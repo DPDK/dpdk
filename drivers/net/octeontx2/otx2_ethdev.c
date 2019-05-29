@@ -2,9 +2,15 @@
  * Copyright(C) 2019 Marvell International Ltd.
  */
 
+#include <inttypes.h>
+#include <math.h>
+
 #include <rte_ethdev_pci.h>
 #include <rte_io.h>
 #include <rte_malloc.h>
+#include <rte_mbuf.h>
+#include <rte_mbuf_pool_ops.h>
+#include <rte_mempool.h>
 
 #include "otx2_ethdev.h"
 
@@ -112,6 +118,308 @@ nix_lf_free(struct otx2_eth_dev *dev)
 	req->flags = 0;
 
 	return otx2_mbox_process(mbox);
+}
+
+static inline void
+nix_rx_queue_reset(struct otx2_eth_rxq *rxq)
+{
+	rxq->head = 0;
+	rxq->available = 0;
+}
+
+static inline uint32_t
+nix_qsize_to_val(enum nix_q_size_e qsize)
+{
+	return (16UL << (qsize * 2));
+}
+
+static inline enum nix_q_size_e
+nix_qsize_clampup_get(struct otx2_eth_dev *dev, uint32_t val)
+{
+	int i;
+
+	if (otx2_ethdev_fixup_is_min_4k_q(dev))
+		i = nix_q_size_4K;
+	else
+		i = nix_q_size_16;
+
+	for (; i < nix_q_size_max; i++)
+		if (val <= nix_qsize_to_val(i))
+			break;
+
+	if (i >= nix_q_size_max)
+		i = nix_q_size_max - 1;
+
+	return i;
+}
+
+static int
+nix_cq_rq_init(struct rte_eth_dev *eth_dev, struct otx2_eth_dev *dev,
+	       uint16_t qid, struct otx2_eth_rxq *rxq, struct rte_mempool *mp)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	const struct rte_memzone *rz;
+	uint32_t ring_size, cq_size;
+	struct nix_aq_enq_req *aq;
+	uint16_t first_skip;
+	int rc;
+
+	cq_size = rxq->qlen;
+	ring_size = cq_size * NIX_CQ_ENTRY_SZ;
+	rz = rte_eth_dma_zone_reserve(eth_dev, "cq", qid, ring_size,
+				      NIX_CQ_ALIGN, dev->node);
+	if (rz == NULL) {
+		otx2_err("Failed to allocate mem for cq hw ring");
+		rc = -ENOMEM;
+		goto fail;
+	}
+	memset(rz->addr, 0, rz->len);
+	rxq->desc = (uintptr_t)rz->addr;
+	rxq->qmask = cq_size - 1;
+
+	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = qid;
+	aq->ctype = NIX_AQ_CTYPE_CQ;
+	aq->op = NIX_AQ_INSTOP_INIT;
+
+	aq->cq.ena = 1;
+	aq->cq.caching = 1;
+	aq->cq.qsize = rxq->qsize;
+	aq->cq.base = rz->iova;
+	aq->cq.avg_level = 0xff;
+	aq->cq.cq_err_int_ena = BIT(NIX_CQERRINT_CQE_FAULT);
+	aq->cq.cq_err_int_ena |= BIT(NIX_CQERRINT_DOOR_ERR);
+
+	/* Many to one reduction */
+	aq->cq.qint_idx = qid % dev->qints;
+
+	if (otx2_ethdev_fixup_is_limit_cq_full(dev)) {
+		uint16_t min_rx_drop;
+		const float rx_cq_skid = 1024 * 256;
+
+		min_rx_drop = ceil(rx_cq_skid / (float)cq_size);
+		aq->cq.drop = min_rx_drop;
+		aq->cq.drop_ena = 1;
+	}
+
+	rc = otx2_mbox_process(mbox);
+	if (rc) {
+		otx2_err("Failed to init cq context");
+		goto fail;
+	}
+
+	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = qid;
+	aq->ctype = NIX_AQ_CTYPE_RQ;
+	aq->op = NIX_AQ_INSTOP_INIT;
+
+	aq->rq.sso_ena = 0;
+	aq->rq.cq = qid; /* RQ to CQ 1:1 mapped */
+	aq->rq.spb_ena = 0;
+	aq->rq.lpb_aura = npa_lf_aura_handle_to_aura(mp->pool_id);
+	first_skip = (sizeof(struct rte_mbuf));
+	first_skip += RTE_PKTMBUF_HEADROOM;
+	first_skip += rte_pktmbuf_priv_size(mp);
+	rxq->data_off = first_skip;
+
+	first_skip /= 8; /* Expressed in number of dwords */
+	aq->rq.first_skip = first_skip;
+	aq->rq.later_skip = (sizeof(struct rte_mbuf) / 8);
+	aq->rq.flow_tagw = 32; /* 32-bits */
+	aq->rq.lpb_sizem1 = rte_pktmbuf_data_room_size(mp);
+	aq->rq.lpb_sizem1 += rte_pktmbuf_priv_size(mp);
+	aq->rq.lpb_sizem1 += sizeof(struct rte_mbuf);
+	aq->rq.lpb_sizem1 /= 8;
+	aq->rq.lpb_sizem1 -= 1; /* Expressed in size minus one */
+	aq->rq.ena = 1;
+	aq->rq.pb_caching = 0x2; /* First cache aligned block to LLC */
+	aq->rq.xqe_imm_size = 0; /* No pkt data copy to CQE */
+	aq->rq.rq_int_ena = 0;
+	/* Many to one reduction */
+	aq->rq.qint_idx = qid % dev->qints;
+
+	if (otx2_ethdev_fixup_is_limit_cq_full(dev))
+		aq->rq.xqe_drop_ena = 1;
+
+	rc = otx2_mbox_process(mbox);
+	if (rc) {
+		otx2_err("Failed to init rq context");
+		goto fail;
+	}
+
+	return 0;
+fail:
+	return rc;
+}
+
+static int
+nix_cq_rq_uninit(struct rte_eth_dev *eth_dev, struct otx2_eth_rxq *rxq)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_aq_enq_req *aq;
+	int rc;
+
+	/* RQ is already disabled */
+	/* Disable CQ */
+	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = rxq->rq;
+	aq->ctype = NIX_AQ_CTYPE_CQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	aq->cq.ena = 0;
+	aq->cq_mask.ena = ~(aq->cq_mask.ena);
+
+	rc = otx2_mbox_process(mbox);
+	if (rc < 0) {
+		otx2_err("Failed to disable cq context");
+		return rc;
+	}
+
+	return 0;
+}
+
+static inline int
+nix_get_data_off(struct otx2_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+
+	return 0;
+}
+
+uint64_t
+otx2_nix_rxq_mbuf_setup(struct otx2_eth_dev *dev, uint16_t port_id)
+{
+	struct rte_mbuf mb_def;
+	uint64_t *tmp;
+
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) % 8 != 0);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, refcnt) -
+				offsetof(struct rte_mbuf, data_off) != 2);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, nb_segs) -
+				offsetof(struct rte_mbuf, data_off) != 4);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, port) -
+				offsetof(struct rte_mbuf, data_off) != 6);
+	mb_def.nb_segs = 1;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM + nix_get_data_off(dev);
+	mb_def.port = port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* Prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
+	tmp = (uint64_t *)&mb_def.rearm_data;
+
+	return *tmp;
+}
+
+static void
+otx2_nix_rx_queue_release(void *rx_queue)
+{
+	struct otx2_eth_rxq *rxq = rx_queue;
+
+	if (!rxq)
+		return;
+
+	otx2_nix_dbg("Releasing rxq %u", rxq->rq);
+	nix_cq_rq_uninit(rxq->eth_dev, rxq);
+	rte_free(rx_queue);
+}
+
+static int
+otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
+			uint16_t nb_desc, unsigned int socket,
+			const struct rte_eth_rxconf *rx_conf,
+			struct rte_mempool *mp)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct rte_mempool_ops *ops;
+	struct otx2_eth_rxq *rxq;
+	const char *platform_ops;
+	enum nix_q_size_e qsize;
+	uint64_t offloads;
+	int rc;
+
+	rc = -EINVAL;
+
+	/* Compile time check to make sure all fast path elements in a CL */
+	RTE_BUILD_BUG_ON(offsetof(struct otx2_eth_rxq, slow_path_start) >= 128);
+
+	/* Sanity checks */
+	if (rx_conf->rx_deferred_start == 1) {
+		otx2_err("Deferred Rx start is not supported");
+		goto fail;
+	}
+
+	platform_ops = rte_mbuf_platform_mempool_ops();
+	/* This driver needs octeontx2_npa mempool ops to work */
+	ops = rte_mempool_get_ops(mp->ops_index);
+	if (strncmp(ops->name, platform_ops, RTE_MEMPOOL_OPS_NAMESIZE)) {
+		otx2_err("mempool ops should be of octeontx2_npa type");
+		goto fail;
+	}
+
+	if (mp->pool_id == 0) {
+		otx2_err("Invalid pool_id");
+		goto fail;
+	}
+
+	/* Free memory prior to re-allocation if needed */
+	if (eth_dev->data->rx_queues[rq] != NULL) {
+		otx2_nix_dbg("Freeing memory prior to re-allocation %d", rq);
+		otx2_nix_rx_queue_release(eth_dev->data->rx_queues[rq]);
+		eth_dev->data->rx_queues[rq] = NULL;
+	}
+
+	offloads = rx_conf->offloads | eth_dev->data->dev_conf.rxmode.offloads;
+	dev->rx_offloads |= offloads;
+
+	/* Find the CQ queue size */
+	qsize = nix_qsize_clampup_get(dev, nb_desc);
+	/* Allocate rxq memory */
+	rxq = rte_zmalloc_socket("otx2 rxq", sizeof(*rxq), OTX2_ALIGN, socket);
+	if (rxq == NULL) {
+		otx2_err("Failed to allocate rq=%d", rq);
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	rxq->eth_dev = eth_dev;
+	rxq->rq = rq;
+	rxq->cq_door = dev->base + NIX_LF_CQ_OP_DOOR;
+	rxq->cq_status = (int64_t *)(dev->base + NIX_LF_CQ_OP_STATUS);
+	rxq->wdata = (uint64_t)rq << 32;
+	rxq->aura = npa_lf_aura_handle_to_aura(mp->pool_id);
+	rxq->mbuf_initializer = otx2_nix_rxq_mbuf_setup(dev,
+							eth_dev->data->port_id);
+	rxq->offloads = offloads;
+	rxq->pool = mp;
+	rxq->qlen = nix_qsize_to_val(qsize);
+	rxq->qsize = qsize;
+
+	/* Alloc completion queue */
+	rc = nix_cq_rq_init(eth_dev, dev, rq, rxq, mp);
+	if (rc) {
+		otx2_err("Failed to allocate rxq=%u", rq);
+		goto free_rxq;
+	}
+
+	rxq->qconf.socket_id = socket;
+	rxq->qconf.nb_desc = nb_desc;
+	rxq->qconf.mempool = mp;
+	memcpy(&rxq->qconf.conf.rx, rx_conf, sizeof(struct rte_eth_rxconf));
+
+	nix_rx_queue_reset(rxq);
+	otx2_nix_dbg("rq=%d pool=%s qsize=%d nb_desc=%d->%d",
+		     rq, mp->name, qsize, nb_desc, rxq->qlen);
+
+	eth_dev->data->rx_queues[rq] = rxq;
+	eth_dev->data->rx_queue_state[rq] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+
+free_rxq:
+	otx2_nix_rx_queue_release(rxq);
+fail:
+	return rc;
 }
 
 static int
@@ -241,6 +549,8 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.dev_infos_get            = otx2_nix_info_get,
 	.dev_configure            = otx2_nix_configure,
 	.link_update              = otx2_nix_link_update,
+	.rx_queue_setup           = otx2_nix_rx_queue_setup,
+	.rx_queue_release         = otx2_nix_rx_queue_release,
 	.stats_get                = otx2_nix_dev_stats_get,
 	.stats_reset              = otx2_nix_dev_stats_reset,
 	.get_reg                  = otx2_nix_dev_get_reg,

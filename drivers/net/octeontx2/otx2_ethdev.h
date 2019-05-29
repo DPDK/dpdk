@@ -10,6 +10,9 @@
 #include <rte_common.h>
 #include <rte_ethdev.h>
 #include <rte_kvargs.h>
+#include <rte_mbuf.h>
+#include <rte_mempool.h>
+#include <rte_string_fns.h>
 
 #include "otx2_common.h"
 #include "otx2_dev.h"
@@ -68,6 +71,7 @@
 #define NIX_RX_MIN_DESC_ALIGN		16
 #define NIX_RX_NB_SEG_MAX		6
 #define NIX_CQ_ENTRY_SZ			128
+#define NIX_CQ_ALIGN			512
 
 /* If PTP is enabled additional SEND MEM DESC is required which
  * takes 2 words, hence max 7 iova address are possible
@@ -116,6 +120,19 @@
 #define NIX_DEFAULT_RSS_CTX_GROUP  0
 #define NIX_DEFAULT_RSS_MCAM_IDX  -1
 
+enum nix_q_size_e {
+	nix_q_size_16,	/* 16 entries */
+	nix_q_size_64,	/* 64 entries */
+	nix_q_size_256,
+	nix_q_size_1K,
+	nix_q_size_4K,
+	nix_q_size_16K,
+	nix_q_size_64K,
+	nix_q_size_256K,
+	nix_q_size_1M,	/* Million entries */
+	nix_q_size_max
+};
+
 struct otx2_qint {
 	struct rte_eth_dev *eth_dev;
 	uint8_t qintx;
@@ -129,6 +146,16 @@ struct otx2_rss_info {
 	uint8_t alg_idx; /* Selected algo index */
 	uint16_t ind_tbl[NIX_RSS_RETA_SIZE_MAX];
 	uint8_t key[NIX_HASH_KEY_SIZE];
+};
+
+struct otx2_eth_qconf {
+	union {
+		struct rte_eth_txconf tx;
+		struct rte_eth_rxconf rx;
+	} conf;
+	void *mempool;
+	uint32_t socket_id;
+	uint16_t nb_desc;
 };
 
 struct otx2_npc_flow_info {
@@ -177,6 +204,29 @@ struct otx2_eth_dev {
 	struct rte_eth_dev *eth_dev;
 } __rte_cache_aligned;
 
+struct otx2_eth_rxq {
+	uint64_t mbuf_initializer;
+	uint64_t data_off;
+	uintptr_t desc;
+	void *lookup_mem;
+	uintptr_t cq_door;
+	uint64_t wdata;
+	int64_t *cq_status;
+	uint32_t head;
+	uint32_t qmask;
+	uint32_t available;
+	uint16_t rq;
+	struct otx2_timesync_info *tstamp;
+	MARKER slow_path_start;
+	uint64_t aura;
+	uint64_t offloads;
+	uint32_t qlen;
+	struct rte_mempool *pool;
+	enum nix_q_size_e qsize;
+	struct rte_eth_dev *eth_dev;
+	struct otx2_eth_qconf qconf;
+} __rte_cache_aligned;
+
 static inline struct otx2_eth_dev *
 otx2_eth_pmd_priv(struct rte_eth_dev *eth_dev)
 {
@@ -192,6 +242,7 @@ void otx2_nix_promisc_enable(struct rte_eth_dev *eth_dev);
 void otx2_nix_promisc_disable(struct rte_eth_dev *eth_dev);
 void otx2_nix_allmulticast_enable(struct rte_eth_dev *eth_dev);
 void otx2_nix_allmulticast_disable(struct rte_eth_dev *eth_dev);
+uint64_t otx2_nix_rxq_mbuf_setup(struct otx2_eth_dev *dev, uint16_t port_id);
 
 /* Link */
 void otx2_nix_toggle_flag_link_cfg(struct otx2_eth_dev *dev, bool set);
