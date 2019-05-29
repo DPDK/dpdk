@@ -771,7 +771,7 @@ out:
 	return error;
 }
 
-static __rte_always_inline uint32_t
+static __rte_noinline uint32_t
 virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mbuf **pkts, uint32_t count)
 {
@@ -830,7 +830,7 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return pkt_idx;
 }
 
-static __rte_always_inline uint32_t
+static __rte_noinline uint32_t
 virtio_dev_rx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mbuf **pkts, uint32_t count)
 {
@@ -1301,7 +1301,7 @@ again:
 	return NULL;
 }
 
-static __rte_always_inline uint16_t
+static __rte_noinline uint16_t
 virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
@@ -1423,7 +1423,7 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return i;
 }
 
-static __rte_always_inline uint16_t
+static __rte_noinline uint16_t
 virtio_dev_tx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
