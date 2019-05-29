@@ -121,7 +121,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			   struct rte_mempool *mb_pool)
 {
 	static int warning1;		/* = 0 */
-	struct ark_adapter *ark = (struct ark_adapter *)dev->data->dev_private;
+	struct ark_adapter *ark = dev->data->dev_private;
 
 	struct ark_rx_queue *queue;
 	uint32_t i;
@@ -611,7 +611,7 @@ eth_rx_queue_stats_reset(void *vqueue)
 void
 eth_ark_udm_force_close(struct rte_eth_dev *dev)
 {
-	struct ark_adapter *ark = (struct ark_adapter *)dev->data->dev_private;
+	struct ark_adapter *ark = dev->data->dev_private;
 	struct ark_rx_queue *queue;
 	uint32_t index;
 	uint16_t i;
