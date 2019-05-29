@@ -60,6 +60,7 @@ New Features
 
   * Performance optimizations in non-vector Tx path
   * Added support for SSE vector mode
+  * Updated HWRM API to version 1.10.0.74
 
 
 Removed Items
