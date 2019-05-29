@@ -368,7 +368,7 @@ static inline void t4_os_write_unlock(rte_rwlock_t *lock)
  */
 static inline struct port_info *ethdev2pinfo(const struct rte_eth_dev *dev)
 {
-	return (struct port_info *)dev->data->dev_private;
+	return dev->data->dev_private;
 }
 
 /**

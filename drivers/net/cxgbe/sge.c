@@ -1138,7 +1138,7 @@ out_free:
 	    (unlikely(m->pkt_len > max_pkt_len)))
 		goto out_free;
 
-	pi = (struct port_info *)txq->data->dev_private;
+	pi = txq->data->dev_private;
 	adap = pi->adapter;
 
 	cntrl = F_TXPKT_L4CSUM_DIS | F_TXPKT_IPCSUM_DIS;
@@ -1792,7 +1792,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	int ret, flsz = 0;
 	struct fw_iq_cmd c;
 	struct sge *s = &adap->sge;
-	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct port_info *pi = eth_dev->data->dev_private;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	char z_name_sw[RTE_MEMZONE_NAMESIZE];
 	unsigned int nb_refill;
@@ -2062,7 +2062,7 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 	int ret, nentries;
 	struct fw_eq_eth_cmd c;
 	struct sge *s = &adap->sge;
-	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct port_info *pi = eth_dev->data->dev_private;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	char z_name_sw[RTE_MEMZONE_NAMESIZE];
 	u8 pciechan;
@@ -2141,7 +2141,7 @@ int t4_sge_alloc_ctrl_txq(struct adapter *adap, struct sge_ctrl_txq *txq,
 	int ret, nentries;
 	struct fw_eq_ctrl_cmd c;
 	struct sge *s = &adap->sge;
-	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct port_info *pi = eth_dev->data->dev_private;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	char z_name_sw[RTE_MEMZONE_NAMESIZE];
 

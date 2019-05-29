@@ -854,7 +854,7 @@ int cxgbe_del_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 		     struct ch_filter_specification *fs,
 		     struct filter_ctx *ctx)
 {
-	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
+	struct port_info *pi = dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
 	struct filter_entry *f;
 	unsigned int chip_ver;
