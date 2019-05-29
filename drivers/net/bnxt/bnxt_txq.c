@@ -80,7 +80,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 			       unsigned int socket_id,
 			       const struct rte_eth_txconf *tx_conf)
 {
-	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt *bp = eth_dev->data->dev_private;
 	struct bnxt_tx_queue *txq;
 	int rc = 0;
 

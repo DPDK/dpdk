@@ -54,7 +54,7 @@ int rte_pmd_bnxt_set_tx_loopback(uint16_t port, uint8_t on)
 	if (!is_bnxt_supported(eth_dev))
 		return -ENOTSUP;
 
-	bp = (struct bnxt *)eth_dev->data->dev_private;
+	bp = eth_dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
 		PMD_DRV_LOG(ERR,
@@ -96,7 +96,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint16_t port, uint8_t on)
 	if (!is_bnxt_supported(eth_dev))
 		return -ENOTSUP;
 
-	bp = (struct bnxt *)eth_dev->data->dev_private;
+	bp = eth_dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
 		PMD_DRV_LOG(ERR,
@@ -146,7 +146,7 @@ int rte_pmd_bnxt_set_vf_mac_addr(uint16_t port, uint16_t vf,
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (vf >= dev_info.max_vfs || mac_addr == NULL)
 		return -EINVAL;
@@ -180,7 +180,7 @@ int rte_pmd_bnxt_set_vf_rate_limit(uint16_t port, uint16_t vf,
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)eth_dev->data->dev_private;
+	bp = eth_dev->data->dev_private;
 
 	if (!bp->pf.active_vfs)
 		return -EINVAL;
@@ -231,7 +231,7 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
 		PMD_DRV_LOG(ERR,
@@ -283,7 +283,7 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
 		PMD_DRV_LOG(ERR,
@@ -333,7 +333,7 @@ rte_pmd_bnxt_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
@@ -370,7 +370,7 @@ int rte_pmd_bnxt_set_vf_rxmode(uint16_t port, uint16_t vf,
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (!bp->pf.vf_info)
 		return -EINVAL;
@@ -462,7 +462,7 @@ int rte_pmd_bnxt_set_vf_vlan_filter(uint16_t port, uint16_t vlan,
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 	if (!bp->pf.vf_info)
 		return -EINVAL;
 
@@ -551,7 +551,7 @@ int rte_pmd_bnxt_get_vf_stats(uint16_t port,
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
 		return -EINVAL;
@@ -578,7 +578,7 @@ int rte_pmd_bnxt_reset_vf_stats(uint16_t port,
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
 		return -EINVAL;
@@ -604,7 +604,7 @@ int rte_pmd_bnxt_get_vf_rx_status(uint16_t port, uint16_t vf_id)
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
 		return -EINVAL;
@@ -631,7 +631,7 @@ int rte_pmd_bnxt_get_vf_tx_drop_count(uint16_t port, uint16_t vf_id,
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
 		return -EINVAL;
@@ -663,7 +663,7 @@ int rte_pmd_bnxt_mac_addr_add(uint16_t port, struct rte_ether_addr *addr,
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
 		return -EINVAL;
@@ -739,7 +739,7 @@ rte_pmd_bnxt_set_vf_vlan_insert(uint16_t port, uint16_t vf,
 		return -ENOTSUP;
 
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
@@ -776,7 +776,7 @@ int rte_pmd_bnxt_set_vf_persist_stats(uint16_t port, uint16_t vf, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
-	bp = (struct bnxt *)dev->data->dev_private;
+	bp = dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
 		PMD_DRV_LOG(ERR,

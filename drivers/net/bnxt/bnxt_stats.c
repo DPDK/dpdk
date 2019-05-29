@@ -387,7 +387,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 
 void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 {
-	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt *bp = eth_dev->data->dev_private;
 	unsigned int i;
 
 	if (!(bp->flags & BNXT_FLAG_INIT_DONE)) {
@@ -406,7 +406,7 @@ void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_xstat *xstats, unsigned int n)
 {
-	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt *bp = eth_dev->data->dev_private;
 
 	unsigned int count, i;
 	uint64_t tx_drop_pkts;
@@ -532,7 +532,7 @@ int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
 
 void bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 {
-	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt *bp = eth_dev->data->dev_private;
 
 	if (bp->flags & BNXT_FLAG_PORT_STATS && BNXT_SINGLE_PF(bp))
 		bnxt_hwrm_port_clr_stats(bp);

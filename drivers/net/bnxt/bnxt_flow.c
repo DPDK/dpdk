@@ -715,7 +715,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 {
 	const struct rte_flow_action *act =
 		bnxt_flow_non_void_action(actions);
-	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt *bp = dev->data->dev_private;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_vf *act_vf;
 	struct bnxt_vnic_info *vnic, *vnic0;
@@ -900,7 +900,7 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 		   const struct rte_flow_action actions[],
 		   struct rte_flow_error *error)
 {
-	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_filter_info *filter;
 	int ret = 0;
 
@@ -999,7 +999,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
-	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_filter_info *filter;
 	struct bnxt_vnic_info *vnic = NULL;
 	bool update_flow = false;
@@ -1100,7 +1100,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
 		  struct rte_flow_error *error)
 {
-	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_filter_info *filter = flow->filter;
 	struct bnxt_vnic_info *vnic = flow->vnic;
 	int ret = 0;
@@ -1129,7 +1129,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 static int
 bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
-	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_vnic_info *vnic;
 	struct rte_flow *flow;
 	unsigned int i;
