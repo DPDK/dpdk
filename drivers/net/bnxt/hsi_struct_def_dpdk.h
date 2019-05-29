@@ -260,6 +260,7 @@ struct cmd_nums {
 	 */
 	uint16_t	req_type;
 	#define HWRM_VER_GET                              UINT32_C(0x0)
+	#define HWRM_ERROR_RECOVERY_QCFG                  UINT32_C(0xc)
 	#define HWRM_FUNC_DRV_IF_CHANGE                   UINT32_C(0xd)
 	#define HWRM_FUNC_BUF_UNRGTR                      UINT32_C(0xe)
 	#define HWRM_FUNC_VF_CFG                          UINT32_C(0xf)
@@ -372,6 +373,8 @@ struct cmd_nums {
 	#define HWRM_STAT_CTX_QUERY                       UINT32_C(0xb2)
 	#define HWRM_STAT_CTX_CLR_STATS                   UINT32_C(0xb3)
 	#define HWRM_PORT_QSTATS_EXT                      UINT32_C(0xb4)
+	#define HWRM_PORT_PHY_MDIO_WRITE                  UINT32_C(0xb5)
+	#define HWRM_PORT_PHY_MDIO_READ                   UINT32_C(0xb6)
 	#define HWRM_FW_RESET                             UINT32_C(0xc0)
 	#define HWRM_FW_QSTATUS                           UINT32_C(0xc1)
 	#define HWRM_FW_HEALTH_CHECK                      UINT32_C(0xc2)
@@ -397,6 +400,8 @@ struct cmd_nums {
 	#define HWRM_WOL_FILTER_QCFG                      UINT32_C(0xf2)
 	#define HWRM_WOL_REASON_QCFG                      UINT32_C(0xf3)
 	/* Experimental */
+	#define HWRM_CFA_METER_QCAPS                      UINT32_C(0xf4)
+	/* Experimental */
 	#define HWRM_CFA_METER_PROFILE_ALLOC              UINT32_C(0xf5)
 	/* Experimental */
 	#define HWRM_CFA_METER_PROFILE_FREE               UINT32_C(0xf6)
@@ -406,6 +411,8 @@ struct cmd_nums {
 	#define HWRM_CFA_METER_INSTANCE_ALLOC             UINT32_C(0xf8)
 	/* Experimental */
 	#define HWRM_CFA_METER_INSTANCE_FREE              UINT32_C(0xf9)
+	/* Experimental */
+	#define HWRM_CFA_METER_INSTANCE_CFG               UINT32_C(0xfa)
 	/* Experimental */
 	#define HWRM_CFA_VFR_ALLOC                        UINT32_C(0xfd)
 	/* Experimental */
@@ -451,6 +458,34 @@ struct cmd_nums {
 	#define HWRM_CFA_FLOW_AGING_QCFG                  UINT32_C(0x115)
 	/* Experimental */
 	#define HWRM_CFA_FLOW_AGING_QCAPS                 UINT32_C(0x116)
+	/* Experimental */
+	#define HWRM_CFA_CTX_MEM_RGTR                     UINT32_C(0x117)
+	/* Experimental */
+	#define HWRM_CFA_CTX_MEM_UNRGTR                   UINT32_C(0x118)
+	/* Experimental */
+	#define HWRM_CFA_CTX_MEM_QCTX                     UINT32_C(0x119)
+	/* Experimental */
+	#define HWRM_CFA_CTX_MEM_QCAPS                    UINT32_C(0x11a)
+	/* Experimental */
+	#define HWRM_CFA_COUNTER_QCAPS                    UINT32_C(0x11b)
+	/* Experimental */
+	#define HWRM_CFA_COUNTER_CFG                      UINT32_C(0x11c)
+	/* Experimental */
+	#define HWRM_CFA_COUNTER_QCFG                     UINT32_C(0x11d)
+	/* Experimental */
+	#define HWRM_CFA_COUNTER_QSTATS                   UINT32_C(0x11e)
+	/* Experimental */
+	#define HWRM_CFA_TCP_FLAG_PROCESS_QCFG            UINT32_C(0x11f)
+	/* Experimental */
+	#define HWRM_CFA_EEM_QCAPS                        UINT32_C(0x120)
+	/* Experimental */
+	#define HWRM_CFA_EEM_CFG                          UINT32_C(0x121)
+	/* Experimental */
+	#define HWRM_CFA_EEM_QCFG                         UINT32_C(0x122)
+	/* Experimental */
+	#define HWRM_CFA_EEM_OP                           UINT32_C(0x123)
+	/* Experimental */
+	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS              UINT32_C(0x124)
 	/* Engine CKV - Ping the device and SRT firmware to get the public key. */
 	#define HWRM_ENGINE_CKV_HELLO                     UINT32_C(0x12d)
 	/* Engine CKV - Get the current allocation status of keys provisioned in the key vault. */
@@ -469,6 +504,8 @@ struct cmd_nums {
 	#define HWRM_ENGINE_CKV_RNG_GET                   UINT32_C(0x134)
 	/* Engine CKV - Generate and encrypt a new AES key. */
 	#define HWRM_ENGINE_CKV_KEY_GEN                   UINT32_C(0x135)
+	/* Engine CKV - Configure a label index with a label value. */
+	#define HWRM_ENGINE_CKV_KEY_LABEL_CFG             UINT32_C(0x136)
 	/* Engine - Query the available queue groups configuration. */
 	#define HWRM_ENGINE_QG_CONFIG_QUERY               UINT32_C(0x13c)
 	/* Engine - Query the queue groups assigned to a function. */
@@ -523,6 +560,8 @@ struct cmd_nums {
 	#define HWRM_ENGINE_NQ_FREE                       UINT32_C(0x163)
 	/* Engine - Set the on-die RQE credit update location. */
 	#define HWRM_ENGINE_ON_DIE_RQE_CREDITS            UINT32_C(0x164)
+	/* Engine - Query the engine function configuration. */
+	#define HWRM_ENGINE_FUNC_QCFG                     UINT32_C(0x165)
 	/* Experimental */
 	#define HWRM_FUNC_RESOURCE_QCAPS                  UINT32_C(0x190)
 	/* Experimental */
@@ -572,6 +611,10 @@ struct cmd_nums {
 	#define HWRM_DBG_I2C_CMD                          UINT32_C(0xff1b)
 	/*  */
 	#define HWRM_DBG_RING_INFO_GET                    UINT32_C(0xff1c)
+	/* Experimental */
+	#define HWRM_DBG_CRASHDUMP_HEADER                 UINT32_C(0xff1d)
+	/* Experimental */
+	#define HWRM_DBG_CRASHDUMP_ERASE                  UINT32_C(0xff1e)
 	/* Experimental */
 	#define HWRM_NVM_FACTORY_DEFAULTS                 UINT32_C(0xffee)
 	#define HWRM_NVM_VALIDATE_OPTION                  UINT32_C(0xffef)
@@ -724,8 +767,8 @@ struct hwrm_err_output {
 #define HWRM_NA_SIGNATURE ((uint32_t)(-1))
 /* hwrm_func_buf_rgtr */
 #define HWRM_MAX_REQ_LEN 128
-/* hwrm_selftest_qlist */
-#define HWRM_MAX_RESP_LEN 280
+/* hwrm_cfa_flow_info */
+#define HWRM_MAX_RESP_LEN 704
 /* 7 bit indirection table index. */
 #define HW_HASH_INDEX_SIZE 0x80
 #define HW_HASH_KEY_SIZE 40
@@ -735,8 +778,8 @@ struct hwrm_err_output {
 #define HWRM_VERSION_MINOR 10
 #define HWRM_VERSION_UPDATE 0
 /* non-zero means beta version */
-#define HWRM_VERSION_RSVD 19
-#define HWRM_VERSION_STR "1.10.0.19"
+#define HWRM_VERSION_RSVD 48
+#define HWRM_VERSION_STR "1.10.0.48"
 
 /****************
  * hwrm_ver_get *
@@ -993,6 +1036,32 @@ struct hwrm_ver_get_output {
 	 */
 	#define HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_FLOW_AGING_SUPPORTED \
 		UINT32_C(0x200)
+	/*
+	 * If set to 1, firmware is capable to support advanced flow counters like,
+	 * Meter drop counters and EEM counters.
+	 * If set to 0, firmware is not capable to support advanced flow counters.
+	 * By default, this flag should be 0 for older version of core firmware.
+	 */
+	#define HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_ADV_FLOW_COUNTERS_SUPPORTED \
+		UINT32_C(0x400)
+	/*
+	 * If set to 1, the firmware is able to support the use of the CFA
+	 * Extended Exact Match(EEM) feature.
+	 * If set to 0, firmware is not capable to support the use of the
+	 * CFA EEM feature.
+	 * By default, this flag should be 0 for older version of core firmware.
+	 */
+	#define HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_CFA_EEM_SUPPORTED \
+		UINT32_C(0x800)
+	/*
+	 * If set to 1, the firmware is able to support advance CFA flow management
+	 * features reported in the HWRM_CFA_FLOW_MGNT_QCAPS.
+	 * If set to 0, then the firmware doesn’t support the advance CFA flow management
+	 * features.
+	 * By default, this flag should be 0 for older version of core firmware.
+	 */
+	#define HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_CFA_ADV_FLOW_MGNT_SUPPORTED \
+		UINT32_C(0x1000)
 	/*
 	 * This field represents the major version of RoCE firmware.
 	 * A change in major version represents a major release.
@@ -3695,6 +3764,9 @@ struct hwrm_async_event_cmpl {
 	/* Reset notification to clients */
 	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_RESET_NOTIFY \
 		UINT32_C(0x8)
+	/* Master function selection event */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ERROR_RECOVERY \
+		UINT32_C(0x9)
 	/* Function driver unloaded */
 	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_FUNC_DRVR_UNLOAD \
 		UINT32_C(0x10)
@@ -3739,6 +3811,40 @@ struct hwrm_async_event_cmpl {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEBUG_NOTIFICATION \
 		UINT32_C(0x37)
+	/*
+	 * A EEM flow cached memory flush request event being posted to the PF
+	 * driver.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_EEM_CACHE_FLUSH_REQ \
+		UINT32_C(0x38)
+	/*
+	 * A EEM flow cache memory flush completion event being posted to the
+	 * firmware by the PF driver. This is indication that host EEM flush
+	 * has completed by the PF.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_EEM_CACHE_FLUSH_DONE \
+		UINT32_C(0x39)
+	/*
+	 * A tcp flag action change event being posted to the PF or trusted VF
+	 * driver by the firmware. The PF or trusted VF driver should query
+	 * the firmware for the new TCP flag action update after receiving
+	 * this async event.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_TCP_FLAG_ACTION_CHANGE \
+		UINT32_C(0x3a)
+	/*
+	 * A eem flow active event being posted to the PF or trusted VF driver
+	 * by the firmware. The PF or trusted VF driver should update the
+	 * flow's aging timer after receiving this async event.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_EEM_FLOW_ACTIVE \
+		UINT32_C(0x3b)
+	/*
+	 * A eem cfg change event being posted to the trusted VF driver by the
+	 * firmware if the parent PF EEM configuration changed.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_EEM_CFG_CHANGE \
+		UINT32_C(0x3c)
 	/*
 	 * A trace log message. This contains firmware trace logs string
 	 * embedded in the asynchronous message. This is an experimental
@@ -4448,6 +4554,75 @@ struct hwrm_async_event_cmpl_reset_notify {
 		UINT32_C(0xffff0000)
 	#define HWRM_ASYNC_EVENT_CMPL_RESET_NOTIFY_EVENT_DATA1_DELAY_IN_100MS_TICKS_SFT \
 		16
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_error_recovery (size:128b/16B) */
+struct hwrm_async_event_cmpl_error_recovery {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/*
+	 * This async notification message can be used for selecting or
+	 * deselecting master function for error recovery,
+	 * and to communicate to all the functions whether error recovery
+	 * was enabled/disabled.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_ID_ERROR_RECOVERY \
+		UINT32_C(0x9)
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_ID_ERROR_RECOVERY
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_OPAQUE_MASK UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_OPAQUE_SFT 1
+	/* 8-lsb timestamp (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* Indicates driver action requested */
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_MASK \
+		UINT32_C(0xff)
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_SFT \
+		0
+	/*
+	 * If set to 1, this function is selected as Master function.
+	 * This function has responsibility to do 'chip reset' when it
+	 * detects a fatal error. If set to 0, master function functionality
+	 * is disabled on this function.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_MASTER_FUNC \
+		UINT32_C(0x1)
+	/*
+	 * If set to 1, error recovery is enabled.
+	 * If set to 0, error recovery is disabled.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_RECOVERY_ENABLED \
+		UINT32_C(0x2)
 } __attribute__((packed));
 
 /* hwrm_async_event_cmpl_func_drvr_unload (size:128b/16B) */
@@ -5180,6 +5355,422 @@ struct hwrm_async_event_cmpl_hw_flow_aged {
 		(UINT32_C(0x1) << 31)
 	#define HWRM_ASYNC_EVENT_CMPL_HW_FLOW_AGED_EVENT_DATA1_FLOW_DIRECTION_LAST \
 		HWRM_ASYNC_EVENT_CMPL_HW_FLOW_AGED_EVENT_DATA1_FLOW_DIRECTION_TX
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_eem_cache_flush_req (size:128b/16B) */
+struct hwrm_async_event_cmpl_eem_cache_flush_req {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Notification of a eem_cache_flush request */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_EVENT_ID_EEM_CACHE_FLUSH_REQ \
+		UINT32_C(0x38)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_EVENT_ID_EEM_CACHE_FLUSH_REQ
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_REQ_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_eem_cache_flush_done (size:128b/16B) */
+struct hwrm_async_event_cmpl_eem_cache_flush_done {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/*
+	 * Notification of a host eem_cache_flush has completed. This event
+	 * is generated by the host driver.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_EVENT_ID_EEM_CACHE_FLUSH_DONE \
+		UINT32_C(0x39)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_EVENT_ID_EEM_CACHE_FLUSH_DONE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* Indicates function ID that this event occurred on. */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_EVENT_DATA1_FID_MASK \
+		UINT32_C(0xffff)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_EVENT_DATA1_FID_SFT \
+		0
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_tcp_flag_action_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_tcp_flag_action_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_TYPE_SFT \
+		0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Notification of tcp flag action change */
+	#define HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_EVENT_ID_TCP_FLAG_ACTION_CHANGE \
+		UINT32_C(0x3a)
+	#define HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_EVENT_ID_TCP_FLAG_ACTION_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_V \
+		UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_TCP_FLAG_ACTION_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_eem_flow_active (size:128b/16B) */
+struct hwrm_async_event_cmpl_eem_flow_active {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Notification of an active eem flow */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_ID_EEM_FLOW_ACTIVE \
+		UINT32_C(0x3b)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_ID_EEM_FLOW_ACTIVE
+	/* Event specific data */
+	uint32_t	event_data2;
+	/* Indicates the 2nd global id this event occurred on. */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA2_GLOBAL_ID_2_MASK \
+		UINT32_C(0x3fffffff)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA2_GLOBAL_ID_2_SFT \
+		0
+	/*
+	 * Indicates flow direction of the flow identified by
+	 * the global_id_2.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA2_FLOW_DIRECTION \
+		UINT32_C(0x40000000)
+	/* If this bit is set to 0, then it indicates that this rx flow. */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA2_FLOW_DIRECTION_RX \
+		(UINT32_C(0x0) << 30)
+	/* If this bit is set to 1, then it indicates that this tx flow. */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA2_FLOW_DIRECTION_TX \
+		(UINT32_C(0x1) << 30)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA2_FLOW_DIRECTION_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA2_FLOW_DIRECTION_TX
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/* Indicates the 1st global id this event occurred on. */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_GLOBAL_ID_1_MASK \
+		UINT32_C(0x3fffffff)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_GLOBAL_ID_1_SFT \
+		0
+	/*
+	 * Indicates flow direction of the flow identified by the
+	 * global_id_1.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_FLOW_DIRECTION \
+		UINT32_C(0x40000000)
+	/* If this bit is set to 0, then it indicates that this is rx flow. */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_FLOW_DIRECTION_RX \
+		(UINT32_C(0x0) << 30)
+	/* If this bit is set to 1, then it indicates that this is tx flow. */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_FLOW_DIRECTION_TX \
+		(UINT32_C(0x1) << 30)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_FLOW_DIRECTION_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_FLOW_DIRECTION_TX
+	/*
+	 * Indicates EEM flow aging mode this event occurred on. If
+	 * this bit is set to 0, the event_data1 is the EEM global
+	 * ID. If this bit is set to 1, the event_data1 is the number
+	 * of global ID in the context memory.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_MODE \
+		UINT32_C(0x80000000)
+	/* EEM flow aging mode 0. */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_MODE_0 \
+		(UINT32_C(0x0) << 31)
+	/* EEM flow aging mode 1. */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_MODE_1 \
+		(UINT32_C(0x1) << 31)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_MODE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_MODE_1
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_eem_cfg_change (size:128b/16B) */
+struct hwrm_async_event_cmpl_eem_cfg_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Notification of EEM configuration change */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_EVENT_ID_EEM_CFG_CHANGE \
+		UINT32_C(0x3c)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_EVENT_ID_EEM_CFG_CHANGE
+	/* Event specific data */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_OPAQUE_MASK UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
+	/*
+	 * Value of 1 to indicate EEM TX configuration is enabled. Value of
+	 * 0 to indicate the EEM TX configuration is disabled.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_EVENT_DATA1_EEM_TX_ENABLE \
+		UINT32_C(0x1)
+	/*
+	 * Value of 1 to indicate EEM RX configuration is enabled. Value of 0
+	 * to indicate the EEM RX configuration is disabled.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_EVENT_DATA1_EEM_RX_ENABLE \
+		UINT32_C(0x2)
+} __attribute__((packed));
+
+/* hwrm_async_event_cmpl_fw_trace_msg (size:128b/16B) */
+struct hwrm_async_event_cmpl_fw_trace_msg {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/* Firmware trace log message */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_ID_FW_TRACE_MSG \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_ID_FW_TRACE_MSG
+	/* Trace byte 0 to 3 */
+	uint32_t	event_data2;
+	/* Trace byte0 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA2_BYTE0_MASK \
+		UINT32_C(0xff)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA2_BYTE0_SFT 0
+	/* Trace byte1 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA2_BYTE1_MASK \
+		UINT32_C(0xff00)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA2_BYTE1_SFT 8
+	/* Trace byte2 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA2_BYTE2_MASK \
+		UINT32_C(0xff0000)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA2_BYTE2_SFT 16
+	/* Trace byte3 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA2_BYTE3_MASK \
+		UINT32_C(0xff000000)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA2_BYTE3_SFT 24
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_OPAQUE_MASK UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_OPAQUE_SFT 1
+	/* Trace flags */
+	uint8_t	timestamp_lo;
+	/* Indicates if the string is partial or complete. */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_STRING \
+		UINT32_C(0x1)
+	/* Complete string */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_STRING_COMPLETE \
+		UINT32_C(0x0)
+	/* Partial string */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_STRING_PARTIAL \
+		UINT32_C(0x1)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_STRING_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_STRING_PARTIAL
+	/* Indicates the firmware that sent the trace message. */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_FIRMWARE \
+		UINT32_C(0x2)
+	/* Primary firmware */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_FIRMWARE_PRIMARY \
+		(UINT32_C(0x0) << 1)
+	/* Secondary firmware */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_FIRMWARE_SECONDARY \
+		(UINT32_C(0x1) << 1)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_FIRMWARE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_LO_FIRMWARE_SECONDARY
+	/* Trace byte 4 to 5 */
+	uint16_t	timestamp_hi;
+	/* Trace byte4 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_HI_BYTE4_MASK \
+		UINT32_C(0xff)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_HI_BYTE4_SFT 0
+	/* Trace byte5 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_HI_BYTE5_MASK \
+		UINT32_C(0xff00)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_TIMESTAMP_HI_BYTE5_SFT 8
+	/* Trace byte 6 to 9 */
+	uint32_t	event_data1;
+	/* Trace byte6 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE6_MASK \
+		UINT32_C(0xff)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE6_SFT 0
+	/* Trace byte7 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE7_MASK \
+		UINT32_C(0xff00)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE7_SFT 8
+	/* Trace byte8 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE8_MASK \
+		UINT32_C(0xff0000)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE8_SFT 16
+	/* Trace byte9 */
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE9_MASK \
+		UINT32_C(0xff000000)
+	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE9_SFT 24
 } __attribute__((packed));
 
 /* hwrm_async_event_cmpl_hwrm_error (size:128b/16B) */
@@ -6067,6 +6658,12 @@ struct hwrm_func_qcaps_output {
 	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_HOT_RESET_CAPABLE \
 		UINT32_C(0x400000)
 	/*
+	 * This flag will be set to 1 by the FW if FW supports adapter error
+	 * recovery.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ERROR_RECOVERY_CAPABLE \
+		UINT32_C(0x800000)
+	/*
 	 * This value is current MAC address configured for this
 	 * function. A value of 00-00-00-00-00-00 indicates no
 	 * MAC address is currently configured.
@@ -6813,8 +7410,7 @@ struct hwrm_func_cfg_input {
 	 * resident HWRM clients, only the parent PF driver shall be allowed
 	 * to initiate this change on one of its children VFs. If this bit is
 	 * set to 1, then the VF that is being configured is requested to be
-	 * trusted. If this bit is set to 0, then the VF that is being configured
-	 * is requested to be not trusted.
+	 * trusted.
 	 */
 	#define HWRM_FUNC_CFG_INPUT_FLAGS_TRUSTED_VF_ENABLE \
 		UINT32_C(0x200000)
@@ -6825,6 +7421,25 @@ struct hwrm_func_cfg_input {
 	 */
 	#define HWRM_FUNC_CFG_INPUT_FLAGS_DYNAMIC_TX_RING_ALLOC \
 		UINT32_C(0x400000)
+	/*
+	 * This bit requests that the firmware test to see if all the assets
+	 * requested in this command (i.e. number of NQ rings) are available.
+	 * The firmware will return an error if the requested assets are
+	 * not available. The firwmare will NOT reserve the assets if they
+	 * are available.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_FLAGS_NQ_ASSETS_TEST \
+		UINT32_C(0x800000)
+	/*
+	 * This configuration change can be initiated by a PF driver. This
+	 * configuration request shall be targeted to a VF. From local host
+	 * resident HWRM clients, only the parent PF driver shall be allowed
+	 * to initiate this change on one of its children VFs. If this bit is
+	 * set to 1, then the VF that is being configured is requested to be
+	 * untrusted.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_FLAGS_TRUSTED_VF_DISABLE \
+		UINT32_C(0x1000000)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the mtu field to be
@@ -7593,6 +8208,19 @@ struct hwrm_func_drv_rgtr_input {
 	 */
 	#define HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_HOT_RESET_SUPPORT \
 		UINT32_C(0x10)
+	/*
+	 * When this bit is 1, the function is indicating the support of the
+	 * error recovery capability. Error recovery support will be used by
+	 * firmware only if all the driver instances support error recovery
+	 * process. By setting this bit, driver is indicating support for
+	 * corresponding async event completion message. These will be
+	 * delivered to the driver even if they did not register for it.
+	 * If supported, after receiving reset notify async event with fatal
+	 * flag set in event data1, then all the drivers have to tear down
+	 * their resources without sending any HWRM commands to FW.
+	 */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_ERROR_RECOVERY_SUPPORT \
+		UINT32_C(0x20)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the os_type field to be
@@ -10270,10 +10898,377 @@ struct hwrm_func_backing_store_qcfg_output {
 	uint8_t	unused_1[7];
 	/*
 	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as 1
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field
+	 * is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/****************************
+ * hwrm_error_recovery_qcfg *
+ ****************************/
+
+
+/* hwrm_error_recovery_qcfg_input (size:192b/24B) */
+struct hwrm_error_recovery_qcfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint8_t	unused_0[8];
+} __attribute__((packed));
+
+/* hwrm_error_recovery_qcfg_output (size:1664b/208B) */
+struct hwrm_error_recovery_qcfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint32_t	flags;
+	/*
+	 * When this flag is set to 1, error recovery will be initiated
+	 * through master function driver.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FLAGS_HOST       UINT32_C(0x1)
+	/*
+	 * When this flag is set to 1, error recovery will be performed
+	 * through Co processor.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FLAGS_CO_CPU     UINT32_C(0x2)
+	/*
+	 * Driver Polling frequency. This value is in units of 100msec.
+	 * Typical value would be 10 to indicate 1sec.
+	 * Drivers can poll FW health status, Heartbeat, reset_counter with
+	 * this frequency.
+	 */
+	uint32_t	driver_polling_freq;
+	/*
+	 * This value is in units of 100msec.
+	 * Typical value would be 30 to indicate 3sec.
+	 * Master function wait period from detecting a fatal error to
+	 * initiating reset. In this time period Master PF expects every
+	 * active driver will detect fatal error.
+	 */
+	uint32_t	master_func_wait_period;
+	/*
+	 * This value is in units of 100msec.
+	 * Typical value would be 50 to indicate 5sec.
+	 * Normal function wait period from fatal error detection to
+	 * polling FW health status. In this time period, drivers should not
+	 * do any PCIe MMIO transaction and should not send any HWRM commands.
+	 */
+	uint32_t	normal_func_wait_period;
+	/*
+	 * This value is in units of 100msec.
+	 * Typical value would be 20 to indicate 2sec.
+	 * This field indicates that, master function wait period after chip
+	 * reset. After this time, master function should reinitialize with
+	 * FW.
+	 */
+	uint32_t	master_func_wait_period_after_reset;
+	/*
+	 * This value is in units of 100msec.
+	 * Typical value would be 60 to indicate 6sec.
+	 * This field is applicable to both master and normal functions.
+	 * Even after chip reset, if FW status not changed to ready,
+	 * then all the functions can poll for this much time and bailout.
+	 */
+	uint32_t	max_bailout_time_after_reset;
+	/*
+	 * FW health status register.
+	 * Lower 2 bits indicates address space location and upper 30 bits
+	 * indicates upper 30bits of the register address.
+	 * A value of 0xFFFF-FFFF indicates this register does not exist.
+	 */
+	uint32_t	fw_health_status_reg;
+	/* Lower 2 bits indicates address space location. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_SPACE_MASK \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_SPACE_SFT \
+		0
+	/*
+	 * If value is 0, this register is located in PCIe config space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_SPACE_PCIE_CFG \
+		UINT32_C(0x0)
+	/*
+	 * If value is 1, this register is located in GRC address space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_SPACE_GRC \
+		UINT32_C(0x1)
+	/*
+	 * If value is 2, this register is located in first BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_SPACE_BAR0 \
+		UINT32_C(0x2)
+	/*
+	 * If value is 3, this register is located in second BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_SPACE_BAR1 \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_SPACE_LAST \
+		HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_SPACE_BAR1
+	/* Upper 30bits of the register address. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_MASK \
+		UINT32_C(0xfffffffc)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEALTH_STATUS_REG_ADDR_SFT \
+		2
+	/*
+	 * FW HeartBeat register.
+	 * Lower 2 bits indicates address space location and upper 30 bits
+	 * indicates actual address.
+	 * A value of 0xFFFF-FFFF indicates this register does not exist.
+	 */
+	uint32_t	fw_heartbeat_reg;
+	/* Lower 2 bits indicates address space location. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_SPACE_MASK \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_SPACE_SFT \
+		0
+	/*
+	 * If value is 0, this register is located in PCIe config space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_SPACE_PCIE_CFG \
+		UINT32_C(0x0)
+	/*
+	 * If value is 1, this register is located in GRC address space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_SPACE_GRC \
+		UINT32_C(0x1)
+	/*
+	 * If value is 2, this register is located in first BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_SPACE_BAR0 \
+		UINT32_C(0x2)
+	/*
+	 * If value is 3, this register is located in second BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_SPACE_BAR1 \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_SPACE_LAST \
+		HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_SPACE_BAR1
+	/* Upper 30bits of the register address. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_MASK \
+		UINT32_C(0xfffffffc)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_HEARTBEAT_REG_ADDR_SFT \
+		2
+	/*
+	 * FW reset counter.
+	 * Lower 2 bits indicates address space location and upper 30 bits
+	 * indicates actual address.
+	 * A value of 0xFFFF-FFFF indicates this register does not exist.
+	 */
+	uint32_t	fw_reset_cnt_reg;
+	/* Lower 2 bits indicates address space location. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_SPACE_MASK \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_SPACE_SFT \
+		0
+	/*
+	 * If value is 0, this register is located in PCIe config space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_SPACE_PCIE_CFG \
+		UINT32_C(0x0)
+	/*
+	 * If value is 1, this register is located in GRC address space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_SPACE_GRC \
+		UINT32_C(0x1)
+	/*
+	 * If value is 2, this register is located in first BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_SPACE_BAR0 \
+		UINT32_C(0x2)
+	/*
+	 * If value is 3, this register is located in second BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_SPACE_BAR1 \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_SPACE_LAST \
+		HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_SPACE_BAR1
+	/* Upper 30bits of the register address. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_MASK \
+		UINT32_C(0xfffffffc)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FW_RESET_CNT_REG_ADDR_SFT \
+		2
+	/*
+	 * Reset Inprogress Register address for PFs.
+	 * Lower 2 bits indicates address space location and upper 30 bits
+	 * indicates actual address.
+	 * A value of 0xFFFF-FFFF indicates this register does not exist.
+	 */
+	uint32_t	reset_inprogress_reg;
+	/* Lower 2 bits indicates address space location. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_SPACE_MASK \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_SPACE_SFT \
+		0
+	/*
+	 * If value is 0, this register is located in PCIe config space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_SPACE_PCIE_CFG \
+		UINT32_C(0x0)
+	/*
+	 * If value is 1, this register is located in GRC address space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_SPACE_GRC \
+		UINT32_C(0x1)
+	/*
+	 * If value is 2, this register is located in first BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_SPACE_BAR0 \
+		UINT32_C(0x2)
+	/*
+	 * If value is 3, this register is located in second BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_SPACE_BAR1 \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_SPACE_LAST \
+		HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_SPACE_BAR1
+	/* Upper 30bits of the register address. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_MASK \
+		UINT32_C(0xfffffffc)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_INPROGRESS_REG_ADDR_SFT \
+		2
+	/* This field indicates the mask value for reset_inprogress_reg. */
+	uint32_t	reset_inprogress_reg_mask;
+	uint8_t	unused_0[3];
+	/*
+	 * Array of registers and value count to reset the Chip
+	 * Each array count has reset_reg, reset_reg_val, delay_after_reset
+	 * in TLV format. Depending upon Chip type, number of reset registers
+	 * will vary. Drivers have to write reset_reg_val in the reset_reg
+	 * location in the same sequence in order to recover from a fatal
+	 * error.
+	 */
+	uint8_t	reg_array_cnt;
+	/*
+	 * Reset register.
+	 * Lower 2 bits indicates address space location and upper 30 bits
+	 * indicates actual address.
+	 * A value of 0xFFFF-FFFF indicates this register does not exist.
+	 */
+	uint32_t	reset_reg[16];
+	/* Lower 2 bits indicates address space location. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_SPACE_MASK \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_SPACE_SFT     0
+	/*
+	 * If value is 0, this register is located in PCIe config space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_SPACE_PCIE_CFG \
+		UINT32_C(0x0)
+	/*
+	 * If value is 1, this register is located in GRC address space.
+	 * Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_SPACE_GRC \
+		UINT32_C(0x1)
+	/*
+	 * If value is 2, this register is located in first BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_SPACE_BAR0 \
+		UINT32_C(0x2)
+	/*
+	 * If value is 3, this register is located in second BAR address
+	 * space. Drivers have to map appropriate window to access this
+	 * register.
+	 */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_SPACE_BAR1 \
+		UINT32_C(0x3)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_SPACE_LAST \
+		HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_SPACE_BAR1
+	/* Upper 30bits of the register address. */
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_MASK \
+		UINT32_C(0xfffffffc)
+	#define HWRM_ERROR_RECOVERY_QCFG_OUTPUT_RESET_REG_ADDR_SFT           2
+	/* Value to be written in reset_reg to reset the controller. */
+	uint32_t	reset_reg_val[16];
+	/*
+	 * This value is in units of 1msec.
+	 * Typical value would be 10 to indicate 10msec.
+	 * Some of the operations like Core reset require delay before
+	 * accessing PCIE MMIO register space.
+	 * If this value is non-zero, drivers have to wait for
+	 * this much time after writing reset_reg_val in reset_reg.
+	 */
+	uint8_t	delay_after_reset[16];
+	uint8_t	unused_1[7];
+	/*
+	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
 	 * to indicate that the output has been completely written.
-	 * When writing a command completion or response to an internal processor,
-	 * the order of writes has to be such that this field is written last.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field
+	 * is written last.
 	 */
 	uint8_t	valid;
 } __attribute__((packed));
@@ -10894,6 +11889,12 @@ struct hwrm_func_drv_if_change_output {
 	 */
 	#define HWRM_FUNC_DRV_IF_CHANGE_OUTPUT_FLAGS_RESC_CHANGE \
 		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', it indicates that the firmware got changed / reset.
+	 * The driver should do complete re-initialization when that bit is set.
+	 */
+	#define HWRM_FUNC_DRV_IF_CHANGE_OUTPUT_FLAGS_HOT_FW_RESET_DONE \
+		UINT32_C(0x2)
 	uint8_t	unused_0[3];
 	/*
 	 * This field is used in Output records to indicate that the output
@@ -14166,6 +15167,9 @@ struct hwrm_port_phy_qcaps_output {
 	/* 10Mb link speed (Full-duplex) */
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS_FORCE_MODE_10MB \
 		UINT32_C(0x2000)
+	/* 200Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS_FORCE_MODE_200GB \
+		UINT32_C(0x4000)
 	/*
 	 * This is a bit mask to indicate what speeds are supported
 	 * for autonegotiation on this link.
@@ -14215,6 +15219,9 @@ struct hwrm_port_phy_qcaps_output {
 	/* 10Mb link speed (Full-duplex) */
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS_AUTO_MODE_10MB \
 		UINT32_C(0x2000)
+	/* 200Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS_AUTO_MODE_200GB \
+		UINT32_C(0x4000)
 	/*
 	 * This is a bit mask to indicate what speeds are supported
 	 * for EEE on this link.
@@ -14279,6 +15286,158 @@ struct hwrm_port_phy_qcaps_output {
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_VALID_MASK \
 		UINT32_C(0xff000000)
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_VALID_SFT             24
+} __attribute__((packed));
+
+/****************************
+ * hwrm_port_phy_mdio_write *
+ ****************************/
+
+
+/* hwrm_port_phy_mdio_write_input (size:320b/40B) */
+struct hwrm_port_phy_mdio_write_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Reserved for future use. */
+	uint32_t	unused_0[2];
+	/* Port ID of port. */
+	uint16_t	port_id;
+	/* If phy_address is 0xFF, port_id will be used to derive phy_addr. */
+	uint8_t	phy_addr;
+	/* 8-bit device address. */
+	uint8_t	dev_addr;
+	/* 16-bit register address. */
+	uint16_t	reg_addr;
+	/* 16-bit register data. */
+	uint16_t	reg_data;
+	/*
+	 * When this bit is set to 1 a Clause 45 mdio access is done.
+	 * when this bit is set to 0 a Clause 22 mdio access is done.
+	 */
+	uint8_t	cl45_mdio;
+	/*  */
+	uint8_t	unused_1[7];
+} __attribute__((packed));
+
+/* hwrm_port_phy_mdio_write_output (size:128b/16B) */
+struct hwrm_port_phy_mdio_write_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/***************************
+ * hwrm_port_phy_mdio_read *
+ ***************************/
+
+
+/* hwrm_port_phy_mdio_read_input (size:256b/32B) */
+struct hwrm_port_phy_mdio_read_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Reserved for future use. */
+	uint32_t	unused_0[2];
+	/* Port ID of port. */
+	uint16_t	port_id;
+	/* If phy_address is 0xFF, port_id will be used to derive phy_addr. */
+	uint8_t	phy_addr;
+	/* 8-bit device address. */
+	uint8_t	dev_addr;
+	/* 16-bit register address. */
+	uint16_t	reg_addr;
+	/*
+	 * When this bit is set to 1 a Clause 45 mdio access is done.
+	 * when this bit is set to 0 a Clause 22 mdio access is done.
+	 */
+	uint8_t	cl45_mdio;
+	/*  */
+	uint8_t	unused_1;
+} __attribute__((packed));
+
+/* hwrm_port_phy_mdio_read_output (size:128b/16B) */
+struct hwrm_port_phy_mdio_read_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* 16-bit register data. */
+	uint16_t	reg_data;
+	uint8_t	unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
 } __attribute__((packed));
 
 /*********************
@@ -20644,7 +21803,9 @@ struct hwrm_ring_reset_output {
 	uint16_t	seq_id;
 	/* The length of the response data in number of bytes. */
 	uint16_t	resp_len;
-	uint8_t	unused_0[7];
+	uint8_t	unused_0[4];
+	/* Position of consumer index after ring reset completes. */
+	uint8_t	consumer_idx[3];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -21209,6 +22370,26 @@ struct hwrm_ring_grp_free_output {
 	 */
 	uint8_t	valid;
 } __attribute__((packed));
+/*
+ * special reserved flow ID to identify per function default
+ * flows for vSwitch offload
+ */
+#define DEFAULT_FLOW_ID 0xFFFFFFFFUL
+/*
+ * special reserved flow ID to identify per function RoCEv1
+ * flows
+ */
+#define ROCEV1_FLOW_ID 0xFFFFFFFEUL
+/*
+ * special reserved flow ID to identify per function RoCEv2
+ * flows
+ */
+#define ROCEV2_FLOW_ID 0xFFFFFFFDUL
+/*
+ * special reserved flow ID to identify per function RoCEv2
+ * CNP flows
+ */
+#define ROCEV2_CNP_FLOW_ID 0xFFFFFFFCUL
 
 /****************************
  * hwrm_cfa_l2_filter_alloc *
@@ -22968,6 +24149,13 @@ struct hwrm_cfa_encap_record_alloc_input {
 	/* Setting of this flag indicates the applicability to the loopback path. */
 	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_FLAGS_LOOPBACK \
 		UINT32_C(0x1)
+	/*
+	 * Setting of this flag indicates this encap record is external encap record.
+	 * Resetting of this flag indicates this flag is internal encap record and
+	 * this is the default setting.
+	 */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_FLAGS_EXTERNAL \
+		UINT32_C(0x2)
 	/* Encapsulation Type. */
 	uint8_t	encap_type;
 	/* Virtual eXtensible Local Area Network (VXLAN) */
@@ -23003,8 +24191,11 @@ struct hwrm_cfa_encap_record_alloc_input {
 	/* Use fixed layer 2 ether type of 0xFFFF */
 	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_L2_ETYPE \
 		UINT32_C(0xb)
+	/* IPV6 over virtual eXtensible Local Area Network with GPE header (IPV6oVXLANGPE) */
+	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_VXLAN_GPE_V6 \
+		UINT32_C(0xc)
 	#define HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_LAST \
-		HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_L2_ETYPE
+		HWRM_CFA_ENCAP_RECORD_ALLOC_INPUT_ENCAP_TYPE_VXLAN_GPE_V6
 	uint8_t	unused_0[3];
 	/* This value is encap data used for the given encap type. */
 	uint32_t	encap_data[20];
@@ -23144,6 +24335,12 @@ struct hwrm_cfa_ntuple_filter_alloc_input {
 	 */
 	#define HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_METER \
 		UINT32_C(0x4)
+	/*
+	 * Setting of this flag indicates that the dest_id field contains function ID.
+	 * If this is not set it indicates dest_id is VNIC or VPORT.
+	 */
+	#define HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DEST_FID \
+		UINT32_C(0x8)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the l2_filter_id field to be
@@ -23605,7 +24802,13 @@ struct hwrm_cfa_ntuple_filter_cfg_input {
 	 */
 	#define HWRM_CFA_NTUPLE_FILTER_CFG_INPUT_ENABLES_NEW_METER_INSTANCE_ID \
 		UINT32_C(0x4)
-	uint8_t	unused_0[4];
+	uint32_t	flags;
+	/*
+	 * Setting this bit to 1 indicates that dest_id field contains FID.
+	 * Setting this to 0 indicates that dest_id field contains VNIC or VPORT.
+	 */
+	#define HWRM_CFA_NTUPLE_FILTER_CFG_INPUT_FLAGS_DEST_FID \
+		UINT32_C(0x1)
 	/* This value is an opaque id into CFA data structures. */
 	uint64_t	ntuple_filter_id;
 	/*
@@ -24090,6 +25293,118 @@ struct hwrm_cfa_em_flow_free_output {
 	uint8_t	valid;
 } __attribute__((packed));
 
+/************************
+ * hwrm_cfa_meter_qcaps *
+ ************************/
+
+
+/* hwrm_cfa_meter_qcaps_input (size:128b/16B) */
+struct hwrm_cfa_meter_qcaps_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+} __attribute__((packed));
+
+/* hwrm_cfa_meter_qcaps_output (size:320b/40B) */
+struct hwrm_cfa_meter_qcaps_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint32_t	flags;
+	/*
+	 * Enumeration denoting the clock at which the Meter is running with.
+	 * This enumeration is used for resources that are similar for both
+	 * TX and RX paths of the chip.
+	 */
+	#define HWRM_CFA_METER_QCAPS_OUTPUT_FLAGS_CLOCK_MASK  UINT32_C(0xf)
+	#define HWRM_CFA_METER_QCAPS_OUTPUT_FLAGS_CLOCK_SFT   0
+	/* 375 MHz */
+	#define HWRM_CFA_METER_QCAPS_OUTPUT_FLAGS_CLOCK_375MHZ  UINT32_C(0x0)
+	/* 625 MHz */
+	#define HWRM_CFA_METER_QCAPS_OUTPUT_FLAGS_CLOCK_625MHZ  UINT32_C(0x1)
+	#define HWRM_CFA_METER_QCAPS_OUTPUT_FLAGS_CLOCK_LAST \
+		HWRM_CFA_METER_QCAPS_OUTPUT_FLAGS_CLOCK_625MHZ
+	uint8_t	unused_0[4];
+	/*
+	 * The minimum guaranteed number of tx meter profiles supported
+	 * for this function.
+	 */
+	uint16_t	min_tx_profile;
+	/*
+	 * The maximum non-guaranteed number of tx meter profiles supported
+	 * for this function.
+	 */
+	uint16_t	max_tx_profile;
+	/*
+	 * The minimum guaranteed number of rx meter profiles supported
+	 * for this function.
+	 */
+	uint16_t	min_rx_profile;
+	/*
+	 * The maximum non-guaranteed number of rx meter profiles supported
+	 * for this function.
+	 */
+	uint16_t	max_rx_profile;
+	/*
+	 * The minimum guaranteed number of tx meter instances supported
+	 * for this function.
+	 */
+	uint16_t	min_tx_instance;
+	/*
+	 * The maximum non-guaranteed number of tx meter instances supported
+	 * for this function.
+	 */
+	uint16_t	max_tx_instance;
+	/*
+	 * The minimum guaranteed number of rx meter instances supported
+	 * for this function.
+	 */
+	uint16_t	min_rx_instance;
+	/*
+	 * The maximum non-guaranteed number of rx meter instances supported
+	 * for this function.
+	 */
+	uint16_t	max_rx_instance;
+	uint8_t	unused_1[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
 /********************************
  * hwrm_cfa_meter_profile_alloc *
  ********************************/
@@ -24200,11 +25515,11 @@ struct hwrm_cfa_meter_profile_alloc_input {
 	/* Value is in 1/100th of a percentage of total bandwidth. */
 	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_PERCENT1_100 \
 		(UINT32_C(0x1) << 29)
-	/* Invalid unit */
-	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_INVALID \
+	/* Raw value */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_RAW \
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_LAST \
-		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_INVALID
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_RATE_BW_VALUE_UNIT_RAW
 	/* A meter burst size specified in bytes. */
 	uint32_t	commit_burst;
 	/* The bandwidth value. */
@@ -24243,7 +25558,7 @@ struct hwrm_cfa_meter_profile_alloc_input {
 	/* Value is in 1/100th of a percentage of total bandwidth. */
 	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_PERCENT1_100 \
 		(UINT32_C(0x1) << 29)
-	/* Invalid unit */
+	/* Invalid value */
 	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_INVALID \
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_COMMIT_BURST_BW_VALUE_UNIT_LAST \
@@ -24286,11 +25601,11 @@ struct hwrm_cfa_meter_profile_alloc_input {
 	/* Value is in 1/100th of a percentage of total bandwidth. */
 	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_PERCENT1_100 \
 		(UINT32_C(0x1) << 29)
-	/* Invalid unit */
-	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_INVALID \
+	/* Raw unit */
+	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_RAW \
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_LAST \
-		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_INVALID
+		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_RAW
 	/* A meter burst size specified in bytes. */
 	uint32_t	excess_peak_burst;
 	/* The bandwidth value. */
@@ -24564,11 +25879,11 @@ struct hwrm_cfa_meter_profile_cfg_input {
 	/* Value is in 1/100th of a percentage of total bandwidth. */
 	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_PERCENT1_100 \
 		(UINT32_C(0x1) << 29)
-	/* Invalid unit */
-	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_INVALID \
+	/* Raw value */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_RAW \
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_LAST \
-		HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_INVALID
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_RATE_BW_VALUE_UNIT_RAW
 	/* A meter burst size specified in bytes. */
 	uint32_t	commit_burst;
 	/* The bandwidth value. */
@@ -24607,7 +25922,7 @@ struct hwrm_cfa_meter_profile_cfg_input {
 	/* Value is in 1/100th of a percentage of total bandwidth. */
 	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_PERCENT1_100 \
 		(UINT32_C(0x1) << 29)
-	/* Invalid unit */
+	/* Invalid value */
 	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_INVALID \
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_COMMIT_BURST_BW_VALUE_UNIT_LAST \
@@ -24650,11 +25965,11 @@ struct hwrm_cfa_meter_profile_cfg_input {
 	/* Value is in 1/100th of a percentage of total bandwidth. */
 	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_PERCENT1_100 \
 		(UINT32_C(0x1) << 29)
-	/* Invalid unit */
-	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_INVALID \
+	/* Raw unit */
+	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_RAW \
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_LAST \
-		HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_INVALID
+		HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_RATE_BW_VALUE_UNIT_RAW
 	/* A meter burst size specified in bytes. */
 	uint32_t	excess_peak_burst;
 	/* The bandwidth value. */
@@ -24775,7 +26090,7 @@ struct hwrm_cfa_meter_instance_alloc_input {
 	/* This value identifies a meter profile in CFA. */
 	uint16_t	meter_profile_id;
 	/*
-	 * A value of 0xfff is considered invalid and implies the
+	 * A value of 0xffff is considered invalid and implies the
 	 * profile is not configured.
 	 */
 	#define HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_METER_PROFILE_ID_INVALID \
@@ -24798,7 +26113,7 @@ struct hwrm_cfa_meter_instance_alloc_output {
 	/* This value identifies a meter instance in CFA. */
 	uint16_t	meter_instance_id;
 	/*
-	 * A value of 0xfff is considered invalid and implies the
+	 * A value of 0xffff is considered invalid and implies the
 	 * instance is not configured.
 	 */
 	#define HWRM_CFA_METER_INSTANCE_ALLOC_OUTPUT_METER_INSTANCE_ID_INVALID \
@@ -24806,6 +26121,98 @@ struct hwrm_cfa_meter_instance_alloc_output {
 	#define HWRM_CFA_METER_INSTANCE_ALLOC_OUTPUT_METER_INSTANCE_ID_LAST \
 		HWRM_CFA_METER_INSTANCE_ALLOC_OUTPUT_METER_INSTANCE_ID_INVALID
 	uint8_t	unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*******************************
+ * hwrm_cfa_meter_instance_cfg *
+ *******************************/
+
+
+/* hwrm_cfa_meter_instance_cfg_input (size:192b/24B) */
+struct hwrm_cfa_meter_instance_cfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint8_t	flags;
+	/*
+	 * Enumeration denoting the RX, TX type of the resource.
+	 * This enumeration is used for resources that are similar for both
+	 * TX and RX paths of the chip.
+	 */
+	#define HWRM_CFA_METER_INSTANCE_CFG_INPUT_FLAGS_PATH     UINT32_C(0x1)
+	/* tx path */
+	#define HWRM_CFA_METER_INSTANCE_CFG_INPUT_FLAGS_PATH_TX \
+		UINT32_C(0x0)
+	/* rx path */
+	#define HWRM_CFA_METER_INSTANCE_CFG_INPUT_FLAGS_PATH_RX \
+		UINT32_C(0x1)
+	#define HWRM_CFA_METER_INSTANCE_CFG_INPUT_FLAGS_PATH_LAST \
+		HWRM_CFA_METER_INSTANCE_CFG_INPUT_FLAGS_PATH_RX
+	uint8_t	unused_0;
+	/*
+	 * This value identifies a new meter profile to be associated with
+	 * the meter instance specified in this command.
+	 */
+	uint16_t	meter_profile_id;
+	/*
+	 * A value of 0xffff is considered invalid and implies the
+	 * profile is not configured.
+	 */
+	#define HWRM_CFA_METER_INSTANCE_CFG_INPUT_METER_PROFILE_ID_INVALID \
+		UINT32_C(0xffff)
+	#define HWRM_CFA_METER_INSTANCE_CFG_INPUT_METER_PROFILE_ID_LAST \
+		HWRM_CFA_METER_INSTANCE_CFG_INPUT_METER_PROFILE_ID_INVALID
+	/*
+	 * This value identifies the ID of a meter instance that needs to be updated with
+	 * a new meter profile specified in this command.
+	 */
+	uint16_t	meter_instance_id;
+	uint8_t	unused_1[2];
+} __attribute__((packed));
+
+/* hwrm_cfa_meter_instance_cfg_output (size:128b/16B) */
+struct hwrm_cfa_meter_instance_cfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -25375,6 +26782,9 @@ struct hwrm_cfa_flow_alloc_input {
 	 */
 	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_MATCH_VXLAN_IP_VNI \
 		UINT32_C(0x100)
+	/* Set to 1 to indicate vhost_id is specified in the outer_vlan_tci field. */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_FLAGS_VHOST_ID_USE_VLAN \
+		UINT32_C(0x200)
 	/*
 	 * Tx Flow: vf fid.
 	 * Rx Flow: pf fid.
@@ -25430,6 +26840,13 @@ struct hwrm_cfa_flow_alloc_input {
 	/* If set to 1, flow aging is enabled for this flow. */
 	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_FLOW_AGING_ENABLED \
 		UINT32_C(0x800)
+	/*
+	 * If set to 1 an attempt will be made to try to offload this flow to the
+	 * most optimal flow table resource.  If set to 0, the flow will be
+	 * placed to the default flow table resource.
+	 */
+	#define HWRM_CFA_FLOW_ALLOC_INPUT_ACTION_FLAGS_PRI_HINT \
+		UINT32_C(0x1000)
 	/*
 	 * Tx Flow: pf or vf fid.
 	 * Rx Flow: vf fid.
@@ -25569,7 +26986,8 @@ struct hwrm_cfa_flow_alloc_output {
 	uint32_t	flow_id;
 	/* This value identifies a set of CFA data structures used for a flow. */
 	uint64_t	ext_flow_handle;
-	uint8_t	unused_1[7];
+	uint32_t	flow_counter_id;
+	uint8_t	unused_1[3];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -25646,6 +27064,229 @@ struct hwrm_cfa_flow_free_output {
 	uint8_t	valid;
 } __attribute__((packed));
 
+/* hwrm_cfa_flow_action_data (size:960b/120B) */
+struct hwrm_cfa_flow_action_data {
+	uint16_t	action_flags;
+	/* Setting of this flag indicates accept action. */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_FWD \
+		UINT32_C(0x1)
+	/* Setting of this flag indicates recycle action. */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_RECYCLE \
+		UINT32_C(0x2)
+	/* Setting of this flag indicates drop action. */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_DROP \
+		UINT32_C(0x4)
+	/* Setting of this flag indicates meter action. */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_METER \
+		UINT32_C(0x8)
+	/* Setting of this flag indicates tunnel action. */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_TUNNEL \
+		UINT32_C(0x10)
+	/*
+	 * If set to 1 and flow direction is TX, it indicates decap of L2 header
+	 * and encap of tunnel header. If set to 1 and flow direction is RX, it
+	 * indicates decap of tunnel header and encap L2 header.
+	 */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_TUNNEL_IP \
+		UINT32_C(0x20)
+	/* Setting of this flag indicates ttl decrement action. */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_TTL_DECREMENT \
+		UINT32_C(0x40)
+	/* If set to 1, flow aging is enabled for this flow. */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_FLOW_AGING_ENABLED \
+		UINT32_C(0x80)
+	/* Setting of this flag indicates encap action.. */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_ENCAP \
+		UINT32_C(0x100)
+	/* Setting of this flag indicates decap action.. */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_DECAP \
+		UINT32_C(0x200)
+	/* Meter id. */
+	uint16_t	act_meter_id;
+	/* VNIC id. */
+	uint16_t	vnic_id;
+	/* vport number. */
+	uint16_t	vport_id;
+	/* The NAT source/destination. */
+	uint16_t	nat_port;
+	uint16_t	unused_0[3];
+	/* NAT IPv4/IPv6 address. */
+	uint32_t	nat_ip_address[4];
+	/* Encapsulation Type. */
+	uint8_t	encap_type;
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_VXLAN        UINT32_C(0x1)
+	/* Network Virtualization Generic Routing Encapsulation (NVGRE) */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_NVGRE        UINT32_C(0x2)
+	/* Generic Routing Encapsulation (GRE) after inside Ethernet payload */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_L2GRE        UINT32_C(0x3)
+	/* IP in IP */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_IPIP         UINT32_C(0x4)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_GENEVE       UINT32_C(0x5)
+	/* Multi-Protocol Lable Switching (MPLS) */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_MPLS         UINT32_C(0x6)
+	/* VLAN */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_VLAN         UINT32_C(0x7)
+	/* Generic Routing Encapsulation (GRE) inside IP datagram payload */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_IPGRE        UINT32_C(0x8)
+	/* IPV4 over virtual eXtensible Local Area Network (IPV4oVXLAN) */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_VXLAN_V4     UINT32_C(0x9)
+	/* Enhance Generic Routing Encapsulation (GRE version 1) inside IP datagram payload */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_IPGRE_V1     UINT32_C(0xa)
+	/* Use fixed layer 2 ether type of 0xFFFF */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_L2_ETYPE     UINT32_C(0xb)
+	/* IPV6 over virtual eXtensible Local Area Network with GPE header (IPV6oVXLANGPE) */
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_VXLAN_GPE_V6 UINT32_C(0xc)
+	#define HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_LAST \
+		HWRM_CFA_FLOW_ACTION_DATA_ENCAP_TYPE_VXLAN_GPE_V6
+	uint8_t	unused[7];
+	/* This value is encap data for the associated encap type. */
+	uint32_t	encap_data[20];
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_tunnel_hdr_data (size:64b/8B) */
+struct hwrm_cfa_flow_tunnel_hdr_data {
+	/* Tunnel Type. */
+	uint8_t	tunnel_type;
+	/* Non-tunnel */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_NONTUNNEL \
+		UINT32_C(0x0)
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_VXLAN \
+		UINT32_C(0x1)
+	/* Network Virtualization Generic Routing Encapsulation (NVGRE) */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_NVGRE \
+		UINT32_C(0x2)
+	/* Generic Routing Encapsulation (GRE) inside Ethernet payload */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_L2GRE \
+		UINT32_C(0x3)
+	/* IP in IP */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_IPIP \
+		UINT32_C(0x4)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_GENEVE \
+		UINT32_C(0x5)
+	/* Multi-Protocol Lable Switching (MPLS) */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_MPLS \
+		UINT32_C(0x6)
+	/* Stateless Transport Tunnel (STT) */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_STT \
+		UINT32_C(0x7)
+	/* Generic Routing Encapsulation (GRE) inside IP datagram payload */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_IPGRE \
+		UINT32_C(0x8)
+	/* IPV4 over virtual eXtensible Local Area Network (IPV4oVXLAN) */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_VXLAN_V4 \
+		UINT32_C(0x9)
+	/* Enhance Generic Routing Encapsulation (GRE version 1) inside IP datagram payload */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_IPGRE_V1 \
+		UINT32_C(0xa)
+	/* Use fixed layer 2 ether type of 0xFFFF */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_L2_ETYPE \
+		UINT32_C(0xb)
+	/* IPV6 over virtual eXtensible Local Area Network with GPE header (IPV6oVXLANGPE) */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_VXLAN_GPE_V6 \
+		UINT32_C(0xc)
+	/* Any tunneled traffic */
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_ANYTUNNEL \
+		UINT32_C(0xff)
+	#define HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_LAST \
+		HWRM_CFA_FLOW_TUNNEL_HDR_DATA_TUNNEL_TYPE_ANYTUNNEL
+	uint8_t	unused[3];
+	/*
+	 * Tunnel identifier.
+	 * Virtual Network Identifier (VNI).
+	 */
+	uint32_t	tunnel_id;
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_l4_key_data (size:64b/8B) */
+struct hwrm_cfa_flow_l4_key_data {
+	/* The value of source port. */
+	uint16_t	l4_src_port;
+	/* The value of destination port. */
+	uint16_t	l4_dst_port;
+	uint32_t	unused;
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_l3_key_data (size:512b/64B) */
+struct hwrm_cfa_flow_l3_key_data {
+	/* The value of ip protocol. */
+	uint8_t	ip_protocol;
+	uint8_t	unused_0[7];
+	/* The value of destination IPv4/IPv6 address. */
+	uint32_t	ip_dst[4];
+	/* The source IPv4/IPv6 address. */
+	uint32_t	ip_src[4];
+	/* NAT IPv4/IPv6 address. */
+	uint32_t	nat_ip_address[4];
+	uint32_t	unused[2];
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_l2_key_data (size:448b/56B) */
+struct hwrm_cfa_flow_l2_key_data {
+	/* Destination MAC address. */
+	uint16_t	dmac[3];
+	uint16_t	unused_0;
+	/* Source MAC address. */
+	uint16_t	smac[3];
+	uint16_t	unused_1;
+	/* L2 header re-write Destination MAC address. */
+	uint16_t	l2_rewrite_dmac[3];
+	uint16_t	unused_2;
+	/* L2 header re-write Source MAC address. */
+	uint16_t	l2_rewrite_smac[3];
+	/* Ethertype. */
+	uint16_t	ethertype;
+	/* Number of VLAN tags. */
+	uint16_t	num_vlan_tags;
+	/* VLAN tpid. */
+	uint16_t	l2_rewrite_vlan_tpid;
+	/* VLAN tci. */
+	uint16_t	l2_rewrite_vlan_tci;
+	uint8_t	unused_3[2];
+	/* Outer VLAN TPID. */
+	uint16_t	ovlan_tpid;
+	/* Outer VLAN TCI. */
+	uint16_t	ovlan_tci;
+	/* Inner VLAN TPID. */
+	uint16_t	ivlan_tpid;
+	/* Inner VLAN TCI. */
+	uint16_t	ivlan_tci;
+	uint8_t	unused[8];
+} __attribute__((packed));
+
+/* hwrm_cfa_flow_key_data (size:4160b/520B) */
+struct hwrm_cfa_flow_key_data {
+	/* Flow associated tunnel L2 header key info. */
+	uint32_t	t_l2_key_data[14];
+	/* Flow associated tunnel L2 header mask info. */
+	uint32_t	t_l2_key_mask[14];
+	/* Flow associated tunnel L3 header key info. */
+	uint32_t	t_l3_key_data[16];
+	/* Flow associated tunnel L3 header mask info. */
+	uint32_t	t_l3_key_mask[16];
+	/* Flow associated tunnel L4 header key info. */
+	uint32_t	t_l4_key_data[2];
+	/* Flow associated tunnel L4 header mask info. */
+	uint32_t	t_l4_key_mask[2];
+	/* Flow associated tunnel header info. */
+	uint32_t	tunnel_hdr[2];
+	/* Flow associated L2 header key info. */
+	uint32_t	l2_key_data[14];
+	/* Flow associated L2 header mask info. */
+	uint32_t	l2_key_mask[14];
+	/* Flow associated L3 header key info. */
+	uint32_t	l3_key_data[16];
+	/* Flow associated L3 header mask info. */
+	uint32_t	l3_key_mask[16];
+	/* Flow associated L4 header key info. */
+	uint32_t	l4_key_data[2];
+	/* Flow associated L4 header mask info. */
+	uint32_t	l4_key_mask[2];
+} __attribute__((packed));
+
 /**********************
  * hwrm_cfa_flow_info *
  **********************/
@@ -25703,7 +27344,7 @@ struct hwrm_cfa_flow_info_input {
 	uint64_t	ext_flow_handle;
 } __attribute__((packed));
 
-/* hwrm_cfa_flow_info_output (size:448b/56B) */
+/* hwrm_cfa_flow_info_output (size:5632b/704B) */
 struct hwrm_cfa_flow_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -25713,8 +27354,11 @@ struct hwrm_cfa_flow_info_output {
 	uint16_t	seq_id;
 	/* The length of the response data in number of bytes. */
 	uint16_t	resp_len;
-	/* flags is 8 b */
 	uint8_t	flags;
+	/* When set to 1, indicates the configuration is the TX flow. */
+	#define HWRM_CFA_FLOW_INFO_OUTPUT_FLAGS_PATH_TX     UINT32_C(0x1)
+	/* When set to 1, indicates the configuration is the RX flow. */
+	#define HWRM_CFA_FLOW_INFO_OUTPUT_FLAGS_PATH_RX     UINT32_C(0x2)
 	/* profile is 8 b */
 	uint8_t	profile;
 	/* src_fid is 16 b */
@@ -25737,7 +27381,12 @@ struct hwrm_cfa_flow_info_output {
 	uint32_t	tunnel_handle;
 	/* The flow aging timer for the flow, the unit is 100 milliseconds */
 	uint16_t	flow_timer;
-	uint8_t	unused_0[5];
+	uint8_t	unused_0[6];
+	/* Flow associated L2, L3 and L4 headers info. */
+	uint32_t	flow_key_data[130];
+	/* Flow associated action record info. */
+	uint32_t	flow_action_info[30];
+	uint8_t	unused_1[7];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -25753,7 +27402,7 @@ struct hwrm_cfa_flow_info_output {
  ***********************/
 
 
-/* hwrm_cfa_flow_flush_input (size:192b/24B) */
+/* hwrm_cfa_flow_flush_input (size:256b/32B) */
 struct hwrm_cfa_flow_flush_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -25782,8 +27431,73 @@ struct hwrm_cfa_flow_flush_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
+	/* flags is 32 b */
 	uint32_t	flags;
-	uint8_t	unused_0[4];
+	/*
+	 * Set to 1 to indicate the page size, page layers, and flow_handle_table_dma_addr
+	 * fields are valid. The flow flush operation should only flush the flows from the
+	 * flow table specified. This flag is set to 0 by older driver. For older firmware,
+	 * setting this flag has no effect.
+	 */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_TABLE_VALID \
+		UINT32_C(0x1)
+	/*
+	 * Set to 1 to indicate flow flush operation to cleanup all the flows, meters, CFA
+	 * context memory tables..etc.  This flag is set to 0 by older driver. For older firmware,
+	 * setting this flag has no effect.
+	 */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_RESET_ALL \
+		UINT32_C(0x2)
+	/*
+	 * This specifies the size of flow handle entries provided by the driver
+	 * in the flow table specified below. Only two flow handle size enums are defined.
+	 */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_HANDLE_ENTRY_SIZE_MASK \
+		UINT32_C(0xc0000000)
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_HANDLE_ENTRY_SIZE_SFT \
+		30
+	/* The flow handle is 16bit */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_HANDLE_ENTRY_SIZE_FLOW_HND_16BIT \
+		(UINT32_C(0x0) << 30)
+	/* The flow handle is 64bit */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_HANDLE_ENTRY_SIZE_FLOW_HND_64BIT \
+		(UINT32_C(0x1) << 30)
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_HANDLE_ENTRY_SIZE_LAST \
+		HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_HANDLE_ENTRY_SIZE_FLOW_HND_64BIT
+	/* Specify page size of the flow table memory. */
+	uint8_t	page_size;
+	/* The page size is 4K */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_4K   UINT32_C(0x0)
+	/* The page size is 8K */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_8K   UINT32_C(0x1)
+	/* The page size is 64K */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_64K  UINT32_C(0x4)
+	/* The page size is 256K */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_256K UINT32_C(0x6)
+	/* The page size is 1M */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_1M   UINT32_C(0x8)
+	/* The page size is 2M */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_2M   UINT32_C(0x9)
+	/* The page size is 4M */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_4M   UINT32_C(0xa)
+	/* The page size is 1G */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_1G   UINT32_C(0x12)
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_LAST \
+		HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_SIZE_1G
+	/* FLow table memory indirect levels. */
+	uint8_t	page_level;
+	/* PBL pointer is physical start address. */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_LEVEL_LVL_0 UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_LEVEL_LVL_1 UINT32_C(0x1)
+	/* PBL pointer points to PDE table with each entry pointing to PTE tables. */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_LEVEL_LVL_2 UINT32_C(0x2)
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_LEVEL_LAST \
+		HWRM_CFA_FLOW_FLUSH_INPUT_PAGE_LEVEL_LVL_2
+	/* number of flows in the flow table */
+	uint16_t	num_flows;
+	/* Pointer to the PBL, or PDL depending on number of levels */
+	uint64_t	page_dir;
 } __attribute__((packed));
 
 /* hwrm_cfa_flow_flush_output (size:128b/16B) */
@@ -25983,7 +27697,12 @@ struct hwrm_cfa_flow_aging_timer_reset_input {
 	uint64_t	resp_addr;
 	/* Flow record index. */
 	uint16_t	flow_handle;
-	uint8_t	unused_0[6];
+	uint8_t	unused_0[2];
+	/*
+	 * New flow timer value for the flow specified in the ext_flow_handle.
+	 * The flow timer unit is 100ms.
+	 */
+	uint32_t	flow_timer;
 	/* This value identifies a set of CFA data structures used for a flow. */
 	uint64_t	ext_flow_handle;
 } __attribute__((packed));
@@ -26244,6 +27963,71 @@ struct hwrm_cfa_flow_aging_qcaps_output {
 	uint8_t	valid;
 } __attribute__((packed));
 
+/**********************************
+ * hwrm_cfa_tcp_flag_process_qcfg *
+ **********************************/
+
+
+/* hwrm_cfa_tcp_flag_process_qcfg_input (size:128b/16B) */
+struct hwrm_cfa_tcp_flag_process_qcfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+} __attribute__((packed));
+
+/* hwrm_cfa_tcp_flag_process_qcfg_output (size:192b/24B) */
+struct hwrm_cfa_tcp_flag_process_qcfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* The port 0 RX mirror action record ID. */
+	uint16_t	rx_ar_id_port0;
+	/* The port 1 RX mirror action record ID. */
+	uint16_t	rx_ar_id_port1;
+	/* The port 0 RX action record ID for TX TCP flag packets from loopback path. */
+	uint16_t	tx_ar_id_port0;
+	/* The port 1 RX action record ID for TX TCP flag packets from loopback path. */
+	uint16_t	tx_ar_id_port1;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
 /**********************
  * hwrm_cfa_pair_info *
  **********************/
@@ -26457,6 +28241,810 @@ struct hwrm_cfa_redirect_query_tunnel_type_output {
 	/* IPV6 over virtual eXtensible Local Area Network with GPE header (IPV6oVXLANGPE) */
 	#define HWRM_CFA_REDIRECT_QUERY_TUNNEL_TYPE_OUTPUT_TUNNEL_MASK_VXLAN_GPE_V6 \
 		UINT32_C(0x2000)
+	uint8_t	unused_0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*************************
+ * hwrm_cfa_ctx_mem_rgtr *
+ *************************/
+
+
+/* hwrm_cfa_ctx_mem_rgtr_input (size:256b/32B) */
+struct hwrm_cfa_ctx_mem_rgtr_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint16_t	flags;
+	/* Counter PBL indirect levels. */
+	uint8_t	page_level;
+	/* PBL pointer is physical start address. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_LEVEL_LVL_0 UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_LEVEL_LVL_1 UINT32_C(0x1)
+	/* PBL pointer points to PDE table with each entry pointing to PTE tables. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_LEVEL_LVL_2 UINT32_C(0x2)
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_LEVEL_LAST \
+		HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_LEVEL_LVL_2
+	/* Page size. */
+	uint8_t	page_size;
+	/* 4KB page size. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_4K   UINT32_C(0x0)
+	/* 8KB page size. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_8K   UINT32_C(0x1)
+	/* 64KB page size. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_64K  UINT32_C(0x4)
+	/* 256KB page size. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_256K UINT32_C(0x6)
+	/* 1MB page size. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_1M   UINT32_C(0x8)
+	/* 2MB page size. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_2M   UINT32_C(0x9)
+	/* 4MB page size. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_4M   UINT32_C(0xa)
+	/* 1GB page size. */
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_1G   UINT32_C(0x12)
+	#define HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_LAST \
+		HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_1G
+	uint32_t	unused_0;
+	/* Pointer to the PBL, or PDL depending on number of levels */
+	uint64_t	page_dir;
+} __attribute__((packed));
+
+/* hwrm_cfa_ctx_mem_rgtr_output (size:128b/16B) */
+struct hwrm_cfa_ctx_mem_rgtr_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/*
+	 * Id/Handle to the recently register context memory.  This handle is passed
+	 * to the CFA feature.
+	 */
+	uint16_t	ctx_id;
+	uint8_t	unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/***************************
+ * hwrm_cfa_ctx_mem_unrgtr *
+ ***************************/
+
+
+/* hwrm_cfa_ctx_mem_unrgtr_input (size:192b/24B) */
+struct hwrm_cfa_ctx_mem_unrgtr_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Id/Handle to the recently register context memory.  This handle is passed
+	 * to the CFA feature.
+	 */
+	uint16_t	ctx_id;
+	uint8_t	unused_0[6];
+} __attribute__((packed));
+
+/* hwrm_cfa_ctx_mem_unrgtr_output (size:128b/16B) */
+struct hwrm_cfa_ctx_mem_unrgtr_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*************************
+ * hwrm_cfa_ctx_mem_qctx *
+ *************************/
+
+
+/* hwrm_cfa_ctx_mem_qctx_input (size:192b/24B) */
+struct hwrm_cfa_ctx_mem_qctx_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Id/Handle to the recently register context memory.  This handle is passed
+	 * to the CFA feature.
+	 */
+	uint16_t	ctx_id;
+	uint8_t	unused_0[6];
+} __attribute__((packed));
+
+/* hwrm_cfa_ctx_mem_qctx_output (size:256b/32B) */
+struct hwrm_cfa_ctx_mem_qctx_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint16_t	flags;
+	/* Counter PBL indirect levels. */
+	uint8_t	page_level;
+	/* PBL pointer is physical start address. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_LEVEL_LVL_0 UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_LEVEL_LVL_1 UINT32_C(0x1)
+	/* PBL pointer points to PDE table with each entry pointing to PTE tables. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_LEVEL_LVL_2 UINT32_C(0x2)
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_LEVEL_LAST \
+		HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_LEVEL_LVL_2
+	/* Page size. */
+	uint8_t	page_size;
+	/* 4KB page size. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_4K   UINT32_C(0x0)
+	/* 8KB page size. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_8K   UINT32_C(0x1)
+	/* 64KB page size. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_64K  UINT32_C(0x4)
+	/* 256KB page size. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_256K UINT32_C(0x6)
+	/* 1MB page size. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_1M   UINT32_C(0x8)
+	/* 2MB page size. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_2M   UINT32_C(0x9)
+	/* 4MB page size. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_4M   UINT32_C(0xa)
+	/* 1GB page size. */
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_1G   UINT32_C(0x12)
+	#define HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_LAST \
+		HWRM_CFA_CTX_MEM_QCTX_OUTPUT_PAGE_SIZE_1G
+	uint8_t	unused_0[4];
+	/* Pointer to the PBL, or PDL depending on number of levels */
+	uint64_t	page_dir;
+	uint8_t	unused_1[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/**************************
+ * hwrm_cfa_ctx_mem_qcaps *
+ **************************/
+
+
+/* hwrm_cfa_ctx_mem_qcaps_input (size:128b/16B) */
+struct hwrm_cfa_ctx_mem_qcaps_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+} __attribute__((packed));
+
+/* hwrm_cfa_ctx_mem_qcaps_output (size:128b/16B) */
+struct hwrm_cfa_ctx_mem_qcaps_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Indicates the maximum number of context memory which can be registered. */
+	uint16_t	max_entries;
+	uint8_t	unused_0[6];
+} __attribute__((packed));
+
+/**********************
+ * hwrm_cfa_eem_qcaps *
+ **********************/
+
+
+/* hwrm_cfa_eem_qcaps_input (size:192b/24B) */
+struct hwrm_cfa_eem_qcaps_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/*
+	 * When set to 1, indicates the configuration will apply to TX flows
+	 * which are to be offloaded.
+	 * Note if this bit is set then the path_rx bit can't be set.
+	 */
+	#define HWRM_CFA_EEM_QCAPS_INPUT_FLAGS_PATH_TX \
+		UINT32_C(0x1)
+	/*
+	 * When set to 1, indicates the configuration will apply to RX flows
+	 * which are to be offloaded.
+	 * Note if this bit is set then the path_tx bit can't be set.
+	 */
+	#define HWRM_CFA_EEM_QCAPS_INPUT_FLAGS_PATH_RX \
+		UINT32_C(0x2)
+	/* When set to 1, all offloaded flows will be sent to EEM. */
+	#define HWRM_CFA_EEM_QCAPS_INPUT_FLAGS_PREFERRED_OFFLOAD \
+		UINT32_C(0x4)
+	uint32_t	unused_0;
+} __attribute__((packed));
+
+/* hwrm_cfa_eem_qcaps_output (size:256b/32B) */
+struct hwrm_cfa_eem_qcaps_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint32_t	flags;
+	/*
+	 * When set to 1, indicates the configuration will apply to TX flows
+	 * which are to be offloaded.
+	 * Note if this bit is set then the path_rx bit can't be set.
+	 */
+	#define HWRM_CFA_EEM_QCAPS_OUTPUT_FLAGS_PATH_TX     UINT32_C(0x1)
+	/*
+	 * When set to 1, indicates the configuration will apply to RX flows
+	 * which are to be offloaded.
+	 * Note if this bit is set then the path_tx bit can't be set.
+	 */
+	#define HWRM_CFA_EEM_QCAPS_OUTPUT_FLAGS_PATH_RX     UINT32_C(0x2)
+	uint32_t	unused_0;
+	uint32_t	supported;
+	/*
+	 * If set to 1, then EEM KEY0 table is supported using crc32 hash.
+	 * If set to 0 EEM KEY0 table is not supported.
+	 */
+	#define HWRM_CFA_EEM_QCAPS_OUTPUT_SUPPORTED_KEY0_TABLE \
+		UINT32_C(0x1)
+	/*
+	 * If set to 1, then EEM KEY1 table is supported using lookup3 hash.
+	 * If set to 0 EEM KEY1 table is not supported.
+	 */
+	#define HWRM_CFA_EEM_QCAPS_OUTPUT_SUPPORTED_KEY1_TABLE \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, then EEM External Record table is supported.
+	 * If set to 0 EEM External Record table is not supported.
+	 * (This table includes action record, EFC pointers, encap pointers)
+	 */
+	#define HWRM_CFA_EEM_QCAPS_OUTPUT_SUPPORTED_EXTERNAL_RECORD_TABLE \
+		UINT32_C(0x4)
+	/*
+	 * If set to 1, then EEM External Flow Counters table is supported.
+	 * If set to 0 EEM External Flow Counters table is not supported.
+	 */
+	#define HWRM_CFA_EEM_QCAPS_OUTPUT_SUPPORTED_EXTERNAL_FLOW_COUNTERS_TABLE \
+		UINT32_C(0x8)
+	/*
+	 * The maximum number of entries supported by EEM.   When configuring the host memory
+	 * the number of numbers of entries that can supported are -
+	 *      32k, 64k 128k, 256k, 512k, 1M, 2M, 4M, 8M, 32M, 64M, 128M entries.
+	 * Any value that are not these values, the FW will round down to the closest support
+	 * number of entries.
+	 */
+	uint32_t	max_entries_supported;
+	/* The entry size in bytes of each entry in the KEY0/KEY1 EEM tables. */
+	uint16_t	key_entry_size;
+	/* The entry size in bytes of each entry in the RECORD EEM tables. */
+	uint16_t	record_entry_size;
+	/* The entry size in bytes of each entry in the EFC EEM tables. */
+	uint16_t	efc_entry_size;
+	uint8_t	unused_1;
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/********************
+ * hwrm_cfa_eem_cfg *
+ ********************/
+
+
+/* hwrm_cfa_eem_cfg_input (size:320b/40B) */
+struct hwrm_cfa_eem_cfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/*
+	 * When set to 1, indicates the configuration will apply to TX flows
+	 * which are to be offloaded.
+	 * Note if this bit is set then the path_rx bit can't be set.
+	 */
+	#define HWRM_CFA_EEM_CFG_INPUT_FLAGS_PATH_TX \
+		UINT32_C(0x1)
+	/*
+	 * When set to 1, indicates the configuration will apply to RX flows
+	 * which are to be offloaded.
+	 * Note if this bit is set then the path_tx bit can't be set.
+	 */
+	#define HWRM_CFA_EEM_CFG_INPUT_FLAGS_PATH_RX \
+		UINT32_C(0x2)
+	/* When set to 1, all offloaded flows will be sent to EEM. */
+	#define HWRM_CFA_EEM_CFG_INPUT_FLAGS_PREFERRED_OFFLOAD \
+		UINT32_C(0x4)
+	uint32_t	unused_0;
+	/*
+	 * Configured EEM with the given number of entries.  All the EEM tables KEY0, KEY1,
+	 * RECORD, EFC all have the same number of entries and all tables will be configured
+	 * using this value.  Current minimum value is 32k. Current maximum value is 128M.
+	 */
+	uint32_t	num_entries;
+	uint32_t	unused_1;
+	/* Configured EEM with the given context if for KEY0 table. */
+	uint16_t	key0_ctx_id;
+	/* Configured EEM with the given context if for KEY1 table. */
+	uint16_t	key1_ctx_id;
+	/* Configured EEM with the given context if for RECORD table. */
+	uint16_t	record_ctx_id;
+	/* Configured EEM with the given context if for EFC table. */
+	uint16_t	efc_ctx_id;
+} __attribute__((packed));
+
+/* hwrm_cfa_eem_cfg_output (size:128b/16B) */
+struct hwrm_cfa_eem_cfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*********************
+ * hwrm_cfa_eem_qcfg *
+ *********************/
+
+
+/* hwrm_cfa_eem_qcfg_input (size:192b/24B) */
+struct hwrm_cfa_eem_qcfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/* When set to 1, indicates the configuration is the TX flow. */
+	#define HWRM_CFA_EEM_QCFG_INPUT_FLAGS_PATH_TX     UINT32_C(0x1)
+	/* When set to 1, indicates the configuration is the RX flow. */
+	#define HWRM_CFA_EEM_QCFG_INPUT_FLAGS_PATH_RX     UINT32_C(0x2)
+	uint32_t	unused_0;
+} __attribute__((packed));
+
+/* hwrm_cfa_eem_qcfg_output (size:192b/24B) */
+struct hwrm_cfa_eem_qcfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint32_t	flags;
+	/* When set to 1, indicates the configuration is the TX flow. */
+	#define HWRM_CFA_EEM_QCFG_OUTPUT_FLAGS_PATH_TX \
+		UINT32_C(0x1)
+	/* When set to 1, indicates the configuration is the RX flow. */
+	#define HWRM_CFA_EEM_QCFG_OUTPUT_FLAGS_PATH_RX \
+		UINT32_C(0x2)
+	/* When set to 1, all offloaded flows will be sent to EEM. */
+	#define HWRM_CFA_EEM_QCFG_OUTPUT_FLAGS_PREFERRED_OFFLOAD \
+		UINT32_C(0x4)
+	/* The number of entries the FW has configured for EEM. */
+	uint32_t	num_entries;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*******************
+ * hwrm_cfa_eem_op *
+ *******************/
+
+
+/* hwrm_cfa_eem_op_input (size:192b/24B) */
+struct hwrm_cfa_eem_op_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/*
+	 * When set to 1, indicates the host memory which is passed will be
+	 * used for the TX flow offload function specified in fid.
+	 * Note if this bit is set then the path_rx bit can't be set.
+	 */
+	#define HWRM_CFA_EEM_OP_INPUT_FLAGS_PATH_TX     UINT32_C(0x1)
+	/*
+	 * When set to 1, indicates the host memory which is passed will be
+	 * used for the RX flow offload function specified in fid.
+	 * Note if this bit is set then the path_tx bit can't be set.
+	 */
+	#define HWRM_CFA_EEM_OP_INPUT_FLAGS_PATH_RX     UINT32_C(0x2)
+	uint16_t	unused_0;
+	/* The number of EEM key table entries to be configured. */
+	uint16_t	op;
+	/* This value is reserved and should not be used. */
+	#define HWRM_CFA_EEM_OP_INPUT_OP_RESERVED    UINT32_C(0x0)
+	/*
+	 * To properly stop EEM and ensure there are no DMA's, the caller
+	 * must disable EEM for the given PF, using this call.  This will
+	 * safely disable EEM and ensure that all DMA'ed to the
+	 * keys/records/efc have been completed.
+	 */
+	#define HWRM_CFA_EEM_OP_INPUT_OP_EEM_DISABLE UINT32_C(0x1)
+	/*
+	 * Once the EEM host memory has been configured, EEM options have
+	 * been configured. Then the caller should enable EEM for the given
+	 * PF.  Note once this call has been made, then the EEM mechanism
+	 * will be active and DMA's will occur as packets are processed.
+	 */
+	#define HWRM_CFA_EEM_OP_INPUT_OP_EEM_ENABLE  UINT32_C(0x2)
+	/*
+	 * Clear EEM settings for the given PF so that the register values
+	 * are reset back to there initial state.
+	 */
+	#define HWRM_CFA_EEM_OP_INPUT_OP_EEM_CLEANUP UINT32_C(0x3)
+	#define HWRM_CFA_EEM_OP_INPUT_OP_LAST \
+		HWRM_CFA_EEM_OP_INPUT_OP_EEM_CLEANUP
+} __attribute__((packed));
+
+/* hwrm_cfa_eem_op_output (size:128b/16B) */
+struct hwrm_cfa_eem_op_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/********************************
+ * hwrm_cfa_adv_flow_mgnt_qcaps *
+ ********************************/
+
+
+/* hwrm_cfa_adv_flow_mgnt_qcaps_input (size:256b/32B) */
+struct hwrm_cfa_adv_flow_mgnt_qcaps_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	unused_0[4];
+} __attribute__((packed));
+
+/* hwrm_cfa_adv_flow_mgnt_qcaps_output (size:128b/16B) */
+struct hwrm_cfa_adv_flow_mgnt_qcaps_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint32_t	flags;
+	/*
+	 * Value of 1 to indicate firmware support 16-bit flow handle.
+	 * Value of 0 to indicate firmware not support 16-bit flow handle.
+	 */
+	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_FLOW_HND_16BIT_SUPPORTED \
+		UINT32_C(0x1)
+	/*
+	 * Value of 1 to indicate firmware support 64-bit flow handle.
+	 * Value of 0 to indicate firmware not support 64-bit flow handle.
+	 */
+	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_FLOW_HND_64BIT_SUPPORTED \
+		UINT32_C(0x2)
+	/*
+	 * Value of 1 to indicate firmware support flow batch delete operation through
+	 * HWRM_CFA_FLOW_FLUSH command.
+	 * Value of 0 to indicate that the firmware does not support flow batch delete
+	 * operation.
+	 */
+	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_FLOW_BATCH_DELETE_SUPPORTED \
+		UINT32_C(0x4)
+	/*
+	 * Value of 1 to indicate that the firmware support flow reset all operation through
+	 * HWRM_CFA_FLOW_FLUSH command.
+	 * Value of 0 indicates firmware does not support flow reset all operation.
+	 */
+	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_FLOW_RESET_ALL_SUPPORTED \
+		UINT32_C(0x8)
+	/*
+	 * Value of 1 to indicate that firmware supports use of FID as dest_id in
+	 * HWRM_CFA_NTUPLE_ALLOC/CFG commands.
+	 * Value of 0 indicates firmware does not support use of FID as dest_id.
+	 */
+	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_NTUPLE_FLOW_DEST_FUNC_SUPPORTED \
+		UINT32_C(0x10)
+	/*
+	 * Value of 1 to indicate that firmware supports TX EEM flows.
+	 * Value of 0 indicates firmware does not support TX EEM flows.
+	 */
+	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_TX_EEM_FLOW_SUPPORTED \
+		UINT32_C(0x20)
+	/*
+	 * Value of 1 to indicate that firmware supports RX EEM flows.
+	 * Value of 0 indicates firmware does not support RX EEM flows.
+	 */
+	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_RX_EEM_FLOW_SUPPORTED \
+		UINT32_C(0x40)
 	uint8_t	unused_0[3];
 	/*
 	 * This field is used in Output records to indicate that the output
@@ -26874,7 +29462,11 @@ struct hwrm_stat_ctx_alloc_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-	/* This is the address for statistic block. */
+	/*
+	 * This is the address for statistic block.
+	 * > For new versions of the chip, this address should be 128B
+	 * > aligned.
+	 */
 	uint64_t	stats_dma_addr;
 	/*
 	 * The statistic block update period in ms.
