@@ -618,12 +618,6 @@ static void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
 			eth_dev->data->port_id);
 }
 
-static int bnxt_dev_lsc_intr_setup(struct rte_eth_dev *eth_dev)
-{
-	bnxt_print_link_info(eth_dev);
-	return 0;
-}
-
 /*
  * Determine whether the current configuration requires support for scattered
  * receive; return 1 if scattered receive is required and 0 if not.
@@ -977,30 +971,72 @@ static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
+/* Return bnxt_rx_queue pointer corresponding to a given rxq. */
+static struct bnxt_rx_queue *bnxt_qid_to_rxq(struct bnxt *bp, uint16_t qid)
+{
+	if (qid >= bp->rx_nr_rings)
+		return NULL;
+
+	return bp->eth_dev->data->rx_queues[qid];
+}
+
+/* Return rxq corresponding to a given rss table ring/group ID. */
+static uint16_t bnxt_rss_to_qid(struct bnxt *bp, uint16_t fwr)
+{
+	unsigned int i;
+
+	for (i = 0; i < bp->rx_nr_rings; i++) {
+		if (bp->grp_info[i].fw_grp_id == fwr)
+			return i;
+	}
+
+	return INVALID_HW_RING_ID;
+}
+
 static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 			    struct rte_eth_rss_reta_entry64 *reta_conf,
 			    uint16_t reta_size)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
-	struct bnxt_vnic_info *vnic;
+	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+	uint16_t tbl_size = HW_HASH_INDEX_SIZE;
+	uint16_t idx, sft;
 	int i;
+
+	if (!vnic->rss_table)
+		return -EINVAL;
 
 	if (!(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG))
 		return -EINVAL;
 
-	if (reta_size != HW_HASH_INDEX_SIZE) {
+	if (reta_size != tbl_size) {
 		PMD_DRV_LOG(ERR, "The configured hash table lookup size "
 			"(%d) must equal the size supported by the hardware "
-			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
+			"(%d)\n", reta_size, tbl_size);
 		return -EINVAL;
 	}
-	/* Update the RSS VNIC(s) */
-	for (i = 0; i < bp->max_vnics; i++) {
-		vnic = &bp->vnic_info[i];
-		memcpy(vnic->rss_table, reta_conf, reta_size);
-		bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+
+	for (i = 0; i < reta_size; i++) {
+		struct bnxt_rx_queue *rxq;
+
+		idx = i / RTE_RETA_GROUP_SIZE;
+		sft = i % RTE_RETA_GROUP_SIZE;
+
+		if (!(reta_conf[idx].mask & (1ULL << sft)))
+			continue;
+
+		rxq = bnxt_qid_to_rxq(bp, reta_conf[idx].reta[sft]);
+		if (!rxq) {
+			PMD_DRV_LOG(ERR, "Invalid ring in reta_conf.\n");
+			return -EINVAL;
+		}
+
+		vnic->rss_table[i] =
+		    vnic->fw_grp_ids[reta_conf[idx].reta[sft]];
 	}
+
+	bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 	return 0;
 }
 
@@ -1010,8 +1046,8 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
-	struct rte_intr_handle *intr_handle
-		= &bp->pdev->intr_handle;
+	uint16_t tbl_size = HW_HASH_INDEX_SIZE;
+	uint16_t idx, sft, i;
 
 	/* Retrieve from the default VNIC */
 	if (!vnic)
@@ -1019,18 +1055,28 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 	if (!vnic->rss_table)
 		return -EINVAL;
 
-	if (reta_size != HW_HASH_INDEX_SIZE) {
+	if (reta_size != tbl_size) {
 		PMD_DRV_LOG(ERR, "The configured hash table lookup size "
 			"(%d) must equal the size supported by the hardware "
-			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
+			"(%d)\n", reta_size, tbl_size);
 		return -EINVAL;
 	}
-	/* EW - need to revisit here copying from uint64_t to uint16_t */
-	memcpy(reta_conf, vnic->rss_table, reta_size);
 
-	if (rte_intr_allow_others(intr_handle)) {
-		if (eth_dev->data->dev_conf.intr_conf.lsc != 0)
-			bnxt_dev_lsc_intr_setup(eth_dev);
+	for (idx = 0, i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		sft = i % RTE_RETA_GROUP_SIZE;
+
+		if (reta_conf[idx].mask & (1ULL << sft)) {
+			uint16_t qid;
+
+			qid = bnxt_rss_to_qid(bp, vnic->rss_table[i]);
+
+			if (qid == INVALID_HW_RING_ID) {
+				PMD_DRV_LOG(ERR, "Inv. entry in rss table.\n");
+				return -EINVAL;
+			}
+			reta_conf[idx].reta[sft] = qid;
+		}
 	}
 
 	return 0;

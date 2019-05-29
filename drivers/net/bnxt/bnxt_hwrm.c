@@ -1607,6 +1607,7 @@ int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 	req.hash_key_tbl_addr =
 	    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
 	req.rss_ctx_idx = rte_cpu_to_le_16(vnic->rss_rule);
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
