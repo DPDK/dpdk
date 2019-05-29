@@ -232,7 +232,13 @@ int otx2_cgx_mac_addr_set(struct rte_eth_dev *eth_dev,
 			  struct rte_ether_addr *addr);
 
 /* Mac address handling */
+int otx2_nix_mac_addr_set(struct rte_eth_dev *eth_dev,
+			  struct rte_ether_addr *addr);
 int otx2_nix_mac_addr_get(struct rte_eth_dev *eth_dev, uint8_t *addr);
+int otx2_nix_mac_addr_add(struct rte_eth_dev *eth_dev,
+			  struct rte_ether_addr *addr,
+			  uint32_t index, uint32_t pool);
+void otx2_nix_mac_addr_del(struct rte_eth_dev *eth_dev, uint32_t index);
 int otx2_cgx_mac_max_entries_get(struct otx2_eth_dev *dev);
 
 /* Devargs */
