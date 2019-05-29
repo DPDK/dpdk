@@ -24,6 +24,8 @@ nix_lf_err_irq(void *param)
 	/* Clear interrupt */
 	otx2_write64(intr, dev->base + NIX_LF_ERR_INT);
 
+	/* Dump registers to std out */
+	otx2_nix_reg_dump(dev, NULL);
 	otx2_nix_queues_ctx_dump(eth_dev);
 }
 
@@ -78,6 +80,8 @@ nix_lf_ras_irq(void *param)
 	/* Clear interrupt */
 	otx2_write64(intr, dev->base + NIX_LF_RAS);
 
+	/* Dump registers to std out */
+	otx2_nix_reg_dump(dev, NULL);
 	otx2_nix_queues_ctx_dump(eth_dev);
 }
 
@@ -237,6 +241,8 @@ nix_lf_q_irq(void *param)
 	/* Clear interrupt */
 	otx2_write64(intr, dev->base + NIX_LF_QINTX_INT(qintx));
 
+	/* Dump registers to std out */
+	otx2_nix_reg_dump(dev, NULL);
 	otx2_nix_queues_ctx_dump(eth_dev);
 }
 

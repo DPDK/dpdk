@@ -5,6 +5,234 @@
 #include "otx2_ethdev.h"
 
 #define nix_dump(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define NIX_REG_INFO(reg) {reg, #reg}
+
+struct nix_lf_reg_info {
+	uint32_t offset;
+	const char *name;
+};
+
+static const struct
+nix_lf_reg_info nix_lf_reg[] = {
+	NIX_REG_INFO(NIX_LF_RX_SECRETX(0)),
+	NIX_REG_INFO(NIX_LF_RX_SECRETX(1)),
+	NIX_REG_INFO(NIX_LF_RX_SECRETX(2)),
+	NIX_REG_INFO(NIX_LF_RX_SECRETX(3)),
+	NIX_REG_INFO(NIX_LF_RX_SECRETX(4)),
+	NIX_REG_INFO(NIX_LF_RX_SECRETX(5)),
+	NIX_REG_INFO(NIX_LF_CFG),
+	NIX_REG_INFO(NIX_LF_GINT),
+	NIX_REG_INFO(NIX_LF_GINT_W1S),
+	NIX_REG_INFO(NIX_LF_GINT_ENA_W1C),
+	NIX_REG_INFO(NIX_LF_GINT_ENA_W1S),
+	NIX_REG_INFO(NIX_LF_ERR_INT),
+	NIX_REG_INFO(NIX_LF_ERR_INT_W1S),
+	NIX_REG_INFO(NIX_LF_ERR_INT_ENA_W1C),
+	NIX_REG_INFO(NIX_LF_ERR_INT_ENA_W1S),
+	NIX_REG_INFO(NIX_LF_RAS),
+	NIX_REG_INFO(NIX_LF_RAS_W1S),
+	NIX_REG_INFO(NIX_LF_RAS_ENA_W1C),
+	NIX_REG_INFO(NIX_LF_RAS_ENA_W1S),
+	NIX_REG_INFO(NIX_LF_SQ_OP_ERR_DBG),
+	NIX_REG_INFO(NIX_LF_MNQ_ERR_DBG),
+	NIX_REG_INFO(NIX_LF_SEND_ERR_DBG),
+};
+
+static int
+nix_lf_get_reg_count(struct otx2_eth_dev *dev)
+{
+	int reg_count = 0;
+
+	reg_count = RTE_DIM(nix_lf_reg);
+	/* NIX_LF_TX_STATX */
+	reg_count += dev->lf_tx_stats;
+	/* NIX_LF_RX_STATX */
+	reg_count += dev->lf_rx_stats;
+	/* NIX_LF_QINTX_CNT*/
+	reg_count += dev->qints;
+	/* NIX_LF_QINTX_INT */
+	reg_count += dev->qints;
+	/* NIX_LF_QINTX_ENA_W1S */
+	reg_count += dev->qints;
+	/* NIX_LF_QINTX_ENA_W1C */
+	reg_count += dev->qints;
+	/* NIX_LF_CINTX_CNT */
+	reg_count += dev->cints;
+	/* NIX_LF_CINTX_WAIT */
+	reg_count += dev->cints;
+	/* NIX_LF_CINTX_INT */
+	reg_count += dev->cints;
+	/* NIX_LF_CINTX_INT_W1S */
+	reg_count += dev->cints;
+	/* NIX_LF_CINTX_ENA_W1S */
+	reg_count += dev->cints;
+	/* NIX_LF_CINTX_ENA_W1C */
+	reg_count += dev->cints;
+
+	return reg_count;
+}
+
+int
+otx2_nix_reg_dump(struct otx2_eth_dev *dev, uint64_t *data)
+{
+	uintptr_t nix_lf_base = dev->base;
+	bool dump_stdout;
+	uint64_t reg;
+	uint32_t i;
+
+	dump_stdout = data ? 0 : 1;
+
+	for (i = 0; i < RTE_DIM(nix_lf_reg); i++) {
+		reg = otx2_read64(nix_lf_base + nix_lf_reg[i].offset);
+		if (dump_stdout && reg)
+			nix_dump("%32s = 0x%" PRIx64,
+				 nix_lf_reg[i].name, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_TX_STATX */
+	for (i = 0; i < dev->lf_tx_stats; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_TX_STATX(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_TX_STATX", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_RX_STATX */
+	for (i = 0; i < dev->lf_rx_stats; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_RX_STATX(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_RX_STATX", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_QINTX_CNT*/
+	for (i = 0; i < dev->qints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_QINTX_CNT(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_QINTX_CNT", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_QINTX_INT */
+	for (i = 0; i < dev->qints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_QINTX_INT(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_QINTX_INT", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_QINTX_ENA_W1S */
+	for (i = 0; i < dev->qints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_QINTX_ENA_W1S(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_QINTX_ENA_W1S", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_QINTX_ENA_W1C */
+	for (i = 0; i < dev->qints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_QINTX_ENA_W1C(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_QINTX_ENA_W1C", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_CINTX_CNT */
+	for (i = 0; i < dev->cints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_CINTX_CNT(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_CINTX_CNT", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_CINTX_WAIT */
+	for (i = 0; i < dev->cints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_CINTX_WAIT(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_CINTX_WAIT", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_CINTX_INT */
+	for (i = 0; i < dev->cints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_CINTX_INT(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_CINTX_INT", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_CINTX_INT_W1S */
+	for (i = 0; i < dev->cints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_CINTX_INT_W1S(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_CINTX_INT_W1S", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_CINTX_ENA_W1S */
+	for (i = 0; i < dev->cints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_CINTX_ENA_W1S(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_CINTX_ENA_W1S", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+
+	/* NIX_LF_CINTX_ENA_W1C */
+	for (i = 0; i < dev->cints; i++) {
+		reg = otx2_read64(nix_lf_base + NIX_LF_CINTX_ENA_W1C(i));
+		if (dump_stdout && reg)
+			nix_dump("%32s_%d = 0x%" PRIx64,
+				 "NIX_LF_CINTX_ENA_W1C", i, reg);
+		if (data)
+			*data++ = reg;
+	}
+	return 0;
+}
+
+int
+otx2_nix_dev_get_reg(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint64_t *data = regs->data;
+
+	if (data == NULL) {
+		regs->length = nix_lf_get_reg_count(dev);
+		regs->width = 8;
+		return 0;
+	}
+
+	if (!regs->length ||
+	    regs->length == (uint32_t)nix_lf_get_reg_count(dev)) {
+		otx2_nix_reg_dump(dev, data);
+		return 0;
+	}
+
+	return -ENOTSUP;
+}
 
 static inline void
 nix_lf_sq_dump(struct  nix_sq_ctx_s *ctx)

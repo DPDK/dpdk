@@ -229,6 +229,7 @@ fail:
 static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.dev_infos_get            = otx2_nix_info_get,
 	.dev_configure            = otx2_nix_configure,
+	.get_reg                  = otx2_nix_dev_get_reg,
 };
 
 static inline int
