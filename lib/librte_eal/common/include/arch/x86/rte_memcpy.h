@@ -115,7 +115,7 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
  * Copy 128-byte blocks from one location to another,
  * locations should not overlap.
  */
-static inline void
+static __rte_always_inline void
 rte_mov128blocks(uint8_t *dst, const uint8_t *src, size_t n)
 {
 	__m512i zmm0, zmm1;
@@ -163,7 +163,7 @@ rte_mov512blocks(uint8_t *dst, const uint8_t *src, size_t n)
 	}
 }
 
-static inline void *
+static __rte_always_inline void *
 rte_memcpy_generic(void *dst, const void *src, size_t n)
 {
 	uintptr_t dstu = (uintptr_t)dst;
@@ -330,7 +330,7 @@ rte_mov64(uint8_t *dst, const uint8_t *src)
  * Copy 128 bytes from one location to another,
  * locations should not overlap.
  */
-static inline void
+static __rte_always_inline void
 rte_mov128(uint8_t *dst, const uint8_t *src)
 {
 	rte_mov32((uint8_t *)dst + 0 * 32, (const uint8_t *)src + 0 * 32);
@@ -343,7 +343,7 @@ rte_mov128(uint8_t *dst, const uint8_t *src)
  * Copy 128-byte blocks from one location to another,
  * locations should not overlap.
  */
-static inline void
+static __rte_always_inline void
 rte_mov128blocks(uint8_t *dst, const uint8_t *src, size_t n)
 {
 	__m256i ymm0, ymm1, ymm2, ymm3;
@@ -363,7 +363,7 @@ rte_mov128blocks(uint8_t *dst, const uint8_t *src, size_t n)
 	}
 }
 
-static inline void *
+static __rte_always_inline void *
 rte_memcpy_generic(void *dst, const void *src, size_t n)
 {
 	uintptr_t dstu = (uintptr_t)dst;
@@ -523,7 +523,7 @@ rte_mov64(uint8_t *dst, const uint8_t *src)
  * Copy 128 bytes from one location to another,
  * locations should not overlap.
  */
-static inline void
+static __rte_always_inline void
 rte_mov128(uint8_t *dst, const uint8_t *src)
 {
 	rte_mov16((uint8_t *)dst + 0 * 16, (const uint8_t *)src + 0 * 16);
@@ -655,7 +655,7 @@ __extension__ ({                                                      \
     }                                                                 \
 })
 
-static inline void *
+static __rte_always_inline void *
 rte_memcpy_generic(void *dst, const void *src, size_t n)
 {
 	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8;
@@ -800,7 +800,7 @@ COPY_BLOCK_64_BACK15:
 
 #endif /* RTE_MACHINE_CPUFLAG */
 
-static inline void *
+static __rte_always_inline void *
 rte_memcpy_aligned(void *dst, const void *src, size_t n)
 {
 	void *ret = dst;
@@ -860,7 +860,7 @@ rte_memcpy_aligned(void *dst, const void *src, size_t n)
 	return ret;
 }
 
-static inline void *
+static __rte_always_inline void *
 rte_memcpy(void *dst, const void *src, size_t n)
 {
 	if (!(((uintptr_t)dst | (uintptr_t)src) & ALIGNMENT_MASK))
