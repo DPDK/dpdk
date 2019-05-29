@@ -2,15 +2,11 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <rte_ip.h>
 #include <rte_string_fns.h>
 #include <rte_hexdump.h>
 #include "test_table.h"
 #include "test_table_acl.h"
-
-#define RTE_IPv4(a, b, c, d) ((uint32_t)(((a) & 0xff) << 24) |		\
-	(((b) & 0xff) << 16) |						\
-	(((c) & 0xff) << 8) |						\
-	((d) & 0xff))
 
 /*
  * Rule and trace formats definitions.
