@@ -238,6 +238,11 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.stats_reset              = otx2_nix_dev_stats_reset,
 	.get_reg                  = otx2_nix_dev_get_reg,
 	.queue_stats_mapping_set  = otx2_nix_queue_stats_mapping,
+	.xstats_get               = otx2_nix_xstats_get,
+	.xstats_get_names         = otx2_nix_xstats_get_names,
+	.xstats_reset             = otx2_nix_xstats_reset,
+	.xstats_get_by_id         = otx2_nix_xstats_get_by_id,
+	.xstats_get_names_by_id   = otx2_nix_xstats_get_names_by_id,
 };
 
 static inline int
