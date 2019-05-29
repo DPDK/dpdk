@@ -19,7 +19,7 @@
 #include "tap_rss.h"
 
 /** Create IPv4 address */
-#define RTE_IPv4(a, b, c, d) ((__u32)(((a) & 0xff) << 24) | \
+#define IPv4(a, b, c, d) ((__u32)(((a) & 0xff) << 24) | \
 		(((b) & 0xff) << 16) | \
 		(((c) & 0xff) << 8)  | \
 		((d) & 0xff))
@@ -37,7 +37,7 @@
 #define KEY_IDX			0
 #define BPF_MAP_ID_KEY	1
 
-struct rte_vlan_hdr {
+struct vlan_hdr {
 	__be16 proto;
 	__be16 tci;
 };
@@ -141,12 +141,12 @@ rss_l3_l4(struct __sk_buff *skb)
 
 	/* Get correct proto for 802.1ad */
 	if (skb->vlan_present && skb->vlan_proto == htons(ETH_P_8021AD)) {
-		if (data + ETH_ALEN * 2 + sizeof(struct rte_vlan_hdr) +
+		if (data + ETH_ALEN * 2 + sizeof(struct vlan_hdr) +
 		    sizeof(proto) > data_end)
 			return TC_ACT_OK;
 		proto = *(__u16 *)(data + ETH_ALEN * 2 +
-				   sizeof(struct rte_vlan_hdr));
-		off += sizeof(struct rte_vlan_hdr);
+				   sizeof(struct vlan_hdr));
+		off += sizeof(struct vlan_hdr);
 	}
 
 	if (proto == htons(ETH_P_IP)) {
@@ -157,11 +157,11 @@ rss_l3_l4(struct __sk_buff *skb)
 		__u8 *src_dst_addr = data + off + offsetof(struct iphdr, saddr);
 		__u8 *src_dst_port = data + off + sizeof(struct iphdr);
 		struct ipv4_l3_l4_tuple v4_tuple = {
-			.src_addr = RTE_IPv4(*(src_dst_addr + 0),
+			.src_addr = IPv4(*(src_dst_addr + 0),
 					*(src_dst_addr + 1),
 					*(src_dst_addr + 2),
 					*(src_dst_addr + 3)),
-			.dst_addr = RTE_IPv4(*(src_dst_addr + 4),
+			.dst_addr = IPv4(*(src_dst_addr + 4),
 					*(src_dst_addr + 5),
 					*(src_dst_addr + 6),
 					*(src_dst_addr + 7)),
