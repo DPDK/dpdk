@@ -163,8 +163,10 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Free the resources allocated from the previous configure */
-	if (dev->configured == 1)
+	if (dev->configured == 1) {
+		oxt2_nix_unregister_queue_irqs(eth_dev);
 		nix_lf_free(dev);
+	}
 
 	if (otx2_dev_is_A0(dev) &&
 	    (txmode->offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
@@ -189,6 +191,13 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail;
 	}
 
+	/* Register queue IRQs */
+	rc = oxt2_nix_register_queue_irqs(eth_dev);
+	if (rc) {
+		otx2_err("Failed to register queue interrupts rc=%d", rc);
+		goto free_nix_lf;
+	}
+
 	/* Update the mac address */
 	ea = eth_dev->data->mac_addrs;
 	memcpy(ea, dev->mac_addr, RTE_ETHER_ADDR_LEN);
@@ -210,6 +219,8 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	dev->configured_nb_tx_qs = data->nb_tx_queues;
 	return 0;
 
+free_nix_lf:
+	rc = nix_lf_free(dev);
 fail:
 	return rc;
 }
@@ -412,6 +423,9 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 	/* Nothing to be done for secondary processes */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	/* Unregister queue irqs */
+	oxt2_nix_unregister_queue_irqs(eth_dev);
 
 	rc = nix_lf_free(dev);
 	if (rc)

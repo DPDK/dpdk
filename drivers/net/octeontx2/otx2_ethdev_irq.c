@@ -112,6 +112,197 @@ nix_lf_unregister_ras_irq(struct rte_eth_dev *eth_dev)
 	otx2_unregister_irq(handle, nix_lf_ras_irq, eth_dev, vec);
 }
 
+static inline uint8_t
+nix_lf_q_irq_get_and_clear(struct otx2_eth_dev *dev, uint16_t q,
+			   uint32_t off, uint64_t mask)
+{
+	uint64_t reg, wdata;
+	uint8_t qint;
+
+	wdata = (uint64_t)q << 44;
+	reg = otx2_atomic64_add_nosync(wdata, (int64_t *)(dev->base + off));
+
+	if (reg & BIT_ULL(42) /* OP_ERR */) {
+		otx2_err("Failed execute irq get off=0x%x", off);
+		return 0;
+	}
+
+	qint = reg & 0xff;
+	wdata &= mask;
+	otx2_write64(wdata, dev->base + off);
+
+	return qint;
+}
+
+static inline uint8_t
+nix_lf_rq_irq_get_and_clear(struct otx2_eth_dev *dev, uint16_t rq)
+{
+	return nix_lf_q_irq_get_and_clear(dev, rq, NIX_LF_RQ_OP_INT, ~0xff00);
+}
+
+static inline uint8_t
+nix_lf_cq_irq_get_and_clear(struct otx2_eth_dev *dev, uint16_t cq)
+{
+	return nix_lf_q_irq_get_and_clear(dev, cq, NIX_LF_CQ_OP_INT, ~0xff00);
+}
+
+static inline uint8_t
+nix_lf_sq_irq_get_and_clear(struct otx2_eth_dev *dev, uint16_t sq)
+{
+	return nix_lf_q_irq_get_and_clear(dev, sq, NIX_LF_SQ_OP_INT, ~0x1ff00);
+}
+
+static inline void
+nix_lf_sq_debug_reg(struct otx2_eth_dev *dev, uint32_t off)
+{
+	uint64_t reg;
+
+	reg = otx2_read64(dev->base + off);
+	if (reg & BIT_ULL(44))
+		otx2_err("SQ=%d err_code=0x%x",
+			 (int)((reg >> 8) & 0xfffff), (uint8_t)(reg & 0xff));
+}
+
+static void
+nix_lf_q_irq(void *param)
+{
+	struct otx2_qint *qint = (struct otx2_qint *)param;
+	struct rte_eth_dev *eth_dev = qint->eth_dev;
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint8_t irq, qintx = qint->qintx;
+	int q, cq, rq, sq;
+	uint64_t intr;
+
+	intr = otx2_read64(dev->base + NIX_LF_QINTX_INT(qintx));
+	if (intr == 0)
+		return;
+
+	otx2_err("Queue_intr=0x%" PRIx64 " qintx=%d pf=%d, vf=%d",
+		 intr, qintx, dev->pf, dev->vf);
+
+	/* Handle RQ interrupts */
+	for (q = 0; q < eth_dev->data->nb_rx_queues; q++) {
+		rq = q % dev->qints;
+		irq = nix_lf_rq_irq_get_and_clear(dev, rq);
+
+		if (irq & BIT_ULL(NIX_RQINT_DROP))
+			otx2_err("RQ=%d NIX_RQINT_DROP", rq);
+
+		if (irq & BIT_ULL(NIX_RQINT_RED))
+			otx2_err("RQ=%d NIX_RQINT_RED",	rq);
+	}
+
+	/* Handle CQ interrupts */
+	for (q = 0; q < eth_dev->data->nb_rx_queues; q++) {
+		cq = q % dev->qints;
+		irq = nix_lf_cq_irq_get_and_clear(dev, cq);
+
+		if (irq & BIT_ULL(NIX_CQERRINT_DOOR_ERR))
+			otx2_err("CQ=%d NIX_CQERRINT_DOOR_ERR", cq);
+
+		if (irq & BIT_ULL(NIX_CQERRINT_WR_FULL))
+			otx2_err("CQ=%d NIX_CQERRINT_WR_FULL", cq);
+
+		if (irq & BIT_ULL(NIX_CQERRINT_CQE_FAULT))
+			otx2_err("CQ=%d NIX_CQERRINT_CQE_FAULT", cq);
+	}
+
+	/* Handle SQ interrupts */
+	for (q = 0; q < eth_dev->data->nb_tx_queues; q++) {
+		sq = q % dev->qints;
+		irq = nix_lf_sq_irq_get_and_clear(dev, sq);
+
+		if (irq & BIT_ULL(NIX_SQINT_LMT_ERR)) {
+			otx2_err("SQ=%d NIX_SQINT_LMT_ERR", sq);
+			nix_lf_sq_debug_reg(dev, NIX_LF_SQ_OP_ERR_DBG);
+		}
+		if (irq & BIT_ULL(NIX_SQINT_MNQ_ERR)) {
+			otx2_err("SQ=%d NIX_SQINT_MNQ_ERR", sq);
+			nix_lf_sq_debug_reg(dev, NIX_LF_MNQ_ERR_DBG);
+		}
+		if (irq & BIT_ULL(NIX_SQINT_SEND_ERR)) {
+			otx2_err("SQ=%d NIX_SQINT_SEND_ERR", sq);
+			nix_lf_sq_debug_reg(dev, NIX_LF_SEND_ERR_DBG);
+		}
+		if (irq & BIT_ULL(NIX_SQINT_SQB_ALLOC_FAIL)) {
+			otx2_err("SQ=%d NIX_SQINT_SQB_ALLOC_FAIL", sq);
+			nix_lf_sq_debug_reg(dev, NIX_LF_SEND_ERR_DBG);
+		}
+	}
+
+	/* Clear interrupt */
+	otx2_write64(intr, dev->base + NIX_LF_QINTX_INT(qintx));
+}
+
+int
+oxt2_nix_register_queue_irqs(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	int vec, q, sqs, rqs, qs, rc = 0;
+
+	/* Figure out max qintx required */
+	rqs = RTE_MIN(dev->qints, eth_dev->data->nb_rx_queues);
+	sqs = RTE_MIN(dev->qints, eth_dev->data->nb_tx_queues);
+	qs  = RTE_MAX(rqs, sqs);
+
+	dev->configured_qints = qs;
+
+	for (q = 0; q < qs; q++) {
+		vec = dev->nix_msixoff + NIX_LF_INT_VEC_QINT_START + q;
+
+		/* Clear QINT CNT */
+		otx2_write64(0, dev->base + NIX_LF_QINTX_CNT(q));
+
+		/* Clear interrupt */
+		otx2_write64(~0ull, dev->base + NIX_LF_QINTX_ENA_W1C(q));
+
+		dev->qints_mem[q].eth_dev = eth_dev;
+		dev->qints_mem[q].qintx = q;
+
+		/* Sync qints_mem update */
+		rte_smp_wmb();
+
+		/* Register queue irq vector */
+		rc = otx2_register_irq(handle, nix_lf_q_irq,
+				       &dev->qints_mem[q], vec);
+		if (rc)
+			break;
+
+		otx2_write64(0, dev->base + NIX_LF_QINTX_CNT(q));
+		otx2_write64(0, dev->base + NIX_LF_QINTX_INT(q));
+		/* Enable QINT interrupt */
+		otx2_write64(~0ull, dev->base + NIX_LF_QINTX_ENA_W1S(q));
+	}
+
+	return rc;
+}
+
+void
+oxt2_nix_unregister_queue_irqs(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	int vec, q;
+
+	for (q = 0; q < dev->configured_qints; q++) {
+		vec = dev->nix_msixoff + NIX_LF_INT_VEC_QINT_START + q;
+
+		/* Clear QINT CNT */
+		otx2_write64(0, dev->base + NIX_LF_QINTX_CNT(q));
+		otx2_write64(0, dev->base + NIX_LF_QINTX_INT(q));
+
+		/* Clear interrupt */
+		otx2_write64(~0ull, dev->base + NIX_LF_QINTX_ENA_W1C(q));
+
+		/* Unregister queue irq vector */
+		otx2_unregister_irq(handle, nix_lf_q_irq,
+				    &dev->qints_mem[q], vec);
+	}
+}
+
 int
 otx2_nix_register_irqs(struct rte_eth_dev *eth_dev)
 {

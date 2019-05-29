@@ -106,6 +106,11 @@
 	DEV_RX_OFFLOAD_QINQ_STRIP | \
 	DEV_RX_OFFLOAD_TIMESTAMP)
 
+struct otx2_qint {
+	struct rte_eth_dev *eth_dev;
+	uint8_t qintx;
+};
+
 struct otx2_rss_info {
 	uint16_t rss_size;
 	uint8_t rss_grps;
@@ -134,6 +139,7 @@ struct otx2_eth_dev {
 	uint16_t cints;
 	uint16_t qints;
 	uint8_t configured;
+	uint8_t configured_qints;
 	uint8_t configured_nb_rx_qs;
 	uint8_t configured_nb_tx_qs;
 	uint16_t nix_msixoff;
@@ -147,6 +153,7 @@ struct otx2_eth_dev {
 	uint64_t tx_offloads;
 	uint64_t rx_offload_capa;
 	uint64_t tx_offload_capa;
+	struct otx2_qint qints_mem[RTE_MAX_QUEUES_PER_PORT];
 	struct otx2_rss_info rss_info;
 	struct otx2_npc_flow_info npc_flow;
 } __rte_cache_aligned;
@@ -163,7 +170,9 @@ void otx2_nix_info_get(struct rte_eth_dev *eth_dev,
 
 /* IRQ */
 int otx2_nix_register_irqs(struct rte_eth_dev *eth_dev);
+int oxt2_nix_register_queue_irqs(struct rte_eth_dev *eth_dev);
 void otx2_nix_unregister_irqs(struct rte_eth_dev *eth_dev);
+void oxt2_nix_unregister_queue_irqs(struct rte_eth_dev *eth_dev);
 
 /* CGX */
 int otx2_cgx_rxtx_start(struct otx2_eth_dev *dev);
