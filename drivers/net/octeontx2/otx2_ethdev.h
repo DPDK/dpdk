@@ -205,6 +205,8 @@ struct otx2_eth_dev {
 	uint32_t txmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	uint32_t rxmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	struct otx2_npc_flow_info npc_flow;
+	struct otx2_eth_qconf *tx_qconf;
+	struct otx2_eth_qconf *rx_qconf;
 	struct rte_eth_dev *eth_dev;
 } __rte_cache_aligned;
 

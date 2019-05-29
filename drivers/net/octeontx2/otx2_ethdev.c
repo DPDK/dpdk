@@ -807,6 +807,172 @@ fail:
 	return rc;
 }
 
+static int
+nix_store_queue_cfg_and_then_release(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_eth_qconf *tx_qconf = NULL;
+	struct otx2_eth_qconf *rx_qconf = NULL;
+	struct otx2_eth_txq **txq;
+	struct otx2_eth_rxq **rxq;
+	int i, nb_rxq, nb_txq;
+
+	nb_rxq = RTE_MIN(dev->configured_nb_rx_qs, eth_dev->data->nb_rx_queues);
+	nb_txq = RTE_MIN(dev->configured_nb_tx_qs, eth_dev->data->nb_tx_queues);
+
+	tx_qconf = malloc(nb_txq * sizeof(*tx_qconf));
+	if (tx_qconf == NULL) {
+		otx2_err("Failed to allocate memory for tx_qconf");
+		goto fail;
+	}
+
+	rx_qconf = malloc(nb_rxq * sizeof(*rx_qconf));
+	if (rx_qconf == NULL) {
+		otx2_err("Failed to allocate memory for rx_qconf");
+		goto fail;
+	}
+
+	txq = (struct otx2_eth_txq **)eth_dev->data->tx_queues;
+	for (i = 0; i < nb_txq; i++) {
+		if (txq[i] == NULL) {
+			otx2_err("txq[%d] is already released", i);
+			goto fail;
+		}
+		memcpy(&tx_qconf[i], &txq[i]->qconf, sizeof(*tx_qconf));
+		otx2_nix_tx_queue_release(txq[i]);
+		eth_dev->data->tx_queues[i] = NULL;
+	}
+
+	rxq = (struct otx2_eth_rxq **)eth_dev->data->rx_queues;
+	for (i = 0; i < nb_rxq; i++) {
+		if (rxq[i] == NULL) {
+			otx2_err("rxq[%d] is already released", i);
+			goto fail;
+		}
+		memcpy(&rx_qconf[i], &rxq[i]->qconf, sizeof(*rx_qconf));
+		otx2_nix_rx_queue_release(rxq[i]);
+		eth_dev->data->rx_queues[i] = NULL;
+	}
+
+	dev->tx_qconf = tx_qconf;
+	dev->rx_qconf = rx_qconf;
+	return 0;
+
+fail:
+	if (tx_qconf)
+		free(tx_qconf);
+	if (rx_qconf)
+		free(rx_qconf);
+
+	return -ENOMEM;
+}
+
+static int
+nix_restore_queue_cfg(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_eth_qconf *tx_qconf = dev->tx_qconf;
+	struct otx2_eth_qconf *rx_qconf = dev->rx_qconf;
+	struct otx2_eth_txq **txq;
+	struct otx2_eth_rxq **rxq;
+	int rc, i, nb_rxq, nb_txq;
+
+	nb_rxq = RTE_MIN(dev->configured_nb_rx_qs, eth_dev->data->nb_rx_queues);
+	nb_txq = RTE_MIN(dev->configured_nb_tx_qs, eth_dev->data->nb_tx_queues);
+
+	rc = -ENOMEM;
+	/* Setup tx & rx queues with previous configuration so
+	 * that the queues can be functional in cases like ports
+	 * are started without re configuring queues.
+	 *
+	 * Usual re config sequence is like below:
+	 * port_configure() {
+	 *      if(reconfigure) {
+	 *              queue_release()
+	 *              queue_setup()
+	 *      }
+	 *      queue_configure() {
+	 *              queue_release()
+	 *              queue_setup()
+	 *      }
+	 * }
+	 * port_start()
+	 *
+	 * In some application's control path, queue_configure() would
+	 * NOT be invoked for TXQs/RXQs in port_configure().
+	 * In such cases, queues can be functional after start as the
+	 * queues are already setup in port_configure().
+	 */
+	for (i = 0; i < nb_txq; i++) {
+		rc = otx2_nix_tx_queue_setup(eth_dev, i, tx_qconf[i].nb_desc,
+					     tx_qconf[i].socket_id,
+					     &tx_qconf[i].conf.tx);
+		if (rc) {
+			otx2_err("Failed to setup tx queue rc=%d", rc);
+			txq = (struct otx2_eth_txq **)eth_dev->data->tx_queues;
+			for (i -= 1; i >= 0; i--)
+				otx2_nix_tx_queue_release(txq[i]);
+			goto fail;
+		}
+	}
+
+	free(tx_qconf); tx_qconf = NULL;
+
+	for (i = 0; i < nb_rxq; i++) {
+		rc = otx2_nix_rx_queue_setup(eth_dev, i, rx_qconf[i].nb_desc,
+					     rx_qconf[i].socket_id,
+					     &rx_qconf[i].conf.rx,
+					     rx_qconf[i].mempool);
+		if (rc) {
+			otx2_err("Failed to setup rx queue rc=%d", rc);
+			rxq = (struct otx2_eth_rxq **)eth_dev->data->rx_queues;
+			for (i -= 1; i >= 0; i--)
+				otx2_nix_rx_queue_release(rxq[i]);
+			goto release_tx_queues;
+		}
+	}
+
+	free(rx_qconf); rx_qconf = NULL;
+
+	return 0;
+
+release_tx_queues:
+	txq = (struct otx2_eth_txq **)eth_dev->data->tx_queues;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		otx2_nix_tx_queue_release(txq[i]);
+fail:
+	if (tx_qconf)
+		free(tx_qconf);
+	if (rx_qconf)
+		free(rx_qconf);
+
+	return rc;
+}
+
+static uint16_t
+nix_eth_nop_burst(void *queue, struct rte_mbuf **mbufs, uint16_t pkts)
+{
+	RTE_SET_USED(queue);
+	RTE_SET_USED(mbufs);
+	RTE_SET_USED(pkts);
+
+	return 0;
+}
+
+static void
+nix_set_nop_rxtx_function(struct rte_eth_dev *eth_dev)
+{
+	/* These dummy functions are required for supporting
+	 * some applications which reconfigure queues without
+	 * stopping tx burst and rx burst threads(eg kni app)
+	 * When the queues context is saved, txq/rxqs are released
+	 * which caused app crash since rx/tx burst is still
+	 * on different lcores
+	 */
+	eth_dev->tx_pkt_burst = nix_eth_nop_burst;
+	eth_dev->rx_pkt_burst = nix_eth_nop_burst;
+	rte_mb();
+}
 
 static int
 otx2_nix_configure(struct rte_eth_dev *eth_dev)
@@ -863,6 +1029,10 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	/* Free the resources allocated from the previous configure */
 	if (dev->configured == 1) {
 		oxt2_nix_unregister_queue_irqs(eth_dev);
+		nix_set_nop_rxtx_function(eth_dev);
+		rc = nix_store_queue_cfg_and_then_release(eth_dev);
+		if (rc)
+			goto fail;
 		nix_lf_free(dev);
 	}
 
@@ -901,6 +1071,16 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	if (rc) {
 		otx2_err("Failed to register queue interrupts rc=%d", rc);
 		goto free_nix_lf;
+	}
+
+	/*
+	 * Restore queue config when reconfigure followed by
+	 * reconfigure and no queue configure invoked from application case.
+	 */
+	if (dev->configured == 1) {
+		rc = nix_restore_queue_cfg(eth_dev);
+		if (rc)
+			goto free_nix_lf;
 	}
 
 	/* Update the mac address */
