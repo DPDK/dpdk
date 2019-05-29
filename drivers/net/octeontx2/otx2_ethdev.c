@@ -195,6 +195,13 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail;
 	}
 
+	/* Configure RSS */
+	rc = otx2_nix_rss_config(eth_dev);
+	if (rc) {
+		otx2_err("Failed to configure rss rc=%d", rc);
+		goto free_nix_lf;
+	}
+
 	/* Register queue IRQs */
 	rc = oxt2_nix_register_queue_irqs(eth_dev);
 	if (rc) {
@@ -245,6 +252,10 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.allmulticast_enable      = otx2_nix_allmulticast_enable,
 	.allmulticast_disable     = otx2_nix_allmulticast_disable,
 	.queue_stats_mapping_set  = otx2_nix_queue_stats_mapping,
+	.reta_update              = otx2_nix_dev_reta_update,
+	.reta_query               = otx2_nix_dev_reta_query,
+	.rss_hash_update          = otx2_nix_rss_hash_update,
+	.rss_hash_conf_get        = otx2_nix_rss_hash_conf_get,
 	.xstats_get               = otx2_nix_xstats_get,
 	.xstats_get_names         = otx2_nix_xstats_get_names,
 	.xstats_reset             = otx2_nix_xstats_reset,

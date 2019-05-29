@@ -59,6 +59,7 @@
 
 #define NIX_MAX_SQB			512
 #define NIX_MIN_SQB			32
+#define NIX_RSS_RETA_SIZE_MAX		256
 /* Group 0 will be used for RSS, 1 -7 will be used for rte_flow RSS action*/
 #define NIX_RSS_GRPS			8
 #define NIX_HASH_KEY_SIZE		48 /* 352 Bits */
@@ -112,14 +113,22 @@
 	DEV_RX_OFFLOAD_QINQ_STRIP | \
 	DEV_RX_OFFLOAD_TIMESTAMP)
 
+#define NIX_DEFAULT_RSS_CTX_GROUP  0
+#define NIX_DEFAULT_RSS_MCAM_IDX  -1
+
 struct otx2_qint {
 	struct rte_eth_dev *eth_dev;
 	uint8_t qintx;
 };
 
 struct otx2_rss_info {
+	uint64_t nix_rss;
+	uint32_t flowkey_cfg;
 	uint16_t rss_size;
 	uint8_t rss_grps;
+	uint8_t alg_idx; /* Selected algo index */
+	uint16_t ind_tbl[NIX_RSS_RETA_SIZE_MAX];
+	uint8_t key[NIX_HASH_KEY_SIZE];
 };
 
 struct otx2_npc_flow_info {
@@ -224,6 +233,30 @@ int otx2_nix_xstats_get_by_id(struct rte_eth_dev *eth_dev,
 int otx2_nix_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
 				    struct rte_eth_xstat_name *xstats_names,
 				    const uint64_t *ids, unsigned int limit);
+
+/* RSS */
+void otx2_nix_rss_set_key(struct otx2_eth_dev *dev,
+			  uint8_t *key, uint32_t key_len);
+uint32_t otx2_rss_ethdev_to_nix(struct otx2_eth_dev *dev,
+				uint64_t ethdev_rss, uint8_t rss_level);
+int otx2_rss_set_hf(struct otx2_eth_dev *dev,
+		    uint32_t flowkey_cfg, uint8_t *alg_idx,
+		    uint8_t group, int mcam_index);
+int otx2_nix_rss_tbl_init(struct otx2_eth_dev *dev, uint8_t group,
+			  uint16_t *ind_tbl);
+int otx2_nix_rss_config(struct rte_eth_dev *eth_dev);
+
+int otx2_nix_dev_reta_update(struct rte_eth_dev *eth_dev,
+			     struct rte_eth_rss_reta_entry64 *reta_conf,
+			     uint16_t reta_size);
+int otx2_nix_dev_reta_query(struct rte_eth_dev *eth_dev,
+			    struct rte_eth_rss_reta_entry64 *reta_conf,
+			    uint16_t reta_size);
+int otx2_nix_rss_hash_update(struct rte_eth_dev *eth_dev,
+			     struct rte_eth_rss_conf *rss_conf);
+
+int otx2_nix_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
+			       struct rte_eth_rss_conf *rss_conf);
 
 /* CGX */
 int otx2_cgx_rxtx_start(struct otx2_eth_dev *dev);

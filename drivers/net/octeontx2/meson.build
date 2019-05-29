@@ -3,6 +3,7 @@
 #
 
 sources = files(
+		'otx2_rss.c',
 		'otx2_mac.c',
 		'otx2_link.c',
 		'otx2_stats.c',
