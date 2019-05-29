@@ -59,6 +59,7 @@ New Features
   Updated the bnxt PMD. The major enhancements include:
 
   * Performance optimizations in non-vector Tx path
+  * Added support for SSE vector mode
 
 
 Removed Items

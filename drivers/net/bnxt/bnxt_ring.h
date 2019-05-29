@@ -10,7 +10,8 @@
 
 #include <rte_memory.h>
 
-#define RING_NEXT(ring, idx)		(((idx) + 1) & (ring)->ring_mask)
+#define RING_ADV(ring, idx, n)		(((idx) + (n)) & (ring)->ring_mask)
+#define RING_NEXT(ring, idx)		RING_ADV(ring, idx, 1)
 
 #define DB_IDX_MASK						0xffffff
 #define DB_IDX_VALID						(0x1 << 26)

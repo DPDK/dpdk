@@ -18,3 +18,7 @@ sources = files('bnxt_cpr.c',
 	'bnxt_util.c',
 	'bnxt_vnic.c',
 	'rte_pmd_bnxt.c')
+
+if arch_subdir == 'x86'
+	sources += files('bnxt_rxtx_vec_sse.c')
+endif

@@ -644,6 +644,67 @@ static int bnxt_scattered_rx(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static eth_rx_burst_t
+bnxt_receive_function(__rte_unused struct rte_eth_dev *eth_dev)
+{
+#ifdef RTE_ARCH_X86
+	/*
+	 * Vector mode receive can be enabled only if scatter rx is not
+	 * in use and rx offloads are limited to VLAN stripping and
+	 * CRC stripping.
+	 */
+	if (!eth_dev->data->scattered_rx &&
+	    !(eth_dev->data->dev_conf.rxmode.offloads &
+	      ~(DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_KEEP_CRC |
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_VLAN_FILTER))) {
+		PMD_DRV_LOG(INFO, "Using vector mode receive for port %d\n",
+			    eth_dev->data->port_id);
+		return bnxt_recv_pkts_vec;
+	}
+	PMD_DRV_LOG(INFO, "Vector mode receive disabled for port %d\n",
+		    eth_dev->data->port_id);
+	PMD_DRV_LOG(INFO,
+		    "Port %d scatter: %d rx offload: %" PRIX64 "\n",
+		    eth_dev->data->port_id,
+		    eth_dev->data->scattered_rx,
+		    eth_dev->data->dev_conf.rxmode.offloads);
+#endif
+	return bnxt_recv_pkts;
+}
+
+static eth_tx_burst_t
+bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
+{
+#ifdef RTE_ARCH_X86
+	/*
+	 * Vector mode receive can be enabled only if scatter tx is not
+	 * in use and tx offloads other than VLAN insertion are not
+	 * in use.
+	 */
+	if (!eth_dev->data->scattered_rx &&
+	    !(eth_dev->data->dev_conf.txmode.offloads &
+	      ~DEV_TX_OFFLOAD_VLAN_INSERT)) {
+		PMD_DRV_LOG(INFO, "Using vector mode transmit for port %d\n",
+			    eth_dev->data->port_id);
+		return bnxt_xmit_pkts_vec;
+	}
+	PMD_DRV_LOG(INFO, "Vector mode transmit disabled for port %d\n",
+		    eth_dev->data->port_id);
+	PMD_DRV_LOG(INFO,
+		    "Port %d scatter: %d tx offload: %" PRIX64 "\n",
+		    eth_dev->data->port_id,
+		    eth_dev->data->scattered_rx,
+		    eth_dev->data->dev_conf.txmode.offloads);
+#endif
+	return bnxt_xmit_pkts;
+}
+
 static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
@@ -674,6 +735,8 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto error;
 
+	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
+	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
 	bp->flags |= BNXT_FLAG_INIT_DONE;
 	return 0;
 
@@ -1600,8 +1663,12 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_eth_dev_info dev_info;
+	uint32_t new_pkt_size;
 	uint32_t rc = 0;
 	uint32_t i;
+
+	new_pkt_size = new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
+		       VLAN_TAG_SIZE * BNXT_NUM_VLANS;
 
 	bnxt_dev_info_get_op(eth_dev, &dev_info);
 
@@ -1610,6 +1677,23 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 			RTE_ETHER_MIN_MTU, BNXT_MAX_MTU);
 		return -EINVAL;
 	}
+
+#ifdef RTE_ARCH_X86
+	/*
+	 * If vector-mode tx/rx is active, disallow any MTU change that would
+	 * require scattered receive support.
+	 */
+	if (eth_dev->data->dev_started &&
+	    (eth_dev->rx_pkt_burst == bnxt_recv_pkts_vec ||
+	     eth_dev->tx_pkt_burst == bnxt_xmit_pkts_vec) &&
+	    (new_pkt_size >
+	     eth_dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
+		PMD_DRV_LOG(ERR,
+			    "MTU change would require scattered rx support. ");
+		PMD_DRV_LOG(ERR, "Stop port before changing MTU.\n");
+		return -EINVAL;
+	}
+#endif
 
 	if (new_mtu > RTE_ETHER_MTU) {
 		bp->flags |= BNXT_FLAG_JUMBO;
@@ -1621,9 +1705,7 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 		bp->flags &= ~BNXT_FLAG_JUMBO;
 	}
 
-	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len =
-		new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
-		VLAN_TAG_SIZE * 2;
+	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = new_pkt_size;
 
 	eth_dev->data->mtu = new_mtu;
 	PMD_DRV_LOG(INFO, "New MTU is %d\n", eth_dev->data->mtu);
@@ -2658,9 +2740,10 @@ bnxt_dev_supported_ptypes_get_op(struct rte_eth_dev *dev)
 		RTE_PTYPE_UNKNOWN
 	};
 
-	if (dev->rx_pkt_burst == bnxt_recv_pkts)
-		return ptypes;
-	return NULL;
+	if (!dev->rx_pkt_burst)
+		return NULL;
+
+	return ptypes;
 }
 
 static int bnxt_map_regs(struct bnxt *bp, uint32_t *reg_arr, int count,

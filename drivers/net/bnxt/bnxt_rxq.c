@@ -355,6 +355,11 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 						RTE_ETH_QUEUE_STATE_STARTED;
 	eth_dev->data->rx_queue_state[queue_idx] = queue_state;
 	rte_spinlock_init(&rxq->lock);
+
+#ifdef RTE_ARCH_X86
+	bnxt_rxq_vec_setup(rxq);
+#endif
+
 out:
 	return rc;
 }
