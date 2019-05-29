@@ -23,6 +23,8 @@ nix_lf_err_irq(void *param)
 
 	/* Clear interrupt */
 	otx2_write64(intr, dev->base + NIX_LF_ERR_INT);
+
+	otx2_nix_queues_ctx_dump(eth_dev);
 }
 
 static int
@@ -75,6 +77,8 @@ nix_lf_ras_irq(void *param)
 
 	/* Clear interrupt */
 	otx2_write64(intr, dev->base + NIX_LF_RAS);
+
+	otx2_nix_queues_ctx_dump(eth_dev);
 }
 
 static int
@@ -232,6 +236,8 @@ nix_lf_q_irq(void *param)
 
 	/* Clear interrupt */
 	otx2_write64(intr, dev->base + NIX_LF_QINTX_INT(qintx));
+
+	otx2_nix_queues_ctx_dump(eth_dev);
 }
 
 int

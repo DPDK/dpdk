@@ -174,6 +174,10 @@ int oxt2_nix_register_queue_irqs(struct rte_eth_dev *eth_dev);
 void otx2_nix_unregister_irqs(struct rte_eth_dev *eth_dev);
 void oxt2_nix_unregister_queue_irqs(struct rte_eth_dev *eth_dev);
 
+/* Debug */
+int otx2_nix_queues_ctx_dump(struct rte_eth_dev *eth_dev);
+void otx2_nix_cqe_dump(const struct nix_cqe_hdr_s *cq);
+
 /* CGX */
 int otx2_cgx_rxtx_start(struct otx2_eth_dev *dev);
 int otx2_cgx_rxtx_stop(struct otx2_eth_dev *dev);
