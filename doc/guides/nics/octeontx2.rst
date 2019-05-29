@@ -18,6 +18,7 @@ Features of the OCTEON TX2 Ethdev PMD are:
 
 - SR-IOV VF
 - Lock-free Tx queue
+- Port hardware statistics
 - Link state information
 - Debug utilities - Context dump and error interrupt support
 

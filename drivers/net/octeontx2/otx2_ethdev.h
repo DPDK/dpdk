@@ -77,6 +77,12 @@
 #define NIX_TX_NB_SEG_MAX		9
 #endif
 
+#define CQ_OP_STAT_OP_ERR	63
+#define CQ_OP_STAT_CQ_ERR	46
+
+#define OP_ERR			BIT_ULL(CQ_OP_STAT_OP_ERR)
+#define CQ_ERR			BIT_ULL(CQ_OP_STAT_CQ_ERR)
+
 #define NIX_RSS_OFFLOAD		(ETH_RSS_PORT | ETH_RSS_IP | ETH_RSS_UDP |\
 				 ETH_RSS_TCP | ETH_RSS_SCTP | \
 				 ETH_RSS_TUNNEL | ETH_RSS_L2_PAYLOAD)
@@ -156,6 +162,8 @@ struct otx2_eth_dev {
 	uint64_t tx_offload_capa;
 	struct otx2_qint qints_mem[RTE_MAX_QUEUES_PER_PORT];
 	struct otx2_rss_info rss_info;
+	uint32_t txmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	uint32_t rxmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	struct otx2_npc_flow_info npc_flow;
 	struct rte_eth_dev *eth_dev;
 } __rte_cache_aligned;
@@ -188,6 +196,15 @@ int otx2_nix_dev_get_reg(struct rte_eth_dev *eth_dev,
 			 struct rte_dev_reg_info *regs);
 int otx2_nix_queues_ctx_dump(struct rte_eth_dev *eth_dev);
 void otx2_nix_cqe_dump(const struct nix_cqe_hdr_s *cq);
+
+/* Stats */
+int otx2_nix_dev_stats_get(struct rte_eth_dev *eth_dev,
+			   struct rte_eth_stats *stats);
+void otx2_nix_dev_stats_reset(struct rte_eth_dev *eth_dev);
+
+int otx2_nix_queue_stats_mapping(struct rte_eth_dev *dev,
+				 uint16_t queue_id, uint8_t stat_idx,
+				 uint8_t is_rx);
 
 /* CGX */
 int otx2_cgx_rxtx_start(struct otx2_eth_dev *dev);

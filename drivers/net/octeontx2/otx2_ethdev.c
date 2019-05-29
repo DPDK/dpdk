@@ -234,7 +234,10 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.dev_infos_get            = otx2_nix_info_get,
 	.dev_configure            = otx2_nix_configure,
 	.link_update              = otx2_nix_link_update,
+	.stats_get                = otx2_nix_dev_stats_get,
+	.stats_reset              = otx2_nix_dev_stats_reset,
 	.get_reg                  = otx2_nix_dev_get_reg,
+	.queue_stats_mapping_set  = otx2_nix_queue_stats_mapping,
 };
 
 static inline int

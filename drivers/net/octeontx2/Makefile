@@ -33,6 +33,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX2_PMD) += \
 	otx2_mac.c	\
 	otx2_link.c	\
+	otx2_stats.c	\
 	otx2_ethdev.c	\
 	otx2_ethdev_irq.c \
 	otx2_ethdev_ops.c \
