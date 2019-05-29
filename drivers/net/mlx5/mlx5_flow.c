@@ -2156,7 +2156,7 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
-	struct mlx5_priv *priv = (struct mlx5_priv *)dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	return flow_list_create(dev, &priv->flows,
 				attr, items, actions, error);
