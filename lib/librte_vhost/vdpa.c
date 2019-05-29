@@ -181,7 +181,7 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 				return -1;
 
 			if (unlikely(dlen < vq->desc[desc_id].len)) {
-				idesc = alloc_copy_ind_table(dev, vq,
+				idesc = vhost_alloc_copy_ind_table(dev, vq,
 						vq->desc[desc_id].addr,
 						vq->desc[desc_id].len);
 				if (unlikely(!idesc))

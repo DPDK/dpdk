@@ -200,6 +200,39 @@ __vhost_log_cache_write(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	}
 }
 
+void *
+vhost_alloc_copy_ind_table(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		uint64_t desc_addr, uint64_t desc_len)
+{
+	void *idesc;
+	uint64_t src, dst;
+	uint64_t len, remain = desc_len;
+
+	idesc = rte_malloc(__func__, desc_len, 0);
+	if (unlikely(!idesc))
+		return NULL;
+
+	dst = (uint64_t)(uintptr_t)idesc;
+
+	while (remain) {
+		len = remain;
+		src = vhost_iova_to_vva(dev, vq, desc_addr, &len,
+				VHOST_ACCESS_RO);
+		if (unlikely(!src || !len)) {
+			rte_free(idesc);
+			return NULL;
+		}
+
+		rte_memcpy((void *)(uintptr_t)dst, (void *)(uintptr_t)src, len);
+
+		remain -= len;
+		dst += len;
+		desc_addr += len;
+	}
+
+	return idesc;
+}
+
 void
 cleanup_vq(struct vhost_virtqueue *vq, int destroy)
 {
