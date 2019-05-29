@@ -342,6 +342,7 @@ rte_telemetry_command_ports_all_stat_values(struct telemetry_impl *telemetry,
 		goto fail;
 	}
 
+	free(values);
 	return 0;
 
 fail:
