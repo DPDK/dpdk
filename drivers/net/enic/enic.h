@@ -252,7 +252,7 @@ static inline unsigned int enic_cq_wq(struct enic *enic, unsigned int wq)
 
 static inline struct enic *pmd_priv(struct rte_eth_dev *eth_dev)
 {
-	return (struct enic *)eth_dev->data->dev_private;
+	return eth_dev->data->dev_private;
 }
 
 static inline uint32_t
