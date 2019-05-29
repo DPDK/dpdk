@@ -32,8 +32,8 @@ The ``meson`` tool is used to configure a DPDK build. On most Linux
 distributions this can be got using the local package management system,
 e.g. ``dnf install meson`` or ``apt-get install meson``. If meson is not
 available as a suitable package, it can also be installed using the Python
-3 ``pip`` tool, e.g. ``pip3 install meson``. Version 0.42 of meson is
-recommended - if the version packaged is too old, the latest version is
+3 ``pip`` tool, e.g. ``pip3 install meson``. Version 0.47.1 of meson is
+required - if the version packaged is too old, the latest version is
 generally available from "pip".
 
 The other dependency for building is the ``ninja`` tool, which acts similar
@@ -164,20 +164,9 @@ For example if the target machine is arm64 we can use the following
 command::
 	meson arm-build --cross-file config/arm/arm64_armv8_linux_gcc
 
-where config/arm/arm64_armv8_linux_gcc contains the following
-parameters::
-
-	[binaries]
-	c = 'aarch64-linux-gnu-gcc'
-	cpp = 'aarch64-linux-gnu-cpp'
-	ar = 'aarch64-linux-gnu-ar'
-
-	[host_machine]
-	system = 'linux'
-	cpu_family = 'aarch64'
-	cpu = 'armv8-a'
-	endian = 'little'
-
+where config/arm/arm64_armv8_linux_gcc contains settings for the compilers
+and other build tools to be used, as well as characteristics of the target
+machine.
 
 Using the DPDK within an Application
 -------------------------------------
@@ -203,9 +192,3 @@ From examples/helloworld/Makefile::
 
 	build:
 		@mkdir -p $@
-
-NOTE: for --static builds, DPDK needs to be built with Meson >= 0.46 in order to
-fully generate the list of private dependencies. If DPDK is built with an older
-version of Meson, it might be necessary to manually specify dependencies of DPDK
-PMDs/libraries, for example -lmlx5 -lmnl for librte-pmd-mlx5, or the static link
-step might fail.
