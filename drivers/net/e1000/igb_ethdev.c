@@ -5029,8 +5029,7 @@ static void
 igb_start_timecounters(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_adapter *adapter =
-		(struct e1000_adapter *)dev->data->dev_private;
+	struct e1000_adapter *adapter = dev->data->dev_private;
 	uint32_t incval = 1;
 	uint32_t shift = 0;
 	uint64_t mask = E1000_CYCLECOUNTER_MASK;
@@ -5081,8 +5080,7 @@ igb_start_timecounters(struct rte_eth_dev *dev)
 static int
 igb_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
 {
-	struct e1000_adapter *adapter =
-			(struct e1000_adapter *)dev->data->dev_private;
+	struct e1000_adapter *adapter = dev->data->dev_private;
 
 	adapter->systime_tc.nsec += delta;
 	adapter->rx_tstamp_tc.nsec += delta;
@@ -5095,8 +5093,7 @@ static int
 igb_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 {
 	uint64_t ns;
-	struct e1000_adapter *adapter =
-			(struct e1000_adapter *)dev->data->dev_private;
+	struct e1000_adapter *adapter = dev->data->dev_private;
 
 	ns = rte_timespec_to_ns(ts);
 
@@ -5112,8 +5109,7 @@ static int
 igb_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 {
 	uint64_t ns, systime_cycles;
-	struct e1000_adapter *adapter =
-			(struct e1000_adapter *)dev->data->dev_private;
+	struct e1000_adapter *adapter = dev->data->dev_private;
 
 	systime_cycles = igb_read_systime_cyclecounter(dev);
 	ns = rte_timecounter_update(&adapter->systime_tc, systime_cycles);
@@ -5206,8 +5202,7 @@ igb_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 			       uint32_t flags __rte_unused)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_adapter *adapter =
-			(struct e1000_adapter *)dev->data->dev_private;
+	struct e1000_adapter *adapter = dev->data->dev_private;
 	uint32_t tsync_rxctl;
 	uint64_t rx_tstamp_cycles;
 	uint64_t ns;
@@ -5228,8 +5223,7 @@ igb_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 			       struct timespec *timestamp)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_adapter *adapter =
-			(struct e1000_adapter *)dev->data->dev_private;
+	struct e1000_adapter *adapter = dev->data->dev_private;
 	uint32_t tsync_txctl;
 	uint64_t tx_tstamp_cycles;
 	uint64_t ns;
