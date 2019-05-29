@@ -266,6 +266,8 @@ void otx2_nix_promisc_enable(struct rte_eth_dev *eth_dev);
 void otx2_nix_promisc_disable(struct rte_eth_dev *eth_dev);
 void otx2_nix_allmulticast_enable(struct rte_eth_dev *eth_dev);
 void otx2_nix_allmulticast_disable(struct rte_eth_dev *eth_dev);
+int otx2_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx);
+int otx2_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx);
 uint64_t otx2_nix_rxq_mbuf_setup(struct otx2_eth_dev *dev, uint16_t port_id);
 
 /* Link */

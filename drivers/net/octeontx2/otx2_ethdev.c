@@ -253,6 +253,26 @@ fail:
 }
 
 static int
+nix_rq_enb_dis(struct rte_eth_dev *eth_dev,
+	       struct otx2_eth_rxq *rxq, const bool enb)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_aq_enq_req *aq;
+
+	/* Pkts will be dropped silently if RQ is disabled */
+	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = rxq->rq;
+	aq->ctype = NIX_AQ_CTYPE_RQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	aq->rq.ena = enb;
+	aq->rq_mask.ena = ~(aq->rq_mask.ena);
+
+	return otx2_mbox_process(mbox);
+}
+
+static int
 nix_cq_rq_uninit(struct rte_eth_dev *eth_dev, struct otx2_eth_rxq *rxq)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
@@ -1110,6 +1130,74 @@ fail:
 	return rc;
 }
 
+int
+otx2_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx)
+{
+	struct rte_eth_dev_data *data = eth_dev->data;
+
+	if (data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
+	data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	return 0;
+}
+
+int
+otx2_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
+{
+	struct rte_eth_dev_data *data = eth_dev->data;
+
+	if (data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
+
+	data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+}
+
+static int
+otx2_nix_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx)
+{
+	struct otx2_eth_rxq *rxq = eth_dev->data->rx_queues[qidx];
+	struct rte_eth_dev_data *data = eth_dev->data;
+	int rc;
+
+	if (data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
+	rc = nix_rq_enb_dis(rxq->eth_dev, rxq, true);
+	if (rc) {
+		otx2_err("Failed to enable rxq=%u, rc=%d", qidx, rc);
+		goto done;
+	}
+
+	data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+
+done:
+	return rc;
+}
+
+static int
+otx2_nix_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
+{
+	struct otx2_eth_rxq *rxq = eth_dev->data->rx_queues[qidx];
+	struct rte_eth_dev_data *data = eth_dev->data;
+	int rc;
+
+	if (data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
+
+	rc = nix_rq_enb_dis(rxq->eth_dev, rxq, false);
+	if (rc) {
+		otx2_err("Failed to disable rxq=%u, rc=%d", qidx, rc);
+		goto done;
+	}
+
+	data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+done:
+	return rc;
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.dev_infos_get            = otx2_nix_info_get,
@@ -1119,6 +1207,10 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.tx_queue_release         = otx2_nix_tx_queue_release,
 	.rx_queue_setup           = otx2_nix_rx_queue_setup,
 	.rx_queue_release         = otx2_nix_rx_queue_release,
+	.tx_queue_start           = otx2_nix_tx_queue_start,
+	.tx_queue_stop            = otx2_nix_tx_queue_stop,
+	.rx_queue_start           = otx2_nix_rx_queue_start,
+	.rx_queue_stop            = otx2_nix_rx_queue_stop,
 	.stats_get                = otx2_nix_dev_stats_get,
 	.stats_reset              = otx2_nix_dev_stats_reset,
 	.get_reg                  = otx2_nix_dev_get_reg,
