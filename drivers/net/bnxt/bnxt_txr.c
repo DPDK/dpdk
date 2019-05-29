@@ -103,21 +103,6 @@ int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id)
 	return 0;
 }
 
-static inline uint32_t bnxt_tx_bds_in_hw(struct bnxt_tx_queue *txq)
-{
-	return ((txq->tx_ring->tx_prod - txq->tx_ring->tx_cons) &
-		txq->tx_ring->tx_ring_struct->ring_mask);
-}
-
-static inline uint32_t bnxt_tx_avail(struct bnxt_tx_queue *txq)
-{
-	/* Tell compiler to fetch tx indices from memory. */
-	rte_compiler_barrier();
-
-	return ((txq->tx_ring->tx_ring_struct->ring_size -
-		 bnxt_tx_bds_in_hw(txq)) - 1);
-}
-
 static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				struct bnxt_tx_queue *txq,
 				uint16_t *coal_pkts,
