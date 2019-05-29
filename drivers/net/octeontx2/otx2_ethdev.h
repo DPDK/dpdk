@@ -19,6 +19,7 @@
 #include "otx2_irq.h"
 #include "otx2_mempool.h"
 #include "otx2_rx.h"
+#include "otx2_tx.h"
 
 #define OTX2_ETH_DEV_PMD_VERSION	"1.0"
 
@@ -62,6 +63,7 @@
 
 #define NIX_MAX_SQB			512
 #define NIX_MIN_SQB			32
+#define NIX_SQB_LIST_SPACE		2
 #define NIX_RSS_RETA_SIZE_MAX		256
 /* Group 0 will be used for RSS, 1 -7 will be used for rte_flow RSS action*/
 #define NIX_RSS_GRPS			8
@@ -72,6 +74,8 @@
 #define NIX_RX_NB_SEG_MAX		6
 #define NIX_CQ_ENTRY_SZ			128
 #define NIX_CQ_ALIGN			512
+#define NIX_SQB_LOWER_THRESH		90
+#define LMT_SLOT_MASK			0x7f
 
 /* If PTP is enabled additional SEND MEM DESC is required which
  * takes 2 words, hence max 7 iova address are possible
@@ -204,6 +208,24 @@ struct otx2_eth_dev {
 	struct rte_eth_dev *eth_dev;
 } __rte_cache_aligned;
 
+struct otx2_eth_txq {
+	uint64_t cmd[8];
+	int64_t fc_cache_pkts;
+	uint64_t *fc_mem;
+	void *lmt_addr;
+	rte_iova_t io_addr;
+	rte_iova_t fc_iova;
+	uint16_t sqes_per_sqb_log2;
+	int16_t nb_sqb_bufs_adj;
+	MARKER slow_path_start;
+	uint16_t nb_sqb_bufs;
+	uint16_t sq;
+	uint64_t offloads;
+	struct otx2_eth_dev *dev;
+	struct rte_mempool *sqb_pool;
+	struct otx2_eth_qconf qconf;
+} __rte_cache_aligned;
+
 struct otx2_eth_rxq {
 	uint64_t mbuf_initializer;
 	uint64_t data_off;
@@ -328,5 +350,8 @@ int otx2_cgx_mac_max_entries_get(struct otx2_eth_dev *dev);
 /* Devargs */
 int otx2_ethdev_parse_devargs(struct rte_devargs *devargs,
 			      struct otx2_eth_dev *dev);
+
+/* Rx and Tx routines */
+void otx2_nix_form_default_desc(struct otx2_eth_txq *txq);
 
 #endif /* __OTX2_ETHDEV_H__ */

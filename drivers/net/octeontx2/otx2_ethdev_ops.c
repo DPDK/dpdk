@@ -144,5 +144,6 @@ otx2_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 				ETH_LINK_SPEED_25G | ETH_LINK_SPEED_40G |
 				ETH_LINK_SPEED_50G | ETH_LINK_SPEED_100G;
 
-	devinfo->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP;
+	devinfo->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
+				RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
 }

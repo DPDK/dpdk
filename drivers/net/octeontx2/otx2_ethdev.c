@@ -422,6 +422,392 @@ fail:
 	return rc;
 }
 
+static inline uint8_t
+nix_sq_max_sqe_sz(struct otx2_eth_txq *txq)
+{
+	/*
+	 * Maximum three segments can be supported with W8, Choose
+	 * NIX_MAXSQESZ_W16 for multi segment offload.
+	 */
+	if (txq->offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+		return NIX_MAXSQESZ_W16;
+	else
+		return NIX_MAXSQESZ_W8;
+}
+
+static int
+nix_sq_init(struct otx2_eth_txq *txq)
+{
+	struct otx2_eth_dev *dev = txq->dev;
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_aq_enq_req *sq;
+
+	if (txq->sqb_pool->pool_id == 0)
+		return -EINVAL;
+
+	sq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	sq->qidx = txq->sq;
+	sq->ctype = NIX_AQ_CTYPE_SQ;
+	sq->op = NIX_AQ_INSTOP_INIT;
+	sq->sq.max_sqe_size = nix_sq_max_sqe_sz(txq);
+
+	sq->sq.default_chan = dev->tx_chan_base;
+	sq->sq.sqe_stype = NIX_STYPE_STF;
+	sq->sq.ena = 1;
+	if (sq->sq.max_sqe_size == NIX_MAXSQESZ_W8)
+		sq->sq.sqe_stype = NIX_STYPE_STP;
+	sq->sq.sqb_aura =
+		npa_lf_aura_handle_to_aura(txq->sqb_pool->pool_id);
+	sq->sq.sq_int_ena = BIT(NIX_SQINT_LMT_ERR);
+	sq->sq.sq_int_ena |= BIT(NIX_SQINT_SQB_ALLOC_FAIL);
+	sq->sq.sq_int_ena |= BIT(NIX_SQINT_SEND_ERR);
+	sq->sq.sq_int_ena |= BIT(NIX_SQINT_MNQ_ERR);
+
+	/* Many to one reduction */
+	sq->sq.qint_idx = txq->sq % dev->qints;
+
+	return otx2_mbox_process(mbox);
+}
+
+static int
+nix_sq_uninit(struct otx2_eth_txq *txq)
+{
+	struct otx2_eth_dev *dev = txq->dev;
+	struct otx2_mbox *mbox = dev->mbox;
+	struct ndc_sync_op *ndc_req;
+	struct nix_aq_enq_rsp *rsp;
+	struct nix_aq_enq_req *aq;
+	uint16_t sqes_per_sqb;
+	void *sqb_buf;
+	int rc, count;
+
+	otx2_nix_dbg("Cleaning up sq %u", txq->sq);
+
+	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = txq->sq;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_READ;
+
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	/* Check if sq is already cleaned up */
+	if (!rsp->sq.ena)
+		return 0;
+
+	/* Disable sq */
+	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = txq->sq;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	aq->sq_mask.ena = ~aq->sq_mask.ena;
+	aq->sq.ena = 0;
+
+	rc = otx2_mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	/* Read SQ and free sqb's */
+	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = txq->sq;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_READ;
+
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	if (aq->sq.smq_pend)
+		otx2_err("SQ has pending sqe's");
+
+	count = aq->sq.sqb_count;
+	sqes_per_sqb = 1 << txq->sqes_per_sqb_log2;
+	/* Free SQB's that are used */
+	sqb_buf = (void *)rsp->sq.head_sqb;
+	while (count) {
+		void *next_sqb;
+
+		next_sqb = *(void **)((uintptr_t)sqb_buf + ((sqes_per_sqb - 1) *
+				      nix_sq_max_sqe_sz(txq)));
+		npa_lf_aura_op_free(txq->sqb_pool->pool_id, 1,
+				    (uint64_t)sqb_buf);
+		sqb_buf = next_sqb;
+		count--;
+	}
+
+	/* Free next to use sqb */
+	if (rsp->sq.next_sqb)
+		npa_lf_aura_op_free(txq->sqb_pool->pool_id, 1,
+				    rsp->sq.next_sqb);
+
+	/* Sync NDC-NIX-TX for LF */
+	ndc_req = otx2_mbox_alloc_msg_ndc_sync_op(mbox);
+	ndc_req->nix_lf_tx_sync = 1;
+	rc = otx2_mbox_process(mbox);
+	if (rc)
+		otx2_err("Error on NDC-NIX-TX LF sync, rc %d", rc);
+
+	return rc;
+}
+
+static int
+nix_sqb_aura_limit_cfg(struct rte_mempool *mp, uint16_t nb_sqb_bufs)
+{
+	struct otx2_npa_lf *npa_lf = otx2_intra_dev_get_cfg()->npa_lf;
+	struct npa_aq_enq_req *aura_req;
+
+	aura_req = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+	aura_req->aura_id = npa_lf_aura_handle_to_aura(mp->pool_id);
+	aura_req->ctype = NPA_AQ_CTYPE_AURA;
+	aura_req->op = NPA_AQ_INSTOP_WRITE;
+
+	aura_req->aura.limit = nb_sqb_bufs;
+	aura_req->aura_mask.limit = ~(aura_req->aura_mask.limit);
+
+	return otx2_mbox_process(npa_lf->mbox);
+}
+
+static int
+nix_alloc_sqb_pool(int port, struct otx2_eth_txq *txq, uint16_t nb_desc)
+{
+	struct otx2_eth_dev *dev = txq->dev;
+	uint16_t sqes_per_sqb, nb_sqb_bufs;
+	char name[RTE_MEMPOOL_NAMESIZE];
+	struct rte_mempool_objsz sz;
+	struct npa_aura_s *aura;
+	uint32_t tmp, blk_sz;
+
+	aura = (struct npa_aura_s *)((uintptr_t)txq->fc_mem + OTX2_ALIGN);
+	snprintf(name, sizeof(name), "otx2_sqb_pool_%d_%d", port, txq->sq);
+	blk_sz = dev->sqb_size;
+
+	if (nix_sq_max_sqe_sz(txq) == NIX_MAXSQESZ_W16)
+		sqes_per_sqb = (dev->sqb_size / 8) / 16;
+	else
+		sqes_per_sqb = (dev->sqb_size / 8) / 8;
+
+	nb_sqb_bufs = nb_desc / sqes_per_sqb;
+	/* Clamp up to devarg passed SQB count */
+	nb_sqb_bufs =  RTE_MIN(dev->max_sqb_count, RTE_MAX(NIX_MIN_SQB,
+			      nb_sqb_bufs + NIX_SQB_LIST_SPACE));
+
+	txq->sqb_pool = rte_mempool_create_empty(name, NIX_MAX_SQB, blk_sz,
+						 0, 0, dev->node,
+						 MEMPOOL_F_NO_SPREAD);
+	txq->nb_sqb_bufs = nb_sqb_bufs;
+	txq->sqes_per_sqb_log2 = (uint16_t)rte_log2_u32(sqes_per_sqb);
+	txq->nb_sqb_bufs_adj = nb_sqb_bufs -
+		RTE_ALIGN_MUL_CEIL(nb_sqb_bufs, sqes_per_sqb) / sqes_per_sqb;
+	txq->nb_sqb_bufs_adj =
+		(NIX_SQB_LOWER_THRESH * txq->nb_sqb_bufs_adj) / 100;
+
+	if (txq->sqb_pool == NULL) {
+		otx2_err("Failed to allocate sqe mempool");
+		goto fail;
+	}
+
+	memset(aura, 0, sizeof(*aura));
+	aura->fc_ena = 1;
+	aura->fc_addr = txq->fc_iova;
+	aura->fc_hyst_bits = 0; /* Store count on all updates */
+	if (rte_mempool_set_ops_byname(txq->sqb_pool, "octeontx2_npa", aura)) {
+		otx2_err("Failed to set ops for sqe mempool");
+		goto fail;
+	}
+	if (rte_mempool_populate_default(txq->sqb_pool) < 0) {
+		otx2_err("Failed to populate sqe mempool");
+		goto fail;
+	}
+
+	tmp = rte_mempool_calc_obj_size(blk_sz, MEMPOOL_F_NO_SPREAD, &sz);
+	if (dev->sqb_size != sz.elt_size) {
+		otx2_err("sqe pool block size is not expected %d != %d",
+			 dev->sqb_size, tmp);
+		goto fail;
+	}
+
+	nix_sqb_aura_limit_cfg(txq->sqb_pool, txq->nb_sqb_bufs);
+
+	return 0;
+fail:
+	return -ENOMEM;
+}
+
+void
+otx2_nix_form_default_desc(struct otx2_eth_txq *txq)
+{
+	struct nix_send_ext_s *send_hdr_ext;
+	struct nix_send_hdr_s *send_hdr;
+	struct nix_send_mem_s *send_mem;
+	union nix_send_sg_s *sg;
+
+	/* Initialize the fields based on basic single segment packet */
+	memset(&txq->cmd, 0, sizeof(txq->cmd));
+
+	if (txq->dev->tx_offload_flags & NIX_TX_NEED_EXT_HDR) {
+		send_hdr = (struct nix_send_hdr_s *)&txq->cmd[0];
+		/* 2(HDR) + 2(EXT_HDR) + 1(SG) + 1(IOVA) = 6/2 - 1 = 2 */
+		send_hdr->w0.sizem1 = 2;
+
+		send_hdr_ext = (struct nix_send_ext_s *)&txq->cmd[2];
+		send_hdr_ext->w0.subdc = NIX_SUBDC_EXT;
+		if (txq->dev->tx_offload_flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+			/* Default: one seg packet would have:
+			 * 2(HDR) + 2(EXT) + 1(SG) + 1(IOVA) + 2(MEM)
+			 * => 8/2 - 1 = 3
+			 */
+			send_hdr->w0.sizem1 = 3;
+			send_hdr_ext->w0.tstmp = 1;
+
+			/* To calculate the offset for send_mem,
+			 * send_hdr->w0.sizem1 * 2
+			 */
+			send_mem = (struct nix_send_mem_s *)(txq->cmd +
+						(send_hdr->w0.sizem1 << 1));
+			send_mem->subdc = NIX_SUBDC_MEM;
+			send_mem->dsz = 0x0;
+			send_mem->wmem = 0x1;
+			send_mem->alg = NIX_SENDMEMALG_SETTSTMP;
+		}
+		sg = (union nix_send_sg_s *)&txq->cmd[4];
+	} else {
+		send_hdr = (struct nix_send_hdr_s *)&txq->cmd[0];
+		/* 2(HDR) + 1(SG) + 1(IOVA) = 4/2 - 1 = 1 */
+		send_hdr->w0.sizem1 = 1;
+		sg = (union nix_send_sg_s *)&txq->cmd[2];
+	}
+
+	send_hdr->w0.sq = txq->sq;
+	sg->subdc = NIX_SUBDC_SG;
+	sg->segs = 1;
+	sg->ld_type = NIX_SENDLDTYPE_LDD;
+
+	rte_smp_wmb();
+}
+
+static void
+otx2_nix_tx_queue_release(void *_txq)
+{
+	struct otx2_eth_txq *txq = _txq;
+
+	if (!txq)
+		return;
+
+	otx2_nix_dbg("Releasing txq %u", txq->sq);
+
+	/* Free sqb's and disable sq */
+	nix_sq_uninit(txq);
+
+	if (txq->sqb_pool) {
+		rte_mempool_free(txq->sqb_pool);
+		txq->sqb_pool = NULL;
+	}
+	rte_free(txq);
+}
+
+
+static int
+otx2_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t sq,
+			uint16_t nb_desc, unsigned int socket_id,
+			const struct rte_eth_txconf *tx_conf)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	const struct rte_memzone *fc;
+	struct otx2_eth_txq *txq;
+	uint64_t offloads;
+	int rc;
+
+	rc = -EINVAL;
+
+	/* Compile time check to make sure all fast path elements in a CL */
+	RTE_BUILD_BUG_ON(offsetof(struct otx2_eth_txq, slow_path_start) >= 128);
+
+	if (tx_conf->tx_deferred_start) {
+		otx2_err("Tx deferred start is not supported");
+		goto fail;
+	}
+
+	/* Free memory prior to re-allocation if needed. */
+	if (eth_dev->data->tx_queues[sq] != NULL) {
+		otx2_nix_dbg("Freeing memory prior to re-allocation %d", sq);
+		otx2_nix_tx_queue_release(eth_dev->data->tx_queues[sq]);
+		eth_dev->data->tx_queues[sq] = NULL;
+	}
+
+	/* Find the expected offloads for this queue */
+	offloads = tx_conf->offloads | eth_dev->data->dev_conf.txmode.offloads;
+
+	/* Allocating tx queue data structure */
+	txq = rte_zmalloc_socket("otx2_ethdev TX queue", sizeof(*txq),
+				 OTX2_ALIGN, socket_id);
+	if (txq == NULL) {
+		otx2_err("Failed to alloc txq=%d", sq);
+		rc = -ENOMEM;
+		goto fail;
+	}
+	txq->sq = sq;
+	txq->dev = dev;
+	txq->sqb_pool = NULL;
+	txq->offloads = offloads;
+	dev->tx_offloads |= offloads;
+
+	/*
+	 * Allocate memory for flow control updates from HW.
+	 * Alloc one cache line, so that fits all FC_STYPE modes.
+	 */
+	fc = rte_eth_dma_zone_reserve(eth_dev, "fcmem", sq,
+				      OTX2_ALIGN + sizeof(struct npa_aura_s),
+				      OTX2_ALIGN, dev->node);
+	if (fc == NULL) {
+		otx2_err("Failed to allocate mem for fcmem");
+		rc = -ENOMEM;
+		goto free_txq;
+	}
+	txq->fc_iova = fc->iova;
+	txq->fc_mem = fc->addr;
+
+	/* Initialize the aura sqb pool */
+	rc = nix_alloc_sqb_pool(eth_dev->data->port_id, txq, nb_desc);
+	if (rc) {
+		otx2_err("Failed to alloc sqe pool rc=%d", rc);
+		goto free_txq;
+	}
+
+	/* Initialize the SQ */
+	rc = nix_sq_init(txq);
+	if (rc) {
+		otx2_err("Failed to init sq=%d context", sq);
+		goto free_txq;
+	}
+
+	txq->fc_cache_pkts = 0;
+	txq->io_addr = dev->base + NIX_LF_OP_SENDX(0);
+	/* Evenly distribute LMT slot for each sq */
+	txq->lmt_addr = (void *)(dev->lmt_addr + ((sq & LMT_SLOT_MASK) << 12));
+
+	txq->qconf.socket_id = socket_id;
+	txq->qconf.nb_desc = nb_desc;
+	memcpy(&txq->qconf.conf.tx, tx_conf, sizeof(struct rte_eth_txconf));
+
+	otx2_nix_form_default_desc(txq);
+
+	otx2_nix_dbg("sq=%d fc=%p offload=0x%" PRIx64 " sqb=0x%" PRIx64 ""
+		     " lmt_addr=%p nb_sqb_bufs=%d sqes_per_sqb_log2=%d", sq,
+		     fc->addr, offloads, txq->sqb_pool->pool_id, txq->lmt_addr,
+		     txq->nb_sqb_bufs, txq->sqes_per_sqb_log2);
+	eth_dev->data->tx_queues[sq] = txq;
+	eth_dev->data->tx_queue_state[sq] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+
+free_txq:
+	otx2_nix_tx_queue_release(txq);
+fail:
+	return rc;
+}
+
+
 static int
 otx2_nix_configure(struct rte_eth_dev *eth_dev)
 {
@@ -549,6 +935,8 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.dev_infos_get            = otx2_nix_info_get,
 	.dev_configure            = otx2_nix_configure,
 	.link_update              = otx2_nix_link_update,
+	.tx_queue_setup           = otx2_nix_tx_queue_setup,
+	.tx_queue_release         = otx2_nix_tx_queue_release,
 	.rx_queue_setup           = otx2_nix_rx_queue_setup,
 	.rx_queue_release         = otx2_nix_rx_queue_release,
 	.stats_get                = otx2_nix_dev_stats_get,
@@ -763,11 +1151,25 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct rte_pci_device *pci_dev;
-	int rc;
+	int rc, i;
 
 	/* Nothing to be done for secondary processes */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	/* Free up SQs */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		otx2_nix_tx_queue_release(eth_dev->data->tx_queues[i]);
+		eth_dev->data->tx_queues[i] = NULL;
+	}
+	eth_dev->data->nb_tx_queues = 0;
+
+	/* Free up RQ's and CQ's */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		otx2_nix_rx_queue_release(eth_dev->data->rx_queues[i]);
+		eth_dev->data->rx_queues[i] = NULL;
+	}
+	eth_dev->data->nb_rx_queues = 0;
 
 	/* Unregister queue irqs */
 	oxt2_nix_unregister_queue_irqs(eth_dev);
