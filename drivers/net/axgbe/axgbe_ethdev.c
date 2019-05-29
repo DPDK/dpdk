@@ -157,7 +157,7 @@ axgbe_dev_configure(struct rte_eth_dev *dev)
 static int
 axgbe_dev_rx_mq_config(struct rte_eth_dev *dev)
 {
-	struct axgbe_port *pdata = (struct axgbe_port *)dev->data->dev_private;
+	struct axgbe_port *pdata = dev->data->dev_private;
 
 	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
 		pdata->rss_enable = 1;
@@ -171,9 +171,10 @@ axgbe_dev_rx_mq_config(struct rte_eth_dev *dev)
 static int
 axgbe_dev_start(struct rte_eth_dev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
-	struct axgbe_port *pdata = (struct axgbe_port *)dev->data->dev_private;
+	struct axgbe_port *pdata = dev->data->dev_private;
 	int ret;
+
+	PMD_INIT_FUNC_TRACE();
 
 	/* Multiqueue RSS */
 	ret = axgbe_dev_rx_mq_config(dev);
@@ -209,8 +210,9 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 static void
 axgbe_dev_stop(struct rte_eth_dev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
 	struct axgbe_port *pdata = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
 
 	rte_intr_disable(&pdata->pci_dev->intr_handle);
 
@@ -237,8 +239,9 @@ axgbe_dev_close(struct rte_eth_dev *dev)
 static void
 axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
 	struct axgbe_port *pdata = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
 
 	AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, PR, 1);
 }
@@ -246,8 +249,9 @@ axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
 static void
 axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
 	struct axgbe_port *pdata = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
 
 	AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, PR, 0);
 }
@@ -255,8 +259,9 @@ axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
 static void
 axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
 	struct axgbe_port *pdata = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
 
 	if (AXGMAC_IOREAD_BITS(pdata, MAC_PFR, PM))
 		return;
@@ -266,8 +271,9 @@ axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev)
 static void
 axgbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
 	struct axgbe_port *pdata = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
 
 	if (!AXGMAC_IOREAD_BITS(pdata, MAC_PFR, PM))
 		return;
@@ -578,7 +584,7 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pdata = (struct axgbe_port *)eth_dev->data->dev_private;
+	pdata = eth_dev->data->dev_private;
 	/* initial state */
 	axgbe_set_bit(AXGBE_DOWN, &pdata->dev_state);
 	axgbe_set_bit(AXGBE_STOPPED, &pdata->dev_state);

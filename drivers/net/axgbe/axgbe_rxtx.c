@@ -342,7 +342,7 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	const struct rte_memzone *tz;
 
 	tx_desc = nb_desc;
-	pdata = (struct axgbe_port *)dev->data->dev_private;
+	pdata = dev->data->dev_private;
 
 	/*
 	 * validate tx descriptors count
