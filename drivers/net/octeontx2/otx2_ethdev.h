@@ -19,6 +19,7 @@
 #include "otx2_irq.h"
 #include "otx2_mempool.h"
 #include "otx2_rx.h"
+#include "otx2_tm.h"
 #include "otx2_tx.h"
 
 #define OTX2_ETH_DEV_PMD_VERSION	"1.0"
@@ -201,6 +202,19 @@ struct otx2_eth_dev {
 	uint64_t rx_offload_capa;
 	uint64_t tx_offload_capa;
 	struct otx2_qint qints_mem[RTE_MAX_QUEUES_PER_PORT];
+	uint16_t txschq[NIX_TXSCH_LVL_CNT];
+	uint16_t txschq_contig[NIX_TXSCH_LVL_CNT];
+	uint16_t txschq_index[NIX_TXSCH_LVL_CNT];
+	uint16_t txschq_contig_index[NIX_TXSCH_LVL_CNT];
+	/* Dis-contiguous queues */
+	uint16_t txschq_list[NIX_TXSCH_LVL_CNT][MAX_TXSCHQ_PER_FUNC];
+	/* Contiguous queues */
+	uint16_t txschq_contig_list[NIX_TXSCH_LVL_CNT][MAX_TXSCHQ_PER_FUNC];
+	uint16_t otx2_tm_root_lvl;
+	uint16_t tm_flags;
+	uint16_t tm_leaf_cnt;
+	struct otx2_nix_tm_node_list node_list;
+	struct otx2_nix_tm_shaper_profile_list shaper_profile_list;
 	struct otx2_rss_info rss_info;
 	uint32_t txmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	uint32_t rxmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
