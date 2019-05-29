@@ -160,8 +160,7 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 		uint16_t slave_port) {
 	struct rte_eth_dev_info slave_info;
 	struct rte_flow_error error;
-	struct bond_dev_private *internals = (struct bond_dev_private *)
-			(bond_dev->data->dev_private);
+	struct bond_dev_private *internals = bond_dev->data->dev_private;
 
 	const struct rte_flow_action_queue lacp_queue_conf = {
 		.index = 0,
@@ -201,8 +200,7 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 int
 bond_8023ad_slow_pkt_hw_filter_supported(uint16_t port_id) {
 	struct rte_eth_dev *bond_dev = &rte_eth_devices[port_id];
-	struct bond_dev_private *internals = (struct bond_dev_private *)
-			(bond_dev->data->dev_private);
+	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	struct rte_eth_dev_info bond_info;
 	uint16_t idx;
 
@@ -227,9 +225,7 @@ int
 bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint16_t slave_port) {
 
 	struct rte_flow_error error;
-	struct bond_dev_private *internals = (struct bond_dev_private *)
-			(bond_dev->data->dev_private);
-
+	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	struct rte_flow_action_queue lacp_queue_conf = {
 		.index = internals->mode4.dedicated_queues.rx_qid,
 	};
@@ -1735,8 +1731,7 @@ slave_configure_slow_queue(struct rte_eth_dev *bonded_eth_dev,
 		struct rte_eth_dev *slave_eth_dev)
 {
 	int errval = 0;
-	struct bond_dev_private *internals = (struct bond_dev_private *)
-		bonded_eth_dev->data->dev_private;
+	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
 	struct port *port = &bond_mode_8023ad_ports[slave_eth_dev->data->port_id];
 
 	if (port->slow_pool == NULL) {
@@ -1802,8 +1797,7 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	uint16_t q_id;
 	struct rte_flow_error flow_error;
 
-	struct bond_dev_private *internals = (struct bond_dev_private *)
-		bonded_eth_dev->data->dev_private;
+	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
 
 	/* Stop slave */
 	rte_eth_dev_stop(slave_eth_dev->data->port_id);
@@ -2421,8 +2415,8 @@ bond_ethdev_slave_link_status_change_monitor(void *cb_arg)
 	if (cb_arg == NULL)
 		return;
 
-	bonded_ethdev = (struct rte_eth_dev *)cb_arg;
-	internals = (struct bond_dev_private *)bonded_ethdev->data->dev_private;
+	bonded_ethdev = cb_arg;
+	internals = bonded_ethdev->data->dev_private;
 
 	if (!bonded_ethdev->data->dev_started ||
 		!internals->link_status_polling_enabled)
