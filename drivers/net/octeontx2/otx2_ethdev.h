@@ -178,6 +178,12 @@ otx2_eth_pmd_priv(struct rte_eth_dev *eth_dev)
 void otx2_nix_info_get(struct rte_eth_dev *eth_dev,
 		       struct rte_eth_dev_info *dev_info);
 
+void otx2_nix_promisc_config(struct rte_eth_dev *eth_dev, int en);
+void otx2_nix_promisc_enable(struct rte_eth_dev *eth_dev);
+void otx2_nix_promisc_disable(struct rte_eth_dev *eth_dev);
+void otx2_nix_allmulticast_enable(struct rte_eth_dev *eth_dev);
+void otx2_nix_allmulticast_disable(struct rte_eth_dev *eth_dev);
+
 /* Link */
 void otx2_nix_toggle_flag_link_cfg(struct otx2_eth_dev *dev, bool set);
 int otx2_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);

@@ -4,6 +4,88 @@
 
 #include "otx2_ethdev.h"
 
+static void
+nix_cgx_promisc_config(struct rte_eth_dev *eth_dev, int en)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+
+	if (otx2_dev_is_vf(dev))
+		return;
+
+	if (en)
+		otx2_mbox_alloc_msg_cgx_promisc_enable(mbox);
+	else
+		otx2_mbox_alloc_msg_cgx_promisc_disable(mbox);
+
+	otx2_mbox_process(mbox);
+}
+
+void
+otx2_nix_promisc_config(struct rte_eth_dev *eth_dev, int en)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_rx_mode *req;
+
+	if (otx2_dev_is_vf(dev))
+		return;
+
+	req = otx2_mbox_alloc_msg_nix_set_rx_mode(mbox);
+
+	if (en)
+		req->mode = NIX_RX_MODE_UCAST | NIX_RX_MODE_PROMISC;
+
+	otx2_mbox_process(mbox);
+	eth_dev->data->promiscuous = en;
+}
+
+void
+otx2_nix_promisc_enable(struct rte_eth_dev *eth_dev)
+{
+	otx2_nix_promisc_config(eth_dev, 1);
+	nix_cgx_promisc_config(eth_dev, 1);
+}
+
+void
+otx2_nix_promisc_disable(struct rte_eth_dev *eth_dev)
+{
+	otx2_nix_promisc_config(eth_dev, 0);
+	nix_cgx_promisc_config(eth_dev, 0);
+}
+
+static void
+nix_allmulticast_config(struct rte_eth_dev *eth_dev, int en)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_rx_mode *req;
+
+	if (otx2_dev_is_vf(dev))
+		return;
+
+	req = otx2_mbox_alloc_msg_nix_set_rx_mode(mbox);
+
+	if (en)
+		req->mode = NIX_RX_MODE_UCAST | NIX_RX_MODE_ALLMULTI;
+	else if (eth_dev->data->promiscuous)
+		req->mode = NIX_RX_MODE_UCAST | NIX_RX_MODE_PROMISC;
+
+	otx2_mbox_process(mbox);
+}
+
+void
+otx2_nix_allmulticast_enable(struct rte_eth_dev *eth_dev)
+{
+	nix_allmulticast_config(eth_dev, 1);
+}
+
+void
+otx2_nix_allmulticast_disable(struct rte_eth_dev *eth_dev)
+{
+	nix_allmulticast_config(eth_dev, 0);
+}
+
 void
 otx2_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 {
