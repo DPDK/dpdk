@@ -441,6 +441,7 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 	rxq->pool = mp;
 	rxq->qlen = nix_qsize_to_val(qsize);
 	rxq->qsize = qsize;
+	rxq->lookup_mem = otx2_nix_fastpath_lookup_mem_get();
 
 	/* Alloc completion queue */
 	rc = nix_cq_rq_init(eth_dev, dev, rq, rxq, mp);
@@ -1290,6 +1291,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.tx_queue_stop            = otx2_nix_tx_queue_stop,
 	.rx_queue_start           = otx2_nix_rx_queue_start,
 	.rx_queue_stop            = otx2_nix_rx_queue_stop,
+	.dev_supported_ptypes_get = otx2_nix_supported_ptypes_get,
 	.stats_get                = otx2_nix_dev_stats_get,
 	.stats_reset              = otx2_nix_dev_stats_reset,
 	.get_reg                  = otx2_nix_dev_get_reg,

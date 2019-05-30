@@ -8,6 +8,7 @@ sources = files(
 		'otx2_mac.c',
 		'otx2_link.c',
 		'otx2_stats.c',
+		'otx2_lookup.c',
 		'otx2_ethdev.c',
 		'otx2_ethdev_irq.c',
 		'otx2_ethdev_ops.c',

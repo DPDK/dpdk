@@ -355,6 +355,12 @@ int otx2_cgx_rxtx_stop(struct otx2_eth_dev *dev);
 int otx2_cgx_mac_addr_set(struct rte_eth_dev *eth_dev,
 			  struct rte_ether_addr *addr);
 
+/* Lookup configuration */
+void *otx2_nix_fastpath_lookup_mem_get(void);
+
+/* PTYPES */
+const uint32_t *otx2_nix_supported_ptypes_get(struct rte_eth_dev *dev);
+
 /* Mac address handling */
 int otx2_nix_mac_addr_set(struct rte_eth_dev *eth_dev,
 			  struct rte_ether_addr *addr);
