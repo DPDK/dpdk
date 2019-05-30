@@ -101,11 +101,15 @@ struct mlx5_rxq_data {
 	uint32_t rq_pi;
 	uint32_t cq_ci;
 	uint16_t rq_repl_thresh; /* Threshold for buffer replenishment. */
+	union {
+		struct rxq_zip zip; /* Compressed context. */
+		uint16_t decompressed;
+		/* Number of ready mbufs decompressed from the CQ. */
+	};
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	uint16_t mprq_max_memcpy_len; /* Maximum size of packet to memcpy. */
 	volatile void *wqes;
 	volatile struct mlx5_cqe(*cqes)[];
-	struct rxq_zip zip; /* Compressed context. */
 	RTE_STD_C11
 	union  {
 		struct rte_mbuf *(*elts)[];

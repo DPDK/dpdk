@@ -349,8 +349,11 @@ rxq_copy_mbuf_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t n)
  * @param elts
  *   Pointer to SW ring to be filled. The first mbuf has to be pre-built from
  *   the title completion descriptor to be copied to the rest of mbufs.
+ *
+ * @return
+ *   Number of mini-CQEs successfully decompressed.
  */
-static inline void
+static inline uint16_t
 rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		    struct rte_mbuf **elts)
 {
@@ -486,6 +489,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	rxq->stats.ibytes += rcvd_byte;
 #endif
 	rxq->cq_ci += mcqe_n;
+	return mcqe_n;
 }
 
 /**
@@ -712,23 +716,16 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	rte_prefetch0(cq + 2);
 	rte_prefetch0(cq + 3);
 	pkts_n = RTE_MIN(pkts_n, MLX5_VPMD_RX_MAX_BURST);
-	/*
-	 * Order of indexes:
-	 *   rq_ci >= cq_ci >= rq_pi
-	 * Definition of indexes:
-	 *   rq_ci - cq_ci := # of buffers owned by HW (posted).
-	 *   cq_ci - rq_pi := # of buffers not returned to app (decompressed).
-	 *   N - (rq_ci - rq_pi) := # of buffers consumed (to be replenished).
-	 */
 	repl_n = q_n - (rxq->rq_ci - rxq->rq_pi);
 	if (repl_n >= rxq->rq_repl_thresh)
 		mlx5_rx_replenish_bulk_mbuf(rxq, repl_n);
 	/* See if there're unreturned mbufs from compressed CQE. */
-	rcvd_pkt = rxq->cq_ci - rxq->rq_pi;
+	rcvd_pkt = rxq->decompressed;
 	if (rcvd_pkt > 0) {
 		rcvd_pkt = RTE_MIN(rcvd_pkt, pkts_n);
 		rxq_copy_mbuf_v(rxq, pkts, rcvd_pkt);
 		rxq->rq_pi += rcvd_pkt;
+		rxq->decompressed -= rcvd_pkt;
 		pkts += rcvd_pkt;
 	}
 	elts_idx = rxq->rq_pi & q_mask;
@@ -737,10 +734,11 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	pkts_n = RTE_ALIGN_FLOOR(pkts_n - rcvd_pkt, MLX5_VPMD_DESCS_PER_LOOP);
 	/* Not to cross queue end. */
 	pkts_n = RTE_MIN(pkts_n, q_n - elts_idx);
+	pkts_n = RTE_MIN(pkts_n, q_n - cq_idx);
 	if (!pkts_n)
 		return rcvd_pkt;
 	/* At this point, there shouldn't be any remained packets. */
-	assert(rxq->rq_pi == rxq->cq_ci);
+	assert(rxq->decompressed == 0);
 	/*
 	 * A. load first Qword (8bytes) in one loop.
 	 * B. copy 4 mbuf pointers from elts ring to returing pkts.
@@ -953,15 +951,17 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	/* Decompress the last CQE if compressed. */
 	if (comp_idx < MLX5_VPMD_DESCS_PER_LOOP && comp_idx == n) {
 		assert(comp_idx == (nocmp_n % MLX5_VPMD_DESCS_PER_LOOP));
-		rxq_cq_decompress_v(rxq, &cq[nocmp_n], &elts[nocmp_n]);
+		rxq->decompressed = rxq_cq_decompress_v(rxq, &cq[nocmp_n],
+							&elts[nocmp_n]);
 		/* Return more packets if needed. */
 		if (nocmp_n < pkts_n) {
-			uint16_t n = rxq->cq_ci - rxq->rq_pi;
+			uint16_t n = rxq->decompressed;
 
 			n = RTE_MIN(n, pkts_n - nocmp_n);
 			rxq_copy_mbuf_v(rxq, &pkts[nocmp_n], n);
 			rxq->rq_pi += n;
 			rcvd_pkt += n;
+			rxq->decompressed -= n;
 		}
 	}
 	rte_compiler_barrier();

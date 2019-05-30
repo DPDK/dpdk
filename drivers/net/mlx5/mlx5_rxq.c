@@ -1073,6 +1073,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->cq_uar = cq_info.cq_uar;
 	rxq_data->cqn = cq_info.cqn;
 	rxq_data->cq_arm_sn = 0;
+	rxq_data->decompressed = 0;
 	/* Update doorbell counter. */
 	rxq_data->rq_ci = wqe_n >> rxq_data->sges_n;
 	rte_wmb();
