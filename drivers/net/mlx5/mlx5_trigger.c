@@ -126,6 +126,7 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		rxq_ctrl->ibv = mlx5_rxq_ibv_new(dev, i);
 		if (!rxq_ctrl->ibv)
 			goto error;
+		rxq_ctrl->wqn = rxq_ctrl->ibv->wq->wq_num;
 	}
 	return 0;
 error:

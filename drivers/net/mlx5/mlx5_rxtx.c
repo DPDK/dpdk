@@ -2031,6 +2031,75 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 }
 
 /**
+ * Modify a Verbs queue state.
+ * This must be called from the primary process.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param sm
+ *   State modify request parameters.
+ *
+ * @return
+ *   0 in case of success else non-zero value and rte_errno is set.
+ */
+int
+mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
+			const struct mlx5_mp_arg_queue_state_modify *sm)
+{
+	int ret;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (sm->is_wq) {
+		struct ibv_wq_attr mod = {
+			.attr_mask = IBV_WQ_ATTR_STATE,
+			.wq_state = sm->state,
+		};
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[sm->queue_id];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+
+		ret = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change Rx WQ state to %u  - %s\n",
+					sm->state, strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+	}
+	return 0;
+}
+
+/**
+ * Modify a Verbs queue state.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param sm
+ *   State modify request parameters.
+ *
+ * @return
+ *   0 in case of success else non-zero value.
+ */
+static int
+mlx5_queue_state_modify(struct rte_eth_dev *dev,
+			struct mlx5_mp_arg_queue_state_modify *sm)
+{
+	int ret = 0;
+
+	switch (rte_eal_process_type()) {
+	case RTE_PROC_PRIMARY:
+		ret = mlx5_queue_state_modify_primary(dev, sm);
+		break;
+	case RTE_PROC_SECONDARY:
+		ret = mlx5_mp_req_queue_state_modify(dev, sm);
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
+/**
  * Handle a Rx error.
  * The function inserts the RQ state to reset when the first error CQE is
  * shown, then drains the CQ by the caller function loop. When the CQ is empty,
@@ -2053,15 +2122,13 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t mbuf_prepare)
 	const unsigned int wqe_n = 1 << rxq->elts_n;
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
-	struct ibv_wq_attr mod = {
-		.attr_mask = IBV_WQ_ATTR_STATE,
-	};
 	union {
 		volatile struct mlx5_cqe *cqe;
 		volatile struct mlx5_err_cqe *err_cqe;
 	} u = {
 		.cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask],
 	};
+	struct mlx5_mp_arg_queue_state_modify sm;
 	int ret;
 
 	switch (rxq->err_state) {
@@ -2069,21 +2136,17 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t mbuf_prepare)
 		rxq->err_state = MLX5_RXQ_ERR_STATE_NEED_RESET;
 		/* Fall-through */
 	case MLX5_RXQ_ERR_STATE_NEED_RESET:
-		if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		sm.is_wq = 1;
+		sm.queue_id = rxq->idx;
+		sm.state = IBV_WQS_RESET;
+		if (mlx5_queue_state_modify(ETH_DEV(rxq_ctrl->priv), &sm))
 			return -1;
-		mod.wq_state = IBV_WQS_RESET;
-		ret = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
-		if (ret) {
-			DRV_LOG(ERR, "Cannot change Rx WQ state to RESET %s\n",
-				strerror(errno));
-			return -1;
-		}
 		if (rxq_ctrl->dump_file_n <
 		    rxq_ctrl->priv->config.max_dump_files_num) {
 			MKSTR(err_str, "Unexpected CQE error syndrome "
 			      "0x%02x CQN = %u RQN = %u wqe_counter = %u"
 			      " rq_ci = %u cq_ci = %u", u.err_cqe->syndrome,
-			      rxq->cqn, rxq_ctrl->ibv->wq->wq_num,
+			      rxq->cqn, rxq_ctrl->wqn,
 			      rte_be_to_cpu_16(u.err_cqe->wqe_counter),
 			      rxq->rq_ci << rxq->sges_n, rxq->cq_ci);
 			MKSTR(name, "dpdk_mlx5_port_%u_rxq_%u_%u",
@@ -2113,13 +2176,12 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t mbuf_prepare)
 			 */
 			*rxq->rq_db = rte_cpu_to_be_32(0);
 			rte_cio_wmb();
-			mod.wq_state = IBV_WQS_RDY;
-			ret = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
-			if (ret) {
-				DRV_LOG(ERR, "Cannot change Rx WQ state to RDY"
-					" %s\n", strerror(errno));
+			sm.is_wq = 1;
+			sm.queue_id = rxq->idx;
+			sm.state = IBV_WQS_RDY;
+			if (mlx5_queue_state_modify(ETH_DEV(rxq_ctrl->priv),
+						    &sm))
 				return -1;
-			}
 			if (mbuf_prepare) {
 				const uint16_t q_mask = wqe_n - 1;
 				uint16_t elt_idx;

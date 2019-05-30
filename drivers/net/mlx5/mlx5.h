@@ -61,6 +61,13 @@ enum mlx5_mp_req_type {
 	MLX5_MP_REQ_CREATE_MR,
 	MLX5_MP_REQ_START_RXTX,
 	MLX5_MP_REQ_STOP_RXTX,
+	MLX5_MP_REQ_QUEUE_STATE_MODIFY,
+};
+
+struct mlx5_mp_arg_queue_state_modify {
+	uint8_t is_wq; /* Set if WQ. */
+	uint16_t queue_id; /* DPDK queue ID. */
+	enum ibv_wq_state state; /* WQ requested state. */
 };
 
 /* Pameters for IPC. */
@@ -71,6 +78,8 @@ struct mlx5_mp_param {
 	RTE_STD_C11
 	union {
 		uintptr_t addr; /* MLX5_MP_REQ_CREATE_MR */
+		struct mlx5_mp_arg_queue_state_modify state_modify;
+		/* MLX5_MP_REQ_QUEUE_STATE_MODIFY */
 	} args;
 };
 
@@ -546,6 +555,8 @@ void mlx5_mp_req_start_rxtx(struct rte_eth_dev *dev);
 void mlx5_mp_req_stop_rxtx(struct rte_eth_dev *dev);
 int mlx5_mp_req_mr_create(struct rte_eth_dev *dev, uintptr_t addr);
 int mlx5_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
+int mlx5_mp_req_queue_state_modify(struct rte_eth_dev *dev,
+				   struct mlx5_mp_arg_queue_state_modify *sm);
 int mlx5_mp_init_primary(void);
 void mlx5_mp_uninit_primary(void);
 int mlx5_mp_init_secondary(void);

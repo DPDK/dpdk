@@ -161,6 +161,7 @@ struct mlx5_rxq_ctrl {
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
 	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
+	uint32_t wqn; /* WQ number. */
 	uint16_t dump_file_n; /* Number of dump files. */
 };
 
@@ -355,6 +356,8 @@ int mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset);
 uint32_t mlx5_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 void mlx5_dump_debug_information(const char *path, const char *title,
 				 const void *buf, unsigned int len);
+int mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
+			const struct mlx5_mp_arg_queue_state_modify *sm);
 
 /* Vectorized version of mlx5_rxtx.c */
 int mlx5_check_raw_vec_tx_support(struct rte_eth_dev *dev);

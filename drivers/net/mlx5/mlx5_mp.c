@@ -85,6 +85,12 @@ mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 		res->result = 0;
 		ret = rte_mp_reply(&mp_res, peer);
 		break;
+	case MLX5_MP_REQ_QUEUE_STATE_MODIFY:
+		mp_init_msg(dev, &mp_res, param->type);
+		res->result = mlx5_queue_state_modify_primary
+					(dev, &param->args.state_modify);
+		ret = rte_mp_reply(&mp_res, peer);
+		break;
 	default:
 		rte_errno = EINVAL;
 		DRV_LOG(ERR, "port %u invalid mp request type",
@@ -267,6 +273,46 @@ mlx5_mp_req_mr_create(struct rte_eth_dev *dev, uintptr_t addr)
 	ret = res->result;
 	if (ret)
 		rte_errno = -ret;
+	free(mp_rep.msgs);
+	return ret;
+}
+
+/**
+ * Request Verbs queue state modification to the primary process.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet structure.
+ * @param sm
+ *   State modify parameters.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_mp_req_queue_state_modify(struct rte_eth_dev *dev,
+			       struct mlx5_mp_arg_queue_state_modify *sm)
+{
+	struct rte_mp_msg mp_req;
+	struct rte_mp_msg *mp_res;
+	struct rte_mp_reply mp_rep;
+	struct mlx5_mp_param *req = (struct mlx5_mp_param *)mp_req.param;
+	struct mlx5_mp_param *res;
+	struct timespec ts = {.tv_sec = MLX5_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
+	int ret;
+
+	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	mp_init_msg(dev, &mp_req, MLX5_MP_REQ_QUEUE_STATE_MODIFY);
+	req->args.state_modify = *sm;
+	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
+	if (ret) {
+		DRV_LOG(ERR, "port %u request to primary process failed",
+			dev->data->port_id);
+		return -rte_errno;
+	}
+	assert(mp_rep.nb_received == 1);
+	mp_res = &mp_rep.msgs[0];
+	res = (struct mlx5_mp_param *)mp_res->param;
+	ret = res->result;
 	free(mp_rep.msgs);
 	return ret;
 }
