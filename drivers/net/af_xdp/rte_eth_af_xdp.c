@@ -70,6 +70,7 @@ struct xsk_umem_info {
 	struct xsk_umem *umem;
 	struct rte_ring *buf_ring;
 	const struct rte_memzone *mz;
+	int pmd_zc;
 };
 
 struct rx_stats {
@@ -109,8 +110,8 @@ struct pmd_internals {
 	int if_index;
 	char if_name[IFNAMSIZ];
 	uint16_t queue_idx;
+	int pmd_zc;
 	struct rte_ether_addr eth_addr;
-	struct xsk_umem_info *umem;
 	struct rte_mempool *mb_pool_share;
 
 	struct pkt_rx_queue rx_queues[ETH_AF_XDP_MAX_QUEUE_PAIRS];
@@ -119,10 +120,12 @@ struct pmd_internals {
 
 #define ETH_AF_XDP_IFACE_ARG			"iface"
 #define ETH_AF_XDP_QUEUE_IDX_ARG		"queue"
+#define ETH_AF_XDP_PMD_ZC_ARG			"pmd_zero_copy"
 
 static const char * const valid_arguments[] = {
 	ETH_AF_XDP_IFACE_ARG,
 	ETH_AF_XDP_QUEUE_IDX_ARG,
+	ETH_AF_XDP_PMD_ZC_ARG,
 	NULL
 };
 
@@ -166,6 +169,15 @@ reserve_fill_queue(struct xsk_umem_info *umem, uint16_t reserve_size)
 	return 0;
 }
 
+static void
+umem_buf_release_to_fq(void *addr, void *opaque)
+{
+	struct xsk_umem_info *umem = (struct xsk_umem_info *)opaque;
+	uint64_t umem_addr = (uint64_t)addr - umem->mz->addr_64;
+
+	rte_ring_enqueue(umem->buf_ring, (void *)umem_addr);
+}
+
 static uint16_t
 eth_af_xdp_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
@@ -175,6 +187,7 @@ eth_af_xdp_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct xsk_ring_prod *fq = &umem->fq;
 	uint32_t idx_rx = 0;
 	uint32_t free_thresh = fq->size >> 1;
+	int pmd_zc = umem->pmd_zc;
 	struct rte_mbuf *mbufs[ETH_AF_XDP_RX_BATCH_SIZE];
 	unsigned long dropped = 0;
 	unsigned long rx_bytes = 0;
@@ -197,19 +210,29 @@ eth_af_xdp_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		uint64_t addr;
 		uint32_t len;
 		void *pkt;
+		uint16_t buf_len = ETH_AF_XDP_FRAME_SIZE;
+		struct rte_mbuf_ext_shared_info *shinfo;
 
 		desc = xsk_ring_cons__rx_desc(rx, idx_rx++);
 		addr = desc->addr;
 		len = desc->len;
 		pkt = xsk_umem__get_data(rxq->umem->mz->addr, addr);
 
-		rte_memcpy(rte_pktmbuf_mtod(mbufs[i], void *), pkt, len);
+		if (pmd_zc) {
+			shinfo = rte_pktmbuf_ext_shinfo_init_helper(pkt,
+					&buf_len, umem_buf_release_to_fq, umem);
+
+			rte_pktmbuf_attach_extbuf(mbufs[i], pkt, 0, buf_len,
+						  shinfo);
+		} else {
+			rte_memcpy(rte_pktmbuf_mtod(mbufs[i], void *),
+							pkt, len);
+			rte_ring_enqueue(umem->buf_ring, (void *)addr);
+		}
 		rte_pktmbuf_pkt_len(mbufs[i]) = len;
 		rte_pktmbuf_data_len(mbufs[i]) = len;
 		rx_bytes += len;
 		bufs[i] = mbufs[i];
-
-		rte_ring_enqueue(umem->buf_ring, (void *)addr);
 	}
 
 	xsk_ring_cons__release(rx, rcvd);
@@ -262,12 +285,21 @@ kick_tx(struct pkt_tx_queue *txq)
 	pull_umem_cq(umem, ETH_AF_XDP_TX_BATCH_SIZE);
 }
 
+static inline bool
+in_umem_range(struct xsk_umem_info *umem, uint64_t addr)
+{
+	uint64_t mz_base_addr = umem->mz->addr_64;
+
+	return addr >= mz_base_addr && addr < mz_base_addr + umem->mz->len;
+}
+
 static uint16_t
 eth_af_xdp_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct pkt_tx_queue *txq = queue;
 	struct xsk_umem_info *umem = txq->pair->umem;
 	struct rte_mbuf *mbuf;
+	int pmd_zc = umem->pmd_zc;
 	void *addrs[ETH_AF_XDP_TX_BATCH_SIZE];
 	unsigned long tx_bytes = 0;
 	int i;
@@ -294,16 +326,26 @@ eth_af_xdp_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 		desc = xsk_ring_prod__tx_desc(&txq->tx, idx_tx + i);
 		mbuf = bufs[i];
-
-		desc->addr = (uint64_t)addrs[i];
 		desc->len = mbuf->pkt_len;
-		pkt = xsk_umem__get_data(umem->mz->addr,
-					 desc->addr);
-		rte_memcpy(pkt, rte_pktmbuf_mtod(mbuf, void *),
-			   desc->len);
-		tx_bytes += mbuf->pkt_len;
 
-		rte_pktmbuf_free(mbuf);
+		/*
+		 * We need to make sure the external mbuf address is within
+		 * current port's umem memzone range
+		 */
+		if (pmd_zc && RTE_MBUF_HAS_EXTBUF(mbuf) &&
+				in_umem_range(umem, (uint64_t)mbuf->buf_addr)) {
+			desc->addr = (uint64_t)mbuf->buf_addr -
+				umem->mz->addr_64;
+			mbuf->buf_addr = xsk_umem__get_data(umem->mz->addr,
+					(uint64_t)addrs[i]);
+		} else {
+			desc->addr = (uint64_t)addrs[i];
+			pkt = xsk_umem__get_data(umem->mz->addr,
+					desc->addr);
+			rte_memcpy(pkt, rte_pktmbuf_mtod(mbuf, void *),
+					desc->len);
+		}
+		tx_bytes += mbuf->pkt_len;
 	}
 
 	xsk_ring_prod__submit(&txq->tx, nb_pkts);
@@ -312,6 +354,9 @@ eth_af_xdp_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	txq->stats.tx_pkts += nb_pkts;
 	txq->stats.tx_bytes += tx_bytes;
+
+	for (i = 0; i < nb_pkts; i++)
+		rte_pktmbuf_free(bufs[i]);
 
 	return nb_pkts;
 }
@@ -454,17 +499,15 @@ eth_dev_close(struct rte_eth_dev *dev)
 		if (rxq->umem == NULL)
 			break;
 		xsk_socket__delete(rxq->xsk);
+		(void)xsk_umem__delete(rxq->umem->umem);
+		xdp_umem_destroy(rxq->umem);
 	}
-
-	(void)xsk_umem__delete(internals->umem->umem);
 
 	/*
 	 * MAC is not allocated dynamically, setting it to NULL would prevent
 	 * from releasing it in rte_eth_dev_release_port.
 	 */
 	dev->data->mac_addrs = NULL;
-
-	xdp_umem_destroy(internals->umem);
 
 	remove_xdp_program(internals);
 }
@@ -639,7 +682,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 		goto err;
 	}
 
-	internals->umem = rxq->umem;
+	rxq->umem->pmd_zc = internals->pmd_zc;
 
 	dev->data->rx_queues[rx_queue_id] = rxq;
 	return 0;
@@ -775,9 +818,8 @@ parse_name_arg(const char *key __rte_unused,
 }
 
 static int
-parse_parameters(struct rte_kvargs *kvlist,
-		 char *if_name,
-		 int *queue_idx)
+parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *queue_idx,
+				int *pmd_zc)
 {
 	int ret;
 
@@ -788,6 +830,11 @@ parse_parameters(struct rte_kvargs *kvlist,
 
 	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_QUEUE_IDX_ARG,
 				 &parse_integer_arg, queue_idx);
+	if (ret < 0)
+		goto free_kvlist;
+
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_PMD_ZC_ARG,
+				 &parse_integer_arg, pmd_zc);
 	if (ret < 0)
 		goto free_kvlist;
 
@@ -827,9 +874,8 @@ error:
 }
 
 static struct rte_eth_dev *
-init_internals(struct rte_vdev_device *dev,
-	       const char *if_name,
-	       int queue_idx)
+init_internals(struct rte_vdev_device *dev, const char *if_name, int queue_idx,
+					int pmd_zc)
 {
 	const char *name = rte_vdev_device_name(dev);
 	const unsigned int numa_node = dev->device.numa_node;
@@ -843,6 +889,7 @@ init_internals(struct rte_vdev_device *dev,
 		return NULL;
 
 	internals->queue_idx = queue_idx;
+	internals->pmd_zc = pmd_zc;
 	strlcpy(internals->if_name, if_name, IFNAMSIZ);
 
 	for (i = 0; i < ETH_AF_XDP_MAX_QUEUE_PAIRS; i++) {
@@ -868,6 +915,9 @@ init_internals(struct rte_vdev_device *dev,
 	/* Let rte_eth_dev_close() release the port resources. */
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
+	if (internals->pmd_zc)
+		AF_XDP_LOG(INFO, "Zero copy between umem and mbuf enabled.\n");
+
 	return eth_dev;
 
 err:
@@ -883,6 +933,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	int xsk_queue_idx = ETH_AF_XDP_DFLT_QUEUE_IDX;
 	struct rte_eth_dev *eth_dev = NULL;
 	const char *name;
+	int pmd_zc = 0;
 
 	AF_XDP_LOG(INFO, "Initializing pmd_af_xdp for %s\n",
 		rte_vdev_device_name(dev));
@@ -909,7 +960,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	if (dev->device.numa_node == SOCKET_ID_ANY)
 		dev->device.numa_node = rte_socket_id();
 
-	if (parse_parameters(kvlist, if_name, &xsk_queue_idx) < 0) {
+	if (parse_parameters(kvlist, if_name, &xsk_queue_idx, &pmd_zc) < 0) {
 		AF_XDP_LOG(ERR, "Invalid kvargs value\n");
 		return -EINVAL;
 	}
@@ -919,7 +970,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 		return -EINVAL;
 	}
 
-	eth_dev = init_internals(dev, if_name, xsk_queue_idx);
+	eth_dev = init_internals(dev, if_name, xsk_queue_idx, pmd_zc);
 	if (eth_dev == NULL) {
 		AF_XDP_LOG(ERR, "Failed to init internals\n");
 		return -1;
@@ -961,7 +1012,8 @@ static struct rte_vdev_driver pmd_af_xdp_drv = {
 RTE_PMD_REGISTER_VDEV(net_af_xdp, pmd_af_xdp_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_af_xdp,
 			      "iface=<string> "
-			      "queue=<int> ");
+			      "queue=<int> "
+			      "pmd_zero_copy=<0|1>");
 
 RTE_INIT(af_xdp_init_log)
 {

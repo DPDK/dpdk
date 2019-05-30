@@ -28,6 +28,7 @@ The following options can be provided to set up an af_xdp port in DPDK.
 
 *   ``iface`` - name of the Kernel interface to attach to (required);
 *   ``queue`` - netdev queue id (optional, default 0);
+*   ``pmd_zero_copy`` - enable zero copy or not (optional, default 0);
 
 Prerequisites
 -------------

@@ -73,6 +73,13 @@ New Features
   Added the new Shared Memory Packet Interface (``memif``) PMD.
   See the :doc:`../nics/memif` guide for more details on this new driver.
 
+* **Updated the AF_XDP PMD.**
+
+  Updated the AF_XDP PMD. The new features include:
+
+  * Enabled zero copy through mbuf's external memory mechanism to achieve
+    high performance
+
 
 Removed Items
 -------------
