@@ -79,6 +79,8 @@ New Features
 
   * Enabled zero copy through mbuf's external memory mechanism to achieve
     high performance
+  * Added multi-queue support to allow one af_xdp vdev with multiple netdev
+    queues
 
 
 Removed Items
