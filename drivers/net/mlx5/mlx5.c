@@ -987,8 +987,10 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		return 0;
 	/* Following UGLY cast is done to pass checkpatch. */
 	kvlist = rte_kvargs_parse(devargs->args, params);
-	if (kvlist == NULL)
-		return 0;
+	if (kvlist == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	/* Process parameters. */
 	for (i = 0; (params[i] != NULL); ++i) {
 		if (rte_kvargs_count(kvlist, params[i])) {
