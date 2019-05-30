@@ -248,6 +248,8 @@ struct mlx5_txq_ctrl {
 	struct mlx5_priv *priv; /* Back pointer to private data. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 	void *bf_reg; /* BlueFlame register from Verbs. */
+	uint32_t cqn; /* CQ number. */
+	uint16_t dump_file_n; /* Number of dump files. */
 };
 
 #define MLX5_TX_BFREG(txq) \
@@ -334,6 +336,8 @@ uint16_t mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 				  uint16_t pkts_n);
 uint16_t mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts,
 			    uint16_t pkts_n);
+__rte_noinline uint16_t mlx5_tx_error_cqe_handle(struct mlx5_txq_data *txq,
+					volatile struct mlx5_err_cqe *err_cqe);
 uint16_t mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
 void mlx5_rxq_initialize(struct mlx5_rxq_data *rxq);
 __rte_noinline int mlx5_rx_err_handle(struct mlx5_rxq_data *rxq,
@@ -489,6 +493,51 @@ tx_mlx5_wqe(struct mlx5_txq_data *txq, uint16_t ci)
 }
 
 /**
+ * Handle the next CQE.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ *
+ * @return
+ *   The last Tx buffer element to free.
+ */
+static __rte_always_inline uint16_t
+mlx5_tx_cqe_handle(struct mlx5_txq_data *txq)
+{
+	const unsigned int cqe_n = 1 << txq->cqe_n;
+	const unsigned int cqe_cnt = cqe_n - 1;
+	uint16_t last_elts;
+	union {
+		volatile struct mlx5_cqe *cqe;
+		volatile struct mlx5_err_cqe *err_cqe;
+	} u = {
+		.cqe =  &(*txq->cqes)[txq->cq_ci & cqe_cnt],
+	};
+	int ret = check_cqe(u.cqe, cqe_n, txq->cq_ci);
+
+	if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
+		if (unlikely(ret == MLX5_CQE_STATUS_ERR))
+			last_elts = mlx5_tx_error_cqe_handle(txq, u.err_cqe);
+		else
+			/* Do not release buffers. */
+			return txq->elts_tail;
+	} else {
+		uint16_t new_wqe_pi = rte_be_to_cpu_16(u.cqe->wqe_counter);
+		volatile struct mlx5_wqe_ctrl *ctrl =
+				(volatile struct mlx5_wqe_ctrl *)
+					tx_mlx5_wqe(txq, new_wqe_pi);
+
+		/* Release completion burst buffers. */
+		last_elts = ctrl->ctrl3;
+		txq->wqe_pi = new_wqe_pi;
+		txq->cq_ci++;
+	}
+	rte_compiler_barrier();
+	*txq->cq_db = rte_cpu_to_be_32(txq->cq_ci);
+	return last_elts;
+}
+
+/**
  * Manage TX completions.
  *
  * When sending a burst, mlx5_tx_burst() posts several WRs.
@@ -501,39 +550,13 @@ mlx5_tx_complete(struct mlx5_txq_data *txq)
 {
 	const uint16_t elts_n = 1 << txq->elts_n;
 	const uint16_t elts_m = elts_n - 1;
-	const unsigned int cqe_n = 1 << txq->cqe_n;
-	const unsigned int cqe_cnt = cqe_n - 1;
 	uint16_t elts_free = txq->elts_tail;
 	uint16_t elts_tail;
-	uint16_t cq_ci = txq->cq_ci;
-	volatile struct mlx5_cqe *cqe = NULL;
-	volatile struct mlx5_wqe_ctrl *ctrl;
 	struct rte_mbuf *m, *free[elts_n];
 	struct rte_mempool *pool = NULL;
 	unsigned int blk_n = 0;
 
-	cqe = &(*txq->cqes)[cq_ci & cqe_cnt];
-	if (unlikely(check_cqe(cqe, cqe_n, cq_ci)))
-		return;
-#ifndef NDEBUG
-	if ((MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_RESP_ERR) ||
-	    (MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_REQ_ERR)) {
-		if (!check_cqe_seen(cqe)) {
-			DRV_LOG(ERR, "unexpected error CQE, Tx stopped");
-			rte_hexdump(stderr, "MLX5 TXQ:",
-				    (const void *)((uintptr_t)txq->wqes),
-				    ((1 << txq->wqe_n) *
-				     MLX5_WQE_SIZE));
-		}
-		return;
-	}
-#endif /* NDEBUG */
-	++cq_ci;
-	rte_cio_rmb();
-	txq->wqe_pi = rte_be_to_cpu_16(cqe->wqe_counter);
-	ctrl = (volatile struct mlx5_wqe_ctrl *)
-		tx_mlx5_wqe(txq, txq->wqe_pi);
-	elts_tail = ctrl->ctrl3;
+	elts_tail = mlx5_tx_cqe_handle(txq);
 	assert((elts_tail & elts_m) < (1 << txq->wqe_n));
 	/* Free buffers. */
 	while (elts_free != elts_tail) {
@@ -564,11 +587,7 @@ mlx5_tx_complete(struct mlx5_txq_data *txq)
 		++elts_free;
 	}
 #endif
-	txq->cq_ci = cq_ci;
 	txq->elts_tail = elts_tail;
-	/* Update the consumer index. */
-	rte_compiler_barrier();
-	*txq->cq_db = rte_cpu_to_be_32(cq_ci);
 }
 
 /**

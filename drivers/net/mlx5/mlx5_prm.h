@@ -153,6 +153,17 @@
 /* Maximum number of DS in WQE. */
 #define MLX5_DSEG_MAX 63
 
+/* The completion mode offset in the WQE control segment line 2. */
+#define MLX5_COMP_MODE_OFFSET 2
+
+/* Completion mode. */
+enum mlx5_completion_mode {
+	MLX5_COMP_ONLY_ERR = 0x0,
+	MLX5_COMP_ONLY_FIRST_ERR = 0x1,
+	MLX5_COMP_ALWAYS = 0x2,
+	MLX5_COMP_CQE_AND_EQE = 0x3,
+};
+
 /* Subset of struct mlx5_wqe_eth_seg. */
 struct mlx5_wqe_eth_seg_small {
 	uint32_t rsvd0;

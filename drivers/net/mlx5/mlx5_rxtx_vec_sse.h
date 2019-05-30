@@ -163,7 +163,7 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		} while (--segs_n);
 		++wqe_ci;
 		/* Fill CTRL in the header. */
-		ctrl = _mm_set_epi32(0, 0, txq->qp_num_8s | ds,
+		ctrl = _mm_set_epi32(0, 4, txq->qp_num_8s | ds,
 				     MLX5_OPC_MOD_MPW << 24 |
 				     txq->wqe_ci << 8 | MLX5_OPCODE_TSO);
 		ctrl = _mm_shuffle_epi8(ctrl, shuf_mask_ctrl);
@@ -182,7 +182,8 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 	if (txq->elts_comp >= MLX5_TX_COMP_THRESH) {
 		/* A CQE slot must always be available. */
 		assert((1u << txq->cqe_n) - (txq->cq_pi++ - txq->cq_ci));
-		wqe->ctrl[2] = rte_cpu_to_be_32(8);
+		wqe->ctrl[2] = rte_cpu_to_be_32(MLX5_COMP_ALWAYS <<
+						MLX5_COMP_MODE_OFFSET);
 		wqe->ctrl[3] = txq->elts_head;
 		txq->elts_comp = 0;
 	}
@@ -229,7 +230,7 @@ txq_burst_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	unsigned int pos;
 	uint16_t max_elts;
 	uint16_t max_wqe;
-	uint32_t comp_req = 0;
+	uint32_t comp_req;
 	const uint16_t wq_n = 1 << txq->wqe_n;
 	const uint16_t wq_mask = wq_n - 1;
 	uint16_t wq_idx = txq->wqe_ci & wq_mask;
@@ -284,12 +285,13 @@ txq_burst_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	}
 	if (txq->elts_comp + pkts_n < MLX5_TX_COMP_THRESH) {
 		txq->elts_comp += pkts_n;
+		comp_req = MLX5_COMP_ONLY_FIRST_ERR << MLX5_COMP_MODE_OFFSET;
 	} else {
 		/* A CQE slot must always be available. */
 		assert((1u << txq->cqe_n) - (txq->cq_pi++ - txq->cq_ci));
 		/* Request a completion. */
 		txq->elts_comp = 0;
-		comp_req = 8;
+		comp_req = MLX5_COMP_ALWAYS << MLX5_COMP_MODE_OFFSET;
 	}
 	/* Fill CTRL in the header. */
 	ctrl = _mm_set_epi32(txq->elts_head, comp_req,

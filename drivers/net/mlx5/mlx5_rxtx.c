@@ -570,6 +570,141 @@ mlx5_dump_debug_information(const char *fname, const char *hex_title,
 }
 
 /**
+ * Move QP from error state to running state.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param qp
+ *   The qp pointer for recovery.
+ *
+ * @return
+ *   0 on success, else errno value.
+ */
+static int
+tx_recover_qp(struct mlx5_txq_data *txq, struct ibv_qp *qp)
+{
+	int ret;
+	struct ibv_qp_attr mod = {
+					.qp_state = IBV_QPS_RESET,
+					.port_num = 1,
+				};
+	ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+	if (ret) {
+		DRV_LOG(ERR, "Cannot change the Tx QP state to RESET %d\n",
+			ret);
+		return ret;
+	}
+	mod.qp_state = IBV_QPS_INIT;
+	ret = mlx5_glue->modify_qp(qp, &mod,
+				   (IBV_QP_STATE | IBV_QP_PORT));
+	if (ret) {
+		DRV_LOG(ERR, "Cannot change Tx QP state to INIT %d\n", ret);
+		return ret;
+	}
+	mod.qp_state = IBV_QPS_RTR;
+	ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+	if (ret) {
+		DRV_LOG(ERR, "Cannot change Tx QP state to RTR %d\n", ret);
+		return ret;
+	}
+	mod.qp_state = IBV_QPS_RTS;
+	ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+	if (ret) {
+		DRV_LOG(ERR, "Cannot change Tx QP state to RTS %d\n", ret);
+		return ret;
+	}
+	txq->wqe_ci = 0;
+	txq->wqe_pi = 0;
+	txq->elts_comp = 0;
+	return 0;
+}
+
+/* Return 1 if the error CQE is signed otherwise, sign it and return 0. */
+static int
+check_err_cqe_seen(volatile struct mlx5_err_cqe *err_cqe)
+{
+	static const uint8_t magic[] = "seen";
+	int ret = 1;
+	unsigned int i;
+
+	for (i = 0; i < sizeof(magic); ++i)
+		if (!ret || err_cqe->rsvd1[i] != magic[i]) {
+			ret = 0;
+			err_cqe->rsvd1[i] = magic[i];
+		}
+	return ret;
+}
+
+/**
+ * Handle error CQE.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param error_cqe
+ *   Pointer to the error CQE.
+ *
+ * @return
+ *   The last Tx buffer element to free.
+ */
+uint16_t
+mlx5_tx_error_cqe_handle(struct mlx5_txq_data *txq,
+			 volatile struct mlx5_err_cqe *err_cqe)
+{
+	if (err_cqe->syndrome != MLX5_CQE_SYNDROME_WR_FLUSH_ERR) {
+		const uint16_t wqe_m = ((1 << txq->wqe_n) - 1);
+		struct mlx5_txq_ctrl *txq_ctrl =
+				container_of(txq, struct mlx5_txq_ctrl, txq);
+		uint16_t new_wqe_pi = rte_be_to_cpu_16(err_cqe->wqe_counter);
+		int seen = check_err_cqe_seen(err_cqe);
+
+		if (!seen && txq_ctrl->dump_file_n <
+		    txq_ctrl->priv->config.max_dump_files_num) {
+			MKSTR(err_str, "Unexpected CQE error syndrome "
+			      "0x%02x CQN = %u SQN = %u wqe_counter = %u "
+			      "wq_ci = %u cq_ci = %u", err_cqe->syndrome,
+			      txq_ctrl->cqn, txq->qp_num_8s >> 8,
+			      rte_be_to_cpu_16(err_cqe->wqe_counter),
+			      txq->wqe_ci, txq->cq_ci);
+			MKSTR(name, "dpdk_mlx5_port_%u_txq_%u_index_%u_%u",
+			      PORT_ID(txq_ctrl->priv), txq->idx,
+			      txq_ctrl->dump_file_n, (uint32_t)rte_rdtsc());
+			mlx5_dump_debug_information(name, NULL, err_str, 0);
+			mlx5_dump_debug_information(name, "MLX5 Error CQ:",
+						    (const void *)((uintptr_t)
+						    &(*txq->cqes)[0]),
+						    sizeof(*err_cqe) *
+						    (1 << txq->cqe_n));
+			mlx5_dump_debug_information(name, "MLX5 Error SQ:",
+						    (const void *)((uintptr_t)
+						    tx_mlx5_wqe(txq, 0)),
+						    MLX5_WQE_SIZE *
+						    (1 << txq->wqe_n));
+			txq_ctrl->dump_file_n++;
+		}
+		if (!seen)
+			/*
+			 * Count errors in WQEs units.
+			 * Later it can be improved to count error packets,
+			 * for example, by SQ parsing to find how much packets
+			 * should be counted for each WQE.
+			 */
+			txq->stats.oerrors += ((txq->wqe_ci & wqe_m) -
+						new_wqe_pi) & wqe_m;
+		if ((rte_eal_process_type() == RTE_PROC_PRIMARY) &&
+		    tx_recover_qp(txq, txq_ctrl->ibv->qp) == 0) {
+			txq->cq_ci++;
+			/* Release all the remaining buffers. */
+			return txq->elts_head;
+		}
+		/* Recovering failed - try again later on the same WQE. */
+	} else {
+		txq->cq_ci++;
+	}
+	/* Do not release buffers. */
+	return txq->elts_tail;
+}
+
+/**
  * DPDK callback for TX.
  *
  * @param dpdk_txq
@@ -709,7 +844,9 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				wqe->ctrl = (rte_v128u32_t){
 					rte_cpu_to_be_32(txq->wqe_ci << 8),
 					rte_cpu_to_be_32(txq->qp_num_8s | 1),
-					0,
+					rte_cpu_to_be_32
+						(MLX5_COMP_ONLY_FIRST_ERR <<
+						 MLX5_COMP_MODE_OFFSET),
 					0,
 				};
 				ds = 1;
@@ -882,7 +1019,8 @@ next_pkt:
 				rte_cpu_to_be_32((txq->wqe_ci << 8) |
 						 MLX5_OPCODE_TSO),
 				rte_cpu_to_be_32(txq->qp_num_8s | ds),
-				0,
+				rte_cpu_to_be_32(MLX5_COMP_ONLY_FIRST_ERR <<
+						 MLX5_COMP_MODE_OFFSET),
 				0,
 			};
 			wqe->eseg = (rte_v128u32_t){
@@ -897,7 +1035,8 @@ next_pkt:
 				rte_cpu_to_be_32((txq->wqe_ci << 8) |
 						 MLX5_OPCODE_SEND),
 				rte_cpu_to_be_32(txq->qp_num_8s | ds),
-				0,
+				rte_cpu_to_be_32(MLX5_COMP_ONLY_FIRST_ERR <<
+						 MLX5_COMP_MODE_OFFSET),
 				0,
 			};
 			wqe->eseg = (rte_v128u32_t){
@@ -926,7 +1065,8 @@ next_wqe:
 		/* A CQE slot must always be available. */
 		assert((1u << txq->cqe_n) - (txq->cq_pi++ - txq->cq_ci));
 		/* Request completion on last WQE. */
-		last_wqe->ctrl2 = rte_cpu_to_be_32(8);
+		last_wqe->ctrl2 = rte_cpu_to_be_32(MLX5_COMP_ALWAYS <<
+						   MLX5_COMP_MODE_OFFSET);
 		/* Save elts_head in unused "immediate" field of WQE. */
 		last_wqe->ctrl3 = txq->elts_head;
 		txq->elts_comp = 0;
@@ -973,7 +1113,8 @@ mlx5_mpw_new(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw, uint32_t length)
 	mpw->wqe->ctrl[0] = rte_cpu_to_be_32((MLX5_OPC_MOD_MPW << 24) |
 					     (txq->wqe_ci << 8) |
 					     MLX5_OPCODE_TSO);
-	mpw->wqe->ctrl[2] = 0;
+	mpw->wqe->ctrl[2] = rte_cpu_to_be_32(MLX5_COMP_ONLY_FIRST_ERR <<
+					     MLX5_COMP_MODE_OFFSET);
 	mpw->wqe->ctrl[3] = 0;
 	mpw->data.dseg[0] = (volatile struct mlx5_wqe_data_seg *)
 		(((uintptr_t)mpw->wqe) + (2 * MLX5_WQE_DWORD_SIZE));
@@ -1145,7 +1286,8 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* A CQE slot must always be available. */
 		assert((1u << txq->cqe_n) - (txq->cq_pi++ - txq->cq_ci));
 		/* Request completion on last WQE. */
-		wqe->ctrl[2] = rte_cpu_to_be_32(8);
+		wqe->ctrl[2] = rte_cpu_to_be_32(MLX5_COMP_ALWAYS <<
+						MLX5_COMP_MODE_OFFSET);
 		/* Save elts_head in unused "immediate" field of WQE. */
 		wqe->ctrl[3] = elts_head;
 		txq->elts_comp = 0;
@@ -1189,7 +1331,8 @@ mlx5_mpw_inline_new(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw,
 	mpw->wqe->ctrl[0] = rte_cpu_to_be_32((MLX5_OPC_MOD_MPW << 24) |
 					     (txq->wqe_ci << 8) |
 					     MLX5_OPCODE_TSO);
-	mpw->wqe->ctrl[2] = 0;
+	mpw->wqe->ctrl[2] = rte_cpu_to_be_32(MLX5_COMP_ONLY_FIRST_ERR <<
+					     MLX5_COMP_MODE_OFFSET);
 	mpw->wqe->ctrl[3] = 0;
 	mpw->wqe->eseg.mss = rte_cpu_to_be_16(length);
 	mpw->wqe->eseg.inline_hdr_sz = 0;
@@ -1447,7 +1590,8 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 		/* A CQE slot must always be available. */
 		assert((1u << txq->cqe_n) - (txq->cq_pi++ - txq->cq_ci));
 		/* Request completion on last WQE. */
-		wqe->ctrl[2] = rte_cpu_to_be_32(8);
+		wqe->ctrl[2] = rte_cpu_to_be_32(MLX5_COMP_ALWAYS <<
+						MLX5_COMP_MODE_OFFSET);
 		/* Save elts_head in unused "immediate" field of WQE. */
 		wqe->ctrl[3] = elts_head;
 		txq->elts_comp = 0;
@@ -1491,7 +1635,8 @@ mlx5_empw_new(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw, int padding)
 		rte_cpu_to_be_32((MLX5_OPC_MOD_ENHANCED_MPSW << 24) |
 				 (txq->wqe_ci << 8) |
 				 MLX5_OPCODE_ENHANCED_MPSW);
-	mpw->wqe->ctrl[2] = 0;
+	mpw->wqe->ctrl[2] = rte_cpu_to_be_32(MLX5_COMP_ONLY_FIRST_ERR <<
+					     MLX5_COMP_MODE_OFFSET);
 	mpw->wqe->ctrl[3] = 0;
 	memset((void *)(uintptr_t)&mpw->wqe->eseg, 0, MLX5_WQE_DWORD_SIZE);
 	if (unlikely(padding)) {
@@ -1738,7 +1883,8 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		/* A CQE slot must always be available. */
 		assert((1u << txq->cqe_n) - (txq->cq_pi++ - txq->cq_ci));
 		/* Request completion on last WQE. */
-		wqe->ctrl[2] = rte_cpu_to_be_32(8);
+		wqe->ctrl[2] = rte_cpu_to_be_32(MLX5_COMP_ALWAYS <<
+						MLX5_COMP_MODE_OFFSET);
 		/* Save elts_head in unused "immediate" field of WQE. */
 		wqe->ctrl[3] = elts_head;
 		txq->elts_comp = 0;

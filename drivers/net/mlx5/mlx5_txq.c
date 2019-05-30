@@ -430,8 +430,7 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	attr.cq = (struct ibv_cq_init_attr_ex){
 		.comp_mask = 0,
 	};
-	cqe_n = ((desc / MLX5_TX_COMP_THRESH) - 1) ?
-		((desc / MLX5_TX_COMP_THRESH) - 1) : 1;
+	cqe_n = desc / MLX5_TX_COMP_THRESH + 1;
 	if (is_empw_burst_func(tx_pkt_burst))
 		cqe_n += MLX5_TX_COMP_THRESH_INLINE_DIV;
 	tmpl.cq = mlx5_glue->create_cq(priv->sh->ctx, cqe_n, NULL, NULL, 0);
@@ -563,6 +562,7 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_ibv->cq = tmpl.cq;
 	rte_atomic32_inc(&txq_ibv->refcnt);
 	txq_ctrl->bf_reg = qp.bf.reg;
+	txq_ctrl->cqn = cq_info.cqn;
 	txq_uar_init(txq_ctrl);
 	if (qp.comp_mask & MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
 		txq_ctrl->uar_mmap_offset = qp.uar_mmap_offset;
