@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+if not get_option('tests')
+	subdir_done()
+endif
+
 test_sources = files('commands.c',
 	'packet_burst_generator.c',
 	'sample_packet_forward.c',
@@ -335,86 +339,85 @@ if get_option('default_library') == 'static'
 	link_libs = dpdk_drivers
 endif
 
-if get_option('tests')
-	dpdk_test = executable('dpdk-test',
-		test_sources,
-		link_whole: link_libs,
-		dependencies: test_dep_objs,
-		c_args: [cflags, '-DALLOW_EXPERIMENTAL_API'],
-		install_rpath: driver_install_path,
-		install: false)
+dpdk_test = executable('dpdk-test',
+	test_sources,
+	link_whole: link_libs,
+	dependencies: test_dep_objs,
+	c_args: [cflags, '-DALLOW_EXPERIMENTAL_API'],
+	install_rpath: driver_install_path,
+	install: false)
 
-	# some perf tests (eg: memcpy perf autotest)take very long
-	# to complete, so timeout to 10 minutes
-	timeout_seconds = 600
-	timeout_seconds_fast = 10
+# some perf tests (eg: memcpy perf autotest)take very long
+# to complete, so timeout to 10 minutes
+timeout_seconds = 600
+timeout_seconds_fast = 10
 
-	# Retrieve the number of CPU cores, defaulting to 4.
-	num_cores = '0-3'
+# Retrieve the number of CPU cores, defaulting to 4.
+num_cores = '0-3'
+if host_machine.system() == 'linux'
+	num_cores = run_command('cat',
+				'/sys/devices/system/cpu/present'
+			       ).stdout().strip()
+elif host_machine.system() == 'freebsd'
+	snum_cores = run_command('/sbin/sysctl', '-n',
+				 'hw.ncpu').stdout().strip()
+	inum_cores = snum_cores.to_int() - 1
+        num_cores = '0-@0@'.format(inum_cores)
+endif
+
+num_cores_arg = '-l ' + num_cores
+
+test_args = [num_cores_arg, '-n 4']
+foreach arg : fast_parallel_test_names
 	if host_machine.system() == 'linux'
-		num_cores = run_command('cat',
-					'/sys/devices/system/cpu/present'
-				       ).stdout().strip()
-	elif host_machine.system() == 'freebsd'
-		snum_cores = run_command('/sbin/sysctl', '-n',
-					 'hw.ncpu').stdout().strip()
-		inum_cores = snum_cores.to_int() - 1
-                num_cores = '0-@0@'.format(inum_cores)
-	endif
-
-	num_cores_arg = '-l ' + num_cores
-
-	test_args = [num_cores_arg, '-n 4']
-	foreach arg : fast_parallel_test_names
-		if host_machine.system() == 'linux'
-			test(arg, dpdk_test,
-				  env : ['DPDK_TEST=' + arg],
-				  args : test_args +
-					 ['--file-prefix=@0@'.format(arg)],
-			timeout : timeout_seconds_fast,
-			suite : 'fast-tests')
-		else
-			test(arg, dpdk_test,
-				env : ['DPDK_TEST=' + arg],
-				args : test_args,
-			timeout : timeout_seconds_fast,
-			suite : 'fast-tests')
-		endif
-	endforeach
-
-	foreach arg : fast_non_parallel_test_names
+		test(arg, dpdk_test,
+			  env : ['DPDK_TEST=' + arg],
+			  args : test_args +
+				 ['--file-prefix=@0@'.format(arg)],
+		timeout : timeout_seconds_fast,
+		suite : 'fast-tests')
+	else
 		test(arg, dpdk_test,
 			env : ['DPDK_TEST=' + arg],
 			args : test_args,
-			timeout : timeout_seconds_fast,
-			is_parallel : false,
-			suite : 'fast-tests')
-	endforeach
+		timeout : timeout_seconds_fast,
+		suite : 'fast-tests')
+	endif
+endforeach
 
-	foreach arg : perf_test_names
-		test(arg, dpdk_test,
+foreach arg : fast_non_parallel_test_names
+	test(arg, dpdk_test,
+		env : ['DPDK_TEST=' + arg],
+		args : test_args,
+		timeout : timeout_seconds_fast,
+		is_parallel : false,
+		suite : 'fast-tests')
+endforeach
+
+foreach arg : perf_test_names
+	test(arg, dpdk_test,
+	env : ['DPDK_TEST=' + arg],
+	args : test_args,
+	timeout : timeout_seconds,
+	is_parallel : false,
+	suite : 'perf-tests')
+endforeach
+
+foreach arg : driver_test_names
+	test(arg, dpdk_test,
 		env : ['DPDK_TEST=' + arg],
 		args : test_args,
 		timeout : timeout_seconds,
 		is_parallel : false,
-		suite : 'perf-tests')
-	endforeach
+		suite : 'driver-tests')
+endforeach
 
-	foreach arg : driver_test_names
-		test(arg, dpdk_test,
-			env : ['DPDK_TEST=' + arg],
-			args : test_args,
-			timeout : timeout_seconds,
-			is_parallel : false,
-			suite : 'driver-tests')
-	endforeach
+foreach arg : dump_test_names
+	test(arg, dpdk_test,
+		env : ['DPDK_TEST=' + arg],
+		args : test_args,
+		timeout : timeout_seconds,
+		is_parallel : false,
+		suite : 'debug-tests')
+endforeach
 
-	foreach arg : dump_test_names
-		test(arg, dpdk_test,
-			env : ['DPDK_TEST=' + arg],
-			args : test_args,
-			timeout : timeout_seconds,
-			is_parallel : false,
-			suite : 'debug-tests')
-	endforeach
-endif
