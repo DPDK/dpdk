@@ -846,7 +846,6 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_rxq_ibv *tmpl = NULL;
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_rwq rwq;
-	unsigned int i;
 	int ret = 0;
 	struct mlx5dv_obj obj;
 	struct mlx5_dev_config *config = &priv->config;
@@ -1031,53 +1030,15 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	}
 	/* Fill the rings. */
 	rxq_data->wqes = rwq.buf;
-	for (i = 0; (i != wqe_n); ++i) {
-		volatile struct mlx5_wqe_data_seg *scat;
-		uintptr_t addr;
-		uint32_t byte_count;
-
-		if (mprq_en) {
-			struct mlx5_mprq_buf *buf = (*rxq_data->mprq_bufs)[i];
-
-			scat = &((volatile struct mlx5_wqe_mprq *)
-				 rxq_data->wqes)[i].dseg;
-			addr = (uintptr_t)mlx5_mprq_buf_addr(buf);
-			byte_count = (1 << rxq_data->strd_sz_n) *
-				     (1 << rxq_data->strd_num_n);
-		} else {
-			struct rte_mbuf *buf = (*rxq_data->elts)[i];
-
-			scat = &((volatile struct mlx5_wqe_data_seg *)
-				 rxq_data->wqes)[i];
-			addr = rte_pktmbuf_mtod(buf, uintptr_t);
-			byte_count = DATA_LEN(buf);
-		}
-		/* scat->addr must be able to store a pointer. */
-		assert(sizeof(scat->addr) >= sizeof(uintptr_t));
-		*scat = (struct mlx5_wqe_data_seg){
-			.addr = rte_cpu_to_be_64(addr),
-			.byte_count = rte_cpu_to_be_32(byte_count),
-			.lkey = mlx5_rx_addr2mr(rxq_data, addr),
-		};
-	}
 	rxq_data->rq_db = rwq.dbrec;
 	rxq_data->cqe_n = log2above(cq_info.cqe_cnt);
-	rxq_data->cq_ci = 0;
-	rxq_data->consumed_strd = 0;
-	rxq_data->rq_pi = 0;
-	rxq_data->zip = (struct rxq_zip){
-		.ai = 0,
-	};
 	rxq_data->cq_db = cq_info.dbrec;
 	rxq_data->cqes = (volatile struct mlx5_cqe (*)[])(uintptr_t)cq_info.buf;
 	rxq_data->cq_uar = cq_info.cq_uar;
 	rxq_data->cqn = cq_info.cqn;
 	rxq_data->cq_arm_sn = 0;
-	rxq_data->decompressed = 0;
-	/* Update doorbell counter. */
-	rxq_data->rq_ci = wqe_n >> rxq_data->sges_n;
-	rte_cio_wmb();
-	*rxq_data->rq_db = rte_cpu_to_be_32(rxq_data->rq_ci);
+	mlx5_rxq_initialize(rxq_data);
+	rxq_data->cq_ci = 0;
 	DRV_LOG(DEBUG, "port %u rxq %u updated with %p", dev->data->port_id,
 		idx, (void *)&tmpl);
 	rte_atomic32_inc(&tmpl->refcnt);

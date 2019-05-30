@@ -1831,6 +1831,59 @@ rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe)
 }
 
 /**
+ * Initialize Rx WQ and indexes.
+ *
+ * @param[in] rxq
+ *   Pointer to RX queue structure.
+ */
+void
+mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
+{
+	const unsigned int wqe_n = 1 << rxq->elts_n;
+	unsigned int i;
+
+	for (i = 0; (i != wqe_n); ++i) {
+		volatile struct mlx5_wqe_data_seg *scat;
+		uintptr_t addr;
+		uint32_t byte_count;
+
+		if (mlx5_rxq_mprq_enabled(rxq)) {
+			struct mlx5_mprq_buf *buf = (*rxq->mprq_bufs)[i];
+
+			scat = &((volatile struct mlx5_wqe_mprq *)
+				rxq->wqes)[i].dseg;
+			addr = (uintptr_t)mlx5_mprq_buf_addr(buf);
+			byte_count = (1 << rxq->strd_sz_n) *
+					(1 << rxq->strd_num_n);
+		} else {
+			struct rte_mbuf *buf = (*rxq->elts)[i];
+
+			scat = &((volatile struct mlx5_wqe_data_seg *)
+					rxq->wqes)[i];
+			addr = rte_pktmbuf_mtod(buf, uintptr_t);
+			byte_count = DATA_LEN(buf);
+		}
+		/* scat->addr must be able to store a pointer. */
+		assert(sizeof(scat->addr) >= sizeof(uintptr_t));
+		*scat = (struct mlx5_wqe_data_seg){
+			.addr = rte_cpu_to_be_64(addr),
+			.byte_count = rte_cpu_to_be_32(byte_count),
+			.lkey = mlx5_rx_addr2mr(rxq, addr),
+		};
+	}
+	rxq->consumed_strd = 0;
+	rxq->decompressed = 0;
+	rxq->rq_pi = 0;
+	rxq->zip = (struct rxq_zip){
+		.ai = 0,
+	};
+	/* Update doorbell counter. */
+	rxq->rq_ci = wqe_n >> rxq->sges_n;
+	rte_cio_wmb();
+	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
+}
+
+/**
  * Get size of the next packet for a given CQE. For compressed CQEs, the
  * consumer index is updated only once all packets of the current one have
  * been processed.
