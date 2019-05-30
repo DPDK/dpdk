@@ -337,6 +337,8 @@ uint16_t removed_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts,
 int mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset);
 int mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset);
 uint32_t mlx5_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+void mlx5_dump_debug_information(const char *path, const char *title,
+				 const void *buf, unsigned int len);
 
 /* Vectorized version of mlx5_rxtx.c */
 int mlx5_check_raw_vec_tx_support(struct rte_eth_dev *dev);

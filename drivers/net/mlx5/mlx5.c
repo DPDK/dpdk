@@ -116,6 +116,9 @@
 /* Select port representors to instantiate. */
 #define MLX5_REPRESENTOR "representor"
 
+/* Device parameter to configure the maximum number of dump files per queue. */
+#define MLX5_MAX_DUMP_FILES_NUM "max_dump_files_num"
+
 #ifndef HAVE_IBV_MLX5_MOD_MPW
 #define MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED (1 << 2)
 #define MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW (1 << 3)
@@ -927,6 +930,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->dv_flow_en = !!tmp;
 	} else if (strcmp(MLX5_MR_EXT_MEMSEG_EN, key) == 0) {
 		config->mr_ext_memseg_en = !!tmp;
+	} else if (strcmp(MLX5_MAX_DUMP_FILES_NUM, key) == 0) {
+		config->max_dump_files_num = tmp;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -971,6 +976,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_DV_FLOW_EN,
 		MLX5_MR_EXT_MEMSEG_EN,
 		MLX5_REPRESENTOR,
+		MLX5_MAX_DUMP_FILES_NUM,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -1440,6 +1446,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
 		config.mprq.enabled = 0;
 	}
+	if (config.max_dump_files_num == 0)
+		config.max_dump_files_num = 128;
 	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL) {
 		DRV_LOG(ERR, "can not allocate rte ethdev");

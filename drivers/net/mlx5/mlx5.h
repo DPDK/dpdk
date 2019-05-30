@@ -204,6 +204,7 @@ struct mlx5_dev_config {
 	unsigned int flow_prio; /* Number of flow priorities. */
 	unsigned int tso_max_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
+	unsigned int max_dump_files_num; /* Maximum dump files per queue. */
 	int txq_inline; /* Maximum packet size for inlining. */
 	int txqs_inline; /* Queue number threshold for inlining. */
 	int txqs_vec; /* Queue number threshold for vectorized Tx. */

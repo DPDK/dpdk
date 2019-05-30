@@ -524,6 +524,50 @@ mlx5_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return rx_queue_count(rxq);
 }
 
+#define MLX5_SYSTEM_LOG_DIR "/var/log"
+/**
+ * Dump debug information to log file.
+ *
+ * @param fname
+ *   The file name.
+ * @param hex_title
+ *   If not NULL this string is printed as a header to the output
+ *   and the output will be in hexadecimal view.
+ * @param buf
+ *   This is the buffer address to print out.
+ * @param len
+ *   The number of bytes to dump out.
+ */
+void
+mlx5_dump_debug_information(const char *fname, const char *hex_title,
+			    const void *buf, unsigned int hex_len)
+{
+	FILE *fd;
+
+	MKSTR(path, "%s/%s", MLX5_SYSTEM_LOG_DIR, fname);
+	fd = fopen(path, "a+");
+	if (!fd) {
+		DRV_LOG(WARNING, "cannot open %s for debug dump\n",
+			path);
+		MKSTR(path2, "./%s", fname);
+		fd = fopen(path2, "a+");
+		if (!fd) {
+			DRV_LOG(ERR, "cannot open %s for debug dump\n",
+				path2);
+			return;
+		}
+		DRV_LOG(INFO, "New debug dump in file %s\n", path2);
+	} else {
+		DRV_LOG(INFO, "New debug dump in file %s\n", path);
+	}
+	if (hex_title)
+		rte_hexdump(fd, hex_title, buf, hex_len);
+	else
+		fprintf(fd, "%s", (const char *)buf);
+	fprintf(fd, "\n\n\n");
+	fclose(fd);
+}
+
 /**
  * DPDK callback for TX.
  *

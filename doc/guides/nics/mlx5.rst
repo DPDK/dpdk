@@ -500,6 +500,13 @@ Run-time configuration
 
     representor=[0-2]
 
+- ``max_dump_files_num`` parameter [int]
+
+  The maximum number of files per PMD entity that may be created for debug information.
+  The files will be created in /var/log directory or in current directory.
+
+  set to 128 by default.
+
 Firmware configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
