@@ -118,7 +118,6 @@ struct pmd_internals {
 
 	int pmd_zc;
 	struct rte_ether_addr eth_addr;
-	struct rte_mempool *mb_pool_share;
 
 	struct pkt_rx_queue *rx_queues;
 	struct pkt_tx_queue *tx_queues;
