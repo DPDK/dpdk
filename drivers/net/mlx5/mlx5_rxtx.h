@@ -36,6 +36,7 @@
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 #include "mlx5_prm.h"
+#include "mlx5_glue.h"
 
 /* Support tunnel matching. */
 #define MLX5_FLOW_TUNNEL 5
@@ -78,6 +79,12 @@ struct mlx5_mprq_buf {
 /* Get pointer to the first stride. */
 #define mlx5_mprq_buf_addr(ptr) ((ptr) + 1)
 
+enum mlx5_rxq_err_state {
+	MLX5_RXQ_ERR_STATE_NO_ERROR = 0,
+	MLX5_RXQ_ERR_STATE_NEED_RESET,
+	MLX5_RXQ_ERR_STATE_NEED_READY,
+};
+
 /* RX queue descriptor. */
 struct mlx5_rxq_data {
 	unsigned int csum:1; /* Enable checksum offloading. */
@@ -92,7 +99,8 @@ struct mlx5_rxq_data {
 	unsigned int strd_num_n:5; /* Log 2 of the number of stride. */
 	unsigned int strd_sz_n:4; /* Log 2 of stride size. */
 	unsigned int strd_shift_en:1; /* Enable 2bytes shift on a stride. */
-	unsigned int :6; /* Remaining bits. */
+	unsigned int err_state:2; /* enum mlx5_rxq_err_state. */
+	unsigned int :4; /* Remaining bits. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
@@ -153,6 +161,7 @@ struct mlx5_rxq_ctrl {
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
 	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
+	uint16_t dump_file_n; /* Number of dump files. */
 };
 
 /* Indirection table. */
@@ -326,6 +335,9 @@ uint16_t mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 uint16_t mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts,
 			    uint16_t pkts_n);
 uint16_t mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
+void mlx5_rxq_initialize(struct mlx5_rxq_data *rxq);
+__rte_noinline int mlx5_rx_err_handle(struct mlx5_rxq_data *rxq,
+				      uint8_t mbuf_prepare);
 void mlx5_mprq_buf_free_cb(void *addr, void *opaque);
 void mlx5_mprq_buf_free(struct mlx5_mprq_buf *buf);
 uint16_t mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts,
@@ -420,32 +432,12 @@ __mlx5_uar_write64(uint64_t val, void *addr, rte_spinlock_t *lock)
 #define mlx5_uar_write64(val, dst, lock) __mlx5_uar_write64(val, dst, lock)
 #endif
 
-#ifndef NDEBUG
-/**
- * Verify or set magic value in CQE.
- *
- * @param cqe
- *   Pointer to CQE.
- *
- * @return
- *   0 the first time.
- */
-static inline int
-check_cqe_seen(volatile struct mlx5_cqe *cqe)
-{
-	static const uint8_t magic[] = "seen";
-	volatile uint8_t (*buf)[sizeof(cqe->rsvd1)] = &cqe->rsvd1;
-	int ret = 1;
-	unsigned int i;
-
-	for (i = 0; i < sizeof(magic) && i < sizeof(*buf); ++i)
-		if (!ret || (*buf)[i] != magic[i]) {
-			ret = 0;
-			(*buf)[i] = magic[i];
-		}
-	return ret;
-}
-#endif /* NDEBUG */
+/* CQE status. */
+enum mlx5_cqe_status {
+	MLX5_CQE_STATUS_SW_OWN,
+	MLX5_CQE_STATUS_HW_OWN,
+	MLX5_CQE_STATUS_ERR,
+};
 
 /**
  * Check whether CQE is valid.
@@ -458,51 +450,24 @@ check_cqe_seen(volatile struct mlx5_cqe *cqe)
  *   Consumer index.
  *
  * @return
- *   0 on success, 1 on failure.
+ *   The CQE status.
  */
-static __rte_always_inline int
-check_cqe(volatile struct mlx5_cqe *cqe,
-	  unsigned int cqes_n, const uint16_t ci)
+static __rte_always_inline enum mlx5_cqe_status
+check_cqe(volatile struct mlx5_cqe *cqe, const uint16_t cqes_n,
+	  const uint16_t ci)
 {
-	uint16_t idx = ci & cqes_n;
-	uint8_t op_own = cqe->op_own;
-	uint8_t op_owner = MLX5_CQE_OWNER(op_own);
-	uint8_t op_code = MLX5_CQE_OPCODE(op_own);
+	const uint16_t idx = ci & cqes_n;
+	const uint8_t op_own = cqe->op_own;
+	const uint8_t op_owner = MLX5_CQE_OWNER(op_own);
+	const uint8_t op_code = MLX5_CQE_OPCODE(op_own);
 
 	if (unlikely((op_owner != (!!(idx))) || (op_code == MLX5_CQE_INVALID)))
-		return 1; /* No CQE. */
-#ifndef NDEBUG
-	if ((op_code == MLX5_CQE_RESP_ERR) ||
-	    (op_code == MLX5_CQE_REQ_ERR)) {
-		volatile struct mlx5_err_cqe *err_cqe = (volatile void *)cqe;
-		uint8_t syndrome = err_cqe->syndrome;
-
-		if ((syndrome == MLX5_CQE_SYNDROME_LOCAL_LENGTH_ERR) ||
-		    (syndrome == MLX5_CQE_SYNDROME_REMOTE_ABORTED_ERR))
-			return 0;
-		if (!check_cqe_seen(cqe)) {
-			DRV_LOG(ERR,
-				"unexpected CQE error %u (0x%02x) syndrome"
-				" 0x%02x",
-				op_code, op_code, syndrome);
-			rte_hexdump(stderr, "MLX5 Error CQE:",
-				    (const void *)((uintptr_t)err_cqe),
-				    sizeof(*cqe));
-		}
-		return 1;
-	} else if ((op_code != MLX5_CQE_RESP_SEND) &&
-		   (op_code != MLX5_CQE_REQ)) {
-		if (!check_cqe_seen(cqe)) {
-			DRV_LOG(ERR, "unexpected CQE opcode %u (0x%02x)",
-				op_code, op_code);
-			rte_hexdump(stderr, "MLX5 CQE:",
-				    (const void *)((uintptr_t)cqe),
-				    sizeof(*cqe));
-		}
-		return 1;
-	}
-#endif /* NDEBUG */
-	return 0;
+		return MLX5_CQE_STATUS_HW_OWN;
+	rte_cio_rmb();
+	if (unlikely(op_code == MLX5_CQE_RESP_ERR ||
+		     op_code == MLX5_CQE_REQ_ERR))
+		return MLX5_CQE_STATUS_ERR;
+	return MLX5_CQE_STATUS_SW_OWN;
 }
 
 /**

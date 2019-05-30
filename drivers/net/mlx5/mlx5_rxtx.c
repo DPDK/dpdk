@@ -25,6 +25,7 @@
 #include <rte_common.h>
 #include <rte_branch_prediction.h>
 #include <rte_ether.h>
+#include <rte_cycles.h>
 
 #include "mlx5.h"
 #include "mlx5_utils.h"
@@ -444,7 +445,7 @@ rx_queue_count(struct mlx5_rxq_data *rxq)
 		cq_ci = rxq->cq_ci;
 	}
 	cqe = &(*rxq->cqes)[cq_ci & cqe_cnt];
-	while (check_cqe(cqe, cqe_n, cq_ci) == 0) {
+	while (check_cqe(cqe, cqe_n, cq_ci) != MLX5_CQE_STATUS_HW_OWN) {
 		int8_t op_own;
 		unsigned int n;
 
@@ -1884,6 +1885,130 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 }
 
 /**
+ * Handle a Rx error.
+ * The function inserts the RQ state to reset when the first error CQE is
+ * shown, then drains the CQ by the caller function loop. When the CQ is empty,
+ * it moves the RQ state to ready and initializes the RQ.
+ * Next CQE identification and error counting are in the caller responsibility.
+ *
+ * @param[in] rxq
+ *   Pointer to RX queue structure.
+ * @param[in] mbuf_prepare
+ *   Whether to prepare mbufs for the RQ.
+ *
+ * @return
+ *   -1 in case of recovery error, otherwise the CQE status.
+ */
+int
+mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t mbuf_prepare)
+{
+	const uint16_t cqe_n = 1 << rxq->cqe_n;
+	const uint16_t cqe_mask = cqe_n - 1;
+	const unsigned int wqe_n = 1 << rxq->elts_n;
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct ibv_wq_attr mod = {
+		.attr_mask = IBV_WQ_ATTR_STATE,
+	};
+	union {
+		volatile struct mlx5_cqe *cqe;
+		volatile struct mlx5_err_cqe *err_cqe;
+	} u = {
+		.cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask],
+	};
+	int ret;
+
+	switch (rxq->err_state) {
+	case MLX5_RXQ_ERR_STATE_NO_ERROR:
+		rxq->err_state = MLX5_RXQ_ERR_STATE_NEED_RESET;
+		/* Fall-through */
+	case MLX5_RXQ_ERR_STATE_NEED_RESET:
+		if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+			return -1;
+		mod.wq_state = IBV_WQS_RESET;
+		ret = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change Rx WQ state to RESET %s\n",
+				strerror(errno));
+			return -1;
+		}
+		if (rxq_ctrl->dump_file_n <
+		    rxq_ctrl->priv->config.max_dump_files_num) {
+			MKSTR(err_str, "Unexpected CQE error syndrome "
+			      "0x%02x CQN = %u RQN = %u wqe_counter = %u"
+			      " rq_ci = %u cq_ci = %u", u.err_cqe->syndrome,
+			      rxq->cqn, rxq_ctrl->ibv->wq->wq_num,
+			      rte_be_to_cpu_16(u.err_cqe->wqe_counter),
+			      rxq->rq_ci << rxq->sges_n, rxq->cq_ci);
+			MKSTR(name, "dpdk_mlx5_port_%u_rxq_%u_%u",
+			      rxq->port_id, rxq->idx, (uint32_t)rte_rdtsc());
+			mlx5_dump_debug_information(name, NULL, err_str, 0);
+			mlx5_dump_debug_information(name, "MLX5 Error CQ:",
+						    (const void *)((uintptr_t)
+								    rxq->cqes),
+						    sizeof(*u.cqe) * cqe_n);
+			mlx5_dump_debug_information(name, "MLX5 Error RQ:",
+						    (const void *)((uintptr_t)
+								    rxq->wqes),
+						    16 * wqe_n);
+			rxq_ctrl->dump_file_n++;
+		}
+		rxq->err_state = MLX5_RXQ_ERR_STATE_NEED_READY;
+		/* Fall-through */
+	case MLX5_RXQ_ERR_STATE_NEED_READY:
+		ret = check_cqe(u.cqe, cqe_n, rxq->cq_ci);
+		if (ret == MLX5_CQE_STATUS_HW_OWN) {
+			rte_cio_wmb();
+			*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
+			rte_cio_wmb();
+			/*
+			 * The RQ consumer index must be zeroed while moving
+			 * from RESET state to RDY state.
+			 */
+			*rxq->rq_db = rte_cpu_to_be_32(0);
+			rte_cio_wmb();
+			mod.wq_state = IBV_WQS_RDY;
+			ret = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
+			if (ret) {
+				DRV_LOG(ERR, "Cannot change Rx WQ state to RDY"
+					" %s\n", strerror(errno));
+				return -1;
+			}
+			if (mbuf_prepare) {
+				const uint16_t q_mask = wqe_n - 1;
+				uint16_t elt_idx;
+				struct rte_mbuf **elt;
+				int i;
+				unsigned int n = wqe_n - (rxq->rq_ci -
+							  rxq->rq_pi);
+
+				for (i = 0; i < (int)n; ++i) {
+					elt_idx = (rxq->rq_ci + i) & q_mask;
+					elt = &(*rxq->elts)[elt_idx];
+					*elt = rte_mbuf_raw_alloc(rxq->mp);
+					if (!*elt) {
+						for (i--; i >= 0; --i) {
+							elt_idx = (rxq->rq_ci +
+								   i) & q_mask;
+							elt = &(*rxq->elts)
+								[elt_idx];
+							rte_pktmbuf_free_seg
+								(*elt);
+						}
+						return -1;
+					}
+				}
+			}
+			mlx5_rxq_initialize(rxq);
+			rxq->err_state = MLX5_RXQ_ERR_STATE_NO_ERROR;
+		}
+		return ret;
+	default:
+		return -1;
+	}
+}
+
+/**
  * Get size of the next packet for a given CQE. For compressed CQEs, the
  * consumer index is updated only once all packets of the current one have
  * been processed.
@@ -1897,8 +2022,7 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
  *   written.
  *
  * @return
- *   Packet size in bytes (0 if there is none), -1 in case of completion
- *   with error.
+ *   0 in case of empty CQE, otherwise the packet size in bytes.
  */
 static inline int
 mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
@@ -1906,98 +2030,118 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 {
 	struct rxq_zip *zip = &rxq->zip;
 	uint16_t cqe_n = cqe_cnt + 1;
-	int len = 0;
+	int len;
 	uint16_t idx, end;
 
-	/* Process compressed data in the CQE and mini arrays. */
-	if (zip->ai) {
-		volatile struct mlx5_mini_cqe8 (*mc)[8] =
-			(volatile struct mlx5_mini_cqe8 (*)[8])
-			(uintptr_t)(&(*rxq->cqes)[zip->ca & cqe_cnt].pkt_info);
-
-		len = rte_be_to_cpu_32((*mc)[zip->ai & 7].byte_cnt);
-		*mcqe = &(*mc)[zip->ai & 7];
-		if ((++zip->ai & 7) == 0) {
-			/* Invalidate consumed CQEs */
-			idx = zip->ca;
-			end = zip->na;
-			while (idx != end) {
-				(*rxq->cqes)[idx & cqe_cnt].op_own =
-					MLX5_CQE_INVALIDATE;
-				++idx;
-			}
-			/*
-			 * Increment consumer index to skip the number of
-			 * CQEs consumed. Hardware leaves holes in the CQ
-			 * ring for software use.
-			 */
-			zip->ca = zip->na;
-			zip->na += 8;
-		}
-		if (unlikely(rxq->zip.ai == rxq->zip.cqe_cnt)) {
-			/* Invalidate the rest */
-			idx = zip->ca;
-			end = zip->cq_ci;
-
-			while (idx != end) {
-				(*rxq->cqes)[idx & cqe_cnt].op_own =
-					MLX5_CQE_INVALIDATE;
-				++idx;
-			}
-			rxq->cq_ci = zip->cq_ci;
-			zip->ai = 0;
-		}
-	/* No compressed data, get next CQE and verify if it is compressed. */
-	} else {
-		int ret;
-		int8_t op_own;
-
-		ret = check_cqe(cqe, cqe_n, rxq->cq_ci);
-		if (unlikely(ret == 1))
-			return 0;
-		++rxq->cq_ci;
-		op_own = cqe->op_own;
-		rte_cio_rmb();
-		if (MLX5_CQE_FORMAT(op_own) == MLX5_COMPRESSED) {
+	do {
+		len = 0;
+		/* Process compressed data in the CQE and mini arrays. */
+		if (zip->ai) {
 			volatile struct mlx5_mini_cqe8 (*mc)[8] =
 				(volatile struct mlx5_mini_cqe8 (*)[8])
-				(uintptr_t)(&(*rxq->cqes)[rxq->cq_ci &
+				(uintptr_t)(&(*rxq->cqes)[zip->ca &
 							  cqe_cnt].pkt_info);
 
-			/* Fix endianness. */
-			zip->cqe_cnt = rte_be_to_cpu_32(cqe->byte_cnt);
-			/*
-			 * Current mini array position is the one returned by
-			 * check_cqe64().
-			 *
-			 * If completion comprises several mini arrays, as a
-			 * special case the second one is located 7 CQEs after
-			 * the initial CQE instead of 8 for subsequent ones.
-			 */
-			zip->ca = rxq->cq_ci;
-			zip->na = zip->ca + 7;
-			/* Compute the next non compressed CQE. */
-			--rxq->cq_ci;
-			zip->cq_ci = rxq->cq_ci + zip->cqe_cnt;
-			/* Get packet size to return. */
-			len = rte_be_to_cpu_32((*mc)[0].byte_cnt);
-			*mcqe = &(*mc)[0];
-			zip->ai = 1;
-			/* Prefetch all the entries to be invalidated */
-			idx = zip->ca;
-			end = zip->cq_ci;
-			while (idx != end) {
-				rte_prefetch0(&(*rxq->cqes)[(idx) & cqe_cnt]);
-				++idx;
+			len = rte_be_to_cpu_32((*mc)[zip->ai & 7].byte_cnt);
+			*mcqe = &(*mc)[zip->ai & 7];
+			if ((++zip->ai & 7) == 0) {
+				/* Invalidate consumed CQEs */
+				idx = zip->ca;
+				end = zip->na;
+				while (idx != end) {
+					(*rxq->cqes)[idx & cqe_cnt].op_own =
+						MLX5_CQE_INVALIDATE;
+					++idx;
+				}
+				/*
+				 * Increment consumer index to skip the number
+				 * of CQEs consumed. Hardware leaves holes in
+				 * the CQ ring for software use.
+				 */
+				zip->ca = zip->na;
+				zip->na += 8;
 			}
+			if (unlikely(rxq->zip.ai == rxq->zip.cqe_cnt)) {
+				/* Invalidate the rest */
+				idx = zip->ca;
+				end = zip->cq_ci;
+
+				while (idx != end) {
+					(*rxq->cqes)[idx & cqe_cnt].op_own =
+						MLX5_CQE_INVALIDATE;
+					++idx;
+				}
+				rxq->cq_ci = zip->cq_ci;
+				zip->ai = 0;
+			}
+		/*
+		 * No compressed data, get next CQE and verify if it is
+		 * compressed.
+		 */
 		} else {
-			len = rte_be_to_cpu_32(cqe->byte_cnt);
+			int ret;
+			int8_t op_own;
+
+			ret = check_cqe(cqe, cqe_n, rxq->cq_ci);
+			if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
+				if (unlikely(ret == MLX5_CQE_STATUS_ERR ||
+					     rxq->err_state)) {
+					ret = mlx5_rx_err_handle(rxq, 0);
+					if (ret == MLX5_CQE_STATUS_HW_OWN ||
+					    ret == -1)
+						return 0;
+				} else {
+					return 0;
+				}
+			}
+			++rxq->cq_ci;
+			op_own = cqe->op_own;
+			if (MLX5_CQE_FORMAT(op_own) == MLX5_COMPRESSED) {
+				volatile struct mlx5_mini_cqe8 (*mc)[8] =
+					(volatile struct mlx5_mini_cqe8 (*)[8])
+					(uintptr_t)(&(*rxq->cqes)
+						[rxq->cq_ci &
+						 cqe_cnt].pkt_info);
+
+				/* Fix endianness. */
+				zip->cqe_cnt = rte_be_to_cpu_32(cqe->byte_cnt);
+				/*
+				 * Current mini array position is the one
+				 * returned by check_cqe64().
+				 *
+				 * If completion comprises several mini arrays,
+				 * as a special case the second one is located
+				 * 7 CQEs after the initial CQE instead of 8
+				 * for subsequent ones.
+				 */
+				zip->ca = rxq->cq_ci;
+				zip->na = zip->ca + 7;
+				/* Compute the next non compressed CQE. */
+				--rxq->cq_ci;
+				zip->cq_ci = rxq->cq_ci + zip->cqe_cnt;
+				/* Get packet size to return. */
+				len = rte_be_to_cpu_32((*mc)[0].byte_cnt);
+				*mcqe = &(*mc)[0];
+				zip->ai = 1;
+				/* Prefetch all to be invalidated */
+				idx = zip->ca;
+				end = zip->cq_ci;
+				while (idx != end) {
+					rte_prefetch0(&(*rxq->cqes)[(idx) &
+								    cqe_cnt]);
+					++idx;
+				}
+			} else {
+				len = rte_be_to_cpu_32(cqe->byte_cnt);
+			}
 		}
-		/* Error while receiving packet. */
-		if (unlikely(MLX5_CQE_OPCODE(op_own) == MLX5_CQE_RESP_ERR))
-			return -1;
-	}
-	return len;
+		if (unlikely(rxq->err_state)) {
+			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
+			++rxq->stats.idropped;
+		} else {
+			return len;
+		}
+	} while (1);
 }
 
 /**
@@ -2140,12 +2284,6 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				rte_mbuf_raw_free(rep);
 				break;
 			}
-			if (unlikely(len == -1)) {
-				/* RX error, packet is likely too large. */
-				rte_mbuf_raw_free(rep);
-				++rxq->stats.idropped;
-				goto skip;
-			}
 			pkt = seg;
 			assert(len >= (rxq->crc_present << 2));
 			pkt->ol_flags = 0;
@@ -2188,7 +2326,6 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		pkt = NULL;
 		--pkts_n;
 		++i;
-skip:
 		/* Align consumer index to the next stride. */
 		rq_ci >>= sges_n;
 		++rq_ci;
@@ -2321,11 +2458,6 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		ret = mlx5_rx_poll_len(rxq, cqe, cq_mask, &mcqe);
 		if (!ret)
 			break;
-		if (unlikely(ret == -1)) {
-			/* RX error, packet is likely too large. */
-			++rxq->stats.idropped;
-			continue;
-		}
 		byte_cnt = ret;
 		strd_cnt = (byte_cnt & MLX5_MPRQ_STRIDE_NUM_MASK) >>
 			   MLX5_MPRQ_STRIDE_NUM_SHIFT;

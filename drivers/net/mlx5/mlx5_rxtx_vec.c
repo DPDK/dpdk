@@ -197,7 +197,7 @@ rxq_handle_pending_error(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	for (i = 0; i < pkts_n; ++i) {
 		struct rte_mbuf *pkt = pkts[i];
 
-		if (pkt->packet_type == RTE_PTYPE_ALL_MASK) {
+		if (pkt->packet_type == RTE_PTYPE_ALL_MASK || rxq->err_state) {
 #ifdef MLX5_PMD_SOFT_COUNTERS
 			err_bytes += PKT_LEN(pkt);
 #endif
@@ -212,6 +212,7 @@ rxq_handle_pending_error(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	rxq->stats.ipackets -= (pkts_n - n);
 	rxq->stats.ibytes -= err_bytes;
 #endif
+	mlx5_rx_err_handle(rxq, 1);
 	return n;
 }
 
@@ -236,7 +237,7 @@ mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	uint64_t err = 0;
 
 	nb_rx = rxq_burst_v(rxq, pkts, pkts_n, &err);
-	if (unlikely(err))
+	if (unlikely(err | rxq->err_state))
 		nb_rx = rxq_handle_pending_error(rxq, pkts, nb_rx);
 	return nb_rx;
 }
