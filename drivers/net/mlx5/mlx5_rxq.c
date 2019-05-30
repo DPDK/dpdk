@@ -1076,7 +1076,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->decompressed = 0;
 	/* Update doorbell counter. */
 	rxq_data->rq_ci = wqe_n >> rxq_data->sges_n;
-	rte_wmb();
+	rte_cio_wmb();
 	*rxq_data->rq_db = rte_cpu_to_be_32(rxq_data->rq_ci);
 	DRV_LOG(DEBUG, "port %u rxq %u updated with %p", dev->data->port_id,
 		idx, (void *)&tmpl);
