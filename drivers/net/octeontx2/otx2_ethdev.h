@@ -274,6 +274,10 @@ otx2_eth_pmd_priv(struct rte_eth_dev *eth_dev)
 /* Ops */
 void otx2_nix_info_get(struct rte_eth_dev *eth_dev,
 		       struct rte_eth_dev_info *dev_info);
+int otx2_nix_get_module_info(struct rte_eth_dev *eth_dev,
+			     struct rte_eth_dev_module_info *modinfo);
+int otx2_nix_get_module_eeprom(struct rte_eth_dev *eth_dev,
+			       struct rte_dev_eeprom_info *info);
 int otx2_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool);
 void otx2_nix_rxq_info_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
 			   struct rte_eth_rxq_info *qinfo);

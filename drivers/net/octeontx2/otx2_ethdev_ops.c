@@ -220,6 +220,57 @@ otx2_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool)
 	return -ENOTSUP;
 }
 
+static struct cgx_fw_data *
+nix_get_fwdata(struct otx2_eth_dev *dev)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	struct cgx_fw_data *rsp = NULL;
+
+	otx2_mbox_alloc_msg_cgx_get_aux_link_info(mbox);
+
+	otx2_mbox_process_msg(mbox, (void *)&rsp);
+
+	return rsp;
+}
+
+int
+otx2_nix_get_module_info(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_dev_module_info *modinfo)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct cgx_fw_data *rsp;
+
+	rsp = nix_get_fwdata(dev);
+	if (rsp == NULL)
+		return -EIO;
+
+	modinfo->type = rsp->fwdata.sfp_eeprom.sff_id;
+	modinfo->eeprom_len = SFP_EEPROM_SIZE;
+
+	return 0;
+}
+
+int
+otx2_nix_get_module_eeprom(struct rte_eth_dev *eth_dev,
+			   struct rte_dev_eeprom_info *info)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct cgx_fw_data *rsp;
+
+	if (!info->data || !info->length ||
+	    (info->offset + info->length > SFP_EEPROM_SIZE))
+		return -EINVAL;
+
+	rsp = nix_get_fwdata(dev);
+	if (rsp == NULL)
+		return -EIO;
+
+	otx2_mbox_memcpy(info->data, rsp->fwdata.sfp_eeprom.buf + info->offset,
+			 info->length);
+
+	return 0;
+}
+
 void
 otx2_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 {

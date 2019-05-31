@@ -1319,6 +1319,8 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.rx_descriptor_status     = otx2_nix_rx_descriptor_status,
 	.tx_done_cleanup          = otx2_nix_tx_done_cleanup,
 	.pool_ops_supported       = otx2_nix_pool_ops_supported,
+	.get_module_info          = otx2_nix_get_module_info,
+	.get_module_eeprom        = otx2_nix_get_module_eeprom,
 };
 
 static inline int
