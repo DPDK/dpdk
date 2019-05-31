@@ -336,9 +336,7 @@ nix_cq_rq_uninit(struct rte_eth_dev *eth_dev, struct otx2_eth_rxq *rxq)
 static inline int
 nix_get_data_off(struct otx2_eth_dev *dev)
 {
-	RTE_SET_USED(dev);
-
-	return 0;
+	return otx2_ethdev_is_ptp_en(dev) ? NIX_TIMESYNC_RX_OFFSET : 0;
 }
 
 uint64_t
@@ -450,6 +448,7 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 	rxq->qlen = nix_qsize_to_val(qsize);
 	rxq->qsize = qsize;
 	rxq->lookup_mem = otx2_nix_fastpath_lookup_mem_get();
+	rxq->tstamp = &dev->tstamp;
 
 	/* Alloc completion queue */
 	rc = nix_cq_rq_init(eth_dev, dev, rq, rxq, mp);
@@ -736,6 +735,7 @@ otx2_nix_form_default_desc(struct otx2_eth_txq *txq)
 			send_mem->dsz = 0x0;
 			send_mem->wmem = 0x1;
 			send_mem->alg = NIX_SENDMEMALG_SETTSTMP;
+			send_mem->addr = txq->dev->tstamp.tx_tstamp_iova;
 		}
 		sg = (union nix_send_sg_s *)&txq->cmd[4];
 	} else {
@@ -1160,6 +1160,16 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto free_nix_lf;
 	}
 
+	/* Enable PTP if it was requested by the app or if it is already
+	 * enabled in PF owning this VF
+	 */
+	memset(&dev->tstamp, 0, sizeof(struct otx2_timesync_info));
+	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) ||
+	    otx2_ethdev_is_ptp_en(dev))
+		otx2_nix_timesync_enable(eth_dev);
+	else
+		otx2_nix_timesync_disable(eth_dev);
+
 	/*
 	 * Restore queue config when reconfigure followed by
 	 * reconfigure and no queue configure invoked from application case.
@@ -1338,6 +1348,8 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.get_module_eeprom        = otx2_nix_get_module_eeprom,
 	.flow_ctrl_get            = otx2_nix_flow_ctrl_get,
 	.flow_ctrl_set            = otx2_nix_flow_ctrl_set,
+	.timesync_enable          = otx2_nix_timesync_enable,
+	.timesync_disable         = otx2_nix_timesync_disable,
 };
 
 static inline int
@@ -1541,6 +1553,10 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 
 	/* Disable nix bpid config */
 	otx2_nix_rxchan_bpid_cfg(eth_dev, false);
+
+	/* Disable PTP if already enabled */
+	if (otx2_ethdev_is_ptp_en(dev))
+		otx2_nix_timesync_disable(eth_dev);
 
 	/* Free up SQs */
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {

@@ -13,6 +13,7 @@
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_string_fns.h>
+#include <rte_time.h>
 
 #include "otx2_common.h"
 #include "otx2_dev.h"
@@ -128,6 +129,12 @@
 #define NIX_DEFAULT_RSS_CTX_GROUP  0
 #define NIX_DEFAULT_RSS_MCAM_IDX  -1
 
+#define otx2_ethdev_is_ptp_en(dev)	((dev)->ptp_en)
+
+#define NIX_TIMESYNC_TX_CMD_LEN		8
+/* Additional timesync values. */
+#define OTX2_CYCLECOUNTER_MASK   0xffffffffffffffffULL
+
 enum nix_q_size_e {
 	nix_q_size_16,	/* 16 entries */
 	nix_q_size_64,	/* 64 entries */
@@ -234,6 +241,12 @@ struct otx2_eth_dev {
 	struct otx2_eth_qconf *tx_qconf;
 	struct otx2_eth_qconf *rx_qconf;
 	struct rte_eth_dev *eth_dev;
+	/* PTP counters */
+	bool ptp_en;
+	struct otx2_timesync_info tstamp;
+	struct rte_timecounter  systime_tc;
+	struct rte_timecounter  rx_tstamp_tc;
+	struct rte_timecounter  tx_tstamp_tc;
 } __rte_cache_aligned;
 
 struct otx2_eth_txq {
@@ -413,5 +426,9 @@ int otx2_ethdev_parse_devargs(struct rte_devargs *devargs,
 
 /* Rx and Tx routines */
 void otx2_nix_form_default_desc(struct otx2_eth_txq *txq);
+
+/* Timesync - PTP routines */
+int otx2_nix_timesync_enable(struct rte_eth_dev *eth_dev);
+int otx2_nix_timesync_disable(struct rte_eth_dev *eth_dev);
 
 #endif /* __OTX2_ETHDEV_H__ */
