@@ -2,6 +2,8 @@
  * Copyright(C) 2019 Marvell International Ltd.
  */
 
+#include <rte_mbuf_pool_ops.h>
+
 #include "otx2_ethdev.h"
 
 static void
@@ -84,6 +86,55 @@ void
 otx2_nix_allmulticast_disable(struct rte_eth_dev *eth_dev)
 {
 	nix_allmulticast_config(eth_dev, 0);
+}
+
+void
+otx2_nix_rxq_info_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
+		      struct rte_eth_rxq_info *qinfo)
+{
+	struct otx2_eth_rxq *rxq;
+
+	rxq = eth_dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->pool;
+	qinfo->scattered_rx = eth_dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->qconf.nb_desc;
+
+	qinfo->conf.rx_free_thresh = 0;
+	qinfo->conf.rx_drop_en = 0;
+	qinfo->conf.rx_deferred_start = 0;
+	qinfo->conf.offloads = rxq->offloads;
+}
+
+void
+otx2_nix_txq_info_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
+		      struct rte_eth_txq_info *qinfo)
+{
+	struct otx2_eth_txq *txq;
+
+	txq = eth_dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->qconf.nb_desc;
+
+	qinfo->conf.tx_thresh.pthresh = 0;
+	qinfo->conf.tx_thresh.hthresh = 0;
+	qinfo->conf.tx_thresh.wthresh = 0;
+
+	qinfo->conf.tx_free_thresh = 0;
+	qinfo->conf.tx_rs_thresh = 0;
+	qinfo->conf.offloads = txq->offloads;
+	qinfo->conf.tx_deferred_start = 0;
+}
+
+int
+otx2_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool)
+{
+	RTE_SET_USED(eth_dev);
+
+	if (!strcmp(pool, rte_mbuf_platform_mempool_ops()))
+		return 0;
+
+	return -ENOTSUP;
 }
 
 void

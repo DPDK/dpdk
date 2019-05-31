@@ -1312,6 +1312,9 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.xstats_reset             = otx2_nix_xstats_reset,
 	.xstats_get_by_id         = otx2_nix_xstats_get_by_id,
 	.xstats_get_names_by_id   = otx2_nix_xstats_get_names_by_id,
+	.rxq_info_get             = otx2_nix_rxq_info_get,
+	.txq_info_get             = otx2_nix_txq_info_get,
+	.pool_ops_supported       = otx2_nix_pool_ops_supported,
 };
 
 static inline int
