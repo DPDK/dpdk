@@ -944,7 +944,7 @@ rte_pmd_af_xdp_remove(struct rte_vdev_device *dev)
 	/* find the ethdev entry */
 	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
-		return -1;
+		return 0;
 
 	eth_dev_close(eth_dev);
 	rte_eth_dev_release_port(eth_dev);
