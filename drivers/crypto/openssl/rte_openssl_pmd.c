@@ -1529,7 +1529,7 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 	}
 
 	if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
-		if (memcmp(dst, op->sym->auth.digest.data,
+		if (CRYPTO_memcmp(dst, op->sym->auth.digest.data,
 				sess->auth.digest_length) != 0) {
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		}
@@ -1914,7 +1914,7 @@ process_openssl_rsa_op(struct rte_crypto_op *cop,
 				"Length of public_decrypt %d "
 				"length of message %zd\n",
 				ret, op->rsa.message.length);
-		if ((ret <= 0) || (memcmp(tmp, op->rsa.message.data,
+		if ((ret <= 0) || (CRYPTO_memcmp(tmp, op->rsa.message.data,
 				op->rsa.message.length))) {
 			OPENSSL_LOG(ERR, "RSA sign Verification failed");
 			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
