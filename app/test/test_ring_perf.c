@@ -52,10 +52,11 @@ get_two_hyperthreads(struct lcore_pair *lcp)
 		RTE_LCORE_FOREACH(id2) {
 			if (id1 == id2)
 				continue;
-			c1 = lcore_config[id1].core_id;
-			c2 = lcore_config[id2].core_id;
-			s1 = lcore_config[id1].socket_id;
-			s2 = lcore_config[id2].socket_id;
+
+			c1 = rte_lcore_to_cpu_id(id1);
+			c2 = rte_lcore_to_cpu_id(id2);
+			s1 = rte_lcore_to_socket_id(id1);
+			s2 = rte_lcore_to_socket_id(id2);
 			if ((c1 == c2) && (s1 == s2)){
 				lcp->c1 = id1;
 				lcp->c2 = id2;
@@ -75,10 +76,11 @@ get_two_cores(struct lcore_pair *lcp)
 		RTE_LCORE_FOREACH(id2) {
 			if (id1 == id2)
 				continue;
-			c1 = lcore_config[id1].core_id;
-			c2 = lcore_config[id2].core_id;
-			s1 = lcore_config[id1].socket_id;
-			s2 = lcore_config[id2].socket_id;
+
+			c1 = rte_lcore_to_cpu_id(id1);
+			c2 = rte_lcore_to_cpu_id(id2);
+			s1 = rte_lcore_to_socket_id(id1);
+			s2 = rte_lcore_to_socket_id(id2);
 			if ((c1 != c2) && (s1 == s2)){
 				lcp->c1 = id1;
 				lcp->c2 = id2;
@@ -98,8 +100,8 @@ get_two_sockets(struct lcore_pair *lcp)
 		RTE_LCORE_FOREACH(id2) {
 			if (id1 == id2)
 				continue;
-			s1 = lcore_config[id1].socket_id;
-			s2 = lcore_config[id2].socket_id;
+			s1 = rte_lcore_to_socket_id(id1);
+			s2 = rte_lcore_to_socket_id(id2);
 			if (s1 != s2){
 				lcp->c1 = id1;
 				lcp->c2 = id2;

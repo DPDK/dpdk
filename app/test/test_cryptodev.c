@@ -378,7 +378,7 @@ testsuite_setup(void)
 			strcpy(temp_str, vdev_args);
 			strlcat(temp_str, ";", sizeof(temp_str));
 			slave_core_count++;
-			socket_id = lcore_config[i].socket_id;
+			socket_id = rte_lcore_to_socket_id(i);
 		}
 		if (slave_core_count != 2) {
 			RTE_LOG(ERR, USER1,

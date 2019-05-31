@@ -44,10 +44,10 @@ get_two_hyperthreads(struct lcore_pair *lcp)
 		RTE_LCORE_FOREACH(id[1]) {
 			if (id[0] == id[1])
 				continue;
-			core[0] = lcore_config[id[0]].core_id;
-			core[1] = lcore_config[id[1]].core_id;
-			socket[0] = lcore_config[id[0]].socket_id;
-			socket[1] = lcore_config[id[1]].socket_id;
+			core[0] = rte_lcore_to_cpu_id(id[0]);
+			core[1] = rte_lcore_to_cpu_id(id[1]);
+			socket[0] = rte_lcore_to_socket_id(id[0]);
+			socket[1] = rte_lcore_to_socket_id(id[1]);
 			if ((core[0] == core[1]) && (socket[0] == socket[1])) {
 				lcp->c1 = id[0];
 				lcp->c2 = id[1];
@@ -70,10 +70,10 @@ get_two_cores(struct lcore_pair *lcp)
 		RTE_LCORE_FOREACH(id[1]) {
 			if (id[0] == id[1])
 				continue;
-			core[0] = lcore_config[id[0]].core_id;
-			core[1] = lcore_config[id[1]].core_id;
-			socket[0] = lcore_config[id[0]].socket_id;
-			socket[1] = lcore_config[id[1]].socket_id;
+			core[0] = rte_lcore_to_cpu_id(id[0]);
+			core[1] = rte_lcore_to_cpu_id(id[1]);
+			socket[0] = rte_lcore_to_socket_id(id[0]);
+			socket[1] = rte_lcore_to_socket_id(id[1]);
 			if ((core[0] != core[1]) && (socket[0] == socket[1])) {
 				lcp->c1 = id[0];
 				lcp->c2 = id[1];
@@ -95,8 +95,8 @@ get_two_sockets(struct lcore_pair *lcp)
 		RTE_LCORE_FOREACH(id[1]) {
 			if (id[0] == id[1])
 				continue;
-			socket[0] = lcore_config[id[0]].socket_id;
-			socket[1] = lcore_config[id[1]].socket_id;
+			socket[0] = rte_lcore_to_socket_id(id[0]);
+			socket[1] = rte_lcore_to_socket_id(id[1]);
 			if (socket[0] != socket[1]) {
 				lcp->c1 = id[0];
 				lcp->c2 = id[1];
