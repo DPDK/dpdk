@@ -430,5 +430,16 @@ void otx2_nix_form_default_desc(struct otx2_eth_txq *txq);
 /* Timesync - PTP routines */
 int otx2_nix_timesync_enable(struct rte_eth_dev *eth_dev);
 int otx2_nix_timesync_disable(struct rte_eth_dev *eth_dev);
+int otx2_nix_timesync_read_rx_timestamp(struct rte_eth_dev *eth_dev,
+					struct timespec *timestamp,
+					uint32_t flags);
+int otx2_nix_timesync_read_tx_timestamp(struct rte_eth_dev *eth_dev,
+					struct timespec *timestamp);
+int otx2_nix_timesync_adjust_time(struct rte_eth_dev *eth_dev, int64_t delta);
+int otx2_nix_timesync_write_time(struct rte_eth_dev *eth_dev,
+				 const struct timespec *ts);
+int otx2_nix_timesync_read_time(struct rte_eth_dev *eth_dev,
+				struct timespec *ts);
+int otx2_eth_dev_ptp_info_update(struct otx2_dev *dev, bool ptp_en);
 
 #endif /* __OTX2_ETHDEV_H__ */

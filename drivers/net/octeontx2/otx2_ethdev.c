@@ -47,6 +47,7 @@ nix_get_tx_offload_capa(struct otx2_eth_dev *dev)
 
 static const struct otx2_dev_ops otx2_dev_ops = {
 	.link_status_update = otx2_eth_dev_link_status_update,
+	.ptp_info_update = otx2_eth_dev_ptp_info_update
 };
 
 static int
@@ -1350,6 +1351,11 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.flow_ctrl_set            = otx2_nix_flow_ctrl_set,
 	.timesync_enable          = otx2_nix_timesync_enable,
 	.timesync_disable         = otx2_nix_timesync_disable,
+	.timesync_read_rx_timestamp = otx2_nix_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp = otx2_nix_timesync_read_tx_timestamp,
+	.timesync_adjust_time     = otx2_nix_timesync_adjust_time,
+	.timesync_read_time       = otx2_nix_timesync_read_time,
+	.timesync_write_time      = otx2_nix_timesync_write_time,
 };
 
 static inline int

@@ -58,6 +58,23 @@ nix_ptp_config(struct rte_eth_dev *eth_dev, int en)
 }
 
 int
+otx2_eth_dev_ptp_info_update(struct otx2_dev *dev, bool ptp_en)
+{
+	struct otx2_eth_dev *otx2_dev = (struct otx2_eth_dev *)dev;
+	struct rte_eth_dev *eth_dev = otx2_dev->eth_dev;
+	int i;
+
+	otx2_dev->ptp_en = ptp_en;
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		struct otx2_eth_rxq *rxq = eth_dev->data->rx_queues[i];
+		rxq->mbuf_initializer =
+			otx2_nix_rxq_mbuf_setup(otx2_dev,
+						eth_dev->data->port_id);
+	}
+	return 0;
+}
+
+int
 otx2_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
@@ -132,4 +149,117 @@ otx2_nix_timesync_disable(struct rte_eth_dev *eth_dev)
 		}
 	}
 	return rc;
+}
+
+int
+otx2_nix_timesync_read_rx_timestamp(struct rte_eth_dev *eth_dev,
+				    struct timespec *timestamp,
+				    uint32_t __rte_unused flags)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_timesync_info *tstamp = &dev->tstamp;
+	uint64_t ns;
+
+	if (!tstamp->rx_ready)
+		return -EINVAL;
+
+	ns = rte_timecounter_update(&dev->rx_tstamp_tc, tstamp->rx_tstamp);
+	*timestamp = rte_ns_to_timespec(ns);
+	tstamp->rx_ready = 0;
+
+	otx2_nix_dbg("rx timestamp: %llu sec: %lu nsec %lu",
+		     (unsigned long long)tstamp->rx_tstamp, timestamp->tv_sec,
+		     timestamp->tv_nsec);
+
+	return 0;
+}
+
+int
+otx2_nix_timesync_read_tx_timestamp(struct rte_eth_dev *eth_dev,
+				    struct timespec *timestamp)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_timesync_info *tstamp = &dev->tstamp;
+	uint64_t ns;
+
+	if (*tstamp->tx_tstamp == 0)
+		return -EINVAL;
+
+	ns = rte_timecounter_update(&dev->tx_tstamp_tc, *tstamp->tx_tstamp);
+	*timestamp = rte_ns_to_timespec(ns);
+
+	otx2_nix_dbg("tx timestamp: %llu sec: %lu nsec %lu",
+		     *(unsigned long long *)tstamp->tx_tstamp,
+		     timestamp->tv_sec, timestamp->tv_nsec);
+
+	*tstamp->tx_tstamp = 0;
+	rte_wmb();
+
+	return 0;
+}
+
+int
+otx2_nix_timesync_adjust_time(struct rte_eth_dev *eth_dev, int64_t delta)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct ptp_req *req;
+	struct ptp_rsp *rsp;
+	int rc;
+
+	/* Adjust the frequent to make tics increments in 10^9 tics per sec */
+	if (delta < PTP_FREQ_ADJUST && delta > -PTP_FREQ_ADJUST) {
+		req = otx2_mbox_alloc_msg_ptp_op(mbox);
+		req->op = PTP_OP_ADJFINE;
+		req->scaled_ppm = delta;
+
+		rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			return rc;
+	}
+	dev->systime_tc.nsec += delta;
+	dev->rx_tstamp_tc.nsec += delta;
+	dev->tx_tstamp_tc.nsec += delta;
+
+	return 0;
+}
+
+int
+otx2_nix_timesync_write_time(struct rte_eth_dev *eth_dev,
+			     const struct timespec *ts)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint64_t ns;
+
+	ns = rte_timespec_to_ns(ts);
+	/* Set the time counters to a new value. */
+	dev->systime_tc.nsec = ns;
+	dev->rx_tstamp_tc.nsec = ns;
+	dev->tx_tstamp_tc.nsec = ns;
+
+	return 0;
+}
+
+int
+otx2_nix_timesync_read_time(struct rte_eth_dev *eth_dev, struct timespec *ts)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct ptp_req *req;
+	struct ptp_rsp *rsp;
+	uint64_t ns;
+	int rc;
+
+	req = otx2_mbox_alloc_msg_ptp_op(mbox);
+	req->op = PTP_OP_GET_CLOCK;
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	ns = rte_timecounter_update(&dev->systime_tc, rsp->clk);
+	*ts = rte_ns_to_timespec(ns);
+
+	otx2_nix_dbg("PTP time read: %ld.%09ld", ts->tv_sec, ts->tv_nsec);
+
+	return 0;
 }
