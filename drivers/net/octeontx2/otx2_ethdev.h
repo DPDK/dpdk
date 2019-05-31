@@ -87,6 +87,9 @@
 #define NIX_TX_NB_SEG_MAX		9
 #endif
 
+/* Apply BP when CQ is 75% full */
+#define NIX_CQ_BP_LEVEL (25 * 256 / 100)
+
 #define CQ_OP_STAT_OP_ERR	63
 #define CQ_OP_STAT_CQ_ERR	46
 
@@ -169,6 +172,14 @@ struct otx2_npc_flow_info {
 	uint16_t flow_max_priority;
 };
 
+struct otx2_fc_info {
+	enum rte_eth_fc_mode mode;  /**< Link flow control mode */
+	uint8_t rx_pause;
+	uint8_t tx_pause;
+	uint8_t chan_cnt;
+	uint16_t bpid[NIX_MAX_CHAN];
+};
+
 struct otx2_eth_dev {
 	OTX2_DEV; /* Base class */
 	MARKER otx2_eth_dev_data_start;
@@ -216,6 +227,7 @@ struct otx2_eth_dev {
 	struct otx2_nix_tm_node_list node_list;
 	struct otx2_nix_tm_shaper_profile_list shaper_profile_list;
 	struct otx2_rss_info rss_info;
+	struct otx2_fc_info fc_info;
 	uint32_t txmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	uint32_t rxmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	struct otx2_npc_flow_info npc_flow;
@@ -367,6 +379,17 @@ int otx2_cgx_rxtx_start(struct otx2_eth_dev *dev);
 int otx2_cgx_rxtx_stop(struct otx2_eth_dev *dev);
 int otx2_cgx_mac_addr_set(struct rte_eth_dev *eth_dev,
 			  struct rte_ether_addr *addr);
+
+/* Flow Control */
+int otx2_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
+			   struct rte_eth_fc_conf *fc_conf);
+
+int otx2_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
+			   struct rte_eth_fc_conf *fc_conf);
+
+int otx2_nix_rxchan_bpid_cfg(struct rte_eth_dev *eth_dev, bool enb);
+
+int otx2_nix_update_flow_ctrl_mode(struct rte_eth_dev *eth_dev);
 
 /* Lookup configuration */
 void *otx2_nix_fastpath_lookup_mem_get(void);

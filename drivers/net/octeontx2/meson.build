@@ -10,6 +10,7 @@ sources = files(
 		'otx2_stats.c',
 		'otx2_lookup.c',
 		'otx2_ethdev.c',
+		'otx2_flow_ctrl.c',
 		'otx2_ethdev_irq.c',
 		'otx2_ethdev_ops.c',
 		'otx2_ethdev_debug.c',

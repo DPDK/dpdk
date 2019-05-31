@@ -25,6 +25,7 @@ Features of the OCTEON TX2 Ethdev PMD are:
 - MAC filtering
 - Port hardware statistics
 - Link state information
+- Link flow control
 - Debug utilities - Context dump and error interrupt support
 
 Prerequisites
