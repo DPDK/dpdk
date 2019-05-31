@@ -137,7 +137,7 @@ rte_lcore_index(int lcore_id)
  * @return
  *   the ID of current lcoreid's physical socket
  */
-unsigned rte_socket_id(void);
+unsigned int rte_socket_id(void);
 
 /**
  * Return number of physical sockets detected on the system.
@@ -177,8 +177,8 @@ rte_socket_id_by_idx(unsigned int idx);
  * @return
  *   the ID of lcoreid's physical socket
  */
-static inline unsigned
-rte_lcore_to_socket_id(unsigned lcore_id)
+static inline unsigned int
+rte_lcore_to_socket_id(unsigned int lcore_id)
 {
 	return lcore_config[lcore_id].socket_id;
 }
@@ -193,7 +193,7 @@ rte_lcore_to_socket_id(unsigned lcore_id)
  *   True if the given lcore is enabled; false otherwise.
  */
 static inline int
-rte_lcore_is_enabled(unsigned lcore_id)
+rte_lcore_is_enabled(unsigned int lcore_id)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
 	if (lcore_id >= RTE_MAX_LCORE)
@@ -214,8 +214,8 @@ rte_lcore_is_enabled(unsigned lcore_id)
  * @return
  *   The next lcore_id or RTE_MAX_LCORE if not found.
  */
-static inline unsigned
-rte_get_next_lcore(unsigned i, int skip_master, int wrap)
+static inline unsigned int
+rte_get_next_lcore(unsigned int i, int skip_master, int wrap)
 {
 	i++;
 	if (wrap)
