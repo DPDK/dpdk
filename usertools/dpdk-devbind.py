@@ -216,6 +216,7 @@ def get_pci_device_details(dev_id, probe_lspci):
 
 def clear_data():
     '''This function clears any old data'''
+    global devices
     devices = {}
 
 def get_device_details(devices_type):
