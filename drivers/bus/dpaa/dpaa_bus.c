@@ -254,6 +254,7 @@ int rte_dpaa_portal_init(void *arg)
 	unsigned int cpu, lcore = rte_lcore_id();
 	int ret;
 	struct dpaa_portal *dpaa_io_portal;
+	rte_cpuset_t cpuset;
 
 	BUS_INIT_FUNC_TRACE();
 
@@ -263,12 +264,13 @@ int rte_dpaa_portal_init(void *arg)
 		if (lcore >= RTE_MAX_LCORE)
 			return -1;
 
-	cpu = lcore_config[lcore].core_id;
+	cpu = rte_lcore_to_cpu_id(lcore);
 
 	/* Set CPU affinity for this thread.*/
 	id = pthread_self();
+	cpuset = rte_lcore_cpuset(lcore);
 	ret = pthread_setaffinity_np(id, sizeof(cpu_set_t),
-			&lcore_config[lcore].cpuset);
+				     &cpuset);
 	if (ret) {
 		DPAA_BUS_LOG(ERR, "pthread_setaffinity_np failed on core :%u"
 			     " (lcore=%u) with ret: %d", cpu, lcore, ret);
