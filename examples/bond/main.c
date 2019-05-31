@@ -531,8 +531,9 @@ static void cmd_start_parsed(__attribute__((unused)) void *parsed_result,
 	int slave_core_id = rte_lcore_id();
 
 	rte_spinlock_trylock(&global_flag_stru_p->lock);
-	if (global_flag_stru_p->LcoreMainIsRunning == 0)	{
-		if (lcore_config[global_flag_stru_p->LcoreMainCore].state != WAIT)	{
+	if (global_flag_stru_p->LcoreMainIsRunning == 0) {
+		if (rte_eal_get_lcore_state(global_flag_stru_p->LcoreMainCore)
+		    != WAIT) {
 			rte_spinlock_unlock(&global_flag_stru_p->lock);
 			return;
 		}
@@ -765,7 +766,7 @@ static void prompt(__attribute__((unused)) void *arg1)
 int
 main(int argc, char *argv[])
 {
-	int ret;
+	int ret, slave_core_id;
 	uint16_t nb_ports, i;
 
 	/* init EAL */
@@ -797,13 +798,13 @@ main(int argc, char *argv[])
 	bond_port_init(mbuf_pool);
 
 	rte_spinlock_init(&global_flag_stru_p->lock);
-	int slave_core_id = rte_lcore_id();
 
 	/* check state of lcores */
 	RTE_LCORE_FOREACH_SLAVE(slave_core_id) {
-	if (lcore_config[slave_core_id].state != WAIT)
-		return -EBUSY;
+		if (rte_eal_get_lcore_state(slave_core_id) != WAIT)
+			return -EBUSY;
 	}
+
 	/* start lcore main on core != master_core - ARP response thread */
 	slave_core_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
 	if ((slave_core_id >= RTE_MAX_LCORE) || (slave_core_id == 0))
