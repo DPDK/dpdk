@@ -38,4 +38,71 @@ move_bad_mbufs(struct rte_mbuf *mb[], const uint32_t bad_idx[], uint32_t nb_mb,
 		mb[k + i] = drb[i];
 }
 
+/*
+ * Find packet's segment for the specified offset.
+ * ofs - at input should contain required offset, at output would contain
+ * offset value within the segment.
+ */
+static inline struct rte_mbuf *
+mbuf_get_seg_ofs(struct rte_mbuf *mb, uint32_t *ofs)
+{
+	uint32_t k, n, plen;
+	struct rte_mbuf *ms;
+
+	plen = mb->pkt_len;
+	n = *ofs;
+
+	if (n == plen) {
+		ms = rte_pktmbuf_lastseg(mb);
+		n = n + rte_pktmbuf_data_len(ms) - plen;
+	} else {
+		ms = mb;
+		for (k = rte_pktmbuf_data_len(ms); n >= k;
+				k = rte_pktmbuf_data_len(ms)) {
+			ms = ms->next;
+			n -= k;
+		}
+	}
+
+	*ofs = n;
+	return ms;
+}
+
+/*
+ * Trim multi-segment packet at the specified offset, and free
+ * all unused segments.
+ * mb - input packet
+ * ms - segment where to cut
+ * ofs - offset within the *ms*
+ * len - length to cut (from given offset to the end of the packet)
+ * Can be used in conjunction with mbuf_get_seg_ofs():
+ * ofs = new_len;
+ * ms = mbuf_get_seg_ofs(mb, &ofs);
+ * mbuf_cut_seg_ofs(mb, ms, ofs, mb->pkt_len - new_len);
+ */
+static inline void
+mbuf_cut_seg_ofs(struct rte_mbuf *mb, struct rte_mbuf *ms, uint32_t ofs,
+	uint32_t len)
+{
+	uint32_t n, slen;
+	struct rte_mbuf *mn;
+
+	slen = ms->data_len;
+	ms->data_len = ofs;
+
+	/* tail spawns through multiple segments */
+	if (slen < ofs + len) {
+		mn = ms->next;
+		ms->next = NULL;
+		for (n = 0; mn != NULL; n++) {
+			ms = mn->next;
+			rte_pktmbuf_free_seg(mn);
+			mn = ms;
+		}
+		mb->nb_segs -= n;
+	}
+
+	mb->pkt_len -= len;
+}
+
 #endif /* _MISC_H_ */

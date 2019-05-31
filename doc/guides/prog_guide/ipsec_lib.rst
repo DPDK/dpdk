@@ -162,7 +162,6 @@ Limitations
 The following features are not properly supported in the current version:
 
 *  ESP transport mode for IPv6 packets with extension headers.
-*  Multi-segment packets.
 *  Updates of the fields in inner IP header for tunnel mode
    (as described in RFC 4301, section 5.1.2).
 *  Hard/soft limit for SA lifetime (time interval/byte count).
