@@ -121,15 +121,7 @@ rte_lcore_count(void)
  * @return
  *   The relative index, or -1 if not enabled.
  */
-static inline int
-rte_lcore_index(int lcore_id)
-{
-	if (lcore_id >= RTE_MAX_LCORE)
-		return -1;
-	if (lcore_id < 0)
-		lcore_id = (int)rte_lcore_id();
-	return lcore_config[lcore_id].core_index;
-}
+int rte_lcore_index(int lcore_id);
 
 /**
  * Return the ID of the physical socket of the logical core we are
@@ -177,11 +169,35 @@ rte_socket_id_by_idx(unsigned int idx);
  * @return
  *   the ID of lcoreid's physical socket
  */
-static inline unsigned int
-rte_lcore_to_socket_id(unsigned int lcore_id)
-{
-	return lcore_config[lcore_id].socket_id;
-}
+unsigned int
+rte_lcore_to_socket_id(unsigned int lcore_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Return the id of the lcore on a socket starting from zero.
+ *
+ * @param lcore_id
+ *   The targeted lcore, or -1 for the current one.
+ * @return
+ *   The relative index, or -1 if not enabled.
+ */
+__rte_experimental int
+rte_lcore_to_cpu_id(int lcore_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Return the cpuset for a given lcore.
+ * @param lcore_id
+ *   the targeted lcore, which MUST be between 0 and RTE_MAX_LCORE-1.
+ * @return
+ *   The cpuset of that lcore
+ */
+__rte_experimental rte_cpuset_t
+rte_lcore_cpuset(unsigned int lcore_id);
 
 /**
  * Test if an lcore is enabled.

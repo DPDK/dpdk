@@ -287,6 +287,14 @@ DPDK_19.05 {
 
 } DPDK_18.11;
 
+DPDK_19.08 {
+	global:
+
+	rte_lcore_index;
+	rte_lcore_to_socket_id;
+
+} DPDK_19.05;
+
 EXPERIMENTAL {
 	global:
 
@@ -378,4 +386,8 @@ EXPERIMENTAL {
 	rte_service_lcore_attr_get;
 	rte_service_lcore_attr_reset_all;
 	rte_service_may_be_active;
+
+	# added in 19.08
+	rte_lcore_cpuset;
+	rte_lcore_to_cpu_id;
 };

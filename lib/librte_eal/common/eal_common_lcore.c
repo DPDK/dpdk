@@ -16,6 +16,39 @@
 #include "eal_private.h"
 #include "eal_thread.h"
 
+int rte_lcore_index(int lcore_id)
+{
+	if (unlikely(lcore_id >= RTE_MAX_LCORE))
+		return -1;
+
+	if (lcore_id < 0)
+		lcore_id = (int)rte_lcore_id();
+
+	return lcore_config[lcore_id].core_index;
+}
+
+int rte_lcore_to_cpu_id(int lcore_id)
+{
+	if (unlikely(lcore_id >= RTE_MAX_LCORE))
+		return -1;
+
+	if (lcore_id < 0)
+		lcore_id = (int)rte_lcore_id();
+
+	return lcore_config[lcore_id].core_id;
+}
+
+rte_cpuset_t rte_lcore_cpuset(unsigned int lcore_id)
+{
+	return lcore_config[lcore_id].cpuset;
+}
+
+unsigned int
+rte_lcore_to_socket_id(unsigned int lcore_id)
+{
+	return lcore_config[lcore_id].socket_id;
+}
+
 static int
 socket_id_cmp(const void *a, const void *b)
 {
