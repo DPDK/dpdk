@@ -279,6 +279,10 @@ void otx2_nix_rxq_info_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
 			   struct rte_eth_rxq_info *qinfo);
 void otx2_nix_txq_info_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
 			   struct rte_eth_txq_info *qinfo);
+uint32_t otx2_nix_rx_queue_count(struct rte_eth_dev *eth_dev, uint16_t qidx);
+int otx2_nix_tx_done_cleanup(void *txq, uint32_t free_cnt);
+int otx2_nix_rx_descriptor_done(void *rxq, uint16_t offset);
+int otx2_nix_rx_descriptor_status(void *rx_queue, uint16_t offset);
 
 void otx2_nix_promisc_config(struct rte_eth_dev *eth_dev, int en);
 void otx2_nix_promisc_enable(struct rte_eth_dev *eth_dev);

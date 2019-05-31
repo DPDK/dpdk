@@ -126,6 +126,89 @@ otx2_nix_txq_info_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
 	qinfo->conf.tx_deferred_start = 0;
 }
 
+static void
+nix_rx_head_tail_get(struct otx2_eth_dev *dev,
+		     uint32_t *head, uint32_t *tail, uint16_t queue_idx)
+{
+	uint64_t reg, val;
+
+	if (head == NULL || tail == NULL)
+		return;
+
+	reg = (((uint64_t)queue_idx) << 32);
+	val = otx2_atomic64_add_nosync(reg, (int64_t *)
+				       (dev->base + NIX_LF_CQ_OP_STATUS));
+	if (val & (OP_ERR | CQ_ERR))
+		val = 0;
+
+	*tail = (uint32_t)(val & 0xFFFFF);
+	*head = (uint32_t)((val >> 20) & 0xFFFFF);
+}
+
+uint32_t
+otx2_nix_rx_queue_count(struct rte_eth_dev *eth_dev, uint16_t queue_idx)
+{
+	struct otx2_eth_rxq *rxq = eth_dev->data->rx_queues[queue_idx];
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint32_t head, tail;
+
+	nix_rx_head_tail_get(dev, &head, &tail, queue_idx);
+	return (tail - head) % rxq->qlen;
+}
+
+static inline int
+nix_offset_has_packet(uint32_t head, uint32_t tail, uint16_t offset)
+{
+	/* Check given offset(queue index) has packet filled by HW */
+	if (tail > head && offset <= tail && offset >= head)
+		return 1;
+	/* Wrap around case */
+	if (head > tail && (offset >= head || offset <= tail))
+		return 1;
+
+	return 0;
+}
+
+int
+otx2_nix_rx_descriptor_done(void *rx_queue, uint16_t offset)
+{
+	struct otx2_eth_rxq *rxq = rx_queue;
+	uint32_t head, tail;
+
+	nix_rx_head_tail_get(otx2_eth_pmd_priv(rxq->eth_dev),
+			     &head, &tail, rxq->rq);
+
+	return nix_offset_has_packet(head, tail, offset);
+}
+
+int
+otx2_nix_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct otx2_eth_rxq *rxq = rx_queue;
+	uint32_t head, tail;
+
+	if (rxq->qlen >= offset)
+		return -EINVAL;
+
+	nix_rx_head_tail_get(otx2_eth_pmd_priv(rxq->eth_dev),
+			     &head, &tail, rxq->rq);
+
+	if (nix_offset_has_packet(head, tail, offset))
+		return RTE_ETH_RX_DESC_DONE;
+	else
+		return RTE_ETH_RX_DESC_AVAIL;
+}
+
+/* It is a NOP for octeontx2 as HW frees the buffer on xmit */
+int
+otx2_nix_tx_done_cleanup(void *txq, uint32_t free_cnt)
+{
+	RTE_SET_USED(txq);
+	RTE_SET_USED(free_cnt);
+
+	return 0;
+}
+
 int
 otx2_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool)
 {
