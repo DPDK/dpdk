@@ -770,6 +770,7 @@ flow_fetch_kex_cfg(struct otx2_eth_dev *dev)
 	struct otx2_npc_flow_info *npc = &dev->npc_flow;
 	struct npc_get_kex_cfg_rsp *kex_rsp;
 	struct otx2_mbox *mbox = dev->mbox;
+	char mkex_pfl_name[MKEX_NAME_LEN];
 	struct otx2_idev_kex_cfg *idev;
 	int rc = 0;
 
@@ -790,6 +791,12 @@ flow_fetch_kex_cfg(struct otx2_eth_dev *dev)
 		memcpy(&idev->kex_cfg, kex_rsp,
 		       sizeof(struct npc_get_kex_cfg_rsp));
 	}
+
+	otx2_mbox_memcpy(mkex_pfl_name,
+			 idev->kex_cfg.mkex_pfl_name, MKEX_NAME_LEN);
+
+	strlcpy((char *)dev->mkex_pfl_name,
+		mkex_pfl_name, sizeof(dev->mkex_pfl_name));
 
 	flow_process_mkex_cfg(npc, &idev->kex_cfg);
 

@@ -235,6 +235,7 @@ struct otx2_eth_dev {
 	uint8_t lso_tsov4_idx;
 	uint8_t lso_tsov6_idx;
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
+	uint8_t mkex_pfl_name[MKEX_NAME_LEN];
 	uint8_t max_mac_entries;
 	uint8_t lf_tx_stats;
 	uint8_t lf_rx_stats;
@@ -340,6 +341,8 @@ void otx2_nix_info_get(struct rte_eth_dev *eth_dev,
 int otx2_nix_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 			     enum rte_filter_type filter_type,
 			     enum rte_filter_op filter_op, void *arg);
+int otx2_nix_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
+			    size_t fw_size);
 int otx2_nix_get_module_info(struct rte_eth_dev *eth_dev,
 			     struct rte_eth_dev_module_info *modinfo);
 int otx2_nix_get_module_eeprom(struct rte_eth_dev *eth_dev,

@@ -1355,6 +1355,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.filter_ctrl              = otx2_nix_dev_filter_ctrl,
 	.get_module_info          = otx2_nix_get_module_info,
 	.get_module_eeprom        = otx2_nix_get_module_eeprom,
+	.fw_version_get           = otx2_nix_fw_version_get,
 	.flow_ctrl_get            = otx2_nix_flow_ctrl_get,
 	.flow_ctrl_set            = otx2_nix_flow_ctrl_set,
 	.timesync_enable          = otx2_nix_timesync_enable,

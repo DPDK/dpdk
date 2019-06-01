@@ -211,6 +211,25 @@ otx2_nix_tx_done_cleanup(void *txq, uint32_t free_cnt)
 }
 
 int
+otx2_nix_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
+			size_t fw_size)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	int rc = (int)fw_size;
+
+	if (fw_size > sizeof(dev->mkex_pfl_name))
+		rc = sizeof(dev->mkex_pfl_name);
+
+	rc = strlcpy(fw_version, (char *)dev->mkex_pfl_name, rc);
+
+	rc += 1; /* Add the size of '\0' */
+	if (fw_size < (uint32_t)rc)
+		return rc;
+
+	return 0;
+}
+
+int
 otx2_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool)
 {
 	RTE_SET_USED(eth_dev);
