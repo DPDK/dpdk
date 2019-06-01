@@ -157,13 +157,17 @@ struct sfc_dp_tx {
 	struct sfc_dp			dp;
 
 	unsigned int			features;
-#define SFC_DP_TX_FEAT_VLAN_INSERT	0x1
-#define SFC_DP_TX_FEAT_TSO		0x2
-#define SFC_DP_TX_FEAT_MULTI_SEG	0x4
-#define SFC_DP_TX_FEAT_MULTI_PROCESS	0x8
-#define SFC_DP_TX_FEAT_MULTI_POOL	0x10
-#define SFC_DP_TX_FEAT_REFCNT		0x20
-#define SFC_DP_TX_FEAT_TSO_ENCAP	0x40
+#define SFC_DP_TX_FEAT_MULTI_PROCESS	0x1
+	/**
+	 * Tx offload capabilities supported by the datapath on device
+	 * level only if HW/FW supports it.
+	 */
+	uint64_t			dev_offload_capa;
+	/**
+	 * Tx offload capabilities supported by the datapath per-queue
+	 * if HW/FW supports it.
+	 */
+	uint64_t			queue_offload_capa;
 	sfc_dp_tx_get_dev_info_t	*get_dev_info;
 	sfc_dp_tx_qsize_up_rings_t	*qsize_up_rings;
 	sfc_dp_tx_qcreate_t		*qcreate;
@@ -195,6 +199,12 @@ sfc_dp_find_tx_by_caps(struct sfc_dp_list *head, unsigned int avail_caps)
 
 /** Get Tx datapath ops by the datapath TxQ handle */
 const struct sfc_dp_tx *sfc_dp_tx_by_dp_txq(const struct sfc_dp_txq *dp_txq);
+
+static inline uint64_t
+sfc_dp_tx_offload_capa(const struct sfc_dp_tx *dp_tx)
+{
+	return dp_tx->dev_offload_capa | dp_tx->queue_offload_capa;
+}
 
 static inline int
 sfc_dp_tx_prepare_pkt(struct rte_mbuf *m,

@@ -34,47 +34,38 @@
  */
 #define SFC_TX_QFLUSH_POLL_ATTEMPTS	(2000)
 
+static uint64_t
+sfc_tx_get_offload_mask(struct sfc_adapter *sa)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint64_t no_caps = 0;
+
+	if (!encp->enc_hw_tx_insert_vlan_enabled)
+		no_caps |= DEV_TX_OFFLOAD_VLAN_INSERT;
+
+	if (!encp->enc_tunnel_encapsulations_supported)
+		no_caps |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+	if (!sa->tso)
+		no_caps |= DEV_TX_OFFLOAD_TCP_TSO;
+
+	if (!sa->tso_encap)
+		no_caps |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+			    DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+
+	return ~no_caps;
+}
+
 uint64_t
 sfc_tx_get_dev_offload_caps(struct sfc_adapter *sa)
 {
-	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
-	uint64_t caps = 0;
-
-	if ((sa->priv.dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) &&
-	    encp->enc_hw_tx_insert_vlan_enabled)
-		caps |= DEV_TX_OFFLOAD_VLAN_INSERT;
-
-	if (sa->priv.dp_tx->features & SFC_DP_TX_FEAT_MULTI_SEG)
-		caps |= DEV_TX_OFFLOAD_MULTI_SEGS;
-
-	if ((~sa->priv.dp_tx->features & SFC_DP_TX_FEAT_MULTI_POOL) &&
-	    (~sa->priv.dp_tx->features & SFC_DP_TX_FEAT_REFCNT))
-		caps |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
-
-	return caps;
+	return sa->priv.dp_tx->dev_offload_capa & sfc_tx_get_offload_mask(sa);
 }
 
 uint64_t
 sfc_tx_get_queue_offload_caps(struct sfc_adapter *sa)
 {
-	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
-	uint64_t caps = 0;
-
-	caps |= DEV_TX_OFFLOAD_IPV4_CKSUM;
-	caps |= DEV_TX_OFFLOAD_UDP_CKSUM;
-	caps |= DEV_TX_OFFLOAD_TCP_CKSUM;
-
-	if (encp->enc_tunnel_encapsulations_supported)
-		caps |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
-
-	if (sa->tso)
-		caps |= DEV_TX_OFFLOAD_TCP_TSO;
-
-	if (sa->tso_encap)
-		caps |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-			 DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
-
-	return caps;
+	return sa->priv.dp_tx->queue_offload_capa & sfc_tx_get_offload_mask(sa);
 }
 
 static int
@@ -1149,11 +1140,14 @@ struct sfc_dp_tx sfc_efx_tx = {
 		.type		= SFC_DP_TX,
 		.hw_fw_caps	= 0,
 	},
-	.features		= SFC_DP_TX_FEAT_VLAN_INSERT |
-				  SFC_DP_TX_FEAT_TSO |
-				  SFC_DP_TX_FEAT_MULTI_POOL |
-				  SFC_DP_TX_FEAT_REFCNT |
-				  SFC_DP_TX_FEAT_MULTI_SEG,
+	.features		= 0,
+	.dev_offload_capa	= DEV_TX_OFFLOAD_VLAN_INSERT |
+				  DEV_TX_OFFLOAD_MULTI_SEGS,
+	.queue_offload_capa	= DEV_TX_OFFLOAD_IPV4_CKSUM |
+				  DEV_TX_OFFLOAD_UDP_CKSUM |
+				  DEV_TX_OFFLOAD_TCP_CKSUM |
+				  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				  DEV_TX_OFFLOAD_TCP_TSO,
 	.qsize_up_rings		= sfc_efx_tx_qsize_up_rings,
 	.qcreate		= sfc_efx_tx_qcreate,
 	.qdestroy		= sfc_efx_tx_qdestroy,

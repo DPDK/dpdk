@@ -744,13 +744,16 @@ sfc_attach(struct sfc_adapter *sa)
 	sa->priv.shared->tunnel_encaps =
 		encp->enc_tunnel_encapsulations_supported;
 
-	if (sa->priv.dp_tx->features & SFC_DP_TX_FEAT_TSO) {
+	if (sfc_dp_tx_offload_capa(sa->priv.dp_tx) & DEV_TX_OFFLOAD_TCP_TSO) {
 		sa->tso = encp->enc_fw_assisted_tso_v2_enabled;
 		if (!sa->tso)
 			sfc_info(sa, "TSO support isn't available on this adapter");
 	}
 
-	if (sa->tso && sa->priv.dp_tx->features & SFC_DP_TX_FEAT_TSO_ENCAP) {
+	if (sa->tso &&
+	    (sfc_dp_tx_offload_capa(sa->priv.dp_tx) &
+	     (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+	      DEV_TX_OFFLOAD_GENEVE_TNL_TSO)) != 0) {
 		sa->tso_encap = encp->enc_fw_assisted_tso_v2_encap_enabled;
 		if (!sa->tso_encap)
 			sfc_info(sa, "Encapsulated TSO support isn't available on this adapter");
