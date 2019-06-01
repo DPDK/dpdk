@@ -557,8 +557,9 @@ struct sfc_dp_rx sfc_efx_rx = {
 		.type		= SFC_DP_RX,
 		.hw_fw_caps	= 0,
 	},
-	.features		= SFC_DP_RX_FEAT_SCATTER |
-				  SFC_DP_RX_FEAT_CHECKSUM,
+	.features		= 0,
+	.dev_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM,
+	.queue_offload_capa	= DEV_RX_OFFLOAD_SCATTER,
 	.qsize_up_rings		= sfc_efx_rx_qsize_up_rings,
 	.qcreate		= sfc_efx_rx_qcreate,
 	.qdestroy		= sfc_efx_rx_qdestroy,
@@ -806,36 +807,32 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	sfc_ev_qstop(rxq->evq);
 }
 
+static uint64_t
+sfc_rx_get_offload_mask(struct sfc_adapter *sa)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	uint64_t no_caps = 0;
+
+	if (encp->enc_tunnel_encapsulations_supported == 0)
+		no_caps |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+	return ~no_caps;
+}
+
 uint64_t
 sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa)
 {
-	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
-	uint64_t caps = 0;
+	uint64_t caps = sa->priv.dp_rx->dev_offload_capa;
 
 	caps |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 
-	if (sa->priv.dp_rx->features & SFC_DP_RX_FEAT_CHECKSUM) {
-		caps |= DEV_RX_OFFLOAD_IPV4_CKSUM;
-		caps |= DEV_RX_OFFLOAD_UDP_CKSUM;
-		caps |= DEV_RX_OFFLOAD_TCP_CKSUM;
-	}
-
-	if (encp->enc_tunnel_encapsulations_supported &&
-	    (sa->priv.dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
-		caps |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
-
-	return caps;
+	return caps & sfc_rx_get_offload_mask(sa);
 }
 
 uint64_t
 sfc_rx_get_queue_offload_caps(struct sfc_adapter *sa)
 {
-	uint64_t caps = 0;
-
-	if (sa->priv.dp_rx->features & SFC_DP_RX_FEAT_SCATTER)
-		caps |= DEV_RX_OFFLOAD_SCATTER;
-
-	return caps;
+	return sa->priv.dp_rx->queue_offload_capa & sfc_rx_get_offload_mask(sa);
 }
 
 static int
@@ -1047,7 +1044,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE;
 
 	if ((encp->enc_tunnel_encapsulations_supported != 0) &&
-	    (sa->priv.dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
+	    (sfc_dp_rx_offload_capa(sa->priv.dp_rx) &
+	     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) != 0)
 		rxq_info->type_flags |= EFX_RXQ_FLAG_INNER_CLASSES;
 
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_RX, sw_index,
