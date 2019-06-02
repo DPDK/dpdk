@@ -85,10 +85,11 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	uint16_t mb_trigger_offset = use_kong_mb ?
 		GRCPF_REG_KONG_COMM_TRIGGER : GRCPF_REG_CHIMP_COMM_TRIGGER;
 
-	if (bp->flags & BNXT_FLAG_SHORT_CMD) {
+	if (bp->flags & BNXT_FLAG_SHORT_CMD ||
+	    msg_len > bp->max_req_len) {
 		void *short_cmd_req = bp->hwrm_short_cmd_req_addr;
 
-		memset(short_cmd_req, 0, bp->max_req_len);
+		memset(short_cmd_req, 0, bp->hwrm_max_ext_req_len);
 		memcpy(short_cmd_req, req, msg_len);
 
 		short_input.req_type = rte_cpu_to_le_16(req->req_type);
@@ -128,8 +129,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	for (i = 0; i < HWRM_CMD_TIMEOUT; i++) {
 		/* Sanity check on the resp->resp_len */
 		rte_rmb();
-		if (resp->resp_len && resp->resp_len <=
-				bp->max_resp_len) {
+		if (resp->resp_len && resp->resp_len <= bp->max_resp_len) {
 			/* Last byte of resp contains the valid key */
 			valid = (uint8_t *)resp + resp->resp_len - 1;
 			if (*valid == HWRM_RESP_VALID_KEY)
@@ -832,7 +832,11 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 		rc = -EINVAL;
 	}
 	bp->max_req_len = rte_le_to_cpu_16(resp->max_req_win_len);
-	max_resp_len = resp->max_resp_len;
+	bp->hwrm_max_ext_req_len = rte_le_to_cpu_16(resp->max_ext_req_len);
+	if (bp->hwrm_max_ext_req_len < HWRM_MAX_REQ_LEN)
+		bp->hwrm_max_ext_req_len = HWRM_MAX_REQ_LEN;
+
+	max_resp_len = rte_le_to_cpu_16(resp->max_resp_len);
 	dev_caps_cfg = rte_le_to_cpu_32(resp->dev_caps_cfg);
 
 	if (bp->max_resp_len != max_resp_len) {
@@ -864,11 +868,22 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	    (dev_caps_cfg &
 	     HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_REQUIRED)) {
 		PMD_DRV_LOG(DEBUG, "Short command supported\n");
+		bp->flags |= BNXT_FLAG_SHORT_CMD;
+	}
+
+	if (((dev_caps_cfg &
+	      HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_SUPPORTED) &&
+	     (dev_caps_cfg &
+	      HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_REQUIRED)) ||
+	    bp->hwrm_max_ext_req_len > HWRM_MAX_REQ_LEN) {
+		sprintf(type, "bnxt_hwrm_short_%04x:%02x:%02x:%02x",
+			bp->pdev->addr.domain, bp->pdev->addr.bus,
+			bp->pdev->addr.devid, bp->pdev->addr.function);
 
 		rte_free(bp->hwrm_short_cmd_req_addr);
 
-		bp->hwrm_short_cmd_req_addr = rte_malloc(type,
-							bp->max_req_len, 0);
+		bp->hwrm_short_cmd_req_addr =
+				rte_malloc(type, bp->hwrm_max_ext_req_len, 0);
 		if (bp->hwrm_short_cmd_req_addr == NULL) {
 			rc = -ENOMEM;
 			goto error;
@@ -883,8 +898,6 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto error;
 		}
-
-		bp->flags |= BNXT_FLAG_SHORT_CMD;
 	}
 	if (dev_caps_cfg &
 	    HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_KONG_MB_CHNL_SUPPORTED) {
