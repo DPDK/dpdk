@@ -10,11 +10,12 @@
 #include <rte_io.h>
 
 #define CMP_VALID(cmp, raw_cons, ring)					\
-	(!!(((struct cmpl_base *)(cmp))->info3_v & CMPL_BASE_V) ==	\
-	 !((raw_cons) & ((ring)->ring_size)))
+	(!!(rte_le_to_cpu_32(((struct cmpl_base *)(cmp))->info3_v) &	\
+	    CMPL_BASE_V) == !((raw_cons) & ((ring)->ring_size)))
 
 #define CMPL_VALID(cmp, v)						\
-	(!!(((struct cmpl_base *)(cmp))->info3_v & CMPL_BASE_V) == !(v))
+	(!!(rte_le_to_cpu_32(((struct cmpl_base *)(cmp))->info3_v) &	\
+	    CMPL_BASE_V) == !(v))
 
 #define CMP_TYPE(cmp)						\
 	(((struct cmpl_base *)cmp)->type & CMPL_BASE_TYPE_MASK)
@@ -31,7 +32,7 @@
 
 #define NEXT_CMPL(cpr, idx, v, inc)	do { \
 	(idx) += (inc); \
-	if (unlikely((idx) == (cpr)->cp_ring_struct->ring_size)) { \
+	if (unlikely((idx) >= (cpr)->cp_ring_struct->ring_size)) { \
 		(v) = !(v); \
 		(idx) = 0; \
 	} \
