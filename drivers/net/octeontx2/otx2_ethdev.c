@@ -14,12 +14,6 @@
 
 #include "otx2_ethdev.h"
 
-static inline void
-otx2_eth_set_tx_function(struct rte_eth_dev *eth_dev)
-{
-	RTE_SET_USED(eth_dev);
-}
-
 static inline uint64_t
 nix_get_rx_offload_capa(struct otx2_eth_dev *dev)
 {

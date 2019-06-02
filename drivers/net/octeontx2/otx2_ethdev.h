@@ -484,6 +484,7 @@ int otx2_ethdev_parse_devargs(struct rte_devargs *devargs,
 
 /* Rx and Tx routines */
 void otx2_eth_set_rx_function(struct rte_eth_dev *eth_dev);
+void otx2_eth_set_tx_function(struct rte_eth_dev *eth_dev);
 void otx2_nix_form_default_desc(struct otx2_eth_txq *txq);
 
 /* Timesync - PTP routines */

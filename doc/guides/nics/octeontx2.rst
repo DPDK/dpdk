@@ -25,6 +25,7 @@ Features of the OCTEON TX2 Ethdev PMD are:
 - Receiver Side Scaling (RSS)
 - MAC/VLAN filtering
 - Generic flow API
+- Inner and Outer Checksum offload
 - VLAN/QinQ stripping and insertion
 - Port hardware statistics
 - Link state information
