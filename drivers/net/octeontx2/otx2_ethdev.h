@@ -280,6 +280,7 @@ struct otx2_eth_dev {
 	struct otx2_eth_qconf *tx_qconf;
 	struct otx2_eth_qconf *rx_qconf;
 	struct rte_eth_dev *eth_dev;
+	eth_rx_burst_t rx_pkt_burst_no_offload;
 	/* PTP counters */
 	bool ptp_en;
 	struct otx2_timesync_info tstamp;
@@ -482,6 +483,7 @@ int otx2_ethdev_parse_devargs(struct rte_devargs *devargs,
 			      struct otx2_eth_dev *dev);
 
 /* Rx and Tx routines */
+void otx2_eth_set_rx_function(struct rte_eth_dev *eth_dev);
 void otx2_nix_form_default_desc(struct otx2_eth_txq *txq);
 
 /* Timesync - PTP routines */

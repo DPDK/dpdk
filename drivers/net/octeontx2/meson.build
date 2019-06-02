@@ -2,7 +2,7 @@
 # Copyright(C) 2019 Marvell International Ltd.
 #
 
-sources = files(
+sources = files('otx2_rx.c',
 		'otx2_tm.c',
 		'otx2_rss.c',
 		'otx2_mac.c',

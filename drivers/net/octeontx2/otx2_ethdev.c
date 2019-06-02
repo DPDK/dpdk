@@ -15,12 +15,6 @@
 #include "otx2_ethdev.h"
 
 static inline void
-otx2_eth_set_rx_function(struct rte_eth_dev *eth_dev)
-{
-	RTE_SET_USED(eth_dev);
-}
-
-static inline void
 otx2_eth_set_tx_function(struct rte_eth_dev *eth_dev)
 {
 	RTE_SET_USED(eth_dev);
