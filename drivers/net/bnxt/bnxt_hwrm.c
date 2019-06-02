@@ -1109,7 +1109,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 	case HWRM_RING_ALLOC_INPUT_RING_TYPE_RX:
 		req.ring_type = ring_type;
 		req.cmpl_ring_id = rte_cpu_to_le_16(cmpl_ring_id);
-		req.stat_ctx_id = rte_cpu_to_le_16(stats_ctx_id);
+		req.stat_ctx_id = rte_cpu_to_le_32(stats_ctx_id);
 		if (stats_ctx_id != INVALID_STATS_CTX_ID)
 			enables |=
 			HWRM_RING_ALLOC_INPUT_ENABLES_STAT_CTX_ID_VALID;
@@ -1259,7 +1259,7 @@ int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 
 	HWRM_PREP(req, STAT_CTX_CLR_STATS, BNXT_USE_CHIMP_MB);
 
-	req.stat_ctx_id = rte_cpu_to_le_16(cpr->hw_stats_ctx_id);
+	req.stat_ctx_id = rte_cpu_to_le_32(cpr->hw_stats_ctx_id);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
@@ -1287,7 +1287,7 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 
 	HWRM_CHECK_RESULT();
 
-	cpr->hw_stats_ctx_id = rte_le_to_cpu_16(resp->stat_ctx_id);
+	cpr->hw_stats_ctx_id = rte_le_to_cpu_32(resp->stat_ctx_id);
 
 	HWRM_UNLOCK();
 
@@ -1303,7 +1303,7 @@ int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 
 	HWRM_PREP(req, STAT_CTX_FREE, BNXT_USE_CHIMP_MB);
 
-	req.stat_ctx_id = rte_cpu_to_le_16(cpr->hw_stats_ctx_id);
+	req.stat_ctx_id = rte_cpu_to_le_32(cpr->hw_stats_ctx_id);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
