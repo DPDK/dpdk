@@ -371,6 +371,10 @@ int otx2_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx);
 int otx2_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx);
 uint64_t otx2_nix_rxq_mbuf_setup(struct otx2_eth_dev *dev, uint16_t port_id);
 
+/* MTU */
+int otx2_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
+int otx2_nix_recalc_mtu(struct rte_eth_dev *eth_dev);
+
 /* Link */
 void otx2_nix_toggle_flag_link_cfg(struct otx2_eth_dev *dev, bool set);
 int otx2_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);

@@ -1476,6 +1476,12 @@ otx2_nix_dev_start(struct rte_eth_dev *eth_dev)
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int rc, i;
 
+	if (eth_dev->data->nb_rx_queues != 0) {
+		rc = otx2_nix_recalc_mtu(eth_dev);
+		if (rc)
+			return rc;
+	}
+
 	/* Start rx queues */
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		rc = otx2_nix_rx_queue_start(eth_dev, i);
@@ -1546,6 +1552,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.stats_get                = otx2_nix_dev_stats_get,
 	.stats_reset              = otx2_nix_dev_stats_reset,
 	.get_reg                  = otx2_nix_dev_get_reg,
+	.mtu_set                  = otx2_nix_mtu_set,
 	.mac_addr_add             = otx2_nix_mac_addr_add,
 	.mac_addr_remove          = otx2_nix_mac_addr_del,
 	.mac_addr_set             = otx2_nix_mac_addr_set,

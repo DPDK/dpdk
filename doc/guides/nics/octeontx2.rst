@@ -30,6 +30,7 @@ Features of the OCTEON TX2 Ethdev PMD are:
 - Port hardware statistics
 - Link state information
 - Link flow control
+- MTU update
 - Scatter-Gather IO support
 - Vector Poll mode driver
 - Debug utilities - Context dump and error interrupt support
