@@ -1136,17 +1136,17 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		if (rc == 0 && resp->error_code)
 			rc = rte_le_to_cpu_16(resp->error_code);
 		switch (ring_type) {
-		case HWRM_RING_FREE_INPUT_RING_TYPE_L2_CMPL:
+		case HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL:
 			PMD_DRV_LOG(ERR,
 				"hwrm_ring_alloc cp failed. rc:%d\n", rc);
 			HWRM_UNLOCK();
 			return rc;
-		case HWRM_RING_FREE_INPUT_RING_TYPE_RX:
+		case HWRM_RING_ALLOC_INPUT_RING_TYPE_RX:
 			PMD_DRV_LOG(ERR,
 				"hwrm_ring_alloc rx failed. rc:%d\n", rc);
 			HWRM_UNLOCK();
 			return rc;
-		case HWRM_RING_FREE_INPUT_RING_TYPE_TX:
+		case HWRM_RING_ALLOC_INPUT_RING_TYPE_TX:
 			PMD_DRV_LOG(ERR,
 				"hwrm_ring_alloc tx failed. rc:%d\n", rc);
 			HWRM_UNLOCK();
