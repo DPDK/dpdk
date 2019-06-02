@@ -23,6 +23,11 @@
 #define NIX_RX_OFFLOAD_MARK_UPDATE_F   BIT(4)
 #define NIX_RX_OFFLOAD_TSTAMP_F        BIT(5)
 
+/* Flags to control cqe_to_mbuf conversion function.
+ * Defining it from backwards to denote its been
+ * not used as offload flags to pick function
+ */
+#define NIX_RX_MULTI_SEG_F            BIT(15)
 #define NIX_TIMESYNC_RX_OFFSET		8
 
 struct otx2_timesync_info {
@@ -134,6 +139,51 @@ nix_update_match_id(const uint16_t match_id, uint64_t ol_flags,
 }
 
 static __rte_always_inline void
+nix_cqe_xtract_mseg(const struct nix_rx_parse_s *rx,
+		    struct rte_mbuf *mbuf, uint64_t rearm)
+{
+	const rte_iova_t *iova_list;
+	struct rte_mbuf *head;
+	const rte_iova_t *eol;
+	uint8_t nb_segs;
+	uint64_t sg;
+
+	sg = *(const uint64_t *)(rx + 1);
+	nb_segs = (sg >> 48) & 0x3;
+	mbuf->nb_segs = nb_segs;
+	mbuf->data_len = sg & 0xFFFF;
+	sg = sg >> 16;
+
+	eol = ((const rte_iova_t *)(rx + 1) + ((rx->desc_sizem1 + 1) << 1));
+	/* Skip SG_S and first IOVA*/
+	iova_list = ((const rte_iova_t *)(rx + 1)) + 2;
+	nb_segs--;
+
+	rearm = rearm & ~0xFFFF;
+
+	head = mbuf;
+	while (nb_segs) {
+		mbuf->next = ((struct rte_mbuf *)*iova_list) - 1;
+		mbuf = mbuf->next;
+
+		__mempool_check_cookies(mbuf->pool, (void **)&mbuf, 1, 1);
+
+		mbuf->data_len = sg & 0xFFFF;
+		sg = sg >> 16;
+		*(uint64_t *)(&mbuf->rearm_data) = rearm;
+		nb_segs--;
+		iova_list++;
+
+		if (!nb_segs && (iova_list + 1 < eol)) {
+			sg = *(const uint64_t *)(iova_list);
+			nb_segs = (sg >> 48) & 0x3;
+			head->nb_segs += nb_segs;
+			iova_list = (const rte_iova_t *)(iova_list + 1);
+		}
+	}
+}
+
+static __rte_always_inline void
 otx2_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 		     struct rte_mbuf *mbuf, const void *lookup_mem,
 		     const uint64_t val, const uint16_t flag)
@@ -178,7 +228,10 @@ otx2_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 	*(uint64_t *)(&mbuf->rearm_data) = val;
 	mbuf->pkt_len = len;
 
-	mbuf->data_len = len;
+	if (flag & NIX_RX_MULTI_SEG_F)
+		nix_cqe_xtract_mseg(rx, mbuf, val);
+	else
+		mbuf->data_len = len;
 }
 
 #define CKSUM_F NIX_RX_OFFLOAD_CHECKSUM_F

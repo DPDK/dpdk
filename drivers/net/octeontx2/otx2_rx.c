@@ -92,6 +92,14 @@ otx2_nix_recv_pkts_ ## name(void *rx_queue,				       \
 {									       \
 	return nix_recv_pkts(rx_queue, rx_pkts, pkts, (flags));		       \
 }									       \
+									       \
+static uint16_t __rte_noinline	__hot					       \
+otx2_nix_recv_pkts_mseg_ ## name(void *rx_queue,			       \
+			struct rte_mbuf **rx_pkts, uint16_t pkts)	       \
+{									       \
+	return nix_recv_pkts(rx_queue, rx_pkts, pkts,			       \
+			     (flags) | NIX_RX_MULTI_SEG_F);		       \
+}									       \
 
 NIX_RX_FASTPATH_MODES
 #undef R
@@ -115,6 +123,8 @@ pick_rx_func(struct rte_eth_dev *eth_dev,
 void
 otx2_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 {
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
 	const eth_rx_burst_t nix_eth_rx_burst[2][2][2][2][2][2] = {
 #define R(name, f5, f4, f3, f2, f1, f0, flags)				\
 	[f5][f4][f3][f2][f1][f0] =  otx2_nix_recv_pkts_ ## name,
@@ -123,7 +133,22 @@ NIX_RX_FASTPATH_MODES
 #undef R
 	};
 
+	const eth_rx_burst_t nix_eth_rx_burst_mseg[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+	[f5][f4][f3][f2][f1][f0] =  otx2_nix_recv_pkts_mseg_ ## name,
+
+NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
 	pick_rx_func(eth_dev, nix_eth_rx_burst);
 
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
+		pick_rx_func(eth_dev, nix_eth_rx_burst_mseg);
+
+	/* Copy multi seg version with no offload for tear down sequence */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		dev->rx_pkt_burst_no_offload =
+			nix_eth_rx_burst_mseg[0][0][0][0][0][0];
 	rte_mb();
 }
