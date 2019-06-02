@@ -415,7 +415,7 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 	if (nb_tx_pkts) {
 		bnxt_tx_cmp(txq, nb_tx_pkts);
 		cpr->cp_raw_cons = raw_cons;
-		B_CP_DB(cpr, cpr->cp_raw_cons, ring_mask);
+		bnxt_db_cq(cpr);
 	}
 
 	return nb_tx_pkts;
@@ -452,7 +452,7 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	if (likely(nb_tx_pkts)) {
 		/* Request a completion on the last packet */
 		last_txbd->flags_type &= ~TX_BD_LONG_FLAGS_NO_CMPL;
-		B_TX_DB(txq->tx_ring->tx_doorbell, txq->tx_ring->tx_prod);
+		bnxt_db_write(&txq->tx_ring->tx_db, txq->tx_ring->tx_prod);
 	}
 
 	return nb_tx_pkts;

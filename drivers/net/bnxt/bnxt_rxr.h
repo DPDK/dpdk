@@ -81,8 +81,8 @@ struct bnxt_sw_rx_bd {
 struct bnxt_rx_ring_info {
 	uint16_t		rx_prod;
 	uint16_t		ag_prod;
-	void			*rx_doorbell;
-	void			*ag_doorbell;
+	struct bnxt_db_info     rx_db;
+	struct bnxt_db_info     ag_db;
 
 	struct rx_prod_pkt_bd	*rx_desc_ring;
 	struct rx_prod_pkt_bd	*ag_desc_ring;

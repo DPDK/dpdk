@@ -74,4 +74,15 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index);
 int bnxt_alloc_hwrm_rings(struct bnxt *bp);
 
+static inline void bnxt_db_write(struct bnxt_db_info *db, uint32_t idx)
+{
+	rte_write32(db->db_key32 | idx, db->doorbell);
+}
+
+static inline void bnxt_db_cq(struct bnxt_cp_ring_info *cpr)
+{
+	rte_smp_wmb();
+	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+}
+
 #endif

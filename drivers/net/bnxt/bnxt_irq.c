@@ -71,7 +71,7 @@ void bnxt_disable_int(struct bnxt *bp)
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
 
 	/* Only the default completion ring */
-	if (cpr != NULL && cpr->cp_doorbell != NULL)
+	if (cpr != NULL && cpr->cp_db.doorbell != NULL)
 		B_CP_DB_DISARM(cpr);
 }
 
@@ -80,7 +80,7 @@ void bnxt_enable_int(struct bnxt *bp)
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
 
 	/* Only the default completion ring */
-	if (cpr != NULL && cpr->cp_doorbell != NULL)
+	if (cpr != NULL && cpr->cp_db.doorbell != NULL)
 		B_CP_DB_ARM(cpr);
 }
 

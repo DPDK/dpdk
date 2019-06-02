@@ -552,7 +552,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 		/* Post some Rx buf early in case of larger burst processing */
 		if (nb_rx_pkts == BNXT_RX_POST_THRESH)
-			B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+			bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
 	}
 
 	cpr->cp_raw_cons = raw_cons;
@@ -565,13 +565,13 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	}
 
 	if (prod != rxr->rx_prod)
-		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+		bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
 
 	/* Ring the AGG ring DB */
 	if (ag_prod != rxr->ag_prod)
-		B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
+		bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
 
-	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+	bnxt_db_cq(cpr);
 
 	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
 	if (rc == -ENOMEM) {
@@ -588,7 +588,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			/* This slot is empty. Alloc buffer for Rx */
 			if (!bnxt_alloc_rx_data(rxq, rxr, i)) {
 				rxr->rx_prod = i;
-				B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+				bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
 			} else {
 				PMD_DRV_LOG(ERR, "Alloc  mbuf failed\n");
 				break;

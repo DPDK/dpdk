@@ -92,7 +92,7 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 	}
 
 	rxq->rxrearm_start += RTE_BNXT_RXQ_REARM_THRESH;
-	B_RX_DB(rxr->rx_doorbell, rxq->rxrearm_start - 1);
+	bnxt_db_write(&rxr->rx_db, rxq->rxrearm_start - 1);
 	if (rxq->rxrearm_start >= rxq->nb_rx_desc)
 		rxq->rxrearm_start = 0;
 
@@ -272,7 +272,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rxq->rxrearm_nb += nb_rx_pkts;
 	cpr->cp_raw_cons = raw_cons;
 	if (nb_rx_pkts || evt)
-		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+		bnxt_db_cq(cpr);
 
 	return nb_rx_pkts;
 }
@@ -349,7 +349,7 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 	if (nb_tx_pkts) {
 		bnxt_tx_cmp_vec(txq, nb_tx_pkts);
 		cpr->cp_raw_cons = raw_cons;
-		B_CP_DB(cpr, raw_cons, ring_mask);
+		bnxt_db_cq(cpr);
 	}
 }
 
@@ -420,7 +420,7 @@ bnxt_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	rte_compiler_barrier();
-	B_TX_DB(txr->tx_doorbell, prod);
+	bnxt_db_write(&txr->tx_db, prod);
 
 	txr->tx_prod = prod;
 

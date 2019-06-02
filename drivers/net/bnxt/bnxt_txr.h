@@ -18,7 +18,7 @@
 struct bnxt_tx_ring_info {
 	uint16_t		tx_prod;
 	uint16_t		tx_cons;
-	void			*tx_doorbell;
+	struct bnxt_db_info     tx_db;
 
 	struct tx_bd_long	*tx_desc_ring;
 	struct bnxt_sw_tx_bd	*tx_buf_ring;

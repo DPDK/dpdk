@@ -276,31 +276,48 @@ static void bnxt_init_dflt_coal(struct bnxt_coal *coal)
 	coal->cmpl_aggr_dma_tmr_during_int = BNXT_CMPL_AGGR_DMA_TMR_DURING_INT;
 }
 
+static void bnxt_set_db(struct bnxt *bp,
+			struct bnxt_db_info *db,
+			uint32_t ring_type,
+			uint32_t map_idx)
+{
+	db->doorbell = (char *)bp->doorbell_base + map_idx * 0x80;
+	switch (ring_type) {
+	case HWRM_RING_ALLOC_INPUT_RING_TYPE_TX:
+		db->db_key32 = DB_KEY_TX;
+		break;
+	case HWRM_RING_ALLOC_INPUT_RING_TYPE_RX:
+		db->db_key32 = DB_KEY_RX;
+		break;
+	case HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL:
+		db->db_key32 = DB_KEY_CP;
+		break;
+	}
+}
+
 int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 {
-	struct rte_pci_device *pci_dev = bp->pdev;
 	struct bnxt_rx_queue *rxq = bp->rx_queues[queue_index];
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 	struct bnxt_ring *ring = rxr->rx_ring_struct;
 	unsigned int map_idx = queue_index + bp->rx_cp_nr_rings;
+	uint8_t ring_type;
 	int rc = 0;
 
 	bp->grp_info[queue_index].fw_stats_ctx = cpr->hw_stats_ctx_id;
 
 	/* Rx cmpl */
-	rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
-				  HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
-				  queue_index, HWRM_NA_SIGNATURE,
-				  HWRM_NA_SIGNATURE);
+	ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL;
+	rc = bnxt_hwrm_ring_alloc(bp, cp_ring,  ring_type, queue_index,
+				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE);
 	if (rc)
 		goto err_out;
 
-	cpr->cp_doorbell = (char *)pci_dev->mem_resource[2].addr +
-		queue_index * BNXT_DB_SIZE;
 	bp->grp_info[queue_index].cp_fw_ring_id = cp_ring->fw_ring_id;
-	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+	bnxt_set_db(bp, &cpr->cp_db, ring_type, queue_index);
+	bnxt_db_cq(cpr);
 
 	if (!queue_index) {
 		/*
@@ -314,35 +331,33 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 			goto err_out;
 	}
 	/* Rx ring */
-	rc = bnxt_hwrm_ring_alloc(bp, ring, HWRM_RING_ALLOC_INPUT_RING_TYPE_RX,
-				  queue_index, cpr->hw_stats_ctx_id,
-				  cp_ring->fw_ring_id);
+	ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_RX;
+	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, queue_index,
+				  cpr->hw_stats_ctx_id, cp_ring->fw_ring_id);
 	if (rc)
 		goto err_out;
 
 	rxr->rx_prod = 0;
-	rxr->rx_doorbell = (char *)pci_dev->mem_resource[2].addr +
-		queue_index * BNXT_DB_SIZE;
 	bp->grp_info[queue_index].rx_fw_ring_id = ring->fw_ring_id;
-	B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+	bnxt_set_db(bp, &rxr->rx_db, ring_type, queue_index);
+	bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
 
-	ring = rxr->ag_ring_struct;
 	/* Agg ring */
+	ring = rxr->ag_ring_struct;
 	if (!ring)
 		PMD_DRV_LOG(ERR, "Alloc AGG Ring is NULL!\n");
 
-	rc = bnxt_hwrm_ring_alloc(bp, ring, HWRM_RING_ALLOC_INPUT_RING_TYPE_RX,
-				  map_idx, HWRM_NA_SIGNATURE,
-				  cp_ring->fw_ring_id);
+	ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_RX;
+	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, map_idx,
+				  HWRM_NA_SIGNATURE, cp_ring->fw_ring_id);
 	if (rc)
 		goto err_out;
 
 	PMD_DRV_LOG(DEBUG, "Alloc AGG Done!\n");
 	rxr->ag_prod = 0;
-	rxr->ag_doorbell = (char *)pci_dev->mem_resource[2].addr +
-		map_idx * BNXT_DB_SIZE;
 	bp->grp_info[queue_index].ag_fw_ring_id = ring->fw_ring_id;
-	B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
+	bnxt_set_db(bp, &rxr->ag_db, ring_type, map_idx);
+	bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
 
 	rxq->rx_buf_use_size = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
 		RTE_ETHER_CRC_LEN + (2 * VLAN_TAG_SIZE);
@@ -356,8 +371,8 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 			rc = -ENOMEM;
 			goto err_out;
 		}
-		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
-		B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
+		bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
+		bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
 	}
 	rxq->index = queue_index;
 	PMD_DRV_LOG(INFO,
@@ -368,6 +383,7 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 err_out:
 	return rc;
 }
+
 /* ring_grp usage:
  * [0] = default completion ring
  * [1 -> +rx_cp_nr_rings] = rx_cp, rx rings
@@ -377,6 +393,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 {
 	struct bnxt_coal coal;
 	unsigned int i;
+	uint8_t ring_type;
 	int rc = 0;
 
 	bnxt_init_dflt_coal(&coal);
@@ -392,18 +409,16 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		bp->grp_info[i].fw_stats_ctx = cpr->hw_stats_ctx_id;
 
 		/* Rx cmpl */
-		rc = bnxt_hwrm_ring_alloc
-			(bp,
-			 cp_ring,
-			 HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
-			 i,
-			 HWRM_NA_SIGNATURE,
-			 HWRM_NA_SIGNATURE);
+		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL;
+		rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, i,
+					  HWRM_NA_SIGNATURE,
+					  HWRM_NA_SIGNATURE);
 		if (rc)
 			goto err_out;
-		cpr->cp_doorbell = (char *)bp->doorbell_base + i * 0x80;
 		bp->grp_info[i].cp_fw_ring_id = cp_ring->fw_ring_id;
-		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+		bnxt_set_db(bp, &cpr->cp_db, ring_type, i);
+		bnxt_db_cq(cpr);
+
 		bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
 
 		if (!i) {
@@ -420,37 +435,36 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		}
 
 		/* Rx ring */
-		rc = bnxt_hwrm_ring_alloc(bp,
-					  ring,
-					  HWRM_RING_ALLOC_INPUT_RING_TYPE_RX,
-					  i,
+		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_RX;
+		rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, i,
 					  cpr->hw_stats_ctx_id,
 					  cp_ring->fw_ring_id);
 		if (rc)
 			goto err_out;
 		rxr->rx_prod = 0;
-		rxr->rx_doorbell = (char *)bp->doorbell_base + i * 0x80;
 		bp->grp_info[i].rx_fw_ring_id = ring->fw_ring_id;
-		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+		bnxt_set_db(bp, &rxr->rx_db, ring_type, i);
+		bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
 
-		ring = rxr->ag_ring_struct;
 		/* Agg ring */
+		ring = rxr->ag_ring_struct;
+
 		if (ring == NULL) {
 			PMD_DRV_LOG(ERR, "Alloc AGG Ring is NULL!\n");
 			goto err_out;
 		}
 
-		rc = bnxt_hwrm_ring_alloc(bp, ring,
-				HWRM_RING_ALLOC_INPUT_RING_TYPE_RX,
-				map_idx, HWRM_NA_SIGNATURE,
-				cp_ring->fw_ring_id);
+		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_RX;
+		rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, map_idx,
+					  HWRM_NA_SIGNATURE,
+					  cp_ring->fw_ring_id);
 		if (rc)
 			goto err_out;
-		PMD_DRV_LOG(DEBUG, "Alloc AGG Done!\n");
+
 		rxr->ag_prod = 0;
-		rxr->ag_doorbell = (char *)bp->doorbell_base + map_idx * 0x80;
 		bp->grp_info[i].ag_fw_ring_id = ring->fw_ring_id;
-		B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
+		bnxt_set_db(bp, &rxr->ag_db, ring_type, map_idx);
+		bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
 
 		rxq->rx_buf_use_size = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
 					RTE_ETHER_CRC_LEN + (2 * VLAN_TAG_SIZE);
@@ -459,8 +473,8 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 			bnxt_rx_queue_release_op(rxq);
 			return -ENOMEM;
 		}
-		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
-		B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
+		bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
+		bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
 		rxq->index = i;
 	}
 
@@ -473,25 +487,25 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		unsigned int idx = i + bp->rx_cp_nr_rings;
 
 		/* Tx cmpl */
-		rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
-					HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
-					idx, HWRM_NA_SIGNATURE,
-					HWRM_NA_SIGNATURE);
+		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL;
+		rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, idx,
+					  HWRM_NA_SIGNATURE,
+					  HWRM_NA_SIGNATURE);
 		if (rc)
 			goto err_out;
 
-		cpr->cp_doorbell = (char *)bp->doorbell_base + idx * 0x80;
-		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+		bnxt_set_db(bp, &cpr->cp_db, ring_type, idx);
+		bnxt_db_cq(cpr);
 
 		/* Tx ring */
-		rc = bnxt_hwrm_ring_alloc(bp, ring,
-					HWRM_RING_ALLOC_INPUT_RING_TYPE_TX,
-					idx, cpr->hw_stats_ctx_id,
-					cp_ring->fw_ring_id);
+		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_TX;
+		rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, idx,
+					  cpr->hw_stats_ctx_id,
+					  cp_ring->fw_ring_id);
 		if (rc)
 			goto err_out;
 
-		txr->tx_doorbell = (char *)bp->doorbell_base + idx * 0x80;
+		bnxt_set_db(bp, &txr->tx_db, ring_type, idx);
 		txq->index = idx;
 		bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
 	}
