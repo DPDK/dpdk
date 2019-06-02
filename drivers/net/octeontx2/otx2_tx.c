@@ -49,6 +49,37 @@ nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return pkts;
 }
 
+static __rte_always_inline uint16_t
+nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
+		   uint16_t pkts, uint64_t *cmd, const uint16_t flags)
+{
+	struct otx2_eth_txq *txq = tx_queue; uint64_t i;
+	const rte_iova_t io_addr = txq->io_addr;
+	void *lmt_addr = txq->lmt_addr;
+	uint16_t segdw;
+
+	NIX_XMIT_FC_OR_RETURN(txq, pkts);
+
+	otx2_lmt_mov(cmd, &txq->cmd[0], otx2_nix_tx_ext_subs(flags));
+
+	/* Lets commit any changes in the packet */
+	rte_cio_wmb();
+
+	for (i = 0; i < pkts; i++) {
+		otx2_nix_xmit_prepare(tx_pkts[i], cmd, flags);
+		segdw = otx2_nix_prepare_mseg(tx_pkts[i], cmd, flags);
+		otx2_nix_xmit_prepare_tstamp(cmd, &txq->cmd[0],
+					     tx_pkts[i]->ol_flags, segdw,
+					     flags);
+		otx2_nix_xmit_mseg_one(cmd, lmt_addr, io_addr, segdw);
+	}
+
+	/* Reduce the cached count */
+	txq->fc_cache_pkts -= pkts;
+
+	return pkts;
+}
+
 #define T(name, f4, f3, f2, f1, f0, sz, flags)				\
 static uint16_t __rte_noinline	__hot					\
 otx2_nix_xmit_pkts_ ## name(void *tx_queue,				\
@@ -57,6 +88,20 @@ otx2_nix_xmit_pkts_ ## name(void *tx_queue,				\
 	uint64_t cmd[sz];						\
 									\
 	return nix_xmit_pkts(tx_queue, tx_pkts, pkts, cmd, flags);	\
+}
+
+NIX_TX_FASTPATH_MODES
+#undef T
+
+#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
+static uint16_t __rte_noinline	__hot					\
+otx2_nix_xmit_pkts_mseg_ ## name(void *tx_queue,			\
+			struct rte_mbuf **tx_pkts, uint16_t pkts)	\
+{									\
+	uint64_t cmd[(sz) + NIX_TX_MSEG_SG_DWORDS - 2];			\
+									\
+	return nix_xmit_pkts_mseg(tx_queue, tx_pkts, pkts, cmd,		\
+				  (flags) | NIX_TX_MULTI_SEG_F);	\
 }
 
 NIX_TX_FASTPATH_MODES
@@ -80,6 +125,8 @@ pick_tx_func(struct rte_eth_dev *eth_dev,
 void
 otx2_eth_set_tx_function(struct rte_eth_dev *eth_dev)
 {
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
 	const eth_tx_burst_t nix_eth_tx_burst[2][2][2][2][2] = {
 #define T(name, f4, f3, f2, f1, f0, sz, flags)				\
 	[f4][f3][f2][f1][f0] =  otx2_nix_xmit_pkts_ ## name,
@@ -88,7 +135,18 @@ NIX_TX_FASTPATH_MODES
 #undef T
 	};
 
+	const eth_tx_burst_t nix_eth_tx_burst_mseg[2][2][2][2][2] = {
+#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
+	[f4][f3][f2][f1][f0] =  otx2_nix_xmit_pkts_mseg_ ## name,
+
+NIX_TX_FASTPATH_MODES
+#undef T
+	};
+
 	pick_tx_func(eth_dev, nix_eth_tx_burst);
+
+	if (dev->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+		pick_tx_func(eth_dev, nix_eth_tx_burst_mseg);
 
 	rte_mb();
 }

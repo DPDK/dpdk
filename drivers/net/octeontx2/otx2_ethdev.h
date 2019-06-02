@@ -89,6 +89,10 @@
 #define NIX_TX_NB_SEG_MAX		9
 #endif
 
+#define NIX_TX_MSEG_SG_DWORDS				\
+	((RTE_ALIGN_MUL_CEIL(NIX_TX_NB_SEG_MAX, 3) / 3)	\
+	 + NIX_TX_NB_SEG_MAX)
+
 /* Apply BP when CQ is 75% full */
 #define NIX_CQ_BP_LEVEL (25 * 256 / 100)
 

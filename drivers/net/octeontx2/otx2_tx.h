@@ -212,6 +212,87 @@ otx2_nix_xmit_one(uint64_t *cmd, void *lmt_addr,
 	} while (lmt_status == 0);
 }
 
+static __rte_always_inline uint16_t
+otx2_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
+{
+	struct nix_send_hdr_s *send_hdr;
+	union nix_send_sg_s *sg;
+	struct rte_mbuf *m_next;
+	uint64_t *slist, sg_u;
+	uint64_t nb_segs;
+	uint64_t segdw;
+	uint8_t off, i;
+
+	send_hdr = (struct nix_send_hdr_s *)cmd;
+	send_hdr->w0.total = m->pkt_len;
+	send_hdr->w0.aura = npa_lf_aura_handle_to_aura(m->pool->pool_id);
+
+	if (flags & NIX_TX_NEED_EXT_HDR)
+		off = 2;
+	else
+		off = 0;
+
+	sg = (union nix_send_sg_s *)&cmd[2 + off];
+	sg_u = sg->u;
+	slist = &cmd[3 + off];
+
+	i = 0;
+	nb_segs = m->nb_segs;
+
+	/* Fill mbuf segments */
+	do {
+		m_next = m->next;
+		sg_u = sg_u | ((uint64_t)m->data_len << (i << 4));
+		*slist = rte_mbuf_data_iova(m);
+		/* Set invert df if reference count > 1 */
+		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
+			sg_u |=
+			((uint64_t)(rte_pktmbuf_prefree_seg(m) == NULL) <<
+			 (i + 55));
+		/* Mark mempool object as "put" since it is freed by NIX */
+		if (!(sg_u & (1ULL << (i + 55)))) {
+			m->next = NULL;
+			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+		}
+		slist++;
+		i++;
+		nb_segs--;
+		if (i > 2 && nb_segs) {
+			i = 0;
+			/* Next SG subdesc */
+			*(uint64_t *)slist = sg_u & 0xFC00000000000000;
+			sg->u = sg_u;
+			sg->segs = 3;
+			sg = (union nix_send_sg_s *)slist;
+			sg_u = sg->u;
+			slist++;
+		}
+		m = m_next;
+	} while (nb_segs);
+
+	sg->u = sg_u;
+	sg->segs = i;
+	segdw = (uint64_t *)slist - (uint64_t *)&cmd[2 + off];
+	/* Roundup extra dwords to multiple of 2 */
+	segdw = (segdw >> 1) + (segdw & 0x1);
+	/* Default dwords */
+	segdw += (off >> 1) + 1 + !!(flags & NIX_TX_OFFLOAD_TSTAMP_F);
+	send_hdr->w0.sizem1 = segdw - 1;
+
+	return segdw;
+}
+
+static __rte_always_inline void
+otx2_nix_xmit_mseg_one(uint64_t *cmd, void *lmt_addr,
+		       rte_iova_t io_addr, uint16_t segdw)
+{
+	uint64_t lmt_status;
+
+	do {
+		otx2_lmt_mov_seg(lmt_addr, (const void *)cmd, segdw);
+		lmt_status = otx2_lmt_submit(io_addr);
+	} while (lmt_status == 0);
+}
 
 #define L3L4CSUM_F   NIX_TX_OFFLOAD_L3_L4_CSUM_F
 #define OL3OL4CSUM_F NIX_TX_OFFLOAD_OL3_OL4_CSUM_F
