@@ -760,6 +760,7 @@ otx2_nix_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 			DEV_RX_OFFLOAD_QINQ_STRIP)) {
 		dev->rx_offloads |= offloads;
 		dev->rx_offload_flags |= NIX_RX_OFFLOAD_VLAN_STRIP_F;
+		otx2_eth_set_rx_function(eth_dev);
 	}
 
 done:

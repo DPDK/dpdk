@@ -34,6 +34,7 @@ Features of the OCTEON TX2 Ethdev PMD are:
 - Vector Poll mode driver
 - Debug utilities - Context dump and error interrupt support
 - IEEE1588 timestamping
+- HW offloaded `ethdev Rx queue` to `eventdev event queue` packet injection
 
 Prerequisites
 -------------
@@ -48,6 +49,63 @@ The following options may be modified in the ``config`` file.
 - ``CONFIG_RTE_LIBRTE_OCTEONTX2_PMD`` (default ``y``)
 
   Toggle compilation of the ``librte_pmd_octeontx2`` driver.
+
+Driver compilation and testing
+------------------------------
+
+Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+for details.
+
+To compile the OCTEON TX2 PMD for Linux arm64 gcc,
+use arm64-octeontx2-linux-gcc as target.
+
+#. Running testpmd:
+
+   Follow instructions available in the document
+   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+   to run testpmd.
+
+   Example output:
+
+   .. code-block:: console
+
+      ./build/app/testpmd -c 0x300 -w 0002:02:00.0 -- --portmask=0x1 --nb-cores=1 --port-topology=loop --rxq=1 --txq=1
+      EAL: Detected 24 lcore(s)
+      EAL: Detected 1 NUMA nodes
+      EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+      EAL: No available hugepages reported in hugepages-2048kB
+      EAL: Probing VFIO support...
+      EAL: VFIO support initialized
+      EAL: PCI device 0002:02:00.0 on NUMA socket 0
+      EAL:   probe driver: 177d:a063 net_octeontx2
+      EAL:   using IOMMU type 1 (Type 1)
+      testpmd: create a new mbuf pool <mbuf_pool_socket_0>: n=267456, size=2176, socket=0
+      testpmd: preferred mempool ops selected: octeontx2_npa
+      Configuring Port 0 (socket 0)
+      PMD: Port 0: Link Up - speed 40000 Mbps - full-duplex
+
+      Port 0: link state change event
+      Port 0: 36:10:66:88:7A:57
+      Checking link statuses...
+      Done
+      No commandline core given, start packet forwarding
+      io packet forwarding - ports=1 - cores=1 - streams=1 - NUMA support enabled, MP allocation mode: native
+      Logical Core 9 (socket 0) forwards packets on 1 streams:
+        RX P=0/Q=0 (socket 0) -> TX P=0/Q=0 (socket 0) peer=02:00:00:00:00:00
+
+        io packet forwarding packets/burst=32
+        nb forwarding cores=1 - nb forwarding ports=1
+        port 0: RX queue number: 1 Tx queue number: 1
+          Rx offloads=0x0 Tx offloads=0x10000
+          RX queue: 0
+            RX desc=512 - RX free threshold=0
+            RX threshold registers: pthresh=0 hthresh=0  wthresh=0
+            RX Offloads=0x0
+          TX queue: 0
+            TX desc=512 - TX free threshold=0
+            TX threshold registers: pthresh=0 hthresh=0  wthresh=0
+            TX offloads=0x10000 - TX RS bit threshold=0
+      Press enter to exit
 
 Runtime Config Options
 ----------------------
@@ -115,6 +173,39 @@ Runtime Config Options
    Above devarg parameters are configurable per device, user needs to pass the
    parameters to all the PCIe devices if application requires to configure on
    all the ethdev ports.
+
+Limitations
+-----------
+
+``mempool_octeontx2`` external mempool handler dependency
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The OCTEON TX2 SoC family NIC has inbuilt HW assisted external mempool manager.
+``net_octeontx2`` pmd only works with ``mempool_octeontx2`` mempool handler
+as it is performance wise most effective way for packet allocation and Tx buffer
+recycling on OCTEON TX2 SoC platform.
+
+CRC striping
+~~~~~~~~~~~~
+
+The OCTEON TX2 SoC family NICs strip the CRC for every packet being received by
+the host interface irrespective of the offload configuration.
+
+
+Debugging Options
+-----------------
+
+.. _table_octeontx2_ethdev_debug_options:
+
+.. table:: OCTEON TX2 ethdev debug options
+
+   +---+------------+-------------------------------------------------------+
+   | # | Component  | EAL log command                                       |
+   +===+============+=======================================================+
+   | 1 | NIX        | --log-level='pmd\.net.octeontx2,8'                    |
+   +---+------------+-------------------------------------------------------+
+   | 2 | NPC        | --log-level='pmd\.net.octeontx2\.flow,8'              |
+   +---+------------+-------------------------------------------------------+
 
 RTE Flow Support
 ----------------

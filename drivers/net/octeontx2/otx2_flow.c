@@ -528,8 +528,10 @@ otx2_flow_destroy(struct rte_eth_dev *dev,
 			return -EINVAL;
 
 		/* Clear mark offload flag if there are no more mark actions */
-		if (rte_atomic32_sub_return(&npc->mark_actions, 1) == 0)
+		if (rte_atomic32_sub_return(&npc->mark_actions, 1) == 0) {
 			hw->rx_offload_flags &= ~NIX_RX_OFFLOAD_MARK_UPDATE_F;
+			otx2_eth_set_rx_function(dev);
+		}
 	}
 
 	rc = flow_free_rss_action(dev, flow);

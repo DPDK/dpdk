@@ -118,6 +118,10 @@ otx2_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 			struct otx2_eth_txq *txq = eth_dev->data->tx_queues[i];
 			otx2_nix_form_default_desc(txq);
 		}
+
+		/* Setting up the function pointers as per new offload flags */
+		otx2_eth_set_rx_function(eth_dev);
+		otx2_eth_set_tx_function(eth_dev);
 	}
 	return rc;
 }
@@ -147,6 +151,10 @@ otx2_nix_timesync_disable(struct rte_eth_dev *eth_dev)
 			struct otx2_eth_txq *txq = eth_dev->data->tx_queues[i];
 			otx2_nix_form_default_desc(txq);
 		}
+
+		/* Setting up the function pointers as per new offload flags */
+		otx2_eth_set_rx_function(eth_dev);
+		otx2_eth_set_tx_function(eth_dev);
 	}
 	return rc;
 }

@@ -135,6 +135,55 @@ otx2_cgx_rxtx_stop(struct otx2_eth_dev *dev)
 	return otx2_mbox_process(mbox);
 }
 
+static int
+npc_rx_enable(struct otx2_eth_dev *dev)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+
+	otx2_mbox_alloc_msg_nix_lf_start_rx(mbox);
+
+	return otx2_mbox_process(mbox);
+}
+
+static int
+npc_rx_disable(struct otx2_eth_dev *dev)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+
+	otx2_mbox_alloc_msg_nix_lf_stop_rx(mbox);
+
+	return otx2_mbox_process(mbox);
+}
+
+static int
+nix_cgx_start_link_event(struct otx2_eth_dev *dev)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+
+	if (otx2_dev_is_vf(dev))
+		return 0;
+
+	otx2_mbox_alloc_msg_cgx_start_linkevents(mbox);
+
+	return otx2_mbox_process(mbox);
+}
+
+static int
+cgx_intlbk_enable(struct otx2_eth_dev *dev, bool en)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+
+	if (otx2_dev_is_vf(dev))
+		return 0;
+
+	if (en)
+		otx2_mbox_alloc_msg_cgx_intlbk_enable(mbox);
+	else
+		otx2_mbox_alloc_msg_cgx_intlbk_disable(mbox);
+
+	return otx2_mbox_process(mbox);
+}
+
 static inline void
 nix_rx_queue_reset(struct otx2_eth_rxq *rxq)
 {
@@ -476,6 +525,74 @@ nix_sq_max_sqe_sz(struct otx2_eth_txq *txq)
 		return NIX_MAXSQESZ_W16;
 	else
 		return NIX_MAXSQESZ_W8;
+}
+
+static uint16_t
+nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct rte_eth_conf *conf = &data->dev_conf;
+	struct rte_eth_rxmode *rxmode = &conf->rxmode;
+	uint16_t flags = 0;
+
+	if (rxmode->mq_mode == ETH_MQ_RX_RSS)
+		flags |= NIX_RX_OFFLOAD_RSS_F;
+
+	if (dev->rx_offloads & (DEV_RX_OFFLOAD_TCP_CKSUM |
+			 DEV_RX_OFFLOAD_UDP_CKSUM))
+		flags |= NIX_RX_OFFLOAD_CHECKSUM_F;
+
+	if (dev->rx_offloads & (DEV_RX_OFFLOAD_IPV4_CKSUM |
+				DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM))
+		flags |= NIX_RX_OFFLOAD_CHECKSUM_F;
+
+	if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
+		flags |= NIX_RX_MULTI_SEG_F;
+
+	if (dev->rx_offloads & (DEV_RX_OFFLOAD_VLAN_STRIP |
+				DEV_RX_OFFLOAD_QINQ_STRIP))
+		flags |= NIX_RX_OFFLOAD_VLAN_STRIP_F;
+
+	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
+		flags |= NIX_RX_OFFLOAD_TSTAMP_F;
+
+	return flags;
+}
+
+static uint16_t
+nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint64_t conf = dev->tx_offloads;
+	uint16_t flags = 0;
+
+	/* Fastpath is dependent on these enums */
+	RTE_BUILD_BUG_ON(PKT_TX_TCP_CKSUM != (1ULL << 52));
+	RTE_BUILD_BUG_ON(PKT_TX_SCTP_CKSUM != (2ULL << 52));
+	RTE_BUILD_BUG_ON(PKT_TX_UDP_CKSUM != (3ULL << 52));
+
+	if (conf & DEV_TX_OFFLOAD_VLAN_INSERT ||
+	    conf & DEV_TX_OFFLOAD_QINQ_INSERT)
+		flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
+
+	if (conf & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM ||
+	    conf & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+		flags |= NIX_TX_OFFLOAD_OL3_OL4_CSUM_F;
+
+	if (conf & DEV_TX_OFFLOAD_IPV4_CKSUM ||
+	    conf & DEV_TX_OFFLOAD_TCP_CKSUM ||
+	    conf & DEV_TX_OFFLOAD_UDP_CKSUM ||
+	    conf & DEV_TX_OFFLOAD_SCTP_CKSUM)
+		flags |= NIX_TX_OFFLOAD_L3_L4_CSUM_F;
+
+	if (!(conf & DEV_TX_OFFLOAD_MBUF_FAST_FREE))
+		flags |= NIX_TX_OFFLOAD_MBUF_NOFF_F;
+
+	if (conf & DEV_TX_OFFLOAD_MULTI_SEGS)
+		flags |= NIX_TX_MULTI_SEG_F;
+
+	return flags;
 }
 
 static int
@@ -1111,6 +1228,8 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 
 	dev->rx_offloads = rxmode->offloads;
 	dev->tx_offloads = txmode->offloads;
+	dev->rx_offload_flags |= nix_rx_offload_flags(eth_dev);
+	dev->tx_offload_flags |= nix_tx_offload_flags(eth_dev);
 	dev->rss_info.rss_grps = NIX_RSS_GRPS;
 
 	nb_rxq = RTE_MAX(data->nb_rx_queues, 1);
@@ -1147,6 +1266,13 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	rc = oxt2_nix_register_queue_irqs(eth_dev);
 	if (rc) {
 		otx2_err("Failed to register queue interrupts rc=%d", rc);
+		goto free_nix_lf;
+	}
+
+	/* Configure loop back mode */
+	rc = cgx_intlbk_enable(dev, eth_dev->data->dev_conf.lpbk_mode);
+	if (rc) {
+		otx2_err("Failed to configure cgx loop back mode rc=%d", rc);
 		goto free_nix_lf;
 	}
 
@@ -1299,6 +1425,59 @@ done:
 	return rc;
 }
 
+static int
+otx2_nix_dev_start(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	int rc, i;
+
+	/* Start rx queues */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rc = otx2_nix_rx_queue_start(eth_dev, i);
+		if (rc)
+			return rc;
+	}
+
+	/* Start tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		rc = otx2_nix_tx_queue_start(eth_dev, i);
+		if (rc)
+			return rc;
+	}
+
+	rc = otx2_nix_update_flow_ctrl_mode(eth_dev);
+	if (rc) {
+		otx2_err("Failed to update flow ctrl mode %d", rc);
+		return rc;
+	}
+
+	rc = npc_rx_enable(dev);
+	if (rc) {
+		otx2_err("Failed to enable NPC rx %d", rc);
+		return rc;
+	}
+
+	otx2_nix_toggle_flag_link_cfg(dev, true);
+
+	rc = nix_cgx_start_link_event(dev);
+	if (rc) {
+		otx2_err("Failed to start cgx link event %d", rc);
+		goto rx_disable;
+	}
+
+	otx2_nix_toggle_flag_link_cfg(dev, false);
+	otx2_eth_set_tx_function(eth_dev);
+	otx2_eth_set_rx_function(eth_dev);
+
+	return 0;
+
+rx_disable:
+	npc_rx_disable(dev);
+	otx2_nix_toggle_flag_link_cfg(dev, false);
+	return rc;
+}
+
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.dev_infos_get            = otx2_nix_info_get,
@@ -1308,6 +1487,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.tx_queue_release         = otx2_nix_tx_queue_release,
 	.rx_queue_setup           = otx2_nix_rx_queue_setup,
 	.rx_queue_release         = otx2_nix_rx_queue_release,
+	.dev_start                = otx2_nix_dev_start,
 	.tx_queue_start           = otx2_nix_tx_queue_start,
 	.tx_queue_stop            = otx2_nix_tx_queue_stop,
 	.rx_queue_start           = otx2_nix_rx_queue_start,
