@@ -1638,9 +1638,11 @@ int bnxt_hwrm_vnic_qcfg(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 	return rc;
 }
 
-int bnxt_hwrm_vnic_ctx_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+int bnxt_hwrm_vnic_ctx_alloc(struct bnxt *bp,
+			     struct bnxt_vnic_info *vnic, uint16_t ctx_idx)
 {
 	int rc = 0;
+	uint16_t ctx_id;
 	struct hwrm_vnic_rss_cos_lb_ctx_alloc_input req = {.req_type = 0 };
 	struct hwrm_vnic_rss_cos_lb_ctx_alloc_output *resp =
 						bp->hwrm_cmd_resp_addr;
@@ -1648,37 +1650,39 @@ int bnxt_hwrm_vnic_ctx_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	HWRM_PREP(req, VNIC_RSS_COS_LB_CTX_ALLOC, BNXT_USE_CHIMP_MB);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
-
 	HWRM_CHECK_RESULT();
 
-	vnic->rss_rule = rte_le_to_cpu_16(resp->rss_cos_lb_ctx_id);
+	ctx_id = rte_le_to_cpu_16(resp->rss_cos_lb_ctx_id);
+	if (!BNXT_HAS_RING_GRPS(bp))
+		vnic->fw_grp_ids[ctx_idx] = ctx_id;
+	else if (ctx_idx == 0)
+		vnic->rss_rule = ctx_id;
+
 	HWRM_UNLOCK();
-	PMD_DRV_LOG(DEBUG, "VNIC RSS Rule %x\n", vnic->rss_rule);
 
 	return rc;
 }
 
-int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp,
+			    struct bnxt_vnic_info *vnic, uint16_t ctx_idx)
 {
 	int rc = 0;
 	struct hwrm_vnic_rss_cos_lb_ctx_free_input req = {.req_type = 0 };
 	struct hwrm_vnic_rss_cos_lb_ctx_free_output *resp =
 						bp->hwrm_cmd_resp_addr;
 
-	if (vnic->rss_rule == (uint16_t)HWRM_NA_SIGNATURE) {
+	if (ctx_idx == (uint16_t)HWRM_NA_SIGNATURE) {
 		PMD_DRV_LOG(DEBUG, "VNIC RSS Rule %x\n", vnic->rss_rule);
 		return rc;
 	}
 	HWRM_PREP(req, VNIC_RSS_COS_LB_CTX_FREE, BNXT_USE_CHIMP_MB);
 
-	req.rss_cos_lb_ctx_id = rte_cpu_to_le_16(vnic->rss_rule);
+	req.rss_cos_lb_ctx_id = rte_cpu_to_le_16(ctx_idx);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
-
-	vnic->rss_rule = (uint16_t)HWRM_NA_SIGNATURE;
 
 	return rc;
 }
@@ -1711,12 +1715,56 @@ int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
+static int
+bnxt_hwrm_vnic_rss_cfg_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	int i;
+	int rc = 0;
+	int nr_ctxs = bp->max_ring_grps;
+	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
+	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (!(vnic->rss_table && vnic->hash_type))
+		return 0;
+
+	HWRM_PREP(req, VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
+
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+	req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
+	req.hash_mode_flags = vnic->hash_mode;
+
+	req.hash_key_tbl_addr =
+	    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
+
+	for (i = 0; i < nr_ctxs; i++) {
+		req.ring_grp_tbl_addr =
+			rte_cpu_to_le_64(vnic->rss_table_dma_addr +
+					 i * HW_HASH_INDEX_SIZE);
+		req.ring_table_pair_index = i;
+		req.rss_ctx_idx = rte_cpu_to_le_16(vnic->fw_grp_ids[i]);
+
+		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req),
+					    BNXT_USE_CHIMP_MB);
+
+		HWRM_CHECK_RESULT();
+		if (rc)
+			break;
+	}
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
 int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 			   struct bnxt_vnic_info *vnic)
 {
 	int rc = 0;
 	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (BNXT_CHIP_THOR(bp))
+		return bnxt_hwrm_vnic_rss_cfg_thor(bp, vnic);
 
 	HWRM_PREP(req, VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
 
@@ -2247,7 +2295,7 @@ void bnxt_free_tunnel_ports(struct bnxt *bp)
 
 void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 {
-	int i;
+	int i, j;
 
 	if (bp->vnic_info == NULL)
 		return;
@@ -2263,7 +2311,16 @@ void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 
 		bnxt_clear_hwrm_vnic_filters(bp, vnic);
 
-		bnxt_hwrm_vnic_ctx_free(bp, vnic);
+		if (!BNXT_CHIP_THOR(bp)) {
+			for (j = 0; j < vnic->num_lb_ctxts; j++) {
+				bnxt_hwrm_vnic_ctx_free(bp, vnic,
+							vnic->fw_grp_ids[j]);
+				vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
+			}
+		} else {
+			bnxt_hwrm_vnic_ctx_free(bp, vnic, vnic->rss_rule);
+			vnic->rss_rule = INVALID_HW_RING_ID;
+		}
 
 		bnxt_hwrm_vnic_tpa_cfg(bp, vnic, false);
 
@@ -4037,32 +4094,105 @@ int bnxt_hwrm_clear_ntuple_filter(struct bnxt *bp,
 	return 0;
 }
 
+static int
+bnxt_vnic_rss_configure_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	uint8_t *rx_queue_state = bp->eth_dev->data->rx_queue_state;
+	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
+	int nr_ctxs = bp->max_ring_grps;
+	struct bnxt_rx_queue **rxqs = bp->rx_queues;
+	uint16_t *ring_tbl = vnic->rss_table;
+	int max_rings = bp->rx_nr_rings;
+	int i, j, k, cnt;
+	int rc = 0;
+
+	HWRM_PREP(req, VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
+
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+	req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
+	req.hash_mode_flags = vnic->hash_mode;
+
+	req.ring_grp_tbl_addr =
+	    rte_cpu_to_le_64(vnic->rss_table_dma_addr);
+	req.hash_key_tbl_addr =
+	    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
+
+	for (i = 0, k = 0; i < nr_ctxs; i++) {
+		struct bnxt_rx_ring_info *rxr;
+		struct bnxt_cp_ring_info *cpr;
+
+		req.ring_table_pair_index = i;
+		req.rss_ctx_idx = rte_cpu_to_le_16(vnic->fw_grp_ids[i]);
+
+		for (j = 0; j < 64; j++) {
+			uint16_t ring_id;
+
+			/* Find next active ring. */
+			for (cnt = 0; cnt < max_rings; cnt++) {
+				if (rx_queue_state[k] !=
+						RTE_ETH_QUEUE_STATE_STOPPED)
+					break;
+				if (++k == max_rings)
+					k = 0;
+			}
+
+			/* Return if no rings are active. */
+			if (cnt == max_rings)
+				return 0;
+
+			/* Add rx/cp ring pair to RSS table. */
+			rxr = rxqs[k]->rx_ring;
+			cpr = rxqs[k]->cp_ring;
+
+			ring_id = rxr->rx_ring_struct->fw_ring_id;
+			*ring_tbl++ = rte_cpu_to_le_16(ring_id);
+			ring_id = cpr->cp_ring_struct->fw_ring_id;
+			*ring_tbl++ = rte_cpu_to_le_16(ring_id);
+
+			if (++k == max_rings)
+				k = 0;
+		}
+		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req),
+					    BNXT_USE_CHIMP_MB);
+
+		HWRM_CHECK_RESULT();
+		if (rc)
+			break;
+	}
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
 int bnxt_vnic_rss_configure(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	unsigned int rss_idx, fw_idx, i;
 
-	if (vnic->rss_table && vnic->hash_type) {
-		/*
-		 * Fill the RSS hash & redirection table with
-		 * ring group ids for all VNICs
-		 */
-		for (rss_idx = 0, fw_idx = 0; rss_idx < HW_HASH_INDEX_SIZE;
-			rss_idx++, fw_idx++) {
-			for (i = 0; i < bp->rx_cp_nr_rings; i++) {
-				fw_idx %= bp->rx_cp_nr_rings;
-				if (vnic->fw_grp_ids[fw_idx] !=
-				    INVALID_HW_RING_ID)
-					break;
-				fw_idx++;
-			}
-			if (i == bp->rx_cp_nr_rings)
-				return 0;
-			vnic->rss_table[rss_idx] =
-				vnic->fw_grp_ids[fw_idx];
+	if (!(vnic->rss_table && vnic->hash_type))
+		return 0;
+
+	if (BNXT_CHIP_THOR(bp))
+		return bnxt_vnic_rss_configure_thor(bp, vnic);
+
+	/*
+	 * Fill the RSS hash & redirection table with
+	 * ring group ids for all VNICs
+	 */
+	for (rss_idx = 0, fw_idx = 0; rss_idx < HW_HASH_INDEX_SIZE;
+		rss_idx++, fw_idx++) {
+		for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+			fw_idx %= bp->rx_cp_nr_rings;
+			if (vnic->fw_grp_ids[fw_idx] != INVALID_HW_RING_ID)
+				break;
+			fw_idx++;
 		}
-		return bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+		if (i == bp->rx_cp_nr_rings)
+			return 0;
+		vnic->rss_table[rss_idx] = vnic->fw_grp_ids[fw_idx];
 	}
-	return 0;
+	return bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 }
 
 static void bnxt_hwrm_set_coal_params(struct bnxt_coal *hw_coal,

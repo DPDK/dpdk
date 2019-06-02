@@ -18,6 +18,7 @@ struct bnxt_vnic_info {
 	uint16_t	start_grp_id;
 	uint16_t	end_grp_id;
 	uint16_t	*fw_grp_ids;
+	uint16_t	num_lb_ctxts;
 	uint16_t	dflt_ring_grp;
 	uint16_t	mru;
 	uint16_t	hash_type;

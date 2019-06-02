@@ -171,6 +171,24 @@ static int bnxt_dev_uninit(struct rte_eth_dev *eth_dev);
  * High level utility functions
  */
 
+static uint16_t bnxt_rss_ctxts(const struct bnxt *bp)
+{
+	if (!BNXT_CHIP_THOR(bp))
+		return 1;
+
+	return RTE_ALIGN_MUL_CEIL(bp->rx_nr_rings,
+				  BNXT_RSS_ENTRIES_PER_CTX_THOR) /
+				    BNXT_RSS_ENTRIES_PER_CTX_THOR;
+}
+
+static uint16_t  bnxt_rss_hash_tbl_size(const struct bnxt *bp)
+{
+	if (!BNXT_CHIP_THOR(bp))
+		return HW_HASH_INDEX_SIZE;
+
+	return bnxt_rss_ctxts(bp) * BNXT_RSS_ENTRIES_PER_CTX_THOR;
+}
+
 static void bnxt_free_mem(struct bnxt *bp)
 {
 	bnxt_free_filter_mem(bp);
@@ -290,13 +308,21 @@ static int bnxt_init_chip(struct bnxt *bp)
 
 		/* Alloc RSS context only if RSS mode is enabled */
 		if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) {
-			rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic);
+			int j, nr_ctxs = bnxt_rss_ctxts(bp);
+
+			rc = 0;
+			for (j = 0; j < nr_ctxs; j++) {
+				rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic, j);
+				if (rc)
+					break;
+			}
 			if (rc) {
 				PMD_DRV_LOG(ERR,
-					"HWRM vnic %d ctx alloc failure rc: %x\n",
-					i, rc);
+				  "HWRM vnic %d ctx %d alloc failure rc: %x\n",
+				  i, j, rc);
 				goto err_out;
 			}
+			vnic->num_lb_ctxts = nr_ctxs;
 		}
 
 		/*
@@ -470,7 +496,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	/* For the sake of symmetry, max_rx_queues = max_tx_queues */
 	dev_info->max_rx_queues = max_rx_rings;
 	dev_info->max_tx_queues = max_rx_rings;
-	dev_info->reta_size = HW_HASH_INDEX_SIZE;
+	dev_info->reta_size = bnxt_rss_hash_tbl_size(bp);
 	dev_info->hash_key_size = 40;
 	max_vnics = bp->max_vnics;
 
@@ -1004,11 +1030,20 @@ static struct bnxt_rx_queue *bnxt_qid_to_rxq(struct bnxt *bp, uint16_t qid)
 /* Return rxq corresponding to a given rss table ring/group ID. */
 static uint16_t bnxt_rss_to_qid(struct bnxt *bp, uint16_t fwr)
 {
+	struct bnxt_rx_queue *rxq;
 	unsigned int i;
 
-	for (i = 0; i < bp->rx_nr_rings; i++) {
-		if (bp->grp_info[i].fw_grp_id == fwr)
-			return i;
+	if (!BNXT_HAS_RING_GRPS(bp)) {
+		for (i = 0; i < bp->rx_nr_rings; i++) {
+			rxq = bp->eth_dev->data->rx_queues[i];
+			if (rxq->rx_ring->rx_ring_struct->fw_ring_id == fwr)
+				return rxq->index;
+		}
+	} else {
+		for (i = 0; i < bp->rx_nr_rings; i++) {
+			if (bp->grp_info[i].fw_grp_id == fwr)
+				return i;
+		}
 	}
 
 	return INVALID_HW_RING_ID;
@@ -1021,7 +1056,7 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
-	uint16_t tbl_size = HW_HASH_INDEX_SIZE;
+	uint16_t tbl_size = bnxt_rss_hash_tbl_size(bp);
 	uint16_t idx, sft;
 	int i;
 
@@ -1053,6 +1088,16 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 			return -EINVAL;
 		}
 
+		if (BNXT_CHIP_THOR(bp)) {
+			vnic->rss_table[i * 2] =
+				rxq->rx_ring->rx_ring_struct->fw_ring_id;
+			vnic->rss_table[i * 2 + 1] =
+				rxq->cp_ring->cp_ring_struct->fw_ring_id;
+		} else {
+			vnic->rss_table[i] =
+			    vnic->fw_grp_ids[reta_conf[idx].reta[sft]];
+		}
+
 		vnic->rss_table[i] =
 		    vnic->fw_grp_ids[reta_conf[idx].reta[sft]];
 	}
@@ -1067,7 +1112,7 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
-	uint16_t tbl_size = HW_HASH_INDEX_SIZE;
+	uint16_t tbl_size = bnxt_rss_hash_tbl_size(bp);
 	uint16_t idx, sft, i;
 
 	/* Retrieve from the default VNIC */
@@ -1090,7 +1135,11 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 		if (reta_conf[idx].mask & (1ULL << sft)) {
 			uint16_t qid;
 
-			qid = bnxt_rss_to_qid(bp, vnic->rss_table[i]);
+			if (BNXT_CHIP_THOR(bp))
+				qid = bnxt_rss_to_qid(bp,
+						      vnic->rss_table[i * 2]);
+			else
+				qid = bnxt_rss_to_qid(bp, vnic->rss_table[i]);
 
 			if (qid == INVALID_HW_RING_ID) {
 				PMD_DRV_LOG(ERR, "Inv. entry in rss table.\n");

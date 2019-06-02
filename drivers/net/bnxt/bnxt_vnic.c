@@ -113,13 +113,20 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	struct rte_pci_device *pdev = bp->pdev;
 	const struct rte_memzone *mz;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
-	uint32_t entry_length = RTE_CACHE_LINE_ROUNDUP(
-				HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table) +
-				HW_HASH_KEY_SIZE +
-				BNXT_MAX_MC_ADDRS * RTE_ETHER_ADDR_LEN);
+	uint32_t entry_length;
 	uint16_t max_vnics;
 	int i;
 	rte_iova_t mz_phys_addr;
+
+	entry_length = HW_HASH_KEY_SIZE +
+		       BNXT_MAX_MC_ADDRS * RTE_ETHER_ADDR_LEN;
+
+	if (BNXT_CHIP_THOR(bp))
+		entry_length += BNXT_RSS_TBL_SIZE_THOR *
+				2 * sizeof(*vnic->rss_table);
+	else
+		entry_length += HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table);
+	entry_length = RTE_CACHE_LINE_ROUNDUP(entry_length);
 
 	max_vnics = bp->max_vnics;
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
