@@ -341,7 +341,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	eth_dev->data->rx_queues[queue_idx] = rxq;
 	/* Allocate RX ring hardware descriptors */
 	if (bnxt_alloc_rings(bp, queue_idx, NULL, rxq, rxq->cp_ring,
-			"rxr")) {
+			rxq->nq_ring, "rxr")) {
 		PMD_DRV_LOG(ERR,
 			"ring_dma_zone_reserve for rx_ring failed!\n");
 		bnxt_rx_queue_release_op(rxq);
@@ -424,15 +424,18 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		vnic = rxq->vnic;
 
-		if (vnic->fw_grp_ids[rx_queue_id] != INVALID_HW_RING_ID)
-			return 0;
+		if (BNXT_HAS_RING_GRPS(bp)) {
+			if (vnic->fw_grp_ids[rx_queue_id] != INVALID_HW_RING_ID)
+				return 0;
+
+			vnic->fw_grp_ids[rx_queue_id] =
+					bp->grp_info[rx_queue_id].fw_grp_id;
+		}
 
 		PMD_DRV_LOG(DEBUG,
 			    "vnic = %p fw_grp_id = %d\n",
 			    vnic, bp->grp_info[rx_queue_id].fw_grp_id);
 
-		vnic->fw_grp_ids[rx_queue_id] =
-					bp->grp_info[rx_queue_id].fw_grp_id;
 		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
@@ -469,7 +472,8 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		vnic = rxq->vnic;
-		vnic->fw_grp_ids[rx_queue_id] = INVALID_HW_RING_ID;
+		if (BNXT_HAS_RING_GRPS(bp))
+			vnic->fw_grp_ids[rx_queue_id] = INVALID_HW_RING_ID;
 		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 

@@ -62,6 +62,12 @@ New Features
   * Added support for SSE vector mode
   * Updated HWRM API to version 1.10.0.74
 
+* **Added support for Broadcom NetXtreme-E BCM57500 Ethernet controllers.**
+
+  Added support to the bnxt PMD for the BCM57500 (a.k.a. "Thor") family
+  of Ethernet controllers. These controllers support link speeds up to
+  200Gbps, 50G PAM-4, and PCIe 4.0.
+
 * **Added memif PMD.**
 
   Added the new Shared Memory Packet Interface (``memif``) PMD.

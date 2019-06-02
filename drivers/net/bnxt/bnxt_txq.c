@@ -134,7 +134,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	/* Allocate TX ring hardware descriptors */
 	if (bnxt_alloc_rings(bp, queue_idx, txq, NULL, txq->cp_ring,
-			"txr")) {
+			txq->nq_ring, "txr")) {
 		PMD_DRV_LOG(ERR, "ring_dma_zone_reserve for tx_ring failed!");
 		bnxt_tx_queue_release_op(txq);
 		rc = -ENOMEM;

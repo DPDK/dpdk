@@ -19,6 +19,10 @@ struct bnxt_db_info;
 	(!!(rte_le_to_cpu_32(((struct cmpl_base *)(cmp))->info3_v) &	\
 	    CMPL_BASE_V) == !(v))
 
+#define NQ_CMP_VALID(nqcmp, raw_cons, ring)		\
+	(!!((nqcmp)->v & rte_cpu_to_le_32(NQ_CN_V)) ==	\
+	 !((raw_cons) & ((ring)->ring_size)))
+
 #define CMP_TYPE(cmp)						\
 	(((struct cmpl_base *)cmp)->type & CMPL_BASE_TYPE_MASK)
 
@@ -70,8 +74,12 @@ struct bnxt_db_info;
 		    ((cpr)->cp_db.doorbell))
 
 struct bnxt_db_info {
-	void		*doorbell;
-	uint32_t	db_key32;
+	void                    *doorbell;
+	union {
+		uint64_t        db_key64;
+		uint32_t        db_key32;
+	};
+	bool                    db_64;
 };
 
 struct bnxt_ring;

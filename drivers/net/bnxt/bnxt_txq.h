@@ -32,6 +32,7 @@ struct bnxt_tx_queue {
 
 	unsigned int		cp_nr_rings;
 	struct bnxt_cp_ring_info	*cp_ring;
+	struct bnxt_cp_ring_info        *nq_ring;
 	const struct rte_memzone *mz;
 	struct rte_mbuf **free;
 };

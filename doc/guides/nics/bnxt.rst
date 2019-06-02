@@ -7,10 +7,10 @@ BNXT Poll Mode Driver
 The bnxt poll mode library (**librte_pmd_bnxt**) implements support for:
 
   * **Broadcom NetXtreme-C®/NetXtreme-E®/NetXtreme-S®
-    BCM5730X / BCM574XX / BCM58000 family of Ethernet Network Controllers**
+    BCM5730X / BCM574XX / BCM58000 / BCM575XX family of Ethernet Network Controllers**
 
-    These adapters support Standards compliant 10/25/50/100Gbps 30MPPS
-    full-duplex throughput.
+    Adapters based on this family of controllers support standards-compliant Ethernet
+    operation with link speeds of 10/25/50/100/200Gbps.
 
     Information about the NetXtreme family of adapters can be found in the
     `NetXtreme® Brand section

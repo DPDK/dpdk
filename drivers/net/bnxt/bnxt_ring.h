@@ -49,6 +49,7 @@ struct bnxt_ring {
 	void			**vmem;
 
 	uint16_t		fw_ring_id; /* Ring id filled by Chimp FW */
+	uint16_t                fw_rx_ring_id;
 	const void		*mem_zone;
 };
 
@@ -70,19 +71,40 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			    struct bnxt_tx_queue *txq,
 			    struct bnxt_rx_queue *rxq,
 			    struct bnxt_cp_ring_info *cp_ring_info,
+			    struct bnxt_cp_ring_info *nq_ring_info,
 			    const char *suffix);
 int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index);
 int bnxt_alloc_hwrm_rings(struct bnxt *bp);
 
 static inline void bnxt_db_write(struct bnxt_db_info *db, uint32_t idx)
 {
-	rte_write32(db->db_key32 | idx, db->doorbell);
+	if (db->db_64)
+		rte_write64_relaxed(db->db_key64 | idx, db->doorbell);
+	else
+		rte_write32(db->db_key32 | idx, db->doorbell);
+}
+
+static inline void bnxt_db_nq(struct bnxt_cp_ring_info *cpr)
+{
+	struct bnxt_db_info *db = &cpr->cp_db;
+
+	rte_smp_wmb();
+	if (likely(db->db_64))
+		rte_write64(db->db_key64 | DBR_TYPE_NQ |
+			    RING_CMP(cpr->cp_ring_struct, cpr->cp_raw_cons),
+			    db->doorbell);
 }
 
 static inline void bnxt_db_cq(struct bnxt_cp_ring_info *cpr)
 {
+	struct bnxt_db_info *db = &cpr->cp_db;
+	uint32_t idx = RING_CMP(cpr->cp_ring_struct, cpr->cp_raw_cons);
+
 	rte_smp_wmb();
-	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+	if (db->db_64)
+		rte_write64(db->db_key64 | idx, db->doorbell);
+	else
+		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
 }
 
 #endif

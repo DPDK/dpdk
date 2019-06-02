@@ -71,6 +71,10 @@ int bnxt_logtype_driver;
 #define BROADCOM_DEV_ID_57407_MF 0x16ea
 #define BROADCOM_DEV_ID_57414_MF 0x16ec
 #define BROADCOM_DEV_ID_57416_MF 0x16ee
+#define BROADCOM_DEV_ID_57508 0x1750
+#define BROADCOM_DEV_ID_57504 0x1751
+#define BROADCOM_DEV_ID_57502 0x1752
+#define BROADCOM_DEV_ID_57500_VF 0x1807
 #define BROADCOM_DEV_ID_58802 0xd802
 #define BROADCOM_DEV_ID_58804 0xd804
 #define BROADCOM_DEV_ID_58808 0x16f0
@@ -119,6 +123,10 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_58804) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_58808) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_58802_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57508) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57504) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57502) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57500_VF) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
@@ -224,6 +232,12 @@ static int bnxt_init_chip(struct bnxt *bp)
 		bp->flags &= ~BNXT_FLAG_JUMBO;
 	}
 
+	/* THOR does not support ring groups.
+	 * But we will use the array to save RSS context IDs.
+	 */
+	if (BNXT_CHIP_THOR(bp))
+		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_THOR;
+
 	rc = bnxt_alloc_all_hwrm_stat_ctxs(bp);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "HWRM stat ctx alloc failure rc: %x\n", rc);
@@ -317,7 +331,7 @@ static int bnxt_init_chip(struct bnxt *bp)
 				    "rxq[%d]->vnic=%p vnic->fw_grp_ids=%p\n",
 				    j, rxq->vnic, rxq->vnic->fw_grp_ids);
 
-			if (rxq->rx_deferred_start)
+			if (BNXT_HAS_RING_GRPS(bp) && rxq->rx_deferred_start)
 				rxq->vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
 		}
 
@@ -573,22 +587,16 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues >
 	    bp->max_cp_rings ||
 	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues >
-	    bp->max_stat_ctx ||
-	    (uint32_t)(eth_dev->data->nb_rx_queues) > bp->max_ring_grps ||
-	    (!(eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) &&
-	     bp->max_vnics < eth_dev->data->nb_rx_queues)) {
-		PMD_DRV_LOG(ERR,
-			"Insufficient resources to support requested config\n");
-		PMD_DRV_LOG(ERR,
-			"Num Queues Requested: Tx %d, Rx %d\n",
-			eth_dev->data->nb_tx_queues,
-			eth_dev->data->nb_rx_queues);
-		PMD_DRV_LOG(ERR,
-			"MAX: TxQ %d, RxQ %d, CQ %d Stat %d, Grp %d, Vnic %d\n",
-			bp->max_tx_rings, bp->max_rx_rings, bp->max_cp_rings,
-			bp->max_stat_ctx, bp->max_ring_grps, bp->max_vnics);
-		return -ENOSPC;
-	}
+	    bp->max_stat_ctx)
+		goto resource_error;
+
+	if (BNXT_HAS_RING_GRPS(bp) &&
+	    (uint32_t)(eth_dev->data->nb_rx_queues) > bp->max_ring_grps)
+		goto resource_error;
+
+	if (!(eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) &&
+	    bp->max_vnics < eth_dev->data->nb_rx_queues)
+		goto resource_error;
 
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
 	bp->tx_cp_nr_rings = bp->tx_nr_rings;
@@ -601,6 +609,19 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		bnxt_mtu_set_op(eth_dev, eth_dev->data->mtu);
 	}
 	return 0;
+
+resource_error:
+	PMD_DRV_LOG(ERR,
+		    "Insufficient resources to support requested config\n");
+	PMD_DRV_LOG(ERR,
+		    "Num Queues Requested: Tx %d, Rx %d\n",
+		    eth_dev->data->nb_tx_queues,
+		    eth_dev->data->nb_rx_queues);
+	PMD_DRV_LOG(ERR,
+		    "MAX: TxQ %d, RxQ %d, CQ %d Stat %d, Grp %d, Vnic %d\n",
+		    bp->max_tx_rings, bp->max_rx_rings, bp->max_cp_rings,
+		    bp->max_stat_ctx, bp->max_ring_grps, bp->max_vnics);
+	return -ENOSPC;
 }
 
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
@@ -3265,7 +3286,8 @@ static bool bnxt_vf_pciid(uint16_t id)
 	    id == BROADCOM_DEV_ID_57414_VF ||
 	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF1 ||
 	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF2 ||
-	    id == BROADCOM_DEV_ID_58802_VF)
+	    id == BROADCOM_DEV_ID_58802_VF ||
+	    id == BROADCOM_DEV_ID_57500_VF)
 		return true;
 	return false;
 }
@@ -3327,6 +3349,245 @@ init_err_disable:
 	return rc;
 }
 
+static int bnxt_alloc_ctx_mem_blk(__rte_unused struct bnxt *bp,
+				  struct bnxt_ctx_pg_info *ctx_pg,
+				  uint32_t mem_size,
+				  const char *suffix,
+				  uint16_t idx)
+{
+	struct bnxt_ring_mem_info *rmem = &ctx_pg->ring_mem;
+	const struct rte_memzone *mz = NULL;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	rte_iova_t mz_phys_addr;
+	uint64_t valid_bits = 0;
+	uint32_t sz;
+	int i;
+
+	if (!mem_size)
+		return 0;
+
+	rmem->nr_pages = RTE_ALIGN_MUL_CEIL(mem_size, BNXT_PAGE_SIZE) /
+			 BNXT_PAGE_SIZE;
+	rmem->page_size = BNXT_PAGE_SIZE;
+	rmem->pg_arr = ctx_pg->ctx_pg_arr;
+	rmem->dma_arr = ctx_pg->ctx_dma_arr;
+	rmem->flags = BNXT_RMEM_VALID_PTE_FLAG;
+
+	valid_bits = PTU_PTE_VALID;
+
+	if (rmem->nr_pages > 1) {
+		snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_pg_tbl%s_%x",
+			 suffix, idx);
+		mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
+		mz = rte_memzone_lookup(mz_name);
+		if (!mz) {
+			mz = rte_memzone_reserve_aligned(mz_name,
+						rmem->nr_pages * 8,
+						SOCKET_ID_ANY,
+						RTE_MEMZONE_2MB |
+						RTE_MEMZONE_SIZE_HINT_ONLY |
+						RTE_MEMZONE_IOVA_CONTIG,
+						BNXT_PAGE_SIZE);
+			if (mz == NULL)
+				return -ENOMEM;
+		}
+
+		memset(mz->addr, 0, mz->len);
+		mz_phys_addr = mz->iova;
+		if ((unsigned long)mz->addr == mz_phys_addr) {
+			PMD_DRV_LOG(WARNING,
+				"Memzone physical address same as virtual.\n");
+			PMD_DRV_LOG(WARNING,
+				    "Using rte_mem_virt2iova()\n");
+			mz_phys_addr = rte_mem_virt2iova(mz->addr);
+			if (mz_phys_addr == 0) {
+				PMD_DRV_LOG(ERR,
+					"unable to map addr to phys memory\n");
+				return -ENOMEM;
+			}
+		}
+		rte_mem_lock_page(((char *)mz->addr));
+
+		rmem->pg_tbl = mz->addr;
+		rmem->pg_tbl_map = mz_phys_addr;
+		rmem->pg_tbl_mz = mz;
+	}
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_%s_%x", suffix, idx);
+	mz = rte_memzone_lookup(mz_name);
+	if (!mz) {
+		mz = rte_memzone_reserve_aligned(mz_name,
+						 mem_size,
+						 SOCKET_ID_ANY,
+						 RTE_MEMZONE_1GB |
+						 RTE_MEMZONE_SIZE_HINT_ONLY |
+						 RTE_MEMZONE_IOVA_CONTIG,
+						 BNXT_PAGE_SIZE);
+		if (mz == NULL)
+			return -ENOMEM;
+	}
+
+	memset(mz->addr, 0, mz->len);
+	mz_phys_addr = mz->iova;
+	if ((unsigned long)mz->addr == mz_phys_addr) {
+		PMD_DRV_LOG(WARNING,
+			    "Memzone physical address same as virtual.\n");
+		PMD_DRV_LOG(WARNING,
+			    "Using rte_mem_virt2iova()\n");
+		for (sz = 0; sz < mem_size; sz += BNXT_PAGE_SIZE)
+			rte_mem_lock_page(((char *)mz->addr) + sz);
+		mz_phys_addr = rte_mem_virt2iova(mz->addr);
+		if (mz_phys_addr == RTE_BAD_IOVA) {
+			PMD_DRV_LOG(ERR,
+				    "unable to map addr to phys memory\n");
+			return -ENOMEM;
+		}
+	}
+
+	for (sz = 0, i = 0; sz < mem_size; sz += BNXT_PAGE_SIZE, i++) {
+		rte_mem_lock_page(((char *)mz->addr) + sz);
+		rmem->pg_arr[i] = ((char *)mz->addr) + sz;
+		rmem->dma_arr[i] = mz_phys_addr + sz;
+
+		if (rmem->nr_pages > 1) {
+			if (i == rmem->nr_pages - 2 &&
+			    (rmem->flags & BNXT_RMEM_RING_PTE_FLAG))
+				valid_bits |= PTU_PTE_NEXT_TO_LAST;
+			else if (i == rmem->nr_pages - 1 &&
+				 (rmem->flags & BNXT_RMEM_RING_PTE_FLAG))
+				valid_bits |= PTU_PTE_LAST;
+
+			rmem->pg_tbl[i] = rte_cpu_to_le_64(rmem->dma_arr[i] |
+							   valid_bits);
+		}
+	}
+
+	rmem->mz = mz;
+	if (rmem->vmem_size)
+		rmem->vmem = (void **)mz->addr;
+	rmem->dma_arr[0] = mz_phys_addr;
+	return 0;
+}
+
+static void bnxt_free_ctx_mem(struct bnxt *bp)
+{
+	int i;
+
+	if (!bp->ctx || !(bp->ctx->flags & BNXT_CTX_FLAG_INITED))
+		return;
+
+	bp->ctx->flags &= ~BNXT_CTX_FLAG_INITED;
+	rte_memzone_free(bp->ctx->qp_mem.ring_mem.mz);
+	rte_memzone_free(bp->ctx->srq_mem.ring_mem.mz);
+	rte_memzone_free(bp->ctx->cq_mem.ring_mem.mz);
+	rte_memzone_free(bp->ctx->vnic_mem.ring_mem.mz);
+	rte_memzone_free(bp->ctx->stat_mem.ring_mem.mz);
+	rte_memzone_free(bp->ctx->qp_mem.ring_mem.pg_tbl_mz);
+	rte_memzone_free(bp->ctx->srq_mem.ring_mem.pg_tbl_mz);
+	rte_memzone_free(bp->ctx->cq_mem.ring_mem.pg_tbl_mz);
+	rte_memzone_free(bp->ctx->vnic_mem.ring_mem.pg_tbl_mz);
+	rte_memzone_free(bp->ctx->stat_mem.ring_mem.pg_tbl_mz);
+
+	for (i = 0; i < BNXT_MAX_Q; i++) {
+		if (bp->ctx->tqm_mem[i])
+			rte_memzone_free(bp->ctx->tqm_mem[i]->ring_mem.mz);
+	}
+
+	rte_free(bp->ctx);
+	bp->ctx = NULL;
+}
+
+#define roundup(x, y)   ((((x) + ((y) - 1)) / (y)) * (y))
+
+#define min_t(type, x, y) ({                    \
+	type __min1 = (x);                      \
+	type __min2 = (y);                      \
+	__min1 < __min2 ? __min1 : __min2; })
+
+#define max_t(type, x, y) ({                    \
+	type __max1 = (x);                      \
+	type __max2 = (y);                      \
+	__max1 > __max2 ? __max1 : __max2; })
+
+#define clamp_t(type, _x, min, max)     min_t(type, max_t(type, _x, min), max)
+
+int bnxt_alloc_ctx_mem(struct bnxt *bp)
+{
+	struct bnxt_ctx_pg_info *ctx_pg;
+	struct bnxt_ctx_mem_info *ctx;
+	uint32_t mem_size, ena, entries;
+	int i, rc;
+
+	rc = bnxt_hwrm_func_backing_store_qcaps(bp);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Query context mem capability failed\n");
+		return rc;
+	}
+	ctx = bp->ctx;
+	if (!ctx || (ctx->flags & BNXT_CTX_FLAG_INITED))
+		return 0;
+
+	ctx_pg = &ctx->qp_mem;
+	ctx_pg->entries = ctx->qp_min_qp1_entries + ctx->qp_max_l2_entries;
+	mem_size = ctx->qp_entry_size * ctx_pg->entries;
+	rc = bnxt_alloc_ctx_mem_blk(bp, ctx_pg, mem_size, "qp_mem", 0);
+	if (rc)
+		return rc;
+
+	ctx_pg = &ctx->srq_mem;
+	ctx_pg->entries = ctx->srq_max_l2_entries;
+	mem_size = ctx->srq_entry_size * ctx_pg->entries;
+	rc = bnxt_alloc_ctx_mem_blk(bp, ctx_pg, mem_size, "srq_mem", 0);
+	if (rc)
+		return rc;
+
+	ctx_pg = &ctx->cq_mem;
+	ctx_pg->entries = ctx->cq_max_l2_entries;
+	mem_size = ctx->cq_entry_size * ctx_pg->entries;
+	rc = bnxt_alloc_ctx_mem_blk(bp, ctx_pg, mem_size, "cq_mem", 0);
+	if (rc)
+		return rc;
+
+	ctx_pg = &ctx->vnic_mem;
+	ctx_pg->entries = ctx->vnic_max_vnic_entries +
+		ctx->vnic_max_ring_table_entries;
+	mem_size = ctx->vnic_entry_size * ctx_pg->entries;
+	rc = bnxt_alloc_ctx_mem_blk(bp, ctx_pg, mem_size, "vnic_mem", 0);
+	if (rc)
+		return rc;
+
+	ctx_pg = &ctx->stat_mem;
+	ctx_pg->entries = ctx->stat_max_entries;
+	mem_size = ctx->stat_entry_size * ctx_pg->entries;
+	rc = bnxt_alloc_ctx_mem_blk(bp, ctx_pg, mem_size, "stat_mem", 0);
+	if (rc)
+		return rc;
+
+	entries = ctx->qp_max_l2_entries;
+	entries = roundup(entries, ctx->tqm_entries_multiple);
+	entries = clamp_t(uint32_t, entries, ctx->tqm_min_entries_per_ring,
+			  ctx->tqm_max_entries_per_ring);
+	for (i = 0, ena = 0; i < BNXT_MAX_Q; i++) {
+		ctx_pg = ctx->tqm_mem[i];
+		/* use min tqm entries for now. */
+		ctx_pg->entries = entries;
+		mem_size = ctx->tqm_entry_size * ctx_pg->entries;
+		rc = bnxt_alloc_ctx_mem_blk(bp, ctx_pg, mem_size, "tqm_mem", i);
+		if (rc)
+			return rc;
+		ena |= HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_TQM_SP << i;
+	}
+
+	ena |= FUNC_BACKING_STORE_CFG_INPUT_DFLT_ENABLES;
+	rc = bnxt_hwrm_func_backing_store_cfg(bp, ena);
+	if (rc)
+		PMD_DRV_LOG(ERR,
+			    "Failed to configure context mem: rc = %d\n", rc);
+	else
+		ctx->flags |= BNXT_CTX_FLAG_INITED;
+
+	return 0;
+}
 
 #define ALLOW_FUNC(x)	\
 	{ \
@@ -3360,6 +3621,12 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (bnxt_vf_pciid(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;
+
+	if (pci_dev->id.device_id == BROADCOM_DEV_ID_57508 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_57504 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_57502 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_57500_VF)
+		bp->flags |= BNXT_FLAG_THOR_CHIP;
 
 	rc = bnxt_init_board(eth_dev);
 	if (rc) {
@@ -3497,13 +3764,6 @@ skip_ext_stats:
 		PMD_DRV_LOG(ERR, "hwrm queue qportcfg failed\n");
 		goto error_free;
 	}
-
-	rc = bnxt_hwrm_func_qcfg(bp);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "hwrm func qcfg failed\n");
-		goto error_free;
-	}
-
 	/* Get the MAX capabilities for this function */
 	rc = bnxt_hwrm_func_qcaps(bp);
 	if (rc) {
@@ -3538,7 +3798,12 @@ skip_ext_stats:
 	memcpy(bp->mac_addr, bp->dflt_mac_addr, sizeof(bp->mac_addr));
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, RTE_ETHER_ADDR_LEN);
 
-	if (bp->max_ring_grps < bp->rx_cp_nr_rings) {
+	/* THOR does not support ring groups.
+	 * But we will use the array to save RSS context IDs.
+	 */
+	if (BNXT_CHIP_THOR(bp)) {
+		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_THOR;
+	} else if (bp->max_ring_grps < bp->rx_cp_nr_rings) {
 		/* 1 ring is for default completion ring */
 		PMD_DRV_LOG(ERR, "Insufficient resource: Ring Group\n");
 		rc = -ENOSPC;
@@ -3592,6 +3857,11 @@ skip_ext_stats:
 		pci_dev->mem_resource[0].phys_addr,
 		pci_dev->mem_resource[0].addr);
 
+	rc = bnxt_hwrm_func_qcfg(bp);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "hwrm func qcfg failed\n");
+		goto error_free;
+	}
 
 	if (BNXT_PF(bp)) {
 		//if (bp->pf.active_vfs) {
@@ -3677,6 +3947,7 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev)
 		bnxt_dev_close_op(eth_dev);
 	if (bp->pf.vf_info)
 		rte_free(bp->pf.vf_info);
+	bnxt_free_ctx_mem(bp);
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;

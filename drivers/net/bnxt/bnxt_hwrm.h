@@ -36,6 +36,13 @@ struct bnxt_cp_ring_info;
 #define HWRM_SPEC_CODE_1_9_0		0x10900
 #define HWRM_SPEC_CODE_1_9_2		0x10902
 
+#define FUNC_BACKING_STORE_CFG_INPUT_DFLT_ENABLES              \
+	(HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_QP |        \
+	HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_SRQ |        \
+	HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_CQ |         \
+	HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_VNIC |       \
+	HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_STAT)
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,
@@ -179,4 +186,7 @@ int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
 			struct bnxt_coal *coal, uint16_t ring_id);
 int bnxt_hwrm_check_vf_rings(struct bnxt *bp);
 int bnxt_hwrm_ext_port_qstats(struct bnxt *bp);
+int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp);
+int bnxt_hwrm_func_backing_store_cfg(struct bnxt *bp, uint32_t enables);
+int bnxt_alloc_ctx_mem(struct bnxt *bp);
 #endif
