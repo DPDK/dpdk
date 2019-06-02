@@ -4095,6 +4095,37 @@ static void bnxt_hwrm_set_coal_params(struct bnxt_coal *hw_coal,
 	req->flags = rte_cpu_to_le_16(flags);
 }
 
+static int bnxt_hwrm_set_coal_params_thor(struct bnxt *bp,
+		struct hwrm_ring_cmpl_ring_cfg_aggint_params_input *agg_req)
+{
+	struct hwrm_ring_aggint_qcaps_input req = {0};
+	struct hwrm_ring_aggint_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+	uint32_t enables;
+	uint16_t flags;
+	int rc;
+
+	HWRM_PREP(req, RING_AGGINT_QCAPS, BNXT_USE_CHIMP_MB);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	if (rc)
+		goto out;
+
+	agg_req->num_cmpl_dma_aggr = resp->num_cmpl_dma_aggr_max;
+	agg_req->cmpl_aggr_dma_tmr = resp->cmpl_aggr_dma_tmr_min;
+
+	flags = HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_FLAGS_TIMER_RESET |
+		HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_FLAGS_RING_IDLE;
+	agg_req->flags = rte_cpu_to_le_16(flags);
+	enables =
+	 HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_ENABLES_CMPL_AGGR_DMA_TMR |
+	 HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_ENABLES_NUM_CMPL_DMA_AGGR;
+	agg_req->enables = rte_cpu_to_le_32(enables);
+
+out:
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+	return rc;
+}
+
 int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
 			struct bnxt_coal *coal, uint16_t ring_id)
 {
@@ -4103,12 +4134,17 @@ int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
 						bp->hwrm_cmd_resp_addr;
 	int rc;
 
-	/* Set ring coalesce parameters only for Stratus 100G NIC */
-	if (!bnxt_stratus_device(bp))
+	/* Set ring coalesce parameters only for 100G NICs */
+	if (BNXT_CHIP_THOR(bp)) {
+		if (bnxt_hwrm_set_coal_params_thor(bp, &req))
+			return -1;
+	} else if (bnxt_stratus_device(bp)) {
+		bnxt_hwrm_set_coal_params(coal, &req);
+	} else {
 		return 0;
+	}
 
 	HWRM_PREP(req, RING_CMPL_RING_CFG_AGGINT_PARAMS, BNXT_USE_CHIMP_MB);
-	bnxt_hwrm_set_coal_params(coal, &req);
 	req.ring_id = rte_cpu_to_le_16(ring_id);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT();
