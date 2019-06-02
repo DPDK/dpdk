@@ -1429,7 +1429,7 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		ctx_enable_flag |= HWRM_VNIC_CFG_INPUT_ENABLES_LB_RULE;
 	if (vnic->cos_rule != 0xffff)
 		ctx_enable_flag |= HWRM_VNIC_CFG_INPUT_ENABLES_COS_RULE;
-	if (vnic->rss_rule != 0xffff) {
+	if (vnic->rss_rule != (uint16_t)HWRM_NA_SIGNATURE) {
 		ctx_enable_flag |= HWRM_VNIC_CFG_INPUT_ENABLES_MRU;
 		ctx_enable_flag |= HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE;
 	}
@@ -1544,7 +1544,7 @@ int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct hwrm_vnic_rss_cos_lb_ctx_free_output *resp =
 						bp->hwrm_cmd_resp_addr;
 
-	if (vnic->rss_rule == 0xffff) {
+	if (vnic->rss_rule == (uint16_t)HWRM_NA_SIGNATURE) {
 		PMD_DRV_LOG(DEBUG, "VNIC RSS Rule %x\n", vnic->rss_rule);
 		return rc;
 	}
@@ -1557,7 +1557,7 @@ int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 
-	vnic->rss_rule = INVALID_HW_RING_ID;
+	vnic->rss_rule = (uint16_t)HWRM_NA_SIGNATURE;
 
 	return rc;
 }
