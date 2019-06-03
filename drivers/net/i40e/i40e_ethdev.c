@@ -526,13 +526,13 @@ static const struct rte_i40e_xstats_name_off rte_i40e_stats_strings[] = {
 	{"rx_unicast_packets", offsetof(struct i40e_eth_stats, rx_unicast)},
 	{"rx_multicast_packets", offsetof(struct i40e_eth_stats, rx_multicast)},
 	{"rx_broadcast_packets", offsetof(struct i40e_eth_stats, rx_broadcast)},
-	{"rx_dropped", offsetof(struct i40e_eth_stats, rx_discards)},
+	{"rx_dropped_packets", offsetof(struct i40e_eth_stats, rx_discards)},
 	{"rx_unknown_protocol_packets", offsetof(struct i40e_eth_stats,
 		rx_unknown_protocol)},
 	{"tx_unicast_packets", offsetof(struct i40e_eth_stats, tx_unicast)},
 	{"tx_multicast_packets", offsetof(struct i40e_eth_stats, tx_multicast)},
 	{"tx_broadcast_packets", offsetof(struct i40e_eth_stats, tx_broadcast)},
-	{"tx_dropped", offsetof(struct i40e_eth_stats, tx_discards)},
+	{"tx_dropped_packets", offsetof(struct i40e_eth_stats, tx_discards)},
 };
 
 #define I40E_NB_ETH_XSTATS (sizeof(rte_i40e_stats_strings) / \
