@@ -281,18 +281,6 @@ The list of queues that must be polled for a given lcore is stored in a private 
 The values n_rx_port and rx_port_list[] are used in the main packet processing loop
 (see :ref:`l2_fwd_app_rx_tx_packets`).
 
-The global configuration for the RX queues is stored in a static structure:
-
-.. code-block:: c
-
-    static const struct rte_eth_rxconf rx_conf = {
-        .rx_thresh = {
-            .pthresh = RX_PTHRESH,
-            .hthresh = RX_HTHRESH,
-            .wthresh = RX_WTHRESH,
-        },
-    };
-
 .. _l2_fwd_app_tx_init:
 
 TX Queue Initialization
