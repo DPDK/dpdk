@@ -153,13 +153,13 @@ static const struct ice_xstats_name_off ice_stats_strings[] = {
 	{"rx_unicast_packets", offsetof(struct ice_eth_stats, rx_unicast)},
 	{"rx_multicast_packets", offsetof(struct ice_eth_stats, rx_multicast)},
 	{"rx_broadcast_packets", offsetof(struct ice_eth_stats, rx_broadcast)},
-	{"rx_dropped", offsetof(struct ice_eth_stats, rx_discards)},
+	{"rx_dropped_packets", offsetof(struct ice_eth_stats, rx_discards)},
 	{"rx_unknown_protocol_packets", offsetof(struct ice_eth_stats,
 		rx_unknown_protocol)},
 	{"tx_unicast_packets", offsetof(struct ice_eth_stats, tx_unicast)},
 	{"tx_multicast_packets", offsetof(struct ice_eth_stats, tx_multicast)},
 	{"tx_broadcast_packets", offsetof(struct ice_eth_stats, tx_broadcast)},
-	{"tx_dropped", offsetof(struct ice_eth_stats, tx_discards)},
+	{"tx_dropped_packets", offsetof(struct ice_eth_stats, tx_discards)},
 };
 
 #define ICE_NB_ETH_XSTATS (sizeof(ice_stats_strings) / \
