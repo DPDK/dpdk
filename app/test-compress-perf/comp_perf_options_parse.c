@@ -364,12 +364,14 @@ parse_max_num_sgl_segs(struct comp_test_data *test_data, const char *arg)
 static int
 parse_window_sz(struct comp_test_data *test_data, const char *arg)
 {
-	int ret = parse_uint16_t((uint16_t *)&test_data->window_sz, arg);
+	uint16_t tmp;
+	int ret = parse_uint16_t(&tmp, arg);
 
 	if (ret) {
 		RTE_LOG(ERR, USER1, "Failed to parse window size\n");
 		return -1;
 	}
+	test_data->window_sz = (int)tmp;
 
 	return 0;
 }
