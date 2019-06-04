@@ -291,10 +291,6 @@ static int ecore_state_wait(struct bnx2x_softc *sc, int state,
 		cnt *= 20;
 
 	ECORE_MSG(sc, "waiting for state to become %d", state);
-	/* being over protective to remind bnx2x_intr_legacy() to
-	 * process RAMROD
-	 */
-	rte_atomic32_set(&sc->scan_fp, 1);
 
 	ECORE_MIGHT_SLEEP();
 	while (cnt--) {

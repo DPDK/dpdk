@@ -4572,6 +4572,8 @@ static void bnx2x_handle_fp_tq(struct bnx2x_fastpath *fp)
 		}
 	}
 
+	/* Assuming we have completed slow path completion, clear the flag */
+	rte_atomic32_set(&sc->scan_fp, 0);
 	bnx2x_ack_sb(sc, fp->igu_sb_id, USTORM_ID,
 		   le16toh(fp->fp_hc_idx), IGU_INT_ENABLE, 1);
 }
