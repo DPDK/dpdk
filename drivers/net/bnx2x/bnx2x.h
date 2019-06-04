@@ -155,13 +155,14 @@ struct bnx2x_device_type {
  * Transmit Buffer Descriptor (tx_bd) definitions*
  */
 /* NUM_TX_PAGES must be a power of 2. */
+#define NUM_TX_PAGES		 16
 #define TOTAL_TX_BD_PER_PAGE     (BNX2X_PAGE_SIZE / sizeof(union eth_tx_bd_types)) /*  256 */
 #define USABLE_TX_BD_PER_PAGE    (TOTAL_TX_BD_PER_PAGE - 1)                      /*  255 */
 
 #define TOTAL_TX_BD(q)           (TOTAL_TX_BD_PER_PAGE * q->nb_tx_pages)         /*  512 */
 #define USABLE_TX_BD(q)          (USABLE_TX_BD_PER_PAGE * q->nb_tx_pages)        /*  510 */
 #define MAX_TX_BD(q)             (TOTAL_TX_BD(q) - 1)                            /*  511 */
-
+#define MAX_TX_AVAIL		 (USABLE_TX_BD_PER_PAGE * NUM_TX_PAGES - 2)
 #define NEXT_TX_BD(x)                                                   \
 	((((x) & USABLE_TX_BD_PER_PAGE) ==                              \
 	  (USABLE_TX_BD_PER_PAGE - 1)) ? (x) + 2 : (x) + 1)
@@ -182,13 +183,14 @@ struct bnx2x_device_type {
 /*
  * Receive Buffer Descriptor (rx_bd) definitions*
  */
-//#define NUM_RX_PAGES            1
+#define MAX_RX_PAGES            8
 #define TOTAL_RX_BD_PER_PAGE    (BNX2X_PAGE_SIZE / sizeof(struct eth_rx_bd))      /*  512 */
 #define USABLE_RX_BD_PER_PAGE   (TOTAL_RX_BD_PER_PAGE - 2)                      /*  510 */
 #define RX_BD_PER_PAGE_MASK     (TOTAL_RX_BD_PER_PAGE - 1)                      /*  511 */
 #define TOTAL_RX_BD(q)          (TOTAL_RX_BD_PER_PAGE * q->nb_rx_pages)         /*  512 */
 #define USABLE_RX_BD(q)         (USABLE_RX_BD_PER_PAGE * q->nb_rx_pages)        /*  510 */
 #define MAX_RX_BD(q)            (TOTAL_RX_BD(q) - 1)                            /*  511 */
+#define MAX_RX_AVAIL		(USABLE_RX_BD_PER_PAGE * MAX_RX_PAGES - 2)
 #define RX_BD_NEXT_PAGE_DESC_CNT 2
 
 #define NEXT_RX_BD(x)                                                   \
@@ -243,6 +245,10 @@ struct bnx2x_device_type {
 	(BD_TH_LO(sc) + DROPLESS_FC_HEADROOM)
 #define MIN_RX_AVAIL(sc)				\
 	((sc)->dropless_fc ? BD_TH_HI(sc) + 128 : 128)
+
+#define MIN_RX_SIZE_NONTPA_HW	ETH_MIN_RX_CQES_WITHOUT_TPA
+#define MIN_RX_SIZE_NONTPA	(RTE_MAX((uint32_t)MIN_RX_SIZE_NONTPA_HW,\
+					(uint32_t)MIN_RX_AVAIL(sc)))
 
 /*
  * dropless fc calculations for RCQs

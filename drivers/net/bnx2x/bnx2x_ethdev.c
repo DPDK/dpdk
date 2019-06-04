@@ -480,6 +480,7 @@ static void
 bnx2x_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
+
 	dev_info->max_rx_queues  = sc->max_rx_queues;
 	dev_info->max_tx_queues  = sc->max_tx_queues;
 	dev_info->min_rx_bufsize = BNX2X_MIN_RX_BUF_SIZE;
@@ -487,6 +488,10 @@ bnx2x_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mac_addrs  = BNX2X_MAX_MAC_ADDRS;
 	dev_info->speed_capa = ETH_LINK_SPEED_10G | ETH_LINK_SPEED_20G;
 	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_JUMBO_FRAME;
+
+	dev_info->rx_desc_lim.nb_max = MAX_RX_AVAIL;
+	dev_info->rx_desc_lim.nb_min = MIN_RX_SIZE_NONTPA;
+	dev_info->tx_desc_lim.nb_max = MAX_TX_AVAIL;
 }
 
 static int
