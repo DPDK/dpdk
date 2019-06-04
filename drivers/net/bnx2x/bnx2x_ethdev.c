@@ -88,7 +88,6 @@ bnx2x_link_update(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE(sc);
 
-	bnx2x_link_status_update(sc);
 	memset(&link, 0, sizeof(link));
 	mb();
 	link.link_speed = sc->link_vars.line_speed;
