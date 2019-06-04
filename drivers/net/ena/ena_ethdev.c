@@ -40,7 +40,6 @@
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_version.h>
-#include <rte_eal_memconfig.h>
 #include <rte_net.h>
 
 #include "ena_ethdev.h"
@@ -271,22 +270,6 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.reta_update          = ena_rss_reta_update,
 	.reta_query           = ena_rss_reta_query,
 };
-
-#define NUMA_NO_NODE	SOCKET_ID_ANY
-
-static inline int ena_cpu_to_node(int cpu)
-{
-	struct rte_config *config = rte_eal_get_configuration();
-	struct rte_fbarray *arr = &config->mem_config->memzones;
-	const struct rte_memzone *mz;
-
-	if (unlikely(cpu >= RTE_MAX_MEMZONE))
-		return NUMA_NO_NODE;
-
-	mz = rte_fbarray_get(arr, cpu);
-
-	return mz->socket_id;
-}
 
 static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
 				       struct ena_com_rx_ctx *ena_rx_ctx)
@@ -1116,7 +1099,7 @@ static int ena_create_io_queue(struct ena_ring *ring)
 	}
 	ctx.qid = ena_qid;
 	ctx.msix_vector = -1; /* interrupts not used */
-	ctx.numa_node = ena_cpu_to_node(ring->id);
+	ctx.numa_node = ring->numa_socket_id;
 
 	rc = ena_com_create_io_queue(ena_dev, &ctx);
 	if (rc) {
@@ -1213,7 +1196,7 @@ static int ena_queue_start(struct ena_ring *ring)
 static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 			      uint16_t queue_idx,
 			      uint16_t nb_desc,
-			      __rte_unused unsigned int socket_id,
+			      unsigned int socket_id,
 			      const struct rte_eth_txconf *tx_conf)
 {
 	struct ena_ring *txq = NULL;
@@ -1250,6 +1233,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->next_to_clean = 0;
 	txq->next_to_use = 0;
 	txq->ring_size = nb_desc;
+	txq->numa_socket_id = socket_id;
 
 	txq->tx_buffer_info = rte_zmalloc("txq->tx_buffer_info",
 					  sizeof(struct ena_tx_buffer) *
@@ -1297,7 +1281,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 			      uint16_t queue_idx,
 			      uint16_t nb_desc,
-			      __rte_unused unsigned int socket_id,
+			      unsigned int socket_id,
 			      __rte_unused const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp)
 {
@@ -1334,6 +1318,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->next_to_clean = 0;
 	rxq->next_to_use = 0;
 	rxq->ring_size = nb_desc;
+	rxq->numa_socket_id = socket_id;
 	rxq->mb_pool = mp;
 
 	rxq->rx_buffer_info = rte_zmalloc("rxq->buffer_info",

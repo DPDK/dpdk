@@ -143,6 +143,8 @@ struct ena_ring {
 		struct ena_stats_rx rx_stats;
 		struct ena_stats_tx tx_stats;
 	};
+
+	unsigned int numa_socket_id;
 } __rte_cache_aligned;
 
 enum ena_adapter_state {
