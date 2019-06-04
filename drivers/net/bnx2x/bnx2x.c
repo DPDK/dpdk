@@ -9018,36 +9018,42 @@ void bnx2x_free_hsi_mem(struct bnx2x_softc *sc)
 /*******************/
 
 		memset(&fp->status_block, 0, sizeof(fp->status_block));
+		bnx2x_dma_free(&fp->sb_dma);
 	}
 
 	/***************************/
 	/* FW DECOMPRESSION BUFFER */
 	/***************************/
 
+	bnx2x_dma_free(&sc->gz_buf_dma);
 	sc->gz_buf = NULL;
 
 	/*******************/
 	/* SLOW PATH QUEUE */
 	/*******************/
 
+	bnx2x_dma_free(&sc->spq_dma);
 	sc->spq = NULL;
 
 	/*************/
 	/* SLOW PATH */
 	/*************/
 
+	bnx2x_dma_free(&sc->sp_dma);
 	sc->sp = NULL;
 
 	/***************/
 	/* EVENT QUEUE */
 	/***************/
 
+	bnx2x_dma_free(&sc->eq_dma);
 	sc->eq = NULL;
 
 	/************************/
 	/* DEFAULT STATUS BLOCK */
 	/************************/
 
+	bnx2x_dma_free(&sc->def_sb_dma);
 	sc->def_sb = NULL;
 
 }
