@@ -36,7 +36,7 @@ typedef void (*rte_intr_unregister_callback_fn)(struct rte_intr_handle *intr_han
 
 /**
  * It registers the callback for the specific interrupt. Multiple
- * callbacks cal be registered at the same time.
+ * callbacks can be registered at the same time.
  * @param intr_handle
  *  Pointer to the interrupt handle.
  * @param cb

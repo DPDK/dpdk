@@ -349,7 +349,7 @@ rte_dev_iterator_next(struct rte_dev_iterator *it);
  * @b EXPERIMENTAL: this API may change without prior notice
  *
  * It registers the callback for the specific device.
- * Multiple callbacks cal be registered at the same time.
+ * Multiple callbacks can be registered at the same time.
  *
  * @param device_name
  *  The device name, that is the param name of the struct rte_device,
