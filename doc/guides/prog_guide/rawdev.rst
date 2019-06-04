@@ -32,7 +32,7 @@ Key factors guiding design of the Rawdevice library:
 
 1. Following are some generic operations which can be treated as applicable
    to a large subset of device types. None of the operations are mandatory to
-   be implemented by a driver. Application should also be design for proper
+   be implemented by a driver. Application should also be designed for proper
    handling for unsupported APIs.
 
   * Device Start/Stop - In some cases, 'reset' might also be required which
