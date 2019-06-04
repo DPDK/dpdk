@@ -2401,6 +2401,9 @@ static void bnx2x_free_mem(struct bnx2x_softc *sc)
 	ecore_ilt_mem_op(sc, ILT_MEMOP_FREE);
 
 	bnx2x_free_ilt_lines_mem(sc);
+
+	/* free the host hardware/software hsi structures */
+	bnx2x_free_hsi_mem(sc);
 }
 
 static int bnx2x_alloc_mem(struct bnx2x_softc *sc)
@@ -2449,6 +2452,13 @@ static int bnx2x_alloc_mem(struct bnx2x_softc *sc)
 		PMD_DRV_LOG(NOTICE, sc, "ecore_ilt_mem_op ILT_MEMOP_ALLOC failed");
 		bnx2x_free_mem(sc);
 		return -1;
+	}
+
+	/* allocate the host hardware/software hsi structures */
+	if (bnx2x_alloc_hsi_mem(sc) != 0) {
+		PMD_DRV_LOG(ERR, sc, "bnx2x_alloc_hsi_mem was failed");
+		bnx2x_free_mem(sc);
+		return -ENXIO;
 	}
 
 	return 0;

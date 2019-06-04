@@ -207,13 +207,6 @@ bnx2x_dev_configure(struct rte_eth_dev *dev)
 		return -ENXIO;
 	}
 
-	/* allocate the host hardware/software hsi structures */
-	if (bnx2x_alloc_hsi_mem(sc) != 0) {
-		PMD_DRV_LOG(ERR, sc, "bnx2x_alloc_hsi_mem was failed");
-		bnx2x_free_ilt_mem(sc);
-		return -ENXIO;
-	}
-
 	bnx2x_dev_rxtx_init_dummy(dev);
 	return 0;
 }
@@ -293,9 +286,6 @@ bnx2x_dev_close(struct rte_eth_dev *dev)
 
 	bnx2x_dev_clear_queues(dev);
 	memset(&(dev->data->dev_link), 0 , sizeof(struct rte_eth_link));
-
-	/* free the host hardware/software hsi structures */
-	bnx2x_free_hsi_mem(sc);
 
 	/* free ilt */
 	bnx2x_free_ilt_mem(sc);
