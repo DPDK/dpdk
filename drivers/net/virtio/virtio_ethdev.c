@@ -1876,6 +1876,8 @@ out:
 static int
 eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 {
+	struct virtio_hw *hw = eth_dev->data->dev_private;
+
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
@@ -1888,8 +1890,11 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 
-	if (eth_dev->device)
+	if (eth_dev->device) {
 		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
+		if (!hw->modern)
+			rte_pci_ioport_unmap(VTPCI_IO(hw));
+	}
 
 	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
 
