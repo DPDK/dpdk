@@ -9,7 +9,6 @@
 #include <stdbool.h>
 #include "../virtio_pci.h"
 #include "../virtio_ring.h"
-#include "vhost.h"
 
 struct virtio_user_queue {
 	uint16_t used_idx;

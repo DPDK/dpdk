@@ -35,6 +35,7 @@
 #include "virtio_logs.h"
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
+#include "virtio_user/virtio_user_dev.h"
 
 static int eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  virtio_dev_configure(struct rte_eth_dev *dev);
@@ -733,6 +734,17 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	vtpci_reset(hw);
 	virtio_dev_free_mbufs(dev);
 	virtio_free_queues(hw);
+
+#ifdef RTE_VIRTIO_USER
+	if (hw->virtio_user_dev)
+		virtio_user_dev_uninit(hw->virtio_user_dev);
+	else
+#endif
+	if (dev->device) {
+		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(dev));
+		if (!hw->modern)
+			rte_pci_ioport_unmap(VTPCI_IO(hw));
+	}
 }
 
 static void
@@ -1645,10 +1657,8 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 
 	hw->weak_barriers = !vtpci_with_feature(hw, VIRTIO_F_ORDER_PLATFORM);
 
-	if (!hw->virtio_user_dev) {
+	if (!hw->virtio_user_dev)
 		pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-		rte_eth_copy_pci_info(eth_dev, pci_dev);
-	}
 
 	/* If host does not support both status and MSI-X then disable LSC */
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS) &&
@@ -1840,6 +1850,12 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
+	/*
+	 * Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("virtio",
 				VIRTIO_MAX_MAC_ADDRS * RTE_ETHER_ADDR_LEN, 0);
@@ -1865,6 +1881,8 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	if (ret < 0)
 		goto err_virtio_init;
 
+	hw->opened = true;
+
 	return 0;
 
 err_virtio_init:
@@ -1882,8 +1900,6 @@ err_vtpci_init:
 static int
 eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct virtio_hw *hw = eth_dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
@@ -1895,12 +1911,6 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->rx_pkt_burst = NULL;
-
-	if (eth_dev->device) {
-		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
-		if (!hw->modern)
-			rte_pci_ioport_unmap(VTPCI_IO(hw));
-	}
 
 	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
 
@@ -1963,7 +1973,13 @@ static int eth_virtio_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 static int eth_virtio_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, eth_virtio_dev_uninit);
+	int ret;
+
+	ret = rte_eth_dev_pci_generic_remove(pci_dev, eth_virtio_dev_uninit);
+	/* Port has already been released by close. */
+	if (ret == -ENODEV)
+		ret = 0;
+	return ret;
 }
 
 static struct rte_pci_driver rte_virtio_pmd = {
@@ -2122,8 +2138,6 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			   DEV_RX_OFFLOAD_TCP_LRO |
 			   DEV_RX_OFFLOAD_VLAN_STRIP))
 		hw->use_simple_rx = 0;
-
-	hw->opened = true;
 
 	return 0;
 }

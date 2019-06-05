@@ -20,6 +20,7 @@
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
 #include "virtio_user/virtio_user_dev.h"
+#include "virtio_user/vhost.h"
 
 #define virtio_user_get_dev(hw) \
 	((struct virtio_user_dev *)(hw)->virtio_user_dev)
@@ -697,8 +698,6 @@ virtio_user_pmd_remove(struct rte_vdev_device *vdev)
 {
 	const char *name;
 	struct rte_eth_dev *eth_dev;
-	struct virtio_hw *hw;
-	struct virtio_user_dev *dev;
 
 	if (!vdev)
 		return -EINVAL;
@@ -706,20 +705,15 @@ virtio_user_pmd_remove(struct rte_vdev_device *vdev)
 	name = rte_vdev_device_name(vdev);
 	PMD_DRV_LOG(INFO, "Un-Initializing %s", name);
 	eth_dev = rte_eth_dev_allocated(name);
+	/* Port has already been released by close. */
 	if (!eth_dev)
-		return -ENODEV;
+		return 0;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return rte_eth_dev_release_port(eth_dev);
 
 	/* make sure the device is stopped, queues freed */
 	rte_eth_dev_close(eth_dev->data->port_id);
-
-	hw = eth_dev->data->dev_private;
-	dev = hw->virtio_user_dev;
-	virtio_user_dev_uninit(dev);
-
-	rte_eth_dev_release_port(eth_dev);
 
 	return 0;
 }
