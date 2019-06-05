@@ -11,7 +11,6 @@
 #include <inttypes.h>
 #include <sys/queue.h>
 #include <errno.h>
-#include <netinet/ip.h>
 #include <signal.h>
 
 #include <rte_common.h>
