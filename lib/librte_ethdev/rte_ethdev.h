@@ -4407,8 +4407,8 @@ rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
  *   The number of packets correct and ready to be sent. The return value can be
  *   less than the value of the *tx_pkts* parameter when some packet doesn't
  *   meet devices requirements with rte_errno set appropriately:
- *   - -EINVAL: offload flags are not correctly set
- *   - -ENOTSUP: the offload feature is not supported by the hardware
+ *   - EINVAL: offload flags are not correctly set
+ *   - ENOTSUP: the offload feature is not supported by the hardware
  *
  */
 
