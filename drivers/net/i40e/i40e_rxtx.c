@@ -1446,7 +1446,7 @@ i40e_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (!(ol_flags & PKT_TX_TCP_SEG)) {
 			if (m->nb_segs > I40E_TX_MAX_MTU_SEG ||
 			    m->pkt_len > I40E_FRAME_SIZE_MAX) {
-				rte_errno = -EINVAL;
+				rte_errno = EINVAL;
 				return i;
 			}
 		} else if (m->nb_segs > I40E_TX_MAX_SEG ||
@@ -1456,31 +1456,31 @@ i40e_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			/* MSS outside the range (256B - 9674B) are considered
 			 * malicious
 			 */
-			rte_errno = -EINVAL;
+			rte_errno = EINVAL;
 			return i;
 		}
 
 		if (ol_flags & I40E_TX_OFFLOAD_NOTSUP_MASK) {
-			rte_errno = -ENOTSUP;
+			rte_errno = ENOTSUP;
 			return i;
 		}
 
 		/* check the size of packet */
 		if (m->pkt_len < I40E_TX_MIN_PKT_LEN) {
-			rte_errno = -EINVAL;
+			rte_errno = EINVAL;
 			return i;
 		}
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
-			rte_errno = ret;
+			rte_errno = -ret;
 			return i;
 		}
 #endif
 		ret = rte_net_intel_cksum_prepare(m);
 		if (ret != 0) {
-			rte_errno = ret;
+			rte_errno = -ret;
 			return i;
 		}
 	}
