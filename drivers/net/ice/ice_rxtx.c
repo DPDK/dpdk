@@ -2370,20 +2370,20 @@ ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			/**
 			 * MSS outside the range are considered malicious
 			 */
-			rte_errno = -EINVAL;
+			rte_errno = EINVAL;
 			return i;
 		}
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
-			rte_errno = ret;
+			rte_errno = -ret;
 			return i;
 		}
 #endif
 		ret = rte_net_intel_cksum_prepare(m);
 		if (ret != 0) {
-			rte_errno = ret;
+			rte_errno = -ret;
 			return i;
 		}
 	}
