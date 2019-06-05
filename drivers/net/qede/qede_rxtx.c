@@ -1798,17 +1798,17 @@ qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
 		ol_flags = m->ol_flags;
 		if (ol_flags & PKT_TX_TCP_SEG) {
 			if (m->nb_segs >= ETH_TX_MAX_BDS_PER_LSO_PACKET) {
-				rte_errno = -EINVAL;
+				rte_errno = EINVAL;
 				break;
 			}
 			/* TBD: confirm its ~9700B for both ? */
 			if (m->tso_segsz > ETH_TX_MAX_NON_LSO_PKT_LEN) {
-				rte_errno = -EINVAL;
+				rte_errno = EINVAL;
 				break;
 			}
 		} else {
 			if (m->nb_segs >= ETH_TX_MAX_BDS_PER_NON_LSO_PACKET) {
-				rte_errno = -EINVAL;
+				rte_errno = EINVAL;
 				break;
 			}
 		}
@@ -1825,14 +1825,14 @@ qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
 					continue;
 			}
 
-			rte_errno = -ENOTSUP;
+			rte_errno = ENOTSUP;
 			break;
 		}
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
-			rte_errno = ret;
+			rte_errno = -ret;
 			break;
 		}
 #endif
