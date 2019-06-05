@@ -852,12 +852,15 @@ allow_experimental_apis
 build
 	**Default Value = true**
 	Used to optionally compile a library, based on its dependencies or
-	environment. A simple example of use would be:
+	environment. When set to "false" the ``reason`` value, explained below, should
+	also be set to explain to the user why the component is not being built.
+	A simple example of use would be:
 
 .. code-block:: python
 
 	if not is_linux
 	        build = false
+	        reason = 'only supported on Linux'
 	endif
 
 
@@ -938,6 +941,13 @@ objs
 	objects that were compiled up as part of another target given in the
 	included library ``meson.build`` file.
 
+reason
+	**Default Value = '<unknown reason>'**.
+	This variable should be used when a library is not to be built i.e. when
+	``build`` is set to "false", to specify the reason why a library will not be
+	built. For missing dependencies this should be of the form
+	``'missing dependency, "libname"'``.
+
 version
 	**Default Value = 1**.
 	Specifies the ABI version of the library, and is used as the major
@@ -990,6 +1000,9 @@ pkgconfig_extra_libs
 	libraries that may need to be linked into the build - especially when
 	using static libraries. Anything added here will be appended to the end
 	of the ``pkgconfig --libs`` output.
+
+reason
+	As above.
 
 sources [mandatory]
 	As above

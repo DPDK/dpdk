@@ -37,6 +37,7 @@ foreach class:dpdk_driver_classes
 
 		# set up empty variables used for build
 		build = true # set to false to disable, e.g. missing deps
+		reason = '<unknown reason>' # set if build == false to explain
 		name = drv
 		version = 1
 		allow_experimental_apis = false
@@ -58,7 +59,16 @@ foreach class:dpdk_driver_classes
 		# pull in driver directory which should assign to each of the above
 		subdir(drv_path)
 
-		if build
+		if not build
+			# some driver directories are placeholders which
+			# are never built, so we allow suppression of the
+			# component disable printout in those cases
+			if reason != ''
+				dpdk_drvs_disabled += drv_path
+				set_variable(drv_path.underscorify() +
+						'_disable_reason', reason)
+			endif
+		else
 			class_drivers += name
 
 			dpdk_conf.set(config_flag_fmt.format(name.to_upper()),1)
