@@ -1005,6 +1005,9 @@ eth_dev_close(struct rte_eth_dev *dev)
 	rte_free(internal);
 
 	dev->data->dev_private = NULL;
+
+	rte_free(vring_states[dev->data->port_id]);
+	vring_states[dev->data->port_id] = NULL;
 }
 
 static int
@@ -1261,7 +1264,7 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	internal->max_queues = queues;
 	internal->vid = -1;
 	data->dev_link = pmd_link;
-	data->dev_flags = RTE_ETH_DEV_INTR_LSC;
+	data->dev_flags = RTE_ETH_DEV_INTR_LSC | RTE_ETH_DEV_CLOSE_REMOVE;
 
 	eth_dev->dev_ops = &ops;
 
@@ -1442,15 +1445,12 @@ rte_pmd_vhost_remove(struct rte_vdev_device *dev)
 	/* find an ethdev entry */
 	eth_dev = rte_eth_dev_allocated(name);
 	if (eth_dev == NULL)
-		return -ENODEV;
+		return 0;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return rte_eth_dev_release_port(eth_dev);
 
 	eth_dev_close(eth_dev);
-
-	rte_free(vring_states[eth_dev->data->port_id]);
-	vring_states[eth_dev->data->port_id] = NULL;
 
 	rte_eth_dev_release_port(eth_dev);
 
