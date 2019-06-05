@@ -1857,17 +1857,23 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	if (!hw->virtio_user_dev) {
 		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
 		if (ret)
-			goto out;
+			goto err_vtpci_init;
 	}
 
 	/* reset device and negotiate default features */
 	ret = virtio_init_device(eth_dev, VIRTIO_PMD_DEFAULT_GUEST_FEATURES);
 	if (ret < 0)
-		goto out;
+		goto err_virtio_init;
 
 	return 0;
 
-out:
+err_virtio_init:
+	if (!hw->virtio_user_dev) {
+		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
+		if (!hw->modern)
+			rte_pci_ioport_unmap(VTPCI_IO(hw));
+	}
+err_vtpci_init:
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 	return ret;
