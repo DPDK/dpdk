@@ -143,7 +143,15 @@ esp_inb_tun_pkt_process(const struct rte_ipsec_session *ss,
 	struct rte_mbuf *mb[], uint16_t num);
 
 uint16_t
+inline_inb_tun_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num);
+
+uint16_t
 esp_inb_trs_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num);
+
+uint16_t
+inline_inb_trs_pkt_process(const struct rte_ipsec_session *ss,
 	struct rte_mbuf *mb[], uint16_t num);
 
 /* outbound processing */

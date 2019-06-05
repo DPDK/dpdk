@@ -104,7 +104,7 @@ outb_cop_prepare(struct rte_crypto_op *cop,
 static inline int32_t
 outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	const uint64_t ivp[IPSEC_MAX_IV_QWORD], struct rte_mbuf *mb,
-	union sym_op_data *icv)
+	union sym_op_data *icv, uint8_t sqh_len)
 {
 	uint32_t clen, hlen, l2len, pdlen, pdofs, plen, tlen;
 	struct rte_mbuf *ml;
@@ -126,11 +126,11 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 
 	/* pad length + esp tail */
 	pdlen = clen - plen;
-	tlen = pdlen + sa->icv_len;
+	tlen = pdlen + sa->icv_len + sqh_len;
 
 	/* do append and prepend */
 	ml = rte_pktmbuf_lastseg(mb);
-	if (tlen + sa->sqh_len + sa->aad_len > rte_pktmbuf_tailroom(ml))
+	if (tlen + sa->aad_len > rte_pktmbuf_tailroom(ml))
 		return -ENOSPC;
 
 	/* prepend header */
@@ -152,8 +152,8 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	rte_memcpy(ph, sa->hdr, sa->hdr_len);
 
 	/* update original and new ip header fields */
-	update_tun_l3hdr(sa, ph + sa->hdr_l3_off, mb->pkt_len, sa->hdr_l3_off,
-			sqn_low16(sqc));
+	update_tun_l3hdr(sa, ph + sa->hdr_l3_off, mb->pkt_len - sqh_len,
+			sa->hdr_l3_off, sqn_low16(sqc));
 
 	/* update spi, seqn and iv */
 	esph = (struct rte_esp_hdr *)(ph + sa->hdr_len);
@@ -242,8 +242,8 @@ esp_outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 		gen_iv(iv, sqc);
 
 		/* try to update the packet itself */
-		rc = outb_tun_pkt_prepare(sa, sqc, iv, mb[i], &icv);
-
+		rc = outb_tun_pkt_prepare(sa, sqc, iv, mb[i], &icv,
+					  sa->sqh_len);
 		/* success, setup crypto op */
 		if (rc >= 0) {
 			outb_pkt_xprepare(sa, sqc, &icv);
@@ -270,7 +270,8 @@ esp_outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 static inline int32_t
 outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	const uint64_t ivp[IPSEC_MAX_IV_QWORD], struct rte_mbuf *mb,
-	uint32_t l2len, uint32_t l3len, union sym_op_data *icv)
+	uint32_t l2len, uint32_t l3len, union sym_op_data *icv,
+	uint8_t sqh_len)
 {
 	uint8_t np;
 	uint32_t clen, hlen, pdlen, pdofs, plen, tlen, uhlen;
@@ -292,11 +293,11 @@ outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 
 	/* pad length + esp tail */
 	pdlen = clen - plen;
-	tlen = pdlen + sa->icv_len;
+	tlen = pdlen + sa->icv_len + sqh_len;
 
 	/* do append and insert */
 	ml = rte_pktmbuf_lastseg(mb);
-	if (tlen + sa->sqh_len + sa->aad_len > rte_pktmbuf_tailroom(ml))
+	if (tlen + sa->aad_len > rte_pktmbuf_tailroom(ml))
 		return -ENOSPC;
 
 	/* prepend space for ESP header */
@@ -314,8 +315,8 @@ outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	insert_esph(ph, ph + hlen, uhlen);
 
 	/* update ip  header fields */
-	np = update_trs_l3hdr(sa, ph + l2len, mb->pkt_len, l2len, l3len,
-			IPPROTO_ESP);
+	np = update_trs_l3hdr(sa, ph + l2len, mb->pkt_len - sqh_len, l2len,
+			l3len, IPPROTO_ESP);
 
 	/* update spi, seqn and iv */
 	esph = (struct rte_esp_hdr *)(ph + uhlen);
@@ -380,8 +381,8 @@ esp_outb_trs_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 		gen_iv(iv, sqc);
 
 		/* try to update the packet itself */
-		rc = outb_trs_pkt_prepare(sa, sqc, iv, mb[i], l2, l3, &icv);
-
+		rc = outb_trs_pkt_prepare(sa, sqc, iv, mb[i], l2, l3, &icv,
+					  sa->sqh_len);
 		/* success, setup crypto op */
 		if (rc >= 0) {
 			outb_pkt_xprepare(sa, sqc, &icv);
@@ -425,6 +426,9 @@ esp_outb_sqh_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	for (i = 0; i != num; i++) {
 		if ((mb[i]->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED) == 0) {
 			ml = rte_pktmbuf_lastseg(mb[i]);
+			/* remove high-order 32 bits of esn from packet len */
+			mb[i]->pkt_len -= sa->sqh_len;
+			ml->data_len -= sa->sqh_len;
 			icv = rte_pktmbuf_mtod_offset(ml, void *,
 				ml->data_len - icv_len);
 			remove_sqh(icv, icv_len);
@@ -494,7 +498,7 @@ inline_outb_tun_pkt_process(const struct rte_ipsec_session *ss,
 		gen_iv(iv, sqc);
 
 		/* try to update the packet itself */
-		rc = outb_tun_pkt_prepare(sa, sqc, iv, mb[i], &icv);
+		rc = outb_tun_pkt_prepare(sa, sqc, iv, mb[i], &icv, 0);
 
 		k += (rc >= 0);
 
@@ -548,7 +552,7 @@ inline_outb_trs_pkt_process(const struct rte_ipsec_session *ss,
 
 		/* try to update the packet itself */
 		rc = outb_trs_pkt_prepare(sa, sqc, iv, mb[i],
-				l2, l3, &icv);
+				l2, l3, &icv, 0);
 
 		k += (rc >= 0);
 

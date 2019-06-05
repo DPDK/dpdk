@@ -16,7 +16,8 @@
 #include "pad.h"
 
 typedef uint16_t (*esp_inb_process_t)(const struct rte_ipsec_sa *sa,
-	struct rte_mbuf *mb[], uint32_t sqn[], uint32_t dr[], uint16_t num);
+	struct rte_mbuf *mb[], uint32_t sqn[], uint32_t dr[], uint16_t num,
+	uint8_t sqh_len);
 
 /*
  * helper function to fill crypto_sym op for cipher+auth algorithms.
@@ -227,6 +228,15 @@ inb_pkt_prepare(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
 
 	icv->va = rte_pktmbuf_mtod_offset(ml, void *, icv_ofs);
 	icv->pa = rte_pktmbuf_iova_offset(ml, icv_ofs);
+
+	/*
+	 * if esn is used then high-order 32 bits are also used in ICV
+	 * calculation but are not transmitted, update packet length
+	 * to be consistent with auth data length and offset, this will
+	 * be subtracted from packet length in post crypto processing
+	 */
+	mb->pkt_len += sa->sqh_len;
+	ml->data_len += sa->sqh_len;
 
 	inb_pkt_xprepare(sa, sqn, icv);
 	return plen;
@@ -443,20 +453,23 @@ tun_process_step3(struct rte_mbuf *mb, uint64_t txof_msk, uint64_t txof_val)
 	mb->ol_flags &= ~PKT_RX_SEC_OFFLOAD;
 }
 
-
 /*
  * *process* function for tunnel packets
  */
 static inline uint16_t
 tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
-	uint32_t sqn[], uint32_t dr[], uint16_t num)
+	    uint32_t sqn[], uint32_t dr[], uint16_t num, uint8_t sqh_len)
 {
 	uint32_t adj, i, k, tl;
 	uint32_t hl[num], to[num];
 	struct esp_tail espt[num];
 	struct rte_mbuf *ml[num];
 
-	const uint32_t tlen = sa->icv_len + sizeof(espt[0]);
+	/*
+	 * remove icv, esp trailer and high-order
+	 * 32 bits of esn from packet length
+	 */
+	const uint32_t tlen = sa->icv_len + sizeof(espt[0]) + sqh_len;
 	const uint32_t cofs = sa->ctp.cipher.offset;
 
 	/*
@@ -496,7 +509,7 @@ tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
  */
 static inline uint16_t
 trs_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
-	uint32_t sqn[], uint32_t dr[], uint16_t num)
+	uint32_t sqn[], uint32_t dr[], uint16_t num, uint8_t sqh_len)
 {
 	char *np;
 	uint32_t i, k, l2, tl;
@@ -504,7 +517,11 @@ trs_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 	struct esp_tail espt[num];
 	struct rte_mbuf *ml[num];
 
-	const uint32_t tlen = sa->icv_len + sizeof(espt[0]);
+	/*
+	 * remove icv, esp trailer and high-order
+	 * 32 bits of esn from packet length
+	 */
+	const uint32_t tlen = sa->icv_len + sizeof(espt[0]) + sqh_len;
 	const uint32_t cofs = sa->ctp.cipher.offset;
 
 	/*
@@ -572,18 +589,15 @@ esp_inb_rsn_update(struct rte_ipsec_sa *sa, const uint32_t sqn[],
  * process group of ESP inbound packets.
  */
 static inline uint16_t
-esp_inb_pkt_process(const struct rte_ipsec_session *ss,
-	struct rte_mbuf *mb[], uint16_t num, esp_inb_process_t process)
+esp_inb_pkt_process(struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
+	uint16_t num, uint8_t sqh_len, esp_inb_process_t process)
 {
 	uint32_t k, n;
-	struct rte_ipsec_sa *sa;
 	uint32_t sqn[num];
 	uint32_t dr[num];
 
-	sa = ss->sa;
-
 	/* process packets, extract seq numbers */
-	k = process(sa, mb, sqn, dr, num);
+	k = process(sa, mb, sqn, dr, num, sqh_len);
 
 	/* handle unprocessed mbufs */
 	if (k != num && k != 0)
@@ -609,7 +623,16 @@ uint16_t
 esp_inb_tun_pkt_process(const struct rte_ipsec_session *ss,
 	struct rte_mbuf *mb[], uint16_t num)
 {
-	return esp_inb_pkt_process(ss, mb, num, tun_process);
+	struct rte_ipsec_sa *sa = ss->sa;
+
+	return esp_inb_pkt_process(sa, mb, num, sa->sqh_len, tun_process);
+}
+
+uint16_t
+inline_inb_tun_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num)
+{
+	return esp_inb_pkt_process(ss->sa, mb, num, 0, tun_process);
 }
 
 /*
@@ -619,5 +642,14 @@ uint16_t
 esp_inb_trs_pkt_process(const struct rte_ipsec_session *ss,
 	struct rte_mbuf *mb[], uint16_t num)
 {
-	return esp_inb_pkt_process(ss, mb, num, trs_process);
+	struct rte_ipsec_sa *sa = ss->sa;
+
+	return esp_inb_pkt_process(sa, mb, num, sa->sqh_len, trs_process);
+}
+
+uint16_t
+inline_inb_trs_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num)
+{
+	return esp_inb_pkt_process(ss->sa, mb, num, 0, trs_process);
 }

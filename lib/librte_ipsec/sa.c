@@ -612,10 +612,10 @@ inline_crypto_pkt_func_select(const struct rte_ipsec_sa *sa,
 	switch (sa->type & msk) {
 	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TUNLV4):
 	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TUNLV6):
-		pf->process = esp_inb_tun_pkt_process;
+		pf->process = inline_inb_tun_pkt_process;
 		break;
 	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TRANS):
-		pf->process = esp_inb_trs_pkt_process;
+		pf->process = inline_inb_trs_pkt_process;
 		break;
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV4):
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV6):
