@@ -104,7 +104,7 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
-	hash_one_block_t hash_oneblock_fn;
+	hash_one_block_t hash_oneblock_fn = NULL;
 	unsigned int key_larger_block_size = 0;
 	uint8_t hashed_key[HMAC_MAX_BLOCK_SIZE] = { 0 };
 	uint32_t auth_precompute = 1;
