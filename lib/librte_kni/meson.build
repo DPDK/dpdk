@@ -3,6 +3,7 @@
 
 if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 	build = false
+	reason = 'only supported on 64-bit linux'
 endif
 version = 2
 sources = files('rte_kni.c')

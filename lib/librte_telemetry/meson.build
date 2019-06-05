@@ -12,4 +12,5 @@ if jansson.found()
 	dpdk_app_link_libraries += ['telemetry']
 else
 	build = false
+	reason = 'missing dependency "jansson"'
 endif

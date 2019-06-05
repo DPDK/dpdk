@@ -3,6 +3,7 @@
 
 if not is_linux
 	build = false
+	reason = 'only supported on linux'
 endif
 if has_libnuma == 1
 	dpdk_conf.set10('RTE_LIBRTE_VHOST_NUMA', true)
