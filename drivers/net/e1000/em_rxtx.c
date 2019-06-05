@@ -616,20 +616,20 @@ eth_em_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		m = tx_pkts[i];
 
 		if (m->ol_flags & E1000_TX_OFFLOAD_NOTSUP_MASK) {
-			rte_errno = -ENOTSUP;
+			rte_errno = ENOTSUP;
 			return i;
 		}
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
-			rte_errno = ret;
+			rte_errno = -ret;
 			return i;
 		}
 #endif
 		ret = rte_net_intel_cksum_prepare(m);
 		if (ret != 0) {
-			rte_errno = ret;
+			rte_errno = -ret;
 			return i;
 		}
 	}

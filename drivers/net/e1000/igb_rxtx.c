@@ -632,25 +632,25 @@ eth_igb_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			if ((m->tso_segsz > IGB_TSO_MAX_MSS) ||
 					(m->l2_len + m->l3_len + m->l4_len >
 					IGB_TSO_MAX_HDRLEN)) {
-				rte_errno = -EINVAL;
+				rte_errno = EINVAL;
 				return i;
 			}
 
 		if (m->ol_flags & IGB_TX_OFFLOAD_NOTSUP_MASK) {
-			rte_errno = -ENOTSUP;
+			rte_errno = ENOTSUP;
 			return i;
 		}
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
-			rte_errno = ret;
+			rte_errno = -ret;
 			return i;
 		}
 #endif
 		ret = rte_net_intel_cksum_prepare(m);
 		if (ret != 0) {
-			rte_errno = ret;
+			rte_errno = -ret;
 			return i;
 		}
 	}
