@@ -3,6 +3,7 @@
 
 if not is_linux
 	build = false
+	reason = 'only supported on linux'
 endif
 
 sources = files('axgbe_ethdev.c',

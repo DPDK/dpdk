@@ -4,6 +4,7 @@
 lib = cc.find_library('sso_zuc', required: false)
 if not lib.found() or not cc.has_header('sso_zuc.h')
 	build = false
+	reason = 'missing dependency, "libsso_zuc"'
 	subdir_done()
 endif
 

@@ -4,6 +4,7 @@
 lib = cc.find_library('sso_kasumi', required: false)
 if not lib.found() or not cc.has_header('sso_kasumi.h')
 	build = false
+	reason = 'missing dependency, "libsso_kasumi"'
 	subdir_done()
 endif
 

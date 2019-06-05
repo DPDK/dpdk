@@ -14,6 +14,7 @@ else
 		pkgconfig_extra_libs += '-lpcap'
 	else
 		build = false
+		reason = 'missing dependency, "libpcap"'
 	endif
 endif
 sources = files('rte_eth_pcap.c')

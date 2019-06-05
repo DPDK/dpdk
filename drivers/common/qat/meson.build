@@ -4,6 +4,7 @@
 # This does not build a driver, but instead holds common files for
 # the crypto and compression drivers.
 build = false
+reason = '' # sentinal value to suppress printout
 qat_deps = ['bus_pci']
 qat_sources = files('qat_common.c',
 		'qat_qp.c',

@@ -25,6 +25,7 @@ foreach libname:libnames
 		libs += [ lib ]
 	else
 		build = false
+		reason = 'missing dependency, "' + libname + '"'
 	endif
 endforeach
 if build

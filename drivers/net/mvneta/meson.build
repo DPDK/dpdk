@@ -10,6 +10,7 @@ inc_dir = path + '/include'
 lib = cc.find_library('libmusdk', dirs : [lib_dir], required: false)
 if not lib.found()
 	build = false
+	reason = 'missing dependency, "libmusdk"'
 else
 	ext_deps += lib
 	includes += include_directories(inc_dir)

@@ -3,5 +3,6 @@
 
 if not is_linux
 	build = false
+	reason = 'only supported on linux'
 endif
 sources = files('rte_eth_af_packet.c')

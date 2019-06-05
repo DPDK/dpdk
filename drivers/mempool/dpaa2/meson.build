@@ -4,7 +4,8 @@
 version = 2
 
 if not is_linux
-        build = false
+	build = false
+	reason = 'only supported on linux'
 endif
 
 deps += ['bus_fslmc']

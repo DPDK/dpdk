@@ -4,6 +4,7 @@
 # All rights reserved.
 
 dep = cc.find_library('nfb', required: false)
+reason = 'missing dependency, "libnfb"'
 
 build = dep.found() and cc.has_header('nfb/nfb.h', dependencies: dep)
 

@@ -3,6 +3,7 @@
 
 if not is_linux
 	build = false
+	reason = 'only supported on linux'
 endif
 deps += ['pmd_dpaa']
 sources = files('dpaa_eventdev.c')

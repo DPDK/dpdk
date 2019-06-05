@@ -5,6 +5,7 @@ version = 2
 
 if not is_linux
 	build = false
+	reason = 'only supported on linux'
 endif
 deps += ['bus_vdev', 'pmd_dpaa2', 'pmd_dpaa2_sec']
 sources = files('dpaa2_hw_dpcon.c',

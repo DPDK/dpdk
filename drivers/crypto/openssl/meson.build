@@ -4,6 +4,7 @@
 dep = dependency('libcrypto', required: false)
 if not dep.found()
 	build = false
+	reason = 'missing dependency, "libcrypto"'
 endif
 allow_experimental_apis = true
 deps += 'bus_vdev'

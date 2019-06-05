@@ -2,7 +2,8 @@
 # Copyright 2018 Luca Boccassi <bluca@debian.org>
 
 if not is_linux
-        build = false
+	build = false
+	reason = 'only supported on linux'
 endif
 sources = files(
 	'rte_eth_tap.c',

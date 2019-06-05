@@ -4,6 +4,7 @@
 dep = dependency('zlib', required: false)
 if not dep.found()
 	build = false
+	reason = 'missing dependency, "zlib"'
 endif
 
 deps += 'bus_vdev'

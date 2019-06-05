@@ -2,7 +2,8 @@
 # Copyright 2018 NXP
 
 if not is_linux
-        build = false
+	build = false
+	reason = 'only supported on linux'
 endif
 
 deps += ['bus_dpaa']

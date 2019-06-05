@@ -2,6 +2,7 @@
 # Copyright(c) 2018 Intel Corporation
 
 build = dpdk_conf.has('RTE_LIBRTE_VHOST')
+reason = 'missing dependency, DPDK vhost library'
 allow_experimental_apis = true
 sources = files('ifcvf_vdpa.c', 'base/ifcvf.c')
 includes += include_directories('base')

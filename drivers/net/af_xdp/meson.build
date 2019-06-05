@@ -13,4 +13,5 @@ if bpf_dep.found() and cc.has_header('bpf/xsk.h') and cc.has_header('linux/if_xd
 	pkgconfig_extra_libs += '-lbpf'
 else
 	build = false
+	reason = 'missing dependency, "libbpf"'
 endif

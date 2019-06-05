@@ -2,6 +2,7 @@
 # Copyright(c) 2018 Microsoft Corporation
 
 build = dpdk_conf.has('RTE_LIBRTE_VMBUS_BUS')
+reason = 'missing dependency, DPDK VMBus driver'
 version = 2
 sources = files('hn_ethdev.c', 'hn_rxtx.c', 'hn_rndis.c', 'hn_nvs.c', 'hn_vf.c')
 

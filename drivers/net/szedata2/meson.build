@@ -3,5 +3,6 @@
 
 dep = cc.find_library('sze2', required: false)
 build = dep.found()
+reason = 'missing dependency, "libsze2"'
 ext_deps += dep
 sources = files('rte_eth_szedata2.c')

@@ -3,7 +3,8 @@
 
 dep = dependency('libisal', required: false)
 if not dep.found()
-       build =false
+	build = false
+	reason = 'missing dependency, "libisal"'
 endif
 
 deps += 'bus_vdev'

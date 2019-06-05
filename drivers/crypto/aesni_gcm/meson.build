@@ -5,6 +5,7 @@ IMB_required_ver = '0.52.0'
 lib = cc.find_library('IPSec_MB', required: false)
 if not lib.found()
 	build = false
+	reason = 'missing dependency, "libIPSec_MB"'
 else
 	ext_deps += lib
 
@@ -13,8 +14,8 @@ else
 		prefix : '#include<intel-ipsec-mb.h>').split('"')[1]
 
 	if (imb_ver == '') or (imb_ver.version_compare('<' + IMB_required_ver))
-		message('IPSec_MB version >= @0@ is required, found version @1@'.format(
-				IMB_required_ver, imb_ver))
+		reason = 'IPSec_MB version >= @0@ is required, found version @1@'.format(
+				IMB_required_ver, imb_ver)
 		build = false
 	endif
 endif

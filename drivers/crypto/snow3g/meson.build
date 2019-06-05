@@ -4,6 +4,7 @@
 lib = cc.find_library('sso_snow3g', required: false)
 if not lib.found() or not cc.has_header('sso_snow3g.h')
 	build = false
+	reason = 'missing dependency, "libsso_snow3g"'
 	subdir_done()
 endif
 
