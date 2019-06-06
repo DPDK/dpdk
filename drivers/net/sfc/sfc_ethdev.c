@@ -1713,6 +1713,32 @@ sfc_pool_ops_supported(struct rte_eth_dev *dev, const char *pool)
 	return sap->dp_rx->pool_ops_supported(pool);
 }
 
+static int
+sfc_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
+	struct sfc_rxq_info *rxq_info;
+
+	SFC_ASSERT(queue_id < sas->rxq_count);
+	rxq_info = &sas->rxq_info[queue_id];
+
+	return sap->dp_rx->intr_enable(rxq_info->dp);
+}
+
+static int
+sfc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
+	struct sfc_rxq_info *rxq_info;
+
+	SFC_ASSERT(queue_id < sas->rxq_count);
+	rxq_info = &sas->rxq_info[queue_id];
+
+	return sap->dp_rx->intr_disable(rxq_info->dp);
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -1743,6 +1769,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.rx_descriptor_done		= sfc_rx_descriptor_done,
 	.rx_descriptor_status		= sfc_rx_descriptor_status,
 	.tx_descriptor_status		= sfc_tx_descriptor_status,
+	.rx_queue_intr_enable		= sfc_rx_queue_intr_enable,
+	.rx_queue_intr_disable		= sfc_rx_queue_intr_disable,
 	.tx_queue_setup			= sfc_tx_queue_setup,
 	.tx_queue_release		= sfc_tx_queue_release,
 	.flow_ctrl_get			= sfc_flow_ctrl_get,

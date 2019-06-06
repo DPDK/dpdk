@@ -162,6 +162,27 @@ sfc_intr_start(struct sfc_adapter *sa)
 	intr_handle = &pci_dev->intr_handle;
 
 	if (intr->handler != NULL) {
+		if (intr->rxq_intr && rte_intr_cap_multiple(intr_handle)) {
+			uint32_t intr_vector;
+
+			intr_vector = sa->eth_dev->data->nb_rx_queues;
+			rc = rte_intr_efd_enable(intr_handle, intr_vector);
+			if (rc != 0)
+				goto fail_rte_intr_efd_enable;
+		}
+		if (rte_intr_dp_is_en(intr_handle)) {
+			intr_handle->intr_vec =
+				rte_calloc("intr_vec",
+				sa->eth_dev->data->nb_rx_queues, sizeof(int),
+				0);
+			if (intr_handle->intr_vec == NULL) {
+				sfc_err(sa,
+					"Failed to allocate %d rx_queues intr_vec",
+					sa->eth_dev->data->nb_rx_queues);
+				goto fail_intr_vector_alloc;
+			}
+		}
+
 		sfc_log_init(sa, "rte_intr_callback_register");
 		rc = rte_intr_callback_register(intr_handle, intr->handler,
 						(void *)sa);
@@ -202,6 +223,12 @@ fail_rte_intr_enable:
 	rte_intr_callback_unregister(intr_handle, intr->handler, (void *)sa);
 
 fail_rte_intr_cb_reg:
+	rte_free(intr_handle->intr_vec);
+
+fail_intr_vector_alloc:
+	rte_intr_efd_disable(intr_handle);
+
+fail_rte_intr_efd_enable:
 	efx_intr_fini(sa->nic);
 
 fail_intr_init:
@@ -224,6 +251,10 @@ sfc_intr_stop(struct sfc_adapter *sa)
 		efx_intr_disable(sa->nic);
 
 		intr_handle = &pci_dev->intr_handle;
+
+		rte_free(intr_handle->intr_vec);
+		rte_intr_efd_disable(intr_handle);
+
 		if (rte_intr_disable(intr_handle) != 0)
 			sfc_err(sa, "cannot disable interrupts");
 
@@ -250,10 +281,10 @@ sfc_intr_configure(struct sfc_adapter *sa)
 
 	intr->handler = NULL;
 	intr->lsc_intr = (sa->eth_dev->data->dev_conf.intr_conf.lsc != 0);
-	if (!intr->lsc_intr) {
-		sfc_notice(sa, "LSC tracking using interrupts is disabled");
+	intr->rxq_intr = (sa->eth_dev->data->dev_conf.intr_conf.rxq != 0);
+
+	if (!intr->lsc_intr && !intr->rxq_intr)
 		goto done;
-	}
 
 	switch (intr->type) {
 	case EFX_INTR_MESSAGE:

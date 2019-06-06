@@ -68,6 +68,12 @@ New Features
   of Ethernet controllers. These controllers support link speeds up to
   200Gbps, 50G PAM-4, and PCIe 4.0.
 
+* **Updated Solarflare network PMD.**
+
+  Updated the Solarflare ``sfc_efx`` driver with changes including:
+
+  * Added support for Rx interrupts.
+
 * **Added memif PMD.**
 
   Added the new Shared Memory Packet Interface (``memif``) PMD.

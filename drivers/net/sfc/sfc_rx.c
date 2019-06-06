@@ -52,6 +52,19 @@ sfc_rx_qflush_failed(struct sfc_rxq_info *rxq_info)
 	rxq_info->state &= ~SFC_RXQ_FLUSHING;
 }
 
+static int
+sfc_efx_rx_qprime(struct sfc_efx_rxq *rxq)
+{
+	int rc = 0;
+
+	if (rxq->evq->read_ptr_primed != rxq->evq->read_ptr) {
+		rc = efx_ev_qprime(rxq->evq->common, rxq->evq->read_ptr);
+		if (rc == 0)
+			rxq->evq->read_ptr_primed = rxq->evq->read_ptr;
+	}
+	return rc;
+}
+
 static void
 sfc_efx_rx_qrefill(struct sfc_efx_rxq *rxq)
 {
@@ -306,6 +319,9 @@ discard:
 
 	sfc_efx_rx_qrefill(rxq);
 
+	if (rxq->flags & SFC_EFX_RXQ_FLAG_INTR_EN)
+		sfc_efx_rx_qprime(rxq);
+
 	return done_pkts;
 }
 
@@ -493,6 +509,12 @@ sfc_efx_rx_qdestroy(struct sfc_dp_rxq *dp_rxq)
 	rte_free(rxq);
 }
 
+
+/* Use qstop and qstart functions in the case of qstart failure */
+static sfc_dp_rx_qstop_t sfc_efx_rx_qstop;
+static sfc_dp_rx_qpurge_t sfc_efx_rx_qpurge;
+
+
 static sfc_dp_rx_qstart_t sfc_efx_rx_qstart;
 static int
 sfc_efx_rx_qstart(struct sfc_dp_rxq *dp_rxq,
@@ -501,6 +523,7 @@ sfc_efx_rx_qstart(struct sfc_dp_rxq *dp_rxq,
 	/* libefx-based datapath is specific to libefx-based PMD */
 	struct sfc_efx_rxq *rxq = sfc_efx_rxq_by_dp_rxq(dp_rxq);
 	struct sfc_rxq *crxq = sfc_rxq_by_dp_rxq(dp_rxq);
+	int rc;
 
 	rxq->common = crxq->common;
 
@@ -510,10 +533,20 @@ sfc_efx_rx_qstart(struct sfc_dp_rxq *dp_rxq,
 
 	rxq->flags |= (SFC_EFX_RXQ_FLAG_STARTED | SFC_EFX_RXQ_FLAG_RUNNING);
 
+	if (rxq->flags & SFC_EFX_RXQ_FLAG_INTR_EN) {
+		rc = sfc_efx_rx_qprime(rxq);
+		if (rc != 0)
+			goto fail_rx_qprime;
+	}
+
 	return 0;
+
+fail_rx_qprime:
+	sfc_efx_rx_qstop(dp_rxq, NULL);
+	sfc_efx_rx_qpurge(dp_rxq);
+	return rc;
 }
 
-static sfc_dp_rx_qstop_t sfc_efx_rx_qstop;
 static void
 sfc_efx_rx_qstop(struct sfc_dp_rxq *dp_rxq,
 		 __rte_unused unsigned int *evq_read_ptr)
@@ -528,7 +561,6 @@ sfc_efx_rx_qstop(struct sfc_dp_rxq *dp_rxq,
 	 */
 }
 
-static sfc_dp_rx_qpurge_t sfc_efx_rx_qpurge;
 static void
 sfc_efx_rx_qpurge(struct sfc_dp_rxq *dp_rxq)
 {
@@ -551,13 +583,40 @@ sfc_efx_rx_qpurge(struct sfc_dp_rxq *dp_rxq)
 	rxq->flags &= ~SFC_EFX_RXQ_FLAG_STARTED;
 }
 
+static sfc_dp_rx_intr_enable_t sfc_efx_rx_intr_enable;
+static int
+sfc_efx_rx_intr_enable(struct sfc_dp_rxq *dp_rxq)
+{
+	struct sfc_efx_rxq *rxq = sfc_efx_rxq_by_dp_rxq(dp_rxq);
+	int rc = 0;
+
+	rxq->flags |= SFC_EFX_RXQ_FLAG_INTR_EN;
+	if (rxq->flags & SFC_EFX_RXQ_FLAG_STARTED) {
+		rc = sfc_efx_rx_qprime(rxq);
+		if (rc != 0)
+			rxq->flags &= ~SFC_EFX_RXQ_FLAG_INTR_EN;
+	}
+	return rc;
+}
+
+static sfc_dp_rx_intr_disable_t sfc_efx_rx_intr_disable;
+static int
+sfc_efx_rx_intr_disable(struct sfc_dp_rxq *dp_rxq)
+{
+	struct sfc_efx_rxq *rxq = sfc_efx_rxq_by_dp_rxq(dp_rxq);
+
+	/* Cannot disarm, just disable rearm */
+	rxq->flags &= ~SFC_EFX_RXQ_FLAG_INTR_EN;
+	return 0;
+}
+
 struct sfc_dp_rx sfc_efx_rx = {
 	.dp = {
 		.name		= SFC_KVARG_DATAPATH_EFX,
 		.type		= SFC_DP_RX,
 		.hw_fw_caps	= 0,
 	},
-	.features		= 0,
+	.features		= SFC_DP_RX_FEAT_INTR,
 	.dev_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM,
 	.queue_offload_capa	= DEV_RX_OFFLOAD_SCATTER,
 	.qsize_up_rings		= sfc_efx_rx_qsize_up_rings,
@@ -569,6 +628,8 @@ struct sfc_dp_rx sfc_efx_rx = {
 	.supported_ptypes_get	= sfc_efx_supported_ptypes_get,
 	.qdesc_npending		= sfc_efx_rx_qdesc_npending,
 	.qdesc_status		= sfc_efx_rx_qdesc_status,
+	.intr_enable		= sfc_efx_rx_intr_enable,
+	.intr_disable		= sfc_efx_rx_intr_disable,
 	.pkt_burst		= sfc_efx_recv_pkts,
 };
 
@@ -1094,6 +1155,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	info.rxq_entries = rxq_info->entries;
 	info.rxq_hw_ring = rxq->mem.esm_base;
+	info.evq_hw_index = sfc_evq_index_by_rxq_sw_index(sa, sw_index);
 	info.evq_entries = evq_entries;
 	info.evq_hw_ring = evq->mem.esm_base;
 	info.hw_index = rxq->hw_index;

@@ -74,6 +74,8 @@ struct sfc_dp_rx_qcreate_info {
 	/** DMA-mapped Rx descriptors ring */
 	void			*rxq_hw_ring;
 
+	/** Event queue index in hardware */
+	unsigned int		evq_hw_index;
 	/** Associated event queue size */
 	unsigned int		evq_entries;
 	/** Hardware event ring */
@@ -193,6 +195,11 @@ typedef unsigned int (sfc_dp_rx_qdesc_npending_t)(struct sfc_dp_rxq *dp_rxq);
 /** Check Rx descriptor status */
 typedef int (sfc_dp_rx_qdesc_status_t)(struct sfc_dp_rxq *dp_rxq,
 				       uint16_t offset);
+/** Enable Rx interrupts */
+typedef int (sfc_dp_rx_intr_enable_t)(struct sfc_dp_rxq *dp_rxq);
+
+/** Disable Rx interrupts */
+typedef int (sfc_dp_rx_intr_disable_t)(struct sfc_dp_rxq *dp_rxq);
 
 /** Receive datapath definition */
 struct sfc_dp_rx {
@@ -202,6 +209,7 @@ struct sfc_dp_rx {
 #define SFC_DP_RX_FEAT_MULTI_PROCESS		0x1
 #define SFC_DP_RX_FEAT_FLOW_FLAG		0x2
 #define SFC_DP_RX_FEAT_FLOW_MARK		0x4
+#define SFC_DP_RX_FEAT_INTR			0x8
 	/**
 	 * Rx offload capabilities supported by the datapath on device
 	 * level only if HW/FW supports it.
@@ -225,6 +233,8 @@ struct sfc_dp_rx {
 	sfc_dp_rx_supported_ptypes_get_t	*supported_ptypes_get;
 	sfc_dp_rx_qdesc_npending_t		*qdesc_npending;
 	sfc_dp_rx_qdesc_status_t		*qdesc_status;
+	sfc_dp_rx_intr_enable_t			*intr_enable;
+	sfc_dp_rx_intr_disable_t		*intr_disable;
 	eth_rx_burst_t				pkt_burst;
 };
 

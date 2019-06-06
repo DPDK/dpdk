@@ -46,6 +46,7 @@ struct sfc_evq {
 	efx_evq_t			*common;
 	const efx_ev_callbacks_t	*callbacks;
 	unsigned int			read_ptr;
+	unsigned int			read_ptr_primed;
 	boolean_t			exception;
 	efsys_mem_t			mem;
 	struct sfc_dp_rxq		*dp_rxq;

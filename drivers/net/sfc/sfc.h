@@ -108,6 +108,7 @@ struct sfc_intr {
 	efx_intr_type_t			type;
 	rte_intr_callback_fn		handler;
 	boolean_t			lsc_intr;
+	boolean_t			rxq_intr;
 };
 
 struct sfc_rxq;

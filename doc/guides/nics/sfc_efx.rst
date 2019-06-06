@@ -82,6 +82,8 @@ SFC EFX PMD has support for:
 
 - Scattered Rx DMA for packet that are larger that a single Rx descriptor
 
+- Receive queue interrupts
+
 - Deferred receive and transmit queue start
 
 - Transmit VLAN insertion (if running firmware variant supports it)
@@ -95,8 +97,6 @@ Non-supported Features
 ----------------------
 
 The features not yet supported include:
-
-- Receive queue interrupts
 
 - Priority-based flow control
 

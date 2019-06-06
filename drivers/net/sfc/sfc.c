@@ -148,7 +148,8 @@ sfc_check_conf(struct sfc_adapter *sa)
 		rc = EINVAL;
 	}
 
-	if (conf->intr_conf.rxq != 0) {
+	if (conf->intr_conf.rxq != 0 &&
+	    (sa->priv.dp_rx->features & SFC_DP_RX_FEAT_INTR) == 0) {
 		sfc_err(sa, "Receive queue interrupt not supported");
 		rc = EINVAL;
 	}
