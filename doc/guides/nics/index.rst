@@ -36,6 +36,7 @@ Network Interface Controller Drivers
     intel_vf
     kni
     liquidio
+    memif
     mlx4
     mlx5
     mvneta

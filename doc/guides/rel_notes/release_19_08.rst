@@ -62,6 +62,11 @@ New Features
   * Added support for SSE vector mode
   * Updated HWRM API to version 1.10.0.74
 
+* **Added memif PMD.**
+
+  Added the new Shared Memory Packet Interface (``memif``) PMD.
+  See the :doc:`../nics/memif` guide for more details on this new driver.
+
 
 Removed Items
 -------------

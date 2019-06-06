@@ -839,6 +839,12 @@ F: drivers/net/softnic/
 F: doc/guides/nics/features/softnic.ini
 F: doc/guides/nics/softnic.rst
 
+Memif PMD
+M: Jakub Grajciar <jgrajcia@cisco.com>
+F: drivers/net/memif/
+F: doc/guides/nics/memif.rst
+F: doc/guides/nics/features/memif.ini
+
 
 Crypto Drivers
 --------------

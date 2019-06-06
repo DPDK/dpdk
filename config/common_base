@@ -445,6 +445,11 @@ CONFIG_RTE_LIBRTE_PMD_AF_PACKET=n
 CONFIG_RTE_LIBRTE_PMD_AF_XDP=n
 
 #
+# Compile Memory Interface PMD driver (Linux only)
+#
+CONFIG_RTE_LIBRTE_PMD_MEMIF=n
+
+#
 # Compile link bonding PMD library
 #
 CONFIG_RTE_LIBRTE_PMD_BOND=y
