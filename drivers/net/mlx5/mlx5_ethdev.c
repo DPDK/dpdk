@@ -242,6 +242,51 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
 }
 
 /**
+ * Get interface name for the specified device, uses the extra base
+ * device resources to perform Netlink requests.
+ *
+ * This is a port representor-aware version of mlx5_get_master_ifname().
+ *
+ * @param[in] base
+ *   Pointer to Ethernet device to use Netlink socket from
+ *   to perfrom requests.
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[out] ifname
+ *   Interface name output buffer.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_get_ifname_base(const struct rte_eth_dev *base,
+		     const struct rte_eth_dev *dev,
+		     char (*ifname)[IF_NAMESIZE])
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv_base = base->data->dev_private;
+	unsigned int ifindex;
+
+	assert(priv);
+	assert(priv->sh);
+	assert(priv_base);
+	ifindex = priv_base->nl_socket_rdma >= 0 ?
+		  mlx5_nl_ifindex(priv_base->nl_socket_rdma,
+				  priv->sh->ibdev_name,
+				  priv->ibv_port) : 0;
+	if (!ifindex) {
+		if (!priv->representor)
+			return mlx5_get_master_ifname(priv->sh->ibdev_path,
+						      ifname);
+		rte_errno = ENXIO;
+		return -rte_errno;
+	}
+	if (if_indextoname(ifindex, &(*ifname)[0]))
+		return 0;
+	rte_errno = errno;
+	return -rte_errno;
+}
+/**
  * Get the interface index from device name.
  *
  * @param[in] dev
@@ -288,6 +333,51 @@ mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr)
 		return -rte_errno;
 	}
 	ret = mlx5_get_ifname(dev, &ifr->ifr_name);
+	if (ret)
+		goto error;
+	ret = ioctl(sock, req, ifr);
+	if (ret == -1) {
+		rte_errno = errno;
+		goto error;
+	}
+	close(sock);
+	return 0;
+error:
+	close(sock);
+	return -rte_errno;
+}
+
+/**
+ * Perform ifreq ioctl() on specified Ethernet device,
+ * ifindex, name and other attributes are requested
+ * on the base device to avoid specified device Netlink
+ * socket sharing (this is not thread-safe).
+ *
+ * @param[in] base
+ *   Pointer to Ethernet device to get dev attributes.
+ * @param[in] dev
+ *   Pointer to Ethernet device to perform ioctl.
+ * @param req
+ *   Request number to pass to ioctl().
+ * @param[out] ifr
+ *   Interface request structure output buffer.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_ifreq_base(const struct rte_eth_dev *base,
+		const struct rte_eth_dev *dev,
+		int req, struct ifreq *ifr)
+{
+	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+	int ret = 0;
+
+	if (sock == -1) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	ret = mlx5_get_ifname_base(base, dev, &ifr->ifr_name);
 	if (ret)
 		goto error;
 	ret = ioctl(sock, req, ifr);
@@ -749,7 +839,15 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
 				ifr = (struct ifreq) {
 					.ifr_data = (void *)&edata,
 				};
-				ret = mlx5_ifreq(master, SIOCETHTOOL, &ifr);
+				/*
+				 * Use special version of mlx5_ifreq()
+				 * to get master device name with local
+				 * device Netlink socket. Using master
+				 * device Netlink socket is not thread
+				 * safe.
+				 */
+				ret = mlx5_ifreq_base(dev, master,
+						      SIOCETHTOOL, &ifr);
 			}
 		}
 		if (ret) {
@@ -846,7 +944,12 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 				ifr = (struct ifreq) {
 					.ifr_data = (void *)&gcmd,
 				};
-				ret = mlx5_ifreq(master, SIOCETHTOOL, &ifr);
+				/*
+				 * Avoid using master Netlink socket.
+				 * This is not thread-safe.
+				 */
+				ret = mlx5_ifreq_base(dev, master,
+						      SIOCETHTOOL, &ifr);
 			}
 		}
 		if (ret) {
@@ -867,7 +970,7 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 
 	*ecmd = gcmd;
 	ifr.ifr_data = (void *)ecmd;
-	ret = mlx5_ifreq(master ? master : dev, SIOCETHTOOL, &ifr);
+	ret = mlx5_ifreq_base(dev, master ? master : dev, SIOCETHTOOL, &ifr);
 	if (ret) {
 		DRV_LOG(DEBUG,
 			"port %u ioctl(SIOCETHTOOL,"
