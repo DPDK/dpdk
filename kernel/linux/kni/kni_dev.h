@@ -50,9 +50,6 @@ struct kni_dev {
 	wait_queue_head_t wq;
 	struct mutex sync_lock;
 
-	/* PCI device id */
-	uint16_t device_id;
-
 	/* kni device */
 	struct net_device *net_dev;
 

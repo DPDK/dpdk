@@ -111,13 +111,6 @@ struct rte_kni_device_info {
 	void * mbuf_va;
 	phys_addr_t mbuf_phys;
 
-	/* PCI info */
-	uint16_t vendor_id;           /**< Vendor ID or PCI_ANY_ID. */
-	uint16_t device_id;           /**< Device ID or PCI_ANY_ID. */
-	uint8_t bus;                  /**< Device bus */
-	uint8_t devid;                /**< Device ID */
-	uint8_t function;             /**< Device function. */
-
 	uint16_t group_id;            /**< Group ID */
 	uint32_t core_id;             /**< core ID to bind for kernel thread */
 

@@ -252,10 +252,6 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 
 	strlcpy(dev_info.name, conf->name, RTE_KNI_NAMESIZE);
 
-	RTE_LOG(INFO, KNI, "pci: %02x:%02x:%02x \t %02x:%02x\n",
-		dev_info.bus, dev_info.devid, dev_info.function,
-			dev_info.vendor_id, dev_info.device_id);
-
 	ret = kni_reserve_mz(kni);
 	if (ret < 0)
 		goto mz_fail;

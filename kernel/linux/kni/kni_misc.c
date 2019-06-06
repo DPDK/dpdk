@@ -377,12 +377,6 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 		(unsigned long long) dev_info.resp_phys, kni->resp_q);
 	pr_debug("mbuf_size:    %u\n", kni->mbuf_size);
 
-	pr_debug("PCI: %02x:%02x.%02x %04x:%04x\n",
-					dev_info.bus,
-					dev_info.devid,
-					dev_info.function,
-					dev_info.vendor_id,
-					dev_info.device_id);
 	/* if user has provided a valid mac address */
 	if (is_valid_ether_addr(dev_info.mac_addr))
 		memcpy(net_dev->dev_addr, dev_info.mac_addr, ETH_ALEN);
