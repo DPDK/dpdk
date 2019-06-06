@@ -25,6 +25,18 @@
 /** Pathname of VMBUS devices directory. */
 #define SYSFS_VMBUS_DEVICES "/sys/bus/vmbus/devices"
 
+/*
+ * GUID associated with network devices
+ * {f8615163-df3e-46c5-913f-f2d2f965ed0e}
+ */
+static const rte_uuid_t vmbus_nic_uuid = {
+	0xf8, 0x61, 0x51, 0x63,
+	0xdf, 0x3e,
+	0x46, 0xc5,
+	0x91, 0x3f,
+	0xf2, 0xd2, 0xf9, 0x65, 0xed, 0xe
+};
+
 extern struct rte_vmbus_bus rte_vmbus_bus;
 
 /* Read sysfs file to get UUID */
@@ -242,14 +254,20 @@ vmbus_scan_one(const char *name)
 	snprintf(dirname, sizeof(dirname), "%s/%s",
 		 SYSFS_VMBUS_DEVICES, name);
 
-	/* get device id */
-	snprintf(filename, sizeof(filename), "%s/device_id", dirname);
-	if (parse_sysfs_uuid(filename, dev->device_id) < 0)
-		goto error;
-
 	/* get device class  */
 	snprintf(filename, sizeof(filename), "%s/class_id", dirname);
 	if (parse_sysfs_uuid(filename, dev->class_id) < 0)
+		goto error;
+
+	/* skip non-network devices */
+	if (rte_uuid_compare(dev->class_id, vmbus_nic_uuid) != 0) {
+		free(dev);
+		return 0;
+	}
+
+	/* get device id */
+	snprintf(filename, sizeof(filename), "%s/device_id", dirname);
+	if (parse_sysfs_uuid(filename, dev->device_id) < 0)
 		goto error;
 
 	/* get relid */
