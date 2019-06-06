@@ -3052,7 +3052,7 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_queue *act_q;
-	const struct rte_flow_action_mark *mark_spec;
+	const struct rte_flow_action_mark *mark_spec = NULL;
 	uint32_t index = 0;
 
 	/* Check if the first non-void action is QUEUE or DROP or PASSTHRU. */
