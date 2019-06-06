@@ -36,6 +36,38 @@ static const struct rte_pci_id pci_id_enic_map[] = {
 	{.vendor_id = 0, /* sentinel */},
 };
 
+/* Supported link speeds of production VIC models */
+static const struct vic_speed_capa {
+	uint16_t sub_devid;
+	uint32_t capa;
+} vic_speed_capa_map[] = {
+	{ 0x0043, ETH_LINK_SPEED_10G }, /* VIC */
+	{ 0x0047, ETH_LINK_SPEED_10G }, /* P81E PCIe */
+	{ 0x0048, ETH_LINK_SPEED_10G }, /* M81KR Mezz */
+	{ 0x004f, ETH_LINK_SPEED_10G }, /* 1280 Mezz */
+	{ 0x0084, ETH_LINK_SPEED_10G }, /* 1240 MLOM */
+	{ 0x0085, ETH_LINK_SPEED_10G }, /* 1225 PCIe */
+	{ 0x00cd, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1285 PCIe */
+	{ 0x00ce, ETH_LINK_SPEED_10G }, /* 1225T PCIe */
+	{ 0x012a, ETH_LINK_SPEED_40G }, /* M4308 */
+	{ 0x012c, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1340 MLOM */
+	{ 0x012e, ETH_LINK_SPEED_10G }, /* 1227 PCIe */
+	{ 0x0137, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1380 Mezz */
+	{ 0x014d, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1385 PCIe */
+	{ 0x015d, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1387 MLOM */
+	{ 0x0215, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G |
+		  ETH_LINK_SPEED_40G }, /* 1440 Mezz */
+	{ 0x0216, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G |
+		  ETH_LINK_SPEED_40G }, /* 1480 MLOM */
+	{ 0x0217, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G }, /* 1455 PCIe */
+	{ 0x0218, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G }, /* 1457 MLOM */
+	{ 0x0219, ETH_LINK_SPEED_40G }, /* 1485 PCIe */
+	{ 0x021a, ETH_LINK_SPEED_40G }, /* 1487 MLOM */
+	{ 0x024a, ETH_LINK_SPEED_40G | ETH_LINK_SPEED_100G }, /* 1495 PCIe */
+	{ 0x024b, ETH_LINK_SPEED_40G | ETH_LINK_SPEED_100G }, /* 1497 MLOM */
+	{ 0, 0 }, /* End marker */
+};
+
 #define ENIC_DEVARG_DISABLE_OVERLAY "disable-overlay"
 #define ENIC_DEVARG_ENABLE_AVX2_RX "enable-avx2-rx"
 #define ENIC_DEVARG_IG_VLAN_REWRITE "ig-vlan-rewrite"
@@ -456,6 +488,24 @@ static void enicpmd_dev_stats_reset(struct rte_eth_dev *eth_dev)
 	enic_dev_stats_clear(enic);
 }
 
+static uint32_t speed_capa_from_pci_id(struct rte_eth_dev *eth_dev)
+{
+	const struct vic_speed_capa *m;
+	struct rte_pci_device *pdev;
+	uint16_t id;
+
+	pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	id = pdev->id.subsystem_device_id;
+	for (m = vic_speed_capa_map; m->sub_devid != 0; m++) {
+		if (m->sub_devid == id)
+			return m->capa;
+	}
+	/* 1300 and later models are at least 40G */
+	if (id >= 0x0100)
+		return ETH_LINK_SPEED_40G;
+	return ETH_LINK_SPEED_10G;
+}
+
 static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	struct rte_eth_dev_info *device_info)
 {
@@ -510,6 +560,7 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 			ENIC_DEFAULT_TX_RING_SIZE),
 		.nb_queues = ENIC_DEFAULT_TX_RINGS,
 	};
+	device_info->speed_capa = speed_capa_from_pci_id(eth_dev);
 }
 
 static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
