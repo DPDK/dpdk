@@ -598,48 +598,6 @@ enum vnic_devcmd_cmd {
 	 *                       a3 = bitmask of supported actions
 	 */
 	CMD_ADD_ADV_FILTER = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 77),
-
-	/*
-	 * Allocate a counter for use with CMD_ADD_FILTER
-	 * out:(u32) a0 = counter index
-	 */
-	CMD_COUNTER_ALLOC = _CMDC(_CMD_DIR_READ, _CMD_VTYPE_ENET, 85),
-
-	/*
-	 * Free a counter
-	 * in: (u32) a0 = counter_id
-	 */
-	CMD_COUNTER_FREE = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 86),
-
-	/*
-	 * Read a counter
-	 * in: (u32) a0 = counter_id
-	 *     (u32) a1 = clear counter if non-zero
-	 * out:(u64) a0 = packet count
-	 *     (u64) a1 = byte count
-	 */
-	CMD_COUNTER_QUERY = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 87),
-
-	/*
-	 * Configure periodic counter DMA.  This will trigger an immediate
-	 * DMA of the counters (unless period == 0), and then schedule a DMA
-	 * of the counters every <period> seconds until disdabled.
-	 * Each new COUNTER_DMA_CONFIG will override all previous commands on
-	 * this vnic.
-	 * Setting a2 (period) = 0 will disable periodic DMAs
-	 * If a0 (num_counters) != 0, an immediate DMA will always be done,
-	 * irrespective of the value in a2.
-	 * in: (u32) a0 = number of counters to DMA
-	 *     (u64) a1 = host target DMA address
-	 *     (u32) a2 = DMA period in milliseconds (0 to disable)
-	 */
-	CMD_COUNTER_DMA_CONFIG = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 88),
-#define VNIC_COUNTER_DMA_MIN_PERIOD 500
-
-	/*
-	 * Clear all counters on a vnic
-	 */
-	CMD_COUNTER_CLEAR_ALL = _CMDC(_CMD_DIR_NONE, _CMD_VTYPE_ENET, 89),
 };
 
 /* Modes for exchanging advanced filter capabilities. The modes supported by
@@ -905,11 +863,9 @@ struct filter_action {
 #define FILTER_ACTION_RQ_STEERING_FLAG	(1 << 0)
 #define FILTER_ACTION_FILTER_ID_FLAG	(1 << 1)
 #define FILTER_ACTION_DROP_FLAG		(1 << 2)
-#define FILTER_ACTION_COUNTER_FLAG      (1 << 3)
 #define FILTER_ACTION_V2_ALL		(FILTER_ACTION_RQ_STEERING_FLAG \
-					 | FILTER_ACTION_FILTER_ID_FLAG \
 					 | FILTER_ACTION_DROP_FLAG \
-					 | FILTER_ACTION_COUNTER_FLAG)
+					 | FILTER_ACTION_FILTER_ID_FLAG)
 
 /* Version 2 of filter action must be a strict extension of struct filter_action
  * where the first fields exactly match in size and meaning.
@@ -919,8 +875,7 @@ struct filter_action_v2 {
 	u32 rq_idx;
 	u32 flags;                     /* use FILTER_ACTION_XXX_FLAG defines */
 	u16 filter_id;
-	u32 counter_index;
-	uint8_t reserved[28];         /* for future expansion */
+	uint8_t reserved[32];         /* for future expansion */
 } __attribute__((packed));
 
 /* Specifies the filter type. */
@@ -1166,14 +1121,5 @@ typedef enum {
 	GRPINTR_DISABLE,
 	GRPINTR_UPD_VECT,
 } grpintr_subcmd_t;
-
-/*
- * Structure for counter DMA
- * (DMAed by CMD_COUNTER_DMA_CONFIG)
- */
-struct vnic_counter_counts {
-	u64 vcc_packets;
-	u64 vcc_bytes;
-};
 
 #endif /* _VNIC_DEVCMD_H_ */

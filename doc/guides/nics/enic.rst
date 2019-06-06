@@ -260,12 +260,6 @@ Generic Flow API is supported. The baseline support is:
   - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
   - In total, up to 64 bytes of mask is allowed across all headers
 
-- **1400 and later series VICS with advanced filters enabled**
-
-  All the above plus:
-
-  - Action: count
-
 The VIC performs packet matching after applying VLAN strip. If VLAN
 stripping is enabled, EtherType in the ETH item corresponds to the
 stripped VLAN header's EtherType. Stripping does not affect the VLAN

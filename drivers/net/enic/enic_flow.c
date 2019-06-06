@@ -360,17 +360,6 @@ static const enum rte_flow_action_type enic_supported_actions_v2_drop[] = {
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
-static const enum rte_flow_action_type enic_supported_actions_v2_count[] = {
-	RTE_FLOW_ACTION_TYPE_QUEUE,
-	RTE_FLOW_ACTION_TYPE_MARK,
-	RTE_FLOW_ACTION_TYPE_FLAG,
-	RTE_FLOW_ACTION_TYPE_DROP,
-	RTE_FLOW_ACTION_TYPE_COUNT,
-	RTE_FLOW_ACTION_TYPE_RSS,
-	RTE_FLOW_ACTION_TYPE_PASSTHRU,
-	RTE_FLOW_ACTION_TYPE_END,
-};
-
 /** Action capabilities indexed by NIC version information */
 static const struct enic_action_cap enic_action_cap[] = {
 	[FILTER_ACTION_RQ_STEERING_FLAG] = {
@@ -383,10 +372,6 @@ static const struct enic_action_cap enic_action_cap[] = {
 	},
 	[FILTER_ACTION_DROP_FLAG] = {
 		.actions = enic_supported_actions_v2_drop,
-		.copy_fn = enic_copy_action_v2,
-	},
-	[FILTER_ACTION_COUNTER_FLAG] = {
-		.actions = enic_supported_actions_v2_count,
 		.copy_fn = enic_copy_action_v2,
 	},
 };
@@ -1265,10 +1250,6 @@ enic_copy_action_v2(struct enic *enic,
 			enic_action->flags |= FILTER_ACTION_DROP_FLAG;
 			break;
 		}
-		case RTE_FLOW_ACTION_TYPE_COUNT: {
-			enic_action->flags |= FILTER_ACTION_COUNTER_FLAG;
-			break;
-		}
 		case RTE_FLOW_ACTION_TYPE_RSS: {
 			const struct rte_flow_action_rss *rss =
 				(const struct rte_flow_action_rss *)
@@ -1360,9 +1341,7 @@ enic_get_action_cap(struct enic *enic)
 	uint8_t actions;
 
 	actions = enic->filter_actions;
-	if (actions & FILTER_ACTION_COUNTER_FLAG)
-		ea = &enic_action_cap[FILTER_ACTION_COUNTER_FLAG];
-	else if (actions & FILTER_ACTION_DROP_FLAG)
+	if (actions & FILTER_ACTION_DROP_FLAG)
 		ea = &enic_action_cap[FILTER_ACTION_DROP_FLAG];
 	else if (actions & FILTER_ACTION_FILTER_ID_FLAG)
 		ea = &enic_action_cap[FILTER_ACTION_FILTER_ID_FLAG];
@@ -1646,9 +1625,7 @@ enic_flow_add_filter(struct enic *enic, struct filter_v2 *enic_filter,
 {
 	struct rte_flow *flow;
 	int err;
-	uint16_t entry;
-	int ctr_idx;
-	int last_max_flow_ctr;
+	u16 entry;
 
 	FLOW_TRACE();
 
@@ -1659,34 +1636,6 @@ enic_flow_add_filter(struct enic *enic, struct filter_v2 *enic_filter,
 		return NULL;
 	}
 
-	flow->counter_idx = -1;
-	last_max_flow_ctr = -1;
-	if (enic_action->flags & FILTER_ACTION_COUNTER_FLAG) {
-		if (!vnic_dev_counter_alloc(enic->vdev, (uint32_t *)&ctr_idx)) {
-			rte_flow_error_set(error, ENOMEM,
-					   RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-					   NULL, "cannot allocate counter");
-			goto unwind_flow_alloc;
-		}
-		flow->counter_idx = ctr_idx;
-		enic_action->counter_index = ctr_idx;
-
-		/* If index is the largest, increase the counter DMA size */
-		if (ctr_idx > enic->max_flow_counter) {
-			err = vnic_dev_counter_dma_cfg(enic->vdev,
-						 VNIC_FLOW_COUNTER_UPDATE_MSECS,
-						 ctr_idx + 1);
-			if (err) {
-				rte_flow_error_set(error, -err,
-					   RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-					   NULL, "counter DMA config failed");
-				goto unwind_ctr_alloc;
-			}
-			last_max_flow_ctr = enic->max_flow_counter;
-			enic->max_flow_counter = ctr_idx;
-		}
-	}
-
 	/* entry[in] is the queue id, entry[out] is the filter Id for delete */
 	entry = enic_action->rq_idx;
 	err = vnic_dev_classifier(enic->vdev, CLSF_ADD, &entry, enic_filter,
@@ -1694,29 +1643,13 @@ enic_flow_add_filter(struct enic *enic, struct filter_v2 *enic_filter,
 	if (err) {
 		rte_flow_error_set(error, -err, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "vnic_dev_classifier error");
-		goto unwind_ctr_dma_cfg;
+		rte_free(flow);
+		return NULL;
 	}
 
 	flow->enic_filter_id = entry;
 	flow->enic_filter = *enic_filter;
-
 	return flow;
-
-/* unwind if there are errors */
-unwind_ctr_dma_cfg:
-	if (last_max_flow_ctr != -1) {
-		/* reduce counter DMA size */
-		vnic_dev_counter_dma_cfg(enic->vdev,
-					 VNIC_FLOW_COUNTER_UPDATE_MSECS,
-					 last_max_flow_ctr + 1);
-		enic->max_flow_counter = last_max_flow_ctr;
-	}
-unwind_ctr_alloc:
-	if (flow->counter_idx != -1)
-		vnic_dev_counter_free(enic->vdev, ctr_idx);
-unwind_flow_alloc:
-	rte_free(flow);
-	return NULL;
 }
 
 /**
@@ -1745,13 +1678,6 @@ enic_flow_del_filter(struct enic *enic, struct rte_flow *flow,
 		rte_flow_error_set(error, -err, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "vnic_dev_classifier failed");
 		return -err;
-	}
-
-	if (flow->counter_idx != -1) {
-		if (!vnic_dev_counter_free(enic->vdev, flow->counter_idx))
-			dev_err(enic, "counter free failed, idx: %d\n",
-				flow->counter_idx);
-		flow->counter_idx = -1;
 	}
 	return 0;
 }
@@ -1869,69 +1795,6 @@ enic_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 	return 0;
 }
 
-static int
-enic_flow_query_count(struct rte_eth_dev *dev,
-		      struct rte_flow *flow, void *data,
-		      struct rte_flow_error *error)
-{
-	struct enic *enic = pmd_priv(dev);
-	struct rte_flow_query_count *query;
-	uint64_t packets, bytes;
-
-	FLOW_TRACE();
-
-	if (flow->counter_idx == -1) {
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL,
-					  "flow does not have counter");
-	}
-	query = (struct rte_flow_query_count *)data;
-	if (!vnic_dev_counter_query(enic->vdev, flow->counter_idx,
-				    !!query->reset, &packets, &bytes)) {
-		return rte_flow_error_set
-			(error, EINVAL,
-			 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			 NULL,
-			 "cannot read counter");
-	}
-	query->hits_set = 1;
-	query->bytes_set = 1;
-	query->hits = packets;
-	query->bytes = bytes;
-	return 0;
-}
-
-static int
-enic_flow_query(struct rte_eth_dev *dev,
-		struct rte_flow *flow,
-		const struct rte_flow_action *actions,
-		void *data,
-		struct rte_flow_error *error)
-{
-	int ret = 0;
-
-	FLOW_TRACE();
-
-	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
-		switch (actions->type) {
-		case RTE_FLOW_ACTION_TYPE_VOID:
-			break;
-		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = enic_flow_query_count(dev, flow, data, error);
-			break;
-		default:
-			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  actions,
-						  "action not supported");
-		}
-		if (ret < 0)
-			return ret;
-	}
-	return 0;
-}
-
 /**
  * Flow callback registration.
  *
@@ -1942,5 +1805,4 @@ const struct rte_flow_ops enic_flow_ops = {
 	.create = enic_flow_create,
 	.destroy = enic_flow_destroy,
 	.flush = enic_flow_flush,
-	.query = enic_flow_query,
 };
