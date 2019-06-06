@@ -1737,12 +1737,10 @@ enic_flow_create(struct rte_eth_dev *dev,
 	if (ret < 0)
 		return NULL;
 
-	rte_spinlock_lock(&enic->flows_lock);
 	flow = enic_flow_add_filter(enic, &enic_filter, &enic_action,
 				    error);
 	if (flow)
 		LIST_INSERT_HEAD(&enic->flows, flow, next);
-	rte_spinlock_unlock(&enic->flows_lock);
 
 	return flow;
 }
@@ -1761,10 +1759,8 @@ enic_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 
 	FLOW_TRACE();
 
-	rte_spinlock_lock(&enic->flows_lock);
 	enic_flow_del_filter(enic, flow, error);
 	LIST_REMOVE(flow, next);
-	rte_spinlock_unlock(&enic->flows_lock);
 	rte_free(flow);
 	return 0;
 }
@@ -1783,7 +1779,6 @@ enic_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 
 	FLOW_TRACE();
 
-	rte_spinlock_lock(&enic->flows_lock);
 
 	while (!LIST_EMPTY(&enic->flows)) {
 		flow = LIST_FIRST(&enic->flows);
@@ -1791,7 +1786,6 @@ enic_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 		LIST_REMOVE(flow, next);
 		rte_free(flow);
 	}
-	rte_spinlock_unlock(&enic->flows_lock);
 	return 0;
 }
 

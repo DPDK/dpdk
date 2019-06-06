@@ -169,7 +169,6 @@ struct enic {
 	rte_spinlock_t mtu_lock;
 
 	LIST_HEAD(enic_flows, rte_flow) flows;
-	rte_spinlock_t flows_lock;
 
 	/* RSS */
 	uint16_t reta_size;
