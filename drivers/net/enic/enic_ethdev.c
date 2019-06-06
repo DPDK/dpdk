@@ -475,6 +475,8 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	 */
 	device_info->max_rx_pktlen = enic_mtu_to_max_rx_pktlen(enic->max_mtu);
 	device_info->max_mac_addrs = ENIC_UNICAST_PERFECT_FILTERS;
+	device_info->min_mtu = ENIC_MIN_MTU;
+	device_info->max_mtu = enic->max_mtu;
 	device_info->rx_offload_capa = enic->rx_offload_capa;
 	device_info->tx_offload_capa = enic->tx_offload_capa;
 	device_info->tx_queue_offload_capa = enic->tx_queue_offload_capa;
