@@ -83,8 +83,10 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 	 * Ensure the IP payload length of all fragments (except the
 	 * the last fragment) are a multiple of 8 bytes per RFC2460.
 	 */
-	frag_size = RTE_ALIGN_FLOOR(mtu_size - sizeof(struct rte_ipv6_hdr),
-				    RTE_IPV6_EHDR_FO_ALIGN);
+
+	frag_size = mtu_size - sizeof(struct rte_ipv6_hdr) -
+		sizeof(struct ipv6_extension_fragment);
+	frag_size = RTE_ALIGN_FLOOR(frag_size, RTE_IPV6_EHDR_FO_ALIGN);
 
 	/* Check that pkts_out is big enough to hold all fragments */
 	if (unlikely (frag_size * nb_pkts_out <
