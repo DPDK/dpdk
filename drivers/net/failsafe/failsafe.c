@@ -374,7 +374,7 @@ rte_pmd_failsafe_probe(struct rte_vdev_device *vdev)
 			}
 			if (!devargs_already_listed(&devargs)) {
 				ret = rte_dev_probe(devargs.name);
-				if (ret != 0) {
+				if (ret < 0) {
 					ERROR("Failed to probe devargs %s",
 					      devargs.name);
 					continue;

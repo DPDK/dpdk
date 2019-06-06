@@ -48,7 +48,7 @@ fs_bus_init(struct rte_eth_dev *dev)
 			ret = rte_eal_hotplug_add(da->bus->name,
 						  da->name,
 						  da->args);
-			if (ret) {
+			if (ret < 0) {
 				ERROR("sub_device %d probe failed %s%s%s", i,
 				      rte_errno ? "(" : "",
 				      rte_errno ? strerror(rte_errno) : "",
@@ -147,7 +147,7 @@ fs_bus_uninit(struct rte_eth_dev *dev)
 
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
 		sdev_ret = rte_dev_remove(sdev->dev);
-		if (sdev_ret) {
+		if (sdev_ret < 0) {
 			ERROR("Failed to remove requested device %s (err: %d)",
 			      sdev->dev->name, sdev_ret);
 			continue;

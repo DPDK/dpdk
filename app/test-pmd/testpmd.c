@@ -2383,7 +2383,7 @@ attach_port(char *identifier)
 		return;
 	}
 
-	if (rte_dev_probe(identifier) != 0) {
+	if (rte_dev_probe(identifier) < 0) {
 		TESTPMD_LOG(ERR, "Failed to attach port %s\n", identifier);
 		return;
 	}
@@ -2453,7 +2453,7 @@ detach_port_device(portid_t port_id)
 			port_flow_flush(port_id);
 	}
 
-	if (rte_dev_remove(dev) != 0) {
+	if (rte_dev_remove(dev) < 0) {
 		TESTPMD_LOG(ERR, "Failed to detach device %s\n", dev->name);
 		return;
 	}

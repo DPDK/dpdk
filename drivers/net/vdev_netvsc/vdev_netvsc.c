@@ -633,7 +633,7 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 		ctx->devname, ctx->devargs);
 	vdev_netvsc_foreach_iface(vdev_netvsc_device_probe, 0, ctx);
 	ret = rte_eal_hotplug_add("vdev", ctx->devname, ctx->devargs);
-	if (ret)
+	if (ret < 0)
 		goto error;
 	LIST_INSERT_HEAD(&vdev_netvsc_ctx_list, ctx, entry);
 	++vdev_netvsc_ctx_count;
