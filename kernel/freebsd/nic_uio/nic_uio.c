@@ -11,6 +11,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h> /* structs, prototypes for pci bus stuff and DEVMETHOD */
 #include <sys/rman.h>
 #include <sys/systm.h>
+#include <sys/lock.h>
 #include <sys/rwlock.h>
 #include <sys/proc.h>
 

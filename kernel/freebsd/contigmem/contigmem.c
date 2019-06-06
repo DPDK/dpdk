@@ -13,10 +13,13 @@ __FBSDID("$FreeBSD$");
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/proc.h>
+#include <sys/lock.h>
 #include <sys/rwlock.h>
+#include <sys/mutex.h>
 #include <sys/systm.h>
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
+#include <sys/eventhandler.h>
 
 #include <machine/bus.h>
 
