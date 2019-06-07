@@ -23,6 +23,7 @@
 #include <rte_bus_pci.h>
 #include <rte_branch_prediction.h>
 #include <rte_memory.h>
+#include <rte_kvargs.h>
 #include <rte_eal.h>
 #include <rte_alarm.h>
 #include <rte_ether.h>
@@ -126,6 +127,13 @@
 
 #define IXGBE_EXVET_VET_EXT_SHIFT              16
 #define IXGBE_DMATXCTL_VT_MASK                 0xFFFF0000
+
+#define IXGBEVF_DEVARG_PFLINK_FULLCHK		"pflink_fullchk"
+
+static const char * const ixgbevf_valid_arguments[] = {
+	IXGBEVF_DEVARG_PFLINK_FULLCHK,
+	NULL
+};
 
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
@@ -1550,6 +1558,45 @@ generate_random_mac_addr(struct rte_ether_addr *mac_addr)
 	memcpy(&mac_addr->addr_bytes[3], &random, 3);
 }
 
+static int
+devarg_handle_int(__rte_unused const char *key, const char *value,
+		  void *extra_args)
+{
+	uint16_t *n = extra_args;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	*n = (uint16_t)strtoul(value, NULL, 0);
+	if (*n == USHRT_MAX && errno == ERANGE)
+		return -1;
+
+	return 0;
+}
+
+static void
+ixgbevf_parse_devargs(struct ixgbe_adapter *adapter,
+		      struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	uint16_t pflink_fullchk;
+
+	if (devargs == NULL)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, ixgbevf_valid_arguments);
+	if (kvlist == NULL)
+		return;
+
+	if (rte_kvargs_count(kvlist, IXGBEVF_DEVARG_PFLINK_FULLCHK) == 1 &&
+	    rte_kvargs_process(kvlist, IXGBEVF_DEVARG_PFLINK_FULLCHK,
+			       devarg_handle_int, &pflink_fullchk) == 0 &&
+	    pflink_fullchk == 1)
+		adapter->pflink_fullchk = 1;
+
+	rte_kvargs_free(kvlist);
+}
+
 /*
  * Virtual Function device init
  */
@@ -1597,6 +1644,9 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 		return 0;
 	}
+
+	ixgbevf_parse_devargs(eth_dev->data->dev_private,
+			      pci_dev->device.devargs);
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
@@ -3908,6 +3958,8 @@ static int
 ixgbevf_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		   int *link_up, int wait_to_complete)
 {
+	struct ixgbe_adapter *adapter = container_of(hw,
+						     struct ixgbe_adapter, hw);
 	struct ixgbe_mbx_info *mbx = &hw->mbx;
 	struct ixgbe_mac_info *mac = &hw->mac;
 	uint32_t links_reg, in_msg;
@@ -3966,6 +4018,15 @@ ixgbevf_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		break;
 	default:
 		*speed = IXGBE_LINK_SPEED_UNKNOWN;
+	}
+
+	if (wait_to_complete == 0 && adapter->pflink_fullchk == 0) {
+		if (*speed == IXGBE_LINK_SPEED_UNKNOWN)
+			mac->get_link_status = true;
+		else
+			mac->get_link_status = false;
+
+		goto out;
 	}
 
 	/* if the read failed it could just be a mailbox collision, best wait
@@ -8660,6 +8721,8 @@ RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe_vf, "* igb_uio | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_ixgbe_vf,
+			      IXGBEVF_DEVARG_PFLINK_FULLCHK "=<0|1>");
 
 RTE_INIT(ixgbe_init_log)
 {

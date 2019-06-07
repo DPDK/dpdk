@@ -498,6 +498,11 @@ struct ixgbe_adapter {
 
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
+
+	/* Used for VF link sync with PF's physical and logical (by checking
+	 * mailbox status) link status.
+	 */
+	uint8_t pflink_fullchk;
 };
 
 struct ixgbe_vf_representor {
