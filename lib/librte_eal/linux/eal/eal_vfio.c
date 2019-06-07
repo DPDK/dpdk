@@ -1445,9 +1445,29 @@ vfio_spapr_create_new_dma_window(int vfio_container_fd,
 	/* create new DMA window */
 	ret = ioctl(vfio_container_fd, VFIO_IOMMU_SPAPR_TCE_CREATE, create);
 	if (ret) {
-		RTE_LOG(ERR, EAL, "  cannot create new DMA window, "
-				"error %i (%s)\n", errno, strerror(errno));
-		return -1;
+		/* try possible page_shift and levels for workaround */
+		uint32_t levels;
+
+		for (levels = 1; levels <= info.ddw.levels; levels++) {
+			uint32_t pgsizes = info.ddw.pgsizes;
+
+			while (pgsizes != 0) {
+				create->page_shift = 31 - __builtin_clz(pgsizes);
+				create->levels = levels;
+				ret = ioctl(vfio_container_fd,
+					VFIO_IOMMU_SPAPR_TCE_CREATE, create);
+				if (!ret)
+					break;
+				pgsizes &= ~(1 << create->page_shift);
+			}
+			if (!ret)
+				break;
+		}
+		if (ret) {
+			RTE_LOG(ERR, EAL, "  cannot create new DMA window, "
+					"error %i (%s)\n", errno, strerror(errno));
+			return -1;
+		}
 	}
 
 	if (create->start_addr != 0) {
