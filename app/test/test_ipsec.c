@@ -26,7 +26,7 @@
 #include "test_cryptodev.h"
 
 #define VDEV_ARGS_SIZE	100
-#define MAX_NB_SESSIONS	100
+#define MAX_NB_SESSIONS	200
 #define MAX_NB_SAS		2
 #define REPLAY_WIN_0	0
 #define REPLAY_WIN_32	32
@@ -93,8 +93,8 @@ struct ipsec_test_cfg {
 };
 
 static const struct ipsec_test_cfg test_cfg[] = {
-
 	{REPLAY_WIN_0, ESN_DISABLED, 0, DATA_64_BYTES, 1, 0},
+	{REPLAY_WIN_0, ESN_DISABLED, 0, DATA_64_BYTES, BURST_SIZE, 0},
 	{REPLAY_WIN_0, ESN_DISABLED, 0, DATA_80_BYTES, BURST_SIZE,
 		REORDER_PKTS},
 	{REPLAY_WIN_32, ESN_ENABLED, 0, DATA_100_BYTES, 1, 0},
