@@ -881,6 +881,19 @@ lksd_proto_ipsec(uint16_t num_pkts)
 	return TEST_SUCCESS;
 }
 
+static void
+dump_grp_pkt(uint32_t i, struct rte_ipsec_group *grp, uint32_t k)
+{
+	RTE_LOG(ERR, USER1,
+		"After rte_ipsec_pkt_process grp[%d].cnt=%d k=%d fail\n",
+		i, grp[i].cnt, k);
+	RTE_LOG(ERR, USER1,
+		"After rte_ipsec_pkt_process grp[%d].m=%p grp[%d].m[%d]=%p\n",
+		i, grp[i].m, i, k, grp[i].m[k]);
+
+	rte_pktmbuf_dump(stdout, grp[i].m[k], grp[i].m[k]->data_len);
+}
+
 static int
 crypto_ipsec_2sa(void)
 {
@@ -916,7 +929,7 @@ crypto_ipsec_2sa(void)
 		ut_params->obuf, grp, BURST_SIZE);
 	if (ng != BURST_SIZE) {
 		RTE_LOG(ERR, USER1, "rte_ipsec_pkt_crypto_group fail ng=%d\n",
-				ng);
+			ng);
 		return TEST_FAILED;
 	}
 
@@ -924,7 +937,7 @@ crypto_ipsec_2sa(void)
 	for (i = 0; i < ng; i++) {
 		k = rte_ipsec_pkt_process(grp[i].id.ptr, grp[i].m, grp[i].cnt);
 		if (k != grp[i].cnt) {
-			RTE_LOG(ERR, USER1, "rte_ipsec_pkt_process fail\n");
+			dump_grp_pkt(i, grp, k);
 			return TEST_FAILED;
 		}
 	}
@@ -1059,7 +1072,7 @@ crypto_ipsec_2sa_4grp(void)
 	for (i = 0; i < ng; i++) {
 		k = rte_ipsec_pkt_process(grp[i].id.ptr, grp[i].m, grp[i].cnt);
 		if (k != grp[i].cnt) {
-			RTE_LOG(ERR, USER1, "rte_ipsec_pkt_process fail\n");
+			dump_grp_pkt(i, grp, k);
 			return TEST_FAILED;
 		}
 		rc = crypto_ipsec_4grp_check_cnt(i, grp);
