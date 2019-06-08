@@ -31,7 +31,7 @@ static void bnxt_int_handler(void *param)
 
 	raw_cons = cpr->cp_raw_cons;
 	while (1) {
-		if (!cpr || !cpr->cp_ring_struct)
+		if (!cpr || !cpr->cp_ring_struct || !cpr->cp_db.doorbell)
 			return;
 
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
