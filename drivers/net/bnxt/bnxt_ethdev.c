@@ -412,13 +412,12 @@ static int bnxt_init_chip(struct bnxt *bp)
 			"intr_handle->nb_efd = %d intr_handle->max_intr = %d\n",
 			 intr_handle->intr_vec, intr_handle->nb_efd,
 			intr_handle->max_intr);
-	}
-
-	for (queue_id = 0; queue_id < bp->eth_dev->data->nb_rx_queues;
-	     queue_id++) {
-		intr_handle->intr_vec[queue_id] = vec;
-		if (vec < base + intr_handle->nb_efd - 1)
-			vec++;
+		for (queue_id = 0; queue_id < bp->eth_dev->data->nb_rx_queues;
+		     queue_id++) {
+			intr_handle->intr_vec[queue_id] = vec;
+			if (vec < base + intr_handle->nb_efd - 1)
+				vec++;
+		}
 	}
 
 	/* enable uio/vfio intr/eventfd mapping */
