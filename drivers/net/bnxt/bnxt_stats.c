@@ -415,6 +415,8 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	unsigned int stat_size = sizeof(uint64_t);
 	unsigned int stat_count;
 
+	memset(xstats, 0, sizeof(*xstats));
+
 	bnxt_hwrm_port_qstats(bp);
 	bnxt_hwrm_func_qstats_tx_drop(bp, 0xffff, &tx_drop_pkts);
 	bnxt_hwrm_ext_port_qstats(bp);

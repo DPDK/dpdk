@@ -3775,7 +3775,8 @@ skip_init:
 			goto skip_ext_stats;
 
 		bp->hw_rx_port_stats_ext = (void *)
-			(bp->hw_rx_port_stats + sizeof(struct rx_port_stats));
+			((uint8_t *)bp->hw_rx_port_stats +
+			 sizeof(struct rx_port_stats));
 		bp->hw_rx_port_stats_ext_map = bp->hw_rx_port_stats_map +
 			sizeof(struct rx_port_stats);
 		bp->flags |= BNXT_FLAG_EXT_RX_PORT_STATS;
@@ -3783,7 +3784,8 @@ skip_init:
 
 		if (bp->hwrm_spec_code < HWRM_SPEC_CODE_1_9_2) {
 			bp->hw_tx_port_stats_ext = (void *)
-			(bp->hw_tx_port_stats + sizeof(struct tx_port_stats));
+				((uint8_t *)bp->hw_tx_port_stats +
+				 sizeof(struct tx_port_stats));
 			bp->hw_tx_port_stats_ext_map =
 				bp->hw_tx_port_stats_map +
 				sizeof(struct tx_port_stats);
