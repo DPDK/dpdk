@@ -3654,6 +3654,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	uint32_t total_alloc_len;
 	rte_iova_t mz_phys_addr;
 	struct bnxt *bp;
+	uint16_t mtu;
 	int rc;
 
 	if (version_printed++ == 0)
@@ -3906,11 +3907,15 @@ skip_ext_stats:
 		pci_dev->mem_resource[0].phys_addr,
 		pci_dev->mem_resource[0].addr);
 
-	rc = bnxt_hwrm_func_qcfg(bp);
+	rc = bnxt_hwrm_func_qcfg(bp, &mtu);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "hwrm func qcfg failed\n");
 		goto error_free;
 	}
+
+	if (mtu >= RTE_ETHER_MIN_MTU && mtu <= BNXT_MAX_MTU &&
+	    mtu != eth_dev->data->mtu)
+		eth_dev->data->mtu = mtu;
 
 	if (BNXT_PF(bp)) {
 		//if (bp->pf.active_vfs) {

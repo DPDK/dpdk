@@ -2638,7 +2638,7 @@ error:
 }
 
 /* JIRA 22088 */
-int bnxt_hwrm_func_qcfg(struct bnxt *bp)
+int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 {
 	struct hwrm_func_qcfg_input req = {0};
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
@@ -2662,6 +2662,9 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 		bp->flags |= BNXT_FLAG_TRUSTED_VF_EN;
 		PMD_DRV_LOG(INFO, "Trusted VF cap enabled\n");
 	}
+
+	if (mtu)
+		*mtu = resp->mtu;
 
 	switch (resp->port_partition_type) {
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0:

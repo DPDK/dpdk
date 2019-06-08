@@ -35,7 +35,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_CFG_CHANGE:
 		PMD_DRV_LOG(INFO, "Async event: VF config changed\n");
-		bnxt_hwrm_func_qcfg(bp);
+		bnxt_hwrm_func_qcfg(bp, NULL);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED:
 		PMD_DRV_LOG(INFO, "Port conn async event\n");
