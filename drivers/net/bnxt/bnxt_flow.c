@@ -109,9 +109,12 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 			}
 			use_ntuple |= 1;
 			break;
+		case RTE_FLOW_ITEM_TYPE_ANY:
+			use_ntuple = 0;
+			break;
 		default:
-			PMD_DRV_LOG(ERR, "Unknown Flow type\n");
-			use_ntuple |= 1;
+			PMD_DRV_LOG(DEBUG, "Unknown Flow type\n");
+			use_ntuple |= 0;
 		}
 		item++;
 	}
@@ -134,6 +137,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	const struct rte_flow_item_eth *eth_spec, *eth_mask;
 	const struct rte_flow_item_nvgre *nvgre_spec;
 	const struct rte_flow_item_nvgre *nvgre_mask;
+	const struct rte_flow_item_gre *gre_spec;
+	const struct rte_flow_item_gre *gre_mask;
 	const struct rte_flow_item_vxlan *vxlan_spec;
 	const struct rte_flow_item_vxlan *vxlan_mask;
 	uint8_t vni_mask[] = {0xFF, 0xFF, 0xFF};
@@ -146,12 +151,22 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	int use_ntuple;
 	uint32_t en = 0;
 	uint32_t en_ethertype;
-	int dflt_vnic;
+	int dflt_vnic, rc = 0;
 
 	use_ntuple = bnxt_filter_type_check(pattern, error);
 	PMD_DRV_LOG(DEBUG, "Use NTUPLE %d\n", use_ntuple);
 	if (use_ntuple < 0)
 		return use_ntuple;
+
+	if (use_ntuple && (bp->eth_dev->data->dev_conf.rxmode.mq_mode &
+	    ETH_MQ_RX_RSS)) {
+		PMD_DRV_LOG(ERR, "Cannot create ntuple flow on RSS queues\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Cannot create flow on RSS queues");
+		rc = -rte_errno;
+		return rc;
+	}
 
 	filter->filter_type = use_ntuple ?
 		HWRM_CFA_NTUPLE_FILTER : HWRM_CFA_EM_FILTER;
@@ -169,16 +184,11 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			return -rte_errno;
 		}
 
-		if (!item->spec || !item->mask) {
-			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "spec/mask is NULL");
-			return -rte_errno;
-		}
-
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
+			if (!item->spec || !item->mask)
+				break;
+
 			eth_spec = item->spec;
 			eth_mask = item->mask;
 
@@ -281,6 +291,10 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			/* If mask is not involved, we could use EM filters. */
 			ipv4_spec = item->spec;
 			ipv4_mask = item->mask;
+
+			if (!item->spec || !item->mask)
+				break;
+
 			/* Only IP DST and SRC fields are maskable. */
 			if (ipv4_mask->hdr.version_ihl ||
 			    ipv4_mask->hdr.type_of_service ||
@@ -339,6 +353,9 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			ipv6_spec = item->spec;
 			ipv6_mask = item->mask;
 
+			if (!item->spec || !item->mask)
+				break;
+
 			/* Only IP DST and SRC fields are maskable. */
 			if (ipv6_mask->hdr.vtc_flow ||
 			    ipv6_mask->hdr.payload_len ||
@@ -388,6 +405,9 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			tcp_spec = item->spec;
 			tcp_mask = item->mask;
 
+			if (!item->spec || !item->mask)
+				break;
+
 			/* Check TCP mask. Only DST & SRC ports are maskable */
 			if (tcp_mask->hdr.sent_seq ||
 			    tcp_mask->hdr.recv_ack ||
@@ -429,6 +449,9 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp_spec = item->spec;
 			udp_mask = item->mask;
+
+			if (!item->spec || !item->mask)
+				break;
 
 			if (udp_mask->hdr.dgram_len ||
 			    udp_mask->hdr.dgram_cksum) {
@@ -477,6 +500,12 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 						   item,
 						   "Invalid VXLAN item");
 				return -rte_errno;
+			}
+
+			if (!vxlan_spec && !vxlan_mask) {
+				filter->tunnel_type =
+				CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN;
+				break;
 			}
 
 			if (vxlan_spec->rsvd1 || vxlan_spec->rsvd0[0] ||
@@ -530,6 +559,12 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				return -rte_errno;
 			}
 
+			if (!nvgre_spec && !nvgre_mask) {
+				filter->tunnel_type =
+				CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_NVGRE;
+				break;
+			}
+
 			if (nvgre_spec->c_k_s_rsvd0_ver != 0x2000 ||
 			    nvgre_spec->protocol != 0x6558) {
 				rte_flow_error_set(error,
@@ -561,10 +596,34 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_NVGRE;
 			}
 			break;
+
+		case RTE_FLOW_ITEM_TYPE_GRE:
+			gre_spec = (const struct rte_flow_item_gre *)item->spec;
+			gre_mask = (const struct rte_flow_item_gre *)item->mask;
+
+			/*
+			 *Check if GRE item is used to describe protocol.
+			 * If yes, both spec and mask should be NULL.
+			 * If no, both spec and mask shouldn't be NULL.
+			 */
+			if (!!gre_spec ^ !!gre_mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid GRE item");
+				return -rte_errno;
+			}
+
+			if (!gre_spec && !gre_mask) {
+				filter->tunnel_type =
+				CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_IPGRE;
+				break;
+			}
+			break;
+
 		case RTE_FLOW_ITEM_TYPE_VF:
 			vf_spec = item->spec;
 			vf = vf_spec->id;
-
 			if (!BNXT_PF(bp)) {
 				rte_flow_error_set(error,
 						   EINVAL,
@@ -724,17 +783,6 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	int dflt_vnic;
 	int rc;
 
-	if (bp->eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {
-		PMD_DRV_LOG(ERR, "Cannot create flow on RSS queues\n");
-		rte_flow_error_set(error,
-				   EINVAL,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL,
-				   "Cannot create flow on RSS queues");
-		rc = -rte_errno;
-		goto ret;
-	}
-
 	rc =
 	bnxt_validate_and_parse_flow_type(bp, attr, pattern, error, filter);
 	if (rc != 0)
@@ -816,14 +864,25 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		act_vf = (const struct rte_flow_action_vf *)act->conf;
 		vf = act_vf->id;
 
-		if (!BNXT_PF(bp)) {
-			rte_flow_error_set(error,
-					   EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   act,
-					   "Configuring on a VF!");
-			rc = -rte_errno;
-			goto ret;
+		if (filter->tunnel_type ==
+		    CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN ||
+		    filter->tunnel_type ==
+		    CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_IPGRE) {
+			/* If issued on a VF, ensure id is 0 and is trusted */
+			if (BNXT_VF(bp)) {
+				if (!BNXT_VF_IS_TRUSTED(bp) || vf) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						act,
+						"Incorrect VF");
+					rc = -rte_errno;
+					goto ret;
+				}
+			}
+
+			filter->enables |= filter->tunnel_type;
+			filter->filter_type = HWRM_CFA_TUNNEL_REDIRECT_FILTER;
+			goto done;
 		}
 
 		if (vf >= bp->pdev->max_vfs) {
@@ -878,7 +937,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		bnxt_free_filter(bp, filter1);
 		filter1->fw_l2_filter_id = -1;
 	}
-
+done:
 	act = bnxt_flow_non_void_action(++act);
 	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
 		rte_flow_error_set(error,
@@ -1006,6 +1065,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	struct rte_flow *flow;
 	unsigned int i;
 	int ret = 0;
+	uint32_t tun_type;
 
 	flow = rte_zmalloc("bnxt_flow", sizeof(struct rte_flow), 0);
 	if (!flow) {
@@ -1046,6 +1106,45 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		update_flow = true;
 	}
 
+	/* If tunnel redirection to a VF/PF is specified then only tunnel_type
+	 * is set and enable is set to the tunnel type. Issue hwrm cmd directly
+	 * in such a case.
+	 */
+	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
+	    filter->enables == filter->tunnel_type) {
+		ret = bnxt_hwrm_tunnel_redirect_query(bp, &tun_type);
+		if (ret) {
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Unable to query tunnel to VF");
+			goto free_filter;
+		}
+		if (tun_type == (1U << filter->tunnel_type)) {
+			ret =
+			bnxt_hwrm_tunnel_redirect_free(bp,
+						       filter->tunnel_type);
+			if (ret) {
+				PMD_DRV_LOG(ERR,
+					    "Unable to free existing tunnel\n");
+				rte_flow_error_set(error, -ret,
+						   RTE_FLOW_ERROR_TYPE_HANDLE,
+						   NULL,
+						   "Unable to free preexisting "
+						   "tunnel on VF");
+				goto free_filter;
+			}
+		}
+		ret = bnxt_hwrm_tunnel_redirect(bp, filter->tunnel_type);
+		if (ret) {
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Unable to redirect tunnel to VF");
+			goto free_filter;
+		}
+		vnic = &bp->vnic_info[0];
+		goto done;
+	}
+
 	if (filter->filter_type == HWRM_CFA_EM_FILTER) {
 		filter->enables |=
 			HWRM_CFA_EM_FLOW_ALLOC_INPUT_ENABLES_L2_FILTER_ID;
@@ -1063,7 +1162,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		if (filter->dst_id == vnic->fw_vnic_id)
 			break;
 	}
-
+done:
 	if (!ret) {
 		flow->filter = filter;
 		flow->vnic = vnic;
@@ -1095,6 +1194,47 @@ free_flow:
 	return flow;
 }
 
+static int bnxt_handle_tunnel_redirect_destroy(struct bnxt *bp,
+					       struct bnxt_filter_info *filter,
+					       struct rte_flow_error *error)
+{
+	uint16_t tun_dst_fid;
+	uint32_t tun_type;
+	int ret = 0;
+
+	ret = bnxt_hwrm_tunnel_redirect_query(bp, &tun_type);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Unable to query tunnel to VF");
+		return ret;
+	}
+	if (tun_type == (1U << filter->tunnel_type)) {
+		ret = bnxt_hwrm_tunnel_redirect_info(bp, filter->tunnel_type,
+						     &tun_dst_fid);
+		if (ret) {
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_HANDLE,
+					   NULL,
+					   "tunnel_redirect info cmd fail");
+			return ret;
+		}
+		PMD_DRV_LOG(INFO, "Pre-existing tunnel fid = %x vf->fid = %x\n",
+			    tun_dst_fid + bp->first_vf_id, bp->fw_fid);
+
+		/* Tunnel doesn't belong to this VF, so don't send HWRM
+		 * cmd, just delete the flow from driver
+		 */
+		if (bp->fw_fid != (tun_dst_fid + bp->first_vf_id))
+			PMD_DRV_LOG(ERR,
+				    "Tunnel does not belong to this VF, skip hwrm_tunnel_redirect_free\n");
+		else
+			ret = bnxt_hwrm_tunnel_redirect_free(bp,
+							filter->tunnel_type);
+	}
+	return ret;
+}
+
 static int
 bnxt_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
@@ -1105,6 +1245,17 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	struct bnxt_vnic_info *vnic = flow->vnic;
 	int ret = 0;
 
+	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
+	    filter->enables == filter->tunnel_type) {
+		ret = bnxt_handle_tunnel_redirect_destroy(bp,
+							  filter,
+							  error);
+		if (!ret)
+			goto done;
+		else
+			return ret;
+	}
+
 	ret = bnxt_match_filter(bp, filter);
 	if (ret == 0)
 		PMD_DRV_LOG(ERR, "Could not find matching flow\n");
@@ -1114,7 +1265,10 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 		ret = bnxt_hwrm_clear_ntuple_filter(bp, filter);
 	else
 		ret = bnxt_hwrm_clear_l2_filter(bp, filter);
+
+done:
 	if (!ret) {
+		bnxt_free_filter(bp, filter);
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
 		rte_free(flow);
 	} else {
@@ -1140,6 +1294,19 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 		STAILQ_FOREACH(flow, &vnic->flow_list, next) {
 			struct bnxt_filter_info *filter = flow->filter;
 
+			if (filter->filter_type ==
+			    HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
+			    filter->enables == filter->tunnel_type) {
+				ret =
+				bnxt_handle_tunnel_redirect_destroy(bp,
+								    filter,
+								    error);
+				if (!ret)
+					goto done;
+				else
+					return ret;
+			}
+
 			if (filter->filter_type == HWRM_CFA_EM_FILTER)
 				ret = bnxt_hwrm_clear_em_filter(bp, filter);
 			if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
@@ -1154,7 +1321,8 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 					 "Failed to flush flow in HW.");
 				return -rte_errno;
 			}
-
+done:
+			bnxt_free_filter(bp, filter);
 			STAILQ_REMOVE(&vnic->flow_list, flow,
 				      rte_flow, next);
 			rte_free(flow);

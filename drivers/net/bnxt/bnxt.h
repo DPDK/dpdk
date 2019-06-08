@@ -430,6 +430,7 @@ struct bnxt {
 	uint16_t		max_l2_ctx;
 	uint16_t		max_vnics;
 	uint16_t		max_stat_ctx;
+	uint16_t		first_vf_id;
 	uint16_t		vlan;
 	struct bnxt_pf_info	pf;
 	uint8_t			port_partition_type;

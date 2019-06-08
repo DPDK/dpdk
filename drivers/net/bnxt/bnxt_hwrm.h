@@ -191,4 +191,9 @@ int bnxt_hwrm_ext_port_qstats(struct bnxt *bp);
 int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp);
 int bnxt_hwrm_func_backing_store_cfg(struct bnxt *bp, uint32_t enables);
 int bnxt_alloc_ctx_mem(struct bnxt *bp);
+int bnxt_hwrm_tunnel_redirect(struct bnxt *bp, uint8_t type);
+int bnxt_hwrm_tunnel_redirect_free(struct bnxt *bp, uint8_t type);
+int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint32_t *type);
+int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
+				   uint16_t *dst_fid);
 #endif

@@ -590,6 +590,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
 	bp->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
+	bp->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
 	/* TODO: For now, do not support VMDq/RFS on VFs. */
 	if (BNXT_PF(bp)) {
 		if (bp->pf.max_vfs)
@@ -4507,6 +4508,88 @@ int bnxt_hwrm_ext_port_qstats(struct bnxt *bp)
 	}
 
 	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int
+bnxt_hwrm_tunnel_redirect(struct bnxt *bp, uint8_t type)
+{
+	struct hwrm_cfa_redirect_tunnel_type_alloc_input req = {0};
+	struct hwrm_cfa_redirect_tunnel_type_alloc_output *resp =
+		bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_ALLOC, BNXT_USE_KONG(bp));
+	req.tunnel_type = type;
+	req.dest_fid = bp->fw_fid;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+	HWRM_CHECK_RESULT();
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int
+bnxt_hwrm_tunnel_redirect_free(struct bnxt *bp, uint8_t type)
+{
+	struct hwrm_cfa_redirect_tunnel_type_free_input req = {0};
+	struct hwrm_cfa_redirect_tunnel_type_free_output *resp =
+		bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_FREE, BNXT_USE_KONG(bp));
+	req.tunnel_type = type;
+	req.dest_fid = bp->fw_fid;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+	HWRM_CHECK_RESULT();
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint32_t *type)
+{
+	struct hwrm_cfa_redirect_query_tunnel_type_input req = {0};
+	struct hwrm_cfa_redirect_query_tunnel_type_output *resp =
+		bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, CFA_REDIRECT_QUERY_TUNNEL_TYPE, BNXT_USE_KONG(bp));
+	req.src_fid = bp->fw_fid;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+	HWRM_CHECK_RESULT();
+
+	if (type)
+		*type = resp->tunnel_mask;
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
+				   uint16_t *dst_fid)
+{
+	struct hwrm_cfa_redirect_tunnel_type_info_input req = {0};
+	struct hwrm_cfa_redirect_tunnel_type_info_output *resp =
+		bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_INFO, BNXT_USE_KONG(bp));
+	req.src_fid = bp->fw_fid;
+	req.tunnel_type = tun_type;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+	HWRM_CHECK_RESULT();
+
+	if (dst_fid)
+		*dst_fid = resp->dest_fid;
+
+	PMD_DRV_LOG(DEBUG, "dst_fid: %x\n", resp->dest_fid);
+
 	HWRM_UNLOCK();
 
 	return rc;
