@@ -380,6 +380,41 @@ fail1:
 }
 
 	__checkReturn	efx_rc_t
+efx_nic_set_drv_version(
+	__inout			efx_nic_t *enp,
+	__in_ecount(length)	char const *verp,
+	__in			size_t length)
+{
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT(!(enp->en_mod_flags & EFX_MOD_PROBE));
+
+	/*
+	 * length is the string content length in bytes.
+	 * Accept any content which fits into the version
+	 * buffer, excluding the last byte. This is reserved
+	 * for an appended NUL terminator.
+	 */
+	if (length >= sizeof (enp->en_drv_version)) {
+		rc = E2BIG;
+		goto fail1;
+	}
+
+	(void) memset(enp->en_drv_version, 0,
+	    sizeof (enp->en_drv_version));
+	memcpy(enp->en_drv_version, verp, length);
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+
+	__checkReturn	efx_rc_t
 efx_nic_get_bar_region(
 	__in		efx_nic_t *enp,
 	__in		efx_nic_region_t region,

@@ -647,6 +647,8 @@ typedef struct efx_lic_ops_s {
 
 #endif
 
+#define	EFX_DRV_VER_MAX		20
+
 typedef struct efx_drv_cfg_s {
 	uint32_t		edc_min_vi_count;
 	uint32_t		edc_max_vi_count;
@@ -677,6 +679,7 @@ struct efx_nic_s {
 	const efx_tx_ops_t	*en_etxop;
 	const efx_rx_ops_t	*en_erxop;
 	efx_fw_variant_t	efv;
+	char			en_drv_version[EFX_DRV_VER_MAX];
 #if EFSYS_OPT_FILTER
 	efx_filter_t		en_filter;
 	const efx_filter_ops_t	*en_efop;

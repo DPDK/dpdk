@@ -1256,13 +1256,17 @@ efx_mcdi_drv_attach(
 	__in		boolean_t attach)
 {
 	efx_mcdi_req_t req;
-	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_DRV_ATTACH_IN_LEN,
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_DRV_ATTACH_IN_V2_LEN,
 		MC_CMD_DRV_ATTACH_EXT_OUT_LEN);
 	efx_rc_t rc;
 
 	req.emr_cmd = MC_CMD_DRV_ATTACH;
 	req.emr_in_buf = payload;
-	req.emr_in_length = MC_CMD_DRV_ATTACH_IN_LEN;
+	if (enp->en_drv_version[0] == '\0') {
+		req.emr_in_length = MC_CMD_DRV_ATTACH_IN_LEN;
+	} else {
+		req.emr_in_length = MC_CMD_DRV_ATTACH_IN_V2_LEN;
+	}
 	req.emr_out_buf = payload;
 	req.emr_out_length = MC_CMD_DRV_ATTACH_EXT_OUT_LEN;
 
@@ -1282,6 +1286,14 @@ efx_mcdi_drv_attach(
 	    DRV_ATTACH_IN_SUBVARIANT_AWARE, EFSYS_OPT_FW_SUBVARIANT_AWARE);
 	MCDI_IN_SET_DWORD(req, DRV_ATTACH_IN_UPDATE, 1);
 	MCDI_IN_SET_DWORD(req, DRV_ATTACH_IN_FIRMWARE_ID, enp->efv);
+
+	if (req.emr_in_length >= MC_CMD_DRV_ATTACH_IN_V2_LEN) {
+		EFX_STATIC_ASSERT(sizeof (enp->en_drv_version) ==
+		    MC_CMD_DRV_ATTACH_IN_V2_DRIVER_VERSION_LEN);
+		memcpy(MCDI_IN2(req, char, DRV_ATTACH_IN_V2_DRIVER_VERSION),
+		    enp->en_drv_version,
+		    MC_CMD_DRV_ATTACH_IN_V2_DRIVER_VERSION_LEN);
+	}
 
 	efx_mcdi_execute(enp, &req);
 

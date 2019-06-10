@@ -1463,6 +1463,19 @@ efx_nic_set_drv_limits(
 	__inout		efx_nic_t *enp,
 	__in		efx_drv_limits_t *edlp);
 
+/*
+ * Register the OS driver version string for management agents
+ * (e.g. via NC-SI). The content length is provided (i.e. no
+ * NUL terminator). Use length 0 to indicate no version string
+ * should be advertised. It is valid to set the version string
+ * only before efx_nic_probe() is called.
+ */
+extern	__checkReturn	efx_rc_t
+efx_nic_set_drv_version(
+	__inout			efx_nic_t *enp,
+	__in_ecount(length)	char const *verp,
+	__in			size_t length);
+
 typedef enum efx_nic_region_e {
 	EFX_REGION_VI,			/* Memory BAR UC mapping */
 	EFX_REGION_PIO_WRITE_VI,	/* Memory BAR WC mapping */
