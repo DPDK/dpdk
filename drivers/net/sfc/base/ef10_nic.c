@@ -223,7 +223,7 @@ fail1:
 	return (rc);
 }
 
-static	__checkReturn		efx_rc_t
+	__checkReturn		efx_rc_t
 efx_mcdi_vadaptor_alloc(
 	__in			efx_nic_t *enp,
 	__in			uint32_t port_id)
@@ -261,7 +261,7 @@ fail1:
 	return (rc);
 }
 
-static	__checkReturn		efx_rc_t
+	__checkReturn		efx_rc_t
 efx_mcdi_vadaptor_free(
 	__in			efx_nic_t *enp,
 	__in			uint32_t port_id)

@@ -3349,6 +3349,7 @@ efx_phy_link_state_get(
 
 #if EFSYS_OPT_EVB
 
+typedef uint32_t efx_vswitch_id_t;
 typedef uint32_t efx_vport_id_t;
 
 typedef enum efx_vswitch_type_e {
@@ -3366,12 +3367,13 @@ typedef enum efx_vport_type_e {
 
 /* Unspecified VLAN ID to support disabling of VLAN filtering */
 #define	EFX_FILTER_VID_UNSPEC	0xffff
+#define	EFX_DEFAULT_VSWITCH_ID	1
 
-extern  __checkReturn   efx_rc_t
+extern	__checkReturn	efx_rc_t
 efx_evb_init(
 	__in		efx_nic_t *enp);
 
-extern	void
+extern			void
 efx_evb_fini(
 	__in		efx_nic_t *enp);
 

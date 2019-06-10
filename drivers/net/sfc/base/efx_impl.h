@@ -655,6 +655,23 @@ typedef struct efx_lic_ops_s {
 typedef struct efx_evb_ops_s {
 	efx_rc_t	(*eeo_init)(efx_nic_t *);
 	void		(*eeo_fini)(efx_nic_t *);
+	efx_rc_t	(*eeo_vswitch_alloc)(efx_nic_t *, efx_vswitch_id_t *);
+	efx_rc_t	(*eeo_vswitch_free)(efx_nic_t *, efx_vswitch_id_t);
+	efx_rc_t	(*eeo_vport_alloc)(efx_nic_t *, efx_vswitch_id_t,
+						efx_vport_type_t, uint16_t,
+						boolean_t, efx_vport_id_t *);
+	efx_rc_t	(*eeo_vport_free)(efx_nic_t *, efx_vswitch_id_t,
+						efx_vport_id_t);
+	efx_rc_t	(*eeo_vport_mac_addr_add)(efx_nic_t *, efx_vswitch_id_t,
+						efx_vport_id_t, uint8_t *);
+	efx_rc_t	(*eeo_vport_mac_addr_del)(efx_nic_t *, efx_vswitch_id_t,
+						efx_vport_id_t, uint8_t *);
+	efx_rc_t	(*eeo_vadaptor_alloc)(efx_nic_t *, efx_vswitch_id_t,
+						efx_vport_id_t);
+	efx_rc_t	(*eeo_vadaptor_free)(efx_nic_t *, efx_vswitch_id_t,
+						efx_vport_id_t);
+	efx_rc_t	(*eeo_vport_assign)(efx_nic_t *, efx_vswitch_id_t,
+						efx_vport_id_t, uint32_t);
 } efx_evb_ops_t;
 
 #endif /* EFSYS_OPT_EVB */

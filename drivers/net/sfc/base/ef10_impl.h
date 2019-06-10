@@ -195,6 +195,16 @@ ef10_intr_fini(
 /* NIC */
 
 extern	__checkReturn	efx_rc_t
+efx_mcdi_vadaptor_alloc(
+	__in		efx_nic_t *enp,
+	__in		uint32_t port_id);
+
+extern	__checkReturn	efx_rc_t
+efx_mcdi_vadaptor_free(
+	__in		efx_nic_t *enp,
+	__in		uint32_t port_id);
+
+extern	__checkReturn	efx_rc_t
 ef10_nic_probe(
 	__in		efx_nic_t *enp);
 
@@ -1267,9 +1277,70 @@ extern	__checkReturn	efx_rc_t
 ef10_evb_init(
 	__in		efx_nic_t *enp);
 
-extern void
+extern			void
 ef10_evb_fini(
 	__in		efx_nic_t *enp);
+
+extern	__checkReturn	efx_rc_t
+ef10_evb_vswitch_alloc(
+	__in		efx_nic_t *enp,
+	__out		efx_vswitch_id_t *vswitch_idp);
+
+
+extern	__checkReturn	efx_rc_t
+ef10_evb_vswitch_free(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id);
+
+extern	__checkReturn	efx_rc_t
+ef10_evb_vport_alloc(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id,
+	__in		efx_vport_type_t vport_type,
+	__in		uint16_t vid,
+	__in		boolean_t vlan_restrict,
+	__out		efx_vport_id_t *vport_idp);
+
+
+extern	__checkReturn	efx_rc_t
+ef10_evb_vport_free(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id,
+	__in		efx_vport_id_t vport_id);
+
+extern	__checkReturn	efx_rc_t
+ef10_evb_vport_mac_addr_add(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id,
+	__in		efx_vport_id_t vport_id,
+	__in_ecount(6)	uint8_t *addrp);
+
+extern	__checkReturn	efx_rc_t
+ef10_evb_vport_mac_addr_del(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id,
+	__in		efx_vport_id_t vport_id,
+	__in_ecount(6)	uint8_t *addrp);
+
+extern	__checkReturn	efx_rc_t
+ef10_evb_vadaptor_alloc(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id,
+	__in		efx_vport_id_t vport_id);
+
+
+extern __checkReturn	efx_rc_t
+ef10_evb_vadaptor_free(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id,
+	__in		efx_vport_id_t vport_id);
+
+extern	__checkReturn	efx_rc_t
+ef10_evb_vport_assign(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id,
+	__in		efx_vport_id_t vport_id,
+	__in		uint32_t vf_index);
 
 #endif  /* EFSYS_OPT_EVB */
 
