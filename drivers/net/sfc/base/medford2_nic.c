@@ -69,9 +69,6 @@ medford2_board_cfg(
 		encp->enc_bug41750_workaround = B_TRUE;
 	}
 
-	/* Chained multicast is always enabled on Medford2 */
-	encp->enc_bug26807_workaround = B_TRUE;
-
 	/*
 	 * If the bug61265 workaround is enabled, then interrupt holdoff timers
 	 * cannot be controlled by timer table writes, so MCDI must be used

@@ -1753,6 +1753,56 @@ fail1:
 }
 
 static	__checkReturn	efx_rc_t
+ef10_set_workaround_bug26807(
+	__in		efx_nic_t *enp)
+{
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	uint32_t flags;
+	efx_rc_t rc;
+
+	/*
+	 * If the bug26807 workaround is enabled, then firmware has enabled
+	 * support for chained multicast filters. Firmware will reset (FLR)
+	 * functions which have filters in the hardware filter table when the
+	 * workaround is enabled/disabled.
+	 *
+	 * We must recheck if the workaround is enabled after inserting the
+	 * first hardware filter, in case it has been changed since this check.
+	 */
+	rc = efx_mcdi_set_workaround(enp, MC_CMD_WORKAROUND_BUG26807,
+	    B_TRUE, &flags);
+	if (rc == 0) {
+		encp->enc_bug26807_workaround = B_TRUE;
+		if (flags & (1 << MC_CMD_WORKAROUND_EXT_OUT_FLR_DONE_LBN)) {
+			/*
+			 * Other functions had installed filters before the
+			 * workaround was enabled, and they have been reset
+			 * by firmware.
+			 */
+			EFSYS_PROBE(bug26807_workaround_flr_done);
+			/* FIXME: bump MC warm boot count ? */
+		}
+	} else if (rc == EACCES) {
+		/*
+		 * Unprivileged functions cannot enable the workaround in older
+		 * firmware.
+		 */
+		encp->enc_bug26807_workaround = B_FALSE;
+	} else if ((rc == ENOTSUP) || (rc == ENOENT)) {
+		encp->enc_bug26807_workaround = B_FALSE;
+	} else {
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static	__checkReturn	efx_rc_t
 ef10_nic_board_cfg(
 	__in		efx_nic_t *enp)
 {
@@ -1910,13 +1960,18 @@ ef10_nic_board_cfg(
 		goto fail10;
 	encp->enc_privilege_mask = mask;
 
+	if ((rc = ef10_set_workaround_bug26807(enp)) != 0)
+		goto fail11;
+
 	/* Get remaining controller-specific board config */
 	if ((rc = enop->eno_board_cfg(enp)) != 0)
 		if (rc != EACCES)
-			goto fail11;
+			goto fail12;
 
 	return (0);
 
+fail12:
+	EFSYS_PROBE(fail12);
 fail11:
 	EFSYS_PROBE(fail11);
 fail10:
