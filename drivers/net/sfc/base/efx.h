@@ -1407,6 +1407,8 @@ typedef struct efx_nic_cfg_s {
 	boolean_t		enc_filter_action_flag_supported;
 	boolean_t		enc_filter_action_mark_supported;
 	uint32_t		enc_filter_action_mark_max;
+	/* Port assigned to this PCI function */
+	uint32_t		enc_assigned_port;
 } efx_nic_cfg_t;
 
 #define	EFX_PCI_FUNCTION_IS_PF(_encp)	((_encp)->enc_vf == 0xffff)

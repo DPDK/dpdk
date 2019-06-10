@@ -1840,6 +1840,8 @@ ef10_nic_board_cfg(
 	/* EFX MCDI interface uses one-based port numbers */
 	emip->emi_port = port + 1;
 
+	encp->enc_assigned_port = port;
+
 	if ((rc = ef10_external_port_mapping(enp, port,
 		    &encp->enc_external_port)) != 0)
 		goto fail2;
