@@ -255,7 +255,7 @@ void iavf_dump_tx_descriptor(const struct iavf_tx_queue *txq,
 	       tx_desc->cmd_type_offset_bsz);
 }
 
-#ifdef DEBUG_DUMP_DESC
+#ifdef RTE_LIBRTE_IAVF_DEBUG_DUMP_DESC
 #define IAVF_DUMP_RX_DESC(rxq, desc, rx_id) \
 	iavf_dump_rx_descriptor(rxq, desc, rx_id)
 #define IAVF_DUMP_TX_DESC(txq, desc, tx_id) \

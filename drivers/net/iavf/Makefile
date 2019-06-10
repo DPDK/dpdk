@@ -13,9 +13,6 @@ LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_hash
 LDLIBS += -lrte_bus_pci
 
-# used to dump HW descriptor for debugging
-# CFLAGS += -DDEBUG_DUMP_DESC
-
 EXPORT_MAP := rte_pmd_iavf_version.map
 
 LIBABIVER := 1
