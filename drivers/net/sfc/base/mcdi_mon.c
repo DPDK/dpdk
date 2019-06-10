@@ -63,34 +63,34 @@ mcdi_mon_decode_stats(
 	for (sensor = 0; sensor < sensor_max; ++sensor) {
 		efx_mon_stat_t id;
 		efx_mon_stat_portmask_t stat_portmask = 0;
-		boolean_t decode_ok;
 		efx_mon_stat_unit_t stat_unit;
 
 		if ((sensor % (MC_CMD_SENSOR_PAGE0_NEXT + 1)) ==
 		    MC_CMD_SENSOR_PAGE0_NEXT) {
+			/* This sensor is one of the page boundary bits. */
 			page++;
 			continue;
-			/* This sensor is one of the page boundary bits. */
 		}
 
 		if (~(sensor_mask[page]) &
-		    (1U << (sensor % (sizeof (sensor_mask[page]) * 8))))
+		    (1U << (sensor % (sizeof (sensor_mask[page]) * 8)))) {
+			/* This sensor is not supported. */
 			continue;
-		/* This sensor not in DMA buffer */
+		}
 
+		/* Supported sensor, so it is present in the DMA buffer. */
 		idx++;
-		/*
-		 * Valid stat in DMA buffer that we need to increment over, even
-		 * if we couldn't look up the id
-		 */
 
-		decode_ok = efx_mon_mcdi_to_efx_stat(sensor, &id);
-		decode_ok =
-		    decode_ok && efx_mon_get_stat_portmap(id, &stat_portmask);
-
-		if (!(decode_ok && (stat_portmask & port_mask)))
+		if ((efx_mon_mcdi_to_efx_stat(sensor, &id) != B_TRUE) ||
+		    (efx_mon_get_stat_portmap(id, &stat_portmask) != B_TRUE)) {
+			/* The sensor is not known to the driver. */
 			continue;
-		/* Either bad decode, or don't know what port stat is on */
+		}
+
+		if ((stat_portmask & port_mask) == 0) {
+			/* The sensor is not for this port. */
+			continue;
+		}
 
 		EFSYS_ASSERT(id < EFX_MON_NSTATS);
 
