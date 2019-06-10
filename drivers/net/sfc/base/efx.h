@@ -1889,6 +1889,7 @@ typedef enum efx_image_format_e {
 	EFX_IMAGE_FORMAT_INVALID,
 	EFX_IMAGE_FORMAT_UNSIGNED,
 	EFX_IMAGE_FORMAT_SIGNED,
+	EFX_IMAGE_FORMAT_SIGNED_PACKAGE
 } efx_image_format_t;
 
 typedef struct efx_image_info_s {

@@ -7,6 +7,8 @@
 #include "efx.h"
 #include "efx_impl.h"
 
+#include "ef10_firmware_ids.h"
+
 #if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
 
 #if EFSYS_OPT_IMAGE_LAYOUT
@@ -429,54 +431,59 @@ fail1:
 
 static	__checkReturn	efx_rc_t
 efx_check_unsigned_image(
-	__in		void		*bufferp,
-	__in		uint32_t	buffer_size)
+	__in		void			*bufferp,
+	__in		uint32_t		buffer_size,
+	__out		efx_image_header_t	**headerpp,
+	__out		efx_image_trailer_t	**trailerpp)
 {
-	efx_image_header_t *header;
-	efx_image_trailer_t *trailer;
+	efx_image_header_t *headerp;
+	efx_image_trailer_t *trailerp;
 	uint32_t crc;
 	efx_rc_t rc;
 
-	EFX_STATIC_ASSERT(sizeof (*header) == EFX_IMAGE_HEADER_SIZE);
-	EFX_STATIC_ASSERT(sizeof (*trailer) == EFX_IMAGE_TRAILER_SIZE);
+	EFX_STATIC_ASSERT(sizeof (*headerp) == EFX_IMAGE_HEADER_SIZE);
+	EFX_STATIC_ASSERT(sizeof (*trailerp) == EFX_IMAGE_TRAILER_SIZE);
 
 	/* Must have at least enough space for required image header fields */
 	if (buffer_size < (EFX_FIELD_OFFSET(efx_image_header_t, eih_size) +
-		sizeof (header->eih_size))) {
+		sizeof (headerp->eih_size))) {
 		rc = ENOSPC;
 		goto fail1;
 	}
-	header = (efx_image_header_t *)bufferp;
+	headerp = (efx_image_header_t *)bufferp;
 
-	if (header->eih_magic != EFX_IMAGE_HEADER_MAGIC) {
-		rc = EINVAL;
+	/* Buffer must have space for image header, code and image trailer. */
+	if (buffer_size < (headerp->eih_size + headerp->eih_code_size +
+		EFX_IMAGE_TRAILER_SIZE)) {
+		rc = ENOSPC;
 		goto fail2;
+	}
+
+	trailerp = (efx_image_trailer_t *)((uint8_t *)headerp +
+	    headerp->eih_size + headerp->eih_code_size);
+
+	*headerpp = headerp;
+	*trailerpp = trailerp;
+
+	if (headerp->eih_magic != EFX_IMAGE_HEADER_MAGIC) {
+		rc = EINVAL;
+		goto fail3;
 	}
 
 	/*
 	 * Check image header version is same or higher than lowest required
 	 * version.
 	 */
-	if (header->eih_version < EFX_IMAGE_HEADER_VERSION) {
+	if (headerp->eih_version < EFX_IMAGE_HEADER_VERSION) {
 		rc = EINVAL;
-		goto fail3;
-	}
-
-	/* Buffer must have space for image header, code and image trailer. */
-	if (buffer_size < (header->eih_size + header->eih_code_size +
-		EFX_IMAGE_TRAILER_SIZE)) {
-		rc = ENOSPC;
 		goto fail4;
 	}
 
 	/* Check CRC from image buffer matches computed CRC. */
-	trailer = (efx_image_trailer_t *)((uint8_t *)header +
-	    header->eih_size + header->eih_code_size);
+	crc = efx_crc32_calculate(0, (uint8_t *)headerp,
+	    (headerp->eih_size + headerp->eih_code_size));
 
-	crc = efx_crc32_calculate(0, (uint8_t *)header,
-	    (header->eih_size + header->eih_code_size));
-
-	if (trailer->eit_crc != crc) {
+	if (trailerp->eit_crc != crc) {
 		rc = EINVAL;
 		goto fail5;
 	}
@@ -507,8 +514,9 @@ efx_check_reflash_image(
 	uint32_t image_offset;
 	uint32_t image_size;
 	void *imagep;
+	efx_image_header_t *headerp;
+	efx_image_trailer_t *trailerp;
 	efx_rc_t rc;
-
 
 	EFSYS_ASSERT(infop != NULL);
 	if (infop == NULL) {
@@ -531,7 +539,7 @@ efx_check_reflash_image(
 	if (rc == 0) {
 		/*
 		 * Buffer holds signed image format. Check that the encapsulated
-		 * content is in unsigned image format.
+		 * content contains an unsigned image format header.
 		 */
 		format = EFX_IMAGE_FORMAT_SIGNED;
 	} else {
@@ -546,10 +554,20 @@ efx_check_reflash_image(
 	}
 	imagep = (uint8_t *)bufferp + image_offset;
 
-	/* Check unsigned image layout (image header, code, image trailer) */
-	rc = efx_check_unsigned_image(imagep, image_size);
+	/* Check image layout (image header, code, image trailer) */
+	rc = efx_check_unsigned_image(imagep, image_size, &headerp, &trailerp);
 	if (rc != 0)
 		goto fail4;
+
+	/*
+	 * Signed images are packages consumed directly by the firmware,
+	 * with the exception of MC firmware, where the image must be
+	 * rearranged for booting purposes.
+	 */
+	if (format == EFX_IMAGE_FORMAT_SIGNED) {
+		if (headerp->eih_type != FIRMWARE_TYPE_MCFW)
+			format = EFX_IMAGE_FORMAT_SIGNED_PACKAGE;
+	}
 
 	/* Return image details */
 	infop->eii_format = format;
