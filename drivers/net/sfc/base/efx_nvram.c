@@ -657,13 +657,10 @@ fail1:
 }
 
 	__checkReturn		efx_rc_t
-efx_mcdi_nvram_info(
+efx_mcdi_nvram_info_ex(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
-	__out_opt		size_t *sizep,
-	__out_opt		uint32_t *addressp,
-	__out_opt		uint32_t *erase_sizep,
-	__out_opt		uint32_t *write_sizep)
+	__out			efx_nvram_info_t *enip)
 {
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_NVRAM_INFO_IN_LEN,
 		MC_CMD_NVRAM_INFO_V2_OUT_LEN);
@@ -690,21 +687,26 @@ efx_mcdi_nvram_info(
 		goto fail2;
 	}
 
-	if (sizep)
-		*sizep = MCDI_OUT_DWORD(req, NVRAM_INFO_OUT_SIZE);
+	enip->eni_partn_size = MCDI_OUT_DWORD(req, NVRAM_INFO_OUT_SIZE);
 
-	if (addressp)
-		*addressp = MCDI_OUT_DWORD(req, NVRAM_INFO_OUT_PHYSADDR);
+	enip->eni_address = MCDI_OUT_DWORD(req, NVRAM_INFO_OUT_PHYSADDR);
 
-	if (erase_sizep)
-		*erase_sizep = MCDI_OUT_DWORD(req, NVRAM_INFO_OUT_ERASESIZE);
+	enip->eni_erase_size = MCDI_OUT_DWORD(req, NVRAM_INFO_OUT_ERASESIZE);
 
-	if (write_sizep) {
-		*write_sizep =
+	enip->eni_write_size =
 			(req.emr_out_length_used <
 			    MC_CMD_NVRAM_INFO_V2_OUT_LEN) ?
 			0 : MCDI_OUT_DWORD(req, NVRAM_INFO_V2_OUT_WRITESIZE);
-	}
+
+	enip->eni_flags = 0;
+
+	if (MCDI_OUT_DWORD_FIELD(req, NVRAM_INFO_OUT_FLAGS,
+		NVRAM_INFO_OUT_PROTECTED))
+		enip->eni_flags |= EFX_NVRAM_FLAG_READ_ONLY;
+
+	if (MCDI_OUT_DWORD_FIELD(req, NVRAM_INFO_OUT_FLAGS,
+		NVRAM_INFO_OUT_READ_ONLY))
+		enip->eni_flags |= EFX_NVRAM_FLAG_READ_ONLY;
 
 	return (0);
 
@@ -715,6 +717,42 @@ fail1:
 
 	return (rc);
 }
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_info(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out_opt		size_t *sizep,
+	__out_opt		uint32_t *addressp,
+	__out_opt		uint32_t *erase_sizep,
+	__out_opt		uint32_t *write_sizep)
+{
+	efx_nvram_info_t eni;
+	efx_rc_t rc;
+
+	if ((rc = efx_mcdi_nvram_info_ex(enp, partn, &eni)) != 0)
+		goto fail1;
+
+	if (sizep)
+		*sizep = eni.eni_partn_size;
+
+	if (addressp)
+		*addressp = eni.eni_address;
+
+	if (erase_sizep)
+		*erase_sizep = eni.eni_erase_size;
+
+	if (write_sizep)
+		*write_sizep = eni.eni_write_size;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 
 /*
  * MC_CMD_NVRAM_UPDATE_START_V2 must be used to support firmware-verified

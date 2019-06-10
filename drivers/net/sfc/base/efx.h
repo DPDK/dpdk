@@ -1606,6 +1606,16 @@ typedef enum efx_nvram_type_e {
 	EFX_NVRAM_NTYPES,
 } efx_nvram_type_t;
 
+typedef struct efx_nvram_info_s {
+	uint32_t eni_flags;
+	uint32_t eni_partn_size;
+	uint32_t eni_address;
+	uint32_t eni_erase_size;
+	uint32_t eni_write_size;
+} efx_nvram_info_t;
+
+#define	EFX_NVRAM_FLAG_READ_ONLY	(1 << 0)
+
 extern	__checkReturn		efx_rc_t
 efx_nvram_init(
 	__in			efx_nic_t *enp);

@@ -568,6 +568,12 @@ efx_mcdi_nvram_info(
 	__out_opt		uint32_t *write_sizep);
 
 	__checkReturn		efx_rc_t
+efx_mcdi_nvram_info_ex(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			efx_nvram_info_t *eni);
+
+	__checkReturn		efx_rc_t
 efx_mcdi_nvram_update_start(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn);
