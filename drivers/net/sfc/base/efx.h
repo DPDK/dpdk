@@ -9,6 +9,7 @@
 
 #include "efx_annote.h"
 #include "efsys.h"
+#include "efx_types.h"
 #include "efx_check.h"
 #include "efx_phy_ids.h"
 
