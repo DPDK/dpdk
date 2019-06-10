@@ -3347,6 +3347,18 @@ efx_phy_link_state_get(
 	__out		efx_phy_link_state_t  *eplsp);
 
 
+#if EFSYS_OPT_EVB
+
+extern  __checkReturn   efx_rc_t
+efx_evb_init(
+	__in		efx_nic_t *enp);
+
+extern	void
+efx_evb_fini(
+	__in		efx_nic_t *enp);
+
+#endif /* EFSYS_OPT_EVB */
+
 #ifdef	__cplusplus
 }
 #endif

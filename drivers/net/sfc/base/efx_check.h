@@ -351,4 +351,11 @@
 # endif
 #endif
 
+#if EFSYS_OPT_EVB
+/* Support enterprise virtual bridging */
+# if !(EFX_OPTS_EF10())
+#  error "EVB requires EF10 arch"
+# endif
+#endif /* EFSYS_OPT_EVB */
+
 #endif /* _SYS_EFX_CHECK_H */

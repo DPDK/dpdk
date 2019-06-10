@@ -1262,6 +1262,16 @@ efx_mcdi_set_nic_global(
 
 #endif	/* EFSYS_OPT_FW_SUBVARIANT_AWARE */
 
+#if EFSYS_OPT_EVB
+extern	__checkReturn	efx_rc_t
+ef10_evb_init(
+	__in		efx_nic_t *enp);
+
+extern void
+ef10_evb_fini(
+	__in		efx_nic_t *enp);
+
+#endif  /* EFSYS_OPT_EVB */
 
 #if EFSYS_OPT_RX_PACKED_STREAM
 

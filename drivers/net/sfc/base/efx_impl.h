@@ -58,6 +58,7 @@ extern "C" {
 #define	EFX_MOD_FILTER		0x00001000
 #define	EFX_MOD_LIC		0x00002000
 #define	EFX_MOD_TUNNEL		0x00004000
+#define	EFX_MOD_EVB		0x00008000
 
 #define	EFX_RESET_PHY		0x00000001
 #define	EFX_RESET_RXQ_ERR	0x00000002
@@ -649,6 +650,15 @@ typedef struct efx_lic_ops_s {
 
 #endif
 
+#if EFSYS_OPT_EVB
+
+typedef struct efx_evb_ops_s {
+	efx_rc_t	(*eeo_init)(efx_nic_t *);
+	void		(*eeo_fini)(efx_nic_t *);
+} efx_evb_ops_t;
+
+#endif /* EFSYS_OPT_EVB */
+
 #define	EFX_DRV_VER_MAX		20
 
 typedef struct efx_drv_cfg_s {
@@ -747,6 +757,9 @@ struct efx_nic_s {
 		} ef10;
 	} en_arch;
 #endif	/* EFX_OPTS_EF10() */
+#if EFSYS_OPT_EVB
+	const efx_evb_ops_t	*en_eeop;
+#endif	/* EFSYS_OPT_EVB */
 };
 
 #define	EFX_FAMILY_IS_EF10(_enp) \
