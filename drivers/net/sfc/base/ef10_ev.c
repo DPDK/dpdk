@@ -1227,6 +1227,13 @@ ef10_ev_mcdi(
 		break;
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH */
 
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+	case MCDI_EVENT_CODE_PROXY_REQUEST:
+		efx_mcdi_ev_proxy_request(enp,
+			MCDI_EV_FIELD(eqp, PROXY_REQUEST_BUFF_INDEX));
+		break;
+#endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
+
 	case MCDI_EVENT_CODE_LINKCHANGE: {
 		efx_link_mode_t link_mode;
 

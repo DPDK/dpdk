@@ -87,6 +87,13 @@ efx_mcdi_ev_proxy_response(
 	__in		unsigned int status);
 #endif
 
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+extern			void
+efx_mcdi_ev_proxy_request(
+	__in		efx_nic_t *enp,
+	__in		unsigned int index);
+#endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
+
 extern			void
 efx_mcdi_ev_death(
 	__in		efx_nic_t *enp,

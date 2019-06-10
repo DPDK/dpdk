@@ -845,6 +845,18 @@ efx_mcdi_ev_proxy_response(
 }
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH */
 
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+			void
+efx_mcdi_ev_proxy_request(
+	__in		efx_nic_t *enp,
+	__in		unsigned int index)
+{
+	const efx_mcdi_transport_t *emtp = enp->en_mcdi.em_emtp;
+
+	if (emtp->emt_ev_proxy_request != NULL)
+		emtp->emt_ev_proxy_request(emtp->emt_context, index);
+}
+#endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 			void
 efx_mcdi_ev_death(
 	__in		efx_nic_t *enp,
