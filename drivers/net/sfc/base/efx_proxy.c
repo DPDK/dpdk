@@ -19,6 +19,7 @@ static const efx_proxy_ops_t	__efx_proxy_dummy_ops = {
 	NULL,			/* epo_set_privilege_mask */
 	NULL,			/* epo_complete_request */
 	NULL,			/* epo_exec_cmd */
+	NULL,			/* epo_get_privilege_mask */
 };
 #endif /* EFSYS_OPT_SIENA */
 
@@ -32,6 +33,7 @@ static const efx_proxy_ops_t			__efx_proxy_ef10_ops = {
 	ef10_proxy_auth_set_privilege_mask,	/* epo_set_privilege_mask */
 	ef10_proxy_auth_complete_request,	/* epo_complete_request */
 	ef10_proxy_auth_exec_cmd,		/* epo_exec_cmd */
+	ef10_proxy_auth_get_privilege_mask,	/* epo_get_privilege_mask */
 };
 #endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 
@@ -296,5 +298,67 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn	efx_rc_t
+efx_proxy_auth_privilege_mask_get(
+	__in		efx_nic_t *enp,
+	__in		uint32_t pf_index,
+	__in		uint32_t vf_index,
+	__out		uint32_t *maskp)
+{
+	const efx_proxy_ops_t *epop = enp->en_epop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT(enp->en_mod_flags & EFX_MOD_PROXY);
+
+	if (epop->epo_get_privilege_mask == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	rc = epop->epo_get_privilege_mask(enp, pf_index, vf_index, maskp);
+	if (rc != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_proxy_auth_privilege_modify(
+	__in		efx_nic_t *enp,
+	__in		uint32_t pf_index,
+	__in		uint32_t vf_index,
+	__in		uint32_t add_privileges_mask,
+	__in		uint32_t remove_privileges_mask)
+{
+	const efx_proxy_ops_t *epop = enp->en_epop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT(enp->en_mod_flags & EFX_MOD_PROXY);
+
+	if (epop->epo_privilege_modify == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	rc = epop->epo_privilege_modify(enp, MC_CMD_PRIVILEGE_MODIFY_IN_ONE,
+		    pf_index, vf_index, add_privileges_mask,
+		    remove_privileges_mask);
+	if (rc != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
 
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */

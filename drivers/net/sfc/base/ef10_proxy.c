@@ -451,6 +451,17 @@ fail1:
 }
 
 	__checkReturn	efx_rc_t
+ef10_proxy_auth_get_privilege_mask(
+	__in		efx_nic_t *enp,
+	__in		uint32_t pf_index,
+	__in		uint32_t vf_index,
+	__out		uint32_t *maskp)
+{
+	return (efx_mcdi_privilege_mask(enp, pf_index, vf_index, maskp));
+}
+
+
+	__checkReturn	efx_rc_t
 ef10_proxy_auth_exec_cmd(
 	__in		efx_nic_t *enp,
 	__inout		efx_proxy_cmd_params_t *paramsp)

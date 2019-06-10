@@ -3513,6 +3513,21 @@ efx_proxy_auth_set_privilege_mask(
 	__in		uint32_t mask,
 	__in		uint32_t value);
 
+	__checkReturn	efx_rc_t
+efx_proxy_auth_privilege_mask_get(
+	__in		efx_nic_t *enp,
+	__in		uint32_t pf_index,
+	__in		uint32_t vf_index,
+	__out		uint32_t *maskp);
+
+	__checkReturn	efx_rc_t
+efx_proxy_auth_privilege_modify(
+	__in		efx_nic_t *enp,
+	__in		uint32_t pf_index,
+	__in		uint32_t vf_index,
+	__in		uint32_t add_privileges_mask,
+	__in		uint32_t remove_privileges_mask);
+
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 
 #ifdef	__cplusplus
