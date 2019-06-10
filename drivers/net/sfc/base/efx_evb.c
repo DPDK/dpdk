@@ -24,6 +24,7 @@ static const efx_evb_ops_t	__efx_evb_dummy_ops = {
 	NULL,		/* eeo_vadaptor_free */
 	NULL,		/* eeo_vport_assign */
 	NULL,		/* eeo_vport_reconfigure */
+	NULL,		/* eeo_vport_stats */
 };
 #endif /* EFSYS_OPT_SIENA */
 
@@ -41,6 +42,7 @@ static const efx_evb_ops_t	__efx_evb_ef10_ops = {
 	ef10_evb_vadaptor_free,		/* eeo_vadaptor_free */
 	ef10_evb_vport_assign,		/* eeo_vport_assign */
 	ef10_evb_vport_reconfigure,	/* eeo_vport_reconfigure */
+	ef10_evb_vport_stats,		/* eeo_vport_stats */
 };
 #endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 
@@ -496,6 +498,44 @@ efx_evb_vswitch_destroy(
 fail2:
 	EFSYS_PROBE(fail2);
 
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_evb_vport_stats(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_t *evp,
+	__in		efx_vport_id_t vport_id,
+	__out		efsys_mem_t *stats_bufferp)
+{
+	efx_rc_t rc;
+	const efx_evb_ops_t *eeop = enp->en_eeop;
+
+	EFSYS_ASSERT(enp->en_mod_flags & EFX_MOD_EVB);
+
+	if (eeop->eeo_vport_stats == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (stats_bufferp == NULL) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	rc = eeop->eeo_vport_stats(enp, evp->ev_vswitch_id,
+		vport_id, stats_bufferp);
+	if (rc != 0)
+		goto fail3;
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);

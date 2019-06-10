@@ -1351,6 +1351,13 @@ ef10_evb_vport_reconfigure(
 	__in_bcount_opt(EFX_MAC_ADDR_LEN)	uint8_t *addrp,
 	__out_opt				boolean_t *fn_resetp);
 
+extern	__checkReturn	efx_rc_t
+ef10_evb_vport_stats(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id,
+	__in		efx_vport_id_t vport_id,
+	__out		efsys_mem_t *esmp);
+
 #endif  /* EFSYS_OPT_EVB */
 
 #if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER

@@ -1834,17 +1834,10 @@ fail1:
 
 #if EFSYS_OPT_MAC_STATS
 
-typedef enum efx_stats_action_e {
-	EFX_STATS_CLEAR,
-	EFX_STATS_UPLOAD,
-	EFX_STATS_ENABLE_NOEVENTS,
-	EFX_STATS_ENABLE_EVENTS,
-	EFX_STATS_DISABLE,
-} efx_stats_action_t;
-
-static	__checkReturn	efx_rc_t
+	__checkReturn	efx_rc_t
 efx_mcdi_mac_stats(
 	__in		efx_nic_t *enp,
+	__in		uint32_t vport_id,
 	__in_opt	efsys_mem_t *esmp,
 	__in		efx_stats_action_t action,
 	__in		uint16_t period_ms)
@@ -1910,7 +1903,7 @@ efx_mcdi_mac_stats(
 	 *	 vadapter has already been deleted.
 	 */
 	MCDI_IN_SET_DWORD(req, MAC_STATS_IN_PORT_ID,
-	    (disable ? EVB_PORT_ID_NULL : enp->en_vport_id));
+		(disable ? EVB_PORT_ID_NULL : vport_id));
 
 	efx_mcdi_execute(enp, &req);
 
@@ -1943,7 +1936,8 @@ efx_mcdi_mac_stats_clear(
 {
 	efx_rc_t rc;
 
-	if ((rc = efx_mcdi_mac_stats(enp, NULL, EFX_STATS_CLEAR, 0)) != 0)
+	if ((rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, NULL,
+			EFX_STATS_CLEAR, 0)) != 0)
 		goto fail1;
 
 	return (0);
@@ -1966,7 +1960,8 @@ efx_mcdi_mac_stats_upload(
 	 * avoid having to pull the statistics buffer into the cache to
 	 * maintain cumulative statistics.
 	 */
-	if ((rc = efx_mcdi_mac_stats(enp, esmp, EFX_STATS_UPLOAD, 0)) != 0)
+	if ((rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, esmp,
+			EFX_STATS_UPLOAD, 0)) != 0)
 		goto fail1;
 
 	return (0);
@@ -1994,13 +1989,14 @@ efx_mcdi_mac_stats_periodic(
 	 * Medford uses a fixed 1sec period before v6.2.1.1033 firmware.
 	 */
 	if (period_ms == 0)
-		rc = efx_mcdi_mac_stats(enp, NULL, EFX_STATS_DISABLE, 0);
+		rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, NULL,
+			EFX_STATS_DISABLE, 0);
 	else if (events)
-		rc = efx_mcdi_mac_stats(enp, esmp, EFX_STATS_ENABLE_EVENTS,
-		    period_ms);
+		rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, esmp,
+			EFX_STATS_ENABLE_EVENTS, period_ms);
 	else
-		rc = efx_mcdi_mac_stats(enp, esmp, EFX_STATS_ENABLE_NOEVENTS,
-		    period_ms);
+		rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, esmp,
+			EFX_STATS_ENABLE_NOEVENTS, period_ms);
 
 	if (rc != 0)
 		goto fail1;

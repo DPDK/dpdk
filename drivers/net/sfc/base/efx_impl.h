@@ -688,6 +688,8 @@ typedef struct efx_evb_ops_s {
 							efx_vport_id_t,
 							uint16_t *, uint8_t *,
 							boolean_t *);
+	efx_rc_t	(*eeo_vport_stats)(efx_nic_t *, efx_vswitch_id_t,
+						efx_vport_id_t, efsys_mem_t *);
 } efx_evb_ops_t;
 
 extern __checkReturn	boolean_t
@@ -1358,12 +1360,28 @@ struct efx_mac_stats_range {
 	efx_mac_stat_t		last;
 };
 
+typedef enum efx_stats_action_e {
+	EFX_STATS_CLEAR,
+	EFX_STATS_UPLOAD,
+	EFX_STATS_ENABLE_NOEVENTS,
+	EFX_STATS_ENABLE_EVENTS,
+	EFX_STATS_DISABLE,
+} efx_stats_action_t;
+
 extern					efx_rc_t
 efx_mac_stats_mask_add_ranges(
 	__inout_bcount(mask_size)	uint32_t *maskp,
 	__in				size_t mask_size,
 	__in_ecount(rng_count)		const struct efx_mac_stats_range *rngp,
 	__in				unsigned int rng_count);
+
+extern	__checkReturn	efx_rc_t
+efx_mcdi_mac_stats(
+	__in		efx_nic_t *enp,
+	__in		uint32_t vport_id,
+	__in_opt	efsys_mem_t *esmp,
+	__in		efx_stats_action_t action,
+	__in		uint16_t period_ms);
 
 #endif	/* EFSYS_OPT_MAC_STATS */
 

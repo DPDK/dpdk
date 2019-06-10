@@ -536,5 +536,18 @@ ef10_evb_vport_reconfigure(
 			addrp, fn_resetp));
 }
 
+	__checkReturn	efx_rc_t
+ef10_evb_vport_stats(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_id_t vswitch_id,
+	__in		efx_vport_id_t vport_id,
+	__in		efsys_mem_t *esmp)
+{
+	_NOTE(ARGUNUSED(vswitch_id))
+
+	return (efx_mcdi_mac_stats(enp, vport_id, esmp,
+			EFX_STATS_UPLOAD, 0));
+}
+
 #endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 #endif /* EFSYS_OPT_EVB */
