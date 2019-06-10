@@ -18,16 +18,17 @@ siena_nvram_partn_size(
 	__out			size_t *sizep)
 {
 	efx_rc_t rc;
+	efx_nvram_info_t eni = { 0 };
 
 	if ((1 << partn) & ~enp->en_u.siena.enu_partn_mask) {
 		rc = ENOTSUP;
 		goto fail1;
 	}
 
-	if ((rc = efx_mcdi_nvram_info(enp, partn, sizep,
-	    NULL, NULL, NULL)) != 0) {
+	if ((rc = efx_mcdi_nvram_info(enp, partn, &eni)) != 0)
 		goto fail2;
-	}
+
+	*sizep = eni.eni_partn_size;
 
 	return (0);
 
@@ -47,7 +48,7 @@ siena_nvram_partn_info(
 {
 	efx_rc_t rc;
 
-	if ((rc = efx_mcdi_nvram_info_ex(enp, partn, enip)) != 0)
+	if ((rc = efx_mcdi_nvram_info(enp, partn, enip)) != 0)
 		goto fail1;
 
 	if (enip->eni_write_size == 0)

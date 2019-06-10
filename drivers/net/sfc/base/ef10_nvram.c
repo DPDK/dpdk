@@ -1946,10 +1946,12 @@ ef10_nvram_partn_size(
 	__out			size_t *sizep)
 {
 	efx_rc_t rc;
+	efx_nvram_info_t eni = { 0 };
 
-	if ((rc = efx_mcdi_nvram_info(enp, partn, sizep,
-	    NULL, NULL, NULL)) != 0)
+	if ((rc = efx_mcdi_nvram_info(enp, partn, &eni)) != 0)
 		goto fail1;
+
+	*sizep = eni.eni_partn_size;
 
 	return (0);
 
@@ -1967,7 +1969,7 @@ ef10_nvram_partn_info(
 {
 	efx_rc_t rc;
 
-	if ((rc = efx_mcdi_nvram_info_ex(enp, partn, enip)) != 0)
+	if ((rc = efx_mcdi_nvram_info(enp, partn, enip)) != 0)
 		goto fail1;
 
 	if (enip->eni_write_size == 0)
@@ -2080,11 +2082,13 @@ ef10_nvram_partn_erase(
 	__in			size_t size)
 {
 	efx_rc_t rc;
+	efx_nvram_info_t eni = { 0 };
 	uint32_t erase_size;
 
-	if ((rc = efx_mcdi_nvram_info(enp, partn, NULL, NULL,
-	    &erase_size, NULL)) != 0)
+	if ((rc = efx_mcdi_nvram_info(enp, partn, &eni)) != 0)
 		goto fail1;
+
+	erase_size = eni.eni_erase_size;
 
 	if (erase_size == 0) {
 		if ((rc = efx_mcdi_nvram_erase(enp, partn, offset, size)) != 0)
@@ -2126,12 +2130,14 @@ ef10_nvram_partn_write(
 	__in			size_t size)
 {
 	size_t chunk;
+	efx_nvram_info_t eni = { 0 };
 	uint32_t write_size;
 	efx_rc_t rc;
 
-	if ((rc = efx_mcdi_nvram_info(enp, partn, NULL, NULL,
-	    NULL, &write_size)) != 0)
+	if ((rc = efx_mcdi_nvram_info(enp, partn, &eni)) != 0)
 		goto fail1;
+
+	write_size = eni.eni_write_size;
 
 	if (write_size != 0) {
 		/*
