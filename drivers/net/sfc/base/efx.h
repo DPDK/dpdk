@@ -1395,6 +1395,8 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_max_pcie_link_gen;
 	/* Firmware verifies integrity of NVRAM updates */
 	boolean_t		enc_nvram_update_verify_result_supported;
+	/* Firmware supports polled NVRAM updates on select partitions */
+	boolean_t		enc_nvram_update_poll_verify_result_supported;
 	/* Firmware accepts updates via the BUNDLE partition */
 	boolean_t		enc_nvram_bundle_update_supported;
 	/* Firmware support for extended MAC_STATS buffer */

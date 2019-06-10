@@ -174,6 +174,7 @@ siena_nvram_partn_unlock(
 	__out_opt		uint32_t *verify_resultp)
 {
 	boolean_t reboot;
+	uint32_t flags = 0;
 	efx_rc_t rc;
 
 	/*
@@ -184,7 +185,8 @@ siena_nvram_partn_unlock(
 		    partn == MC_CMD_NVRAM_TYPE_PHY_PORT1 ||
 		    partn == MC_CMD_NVRAM_TYPE_DISABLED_CALLISTO);
 
-	rc = efx_mcdi_nvram_update_finish(enp, partn, reboot, verify_resultp);
+	rc = efx_mcdi_nvram_update_finish(enp, partn, reboot, flags,
+		    verify_resultp);
 	if (rc != 0)
 		goto fail1;
 

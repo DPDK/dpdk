@@ -1216,6 +1216,11 @@ ef10_get_datapath_caps(
 	else
 		encp->enc_nvram_update_verify_result_supported = B_FALSE;
 
+	if (CAP_FLAGS2(req, NVRAM_UPDATE_POLL_VERIFY_RESULT))
+		encp->enc_nvram_update_poll_verify_result_supported = B_TRUE;
+	else
+		encp->enc_nvram_update_poll_verify_result_supported = B_FALSE;
+
 	/*
 	 * Check if firmware update via the BUNDLE partition is supported
 	 */

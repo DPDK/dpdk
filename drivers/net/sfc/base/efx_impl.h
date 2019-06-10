@@ -594,11 +594,15 @@ efx_mcdi_nvram_write(
 	__in_bcount(size)	caddr_t data,
 	__in			size_t size);
 
+#define	EFX_NVRAM_UPDATE_FLAGS_BACKGROUND	0x00000001
+#define	EFX_NVRAM_UPDATE_FLAGS_POLL		0x00000002
+
 	__checkReturn		efx_rc_t
 efx_mcdi_nvram_update_finish(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
 	__in			boolean_t reboot,
+	__in			uint32_t flags,
 	__out_opt		uint32_t *verify_resultp);
 
 #if EFSYS_OPT_DIAG

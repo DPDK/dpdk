@@ -965,6 +965,7 @@ efx_mcdi_nvram_update_finish(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
 	__in			boolean_t reboot,
+	__in			uint32_t flags,
 	__out_opt		uint32_t *verify_resultp)
 {
 	const efx_nic_cfg_t *encp = &enp->en_nic_cfg;
@@ -972,7 +973,7 @@ efx_mcdi_nvram_update_finish(
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_NVRAM_UPDATE_FINISH_V2_IN_LEN,
 		MC_CMD_NVRAM_UPDATE_FINISH_V2_OUT_LEN);
 	uint32_t verify_result = MC_CMD_NVRAM_VERIFY_RC_UNKNOWN;
-	efx_rc_t rc;
+	efx_rc_t rc = 0;
 
 	req.emr_cmd = MC_CMD_NVRAM_UPDATE_FINISH;
 	req.emr_in_buf = payload;
@@ -983,8 +984,19 @@ efx_mcdi_nvram_update_finish(
 	MCDI_IN_SET_DWORD(req, NVRAM_UPDATE_FINISH_V2_IN_TYPE, partn);
 	MCDI_IN_SET_DWORD(req, NVRAM_UPDATE_FINISH_V2_IN_REBOOT, reboot);
 
-	MCDI_IN_POPULATE_DWORD_1(req, NVRAM_UPDATE_FINISH_V2_IN_FLAGS,
-	    NVRAM_UPDATE_FINISH_V2_IN_FLAG_REPORT_VERIFY_RESULT, 1);
+	if (!encp->enc_nvram_update_poll_verify_result_supported) {
+		flags &= ~EFX_NVRAM_UPDATE_FLAGS_BACKGROUND;
+		flags &= ~EFX_NVRAM_UPDATE_FLAGS_POLL;
+	}
+
+	MCDI_IN_POPULATE_DWORD_3(req, NVRAM_UPDATE_FINISH_V2_IN_FLAGS,
+	    NVRAM_UPDATE_FINISH_V2_IN_FLAG_REPORT_VERIFY_RESULT,
+	    1,
+	    NVRAM_UPDATE_FINISH_V2_IN_FLAG_RUN_IN_BACKGROUND,
+	    (flags & EFX_NVRAM_UPDATE_FLAGS_BACKGROUND) ? 1 : 0,
+	    NVRAM_UPDATE_FINISH_V2_IN_FLAG_POLL_VERIFY_RESULT,
+	    (flags & EFX_NVRAM_UPDATE_FLAGS_POLL) ? 1 : 0
+	    );
 
 	efx_mcdi_execute(enp, &req);
 
@@ -1005,11 +1017,13 @@ efx_mcdi_nvram_update_finish(
 		    MCDI_OUT_DWORD(req, NVRAM_UPDATE_FINISH_V2_OUT_RESULT_CODE);
 	}
 
-	if ((encp->enc_nvram_update_verify_result_supported) &&
-	    (verify_result != MC_CMD_NVRAM_VERIFY_RC_SUCCESS)) {
-		/* Update verification failed */
-		rc = EINVAL;
-		goto fail3;
+	if (encp->enc_nvram_update_verify_result_supported) {
+		if ((verify_result != MC_CMD_NVRAM_VERIFY_RC_SUCCESS) &&
+		    (verify_result != MC_CMD_NVRAM_VERIFY_RC_PENDING)) {
+			/* Update verification failed */
+			rc = EINVAL;
+			goto fail3;
+		}
 	}
 
 	if (verify_resultp != NULL)

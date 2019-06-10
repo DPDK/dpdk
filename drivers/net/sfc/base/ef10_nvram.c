@@ -2177,6 +2177,10 @@ fail1:
 	return (rc);
 }
 
+#define	EF10_NVRAM_INITIAL_POLL_DELAY_US 10000
+#define	EF10_NVRAM_MAX_POLL_DELAY_US     1000000
+#define	EF10_NVRAM_POLL_RETRIES          100
+
 	__checkReturn		efx_rc_t
 ef10_nvram_partn_unlock(
 	__in			efx_nic_t *enp,
@@ -2184,17 +2188,58 @@ ef10_nvram_partn_unlock(
 	__out_opt		uint32_t *verify_resultp)
 {
 	boolean_t reboot = B_FALSE;
+	uint32_t poll_delay_us = EF10_NVRAM_INITIAL_POLL_DELAY_US;
+	uint32_t poll_retry = 0;
+	uint32_t verify_result = MC_CMD_NVRAM_VERIFY_RC_UNKNOWN;
 	efx_rc_t rc;
 
-	if (verify_resultp != NULL)
-		*verify_resultp = MC_CMD_NVRAM_VERIFY_RC_UNKNOWN;
+	rc = efx_mcdi_nvram_update_finish(enp, partn, reboot,
+	    EFX_NVRAM_UPDATE_FLAGS_BACKGROUND, &verify_result);
 
-	rc = efx_mcdi_nvram_update_finish(enp, partn, reboot, verify_resultp);
-	if (rc != 0)
-		goto fail1;
+	/*
+	 * NVRAM updates can take a long time (e.g. up to 1 minute for bundle
+	 * images). Polling for NVRAM update completion ensures that other MCDI
+	 * commands can be issued before the background NVRAM update completes.
+	 *
+	 * Without polling, other MCDI commands can only be issued before the
+	 * NVRAM update completes if the MCDI transport and the firmware
+	 * support the Asynchronous MCDI protocol extensions in SF-116575-PS.
+	 *
+	 * The initial call either completes the update synchronously, or
+	 * returns RC_PENDING to indicate processing is continuing. In the
+	 * latter case, we poll for at least 1 minute, at increasing intervals
+	 * (10ms, 100ms, 1s).
+	 */
+	while (verify_result == MC_CMD_NVRAM_VERIFY_RC_PENDING) {
+
+		if (poll_retry > EF10_NVRAM_POLL_RETRIES) {
+			rc = ETIMEDOUT;
+			goto fail1;
+		}
+		poll_retry++;
+
+		EFSYS_SLEEP(poll_delay_us);
+		if (poll_delay_us < EF10_NVRAM_MAX_POLL_DELAY_US)
+			poll_delay_us *= 10;
+
+		/* Poll for completion of background NVRAM update. */
+		verify_result = MC_CMD_NVRAM_VERIFY_RC_UNKNOWN;
+
+		rc = efx_mcdi_nvram_update_finish(enp, partn, reboot,
+		    EFX_NVRAM_UPDATE_FLAGS_POLL, &verify_result);
+		if (rc != 0) {
+			/* Poll failed, so assume NVRAM update failed. */
+			goto fail2;
+		}
+	}
+
+	if (verify_resultp != NULL)
+		*verify_resultp = verify_result;
 
 	return (0);
 
+fail2:
+	EFSYS_PROBE(fail2);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 
