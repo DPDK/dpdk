@@ -501,7 +501,8 @@ typedef struct efx_nvram_ops_s {
 #endif	/* EFSYS_OPT_DIAG */
 	efx_rc_t	(*envo_type_to_partn)(efx_nic_t *, efx_nvram_type_t,
 					    uint32_t *);
-	efx_rc_t	(*envo_partn_size)(efx_nic_t *, uint32_t, size_t *);
+	efx_rc_t	(*envo_partn_info)(efx_nic_t *, uint32_t,
+					    efx_nvram_info_t *);
 	efx_rc_t	(*envo_partn_rw_start)(efx_nic_t *, uint32_t, size_t *);
 	efx_rc_t	(*envo_partn_read)(efx_nic_t *, uint32_t,
 					    unsigned int, caddr_t, size_t);

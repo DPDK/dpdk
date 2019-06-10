@@ -40,6 +40,29 @@ fail1:
 }
 
 	__checkReturn		efx_rc_t
+siena_nvram_partn_info(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			efx_nvram_info_t * enip)
+{
+	efx_rc_t rc;
+
+	if ((rc = efx_mcdi_nvram_info_ex(enp, partn, enip)) != 0)
+		goto fail1;
+
+	if (enip->eni_write_size == 0)
+		enip->eni_write_size = SIENA_NVRAM_CHUNK;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+
+	__checkReturn		efx_rc_t
 siena_nvram_partn_lock(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn)

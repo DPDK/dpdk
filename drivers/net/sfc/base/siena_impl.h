@@ -192,6 +192,12 @@ siena_nvram_partn_size(
 	__out			size_t *sizep);
 
 extern	__checkReturn		efx_rc_t
+siena_nvram_partn_info(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			efx_nvram_info_t * enip);
+
+extern	__checkReturn		efx_rc_t
 siena_nvram_partn_rw_start(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,

@@ -1635,6 +1635,12 @@ efx_nvram_size(
 	__out			size_t *sizep);
 
 extern	__checkReturn		efx_rc_t
+efx_nvram_info(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__out			efx_nvram_info_t *enip);
+
+extern	__checkReturn		efx_rc_t
 efx_nvram_rw_start(
 	__in			efx_nic_t *enp,
 	__in			efx_nvram_type_t type,

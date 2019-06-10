@@ -1960,6 +1960,29 @@ fail1:
 }
 
 	__checkReturn		efx_rc_t
+ef10_nvram_partn_info(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			efx_nvram_info_t *enip)
+{
+	efx_rc_t rc;
+
+	if ((rc = efx_mcdi_nvram_info_ex(enp, partn, enip)) != 0)
+		goto fail1;
+
+	if (enip->eni_write_size == 0)
+		enip->eni_write_size = EF10_NVRAM_CHUNK;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+
+	__checkReturn		efx_rc_t
 ef10_nvram_partn_lock(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn)
@@ -2439,22 +2462,17 @@ ef10_nvram_partn_rw_start(
 	__in			uint32_t partn,
 	__out			size_t *chunk_sizep)
 {
-	uint32_t write_size = 0;
+	efx_nvram_info_t eni = { 0 };
 	efx_rc_t rc;
 
-	if ((rc = efx_mcdi_nvram_info(enp, partn, NULL, NULL,
-	    NULL, &write_size)) != 0)
+	if ((rc = ef10_nvram_partn_info(enp, partn, &eni)) != 0)
 		goto fail1;
 
 	if ((rc = ef10_nvram_partn_lock(enp, partn)) != 0)
 		goto fail2;
 
-	if (chunk_sizep != NULL) {
-		if (write_size == 0)
-			*chunk_sizep = EF10_NVRAM_CHUNK;
-		else
-			*chunk_sizep = write_size;
-	}
+	if (chunk_sizep != NULL)
+		*chunk_sizep = eni.eni_write_size;
 
 	return (0);
 

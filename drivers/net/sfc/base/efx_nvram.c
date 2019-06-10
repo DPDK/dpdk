@@ -16,7 +16,7 @@ static const efx_nvram_ops_t	__efx_nvram_siena_ops = {
 	siena_nvram_test,		/* envo_test */
 #endif	/* EFSYS_OPT_DIAG */
 	siena_nvram_type_to_partn,	/* envo_type_to_partn */
-	siena_nvram_partn_size,		/* envo_partn_size */
+	siena_nvram_partn_info,		/* envo_partn_info */
 	siena_nvram_partn_rw_start,	/* envo_partn_rw_start */
 	siena_nvram_partn_read,		/* envo_partn_read */
 	siena_nvram_partn_read,		/* envo_partn_read_backup */
@@ -37,7 +37,7 @@ static const efx_nvram_ops_t	__efx_nvram_ef10_ops = {
 	ef10_nvram_test,		/* envo_test */
 #endif	/* EFSYS_OPT_DIAG */
 	ef10_nvram_type_to_partn,	/* envo_type_to_partn */
-	ef10_nvram_partn_size,		/* envo_partn_size */
+	ef10_nvram_partn_info,		/* envo_partn_info */
 	ef10_nvram_partn_rw_start,	/* envo_partn_rw_start */
 	ef10_nvram_partn_read,		/* envo_partn_read */
 	ef10_nvram_partn_read_backup,	/* envo_partn_read_backup */
@@ -138,6 +138,7 @@ efx_nvram_size(
 	__out			size_t *sizep)
 {
 	const efx_nvram_ops_t *envop = enp->en_envop;
+	efx_nvram_info_t eni = { 0 };
 	uint32_t partn;
 	efx_rc_t rc;
 
@@ -147,8 +148,10 @@ efx_nvram_size(
 	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
 		goto fail1;
 
-	if ((rc = envop->envo_partn_size(enp, partn, sizep)) != 0)
+	if ((rc = envop->envo_partn_info(enp, partn, &eni)) != 0)
 		goto fail2;
+
+	*sizep = eni.eni_partn_size;
 
 	return (0);
 
@@ -160,6 +163,36 @@ fail1:
 
 	return (rc);
 }
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_info(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__out			efx_nvram_info_t *enip)
+{
+	const efx_nvram_ops_t *envop = enp->en_envop;
+	uint32_t partn;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NVRAM);
+
+	if ((rc = envop->envo_type_to_partn(enp, type, &partn)) != 0)
+		goto fail1;
+
+	if ((rc = envop->envo_partn_info(enp, partn, enip)) != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 
 	__checkReturn		efx_rc_t
 efx_nvram_get_version(
@@ -305,7 +338,7 @@ efx_nvram_erase(
 {
 	const efx_nvram_ops_t *envop = enp->en_envop;
 	unsigned int offset = 0;
-	size_t size = 0;
+	efx_nvram_info_t eni = { 0 };
 	uint32_t partn;
 	efx_rc_t rc;
 
@@ -317,10 +350,11 @@ efx_nvram_erase(
 
 	EFSYS_ASSERT3U(enp->en_nvram_partn_locked, ==, partn);
 
-	if ((rc = envop->envo_partn_size(enp, partn, &size)) != 0)
+	if ((rc = envop->envo_partn_info(enp, partn, &eni)) != 0)
 		goto fail2;
 
-	if ((rc = envop->envo_partn_erase(enp, partn, offset, size)) != 0)
+	if ((rc = envop->envo_partn_erase(enp, partn, offset,
+		    eni.eni_partn_size)) != 0)
 		goto fail3;
 
 	return (0);
