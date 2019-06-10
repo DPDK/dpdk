@@ -536,6 +536,16 @@ struct tlv_pcie_tx_amp_config {
   uint8_t lane_amp[16];
 };
 
+/* Enum to select an OEM and enable additional functionality related to this OEM
+ * (e.g. vendor extensions to VPD, NC-SI etc.) */
+#define TLV_TAG_OEM  (0x00230000)
+struct tlv_oem {
+  uint32_t tag;
+  uint32_t length;
+  uint8_t oem;
+};
+#define TLV_OEM_NONE 0
+#define TLV_OEM_DELL 1
 
 /* Global PCIe configuration, second revision. This represents the visible PFs
  * by a bitmap rather than having the number of the highest visible one. As such
