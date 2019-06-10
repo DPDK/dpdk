@@ -215,7 +215,7 @@ eal_parse_sysfs_value(const char *filename, unsigned long *val)
  * We also don't lock the whole file, so that in future we can use read-locks
  * on other parts, e.g. memzones, to detect if there are running secondary
  * processes. */
-static void
+static int
 rte_eal_config_create(void)
 {
 	void *rte_mem_cfg_addr;
@@ -224,60 +224,82 @@ rte_eal_config_create(void)
 	const char *pathname = eal_runtime_config_path();
 
 	if (internal_config.no_shconf)
-		return;
+		return 0;
 
 	if (mem_cfg_fd < 0){
 		mem_cfg_fd = open(pathname, O_RDWR | O_CREAT, 0600);
-		if (mem_cfg_fd < 0)
-			rte_panic("Cannot open '%s' for rte_mem_config\n", pathname);
+		if (mem_cfg_fd < 0) {
+			RTE_LOG(ERR, EAL, "Cannot open '%s' for rte_mem_config\n",
+				pathname);
+			return -1;
+		}
 	}
 
 	retval = ftruncate(mem_cfg_fd, sizeof(*rte_config.mem_config));
 	if (retval < 0){
 		close(mem_cfg_fd);
-		rte_panic("Cannot resize '%s' for rte_mem_config\n", pathname);
+		mem_cfg_fd = -1;
+		RTE_LOG(ERR, EAL, "Cannot resize '%s' for rte_mem_config\n",
+			pathname);
+		return -1;
 	}
 
 	retval = fcntl(mem_cfg_fd, F_SETLK, &wr_lock);
 	if (retval < 0){
 		close(mem_cfg_fd);
-		rte_exit(EXIT_FAILURE, "Cannot create lock on '%s'. Is another primary "
-				"process running?\n", pathname);
+		mem_cfg_fd = -1;
+		RTE_LOG(ERR, EAL, "Cannot create lock on '%s'. Is another primary "
+			"process running?\n", pathname);
+		return -1;
 	}
 
 	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),
 				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
 
 	if (rte_mem_cfg_addr == MAP_FAILED){
-		rte_panic("Cannot mmap memory for rte_config\n");
+		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config\n");
+		close(mem_cfg_fd);
+		mem_cfg_fd = -1;
+		return -1;
 	}
 	memcpy(rte_mem_cfg_addr, &early_mem_config, sizeof(early_mem_config));
 	rte_config.mem_config = rte_mem_cfg_addr;
+
+	return 0;
 }
 
 /* attach to an existing shared memory config */
-static void
+static int
 rte_eal_config_attach(void)
 {
 	void *rte_mem_cfg_addr;
 	const char *pathname = eal_runtime_config_path();
 
 	if (internal_config.no_shconf)
-		return;
+		return 0;
 
 	if (mem_cfg_fd < 0){
 		mem_cfg_fd = open(pathname, O_RDWR);
-		if (mem_cfg_fd < 0)
-			rte_panic("Cannot open '%s' for rte_mem_config\n", pathname);
+		if (mem_cfg_fd < 0) {
+			RTE_LOG(ERR, EAL, "Cannot open '%s' for rte_mem_config\n",
+				pathname);
+			return -1;
+		}
 	}
 
 	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),
 				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
 	close(mem_cfg_fd);
-	if (rte_mem_cfg_addr == MAP_FAILED)
-		rte_panic("Cannot mmap memory for rte_config\n");
+	mem_cfg_fd = -1;
+	if (rte_mem_cfg_addr == MAP_FAILED) {
+		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config! error %i (%s)\n",
+			errno, strerror(errno));
+		return -1;
+	}
 
 	rte_config.mem_config = rte_mem_cfg_addr;
+
+	return 0;
 }
 
 /* Detect if we are a primary or a secondary process */
@@ -306,23 +328,29 @@ eal_proc_type_detect(void)
 }
 
 /* Sets up rte_config structure with the pointer to shared memory config.*/
-static void
+static int
 rte_config_init(void)
 {
 	rte_config.process_type = internal_config.process_type;
 
 	switch (rte_config.process_type){
 	case RTE_PROC_PRIMARY:
-		rte_eal_config_create();
+		if (rte_eal_config_create() < 0)
+			return -1;
 		break;
 	case RTE_PROC_SECONDARY:
-		rte_eal_config_attach();
+		if (rte_eal_config_attach() < 0)
+			return -1;
 		rte_eal_mcfg_wait_complete(rte_config.mem_config);
 		break;
 	case RTE_PROC_AUTO:
 	case RTE_PROC_INVALID:
-		rte_panic("Invalid process type\n");
+		RTE_LOG(ERR, EAL, "Invalid process type %d\n",
+			rte_config.process_type);
+		return -1;
 	}
+
+	return 0;
 }
 
 /* display usage */
@@ -655,7 +683,10 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	rte_config_init();
+	if (rte_config_init() < 0) {
+		rte_eal_init_alert("Cannot init config");
+		return -1;
+	}
 
 	if (rte_eal_intr_init() < 0) {
 		rte_eal_init_alert("Cannot init interrupt-handling thread");
