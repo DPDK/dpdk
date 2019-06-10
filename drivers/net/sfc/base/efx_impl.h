@@ -652,6 +652,17 @@ typedef struct efx_lic_ops_s {
 
 #if EFSYS_OPT_EVB
 
+struct efx_vswitch_s {
+	efx_nic_t		*ev_enp;
+	efx_vswitch_id_t	ev_vswitch_id;
+	uint32_t		ev_num_vports;
+	/*
+	 * Vport configuration array: index 0 to store PF configuration
+	 * and next ev_num_vports-1 entries hold VFs configuration.
+	 */
+	efx_vport_config_t	*ev_evcp;
+};
+
 typedef struct efx_evb_ops_s {
 	efx_rc_t	(*eeo_init)(efx_nic_t *);
 	void		(*eeo_fini)(efx_nic_t *);
@@ -673,6 +684,10 @@ typedef struct efx_evb_ops_s {
 	efx_rc_t	(*eeo_vport_assign)(efx_nic_t *, efx_vswitch_id_t,
 						efx_vport_id_t, uint32_t);
 } efx_evb_ops_t;
+
+extern __checkReturn	boolean_t
+efx_is_zero_eth_addr(
+	__in_bcount(EFX_MAC_ADDR_LEN)	const uint8_t *addrp);
 
 #endif /* EFSYS_OPT_EVB */
 
@@ -776,6 +791,7 @@ struct efx_nic_s {
 #endif	/* EFX_OPTS_EF10() */
 #if EFSYS_OPT_EVB
 	const efx_evb_ops_t	*en_eeop;
+	struct efx_vswitch_s    *en_vswitchp;
 #endif	/* EFSYS_OPT_EVB */
 };
 

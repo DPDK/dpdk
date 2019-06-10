@@ -1411,6 +1411,9 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_assigned_port;
 } efx_nic_cfg_t;
 
+#define	EFX_VPORT_PCI_FUNCTION_IS_PF(configp) \
+	((configp)->evc_function == 0xffff)
+
 #define	EFX_PCI_FUNCTION_IS_PF(_encp)	((_encp)->enc_vf == 0xffff)
 #define	EFX_PCI_FUNCTION_IS_VF(_encp)	((_encp)->enc_vf != 0xffff)
 
@@ -3369,6 +3372,31 @@ typedef enum efx_vport_type_e {
 #define	EFX_FILTER_VID_UNSPEC	0xffff
 #define	EFX_DEFAULT_VSWITCH_ID	1
 
+/* Default VF VLAN ID on creation */
+#define		EFX_VF_VID_DEFAULT	EFX_FILTER_VID_UNSPEC
+#define		EFX_VPORT_ID_INVALID	0
+
+typedef struct efx_vport_config_s {
+	/* Either VF index or 0xffff for PF */
+	uint16_t	evc_function;
+	/* VLAN ID of the associated function */
+	uint16_t	evc_vid;
+	/* vport id shared with client driver */
+	efx_vport_id_t	evc_vport_id;
+	/* MAC address of the associated function */
+	uint8_t		evc_mac_addr[EFX_MAC_ADDR_LEN];
+	/*
+	 * vports created with this flag set may only transfer traffic on the
+	 * VLANs permitted by the vport. Also, an attempt to install filter with
+	 * VLAN will be refused unless requesting function has VLAN privilege.
+	 */
+	boolean_t	evc_vlan_restrict;
+	/* Whether this function is assigned or not */
+	boolean_t	evc_vport_assigned;
+} efx_vport_config_t;
+
+typedef	struct	efx_vswitch_s	efx_vswitch_t;
+
 extern	__checkReturn	efx_rc_t
 efx_evb_init(
 	__in		efx_nic_t *enp);
@@ -3376,6 +3404,18 @@ efx_evb_init(
 extern			void
 efx_evb_fini(
 	__in		efx_nic_t *enp);
+
+extern	__checkReturn	efx_rc_t
+efx_evb_vswitch_create(
+	__in				efx_nic_t *enp,
+	__in				uint32_t num_vports,
+	__inout_ecount(num_vports)	efx_vport_config_t *vport_configp,
+	__deref_out			efx_vswitch_t **evpp);
+
+extern	__checkReturn	efx_rc_t
+efx_evb_vswitch_destroy(
+	__in				efx_nic_t *enp,
+	__in				efx_vswitch_t *evp);
 
 #endif /* EFSYS_OPT_EVB */
 
