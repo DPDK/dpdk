@@ -1936,7 +1936,7 @@ ef10_nic_board_cfg(
 	encp->enc_rxq_limit = EFX_RXQ_LIMIT_TARGET;
 	encp->enc_txq_limit = EFX_TXQ_LIMIT_TARGET;
 
-	encp->enc_buftbl_limit = 0xFFFFFFFF;
+	encp->enc_buftbl_limit = UINT32_MAX;
 
 	/* Get interrupt vector limits */
 	if ((rc = efx_mcdi_get_vector_cfg(enp, &base, &nvec, NULL)) != 0) {
