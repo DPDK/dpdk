@@ -73,7 +73,8 @@ mcdi_mon_decode_stats(
 			/* This sensor is one of the page boundary bits. */
 		}
 
-		if (~(sensor_mask[page]) & (1U << sensor))
+		if (~(sensor_mask[page]) &
+		    (1U << (sensor % (sizeof (sensor_mask[page]) * 8))))
 			continue;
 		/* This sensor not in DMA buffer */
 
