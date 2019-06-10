@@ -3419,6 +3419,38 @@ efx_evb_vswitch_destroy(
 
 #endif /* EFSYS_OPT_EVB */
 
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+
+typedef struct efx_proxy_auth_config_s {
+	efsys_mem_t	*request_bufferp;
+	efsys_mem_t	*response_bufferp;
+	efsys_mem_t	*status_bufferp;
+	uint32_t	block_cnt;
+	uint32_t	*op_listp;
+	size_t		op_count;
+	uint32_t	handled_privileges;
+} efx_proxy_auth_config_t;
+
+extern	__checkReturn	efx_rc_t
+efx_proxy_auth_init(
+	__in		efx_nic_t *enp);
+
+extern			void
+efx_proxy_auth_fini(
+	__in		efx_nic_t *enp);
+
+extern	__checkReturn	efx_rc_t
+efx_proxy_auth_configure(
+	__in		efx_nic_t *enp,
+	__in		efx_proxy_auth_config_t *configp);
+
+	__checkReturn	efx_rc_t
+efx_proxy_auth_destroy(
+	__in		efx_nic_t *enp,
+	__in		uint32_t handled_privileges);
+
+#endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
+
 #ifdef	__cplusplus
 }
 #endif

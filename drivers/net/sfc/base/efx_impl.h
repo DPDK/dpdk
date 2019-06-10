@@ -59,6 +59,7 @@ extern "C" {
 #define	EFX_MOD_LIC		0x00002000
 #define	EFX_MOD_TUNNEL		0x00004000
 #define	EFX_MOD_EVB		0x00008000
+#define	EFX_MOD_PROXY		0x00010000
 
 #define	EFX_RESET_PHY		0x00000001
 #define	EFX_RESET_RXQ_ERR	0x00000002
@@ -691,6 +692,24 @@ efx_is_zero_eth_addr(
 
 #endif /* EFSYS_OPT_EVB */
 
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+
+#define	EFX_PROXY_CONFIGURE_MAGIC	0xAB2015EF
+
+
+typedef struct efx_proxy_ops_s {
+	efx_rc_t	(*epo_init)(efx_nic_t *);
+	void		(*epo_fini)(efx_nic_t *);
+	efx_rc_t	(*epo_mc_config)(efx_nic_t *, efsys_mem_t *,
+					efsys_mem_t *, efsys_mem_t *,
+					uint32_t, uint32_t *, size_t);
+	efx_rc_t	(*epo_disable)(efx_nic_t *);
+	efx_rc_t	(*epo_privilege_modify)(efx_nic_t *, uint32_t, uint32_t,
+					uint32_t, uint32_t, uint32_t);
+} efx_proxy_ops_t;
+
+#endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
+
 #define	EFX_DRV_VER_MAX		20
 
 typedef struct efx_drv_cfg_s {
@@ -793,6 +812,9 @@ struct efx_nic_s {
 	const efx_evb_ops_t	*en_eeop;
 	struct efx_vswitch_s    *en_vswitchp;
 #endif	/* EFSYS_OPT_EVB */
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+	const efx_proxy_ops_t	*en_epop;
+#endif	/* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 };
 
 #define	EFX_FAMILY_IS_EF10(_enp) \

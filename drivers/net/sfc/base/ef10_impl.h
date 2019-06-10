@@ -1344,6 +1344,40 @@ ef10_evb_vport_assign(
 
 #endif  /* EFSYS_OPT_EVB */
 
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+extern	__checkReturn	efx_rc_t
+ef10_proxy_auth_init(
+	__in		efx_nic_t *enp);
+
+extern			void
+ef10_proxy_auth_fini(
+	__in		efx_nic_t *enp);
+
+extern	__checkReturn		efx_rc_t
+ef10_proxy_auth_mc_config(
+	__in			efx_nic_t *enp,
+	__in			efsys_mem_t *request_bufferp,
+	__in			efsys_mem_t *response_bufferp,
+	__in			efsys_mem_t *status_bufferp,
+	__in			uint32_t block_cnt,
+	__in_ecount(op_count)	uint32_t *op_listp,
+	__in			size_t op_count);
+
+extern	__checkReturn	efx_rc_t
+ef10_proxy_auth_disable(
+	__in		efx_nic_t *enp);
+
+extern	__checkReturn	efx_rc_t
+ef10_proxy_auth_privilege_modify(
+	__in		efx_nic_t *enp,
+	__in		uint32_t fn_group,
+	__in		uint32_t pf_index,
+	__in		uint32_t vf_index,
+	__in		uint32_t add_privileges_mask,
+	__in		uint32_t remove_privileges_mask);
+
+#endif  /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
+
 #if EFSYS_OPT_RX_PACKED_STREAM
 
 /* Data space per credit in packed stream mode */
