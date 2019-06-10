@@ -1217,6 +1217,14 @@ ef10_get_datapath_caps(
 		encp->enc_nvram_update_verify_result_supported = B_FALSE;
 
 	/*
+	 * Check if firmware update via the BUNDLE partition is supported
+	 */
+	if (CAP_FLAGS2(req, BUNDLE_UPDATE))
+		encp->enc_nvram_bundle_update_supported = B_TRUE;
+	else
+		encp->enc_nvram_bundle_update_supported = B_FALSE;
+
+	/*
 	 * Check if firmware provides packet memory and Rx datapath
 	 * counters.
 	 */
