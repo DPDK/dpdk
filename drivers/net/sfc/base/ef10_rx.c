@@ -106,7 +106,7 @@ efx_mcdi_init_rxq(
 	    INIT_RXQ_EXT_IN_FLAG_WANT_OUTER_CLASSES, want_outer_classes,
 	    INIT_RXQ_EXT_IN_FLAG_NO_CONT_EV, no_cont_ev);
 	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_OWNER_ID, 0);
-	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_PORT_ID, EVB_PORT_ID_ASSIGNED);
+	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_PORT_ID, enp->en_vport_id);
 
 	if (es_bufs_per_desc > 0) {
 		MCDI_IN_SET_DWORD(req,
@@ -233,7 +233,7 @@ efx_mcdi_rss_context_alloc(
 	req.emr_out_length = MC_CMD_RSS_CONTEXT_ALLOC_OUT_LEN;
 
 	MCDI_IN_SET_DWORD(req, RSS_CONTEXT_ALLOC_IN_UPSTREAM_PORT_ID,
-	    EVB_PORT_ID_ASSIGNED);
+		enp->en_vport_id);
 	MCDI_IN_SET_DWORD(req, RSS_CONTEXT_ALLOC_IN_TYPE, context_type);
 
 	/*

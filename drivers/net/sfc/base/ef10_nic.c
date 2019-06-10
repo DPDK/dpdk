@@ -233,8 +233,6 @@ efx_mcdi_vadaptor_alloc(
 		MC_CMD_VADAPTOR_ALLOC_OUT_LEN);
 	efx_rc_t rc;
 
-	EFSYS_ASSERT3U(enp->en_vport_id, ==, EVB_PORT_ID_NULL);
-
 	req.emr_cmd = MC_CMD_VADAPTOR_ALLOC;
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_VADAPTOR_ALLOC_IN_LEN;
@@ -2517,9 +2515,21 @@ ef10_nic_fini(
 {
 	uint32_t i;
 	efx_rc_t rc;
+	boolean_t do_vadaptor_free = B_TRUE;
 
-	(void) efx_mcdi_vadaptor_free(enp, enp->en_vport_id);
-	enp->en_vport_id = 0;
+#if EFSYS_OPT_EVB
+	if (enp->en_vswitchp != NULL) {
+		/*
+		 * For SR-IOV the vAdaptor is freed with the vswitch,
+		 * so do not free it here.
+		 */
+		do_vadaptor_free = B_FALSE;
+	}
+#endif
+	if (do_vadaptor_free != B_FALSE) {
+		(void) efx_mcdi_vadaptor_free(enp, enp->en_vport_id);
+		enp->en_vport_id = EVB_PORT_ID_NULL;
+	}
 
 	/* Unlink piobufs from extra VIs in WC mapping */
 	if (enp->en_arch.ef10.ena_piobuf_count > 0) {

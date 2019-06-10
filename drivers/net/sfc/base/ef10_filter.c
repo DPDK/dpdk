@@ -202,8 +202,7 @@ efx_mcdi_filter_op_add(
 		goto fail1;
 	}
 
-	MCDI_IN_SET_DWORD(req, FILTER_OP_EXT_IN_PORT_ID,
-	    EVB_PORT_ID_ASSIGNED);
+	MCDI_IN_SET_DWORD(req, FILTER_OP_EXT_IN_PORT_ID, enp->en_vport_id);
 	MCDI_IN_SET_DWORD(req, FILTER_OP_EXT_IN_MATCH_FIELDS,
 	    match_flags);
 	if (spec->efs_dmaq_id == EFX_FILTER_SPEC_RX_DMAQ_ID_DROP) {
