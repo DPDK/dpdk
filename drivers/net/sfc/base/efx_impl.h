@@ -706,6 +706,11 @@ typedef struct efx_proxy_ops_s {
 	efx_rc_t	(*epo_disable)(efx_nic_t *);
 	efx_rc_t	(*epo_privilege_modify)(efx_nic_t *, uint32_t, uint32_t,
 					uint32_t, uint32_t, uint32_t);
+	efx_rc_t	(*epo_set_privilege_mask)(efx_nic_t *, uint32_t,
+					uint32_t, uint32_t);
+	efx_rc_t	(*epo_complete_request)(efx_nic_t *, uint32_t,
+					uint32_t, uint32_t);
+	efx_rc_t	(*epo_exec_cmd)(efx_nic_t *, efx_proxy_cmd_params_t *);
 } efx_proxy_ops_t;
 
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */

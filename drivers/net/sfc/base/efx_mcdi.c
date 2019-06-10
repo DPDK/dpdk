@@ -360,7 +360,11 @@ efx_mcdi_read_response_header(
 		rc = EIO;
 		goto fail1;
 	}
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+	if (((cmd != emrp->emr_cmd) && (emrp->emr_cmd != MC_CMD_PROXY_CMD)) ||
+#else
 	if ((cmd != emrp->emr_cmd) ||
+#endif
 	    (seq != ((emip->emi_seq - 1) & EFX_MASK32(MCDI_HEADER_SEQ)))) {
 		/* Response is for a different request */
 		rc = EIO;
@@ -442,6 +446,11 @@ efx_mcdi_finish_response(
 	efx_dword_t hdr[2];
 	unsigned int hdr_len;
 	size_t bytes;
+	unsigned int resp_off;
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+	unsigned int resp_cmd;
+	boolean_t proxied_cmd_resp = B_FALSE;
+#endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 
 	if (emrp->emr_out_buf == NULL)
 		return;
@@ -456,14 +465,35 @@ efx_mcdi_finish_response(
 		 */
 		efx_mcdi_read_response(enp, &hdr[1], hdr_len, sizeof (hdr[1]));
 		hdr_len += sizeof (hdr[1]);
+		resp_off = hdr_len;
 
 		emrp->emr_out_length_used = EFX_DWORD_FIELD(hdr[1],
-					    MC_CMD_V2_EXTN_IN_ACTUAL_LEN);
+						MC_CMD_V2_EXTN_IN_ACTUAL_LEN);
+#if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+		/*
+		 * A proxy MCDI command is executed by PF on behalf of
+		 * one of its VFs. The command to be proxied follows
+		 * immediately afterward in the host buffer.
+		 * PROXY_CMD inner call complete response should be copied to
+		 * output buffer so that it can be returned to the requesting
+		 * function in MC_CMD_PROXY_COMPLETE payload.
+		 */
+		resp_cmd =
+			EFX_DWORD_FIELD(hdr[1], MC_CMD_V2_EXTN_IN_EXTENDED_CMD);
+		proxied_cmd_resp = ((emrp->emr_cmd == MC_CMD_PROXY_CMD) &&
+					(resp_cmd != MC_CMD_PROXY_CMD));
+		if (proxied_cmd_resp) {
+			resp_off = 0;
+			emrp->emr_out_length_used += hdr_len;
+		}
+#endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
+	} else {
+		resp_off = hdr_len;
 	}
 
 	/* Copy payload out into caller supplied buffer */
 	bytes = MIN(emrp->emr_out_length_used, emrp->emr_out_length);
-	efx_mcdi_read_response(enp, emrp->emr_out_buf, hdr_len, bytes);
+	efx_mcdi_read_response(enp, emrp->emr_out_buf, resp_off, bytes);
 
 #if EFSYS_OPT_MCDI_LOGGING
 	if (emtp->emt_logger != NULL) {

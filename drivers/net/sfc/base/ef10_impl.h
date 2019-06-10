@@ -1376,6 +1376,25 @@ ef10_proxy_auth_privilege_modify(
 	__in		uint32_t add_privileges_mask,
 	__in		uint32_t remove_privileges_mask);
 
+	__checkReturn	efx_rc_t
+ef10_proxy_auth_set_privilege_mask(
+	__in		efx_nic_t *enp,
+	__in		uint32_t vf_index,
+	__in		uint32_t mask,
+	__in		uint32_t value);
+
+	__checkReturn	efx_rc_t
+ef10_proxy_auth_complete_request(
+	__in		efx_nic_t *enp,
+	__in		uint32_t fn_index,
+	__in		uint32_t proxy_result,
+	__in		uint32_t handle);
+
+	__checkReturn	efx_rc_t
+ef10_proxy_auth_exec_cmd(
+	__in		efx_nic_t *enp,
+	__inout		efx_proxy_cmd_params_t *paramsp);
+
 #endif  /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 
 #if EFSYS_OPT_RX_PACKED_STREAM

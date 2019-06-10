@@ -3434,6 +3434,16 @@ typedef struct efx_proxy_auth_config_s {
 	uint32_t	handled_privileges;
 } efx_proxy_auth_config_t;
 
+typedef struct efx_proxy_cmd_params_s {
+	uint32_t	pf_index;
+	uint32_t	vf_index;
+	uint8_t		*request_bufferp;
+	size_t		request_size;
+	uint8_t		*response_bufferp;
+	size_t		response_size;
+	size_t		*response_size_actualp;
+} efx_proxy_cmd_params_t;
+
 extern	__checkReturn	efx_rc_t
 efx_proxy_auth_init(
 	__in		efx_nic_t *enp);
@@ -3451,6 +3461,25 @@ efx_proxy_auth_configure(
 efx_proxy_auth_destroy(
 	__in		efx_nic_t *enp,
 	__in		uint32_t handled_privileges);
+
+	__checkReturn	efx_rc_t
+efx_proxy_auth_complete_request(
+	__in		efx_nic_t *enp,
+	__in		uint32_t fn_index,
+	__in		uint32_t proxy_result,
+	__in		uint32_t handle);
+
+	__checkReturn	efx_rc_t
+efx_proxy_auth_exec_cmd(
+	__in		efx_nic_t *enp,
+	__inout		efx_proxy_cmd_params_t *paramsp);
+
+	__checkReturn	efx_rc_t
+efx_proxy_auth_set_privilege_mask(
+	__in		efx_nic_t *enp,
+	__in		uint32_t vf_index,
+	__in		uint32_t mask,
+	__in		uint32_t value);
 
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 
