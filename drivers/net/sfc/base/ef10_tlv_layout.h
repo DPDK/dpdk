@@ -41,6 +41,7 @@
  *        2: firmware internal use
  *        3: license partition
  *        4: tsa configuration
+ *        5: bundle update
  *
  *   -  TTT is a type, which is just a unique value.  The same type value
  *      might appear in both locations, indicating a relationship between
@@ -85,6 +86,30 @@
 #define TLV_TAG_SKIP                    (0x00000000)
 #define TLV_TAG_INVALID                 (0xFFFFFFFF)
 
+
+/* TLV start.
+ *
+ * Marks the start of a TLV layout within a partition that may/may-not be
+ * a TLV partition. i.e. if a portion of data (at any offset) within a
+ * partition is expected to be in TLV format, then the first tag in this
+ * layout is expected to be TLV_TAG_START.
+ *
+ * This tag is not used in TLV layouts where the entire partition is TLV.
+ * Please continue using TLV_TAG_PARTITION_HEADER to indicate the start
+ * of TLV layout in such cases.
+ */
+
+#define TLV_TAG_START                   (0xEF10BA5E)
+
+struct tlv_start {
+  uint32_t tag;
+  uint32_t length;
+  /* Length of the TLV structure following this tag - includes length of all tags
+   * within the TLV layout starting with this TLV_TAG_START.
+   * Includes TLV_TAG_END. Does not include TLV_TAG_START
+   */
+  uint32_t tlv_layout_len;
+};
 
 /* TLV partition header.
  *
