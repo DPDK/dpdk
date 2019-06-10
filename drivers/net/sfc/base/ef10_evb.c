@@ -330,6 +330,74 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn				efx_rc_t
+efx_mcdi_vport_reconfigure(
+	__in					efx_nic_t *enp,
+	__in					efx_vport_id_t vport_id,
+	__in_opt				uint16_t *vidp,
+	__in_bcount_opt(EFX_MAC_ADDR_LEN)	uint8_t *addrp,
+	__out_opt				boolean_t *fn_resetp)
+{
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_VPORT_RECONFIGURE_IN_LEN,
+		MC_CMD_VPORT_RECONFIGURE_OUT_LEN);
+	efx_mcdi_req_t req;
+	efx_rc_t rc;
+	uint32_t reset_flag = 0;
+
+	req.emr_cmd = MC_CMD_VPORT_RECONFIGURE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_VPORT_RECONFIGURE_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_VPORT_RECONFIGURE_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, VPORT_RECONFIGURE_IN_VPORT_ID, vport_id);
+
+	if (vidp != NULL) {
+		MCDI_IN_POPULATE_DWORD_1(req, VPORT_RECONFIGURE_IN_FLAGS,
+			VPORT_RECONFIGURE_IN_REPLACE_VLAN_TAGS, 1);
+		if (*vidp != EFX_FILTER_VID_UNSPEC) {
+			MCDI_IN_SET_DWORD(req,
+				VPORT_RECONFIGURE_IN_NUM_VLAN_TAGS, 1);
+			MCDI_IN_POPULATE_DWORD_1(req,
+				VPORT_RECONFIGURE_IN_VLAN_TAGS,
+				VPORT_RECONFIGURE_IN_VLAN_TAG_0, *vidp);
+		}
+	}
+
+	if ((addrp != NULL) && (efx_is_zero_eth_addr(addrp) == B_FALSE)) {
+		MCDI_IN_POPULATE_DWORD_1(req, VPORT_RECONFIGURE_IN_FLAGS,
+			 VPORT_RECONFIGURE_IN_REPLACE_MACADDRS, 1);
+		MCDI_IN_SET_DWORD(req, VPORT_RECONFIGURE_IN_NUM_MACADDRS, 1);
+		EFX_MAC_ADDR_COPY(MCDI_IN2(req, uint8_t,
+					VPORT_RECONFIGURE_IN_MACADDRS), addrp);
+	}
+
+	efx_mcdi_execute(enp, &req);
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_VPORT_RECONFIGURE_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	reset_flag = MCDI_OUT_DWORD_FIELD(req, VPORT_RECONFIGURE_OUT_FLAGS,
+					    VPORT_RECONFIGURE_OUT_RESET_DONE);
+
+	if (fn_resetp != NULL)
+		*fn_resetp = (reset_flag != 0);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 	__checkReturn	efx_rc_t
 ef10_evb_vswitch_alloc(
 	__in		efx_nic_t *enp,
@@ -451,6 +519,21 @@ ef10_evb_vport_assign(
 	_NOTE(ARGUNUSED(vswitch_id))
 
 	return (efx_mcdi_port_assign(enp, vport_id, vf_index));
+}
+
+	__checkReturn				efx_rc_t
+ef10_evb_vport_reconfigure(
+	__in					efx_nic_t *enp,
+	__in					efx_vswitch_id_t vswitch_id,
+	__in					efx_vport_id_t vport_id,
+	__in_opt				uint16_t *vidp,
+	__in_bcount_opt(EFX_MAC_ADDR_LEN)	uint8_t *addrp,
+	__out_opt				boolean_t *fn_resetp)
+{
+	_NOTE(ARGUNUSED(vswitch_id))
+
+	return (efx_mcdi_vport_reconfigure(enp, vport_id, vidp,
+			addrp, fn_resetp));
 }
 
 #endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */

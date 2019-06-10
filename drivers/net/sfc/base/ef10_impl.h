@@ -1342,6 +1342,15 @@ ef10_evb_vport_assign(
 	__in		efx_vport_id_t vport_id,
 	__in		uint32_t vf_index);
 
+extern	__checkReturn				efx_rc_t
+ef10_evb_vport_reconfigure(
+	__in					efx_nic_t *enp,
+	__in					efx_vswitch_id_t vswitch_id,
+	__in					efx_vport_id_t vport_id,
+	__in_opt				uint16_t *vidp,
+	__in_bcount_opt(EFX_MAC_ADDR_LEN)	uint8_t *addrp,
+	__out_opt				boolean_t *fn_resetp);
+
 #endif  /* EFSYS_OPT_EVB */
 
 #if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER

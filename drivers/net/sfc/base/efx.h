@@ -1370,6 +1370,8 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_hw_pf_count;
 	/* Datapath firmware vadapter/vport/vswitch support */
 	boolean_t		enc_datapath_cap_evb;
+	/* Datapath firmware vport reconfigure support */
+	boolean_t		enc_vport_reconfigure_supported;
 	boolean_t		enc_rx_disable_scatter_supported;
 	boolean_t		enc_allow_set_mac_with_installed_filters;
 	boolean_t		enc_enhanced_set_mac_supported;
@@ -3420,6 +3422,28 @@ efx_evb_vswitch_destroy(
 	__in				efx_nic_t *enp,
 	__in				efx_vswitch_t *evp);
 
+extern	__checkReturn			efx_rc_t
+efx_evb_vport_mac_set(
+	__in				efx_nic_t *enp,
+	__in				efx_vswitch_t *evp,
+	__in				efx_vport_id_t vport_id,
+	__in_bcount(EFX_MAC_ADDR_LEN)	uint8_t *addrp);
+
+extern	__checkReturn	efx_rc_t
+efx_evb_vport_vlan_set(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_t *evp,
+	__in		efx_vport_id_t vport_id,
+	__in		uint16_t vid);
+
+extern	__checkReturn			efx_rc_t
+efx_evb_vport_reset(
+	__in				efx_nic_t *enp,
+	__in				efx_vswitch_t *evp,
+	__in				efx_vport_id_t vport_id,
+	__in_bcount(EFX_MAC_ADDR_LEN)	uint8_t *addrp,
+	__in				uint16_t vid,
+	__out				boolean_t *is_fn_resetp);
 #endif /* EFSYS_OPT_EVB */
 
 #if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER

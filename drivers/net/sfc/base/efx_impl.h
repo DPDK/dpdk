@@ -684,6 +684,10 @@ typedef struct efx_evb_ops_s {
 						efx_vport_id_t);
 	efx_rc_t	(*eeo_vport_assign)(efx_nic_t *, efx_vswitch_id_t,
 						efx_vport_id_t, uint32_t);
+	efx_rc_t	(*eeo_vport_reconfigure)(efx_nic_t *, efx_vswitch_id_t,
+							efx_vport_id_t,
+							uint16_t *, uint8_t *,
+							boolean_t *);
 } efx_evb_ops_t;
 
 extern __checkReturn	boolean_t

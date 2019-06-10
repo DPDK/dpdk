@@ -23,6 +23,7 @@ static const efx_evb_ops_t	__efx_evb_dummy_ops = {
 	NULL,		/* eeo_vadaptor_alloc */
 	NULL,		/* eeo_vadaptor_free */
 	NULL,		/* eeo_vport_assign */
+	NULL,		/* eeo_vport_reconfigure */
 };
 #endif /* EFSYS_OPT_SIENA */
 
@@ -39,6 +40,7 @@ static const efx_evb_ops_t	__efx_evb_ef10_ops = {
 	ef10_evb_vadaptor_alloc,	/* eeo_vadaptor_alloc */
 	ef10_evb_vadaptor_free,		/* eeo_vadaptor_free */
 	ef10_evb_vport_assign,		/* eeo_vport_assign */
+	ef10_evb_vport_reconfigure,	/* eeo_vport_reconfigure */
 };
 #endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 
@@ -348,7 +350,114 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_evb_vport_mac_set(
+	__in				efx_nic_t *enp,
+	__in				efx_vswitch_t *evp,
+	__in				efx_vport_id_t vport_id,
+	__in_bcount(EFX_MAC_ADDR_LEN)	uint8_t *addrp)
+{
+	const efx_evb_ops_t *eeop = enp->en_eeop;
+	efx_rc_t rc;
 
+	EFSYS_ASSERT(enp->en_mod_flags & EFX_MOD_EVB);
+
+	if (eeop->eeo_vport_reconfigure == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (addrp == NULL) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	rc = eeop->eeo_vport_reconfigure(enp, evp->ev_vswitch_id, vport_id,
+		NULL, addrp, NULL);
+	if (rc != 0)
+		goto fail3;
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_evb_vport_vlan_set(
+	__in		efx_nic_t *enp,
+	__in		efx_vswitch_t *evp,
+	__in		efx_vport_id_t vport_id,
+	__in		uint16_t vid)
+{
+	const efx_evb_ops_t *eeop = enp->en_eeop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT(enp->en_mod_flags & EFX_MOD_EVB);
+
+	if (eeop->eeo_vport_reconfigure == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	rc = eeop->eeo_vport_reconfigure(enp, evp->ev_vswitch_id, vport_id,
+		&vid, NULL, NULL);
+	if (rc != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_evb_vport_reset(
+	__in				efx_nic_t *enp,
+	__in				efx_vswitch_t *evp,
+	__in				efx_vport_id_t vport_id,
+	__in_bcount(EFX_MAC_ADDR_LEN)	uint8_t *addrp,
+	__in				uint16_t vid,
+	__out				boolean_t *is_fn_resetp)
+{
+	const efx_evb_ops_t *eeop = enp->en_eeop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT(enp->en_mod_flags & EFX_MOD_EVB);
+
+	if (eeop->eeo_vport_reconfigure == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (is_fn_resetp == NULL) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	rc = eeop->eeo_vport_reconfigure(enp, evp->ev_vswitch_id, vport_id,
+		&vid, addrp, is_fn_resetp);
+	if (rc != 0)
+		goto fail3;
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
 	__checkReturn	efx_rc_t
 efx_evb_vswitch_destroy(
 	__in		efx_nic_t *enp,

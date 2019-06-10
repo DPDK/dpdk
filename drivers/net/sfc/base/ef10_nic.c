@@ -1108,6 +1108,12 @@ ef10_get_datapath_caps(
 	else
 		encp->enc_datapath_cap_evb = B_FALSE;
 
+	/* Check if the firmware supports vport reconfiguration */
+	if (CAP_FLAGS1(req, VPORT_RECONFIGURE))
+		encp->enc_vport_reconfigure_supported = B_TRUE;
+	else
+		encp->enc_vport_reconfigure_supported = B_FALSE;
+
 	/* Check if the firmware supports VLAN insertion */
 	if (CAP_FLAGS1(req, TX_VLAN_INSERTION))
 		encp->enc_hw_tx_insert_vlan_enabled = B_TRUE;
