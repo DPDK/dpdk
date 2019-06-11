@@ -496,13 +496,13 @@ step2_func()
 	TEXT[5]="Setup hugepage mappings for NUMA systems"
 	FUNC[5]="set_numa_pages"
 
-	TEXT[6]="Display current Ethernet/Crypto device settings"
+	TEXT[6]="Display current Ethernet/Baseband/Crypto device settings"
 	FUNC[6]="show_devices"
 
-	TEXT[7]="Bind Ethernet/Crypto device to IGB UIO module"
+	TEXT[7]="Bind Ethernet/Baseband/Crypto device to IGB UIO module"
 	FUNC[7]="bind_devices_to_igb_uio"
 
-	TEXT[8]="Bind Ethernet/Crypto device to VFIO module"
+	TEXT[8]="Bind Ethernet/Baseband/Crypto device to VFIO module"
 	FUNC[8]="bind_devices_to_vfio"
 
 	TEXT[9]="Setup VFIO permissions"

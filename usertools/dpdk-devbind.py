@@ -12,6 +12,8 @@ from os.path import exists, abspath, dirname, basename
 # The PCI base class for all devices
 network_class = {'Class': '02', 'Vendor': None, 'Device': None,
                     'SVendor': None, 'SDevice': None}
+acceleration_class = {'Class': '12', 'Vendor': None, 'Device': None,
+                      'SVendor': None, 'SDevice': None}
 ifpga_class = {'Class': '12', 'Vendor': '8086', 'Device': '0b30',
                     'SVendor': None, 'SDevice': None}
 encryption_class = {'Class': '10', 'Vendor': None, 'Device': None,
@@ -42,6 +44,7 @@ intel_ioat_skx = {'Class': '08', 'Vendor': '8086', 'Device': '2021',
               'SVendor': None, 'SDevice': None}
 
 network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
+baseband_devices = [acceleration_class]
 crypto_devices = [encryption_class, intel_processor_class]
 eventdev_devices = [cavium_sso, cavium_tim, octeontx2_sso]
 mempool_devices = [cavium_fpa, octeontx2_npa]
@@ -95,7 +98,7 @@ Options:
 
     --status-dev:
         Print the status of given device group. Supported device groups are:
-        "net", "crypto", "event", "mempool" and "compress"
+        "net", "baseband", "crypto", "event", "mempool" and "compress"
 
     -b driver, --bind=driver:
         Select the driver to use or \"none\" to unbind the device
@@ -590,6 +593,9 @@ def show_status():
     if status_dev == "net" or status_dev == "all":
         show_device_status(network_devices, "Network")
 
+    if status_dev == "baseband" or status_dev == "all":
+        show_device_status(baseband_devices, "Baseband")
+
     if status_dev == "crypto" or status_dev == "all":
         show_device_status(crypto_devices, "Crypto")
 
@@ -675,6 +681,7 @@ def do_arg_actions():
             clear_data()
             # refresh if we have changed anything
             get_device_details(network_devices)
+            get_device_details(baseband_devices)
             get_device_details(crypto_devices)
             get_device_details(eventdev_devices)
             get_device_details(mempool_devices)
@@ -696,6 +703,7 @@ def main():
     check_modules()
     clear_data()
     get_device_details(network_devices)
+    get_device_details(baseband_devices)
     get_device_details(crypto_devices)
     get_device_details(eventdev_devices)
     get_device_details(mempool_devices)
