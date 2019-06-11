@@ -13,7 +13,7 @@ kni_sources = files(
 custom_target('rte_kni',
 	input: kni_sources,
 	output: 'rte_kni.ko',
-	command: ['make', '-j4', '-C', kernel_dir,
+	command: ['make', '-j4', '-C', kernel_dir + '/build',
 		'M=' + meson.current_build_dir(),
 		'src=' + meson.current_source_dir(),
 		'MODULE_CFLAGS=-include ' + meson.source_root() + '/config/rte_config.h' +
@@ -25,5 +25,5 @@ custom_target('rte_kni',
 	depends: kni_mkfile,
 	console: true,
 	install: true,
-	install_dir: kernel_dir + '/../extra/dpdk',
+	install_dir: kernel_dir + '/extra/dpdk',
 	build_by_default: get_option('enable_kmods'))
