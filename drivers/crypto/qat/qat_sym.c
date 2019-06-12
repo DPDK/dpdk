@@ -530,6 +530,8 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			qat_req->comn_mid.dest_data_addr =
 					cookie->qat_sgl_dst_phys_addr;
 		}
+		qat_req->comn_mid.src_length = 0;
+		qat_req->comn_mid.dst_length = 0;
 	} else {
 		qat_req->comn_mid.src_data_addr = src_buf_start;
 		qat_req->comn_mid.dest_data_addr = dst_buf_start;
