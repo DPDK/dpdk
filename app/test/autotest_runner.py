@@ -43,9 +43,16 @@ def get_numa_nodes():
 # find first (or any, really) CPU on a particular node, will be used to spread
 # processes around NUMA nodes to avoid exhausting memory on particular node
 def first_cpu_on_node(node_nr):
-    cpu_path = glob.glob("/sys/devices/system/node/node%d/cpu*" % node_nr)[0]
-    cpu_name = os.path.basename(cpu_path)
-    m = re.match(r"cpu(\d+)", cpu_name)
+    cpu_path = glob.glob("/sys/devices/system/node/node%d/cpu*" % node_nr)
+    r = re.compile(r"cpu(\d+)")
+    cpu_name = filter(None,
+            map(r.match,
+                map(os.path.basename, cpu_path)
+            )
+    )
+    # for compatibility between python 3 and 2 we need to make interable out
+    # of filter return as it returns list in python 2 and a generator in 3
+    m = next(iter(cpu_name))
     return int(m.group(1))
 
 
