@@ -6,9 +6,9 @@ NFB poll mode driver library
 =================================
 
 The NFB poll mode driver library implements support for the Netcope
-FPGA Boards (**NFB-***), FPGA-based programmable NICs.
-The NFB PMD uses interface provided by the libnfb library to communicate
-with the NFB cards over the nfb layer.
+FPGA Boards (**NFB-40G2, NFB-100G2, NFB-200G2QL**) and Silicom **FB2CGG3** card,
+FPGA-based programmable NICs. The NFB PMD uses interface provided by the libnfb
+library to communicate with these cards over the nfb layer.
 
 More information about the
 `NFB cards <http://www.netcope.com/en/products/fpga-boards>`_
