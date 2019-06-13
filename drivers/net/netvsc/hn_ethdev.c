@@ -237,8 +237,8 @@ static void hn_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->max_mac_addrs  = 1;
 
 	dev_info->hash_key_size = NDIS_HASH_KEYSIZE_TOEPLITZ;
-	dev_info->flow_type_rss_offloads =
-		ETH_RSS_IPV4 | ETH_RSS_IPV6 | ETH_RSS_TCP | ETH_RSS_UDP;
+	dev_info->flow_type_rss_offloads = hv->rss_offloads;
+	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
 
 	dev_info->max_rx_queues = hv->max_queues;
 	dev_info->max_tx_queues = hv->max_queues;
