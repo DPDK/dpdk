@@ -1568,6 +1568,14 @@ static const struct rte_pci_id rte_szedata2_pci_id_table[] = {
 				PCI_DEVICE_ID_NETCOPE_NFB200G2QL)
 	},
 	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_SILICOM,
+				PCI_DEVICE_ID_FB2CGG3)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_SILICOM,
+				PCI_DEVICE_ID_FB2CGG3D)
+	},
+	{
 		.vendor_id = 0,
 	}
 };
