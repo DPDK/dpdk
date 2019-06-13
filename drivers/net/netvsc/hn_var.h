@@ -131,6 +131,10 @@ struct hn_data {
 	rte_atomic32_t	rndis_req_id;
 	uint8_t		rndis_resp[256];
 
+	uint32_t	rss_hash;
+	uint8_t		rss_key[40];
+	uint16_t	rss_ind[128];
+
 	struct rte_ether_addr mac_addr;
 
 	struct rte_eth_dev_owner owner;
@@ -239,3 +243,8 @@ int	hn_vf_xstats_get(struct rte_eth_dev *dev,
 			 struct rte_eth_xstat *xstats,
 			 unsigned int n);
 void	hn_vf_xstats_reset(struct rte_eth_dev *dev);
+int	hn_vf_rss_hash_update(struct rte_eth_dev *dev,
+			      struct rte_eth_rss_conf *rss_conf);
+int	hn_vf_reta_hash_update(struct rte_eth_dev *dev,
+			       struct rte_eth_rss_reta_entry64 *reta_conf,
+			       uint16_t reta_size);

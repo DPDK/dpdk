@@ -961,62 +961,34 @@ hn_rndis_set_rxfilter(struct hn_data *hv, uint32_t filter)
 	return error;
 }
 
-/* The default RSS key.
- * This value is the same as MLX5 so that flows will be
- * received on same path for both VF ans synthetic NIC.
- */
-static const uint8_t rss_default_key[NDIS_HASH_KEYSIZE_TOEPLITZ] = {
-	0x2c, 0xc6, 0x81, 0xd1,	0x5b, 0xdb, 0xf4, 0xf7,
-	0xfc, 0xa2, 0x83, 0x19,	0xdb, 0x1a, 0x3e, 0x94,
-	0x6b, 0x9e, 0x38, 0xd9,	0x2c, 0x9c, 0x03, 0xd1,
-	0xad, 0x99, 0x44, 0xa7,	0xd9, 0x56, 0x3d, 0x59,
-	0x06, 0x3c, 0x25, 0xf3,	0xfc, 0x1f, 0xdc, 0x2a,
-};
-
-int hn_rndis_conf_rss(struct hn_data *hv,
-		      const struct rte_eth_rss_conf *rss_conf)
+int hn_rndis_conf_rss(struct hn_data *hv, uint32_t flags)
 {
 	struct ndis_rssprm_toeplitz rssp;
 	struct ndis_rss_params *prm = &rssp.rss_params;
-	const uint8_t *rss_key = rss_conf->rss_key ? : rss_default_key;
-	uint32_t rss_hash;
 	unsigned int i;
 	int error;
-
-	PMD_INIT_FUNC_TRACE();
 
 	memset(&rssp, 0, sizeof(rssp));
 
 	prm->ndis_hdr.ndis_type = NDIS_OBJTYPE_RSS_PARAMS;
 	prm->ndis_hdr.ndis_rev = NDIS_RSS_PARAMS_REV_2;
 	prm->ndis_hdr.ndis_size = sizeof(*prm);
-	prm->ndis_flags = 0;
-
-	rss_hash = NDIS_HASH_FUNCTION_TOEPLITZ;
-	if (rss_conf->rss_hf & ETH_RSS_IPV4)
-		rss_hash |= NDIS_HASH_IPV4;
-	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
-		rss_hash |= NDIS_HASH_TCP_IPV4;
-	if (rss_conf->rss_hf & ETH_RSS_IPV6)
-		rss_hash |=  NDIS_HASH_IPV6;
-	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
-		rss_hash |= NDIS_HASH_TCP_IPV6;
-
-	prm->ndis_hash = rss_hash;
+	prm->ndis_flags = flags;
+	prm->ndis_hash = hv->rss_hash;
 	prm->ndis_indsize = sizeof(rssp.rss_ind[0]) * NDIS_HASH_INDCNT;
 	prm->ndis_indoffset = offsetof(struct ndis_rssprm_toeplitz, rss_ind[0]);
 	prm->ndis_keysize = NDIS_HASH_KEYSIZE_TOEPLITZ;
 	prm->ndis_keyoffset = offsetof(struct ndis_rssprm_toeplitz, rss_key[0]);
 
 	for (i = 0; i < NDIS_HASH_INDCNT; i++)
-		rssp.rss_ind[i] = i % hv->num_queues;
+		rssp.rss_ind[i] = hv->rss_ind[i];
 
 	/* Set hask key values */
-	memcpy(&rssp.rss_key, rss_key, NDIS_HASH_KEYSIZE_TOEPLITZ);
+	memcpy(&rssp.rss_key, hv->rss_key, NDIS_HASH_KEYSIZE_TOEPLITZ);
 
 	error = hn_rndis_set(hv, OID_GEN_RECEIVE_SCALE_PARAMETERS,
 			     &rssp, sizeof(rssp));
-	if (error) {
+	if (error != 0) {
 		PMD_DRV_LOG(ERR,
 			    "RSS config num queues=%u failed: %d",
 			    hv->num_queues, error);

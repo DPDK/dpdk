@@ -69,6 +69,18 @@ static const struct hn_xstats_name_off hn_stat_strings[] = {
 	{ "size_1519_max_packets",  offsetof(struct hn_stats, size_bins[7]) },
 };
 
+/* The default RSS key.
+ * This value is the same as MLX5 so that flows will be
+ * received on same path for both VF ans synthetic NIC.
+ */
+static const uint8_t rss_default_key[NDIS_HASH_KEYSIZE_TOEPLITZ] = {
+	0x2c, 0xc6, 0x81, 0xd1,	0x5b, 0xdb, 0xf4, 0xf7,
+	0xfc, 0xa2, 0x83, 0x19,	0xdb, 0x1a, 0x3e, 0x94,
+	0x6b, 0x9e, 0x38, 0xd9,	0x2c, 0x9c, 0x03, 0xd1,
+	0xad, 0x99, 0x44, 0xa7,	0xd9, 0x56, 0x3d, 0x59,
+	0x06, 0x3c, 0x25, 0xf3,	0xfc, 0x1f, 0xdc, 0x2a,
+};
+
 static struct rte_eth_dev *
 eth_dev_vmbus_allocate(struct rte_vmbus_device *dev, size_t private_data_size)
 {
@@ -247,6 +259,155 @@ static void hn_dev_info_get(struct rte_eth_dev *dev,
 	hn_vf_info_get(hv, dev_info);
 }
 
+static int hn_rss_reta_update(struct rte_eth_dev *dev,
+			      struct rte_eth_rss_reta_entry64 *reta_conf,
+			      uint16_t reta_size)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	unsigned int i;
+	int err;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (reta_size != NDIS_HASH_INDCNT) {
+		PMD_DRV_LOG(ERR, "Hash lookup table size does not match NDIS");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < NDIS_HASH_INDCNT; i++) {
+		uint16_t idx = i / RTE_RETA_GROUP_SIZE;
+		uint16_t shift = i % RTE_RETA_GROUP_SIZE;
+		uint64_t mask = (uint64_t)1 << shift;
+
+		if (reta_conf[idx].mask & mask)
+			hv->rss_ind[i] = reta_conf[idx].reta[shift];
+	}
+
+	err = hn_rndis_conf_rss(hv, 0);
+	if (err) {
+		PMD_DRV_LOG(NOTICE,
+			    "reta reconfig failed");
+		return err;
+	}
+
+	return hn_vf_reta_hash_update(dev, reta_conf, reta_size);
+}
+
+static int hn_rss_reta_query(struct rte_eth_dev *dev,
+			     struct rte_eth_rss_reta_entry64 *reta_conf,
+			     uint16_t reta_size)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	unsigned int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (reta_size != NDIS_HASH_INDCNT) {
+		PMD_DRV_LOG(ERR, "Hash lookup table size does not match NDIS");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < NDIS_HASH_INDCNT; i++) {
+		uint16_t idx = i / RTE_RETA_GROUP_SIZE;
+		uint16_t shift = i % RTE_RETA_GROUP_SIZE;
+		uint64_t mask = (uint64_t)1 << shift;
+
+		if (reta_conf[idx].mask & mask)
+			reta_conf[idx].reta[shift] = hv->rss_ind[i];
+	}
+	return 0;
+}
+
+static void hn_rss_hash_init(struct hn_data *hv,
+			     const struct rte_eth_rss_conf *rss_conf)
+{
+	/* Convert from DPDK RSS hash flags to NDIS hash flags */
+	hv->rss_hash = NDIS_HASH_FUNCTION_TOEPLITZ;
+
+	if (rss_conf->rss_hf & ETH_RSS_IPV4)
+		hv->rss_hash |= NDIS_HASH_IPV4;
+	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+		hv->rss_hash |= NDIS_HASH_TCP_IPV4;
+	if (rss_conf->rss_hf & ETH_RSS_IPV6)
+		hv->rss_hash |=  NDIS_HASH_IPV6;
+	if (rss_conf->rss_hf & ETH_RSS_IPV6_EX)
+		hv->rss_hash |=  NDIS_HASH_IPV6_EX;
+	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+		hv->rss_hash |= NDIS_HASH_TCP_IPV6;
+	if (rss_conf->rss_hf & ETH_RSS_IPV6_TCP_EX)
+		hv->rss_hash |= NDIS_HASH_TCP_IPV6_EX;
+
+	memcpy(hv->rss_key, rss_conf->rss_key ? : rss_default_key,
+	       NDIS_HASH_KEYSIZE_TOEPLITZ);
+}
+
+static int hn_rss_hash_update(struct rte_eth_dev *dev,
+			      struct rte_eth_rss_conf *rss_conf)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	int err;
+
+	PMD_INIT_FUNC_TRACE();
+
+	err = hn_rndis_conf_rss(hv, NDIS_RSS_FLAG_DISABLE);
+	if (err) {
+		PMD_DRV_LOG(NOTICE,
+			    "rss disable failed");
+		return err;
+	}
+
+	hn_rss_hash_init(hv, rss_conf);
+
+	err = hn_rndis_conf_rss(hv, 0);
+	if (err) {
+		PMD_DRV_LOG(NOTICE,
+			    "rss reconfig failed (RSS disabled)");
+		return err;
+	}
+
+
+	return hn_vf_rss_hash_update(dev, rss_conf);
+}
+
+static int hn_rss_hash_conf_get(struct rte_eth_dev *dev,
+				struct rte_eth_rss_conf *rss_conf)
+{
+	struct hn_data *hv = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (hv->ndis_ver < NDIS_VERSION_6_20) {
+		PMD_DRV_LOG(DEBUG, "RSS not supported on this host");
+		return -EOPNOTSUPP;
+	}
+
+	rss_conf->rss_key_len = NDIS_HASH_KEYSIZE_TOEPLITZ;
+	if (rss_conf->rss_key)
+		memcpy(rss_conf->rss_key, hv->rss_key,
+		       NDIS_HASH_KEYSIZE_TOEPLITZ);
+
+	rss_conf->rss_hf = 0;
+	if (hv->rss_hash & NDIS_HASH_IPV4)
+		rss_conf->rss_hf |= ETH_RSS_IPV4;
+
+	if (hv->rss_hash & NDIS_HASH_TCP_IPV4)
+		rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+
+	if (hv->rss_hash & NDIS_HASH_IPV6)
+		rss_conf->rss_hf |= ETH_RSS_IPV6;
+
+	if (hv->rss_hash & NDIS_HASH_IPV6_EX)
+		rss_conf->rss_hf |= ETH_RSS_IPV6_EX;
+
+	if (hv->rss_hash & NDIS_HASH_TCP_IPV6)
+		rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+
+	if (hv->rss_hash & NDIS_HASH_TCP_IPV6_EX)
+		rss_conf->rss_hf |= ETH_RSS_IPV6_TCP_EX;
+
+	return 0;
+}
+
 static void
 hn_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
@@ -353,15 +514,13 @@ static int hn_subchan_configure(struct hn_data *hv,
 
 static int hn_dev_configure(struct rte_eth_dev *dev)
 {
-	const struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	struct rte_eth_rss_conf *rss_conf = &dev_conf->rx_adv_conf.rss_conf;
 	const struct rte_eth_rxmode *rxmode = &dev_conf->rxmode;
 	const struct rte_eth_txmode *txmode = &dev_conf->txmode;
-
-	const struct rte_eth_rss_conf *rss_conf =
-		&dev_conf->rx_adv_conf.rss_conf;
 	struct hn_data *hv = dev->data->dev_private;
 	uint64_t unsupported;
-	int err, subchan;
+	int i, err, subchan;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -393,6 +552,12 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 
 	hv->num_queues = RTE_MAX(dev->data->nb_rx_queues,
 				 dev->data->nb_tx_queues);
+
+	for (i = 0; i < NDIS_HASH_INDCNT; i++)
+		hv->rss_ind[i] = i % hv->num_queues;
+
+	hn_rss_hash_init(hv, rss_conf);
+
 	subchan = hv->num_queues - 1;
 	if (subchan > 0) {
 		err = hn_subchan_configure(hv, subchan);
@@ -402,10 +567,10 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 			return err;
 		}
 
-		err = hn_rndis_conf_rss(hv, rss_conf);
+		err = hn_rndis_conf_rss(hv, 0);
 		if (err) {
 			PMD_DRV_LOG(NOTICE,
-				    "rss configuration failed");
+				    "initial RSS config failed");
 			return err;
 		}
 	}
@@ -655,6 +820,10 @@ static const struct eth_dev_ops hn_eth_dev_ops = {
 	.allmulticast_enable    = hn_dev_allmulticast_enable,
 	.allmulticast_disable   = hn_dev_allmulticast_disable,
 	.set_mc_addr_list	= hn_dev_mc_addr_list,
+	.reta_update		= hn_rss_reta_update,
+	.reta_query             = hn_rss_reta_query,
+	.rss_hash_update	= hn_rss_hash_update,
+	.rss_hash_conf_get      = hn_rss_hash_conf_get,
 	.tx_queue_setup		= hn_dev_tx_queue_setup,
 	.tx_queue_release	= hn_dev_tx_queue_release,
 	.tx_done_cleanup        = hn_dev_tx_done_cleanup,

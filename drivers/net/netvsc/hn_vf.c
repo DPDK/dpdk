@@ -553,3 +553,37 @@ void hn_vf_xstats_reset(struct rte_eth_dev *dev)
 		vf_dev->dev_ops->xstats_reset(vf_dev);
 	rte_spinlock_unlock(&hv->vf_lock);
 }
+
+int hn_vf_rss_hash_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	struct rte_eth_dev *vf_dev;
+	int ret = 0;
+
+	rte_spinlock_lock(&hv->vf_lock);
+	vf_dev = hn_get_vf_dev(hv);
+	if (vf_dev && vf_dev->dev_ops->rss_hash_update)
+		ret = vf_dev->dev_ops->rss_hash_update(vf_dev, rss_conf);
+	rte_spinlock_unlock(&hv->vf_lock);
+
+	return ret;
+}
+
+int hn_vf_reta_hash_update(struct rte_eth_dev *dev,
+			   struct rte_eth_rss_reta_entry64 *reta_conf,
+			   uint16_t reta_size)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	struct rte_eth_dev *vf_dev;
+	int ret = 0;
+
+	rte_spinlock_lock(&hv->vf_lock);
+	vf_dev = hn_get_vf_dev(hv);
+	if (vf_dev && vf_dev->dev_ops->reta_update)
+		ret = vf_dev->dev_ops->reta_update(vf_dev,
+						   reta_conf, reta_size);
+	rte_spinlock_unlock(&hv->vf_lock);
+
+	return ret;
+}
