@@ -117,6 +117,7 @@ F: lib/librte_eal/freebsd/BSDmakefile.meson
 F: meson_options.txt
 F: config/rte_config.h
 F: buildtools/gen-pmdinfo-cfile.sh
+F: buildtools/map_to_def.py
 F: buildtools/symlink-drivers-solibs.sh
 
 Public CI
