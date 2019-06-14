@@ -101,6 +101,14 @@ struct pmd_devargs {
 	int phy_mac;
 };
 
+struct pmd_devargs_all {
+	struct pmd_devargs rx_queues;
+	struct pmd_devargs tx_queues;
+	int single_iface;
+	unsigned int is_tx_pcap;
+	unsigned int is_tx_iface;
+};
+
 static const char *valid_arguments[] = {
 	ETH_PCAP_RX_PCAP_ARG,
 	ETH_PCAP_TX_PCAP_ARG,
@@ -1060,11 +1068,14 @@ eth_pcap_update_mac(const char *if_name, struct rte_eth_dev *eth_dev,
 
 static int
 eth_from_pcaps_common(struct rte_vdev_device *vdev,
-		struct pmd_devargs *rx_queues, const unsigned int nb_rx_queues,
-		struct pmd_devargs *tx_queues, const unsigned int nb_tx_queues,
+		struct pmd_devargs_all *devargs_all,
 		struct pmd_internals **internals, struct rte_eth_dev **eth_dev)
 {
 	struct pmd_process_private *pp;
+	struct pmd_devargs *rx_queues = &devargs_all->rx_queues;
+	struct pmd_devargs *tx_queues = &devargs_all->tx_queues;
+	const unsigned int nb_rx_queues = rx_queues->num_of_queue;
+	const unsigned int nb_tx_queues = tx_queues->num_of_queue;
 	unsigned int i;
 
 	/* do some parameter checking */
@@ -1102,16 +1113,15 @@ eth_from_pcaps_common(struct rte_vdev_device *vdev,
 
 static int
 eth_from_pcaps(struct rte_vdev_device *vdev,
-		struct pmd_devargs *rx_queues, const unsigned int nb_rx_queues,
-		struct pmd_devargs *tx_queues, const unsigned int nb_tx_queues,
-		int single_iface, unsigned int using_dumpers)
+		struct pmd_devargs_all *devargs_all)
 {
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
+	struct pmd_devargs *rx_queues = &devargs_all->rx_queues;
+	int single_iface = devargs_all->single_iface;
 	int ret;
 
-	ret = eth_from_pcaps_common(vdev, rx_queues, nb_rx_queues,
-		tx_queues, nb_tx_queues, &internals, &eth_dev);
+	ret = eth_from_pcaps_common(vdev, devargs_all, &internals, &eth_dev);
 
 	if (ret < 0)
 		return ret;
@@ -1133,7 +1143,8 @@ eth_from_pcaps(struct rte_vdev_device *vdev,
 
 	eth_dev->rx_pkt_burst = eth_pcap_rx;
 
-	if (using_dumpers)
+	/* Assign tx ops. */
+	if (devargs_all->is_tx_pcap)
 		eth_dev->tx_pkt_burst = eth_pcap_tx_dumper;
 	else
 		eth_dev->tx_pkt_burst = eth_pcap_tx;
@@ -1146,14 +1157,19 @@ static int
 pmd_pcap_probe(struct rte_vdev_device *dev)
 {
 	const char *name;
-	unsigned int is_rx_pcap = 0, is_tx_pcap = 0;
+	unsigned int is_rx_pcap = 0;
 	struct rte_kvargs *kvlist;
 	struct pmd_devargs pcaps = {0};
 	struct pmd_devargs dumpers = {0};
 	struct rte_eth_dev *eth_dev =  NULL;
 	struct pmd_internals *internal;
-	int single_iface = 0;
 	int ret;
+
+	struct pmd_devargs_all devargs_all = {
+		.single_iface = 0,
+		.is_tx_pcap = 0,
+		.is_tx_iface = 0,
+	};
 
 	name = rte_vdev_device_name(dev);
 	PMD_LOG(INFO, "Initializing pmd_pcap for %s", name);
@@ -1201,7 +1217,7 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 
 		dumpers.phy_mac = pcaps.phy_mac;
 
-		single_iface = 1;
+		devargs_all.single_iface = 1;
 		pcaps.num_of_queue = 1;
 		dumpers.num_of_queue = 1;
 
@@ -1230,10 +1246,11 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	 * We check whether we want to open a TX stream to a real NIC or a
 	 * pcap file
 	 */
-	is_tx_pcap = rte_kvargs_count(kvlist, ETH_PCAP_TX_PCAP_ARG) ? 1 : 0;
+	devargs_all.is_tx_pcap =
+		rte_kvargs_count(kvlist, ETH_PCAP_TX_PCAP_ARG) ? 1 : 0;
 	dumpers.num_of_queue = 0;
 
-	if (is_tx_pcap)
+	if (devargs_all.is_tx_pcap)
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_PCAP_ARG,
 				&open_tx_pcap, &dumpers);
 	else
@@ -1275,7 +1292,7 @@ create_eth:
 
 		eth_dev->process_private = pp;
 		eth_dev->rx_pkt_burst = eth_pcap_rx;
-		if (is_tx_pcap)
+		if (devargs_all.is_tx_pcap)
 			eth_dev->tx_pkt_burst = eth_pcap_tx_dumper;
 		else
 			eth_dev->tx_pkt_burst = eth_pcap_tx;
@@ -1284,8 +1301,10 @@ create_eth:
 		goto free_kvlist;
 	}
 
-	ret = eth_from_pcaps(dev, &pcaps, pcaps.num_of_queue, &dumpers,
-		dumpers.num_of_queue, single_iface, is_tx_pcap);
+	devargs_all.rx_queues = pcaps;
+	devargs_all.tx_queues = dumpers;
+
+	ret = eth_from_pcaps(dev, &devargs_all);
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
