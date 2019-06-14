@@ -376,13 +376,14 @@ error:
 	return -1;
 }
 
-/*
- * Get iommu class of PCI devices on the bus.
- */
 enum rte_iova_mode
-rte_pci_get_iommu_class(void)
+pci_device_iova_mode(const struct rte_pci_driver *pdrv __rte_unused,
+		     const struct rte_pci_device *pdev)
 {
 	/* Supports only RTE_KDRV_NIC_UIO */
+	if (pdev->kdrv != RTE_KDRV_NIC_UIO)
+		RTE_LOG(DEBUG, EAL, "Unsupported kernel driver? Defaulting to IOVA as 'PA'\n");
+
 	return RTE_IOVA_PA;
 }
 

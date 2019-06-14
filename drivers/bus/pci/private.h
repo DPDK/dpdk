@@ -173,6 +173,14 @@ rte_pci_match(const struct rte_pci_driver *pci_drv,
 	      const struct rte_pci_device *pci_dev);
 
 /**
+ * OS specific callback for rte_pci_get_iommu_class
+ *
+ */
+enum rte_iova_mode
+pci_device_iova_mode(const struct rte_pci_driver *pci_drv,
+		     const struct rte_pci_device *pci_dev);
+
+/**
  * Get iommu class of PCI devices on the bus.
  * And return their preferred iova mapping mode.
  *
