@@ -106,6 +106,26 @@ Runtime Config Options
 
    --vdev 'net_pcap0,iface=eth0,phy_mac=1'
 
+- Use the RX PCAP file to infinitely receive packets
+
+ In case ``rx_pcap=`` configuration is set, user may want to use the selected PCAP file for rudimental
+ performance testing. This can be done with a ``devarg`` ``infinite_rx``, for example::
+
+   --vdev 'net_pcap0,rx_pcap=file_rx.pcap,infinite_rx=1'
+
+ When this mode is used, it is recommended to drop all packets on transmit by not providing a tx_pcap or tx_iface.
+
+ This option is device wide, so all queues on a device will either have this enabled or disabled.
+ This option should only be provided once per device.
+
+- Drop all packets on transmit
+
+ The user may want to drop all packets on tx for a device. This can be done by not providing a tx_pcap or tx_iface, for example::
+
+   --vdev 'net_pcap0,rx_pcap=file_rx.pcap'
+
+ In this case, one tx drop queue is created for each rxq on that device.
+
 Examples of Usage
 ^^^^^^^^^^^^^^^^^
 
