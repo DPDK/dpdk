@@ -233,7 +233,7 @@ cperf_verify_test_runner(void *test_ctx)
 	uint64_t ops_deqd = 0, ops_deqd_total = 0, ops_deqd_failed = 0;
 	uint64_t ops_failed = 0;
 
-	static int only_once;
+	static rte_atomic16_t display_once = RTE_ATOMIC16_INIT(0);
 
 	uint64_t i;
 	uint16_t ops_unused = 0;
@@ -376,12 +376,11 @@ cperf_verify_test_runner(void *test_ctx)
 	}
 
 	if (!ctx->options->csv) {
-		if (!only_once)
+		if (rte_atomic16_test_and_set(&display_once))
 			printf("%12s%12s%12s%12s%12s%12s%12s%12s\n\n",
 				"lcore id", "Buf Size", "Burst size",
 				"Enqueued", "Dequeued", "Failed Enq",
 				"Failed Deq", "Failed Ops");
-		only_once = 1;
 
 		printf("%12u%12u%12u%12"PRIu64"%12"PRIu64"%12"PRIu64
 				"%12"PRIu64"%12"PRIu64"\n",
@@ -394,11 +393,10 @@ cperf_verify_test_runner(void *test_ctx)
 				ops_deqd_failed,
 				ops_failed);
 	} else {
-		if (!only_once)
+		if (rte_atomic16_test_and_set(&display_once))
 			printf("\n# lcore id, Buffer Size(B), "
 				"Burst Size,Enqueued,Dequeued,Failed Enq,"
 				"Failed Deq,Failed Ops\n");
-		only_once = 1;
 
 		printf("%10u;%10u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
 				"%"PRIu64"\n",
