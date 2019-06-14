@@ -765,12 +765,18 @@ rte_eal_init(int argc, char **argv)
 	/* if no EAL option "--iova-mode=<pa|va>", use bus IOVA scheme */
 	if (internal_config.iova_mode == RTE_IOVA_DC) {
 		/* autodetect the IOVA mapping mode (default is RTE_IOVA_PA) */
-		rte_eal_get_configuration()->iova_mode =
-			rte_bus_get_iommu_class();
+		enum rte_iova_mode iova_mode = rte_bus_get_iommu_class();
+
+		if (iova_mode == RTE_IOVA_DC)
+			iova_mode = RTE_IOVA_PA;
+		rte_eal_get_configuration()->iova_mode = iova_mode;
 	} else {
 		rte_eal_get_configuration()->iova_mode =
 			internal_config.iova_mode;
 	}
+
+	RTE_LOG(INFO, EAL, "Selected IOVA mode '%s'\n",
+		rte_eal_iova_mode() == RTE_IOVA_PA ? "PA" : "VA");
 
 	if (internal_config.no_hugetlbfs == 0) {
 		/* rte_config isn't initialized yet */

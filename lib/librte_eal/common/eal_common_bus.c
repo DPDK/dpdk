@@ -237,10 +237,6 @@ rte_bus_get_iommu_class(void)
 			mode |= bus->get_iommu_class();
 	}
 
-	if (mode != RTE_IOVA_VA) {
-		/* Use default IOVA mode */
-		mode = RTE_IOVA_PA;
-	}
 	return mode;
 }
 
