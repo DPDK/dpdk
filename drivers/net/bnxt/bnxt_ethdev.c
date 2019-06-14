@@ -3545,7 +3545,7 @@ static void bnxt_free_ctx_mem(struct bnxt *bp)
 	bp->ctx = NULL;
 }
 
-#define roundup(x, y)   ((((x) + ((y) - 1)) / (y)) * (y))
+#define bnxt_roundup(x, y)   ((((x) + ((y) - 1)) / (y)) * (y))
 
 #define min_t(type, x, y) ({                    \
 	type __min1 = (x);                      \
@@ -3612,7 +3612,7 @@ int bnxt_alloc_ctx_mem(struct bnxt *bp)
 		return rc;
 
 	entries = ctx->qp_max_l2_entries;
-	entries = roundup(entries, ctx->tqm_entries_multiple);
+	entries = bnxt_roundup(entries, ctx->tqm_entries_multiple);
 	entries = clamp_t(uint32_t, entries, ctx->tqm_min_entries_per_ring,
 			  ctx->tqm_max_entries_per_ring);
 	for (i = 0, ena = 0; i < BNXT_MAX_Q; i++) {
