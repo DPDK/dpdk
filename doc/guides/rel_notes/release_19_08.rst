@@ -133,6 +133,12 @@ New Features
   device to be received repeatedly at a high rate. This can be useful for quick
   performance testing of DPDK apps.
 
+* **Added a FPGA_LTE_FEC bbdev PMD.**
+
+  Added the new ``fpga_lte_fec`` bbdev driver for the Intel® FPGA PAC
+  (Programmable  Acceleration Card) N3000.  See the
+  :doc:`../bbdevs/fpga_lte_fec` BBDEV guide for more details on this new driver.
+
 * **Added Intel QuickData Technology PMD**
 
   The PMD for Intel\ |reg|  QuickData Technology, part of
