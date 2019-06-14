@@ -1174,7 +1174,8 @@ init_config(void)
 		/* Check for maximum number of segments per MTU. Accordingly
 		 * update the mbuf data size.
 		 */
-		if (port->dev_info.rx_desc_lim.nb_mtu_seg_max != UINT16_MAX) {
+		if (port->dev_info.rx_desc_lim.nb_mtu_seg_max != UINT16_MAX &&
+				port->dev_info.rx_desc_lim.nb_mtu_seg_max != 0) {
 			data_size = rx_mode.max_rx_pkt_len /
 				port->dev_info.rx_desc_lim.nb_mtu_seg_max;
 
