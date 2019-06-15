@@ -19,7 +19,7 @@
 #include <limits.h>
 #include <fcntl.h>
 
-#include <rte_per_lcore.h>
+#include <rte_lcore.h>
 #include <rte_debug.h>
 #include <rte_string_fns.h>
 
@@ -560,7 +560,9 @@ test_missing_c_flag(void)
 		       "process ran without error with invalid -l flag\n");
 		return -1;
 	}
-	if (launch_proc(argv15) != 0) {
+	if (rte_lcore_is_enabled(0) && rte_lcore_is_enabled(1) &&
+	    rte_lcore_is_enabled(2) && rte_lcore_is_enabled(3) &&
+	    launch_proc(argv15) != 0) {
 		printf("Error - "
 		       "process did not run ok with valid corelist value\n");
 		return -1;
@@ -579,7 +581,11 @@ test_missing_c_flag(void)
 		return -1;
 	}
 
-	if (launch_proc(argv29) != 0) {
+	if (rte_lcore_is_enabled(0) && rte_lcore_is_enabled(1) &&
+	    rte_lcore_is_enabled(2) && rte_lcore_is_enabled(3) &&
+	    rte_lcore_is_enabled(3) && rte_lcore_is_enabled(5) &&
+	    rte_lcore_is_enabled(4) && rte_lcore_is_enabled(7) &&
+	    launch_proc(argv29) != 0) {
 		printf("Error - "
 		       "process did not run ok with valid corelist value\n");
 		return -1;
@@ -605,6 +611,9 @@ test_master_lcore_flag(void)
 	}
 	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
+
+	if (!rte_lcore_is_enabled(0) || !rte_lcore_is_enabled(1))
+		return TEST_SKIPPED;
 
 	/* --master-lcore flag but no value */
 	const char *argv1[] = { prgname, prefix, mp_flag,
