@@ -188,7 +188,7 @@ fast_parallel_test_names = [
         'sched_autotest',
         'spinlock_autotest',
         'stack_autotest',
-        'stack_nb_autotest',
+        'stack_lf_autotest',
         'string_autotest',
         'table_autotest',
         'tailq_autotest',
@@ -247,7 +247,7 @@ perf_test_names = [
         'ring_pmd_perf_autotest',
         'pmd_perf_autotest',
         'stack_perf_autotest',
-        'stack_nb_perf_autotest',
+        'stack_lf_perf_autotest',
 ]
 
 # All test cases in driver_test_names list are non-parallel
