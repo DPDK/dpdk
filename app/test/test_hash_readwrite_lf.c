@@ -939,7 +939,7 @@ test_hash_add_ks_lookup_hit_sp(struct rwc_perf *rwc_perf_results, int rwc_lf,
 		}
 		for (n = 0; n < NUM_TEST; n++) {
 			unsigned int tot_lcore = rte_lcore_count();
-			if (tot_lcore < rwc_core_cnt[n])
+			if (tot_lcore < rwc_core_cnt[n] + 1)
 				goto finish;
 
 			printf("\nNumber of readers: %u\n", rwc_core_cnt[n]);
