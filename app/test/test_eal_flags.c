@@ -245,25 +245,25 @@ test_whitelist_flag(void)
 #endif
 
 	const char *wlinval[][11] = {
-		{prgname, prefix, mp_flag, "-c", "1",
+		{prgname, prefix, mp_flag,
 				pci_whitelist, "error", "", ""},
-		{prgname, prefix, mp_flag, "-c", "1",
+		{prgname, prefix, mp_flag,
 				pci_whitelist, "0:0:0", "", ""},
-		{prgname, prefix, mp_flag, "-c", "1",
+		{prgname, prefix, mp_flag,
 				pci_whitelist, "0:error:0.1", "", ""},
-		{prgname, prefix, mp_flag, "-c", "1",
+		{prgname, prefix, mp_flag,
 				pci_whitelist, "0:0:0.1error", "", ""},
-		{prgname, prefix, mp_flag, "-c", "1",
+		{prgname, prefix, mp_flag,
 				pci_whitelist, "error0:0:0.1", "", ""},
-		{prgname, prefix, mp_flag, "-c", "1",
+		{prgname, prefix, mp_flag,
 				pci_whitelist, "0:0:0.1.2", "", ""},
 	};
 	/* Test with valid whitelist option */
-	const char *wlval1[] = {prgname, prefix, mp_flag, "-c", "1",
+	const char *wlval1[] = {prgname, prefix, mp_flag,
 			pci_whitelist, "00FF:09:0B.3"};
-	const char *wlval2[] = {prgname, prefix, mp_flag, "-c", "1",
+	const char *wlval2[] = {prgname, prefix, mp_flag,
 			pci_whitelist, "09:0B.3", pci_whitelist, "0a:0b.1"};
-	const char *wlval3[] = {prgname, prefix, mp_flag, "-c", "1",
+	const char *wlval3[] = {prgname, prefix, mp_flag,
 			pci_whitelist, "09:0B.3,type=test",
 			pci_whitelist, "08:00.1,type=normal",
 	};
@@ -311,15 +311,15 @@ test_invalid_b_flag(void)
 #endif
 
 	const char *blinval[][9] = {
-		{prgname, prefix, mp_flag, "-c", "1", "-b", "error"},
-		{prgname, prefix, mp_flag, "-c", "1", "-b", "0:0:0"},
-		{prgname, prefix, mp_flag, "-c", "1", "-b", "0:error:0.1"},
-		{prgname, prefix, mp_flag, "-c", "1", "-b", "0:0:0.1error"},
-		{prgname, prefix, mp_flag, "-c", "1", "-b", "error0:0:0.1"},
-		{prgname, prefix, mp_flag, "-c", "1", "-b", "0:0:0.1.2"},
+		{prgname, prefix, mp_flag, "-b", "error"},
+		{prgname, prefix, mp_flag, "-b", "0:0:0"},
+		{prgname, prefix, mp_flag, "-b", "0:error:0.1"},
+		{prgname, prefix, mp_flag, "-b", "0:0:0.1error"},
+		{prgname, prefix, mp_flag, "-b", "error0:0:0.1"},
+		{prgname, prefix, mp_flag, "-b", "0:0:0.1.2"},
 	};
 	/* Test with valid blacklist option */
-	const char *blval[] = {prgname, prefix, mp_flag, "-c", "1",
+	const char *blval[] = {prgname, prefix, mp_flag,
 			       "-b", "FF:09:0B.3"};
 
 	int i;
@@ -356,17 +356,17 @@ test_invalid_vdev_flag(void)
 
 	/* Test with invalid vdev option */
 	const char *vdevinval[] = {prgname, prefix, no_huge,
-				"-c", "1", vdev, "eth_dummy"};
+				vdev, "eth_dummy"};
 
 	/* Test with valid vdev option */
 	const char *vdevval1[] = {prgname, prefix, no_huge,
-	"-c", "1", vdev, "net_ring0"};
+	vdev, "net_ring0"};
 
 	const char *vdevval2[] = {prgname, prefix, no_huge,
-	"-c", "1", vdev, "net_ring0,args=test"};
+	vdev, "net_ring0,args=test"};
 
 	const char *vdevval3[] = {prgname, prefix, no_huge,
-	"-c", "1", vdev, "net_ring0,nodeaction=r1:0:CREATE"};
+	vdev, "net_ring0,nodeaction=r1:0:CREATE"};
 
 	if (launch_proc(vdevinval) == 0) {
 		printf("Error - process did run ok with invalid "
@@ -413,13 +413,13 @@ test_invalid_r_flag(void)
 #endif
 
 	const char *rinval[][9] = {
-			{prgname, prefix, mp_flag, "-c", "1", "-r", "error"},
-			{prgname, prefix, mp_flag, "-c", "1", "-r", "0"},
-			{prgname, prefix, mp_flag, "-c", "1", "-r", "-1"},
-			{prgname, prefix, mp_flag, "-c", "1", "-r", "17"},
+			{prgname, prefix, mp_flag, "-r", "error"},
+			{prgname, prefix, mp_flag, "-r", "0"},
+			{prgname, prefix, mp_flag, "-r", "-1"},
+			{prgname, prefix, mp_flag, "-r", "17"},
 	};
 	/* Test with valid blacklist option */
-	const char *rval[] = {prgname, prefix, mp_flag, "-c", "1", "-r", "16"};
+	const char *rval[] = {prgname, prefix, mp_flag, "-r", "16"};
 
 	int i;
 
@@ -661,15 +661,19 @@ test_invalid_n_flag(void)
 #endif
 
 	/* -n flag but no value */
-	const char *argv1[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n"};
+	const char *argv1[] = { prgname, prefix, no_huge, no_shconf,
+				"-n"};
 	/* bad numeric value */
-	const char *argv2[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n", "e" };
+	const char *argv2[] = { prgname, prefix, no_huge, no_shconf,
+				"-n", "e" };
 	/* zero is invalid */
-	const char *argv3[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n", "0" };
+	const char *argv3[] = { prgname, prefix, no_huge, no_shconf,
+				"-n", "0" };
 	/* sanity test - check with good value */
-	const char *argv4[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n", "2" };
+	const char *argv4[] = { prgname, prefix, no_huge, no_shconf,
+				"-n", "2" };
 	/* sanity test - check with no -n flag */
-	const char *argv5[] = { prgname, prefix, no_huge, no_shconf, "-c", "1"};
+	const char *argv5[] = { prgname, prefix, no_huge, no_shconf};
 
 	if (launch_proc(argv1) == 0
 			|| launch_proc(argv2) == 0
@@ -710,9 +714,9 @@ test_no_hpet_flag(void)
 #endif
 
 	/* With --no-hpet */
-	const char *argv1[] = {prgname, prefix, mp_flag, no_hpet, "-c", "1"};
+	const char *argv1[] = {prgname, prefix, mp_flag, no_hpet};
 	/* Without --no-hpet */
-	const char *argv2[] = {prgname, prefix, mp_flag, "-c", "1"};
+	const char *argv2[] = {prgname, prefix, mp_flag};
 
 	if (launch_proc(argv1) != 0) {
 		printf("Error - process did not run ok with --no-hpet flag\n");
@@ -741,16 +745,16 @@ test_no_huge_flag(void)
 #endif
 
 	/* With --no-huge */
-	const char *argv1[] = {prgname, prefix, no_huge, "-c", "1"};
+	const char *argv1[] = {prgname, prefix, no_huge};
 	/* With --no-huge and -m */
-	const char *argv2[] = {prgname, prefix, no_huge, "-c", "1",
+	const char *argv2[] = {prgname, prefix, no_huge,
 			"-m", DEFAULT_MEM_SIZE};
 
 	/* With --no-huge and --socket-mem */
-	const char *argv3[] = {prgname, prefix, no_huge, "-c", "1",
+	const char *argv3[] = {prgname, prefix, no_huge,
 			"--socket-mem=" DEFAULT_MEM_SIZE};
 	/* With --no-huge, -m and --socket-mem */
-	const char *argv4[] = {prgname, prefix, no_huge, "-c", "1",
+	const char *argv4[] = {prgname, prefix, no_huge,
 			"-m", DEFAULT_MEM_SIZE, "--socket-mem=" DEFAULT_MEM_SIZE};
 	if (launch_proc(argv1) != 0) {
 		printf("Error - process did not run ok with --no-huge flag\n");
@@ -837,55 +841,56 @@ test_misc_flags(void)
 	 * No further testing of output done.
 	 */
 	/* sanity check - failure with invalid option */
-	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "1", "--invalid-opt"};
+	const char *argv0[] = {prgname, prefix, mp_flag, "--invalid-opt"};
 
 	/* With --no-pci */
-	const char *argv1[] = {prgname, prefix, mp_flag, "-c", "1", "--no-pci"};
+	const char *argv1[] = {prgname, prefix, mp_flag, "--no-pci"};
 	/* With -v */
-	const char *argv2[] = {prgname, prefix, mp_flag, "-c", "1", "-v"};
+	const char *argv2[] = {prgname, prefix, mp_flag, "-v"};
 	/* With valid --syslog */
-	const char *argv3[] = {prgname, prefix, mp_flag, "-c", "1",
+	const char *argv3[] = {prgname, prefix, mp_flag,
 			"--syslog", "syslog"};
 	/* With empty --syslog (should fail) */
-	const char *argv4[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog"};
+	const char *argv4[] = {prgname, prefix, mp_flag, "--syslog"};
 	/* With invalid --syslog */
-	const char *argv5[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog", "error"};
+	const char *argv5[] = {prgname, prefix, mp_flag, "--syslog", "error"};
 	/* With no-sh-conf, also use no-huge to ensure this test runs on BSD */
-	const char *argv6[] = {prgname, "-c", "1", "-m", DEFAULT_MEM_SIZE,
+	const char *argv6[] = {prgname, "-m", DEFAULT_MEM_SIZE,
 			no_shconf, nosh_prefix, no_huge};
 
 	/* With --huge-dir */
-	const char *argv7[] = {prgname, "-c", "1", "-m", DEFAULT_MEM_SIZE,
+	const char *argv7[] = {prgname, "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", hugepath};
 	/* With empty --huge-dir (should fail) */
-	const char *argv8[] = {prgname, "-c", "1", "-m", DEFAULT_MEM_SIZE,
+	const char *argv8[] = {prgname, "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir"};
 	/* With invalid --huge-dir */
-	const char *argv9[] = {prgname, "-c", "1", "-m", DEFAULT_MEM_SIZE,
+	const char *argv9[] = {prgname, "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", "invalid"};
 	/* Secondary process with invalid --huge-dir (should run as flag has no
 	 * effect on secondary processes) */
-	const char *argv10[] = {prgname, prefix, mp_flag, "-c", "1", "--huge-dir", "invalid"};
+	const char *argv10[] = {prgname, prefix, mp_flag,
+			"--huge-dir", "invalid"};
 
 	/* try running with base-virtaddr param */
 	const char *argv11[] = {prgname, "--file-prefix=virtaddr",
-			"-c", "1", "--base-virtaddr=0x12345678"};
+			"--base-virtaddr=0x12345678"};
 
 	/* try running with --vfio-intr INTx flag */
 	const char *argv12[] = {prgname, "--file-prefix=intr",
-			"-c", "1", "--vfio-intr=legacy"};
+			"--vfio-intr=legacy"};
 
 	/* try running with --vfio-intr MSI flag */
 	const char *argv13[] = {prgname, "--file-prefix=intr",
-			"-c", "1", "--vfio-intr=msi"};
+			"--vfio-intr=msi"};
 
 	/* try running with --vfio-intr MSI-X flag */
 	const char *argv14[] = {prgname, "--file-prefix=intr",
-			"-c", "1", "--vfio-intr=msix"};
+			"--vfio-intr=msix"};
 
 	/* try running with --vfio-intr invalid flag */
 	const char *argv15[] = {prgname, "--file-prefix=intr",
-			"-c", "1", "--vfio-intr=invalid"};
+			"--vfio-intr=invalid"};
 
 	/* run all tests also applicable to FreeBSD first */
 
@@ -996,25 +1001,25 @@ test_file_prefix(void)
 #endif
 
 	/* this should fail unless the test itself is run with "memtest" prefix */
-	const char *argv0[] = {prgname, mp_flag, "-c", "1", "-m",
+	const char *argv0[] = {prgname, mp_flag, "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest };
 
 	/* primary process with memtest1 and default mem mode */
-	const char *argv1[] = {prgname, "-c", "1", "-m",
+	const char *argv1[] = {prgname, "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest1 };
 
 	/* primary process with memtest1 and legacy mem mode */
-	const char *argv2[] = {prgname, "-c", "1", "-m",
+	const char *argv2[] = {prgname, "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest1,
 			"--legacy-mem" };
 
 	/* primary process with memtest2 and legacy mem mode */
-	const char *argv3[] = {prgname, "-c", "1", "-m",
+	const char *argv3[] = {prgname, "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest2,
 			"--legacy-mem" };
 
 	/* primary process with memtest2 and default mem mode */
-	const char *argv4[] = {prgname, "-c", "1", "-m",
+	const char *argv4[] = {prgname, "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest2 };
 
 	/* check if files for current prefix are present */
@@ -1159,39 +1164,39 @@ test_memory_flags(void)
 #endif
 
 	/* valid -m flag and mp flag */
-	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "10",
+	const char *argv0[] = {prgname, prefix, mp_flag,
 			"-m", DEFAULT_MEM_SIZE};
 
 	/* valid -m flag */
-	const char *argv1[] = {prgname, "-c", "10",
+	const char *argv1[] = {prgname,
 			"--file-prefix=" memtest, "-m", DEFAULT_MEM_SIZE};
 
 	/* valid (zero) --socket-mem flag */
-	const char *argv2[] = {prgname, "-c", "10",
+	const char *argv2[] = {prgname,
 			"--file-prefix=" memtest, "--socket-mem=0,0,0,0"};
 
 	/* invalid (incomplete) --socket-mem flag */
-	const char *argv3[] = {prgname, "-c", "10",
+	const char *argv3[] = {prgname,
 			"--file-prefix=" memtest, "--socket-mem=2,2,"};
 
 	/* invalid (mixed with invalid data) --socket-mem flag */
-	const char *argv4[] = {prgname, "-c", "10",
+	const char *argv4[] = {prgname,
 			"--file-prefix=" memtest, "--socket-mem=2,2,Fred"};
 
 	/* invalid (with numeric value as last character) --socket-mem flag */
-	const char *argv5[] = {prgname, "-c", "10",
+	const char *argv5[] = {prgname,
 			"--file-prefix=" memtest, "--socket-mem=2,2,Fred0"};
 
 	/* invalid (with empty socket) --socket-mem flag */
-	const char *argv6[] = {prgname, "-c", "10",
+	const char *argv6[] = {prgname,
 			"--file-prefix=" memtest, "--socket-mem=2,,2"};
 
 	/* invalid (null) --socket-mem flag */
-	const char *argv7[] = {prgname, "-c", "10",
+	const char *argv7[] = {prgname,
 			"--file-prefix=" memtest, "--socket-mem="};
 
 	/* valid --socket-mem specified together with -m flag */
-	const char *argv8[] = {prgname, "-c", "10",
+	const char *argv8[] = {prgname,
 			"--file-prefix=" memtest, "-m", DEFAULT_MEM_SIZE, "--socket-mem=2,2"};
 
 	/* construct an invalid socket mask with 2 megs on each socket plus
@@ -1243,11 +1248,11 @@ test_memory_flags(void)
 	}
 
 	/* invalid --socket-mem flag (with extra socket) */
-	const char *argv9[] = {prgname, "-c", "10",
+	const char *argv9[] = {prgname,
 			"--file-prefix=" memtest, invalid_socket_mem};
 
 	/* valid --socket-mem flag */
-	const char *argv10[] = {prgname, "-c", "10",
+	const char *argv10[] = {prgname,
 			"--file-prefix=" memtest, valid_socket_mem};
 
 	if (launch_proc(argv0) != 0) {
