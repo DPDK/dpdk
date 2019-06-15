@@ -126,11 +126,9 @@ get_enabled_cores_list(void)
 	uint32_t i = 0;
 	uint16_t core_id;
 	uint32_t max_cores = rte_lcore_count();
-	for (core_id = 0; core_id < RTE_MAX_LCORE && i < max_cores; core_id++) {
-		if (rte_lcore_is_enabled(core_id)) {
-			enabled_core_ids[i] = core_id;
-			i++;
-		}
+	RTE_LCORE_FOREACH(core_id) {
+		enabled_core_ids[i] = core_id;
+		i++;
 	}
 
 	if (i != max_cores) {
@@ -738,7 +736,7 @@ test_hash_add_no_ks_lookup_hit(struct rwc_perf *rwc_perf_results, int rwc_lf,
 							enabled_core_ids[i]);
 
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
-				if (rte_eal_wait_lcore(i) < 0)
+				if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 					goto err;
 
 			unsigned long long cycles_per_lookup =
@@ -810,7 +808,7 @@ test_hash_add_no_ks_lookup_miss(struct rwc_perf *rwc_perf_results, int rwc_lf,
 			if (ret < 0)
 				goto err;
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
-				if (rte_eal_wait_lcore(i) < 0)
+				if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 					goto err;
 
 			unsigned long long cycles_per_lookup =
@@ -886,7 +884,7 @@ test_hash_add_ks_lookup_hit_non_sp(struct rwc_perf *rwc_perf_results,
 			if (ret < 0)
 				goto err;
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
-				if (rte_eal_wait_lcore(i) < 0)
+				if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 					goto err;
 
 			unsigned long long cycles_per_lookup =
@@ -962,7 +960,7 @@ test_hash_add_ks_lookup_hit_sp(struct rwc_perf *rwc_perf_results, int rwc_lf,
 			if (ret < 0)
 				goto err;
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
-				if (rte_eal_wait_lcore(i) < 0)
+				if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 					goto err;
 
 			unsigned long long cycles_per_lookup =
@@ -1037,7 +1035,7 @@ test_hash_add_ks_lookup_miss(struct rwc_perf *rwc_perf_results, int rwc_lf, int
 			if (ret < 0)
 				goto err;
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
-				if (rte_eal_wait_lcore(i) < 0)
+				if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 					goto err;
 
 			unsigned long long cycles_per_lookup =
@@ -1132,12 +1130,12 @@ test_hash_multi_add_lookup(struct rwc_perf *rwc_perf_results, int rwc_lf,
 				for (i = rwc_core_cnt[n] + 1;
 				     i <= rwc_core_cnt[m] + rwc_core_cnt[n];
 				     i++)
-					rte_eal_wait_lcore(i);
+					rte_eal_wait_lcore(enabled_core_ids[i]);
 
 				writer_done = 1;
 
 				for (i = 1; i <= rwc_core_cnt[n]; i++)
-					if (rte_eal_wait_lcore(i) < 0)
+					if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 						goto err;
 
 				unsigned long long cycles_per_lookup =
@@ -1221,7 +1219,7 @@ test_hash_add_ks_lookup_hit_extbkt(struct rwc_perf *rwc_perf_results,
 			writer_done = 1;
 
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
-				if (rte_eal_wait_lcore(i) < 0)
+				if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 					goto err;
 
 			unsigned long long cycles_per_lookup =
