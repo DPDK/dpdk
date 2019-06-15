@@ -148,8 +148,7 @@ test_deps = ['acl',
 	'timer'
 ]
 
-# All test cases in fast_parallel_test_names list are parallel
-fast_parallel_test_names = [
+fast_test_names = [
         'acl_autotest',
         'alarm_autotest',
         'atomic_autotest',
@@ -209,10 +208,6 @@ fast_parallel_test_names = [
         'timer_autotest',
         'user_delay_us',
         'version_autotest',
-]
-
-# All test cases in fast_non_parallel_test_names list are non-parallel
-fast_non_parallel_test_names = [
         'bitratestats_autotest',
         'crc_autotest',
         'delay_us_sleep_autotest',
@@ -236,7 +231,6 @@ fast_non_parallel_test_names = [
         'thash_autotest',
 ]
 
-# All test cases in perf_test_names list are non-parallel
 perf_test_names = [
         'ring_perf_autotest',
         'mempool_perf_autotest',
@@ -264,7 +258,6 @@ perf_test_names = [
         'stack_lf_perf_autotest',
 ]
 
-# All test cases in driver_test_names list are non-parallel
 driver_test_names = [
         'cryptodev_aesni_mb_autotest',
         'cryptodev_aesni_gcm_autotest',
@@ -286,7 +279,6 @@ driver_test_names = [
         'link_bonding_rssconf_autotest',
 ]
 
-# All test cases in dump_test_names list are non-parallel
 dump_test_names = [
         'dump_struct_sizes',
         'dump_mempool',
@@ -335,7 +327,7 @@ if dpdk_conf.has('RTE_LIBRTE_COMPRESSDEV')
 		test_dep_objs += compress_test_dep
 		test_sources += 'test_compressdev.c'
 		test_deps += 'compressdev'
-		fast_non_parallel_test_names += 'compressdev_autotest'
+		fast_test_names += 'compressdev_autotest'
 	endif
 endif
 
@@ -383,30 +375,23 @@ endif
 num_cores_arg = '-l ' + num_cores
 
 test_args = [num_cores_arg]
-foreach arg : fast_parallel_test_names
+foreach arg : fast_test_names
 	if host_machine.system() == 'linux'
 		test(arg, dpdk_test,
 			  env : ['DPDK_TEST=' + arg],
 			  args : test_args +
 				 ['--file-prefix=@0@'.format(arg)],
 		timeout : timeout_seconds_fast,
+		is_parallel : false,
 		suite : 'fast-tests')
 	else
 		test(arg, dpdk_test,
 			env : ['DPDK_TEST=' + arg],
 			args : test_args,
 		timeout : timeout_seconds_fast,
-		suite : 'fast-tests')
-	endif
-endforeach
-
-foreach arg : fast_non_parallel_test_names
-	test(arg, dpdk_test,
-		env : ['DPDK_TEST=' + arg],
-		args : test_args,
-		timeout : timeout_seconds_fast,
 		is_parallel : false,
 		suite : 'fast-tests')
+	endif
 endforeach
 
 foreach arg : perf_test_names
