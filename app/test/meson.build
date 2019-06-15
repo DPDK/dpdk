@@ -200,10 +200,7 @@ fast_parallel_test_names = [
 # All test cases in fast_non_parallel_test_names list are non-parallel
 fast_non_parallel_test_names = [
         'bitratestats_autotest',
-        'cryptodev_sw_armv8_autotest',
         'crc_autotest',
-        'cryptodev_openssl_asym_autotest',
-        'cryptodev_sw_mvsam_autotest',
         'delay_us_sleep_autotest',
         'distributor_autotest',
         'eventdev_common_autotest',
@@ -259,21 +256,22 @@ perf_test_names = [
 
 # All test cases in driver_test_names list are non-parallel
 driver_test_names = [
+        'cryptodev_aesni_mb_autotest',
+        'cryptodev_aesni_gcm_autotest',
+        'cryptodev_dpaa_sec_autotest',
+        'cryptodev_dpaa2_sec_autotest',
+        'cryptodev_null_autotest',
+        'cryptodev_openssl_autotest',
+        'cryptodev_openssl_asym_autotest',
+        'cryptodev_qat_autotest',
+        'cryptodev_sw_armv8_autotest',
+        'cryptodev_sw_kasumi_autotest',
+        'cryptodev_sw_mvsam_autotest',
+        'cryptodev_sw_snow3g_autotest',
+        'cryptodev_sw_zuc_autotest',
         'link_bonding_autotest',
         'link_bonding_mode4_autotest',
         'link_bonding_rssconf_autotest',
-        'cryptodev_sw_mrvl_autotest',
-        'cryptodev_dpaa2_sec_autotest',
-        'cryptodev_dpaa_sec_autotest',
-        'cryptodev_qat_autotest',
-        'cryptodev_aesni_mb_autotest',
-        'cryptodev_openssl_autotest',
-        'cryptodev_scheduler_autotest',
-        'cryptodev_aesni_gcm_autotest',
-        'cryptodev_null_autotest',
-        'cryptodev_sw_snow3g_autotest',
-        'cryptodev_sw_kasumi_autotest',
-        'cryptodev_sw_zuc_autotest',
 ]
 
 # All test cases in dump_test_names list are non-parallel
@@ -327,6 +325,10 @@ if dpdk_conf.has('RTE_LIBRTE_COMPRESSDEV')
 		test_deps += 'compressdev'
 		fast_non_parallel_test_names += 'compressdev_autotest'
 	endif
+endif
+
+if dpdk_conf.has('RTE_LIBRTE_PMD_CRYPTO_SCHEDULER')
+	driver_test_names += 'cryptodev_scheduler_autotest'
 endif
 
 foreach d:test_deps

@@ -393,8 +393,8 @@ parallel_test_list = [
         "Report":  None,
     },
     {
-        "Name":    "Cryptodev sw mrvl autotest",
-        "Command": "cryptodev_sw_mrvl_autotest",
+        "Name":    "Cryptodev sw mvsam autotest",
+        "Command": "cryptodev_sw_mvsam_autotest",
         "Func":    default_autotest,
         "Report":  None,
     },
