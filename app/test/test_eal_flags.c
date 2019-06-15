@@ -245,25 +245,25 @@ test_whitelist_flag(void)
 #endif
 
 	const char *wlinval[][11] = {
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+		{prgname, prefix, mp_flag, "-c", "1",
 				pci_whitelist, "error", "", ""},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+		{prgname, prefix, mp_flag, "-c", "1",
 				pci_whitelist, "0:0:0", "", ""},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+		{prgname, prefix, mp_flag, "-c", "1",
 				pci_whitelist, "0:error:0.1", "", ""},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+		{prgname, prefix, mp_flag, "-c", "1",
 				pci_whitelist, "0:0:0.1error", "", ""},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+		{prgname, prefix, mp_flag, "-c", "1",
 				pci_whitelist, "error0:0:0.1", "", ""},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+		{prgname, prefix, mp_flag, "-c", "1",
 				pci_whitelist, "0:0:0.1.2", "", ""},
 	};
 	/* Test with valid whitelist option */
-	const char *wlval1[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+	const char *wlval1[] = {prgname, prefix, mp_flag, "-c", "1",
 			pci_whitelist, "00FF:09:0B.3"};
-	const char *wlval2[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+	const char *wlval2[] = {prgname, prefix, mp_flag, "-c", "1",
 			pci_whitelist, "09:0B.3", pci_whitelist, "0a:0b.1"};
-	const char *wlval3[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1",
+	const char *wlval3[] = {prgname, prefix, mp_flag, "-c", "1",
 			pci_whitelist, "09:0B.3,type=test",
 			pci_whitelist, "08:00.1,type=normal",
 	};
@@ -311,15 +311,16 @@ test_invalid_b_flag(void)
 #endif
 
 	const char *blinval[][9] = {
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-b", "error"},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-b", "0:0:0"},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-b", "0:error:0.1"},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-b", "0:0:0.1error"},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-b", "error0:0:0.1"},
-		{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-b", "0:0:0.1.2"},
+		{prgname, prefix, mp_flag, "-c", "1", "-b", "error"},
+		{prgname, prefix, mp_flag, "-c", "1", "-b", "0:0:0"},
+		{prgname, prefix, mp_flag, "-c", "1", "-b", "0:error:0.1"},
+		{prgname, prefix, mp_flag, "-c", "1", "-b", "0:0:0.1error"},
+		{prgname, prefix, mp_flag, "-c", "1", "-b", "error0:0:0.1"},
+		{prgname, prefix, mp_flag, "-c", "1", "-b", "0:0:0.1.2"},
 	};
 	/* Test with valid blacklist option */
-	const char *blval[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-b", "FF:09:0B.3"};
+	const char *blval[] = {prgname, prefix, mp_flag, "-c", "1",
+			       "-b", "FF:09:0B.3"};
 
 	int i;
 
@@ -354,17 +355,17 @@ test_invalid_vdev_flag(void)
 #endif
 
 	/* Test with invalid vdev option */
-	const char *vdevinval[] = {prgname, prefix, no_huge, "-n", "1",
+	const char *vdevinval[] = {prgname, prefix, no_huge,
 				"-c", "1", vdev, "eth_dummy"};
 
 	/* Test with valid vdev option */
-	const char *vdevval1[] = {prgname, prefix, no_huge, "-n", "1",
+	const char *vdevval1[] = {prgname, prefix, no_huge,
 	"-c", "1", vdev, "net_ring0"};
 
-	const char *vdevval2[] = {prgname, prefix, no_huge, "-n", "1",
+	const char *vdevval2[] = {prgname, prefix, no_huge,
 	"-c", "1", vdev, "net_ring0,args=test"};
 
-	const char *vdevval3[] = {prgname, prefix, no_huge, "-n", "1",
+	const char *vdevval3[] = {prgname, prefix, no_huge,
 	"-c", "1", vdev, "net_ring0,nodeaction=r1:0:CREATE"};
 
 	if (launch_proc(vdevinval) == 0) {
@@ -412,13 +413,13 @@ test_invalid_r_flag(void)
 #endif
 
 	const char *rinval[][9] = {
-			{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-r", "error"},
-			{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-r", "0"},
-			{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-r", "-1"},
-			{prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-r", "17"},
+			{prgname, prefix, mp_flag, "-c", "1", "-r", "error"},
+			{prgname, prefix, mp_flag, "-c", "1", "-r", "0"},
+			{prgname, prefix, mp_flag, "-c", "1", "-r", "-1"},
+			{prgname, prefix, mp_flag, "-c", "1", "-r", "17"},
 	};
 	/* Test with valid blacklist option */
-	const char *rval[] = {prgname, prefix, mp_flag, "-n", "1", "-c", "1", "-r", "16"};
+	const char *rval[] = {prgname, prefix, mp_flag, "-c", "1", "-r", "16"};
 
 	int i;
 
@@ -456,74 +457,74 @@ test_missing_c_flag(void)
 #endif
 
 	/* -c flag but no coremask value */
-	const char *argv1[] = { prgname, prefix, mp_flag, "-n", "3", "-c"};
+	const char *argv1[] = { prgname, prefix, mp_flag, "-c"};
 	/* No -c, -l or --lcores flag at all */
-	const char *argv2[] = { prgname, prefix, mp_flag, "-n", "3"};
+	const char *argv2[] = { prgname, prefix, mp_flag};
 	/* bad coremask value */
 	const char *argv3[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-c", "error" };
+				"-c", "error" };
 	/* sanity check of tests - valid coremask value */
 	const char *argv4[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-c", "1" };
+				"-c", "1" };
 	/* -l flag but no corelist value */
 	const char *argv5[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-l"};
+				"-l"};
 	const char *argv6[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-l", " " };
+				"-l", " " };
 	/* bad corelist values */
 	const char *argv7[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-l", "error" };
+				"-l", "error" };
 	const char *argv8[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-l", "1-" };
+				"-l", "1-" };
 	const char *argv9[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-l", "1," };
+				"-l", "1," };
 	const char *argv10[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "-l", "1#2" };
+				 "-l", "1#2" };
 	/* core number is negative value */
 	const char * const argv11[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-l", "-5" };
+				"-l", "-5" };
 	const char * const argv12[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-l", "-5-7" };
+				"-l", "-5-7" };
 	/* core number is maximum value */
 	const char * const argv13[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-l", RTE_STR(RTE_MAX_LCORE) };
+				"-l", RTE_STR(RTE_MAX_LCORE) };
 	const char * const argv14[] = { prgname, prefix, mp_flag,
-				"-n", "3", "-l", "1-"RTE_STR(RTE_MAX_LCORE) };
+				"-l", "1-"RTE_STR(RTE_MAX_LCORE) };
 	/* sanity check test - valid corelist value */
 	const char * const argv15[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "-l", "1-2,3" };
+				 "-l", "1-2,3" };
 
 	/* --lcores flag but no lcores value */
 	const char * const argv16[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores" };
+				 "--lcores" };
 	const char * const argv17[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", " " };
+				 "--lcores", " " };
 	/* bad lcores value */
 	const char * const argv18[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "1-3-5" };
+				 "--lcores", "1-3-5" };
 	const char * const argv19[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "0-1,,2" };
+				 "--lcores", "0-1,,2" };
 	const char * const argv20[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "0-,1" };
+				 "--lcores", "0-,1" };
 	const char * const argv21[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "(0-,2-4)" };
+				 "--lcores", "(0-,2-4)" };
 	const char * const argv22[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "(-1,2)" };
+				 "--lcores", "(-1,2)" };
 	const char * const argv23[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "(2-4)@(2-4-6)" };
+				 "--lcores", "(2-4)@(2-4-6)" };
 	const char * const argv24[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "(a,2)" };
+				 "--lcores", "(a,2)" };
 	const char * const argv25[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "1-3@(1,3)" };
+				 "--lcores", "1-3@(1,3)" };
 	const char * const argv26[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "3@((1,3)" };
+				 "--lcores", "3@((1,3)" };
 	const char * const argv27[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "(4-7)=(1,3)" };
+				 "--lcores", "(4-7)=(1,3)" };
 	const char * const argv28[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores", "[4-7]@(1,3)" };
+				 "--lcores", "[4-7]@(1,3)" };
 	/* sanity check of tests - valid lcores value */
 	const char * const argv29[] = { prgname, prefix, mp_flag,
-				 "-n", "3", "--lcores",
+				 "--lcores",
 				 "0-1,2@(5-7),(3-5)@(0,2),(0,6),7"};
 
 	if (launch_proc(argv2) != 0) {
@@ -606,16 +607,22 @@ test_master_lcore_flag(void)
 #endif
 
 	/* --master-lcore flag but no value */
-	const char *argv1[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore"};
+	const char *argv1[] = { prgname, prefix, mp_flag,
+				"-c", "3", "--master-lcore"};
 	/* --master-lcore flag with invalid value */
-	const char *argv2[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "-1"};
-	const char *argv3[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "X"};
+	const char *argv2[] = { prgname, prefix, mp_flag,
+				"-c", "3", "--master-lcore", "-1"};
+	const char *argv3[] = { prgname, prefix, mp_flag,
+				"-c", "3", "--master-lcore", "X"};
 	/* master lcore not in coremask */
-	const char *argv4[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "2"};
+	const char *argv4[] = { prgname, prefix, mp_flag,
+				"-c", "3", "--master-lcore", "2"};
 	/* valid value */
-	const char *argv5[] = { prgname, prefix, mp_flag, "-n", "1", "-c", "3", "--master-lcore", "1"};
+	const char *argv5[] = { prgname, prefix, mp_flag,
+				"-c", "3", "--master-lcore", "1"};
 	/* valid value set before coremask */
-	const char *argv6[] = { prgname, prefix, mp_flag, "-n", "1", "--master-lcore", "1", "-c", "3"};
+	const char *argv6[] = { prgname, prefix, mp_flag,
+				"--master-lcore", "1", "-c", "3"};
 
 	if (launch_proc(argv1) == 0
 			|| launch_proc(argv2) == 0
@@ -703,9 +710,9 @@ test_no_hpet_flag(void)
 #endif
 
 	/* With --no-hpet */
-	const char *argv1[] = {prgname, prefix, mp_flag, no_hpet, "-c", "1", "-n", "2"};
+	const char *argv1[] = {prgname, prefix, mp_flag, no_hpet, "-c", "1"};
 	/* Without --no-hpet */
-	const char *argv2[] = {prgname, prefix, mp_flag, "-c", "1", "-n", "2"};
+	const char *argv2[] = {prgname, prefix, mp_flag, "-c", "1"};
 
 	if (launch_proc(argv1) != 0) {
 		printf("Error - process did not run ok with --no-hpet flag\n");
@@ -734,16 +741,16 @@ test_no_huge_flag(void)
 #endif
 
 	/* With --no-huge */
-	const char *argv1[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2"};
+	const char *argv1[] = {prgname, prefix, no_huge, "-c", "1"};
 	/* With --no-huge and -m */
-	const char *argv2[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
+	const char *argv2[] = {prgname, prefix, no_huge, "-c", "1",
 			"-m", DEFAULT_MEM_SIZE};
 
 	/* With --no-huge and --socket-mem */
-	const char *argv3[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
+	const char *argv3[] = {prgname, prefix, no_huge, "-c", "1",
 			"--socket-mem=" DEFAULT_MEM_SIZE};
 	/* With --no-huge, -m and --socket-mem */
-	const char *argv4[] = {prgname, prefix, no_huge, "-c", "1", "-n", "2",
+	const char *argv4[] = {prgname, prefix, no_huge, "-c", "1",
 			"-m", DEFAULT_MEM_SIZE, "--socket-mem=" DEFAULT_MEM_SIZE};
 	if (launch_proc(argv1) != 0) {
 		printf("Error - process did not run ok with --no-huge flag\n");
@@ -844,17 +851,17 @@ test_misc_flags(void)
 	/* With invalid --syslog */
 	const char *argv5[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog", "error"};
 	/* With no-sh-conf, also use no-huge to ensure this test runs on BSD */
-	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
+	const char *argv6[] = {prgname, "-c", "1", "-m", DEFAULT_MEM_SIZE,
 			no_shconf, nosh_prefix, no_huge};
 
 	/* With --huge-dir */
-	const char *argv7[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
+	const char *argv7[] = {prgname, "-c", "1", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", hugepath};
 	/* With empty --huge-dir (should fail) */
-	const char *argv8[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
+	const char *argv8[] = {prgname, "-c", "1", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir"};
 	/* With invalid --huge-dir */
-	const char *argv9[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
+	const char *argv9[] = {prgname, "-c", "1", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", "invalid"};
 	/* Secondary process with invalid --huge-dir (should run as flag has no
 	 * effect on secondary processes) */
@@ -862,23 +869,23 @@ test_misc_flags(void)
 
 	/* try running with base-virtaddr param */
 	const char *argv11[] = {prgname, "--file-prefix=virtaddr",
-			"-c", "1", "-n", "2", "--base-virtaddr=0x12345678"};
+			"-c", "1", "--base-virtaddr=0x12345678"};
 
 	/* try running with --vfio-intr INTx flag */
 	const char *argv12[] = {prgname, "--file-prefix=intr",
-			"-c", "1", "-n", "2", "--vfio-intr=legacy"};
+			"-c", "1", "--vfio-intr=legacy"};
 
 	/* try running with --vfio-intr MSI flag */
 	const char *argv13[] = {prgname, "--file-prefix=intr",
-			"-c", "1", "-n", "2", "--vfio-intr=msi"};
+			"-c", "1", "--vfio-intr=msi"};
 
 	/* try running with --vfio-intr MSI-X flag */
 	const char *argv14[] = {prgname, "--file-prefix=intr",
-			"-c", "1", "-n", "2", "--vfio-intr=msix"};
+			"-c", "1", "--vfio-intr=msix"};
 
 	/* try running with --vfio-intr invalid flag */
 	const char *argv15[] = {prgname, "--file-prefix=intr",
-			"-c", "1", "-n", "2", "--vfio-intr=invalid"};
+			"-c", "1", "--vfio-intr=invalid"};
 
 	/* run all tests also applicable to FreeBSD first */
 
@@ -989,25 +996,25 @@ test_file_prefix(void)
 #endif
 
 	/* this should fail unless the test itself is run with "memtest" prefix */
-	const char *argv0[] = {prgname, mp_flag, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
-			"--file-prefix=" memtest };
+	const char *argv0[] = {prgname, mp_flag, "-c", "1", "-m",
+			DEFAULT_MEM_SIZE, "--file-prefix=" memtest };
 
 	/* primary process with memtest1 and default mem mode */
-	const char *argv1[] = {prgname, "-c", "1", "-n", "2", "-m",
+	const char *argv1[] = {prgname, "-c", "1", "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest1 };
 
 	/* primary process with memtest1 and legacy mem mode */
-	const char *argv2[] = {prgname, "-c", "1", "-n", "2", "-m",
+	const char *argv2[] = {prgname, "-c", "1", "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest1,
 			"--legacy-mem" };
 
 	/* primary process with memtest2 and legacy mem mode */
-	const char *argv3[] = {prgname, "-c", "1", "-n", "2", "-m",
+	const char *argv3[] = {prgname, "-c", "1", "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest2,
 			"--legacy-mem" };
 
 	/* primary process with memtest2 and default mem mode */
-	const char *argv4[] = {prgname, "-c", "1", "-n", "2", "-m",
+	const char *argv4[] = {prgname, "-c", "1", "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest2 };
 
 	/* check if files for current prefix are present */
@@ -1153,38 +1160,38 @@ test_memory_flags(void)
 
 	/* valid -m flag and mp flag */
 	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "10",
-			"-n", "2", "-m", DEFAULT_MEM_SIZE};
+			"-m", DEFAULT_MEM_SIZE};
 
 	/* valid -m flag */
-	const char *argv1[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv1[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, "-m", DEFAULT_MEM_SIZE};
 
 	/* valid (zero) --socket-mem flag */
-	const char *argv2[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv2[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, "--socket-mem=0,0,0,0"};
 
 	/* invalid (incomplete) --socket-mem flag */
-	const char *argv3[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv3[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, "--socket-mem=2,2,"};
 
 	/* invalid (mixed with invalid data) --socket-mem flag */
-	const char *argv4[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv4[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, "--socket-mem=2,2,Fred"};
 
 	/* invalid (with numeric value as last character) --socket-mem flag */
-	const char *argv5[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv5[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, "--socket-mem=2,2,Fred0"};
 
 	/* invalid (with empty socket) --socket-mem flag */
-	const char *argv6[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv6[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, "--socket-mem=2,,2"};
 
 	/* invalid (null) --socket-mem flag */
-	const char *argv7[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv7[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, "--socket-mem="};
 
 	/* valid --socket-mem specified together with -m flag */
-	const char *argv8[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv8[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, "-m", DEFAULT_MEM_SIZE, "--socket-mem=2,2"};
 
 	/* construct an invalid socket mask with 2 megs on each socket plus
@@ -1236,11 +1243,11 @@ test_memory_flags(void)
 	}
 
 	/* invalid --socket-mem flag (with extra socket) */
-	const char *argv9[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv9[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, invalid_socket_mem};
 
 	/* valid --socket-mem flag */
-	const char *argv10[] = {prgname, "-c", "10", "-n", "2",
+	const char *argv10[] = {prgname, "-c", "10",
 			"--file-prefix=" memtest, valid_socket_mem};
 
 	if (launch_proc(argv0) != 0) {

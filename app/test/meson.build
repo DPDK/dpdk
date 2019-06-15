@@ -368,7 +368,7 @@ endif
 
 num_cores_arg = '-l ' + num_cores
 
-test_args = [num_cores_arg, '-n 4']
+test_args = [num_cores_arg]
 foreach arg : fast_parallel_test_names
 	if host_machine.system() == 'linux'
 		test(arg, dpdk_test,
