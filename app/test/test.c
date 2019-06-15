@@ -208,14 +208,16 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 		printf(" + Test Suite : %s\n", suite->suite_name);
 	}
 
-	if (suite->setup)
-		if (suite->setup() != 0) {
+	if (suite->setup) {
+		test_success = suite->setup();
+		if (test_success != 0) {
 			/*
-			 * setup failed, so count all enabled tests and mark
-			 * them as failed
+			 * setup did not pass, so count all enabled tests and
+			 * mark them as failed/skipped
 			 */
 			while (suite->unit_test_cases[total].testcase) {
-				if (!suite->unit_test_cases[total].enabled)
+				if (!suite->unit_test_cases[total].enabled ||
+				    test_success == TEST_SKIPPED)
 					skipped++;
 				else
 					failed++;
@@ -223,6 +225,7 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 			}
 			goto suite_summary;
 		}
+	}
 
 	printf(" + ------------------------------------------------------- +\n");
 
@@ -246,6 +249,8 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 			test_success = suite->unit_test_cases[total].testcase();
 			if (test_success == TEST_SUCCESS)
 				succeeded++;
+			else if (test_success == TEST_SKIPPED)
+				skipped++;
 			else if (test_success == -ENOTSUP)
 				unsupported++;
 			else
@@ -262,6 +267,8 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 
 		if (test_success == TEST_SUCCESS)
 			status = "succeeded";
+		else if (test_success == TEST_SKIPPED)
+			status = "skipped";
 		else if (test_success == -ENOTSUP)
 			status = "unsupported";
 		else
@@ -293,7 +300,8 @@ suite_summary:
 	last_test_result = failed;
 
 	if (failed)
-		return -1;
-
-	return 0;
+		return TEST_FAILED;
+	if (total == skipped)
+		return TEST_SKIPPED;
+	return TEST_SUCCESS;
 }

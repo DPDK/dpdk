@@ -753,18 +753,17 @@ static int
 test_refcnt_mbuf(void)
 {
 #ifdef RTE_MBUF_REFCNT_ATOMIC
-	unsigned lnum, master, slave, tref;
+	unsigned int master, slave, tref;
 	int ret = -1;
 	struct rte_mempool *refcnt_pool = NULL;
 	struct rte_ring *refcnt_mbuf_ring = NULL;
 
-	if ((lnum = rte_lcore_count()) == 1) {
-		printf("skipping %s, number of lcores: %u is not enough\n",
-		    __func__, lnum);
-		return 0;
+	if (rte_lcore_count() < 2) {
+		printf("Not enough cores for test_refcnt_mbuf, expecting at least 2\n");
+		return TEST_SKIPPED;
 	}
 
-	printf("starting %s, at %u lcores\n", __func__, lnum);
+	printf("starting %s, at %u lcores\n", __func__, rte_lcore_count());
 
 	/* create refcnt pool & ring if they don't exist */
 
@@ -1206,7 +1205,7 @@ test_mbuf(void)
 		goto err;
 	}
 
-	if (test_refcnt_mbuf()<0){
+	if (test_refcnt_mbuf() < 0) {
 		printf("test_refcnt_mbuf() failed \n");
 		goto err;
 	}

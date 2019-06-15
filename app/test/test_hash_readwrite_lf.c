@@ -1254,10 +1254,10 @@ test_hash_readwrite_lf_main(void)
 	int htm;
 	int use_jhash = 0;
 	int ext_bkt = 0;
-	if (rte_lcore_count() == 1) {
-		printf("More than one lcore is required "
-			"to do read write lock-free concurrency test\n");
-		return -1;
+
+	if (rte_lcore_count() < 2) {
+		printf("Not enough cores for hash_readwrite_lf_autotest, expecting at least 2\n");
+		return TEST_SKIPPED;
 	}
 
 	setlocale(LC_NUMERIC, "");

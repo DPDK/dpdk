@@ -594,8 +594,8 @@ test_distributor(void)
 	int i;
 
 	if (rte_lcore_count() < 2) {
-		printf("ERROR: not enough cores to test distributor\n");
-		return -1;
+		printf("Not enough cores for distributor_autotest, expecting at least 2\n");
+		return TEST_SKIPPED;
 	}
 
 	if (db == NULL) {

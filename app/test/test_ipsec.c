@@ -296,8 +296,8 @@ testsuite_setup(void)
 
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
-		RTE_LOG(ERR, USER1, "No crypto devices found?\n");
-		return TEST_FAILED;
+		RTE_LOG(WARNING, USER1, "No crypto devices found?\n");
+		return TEST_SKIPPED;
 	}
 
 	/* Find first valid crypto device */

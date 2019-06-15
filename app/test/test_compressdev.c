@@ -134,8 +134,8 @@ testsuite_setup(void)
 	unsigned int i;
 
 	if (rte_compressdev_count() == 0) {
-		RTE_LOG(ERR, USER1, "Need at least one compress device\n");
-		return TEST_FAILED;
+		RTE_LOG(WARNING, USER1, "Need at least one compress device\n");
+		return TEST_SKIPPED;
 	}
 
 	RTE_LOG(NOTICE, USER1, "Running tests on device %s\n",

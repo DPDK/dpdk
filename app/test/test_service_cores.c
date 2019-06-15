@@ -502,6 +502,10 @@ service_lcore_running_check(void)
 static int
 service_lcore_add_del(void)
 {
+	if (!rte_lcore_is_enabled(0) || !rte_lcore_is_enabled(1) ||
+	    !rte_lcore_is_enabled(2) || !rte_lcore_is_enabled(3))
+		return TEST_SKIPPED;
+
 	/* check initial count */
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_count(),
 			"Service lcore count has value before adding a lcore");
@@ -669,6 +673,11 @@ static int
 service_mt_safe_poll(void)
 {
 	int mt_safe = 1;
+
+	if (!rte_lcore_is_enabled(0) || !rte_lcore_is_enabled(1) ||
+	    !rte_lcore_is_enabled(2))
+		return TEST_SKIPPED;
+
 	TEST_ASSERT_EQUAL(1, service_threaded_test(mt_safe),
 			"Error: MT Safe service not run by two cores concurrently");
 	return TEST_SUCCESS;
@@ -681,6 +690,11 @@ static int
 service_mt_unsafe_poll(void)
 {
 	int mt_safe = 0;
+
+	if (!rte_lcore_is_enabled(0) || !rte_lcore_is_enabled(1) ||
+	    !rte_lcore_is_enabled(2))
+		return TEST_SKIPPED;
+
 	TEST_ASSERT_EQUAL(1, service_threaded_test(mt_safe),
 			"Error: NON MT Safe service run by two cores concurrently");
 	return TEST_SUCCESS;

@@ -336,11 +336,13 @@ test_stack_multithreaded(uint32_t flags)
 	struct rte_stack *s;
 	rte_atomic64_t size;
 
+	if (rte_lcore_count() < 2) {
+		printf("Not enough cores for test_stack_multithreaded, expecting at least 2\n");
+		return TEST_SKIPPED;
+	}
+
 	printf("[%s():%u] Running with %u lcores\n",
 	       __func__, __LINE__, rte_lcore_count());
-
-	if (rte_lcore_count() < 2)
-		return 0;
 
 	args = rte_malloc(NULL, sizeof(struct test_args) * RTE_MAX_LCORE, 0);
 	if (args == NULL) {

@@ -978,15 +978,15 @@ test_rcu_qsbr_main(void)
 {
 	uint16_t core_id;
 
+	if (rte_lcore_count() < 5) {
+		printf("Not enough cores for rcu_qsbr_autotest, expecting at least 5\n");
+		return TEST_SKIPPED;
+	}
+
 	num_cores = 0;
 	RTE_LCORE_FOREACH_SLAVE(core_id) {
 		enabled_core_ids[num_cores] = core_id;
 		num_cores++;
-	}
-
-	if (num_cores < 4) {
-		printf("Test failed! Need 4 or more cores\n");
-		goto test_fail;
 	}
 
 	/* Error-checking test cases */

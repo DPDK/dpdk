@@ -260,11 +260,10 @@ err1:
 static int
 test_hash_multiwriter_main(void)
 {
-	if (rte_lcore_count() == 1) {
-		printf("More than one lcore is required to do multiwriter test\n");
-		return 0;
+	if (rte_lcore_count() < 2) {
+		printf("Not enough cores for distributor_autotest, expecting at least 2\n");
+		return TEST_SKIPPED;
 	}
-
 
 	setlocale(LC_NUMERIC, "");
 

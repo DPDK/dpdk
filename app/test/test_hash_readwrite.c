@@ -618,10 +618,9 @@ test_hash_readwrite_main(void)
 	int use_htm, use_ext,  reader_faster;
 	unsigned int i = 0, core_id = 0;
 
-	if (rte_lcore_count() <= 2) {
-		printf("More than two lcores are required "
-			"to do read write test\n");
-		return -1;
+	if (rte_lcore_count() < 3) {
+		printf("Not enough cores for hash_readwrite_autotest, expecting at least 3\n");
+		return TEST_SKIPPED;
 	}
 
 	RTE_LCORE_FOREACH_SLAVE(core_id) {

@@ -208,8 +208,8 @@ test_distributor_perf(void)
 	static struct rte_mempool *p;
 
 	if (rte_lcore_count() < 2) {
-		printf("ERROR: not enough cores to test distributor\n");
-		return -1;
+		printf("Not enough cores for distributor_perf_autotest, expecting at least 2\n");
+		return TEST_SKIPPED;
 	}
 
 	/* first time how long it takes to round-trip a cache line */

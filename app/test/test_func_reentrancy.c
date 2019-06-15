@@ -473,9 +473,9 @@ test_func_reentrancy(void)
 	uint32_t case_id;
 	struct test_case *pt_case = NULL;
 
-	if (rte_lcore_count() <= 1) {
-		printf("Not enough lcore for testing\n");
-		return -1;
+	if (rte_lcore_count() < 2) {
+		printf("Not enough cores for func_reentrancy_autotest, expecting at least 2\n");
+		return TEST_SKIPPED;
 	}
 	else if (rte_lcore_count() > MAX_LCORES)
 		printf("Too many lcores, some cores will be disabled\n");

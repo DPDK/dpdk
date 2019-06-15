@@ -538,14 +538,14 @@ test_timer(void)
 	uint64_t cur_time;
 	uint64_t hz;
 
+	if (rte_lcore_count() < 2) {
+		printf("Not enough cores for timer_autotest, expecting at least 2\n");
+		return TEST_SKIPPED;
+	}
+
 	/* sanity check our timer sources and timer config values */
 	if (timer_sanity_check() < 0) {
 		printf("Timer sanity checks failed\n");
-		return TEST_FAILED;
-	}
-
-	if (rte_lcore_count() < 2) {
-		printf("not enough lcores for this test\n");
 		return TEST_FAILED;
 	}
 

@@ -158,8 +158,9 @@ testsuite_setup(void)
 	}
 
 	if (rte_lcore_count() < required_lcore_count) {
-		printf("%d lcores needed to run tests", required_lcore_count);
-		return TEST_FAILED;
+		printf("Not enough cores for event_timer_adapter_test, expecting at least %u\n",
+		       required_lcore_count);
+		return TEST_SKIPPED;
 	}
 
 	/* Assign lcores for various tasks */

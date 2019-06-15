@@ -118,15 +118,17 @@ test_timer_secondary(void)
 	int ret;
 
 	if (proc_type == RTE_PROC_PRIMARY) {
+		if (rte_lcore_count() < NUM_LCORES_NEEDED) {
+			printf("Not enough cores for test_timer_secondary, expecting at least %u\n",
+			       NUM_LCORES_NEEDED);
+			return TEST_SKIPPED;
+		}
+
 		mz = rte_memzone_reserve(TEST_INFO_MZ_NAME, sizeof(*test_info),
 					 SOCKET_ID_ANY, 0);
 		test_info = mz->addr;
 		TEST_ASSERT_NOT_NULL(test_info, "Couldn't allocate memory for "
 				     "test data");
-
-		TEST_ASSERT(rte_lcore_count() >= NUM_LCORES_NEEDED,
-			    "at least %d lcores needed to run tests",
-			    NUM_LCORES_NEEDED);
 
 		test_info->tim_mempool = rte_mempool_create("test_timer_mp",
 				NUM_TIMERS, sizeof(struct rte_timer), 0, 0,
