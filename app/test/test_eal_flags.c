@@ -342,10 +342,10 @@ test_invalid_b_flag(void)
  *  Test that the app doesn't run with invalid vdev option.
  *  Final test ensures it does run with valid options as sanity check
  */
-#ifdef RTE_LIBRTE_PMD_RING
 static int
 test_invalid_vdev_flag(void)
 {
+#ifdef RTE_LIBRTE_PMD_RING
 #ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point, and we also need to
 	 * run another primary process here */
@@ -391,8 +391,10 @@ test_invalid_vdev_flag(void)
 		return -1;
 	}
 	return 0;
-}
+#else
+	return TEST_SKIPPED;
 #endif
+}
 
 /*
  * Test that the app doesn't run with invalid -r option.
@@ -1413,3 +1415,17 @@ test_eal_flags(void)
 }
 
 REGISTER_TEST_COMMAND(eal_flags_autotest, test_eal_flags);
+
+/* subtests used in meson for CI */
+REGISTER_TEST_COMMAND(eal_flags_c_opt_autotest, test_missing_c_flag);
+REGISTER_TEST_COMMAND(eal_flags_master_opt_autotest, test_master_lcore_flag);
+REGISTER_TEST_COMMAND(eal_flags_n_opt_autotest, test_invalid_n_flag);
+REGISTER_TEST_COMMAND(eal_flags_hpet_autotest, test_no_hpet_flag);
+REGISTER_TEST_COMMAND(eal_flags_no_huge_autotest, test_no_huge_flag);
+REGISTER_TEST_COMMAND(eal_flags_w_opt_autotest, test_whitelist_flag);
+REGISTER_TEST_COMMAND(eal_flags_b_opt_autotest, test_invalid_b_flag);
+REGISTER_TEST_COMMAND(eal_flags_vdev_opt_autotest, test_invalid_vdev_flag);
+REGISTER_TEST_COMMAND(eal_flags_r_opt_autotest, test_invalid_r_flag);
+REGISTER_TEST_COMMAND(eal_flags_mem_autotest, test_memory_flags);
+REGISTER_TEST_COMMAND(eal_flags_file_prefix_autotest, test_file_prefix);
+REGISTER_TEST_COMMAND(eal_flags_misc_autotest, test_misc_flags);

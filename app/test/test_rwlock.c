@@ -547,3 +547,9 @@ test_rwlock(void)
 }
 
 REGISTER_TEST_COMMAND(rwlock_autotest, test_rwlock);
+
+/* subtests used in meson for CI */
+REGISTER_TEST_COMMAND(rwlock_test1_autotest, rwlock_test1);
+REGISTER_TEST_COMMAND(rwlock_rda_autotest, try_rwlock_test_rda);
+REGISTER_TEST_COMMAND(rwlock_rds_wrm_autotest, try_rwlock_test_rds_wrm);
+REGISTER_TEST_COMMAND(rwlock_rde_wro_autotest, try_rwlock_test_rde_wro);
