@@ -16,8 +16,7 @@
 #include "test.h"
 
 /* Check condition and return an error if true. */
-#define TEST_RCU_MAX_LCORE 128
-static uint16_t enabled_core_ids[TEST_RCU_MAX_LCORE];
+static uint16_t enabled_core_ids[RTE_MAX_LCORE];
 static uint8_t num_cores;
 
 static uint32_t *keys;
@@ -28,7 +27,7 @@ static volatile uint8_t writer_done;
 static volatile uint8_t all_registered;
 static volatile uint32_t thr_id;
 
-static struct rte_rcu_qsbr *t[TEST_RCU_MAX_LCORE];
+static struct rte_rcu_qsbr *t[RTE_MAX_LCORE];
 static struct rte_hash *h;
 static char hash_name[8];
 static rte_atomic64_t updates, checks;
@@ -39,38 +38,17 @@ static rte_atomic64_t update_cycles, check_cycles;
  */
 #define RCU_SCALE_DOWN 1000
 
-/* Simple way to allocate thread ids in 0 to TEST_RCU_MAX_LCORE space */
+/* Simple way to allocate thread ids in 0 to RTE_MAX_LCORE space */
 static inline uint32_t
 alloc_thread_id(void)
 {
 	uint32_t tmp_thr_id;
 
 	tmp_thr_id = __atomic_fetch_add(&thr_id, 1, __ATOMIC_RELAXED);
-	if (tmp_thr_id >= TEST_RCU_MAX_LCORE)
+	if (tmp_thr_id >= RTE_MAX_LCORE)
 		printf("Invalid thread id %u\n", tmp_thr_id);
 
 	return tmp_thr_id;
-}
-
-static inline int
-get_enabled_cores_mask(void)
-{
-	uint16_t core_id;
-	uint32_t max_cores = rte_lcore_count();
-
-	if (max_cores > TEST_RCU_MAX_LCORE) {
-		printf("Number of cores exceed %d\n", TEST_RCU_MAX_LCORE);
-		return -1;
-	}
-
-	core_id = 0;
-	num_cores = 0;
-	RTE_LCORE_FOREACH_SLAVE(core_id) {
-		enabled_core_ids[num_cores] = core_id;
-		num_cores++;
-	}
-
-	return 0;
 }
 
 static int
@@ -165,7 +143,7 @@ test_rcu_qsbr_perf(void)
 	if (all_registered == 1)
 		tmp_num_cores = num_cores - 1;
 	else
-		tmp_num_cores = TEST_RCU_MAX_LCORE;
+		tmp_num_cores = RTE_MAX_LCORE;
 
 	sz = rte_rcu_qsbr_get_memsize(tmp_num_cores);
 	t[0] = (struct rte_rcu_qsbr *)rte_zmalloc("rcu0", sz,
@@ -223,7 +201,7 @@ test_rcu_qsbr_rperf(void)
 	if (all_registered == 1)
 		tmp_num_cores = num_cores;
 	else
-		tmp_num_cores = TEST_RCU_MAX_LCORE;
+		tmp_num_cores = RTE_MAX_LCORE;
 
 	sz = rte_rcu_qsbr_get_memsize(tmp_num_cores);
 	t[0] = (struct rte_rcu_qsbr *)rte_zmalloc("rcu0", sz,
@@ -269,11 +247,11 @@ test_rcu_qsbr_wperf(void)
 	/* Number of readers does not matter for QS variable in this test
 	 * case as no reader will be registered.
 	 */
-	sz = rte_rcu_qsbr_get_memsize(TEST_RCU_MAX_LCORE);
+	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
 	t[0] = (struct rte_rcu_qsbr *)rte_zmalloc("rcu0", sz,
 						RTE_CACHE_LINE_SIZE);
 	/* QS variable is initialized */
-	rte_rcu_qsbr_init(t[0], TEST_RCU_MAX_LCORE);
+	rte_rcu_qsbr_init(t[0], RTE_MAX_LCORE);
 
 	/* Writer threads are launched */
 	for (i = 0; i < num_cores; i++)
@@ -367,7 +345,7 @@ static struct rte_hash *init_hash(void)
 
 	for (i = 0; i < TOTAL_ENTRY; i++) {
 		hash_data[i] = rte_zmalloc(NULL,
-				sizeof(uint32_t) * TEST_RCU_MAX_LCORE, 0);
+				sizeof(uint32_t) * RTE_MAX_LCORE, 0);
 		if (hash_data[i] == NULL) {
 			printf("No memory\n");
 			return NULL;
@@ -417,7 +395,7 @@ test_rcu_qsbr_sw_sv_1qs(void)
 	if (all_registered == 1)
 		tmp_num_cores = num_cores;
 	else
-		tmp_num_cores = TEST_RCU_MAX_LCORE;
+		tmp_num_cores = RTE_MAX_LCORE;
 
 	sz = rte_rcu_qsbr_get_memsize(tmp_num_cores);
 	t[0] = (struct rte_rcu_qsbr *)rte_zmalloc("rcu0", sz,
@@ -530,7 +508,7 @@ test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 	if (all_registered == 1)
 		tmp_num_cores = num_cores;
 	else
-		tmp_num_cores = TEST_RCU_MAX_LCORE;
+		tmp_num_cores = RTE_MAX_LCORE;
 
 	sz = rte_rcu_qsbr_get_memsize(tmp_num_cores);
 	t[0] = (struct rte_rcu_qsbr *)rte_zmalloc("rcu0", sz,
@@ -626,21 +604,22 @@ error:
 static int
 test_rcu_qsbr_main(void)
 {
+	uint16_t core_id;
+
 	rte_atomic64_init(&updates);
 	rte_atomic64_init(&update_cycles);
 	rte_atomic64_init(&checks);
 	rte_atomic64_init(&check_cycles);
 
-	if (get_enabled_cores_mask() != 0)
-		return -1;
+	num_cores = 0;
+	RTE_LCORE_FOREACH_SLAVE(core_id) {
+		enabled_core_ids[num_cores] = core_id;
+		num_cores++;
+	}
 
 	printf("Number of cores provided = %d\n", num_cores);
 	if (num_cores < 2) {
 		printf("Test failed! Need 2 or more cores\n");
-		goto test_fail;
-	}
-	if (num_cores > TEST_RCU_MAX_LCORE) {
-		printf("Test failed! %d cores supported\n", TEST_RCU_MAX_LCORE);
 		goto test_fail;
 	}
 
@@ -664,12 +643,12 @@ test_rcu_qsbr_main(void)
 		goto test_fail;
 
 	/* Make sure the actual number of cores provided is less than
-	 * TEST_RCU_MAX_LCORE. This will allow for some threads not
+	 * RTE_MAX_LCORE. This will allow for some threads not
 	 * to be registered on the QS variable.
 	 */
-	if (num_cores >= TEST_RCU_MAX_LCORE) {
+	if (num_cores >= RTE_MAX_LCORE) {
 		printf("Test failed! number of cores provided should be less than %d\n",
-			TEST_RCU_MAX_LCORE);
+			RTE_MAX_LCORE);
 		goto test_fail;
 	}
 
