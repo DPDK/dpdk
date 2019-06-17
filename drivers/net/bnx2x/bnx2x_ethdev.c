@@ -700,6 +700,13 @@ eth_bnx2xvf_dev_init(struct rte_eth_dev *eth_dev)
 	return bnx2x_common_dev_init(eth_dev, 1);
 }
 
+static int eth_bnx2x_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	/* mac_addrs must not be freed alone because part of dev_private */
+	eth_dev->data->mac_addrs = NULL;
+	return 0;
+}
+
 static struct rte_pci_driver rte_bnx2x_pmd;
 static struct rte_pci_driver rte_bnx2xvf_pmd;
 
@@ -718,7 +725,7 @@ static int eth_bnx2x_pci_probe(struct rte_pci_driver *pci_drv,
 
 static int eth_bnx2x_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_bnx2x_dev_uninit);
 }
 
 static struct rte_pci_driver rte_bnx2x_pmd = {
