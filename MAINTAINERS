@@ -367,7 +367,7 @@ M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/librte_ethdev/rte_mtr*
 
 Baseband API - EXPERIMENTAL
-M: Amr Mokhtar <amr.mokhtar@intel.com>
+M: Nicolas Chautru <nicolas.chautru@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_bbdev/
 F: doc/guides/prog_guide/bbdev.rst
