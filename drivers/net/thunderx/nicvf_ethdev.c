@@ -2206,6 +2206,7 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 malloc_fail:
 	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
 alarm_fail:
 	nicvf_periodic_alarm_stop(nicvf_interrupt, eth_dev);
 fail:

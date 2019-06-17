@@ -1466,6 +1466,7 @@ err_pf_setup:
 	ice_res_pool_destroy(&pf->msix_pool);
 err_msix_pool_init:
 	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
 err_init_mac:
 	ice_sched_cleanup_all(hw);
 	rte_free(hw->port_info);

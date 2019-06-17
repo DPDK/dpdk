@@ -403,9 +403,9 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 
 	return ret;
 
- error:
-	if (dev->data->mac_addrs)
-		rte_free(dev->data->mac_addrs);
+error:
+	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
 	return -1;
 }
 

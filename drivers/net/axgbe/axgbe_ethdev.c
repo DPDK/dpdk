@@ -700,6 +700,7 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	ret = pdata->phy_if.phy_init(pdata);
 	if (ret) {
 		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
 		return ret;
 	}
 

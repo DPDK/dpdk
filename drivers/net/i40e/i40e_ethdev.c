@@ -1595,6 +1595,7 @@ err_init_tunnel_filter_list:
 	rte_free(pf->ethertype.hash_map);
 err_init_ethtype_filter_list:
 	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
 err_mac_alloc:
 	i40e_vsi_release(pf->main_vsi);
 err_setup_pf_switch:
