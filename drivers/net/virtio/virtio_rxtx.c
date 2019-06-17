@@ -559,7 +559,6 @@ virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
 
 		/* TCP Segmentation Offload */
 		if (cookie->ol_flags & PKT_TX_TCP_SEG) {
-			virtio_tso_fix_cksum(cookie);
 			hdr->gso_type = (cookie->ol_flags & PKT_TX_IPV6) ?
 				VIRTIO_NET_HDR_GSO_TCPV6 :
 				VIRTIO_NET_HDR_GSO_TCPV4;
@@ -1947,6 +1946,37 @@ virtio_recv_mergeable_pkts_packed(void *rx_queue,
 	}
 
 	return nb_rx;
+}
+
+uint16_t
+virtio_xmit_pkts_prepare(void *tx_queue __rte_unused, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts)
+{
+	uint16_t nb_tx;
+	int error;
+
+	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+		struct rte_mbuf *m = tx_pkts[nb_tx];
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		error = rte_validate_tx_offload(m);
+		if (unlikely(error)) {
+			rte_errno = -error;
+			break;
+		}
+#endif
+
+		error = rte_net_intel_cksum_prepare(m);
+		if (unlikely(error)) {
+			rte_errno = -error;
+			break;
+		}
+
+		if (m->ol_flags & PKT_TX_TCP_SEG)
+			virtio_tso_fix_cksum(m);
+	}
+
+	return nb_tx;
 }
 
 uint16_t
