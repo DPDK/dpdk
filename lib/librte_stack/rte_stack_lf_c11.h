@@ -26,7 +26,7 @@ __rte_stack_lf_count(struct rte_stack *s)
 	 * elements. If the mempool is near-empty to the point that this is a
 	 * concern, the user should consider increasing the mempool size.
 	 */
-	return (unsigned int)__atomic_load_n(&s->stack_lf.used.len.cnt,
+	return (unsigned int)__atomic_load_n(&s->stack_lf.used.len,
 					     __ATOMIC_RELAXED);
 }
 
@@ -78,7 +78,7 @@ __rte_stack_lf_push_elems(struct rte_stack_lf_list *list,
 	/* Ensure the stack modifications are not reordered with respect
 	 * to the LIFO len update.
 	 */
-	__atomic_add_fetch(&list->len.cnt, num, __ATOMIC_RELEASE);
+	__atomic_add_fetch(&list->len, num, __ATOMIC_RELEASE);
 #endif
 }
 
@@ -101,7 +101,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 	int success;
 
 	/* Reserve num elements, if available */
-	len = __atomic_load_n(&list->len.cnt, __ATOMIC_ACQUIRE);
+	len = __atomic_load_n(&list->len, __ATOMIC_ACQUIRE);
 
 	while (1) {
 		/* Does the list contain enough elements? */
@@ -109,7 +109,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 			return NULL;
 
 		/* len is updated on failure */
-		if (__atomic_compare_exchange_n(&list->len.cnt,
+		if (__atomic_compare_exchange_n(&list->len,
 						&len, len - num,
 						0, __ATOMIC_ACQUIRE,
 						__ATOMIC_ACQUIRE))

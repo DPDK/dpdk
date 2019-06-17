@@ -26,7 +26,8 @@ __rte_stack_lf_count(struct rte_stack *s)
 	 * elements. If the mempool is near-empty to the point that this is a
 	 * concern, the user should consider increasing the mempool size.
 	 */
-	return (unsigned int)rte_atomic64_read(&s->stack_lf.used.len);
+	return (unsigned int)rte_atomic64_read((rte_atomic64_t *)
+			&s->stack_lf.used.len);
 }
 
 static __rte_always_inline void
@@ -73,7 +74,7 @@ __rte_stack_lf_push_elems(struct rte_stack_lf_list *list,
 				__ATOMIC_RELAXED);
 	} while (success == 0);
 
-	rte_atomic64_add(&list->len, num);
+	rte_atomic64_add((rte_atomic64_t *)&list->len, num);
 #endif
 }
 
@@ -96,7 +97,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 
 	/* Reserve num elements, if available */
 	while (1) {
-		uint64_t len = rte_atomic64_read(&list->len);
+		uint64_t len = rte_atomic64_read((rte_atomic64_t *)&list->len);
 
 		/* Does the list contain enough elements? */
 		if (unlikely(len < num))
