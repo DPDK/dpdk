@@ -12132,7 +12132,7 @@ i40e_filter_restore(struct i40e_pf *pf)
 	i40e_rss_filter_restore(pf);
 }
 
-static bool
+bool
 is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv)
 {
 	if (strcmp(dev->device->driver->name, drv->driver.name))

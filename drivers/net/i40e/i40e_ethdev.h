@@ -271,6 +271,7 @@ enum i40e_flxpld_layer_idx {
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + I40E_VLAN_TAG_SIZE * 2)
 
 struct i40e_adapter;
+struct rte_pci_driver;
 
 /**
  * MAC filter structure
@@ -1215,7 +1216,9 @@ void i40e_set_vlan_filter(struct i40e_vsi *vsi, uint16_t vlan_id, bool on);
 int i40e_add_macvlan_filters(struct i40e_vsi *vsi,
 			     struct i40e_macvlan_filter *filter,
 			     int total);
+bool is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv);
 bool is_i40e_supported(struct rte_eth_dev *dev);
+bool is_i40evf_supported(struct rte_eth_dev *dev);
 
 int i40e_validate_input_set(enum i40e_filter_pctype pctype,
 			    enum rte_filter_type filter, uint64_t inset);

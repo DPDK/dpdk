@@ -2808,3 +2808,9 @@ i40evf_set_mc_addr_list(struct rte_eth_dev *dev,
 
 	return 0;
 }
+
+bool
+is_i40evf_supported(struct rte_eth_dev *dev)
+{
+	return is_device_supported(dev, &rte_i40evf_pmd);
+}
