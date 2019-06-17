@@ -10,7 +10,7 @@ RTE_TARGET ?= $(notdir $(abspath $(dir $(firstword $(wildcard $(RTE_SDK)/*/.conf
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-ifneq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
+ifneq ($(CONFIG_RTE_EXEC_ENV_LINUX),y)
 $(info This application can only operate in a linux environment, \
 please change the definition of the RTE_TARGET environment variable)
 all:
