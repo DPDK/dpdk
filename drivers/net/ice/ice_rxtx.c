@@ -1742,14 +1742,71 @@ ice_recv_pkts(void *rx_queue,
 }
 
 static inline void
+ice_parse_tunneling_params(uint64_t ol_flags,
+			    union ice_tx_offload tx_offload,
+			    uint32_t *cd_tunneling)
+{
+	/* EIPT: External (outer) IP header type */
+	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+		*cd_tunneling |= ICE_TX_CTX_EIPT_IPV4;
+	else if (ol_flags & PKT_TX_OUTER_IPV4)
+		*cd_tunneling |= ICE_TX_CTX_EIPT_IPV4_NO_CSUM;
+	else if (ol_flags & PKT_TX_OUTER_IPV6)
+		*cd_tunneling |= ICE_TX_CTX_EIPT_IPV6;
+
+	/* EIPLEN: External (outer) IP header length, in DWords */
+	*cd_tunneling |= (tx_offload.outer_l3_len >> 2) <<
+		ICE_TXD_CTX_QW0_EIPLEN_S;
+
+	/* L4TUNT: L4 Tunneling Type */
+	switch (ol_flags & PKT_TX_TUNNEL_MASK) {
+	case PKT_TX_TUNNEL_IPIP:
+		/* for non UDP / GRE tunneling, set to 00b */
+		break;
+	case PKT_TX_TUNNEL_VXLAN:
+	case PKT_TX_TUNNEL_GENEVE:
+		*cd_tunneling |= ICE_TXD_CTX_UDP_TUNNELING;
+		break;
+	case PKT_TX_TUNNEL_GRE:
+		*cd_tunneling |= ICE_TXD_CTX_GRE_TUNNELING;
+		break;
+	default:
+		PMD_TX_LOG(ERR, "Tunnel type not supported");
+		return;
+	}
+
+	/* L4TUNLEN: L4 Tunneling Length, in Words
+	 *
+	 * We depend on app to set rte_mbuf.l2_len correctly.
+	 * For IP in GRE it should be set to the length of the GRE
+	 * header;
+	 * For MAC in GRE or MAC in UDP it should be set to the length
+	 * of the GRE or UDP headers plus the inner MAC up to including
+	 * its last Ethertype.
+	 * If MPLS labels exists, it should include them as well.
+	 */
+	*cd_tunneling |= (tx_offload.l2_len >> 1) <<
+		ICE_TXD_CTX_QW0_NATLEN_S;
+
+	if ((ol_flags & PKT_TX_OUTER_UDP_CKSUM) &&
+	    (ol_flags & PKT_TX_OUTER_IP_CKSUM) &&
+	    (*cd_tunneling & ICE_TXD_CTX_UDP_TUNNELING))
+		*cd_tunneling |= ICE_TXD_CTX_QW0_L4T_CS_M;
+}
+
+static inline void
 ice_txd_enable_checksum(uint64_t ol_flags,
 			uint32_t *td_cmd,
 			uint32_t *td_offset,
 			union ice_tx_offload tx_offload)
 {
-	/* L2 length must be set. */
-	*td_offset |= (tx_offload.l2_len >> 1) <<
-		      ICE_TX_DESC_LEN_MACLEN_S;
+	/* Set MACLEN */
+	if (ol_flags & PKT_TX_TUNNEL_MASK)
+		*td_offset |= (tx_offload.outer_l2_len >> 1)
+			<< ICE_TX_DESC_LEN_MACLEN_S;
+	else
+		*td_offset |= (tx_offload.l2_len >> 1)
+			<< ICE_TX_DESC_LEN_MACLEN_S;
 
 	/* Enable L3 checksum offloads */
 	if (ol_flags & PKT_TX_IP_CKSUM) {
@@ -1863,7 +1920,10 @@ ice_build_ctob(uint32_t td_cmd,
 static inline uint16_t
 ice_calc_context_desc(uint64_t flags)
 {
-	static uint64_t mask = PKT_TX_TCP_SEG | PKT_TX_QINQ;
+	static uint64_t mask = PKT_TX_TCP_SEG |
+		PKT_TX_QINQ |
+		PKT_TX_OUTER_IP_CKSUM |
+		PKT_TX_TUNNEL_MASK;
 
 	return (flags & mask) ? 1 : 0;
 }
@@ -1909,6 +1969,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct ice_tx_entry *txe, *txn;
 	struct rte_mbuf *tx_pkt;
 	struct rte_mbuf *m_seg;
+	uint32_t cd_tunneling_params;
 	uint16_t tx_id;
 	uint16_t nb_tx;
 	uint16_t nb_used;
@@ -1979,6 +2040,12 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			td_tag = tx_pkt->vlan_tci;
 		}
 
+		/* Fill in tunneling parameters if necessary */
+		cd_tunneling_params = 0;
+		if (ol_flags & PKT_TX_TUNNEL_MASK)
+			ice_parse_tunneling_params(ol_flags, tx_offload,
+						   &cd_tunneling_params);
+
 		/* Enable checksum offloading */
 		if (ol_flags & ICE_TX_CKSUM_OFFLOAD_MASK) {
 			ice_txd_enable_checksum(ol_flags, &td_cmd,
@@ -2003,6 +2070,9 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			if (ol_flags & PKT_TX_TCP_SEG)
 				cd_type_cmd_tso_mss |=
 					ice_set_tso_ctx(tx_pkt, tx_offload);
+
+			ctx_txd->tunneling_params =
+				rte_cpu_to_le_32(cd_tunneling_params);
 
 			/* TX context descriptor based double VLAN insert */
 			if (ol_flags & PKT_TX_QINQ) {

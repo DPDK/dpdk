@@ -68,6 +68,12 @@ New Features
   of Ethernet controllers. These controllers support link speeds up to
   200Gbps, 50G PAM-4, and PCIe 4.0.
 
+* **Updated the ice driver.**
+
+  Updated ice driver with new features and improvements, including:
+
+  * Enabled Tx outer/inner L3/L4 checksum offload.
+
 * **Updated Solarflare network PMD.**
 
   Updated the Solarflare ``sfc_efx`` driver with changes including:

@@ -2054,7 +2054,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			DEV_TX_OFFLOAD_UDP_CKSUM |
 			DEV_TX_OFFLOAD_TCP_CKSUM |
 			DEV_TX_OFFLOAD_SCTP_CKSUM |
-			DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+			DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+			DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
 		dev_info->flow_type_rss_offloads |= ICE_RSS_OFFLOAD_ALL;
 	}
 
