@@ -45,7 +45,7 @@ Code
   pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
   pattern[0].spec = &eth;
 
-  /* set the vlan to pas all packets */
+  /* set the vlan to pass all packets */
   pattern[1] = RTE_FLOW_ITEM_TYPE_VLAN;
   pattern[1].spec = &vlan;
 
@@ -141,7 +141,7 @@ Code
   pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
   pattern[0].spec = &eth;
 
-  /* set the vlan to pas all packets */
+  /* set the vlan to pass all packets */
   pattern[1] = RTE_FLOW_ITEM_TYPE_VLAN;
   pattern[1].spec = &vlan;
 
