@@ -12,6 +12,7 @@ BUFFER_SIZE = 200000
 METRICS_REQ = "{\"action\":0,\"command\":\"ports_all_stat_values\",\"data\":null}"
 API_REG = "{\"action\":1,\"command\":\"clients\",\"data\":{\"client_path\":\""
 API_UNREG = "{\"action\":2,\"command\":\"clients\",\"data\":{\"client_path\":\""
+GLOBAL_METRICS_REQ = "{\"action\":0,\"command\":\"global_stat_values\",\"data\":null}"
 DEFAULT_FP = "/var/run/dpdk/default_client"
 
 class Socket:
@@ -79,12 +80,18 @@ class Client:
             self.requestMetrics()
             time.sleep(sleep_time)
 
+    def requestGlobalMetrics(self): #Requests global metrics for given client
+        self.socket.client_fd.send(GLOBAL_METRICS_REQ)
+        data = self.socket.client_fd.recv(BUFFER_SIZE)
+        print "\nResponse: \n", str(data)
+
     def interactiveMenu(self, sleep_time): # Creates Interactive menu within the script
-        while self.choice != 3:
+        while self.choice != 4:
             print("\nOptions Menu")
             print("[1] Send for Metrics for all ports")
             print("[2] Send for Metrics for all ports recursively")
-            print("[3] Unregister client")
+            print("[3] Send for global Metrics")
+            print("[4] Unregister client")
 
             try:
                 self.choice = int(input("\n:"))
@@ -95,6 +102,8 @@ class Client:
                 elif self.choice == 2:
                     self.repeatedlyRequestMetrics(sleep_time)
                 elif self.choice == 3:
+                    self.requestGlobalMetrics()
+                elif self.choice == 4:
                     self.unregister()
                     self.unregistered = 1
                 else:

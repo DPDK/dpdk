@@ -94,6 +94,11 @@ New Features
   * Added multi-queue support to allow one af_xdp vdev with multiple netdev
     queues
 
+* **Updated telemetry library for global metrics support.**
+
+  Updated ``librte_telemetry`` to fetch the global metrics from the
+  ``librte_metrics`` library.
+
 
 Removed Items
 -------------

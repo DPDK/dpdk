@@ -11,9 +11,10 @@ Introduction
 ------------
 
 The ``librte_telemetry`` provides the functionality so that users may query
-metrics from incoming port traffic. The application which initializes packet
-forwarding will act as the server, sending metrics to the requesting application
-which acts as the client.
+metrics from incoming port traffic and global stats(application stats).
+The application which initializes packet forwarding will act as the server,
+sending metrics to the requesting application which acts as the client.
+
 
 In DPDK, applications are used to initialize the ``telemetry``. To view incoming
 traffic on featured ports, the application should be run first (ie. after ports
@@ -79,7 +80,7 @@ any DPDK application is applicable.
    the menu.
 
 #. Send traffic to any or all available ports from a traffic generator.
-   Select a query option(recursive or singular polling).
+   Select a query option(recursive or singular polling or global stats).
    The metrics will then be displayed on the client terminal in JSON format.
 
 #. Once finished, unregister the client using the menu command.

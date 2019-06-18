@@ -449,17 +449,14 @@ einval_fail:
 
 static int32_t
 rte_telemetry_encode_json_format(struct telemetry_impl *telemetry,
-	uint32_t *port_ids, uint32_t num_port_ids, uint32_t *metric_ids,
-	uint32_t num_metric_ids, char **json_buffer)
+	struct telemetry_encode_param *ep, char **json_buffer)
 {
 	int ret;
 	json_t *root, *ports;
 	uint32_t i;
-
-	if (num_port_ids <= 0 || num_metric_ids <= 0) {
-		TELEMETRY_LOG_ERR("Please provide port and metric ids to query");
-		goto einval_fail;
-	}
+	uint32_t port_id;
+	uint32_t num_port_ids;
+	uint32_t num_metric_ids;
 
 	ports = json_array();
 	if (ports == NULL) {
@@ -467,20 +464,47 @@ rte_telemetry_encode_json_format(struct telemetry_impl *telemetry,
 		goto eperm_fail;
 	}
 
-	for (i = 0; i < num_port_ids; i++) {
-		if (!rte_eth_dev_is_valid_port(port_ids[i])) {
-			TELEMETRY_LOG_ERR("Port: %d invalid", port_ids[i]);
+	if (ep->type == PORT_STATS) {
+		num_port_ids = ep->pp.num_port_ids;
+		num_metric_ids = ep->pp.num_metric_ids;
+
+		if (num_port_ids <= 0 || num_metric_ids <= 0) {
+			TELEMETRY_LOG_ERR("Please provide port and metric ids to query");
 			goto einval_fail;
 		}
-	}
 
-	for (i = 0; i < num_port_ids; i++) {
-		ret = rte_telemetry_json_format_port(telemetry, port_ids[i],
-			ports, metric_ids, num_metric_ids);
+		for (i = 0; i < num_port_ids; i++) {
+			port_id = ep->pp.port_ids[i];
+			if (!rte_eth_dev_is_valid_port(port_id)) {
+				TELEMETRY_LOG_ERR("Port: %d invalid",
+							port_id);
+				goto einval_fail;
+			}
+		}
+
+		for (i = 0; i < num_port_ids; i++) {
+			port_id = ep->pp.port_ids[i];
+			ret = rte_telemetry_json_format_port(telemetry,
+					port_id, ports, &ep->pp.metric_ids[0],
+					num_metric_ids);
+			if (ret < 0) {
+				TELEMETRY_LOG_ERR("Format port in JSON failed");
+				return -1;
+			}
+		}
+	} else if (ep->type == GLOBAL_STATS) {
+		/* Request Global Metrics */
+		ret = rte_telemetry_json_format_port(telemetry,
+				RTE_METRICS_GLOBAL,
+				ports, &ep->gp.metric_ids[0],
+				ep->gp.num_metric_ids);
 		if (ret < 0) {
-			TELEMETRY_LOG_ERR("Format port in JSON failed");
+			TELEMETRY_LOG_ERR(" Request Global Metrics Failed");
 			return -1;
 		}
+	} else {
+		TELEMETRY_LOG_ERR(" Invalid metrics type in encode params");
+		goto einval_fail;
 	}
 
 	root = json_object();
@@ -520,10 +544,10 @@ einval_fail:
 }
 
 int32_t
-rte_telemetry_send_ports_stats_values(uint32_t *metric_ids, int num_metric_ids,
-	uint32_t *port_ids, int num_port_ids, struct telemetry_impl *telemetry)
+rte_telemetry_send_global_stats_values(struct telemetry_encode_param *ep,
+	struct telemetry_impl *telemetry)
 {
-	int ret, i;
+	int ret;
 	char *json_buffer = NULL;
 
 	if (telemetry == NULL) {
@@ -531,42 +555,78 @@ rte_telemetry_send_ports_stats_values(uint32_t *metric_ids, int num_metric_ids,
 		return -1;
 	}
 
-	if (metric_ids == NULL) {
-		TELEMETRY_LOG_ERR("Invalid metric_ids array");
-		goto einval_fail;
-	}
-
-	if (num_metric_ids < 0) {
+	if (ep->gp.num_metric_ids < 0) {
 		TELEMETRY_LOG_ERR("Invalid num_metric_ids, must be positive");
 		goto einval_fail;
 	}
 
-	if (port_ids == NULL) {
-		TELEMETRY_LOG_ERR("Invalid port_ids array");
+	ret = rte_telemetry_encode_json_format(telemetry, ep,
+		&json_buffer);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("JSON encode function failed");
+		return -1;
+	}
+
+	ret = rte_telemetry_write_to_socket(telemetry, json_buffer);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not write to socket");
+		return -1;
+	}
+
+	return 0;
+
+einval_fail:
+	ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not send error");
+	return -1;
+}
+
+int32_t
+rte_telemetry_send_ports_stats_values(struct telemetry_encode_param *ep,
+	struct telemetry_impl *telemetry)
+{
+	int ret;
+	char *json_buffer = NULL;
+	uint32_t port_id;
+	unsigned int i;
+
+	if (telemetry == NULL) {
+		TELEMETRY_LOG_ERR("Invalid telemetry argument");
+		return -1;
+	}
+
+	if (ep == NULL) {
+		TELEMETRY_LOG_ERR("Invalid encode param argument");
 		goto einval_fail;
 	}
 
-	if (num_port_ids < 0) {
+	if (ep->pp.num_metric_ids < 0) {
+		TELEMETRY_LOG_ERR("Invalid num_metric_ids, must be positive");
+		goto einval_fail;
+	}
+
+	if (ep->pp.num_port_ids < 0) {
 		TELEMETRY_LOG_ERR("Invalid num_port_ids, must be positive");
 		goto einval_fail;
 	}
 
-	for (i = 0; i < num_port_ids; i++) {
-		if (!rte_eth_dev_is_valid_port(port_ids[i])) {
-			TELEMETRY_LOG_ERR("Port: %d invalid", port_ids[i]);
+	for (i = 0; i < ep->pp.num_port_ids; i++) {
+		port_id = ep->pp.port_ids[i];
+		if (!rte_eth_dev_is_valid_port(port_id)) {
+			TELEMETRY_LOG_ERR("Port: %d invalid", port_id);
 			goto einval_fail;
 		}
 
 		ret = rte_telemetry_update_metrics_ethdev(telemetry,
-				port_ids[i], telemetry->reg_index[i]);
+				port_id, telemetry->reg_index[i]);
 		if (ret < 0) {
 			TELEMETRY_LOG_ERR("Failed to update ethdev metrics");
 			return -1;
 		}
 	}
 
-	ret = rte_telemetry_encode_json_format(telemetry, port_ids,
-		num_port_ids, metric_ids, num_metric_ids, &json_buffer);
+	ret = rte_telemetry_encode_json_format(telemetry, ep, &json_buffer);
 	if (ret < 0) {
 		TELEMETRY_LOG_ERR("JSON encode function failed");
 		return -1;

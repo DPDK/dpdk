@@ -24,6 +24,8 @@ extern int telemetry_log_level;
 #define TELEMETRY_LOG_INFO(fmt, args...) \
 	TELEMETRY_LOG(INFO, fmt, ## args)
 
+#define MAX_METRICS 256
+
 typedef struct telemetry_client {
 	char *file_path;
 	int fd;
@@ -46,6 +48,28 @@ typedef struct telemetry_impl {
 enum rte_telemetry_parser_actions {
 	ACTION_GET = 0,
 	ACTION_DELETE = 2
+};
+
+enum rte_telemetry_stats_type {
+	PORT_STATS = 0,
+	GLOBAL_STATS = 1
+};
+
+/* @internal */
+struct telemetry_encode_param {
+	enum rte_telemetry_stats_type type;
+	union {
+		struct port_param {
+			uint32_t num_metric_ids;
+			uint32_t metric_ids[MAX_METRICS];
+			uint32_t num_port_ids;
+			uint32_t port_ids[RTE_MAX_ETHPORTS];
+		} pp;
+		struct global_param {
+			uint32_t num_metric_ids;
+			uint32_t metric_ids[MAX_METRICS];
+		} gp;
+	};
 };
 
 int32_t
@@ -72,10 +96,13 @@ int32_t
 rte_telemetry_is_port_active(int port_id);
 
 int32_t
-rte_telemetry_send_ports_stats_values(uint32_t *metric_ids, int num_metric_ids,
-	uint32_t *port_ids, int num_port_ids, struct telemetry_impl *telemetry);
+rte_telemetry_send_ports_stats_values(struct telemetry_encode_param *ep,
+	struct telemetry_impl *telemetry);
 
 int32_t
 rte_telemetry_socket_messaging_testing(int index, int socket);
 
+int32_t
+rte_telemetry_send_global_stats_values(struct telemetry_encode_param *ep,
+	struct telemetry_impl *telemetry);
 #endif
