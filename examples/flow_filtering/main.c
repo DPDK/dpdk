@@ -149,7 +149,6 @@ init_port(void)
 
 	rxq_conf = dev_info.default_rxconf;
 	rxq_conf.offloads = port_conf.rxmode.offloads;
-	/* only set Rx queues: something we care only so far */
 	for (i = 0; i < nr_queues; i++) {
 		ret = rte_eth_rx_queue_setup(port_id, i, 512,
 				     rte_eth_dev_socket_id(port_id),
