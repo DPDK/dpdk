@@ -53,6 +53,210 @@ static const u8 dummy_eth_header[DUMMY_ETH_HDR_LEN] = { 0x2, 0, 0, 0, 0, 0,
 	 sizeof(((struct ice_sw_rule_vsi_list *)0)->vsi) + \
 	 ((n) * sizeof(((struct ice_sw_rule_vsi_list *)0)->vsi)))
 
+static const
+u8 dummy_gre_packet[] = { 0, 0, 0, 0,		/* Ether starts */
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,
+			  0x08, 0,		/* Ether ends */
+			  0x45, 0, 0, 0x3E,	/* IP starts */
+			  0, 0, 0, 0,
+			  0, 0x2F, 0, 0,
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,		/* IP ends */
+			  0x80, 0, 0x65, 0x58,	/* GRE starts */
+			  0, 0, 0, 0,		/* GRE ends */
+			  0, 0, 0, 0,		/* Ether starts */
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,
+			  0x08, 0,		/* Ether ends */
+			  0x45, 0, 0, 0x14,	/* IP starts */
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,
+			  0, 0, 0, 0		/* IP ends */
+			};
+
+static const u8
+dummy_udp_tun_packet[] = {0, 0, 0, 0,		/* Ether starts */
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,
+			  0x08, 0,		/* Ether ends */
+			  0x45, 0, 0, 0x32,	/* IP starts */
+			  0, 0, 0, 0,
+			  0, 0x11, 0, 0,
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,		/* IP ends */
+			  0, 0, 0x12, 0xB5,	/* UDP start*/
+			  0, 0x1E, 0, 0,	/* UDP end*/
+			  0, 0, 0, 0,		/* VXLAN start */
+			  0, 0, 0, 0,		/* VXLAN end*/
+			  0, 0, 0, 0,		/* Ether starts */
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,
+			  0, 0			/* Ether ends */
+			};
+
+static const u8
+dummy_tcp_tun_packet[] = {0, 0, 0, 0,		/* Ether starts */
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,
+			  0x08, 0,              /* Ether ends */
+			  0x45, 0, 0, 0x28,     /* IP starts */
+			  0, 0x01, 0, 0,
+			  0x40, 0x06, 0xF5, 0x69,
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,   /* IP ends */
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,
+			  0x50, 0x02, 0x20,
+			  0, 0x9, 0x79, 0, 0,
+			  0, 0 /* 2 bytes padding for 4 byte alignment*/
+			};
+
+/* this is a recipe to profile bitmap association */
+static ice_declare_bitmap(recipe_to_profile[ICE_MAX_NUM_RECIPES],
+			  ICE_MAX_NUM_PROFILES);
+static ice_declare_bitmap(available_result_ids, ICE_CHAIN_FV_INDEX_START + 1);
+
+/**
+ * ice_get_recp_frm_fw - update SW bookkeeping from FW recipe entries
+ * @hw: pointer to hardware structure
+ * @recps: struct that we need to populate
+ * @rid: recipe ID that we are populating
+ *
+ * This function is used to populate all the necessary entries into our
+ * bookkeeping so that we have a current list of all the recipes that are
+ * programmed in the firmware.
+ */
+static enum ice_status
+ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid)
+{
+	u16 i, sub_recps, fv_word_idx = 0, result_idx = 0;
+	ice_declare_bitmap(r_bitmap, ICE_MAX_NUM_PROFILES);
+	u16 result_idxs[ICE_MAX_CHAIN_RECIPE] = { 0 };
+	struct ice_aqc_recipe_data_elem *tmp;
+	u16 num_recps = ICE_MAX_NUM_RECIPES;
+	struct ice_prot_lkup_ext *lkup_exts;
+	enum ice_status status;
+
+	/* we need a buffer big enough to accommodate all the recipes */
+	tmp = (struct ice_aqc_recipe_data_elem *)ice_calloc(hw,
+		ICE_MAX_NUM_RECIPES, sizeof(*tmp));
+	if (!tmp)
+		return ICE_ERR_NO_MEMORY;
+
+	tmp[0].recipe_indx = rid;
+	status = ice_aq_get_recipe(hw, tmp, &num_recps, rid, NULL);
+	/* non-zero status meaning recipe doesn't exist */
+	if (status)
+		goto err_unroll;
+	lkup_exts = &recps[rid].lkup_exts;
+	/* start populating all the entries for recps[rid] based on lkups from
+	 * firmware
+	 */
+	for (sub_recps = 0; sub_recps < num_recps; sub_recps++) {
+		struct ice_aqc_recipe_data_elem root_bufs = tmp[sub_recps];
+		struct ice_recp_grp_entry *rg_entry;
+		u8 prof_id, prot = 0;
+		u16 off = 0;
+
+		rg_entry = (struct ice_recp_grp_entry *)
+			ice_malloc(hw, sizeof(*rg_entry));
+		if (!rg_entry) {
+			status = ICE_ERR_NO_MEMORY;
+			goto err_unroll;
+		}
+		/* Avoid 8th bit since its result enable bit */
+		result_idxs[result_idx] = root_bufs.content.result_indx &
+			~ICE_AQ_RECIPE_RESULT_EN;
+		/* Check if result enable bit is set */
+		if (root_bufs.content.result_indx & ICE_AQ_RECIPE_RESULT_EN)
+			ice_clear_bit(ICE_CHAIN_FV_INDEX_START -
+				      result_idxs[result_idx++],
+				      available_result_ids);
+		ice_memcpy(r_bitmap,
+			   recipe_to_profile[tmp[sub_recps].recipe_indx],
+			   sizeof(r_bitmap), ICE_NONDMA_TO_NONDMA);
+		/* get the first profile that is associated with rid */
+		prof_id = ice_find_first_bit(r_bitmap, ICE_MAX_NUM_PROFILES);
+		for (i = 0; i < ICE_NUM_WORDS_RECIPE; i++) {
+			u8 lkup_indx = root_bufs.content.lkup_indx[i + 1];
+
+			rg_entry->fv_idx[i] = lkup_indx;
+			/* If the recipe is a chained recipe then all its
+			 * child recipe's result will have a result index.
+			 * To fill fv_words we should not use those result
+			 * index, we only need the protocol ids and offsets.
+			 * We will skip all the fv_idx which stores result
+			 * index in them. We also need to skip any fv_idx which
+			 * has ICE_AQ_RECIPE_LKUP_IGNORE or 0 since it isn't a
+			 * valid offset value.
+			 */
+			if (result_idxs[0] == rg_entry->fv_idx[i] ||
+			    result_idxs[1] == rg_entry->fv_idx[i] ||
+			    result_idxs[2] == rg_entry->fv_idx[i] ||
+			    result_idxs[3] == rg_entry->fv_idx[i] ||
+			    result_idxs[4] == rg_entry->fv_idx[i] ||
+			    rg_entry->fv_idx[i] == ICE_AQ_RECIPE_LKUP_IGNORE ||
+			    rg_entry->fv_idx[i] == 0)
+				continue;
+
+			ice_find_prot_off(hw, ICE_BLK_SW, prof_id,
+					  rg_entry->fv_idx[i], &prot, &off);
+			lkup_exts->fv_words[fv_word_idx].prot_id = prot;
+			lkup_exts->fv_words[fv_word_idx].off = off;
+			fv_word_idx++;
+		}
+		/* populate rg_list with the data from the child entry of this
+		 * recipe
+		 */
+		LIST_ADD(&rg_entry->l_entry, &recps[rid].rg_list);
+	}
+	lkup_exts->n_val_words = fv_word_idx;
+	recps[rid].n_grp_count = num_recps;
+	recps[rid].root_buf = (struct ice_aqc_recipe_data_elem *)
+		ice_calloc(hw, recps[rid].n_grp_count,
+			   sizeof(struct ice_aqc_recipe_data_elem));
+	if (!recps[rid].root_buf)
+		goto err_unroll;
+
+	ice_memcpy(recps[rid].root_buf, tmp, recps[rid].n_grp_count *
+		   sizeof(*recps[rid].root_buf), ICE_NONDMA_TO_NONDMA);
+	recps[rid].recp_created = true;
+	if (tmp[sub_recps].content.rid & ICE_AQ_RECIPE_ID_IS_ROOT)
+		recps[rid].root_rid = rid;
+err_unroll:
+	ice_free(hw, tmp);
+	return status;
+}
+
+/**
+ * ice_get_recp_to_prof_map - updates recipe to profile mapping
+ * @hw: pointer to hardware structure
+ *
+ * This function is used to populate recipe_to_profile matrix where index to
+ * this array is the recipe ID and the element is the mapping of which profiles
+ * is this recipe mapped to.
+ */
+static void
+ice_get_recp_to_prof_map(struct ice_hw *hw)
+{
+	ice_declare_bitmap(r_bitmap, ICE_MAX_NUM_RECIPES);
+	u16 i;
+
+	for (i = 0; i < ICE_MAX_NUM_PROFILES; i++) {
+		u16 j;
+
+		ice_zero_bitmap(r_bitmap, ICE_MAX_NUM_RECIPES);
+		if (ice_aq_get_recipe_to_profile(hw, i, (u8 *)r_bitmap, NULL))
+			continue;
+
+		for (j = 0; j < ICE_MAX_NUM_RECIPES; j++)
+			if (ice_is_bit_set(r_bitmap, j))
+				ice_set_bit(i, recipe_to_profile[j]);
+	}
+}
 
 /**
  * ice_init_def_sw_recp - initialize the recipe book keeping tables
@@ -75,6 +279,7 @@ enum ice_status ice_init_def_sw_recp(struct ice_hw *hw)
 		recps[i].root_rid = i;
 		INIT_LIST_HEAD(&recps[i].filt_rules);
 		INIT_LIST_HEAD(&recps[i].filt_replay_rules);
+		INIT_LIST_HEAD(&recps[i].rg_list);
 		ice_init_lock(&recps[i].filt_rule_lock);
 	}
 
@@ -1016,6 +1221,35 @@ ice_aq_map_recipe_to_profile(struct ice_hw *hw, u32 profile_id, u8 *r_bitmap,
 		   ICE_NONDMA_TO_NONDMA);
 
 	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+}
+
+/**
+ * ice_aq_get_recipe_to_profile - Map recipe to packet profile
+ * @hw: pointer to the HW struct
+ * @profile_id: package profile ID to associate the recipe with
+ * @r_bitmap: Recipe bitmap filled in and need to be returned as response
+ * @cd: pointer to command details structure or NULL
+ * Associate profile ID with given recipe (0x0293)
+ */
+enum ice_status
+ice_aq_get_recipe_to_profile(struct ice_hw *hw, u32 profile_id, u8 *r_bitmap,
+			     struct ice_sq_cd *cd)
+{
+	struct ice_aqc_recipe_to_profile *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+
+	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_get_recipe_to_prof");
+	cmd = &desc.params.recipe_to_profile;
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_recipe_to_profile);
+	cmd->profile_id = CPU_TO_LE16(profile_id);
+
+	status = ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+	if (!status)
+		ice_memcpy(r_bitmap, cmd->recipe_assoc,
+			   sizeof(cmd->recipe_assoc), ICE_NONDMA_TO_NONDMA);
+
+	return status;
 }
 
 /**
@@ -3899,6 +4133,1414 @@ exit_error:
 	return ret;
 }
 
+/* This is mapping table entry that maps every word within a given protocol
+ * structure to the real byte offset as per the specification of that
+ * protocol header.
+ * for example dst address is 3 words in ethertype header and corresponding
+ * bytes are 0, 2, 3 in the actual packet header and src address is at 4, 6, 8
+ * IMPORTANT: Every structure part of "ice_prot_hdr" union should have a
+ * matching entry describing its field. This needs to be updated if new
+ * structure is added to that union.
+ */
+static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
+	{ ICE_MAC_OFOS,		{ 0, 2, 4, 6, 8, 10, 12 } },
+	{ ICE_MAC_IL,		{ 0, 2, 4, 6, 8, 10, 12 } },
+	{ ICE_IPV4_OFOS,	{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 } },
+	{ ICE_IPV4_IL,		{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 } },
+	{ ICE_IPV6_IL,		{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
+				 26, 28, 30, 32, 34, 36, 38 } },
+	{ ICE_IPV6_OFOS,	{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
+				 26, 28, 30, 32, 34, 36, 38 } },
+	{ ICE_TCP_IL,		{ 0, 2 } },
+	{ ICE_UDP_ILOS,		{ 0, 2 } },
+	{ ICE_SCTP_IL,		{ 0, 2 } },
+	{ ICE_VXLAN,		{ 8, 10, 12 } },
+	{ ICE_GENEVE,		{ 8, 10, 12 } },
+	{ ICE_VXLAN_GPE,	{ 0, 2, 4 } },
+	{ ICE_NVGRE,		{ 0, 2 } },
+	{ ICE_PROTOCOL_LAST,	{ 0 } }
+};
+
+/* The following table describes preferred grouping of recipes.
+ * If a recipe that needs to be programmed is a superset or matches one of the
+ * following combinations, then the recipe needs to be chained as per the
+ * following policy.
+ */
+static const struct ice_pref_recipe_group ice_recipe_pack[] = {
+	{3, { { ICE_MAC_OFOS_HW, 0, 0 }, { ICE_MAC_OFOS_HW, 2, 0 },
+	      { ICE_MAC_OFOS_HW, 4, 0 } } },
+	{4, { { ICE_MAC_IL_HW, 0, 0 }, { ICE_MAC_IL_HW, 2, 0 },
+	      { ICE_MAC_IL_HW, 4, 0 }, { ICE_META_DATA_ID_HW, 44, 0 } } },
+	{2, { { ICE_IPV4_IL_HW, 0, 0 }, { ICE_IPV4_IL_HW, 2, 0 } } },
+	{2, { { ICE_IPV4_IL_HW, 12, 0 }, { ICE_IPV4_IL_HW, 14, 0 } } },
+};
+
+static const struct ice_protocol_entry ice_prot_id_tbl[] = {
+	{ ICE_MAC_OFOS,		ICE_MAC_OFOS_HW },
+	{ ICE_MAC_IL,		ICE_MAC_IL_HW },
+	{ ICE_IPV4_OFOS,	ICE_IPV4_OFOS_HW },
+	{ ICE_IPV4_IL,		ICE_IPV4_IL_HW },
+	{ ICE_IPV6_OFOS,	ICE_IPV6_OFOS_HW },
+	{ ICE_IPV6_IL,		ICE_IPV6_IL_HW },
+	{ ICE_TCP_IL,		ICE_TCP_IL_HW },
+	{ ICE_UDP_ILOS,		ICE_UDP_ILOS_HW },
+	{ ICE_SCTP_IL,		ICE_SCTP_IL_HW },
+	{ ICE_VXLAN,		ICE_UDP_OF_HW },
+	{ ICE_GENEVE,		ICE_UDP_OF_HW },
+	{ ICE_VXLAN_GPE,	ICE_UDP_OF_HW },
+	{ ICE_NVGRE,		ICE_GRE_OF_HW },
+	{ ICE_PROTOCOL_LAST,	0 }
+};
+
+/**
+ * ice_find_recp - find a recipe
+ * @hw: pointer to the hardware structure
+ * @lkup_exts: extension sequence to match
+ *
+ * Returns index of matching recipe, or ICE_MAX_NUM_RECIPES if not found.
+ */
+static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts)
+{
+	struct ice_sw_recipe *recp;
+	u16 i;
+
+	ice_get_recp_to_prof_map(hw);
+	/* Initialize available_result_ids which tracks available result idx */
+	for (i = 0; i <= ICE_CHAIN_FV_INDEX_START; i++)
+		ice_set_bit(ICE_CHAIN_FV_INDEX_START - i,
+			    available_result_ids);
+
+	/* Walk through existing recipes to find a match */
+	recp = hw->switch_info->recp_list;
+	for (i = 0; i < ICE_MAX_NUM_RECIPES; i++) {
+		/* If recipe was not created for this ID, in SW bookkeeping,
+		 * check if FW has an entry for this recipe. If the FW has an
+		 * entry update it in our SW bookkeeping and continue with the
+		 * matching.
+		 */
+		if (!recp[i].recp_created)
+			if (ice_get_recp_frm_fw(hw,
+						hw->switch_info->recp_list, i))
+				continue;
+
+		/* if number of words we are looking for match */
+		if (lkup_exts->n_val_words == recp[i].lkup_exts.n_val_words) {
+			struct ice_fv_word *a = lkup_exts->fv_words;
+			struct ice_fv_word *b = recp[i].lkup_exts.fv_words;
+			bool found = true;
+			u8 p, q;
+
+			for (p = 0; p < lkup_exts->n_val_words; p++) {
+				for (q = 0; q < recp[i].lkup_exts.n_val_words;
+				     q++) {
+					if (a[p].off == b[q].off &&
+					    a[p].prot_id == b[q].prot_id)
+						/* Found the "p"th word in the
+						 * given recipe
+						 */
+						break;
+				}
+				/* After walking through all the words in the
+				 * "i"th recipe if "p"th word was not found then
+				 * this recipe is not what we are looking for.
+				 * So break out from this loop and try the next
+				 * recipe
+				 */
+				if (q >= recp[i].lkup_exts.n_val_words) {
+					found = false;
+					break;
+				}
+			}
+			/* If for "i"th recipe the found was never set to false
+			 * then it means we found our match
+			 */
+			if (found)
+				return i; /* Return the recipe ID */
+		}
+	}
+	return ICE_MAX_NUM_RECIPES;
+}
+
+/**
+ * ice_prot_type_to_id - get protocol ID from protocol type
+ * @type: protocol type
+ * @id: pointer to variable that will receive the ID
+ *
+ * Returns true if found, false otherwise
+ */
+static bool ice_prot_type_to_id(enum ice_protocol_type type, u16 *id)
+{
+	u16 i;
+
+	for (i = 0; ice_prot_id_tbl[i].type != ICE_PROTOCOL_LAST; i++)
+		if (ice_prot_id_tbl[i].type == type) {
+			*id = ice_prot_id_tbl[i].protocol_id;
+			return true;
+		}
+	return false;
+}
+
+/**
+ * ice_find_valid_words - count valid words
+ * @rule: advanced rule with lookup information
+ * @lkup_exts: byte offset extractions of the words that are valid
+ *
+ * calculate valid words in a lookup rule using mask value
+ */
+static u16
+ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
+		     struct ice_prot_lkup_ext *lkup_exts)
+{
+	u16 j, word = 0;
+	u16 prot_id;
+	u16 ret_val;
+
+	if (!ice_prot_type_to_id(rule->type, &prot_id))
+		return 0;
+
+	word = lkup_exts->n_val_words;
+
+	for (j = 0; j < sizeof(rule->m_u) / sizeof(u16); j++)
+		if (((u16 *)&rule->m_u)[j] == 0xffff &&
+		    rule->type < ARRAY_SIZE(ice_prot_ext)) {
+			/* No more space to accommodate */
+			if (word >= ICE_MAX_CHAIN_WORDS)
+				return 0;
+			lkup_exts->fv_words[word].off =
+				ice_prot_ext[rule->type].offs[j];
+			lkup_exts->fv_words[word].prot_id =
+				ice_prot_id_tbl[rule->type].protocol_id;
+			word++;
+		}
+
+	ret_val = word - lkup_exts->n_val_words;
+	lkup_exts->n_val_words = word;
+
+	return ret_val;
+}
+
+/**
+ * ice_find_prot_off_ind - check for specific ID and offset in rule
+ * @lkup_exts: an array of protocol header extractions
+ * @prot_type: protocol type to check
+ * @off: expected offset of the extraction
+ *
+ * Check if the prot_ext has given protocol ID and offset
+ */
+static u8
+ice_find_prot_off_ind(struct ice_prot_lkup_ext *lkup_exts, u8 prot_type,
+		      u16 off)
+{
+	u8 j;
+
+	for (j = 0; j < lkup_exts->n_val_words; j++)
+		if (lkup_exts->fv_words[j].off == off &&
+		    lkup_exts->fv_words[j].prot_id == prot_type)
+			return j;
+
+	return ICE_MAX_CHAIN_WORDS;
+}
+
+/**
+ * ice_is_recipe_subset - check if recipe group policy is a subset of lookup
+ * @lkup_exts: an array of protocol header extractions
+ * @r_policy: preferred recipe grouping policy
+ *
+ * Helper function to check if given recipe group is subset we need to check if
+ * all the words described by the given recipe group exist in the advanced rule
+ * look up information
+ */
+static bool
+ice_is_recipe_subset(struct ice_prot_lkup_ext *lkup_exts,
+		     const struct ice_pref_recipe_group *r_policy)
+{
+	u8 ind[ICE_NUM_WORDS_RECIPE];
+	u8 count = 0;
+	u8 i;
+
+	/* check if everything in the r_policy is part of the entire rule */
+	for (i = 0; i < r_policy->n_val_pairs; i++) {
+		u8 j;
+
+		j = ice_find_prot_off_ind(lkup_exts, r_policy->pairs[i].prot_id,
+					  r_policy->pairs[i].off);
+		if (j >= ICE_MAX_CHAIN_WORDS)
+			return false;
+
+		/* store the indexes temporarily found by the find function
+		 * this will be used to mark the words as 'done'
+		 */
+		ind[count++] = j;
+	}
+
+	/* If the entire policy recipe was a true match, then mark the fields
+	 * that are covered by the recipe as 'done' meaning that these words
+	 * will be clumped together in one recipe.
+	 * "Done" here means in our searching if certain recipe group
+	 * matches or is subset of the given rule, then we mark all
+	 * the corresponding offsets as found. So the remaining recipes should
+	 * be created with whatever words that were left.
+	 */
+	for (i = 0; i < count; i++) {
+		u8 in = ind[i];
+
+		ice_set_bit(in, lkup_exts->done);
+	}
+	return true;
+}
+
+/**
+ * ice_create_first_fit_recp_def - Create a recipe grouping
+ * @hw: pointer to the hardware structure
+ * @lkup_exts: an array of protocol header extractions
+ * @rg_list: pointer to a list that stores new recipe groups
+ * @recp_cnt: pointer to a variable that stores returned number of recipe groups
+ *
+ * Using first fit algorithm, take all the words that are still not done
+ * and start grouping them in 4-word groups. Each group makes up one
+ * recipe.
+ */
+static enum ice_status
+ice_create_first_fit_recp_def(struct ice_hw *hw,
+			      struct ice_prot_lkup_ext *lkup_exts,
+			      struct LIST_HEAD_TYPE *rg_list,
+			      u8 *recp_cnt)
+{
+	struct ice_pref_recipe_group *grp = NULL;
+	u8 j;
+
+	*recp_cnt = 0;
+
+	/* Walk through every word in the rule to check if it is not done. If so
+	 * then this word needs to be part of a new recipe.
+	 */
+	for (j = 0; j < lkup_exts->n_val_words; j++)
+		if (!ice_is_bit_set(lkup_exts->done, j)) {
+			if (!grp ||
+			    grp->n_val_pairs == ICE_NUM_WORDS_RECIPE) {
+				struct ice_recp_grp_entry *entry;
+
+				entry = (struct ice_recp_grp_entry *)
+					ice_malloc(hw, sizeof(*entry));
+				if (!entry)
+					return ICE_ERR_NO_MEMORY;
+				LIST_ADD(&entry->l_entry, rg_list);
+				grp = &entry->r_group;
+				(*recp_cnt)++;
+			}
+
+			grp->pairs[grp->n_val_pairs].prot_id =
+				lkup_exts->fv_words[j].prot_id;
+			grp->pairs[grp->n_val_pairs].off =
+				lkup_exts->fv_words[j].off;
+			grp->n_val_pairs++;
+		}
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_fill_fv_word_index - fill in the field vector indices for a recipe group
+ * @hw: pointer to the hardware structure
+ * @fv_list: field vector with the extraction sequence information
+ * @rg_list: recipe groupings with protocol-offset pairs
+ *
+ * Helper function to fill in the field vector indices for protocol-offset
+ * pairs. These indexes are then ultimately programmed into a recipe.
+ */
+static void
+ice_fill_fv_word_index(struct ice_hw *hw, struct LIST_HEAD_TYPE *fv_list,
+		       struct LIST_HEAD_TYPE *rg_list)
+{
+	struct ice_sw_fv_list_entry *fv;
+	struct ice_recp_grp_entry *rg;
+	struct ice_fv_word *fv_ext;
+
+	if (LIST_EMPTY(fv_list))
+		return;
+
+	fv = LIST_FIRST_ENTRY(fv_list, struct ice_sw_fv_list_entry, list_entry);
+	fv_ext = fv->fv_ptr->ew;
+
+	LIST_FOR_EACH_ENTRY(rg, rg_list, ice_recp_grp_entry, l_entry) {
+		u8 i;
+
+		for (i = 0; i < rg->r_group.n_val_pairs; i++) {
+			struct ice_fv_word *pr;
+			u8 j;
+
+			pr = &rg->r_group.pairs[i];
+			for (j = 0; j < hw->blk[ICE_BLK_SW].es.fvw; j++)
+				if (fv_ext[j].prot_id == pr->prot_id &&
+				    fv_ext[j].off == pr->off) {
+					/* Store index of field vector */
+					rg->fv_idx[i] = j;
+					break;
+				}
+		}
+	}
+}
+
+/**
+ * ice_add_sw_recipe - function to call AQ calls to create switch recipe
+ * @hw: pointer to hardware structure
+ * @rm: recipe management list entry
+ * @match_tun: if field vector index for tunnel needs to be programmed
+ */
+static enum ice_status
+ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
+		  bool match_tun)
+{
+	struct ice_aqc_recipe_data_elem *tmp;
+	struct ice_aqc_recipe_data_elem *buf;
+	struct ice_recp_grp_entry *entry;
+	enum ice_status status;
+	u16 recipe_count;
+	u8 chain_idx;
+	u8 recps = 0;
+
+	/* When more than one recipe are required, another recipe is needed to
+	 * chain them together. Matching a tunnel metadata ID takes up one of
+	 * the match fields in the chaining recipe reducing the number of
+	 * chained recipes by one.
+	 */
+	if (rm->n_grp_count > 1)
+		rm->n_grp_count++;
+	if (rm->n_grp_count > ICE_MAX_CHAIN_RECIPE ||
+	    (match_tun && rm->n_grp_count > (ICE_MAX_CHAIN_RECIPE - 1)))
+		return ICE_ERR_MAX_LIMIT;
+
+	tmp = (struct ice_aqc_recipe_data_elem *)ice_calloc(hw,
+							    ICE_MAX_NUM_RECIPES,
+							    sizeof(*tmp));
+	if (!tmp)
+		return ICE_ERR_NO_MEMORY;
+
+	buf = (struct ice_aqc_recipe_data_elem *)
+		ice_calloc(hw, rm->n_grp_count, sizeof(*buf));
+	if (!buf) {
+		status = ICE_ERR_NO_MEMORY;
+		goto err_mem;
+	}
+
+	ice_zero_bitmap(rm->r_bitmap, ICE_MAX_NUM_RECIPES);
+	recipe_count = ICE_MAX_NUM_RECIPES;
+	status = ice_aq_get_recipe(hw, tmp, &recipe_count, ICE_SW_LKUP_MAC,
+				   NULL);
+	if (status || recipe_count == 0)
+		goto err_unroll;
+
+	/* Allocate the recipe resources, and configure them according to the
+	 * match fields from protocol headers and extracted field vectors.
+	 */
+	chain_idx = ICE_CHAIN_FV_INDEX_START -
+		ice_find_first_bit(available_result_ids,
+				   ICE_CHAIN_FV_INDEX_START + 1);
+	LIST_FOR_EACH_ENTRY(entry, &rm->rg_list, ice_recp_grp_entry, l_entry) {
+		u8 i;
+
+		status = ice_alloc_recipe(hw, &entry->rid);
+		if (status)
+			goto err_unroll;
+
+		/* Clear the result index of the located recipe, as this will be
+		 * updated, if needed, later in the recipe creation process.
+		 */
+		tmp[0].content.result_indx = 0;
+
+		buf[recps] = tmp[0];
+		buf[recps].recipe_indx = (u8)entry->rid;
+		/* if the recipe is a non-root recipe RID should be programmed
+		 * as 0 for the rules to be applied correctly.
+		 */
+		buf[recps].content.rid = 0;
+		ice_memset(&buf[recps].content.lkup_indx, 0,
+			   sizeof(buf[recps].content.lkup_indx),
+			   ICE_NONDMA_MEM);
+
+		/* All recipes use look-up index 0 to match switch ID. */
+		buf[recps].content.lkup_indx[0] = ICE_AQ_SW_ID_LKUP_IDX;
+		buf[recps].content.mask[0] =
+			CPU_TO_LE16(ICE_AQ_SW_ID_LKUP_MASK);
+		/* Setup lkup_indx 1..4 to INVALID/ignore and set the mask
+		 * to be 0
+		 */
+		for (i = 1; i <= ICE_NUM_WORDS_RECIPE; i++) {
+			buf[recps].content.lkup_indx[i] = 0x80;
+			buf[recps].content.mask[i] = 0;
+		}
+
+		for (i = 0; i < entry->r_group.n_val_pairs; i++) {
+			buf[recps].content.lkup_indx[i + 1] = entry->fv_idx[i];
+			buf[recps].content.mask[i + 1] = CPU_TO_LE16(0xFFFF);
+		}
+
+		if (rm->n_grp_count > 1) {
+			entry->chain_idx = chain_idx;
+			buf[recps].content.result_indx =
+				ICE_AQ_RECIPE_RESULT_EN |
+				((chain_idx << ICE_AQ_RECIPE_RESULT_DATA_S) &
+				 ICE_AQ_RECIPE_RESULT_DATA_M);
+			ice_clear_bit(ICE_CHAIN_FV_INDEX_START - chain_idx,
+				      available_result_ids);
+			chain_idx = ICE_CHAIN_FV_INDEX_START -
+				ice_find_first_bit(available_result_ids,
+						   ICE_CHAIN_FV_INDEX_START +
+						   1);
+		}
+
+		/* fill recipe dependencies */
+		ice_zero_bitmap((ice_bitmap_t *)buf[recps].recipe_bitmap,
+				ICE_MAX_NUM_RECIPES);
+		ice_set_bit(buf[recps].recipe_indx,
+			    (ice_bitmap_t *)buf[recps].recipe_bitmap);
+		buf[recps].content.act_ctrl_fwd_priority = rm->priority;
+		recps++;
+	}
+
+	if (rm->n_grp_count == 1) {
+		rm->root_rid = buf[0].recipe_indx;
+		ice_set_bit(buf[0].recipe_indx, rm->r_bitmap);
+		buf[0].content.rid = rm->root_rid | ICE_AQ_RECIPE_ID_IS_ROOT;
+		if (sizeof(buf[0].recipe_bitmap) >= sizeof(rm->r_bitmap)) {
+			ice_memcpy(buf[0].recipe_bitmap, rm->r_bitmap,
+				   sizeof(buf[0].recipe_bitmap),
+				   ICE_NONDMA_TO_NONDMA);
+		} else {
+			status = ICE_ERR_BAD_PTR;
+			goto err_unroll;
+		}
+		/* Applicable only for ROOT_RECIPE, set the fwd_priority for
+		 * the recipe which is getting created if specified
+		 * by user. Usually any advanced switch filter, which results
+		 * into new extraction sequence, ended up creating a new recipe
+		 * of type ROOT and usually recipes are associated with profiles
+		 * Switch rule referreing newly created recipe, needs to have
+		 * either/or 'fwd' or 'join' priority, otherwise switch rule
+		 * evaluation will not happen correctly. In other words, if
+		 * switch rule to be evaluated on priority basis, then recipe
+		 * needs to have priority, otherwise it will be evaluated last.
+		 */
+		buf[0].content.act_ctrl_fwd_priority = rm->priority;
+	} else {
+		struct ice_recp_grp_entry *last_chain_entry;
+		u16 rid, i;
+
+		/* Allocate the last recipe that will chain the outcomes of the
+		 * other recipes together
+		 */
+		status = ice_alloc_recipe(hw, &rid);
+		if (status)
+			goto err_unroll;
+
+		buf[recps].recipe_indx = (u8)rid;
+		buf[recps].content.rid = (u8)rid;
+		buf[recps].content.rid |= ICE_AQ_RECIPE_ID_IS_ROOT;
+		/* the new entry created should also be part of rg_list to
+		 * make sure we have complete recipe
+		 */
+		last_chain_entry = (struct ice_recp_grp_entry *)ice_malloc(hw,
+			sizeof(*last_chain_entry));
+		if (!last_chain_entry) {
+			status = ICE_ERR_NO_MEMORY;
+			goto err_unroll;
+		}
+		last_chain_entry->rid = rid;
+		ice_memset(&buf[recps].content.lkup_indx, 0,
+			   sizeof(buf[recps].content.lkup_indx),
+			   ICE_NONDMA_MEM);
+		/* All recipes use look-up index 0 to match switch ID. */
+		buf[recps].content.lkup_indx[0] = ICE_AQ_SW_ID_LKUP_IDX;
+		buf[recps].content.mask[0] =
+			CPU_TO_LE16(ICE_AQ_SW_ID_LKUP_MASK);
+		for (i = 1; i <= ICE_NUM_WORDS_RECIPE; i++) {
+			buf[recps].content.lkup_indx[i] =
+				ICE_AQ_RECIPE_LKUP_IGNORE;
+			buf[recps].content.mask[i] = 0;
+		}
+
+		i = 1;
+		/* update r_bitmap with the recp that is used for chaining */
+		ice_set_bit(rid, rm->r_bitmap);
+		/* this is the recipe that chains all the other recipes so it
+		 * should not have a chaining ID to indicate the same
+		 */
+		last_chain_entry->chain_idx = ICE_INVAL_CHAIN_IND;
+		LIST_FOR_EACH_ENTRY(entry, &rm->rg_list, ice_recp_grp_entry,
+				    l_entry) {
+			last_chain_entry->fv_idx[i] = entry->chain_idx;
+			buf[recps].content.lkup_indx[i] = entry->chain_idx;
+			buf[recps].content.mask[i++] = CPU_TO_LE16(0xFFFF);
+			ice_set_bit(entry->rid, rm->r_bitmap);
+		}
+		LIST_ADD(&last_chain_entry->l_entry, &rm->rg_list);
+		if (sizeof(buf[recps].recipe_bitmap) >=
+		    sizeof(rm->r_bitmap)) {
+			ice_memcpy(buf[recps].recipe_bitmap, rm->r_bitmap,
+				   sizeof(buf[recps].recipe_bitmap),
+				   ICE_NONDMA_TO_NONDMA);
+		} else {
+			status = ICE_ERR_BAD_PTR;
+			goto err_unroll;
+		}
+		buf[recps].content.act_ctrl_fwd_priority = rm->priority;
+
+		/* To differentiate among different UDP tunnels, a meta data ID
+		 * flag is used.
+		 */
+		if (match_tun) {
+			buf[recps].content.lkup_indx[i] = ICE_TUN_FLAG_FV_IND;
+			buf[recps].content.mask[i] =
+				CPU_TO_LE16(ICE_TUN_FLAG_MASK);
+		}
+
+		recps++;
+		rm->root_rid = (u8)rid;
+	}
+	status = ice_acquire_change_lock(hw, ICE_RES_WRITE);
+	if (status)
+		goto err_unroll;
+
+	status = ice_aq_add_recipe(hw, buf, rm->n_grp_count, NULL);
+	ice_release_change_lock(hw);
+	if (status)
+		goto err_unroll;
+
+	/* Every recipe that just got created add it to the recipe
+	 * book keeping list
+	 */
+	LIST_FOR_EACH_ENTRY(entry, &rm->rg_list, ice_recp_grp_entry, l_entry) {
+		struct ice_switch_info *sw = hw->switch_info;
+		struct ice_sw_recipe *recp;
+
+		recp = &sw->recp_list[entry->rid];
+		recp->root_rid = entry->rid;
+		ice_memcpy(&recp->ext_words, entry->r_group.pairs,
+			   entry->r_group.n_val_pairs *
+			   sizeof(struct ice_fv_word),
+			   ICE_NONDMA_TO_NONDMA);
+
+		recp->n_ext_words = entry->r_group.n_val_pairs;
+		recp->chain_idx = entry->chain_idx;
+		recp->recp_created = true;
+		recp->big_recp = false;
+	}
+	rm->root_buf = buf;
+	ice_free(hw, tmp);
+	return status;
+
+err_unroll:
+err_mem:
+	ice_free(hw, tmp);
+	ice_free(hw, buf);
+	return status;
+}
+
+/**
+ * ice_create_recipe_group - creates recipe group
+ * @hw: pointer to hardware structure
+ * @rm: recipe management list entry
+ * @lkup_exts: lookup elements
+ */
+static enum ice_status
+ice_create_recipe_group(struct ice_hw *hw, struct ice_sw_recipe *rm,
+			struct ice_prot_lkup_ext *lkup_exts)
+{
+	struct ice_recp_grp_entry *entry;
+	struct ice_recp_grp_entry *tmp;
+	enum ice_status status;
+	u8 recp_count = 0;
+	u16 groups, i;
+
+	rm->n_grp_count = 0;
+
+	/* Each switch recipe can match up to 5 words or metadata. One word in
+	 * each recipe is used to match the switch ID. Four words are left for
+	 * matching other values. If the new advanced recipe requires more than
+	 * 4 words, it needs to be split into multiple recipes which are chained
+	 * together using the intermediate result that each produces as input to
+	 * the other recipes in the sequence.
+	 */
+	groups = ARRAY_SIZE(ice_recipe_pack);
+
+	/* Check if any of the preferred recipes from the grouping policy
+	 * matches.
+	 */
+	for (i = 0; i < groups; i++)
+		/* Check if the recipe from the preferred grouping matches
+		 * or is a subset of the fields that needs to be looked up.
+		 */
+		if (ice_is_recipe_subset(lkup_exts, &ice_recipe_pack[i])) {
+			/* This recipe can be used by itself or grouped with
+			 * other recipes.
+			 */
+			entry = (struct ice_recp_grp_entry *)
+				ice_malloc(hw, sizeof(*entry));
+			if (!entry) {
+				status = ICE_ERR_NO_MEMORY;
+				goto err_unroll;
+			}
+			entry->r_group = ice_recipe_pack[i];
+			LIST_ADD(&entry->l_entry, &rm->rg_list);
+			rm->n_grp_count++;
+		}
+
+	/* Create recipes for words that are marked not done by packing them
+	 * as best fit.
+	 */
+	status = ice_create_first_fit_recp_def(hw, lkup_exts,
+					       &rm->rg_list, &recp_count);
+	if (!status) {
+		rm->n_grp_count += recp_count;
+		rm->n_ext_words = lkup_exts->n_val_words;
+		ice_memcpy(&rm->ext_words, lkup_exts->fv_words,
+			   sizeof(rm->ext_words), ICE_NONDMA_TO_NONDMA);
+		goto out;
+	}
+
+err_unroll:
+	LIST_FOR_EACH_ENTRY_SAFE(entry, tmp, &rm->rg_list, ice_recp_grp_entry,
+				 l_entry) {
+		LIST_DEL(&entry->l_entry);
+		ice_free(hw, entry);
+	}
+
+out:
+	return status;
+}
+
+/**
+ * ice_get_fv - get field vectors/extraction sequences for spec. lookup types
+ * @hw: pointer to hardware structure
+ * @lkups: lookup elements or match criteria for the advanced recipe, one
+ *	   structure per protocol header
+ * @lkups_cnt: number of protocols
+ * @fv_list: pointer to a list that holds the returned field vectors
+ */
+static enum ice_status
+ice_get_fv(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
+	   struct LIST_HEAD_TYPE *fv_list)
+{
+	enum ice_status status;
+	u16 *prot_ids;
+	u16 i;
+
+	prot_ids = (u16 *)ice_calloc(hw, lkups_cnt, sizeof(*prot_ids));
+	if (!prot_ids)
+		return ICE_ERR_NO_MEMORY;
+
+	for (i = 0; i < lkups_cnt; i++)
+		if (!ice_prot_type_to_id(lkups[i].type, &prot_ids[i])) {
+			status = ICE_ERR_CFG;
+			goto free_mem;
+		}
+
+	/* Find field vectors that include all specified protocol types */
+	status = ice_get_sw_fv_list(hw, prot_ids, lkups_cnt, fv_list);
+
+free_mem:
+	ice_free(hw, prot_ids);
+	return status;
+}
+
+/**
+ * ice_add_adv_recipe - Add an advanced recipe that is not part of the default
+ * @hw: pointer to hardware structure
+ * @lkups: lookup elements or match criteria for the advanced recipe, one
+ *  structure per protocol header
+ * @lkups_cnt: number of protocols
+ * @rinfo: other information regarding the rule e.g. priority and action info
+ * @rid: return the recipe ID of the recipe created
+ */
+static enum ice_status
+ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
+		   u16 lkups_cnt, struct ice_adv_rule_info *rinfo, u16 *rid)
+{
+	struct ice_prot_lkup_ext *lkup_exts;
+	struct ice_recp_grp_entry *r_entry;
+	struct ice_sw_fv_list_entry *fvit;
+	struct ice_recp_grp_entry *r_tmp;
+	struct ice_sw_fv_list_entry *tmp;
+	enum ice_status status = ICE_SUCCESS;
+	struct ice_sw_recipe *rm;
+	bool match_tun = false;
+	u8 i;
+
+	if (!lkups_cnt)
+		return ICE_ERR_PARAM;
+
+	lkup_exts = (struct ice_prot_lkup_ext *)
+		ice_malloc(hw, sizeof(*lkup_exts));
+	if (!lkup_exts)
+		return ICE_ERR_NO_MEMORY;
+
+	/* Determine the number of words to be matched and if it exceeds a
+	 * recipe's restrictions
+	 */
+	for (i = 0; i < lkups_cnt; i++) {
+		u16 count;
+
+		if (lkups[i].type >= ICE_PROTOCOL_LAST) {
+			status = ICE_ERR_CFG;
+			goto err_free_lkup_exts;
+		}
+
+		count = ice_fill_valid_words(&lkups[i], lkup_exts);
+		if (!count) {
+			status = ICE_ERR_CFG;
+			goto err_free_lkup_exts;
+		}
+	}
+
+	*rid = ice_find_recp(hw, lkup_exts);
+	if (*rid < ICE_MAX_NUM_RECIPES)
+		/* Success if found a recipe that match the existing criteria */
+		goto err_free_lkup_exts;
+
+	/* Recipe we need does not exist, add a recipe */
+
+	rm = (struct ice_sw_recipe *)ice_malloc(hw, sizeof(*rm));
+	if (!rm) {
+		status = ICE_ERR_NO_MEMORY;
+		goto err_free_lkup_exts;
+	}
+
+	/* Get field vectors that contain fields extracted from all the protocol
+	 * headers being programmed.
+	 */
+	INIT_LIST_HEAD(&rm->fv_list);
+	INIT_LIST_HEAD(&rm->rg_list);
+
+	status = ice_get_fv(hw, lkups, lkups_cnt, &rm->fv_list);
+	if (status)
+		goto err_unroll;
+
+	/* Group match words into recipes using preferred recipe grouping
+	 * criteria.
+	 */
+	status = ice_create_recipe_group(hw, rm, lkup_exts);
+	if (status)
+		goto err_unroll;
+
+	/* There is only profile for UDP tunnels. So, it is necessary to use a
+	 * metadata ID flag to differentiate different tunnel types. A separate
+	 * recipe needs to be used for the metadata.
+	 */
+	if ((rinfo->tun_type == ICE_SW_TUN_VXLAN_GPE ||
+	     rinfo->tun_type == ICE_SW_TUN_GENEVE ||
+	     rinfo->tun_type == ICE_SW_TUN_VXLAN) && rm->n_grp_count > 1)
+		match_tun = true;
+
+	/* set the recipe priority if specified */
+	rm->priority = rinfo->priority ? rinfo->priority : 0;
+
+	/* Find offsets from the field vector. Pick the first one for all the
+	 * recipes.
+	 */
+	ice_fill_fv_word_index(hw, &rm->fv_list, &rm->rg_list);
+	status = ice_add_sw_recipe(hw, rm, match_tun);
+	if (status)
+		goto err_unroll;
+
+	/* Associate all the recipes created with all the profiles in the
+	 * common field vector.
+	 */
+	LIST_FOR_EACH_ENTRY(fvit, &rm->fv_list, ice_sw_fv_list_entry,
+			    list_entry) {
+		ice_declare_bitmap(r_bitmap, ICE_MAX_NUM_RECIPES);
+
+		status = ice_aq_get_recipe_to_profile(hw, fvit->profile_id,
+						      (u8 *)r_bitmap, NULL);
+		if (status)
+			goto err_unroll;
+
+		ice_or_bitmap(rm->r_bitmap, r_bitmap, rm->r_bitmap,
+			      ICE_MAX_NUM_RECIPES);
+		status = ice_acquire_change_lock(hw, ICE_RES_WRITE);
+		if (status)
+			goto err_unroll;
+
+		status = ice_aq_map_recipe_to_profile(hw, fvit->profile_id,
+						      (u8 *)rm->r_bitmap,
+						      NULL);
+		ice_release_change_lock(hw);
+
+		if (status)
+			goto err_unroll;
+	}
+
+	*rid = rm->root_rid;
+	ice_memcpy(&hw->switch_info->recp_list[*rid].lkup_exts,
+		   lkup_exts, sizeof(*lkup_exts), ICE_NONDMA_TO_NONDMA);
+err_unroll:
+	LIST_FOR_EACH_ENTRY_SAFE(r_entry, r_tmp, &rm->rg_list,
+				 ice_recp_grp_entry, l_entry) {
+		LIST_DEL(&r_entry->l_entry);
+		ice_free(hw, r_entry);
+	}
+
+	LIST_FOR_EACH_ENTRY_SAFE(fvit, tmp, &rm->fv_list, ice_sw_fv_list_entry,
+				 list_entry) {
+		LIST_DEL(&fvit->list_entry);
+		ice_free(hw, fvit);
+	}
+
+	if (rm->root_buf)
+		ice_free(hw, rm->root_buf);
+
+	ice_free(hw, rm);
+
+err_free_lkup_exts:
+	ice_free(hw, lkup_exts);
+
+	return status;
+}
+
+#define ICE_MAC_HDR_OFFSET	0
+#define ICE_IP_HDR_OFFSET	14
+#define ICE_GRE_HDR_OFFSET	34
+#define ICE_MAC_IL_HDR_OFFSET	42
+#define ICE_IP_IL_HDR_OFFSET	56
+#define ICE_L4_HDR_OFFSET	34
+#define ICE_UDP_TUN_HDR_OFFSET	42
+
+/**
+ * ice_find_dummy_packet - find dummy packet with given match criteria
+ *
+ * @lkups: lookup elements or match criteria for the advanced recipe, one
+ *	   structure per protocol header
+ * @lkups_cnt: number of protocols
+ * @tun_type: tunnel type from the match criteria
+ * @pkt: dummy packet to fill according to filter match criteria
+ * @pkt_len: packet length of dummy packet
+ */
+static void
+ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
+		      enum ice_sw_tunnel_type tun_type, const u8 **pkt,
+		      u16 *pkt_len)
+{
+	u16 i;
+
+	if (tun_type == ICE_SW_TUN_NVGRE || tun_type == ICE_ALL_TUNNELS) {
+		*pkt = dummy_gre_packet;
+		*pkt_len = sizeof(dummy_gre_packet);
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_VXLAN || tun_type == ICE_SW_TUN_GENEVE ||
+	    tun_type == ICE_SW_TUN_VXLAN_GPE) {
+		*pkt = dummy_udp_tun_packet;
+		*pkt_len = sizeof(dummy_udp_tun_packet);
+		return;
+	}
+
+	for (i = 0; i < lkups_cnt; i++) {
+		if (lkups[i].type == ICE_UDP_ILOS) {
+			*pkt = dummy_udp_tun_packet;
+			*pkt_len = sizeof(dummy_udp_tun_packet);
+			return;
+		}
+	}
+
+	*pkt = dummy_tcp_tun_packet;
+	*pkt_len = sizeof(dummy_tcp_tun_packet);
+}
+
+/**
+ * ice_fill_adv_dummy_packet - fill a dummy packet with given match criteria
+ *
+ * @lkups: lookup elements or match criteria for the advanced recipe, one
+ *	   structure per protocol header
+ * @lkups_cnt: number of protocols
+ * @tun_type: to know if the dummy packet is supposed to be tunnel packet
+ * @s_rule: stores rule information from the match criteria
+ * @dummy_pkt: dummy packet to fill according to filter match criteria
+ * @pkt_len: packet length of dummy packet
+ */
+static void
+ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
+			  enum ice_sw_tunnel_type tun_type,
+			  struct ice_aqc_sw_rules_elem *s_rule,
+			  const u8 *dummy_pkt, u16 pkt_len)
+{
+	u8 *pkt;
+	u16 i;
+
+	/* Start with a packet with a pre-defined/dummy content. Then, fill
+	 * in the header values to be looked up or matched.
+	 */
+	pkt = s_rule->pdata.lkup_tx_rx.hdr;
+
+	ice_memcpy(pkt, dummy_pkt, pkt_len, ICE_NONDMA_TO_NONDMA);
+
+	for (i = 0; i < lkups_cnt; i++) {
+		u32 len, pkt_off, hdr_size, field_off;
+
+		switch (lkups[i].type) {
+		case ICE_MAC_OFOS:
+		case ICE_MAC_IL:
+			pkt_off = offsetof(struct ice_ether_hdr, dst_addr) +
+				((lkups[i].type == ICE_MAC_IL) ?
+				 ICE_MAC_IL_HDR_OFFSET : 0);
+			len = sizeof(lkups[i].h_u.eth_hdr.dst_addr);
+			if ((tun_type == ICE_SW_TUN_VXLAN ||
+			     tun_type == ICE_SW_TUN_GENEVE ||
+			     tun_type == ICE_SW_TUN_VXLAN_GPE) &&
+			     lkups[i].type == ICE_MAC_IL) {
+				pkt_off += sizeof(struct ice_udp_tnl_hdr);
+			}
+
+			ice_memcpy(&pkt[pkt_off],
+				   &lkups[i].h_u.eth_hdr.dst_addr, len,
+				   ICE_NONDMA_TO_NONDMA);
+			pkt_off = offsetof(struct ice_ether_hdr, src_addr) +
+				((lkups[i].type == ICE_MAC_IL) ?
+				 ICE_MAC_IL_HDR_OFFSET : 0);
+			len = sizeof(lkups[i].h_u.eth_hdr.src_addr);
+			if ((tun_type == ICE_SW_TUN_VXLAN ||
+			     tun_type == ICE_SW_TUN_GENEVE ||
+			     tun_type == ICE_SW_TUN_VXLAN_GPE) &&
+			     lkups[i].type == ICE_MAC_IL) {
+				pkt_off += sizeof(struct ice_udp_tnl_hdr);
+			}
+			ice_memcpy(&pkt[pkt_off],
+				   &lkups[i].h_u.eth_hdr.src_addr, len,
+				   ICE_NONDMA_TO_NONDMA);
+			if (lkups[i].h_u.eth_hdr.ethtype_id) {
+				pkt_off = offsetof(struct ice_ether_hdr,
+						   ethtype_id) +
+					((lkups[i].type == ICE_MAC_IL) ?
+					 ICE_MAC_IL_HDR_OFFSET : 0);
+				len = sizeof(lkups[i].h_u.eth_hdr.ethtype_id);
+				if ((tun_type == ICE_SW_TUN_VXLAN ||
+				     tun_type == ICE_SW_TUN_GENEVE ||
+				     tun_type == ICE_SW_TUN_VXLAN_GPE) &&
+				     lkups[i].type == ICE_MAC_IL) {
+					pkt_off +=
+						sizeof(struct ice_udp_tnl_hdr);
+				}
+				ice_memcpy(&pkt[pkt_off],
+					   &lkups[i].h_u.eth_hdr.ethtype_id,
+					   len, ICE_NONDMA_TO_NONDMA);
+			}
+			break;
+		case ICE_IPV4_OFOS:
+			hdr_size = sizeof(struct ice_ipv4_hdr);
+			if (lkups[i].h_u.ipv4_hdr.dst_addr) {
+				pkt_off = ICE_IP_HDR_OFFSET +
+					   offsetof(struct ice_ipv4_hdr,
+						    dst_addr);
+				field_off = offsetof(struct ice_ipv4_hdr,
+						     dst_addr);
+				len = hdr_size - field_off;
+				ice_memcpy(&pkt[pkt_off],
+					   &lkups[i].h_u.ipv4_hdr.dst_addr,
+					   len, ICE_NONDMA_TO_NONDMA);
+			}
+			if (lkups[i].h_u.ipv4_hdr.src_addr) {
+				pkt_off = ICE_IP_HDR_OFFSET +
+					   offsetof(struct ice_ipv4_hdr,
+						    src_addr);
+				field_off = offsetof(struct ice_ipv4_hdr,
+						     src_addr);
+				len = hdr_size - field_off;
+				ice_memcpy(&pkt[pkt_off],
+					   &lkups[i].h_u.ipv4_hdr.src_addr,
+					   len, ICE_NONDMA_TO_NONDMA);
+			}
+			break;
+		case ICE_IPV4_IL:
+			break;
+		case ICE_TCP_IL:
+		case ICE_UDP_ILOS:
+		case ICE_SCTP_IL:
+			hdr_size = sizeof(struct ice_udp_tnl_hdr);
+			if (lkups[i].h_u.l4_hdr.dst_port) {
+				pkt_off = ICE_L4_HDR_OFFSET +
+					   offsetof(struct ice_l4_hdr,
+						    dst_port);
+				field_off = offsetof(struct ice_l4_hdr,
+						     dst_port);
+				len =  hdr_size - field_off;
+				ice_memcpy(&pkt[pkt_off],
+					   &lkups[i].h_u.l4_hdr.dst_port,
+					   len, ICE_NONDMA_TO_NONDMA);
+			}
+			if (lkups[i].h_u.l4_hdr.src_port) {
+				pkt_off = ICE_L4_HDR_OFFSET +
+					offsetof(struct ice_l4_hdr, src_port);
+				field_off = offsetof(struct ice_l4_hdr,
+						     src_port);
+				len =  hdr_size - field_off;
+				ice_memcpy(&pkt[pkt_off],
+					   &lkups[i].h_u.l4_hdr.src_port,
+					   len, ICE_NONDMA_TO_NONDMA);
+			}
+			break;
+		case ICE_VXLAN:
+		case ICE_GENEVE:
+		case ICE_VXLAN_GPE:
+			pkt_off = ICE_UDP_TUN_HDR_OFFSET +
+				   offsetof(struct ice_udp_tnl_hdr, vni);
+			field_off = offsetof(struct ice_udp_tnl_hdr, vni);
+			len =  sizeof(struct ice_udp_tnl_hdr) - field_off;
+			ice_memcpy(&pkt[pkt_off], &lkups[i].h_u.tnl_hdr.vni,
+				   len, ICE_NONDMA_TO_NONDMA);
+			break;
+		default:
+			break;
+		}
+	}
+	s_rule->pdata.lkup_tx_rx.hdr_len = CPU_TO_LE16(pkt_len);
+}
+
+/**
+ * ice_find_adv_rule_entry - Search a rule entry
+ * @hw: pointer to the hardware structure
+ * @lkups: lookup elements or match criteria for the advanced recipe, one
+ *	   structure per protocol header
+ * @lkups_cnt: number of protocols
+ * @recp_id: recipe ID for which we are finding the rule
+ * @rinfo: other information regarding the rule e.g. priority and action info
+ *
+ * Helper function to search for a given advance rule entry
+ * Returns pointer to entry storing the rule if found
+ */
+static struct ice_adv_fltr_mgmt_list_entry *
+ice_find_adv_rule_entry(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
+			u16 lkups_cnt, u8 recp_id,
+			struct ice_adv_rule_info *rinfo)
+{
+	struct ice_adv_fltr_mgmt_list_entry *list_itr;
+	struct ice_switch_info *sw = hw->switch_info;
+	int i;
+
+	LIST_FOR_EACH_ENTRY(list_itr, &sw->recp_list[recp_id].filt_rules,
+			    ice_adv_fltr_mgmt_list_entry, list_entry) {
+		bool lkups_matched = true;
+
+		if (lkups_cnt != list_itr->lkups_cnt)
+			continue;
+		for (i = 0; i < list_itr->lkups_cnt; i++)
+			if (memcmp(&list_itr->lkups[i], &lkups[i],
+				   sizeof(*lkups))) {
+				lkups_matched = false;
+				break;
+			}
+		if (rinfo->sw_act.flag == list_itr->rule_info.sw_act.flag &&
+		    rinfo->tun_type == list_itr->rule_info.tun_type &&
+		    lkups_matched)
+			return list_itr;
+	}
+	return NULL;
+}
+
+/**
+ * ice_adv_add_update_vsi_list
+ * @hw: pointer to the hardware structure
+ * @m_entry: pointer to current adv filter management list entry
+ * @cur_fltr: filter information from the book keeping entry
+ * @new_fltr: filter information with the new VSI to be added
+ *
+ * Call AQ command to add or update previously created VSI list with new VSI.
+ *
+ * Helper function to do book keeping associated with adding filter information
+ * The algorithm to do the booking keeping is described below :
+ * When a VSI needs to subscribe to a given advanced filter
+ *	if only one VSI has been added till now
+ *		Allocate a new VSI list and add two VSIs
+ *		to this list using switch rule command
+ *		Update the previously created switch rule with the
+ *		newly created VSI list ID
+ *	if a VSI list was previously created
+ *		Add the new VSI to the previously created VSI list set
+ *		using the update switch rule command
+ */
+static enum ice_status
+ice_adv_add_update_vsi_list(struct ice_hw *hw,
+			    struct ice_adv_fltr_mgmt_list_entry *m_entry,
+			    struct ice_adv_rule_info *cur_fltr,
+			    struct ice_adv_rule_info *new_fltr)
+{
+	enum ice_status status;
+	u16 vsi_list_id = 0;
+
+	if (cur_fltr->sw_act.fltr_act == ICE_FWD_TO_Q ||
+	    cur_fltr->sw_act.fltr_act == ICE_FWD_TO_QGRP)
+		return ICE_ERR_NOT_IMPL;
+
+	if (cur_fltr->sw_act.fltr_act == ICE_DROP_PACKET &&
+	    new_fltr->sw_act.fltr_act == ICE_DROP_PACKET)
+		return ICE_ERR_ALREADY_EXISTS;
+
+	if ((new_fltr->sw_act.fltr_act == ICE_FWD_TO_Q ||
+	     new_fltr->sw_act.fltr_act == ICE_FWD_TO_QGRP) &&
+	    (cur_fltr->sw_act.fltr_act == ICE_FWD_TO_VSI ||
+	     cur_fltr->sw_act.fltr_act == ICE_FWD_TO_VSI_LIST))
+		return ICE_ERR_NOT_IMPL;
+
+	if (m_entry->vsi_count < 2 && !m_entry->vsi_list_info) {
+		 /* Only one entry existed in the mapping and it was not already
+		  * a part of a VSI list. So, create a VSI list with the old and
+		  * new VSIs.
+		  */
+		struct ice_fltr_info tmp_fltr;
+		u16 vsi_handle_arr[2];
+
+		/* A rule already exists with the new VSI being added */
+		if (cur_fltr->sw_act.fwd_id.hw_vsi_id ==
+		    new_fltr->sw_act.fwd_id.hw_vsi_id)
+			return ICE_ERR_ALREADY_EXISTS;
+
+		vsi_handle_arr[0] = cur_fltr->sw_act.vsi_handle;
+		vsi_handle_arr[1] = new_fltr->sw_act.vsi_handle;
+		status = ice_create_vsi_list_rule(hw, &vsi_handle_arr[0], 2,
+						  &vsi_list_id,
+						  ICE_SW_LKUP_LAST);
+		if (status)
+			return status;
+
+		tmp_fltr.fltr_rule_id = cur_fltr->fltr_rule_id;
+		tmp_fltr.fltr_act = ICE_FWD_TO_VSI_LIST;
+		tmp_fltr.fwd_id.vsi_list_id = vsi_list_id;
+		/* Update the previous switch rule of "forward to VSI" to
+		 * "fwd to VSI list"
+		 */
+		status = ice_update_pkt_fwd_rule(hw, &tmp_fltr);
+		if (status)
+			return status;
+
+		cur_fltr->sw_act.fwd_id.vsi_list_id = vsi_list_id;
+		cur_fltr->sw_act.fltr_act = ICE_FWD_TO_VSI_LIST;
+		m_entry->vsi_list_info =
+			ice_create_vsi_list_map(hw, &vsi_handle_arr[0], 2,
+						vsi_list_id);
+	} else {
+		u16 vsi_handle = new_fltr->sw_act.vsi_handle;
+
+		if (!m_entry->vsi_list_info)
+			return ICE_ERR_CFG;
+
+		/* A rule already exists with the new VSI being added */
+		if (ice_is_bit_set(m_entry->vsi_list_info->vsi_map, vsi_handle))
+			return ICE_SUCCESS;
+
+		/* Update the previously created VSI list set with
+		 * the new VSI ID passed in
+		 */
+		vsi_list_id = cur_fltr->sw_act.fwd_id.vsi_list_id;
+
+		status = ice_update_vsi_list_rule(hw, &vsi_handle, 1,
+						  vsi_list_id, false,
+						  ice_aqc_opc_update_sw_rules,
+						  ICE_SW_LKUP_LAST);
+		/* update VSI list mapping info with new VSI ID */
+		if (!status)
+			ice_set_bit(vsi_handle,
+				    m_entry->vsi_list_info->vsi_map);
+	}
+	if (!status)
+		m_entry->vsi_count++;
+	return status;
+}
+
+/**
+ * ice_add_adv_rule - create an advanced switch rule
+ * @hw: pointer to the hardware structure
+ * @lkups: information on the words that needs to be looked up. All words
+ * together makes one recipe
+ * @lkups_cnt: num of entries in the lkups array
+ * @rinfo: other information related to the rule that needs to be programmed
+ * @added_entry: this will return recipe_id, rule_id and vsi_handle. should be
+ *               ignored is case of error.
+ *
+ * This function can program only 1 rule at a time. The lkups is used to
+ * describe the all the words that forms the "lookup" portion of the recipe.
+ * These words can span multiple protocols. Callers to this function need to
+ * pass in a list of protocol headers with lookup information along and mask
+ * that determines which words are valid from the given protocol header.
+ * rinfo describes other information related to this rule such as forwarding
+ * IDs, priority of this rule, etc.
+ */
+enum ice_status
+ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
+		 u16 lkups_cnt, struct ice_adv_rule_info *rinfo,
+		 struct ice_rule_query_data *added_entry)
+{
+	struct ice_adv_fltr_mgmt_list_entry *m_entry, *adv_fltr = NULL;
+	u16 rid = 0, i, pkt_len, rule_buf_sz, vsi_handle;
+	struct ice_aqc_sw_rules_elem *s_rule;
+	struct LIST_HEAD_TYPE *rule_head;
+	struct ice_switch_info *sw;
+	enum ice_status status;
+	const u8 *pkt = NULL;
+	u32 act = 0;
+
+	if (!lkups_cnt)
+		return ICE_ERR_PARAM;
+
+	for (i = 0; i < lkups_cnt; i++) {
+		u16 j, *ptr;
+
+		/* Validate match masks to make sure they match complete 16-bit
+		 * words.
+		 */
+		ptr = (u16 *)&lkups->m_u;
+		for (j = 0; j < sizeof(lkups->m_u) / sizeof(u16); j++)
+			if (ptr[j] != 0 && ptr[j] != 0xffff)
+				return ICE_ERR_PARAM;
+	}
+
+	if (!(rinfo->sw_act.fltr_act == ICE_FWD_TO_VSI ||
+	      rinfo->sw_act.fltr_act == ICE_FWD_TO_Q ||
+	      rinfo->sw_act.fltr_act == ICE_DROP_PACKET))
+		return ICE_ERR_CFG;
+
+	vsi_handle = rinfo->sw_act.vsi_handle;
+	if (!ice_is_vsi_valid(hw, vsi_handle))
+		return ICE_ERR_PARAM;
+
+	if (rinfo->sw_act.fltr_act == ICE_FWD_TO_VSI)
+		rinfo->sw_act.fwd_id.hw_vsi_id =
+			ice_get_hw_vsi_num(hw, vsi_handle);
+	if (rinfo->sw_act.flag & ICE_FLTR_TX)
+		rinfo->sw_act.src = ice_get_hw_vsi_num(hw, vsi_handle);
+
+	status = ice_add_adv_recipe(hw, lkups, lkups_cnt, rinfo, &rid);
+	if (status)
+		return status;
+	m_entry = ice_find_adv_rule_entry(hw, lkups, lkups_cnt, rid, rinfo);
+	if (m_entry) {
+		/* we have to add VSI to VSI_LIST and increment vsi_count.
+		 * Also Update VSI list so that we can change forwarding rule
+		 * if the rule already exists, we will check if it exists with
+		 * same vsi_id, if not then add it to the VSI list if it already
+		 * exists if not then create a VSI list and add the existing VSI
+		 * ID and the new VSI ID to the list
+		 * We will add that VSI to the list
+		 */
+		status = ice_adv_add_update_vsi_list(hw, m_entry,
+						     &m_entry->rule_info,
+						     rinfo);
+		if (added_entry) {
+			added_entry->rid = rid;
+			added_entry->rule_id = m_entry->rule_info.fltr_rule_id;
+			added_entry->vsi_handle = rinfo->sw_act.vsi_handle;
+		}
+		return status;
+	}
+	ice_find_dummy_packet(lkups, lkups_cnt, rinfo->tun_type, &pkt,
+			      &pkt_len);
+	rule_buf_sz = ICE_SW_RULE_RX_TX_NO_HDR_SIZE + pkt_len;
+	s_rule = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw, rule_buf_sz);
+	if (!s_rule)
+		return ICE_ERR_NO_MEMORY;
+	act |= ICE_SINGLE_ACT_LB_ENABLE | ICE_SINGLE_ACT_LAN_ENABLE;
+	switch (rinfo->sw_act.fltr_act) {
+	case ICE_FWD_TO_VSI:
+		act |= (rinfo->sw_act.fwd_id.hw_vsi_id <<
+			ICE_SINGLE_ACT_VSI_ID_S) & ICE_SINGLE_ACT_VSI_ID_M;
+		act |= ICE_SINGLE_ACT_VSI_FORWARDING | ICE_SINGLE_ACT_VALID_BIT;
+		break;
+	case ICE_FWD_TO_Q:
+		act |= ICE_SINGLE_ACT_TO_Q;
+		act |= (rinfo->sw_act.fwd_id.q_id << ICE_SINGLE_ACT_Q_INDEX_S) &
+		       ICE_SINGLE_ACT_Q_INDEX_M;
+		break;
+	case ICE_DROP_PACKET:
+		act |= ICE_SINGLE_ACT_VSI_FORWARDING | ICE_SINGLE_ACT_DROP |
+		       ICE_SINGLE_ACT_VALID_BIT;
+		break;
+	default:
+		status = ICE_ERR_CFG;
+		goto err_ice_add_adv_rule;
+	}
+
+	/* set the rule LOOKUP type based on caller specified 'RX'
+	 * instead of hardcoding it to be either LOOKUP_TX/RX
+	 *
+	 * for 'RX' set the source to be the port number
+	 * for 'TX' set the source to be the source HW VSI number (determined
+	 * by caller)
+	 */
+	if (rinfo->rx) {
+		s_rule->type = CPU_TO_LE16(ICE_AQC_SW_RULES_T_LKUP_RX);
+		s_rule->pdata.lkup_tx_rx.src =
+			CPU_TO_LE16(hw->port_info->lport);
+	} else {
+		s_rule->type = CPU_TO_LE16(ICE_AQC_SW_RULES_T_LKUP_TX);
+		s_rule->pdata.lkup_tx_rx.src = CPU_TO_LE16(rinfo->sw_act.src);
+	}
+
+	s_rule->pdata.lkup_tx_rx.recipe_id = CPU_TO_LE16(rid);
+	s_rule->pdata.lkup_tx_rx.act = CPU_TO_LE32(act);
+
+	ice_fill_adv_dummy_packet(lkups, lkups_cnt, rinfo->tun_type, s_rule,
+				  pkt, pkt_len);
+
+	status = ice_aq_sw_rules(hw, (struct ice_aqc_sw_rules *)s_rule,
+				 rule_buf_sz, 1, ice_aqc_opc_add_sw_rules,
+				 NULL);
+	if (status)
+		goto err_ice_add_adv_rule;
+	adv_fltr = (struct ice_adv_fltr_mgmt_list_entry *)
+		ice_malloc(hw, sizeof(struct ice_adv_fltr_mgmt_list_entry));
+	if (!adv_fltr) {
+		status = ICE_ERR_NO_MEMORY;
+		goto err_ice_add_adv_rule;
+	}
+
+	adv_fltr->lkups = (struct ice_adv_lkup_elem *)
+		ice_memdup(hw, lkups, lkups_cnt * sizeof(*lkups),
+			   ICE_NONDMA_TO_NONDMA);
+	if (!adv_fltr->lkups) {
+		status = ICE_ERR_NO_MEMORY;
+		goto err_ice_add_adv_rule;
+	}
+
+	adv_fltr->lkups_cnt = lkups_cnt;
+	adv_fltr->rule_info = *rinfo;
+	adv_fltr->rule_info.fltr_rule_id =
+		LE16_TO_CPU(s_rule->pdata.lkup_tx_rx.index);
+	sw = hw->switch_info;
+	sw->recp_list[rid].adv_rule = true;
+	rule_head = &sw->recp_list[rid].filt_rules;
+
+	if (rinfo->sw_act.fltr_act == ICE_FWD_TO_VSI) {
+		struct ice_fltr_info tmp_fltr;
+
+		tmp_fltr.fltr_rule_id =
+			LE16_TO_CPU(s_rule->pdata.lkup_tx_rx.index);
+		tmp_fltr.fltr_act = ICE_FWD_TO_VSI;
+		tmp_fltr.fwd_id.hw_vsi_id =
+			ice_get_hw_vsi_num(hw, vsi_handle);
+		tmp_fltr.vsi_handle = vsi_handle;
+		/* Update the previous switch rule of "forward to VSI" to
+		 * "fwd to VSI list"
+		 */
+		status = ice_update_pkt_fwd_rule(hw, &tmp_fltr);
+		if (status)
+			goto err_ice_add_adv_rule;
+		adv_fltr->vsi_count = 1;
+	}
+
+	/* Add rule entry to book keeping list */
+	LIST_ADD(&adv_fltr->list_entry, rule_head);
+	if (added_entry) {
+		added_entry->rid = rid;
+		added_entry->rule_id = adv_fltr->rule_info.fltr_rule_id;
+		added_entry->vsi_handle = rinfo->sw_act.vsi_handle;
+	}
+err_ice_add_adv_rule:
+	if (status && adv_fltr) {
+		ice_free(hw, adv_fltr->lkups);
+		ice_free(hw, adv_fltr);
+	}
+
+	ice_free(hw, s_rule);
+
+	return status;
+}
 /**
  * ice_replay_fltr - Replay all the filters stored by a specific list head
  * @hw: pointer to the hardware structure

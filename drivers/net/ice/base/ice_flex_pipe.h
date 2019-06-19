@@ -15,7 +15,12 @@
 
 enum ice_status
 ice_update_pkg(struct ice_hw *hw, struct ice_buf *bufs, u32 count);
-
+enum ice_status
+ice_acquire_change_lock(struct ice_hw *hw, enum ice_aq_res_access_type access);
+void ice_release_change_lock(struct ice_hw *hw);
+enum ice_status
+ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
+		  u8 *prot, u16 *off);
 struct ice_generic_seg_hdr *
 ice_find_seg_in_pkg(struct ice_hw *hw, u32 seg_type,
 		    struct ice_pkg_hdr *pkg_hdr);

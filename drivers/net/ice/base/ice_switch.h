@@ -172,11 +172,21 @@ struct ice_sw_act_ctrl {
 	u8 qgrp_size;
 };
 
+struct ice_rule_query_data {
+	/* Recipe ID for which the requested rule was added */
+	u16 rid;
+	/* Rule ID that was added or is supposed to be removed */
+	u16 rule_id;
+	/* vsi_handle for which Rule was added or is supposed to be removed */
+	u16 vsi_handle;
+};
+
 struct ice_adv_rule_info {
 	enum ice_sw_tunnel_type tun_type;
 	struct ice_sw_act_ctrl sw_act;
 	u32 priority;
 	u8 rx; /* true means LOOKUP_RX otherwise LOOKUP_TX */
+	u16 fltr_rule_id;
 };
 
 /* A collection of one or more four word recipe */
@@ -222,6 +232,7 @@ struct ice_sw_recipe {
 	/* Profiles this recipe should be associated with */
 	struct LIST_HEAD_TYPE fv_list;
 
+#define ICE_MAX_NUM_PROFILES 256
 	/* Profiles this recipe is associated with */
 	u8 num_profs, *prof_ids;
 
@@ -281,6 +292,8 @@ struct ice_adv_fltr_mgmt_list_entry {
 	struct ice_adv_lkup_elem *lkups;
 	struct ice_adv_rule_info rule_info;
 	u16 lkups_cnt;
+	struct ice_vsi_list_map_info *vsi_list_info;
+	u16 vsi_count;
 };
 
 enum ice_promisc_flags {
@@ -421,7 +434,15 @@ enum ice_status
 ice_aq_map_recipe_to_profile(struct ice_hw *hw, u32 profile_id, u8 *r_bitmap,
 			     struct ice_sq_cd *cd);
 
+enum ice_status
+ice_aq_get_recipe_to_profile(struct ice_hw *hw, u32 profile_id, u8 *r_bitmap,
+			     struct ice_sq_cd *cd);
+
 enum ice_status ice_alloc_recipe(struct ice_hw *hw, u16 *recipe_id);
+enum ice_status
+ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
+		 u16 lkups_cnt, struct ice_adv_rule_info *rinfo,
+		 struct ice_rule_query_data *added_entry);
 enum ice_status ice_replay_all_fltr(struct ice_hw *hw);
 
 enum ice_status ice_init_def_sw_recp(struct ice_hw *hw);

@@ -710,6 +710,7 @@ struct ice_aqc_recipe_content {
 #define ICE_AQ_RECIPE_ID_S		0
 #define ICE_AQ_RECIPE_ID_M		(0x3F << ICE_AQ_RECIPE_ID_S)
 #define ICE_AQ_RECIPE_ID_IS_ROOT	BIT(7)
+#define ICE_AQ_SW_ID_LKUP_IDX		0
 	u8 lkup_indx[5];
 #define ICE_AQ_RECIPE_LKUP_DATA_S	0
 #define ICE_AQ_RECIPE_LKUP_DATA_M	(0x3F << ICE_AQ_RECIPE_LKUP_DATA_S)
