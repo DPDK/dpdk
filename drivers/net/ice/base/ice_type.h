@@ -70,7 +70,7 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 /* debug masks - set these bits in hw->debug_mask to control output */
 #define ICE_DBG_INIT		BIT_ULL(1)
 #define ICE_DBG_RELEASE		BIT_ULL(2)
-
+#define ICE_DBG_FW_LOG		BIT_ULL(3)
 #define ICE_DBG_LINK		BIT_ULL(4)
 #define ICE_DBG_PHY		BIT_ULL(5)
 #define ICE_DBG_QCTX		BIT_ULL(6)

@@ -789,10 +789,10 @@ out:
  */
 void ice_output_fw_log(struct ice_hw *hw, struct ice_aq_desc *desc, void *buf)
 {
-	ice_debug(hw, ICE_DBG_AQ_MSG, "[ FW Log Msg Start ]\n");
-	ice_debug_array(hw, ICE_DBG_AQ_MSG, 16, 1, (u8 *)buf,
+	ice_debug(hw, ICE_DBG_FW_LOG, "[ FW Log Msg Start ]\n");
+	ice_debug_array(hw, ICE_DBG_FW_LOG, 16, 1, (u8 *)buf,
 			LE16_TO_CPU(desc->datalen));
-	ice_debug(hw, ICE_DBG_AQ_MSG, "[ FW Log Msg End ]\n");
+	ice_debug(hw, ICE_DBG_FW_LOG, "[ FW Log Msg End ]\n");
 }
 
 /**
