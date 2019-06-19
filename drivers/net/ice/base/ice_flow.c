@@ -195,21 +195,11 @@ static const u32 ice_ptypes_arp_of[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
-/* Packet types for packets with an Outermost/First UDP header */
-static const u32 ice_ptypes_udp_of[] = {
-	0x81000000, 0x00000000, 0x04000000, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-};
-
-/* Packet types for packets with an Innermost/Last UDP header */
+/* UDP Packet types for non-tunneled packets or tunneled
+ * packets with inner UDP.
+ */
 static const u32 ice_ptypes_udp_il[] = {
-	0x80000000, 0x20204040, 0x00081010, 0x80810102,
+	0x81000000, 0x20204040, 0x04081010, 0x80810102,
 	0x00204040, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -222,7 +212,7 @@ static const u32 ice_ptypes_udp_il[] = {
 /* Packet types for packets with an Innermost/Last TCP header */
 static const u32 ice_ptypes_tcp_il[] = {
 	0x04000000, 0x80810102, 0x10204040, 0x42040408,
-	0x00810002, 0x00000000, 0x00000000, 0x00000000,
+	0x00810102, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -473,8 +463,7 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 				       ICE_FLOW_PTYPE_MAX);
 			hdrs &= ~ICE_FLOW_SEG_HDR_ICMP;
 		} else if (hdrs & ICE_FLOW_SEG_HDR_UDP) {
-			src = !i ? (const ice_bitmap_t *)ice_ptypes_udp_of :
-				(const ice_bitmap_t *)ice_ptypes_udp_il;
+			src = (const ice_bitmap_t *)ice_ptypes_udp_il;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
 			hdrs &= ~ICE_FLOW_SEG_HDR_UDP;
