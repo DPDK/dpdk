@@ -398,7 +398,7 @@ ice_find_boost_entry(struct ice_seg *ice_seg, u16 addr,
  * Handles enumeration of individual label entries.
  */
 static void *
-ice_label_enum_handler(u32 __always_unused sect_type, void *section, u32 index,
+ice_label_enum_handler(u32 __ALWAYS_UNUSED sect_type, void *section, u32 index,
 		       u32 *offset)
 {
 	struct ice_label_section *labels;

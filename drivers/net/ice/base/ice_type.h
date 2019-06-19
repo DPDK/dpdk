@@ -102,6 +102,9 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 #define ICE_DBG_USER		BIT_ULL(31)
 #define ICE_DBG_ALL		0xFFFFFFFFFFFFFFFFULL
 
+#ifndef __ALWAYS_UNUSED
+#define __ALWAYS_UNUSED
+#endif
 
 
 
