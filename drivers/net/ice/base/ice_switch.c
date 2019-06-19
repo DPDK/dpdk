@@ -5585,6 +5585,7 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	const u8 *pkt = NULL;
 	bool found = false;
 	u32 act = 0;
+	u8 q_rgn;
 
 	if (!lkups_cnt)
 		return ICE_ERR_PARAM;
@@ -5615,6 +5616,7 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 
 	if (!(rinfo->sw_act.fltr_act == ICE_FWD_TO_VSI ||
 	      rinfo->sw_act.fltr_act == ICE_FWD_TO_Q ||
+	      rinfo->sw_act.fltr_act == ICE_FWD_TO_QGRP ||
 	      rinfo->sw_act.fltr_act == ICE_DROP_PACKET))
 		return ICE_ERR_CFG;
 
@@ -5666,6 +5668,15 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		act |= ICE_SINGLE_ACT_TO_Q;
 		act |= (rinfo->sw_act.fwd_id.q_id << ICE_SINGLE_ACT_Q_INDEX_S) &
 		       ICE_SINGLE_ACT_Q_INDEX_M;
+		break;
+	case ICE_FWD_TO_QGRP:
+		q_rgn = rinfo->sw_act.qgrp_size > 0 ?
+			(u8)ice_ilog2(rinfo->sw_act.qgrp_size) : 0;
+		act |= ICE_SINGLE_ACT_TO_Q;
+		act |= (rinfo->sw_act.fwd_id.q_id << ICE_SINGLE_ACT_Q_INDEX_S) &
+		       ICE_SINGLE_ACT_Q_INDEX_M;
+		act |= (q_rgn << ICE_SINGLE_ACT_Q_REGION_S) &
+		       ICE_SINGLE_ACT_Q_REGION_M;
 		break;
 	case ICE_DROP_PACKET:
 		act |= ICE_SINGLE_ACT_VSI_FORWARDING | ICE_SINGLE_ACT_DROP |
