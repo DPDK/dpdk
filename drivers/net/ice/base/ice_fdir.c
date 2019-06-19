@@ -692,8 +692,13 @@ bool ice_fdir_is_dup_fltr(struct ice_hw *hw, struct ice_fdir_fltr *input)
 				ret = ice_fdir_comp_rules(rule, input, false);
 			else
 				ret = ice_fdir_comp_rules(rule, input, true);
-			if (ret)
-				break;
+			if (ret) {
+				if (rule->fltr_id == input->fltr_id &&
+				    rule->q_index != input->q_index)
+					ret = false;
+				else
+					break;
+			}
 		}
 	}
 
