@@ -2989,6 +2989,26 @@ void ice_fill_blk_tbls(struct ice_hw *hw)
 }
 
 /**
+ * ice_free_prof_map - free profile map
+ * @hw: pointer to the hardware structure
+ * @blk_idx: HW block index
+ */
+static void ice_free_prof_map(struct ice_hw *hw, u8 blk_idx)
+{
+	struct ice_es *es = &hw->blk[blk_idx].es;
+	struct ice_prof_map *del, *tmp;
+
+	ice_acquire_lock(&es->prof_map_lock);
+	LIST_FOR_EACH_ENTRY_SAFE(del, tmp, &es->prof_map,
+				 ice_prof_map, list) {
+		LIST_DEL(&del->list);
+		ice_free(hw, del);
+	}
+	INIT_LIST_HEAD(&es->prof_map);
+	ice_release_lock(&es->prof_map_lock);
+}
+
+/**
  * ice_free_flow_profs - free flow profile entries
  * @hw: pointer to the hardware structure
  * @blk_idx: HW block index
@@ -2997,10 +3017,7 @@ static void ice_free_flow_profs(struct ice_hw *hw, u8 blk_idx)
 {
 	struct ice_flow_prof *p, *tmp;
 
-	/* This call is being made as part of resource deallocation
-	 * during unload. Lock acquire and release will not be
-	 * necessary here.
-	 */
+	ice_acquire_lock(&hw->fl_profs_locks[blk_idx]);
 	LIST_FOR_EACH_ENTRY_SAFE(p, tmp, &hw->fl_profs[blk_idx],
 				 ice_flow_prof, l_entry) {
 		struct ice_flow_entry *e, *t;
@@ -3014,6 +3031,7 @@ static void ice_free_flow_profs(struct ice_hw *hw, u8 blk_idx)
 			ice_free(hw, p->acts);
 		ice_free(hw, p);
 	}
+	ice_release_lock(&hw->fl_profs_locks[blk_idx]);
 
 	/* if driver is in reset and tables are being cleared
 	 * re-initialize the flow profile list heads
@@ -3050,17 +3068,12 @@ void ice_free_hw_tbls(struct ice_hw *hw)
 	for (i = 0; i < ICE_BLK_COUNT; i++) {
 		if (hw->blk[i].is_list_init) {
 			struct ice_es *es = &hw->blk[i].es;
-			struct ice_prof_map *del, *tmp;
 
-			LIST_FOR_EACH_ENTRY_SAFE(del, tmp, &es->prof_map,
-						 ice_prof_map, list) {
-				LIST_DEL(&del->list);
-				ice_free(hw, del);
-			}
-
+			ice_free_prof_map(hw, i);
 			ice_destroy_lock(&es->prof_map_lock);
 			ice_free_flow_profs(hw, i);
 			ice_destroy_lock(&hw->fl_profs_locks[i]);
+
 			hw->blk[i].is_list_init = false;
 		}
 		ice_free_vsig_tbl(hw, (enum ice_block)i);
