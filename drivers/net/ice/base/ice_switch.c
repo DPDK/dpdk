@@ -2288,14 +2288,15 @@ ice_add_rule_internal(struct ice_hw *hw, u8 recp_id,
 
 	m_entry = ice_find_rule_entry(hw, recp_id, new_fltr);
 	if (!m_entry) {
-		ice_release_lock(rule_lock);
-		return ice_create_pkt_fwd_rule(hw, f_entry);
+		status = ice_create_pkt_fwd_rule(hw, f_entry);
+		goto exit_add_rule_internal;
 	}
 
 	cur_fltr = &m_entry->fltr_info;
 	status = ice_add_update_vsi_list(hw, m_entry, cur_fltr, new_fltr);
-	ice_release_lock(rule_lock);
 
+exit_add_rule_internal:
+	ice_release_lock(rule_lock);
 	return status;
 }
 
