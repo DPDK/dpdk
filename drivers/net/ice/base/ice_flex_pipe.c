@@ -3041,6 +3041,7 @@ void ice_free_hw_tbls(struct ice_hw *hw)
 				ice_free(hw, del);
 			}
 
+			ice_destroy_lock(&es->prof_map_lock);
 			ice_free_flow_profs(hw, i);
 			ice_destroy_lock(&hw->fl_profs_locks[i]);
 			hw->blk[i].is_list_init = false;
@@ -3101,6 +3102,7 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 			continue;
 
 		ice_init_flow_profs(hw, i);
+		ice_init_lock(&es->prof_map_lock);
 		INIT_LIST_HEAD(&es->prof_map);
 		hw->blk[i].is_list_init = true;
 
@@ -3843,6 +3845,8 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 	u32 byte = 0;
 	u8 prof_id;
 
+	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
+
 	/* search for existing profile */
 	status = ice_find_prof_id(hw, blk, es, &prof_id);
 	if (status) {
@@ -3914,12 +3918,39 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 		bytes--;
 		byte++;
 	}
-	LIST_ADD(&prof->list, &hw->blk[blk].es.prof_map);
 
-	return ICE_SUCCESS;
+	LIST_ADD(&prof->list, &hw->blk[blk].es.prof_map);
+	status = ICE_SUCCESS;
 
 err_ice_add_prof:
+	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
 	return status;
+}
+
+/**
+ * ice_search_prof_id_low - Search for a profile tracking ID low level
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ * @id: profile tracking ID
+ *
+ * This will search for a profile tracking ID which was previously added. This
+ * version assumes that the caller has already acquired the prof map lock.
+ */
+static struct ice_prof_map *
+ice_search_prof_id_low(struct ice_hw *hw, enum ice_block blk, u64 id)
+{
+	struct ice_prof_map *entry = NULL;
+	struct ice_prof_map *map;
+
+	LIST_FOR_EACH_ENTRY(map, &hw->blk[blk].es.prof_map, ice_prof_map,
+			    list) {
+		if (map->profile_cookie == id) {
+			entry = map;
+			break;
+		}
+	}
+
+	return entry;
 }
 
 /**
@@ -3933,16 +3964,11 @@ err_ice_add_prof:
 struct ice_prof_map *
 ice_search_prof_id(struct ice_hw *hw, enum ice_block blk, u64 id)
 {
-	struct ice_prof_map *entry = NULL;
-	struct ice_prof_map *map;
+	struct ice_prof_map *entry;
 
-	LIST_FOR_EACH_ENTRY(map, &hw->blk[blk].es.prof_map, ice_prof_map,
-			    list) {
-		if (map->profile_cookie == id) {
-			entry = map;
-			break;
-		}
-	}
+	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
+	entry = ice_search_prof_id_low(hw, blk, id);
+	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
 
 	return entry;
 }
@@ -4199,29 +4225,33 @@ err_ice_rem_flow_all:
  */
 enum ice_status ice_rem_prof(struct ice_hw *hw, enum ice_block blk, u64 id)
 {
-	enum ice_status status;
 	struct ice_prof_map *pmap;
+	enum ice_status status;
 
-	pmap = ice_search_prof_id(hw, blk, id);
-	if (!pmap)
-		return ICE_ERR_DOES_NOT_EXIST;
+	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
+
+	pmap = ice_search_prof_id_low(hw, blk, id);
+	if (!pmap) {
+		status = ICE_ERR_DOES_NOT_EXIST;
+		goto err_ice_rem_prof;
+	}
 
 	/* remove all flows with this profile */
 	status = ice_rem_flow_all(hw, blk, pmap->profile_cookie);
 	if (status)
-		return status;
+		goto err_ice_rem_prof;
 
-	/* remove profile */
-	status = ice_free_prof_id(hw, blk, pmap->prof_id);
-	if (status)
-		return status;
 	/* dereference profile, and possibly remove */
 	ice_prof_dec_ref(hw, blk, pmap->prof_id);
 
 	LIST_DEL(&pmap->list);
 	ice_free(hw, pmap);
 
-	return ICE_SUCCESS;
+	status = ICE_SUCCESS;
+
+err_ice_rem_prof:
+	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
+	return status;
 }
 
 /**

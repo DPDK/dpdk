@@ -503,10 +503,11 @@ struct ice_es {
 	u16 count;
 	u16 fvw;
 	u16 *ref_count;
-	u8 *written;
-	u8 reverse; /* set to true to reverse FV order */
 	struct LIST_HEAD_TYPE prof_map;
 	struct ice_fv_word *t;
+	struct ice_lock prof_map_lock;	/* protect access to profiles list */
+	u8 *written;
+	u8 reverse; /* set to true to reverse FV order */
 };
 
 /* PTYPE Group management */
