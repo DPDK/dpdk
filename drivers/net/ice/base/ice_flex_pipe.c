@@ -461,7 +461,7 @@ ice_enum_labels(struct ice_seg *ice_seg, u32 type, struct ice_pkg_enum *state,
  * since the first call to ice_enum_labels requires a pointer to an actual
  * ice_seg structure.
  */
-void ice_init_pkg_hints(struct ice_hw *hw, struct ice_seg *ice_seg)
+static void ice_init_pkg_hints(struct ice_hw *hw, struct ice_seg *ice_seg)
 {
 	struct ice_pkg_enum state;
 	char *label_name;
@@ -808,27 +808,6 @@ ice_aq_download_pkg(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
 	return status;
 }
 
-/**
- * ice_aq_upload_section
- * @hw: pointer to the hardware structure
- * @pkg_buf: the package buffer which will receive the section
- * @buf_size: the size of the package buffer
- * @cd: pointer to command details structure or NULL
- *
- * Upload Section (0x0C41)
- */
-enum ice_status
-ice_aq_upload_section(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
-		      u16 buf_size, struct ice_sq_cd *cd)
-{
-	struct ice_aq_desc desc;
-
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_upload_section");
-	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_upload_section);
-	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
-
-	return ice_aq_send_cmd(hw, &desc, pkg_buf, buf_size, cd);
-}
 
 /**
  * ice_aq_update_pkg
@@ -890,7 +869,7 @@ ice_aq_update_pkg(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf, u16 buf_size,
  * success it returns a pointer to the segment header, otherwise it will
  * return NULL.
  */
-struct ice_generic_seg_hdr *
+static struct ice_generic_seg_hdr *
 ice_find_seg_in_pkg(struct ice_hw *hw, u32 seg_type,
 		    struct ice_pkg_hdr *pkg_hdr)
 {
@@ -1052,7 +1031,8 @@ ice_aq_get_pkg_info_list(struct ice_hw *hw,
  *
  * Handles the download of a complete package.
  */
-enum ice_status ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg)
+static enum ice_status
+ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg)
 {
 	struct ice_buf_table *ice_buf_tbl;
 
@@ -1081,7 +1061,7 @@ enum ice_status ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg)
  *
  * Saves off the package details into the HW structure.
  */
-enum ice_status
+static enum ice_status
 ice_init_pkg_info(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr)
 {
 	struct ice_global_metadata_seg *meta_seg;
@@ -1133,8 +1113,7 @@ ice_init_pkg_info(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr)
  *
  * Store details of the package currently loaded in HW into the HW structure.
  */
-enum ice_status
-ice_get_pkg_info(struct ice_hw *hw)
+static enum ice_status ice_get_pkg_info(struct ice_hw *hw)
 {
 	struct ice_aqc_get_pkg_info_resp *pkg_info;
 	enum ice_status status;
@@ -1187,40 +1166,6 @@ init_pkg_free_alloc:
 	return status;
 }
 
-/**
- * ice_find_label_value
- * @ice_seg: pointer to the ice segment (non-NULL)
- * @name: name of the label to search for
- * @type: the section type that will contain the label
- * @value: pointer to a value that will return the label's value if found
- *
- * Finds a label's value given the label name and the section type to search.
- * The ice_seg parameter must not be NULL since the first call to
- * ice_enum_labels requires a pointer to an actual ice_seg structure.
- */
-enum ice_status
-ice_find_label_value(struct ice_seg *ice_seg, char const *name, u32 type,
-		     u16 *value)
-{
-	struct ice_pkg_enum state;
-	char *label_name;
-	u16 val;
-
-	if (!ice_seg)
-		return ICE_ERR_PARAM;
-
-	do {
-		label_name = ice_enum_labels(ice_seg, type, &state, &val);
-		if (label_name && !strcmp(label_name, name)) {
-			*value = val;
-			return ICE_SUCCESS;
-		}
-
-		ice_seg = NULL;
-	} while (label_name);
-
-	return ICE_ERR_CFG;
-}
 
 /**
  * ice_verify_pkg - verify package
@@ -1499,7 +1444,7 @@ enum ice_status ice_copy_and_init_pkg(struct ice_hw *hw, const u8 *buf, u32 len)
  * Allocates a package buffer and returns a pointer to the buffer header.
  * Note: all package contents must be in Little Endian form.
  */
-struct ice_buf_build *ice_pkg_buf_alloc(struct ice_hw *hw)
+static struct ice_buf_build *ice_pkg_buf_alloc(struct ice_hw *hw)
 {
 	struct ice_buf_build *bld;
 	struct ice_buf_hdr *buf;
@@ -1623,40 +1568,15 @@ err:
 }
 
 /**
- * ice_pkg_buf_alloc_single_section
+ * ice_pkg_buf_free
  * @hw: pointer to the HW structure
- * @type: the section type value
- * @size: the size of the section to reserve (in bytes)
- * @section: returns pointer to the section
+ * @bld: pointer to pkg build (allocated by ice_pkg_buf_alloc())
  *
- * Allocates a package buffer with a single section.
- * Note: all package contents must be in Little Endian form.
+ * Frees a package buffer
  */
-static struct ice_buf_build *
-ice_pkg_buf_alloc_single_section(struct ice_hw *hw, u32 type, u16 size,
-				 void **section)
+static void ice_pkg_buf_free(struct ice_hw *hw, struct ice_buf_build *bld)
 {
-	struct ice_buf_build *buf;
-
-	if (!section)
-		return NULL;
-
-	buf = ice_pkg_buf_alloc(hw);
-	if (!buf)
-		return NULL;
-
-	if (ice_pkg_buf_reserve_section(buf, 1))
-		goto ice_pkg_buf_alloc_single_section_err;
-
-	*section = ice_pkg_buf_alloc_section(buf, type, size);
-	if (!*section)
-		goto ice_pkg_buf_alloc_single_section_err;
-
-	return buf;
-
-ice_pkg_buf_alloc_single_section_err:
-	ice_pkg_buf_free(hw, buf);
-	return NULL;
+	ice_free(hw, bld);
 }
 
 /**
@@ -1672,7 +1592,7 @@ ice_pkg_buf_alloc_single_section_err:
  * result in some wasted space in the buffer.
  * Note: all package contents must be in Little Endian form.
  */
-enum ice_status
+static enum ice_status
 ice_pkg_buf_reserve_section(struct ice_buf_build *bld, u16 count)
 {
 	struct ice_buf_hdr *buf;
@@ -1701,48 +1621,6 @@ ice_pkg_buf_reserve_section(struct ice_buf_build *bld, u16 count)
 }
 
 /**
- * ice_pkg_buf_unreserve_section
- * @bld: pointer to pkg build (allocated by ice_pkg_buf_alloc())
- * @count: the number of sections to unreserve
- *
- * Unreserves one or more section table entries in a package buffer, releasing
- * space that can be used for section data. This routine can be called
- * multiple times as long as they are made before calling
- * ice_pkg_buf_alloc_section(). Once ice_pkg_buf_alloc_section()
- * is called once, the number of sections that can be allocated will not be able
- * to be increased; not using all reserved sections is fine, but this will
- * result in some wasted space in the buffer.
- * Note: all package contents must be in Little Endian form.
- */
-enum ice_status
-ice_pkg_buf_unreserve_section(struct ice_buf_build *bld, u16 count)
-{
-	struct ice_buf_hdr *buf;
-	u16 section_count;
-	u16 data_end;
-
-	if (!bld)
-		return ICE_ERR_PARAM;
-
-	buf = (struct ice_buf_hdr *)&bld->buf;
-
-	/* already an active section, can't decrease table size */
-	section_count = LE16_TO_CPU(buf->section_count);
-	if (section_count > 0)
-		return ICE_ERR_CFG;
-
-	if (count > bld->reserved_section_table_entries)
-		return ICE_ERR_CFG;
-	bld->reserved_section_table_entries -= count;
-
-	data_end = LE16_TO_CPU(buf->data_end) -
-		   (count * sizeof(buf->section_entry[0]));
-	buf->data_end = CPU_TO_LE16(data_end);
-
-	return ICE_SUCCESS;
-}
-
-/**
  * ice_pkg_buf_alloc_section
  * @bld: pointer to pkg build (allocated by ice_pkg_buf_alloc())
  * @type: the section type value
@@ -1754,7 +1632,7 @@ ice_pkg_buf_unreserve_section(struct ice_buf_build *bld, u16 count)
  * section contents.
  * Note: all package contents must be in Little Endian form.
  */
-void *
+static void *
 ice_pkg_buf_alloc_section(struct ice_buf_build *bld, u32 type, u16 size)
 {
 	struct ice_buf_hdr *buf;
@@ -1796,24 +1674,6 @@ ice_pkg_buf_alloc_section(struct ice_buf_build *bld, u32 type, u16 size)
 }
 
 /**
- * ice_pkg_buf_get_free_space
- * @bld: pointer to pkg build (allocated by ice_pkg_buf_alloc())
- *
- * Returns the number of free bytes remaining in the buffer.
- * Note: all package contents must be in Little Endian form.
- */
-u16 ice_pkg_buf_get_free_space(struct ice_buf_build *bld)
-{
-	struct ice_buf_hdr *buf;
-
-	if (!bld)
-		return 0;
-
-	buf = (struct ice_buf_hdr *)&bld->buf;
-	return ICE_MAX_S_DATA_END - LE16_TO_CPU(buf->data_end);
-}
-
-/**
  * ice_pkg_buf_get_active_sections
  * @bld: pointer to pkg build (allocated by ice_pkg_buf_alloc())
  *
@@ -1823,7 +1683,7 @@ u16 ice_pkg_buf_get_free_space(struct ice_buf_build *bld)
  * not be used.
  * Note: all package contents must be in Little Endian form.
  */
-u16 ice_pkg_buf_get_active_sections(struct ice_buf_build *bld)
+static u16 ice_pkg_buf_get_active_sections(struct ice_buf_build *bld)
 {
 	struct ice_buf_hdr *buf;
 
@@ -1840,24 +1700,12 @@ u16 ice_pkg_buf_get_active_sections(struct ice_buf_build *bld)
  *
  * Return a pointer to the buffer's header
  */
-struct ice_buf *ice_pkg_buf(struct ice_buf_build *bld)
+static struct ice_buf *ice_pkg_buf(struct ice_buf_build *bld)
 {
 	if (!bld)
 		return NULL;
 
 	return &bld->buf;
-}
-
-/**
- * ice_pkg_buf_free
- * @hw: pointer to the HW structure
- * @bld: pointer to pkg build (allocated by ice_pkg_buf_alloc())
- *
- * Frees a package buffer
- */
-void ice_pkg_buf_free(struct ice_hw *hw, struct ice_buf_build *bld)
-{
-	ice_free(hw, bld);
 }
 
 /**
@@ -1891,38 +1739,6 @@ ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
 
 /* PTG Management */
 
-/**
- * ice_ptg_update_xlt1 - Updates packet type groups in HW via XLT1 table
- * @hw: pointer to the hardware structure
- * @blk: HW block
- *
- * This function will update the XLT1 hardware table to reflect the new
- * packet type group configuration.
- */
-enum ice_status ice_ptg_update_xlt1(struct ice_hw *hw, enum ice_block blk)
-{
-	struct ice_xlt1_section *sect;
-	struct ice_buf_build *bld;
-	enum ice_status status;
-	u16 index;
-
-	bld = ice_pkg_buf_alloc_single_section(hw, ice_sect_id(blk, ICE_XLT1),
-					       ICE_XLT1_SIZE(ICE_XLT1_CNT),
-					       (void **)&sect);
-	if (!bld)
-		return ICE_ERR_NO_MEMORY;
-
-	sect->count = CPU_TO_LE16(ICE_XLT1_CNT);
-	sect->offset = CPU_TO_LE16(0);
-	for (index = 0; index < ICE_XLT1_CNT; index++)
-		sect->value[index] = hw->blk[blk].xlt1.ptypes[index].ptg;
-
-	status = ice_update_pkg(hw, ice_pkg_buf(bld), 1);
-
-	ice_pkg_buf_free(hw, bld);
-
-	return status;
-}
 
 /**
  * ice_ptg_find_ptype - Search for packet type group using packet type (ptype)
@@ -1935,7 +1751,7 @@ enum ice_status ice_ptg_update_xlt1(struct ice_hw *hw, enum ice_block blk)
  * PTG ID that contains it through the ptg parameter, with the value of
  * ICE_DEFAULT_PTG (0) meaning it is part the default PTG.
  */
-enum ice_status
+static enum ice_status
 ice_ptg_find_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 *ptg)
 {
 	if (ptype >= ICE_XLT1_CNT || !ptg)
@@ -1969,7 +1785,7 @@ void ice_ptg_alloc_val(struct ice_hw *hw, enum ice_block blk, u8 ptg)
  * that 0 is the default packet type group, so successfully created PTGs will
  * have a non-zero ID value; which means a 0 return value indicates an error.
  */
-u8 ice_ptg_alloc(struct ice_hw *hw, enum ice_block blk)
+static u8 ice_ptg_alloc(struct ice_hw *hw, enum ice_block blk)
 {
 	u16 i;
 
@@ -1982,31 +1798,6 @@ u8 ice_ptg_alloc(struct ice_hw *hw, enum ice_block blk)
 		}
 
 	return 0;
-}
-
-/**
- * ice_ptg_free - Frees a packet type group
- * @hw: pointer to the hardware structure
- * @blk: HW block
- * @ptg: the ptg ID to free
- *
- * This function frees a packet type group, and returns all the current ptypes
- * within it to the default PTG.
- */
-void ice_ptg_free(struct ice_hw *hw, enum ice_block blk, u8 ptg)
-{
-	struct ice_ptg_ptype *p, *temp;
-
-	hw->blk[blk].xlt1.ptg_tbl[ptg].in_use = false;
-	p = hw->blk[blk].xlt1.ptg_tbl[ptg].first_ptype;
-	while (p) {
-		p->ptg = ICE_DEFAULT_PTG;
-		temp = p->next_ptype;
-		p->next_ptype = NULL;
-		p = temp;
-	}
-
-	hw->blk[blk].xlt1.ptg_tbl[ptg].first_ptype = NULL;
 }
 
 /**
@@ -2066,7 +1857,7 @@ ice_ptg_remove_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
  * a destination PTG ID of ICE_DEFAULT_PTG (0) will move the ptype to the
  * default PTG.
  */
-enum ice_status
+static enum ice_status
 ice_ptg_add_mv_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
 {
 	enum ice_status status;
@@ -2202,70 +1993,6 @@ ice_match_prop_lst(struct LIST_HEAD_TYPE *list1, struct LIST_HEAD_TYPE *list2)
 
 /* VSIG Management */
 
-/**
- * ice_vsig_update_xlt2_sect - update one section of XLT2 table
- * @hw: pointer to the hardware structure
- * @blk: HW block
- * @vsi: HW VSI number to program
- * @vsig: vsig for the VSI
- *
- * This function will update the XLT2 hardware table with the input VSI
- * group configuration.
- */
-static enum ice_status
-ice_vsig_update_xlt2_sect(struct ice_hw *hw, enum ice_block blk, u16 vsi,
-			  u16 vsig)
-{
-	struct ice_xlt2_section *sect;
-	struct ice_buf_build *bld;
-	enum ice_status status;
-
-	bld = ice_pkg_buf_alloc_single_section(hw, ice_sect_id(blk, ICE_XLT2),
-					       sizeof(struct ice_xlt2_section),
-					       (void **)&sect);
-	if (!bld)
-		return ICE_ERR_NO_MEMORY;
-
-	sect->count = CPU_TO_LE16(1);
-	sect->offset = CPU_TO_LE16(vsi);
-	sect->value[0] = CPU_TO_LE16(vsig);
-
-	status = ice_update_pkg(hw, ice_pkg_buf(bld), 1);
-
-	ice_pkg_buf_free(hw, bld);
-
-	return status;
-}
-
-/**
- * ice_vsig_update_xlt2 - update XLT2 table with VSIG configuration
- * @hw: pointer to the hardware structure
- * @blk: HW block
- *
- * This function will update the XLT2 hardware table with the input VSI
- * group configuration of used vsis.
- */
-enum ice_status ice_vsig_update_xlt2(struct ice_hw *hw, enum ice_block blk)
-{
-	u16 vsi;
-
-	for (vsi = 0; vsi < ICE_MAX_VSI; vsi++) {
-		/* update only vsis that have been changed */
-		if (hw->blk[blk].xlt2.vsis[vsi].changed) {
-			enum ice_status status;
-			u16 vsig;
-
-			vsig = hw->blk[blk].xlt2.vsis[vsi].vsig;
-			status = ice_vsig_update_xlt2_sect(hw, blk, vsi, vsig);
-			if (status)
-				return status;
-
-			hw->blk[blk].xlt2.vsis[vsi].changed = 0;
-		}
-	}
-
-	return ICE_SUCCESS;
-}
 
 /**
  * ice_vsig_find_vsi - find a VSIG that contains a specified VSI
@@ -2346,7 +2073,7 @@ static u16 ice_vsig_alloc(struct ice_hw *hw, enum ice_block blk)
  * for, the list must match exactly, including the order in which the
  * characteristics are listed.
  */
-enum ice_status
+static enum ice_status
 ice_find_dup_props_vsig(struct ice_hw *hw, enum ice_block blk,
 			struct LIST_HEAD_TYPE *chs, u16 *vsig)
 {
@@ -2373,7 +2100,7 @@ ice_find_dup_props_vsig(struct ice_hw *hw, enum ice_block blk,
  * The function will remove all VSIs associated with the input VSIG and move
  * them to the DEFAULT_VSIG and mark the VSIG available.
  */
-enum ice_status
+static enum ice_status
 ice_vsig_free(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 {
 	struct ice_vsig_prof *dtmp, *del;
@@ -2425,6 +2152,62 @@ ice_vsig_free(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 }
 
 /**
+ * ice_vsig_remove_vsi - remove VSI from VSIG
+ * @hw: pointer to the hardware structure
+ * @blk: HW block
+ * @vsi: VSI to remove
+ * @vsig: VSI group to remove from
+ *
+ * The function will remove the input VSI from its VSI group and move it
+ * to the DEFAULT_VSIG.
+ */
+static enum ice_status
+ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
+{
+	struct ice_vsig_vsi **vsi_head, *vsi_cur, *vsi_tgt;
+	u16 idx;
+
+	idx = vsig & ICE_VSIG_IDX_M;
+
+	if (vsi >= ICE_MAX_VSI || idx >= ICE_MAX_VSIGS)
+		return ICE_ERR_PARAM;
+
+	if (!hw->blk[blk].xlt2.vsig_tbl[idx].in_use)
+		return ICE_ERR_DOES_NOT_EXIST;
+
+	/* entry already in default VSIG, don't have to remove */
+	if (idx == ICE_DEFAULT_VSIG)
+		return ICE_SUCCESS;
+
+	vsi_head = &hw->blk[blk].xlt2.vsig_tbl[idx].first_vsi;
+	if (!(*vsi_head))
+		return ICE_ERR_CFG;
+
+	vsi_tgt = &hw->blk[blk].xlt2.vsis[vsi];
+	vsi_cur = (*vsi_head);
+
+	/* iterate the VSI list, skip over the entry to be removed */
+	while (vsi_cur) {
+		if (vsi_tgt == vsi_cur) {
+			(*vsi_head) = vsi_cur->next_vsi;
+			break;
+		}
+		vsi_head = &vsi_cur->next_vsi;
+		vsi_cur = vsi_cur->next_vsi;
+	}
+
+	/* verify if VSI was removed from group list */
+	if (!vsi_cur)
+		return ICE_ERR_DOES_NOT_EXIST;
+
+	vsi_cur->vsig = ICE_DEFAULT_VSIG;
+	vsi_cur->changed = 1;
+	vsi_cur->next_vsi = NULL;
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_vsig_add_mv_vsi - add or move a VSI to a VSI group
  * @hw: pointer to the hardware structure
  * @blk: HW block
@@ -2436,7 +2219,7 @@ ice_vsig_free(struct ice_hw *hw, enum ice_block blk, u16 vsig)
  * move the entry to the DEFAULT_VSIG, update the original VSIG and
  * then move entry to the new VSIG.
  */
-enum ice_status
+static enum ice_status
 ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 {
 	struct ice_vsig_vsi *tmp;
@@ -2483,62 +2266,6 @@ ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 		&hw->blk[blk].xlt2.vsis[vsi];
 	hw->blk[blk].xlt2.vsis[vsi].next_vsi = tmp;
 	hw->blk[blk].xlt2.t[vsi] = vsig;
-
-	return ICE_SUCCESS;
-}
-
-/**
- * ice_vsig_remove_vsi - remove VSI from VSIG
- * @hw: pointer to the hardware structure
- * @blk: HW block
- * @vsi: VSI to remove
- * @vsig: VSI group to remove from
- *
- * The function will remove the input VSI from its VSI group and move it
- * to the DEFAULT_VSIG.
- */
-enum ice_status
-ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
-{
-	struct ice_vsig_vsi **vsi_head, *vsi_cur, *vsi_tgt;
-	u16 idx;
-
-	idx = vsig & ICE_VSIG_IDX_M;
-
-	if (vsi >= ICE_MAX_VSI || idx >= ICE_MAX_VSIGS)
-		return ICE_ERR_PARAM;
-
-	if (!hw->blk[blk].xlt2.vsig_tbl[idx].in_use)
-		return ICE_ERR_DOES_NOT_EXIST;
-
-	/* entry already in default VSIG, don't have to remove */
-	if (idx == ICE_DEFAULT_VSIG)
-		return ICE_SUCCESS;
-
-	vsi_head = &hw->blk[blk].xlt2.vsig_tbl[idx].first_vsi;
-	if (!(*vsi_head))
-		return ICE_ERR_CFG;
-
-	vsi_tgt = &hw->blk[blk].xlt2.vsis[vsi];
-	vsi_cur = (*vsi_head);
-
-	/* iterate the VSI list, skip over the entry to be removed */
-	while (vsi_cur) {
-		if (vsi_tgt == vsi_cur) {
-			(*vsi_head) = vsi_cur->next_vsi;
-			break;
-		}
-		vsi_head = &vsi_cur->next_vsi;
-		vsi_cur = vsi_cur->next_vsi;
-	}
-
-	/* verify if VSI was removed from group list */
-	if (!vsi_cur)
-		return ICE_ERR_DOES_NOT_EXIST;
-
-	vsi_cur->vsig = ICE_DEFAULT_VSIG;
-	vsi_cur->changed = 1;
-	vsi_cur->next_vsi = NULL;
 
 	return ICE_SUCCESS;
 }
@@ -4036,44 +3763,6 @@ ice_search_prof_id(struct ice_hw *hw, enum ice_block blk, u64 id)
 }
 
 /**
- * ice_set_prof_context - Set context for a given profile
- * @hw: pointer to the HW struct
- * @blk: hardware block
- * @id: profile tracking ID
- * @cntxt: context
- */
-struct ice_prof_map *
-ice_set_prof_context(struct ice_hw *hw, enum ice_block blk, u64 id, u64 cntxt)
-{
-	struct ice_prof_map *entry;
-
-	entry = ice_search_prof_id(hw, blk, id);
-	if (entry)
-		entry->context = cntxt;
-
-	return entry;
-}
-
-/**
- * ice_get_prof_context - Get context for a given profile
- * @hw: pointer to the HW struct
- * @blk: hardware block
- * @id: profile tracking ID
- * @cntxt: pointer to variable to receive the context
- */
-struct ice_prof_map *
-ice_get_prof_context(struct ice_hw *hw, enum ice_block blk, u64 id, u64 *cntxt)
-{
-	struct ice_prof_map *entry;
-
-	entry = ice_search_prof_id(hw, blk, id);
-	if (entry)
-		*cntxt = entry->context;
-
-	return entry;
-}
-
-/**
  * ice_vsig_prof_id_count - count profiles in a VSIG
  * @hw: pointer to the HW struct
  * @blk: hardware block
@@ -4989,34 +4678,6 @@ err_ice_add_prof_id_flow:
 }
 
 /**
- * ice_add_flow - add flow
- * @hw: pointer to the HW struct
- * @blk: hardware block
- * @vsi: array of VSIs to enable with the profile specified by ID
- * @count: number of elements in the VSI array
- * @id: profile tracking ID
- *
- * Calling this function will update the hardware tables to enable the
- * profile indicated by the ID parameter for the VSIs specified in the VSI
- * array. Once successfully called, the flow will be enabled.
- */
-enum ice_status
-ice_add_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi[], u8 count,
-	     u64 id)
-{
-	enum ice_status status;
-	u16 i;
-
-	for (i = 0; i < count; i++) {
-		status = ice_add_prof_id_flow(hw, blk, vsi[i], id);
-		if (status)
-			return status;
-	}
-
-	return ICE_SUCCESS;
-}
-
-/**
  * ice_rem_prof_from_list - remove a profile from list
  * @hw: pointer to the HW struct
  * @lst: list to remove the profile from
@@ -5168,32 +4829,4 @@ err_ice_rem_prof_id_flow:
 	}
 
 	return status;
-}
-
-/**
- * ice_rem_flow - remove flow
- * @hw: pointer to the HW struct
- * @blk: hardware block
- * @vsi: array of VSIs from which to remove the profile specified by ID
- * @count: number of elements in the VSI array
- * @id: profile tracking ID
- *
- * The function will remove flows from the specified VSIs that were enabled
- * using ice_add_flow. The ID value will indicated which profile will be
- * removed. Once successfully called, the flow will be disabled.
- */
-enum ice_status
-ice_rem_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi[], u8 count,
-	     u64 id)
-{
-	enum ice_status status;
-	u16 i;
-
-	for (i = 0; i < count; i++) {
-		status = ice_rem_prof_id_flow(hw, blk, vsi[i], id);
-		if (status)
-			return status;
-	}
-
-	return ICE_SUCCESS;
 }
