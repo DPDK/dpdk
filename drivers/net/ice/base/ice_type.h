@@ -72,6 +72,7 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 #define ICE_HI_WORD(x)		((u16)(((x) >> 16) & 0xFFFF))
 
 /* debug masks - set these bits in hw->debug_mask to control output */
+#define ICE_DBG_TRACE		BIT_ULL(0) /* for function-trace only */
 #define ICE_DBG_INIT		BIT_ULL(1)
 #define ICE_DBG_RELEASE		BIT_ULL(2)
 #define ICE_DBG_FW_LOG		BIT_ULL(3)
@@ -191,6 +192,7 @@ enum ice_vsi_type {
 #ifdef ADQ_SUPPORT
 	ICE_VSI_CHNL = 4,
 #endif /* ADQ_SUPPORT */
+	ICE_VSI_LB = 6,
 };
 
 struct ice_link_status {
@@ -705,6 +707,8 @@ struct ice_fw_log_cfg {
 #define ICE_FW_LOG_EVNT_INIT	(ICE_AQC_FW_LOG_INIT_EN >> ICE_AQC_FW_LOG_EN_S)
 #define ICE_FW_LOG_EVNT_FLOW	(ICE_AQC_FW_LOG_FLOW_EN >> ICE_AQC_FW_LOG_EN_S)
 #define ICE_FW_LOG_EVNT_ERR	(ICE_AQC_FW_LOG_ERR_EN >> ICE_AQC_FW_LOG_EN_S)
+#define ICE_FW_LOG_EVNT_ALL	(ICE_FW_LOG_EVNT_INFO | ICE_FW_LOG_EVNT_INIT | \
+				 ICE_FW_LOG_EVNT_FLOW | ICE_FW_LOG_EVNT_ERR)
 	struct ice_fw_log_evnt evnts[ICE_AQC_FW_LOG_ID_MAX];
 };
 
@@ -934,7 +938,6 @@ enum ice_sw_fwd_act_type {
 #define ICE_SR_CSR_PROTECTED_LIST_PTR		0x0D
 #define ICE_SR_MNG_CFG_PTR			0x0E
 #define ICE_SR_EMP_MODULE_PTR			0x0F
-#define ICE_SR_PBA_FLAGS			0x15
 #define ICE_SR_PBA_BLOCK_PTR			0x16
 #define ICE_SR_BOOT_CFG_PTR			0x17
 #define ICE_SR_NVM_WOL_CFG			0x19
@@ -980,6 +983,7 @@ enum ice_sw_fwd_act_type {
 #define ICE_SR_EMP_SR_SETTINGS_PTR		0x48
 #define ICE_SR_CONFIGURATION_METADATA_PTR	0x4D
 #define ICE_SR_IMMEDIATE_VALUES_PTR		0x4E
+#define ICE_SR_POR_REGISTERS_AUTOLOAD_PTR	0x118
 
 /* Auxiliary field, mask and shift definition for Shadow RAM and NVM Flash */
 #define ICE_SR_VPD_SIZE_WORDS		512

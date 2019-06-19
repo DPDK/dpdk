@@ -11,6 +11,9 @@
 #define ICE_SW_CFG_MAX_BUF_LEN 2048
 #define ICE_MAX_SW 256
 #define ICE_DFLT_VSI_INVAL 0xff
+#define ICE_FLTR_RX BIT(0)
+#define ICE_FLTR_TX BIT(1)
+#define ICE_FLTR_TX_RX (ICE_FLTR_RX | ICE_FLTR_TX)
 
 
 /* Worst case buffer length for ice_aqc_opc_get_res_alloc */
@@ -77,9 +80,6 @@ struct ice_fltr_info {
 	/* rule ID returned by firmware once filter rule is created */
 	u16 fltr_rule_id;
 	u16 flag;
-#define ICE_FLTR_RX		BIT(0)
-#define ICE_FLTR_TX		BIT(1)
-#define ICE_FLTR_TX_RX		(ICE_FLTR_RX | ICE_FLTR_TX)
 
 	/* Source VSI for LOOKUP_TX or source port for LOOKUP_RX */
 	u16 src;
@@ -145,10 +145,6 @@ struct ice_sw_act_ctrl {
 	/* Source VSI for LOOKUP_TX or source port for LOOKUP_RX */
 	u16 src;
 	u16 flag;
-#define ICE_FLTR_RX             BIT(0)
-#define ICE_FLTR_TX             BIT(1)
-#define ICE_FLTR_TX_RX (ICE_FLTR_RX | ICE_FLTR_TX)
-
 	enum ice_sw_fwd_act_type fltr_act;
 	/* Depending on filter action */
 	union {
@@ -368,6 +364,8 @@ ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
 		     struct ice_sq_cd *cd);
 enum ice_status
 ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list);
+enum ice_status
+ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list);
 void ice_rem_all_sw_rules_info(struct ice_hw *hw);
 enum ice_status ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
 enum ice_status ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
@@ -375,8 +373,6 @@ enum ice_status
 ice_add_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list);
 enum ice_status
 ice_remove_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list);
-enum ice_status
-ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list);
 #ifndef NO_MACVLAN_SUPPORT
 enum ice_status
 ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list);

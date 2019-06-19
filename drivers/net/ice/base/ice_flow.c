@@ -844,6 +844,7 @@ ice_flow_proc_segs(struct ice_hw *hw, struct ice_flow_prof_params *params)
 
 #define ICE_FLOW_FIND_PROF_CHK_FLDS	0x00000001
 #define ICE_FLOW_FIND_PROF_CHK_VSI	0x00000002
+#define ICE_FLOW_FIND_PROF_NOT_CHK_DIR	0x00000004
 
 /**
  * ice_flow_find_prof_conds - Find a profile matching headers and conditions
@@ -863,7 +864,8 @@ ice_flow_find_prof_conds(struct ice_hw *hw, enum ice_block blk,
 	struct ice_flow_prof *p;
 
 	LIST_FOR_EACH_ENTRY(p, &hw->fl_profs[blk], ice_flow_prof, l_entry) {
-		if (p->dir == dir && segs_cnt && segs_cnt == p->segs_cnt) {
+		if ((p->dir == dir || conds & ICE_FLOW_FIND_PROF_NOT_CHK_DIR) &&
+		    segs_cnt && segs_cnt == p->segs_cnt) {
 			u8 i;
 
 			/* Check for profile-VSI association if specified */
