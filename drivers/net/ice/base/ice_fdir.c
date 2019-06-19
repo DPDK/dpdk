@@ -186,7 +186,7 @@ ice_set_dflt_val_fd_desc(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx)
 	fd_fltr_ctx->desc_prof_prio = ICE_FXD_FLTR_QW1_PROF_PRIO_ZERO;
 	fd_fltr_ctx->desc_prof = ICE_FXD_FLTR_QW1_PROF_ZERO;
 	fd_fltr_ctx->swap = ICE_FXD_FLTR_QW1_SWAP_SET;
-	fd_fltr_ctx->fdid_prio = ICE_FXD_FLTR_QW1_FDID_PRI_ZERO;
+	fd_fltr_ctx->fdid_prio = ICE_FXD_FLTR_QW1_FDID_PRI_ONE;
 	fd_fltr_ctx->fdid_mdid = ICE_FXD_FLTR_QW1_FDID_MDID_FD;
 	fd_fltr_ctx->fdid = ICE_FXD_FLTR_QW1_FDID_ZERO;
 }
