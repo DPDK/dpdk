@@ -1659,6 +1659,9 @@ enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 	if (!ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
 
+	if (LIST_EMPTY(&hw->fl_profs[blk]))
+		return ICE_SUCCESS;
+
 	ice_acquire_lock(&hw->fl_profs_locks[blk]);
 	LIST_FOR_EACH_ENTRY_SAFE(p, t, &hw->fl_profs[blk], ice_flow_prof,
 				 l_entry) {
