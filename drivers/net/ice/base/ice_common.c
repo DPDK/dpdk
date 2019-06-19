@@ -1474,53 +1474,6 @@ ice_clear_tx_drbell_q_ctx(struct ice_hw *hw, u32 tx_drbell_q_index)
 }
 #endif /* !NO_UNUSED_CTX_CODE || AE_DRIVER */
 
-/**
- * ice_debug_cq
- * @hw: pointer to the hardware structure
- * @mask: debug mask
- * @desc: pointer to control queue descriptor
- * @buf: pointer to command buffer
- * @buf_len: max length of buf
- *
- * Dumps debug log about control command with descriptor contents.
- */
-void
-ice_debug_cq(struct ice_hw *hw, u32 mask, void *desc, void *buf, u16 buf_len)
-{
-	struct ice_aq_desc *cq_desc = (struct ice_aq_desc *)desc;
-	u16 len;
-
-	if (!(mask & hw->debug_mask))
-		return;
-
-	if (!desc)
-		return;
-
-	len = LE16_TO_CPU(cq_desc->datalen);
-
-	ice_debug(hw, mask,
-		  "CQ CMD: opcode 0x%04X, flags 0x%04X, datalen 0x%04X, retval 0x%04X\n",
-		  LE16_TO_CPU(cq_desc->opcode),
-		  LE16_TO_CPU(cq_desc->flags),
-		  LE16_TO_CPU(cq_desc->datalen), LE16_TO_CPU(cq_desc->retval));
-	ice_debug(hw, mask, "\tcookie (h,l) 0x%08X 0x%08X\n",
-		  LE32_TO_CPU(cq_desc->cookie_high),
-		  LE32_TO_CPU(cq_desc->cookie_low));
-	ice_debug(hw, mask, "\tparam (0,1)  0x%08X 0x%08X\n",
-		  LE32_TO_CPU(cq_desc->params.generic.param0),
-		  LE32_TO_CPU(cq_desc->params.generic.param1));
-	ice_debug(hw, mask, "\taddr (h,l)   0x%08X 0x%08X\n",
-		  LE32_TO_CPU(cq_desc->params.generic.addr_high),
-		  LE32_TO_CPU(cq_desc->params.generic.addr_low));
-	if (buf && cq_desc->datalen != 0) {
-		ice_debug(hw, mask, "Buffer:\n");
-		if (buf_len < len)
-			len = buf_len;
-
-		ice_debug_array(hw, mask, 16, 1, (u8 *)buf, len);
-	}
-}
-
 
 /* FW Admin Queue command wrappers */
 

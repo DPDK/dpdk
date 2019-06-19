@@ -20,8 +20,6 @@ enum ice_fw_modes {
 
 enum ice_status ice_nvm_validate_checksum(struct ice_hw *hw);
 
-void
-ice_debug_cq(struct ice_hw *hw, u32 mask, void *desc, void *buf, u16 buf_len);
 enum ice_status ice_init_hw(struct ice_hw *hw);
 void ice_deinit_hw(struct ice_hw *hw);
 enum ice_status ice_check_reset(struct ice_hw *hw);

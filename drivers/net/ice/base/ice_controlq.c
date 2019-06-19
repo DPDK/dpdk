@@ -728,6 +728,54 @@ static u16 ice_clean_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 }
 
 /**
+ * ice_debug_cq
+ * @hw: pointer to the hardware structure
+ * @desc: pointer to control queue descriptor
+ * @buf: pointer to command buffer
+ * @buf_len: max length of buf
+ *
+ * Dumps debug log about control command with descriptor contents.
+ */
+static void ice_debug_cq(struct ice_hw *hw, void *desc, void *buf, u16 buf_len)
+{
+	struct ice_aq_desc *cq_desc = (struct ice_aq_desc *)desc;
+	u16 datalen, flags;
+
+	if (!((ICE_DBG_AQ_DESC | ICE_DBG_AQ_DESC_BUF) & hw->debug_mask))
+		return;
+
+	if (!desc)
+		return;
+
+	datalen = LE16_TO_CPU(cq_desc->datalen);
+	flags = LE16_TO_CPU(cq_desc->flags);
+
+	ice_debug(hw, ICE_DBG_AQ_DESC,
+		  "CQ CMD: opcode 0x%04X, flags 0x%04X, datalen 0x%04X, retval 0x%04X\n",
+		  LE16_TO_CPU(cq_desc->opcode), flags, datalen,
+		  LE16_TO_CPU(cq_desc->retval));
+	ice_debug(hw, ICE_DBG_AQ_DESC, "\tcookie (h,l) 0x%08X 0x%08X\n",
+		  LE32_TO_CPU(cq_desc->cookie_high),
+		  LE32_TO_CPU(cq_desc->cookie_low));
+	ice_debug(hw, ICE_DBG_AQ_DESC, "\tparam (0,1)  0x%08X 0x%08X\n",
+		  LE32_TO_CPU(cq_desc->params.generic.param0),
+		  LE32_TO_CPU(cq_desc->params.generic.param1));
+	ice_debug(hw, ICE_DBG_AQ_DESC, "\taddr (h,l)   0x%08X 0x%08X\n",
+		  LE32_TO_CPU(cq_desc->params.generic.addr_high),
+		  LE32_TO_CPU(cq_desc->params.generic.addr_low));
+	/* Dump buffer iff 1) one exists and 2) is either a response indicated
+	 * by the DD and/or CMP flag set or a command with the RD flag set.
+	 */
+	if (buf && cq_desc->datalen != 0 &&
+	    (flags & (ICE_AQ_FLAG_DD | ICE_AQ_FLAG_CMP) ||
+	     flags & ICE_AQ_FLAG_RD)) {
+		ice_debug(hw, ICE_DBG_AQ_DESC_BUF, "Buffer:\n");
+		ice_debug_array(hw, ICE_DBG_AQ_DESC_BUF, 16, 1, (u8 *)buf,
+				min(buf_len, datalen));
+	}
+}
+
+/**
  * ice_sq_done - check if FW has processed the Admin Send Queue (ATQ)
  * @hw: pointer to the HW struct
  * @cq: pointer to the specific Control queue
@@ -886,7 +934,7 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	ice_debug(hw, ICE_DBG_AQ_MSG,
 		  "ATQ: Control Send queue desc and buffer:\n");
 
-	ice_debug_cq(hw, ICE_DBG_AQ_CMD, (void *)desc_on_ring, buf, buf_size);
+	ice_debug_cq(hw, (void *)desc_on_ring, buf, buf_size);
 
 
 	(cq->sq.next_to_use)++;
@@ -950,7 +998,7 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	ice_debug(hw, ICE_DBG_AQ_MSG,
 		  "ATQ: desc and buffer writeback:\n");
 
-	ice_debug_cq(hw, ICE_DBG_AQ_CMD, (void *)desc, buf, buf_size);
+	ice_debug_cq(hw, (void *)desc, buf, buf_size);
 
 
 	/* save writeback AQ if requested */
@@ -1055,7 +1103,7 @@ ice_clean_rq_elem(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 
 	ice_debug(hw, ICE_DBG_AQ_MSG, "ARQ: desc and buffer:\n");
 
-	ice_debug_cq(hw, ICE_DBG_AQ_CMD, (void *)desc, e->msg_buf,
+	ice_debug_cq(hw, (void *)desc, e->msg_buf,
 		     cq->rq_buf_size);
 
 
