@@ -284,10 +284,10 @@ static const u32 ice_ptypes_mac_il[] = {
 /* Manage parameters and info. used during the creation of a flow profile */
 struct ice_flow_prof_params {
 	enum ice_block blk;
-	struct ice_flow_prof *prof;
-
 	u16 entry_length; /* # of bytes formatted entry will require */
 	u8 es_cnt;
+	struct ice_flow_prof *prof;
+
 	/* For ACL, the es[0] will have the data of ICE_RX_MDID_PKT_FLAGS_15_0
 	 * This will give us the direction flags.
 	 */

@@ -81,6 +81,7 @@ struct ice_rq_event_info {
 /* Control Queue information */
 struct ice_ctl_q_info {
 	enum ice_ctl_q qtype;
+	enum ice_aq_err rq_last_status;	/* last status on receive queue */
 	struct ice_ctl_q_ring rq;	/* receive queue */
 	struct ice_ctl_q_ring sq;	/* send queue */
 	u32 sq_cmd_timeout;		/* send queue cmd write back timeout */
@@ -88,10 +89,9 @@ struct ice_ctl_q_info {
 	u16 num_sq_entries;		/* send queue depth */
 	u16 rq_buf_size;		/* receive queue buffer size */
 	u16 sq_buf_size;		/* send queue buffer size */
+	enum ice_aq_err sq_last_status;	/* last status on send queue */
 	struct ice_lock sq_lock;		/* Send queue lock */
 	struct ice_lock rq_lock;		/* Receive queue lock */
-	enum ice_aq_err sq_last_status;	/* last status on send queue */
-	enum ice_aq_err rq_last_status;	/* last status on receive queue */
 };
 
 #endif /* _ICE_CONTROLQ_H_ */

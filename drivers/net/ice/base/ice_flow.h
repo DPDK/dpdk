@@ -225,17 +225,15 @@ struct ice_flow_entry {
 	struct LIST_ENTRY_TYPE l_entry;
 
 	u64 id;
-	u16 vsi_handle;
-	enum ice_flow_priority priority;
 	struct ice_flow_prof *prof;
-
-	/* Flow entry's content */
-	u16 entry_sz;
-	void *entry;
-
 	/* Action list */
-	u8 acts_cnt;
 	struct ice_flow_action *acts;
+	/* Flow entry's content */
+	void *entry;
+	enum ice_flow_priority priority;
+	u16 vsi_handle;
+	u16 entry_sz;
+	u8 acts_cnt;
 };
 
 #define ICE_FLOW_ENTRY_HNDL(e)	((unsigned long)e)
@@ -246,12 +244,13 @@ struct ice_flow_prof {
 
 	u64 id;
 	enum ice_flow_dir dir;
+	u8 segs_cnt;
+	u8 acts_cnt;
 
 	/* Keep track of flow entries associated with this flow profile */
 	struct ice_lock entries_lock;
 	struct LIST_HEAD_TYPE entries;
 
-	u8 segs_cnt;
 	struct ice_flow_seg_info segs[ICE_FLOW_SEG_MAX];
 
 	/* software VSI handles referenced by this flow profile */
@@ -264,7 +263,6 @@ struct ice_flow_prof {
 	} cfg;
 
 	/* Default actions */
-	u8 acts_cnt;
 	struct ice_flow_action *acts;
 };
 

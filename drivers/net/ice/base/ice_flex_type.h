@@ -5,7 +5,7 @@
 #ifndef _ICE_FLEX_TYPE_H_
 #define _ICE_FLEX_TYPE_H_
 
-#define ICE_FV_OFFSET_INVAL    0x1FF
+#define ICE_FV_OFFSET_INVAL	0x1FF
 
 #pragma pack(1)
 /* Extraction Sequence (Field Vector) Table */
@@ -14,7 +14,6 @@ struct ice_fv_word {
 	u16 off;		/* Offset within the protocol header */
 	u8 resvrd;
 };
-
 #pragma pack()
 
 #define ICE_MAX_FV_WORDS 48
@@ -367,7 +366,6 @@ struct ice_boost_key_value {
 	__le16 hv_src_port_key;
 	u8 tcam_search_key;
 };
-
 #pragma pack()
 
 struct ice_boost_key {
@@ -406,7 +404,6 @@ struct ice_xlt1_section {
 	__le16 offset;
 	u8 value[1];
 };
-
 #pragma pack()
 
 #define ICE_XLT1_SIZE(n)	(sizeof(struct ice_xlt1_section) + \
@@ -467,19 +464,19 @@ struct ice_tunnel_type_scan {
 
 struct ice_tunnel_entry {
 	enum ice_tunnel_type type;
-	u8 valid;
-	u8 in_use;
-	u8 marked;
 	u16 boost_addr;
 	u16 port;
 	struct ice_boost_tcam_entry *boost_entry;
+	u8 valid;
+	u8 in_use;
+	u8 marked;
 };
 
 #define ICE_TUNNEL_MAX_ENTRIES	16
 
 struct ice_tunnel_table {
-	u16 count;
 	struct ice_tunnel_entry tbl[ICE_TUNNEL_MAX_ENTRIES];
+	u16 count;
 };
 
 struct ice_pkg_es {
@@ -511,13 +508,13 @@ struct ice_es {
 #define ICE_DEFAULT_PTG	0
 
 struct ice_ptg_entry {
-	u8 in_use;
 	struct ice_ptg_ptype *first_ptype;
+	u8 in_use;
 };
 
 struct ice_ptg_ptype {
-	u8 ptg;
 	struct ice_ptg_ptype *next_ptype;
+	u8 ptg;
 };
 
 #define ICE_MAX_TCAM_PER_PROFILE	8
@@ -535,9 +532,9 @@ struct ice_prof_map {
 #define ICE_INVALID_TCAM	0xFFFF
 
 struct ice_tcam_inf {
+	u16 tcam_idx;
 	u8 ptg;
 	u8 prof_id;
-	u16 tcam_idx;
 	u8 in_use;
 };
 
@@ -550,16 +547,16 @@ struct ice_vsig_prof {
 };
 
 struct ice_vsig_entry {
-	u8 in_use;
 	struct LIST_HEAD_TYPE prop_lst;
 	struct ice_vsig_vsi *first_vsi;
+	u8 in_use;
 };
 
 struct ice_vsig_vsi {
+	struct ice_vsig_vsi *next_vsi;
+	u32 prop_mask;
 	u16 changed;
 	u16 vsig;
-	u32 prop_mask;
-	struct ice_vsig_vsi *next_vsi;
 };
 
 #define ICE_XLT1_CNT	1024
@@ -567,11 +564,11 @@ struct ice_vsig_vsi {
 
 /* XLT1 Table */
 struct ice_xlt1 {
-	u32 sid;
-	u16 count;
 	struct ice_ptg_entry *ptg_tbl;
 	struct ice_ptg_ptype *ptypes;
 	u8 *t;
+	u32 sid;
+	u16 count;
 };
 
 #define ICE_XLT2_CNT	768
@@ -591,11 +588,11 @@ struct ice_xlt1 {
 
 /* XLT2 Table */
 struct ice_xlt2 {
-	u32 sid;
-	u16 count;
 	struct ice_vsig_entry *vsig_tbl;
 	struct ice_vsig_vsi *vsis;
 	u16 *t;
+	u32 sid;
+	u16 count;
 };
 
 /* Extraction sequence - list of match fields:
@@ -641,21 +638,20 @@ struct ice_prof_id_section {
 	__le16 count;
 	struct ice_prof_tcam_entry entry[1];
 };
-
 #pragma pack()
 
 struct ice_prof_tcam {
 	u32 sid;
 	u16 count;
 	u16 max_prof_id;
-	u8 cdid_bits; /* # cdid bits to use in key, 0, 2, 4, or 8 */
 	struct ice_prof_tcam_entry *t;
+	u8 cdid_bits; /* # cdid bits to use in key, 0, 2, 4, or 8 */
 };
 
 struct ice_prof_redir {
+	u8 *t;
 	u32 sid;
 	u16 count;
-	u8 *t;
 };
 
 /* Tables per block */
