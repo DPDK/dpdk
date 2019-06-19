@@ -4,23 +4,39 @@
 SW Turbo Poll Mode Driver
 =========================
 
-The SW Turbo PMD (**baseband_turbo_sw**) provides a poll mode bbdev driver that utilizes
-Intel optimized libraries for LTE Layer 1 workloads acceleration. This PMD
-supports the functions: Turbo FEC, Rate Matching and CRC functions.
+The SW Turbo PMD (**baseband_turbo_sw**) provides a software only poll mode bbdev
+driver that can optionally utilize Intel optimized libraries for LTE Layer 1
+workloads acceleration.
+
+Note that the driver can also be built without any dependency with reduced
+functionality for maintenance purpose.
+
+To enable linking to the SDK libraries see detailed installation section below.
+One flag can be enabled depending on whether the target machine can support
+AVX2 instructions sets and the related SDK libraries for vectorized
+signal processing functions are installed :
+- CONFIG_RTE_BBDEV_SDK_AVX2
+
+By default this flag is disabled. For AVX2 machine and SDK
+library installed then this flag can be enabled.
+
+This PMD supports the functions: FEC, Rate Matching and CRC functions detailed
+in the Features section.
 
 Features
 --------
 
-SW Turbo PMD has support for the following capabilities:
+SW Turbo PMD can support for the following capabilities when the SDK libraries
+are used:
 
-For the encode operation:
+For the LTE encode operation:
 
 * ``RTE_BBDEV_TURBO_CRC_24A_ATTACH``
 * ``RTE_BBDEV_TURBO_CRC_24B_ATTACH``
 * ``RTE_BBDEV_TURBO_RATE_MATCH``
 * ``RTE_BBDEV_TURBO_RV_INDEX_BYPASS``
 
-For the decode operation:
+For the LTE decode operation:
 
 * ``RTE_BBDEV_TURBO_SUBBLOCK_DEINTERLEAVE``
 * ``RTE_BBDEV_TURBO_CRC_TYPE_24B``
@@ -41,14 +57,10 @@ Installation
 FlexRAN SDK Download
 ~~~~~~~~~~~~~~~~~~~~
 
-To build DPDK with the *baseband_turbo_sw* PMD the user is required to download
-the export controlled ``FlexRAN SDK`` Libraries. An account at `Intel Resource
-Design Center <https://www.intel.com/content/www/us/en/design/resource-design-center.html>`_
-needs to be registered.
+As an option it is possible to link this driver with FleXRAN SDK libraries
+which can enable real time signal processing using AVX instructions.
 
-Once registered, the user needs to log in, and look for
-*Intel FlexRAN Software Release Package -18-09* to download or directly through
-this `link <https://cdrdv2.intel.com/v1/dl/getContent/605167>`_.
+These libraries are available through this `link <https://software.intel.com/en-us/articles/flexran-lte-and-5g-nr-fec-software-development-kit-modules>`_.
 
 After download is complete, the user needs to unpack and compile on their
 system before building DPDK.
@@ -57,24 +69,24 @@ The following table maps DPDK versions with past FlexRAN SDK releases:
 
 .. _table_flexran_releases:
 
-.. table:: DPDK and FlexRAN SDK releases compliance
+.. table:: DPDK and FlexRAN FEC SDK releases compliance
 
    =====================  ============================
-   DPDK version           FlexRAN SDK release
+   DPDK version           FlexRAN FEC SDK release
    =====================  ============================
-   18.02                  1.3.0
-   18.05                  1.4.0
-   18.08                  1.6.0
-   19.02                  18.09
+   19.08                  19.04
    =====================  ============================
 
 FlexRAN SDK Installation
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
+Note that the installation of these libraries is optional.
+
 The following are pre-requisites for building FlexRAN SDK Libraries:
- (a) An AVX2 supporting machine
- (b) CentOS Linux release 7.2.1511 (Core) operating system
- (c) Intel ICC 18.0.1 20171018 compiler installed
+ (a) An AVX2 or AVX512 supporting machine
+ (b) CentOS Linux release 7.2.1511 (Core) operating system is advised
+ (c) Intel ICC 18.0.1 20171018 compiler or more recent and related libraries
+     ICC is `available with a free community license <https://software.intel.com/en-us/system-studio/choose-download#technical>`_.
 
 The following instructions should be followed in this exact order:
 
@@ -84,25 +96,18 @@ The following instructions should be followed in this exact order:
 
         source <path-to-icc-compiler-install-folder>/linux/bin/compilervars.sh intel64 -platform linux
 
-#. Extract the ``605167-flexran-18-09-tar.gz`` package:
-
-    .. code-block:: console
-
-        mkdir FlexRAN-18.09
-        tar xvzf 605167-flexran-18-09-tar.gz -C FlexRAN-18.09/
-
 #. Run the SDK extractor script and accept the license:
 
     .. code-block:: console
 
-        cd <path-to-workspace>/FlexRAN-18.09/
-        ./SDK-18.09.sh
+        cd <path-to-workspace>
+        ./FlexRAN-FEC-SDK-19-04.sh
 
 #. Generate makefiles based on system configuration:
 
     .. code-block:: console
 
-        cd <path-to-workspace>/FlexRAN-18.09/SDK-18.09/sdk/
+        cd <path-to-workspace>/FlexRAN-FEC-SDK-19-04/sdk/
         ./create-makefiles-linux.sh
 
 #. A build folder is generated in this form ``build-<ISA>-<CC>``, enter that
@@ -129,12 +134,14 @@ Example:
 
 .. code-block:: console
 
-    export FLEXRAN_SDK=<path-to-workspace>/FlexRAN-18.09/SDK-18.09/sdk/build-avx2-icc/install
-    export DIR_WIRELESS_SDK=<path-to-workspace>/FlexRAN-18.09/SDK-18.09/sdk/
+    export FLEXRAN_SDK=<path-to-workspace>/FlexRAN-FEC-SDK-19-04/sdk/build-avx2-icc/install
+    export DIR_WIRELESS_SDK=<path-to-workspace>/FlexRAN-FEC-SDK-19-04/sdk/build-avx2-icc/
 
-
-* Set ``CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW=y`` in DPDK common configuration
-  file ``config/common_base``.
+* Set ``CONFIG_RTE_BBDEV_SDK_AVX2=y``
+  in DPDK common configuration file ``config/common_base`` to be able to use
+  the SDK libraries as mentioned above.
+  If no flag are set the PMD driver will still build but its capabilities
+  will be limited accordingly.
 
 To use the PMD in an application, user must:
 
