@@ -525,7 +525,15 @@ static void ice_cleanup_fltr_mgmt_struct(struct ice_hw *hw)
 	}
 	recps = hw->switch_info->recp_list;
 	for (i = 0; i < ICE_MAX_NUM_RECIPES; i++) {
+		struct ice_recp_grp_entry *rg_entry, *tmprg_entry;
+
 		recps[i].root_rid = i;
+		LIST_FOR_EACH_ENTRY_SAFE(rg_entry, tmprg_entry,
+					 &recps[i].rg_list, ice_recp_grp_entry,
+					 l_entry) {
+			LIST_DEL(&rg_entry->l_entry);
+			ice_free(hw, rg_entry);
+		}
 
 		if (recps[i].adv_rule) {
 			struct ice_adv_fltr_mgmt_list_entry *tmp_entry;
@@ -552,6 +560,8 @@ static void ice_cleanup_fltr_mgmt_struct(struct ice_hw *hw)
 				ice_free(hw, lst_itr);
 			}
 		}
+		if (recps[i].root_buf)
+			ice_free(hw, recps[i].root_buf);
 	}
 	ice_rm_all_sw_replay_rule_info(hw);
 	ice_free(hw, sw->recp_list);
