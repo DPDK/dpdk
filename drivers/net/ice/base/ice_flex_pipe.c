@@ -3712,7 +3712,7 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 	u32 mask_sel = 0;
 	u8 i, j, k;
 
-	ice_memset(pair_list, 0, sizeof(pair_list), ICE_NONDMA_MEM);
+	ice_zero_bitmap(pair_list, ICE_FD_SRC_DST_PAIR_COUNT);
 
 	ice_init_fd_mask_regs(hw);
 
@@ -4488,7 +4488,7 @@ ice_adj_prof_priorities(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 	enum ice_status status;
 	u16 idx;
 
-	ice_memset(ptgs_used, 0, sizeof(ptgs_used), ICE_NONDMA_MEM);
+	ice_zero_bitmap(ptgs_used, ICE_XLT1_CNT);
 	idx = vsig & ICE_VSIG_IDX_M;
 
 	/* Priority is based on the order in which the profiles are added. The
