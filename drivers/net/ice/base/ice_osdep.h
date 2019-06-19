@@ -126,9 +126,17 @@ do {									\
 #define ICE_PCI_REG(reg)     rte_read32(reg)
 #define ICE_PCI_REG_ADDR(a, reg) \
 	((volatile uint32_t *)((char *)(a)->hw_addr + (reg)))
+#define ICE_PCI_REG64(reg)     rte_read64(reg)
+#define ICE_PCI_REG_ADDR64(a, reg) \
+	((volatile uint64_t *)((char *)(a)->hw_addr + (reg)))
 static inline uint32_t ice_read_addr(volatile void *addr)
 {
 	return rte_le_to_cpu_32(ICE_PCI_REG(addr));
+}
+
+static inline uint64_t ice_read_addr64(volatile void *addr)
+{
+	return rte_le_to_cpu_64(ICE_PCI_REG64(addr));
 }
 
 #define ICE_PCI_REG_WRITE(reg, value) \
@@ -145,6 +153,7 @@ static inline uint32_t ice_read_addr(volatile void *addr)
 	ICE_PCI_REG_WRITE(ICE_PCI_REG_ADDR((a), (reg)), (value))
 #define flush(a) ice_read_addr(ICE_PCI_REG_ADDR((a), (GLGEN_STAT)))
 #define div64_long(n, d) ((n) / (d))
+#define rd64(a, reg) ice_read_addr64(ICE_PCI_REG_ADDR64((a), (reg)))
 
 #define BITS_PER_BYTE       8
 
