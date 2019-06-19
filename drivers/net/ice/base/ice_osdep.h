@@ -267,6 +267,20 @@ ice_hweight8(u32 num)
 	return bits;
 }
 
+static inline u8
+ice_hweight32(u32 num)
+{
+	u8 bits = 0;
+	u32 i;
+
+	for (i = 0; i < 32; i++) {
+		bits += (u8)(num & 0x1);
+		num >>= 1;
+	}
+
+	return bits;
+}
+
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 #define DELAY(x) rte_delay_us(x)
 #define ice_usec_delay(x) rte_delay_us(x)
