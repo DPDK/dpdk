@@ -31,6 +31,7 @@ enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 #define ETH_VHOST_DEQUEUE_ZERO_COPY	"dequeue-zero-copy"
 #define ETH_VHOST_IOMMU_SUPPORT		"iommu-support"
 #define ETH_VHOST_POSTCOPY_SUPPORT	"postcopy-support"
+#define ETH_VHOST_VIRTIO_NET_F_HOST_TSO "tso"
 #define VHOST_MAX_PKT_BURST 32
 
 static const char *valid_arguments[] = {
@@ -40,6 +41,7 @@ static const char *valid_arguments[] = {
 	ETH_VHOST_DEQUEUE_ZERO_COPY,
 	ETH_VHOST_IOMMU_SUPPORT,
 	ETH_VHOST_POSTCOPY_SUPPORT,
+	ETH_VHOST_VIRTIO_NET_F_HOST_TSO,
 	NULL
 };
 
@@ -1209,7 +1211,8 @@ static const struct eth_dev_ops ops = {
 
 static int
 eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
-	int16_t queues, const unsigned int numa_node, uint64_t flags)
+	int16_t queues, const unsigned int numa_node, uint64_t flags,
+	uint64_t disable_flags)
 {
 	const char *name = rte_vdev_device_name(dev);
 	struct rte_eth_dev_data *data;
@@ -1281,6 +1284,12 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	if (rte_vhost_driver_register(iface_name, flags))
 		goto error;
 
+	if (disable_flags) {
+		if (rte_vhost_driver_disable_features(iface_name,
+					disable_flags))
+			goto error;
+	}
+
 	if (rte_vhost_driver_callback_register(iface_name, &vhost_ops) < 0) {
 		VHOST_LOG(ERR, "Can't register callbacks\n");
 		goto error;
@@ -1343,10 +1352,12 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 	char *iface_name;
 	uint16_t queues;
 	uint64_t flags = 0;
+	uint64_t disable_flags = 0;
 	int client_mode = 0;
 	int dequeue_zero_copy = 0;
 	int iommu_support = 0;
 	int postcopy_support = 0;
+	int tso = 0;
 	struct rte_eth_dev *eth_dev;
 	const char *name = rte_vdev_device_name(dev);
 
@@ -1428,11 +1439,24 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 			flags |= RTE_VHOST_USER_POSTCOPY_SUPPORT;
 	}
 
+	if (rte_kvargs_count(kvlist, ETH_VHOST_VIRTIO_NET_F_HOST_TSO) == 1) {
+		ret = rte_kvargs_process(kvlist,
+				ETH_VHOST_VIRTIO_NET_F_HOST_TSO,
+				&open_int, &tso);
+		if (ret < 0)
+			goto out_free;
+
+		if (tso == 0) {
+			disable_flags |= (1ULL << VIRTIO_NET_F_HOST_TSO4);
+			disable_flags |= (1ULL << VIRTIO_NET_F_HOST_TSO6);
+		}
+	}
+
 	if (dev->device.numa_node == SOCKET_ID_ANY)
 		dev->device.numa_node = rte_socket_id();
 
 	eth_dev_vhost_create(dev, iface_name, queues, dev->device.numa_node,
-		flags);
+		flags, disable_flags);
 
 out_free:
 	rte_kvargs_free(kvlist);
@@ -1476,7 +1500,8 @@ RTE_PMD_REGISTER_PARAM_STRING(net_vhost,
 	"client=<0|1> "
 	"dequeue-zero-copy=<0|1> "
 	"iommu-support=<0|1> "
-	"postcopy-support=<0|1>");
+	"postcopy-support=<0|1> "
+	"tso=<0|1>");
 
 RTE_INIT(vhost_init_log)
 {
