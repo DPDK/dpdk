@@ -1948,6 +1948,7 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 	struct ice_hw_func_caps *func_p = NULL;
 	struct ice_hw_dev_caps *dev_p = NULL;
 	struct ice_hw_common_caps *caps;
+	char const *prefix;
 	u32 i;
 
 	if (!buf)
@@ -1958,9 +1959,11 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 	if (opc == ice_aqc_opc_list_dev_caps) {
 		dev_p = &hw->dev_caps;
 		caps = &dev_p->common_cap;
+		prefix = "dev cap";
 	} else if (opc == ice_aqc_opc_list_func_caps) {
 		func_p = &hw->func_caps;
 		caps = &func_p->common_cap;
+		prefix = "func cap";
 	} else {
 		ice_debug(hw, ICE_DBG_INIT, "wrong opcode\n");
 		return;
@@ -1976,21 +1979,25 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 		case ICE_AQC_CAPS_VALID_FUNCTIONS:
 			caps->valid_functions = number;
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: Valid Functions = %d\n",
+				  "%s: valid functions = %d\n", prefix,
 				  caps->valid_functions);
 			break;
 		case ICE_AQC_CAPS_VSI:
 			if (dev_p) {
 				dev_p->num_vsi_allocd_to_host = number;
 				ice_debug(hw, ICE_DBG_INIT,
-					  "HW caps: Dev.VSI cnt = %d\n",
+					  "%s: num VSI alloc to host = %d\n",
+					  prefix,
 					  dev_p->num_vsi_allocd_to_host);
 			} else if (func_p) {
 				func_p->guar_num_vsi =
 					ice_get_num_per_func(hw, ICE_MAX_VSI);
 				ice_debug(hw, ICE_DBG_INIT,
-					  "HW caps: Func.VSI cnt = %d\n",
-					  number);
+					  "%s: num guaranteed VSI (fw) = %d\n",
+					  prefix, number);
+				ice_debug(hw, ICE_DBG_INIT,
+					  "%s: num guaranteed VSI = %d\n",
+					  prefix, func_p->guar_num_vsi);
 			}
 			break;
 		case ICE_AQC_CAPS_DCB:
@@ -1998,49 +2005,51 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 			caps->active_tc_bitmap = logical_id;
 			caps->maxtc = phys_id;
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: DCB = %d\n", caps->dcb);
+				  "%s: DCB = %d\n", prefix, caps->dcb);
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: Active TC bitmap = %d\n",
+				  "%s: active TC bitmap = %d\n", prefix,
 				  caps->active_tc_bitmap);
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: TC Max = %d\n", caps->maxtc);
+				  "%s: TC max = %d\n", prefix, caps->maxtc);
 			break;
 		case ICE_AQC_CAPS_RSS:
 			caps->rss_table_size = number;
 			caps->rss_table_entry_width = logical_id;
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: RSS table size = %d\n",
+				  "%s: RSS table size = %d\n", prefix,
 				  caps->rss_table_size);
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: RSS table width = %d\n",
+				  "%s: RSS table width = %d\n", prefix,
 				  caps->rss_table_entry_width);
 			break;
 		case ICE_AQC_CAPS_RXQS:
 			caps->num_rxq = number;
 			caps->rxq_first_id = phys_id;
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: Num Rx Qs = %d\n", caps->num_rxq);
+				  "%s: num Rx queues = %d\n", prefix,
+				  caps->num_rxq);
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: Rx first queue ID = %d\n",
+				  "%s: Rx first queue ID = %d\n", prefix,
 				  caps->rxq_first_id);
 			break;
 		case ICE_AQC_CAPS_TXQS:
 			caps->num_txq = number;
 			caps->txq_first_id = phys_id;
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: Num Tx Qs = %d\n", caps->num_txq);
+				  "%s: num Tx queues = %d\n", prefix,
+				  caps->num_txq);
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: Tx first queue ID = %d\n",
+				  "%s: Tx first queue ID = %d\n", prefix,
 				  caps->txq_first_id);
 			break;
 		case ICE_AQC_CAPS_MSIX:
 			caps->num_msix_vectors = number;
 			caps->msix_vector_first_id = phys_id;
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: MSIX vector count = %d\n",
+				  "%s: MSIX vector count = %d\n", prefix,
 				  caps->num_msix_vectors);
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: MSIX first vector index = %d\n",
+				  "%s: MSIX first vector index = %d\n", prefix,
 				  caps->msix_vector_first_id);
 			break;
 		case ICE_AQC_CAPS_FD:
@@ -2050,7 +2059,7 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 			if (dev_p) {
 				dev_p->num_flow_director_fltr = number;
 				ice_debug(hw, ICE_DBG_INIT,
-					  "HW caps: Dev.fd_fltr =%d\n",
+					  "%s: num FD filters = %d\n", prefix,
 					  dev_p->num_flow_director_fltr);
 			}
 			if (func_p) {
@@ -2063,29 +2072,23 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 				      GLQF_FD_SIZE_FD_BSIZE_S;
 				func_p->fd_fltr_best_effort = val;
 				ice_debug(hw, ICE_DBG_INIT,
-					  "HW:func.fd_fltr guar= %d\n",
-					  func_p->fd_fltr_guar);
+					  "%s: num guaranteed FD filters = %d\n",
+					  prefix, func_p->fd_fltr_guar);
 				ice_debug(hw, ICE_DBG_INIT,
-					  "HW:func.fd_fltr best effort=%d\n",
-					  func_p->fd_fltr_best_effort);
+					  "%s: num best effort FD filters = %d\n",
+					  prefix, func_p->fd_fltr_best_effort);
 			}
 			break;
 		}
 		case ICE_AQC_CAPS_MAX_MTU:
 			caps->max_mtu = number;
-			if (dev_p)
-				ice_debug(hw, ICE_DBG_INIT,
-					  "HW caps: Dev.MaxMTU = %d\n",
-					  caps->max_mtu);
-			else if (func_p)
-				ice_debug(hw, ICE_DBG_INIT,
-					  "HW caps: func.MaxMTU = %d\n",
-					  caps->max_mtu);
+			ice_debug(hw, ICE_DBG_INIT, "%s: max MTU = %d\n",
+				  prefix, caps->max_mtu);
 			break;
 		default:
 			ice_debug(hw, ICE_DBG_INIT,
-				  "HW caps: Unknown capability[%d]: 0x%x\n", i,
-				  cap);
+				  "%s: unknown capability[%d]: 0x%x\n", prefix,
+				  i, cap);
 			break;
 		}
 	}
