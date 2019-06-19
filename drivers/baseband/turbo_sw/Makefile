@@ -3,9 +3,6 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-ifeq ($(FLEXRAN_SDK),)
-$(error "Please define FLEXRAN_SDK environment variable")
-endif
 
 # library name
 LIB = librte_pmd_bbdev_turbo_sw.a
@@ -21,17 +18,21 @@ LDLIBS += -lrte_bus_vdev
 # versioning export map
 EXPORT_MAP := rte_pmd_bbdev_turbo_sw_version.map
 
-# external library dependencies
+# external library dependencies if available
+ifeq ($(CONFIG_RTE_BBDEV_SDK_AVX2),y)
+ifeq ($(FLEXRAN_SDK),)
+$(error "Please define FLEXRAN_SDK environment variable")
+endif
 CFLAGS += -I$(FLEXRAN_SDK)/lib_common
 CFLAGS += -I$(FLEXRAN_SDK)/lib_turbo
 CFLAGS += -I$(FLEXRAN_SDK)/lib_crc
 CFLAGS += -I$(FLEXRAN_SDK)/lib_rate_matching
-
 LDLIBS += -L$(FLEXRAN_SDK)/lib_turbo -lturbo
 LDLIBS += -L$(FLEXRAN_SDK)/lib_crc -lcrc
 LDLIBS += -L$(FLEXRAN_SDK)/lib_rate_matching -lrate_matching
 LDLIBS += -L$(FLEXRAN_SDK)/lib_common -lcommon
-LDLIBS += -lstdc++ -lirc -limf -lipps
+LDLIBS += -lstdc++ -lirc -limf -lipps -lsvml
+endif
 
 # library version
 LIBABIVER := 1
