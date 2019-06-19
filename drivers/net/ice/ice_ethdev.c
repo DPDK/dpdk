@@ -1447,7 +1447,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 	/* Disable double vlan by default */
 	ice_vsi_config_double_vlan(vsi, FALSE);
 
-	ret = ice_aq_stop_lldp(hw, TRUE, NULL);
+	ret = ice_aq_stop_lldp(hw, TRUE, FALSE, NULL);
 	if (ret != ICE_SUCCESS)
 		PMD_INIT_LOG(DEBUG, "lldp has already stopped\n");
 

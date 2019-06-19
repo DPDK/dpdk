@@ -114,7 +114,6 @@ struct ice_lldp_org_tlv {
 	__be32 ouisubtype;
 	u8 tlvinfo[1];
 };
-
 #pragma pack()
 
 struct ice_cee_tlv_hdr {
@@ -147,7 +146,6 @@ struct ice_cee_app_prio {
 	__be16 lower_oui;
 	u8 prio_map;
 };
-
 #pragma pack()
 
 /* TODO: The below structures related LLDP/DCBX variables
@@ -190,8 +188,8 @@ enum ice_status
 ice_aq_get_cee_dcb_cfg(struct ice_hw *hw,
 		       struct ice_aqc_get_cee_dcb_cfg_resp *buff,
 		       struct ice_sq_cd *cd);
-u8 ice_get_dcbx_status(struct ice_hw *hw);
 enum ice_status ice_lldp_to_dcb_cfg(u8 *lldpmib, struct ice_dcbx_cfg *dcbcfg);
+u8 ice_get_dcbx_status(struct ice_hw *hw);
 enum ice_status
 ice_aq_get_dcb_cfg(struct ice_hw *hw, u8 mib_type, u8 bridgetype,
 		   struct ice_dcbx_cfg *dcbcfg);
@@ -211,9 +209,10 @@ enum ice_status
 ice_update_port_tc_tree_cfg(struct ice_port_info *pi,
 			    struct ice_aqc_port_ets_elem *buf);
 enum ice_status
-ice_aq_stop_lldp(struct ice_hw *hw, bool shutdown_lldp_agent,
+ice_aq_stop_lldp(struct ice_hw *hw, bool shutdown_lldp_agent, bool persist,
 		 struct ice_sq_cd *cd);
-enum ice_status ice_aq_start_lldp(struct ice_hw *hw, struct ice_sq_cd *cd);
+enum ice_status
+ice_aq_start_lldp(struct ice_hw *hw, bool persist, struct ice_sq_cd *cd);
 enum ice_status
 ice_aq_start_stop_dcbx(struct ice_hw *hw, bool start_dcbx_agent,
 		       bool *dcbx_agent_status, struct ice_sq_cd *cd);
