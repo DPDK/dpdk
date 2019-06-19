@@ -194,8 +194,9 @@ struct ice_udp_tnl_hdr {
 };
 
 struct ice_nvgre {
-	u16 tni;
-	u16 flow_id;
+	u16 flags;
+	u16 protocol;
+	u32 tni_flow;
 };
 
 union ice_prot_hdr {

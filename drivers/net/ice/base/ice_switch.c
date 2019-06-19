@@ -4390,7 +4390,7 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
 	{ ICE_VXLAN,		{ 8, 10, 12, 14 } },
 	{ ICE_GENEVE,		{ 8, 10, 12, 14 } },
 	{ ICE_VXLAN_GPE,	{ 0, 2, 4 } },
-	{ ICE_NVGRE,		{ 0, 2 } },
+	{ ICE_NVGRE,		{ 0, 2, 4, 6 } },
 	{ ICE_PROTOCOL_LAST,	{ 0 } }
 };
 
