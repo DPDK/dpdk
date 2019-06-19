@@ -443,6 +443,15 @@ enum ice_status
 ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		 u16 lkups_cnt, struct ice_adv_rule_info *rinfo,
 		 struct ice_rule_query_data *added_entry);
+enum ice_status
+ice_rem_adv_rule_for_vsi(struct ice_hw *hw, u16 vsi_handle);
+enum ice_status
+ice_rem_adv_rule_by_id(struct ice_hw *hw,
+		       struct ice_rule_query_data *remove_entry);
+enum ice_status
+ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
+		 u16 lkups_cnt, struct ice_adv_rule_info *rinfo);
+
 enum ice_status ice_replay_all_fltr(struct ice_hw *hw);
 
 enum ice_status ice_init_def_sw_recp(struct ice_hw *hw);

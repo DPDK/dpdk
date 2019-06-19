@@ -2218,17 +2218,38 @@ ice_find_vsi_list_entry(struct ice_hw *hw, u8 recp_id, u16 vsi_handle,
 {
 	struct ice_vsi_list_map_info *map_info = NULL;
 	struct ice_switch_info *sw = hw->switch_info;
-	struct ice_fltr_mgmt_list_entry *list_itr;
 	struct LIST_HEAD_TYPE *list_head;
 
 	list_head = &sw->recp_list[recp_id].filt_rules;
-	LIST_FOR_EACH_ENTRY(list_itr, list_head, ice_fltr_mgmt_list_entry,
-			    list_entry) {
-		if (list_itr->vsi_count == 1 && list_itr->vsi_list_info) {
-			map_info = list_itr->vsi_list_info;
-			if (ice_is_bit_set(map_info->vsi_map, vsi_handle)) {
-				*vsi_list_id = map_info->vsi_list_id;
-				return map_info;
+	if (sw->recp_list[recp_id].adv_rule) {
+		struct ice_adv_fltr_mgmt_list_entry *list_itr;
+
+		LIST_FOR_EACH_ENTRY(list_itr, list_head,
+				    ice_adv_fltr_mgmt_list_entry,
+				    list_entry) {
+			if (list_itr->vsi_list_info) {
+				map_info = list_itr->vsi_list_info;
+				if (ice_is_bit_set(map_info->vsi_map,
+						   vsi_handle)) {
+					*vsi_list_id = map_info->vsi_list_id;
+					return map_info;
+				}
+			}
+		}
+	} else {
+		struct ice_fltr_mgmt_list_entry *list_itr;
+
+		LIST_FOR_EACH_ENTRY(list_itr, list_head,
+				    ice_fltr_mgmt_list_entry,
+				    list_entry) {
+			if (list_itr->vsi_count == 1 &&
+			    list_itr->vsi_list_info) {
+				map_info = list_itr->vsi_list_info;
+				if (ice_is_bit_set(map_info->vsi_map,
+						   vsi_handle)) {
+					*vsi_list_id = map_info->vsi_list_id;
+					return map_info;
+				}
 			}
 		}
 	}
@@ -5564,6 +5585,278 @@ err_ice_add_adv_rule:
 
 	return status;
 }
+
+/**
+ * ice_adv_rem_update_vsi_list
+ * @hw: pointer to the hardware structure
+ * @vsi_handle: VSI handle of the VSI to remove
+ * @fm_list: filter management entry for which the VSI list management needs to
+ *	     be done
+ */
+static enum ice_status
+ice_adv_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
+			    struct ice_adv_fltr_mgmt_list_entry *fm_list)
+{
+	struct ice_vsi_list_map_info *vsi_list_info;
+	enum ice_sw_lkup_type lkup_type;
+	enum ice_status status;
+	u16 vsi_list_id;
+
+	if (fm_list->rule_info.sw_act.fltr_act != ICE_FWD_TO_VSI_LIST ||
+	    fm_list->vsi_count == 0)
+		return ICE_ERR_PARAM;
+
+	/* A rule with the VSI being removed does not exist */
+	if (!ice_is_bit_set(fm_list->vsi_list_info->vsi_map, vsi_handle))
+		return ICE_ERR_DOES_NOT_EXIST;
+
+	lkup_type = ICE_SW_LKUP_LAST;
+	vsi_list_id = fm_list->rule_info.sw_act.fwd_id.vsi_list_id;
+	status = ice_update_vsi_list_rule(hw, &vsi_handle, 1, vsi_list_id, true,
+					  ice_aqc_opc_update_sw_rules,
+					  lkup_type);
+	if (status)
+		return status;
+
+	fm_list->vsi_count--;
+	ice_clear_bit(vsi_handle, fm_list->vsi_list_info->vsi_map);
+	vsi_list_info = fm_list->vsi_list_info;
+	if (fm_list->vsi_count == 1) {
+		struct ice_fltr_info tmp_fltr;
+		u16 rem_vsi_handle;
+
+		rem_vsi_handle = ice_find_first_bit(vsi_list_info->vsi_map,
+						    ICE_MAX_VSI);
+		if (!ice_is_vsi_valid(hw, rem_vsi_handle))
+			return ICE_ERR_OUT_OF_RANGE;
+
+		/* Make sure VSI list is empty before removing it below */
+		status = ice_update_vsi_list_rule(hw, &rem_vsi_handle, 1,
+						  vsi_list_id, true,
+						  ice_aqc_opc_update_sw_rules,
+						  lkup_type);
+		if (status)
+			return status;
+		tmp_fltr.fltr_rule_id = fm_list->rule_info.fltr_rule_id;
+		fm_list->rule_info.sw_act.fltr_act = ICE_FWD_TO_VSI;
+		tmp_fltr.fltr_act = ICE_FWD_TO_VSI;
+		tmp_fltr.fwd_id.hw_vsi_id =
+			ice_get_hw_vsi_num(hw, rem_vsi_handle);
+		fm_list->rule_info.sw_act.fwd_id.hw_vsi_id =
+			ice_get_hw_vsi_num(hw, rem_vsi_handle);
+
+		/* Update the previous switch rule of "MAC forward to VSI" to
+		 * "MAC fwd to VSI list"
+		 */
+		status = ice_update_pkt_fwd_rule(hw, &tmp_fltr);
+		if (status) {
+			ice_debug(hw, ICE_DBG_SW,
+				  "Failed to update pkt fwd rule to FWD_TO_VSI on HW VSI %d, error %d\n",
+				  tmp_fltr.fwd_id.hw_vsi_id, status);
+			return status;
+		}
+	}
+
+	if (fm_list->vsi_count == 1) {
+		/* Remove the VSI list since it is no longer used */
+		status = ice_remove_vsi_list_rule(hw, vsi_list_id, lkup_type);
+		if (status) {
+			ice_debug(hw, ICE_DBG_SW,
+				  "Failed to remove VSI list %d, error %d\n",
+				  vsi_list_id, status);
+			return status;
+		}
+
+		LIST_DEL(&vsi_list_info->list_entry);
+		ice_free(hw, vsi_list_info);
+		fm_list->vsi_list_info = NULL;
+	}
+
+	return status;
+}
+
+/**
+ * ice_rem_adv_rule - removes existing advanced switch rule
+ * @hw: pointer to the hardware structure
+ * @lkups: information on the words that needs to be looked up. All words
+ *         together makes one recipe
+ * @lkups_cnt: num of entries in the lkups array
+ * @rinfo: Its the pointer to the rule information for the rule
+ *
+ * This function can be used to remove 1 rule at a time. The lkups is
+ * used to describe all the words that forms the "lookup" portion of the
+ * rule. These words can span multiple protocols. Callers to this function
+ * need to pass in a list of protocol headers with lookup information along
+ * and mask that determines which words are valid from the given protocol
+ * header. rinfo describes other information related to this rule such as
+ * forwarding IDs, priority of this rule, etc.
+ */
+enum ice_status
+ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
+		 u16 lkups_cnt, struct ice_adv_rule_info *rinfo)
+{
+	struct ice_adv_fltr_mgmt_list_entry *list_elem;
+	struct ice_prot_lkup_ext lkup_exts;
+	u16 rule_buf_sz, pkt_len, i, rid;
+	enum ice_status status = ICE_SUCCESS;
+	bool remove_rule = false;
+	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
+	const u8 *pkt = NULL;
+	u16 vsi_handle;
+
+	ice_memset(&lkup_exts, 0, sizeof(lkup_exts), ICE_NONDMA_MEM);
+	for (i = 0; i < lkups_cnt; i++) {
+		u16 count;
+
+		if (lkups[i].type >= ICE_PROTOCOL_LAST)
+			return ICE_ERR_CFG;
+
+		count = ice_fill_valid_words(&lkups[i], &lkup_exts);
+		if (!count)
+			return ICE_ERR_CFG;
+	}
+	rid = ice_find_recp(hw, &lkup_exts);
+	/* If did not find a recipe that match the existing criteria */
+	if (rid == ICE_MAX_NUM_RECIPES)
+		return ICE_ERR_PARAM;
+
+	rule_lock = &hw->switch_info->recp_list[rid].filt_rule_lock;
+	list_elem = ice_find_adv_rule_entry(hw, lkups, lkups_cnt, rid, rinfo);
+	/* the rule is already removed */
+	if (!list_elem)
+		return ICE_SUCCESS;
+	ice_acquire_lock(rule_lock);
+	if (list_elem->rule_info.sw_act.fltr_act != ICE_FWD_TO_VSI_LIST) {
+		remove_rule = true;
+	} else if (list_elem->vsi_count > 1) {
+		list_elem->vsi_list_info->ref_cnt--;
+		remove_rule = false;
+		vsi_handle = rinfo->sw_act.vsi_handle;
+		status = ice_adv_rem_update_vsi_list(hw, vsi_handle, list_elem);
+	} else {
+		vsi_handle = rinfo->sw_act.vsi_handle;
+		status = ice_adv_rem_update_vsi_list(hw, vsi_handle, list_elem);
+		if (status) {
+			ice_release_lock(rule_lock);
+			return status;
+		}
+		if (list_elem->vsi_count == 0)
+			remove_rule = true;
+	}
+	ice_release_lock(rule_lock);
+	if (remove_rule) {
+		struct ice_aqc_sw_rules_elem *s_rule;
+
+		ice_find_dummy_packet(lkups, lkups_cnt, rinfo->tun_type, &pkt,
+				      &pkt_len);
+		rule_buf_sz = ICE_SW_RULE_RX_TX_NO_HDR_SIZE + pkt_len;
+		s_rule =
+			(struct ice_aqc_sw_rules_elem *)ice_malloc(hw,
+								   rule_buf_sz);
+		if (!s_rule)
+			return ICE_ERR_NO_MEMORY;
+		s_rule->pdata.lkup_tx_rx.act = 0;
+		s_rule->pdata.lkup_tx_rx.index =
+			CPU_TO_LE16(list_elem->rule_info.fltr_rule_id);
+		s_rule->pdata.lkup_tx_rx.hdr_len = 0;
+		status = ice_aq_sw_rules(hw, (struct ice_aqc_sw_rules *)s_rule,
+					 rule_buf_sz, 1,
+					 ice_aqc_opc_remove_sw_rules, NULL);
+		if (status == ICE_SUCCESS) {
+			ice_acquire_lock(rule_lock);
+			LIST_DEL(&list_elem->list_entry);
+			ice_free(hw, list_elem->lkups);
+			ice_free(hw, list_elem);
+			ice_release_lock(rule_lock);
+		}
+		ice_free(hw, s_rule);
+	}
+	return status;
+}
+
+/**
+ * ice_rem_adv_rule_by_id - removes existing advanced switch rule by ID
+ * @hw: pointer to the hardware structure
+ * @remove_entry: data struct which holds rule_id, VSI handle and recipe ID
+ *
+ * This function is used to remove 1 rule at a time. The removal is based on
+ * the remove_entry parameter. This function will remove rule for a given
+ * vsi_handle with a given rule_id which is passed as parameter in remove_entry
+ */
+enum ice_status
+ice_rem_adv_rule_by_id(struct ice_hw *hw,
+		       struct ice_rule_query_data *remove_entry)
+{
+	struct ice_adv_fltr_mgmt_list_entry *list_itr;
+	struct LIST_HEAD_TYPE *list_head;
+	struct ice_adv_rule_info rinfo;
+	struct ice_switch_info *sw;
+
+	sw = hw->switch_info;
+	if (!sw->recp_list[remove_entry->rid].recp_created)
+		return ICE_ERR_PARAM;
+	list_head = &sw->recp_list[remove_entry->rid].filt_rules;
+	LIST_FOR_EACH_ENTRY(list_itr, list_head, ice_adv_fltr_mgmt_list_entry,
+			    list_entry) {
+		if (list_itr->rule_info.fltr_rule_id ==
+		    remove_entry->rule_id) {
+			rinfo = list_itr->rule_info;
+			rinfo.sw_act.vsi_handle = remove_entry->vsi_handle;
+			return ice_rem_adv_rule(hw, list_itr->lkups,
+						list_itr->lkups_cnt, &rinfo);
+		}
+	}
+	return ICE_ERR_PARAM;
+}
+
+/**
+ * ice_rem_adv_for_vsi - removes existing advanced switch rules for a
+ *                       given VSI handle
+ * @hw: pointer to the hardware structure
+ * @vsi_handle: VSI handle for which we are supposed to remove all the rules.
+ *
+ * This function is used to remove all the rules for a given VSI and as soon
+ * as removing a rule fails, it will return immediately with the error code,
+ * else it will return ICE_SUCCESS
+ */
+enum ice_status
+ice_rem_adv_rule_for_vsi(struct ice_hw *hw, u16 vsi_handle)
+{
+	struct ice_adv_fltr_mgmt_list_entry *list_itr;
+	struct ice_vsi_list_map_info *map_info;
+	struct LIST_HEAD_TYPE *list_head;
+	struct ice_adv_rule_info rinfo;
+	struct ice_switch_info *sw;
+	enum ice_status status;
+	u16 vsi_list_id = 0;
+	u8 rid;
+
+	sw = hw->switch_info;
+	for (rid = 0; rid < ICE_MAX_NUM_RECIPES; rid++) {
+		if (!sw->recp_list[rid].recp_created)
+			continue;
+		if (!sw->recp_list[rid].adv_rule)
+			continue;
+		list_head = &sw->recp_list[rid].filt_rules;
+		map_info = NULL;
+		LIST_FOR_EACH_ENTRY(list_itr, list_head,
+				    ice_adv_fltr_mgmt_list_entry, list_entry) {
+			map_info = ice_find_vsi_list_entry(hw, rid, vsi_handle,
+							   &vsi_list_id);
+			if (!map_info)
+				continue;
+			rinfo = list_itr->rule_info;
+			rinfo.sw_act.vsi_handle = vsi_handle;
+			status = ice_rem_adv_rule(hw, list_itr->lkups,
+						  list_itr->lkups_cnt, &rinfo);
+			if (status)
+				return status;
+			map_info = NULL;
+		}
+	}
+	return ICE_SUCCESS;
+}
+
 /**
  * ice_replay_fltr - Replay all the filters stored by a specific list head
  * @hw: pointer to the hardware structure
