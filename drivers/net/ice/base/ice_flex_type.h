@@ -455,17 +455,7 @@ struct ice_pkg_enum {
 
 enum ice_tunnel_type {
 	TNL_VXLAN = 0,
-	TNL_GTPC,
-	TNL_GTPC_TEID,
-	TNL_GTPU,
-	TNL_GTPU_TEID,
-	TNL_VXLAN_GPE,
 	TNL_GENEVE,
-	TNL_NAT,
-	TNL_ROCE_V2,
-	TNL_MPLSO_UDP,
-	TNL_UDP2_END,
-	TNL_UPD_END,
 	TNL_LAST = 0xFF,
 	TNL_ALL = 0xFF,
 };

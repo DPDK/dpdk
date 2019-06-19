@@ -7,19 +7,12 @@
 #include "ice_protocol_type.h"
 #include "ice_flow.h"
 
+/* To support tunneling entries by PF, the package will append the PF number to
+ * the label; for example TNL_VXLAN_PF0, TNL_VXLAN_PF1, TNL_VXLAN_PF2, etc.
+ */
 static const struct ice_tunnel_type_scan tnls[] = {
-	{ TNL_VXLAN,		"TNL_VXLAN" },
-	{ TNL_GTPC,		"TNL_GTPC" },
-	{ TNL_GTPC_TEID,	"TNL_GTPC_TEID" },
-	{ TNL_GTPU,		"TNL_GTPC" },
-	{ TNL_GTPU_TEID,	"TNL_GTPU_TEID" },
-	{ TNL_VXLAN_GPE,	"TNL_VXLAN_GPE" },
-	{ TNL_GENEVE,		"TNL_GENEVE" },
-	{ TNL_NAT,		"TNL_NAT" },
-	{ TNL_ROCE_V2,		"TNL_ROCE_V2" },
-	{ TNL_MPLSO_UDP,	"TNL_MPLSO_UDP" },
-	{ TNL_UDP2_END,		"TNL_UDP2_END" },
-	{ TNL_UPD_END,		"TNL_UPD_END" },
+	{ TNL_VXLAN,		"TNL_VXLAN_PF" },
+	{ TNL_GENEVE,		"TNL_GENEVE_PF" },
 	{ TNL_LAST,		"" }
 };
 
@@ -485,8 +478,17 @@ void ice_init_pkg_hints(struct ice_hw *hw, struct ice_seg *ice_seg)
 
 	while (label_name && hw->tnl.count < ICE_TUNNEL_MAX_ENTRIES) {
 		for (i = 0; tnls[i].type != TNL_LAST; i++) {
-			if (!strncmp(label_name, tnls[i].label_prefix,
-				     strlen(tnls[i].label_prefix))) {
+			size_t len = strlen(tnls[i].label_prefix);
+
+			/* Look for matching label start, before continuing */
+			if (strncmp(label_name, tnls[i].label_prefix, len))
+				continue;
+
+			/* Make sure this label matches our PF. Note that the PF
+			 * character ('0' - '7') will be located where our
+			 * prefix string's null terminator is located.
+			 */
+			if ((label_name[len] - '0') == hw->pf_id) {
 				hw->tnl.tbl[hw->tnl.count].type = tnls[i].type;
 				hw->tnl.tbl[hw->tnl.count].valid = false;
 				hw->tnl.tbl[hw->tnl.count].in_use = false;
@@ -1083,12 +1085,8 @@ enum ice_status ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg)
 enum ice_status
 ice_init_pkg_info(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr)
 {
-	struct ice_aqc_get_pkg_info_resp *pkg_info;
 	struct ice_global_metadata_seg *meta_seg;
 	struct ice_generic_seg_hdr *seg_hdr;
-	enum ice_status status;
-	u16 size;
-	u32 i;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 	if (!pkg_hdr)
@@ -1127,7 +1125,25 @@ ice_init_pkg_info(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr)
 		return ICE_ERR_CFG;
 	}
 
-#define ICE_PKG_CNT	4
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_get_pkg_info
+ * @hw: pointer to the hardware structure
+ *
+ * Store details of the package currently loaded in HW into the HW structure.
+ */
+enum ice_status
+ice_get_pkg_info(struct ice_hw *hw)
+{
+	struct ice_aqc_get_pkg_info_resp *pkg_info;
+	enum ice_status status;
+	u16 size;
+	u32 i;
+
+	ice_debug(hw, ICE_DBG_TRACE, "ice_init_pkg_info\n");
+
 	size = sizeof(*pkg_info) + (sizeof(pkg_info->pkg_info[0]) *
 				    (ICE_PKG_CNT - 1));
 	pkg_info = (struct ice_aqc_get_pkg_info_resp *)ice_malloc(hw, size);
@@ -1311,6 +1327,32 @@ static void ice_init_pkg_regs(struct ice_hw *hw)
 }
 
 /**
+ * ice_chk_pkg_version - check package version for compatibility with driver
+ * @hw: pointer to the hardware structure
+ * @pkg_ver: pointer to a version structure to check
+ *
+ * Check to make sure that the package about to be downloaded is compatible with
+ * the driver. To be compatible, the major and minor components of the package
+ * version must match our ICE_PKG_SUPP_VER_MAJ and ICE_PKG_SUPP_VER_MNR
+ * definitions.
+ */
+static enum ice_status
+ice_chk_pkg_version(struct ice_hw *hw, struct ice_pkg_ver *pkg_ver)
+{
+	if (pkg_ver->major != ICE_PKG_SUPP_VER_MAJ ||
+	    pkg_ver->minor != ICE_PKG_SUPP_VER_MNR) {
+		ice_info(hw, "ERROR: Incompatible package: %d.%d.%d.%d - requires package version: %d.%d.*.*\n",
+			 pkg_ver->major, pkg_ver->minor, pkg_ver->update,
+			 pkg_ver->draft, ICE_PKG_SUPP_VER_MAJ,
+			 ICE_PKG_SUPP_VER_MNR);
+
+		return ICE_ERR_NOT_SUPPORTED;
+	}
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_init_pkg - initialize/download package
  * @hw: pointer to the hardware structure
  * @buf: pointer to the package buffer
@@ -1357,6 +1399,13 @@ enum ice_status ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
 	if (status)
 		return status;
 
+	/* before downloading the package, check package version for
+	 * compatibility with driver
+	 */
+	status = ice_chk_pkg_version(hw, &hw->pkg_ver);
+	if (status)
+		return status;
+
 	/* find segment in given package */
 	seg = (struct ice_seg *)ice_find_seg_in_pkg(hw, SEGMENT_TYPE_ICE, pkg);
 	if (!seg) {
@@ -1371,6 +1420,15 @@ enum ice_status ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
 		ice_debug(hw, ICE_DBG_INIT,
 			  "package previously loaded - no work.\n");
 		status = ICE_SUCCESS;
+	}
+
+	/* Get information on the package currently loaded in HW, then make sure
+	 * the driver is compatible with this version.
+	 */
+	if (!status) {
+		status = ice_get_pkg_info(hw);
+		if (!status)
+			status = ice_chk_pkg_version(hw, &hw->active_pkg_ver);
 	}
 
 	if (!status) {

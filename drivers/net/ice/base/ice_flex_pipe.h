@@ -7,11 +7,17 @@
 
 #include "ice_type.h"
 
+/* Package minimal version supported */
+#define ICE_PKG_SUPP_VER_MAJ	1
+#define ICE_PKG_SUPP_VER_MNR	2
+
 /* Package format version */
 #define ICE_PKG_FMT_VER_MAJ	1
 #define ICE_PKG_FMT_VER_MNR	0
 #define ICE_PKG_FMT_VER_UPD	0
 #define ICE_PKG_FMT_VER_DFT	0
+
+#define ICE_PKG_CNT 4
 
 enum ice_status
 ice_update_pkg(struct ice_hw *hw, struct ice_buf *bufs, u32 count);
@@ -28,6 +34,8 @@ enum ice_status ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg);
 
 enum ice_status
 ice_init_pkg_info(struct ice_hw *hw, struct ice_pkg_hdr *pkg_header);
+enum ice_status
+ice_get_pkg_info(struct ice_hw *hw);
 
 void ice_init_pkg_hints(struct ice_hw *hw, struct ice_seg *ice_seg);
 
