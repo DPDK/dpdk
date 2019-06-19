@@ -33,7 +33,7 @@ T: git://dpdk.org/next/dpdk-next-net
 
 Next-net-intel Tree
 M: Qi Zhang <qi.z.zhang@intel.com>
-M: Beilei Xing <beilei.xing@intel.com>
+M: Xiaolong Ye <xiaolong.ye@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 
 Next-net-mlx Tree
