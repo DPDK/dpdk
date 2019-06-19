@@ -142,6 +142,8 @@ struct ice_aqc_manage_mac_read {
 #define ICE_AQC_MAN_MAC_SAN_ADDR_VALID		BIT(5)
 #define ICE_AQC_MAN_MAC_PORT_ADDR_VALID		BIT(6)
 #define ICE_AQC_MAN_MAC_WOL_ADDR_VALID		BIT(7)
+#define ICE_AQC_MAN_MAC_MC_MAG_EN		BIT(8)
+#define ICE_AQC_MAN_MAC_WOL_PRESERVE_ON_PFR	BIT(9)
 #define ICE_AQC_MAN_MAC_READ_S			4
 #define ICE_AQC_MAN_MAC_READ_M			(0xF << ICE_AQC_MAN_MAC_READ_S)
 	u8 rsvd[2];
@@ -2390,6 +2392,7 @@ enum ice_aq_err {
 	ICE_AQ_RC_ESVN		= 26, /* SVN number prohibits this package */
 	ICE_AQ_RC_EBADMAN	= 27, /* Manifest hash mismatch */
 	ICE_AQ_RC_EBADBUF	= 28, /* Buffer hash mismatches manifest */
+	ICE_AQ_RC_EACCES_BMCU	= 29, /* BMC Update in progress */
 };
 
 /* Admin Queue command opcodes */
