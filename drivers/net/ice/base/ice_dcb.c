@@ -927,10 +927,11 @@ enum ice_status ice_get_dcb_cfg(struct ice_port_info *pi)
 /**
  * ice_init_dcb
  * @hw: pointer to the HW struct
+ * @enable_mib_change: enable MIB change event
  *
  * Update DCB configuration from the Firmware
  */
-enum ice_status ice_init_dcb(struct ice_hw *hw)
+enum ice_status ice_init_dcb(struct ice_hw *hw, bool enable_mib_change)
 {
 	struct ice_port_info *pi = hw->port_info;
 	enum ice_status ret = ICE_SUCCESS;
@@ -952,13 +953,42 @@ enum ice_status ice_init_dcb(struct ice_hw *hw)
 			return ret;
 	} else if (pi->dcbx_status == ICE_DCBX_STATUS_DIS) {
 		return ICE_ERR_NOT_READY;
-	} else if (pi->dcbx_status == ICE_DCBX_STATUS_MULTIPLE_PEERS) {
 	}
 
 	/* Configure the LLDP MIB change event */
-	ret = ice_aq_cfg_lldp_mib_change(hw, true, NULL);
+	if (enable_mib_change) {
+		ret = ice_aq_cfg_lldp_mib_change(hw, true, NULL);
+		if (!ret)
+			pi->is_sw_lldp = false;
+	}
+
+	return ret;
+}
+
+/**
+ * ice_cfg_lldp_mib_change
+ * @hw: pointer to the HW struct
+ * @ena_mib: enable/disable MIB change event
+ *
+ * Configure (disable/enable) MIB
+ */
+enum ice_status ice_cfg_lldp_mib_change(struct ice_hw *hw, bool ena_mib)
+{
+	struct ice_port_info *pi = hw->port_info;
+	enum ice_status ret;
+
+	if (!hw->func_caps.common_cap.dcb)
+		return ICE_ERR_NOT_SUPPORTED;
+
+	/* Get DCBX status */
+	pi->dcbx_status = ice_get_dcbx_status(hw);
+
+	if (pi->dcbx_status == ICE_DCBX_STATUS_DIS)
+		return ICE_ERR_NOT_READY;
+
+	ret = ice_aq_cfg_lldp_mib_change(hw, ena_mib, NULL);
 	if (!ret)
-		pi->is_sw_lldp = false;
+		pi->is_sw_lldp = !ena_mib;
 
 	return ret;
 }
