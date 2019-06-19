@@ -408,8 +408,20 @@ enum ice_status
 ice_get_vsi_vlan_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
 			 u16 *vid);
 
+enum ice_status
+ice_aq_add_recipe(struct ice_hw *hw,
+		  struct ice_aqc_recipe_data_elem *s_recipe_list,
+		  u16 num_recipes, struct ice_sq_cd *cd);
 
+enum ice_status
+ice_aq_get_recipe(struct ice_hw *hw,
+		  struct ice_aqc_recipe_data_elem *s_recipe_list,
+		  u16 *num_recipes, u16 recipe_root, struct ice_sq_cd *cd);
+enum ice_status
+ice_aq_map_recipe_to_profile(struct ice_hw *hw, u32 profile_id, u8 *r_bitmap,
+			     struct ice_sq_cd *cd);
 
+enum ice_status ice_alloc_recipe(struct ice_hw *hw, u16 *recipe_id);
 enum ice_status ice_replay_all_fltr(struct ice_hw *hw);
 
 enum ice_status ice_init_def_sw_recp(struct ice_hw *hw);

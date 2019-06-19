@@ -914,6 +914,138 @@ ice_aq_sw_rules(struct ice_hw *hw, void *rule_list, u16 rule_list_sz,
 	return ice_aq_send_cmd(hw, &desc, rule_list, rule_list_sz, cd);
 }
 
+/**
+ * ice_aq_add_recipe - add switch recipe
+ * @hw: pointer to the HW struct
+ * @s_recipe_list: pointer to switch rule population list
+ * @num_recipes: number of switch recipes in the list
+ * @cd: pointer to command details structure or NULL
+ *
+ * Add(0x0290)
+ */
+enum ice_status
+ice_aq_add_recipe(struct ice_hw *hw,
+		  struct ice_aqc_recipe_data_elem *s_recipe_list,
+		  u16 num_recipes, struct ice_sq_cd *cd)
+{
+	struct ice_aqc_add_get_recipe *cmd;
+	struct ice_aq_desc desc;
+	u16 buf_size;
+
+	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_add_recipe");
+	cmd = &desc.params.add_get_recipe;
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_add_recipe);
+
+	cmd->num_sub_recipes = CPU_TO_LE16(num_recipes);
+	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
+
+	buf_size = num_recipes * sizeof(*s_recipe_list);
+
+	return ice_aq_send_cmd(hw, &desc, s_recipe_list, buf_size, cd);
+}
+
+/**
+ * ice_aq_get_recipe - get switch recipe
+ * @hw: pointer to the HW struct
+ * @s_recipe_list: pointer to switch rule population list
+ * @num_recipes: pointer to the number of recipes (input and output)
+ * @recipe_root: root recipe number of recipe(s) to retrieve
+ * @cd: pointer to command details structure or NULL
+ *
+ * Get(0x0292)
+ *
+ * On input, *num_recipes should equal the number of entries in s_recipe_list.
+ * On output, *num_recipes will equal the number of entries returned in
+ * s_recipe_list.
+ *
+ * The caller must supply enough space in s_recipe_list to hold all possible
+ * recipes and *num_recipes must equal ICE_MAX_NUM_RECIPES.
+ */
+enum ice_status
+ice_aq_get_recipe(struct ice_hw *hw,
+		  struct ice_aqc_recipe_data_elem *s_recipe_list,
+		  u16 *num_recipes, u16 recipe_root, struct ice_sq_cd *cd)
+{
+	struct ice_aqc_add_get_recipe *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+	u16 buf_size;
+
+	if (*num_recipes != ICE_MAX_NUM_RECIPES)
+		return ICE_ERR_PARAM;
+
+	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_get_recipe");
+	cmd = &desc.params.add_get_recipe;
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_recipe);
+
+	cmd->return_index = CPU_TO_LE16(recipe_root);
+	cmd->num_sub_recipes = 0;
+
+	buf_size = *num_recipes * sizeof(*s_recipe_list);
+
+	status = ice_aq_send_cmd(hw, &desc, s_recipe_list, buf_size, cd);
+	/* cppcheck-suppress constArgument */
+	*num_recipes = LE16_TO_CPU(cmd->num_sub_recipes);
+
+	return status;
+}
+
+/**
+ * ice_aq_map_recipe_to_profile - Map recipe to packet profile
+ * @hw: pointer to the HW struct
+ * @profile_id: package profile ID to associate the recipe with
+ * @r_bitmap: Recipe bitmap filled in and need to be returned as response
+ * @cd: pointer to command details structure or NULL
+ * Recipe to profile association (0x0291)
+ */
+enum ice_status
+ice_aq_map_recipe_to_profile(struct ice_hw *hw, u32 profile_id, u8 *r_bitmap,
+			     struct ice_sq_cd *cd)
+{
+	struct ice_aqc_recipe_to_profile *cmd;
+	struct ice_aq_desc desc;
+
+	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_assoc_recipe_to_prof");
+	cmd = &desc.params.recipe_to_profile;
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_recipe_to_profile);
+	cmd->profile_id = CPU_TO_LE16(profile_id);
+	/* Set the recipe ID bit in the bitmask to let the device know which
+	 * profile we are associating the recipe to
+	 */
+	ice_memcpy(cmd->recipe_assoc, r_bitmap, sizeof(cmd->recipe_assoc),
+		   ICE_NONDMA_TO_NONDMA);
+
+	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+}
+
+/**
+ * ice_alloc_recipe - add recipe resource
+ * @hw: pointer to the hardware structure
+ * @rid: recipe ID returned as response to AQ call
+ */
+enum ice_status ice_alloc_recipe(struct ice_hw *hw, u16 *rid)
+{
+	struct ice_aqc_alloc_free_res_elem *sw_buf;
+	enum ice_status status;
+	u16 buf_len;
+
+	buf_len = sizeof(*sw_buf);
+	sw_buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
+	if (!sw_buf)
+		return ICE_ERR_NO_MEMORY;
+
+	sw_buf->num_elems = CPU_TO_LE16(1);
+	sw_buf->res_type = CPU_TO_LE16((ICE_AQC_RES_TYPE_RECIPE <<
+					ICE_AQC_RES_TYPE_S) |
+					ICE_AQC_RES_TYPE_FLAG_SHARED);
+	status = ice_aq_alloc_free_res(hw, 1, sw_buf, buf_len,
+				       ice_aqc_opc_alloc_res, NULL);
+	if (!status)
+		*rid = LE16_TO_CPU(sw_buf->elem[0].e.sw_resp);
+	ice_free(hw, sw_buf);
+
+	return status;
+}
 
 /* ice_init_port_info - Initialize port_info with switch configuration data
  * @pi: pointer to port_info
