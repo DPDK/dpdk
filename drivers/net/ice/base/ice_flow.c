@@ -1605,27 +1605,32 @@ ice_flow_set_rss_seg_info(struct ice_flow_seg_info *segs, u64 hash_fields,
 }
 
 /**
- * ice_rem_all_rss_vsi_ctx - remove all RSS configurations from VSI context
+ * ice_rem_vsi_rss_list - remove VSI from RSS list
  * @hw: pointer to the hardware structure
  * @vsi_handle: software VSI handle
  *
+ * Remove the VSI from all RSS configurations in the list.
  */
-void ice_rem_all_rss_vsi_ctx(struct ice_hw *hw, u16 vsi_handle)
+void ice_rem_vsi_rss_list(struct ice_hw *hw, u16 vsi_handle)
 {
 	struct ice_rss_cfg *r, *tmp;
 
-	if (!ice_is_vsi_valid(hw, vsi_handle) ||
-	    LIST_EMPTY(&hw->vsi_ctx[vsi_handle]->rss_list_head))
+	if (LIST_EMPTY(&hw->rss_list_head))
 		return;
 
-	ice_acquire_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
-	LIST_FOR_EACH_ENTRY_SAFE(r, tmp,
-				 &hw->vsi_ctx[vsi_handle]->rss_list_head,
+	ice_acquire_lock(&hw->rss_locks);
+	LIST_FOR_EACH_ENTRY_SAFE(r, tmp, &hw->rss_list_head,
 				 ice_rss_cfg, l_entry) {
-		LIST_DEL(&r->l_entry);
-		ice_free(hw, r);
+		if (ice_is_bit_set(r->vsis, vsi_handle)) {
+			ice_clear_bit(vsi_handle, r->vsis);
+
+			if (!ice_is_any_bit_set(r->vsis, ICE_MAX_VSI)) {
+				LIST_DEL(&r->l_entry);
+				ice_free(hw, r);
+			}
+		}
 	}
-	ice_release_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
+	ice_release_lock(&hw->rss_locks);
 }
 
 /**
@@ -1667,7 +1672,7 @@ enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 }
 
 /**
- * ice_rem_rss_cfg_vsi_ctx - remove RSS configuration from VSI context
+ * ice_rem_rss_list - remove RSS configuration from list
  * @hw: pointer to the hardware structure
  * @vsi_handle: software VSI handle
  * @prof: pointer to flow profile
@@ -1675,8 +1680,7 @@ enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
  * Assumption: lock has already been acquired for RSS list
  */
 static void
-ice_rem_rss_cfg_vsi_ctx(struct ice_hw *hw, u16 vsi_handle,
-			struct ice_flow_prof *prof)
+ice_rem_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
 {
 	struct ice_rss_cfg *r, *tmp;
 
@@ -1684,20 +1688,22 @@ ice_rem_rss_cfg_vsi_ctx(struct ice_hw *hw, u16 vsi_handle,
 	 * hash configurations associated to the flow profile. If found
 	 * remove from the RSS entry list of the VSI context and delete entry.
 	 */
-	LIST_FOR_EACH_ENTRY_SAFE(r, tmp,
-				 &hw->vsi_ctx[vsi_handle]->rss_list_head,
+	LIST_FOR_EACH_ENTRY_SAFE(r, tmp, &hw->rss_list_head,
 				 ice_rss_cfg, l_entry) {
 		if (r->hashed_flds == prof->segs[prof->segs_cnt - 1].match &&
 		    r->packet_hdr == prof->segs[prof->segs_cnt - 1].hdrs) {
-			LIST_DEL(&r->l_entry);
-			ice_free(hw, r);
+			ice_clear_bit(vsi_handle, r->vsis);
+			if (!ice_is_any_bit_set(r->vsis, ICE_MAX_VSI)) {
+				LIST_DEL(&r->l_entry);
+				ice_free(hw, r);
+			}
 			return;
 		}
 	}
 }
 
 /**
- * ice_add_rss_vsi_ctx - add RSS configuration to VSI context
+ * ice_add_rss_list - add RSS configuration to list
  * @hw: pointer to the hardware structure
  * @vsi_handle: software VSI handle
  * @prof: pointer to flow profile
@@ -1705,16 +1711,17 @@ ice_rem_rss_cfg_vsi_ctx(struct ice_hw *hw, u16 vsi_handle,
  * Assumption: lock has already been acquired for RSS list
  */
 static enum ice_status
-ice_add_rss_vsi_ctx(struct ice_hw *hw, u16 vsi_handle,
-		    struct ice_flow_prof *prof)
+ice_add_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
 {
 	struct ice_rss_cfg *r, *rss_cfg;
 
-	LIST_FOR_EACH_ENTRY(r, &hw->vsi_ctx[vsi_handle]->rss_list_head,
+	LIST_FOR_EACH_ENTRY(r, &hw->rss_list_head,
 			    ice_rss_cfg, l_entry)
 		if (r->hashed_flds == prof->segs[prof->segs_cnt - 1].match &&
-		    r->packet_hdr == prof->segs[prof->segs_cnt - 1].hdrs)
+		    r->packet_hdr == prof->segs[prof->segs_cnt - 1].hdrs) {
+			ice_set_bit(vsi_handle, r->vsis);
 			return ICE_SUCCESS;
+		}
 
 	rss_cfg = (struct ice_rss_cfg *)ice_malloc(hw, sizeof(*rss_cfg));
 	if (!rss_cfg)
@@ -1722,8 +1729,9 @@ ice_add_rss_vsi_ctx(struct ice_hw *hw, u16 vsi_handle,
 
 	rss_cfg->hashed_flds = prof->segs[prof->segs_cnt - 1].match;
 	rss_cfg->packet_hdr = prof->segs[prof->segs_cnt - 1].hdrs;
-	LIST_ADD_TAIL(&rss_cfg->l_entry,
-		      &hw->vsi_ctx[vsi_handle]->rss_list_head);
+	ice_set_bit(vsi_handle, rss_cfg->vsis);
+
+	LIST_ADD_TAIL(&rss_cfg->l_entry, &hw->rss_list_head);
 
 	return ICE_SUCCESS;
 }
@@ -1785,7 +1793,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	if (prof) {
 		status = ice_flow_disassoc_prof(hw, blk, prof, vsi_handle);
 		if (!status)
-			ice_rem_rss_cfg_vsi_ctx(hw, vsi_handle, prof);
+			ice_rem_rss_list(hw, vsi_handle, prof);
 		else
 			goto exit;
 
@@ -1806,7 +1814,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	if (prof) {
 		status = ice_flow_assoc_prof(hw, blk, prof, vsi_handle);
 		if (!status)
-			status = ice_add_rss_vsi_ctx(hw, vsi_handle, prof);
+			status = ice_add_rss_list(hw, vsi_handle, prof);
 		goto exit;
 	}
 
@@ -1828,7 +1836,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 		goto exit;
 	}
 
-	status = ice_add_rss_vsi_ctx(hw, vsi_handle, prof);
+	status = ice_add_rss_list(hw, vsi_handle, prof);
 
 exit:
 	ice_free(hw, segs);
@@ -1856,9 +1864,9 @@ ice_add_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	    !ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
 
-	ice_acquire_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
+	ice_acquire_lock(&hw->rss_locks);
 	status = ice_add_rss_cfg_sync(hw, vsi_handle, hashed_flds, addl_hdrs);
-	ice_release_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
+	ice_release_lock(&hw->rss_locks);
 
 	return status;
 }
@@ -1905,7 +1913,7 @@ ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	/* Remove RSS configuration from VSI context before deleting
 	 * the flow profile.
 	 */
-	ice_rem_rss_cfg_vsi_ctx(hw, vsi_handle, prof);
+	ice_rem_rss_list(hw, vsi_handle, prof);
 
 	if (!ice_is_any_bit_set(prof->vsis, ICE_MAX_VSI))
 		status = ice_flow_rem_prof_sync(hw, blk, prof);
@@ -2066,15 +2074,15 @@ ice_rem_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	    !ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
 
-	ice_acquire_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
+	ice_acquire_lock(&hw->rss_locks);
 	status = ice_rem_rss_cfg_sync(hw, vsi_handle, hashed_flds, addl_hdrs);
-	ice_release_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
+	ice_release_lock(&hw->rss_locks);
 
 	return status;
 }
 
 /**
- * ice_replay_rss_cfg - remove RSS configurations associated with VSI
+ * ice_replay_rss_cfg - replay RSS configurations associated with VSI
  * @hw: pointer to the hardware structure
  * @vsi_handle: software VSI handle
  */
@@ -2086,15 +2094,18 @@ enum ice_status ice_replay_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 	if (!ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
 
-	ice_acquire_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
-	LIST_FOR_EACH_ENTRY(r, &hw->vsi_ctx[vsi_handle]->rss_list_head,
+	ice_acquire_lock(&hw->rss_locks);
+	LIST_FOR_EACH_ENTRY(r, &hw->rss_list_head,
 			    ice_rss_cfg, l_entry) {
-		status = ice_add_rss_cfg_sync(hw, vsi_handle, r->hashed_flds,
-					      r->packet_hdr);
-		if (status)
-			break;
+		if (ice_is_bit_set(r->vsis, vsi_handle)) {
+			status = ice_add_rss_cfg_sync(hw, vsi_handle,
+						      r->hashed_flds,
+						      r->packet_hdr);
+			if (status)
+				break;
+		}
 	}
-	ice_release_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
+	ice_release_lock(&hw->rss_locks);
 
 	return status;
 }
@@ -2116,14 +2127,15 @@ u64 ice_get_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u32 hdrs)
 	if (hdrs == ICE_FLOW_SEG_HDR_NONE || !ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_HASH_INVALID;
 
-	ice_acquire_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
-	LIST_FOR_EACH_ENTRY(r, &hw->vsi_ctx[vsi_handle]->rss_list_head,
+	ice_acquire_lock(&hw->rss_locks);
+	LIST_FOR_EACH_ENTRY(r, &hw->rss_list_head,
 			    ice_rss_cfg, l_entry)
-		if (r->packet_hdr == hdrs) {
+		if (ice_is_bit_set(r->vsis, vsi_handle) &&
+		    r->packet_hdr == hdrs) {
 			rss_cfg = r;
 			break;
 		}
-	ice_release_lock(&hw->vsi_ctx[vsi_handle]->rss_locks);
+	ice_release_lock(&hw->rss_locks);
 
 	return rss_cfg ? rss_cfg->hashed_flds : ICE_HASH_INVALID;
 }

@@ -687,10 +687,7 @@ static void ice_clear_vsi_ctx(struct ice_hw *hw, u16 vsi_handle)
 
 	vsi = ice_get_vsi_ctx(hw, vsi_handle);
 	if (vsi) {
-		if (!LIST_EMPTY(&vsi->rss_list_head))
-			ice_rem_all_rss_vsi_ctx(hw, vsi_handle);
 		ice_clear_vsi_q_ctx(hw, vsi_handle);
-		ice_destroy_lock(&vsi->rss_locks);
 		ice_free(hw, vsi);
 		hw->vsi_ctx[vsi_handle] = NULL;
 	}
@@ -741,8 +738,7 @@ ice_add_vsi(struct ice_hw *hw, u16 vsi_handle, struct ice_vsi_ctx *vsi_ctx,
 			return ICE_ERR_NO_MEMORY;
 		}
 		*tmp_vsi_ctx = *vsi_ctx;
-		ice_init_lock(&tmp_vsi_ctx->rss_locks);
-		INIT_LIST_HEAD(&tmp_vsi_ctx->rss_list_head);
+
 		ice_save_vsi_ctx(hw, vsi_handle, tmp_vsi_ctx);
 	} else {
 		/* update with new HW VSI num */

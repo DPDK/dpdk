@@ -270,6 +270,8 @@ struct ice_flow_prof {
 
 struct ice_rss_cfg {
 	struct LIST_ENTRY_TYPE l_entry;
+	/* bitmap of VSIs added to the RSS entry */
+	ice_declare_bitmap(vsis, ICE_MAX_VSI);
 	u64 hashed_flds;
 	u32 packet_hdr;
 };
@@ -338,7 +340,7 @@ ice_flow_set_fld_prefix(struct ice_flow_seg_info *seg, enum ice_flow_field fld,
 void
 ice_flow_add_fld_raw(struct ice_flow_seg_info *seg, u16 off, u8 len,
 		     u16 val_loc, u16 mask_loc);
-void ice_rem_all_rss_vsi_ctx(struct ice_hw *hw, u16 vsi_handle);
+void ice_rem_vsi_rss_list(struct ice_hw *hw, u16 vsi_handle);
 enum ice_status ice_replay_rss_cfg(struct ice_hw *hw, u16 vsi_handle);
 enum ice_status
 ice_add_avf_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds);

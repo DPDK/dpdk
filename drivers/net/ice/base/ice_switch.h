@@ -32,8 +32,6 @@ struct ice_vsi_ctx {
 	u8 alloc_from_pool;
 	u16 num_lan_q_entries[ICE_MAX_TRAFFIC_CLASS];
 	struct ice_q_ctx *lan_q_ctx[ICE_MAX_TRAFFIC_CLASS];
-	struct ice_lock rss_locks;	/* protect rss config in VSI ctx */
-	struct LIST_HEAD_TYPE rss_list_head;
 };
 
 /* This is to be used by add/update mirror rule Admin Queue command */
