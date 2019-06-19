@@ -373,12 +373,10 @@ enum ice_status
 ice_add_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list);
 enum ice_status
 ice_remove_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list);
-#ifndef NO_MACVLAN_SUPPORT
 enum ice_status
 ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list);
 enum ice_status
 ice_remove_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list);
-#endif /* !NO_MACVLAN_SUPPORT */
 
 enum ice_status
 ice_add_mac_with_sw_marker(struct ice_hw *hw, struct ice_fltr_info *f_info,

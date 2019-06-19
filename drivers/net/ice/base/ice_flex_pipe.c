@@ -640,7 +640,7 @@ static bool ice_bits_max_set(const u8 *mask, u16 size, u16 max)
  * @size: the size of the complete key in bytes (must be even)
  * @val: array of 8-bit values that makes up the value portion of the key
  * @upd: array of 8-bit masks that determine what key portion to update
- * @dc: array of 8-bit masks that make up the dont' care mask
+ * @dc: array of 8-bit masks that make up the don't care mask
  * @nm: array of 8-bit masks that make up the never match mask
  * @off: the offset of the first byte in the key to update
  * @len: the number of bytes in the key update
@@ -897,7 +897,7 @@ ice_find_seg_in_pkg(struct ice_hw *hw, u32 seg_type,
 	u32 i;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
-	ice_debug(hw, ICE_DBG_PKG, "Package version: %d.%d.%d.%d\n",
+	ice_debug(hw, ICE_DBG_PKG, "Package format version: %d.%d.%d.%d\n",
 		  pkg_hdr->format_ver.major, pkg_hdr->format_ver.minor,
 		  pkg_hdr->format_ver.update, pkg_hdr->format_ver.draft);
 
@@ -4479,6 +4479,7 @@ ice_move_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig,
 	status = ice_vsig_find_vsi(hw, blk, vsi, &orig_vsig);
 	if (!status)
 		status = ice_vsig_add_mv_vsi(hw, blk, vsi, vsig);
+
 	if (status) {
 		ice_free(hw, p);
 		return status;

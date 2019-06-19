@@ -262,7 +262,7 @@ ice_cfg_sq_regs(struct ice_hw *hw, struct ice_ctl_q_info *cq)
  * @hw: pointer to the hardware structure
  * @cq: pointer to the specific Control queue
  *
- * Configure base address and length registers for the receive (event q)
+ * Configure base address and length registers for the receive (event queue)
  */
 static enum ice_status
 ice_cfg_rq_regs(struct ice_hw *hw, struct ice_ctl_q_info *cq)
@@ -772,9 +772,6 @@ static u16 ice_clean_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 	struct ice_ctl_q_ring *sq = &cq->sq;
 	u16 ntc = sq->next_to_clean;
 	struct ice_sq_cd *details;
-#if 0
-	struct ice_aq_desc desc_cb;
-#endif
 	struct ice_aq_desc *desc;
 
 	desc = ICE_CTL_Q_DESC(*sq, ntc);
@@ -783,15 +780,6 @@ static u16 ice_clean_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 	while (rd32(hw, cq->sq.head) != ntc) {
 		ice_debug(hw, ICE_DBG_AQ_MSG,
 			  "ntc %d head %d.\n", ntc, rd32(hw, cq->sq.head));
-#if 0
-		if (details->callback) {
-			ICE_CTL_Q_CALLBACK cb_func =
-				(ICE_CTL_Q_CALLBACK)details->callback;
-			ice_memcpy(&desc_cb, desc, sizeof(desc_cb),
-				   ICE_DMA_TO_DMA);
-			cb_func(hw, &desc_cb);
-		}
-#endif
 		ice_memset(desc, 0, sizeof(*desc), ICE_DMA_MEM);
 		ice_memset(details, 0, sizeof(*details), ICE_NONDMA_MEM);
 		ntc++;
@@ -941,38 +929,8 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	details = ICE_CTL_Q_DETAILS(cq->sq, cq->sq.next_to_use);
 	if (cd)
 		*details = *cd;
-#if 0
-		/* FIXME: if/when this block gets enabled (when the #if 0
-		 * is removed), add braces to both branches of the surrounding
-		 * conditional expression. The braces have been removed to
-		 * prevent checkpatch complaining.
-		 */
-
-		/* If the command details are defined copy the cookie. The
-		 * CPU_TO_LE32 is not needed here because the data is ignored
-		 * by the FW, only used by the driver
-		 */
-		if (details->cookie) {
-			desc->cookie_high =
-				CPU_TO_LE32(ICE_HI_DWORD(details->cookie));
-			desc->cookie_low =
-				CPU_TO_LE32(ICE_LO_DWORD(details->cookie));
-		}
-#endif
 	else
 		ice_memset(details, 0, sizeof(*details), ICE_NONDMA_MEM);
-#if 0
-	/* clear requested flags and then set additional flags if defined */
-	desc->flags &= ~CPU_TO_LE16(details->flags_dis);
-	desc->flags |= CPU_TO_LE16(details->flags_ena);
-
-	if (details->postpone && !details->async) {
-		ice_debug(hw, ICE_DBG_AQ_MSG,
-			  "Async flag not set along with postpone flag\n");
-		status = ICE_ERR_PARAM;
-		goto sq_send_command_error;
-	}
-#endif
 
 	/* Call clean and check queue available function to reclaim the
 	 * descriptors that were processed by FW/MBX; the function returns the
@@ -1019,20 +977,8 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	(cq->sq.next_to_use)++;
 	if (cq->sq.next_to_use == cq->sq.count)
 		cq->sq.next_to_use = 0;
-#if 0
-	/* FIXME - handle this case? */
-	if (!details->postpone)
-#endif
 	wr32(hw, cq->sq.tail, cq->sq.next_to_use);
 
-#if 0
-	/* if command details are not defined or async flag is not set,
-	 * we need to wait for desc write back
-	 */
-	if (!details->async && !details->postpone) {
-		/* FIXME - handle this case? */
-	}
-#endif
 	do {
 		if (ice_sq_done(hw, cq))
 			break;
@@ -1087,9 +1033,6 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 
 	/* update the error if time out occurred */
 	if (!cmd_completed) {
-#if 0
-	    (!details->async && !details->postpone)) {
-#endif
 		ice_debug(hw, ICE_DBG_AQ_MSG,
 			  "Control Send Queue Writeback timeout.\n");
 		status = ICE_ERR_AQ_TIMEOUT;
@@ -1208,9 +1151,6 @@ ice_clean_rq_elem(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	cq->rq.next_to_clean = ntc;
 	cq->rq.next_to_use = ntu;
 
-#if 0
-	ice_nvmupd_check_wait_event(hw, LE16_TO_CPU(e->desc.opcode));
-#endif
 clean_rq_elem_out:
 	/* Set pending if needed, unlock and return */
 	if (pending) {

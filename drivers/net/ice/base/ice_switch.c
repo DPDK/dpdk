@@ -2934,7 +2934,6 @@ ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 	return ICE_SUCCESS;
 }
 
-#ifndef NO_MACVLAN_SUPPORT
 /**
  * ice_add_mac_vlan - Add MAC and VLAN pair based filter rule
  * @hw: pointer to the hardware structure
@@ -2969,7 +2968,6 @@ ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list)
 	}
 	return ICE_SUCCESS;
 }
-#endif
 
 /**
  * ice_add_eth_mac - Add ethertype and MAC based filter rule
@@ -3307,7 +3305,6 @@ ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 	return ICE_SUCCESS;
 }
 
-#ifndef NO_MACVLAN_SUPPORT
 /**
  * ice_remove_mac_vlan - Remove MAC VLAN based filter rule
  * @hw: pointer to the hardware structure
@@ -3335,7 +3332,6 @@ ice_remove_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 	}
 	return ICE_SUCCESS;
 }
-#endif /* !NO_MACVLAN_SUPPORT */
 
 /**
  * ice_vsi_uses_fltr - Determine if given VSI uses specified filter
@@ -3850,11 +3846,7 @@ ice_remove_vsi_lkup_fltr(struct ice_hw *hw, u16 vsi_handle,
 		ice_remove_promisc(hw, lkup, &remove_list_head);
 		break;
 	case ICE_SW_LKUP_MAC_VLAN:
-#ifndef NO_MACVLAN_SUPPORT
 		ice_remove_mac_vlan(hw, &remove_list_head);
-#else
-		ice_debug(hw, ICE_DBG_SW, "MAC VLAN look up is not supported yet\n");
-#endif /* !NO_MACVLAN_SUPPORT */
 		break;
 	case ICE_SW_LKUP_ETHERTYPE:
 	case ICE_SW_LKUP_ETHERTYPE_MAC:

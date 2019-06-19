@@ -163,16 +163,12 @@ struct ice_fdir_fltr {
 
 	/* filter control */
 	u16 q_index;
-#ifdef ADQ_SUPPORT
-	u16 orig_q_index;
-#endif /* ADQ_SUPPORT */
 	u16 dest_vsi;
 	u8 dest_ctl;
 	u8 fltr_status;
 	u16 cnt_index;
 	u32 fltr_id;
 };
-
 
 /* Dummy packet filter definition structure. */
 struct ice_fdir_base_pkt {

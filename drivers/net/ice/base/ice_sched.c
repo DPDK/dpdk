@@ -1233,7 +1233,7 @@ enum ice_status ice_sched_init_port(struct ice_port_info *pi)
 		goto err_init_port;
 	}
 
-	/* If the last node is a leaf node then the index of the Q group
+	/* If the last node is a leaf node then the index of the queue group
 	 * layer is two less than the number of elements.
 	 */
 	if (num_elems > 2 && buf[0].generic[num_elems - 1].data.elem_type ==
@@ -3529,9 +3529,11 @@ ice_cfg_agg_vsi_priority_per_tc(struct ice_port_info *pi, u32 agg_id,
 		LIST_FOR_EACH_ENTRY(agg_vsi_info, &agg_info->agg_vsi_list,
 				    ice_sched_agg_vsi_info, list_entry)
 			if (agg_vsi_info->vsi_handle == vsi_handle) {
+				/* cppcheck-suppress unreadVariable */
 				vsi_handle_valid = true;
 				break;
 			}
+
 		if (!vsi_handle_valid)
 			goto exit_agg_priority_per_tc;
 

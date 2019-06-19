@@ -22,13 +22,9 @@
 #define ICE_BYTES_PER_DWORD	4
 #define ICE_MAX_TRAFFIC_CLASS	8
 
-#ifndef MIN_T
 #define MIN_T(_t, _a, _b)	min((_t)(_a), (_t)(_b))
-#endif
 
-#ifndef IS_ASCII
 #define IS_ASCII(_ch)	((_ch) < 0x80)
-#endif
 
 #include "ice_status.h"
 #include "ice_hw_autogen.h"
@@ -45,9 +41,7 @@ static inline bool ice_is_tc_ena(ice_bitmap_t bitmap, u8 tc)
 	return ice_is_bit_set(&bitmap, tc);
 }
 
-#ifndef DIV_64BIT
 #define DIV_64BIT(n, d) ((n) / (d))
-#endif /* DIV_64BIT */
 
 static inline u64 round_up_64bit(u64 a, u32 b)
 {
@@ -192,9 +186,6 @@ enum ice_media_type {
 enum ice_vsi_type {
 	ICE_VSI_PF = 0,
 	ICE_VSI_CTRL = 3,	/* equates to ICE_VSI_PF with 1 queue pair */
-#ifdef ADQ_SUPPORT
-	ICE_VSI_CHNL = 4,
-#endif /* ADQ_SUPPORT */
 	ICE_VSI_LB = 6,
 };
 
@@ -914,9 +905,6 @@ struct ice_hw_port_stats {
 	/* flow director stats */
 	u32 fd_sb_status;
 	u64 fd_sb_match;
-#ifdef ADQ_SUPPORT
-	u64 ch_atr_match;
-#endif /* ADQ_SUPPORT */
 };
 
 enum ice_sw_fwd_act_type {
