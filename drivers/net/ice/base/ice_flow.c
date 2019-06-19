@@ -26,8 +26,8 @@
  * protocol headers. Displacement values are expressed in number of bits.
  */
 #define ICE_FLOW_FLD_IPV6_TTL_DSCP_DISP	(-4)
-#define ICE_FLOW_FLD_IPV6_TTL_PROT_DISP	((-2) * 8)
-#define ICE_FLOW_FLD_IPV6_TTL_TTL_DISP	((-1) * 8)
+#define ICE_FLOW_FLD_IPV6_TTL_PROT_DISP	((-2) * BITS_PER_BYTE)
+#define ICE_FLOW_FLD_IPV6_TTL_TTL_DISP	((-1) * BITS_PER_BYTE)
 
 /* Describe properties of a protocol header field */
 struct ice_flow_field_info {
@@ -36,70 +36,76 @@ struct ice_flow_field_info {
 	u16 size;	/* Size of fields in bits */
 };
 
+#define ICE_FLOW_FLD_INFO(_hdr, _offset_bytes, _size_bytes) { \
+	.hdr = _hdr, \
+	.off = _offset_bytes * BITS_PER_BYTE, \
+	.size = _size_bytes * BITS_PER_BYTE, \
+}
+
 /* Table containing properties of supported protocol header fields */
 static const
 struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	/* Ether */
 	/* ICE_FLOW_FIELD_IDX_ETH_DA */
-	{ ICE_FLOW_SEG_HDR_ETH, 0, ETH_ALEN * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ETH, 0, ETH_ALEN),
 	/* ICE_FLOW_FIELD_IDX_ETH_SA */
-	{ ICE_FLOW_SEG_HDR_ETH, ETH_ALEN * 8, ETH_ALEN * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ETH, ETH_ALEN, ETH_ALEN),
 	/* ICE_FLOW_FIELD_IDX_S_VLAN */
-	{ ICE_FLOW_SEG_HDR_VLAN, 12 * 8, ICE_FLOW_FLD_SZ_VLAN * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_VLAN, 12, ICE_FLOW_FLD_SZ_VLAN),
 	/* ICE_FLOW_FIELD_IDX_C_VLAN */
-	{ ICE_FLOW_SEG_HDR_VLAN, 14 * 8, ICE_FLOW_FLD_SZ_VLAN * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_VLAN, 14, ICE_FLOW_FLD_SZ_VLAN),
 	/* ICE_FLOW_FIELD_IDX_ETH_TYPE */
-	{ ICE_FLOW_SEG_HDR_ETH, 12 * 8, ICE_FLOW_FLD_SZ_ETH_TYPE * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ETH, 12, ICE_FLOW_FLD_SZ_ETH_TYPE),
 	/* IPv4 */
 	/* ICE_FLOW_FIELD_IDX_IP_DSCP */
-	{ ICE_FLOW_SEG_HDR_IPV4, 1 * 8, 1 * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_IPV4, 1, 1),
 	/* ICE_FLOW_FIELD_IDX_IP_TTL */
-	{ ICE_FLOW_SEG_HDR_NONE, 8 * 8, 1 * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_NONE, 8, 1),
 	/* ICE_FLOW_FIELD_IDX_IP_PROT */
-	{ ICE_FLOW_SEG_HDR_NONE, 9 * 8, ICE_FLOW_FLD_SZ_IP_PROT * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_NONE, 9, ICE_FLOW_FLD_SZ_IP_PROT),
 	/* ICE_FLOW_FIELD_IDX_IPV4_SA */
-	{ ICE_FLOW_SEG_HDR_IPV4, 12 * 8, ICE_FLOW_FLD_SZ_IPV4_ADDR * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_IPV4, 12, ICE_FLOW_FLD_SZ_IPV4_ADDR),
 	/* ICE_FLOW_FIELD_IDX_IPV4_DA */
-	{ ICE_FLOW_SEG_HDR_IPV4, 16 * 8, ICE_FLOW_FLD_SZ_IPV4_ADDR * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_IPV4, 16, ICE_FLOW_FLD_SZ_IPV4_ADDR),
 	/* IPv6 */
 	/* ICE_FLOW_FIELD_IDX_IPV6_SA */
-	{ ICE_FLOW_SEG_HDR_IPV6, 8 * 8, ICE_FLOW_FLD_SZ_IPV6_ADDR * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_IPV6, 8, ICE_FLOW_FLD_SZ_IPV6_ADDR),
 	/* ICE_FLOW_FIELD_IDX_IPV6_DA */
-	{ ICE_FLOW_SEG_HDR_IPV6, 24 * 8, ICE_FLOW_FLD_SZ_IPV6_ADDR * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_IPV6, 24, ICE_FLOW_FLD_SZ_IPV6_ADDR),
 	/* Transport */
 	/* ICE_FLOW_FIELD_IDX_TCP_SRC_PORT */
-	{ ICE_FLOW_SEG_HDR_TCP, 0 * 8, ICE_FLOW_FLD_SZ_PORT * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_TCP, 0, ICE_FLOW_FLD_SZ_PORT),
 	/* ICE_FLOW_FIELD_IDX_TCP_DST_PORT */
-	{ ICE_FLOW_SEG_HDR_TCP, 2 * 8, ICE_FLOW_FLD_SZ_PORT * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_TCP, 2, ICE_FLOW_FLD_SZ_PORT),
 	/* ICE_FLOW_FIELD_IDX_UDP_SRC_PORT */
-	{ ICE_FLOW_SEG_HDR_UDP, 0 * 8, ICE_FLOW_FLD_SZ_PORT * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_UDP, 0, ICE_FLOW_FLD_SZ_PORT),
 	/* ICE_FLOW_FIELD_IDX_UDP_DST_PORT */
-	{ ICE_FLOW_SEG_HDR_UDP, 2 * 8, ICE_FLOW_FLD_SZ_PORT * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_UDP, 2, ICE_FLOW_FLD_SZ_PORT),
 	/* ICE_FLOW_FIELD_IDX_SCTP_SRC_PORT */
-	{ ICE_FLOW_SEG_HDR_SCTP, 0 * 8, ICE_FLOW_FLD_SZ_PORT * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_SCTP, 0, ICE_FLOW_FLD_SZ_PORT),
 	/* ICE_FLOW_FIELD_IDX_SCTP_DST_PORT */
-	{ ICE_FLOW_SEG_HDR_SCTP, 2 * 8, ICE_FLOW_FLD_SZ_PORT * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_SCTP, 2, ICE_FLOW_FLD_SZ_PORT),
 	/* ICE_FLOW_FIELD_IDX_TCP_FLAGS */
-	{ ICE_FLOW_SEG_HDR_TCP, 13 * 8, ICE_FLOW_FLD_SZ_TCP_FLAGS * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_TCP, 13, ICE_FLOW_FLD_SZ_TCP_FLAGS),
 	/* ARP */
 	/* ICE_FLOW_FIELD_IDX_ARP_SIP */
-	{ ICE_FLOW_SEG_HDR_ARP, 14 * 8, ICE_FLOW_FLD_SZ_IPV4_ADDR * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ARP, 14, ICE_FLOW_FLD_SZ_IPV4_ADDR),
 	/* ICE_FLOW_FIELD_IDX_ARP_DIP */
-	{ ICE_FLOW_SEG_HDR_ARP, 24 * 8, ICE_FLOW_FLD_SZ_IPV4_ADDR * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ARP, 24, ICE_FLOW_FLD_SZ_IPV4_ADDR),
 	/* ICE_FLOW_FIELD_IDX_ARP_SHA */
-	{ ICE_FLOW_SEG_HDR_ARP, 8 * 8, ETH_ALEN * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ARP, 8, ETH_ALEN),
 	/* ICE_FLOW_FIELD_IDX_ARP_DHA */
-	{ ICE_FLOW_SEG_HDR_ARP, 18 * 8, ETH_ALEN * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ARP, 18, ETH_ALEN),
 	/* ICE_FLOW_FIELD_IDX_ARP_OP */
-	{ ICE_FLOW_SEG_HDR_ARP, 6 * 8, ICE_FLOW_FLD_SZ_ARP_OPER * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ARP, 6, ICE_FLOW_FLD_SZ_ARP_OPER),
 	/* ICMP */
 	/* ICE_FLOW_FIELD_IDX_ICMP_TYPE */
-	{ ICE_FLOW_SEG_HDR_ICMP, 0 * 8, ICE_FLOW_FLD_SZ_ICMP_TYPE * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ICMP, 0, ICE_FLOW_FLD_SZ_ICMP_TYPE),
 	/* ICE_FLOW_FIELD_IDX_ICMP_CODE */
-	{ ICE_FLOW_SEG_HDR_ICMP, 1 * 8, ICE_FLOW_FLD_SZ_ICMP_CODE * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ICMP, 1, ICE_FLOW_FLD_SZ_ICMP_CODE),
 	/* GRE */
 	/* ICE_FLOW_FIELD_IDX_GRE_KEYID */
-	{ ICE_FLOW_SEG_HDR_GRE, 12 * 8, ICE_FLOW_FLD_SZ_GRE_KEYID * 8 },
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_GRE, 12, ICE_FLOW_FLD_SZ_GRE_KEYID),
 };
 
 /* Bitmaps indicating relevant packet types for a particular protocol header
@@ -644,7 +650,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	/* Each extraction sequence entry is a word in size, and extracts a
 	 * word-aligned offset from a protocol header.
 	 */
-	ese_bits = ICE_FLOW_FV_EXTRACT_SZ * 8;
+	ese_bits = ICE_FLOW_FV_EXTRACT_SZ * BITS_PER_BYTE;
 
 	flds[fld].xtrct.prot_id = prot_id;
 	flds[fld].xtrct.off = (ice_flds_info[fld].off / ese_bits) *
@@ -737,15 +743,17 @@ ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		raw->info.xtrct.prot_id = ICE_PROT_PAY;
 		raw->info.xtrct.off = (off / ICE_FLOW_FV_EXTRACT_SZ) *
 			ICE_FLOW_FV_EXTRACT_SZ;
-		raw->info.xtrct.disp = (off % ICE_FLOW_FV_EXTRACT_SZ) * 8;
+		raw->info.xtrct.disp = (off % ICE_FLOW_FV_EXTRACT_SZ) *
+			BITS_PER_BYTE;
 		raw->info.xtrct.idx = params->es_cnt;
 
 		/* Determine the number of field vector entries this raw field
 		 * consumes.
 		 */
 		cnt = DIVIDE_AND_ROUND_UP(raw->info.xtrct.disp +
-					  (raw->info.src.last * 8),
-					  ICE_FLOW_FV_EXTRACT_SZ * 8);
+					  (raw->info.src.last * BITS_PER_BYTE),
+					  (ICE_FLOW_FV_EXTRACT_SZ *
+					   BITS_PER_BYTE));
 		off = raw->info.xtrct.off;
 		for (j = 0; j < cnt; j++) {
 			/* Make sure the number of extraction sequence required

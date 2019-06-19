@@ -3862,7 +3862,7 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 
 			idx = (j * 4) + k;
 			if (used[idx])
-				raw_entry |= used[idx] << (k * 8);
+				raw_entry |= used[idx] << (k * BITS_PER_BYTE);
 		}
 
 		/* write the appropriate register set, based on HW block */
@@ -3957,7 +3957,7 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 				u16 ptype;
 				u8 m;
 
-				ptype = byte * 8 + bit;
+				ptype = byte * BITS_PER_BYTE + bit;
 				if (ptype < ICE_FLOW_PTYPE_MAX) {
 					prof->ptype[prof->ptype_count] = ptype;
 
