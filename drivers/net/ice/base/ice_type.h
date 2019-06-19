@@ -261,8 +261,8 @@ enum ice_fltr_ptype {
 	ICE_FLTR_PTYPE_MAX,
 };
 
-/* 6 VSI = 1 ICE_VSI_PF + 1 ICE_VSI_CTRL + 4 ICE_VSI_CHNL */
-#define ICE_MAX_FDIR_VSI_PER_FILTER	6
+/* 2 VSI = 1 ICE_VSI_PF + 1 ICE_VSI_CTRL */
+#define ICE_MAX_FDIR_VSI_PER_FILTER	2
 
 struct ice_fd_hw_prof {
 	struct ice_flow_seg_info *fdir_seg;
