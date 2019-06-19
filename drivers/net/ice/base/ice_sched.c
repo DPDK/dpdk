@@ -5060,16 +5060,15 @@ enum ice_status ice_cfg_rl_burst_size(struct ice_hw *hw, u32 bytes)
 	if (bytes < ICE_MIN_BURST_SIZE_ALLOWED ||
 	    bytes > ICE_MAX_BURST_SIZE_ALLOWED)
 		return ICE_ERR_PARAM;
-	if (bytes <= ICE_MAX_BURST_SIZE_BYTE_GRANULARITY) {
-		/* byte granularity case */
+	if (ice_round_to_num(bytes, 64) <=
+	    ICE_MAX_BURST_SIZE_64_BYTE_GRANULARITY) {
+		/* 64 byte granularity case */
 		/* Disable MSB granularity bit */
-		burst_size_to_prog = ICE_BYTE_GRANULARITY;
-		/* round number to nearest 256 granularity */
-		bytes = ice_round_to_num(bytes, 256);
-		/* check rounding doesn't go beyond allowed */
-		if (bytes > ICE_MAX_BURST_SIZE_BYTE_GRANULARITY)
-			bytes = ICE_MAX_BURST_SIZE_BYTE_GRANULARITY;
-		burst_size_to_prog |= (u16)bytes;
+		burst_size_to_prog = ICE_64_BYTE_GRANULARITY;
+		/* round number to nearest 64 byte granularity */
+		bytes = ice_round_to_num(bytes, 64);
+		/* The value is in 64 byte chunks */
+		burst_size_to_prog |= (u16)(bytes / 64);
 	} else {
 		/* k bytes granularity case */
 		/* Enable MSB granularity bit */

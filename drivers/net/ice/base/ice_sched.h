@@ -13,14 +13,16 @@
 #define ICE_SCHED_INVAL_LAYER_NUM	0xFF
 /* Burst size is a 12 bits register that is configured while creating the RL
  * profile(s). MSB is a granularity bit and tells the granularity type
- * 0 - LSB bits are in bytes granularity
+ * 0 - LSB bits are in 64 bytes granularity
  * 1 - LSB bits are in 1K bytes granularity
  */
-#define ICE_BYTE_GRANULARITY			0
-#define ICE_KBYTE_GRANULARITY			0x800
-#define ICE_MIN_BURST_SIZE_ALLOWED		1 /* In Bytes */
-#define ICE_MAX_BURST_SIZE_ALLOWED		(2047 * 1024) /* In Bytes */
-#define ICE_MAX_BURST_SIZE_BYTE_GRANULARITY	2047 /* In Bytes */
+#define ICE_64_BYTE_GRANULARITY			0
+#define ICE_KBYTE_GRANULARITY			BIT(11)
+#define ICE_MIN_BURST_SIZE_ALLOWED		64 /* In Bytes */
+#define ICE_MAX_BURST_SIZE_ALLOWED \
+	((BIT(11) - 1) * 1024) /* In Bytes */
+#define ICE_MAX_BURST_SIZE_64_BYTE_GRANULARITY \
+	((BIT(11) - 1) * 64) /* In Bytes */
 #define ICE_MAX_BURST_SIZE_KBYTE_GRANULARITY	ICE_MAX_BURST_SIZE_ALLOWED
 
 #define ICE_RL_PROF_FREQUENCY 446000000
