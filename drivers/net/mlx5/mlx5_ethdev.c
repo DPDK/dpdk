@@ -1051,7 +1051,7 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 	do {
 		ret = mlx5_link_update_unlocked_gs(dev, &dev_link);
-		if (ret)
+		if (ret == -ENOTSUP)
 			ret = mlx5_link_update_unlocked_gset(dev, &dev_link);
 		if (ret == 0)
 			break;
