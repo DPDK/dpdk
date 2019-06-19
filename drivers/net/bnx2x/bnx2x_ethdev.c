@@ -150,7 +150,6 @@ static void bnx2x_periodic_start(void *param)
 		if (ret) {
 			PMD_DRV_LOG(ERR, sc, "Unable to start periodic"
 					     " timer rc %d", ret);
-			assert(false && "Unable to start periodic timer");
 		}
 	}
 }
