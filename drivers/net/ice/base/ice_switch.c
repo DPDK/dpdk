@@ -248,6 +248,8 @@ static ice_declare_bitmap(recipe_to_profile[ICE_MAX_NUM_RECIPES],
 			  ICE_MAX_NUM_PROFILES);
 static ice_declare_bitmap(available_result_ids, ICE_CHAIN_FV_INDEX_START + 1);
 
+static void ice_get_recp_to_prof_map(struct ice_hw *hw);
+
 /**
  * ice_get_recp_frm_fw - update SW bookkeeping from FW recipe entries
  * @hw: pointer to hardware structure
@@ -269,6 +271,10 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid)
 	struct ice_prot_lkup_ext *lkup_exts;
 	enum ice_status status;
 
+	/* Get recipe to profile map so that we can get the fv from
+	 * lkups that we read for a recipe from FW.
+	 */
+	ice_get_recp_to_prof_map(hw);
 	/* we need a buffer big enough to accommodate all the recipes */
 	tmp = (struct ice_aqc_recipe_data_elem *)ice_calloc(hw,
 		ICE_MAX_NUM_RECIPES, sizeof(*tmp));
@@ -4435,7 +4441,6 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts)
 	struct ice_sw_recipe *recp;
 	u16 i;
 
-	ice_get_recp_to_prof_map(hw);
 	/* Initialize available_result_ids which tracks available result idx */
 	for (i = 0; i <= ICE_CHAIN_FV_INDEX_START; i++)
 		ice_set_bit(ICE_CHAIN_FV_INDEX_START - i,
