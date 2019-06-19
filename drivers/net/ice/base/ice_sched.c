@@ -5259,8 +5259,7 @@ void ice_sched_replay_agg(struct ice_hw *hw)
 					   ICE_MAX_TRAFFIC_CLASS);
 			enum ice_status status;
 
-			ice_zero_bitmap(replay_bitmap,
-					sizeof(replay_bitmap) * BITS_PER_BYTE);
+			ice_zero_bitmap(replay_bitmap, ICE_MAX_TRAFFIC_CLASS);
 			ice_sched_get_ena_tc_bitmap(pi,
 						    agg_info->replay_tc_bitmap,
 						    replay_bitmap);
@@ -5396,7 +5395,7 @@ ice_sched_replay_vsi_agg(struct ice_hw *hw, u16 vsi_handle)
 	struct ice_sched_agg_info *agg_info;
 	enum ice_status status;
 
-	ice_zero_bitmap(replay_bitmap, sizeof(replay_bitmap) * BITS_PER_BYTE);
+	ice_zero_bitmap(replay_bitmap, ICE_MAX_TRAFFIC_CLASS);
 	if (!ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
 	agg_info = ice_get_vsi_agg_info(hw, vsi_handle);
