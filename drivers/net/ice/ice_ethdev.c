@@ -2296,7 +2296,7 @@ ice_force_phys_link_state(struct ice_hw *hw, bool link_up)
 	else
 		cfg.caps &= ~ICE_AQ_PHY_ENA_LINK;
 
-	status = ice_aq_set_phy_cfg(hw, pi->lport, &cfg, NULL);
+	status = ice_aq_set_phy_cfg(hw, pi, &cfg, NULL);
 
 out:
 	ice_free(hw, pcaps);

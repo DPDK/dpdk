@@ -134,7 +134,7 @@ ice_aq_manage_mac_write(struct ice_hw *hw, const u8 *mac_addr, u8 flags,
 
 enum ice_status ice_clear_pf_cfg(struct ice_hw *hw);
 enum ice_status
-ice_aq_set_phy_cfg(struct ice_hw *hw, u8 lport,
+ice_aq_set_phy_cfg(struct ice_hw *hw, struct ice_port_info *pi,
 		   struct ice_aqc_set_phy_cfg_data *cfg, struct ice_sq_cd *cd);
 enum ice_status
 ice_set_fc(struct ice_port_info *pi, u8 *aq_failures,
