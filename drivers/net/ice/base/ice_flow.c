@@ -932,6 +932,29 @@ ice_flow_find_prof_id(struct ice_hw *hw, enum ice_block blk, u64 prof_id)
 }
 
 /**
+ * ice_dealloc_flow_entry - Deallocate flow entry memory
+ * @hw: pointer to the HW struct
+ * @entry: flow entry to be removed
+ */
+static void
+ice_dealloc_flow_entry(struct ice_hw *hw, struct ice_flow_entry *entry)
+{
+	if (!entry)
+		return;
+
+	if (entry->entry)
+		ice_free(hw, entry->entry);
+
+	if (entry->acts) {
+		ice_free(hw, entry->acts);
+		entry->acts = NULL;
+		entry->acts_cnt = 0;
+	}
+
+	ice_free(hw, entry);
+}
+
+/**
  * ice_flow_rem_entry_sync - Remove a flow entry
  * @hw: pointer to the HW struct
  * @entry: flow entry to be removed
@@ -944,16 +967,7 @@ ice_flow_rem_entry_sync(struct ice_hw *hw, struct ice_flow_entry *entry)
 
 	LIST_DEL(&entry->l_entry);
 
-	if (entry->entry)
-		ice_free(hw, entry->entry);
-
-	if (entry->acts) {
-		ice_free(hw, entry->acts);
-		entry->acts = NULL;
-		entry->acts_cnt = 0;
-	}
-
-	ice_free(hw, entry);
+	ice_dealloc_flow_entry(hw, entry);
 
 	return ICE_SUCCESS;
 }
