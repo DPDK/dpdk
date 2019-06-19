@@ -860,7 +860,7 @@ ice_aq_add_update_mir_rule(struct ice_hw *hw, u16 rule_type, u16 dest_vsi,
 			return ICE_ERR_PARAM;
 
 		buf_size = count * sizeof(__le16);
-		mr_list = (__le16 *)ice_malloc(hw, buf_size);
+		mr_list = (_FORCE_ __le16 *)ice_malloc(hw, buf_size);
 		if (!mr_list)
 			return ICE_ERR_NO_MEMORY;
 		break;
@@ -1460,7 +1460,6 @@ static int ice_ilog2(u64 n)
 	return -1;
 }
 
-
 /**
  * ice_fill_sw_rule - Helper function to fill switch rule structure
  * @hw: pointer to the hardware structure
@@ -1479,7 +1478,6 @@ ice_fill_sw_rule(struct ice_hw *hw, struct ice_fltr_info *f_info,
 	u32 act = 0;
 	__be16 *off;
 	u8 q_rgn;
-
 
 	if (opc == ice_aqc_opc_remove_sw_rules) {
 		s_rule->pdata.lkup_tx_rx.act = 0;
@@ -1556,7 +1554,7 @@ ice_fill_sw_rule(struct ice_hw *hw, struct ice_fltr_info *f_info,
 		daddr = f_info->l_data.ethertype_mac.mac_addr;
 		/* fall-through */
 	case ICE_SW_LKUP_ETHERTYPE:
-		off = (__be16 *)(eth_hdr + ICE_ETH_ETHTYPE_OFFSET);
+		off = (_FORCE_ __be16 *)(eth_hdr + ICE_ETH_ETHTYPE_OFFSET);
 		*off = CPU_TO_BE16(f_info->l_data.ethertype_mac.ethertype);
 		break;
 	case ICE_SW_LKUP_MAC_VLAN:
@@ -1587,7 +1585,7 @@ ice_fill_sw_rule(struct ice_hw *hw, struct ice_fltr_info *f_info,
 			   ICE_NONDMA_TO_NONDMA);
 
 	if (!(vlan_id > ICE_MAX_VLAN_ID)) {
-		off = (__be16 *)(eth_hdr + ICE_ETH_VLAN_TCI_OFFSET);
+		off = (_FORCE_ __be16 *)(eth_hdr + ICE_ETH_VLAN_TCI_OFFSET);
 		*off = CPU_TO_BE16(vlan_id);
 	}
 

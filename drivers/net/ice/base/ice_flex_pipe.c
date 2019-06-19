@@ -134,7 +134,7 @@ static struct ice_buf_table *ice_find_buf_table(struct ice_seg *ice_seg)
 	nvms = (struct ice_nvm_table *)(ice_seg->device_table +
 		LE32_TO_CPU(ice_seg->device_table_count));
 
-	return (struct ice_buf_table *)
+	return (_FORCE_ struct ice_buf_table *)
 		(nvms->vers + LE32_TO_CPU(nvms->table_count));
 }
 
@@ -2937,7 +2937,7 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 		case ICE_SID_XLT2_ACL:
 		case ICE_SID_XLT2_PE:
 			xlt2 = (struct ice_xlt2_section *)sect;
-			src = (u8 *)xlt2->value;
+			src = (_FORCE_ u8 *)xlt2->value;
 			sect_len = LE16_TO_CPU(xlt2->count) *
 				sizeof(*hw->blk[block_id].xlt2.t);
 			dst = (u8 *)hw->blk[block_id].xlt2.t;
@@ -3824,7 +3824,7 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 
 	/* fill in the swap array */
 	si = hw->blk[ICE_BLK_FD].es.fvw - 1;
-	do {
+	while (si >= 0) {
 		u8 indexes_used = 1;
 
 		/* assume flat at this index */
@@ -3856,7 +3856,7 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 		}
 
 		si -= indexes_used;
-	} while (si >= 0);
+	}
 
 	/* for each set of 4 swap indexes, write the appropriate register */
 	for (j = 0; j < hw->blk[ICE_BLK_FD].es.fvw / 4; j++) {

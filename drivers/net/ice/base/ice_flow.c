@@ -415,9 +415,6 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 		const ice_bitmap_t *src;
 		u32 hdrs;
 
-		if (i > 0 && (i + 1) < prof->segs_cnt)
-			continue;
-
 		hdrs = prof->segs[i].hdrs;
 
 		if (hdrs & ICE_FLOW_SEG_HDR_ETH) {

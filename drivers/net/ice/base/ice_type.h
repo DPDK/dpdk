@@ -14,6 +14,10 @@
 
 #define BITS_PER_BYTE	8
 
+#ifndef _FORCE_
+#define _FORCE_
+#endif
+
 #define ICE_BYTES_PER_WORD	2
 #define ICE_BYTES_PER_DWORD	4
 #define ICE_MAX_TRAFFIC_CLASS	8
@@ -23,7 +27,7 @@
 #endif
 
 #ifndef IS_ASCII
-#define IS_ASCII(_ch)  ((_ch) < 0x80)
+#define IS_ASCII(_ch)	((_ch) < 0x80)
 #endif
 
 #include "ice_status.h"
@@ -728,6 +732,7 @@ struct ice_hw {
 	u8 pf_id;		/* device profile info */
 
 	u16 max_burst_size;	/* driver sets this value */
+
 	/* Tx Scheduler values */
 	u16 num_tx_sched_layers;
 	u16 num_tx_sched_phys_layers;

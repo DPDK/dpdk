@@ -189,6 +189,7 @@ struct ice_udp_tnl_hdr {
 	u16 field;
 	u16 proto_type;
 	u16 vni;
+	u16 reserved;
 };
 
 struct ice_nvgre {
