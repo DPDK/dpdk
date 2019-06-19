@@ -1005,9 +1005,8 @@ ice_dwnld_cfg_bufs(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 
 		bh = (struct ice_buf_hdr *)(bufs + i);
 
-		status = ice_aq_download_pkg(hw, bh, LE16_TO_CPU(bh->data_end),
-					     last, &offset, &info, NULL);
-
+		status = ice_aq_download_pkg(hw, bh, ICE_PKG_BUF_SIZE, last,
+					     &offset, &info, NULL);
 		if (status) {
 			ice_debug(hw, ICE_DBG_PKG,
 				  "Pkg download failed: err %d off %d inf %d\n",
