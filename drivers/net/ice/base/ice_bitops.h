@@ -306,21 +306,14 @@ static inline bool ice_is_any_bit_set(ice_bitmap_t *bitmap, u16 size)
  * @src: bitmap to copy from
  * @size: Size of the bitmaps in bits
  *
- * This function copy bitmap from src to dst.
+ * This function copy bitmap from src to dst. Note that this function assumes
+ * it is operating on a bitmap declared using ice_declare_bitmap. It will copy
+ * the entire last chunk even if this contains bits beyond the size.
  */
 static inline void ice_cp_bitmap(ice_bitmap_t *dst, ice_bitmap_t *src, u16 size)
 {
-	ice_bitmap_t mask;
-	u16 i;
-
-	/* Handle all but last chunk*/
-	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
-		dst[i] = src[i];
-
-	/* We want to only copy bits within the size.*/
-	mask = LAST_CHUNK_MASK(size);
-	dst[i] &= ~mask;
-	dst[i] |= src[i] & mask;
+	ice_memcpy(dst, src, BITS_TO_CHUNKS(size) * sizeof(ice_bitmap_t),
+		   ICE_NONDMA_TO_NONDMA);
 }
 
 /**
