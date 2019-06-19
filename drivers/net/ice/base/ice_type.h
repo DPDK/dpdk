@@ -557,6 +557,14 @@ struct ice_bw_type_info {
 	u32 shared_bw;
 };
 
+/* VSI queue context structure for given TC */
+struct ice_q_ctx {
+	u16  q_handle;
+	u32  q_teid;
+	/* bw_t_info saves queue BW information */
+	struct ice_bw_type_info bw_t_info;
+};
+
 /* VSI type list entry to locate corresponding VSI/aggregator nodes */
 struct ice_sched_vsi_info {
 	struct ice_sched_node *vsi_node[ICE_MAX_TRAFFIC_CLASS];

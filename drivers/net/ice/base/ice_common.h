@@ -186,6 +186,10 @@ void ice_sched_replay_agg(struct ice_hw *hw);
 enum ice_status ice_sched_replay_tc_node_bw(struct ice_hw *hw);
 enum ice_status ice_replay_vsi_agg(struct ice_hw *hw, u16 vsi_handle);
 enum ice_status
+ice_sched_replay_q_bw(struct ice_port_info *pi, struct ice_q_ctx *q_ctx);
+struct ice_q_ctx *
+ice_get_lan_q_ctx(struct ice_hw *hw, u16 vsi_handle, u8 tc, u16 q_handle);
+enum ice_status
 ice_cfg_tc_node_bw_alloc(struct ice_port_info *pi, u8 tc,
 			 enum ice_rl_type rl_type, u8 bw_alloc);
 enum ice_status ice_cfg_rl_burst_size(struct ice_hw *hw, u32 bytes);

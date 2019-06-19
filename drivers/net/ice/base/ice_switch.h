@@ -21,11 +21,6 @@
 #define ICE_VSI_INVAL_ID 0xFFFF
 #define ICE_INVAL_Q_HANDLE 0xFFFF
 
-/* VSI queue context structure */
-struct ice_q_ctx {
-	u16  q_handle;
-};
-
 /* VSI context structure for add/get/update/free operations */
 struct ice_vsi_ctx {
 	u16 vsi_num;

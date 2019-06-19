@@ -4327,26 +4327,60 @@ ice_sched_validate_srl_node(struct ice_sched_node *node, u8 sel_layer)
 }
 
 /**
+ * ice_sched_save_q_bw - save queue node's BW information
+ * @q_ctx: queue context structure
+ * @rl_type: rate limit type min, max, or shared
+ * @bw: bandwidth in Kbps - Kilo bits per sec
+ *
+ * Save BW information of queue type node for post replay use.
+ */
+static enum ice_status
+ice_sched_save_q_bw(struct ice_q_ctx *q_ctx, enum ice_rl_type rl_type, u32 bw)
+{
+	switch (rl_type) {
+	case ICE_MIN_BW:
+		ice_set_clear_cir_bw(&q_ctx->bw_t_info, bw);
+		break;
+	case ICE_MAX_BW:
+		ice_set_clear_eir_bw(&q_ctx->bw_t_info, bw);
+		break;
+	case ICE_SHARED_BW:
+		ice_set_clear_shared_bw(&q_ctx->bw_t_info, bw);
+		break;
+	default:
+		return ICE_ERR_PARAM;
+	}
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_sched_set_q_bw_lmt - sets queue BW limit
  * @pi: port information structure
- * @q_id: queue ID (leaf node TEID)
+ * @vsi_handle: sw VSI handle
+ * @tc: traffic class
+ * @q_handle: software queue handle
  * @rl_type: min, max, or shared
  * @bw: bandwidth in Kbps
  *
  * This function sets BW limit of queue scheduling node.
  */
 static enum ice_status
-ice_sched_set_q_bw_lmt(struct ice_port_info *pi, u32 q_id,
-		       enum ice_rl_type rl_type, u32 bw)
+ice_sched_set_q_bw_lmt(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
+		       u16 q_handle, enum ice_rl_type rl_type, u32 bw)
 {
 	enum ice_status status = ICE_ERR_PARAM;
 	struct ice_sched_node *node;
+	struct ice_q_ctx *q_ctx;
 
+	if (!ice_is_vsi_valid(pi->hw, vsi_handle))
+		return ICE_ERR_PARAM;
 	ice_acquire_lock(&pi->sched_lock);
-
-	node = ice_sched_find_node_by_teid(pi->root, q_id);
+	q_ctx = ice_get_lan_q_ctx(pi->hw, vsi_handle, tc, q_handle);
+	if (!q_ctx)
+		goto exit_q_bw_lmt;
+	node = ice_sched_find_node_by_teid(pi->root, q_ctx->q_teid);
 	if (!node) {
-		ice_debug(pi->hw, ICE_DBG_SCHED, "Wrong q_id\n");
+		ice_debug(pi->hw, ICE_DBG_SCHED, "Wrong q_teid\n");
 		goto exit_q_bw_lmt;
 	}
 
@@ -4374,6 +4408,9 @@ ice_sched_set_q_bw_lmt(struct ice_port_info *pi, u32 q_id,
 	else
 		status = ice_sched_set_node_bw_lmt(pi, node, rl_type, bw);
 
+	if (!status)
+		status = ice_sched_save_q_bw(q_ctx, rl_type, bw);
+
 exit_q_bw_lmt:
 	ice_release_lock(&pi->sched_lock);
 	return status;
@@ -4382,32 +4419,38 @@ exit_q_bw_lmt:
 /**
  * ice_cfg_q_bw_lmt - configure queue BW limit
  * @pi: port information structure
- * @q_id: queue ID (leaf node TEID)
+ * @vsi_handle: sw VSI handle
+ * @tc: traffic class
+ * @q_handle: software queue handle
  * @rl_type: min, max, or shared
  * @bw: bandwidth in Kbps
  *
  * This function configures BW limit of queue scheduling node.
  */
 enum ice_status
-ice_cfg_q_bw_lmt(struct ice_port_info *pi, u32 q_id, enum ice_rl_type rl_type,
-		 u32 bw)
+ice_cfg_q_bw_lmt(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
+		 u16 q_handle, enum ice_rl_type rl_type, u32 bw)
 {
-	return ice_sched_set_q_bw_lmt(pi, q_id, rl_type, bw);
+	return ice_sched_set_q_bw_lmt(pi, vsi_handle, tc, q_handle, rl_type,
+				      bw);
 }
 
 /**
  * ice_cfg_q_bw_dflt_lmt - configure queue BW default limit
  * @pi: port information structure
- * @q_id: queue ID (leaf node TEID)
+ * @vsi_handle: sw VSI handle
+ * @tc: traffic class
+ * @q_handle: software queue handle
  * @rl_type: min, max, or shared
  *
  * This function configures BW default limit of queue scheduling node.
  */
 enum ice_status
-ice_cfg_q_bw_dflt_lmt(struct ice_port_info *pi, u32 q_id,
-		      enum ice_rl_type rl_type)
+ice_cfg_q_bw_dflt_lmt(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
+		      u16 q_handle, enum ice_rl_type rl_type)
 {
-	return ice_sched_set_q_bw_lmt(pi, q_id, rl_type, ICE_SCHED_DFLT_BW);
+	return ice_sched_set_q_bw_lmt(pi, vsi_handle, tc, q_handle, rl_type,
+				      ICE_SCHED_DFLT_BW);
 }
 
 /**
@@ -5420,4 +5463,24 @@ ice_replay_vsi_agg(struct ice_hw *hw, u16 vsi_handle)
 	status = ice_sched_replay_vsi_agg(hw, vsi_handle);
 	ice_release_lock(&pi->sched_lock);
 	return status;
+}
+
+/**
+ * ice_sched_replay_q_bw - replay queue type node BW
+ * @pi: port information structure
+ * @q_ctx: queue context structure
+ *
+ * This function replays queue type node bandwidth. This function needs to be
+ * called with scheduler lock held.
+ */
+enum ice_status
+ice_sched_replay_q_bw(struct ice_port_info *pi, struct ice_q_ctx *q_ctx)
+{
+	struct ice_sched_node *q_node;
+
+	/* Following also checks the presence of node in tree */
+	q_node = ice_sched_find_node_by_teid(pi->root, q_ctx->q_teid);
+	if (!q_node)
+		return ICE_ERR_PARAM;
+	return ice_sched_replay_node_bw(pi->hw, q_node, &q_ctx->bw_t_info);
 }

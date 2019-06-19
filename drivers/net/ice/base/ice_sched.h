@@ -122,11 +122,11 @@ ice_move_vsi_to_agg(struct ice_port_info *pi, u32 agg_id, u16 vsi_handle,
 		    u8 tc_bitmap);
 enum ice_status ice_rm_agg_cfg(struct ice_port_info *pi, u32 agg_id);
 enum ice_status
-ice_cfg_q_bw_lmt(struct ice_port_info *pi, u32 q_id, enum ice_rl_type rl_type,
-		 u32 bw);
+ice_cfg_q_bw_lmt(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
+		 u16 q_handle, enum ice_rl_type rl_type, u32 bw);
 enum ice_status
-ice_cfg_q_bw_dflt_lmt(struct ice_port_info *pi, u32 q_id,
-		      enum ice_rl_type rl_type);
+ice_cfg_q_bw_dflt_lmt(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
+		      u16 q_handle, enum ice_rl_type rl_type);
 enum ice_status
 ice_cfg_tc_node_bw_lmt(struct ice_port_info *pi, u8 tc,
 		       enum ice_rl_type rl_type, u32 bw);
