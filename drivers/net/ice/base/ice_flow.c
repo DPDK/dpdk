@@ -496,6 +496,42 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 }
 
 /**
+ * ice_flow_xtract_pkt_flags - Create an extr sequence entry for packet flags
+ * @hw: pointer to the HW struct
+ * @params: information about the flow to be processed
+ * @flags: The value of pkt_flags[x:x] in RX/TX MDID metadata.
+ *
+ * This function will allocate an extraction sequence entries for a DWORD size
+ * chunk of the packet flags.
+ */
+static enum ice_status
+ice_flow_xtract_pkt_flags(struct ice_hw *hw,
+			  struct ice_flow_prof_params *params,
+			  enum ice_flex_mdid_pkt_flags flags)
+{
+	u8 fv_words = hw->blk[params->blk].es.fvw;
+	u8 idx;
+
+	/* Make sure the number of extraction sequence entries required does not
+	 * exceed the block's capacity.
+	 */
+	if (params->es_cnt >= fv_words)
+		return ICE_ERR_MAX_LIMIT;
+
+	/* some blocks require a reversed field vector layout */
+	if (hw->blk[params->blk].es.reverse)
+		idx = fv_words - params->es_cnt - 1;
+	else
+		idx = params->es_cnt;
+
+	params->es[idx].prot_id = ICE_PROT_META_ID;
+	params->es[idx].off = flags;
+	params->es_cnt++;
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_flow_xtract_fld - Create an extraction sequence entry for the given field
  * @hw: pointer to the HW struct
  * @params: information about the flow to be processed
@@ -743,6 +779,13 @@ ice_flow_create_xtrct_seq(struct ice_hw *hw,
 {
 	enum ice_status status = ICE_SUCCESS;
 	u8 i;
+
+	/* For ACL, we also need to extract the direction bit (Rx,Tx) data from
+	 * packet flags
+	 */
+	if (params->blk == ICE_BLK_ACL)
+		ice_flow_xtract_pkt_flags(hw, params,
+					  ICE_RX_MDID_PKT_FLAGS_15_0);
 
 	for (i = 0; i < params->prof->segs_cnt; i++) {
 		u64 match = params->prof->segs[i].match;
