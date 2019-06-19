@@ -449,11 +449,7 @@ ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
 {
 	u16 fc_threshold_val, tx_timer_val;
 	struct ice_aqc_set_mac_cfg *cmd;
-	struct ice_port_info *pi;
 	struct ice_aq_desc desc;
-	enum ice_status status;
-	u8 port_num = 0;
-	bool link_up;
 	u32 reg_val;
 
 	cmd = &desc.params.set_mac_cfg;
@@ -464,21 +460,6 @@ ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_mac_cfg);
 
 	cmd->max_frame_size = CPU_TO_LE16(max_frame_size);
-
-	/* Retrieve the current data_pacing value in FW*/
-	pi = &hw->port_info[port_num];
-
-	/* We turn on the get_link_info so that ice_update_link_info(...)
-	 * can be called.
-	 */
-	pi->phy.get_link_info = 1;
-
-	status = ice_get_link_status(pi, &link_up);
-
-	if (status)
-		return status;
-
-	cmd->params = pi->phy.link_info.pacing;
 
 	/* We read back the transmit timer and fc threshold value of
 	 * LFC. Thus, we will use index =
