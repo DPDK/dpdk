@@ -696,6 +696,72 @@ struct ice_aqc_storm_cfg {
 
 #define ICE_MAX_NUM_RECIPES 64
 
+/* Add/Get Recipe (indirect 0x0290/0x0292)*/
+struct ice_aqc_add_get_recipe {
+	__le16 num_sub_recipes;	/* Input in Add cmd, Output in Get cmd */
+	__le16 return_index;	/* Input, used for Get cmd only */
+	u8 reserved[4];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+struct ice_aqc_recipe_content {
+	u8 rid;
+#define ICE_AQ_RECIPE_ID_S		0
+#define ICE_AQ_RECIPE_ID_M		(0x3F << ICE_AQ_RECIPE_ID_S)
+#define ICE_AQ_RECIPE_ID_IS_ROOT	BIT(7)
+	u8 lkup_indx[5];
+#define ICE_AQ_RECIPE_LKUP_DATA_S	0
+#define ICE_AQ_RECIPE_LKUP_DATA_M	(0x3F << ICE_AQ_RECIPE_LKUP_DATA_S)
+#define ICE_AQ_RECIPE_LKUP_IGNORE	BIT(7)
+#define ICE_AQ_SW_ID_LKUP_MASK		0x00FF
+	__le16 mask[5];
+	u8 result_indx;
+#define ICE_AQ_RECIPE_RESULT_DATA_S	0
+#define ICE_AQ_RECIPE_RESULT_DATA_M	(0x3F << ICE_AQ_RECIPE_RESULT_DATA_S)
+#define ICE_AQ_RECIPE_RESULT_EN		BIT(7)
+	u8 rsvd0[3];
+	u8 act_ctrl_join_priority;
+	u8 act_ctrl_fwd_priority;
+#define ICE_AQ_RECIPE_FWD_PRIORITY_S	0
+#define ICE_AQ_RECIPE_FWD_PRIORITY_M	(0xF << ICE_AQ_RECIPE_FWD_PRIORITY_S)
+	u8 act_ctrl;
+#define ICE_AQ_RECIPE_ACT_NEED_PASS_L2	BIT(0)
+#define ICE_AQ_RECIPE_ACT_ALLOW_PASS_L2	BIT(1)
+#define ICE_AQ_RECIPE_ACT_INV_ACT	BIT(2)
+#define ICE_AQ_RECIPE_ACT_PRUNE_INDX_S	4
+#define ICE_AQ_RECIPE_ACT_PRUNE_INDX_M	(0x3 << ICE_AQ_RECIPE_ACT_PRUNE_INDX_S)
+	u8 rsvd1;
+	__le32 dflt_act;
+#define ICE_AQ_RECIPE_DFLT_ACT_S	0
+#define ICE_AQ_RECIPE_DFLT_ACT_M	(0x7FFFF << ICE_AQ_RECIPE_DFLT_ACT_S)
+#define ICE_AQ_RECIPE_DFLT_ACT_VALID	BIT(31)
+};
+
+struct ice_aqc_recipe_data_elem {
+	u8 recipe_indx;
+	u8 resp_bits;
+#define ICE_AQ_RECIPE_WAS_UPDATED	BIT(0)
+	u8 rsvd0[2];
+	u8 recipe_bitmap[8];
+	u8 rsvd1[4];
+	struct ice_aqc_recipe_content content;
+	u8 rsvd2[20];
+};
+
+/* This struct contains a number of entries as per the
+ * num_sub_recipes in the command
+ */
+struct ice_aqc_add_get_recipe_data {
+	struct ice_aqc_recipe_data_elem recipe[1];
+};
+
+/* Set/Get Recipes to Profile Association (direct 0x0291/0x0293) */
+struct ice_aqc_recipe_to_profile {
+	__le16 profile_id;
+	u8 rsvd[6];
+	ice_declare_bitmap(recipe_assoc, ICE_MAX_NUM_RECIPES);
+};
 
 /* Add/Update/Remove/Get switch rules (indirect 0x02A0, 0x02A1, 0x02A2, 0x02A3)
  */
@@ -2210,6 +2276,8 @@ struct ice_aq_desc {
 		struct ice_aqc_get_sw_cfg get_sw_conf;
 		struct ice_aqc_sw_rules sw_rules;
 		struct ice_aqc_storm_cfg storm_conf;
+		struct ice_aqc_add_get_recipe add_get_recipe;
+		struct ice_aqc_recipe_to_profile recipe_to_profile;
 		struct ice_aqc_get_topo get_topo;
 		struct ice_aqc_sched_elem_cmd sched_elem_cmd;
 		struct ice_aqc_query_txsched_res query_sched_res;
@@ -2369,6 +2437,11 @@ enum ice_adminq_opc {
 	ice_aqc_opc_set_storm_cfg			= 0x0280,
 	ice_aqc_opc_get_storm_cfg			= 0x0281,
 
+	/* recipe commands */
+	ice_aqc_opc_add_recipe				= 0x0290,
+	ice_aqc_opc_recipe_to_profile			= 0x0291,
+	ice_aqc_opc_get_recipe				= 0x0292,
+	ice_aqc_opc_get_recipe_to_profile		= 0x0293,
 
 	/* switch rules population commands */
 	ice_aqc_opc_add_sw_rules			= 0x02A0,
