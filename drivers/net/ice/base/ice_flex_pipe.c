@@ -1709,6 +1709,234 @@ static struct ice_buf *ice_pkg_buf(struct ice_buf_build *bld)
 }
 
 /**
+ * ice_tunnel_port_in_use
+ * @hw: pointer to the HW structure
+ * @port: port to search for
+ * @index: optionally returns index
+ *
+ * Returns whether a port is already in use as a tunnel, and optionally its
+ * index
+ */
+bool ice_tunnel_port_in_use(struct ice_hw *hw, u16 port, u16 *index)
+{
+	u16 i;
+
+	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
+		if (hw->tnl.tbl[i].in_use && hw->tnl.tbl[i].port == port) {
+			if (index)
+				*index = i;
+			return true;
+		}
+
+	return false;
+}
+
+/**
+ * ice_tunnel_get_type
+ * @hw: pointer to the HW structure
+ * @port: port to search for
+ * @type: returns tunnel index
+ *
+ * For a given port number, will return the type of tunnel.
+ */
+bool
+ice_tunnel_get_type(struct ice_hw *hw, u16 port, enum ice_tunnel_type *type)
+{
+	u16 i;
+
+	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
+		if (hw->tnl.tbl[i].in_use && hw->tnl.tbl[i].port == port) {
+			*type = hw->tnl.tbl[i].type;
+			return true;
+		}
+
+	return false;
+}
+
+/**
+ * ice_find_free_tunnel_entry
+ * @hw: pointer to the HW structure
+ * @type: tunnel type
+ * @index: optionally returns index
+ *
+ * Returns whether there is a free tunnel entry, and optionally its index
+ */
+static bool
+ice_find_free_tunnel_entry(struct ice_hw *hw, enum ice_tunnel_type type,
+			   u16 *index)
+{
+	u16 i;
+
+	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
+		if (hw->tnl.tbl[i].valid && !hw->tnl.tbl[i].in_use &&
+		    hw->tnl.tbl[i].type == type) {
+			if (index)
+				*index = i;
+			return true;
+		}
+
+	return false;
+}
+
+/**
+ * ice_create_tunnel
+ * @hw: pointer to the HW structure
+ * @type: type of tunnel
+ * @port: port to use for vxlan tunnel
+ *
+ * Creates a tunnel
+ */
+enum ice_status
+ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port)
+{
+	struct ice_boost_tcam_section *sect_rx, *sect_tx;
+	enum ice_status status = ICE_ERR_MAX_LIMIT;
+	struct ice_buf_build *bld;
+	u16 index;
+
+	if (ice_tunnel_port_in_use(hw, port, NULL))
+		return ICE_ERR_ALREADY_EXISTS;
+
+	if (!ice_find_free_tunnel_entry(hw, type, &index))
+		return ICE_ERR_OUT_OF_RANGE;
+
+	bld = ice_pkg_buf_alloc(hw);
+	if (!bld)
+		return ICE_ERR_NO_MEMORY;
+
+	/* allocate 2 sections, one for RX parser, one for TX parser */
+	if (ice_pkg_buf_reserve_section(bld, 2))
+		goto ice_create_tunnel_err;
+
+	sect_rx = (struct ice_boost_tcam_section *)
+		ice_pkg_buf_alloc_section(bld, ICE_SID_RXPARSER_BOOST_TCAM,
+					  sizeof(*sect_rx));
+	if (!sect_rx)
+		goto ice_create_tunnel_err;
+	sect_rx->count = CPU_TO_LE16(1);
+
+	sect_tx = (struct ice_boost_tcam_section *)
+		ice_pkg_buf_alloc_section(bld, ICE_SID_TXPARSER_BOOST_TCAM,
+					  sizeof(*sect_tx));
+	if (!sect_tx)
+		goto ice_create_tunnel_err;
+	sect_tx->count = CPU_TO_LE16(1);
+
+	/* copy original boost entry to update package buffer */
+	ice_memcpy(sect_rx->tcam, hw->tnl.tbl[index].boost_entry,
+		   sizeof(*sect_rx->tcam), ICE_NONDMA_TO_NONDMA);
+
+	/* over-write the never-match dest port key bits with the encoded port
+	 * bits
+	 */
+	ice_set_key((u8 *)&sect_rx->tcam[0].key, sizeof(sect_rx->tcam[0].key),
+		    (u8 *)&port, NULL, NULL, NULL,
+		    offsetof(struct ice_boost_key_value, hv_dst_port_key),
+		    sizeof(sect_rx->tcam[0].key.key.hv_dst_port_key));
+
+	/* exact copy of entry to TX section entry */
+	ice_memcpy(sect_tx->tcam, sect_rx->tcam, sizeof(*sect_tx->tcam),
+		   ICE_NONDMA_TO_NONDMA);
+
+	status = ice_update_pkg(hw, ice_pkg_buf(bld), 1);
+	if (!status) {
+		hw->tnl.tbl[index].port = port;
+		hw->tnl.tbl[index].in_use = true;
+	}
+
+ice_create_tunnel_err:
+	ice_pkg_buf_free(hw, bld);
+
+	return status;
+}
+
+/**
+ * ice_destroy_tunnel
+ * @hw: pointer to the HW structure
+ * @port: port of tunnel to destroy (ignored if the all parameter is true)
+ * @all: flag that states to destroy all tunnels
+ *
+ * Destroys a tunnel or all tunnels by creating an update package buffer
+ * targeting the specific updates requested and then performing an update
+ * package.
+ */
+enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
+{
+	struct ice_boost_tcam_section *sect_rx, *sect_tx;
+	enum ice_status status = ICE_ERR_MAX_LIMIT;
+	struct ice_buf_build *bld;
+	u16 count = 0;
+	u16 size;
+	u16 i;
+
+	/* determine count */
+	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
+		if (hw->tnl.tbl[i].valid && hw->tnl.tbl[i].in_use &&
+		    (all || hw->tnl.tbl[i].port == port))
+			count++;
+
+	if (!count)
+		return ICE_ERR_PARAM;
+
+	/* size of section - there is at least one entry */
+	size = (count - 1) * sizeof(*sect_rx->tcam) + sizeof(*sect_rx);
+
+	bld = ice_pkg_buf_alloc(hw);
+	if (!bld)
+		return ICE_ERR_NO_MEMORY;
+
+	/* allocate 2 sections, one for RX parser, one for TX parser */
+	if (ice_pkg_buf_reserve_section(bld, 2))
+		goto ice_destroy_tunnel_err;
+
+	sect_rx = (struct ice_boost_tcam_section *)
+		ice_pkg_buf_alloc_section(bld, ICE_SID_RXPARSER_BOOST_TCAM,
+					  size);
+	if (!sect_rx)
+		goto ice_destroy_tunnel_err;
+	sect_rx->count = CPU_TO_LE16(1);
+
+	sect_tx = (struct ice_boost_tcam_section *)
+		ice_pkg_buf_alloc_section(bld, ICE_SID_TXPARSER_BOOST_TCAM,
+					  size);
+	if (!sect_tx)
+		goto ice_destroy_tunnel_err;
+	sect_tx->count = CPU_TO_LE16(1);
+
+	/* copy original boost entry to update package buffer, one copy to RX
+	 * section, another copy to the TX section
+	 */
+	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
+		if (hw->tnl.tbl[i].valid && hw->tnl.tbl[i].in_use &&
+		    (all || hw->tnl.tbl[i].port == port)) {
+			ice_memcpy(sect_rx->tcam + i,
+				   hw->tnl.tbl[i].boost_entry,
+				   sizeof(*sect_rx->tcam),
+				   ICE_NONDMA_TO_NONDMA);
+			ice_memcpy(sect_tx->tcam + i,
+				   hw->tnl.tbl[i].boost_entry,
+				   sizeof(*sect_tx->tcam),
+				   ICE_NONDMA_TO_NONDMA);
+			hw->tnl.tbl[i].marked = true;
+		}
+
+	status = ice_update_pkg(hw, ice_pkg_buf(bld), 1);
+	if (!status)
+		for (i = 0; i < hw->tnl.count &&
+		     i < ICE_TUNNEL_MAX_ENTRIES; i++)
+			if (hw->tnl.tbl[i].marked) {
+				hw->tnl.tbl[i].port = 0;
+				hw->tnl.tbl[i].in_use = false;
+				hw->tnl.tbl[i].marked = false;
+			}
+
+ice_destroy_tunnel_err:
+	ice_pkg_buf_free(hw, bld);
+
+	return status;
+}
+
+/**
  * ice_find_prot_off - find prot ID and offset pair, based on prof and FV index
  * @hw: pointer to the hardware structure
  * @blk: hardware block

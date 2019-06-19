@@ -33,6 +33,12 @@ ice_find_label_value(struct ice_seg *ice_seg, char const *name, u32 type,
 enum ice_status
 ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u8 ids_cnt,
 		   struct LIST_HEAD_TYPE *fv_list);
+enum ice_status
+ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port);
+enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all);
+bool ice_tunnel_port_in_use(struct ice_hw *hw, u16 port, u16 *index);
+bool
+ice_tunnel_get_type(struct ice_hw *hw, u16 port, enum ice_tunnel_type *type);
 
 
 /* XLT2/VSI group functions */
