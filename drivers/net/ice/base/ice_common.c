@@ -833,7 +833,7 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 	u16 mac_buf_len;
 	void *mac_buf;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_init_hw");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 
 	/* Set MAC type based on DeviceID */
@@ -1623,7 +1623,7 @@ ice_aq_req_res(struct ice_hw *hw, enum ice_aq_res_ids res,
 	struct ice_aq_desc desc;
 	enum ice_status status;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_req_res");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	cmd_resp = &desc.params.res_owner;
 
@@ -1692,7 +1692,7 @@ ice_aq_release_res(struct ice_hw *hw, enum ice_aq_res_ids res, u8 sdp_number,
 	struct ice_aqc_req_res *cmd;
 	struct ice_aq_desc desc;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_release_res");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	cmd = &desc.params.res_owner;
 
@@ -1722,7 +1722,7 @@ ice_acquire_res(struct ice_hw *hw, enum ice_aq_res_ids res,
 	u32 time_left = timeout;
 	enum ice_status status;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_acquire_res");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	status = ice_aq_req_res(hw, res, access, 0, &time_left, NULL);
 
@@ -1780,7 +1780,7 @@ void ice_release_res(struct ice_hw *hw, enum ice_aq_res_ids res)
 	enum ice_status status;
 	u32 total_delay = 0;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_release_res");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	status = ice_aq_release_res(hw, res, 0, NULL);
 
@@ -1814,7 +1814,7 @@ ice_aq_alloc_free_res(struct ice_hw *hw, u16 num_entries,
 	struct ice_aqc_alloc_free_res_cmd *cmd;
 	struct ice_aq_desc desc;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_alloc_free_res");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	cmd = &desc.params.sw_res_ctrl;
 
@@ -3106,7 +3106,7 @@ ice_aq_add_lan_txq(struct ice_hw *hw, u8 num_qgrps,
 	struct ice_aqc_add_txqs *cmd;
 	struct ice_aq_desc desc;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_add_lan_txq");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	cmd = &desc.params.add_txqs;
 
@@ -3162,7 +3162,7 @@ ice_aq_dis_lan_txq(struct ice_hw *hw, u8 num_qgrps,
 	enum ice_status status;
 	u16 i, sz = 0;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_dis_lan_txq");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 	cmd = &desc.params.dis_txqs;
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_dis_txqs);
 

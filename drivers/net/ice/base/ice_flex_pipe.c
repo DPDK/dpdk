@@ -1142,7 +1142,7 @@ ice_get_pkg_info(struct ice_hw *hw)
 	u16 size;
 	u32 i;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_init_pkg_info\n");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	size = sizeof(*pkg_info) + (sizeof(pkg_info->pkg_info[0]) *
 				    (ICE_PKG_CNT - 1));
@@ -2416,6 +2416,11 @@ ice_vsig_free(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 		LIST_DEL(&del->list);
 		ice_free(hw, del);
 	}
+
+	/* if VSIG characteristic list was cleared for reset
+	 * re-initialize the list head
+	 */
+	INIT_LIST_HEAD(&hw->blk[blk].xlt2.vsig_tbl[idx].prop_lst);
 
 	return ICE_SUCCESS;
 }

@@ -35,6 +35,8 @@ static void ice_adminq_init_regs(struct ice_hw *hw)
 {
 	struct ice_ctl_q_info *cq = &hw->adminq;
 
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
 	ICE_CQ_INIT_REGS(cq, PF_FW);
 }
 
@@ -295,6 +297,8 @@ static enum ice_status ice_init_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 {
 	enum ice_status ret_code;
 
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
 	if (cq->sq.count > 0) {
 		/* queue already initialized */
 		ret_code = ICE_ERR_NOT_READY;
@@ -353,6 +357,8 @@ init_ctrlq_exit:
 static enum ice_status ice_init_rq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 {
 	enum ice_status ret_code;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	if (cq->rq.count > 0) {
 		/* queue already initialized */
@@ -422,6 +428,8 @@ ice_shutdown_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 {
 	enum ice_status ret_code = ICE_SUCCESS;
 
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
 	ice_acquire_lock(&cq->sq_lock);
 
 	if (!cq->sq.count) {
@@ -485,6 +493,8 @@ ice_shutdown_rq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 {
 	enum ice_status ret_code = ICE_SUCCESS;
 
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
 	ice_acquire_lock(&cq->rq_lock);
 
 	if (!cq->rq.count) {
@@ -520,6 +530,8 @@ static enum ice_status ice_init_check_adminq(struct ice_hw *hw)
 {
 	struct ice_ctl_q_info *cq = &hw->adminq;
 	enum ice_status status;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 
 	status = ice_aq_get_fw_ver(hw, NULL);
@@ -558,6 +570,8 @@ static enum ice_status ice_init_ctrlq(struct ice_hw *hw, enum ice_ctl_q q_type)
 {
 	struct ice_ctl_q_info *cq;
 	enum ice_status ret_code;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	switch (q_type) {
 	case ICE_CTL_Q_ADMIN:
@@ -616,6 +630,8 @@ init_ctrlq_free_sq:
 enum ice_status ice_init_all_ctrlq(struct ice_hw *hw)
 {
 	enum ice_status ret_code;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 
 	/* Init FW admin queue */
@@ -677,6 +693,8 @@ static void ice_shutdown_ctrlq(struct ice_hw *hw, enum ice_ctl_q q_type)
 {
 	struct ice_ctl_q_info *cq;
 
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
 	switch (q_type) {
 	case ICE_CTL_Q_ADMIN:
 		cq = &hw->adminq;
@@ -704,6 +722,7 @@ static void ice_shutdown_ctrlq(struct ice_hw *hw, enum ice_ctl_q q_type)
  */
 void ice_shutdown_all_ctrlq(struct ice_hw *hw)
 {
+	ice_debug(hw, ICE_DBG_TRACE, "ice_shutdown_all_ctrlq\n");
 	/* Shutdown FW admin queue */
 	ice_shutdown_ctrlq(hw, ICE_CTL_Q_ADMIN);
 	/* Shutdown PF-VF Mailbox */

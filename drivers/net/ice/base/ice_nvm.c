@@ -24,7 +24,7 @@ ice_aq_read_nvm(struct ice_hw *hw, u16 module_typeid, u32 offset, u16 length,
 	struct ice_aq_desc desc;
 	struct ice_aqc_nvm *cmd;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_read_nvm");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	cmd = &desc.params.nvm;
 
@@ -95,7 +95,7 @@ ice_read_sr_aq(struct ice_hw *hw, u32 offset, u16 words, u16 *data,
 {
 	enum ice_status status;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_read_sr_aq");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	status = ice_check_sr_access_params(hw, offset, words);
 
@@ -123,7 +123,7 @@ ice_read_sr_word_aq(struct ice_hw *hw, u16 offset, u16 *data)
 {
 	enum ice_status status;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_read_sr_word_aq");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	status = ice_read_sr_aq(hw, offset, 1, data, true);
 	if (!status)
@@ -152,7 +152,7 @@ ice_read_sr_buf_aq(struct ice_hw *hw, u16 offset, u16 *words, u16 *data)
 	u16 words_read = 0;
 	u16 i = 0;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_read_sr_buf_aq");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	do {
 		u16 read_size, off_w;
@@ -202,7 +202,7 @@ read_nvm_buf_aq_exit:
 static enum ice_status
 ice_acquire_nvm(struct ice_hw *hw, enum ice_aq_res_access_type access)
 {
-	ice_debug(hw, ICE_DBG_TRACE, "ice_acquire_nvm");
+	ice_debug(hw, ICE_DBG_TRACE, "ice_acquire_nvm\n");
 
 	if (hw->nvm.blank_nvm_mode)
 		return ICE_SUCCESS;
@@ -218,7 +218,7 @@ ice_acquire_nvm(struct ice_hw *hw, enum ice_aq_res_access_type access)
  */
 static void ice_release_nvm(struct ice_hw *hw)
 {
-	ice_debug(hw, ICE_DBG_TRACE, "ice_release_nvm");
+	ice_debug(hw, ICE_DBG_TRACE, "ice_release_nvm\n");
 
 	if (hw->nvm.blank_nvm_mode)
 		return;
@@ -263,7 +263,7 @@ enum ice_status ice_init_nvm(struct ice_hw *hw)
 	u32 fla, gens_stat;
 	u8 sr_size;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_init_nvm");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	/* The SR size is stored regardless of the NVM programming mode
 	 * as the blank mode may be used in the factory line.
