@@ -2092,6 +2092,18 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 			break;
 		}
 	}
+
+	/* Re-calculate capabilities that are dependent on the number of
+	 * physical ports; i.e. some features are not supported or function
+	 * differently on devices with more than 4 ports.
+	 */
+	if (caps && (ice_hweight32(caps->valid_functions) > 4)) {
+		/* Max 4 TCs per port */
+		caps->maxtc = 4;
+		ice_debug(hw, ICE_DBG_INIT,
+			  "%s: TC max = %d (based on #ports)\n", prefix,
+			  caps->maxtc);
+	}
 }
 
 /**
