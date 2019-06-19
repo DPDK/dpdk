@@ -255,13 +255,15 @@ static void ice_get_recp_to_prof_map(struct ice_hw *hw);
  * @hw: pointer to hardware structure
  * @recps: struct that we need to populate
  * @rid: recipe ID that we are populating
+ * @refresh_required: true if we should get recipe to profile mapping from FW
  *
  * This function is used to populate all the necessary entries into our
  * bookkeeping so that we have a current list of all the recipes that are
  * programmed in the firmware.
  */
 static enum ice_status
-ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid)
+ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
+		    bool *refresh_required)
 {
 	u16 i, sub_recps, fv_word_idx = 0, result_idx = 0;
 	ice_declare_bitmap(r_bitmap, ICE_MAX_NUM_PROFILES);
@@ -271,10 +273,6 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid)
 	struct ice_prot_lkup_ext *lkup_exts;
 	enum ice_status status;
 
-	/* Get recipe to profile map so that we can get the fv from
-	 * lkups that we read for a recipe from FW.
-	 */
-	ice_get_recp_to_prof_map(hw);
 	/* we need a buffer big enough to accommodate all the recipes */
 	tmp = (struct ice_aqc_recipe_data_elem *)ice_calloc(hw,
 		ICE_MAX_NUM_RECIPES, sizeof(*tmp));
@@ -286,6 +284,19 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid)
 	/* non-zero status meaning recipe doesn't exist */
 	if (status)
 		goto err_unroll;
+
+	/* Get recipe to profile map so that we can get the fv from lkups that
+	 * we read for a recipe from FW. Since we want to minimize the number of
+	 * times we make this FW call, just make one call and cache the copy
+	 * until a new recipe is added. This operation is only required the
+	 * first time to get the changes from FW. Then to search existing
+	 * entries we don't need to update the cache again until another recipe
+	 * gets added.
+	 */
+	if (*refresh_required) {
+		ice_get_recp_to_prof_map(hw);
+		*refresh_required = false;
+	}
 	lkup_exts = &recps[rid].lkup_exts;
 	/* start populating all the entries for recps[rid] based on lkups from
 	 * firmware
@@ -4438,6 +4449,7 @@ static const struct ice_protocol_entry ice_prot_id_tbl[] = {
  */
 static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts)
 {
+	bool refresh_required = true;
 	struct ice_sw_recipe *recp;
 	u16 i;
 
@@ -4456,7 +4468,8 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts)
 		 */
 		if (!recp[i].recp_created)
 			if (ice_get_recp_frm_fw(hw,
-						hw->switch_info->recp_list, i))
+						hw->switch_info->recp_list, i,
+						&refresh_required))
 				continue;
 
 		/* if number of words we are looking for match */
