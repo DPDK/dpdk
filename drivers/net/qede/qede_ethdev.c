@@ -1426,7 +1426,6 @@ static void qede_poll_sp_sb_cb(void *param)
 	if (rc != 0) {
 		DP_ERR(edev, "Unable to start periodic"
 			     " timer rc %d\n", rc);
-		assert(false && "Unable to start periodic timer");
 	}
 }
 
