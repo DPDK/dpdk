@@ -35,6 +35,7 @@ enum ice_protocol_type {
 	ICE_IPV6_IL,
 	ICE_IPV6_OFOS,
 	ICE_TCP_IL,
+	ICE_UDP_OF,
 	ICE_UDP_ILOS,
 	ICE_SCTP_IL,
 	ICE_VXLAN,
@@ -112,6 +113,7 @@ enum ice_prot_id {
 #define ICE_IPV6_OFOS_HW	40
 #define ICE_IPV6_IL_HW		41
 #define ICE_TCP_IL_HW		49
+#define ICE_UDP_OF_HW		52
 #define ICE_UDP_ILOS_HW		53
 #define ICE_SCTP_IL_HW		96
 
@@ -188,8 +190,7 @@ struct ice_l4_hdr {
 struct ice_udp_tnl_hdr {
 	u16 field;
 	u16 proto_type;
-	u16 vni;
-	u16 reserved;
+	u32 vni;	/* only use lower 24-bits */
 };
 
 struct ice_nvgre {
@@ -225,6 +226,7 @@ struct ice_prot_lkup_ext {
 	u8 n_val_words;
 	/* create a buffer to hold max words per recipe */
 	u16 field_off[ICE_MAX_CHAIN_WORDS];
+	u16 field_mask[ICE_MAX_CHAIN_WORDS];
 
 	struct ice_fv_word fv_words[ICE_MAX_CHAIN_WORDS];
 
@@ -235,6 +237,7 @@ struct ice_prot_lkup_ext {
 struct ice_pref_recipe_group {
 	u8 n_val_pairs;		/* Number of valid pairs */
 	struct ice_fv_word pairs[ICE_NUM_WORDS_RECIPE];
+	u16 mask[ICE_NUM_WORDS_RECIPE];
 };
 
 struct ice_recp_grp_entry {
@@ -244,6 +247,7 @@ struct ice_recp_grp_entry {
 	u16 rid;
 	u8 chain_idx;
 	u16 fv_idx[ICE_NUM_WORDS_RECIPE];
+	u16 fv_mask[ICE_NUM_WORDS_RECIPE];
 	struct ice_pref_recipe_group r_group;
 };
 #endif /* _ICE_PROTOCOL_TYPE_H_ */

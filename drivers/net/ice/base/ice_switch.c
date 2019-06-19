@@ -53,66 +53,195 @@ static const u8 dummy_eth_header[DUMMY_ETH_HDR_LEN] = { 0x2, 0, 0, 0, 0, 0,
 	 sizeof(((struct ice_sw_rule_vsi_list *)0)->vsi) + \
 	 ((n) * sizeof(((struct ice_sw_rule_vsi_list *)0)->vsi)))
 
+struct ice_dummy_pkt_offsets {
+	enum ice_protocol_type type;
+	u16 offset; /* ICE_PROTOCOL_LAST indicates end of list */
+};
+
 static const
-u8 dummy_gre_packet[] = { 0, 0, 0, 0,		/* Ether starts */
+struct ice_dummy_pkt_offsets dummy_gre_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_NVGRE,		34 },
+	{ ICE_MAC_IL,		42 },
+	{ ICE_IPV4_IL,		54 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const
+u8 dummy_gre_packet[] = { 0, 0, 0, 0,		/* ICE_MAC_OFOS 0 */
 			  0, 0, 0, 0,
 			  0, 0, 0, 0,
-			  0x08, 0,		/* Ether ends */
-			  0x45, 0, 0, 0x3E,	/* IP starts */
+			  0x08, 0,
+			  0x45, 0, 0, 0x3E,	/* ICE_IPV4_OFOS 14 */
 			  0, 0, 0, 0,
 			  0, 0x2F, 0, 0,
 			  0, 0, 0, 0,
-			  0, 0, 0, 0,		/* IP ends */
-			  0x80, 0, 0x65, 0x58,	/* GRE starts */
-			  0, 0, 0, 0,		/* GRE ends */
-			  0, 0, 0, 0,		/* Ether starts */
+			  0, 0, 0, 0,
+			  0x80, 0, 0x65, 0x58,	/* ICE_NVGRE 34 */
+			  0, 0, 0, 0,
+			  0, 0, 0, 0,		/* ICE_MAC_IL 42 */
 			  0, 0, 0, 0,
 			  0, 0, 0, 0,
-			  0x08, 0,		/* Ether ends */
-			  0x45, 0, 0, 0x14,	/* IP starts */
+			  0x08, 0,
+			  0x45, 0, 0, 0x14,	/* ICE_IPV4_IL 54 */
 			  0, 0, 0, 0,
 			  0, 0, 0, 0,
 			  0, 0, 0, 0,
-			  0, 0, 0, 0		/* IP ends */
+			  0, 0, 0, 0
 			};
 
-static const u8
-dummy_udp_tun_packet[] = {0, 0, 0, 0,		/* Ether starts */
-			  0, 0, 0, 0,
-			  0, 0, 0, 0,
-			  0x08, 0,		/* Ether ends */
-			  0x45, 0, 0, 0x32,	/* IP starts */
-			  0, 0, 0, 0,
-			  0, 0x11, 0, 0,
-			  0, 0, 0, 0,
-			  0, 0, 0, 0,		/* IP ends */
-			  0, 0, 0x12, 0xB5,	/* UDP start*/
-			  0, 0x1E, 0, 0,	/* UDP end*/
-			  0, 0, 0, 0,		/* VXLAN start */
-			  0, 0, 0, 0,		/* VXLAN end*/
-			  0, 0, 0, 0,		/* Ether starts */
-			  0, 0, 0, 0,
-			  0, 0, 0, 0,
-			  0, 0			/* Ether ends */
-			};
+static const
+struct ice_dummy_pkt_offsets dummy_udp_tun_tcp_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_UDP_OF,		34 },
+	{ ICE_VXLAN,		42 },
+	{ ICE_MAC_IL,		50 },
+	{ ICE_IPV4_IL,		64 },
+	{ ICE_TCP_IL,		84 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const
+u8 dummy_udp_tun_tcp_packet[] = {
+	0x00, 0x00, 0x00, 0x00,  /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x5a, /* ICE_IPV4_OFOS 14 */
+	0x00, 0x01, 0x00, 0x00,
+	0x40, 0x11, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x12, 0xb5, /* ICE_UDP_OF 34 */
+	0x00, 0x46, 0x00, 0x00,
+
+	0x04, 0x00, 0x00, 0x03, /* ICE_VXLAN 42 */
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_IL 50 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x28, /* ICE_IPV4_IL 64 */
+	0x00, 0x01, 0x00, 0x00,
+	0x40, 0x06, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_TCP_IL 84 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x50, 0x02, 0x20, 0x00,
+	0x00, 0x00, 0x00, 0x00
+};
+
+static const
+struct ice_dummy_pkt_offsets dummy_udp_tun_udp_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_UDP_OF,		34 },
+	{ ICE_VXLAN,		42 },
+	{ ICE_MAC_IL,		50 },
+	{ ICE_IPV4_IL,		64 },
+	{ ICE_UDP_ILOS,		84 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const
+u8 dummy_udp_tun_udp_packet[] = {
+	0x00, 0x00, 0x00, 0x00,  /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x4e, /* ICE_IPV4_OFOS 14 */
+	0x00, 0x01, 0x00, 0x00,
+	0x00, 0x11, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x12, 0xb5, /* ICE_UDP_OF 34 */
+	0x00, 0x3a, 0x00, 0x00,
+
+	0x0c, 0x00, 0x00, 0x03, /* ICE_VXLAN 42 */
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_IL 50 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x1c, /* ICE_IPV4_IL 64 */
+	0x00, 0x01, 0x00, 0x00,
+	0x00, 0x11, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_UDP_ILOS 84 */
+	0x00, 0x08, 0x00, 0x00,
+};
+
+static const
+struct ice_dummy_pkt_offsets dummy_udp_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_UDP_ILOS,		34 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
 
 static const u8
-dummy_tcp_tun_packet[] = {0, 0, 0, 0,		/* Ether starts */
-			  0, 0, 0, 0,
-			  0, 0, 0, 0,
-			  0x08, 0,              /* Ether ends */
-			  0x45, 0, 0, 0x28,     /* IP starts */
-			  0, 0x01, 0, 0,
-			  0x40, 0x06, 0xF5, 0x69,
-			  0, 0, 0, 0,
-			  0, 0, 0, 0,   /* IP ends */
-			  0, 0, 0, 0,
-			  0, 0, 0, 0,
-			  0, 0, 0, 0,
-			  0x50, 0x02, 0x20,
-			  0, 0x9, 0x79, 0, 0,
-			  0, 0 /* 2 bytes padding for 4 byte alignment*/
-			};
+dummy_udp_packet[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x1c, /* ICE_IPV4_OFOS 14 */
+	0x00, 0x01, 0x00, 0x00,
+	0x00, 0x11, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_UDP_ILOS 34 */
+	0x00, 0x08, 0x00, 0x00,
+
+	0x00, 0x00,	/* 2 bytes for 4 byte alignment */
+};
+
+static const
+struct ice_dummy_pkt_offsets dummy_tcp_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_TCP_IL,		34 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8
+dummy_tcp_packet[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x28, /* ICE_IPV4_OFOS 14 */
+	0x00, 0x01, 0x00, 0x00,
+	0x00, 0x06, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_TCP_IL 34 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x50, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00,	/* 2 bytes for 4 byte alignment */
+};
 
 /* this is a recipe to profile bitmap association */
 static ice_declare_bitmap(recipe_to_profile[ICE_MAX_NUM_RECIPES],
@@ -184,6 +313,9 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid)
 			u8 lkup_indx = root_bufs.content.lkup_indx[i + 1];
 
 			rg_entry->fv_idx[i] = lkup_indx;
+			rg_entry->fv_mask[i] =
+				LE16_TO_CPU(root_bufs.content.mask[i + 1]);
+
 			/* If the recipe is a chained recipe then all its
 			 * child recipe's result will have a result index.
 			 * To fill fv_words we should not use those result
@@ -4246,10 +4378,11 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
 	{ ICE_IPV6_OFOS,	{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
 				 26, 28, 30, 32, 34, 36, 38 } },
 	{ ICE_TCP_IL,		{ 0, 2 } },
+	{ ICE_UDP_OF,		{ 0, 2 } },
 	{ ICE_UDP_ILOS,		{ 0, 2 } },
 	{ ICE_SCTP_IL,		{ 0, 2 } },
-	{ ICE_VXLAN,		{ 8, 10, 12 } },
-	{ ICE_GENEVE,		{ 8, 10, 12 } },
+	{ ICE_VXLAN,		{ 8, 10, 12, 14 } },
+	{ ICE_GENEVE,		{ 8, 10, 12, 14 } },
 	{ ICE_VXLAN_GPE,	{ 0, 2, 4 } },
 	{ ICE_NVGRE,		{ 0, 2 } },
 	{ ICE_PROTOCOL_LAST,	{ 0 } }
@@ -4262,11 +4395,14 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
  */
 static const struct ice_pref_recipe_group ice_recipe_pack[] = {
 	{3, { { ICE_MAC_OFOS_HW, 0, 0 }, { ICE_MAC_OFOS_HW, 2, 0 },
-	      { ICE_MAC_OFOS_HW, 4, 0 } } },
+	      { ICE_MAC_OFOS_HW, 4, 0 } }, { 0xffff, 0xffff, 0xffff, 0xffff } },
 	{4, { { ICE_MAC_IL_HW, 0, 0 }, { ICE_MAC_IL_HW, 2, 0 },
-	      { ICE_MAC_IL_HW, 4, 0 }, { ICE_META_DATA_ID_HW, 44, 0 } } },
-	{2, { { ICE_IPV4_IL_HW, 0, 0 }, { ICE_IPV4_IL_HW, 2, 0 } } },
-	{2, { { ICE_IPV4_IL_HW, 12, 0 }, { ICE_IPV4_IL_HW, 14, 0 } } },
+	      { ICE_MAC_IL_HW, 4, 0 }, { ICE_META_DATA_ID_HW, 44, 0 } },
+		{ 0xffff, 0xffff, 0xffff, 0xffff } },
+	{2, { { ICE_IPV4_IL_HW, 0, 0 }, { ICE_IPV4_IL_HW, 2, 0 } },
+		{ 0xffff, 0xffff, 0xffff, 0xffff } },
+	{2, { { ICE_IPV4_IL_HW, 12, 0 }, { ICE_IPV4_IL_HW, 14, 0 } },
+		{ 0xffff, 0xffff, 0xffff, 0xffff } },
 };
 
 static const struct ice_protocol_entry ice_prot_id_tbl[] = {
@@ -4277,6 +4413,7 @@ static const struct ice_protocol_entry ice_prot_id_tbl[] = {
 	{ ICE_IPV6_OFOS,	ICE_IPV6_OFOS_HW },
 	{ ICE_IPV6_IL,		ICE_IPV6_IL_HW },
 	{ ICE_TCP_IL,		ICE_TCP_IL_HW },
+	{ ICE_UDP_OF,		ICE_UDP_OF_HW },
 	{ ICE_UDP_ILOS,		ICE_UDP_ILOS_HW },
 	{ ICE_SCTP_IL,		ICE_SCTP_IL_HW },
 	{ ICE_VXLAN,		ICE_UDP_OF_HW },
@@ -4395,7 +4532,7 @@ ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
 	word = lkup_exts->n_val_words;
 
 	for (j = 0; j < sizeof(rule->m_u) / sizeof(u16); j++)
-		if (((u16 *)&rule->m_u)[j] == 0xffff &&
+		if (((u16 *)&rule->m_u)[j] &&
 		    rule->type < ARRAY_SIZE(ice_prot_ext)) {
 			/* No more space to accommodate */
 			if (word >= ICE_MAX_CHAIN_WORDS)
@@ -4404,6 +4541,7 @@ ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
 				ice_prot_ext[rule->type].offs[j];
 			lkup_exts->fv_words[word].prot_id =
 				ice_prot_id_tbl[rule->type].protocol_id;
+			lkup_exts->field_mask[word] = ((u16 *)&rule->m_u)[j];
 			word++;
 		}
 
@@ -4527,6 +4665,7 @@ ice_create_first_fit_recp_def(struct ice_hw *hw,
 				lkup_exts->fv_words[j].prot_id;
 			grp->pairs[grp->n_val_pairs].off =
 				lkup_exts->fv_words[j].off;
+			grp->mask[grp->n_val_pairs] = lkup_exts->field_mask[j];
 			grp->n_val_pairs++;
 		}
 
@@ -4561,14 +4700,22 @@ ice_fill_fv_word_index(struct ice_hw *hw, struct LIST_HEAD_TYPE *fv_list,
 
 		for (i = 0; i < rg->r_group.n_val_pairs; i++) {
 			struct ice_fv_word *pr;
+			u16 mask;
 			u8 j;
 
 			pr = &rg->r_group.pairs[i];
+			mask = rg->r_group.mask[i];
+
 			for (j = 0; j < hw->blk[ICE_BLK_SW].es.fvw; j++)
 				if (fv_ext[j].prot_id == pr->prot_id &&
 				    fv_ext[j].off == pr->off) {
 					/* Store index of field vector */
 					rg->fv_idx[i] = j;
+					/* Mask is given by caller as big
+					 * endian, but sent to FW as little
+					 * endian
+					 */
+					rg->fv_mask[i] = mask << 8 | mask >> 8;
 					break;
 				}
 		}
@@ -4666,7 +4813,8 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 
 		for (i = 0; i < entry->r_group.n_val_pairs; i++) {
 			buf[recps].content.lkup_indx[i + 1] = entry->fv_idx[i];
-			buf[recps].content.mask[i + 1] = CPU_TO_LE16(0xFFFF);
+			buf[recps].content.mask[i + 1] =
+				CPU_TO_LE16(entry->fv_mask[i]);
 		}
 
 		if (rm->n_grp_count > 1) {
@@ -4889,6 +5037,8 @@ ice_create_recipe_group(struct ice_hw *hw, struct ice_sw_recipe *rm,
 		rm->n_ext_words = lkup_exts->n_val_words;
 		ice_memcpy(&rm->ext_words, lkup_exts->fv_words,
 			   sizeof(rm->ext_words), ICE_NONDMA_TO_NONDMA);
+		ice_memcpy(rm->word_masks, lkup_exts->field_mask,
+			   sizeof(rm->word_masks), ICE_NONDMA_TO_NONDMA);
 		goto out;
 	}
 
@@ -5090,16 +5240,8 @@ err_free_lkup_exts:
 	return status;
 }
 
-#define ICE_MAC_HDR_OFFSET	0
-#define ICE_IP_HDR_OFFSET	14
-#define ICE_GRE_HDR_OFFSET	34
-#define ICE_MAC_IL_HDR_OFFSET	42
-#define ICE_IP_IL_HDR_OFFSET	56
-#define ICE_L4_HDR_OFFSET	34
-#define ICE_UDP_TUN_HDR_OFFSET	42
-
 /**
- * ice_find_dummy_packet - find dummy packet with given match criteria
+ * ice_find_dummy_packet - find dummy packet by tunnel type
  *
  * @lkups: lookup elements or match criteria for the advanced recipe, one
  *	   structure per protocol header
@@ -5107,37 +5249,56 @@ err_free_lkup_exts:
  * @tun_type: tunnel type from the match criteria
  * @pkt: dummy packet to fill according to filter match criteria
  * @pkt_len: packet length of dummy packet
+ * @offsets: pointer to receive the pointer to the offsets for the packet
  */
 static void
 ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		      enum ice_sw_tunnel_type tun_type, const u8 **pkt,
-		      u16 *pkt_len)
+		      u16 *pkt_len,
+		      const struct ice_dummy_pkt_offsets **offsets)
 {
+	bool tcp = false, udp = false;
 	u16 i;
+
+	for (i = 0; i < lkups_cnt; i++) {
+		if (lkups[i].type == ICE_UDP_ILOS)
+			udp = true;
+		else if (lkups[i].type == ICE_TCP_IL)
+			tcp = true;
+	}
 
 	if (tun_type == ICE_SW_TUN_NVGRE || tun_type == ICE_ALL_TUNNELS) {
 		*pkt = dummy_gre_packet;
 		*pkt_len = sizeof(dummy_gre_packet);
+		*offsets = dummy_gre_packet_offsets;
 		return;
 	}
 
 	if (tun_type == ICE_SW_TUN_VXLAN || tun_type == ICE_SW_TUN_GENEVE ||
-	    tun_type == ICE_SW_TUN_VXLAN_GPE) {
-		*pkt = dummy_udp_tun_packet;
-		*pkt_len = sizeof(dummy_udp_tun_packet);
+	    tun_type == ICE_SW_TUN_VXLAN_GPE || tun_type == ICE_SW_TUN_UDP) {
+		if (tcp) {
+			*pkt = dummy_udp_tun_tcp_packet;
+			*pkt_len = sizeof(dummy_udp_tun_tcp_packet);
+			*offsets = dummy_udp_tun_tcp_packet_offsets;
+			return;
+		}
+
+		*pkt = dummy_udp_tun_udp_packet;
+		*pkt_len = sizeof(dummy_udp_tun_udp_packet);
+		*offsets = dummy_udp_tun_udp_packet_offsets;
 		return;
 	}
 
-	for (i = 0; i < lkups_cnt; i++) {
-		if (lkups[i].type == ICE_UDP_ILOS) {
-			*pkt = dummy_udp_tun_packet;
-			*pkt_len = sizeof(dummy_udp_tun_packet);
-			return;
-		}
+	if (udp) {
+		*pkt = dummy_udp_packet;
+		*pkt_len = sizeof(dummy_udp_packet);
+		*offsets = dummy_udp_packet_offsets;
+		return;
 	}
 
-	*pkt = dummy_tcp_tun_packet;
-	*pkt_len = sizeof(dummy_tcp_tun_packet);
+	*pkt = dummy_tcp_packet;
+	*pkt_len = sizeof(dummy_tcp_packet);
+	*offsets = dummy_tcp_packet_offsets;
 }
 
 /**
@@ -5146,16 +5307,16 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
  * @lkups: lookup elements or match criteria for the advanced recipe, one
  *	   structure per protocol header
  * @lkups_cnt: number of protocols
- * @tun_type: to know if the dummy packet is supposed to be tunnel packet
  * @s_rule: stores rule information from the match criteria
  * @dummy_pkt: dummy packet to fill according to filter match criteria
  * @pkt_len: packet length of dummy packet
+ * @offsets: offset info for the dummy packet
  */
-static void
+static enum ice_status
 ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
-			  enum ice_sw_tunnel_type tun_type,
 			  struct ice_aqc_sw_rules_elem *s_rule,
-			  const u8 *dummy_pkt, u16 pkt_len)
+			  const u8 *dummy_pkt, u16 pkt_len,
+			  const struct ice_dummy_pkt_offsets *offsets)
 {
 	u8 *pkt;
 	u16 i;
@@ -5168,124 +5329,77 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 	ice_memcpy(pkt, dummy_pkt, pkt_len, ICE_NONDMA_TO_NONDMA);
 
 	for (i = 0; i < lkups_cnt; i++) {
-		u32 len, pkt_off, hdr_size, field_off;
+		enum ice_protocol_type type;
+		u16 offset = 0, len = 0, j;
+		bool found = false;
+
+		/* find the start of this layer; it should be found since this
+		 * was already checked when search for the dummy packet
+		 */
+		type = lkups[i].type;
+		for (j = 0; offsets[j].type != ICE_PROTOCOL_LAST; j++) {
+			if (type == offsets[j].type) {
+				offset = offsets[j].offset;
+				found = true;
+				break;
+			}
+		}
+		/* this should never happen in a correct calling sequence */
+		if (!found)
+			return ICE_ERR_PARAM;
 
 		switch (lkups[i].type) {
 		case ICE_MAC_OFOS:
 		case ICE_MAC_IL:
-			pkt_off = offsetof(struct ice_ether_hdr, dst_addr) +
-				((lkups[i].type == ICE_MAC_IL) ?
-				 ICE_MAC_IL_HDR_OFFSET : 0);
-			len = sizeof(lkups[i].h_u.eth_hdr.dst_addr);
-			if ((tun_type == ICE_SW_TUN_VXLAN ||
-			     tun_type == ICE_SW_TUN_GENEVE ||
-			     tun_type == ICE_SW_TUN_VXLAN_GPE) &&
-			     lkups[i].type == ICE_MAC_IL) {
-				pkt_off += sizeof(struct ice_udp_tnl_hdr);
-			}
-
-			ice_memcpy(&pkt[pkt_off],
-				   &lkups[i].h_u.eth_hdr.dst_addr, len,
-				   ICE_NONDMA_TO_NONDMA);
-			pkt_off = offsetof(struct ice_ether_hdr, src_addr) +
-				((lkups[i].type == ICE_MAC_IL) ?
-				 ICE_MAC_IL_HDR_OFFSET : 0);
-			len = sizeof(lkups[i].h_u.eth_hdr.src_addr);
-			if ((tun_type == ICE_SW_TUN_VXLAN ||
-			     tun_type == ICE_SW_TUN_GENEVE ||
-			     tun_type == ICE_SW_TUN_VXLAN_GPE) &&
-			     lkups[i].type == ICE_MAC_IL) {
-				pkt_off += sizeof(struct ice_udp_tnl_hdr);
-			}
-			ice_memcpy(&pkt[pkt_off],
-				   &lkups[i].h_u.eth_hdr.src_addr, len,
-				   ICE_NONDMA_TO_NONDMA);
-			if (lkups[i].h_u.eth_hdr.ethtype_id) {
-				pkt_off = offsetof(struct ice_ether_hdr,
-						   ethtype_id) +
-					((lkups[i].type == ICE_MAC_IL) ?
-					 ICE_MAC_IL_HDR_OFFSET : 0);
-				len = sizeof(lkups[i].h_u.eth_hdr.ethtype_id);
-				if ((tun_type == ICE_SW_TUN_VXLAN ||
-				     tun_type == ICE_SW_TUN_GENEVE ||
-				     tun_type == ICE_SW_TUN_VXLAN_GPE) &&
-				     lkups[i].type == ICE_MAC_IL) {
-					pkt_off +=
-						sizeof(struct ice_udp_tnl_hdr);
-				}
-				ice_memcpy(&pkt[pkt_off],
-					   &lkups[i].h_u.eth_hdr.ethtype_id,
-					   len, ICE_NONDMA_TO_NONDMA);
-			}
+			len = sizeof(struct ice_ether_hdr);
 			break;
 		case ICE_IPV4_OFOS:
-			hdr_size = sizeof(struct ice_ipv4_hdr);
-			if (lkups[i].h_u.ipv4_hdr.dst_addr) {
-				pkt_off = ICE_IP_HDR_OFFSET +
-					   offsetof(struct ice_ipv4_hdr,
-						    dst_addr);
-				field_off = offsetof(struct ice_ipv4_hdr,
-						     dst_addr);
-				len = hdr_size - field_off;
-				ice_memcpy(&pkt[pkt_off],
-					   &lkups[i].h_u.ipv4_hdr.dst_addr,
-					   len, ICE_NONDMA_TO_NONDMA);
-			}
-			if (lkups[i].h_u.ipv4_hdr.src_addr) {
-				pkt_off = ICE_IP_HDR_OFFSET +
-					   offsetof(struct ice_ipv4_hdr,
-						    src_addr);
-				field_off = offsetof(struct ice_ipv4_hdr,
-						     src_addr);
-				len = hdr_size - field_off;
-				ice_memcpy(&pkt[pkt_off],
-					   &lkups[i].h_u.ipv4_hdr.src_addr,
-					   len, ICE_NONDMA_TO_NONDMA);
-			}
-			break;
 		case ICE_IPV4_IL:
+			len = sizeof(struct ice_ipv4_hdr);
 			break;
 		case ICE_TCP_IL:
+		case ICE_UDP_OF:
 		case ICE_UDP_ILOS:
+			len = sizeof(struct ice_l4_hdr);
+			break;
 		case ICE_SCTP_IL:
-			hdr_size = sizeof(struct ice_udp_tnl_hdr);
-			if (lkups[i].h_u.l4_hdr.dst_port) {
-				pkt_off = ICE_L4_HDR_OFFSET +
-					   offsetof(struct ice_l4_hdr,
-						    dst_port);
-				field_off = offsetof(struct ice_l4_hdr,
-						     dst_port);
-				len =  hdr_size - field_off;
-				ice_memcpy(&pkt[pkt_off],
-					   &lkups[i].h_u.l4_hdr.dst_port,
-					   len, ICE_NONDMA_TO_NONDMA);
-			}
-			if (lkups[i].h_u.l4_hdr.src_port) {
-				pkt_off = ICE_L4_HDR_OFFSET +
-					offsetof(struct ice_l4_hdr, src_port);
-				field_off = offsetof(struct ice_l4_hdr,
-						     src_port);
-				len =  hdr_size - field_off;
-				ice_memcpy(&pkt[pkt_off],
-					   &lkups[i].h_u.l4_hdr.src_port,
-					   len, ICE_NONDMA_TO_NONDMA);
-			}
+			len = sizeof(struct ice_sctp_hdr);
+			break;
+		case ICE_NVGRE:
+			len = sizeof(struct ice_nvgre);
 			break;
 		case ICE_VXLAN:
 		case ICE_GENEVE:
 		case ICE_VXLAN_GPE:
-			pkt_off = ICE_UDP_TUN_HDR_OFFSET +
-				   offsetof(struct ice_udp_tnl_hdr, vni);
-			field_off = offsetof(struct ice_udp_tnl_hdr, vni);
-			len =  sizeof(struct ice_udp_tnl_hdr) - field_off;
-			ice_memcpy(&pkt[pkt_off], &lkups[i].h_u.tnl_hdr.vni,
-				   len, ICE_NONDMA_TO_NONDMA);
+			len = sizeof(struct ice_udp_tnl_hdr);
 			break;
 		default:
-			break;
+			return ICE_ERR_PARAM;
 		}
+
+		/* the length should be a word multiple */
+		if (len % ICE_BYTES_PER_WORD)
+			return ICE_ERR_CFG;
+
+		/* We have the offset to the header start, the length, the
+		 * caller's header values and mask. Use this information to
+		 * copy the data into the dummy packet appropriately based on
+		 * the mask. Note that we need to only write the bits as
+		 * indicated by the mask to make sure we don't improperly write
+		 * over any significant packet data.
+		 */
+		for (j = 0; j < len / sizeof(u16); j++)
+			if (((u16 *)&lkups[i].m_u)[j])
+				((u16 *)(pkt + offset))[j] =
+					(((u16 *)(pkt + offset))[j] &
+					 ~((u16 *)&lkups[i].m_u)[j]) |
+					(((u16 *)&lkups[i].h_u)[j] &
+					 ((u16 *)&lkups[i].m_u)[j]);
 	}
+
 	s_rule->pdata.lkup_tx_rx.hdr_len = CPU_TO_LE16(pkt_len);
+
+	return ICE_SUCCESS;
 }
 
 /**
@@ -5439,7 +5553,7 @@ ice_adv_add_update_vsi_list(struct ice_hw *hw,
 }
 
 /**
- * ice_add_adv_rule - create an advanced switch rule
+ * ice_add_adv_rule - helper function to create an advanced switch rule
  * @hw: pointer to the hardware structure
  * @lkups: information on the words that needs to be looked up. All words
  * together makes one recipe
@@ -5463,11 +5577,13 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 {
 	struct ice_adv_fltr_mgmt_list_entry *m_entry, *adv_fltr = NULL;
 	u16 rid = 0, i, pkt_len, rule_buf_sz, vsi_handle;
-	struct ice_aqc_sw_rules_elem *s_rule;
+	const struct ice_dummy_pkt_offsets *pkt_offsets;
+	struct ice_aqc_sw_rules_elem *s_rule = NULL;
 	struct LIST_HEAD_TYPE *rule_head;
 	struct ice_switch_info *sw;
 	enum ice_status status;
 	const u8 *pkt = NULL;
+	bool found = false;
 	u32 act = 0;
 
 	if (!lkups_cnt)
@@ -5476,13 +5592,25 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	for (i = 0; i < lkups_cnt; i++) {
 		u16 j, *ptr;
 
-		/* Validate match masks to make sure they match complete 16-bit
-		 * words.
+		/* Validate match masks to make sure that there is something
+		 * to match.
 		 */
-		ptr = (u16 *)&lkups->m_u;
+		ptr = (u16 *)&lkups[i].m_u;
 		for (j = 0; j < sizeof(lkups->m_u) / sizeof(u16); j++)
-			if (ptr[j] != 0 && ptr[j] != 0xffff)
-				return ICE_ERR_PARAM;
+			if (ptr[j] != 0) {
+				found = true;
+				break;
+			}
+	}
+	if (!found)
+		return ICE_ERR_PARAM;
+
+	/* make sure that we can locate a dummy packet */
+	ice_find_dummy_packet(lkups, lkups_cnt, rinfo->tun_type, &pkt, &pkt_len,
+			      &pkt_offsets);
+	if (!pkt) {
+		status = ICE_ERR_PARAM;
+		goto err_ice_add_adv_rule;
 	}
 
 	if (!(rinfo->sw_act.fltr_act == ICE_FWD_TO_VSI ||
@@ -5523,8 +5651,6 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		}
 		return status;
 	}
-	ice_find_dummy_packet(lkups, lkups_cnt, rinfo->tun_type, &pkt,
-			      &pkt_len);
 	rule_buf_sz = ICE_SW_RULE_RX_TX_NO_HDR_SIZE + pkt_len;
 	s_rule = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw, rule_buf_sz);
 	if (!s_rule)
@@ -5569,8 +5695,8 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	s_rule->pdata.lkup_tx_rx.recipe_id = CPU_TO_LE16(rid);
 	s_rule->pdata.lkup_tx_rx.act = CPU_TO_LE32(act);
 
-	ice_fill_adv_dummy_packet(lkups, lkups_cnt, rinfo->tun_type, s_rule,
-				  pkt, pkt_len);
+	ice_fill_adv_dummy_packet(lkups, lkups_cnt, s_rule, pkt, pkt_len,
+				  pkt_offsets);
 
 	status = ice_aq_sw_rules(hw, (struct ice_aqc_sw_rules *)s_rule,
 				 rule_buf_sz, 1, ice_aqc_opc_add_sw_rules,
@@ -5746,11 +5872,12 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		 u16 lkups_cnt, struct ice_adv_rule_info *rinfo)
 {
 	struct ice_adv_fltr_mgmt_list_entry *list_elem;
+	const struct ice_dummy_pkt_offsets *offsets;
 	struct ice_prot_lkup_ext lkup_exts;
 	u16 rule_buf_sz, pkt_len, i, rid;
+	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
 	enum ice_status status = ICE_SUCCESS;
 	bool remove_rule = false;
-	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
 	const u8 *pkt = NULL;
 	u16 vsi_handle;
 
@@ -5798,7 +5925,7 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		struct ice_aqc_sw_rules_elem *s_rule;
 
 		ice_find_dummy_packet(lkups, lkups_cnt, rinfo->tun_type, &pkt,
-				      &pkt_len);
+				      &pkt_len, &offsets);
 		rule_buf_sz = ICE_SW_RULE_RX_TX_NO_HDR_SIZE + pkt_len;
 		s_rule =
 			(struct ice_aqc_sw_rules_elem *)ice_malloc(hw,
