@@ -10,6 +10,8 @@ option('enable_kmods', type: 'boolean', value: true,
 	description: 'build kernel modules')
 option('examples', type: 'string', value: '',
 	description: 'Comma-separated list of examples to build by default')
+option('flexran_sdk', type: 'string', value: '',
+	description: 'Path to FlexRAN SDK optional Libraries for BBDEV device')
 option('ibverbs_link', type: 'combo', choices : ['shared', 'dlopen'], value: 'shared',
 	description: 'Linkage method (shared/dlopen) for Mellanox PMDs with ibverbs dependencies.')
 option('include_subdir_arch', type: 'string', value: '',
