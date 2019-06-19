@@ -6,7 +6,6 @@
 #define _ICE_COMMON_H_
 
 #include "ice_type.h"
-
 #include "ice_flex_pipe.h"
 #include "ice_switch.h"
 #include "ice_fdir.h"
@@ -34,8 +33,7 @@ ice_clean_rq_elem(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		  struct ice_rq_event_info *e, u16 *pending);
 enum ice_status
 ice_get_link_status(struct ice_port_info *pi, bool *link_up);
-enum ice_status
-ice_update_link_info(struct ice_port_info *pi);
+enum ice_status ice_update_link_info(struct ice_port_info *pi);
 enum ice_status
 ice_acquire_res(struct ice_hw *hw, enum ice_aq_res_ids res,
 		enum ice_aq_res_access_type access, u32 timeout);
@@ -195,8 +193,8 @@ ice_cfg_tc_node_bw_alloc(struct ice_port_info *pi, u8 tc,
 enum ice_status ice_cfg_rl_burst_size(struct ice_hw *hw, u32 bytes);
 void ice_output_fw_log(struct ice_hw *hw, struct ice_aq_desc *desc, void *buf);
 void
-ice_stat_update40(struct ice_hw *hw, u32 hireg, u32 loreg,
-		  bool prev_stat_loaded, u64 *prev_stat, u64 *cur_stat);
+ice_stat_update40(struct ice_hw *hw, u32 reg, bool prev_stat_loaded,
+		  u64 *prev_stat, u64 *cur_stat);
 void
 ice_stat_update32(struct ice_hw *hw, u32 reg, bool prev_stat_loaded,
 		  u64 *prev_stat, u64 *cur_stat);
