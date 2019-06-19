@@ -147,22 +147,15 @@ ice_test_and_set_bit(u16 nr, ice_bitmap_t *bitmap)
  * @bmp: bitmap to set zeros
  * @size: Size of the bitmaps in bits
  *
- * This function sets bits of a bitmap to zero.
+ * Set all of the bits in a bitmap to zero. Note that this function assumes it
+ * operates on an ice_bitmap_t which was declared using ice_declare_bitmap. It
+ * will zero every bit in the last chunk, even if those bits are beyond the
+ * size.
  */
 static inline void ice_zero_bitmap(ice_bitmap_t *bmp, u16 size)
 {
-	ice_bitmap_t mask;
-	u16 i;
-
-	/* Handle all but last chunk*/
-	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
-		bmp[i] = 0;
-	/* For the last chunk, we want to take care of not to modify bits
-	 * outside the size boundary. ~mask take care of all the bits outside
-	 * the boundary.
-	 */
-	mask = LAST_CHUNK_MASK(size);
-	bmp[i] &= ~mask;
+	ice_memset(bmp, 0, BITS_TO_CHUNKS(size) * sizeof(ice_bitmap_t),
+		   ICE_NONDMA_MEM);
 }
 
 /**
