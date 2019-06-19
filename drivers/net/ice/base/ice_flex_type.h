@@ -675,6 +675,7 @@ struct ice_blk_info {
 	struct ice_prof_redir prof_redir;
 	struct ice_es es;
 	u8 overwrite; /* set to true to allow overwrite of table entries */
+	u8 is_list_init;
 };
 
 enum ice_chg_type {

@@ -1375,10 +1375,12 @@ enum ice_status ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
 
 	if (!status) {
 		hw->seg = seg;
-		/* on successful package download, update other required
-		 * registers to support the package
+		/* on successful package download update other required
+		 * registers to support the package and fill HW tables
+		 * with package content.
 		 */
 		ice_init_pkg_regs(hw);
+		ice_fill_blk_tbls(hw);
 	} else {
 		ice_debug(hw, ICE_DBG_INIT, "package load failed, %d\n",
 			  status);
@@ -2756,6 +2758,65 @@ static const u32 ice_blk_sids[ICE_BLK_COUNT][ICE_SID_OFF_COUNT] = {
 };
 
 /**
+ * ice_init_sw_xlt1_db - init software XLT1 database from HW tables
+ * @hw: pointer to the hardware structure
+ * @blk: the HW block to initialize
+ */
+static
+void ice_init_sw_xlt1_db(struct ice_hw *hw, enum ice_block blk)
+{
+	u16 pt;
+
+	for (pt = 0; pt < hw->blk[blk].xlt1.count; pt++) {
+		u8 ptg;
+
+		ptg = hw->blk[blk].xlt1.t[pt];
+		if (ptg != ICE_DEFAULT_PTG) {
+			ice_ptg_alloc_val(hw, blk, ptg);
+			ice_ptg_add_mv_ptype(hw, blk, pt, ptg);
+		}
+	}
+}
+
+/**
+ * ice_init_sw_xlt2_db - init software XLT2 database from HW tables
+ * @hw: pointer to the hardware structure
+ * @blk: the HW block to initialize
+ */
+static void ice_init_sw_xlt2_db(struct ice_hw *hw, enum ice_block blk)
+{
+	u16 vsi;
+
+	for (vsi = 0; vsi < hw->blk[blk].xlt2.count; vsi++) {
+		u16 vsig;
+
+		vsig = hw->blk[blk].xlt2.t[vsi];
+		if (vsig) {
+			ice_vsig_alloc_val(hw, blk, vsig);
+			ice_vsig_add_mv_vsi(hw, blk, vsi, vsig);
+			/* no changes at this time, since this has been
+			 * initialized from the original package
+			 */
+			hw->blk[blk].xlt2.vsis[vsi].changed = 0;
+		}
+	}
+}
+
+/**
+ * ice_init_sw_db - init software database from HW tables
+ * @hw: pointer to the hardware structure
+ */
+static void ice_init_sw_db(struct ice_hw *hw)
+{
+	u16 i;
+
+	for (i = 0; i < ICE_BLK_COUNT; i++) {
+		ice_init_sw_xlt1_db(hw, (enum ice_block)i);
+		ice_init_sw_xlt2_db(hw, (enum ice_block)i);
+	}
+}
+
+/**
  * ice_fill_tbl - Reads content of a single table type into database
  * @hw: pointer to the hardware structure
  * @block_id: Block ID of the table to copy
@@ -2853,12 +2914,12 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 		case ICE_SID_FLD_VEC_PE:
 			es = (struct ice_sw_fv_section *)sect;
 			src = (u8 *)es->fv;
-			sect_len = LE16_TO_CPU(es->count) *
-				hw->blk[block_id].es.fvw *
+			sect_len = (u32)(LE16_TO_CPU(es->count) *
+					 hw->blk[block_id].es.fvw) *
 				sizeof(*hw->blk[block_id].es.t);
 			dst = (u8 *)hw->blk[block_id].es.t;
-			dst_len = hw->blk[block_id].es.count *
-				hw->blk[block_id].es.fvw *
+			dst_len = (u32)(hw->blk[block_id].es.count *
+					hw->blk[block_id].es.fvw) *
 				sizeof(*hw->blk[block_id].es.t);
 			break;
 		default:
@@ -2886,75 +2947,61 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 }
 
 /**
- * ice_fill_blk_tbls - Read package content for tables of a block
+ * ice_fill_blk_tbls - Read package context for tables
  * @hw: pointer to the hardware structure
- * @block_id: The block ID which contains the tables to be copied
  *
  * Reads the current package contents and populates the driver
- * database with the data it contains to allow for advanced driver
- * features.
+ * database with the data iteratively for all advanced feature
+ * blocks. Assume that the Hw tables have been allocated.
  */
-static void ice_fill_blk_tbls(struct ice_hw *hw, enum ice_block block_id)
+void ice_fill_blk_tbls(struct ice_hw *hw)
 {
-	ice_fill_tbl(hw, block_id, hw->blk[block_id].xlt1.sid);
-	ice_fill_tbl(hw, block_id, hw->blk[block_id].xlt2.sid);
-	ice_fill_tbl(hw, block_id, hw->blk[block_id].prof.sid);
-	ice_fill_tbl(hw, block_id, hw->blk[block_id].prof_redir.sid);
-	ice_fill_tbl(hw, block_id, hw->blk[block_id].es.sid);
+	u8 i;
+
+	for (i = 0; i < ICE_BLK_COUNT; i++) {
+		enum ice_block blk_id = (enum ice_block)i;
+
+		ice_fill_tbl(hw, blk_id, hw->blk[blk_id].xlt1.sid);
+		ice_fill_tbl(hw, blk_id, hw->blk[blk_id].xlt2.sid);
+		ice_fill_tbl(hw, blk_id, hw->blk[blk_id].prof.sid);
+		ice_fill_tbl(hw, blk_id, hw->blk[blk_id].prof_redir.sid);
+		ice_fill_tbl(hw, blk_id, hw->blk[blk_id].es.sid);
+	}
+
+	ice_init_sw_db(hw);
 }
 
 /**
  * ice_free_flow_profs - free flow profile entries
  * @hw: pointer to the hardware structure
+ * @blk_idx: HW block index
  */
-static void ice_free_flow_profs(struct ice_hw *hw)
+static void ice_free_flow_profs(struct ice_hw *hw, u8 blk_idx)
 {
-	u8 i;
+	struct ice_flow_prof *p, *tmp;
 
-	for (i = 0; i < ICE_BLK_COUNT; i++) {
-		struct ice_flow_prof *p, *tmp;
+	/* This call is being made as part of resource deallocation
+	 * during unload. Lock acquire and release will not be
+	 * necessary here.
+	 */
+	LIST_FOR_EACH_ENTRY_SAFE(p, tmp, &hw->fl_profs[blk_idx],
+				 ice_flow_prof, l_entry) {
+		struct ice_flow_entry *e, *t;
 
-		if (!&hw->fl_profs[i])
-			continue;
+		LIST_FOR_EACH_ENTRY_SAFE(e, t, &p->entries,
+					 ice_flow_entry, l_entry)
+			ice_flow_rem_entry(hw, ICE_FLOW_ENTRY_HNDL(e));
 
-		/* This call is being made as part of resource deallocation
-		 * during unload. Lock acquire and release will not be
-		 * necessary here.
-		 */
-		LIST_FOR_EACH_ENTRY_SAFE(p, tmp, &hw->fl_profs[i],
-					 ice_flow_prof, l_entry) {
-			struct ice_flow_entry *e, *t;
-
-			LIST_FOR_EACH_ENTRY_SAFE(e, t, &p->entries,
-						 ice_flow_entry, l_entry)
-				ice_flow_rem_entry(hw, ICE_FLOW_ENTRY_HNDL(e));
-
-			LIST_DEL(&p->l_entry);
-			if (p->acts)
-				ice_free(hw, p->acts);
-			ice_free(hw, p);
-		}
-
-		ice_destroy_lock(&hw->fl_profs_locks[i]);
+		LIST_DEL(&p->l_entry);
+		if (p->acts)
+			ice_free(hw, p->acts);
+		ice_free(hw, p);
 	}
-}
 
-/**
- * ice_free_prof_map - frees the profile map
- * @hw: pointer to the hardware structure
- * @blk: the HW block which contains the profile map to be freed
- */
-static void ice_free_prof_map(struct ice_hw *hw, enum ice_block blk)
-{
-	struct ice_prof_map *del, *tmp;
-
-	if (LIST_EMPTY(&hw->blk[blk].es.prof_map))
-		return;
-
-	LIST_FOR_EACH_ENTRY_SAFE(del, tmp, &hw->blk[blk].es.prof_map,
-				 ice_prof_map, list) {
-		ice_rem_prof(hw, blk, del->profile_cookie);
-	}
+	/* if driver is in reset and tables are being cleared
+	 * re-initialize the flow profile list heads
+	 */
+	INIT_LIST_HEAD(&hw->fl_profs[blk_idx]);
 }
 
 /**
@@ -2980,10 +3027,24 @@ static void ice_free_vsig_tbl(struct ice_hw *hw, enum ice_block blk)
  */
 void ice_free_hw_tbls(struct ice_hw *hw)
 {
+	struct ice_rss_cfg *r, *rt;
 	u8 i;
 
 	for (i = 0; i < ICE_BLK_COUNT; i++) {
-		ice_free_prof_map(hw, (enum ice_block)i);
+		if (hw->blk[i].is_list_init) {
+			struct ice_es *es = &hw->blk[i].es;
+			struct ice_prof_map *del, *tmp;
+
+			LIST_FOR_EACH_ENTRY_SAFE(del, tmp, &es->prof_map,
+						 ice_prof_map, list) {
+				LIST_DEL(&del->list);
+				ice_free(hw, del);
+			}
+
+			ice_free_flow_profs(hw, i);
+			ice_destroy_lock(&hw->fl_profs_locks[i]);
+			hw->blk[i].is_list_init = false;
+		}
 		ice_free_vsig_tbl(hw, (enum ice_block)i);
 		ice_free(hw, hw->blk[i].xlt1.ptypes);
 		ice_free(hw, hw->blk[i].xlt1.ptg_tbl);
@@ -2998,84 +3059,24 @@ void ice_free_hw_tbls(struct ice_hw *hw)
 		ice_free(hw, hw->blk[i].es.written);
 	}
 
+	LIST_FOR_EACH_ENTRY_SAFE(r, rt, &hw->rss_list_head,
+				 ice_rss_cfg, l_entry) {
+		LIST_DEL(&r->l_entry);
+		ice_free(hw, r);
+	}
+	ice_destroy_lock(&hw->rss_locks);
 	ice_memset(hw->blk, 0, sizeof(hw->blk), ICE_NONDMA_MEM);
-
-	ice_free_flow_profs(hw);
 }
 
 /**
  * ice_init_flow_profs - init flow profile locks and list heads
  * @hw: pointer to the hardware structure
+ * @blk_idx: HW block index
  */
-static void ice_init_flow_profs(struct ice_hw *hw)
+static void ice_init_flow_profs(struct ice_hw *hw, u8 blk_idx)
 {
-	u8 i;
-
-	for (i = 0; i < ICE_BLK_COUNT; i++) {
-		ice_init_lock(&hw->fl_profs_locks[i]);
-		INIT_LIST_HEAD(&hw->fl_profs[i]);
-	}
-}
-
-/**
- * ice_init_sw_xlt1_db - init software XLT1 database from HW tables
- * @hw: pointer to the hardware structure
- * @blk: the HW block to initialize
- */
-static
-void ice_init_sw_xlt1_db(struct ice_hw *hw, enum ice_block blk)
-{
-	u16 pt;
-
-	for (pt = 0; pt < hw->blk[blk].xlt1.count; pt++) {
-		u8 ptg;
-
-		ptg = hw->blk[blk].xlt1.t[pt];
-		if (ptg != ICE_DEFAULT_PTG) {
-			ice_ptg_alloc_val(hw, blk, ptg);
-			ice_ptg_add_mv_ptype(hw, blk, pt, ptg);
-		}
-	}
-}
-
-/**
- * ice_init_sw_xlt2_db - init software XLT2 database from HW tables
- * @hw: pointer to the hardware structure
- * @blk: the HW block to initialize
- */
-static
-void ice_init_sw_xlt2_db(struct ice_hw *hw, enum ice_block blk)
-{
-	u16 vsi;
-
-	for (vsi = 0; vsi < hw->blk[blk].xlt2.count; vsi++) {
-		u16 vsig;
-
-		vsig = hw->blk[blk].xlt2.t[vsi];
-		if (vsig) {
-			ice_vsig_alloc_val(hw, blk, vsig);
-			ice_vsig_add_mv_vsi(hw, blk, vsi, vsig);
-			/* no changes at this time, since this has been
-			 * initialized from the original package
-			 */
-			hw->blk[blk].xlt2.vsis[vsi].changed = 0;
-		}
-	}
-}
-
-/**
- * ice_init_sw_db - init software database from HW tables
- * @hw: pointer to the hardware structure
- */
-static
-void ice_init_sw_db(struct ice_hw *hw)
-{
-	u16 i;
-
-	for (i = 0; i < ICE_BLK_COUNT; i++) {
-		ice_init_sw_xlt1_db(hw, (enum ice_block)i);
-		ice_init_sw_xlt2_db(hw, (enum ice_block)i);
-	}
+	ice_init_lock(&hw->fl_profs_locks[blk_idx]);
+	INIT_LIST_HEAD(&hw->fl_profs[blk_idx]);
 }
 
 /**
@@ -3086,14 +3087,22 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 {
 	u8 i;
 
-	ice_init_flow_profs(hw);
-
+	ice_init_lock(&hw->rss_locks);
+	INIT_LIST_HEAD(&hw->rss_list_head);
 	for (i = 0; i < ICE_BLK_COUNT; i++) {
 		struct ice_prof_redir *prof_redir = &hw->blk[i].prof_redir;
 		struct ice_prof_tcam *prof = &hw->blk[i].prof;
 		struct ice_xlt1 *xlt1 = &hw->blk[i].xlt1;
 		struct ice_xlt2 *xlt2 = &hw->blk[i].xlt2;
 		struct ice_es *es = &hw->blk[i].es;
+		u16 j;
+
+		if (hw->blk[i].is_list_init)
+			continue;
+
+		ice_init_flow_profs(hw, i);
+		INIT_LIST_HEAD(&es->prof_map);
+		hw->blk[i].is_list_init = true;
 
 		hw->blk[i].overwrite = blk_sizes[i].overwrite;
 		es->reverse = blk_sizes[i].reverse;
@@ -3131,6 +3140,9 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 		if (!xlt2->vsig_tbl)
 			goto err;
 
+		for (j = 0; j < xlt2->count; j++)
+			INIT_LIST_HEAD(&xlt2->vsig_tbl[j].prop_lst);
+
 		xlt2->t = (u16 *)ice_calloc(hw, xlt2->count, sizeof(*xlt2->t));
 		if (!xlt2->t)
 			goto err;
@@ -3157,8 +3169,8 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 		es->count = blk_sizes[i].es;
 		es->fvw = blk_sizes[i].fvw;
 		es->t = (struct ice_fv_word *)
-			ice_calloc(hw, es->count * es->fvw, sizeof(*es->t));
-
+			ice_calloc(hw, (u32)(es->count * es->fvw),
+				   sizeof(*es->t));
 		if (!es->t)
 			goto err;
 
@@ -3170,15 +3182,7 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 
 		if (!es->ref_count)
 			goto err;
-
-		INIT_LIST_HEAD(&es->prof_map);
-
-		/* Now that tables are allocated, read in package data */
-		ice_fill_blk_tbls(hw, (enum ice_block)i);
 	}
-
-	ice_init_sw_db(hw);
-
 	return ICE_SUCCESS;
 
 err:

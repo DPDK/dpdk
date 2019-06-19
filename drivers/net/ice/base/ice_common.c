@@ -916,12 +916,13 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 
 	ice_init_flex_flds(hw, ICE_RXDID_FLEX_NIC);
 	ice_init_flex_flds(hw, ICE_RXDID_FLEX_NIC_2);
-
 	/* Obtain counter base index which would be used by flow director */
 	status = ice_alloc_fd_res_cntr(hw, &hw->fd_ctr_base);
 	if (status)
 		goto err_unroll_fltr_mgmt_struct;
-
+	status = ice_init_hw_tbls(hw);
+	if (status)
+		goto err_unroll_fltr_mgmt_struct;
 	return ICE_SUCCESS;
 
 err_unroll_fltr_mgmt_struct:
@@ -952,6 +953,7 @@ void ice_deinit_hw(struct ice_hw *hw)
 	ice_sched_cleanup_all(hw);
 	ice_sched_clear_agg(hw);
 	ice_free_seg(hw);
+	ice_free_hw_tbls(hw);
 
 	if (hw->port_info) {
 		ice_free(hw, hw->port_info);
