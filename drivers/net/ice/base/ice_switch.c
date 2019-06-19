@@ -3034,6 +3034,27 @@ ice_rem_sw_rule_info(struct ice_hw *hw, struct LIST_HEAD_TYPE *rule_head)
 	}
 }
 
+/**
+ * ice_rem_adv_rule_info
+ * @hw: pointer to the hardware structure
+ * @rule_head: pointer to the switch list structure that we want to delete
+ */
+static void
+ice_rem_adv_rule_info(struct ice_hw *hw, struct LIST_HEAD_TYPE *rule_head)
+{
+	struct ice_adv_fltr_mgmt_list_entry *tmp_entry;
+	struct ice_adv_fltr_mgmt_list_entry *lst_itr;
+
+	if (LIST_EMPTY(rule_head))
+		return;
+
+	LIST_FOR_EACH_ENTRY_SAFE(lst_itr, tmp_entry, rule_head,
+				 ice_adv_fltr_mgmt_list_entry, list_entry) {
+		LIST_DEL(&lst_itr->list_entry);
+		ice_free(hw, lst_itr->lkups);
+		ice_free(hw, lst_itr);
+	}
+}
 
 /**
  * ice_rem_all_sw_rules_info
@@ -3050,6 +3071,8 @@ void ice_rem_all_sw_rules_info(struct ice_hw *hw)
 		rule_head = &sw->recp_list[i].filt_rules;
 		if (!sw->recp_list[i].adv_rule)
 			ice_rem_sw_rule_info(hw, rule_head);
+		else
+			ice_rem_adv_rule_info(hw, rule_head);
 	}
 }
 
@@ -5689,6 +5712,38 @@ end:
 	return status;
 }
 
+/**
+ * ice_replay_vsi_adv_rule - Replay advanced rule for requested VSI
+ * @hw: pointer to the hardware structure
+ * @vsi_handle: driver VSI handle
+ * @list_head: list for which filters need to be replayed
+ *
+ * Replay the advanced rule for the given VSI.
+ */
+static enum ice_status
+ice_replay_vsi_adv_rule(struct ice_hw *hw, u16 vsi_handle,
+			struct LIST_HEAD_TYPE *list_head)
+{
+	struct ice_rule_query_data added_entry = { 0 };
+	struct ice_adv_fltr_mgmt_list_entry *adv_fltr;
+	enum ice_status status = ICE_SUCCESS;
+
+	if (LIST_EMPTY(list_head))
+		return status;
+	LIST_FOR_EACH_ENTRY(adv_fltr, list_head, ice_adv_fltr_mgmt_list_entry,
+			    list_entry) {
+		struct ice_adv_rule_info *rinfo = &adv_fltr->rule_info;
+		u16 lk_cnt = adv_fltr->lkups_cnt;
+
+		if (vsi_handle != rinfo->sw_act.vsi_handle)
+			continue;
+		status = ice_add_adv_rule(hw, adv_fltr->lkups, lk_cnt, rinfo,
+					  &added_entry);
+		if (status)
+			break;
+	}
+	return status;
+}
 
 /**
  * ice_replay_vsi_all_fltr - replay all filters stored in bookkeeping lists
@@ -5700,23 +5755,23 @@ end:
 enum ice_status ice_replay_vsi_all_fltr(struct ice_hw *hw, u16 vsi_handle)
 {
 	struct ice_switch_info *sw = hw->switch_info;
-	enum ice_status status = ICE_SUCCESS;
+	enum ice_status status;
 	u8 i;
 
+	/* Update the recipes that were created */
 	for (i = 0; i < ICE_MAX_NUM_RECIPES; i++) {
-		/* Update the default recipe lines and ones that were created */
-		if (i < ICE_MAX_NUM_RECIPES || sw->recp_list[i].recp_created) {
-			struct LIST_HEAD_TYPE *head;
+		struct LIST_HEAD_TYPE *head;
 
-			head = &sw->recp_list[i].filt_replay_rules;
-			if (!sw->recp_list[i].adv_rule)
-				status = ice_replay_vsi_fltr(hw, vsi_handle, i,
-							     head);
-			if (status != ICE_SUCCESS)
-				return status;
-		}
+		head = &sw->recp_list[i].filt_replay_rules;
+		if (!sw->recp_list[i].adv_rule)
+			status = ice_replay_vsi_fltr(hw, vsi_handle, i, head);
+		else
+			status = ice_replay_vsi_adv_rule(hw, vsi_handle, head);
+		if (status != ICE_SUCCESS)
+			return status;
 	}
-	return status;
+
+	return ICE_SUCCESS;
 }
 
 /**
@@ -5740,6 +5795,8 @@ void ice_rm_all_sw_replay_rule_info(struct ice_hw *hw)
 			l_head = &sw->recp_list[i].filt_replay_rules;
 			if (!sw->recp_list[i].adv_rule)
 				ice_rem_sw_rule_info(hw, l_head);
+			else
+				ice_rem_adv_rule_info(hw, l_head);
 		}
 	}
 }
