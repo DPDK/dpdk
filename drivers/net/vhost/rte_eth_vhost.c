@@ -853,6 +853,10 @@ vring_state_changed(int vid, uint16_t vring, int enable)
 	/* won't be NULL */
 	state = vring_states[eth_dev->data->port_id];
 	rte_spinlock_lock(&state->lock);
+	if (state->cur[vring] == enable) {
+		rte_spinlock_unlock(&state->lock);
+		return 0;
+	}
 	state->cur[vring] = enable;
 	state->max_vring = RTE_MAX(vring, state->max_vring);
 	rte_spinlock_unlock(&state->lock);
