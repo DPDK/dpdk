@@ -742,9 +742,11 @@ hn_dev_xstats_get(struct rte_eth_dev *dev,
 			continue;
 
 		stats = (const char *)&txq->stats;
-		for (t = 0; t < RTE_DIM(hn_stat_strings); t++)
-			xstats[count++].value = *(const uint64_t *)
+		for (t = 0; t < RTE_DIM(hn_stat_strings); t++, count++) {
+			xstats[count].id = count;
+			xstats[count].value = *(const uint64_t *)
 				(stats + hn_stat_strings[t].offset);
+		}
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -754,9 +756,11 @@ hn_dev_xstats_get(struct rte_eth_dev *dev,
 			continue;
 
 		stats = (const char *)&rxq->stats;
-		for (t = 0; t < RTE_DIM(hn_stat_strings); t++)
-			xstats[count++].value = *(const uint64_t *)
+		for (t = 0; t < RTE_DIM(hn_stat_strings); t++, count++) {
+			xstats[count].id = count;
+			xstats[count].value = *(const uint64_t *)
 				(stats + hn_stat_strings[t].offset);
+		}
 	}
 
 	ret = hn_vf_xstats_get(dev, xstats + count, n - count);
