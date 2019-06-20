@@ -162,9 +162,6 @@ int32_t rte_service_runstate_set(uint32_t id, uint32_t runstate);
 int32_t rte_service_runstate_get(uint32_t id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * This function returns whether the service may be currently executing on
  * at least one lcore, or definitely is not. This function can be used to
  * determine if, after setting the service runstate to stopped, the service
@@ -178,7 +175,6 @@ int32_t rte_service_runstate_get(uint32_t id);
  * @retval 0 Service is not running on any lcore
  * @retval -EINVAL Invalid service id
  */
-__rte_experimental
 int32_t
 rte_service_may_be_active(uint32_t id);
 
@@ -390,9 +386,6 @@ int32_t rte_service_attr_reset_all(uint32_t id);
 #define RTE_SERVICE_LCORE_ATTR_LOOPS 0
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get an attribute from a service core.
  *
  * @param lcore Id of the service core.
@@ -402,7 +395,6 @@ int32_t rte_service_attr_reset_all(uint32_t id);
  *         -EINVAL Invalid lcore, attr_id or attr_value was NULL.
  *         -ENOTSUP lcore is not a service core.
  */
-__rte_experimental
 int32_t
 rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
 			   uint64_t *attr_value);
@@ -418,7 +410,6 @@ rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
  *         -EINVAL Invalid service id provided
  *         -ENOTSUP lcore is not a service core.
  */
-__rte_experimental
 int32_t
 rte_service_lcore_attr_reset_all(uint32_t lcore);
 

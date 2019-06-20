@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-allow_experimental_apis = true
 sources = files('sw_evdev_scheduler.c',
 	'sw_evdev_selftest.c',
 	'sw_evdev_worker.c',
