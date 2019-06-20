@@ -1881,37 +1881,33 @@ virtio_recv_mergeable_pkts_packed(void *rx_queue,
 	while (seg_res != 0) {
 		uint16_t rcv_cnt = RTE_MIN((uint16_t)seg_res,
 					VIRTIO_MBUF_BURST_SZ);
-		if (likely(vq->vq_free_cnt >= rcv_cnt)) {
-			num = virtqueue_dequeue_burst_rx_packed(vq, rcv_pkts,
-					len, rcv_cnt);
-			uint16_t extra_idx = 0;
+		uint16_t extra_idx = 0;
 
-			rcv_cnt = num;
-
-			while (extra_idx < rcv_cnt) {
-				rxm = rcv_pkts[extra_idx];
-
-				rxm->data_off =
-					RTE_PKTMBUF_HEADROOM - hdr_size;
-				rxm->pkt_len = (uint32_t)(len[extra_idx]);
-				rxm->data_len = (uint16_t)(len[extra_idx]);
-
-				prev->next = rxm;
-				prev = rxm;
-				rx_pkts[nb_rx]->pkt_len += len[extra_idx];
-				extra_idx += 1;
-			}
-			seg_res -= rcv_cnt;
-			if (!seg_res) {
-				virtio_rx_stats_updated(rxvq, rx_pkts[nb_rx]);
-				nb_rx++;
-			}
-		} else {
-			PMD_RX_LOG(ERR,
-					"No enough segments for packet.");
+		rcv_cnt = virtqueue_dequeue_burst_rx_packed(vq, rcv_pkts,
+				len, rcv_cnt);
+		if (unlikely(rcv_cnt == 0)) {
+			PMD_RX_LOG(ERR, "No enough segments for packet.");
 			rte_pktmbuf_free(rx_pkts[nb_rx]);
 			rxvq->stats.errors++;
 			break;
+		}
+
+		while (extra_idx < rcv_cnt) {
+			rxm = rcv_pkts[extra_idx];
+
+			rxm->data_off = RTE_PKTMBUF_HEADROOM - hdr_size;
+			rxm->pkt_len = (uint32_t)(len[extra_idx]);
+			rxm->data_len = (uint16_t)(len[extra_idx]);
+
+			prev->next = rxm;
+			prev = rxm;
+			rx_pkts[nb_rx]->pkt_len += len[extra_idx];
+			extra_idx += 1;
+		}
+		seg_res -= rcv_cnt;
+		if (!seg_res) {
+			virtio_rx_stats_updated(rxvq, rx_pkts[nb_rx]);
+			nb_rx++;
 		}
 	}
 
