@@ -763,7 +763,7 @@ hn_dev_xstats_get(struct rte_eth_dev *dev,
 		}
 	}
 
-	ret = hn_vf_xstats_get(dev, xstats + count, n - count);
+	ret = hn_vf_xstats_get(dev, xstats, count, n);
 	if (ret < 0)
 		return ret;
 

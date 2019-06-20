@@ -506,17 +506,19 @@ int hn_vf_xstats_get_names(struct rte_eth_dev *dev,
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_eth_dev *vf_dev;
 	int i, count = 0;
-	char tmp[RTE_ETH_XSTATS_NAME_SIZE];
 
 	rte_spinlock_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
-	if (vf_dev && vf_dev->dev_ops->xstats_get_names)
-		count = vf_dev->dev_ops->xstats_get_names(vf_dev, names, n);
+	if (vf_dev)
+		count = rte_eth_xstats_get_names(vf_dev->data->port_id,
+						 names, n);
 	rte_spinlock_unlock(&hv->vf_lock);
 
 	/* add vf_ prefix to xstat names */
 	if (names) {
 		for (i = 0; i < count; i++) {
+			char tmp[RTE_ETH_XSTATS_NAME_SIZE];
+
 			snprintf(tmp, sizeof(tmp), "vf_%s", names[i].name);
 			strlcpy(names[i].name, tmp, sizeof(names[i].name));
 		}
@@ -527,17 +529,25 @@ int hn_vf_xstats_get_names(struct rte_eth_dev *dev,
 
 int hn_vf_xstats_get(struct rte_eth_dev *dev,
 		     struct rte_eth_xstat *xstats,
+		     unsigned int offset,
 		     unsigned int n)
 {
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_eth_dev *vf_dev;
-	int count = 0;
+	int i, count = 0;
 
 	rte_spinlock_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
-	if (vf_dev && vf_dev->dev_ops->xstats_get)
-		count = vf_dev->dev_ops->xstats_get(vf_dev, xstats, n);
+	if (vf_dev)
+		count = rte_eth_xstats_get(vf_dev->data->port_id,
+					   xstats + offset, n - offset);
 	rte_spinlock_unlock(&hv->vf_lock);
+
+	/* Offset id's for VF stats */
+	if (count > 0) {
+		for (i = 0; i < count; i++)
+			xstats[i + offset].id += offset;
+	}
 
 	return count;
 }
@@ -549,8 +559,8 @@ void hn_vf_xstats_reset(struct rte_eth_dev *dev)
 
 	rte_spinlock_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
-	if (vf_dev && vf_dev->dev_ops->xstats_reset)
-		vf_dev->dev_ops->xstats_reset(vf_dev);
+	if (vf_dev)
+		rte_eth_xstats_reset(vf_dev->data->port_id);
 	rte_spinlock_unlock(&hv->vf_lock);
 }
 

@@ -241,7 +241,7 @@ int	hn_vf_xstats_get_names(struct rte_eth_dev *dev,
 			       unsigned int size);
 int	hn_vf_xstats_get(struct rte_eth_dev *dev,
 			 struct rte_eth_xstat *xstats,
-			 unsigned int n);
+			 unsigned int offset, unsigned int n);
 void	hn_vf_xstats_reset(struct rte_eth_dev *dev);
 int	hn_vf_rss_hash_update(struct rte_eth_dev *dev,
 			      struct rte_eth_rss_conf *rss_conf);
