@@ -284,6 +284,8 @@ vhost_user_set_features(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	} else {
 		dev->vhost_hlen = sizeof(struct virtio_net_hdr);
 	}
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"negotiated Virtio features: 0x%" PRIx64 "\n", dev->features);
 	VHOST_LOG_DEBUG(VHOST_CONFIG,
 		"(%d) mergeable RX buffers %s, virtio 1 %s\n",
 		dev->vid,
@@ -1406,6 +1408,9 @@ vhost_user_set_protocol_features(struct virtio_net **pdev,
 	}
 
 	dev->protocol_features = protocol_features;
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"negotiated Vhost-user protocol features: 0x%" PRIx64 "\n",
+		dev->protocol_features);
 
 	return RTE_VHOST_MSG_RESULT_OK;
 }
