@@ -133,6 +133,14 @@ For applications that use ``rte_pktmbuf_create()``, there is a config setting
 (``RTE_MBUF_DEFAULT_MEMPOOL_OPS``) that allows the application to make use of
 an alternative mempool handler.
 
+  .. note::
+
+    When running a DPDK application with shared libraries, mempool handler
+    shared objects specified with the '-d' EAL command-line parameter are
+    dynamically loaded. When running a multi-process application with shared
+    libraries, the -d arguments for mempool handlers *must be specified in the
+    same order for all processes* to ensure correct operation.
+
 
 Use Cases
 ---------
