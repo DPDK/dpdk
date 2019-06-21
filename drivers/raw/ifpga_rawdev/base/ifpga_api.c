@@ -76,6 +76,7 @@ static int ifpga_acc_get_region_info(struct opae_accelerator *acc,
 	info->flags = ACC_REGION_READ | ACC_REGION_WRITE | ACC_REGION_MMIO;
 	info->len = afu_info->region[info->index].len;
 	info->addr = afu_info->region[info->index].addr;
+	info->phys_addr = afu_info->region[info->index].phys_addr;
 
 	return 0;
 }
