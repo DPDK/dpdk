@@ -31,7 +31,7 @@
 #define CMD_NOP			0ULL
 #define CMD_RD			1ULL
 #define CMD_WR			2ULL
-#define CTRL_DEV_SELECT		GENMASK_ULL(52, 49)
+#define CTRL_DEV_SELECT		GENMASK_ULL(53, 49)
 #define CTRL_DS_SHIFT   49
 #define CTRL_FEAT_SELECT	BIT_ULL(48)
 #define SELECT_IP		0
