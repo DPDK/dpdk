@@ -149,7 +149,7 @@ static inline int fpga_port_reset(struct ifpga_port_hw *port)
 	return ret;
 }
 
-int do_pr(struct ifpga_hw *hw, u32 port_id, void *buffer, u32 size,
+int do_pr(struct ifpga_hw *hw, u32 port_id, const char *buffer, u32 size,
 	  u64 *status);
 
 int fme_get_prop(struct ifpga_fme_hw *fme, struct feature_prop *prop);

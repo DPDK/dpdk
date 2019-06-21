@@ -44,7 +44,7 @@ struct opae_manager {
 
 /* FIXME: add more management ops, e.g power/thermal and etc */
 struct opae_manager_ops {
-	int (*flash)(struct opae_manager *mgr, int id, void *buffer,
+	int (*flash)(struct opae_manager *mgr, int id, const char *buffer,
 		     u32 size, u64 *status);
 	int (*get_eth_group_region_info)(struct opae_manager *mgr,
 			struct opae_eth_group_region_info *info);
@@ -74,7 +74,7 @@ struct opae_manager *
 opae_manager_alloc(const char *name, struct opae_manager_ops *ops,
 		struct opae_manager_networking_ops *network_ops, void *data);
 #define opae_manager_free(mgr) opae_free(mgr)
-int opae_manager_flash(struct opae_manager *mgr, int acc_id, void *buf,
+int opae_manager_flash(struct opae_manager *mgr, int acc_id, const char *buf,
 		       u32 size, u64 *status);
 int opae_manager_get_eth_group_region_info(struct opae_manager *mgr,
 		u8 group_id, struct opae_eth_group_region_info *info);

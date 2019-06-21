@@ -225,7 +225,7 @@ ifpga_rawdev_reset(struct rte_rawdev *dev)
 }
 
 static int
-fpga_pr(struct rte_rawdev *raw_dev, u32 port_id, u64 *buffer, u32 size,
+fpga_pr(struct rte_rawdev *raw_dev, u32 port_id, const char *buffer, u32 size,
 			u64 *status)
 {
 
@@ -296,6 +296,11 @@ rte_fpga_do_pr(struct rte_rawdev *rawdev, int port_id,
 		goto close_fd;
 	}
 	buffer_size = file_stat.st_size;
+	if (buffer_size <= 0) {
+		ret = -EINVAL;
+		goto close_fd;
+	}
+
 	IFPGA_RAWDEV_PMD_INFO("bitstream file size: %zu\n", buffer_size);
 	buffer = rte_malloc(NULL, buffer_size, 0);
 	if (!buffer) {

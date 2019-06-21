@@ -23,7 +23,7 @@ int ifpga_set_irq(struct ifpga_hw *hw, u32 fiu_id, u32 port_id,
 		  u32 feature_id, void *irq_set);
 
 /* FME APIs */
-int ifpga_pr(struct ifpga_hw *hw, u32 port_id, void *buffer, u32 size,
+int ifpga_pr(struct ifpga_hw *hw, u32 port_id, const char *buffer, u32 size,
 	     u64 *status);
 
 #endif /* _IFPGA_API_H_ */

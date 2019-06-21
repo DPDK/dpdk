@@ -244,8 +244,8 @@ opae_manager_alloc(const char *name, struct opae_manager_ops *ops,
  *
  * Return: 0 on success, otherwise error code.
  */
-int opae_manager_flash(struct opae_manager *mgr, int id, void *buf, u32 size,
-		       u64 *status)
+int opae_manager_flash(struct opae_manager *mgr, int id, const char *buf,
+		u32 size, u64 *status)
 {
 	if (!mgr)
 		return -EINVAL;

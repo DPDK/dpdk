@@ -182,7 +182,7 @@ struct opae_bridge_ops ifpga_br_ops = {
 };
 
 /* Manager APIs */
-static int ifpga_mgr_flash(struct opae_manager *mgr, int id, void *buf,
+static int ifpga_mgr_flash(struct opae_manager *mgr, int id, const char *buf,
 			   u32 size, u64 *status)
 {
 	struct ifpga_fme_hw *fme = mgr->data;
@@ -324,7 +324,7 @@ struct opae_adapter_ops ifpga_adapter_ops = {
  *   - 0: Success, partial reconfiguration finished.
  *   - <0: Error code returned in partial reconfiguration.
  **/
-int ifpga_pr(struct ifpga_hw *hw, u32 port_id, void *buffer, u32 size,
+int ifpga_pr(struct ifpga_hw *hw, u32 port_id, const char *buffer, u32 size,
 	     u64 *status)
 {
 	if (!is_valid_port_id(hw, port_id))
