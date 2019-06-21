@@ -184,7 +184,7 @@ rte_eth_dev_pci_generic_remove(struct rte_pci_device *pci_dev,
 
 	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (!eth_dev)
-		return -ENODEV;
+		return 0;
 
 	if (dev_uninit) {
 		ret = dev_uninit(eth_dev);
