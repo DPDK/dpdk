@@ -34,6 +34,10 @@ uint32_t sfc_logtype_driver;
 static struct sfc_dp_list sfc_dp_head =
 	TAILQ_HEAD_INITIALIZER(sfc_dp_head);
 
+
+static void sfc_eth_dev_clear_ops(struct rte_eth_dev *dev);
+
+
 static int
 sfc_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 {
@@ -335,9 +339,29 @@ sfc_dev_close(struct rte_eth_dev *dev)
 		sfc_err(sa, "unexpected adapter state %u on close", sa->state);
 		break;
 	}
+
+	/*
+	 * Cleanup all resources in accordance with RTE_ETH_DEV_CLOSE_REMOVE.
+	 * Rollback primary process sfc_eth_dev_init() below.
+	 */
+
+	sfc_eth_dev_clear_ops(dev);
+
+	sfc_detach(sa);
+	sfc_unprobe(sa);
+
+	sfc_kvargs_cleanup(sa);
+
 	sfc_adapter_unlock(sa);
+	sfc_adapter_lock_fini(sa);
 
 	sfc_log_init(sa, "done");
+
+	/* Required for logging, so cleanup last */
+	sa->eth_dev = NULL;
+
+	dev->process_private = NULL;
+	free(sa);
 }
 
 static void
@@ -2123,6 +2147,8 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 
 	sfc_log_init(sa, "entry");
 
+	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	dev->data->mac_addrs = rte_zmalloc("sfc", RTE_ETHER_ADDR_LEN, 0);
 	if (dev->data->mac_addrs == NULL) {
 		rc = ENOMEM;
@@ -2189,37 +2215,12 @@ fail_alloc_sa:
 static int
 sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 {
-	struct sfc_adapter *sa;
-
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		sfc_eth_dev_secondary_clear_ops(dev);
 		return 0;
 	}
 
 	sfc_dev_close(dev);
-
-	sa = sfc_adapter_by_eth_dev(dev);
-	sfc_log_init(sa, "entry");
-
-	sfc_adapter_lock(sa);
-
-	sfc_eth_dev_clear_ops(dev);
-
-	sfc_detach(sa);
-	sfc_unprobe(sa);
-
-	sfc_kvargs_cleanup(sa);
-
-	sfc_adapter_unlock(sa);
-	sfc_adapter_lock_fini(sa);
-
-	sfc_log_init(sa, "done");
-
-	/* Required for logging, so cleanup last */
-	sa->eth_dev = NULL;
-
-	dev->process_private = NULL;
-	free(sa);
 
 	return 0;
 }
