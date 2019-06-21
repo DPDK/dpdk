@@ -149,13 +149,7 @@ struct rte_eth_syn_filter {
 		RTE_NTUPLE_FLAGS_DST_PORT | \
 		RTE_NTUPLE_FLAGS_PROTO)
 
-#define TCP_URG_FLAG 0x20
-#define TCP_ACK_FLAG 0x10
-#define TCP_PSH_FLAG 0x08
-#define TCP_RST_FLAG 0x04
-#define TCP_SYN_FLAG 0x02
-#define TCP_FIN_FLAG 0x01
-#define TCP_FLAG_ALL 0x3F
+#define RTE_NTUPLE_TCP_FLAGS_MASK 0x3F /**< TCP flags filter can match. */
 
 /**
  * A structure used to define the ntuple filter entry

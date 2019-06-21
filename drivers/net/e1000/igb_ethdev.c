@@ -3707,7 +3707,7 @@ ntuple_filter_to_2tuple(struct rte_eth_ntuple_filter *filter,
 		return -EINVAL;
 	if (filter->priority > E1000_2TUPLE_MAX_PRI)
 		return -EINVAL;  /* filter index is out of range. */
-	if (filter->tcp_flags > TCP_FLAG_ALL)
+	if (filter->tcp_flags > RTE_NTUPLE_TCP_FLAGS_MASK)
 		return -EINVAL;  /* flags is invalid. */
 
 	switch (filter->dst_port_mask) {
@@ -3787,18 +3787,18 @@ igb_inject_2uple_filter(struct rte_eth_dev *dev,
 		ttqf &= ~E1000_TTQF_MASK_ENABLE;
 
 	/* tcp flags bits setting. */
-	if (filter->filter_info.tcp_flags & TCP_FLAG_ALL) {
-		if (filter->filter_info.tcp_flags & TCP_URG_FLAG)
+	if (filter->filter_info.tcp_flags & RTE_NTUPLE_TCP_FLAGS_MASK) {
+		if (filter->filter_info.tcp_flags & RTE_TCP_URG_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_URG;
-		if (filter->filter_info.tcp_flags & TCP_ACK_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_ACK_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_ACK;
-		if (filter->filter_info.tcp_flags & TCP_PSH_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_PSH_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_PSH;
-		if (filter->filter_info.tcp_flags & TCP_RST_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_RST_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_RST;
-		if (filter->filter_info.tcp_flags & TCP_SYN_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_SYN_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_SYN;
-		if (filter->filter_info.tcp_flags & TCP_FIN_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_FIN_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_FIN;
 	} else {
 		imir_ext |= E1000_IMIREXT_CTRL_BP;
@@ -4193,7 +4193,7 @@ ntuple_filter_to_5tuple_82576(struct rte_eth_ntuple_filter *filter,
 		return -EINVAL;
 	if (filter->priority > E1000_2TUPLE_MAX_PRI)
 		return -EINVAL;  /* filter index is out of range. */
-	if (filter->tcp_flags > TCP_FLAG_ALL)
+	if (filter->tcp_flags > RTE_NTUPLE_TCP_FLAGS_MASK)
 		return -EINVAL;  /* flags is invalid. */
 
 	switch (filter->dst_ip_mask) {
@@ -4323,18 +4323,18 @@ igb_inject_5tuple_filter_82576(struct rte_eth_dev *dev,
 	imir |= filter->filter_info.priority << E1000_IMIR_PRIORITY_SHIFT;
 
 	/* tcp flags bits setting. */
-	if (filter->filter_info.tcp_flags & TCP_FLAG_ALL) {
-		if (filter->filter_info.tcp_flags & TCP_URG_FLAG)
+	if (filter->filter_info.tcp_flags & RTE_NTUPLE_TCP_FLAGS_MASK) {
+		if (filter->filter_info.tcp_flags & RTE_TCP_URG_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_URG;
-		if (filter->filter_info.tcp_flags & TCP_ACK_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_ACK_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_ACK;
-		if (filter->filter_info.tcp_flags & TCP_PSH_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_PSH_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_PSH;
-		if (filter->filter_info.tcp_flags & TCP_RST_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_RST_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_RST;
-		if (filter->filter_info.tcp_flags & TCP_SYN_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_SYN_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_SYN;
-		if (filter->filter_info.tcp_flags & TCP_FIN_FLAG)
+		if (filter->filter_info.tcp_flags & RTE_TCP_FIN_FLAG)
 			imir_ext |= E1000_IMIREXT_CTRL_FIN;
 	} else {
 		imir_ext |= E1000_IMIREXT_CTRL_BP;

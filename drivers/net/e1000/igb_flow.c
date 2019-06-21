@@ -866,13 +866,13 @@ cons_parse_syn_filter(const struct rte_flow_attr *attr,
 
 	tcp_spec = item->spec;
 	tcp_mask = item->mask;
-	if (!(tcp_spec->hdr.tcp_flags & TCP_SYN_FLAG) ||
+	if (!(tcp_spec->hdr.tcp_flags & RTE_TCP_SYN_FLAG) ||
 	    tcp_mask->hdr.src_port ||
 	    tcp_mask->hdr.dst_port ||
 	    tcp_mask->hdr.sent_seq ||
 	    tcp_mask->hdr.recv_ack ||
 	    tcp_mask->hdr.data_off ||
-	    tcp_mask->hdr.tcp_flags != TCP_SYN_FLAG ||
+	    tcp_mask->hdr.tcp_flags != RTE_TCP_SYN_FLAG ||
 	    tcp_mask->hdr.rx_win ||
 	    tcp_mask->hdr.cksum ||
 	    tcp_mask->hdr.tcp_urp) {

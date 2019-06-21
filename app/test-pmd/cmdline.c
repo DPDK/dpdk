@@ -10080,7 +10080,7 @@ cmd_2tuple_filter_parsed(void *parsed_result,
 			" when protocol is TCP.\n");
 		return;
 	}
-	if (res->tcp_flags_value > TCP_FLAG_ALL) {
+	if (res->tcp_flags_value > RTE_NTUPLE_TCP_FLAGS_MASK) {
 		printf("invalid TCP flags.\n");
 		return;
 	}
@@ -10238,7 +10238,7 @@ cmd_5tuple_filter_parsed(void *parsed_result,
 			" when protocol is TCP.\n");
 		return;
 	}
-	if (res->tcp_flags_value > TCP_FLAG_ALL) {
+	if (res->tcp_flags_value > RTE_NTUPLE_TCP_FLAGS_MASK) {
 		printf("invalid TCP flags.\n");
 		return;
 	}
