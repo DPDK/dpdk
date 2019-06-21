@@ -1084,7 +1084,7 @@ eval_jcc(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 /*
  * validate parameters for each instruction type.
  */
-static const struct bpf_ins_check ins_chk[UINT8_MAX] = {
+static const struct bpf_ins_check ins_chk[UINT8_MAX + 1] = {
 	/* ALU IMM 32-bit instructions */
 	[(BPF_ALU | BPF_ADD | BPF_K)] = {
 		.mask = {.dreg = WRT_REGS, .sreg = ZERO_REG},
