@@ -44,6 +44,12 @@
 #define STAT_DATA_VAL		BIT_ULL(32)
 #define STAT_RD_DATA		GENMASK_ULL(31, 0)
 
+/* Additional Feature Register */
+#define ADD_PHY_CTRL            0x0
+#define PHY_RESET               BIT(0)
+#define MAC_CONFIG      0x310
+#define MAC_RESET_MASK  GENMASK(2, 0)
+
 struct opae_eth_group_info {
 	u8 group_id;
 	u8 speed;

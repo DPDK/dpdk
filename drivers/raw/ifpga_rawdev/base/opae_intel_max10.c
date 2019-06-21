@@ -57,13 +57,6 @@ intel_max10_device_probe(struct altera_spi_device *spi,
 	}
 	dev_info(dev, "FPGA loaded from %s Image\n", val ? "User" : "Factory");
 
-	/* set PKVL Polling manually in BBS */
-	ret = max10_reg_write(PKVL_POLLING_CTRL, 0x3);
-	if (ret != 0) {
-		dev_err(dev, "%s set PKVL polling fail\n", __func__);
-		goto spi_tran_fail;
-	}
-
 	return dev;
 
 spi_tran_fail:
