@@ -17,11 +17,13 @@ int max10_reg_read(unsigned int reg, unsigned int *val)
 
 int max10_reg_write(unsigned int reg, unsigned int val)
 {
+	unsigned int tmp = val;
+
 	if (!g_max10)
 		return -ENODEV;
 
 	return spi_transaction_write(g_max10->spi_tran_dev,
-			reg, 4, (unsigned char *)&val);
+			reg, 4, (unsigned char *)&tmp);
 }
 
 struct intel_max10_device *
@@ -57,7 +59,7 @@ intel_max10_device_probe(struct altera_spi_device *spi,
 
 	/* set PKVL Polling manually in BBS */
 	ret = max10_reg_write(PKVL_POLLING_CTRL, 0x3);
-	if (ret) {
+	if (ret != 0) {
 		dev_err(dev, "%s set PKVL polling fail\n", __func__);
 		goto spi_tran_fail;
 	}
