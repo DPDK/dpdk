@@ -2196,6 +2196,8 @@ sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 		return 0;
 	}
 
+	sfc_dev_close(dev);
+
 	sa = sfc_adapter_by_eth_dev(dev);
 	sfc_log_init(sa, "entry");
 
