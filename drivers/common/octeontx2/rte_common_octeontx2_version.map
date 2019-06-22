@@ -1,6 +1,9 @@
 DPDK_19.08 {
 	global:
 
+	otx2_dev_fini;
+	otx2_dev_init;
+
 	otx2_logtype_base;
 	otx2_logtype_dpi;
 	otx2_logtype_mbox;

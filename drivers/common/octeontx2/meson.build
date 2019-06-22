@@ -2,7 +2,7 @@
 # Copyright(C) 2019 Marvell International Ltd.
 #
 
-sources= files(
+sources= files('otx2_dev.c',
 		'otx2_mbox.c',
 		'otx2_common.c',
 	       )
@@ -19,6 +19,6 @@ foreach flag: extra_flags
 	endif
 endforeach
 
-deps = ['eal', 'ethdev']
+deps = ['eal', 'pci', 'ethdev']
 includes += include_directories('../../common/octeontx2',
 		'../../bus/pci')

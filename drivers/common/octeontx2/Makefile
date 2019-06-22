@@ -11,6 +11,7 @@ LIB = librte_common_octeontx2.a
 
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/common/octeontx2
+CFLAGS += -I$(RTE_SDK)/drivers/bus/pci
 
 ifneq ($(CONFIG_RTE_ARCH_64),y)
 CFLAGS += -Wno-int-to-pointer-cast
@@ -24,6 +25,7 @@ LIBABIVER := 1
 #
 # all source are stored in SRCS-y
 #
+SRCS-y += otx2_dev.c
 SRCS-y += otx2_mbox.c
 SRCS-y += otx2_common.c
 

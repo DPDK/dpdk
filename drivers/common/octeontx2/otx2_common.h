@@ -69,6 +69,20 @@ extern int otx2_logtype_dpi;
 #define otx2_tim_dbg(fmt, ...) otx2_dbg(tim, fmt, ##__VA_ARGS__)
 #define otx2_dpi_dbg(fmt, ...) otx2_dbg(dpi, fmt, ##__VA_ARGS__)
 
+/* PCI IDs */
+#define PCI_VENDOR_ID_CAVIUM			0x177D
+#define PCI_DEVID_OCTEONTX2_RVU_PF              0xA063
+#define PCI_DEVID_OCTEONTX2_RVU_VF		0xA064
+#define PCI_DEVID_OCTEONTX2_RVU_AF		0xA065
+#define PCI_DEVID_OCTEONTX2_RVU_SSO_TIM_PF	0xA0F9
+#define PCI_DEVID_OCTEONTX2_RVU_SSO_TIM_VF	0xA0FA
+#define PCI_DEVID_OCTEONTX2_RVU_NPA_PF		0xA0FB
+#define PCI_DEVID_OCTEONTX2_RVU_NPA_VF		0xA0FC
+#define PCI_DEVID_OCTEONTX2_RVU_CPT_PF		0xA0FD
+#define PCI_DEVID_OCTEONTX2_RVU_CPT_VF		0xA0FE
+#define PCI_DEVID_OCTEONTX2_RVU_AF_VF		0xA0f8
+#define PCI_DEVID_OCTEONTX2_DPI_VF		0xA081
+
 /* IO Access */
 #define otx2_read64(addr) rte_read64_relaxed((void *)(addr))
 #define otx2_write64(val, addr) rte_write64_relaxed((val), (void *)(addr))
