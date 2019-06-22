@@ -37,6 +37,303 @@ npa_lf_aura_op_alloc_one(const int64_t wdata, int64_t * const addr,
 	return -ENOENT;
 }
 
+#if defined(RTE_ARCH_ARM64)
+static __rte_noinline int
+npa_lf_aura_op_search_alloc(const int64_t wdata, int64_t * const addr,
+		void **obj_table, unsigned int n)
+{
+	uint8_t i;
+
+	for (i = 0; i < n; i++) {
+		if (obj_table[i] != NULL)
+			continue;
+		if (npa_lf_aura_op_alloc_one(wdata, addr, obj_table, i))
+			return -ENOENT;
+	}
+
+	return 0;
+}
+
+/*
+ * Some versions of the compiler don't have support for __int128_t for
+ * CASP inline-asm. i.e. if the optimization level is reduced to -O0 the
+ * CASP restrictions aren't followed and the compiler might end up violation the
+ * CASP rules. Fix it by explicitly providing ((optimize("-O3"))).
+ *
+ * Example:
+ * ccSPMGzq.s:1648: Error: reg pair must start from even reg at
+ * operand 1 - `casp x21,x22,x0,x1,[x19]'
+ */
+static  __attribute__((optimize("-O3"))) __rte_noinline int __hot
+npa_lf_aura_op_alloc_bulk(const int64_t wdata, int64_t * const addr,
+			  unsigned int n, void **obj_table)
+{
+	const __uint128_t wdata128 = ((__uint128_t)wdata << 64) | wdata;
+	uint64x2_t failed = vdupq_n_u64(~0);
+
+	switch (n) {
+	case 32:
+	{
+		__uint128_t t0, t1, t2, t3, t4, t5, t6, t7, t8, t9;
+		__uint128_t t10, t11;
+
+		asm volatile (
+		".cpu  generic+lse\n"
+		"casp %[t0], %H[t0], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t1], %H[t1], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t2], %H[t2], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t3], %H[t3], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t4], %H[t4], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t5], %H[t5], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t6], %H[t6], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t7], %H[t7], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t8], %H[t8], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t9], %H[t9], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t10], %H[t10], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t11], %H[t11], %[wdata], %H[wdata], [%[loc]]\n"
+		"fmov d16, %[t0]\n"
+		"fmov v16.D[1], %H[t0]\n"
+		"casp %[t0], %H[t0], %[wdata], %H[wdata], [%[loc]]\n"
+		"fmov d17, %[t1]\n"
+		"fmov v17.D[1], %H[t1]\n"
+		"casp %[t1], %H[t1], %[wdata], %H[wdata], [%[loc]]\n"
+		"fmov d18, %[t2]\n"
+		"fmov v18.D[1], %H[t2]\n"
+		"casp %[t2], %H[t2], %[wdata], %H[wdata], [%[loc]]\n"
+		"fmov d19, %[t3]\n"
+		"fmov v19.D[1], %H[t3]\n"
+		"casp %[t3], %H[t3], %[wdata], %H[wdata], [%[loc]]\n"
+		"and %[failed].16B, %[failed].16B, v16.16B\n"
+		"and %[failed].16B, %[failed].16B, v17.16B\n"
+		"and %[failed].16B, %[failed].16B, v18.16B\n"
+		"and %[failed].16B, %[failed].16B, v19.16B\n"
+		"fmov d20, %[t4]\n"
+		"fmov v20.D[1], %H[t4]\n"
+		"fmov d21, %[t5]\n"
+		"fmov v21.D[1], %H[t5]\n"
+		"fmov d22, %[t6]\n"
+		"fmov v22.D[1], %H[t6]\n"
+		"fmov d23, %[t7]\n"
+		"fmov v23.D[1], %H[t7]\n"
+		"and %[failed].16B, %[failed].16B, v20.16B\n"
+		"and %[failed].16B, %[failed].16B, v21.16B\n"
+		"and %[failed].16B, %[failed].16B, v22.16B\n"
+		"and %[failed].16B, %[failed].16B, v23.16B\n"
+		"st1 { v16.2d, v17.2d, v18.2d, v19.2d}, [%[dst]], 64\n"
+		"st1 { v20.2d, v21.2d, v22.2d, v23.2d}, [%[dst]], 64\n"
+		"fmov d16, %[t8]\n"
+		"fmov v16.D[1], %H[t8]\n"
+		"fmov d17, %[t9]\n"
+		"fmov v17.D[1], %H[t9]\n"
+		"fmov d18, %[t10]\n"
+		"fmov v18.D[1], %H[t10]\n"
+		"fmov d19, %[t11]\n"
+		"fmov v19.D[1], %H[t11]\n"
+		"and %[failed].16B, %[failed].16B, v16.16B\n"
+		"and %[failed].16B, %[failed].16B, v17.16B\n"
+		"and %[failed].16B, %[failed].16B, v18.16B\n"
+		"and %[failed].16B, %[failed].16B, v19.16B\n"
+		"fmov d20, %[t0]\n"
+		"fmov v20.D[1], %H[t0]\n"
+		"fmov d21, %[t1]\n"
+		"fmov v21.D[1], %H[t1]\n"
+		"fmov d22, %[t2]\n"
+		"fmov v22.D[1], %H[t2]\n"
+		"fmov d23, %[t3]\n"
+		"fmov v23.D[1], %H[t3]\n"
+		"and %[failed].16B, %[failed].16B, v20.16B\n"
+		"and %[failed].16B, %[failed].16B, v21.16B\n"
+		"and %[failed].16B, %[failed].16B, v22.16B\n"
+		"and %[failed].16B, %[failed].16B, v23.16B\n"
+		"st1 { v16.2d, v17.2d, v18.2d, v19.2d}, [%[dst]], 64\n"
+		"st1 { v20.2d, v21.2d, v22.2d, v23.2d}, [%[dst]], 64\n"
+		: "+Q" (*addr), [failed] "=&w" (failed),
+		[t0] "=&r" (t0), [t1] "=&r" (t1), [t2] "=&r" (t2),
+		[t3] "=&r" (t3), [t4] "=&r" (t4), [t5] "=&r" (t5),
+		[t6] "=&r" (t6), [t7] "=&r" (t7), [t8] "=&r" (t8),
+		[t9] "=&r" (t9), [t10] "=&r" (t10), [t11] "=&r" (t11)
+		: [wdata] "r" (wdata128), [dst] "r" (obj_table),
+		[loc] "r" (addr)
+		: "memory", "v16", "v17", "v18",
+		"v19", "v20", "v21", "v22", "v23"
+		);
+		break;
+	}
+	case 16:
+	{
+		__uint128_t t0, t1, t2, t3, t4, t5, t6, t7;
+
+		asm volatile (
+		".cpu  generic+lse\n"
+		"casp %[t0], %H[t0], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t1], %H[t1], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t2], %H[t2], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t3], %H[t3], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t4], %H[t4], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t5], %H[t5], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t6], %H[t6], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t7], %H[t7], %[wdata], %H[wdata], [%[loc]]\n"
+		"fmov d16, %[t0]\n"
+		"fmov v16.D[1], %H[t0]\n"
+		"fmov d17, %[t1]\n"
+		"fmov v17.D[1], %H[t1]\n"
+		"fmov d18, %[t2]\n"
+		"fmov v18.D[1], %H[t2]\n"
+		"fmov d19, %[t3]\n"
+		"fmov v19.D[1], %H[t3]\n"
+		"and %[failed].16B, %[failed].16B, v16.16B\n"
+		"and %[failed].16B, %[failed].16B, v17.16B\n"
+		"and %[failed].16B, %[failed].16B, v18.16B\n"
+		"and %[failed].16B, %[failed].16B, v19.16B\n"
+		"fmov d20, %[t4]\n"
+		"fmov v20.D[1], %H[t4]\n"
+		"fmov d21, %[t5]\n"
+		"fmov v21.D[1], %H[t5]\n"
+		"fmov d22, %[t6]\n"
+		"fmov v22.D[1], %H[t6]\n"
+		"fmov d23, %[t7]\n"
+		"fmov v23.D[1], %H[t7]\n"
+		"and %[failed].16B, %[failed].16B, v20.16B\n"
+		"and %[failed].16B, %[failed].16B, v21.16B\n"
+		"and %[failed].16B, %[failed].16B, v22.16B\n"
+		"and %[failed].16B, %[failed].16B, v23.16B\n"
+		"st1 { v16.2d, v17.2d, v18.2d, v19.2d}, [%[dst]], 64\n"
+		"st1 { v20.2d, v21.2d, v22.2d, v23.2d}, [%[dst]], 64\n"
+		: "+Q" (*addr), [failed] "=&w" (failed),
+		[t0] "=&r" (t0), [t1] "=&r" (t1), [t2] "=&r" (t2),
+		[t3] "=&r" (t3), [t4] "=&r" (t4), [t5] "=&r" (t5),
+		[t6] "=&r" (t6), [t7] "=&r" (t7)
+		: [wdata] "r" (wdata128), [dst] "r" (obj_table),
+		[loc] "r" (addr)
+		: "memory", "v16", "v17", "v18", "v19",
+		  "v20", "v21", "v22", "v23"
+		);
+		break;
+	}
+	case 8:
+	{
+		__uint128_t t0, t1, t2, t3;
+
+		asm volatile (
+		".cpu  generic+lse\n"
+		"casp %[t0], %H[t0], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t1], %H[t1], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t2], %H[t2], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t3], %H[t3], %[wdata], %H[wdata], [%[loc]]\n"
+		"fmov d16, %[t0]\n"
+		"fmov v16.D[1], %H[t0]\n"
+		"fmov d17, %[t1]\n"
+		"fmov v17.D[1], %H[t1]\n"
+		"fmov d18, %[t2]\n"
+		"fmov v18.D[1], %H[t2]\n"
+		"fmov d19, %[t3]\n"
+		"fmov v19.D[1], %H[t3]\n"
+		"and %[failed].16B, %[failed].16B, v16.16B\n"
+		"and %[failed].16B, %[failed].16B, v17.16B\n"
+		"and %[failed].16B, %[failed].16B, v18.16B\n"
+		"and %[failed].16B, %[failed].16B, v19.16B\n"
+		"st1 { v16.2d, v17.2d, v18.2d, v19.2d}, [%[dst]], 64\n"
+		: "+Q" (*addr), [failed] "=&w" (failed),
+		[t0] "=&r" (t0), [t1] "=&r" (t1), [t2] "=&r" (t2),
+		[t3] "=&r" (t3)
+		: [wdata] "r" (wdata128), [dst] "r" (obj_table),
+		[loc] "r" (addr)
+		: "memory", "v16", "v17", "v18", "v19"
+		);
+		break;
+	}
+	case 4:
+	{
+		__uint128_t t0, t1;
+
+		asm volatile (
+		".cpu  generic+lse\n"
+		"casp %[t0], %H[t0], %[wdata], %H[wdata], [%[loc]]\n"
+		"casp %[t1], %H[t1], %[wdata], %H[wdata], [%[loc]]\n"
+		"fmov d16, %[t0]\n"
+		"fmov v16.D[1], %H[t0]\n"
+		"fmov d17, %[t1]\n"
+		"fmov v17.D[1], %H[t1]\n"
+		"and %[failed].16B, %[failed].16B, v16.16B\n"
+		"and %[failed].16B, %[failed].16B, v17.16B\n"
+		"st1 { v16.2d, v17.2d}, [%[dst]], 32\n"
+		: "+Q" (*addr), [failed] "=&w" (failed),
+		[t0] "=&r" (t0), [t1] "=&r" (t1)
+		: [wdata] "r" (wdata128), [dst] "r" (obj_table),
+		[loc] "r" (addr)
+		: "memory", "v16", "v17"
+		);
+		break;
+	}
+	case 2:
+	{
+		__uint128_t t0;
+
+		asm volatile (
+		".cpu  generic+lse\n"
+		"casp %[t0], %H[t0], %[wdata], %H[wdata], [%[loc]]\n"
+		"fmov d16, %[t0]\n"
+		"fmov v16.D[1], %H[t0]\n"
+		"and %[failed].16B, %[failed].16B, v16.16B\n"
+		"st1 { v16.2d}, [%[dst]], 16\n"
+		: "+Q" (*addr), [failed] "=&w" (failed),
+		[t0] "=&r" (t0)
+		: [wdata] "r" (wdata128), [dst] "r" (obj_table),
+		[loc] "r" (addr)
+		: "memory", "v16"
+		);
+		break;
+	}
+	case 1:
+		return npa_lf_aura_op_alloc_one(wdata, addr, obj_table, 0);
+	}
+
+	if (unlikely(!(vgetq_lane_u64(failed, 0) & vgetq_lane_u64(failed, 1))))
+		return npa_lf_aura_op_search_alloc(wdata, addr, (void **)
+			((char *)obj_table - (sizeof(uint64_t) * n)), n);
+
+	return 0;
+}
+
+static __rte_noinline void
+otx2_npa_clear_alloc(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	unsigned int i;
+
+	for (i = 0; i < n; i++) {
+		if (obj_table[i] != NULL) {
+			otx2_npa_enq(mp, &obj_table[i], 1);
+			obj_table[i] = NULL;
+		}
+	}
+}
+
+static inline int __hot
+otx2_npa_deq_arm64(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	const int64_t wdata = npa_lf_aura_handle_to_aura(mp->pool_id);
+	void **obj_table_bak = obj_table;
+	const unsigned int nfree = n;
+	unsigned int parts;
+
+	int64_t * const addr = (int64_t * const)
+			(npa_lf_aura_handle_to_base(mp->pool_id) +
+				NPA_LF_AURA_OP_ALLOCX(0));
+	while (n) {
+		parts = n > 31 ? 32 : rte_align32prevpow2(n);
+		n -= parts;
+		if (unlikely(npa_lf_aura_op_alloc_bulk(wdata, addr,
+				parts, obj_table))) {
+			otx2_npa_clear_alloc(mp, obj_table_bak, nfree - n);
+			return -ENOENT;
+		}
+		obj_table += parts;
+	}
+
+	return 0;
+}
+#endif
+
 static inline int __hot
 otx2_npa_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 {
@@ -463,7 +760,11 @@ static struct rte_mempool_ops otx2_npa_ops = {
 	.get_count = otx2_npa_get_count,
 	.calc_mem_size = otx2_npa_calc_mem_size,
 	.populate = otx2_npa_populate,
+#if defined(RTE_ARCH_ARM64)
+	.dequeue = otx2_npa_deq_arm64,
+#else
 	.dequeue = otx2_npa_deq,
+#endif
 };
 
 MEMPOOL_REGISTER_OPS(otx2_npa_ops);
