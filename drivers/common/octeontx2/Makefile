@@ -11,6 +11,7 @@ LIB = librte_common_octeontx2.a
 
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/common/octeontx2
+CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx2
 CFLAGS += -I$(RTE_SDK)/drivers/bus/pci
 
 ifneq ($(CONFIG_RTE_ARCH_64),y)

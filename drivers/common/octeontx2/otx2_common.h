@@ -37,12 +37,7 @@
 #endif
 
 /* Intra device related functions */
-struct otx2_npa_lf {
-	struct otx2_mbox *mbox;
-	struct rte_pci_device *pci_dev;
-	struct rte_intr_handle *intr_handle;
-};
-
+struct otx2_npa_lf;
 struct otx2_idev_cfg {
 	uint16_t sso_pf_func;
 	uint16_t npa_pf_func;

@@ -22,4 +22,4 @@ endforeach
 
 deps = ['eal', 'pci', 'ethdev']
 includes += include_directories('../../common/octeontx2',
-		'../../bus/pci')
+		'../../mempool/octeontx2', '../../bus/pci')

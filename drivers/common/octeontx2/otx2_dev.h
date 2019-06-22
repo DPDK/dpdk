@@ -10,6 +10,7 @@
 #include "otx2_common.h"
 #include "otx2_irq.h"
 #include "otx2_mbox.h"
+#include "otx2_mempool.h"
 
 /* Common HWCAP flags. Use from LSB bits */
 #define OTX2_HWCAP_F_VF		BIT_ULL(0) /* VF device */
