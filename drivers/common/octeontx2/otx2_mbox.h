@@ -1411,9 +1411,151 @@ struct tim_enable_rsp {
 	uint32_t __otx2_io currentbucket;
 };
 
+const char *otx2_mbox_id2name(uint16_t id);
+int otx2_mbox_id2size(uint16_t id);
 void otx2_mbox_reset(struct otx2_mbox *mbox, int devid);
 int otx2_mbox_init(struct otx2_mbox *mbox, uintptr_t hwbase,
 		   uintptr_t reg_base, int direction, int ndevs);
 void otx2_mbox_fini(struct otx2_mbox *mbox);
+void otx2_mbox_msg_send(struct otx2_mbox *mbox, int devid);
+int otx2_mbox_wait_for_rsp(struct otx2_mbox *mbox, int devid);
+int otx2_mbox_wait_for_rsp_tmo(struct otx2_mbox *mbox, int devid, uint32_t tmo);
+int otx2_mbox_get_rsp(struct otx2_mbox *mbox, int devid, void **msg);
+int otx2_mbox_get_rsp_tmo(struct otx2_mbox *mbox, int devid, void **msg,
+			  uint32_t tmo);
+int otx2_mbox_get_availmem(struct otx2_mbox *mbox, int devid);
+struct mbox_msghdr *otx2_mbox_alloc_msg_rsp(struct otx2_mbox *mbox, int devid,
+					    int size, int size_rsp);
+
+static inline struct mbox_msghdr *
+otx2_mbox_alloc_msg(struct otx2_mbox *mbox, int devid, int size)
+{
+	return otx2_mbox_alloc_msg_rsp(mbox, devid, size, 0);
+}
+
+static inline void
+otx2_mbox_req_init(uint16_t mbox_id, void *msghdr)
+{
+	struct mbox_msghdr *hdr = msghdr;
+
+	hdr->sig = OTX2_MBOX_REQ_SIG;
+	hdr->ver = OTX2_MBOX_VERSION;
+	hdr->id = mbox_id;
+	hdr->pcifunc = 0;
+}
+
+static inline void
+otx2_mbox_rsp_init(uint16_t mbox_id, void *msghdr)
+{
+	struct mbox_msghdr *hdr = msghdr;
+
+	hdr->sig = OTX2_MBOX_RSP_SIG;
+	hdr->rc = -ETIMEDOUT;
+	hdr->id = mbox_id;
+}
+
+static inline bool
+otx2_mbox_nonempty(struct otx2_mbox *mbox, int devid)
+{
+	struct otx2_mbox_dev *mdev = &mbox->dev[devid];
+	bool ret;
+
+	rte_spinlock_lock(&mdev->mbox_lock);
+	ret = mdev->num_msgs != 0;
+	rte_spinlock_unlock(&mdev->mbox_lock);
+
+	return ret;
+}
+
+static inline int
+otx2_mbox_process(struct otx2_mbox *mbox)
+{
+	otx2_mbox_msg_send(mbox, 0);
+	return otx2_mbox_get_rsp(mbox, 0, NULL);
+}
+
+static inline int
+otx2_mbox_process_msg(struct otx2_mbox *mbox, void **msg)
+{
+	otx2_mbox_msg_send(mbox, 0);
+	return otx2_mbox_get_rsp(mbox, 0, msg);
+}
+
+static inline int
+otx2_mbox_process_tmo(struct otx2_mbox *mbox, uint32_t tmo)
+{
+	otx2_mbox_msg_send(mbox, 0);
+	return otx2_mbox_get_rsp_tmo(mbox, 0, NULL, tmo);
+}
+
+static inline int
+otx2_mbox_process_msg_tmo(struct otx2_mbox *mbox, void **msg, uint32_t tmo)
+{
+	otx2_mbox_msg_send(mbox, 0);
+	return otx2_mbox_get_rsp_tmo(mbox, 0, msg, tmo);
+}
+
+int otx2_send_ready_msg(struct otx2_mbox *mbox, uint16_t *pf_func /* out */);
+int otx2_reply_invalid_msg(struct otx2_mbox *mbox, int devid, uint16_t pf_func,
+			uint16_t id);
+
+#define M(_name, _id, _fn_name, _req_type, _rsp_type)			\
+static inline struct _req_type						\
+*otx2_mbox_alloc_msg_ ## _fn_name(struct otx2_mbox *mbox)		\
+{									\
+	struct _req_type *req;						\
+									\
+	req = (struct _req_type *)otx2_mbox_alloc_msg_rsp(		\
+		mbox, 0, sizeof(struct _req_type),			\
+		sizeof(struct _rsp_type));				\
+	if (!req)							\
+		return NULL;						\
+									\
+	req->hdr.sig = OTX2_MBOX_REQ_SIG;				\
+	req->hdr.id = _id;						\
+	otx2_mbox_dbg("id=0x%x (%s)",					\
+			req->hdr.id, otx2_mbox_id2name(req->hdr.id));	\
+	return req;							\
+}
+
+MBOX_MESSAGES
+#undef M
+
+/* This is required for copy operations from device memory which do not work on
+ * addresses which are unaligned to 16B. This is because of specific
+ * optimizations to libc memcpy.
+ */
+static inline volatile void *
+otx2_mbox_memcpy(volatile void *d, const volatile void *s, size_t l)
+{
+	const volatile uint8_t *sb;
+	volatile uint8_t *db;
+	size_t i;
+
+	if (!d || !s)
+		return NULL;
+	db = (volatile uint8_t *)d;
+	sb = (const volatile uint8_t *)s;
+	for (i = 0; i < l; i++)
+		db[i] = sb[i];
+	return d;
+}
+
+/* This is required for memory operations from device memory which do not
+ * work on addresses which are unaligned to 16B. This is because of specific
+ * optimizations to libc memset.
+ */
+static inline void
+otx2_mbox_memset(volatile void *d, uint8_t val, size_t l)
+{
+	volatile uint8_t *db;
+	size_t i = 0;
+
+	if (!d || !l)
+		return;
+	db = (volatile uint8_t *)d;
+	for (i = 0; i < l; i++)
+		db[i] = val;
+}
 
 #endif /* __OTX2_MBOX_H__ */

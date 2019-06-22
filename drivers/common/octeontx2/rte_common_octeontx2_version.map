@@ -11,5 +11,12 @@ DPDK_19.08 {
 	otx2_logtype_tm;
 	otx2_logtype_tim;
 
+	otx2_mbox_alloc_msg_rsp;
+	otx2_mbox_get_rsp;
+	otx2_mbox_get_rsp_tmo;
+	otx2_mbox_id2name;
+	otx2_mbox_msg_send;
+	otx2_mbox_wait_for_rsp;
+
 	local: *;
 };
