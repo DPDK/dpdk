@@ -7,6 +7,7 @@
 #include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_io.h>
+#include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_pci.h>
@@ -159,6 +160,42 @@ otx2_aura_size_to_u32(uint8_t val)
 	return 1 << (val + 6);
 }
 
+static int
+parse_max_pools(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint32_t val;
+
+	val = atoi(value);
+	if (val < otx2_aura_size_to_u32(NPA_AURA_SZ_128))
+		val = 128;
+	if (val > otx2_aura_size_to_u32(NPA_AURA_SZ_1M))
+		val = BIT_ULL(20);
+
+	*(uint8_t *)extra_args = rte_log2_u32(val) - 6;
+	return 0;
+}
+
+#define OTX2_MAX_POOLS "max_pools"
+
+static uint8_t
+otx2_parse_aura_size(struct rte_devargs *devargs)
+{
+	uint8_t aura_sz = NPA_AURA_SZ_128;
+	struct rte_kvargs *kvlist;
+
+	if (devargs == NULL)
+		goto exit;
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		goto exit;
+
+	rte_kvargs_process(kvlist, OTX2_MAX_POOLS, &parse_max_pools, &aura_sz);
+	rte_kvargs_free(kvlist);
+exit:
+	return aura_sz;
+}
+
 static inline int
 npa_lf_attach(struct otx2_mbox *mbox)
 {
@@ -251,7 +288,7 @@ otx2_npa_lf_init(struct rte_pci_device *pci_dev, void *otx2_dev)
 		if (rc)
 			goto npa_detach;
 
-		aura_sz = NPA_AURA_SZ_128;
+		aura_sz = otx2_parse_aura_size(pci_dev->device.devargs);
 		nr_pools = otx2_aura_size_to_u32(aura_sz);
 
 		lf = &dev->npalf;
@@ -414,3 +451,5 @@ static struct rte_pci_driver pci_npa = {
 RTE_PMD_REGISTER_PCI(mempool_octeontx2, pci_npa);
 RTE_PMD_REGISTER_PCI_TABLE(mempool_octeontx2, pci_npa_map);
 RTE_PMD_REGISTER_KMOD_DEP(mempool_octeontx2, "vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(mempool_octeontx2,
+			      OTX2_MAX_POOLS "=<128-1048576>");
