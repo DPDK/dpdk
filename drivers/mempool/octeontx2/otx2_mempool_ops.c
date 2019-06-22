@@ -7,6 +7,12 @@
 
 #include "otx2_mempool.h"
 
+static unsigned int
+otx2_npa_get_count(const struct rte_mempool *mp)
+{
+	return (unsigned int)npa_lf_aura_op_available(mp->pool_id);
+}
+
 static int
 npa_lf_aura_pool_init(struct otx2_mbox *mbox, uint32_t aura_id,
 		      struct npa_aura_s *aura, struct npa_pool_s *pool)
@@ -341,10 +347,66 @@ otx2_npa_free(struct rte_mempool *mp)
 	otx2_npa_lf_fini();
 }
 
+static ssize_t
+otx2_npa_calc_mem_size(const struct rte_mempool *mp, uint32_t obj_num,
+		       uint32_t pg_shift, size_t *min_chunk_size, size_t *align)
+{
+	ssize_t mem_size;
+
+	/*
+	 * Simply need space for one more object to be able to
+	 * fulfill alignment requirements.
+	 */
+	mem_size = rte_mempool_op_calc_mem_size_default(mp, obj_num + 1,
+							pg_shift,
+							min_chunk_size, align);
+	if (mem_size >= 0) {
+		/*
+		 * Memory area which contains objects must be physically
+		 * contiguous.
+		 */
+		*min_chunk_size = mem_size;
+	}
+
+	return mem_size;
+}
+
+static int
+otx2_npa_populate(struct rte_mempool *mp, unsigned int max_objs, void *vaddr,
+		  rte_iova_t iova, size_t len,
+		  rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg)
+{
+	size_t total_elt_sz;
+	size_t off;
+
+	if (iova == RTE_BAD_IOVA)
+		return -EINVAL;
+
+	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
+
+	/* Align object start address to a multiple of total_elt_sz */
+	off = total_elt_sz - ((uintptr_t)vaddr % total_elt_sz);
+
+	if (len < off)
+		return -EINVAL;
+
+	vaddr = (char *)vaddr + off;
+	iova += off;
+	len -= off;
+
+	npa_lf_aura_op_range_set(mp->pool_id, iova, iova + len);
+
+	return rte_mempool_op_populate_default(mp, max_objs, vaddr, iova, len,
+					       obj_cb, obj_cb_arg);
+}
+
 static struct rte_mempool_ops otx2_npa_ops = {
 	.name = "octeontx2_npa",
 	.alloc = otx2_npa_alloc,
 	.free = otx2_npa_free,
+	.get_count = otx2_npa_get_count,
+	.calc_mem_size = otx2_npa_calc_mem_size,
+	.populate = otx2_npa_populate,
 };
 
 MEMPOOL_REGISTER_OPS(otx2_npa_ops);

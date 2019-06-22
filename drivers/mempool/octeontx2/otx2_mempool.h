@@ -29,6 +29,11 @@ struct otx2_npa_qint {
 	uint8_t qintx;
 };
 
+struct npa_aura_lim {
+	uint64_t ptr_start;
+	uint64_t ptr_end;
+};
+
 struct otx2_npa_lf {
 	uint16_t qints;
 	uintptr_t base;
@@ -42,6 +47,7 @@ struct otx2_npa_lf {
 	uint32_t stack_pg_ptrs;
 	uint32_t stack_pg_bytes;
 	struct rte_bitmap *npa_bmp;
+	struct npa_aura_lim *aura_lim;
 	struct rte_pci_device *pci_dev;
 	struct rte_intr_handle *intr_handle;
 };
@@ -185,11 +191,16 @@ npa_lf_aura_op_range_set(uint64_t aura_handle, uint64_t start_iova,
 				uint64_t end_iova)
 {
 	uint64_t reg = npa_lf_aura_handle_to_aura(aura_handle);
+	struct otx2_npa_lf *lf = otx2_npa_lf_obj_get();
+	struct npa_aura_lim *lim = lf->aura_lim;
 
-	otx2_store_pair(start_iova, reg,
+	lim[reg].ptr_start = RTE_MIN(lim[reg].ptr_start, start_iova);
+	lim[reg].ptr_end = RTE_MAX(lim[reg].ptr_end, end_iova);
+
+	otx2_store_pair(lim[reg].ptr_start, reg,
 			npa_lf_aura_handle_to_base(aura_handle) +
 			NPA_LF_POOL_OP_PTR_START0);
-	otx2_store_pair(end_iova, reg,
+	otx2_store_pair(lim[reg].ptr_end, reg,
 			npa_lf_aura_handle_to_base(aura_handle) +
 			NPA_LF_POOL_OP_PTR_END0);
 }

@@ -105,8 +105,24 @@ npa_lf_init(struct otx2_npa_lf *lf, uintptr_t base, uint8_t aura_sz,
 		goto bmap_free;
 	}
 
+	/* Allocate memory for nap_aura_lim memory */
+	lf->aura_lim = rte_zmalloc("npa_aura_lim_mem",
+			sizeof(struct npa_aura_lim) * nr_pools, 0);
+	if (lf->aura_lim == NULL) {
+		rc = -ENOMEM;
+		goto qint_free;
+	}
+
+	/* Init aura start & end limits */
+	for (i = 0; i < nr_pools; i++) {
+		lf->aura_lim[i].ptr_start = UINT64_MAX;
+		lf->aura_lim[i].ptr_end = 0x0ull;
+	}
+
 	return 0;
 
+qint_free:
+	rte_free(lf->npa_qint_mem);
 bmap_free:
 	rte_bitmap_free(lf->npa_bmp);
 bmap_mem_free:
@@ -123,6 +139,7 @@ npa_lf_fini(struct otx2_npa_lf *lf)
 	if (!lf)
 		return NPA_LF_ERR_PARAM;
 
+	rte_free(lf->aura_lim);
 	rte_free(lf->npa_qint_mem);
 	rte_bitmap_free(lf->npa_bmp);
 	rte_free(lf->npa_bmp_mem);
