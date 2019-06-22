@@ -6,6 +6,8 @@
 #define _OTX2_COMMON_H_
 
 #include <rte_common.h>
+#include <rte_io.h>
+#include <rte_memory.h>
 
 #include "hw/otx2_rvu.h"
 #include "hw/otx2_nix.h"
@@ -29,6 +31,16 @@
 /* Compiler attributes */
 #ifndef __hot
 #define __hot   __attribute__((hot))
+#endif
+
+/* IO Access */
+#define otx2_read64(addr) rte_read64_relaxed((void *)(addr))
+#define otx2_write64(val, addr) rte_write64_relaxed((val), (void *)(addr))
+
+#if defined(RTE_ARCH_ARM64)
+#include "otx2_io_arm64.h"
+#else
+#include "otx2_io_generic.h"
 #endif
 
 #endif /* _OTX2_COMMON_H_ */
