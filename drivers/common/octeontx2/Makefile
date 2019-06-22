@@ -25,6 +25,7 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-y += otx2_mbox.c
+SRCS-y += otx2_common.c
 
 LDLIBS += -lrte_eal
 LDLIBS += -lrte_ethdev

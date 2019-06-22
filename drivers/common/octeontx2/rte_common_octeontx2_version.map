@@ -1,4 +1,15 @@
 DPDK_19.08 {
+	global:
+
+	otx2_logtype_base;
+	otx2_logtype_dpi;
+	otx2_logtype_mbox;
+	otx2_logtype_npa;
+	otx2_logtype_npc;
+	otx2_logtype_nix;
+	otx2_logtype_sso;
+	otx2_logtype_tm;
+	otx2_logtype_tim;
 
 	local: *;
 };

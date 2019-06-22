@@ -4,6 +4,7 @@
 
 sources= files(
 		'otx2_mbox.c',
+		'otx2_common.c',
 	       )
 
 extra_flags = []
