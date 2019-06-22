@@ -98,6 +98,8 @@ HW Offload Drivers
 
 This section lists dataplane H/W block(s) available in OCTEON TX2 SoC.
 
+#. **Mempool Driver**
+   See :doc:`../mempool/octeontx2` for NPA mempool driver information.
 
 Procedure to Setup Platform
 ---------------------------
