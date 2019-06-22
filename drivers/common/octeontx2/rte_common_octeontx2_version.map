@@ -1,6 +1,7 @@
 DPDK_19.08 {
 	global:
 
+	otx2_dev_active_vfs;
 	otx2_dev_fini;
 	otx2_dev_init;
 

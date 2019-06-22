@@ -52,6 +52,52 @@ mbox_mem_unmap(void *va, size_t size)
 }
 
 static int
+pf_af_sync_msg(struct otx2_dev *dev, struct mbox_msghdr **rsp)
+{
+	uint32_t timeout = 0, sleep = 1; struct otx2_mbox *mbox = dev->mbox;
+	struct otx2_mbox_dev *mdev = &mbox->dev[0];
+	volatile uint64_t int_status;
+	struct mbox_msghdr *msghdr;
+	uint64_t off;
+	int rc = 0;
+
+	/* We need to disable PF interrupts. We are in timer interrupt */
+	otx2_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
+
+	/* Send message */
+	otx2_mbox_msg_send(mbox, 0);
+
+	do {
+		rte_delay_ms(sleep);
+		timeout += sleep;
+		if (timeout >= MBOX_RSP_TIMEOUT) {
+			otx2_err("Message timeout: %dms", MBOX_RSP_TIMEOUT);
+			rc = -EIO;
+			break;
+		}
+		int_status = otx2_read64(dev->bar2 + RVU_PF_INT);
+	} while ((int_status & 0x1) != 0x1);
+
+	/* Clear */
+	otx2_write64(int_status, dev->bar2 + RVU_PF_INT);
+
+	/* Enable interrupts */
+	otx2_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1S);
+
+	if (rc == 0) {
+		/* Get message */
+		off = mbox->rx_start +
+			RTE_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+		msghdr = (struct mbox_msghdr *)((uintptr_t)mdev->mbase + off);
+		if (rsp)
+			*rsp = msghdr;
+		rc = msghdr->rc;
+	}
+
+	return rc;
+}
+
+static int
 af_pf_wait_msg(struct otx2_dev *dev, uint16_t vf, int num_msg)
 {
 	uint32_t timeout = 0, sleep = 1; struct otx2_mbox *mbox = dev->mbox;
@@ -703,6 +749,132 @@ mbox_unregister_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 		return mbox_unregister_pf_irq(pci_dev, dev);
 }
 
+static int
+vf_flr_send_msg(struct otx2_dev *dev, uint16_t vf)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	struct msg_req *req;
+	int rc;
+
+	req = otx2_mbox_alloc_msg_vf_flr(mbox);
+	/* Overwrite pcifunc to indicate VF */
+	req->hdr.pcifunc = otx2_pfvf_func(dev->pf, vf);
+
+	/* Sync message in interrupt context */
+	rc = pf_af_sync_msg(dev, NULL);
+	if (rc)
+		otx2_err("Failed to send VF FLR mbox msg, rc=%d", rc);
+
+	return rc;
+}
+
+static void
+otx2_pf_vf_flr_irq(void *param)
+{
+	struct otx2_dev *dev = (struct otx2_dev *)param;
+	uint16_t max_vf = 64, vf;
+	uintptr_t bar2;
+	uint64_t intr;
+	int i;
+
+	max_vf = (dev->maxvf > 0) ? dev->maxvf : 64;
+	bar2 = dev->bar2;
+
+	otx2_base_dbg("FLR VF interrupt: max_vf: %d", max_vf);
+
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
+		intr = otx2_read64(bar2 + RVU_PF_VFFLR_INTX(i));
+		if (!intr)
+			continue;
+
+		for (vf = 0; vf < max_vf; vf++) {
+			if (!(intr & (1ULL << vf)))
+				continue;
+
+			vf = 64 * i + vf;
+			otx2_base_dbg("FLR: i :%d intr: 0x%" PRIx64 ", vf-%d",
+				      i, intr, vf);
+			/* Clear interrupt */
+			otx2_write64(BIT_ULL(vf), bar2 + RVU_PF_VFFLR_INTX(i));
+			/* Disable the interrupt */
+			otx2_write64(BIT_ULL(vf),
+				     bar2 + RVU_PF_VFFLR_INT_ENA_W1CX(i));
+			/* Inform AF about VF reset */
+			vf_flr_send_msg(dev, vf);
+
+			/* Signal FLR finish */
+			otx2_write64(BIT_ULL(vf), bar2 + RVU_PF_VFTRPENDX(i));
+			/* Enable interrupt */
+			otx2_write64(~0ull,
+				     bar2 + RVU_PF_VFFLR_INT_ENA_W1SX(i));
+		}
+	}
+}
+
+static int
+vf_flr_unregister_irqs(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
+{
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int i;
+
+	otx2_base_dbg("Unregister VF FLR interrupts for %s", pci_dev->name);
+
+	/* HW clear irq */
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; i++)
+		otx2_write64(~0ull, dev->bar2 + RVU_PF_VFFLR_INT_ENA_W1CX(i));
+
+	otx2_unregister_irq(intr_handle, otx2_pf_vf_flr_irq, dev,
+			    RVU_PF_INT_VEC_VFFLR0);
+
+	otx2_unregister_irq(intr_handle, otx2_pf_vf_flr_irq, dev,
+			    RVU_PF_INT_VEC_VFFLR1);
+
+	return 0;
+}
+
+static int
+vf_flr_register_irqs(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
+{
+	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	int i, rc;
+
+	otx2_base_dbg("Register VF FLR interrupts for %s", pci_dev->name);
+
+	rc = otx2_register_irq(handle, otx2_pf_vf_flr_irq, dev,
+			       RVU_PF_INT_VEC_VFFLR0);
+	if (rc)
+		otx2_err("Failed to init RVU_PF_INT_VEC_VFFLR0 rc=%d", rc);
+
+	rc = otx2_register_irq(handle, otx2_pf_vf_flr_irq, dev,
+			       RVU_PF_INT_VEC_VFFLR1);
+	if (rc)
+		otx2_err("Failed to init RVU_PF_INT_VEC_VFFLR1 rc=%d", rc);
+
+	/* Enable HW interrupt */
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
+		otx2_write64(~0ull, dev->bar2 + RVU_PF_VFFLR_INTX(i));
+		otx2_write64(~0ull, dev->bar2 + RVU_PF_VFTRPENDX(i));
+		otx2_write64(~0ull, dev->bar2 + RVU_PF_VFFLR_INT_ENA_W1SX(i));
+	}
+	return 0;
+}
+
+/**
+ * @internal
+ * Get number of active VFs for the given PF device.
+ */
+int
+otx2_dev_active_vfs(void *otx2_dev)
+{
+	struct otx2_dev *dev = otx2_dev;
+	int i, count = 0;
+
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; i++)
+		count += __builtin_popcount(dev->active_vfs[i]);
+
+	return count;
+}
+
 static void
 otx2_update_pass_hwcap(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
@@ -818,6 +990,12 @@ otx2_dev_init(struct rte_pci_device *pci_dev, void *otx2_dev)
 			goto mbox_fini;
 	}
 
+	/* Register VF-FLR irq handlers */
+	if (otx2_dev_is_pf(dev)) {
+		rc = vf_flr_register_irqs(pci_dev, dev);
+		if (rc)
+			goto iounmap;
+	}
 	dev->mbox_active = 1;
 	return rc;
 
@@ -851,6 +1029,8 @@ otx2_dev_fini(struct rte_pci_device *pci_dev, void *otx2_dev)
 
 	mbox_unregister_irq(pci_dev, dev);
 
+	if (otx2_dev_is_pf(dev))
+		vf_flr_unregister_irqs(pci_dev, dev);
 	/* Release PF - VF */
 	mbox = &dev->mbox_vfpf;
 	if (mbox->hwbase && mbox->dev)
