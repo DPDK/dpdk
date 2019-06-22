@@ -202,4 +202,7 @@ int otx2_npa_lf_fini(void);
 int otx2_npa_register_irqs(struct otx2_npa_lf *lf);
 void otx2_npa_unregister_irqs(struct otx2_npa_lf *lf);
 
+/* Debug */
+int otx2_mempool_ctx_dump(struct otx2_npa_lf *lf);
+
 #endif /* __OTX2_MEMPOOL_H__ */

@@ -4,6 +4,7 @@
 
 sources = files('otx2_mempool.c',
 		'otx2_mempool_irq.c',
+		'otx2_mempool_debug.c'
 		)
 
 extra_flags = []

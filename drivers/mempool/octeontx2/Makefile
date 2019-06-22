@@ -29,7 +29,8 @@ LIBABIVER := 1
 #
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX2_MEMPOOL) += \
 	otx2_mempool.c 		\
-	otx2_mempool_irq.c
+	otx2_mempool_irq.c	\
+	otx2_mempool_debug.c
 
 LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf
 LDLIBS += -lrte_common_octeontx2 -lrte_kvargs -lrte_bus_pci
