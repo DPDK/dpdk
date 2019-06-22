@@ -1411,4 +1411,9 @@ struct tim_enable_rsp {
 	uint32_t __otx2_io currentbucket;
 };
 
+void otx2_mbox_reset(struct otx2_mbox *mbox, int devid);
+int otx2_mbox_init(struct otx2_mbox *mbox, uintptr_t hwbase,
+		   uintptr_t reg_base, int direction, int ndevs);
+void otx2_mbox_fini(struct otx2_mbox *mbox);
+
 #endif /* __OTX2_MBOX_H__ */
