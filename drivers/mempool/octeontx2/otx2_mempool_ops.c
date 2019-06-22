@@ -1,0 +1,246 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(C) 2019 Marvell International Ltd.
+ */
+
+#include <rte_mempool.h>
+#include <rte_vect.h>
+
+#include "otx2_mempool.h"
+
+static int
+npa_lf_aura_pool_init(struct otx2_mbox *mbox, uint32_t aura_id,
+		      struct npa_aura_s *aura, struct npa_pool_s *pool)
+{
+	struct npa_aq_enq_req *aura_init_req, *pool_init_req;
+	struct npa_aq_enq_rsp *aura_init_rsp, *pool_init_rsp;
+	struct otx2_mbox_dev *mdev = &mbox->dev[0];
+	int rc, off;
+
+	aura_init_req = otx2_mbox_alloc_msg_npa_aq_enq(mbox);
+
+	aura_init_req->aura_id = aura_id;
+	aura_init_req->ctype = NPA_AQ_CTYPE_AURA;
+	aura_init_req->op = NPA_AQ_INSTOP_INIT;
+	memcpy(&aura_init_req->aura, aura, sizeof(*aura));
+
+	pool_init_req = otx2_mbox_alloc_msg_npa_aq_enq(mbox);
+
+	pool_init_req->aura_id = aura_id;
+	pool_init_req->ctype = NPA_AQ_CTYPE_POOL;
+	pool_init_req->op = NPA_AQ_INSTOP_INIT;
+	memcpy(&pool_init_req->pool, pool, sizeof(*pool));
+
+	otx2_mbox_msg_send(mbox, 0);
+	rc = otx2_mbox_wait_for_rsp(mbox, 0);
+	if (rc < 0)
+		return rc;
+
+	off = mbox->rx_start +
+			RTE_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+	aura_init_rsp = (struct npa_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
+	off = mbox->rx_start + aura_init_rsp->hdr.next_msgoff;
+	pool_init_rsp = (struct npa_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
+
+	if (rc == 2 && aura_init_rsp->hdr.rc == 0 && pool_init_rsp->hdr.rc == 0)
+		return 0;
+	else
+		return NPA_LF_ERR_AURA_POOL_INIT;
+}
+
+static inline char*
+npa_lf_stack_memzone_name(struct otx2_npa_lf *lf, int pool_id, char *name)
+{
+	snprintf(name, RTE_MEMZONE_NAMESIZE, "otx2_npa_stack_%x_%d",
+			lf->pf_func, pool_id);
+
+	return name;
+}
+
+static inline const struct rte_memzone *
+npa_lf_stack_dma_alloc(struct otx2_npa_lf *lf, char *name,
+		       int pool_id, size_t size)
+{
+	return rte_memzone_reserve_aligned(
+		npa_lf_stack_memzone_name(lf, pool_id, name), size, 0,
+			RTE_MEMZONE_IOVA_CONTIG, OTX2_ALIGN);
+}
+
+static inline int
+bitmap_ctzll(uint64_t slab)
+{
+	if (slab == 0)
+		return 0;
+
+	return __builtin_ctzll(slab);
+}
+
+static int
+npa_lf_aura_pool_pair_alloc(struct otx2_npa_lf *lf, const uint32_t block_size,
+			    const uint32_t block_count, struct npa_aura_s *aura,
+			    struct npa_pool_s *pool, uint64_t *aura_handle)
+{
+	int rc, aura_id, pool_id, stack_size, alloc_size;
+	char name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *mz;
+	uint64_t slab;
+	uint32_t pos;
+
+	/* Sanity check */
+	if (!lf || !block_size || !block_count ||
+	    !pool || !aura || !aura_handle)
+		return NPA_LF_ERR_PARAM;
+
+	/* Block size should be cache line aligned and in range of 128B-128KB */
+	if (block_size % OTX2_ALIGN || block_size < 128 ||
+	    block_size > 128 * 1024)
+		return NPA_LF_ERR_INVALID_BLOCK_SZ;
+
+	pos = slab = 0;
+	/* Scan from the beginning */
+	__rte_bitmap_scan_init(lf->npa_bmp);
+	/* Scan bitmap to get the free pool */
+	rc = rte_bitmap_scan(lf->npa_bmp, &pos, &slab);
+	/* Empty bitmap */
+	if (rc == 0) {
+		otx2_err("Mempools exhausted, 'max_pools' devargs to increase");
+		return -ERANGE;
+	}
+
+	/* Get aura_id from resource bitmap */
+	aura_id = pos + bitmap_ctzll(slab);
+	/* Mark pool as reserved */
+	rte_bitmap_clear(lf->npa_bmp, aura_id);
+
+	/* Configuration based on each aura has separate pool(aura-pool pair) */
+	pool_id = aura_id;
+	rc = (aura_id < 0 || pool_id >= (int)lf->nr_pools || aura_id >=
+	      (int)BIT_ULL(6 + lf->aura_sz)) ? NPA_LF_ERR_AURA_ID_ALLOC : 0;
+	if (rc)
+		goto exit;
+
+	/* Allocate stack memory */
+	stack_size = (block_count + lf->stack_pg_ptrs - 1) / lf->stack_pg_ptrs;
+	alloc_size = stack_size * lf->stack_pg_bytes;
+
+	mz = npa_lf_stack_dma_alloc(lf, name, pool_id, alloc_size);
+	if (mz == NULL) {
+		rc = -ENOMEM;
+		goto aura_res_put;
+	}
+
+	/* Update aura fields */
+	aura->pool_addr = pool_id;/* AF will translate to associated poolctx */
+	aura->ena = 1;
+	aura->shift = __builtin_clz(block_count) - 8;
+	aura->limit = block_count;
+	aura->pool_caching = 1;
+	aura->err_int_ena = BIT(NPA_AURA_ERR_INT_AURA_ADD_OVER);
+	aura->err_int_ena |= BIT(NPA_AURA_ERR_INT_AURA_ADD_UNDER);
+	aura->err_int_ena |= BIT(NPA_AURA_ERR_INT_AURA_FREE_UNDER);
+	aura->err_int_ena |= BIT(NPA_AURA_ERR_INT_POOL_DIS);
+	/* Many to one reduction */
+	aura->err_qint_idx = aura_id % lf->qints;
+
+	/* Update pool fields */
+	pool->stack_base = mz->iova;
+	pool->ena = 1;
+	pool->buf_size = block_size / OTX2_ALIGN;
+	pool->stack_max_pages = stack_size;
+	pool->shift = __builtin_clz(block_count) - 8;
+	pool->ptr_start = 0;
+	pool->ptr_end = ~0;
+	pool->stack_caching = 1;
+	pool->err_int_ena = BIT(NPA_POOL_ERR_INT_OVFLS);
+	pool->err_int_ena |= BIT(NPA_POOL_ERR_INT_RANGE);
+	pool->err_int_ena |= BIT(NPA_POOL_ERR_INT_PERR);
+
+	/* Many to one reduction */
+	pool->err_qint_idx = pool_id % lf->qints;
+
+	/* Issue AURA_INIT and POOL_INIT op */
+	rc = npa_lf_aura_pool_init(lf->mbox, aura_id, aura, pool);
+	if (rc)
+		goto stack_mem_free;
+
+	*aura_handle = npa_lf_aura_handle_gen(aura_id, lf->base);
+
+	/* Update aura count */
+	npa_lf_aura_op_cnt_set(*aura_handle, 0, block_count);
+	/* Read it back to make sure aura count is updated */
+	npa_lf_aura_op_cnt_get(*aura_handle);
+
+	return 0;
+
+stack_mem_free:
+	rte_memzone_free(mz);
+aura_res_put:
+	rte_bitmap_set(lf->npa_bmp, aura_id);
+exit:
+	return rc;
+}
+
+static int
+otx2_npa_alloc(struct rte_mempool *mp)
+{
+	uint32_t block_size, block_count;
+	struct otx2_npa_lf *lf;
+	struct npa_aura_s aura;
+	struct npa_pool_s pool;
+	uint64_t aura_handle;
+	int rc;
+
+	lf = otx2_npa_lf_obj_get();
+	if (lf == NULL) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	block_size = mp->elt_size + mp->header_size + mp->trailer_size;
+	block_count = mp->size;
+
+	if (block_size % OTX2_ALIGN != 0) {
+		otx2_err("Block size should be multiple of 128B");
+		rc = -ERANGE;
+		goto error;
+	}
+
+	memset(&aura, 0, sizeof(struct npa_aura_s));
+	memset(&pool, 0, sizeof(struct npa_pool_s));
+	pool.nat_align = 1;
+	pool.buf_offset = 1;
+
+	if ((uint32_t)pool.buf_offset * OTX2_ALIGN != mp->header_size) {
+		otx2_err("Unsupported mp->header_size=%d", mp->header_size);
+		rc = -EINVAL;
+		goto error;
+	}
+
+	/* Use driver specific mp->pool_config to override aura config */
+	if (mp->pool_config != NULL)
+		memcpy(&aura, mp->pool_config, sizeof(struct npa_aura_s));
+
+	rc = npa_lf_aura_pool_pair_alloc(lf, block_size, block_count,
+			 &aura, &pool, &aura_handle);
+	if (rc) {
+		otx2_err("Failed to alloc pool or aura rc=%d", rc);
+		goto error;
+	}
+
+	/* Store aura_handle for future queue operations */
+	mp->pool_id = aura_handle;
+	otx2_npa_dbg("lf=%p block_sz=%d block_count=%d aura_handle=0x%"PRIx64,
+		     lf, block_size, block_count, aura_handle);
+
+	/* Just hold the reference of the object */
+	otx2_npa_lf_obj_ref();
+	return 0;
+error:
+	return rc;
+}
+
+static struct rte_mempool_ops otx2_npa_ops = {
+	.name = "octeontx2_npa",
+	.alloc = otx2_npa_alloc,
+};
+
+MEMPOOL_REGISTER_OPS(otx2_npa_ops);

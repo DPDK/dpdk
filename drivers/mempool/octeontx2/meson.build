@@ -2,7 +2,8 @@
 # Copyright(C) 2019 Marvell International Ltd.
 #
 
-sources = files('otx2_mempool.c',
+sources = files('otx2_mempool_ops.c',
+		'otx2_mempool.c',
 		'otx2_mempool_irq.c',
 		'otx2_mempool_debug.c'
 		)

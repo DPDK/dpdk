@@ -28,6 +28,7 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX2_MEMPOOL) += \
+	otx2_mempool_ops.c	\
 	otx2_mempool.c 		\
 	otx2_mempool_irq.c	\
 	otx2_mempool_debug.c
