@@ -7,6 +7,61 @@
 
 #include "otx2_mempool.h"
 
+static int __hot
+otx2_npa_enq(struct rte_mempool *mp, void * const *obj_table, unsigned int n)
+{
+	unsigned int index; const uint64_t aura_handle = mp->pool_id;
+	const uint64_t reg = npa_lf_aura_handle_to_aura(aura_handle);
+	const uint64_t addr = npa_lf_aura_handle_to_base(aura_handle) +
+				 NPA_LF_AURA_OP_FREE0;
+
+	for (index = 0; index < n; index++)
+		otx2_store_pair((uint64_t)obj_table[index], reg, addr);
+
+	return 0;
+}
+
+static __rte_noinline int
+npa_lf_aura_op_alloc_one(const int64_t wdata, int64_t * const addr,
+			 void **obj_table, uint8_t i)
+{
+	uint8_t retry = 4;
+
+	do {
+		obj_table[i] = (void *)otx2_atomic64_add_nosync(wdata, addr);
+		if (obj_table[i] != NULL)
+			return 0;
+
+	} while (retry--);
+
+	return -ENOENT;
+}
+
+static inline int __hot
+otx2_npa_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	const int64_t wdata = npa_lf_aura_handle_to_aura(mp->pool_id);
+	unsigned int index;
+	uint64_t obj;
+
+	int64_t * const addr = (int64_t * const)
+			(npa_lf_aura_handle_to_base(mp->pool_id) +
+				NPA_LF_AURA_OP_ALLOCX(0));
+	for (index = 0; index < n; index++, obj_table++) {
+		obj = npa_lf_aura_op_alloc_one(wdata, addr, obj_table, 0);
+		if (obj == 0) {
+			for (; index > 0; index--) {
+				obj_table--;
+				otx2_npa_enq(mp, obj_table, 1);
+			}
+			return -ENOENT;
+		}
+		*obj_table = (void *)obj;
+	}
+
+	return 0;
+}
+
 static unsigned int
 otx2_npa_get_count(const struct rte_mempool *mp)
 {
@@ -404,9 +459,11 @@ static struct rte_mempool_ops otx2_npa_ops = {
 	.name = "octeontx2_npa",
 	.alloc = otx2_npa_alloc,
 	.free = otx2_npa_free,
+	.enqueue = otx2_npa_enq,
 	.get_count = otx2_npa_get_count,
 	.calc_mem_size = otx2_npa_calc_mem_size,
 	.populate = otx2_npa_populate,
+	.dequeue = otx2_npa_deq,
 };
 
 MEMPOOL_REGISTER_OPS(otx2_npa_ops);
