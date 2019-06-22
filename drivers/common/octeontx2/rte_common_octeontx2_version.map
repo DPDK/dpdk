@@ -21,5 +21,9 @@ DPDK_19.08 {
 	otx2_mbox_msg_send;
 	otx2_mbox_wait_for_rsp;
 
+	otx2_disable_irqs;
+	otx2_unregister_irq;
+	otx2_register_irq;
+
 	local: *;
 };
