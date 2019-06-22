@@ -450,6 +450,7 @@ M: Jerin Jacob <jerinj@marvell.com>
 M: Nithin Dabilpuram <ndabilpuram@marvell.com>
 M: Vamsi Attunuru <vattunuru@marvell.com>
 F: drivers/common/octeontx2/
+F: drivers/mempool/octeontx2/
 F: doc/guides/platform/img/octeontx2_*
 F: doc/guides/platform/octeontx2.rst
 

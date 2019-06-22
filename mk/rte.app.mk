@@ -88,6 +88,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_TIMER)          += -lrte_timer
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MEMPOOL)        += -lrte_mempool
 _LDLIBS-$(CONFIG_RTE_LIBRTE_STACK)          += -lrte_stack
 _LDLIBS-$(CONFIG_RTE_DRIVER_MEMPOOL_RING)   += -lrte_mempool_ring
+_LDLIBS-$(CONFIG_RTE_LIBRTE_OCTEONTX2_MEMPOOL) += -lrte_mempool_octeontx2
 _LDLIBS-$(CONFIG_RTE_LIBRTE_RING)           += -lrte_ring
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PCI)            += -lrte_pci
 _LDLIBS-$(CONFIG_RTE_LIBRTE_EAL)            += -lrte_eal
@@ -107,7 +108,10 @@ endif
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF)$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL),yy)
 _LDLIBS-y += -lrte_common_octeontx
 endif
+OCTEONTX2-y := $(CONFIG_RTE_LIBRTE_OCTEONTX2_MEMPOOL)
+ifeq ($(findstring y,$(OCTEONTX2-y)),y)
 _LDLIBS-y += -lrte_common_octeontx2
+endif
 
 MVEP-y := $(CONFIG_RTE_LIBRTE_MVPP2_PMD)
 MVEP-y += $(CONFIG_RTE_LIBRTE_MVNETA_PMD)

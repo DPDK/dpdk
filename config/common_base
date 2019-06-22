@@ -778,6 +778,11 @@ CONFIG_RTE_DRIVER_MEMPOOL_STACK=y
 CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL=y
 
 #
+# Compile PMD for octeontx2 npa mempool device
+#
+CONFIG_RTE_LIBRTE_OCTEONTX2_MEMPOOL=y
+
+#
 # Compile librte_mbuf
 #
 CONFIG_RTE_LIBRTE_MBUF=y
