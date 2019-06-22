@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <rte_alarm.h>
 #include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_memcpy.h>
@@ -48,6 +49,200 @@ mbox_mem_unmap(void *va, size_t size)
 {
 	if (va)
 		munmap(va, size);
+}
+
+static int
+af_pf_wait_msg(struct otx2_dev *dev, uint16_t vf, int num_msg)
+{
+	uint32_t timeout = 0, sleep = 1; struct otx2_mbox *mbox = dev->mbox;
+	struct otx2_mbox_dev *mdev = &mbox->dev[0];
+	volatile uint64_t int_status;
+	struct mbox_hdr *req_hdr;
+	struct mbox_msghdr *msg;
+	struct mbox_msghdr *rsp;
+	uint64_t offset;
+	size_t size;
+	int i;
+
+	/* We need to disable PF interrupts. We are in timer interrupt */
+	otx2_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
+
+	/* Send message */
+	otx2_mbox_msg_send(mbox, 0);
+
+	do {
+		rte_delay_ms(sleep);
+		timeout++;
+		if (timeout >= MBOX_RSP_TIMEOUT) {
+			otx2_err("Routed messages %d timeout: %dms",
+				 num_msg, MBOX_RSP_TIMEOUT);
+			break;
+		}
+		int_status = otx2_read64(dev->bar2 + RVU_PF_INT);
+	} while ((int_status & 0x1) != 0x1);
+
+	/* Clear */
+	otx2_write64(~0ull, dev->bar2 + RVU_PF_INT);
+
+	/* Enable interrupts */
+	otx2_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1S);
+
+	rte_spinlock_lock(&mdev->mbox_lock);
+
+	req_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
+	if (req_hdr->num_msgs != num_msg)
+		otx2_err("Routed messages: %d received: %d", num_msg,
+			 req_hdr->num_msgs);
+
+	/* Get messages from mbox */
+	offset = mbox->rx_start +
+			RTE_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+	for (i = 0; i < req_hdr->num_msgs; i++) {
+		msg = (struct mbox_msghdr *)((uintptr_t)mdev->mbase + offset);
+		size = mbox->rx_start + msg->next_msgoff - offset;
+
+		/* Reserve PF/VF mbox message */
+		size = RTE_ALIGN(size, MBOX_MSG_ALIGN);
+		rsp = otx2_mbox_alloc_msg(&dev->mbox_vfpf, vf, size);
+		otx2_mbox_rsp_init(msg->id, rsp);
+
+		/* Copy message from AF<->PF mbox to PF<->VF mbox */
+		otx2_mbox_memcpy((uint8_t *)rsp + sizeof(struct mbox_msghdr),
+				 (uint8_t *)msg + sizeof(struct mbox_msghdr),
+				 size - sizeof(struct mbox_msghdr));
+
+		/* Set status and sender pf_func data */
+		rsp->rc = msg->rc;
+		rsp->pcifunc = msg->pcifunc;
+
+		offset = mbox->rx_start + msg->next_msgoff;
+	}
+	rte_spinlock_unlock(&mdev->mbox_lock);
+
+	return req_hdr->num_msgs;
+}
+
+static int
+vf_pf_process_msgs(struct otx2_dev *dev, uint16_t vf)
+{
+	int offset, routed = 0; struct otx2_mbox *mbox = &dev->mbox_vfpf;
+	struct otx2_mbox_dev *mdev = &mbox->dev[vf];
+	struct mbox_hdr *req_hdr;
+	struct mbox_msghdr *msg;
+	size_t size;
+	uint16_t i;
+
+	req_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
+	if (!req_hdr->num_msgs)
+		return 0;
+
+	offset = mbox->rx_start + RTE_ALIGN(sizeof(*req_hdr), MBOX_MSG_ALIGN);
+
+	for (i = 0; i < req_hdr->num_msgs; i++) {
+
+		msg = (struct mbox_msghdr *)((uintptr_t)mdev->mbase + offset);
+		size = mbox->rx_start + msg->next_msgoff - offset;
+
+		/* RVU_PF_FUNC_S */
+		msg->pcifunc = otx2_pfvf_func(dev->pf, vf);
+
+		if (msg->id == MBOX_MSG_READY) {
+			struct ready_msg_rsp *rsp;
+			uint16_t max_bits = sizeof(dev->active_vfs[0]) * 8;
+
+			/* Handle READY message in PF */
+			dev->active_vfs[vf / max_bits] |=
+						BIT_ULL(vf % max_bits);
+			rsp = (struct ready_msg_rsp *)
+			       otx2_mbox_alloc_msg(mbox, vf, sizeof(*rsp));
+			otx2_mbox_rsp_init(msg->id, rsp);
+
+			/* PF/VF function ID */
+			rsp->hdr.pcifunc = msg->pcifunc;
+			rsp->hdr.rc = 0;
+		} else {
+			struct mbox_msghdr *af_req;
+			/* Reserve AF/PF mbox message */
+			size = RTE_ALIGN(size, MBOX_MSG_ALIGN);
+			af_req = otx2_mbox_alloc_msg(dev->mbox, 0, size);
+			otx2_mbox_req_init(msg->id, af_req);
+
+			/* Copy message from VF<->PF mbox to PF<->AF mbox */
+			otx2_mbox_memcpy((uint8_t *)af_req +
+				   sizeof(struct mbox_msghdr),
+				   (uint8_t *)msg + sizeof(struct mbox_msghdr),
+				   size - sizeof(struct mbox_msghdr));
+			af_req->pcifunc = msg->pcifunc;
+			routed++;
+		}
+		offset = mbox->rx_start + msg->next_msgoff;
+	}
+
+	if (routed > 0) {
+		otx2_base_dbg("pf:%d routed %d messages from vf:%d to AF",
+			      dev->pf, routed, vf);
+		af_pf_wait_msg(dev, vf, routed);
+		otx2_mbox_reset(dev->mbox, 0);
+	}
+
+	/* Send mbox responses to VF */
+	if (mdev->num_msgs) {
+		otx2_base_dbg("pf:%d reply %d messages to vf:%d",
+			      dev->pf, mdev->num_msgs, vf);
+		otx2_mbox_msg_send(mbox, vf);
+	}
+
+	return i;
+}
+
+static void
+otx2_vf_pf_mbox_handle_msg(void *param)
+{
+	uint16_t vf, max_vf, max_bits;
+	struct otx2_dev *dev = param;
+
+	max_bits = sizeof(dev->intr.bits[0]) * sizeof(uint64_t);
+	max_vf = max_bits * MAX_VFPF_DWORD_BITS;
+
+	for (vf = 0; vf < max_vf; vf++) {
+		if (dev->intr.bits[vf/max_bits] & BIT_ULL(vf%max_bits)) {
+			otx2_base_dbg("Process vf:%d request (pf:%d, vf:%d)",
+				       vf, dev->pf, dev->vf);
+			vf_pf_process_msgs(dev, vf);
+			dev->intr.bits[vf/max_bits] &= ~(BIT_ULL(vf%max_bits));
+		}
+	}
+	dev->timer_set = 0;
+}
+
+static void
+otx2_vf_pf_mbox_irq(void *param)
+{
+	struct otx2_dev *dev = param;
+	bool alarm_set = false;
+	uint64_t intr;
+	int vfpf;
+
+	for (vfpf = 0; vfpf < MAX_VFPF_DWORD_BITS; ++vfpf) {
+		intr = otx2_read64(dev->bar2 + RVU_PF_VFPF_MBOX_INTX(vfpf));
+		if (!intr)
+			continue;
+
+		otx2_base_dbg("vfpf: %d intr: 0x%" PRIx64 " (pf:%d, vf:%d)",
+			      vfpf, intr, dev->pf, dev->vf);
+
+		/* Save and clear intr bits */
+		dev->intr.bits[vfpf] |= intr;
+		otx2_write64(intr, dev->bar2 + RVU_PF_VFPF_MBOX_INTX(vfpf));
+		alarm_set = true;
+	}
+
+	if (!dev->timer_set && alarm_set) {
+		dev->timer_set = 1;
+		/* Start timer to handle messages */
+		rte_eal_alarm_set(VF_PF_MBOX_TIMER_MS,
+				  otx2_vf_pf_mbox_handle_msg, dev);
+	}
 }
 
 static void
@@ -118,12 +313,33 @@ static int
 mbox_register_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
-	int rc;
+	int i, rc;
+
+	/* HW clear irq */
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i)
+		otx2_write64(~0ull, dev->bar2 +
+			     RVU_PF_VFPF_MBOX_INT_ENA_W1CX(i));
 
 	otx2_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
 
 	dev->timer_set = 0;
 
+	/* MBOX interrupt for VF(0...63) <-> PF */
+	rc = otx2_register_irq(intr_handle, otx2_vf_pf_mbox_irq, dev,
+			       RVU_PF_INT_VEC_VFPF_MBOX0);
+
+	if (rc) {
+		otx2_err("Fail to register PF(VF0-63) mbox irq");
+		return rc;
+	}
+	/* MBOX interrupt for VF(64...128) <-> PF */
+	rc = otx2_register_irq(intr_handle, otx2_vf_pf_mbox_irq, dev,
+			       RVU_PF_INT_VEC_VFPF_MBOX1);
+
+	if (rc) {
+		otx2_err("Fail to register PF(VF64-128) mbox irq");
+		return rc;
+	}
 	/* MBOX interrupt AF <-> PF */
 	rc = otx2_register_irq(intr_handle, otx2_af_pf_mbox_irq,
 			       dev, RVU_PF_INT_VEC_AFPF_MBOX);
@@ -131,6 +347,11 @@ mbox_register_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 		otx2_err("Fail to register AF<->PF mbox irq");
 		return rc;
 	}
+
+	/* HW enable intr */
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i)
+		otx2_write64(~0ull, dev->bar2 +
+			RVU_PF_VFPF_MBOX_INT_ENA_W1SX(i));
 
 	otx2_write64(~0ull, dev->bar2 + RVU_PF_INT);
 	otx2_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1S);
@@ -142,10 +363,27 @@ static void
 mbox_unregister_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int i;
+
+	/* HW clear irq */
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i)
+		otx2_write64(~0ull, dev->bar2 +
+			     RVU_PF_VFPF_MBOX_INT_ENA_W1CX(i));
 
 	otx2_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
 
 	dev->timer_set = 0;
+
+	rte_eal_alarm_cancel(otx2_vf_pf_mbox_handle_msg, dev);
+
+	/* Unregister the interrupt handler for each vectors */
+	/* MBOX interrupt for VF(0...63) <-> PF */
+	otx2_unregister_irq(intr_handle, otx2_vf_pf_mbox_irq, dev,
+			    RVU_PF_INT_VEC_VFPF_MBOX0);
+
+	/* MBOX interrupt for VF(64...128) <-> PF */
+	otx2_unregister_irq(intr_handle, otx2_vf_pf_mbox_irq, dev,
+			    RVU_PF_INT_VEC_VFPF_MBOX1);
 
 	/* MBOX interrupt AF <-> PF */
 	otx2_unregister_irq(intr_handle, otx2_af_pf_mbox_irq, dev,
