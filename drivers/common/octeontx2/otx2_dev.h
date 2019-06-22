@@ -23,6 +23,17 @@
 
 struct otx2_dev;
 
+/* Link status callback */
+typedef void (*otx2_link_status_t)(struct otx2_dev *dev,
+				   struct cgx_link_user_info *link);
+/* PTP info callback */
+typedef int (*otx2_ptp_info_t)(struct otx2_dev *dev, bool ptp_en);
+
+struct otx2_dev_ops {
+	otx2_link_status_t link_status_update;
+	otx2_ptp_info_t ptp_info_update;
+};
+
 #define OTX2_DEV					\
 	int node __rte_cache_aligned;			\
 	uint16_t pf;					\

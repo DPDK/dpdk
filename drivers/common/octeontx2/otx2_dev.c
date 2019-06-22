@@ -195,6 +195,57 @@ vf_pf_process_msgs(struct otx2_dev *dev, uint16_t vf)
 	return i;
 }
 
+static int
+vf_pf_process_up_msgs(struct otx2_dev *dev, uint16_t vf)
+{
+	struct otx2_mbox *mbox = &dev->mbox_vfpf_up;
+	struct otx2_mbox_dev *mdev = &mbox->dev[vf];
+	struct mbox_hdr *req_hdr;
+	struct mbox_msghdr *msg;
+	int msgs_acked = 0;
+	int offset;
+	uint16_t i;
+
+	req_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
+	if (req_hdr->num_msgs == 0)
+		return 0;
+
+	offset = mbox->rx_start + RTE_ALIGN(sizeof(*req_hdr), MBOX_MSG_ALIGN);
+
+	for (i = 0; i < req_hdr->num_msgs; i++) {
+		msg = (struct mbox_msghdr *)((uintptr_t)mdev->mbase + offset);
+
+		msgs_acked++;
+		/* RVU_PF_FUNC_S */
+		msg->pcifunc = otx2_pfvf_func(dev->pf, vf);
+
+		switch (msg->id) {
+		case MBOX_MSG_CGX_LINK_EVENT:
+			otx2_base_dbg("PF: Msg 0x%x (%s) fn:0x%x (pf:%d,vf:%d)",
+				      msg->id, otx2_mbox_id2name(msg->id),
+				      msg->pcifunc, otx2_get_pf(msg->pcifunc),
+				      otx2_get_vf(msg->pcifunc));
+			break;
+		case MBOX_MSG_CGX_PTP_RX_INFO:
+			otx2_base_dbg("PF: Msg 0x%x (%s) fn:0x%x (pf:%d,vf:%d)",
+				      msg->id, otx2_mbox_id2name(msg->id),
+				      msg->pcifunc, otx2_get_pf(msg->pcifunc),
+				      otx2_get_vf(msg->pcifunc));
+			break;
+		default:
+			otx2_err("Not handled UP msg 0x%x (%s) func:0x%x",
+				 msg->id, otx2_mbox_id2name(msg->id),
+				 msg->pcifunc);
+		}
+		offset = mbox->rx_start + msg->next_msgoff;
+	}
+	otx2_mbox_reset(mbox, vf);
+	mdev->msgs_acked = msgs_acked;
+	rte_wmb();
+
+	return i;
+}
+
 static void
 otx2_vf_pf_mbox_handle_msg(void *param)
 {
@@ -209,6 +260,8 @@ otx2_vf_pf_mbox_handle_msg(void *param)
 			otx2_base_dbg("Process vf:%d request (pf:%d, vf:%d)",
 				       vf, dev->pf, dev->vf);
 			vf_pf_process_msgs(dev, vf);
+			/* UP messages */
+			vf_pf_process_up_msgs(dev, vf);
 			dev->intr.bits[vf/max_bits] &= ~(BIT_ULL(vf%max_bits));
 		}
 	}
@@ -291,6 +344,185 @@ otx2_process_msgs(struct otx2_dev *dev, struct otx2_mbox *mbox)
 	rte_wmb();
 }
 
+/* Copies the message received from AF and sends it to VF */
+static void
+pf_vf_mbox_send_up_msg(struct otx2_dev *dev, void *rec_msg)
+{
+	uint16_t max_bits = sizeof(dev->active_vfs[0]) * sizeof(uint64_t);
+	struct otx2_mbox *vf_mbox = &dev->mbox_vfpf_up;
+	struct msg_req *msg = rec_msg;
+	struct mbox_msghdr *vf_msg;
+	uint16_t vf;
+	size_t size;
+
+	size = RTE_ALIGN(otx2_mbox_id2size(msg->hdr.id), MBOX_MSG_ALIGN);
+	/* Send UP message to all VF's */
+	for (vf = 0; vf < vf_mbox->ndevs; vf++) {
+		/* VF active */
+		if (!(dev->active_vfs[vf / max_bits] & (BIT_ULL(vf))))
+			continue;
+
+		otx2_base_dbg("(%s) size: %zx to VF: %d",
+			      otx2_mbox_id2name(msg->hdr.id), size, vf);
+
+		/* Reserve PF/VF mbox message */
+		vf_msg = otx2_mbox_alloc_msg(vf_mbox, vf, size);
+		if (!vf_msg) {
+			otx2_err("Failed to alloc VF%d UP message", vf);
+			continue;
+		}
+		otx2_mbox_req_init(msg->hdr.id, vf_msg);
+
+		/*
+		 * Copy message from AF<->PF UP mbox
+		 * to PF<->VF UP mbox
+		 */
+		otx2_mbox_memcpy((uint8_t *)vf_msg +
+				 sizeof(struct mbox_msghdr), (uint8_t *)msg
+				 + sizeof(struct mbox_msghdr), size -
+				 sizeof(struct mbox_msghdr));
+
+		vf_msg->rc = msg->hdr.rc;
+		/* Set PF to be a sender */
+		vf_msg->pcifunc = dev->pf_func;
+
+		/* Send to VF */
+		otx2_mbox_msg_send(vf_mbox, vf);
+	}
+}
+
+static int
+otx2_mbox_up_handler_cgx_link_event(struct otx2_dev *dev,
+				    struct cgx_link_info_msg *msg,
+				    struct msg_rsp *rsp)
+{
+	struct cgx_link_user_info *linfo = &msg->link_info;
+
+	otx2_base_dbg("pf:%d/vf:%d NIC Link %s --> 0x%x (%s) from: pf:%d/vf:%d",
+		      otx2_get_pf(dev->pf_func), otx2_get_vf(dev->pf_func),
+		      linfo->link_up ? "UP" : "DOWN", msg->hdr.id,
+		      otx2_mbox_id2name(msg->hdr.id),
+		      otx2_get_pf(msg->hdr.pcifunc),
+		      otx2_get_vf(msg->hdr.pcifunc));
+
+	/* PF gets link notification from AF */
+	if (otx2_get_pf(msg->hdr.pcifunc) == 0) {
+		if (dev->ops && dev->ops->link_status_update)
+			dev->ops->link_status_update(dev, linfo);
+
+		/* Forward the same message as received from AF to VF */
+		pf_vf_mbox_send_up_msg(dev, msg);
+	} else {
+		/* VF gets link up notification */
+		if (dev->ops && dev->ops->link_status_update)
+			dev->ops->link_status_update(dev, linfo);
+	}
+
+	rsp->hdr.rc = 0;
+	return 0;
+}
+
+static int
+otx2_mbox_up_handler_cgx_ptp_rx_info(struct otx2_dev *dev,
+				     struct cgx_ptp_rx_info_msg *msg,
+				     struct msg_rsp *rsp)
+{
+	otx2_nix_dbg("pf:%d/vf:%d PTP mode %s --> 0x%x (%s) from: pf:%d/vf:%d",
+		 otx2_get_pf(dev->pf_func),
+		 otx2_get_vf(dev->pf_func),
+		 msg->ptp_en ? "ENABLED" : "DISABLED",
+		 msg->hdr.id, otx2_mbox_id2name(msg->hdr.id),
+		 otx2_get_pf(msg->hdr.pcifunc),
+		 otx2_get_vf(msg->hdr.pcifunc));
+
+	/* PF gets PTP notification from AF */
+	if (otx2_get_pf(msg->hdr.pcifunc) == 0) {
+		if (dev->ops && dev->ops->ptp_info_update)
+			dev->ops->ptp_info_update(dev, msg->ptp_en);
+
+		/* Forward the same message as received from AF to VF */
+		pf_vf_mbox_send_up_msg(dev, msg);
+	} else {
+		/* VF gets PTP notification */
+		if (dev->ops && dev->ops->ptp_info_update)
+			dev->ops->ptp_info_update(dev, msg->ptp_en);
+	}
+
+	rsp->hdr.rc = 0;
+	return 0;
+}
+
+static int
+mbox_process_msgs_up(struct otx2_dev *dev, struct mbox_msghdr *req)
+{
+	/* Check if valid, if not reply with a invalid msg */
+	if (req->sig != OTX2_MBOX_REQ_SIG)
+		return -EIO;
+
+	switch (req->id) {
+#define M(_name, _id, _fn_name, _req_type, _rsp_type)		\
+	case _id: {						\
+		struct _rsp_type *rsp;				\
+		int err;					\
+								\
+		rsp = (struct _rsp_type *)otx2_mbox_alloc_msg(	\
+			&dev->mbox_up, 0,			\
+			sizeof(struct _rsp_type));		\
+		if (!rsp)					\
+			return -ENOMEM;				\
+								\
+		rsp->hdr.id = _id;				\
+		rsp->hdr.sig = OTX2_MBOX_RSP_SIG;		\
+		rsp->hdr.pcifunc = dev->pf_func;		\
+		rsp->hdr.rc = 0;				\
+								\
+		err = otx2_mbox_up_handler_ ## _fn_name(	\
+			dev, (struct _req_type *)req, rsp);	\
+		return err;					\
+	}
+MBOX_UP_CGX_MESSAGES
+#undef M
+
+	default :
+		otx2_reply_invalid_msg(&dev->mbox_up, 0, 0, req->id);
+	}
+
+	return -ENODEV;
+}
+
+static void
+otx2_process_msgs_up(struct otx2_dev *dev, struct otx2_mbox *mbox)
+{
+	struct otx2_mbox_dev *mdev = &mbox->dev[0];
+	struct mbox_hdr *req_hdr;
+	struct mbox_msghdr *msg;
+	int i, err, offset;
+
+	req_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
+	if (req_hdr->num_msgs == 0)
+		return;
+
+	offset = mbox->rx_start + RTE_ALIGN(sizeof(*req_hdr), MBOX_MSG_ALIGN);
+	for (i = 0; i < req_hdr->num_msgs; i++) {
+		msg = (struct mbox_msghdr *)((uintptr_t)mdev->mbase + offset);
+
+		otx2_base_dbg("Message 0x%x (%s) pf:%d/vf:%d",
+				msg->id, otx2_mbox_id2name(msg->id),
+				otx2_get_pf(msg->pcifunc),
+				otx2_get_vf(msg->pcifunc));
+		err = mbox_process_msgs_up(dev, msg);
+		if (err)
+			otx2_err("Error %d handling 0x%x (%s)",
+				 err, msg->id, otx2_mbox_id2name(msg->id));
+		offset = mbox->rx_start + msg->next_msgoff;
+	}
+	/* Send mbox responses */
+	if (mdev->num_msgs) {
+		otx2_base_dbg("Reply num_msgs:%d", mdev->num_msgs);
+		otx2_mbox_msg_send(mbox, 0);
+	}
+}
+
 static void
 otx2_pf_vf_mbox_irq(void *param)
 {
@@ -303,10 +535,13 @@ otx2_pf_vf_mbox_irq(void *param)
 
 	otx2_write64(intr, dev->bar2 + RVU_VF_INT);
 	otx2_base_dbg("Irq 0x%" PRIx64 "(pf:%d,vf:%d)", intr, dev->pf, dev->vf);
-	if (intr)
+	if (intr) {
 		/* First process all configuration messages */
 		otx2_process_msgs(dev, dev->mbox);
 
+		/* Process Uplink messages */
+		otx2_process_msgs_up(dev, &dev->mbox_up);
+	}
 }
 
 static void
@@ -322,9 +557,13 @@ otx2_af_pf_mbox_irq(void *param)
 	otx2_write64(intr, dev->bar2 + RVU_PF_INT);
 
 	otx2_base_dbg("Irq 0x%" PRIx64 "(pf:%d,vf:%d)", intr, dev->pf, dev->vf);
-	if (intr)
+	if (intr) {
 		/* First process all configuration messages */
 		otx2_process_msgs(dev, dev->mbox);
+
+		/* Process Uplink messages */
+		otx2_process_msgs_up(dev, &dev->mbox_up);
+	}
 }
 
 static int
