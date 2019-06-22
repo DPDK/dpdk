@@ -195,6 +195,7 @@ otx2_npa_lf_fini(void)
 		return -ENOMEM;
 
 	if (rte_atomic16_add_return(&idev->npa_refcnt, -1) == 0) {
+		otx2_npa_unregister_irqs(idev->npa_lf);
 		rc |= npa_lf_fini(idev->npa_lf);
 		rc |= npa_lf_detach(idev->npa_lf->mbox);
 		otx2_npa_set_defaults(idev);
@@ -251,6 +252,9 @@ otx2_npa_lf_init(struct rte_pci_device *pci_dev, void *otx2_dev)
 		idev->npa_pf_func = dev->pf_func;
 		idev->npa_lf = lf;
 		rte_smp_wmb();
+		rc = otx2_npa_register_irqs(lf);
+		if (rc)
+			goto npa_fini;
 
 		rte_mbuf_set_platform_mempool_ops("octeontx2_npa");
 		otx2_npa_dbg("npa_lf=%p pools=%d sz=%d pf_func=0x%x msix=0x%x",
@@ -259,6 +263,8 @@ otx2_npa_lf_init(struct rte_pci_device *pci_dev, void *otx2_dev)
 
 	return 0;
 
+npa_fini:
+	npa_lf_fini(idev->npa_lf);
 npa_detach:
 	npa_lf_detach(dev->mbox);
 fail:

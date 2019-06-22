@@ -198,4 +198,8 @@ npa_lf_aura_op_range_set(uint64_t aura_handle, uint64_t start_iova,
 int otx2_npa_lf_init(struct rte_pci_device *pci_dev, void *otx2_dev);
 int otx2_npa_lf_fini(void);
 
+/* IRQ */
+int otx2_npa_register_irqs(struct otx2_npa_lf *lf);
+void otx2_npa_unregister_irqs(struct otx2_npa_lf *lf);
+
 #endif /* __OTX2_MEMPOOL_H__ */
