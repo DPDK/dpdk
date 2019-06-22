@@ -47,6 +47,62 @@ npa_lf_aura_pool_init(struct otx2_mbox *mbox, uint32_t aura_id,
 		return NPA_LF_ERR_AURA_POOL_INIT;
 }
 
+static int
+npa_lf_aura_pool_fini(struct otx2_mbox *mbox,
+		      uint32_t aura_id,
+		      uint64_t aura_handle)
+{
+	struct npa_aq_enq_req *aura_req, *pool_req;
+	struct npa_aq_enq_rsp *aura_rsp, *pool_rsp;
+	struct otx2_mbox_dev *mdev = &mbox->dev[0];
+	struct ndc_sync_op *ndc_req;
+	int rc, off;
+
+	/* Procedure for disabling an aura/pool */
+	rte_delay_us(10);
+	npa_lf_aura_op_alloc(aura_handle, 0);
+
+	pool_req = otx2_mbox_alloc_msg_npa_aq_enq(mbox);
+	pool_req->aura_id = aura_id;
+	pool_req->ctype = NPA_AQ_CTYPE_POOL;
+	pool_req->op = NPA_AQ_INSTOP_WRITE;
+	pool_req->pool.ena = 0;
+	pool_req->pool_mask.ena = ~pool_req->pool_mask.ena;
+
+	aura_req = otx2_mbox_alloc_msg_npa_aq_enq(mbox);
+	aura_req->aura_id = aura_id;
+	aura_req->ctype = NPA_AQ_CTYPE_AURA;
+	aura_req->op = NPA_AQ_INSTOP_WRITE;
+	aura_req->aura.ena = 0;
+	aura_req->aura_mask.ena = ~aura_req->aura_mask.ena;
+
+	otx2_mbox_msg_send(mbox, 0);
+	rc = otx2_mbox_wait_for_rsp(mbox, 0);
+	if (rc < 0)
+		return rc;
+
+	off = mbox->rx_start +
+			RTE_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+	pool_rsp = (struct npa_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
+
+	off = mbox->rx_start + pool_rsp->hdr.next_msgoff;
+	aura_rsp = (struct npa_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
+
+	if (rc != 2 || aura_rsp->hdr.rc != 0 || pool_rsp->hdr.rc != 0)
+		return NPA_LF_ERR_AURA_POOL_FINI;
+
+	/* Sync NDC-NPA for LF */
+	ndc_req = otx2_mbox_alloc_msg_ndc_sync_op(mbox);
+	ndc_req->npa_lf_sync = 1;
+
+	rc = otx2_mbox_process(mbox);
+	if (rc) {
+		otx2_err("Error on NDC-NPA LF sync, rc %d", rc);
+		return NPA_LF_ERR_AURA_POOL_FINI;
+	}
+	return 0;
+}
+
 static inline char*
 npa_lf_stack_memzone_name(struct otx2_npa_lf *lf, int pool_id, char *name)
 {
@@ -63,6 +119,18 @@ npa_lf_stack_dma_alloc(struct otx2_npa_lf *lf, char *name,
 	return rte_memzone_reserve_aligned(
 		npa_lf_stack_memzone_name(lf, pool_id, name), size, 0,
 			RTE_MEMZONE_IOVA_CONTIG, OTX2_ALIGN);
+}
+
+static inline int
+npa_lf_stack_dma_free(struct otx2_npa_lf *lf, char *name, int pool_id)
+{
+	const struct rte_memzone *mz;
+
+	mz = rte_memzone_lookup(npa_lf_stack_memzone_name(lf, pool_id, name));
+	if (mz == NULL)
+		return -EINVAL;
+
+	return rte_memzone_free(mz);
 }
 
 static inline int
@@ -180,6 +248,24 @@ exit:
 }
 
 static int
+npa_lf_aura_pool_pair_free(struct otx2_npa_lf *lf, uint64_t aura_handle)
+{
+	char name[RTE_MEMZONE_NAMESIZE];
+	int aura_id, pool_id, rc;
+
+	if (!lf || !aura_handle)
+		return NPA_LF_ERR_PARAM;
+
+	aura_id = pool_id = npa_lf_aura_handle_to_aura(aura_handle);
+	rc = npa_lf_aura_pool_fini(lf->mbox, aura_id, aura_handle);
+	rc |= npa_lf_stack_dma_free(lf, name, pool_id);
+
+	rte_bitmap_set(lf->npa_bmp, aura_id);
+
+	return rc;
+}
+
+static int
 otx2_npa_alloc(struct rte_mempool *mp)
 {
 	uint32_t block_size, block_count;
@@ -238,9 +324,27 @@ error:
 	return rc;
 }
 
+static void
+otx2_npa_free(struct rte_mempool *mp)
+{
+	struct otx2_npa_lf *lf = otx2_npa_lf_obj_get();
+	int rc = 0;
+
+	otx2_npa_dbg("lf=%p aura_handle=0x%"PRIx64, lf, mp->pool_id);
+	if (lf != NULL)
+		rc = npa_lf_aura_pool_pair_free(lf, mp->pool_id);
+
+	if (rc)
+		otx2_err("Failed to free pool or aura rc=%d", rc);
+
+	/* Release the reference of npalf */
+	otx2_npa_lf_fini();
+}
+
 static struct rte_mempool_ops otx2_npa_ops = {
 	.name = "octeontx2_npa",
 	.alloc = otx2_npa_alloc,
+	.free = otx2_npa_free,
 };
 
 MEMPOOL_REGISTER_OPS(otx2_npa_ops);
