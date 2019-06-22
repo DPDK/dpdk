@@ -344,7 +344,8 @@ static inline uint32_t ipn3ke_read_addr(volatile void *addr)
 
 #define WCMD 0x8000000000000000
 #define RCMD 0x4000000000000000
-#define UPL_BASE 0x10000
+#define INDRCT_CTRL 0x30
+#define INDRCT_STS 0x38
 static inline uint32_t _ipn3ke_indrct_read(struct ipn3ke_hw *hw,
 		uint32_t addr)
 {
@@ -355,13 +356,13 @@ static inline uint32_t _ipn3ke_indrct_read(struct ipn3ke_hw *hw,
 
 	word_offset = (addr & 0x1FFFFFF) >> 2;
 	indirect_value = RCMD | word_offset << 32;
-	indirect_addrs = hw->hw_addr + (uint32_t)(UPL_BASE | 0x10);
+	indirect_addrs = hw->hw_addr + (uint32_t)(INDRCT_CTRL);
 
 	rte_delay_us(10);
 
 	rte_write64((rte_cpu_to_le_64(indirect_value)), indirect_addrs);
 
-	indirect_addrs = hw->hw_addr + (uint32_t)(UPL_BASE | 0x18);
+	indirect_addrs = hw->hw_addr + (uint32_t)(INDRCT_STS);
 	while ((read_data >> 32) != 1)
 		read_data = rte_read64(indirect_addrs);
 
@@ -377,7 +378,7 @@ static inline void _ipn3ke_indrct_write(struct ipn3ke_hw *hw,
 
 	word_offset = (addr & 0x1FFFFFF) >> 2;
 	indirect_value = WCMD | word_offset << 32 | value;
-	indirect_addrs = hw->hw_addr + (uint32_t)(UPL_BASE | 0x10);
+	indirect_addrs = hw->hw_addr + (uint32_t)(INDRCT_CTRL);
 
 	rte_write64((rte_cpu_to_le_64(indirect_value)), indirect_addrs);
 	rte_delay_us(10);
@@ -409,6 +410,9 @@ static inline void _ipn3ke_indrct_write(struct ipn3ke_hw *hw,
 
 #define IPN3KE_DEV_PRIVATE_TO_TM(dev) \
 	(&(((struct ipn3ke_rpst *)(dev)->data->dev_private)->tm))
+
+#define IPN3KE_VBNG_INIT_DONE                      (0x3)
+#define IPN3KE_VBNG_INIT_STS                      (0x204)
 
 /* Byte address of IPN3KE internal module */
 #define IPN3KE_TM_VERSION                     (IPN3KE_QM_OFFSET + 0x0000)

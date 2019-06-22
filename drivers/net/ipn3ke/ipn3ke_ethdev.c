@@ -192,6 +192,26 @@ ipn3ke_hw_cap_init(struct ipn3ke_hw *hw)
 }
 
 static int
+ipn3ke_vbng_init_done(struct ipn3ke_hw *hw)
+{
+	uint32_t timeout = 10000;
+	while (timeout > 0) {
+		if (IPN3KE_READ_REG(hw, IPN3KE_VBNG_INIT_STS)
+			== IPN3KE_VBNG_INIT_DONE)
+			break;
+		rte_delay_us(1000);
+		timeout--;
+	}
+
+	if (!timeout) {
+		IPN3KE_AFU_PMD_ERR("IPN3KE vBNG INIT timeout.\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 ipn3ke_hw_init(struct rte_afu_device *afu_dev,
 	struct ipn3ke_hw *hw)
 {
@@ -223,15 +243,24 @@ ipn3ke_hw_init(struct rte_afu_device *afu_dev,
 				"LineSideMACType", &mac_type);
 	hw->retimer.mac_type = (int)mac_type;
 
+	IPN3KE_AFU_PMD_DEBUG("UPL_version is 0x%x\n", IPN3KE_READ_REG(hw, 0));
+
 	if (afu_dev->id.uuid.uuid_low == IPN3KE_UUID_VBNG_LOW &&
 		afu_dev->id.uuid.uuid_high == IPN3KE_UUID_VBNG_HIGH) {
-		ipn3ke_hw_cap_init(hw);
-		IPN3KE_AFU_PMD_DEBUG("UPL_version is 0x%x\n",
-			IPN3KE_READ_REG(hw, 0));
+		/* After power on, wait until init done */
+		if (ipn3ke_vbng_init_done(hw))
+			return -1;
 
-		/* Reset FPGA IP */
+		ipn3ke_hw_cap_init(hw);
+
+		/* Reset vBNG IP */
 		IPN3KE_WRITE_REG(hw, IPN3KE_CTRL_RESET, 1);
+		rte_delay_us(10);
 		IPN3KE_WRITE_REG(hw, IPN3KE_CTRL_RESET, 0);
+
+		/* After reset, wait until init done */
+		if (ipn3ke_vbng_init_done(hw))
+			return -1;
 	}
 
 	if (hw->retimer.mac_type == IFPGA_RAWDEV_RETIMER_MAC_TYPE_10GE_XFI) {
