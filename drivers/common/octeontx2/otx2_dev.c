@@ -177,7 +177,13 @@ void
 otx2_dev_fini(struct rte_pci_device *pci_dev, void *otx2_dev)
 {
 	struct otx2_dev *dev = otx2_dev;
+	struct otx2_idev_cfg *idev;
 	struct otx2_mbox *mbox;
+
+	/* Clear references to this pci dev */
+	idev = otx2_intra_dev_get_cfg();
+	if (idev->npa_lf && idev->npa_lf->pci_dev == pci_dev)
+		idev->npa_lf = NULL;
 
 	/* Release PF - VF */
 	mbox = &dev->mbox_vfpf;

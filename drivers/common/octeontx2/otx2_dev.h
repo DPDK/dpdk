@@ -40,6 +40,7 @@ struct otx2_dev;
 	otx2_intr_t intr;				\
 	int timer_set;	/* ~0 : no alarm handling */	\
 	uint64_t hwcap;					\
+	struct otx2_npa_lf npalf;			\
 	struct otx2_mbox *mbox;				\
 	uint16_t maxvf;					\
 	const struct otx2_dev_ops *ops

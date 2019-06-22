@@ -5,9 +5,12 @@
 #ifndef _OTX2_COMMON_H_
 #define _OTX2_COMMON_H_
 
+#include <rte_atomic.h>
 #include <rte_common.h>
-#include <rte_io.h>
+#include <rte_cycles.h>
 #include <rte_memory.h>
+#include <rte_memzone.h>
+#include <rte_io.h>
 
 #include "hw/otx2_rvu.h"
 #include "hw/otx2_nix.h"
@@ -32,6 +35,33 @@
 #ifndef __hot
 #define __hot   __attribute__((hot))
 #endif
+
+/* Intra device related functions */
+struct otx2_npa_lf {
+	struct otx2_mbox *mbox;
+	struct rte_pci_device *pci_dev;
+	struct rte_intr_handle *intr_handle;
+};
+
+struct otx2_idev_cfg {
+	uint16_t sso_pf_func;
+	uint16_t npa_pf_func;
+	struct otx2_npa_lf *npa_lf;
+	RTE_STD_C11
+	union {
+		rte_atomic16_t npa_refcnt;
+		uint16_t npa_refcnt_u16;
+	};
+};
+
+struct otx2_idev_cfg *otx2_intra_dev_get_cfg(void);
+void otx2_sso_pf_func_set(uint16_t sso_pf_func);
+uint16_t otx2_sso_pf_func_get(void);
+uint16_t otx2_npa_pf_func_get(void);
+struct otx2_npa_lf *otx2_npa_lf_obj_get(void);
+void otx2_npa_set_defaults(struct otx2_idev_cfg *idev);
+int otx2_npa_lf_active(void *dev);
+int otx2_npa_lf_obj_ref(void);
 
 /* Log */
 extern int otx2_logtype_base;

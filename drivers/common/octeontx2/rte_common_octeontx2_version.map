@@ -21,6 +21,15 @@ DPDK_19.08 {
 	otx2_mbox_msg_send;
 	otx2_mbox_wait_for_rsp;
 
+	otx2_intra_dev_get_cfg;
+	otx2_npa_lf_active;
+	otx2_npa_lf_obj_get;
+	otx2_npa_lf_obj_ref;
+	otx2_npa_pf_func_get;
+	otx2_npa_set_defaults;
+	otx2_sso_pf_func_get;
+	otx2_sso_pf_func_set;
+
 	otx2_disable_irqs;
 	otx2_unregister_irq;
 	otx2_register_irq;
