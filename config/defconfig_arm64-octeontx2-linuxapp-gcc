@@ -16,3 +16,6 @@ CONFIG_RTE_LIBRTE_VHOST_NUMA=n
 
 # Recommend to use VFIO as co-processors needs SMMU/IOMMU
 CONFIG_RTE_EAL_IGB_UIO=n
+
+# Max supported NIX LFs
+CONFIG_RTE_MAX_VFIO_GROUPS=128
