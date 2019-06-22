@@ -292,6 +292,24 @@ otx2_process_msgs(struct otx2_dev *dev, struct otx2_mbox *mbox)
 }
 
 static void
+otx2_pf_vf_mbox_irq(void *param)
+{
+	struct otx2_dev *dev = param;
+	uint64_t intr;
+
+	intr = otx2_read64(dev->bar2 + RVU_VF_INT);
+	if (intr == 0)
+		return;
+
+	otx2_write64(intr, dev->bar2 + RVU_VF_INT);
+	otx2_base_dbg("Irq 0x%" PRIx64 "(pf:%d,vf:%d)", intr, dev->pf, dev->vf);
+	if (intr)
+		/* First process all configuration messages */
+		otx2_process_msgs(dev, dev->mbox);
+
+}
+
+static void
 otx2_af_pf_mbox_irq(void *param)
 {
 	struct otx2_dev *dev = param;
@@ -310,7 +328,7 @@ otx2_af_pf_mbox_irq(void *param)
 }
 
 static int
-mbox_register_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
+mbox_register_pf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int i, rc;
@@ -359,8 +377,41 @@ mbox_register_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 	return rc;
 }
 
+static int
+mbox_register_vf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
+{
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int rc;
+
+	/* Clear irq */
+	otx2_write64(~0ull, dev->bar2 + RVU_VF_INT_ENA_W1C);
+
+	/* MBOX interrupt PF <-> VF */
+	rc = otx2_register_irq(intr_handle, otx2_pf_vf_mbox_irq,
+			       dev, RVU_VF_INT_VEC_MBOX);
+	if (rc) {
+		otx2_err("Fail to register PF<->VF mbox irq");
+		return rc;
+	}
+
+	/* HW enable intr */
+	otx2_write64(~0ull, dev->bar2 + RVU_VF_INT);
+	otx2_write64(~0ull, dev->bar2 + RVU_VF_INT_ENA_W1S);
+
+	return rc;
+}
+
+static int
+mbox_register_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
+{
+	if (otx2_dev_is_vf(dev))
+		return mbox_register_vf_irq(pci_dev, dev);
+	else
+		return mbox_register_pf_irq(pci_dev, dev);
+}
+
 static void
-mbox_unregister_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
+mbox_unregister_pf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int i;
@@ -388,6 +439,29 @@ mbox_unregister_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 	/* MBOX interrupt AF <-> PF */
 	otx2_unregister_irq(intr_handle, otx2_af_pf_mbox_irq, dev,
 			    RVU_PF_INT_VEC_AFPF_MBOX);
+
+}
+
+static void
+mbox_unregister_vf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
+{
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	/* Clear irq */
+	otx2_write64(~0ull, dev->bar2 + RVU_VF_INT_ENA_W1C);
+
+	/* Unregister the interrupt handler */
+	otx2_unregister_irq(intr_handle, otx2_pf_vf_mbox_irq, dev,
+			    RVU_VF_INT_VEC_MBOX);
+}
+
+static void
+mbox_unregister_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
+{
+	if (otx2_dev_is_vf(dev))
+		return mbox_unregister_vf_irq(pci_dev, dev);
+	else
+		return mbox_unregister_pf_irq(pci_dev, dev);
 }
 
 static void
