@@ -48,6 +48,152 @@ struct otx2_npa_lf {
 
 #define AURA_ID_MASK  (BIT_ULL(16) - 1)
 
+/*
+ * Generate 64bit handle to have optimized alloc and free aura operation.
+ * 0 - AURA_ID_MASK for storing the aura_id.
+ * AURA_ID_MASK+1 - (2^64 - 1) for storing the lf base address.
+ * This scheme is valid when OS can give AURA_ID_MASK
+ * aligned address for lf base address.
+ */
+static inline uint64_t
+npa_lf_aura_handle_gen(uint32_t aura_id, uintptr_t addr)
+{
+	uint64_t val;
+
+	val = aura_id & AURA_ID_MASK;
+	return (uint64_t)addr | val;
+}
+
+static inline uint64_t
+npa_lf_aura_handle_to_aura(uint64_t aura_handle)
+{
+	return aura_handle & AURA_ID_MASK;
+}
+
+static inline uintptr_t
+npa_lf_aura_handle_to_base(uint64_t aura_handle)
+{
+	return (uintptr_t)(aura_handle & ~AURA_ID_MASK);
+}
+
+static inline uint64_t
+npa_lf_aura_op_alloc(uint64_t aura_handle, const int drop)
+{
+	uint64_t wdata = npa_lf_aura_handle_to_aura(aura_handle);
+
+	if (drop)
+		wdata |= BIT_ULL(63); /* DROP */
+
+	return otx2_atomic64_add_nosync(wdata,
+		(int64_t *)(npa_lf_aura_handle_to_base(aura_handle) +
+		NPA_LF_AURA_OP_ALLOCX(0)));
+}
+
+static inline void
+npa_lf_aura_op_free(uint64_t aura_handle, const int fabs, uint64_t iova)
+{
+	uint64_t reg = npa_lf_aura_handle_to_aura(aura_handle);
+
+	if (fabs)
+		reg |= BIT_ULL(63); /* FABS */
+
+	otx2_store_pair(iova, reg,
+		npa_lf_aura_handle_to_base(aura_handle) + NPA_LF_AURA_OP_FREE0);
+}
+
+static inline uint64_t
+npa_lf_aura_op_cnt_get(uint64_t aura_handle)
+{
+	uint64_t wdata;
+	uint64_t reg;
+
+	wdata = npa_lf_aura_handle_to_aura(aura_handle) << 44;
+
+	reg = otx2_atomic64_add_nosync(wdata,
+			(int64_t *)(npa_lf_aura_handle_to_base(aura_handle) +
+			 NPA_LF_AURA_OP_CNT));
+
+	if (reg & BIT_ULL(42) /* OP_ERR */)
+		return 0;
+	else
+		return reg & 0xFFFFFFFFF;
+}
+
+static inline void
+npa_lf_aura_op_cnt_set(uint64_t aura_handle, const int sign, uint64_t count)
+{
+	uint64_t reg = count & (BIT_ULL(36) - 1);
+
+	if (sign)
+		reg |= BIT_ULL(43); /* CNT_ADD */
+
+	reg |= (npa_lf_aura_handle_to_aura(aura_handle) << 44);
+
+	otx2_write64(reg,
+		npa_lf_aura_handle_to_base(aura_handle) + NPA_LF_AURA_OP_CNT);
+}
+
+static inline uint64_t
+npa_lf_aura_op_limit_get(uint64_t aura_handle)
+{
+	uint64_t wdata;
+	uint64_t reg;
+
+	wdata = npa_lf_aura_handle_to_aura(aura_handle) << 44;
+
+	reg = otx2_atomic64_add_nosync(wdata,
+			(int64_t *)(npa_lf_aura_handle_to_base(aura_handle) +
+			 NPA_LF_AURA_OP_LIMIT));
+
+	if (reg & BIT_ULL(42) /* OP_ERR */)
+		return 0;
+	else
+		return reg & 0xFFFFFFFFF;
+}
+
+static inline void
+npa_lf_aura_op_limit_set(uint64_t aura_handle, uint64_t limit)
+{
+	uint64_t reg = limit & (BIT_ULL(36) - 1);
+
+	reg |= (npa_lf_aura_handle_to_aura(aura_handle) << 44);
+
+	otx2_write64(reg,
+		npa_lf_aura_handle_to_base(aura_handle) + NPA_LF_AURA_OP_LIMIT);
+}
+
+static inline uint64_t
+npa_lf_aura_op_available(uint64_t aura_handle)
+{
+	uint64_t wdata;
+	uint64_t reg;
+
+	wdata = npa_lf_aura_handle_to_aura(aura_handle) << 44;
+
+	reg = otx2_atomic64_add_nosync(wdata,
+			    (int64_t *)(npa_lf_aura_handle_to_base(
+			     aura_handle) + NPA_LF_POOL_OP_AVAILABLE));
+
+	if (reg & BIT_ULL(42) /* OP_ERR */)
+		return 0;
+	else
+		return reg & 0xFFFFFFFFF;
+}
+
+static inline void
+npa_lf_aura_op_range_set(uint64_t aura_handle, uint64_t start_iova,
+				uint64_t end_iova)
+{
+	uint64_t reg = npa_lf_aura_handle_to_aura(aura_handle);
+
+	otx2_store_pair(start_iova, reg,
+			npa_lf_aura_handle_to_base(aura_handle) +
+			NPA_LF_POOL_OP_PTR_START0);
+	otx2_store_pair(end_iova, reg,
+			npa_lf_aura_handle_to_base(aura_handle) +
+			NPA_LF_POOL_OP_PTR_END0);
+}
+
 /* NPA LF */
 int otx2_npa_lf_init(struct rte_pci_device *pci_dev, void *otx2_dev);
 int otx2_npa_lf_fini(void);
