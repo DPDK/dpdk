@@ -5,6 +5,8 @@
 #ifndef _IPH_H_
 #define _IPH_H_
 
+#include <rte_ip.h>
+
 /**
  * @file iph.h
  * Contains functions/structures/macros to manipulate IPv4/IPv6 headers
@@ -40,24 +42,61 @@ static inline int
 update_trs_l3hdr(const struct rte_ipsec_sa *sa, void *p, uint32_t plen,
 		uint32_t l2len, uint32_t l3len, uint8_t proto)
 {
-	struct rte_ipv4_hdr *v4h;
-	struct rte_ipv6_hdr *v6h;
 	int32_t rc;
 
+	/* IPv4 */
 	if ((sa->type & RTE_IPSEC_SATP_IPV_MASK) == RTE_IPSEC_SATP_IPV4) {
+		struct rte_ipv4_hdr *v4h;
+
 		v4h = p;
 		rc = v4h->next_proto_id;
 		v4h->next_proto_id = proto;
 		v4h->total_length = rte_cpu_to_be_16(plen - l2len);
-	} else if (l3len == sizeof(*v6h)) {
+	/* IPv6 */
+	} else {
+		struct rte_ipv6_hdr *v6h;
+		uint8_t *p_nh;
+
 		v6h = p;
-		rc = v6h->proto;
-		v6h->proto = proto;
+
+		/* basic IPv6 header with no extensions */
+		if (l3len == sizeof(struct rte_ipv6_hdr))
+			p_nh = &v6h->proto;
+
+		/* IPv6 with extensions */
+		else {
+			size_t ext_len;
+			int nh;
+			uint8_t *pd, *plimit;
+
+			/* locate last extension within l3len bytes */
+			pd = (uint8_t *)p;
+			plimit = pd + l3len;
+			ext_len = sizeof(struct rte_ipv6_hdr);
+			nh = v6h->proto;
+			while (pd + ext_len < plimit) {
+				pd += ext_len;
+				nh = rte_ipv6_get_next_ext(pd, nh, &ext_len);
+				if (unlikely(nh < 0))
+					return -EINVAL;
+			}
+
+			/* invalid l3len - extension exceeds header length */
+			if (unlikely(pd + ext_len != plimit))
+				return -EINVAL;
+
+			/* save last extension offset */
+			p_nh = pd;
+		}
+
+		/* update header type; return original value */
+		rc = *p_nh;
+		*p_nh = proto;
+
+		/* fix packet length */
 		v6h->payload_len = rte_cpu_to_be_16(plen - l2len -
 				sizeof(*v6h));
-	/* need to add support for IPv6 with options */
-	} else
-		rc = -ENOTSUP;
+	}
 
 	return rc;
 }

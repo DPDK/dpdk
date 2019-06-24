@@ -23,7 +23,7 @@ libraries = [
 	'kni', 'latencystats', 'lpm', 'member',
 	'power', 'pdump', 'rawdev',
 	'rcu', 'reorder', 'sched', 'security', 'stack', 'vhost',
-	#ipsec lib depends on crypto and security
+	# ipsec lib depends on net, crypto and security
 	'ipsec',
 	# add pkt framework libs which use other libs from above
 	'port', 'table', 'pipeline',
