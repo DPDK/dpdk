@@ -107,6 +107,8 @@ where,
 
 *   --empty-poll: Traffic Aware power management. See below for details
 
+*   --telemetry:  Telemetry mode.
+
 See :doc:`l3_forward` for details.
 The L3fwd-power example reuses the L3fwd command line options.
 
@@ -431,3 +433,29 @@ then be started without the training mode so traffic can start immediately.
 .. code-block:: console
 
         ./examples/l3fwd-power/build/l3fwd-power -l 1-3 -- -p 0x0f --config="(0,0,2),(0,1,3)" --empty-poll "0,340000,540000" –P
+
+Telemetry Mode
+--------------
+
+The telemetry mode support for ``l3fwd-power`` is a standalone mode, in this mode
+``l3fwd-power`` does simple l3fwding along with calculating empty polls, full polls,
+and busy percentage for each forwarding core. The aggregation of these
+values of all cores is reported as application level telemetry to metric
+library for every 500ms from the master core.
+
+The busy percentage is calculated by recording the poll_count
+and when the count reaches a defined value the total
+cycles it took is measured and compared with minimum and maximum
+reference cycles and accordingly busy rate is set  to either 0% or
+50% or 100%.
+
+   .. Note::
+
+      * The CONFIG_RTE_LIBRTE_TELEMETRY should be set in order to get the stats in DPDK telemetry.
+
+.. code-block:: console
+
+        ./examples/l3fwd-power/build/l3fwd-power --telemetry -l 1-3 -- -p 0x0f --config="(0,0,2),(0,1,3)" --telemetry
+
+The new stats ``empty_poll`` , ``full_poll`` and ``busy_percent`` can be viewed by running the script
+``/usertools/dpdk-telemetry-client.py`` and selecting the menu option ``Send for global Metrics``.

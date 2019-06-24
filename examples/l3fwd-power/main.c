@@ -14,6 +14,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <signal.h>
+#include <math.h>
 
 #include <rte_common.h>
 #include <rte_byteorder.h>
@@ -44,6 +45,7 @@
 #include <rte_power.h>
 #include <rte_spinlock.h>
 #include <rte_power_empty_poll.h>
+#include <rte_metrics.h>
 
 #include "perf_core.h"
 #include "main.h"
@@ -146,16 +148,58 @@ static uint32_t enabled_port_mask = 0;
 static int promiscuous_on = 0;
 /* NUMA is enabled by default. */
 static int numa_on = 1;
-/* emptypoll is disabled by default. */
-static bool empty_poll_on;
+static bool empty_poll_stop;
 static bool empty_poll_train;
-volatile bool empty_poll_stop;
+volatile bool quit_signal;
 static struct  ep_params *ep_params;
 static struct  ep_policy policy;
 static long  ep_med_edpi, ep_hgh_edpi;
+/* timer to update telemetry every 500ms */
+static struct rte_timer telemetry_timer;
+
+/* stats index returned by metrics lib */
+int telstats_index;
+
+struct telstats_name {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+};
+
+/* telemetry stats to be reported */
+const struct telstats_name telstats_strings[] = {
+	{"empty_poll"},
+	{"full_poll"},
+	{"busy_percent"}
+};
+
+/* core busyness in percentage */
+enum busy_rate {
+	ZERO = 0,
+	PARTIAL = 50,
+	FULL = 100
+};
+
+/* reference poll count to measure core busyness */
+#define DEFAULT_COUNT 10000
+/*
+ * reference CYCLES to be used to
+ * measure core busyness based on poll count
+ */
+#define MIN_CYCLES 1500000ULL
+#define MAX_CYCLES 2500000ULL
+
+/* (500ms) */
+#define TELEMETRY_INTERVALS_PER_SEC 2
 
 static int parse_ptype; /**< Parse packet type using rx callback, and */
 			/**< disabled by default */
+
+enum appmode {
+	APP_MODE_LEGACY = 0,
+	APP_MODE_EMPTY_POLL,
+	APP_MODE_TELEMETRY
+};
+
+enum appmode app_mode;
 
 enum freq_scale_hint_t
 {
@@ -341,7 +385,26 @@ struct lcore_stats {
 	uint64_t nb_rx_processed;
 	/* total iterations looped recently */
 	uint64_t nb_iteration_looped;
-	uint32_t padding[9];
+	/*
+	 * Represents empty and non empty polls
+	 * of rte_eth_rx_burst();
+	 * ep_nep[0] holds non empty polls
+	 * i.e. 0 < nb_rx <= MAX_BURST
+	 * ep_nep[1] holds empty polls.
+	 * i.e. nb_rx == 0
+	 */
+	uint64_t ep_nep[2];
+	/*
+	 * Represents full and empty+partial
+	 * polls of rte_eth_rx_burst();
+	 * ep_nep[0] holds empty+partial polls.
+	 * i.e. 0 <= nb_rx < MAX_BURST
+	 * ep_nep[1] holds full polls
+	 * i.e. nb_rx == MAX_BURST
+	 */
+	uint64_t fp_nfp[2];
+	enum busy_rate br;
+	rte_spinlock_t telemetry_lock;
 } __rte_cache_aligned;
 
 static struct lcore_conf lcore_conf[RTE_MAX_LCORE] __rte_cache_aligned;
@@ -362,7 +425,7 @@ static uint8_t  freq_tlb[] = {14, 9, 1};
 
 static int is_done(void)
 {
-	return empty_poll_stop;
+	return quit_signal;
 }
 
 /* exit signal handler */
@@ -374,8 +437,9 @@ signal_exit_now(int sigtype)
 	int ret;
 
 	if (sigtype == SIGINT) {
-		if (empty_poll_on)
-			empty_poll_stop = true;
+		if (app_mode == APP_MODE_EMPTY_POLL ||
+				app_mode == APP_MODE_TELEMETRY)
+			quit_signal = true;
 
 
 		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
@@ -390,7 +454,7 @@ signal_exit_now(int sigtype)
 							"core%u\n", lcore_id);
 		}
 
-		if (!empty_poll_on) {
+		if (app_mode != APP_MODE_EMPTY_POLL) {
 			RTE_ETH_FOREACH_DEV(portid) {
 				if ((enabled_port_mask & (1 << portid)) == 0)
 					continue;
@@ -401,7 +465,7 @@ signal_exit_now(int sigtype)
 		}
 	}
 
-	if (!empty_poll_on)
+	if (app_mode != APP_MODE_EMPTY_POLL)
 		rte_exit(EXIT_SUCCESS, "User forced exit\n");
 }
 
@@ -871,6 +935,126 @@ static int event_register(struct lcore_conf *qconf)
 }
 /* main processing loop */
 static int
+main_telemetry_loop(__attribute__((unused)) void *dummy)
+{
+	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	unsigned int lcore_id;
+	uint64_t prev_tsc, diff_tsc, cur_tsc, prev_tel_tsc;
+	int i, j, nb_rx;
+	uint8_t queueid;
+	uint16_t portid;
+	struct lcore_conf *qconf;
+	struct lcore_rx_queue *rx_queue;
+	uint64_t ep_nep[2] = {0}, fp_nfp[2] = {0};
+	uint64_t poll_count;
+	enum busy_rate br;
+
+	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
+					US_PER_S * BURST_TX_DRAIN_US;
+
+	poll_count = 0;
+	prev_tsc = 0;
+	prev_tel_tsc = 0;
+
+	lcore_id = rte_lcore_id();
+	qconf = &lcore_conf[lcore_id];
+
+	if (qconf->n_rx_queue == 0) {
+		RTE_LOG(INFO, L3FWD_POWER, "lcore %u has nothing to do\n",
+			lcore_id);
+		return 0;
+	}
+
+	RTE_LOG(INFO, L3FWD_POWER, "entering main telemetry loop on lcore %u\n",
+		lcore_id);
+
+	for (i = 0; i < qconf->n_rx_queue; i++) {
+		portid = qconf->rx_queue_list[i].port_id;
+		queueid = qconf->rx_queue_list[i].queue_id;
+		RTE_LOG(INFO, L3FWD_POWER, " -- lcoreid=%u portid=%u "
+			"rxqueueid=%hhu\n", lcore_id, portid, queueid);
+	}
+
+	while (!is_done()) {
+
+		cur_tsc = rte_rdtsc();
+		/*
+		 * TX burst queue drain
+		 */
+		diff_tsc = cur_tsc - prev_tsc;
+		if (unlikely(diff_tsc > drain_tsc)) {
+			for (i = 0; i < qconf->n_tx_port; ++i) {
+				portid = qconf->tx_port_id[i];
+				rte_eth_tx_buffer_flush(portid,
+						qconf->tx_queue_id[portid],
+						qconf->tx_buffer[portid]);
+			}
+			prev_tsc = cur_tsc;
+		}
+
+		/*
+		 * Read packet from RX queues
+		 */
+		for (i = 0; i < qconf->n_rx_queue; ++i) {
+			rx_queue = &(qconf->rx_queue_list[i]);
+			portid = rx_queue->port_id;
+			queueid = rx_queue->queue_id;
+
+			nb_rx = rte_eth_rx_burst(portid, queueid, pkts_burst,
+								MAX_PKT_BURST);
+			ep_nep[nb_rx == 0]++;
+			fp_nfp[nb_rx == MAX_PKT_BURST]++;
+			poll_count++;
+			if (unlikely(nb_rx == 0))
+				continue;
+
+			/* Prefetch first packets */
+			for (j = 0; j < PREFETCH_OFFSET && j < nb_rx; j++) {
+				rte_prefetch0(rte_pktmbuf_mtod(
+						pkts_burst[j], void *));
+			}
+
+			/* Prefetch and forward already prefetched packets */
+			for (j = 0; j < (nb_rx - PREFETCH_OFFSET); j++) {
+				rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[
+						j + PREFETCH_OFFSET], void *));
+				l3fwd_simple_forward(pkts_burst[j], portid,
+								qconf);
+			}
+
+			/* Forward remaining prefetched packets */
+			for (; j < nb_rx; j++) {
+				l3fwd_simple_forward(pkts_burst[j], portid,
+								qconf);
+			}
+		}
+		if (unlikely(poll_count >= DEFAULT_COUNT)) {
+			diff_tsc = cur_tsc - prev_tel_tsc;
+			if (diff_tsc >= MAX_CYCLES) {
+				br = FULL;
+			} else if (diff_tsc > MIN_CYCLES &&
+					diff_tsc < MAX_CYCLES) {
+				br = PARTIAL;
+			} else {
+				br = ZERO;
+			}
+			poll_count = 0;
+			prev_tel_tsc = cur_tsc;
+			/* update stats for telemetry */
+			rte_spinlock_lock(&stats[lcore_id].telemetry_lock);
+			stats[lcore_id].ep_nep[0] = ep_nep[0];
+			stats[lcore_id].ep_nep[1] = ep_nep[1];
+			stats[lcore_id].fp_nfp[0] = fp_nfp[0];
+			stats[lcore_id].fp_nfp[1] = fp_nfp[1];
+			stats[lcore_id].br = br;
+			rte_spinlock_unlock(&stats[lcore_id].telemetry_lock);
+		}
+	}
+
+	return 0;
+}
+/* main processing loop */
+static int
 main_empty_poll_loop(__attribute__((unused)) void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -1192,6 +1376,11 @@ check_lcore_params(void)
 			printf("warning: lcore %hhu is on socket %d with numa "
 						"off\n", lcore, socketid);
 		}
+		if (app_mode == APP_MODE_TELEMETRY && lcore == rte_lcore_id()) {
+			printf("cannot enable master core %d in config for telemetry mode\n",
+				rte_lcore_id());
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -1276,7 +1465,9 @@ print_usage(const char *prgname)
 		" which max packet len is PKTLEN in decimal (64-9600)\n"
 		"  --parse-ptype: parse packet type by software\n"
 		"  --empty-poll: enable empty poll detection"
-		" follow (training_flag, high_threshold, med_threshold)\n",
+		" follow (training_flag, high_threshold, med_threshold)\n"
+		" --telemetry: enable telemetry mode, to update"
+		" empty polls, full polls, and core busyness to telemetry\n",
 		prgname);
 }
 
@@ -1419,6 +1610,7 @@ parse_ep_config(const char *q_arg)
 
 }
 #define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
+#define CMD_LINE_OPT_TELEMETRY "telemetry"
 
 /* Parse the argument given in the command line of the application */
 static int
@@ -1437,6 +1629,7 @@ parse_args(int argc, char **argv)
 		{"enable-jumbo", 0, 0, 0},
 		{"empty-poll", 1, 0, 0},
 		{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, 0},
+		{CMD_LINE_OPT_TELEMETRY, 0, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -1510,8 +1703,11 @@ parse_args(int argc, char **argv)
 
 			if (!strncmp(lgopts[option_index].name,
 						"empty-poll", 10)) {
-				printf("empty-poll is enabled\n");
-				empty_poll_on = true;
+				if (app_mode == APP_MODE_TELEMETRY) {
+					printf(" empty-poll cannot be enabled as telemetry mode is enabled\n");
+					return -1;
+				}
+				app_mode = APP_MODE_EMPTY_POLL;
 				ret = parse_ep_config(optarg);
 
 				if (ret) {
@@ -1519,7 +1715,18 @@ parse_args(int argc, char **argv)
 					print_usage(prgname);
 					return -1;
 				}
+				printf("empty-poll is enabled\n");
+			}
 
+			if (!strncmp(lgopts[option_index].name,
+					CMD_LINE_OPT_TELEMETRY,
+					sizeof(CMD_LINE_OPT_TELEMETRY))) {
+				if (app_mode == APP_MODE_EMPTY_POLL) {
+					printf("telemetry mode cannot be enabled as empty poll mode is enabled\n");
+					return -1;
+				}
+				app_mode = APP_MODE_TELEMETRY;
+				printf("telemetry mode is enabled\n");
 			}
 
 			if (!strncmp(lgopts[option_index].name,
@@ -1871,6 +2078,52 @@ init_power_library(void)
 	return ret;
 }
 static void
+update_telemetry(__attribute__((unused)) struct rte_timer *tim,
+		__attribute__((unused)) void *arg)
+{
+	unsigned int lcore_id = rte_lcore_id();
+	struct lcore_conf *qconf;
+	uint64_t app_eps = 0, app_fps = 0, app_br = 0;
+	uint64_t values[3] = {0};
+	int ret;
+	uint64_t count = 0;
+
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		qconf = &lcore_conf[lcore_id];
+		if (qconf->n_rx_queue == 0)
+			continue;
+		count++;
+		rte_spinlock_lock(&stats[lcore_id].telemetry_lock);
+		app_eps += stats[lcore_id].ep_nep[1];
+		app_fps += stats[lcore_id].fp_nfp[1];
+		app_br += stats[lcore_id].br;
+		rte_spinlock_unlock(&stats[lcore_id].telemetry_lock);
+	}
+
+	values[0] = round(app_eps/count);
+	values[1] = round(app_fps/count);
+	values[2] = round(app_br/count);
+	ret = rte_metrics_update_values(RTE_METRICS_GLOBAL, telstats_index,
+					values, RTE_DIM(values));
+	if (ret < 0)
+		RTE_LOG(WARNING, POWER, "failed to update metrcis\n");
+}
+static void
+telemetry_setup_timer(void)
+{
+	int lcore_id = rte_lcore_id();
+	uint64_t hz = rte_get_timer_hz();
+	uint64_t ticks;
+
+	ticks = hz / TELEMETRY_INTERVALS_PER_SEC;
+	rte_timer_reset_sync(&telemetry_timer,
+			ticks,
+			PERIODICAL,
+			lcore_id,
+			update_telemetry,
+			NULL);
+}
+static void
 empty_poll_setup_timer(void)
 {
 	int lcore_id = rte_lcore_id();
@@ -1904,7 +2157,10 @@ launch_timer(unsigned int lcore_id)
 
 	RTE_LOG(INFO, POWER, "Bring up the Timer\n");
 
-	empty_poll_setup_timer();
+	if (app_mode == APP_MODE_EMPTY_POLL)
+		empty_poll_setup_timer();
+	else
+		telemetry_setup_timer();
 
 	cycles_10ms = rte_get_timer_hz() / 100;
 
@@ -1939,6 +2195,8 @@ main(int argc, char **argv)
 	uint32_t dev_rxq_num, dev_txq_num;
 	uint8_t nb_rx_queue, queue, socketid;
 	uint16_t portid;
+	uint8_t num_telstats = RTE_DIM(telstats_strings);
+	const char *ptr_strings[num_telstats];
 
 	/* catch SIGINT and restore cpufreq governor to ondemand */
 	signal(SIGINT, signal_exit_now);
@@ -2105,7 +2363,7 @@ main(int argc, char **argv)
 		if (rte_lcore_is_enabled(lcore_id) == 0)
 			continue;
 
-		if (empty_poll_on == false) {
+		if (app_mode == APP_MODE_LEGACY) {
 			/* init timer structures for each enabled lcore */
 			rte_timer_init(&power_timers[lcore_id]);
 			hz = rte_get_timer_hz();
@@ -2184,7 +2442,7 @@ main(int argc, char **argv)
 
 	check_all_ports_link_status(enabled_port_mask);
 
-	if (empty_poll_on == true) {
+	if (app_mode == APP_MODE_EMPTY_POLL) {
 
 		if (empty_poll_train) {
 			policy.state = TRAINING;
@@ -2203,15 +2461,34 @@ main(int argc, char **argv)
 
 
 	/* launch per-lcore init on every lcore */
-	if (empty_poll_on == false) {
+	if (app_mode == APP_MODE_LEGACY) {
 		rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);
-	} else {
+	} else if (app_mode == APP_MODE_EMPTY_POLL) {
 		empty_poll_stop = false;
 		rte_eal_mp_remote_launch(main_empty_poll_loop, NULL,
 				SKIP_MASTER);
+	} else {
+		/* Init metrics library */
+		rte_metrics_init(rte_socket_id());
+		/** Register stats with metrics library */
+		for (unsigned int i = 0; i < num_telstats; i++)
+			ptr_strings[i] = telstats_strings[i].name;
+
+		ret = rte_metrics_reg_names(ptr_strings, num_telstats);
+		if (ret >= 0)
+			telstats_index = ret;
+		else
+			rte_exit(EXIT_FAILURE, "failed to register metrics names");
+
+		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+			rte_spinlock_init(&stats[lcore_id].telemetry_lock);
+		}
+		rte_timer_init(&telemetry_timer);
+		rte_eal_mp_remote_launch(main_telemetry_loop, NULL,
+						SKIP_MASTER);
 	}
 
-	if (empty_poll_on == true)
+	if (app_mode == APP_MODE_EMPTY_POLL || app_mode == APP_MODE_TELEMETRY)
 		launch_timer(rte_lcore_id());
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
@@ -2219,7 +2496,7 @@ main(int argc, char **argv)
 			return -1;
 	}
 
-	if (empty_poll_on)
+	if (app_mode == APP_MODE_EMPTY_POLL)
 		rte_power_empty_poll_stat_free();
 
 	return 0;

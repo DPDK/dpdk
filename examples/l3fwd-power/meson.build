@@ -10,7 +10,7 @@ if not is_linux
 	build = false
 endif
 allow_experimental_apis = true
-deps += ['power', 'timer', 'lpm', 'hash']
+deps += ['power', 'timer', 'lpm', 'hash', 'metrics']
 sources = files(
 	'main.c', 'perf_core.c'
 )

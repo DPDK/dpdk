@@ -99,6 +99,11 @@ New Features
   Updated ``librte_telemetry`` to fetch the global metrics from the
   ``librte_metrics`` library.
 
+* **Added new telemetry mode for l3fwd-power application.**
+
+  Added telemetry mode to l3fwd-power application to report
+  application level busyness, empty and full polls of rte_eth_rx_burst().
+
 
 Removed Items
 -------------
