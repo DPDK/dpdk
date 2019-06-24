@@ -165,6 +165,13 @@ API Changes
 * malloc: The function ``rte_malloc_set_limit`` was never implemented
   is deprecated and will be removed in a future release.
 
+* eventdev: No longer marked as experimental.
+
+  The eventdev functions are no longer marked as experimental, and have
+  become part of the normal DPDK API and ABI. Any future ABI changes will be
+  announced at least one release before the ABI change is made. There are no
+  ABI breaking changes planned.
+
 
 ABI Changes
 -----------
@@ -180,6 +187,18 @@ ABI Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
+
+* eventdev: Event based Rx adapter callback
+
+  The mbuf pointer array in the event eth Rx adapter callback
+  has been replaced with an event array. Using
+  an event array allows the application to change attributes
+  of the events enqueued by the SW adapter.
+
+  The callback can drop packets and populate
+  a callback argument with the number of dropped packets.
+  Add a Rx adapter stats field to keep track of the total
+  number of dropped packets.
 
 
 Shared Library Versions
@@ -217,7 +236,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_eal.so.10
      librte_efd.so.1
      librte_ethdev.so.12
-     librte_eventdev.so.6
+   + librte_eventdev.so.7
      librte_flow_classify.so.1
      librte_gro.so.1
      librte_gso.so.1

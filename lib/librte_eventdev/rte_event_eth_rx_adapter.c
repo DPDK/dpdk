@@ -763,8 +763,8 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 	uint32_t rss;
 	int do_rss;
 	uint64_t ts;
-	struct rte_mbuf *cb_mbufs[BATCH_SIZE];
 	uint16_t nb_cb;
+	uint16_t dropped;
 
 	/* 0xffff ffff if PKT_RX_RSS_HASH is set, otherwise 0 */
 	rss_mask = ~(((m->ol_flags & PKT_RX_RSS_HASH) != 0) - 1);
@@ -780,19 +780,6 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 		}
 	}
 
-
-	nb_cb = dev_info->cb_fn ? dev_info->cb_fn(eth_dev_id, rx_queue_id,
-						ETH_EVENT_BUFFER_SIZE,
-						buf->count, mbufs,
-						num,
-						dev_info->cb_arg,
-						cb_mbufs) :
-						num;
-	if (nb_cb < num) {
-		mbufs = cb_mbufs;
-		num = nb_cb;
-	}
-
 	for (i = 0; i < num; i++) {
 		m = mbufs[i];
 
@@ -804,6 +791,21 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 				(ev->flow_id & flow_id_mask);
 		ev->mbuf = m;
 		ev++;
+	}
+
+	if (dev_info->cb_fn) {
+
+		dropped = 0;
+		nb_cb = dev_info->cb_fn(eth_dev_id, rx_queue_id,
+					ETH_EVENT_BUFFER_SIZE, buf->count, ev,
+					num, dev_info->cb_arg, &dropped);
+		if (unlikely(nb_cb > num))
+			RTE_EDEV_LOG_ERR("Rx CB returned %d (> %d) events",
+				nb_cb, num);
+		else
+			num = nb_cb;
+		if (dropped)
+			rx_adapter->stats.rx_dropped += dropped;
 	}
 
 	buf->count += num;

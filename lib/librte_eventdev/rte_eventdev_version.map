@@ -123,9 +123,9 @@ DPDK_19.05 {
 	rte_event_timer_cancel_burst;
 } DPDK_18.05;
 
-EXPERIMENTAL {
+DPDK_19.08 {
 	global:
 
 	rte_event_eth_rx_adapter_cb_register;
 	rte_event_eth_rx_adapter_stats_get;
-};
+} DPDK_19.05;

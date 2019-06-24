@@ -411,7 +411,7 @@ F: lib/librte_eventdev/
 F: drivers/event/skeleton/
 F: app/test/test_eventdev.c
 
-Eventdev Ethdev Rx Adapter API - EXPERIMENTAL
+Eventdev Ethdev Rx Adapter API
 M: Nikhil Rao <nikhil.rao@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*eth_rx_adapter*
