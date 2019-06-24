@@ -290,7 +290,8 @@ It then puts the mbuf back in the cache.
 Ethtool
 -------
 
-Ethtool is a Linux-specific tool with corresponding support in the kernel
-where each net device must register its own callbacks for the supported operations.
-The current implementation uses the igb/ixgbe modified Linux drivers for ethtool support.
-Ethtool is not supported in i40e and VMs (VF or EM devices).
+Ethtool is a Linux-specific tool with corresponding support in the kernel.
+The current version of kni provides minimal ethtool functionality
+including querying version and link state. It does not support link
+control, statistics, or dumping device registers.
+
