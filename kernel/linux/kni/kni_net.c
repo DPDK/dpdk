@@ -401,7 +401,7 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 	/* Get the number of entries in rx_q */
 	num_rq = kni_fifo_count(kni->rx_q);
 
-	/* Get the number of free entrie in tx_q */
+	/* Get the number of free entries in tx_q */
 	num_tq = kni_fifo_free_count(kni->tx_q);
 
 	/* Get the number of entries in alloc_q */
@@ -755,6 +755,7 @@ kni_net_config_lo_mode(char *lo_str)
 	} else if (!strcmp(lo_str, "lo_mode_fifo_skb")) {
 		pr_debug("loopback mode=lo_mode_fifo_skb enabled");
 		kni_net_rx_func = kni_net_rx_lo_fifo_skb;
-	} else
-		pr_debug("Incognizant parameter, loopback disabled");
+	} else {
+		pr_debug("Unknown loopback parameter, disabled");
+	}
 }
