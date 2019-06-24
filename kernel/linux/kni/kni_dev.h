@@ -39,7 +39,6 @@ struct kni_dev {
 	/* kni list */
 	struct list_head list;
 
-	struct net_device_stats stats;
 	int status;
 	uint16_t group_id;           /* Group ID of a group of KNI devices */
 	uint32_t core_id;            /* Core ID to bind */

@@ -291,15 +291,15 @@ kni_net_tx(struct sk_buff *skb, struct net_device *dev)
 
 	/* Free skb and update statistics */
 	dev_kfree_skb(skb);
-	kni->stats.tx_bytes += len;
-	kni->stats.tx_packets++;
+	dev->stats.tx_bytes += len;
+	dev->stats.tx_packets++;
 
 	return NETDEV_TX_OK;
 
 drop:
 	/* Free skb and update statistics */
 	dev_kfree_skb(skb);
-	kni->stats.tx_dropped++;
+	dev->stats.tx_dropped++;
 
 	return NETDEV_TX_OK;
 }
@@ -343,7 +343,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 		skb = netdev_alloc_skb(dev, len);
 		if (!skb) {
 			/* Update statistics */
-			kni->stats.rx_dropped++;
+			dev->stats.rx_dropped++;
 			continue;
 		}
 
@@ -372,8 +372,8 @@ kni_net_rx_normal(struct kni_dev *kni)
 		netif_rx_ni(skb);
 
 		/* Update statistics */
-		kni->stats.rx_bytes += len;
-		kni->stats.rx_packets++;
+		dev->stats.rx_bytes += len;
+		dev->stats.rx_packets++;
 	}
 
 	/* Burst enqueue mbufs into free_q */
@@ -396,6 +396,7 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 	void *data_kva;
 	struct rte_kni_mbuf *alloc_kva;
 	void *alloc_data_kva;
+	struct net_device *dev = kni->net_dev;
 
 	/* Get the number of entries in rx_q */
 	num_rq = kni_fifo_count(kni->rx_q);
@@ -443,8 +444,8 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 			alloc_kva->pkt_len = len;
 			alloc_kva->data_len = len;
 
-			kni->stats.tx_bytes += len;
-			kni->stats.rx_bytes += len;
+			dev->stats.tx_bytes += len;
+			dev->stats.rx_bytes += len;
 		}
 
 		/* Burst enqueue mbufs into tx_q */
@@ -464,8 +465,8 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 	 * Update statistic, and enqueue/dequeue failure is impossible,
 	 * as all queues are checked at first.
 	 */
-	kni->stats.tx_packets += num;
-	kni->stats.rx_packets += num;
+	dev->stats.tx_packets += num;
+	dev->stats.rx_packets += num;
 }
 
 /*
@@ -518,7 +519,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 		/* Simulate real usage, allocate/copy skb twice */
 		skb = netdev_alloc_skb(dev, len);
 		if (skb == NULL) {
-			kni->stats.rx_dropped++;
+			dev->stats.rx_dropped++;
 			continue;
 		}
 
@@ -542,8 +543,8 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
 
-		kni->stats.rx_bytes += len;
-		kni->stats.rx_packets++;
+		dev->stats.rx_bytes += len;
+		dev->stats.rx_packets++;
 
 		/* call tx interface */
 		kni_net_tx(skb, dev);
@@ -573,12 +574,10 @@ kni_net_rx(struct kni_dev *kni)
 static void
 kni_net_tx_timeout(struct net_device *dev)
 {
-	struct kni_dev *kni = netdev_priv(dev);
-
 	pr_debug("Transmit timeout at %ld, latency %ld\n", jiffies,
 			jiffies - dev_trans_start(dev));
 
-	kni->stats.tx_errors++;
+	dev->stats.tx_errors++;
 	netif_wake_queue(dev);
 }
 
@@ -625,17 +624,6 @@ kni_net_poll_resp(struct kni_dev *kni)
 {
 	if (kni_fifo_count(kni->resp_q))
 		wake_up_interruptible(&kni->wq);
-}
-
-/*
- * Return statistics to the caller
- */
-static struct net_device_stats *
-kni_net_stats(struct net_device *dev)
-{
-	struct kni_dev *kni = netdev_priv(dev);
-
-	return &kni->stats;
 }
 
 /*
@@ -730,7 +718,6 @@ static const struct net_device_ops kni_net_netdev_ops = {
 	.ndo_change_rx_flags = kni_net_set_promiscusity,
 	.ndo_start_xmit = kni_net_tx,
 	.ndo_change_mtu = kni_net_change_mtu,
-	.ndo_get_stats = kni_net_stats,
 	.ndo_tx_timeout = kni_net_tx_timeout,
 	.ndo_set_mac_address = kni_net_set_mac,
 #ifdef HAVE_CHANGE_CARRIER_CB
