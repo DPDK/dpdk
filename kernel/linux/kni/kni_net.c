@@ -340,15 +340,12 @@ kni_net_rx_normal(struct kni_dev *kni)
 		data_kva = kva2data_kva(kva);
 		kni->va[i] = pa2va(kni->pa[i], kva);
 
-		skb = dev_alloc_skb(len + 2);
+		skb = netdev_alloc_skb(dev, len);
 		if (!skb) {
 			/* Update statistics */
 			kni->stats.rx_dropped++;
 			continue;
 		}
-
-		/* Align IP on 16B boundary */
-		skb_reserve(skb, 2);
 
 		if (kva->nb_segs == 1) {
 			memcpy(skb_put(skb, len), data_kva, len);
@@ -368,7 +365,6 @@ kni_net_rx_normal(struct kni_dev *kni)
 			}
 		}
 
-		skb->dev = dev;
 		skb->protocol = eth_type_trans(skb, dev);
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
 
@@ -512,25 +508,19 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 		data_kva = kva2data_kva(kva);
 		kni->va[i] = pa2va(kni->pa[i], kva);
 
-		skb = dev_alloc_skb(len + 2);
+		skb = netdev_alloc_skb(dev, len);
 		if (skb) {
-			/* Align IP on 16B boundary */
-			skb_reserve(skb, 2);
 			memcpy(skb_put(skb, len), data_kva, len);
-			skb->dev = dev;
 			skb->ip_summed = CHECKSUM_UNNECESSARY;
 			dev_kfree_skb(skb);
 		}
 
 		/* Simulate real usage, allocate/copy skb twice */
-		skb = dev_alloc_skb(len + 2);
+		skb = netdev_alloc_skb(dev, len);
 		if (skb == NULL) {
 			kni->stats.rx_dropped++;
 			continue;
 		}
-
-		/* Align IP on 16B boundary */
-		skb_reserve(skb, 2);
 
 		if (kva->nb_segs == 1) {
 			memcpy(skb_put(skb, len), data_kva, len);
@@ -550,7 +540,6 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 			}
 		}
 
-		skb->dev = dev;
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
 
 		kni->stats.rx_bytes += len;
