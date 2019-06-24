@@ -17,6 +17,17 @@
 # naming convention:
 # 'old' means that ipsec-secgw will run in legacy (non-librte_ipsec mode)
 # 'tun/trs' refer to tunnel/transport mode respectively
+
+usage()
+{
+	echo "Usage:"
+	echo -e "\t$0 -[46p]"
+	echo -e "\t\t-4 Perform Linux IPv4 network tests"
+	echo -e "\t\t-6 Perform Linux IPv6 network tests"
+	echo -e "\t\t-p Perform packet validation tests"
+	echo -e "\t\t-h Display this help"
+}
+
 LINUX_TEST="tun_aescbc_sha1 \
 tun_aescbc_sha1_esn \
 tun_aescbc_sha1_esn_atom \
@@ -50,47 +61,82 @@ trs_3descbc_sha1_old \
 trs_3descbc_sha1_esn \
 trs_3descbc_sha1_esn_atom"
 
-DIR=`dirname $0`
+PKT_TESTS="trs_ipv6opts"
+
+DIR=$(dirname $0)
 
 # get input options
-st=0
 run4=0
 run6=0
-while [[ ${st} -eq 0 ]]; do
-	getopts ":46" opt
-	st=$?
-	if [[ "${opt}" == "4" ]]; then
-		run4=1
-	elif [[ "${opt}" == "6" ]]; then
-		run6=1
-	fi
+runpkt=0
+while getopts ":46ph" opt
+do
+	case $opt in
+		4)
+			run4=1
+			;;
+		6)
+			run6=1
+			;;
+		p)
+			runpkt=1
+			;;
+		h)
+			usage
+			exit 0
+			;;
+		?)
+			echo "Invalid option"
+			usage
+			exit 127
+			;;
+	esac
 done
 
-if [[ ${run4} -eq 0 && ${run6} -eq 0 ]]; then
+# no test suite has been selected
+if [[ ${run4} -eq 0 && ${run6} -eq 0 && ${runpkt} -eq 0 ]]; then
+	usage
 	exit 127
 fi
 
-for i in ${LINUX_TEST}; do
+# perform packet processing validation tests
+st=0
+if [ $runpkt -eq 1 ]; then
+	echo "Performing packet validation tests"
+	/bin/bash ${DIR}/pkttest.sh ${PKT_TESTS}
+	st=$?
 
-	echo "starting test ${i}"
-
-	st4=0
-	if [[ ${run4} -ne 0 ]]; then
-		/bin/bash ${DIR}/linux_test4.sh ${i}
-		st4=$?
-		echo "test4 ${i} finished with status ${st4}"
+	echo "pkttests finished with status ${st}"
+	if [[ ${st} -ne 0 ]]; then
+		echo "ERROR pkttests FAILED"
+		exit ${st}
 	fi
+fi
 
-	st6=0
-	if [[ ${run6} -ne 0 ]]; then
-		/bin/bash ${DIR}/linux_test6.sh ${i}
-		st6=$?
-		echo "test6 ${i} finished with status ${st6}"
-	fi
+# perform network tests
+if [[ ${run4} -eq 1 || ${run6} -eq 1 ]]; then
+	for i in ${LINUX_TEST}; do
 
-	let "st = st4 + st6"
-	if [[ $st -ne 0 ]]; then
-		echo "ERROR test ${i} FAILED"
-		exit $st
-	fi
-done
+		echo "starting test ${i}"
+
+		st4=0
+		if [[ ${run4} -ne 0 ]]; then
+			/bin/bash ${DIR}/linux_test4.sh ${i}
+			st4=$?
+			echo "test4 ${i} finished with status ${st4}"
+		fi
+
+		st6=0
+		if [[ ${run6} -ne 0 ]]; then
+			/bin/bash ${DIR}/linux_test6.sh ${i}
+			st6=$?
+			echo "test6 ${i} finished with status ${st6}"
+		fi
+
+		let "st = st4 + st6"
+		if [[ $st -ne 0 ]]; then
+			echo "ERROR test ${i} FAILED"
+			exit $st
+		fi
+	done
+fi

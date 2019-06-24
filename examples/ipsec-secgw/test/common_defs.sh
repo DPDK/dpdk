@@ -1,22 +1,10 @@
 #! /bin/bash
 
-#check that env vars are properly defined
-
-#check SGW_PATH
-if [[ -z "${SGW_PATH}" || ! -x ${SGW_PATH} ]]; then
-	echo "SGW_PATH is invalid"
-	exit 127
-fi
-
 #check ETH_DEV
 if [[ -z "${ETH_DEV}" ]]; then
 	echo "ETH_DEV is invalid"
 	exit 127
 fi
-
-#setup SGW_LCORE
-SGW_LCORE=${SGW_LCORE:-0}
-
 #check that REMOTE_HOST is reachable
 ssh ${REMOTE_HOST} echo
 st=$?
@@ -46,14 +34,6 @@ LOCAL_IPV6=fd12:3456:789a:0031:0000:0000:0000:0092
 
 DPDK_PATH=${RTE_SDK:-${PWD}}
 DPDK_BUILD=${RTE_TARGET:-x86_64-native-linux-gcc}
-
-SGW_OUT_FILE=./ipsec-secgw.out1
-
-SGW_CMD_EAL_PRM="--lcores=${SGW_LCORE} -n 4 ${ETH_DEV}"
-SGW_CMD_CFG="(0,0,${SGW_LCORE}),(1,0,${SGW_LCORE})"
-SGW_CMD_PRM="-p 0x3 -u 1 -P --config=\"${SGW_CMD_CFG}\""
-
-SGW_CFG_FILE=$(mktemp)
 
 # configure local host/ifaces
 config_local_iface()
@@ -126,37 +106,7 @@ config6_iface()
 	config6_remote_iface
 }
 
-#start ipsec-secgw
-secgw_start()
-{
-	SGW_EXEC_FILE=$(mktemp)
-	cat <<EOF > ${SGW_EXEC_FILE}
-${SGW_PATH} ${SGW_CMD_EAL_PRM} ${CRYPTO_DEV} \
---vdev="net_tap0,mac=fixed" \
--- ${SGW_CMD_PRM} ${SGW_CMD_XPRM} -f ${SGW_CFG_FILE} > \
-${SGW_OUT_FILE} 2>&1 &
-p=\$!
-echo \$p
-EOF
-
-	cat ${SGW_EXEC_FILE}
-	SGW_PID=`/bin/bash -x ${SGW_EXEC_FILE}`
-
-	# wait till ipsec-secgw start properly
-	i=0
-	st=1
-	while [[ $i -ne 10 && st -ne 0 ]]; do
-		sleep 1
-		ifconfig ${LOCAL_IFACE}
-		st=$?
-		let i++
-	done
-}
-
-#stop ipsec-secgw and cleanup
-secgw_stop()
-{
-	kill ${SGW_PID}
-	rm -f ${SGW_EXEC_FILE}
-	rm -f ${SGW_CFG_FILE}
-}
+# secgw application parameters setup
+SGW_PORT_CFG="--vdev=\"net_tap0,mac=fixed\" ${ETH_DEV}"
+SGW_WAIT_DEV="${LOCAL_IFACE}"
+. ${DIR}/common_defs_secgw.sh
