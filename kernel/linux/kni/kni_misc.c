@@ -346,7 +346,6 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	kni = netdev_priv(net_dev);
 
 	kni->net_dev = net_dev;
-	kni->group_id = dev_info.group_id;
 	kni->core_id = dev_info.core_id;
 	strncpy(kni->name, dev_info.name, RTE_KNI_NAMESIZE);
 
