@@ -51,22 +51,22 @@ struct kni_dev {
 	struct net_device *net_dev;
 
 	/* queue for packets to be sent out */
-	void *tx_q;
+	struct rte_kni_fifo *tx_q;
 
 	/* queue for the packets received */
-	void *rx_q;
+	struct rte_kni_fifo *rx_q;
 
 	/* queue for the allocated mbufs those can be used to save sk buffs */
-	void *alloc_q;
+	struct rte_kni_fifo *alloc_q;
 
 	/* free queue for the mbufs to be freed */
-	void *free_q;
+	struct rte_kni_fifo *free_q;
 
 	/* request queue */
-	void *req_q;
+	struct rte_kni_fifo *req_q;
 
 	/* response queue */
-	void *resp_q;
+	struct rte_kni_fifo *resp_q;
 
 	void *sync_kva;
 	void *sync_va;
