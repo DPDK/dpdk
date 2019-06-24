@@ -55,7 +55,7 @@ cpt_is_algo_supported(struct rte_crypto_sym_xform *xform)
 }
 
 static __rte_always_inline void
-gen_key_snow3g(uint8_t *ck, uint32_t *keyx)
+gen_key_snow3g(const uint8_t *ck, uint32_t *keyx)
 {
 	int i, base;
 
@@ -175,7 +175,7 @@ cpt_fc_ciph_set_key_set_aes_key_type(mc_fc_context_t *fctx, uint16_t key_len)
 }
 
 static __rte_always_inline void
-cpt_fc_ciph_set_key_snow3g_uea2(struct cpt_ctx *cpt_ctx, uint8_t *key,
+cpt_fc_ciph_set_key_snow3g_uea2(struct cpt_ctx *cpt_ctx, const uint8_t *key,
 		uint16_t key_len)
 {
 	uint32_t keyx[4];
@@ -186,7 +186,7 @@ cpt_fc_ciph_set_key_snow3g_uea2(struct cpt_ctx *cpt_ctx, uint8_t *key,
 }
 
 static __rte_always_inline void
-cpt_fc_ciph_set_key_zuc_eea3(struct cpt_ctx *cpt_ctx, uint8_t *key,
+cpt_fc_ciph_set_key_zuc_eea3(struct cpt_ctx *cpt_ctx, const uint8_t *key,
 		uint16_t key_len)
 {
 	cpt_ctx->snow3g = 0;
@@ -196,7 +196,7 @@ cpt_fc_ciph_set_key_zuc_eea3(struct cpt_ctx *cpt_ctx, uint8_t *key,
 }
 
 static __rte_always_inline void
-cpt_fc_ciph_set_key_kasumi_f8_ecb(struct cpt_ctx *cpt_ctx, uint8_t *key,
+cpt_fc_ciph_set_key_kasumi_f8_ecb(struct cpt_ctx *cpt_ctx, const uint8_t *key,
 		uint16_t key_len)
 {
 	cpt_ctx->k_ecb = 1;
@@ -205,7 +205,7 @@ cpt_fc_ciph_set_key_kasumi_f8_ecb(struct cpt_ctx *cpt_ctx, uint8_t *key,
 }
 
 static __rte_always_inline void
-cpt_fc_ciph_set_key_kasumi_f8_cbc(struct cpt_ctx *cpt_ctx, uint8_t *key,
+cpt_fc_ciph_set_key_kasumi_f8_cbc(struct cpt_ctx *cpt_ctx, const uint8_t *key,
 		uint16_t key_len)
 {
 	memcpy(cpt_ctx->k_ctx.ci_key, key, key_len);
@@ -213,7 +213,7 @@ cpt_fc_ciph_set_key_kasumi_f8_cbc(struct cpt_ctx *cpt_ctx, uint8_t *key,
 }
 
 static __rte_always_inline int
-cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, uint8_t *key,
+cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
 		    uint16_t key_len, uint8_t *salt)
 {
 	struct cpt_ctx *cpt_ctx = ctx;
@@ -2486,7 +2486,7 @@ cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 }
 
 static __rte_always_inline int
-cpt_fc_auth_set_key(void *ctx, auth_type_t type, uint8_t *key,
+cpt_fc_auth_set_key(void *ctx, auth_type_t type, const uint8_t *key,
 		    uint16_t key_len, uint16_t mac_len)
 {
 	struct cpt_ctx *cpt_ctx = ctx;

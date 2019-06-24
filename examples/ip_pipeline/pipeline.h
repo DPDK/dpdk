@@ -276,6 +276,10 @@ struct table_rule_match {
 	} match;
 };
 
+#ifndef SYM_CRYPTO_MAX_KEY_SIZE
+#define SYM_CRYPTO_MAX_KEY_SIZE                (256)
+#endif
+
 struct table_rule_action {
 	uint64_t action_mask;
 	struct rte_table_action_fwd_params fwd;
@@ -288,8 +292,10 @@ struct table_rule_action {
 	struct rte_table_action_stats_params stats;
 	struct rte_table_action_time_params time;
 	struct rte_table_action_sym_crypto_params sym_crypto;
+	uint8_t sym_crypto_key[SYM_CRYPTO_MAX_KEY_SIZE];
 	struct rte_table_action_tag_params tag;
 	struct rte_table_action_decap_params decap;
+
 };
 
 struct table_rule {

@@ -59,10 +59,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* cryptodev: the ``uint8_t *data`` member of ``key`` structure in the xforms
-  structure (``rte_crypto_cipher_xform``, ``rte_crypto_auth_xform``, and
-  ``rte_crypto_aead_xform``) will be changed to ``const uint8_t *data``.
-
 * cryptodev: support for using IV with all sizes is added, J0 still can
   be used but only when IV length in following structs ``rte_crypto_auth_xform``,
   ``rte_crypto_aead_xform`` is set to zero. When IV length is greater or equal

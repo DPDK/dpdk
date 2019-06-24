@@ -97,6 +97,7 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 
 	if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION) {
 		int i, ip_index = -1;
+		uint8_t *key;
 
 		/* Find a match in the IP table*/
 		for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++) {
@@ -193,23 +194,32 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 		IXGBE_WAIT_RWRITE;
 
 		/* write Key table entry*/
+		key = malloc(ic_session->key_len);
+		if (!key)
+			return -ENOMEM;
+
+		memcpy(key, ic_session->key, ic_session->key_len);
+
 		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE |
 				IPSRXIDX_TABLE_KEY | (sa_index << 3);
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(0),
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[12]));
+			rte_cpu_to_be_32(*(uint32_t *)&key[12]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(1),
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[8]));
+			rte_cpu_to_be_32(*(uint32_t *)&key[8]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(2),
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[4]));
+			rte_cpu_to_be_32(*(uint32_t *)&key[4]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(3),
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[0]));
+			rte_cpu_to_be_32(*(uint32_t *)&key[0]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXSALT,
 				rte_cpu_to_be_32(ic_session->salt));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSRXMOD,
 				priv->rx_sa_tbl[sa_index].mode);
 		IXGBE_WAIT_RWRITE;
 
+		free(key);
+
 	} else { /* sess->dir == RTE_CRYPTO_OUTBOUND */
+		uint8_t *key;
 		int i;
 
 		/* Find a free entry in the SA table*/
@@ -231,19 +241,27 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 		priv->tx_sa_tbl[i].used = 1;
 		ic_session->sa_index = sa_index;
 
+		key = malloc(ic_session->key_len);
+		if (!key)
+			return -ENOMEM;
+
+		memcpy(key, ic_session->key, ic_session->key_len);
+
 		/* write Key table entry*/
 		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE | (sa_index << 3);
 		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(0),
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[12]));
+			rte_cpu_to_be_32(*(uint32_t *)&key[12]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(1),
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[8]));
+			rte_cpu_to_be_32(*(uint32_t *)&key[8]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(2),
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[4]));
+			rte_cpu_to_be_32(*(uint32_t *)&key[4]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(3),
-			rte_cpu_to_be_32(*(uint32_t *)&ic_session->key[0]));
+			rte_cpu_to_be_32(*(uint32_t *)&key[0]));
 		IXGBE_WRITE_REG(hw, IXGBE_IPSTXSALT,
 				rte_cpu_to_be_32(ic_session->salt));
 		IXGBE_WAIT_TWRITE;
+
+		free(key);
 	}
 
 	return 0;
@@ -392,6 +410,7 @@ ixgbe_crypto_create_session(void *device,
 	}
 
 	ic_session->key = aead_xform->key.data;
+	ic_session->key_len = aead_xform->key.length;
 	memcpy(&ic_session->salt,
 	       &aead_xform->key.data[aead_xform->key.length], 4);
 	ic_session->spi = conf->ipsec.spi;

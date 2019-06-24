@@ -35,7 +35,7 @@ typedef void (*aes_keyexp_t)(const void *key, void *enc_exp_keys, void *dec_exp_
 static void
 calculate_auth_precomputes(hash_one_block_t one_block_hash,
 		uint8_t *ipad, uint8_t *opad,
-		uint8_t *hkey, uint16_t hkey_len,
+		const uint8_t *hkey, uint16_t hkey_len,
 		uint16_t blocksize)
 {
 	unsigned i, length;

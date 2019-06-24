@@ -751,6 +751,8 @@ mrvl_crypto_pmd_sym_session_configure(__rte_unused struct rte_cryptodev *dev,
 		return -ENOMEM;
 	}
 
+	memset(sess_private_data, 0, sizeof(struct mrvl_crypto_session));
+
 	ret = mrvl_crypto_set_session_parameters(sess_private_data, xform);
 	if (ret != 0) {
 		MRVL_LOG(ERR, "Failed to configure session parameters!");
@@ -768,6 +770,12 @@ mrvl_crypto_pmd_sym_session_configure(__rte_unused struct rte_cryptodev *dev,
 		MRVL_LOG(DEBUG, "Failed to create session!");
 		return -EIO;
 	}
+
+	/* free the keys memory allocated for session creation */
+	if (mrvl_sess->sam_sess_params.cipher_key != NULL)
+		free(mrvl_sess->sam_sess_params.cipher_key);
+	if (mrvl_sess->sam_sess_params.auth_key != NULL)
+		free(mrvl_sess->sam_sess_params.auth_key);
 
 	return 0;
 }

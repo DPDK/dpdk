@@ -24,7 +24,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 	const struct rte_crypto_sym_xform *auth_xform;
 	const struct rte_crypto_sym_xform *aead_xform;
 	uint8_t key_length;
-	uint8_t *key;
+	const uint8_t *key;
 
 	/* AES-GMAC */
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {

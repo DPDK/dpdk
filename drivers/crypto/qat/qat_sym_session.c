@@ -35,7 +35,7 @@ bpi_cipher_ctx_free(void *bpi_ctx)
 static int
 bpi_cipher_ctx_init(enum rte_crypto_cipher_algorithm cryptodev_algo,
 		enum rte_crypto_cipher_operation direction __rte_unused,
-		uint8_t *key, void **ctx)
+		const uint8_t *key, void **ctx)
 {
 	const EVP_CIPHER *algo = NULL;
 	int ret;
@@ -510,7 +510,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 {
 	struct rte_crypto_auth_xform *auth_xform = qat_get_auth_xform(xform);
 	struct qat_sym_dev_private *internals = dev->data->dev_private;
-	uint8_t *key_data = auth_xform->key.data;
+	const uint8_t *key_data = auth_xform->key.data;
 	uint8_t key_length = auth_xform->key.length;
 	session->aes_cmac = 0;
 
@@ -1272,7 +1272,7 @@ qat_get_crypto_proto_flag(uint16_t flags)
 }
 
 int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
-						uint8_t *cipherkey,
+						const uint8_t *cipherkey,
 						uint32_t cipherkeylen)
 {
 	struct icp_qat_hw_cipher_algo_blk *cipher;
@@ -1427,7 +1427,7 @@ int qat_sym_session_aead_create_cd_cipher(struct qat_sym_session *cdesc,
 }
 
 int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
-						uint8_t *authkey,
+						const uint8_t *authkey,
 						uint32_t authkeylen,
 						uint32_t aad_length,
 						uint32_t digestsize,

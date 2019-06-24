@@ -19,6 +19,7 @@ int snow3g_logtype_driver;
 					## __VA_ARGS__)
 
 #define SNOW3G_DIGEST_LENGTH 4
+#define SNOW3G_MAX_KEY_SIZE  128
 
 /** private data structure for each virtual SNOW 3G device */
 struct snow3g_private {

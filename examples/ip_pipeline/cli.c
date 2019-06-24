@@ -3772,24 +3772,18 @@ parse_free_sym_crypto_param_data(struct rte_table_action_sym_crypto_params *p)
 
 		switch (xform[i]->type) {
 		case RTE_CRYPTO_SYM_XFORM_CIPHER:
-			if (xform[i]->cipher.key.data)
-				free(xform[i]->cipher.key.data);
 			if (p->cipher_auth.cipher_iv.val)
 				free(p->cipher_auth.cipher_iv.val);
 			if (p->cipher_auth.cipher_iv_update.val)
 				free(p->cipher_auth.cipher_iv_update.val);
 			break;
 		case RTE_CRYPTO_SYM_XFORM_AUTH:
-			if (xform[i]->auth.key.data)
-				free(xform[i]->cipher.key.data);
 			if (p->cipher_auth.auth_iv.val)
 				free(p->cipher_auth.cipher_iv.val);
 			if (p->cipher_auth.auth_iv_update.val)
 				free(p->cipher_auth.cipher_iv_update.val);
 			break;
 		case RTE_CRYPTO_SYM_XFORM_AEAD:
-			if (xform[i]->aead.key.data)
-				free(xform[i]->cipher.key.data);
 			if (p->aead.iv.val)
 				free(p->aead.iv.val);
 			if (p->aead.aad.val)
@@ -3804,8 +3798,8 @@ parse_free_sym_crypto_param_data(struct rte_table_action_sym_crypto_params *p)
 
 static struct rte_crypto_sym_xform *
 parse_table_action_cipher(struct rte_table_action_sym_crypto_params *p,
-		char **tokens, uint32_t n_tokens, uint32_t encrypt,
-		uint32_t *used_n_tokens)
+		uint8_t *key, uint32_t max_key_len, char **tokens,
+		uint32_t n_tokens, uint32_t encrypt, uint32_t *used_n_tokens)
 {
 	struct rte_crypto_sym_xform *xform_cipher;
 	int status;
@@ -3832,16 +3826,16 @@ parse_table_action_cipher(struct rte_table_action_sym_crypto_params *p,
 
 	/* cipher_key */
 	len = strlen(tokens[4]);
-	xform_cipher->cipher.key.data = calloc(1, len / 2 + 1);
-	if (xform_cipher->cipher.key.data == NULL)
+	if (len / 2 > max_key_len) {
+		status = -ENOMEM;
 		goto error_exit;
+	}
 
-	status = parse_hex_string(tokens[4],
-			xform_cipher->cipher.key.data,
-			(uint32_t *)&len);
+	status = parse_hex_string(tokens[4], key, (uint32_t *)&len);
 	if (status < 0)
 		goto error_exit;
 
+	xform_cipher->cipher.key.data = key;
 	xform_cipher->cipher.key.length = (uint16_t)len;
 
 	/* cipher_iv */
@@ -3865,9 +3859,6 @@ parse_table_action_cipher(struct rte_table_action_sym_crypto_params *p,
 	return xform_cipher;
 
 error_exit:
-	if (xform_cipher->cipher.key.data)
-		free(xform_cipher->cipher.key.data);
-
 	if (p->cipher_auth.cipher_iv.val) {
 		free(p->cipher_auth.cipher_iv.val);
 		p->cipher_auth.cipher_iv.val = NULL;
@@ -3880,8 +3871,8 @@ error_exit:
 
 static struct rte_crypto_sym_xform *
 parse_table_action_cipher_auth(struct rte_table_action_sym_crypto_params *p,
-		char **tokens, uint32_t n_tokens, uint32_t encrypt,
-		uint32_t *used_n_tokens)
+		uint8_t *key, uint32_t max_key_len, char **tokens,
+		uint32_t n_tokens, uint32_t encrypt, uint32_t *used_n_tokens)
 {
 	struct rte_crypto_sym_xform *xform_cipher;
 	struct rte_crypto_sym_xform *xform_auth;
@@ -3910,16 +3901,20 @@ parse_table_action_cipher_auth(struct rte_table_action_sym_crypto_params *p,
 
 	/* auth_key */
 	len = strlen(tokens[10]);
-	xform_auth->auth.key.data = calloc(1, len / 2 + 1);
-	if (xform_auth->auth.key.data == NULL)
+	if (len / 2 > max_key_len) {
+		status = -ENOMEM;
 		goto error_exit;
+	}
 
-	status = parse_hex_string(tokens[10],
-			xform_auth->auth.key.data, (uint32_t *)&len);
+	status = parse_hex_string(tokens[10], key, (uint32_t *)&len);
 	if (status < 0)
 		goto error_exit;
 
+	xform_auth->auth.key.data = key;
 	xform_auth->auth.key.length = (uint16_t)len;
+
+	key += xform_auth->auth.key.length;
+	max_key_len -= xform_auth->auth.key.length;
 
 	if (strcmp(tokens[11], "digest_size"))
 		goto error_exit;
@@ -3929,8 +3924,8 @@ parse_table_action_cipher_auth(struct rte_table_action_sym_crypto_params *p,
 	if (status < 0)
 		goto error_exit;
 
-	xform_cipher = parse_table_action_cipher(p, tokens, 7, encrypt,
-			used_n_tokens);
+	xform_cipher = parse_table_action_cipher(p, key, max_key_len, tokens,
+			7, encrypt, used_n_tokens);
 	if (xform_cipher == NULL)
 		goto error_exit;
 
@@ -3945,8 +3940,6 @@ parse_table_action_cipher_auth(struct rte_table_action_sym_crypto_params *p,
 	}
 
 error_exit:
-	if (xform_auth->auth.key.data)
-		free(xform_auth->auth.key.data);
 	if (p->cipher_auth.auth_iv.val) {
 		free(p->cipher_auth.auth_iv.val);
 		p->cipher_auth.auth_iv.val = 0;
@@ -3959,8 +3952,8 @@ error_exit:
 
 static struct rte_crypto_sym_xform *
 parse_table_action_aead(struct rte_table_action_sym_crypto_params *p,
-		char **tokens, uint32_t n_tokens, uint32_t encrypt,
-		uint32_t *used_n_tokens)
+		uint8_t *key, uint32_t max_key_len, char **tokens,
+		uint32_t n_tokens, uint32_t encrypt, uint32_t *used_n_tokens)
 {
 	struct rte_crypto_sym_xform *xform_aead;
 	int status;
@@ -3989,15 +3982,16 @@ parse_table_action_aead(struct rte_table_action_sym_crypto_params *p,
 
 	/* aead_key */
 	len = strlen(tokens[4]);
-	xform_aead->aead.key.data = calloc(1, len / 2 + 1);
-	if (xform_aead->aead.key.data == NULL)
+	if (len / 2 > max_key_len) {
+		status = -ENOMEM;
 		goto error_exit;
+	}
 
-	status = parse_hex_string(tokens[4], xform_aead->aead.key.data,
-			(uint32_t *)&len);
+	status = parse_hex_string(tokens[4], key, (uint32_t *)&len);
 	if (status < 0)
 		goto error_exit;
 
+	xform_aead->aead.key.data = key;
 	xform_aead->aead.key.length = (uint16_t)len;
 
 	/* aead_iv */
@@ -4039,8 +4033,6 @@ parse_table_action_aead(struct rte_table_action_sym_crypto_params *p,
 	return xform_aead;
 
 error_exit:
-	if (xform_aead->aead.key.data)
-		free(xform_aead->aead.key.data);
 	if (p->aead.iv.val) {
 		free(p->aead.iv.val);
 		p->aead.iv.val = NULL;
@@ -4063,6 +4055,8 @@ parse_table_action_sym_crypto(char **tokens,
 {
 	struct rte_table_action_sym_crypto_params *p = &a->sym_crypto;
 	struct rte_crypto_sym_xform *xform = NULL;
+	uint8_t *key = a->sym_crypto_key;
+	uint32_t max_key_len = SYM_CRYPTO_MAX_KEY_SIZE;
 	uint32_t used_n_tokens;
 	uint32_t encrypt;
 	int status;
@@ -4087,20 +4081,20 @@ parse_table_action_sym_crypto(char **tokens,
 		tokens += 3;
 		n_tokens -= 3;
 
-		xform = parse_table_action_cipher(p, tokens, n_tokens, encrypt,
-				&used_n_tokens);
+		xform = parse_table_action_cipher(p, key, max_key_len, tokens,
+				n_tokens, encrypt, &used_n_tokens);
 	} else if (strcmp(tokens[3], "cipher_auth") == 0) {
 		tokens += 3;
 		n_tokens -= 3;
 
-		xform = parse_table_action_cipher_auth(p, tokens, n_tokens,
-				encrypt, &used_n_tokens);
+		xform = parse_table_action_cipher_auth(p, key, max_key_len,
+				tokens, n_tokens, encrypt, &used_n_tokens);
 	} else if (strcmp(tokens[3], "aead") == 0) {
 		tokens += 3;
 		n_tokens -= 3;
 
-		xform = parse_table_action_aead(p, tokens, n_tokens, encrypt,
-				&used_n_tokens);
+		xform = parse_table_action_aead(p, key, max_key_len, tokens,
+				n_tokens, encrypt, &used_n_tokens);
 	}
 
 	if (xform == NULL)

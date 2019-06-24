@@ -255,6 +255,10 @@ API Changes
 * malloc: The function ``rte_malloc_set_limit`` was never implemented
   is deprecated and will be removed in a future release.
 
+* cryptodev: the ``uint8_t *data`` member of ``key`` structure in the xforms
+  structure (``rte_crypto_cipher_xform``, ``rte_crypto_auth_xform``, and
+  ``rte_crypto_aead_xform``) have been changed to ``const uint8_t *data``.
+
 * eventdev: No longer marked as experimental.
 
   The eventdev functions are no longer marked as experimental, and have

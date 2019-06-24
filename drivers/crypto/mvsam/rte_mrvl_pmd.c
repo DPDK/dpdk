@@ -222,6 +222,8 @@ static int
 mrvl_crypto_set_cipher_session_parameters(struct mrvl_crypto_session *sess,
 		const struct rte_crypto_sym_xform *cipher_xform)
 {
+	uint8_t *cipher_key;
+
 	/* Make sure we've got proper struct */
 	if (cipher_xform->type != RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		MRVL_LOG(ERR, "Wrong xform struct provided!");
@@ -256,8 +258,17 @@ mrvl_crypto_set_cipher_session_parameters(struct mrvl_crypto_session *sess,
 		return -EINVAL;
 	}
 
+	cipher_key = malloc(cipher_xform->cipher.key.length);
+	if (cipher_key == NULL) {
+		MRVL_LOG(ERR, "Insufficient memory!");
+		return -ENOMEM;
+	}
+
+	memcpy(cipher_key, cipher_xform->cipher.key.data,
+			cipher_xform->cipher.key.length);
+
 	sess->sam_sess_params.cipher_key_len = cipher_xform->cipher.key.length;
-	sess->sam_sess_params.cipher_key = cipher_xform->cipher.key.data;
+	sess->sam_sess_params.cipher_key = cipher_key;
 
 	return 0;
 }
@@ -273,6 +284,8 @@ static int
 mrvl_crypto_set_auth_session_parameters(struct mrvl_crypto_session *sess,
 		const struct rte_crypto_sym_xform *auth_xform)
 {
+	uint8_t *auth_key = NULL;
+
 	/* Make sure we've got proper struct */
 	if (auth_xform->type != RTE_CRYPTO_SYM_XFORM_AUTH) {
 		MRVL_LOG(ERR, "Wrong xform struct provided!");
@@ -293,9 +306,20 @@ mrvl_crypto_set_auth_session_parameters(struct mrvl_crypto_session *sess,
 		auth_map[auth_xform->auth.algo].auth_alg;
 	sess->sam_sess_params.u.basic.auth_icv_len =
 		auth_xform->auth.digest_length;
+
+	if (auth_xform->auth.key.length > 0) {
+		auth_key = malloc(auth_xform->auth.key.length);
+		if (auth_key == NULL) {
+			MRVL_LOG(ERR, "Not enough memory!");
+			return -EINVAL;
+		}
+
+		memcpy(auth_key, auth_xform->auth.key.data,
+				auth_xform->auth.key.length);
+	}
+
 	/* auth_key must be NULL if auth algorithm does not use HMAC */
-	sess->sam_sess_params.auth_key = auth_xform->auth.key.length ?
-					 auth_xform->auth.key.data : NULL;
+	sess->sam_sess_params.auth_key = auth_key;
 	sess->sam_sess_params.auth_key_len = auth_xform->auth.key.length;
 
 	return 0;
@@ -312,6 +336,8 @@ static int
 mrvl_crypto_set_aead_session_parameters(struct mrvl_crypto_session *sess,
 		const struct rte_crypto_sym_xform *aead_xform)
 {
+	uint8_t *aead_key;
+
 	/* Make sure we've got proper struct */
 	if (aead_xform->type != RTE_CRYPTO_SYM_XFORM_AEAD) {
 		MRVL_LOG(ERR, "Wrong xform struct provided!");
@@ -344,7 +370,16 @@ mrvl_crypto_set_aead_session_parameters(struct mrvl_crypto_session *sess,
 		return -EINVAL;
 	}
 
-	sess->sam_sess_params.cipher_key = aead_xform->aead.key.data;
+	aead_key = malloc(aead_xform->aead.key.length);
+	if (aead_key == NULL) {
+		MRVL_LOG(ERR, "Insufficient memory!");
+		return -ENOMEM;
+	}
+
+	memcpy(aead_key, aead_xform->aead.key.data,
+			aead_xform->aead.key.length);
+
+	sess->sam_sess_params.cipher_key = aead_key;
 	sess->sam_sess_params.cipher_key_len = aead_xform->aead.key.length;
 
 	if (sess->sam_sess_params.cipher_mode == SAM_CIPHER_GCM)

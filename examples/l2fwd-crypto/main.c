@@ -136,6 +136,7 @@ struct l2fwd_crypto_options {
 	struct rte_crypto_sym_xform cipher_xform;
 	unsigned ckey_param;
 	int ckey_random_size;
+	uint8_t cipher_key[MAX_KEY_SIZE];
 
 	struct l2fwd_iv cipher_iv;
 	unsigned int cipher_iv_param;
@@ -144,6 +145,7 @@ struct l2fwd_crypto_options {
 	struct rte_crypto_sym_xform auth_xform;
 	uint8_t akey_param;
 	int akey_random_size;
+	uint8_t auth_key[MAX_KEY_SIZE];
 
 	struct l2fwd_iv auth_iv;
 	unsigned int auth_iv_param;
@@ -152,6 +154,7 @@ struct l2fwd_crypto_options {
 	struct rte_crypto_sym_xform aead_xform;
 	unsigned int aead_key_param;
 	int aead_key_random_size;
+	uint8_t aead_key[MAX_KEY_SIZE];
 
 	struct l2fwd_iv aead_iv;
 	unsigned int aead_iv_param;
@@ -1219,8 +1222,7 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "cipher_key") == 0) {
 		options->ckey_param = 1;
 		options->cipher_xform.cipher.key.length =
-			parse_bytes(options->cipher_xform.cipher.key.data, optarg,
-					MAX_KEY_SIZE);
+			parse_bytes(options->cipher_key, optarg, MAX_KEY_SIZE);
 		if (options->cipher_xform.cipher.key.length > 0)
 			return 0;
 		else
@@ -1256,8 +1258,7 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "auth_key") == 0) {
 		options->akey_param = 1;
 		options->auth_xform.auth.key.length =
-			parse_bytes(options->auth_xform.auth.key.data, optarg,
-					MAX_KEY_SIZE);
+			parse_bytes(options->auth_key, optarg, MAX_KEY_SIZE);
 		if (options->auth_xform.auth.key.length > 0)
 			return 0;
 		else
@@ -1294,8 +1295,7 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "aead_key") == 0) {
 		options->aead_key_param = 1;
 		options->aead_xform.aead.key.length =
-			parse_bytes(options->aead_xform.aead.key.data, optarg,
-					MAX_KEY_SIZE);
+			parse_bytes(options->aead_key, optarg, MAX_KEY_SIZE);
 		if (options->aead_xform.aead.key.length > 0)
 			return 0;
 		else
@@ -2349,8 +2349,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 					options->aead_xform.aead.key.length =
 						cap->sym.aead.key_size.min;
 
-				generate_random_key(
-					options->aead_xform.aead.key.data,
+				generate_random_key(options->aead_key,
 					options->aead_xform.aead.key.length);
 			}
 
@@ -2407,8 +2406,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 					options->cipher_xform.cipher.key.length =
 						cap->sym.cipher.key_size.min;
 
-				generate_random_key(
-					options->cipher_xform.cipher.key.data,
+				generate_random_key(options->cipher_key,
 					options->cipher_xform.cipher.key.length);
 			}
 		}
@@ -2441,8 +2439,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 					options->auth_xform.auth.key.length =
 						cap->sym.auth.key_size.min;
 
-				generate_random_key(
-					options->auth_xform.auth.key.data,
+				generate_random_key(options->auth_key,
 					options->auth_xform.auth.key.length);
 			}
 
@@ -2613,20 +2610,11 @@ initialize_ports(struct l2fwd_crypto_options *options)
 static void
 reserve_key_memory(struct l2fwd_crypto_options *options)
 {
-	options->cipher_xform.cipher.key.data = rte_malloc("crypto key",
-						MAX_KEY_SIZE, 0);
-	if (options->cipher_xform.cipher.key.data == NULL)
-		rte_exit(EXIT_FAILURE, "Failed to allocate memory for cipher key");
+	options->cipher_xform.cipher.key.data = options->cipher_key;
 
-	options->auth_xform.auth.key.data = rte_malloc("auth key",
-						MAX_KEY_SIZE, 0);
-	if (options->auth_xform.auth.key.data == NULL)
-		rte_exit(EXIT_FAILURE, "Failed to allocate memory for auth key");
+	options->auth_xform.auth.key.data = options->auth_key;
 
-	options->aead_xform.aead.key.data = rte_malloc("aead key",
-						MAX_KEY_SIZE, 0);
-	if (options->aead_xform.aead.key.data == NULL)
-		rte_exit(EXIT_FAILURE, "Failed to allocate memory for AEAD key");
+	options->aead_xform.aead.key.data = options->aead_key;
 
 	options->cipher_iv.data = rte_malloc("cipher iv", MAX_KEY_SIZE, 0);
 	if (options->cipher_iv.data == NULL)

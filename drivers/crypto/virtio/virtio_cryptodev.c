@@ -1210,7 +1210,7 @@ static int
 virtio_crypto_sym_pad_op_ctrl_req(
 		struct virtio_crypto_op_ctrl_req *ctrl,
 		struct rte_crypto_sym_xform *xform, bool is_chainned,
-		uint8_t **cipher_key_data, uint8_t **auth_key_data,
+		uint8_t *cipher_key_data, uint8_t *auth_key_data,
 		struct virtio_crypto_session *session)
 {
 	int ret;
@@ -1220,6 +1220,12 @@ virtio_crypto_sym_pad_op_ctrl_req(
 	/* Get cipher xform from crypto xform chain */
 	cipher_xform = virtio_crypto_get_cipher_xform(xform);
 	if (cipher_xform) {
+		if (cipher_xform->key.length > VIRTIO_CRYPTO_MAX_KEY_SIZE) {
+			VIRTIO_CRYPTO_SESSION_LOG_ERR(
+				"cipher key size cannot be longer than %u",
+				VIRTIO_CRYPTO_MAX_KEY_SIZE);
+			return -1;
+		}
 		if (cipher_xform->iv.length > VIRTIO_CRYPTO_MAX_IV_SIZE) {
 			VIRTIO_CRYPTO_SESSION_LOG_ERR(
 				"cipher IV size cannot be longer than %u",
@@ -1241,7 +1247,8 @@ virtio_crypto_sym_pad_op_ctrl_req(
 			return -1;
 		}
 
-		*cipher_key_data = cipher_xform->key.data;
+		memcpy(cipher_key_data, cipher_xform->key.data,
+				cipher_xform->key.length);
 
 		session->iv.offset = cipher_xform->iv.offset;
 		session->iv.length = cipher_xform->iv.length;
@@ -1254,13 +1261,20 @@ virtio_crypto_sym_pad_op_ctrl_req(
 		struct virtio_crypto_alg_chain_session_para *para =
 			&(ctrl->u.sym_create_session.u.chain.para);
 		if (auth_xform->key.length) {
+			if (auth_xform->key.length >
+					VIRTIO_CRYPTO_MAX_KEY_SIZE) {
+				VIRTIO_CRYPTO_SESSION_LOG_ERR(
+				"auth key size cannot be longer than %u",
+					VIRTIO_CRYPTO_MAX_KEY_SIZE);
+				return -1;
+			}
 			para->hash_mode = VIRTIO_CRYPTO_SYM_HASH_MODE_AUTH;
 			para->u.mac_param.auth_key_len =
 				(uint32_t)auth_xform->key.length;
 			para->u.mac_param.hash_result_len =
 				auth_xform->digest_length;
-
-			*auth_key_data = auth_xform->key.data;
+			memcpy(auth_key_data, auth_xform->key.data,
+					auth_xform->key.length);
 		} else {
 			para->hash_mode	= VIRTIO_CRYPTO_SYM_HASH_MODE_PLAIN;
 			para->u.hash_param.hash_result_len =
@@ -1310,8 +1324,8 @@ virtio_crypto_sym_configure_session(
 	struct virtio_crypto_session *session;
 	struct virtio_crypto_op_ctrl_req *ctrl_req;
 	enum virtio_crypto_cmd_id cmd_id;
-	uint8_t *cipher_key_data = NULL;
-	uint8_t *auth_key_data = NULL;
+	uint8_t cipher_key_data[VIRTIO_CRYPTO_MAX_KEY_SIZE] = {0};
+	uint8_t auth_key_data[VIRTIO_CRYPTO_MAX_KEY_SIZE] = {0};
 	struct virtio_crypto_hw *hw;
 	struct virtqueue *control_vq;
 
@@ -1355,7 +1369,7 @@ virtio_crypto_sym_configure_session(
 			= VIRTIO_CRYPTO_SYM_OP_ALGORITHM_CHAINING;
 
 		ret = virtio_crypto_sym_pad_op_ctrl_req(ctrl_req,
-			xform, true, &cipher_key_data, &auth_key_data, session);
+			xform, true, cipher_key_data, auth_key_data, session);
 		if (ret < 0) {
 			VIRTIO_CRYPTO_SESSION_LOG_ERR(
 				"padding sym op ctrl req failed");
@@ -1373,7 +1387,7 @@ virtio_crypto_sym_configure_session(
 		ctrl_req->u.sym_create_session.op_type
 			= VIRTIO_CRYPTO_SYM_OP_CIPHER;
 		ret = virtio_crypto_sym_pad_op_ctrl_req(ctrl_req, xform,
-			false, &cipher_key_data, &auth_key_data, session);
+			false, cipher_key_data, auth_key_data, session);
 		if (ret < 0) {
 			VIRTIO_CRYPTO_SESSION_LOG_ERR(
 				"padding sym op ctrl req failed");

@@ -18,6 +18,8 @@
 
 #define VIRTIO_CRYPTO_MAX_IV_SIZE 16
 
+#define VIRTIO_CRYPTO_MAX_KEY_SIZE 256
+
 extern uint8_t cryptodev_virtio_driver_id;
 
 enum virtio_crypto_cmd_id {
