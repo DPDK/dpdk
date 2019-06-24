@@ -1228,10 +1228,7 @@ single_inbound_lookup(struct ipsec_sa *sadb, struct rte_mbuf *pkt,
 	*sa_ret = NULL;
 
 	ip = rte_pktmbuf_mtod(pkt, struct ip *);
-	if (ip->ip_v == IPVERSION)
-		esp = (struct rte_esp_hdr *)(ip + 1);
-	else
-		esp = (struct rte_esp_hdr *)(((struct ip6_hdr *)ip) + 1);
+	esp = rte_pktmbuf_mtod_offset(pkt, struct rte_esp_hdr *, pkt->l3_len);
 
 	if (esp->spi == INVALID_SPI)
 		return;

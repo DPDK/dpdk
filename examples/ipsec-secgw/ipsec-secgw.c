@@ -41,6 +41,7 @@
 #include <rte_jhash.h>
 #include <rte_cryptodev.h>
 #include <rte_security.h>
+#include <rte_ip.h>
 
 #include "ipsec.h"
 #include "parser.h"
@@ -248,16 +249,40 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 		pkt->l2_len = 0;
 		pkt->l3_len = sizeof(struct ip);
 	} else if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
-		nlp = (uint8_t *)rte_pktmbuf_adj(pkt, RTE_ETHER_HDR_LEN);
-		nlp = RTE_PTR_ADD(nlp, offsetof(struct ip6_hdr, ip6_nxt));
-		if (*nlp == IPPROTO_ESP)
+		int next_proto;
+		size_t l3len, ext_len;
+		struct rte_ipv6_hdr *v6h;
+		uint8_t *p;
+
+		/* get protocol type */
+		v6h = (struct rte_ipv6_hdr *)rte_pktmbuf_adj(pkt,
+			RTE_ETHER_HDR_LEN);
+		next_proto = v6h->proto;
+
+		/* determine l3 header size up to ESP extension */
+		l3len = sizeof(struct ip6_hdr);
+		p = rte_pktmbuf_mtod(pkt, uint8_t *);
+		while (next_proto != IPPROTO_ESP && l3len < pkt->data_len &&
+			(next_proto = rte_ipv6_get_next_ext(p + l3len,
+						next_proto, &ext_len)) >= 0)
+			l3len += ext_len;
+
+		/* drop packet when IPv6 header exceeds first segment length */
+		if (unlikely(l3len > pkt->data_len)) {
+			rte_pktmbuf_free(pkt);
+			return;
+		}
+
+		if (next_proto == IPPROTO_ESP)
 			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
 		else {
-			t->ip6.data[t->ip6.num] = nlp;
+			t->ip6.data[t->ip6.num] = rte_pktmbuf_mtod_offset(pkt,
+				uint8_t *,
+				offsetof(struct rte_ipv6_hdr, proto));
 			t->ip6.pkts[(t->ip6.num)++] = pkt;
 		}
 		pkt->l2_len = 0;
-		pkt->l3_len = sizeof(struct ip6_hdr);
+		pkt->l3_len = l3len;
 	} else {
 		/* Unknown/Unsupported type, drop the packet */
 		RTE_LOG(ERR, IPSEC, "Unsupported packet type 0x%x\n",
