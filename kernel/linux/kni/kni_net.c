@@ -13,6 +13,7 @@
 #include <linux/version.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h> /* eth_type_trans */
+#include <linux/ethtool.h>
 #include <linux/skbuff.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
@@ -725,6 +726,18 @@ static const struct net_device_ops kni_net_netdev_ops = {
 #endif
 };
 
+static void kni_get_drvinfo(struct net_device *dev,
+			    struct ethtool_drvinfo *info)
+{
+	strlcpy(info->version, KNI_VERSION, sizeof(info->version));
+	strlcpy(info->driver, "kni", sizeof(info->driver));
+}
+
+static const struct ethtool_ops kni_net_ethtool_ops = {
+	.get_drvinfo	= kni_get_drvinfo,
+	.get_link	= ethtool_op_get_link,
+};
+
 void
 kni_net_init(struct net_device *dev)
 {
@@ -736,6 +749,7 @@ kni_net_init(struct net_device *dev)
 	ether_setup(dev); /* assign some of the fields */
 	dev->netdev_ops      = &kni_net_netdev_ops;
 	dev->header_ops      = &kni_net_header_ops;
+	dev->ethtool_ops     = &kni_net_ethtool_ops;
 	dev->watchdog_timeo = WD_TIMEOUT;
 }
 

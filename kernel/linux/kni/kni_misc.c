@@ -21,6 +21,7 @@
 #include "compat.h"
 #include "kni_dev.h"
 
+MODULE_VERSION(KNI_VERSION);
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Intel Corporation");
 MODULE_DESCRIPTION("Kernel Module for managing kni devices");

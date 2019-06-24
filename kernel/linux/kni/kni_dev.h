@@ -11,6 +11,8 @@
 #endif
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#define KNI_VERSION	"1.0"
+
 #include "compat.h"
 
 #include <linux/if.h>
