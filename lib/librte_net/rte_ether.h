@@ -405,6 +405,11 @@ static inline int rte_vlan_insert(struct rte_mbuf **m)
 
 	(*m)->ol_flags &= ~(PKT_RX_VLAN_STRIPPED | PKT_TX_VLAN);
 
+	if ((*m)->ol_flags & PKT_TX_TUNNEL_MASK)
+		(*m)->outer_l2_len += sizeof(struct rte_vlan_hdr);
+	else
+		(*m)->l2_len += sizeof(struct rte_vlan_hdr);
+
 	return 0;
 }
 
