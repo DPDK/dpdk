@@ -440,6 +440,56 @@ rte_ipv6_udptcp_cksum(const struct rte_ipv6_hdr *ipv6_hdr, const void *l4_hdr)
 	return (uint16_t)cksum;
 }
 
+/* IPv6 fragmentation header size */
+#define RTE_IPV6_FRAG_HDR_SIZE 8
+
+/**
+ * Parse next IPv6 header extension
+ *
+ * This function checks if proto number is an IPv6 extensions and parses its
+ * data if so, providing information on next header and extension length.
+ *
+ * @param p
+ *   Pointer to an extension raw data.
+ * @param proto
+ *   Protocol number extracted from the "next header" field from
+ *   the IPv6 header or the previous extension.
+ * @param ext_len
+ *   Extension data length.
+ * @return
+ *   next protocol number if proto is an IPv6 extension, -EINVAL otherwise
+ */
+__rte_experimental
+static inline int
+rte_ipv6_get_next_ext(uint8_t *p, int proto, size_t *ext_len)
+{
+	int next_proto;
+
+	switch (proto) {
+	case IPPROTO_AH:
+		next_proto = *p++;
+		*ext_len = (*p + 2) * sizeof(uint32_t);
+		break;
+
+	case IPPROTO_HOPOPTS:
+	case IPPROTO_ROUTING:
+	case IPPROTO_DSTOPTS:
+		next_proto = *p++;
+		*ext_len = (*p + 1) * sizeof(uint64_t);
+		break;
+
+	case IPPROTO_FRAGMENT:
+		next_proto = *p;
+		*ext_len = RTE_IPV6_FRAG_HDR_SIZE;
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	return next_proto;
+}
+
 #ifdef __cplusplus
 }
 #endif
