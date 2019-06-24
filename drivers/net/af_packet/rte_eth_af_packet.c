@@ -32,7 +32,6 @@
 #define ETH_AF_PACKET_FRAMECOUNT_ARG	"framecnt"
 #define ETH_AF_PACKET_QDISC_BYPASS_ARG	"qdisc_bypass"
 
-#define DFLT_BLOCK_SIZE		(1 << 12)
 #define DFLT_FRAME_SIZE		(1 << 11)
 #define DFLT_FRAME_COUNT	(1 << 9)
 
@@ -811,7 +810,7 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	struct rte_kvargs_pair *pair = NULL;
 	unsigned k_idx;
 	unsigned int blockcount;
-	unsigned int blocksize = DFLT_BLOCK_SIZE;
+	unsigned int blocksize;
 	unsigned int framesize = DFLT_FRAME_SIZE;
 	unsigned int framecount = DFLT_FRAME_COUNT;
 	unsigned int qpairs = 1;
@@ -820,6 +819,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	/* do some parameter checking */
 	if (*sockfd < 0)
 		return -1;
+
+	blocksize = getpagesize();
 
 	/*
 	 * Walk arguments for configurable settings
