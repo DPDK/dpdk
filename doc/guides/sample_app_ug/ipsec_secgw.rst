@@ -69,7 +69,6 @@ Constraints
 *  No AH mode.
 *  Supported algorithms: AES-CBC, AES-CTR, AES-GCM, 3DES-CBC, HMAC-SHA1 and NULL.
 *  Each SA must be handle by a unique lcore (*1 RX queue per port*).
-*  No chained mbufs.
 
 Compiling the Application
 -------------------------
@@ -98,6 +97,8 @@ The application has a number of command line options::
                         --single-sa SAIDX
                         --rxoffload MASK
                         --txoffload MASK
+                        --mtu MTU
+                        --reassemble NUM
                         -f CONFIG_FILE_PATH
 
 Where:
@@ -111,9 +112,13 @@ Where:
 
 *   ``-u PORTMASK``: hexadecimal bitmask of unprotected ports
 
-*   ``-j FRAMESIZE``: *optional*. Enables jumbo frames with the maximum size
-    specified as FRAMESIZE. If an invalid value is provided as FRAMESIZE
-    then the default value 9000 is used.
+*   ``-j FRAMESIZE``: *optional*. data buffer size (in bytes),
+    in other words maximum data size for one segment.
+    Packets with length bigger then FRAMESIZE still can be received,
+    but will be segmented.
+    Default value: RTE_MBUF_DEFAULT_BUF_SIZE (2176)
+    Minimum value: RTE_MBUF_DEFAULT_BUF_SIZE (2176)
+    Maximum value: UINT16_MAX (65535).
 
 *   ``-l``: enables code-path that uses librte_ipsec.
 
@@ -143,6 +148,15 @@ Where:
     (bitmask of DEV_TX_OFFLOAD_* values). It is an optional parameter and
     allows user to disable some of the TX HW offload capabilities.
     By default all HW TX offloads are enabled.
+
+*   ``--mtu MTU``: MTU value (in bytes) on all attached ethernet ports.
+    Outgoing packets with length bigger then MTU will be fragmented.
+    Incoming packets with length bigger then MTU will be discarded.
+    Default value: 1500.
+
+*   ``--reassemble NUM``: max number of entries in reassemble fragment table.
+    Zero value disables reassembly functionality.
+    Default value: 0.
 
 *   ``-f CONFIG_FILE_PATH``: the full path of text-based file containing all
     configuration items for running the application (See Configuration file

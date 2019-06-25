@@ -203,6 +203,7 @@ struct socket_ctx {
 	struct rt_ctx *rt_ip4;
 	struct rt_ctx *rt_ip6;
 	struct rte_mempool *mbuf_pool;
+	struct rte_mempool *mbuf_pool_indir;
 	struct rte_mempool *session_pool;
 	struct rte_mempool *session_priv_pool;
 };
