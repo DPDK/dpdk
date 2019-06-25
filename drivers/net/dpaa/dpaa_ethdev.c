@@ -1214,7 +1214,7 @@ static int dpaa_debug_queue_init(struct qman_fq *fq, uint32_t fqid)
 static int
 dpaa_dev_init(struct rte_eth_dev *eth_dev)
 {
-	int num_cores, num_rx_fqs, fqid;
+	int num_rx_fqs, fqid;
 	int loop, ret = 0;
 	int dev_id;
 	struct rte_dpaa_device *dpaa_device;
@@ -1319,23 +1319,22 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	dpaa_intf->nb_rx_queues = num_rx_fqs;
 
 	/* Initialise Tx FQs.free_rx Have as many Tx FQ's as number of cores */
-	num_cores = rte_lcore_count();
 	dpaa_intf->tx_queues = rte_zmalloc(NULL, sizeof(struct qman_fq) *
-		num_cores, MAX_CACHELINE);
+		MAX_DPAA_CORES, MAX_CACHELINE);
 	if (!dpaa_intf->tx_queues) {
 		DPAA_PMD_ERR("Failed to alloc mem for TX queues\n");
 		ret = -ENOMEM;
 		goto free_rx;
 	}
 
-	for (loop = 0; loop < num_cores; loop++) {
+	for (loop = 0; loop < MAX_DPAA_CORES; loop++) {
 		ret = dpaa_tx_queue_init(&dpaa_intf->tx_queues[loop],
 					 fman_intf);
 		if (ret)
 			goto free_tx;
 		dpaa_intf->tx_queues[loop].dpaa_intf = dpaa_intf;
 	}
-	dpaa_intf->nb_tx_queues = num_cores;
+	dpaa_intf->nb_tx_queues = MAX_DPAA_CORES;
 
 #ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
 	dpaa_debug_queue_init(&dpaa_intf->debug_queues[
@@ -1484,7 +1483,7 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 		return 0;
 	}
 
-	if (!is_global_init) {
+	if (!is_global_init && (rte_eal_process_type() == RTE_PROC_PRIMARY)) {
 		/* One time load of Qman/Bman drivers */
 		ret = qman_global_init();
 		if (ret) {
@@ -1530,20 +1529,29 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 		}
 	}
 
-	eth_dev = rte_eth_dev_allocate(dpaa_dev->name);
-	if (eth_dev == NULL)
-		return -ENOMEM;
+	/* In case of secondary process, the device is already configured
+	 * and no further action is required, except portal initialization
+	 * and verifying secondary attachment to port name.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		eth_dev = rte_eth_dev_attach_secondary(dpaa_dev->name);
+		if (!eth_dev)
+			return -ENOMEM;
+	} else {
+		eth_dev = rte_eth_dev_allocate(dpaa_dev->name);
+		if (eth_dev == NULL)
+			return -ENOMEM;
 
-	eth_dev->data->dev_private = rte_zmalloc(
-					"ethdev private structure",
-					sizeof(struct dpaa_if),
-					RTE_CACHE_LINE_SIZE);
-	if (!eth_dev->data->dev_private) {
-		DPAA_PMD_ERR("Cannot allocate memzone for port data");
-		rte_eth_dev_release_port(eth_dev);
-		return -ENOMEM;
+		eth_dev->data->dev_private = rte_zmalloc(
+						"ethdev private structure",
+						sizeof(struct dpaa_if),
+						RTE_CACHE_LINE_SIZE);
+		if (!eth_dev->data->dev_private) {
+			DPAA_PMD_ERR("Cannot allocate memzone for port data");
+			rte_eth_dev_release_port(eth_dev);
+			return -ENOMEM;
+		}
 	}
-
 	eth_dev->device = &dpaa_dev->device;
 	dpaa_dev->eth_dev = eth_dev;
 
