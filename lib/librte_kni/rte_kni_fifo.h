@@ -104,3 +104,14 @@ kni_fifo_count(struct rte_kni_fifo *fifo)
 	unsigned fifo_read = __KNI_LOAD_ACQUIRE(&fifo->read);
 	return (fifo->len + fifo_write - fifo_read) & (fifo->len - 1);
 }
+
+/**
+ * Get the num of available elements in the fifo
+ */
+static inline uint32_t
+kni_fifo_free_count(struct rte_kni_fifo *fifo)
+{
+	uint32_t fifo_write = __KNI_LOAD_ACQUIRE(&fifo->write);
+	uint32_t fifo_read = __KNI_LOAD_ACQUIRE(&fifo->read);
+	return (fifo_read - fifo_write - 1) & (fifo->len - 1);
+}

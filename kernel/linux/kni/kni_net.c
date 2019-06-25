@@ -62,18 +62,6 @@ kva2data_kva(struct rte_kni_mbuf *m)
 	return phys_to_virt(m->buf_physaddr + m->data_off);
 }
 
-/* virtual address to physical address */
-static void *
-va2pa(void *va, struct rte_kni_mbuf *m)
-{
-	void *pa;
-
-	pa = (void *)((unsigned long)va -
-			((unsigned long)m->buf_addr -
-			 (unsigned long)m->buf_physaddr));
-	return pa;
-}
-
 /*
  * It can be called to process the request.
  */
@@ -174,7 +162,10 @@ kni_fifo_trans_pa2va(struct kni_dev *kni,
 	struct rte_kni_fifo *src_pa, struct rte_kni_fifo *dst_va)
 {
 	uint32_t ret, i, num_dst, num_rx;
-	void *kva;
+	struct rte_kni_mbuf *kva, *prev_kva;
+	int nb_segs;
+	int kva_nb_segs;
+
 	do {
 		num_dst = kni_fifo_free_count(dst_va);
 		if (num_dst == 0)
@@ -189,6 +180,17 @@ kni_fifo_trans_pa2va(struct kni_dev *kni,
 		for (i = 0; i < num_rx; i++) {
 			kva = pa2kva(kni->pa[i]);
 			kni->va[i] = pa2va(kni->pa[i], kva);
+
+			kva_nb_segs = kva->nb_segs;
+			for (nb_segs = 0; nb_segs < kva_nb_segs; nb_segs++) {
+				if (!kva->next)
+					break;
+
+				prev_kva = kva;
+				kva = pa2kva(kva->next);
+				/* Convert physical address to virtual address */
+				prev_kva->next = pa2va(prev_kva->next, kva);
+			}
 		}
 
 		ret = kni_fifo_put(dst_va, kni->va, num_rx);
@@ -314,7 +316,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 	uint32_t ret;
 	uint32_t len;
 	uint32_t i, num_rx, num_fq;
-	struct rte_kni_mbuf *kva;
+	struct rte_kni_mbuf *kva, *prev_kva;
 	void *data_kva;
 	struct sk_buff *skb;
 	struct net_device *dev = kni->net_dev;
@@ -361,8 +363,11 @@ kni_net_rx_normal(struct kni_dev *kni)
 				if (!kva->next)
 					break;
 
-				kva = pa2kva(va2pa(kva->next, kva));
+				prev_kva = kva;
+				kva = pa2kva(kva->next);
 				data_kva = kva2data_kva(kva);
+				/* Convert physical address to virtual address */
+				prev_kva->next = pa2va(prev_kva->next, kva);
 			}
 		}
 
@@ -393,7 +398,7 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 	uint32_t ret;
 	uint32_t len;
 	uint32_t i, num, num_rq, num_tq, num_aq, num_fq;
-	struct rte_kni_mbuf *kva;
+	struct rte_kni_mbuf *kva, *next_kva;
 	void *data_kva;
 	struct rte_kni_mbuf *alloc_kva;
 	void *alloc_data_kva;
@@ -437,6 +442,13 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 			data_kva = kva2data_kva(kva);
 			kni->va[i] = pa2va(kni->pa[i], kva);
 
+			while (kva->next) {
+				next_kva = pa2kva(kva->next);
+				/* Convert physical address to virtual address */
+				kva->next = pa2va(kva->next, next_kva);
+				kva = next_kva;
+			}
+
 			alloc_kva = pa2kva(kni->alloc_pa[i]);
 			alloc_data_kva = kva2data_kva(alloc_kva);
 			kni->alloc_va[i] = pa2va(kni->alloc_pa[i], alloc_kva);
@@ -479,7 +491,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 	uint32_t ret;
 	uint32_t len;
 	uint32_t i, num_rq, num_fq, num;
-	struct rte_kni_mbuf *kva;
+	struct rte_kni_mbuf *kva, *prev_kva;
 	void *data_kva;
 	struct sk_buff *skb;
 	struct net_device *dev = kni->net_dev;
@@ -537,8 +549,11 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 				if (!kva->next)
 					break;
 
-				kva = pa2kva(va2pa(kva->next, kva));
+				prev_kva = kva;
+				kva = pa2kva(kva->next);
 				data_kva = kva2data_kva(kva);
+				/* Convert physical address to virtual address */
+				prev_kva->next = pa2va(prev_kva->next, kva);
 			}
 		}
 

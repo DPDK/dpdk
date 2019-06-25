@@ -86,7 +86,7 @@ struct rte_kni_mbuf {
 	/* fields on second cache line */
 	char pad3[8] __attribute__((__aligned__(RTE_CACHE_LINE_MIN_SIZE)));
 	void *pool;
-	void *next;
+	void *next;             /**< Physical address of next mbuf in kernel. */
 };
 
 /*

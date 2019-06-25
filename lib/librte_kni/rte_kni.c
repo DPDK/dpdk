@@ -349,6 +349,19 @@ va2pa(struct rte_mbuf *m)
 			 (unsigned long)m->buf_iova));
 }
 
+static void *
+va2pa_all(struct rte_mbuf *mbuf)
+{
+	void *phy_mbuf = va2pa(mbuf);
+	struct rte_mbuf *next = mbuf->next;
+	while (next) {
+		mbuf->next = va2pa(next);
+		mbuf = next;
+		next = mbuf->next;
+	}
+	return phy_mbuf;
+}
+
 static void
 obj_free(struct rte_mempool *mp __rte_unused, void *opaque, void *obj,
 		unsigned obj_idx __rte_unused)
@@ -541,12 +554,13 @@ rte_kni_handle_request(struct rte_kni *kni)
 unsigned
 rte_kni_tx_burst(struct rte_kni *kni, struct rte_mbuf **mbufs, unsigned int num)
 {
+	num = RTE_MIN(kni_fifo_free_count(kni->rx_q), num);
 	void *phy_mbufs[num];
 	unsigned int ret;
 	unsigned int i;
 
 	for (i = 0; i < num; i++)
-		phy_mbufs[i] = va2pa(mbufs[i]);
+		phy_mbufs[i] = va2pa_all(mbufs[i]);
 
 	ret = kni_fifo_put(kni->rx_q, phy_mbufs, num);
 
