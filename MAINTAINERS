@@ -36,6 +36,10 @@ M: Qi Zhang <qi.z.zhang@intel.com>
 M: Xiaolong Ye <xiaolong.ye@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 
+Next-net-mrvl Tree
+M: Jerin Jacob <jerinj@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
+
 Next-net-mlx Tree
 M: Shahaf Shuler <shahafs@mellanox.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
@@ -556,6 +560,7 @@ F: doc/guides/nics/features/bnxt.ini
 Cavium ThunderX nicvf
 M: Jerin Jacob <jerinj@marvell.com>
 M: Maciej Czekaj <mczekaj@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/thunderx/
 F: doc/guides/nics/thunderx.rst
 F: doc/guides/nics/features/thunderx.ini
@@ -563,12 +568,14 @@ F: doc/guides/nics/features/thunderx.ini
 Cavium LiquidIO
 M: Shijith Thotton <sthotton@marvell.com>
 M: Srisivasubramanian Srinivasan <srinivasan@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/liquidio/
 F: doc/guides/nics/liquidio.rst
 F: doc/guides/nics/features/liquidio.ini
 
 Cavium OCTEON TX
 M: Jerin Jacob <jerinj@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/common/octeontx/
 F: drivers/mempool/octeontx/
 F: drivers/net/octeontx/
@@ -655,6 +662,7 @@ F: doc/guides/nics/features/ipn3ke.ini
 Marvell mvpp2
 M: Tomasz Duszynski <tdu@semihalf.com>
 M: Liron Himi <lironh@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/common/mvep/
 F: drivers/net/mvpp2/
 F: doc/guides/nics/mvpp2.rst
@@ -663,6 +671,7 @@ F: doc/guides/nics/features/mvpp2.ini
 Marvell mvneta
 M: Zyta Szpak <zr@semihalf.com>
 M: Liron Himi <lironh@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/mvneta/
 F: doc/guides/nics/mvneta.rst
 F: doc/guides/nics/features/mvneta.ini
@@ -743,6 +752,7 @@ F: doc/guides/nics/features/enetc.ini
 QLogic bnx2x
 M: Rasesh Mody <rmody@marvell.com>
 M: Shahed Shaikh <shshaikh@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/bnx2x/
 F: doc/guides/nics/bnx2x.rst
 F: doc/guides/nics/features/bnx2x*.ini
@@ -750,6 +760,7 @@ F: doc/guides/nics/features/bnx2x*.ini
 QLogic qede PMD
 M: Rasesh Mody <rmody@marvell.com>
 M: Shahed Shaikh <shshaikh@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
 F: doc/guides/nics/features/qede*.ini
