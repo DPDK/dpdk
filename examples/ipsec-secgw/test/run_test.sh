@@ -11,7 +11,10 @@
 #  SGW_LCORE - lcore to run ipsec-secgw on (default value is 0)
 #  CRYPTO_DEV - crypto device to be used ('-w <pci-id>')
 #  if none specified appropriate vdevs will be created by the scrit
-# refer to linux_test1.sh for more information
+#  MULTI_SEG_TEST - ipsec-secgw option to enable reassembly support and
+#  specify size of reassembly table (i.e. MULTI_SEG_TEST="--reassemble 128")
+# refer to linux_test[4,6].sh for more information
+
 
 # All supported modes to test.
 # naming convention:

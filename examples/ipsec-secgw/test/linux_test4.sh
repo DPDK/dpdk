@@ -15,6 +15,8 @@
 #  SGW_LCORE - lcore to run ipsec-secgw on (default value is 0)
 #  CRYPTO_DEV - crypto device to be used ('-w <pci-id>')
 #  if none specified appropriate vdevs will be created by the scrit
+#  MULTI_SEG_TEST - ipsec-secgw option to enable reassembly support and
+#  specify size of reassembly table (i.e. MULTI_SEG_TEST="--reassemble 128")
 #
 # The purpose of the script is to automate ipsec-secgw testing
 # using another system running linux as a DUT.
@@ -42,6 +44,17 @@ MODE=$1
  . ${DIR}/common_defs.sh
  . ${DIR}/${MODE}_defs.sh
 
+#make linux to generate fragmented packets
+if [[ -n "${MULTI_SEG_TEST}" && -n "${SGW_CMD_XPRM}" ]]; then
+	echo "multi-segment test is enabled"
+	SGW_CMD_XPRM="${SGW_CMD_XPRM} ${MULTI_SEG_TEST}"
+	PING_LEN=5000
+	MTU_LEN=1500
+else
+	PING_LEN=${DEF_PING_LEN}
+	MTU_LEN=${DEF_MTU_LEN}
+fi
+
 config_secgw
 
 secgw_start
@@ -52,9 +65,11 @@ config_remote_xfrm
 
  . ${DIR}/data_rxtx.sh
 
-ping_test1 ${REMOTE_IPV4}
+set_local_mtu ${MTU_LEN}
+ping_test1 ${REMOTE_IPV4} 0 ${PING_LEN}
 st=$?
 if [[ $st -eq 0 ]]; then
+	set_local_mtu ${DEF_MTU_LEN}
 	scp_test1 ${REMOTE_IPV4}
 	st=$?
 fi

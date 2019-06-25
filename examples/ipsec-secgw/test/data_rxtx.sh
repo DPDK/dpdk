@@ -5,14 +5,15 @@ TCP_PORT=22222
 ping_test1()
 {
 	dst=$1
+	i=${2:-0}
+	end=${3:-1200}
 
-	i=0
 	st=0
-	while [[ $i -ne 1200 && $st -eq 0 ]];
+	while [[ $i -ne $end && $st -eq 0 ]];
 	do
-		let i++
-		ping -c 1 -s ${i} ${dst}
+		ping -c 1 -s ${i} -M dont ${dst}
 		st=$?
+		let i++
 	done
 
 	if [[ $st -ne 0 ]]; then
@@ -24,14 +25,15 @@ ping_test1()
 ping6_test1()
 {
 	dst=$1
+	i=${2:-0}
+	end=${3:-1200}
 
-	i=0
 	st=0
-	while [[ $i -ne 1200 && $st -eq 0 ]];
+	while [[ $i -ne $end && $st -eq 0 ]];
 	do
-		let i++
-		ping6 -c 1 -s ${i} ${dst}
+		ping6 -c 1 -s ${i} -M dont ${dst}
 		st=$?
+		let i++
 	done
 
 	if [[ $st -ne 0 ]]; then
