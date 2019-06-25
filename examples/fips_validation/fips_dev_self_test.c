@@ -1557,11 +1557,15 @@ fips_dev_auto_test_uninit(uint8_t dev_id,
 static int
 fips_dev_auto_test_init(uint8_t dev_id, struct fips_dev_auto_test_env *env)
 {
-	struct rte_cryptodev_config conf = {rte_cryptodev_socket_id(dev_id), 1};
 	struct rte_cryptodev_qp_conf qp_conf = {128, NULL, NULL};
 	uint32_t sess_sz = rte_cryptodev_sym_get_private_session_size(dev_id);
+	struct rte_cryptodev_config conf;
 	char name[128];
 	int ret;
+
+	conf.socket_id = rte_cryptodev_socket_id(dev_id);
+	conf.nb_queue_pairs = 1;
+	conf.ff_disable = 0;
 
 	ret = rte_cryptodev_configure(dev_id, &conf);
 	if (ret < 0)

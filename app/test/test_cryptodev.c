@@ -430,6 +430,7 @@ testsuite_setup(void)
 
 	ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
+	ts_params->conf.ff_disable = RTE_CRYPTODEV_FF_SECURITY;
 
 	unsigned int session_size =
 		rte_cryptodev_sym_get_private_session_size(dev_id);
@@ -524,6 +525,7 @@ ut_setup(void)
 
 	/* Reconfigure device to default parameters */
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
+	ts_params->conf.ff_disable = RTE_CRYPTODEV_FF_SECURITY;
 	ts_params->qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT;
 	ts_params->qp_conf.mp_session = ts_params->session_mpool;
 	ts_params->qp_conf.mp_session_private = ts_params->session_priv_mpool;

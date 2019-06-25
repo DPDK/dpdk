@@ -548,6 +548,7 @@ configure_cryptodev(void)
 	rte_cryptodev_info_get(TEST_CDEV_ID, &info);
 	conf.nb_queue_pairs = info.max_nb_queue_pairs;
 	conf.socket_id = SOCKET_ID_ANY;
+	conf.ff_disable = RTE_CRYPTODEV_FF_SECURITY;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(TEST_CDEV_ID, &conf),
 			"Failed to configure cryptodev %u with %u qps\n",

@@ -516,6 +516,7 @@ main(int argc, char *argv[])
 
 		config.nb_queue_pairs = dev_info.max_nb_queue_pairs;
 		config.socket_id = rte_lcore_to_socket_id(lo->lcore_id);
+		config.ff_disable = RTE_CRYPTODEV_FF_SECURITY;
 
 		ret = rte_cryptodev_configure(info->cid, &config);
 		if (ret < 0) {

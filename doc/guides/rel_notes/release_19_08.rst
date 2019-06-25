@@ -236,6 +236,16 @@ ABI Changes
   Add a Rx adapter stats field to keep track of the total
   number of dropped packets.
 
+* cryptodev: New member in ``rte_cryptodev_config`` to allow applications to
+  disable features supported by the crypto device. Only the following features
+  would be allowed to be disabled this way,
+
+  - ``RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO``
+  - ``RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO``
+  - ``RTE_CRYPTODEV_FF_SECURITY``
+
+  Disabling unused features would facilitate efficient usage of HW/SW offload.
+
 
 Shared Library Versions
 -----------------------
@@ -267,7 +277,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cfgfile.so.2
      librte_cmdline.so.2
      librte_compressdev.so.1
-     librte_cryptodev.so.7
+   + librte_cryptodev.so.8
      librte_distributor.so.1
    + librte_eal.so.11
      librte_efd.so.1

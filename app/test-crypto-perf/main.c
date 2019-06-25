@@ -200,7 +200,8 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		}
 		struct rte_cryptodev_config conf = {
 			.nb_queue_pairs = opts->nb_qps,
-			.socket_id = socket_id
+			.socket_id = socket_id,
+			.ff_disable = RTE_CRYPTODEV_FF_SECURITY,
 		};
 
 		struct rte_cryptodev_qp_conf qp_conf = {

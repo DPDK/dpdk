@@ -616,6 +616,13 @@ struct rte_cryptodev_config {
 	int socket_id;			/**< Socket to allocate resources on */
 	uint16_t nb_queue_pairs;
 	/**< Number of queue pairs to configure on device */
+	uint64_t ff_disable;
+	/**< Feature flags to be disabled. Only the following features are
+	 * allowed to be disabled,
+	 *  - RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO
+	 *  - RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO
+	 *  - RTE_CRYTPODEV_FF_SECURITY
+	 */
 };
 
 /**

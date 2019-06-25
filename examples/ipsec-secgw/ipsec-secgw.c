@@ -1720,6 +1720,7 @@ cryptodevs_init(void)
 
 		dev_conf.socket_id = rte_cryptodev_socket_id(cdev_id);
 		dev_conf.nb_queue_pairs = qp;
+		dev_conf.ff_disable = RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO;
 
 		uint32_t dev_max_sess = cdev_info.sym.max_nb_sessions;
 		if (dev_max_sess != 0 && dev_max_sess < CDEV_MP_NB_OBJS)

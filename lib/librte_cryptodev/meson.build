@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
-version = 7
+version = 8
 allow_experimental_apis = true
 sources = files('rte_cryptodev.c', 'rte_cryptodev_pmd.c')
 headers = files('rte_cryptodev.h',

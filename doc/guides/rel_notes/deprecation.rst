@@ -59,20 +59,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* cryptodev: New member in ``rte_cryptodev_config`` to allow applications to
-  disable features supported by the crypto device. Only the following features
-  would be allowed to be disabled this way,
-
-  - ``RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO``
-  - ``RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO``
-  - ``RTE_CRYPTODEV_FF_SECURITY``
-
-  Disabling unused features would facilitate efficient usage of HW/SW offload.
-
-  - Member ``uint64_t ff_disable`` in ``rte_cryptodev_config``
-
-  The field would be added in v19.08.
-
 * cryptodev: the ``uint8_t *data`` member of ``key`` structure in the xforms
   structure (``rte_crypto_cipher_xform``, ``rte_crypto_auth_xform``, and
   ``rte_crypto_aead_xform``) will be changed to ``const uint8_t *data``.

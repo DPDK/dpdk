@@ -342,6 +342,7 @@ testsuite_setup(void)
 
 	ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
+	ts_params->conf.ff_disable = RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO;
 
 	sess_sz = rte_cryptodev_sym_get_private_session_size(dev_id);
 	sess_sz = RTE_MAX(sess_sz, sizeof(struct rte_security_session));

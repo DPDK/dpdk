@@ -48,7 +48,7 @@ struct cryptodev_fips_validate_env {
 static int
 cryptodev_fips_validate_app_int(void)
 {
-	struct rte_cryptodev_config conf = {rte_socket_id(), 1};
+	struct rte_cryptodev_config conf = {rte_socket_id(), 1, 0};
 	struct rte_cryptodev_qp_conf qp_conf = {128, NULL, NULL};
 	uint32_t sess_sz = rte_cryptodev_sym_get_private_session_size(
 			env.dev_id);

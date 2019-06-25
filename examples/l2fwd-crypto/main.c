@@ -2256,6 +2256,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		struct rte_cryptodev_config conf = {
 			.nb_queue_pairs = 1,
 			.socket_id = socket_id,
+			.ff_disable = RTE_CRYPTODEV_FF_SECURITY,
 		};
 
 		rte_cryptodev_info_get(cdev_id, &dev_info);
