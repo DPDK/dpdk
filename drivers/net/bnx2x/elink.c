@@ -8097,7 +8097,7 @@ static elink_status_t elink_8073_8727_external_rom_boot(struct bnx2x_softc *sc,
 					     uint8_t port)
 {
 	uint32_t count = 0;
-	uint16_t fw_ver1, fw_msgout;
+	uint16_t fw_ver1 = 0, fw_msgout;
 	elink_status_t rc = ELINK_STATUS_OK;
 
 	/* Boot port from external ROM  */
