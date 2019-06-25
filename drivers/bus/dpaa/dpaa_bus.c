@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017 NXP
+ *   Copyright 2017-2019 NXP
  *
  */
 /* System headers */
@@ -389,19 +389,28 @@ rte_dpaa_bus_parse(const char *name, void *out_name)
 {
 	int i, j;
 	int max_fman = 2, max_macs = 16;
-	char *sep = strchr(name, ':');
+	char *dup_name;
+	char *sep = NULL;
 
-	if (strncmp(name, RTE_STR(FSL_DPAA_BUS_NAME),
-		strlen(RTE_STR(FSL_DPAA_BUS_NAME)))) {
-		return -EINVAL;
-	}
+	/* There are two ways of passing device name, with and without
+	 * separator. "dpaa_bus:fm1-mac3" with separator, and "fm1-mac3"
+	 * without separator. Both need to be handled.
+	 * It is also possible that "name=fm1-mac3" is passed along.
+	 */
+	DPAA_BUS_DEBUG("Parse device name (%s)\n", name);
 
-	if (!sep) {
-		DPAA_BUS_ERR("Incorrect device name observed");
-		return -EINVAL;
-	}
+	/* Check for dpaa_bus:fm1-mac3 style */
+	dup_name = strdup(name);
+	sep = strchr(dup_name, ':');
+	if (!sep)
+		/* If not, check for name=fm1-mac3 style */
+		sep = strchr(dup_name, '=');
 
-	sep = (char *) (sep + 1);
+	if (sep)
+		/* jump over the seprator */
+		sep = (char *) (sep + 1);
+	else
+		sep = dup_name;
 
 	for (i = 0; i < max_fman; i++) {
 		for (j = 0; j < max_macs; j++) {
@@ -410,6 +419,7 @@ rte_dpaa_bus_parse(const char *name, void *out_name)
 			if (strcmp(fm_name, sep) == 0) {
 				if (out_name)
 					strcpy(out_name, sep);
+				free(dup_name);
 				return 0;
 			}
 		}
@@ -422,10 +432,12 @@ rte_dpaa_bus_parse(const char *name, void *out_name)
 		if (strcmp(sec_name, sep) == 0) {
 			if (out_name)
 				strcpy(out_name, sep);
+			free(dup_name);
 			return 0;
 		}
 	}
 
+	free(dup_name);
 	return -EINVAL;
 }
 
@@ -444,7 +456,10 @@ rte_dpaa_bus_scan(void)
 		RTE_LOG(DEBUG, EAL, "DPAA Bus not present. Skipping.\n");
 		return 0;
 	}
-	/* detected DPAA devices */
+
+	if (rte_dpaa_bus.detected)
+		return 0;
+
 	rte_dpaa_bus.detected = 1;
 
 	/* create the key, supplying a function that'll be invoked
@@ -553,12 +568,16 @@ rte_dpaa_bus_probe(void)
 	FILE *svr_file = NULL;
 	unsigned int svr_ver;
 	int probe_all = rte_dpaa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_WHITELIST;
+	static int process_once;
 
 	/* If DPAA bus is not present nothing needs to be done */
 	if (!rte_dpaa_bus.detected)
 		return 0;
 
-	rte_dpaa_bus_dev_build();
+	/* Device list creation is only done once */
+	if (!process_once)
+		rte_dpaa_bus_dev_build();
+	process_once = 1;
 
 	/* If no device present on DPAA bus nothing needs to be done */
 	if (TAILQ_EMPTY(&rte_dpaa_bus.device_list))
@@ -618,17 +637,28 @@ rte_dpaa_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		     const void *data)
 {
 	struct rte_dpaa_device *dev;
+	const struct rte_dpaa_device *dstart;
 
-	TAILQ_FOREACH(dev, &rte_dpaa_bus.device_list, next) {
-		if (start && &dev->device == start) {
-			start = NULL;  /* starting point found */
-			continue;
-		}
+	/* find_device is called with 'data' as an opaque object - just call
+	 * cmp with this and each device object on bus.
+	 */
 
-		if (cmp(&dev->device, data) == 0)
-			return &dev->device;
+	if (start != NULL) {
+		dstart = RTE_DEV_TO_DPAA_CONST(start);
+		dev = TAILQ_NEXT(dstart, next);
+	} else {
+		dev = TAILQ_FIRST(&rte_dpaa_bus.device_list);
 	}
 
+	while (dev != NULL) {
+		if (cmp(&dev->device, data) == 0) {
+			DPAA_BUS_DEBUG("Found dev=(%s)\n", dev->device.name);
+			return &dev->device;
+		}
+		dev = TAILQ_NEXT(dev, next);
+	}
+
+	DPAA_BUS_DEBUG("Unable to find any device\n");
 	return NULL;
 }
 
@@ -645,6 +675,57 @@ rte_dpaa_get_iommu_class(void)
 	return RTE_IOVA_PA;
 }
 
+static int
+dpaa_bus_plug(struct rte_device *dev __rte_unused)
+{
+	/* No operation is performed while plugging the device */
+	return 0;
+}
+
+static int
+dpaa_bus_unplug(struct rte_device *dev __rte_unused)
+{
+	/* No operation is performed while unplugging the device */
+	return 0;
+}
+
+static void *
+dpaa_bus_dev_iterate(const void *start, const char *str,
+		     const struct rte_dev_iterator *it __rte_unused)
+{
+	const struct rte_dpaa_device *dstart;
+	struct rte_dpaa_device *dev;
+	char *dup, *dev_name = NULL;
+
+	/* Expectation is that device would be name=device_name */
+	if (strncmp(str, "name=", 5) != 0) {
+		DPAA_BUS_ERR("Invalid device string (%s)\n", str);
+		return NULL;
+	}
+
+	/* Now that name=device_name format is available, split */
+	dup = strdup(str);
+	dev_name = dup + strlen("name=");
+
+	if (start != NULL) {
+		dstart = RTE_DEV_TO_DPAA_CONST(start);
+		dev = TAILQ_NEXT(dstart, next);
+	} else {
+		dev = TAILQ_FIRST(&rte_dpaa_bus.device_list);
+	}
+
+	while (dev != NULL) {
+		if (strcmp(dev->device.name, dev_name) == 0) {
+			free(dup);
+			return &dev->device;
+		}
+		dev = TAILQ_NEXT(dev, next);
+	}
+
+	free(dup);
+	return NULL;
+}
+
 static struct rte_dpaa_bus rte_dpaa_bus = {
 	.bus = {
 		.scan = rte_dpaa_bus_scan,
@@ -652,6 +733,9 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 		.parse = rte_dpaa_bus_parse,
 		.find_device = rte_dpaa_find_device,
 		.get_iommu_class = rte_dpaa_get_iommu_class,
+		.plug = dpaa_bus_plug,
+		.unplug = dpaa_bus_unplug,
+		.dev_iterate = dpaa_bus_dev_iterate,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_dpaa_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_dpaa_bus.driver_list),
