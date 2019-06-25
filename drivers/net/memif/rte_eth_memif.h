@@ -93,10 +93,6 @@ struct pmd_internals {
 
 	struct memif_control_channel *cc;	/**< control channel */
 
-	struct memif_region *regions[ETH_MEMIF_MAX_REGION_NUM];
-	/**< shared memory regions */
-	memif_region_index_t regions_num;	/**< number of regions */
-
 	/* remote info */
 	char remote_name[RTE_DEV_NAME_MAX_LEN];		/**< remote app name */
 	char remote_if_name[RTE_DEV_NAME_MAX_LEN];	/**< remote peer name */
@@ -124,13 +120,19 @@ struct pmd_internals {
 	struct rte_vdev_device *vdev;		/**< vdev handle */
 };
 
+struct pmd_process_private {
+	struct memif_region *regions[ETH_MEMIF_MAX_REGION_NUM];
+	/**< shared memory regions */
+	memif_region_index_t regions_num;	/**< number of regions */
+};
+
 /**
  * Unmap shared memory and free regions from memory.
  *
- * @param pmd
- *   device internals
+ * @param proc_private
+ *   device process private data
  */
-void memif_free_regions(struct pmd_internals *pmd);
+void memif_free_regions(struct pmd_process_private *proc_private);
 
 /**
  * Finalize connection establishment process. Map shared memory file

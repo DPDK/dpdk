@@ -256,6 +256,7 @@ memif_msg_receive_add_region(struct rte_eth_dev *dev, memif_msg_t *msg,
 			     int fd)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct pmd_process_private *proc_private = dev->process_private;
 	memif_msg_add_region_t *ar = &msg->add_region;
 	struct memif_region *r;
 
@@ -264,16 +265,16 @@ memif_msg_receive_add_region(struct rte_eth_dev *dev, memif_msg_t *msg,
 		return -1;
 	}
 
-	if (ar->index >= ETH_MEMIF_MAX_REGION_NUM || ar->index != pmd->regions_num ||
-			pmd->regions[ar->index] != NULL) {
+	if (ar->index >= ETH_MEMIF_MAX_REGION_NUM ||
+			ar->index != proc_private->regions_num ||
+			proc_private->regions[ar->index] != NULL) {
 		memif_msg_enq_disconnect(pmd->cc, "Invalid region index", 0);
 		return -1;
 	}
 
 	r = rte_zmalloc("region", sizeof(struct memif_region), 0);
 	if (r == NULL) {
-		MIF_LOG(ERR, "%s: Failed to alloc memif region.",
-			rte_vdev_device_name(pmd->vdev));
+		memif_msg_enq_disconnect(pmd->cc, "Failed to alloc memif region.", 0);
 		return -ENOMEM;
 	}
 
@@ -281,8 +282,8 @@ memif_msg_receive_add_region(struct rte_eth_dev *dev, memif_msg_t *msg,
 	r->region_size = ar->size;
 	r->addr = NULL;
 
-	pmd->regions[ar->index] = r;
-	pmd->regions_num++;
+	proc_private->regions[ar->index] = r;
+	proc_private->regions_num++;
 
 	return 0;
 }
@@ -377,8 +378,7 @@ memif_msg_receive_disconnect(struct rte_eth_dev *dev, memif_msg_t *msg)
 		rte_vdev_device_name(pmd->vdev), pmd->remote_disc_string);
 
 	memset(pmd->local_disc_string, 0, ETH_MEMIF_DISC_STRING_SIZE);
-	memif_disconnect(rte_eth_dev_allocated
-			 (rte_vdev_device_name(pmd->vdev)));
+	memif_disconnect(dev);
 	return 0;
 }
 
@@ -423,9 +423,10 @@ static int
 memif_msg_enq_add_region(struct rte_eth_dev *dev, uint8_t idx)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct pmd_process_private *proc_private = dev->process_private;
 	struct memif_msg_queue_elt *e = memif_msg_enq(pmd->cc);
 	memif_msg_add_region_t *ar;
-	struct memif_region *mr = pmd->regions[idx];
+	struct memif_region *mr = proc_private->regions[idx];
 
 	if (e == NULL)
 		return -1;
@@ -524,11 +525,16 @@ void
 memif_disconnect(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct pmd_process_private *proc_private = dev->process_private;
 	struct memif_msg_queue_elt *elt, *next;
 	struct memif_queue *mq;
 	struct rte_intr_handle *ih;
 	int i;
 	int ret;
+
+	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	pmd->flags &= ~ETH_MEMIF_FLAG_CONNECTING;
+	pmd->flags &= ~ETH_MEMIF_FLAG_CONNECTED;
 
 	if (pmd->cc != NULL) {
 		/* Clear control message queue (except disconnect message if any). */
@@ -545,8 +551,7 @@ memif_disconnect(struct rte_eth_dev *dev)
 		/* at this point, there should be no more messages in queue */
 		if (TAILQ_FIRST(&pmd->cc->msg_queue) != NULL) {
 			MIF_LOG(WARNING,
-				"%s: Unexpected message(s) in message queue.",
-				rte_vdev_device_name(pmd->vdev));
+				"Unexpected message(s) in message queue.");
 		}
 
 		ih = &pmd->cc->intr_handle;
@@ -569,9 +574,8 @@ memif_disconnect(struct rte_eth_dev *dev)
 			}
 			pmd->cc = NULL;
 			if (ret <= 0)
-				MIF_LOG(WARNING, "%s: Failed to unregister "
-					"control channel callback.",
-					rte_vdev_device_name(pmd->vdev));
+				MIF_LOG(WARNING,
+					"Failed to unregister control channel callback.");
 		}
 	}
 
@@ -592,7 +596,6 @@ memif_disconnect(struct rte_eth_dev *dev)
 			close(mq->intr_handle.fd);
 			mq->intr_handle.fd = -1;
 		}
-		mq->ring = NULL;
 	}
 	for (i = 0; i < pmd->cfg.num_m2s_rings; i++) {
 		if (pmd->role == MEMIF_ROLE_MASTER) {
@@ -610,18 +613,14 @@ memif_disconnect(struct rte_eth_dev *dev)
 			close(mq->intr_handle.fd);
 			mq->intr_handle.fd = -1;
 		}
-		mq->ring = NULL;
 	}
 
-	memif_free_regions(pmd);
+	memif_free_regions(proc_private);
 
 	/* reset connection configuration */
 	memset(&pmd->run, 0, sizeof(pmd->run));
 
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
-	pmd->flags &= ~ETH_MEMIF_FLAG_CONNECTING;
-	pmd->flags &= ~ETH_MEMIF_FLAG_CONNECTED;
-	MIF_LOG(DEBUG, "%s: Disconnected.", rte_vdev_device_name(pmd->vdev));
+	MIF_LOG(DEBUG, "Disconnected.");
 }
 
 static int
@@ -640,6 +639,7 @@ memif_msg_receive(struct memif_control_channel *cc)
 	int afd = -1;
 	int i;
 	struct pmd_internals *pmd;
+	struct pmd_process_private *proc_private;
 
 	iov[0].iov_base = (void *)&msg;
 	iov[0].iov_len = sizeof(memif_msg_t);
@@ -688,7 +688,8 @@ memif_msg_receive(struct memif_control_channel *cc)
 		if (ret < 0)
 			goto exit;
 		pmd = cc->dev->data->dev_private;
-		for (i = 0; i < pmd->regions_num; i++) {
+		proc_private = cc->dev->process_private;
+		for (i = 0; i < proc_private->regions_num; i++) {
 			ret = memif_msg_enq_add_region(cc->dev, i);
 			if (ret < 0)
 				goto exit;

@@ -11,5 +11,8 @@ sources = files('rte_eth_memif.c',
 allow_experimental_apis = true
 # Experimantal APIs:
 # - rte_intr_callback_unregister_pending
+# - rte_mp_action_register
+# - rte_mp_reply
+# - rte_mp_request_sync
 
 deps += ['hash']
