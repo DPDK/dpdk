@@ -2,6 +2,7 @@
  *
  * Copyright 2011 Freescale Semiconductor, Inc.
  * All rights reserved.
+ * Copyright 2019 NXP
  *
  */
 
@@ -40,6 +41,7 @@
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_cycles.h>
+#include <rte_malloc.h>
 
 /* The following definitions are primarily to allow the single-source driver
  * interfaces to be included by arbitrary program code. Ie. for interfaces that
@@ -339,12 +341,12 @@ static inline void copy_bytes(void *dest, const void *src, size_t sz)
 #endif
 
 /* Allocator stuff */
-#define kmalloc(sz, t)	malloc(sz)
-#define vmalloc(sz)	malloc(sz)
-#define kfree(p)	{ if (p) free(p); }
+#define kmalloc(sz, t)	rte_malloc(NULL, sz, 0)
+#define vmalloc(sz)	rte_malloc(NULL, sz, 0)
+#define kfree(p)	{ if (p) rte_free(p); }
 static inline void *kzalloc(size_t sz, gfp_t __foo __rte_unused)
 {
-	void *ptr = malloc(sz);
+	void *ptr = rte_malloc(NULL, sz, 0);
 
 	if (ptr)
 		memset(ptr, 0, sz);

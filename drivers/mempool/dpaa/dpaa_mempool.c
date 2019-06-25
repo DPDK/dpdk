@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017 NXP
+ *   Copyright 2017,2019 NXP
  *
  */
 
@@ -51,6 +51,15 @@ dpaa_mbuf_create_pool(struct rte_mempool *mp)
 
 	MEMPOOL_INIT_FUNC_TRACE();
 
+	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+		ret = rte_dpaa_portal_init((void *)0);
+		if (ret) {
+			DPAA_MEMPOOL_ERR(
+				"rte_dpaa_portal_init failed with ret: %d",
+				 ret);
+			return -1;
+		}
+	}
 	bp = bman_new_pool(&params);
 	if (!bp) {
 		DPAA_MEMPOOL_ERR("bman_new_pool() failed");
