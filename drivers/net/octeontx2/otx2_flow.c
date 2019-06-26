@@ -5,6 +5,48 @@
 #include "otx2_ethdev.h"
 #include "otx2_flow.h"
 
+int
+otx2_flow_free_all_resources(struct otx2_eth_dev *hw)
+{
+	struct otx2_npc_flow_info *npc = &hw->npc_flow;
+	struct otx2_mbox *mbox = hw->mbox;
+	struct otx2_mcam_ents_info *info;
+	struct rte_bitmap *bmap;
+	struct rte_flow *flow;
+	int entry_count = 0;
+	int rc, idx;
+
+	for (idx = 0; idx < npc->flow_max_priority; idx++) {
+		info = &npc->flow_entry_info[idx];
+		entry_count += info->live_ent;
+	}
+
+	if (entry_count == 0)
+		return 0;
+
+	/* Free all MCAM entries allocated */
+	rc = otx2_flow_mcam_free_all_entries(mbox);
+
+	/* Free any MCAM counters and delete flow list */
+	for (idx = 0; idx < npc->flow_max_priority; idx++) {
+		while ((flow = TAILQ_FIRST(&npc->flow_list[idx])) != NULL) {
+			if (flow->ctr_id != NPC_COUNTER_NONE)
+				rc |= otx2_flow_mcam_free_counter(mbox,
+							     flow->ctr_id);
+
+			TAILQ_REMOVE(&npc->flow_list[idx], flow, next);
+			rte_free(flow);
+			bmap = npc->live_entries[flow->priority];
+			rte_bitmap_clear(bmap, flow->mcam_id);
+		}
+		info = &npc->flow_entry_info[idx];
+		info->free_ent = 0;
+		info->live_ent = 0;
+	}
+	return rc;
+}
+
+
 static int
 flow_program_npc(struct otx2_parse_state *pst, struct otx2_mbox *mbox,
 		 struct otx2_npc_flow_info *flow_info)
@@ -238,6 +280,27 @@ flow_program_rss_action(struct rte_eth_dev *eth_dev,
 }
 
 static int
+flow_free_rss_action(struct rte_eth_dev *eth_dev,
+		     struct rte_flow *flow)
+{
+	struct otx2_eth_dev *dev = eth_dev->data->dev_private;
+	struct otx2_npc_flow_info *npc = &dev->npc_flow;
+	uint32_t rss_grp;
+
+	if (flow->npc_action & NIX_RX_ACTIONOP_RSS) {
+		rss_grp = (flow->npc_action >> NIX_RSS_ACT_GRP_OFFSET) &
+			NIX_RSS_ACT_GRP_MASK;
+		if (rss_grp == 0 || rss_grp >= npc->rss_grps)
+			return -EINVAL;
+
+		rte_bitmap_clear(npc->rss_grp_entries, rss_grp);
+	}
+
+	return 0;
+}
+
+
+static int
 flow_parse_meta_items(__rte_unused struct otx2_parse_state *pst)
 {
 	otx2_npc_dbg("Meta Item");
@@ -445,7 +508,150 @@ err_exit:
 	return NULL;
 }
 
+static int
+otx2_flow_destroy(struct rte_eth_dev *dev,
+		  struct rte_flow *flow,
+		  struct rte_flow_error *error)
+{
+	struct otx2_eth_dev *hw = dev->data->dev_private;
+	struct otx2_npc_flow_info *npc = &hw->npc_flow;
+	struct otx2_mbox *mbox = hw->mbox;
+	struct rte_bitmap *bmap;
+	uint16_t match_id;
+	int rc;
+
+	match_id = (flow->npc_action >> NIX_RX_ACT_MATCH_OFFSET) &
+		NIX_RX_ACT_MATCH_MASK;
+
+	if (match_id && match_id < OTX2_FLOW_ACTION_FLAG_DEFAULT) {
+		if (rte_atomic32_read(&npc->mark_actions) == 0)
+			return -EINVAL;
+
+		/* Clear mark offload flag if there are no more mark actions */
+		if (rte_atomic32_sub_return(&npc->mark_actions, 1) == 0)
+			hw->rx_offload_flags &= ~NIX_RX_OFFLOAD_MARK_UPDATE_F;
+	}
+
+	rc = flow_free_rss_action(dev, flow);
+	if (rc != 0) {
+		rte_flow_error_set(error, EIO,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Failed to free rss action");
+	}
+
+	rc = otx2_flow_mcam_free_entry(mbox, flow->mcam_id);
+	if (rc != 0) {
+		rte_flow_error_set(error, EIO,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Failed to destroy filter");
+	}
+
+	TAILQ_REMOVE(&npc->flow_list[flow->priority], flow, next);
+
+	bmap = npc->live_entries[flow->priority];
+	rte_bitmap_clear(bmap, flow->mcam_id);
+
+	rte_free(flow);
+	return 0;
+}
+
+static int
+otx2_flow_flush(struct rte_eth_dev *dev,
+		struct rte_flow_error *error)
+{
+	struct otx2_eth_dev *hw = dev->data->dev_private;
+	int rc;
+
+	rc = otx2_flow_free_all_resources(hw);
+	if (rc) {
+		otx2_err("Error when deleting NPC MCAM entries "
+				", counters");
+		rte_flow_error_set(error, EIO,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Failed to flush filter");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+otx2_flow_isolate(struct rte_eth_dev *dev __rte_unused,
+		  int enable __rte_unused,
+		  struct rte_flow_error *error)
+{
+	/*
+	 * If we support, we need to un-install the default mcam
+	 * entry for this port.
+	 */
+
+	rte_flow_error_set(error, ENOTSUP,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL,
+			   "Flow isolation not supported");
+
+	return -rte_errno;
+}
+
+static int
+otx2_flow_query(struct rte_eth_dev *dev,
+		struct rte_flow *flow,
+		const struct rte_flow_action *action,
+		void *data,
+		struct rte_flow_error *error)
+{
+	struct otx2_eth_dev *hw = dev->data->dev_private;
+	struct rte_flow_query_count *query = data;
+	struct otx2_mbox *mbox = hw->mbox;
+	const char *errmsg = NULL;
+	int errcode = ENOTSUP;
+	int rc;
+
+	if (action->type != RTE_FLOW_ACTION_TYPE_COUNT) {
+		errmsg = "Only COUNT is supported in query";
+		goto err_exit;
+	}
+
+	if (flow->ctr_id == NPC_COUNTER_NONE) {
+		errmsg = "Counter is not available";
+		goto err_exit;
+	}
+
+	rc = otx2_flow_mcam_read_counter(mbox, flow->ctr_id, &query->hits);
+	if (rc != 0) {
+		errcode = EIO;
+		errmsg = "Error reading flow counter";
+		goto err_exit;
+	}
+	query->hits_set = 1;
+	query->bytes_set = 0;
+
+	if (query->reset)
+		rc = otx2_flow_mcam_clear_counter(mbox, flow->ctr_id);
+	if (rc != 0) {
+		errcode = EIO;
+		errmsg = "Error clearing flow counter";
+		goto err_exit;
+	}
+
+	return 0;
+
+err_exit:
+	rte_flow_error_set(error, errcode,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL,
+			   errmsg);
+	return -rte_errno;
+}
+
 const struct rte_flow_ops otx2_flow_ops = {
 	.validate = otx2_flow_validate,
 	.create = otx2_flow_create,
+	.destroy = otx2_flow_destroy,
+	.flush = otx2_flow_flush,
+	.query = otx2_flow_query,
+	.isolate = otx2_flow_isolate,
 };

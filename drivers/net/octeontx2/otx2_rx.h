@@ -5,6 +5,9 @@
 #ifndef __OTX2_RX_H__
 #define __OTX2_RX_H__
 
+/* Default mark value used when none is provided. */
+#define OTX2_FLOW_ACTION_FLAG_DEFAULT	0xffff
+
 #define PTYPE_WIDTH 12
 #define PTYPE_NON_TUNNEL_ARRAY_SZ	BIT(PTYPE_WIDTH)
 #define PTYPE_TUNNEL_ARRAY_SZ		BIT(PTYPE_WIDTH)
