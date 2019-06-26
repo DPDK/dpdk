@@ -341,7 +341,7 @@ otx2_npa_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 	unsigned int index;
 	uint64_t obj;
 
-	int64_t * const addr = (int64_t * const)
+	int64_t * const addr = (int64_t *)
 			(npa_lf_aura_handle_to_base(mp->pool_id) +
 				NPA_LF_AURA_OP_ALLOCX(0));
 	for (index = 0; index < n; index++, obj_table++) {
