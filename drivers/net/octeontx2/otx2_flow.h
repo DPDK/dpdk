@@ -387,4 +387,10 @@ int otx2_flow_parse_actions(struct rte_eth_dev *dev,
 int otx2_flow_free_all_resources(struct otx2_eth_dev *hw);
 
 int otx2_flow_parse_mpls(struct otx2_parse_state *pst, int lid);
+
+int
+flow_validate_and_shift_prio_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
+				 struct otx2_npc_flow_info *flow_info,
+				 struct npc_mcam_alloc_entry_rsp *rsp,
+				 int req_prio);
 #endif /* __OTX2_FLOW_H__ */

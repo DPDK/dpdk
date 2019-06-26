@@ -385,3 +385,262 @@ otx2_flow_keyx_compress(uint64_t *data, uint32_t nibble_mask)
 	data[1] = cdata[1];
 }
 
+static int
+flow_first_set_bit(uint64_t slab)
+{
+	int num = 0;
+
+	if ((slab & 0xffffffff) == 0) {
+		num += 32;
+		slab >>= 32;
+	}
+	if ((slab & 0xffff) == 0) {
+		num += 16;
+		slab >>= 16;
+	}
+	if ((slab & 0xff) == 0) {
+		num += 8;
+		slab >>= 8;
+	}
+	if ((slab & 0xf) == 0) {
+		num += 4;
+		slab >>= 4;
+	}
+	if ((slab & 0x3) == 0) {
+		num += 2;
+		slab >>= 2;
+	}
+	if ((slab & 0x1) == 0)
+		num += 1;
+
+	return num;
+}
+
+static int
+flow_shift_lv_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
+		  struct otx2_npc_flow_info *flow_info,
+		  uint32_t old_ent, uint32_t new_ent)
+{
+	struct npc_mcam_shift_entry_req *req;
+	struct npc_mcam_shift_entry_rsp *rsp;
+	struct otx2_flow_list *list;
+	struct rte_flow *flow_iter;
+	int rc = 0;
+
+	otx2_npc_dbg("Old ent:%u new ent:%u priority:%u", old_ent, new_ent,
+		     flow->priority);
+
+	list = &flow_info->flow_list[flow->priority];
+
+	/* Old entry is disabled & it's contents are moved to new_entry,
+	 * new entry is enabled finally.
+	 */
+	req = otx2_mbox_alloc_msg_npc_mcam_shift_entry(mbox);
+	req->curr_entry[0] = old_ent;
+	req->new_entry[0] = new_ent;
+	req->shift_count = 1;
+
+	otx2_mbox_msg_send(mbox, 0);
+	rc = otx2_mbox_get_rsp(mbox, 0, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	/* Remove old node from list */
+	TAILQ_FOREACH(flow_iter, list, next) {
+		if (flow_iter->mcam_id == old_ent)
+			TAILQ_REMOVE(list, flow_iter, next);
+	}
+
+	/* Insert node with new mcam id at right place */
+	TAILQ_FOREACH(flow_iter, list, next) {
+		if (flow_iter->mcam_id > new_ent)
+			TAILQ_INSERT_BEFORE(flow_iter, flow, next);
+	}
+	return rc;
+}
+
+/* Exchange all required entries with a given priority level */
+static int
+flow_shift_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
+	       struct otx2_npc_flow_info *flow_info,
+	       struct npc_mcam_alloc_entry_rsp *rsp, int dir, int prio_lvl)
+{
+	struct rte_bitmap *fr_bmp, *fr_bmp_rev, *lv_bmp, *lv_bmp_rev, *bmp;
+	uint32_t e_fr = 0, e_lv = 0, e, e_id = 0, mcam_entries;
+	uint64_t fr_bit_pos = 0, lv_bit_pos = 0, bit_pos = 0;
+	/* Bit position within the slab */
+	uint32_t sl_fr_bit_off = 0, sl_lv_bit_off = 0;
+	/* Overall bit position of the start of slab */
+	/* free & live entry index */
+	int rc_fr = 0, rc_lv = 0, rc = 0, idx = 0;
+	struct otx2_mcam_ents_info *ent_info;
+	/* free & live bitmap slab */
+	uint64_t sl_fr = 0, sl_lv = 0, *sl;
+
+	fr_bmp = flow_info->free_entries[prio_lvl];
+	fr_bmp_rev = flow_info->free_entries_rev[prio_lvl];
+	lv_bmp = flow_info->live_entries[prio_lvl];
+	lv_bmp_rev = flow_info->live_entries_rev[prio_lvl];
+	ent_info = &flow_info->flow_entry_info[prio_lvl];
+	mcam_entries = flow_info->mcam_entries;
+
+
+	/* New entries allocated are always contiguous, but older entries
+	 * already in free/live bitmap can be non-contiguous: so return
+	 * shifted entries should be in non-contiguous format.
+	 */
+	while (idx <= rsp->count) {
+		if (!sl_fr && !sl_lv) {
+			/* Lower index elements to be exchanged */
+			if (dir < 0) {
+				rc_fr = rte_bitmap_scan(fr_bmp, &e_fr, &sl_fr);
+				rc_lv = rte_bitmap_scan(lv_bmp, &e_lv, &sl_lv);
+				otx2_npc_dbg("Fwd slab rc fr %u rc lv %u "
+					     "e_fr %u e_lv %u", rc_fr, rc_lv,
+					      e_fr, e_lv);
+			} else {
+				rc_fr = rte_bitmap_scan(fr_bmp_rev,
+							&sl_fr_bit_off,
+							&sl_fr);
+				rc_lv = rte_bitmap_scan(lv_bmp_rev,
+							&sl_lv_bit_off,
+							&sl_lv);
+
+				otx2_npc_dbg("Rev slab rc fr %u rc lv %u "
+					     "e_fr %u e_lv %u", rc_fr, rc_lv,
+					      e_fr, e_lv);
+			}
+		}
+
+		if (rc_fr) {
+			fr_bit_pos = flow_first_set_bit(sl_fr);
+			e_fr = sl_fr_bit_off + fr_bit_pos;
+			otx2_npc_dbg("Fr_bit_pos 0x%" PRIx64, fr_bit_pos);
+		} else {
+			e_fr = ~(0);
+		}
+
+		if (rc_lv) {
+			lv_bit_pos = flow_first_set_bit(sl_lv);
+			e_lv = sl_lv_bit_off + lv_bit_pos;
+			otx2_npc_dbg("Lv_bit_pos 0x%" PRIx64, lv_bit_pos);
+		} else {
+			e_lv = ~(0);
+		}
+
+		/* First entry is from free_bmap */
+		if (e_fr < e_lv) {
+			bmp = fr_bmp;
+			e = e_fr;
+			sl = &sl_fr;
+			bit_pos = fr_bit_pos;
+			if (dir > 0)
+				e_id = mcam_entries - e - 1;
+			else
+				e_id = e;
+			otx2_npc_dbg("Fr e %u e_id %u", e, e_id);
+		} else {
+			bmp = lv_bmp;
+			e = e_lv;
+			sl = &sl_lv;
+			bit_pos = lv_bit_pos;
+			if (dir > 0)
+				e_id = mcam_entries - e - 1;
+			else
+				e_id = e;
+
+			otx2_npc_dbg("Lv e %u e_id %u", e, e_id);
+			if (idx < rsp->count)
+				rc =
+				  flow_shift_lv_ent(mbox, flow,
+						    flow_info, e_id,
+						    rsp->entry + idx);
+		}
+
+		rte_bitmap_clear(bmp, e);
+		rte_bitmap_set(bmp, rsp->entry + idx);
+		/* Update entry list, use non-contiguous
+		 * list now.
+		 */
+		rsp->entry_list[idx] = e_id;
+		*sl &= ~(1 << bit_pos);
+
+		/* Update min & max entry identifiers in current
+		 * priority level.
+		 */
+		if (dir < 0) {
+			ent_info->max_id = rsp->entry + idx;
+			ent_info->min_id = e_id;
+		} else {
+			ent_info->max_id = e_id;
+			ent_info->min_id = rsp->entry;
+		}
+
+		idx++;
+	}
+	return rc;
+}
+
+/* Validate if newly allocated entries lie in the correct priority zone
+ * since NPC_MCAM_LOWER_PRIO & NPC_MCAM_HIGHER_PRIO don't ensure zone accuracy.
+ * If not properly aligned, shift entries to do so
+ */
+int
+flow_validate_and_shift_prio_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
+				 struct otx2_npc_flow_info *flow_info,
+				 struct npc_mcam_alloc_entry_rsp *rsp,
+				 int req_prio)
+{
+	int prio_idx = 0, rc = 0, needs_shift = 0, idx, prio = flow->priority;
+	struct otx2_mcam_ents_info *info = flow_info->flow_entry_info;
+	int dir = (req_prio == NPC_MCAM_HIGHER_PRIO) ? 1 : -1;
+	uint32_t tot_ent = 0;
+
+	otx2_npc_dbg("Dir %d, priority = %d", dir, prio);
+
+	if (dir < 0)
+		prio_idx = flow_info->flow_max_priority - 1;
+
+	/* Only live entries needs to be shifted, free entries can just be
+	 * moved by bits manipulation.
+	 */
+
+	/* For dir = -1(NPC_MCAM_LOWER_PRIO), when shifting,
+	 * NPC_MAX_PREALLOC_ENT are exchanged with adjoining higher priority
+	 * level entries(lower indexes).
+	 *
+	 * For dir = +1(NPC_MCAM_HIGHER_PRIO), during shift,
+	 * NPC_MAX_PREALLOC_ENT are exchanged with adjoining lower priority
+	 * level entries(higher indexes) with highest indexes.
+	 */
+	do {
+		tot_ent = info[prio_idx].free_ent + info[prio_idx].live_ent;
+
+		if (dir < 0 && prio_idx != prio &&
+		    rsp->entry > info[prio_idx].max_id && tot_ent) {
+			otx2_npc_dbg("Rsp entry %u prio idx %u "
+				     "max id %u", rsp->entry, prio_idx,
+				      info[prio_idx].max_id);
+
+			needs_shift = 1;
+		} else if ((dir > 0) && (prio_idx != prio) &&
+		     (rsp->entry < info[prio_idx].min_id) && tot_ent) {
+			otx2_npc_dbg("Rsp entry %u prio idx %u "
+				     "min id %u", rsp->entry, prio_idx,
+				      info[prio_idx].min_id);
+			needs_shift = 1;
+		}
+
+		otx2_npc_dbg("Needs_shift = %d", needs_shift);
+		if (needs_shift) {
+			needs_shift = 0;
+			rc = flow_shift_ent(mbox, flow, flow_info, rsp, dir,
+					    prio_idx);
+		} else {
+			for (idx = 0; idx < rsp->count; idx++)
+				rsp->entry_list[idx] = rsp->entry + idx;
+		}
+	} while ((prio_idx != prio) && (prio_idx += dir));
+
+	return rc;
+}
