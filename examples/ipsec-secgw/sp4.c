@@ -17,6 +17,18 @@
 
 #define MAX_ACL_RULE_NUM	1024
 
+#define IPV4_DST_FROM_SP(acr) \
+		(rte_cpu_to_be_32((acr).field[DST_FIELD_IPV4].value.u32))
+
+#define IPV4_SRC_FROM_SP(acr) \
+		(rte_cpu_to_be_32((acr).field[SRC_FIELD_IPV4].value.u32))
+
+#define IPV4_DST_MASK_FROM_SP(acr) \
+		((acr).field[DST_FIELD_IPV4].mask_range.u32)
+
+#define IPV4_SRC_MASK_FROM_SP(acr) \
+		((acr).field[SRC_FIELD_IPV4].mask_range.u32)
+
 /*
  * Rule and trace formats definitions.
  */
@@ -552,7 +564,8 @@ sp4_init(struct socket_ctx *ctx, int32_t socket_id)
  * Search though SP rules for given SPI.
  */
 int
-sp4_spi_present(uint32_t spi, int inbound)
+sp4_spi_present(uint32_t spi, int inbound, struct ip_addr ip_addr[2],
+			uint32_t mask[2])
 {
 	uint32_t i, num;
 	const struct acl4_rules *acr;
@@ -566,8 +579,15 @@ sp4_spi_present(uint32_t spi, int inbound)
 	}
 
 	for (i = 0; i != num; i++) {
-		if (acr[i].data.userdata == spi)
+		if (acr[i].data.userdata == spi) {
+			if (NULL != ip_addr && NULL != mask) {
+				ip_addr[0].ip.ip4 = IPV4_SRC_FROM_SP(acr[i]);
+				ip_addr[1].ip.ip4 = IPV4_DST_FROM_SP(acr[i]);
+				mask[0] = IPV4_SRC_MASK_FROM_SP(acr[i]);
+				mask[1] = IPV4_DST_MASK_FROM_SP(acr[i]);
+			}
 			return i;
+		}
 	}
 
 	return -ENOENT;

@@ -17,6 +17,36 @@
 
 #define MAX_ACL_RULE_NUM	1024
 
+#define IPV6_FROM_SP(acr, fidx_low, fidx_high) \
+		(((uint64_t)(acr).field[(fidx_high)].value.u32 << 32) | \
+		(acr).field[(fidx_low)].value.u32)
+
+#define IPV6_DST_FROM_SP(addr, acr) do {\
+		(addr).ip.ip6.ip6[0] = rte_cpu_to_be_64(IPV6_FROM_SP((acr), \
+						IP6_DST1, IP6_DST0));\
+		(addr).ip.ip6.ip6[1] = rte_cpu_to_be_64(IPV6_FROM_SP((acr), \
+						IP6_DST3, IP6_DST2));\
+		} while (0)
+
+#define IPV6_SRC_FROM_SP(addr, acr) do {\
+		(addr).ip.ip6.ip6[0] = rte_cpu_to_be_64(IPV6_FROM_SP((acr), \
+							IP6_SRC1, IP6_SRC0));\
+		(addr).ip.ip6.ip6[1] = rte_cpu_to_be_64(IPV6_FROM_SP((acr), \
+							IP6_SRC3, IP6_SRC2));\
+		} while (0)
+
+#define IPV6_DST_MASK_FROM_SP(mask, acr) \
+		((mask) = (acr).field[IP6_DST0].mask_range.u32 + \
+			(acr).field[IP6_DST1].mask_range.u32 + \
+			(acr).field[IP6_DST2].mask_range.u32 + \
+			(acr).field[IP6_DST3].mask_range.u32)
+
+#define IPV6_SRC_MASK_FROM_SP(mask, acr) \
+		((mask) = (acr).field[IP6_SRC0].mask_range.u32 + \
+			(acr).field[IP6_SRC1].mask_range.u32 + \
+			(acr).field[IP6_SRC2].mask_range.u32 + \
+			(acr).field[IP6_SRC3].mask_range.u32)
+
 enum {
 	IP6_PROTO,
 	IP6_SRC0,
@@ -666,7 +696,8 @@ sp6_init(struct socket_ctx *ctx, int32_t socket_id)
  * Search though SP rules for given SPI.
  */
 int
-sp6_spi_present(uint32_t spi, int inbound)
+sp6_spi_present(uint32_t spi, int inbound, struct ip_addr ip_addr[2],
+			uint32_t mask[2])
 {
 	uint32_t i, num;
 	const struct acl6_rules *acr;
@@ -680,8 +711,15 @@ sp6_spi_present(uint32_t spi, int inbound)
 	}
 
 	for (i = 0; i != num; i++) {
-		if (acr[i].data.userdata == spi)
+		if (acr[i].data.userdata == spi) {
+			if (NULL != ip_addr && NULL != mask) {
+				IPV6_SRC_FROM_SP(ip_addr[0], acr[i]);
+				IPV6_DST_FROM_SP(ip_addr[1], acr[i]);
+				IPV6_SRC_MASK_FROM_SP(mask[0], acr[i]);
+				IPV6_DST_MASK_FROM_SP(mask[1], acr[i]);
+			}
 			return i;
+		}
 	}
 
 	return -ENOENT;

@@ -192,7 +192,7 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 		}
 	}
 
-	if (unlikely(sa->flags == TRANSPORT)) {
+	if (unlikely(IS_TRANSPORT(sa->flags))) {
 		ip = rte_pktmbuf_mtod(m, struct ip *);
 		ip4 = (struct ip *)rte_pktmbuf_adj(m,
 				sizeof(struct rte_esp_hdr) + sa->iv_len);
@@ -233,13 +233,13 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 
 	ip4 = rte_pktmbuf_mtod(m, struct ip *);
 	if (likely(ip4->ip_v == IPVERSION)) {
-		if (unlikely(sa->flags == TRANSPORT)) {
+		if (unlikely(IS_TRANSPORT(sa->flags))) {
 			ip_hdr_len = ip4->ip_hl * 4;
 			nlp = ip4->ip_p;
 		} else
 			nlp = IPPROTO_IPIP;
 	} else if (ip4->ip_v == IP6_VERSION) {
-		if (unlikely(sa->flags == TRANSPORT)) {
+		if (unlikely(IS_TRANSPORT(sa->flags))) {
 			/* XXX No option headers supported */
 			ip_hdr_len = sizeof(struct ip6_hdr);
 			ip6 = (struct ip6_hdr *)ip4;
@@ -257,14 +257,13 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 			ip_hdr_len + 2, sa->block_size);
 	pad_len = pad_payload_len + ip_hdr_len - rte_pktmbuf_pkt_len(m);
 
-	RTE_ASSERT(sa->flags == IP4_TUNNEL || sa->flags == IP6_TUNNEL ||
-			sa->flags == TRANSPORT);
+	RTE_ASSERT(IS_TUNNEL(sa->flags) || IS_TRANSPORT(sa->flags));
 
-	if (likely(sa->flags == IP4_TUNNEL))
+	if (likely(IS_IP4_TUNNEL(sa->flags)))
 		ip_hdr_len = sizeof(struct ip);
-	else if (sa->flags == IP6_TUNNEL)
+	else if (IS_IP6_TUNNEL(sa->flags))
 		ip_hdr_len = sizeof(struct ip6_hdr);
-	else if (sa->flags != TRANSPORT) {
+	else if (!IS_TRANSPORT(sa->flags)) {
 		RTE_LOG(ERR, IPSEC_ESP, "Unsupported SA flags: 0x%x\n",
 				sa->flags);
 		return -EINVAL;
@@ -291,7 +290,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		rte_prefetch0(padding);
 	}
 
-	switch (sa->flags) {
+	switch (WITHOUT_TRANSPORT_VERSION(sa->flags)) {
 	case IP4_TUNNEL:
 		ip4 = ip4ip_outbound(m, sizeof(struct rte_esp_hdr) + sa->iv_len,
 				&sa->src, &sa->dst);

@@ -101,6 +101,8 @@ struct ipsec_sa {
 #define IP4_TUNNEL (1 << 0)
 #define IP6_TUNNEL (1 << 1)
 #define TRANSPORT  (1 << 2)
+#define IP4_TRANSPORT (1 << 3)
+#define IP6_TRANSPORT (1 << 4)
 	struct ip_addr src;
 	struct ip_addr dst;
 	uint8_t cipher_key[MAX_KEY_SIZE];
@@ -138,6 +140,27 @@ struct ipsec_mbuf_metadata {
 	struct rte_crypto_sym_op sym_cop;
 	uint8_t buf[32];
 } __rte_cache_aligned;
+
+#define IS_TRANSPORT(flags) ((flags) & TRANSPORT)
+
+#define IS_TUNNEL(flags) ((flags) & (IP4_TUNNEL | IP6_TUNNEL))
+
+#define IS_IP4(flags) ((flags) & (IP4_TUNNEL | IP4_TRANSPORT))
+
+#define IS_IP6(flags) ((flags) & (IP6_TUNNEL | IP6_TRANSPORT))
+
+#define IS_IP4_TUNNEL(flags) ((flags) & IP4_TUNNEL)
+
+#define IS_IP6_TUNNEL(flags) ((flags) & IP6_TUNNEL)
+
+/*
+ * Macro for getting ipsec_sa flags statuses without version of protocol
+ * used for transport (IP4_TRANSPORT and IP6_TRANSPORT flags).
+ */
+#define WITHOUT_TRANSPORT_VERSION(flags) \
+		((flags) & (IP4_TUNNEL | \
+			IP6_TUNNEL | \
+			TRANSPORT))
 
 struct cdev_qp {
 	uint16_t id;
@@ -283,9 +306,11 @@ sp6_init(struct socket_ctx *ctx, int32_t socket_id);
  * or -ENOENT otherwise.
  */
 int
-sp4_spi_present(uint32_t spi, int inbound);
+sp4_spi_present(uint32_t spi, int inbound, struct ip_addr ip_addr[2],
+			uint32_t mask[2]);
 int
-sp6_spi_present(uint32_t spi, int inbound);
+sp6_spi_present(uint32_t spi, int inbound, struct ip_addr ip_addr[2],
+			uint32_t mask[2]);
 
 /*
  * Search through SA entries for given SPI.
