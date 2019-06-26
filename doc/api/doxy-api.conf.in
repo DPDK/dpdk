@@ -4,6 +4,7 @@
 PROJECT_NAME            = DPDK
 PROJECT_NUMBER          = @VERSION@
 INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
+                          @TOPDIR@/drivers/bus/vdev \
                           @TOPDIR@/drivers/crypto/scheduler \
                           @TOPDIR@/drivers/mempool/dpaa2 \
                           @TOPDIR@/drivers/net/bnxt \

@@ -31,6 +31,7 @@ The public API headers are grouped by topics:
   [latency]            (@ref rte_latencystats.h),
   [devargs]            (@ref rte_devargs.h),
   [PCI]                (@ref rte_pci.h),
+  [vdev]               (@ref rte_bus_vdev.h),
   [vfio]               (@ref rte_vfio.h)
 
 - **device specific**:

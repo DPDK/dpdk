@@ -5,6 +5,12 @@
 #ifndef RTE_VDEV_H
 #define RTE_VDEV_H
 
+/**
+ * @file
+ * RTE virtual bus API
+ *
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
