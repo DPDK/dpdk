@@ -469,3 +469,213 @@ otx2_flow_parse_ld(struct otx2_parse_state *pst)
 
 	return otx2_flow_update_parse_state(pst, &info, lid, lt, lflags);
 }
+
+static inline void
+flow_check_lc_ip_tunnel(struct otx2_parse_state *pst)
+{
+	const struct rte_flow_item *pattern = pst->pattern + 1;
+
+	pattern = otx2_flow_skip_void_and_any_items(pattern);
+	if (pattern->type == RTE_FLOW_ITEM_TYPE_MPLS ||
+	    pattern->type == RTE_FLOW_ITEM_TYPE_IPV4 ||
+	    pattern->type == RTE_FLOW_ITEM_TYPE_IPV6)
+		pst->tunnel = 1;
+}
+
+/* Outer IPv4, Outer IPv6, MPLS, ARP */
+int
+otx2_flow_parse_lc(struct otx2_parse_state *pst)
+{
+	uint8_t hw_mask[NPC_MAX_EXTRACT_DATA_LEN];
+	struct otx2_flow_item_info info;
+	int lid, lt;
+	int rc;
+
+	if (pst->pattern->type == RTE_FLOW_ITEM_TYPE_MPLS)
+		return otx2_flow_parse_mpls(pst, NPC_LID_LC);
+
+	info.hw_mask = &hw_mask;
+	info.spec = NULL;
+	info.mask = NULL;
+	info.hw_hdr_len = 0;
+	lid = NPC_LID_LC;
+
+	switch (pst->pattern->type) {
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+		lt = NPC_LT_LC_IP;
+		info.def_mask = &rte_flow_item_ipv4_mask;
+		info.len = sizeof(struct rte_flow_item_ipv4);
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+		lid = NPC_LID_LC;
+		lt = NPC_LT_LC_IP6;
+		info.def_mask = &rte_flow_item_ipv6_mask;
+		info.len = sizeof(struct rte_flow_item_ipv6);
+		break;
+	case RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4:
+		lt = NPC_LT_LC_ARP;
+		info.def_mask = &rte_flow_item_arp_eth_ipv4_mask;
+		info.len = sizeof(struct rte_flow_item_arp_eth_ipv4);
+		break;
+	default:
+		/* No match at this layer */
+		return 0;
+	}
+
+	/* Identify if IP tunnels MPLS or IPv4/v6 */
+	flow_check_lc_ip_tunnel(pst);
+
+	otx2_flow_get_hw_supp_mask(pst, &info, lid, lt);
+	rc = otx2_flow_parse_item_basic(pst->pattern, &info, pst->error);
+	if (rc != 0)
+		return rc;
+
+	return otx2_flow_update_parse_state(pst, &info, lid, lt, 0);
+}
+
+/* VLAN, ETAG */
+int
+otx2_flow_parse_lb(struct otx2_parse_state *pst)
+{
+	const struct rte_flow_item *pattern = pst->pattern;
+	const struct rte_flow_item *last_pattern;
+	char hw_mask[NPC_MAX_EXTRACT_DATA_LEN];
+	struct otx2_flow_item_info info;
+	int lid, lt, lflags;
+	int nr_vlans = 0;
+	int rc;
+
+	info.spec = NULL;
+	info.mask = NULL;
+	info.hw_hdr_len = NPC_TPID_LENGTH;
+
+	lid = NPC_LID_LB;
+	lflags = 0;
+	last_pattern = pattern;
+
+	if (pst->pattern->type == RTE_FLOW_ITEM_TYPE_VLAN) {
+		/* RTE vlan is either 802.1q or 802.1ad,
+		 * this maps to either CTAG/STAG. We need to decide
+		 * based on number of VLANS present. Matching is
+		 * supported on first tag only.
+		 */
+		info.def_mask = &rte_flow_item_vlan_mask;
+		info.hw_mask = NULL;
+		info.len = sizeof(struct rte_flow_item_vlan);
+
+		pattern = pst->pattern;
+		while (pattern->type == RTE_FLOW_ITEM_TYPE_VLAN) {
+			nr_vlans++;
+
+			/* Basic validation of 2nd/3rd vlan item */
+			if (nr_vlans > 1) {
+				otx2_npc_dbg("Vlans  = %d", nr_vlans);
+				rc = otx2_flow_parse_item_basic(pattern, &info,
+								pst->error);
+				if (rc != 0)
+					return rc;
+			}
+			last_pattern = pattern;
+			pattern++;
+			pattern = otx2_flow_skip_void_and_any_items(pattern);
+		}
+
+		switch (nr_vlans) {
+		case 1:
+			lt = NPC_LT_LB_CTAG;
+			break;
+		case 2:
+			lt = NPC_LT_LB_STAG;
+			lflags = NPC_F_STAG_CTAG;
+			break;
+		case 3:
+			lt = NPC_LT_LB_STAG;
+			lflags = NPC_F_STAG_STAG_CTAG;
+			break;
+		default:
+			rte_flow_error_set(pst->error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   last_pattern,
+					   "more than 3 vlans not supported");
+			return -rte_errno;
+		}
+	} else if (pst->pattern->type == RTE_FLOW_ITEM_TYPE_E_TAG) {
+		/* we can support ETAG and match a subsequent CTAG
+		 * without any matching support.
+		 */
+		lt = NPC_LT_LB_ETAG;
+		lflags = 0;
+
+		last_pattern = pst->pattern;
+		pattern = otx2_flow_skip_void_and_any_items(pst->pattern + 1);
+		if (pattern->type == RTE_FLOW_ITEM_TYPE_VLAN) {
+			info.def_mask = &rte_flow_item_vlan_mask;
+			/* set supported mask to NULL for vlan tag */
+			info.hw_mask = NULL;
+			info.len = sizeof(struct rte_flow_item_vlan);
+			rc = otx2_flow_parse_item_basic(pattern, &info,
+							pst->error);
+			if (rc != 0)
+				return rc;
+
+			lflags = NPC_F_ETAG_CTAG;
+			last_pattern = pattern;
+		}
+
+		info.def_mask = &rte_flow_item_e_tag_mask;
+		info.len = sizeof(struct rte_flow_item_e_tag);
+	} else {
+		return 0;
+	}
+
+	info.hw_mask = &hw_mask;
+	info.spec = NULL;
+	info.mask = NULL;
+	otx2_flow_get_hw_supp_mask(pst, &info, lid, lt);
+
+	rc = otx2_flow_parse_item_basic(pst->pattern, &info, pst->error);
+	if (rc != 0)
+		return rc;
+
+	/* Point pattern to last item consumed */
+	pst->pattern = last_pattern;
+	return otx2_flow_update_parse_state(pst, &info, lid, lt, lflags);
+}
+
+int
+otx2_flow_parse_la(struct otx2_parse_state *pst)
+{
+	struct rte_flow_item_eth hw_mask;
+	struct otx2_flow_item_info info;
+	int lid, lt;
+	int rc;
+
+	/* Identify the pattern type into lid, lt */
+	if (pst->pattern->type != RTE_FLOW_ITEM_TYPE_ETH)
+		return 0;
+
+	lid = NPC_LID_LA;
+	lt = NPC_LT_LA_ETHER;
+	info.hw_hdr_len = 0;
+
+	if (pst->flow->nix_intf == NIX_INTF_TX) {
+		lt = NPC_LT_LA_IH_NIX_ETHER;
+		info.hw_hdr_len = NPC_IH_LENGTH;
+	}
+
+	/* Prepare for parsing the item */
+	info.def_mask = &rte_flow_item_eth_mask;
+	info.hw_mask = &hw_mask;
+	info.len = sizeof(struct rte_flow_item_eth);
+	otx2_flow_get_hw_supp_mask(pst, &info, lid, lt);
+	info.spec = NULL;
+	info.mask = NULL;
+
+	/* Basic validation of item parameters */
+	rc = otx2_flow_parse_item_basic(pst->pattern, &info, pst->error);
+	if (rc)
+		return rc;
+
+	/* Update pst if not validate only? clash check? */
+	return otx2_flow_update_parse_state(pst, &info, lid, lt, 0);
+}
