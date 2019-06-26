@@ -154,8 +154,12 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 		if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION)
 			priv->rx_sa_tbl[sa_index].mode |=
 					(IPSRXMOD_PROTO | IPSRXMOD_DECRYPT);
-		if (ic_session->dst_ip.type == IPv6)
+		if (ic_session->dst_ip.type == IPv6) {
 			priv->rx_sa_tbl[sa_index].mode |= IPSRXMOD_IPV6;
+			priv->rx_ip_tbl[ip_index].ip.type = IPv6;
+		} else if (ic_session->dst_ip.type == IPv4)
+			priv->rx_ip_tbl[ip_index].ip.type = IPv4;
+
 		priv->rx_sa_tbl[sa_index].used = 1;
 
 		/* write IP table entry*/
