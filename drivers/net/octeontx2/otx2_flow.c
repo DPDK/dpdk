@@ -655,3 +655,318 @@ const struct rte_flow_ops otx2_flow_ops = {
 	.query = otx2_flow_query,
 	.isolate = otx2_flow_isolate,
 };
+
+static int
+flow_supp_key_len(uint32_t supp_mask)
+{
+	int nib_count = 0;
+	while (supp_mask) {
+		nib_count++;
+		supp_mask &= (supp_mask - 1);
+	}
+	return nib_count * 4;
+}
+
+/* Refer HRM register:
+ * NPC_AF_INTF(0..1)_LID(0..7)_LT(0..15)_LD(0..1)_CFG
+ * and
+ * NPC_AF_INTF(0..1)_LDATA(0..1)_FLAGS(0..15)_CFG
+ **/
+#define BYTESM1_SHIFT	16
+#define HDR_OFF_SHIFT	8
+static void
+flow_update_kex_info(struct npc_xtract_info *xtract_info,
+		     uint64_t val)
+{
+	xtract_info->len = ((val >> BYTESM1_SHIFT) & 0xf) + 1;
+	xtract_info->hdr_off = (val >> HDR_OFF_SHIFT) & 0xff;
+	xtract_info->key_off = val & 0x3f;
+	xtract_info->enable = ((val >> 7) & 0x1);
+}
+
+static void
+flow_process_mkex_cfg(struct otx2_npc_flow_info *npc,
+		      struct npc_get_kex_cfg_rsp *kex_rsp)
+{
+	volatile uint64_t (*q)[NPC_MAX_INTF][NPC_MAX_LID][NPC_MAX_LT]
+		[NPC_MAX_LD];
+	struct npc_xtract_info *x_info = NULL;
+	int lid, lt, ld, fl, ix;
+	otx2_dxcfg_t *p;
+	uint64_t keyw;
+	uint64_t val;
+
+	npc->keyx_supp_nmask[NPC_MCAM_RX] =
+		kex_rsp->rx_keyx_cfg & 0x7fffffffULL;
+	npc->keyx_supp_nmask[NPC_MCAM_TX] =
+		kex_rsp->tx_keyx_cfg & 0x7fffffffULL;
+	npc->keyx_len[NPC_MCAM_RX] =
+		flow_supp_key_len(npc->keyx_supp_nmask[NPC_MCAM_RX]);
+	npc->keyx_len[NPC_MCAM_TX] =
+		flow_supp_key_len(npc->keyx_supp_nmask[NPC_MCAM_TX]);
+
+	keyw = (kex_rsp->rx_keyx_cfg >> 32) & 0x7ULL;
+	npc->keyw[NPC_MCAM_RX] = keyw;
+	keyw = (kex_rsp->tx_keyx_cfg >> 32) & 0x7ULL;
+	npc->keyw[NPC_MCAM_TX] = keyw;
+
+	/* Update KEX_LD_FLAG */
+	for (ix = 0; ix < NPC_MAX_INTF; ix++) {
+		for (ld = 0; ld < NPC_MAX_LD; ld++) {
+			for (fl = 0; fl < NPC_MAX_LFL; fl++) {
+				x_info =
+				    &npc->prx_fxcfg[ix][ld][fl].xtract[0];
+				val = kex_rsp->intf_ld_flags[ix][ld][fl];
+				flow_update_kex_info(x_info, val);
+			}
+		}
+	}
+
+	/* Update LID, LT and LDATA cfg */
+	p = &npc->prx_dxcfg;
+	q = (volatile uint64_t (*)[][NPC_MAX_LID][NPC_MAX_LT][NPC_MAX_LD])
+			(&kex_rsp->intf_lid_lt_ld);
+	for (ix = 0; ix < NPC_MAX_INTF; ix++) {
+		for (lid = 0; lid < NPC_MAX_LID; lid++) {
+			for (lt = 0; lt < NPC_MAX_LT; lt++) {
+				for (ld = 0; ld < NPC_MAX_LD; ld++) {
+					x_info = &(*p)[ix][lid][lt].xtract[ld];
+					val = (*q)[ix][lid][lt][ld];
+					flow_update_kex_info(x_info, val);
+				}
+			}
+		}
+	}
+	/* Update LDATA Flags cfg */
+	npc->prx_lfcfg[0].i = kex_rsp->kex_ld_flags[0];
+	npc->prx_lfcfg[1].i = kex_rsp->kex_ld_flags[1];
+}
+
+static struct otx2_idev_kex_cfg *
+flow_intra_dev_kex_cfg(void)
+{
+	static const char name[] = "octeontx2_intra_device_kex_conf";
+	struct otx2_idev_kex_cfg *idev;
+	const struct rte_memzone *mz;
+
+	mz = rte_memzone_lookup(name);
+	if (mz)
+		return mz->addr;
+
+	/* Request for the first time */
+	mz = rte_memzone_reserve_aligned(name, sizeof(struct otx2_idev_kex_cfg),
+					 SOCKET_ID_ANY, 0, OTX2_ALIGN);
+	if (mz) {
+		idev = mz->addr;
+		rte_atomic16_set(&idev->kex_refcnt, 0);
+		return idev;
+	}
+	return NULL;
+}
+
+static int
+flow_fetch_kex_cfg(struct otx2_eth_dev *dev)
+{
+	struct otx2_npc_flow_info *npc = &dev->npc_flow;
+	struct npc_get_kex_cfg_rsp *kex_rsp;
+	struct otx2_mbox *mbox = dev->mbox;
+	struct otx2_idev_kex_cfg *idev;
+	int rc = 0;
+
+	idev = flow_intra_dev_kex_cfg();
+	if (!idev)
+		return -ENOMEM;
+
+	/* Is kex_cfg read by any another driver? */
+	if (rte_atomic16_add_return(&idev->kex_refcnt, 1) == 1) {
+		/* Call mailbox to get key & data size */
+		(void)otx2_mbox_alloc_msg_npc_get_kex_cfg(mbox);
+		otx2_mbox_msg_send(mbox, 0);
+		rc = otx2_mbox_get_rsp(mbox, 0, (void *)&kex_rsp);
+		if (rc) {
+			otx2_err("Failed to fetch NPC keyx config");
+			goto done;
+		}
+		memcpy(&idev->kex_cfg, kex_rsp,
+		       sizeof(struct npc_get_kex_cfg_rsp));
+	}
+
+	flow_process_mkex_cfg(npc, &idev->kex_cfg);
+
+done:
+	return rc;
+}
+
+int
+otx2_flow_init(struct otx2_eth_dev *hw)
+{
+	uint8_t *mem = NULL, *nix_mem = NULL, *npc_mem = NULL;
+	struct otx2_npc_flow_info *npc = &hw->npc_flow;
+	uint32_t bmap_sz;
+	int rc = 0, idx;
+
+	rc = flow_fetch_kex_cfg(hw);
+	if (rc) {
+		otx2_err("Failed to fetch NPC keyx config from idev");
+		return rc;
+	}
+
+	rte_atomic32_init(&npc->mark_actions);
+
+	npc->mcam_entries = NPC_MCAM_TOT_ENTRIES >> npc->keyw[NPC_MCAM_RX];
+	/* Free, free_rev, live and live_rev entries */
+	bmap_sz = rte_bitmap_get_memory_footprint(npc->mcam_entries);
+	mem = rte_zmalloc(NULL, 4 * bmap_sz * npc->flow_max_priority,
+			  RTE_CACHE_LINE_SIZE);
+	if (mem == NULL) {
+		otx2_err("Bmap alloc failed");
+		rc = -ENOMEM;
+		return rc;
+	}
+
+	npc->flow_entry_info = rte_zmalloc(NULL, npc->flow_max_priority
+					   * sizeof(struct otx2_mcam_ents_info),
+					   0);
+	if (npc->flow_entry_info == NULL) {
+		otx2_err("flow_entry_info alloc failed");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	npc->free_entries = rte_zmalloc(NULL, npc->flow_max_priority
+					* sizeof(struct rte_bitmap),
+					0);
+	if (npc->free_entries == NULL) {
+		otx2_err("free_entries alloc failed");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	npc->free_entries_rev = rte_zmalloc(NULL, npc->flow_max_priority
+					* sizeof(struct rte_bitmap),
+					0);
+	if (npc->free_entries_rev == NULL) {
+		otx2_err("free_entries_rev alloc failed");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	npc->live_entries = rte_zmalloc(NULL, npc->flow_max_priority
+					* sizeof(struct rte_bitmap),
+					0);
+	if (npc->live_entries == NULL) {
+		otx2_err("live_entries alloc failed");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	npc->live_entries_rev = rte_zmalloc(NULL, npc->flow_max_priority
+					* sizeof(struct rte_bitmap),
+					0);
+	if (npc->live_entries_rev == NULL) {
+		otx2_err("live_entries_rev alloc failed");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	npc->flow_list = rte_zmalloc(NULL, npc->flow_max_priority
+					* sizeof(struct otx2_flow_list),
+					0);
+	if (npc->flow_list == NULL) {
+		otx2_err("flow_list alloc failed");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	npc_mem = mem;
+	for (idx = 0; idx < npc->flow_max_priority; idx++) {
+		TAILQ_INIT(&npc->flow_list[idx]);
+
+		npc->free_entries[idx] =
+			rte_bitmap_init(npc->mcam_entries, mem, bmap_sz);
+		mem += bmap_sz;
+
+		npc->free_entries_rev[idx] =
+			rte_bitmap_init(npc->mcam_entries, mem, bmap_sz);
+		mem += bmap_sz;
+
+		npc->live_entries[idx] =
+			rte_bitmap_init(npc->mcam_entries, mem, bmap_sz);
+		mem += bmap_sz;
+
+		npc->live_entries_rev[idx] =
+			rte_bitmap_init(npc->mcam_entries, mem, bmap_sz);
+		mem += bmap_sz;
+
+		npc->flow_entry_info[idx].free_ent = 0;
+		npc->flow_entry_info[idx].live_ent = 0;
+		npc->flow_entry_info[idx].max_id = 0;
+		npc->flow_entry_info[idx].min_id = ~(0);
+	}
+
+	npc->rss_grps = NIX_RSS_GRPS;
+
+	bmap_sz = rte_bitmap_get_memory_footprint(npc->rss_grps);
+	nix_mem = rte_zmalloc(NULL, bmap_sz,  RTE_CACHE_LINE_SIZE);
+	if (nix_mem == NULL) {
+		otx2_err("Bmap alloc failed");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	npc->rss_grp_entries = rte_bitmap_init(npc->rss_grps, nix_mem, bmap_sz);
+
+	/* Group 0 will be used for RSS,
+	 * 1 -7 will be used for rte_flow RSS action
+	 */
+	rte_bitmap_set(npc->rss_grp_entries, 0);
+
+	return 0;
+
+err:
+	if (npc->flow_list)
+		rte_free(npc->flow_list);
+	if (npc->live_entries_rev)
+		rte_free(npc->live_entries_rev);
+	if (npc->live_entries)
+		rte_free(npc->live_entries);
+	if (npc->free_entries_rev)
+		rte_free(npc->free_entries_rev);
+	if (npc->free_entries)
+		rte_free(npc->free_entries);
+	if (npc->flow_entry_info)
+		rte_free(npc->flow_entry_info);
+	if (npc_mem)
+		rte_free(npc_mem);
+	if (nix_mem)
+		rte_free(nix_mem);
+	return rc;
+}
+
+int
+otx2_flow_fini(struct otx2_eth_dev *hw)
+{
+	struct otx2_npc_flow_info *npc = &hw->npc_flow;
+	int rc;
+
+	rc = otx2_flow_free_all_resources(hw);
+	if (rc) {
+		otx2_err("Error when deleting NPC MCAM entries, counters");
+		return rc;
+	}
+
+	if (npc->flow_list)
+		rte_free(npc->flow_list);
+	if (npc->live_entries_rev)
+		rte_free(npc->live_entries_rev);
+	if (npc->live_entries)
+		rte_free(npc->live_entries);
+	if (npc->free_entries_rev)
+		rte_free(npc->free_entries_rev);
+	if (npc->free_entries)
+		rte_free(npc->free_entries);
+	if (npc->flow_entry_info)
+		rte_free(npc->flow_entry_info);
+
+	return 0;
+}
