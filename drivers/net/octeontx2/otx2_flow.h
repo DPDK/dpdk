@@ -15,6 +15,8 @@
 #include "otx2_ethdev.h"
 #include "otx2_mbox.h"
 
+struct otx2_eth_dev;
+
 int otx2_flow_init(struct otx2_eth_dev *hw);
 int otx2_flow_fini(struct otx2_eth_dev *hw);
 extern const struct rte_flow_ops otx2_flow_ops;

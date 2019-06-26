@@ -17,6 +17,7 @@
 
 #include "otx2_common.h"
 #include "otx2_dev.h"
+#include "otx2_flow.h"
 #include "otx2_irq.h"
 #include "otx2_mempool.h"
 #include "otx2_rx.h"
@@ -171,12 +172,6 @@ struct otx2_eth_qconf {
 	void *mempool;
 	uint32_t socket_id;
 	uint16_t nb_desc;
-};
-
-struct otx2_npc_flow_info {
-	uint16_t channel; /*rx channel */
-	uint16_t flow_prealloc_size;
-	uint16_t flow_max_priority;
 };
 
 struct otx2_fc_info {
