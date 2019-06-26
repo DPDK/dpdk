@@ -373,18 +373,6 @@ test_multi_alloc_statistics(void)
 }
 
 static int
-test_rte_malloc_type_limits(void)
-{
-	/* The type-limits functionality is not yet implemented,
-	 * so always return 0 no matter what the retval.
-	 */
-	const char *typename = "limit_test";
-	rte_malloc_set_limit(typename, 64 * 1024);
-	rte_malloc_dump_stats(stdout, typename);
-	return 0;
-}
-
-static int
 test_realloc(void)
 {
 	const char hello_str[] = "Hello, world!";
@@ -951,15 +939,6 @@ test_malloc(void)
 		return ret;
 	}
 	else printf("test_random_alloc_free() passed\n");
-
-	/*----------------------------*/
-	ret = test_rte_malloc_type_limits();
-	if (ret < 0){
-		printf("test_rte_malloc_type_limits() failed\n");
-		return ret;
-	}
-	/* TODO: uncomment following line once type limits are valid */
-	/*else printf("test_rte_malloc_type_limits() passed\n");*/
 
 	/*----------------------------*/
 	ret = test_rte_malloc_validate();

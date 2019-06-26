@@ -162,6 +162,9 @@ API Changes
 * The network structures, definitions and functions have
   been prefixed by ``rte_`` to resolve conflicts with libc headers.
 
+* malloc: The function ``rte_malloc_set_limit`` was never implemented
+  is deprecated and will be removed in a future release.
+
 
 ABI Changes
 -----------
