@@ -5,6 +5,22 @@
 #include "otx2_ethdev.h"
 #include "otx2_flow.h"
 
+static int
+flow_mcam_alloc_counter(struct otx2_mbox *mbox, uint16_t *ctr)
+{
+	struct npc_mcam_alloc_counter_req *req;
+	struct npc_mcam_alloc_counter_rsp *rsp;
+	int rc;
+
+	req = otx2_mbox_alloc_msg_npc_mcam_alloc_counter(mbox);
+	req->count = 1;
+	otx2_mbox_msg_send(mbox, 0);
+	rc = otx2_mbox_get_rsp(mbox, 0, (void *)&rsp);
+
+	*ctr = rsp->cntr_list[0];
+	return rc;
+}
+
 int
 otx2_flow_mcam_free_counter(struct otx2_mbox *mbox, uint16_t ctr_id)
 {
@@ -585,7 +601,7 @@ flow_shift_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
  * since NPC_MCAM_LOWER_PRIO & NPC_MCAM_HIGHER_PRIO don't ensure zone accuracy.
  * If not properly aligned, shift entries to do so
  */
-int
+static int
 flow_validate_and_shift_prio_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
 				 struct otx2_npc_flow_info *flow_info,
 				 struct npc_mcam_alloc_entry_rsp *rsp,
@@ -643,4 +659,252 @@ flow_validate_and_shift_prio_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
 	} while ((prio_idx != prio) && (prio_idx += dir));
 
 	return rc;
+}
+
+static int
+flow_find_ref_entry(struct otx2_npc_flow_info *flow_info, int *prio,
+		    int prio_lvl)
+{
+	struct otx2_mcam_ents_info *info = flow_info->flow_entry_info;
+	int step = 1;
+
+	while (step < flow_info->flow_max_priority) {
+		if (((prio_lvl + step) < flow_info->flow_max_priority) &&
+		    info[prio_lvl + step].live_ent) {
+			*prio = NPC_MCAM_HIGHER_PRIO;
+			return info[prio_lvl + step].min_id;
+		}
+
+		if (((prio_lvl - step) >= 0) &&
+		    info[prio_lvl - step].live_ent) {
+			otx2_npc_dbg("Prio_lvl %u live %u", prio_lvl - step,
+				     info[prio_lvl - step].live_ent);
+			*prio = NPC_MCAM_LOWER_PRIO;
+			return info[prio_lvl - step].max_id;
+		}
+		step++;
+	}
+	*prio = NPC_MCAM_ANY_PRIO;
+	return 0;
+}
+
+static int
+flow_fill_entry_cache(struct otx2_mbox *mbox, struct rte_flow *flow,
+		      struct otx2_npc_flow_info *flow_info, uint32_t *free_ent)
+{
+	struct rte_bitmap *free_bmp, *free_bmp_rev, *live_bmp, *live_bmp_rev;
+	struct npc_mcam_alloc_entry_rsp rsp_local;
+	struct npc_mcam_alloc_entry_rsp *rsp_cmd;
+	struct npc_mcam_alloc_entry_req *req;
+	struct npc_mcam_alloc_entry_rsp *rsp;
+	struct otx2_mcam_ents_info *info;
+	uint16_t ref_ent, idx;
+	int rc, prio;
+
+	info = &flow_info->flow_entry_info[flow->priority];
+	free_bmp = flow_info->free_entries[flow->priority];
+	free_bmp_rev = flow_info->free_entries_rev[flow->priority];
+	live_bmp = flow_info->live_entries[flow->priority];
+	live_bmp_rev = flow_info->live_entries_rev[flow->priority];
+
+	ref_ent = flow_find_ref_entry(flow_info, &prio, flow->priority);
+
+	req = otx2_mbox_alloc_msg_npc_mcam_alloc_entry(mbox);
+	req->contig = 1;
+	req->count = flow_info->flow_prealloc_size;
+	req->priority = prio;
+	req->ref_entry = ref_ent;
+
+	otx2_npc_dbg("Fill cache ref entry %u prio %u", ref_ent, prio);
+
+	otx2_mbox_msg_send(mbox, 0);
+	rc = otx2_mbox_get_rsp(mbox, 0, (void *)&rsp_cmd);
+	if (rc)
+		return rc;
+
+	rsp = &rsp_local;
+	memcpy(rsp, rsp_cmd, sizeof(*rsp));
+
+	otx2_npc_dbg("Alloc entry %u count %u , prio = %d", rsp->entry,
+		     rsp->count, prio);
+
+	/* Non-first ent cache fill */
+	if (prio != NPC_MCAM_ANY_PRIO) {
+		flow_validate_and_shift_prio_ent(mbox, flow, flow_info, rsp,
+						 prio);
+	} else {
+		/* Copy into response entry list */
+		for (idx = 0; idx < rsp->count; idx++)
+			rsp->entry_list[idx] = rsp->entry + idx;
+	}
+
+	otx2_npc_dbg("Fill entry cache rsp count %u", rsp->count);
+	/* Update free entries, reverse free entries list,
+	 * min & max entry ids.
+	 */
+	for (idx = 0; idx < rsp->count; idx++) {
+		if (unlikely(rsp->entry_list[idx] < info->min_id))
+			info->min_id = rsp->entry_list[idx];
+
+		if (unlikely(rsp->entry_list[idx] > info->max_id))
+			info->max_id = rsp->entry_list[idx];
+
+		/* Skip entry to be returned, not to be part of free
+		 * list.
+		 */
+		if (prio == NPC_MCAM_HIGHER_PRIO) {
+			if (unlikely(idx == (rsp->count - 1))) {
+				*free_ent = rsp->entry_list[idx];
+				continue;
+			}
+		} else {
+			if (unlikely(!idx)) {
+				*free_ent = rsp->entry_list[idx];
+				continue;
+			}
+		}
+		info->free_ent++;
+		rte_bitmap_set(free_bmp, rsp->entry_list[idx]);
+		rte_bitmap_set(free_bmp_rev, flow_info->mcam_entries -
+			       rsp->entry_list[idx] - 1);
+
+		otx2_npc_dbg("Final rsp entry %u rsp entry rev %u",
+			     rsp->entry_list[idx],
+		flow_info->mcam_entries - rsp->entry_list[idx] - 1);
+	}
+
+	otx2_npc_dbg("Cache free entry %u, rev = %u", *free_ent,
+		     flow_info->mcam_entries - *free_ent - 1);
+	info->live_ent++;
+	rte_bitmap_set(live_bmp, *free_ent);
+	rte_bitmap_set(live_bmp_rev, flow_info->mcam_entries - *free_ent - 1);
+
+	return 0;
+}
+
+static int
+flow_check_preallocated_entry_cache(struct otx2_mbox *mbox,
+				    struct rte_flow *flow,
+				    struct otx2_npc_flow_info *flow_info)
+{
+	struct rte_bitmap *free, *free_rev, *live, *live_rev;
+	uint32_t pos = 0, free_ent = 0, mcam_entries;
+	struct otx2_mcam_ents_info *info;
+	uint64_t slab = 0;
+	int rc;
+
+	otx2_npc_dbg("Flow priority %u", flow->priority);
+
+	info = &flow_info->flow_entry_info[flow->priority];
+
+	free_rev = flow_info->free_entries_rev[flow->priority];
+	free = flow_info->free_entries[flow->priority];
+	live_rev = flow_info->live_entries_rev[flow->priority];
+	live = flow_info->live_entries[flow->priority];
+	mcam_entries = flow_info->mcam_entries;
+
+	if (info->free_ent) {
+		rc = rte_bitmap_scan(free, &pos, &slab);
+		if (rc) {
+			/* Get free_ent from free entry bitmap */
+			free_ent = pos + __builtin_ctzll(slab);
+			otx2_npc_dbg("Allocated from cache entry %u", free_ent);
+			/* Remove from free bitmaps and add to live ones */
+			rte_bitmap_clear(free, free_ent);
+			rte_bitmap_set(live, free_ent);
+			rte_bitmap_clear(free_rev,
+					 mcam_entries - free_ent - 1);
+			rte_bitmap_set(live_rev,
+				       mcam_entries - free_ent - 1);
+
+			info->free_ent--;
+			info->live_ent++;
+			return free_ent;
+		}
+
+		otx2_npc_dbg("No free entry:its a mess");
+		return -1;
+	}
+
+	rc = flow_fill_entry_cache(mbox, flow, flow_info, &free_ent);
+	if (rc)
+		return rc;
+
+	return free_ent;
+}
+
+int
+otx2_flow_mcam_alloc_and_write(struct rte_flow *flow, struct otx2_mbox *mbox,
+			       __rte_unused struct otx2_parse_state *pst,
+			       struct otx2_npc_flow_info *flow_info)
+{
+	int use_ctr = (flow->ctr_id == NPC_COUNTER_NONE ? 0 : 1);
+	struct npc_mcam_write_entry_req *req;
+	struct mbox_msghdr *rsp;
+	uint16_t ctr = ~(0);
+	int rc, idx;
+	int entry;
+
+	if (use_ctr) {
+		rc = flow_mcam_alloc_counter(mbox, &ctr);
+		if (rc)
+			return rc;
+	}
+
+	entry = flow_check_preallocated_entry_cache(mbox, flow, flow_info);
+	if (entry < 0) {
+		otx2_err("Prealloc failed");
+		otx2_flow_mcam_free_counter(mbox, ctr);
+		return NPC_MCAM_ALLOC_FAILED;
+	}
+	req = otx2_mbox_alloc_msg_npc_mcam_write_entry(mbox);
+	req->set_cntr = use_ctr;
+	req->cntr = ctr;
+	req->entry = entry;
+	otx2_npc_dbg("Alloc & write entry %u", entry);
+
+	req->intf =
+		(flow->nix_intf == OTX2_INTF_RX) ? NPC_MCAM_RX : NPC_MCAM_TX;
+	req->enable_entry = 1;
+	req->entry_data.action = flow->npc_action;
+
+	/*
+	 * DPDK sets vtag action on per interface basis, not
+	 * per flow basis. It is a matter of how we decide to support
+	 * this pmd specific behavior. There are two ways:
+	 *	1. Inherit the vtag action from the one configured
+	 *	   for this interface. This can be read from the
+	 *	   vtag_action configured for default mcam entry of
+	 *	   this pf_func.
+	 *	2. Do not support vtag action with rte_flow.
+	 *
+	 * Second approach is used now.
+	 */
+	req->entry_data.vtag_action = 0ULL;
+
+	for (idx = 0; idx < OTX2_MAX_MCAM_WIDTH_DWORDS; idx++) {
+		req->entry_data.kw[idx] = flow->mcam_data[idx];
+		req->entry_data.kw_mask[idx] = flow->mcam_mask[idx];
+	}
+
+	if (flow->nix_intf == OTX2_INTF_RX) {
+		req->entry_data.kw[0] |= flow_info->channel;
+		req->entry_data.kw_mask[0] |=  (BIT_ULL(12) - 1);
+	} else {
+		uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
+
+		pf_func = htons(pf_func);
+		req->entry_data.kw[0] |= ((uint64_t)pf_func << 32);
+		req->entry_data.kw_mask[0] |= ((uint64_t)0xffff << 32);
+	}
+
+	otx2_mbox_msg_send(mbox, 0);
+	rc = otx2_mbox_get_rsp(mbox, 0, (void *)&rsp);
+	if (rc != 0)
+		return rc;
+
+	flow->mcam_id = entry;
+	if (use_ctr)
+		flow->ctr_id = ctr;
+	return 0;
 }
