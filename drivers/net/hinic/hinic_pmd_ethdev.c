@@ -1543,6 +1543,8 @@ static int hinic_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* rte_eth_dev ops, rx_burst and tx_burst */
 	eth_dev->dev_ops = &hinic_pmd_ops;
+	eth_dev->rx_pkt_burst = hinic_recv_pkts;
+	eth_dev->tx_pkt_burst = hinic_xmit_pkts;
 
 	return hinic_func_init(eth_dev);
 }
@@ -1560,6 +1562,8 @@ static int hinic_dev_uninit(struct rte_eth_dev *dev)
 	hinic_dev_close(dev);
 
 	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;

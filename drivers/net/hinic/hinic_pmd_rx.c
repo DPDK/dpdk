@@ -4,6 +4,9 @@
 
 #include <rte_ether.h>
 #include <rte_mbuf.h>
+#ifdef __ARM64_NEON__
+#include <arm_neon.h>
+#endif
 
 #include "base/hinic_compat.h"
 #include "base/hinic_pmd_hwdev.h"
@@ -35,7 +38,68 @@
 
 #define HINIC_GET_RQ_FREE_WQEBBS(rxq)	((rxq)->wq->delta - 1)
 
+/* rxq cqe done and status bit */
+#define HINIC_GET_RX_DONE_BE(status)	\
+	((status) & 0x80U)
+
 #define HINIC_RX_CSUM_OFFLOAD_EN	0xFFF
+
+#define RQ_CQE_SGE_VLAN_SHIFT			0
+#define RQ_CQE_SGE_LEN_SHIFT			16
+
+#define RQ_CQE_SGE_VLAN_MASK			0xFFFFU
+#define RQ_CQE_SGE_LEN_MASK			0xFFFFU
+
+#define RQ_CQE_SGE_GET(val, member)		\
+	(((val) >> RQ_CQE_SGE_##member##_SHIFT) & RQ_CQE_SGE_##member##_MASK)
+
+#define HINIC_GET_RX_VLAN_TAG(vlan_len)	\
+		RQ_CQE_SGE_GET(vlan_len, VLAN)
+
+#define HINIC_GET_RX_PKT_LEN(vlan_len)	\
+		RQ_CQE_SGE_GET(vlan_len, LEN)
+
+#define RQ_CQE_STATUS_CSUM_ERR_SHIFT		0
+#define RQ_CQE_STATUS_NUM_LRO_SHIFT		16
+#define RQ_CQE_STATUS_LRO_PUSH_SHIFT		25
+#define RQ_CQE_STATUS_LRO_ENTER_SHIFT		26
+#define RQ_CQE_STATUS_LRO_INTR_SHIFT		27
+
+#define RQ_CQE_STATUS_BP_EN_SHIFT		30
+#define RQ_CQE_STATUS_RXDONE_SHIFT		31
+#define RQ_CQE_STATUS_FLUSH_SHIFT		28
+
+#define RQ_CQE_STATUS_CSUM_ERR_MASK		0xFFFFU
+#define RQ_CQE_STATUS_NUM_LRO_MASK		0xFFU
+#define RQ_CQE_STATUS_LRO_PUSH_MASK		0X1U
+#define RQ_CQE_STATUS_LRO_ENTER_MASK		0X1U
+#define RQ_CQE_STATUS_LRO_INTR_MASK		0X1U
+#define RQ_CQE_STATUS_BP_EN_MASK		0X1U
+#define RQ_CQE_STATUS_RXDONE_MASK		0x1U
+#define RQ_CQE_STATUS_FLUSH_MASK		0x1U
+
+#define RQ_CQE_STATUS_GET(val, member)		\
+		(((val) >> RQ_CQE_STATUS_##member##_SHIFT) & \
+				RQ_CQE_STATUS_##member##_MASK)
+
+#define RQ_CQE_STATUS_CLEAR(val, member)	\
+		((val) & (~(RQ_CQE_STATUS_##member##_MASK << \
+				RQ_CQE_STATUS_##member##_SHIFT)))
+
+#define HINIC_GET_RX_CSUM_ERR(status)	\
+		RQ_CQE_STATUS_GET(status, CSUM_ERR)
+
+#define HINIC_GET_RX_DONE(status)	\
+		RQ_CQE_STATUS_GET(status, RXDONE)
+
+#define HINIC_GET_RX_FLUSH(status)	\
+		RQ_CQE_STATUS_GET(status, FLUSH)
+
+#define HINIC_GET_RX_BP_EN(status)	\
+		RQ_CQE_STATUS_GET(status, BP_EN)
+
+#define HINIC_GET_RX_NUM_LRO(status)	\
+		RQ_CQE_STATUS_GET(status, NUM_LRO)
 
 /* RQ_CTRL */
 #define	RQ_CTRL_BUFDESC_SECT_LEN_SHIFT		0
@@ -56,6 +120,72 @@
 
 #define RQ_CTRL_CLEAR(val, member)		\
 	((val) & (~(RQ_CTRL_##member##_MASK << RQ_CTRL_##member##_SHIFT)))
+
+#define RQ_CQE_PKT_NUM_SHIFT			1
+#define RQ_CQE_PKT_FIRST_LEN_SHIFT		19
+#define RQ_CQE_PKT_LAST_LEN_SHIFT		6
+#define RQ_CQE_SUPER_CQE_EN_SHIFT		0
+
+#define RQ_CQE_PKT_FIRST_LEN_MASK		0x1FFFU
+#define RQ_CQE_PKT_LAST_LEN_MASK		0x1FFFU
+#define RQ_CQE_PKT_NUM_MASK			0x1FU
+#define RQ_CQE_SUPER_CQE_EN_MASK		0x1
+
+#define RQ_CQE_PKT_NUM_GET(val, member)		\
+	(((val) >> RQ_CQE_PKT_##member##_SHIFT) & RQ_CQE_PKT_##member##_MASK)
+
+#define HINIC_GET_RQ_CQE_PKT_NUM(pkt_info) RQ_CQE_PKT_NUM_GET(pkt_info, NUM)
+
+#define RQ_CQE_SUPER_CQE_EN_GET(val, member)	\
+	(((val) >> RQ_CQE_##member##_SHIFT) & RQ_CQE_##member##_MASK)
+
+#define HINIC_GET_SUPER_CQE_EN(pkt_info)	\
+	RQ_CQE_SUPER_CQE_EN_GET(pkt_info, SUPER_CQE_EN)
+
+#define RQ_CQE_OFFOLAD_TYPE_VLAN_EN_SHIFT		21
+#define RQ_CQE_OFFOLAD_TYPE_VLAN_EN_MASK		0x1U
+
+#define RQ_CQE_OFFOLAD_TYPE_PKT_TYPE_SHIFT		0
+#define RQ_CQE_OFFOLAD_TYPE_PKT_TYPE_MASK		0xFFFU
+
+#define RQ_CQE_OFFOLAD_TYPE_PKT_UMBCAST_SHIFT		19
+#define RQ_CQE_OFFOLAD_TYPE_PKT_UMBCAST_MASK		0x3U
+
+#define RQ_CQE_OFFOLAD_TYPE_RSS_TYPE_SHIFT		24
+#define RQ_CQE_OFFOLAD_TYPE_RSS_TYPE_MASK		0xFFU
+
+#define RQ_CQE_OFFOLAD_TYPE_GET(val, member)		(((val) >> \
+				RQ_CQE_OFFOLAD_TYPE_##member##_SHIFT) & \
+				RQ_CQE_OFFOLAD_TYPE_##member##_MASK)
+
+#define HINIC_GET_RX_VLAN_OFFLOAD_EN(offload_type)	\
+		RQ_CQE_OFFOLAD_TYPE_GET(offload_type, VLAN_EN)
+
+#define HINIC_GET_RSS_TYPES(offload_type)	\
+		RQ_CQE_OFFOLAD_TYPE_GET(offload_type, RSS_TYPE)
+
+#define HINIC_GET_RX_PKT_TYPE(offload_type)	\
+		RQ_CQE_OFFOLAD_TYPE_GET(offload_type, PKT_TYPE)
+
+#define HINIC_GET_RX_PKT_UMBCAST(offload_type)	\
+		RQ_CQE_OFFOLAD_TYPE_GET(offload_type, PKT_UMBCAST)
+
+#define RQ_CQE_STATUS_CSUM_BYPASS_VAL			0x80U
+#define RQ_CQE_STATUS_CSUM_ERR_IP_MASK			0x39U
+#define RQ_CQE_STATUS_CSUM_ERR_L4_MASK			0x46U
+#define RQ_CQE_STATUS_CSUM_ERR_OTHER			0x100U
+
+#define HINIC_CSUM_ERR_BYPASSED(csum_err)	 \
+	((csum_err) == RQ_CQE_STATUS_CSUM_BYPASS_VAL)
+
+#define HINIC_CSUM_ERR_IP(csum_err)	 \
+	((csum_err) & RQ_CQE_STATUS_CSUM_ERR_IP_MASK)
+
+#define HINIC_CSUM_ERR_L4(csum_err)	 \
+	((csum_err) & RQ_CQE_STATUS_CSUM_ERR_L4_MASK)
+
+#define HINIC_CSUM_ERR_OTHER(csum_err)	 \
+	((csum_err) == RQ_CQE_STATUS_CSUM_ERR_OTHER)
 
 
 void hinic_get_func_rx_buf_size(struct hinic_nic_dev *nic_dev)
@@ -154,6 +284,25 @@ hinic_prepare_rq_wqe(void *wqe, __rte_unused u16 pi, dma_addr_t buf_addr,
 
 	buf_desc->addr_high = upper_32_bits(buf_addr);
 	buf_desc->addr_low = lower_32_bits(buf_addr);
+}
+
+void hinic_rxq_get_stats(struct hinic_rxq *rxq, struct hinic_rxq_stats *stats)
+{
+	if (!rxq || !stats)
+		return;
+
+	memcpy(stats, &rxq->rxq_stats, sizeof(rxq->rxq_stats));
+}
+
+void hinic_rxq_stats_reset(struct hinic_rxq *rxq)
+{
+	struct hinic_rxq_stats *rxq_stats;
+
+	if (rxq == NULL)
+		return;
+
+	rxq_stats = &rxq->rxq_stats;
+	memset(rxq_stats, 0, sizeof(*rxq_stats));
 }
 
 static int hinic_rx_alloc_cqe(struct hinic_rxq *rxq)
@@ -287,6 +436,42 @@ void hinic_free_all_rx_mbuf(struct rte_eth_dev *eth_dev)
 
 	for (q_id = 0; q_id < nic_dev->num_rq; q_id++)
 		hinic_free_all_rx_skbs(nic_dev->rxqs[q_id]);
+}
+
+static void hinic_recv_jumbo_pkt(struct hinic_rxq *rxq,
+				 struct rte_mbuf *head_skb,
+				 u32 remain_pkt_len)
+{
+	struct hinic_nic_dev *nic_dev = rxq->nic_dev;
+	struct rte_mbuf *cur_mbuf, *rxm = NULL;
+	struct hinic_rx_info *rx_info;
+	u16 sw_ci, rx_buf_len = rxq->buf_len;
+	u32 pkt_len;
+
+	while (remain_pkt_len > 0) {
+		sw_ci = hinic_get_rq_local_ci(nic_dev->hwdev, rxq->q_id);
+		rx_info = &rxq->rx_info[sw_ci];
+
+		hinic_update_rq_local_ci(nic_dev->hwdev, rxq->q_id, 1);
+
+		pkt_len = remain_pkt_len > rx_buf_len ?
+			rx_buf_len : remain_pkt_len;
+		remain_pkt_len -= pkt_len;
+
+		cur_mbuf = rx_info->mbuf;
+		cur_mbuf->data_len = (u16)pkt_len;
+		cur_mbuf->next = NULL;
+
+		head_skb->pkt_len += cur_mbuf->data_len;
+		head_skb->nb_segs++;
+
+		if (!rxm)
+			head_skb->next = cur_mbuf;
+		else
+			rxm->next = cur_mbuf;
+
+		rxm = cur_mbuf;
+	}
 }
 
 static void hinic_rss_deinit(struct hinic_nic_dev *nic_dev)
@@ -543,6 +728,125 @@ void hinic_free_all_rx_skbs(struct hinic_rxq *rxq)
 	}
 }
 
+static inline void hinic_rq_cqe_be_to_cpu32(void *dst_le32,
+					    volatile void *src_be32)
+{
+#if defined(__X86_64_SSE__)
+	volatile __m128i *wqe_be = (volatile __m128i *)src_be32;
+	__m128i *wqe_le = (__m128i *)dst_le32;
+	__m128i shuf_mask =  _mm_set_epi8(12, 13, 14, 15, 8, 9, 10,
+					11, 4, 5, 6, 7, 0, 1, 2, 3);
+
+	/* l2nic just use first 128 bits */
+	wqe_le[0] = _mm_shuffle_epi8(wqe_be[0], shuf_mask);
+#elif defined(__ARM64_NEON__)
+	volatile uint8x16_t *wqe_be = (volatile uint8x16_t *)src_be32;
+	uint8x16_t *wqe_le = (uint8x16_t *)dst_le32;
+	const uint8x16_t shuf_mask = {3, 2, 1, 0, 7, 6, 5, 4, 11, 10,
+					9, 8, 15, 14, 13, 12};
+
+	/* l2nic just use first 128 bits */
+	wqe_le[0] = vqtbl1q_u8(wqe_be[0], shuf_mask);
+#else
+	u32 i;
+	volatile u32 *wqe_be = (volatile u32 *)src_be32;
+	u32 *wqe_le = (u32 *)dst_le32;
+
+#define HINIC_L2NIC_RQ_CQE_USED		4 /* 4Bytes unit */
+
+	for (i = 0; i < HINIC_L2NIC_RQ_CQE_USED; i++) {
+		*wqe_le = rte_be_to_cpu_32(*wqe_be);
+		wqe_be++;
+		wqe_le++;
+	}
+#endif
+}
+
+static inline uint64_t hinic_rx_rss_hash(uint32_t offload_type,
+					 uint32_t cqe_hass_val,
+					 uint32_t *rss_hash)
+{
+	uint32_t rss_type;
+
+	rss_type = HINIC_GET_RSS_TYPES(offload_type);
+	if (likely(rss_type != 0)) {
+		*rss_hash = cqe_hass_val;
+		return PKT_RX_RSS_HASH;
+	}
+
+	return 0;
+}
+
+static inline uint64_t hinic_rx_csum(uint32_t status, struct hinic_rxq *rxq)
+{
+	uint32_t checksum_err;
+	uint64_t flags;
+
+	/* most case checksum is ok */
+	checksum_err = HINIC_GET_RX_CSUM_ERR(status);
+	if (likely(checksum_err == 0))
+		return (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+
+	/* If BYPASS bit set, all other status indications should be ignored */
+	if (unlikely(HINIC_CSUM_ERR_BYPASSED(checksum_err)))
+		return PKT_RX_IP_CKSUM_UNKNOWN;
+
+	flags = 0;
+
+	/* IP checksum error */
+	if (HINIC_CSUM_ERR_IP(checksum_err))
+		flags |= PKT_RX_IP_CKSUM_BAD;
+	else
+		flags |= PKT_RX_IP_CKSUM_GOOD;
+
+	/* L4 checksum error */
+	if (HINIC_CSUM_ERR_L4(checksum_err))
+		flags |= PKT_RX_L4_CKSUM_BAD;
+	else
+		flags |= PKT_RX_L4_CKSUM_GOOD;
+
+	if (unlikely(HINIC_CSUM_ERR_OTHER(checksum_err)))
+		flags = PKT_RX_L4_CKSUM_NONE;
+
+	rxq->rxq_stats.errors++;
+
+	return flags;
+}
+
+static inline uint64_t hinic_rx_vlan(uint32_t offload_type, uint32_t vlan_len,
+				     uint16_t *vlan_tci)
+{
+	uint16_t vlan_tag;
+
+	vlan_tag = HINIC_GET_RX_VLAN_TAG(vlan_len);
+	if (!HINIC_GET_RX_VLAN_OFFLOAD_EN(offload_type) || 0 == vlan_tag) {
+		*vlan_tci = 0;
+		return 0;
+	}
+
+	*vlan_tci = vlan_tag;
+
+	return PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+}
+
+static inline u32 hinic_rx_alloc_mbuf_bulk(struct hinic_rxq *rxq,
+					   struct rte_mbuf **mbufs,
+					   u32 exp_mbuf_cnt)
+{
+	int rc;
+	u32 avail_cnt;
+
+	rc = rte_pktmbuf_alloc_bulk(rxq->mb_pool, mbufs, exp_mbuf_cnt);
+	if (likely(rc == HINIC_OK)) {
+		avail_cnt = exp_mbuf_cnt;
+	} else {
+		avail_cnt = 0;
+		rxq->rxq_stats.rx_nombuf += exp_mbuf_cnt;
+	}
+
+	return avail_cnt;
+}
+
 static struct rte_mbuf *hinic_rx_alloc_mbuf(struct hinic_rxq *rxq,
 					dma_addr_t *dma_addr)
 {
@@ -555,6 +859,51 @@ static struct rte_mbuf *hinic_rx_alloc_mbuf(struct hinic_rxq *rxq,
 	*dma_addr = rte_mbuf_data_iova_default(mbuf);
 
 	return mbuf;
+}
+
+static inline void hinic_rearm_rxq_mbuf(struct hinic_rxq *rxq)
+{
+	u16 pi;
+	u32 i, free_wqebbs, rearm_wqebbs, exp_wqebbs;
+	dma_addr_t dma_addr;
+	struct hinic_rq_wqe *rq_wqe;
+	struct rte_mbuf **rearm_mbufs;
+
+	/* check free wqebb fo rearm */
+	free_wqebbs = HINIC_GET_RQ_FREE_WQEBBS(rxq);
+	if (unlikely(free_wqebbs < rxq->rx_free_thresh))
+		return;
+
+	/* get rearm mbuf array */
+	pi = HINIC_GET_RQ_LOCAL_PI(rxq);
+	rearm_mbufs = (struct rte_mbuf **)(&rxq->rx_info[pi]);
+
+	/* check rxq free wqebbs turn around */
+	exp_wqebbs = rxq->q_depth - pi;
+	if (free_wqebbs < exp_wqebbs)
+		exp_wqebbs = free_wqebbs;
+
+	/* alloc mbuf in bulk */
+	rearm_wqebbs = hinic_rx_alloc_mbuf_bulk(rxq, rearm_mbufs, exp_wqebbs);
+	if (unlikely(rearm_wqebbs == 0))
+		return;
+
+	/* rearm rx mbuf */
+	rq_wqe = WQ_WQE_ADDR(rxq->wq, (u32)pi);
+	for (i = 0; i < rearm_wqebbs; i++) {
+		dma_addr = rte_mbuf_data_iova_default(rearm_mbufs[i]);
+		rq_wqe->buf_desc.addr_high =
+					cpu_to_be32(upper_32_bits(dma_addr));
+		rq_wqe->buf_desc.addr_low =
+					cpu_to_be32(lower_32_bits(dma_addr));
+		rq_wqe++;
+	}
+	rxq->wq->prod_idx += rearm_wqebbs;
+	rxq->wq->delta -= rearm_wqebbs;
+
+	/* update rq hw_pi */
+	rte_wmb();
+	HINIC_UPDATE_RQ_HW_PI(rxq, pi + rearm_wqebbs);
 }
 
 void hinic_rx_alloc_pkts(struct hinic_rxq *rxq)
@@ -595,4 +944,106 @@ void hinic_rx_alloc_pkts(struct hinic_rxq *rxq)
 		rte_wmb();
 		HINIC_UPDATE_RQ_HW_PI(rxq, pi + 1);
 	}
+}
+
+u16 hinic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
+{
+	struct rte_mbuf *rxm;
+	struct hinic_rxq *rxq = rx_queue;
+	struct hinic_rx_info *rx_info;
+	volatile struct hinic_rq_cqe *rx_cqe;
+	u16 rx_buf_len, pkts = 0;
+	u16 sw_ci, ci_mask, wqebb_cnt = 0;
+	u32 pkt_len, status, vlan_len;
+	u64 rx_bytes = 0;
+	struct hinic_rq_cqe cqe;
+	u32 offload_type, rss_hash;
+
+	rx_buf_len = rxq->buf_len;
+
+	/* 1. get polling start ci */
+	ci_mask = HINIC_GET_RQ_WQE_MASK(rxq);
+	sw_ci = HINIC_GET_RQ_LOCAL_CI(rxq);
+
+	while (pkts < nb_pkts) {
+		 /* 2. current ci is done */
+		rx_cqe = &rxq->rx_cqe[sw_ci];
+		status = rx_cqe->status;
+		if (!HINIC_GET_RX_DONE_BE(status))
+			break;
+
+		/* read other cqe member after status */
+		rte_rmb();
+
+		/* convert cqe and get packet length */
+		hinic_rq_cqe_be_to_cpu32(&cqe, (volatile void *)rx_cqe);
+		vlan_len = cqe.vlan_len;
+
+		rx_info = &rxq->rx_info[sw_ci];
+		rxm = rx_info->mbuf;
+
+		/* 3. next ci point and prefetch */
+		sw_ci++;
+		sw_ci &= ci_mask;
+
+		/* prefetch next mbuf first 64B */
+		rte_prefetch0(rxq->rx_info[sw_ci].mbuf);
+
+		/* 4. jumbo frame process */
+		pkt_len = HINIC_GET_RX_PKT_LEN(vlan_len);
+		if (likely(pkt_len <= rx_buf_len)) {
+			rxm->data_len = pkt_len;
+			rxm->pkt_len = pkt_len;
+			wqebb_cnt++;
+		} else {
+			rxm->data_len = rx_buf_len;
+			rxm->pkt_len = rx_buf_len;
+
+			/* if jumbo use multi-wqebb update ci,
+			 * recv_jumbo_pkt will also update ci
+			 */
+			HINIC_UPDATE_RQ_LOCAL_CI(rxq, wqebb_cnt + 1);
+			wqebb_cnt = 0;
+			hinic_recv_jumbo_pkt(rxq, rxm, pkt_len - rx_buf_len);
+			sw_ci = HINIC_GET_RQ_LOCAL_CI(rxq);
+		}
+
+		/* 5. vlan/checksum/rss/pkt_type/gro offload */
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rxm->port = rxq->port_id;
+		offload_type = cqe.offload_type;
+
+		/* vlan offload */
+		rxm->ol_flags |= hinic_rx_vlan(offload_type, vlan_len,
+					       &rxm->vlan_tci);
+
+		/* checksum offload */
+		rxm->ol_flags |= hinic_rx_csum(cqe.status, rxq);
+
+		/* rss hash offload */
+		rss_hash = cqe.rss_hash;
+		rxm->ol_flags |= hinic_rx_rss_hash(offload_type, rss_hash,
+						   &rxm->hash.rss);
+
+		/* 6. clear done bit */
+		rx_cqe->status = 0;
+
+		rx_bytes += pkt_len;
+		rx_pkts[pkts++] = rxm;
+	}
+
+	if (pkts) {
+		/* 7. update ci */
+		HINIC_UPDATE_RQ_LOCAL_CI(rxq, wqebb_cnt);
+
+		/* do packet stats */
+		rxq->rxq_stats.packets += pkts;
+		rxq->rxq_stats.bytes += rx_bytes;
+	}
+	rxq->rxq_stats.burst_pkts = pkts;
+
+	/* 8. rearm mbuf to rxq */
+	hinic_rearm_rxq_mbuf(rxq);
+
+	return pkts;
 }
