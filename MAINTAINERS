@@ -602,6 +602,14 @@ F: drivers/net/enic/
 F: doc/guides/nics/enic.rst
 F: doc/guides/nics/features/enic.ini
 
+Huawei hinic
+M: Ziyang Xuan <xuanziyang2@huawei.com>
+M: Xiaoyun Wang <cloud.wangxiaoyun@huawei.com>
+M: Guoyang Zhou <zhouguoyang@huawei.com>
+F: drivers/net/hinic/
+F: doc/guides/nics/hinic.rst
+F: doc/guides/nics/features/hinic.ini
+
 Intel e1000
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel

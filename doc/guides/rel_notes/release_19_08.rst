@@ -82,6 +82,12 @@ New Features
   of Ethernet controllers. These controllers support link speeds up to
   200Gbps, 50G PAM-4, and PCIe 4.0.
 
+* **Added hinic PMD.**
+
+  Added the new ``hinic`` net driver for Huawei Intelligent PCIE Network
+  Adapters based on the Huawei Ethernet Controller Hi1822.
+  See the :doc:`../nics/hinic` guide for more details on this new driver.
+
 * **Updated the ice driver.**
 
   Updated ice driver with new features and improvements, including:

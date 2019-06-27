@@ -54,3 +54,8 @@ CONFIG_RTE_LIBRTE_NFP_PMD=n
 
 # 32-bit doesn't break up memory in lists, but does have VA allocation limit
 CONFIG_RTE_MAX_MEM_MB=2048
+
+#
+# HINIC PMD is not supported on 32-bit
+#
+CONFIG_RTE_LIBRTE_HINIC_PMD=n
