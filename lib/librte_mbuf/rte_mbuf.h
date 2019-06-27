@@ -702,7 +702,18 @@ struct rte_mbuf {
 			uint64_t tso_segsz:RTE_MBUF_TSO_SEGSZ_BITS;
 			/**< TCP TSO segment size */
 
-			/* fields for TX offloading of tunnels */
+			/*
+			 * Fields for Tx offloading of tunnels.
+			 * These are undefined for packets which don't request
+			 * any tunnel offloads (outer IP or UDP checksum,
+			 * tunnel TSO).
+			 *
+			 * PMDs should not use these fields unconditionally
+			 * when calculating offsets.
+			 *
+			 * Applications are expected to set appropriate tunnel
+			 * offload flags when they fill in these fields.
+			 */
 			uint64_t outer_l3_len:RTE_MBUF_OUTL3_LEN_BITS;
 			/**< Outer L3 (IP) Hdr Length. */
 			uint64_t outer_l2_len:RTE_MBUF_OUTL2_LEN_BITS;

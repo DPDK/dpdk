@@ -619,8 +619,9 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 			rte_cpu_to_le_16(rte_pktmbuf_data_len(mb));
 
 	if (mb->ol_flags & PKT_TX_TCP_SEG) {
-		hdrlen = mb->outer_l2_len + mb->outer_l3_len + mb->l2_len +
-			mb->l3_len + mb->l4_len;
+		hdrlen = mb->l2_len + mb->l3_len + mb->l4_len;
+		hdrlen += (mb->ol_flags & PKT_TX_TUNNEL_MASK) ?
+			  mb->outer_l2_len + mb->outer_l3_len : 0;
 		if (q->hw_ring[q->next_free].flags & FM10K_TXD_FLAG_FTAG)
 			hdrlen += sizeof(struct fm10k_ftag);
 

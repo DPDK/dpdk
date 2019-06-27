@@ -235,8 +235,10 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_LSO |
 					 TX_BD_LONG_LFLAGS_T_IPID;
 			hdr_size = tx_pkt->l2_len + tx_pkt->l3_len +
-					tx_pkt->l4_len + tx_pkt->outer_l2_len +
-					tx_pkt->outer_l3_len;
+					tx_pkt->l4_len;
+			hdr_size += (tx_pkt->ol_flags & PKT_TX_TUNNEL_MASK) ?
+				    tx_pkt->outer_l2_len +
+				    tx_pkt->outer_l3_len : 0;
 			/* The hdr_size is multiple of 16bit units not 8bit.
 			 * Hence divide by 2.
 			 */

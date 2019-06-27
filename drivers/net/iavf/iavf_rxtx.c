@@ -1449,9 +1449,6 @@ iavf_set_tso_ctx(struct rte_mbuf *mbuf, union iavf_tx_offload tx_offload)
 		return ctx_desc;
 	}
 
-	/* in case of non tunneling packet, the outer_l2_len and
-	 * outer_l3_len must be 0.
-	 */
 	hdr_len = tx_offload.l2_len +
 		  tx_offload.l3_len +
 		  tx_offload.l4_len;

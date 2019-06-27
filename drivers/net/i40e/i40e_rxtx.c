@@ -981,15 +981,9 @@ i40e_set_tso_ctx(struct rte_mbuf *mbuf, union i40e_tx_offload tx_offload)
 		return ctx_desc;
 	}
 
-	/**
-	 * in case of non tunneling packet, the outer_l2_len and
-	 * outer_l3_len must be 0.
-	 */
-	hdr_len = tx_offload.outer_l2_len +
-		tx_offload.outer_l3_len +
-		tx_offload.l2_len +
-		tx_offload.l3_len +
-		tx_offload.l4_len;
+	hdr_len = tx_offload.l2_len + tx_offload.l3_len + tx_offload.l4_len;
+	hdr_len += (mbuf->ol_flags & PKT_TX_TUNNEL_MASK) ?
+		   tx_offload.outer_l2_len + tx_offload.outer_l3_len : 0;
 
 	cd_cmd = I40E_TX_CTX_DESC_TSO;
 	cd_tso_len = mbuf->pkt_len - hdr_len;
