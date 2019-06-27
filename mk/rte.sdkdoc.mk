@@ -56,6 +56,7 @@ api-html: $(API_EXAMPLES)
 .PHONY: api-html-clean
 api-html-clean:
 	$(Q)rm -f $(API_EXAMPLES)
+	$(Q)rm -rf $(RTE_OUTPUT)/doc/html/api/search
 	$(Q)rm -f $(RTE_OUTPUT)/doc/html/api/*
 	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/html/api 2>&- || true
 
