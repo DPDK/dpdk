@@ -86,9 +86,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 16,
 					.max = 16,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
@@ -106,9 +106,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 8
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 16,
 					.max = 16,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
@@ -126,9 +126,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 20,
 					.max = 20,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
@@ -146,9 +146,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 20,
 					.max = 20,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
@@ -166,9 +166,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 28,
 					.max = 28,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
@@ -186,9 +186,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 28,
 					.max = 28,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
@@ -206,9 +206,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 32,
 					.max = 32,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
@@ -226,9 +226,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 32,
 					.max = 32,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
@@ -246,9 +246,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 48,
 					.max = 48,
-					.increment = 1
+					.increment = 0
 					},
 			}, }
 		}, }
@@ -266,9 +266,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 48,
 					.max = 48,
-					.increment = 1
+					.increment = 0
 					},
 			}, }
 		}, }
@@ -286,9 +286,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 64,
 					.max = 64,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
@@ -306,9 +306,9 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 1,
+					.min = 64,
 					.max = 64,
-					.increment = 1
+					.increment = 0
 				},
 			}, }
 		}, }
