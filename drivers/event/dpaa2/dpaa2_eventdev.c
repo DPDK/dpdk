@@ -640,7 +640,7 @@ dpaa2_eventdev_timeout_ticks(struct rte_eventdev *dev, uint64_t ns,
 	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
-	*timeout_ticks = ns * scale;
+	*timeout_ticks = ns / scale;
 
 	return 0;
 }
