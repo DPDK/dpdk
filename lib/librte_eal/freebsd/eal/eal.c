@@ -288,16 +288,57 @@ rte_eal_config_attach(void)
 	}
 
 	rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),
-				PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
-	close(mem_cfg_fd);
-	mem_cfg_fd = -1;
+				PROT_READ, MAP_SHARED, mem_cfg_fd, 0);
+	/* don't close the fd here, it will be closed on reattach */
 	if (rte_mem_cfg_addr == MAP_FAILED) {
+		close(mem_cfg_fd);
+		mem_cfg_fd = -1;
 		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config! error %i (%s)\n",
 			errno, strerror(errno));
 		return -1;
 	}
 
 	rte_config.mem_config = rte_mem_cfg_addr;
+
+	return 0;
+}
+
+/* reattach the shared config at exact memory location primary process has it */
+static int
+rte_eal_config_reattach(void)
+{
+	struct rte_mem_config *mem_config;
+	void *rte_mem_cfg_addr;
+
+	if (internal_config.no_shconf)
+		return 0;
+
+	/* save the address primary process has mapped shared config to */
+	rte_mem_cfg_addr =
+			(void *)(uintptr_t)rte_config.mem_config->mem_cfg_addr;
+
+	/* unmap original config */
+	munmap(rte_config.mem_config, sizeof(struct rte_mem_config));
+
+	/* remap the config at proper address */
+	mem_config = (struct rte_mem_config *) mmap(rte_mem_cfg_addr,
+			sizeof(*mem_config), PROT_READ | PROT_WRITE, MAP_SHARED,
+			mem_cfg_fd, 0);
+	close(mem_cfg_fd);
+	mem_cfg_fd = -1;
+
+	if (mem_config == MAP_FAILED) {
+		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config! error %i (%s)\n",
+				errno, strerror(errno));
+		return -1;
+	} else if (mem_config != rte_mem_cfg_addr) {
+		/* errno is stale, don't use */
+		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config at [%p], got [%p]\n",
+			  rte_mem_cfg_addr, mem_config);
+		return -1;
+	}
+
+	rte_config.mem_config = mem_config;
 
 	return 0;
 }
@@ -342,6 +383,8 @@ rte_config_init(void)
 		if (rte_eal_config_attach() < 0)
 			return -1;
 		rte_eal_mcfg_wait_complete(rte_config.mem_config);
+		if (rte_eal_config_reattach() < 0)
+			return -1;
 		break;
 	case RTE_PROC_AUTO:
 	case RTE_PROC_INVALID:
