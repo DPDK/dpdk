@@ -60,5 +60,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_HINIC_PMD) += hinic_pmd_nicio.c
 SRCS-$(CONFIG_RTE_LIBRTE_HINIC_PMD) += hinic_pmd_wq.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_HINIC_PMD) += hinic_pmd_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_HINIC_PMD) += hinic_pmd_rx.c
+SRCS-$(CONFIG_RTE_LIBRTE_HINIC_PMD) += hinic_pmd_tx.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

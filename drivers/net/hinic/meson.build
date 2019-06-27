@@ -6,6 +6,8 @@ objs = [base_objs]
 
 sources = files(
 	'hinic_pmd_ethdev.c',
+	'hinic_pmd_rx.c',
+	'hinic_pmd_tx.c',
 	)
 
 includes += include_directories('base')
