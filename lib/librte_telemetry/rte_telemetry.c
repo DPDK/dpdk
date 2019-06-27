@@ -318,13 +318,13 @@ eperm_fail:
 static int32_t
 rte_telemetry_json_format_port(struct telemetry_impl *telemetry,
 	uint32_t port_id, json_t *ports, uint32_t *metric_ids,
-	uint32_t num_metric_ids)
+	int num_metric_ids)
 {
 	struct rte_metric_value *metrics = 0;
 	struct rte_metric_name *names = 0;
 	int num_metrics, ret, err_ret;
 	json_t *port, *stats;
-	uint32_t i;
+	int i;
 
 	num_metrics = rte_metrics_get_names(NULL, 0);
 	if (num_metrics < 0) {
@@ -453,10 +453,10 @@ rte_telemetry_encode_json_format(struct telemetry_impl *telemetry,
 {
 	int ret;
 	json_t *root, *ports;
-	uint32_t i;
+	int i;
 	uint32_t port_id;
-	uint32_t num_port_ids;
-	uint32_t num_metric_ids;
+	int num_port_ids;
+	int num_metric_ids;
 
 	ports = json_array();
 	if (ports == NULL) {
@@ -589,7 +589,7 @@ rte_telemetry_send_ports_stats_values(struct telemetry_encode_param *ep,
 	int ret;
 	char *json_buffer = NULL;
 	uint32_t port_id;
-	unsigned int i;
+	int i;
 
 	if (telemetry == NULL) {
 		TELEMETRY_LOG_ERR("Invalid telemetry argument");

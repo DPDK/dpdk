@@ -60,13 +60,13 @@ struct telemetry_encode_param {
 	enum rte_telemetry_stats_type type;
 	union {
 		struct port_param {
-			uint32_t num_metric_ids;
+			int num_metric_ids;
 			uint32_t metric_ids[MAX_METRICS];
-			uint32_t num_port_ids;
+			int num_port_ids;
 			uint32_t port_ids[RTE_MAX_ETHPORTS];
 		} pp;
 		struct global_param {
-			uint32_t num_metric_ids;
+			int num_metric_ids;
 			uint32_t metric_ids[MAX_METRICS];
 		} gp;
 	};
