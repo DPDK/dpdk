@@ -46,6 +46,163 @@
 /** Driver-specific log messages type. */
 int hinic_logtype;
 
+struct hinic_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	u32  offset;
+};
+
+#define HINIC_FUNC_STAT(_stat_item) {	\
+	.name = #_stat_item, \
+	.offset = offsetof(struct hinic_vport_stats, _stat_item) \
+}
+
+#define HINIC_PORT_STAT(_stat_item) { \
+	.name = #_stat_item, \
+	.offset = offsetof(struct hinic_phy_port_stats, _stat_item) \
+}
+
+static const struct hinic_xstats_name_off hinic_vport_stats_strings[] = {
+	HINIC_FUNC_STAT(tx_unicast_pkts_vport),
+	HINIC_FUNC_STAT(tx_unicast_bytes_vport),
+	HINIC_FUNC_STAT(tx_multicast_pkts_vport),
+	HINIC_FUNC_STAT(tx_multicast_bytes_vport),
+	HINIC_FUNC_STAT(tx_broadcast_pkts_vport),
+	HINIC_FUNC_STAT(tx_broadcast_bytes_vport),
+
+	HINIC_FUNC_STAT(rx_unicast_pkts_vport),
+	HINIC_FUNC_STAT(rx_unicast_bytes_vport),
+	HINIC_FUNC_STAT(rx_multicast_pkts_vport),
+	HINIC_FUNC_STAT(rx_multicast_bytes_vport),
+	HINIC_FUNC_STAT(rx_broadcast_pkts_vport),
+	HINIC_FUNC_STAT(rx_broadcast_bytes_vport),
+
+	HINIC_FUNC_STAT(tx_discard_vport),
+	HINIC_FUNC_STAT(rx_discard_vport),
+	HINIC_FUNC_STAT(tx_err_vport),
+	HINIC_FUNC_STAT(rx_err_vport),
+};
+
+#define HINIC_VPORT_XSTATS_NUM (sizeof(hinic_vport_stats_strings) / \
+		sizeof(hinic_vport_stats_strings[0]))
+
+static const struct hinic_xstats_name_off hinic_phyport_stats_strings[] = {
+	HINIC_PORT_STAT(mac_rx_total_pkt_num),
+	HINIC_PORT_STAT(mac_rx_total_oct_num),
+	HINIC_PORT_STAT(mac_rx_bad_pkt_num),
+	HINIC_PORT_STAT(mac_rx_bad_oct_num),
+	HINIC_PORT_STAT(mac_rx_good_pkt_num),
+	HINIC_PORT_STAT(mac_rx_good_oct_num),
+	HINIC_PORT_STAT(mac_rx_uni_pkt_num),
+	HINIC_PORT_STAT(mac_rx_multi_pkt_num),
+	HINIC_PORT_STAT(mac_rx_broad_pkt_num),
+	HINIC_PORT_STAT(mac_tx_total_pkt_num),
+	HINIC_PORT_STAT(mac_tx_total_oct_num),
+	HINIC_PORT_STAT(mac_tx_bad_pkt_num),
+	HINIC_PORT_STAT(mac_tx_bad_oct_num),
+	HINIC_PORT_STAT(mac_tx_good_pkt_num),
+	HINIC_PORT_STAT(mac_tx_good_oct_num),
+	HINIC_PORT_STAT(mac_tx_uni_pkt_num),
+	HINIC_PORT_STAT(mac_tx_multi_pkt_num),
+	HINIC_PORT_STAT(mac_tx_broad_pkt_num),
+	HINIC_PORT_STAT(mac_rx_fragment_pkt_num),
+	HINIC_PORT_STAT(mac_rx_undersize_pkt_num),
+	HINIC_PORT_STAT(mac_rx_undermin_pkt_num),
+	HINIC_PORT_STAT(mac_rx_64_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_65_127_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_128_255_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_256_511_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_512_1023_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_1024_1518_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_1519_2047_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_2048_4095_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_4096_8191_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_8192_9216_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_9217_12287_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_12288_16383_oct_pkt_num),
+	HINIC_PORT_STAT(mac_rx_1519_max_bad_pkt_num),
+	HINIC_PORT_STAT(mac_rx_1519_max_good_pkt_num),
+	HINIC_PORT_STAT(mac_rx_oversize_pkt_num),
+	HINIC_PORT_STAT(mac_rx_jabber_pkt_num),
+	HINIC_PORT_STAT(mac_rx_mac_pause_num),
+	HINIC_PORT_STAT(mac_rx_pfc_pkt_num),
+	HINIC_PORT_STAT(mac_rx_pfc_pri0_pkt_num),
+	HINIC_PORT_STAT(mac_rx_pfc_pri1_pkt_num),
+	HINIC_PORT_STAT(mac_rx_pfc_pri2_pkt_num),
+	HINIC_PORT_STAT(mac_rx_pfc_pri3_pkt_num),
+	HINIC_PORT_STAT(mac_rx_pfc_pri4_pkt_num),
+	HINIC_PORT_STAT(mac_rx_pfc_pri5_pkt_num),
+	HINIC_PORT_STAT(mac_rx_pfc_pri6_pkt_num),
+	HINIC_PORT_STAT(mac_rx_pfc_pri7_pkt_num),
+	HINIC_PORT_STAT(mac_rx_mac_control_pkt_num),
+	HINIC_PORT_STAT(mac_rx_sym_err_pkt_num),
+	HINIC_PORT_STAT(mac_rx_fcs_err_pkt_num),
+	HINIC_PORT_STAT(mac_rx_send_app_good_pkt_num),
+	HINIC_PORT_STAT(mac_rx_send_app_bad_pkt_num),
+	HINIC_PORT_STAT(mac_tx_fragment_pkt_num),
+	HINIC_PORT_STAT(mac_tx_undersize_pkt_num),
+	HINIC_PORT_STAT(mac_tx_undermin_pkt_num),
+	HINIC_PORT_STAT(mac_tx_64_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_65_127_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_128_255_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_256_511_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_512_1023_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_1024_1518_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_1519_2047_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_2048_4095_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_4096_8191_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_8192_9216_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_9217_12287_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_12288_16383_oct_pkt_num),
+	HINIC_PORT_STAT(mac_tx_1519_max_bad_pkt_num),
+	HINIC_PORT_STAT(mac_tx_1519_max_good_pkt_num),
+	HINIC_PORT_STAT(mac_tx_oversize_pkt_num),
+	HINIC_PORT_STAT(mac_trans_jabber_pkt_num),
+	HINIC_PORT_STAT(mac_tx_mac_pause_num),
+	HINIC_PORT_STAT(mac_tx_pfc_pkt_num),
+	HINIC_PORT_STAT(mac_tx_pfc_pri0_pkt_num),
+	HINIC_PORT_STAT(mac_tx_pfc_pri1_pkt_num),
+	HINIC_PORT_STAT(mac_tx_pfc_pri2_pkt_num),
+	HINIC_PORT_STAT(mac_tx_pfc_pri3_pkt_num),
+	HINIC_PORT_STAT(mac_tx_pfc_pri4_pkt_num),
+	HINIC_PORT_STAT(mac_tx_pfc_pri5_pkt_num),
+	HINIC_PORT_STAT(mac_tx_pfc_pri6_pkt_num),
+	HINIC_PORT_STAT(mac_tx_pfc_pri7_pkt_num),
+	HINIC_PORT_STAT(mac_tx_mac_control_pkt_num),
+	HINIC_PORT_STAT(mac_tx_err_all_pkt_num),
+	HINIC_PORT_STAT(mac_tx_from_app_good_pkt_num),
+	HINIC_PORT_STAT(mac_tx_from_app_bad_pkt_num),
+};
+
+#define HINIC_PHYPORT_XSTATS_NUM (sizeof(hinic_phyport_stats_strings) / \
+		sizeof(hinic_phyport_stats_strings[0]))
+
+static const struct hinic_xstats_name_off hinic_rxq_stats_strings[] = {
+	{"rx_nombuf", offsetof(struct hinic_rxq_stats, rx_nombuf)},
+	{"burst_pkt", offsetof(struct hinic_rxq_stats, burst_pkts)},
+};
+
+#define HINIC_RXQ_XSTATS_NUM (sizeof(hinic_rxq_stats_strings) / \
+		sizeof(hinic_rxq_stats_strings[0]))
+
+static const struct hinic_xstats_name_off hinic_txq_stats_strings[] = {
+	{"tx_busy", offsetof(struct hinic_txq_stats, tx_busy)},
+	{"offload_errors", offsetof(struct hinic_txq_stats, off_errs)},
+	{"copy_pkts", offsetof(struct hinic_txq_stats, cpy_pkts)},
+	{"rl_drop", offsetof(struct hinic_txq_stats, rl_drop)},
+	{"burst_pkts", offsetof(struct hinic_txq_stats, burst_pkts)},
+};
+
+#define HINIC_TXQ_XSTATS_NUM (sizeof(hinic_txq_stats_strings) / \
+		sizeof(hinic_txq_stats_strings[0]))
+
+static int hinic_xstats_calc_num(struct hinic_nic_dev *nic_dev)
+{
+	return (HINIC_VPORT_XSTATS_NUM +
+		HINIC_PHYPORT_XSTATS_NUM +
+		HINIC_RXQ_XSTATS_NUM * nic_dev->num_rq +
+		HINIC_TXQ_XSTATS_NUM * nic_dev->num_sq);
+}
+
 static const struct rte_eth_desc_lim hinic_rx_desc_lim = {
 	.nb_max = HINIC_MAX_QUEUE_DEPTH,
 	.nb_min = HINIC_MIN_QUEUE_DEPTH,
@@ -945,6 +1102,141 @@ static void hinic_disable_interrupt(struct rte_eth_dev *dev)
 			    retries);
 }
 
+static int hinic_set_dev_promiscuous(struct hinic_nic_dev *nic_dev, bool enable)
+{
+	u32 rx_mode_ctrl = nic_dev->rx_mode_status;
+
+	if (enable)
+		rx_mode_ctrl |= HINIC_RX_MODE_PROMISC;
+	else
+		rx_mode_ctrl &= (~HINIC_RX_MODE_PROMISC);
+
+	return hinic_config_rx_mode(nic_dev, rx_mode_ctrl);
+}
+
+/**
+ * DPDK callback to get device statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param stats
+ *   Stats structure output buffer.
+ *
+ * @return
+ *   0 on success and stats is filled,
+ *   negative error value otherwise.
+ */
+static int
+hinic_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	int i, err, q_num;
+	u64 rx_discards_pmd = 0;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct hinic_vport_stats vport_stats;
+	struct hinic_rxq	*rxq = NULL;
+	struct hinic_rxq_stats rxq_stats;
+	struct hinic_txq	*txq = NULL;
+	struct hinic_txq_stats txq_stats;
+
+	err = hinic_get_vport_stats(nic_dev->hwdev, &vport_stats);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Get vport stats from fw failed, nic_dev: %s",
+			nic_dev->proc_dev_name);
+		return err;
+	}
+
+	/* rx queue stats */
+	q_num = (nic_dev->num_rq < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
+			nic_dev->num_rq : RTE_ETHDEV_QUEUE_STAT_CNTRS;
+	for (i = 0; i < q_num; i++) {
+		rxq = nic_dev->rxqs[i];
+		hinic_rxq_get_stats(rxq, &rxq_stats);
+		stats->q_ipackets[i] = rxq_stats.packets;
+		stats->q_ibytes[i] = rxq_stats.bytes;
+		stats->q_errors[i] = rxq_stats.rx_discards;
+
+		stats->ierrors += rxq_stats.errors;
+		rx_discards_pmd += rxq_stats.rx_discards;
+		dev->data->rx_mbuf_alloc_failed += rxq_stats.rx_nombuf;
+	}
+
+	/* tx queue stats */
+	q_num = (nic_dev->num_sq < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
+		nic_dev->num_sq : RTE_ETHDEV_QUEUE_STAT_CNTRS;
+	for (i = 0; i < q_num; i++) {
+		txq = nic_dev->txqs[i];
+		hinic_txq_get_stats(txq, &txq_stats);
+		stats->q_opackets[i] = txq_stats.packets;
+		stats->q_obytes[i] = txq_stats.bytes;
+		stats->oerrors += (txq_stats.tx_busy + txq_stats.off_errs);
+	}
+
+	/* vport stats */
+	stats->oerrors += vport_stats.tx_discard_vport;
+
+	stats->imissed = vport_stats.rx_discard_vport + rx_discards_pmd;
+
+	stats->ipackets = (vport_stats.rx_unicast_pkts_vport +
+			vport_stats.rx_multicast_pkts_vport +
+			vport_stats.rx_broadcast_pkts_vport -
+			rx_discards_pmd);
+
+	stats->opackets = (vport_stats.tx_unicast_pkts_vport +
+			vport_stats.tx_multicast_pkts_vport +
+			vport_stats.tx_broadcast_pkts_vport);
+
+	stats->ibytes = (vport_stats.rx_unicast_bytes_vport +
+			vport_stats.rx_multicast_bytes_vport +
+			vport_stats.rx_broadcast_bytes_vport);
+
+	stats->obytes = (vport_stats.tx_unicast_bytes_vport +
+			vport_stats.tx_multicast_bytes_vport +
+			vport_stats.tx_broadcast_bytes_vport);
+	return 0;
+}
+
+/**
+ * DPDK callback to clear device statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void hinic_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	int qid;
+	struct hinic_rxq	*rxq = NULL;
+	struct hinic_txq	*txq = NULL;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	hinic_clear_vport_stats(nic_dev->hwdev);
+
+	for (qid = 0; qid < nic_dev->num_rq; qid++) {
+		rxq = nic_dev->rxqs[qid];
+		hinic_rxq_stats_reset(rxq);
+	}
+
+	for (qid = 0; qid < nic_dev->num_sq; qid++) {
+		txq = nic_dev->txqs[qid];
+		hinic_txq_stats_reset(txq);
+	}
+}
+
+/**
+ * DPDK callback to clear device extended statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ **/
+static void hinic_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	hinic_dev_stats_reset(dev);
+
+	if (hinic_func_type(nic_dev->hwdev) != TYPE_VF)
+		hinic_clear_phy_port_stats(nic_dev->hwdev);
+}
+
 static void hinic_gen_random_mac_addr(struct rte_ether_addr *mac_addr)
 {
 	uint64_t random_value;
@@ -1024,6 +1316,438 @@ static void hinic_deinit_mac_addr(struct rte_eth_dev *eth_dev)
 	if (rc && rc != HINIC_PF_SET_VF_ALREADY)
 		PMD_DRV_LOG(ERR, "Delete mac table failed, dev_name: %s",
 			    eth_dev->data->name);
+}
+
+/**
+ * DPDK callback to enable promiscuous mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void hinic_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	int rc = HINIC_OK;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	PMD_DRV_LOG(INFO, "Enable promiscuous, nic_dev: %s, port_id: %d, promisc: %d",
+		    nic_dev->proc_dev_name, dev->data->port_id,
+		    dev->data->promiscuous);
+
+	rc = hinic_set_dev_promiscuous(nic_dev, true);
+	if (rc)
+		PMD_DRV_LOG(ERR, "Enable promiscuous failed");
+}
+
+/**
+ * DPDK callback to disable promiscuous mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void hinic_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	int rc = HINIC_OK;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	PMD_DRV_LOG(INFO, "Disable promiscuous, nic_dev: %s, port_id: %d, promisc: %d",
+		    nic_dev->proc_dev_name, dev->data->port_id,
+		    dev->data->promiscuous);
+
+	rc = hinic_set_dev_promiscuous(nic_dev, false);
+	if (rc)
+		PMD_DRV_LOG(ERR, "Disable promiscuous failed");
+}
+
+/**
+ * DPDK callback to update the RSS hash key and RSS hash type.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rss_conf
+ *   RSS configuration data.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int hinic_rss_hash_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	u8 tmpl_idx = nic_dev->rss_tmpl_idx;
+	u8 hashkey[HINIC_RSS_KEY_SIZE] = {0};
+	u8 prio_tc[HINIC_DCB_UP_MAX] = {0};
+	u64 rss_hf = rss_conf->rss_hf;
+	struct nic_rss_type rss_type = {0};
+	int err = 0;
+
+	if (!(nic_dev->flags & ETH_MQ_RX_RSS_FLAG)) {
+		PMD_DRV_LOG(WARNING, "RSS is not enabled");
+		return HINIC_OK;
+	}
+
+	if (rss_conf->rss_key_len > HINIC_RSS_KEY_SIZE) {
+		PMD_DRV_LOG(ERR, "Invalid rss key, rss_key_len:%d",
+			    rss_conf->rss_key_len);
+		return HINIC_ERROR;
+	}
+
+	if (rss_conf->rss_key) {
+		memcpy(hashkey, rss_conf->rss_key, rss_conf->rss_key_len);
+		err = hinic_rss_set_template_tbl(nic_dev->hwdev, tmpl_idx,
+						 hashkey);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Set rss template table failed");
+			goto disable_rss;
+		}
+	}
+
+	rss_type.ipv4 = (rss_hf & (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4)) ? 1 : 0;
+	rss_type.tcp_ipv4 = (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) ? 1 : 0;
+	rss_type.ipv6 = (rss_hf & (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6)) ? 1 : 0;
+	rss_type.ipv6_ext = (rss_hf & ETH_RSS_IPV6_EX) ? 1 : 0;
+	rss_type.tcp_ipv6 = (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) ? 1 : 0;
+	rss_type.tcp_ipv6_ext = (rss_hf & ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
+	rss_type.udp_ipv4 = (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) ? 1 : 0;
+	rss_type.udp_ipv6 = (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) ? 1 : 0;
+
+	err = hinic_set_rss_type(nic_dev->hwdev, tmpl_idx, rss_type);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Set rss type table failed");
+		goto disable_rss;
+	}
+
+	return 0;
+
+disable_rss:
+	memset(prio_tc, 0, sizeof(prio_tc));
+	(void)hinic_rss_cfg(nic_dev->hwdev, 0, tmpl_idx, 0, prio_tc);
+	return err;
+}
+
+/**
+ * DPDK callback to get the RSS hash configuration.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rss_conf
+ *   RSS configuration data.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int hinic_rss_conf_get(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_conf *rss_conf)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	u8 tmpl_idx = nic_dev->rss_tmpl_idx;
+	u8 hashkey[HINIC_RSS_KEY_SIZE] = {0};
+	struct nic_rss_type rss_type = {0};
+	int err;
+
+	if (!(nic_dev->flags & ETH_MQ_RX_RSS_FLAG)) {
+		PMD_DRV_LOG(WARNING, "RSS is not enabled");
+		return HINIC_ERROR;
+	}
+
+	err = hinic_rss_get_template_tbl(nic_dev->hwdev, tmpl_idx, hashkey);
+	if (err)
+		return err;
+
+	if (rss_conf->rss_key &&
+	    rss_conf->rss_key_len >= HINIC_RSS_KEY_SIZE) {
+		memcpy(rss_conf->rss_key, hashkey, sizeof(hashkey));
+		rss_conf->rss_key_len = sizeof(hashkey);
+	}
+
+	err = hinic_get_rss_type(nic_dev->hwdev, tmpl_idx, &rss_type);
+	if (err)
+		return err;
+
+	rss_conf->rss_hf = 0;
+	rss_conf->rss_hf |=  rss_type.ipv4 ?
+		(ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4) : 0;
+	rss_conf->rss_hf |=  rss_type.tcp_ipv4 ? ETH_RSS_NONFRAG_IPV4_TCP : 0;
+	rss_conf->rss_hf |=  rss_type.ipv6 ?
+		(ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6) : 0;
+	rss_conf->rss_hf |=  rss_type.ipv6_ext ? ETH_RSS_IPV6_EX : 0;
+	rss_conf->rss_hf |=  rss_type.tcp_ipv6 ? ETH_RSS_NONFRAG_IPV6_TCP : 0;
+	rss_conf->rss_hf |=  rss_type.tcp_ipv6_ext ? ETH_RSS_IPV6_TCP_EX : 0;
+	rss_conf->rss_hf |=  rss_type.udp_ipv4 ? ETH_RSS_NONFRAG_IPV4_UDP : 0;
+	rss_conf->rss_hf |=  rss_type.udp_ipv6 ? ETH_RSS_NONFRAG_IPV6_UDP : 0;
+
+	return HINIC_OK;
+}
+
+/**
+ * DPDK callback to update the RETA indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param reta_conf
+ *   Pointer to RETA configuration structure array.
+ * @param reta_size
+ *   Size of the RETA table.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int hinic_rss_indirtbl_update(struct rte_eth_dev *dev,
+			      struct rte_eth_rss_reta_entry64 *reta_conf,
+			      uint16_t reta_size)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	u8 tmpl_idx = nic_dev->rss_tmpl_idx;
+	u8 prio_tc[HINIC_DCB_UP_MAX] = {0};
+	u32 indirtbl[NIC_RSS_INDIR_SIZE] = {0};
+	int err = 0;
+	u16 i = 0;
+	u16 idx, shift;
+
+	if (!(nic_dev->flags & ETH_MQ_RX_RSS_FLAG))
+		return HINIC_OK;
+
+	if (reta_size != NIC_RSS_INDIR_SIZE) {
+		PMD_DRV_LOG(ERR, "Invalid reta size, reta_size:%d", reta_size);
+		return HINIC_ERROR;
+	}
+
+	err = hinic_rss_get_indir_tbl(nic_dev->hwdev, tmpl_idx, indirtbl);
+	if (err)
+		return err;
+
+	/* update rss indir_tbl */
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			indirtbl[i] = reta_conf[idx].reta[shift];
+	}
+
+	for (i = 0 ; i < reta_size; i++) {
+		if (indirtbl[i] >= nic_dev->num_rq) {
+			PMD_DRV_LOG(ERR, "Invalid reta entry, index:%d, num_rq:%d",
+				    i, nic_dev->num_rq);
+			goto disable_rss;
+		}
+	}
+
+	err = hinic_rss_set_indir_tbl(nic_dev->hwdev, tmpl_idx, indirtbl);
+	if (err)
+		goto disable_rss;
+
+	nic_dev->rss_indir_flag = true;
+
+	return 0;
+
+disable_rss:
+	memset(prio_tc, 0, sizeof(prio_tc));
+	(void)hinic_rss_cfg(nic_dev->hwdev, 0, tmpl_idx, 0, prio_tc);
+
+	return HINIC_ERROR;
+}
+
+
+/**
+ * DPDK callback to get the RETA indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param reta_conf
+ *   Pointer to RETA configuration structure array.
+ * @param reta_size
+ *   Size of the RETA table.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int hinic_rss_indirtbl_query(struct rte_eth_dev *dev,
+			     struct rte_eth_rss_reta_entry64 *reta_conf,
+			     uint16_t reta_size)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	u8 tmpl_idx = nic_dev->rss_tmpl_idx;
+	int err = 0;
+	u32 indirtbl[NIC_RSS_INDIR_SIZE] = {0};
+	u16 idx, shift;
+	u16 i = 0;
+
+	if (reta_size != NIC_RSS_INDIR_SIZE) {
+		PMD_DRV_LOG(ERR, "Invalid reta size, reta_size:%d", reta_size);
+		return HINIC_ERROR;
+	}
+
+	err = hinic_rss_get_indir_tbl(nic_dev->hwdev, tmpl_idx, indirtbl);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Get rss indirect table failed, error:%d",
+			    err);
+		return err;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			reta_conf[idx].reta[shift] = (uint16_t)indirtbl[i];
+	}
+
+	return HINIC_OK;
+}
+
+/**
+ * DPDK callback to get extended device statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param xstats
+ *   Pointer to rte extended stats table.
+ * @param n
+ *   The size of the stats table.
+ *
+ * @return
+ *   Number of extended stats on success and stats is filled,
+ *   negative error value otherwise.
+ */
+static int hinic_dev_xstats_get(struct rte_eth_dev *dev,
+			 struct rte_eth_xstat *xstats,
+			 unsigned int n)
+{
+	u16 qid = 0;
+	u32 i;
+	int err, count;
+	struct hinic_nic_dev *nic_dev;
+	struct hinic_phy_port_stats port_stats;
+	struct hinic_vport_stats vport_stats;
+	struct hinic_rxq	*rxq = NULL;
+	struct hinic_rxq_stats rxq_stats;
+	struct hinic_txq	*txq = NULL;
+	struct hinic_txq_stats txq_stats;
+
+	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	count = hinic_xstats_calc_num(nic_dev);
+	if ((int)n < count)
+		return count;
+
+	count = 0;
+
+	/* Get stats from hinic_rxq_stats */
+	for (qid = 0; qid < nic_dev->num_rq; qid++) {
+		rxq = nic_dev->rxqs[qid];
+		hinic_rxq_get_stats(rxq, &rxq_stats);
+
+		for (i = 0; i < HINIC_RXQ_XSTATS_NUM; i++) {
+			xstats[count].value =
+				*(uint64_t *)(((char *)&rxq_stats) +
+				hinic_rxq_stats_strings[i].offset);
+			xstats[count].id = count;
+			count++;
+		}
+	}
+
+	/* Get stats from hinic_txq_stats */
+	for (qid = 0; qid < nic_dev->num_sq; qid++) {
+		txq = nic_dev->txqs[qid];
+		hinic_txq_get_stats(txq, &txq_stats);
+
+		for (i = 0; i < HINIC_TXQ_XSTATS_NUM; i++) {
+			xstats[count].value =
+				*(uint64_t *)(((char *)&txq_stats) +
+				hinic_txq_stats_strings[i].offset);
+			xstats[count].id = count;
+			count++;
+		}
+	}
+
+	/* Get stats from hinic_vport_stats */
+	err = hinic_get_vport_stats(nic_dev->hwdev, &vport_stats);
+	if (err)
+		return err;
+
+	for (i = 0; i < HINIC_VPORT_XSTATS_NUM; i++) {
+		xstats[count].value =
+			*(uint64_t *)(((char *)&vport_stats) +
+			hinic_vport_stats_strings[i].offset);
+		xstats[count].id = count;
+		count++;
+	}
+
+	/* Get stats from hinic_phy_port_stats */
+	err = hinic_get_phy_port_stats(nic_dev->hwdev, &port_stats);
+	if (err)
+		return err;
+
+	for (i = 0; i < HINIC_PHYPORT_XSTATS_NUM; i++) {
+		xstats[count].value = *(uint64_t *)(((char *)&port_stats) +
+				hinic_phyport_stats_strings[i].offset);
+		xstats[count].id = count;
+		count++;
+	}
+
+	return count;
+}
+
+/**
+ * DPDK callback to retrieve names of extended device statistics
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param xstats_names
+ *   Buffer to insert names into.
+ *
+ * @return
+ *   Number of xstats names.
+ */
+static int hinic_dev_xstats_get_names(struct rte_eth_dev *dev,
+			       struct rte_eth_xstat_name *xstats_names,
+			       __rte_unused unsigned int limit)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	int count = 0;
+	u16 i = 0, q_num;
+
+	if (xstats_names == NULL)
+		return hinic_xstats_calc_num(nic_dev);
+
+	/* get pmd rxq stats */
+	for (q_num = 0; q_num < nic_dev->num_rq; q_num++) {
+		for (i = 0; i < HINIC_RXQ_XSTATS_NUM; i++) {
+			snprintf(xstats_names[count].name,
+				 sizeof(xstats_names[count].name),
+				 "rxq%d_%s_pmd",
+				 q_num, hinic_rxq_stats_strings[i].name);
+			count++;
+		}
+	}
+
+	/* get pmd txq stats */
+	for (q_num = 0; q_num < nic_dev->num_sq; q_num++) {
+		for (i = 0; i < HINIC_TXQ_XSTATS_NUM; i++) {
+			snprintf(xstats_names[count].name,
+				 sizeof(xstats_names[count].name),
+				 "txq%d_%s_pmd",
+				 q_num, hinic_txq_stats_strings[i].name);
+			count++;
+		}
+	}
+
+	/* get vport stats */
+	for (i = 0; i < HINIC_VPORT_XSTATS_NUM; i++) {
+		snprintf(xstats_names[count].name,
+			 sizeof(xstats_names[count].name),
+			 "%s",
+			 hinic_vport_stats_strings[i].name);
+		count++;
+	}
+
+	/* get phy port stats */
+	for (i = 0; i < HINIC_PHYPORT_XSTATS_NUM; i++) {
+		snprintf(xstats_names[count].name,
+			 sizeof(xstats_names[count].name),
+			 "%s",
+			 hinic_phyport_stats_strings[i].name);
+		count++;
+	}
+
+	return count;
 }
 
 static int hinic_set_default_pause_feature(struct hinic_nic_dev *nic_dev)
@@ -1527,6 +2251,17 @@ static const struct eth_dev_ops hinic_pmd_ops = {
 	.tx_queue_release              = hinic_tx_queue_release,
 	.dev_stop                      = hinic_dev_stop,
 	.dev_close                     = hinic_dev_close,
+	.promiscuous_enable            = hinic_dev_promiscuous_enable,
+	.promiscuous_disable           = hinic_dev_promiscuous_disable,
+	.rss_hash_update               = hinic_rss_hash_update,
+	.rss_hash_conf_get             = hinic_rss_conf_get,
+	.reta_update                   = hinic_rss_indirtbl_update,
+	.reta_query                    = hinic_rss_indirtbl_query,
+	.stats_get                     = hinic_dev_stats_get,
+	.stats_reset                   = hinic_dev_stats_reset,
+	.xstats_get                    = hinic_dev_xstats_get,
+	.xstats_reset                  = hinic_dev_xstats_reset,
+	.xstats_get_names              = hinic_dev_xstats_get_names,
 };
 
 static int hinic_dev_init(struct rte_eth_dev *eth_dev)
