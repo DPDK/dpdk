@@ -58,6 +58,7 @@ static const struct rte_eth_desc_lim hinic_tx_desc_lim = {
 	.nb_align = HINIC_TXD_ALIGN,
 };
 
+
 /**
  * Interrupt handler triggered by NIC  for handling
  * specific event.
@@ -141,6 +142,311 @@ static int hinic_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	return HINIC_OK;
+}
+
+/**
+ * DPDK callback to create the receive queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param queue_idx
+ *   RX queue index.
+ * @param nb_desc
+ *   Number of descriptors for receive queue.
+ * @param socket_id
+ *   NUMA socket on which memory must be allocated.
+ * @param rx_conf
+ *   Thresholds parameters (unused_).
+ * @param mp
+ *   Memory pool for buffer allocations.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int hinic_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+			 uint16_t nb_desc, unsigned int socket_id,
+			 __rte_unused const struct rte_eth_rxconf *rx_conf,
+			 struct rte_mempool *mp)
+{
+	int rc;
+	struct hinic_nic_dev *nic_dev;
+	struct hinic_hwdev *hwdev;
+	struct hinic_rxq *rxq;
+	u16 rq_depth, rx_free_thresh;
+	u32 buf_size;
+
+	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	hwdev = nic_dev->hwdev;
+
+	/* queue depth must be power of 2, otherwise will be aligned up */
+	rq_depth = (nb_desc & (nb_desc - 1)) ?
+		((u16)(1U << (ilog2(nb_desc) + 1))) : nb_desc;
+
+	/*
+	 * Validate number of receive descriptors.
+	 * It must not exceed hardware maximum and minimum.
+	 */
+	if (rq_depth > HINIC_MAX_QUEUE_DEPTH ||
+		rq_depth < HINIC_MIN_QUEUE_DEPTH) {
+		PMD_DRV_LOG(ERR, "RX queue depth is out of range from %d to %d, (nb_desc=%d, q_depth=%d, port=%d queue=%d)",
+			    HINIC_MIN_QUEUE_DEPTH, HINIC_MAX_QUEUE_DEPTH,
+			    (int)nb_desc, (int)rq_depth,
+			    (int)dev->data->port_id, (int)queue_idx);
+		return -EINVAL;
+	}
+
+	/*
+	 * The RX descriptor ring will be cleaned after rxq->rx_free_thresh
+	 * descriptors are used or if the number of descriptors required
+	 * to transmit a packet is greater than the number of free RX
+	 * descriptors.
+	 * The following constraints must be satisfied:
+	 *  rx_free_thresh must be greater than 0.
+	 *  rx_free_thresh must be less than the size of the ring minus 1.
+	 * When set to zero use default values.
+	 */
+	rx_free_thresh = (u16)((rx_conf->rx_free_thresh) ?
+			rx_conf->rx_free_thresh : HINIC_DEFAULT_RX_FREE_THRESH);
+	if (rx_free_thresh >= (rq_depth - 1)) {
+		PMD_DRV_LOG(ERR, "rx_free_thresh must be less than the number of RX descriptors minus 1. (rx_free_thresh=%u port=%d queue=%d)",
+			    (unsigned int)rx_free_thresh,
+			    (int)dev->data->port_id,
+			    (int)queue_idx);
+		return -EINVAL;
+	}
+
+	rxq = rte_zmalloc_socket("hinic_rx_queue", sizeof(struct hinic_rxq),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (!rxq) {
+		PMD_DRV_LOG(ERR, "Allocate rxq[%d] failed, dev_name: %s",
+			    queue_idx, dev->data->name);
+		return -ENOMEM;
+	}
+	nic_dev->rxqs[queue_idx] = rxq;
+
+	/* alloc rx sq hw wqepage*/
+	rc = hinic_create_rq(hwdev, queue_idx, rq_depth);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Create rxq[%d] failed, dev_name: %s, rq_depth: %d",
+			    queue_idx, dev->data->name, rq_depth);
+		goto ceate_rq_fail;
+	}
+
+	/* mbuf pool must be assigned before setup rx resources */
+	rxq->mb_pool = mp;
+
+	rc =
+	hinic_convert_rx_buf_size(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+				  RTE_PKTMBUF_HEADROOM, &buf_size);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Adjust buf size failed, dev_name: %s",
+			    dev->data->name);
+		goto adjust_bufsize_fail;
+	}
+
+	/* rx queue info, rearm control */
+	rxq->wq = &hwdev->nic_io->rq_wq[queue_idx];
+	rxq->pi_virt_addr = hwdev->nic_io->qps[queue_idx].rq.pi_virt_addr;
+	rxq->nic_dev = nic_dev;
+	rxq->q_id = queue_idx;
+	rxq->q_depth = rq_depth;
+	rxq->buf_len = (u16)buf_size;
+	rxq->rx_free_thresh = rx_free_thresh;
+
+	/* the last point cant do mbuf rearm in bulk */
+	rxq->rxinfo_align_end = rxq->q_depth - rxq->rx_free_thresh;
+
+	/* device port identifier */
+	rxq->port_id = dev->data->port_id;
+
+	/* alloc rx_cqe and prepare rq_wqe */
+	rc = hinic_setup_rx_resources(rxq);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Setup rxq[%d] rx_resources failed, dev_name:%s",
+			    queue_idx, dev->data->name);
+		goto setup_rx_res_err;
+	}
+
+	/* record nic_dev rxq in rte_eth rx_queues */
+	dev->data->rx_queues[queue_idx] = rxq;
+
+	return 0;
+
+setup_rx_res_err:
+adjust_bufsize_fail:
+	hinic_destroy_rq(hwdev, queue_idx);
+
+ceate_rq_fail:
+	rte_free(rxq);
+
+	return rc;
+}
+
+static void hinic_reset_rx_queue(struct rte_eth_dev *dev)
+{
+	struct hinic_rxq *rxq;
+	struct hinic_nic_dev *nic_dev;
+	int q_id = 0;
+
+	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	for (q_id = 0; q_id < nic_dev->num_rq; q_id++) {
+		rxq = dev->data->rx_queues[q_id];
+
+		rxq->wq->cons_idx = 0;
+		rxq->wq->prod_idx = 0;
+		rxq->wq->delta = rxq->q_depth;
+		rxq->wq->mask = rxq->q_depth - 1;
+
+		/* alloc mbuf to rq */
+		hinic_rx_alloc_pkts(rxq);
+	}
+}
+
+/**
+ * DPDK callback to configure the transmit queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param queue_idx
+ *   Transmit queue index.
+ * @param nb_desc
+ *   Number of descriptors for transmit queue.
+ * @param socket_id
+ *   NUMA socket on which memory must be allocated.
+ * @param tx_conf
+ *   Tx queue configuration parameters.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int hinic_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+			 uint16_t nb_desc, unsigned int socket_id,
+			 __rte_unused const struct rte_eth_txconf *tx_conf)
+{
+	int rc;
+	struct hinic_nic_dev *nic_dev;
+	struct hinic_hwdev *hwdev;
+	struct hinic_txq *txq;
+	u16 sq_depth, tx_free_thresh;
+
+	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	hwdev = nic_dev->hwdev;
+
+	/* queue depth must be power of 2, otherwise will be aligned up */
+	sq_depth = (nb_desc & (nb_desc - 1)) ?
+			((u16)(1U << (ilog2(nb_desc) + 1))) : nb_desc;
+
+	/*
+	 * Validate number of transmit descriptors.
+	 * It must not exceed hardware maximum and minimum.
+	 */
+	if (sq_depth > HINIC_MAX_QUEUE_DEPTH ||
+		sq_depth < HINIC_MIN_QUEUE_DEPTH) {
+		PMD_DRV_LOG(ERR, "TX queue depth is out of range from %d to %d, (nb_desc=%d, q_depth=%d, port=%d queue=%d)",
+			  HINIC_MIN_QUEUE_DEPTH, HINIC_MAX_QUEUE_DEPTH,
+			  (int)nb_desc, (int)sq_depth,
+			  (int)dev->data->port_id, (int)queue_idx);
+		return -EINVAL;
+	}
+
+	/*
+	 * The TX descriptor ring will be cleaned after txq->tx_free_thresh
+	 * descriptors are used or if the number of descriptors required
+	 * to transmit a packet is greater than the number of free TX
+	 * descriptors.
+	 * The following constraints must be satisfied:
+	 *  tx_free_thresh must be greater than 0.
+	 *  tx_free_thresh must be less than the size of the ring minus 1.
+	 * When set to zero use default values.
+	 */
+	tx_free_thresh = (u16)((tx_conf->tx_free_thresh) ?
+			tx_conf->tx_free_thresh : HINIC_DEFAULT_TX_FREE_THRESH);
+	if (tx_free_thresh >= (sq_depth - 1)) {
+		PMD_DRV_LOG(ERR, "tx_free_thresh must be less than the number of TX descriptors minus 1. (tx_free_thresh=%u port=%d queue=%d)",
+			(unsigned int)tx_free_thresh, (int)dev->data->port_id,
+			(int)queue_idx);
+		return -EINVAL;
+	}
+
+	txq = rte_zmalloc_socket("hinic_tx_queue", sizeof(struct hinic_txq),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (!txq) {
+		PMD_DRV_LOG(ERR, "Allocate txq[%d] failed, dev_name: %s",
+			    queue_idx, dev->data->name);
+		return -ENOMEM;
+	}
+	nic_dev->txqs[queue_idx] = txq;
+
+	/* alloc tx sq hw wqepage */
+	rc = hinic_create_sq(hwdev, queue_idx, sq_depth);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Create txq[%d] failed, dev_name: %s, sq_depth: %d",
+			    queue_idx, dev->data->name, sq_depth);
+		goto create_sq_fail;
+	}
+
+	txq->q_id = queue_idx;
+	txq->q_depth = sq_depth;
+	txq->port_id = dev->data->port_id;
+	txq->tx_free_thresh = tx_free_thresh;
+	txq->nic_dev = nic_dev;
+	txq->wq = &hwdev->nic_io->sq_wq[queue_idx];
+	txq->sq = &hwdev->nic_io->qps[queue_idx].sq;
+	txq->cons_idx_addr = hwdev->nic_io->qps[queue_idx].sq.cons_idx_addr;
+	txq->sq_head_addr = HINIC_GET_WQ_HEAD(txq);
+	txq->sq_bot_sge_addr = HINIC_GET_WQ_TAIL(txq) -
+					sizeof(struct hinic_sq_bufdesc);
+	txq->cos = nic_dev->default_cos;
+
+	/* alloc software txinfo */
+	rc = hinic_setup_tx_resources(txq);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Setup txq[%d] tx_resources failed, dev_name: %s",
+			    queue_idx, dev->data->name);
+		goto setup_tx_res_fail;
+	}
+
+	/* record nic_dev txq in rte_eth tx_queues */
+	dev->data->tx_queues[queue_idx] = txq;
+
+	return HINIC_OK;
+
+setup_tx_res_fail:
+	hinic_destroy_sq(hwdev, queue_idx);
+
+create_sq_fail:
+	rte_free(txq);
+
+	return rc;
+}
+
+static void hinic_reset_tx_queue(struct rte_eth_dev *dev)
+{
+	struct hinic_nic_dev *nic_dev;
+	struct hinic_txq *txq;
+	struct hinic_nic_io *nic_io;
+	struct hinic_hwdev *hwdev;
+	volatile u32 *ci_addr;
+	int q_id = 0;
+
+	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	hwdev = nic_dev->hwdev;
+	nic_io = hwdev->nic_io;
+
+	for (q_id = 0; q_id < nic_dev->num_sq; q_id++) {
+		txq = dev->data->tx_queues[q_id];
+
+		txq->wq->cons_idx = 0;
+		txq->wq->prod_idx = 0;
+		txq->wq->delta = txq->q_depth;
+		txq->wq->mask  = txq->q_depth - 1;
+
+		/*clear hardware ci*/
+		ci_addr = (volatile u32 *)HINIC_CI_VADDR(nic_io->ci_vaddr_base,
+							q_id);
+		*ci_addr = 0;
+	}
 }
 
 /**
@@ -236,6 +542,301 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->tx_desc_lim = hinic_tx_desc_lim;
 }
 
+static int hinic_config_rx_mode(struct hinic_nic_dev *nic_dev, u32 rx_mode_ctrl)
+{
+	int err;
+
+	err = hinic_set_rx_mode(nic_dev->hwdev, rx_mode_ctrl);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to set rx mode");
+		return -EINVAL;
+	}
+	nic_dev->rx_mode_status = rx_mode_ctrl;
+
+	return 0;
+}
+
+
+static int hinic_rxtx_configure(struct rte_eth_dev *dev)
+{
+	int err;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	/* rx configure, if rss enable, need to init default configuration */
+	err = hinic_rx_configure(dev);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Configure rss failed");
+		return err;
+	}
+
+	/* rx mode init */
+	err = hinic_config_rx_mode(nic_dev, HINIC_DEFAULT_RX_MODE);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Configure rx_mode:0x%x failed",
+			HINIC_DEFAULT_RX_MODE);
+		goto set_rx_mode_fail;
+	}
+
+	return HINIC_OK;
+
+set_rx_mode_fail:
+	hinic_rx_remove_configure(dev);
+
+	return err;
+}
+
+static void hinic_remove_rxtx_configure(struct rte_eth_dev *dev)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	(void)hinic_config_rx_mode(nic_dev, 0);
+	hinic_rx_remove_configure(dev);
+}
+
+static int hinic_priv_get_dev_link_status(struct hinic_nic_dev *nic_dev,
+					  struct rte_eth_link *link)
+{
+	int rc;
+	u8 port_link_status = 0;
+	struct nic_port_info port_link_info;
+	struct hinic_hwdev *nic_hwdev = nic_dev->hwdev;
+	uint32_t port_speed[LINK_SPEED_MAX] = {ETH_SPEED_NUM_10M,
+					ETH_SPEED_NUM_100M, ETH_SPEED_NUM_1G,
+					ETH_SPEED_NUM_10G, ETH_SPEED_NUM_25G,
+					ETH_SPEED_NUM_40G, ETH_SPEED_NUM_100G};
+
+	rc = hinic_get_link_status(nic_hwdev, &port_link_status);
+	if (rc)
+		return rc;
+
+	if (!port_link_status) {
+		link->link_status = ETH_LINK_DOWN;
+		link->link_speed = 0;
+		link->link_duplex = ETH_LINK_HALF_DUPLEX;
+		link->link_autoneg = ETH_LINK_FIXED;
+		return HINIC_OK;
+	}
+
+	memset(&port_link_info, 0, sizeof(port_link_info));
+	rc = hinic_get_port_info(nic_hwdev, &port_link_info);
+	if (rc)
+		return rc;
+
+	link->link_speed = port_speed[port_link_info.speed % LINK_SPEED_MAX];
+	link->link_duplex = port_link_info.duplex;
+	link->link_autoneg = port_link_info.autoneg_state;
+	link->link_status = port_link_status;
+
+	return HINIC_OK;
+}
+
+/**
+ * DPDK callback to retrieve physical link information.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param wait_to_complete
+ *   Wait for request completion.
+ *
+ * @return
+ *   0 link status changed, -1 link status not changed
+ */
+static int hinic_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+{
+#define CHECK_INTERVAL 10  /* 10ms */
+#define MAX_REPEAT_TIME 100  /* 1s (100 * 10ms) in total */
+	int rc = HINIC_OK;
+	struct rte_eth_link link;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	unsigned int rep_cnt = MAX_REPEAT_TIME;
+
+	memset(&link, 0, sizeof(link));
+	do {
+		/* Get link status information from hardware */
+		rc = hinic_priv_get_dev_link_status(nic_dev, &link);
+		if (rc != HINIC_OK) {
+			link.link_speed = ETH_SPEED_NUM_NONE;
+			link.link_duplex = ETH_LINK_FULL_DUPLEX;
+			PMD_DRV_LOG(ERR, "Get link status failed");
+			goto out;
+		}
+
+		if (!wait_to_complete || link.link_status)
+			break;
+
+		rte_delay_ms(CHECK_INTERVAL);
+	} while (rep_cnt--);
+
+out:
+	rc = rte_eth_linkstatus_set(dev, &link);
+	return rc;
+}
+
+/**
+ * DPDK callback to start the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int hinic_dev_start(struct rte_eth_dev *dev)
+{
+	int rc;
+	char *name;
+	struct hinic_nic_dev *nic_dev;
+
+	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	name = dev->data->name;
+
+	/* reset rx and tx queue */
+	hinic_reset_rx_queue(dev);
+	hinic_reset_tx_queue(dev);
+
+	/* get func rx buf size */
+	hinic_get_func_rx_buf_size(nic_dev);
+
+	/* init txq and rxq context */
+	rc = hinic_init_qp_ctxts(nic_dev->hwdev);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Initialize qp context failed, dev_name:%s",
+			    name);
+		goto init_qp_fail;
+	}
+
+	/* rss template */
+	rc = hinic_config_mq_mode(dev, TRUE);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Configure mq mode failed, dev_name: %s",
+			    name);
+		goto cfg_mq_mode_fail;
+	}
+
+	/* set default mtu */
+	rc = hinic_set_port_mtu(nic_dev->hwdev, nic_dev->mtu_size);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Set mtu_size[%d] failed, dev_name: %s",
+			    nic_dev->mtu_size, name);
+		goto set_mtu_fail;
+	}
+
+	/* configure rss rx_mode and other rx or tx default feature */
+	rc = hinic_rxtx_configure(dev);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Configure tx and rx failed, dev_name: %s",
+			    name);
+		goto cfg_rxtx_fail;
+	}
+
+	/* open virtual port and ready to start packet receiving */
+	rc = hinic_set_vport_enable(nic_dev->hwdev, true);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Enable vport failed, dev_name:%s", name);
+		goto en_vport_fail;
+	}
+
+	/* open physical port and start packet receiving */
+	rc = hinic_set_port_enable(nic_dev->hwdev, true);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Enable physical port failed, dev_name:%s",
+			    name);
+		goto en_port_fail;
+	}
+
+	/* update eth_dev link status */
+	if (dev->data->dev_conf.intr_conf.lsc != 0)
+		(void)hinic_link_update(dev, 0);
+
+	hinic_set_bit(HINIC_DEV_START, &nic_dev->dev_status);
+
+	return 0;
+
+en_port_fail:
+	(void)hinic_set_vport_enable(nic_dev->hwdev, false);
+
+en_vport_fail:
+	/* Flush tx && rx chip resources in case of set vport fake fail */
+	(void)hinic_flush_qp_res(nic_dev->hwdev);
+	rte_delay_ms(100);
+
+	hinic_remove_rxtx_configure(dev);
+
+cfg_rxtx_fail:
+set_mtu_fail:
+cfg_mq_mode_fail:
+	hinic_free_qp_ctxts(nic_dev->hwdev);
+
+init_qp_fail:
+	hinic_free_all_rx_mbuf(dev);
+	hinic_free_all_tx_mbuf(dev);
+
+	return rc;
+}
+
+/**
+ * DPDK callback to release the receive queue.
+ *
+ * @param queue
+ *   Generic receive queue pointer.
+ */
+static void hinic_rx_queue_release(void *queue)
+{
+	struct hinic_rxq *rxq = queue;
+	struct hinic_nic_dev *nic_dev;
+
+	if (!rxq) {
+		PMD_DRV_LOG(WARNING, "Rxq is null when release");
+		return;
+	}
+	nic_dev = rxq->nic_dev;
+
+	/* free rxq_pkt mbuf */
+	hinic_free_all_rx_skbs(rxq);
+
+	/* free rxq_cqe, rxq_info */
+	hinic_free_rx_resources(rxq);
+
+	/* free root rq wq */
+	hinic_destroy_rq(nic_dev->hwdev, rxq->q_id);
+
+	nic_dev->rxqs[rxq->q_id] = NULL;
+
+	/* free rxq */
+	rte_free(rxq);
+}
+
+/**
+ * DPDK callback to release the transmit queue.
+ *
+ * @param queue
+ *   Generic transmit queue pointer.
+ */
+static void hinic_tx_queue_release(void *queue)
+{
+	struct hinic_txq *txq = queue;
+	struct hinic_nic_dev *nic_dev;
+
+	if (!txq) {
+		PMD_DRV_LOG(WARNING, "Txq is null when release");
+		return;
+	}
+	nic_dev = txq->nic_dev;
+
+	/* free txq_pkt mbuf */
+	hinic_free_all_tx_skbs(txq);
+
+	/* free txq_info */
+	hinic_free_tx_resources(txq);
+
+	/* free root sq wq */
+	hinic_destroy_sq(nic_dev->hwdev, txq->q_id);
+	nic_dev->txqs[txq->q_id] = NULL;
+
+	/* free txq */
+	rte_free(txq);
+}
+
 static void hinic_free_all_rq(struct hinic_nic_dev *nic_dev)
 {
 	u16 q_id;
@@ -250,6 +851,61 @@ static void hinic_free_all_sq(struct hinic_nic_dev *nic_dev)
 
 	for (q_id = 0; q_id < nic_dev->num_sq; q_id++)
 		hinic_destroy_sq(nic_dev->hwdev, q_id);
+}
+
+/**
+ * DPDK callback to stop the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void hinic_dev_stop(struct rte_eth_dev *dev)
+{
+	int rc;
+	char *name;
+	uint16_t port_id;
+	struct hinic_nic_dev *nic_dev;
+	struct rte_eth_link link;
+
+	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	name = dev->data->name;
+	port_id = dev->data->port_id;
+
+	if (!hinic_test_and_clear_bit(HINIC_DEV_START, &nic_dev->dev_status)) {
+		PMD_DRV_LOG(INFO, "Device %s already stopped", name);
+		return;
+	}
+
+	/* just stop phy port and vport */
+	rc = hinic_set_port_enable(nic_dev->hwdev, false);
+	if (rc)
+		PMD_DRV_LOG(WARNING, "Disable phy port failed, error: %d, dev_name:%s, port_id:%d",
+			  rc, name, port_id);
+
+	rc = hinic_set_vport_enable(nic_dev->hwdev, false);
+	if (rc)
+		PMD_DRV_LOG(WARNING, "Disable vport failed, error: %d, dev_name:%s, port_id:%d",
+			  rc, name, port_id);
+
+	/* Clear recorded link status */
+	memset(&link, 0, sizeof(link));
+	(void)rte_eth_linkstatus_set(dev, &link);
+
+	/* flush pending io request */
+	rc = hinic_rx_tx_flush(nic_dev->hwdev);
+	if (rc)
+		PMD_DRV_LOG(WARNING, "Flush pending io failed, error: %d, dev_name: %s, port_id: %d",
+			    rc, name, port_id);
+
+	/* clean rss table and rx_mode */
+	hinic_remove_rxtx_configure(dev);
+
+	/* clean root context */
+	hinic_free_qp_ctxts(nic_dev->hwdev);
+
+	/* free mbuf */
+	hinic_free_all_rx_mbuf(dev);
+	hinic_free_all_tx_mbuf(dev);
 }
 
 static void hinic_disable_interrupt(struct rte_eth_dev *dev)
@@ -289,6 +945,21 @@ static void hinic_disable_interrupt(struct rte_eth_dev *dev)
 			    retries);
 }
 
+static void hinic_gen_random_mac_addr(struct rte_ether_addr *mac_addr)
+{
+	uint64_t random_value;
+
+	/* Set Organizationally Unique Identifier (OUI) prefix */
+	mac_addr->addr_bytes[0] = 0x00;
+	mac_addr->addr_bytes[1] = 0x09;
+	mac_addr->addr_bytes[2] = 0xC0;
+	/* Force indication of locally assigned MAC address. */
+	mac_addr->addr_bytes[0] |= RTE_ETHER_LOCAL_ADMIN_ADDR;
+	/* Generate the last 3 bytes of the MAC address with a random number. */
+	random_value = rte_rand();
+	memcpy(&mac_addr->addr_bytes[3], &random_value, 3);
+}
+
 /**
  * Init mac_vlan table in NIC.
  *
@@ -313,6 +984,9 @@ static int hinic_init_mac_addr(struct rte_eth_dev *eth_dev)
 
 	memmove(eth_dev->data->mac_addrs->addr_bytes,
 		addr_bytes, RTE_ETHER_ADDR_LEN);
+
+	if (rte_is_zero_ether_addr(eth_dev->data->mac_addrs))
+		hinic_gen_random_mac_addr(eth_dev->data->mac_addrs);
 
 	func_id = hinic_global_func_id(nic_dev->hwdev);
 	rc = hinic_set_mac(nic_dev->hwdev, eth_dev->data->mac_addrs->addr_bytes,
@@ -817,6 +1491,9 @@ static void hinic_dev_close(struct rte_eth_dev *dev)
 		return;
 	}
 
+	/* stop device first */
+	hinic_dev_stop(dev);
+
 	/* rx_cqe, rx_info */
 	hinic_free_all_rx_resources(dev);
 
@@ -842,6 +1519,13 @@ static void hinic_dev_close(struct rte_eth_dev *dev)
 static const struct eth_dev_ops hinic_pmd_ops = {
 	.dev_configure                 = hinic_dev_configure,
 	.dev_infos_get                 = hinic_dev_infos_get,
+	.rx_queue_setup                = hinic_rx_queue_setup,
+	.tx_queue_setup                = hinic_tx_queue_setup,
+	.dev_start                     = hinic_dev_start,
+	.link_update                   = hinic_link_update,
+	.rx_queue_release              = hinic_rx_queue_release,
+	.tx_queue_release              = hinic_tx_queue_release,
+	.dev_stop                      = hinic_dev_stop,
 	.dev_close                     = hinic_dev_close,
 };
 
