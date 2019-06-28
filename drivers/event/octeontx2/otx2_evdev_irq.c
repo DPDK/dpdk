@@ -117,7 +117,7 @@ sso_register_irqs(const struct rte_eventdev *event_dev)
 	int i, rc = -EINVAL;
 	uint8_t nb_ports;
 
-	nb_ports = dev->nb_event_ports;
+	nb_ports = dev->nb_event_ports * (dev->dual_ws ? 2 : 1);
 
 	for (i = 0; i < dev->nb_event_queues; i++) {
 		if (dev->sso_msixoff[i] == MSIX_VECTOR_INVALID) {
@@ -159,7 +159,7 @@ sso_unregister_irqs(const struct rte_eventdev *event_dev)
 	uint8_t nb_ports;
 	int i;
 
-	nb_ports = dev->nb_event_ports;
+	nb_ports = dev->nb_event_ports * (dev->dual_ws ? 2 : 1);
 
 	for (i = 0; i < dev->nb_event_queues; i++) {
 		uintptr_t base = dev->bar2 + (RVU_BLOCK_ADDR_SSO << 20 |

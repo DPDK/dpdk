@@ -20,7 +20,7 @@ static inline int
 sso_get_msix_offsets(const struct rte_eventdev *event_dev)
 {
 	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
-	uint8_t nb_ports = dev->nb_event_ports;
+	uint8_t nb_ports = dev->nb_event_ports * (dev->dual_ws ? 2 : 1);
 	struct otx2_mbox *mbox = dev->mbox;
 	struct msix_offset_rsp *msix_rsp;
 	int i, rc;
@@ -82,16 +82,26 @@ otx2_sso_port_link(struct rte_eventdev *event_dev, void *port,
 		   const uint8_t queues[], const uint8_t priorities[],
 		   uint16_t nb_links)
 {
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
 	uint8_t port_id = 0;
 	uint16_t link;
 
-	RTE_SET_USED(event_dev);
 	RTE_SET_USED(priorities);
 	for (link = 0; link < nb_links; link++) {
-		struct otx2_ssogws *ws = port;
+		if (dev->dual_ws) {
+			struct otx2_ssogws_dual *ws = port;
 
-		port_id = ws->port;
-		sso_port_link_modify(ws, queues[link], true);
+			port_id = ws->port;
+			sso_port_link_modify((struct otx2_ssogws *)
+					&ws->ws_state[0], queues[link], true);
+			sso_port_link_modify((struct otx2_ssogws *)
+					&ws->ws_state[1], queues[link], true);
+		} else {
+			struct otx2_ssogws *ws = port;
+
+			port_id = ws->port;
+			sso_port_link_modify(ws, queues[link], true);
+		}
 	}
 	sso_func_trace("Port=%d nb_links=%d", port_id, nb_links);
 
@@ -102,15 +112,27 @@ static int
 otx2_sso_port_unlink(struct rte_eventdev *event_dev, void *port,
 		     uint8_t queues[], uint16_t nb_unlinks)
 {
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
 	uint8_t port_id = 0;
 	uint16_t unlink;
 
-	RTE_SET_USED(event_dev);
 	for (unlink = 0; unlink < nb_unlinks; unlink++) {
-		struct otx2_ssogws *ws = port;
+		if (dev->dual_ws) {
+			struct otx2_ssogws_dual *ws = port;
 
-		port_id = ws->port;
-		sso_port_link_modify(ws, queues[unlink], false);
+			port_id = ws->port;
+			sso_port_link_modify((struct otx2_ssogws *)
+					&ws->ws_state[0], queues[unlink],
+					false);
+			sso_port_link_modify((struct otx2_ssogws *)
+					&ws->ws_state[1], queues[unlink],
+					false);
+		} else {
+			struct otx2_ssogws *ws = port;
+
+			port_id = ws->port;
+			sso_port_link_modify(ws, queues[unlink], false);
+		}
 	}
 	sso_func_trace("Port=%d nb_unlinks=%d", port_id, nb_unlinks);
 
@@ -242,11 +264,23 @@ sso_clr_links(const struct rte_eventdev *event_dev)
 	int i, j;
 
 	for (i = 0; i < dev->nb_event_ports; i++) {
-		struct otx2_ssogws *ws;
+		if (dev->dual_ws) {
+			struct otx2_ssogws_dual *ws;
 
-		ws = event_dev->data->ports[i];
-		for (j = 0; j < dev->nb_event_queues; j++)
-			sso_port_link_modify(ws, j, false);
+			ws = event_dev->data->ports[i];
+			for (j = 0; j < dev->nb_event_queues; j++) {
+				sso_port_link_modify((struct otx2_ssogws *)
+						&ws->ws_state[0], j, false);
+				sso_port_link_modify((struct otx2_ssogws *)
+						&ws->ws_state[1], j, false);
+			}
+		} else {
+			struct otx2_ssogws *ws;
+
+			ws = event_dev->data->ports[i];
+			for (j = 0; j < dev->nb_event_queues; j++)
+				sso_port_link_modify(ws, j, false);
+		}
 	}
 }
 
@@ -259,6 +293,73 @@ sso_set_port_ops(struct otx2_ssogws *ws, uintptr_t base)
 	ws->swtp_op		= base + SSOW_LF_GWS_SWTP;
 	ws->swtag_norm_op	= base + SSOW_LF_GWS_OP_SWTAG_NORM;
 	ws->swtag_desched_op	= base + SSOW_LF_GWS_OP_SWTAG_DESCHED;
+}
+
+static int
+sso_configure_dual_ports(const struct rte_eventdev *event_dev)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	uint8_t vws = 0;
+	uint8_t nb_lf;
+	int i, rc;
+
+	otx2_sso_dbg("Configuring event ports %d", dev->nb_event_ports);
+
+	nb_lf = dev->nb_event_ports * 2;
+	/* Ask AF to attach required LFs. */
+	rc = sso_hw_lf_cfg(mbox, SSO_LF_GWS, nb_lf, true);
+	if (rc < 0) {
+		otx2_err("Failed to attach SSO GWS LF");
+		return -ENODEV;
+	}
+
+	if (sso_lf_cfg(dev, mbox, SSO_LF_GWS, nb_lf, true) < 0) {
+		sso_hw_lf_cfg(mbox, SSO_LF_GWS, nb_lf, false);
+		otx2_err("Failed to init SSO GWS LF");
+		return -ENODEV;
+	}
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		struct otx2_ssogws_dual *ws;
+		uintptr_t base;
+
+		/* Free memory prior to re-allocation if needed */
+		if (event_dev->data->ports[i] != NULL) {
+			ws = event_dev->data->ports[i];
+			rte_free(ws);
+			ws = NULL;
+		}
+
+		/* Allocate event port memory */
+		ws = rte_zmalloc_socket("otx2_sso_ws",
+					sizeof(struct otx2_ssogws_dual),
+					RTE_CACHE_LINE_SIZE,
+					event_dev->data->socket_id);
+		if (ws == NULL) {
+			otx2_err("Failed to alloc memory for port=%d", i);
+			rc = -ENOMEM;
+			break;
+		}
+
+		ws->port = i;
+		base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | vws << 12);
+		sso_set_port_ops((struct otx2_ssogws *)&ws->ws_state[0], base);
+		vws++;
+
+		base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | vws << 12);
+		sso_set_port_ops((struct otx2_ssogws *)&ws->ws_state[1], base);
+		vws++;
+
+		event_dev->data->ports[i] = ws;
+	}
+
+	if (rc < 0) {
+		sso_lf_cfg(dev, mbox, SSO_LF_GWS, nb_lf, false);
+		sso_hw_lf_cfg(mbox, SSO_LF_GWS, nb_lf, false);
+	}
+
+	return rc;
 }
 
 static int
@@ -465,6 +566,7 @@ sso_lf_teardown(struct otx2_sso_evdev *dev,
 		break;
 	case SSO_LF_GWS:
 		nb_lf = dev->nb_event_ports;
+		nb_lf *= dev->dual_ws ? 2 : 1;
 		break;
 	default:
 		return;
@@ -530,7 +632,12 @@ otx2_sso_configure(const struct rte_eventdev *event_dev)
 	dev->nb_event_queues = conf->nb_event_queues;
 	dev->nb_event_ports = conf->nb_event_ports;
 
-	if (sso_configure_ports(event_dev)) {
+	if (dev->dual_ws)
+		rc = sso_configure_dual_ports(event_dev);
+	else
+		rc = sso_configure_ports(event_dev);
+
+	if (rc < 0) {
 		otx2_err("Failed to configure event ports");
 		return -ENODEV;
 	}
@@ -660,14 +767,27 @@ otx2_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
 	/* Set get_work timeout for HWS */
 	val = NSEC2USEC(dev->deq_tmo_ns) - 1;
 
-	struct otx2_ssogws *ws = event_dev->data->ports[port_id];
-	uintptr_t base = OTX2_SSOW_GET_BASE_ADDR(ws->getwrk_op);
+	if (dev->dual_ws) {
+		struct otx2_ssogws_dual *ws = event_dev->data->ports[port_id];
 
-	rte_memcpy(ws->grps_base, grps_base,
-		   sizeof(uintptr_t) * OTX2_SSO_MAX_VHGRP);
-	ws->fc_mem = dev->fc_mem;
-	ws->xaq_lmt = dev->xaq_lmt;
-	otx2_write64(val, base + SSOW_LF_GWS_NW_TIM);
+		rte_memcpy(ws->grps_base, grps_base,
+			   sizeof(uintptr_t) * OTX2_SSO_MAX_VHGRP);
+		ws->fc_mem = dev->fc_mem;
+		ws->xaq_lmt = dev->xaq_lmt;
+		otx2_write64(val, OTX2_SSOW_GET_BASE_ADDR(
+			     ws->ws_state[0].getwrk_op) + SSOW_LF_GWS_NW_TIM);
+		otx2_write64(val, OTX2_SSOW_GET_BASE_ADDR(
+			     ws->ws_state[1].getwrk_op) + SSOW_LF_GWS_NW_TIM);
+	} else {
+		struct otx2_ssogws *ws = event_dev->data->ports[port_id];
+		uintptr_t base = OTX2_SSOW_GET_BASE_ADDR(ws->getwrk_op);
+
+		rte_memcpy(ws->grps_base, grps_base,
+			   sizeof(uintptr_t) * OTX2_SSO_MAX_VHGRP);
+		ws->fc_mem = dev->fc_mem;
+		ws->xaq_lmt = dev->xaq_lmt;
+		otx2_write64(val, base + SSOW_LF_GWS_NW_TIM);
+	}
 
 	otx2_sso_dbg("Port=%d ws=%p", port_id, event_dev->data->ports[port_id]);
 
@@ -735,18 +855,37 @@ otx2_sso_dump(struct rte_eventdev *event_dev, FILE *f)
 	uint8_t queue;
 	uint8_t port;
 
+	fprintf(f, "[%s] SSO running in [%s] mode\n", __func__, dev->dual_ws ?
+		"dual_ws" : "single_ws");
 	/* Dump SSOW registers */
 	for (port = 0; port < dev->nb_event_ports; port++) {
-		fprintf(f, "[%s]SSO single workslot[%d] dump\n",
-			__func__, port);
-		ssogws_dump(event_dev->data->ports[port], f);
+		if (dev->dual_ws) {
+			struct otx2_ssogws_dual *ws =
+				event_dev->data->ports[port];
+
+			fprintf(f, "[%s] SSO dual workslot[%d] vws[%d] dump\n",
+				__func__, port, 0);
+			ssogws_dump((struct otx2_ssogws *)&ws->ws_state[0], f);
+			fprintf(f, "[%s]SSO dual workslot[%d] vws[%d] dump\n",
+				__func__, port, 1);
+			ssogws_dump((struct otx2_ssogws *)&ws->ws_state[1], f);
+		} else {
+			fprintf(f, "[%s]SSO single workslot[%d] dump\n",
+				__func__, port);
+			ssogws_dump(event_dev->data->ports[port], f);
+		}
 	}
 
 	/* Dump SSO registers */
 	for (queue = 0; queue < dev->nb_event_queues; queue++) {
 		fprintf(f, "[%s]SSO group[%d] dump\n", __func__, queue);
-		struct otx2_ssogws *ws = event_dev->data->ports[0];
-		ssoggrp_dump(ws->grps_base[queue], f);
+		if (dev->dual_ws) {
+			struct otx2_ssogws_dual *ws = event_dev->data->ports[0];
+			ssoggrp_dump(ws->grps_base[queue], f);
+		} else {
+			struct otx2_ssogws *ws = event_dev->data->ports[0];
+			ssoggrp_dump(ws->grps_base[queue], f);
+		}
 	}
 }
 
@@ -879,7 +1018,14 @@ otx2_sso_init(struct rte_eventdev *event_dev)
 		goto otx2_npa_lf_uninit;
 	}
 
+	dev->dual_ws = 1;
 	sso_parse_devargs(dev, pci_dev->device.devargs);
+	if (dev->dual_ws) {
+		otx2_sso_dbg("Using dual workslot mode");
+		dev->max_event_ports = dev->max_event_ports / 2;
+	} else {
+		otx2_sso_dbg("Using single workslot mode");
+	}
 
 	otx2_sso_pf_func_set(dev->pf_func);
 	otx2_sso_dbg("Initializing %s max_queues=%d max_ports=%d",

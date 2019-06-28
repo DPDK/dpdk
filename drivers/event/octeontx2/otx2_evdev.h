@@ -121,6 +121,7 @@ struct otx2_sso_evdev {
 	uint64_t nb_xaq_cfg;
 	rte_iova_t fc_iova;
 	struct rte_mempool *xaq_pool;
+	uint8_t dual_ws;
 	/* Dev args */
 	uint32_t xae_cnt;
 	/* HW const */
@@ -148,6 +149,22 @@ struct otx2_ssogws {
 	/* Get Work Fastpath data */
 	OTX2_SSOGWS_OPS;
 	uint8_t swtag_req;
+	uint8_t port;
+	/* Add Work Fastpath data */
+	uint64_t xaq_lmt __rte_cache_aligned;
+	uint64_t *fc_mem;
+	uintptr_t grps_base[OTX2_SSO_MAX_VHGRP];
+} __rte_cache_aligned;
+
+struct otx2_ssogws_state {
+	OTX2_SSOGWS_OPS;
+};
+
+struct otx2_ssogws_dual {
+	/* Get Work Fastpath data */
+	struct otx2_ssogws_state ws_state[2]; /* Ping and Pong */
+	uint8_t swtag_req;
+	uint8_t vws; /* Ping pong bit */
 	uint8_t port;
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;

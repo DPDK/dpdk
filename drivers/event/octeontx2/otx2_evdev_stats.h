@@ -76,10 +76,28 @@ otx2_sso_xstats_get(const struct rte_eventdev *event_dev,
 		xstats = sso_hws_xstats;
 
 		req_rsp = otx2_mbox_alloc_msg_sso_hws_get_stats(mbox);
-			((struct sso_info_req *)req_rsp)->hws = queue_port_id;
+			((struct sso_info_req *)req_rsp)->hws = dev->dual_ws ?
+					2 * queue_port_id : queue_port_id;
 		rc = otx2_mbox_process_msg(mbox, (void **)&req_rsp);
 		if (rc < 0)
 			goto invalid_value;
+
+		if (dev->dual_ws) {
+			for (i = 0; i < n && i < xstats_mode_count; i++) {
+				xstat = &xstats[ids[i] - start_offset];
+				values[i] = *(uint64_t *)
+					((char *)req_rsp + xstat->offset);
+				values[i] = (values[i] >> xstat->shift) &
+					xstat->mask;
+			}
+
+			req_rsp = otx2_mbox_alloc_msg_sso_hws_get_stats(mbox);
+			((struct sso_info_req *)req_rsp)->hws =
+					(2 * queue_port_id) + 1;
+			rc = otx2_mbox_process_msg(mbox, (void **)&req_rsp);
+			if (rc < 0)
+				goto invalid_value;
+		}
 
 		break;
 	case RTE_EVENT_DEV_XSTATS_QUEUE:
@@ -107,7 +125,11 @@ otx2_sso_xstats_get(const struct rte_eventdev *event_dev,
 		value = *(uint64_t *)((char *)req_rsp + xstat->offset);
 		value = (value >> xstat->shift) & xstat->mask;
 
-		values[i] = value;
+		if ((mode == RTE_EVENT_DEV_XSTATS_PORT) && dev->dual_ws)
+			values[i] += value;
+		else
+			values[i] = value;
+
 		values[i] -= xstat->reset_snap[queue_port_id];
 	}
 
@@ -143,10 +165,29 @@ otx2_sso_xstats_reset(struct rte_eventdev *event_dev,
 		xstats = sso_hws_xstats;
 
 		req_rsp = otx2_mbox_alloc_msg_sso_hws_get_stats(mbox);
-		((struct sso_info_req *)req_rsp)->hws = queue_port_id;
+		((struct sso_info_req *)req_rsp)->hws = dev->dual_ws ?
+			2 * queue_port_id : queue_port_id;
 		rc = otx2_mbox_process_msg(mbox, (void **)&req_rsp);
 		if (rc < 0)
 			goto invalid_value;
+
+		if (dev->dual_ws) {
+			for (i = 0; i < n && i < xstats_mode_count; i++) {
+				xstat = &xstats[ids[i] - start_offset];
+				xstat->reset_snap[queue_port_id] = *(uint64_t *)
+					((char *)req_rsp + xstat->offset);
+				xstat->reset_snap[queue_port_id] =
+					(xstat->reset_snap[queue_port_id] >>
+						xstat->shift) & xstat->mask;
+			}
+
+			req_rsp = otx2_mbox_alloc_msg_sso_hws_get_stats(mbox);
+			((struct sso_info_req *)req_rsp)->hws =
+					(2 * queue_port_id) + 1;
+			rc = otx2_mbox_process_msg(mbox, (void **)&req_rsp);
+			if (rc < 0)
+				goto invalid_value;
+		}
 
 		break;
 	case RTE_EVENT_DEV_XSTATS_QUEUE:
@@ -174,7 +215,10 @@ otx2_sso_xstats_reset(struct rte_eventdev *event_dev,
 		value = *(uint64_t *)((char *)req_rsp + xstat->offset);
 		value = (value >> xstat->shift) & xstat->mask;
 
-		xstat->reset_snap[queue_port_id] =  value;
+		if ((mode == RTE_EVENT_DEV_XSTATS_PORT) && dev->dual_ws)
+			xstat->reset_snap[queue_port_id] += value;
+		else
+			xstat->reset_snap[queue_port_id] =  value;
 	}
 	return i;
 invalid_value:
