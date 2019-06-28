@@ -38,6 +38,42 @@
 #define SSO_LF_GGRP_AQ_THR                  (0x1e0ull)
 #define SSO_LF_GGRP_MISC_CNT                (0x200ull)
 
+/* SSOW LF register offsets (BAR2) */
+#define SSOW_LF_GWS_LINKS                   (0x10ull)
+#define SSOW_LF_GWS_PENDWQP                 (0x40ull)
+#define SSOW_LF_GWS_PENDSTATE               (0x50ull)
+#define SSOW_LF_GWS_NW_TIM                  (0x70ull)
+#define SSOW_LF_GWS_GRPMSK_CHG              (0x80ull)
+#define SSOW_LF_GWS_INT                     (0x100ull)
+#define SSOW_LF_GWS_INT_W1S                 (0x108ull)
+#define SSOW_LF_GWS_INT_ENA_W1S             (0x110ull)
+#define SSOW_LF_GWS_INT_ENA_W1C             (0x118ull)
+#define SSOW_LF_GWS_TAG                     (0x200ull)
+#define SSOW_LF_GWS_WQP                     (0x210ull)
+#define SSOW_LF_GWS_SWTP                    (0x220ull)
+#define SSOW_LF_GWS_PENDTAG                 (0x230ull)
+#define SSOW_LF_GWS_OP_ALLOC_WE             (0x400ull)
+#define SSOW_LF_GWS_OP_GET_WORK             (0x600ull)
+#define SSOW_LF_GWS_OP_SWTAG_FLUSH          (0x800ull)
+#define SSOW_LF_GWS_OP_SWTAG_UNTAG          (0x810ull)
+#define SSOW_LF_GWS_OP_SWTP_CLR             (0x820ull)
+#define SSOW_LF_GWS_OP_UPD_WQP_GRP0         (0x830ull)
+#define SSOW_LF_GWS_OP_UPD_WQP_GRP1         (0x838ull)
+#define SSOW_LF_GWS_OP_DESCHED              (0x880ull)
+#define SSOW_LF_GWS_OP_DESCHED_NOSCH        (0x8c0ull)
+#define SSOW_LF_GWS_OP_SWTAG_DESCHED        (0x980ull)
+#define SSOW_LF_GWS_OP_SWTAG_NOSCHED        (0x9c0ull)
+#define SSOW_LF_GWS_OP_CLR_NSCHED0          (0xa00ull)
+#define SSOW_LF_GWS_OP_CLR_NSCHED1          (0xa08ull)
+#define SSOW_LF_GWS_OP_SWTP_SET             (0xc00ull)
+#define SSOW_LF_GWS_OP_SWTAG_NORM           (0xc10ull)
+#define SSOW_LF_GWS_OP_SWTAG_FULL0          (0xc20ull)
+#define SSOW_LF_GWS_OP_SWTAG_FULL1          (0xc28ull)
+#define SSOW_LF_GWS_OP_GWC_INVAL            (0xe00ull)
+
+#define OTX2_SSOW_GET_BASE_ADDR(_GW)        ((_GW) - SSOW_LF_GWS_OP_GET_WORK)
+
+#define NSEC2USEC(__ns)			((__ns) / 1E3)
 #define USEC2NSEC(__us)                 ((__us) * 1E3)
 
 enum otx2_sso_lf_type {
@@ -68,6 +104,29 @@ struct otx2_sso_evdev {
 	uint32_t xae_waes;
 	uint32_t xaq_buf_size;
 	uint32_t iue;
+} __rte_cache_aligned;
+
+#define OTX2_SSOGWS_OPS \
+	/* WS ops */			\
+	uintptr_t getwrk_op;		\
+	uintptr_t tag_op;		\
+	uintptr_t wqp_op;		\
+	uintptr_t swtp_op;		\
+	uintptr_t swtag_norm_op;	\
+	uintptr_t swtag_desched_op;	\
+	uint8_t cur_tt;			\
+	uint8_t cur_grp
+
+/* Event port aka GWS */
+struct otx2_ssogws {
+	/* Get Work Fastpath data */
+	OTX2_SSOGWS_OPS;
+	uint8_t swtag_req;
+	uint8_t port;
+	/* Add Work Fastpath data */
+	uint64_t xaq_lmt __rte_cache_aligned;
+	uint64_t *fc_mem;
+	uintptr_t grps_base[OTX2_SSO_MAX_VHGRP];
 } __rte_cache_aligned;
 
 static inline struct otx2_sso_evdev *

@@ -145,10 +145,27 @@ sso_lf_cfg(struct otx2_sso_evdev *dev, struct otx2_mbox *mbox,
 }
 
 static void
+otx2_sso_port_release(void *port)
+{
+	rte_free(port);
+}
+
+static void
 otx2_sso_queue_release(struct rte_eventdev *event_dev, uint8_t queue_id)
 {
 	RTE_SET_USED(event_dev);
 	RTE_SET_USED(queue_id);
+}
+
+static void
+sso_set_port_ops(struct otx2_ssogws *ws, uintptr_t base)
+{
+	ws->tag_op		= base + SSOW_LF_GWS_TAG;
+	ws->wqp_op		= base + SSOW_LF_GWS_WQP;
+	ws->getwrk_op		= base + SSOW_LF_GWS_OP_GET_WORK;
+	ws->swtp_op		= base + SSOW_LF_GWS_SWTP;
+	ws->swtag_norm_op	= base + SSOW_LF_GWS_OP_SWTAG_NORM;
+	ws->swtag_desched_op	= base + SSOW_LF_GWS_OP_SWTAG_DESCHED;
 }
 
 static int
@@ -157,7 +174,7 @@ sso_configure_ports(const struct rte_eventdev *event_dev)
 	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
 	struct otx2_mbox *mbox = dev->mbox;
 	uint8_t nb_lf;
-	int rc;
+	int i, rc;
 
 	otx2_sso_dbg("Configuring event ports %d", dev->nb_event_ports);
 
@@ -173,6 +190,40 @@ sso_configure_ports(const struct rte_eventdev *event_dev)
 		sso_hw_lf_cfg(mbox, SSO_LF_GWS, nb_lf, false);
 		otx2_err("Failed to init SSO GWS LF");
 		return -ENODEV;
+	}
+
+	for (i = 0; i < nb_lf; i++) {
+		struct otx2_ssogws *ws;
+		uintptr_t base;
+
+		/* Free memory prior to re-allocation if needed */
+		if (event_dev->data->ports[i] != NULL) {
+			ws = event_dev->data->ports[i];
+			rte_free(ws);
+			ws = NULL;
+		}
+
+		/* Allocate event port memory */
+		ws = rte_zmalloc_socket("otx2_sso_ws",
+					sizeof(struct otx2_ssogws),
+					RTE_CACHE_LINE_SIZE,
+					event_dev->data->socket_id);
+		if (ws == NULL) {
+			otx2_err("Failed to alloc memory for port=%d", i);
+			rc = -ENOMEM;
+			break;
+		}
+
+		ws->port = i;
+		base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | i << 12);
+		sso_set_port_ops(ws, base);
+
+		event_dev->data->ports[i] = ws;
+	}
+
+	if (rc < 0) {
+		sso_lf_cfg(dev, mbox, SSO_LF_GWS, nb_lf, false);
+		sso_hw_lf_cfg(mbox, SSO_LF_GWS, nb_lf, false);
 	}
 
 	return rc;
@@ -459,6 +510,60 @@ otx2_sso_queue_setup(struct rte_eventdev *event_dev, uint8_t queue_id,
 	return 0;
 }
 
+static void
+otx2_sso_port_def_conf(struct rte_eventdev *event_dev, uint8_t port_id,
+		       struct rte_event_port_conf *port_conf)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+
+	RTE_SET_USED(port_id);
+	port_conf->new_event_threshold = dev->max_num_events;
+	port_conf->dequeue_depth = 1;
+	port_conf->enqueue_depth = 1;
+}
+
+static int
+otx2_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
+		    const struct rte_event_port_conf *port_conf)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	uintptr_t grps_base[OTX2_SSO_MAX_VHGRP] = {0};
+	uint64_t val;
+	uint16_t q;
+
+	sso_func_trace("Port=%d", port_id);
+	RTE_SET_USED(port_conf);
+
+	if (event_dev->data->ports[port_id] == NULL) {
+		otx2_err("Invalid port Id %d", port_id);
+		return -EINVAL;
+	}
+
+	for (q = 0; q < dev->nb_event_queues; q++) {
+		grps_base[q] = dev->bar2 + (RVU_BLOCK_ADDR_SSO << 20 | q << 12);
+		if (grps_base[q] == 0) {
+			otx2_err("Failed to get grp[%d] base addr", q);
+			return -EINVAL;
+		}
+	}
+
+	/* Set get_work timeout for HWS */
+	val = NSEC2USEC(dev->deq_tmo_ns) - 1;
+
+	struct otx2_ssogws *ws = event_dev->data->ports[port_id];
+	uintptr_t base = OTX2_SSOW_GET_BASE_ADDR(ws->getwrk_op);
+
+	rte_memcpy(ws->grps_base, grps_base,
+		   sizeof(uintptr_t) * OTX2_SSO_MAX_VHGRP);
+	ws->fc_mem = dev->fc_mem;
+	ws->xaq_lmt = dev->xaq_lmt;
+	otx2_write64(val, base + SSOW_LF_GWS_NW_TIM);
+
+	otx2_sso_dbg("Port=%d ws=%p", port_id, event_dev->data->ports[port_id]);
+
+	return 0;
+}
+
 /* Initialize and register event driver with DPDK Application */
 static struct rte_eventdev_ops otx2_sso_ops = {
 	.dev_infos_get    = otx2_sso_info_get,
@@ -466,6 +571,9 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.queue_def_conf   = otx2_sso_queue_def_conf,
 	.queue_setup      = otx2_sso_queue_setup,
 	.queue_release    = otx2_sso_queue_release,
+	.port_def_conf    = otx2_sso_port_def_conf,
+	.port_setup       = otx2_sso_port_setup,
+	.port_release     = otx2_sso_port_release,
 };
 
 #define OTX2_SSO_XAE_CNT	"xae_cnt"
