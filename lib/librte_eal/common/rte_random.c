@@ -189,14 +189,13 @@ __rte_random_initial_seed(void)
 		return ge_seed;
 #endif
 #ifdef RTE_MACHINE_CPUFLAG_RDSEED
-	unsigned int rdseed_rc;
-	unsigned long long rdseed_seed;
+	unsigned int rdseed_low;
+	unsigned int rdseed_high;
 
 	/* first fallback: rdseed instruction, if available */
-	rdseed_rc = _rdseed64_step(&rdseed_seed);
-
-	if (rdseed_rc == 1)
-		return (uint64_t)rdseed_seed;
+	if (_rdseed32_step(&rdseed_low) == 1 &&
+	    _rdseed32_step(&rdseed_high) == 1)
+		return (uint64_t)rdseed_low | ((uint64_t)rdseed_high << 32);
 #endif
 	/* second fallback: seed using rdtsc */
 	return rte_get_timer_cycles();
