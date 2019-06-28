@@ -11,6 +11,24 @@
 
 static struct rte_event_timer_adapter_ops otx2_tim_ops;
 
+static inline int
+tim_get_msix_offsets(void)
+{
+	struct otx2_tim_evdev *dev = tim_priv_get();
+	struct otx2_mbox *mbox = dev->mbox;
+	struct msix_offset_rsp *msix_rsp;
+	int i, rc;
+
+	/* Get TIM MSIX vector offsets */
+	otx2_mbox_alloc_msg_msix_offset(mbox);
+	rc = otx2_mbox_process_msg(mbox, (void *)&msix_rsp);
+
+	for (i = 0; i < dev->nb_rings; i++)
+		dev->tim_msixoff[i] = msix_rsp->timlf_msixoff[i];
+
+	return rc;
+}
+
 static void
 tim_optimze_bkt_param(struct otx2_tim_ring *tim_ring)
 {
@@ -289,6 +307,10 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	tim_ring->base = dev->bar2 +
 		(RVU_BLOCK_ADDR_TIM << 20 | tim_ring->ring_id << 12);
 
+	rc = tim_register_irq(tim_ring->ring_id);
+	if (rc < 0)
+		goto chnk_mem_err;
+
 	otx2_write64((uint64_t)tim_ring->bkt,
 		     tim_ring->base + TIM_LF_RING_BASE);
 	otx2_write64(tim_ring->aura, tim_ring->base + TIM_LF_RING_AURA);
@@ -316,6 +338,8 @@ otx2_tim_ring_free(struct rte_event_timer_adapter *adptr)
 
 	if (dev == NULL)
 		return -ENODEV;
+
+	tim_unregister_irq(tim_ring->ring_id);
 
 	req = otx2_mbox_alloc_msg_tim_lf_free(dev->mbox);
 	req->ring = tim_ring->ring_id;
@@ -380,6 +404,7 @@ void
 otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev)
 {
 	struct rsrc_attach_req *atch_req;
+	struct rsrc_detach_req *dtch_req;
 	struct free_rsrcs_rsp *rsrc_cnt;
 	const struct rte_memzone *mz;
 	struct otx2_tim_evdev *dev;
@@ -427,6 +452,12 @@ otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev)
 		goto mz_free;
 	}
 
+	rc = tim_get_msix_offsets();
+	if (rc < 0) {
+		otx2_err("Unable to get MSIX offsets for TIM.");
+		goto detach;
+	}
+
 	if (dev->chunk_slots &&
 	    dev->chunk_slots <= OTX2_TIM_MAX_CHUNK_SLOTS &&
 	    dev->chunk_slots >= OTX2_TIM_MIN_CHUNK_SLOTS) {
@@ -438,6 +469,12 @@ otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev)
 
 	return;
 
+detach:
+	dtch_req = otx2_mbox_alloc_msg_detach_resources(dev->mbox);
+	dtch_req->partial = true;
+	dtch_req->timlfs = true;
+
+	otx2_mbox_process(dev->mbox);
 mz_free:
 	rte_memzone_free(mz);
 }

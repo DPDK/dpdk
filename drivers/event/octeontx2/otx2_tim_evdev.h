@@ -16,6 +16,14 @@
 
 #define TIM_LF_RING_AURA		(0x0)
 #define TIM_LF_RING_BASE		(0x130)
+#define TIM_LF_NRSPERR_INT		(0x200)
+#define TIM_LF_NRSPERR_INT_W1S		(0x208)
+#define TIM_LF_NRSPERR_INT_ENA_W1S	(0x210)
+#define TIM_LF_NRSPERR_INT_ENA_W1C	(0x218)
+#define TIM_LF_RAS_INT			(0x300)
+#define TIM_LF_RAS_INT_W1S		(0x308)
+#define TIM_LF_RAS_INT_ENA_W1S		(0x310)
+#define TIM_LF_RAS_INT_ENA_W1C		(0x318)
 
 #define OTX2_MAX_TIM_RINGS		(256)
 #define OTX2_TIM_MAX_BUCKETS		(0xFFFFF)
@@ -61,6 +69,8 @@ struct otx2_tim_evdev {
 	/* Dev args */
 	uint8_t disable_npa;
 	uint16_t chunk_slots;
+	/* MSIX offsets */
+	uint16_t tim_msixoff[OTX2_MAX_TIM_RINGS];
 };
 
 struct otx2_tim_ring {
@@ -102,5 +112,9 @@ int otx2_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 
 void otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev);
 void otx2_tim_fini(void);
+
+/* TIM IRQ */
+int tim_register_irq(uint16_t ring_id);
+void tim_unregister_irq(uint16_t ring_id);
 
 #endif /* __OTX2_TIM_EVDEV_H__ */
