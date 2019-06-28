@@ -2,7 +2,11 @@
  * Copyright(c) 2019 Ericsson AB
  */
 
+#ifdef RTE_MACHINE_CPUFLAG_RDSEED
+#include <x86intrin.h>
+#endif
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <rte_branch_prediction.h>
 #include <rte_cycles.h>
@@ -133,7 +137,37 @@ rte_rand(void)
 	return __rte_rand_lfsr258(state);
 }
 
+static uint64_t
+__rte_random_initial_seed(void)
+{
+#ifdef RTE_LIBEAL_USE_GETENTROPY
+	int ge_rc;
+	uint64_t ge_seed;
+
+	ge_rc = getentropy(&ge_seed, sizeof(ge_seed));
+
+	if (ge_rc == 0)
+		return ge_seed;
+#endif
+#ifdef RTE_MACHINE_CPUFLAG_RDSEED
+	unsigned int rdseed_rc;
+	unsigned long long rdseed_seed;
+
+	/* first fallback: rdseed instruction, if available */
+	rdseed_rc = _rdseed64_step(&rdseed_seed);
+
+	if (rdseed_rc == 1)
+		return (uint64_t)rdseed_seed;
+#endif
+	/* second fallback: seed using rdtsc */
+	return rte_get_timer_cycles();
+}
+
 RTE_INIT(rte_rand_init)
 {
-	rte_srand(rte_get_timer_cycles());
+	uint64_t seed;
+
+	seed = __rte_random_initial_seed();
+
+	rte_srand(seed);
 }
