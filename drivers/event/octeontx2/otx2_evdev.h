@@ -62,6 +62,8 @@ struct otx2_sso_evdev {
 	uint64_t nb_xaq_cfg;
 	rte_iova_t fc_iova;
 	struct rte_mempool *xaq_pool;
+	/* Dev args */
+	uint32_t xae_cnt;
 	/* HW const */
 	uint32_t xae_waes;
 	uint32_t xaq_buf_size;
@@ -72,6 +74,15 @@ static inline struct otx2_sso_evdev *
 sso_pmd_priv(const struct rte_eventdev *event_dev)
 {
 	return event_dev->data->dev_private;
+}
+
+static inline int
+parse_kvargs_value(const char *key, const char *value, void *opaque)
+{
+	RTE_SET_USED(key);
+
+	*(uint32_t *)opaque = (uint32_t)atoi(value);
+	return 0;
 }
 
 /* Init and Fini API's */

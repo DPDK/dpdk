@@ -46,6 +46,18 @@ The following option can be modified in the ``config`` file.
 
   Toggle compilation of the ``librte_pmd_octeontx2_event`` driver.
 
+Runtime Config Options
+~~~~~~~~~~~~~~~~~~~~~~
+
+- ``Maximum number of in-flight events`` (default ``8192``)
+
+  In **Marvell OCTEON TX2** the max number of in-flight events are only limited
+  by DRAM size, the ``xae_cnt`` devargs parameter is introduced to provide
+  upper limit for in-flight events.
+  For example::
+
+    --dev "0002:0e:00.0,xae_cnt=16384"
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 

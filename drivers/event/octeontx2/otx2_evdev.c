@@ -8,6 +8,7 @@
 #include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_eventdev_pmd_pci.h>
+#include <rte_kvargs.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_pci.h>
 
@@ -245,7 +246,10 @@ sso_xaq_allocate(struct otx2_sso_evdev *dev)
 
 	/* Taken from HRM 14.3.3(4) */
 	xaq_cnt = dev->nb_event_queues * OTX2_SSO_XAQ_CACHE_CNT;
-	xaq_cnt += (dev->iue / dev->xae_waes) +
+	if (dev->xae_cnt)
+		xaq_cnt += dev->xae_cnt / dev->xae_waes;
+	else
+		xaq_cnt += (dev->iue / dev->xae_waes) +
 			(OTX2_SSO_XAQ_SLACK * dev->nb_event_queues);
 
 	otx2_sso_dbg("Configuring %d xaq buffers", xaq_cnt);
@@ -464,6 +468,25 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.queue_release    = otx2_sso_queue_release,
 };
 
+#define OTX2_SSO_XAE_CNT	"xae_cnt"
+
+static void
+sso_parse_devargs(struct otx2_sso_evdev *dev, struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+
+	if (devargs == NULL)
+		return;
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return;
+
+	rte_kvargs_process(kvlist, OTX2_SSO_XAE_CNT, &parse_kvargs_value,
+			   &dev->xae_cnt);
+
+	rte_kvargs_free(kvlist);
+}
+
 static int
 otx2_sso_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
@@ -553,6 +576,8 @@ otx2_sso_init(struct rte_eventdev *event_dev)
 		goto otx2_npa_lf_uninit;
 	}
 
+	sso_parse_devargs(dev, pci_dev->device.devargs);
+
 	otx2_sso_pf_func_set(dev->pf_func);
 	otx2_sso_dbg("Initializing %s max_queues=%d max_ports=%d",
 		     event_dev->data->name, dev->max_event_queues,
@@ -601,3 +626,4 @@ dev_fini:
 RTE_PMD_REGISTER_PCI(event_octeontx2, pci_sso);
 RTE_PMD_REGISTER_PCI_TABLE(event_octeontx2, pci_sso_map);
 RTE_PMD_REGISTER_KMOD_DEP(event_octeontx2, "vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(event_octeontx2, OTX2_SSO_XAE_CNT "=<int>");
