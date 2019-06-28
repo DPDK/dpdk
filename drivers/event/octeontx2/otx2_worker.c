@@ -82,6 +82,61 @@ otx2_ssogws_release_event(struct otx2_ssogws *ws)
 }
 
 uint16_t __hot
+otx2_ssogws_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
+{
+	struct otx2_ssogws *ws = port;
+
+	RTE_SET_USED(timeout_ticks);
+
+	if (ws->swtag_req) {
+		ws->swtag_req = 0;
+		otx2_ssogws_swtag_wait(ws);
+		return 1;
+	}
+
+	return otx2_ssogws_get_work(ws, ev);
+}
+
+uint16_t __hot
+otx2_ssogws_deq_burst(void *port, struct rte_event ev[], uint16_t nb_events,
+		      uint64_t timeout_ticks)
+{
+	RTE_SET_USED(nb_events);
+
+	return otx2_ssogws_deq(port, ev, timeout_ticks);
+}
+
+uint16_t __hot
+otx2_ssogws_deq_timeout(void *port, struct rte_event *ev,
+			uint64_t timeout_ticks)
+{
+	struct otx2_ssogws *ws = port;
+	uint16_t ret = 1;
+	uint64_t iter;
+
+	if (ws->swtag_req) {
+		ws->swtag_req = 0;
+		otx2_ssogws_swtag_wait(ws);
+		return ret;
+	}
+
+	ret = otx2_ssogws_get_work(ws, ev);
+	for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)
+		ret = otx2_ssogws_get_work(ws, ev);
+
+	return ret;
+}
+
+uint16_t __hot
+otx2_ssogws_deq_timeout_burst(void *port, struct rte_event ev[],
+			      uint16_t nb_events, uint64_t timeout_ticks)
+{
+	RTE_SET_USED(nb_events);
+
+	return otx2_ssogws_deq_timeout(port, ev, timeout_ticks);
+}
+
+uint16_t __hot
 otx2_ssogws_enq(void *port, const struct rte_event *ev)
 {
 	struct otx2_ssogws *ws = port;
