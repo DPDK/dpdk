@@ -15,6 +15,7 @@
 #include "otx2_evdev_stats.h"
 #include "otx2_evdev.h"
 #include "otx2_irq.h"
+#include "otx2_tim_evdev.h"
 
 static inline int
 sso_get_msix_offsets(const struct rte_eventdev *event_dev)
@@ -1310,6 +1311,7 @@ otx2_sso_init(struct rte_eventdev *event_dev)
 		event_dev->dev_ops->dev_selftest();
 	}
 
+	otx2_tim_init(pci_dev, (struct otx2_dev *)dev);
 
 	return 0;
 
@@ -1345,6 +1347,7 @@ dev_fini:
 		return -EAGAIN;
 	}
 
+	otx2_tim_fini();
 	otx2_dev_fini(pci_dev, dev);
 
 	return 0;

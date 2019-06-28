@@ -28,6 +28,10 @@ Features of the OCTEON TX2 SSO PMD are:
 - Open system with configurable amount of outstanding events limited only by
   DRAM
 - HW accelerated dequeue timeout support to enable power management
+- HW managed event timers support through TIM, with high precision and
+  time granularity of 2.5us.
+- Up to 256 TIM rings aka event timer adapters.
+- Up to 8 rings traversed in parallel.
 
 Prerequisites and Compilation procedure
 ---------------------------------------
@@ -101,4 +105,6 @@ Debugging Options
    | # | Component  | EAL log command                                       |
    +===+============+=======================================================+
    | 1 | SSO        | --log-level='pmd\.event\.octeontx2,8'                 |
+   +---+------------+-------------------------------------------------------+
+   | 2 | TIM        | --log-level='pmd\.event\.octeontx2\.timer,8'          |
    +---+------------+-------------------------------------------------------+
