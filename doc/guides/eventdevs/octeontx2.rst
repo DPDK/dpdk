@@ -103,6 +103,17 @@ Runtime Config Options
 
     --dev "0002:0e:00.0,tim_disable_npa=1"
 
+- ``TIM modify chunk slots``
+
+  The ``tim_chnk_slots`` devargs can be used to modify number of chunk slots.
+  Chunks are used to store event timers, a chunk can be visualised as an array
+  where the last element points to the next chunk and rest of them are used to
+  store events. TIM traverses the list of chunks and enqueues the event timers
+  to SSO. The default value is 255 and the max value is 4095.
+  For example::
+
+    --dev "0002:0e:00.0,tim_chnk_slots=1023"
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 

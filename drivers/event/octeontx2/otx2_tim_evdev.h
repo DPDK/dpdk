@@ -22,6 +22,8 @@
 #define OTX2_TIM_RING_DEF_CHUNK_SZ	(4096)
 #define OTX2_TIM_CHUNK_ALIGNMENT	(16)
 #define OTX2_TIM_NB_CHUNK_SLOTS(sz)	(((sz) / OTX2_TIM_CHUNK_ALIGNMENT) - 1)
+#define OTX2_TIM_MIN_CHUNK_SLOTS	(0x1)
+#define OTX2_TIM_MAX_CHUNK_SLOTS	(0x1FFE)
 #define OTX2_TIM_MIN_TMO_TKS		(256)
 
 enum otx2_tim_clk_src {
@@ -54,9 +56,11 @@ struct otx2_tim_evdev {
 	struct rte_eventdev *event_dev;
 	struct otx2_mbox *mbox;
 	uint16_t nb_rings;
+	uint32_t chunk_sz;
 	uintptr_t bar2;
 	/* Dev args */
 	uint8_t disable_npa;
+	uint16_t chunk_slots;
 };
 
 struct otx2_tim_ring {

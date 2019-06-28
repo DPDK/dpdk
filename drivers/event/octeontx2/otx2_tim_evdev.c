@@ -240,7 +240,7 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	tim_ring->tck_nsec = RTE_ALIGN_MUL_CEIL(rcfg->timer_tick_ns, 10);
 	tim_ring->max_tout = rcfg->max_tmo_ns;
 	tim_ring->nb_bkts = (tim_ring->max_tout / tim_ring->tck_nsec);
-	tim_ring->chunk_sz = OTX2_TIM_RING_DEF_CHUNK_SZ;
+	tim_ring->chunk_sz = dev->chunk_sz;
 	nb_timers = rcfg->nb_timers;
 	tim_ring->disable_npa = dev->disable_npa;
 
@@ -356,6 +356,7 @@ otx2_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 }
 
 #define OTX2_TIM_DISABLE_NPA	"tim_disable_npa"
+#define OTX2_TIM_CHNK_SLOTS	"tim_chnk_slots"
 
 static void
 tim_parse_devargs(struct rte_devargs *devargs, struct otx2_tim_evdev *dev)
@@ -371,6 +372,8 @@ tim_parse_devargs(struct rte_devargs *devargs, struct otx2_tim_evdev *dev)
 
 	rte_kvargs_process(kvlist, OTX2_TIM_DISABLE_NPA,
 			   &parse_kvargs_flag, &dev->disable_npa);
+	rte_kvargs_process(kvlist, OTX2_TIM_CHNK_SLOTS,
+			   &parse_kvargs_value, &dev->chunk_slots);
 }
 
 void
@@ -422,6 +425,15 @@ otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev)
 	if (rc < 0) {
 		otx2_err("Unable to attach TIM rings.");
 		goto mz_free;
+	}
+
+	if (dev->chunk_slots &&
+	    dev->chunk_slots <= OTX2_TIM_MAX_CHUNK_SLOTS &&
+	    dev->chunk_slots >= OTX2_TIM_MIN_CHUNK_SLOTS) {
+		dev->chunk_sz = (dev->chunk_slots + 1) *
+			OTX2_TIM_CHUNK_ALIGNMENT;
+	} else {
+		dev->chunk_sz = OTX2_TIM_RING_DEF_CHUNK_SZ;
 	}
 
 	return;
