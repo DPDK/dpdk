@@ -1092,6 +1092,8 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.port_unlink      = otx2_sso_port_unlink,
 	.timeout_ticks    = otx2_sso_timeout_ticks,
 
+	.timer_adapter_caps_get = otx2_tim_caps_get,
+
 	.xstats_get       = otx2_sso_xstats_get,
 	.xstats_reset     = otx2_sso_xstats_reset,
 	.xstats_get_names = otx2_sso_xstats_get_names,

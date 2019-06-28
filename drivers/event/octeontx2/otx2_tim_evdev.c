@@ -5,6 +5,25 @@
 #include "otx2_evdev.h"
 #include "otx2_tim_evdev.h"
 
+int
+otx2_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
+		  uint32_t *caps,
+		  const struct rte_event_timer_adapter_ops **ops)
+{
+	struct otx2_tim_evdev *dev = tim_priv_get();
+
+	RTE_SET_USED(flags);
+	RTE_SET_USED(ops);
+	if (dev == NULL)
+		return -ENODEV;
+
+	/* Store evdev pointer for later use. */
+	dev->event_dev = (struct rte_eventdev *)(uintptr_t)evdev;
+	*caps = RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT;
+
+	return 0;
+}
+
 void
 otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev)
 {
