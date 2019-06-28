@@ -30,6 +30,23 @@ tim_get_msix_offsets(void)
 }
 
 static void
+tim_set_fp_ops(struct otx2_tim_ring *tim_ring)
+{
+	uint8_t prod_flag = !tim_ring->prod_type_sp;
+
+	/* [MOD/AND] [DFB/FB] [SP][MP]*/
+	const rte_event_timer_arm_burst_t arm_burst[2][2][2] = {
+#define FP(_name,  _f3, _f2, _f1, flags) \
+		[_f3][_f2][_f1] = otx2_tim_arm_burst_ ## _name,
+TIM_ARM_FASTPATH_MODES
+#undef FP
+	};
+
+	otx2_tim_ops.arm_burst = arm_burst[tim_ring->optimized]
+				[tim_ring->ena_dfb][prod_flag];
+}
+
+static void
 otx2_tim_ring_info_get(const struct rte_event_timer_adapter *adptr,
 		       struct rte_event_timer_adapter_info *adptr_info)
 {
@@ -326,6 +343,9 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	otx2_write64((uint64_t)tim_ring->bkt,
 		     tim_ring->base + TIM_LF_RING_BASE);
 	otx2_write64(tim_ring->aura, tim_ring->base + TIM_LF_RING_AURA);
+
+	/* Set fastpath ops. */
+	tim_set_fp_ops(tim_ring);
 
 	/* Update SSO xae count. */
 	sso_updt_xae_cnt(sso_pmd_priv(dev->event_dev), (void *)&nb_timers,

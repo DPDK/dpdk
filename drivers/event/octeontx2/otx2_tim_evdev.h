@@ -7,6 +7,7 @@
 
 #include <rte_event_timer_adapter.h>
 #include <rte_event_timer_adapter_pmd.h>
+#include <rte_reciprocal.h>
 
 #include "otx2_dev.h"
 
@@ -70,6 +71,13 @@
 #define OTX2_TIM_MAX_CHUNK_SLOTS	(0x1FFE)
 #define OTX2_TIM_MIN_TMO_TKS		(256)
 
+#define OTX2_TIM_SP             0x1
+#define OTX2_TIM_MP             0x2
+#define OTX2_TIM_BKT_AND        0x4
+#define OTX2_TIM_BKT_MOD        0x8
+#define OTX2_TIM_ENA_FB         0x10
+#define OTX2_TIM_ENA_DFB        0x20
+
 enum otx2_tim_clk_src {
 	OTX2_TIM_CLK_SRC_10NS = RTE_EVENT_TIMER_ADAPTER_CPU_CLK,
 	OTX2_TIM_CLK_SRC_GPIO = RTE_EVENT_TIMER_ADAPTER_EXT_CLK0,
@@ -95,6 +103,11 @@ struct otx2_tim_bkt {
 	uint64_t pad;
 } __rte_packed __rte_aligned(32);
 
+struct otx2_tim_ent {
+	uint64_t w0;
+	uint64_t wqe;
+} __rte_packed;
+
 struct otx2_tim_evdev {
 	struct rte_pci_device *pci_dev;
 	struct rte_eventdev *event_dev;
@@ -111,8 +124,10 @@ struct otx2_tim_evdev {
 
 struct otx2_tim_ring {
 	uintptr_t base;
+	struct rte_reciprocal_u64 fast_div;
 	uint16_t nb_chunk_slots;
 	uint32_t nb_bkts;
+	uint64_t ring_start_cyc;
 	struct otx2_tim_bkt *bkt;
 	struct rte_mempool *chunk_pool;
 	uint64_t tck_int;
@@ -141,6 +156,24 @@ tim_priv_get(void)
 
 	return mz->addr;
 }
+
+#define TIM_ARM_FASTPATH_MODES						  \
+FP(mod_sp,    0, 0, 0, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_DFB | OTX2_TIM_SP) \
+FP(mod_mp,    0, 0, 1, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_DFB | OTX2_TIM_MP) \
+FP(mod_fb_sp, 0, 1, 0, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_FB  | OTX2_TIM_SP) \
+FP(mod_fb_mp, 0, 1, 1, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_FB  | OTX2_TIM_MP) \
+FP(and_sp,    1, 0, 0, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_DFB | OTX2_TIM_SP) \
+FP(and_mp,    1, 0, 1, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_DFB | OTX2_TIM_MP) \
+FP(and_fb_sp, 1, 1, 0, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_FB  | OTX2_TIM_SP) \
+FP(and_fb_mp, 1, 1, 1, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_FB  | OTX2_TIM_MP) \
+
+#define FP(_name, _f3, _f2, _f1, flags)					  \
+uint16_t otx2_tim_arm_burst_ ## _name(					  \
+			const struct rte_event_timer_adapter *adptr,	  \
+				      struct rte_event_timer **tim,	  \
+				      const uint16_t nb_timers);
+TIM_ARM_FASTPATH_MODES
+#undef FP
 
 int otx2_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		      uint32_t *caps,
