@@ -315,6 +315,11 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		     tim_ring->base + TIM_LF_RING_BASE);
 	otx2_write64(tim_ring->aura, tim_ring->base + TIM_LF_RING_AURA);
 
+	/* Update SSO xae count. */
+	sso_updt_xae_cnt(sso_pmd_priv(dev->event_dev), (void *)&nb_timers,
+			 RTE_EVENT_TYPE_TIMER);
+	sso_xae_reconfigure(dev->event_dev);
+
 	return rc;
 
 chnk_mem_err:

@@ -129,6 +129,7 @@ struct otx2_sso_evdev {
 	uint64_t nb_xaq_cfg;
 	rte_iova_t fc_iova;
 	struct rte_mempool *xaq_pool;
+	uint32_t adptr_xae_cnt;
 	/* Dev args */
 	uint8_t dual_ws;
 	uint8_t selftest;
@@ -243,6 +244,10 @@ uint16_t otx2_ssogws_dual_deq_timeout(void *port, struct rte_event *ev,
 uint16_t otx2_ssogws_dual_deq_timeout_burst(void *port, struct rte_event ev[],
 					    uint16_t nb_events,
 					    uint64_t timeout_ticks);
+
+void sso_updt_xae_cnt(struct otx2_sso_evdev *dev, void *data,
+		      uint32_t event_type);
+int sso_xae_reconfigure(struct rte_eventdev *event_dev);
 void sso_fastpath_fns_set(struct rte_eventdev *event_dev);
 /* Clean up API's */
 typedef void (*otx2_handle_event_t)(void *arg, struct rte_event ev);

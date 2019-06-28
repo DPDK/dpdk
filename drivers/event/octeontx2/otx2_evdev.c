@@ -529,6 +529,9 @@ sso_xaq_allocate(struct otx2_sso_evdev *dev)
 	xaq_cnt = dev->nb_event_queues * OTX2_SSO_XAQ_CACHE_CNT;
 	if (dev->xae_cnt)
 		xaq_cnt += dev->xae_cnt / dev->xae_waes;
+	else if (dev->adptr_xae_cnt)
+		xaq_cnt += (dev->adptr_xae_cnt / dev->xae_waes) +
+			(OTX2_SSO_XAQ_SLACK * dev->nb_event_queues);
 	else
 		xaq_cnt += (dev->iue / dev->xae_waes) +
 			(OTX2_SSO_XAQ_SLACK * dev->nb_event_queues);
@@ -1028,6 +1031,34 @@ sso_cleanup(struct rte_eventdev *event_dev, uint8_t enable)
 	/* reset SSO GWS cache */
 	otx2_mbox_alloc_msg_sso_ws_cache_inv(dev->mbox);
 	otx2_mbox_process(dev->mbox);
+}
+
+int
+sso_xae_reconfigure(struct rte_eventdev *event_dev)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	struct rte_mempool *prev_xaq_pool;
+	int rc = 0;
+
+	if (event_dev->data->dev_started)
+		sso_cleanup(event_dev, 0);
+
+	prev_xaq_pool = dev->xaq_pool;
+	dev->xaq_pool = NULL;
+	sso_xaq_allocate(dev);
+	rc = sso_ggrp_alloc_xaq(dev);
+	if (rc < 0) {
+		otx2_err("Failed to alloc xaq to ggrp %d", rc);
+		rte_mempool_free(prev_xaq_pool);
+		return rc;
+	}
+
+	rte_mempool_free(prev_xaq_pool);
+	rte_mb();
+	if (event_dev->data->dev_started)
+		sso_cleanup(event_dev, 1);
+
+	return 0;
 }
 
 static int
