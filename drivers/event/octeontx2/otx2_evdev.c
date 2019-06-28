@@ -13,6 +13,29 @@
 #include <rte_pci.h>
 
 #include "otx2_evdev.h"
+#include "otx2_irq.h"
+
+static inline int
+sso_get_msix_offsets(const struct rte_eventdev *event_dev)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	uint8_t nb_ports = dev->nb_event_ports;
+	struct otx2_mbox *mbox = dev->mbox;
+	struct msix_offset_rsp *msix_rsp;
+	int i, rc;
+
+	/* Get SSO and SSOW MSIX vector offsets */
+	otx2_mbox_alloc_msg_msix_offset(mbox);
+	rc = otx2_mbox_process_msg(mbox, (void *)&msix_rsp);
+
+	for (i = 0; i < nb_ports; i++)
+		dev->ssow_msixoff[i] = msix_rsp->ssow_msixoff[i];
+
+	for (i = 0; i < dev->nb_event_queues; i++)
+		dev->sso_msixoff[i] = msix_rsp->sso_msixoff[i];
+
+	return rc;
+}
 
 static void
 otx2_sso_info_get(struct rte_eventdev *event_dev,
@@ -491,6 +514,9 @@ otx2_sso_configure(const struct rte_eventdev *event_dev)
 		return -EINVAL;
 	}
 
+	if (dev->configured)
+		sso_unregister_irqs(event_dev);
+
 	if (dev->nb_event_queues) {
 		/* Finit any previous queues. */
 		sso_lf_teardown(dev, SSO_LF_GGRP);
@@ -524,6 +550,18 @@ otx2_sso_configure(const struct rte_eventdev *event_dev)
 	rc = sso_ggrp_alloc_xaq(dev);
 	if (rc < 0) {
 		otx2_err("Failed to alloc xaq to ggrp %d", rc);
+		goto teardown_hwggrp;
+	}
+
+	rc = sso_get_msix_offsets(event_dev);
+	if (rc < 0) {
+		otx2_err("Failed to get msix offsets %d", rc);
+		goto teardown_hwggrp;
+	}
+
+	rc = sso_register_irqs(event_dev);
+	if (rc < 0) {
+		otx2_err("Failed to register irq %d", rc);
 		goto teardown_hwggrp;
 	}
 

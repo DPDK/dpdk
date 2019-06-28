@@ -2,7 +2,9 @@
 # Copyright(C) 2019 Marvell International Ltd.
 #
 
-sources = files('otx2_evdev.c')
+sources = files('otx2_evdev.c',
+		'otx2_evdev_irq.c',
+		)
 
 allow_experimental_apis = true
 

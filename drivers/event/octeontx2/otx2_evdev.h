@@ -105,6 +105,9 @@ struct otx2_sso_evdev {
 	uint32_t xae_waes;
 	uint32_t xaq_buf_size;
 	uint32_t iue;
+	/* MSIX offsets */
+	uint16_t sso_msixoff[OTX2_SSO_MAX_VHGRP];
+	uint16_t ssow_msixoff[OTX2_SSO_MAX_VHWS];
 } __rte_cache_aligned;
 
 #define OTX2_SSOGWS_OPS \
@@ -148,5 +151,8 @@ parse_kvargs_value(const char *key, const char *value, void *opaque)
 /* Init and Fini API's */
 int otx2_sso_init(struct rte_eventdev *event_dev);
 int otx2_sso_fini(struct rte_eventdev *event_dev);
+/* IRQ handlers */
+int sso_register_irqs(const struct rte_eventdev *event_dev);
+void sso_unregister_irqs(const struct rte_eventdev *event_dev);
 
 #endif /* __OTX2_EVDEV_H__ */

@@ -34,6 +34,7 @@ LIBABIVER := 1
 #
 
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_EVENTDEV) += otx2_evdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_EVENTDEV) += otx2_evdev_irq.c
 
 LDLIBS += -lrte_eal -lrte_bus_pci -lrte_pci -lrte_kvargs
 LDLIBS += -lrte_mempool -lrte_eventdev -lrte_mbuf
