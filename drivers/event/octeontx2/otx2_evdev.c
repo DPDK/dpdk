@@ -12,6 +12,7 @@
 #include <rte_mbuf_pool_ops.h>
 #include <rte_pci.h>
 
+#include "otx2_evdev_stats.h"
 #include "otx2_evdev.h"
 #include "otx2_irq.h"
 
@@ -762,6 +763,10 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.port_link        = otx2_sso_port_link,
 	.port_unlink      = otx2_sso_port_unlink,
 	.timeout_ticks    = otx2_sso_timeout_ticks,
+
+	.xstats_get       = otx2_sso_xstats_get,
+	.xstats_reset     = otx2_sso_xstats_reset,
+	.xstats_get_names = otx2_sso_xstats_get_names,
 
 	.dump             = otx2_sso_dump,
 };
