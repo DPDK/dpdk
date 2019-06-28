@@ -379,6 +379,69 @@ rng_mem_err:
 }
 
 static int
+otx2_tim_ring_start(const struct rte_event_timer_adapter *adptr)
+{
+	struct otx2_tim_ring *tim_ring = adptr->data->adapter_priv;
+	struct otx2_tim_evdev *dev = tim_priv_get();
+	struct tim_enable_rsp *rsp;
+	struct tim_ring_req *req;
+	int rc;
+
+	if (dev == NULL)
+		return -ENODEV;
+
+	req = otx2_mbox_alloc_msg_tim_enable_ring(dev->mbox);
+	req->ring = tim_ring->ring_id;
+
+	rc = otx2_mbox_process_msg(dev->mbox, (void **)&rsp);
+	if (rc < 0) {
+		tim_err_desc(rc);
+		goto fail;
+	}
+#ifdef RTE_ARM_EAL_RDTSC_USE_PMU
+	uint64_t tenns_stmp, tenns_diff;
+	uint64_t pmu_stmp;
+
+	pmu_stmp = rte_rdtsc();
+	asm volatile("mrs %0, cntvct_el0" : "=r" (tenns_stmp));
+
+	tenns_diff = tenns_stmp - rsp->timestarted;
+	pmu_stmp = pmu_stmp - (NSEC2TICK(tenns_diff  * 10, rte_get_timer_hz()));
+	tim_ring->ring_start_cyc = pmu_stmp;
+#else
+	tim_ring->ring_start_cyc = rsp->timestarted;
+#endif
+	tim_ring->tck_int = NSEC2TICK(tim_ring->tck_nsec, rte_get_timer_hz());
+	tim_ring->fast_div = rte_reciprocal_value_u64(tim_ring->tck_int);
+
+fail:
+	return rc;
+}
+
+static int
+otx2_tim_ring_stop(const struct rte_event_timer_adapter *adptr)
+{
+	struct otx2_tim_ring *tim_ring = adptr->data->adapter_priv;
+	struct otx2_tim_evdev *dev = tim_priv_get();
+	struct tim_ring_req *req;
+	int rc;
+
+	if (dev == NULL)
+		return -ENODEV;
+
+	req = otx2_mbox_alloc_msg_tim_disable_ring(dev->mbox);
+	req->ring = tim_ring->ring_id;
+
+	rc = otx2_mbox_process(dev->mbox);
+	if (rc < 0) {
+		tim_err_desc(rc);
+		rc = -EBUSY;
+	}
+
+	return rc;
+}
+
+static int
 otx2_tim_ring_free(struct rte_event_timer_adapter *adptr)
 {
 	struct otx2_tim_ring *tim_ring = adptr->data->adapter_priv;
@@ -439,11 +502,14 @@ otx2_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 	struct otx2_tim_evdev *dev = tim_priv_get();
 
 	RTE_SET_USED(flags);
+
 	if (dev == NULL)
 		return -ENODEV;
 
 	otx2_tim_ops.init = otx2_tim_ring_create;
 	otx2_tim_ops.uninit = otx2_tim_ring_free;
+	otx2_tim_ops.start = otx2_tim_ring_start;
+	otx2_tim_ops.stop = otx2_tim_ring_stop;
 	otx2_tim_ops.get_info	= otx2_tim_ring_info_get;
 
 	if (dev->enable_stats) {
