@@ -2,6 +2,7 @@
  * Copyright(C) 2019 Marvell International Ltd.
  */
 
+#include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_mbuf_pool_ops.h>
 
@@ -77,33 +78,45 @@ tim_chnk_pool_create(struct otx2_tim_ring *tim_ring,
 	if (cache_sz > RTE_MEMPOOL_CACHE_MAX_SIZE)
 		cache_sz = RTE_MEMPOOL_CACHE_MAX_SIZE;
 
-	/* NPA need not have cache as free is not visible to SW */
-	tim_ring->chunk_pool = rte_mempool_create_empty(pool_name,
-							tim_ring->nb_chunks,
-							tim_ring->chunk_sz,
-							0, 0, rte_socket_id(),
-							mp_flags);
+	if (!tim_ring->disable_npa) {
+		/* NPA need not have cache as free is not visible to SW */
+		tim_ring->chunk_pool = rte_mempool_create_empty(pool_name,
+				tim_ring->nb_chunks, tim_ring->chunk_sz,
+				0, 0, rte_socket_id(), mp_flags);
 
-	if (tim_ring->chunk_pool == NULL) {
-		otx2_err("Unable to create chunkpool.");
-		return -ENOMEM;
-	}
+		if (tim_ring->chunk_pool == NULL) {
+			otx2_err("Unable to create chunkpool.");
+			return -ENOMEM;
+		}
 
-	rc = rte_mempool_set_ops_byname(tim_ring->chunk_pool,
-					rte_mbuf_platform_mempool_ops(), NULL);
-	if (rc < 0) {
-		otx2_err("Unable to set chunkpool ops");
-		goto free;
-	}
+		rc = rte_mempool_set_ops_byname(tim_ring->chunk_pool,
+						rte_mbuf_platform_mempool_ops(),
+						NULL);
+		if (rc < 0) {
+			otx2_err("Unable to set chunkpool ops");
+			goto free;
+		}
 
-	rc = rte_mempool_populate_default(tim_ring->chunk_pool);
-	if (rc < 0) {
-		otx2_err("Unable to set populate chunkpool.");
-		goto free;
+		rc = rte_mempool_populate_default(tim_ring->chunk_pool);
+		if (rc < 0) {
+			otx2_err("Unable to set populate chunkpool.");
+			goto free;
+		}
+		tim_ring->aura = npa_lf_aura_handle_to_aura(
+				tim_ring->chunk_pool->pool_id);
+		tim_ring->ena_dfb = 0;
+	} else {
+		tim_ring->chunk_pool = rte_mempool_create(pool_name,
+				tim_ring->nb_chunks, tim_ring->chunk_sz,
+				cache_sz, 0, NULL, NULL, NULL, NULL,
+				rte_socket_id(),
+				mp_flags);
+		if (tim_ring->chunk_pool == NULL) {
+			otx2_err("Unable to create chunkpool.");
+			return -ENOMEM;
+		}
+		tim_ring->ena_dfb = 1;
 	}
-	tim_ring->aura = npa_lf_aura_handle_to_aura(
-						tim_ring->chunk_pool->pool_id);
-	tim_ring->ena_dfb = 0;
 
 	return 0;
 
@@ -229,6 +242,8 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	tim_ring->nb_bkts = (tim_ring->max_tout / tim_ring->tck_nsec);
 	tim_ring->chunk_sz = OTX2_TIM_RING_DEF_CHUNK_SZ;
 	nb_timers = rcfg->nb_timers;
+	tim_ring->disable_npa = dev->disable_npa;
+
 	tim_ring->nb_chunks = nb_timers / OTX2_TIM_NB_CHUNK_SLOTS(
 							tim_ring->chunk_sz);
 	tim_ring->nb_chunk_slots = OTX2_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
@@ -340,6 +355,24 @@ otx2_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 	return 0;
 }
 
+#define OTX2_TIM_DISABLE_NPA	"tim_disable_npa"
+
+static void
+tim_parse_devargs(struct rte_devargs *devargs, struct otx2_tim_evdev *dev)
+{
+	struct rte_kvargs *kvlist;
+
+	if (devargs == NULL)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return;
+
+	rte_kvargs_process(kvlist, OTX2_TIM_DISABLE_NPA,
+			   &parse_kvargs_flag, &dev->disable_npa);
+}
+
 void
 otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev)
 {
@@ -364,6 +397,8 @@ otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev)
 	dev->pci_dev = pci_dev;
 	dev->mbox = cmn_dev->mbox;
 	dev->bar2 = cmn_dev->bar2;
+
+	tim_parse_devargs(pci_dev->device.devargs, dev);
 
 	otx2_mbox_alloc_msg_free_rsrc_cnt(dev->mbox);
 	rc = otx2_mbox_process_msg(dev->mbox, (void *)&rsrc_cnt);

@@ -55,6 +55,8 @@ struct otx2_tim_evdev {
 	struct otx2_mbox *mbox;
 	uint16_t nb_rings;
 	uintptr_t bar2;
+	/* Dev args */
+	uint8_t disable_npa;
 };
 
 struct otx2_tim_ring {
@@ -65,6 +67,7 @@ struct otx2_tim_ring {
 	struct rte_mempool *chunk_pool;
 	uint64_t tck_int;
 	uint8_t prod_type_sp;
+	uint8_t disable_npa;
 	uint8_t optimized;
 	uint8_t ena_dfb;
 	uint16_t ring_id;
