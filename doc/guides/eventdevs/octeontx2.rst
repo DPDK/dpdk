@@ -58,6 +58,14 @@ Runtime Config Options
 
     --dev "0002:0e:00.0,xae_cnt=16384"
 
+- ``Force legacy mode``
+
+  The ``single_ws`` devargs parameter is introduced to force legacy mode i.e
+  single workslot mode in SSO and disable the default dual workslot mode.
+  For example::
+
+    --dev "0002:0e:00.0,single_ws=1"
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 

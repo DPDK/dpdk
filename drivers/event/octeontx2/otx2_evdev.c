@@ -911,11 +911,13 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 };
 
 #define OTX2_SSO_XAE_CNT	"xae_cnt"
+#define OTX2_SSO_SINGLE_WS	"single_ws"
 
 static void
 sso_parse_devargs(struct otx2_sso_evdev *dev, struct rte_devargs *devargs)
 {
 	struct rte_kvargs *kvlist;
+	uint8_t single_ws = 0;
 
 	if (devargs == NULL)
 		return;
@@ -925,7 +927,10 @@ sso_parse_devargs(struct otx2_sso_evdev *dev, struct rte_devargs *devargs)
 
 	rte_kvargs_process(kvlist, OTX2_SSO_XAE_CNT, &parse_kvargs_value,
 			   &dev->xae_cnt);
+	rte_kvargs_process(kvlist, OTX2_SSO_SINGLE_WS, &parse_kvargs_flag,
+			   &single_ws);
 
+	dev->dual_ws = !single_ws;
 	rte_kvargs_free(kvlist);
 }
 
@@ -1075,4 +1080,5 @@ dev_fini:
 RTE_PMD_REGISTER_PCI(event_octeontx2, pci_sso);
 RTE_PMD_REGISTER_PCI_TABLE(event_octeontx2, pci_sso_map);
 RTE_PMD_REGISTER_KMOD_DEP(event_octeontx2, "vfio-pci");
-RTE_PMD_REGISTER_PARAM_STRING(event_octeontx2, OTX2_SSO_XAE_CNT "=<int>");
+RTE_PMD_REGISTER_PARAM_STRING(event_octeontx2, OTX2_SSO_XAE_CNT "=<int>"
+			      OTX2_SSO_SINGLE_WS "=1");
