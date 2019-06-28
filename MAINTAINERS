@@ -1044,6 +1044,12 @@ Cavium OCTEON TX timvf
 M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 F: drivers/event/octeontx/timvf_*
 
+Marvell OCTEON TX2
+M: Pavan Nikhilesh <pbhagavatula@marvell.com>
+M: Jerin Jacob <jerinj@marvell.com>
+F: drivers/event/octeontx2/
+F: doc/guides/eventdevs/octeontx2.rst
+
 NXP DPAA eventdev
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 M: Sunil Kumar Kori <sunil.kori@nxp.com>

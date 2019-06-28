@@ -101,6 +101,9 @@ This section lists dataplane H/W block(s) available in OCTEON TX2 SoC.
 #. **Mempool Driver**
    See :doc:`../mempool/octeontx2` for NPA mempool driver information.
 
+#. **Event Device Driver**
+   See :doc:`../eventdevs/octeontx2` for SSO event device driver information.
+
 Procedure to Setup Platform
 ---------------------------
 

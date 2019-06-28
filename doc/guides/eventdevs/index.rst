@@ -16,4 +16,5 @@ application trough the eventdev API.
     dsw
     sw
     octeontx
+    octeontx2
     opdl
