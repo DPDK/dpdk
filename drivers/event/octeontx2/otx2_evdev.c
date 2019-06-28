@@ -683,6 +683,72 @@ otx2_sso_timeout_ticks(struct rte_eventdev *event_dev, uint64_t ns,
 	return 0;
 }
 
+static void
+ssogws_dump(struct otx2_ssogws *ws, FILE *f)
+{
+	uintptr_t base = OTX2_SSOW_GET_BASE_ADDR(ws->getwrk_op);
+
+	fprintf(f, "SSOW_LF_GWS Base addr   0x%" PRIx64 "\n", (uint64_t)base);
+	fprintf(f, "SSOW_LF_GWS_LINKS       0x%" PRIx64 "\n",
+		otx2_read64(base + SSOW_LF_GWS_LINKS));
+	fprintf(f, "SSOW_LF_GWS_PENDWQP     0x%" PRIx64 "\n",
+		otx2_read64(base + SSOW_LF_GWS_PENDWQP));
+	fprintf(f, "SSOW_LF_GWS_PENDSTATE   0x%" PRIx64 "\n",
+		otx2_read64(base + SSOW_LF_GWS_PENDSTATE));
+	fprintf(f, "SSOW_LF_GWS_NW_TIM      0x%" PRIx64 "\n",
+		otx2_read64(base + SSOW_LF_GWS_NW_TIM));
+	fprintf(f, "SSOW_LF_GWS_TAG         0x%" PRIx64 "\n",
+		otx2_read64(base + SSOW_LF_GWS_TAG));
+	fprintf(f, "SSOW_LF_GWS_WQP         0x%" PRIx64 "\n",
+		otx2_read64(base + SSOW_LF_GWS_TAG));
+	fprintf(f, "SSOW_LF_GWS_SWTP        0x%" PRIx64 "\n",
+		otx2_read64(base + SSOW_LF_GWS_SWTP));
+	fprintf(f, "SSOW_LF_GWS_PENDTAG     0x%" PRIx64 "\n",
+		otx2_read64(base + SSOW_LF_GWS_PENDTAG));
+}
+
+static void
+ssoggrp_dump(uintptr_t base, FILE *f)
+{
+	fprintf(f, "SSO_LF_GGRP Base addr   0x%" PRIx64 "\n", (uint64_t)base);
+	fprintf(f, "SSO_LF_GGRP_QCTL        0x%" PRIx64 "\n",
+		otx2_read64(base + SSO_LF_GGRP_QCTL));
+	fprintf(f, "SSO_LF_GGRP_XAQ_CNT     0x%" PRIx64 "\n",
+		otx2_read64(base + SSO_LF_GGRP_XAQ_CNT));
+	fprintf(f, "SSO_LF_GGRP_INT_THR     0x%" PRIx64 "\n",
+		otx2_read64(base + SSO_LF_GGRP_INT_THR));
+	fprintf(f, "SSO_LF_GGRP_INT_CNT     0x%" PRIX64 "\n",
+		otx2_read64(base + SSO_LF_GGRP_INT_CNT));
+	fprintf(f, "SSO_LF_GGRP_AQ_CNT      0x%" PRIX64 "\n",
+		otx2_read64(base + SSO_LF_GGRP_AQ_CNT));
+	fprintf(f, "SSO_LF_GGRP_AQ_THR      0x%" PRIX64 "\n",
+		otx2_read64(base + SSO_LF_GGRP_AQ_THR));
+	fprintf(f, "SSO_LF_GGRP_MISC_CNT    0x%" PRIx64 "\n",
+		otx2_read64(base + SSO_LF_GGRP_MISC_CNT));
+}
+
+static void
+otx2_sso_dump(struct rte_eventdev *event_dev, FILE *f)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	uint8_t queue;
+	uint8_t port;
+
+	/* Dump SSOW registers */
+	for (port = 0; port < dev->nb_event_ports; port++) {
+		fprintf(f, "[%s]SSO single workslot[%d] dump\n",
+			__func__, port);
+		ssogws_dump(event_dev->data->ports[port], f);
+	}
+
+	/* Dump SSO registers */
+	for (queue = 0; queue < dev->nb_event_queues; queue++) {
+		fprintf(f, "[%s]SSO group[%d] dump\n", __func__, queue);
+		struct otx2_ssogws *ws = event_dev->data->ports[0];
+		ssoggrp_dump(ws->grps_base[queue], f);
+	}
+}
+
 /* Initialize and register event driver with DPDK Application */
 static struct rte_eventdev_ops otx2_sso_ops = {
 	.dev_infos_get    = otx2_sso_info_get,
@@ -696,6 +762,8 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.port_link        = otx2_sso_port_link,
 	.port_unlink      = otx2_sso_port_unlink,
 	.timeout_ticks    = otx2_sso_timeout_ticks,
+
+	.dump             = otx2_sso_dump,
 };
 
 #define OTX2_SSO_XAE_CNT	"xae_cnt"
