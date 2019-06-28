@@ -232,6 +232,12 @@ uint16_t otx2_ssogws_dual_deq_timeout(void *port, struct rte_event *ev,
 uint16_t otx2_ssogws_dual_deq_timeout_burst(void *port, struct rte_event ev[],
 					    uint16_t nb_events,
 					    uint64_t timeout_ticks);
+void sso_fastpath_fns_set(struct rte_eventdev *event_dev);
+/* Clean up API's */
+typedef void (*otx2_handle_event_t)(void *arg, struct rte_event ev);
+void ssogws_flush_events(struct otx2_ssogws *ws, uint8_t queue_id,
+			 uintptr_t base, otx2_handle_event_t fn, void *arg);
+void ssogws_reset(struct otx2_ssogws *ws);
 /* Init and Fini API's */
 int otx2_sso_init(struct rte_eventdev *event_dev);
 int otx2_sso_fini(struct rte_eventdev *event_dev);

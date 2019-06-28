@@ -38,6 +38,41 @@ sso_get_msix_offsets(const struct rte_eventdev *event_dev)
 	return rc;
 }
 
+void
+sso_fastpath_fns_set(struct rte_eventdev *event_dev)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+
+	event_dev->enqueue			= otx2_ssogws_enq;
+	event_dev->enqueue_burst		= otx2_ssogws_enq_burst;
+	event_dev->enqueue_new_burst		= otx2_ssogws_enq_new_burst;
+	event_dev->enqueue_forward_burst	= otx2_ssogws_enq_fwd_burst;
+
+	event_dev->dequeue			= otx2_ssogws_deq;
+	event_dev->dequeue_burst		= otx2_ssogws_deq_burst;
+	if (dev->is_timeout_deq) {
+		event_dev->dequeue		= otx2_ssogws_deq_timeout;
+		event_dev->dequeue_burst	= otx2_ssogws_deq_timeout_burst;
+	}
+
+	if (dev->dual_ws) {
+		event_dev->enqueue		= otx2_ssogws_dual_enq;
+		event_dev->enqueue_burst	= otx2_ssogws_dual_enq_burst;
+		event_dev->enqueue_new_burst	=
+					otx2_ssogws_dual_enq_new_burst;
+		event_dev->enqueue_forward_burst =
+					otx2_ssogws_dual_enq_fwd_burst;
+		event_dev->dequeue		= otx2_ssogws_dual_deq;
+		event_dev->dequeue_burst	= otx2_ssogws_dual_deq_burst;
+		if (dev->is_timeout_deq) {
+			event_dev->dequeue	= otx2_ssogws_dual_deq_timeout;
+			event_dev->dequeue_burst =
+					otx2_ssogws_dual_deq_timeout_burst;
+		}
+	}
+	rte_mb();
+}
+
 static void
 otx2_sso_info_get(struct rte_eventdev *event_dev,
 		  struct rte_event_dev_info *dev_info)
@@ -889,6 +924,93 @@ otx2_sso_dump(struct rte_eventdev *event_dev, FILE *f)
 	}
 }
 
+static void
+otx2_handle_event(void *arg, struct rte_event event)
+{
+	struct rte_eventdev *event_dev = arg;
+
+	if (event_dev->dev_ops->dev_stop_flush != NULL)
+		event_dev->dev_ops->dev_stop_flush(event_dev->data->dev_id,
+				event, event_dev->data->dev_stop_flush_arg);
+}
+
+static void
+sso_cleanup(struct rte_eventdev *event_dev, uint8_t enable)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	uint16_t i;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		if (dev->dual_ws) {
+			struct otx2_ssogws_dual *ws;
+
+			ws = event_dev->data->ports[i];
+			ssogws_reset((struct otx2_ssogws *)&ws->ws_state[0]);
+			ssogws_reset((struct otx2_ssogws *)&ws->ws_state[1]);
+			ws->swtag_req = 0;
+			ws->vws = 0;
+			ws->ws_state[0].cur_grp = 0;
+			ws->ws_state[0].cur_tt = SSO_SYNC_EMPTY;
+			ws->ws_state[1].cur_grp = 0;
+			ws->ws_state[1].cur_tt = SSO_SYNC_EMPTY;
+		} else {
+			struct otx2_ssogws *ws;
+
+			ws = event_dev->data->ports[i];
+			ssogws_reset(ws);
+			ws->swtag_req = 0;
+			ws->cur_grp = 0;
+			ws->cur_tt = SSO_SYNC_EMPTY;
+		}
+	}
+
+	rte_mb();
+	if (dev->dual_ws) {
+		struct otx2_ssogws_dual *ws = event_dev->data->ports[0];
+		struct otx2_ssogws temp_ws;
+
+		memcpy(&temp_ws, &ws->ws_state[0],
+		       sizeof(struct otx2_ssogws_state));
+		for (i = 0; i < dev->nb_event_queues; i++) {
+			/* Consume all the events through HWS0 */
+			ssogws_flush_events(&temp_ws, i, ws->grps_base[i],
+					    otx2_handle_event, event_dev);
+			/* Enable/Disable SSO GGRP */
+			otx2_write64(enable, ws->grps_base[i] +
+				     SSO_LF_GGRP_QCTL);
+		}
+		ws->ws_state[0].cur_grp = 0;
+		ws->ws_state[0].cur_tt = SSO_SYNC_EMPTY;
+	} else {
+		struct otx2_ssogws *ws = event_dev->data->ports[0];
+
+		for (i = 0; i < dev->nb_event_queues; i++) {
+			/* Consume all the events through HWS0 */
+			ssogws_flush_events(ws, i, ws->grps_base[i],
+					    otx2_handle_event, event_dev);
+			/* Enable/Disable SSO GGRP */
+			otx2_write64(enable, ws->grps_base[i] +
+				     SSO_LF_GGRP_QCTL);
+		}
+		ws->cur_grp = 0;
+		ws->cur_tt = SSO_SYNC_EMPTY;
+	}
+
+	/* reset SSO GWS cache */
+	otx2_mbox_alloc_msg_sso_ws_cache_inv(dev->mbox);
+	otx2_mbox_process(dev->mbox);
+}
+
+static int
+otx2_sso_start(struct rte_eventdev *event_dev)
+{
+	sso_func_trace();
+	sso_cleanup(event_dev, 1);
+	sso_fastpath_fns_set(event_dev);
+
+	return 0;
+}
+
 /* Initialize and register event driver with DPDK Application */
 static struct rte_eventdev_ops otx2_sso_ops = {
 	.dev_infos_get    = otx2_sso_info_get,
@@ -908,6 +1030,7 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.xstats_get_names = otx2_sso_xstats_get_names,
 
 	.dump             = otx2_sso_dump,
+	.dev_start        = otx2_sso_start,
 };
 
 #define OTX2_SSO_XAE_CNT	"xae_cnt"
@@ -975,8 +1098,10 @@ otx2_sso_init(struct rte_eventdev *event_dev)
 
 	event_dev->dev_ops = &otx2_sso_ops;
 	/* For secondary processes, the primary has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		sso_fastpath_fns_set(event_dev);
 		return 0;
+	}
 
 	dev = sso_pmd_priv(event_dev);
 

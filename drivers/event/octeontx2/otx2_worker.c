@@ -194,3 +194,77 @@ otx2_ssogws_enq_fwd_burst(void *port, const struct rte_event ev[],
 
 	return 1;
 }
+
+void
+ssogws_flush_events(struct otx2_ssogws *ws, uint8_t queue_id, uintptr_t base,
+		    otx2_handle_event_t fn, void *arg)
+{
+	uint64_t cq_ds_cnt = 1;
+	uint64_t aq_cnt = 1;
+	uint64_t ds_cnt = 1;
+	struct rte_event ev;
+	uint64_t enable;
+	uint64_t val;
+
+	enable = otx2_read64(base + SSO_LF_GGRP_QCTL);
+	if (!enable)
+		return;
+
+	val  = queue_id;	/* GGRP ID */
+	val |= BIT_ULL(18);	/* Grouped */
+	val |= BIT_ULL(16);	/* WAIT */
+
+	aq_cnt = otx2_read64(base + SSO_LF_GGRP_AQ_CNT);
+	ds_cnt = otx2_read64(base + SSO_LF_GGRP_MISC_CNT);
+	cq_ds_cnt = otx2_read64(base + SSO_LF_GGRP_INT_CNT);
+	cq_ds_cnt &= 0x3FFF3FFF0000;
+
+	while (aq_cnt || cq_ds_cnt || ds_cnt) {
+		otx2_write64(val, ws->getwrk_op);
+		otx2_ssogws_get_work_empty(ws, &ev);
+		if (fn != NULL && ev.u64 != 0)
+			fn(arg, ev);
+		if (ev.sched_type != SSO_TT_EMPTY)
+			otx2_ssogws_swtag_flush(ws);
+		rte_mb();
+		aq_cnt = otx2_read64(base + SSO_LF_GGRP_AQ_CNT);
+		ds_cnt = otx2_read64(base + SSO_LF_GGRP_MISC_CNT);
+		cq_ds_cnt = otx2_read64(base + SSO_LF_GGRP_INT_CNT);
+		/* Extract cq and ds count */
+		cq_ds_cnt &= 0x3FFF3FFF0000;
+	}
+
+	otx2_write64(0, OTX2_SSOW_GET_BASE_ADDR(ws->getwrk_op) +
+		     SSOW_LF_GWS_OP_GWC_INVAL);
+	rte_mb();
+}
+
+void
+ssogws_reset(struct otx2_ssogws *ws)
+{
+	uintptr_t base = OTX2_SSOW_GET_BASE_ADDR(ws->getwrk_op);
+	uint64_t pend_state;
+	uint8_t pend_tt;
+	uint64_t tag;
+
+	/* Wait till getwork/swtp/waitw/desched completes. */
+	do {
+		pend_state = otx2_read64(base + SSOW_LF_GWS_PENDSTATE);
+		rte_mb();
+	} while (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(58)));
+
+	tag = otx2_read64(base + SSOW_LF_GWS_TAG);
+	pend_tt = (tag >> 32) & 0x3;
+	if (pend_tt != SSO_TT_EMPTY) { /* Work was pending */
+		if (pend_tt == SSO_SYNC_ATOMIC || pend_tt == SSO_SYNC_ORDERED)
+			otx2_ssogws_swtag_untag(ws);
+		otx2_ssogws_desched(ws);
+	}
+	rte_mb();
+
+	/* Wait for desched to complete. */
+	do {
+		pend_state = otx2_read64(base + SSOW_LF_GWS_PENDSTATE);
+		rte_mb();
+	} while (pend_state & BIT_ULL(58));
+}
