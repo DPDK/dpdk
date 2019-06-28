@@ -20,6 +20,11 @@
 
 #define USEC2NSEC(__us)                 ((__us) * 1E3)
 
+enum otx2_sso_lf_type {
+	SSO_LF_GGRP,
+	SSO_LF_GWS
+};
+
 struct otx2_sso_evdev {
 	OTX2_DEV; /* Base class */
 	uint8_t max_event_queues;
@@ -27,10 +32,15 @@ struct otx2_sso_evdev {
 	uint8_t is_timeout_deq;
 	uint8_t nb_event_queues;
 	uint8_t nb_event_ports;
+	uint8_t configured;
 	uint32_t deq_tmo_ns;
 	uint32_t min_dequeue_timeout_ns;
 	uint32_t max_dequeue_timeout_ns;
 	int32_t max_num_events;
+	/* HW const */
+	uint32_t xae_waes;
+	uint32_t xaq_buf_size;
+	uint32_t iue;
 } __rte_cache_aligned;
 
 static inline struct otx2_sso_evdev *
