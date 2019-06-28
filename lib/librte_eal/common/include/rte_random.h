@@ -16,7 +16,6 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <stdlib.h>
 
 /**
  * Seed the pseudo-random generator.
@@ -25,34 +24,28 @@ extern "C" {
  * value. It may need to be re-seeded by the user with a real random
  * value.
  *
+ * This function is not multi-thread safe in regards to other
+ * rte_srand() calls, nor is it in relation to concurrent rte_rand()
+ * calls.
+ *
  * @param seedval
  *   The value of the seed.
  */
-static inline void
-rte_srand(uint64_t seedval)
-{
-	srand48((long)seedval);
-}
+void
+rte_srand(uint64_t seedval);
 
 /**
  * Get a pseudo-random value.
  *
- * This function generates pseudo-random numbers using the linear
- * congruential algorithm and 48-bit integer arithmetic, called twice
- * to generate a 64-bit value.
+ * The generator is not cryptographically secure.
+ *
+ * If called from lcore threads, this function is thread-safe.
  *
  * @return
  *   A pseudo-random value between 0 and (1<<64)-1.
  */
-static inline uint64_t
-rte_rand(void)
-{
-	uint64_t val;
-	val = (uint64_t)lrand48();
-	val <<= 32;
-	val += (uint64_t)lrand48();
-	return val;
-}
+uint64_t
+rte_rand(void);
 
 #ifdef __cplusplus
 }

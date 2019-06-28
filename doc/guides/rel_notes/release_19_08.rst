@@ -54,6 +54,16 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Updated the EAL Pseudo-random Number Generator.**
+
+  The lrand48()-based rte_rand() function is replaced with a
+  DPDK-native combined Linear Feedback Shift Register (LFSR)
+  pseudo-random number generator (PRNG).
+
+  This new PRNG implementation is multi-thread safe, provides
+  higher-quality pseudo-random numbers (including full 64 bit
+  support) and improved performance.
+
 * **Updated the bnxt PMD.**
 
   Updated the bnxt PMD. The major enhancements include:

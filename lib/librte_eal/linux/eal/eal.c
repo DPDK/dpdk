@@ -1122,8 +1122,6 @@ rte_eal_init(int argc, char **argv)
 #endif
 	}
 
-	rte_srand(rte_rdtsc());
-
 	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0) {
 		rte_eal_init_alert("Cannot init logging.");
 		rte_errno = ENOMEM;

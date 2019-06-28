@@ -292,6 +292,8 @@ DPDK_19.08 {
 
 	rte_lcore_index;
 	rte_lcore_to_socket_id;
+	rte_rand;
+	rte_srand;
 
 } DPDK_19.05;
 

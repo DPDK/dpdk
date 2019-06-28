@@ -90,6 +90,7 @@ test_sources = files('commands.c',
 	'test_power_acpi_cpufreq.c',
 	'test_power_kvm_vm.c',
 	'test_prefetch.c',
+	'test_rand_perf.c',
 	'test_rcu_qsbr.c',
 	'test_rcu_qsbr_perf.c',
 	'test_reciprocal_division.c',
@@ -256,6 +257,7 @@ perf_test_names = [
         'pmd_perf_autotest',
         'stack_perf_autotest',
         'stack_lf_perf_autotest',
+        'rand_perf_autotest',
 ]
 
 driver_test_names = [

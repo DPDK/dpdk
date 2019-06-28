@@ -73,6 +73,7 @@ SRCS-y += test_reciprocal_division.c
 SRCS-y += test_reciprocal_division_perf.c
 SRCS-y += test_fbarray.c
 SRCS-y += test_external_mem.c
+SRCS-y += test_rand_perf.c
 
 SRCS-y += test_ring.c
 SRCS-y += test_ring_perf.c

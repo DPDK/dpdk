@@ -227,6 +227,12 @@ M: Joyce Kong <joyce.kong@arm.com>
 F: lib/librte_eal/common/include/generic/rte_ticketlock.h
 F: app/test/test_ticketlock.c
 
+Pseudo-random Number Generation
+M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
+F: lib/librte_eal/common/include/rte_random.h
+F: lib/librte_eal/common/rte_random.c
+F: app/test/test_rand_perf.c
+
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
 M: Gavin Hu <gavin.hu@arm.com>

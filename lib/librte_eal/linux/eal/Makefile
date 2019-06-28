@@ -77,6 +77,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += malloc_mp.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += rte_keepalive.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += rte_option.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += rte_service.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += rte_random.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += rte_reciprocal.c
 
 # from arch dir

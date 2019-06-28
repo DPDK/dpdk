@@ -69,6 +69,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += malloc_mp.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += rte_keepalive.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += rte_option.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += rte_service.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += rte_random.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += rte_reciprocal.c
 
 # from arch dir

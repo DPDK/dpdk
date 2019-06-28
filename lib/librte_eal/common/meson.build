@@ -35,6 +35,7 @@ common_sources = files(
 	'rte_keepalive.c',
 	'rte_malloc.c',
 	'rte_option.c',
+	'rte_random.c',
 	'rte_reciprocal.c',
 	'rte_service.c'
 )

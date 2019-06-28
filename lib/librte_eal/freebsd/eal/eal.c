@@ -758,8 +758,6 @@ rte_eal_init(int argc, char **argv)
 #endif
 	}
 
-	rte_srand(rte_rdtsc());
-
 	/* in secondary processes, memory init may allocate additional fbarrays
 	 * not present in primary processes, so to avoid any potential issues,
 	 * initialize memzones first.
