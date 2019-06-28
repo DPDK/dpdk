@@ -137,6 +137,45 @@ rte_rand(void)
 	return __rte_rand_lfsr258(state);
 }
 
+uint64_t __rte_experimental
+rte_rand_max(uint64_t upper_bound)
+{
+	struct rte_rand_state *state;
+	uint8_t ones;
+	uint8_t leading_zeros;
+	uint64_t mask = ~((uint64_t)0);
+	uint64_t res;
+
+	if (unlikely(upper_bound < 2))
+		return 0;
+
+	state = __rte_rand_get_state();
+
+	ones = __builtin_popcountll(upper_bound);
+
+	/* Handle power-of-2 upper_bound as a special case, since it
+	 * has no bias issues.
+	 */
+	if (unlikely(ones == 1))
+		return __rte_rand_lfsr258(state) & (upper_bound - 1);
+
+	/* The approach to avoiding bias is to create a mask that
+	 * stretches beyond the request value range, and up to the
+	 * next power-of-2. In case the masked generated random value
+	 * is equal to or greater than the upper bound, just discard
+	 * the value and generate a new one.
+	 */
+
+	leading_zeros = __builtin_clzll(upper_bound);
+	mask >>= leading_zeros;
+
+	do {
+		res = __rte_rand_lfsr258(state) & mask;
+	} while (unlikely(res >= upper_bound));
+
+	return res;
+}
+
 static uint64_t
 __rte_random_initial_seed(void)
 {

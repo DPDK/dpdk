@@ -64,6 +64,10 @@ New Features
   higher-quality pseudo-random numbers (including full 64 bit
   support) and improved performance.
 
+  In addition, <rte_random.h> is extended with a new function
+  rte_rand_max() which supplies unbiased, bounded pseudo-random
+  numbers.
+
 * **Updated the bnxt PMD.**
 
   Updated the bnxt PMD. The major enhancements include:

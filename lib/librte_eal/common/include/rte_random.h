@@ -17,6 +17,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include <rte_compat.h>
+
 /**
  * Seed the pseudo-random generator.
  *
@@ -46,6 +48,22 @@ rte_srand(uint64_t seedval);
  */
 uint64_t
 rte_rand(void);
+
+/**
+ * Generates a pseudo-random number with an upper bound.
+ *
+ * This function returns an uniformly distributed (unbiased) random
+ * number less than a user-specified maximum value.
+ *
+ * If called from lcore threads, this function is thread-safe.
+ *
+ * @param upper_bound
+ *   The upper bound of the generated number.
+ * @return
+ *   A pseudo-random value between 0 and (upper_bound-1).
+ */
+uint64_t __rte_experimental
+rte_rand_max(uint64_t upper_bound);
 
 #ifdef __cplusplus
 }
