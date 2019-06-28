@@ -66,6 +66,21 @@ Runtime Config Options
 
     --dev "0002:0e:00.0,single_ws=1"
 
+- ``Event Group QoS support``
+
+  SSO GGRPs i.e. queue uses DRAM & SRAM buffers to hold in-flight
+  events. By default the buffers are assigned to the SSO GGRPs to
+  satisfy minimum HW requirements. SSO is free to assign the remaining
+  buffers to GGRPs based on a preconfigured threshold.
+  We can control the QoS of SSO GGRP by modifying the above mentioned
+  thresholds. GGRPs that have higher importance can be assigned higher
+  thresholds than the rest. The dictionary format is as follows
+  [Qx-XAQ-TAQ-IAQ][Qz-XAQ-TAQ-IAQ] expressed in percentages, 0 represents
+  default.
+  For example::
+
+    --dev "0002:0e:00.0,qos=[1-50-50-50]"
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 

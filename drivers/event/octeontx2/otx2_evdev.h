@@ -104,6 +104,13 @@ enum {
 	SSO_SYNC_EMPTY
 };
 
+struct otx2_sso_qos {
+	uint8_t queue;
+	uint8_t xaq_prcnt;
+	uint8_t taq_prcnt;
+	uint8_t iaq_prcnt;
+};
+
 struct otx2_sso_evdev {
 	OTX2_DEV; /* Base class */
 	uint8_t max_event_queues;
@@ -124,6 +131,8 @@ struct otx2_sso_evdev {
 	/* Dev args */
 	uint8_t dual_ws;
 	uint32_t xae_cnt;
+	uint8_t qos_queue_cnt;
+	struct otx2_sso_qos *qos_parse_data;
 	/* HW const */
 	uint32_t xae_waes;
 	uint32_t xaq_buf_size;

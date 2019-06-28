@@ -935,6 +935,34 @@ otx2_handle_event(void *arg, struct rte_event event)
 }
 
 static void
+sso_qos_cfg(struct rte_eventdev *event_dev)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	struct sso_grp_qos_cfg *req;
+	uint16_t i;
+
+	for (i = 0; i < dev->qos_queue_cnt; i++) {
+		uint8_t xaq_prcnt = dev->qos_parse_data[i].xaq_prcnt;
+		uint8_t iaq_prcnt = dev->qos_parse_data[i].iaq_prcnt;
+		uint8_t taq_prcnt = dev->qos_parse_data[i].taq_prcnt;
+
+		if (dev->qos_parse_data[i].queue >= dev->nb_event_queues)
+			continue;
+
+		req = otx2_mbox_alloc_msg_sso_grp_qos_config(dev->mbox);
+		req->xaq_limit = (dev->nb_xaq_cfg *
+				  (xaq_prcnt ? xaq_prcnt : 100)) / 100;
+		req->taq_thr = (SSO_HWGRP_IAQ_MAX_THR_MASK *
+				(iaq_prcnt ? iaq_prcnt : 100)) / 100;
+		req->iaq_thr = (SSO_HWGRP_TAQ_MAX_THR_MASK *
+				(taq_prcnt ? taq_prcnt : 100)) / 100;
+	}
+
+	if (dev->qos_queue_cnt)
+		otx2_mbox_process(dev->mbox);
+}
+
+static void
 sso_cleanup(struct rte_eventdev *event_dev, uint8_t enable)
 {
 	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
@@ -1005,6 +1033,7 @@ static int
 otx2_sso_start(struct rte_eventdev *event_dev)
 {
 	sso_func_trace();
+	sso_qos_cfg(event_dev);
 	sso_cleanup(event_dev, 1);
 	sso_fastpath_fns_set(event_dev);
 
@@ -1035,6 +1064,76 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 
 #define OTX2_SSO_XAE_CNT	"xae_cnt"
 #define OTX2_SSO_SINGLE_WS	"single_ws"
+#define OTX2_SSO_GGRP_QOS	"qos"
+
+static void
+parse_queue_param(char *value, void *opaque)
+{
+	struct otx2_sso_qos queue_qos = {0};
+	uint8_t *val = (uint8_t *)&queue_qos;
+	struct otx2_sso_evdev *dev = opaque;
+	char *tok = strtok(value, "-");
+
+	if (!strlen(value))
+		return;
+
+	while (tok != NULL) {
+		*val = atoi(tok);
+		tok = strtok(NULL, "-");
+		val++;
+	}
+
+	if (val != (&queue_qos.iaq_prcnt + 1)) {
+		otx2_err("Invalid QoS parameter expected [Qx-XAQ-TAQ-IAQ]");
+		return;
+	}
+
+	dev->qos_queue_cnt++;
+	dev->qos_parse_data = rte_realloc(dev->qos_parse_data,
+					  sizeof(struct otx2_sso_qos) *
+					  dev->qos_queue_cnt, 0);
+	dev->qos_parse_data[dev->qos_queue_cnt - 1] = queue_qos;
+}
+
+static void
+parse_qos_list(const char *value, void *opaque)
+{
+	char *s = strdup(value);
+	char *start = NULL;
+	char *end = NULL;
+	char *f = s;
+
+	while (*s) {
+		if (*s == '[')
+			start = s;
+		else if (*s == ']')
+			end = s;
+
+		if (start < end && *start) {
+			*end = 0;
+			parse_queue_param(start + 1, opaque);
+			s = end;
+			start = end;
+		}
+		s++;
+	}
+
+	free(f);
+}
+
+static int
+parse_sso_kvargs_dict(const char *key, const char *value, void *opaque)
+{
+	RTE_SET_USED(key);
+
+	/* Dict format [Qx-XAQ-TAQ-IAQ][Qz-XAQ-TAQ-IAQ] use '-' cause ','
+	 * isn't allowed. Everything is expressed in percentages, 0 represents
+	 * default.
+	 */
+	parse_qos_list(value, opaque);
+
+	return 0;
+}
 
 static void
 sso_parse_devargs(struct otx2_sso_evdev *dev, struct rte_devargs *devargs)
@@ -1052,6 +1151,8 @@ sso_parse_devargs(struct otx2_sso_evdev *dev, struct rte_devargs *devargs)
 			   &dev->xae_cnt);
 	rte_kvargs_process(kvlist, OTX2_SSO_SINGLE_WS, &parse_kvargs_flag,
 			   &single_ws);
+	rte_kvargs_process(kvlist, OTX2_SSO_GGRP_QOS, &parse_sso_kvargs_dict,
+			   dev);
 
 	dev->dual_ws = !single_ws;
 	rte_kvargs_free(kvlist);
@@ -1206,4 +1307,5 @@ RTE_PMD_REGISTER_PCI(event_octeontx2, pci_sso);
 RTE_PMD_REGISTER_PCI_TABLE(event_octeontx2, pci_sso_map);
 RTE_PMD_REGISTER_KMOD_DEP(event_octeontx2, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(event_octeontx2, OTX2_SSO_XAE_CNT "=<int>"
-			      OTX2_SSO_SINGLE_WS "=1");
+			      OTX2_SSO_SINGLE_WS "=1"
+			      OTX2_SSO_GGRP_QOS "=<string>");
