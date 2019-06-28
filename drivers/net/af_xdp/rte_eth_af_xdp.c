@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <poll.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <sys/socket.h>
@@ -90,6 +91,7 @@ struct pkt_rx_queue {
 	struct rx_stats stats;
 
 	struct pkt_tx_queue *pair;
+	struct pollfd fds[1];
 	int xsk_queue_idx;
 };
 
@@ -206,8 +208,14 @@ eth_af_xdp_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		return 0;
 
 	rcvd = xsk_ring_cons__peek(rx, nb_pkts, &idx_rx);
-	if (rcvd == 0)
+	if (rcvd == 0) {
+#if defined(XDP_USE_NEED_WAKEUP)
+		if (xsk_ring_prod__needs_wakeup(fq))
+			(void)poll(rxq->fds, 1, 1000);
+#endif
+
 		goto out;
+	}
 
 	if (xsk_prod_nb_free(fq, free_thresh) >= free_thresh)
 		(void)reserve_fill_queue(umem, ETH_AF_XDP_RX_BATCH_SIZE);
@@ -279,16 +287,19 @@ kick_tx(struct pkt_tx_queue *txq)
 {
 	struct xsk_umem_info *umem = txq->pair->umem;
 
-	while (send(xsk_socket__fd(txq->pair->xsk), NULL,
-		      0, MSG_DONTWAIT) < 0) {
-		/* some thing unexpected */
-		if (errno != EBUSY && errno != EAGAIN && errno != EINTR)
-			break;
+#if defined(XDP_USE_NEED_WAKEUP)
+	if (xsk_ring_prod__needs_wakeup(&txq->tx))
+#endif
+		while (send(xsk_socket__fd(txq->pair->xsk), NULL,
+			    0, MSG_DONTWAIT) < 0) {
+			/* some thing unexpected */
+			if (errno != EBUSY && errno != EAGAIN && errno != EINTR)
+				break;
 
-		/* pull from completion queue to leave more space */
-		if (errno == EAGAIN)
-			pull_umem_cq(umem, ETH_AF_XDP_TX_BATCH_SIZE);
-	}
+			/* pull from completion queue to leave more space */
+			if (errno == EAGAIN)
+				pull_umem_cq(umem, ETH_AF_XDP_TX_BATCH_SIZE);
+		}
 	pull_umem_cq(umem, ETH_AF_XDP_TX_BATCH_SIZE);
 }
 
@@ -622,6 +633,11 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	cfg.libbpf_flags = 0;
 	cfg.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST;
 	cfg.bind_flags = 0;
+
+#if defined(XDP_USE_NEED_WAKEUP)
+	cfg.bind_flags |= XDP_USE_NEED_WAKEUP;
+#endif
+
 	ret = xsk_socket__create(&rxq->xsk, internals->if_name,
 			rxq->xsk_queue_idx, rxq->umem->umem, &rxq->rx,
 			&txq->tx, &cfg);
@@ -682,6 +698,9 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 		ret = -EINVAL;
 		goto err;
 	}
+
+	rxq->fds[0].fd = xsk_socket__fd(rxq->xsk);
+	rxq->fds[0].events = POLLIN;
 
 	rxq->umem->pmd_zc = internals->pmd_zc;
 

@@ -113,6 +113,8 @@ New Features
     high performance
   * Added multi-queue support to allow one af_xdp vdev with multiple netdev
     queues
+  * Enabled need_wakeup feature which can provide efficient support for case
+    that application and driver executing on the same core.
 
 * **Updated telemetry library for global metrics support.**
 

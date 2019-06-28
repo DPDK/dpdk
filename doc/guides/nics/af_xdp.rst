@@ -21,6 +21,12 @@ be added later.
 Note that MTU of AF_XDP PMD is limited due to XDP lacks support for
 fragmentation.
 
+AF_XDP PMD enables need_wakeup flag by default if it is supported. This
+need_wakeup feature is used to support executing application and driver on the
+same core efficiently. This feature not only has a large positive performance
+impact for the one core case, but also does not degrade 2 core performance and
+actually improves it for Tx heavy workloads.
+
 Options
 -------
 
@@ -41,6 +47,7 @@ This is a Linux-specific PMD, thus the following prerequisites apply:
    User can install libbpf via `make install_lib` && `make install_headers` in
    <kernel src tree>/tools/lib/bpf;
 *  A Kernel bound interface to attach to;
+*  For need_wakeup feature, it requires kernel version later than v5.3-rc1;
 
 Set up an af_xdp interface
 -----------------------------
