@@ -635,6 +635,16 @@ otx2_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
 	return 0;
 }
 
+static int
+otx2_sso_timeout_ticks(struct rte_eventdev *event_dev, uint64_t ns,
+		       uint64_t *tmo_ticks)
+{
+	RTE_SET_USED(event_dev);
+	*tmo_ticks = NSEC2TICK(ns, rte_get_timer_hz());
+
+	return 0;
+}
+
 /* Initialize and register event driver with DPDK Application */
 static struct rte_eventdev_ops otx2_sso_ops = {
 	.dev_infos_get    = otx2_sso_info_get,
@@ -647,6 +657,7 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.port_release     = otx2_sso_port_release,
 	.port_link        = otx2_sso_port_link,
 	.port_unlink      = otx2_sso_port_unlink,
+	.timeout_ticks    = otx2_sso_timeout_ticks,
 };
 
 #define OTX2_SSO_XAE_CNT	"xae_cnt"
