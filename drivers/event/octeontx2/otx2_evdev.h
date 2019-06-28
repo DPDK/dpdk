@@ -130,6 +130,7 @@ struct otx2_sso_evdev {
 	struct rte_mempool *xaq_pool;
 	/* Dev args */
 	uint8_t dual_ws;
+	uint8_t selftest;
 	uint32_t xae_cnt;
 	uint8_t qos_queue_cnt;
 	struct otx2_sso_qos *qos_parse_data;
@@ -247,6 +248,8 @@ typedef void (*otx2_handle_event_t)(void *arg, struct rte_event ev);
 void ssogws_flush_events(struct otx2_ssogws *ws, uint8_t queue_id,
 			 uintptr_t base, otx2_handle_event_t fn, void *arg);
 void ssogws_reset(struct otx2_ssogws *ws);
+/* Selftest */
+int otx2_sso_selftest(void);
 /* Init and Fini API's */
 int otx2_sso_init(struct rte_eventdev *event_dev);
 int otx2_sso_fini(struct rte_eventdev *event_dev);

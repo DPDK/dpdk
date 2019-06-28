@@ -6,6 +6,7 @@ sources = files('otx2_worker.c',
 		'otx2_worker_dual.c',
 		'otx2_evdev.c',
 		'otx2_evdev_irq.c',
+		'otx2_evdev_selftest.c',
 		)
 
 allow_experimental_apis = true

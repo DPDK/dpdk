@@ -81,6 +81,15 @@ Runtime Config Options
 
     --dev "0002:0e:00.0,qos=[1-50-50-50]"
 
+- ``Selftest``
+
+  The functionality of OCTEON TX2 eventdev can be verified using this option,
+  various unit and functional tests are run to verify the sanity.
+  The tests are run once the vdev creation is successfully complete.
+  For example::
+
+    --dev "0002:0e:00.0,selftest=1"
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 
