@@ -36,7 +36,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_EVENTDEV) += otx2_evdev.c
 
 LDLIBS += -lrte_eal -lrte_bus_pci -lrte_pci
-LDLIBS += -lrte_eventdev
+LDLIBS += -lrte_mempool -lrte_eventdev -lrte_mbuf
 LDLIBS += -lrte_common_octeontx2 -lrte_mempool_octeontx2
 
 include $(RTE_SDK)/mk/rte.lib.mk

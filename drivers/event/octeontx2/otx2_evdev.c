@@ -8,6 +8,7 @@
 #include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_eventdev_pmd_pci.h>
+#include <rte_mbuf_pool_ops.h>
 #include <rte_pci.h>
 
 #include "otx2_evdev.h"
@@ -203,6 +204,107 @@ sso_configure_queues(const struct rte_eventdev *event_dev)
 	return rc;
 }
 
+static int
+sso_xaq_allocate(struct otx2_sso_evdev *dev)
+{
+	const struct rte_memzone *mz;
+	struct npa_aura_s *aura;
+	static int reconfig_cnt;
+	char pool_name[RTE_MEMZONE_NAMESIZE];
+	uint32_t xaq_cnt;
+	int rc;
+
+	if (dev->xaq_pool)
+		rte_mempool_free(dev->xaq_pool);
+
+	/*
+	 * Allocate memory for Add work backpressure.
+	 */
+	mz = rte_memzone_lookup(OTX2_SSO_FC_NAME);
+	if (mz == NULL)
+		mz = rte_memzone_reserve_aligned(OTX2_SSO_FC_NAME,
+						 OTX2_ALIGN +
+						 sizeof(struct npa_aura_s),
+						 rte_socket_id(),
+						 RTE_MEMZONE_IOVA_CONTIG,
+						 OTX2_ALIGN);
+	if (mz == NULL) {
+		otx2_err("Failed to allocate mem for fcmem");
+		return -ENOMEM;
+	}
+
+	dev->fc_iova = mz->iova;
+	dev->fc_mem = mz->addr;
+
+	aura = (struct npa_aura_s *)((uintptr_t)dev->fc_mem + OTX2_ALIGN);
+	memset(aura, 0, sizeof(struct npa_aura_s));
+
+	aura->fc_ena = 1;
+	aura->fc_addr = dev->fc_iova;
+	aura->fc_hyst_bits = 0; /* Store count on all updates */
+
+	/* Taken from HRM 14.3.3(4) */
+	xaq_cnt = dev->nb_event_queues * OTX2_SSO_XAQ_CACHE_CNT;
+	xaq_cnt += (dev->iue / dev->xae_waes) +
+			(OTX2_SSO_XAQ_SLACK * dev->nb_event_queues);
+
+	otx2_sso_dbg("Configuring %d xaq buffers", xaq_cnt);
+	/* Setup XAQ based on number of nb queues. */
+	snprintf(pool_name, 30, "otx2_xaq_buf_pool_%d", reconfig_cnt);
+	dev->xaq_pool = (void *)rte_mempool_create_empty(pool_name,
+			xaq_cnt, dev->xaq_buf_size, 0, 0,
+			rte_socket_id(), 0);
+
+	if (dev->xaq_pool == NULL) {
+		otx2_err("Unable to create empty mempool.");
+		rte_memzone_free(mz);
+		return -ENOMEM;
+	}
+
+	rc = rte_mempool_set_ops_byname(dev->xaq_pool,
+					rte_mbuf_platform_mempool_ops(), aura);
+	if (rc != 0) {
+		otx2_err("Unable to set xaqpool ops.");
+		goto alloc_fail;
+	}
+
+	rc = rte_mempool_populate_default(dev->xaq_pool);
+	if (rc < 0) {
+		otx2_err("Unable to set populate xaqpool.");
+		goto alloc_fail;
+	}
+	reconfig_cnt++;
+	/* When SW does addwork (enqueue) check if there is space in XAQ by
+	 * comparing fc_addr above against the xaq_lmt calculated below.
+	 * There should be a minimum headroom (OTX2_SSO_XAQ_SLACK / 2) for SSO
+	 * to request XAQ to cache them even before enqueue is called.
+	 */
+	dev->xaq_lmt = xaq_cnt - (OTX2_SSO_XAQ_SLACK / 2 *
+				  dev->nb_event_queues);
+	dev->nb_xaq_cfg = xaq_cnt;
+
+	return 0;
+alloc_fail:
+	rte_mempool_free(dev->xaq_pool);
+	rte_memzone_free(mz);
+	return rc;
+}
+
+static int
+sso_ggrp_alloc_xaq(struct otx2_sso_evdev *dev)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	struct sso_hw_setconfig *req;
+
+	otx2_sso_dbg("Configuring XAQ for GGRPs");
+	req = otx2_mbox_alloc_msg_sso_hw_setconfig(mbox);
+	req->npa_pf_func = otx2_npa_pf_func_get();
+	req->npa_aura_id = npa_lf_aura_handle_to_aura(dev->xaq_pool->pool_id);
+	req->hwgrps = dev->nb_event_queues;
+
+	return otx2_mbox_process(mbox);
+}
+
 static void
 sso_lf_teardown(struct otx2_sso_evdev *dev,
 		enum otx2_sso_lf_type lf_type)
@@ -288,11 +390,23 @@ otx2_sso_configure(const struct rte_eventdev *event_dev)
 		goto teardown_hws;
 	}
 
+	if (sso_xaq_allocate(dev) < 0) {
+		rc = -ENOMEM;
+		goto teardown_hwggrp;
+	}
+
+	rc = sso_ggrp_alloc_xaq(dev);
+	if (rc < 0) {
+		otx2_err("Failed to alloc xaq to ggrp %d", rc);
+		goto teardown_hwggrp;
+	}
+
 	dev->configured = 1;
 	rte_mb();
 
 	return 0;
-
+teardown_hwggrp:
+	sso_lf_teardown(dev, SSO_LF_GGRP);
 teardown_hws:
 	sso_lf_teardown(dev, SSO_LF_GWS);
 	dev->nb_event_queues = 0;

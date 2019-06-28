@@ -17,6 +17,9 @@
 
 #define OTX2_SSO_MAX_VHGRP                  RTE_EVENT_MAX_QUEUES_PER_DEV
 #define OTX2_SSO_MAX_VHWS                   (UINT8_MAX)
+#define OTX2_SSO_FC_NAME                    "otx2_evdev_xaq_fc"
+#define OTX2_SSO_XAQ_SLACK                  (8)
+#define OTX2_SSO_XAQ_CACHE_CNT              (0x7)
 
 /* SSO LF register offsets (BAR2) */
 #define SSO_LF_GGRP_OP_ADD_WORK0            (0x0ull)
@@ -54,6 +57,11 @@ struct otx2_sso_evdev {
 	uint32_t min_dequeue_timeout_ns;
 	uint32_t max_dequeue_timeout_ns;
 	int32_t max_num_events;
+	uint64_t *fc_mem;
+	uint64_t xaq_lmt;
+	uint64_t nb_xaq_cfg;
+	rte_iova_t fc_iova;
+	struct rte_mempool *xaq_pool;
 	/* HW const */
 	uint32_t xae_waes;
 	uint32_t xaq_buf_size;
