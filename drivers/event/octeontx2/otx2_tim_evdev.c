@@ -53,6 +53,7 @@ TIM_ARM_TMO_FASTPATH_MODES
 				[tim_ring->ena_dfb][prod_flag];
 	otx2_tim_ops.arm_tmo_tick_burst = arm_tmo_burst[tim_ring->optimized]
 				[tim_ring->ena_dfb];
+	otx2_tim_ops.cancel_burst = otx2_tim_timer_cancel_burst;
 }
 
 static void
