@@ -17,7 +17,7 @@
 
 /* Check condition and return an error if true. */
 static uint16_t enabled_core_ids[RTE_MAX_LCORE];
-static uint8_t num_cores;
+static unsigned int num_cores;
 
 static uint32_t *keys;
 #define TOTAL_ENTRY (1024 * 8)
@@ -125,8 +125,8 @@ test_rcu_qsbr_writer_perf(void *arg)
 static int
 test_rcu_qsbr_perf(void)
 {
-	int i, sz;
-	int tmp_num_cores;
+	int sz;
+	unsigned int i, tmp_num_cores;
 
 	writer_done = 0;
 
@@ -188,8 +188,8 @@ test_rcu_qsbr_perf(void)
 static int
 test_rcu_qsbr_rperf(void)
 {
-	int i, sz;
-	int tmp_num_cores;
+	int sz;
+	unsigned int i, tmp_num_cores;
 
 	rte_atomic64_clear(&updates);
 	rte_atomic64_clear(&update_cycles);
@@ -234,7 +234,8 @@ test_rcu_qsbr_rperf(void)
 static int
 test_rcu_qsbr_wperf(void)
 {
-	int i, sz;
+	int sz;
+	unsigned int i;
 
 	rte_atomic64_clear(&checks);
 	rte_atomic64_clear(&check_cycles);
@@ -378,7 +379,8 @@ static int
 test_rcu_qsbr_sw_sv_1qs(void)
 {
 	uint64_t token, begin, cycles;
-	int i, j, tmp_num_cores, sz;
+	int sz;
+	unsigned int i, j, tmp_num_cores;
 	int32_t pos;
 
 	writer_done = 0;
@@ -496,7 +498,8 @@ static int
 test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 {
 	uint64_t token, begin, cycles;
-	int i, j, ret, tmp_num_cores, sz;
+	int ret, sz;
+	unsigned int i, j, tmp_num_cores;
 	int32_t pos;
 
 	writer_done = 0;
