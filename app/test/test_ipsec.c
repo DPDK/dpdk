@@ -452,8 +452,10 @@ ut_teardown(void)
 
 	for (i = 0; i < BURST_SIZE; i++) {
 		/* free crypto operation structure */
-		if (ut_params->cop[i])
+		if (ut_params->cop[i]) {
 			rte_crypto_op_free(ut_params->cop[i]);
+			ut_params->cop[i] = NULL;
+		}
 
 		/*
 		 * free mbuf - both obuf and ibuf are usually the same,
@@ -463,17 +465,17 @@ ut_teardown(void)
 		if (ut_params->obuf[i]) {
 			rte_pktmbuf_free(ut_params->obuf[i]);
 			if (ut_params->ibuf[i] == ut_params->obuf[i])
-				ut_params->ibuf[i] = 0;
-			ut_params->obuf[i] = 0;
+				ut_params->ibuf[i] = NULL;
+			ut_params->obuf[i] = NULL;
 		}
 		if (ut_params->ibuf[i]) {
 			rte_pktmbuf_free(ut_params->ibuf[i]);
-			ut_params->ibuf[i] = 0;
+			ut_params->ibuf[i] = NULL;
 		}
 
 		if (ut_params->testbuf[i]) {
 			rte_pktmbuf_free(ut_params->testbuf[i]);
-			ut_params->testbuf[i] = 0;
+			ut_params->testbuf[i] = NULL;
 		}
 	}
 
