@@ -10,6 +10,51 @@
 
 static struct rte_event_timer_adapter_ops otx2_tim_ops;
 
+static void
+tim_optimze_bkt_param(struct otx2_tim_ring *tim_ring)
+{
+	uint64_t tck_nsec;
+	uint32_t hbkts;
+	uint32_t lbkts;
+
+	hbkts = rte_align32pow2(tim_ring->nb_bkts);
+	tck_nsec = RTE_ALIGN_MUL_CEIL(tim_ring->max_tout / (hbkts - 1), 10);
+
+	if ((tck_nsec < TICK2NSEC(OTX2_TIM_MIN_TMO_TKS,
+				  tim_ring->tenns_clk_freq) ||
+	    hbkts > OTX2_TIM_MAX_BUCKETS))
+		hbkts = 0;
+
+	lbkts = rte_align32prevpow2(tim_ring->nb_bkts);
+	tck_nsec = RTE_ALIGN_MUL_CEIL((tim_ring->max_tout / (lbkts - 1)), 10);
+
+	if ((tck_nsec < TICK2NSEC(OTX2_TIM_MIN_TMO_TKS,
+				  tim_ring->tenns_clk_freq) ||
+	    lbkts > OTX2_TIM_MAX_BUCKETS))
+		lbkts = 0;
+
+	if (!hbkts && !lbkts)
+		return;
+
+	if (!hbkts) {
+		tim_ring->nb_bkts = lbkts;
+		goto end;
+	} else if (!lbkts) {
+		tim_ring->nb_bkts = hbkts;
+		goto end;
+	}
+
+	tim_ring->nb_bkts = (hbkts - tim_ring->nb_bkts) <
+		(tim_ring->nb_bkts - lbkts) ? hbkts : lbkts;
+end:
+	tim_ring->optimized = true;
+	tim_ring->tck_nsec = RTE_ALIGN_MUL_CEIL((tim_ring->max_tout /
+						(tim_ring->nb_bkts - 1)), 10);
+	otx2_tim_dbg("Optimized configured values");
+	otx2_tim_dbg("Nb_bkts  : %" PRIu32 "", tim_ring->nb_bkts);
+	otx2_tim_dbg("Tck_nsec : %" PRIu64 "", tim_ring->tck_nsec);
+}
+
 static int
 tim_chnk_pool_create(struct otx2_tim_ring *tim_ring,
 		     struct rte_event_timer_adapter_conf *rcfg)
@@ -159,8 +204,13 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 
 	if (NSEC2TICK(RTE_ALIGN_MUL_CEIL(rcfg->timer_tick_ns, 10),
 		      rsp->tenns_clk) < OTX2_TIM_MIN_TMO_TKS) {
-		rc = -ERANGE;
-		goto rng_mem_err;
+		if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES)
+			rcfg->timer_tick_ns = TICK2NSEC(OTX2_TIM_MIN_TMO_TKS,
+					rsp->tenns_clk);
+		else {
+			rc = -ERANGE;
+			goto rng_mem_err;
+		}
 	}
 
 	tim_ring = rte_zmalloc("otx2_tim_prv", sizeof(struct otx2_tim_ring), 0);
@@ -183,6 +233,15 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 							tim_ring->chunk_sz);
 	tim_ring->nb_chunk_slots = OTX2_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
 
+	/* Try to optimize the bucket parameters. */
+	if ((rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES)) {
+		if (rte_is_power_of_2(tim_ring->nb_bkts))
+			tim_ring->optimized = true;
+		else
+			tim_optimze_bkt_param(tim_ring);
+	}
+
+	tim_ring->nb_chunks = tim_ring->nb_chunks * tim_ring->nb_bkts;
 	/* Create buckets. */
 	tim_ring->bkt = rte_zmalloc("otx2_tim_bucket", (tim_ring->nb_bkts) *
 				    sizeof(struct otx2_tim_bkt),

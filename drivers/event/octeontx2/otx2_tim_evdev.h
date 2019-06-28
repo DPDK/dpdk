@@ -17,6 +17,8 @@
 #define TIM_LF_RING_AURA		(0x0)
 #define TIM_LF_RING_BASE		(0x130)
 
+#define OTX2_MAX_TIM_RINGS		(256)
+#define OTX2_TIM_MAX_BUCKETS		(0xFFFFF)
 #define OTX2_TIM_RING_DEF_CHUNK_SZ	(4096)
 #define OTX2_TIM_CHUNK_ALIGNMENT	(16)
 #define OTX2_TIM_NB_CHUNK_SLOTS(sz)	(((sz) / OTX2_TIM_CHUNK_ALIGNMENT) - 1)
@@ -63,6 +65,7 @@ struct otx2_tim_ring {
 	struct rte_mempool *chunk_pool;
 	uint64_t tck_int;
 	uint8_t prod_type_sp;
+	uint8_t optimized;
 	uint8_t ena_dfb;
 	uint16_t ring_id;
 	uint32_t aura;

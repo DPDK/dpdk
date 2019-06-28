@@ -76,6 +76,7 @@
 #define NSEC2USEC(__ns)			((__ns) / 1E3)
 #define USEC2NSEC(__us)                 ((__us) * 1E3)
 #define NSEC2TICK(__ns, __freq)		(((__ns) * (__freq)) / 1E9)
+#define TICK2NSEC(__tck, __freq)	(((__tck) * 1E9) / (__freq))
 
 enum otx2_sso_lf_type {
 	SSO_LF_GGRP,
