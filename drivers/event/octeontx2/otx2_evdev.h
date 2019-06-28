@@ -170,6 +170,14 @@ parse_kvargs_value(const char *key, const char *value, void *opaque)
 	return 0;
 }
 
+uint16_t otx2_ssogws_enq(void *port, const struct rte_event *ev);
+uint16_t otx2_ssogws_enq_burst(void *port, const struct rte_event ev[],
+			       uint16_t nb_events);
+uint16_t otx2_ssogws_enq_new_burst(void *port, const struct rte_event ev[],
+				   uint16_t nb_events);
+uint16_t otx2_ssogws_enq_fwd_burst(void *port, const struct rte_event ev[],
+				   uint16_t nb_events);
+
 /* Init and Fini API's */
 int otx2_sso_init(struct rte_eventdev *event_dev);
 int otx2_sso_fini(struct rte_eventdev *event_dev);
