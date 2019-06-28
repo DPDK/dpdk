@@ -30,6 +30,18 @@ tim_get_msix_offsets(void)
 }
 
 static void
+otx2_tim_ring_info_get(const struct rte_event_timer_adapter *adptr,
+		       struct rte_event_timer_adapter_info *adptr_info)
+{
+	struct otx2_tim_ring *tim_ring = adptr->data->adapter_priv;
+
+	adptr_info->max_tmo_ns = tim_ring->max_tout;
+	adptr_info->min_resolution_ns = tim_ring->tck_nsec;
+	rte_memcpy(&adptr_info->conf, &adptr->data->conf,
+		   sizeof(struct rte_event_timer_adapter_conf));
+}
+
+static void
 tim_optimze_bkt_param(struct otx2_tim_ring *tim_ring)
 {
 	uint64_t tck_nsec;
@@ -375,6 +387,7 @@ otx2_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 
 	otx2_tim_ops.init = otx2_tim_ring_create;
 	otx2_tim_ops.uninit = otx2_tim_ring_free;
+	otx2_tim_ops.get_info	= otx2_tim_ring_info_get;
 
 	/* Store evdev pointer for later use. */
 	dev->event_dev = (struct rte_eventdev *)(uintptr_t)evdev;
