@@ -114,6 +114,14 @@ Runtime Config Options
 
     --dev "0002:0e:00.0,tim_chnk_slots=1023"
 
+- ``TIM enable arm/cancel statistics``
+
+  The ``tim_stats_ena`` devargs can be used to enable arm and cancel stats of
+  event timer adapter.
+  For example::
+
+    --dev "0002:0e:00.0,tim_stats_ena=1"
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 

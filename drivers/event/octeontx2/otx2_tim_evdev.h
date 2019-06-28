@@ -79,6 +79,7 @@
 #define OTX2_TIM_BKT_MOD        0x8
 #define OTX2_TIM_ENA_FB         0x10
 #define OTX2_TIM_ENA_DFB        0x20
+#define OTX2_TIM_ENA_STATS      0x40
 
 enum otx2_tim_clk_src {
 	OTX2_TIM_CLK_SRC_10NS = RTE_EVENT_TIMER_ADAPTER_CPU_CLK,
@@ -120,6 +121,7 @@ struct otx2_tim_evdev {
 	/* Dev args */
 	uint8_t disable_npa;
 	uint16_t chunk_slots;
+	uint8_t enable_stats;
 	/* MSIX offsets */
 	uint16_t tim_msixoff[OTX2_MAX_TIM_RINGS];
 };
@@ -133,7 +135,9 @@ struct otx2_tim_ring {
 	struct otx2_tim_bkt *bkt;
 	struct rte_mempool *chunk_pool;
 	uint64_t tck_int;
+	rte_atomic64_t arm_cnt;
 	uint8_t prod_type_sp;
+	uint8_t enable_stats;
 	uint8_t disable_npa;
 	uint8_t optimized;
 	uint8_t ena_dfb;
@@ -159,32 +163,57 @@ tim_priv_get(void)
 	return mz->addr;
 }
 
-#define TIM_ARM_FASTPATH_MODES						  \
-FP(mod_sp,    0, 0, 0, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_DFB | OTX2_TIM_SP) \
-FP(mod_mp,    0, 0, 1, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_DFB | OTX2_TIM_MP) \
-FP(mod_fb_sp, 0, 1, 0, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_FB  | OTX2_TIM_SP) \
-FP(mod_fb_mp, 0, 1, 1, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_FB  | OTX2_TIM_MP) \
-FP(and_sp,    1, 0, 0, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_DFB | OTX2_TIM_SP) \
-FP(and_mp,    1, 0, 1, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_DFB | OTX2_TIM_MP) \
-FP(and_fb_sp, 1, 1, 0, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_FB  | OTX2_TIM_SP) \
-FP(and_fb_mp, 1, 1, 1, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_FB  | OTX2_TIM_MP) \
+#define TIM_ARM_FASTPATH_MODES						     \
+FP(mod_sp,    0, 0, 0, 0, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_DFB | OTX2_TIM_SP) \
+FP(mod_mp,    0, 0, 0, 1, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_DFB | OTX2_TIM_MP) \
+FP(mod_fb_sp, 0, 0, 1, 0, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_FB  | OTX2_TIM_SP) \
+FP(mod_fb_mp, 0, 0, 1, 1, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_FB  | OTX2_TIM_MP) \
+FP(and_sp,    0, 1, 0, 0, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_DFB | OTX2_TIM_SP) \
+FP(and_mp,    0, 1, 0, 1, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_DFB | OTX2_TIM_MP) \
+FP(and_fb_sp, 0, 1, 1, 0, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_FB  | OTX2_TIM_SP) \
+FP(and_fb_mp, 0, 1, 1, 1, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_FB  | OTX2_TIM_MP) \
+FP(stats_mod_sp,    1, 0, 0, 0, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_MOD |	     \
+	OTX2_TIM_ENA_DFB | OTX2_TIM_SP)					     \
+FP(stats_mod_mp,    1, 0, 0, 1, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_MOD |	     \
+	OTX2_TIM_ENA_DFB | OTX2_TIM_MP)					     \
+FP(stats_mod_fb_sp, 1, 0, 1, 0, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_MOD |	     \
+	OTX2_TIM_ENA_FB  | OTX2_TIM_SP)					     \
+FP(stats_mod_fb_mp, 1, 0, 1, 1, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_MOD |	     \
+	OTX2_TIM_ENA_FB  | OTX2_TIM_MP)					     \
+FP(stats_and_sp,    1, 1, 0, 0, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_AND |	     \
+	OTX2_TIM_ENA_DFB | OTX2_TIM_SP)					     \
+FP(stats_and_mp,    1, 1, 0, 1, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_AND |	     \
+	OTX2_TIM_ENA_DFB | OTX2_TIM_MP)					     \
+FP(stats_and_fb_sp, 1, 1, 1, 0, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_AND |	     \
+	OTX2_TIM_ENA_FB  | OTX2_TIM_SP)					     \
+FP(stats_and_fb_mp, 1, 1, 1, 1, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_AND |	     \
+	OTX2_TIM_ENA_FB  | OTX2_TIM_MP)
 
-#define FP(_name, _f3, _f2, _f1, flags)					  \
-uint16_t otx2_tim_arm_burst_ ## _name(					  \
-			const struct rte_event_timer_adapter *adptr,	  \
-				      struct rte_event_timer **tim,	  \
-				      const uint16_t nb_timers);
+#define TIM_ARM_TMO_FASTPATH_MODES					\
+FP(mod,		 0, 0, 0, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_DFB)		\
+FP(mod_fb,	 0, 0, 1, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_FB)		\
+FP(and,		 0, 1, 0, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_DFB)		\
+FP(and_fb,	 0, 1, 1, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_FB)		\
+FP(stats_mod,	 1, 0, 0, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_MOD |	\
+	OTX2_TIM_ENA_DFB)						\
+FP(stats_mod_fb, 1, 0, 1, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_MOD |	\
+	OTX2_TIM_ENA_FB)						\
+FP(stats_and,	 1, 1, 0, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_AND |	\
+	OTX2_TIM_ENA_DFB)						\
+FP(stats_and_fb, 1, 1, 1, OTX2_TIM_ENA_STATS | OTX2_TIM_BKT_AND |	\
+	OTX2_TIM_ENA_FB)
+
+#define FP(_name, _f4, _f3, _f2, _f1, flags)				   \
+uint16_t								   \
+otx2_tim_arm_burst_ ## _name(const struct rte_event_timer_adapter *adptr,  \
+			     struct rte_event_timer **tim,		   \
+			     const uint16_t nb_timers);
 TIM_ARM_FASTPATH_MODES
 #undef FP
 
-#define TIM_ARM_TMO_FASTPATH_MODES				\
-FP(mod,       0, 0, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_DFB)	\
-FP(mod_fb,    0, 1, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_FB)		\
-FP(and,       1, 0, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_DFB)	\
-FP(and_fb,    1, 1, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_FB)		\
-
-#define FP(_name, _f2, _f1, flags)					\
-uint16_t otx2_tim_arm_tmo_tick_burst_ ## _name(				\
+#define FP(_name, _f3, _f2, _f1, flags)					\
+uint16_t								\
+otx2_tim_arm_tmo_tick_burst_ ## _name(					\
 		const struct rte_event_timer_adapter *adptr,		\
 		struct rte_event_timer **tim,				\
 		const uint64_t timeout_tick, const uint16_t nb_timers);
