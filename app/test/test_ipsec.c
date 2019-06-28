@@ -1171,9 +1171,11 @@ static void
 destroy_sa(uint32_t j)
 {
 	struct ipsec_unitest_params *ut = &unittest_params;
+	struct ipsec_testsuite_params *ts = &testsuite_params;
 
 	rte_ipsec_sa_fini(ut->ss[j].sa);
 	rte_free(ut->ss[j].sa);
+	rte_cryptodev_sym_session_clear(ts->valid_dev, ut->ss[j].crypto.ses);
 	rte_cryptodev_sym_session_free(ut->ss[j].crypto.ses);
 	memset(&ut->ss[j], 0, sizeof(ut->ss[j]));
 }
