@@ -12,6 +12,36 @@
 
 #include "otx2_evdev.h"
 
+static void
+otx2_sso_info_get(struct rte_eventdev *event_dev,
+		  struct rte_event_dev_info *dev_info)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+
+	dev_info->driver_name = RTE_STR(EVENTDEV_NAME_OCTEONTX2_PMD);
+	dev_info->min_dequeue_timeout_ns = dev->min_dequeue_timeout_ns;
+	dev_info->max_dequeue_timeout_ns = dev->max_dequeue_timeout_ns;
+	dev_info->max_event_queues = dev->max_event_queues;
+	dev_info->max_event_queue_flows = (1ULL << 20);
+	dev_info->max_event_queue_priority_levels = 8;
+	dev_info->max_event_priority_levels = 1;
+	dev_info->max_event_ports = dev->max_event_ports;
+	dev_info->max_event_port_dequeue_depth = 1;
+	dev_info->max_event_port_enqueue_depth = 1;
+	dev_info->max_num_events =  dev->max_num_events;
+	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_QUEUE_QOS |
+					RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
+					RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES |
+					RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK |
+					RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT |
+					RTE_EVENT_DEV_CAP_NONSEQ_MODE;
+}
+
+/* Initialize and register event driver with DPDK Application */
+static struct rte_eventdev_ops otx2_sso_ops = {
+	.dev_infos_get    = otx2_sso_info_get,
+};
+
 static int
 otx2_sso_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
@@ -51,6 +81,7 @@ otx2_sso_init(struct rte_eventdev *event_dev)
 	struct otx2_sso_evdev *dev;
 	int rc;
 
+	event_dev->dev_ops = &otx2_sso_ops;
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
