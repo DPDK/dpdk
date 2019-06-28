@@ -46,21 +46,101 @@ static struct rte_pci_driver pci_sso = {
 int
 otx2_sso_init(struct rte_eventdev *event_dev)
 {
-	RTE_SET_USED(event_dev);
+	struct free_rsrcs_rsp *rsrc_cnt;
+	struct rte_pci_device *pci_dev;
+	struct otx2_sso_evdev *dev;
+	int rc;
+
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	dev = sso_pmd_priv(event_dev);
+
+	pci_dev = container_of(event_dev->dev, struct rte_pci_device, device);
+
+	/* Initialize the base otx2_dev object */
+	rc = otx2_dev_init(pci_dev, dev);
+	if (rc < 0) {
+		otx2_err("Failed to initialize otx2_dev rc=%d", rc);
+		goto error;
+	}
+
+	/* Get SSO and SSOW MSIX rsrc cnt */
+	otx2_mbox_alloc_msg_free_rsrc_cnt(dev->mbox);
+	rc = otx2_mbox_process_msg(dev->mbox, (void *)&rsrc_cnt);
+	if (rc < 0) {
+		otx2_err("Unable to get free rsrc count");
+		goto otx2_dev_uninit;
+	}
+	otx2_sso_dbg("SSO %d SSOW %d NPA %d provisioned", rsrc_cnt->sso,
+		     rsrc_cnt->ssow, rsrc_cnt->npa);
+
+	dev->max_event_ports = RTE_MIN(rsrc_cnt->ssow, OTX2_SSO_MAX_VHWS);
+	dev->max_event_queues = RTE_MIN(rsrc_cnt->sso, OTX2_SSO_MAX_VHGRP);
+	/* Grab the NPA LF if required */
+	rc = otx2_npa_lf_init(pci_dev, dev);
+	if (rc < 0) {
+		otx2_err("Unable to init NPA lf. It might not be provisioned");
+		goto otx2_dev_uninit;
+	}
+
+	dev->drv_inited = true;
+	dev->is_timeout_deq = 0;
+	dev->min_dequeue_timeout_ns = USEC2NSEC(1);
+	dev->max_dequeue_timeout_ns = USEC2NSEC(0x3FF);
+	dev->max_num_events = -1;
+	dev->nb_event_queues = 0;
+	dev->nb_event_ports = 0;
+
+	if (!dev->max_event_ports || !dev->max_event_queues) {
+		otx2_err("Not enough eventdev resource queues=%d ports=%d",
+			 dev->max_event_queues, dev->max_event_ports);
+		rc = -ENODEV;
+		goto otx2_npa_lf_uninit;
+	}
+
+	otx2_sso_pf_func_set(dev->pf_func);
+	otx2_sso_dbg("Initializing %s max_queues=%d max_ports=%d",
+		     event_dev->data->name, dev->max_event_queues,
+		     dev->max_event_ports);
+
+
 	return 0;
+
+otx2_npa_lf_uninit:
+	otx2_npa_lf_fini();
+otx2_dev_uninit:
+	otx2_dev_fini(pci_dev, dev);
+error:
+	return rc;
 }
 
 int
 otx2_sso_fini(struct rte_eventdev *event_dev)
 {
-	RTE_SET_USED(event_dev);
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	struct rte_pci_device *pci_dev;
+
 	/* For secondary processes, nothing to be done */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	pci_dev = container_of(event_dev->dev, struct rte_pci_device, device);
+
+	if (!dev->drv_inited)
+		goto dev_fini;
+
+	dev->drv_inited = false;
+	otx2_npa_lf_fini();
+
+dev_fini:
+	if (otx2_npa_lf_active(dev)) {
+		otx2_info("Common resource in use by other devices");
+		return -EAGAIN;
+	}
+
+	otx2_dev_fini(pci_dev, dev);
 
 	return 0;
 }
