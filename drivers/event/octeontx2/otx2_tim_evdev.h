@@ -111,6 +111,13 @@ struct otx2_tim_ent {
 	uint64_t wqe;
 } __rte_packed;
 
+struct otx2_tim_ctl {
+	uint16_t ring;
+	uint16_t chunk_slots;
+	uint16_t disable_npa;
+	uint16_t enable_stats;
+};
+
 struct otx2_tim_evdev {
 	struct rte_pci_device *pci_dev;
 	struct rte_eventdev *event_dev;
@@ -123,6 +130,9 @@ struct otx2_tim_evdev {
 	uint16_t chunk_slots;
 	uint16_t min_ring_cnt;
 	uint8_t enable_stats;
+	uint16_t ring_ctl_cnt;
+	struct otx2_tim_ctl *ring_ctl_data;
+	/* HW const */
 	/* MSIX offsets */
 	uint16_t tim_msixoff[OTX2_MAX_TIM_RINGS];
 };

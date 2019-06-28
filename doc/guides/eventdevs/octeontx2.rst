@@ -132,6 +132,16 @@ Runtime Config Options
 
     --dev "0002:0e:00.0,tim_rings_lmt=5"
 
+- ``TIM ring control internal parameters``
+
+  When using multiple TIM rings the ``tim_ring_ctl`` devargs can be used to
+  control each TIM rings internal parameters uniquely. The following dict
+  format is expected [ring-chnk_slots-disable_npa-stats_ena]. 0 represents
+  default values.
+  For Example::
+
+    --dev "0002:0e:00.0,tim_ring_ctl=[2-1023-1-0]"
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 

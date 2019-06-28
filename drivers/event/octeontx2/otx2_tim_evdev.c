@@ -255,7 +255,7 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	struct tim_lf_alloc_req *req;
 	struct tim_lf_alloc_rsp *rsp;
 	uint64_t nb_timers;
-	int rc;
+	int i, rc;
 
 	if (dev == NULL)
 		return -ENODEV;
@@ -303,6 +303,18 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	nb_timers = rcfg->nb_timers;
 	tim_ring->disable_npa = dev->disable_npa;
 	tim_ring->enable_stats = dev->enable_stats;
+
+	for (i = 0; i < dev->ring_ctl_cnt ; i++) {
+		struct otx2_tim_ctl *ring_ctl = &dev->ring_ctl_data[i];
+
+		if (ring_ctl->ring == tim_ring->ring_id) {
+			tim_ring->chunk_sz = ring_ctl->chunk_slots ?
+				((uint32_t)(ring_ctl->chunk_slots + 1) *
+				 OTX2_TIM_CHUNK_ALIGNMENT) : tim_ring->chunk_sz;
+			tim_ring->enable_stats = ring_ctl->enable_stats;
+			tim_ring->disable_npa = ring_ctl->disable_npa;
+		}
+	}
 
 	tim_ring->nb_chunks = nb_timers / OTX2_TIM_NB_CHUNK_SLOTS(
 							tim_ring->chunk_sz);
@@ -529,6 +541,77 @@ otx2_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 #define OTX2_TIM_CHNK_SLOTS	"tim_chnk_slots"
 #define OTX2_TIM_STATS_ENA	"tim_stats_ena"
 #define OTX2_TIM_RINGS_LMT	"tim_rings_lmt"
+#define OTX2_TIM_RING_CTL	"tim_ring_ctl"
+
+static void
+tim_parse_ring_param(char *value, void *opaque)
+{
+	struct otx2_tim_evdev *dev = opaque;
+	struct otx2_tim_ctl ring_ctl = {0};
+	char *tok = strtok(value, "-");
+	uint16_t *val;
+
+	val = (uint16_t *)&ring_ctl;
+
+	if (!strlen(value))
+		return;
+
+	while (tok != NULL) {
+		*val = atoi(tok);
+		tok = strtok(NULL, "-");
+		val++;
+	}
+
+	if (val != (&ring_ctl.enable_stats + 1)) {
+		otx2_err(
+		"Invalid ring param expected [ring-chunk_sz-disable_npa-enable_stats]");
+		return;
+	}
+
+	dev->ring_ctl_cnt++;
+	dev->ring_ctl_data = rte_realloc(dev->ring_ctl_data,
+			sizeof(struct otx2_tim_ctl), 0);
+	dev->ring_ctl_data[dev->ring_ctl_cnt - 1] = ring_ctl;
+}
+
+static void
+tim_parse_ring_ctl_list(const char *value, void *opaque)
+{
+	char *s = strdup(value);
+	char *start = NULL;
+	char *end = NULL;
+	char *f = s;
+
+	while (*s) {
+		if (*s == '[')
+			start = s;
+		else if (*s == ']')
+			end = s;
+
+		if (start < end && *start) {
+			*end = 0;
+			tim_parse_ring_param(start + 1, opaque);
+			start = end;
+			s = end;
+		}
+		s++;
+	}
+
+	free(f);
+}
+
+static int
+tim_parse_kvargs_dict(const char *key, const char *value, void *opaque)
+{
+	RTE_SET_USED(key);
+
+	/* Dict format [ring-chunk_sz-disable_npa-enable_stats] use '-' as ','
+	 * isn't allowed. 0 represents default.
+	 */
+	tim_parse_ring_ctl_list(value, opaque);
+
+	return 0;
+}
 
 static void
 tim_parse_devargs(struct rte_devargs *devargs, struct otx2_tim_evdev *dev)
@@ -550,6 +633,8 @@ tim_parse_devargs(struct rte_devargs *devargs, struct otx2_tim_evdev *dev)
 			   &dev->enable_stats);
 	rte_kvargs_process(kvlist, OTX2_TIM_RINGS_LMT, &parse_kvargs_value,
 			   &dev->min_ring_cnt);
+	rte_kvargs_process(kvlist, OTX2_TIM_RING_CTL,
+			   &tim_parse_kvargs_dict, &dev);
 }
 
 void
