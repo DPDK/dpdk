@@ -1040,6 +1040,43 @@ otx2_sso_start(struct rte_eventdev *event_dev)
 	return 0;
 }
 
+static void
+otx2_sso_stop(struct rte_eventdev *event_dev)
+{
+	sso_func_trace();
+	sso_cleanup(event_dev, 0);
+	rte_mb();
+}
+
+static int
+otx2_sso_close(struct rte_eventdev *event_dev)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	uint8_t all_queues[RTE_EVENT_MAX_QUEUES_PER_DEV];
+	uint16_t i;
+
+	if (!dev->configured)
+		return 0;
+
+	sso_unregister_irqs(event_dev);
+
+	for (i = 0; i < dev->nb_event_queues; i++)
+		all_queues[i] = i;
+
+	for (i = 0; i < dev->nb_event_ports; i++)
+		otx2_sso_port_unlink(event_dev, event_dev->data->ports[i],
+				     all_queues, dev->nb_event_queues);
+
+	sso_lf_teardown(dev, SSO_LF_GGRP);
+	sso_lf_teardown(dev, SSO_LF_GWS);
+	dev->nb_event_ports = 0;
+	dev->nb_event_queues = 0;
+	rte_mempool_free(dev->xaq_pool);
+	rte_memzone_free(rte_memzone_lookup(OTX2_SSO_FC_NAME));
+
+	return 0;
+}
+
 /* Initialize and register event driver with DPDK Application */
 static struct rte_eventdev_ops otx2_sso_ops = {
 	.dev_infos_get    = otx2_sso_info_get,
@@ -1060,6 +1097,8 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 
 	.dump             = otx2_sso_dump,
 	.dev_start        = otx2_sso_start,
+	.dev_stop         = otx2_sso_stop,
+	.dev_close        = otx2_sso_close,
 };
 
 #define OTX2_SSO_XAE_CNT	"xae_cnt"
