@@ -42,8 +42,17 @@ TIM_ARM_FASTPATH_MODES
 #undef FP
 	};
 
+	const rte_event_timer_arm_tmo_tick_burst_t arm_tmo_burst[2][2] = {
+#define FP(_name, _f2, _f1, flags) \
+		[_f2][_f1] = otx2_tim_arm_tmo_tick_burst_ ## _name,
+TIM_ARM_TMO_FASTPATH_MODES
+#undef FP
+	};
+
 	otx2_tim_ops.arm_burst = arm_burst[tim_ring->optimized]
 				[tim_ring->ena_dfb][prod_flag];
+	otx2_tim_ops.arm_tmo_tick_burst = arm_tmo_burst[tim_ring->optimized]
+				[tim_ring->ena_dfb];
 }
 
 static void

@@ -66,6 +66,8 @@
 #define OTX2_TIM_MAX_BUCKETS		(0xFFFFF)
 #define OTX2_TIM_RING_DEF_CHUNK_SZ	(4096)
 #define OTX2_TIM_CHUNK_ALIGNMENT	(16)
+#define OTX2_TIM_MAX_BURST		(RTE_CACHE_LINE_SIZE / \
+						OTX2_TIM_CHUNK_ALIGNMENT)
 #define OTX2_TIM_NB_CHUNK_SLOTS(sz)	(((sz) / OTX2_TIM_CHUNK_ALIGNMENT) - 1)
 #define OTX2_TIM_MIN_CHUNK_SLOTS	(0x1)
 #define OTX2_TIM_MAX_CHUNK_SLOTS	(0x1FFE)
@@ -173,6 +175,20 @@ uint16_t otx2_tim_arm_burst_ ## _name(					  \
 				      struct rte_event_timer **tim,	  \
 				      const uint16_t nb_timers);
 TIM_ARM_FASTPATH_MODES
+#undef FP
+
+#define TIM_ARM_TMO_FASTPATH_MODES				\
+FP(mod,       0, 0, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_DFB)	\
+FP(mod_fb,    0, 1, OTX2_TIM_BKT_MOD | OTX2_TIM_ENA_FB)		\
+FP(and,       1, 0, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_DFB)	\
+FP(and_fb,    1, 1, OTX2_TIM_BKT_AND | OTX2_TIM_ENA_FB)		\
+
+#define FP(_name, _f2, _f1, flags)					\
+uint16_t otx2_tim_arm_tmo_tick_burst_ ## _name(				\
+		const struct rte_event_timer_adapter *adptr,		\
+		struct rte_event_timer **tim,				\
+		const uint64_t timeout_tick, const uint16_t nb_timers);
+TIM_ARM_TMO_FASTPATH_MODES
 #undef FP
 
 int otx2_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
