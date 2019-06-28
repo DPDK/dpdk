@@ -214,6 +214,15 @@ uint16_t otx2_ssogws_dual_enq_new_burst(void *port, const struct rte_event ev[],
 uint16_t otx2_ssogws_dual_enq_fwd_burst(void *port, const struct rte_event ev[],
 					uint16_t nb_events);
 
+uint16_t otx2_ssogws_dual_deq(void *port, struct rte_event *ev,
+			      uint64_t timeout_ticks);
+uint16_t otx2_ssogws_dual_deq_burst(void *port, struct rte_event ev[],
+				    uint16_t nb_events, uint64_t timeout_ticks);
+uint16_t otx2_ssogws_dual_deq_timeout(void *port, struct rte_event *ev,
+				      uint64_t timeout_ticks);
+uint16_t otx2_ssogws_dual_deq_timeout_burst(void *port, struct rte_event ev[],
+					    uint16_t nb_events,
+					    uint64_t timeout_ticks);
 /* Init and Fini API's */
 int otx2_sso_init(struct rte_eventdev *event_dev);
 int otx2_sso_fini(struct rte_eventdev *event_dev);

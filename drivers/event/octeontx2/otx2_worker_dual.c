@@ -139,3 +139,69 @@ otx2_ssogws_dual_enq_fwd_burst(void *port, const struct rte_event ev[],
 
 	return 1;
 }
+
+uint16_t __hot
+otx2_ssogws_dual_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
+{
+	struct otx2_ssogws_dual *ws = port;
+	uint8_t gw;
+
+	RTE_SET_USED(timeout_ticks);
+	if (ws->swtag_req) {
+		otx2_ssogws_swtag_wait((struct otx2_ssogws *)
+				       &ws->ws_state[!ws->vws]);
+		ws->swtag_req = 0;
+		return 1;
+	}
+
+	gw = otx2_ssogws_dual_get_work(&ws->ws_state[ws->vws],
+				       &ws->ws_state[!ws->vws], ev);
+	ws->vws = !ws->vws;
+
+	return gw;
+}
+
+uint16_t __hot
+otx2_ssogws_dual_deq_burst(void *port, struct rte_event ev[],
+			   uint16_t nb_events, uint64_t timeout_ticks)
+{
+	RTE_SET_USED(nb_events);
+
+	return otx2_ssogws_dual_deq(port, ev, timeout_ticks);
+}
+
+uint16_t __hot
+otx2_ssogws_dual_deq_timeout(void *port, struct rte_event *ev,
+			     uint64_t timeout_ticks)
+{
+	struct otx2_ssogws_dual *ws = port;
+	uint64_t iter;
+	uint8_t gw;
+
+	if (ws->swtag_req) {
+		otx2_ssogws_swtag_wait((struct otx2_ssogws *)
+				       &ws->ws_state[!ws->vws]);
+		ws->swtag_req = 0;
+		return 1;
+	}
+
+	gw = otx2_ssogws_dual_get_work(&ws->ws_state[ws->vws],
+				       &ws->ws_state[!ws->vws], ev);
+	ws->vws = !ws->vws;
+	for (iter = 1; iter < timeout_ticks && (gw == 0); iter++) {
+		gw = otx2_ssogws_dual_get_work(&ws->ws_state[ws->vws],
+					       &ws->ws_state[!ws->vws], ev);
+		ws->vws = !ws->vws;
+	}
+
+	return gw;
+}
+
+uint16_t __hot
+otx2_ssogws_dual_deq_timeout_burst(void *port, struct rte_event ev[],
+				   uint16_t nb_events, uint64_t timeout_ticks)
+{
+	RTE_SET_USED(nb_events);
+
+	return otx2_ssogws_dual_deq_timeout(port, ev, timeout_ticks);
+}
