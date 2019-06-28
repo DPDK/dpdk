@@ -89,13 +89,17 @@ test_rcu_qsbr_get_memsize(void)
 	sz = rte_rcu_qsbr_get_memsize(0);
 	TEST_RCU_QSBR_RETURN_IF_ERROR((sz != 1), "Get Memsize for 0 threads");
 
-	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
+	sz = rte_rcu_qsbr_get_memsize(128);
 	/* For 128 threads,
 	 * for machines with cache line size of 64B - 8384
 	 * for machines with cache line size of 128 - 16768
 	 */
-	TEST_RCU_QSBR_RETURN_IF_ERROR((sz != 8384 && sz != 16768),
-		"Get Memsize");
+	if (RTE_CACHE_LINE_SIZE == 64)
+		TEST_RCU_QSBR_RETURN_IF_ERROR((sz != 8384),
+			"Get Memsize for 128 threads");
+	else if (RTE_CACHE_LINE_SIZE == 128)
+		TEST_RCU_QSBR_RETURN_IF_ERROR((sz != 16768),
+			"Get Memsize for 128 threads");
 
 	return 0;
 }
