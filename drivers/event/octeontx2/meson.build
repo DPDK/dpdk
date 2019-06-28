@@ -3,6 +3,7 @@
 #
 
 sources = files('otx2_worker.c',
+		'otx2_worker_dual.c',
 		'otx2_evdev.c',
 		'otx2_evdev_irq.c',
 		)
