@@ -627,7 +627,7 @@ static inline int
 rte_cryptodev_data_alloc(uint8_t dev_id, struct rte_cryptodev_data **data,
 		int socket_id)
 {
-	char mz_name[RTE_CRYPTODEV_NAME_MAX_LEN];
+	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 	int n;
 
@@ -649,6 +649,31 @@ rte_cryptodev_data_alloc(uint8_t dev_id, struct rte_cryptodev_data **data,
 	*data = mz->addr;
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		memset(*data, 0, sizeof(struct rte_cryptodev_data));
+
+	return 0;
+}
+
+static inline int
+rte_cryptodev_data_free(uint8_t dev_id, struct rte_cryptodev_data **data)
+{
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *mz;
+	int n;
+
+	/* generate memzone name */
+	n = snprintf(mz_name, sizeof(mz_name), "rte_cryptodev_data_%u", dev_id);
+	if (n >= (int)sizeof(mz_name))
+		return -EINVAL;
+
+	mz = rte_memzone_lookup(mz_name);
+	if (mz == NULL)
+		return -ENOMEM;
+
+	RTE_ASSERT(*data == mz->addr);
+	*data = NULL;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		return rte_memzone_free(mz);
 
 	return 0;
 }
@@ -687,16 +712,16 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id)
 	cryptodev = rte_cryptodev_pmd_get_dev(dev_id);
 
 	if (cryptodev->data == NULL) {
-		struct rte_cryptodev_data *cryptodev_data =
-				cryptodev_globals.data[dev_id];
+		struct rte_cryptodev_data **cryptodev_data =
+				&cryptodev_globals.data[dev_id];
 
-		int retval = rte_cryptodev_data_alloc(dev_id, &cryptodev_data,
+		int retval = rte_cryptodev_data_alloc(dev_id, cryptodev_data,
 				socket_id);
 
-		if (retval < 0 || cryptodev_data == NULL)
+		if (retval < 0 || *cryptodev_data == NULL)
 			return NULL;
 
-		cryptodev->data = cryptodev_data;
+		cryptodev->data = *cryptodev_data;
 
 		strlcpy(cryptodev->data->name, name,
 			RTE_CRYPTODEV_NAME_MAX_LEN);
@@ -720,16 +745,23 @@ int
 rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev)
 {
 	int ret;
+	uint8_t dev_id;
 
 	if (cryptodev == NULL)
 		return -EINVAL;
 
+	dev_id = cryptodev->data->dev_id;
+
 	/* Close device only if device operations have been set */
 	if (cryptodev->dev_ops) {
-		ret = rte_cryptodev_close(cryptodev->data->dev_id);
+		ret = rte_cryptodev_close(dev_id);
 		if (ret < 0)
 			return ret;
 	}
+
+	ret = rte_cryptodev_data_free(dev_id, &cryptodev_globals.data[dev_id]);
+	if (ret < 0)
+		return ret;
 
 	cryptodev->attached = RTE_CRYPTODEV_DETACHED;
 	cryptodev_globals.nb_devs--;
