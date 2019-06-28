@@ -39,6 +39,60 @@ otx2_sso_info_get(struct rte_eventdev *event_dev,
 					RTE_EVENT_DEV_CAP_NONSEQ_MODE;
 }
 
+static void
+sso_port_link_modify(struct otx2_ssogws *ws, uint8_t queue, uint8_t enable)
+{
+	uintptr_t base = OTX2_SSOW_GET_BASE_ADDR(ws->getwrk_op);
+	uint64_t val;
+
+	val = queue;
+	val |= 0ULL << 12; /* SET 0 */
+	val |= 0x8000800080000000; /* Dont modify rest of the masks */
+	val |= (uint64_t)enable << 14;   /* Enable/Disable Membership. */
+
+	otx2_write64(val, base + SSOW_LF_GWS_GRPMSK_CHG);
+}
+
+static int
+otx2_sso_port_link(struct rte_eventdev *event_dev, void *port,
+		   const uint8_t queues[], const uint8_t priorities[],
+		   uint16_t nb_links)
+{
+	uint8_t port_id = 0;
+	uint16_t link;
+
+	RTE_SET_USED(event_dev);
+	RTE_SET_USED(priorities);
+	for (link = 0; link < nb_links; link++) {
+		struct otx2_ssogws *ws = port;
+
+		port_id = ws->port;
+		sso_port_link_modify(ws, queues[link], true);
+	}
+	sso_func_trace("Port=%d nb_links=%d", port_id, nb_links);
+
+	return (int)nb_links;
+}
+
+static int
+otx2_sso_port_unlink(struct rte_eventdev *event_dev, void *port,
+		     uint8_t queues[], uint16_t nb_unlinks)
+{
+	uint8_t port_id = 0;
+	uint16_t unlink;
+
+	RTE_SET_USED(event_dev);
+	for (unlink = 0; unlink < nb_unlinks; unlink++) {
+		struct otx2_ssogws *ws = port;
+
+		port_id = ws->port;
+		sso_port_link_modify(ws, queues[unlink], false);
+	}
+	sso_func_trace("Port=%d nb_unlinks=%d", port_id, nb_unlinks);
+
+	return (int)nb_unlinks;
+}
+
 static int
 sso_hw_lf_cfg(struct otx2_mbox *mbox, enum otx2_sso_lf_type type,
 	      uint16_t nb_lf, uint8_t attach)
@@ -155,6 +209,21 @@ otx2_sso_queue_release(struct rte_eventdev *event_dev, uint8_t queue_id)
 {
 	RTE_SET_USED(event_dev);
 	RTE_SET_USED(queue_id);
+}
+
+static void
+sso_clr_links(const struct rte_eventdev *event_dev)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	int i, j;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		struct otx2_ssogws *ws;
+
+		ws = event_dev->data->ports[i];
+		for (j = 0; j < dev->nb_event_queues; j++)
+			sso_port_link_modify(ws, j, false);
+	}
 }
 
 static void
@@ -450,6 +519,8 @@ otx2_sso_configure(const struct rte_eventdev *event_dev)
 		goto teardown_hwggrp;
 	}
 
+	/* Clear any prior port-queue mapping. */
+	sso_clr_links(event_dev);
 	rc = sso_ggrp_alloc_xaq(dev);
 	if (rc < 0) {
 		otx2_err("Failed to alloc xaq to ggrp %d", rc);
@@ -574,6 +645,8 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.port_def_conf    = otx2_sso_port_def_conf,
 	.port_setup       = otx2_sso_port_setup,
 	.port_release     = otx2_sso_port_release,
+	.port_link        = otx2_sso_port_link,
+	.port_unlink      = otx2_sso_port_unlink,
 };
 
 #define OTX2_SSO_XAE_CNT	"xae_cnt"
