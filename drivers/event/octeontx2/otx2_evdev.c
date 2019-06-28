@@ -142,6 +142,13 @@ sso_lf_cfg(struct otx2_sso_evdev *dev, struct otx2_mbox *mbox,
 	return 0;
 }
 
+static void
+otx2_sso_queue_release(struct rte_eventdev *event_dev, uint8_t queue_id)
+{
+	RTE_SET_USED(event_dev);
+	RTE_SET_USED(queue_id);
+}
+
 static int
 sso_configure_ports(const struct rte_eventdev *event_dev)
 {
@@ -294,10 +301,53 @@ teardown_hws:
 	return rc;
 }
 
+static void
+otx2_sso_queue_def_conf(struct rte_eventdev *event_dev, uint8_t queue_id,
+			struct rte_event_queue_conf *queue_conf)
+{
+	RTE_SET_USED(event_dev);
+	RTE_SET_USED(queue_id);
+
+	queue_conf->nb_atomic_flows = (1ULL << 20);
+	queue_conf->nb_atomic_order_sequences = (1ULL << 20);
+	queue_conf->event_queue_cfg = RTE_EVENT_QUEUE_CFG_ALL_TYPES;
+	queue_conf->priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+}
+
+static int
+otx2_sso_queue_setup(struct rte_eventdev *event_dev, uint8_t queue_id,
+		     const struct rte_event_queue_conf *queue_conf)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct sso_grp_priority *req;
+	int rc;
+
+	sso_func_trace("Queue=%d prio=%d", queue_id, queue_conf->priority);
+
+	req = otx2_mbox_alloc_msg_sso_grp_set_priority(dev->mbox);
+	req->grp = queue_id;
+	req->weight = 0xFF;
+	req->affinity = 0xFF;
+	/* Normalize <0-255> to <0-7> */
+	req->priority = queue_conf->priority / 32;
+
+	rc = otx2_mbox_process(mbox);
+	if (rc < 0) {
+		otx2_err("Failed to set priority queue=%d", queue_id);
+		return rc;
+	}
+
+	return 0;
+}
+
 /* Initialize and register event driver with DPDK Application */
 static struct rte_eventdev_ops otx2_sso_ops = {
 	.dev_infos_get    = otx2_sso_info_get,
 	.dev_configure    = otx2_sso_configure,
+	.queue_def_conf   = otx2_sso_queue_def_conf,
+	.queue_setup      = otx2_sso_queue_setup,
+	.queue_release    = otx2_sso_queue_release,
 };
 
 static int

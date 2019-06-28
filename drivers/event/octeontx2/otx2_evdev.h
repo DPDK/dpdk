@@ -18,6 +18,23 @@
 #define OTX2_SSO_MAX_VHGRP                  RTE_EVENT_MAX_QUEUES_PER_DEV
 #define OTX2_SSO_MAX_VHWS                   (UINT8_MAX)
 
+/* SSO LF register offsets (BAR2) */
+#define SSO_LF_GGRP_OP_ADD_WORK0            (0x0ull)
+#define SSO_LF_GGRP_OP_ADD_WORK1            (0x8ull)
+
+#define SSO_LF_GGRP_QCTL                    (0x20ull)
+#define SSO_LF_GGRP_EXE_DIS                 (0x80ull)
+#define SSO_LF_GGRP_INT                     (0x100ull)
+#define SSO_LF_GGRP_INT_W1S                 (0x108ull)
+#define SSO_LF_GGRP_INT_ENA_W1S             (0x110ull)
+#define SSO_LF_GGRP_INT_ENA_W1C             (0x118ull)
+#define SSO_LF_GGRP_INT_THR                 (0x140ull)
+#define SSO_LF_GGRP_INT_CNT                 (0x180ull)
+#define SSO_LF_GGRP_XAQ_CNT                 (0x1b0ull)
+#define SSO_LF_GGRP_AQ_CNT                  (0x1c0ull)
+#define SSO_LF_GGRP_AQ_THR                  (0x1e0ull)
+#define SSO_LF_GGRP_MISC_CNT                (0x200ull)
+
 #define USEC2NSEC(__us)                 ((__us) * 1E3)
 
 enum otx2_sso_lf_type {
