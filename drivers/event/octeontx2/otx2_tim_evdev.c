@@ -528,6 +528,7 @@ otx2_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 #define OTX2_TIM_DISABLE_NPA	"tim_disable_npa"
 #define OTX2_TIM_CHNK_SLOTS	"tim_chnk_slots"
 #define OTX2_TIM_STATS_ENA	"tim_stats_ena"
+#define OTX2_TIM_RINGS_LMT	"tim_rings_lmt"
 
 static void
 tim_parse_devargs(struct rte_devargs *devargs, struct otx2_tim_evdev *dev)
@@ -547,6 +548,8 @@ tim_parse_devargs(struct rte_devargs *devargs, struct otx2_tim_evdev *dev)
 			   &parse_kvargs_value, &dev->chunk_slots);
 	rte_kvargs_process(kvlist, OTX2_TIM_STATS_ENA, &parse_kvargs_flag,
 			   &dev->enable_stats);
+	rte_kvargs_process(kvlist, OTX2_TIM_RINGS_LMT, &parse_kvargs_value,
+			   &dev->min_ring_cnt);
 }
 
 void
@@ -584,7 +587,8 @@ otx2_tim_init(struct rte_pci_device *pci_dev, struct otx2_dev *cmn_dev)
 		goto mz_free;
 	}
 
-	dev->nb_rings = rsrc_cnt->tim;
+	dev->nb_rings = dev->min_ring_cnt ?
+		RTE_MIN(dev->min_ring_cnt, rsrc_cnt->tim) : rsrc_cnt->tim;
 
 	if (!dev->nb_rings) {
 		otx2_tim_dbg("No TIM Logical functions provisioned.");

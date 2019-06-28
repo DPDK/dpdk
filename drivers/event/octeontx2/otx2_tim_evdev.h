@@ -121,6 +121,7 @@ struct otx2_tim_evdev {
 	/* Dev args */
 	uint8_t disable_npa;
 	uint16_t chunk_slots;
+	uint16_t min_ring_cnt;
 	uint8_t enable_stats;
 	/* MSIX offsets */
 	uint16_t tim_msixoff[OTX2_MAX_TIM_RINGS];

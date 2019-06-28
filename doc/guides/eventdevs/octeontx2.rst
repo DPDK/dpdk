@@ -122,6 +122,16 @@ Runtime Config Options
 
     --dev "0002:0e:00.0,tim_stats_ena=1"
 
+- ``TIM limit max rings reserved``
+
+  The ``tim_rings_lmt`` devargs can be used to limit the max number of TIM
+  rings i.e. event timer adapter reserved on probe. Since, TIM rings are HW
+  resources we can avoid starving other applications by not grabbing all the
+  rings.
+  For example::
+
+    --dev "0002:0e:00.0,tim_rings_lmt=5"
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 
