@@ -1345,6 +1345,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.rx_descriptor_status     = otx2_nix_rx_descriptor_status,
 	.tx_done_cleanup          = otx2_nix_tx_done_cleanup,
 	.pool_ops_supported       = otx2_nix_pool_ops_supported,
+	.filter_ctrl              = otx2_nix_dev_filter_ctrl,
 	.get_module_info          = otx2_nix_get_module_info,
 	.get_module_eeprom        = otx2_nix_get_module_eeprom,
 	.flow_ctrl_get            = otx2_nix_flow_ctrl_get,
@@ -1524,6 +1525,11 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 		dev->hwcap |= OTX2_FIXUP_F_LIMIT_CQ_FULL;
 	}
 
+	/* Initialize rte-flow */
+	rc = otx2_flow_init(dev);
+	if (rc)
+		goto free_mac_addrs;
+
 	otx2_nix_dbg("Port=%d pf=%d vf=%d ver=%s msix_off=%d hwcap=0x%" PRIx64
 		     " rxoffload_capa=0x%" PRIx64 " txoffload_capa=0x%" PRIx64,
 		     eth_dev->data->port_id, dev->pf, dev->vf,
@@ -1559,6 +1565,9 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 
 	/* Disable nix bpid config */
 	otx2_nix_rxchan_bpid_cfg(eth_dev, false);
+
+	/* Disable other rte_flow entries */
+	otx2_flow_fini(dev);
 
 	/* Disable PTP if already enabled */
 	if (otx2_ethdev_is_ptp_en(dev))

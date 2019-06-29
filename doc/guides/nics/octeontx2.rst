@@ -23,6 +23,7 @@ Features of the OCTEON TX2 Ethdev PMD are:
 - Multiple queues for TX and RX
 - Receiver Side Scaling (RSS)
 - MAC filtering
+- Generic flow API
 - Port hardware statistics
 - Link state information
 - Link flow control
@@ -109,3 +110,99 @@ Runtime Config Options
    Above devarg parameters are configurable per device, user needs to pass the
    parameters to all the PCIe devices if application requires to configure on
    all the ethdev ports.
+
+RTE Flow Support
+----------------
+
+The OCTEON TX2 SoC family NIC has support for the following patterns and
+actions.
+
+Patterns:
+
+.. _table_octeontx2_supported_flow_item_types:
+
+.. table:: Item types
+
+   +----+--------------------------------+
+   | #  | Pattern Type                   |
+   +====+================================+
+   | 1  | RTE_FLOW_ITEM_TYPE_ETH         |
+   +----+--------------------------------+
+   | 2  | RTE_FLOW_ITEM_TYPE_VLAN        |
+   +----+--------------------------------+
+   | 3  | RTE_FLOW_ITEM_TYPE_E_TAG       |
+   +----+--------------------------------+
+   | 4  | RTE_FLOW_ITEM_TYPE_IPV4        |
+   +----+--------------------------------+
+   | 5  | RTE_FLOW_ITEM_TYPE_IPV6        |
+   +----+--------------------------------+
+   | 6  | RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4|
+   +----+--------------------------------+
+   | 7  | RTE_FLOW_ITEM_TYPE_MPLS        |
+   +----+--------------------------------+
+   | 8  | RTE_FLOW_ITEM_TYPE_ICMP        |
+   +----+--------------------------------+
+   | 9  | RTE_FLOW_ITEM_TYPE_UDP         |
+   +----+--------------------------------+
+   | 10 | RTE_FLOW_ITEM_TYPE_TCP         |
+   +----+--------------------------------+
+   | 11 | RTE_FLOW_ITEM_TYPE_SCTP        |
+   +----+--------------------------------+
+   | 12 | RTE_FLOW_ITEM_TYPE_ESP         |
+   +----+--------------------------------+
+   | 13 | RTE_FLOW_ITEM_TYPE_GRE         |
+   +----+--------------------------------+
+   | 14 | RTE_FLOW_ITEM_TYPE_NVGRE       |
+   +----+--------------------------------+
+   | 15 | RTE_FLOW_ITEM_TYPE_VXLAN       |
+   +----+--------------------------------+
+   | 16 | RTE_FLOW_ITEM_TYPE_GTPC        |
+   +----+--------------------------------+
+   | 17 | RTE_FLOW_ITEM_TYPE_GTPU        |
+   +----+--------------------------------+
+   | 18 | RTE_FLOW_ITEM_TYPE_GENEVE      |
+   +----+--------------------------------+
+   | 19 | RTE_FLOW_ITEM_TYPE_VXLAN_GPE   |
+   +----+--------------------------------+
+   | 20 | RTE_FLOW_ITEM_TYPE_VOID        |
+   +----+--------------------------------+
+   | 21 | RTE_FLOW_ITEM_TYPE_ANY         |
+   +----+--------------------------------+
+
+Actions:
+
+.. _table_octeontx2_supported_ingress_action_types:
+
+.. table:: Ingress action types
+
+   +----+--------------------------------+
+   | #  | Action Type                    |
+   +====+================================+
+   | 1  | RTE_FLOW_ACTION_TYPE_VOID      |
+   +----+--------------------------------+
+   | 2  | RTE_FLOW_ACTION_TYPE_MARK      |
+   +----+--------------------------------+
+   | 3  | RTE_FLOW_ACTION_TYPE_FLAG      |
+   +----+--------------------------------+
+   | 4  | RTE_FLOW_ACTION_TYPE_COUNT     |
+   +----+--------------------------------+
+   | 5  | RTE_FLOW_ACTION_TYPE_DROP      |
+   +----+--------------------------------+
+   | 6  | RTE_FLOW_ACTION_TYPE_QUEUE     |
+   +----+--------------------------------+
+   | 7  | RTE_FLOW_ACTION_TYPE_RSS       |
+   +----+--------------------------------+
+   | 8  | RTE_FLOW_ACTION_TYPE_SECURITY  |
+   +----+--------------------------------+
+
+.. _table_octeontx2_supported_egress_action_types:
+
+.. table:: Egress action types
+
+   +----+--------------------------------+
+   | #  | Action Type                    |
+   +====+================================+
+   | 1  | RTE_FLOW_ACTION_TYPE_COUNT     |
+   +----+--------------------------------+
+   | 2  | RTE_FLOW_ACTION_TYPE_DROP      |
+   +----+--------------------------------+

@@ -294,6 +294,9 @@ otx2_eth_pmd_priv(struct rte_eth_dev *eth_dev)
 /* Ops */
 void otx2_nix_info_get(struct rte_eth_dev *eth_dev,
 		       struct rte_eth_dev_info *dev_info);
+int otx2_nix_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
+			     enum rte_filter_type filter_type,
+			     enum rte_filter_op filter_op, void *arg);
 int otx2_nix_get_module_info(struct rte_eth_dev *eth_dev,
 			     struct rte_eth_dev_module_info *modinfo);
 int otx2_nix_get_module_eeprom(struct rte_eth_dev *eth_dev,
