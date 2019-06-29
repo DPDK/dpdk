@@ -1834,7 +1834,7 @@ rte_vfio_container_create(void)
 	return vfio_cfgs[i].vfio_container_fd;
 }
 
-int __rte_experimental
+int
 rte_vfio_container_destroy(int container_fd)
 {
 	struct vfio_config *vfio_cfg;
