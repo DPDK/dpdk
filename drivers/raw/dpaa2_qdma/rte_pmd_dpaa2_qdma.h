@@ -286,7 +286,7 @@ rte_qdma_vq_dequeue_multi(uint16_t vq_id,
  * @returns
  *   - A completed job or NULL if no job is there.
  */
-struct rte_qdma_job * __rte_experimental
+struct rte_qdma_job *
 rte_qdma_vq_dequeue(uint16_t vq_id);
 
 /**
