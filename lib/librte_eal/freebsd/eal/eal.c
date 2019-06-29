@@ -881,7 +881,7 @@ rte_eal_init(int argc, char **argv)
 	return fctret;
 }
 
-int __rte_experimental
+int
 rte_eal_cleanup(void)
 {
 	rte_service_finalize();

@@ -193,7 +193,7 @@ fail:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 				rte_intr_callback_fn cb_fn, void *cb_arg,
 				rte_intr_unregister_callback_fn ucb_fn)

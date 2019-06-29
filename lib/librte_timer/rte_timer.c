@@ -92,7 +92,7 @@ timer_data_valid(uint32_t id)
 	timer_data = &rte_timer_data_arr[id];				\
 } while (0)
 
-int __rte_experimental
+int
 rte_timer_data_alloc(uint32_t *id_ptr)
 {
 	int i;
@@ -116,7 +116,7 @@ rte_timer_data_alloc(uint32_t *id_ptr)
 	return -ENOSPC;
 }
 
-int __rte_experimental
+int
 rte_timer_data_dealloc(uint32_t id)
 {
 	struct rte_timer_data *timer_data;
@@ -204,7 +204,7 @@ MAP_STATIC_SYMBOL(int rte_timer_subsystem_init(void),
 		  rte_timer_subsystem_init_v1905);
 BIND_DEFAULT_SYMBOL(rte_timer_subsystem_init, _v1905, 19.05);
 
-void __rte_experimental
+void
 rte_timer_subsystem_finalize(void)
 {
 	if (!rte_timer_subsystem_initialized)
@@ -573,7 +573,7 @@ MAP_STATIC_SYMBOL(int rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
 		  rte_timer_reset_v1905);
 BIND_DEFAULT_SYMBOL(rte_timer_reset, _v1905, 19.05);
 
-int __rte_experimental
+int
 rte_timer_alt_reset(uint32_t timer_data_id, struct rte_timer *tim,
 		    uint64_t ticks, enum rte_timer_type type,
 		    unsigned int tim_lcore, rte_timer_cb_t fct, void *arg)
@@ -657,7 +657,7 @@ MAP_STATIC_SYMBOL(int rte_timer_stop(struct rte_timer *tim),
 		  rte_timer_stop_v1905);
 BIND_DEFAULT_SYMBOL(rte_timer_stop, _v1905, 19.05);
 
-int __rte_experimental
+int
 rte_timer_alt_stop(uint32_t timer_data_id, struct rte_timer *tim)
 {
 	struct rte_timer_data *timer_data;
@@ -822,7 +822,7 @@ rte_timer_manage_v1905(void)
 MAP_STATIC_SYMBOL(int rte_timer_manage(void), rte_timer_manage_v1905);
 BIND_DEFAULT_SYMBOL(rte_timer_manage, _v1905, 19.05);
 
-int __rte_experimental
+int
 rte_timer_alt_manage(uint32_t timer_data_id,
 		     unsigned int *poll_lcores,
 		     int nb_poll_lcores,
@@ -995,7 +995,7 @@ rte_timer_alt_manage(uint32_t timer_data_id,
 }
 
 /* Walk pending lists, stopping timers and calling user-specified function */
-int __rte_experimental
+int
 rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
 		   int nb_walk_lcores,
 		   rte_timer_stop_all_cb_t f, void *f_arg)
@@ -1074,7 +1074,7 @@ MAP_STATIC_SYMBOL(int rte_timer_dump_stats(FILE *f),
 		  rte_timer_dump_stats_v1905);
 BIND_DEFAULT_SYMBOL(rte_timer_dump_stats, _v1905, 19.05);
 
-int __rte_experimental
+int
 rte_timer_alt_dump_stats(uint32_t timer_data_id __rte_unused, FILE *f)
 {
 	struct rte_timer_data *timer_data;

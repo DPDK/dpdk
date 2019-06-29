@@ -709,7 +709,7 @@ rte_kni_unregister_handlers(struct rte_kni *kni)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_kni_update_link(struct rte_kni *kni, unsigned int linkup)
 {
 	char path[64];

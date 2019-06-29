@@ -601,7 +601,7 @@ rte_eth_find_next_owned_by(uint16_t port_id, const uint64_t owner_id)
 	return port_id;
 }
 
-int __rte_experimental
+int
 rte_eth_dev_owner_new(uint64_t *owner_id)
 {
 	rte_eth_dev_shared_data_prepare();
@@ -654,7 +654,7 @@ _rte_eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_eth_dev_owner_set(const uint16_t port_id,
 		      const struct rte_eth_dev_owner *owner)
 {
@@ -670,7 +670,7 @@ rte_eth_dev_owner_set(const uint16_t port_id,
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_eth_dev_owner_unset(const uint16_t port_id, const uint64_t owner_id)
 {
 	const struct rte_eth_dev_owner new_owner = (struct rte_eth_dev_owner)
@@ -687,7 +687,7 @@ rte_eth_dev_owner_unset(const uint16_t port_id, const uint64_t owner_id)
 	return ret;
 }
 
-void __rte_experimental
+void
 rte_eth_dev_owner_delete(const uint64_t owner_id)
 {
 	uint16_t port_id;
@@ -713,7 +713,7 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
 }
 
-int __rte_experimental
+int
 rte_eth_dev_owner_get(const uint16_t port_id, struct rte_eth_dev_owner *owner)
 {
 	int ret = 0;
@@ -1535,7 +1535,7 @@ rte_eth_dev_reset(uint16_t port_id)
 	return eth_err(port_id, ret);
 }
 
-int __rte_experimental
+int
 rte_eth_dev_is_removed(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
@@ -3592,7 +3592,7 @@ rte_eth_dev_rx_intr_ctl(uint16_t port_id, int epfd, int op, void *data)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_eth_dev_rx_intr_ctl_q_get_fd(uint16_t port_id, uint16_t queue_id)
 {
 	struct rte_intr_handle *intr_handle;
@@ -3654,7 +3654,7 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 			RTE_MEMZONE_IOVA_CONTIG, align);
 }
 
-int __rte_experimental
+int
 rte_eth_dev_create(struct rte_device *device, const char *name,
 	size_t priv_data_size,
 	ethdev_bus_specific_init ethdev_bus_specific_init,
@@ -3717,7 +3717,7 @@ probe_failed:
 	return retval;
 }
 
-int  __rte_experimental
+int
 rte_eth_dev_destroy(struct rte_eth_dev *ethdev,
 	ethdev_uninit_t ethdev_uninit)
 {
@@ -4238,7 +4238,7 @@ rte_eth_dev_set_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info)
 	return eth_err(port_id, (*dev->dev_ops->set_eeprom)(dev, info));
 }
 
-int __rte_experimental
+int
 rte_eth_dev_get_module_info(uint16_t port_id,
 			    struct rte_eth_dev_module_info *modinfo)
 {
@@ -4251,7 +4251,7 @@ rte_eth_dev_get_module_info(uint16_t port_id,
 	return (*dev->dev_ops->get_module_info)(dev, modinfo);
 }
 
-int __rte_experimental
+int
 rte_eth_dev_get_module_eeprom(uint16_t port_id,
 			      struct rte_dev_eeprom_info *info)
 {
@@ -4407,7 +4407,7 @@ static struct rte_eth_dev_switch {
 	enum rte_eth_switch_domain_state state;
 } rte_eth_switch_domains[RTE_MAX_ETHPORTS];
 
-int __rte_experimental
+int
 rte_eth_switch_domain_alloc(uint16_t *domain_id)
 {
 	unsigned int i;
@@ -4428,7 +4428,7 @@ rte_eth_switch_domain_alloc(uint16_t *domain_id)
 	return -ENOSPC;
 }
 
-int __rte_experimental
+int
 rte_eth_switch_domain_free(uint16_t domain_id)
 {
 	if (domain_id == RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID ||
@@ -4508,7 +4508,7 @@ rte_eth_devargs_tokenise(struct rte_kvargs *arglist, const char *str_in)
 	}
 }
 
-int __rte_experimental
+int
 rte_eth_devargs_parse(const char *dargs, struct rte_eth_devargs *eth_da)
 {
 	struct rte_kvargs args;

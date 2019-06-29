@@ -79,6 +79,31 @@ check_forbidden_additions() { # <patch>
 	return $res
 }
 
+check_experimental_tags() { # <patch>
+	res=0
+
+	cat "$1" |awk '
+	BEGIN {
+		current_file = "";
+		ret = 0;
+	}
+	/^+++ b\// {
+		current_file = $2;
+	}
+	/^+.*__rte_experimental/ {
+		if (current_file ~ ".c$" ) {
+			print "Please only put __rte_experimental tags in " \
+				"headers ("current_file")";
+			ret = 1;
+		}
+	}
+	END {
+		exit ret;
+	}' || res=1
+
+	return $res
+}
+
 number=0
 range='origin/master..'
 quiet=false
@@ -145,6 +170,14 @@ check () { # <patch> <commit> <title>
 
 	! $verbose || printf '\nChecking forbidden tokens additions:\n'
 	report=$(check_forbidden_additions "$tmpinput")
+	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$3"
+		printf '%s\n' "$report"
+		ret=1
+	fi
+
+	! $verbose || printf '\nChecking __rte_experimental tags:\n'
+	report=$(check_experimental_tags "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$3"
 		printf '%s\n' "$report"

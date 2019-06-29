@@ -422,7 +422,7 @@ rollback:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_dev_event_callback_register(const char *device_name,
 				rte_dev_event_cb_fn cb_fn,
 				void *cb_arg)
@@ -488,7 +488,7 @@ error:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_dev_event_callback_unregister(const char *device_name,
 				  rte_dev_event_cb_fn cb_fn,
 				  void *cb_arg)
@@ -533,7 +533,7 @@ rte_dev_event_callback_unregister(const char *device_name,
 	return ret;
 }
 
-void __rte_experimental
+void
 rte_dev_event_callback_process(const char *device_name,
 			       enum rte_dev_event_type event)
 {
@@ -559,7 +559,6 @@ rte_dev_event_callback_process(const char *device_name,
 	rte_spinlock_unlock(&dev_event_lock);
 }
 
-__rte_experimental
 int
 rte_dev_iterator_init(struct rte_dev_iterator *it,
 		      const char *dev_str)
@@ -712,7 +711,6 @@ end:
 	it->device = dev;
 	return dev == NULL;
 }
-__rte_experimental
 struct rte_device *
 rte_dev_iterator_next(struct rte_dev_iterator *it)
 {

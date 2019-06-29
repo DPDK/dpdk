@@ -285,7 +285,7 @@ failure_handle_err:
 	rte_spinlock_unlock(&failure_handle_lock);
 }
 
-int __rte_experimental
+int
 rte_dev_event_monitor_start(void)
 {
 	int ret;
@@ -312,7 +312,7 @@ rte_dev_event_monitor_start(void)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_dev_event_monitor_stop(void)
 {
 	int ret;
@@ -365,7 +365,7 @@ dev_sigbus_handler_unregister(void)
 	return rte_errno;
 }
 
-int __rte_experimental
+int
 rte_dev_hotplug_handle_enable(void)
 {
 	int ret = 0;
@@ -380,7 +380,7 @@ rte_dev_hotplug_handle_enable(void)
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_dev_hotplug_handle_disable(void)
 {
 	int ret = 0;

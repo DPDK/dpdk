@@ -899,7 +899,7 @@ rte_flow_copy(struct rte_flow_desc *desc, size_t len,
  * Expand RSS flows into several possible flows according to the RSS hash
  * fields requested and the driver capabilities.
  */
-int __rte_experimental
+int
 rte_flow_expand_rss(struct rte_flow_expand_rss *buf, size_t size,
 		    const struct rte_flow_item *pattern, uint64_t types,
 		    const struct rte_flow_expand_node graph[],

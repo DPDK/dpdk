@@ -86,7 +86,7 @@ bpf_check_xsym(const struct rte_bpf_xsym *xsym)
 	return 0;
 }
 
-__rte_experimental struct rte_bpf *
+struct rte_bpf *
 rte_bpf_load(const struct rte_bpf_prm *prm)
 {
 	struct rte_bpf *bpf;
@@ -132,7 +132,7 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 }
 
 #ifndef RTE_LIBRTE_BPF_ELF
-__rte_experimental struct rte_bpf *
+struct rte_bpf *
 rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 	const char *sname)
 {

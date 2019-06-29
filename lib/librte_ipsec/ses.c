@@ -27,7 +27,7 @@ session_check(struct rte_ipsec_session *ss)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_ipsec_session_prepare(struct rte_ipsec_session *ss)
 {
 	int32_t rc;

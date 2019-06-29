@@ -6,7 +6,7 @@
 #include "rte_compressdev.h"
 #include "rte_compressdev_internal.h"
 
-const char * __rte_experimental
+const char *
 rte_comp_get_feature_name(uint64_t flag)
 {
 	switch (flag) {
@@ -112,7 +112,7 @@ rte_comp_op_init(struct rte_mempool *mempool,
 	op->mempool = mempool;
 }
 
-struct rte_mempool * __rte_experimental
+struct rte_mempool *
 rte_comp_op_pool_create(const char *name,
 		unsigned int nb_elts, unsigned int cache_size,
 		uint16_t user_size, int socket_id)
@@ -167,7 +167,7 @@ rte_comp_op_pool_create(const char *name,
 	return mp;
 }
 
-struct rte_comp_op * __rte_experimental
+struct rte_comp_op *
 rte_comp_op_alloc(struct rte_mempool *mempool)
 {
 	struct rte_comp_op *op = NULL;
@@ -182,7 +182,7 @@ rte_comp_op_alloc(struct rte_mempool *mempool)
 	return op;
 }
 
-int __rte_experimental
+int
 rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
 		struct rte_comp_op **ops, uint16_t nb_ops)
 {
@@ -207,14 +207,14 @@ rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
  * @param op
  *   Compress operation
  */
-void __rte_experimental
+void
 rte_comp_op_free(struct rte_comp_op *op)
 {
 	if (op != NULL && op->mempool != NULL)
 		rte_mempool_put(op->mempool, op);
 }
 
-void __rte_experimental
+void
 rte_comp_op_bulk_free(struct rte_comp_op **ops, uint16_t nb_ops)
 {
 	uint16_t i;

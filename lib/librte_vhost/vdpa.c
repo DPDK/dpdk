@@ -126,7 +126,7 @@ rte_vdpa_get_device_num(void)
 	return vdpa_device_num;
 }
 
-int __rte_experimental
+int
 rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 {
 	struct virtio_net *dev = get_device(vid);

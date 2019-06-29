@@ -38,7 +38,6 @@ rte_option_parse(const char *opt)
 	return -1;
 }
 
-__rte_experimental
 int
 rte_option_register(struct rte_option *opt)
 {

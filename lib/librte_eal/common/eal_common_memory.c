@@ -243,7 +243,7 @@ virt2memseg_list(const void *addr)
 	return msl;
 }
 
-__rte_experimental struct rte_memseg_list *
+struct rte_memseg_list *
 rte_mem_virt2memseg_list(const void *addr)
 {
 	return virt2memseg_list(addr);
@@ -280,7 +280,7 @@ find_virt_legacy(const struct rte_memseg_list *msl __rte_unused,
 	return 0;
 }
 
-__rte_experimental void *
+void *
 rte_mem_iova2virt(rte_iova_t iova)
 {
 	struct virtiova vi;
@@ -299,7 +299,7 @@ rte_mem_iova2virt(rte_iova_t iova)
 	return vi.virt;
 }
 
-__rte_experimental struct rte_memseg *
+struct rte_memseg *
 rte_mem_virt2memseg(const void *addr, const struct rte_memseg_list *msl)
 {
 	return virt2memseg(addr, msl != NULL ? msl :
@@ -368,7 +368,7 @@ dump_memseg(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
  * Defining here because declared in rte_memory.h, but the actual implementation
  * is in eal_common_memalloc.c, like all other memalloc internals.
  */
-int __rte_experimental
+int
 rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb,
 		void *arg)
 {
@@ -381,7 +381,7 @@ rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb,
 	return eal_memalloc_mem_event_callback_register(name, clb, arg);
 }
 
-int __rte_experimental
+int
 rte_mem_event_callback_unregister(const char *name, void *arg)
 {
 	/* FreeBSD boots with legacy mem enabled by default */
@@ -393,7 +393,7 @@ rte_mem_event_callback_unregister(const char *name, void *arg)
 	return eal_memalloc_mem_event_callback_unregister(name, arg);
 }
 
-int __rte_experimental
+int
 rte_mem_alloc_validator_register(const char *name,
 		rte_mem_alloc_validator_t clb, int socket_id, size_t limit)
 {
@@ -407,7 +407,7 @@ rte_mem_alloc_validator_register(const char *name,
 			limit);
 }
 
-int __rte_experimental
+int
 rte_mem_alloc_validator_unregister(const char *name, int socket_id)
 {
 	/* FreeBSD boots with legacy mem enabled by default */
@@ -489,13 +489,13 @@ check_dma_mask(uint8_t maskbits, bool thread_unsafe)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_mem_check_dma_mask(uint8_t maskbits)
 {
 	return check_dma_mask(maskbits, false);
 }
 
-int __rte_experimental
+int
 rte_mem_check_dma_mask_thread_unsafe(uint8_t maskbits)
 {
 	return check_dma_mask(maskbits, true);
@@ -508,7 +508,7 @@ rte_mem_check_dma_mask_thread_unsafe(uint8_t maskbits)
  * initialization. PMDs should use rte_mem_check_dma_mask if addressing
  * limitations by the device.
  */
-void __rte_experimental
+void
 rte_mem_set_dma_mask(uint8_t maskbits)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -554,7 +554,7 @@ rte_mem_lock_page(const void *virt)
 	return mlock((void *)aligned, page_size);
 }
 
-int __rte_experimental
+int
 rte_memseg_contig_walk_thread_unsafe(rte_memseg_contig_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -593,7 +593,7 @@ rte_memseg_contig_walk_thread_unsafe(rte_memseg_contig_walk_t func, void *arg)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -607,7 +607,7 @@ rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_memseg_walk_thread_unsafe(rte_memseg_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -635,7 +635,7 @@ rte_memseg_walk_thread_unsafe(rte_memseg_walk_t func, void *arg)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_memseg_walk(rte_memseg_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -649,7 +649,7 @@ rte_memseg_walk(rte_memseg_walk_t func, void *arg)
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_memseg_list_walk_thread_unsafe(rte_memseg_list_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -668,7 +668,7 @@ rte_memseg_list_walk_thread_unsafe(rte_memseg_list_walk_t func, void *arg)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -682,7 +682,7 @@ rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_memseg_get_fd_thread_unsafe(const struct rte_memseg *ms)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -724,7 +724,7 @@ rte_memseg_get_fd_thread_unsafe(const struct rte_memseg *ms)
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_memseg_get_fd(const struct rte_memseg *ms)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -737,7 +737,7 @@ rte_memseg_get_fd(const struct rte_memseg *ms)
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
 		size_t *offset)
 {
@@ -780,7 +780,7 @@ rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_memseg_get_fd_offset(const struct rte_memseg *ms, size_t *offset)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -793,7 +793,7 @@ rte_memseg_get_fd_offset(const struct rte_memseg *ms, size_t *offset)
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
 		unsigned int n_pages, size_t page_sz)
 {
@@ -842,7 +842,7 @@ unlock:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_extmem_unregister(void *va_addr, size_t len)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -899,13 +899,13 @@ unlock:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_extmem_attach(void *va_addr, size_t len)
 {
 	return sync_memory(va_addr, len, true);
 }
 
-int __rte_experimental
+int
 rte_extmem_detach(void *va_addr, size_t len)
 {
 	return sync_memory(va_addr, len, false);

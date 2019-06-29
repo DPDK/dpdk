@@ -709,7 +709,7 @@ fully_validate(const char *name, unsigned int elt_sz, unsigned int len)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 		unsigned int elt_sz)
 {
@@ -833,7 +833,7 @@ fail:
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_fbarray_attach(struct rte_fbarray *arr)
 {
 	struct mem_area *ma = NULL, *tmp = NULL;
@@ -924,7 +924,7 @@ fail:
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_fbarray_detach(struct rte_fbarray *arr)
 {
 	struct mem_area *tmp = NULL;
@@ -978,7 +978,7 @@ out:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_fbarray_destroy(struct rte_fbarray *arr)
 {
 	struct mem_area *tmp = NULL;
@@ -1060,7 +1060,7 @@ out:
 	return ret;
 }
 
-void * __rte_experimental
+void *
 rte_fbarray_get(const struct rte_fbarray *arr, unsigned int idx)
 {
 	void *ret = NULL;
@@ -1079,19 +1079,19 @@ rte_fbarray_get(const struct rte_fbarray *arr, unsigned int idx)
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_fbarray_set_used(struct rte_fbarray *arr, unsigned int idx)
 {
 	return set_used(arr, idx, true);
 }
 
-int __rte_experimental
+int
 rte_fbarray_set_free(struct rte_fbarray *arr, unsigned int idx)
 {
 	return set_used(arr, idx, false);
 }
 
-int __rte_experimental
+int
 rte_fbarray_is_used(struct rte_fbarray *arr, unsigned int idx)
 {
 	struct used_mask *msk;
@@ -1160,25 +1160,25 @@ out:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_next_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find(arr, start, true, false);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_next_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find(arr, start, true, true);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_prev_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find(arr, start, false, false);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_prev_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find(arr, start, false, true);
@@ -1236,28 +1236,28 @@ out:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_next_n_free(struct rte_fbarray *arr, unsigned int start,
 		unsigned int n)
 {
 	return fbarray_find_n(arr, start, n, true, false);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_next_n_used(struct rte_fbarray *arr, unsigned int start,
 		unsigned int n)
 {
 	return fbarray_find_n(arr, start, n, true, true);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_prev_n_free(struct rte_fbarray *arr, unsigned int start,
 		unsigned int n)
 {
 	return fbarray_find_n(arr, start, n, false, false);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_prev_n_used(struct rte_fbarray *arr, unsigned int start,
 		unsigned int n)
 {
@@ -1400,56 +1400,56 @@ fbarray_find_biggest(struct rte_fbarray *arr, unsigned int start, bool used,
 	return biggest_idx;
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_biggest_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_biggest(arr, start, false, false);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_biggest_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_biggest(arr, start, true, false);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_rev_biggest_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_biggest(arr, start, false, true);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_rev_biggest_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_biggest(arr, start, true, true);
 }
 
 
-int __rte_experimental
+int
 rte_fbarray_find_contig_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_contig(arr, start, true, false);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_contig_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_contig(arr, start, true, true);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_rev_contig_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_contig(arr, start, false, false);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_rev_contig_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_contig(arr, start, false, true);
 }
 
-int __rte_experimental
+int
 rte_fbarray_find_idx(const struct rte_fbarray *arr, const void *elt)
 {
 	void *end;
@@ -1475,7 +1475,7 @@ rte_fbarray_find_idx(const struct rte_fbarray *arr, const void *elt)
 	return ret;
 }
 
-void __rte_experimental
+void
 rte_fbarray_dump_metadata(struct rte_fbarray *arr, FILE *f)
 {
 	struct used_mask *msk;

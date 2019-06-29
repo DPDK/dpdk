@@ -119,7 +119,7 @@ rte_meter_trtcm_config(struct rte_meter_trtcm *m,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_meter_trtcm_rfc4115_profile_config(
 	struct rte_meter_trtcm_rfc4115_profile *p,
 	struct rte_meter_trtcm_rfc4115_params *params)
@@ -144,7 +144,7 @@ rte_meter_trtcm_rfc4115_profile_config(
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_meter_trtcm_rfc4115_config(
 	struct rte_meter_trtcm_rfc4115 *m,
 	struct rte_meter_trtcm_rfc4115_profile *p)

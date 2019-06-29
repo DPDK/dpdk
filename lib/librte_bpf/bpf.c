@@ -16,7 +16,7 @@
 
 int rte_bpf_logtype;
 
-__rte_experimental void
+void
 rte_bpf_destroy(struct rte_bpf *bpf)
 {
 	if (bpf != NULL) {
@@ -26,7 +26,7 @@ rte_bpf_destroy(struct rte_bpf *bpf)
 	}
 }
 
-__rte_experimental int
+int
 rte_bpf_get_jit(const struct rte_bpf *bpf, struct rte_bpf_jit *jit)
 {
 	if (bpf == NULL || jit == NULL)

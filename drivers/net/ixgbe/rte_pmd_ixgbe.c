@@ -882,7 +882,7 @@ rte_pmd_ixgbe_set_tc_bw_alloc(uint16_t port,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_pmd_ixgbe_upd_fctrl_sbp(uint16_t port, int enable)
 {
 	struct ixgbe_hw *hw;
@@ -1096,7 +1096,7 @@ STATIC void rte_pmd_ixgbe_release_swfw(struct ixgbe_hw *hw, u32 mask)
 	ixgbe_release_swfw_semaphore(hw, mask);
 }
 
-int __rte_experimental
+int
 rte_pmd_ixgbe_mdio_lock(uint16_t port)
 {
 	struct ixgbe_hw *hw;
@@ -1123,7 +1123,7 @@ rte_pmd_ixgbe_mdio_lock(uint16_t port)
 	return IXGBE_SUCCESS;
 }
 
-int __rte_experimental
+int
 rte_pmd_ixgbe_mdio_unlock(uint16_t port)
 {
 	struct rte_eth_dev *dev;
@@ -1150,7 +1150,7 @@ rte_pmd_ixgbe_mdio_unlock(uint16_t port)
 	return IXGBE_SUCCESS;
 }
 
-int __rte_experimental
+int
 rte_pmd_ixgbe_mdio_unlocked_read(uint16_t port, uint32_t reg_addr,
 				 uint32_t dev_type, uint16_t *phy_data)
 {
@@ -1197,7 +1197,7 @@ rte_pmd_ixgbe_mdio_unlocked_read(uint16_t port, uint32_t reg_addr,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_pmd_ixgbe_mdio_unlocked_write(uint16_t port, uint32_t reg_addr,
 				  uint32_t dev_type, uint16_t phy_data)
 {

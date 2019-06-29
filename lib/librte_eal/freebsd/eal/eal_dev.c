@@ -6,28 +6,28 @@
 #include <rte_compat.h>
 #include <rte_dev.h>
 
-int __rte_experimental
+int
 rte_dev_event_monitor_start(void)
 {
 	RTE_LOG(ERR, EAL, "Device event is not supported for FreeBSD\n");
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_dev_event_monitor_stop(void)
 {
 	RTE_LOG(ERR, EAL, "Device event is not supported for FreeBSD\n");
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_dev_hotplug_handle_enable(void)
 {
 	RTE_LOG(ERR, EAL, "Device event is not supported for FreeBSD\n");
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_dev_hotplug_handle_disable(void)
 {
 	RTE_LOG(ERR, EAL, "Device event is not supported for FreeBSD\n");

@@ -123,7 +123,7 @@ rte_ip_frag_table_statistics_dump(FILE *f, const struct rte_ip_frag_tbl *tbl)
 }
 
 /* Delete expired fragments */
-void __rte_experimental
+void
 rte_frag_table_del_expired_entries(struct rte_ip_frag_tbl *tbl,
 	struct rte_ip_frag_death_row *dr, uint64_t tms)
 {

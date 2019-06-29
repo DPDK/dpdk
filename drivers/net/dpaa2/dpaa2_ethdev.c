@@ -102,7 +102,7 @@ static int dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 int dpaa2_logtype_pmd;
 
-__rte_experimental void
+void
 rte_pmd_dpaa2_set_timestamp(enum pmd_dpaa2_ts enable)
 {
 	dpaa2_enable_ts = enable;

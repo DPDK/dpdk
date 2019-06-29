@@ -12,7 +12,7 @@
 static struct rte_class_list rte_class_list =
 	TAILQ_HEAD_INITIALIZER(rte_class_list);
 
-__rte_experimental void
+void
 rte_class_register(struct rte_class *class)
 {
 	RTE_VERIFY(class);
@@ -22,14 +22,13 @@ rte_class_register(struct rte_class *class)
 	RTE_LOG(DEBUG, EAL, "Registered [%s] device class.\n", class->name);
 }
 
-__rte_experimental void
+void
 rte_class_unregister(struct rte_class *class)
 {
 	TAILQ_REMOVE(&rte_class_list, class, next);
 	RTE_LOG(DEBUG, EAL, "Unregistered [%s] device class.\n", class->name);
 }
 
-__rte_experimental
 struct rte_class *
 rte_class_find(const struct rte_class *start, rte_class_cmp_t cmp,
 	       const void *data)
@@ -56,7 +55,6 @@ cmp_class_name(const struct rte_class *class, const void *_name)
 	return strcmp(class->name, name);
 }
 
-__rte_experimental
 struct rte_class *
 rte_class_find_by_name(const char *name)
 {

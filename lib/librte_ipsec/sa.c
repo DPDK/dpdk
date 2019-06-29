@@ -77,7 +77,7 @@ fill_crypto_xform(struct crypto_xform *xform, uint64_t type,
 	return 0;
 }
 
-uint64_t __rte_experimental
+uint64_t
 rte_ipsec_sa_type(const struct rte_ipsec_sa *sa)
 {
 	return sa->type;
@@ -149,7 +149,7 @@ ipsec_sa_size(uint64_t type, uint32_t *wnd_sz, uint32_t *nb_bucket)
 	return sz;
 }
 
-void __rte_experimental
+void
 rte_ipsec_sa_fini(struct rte_ipsec_sa *sa)
 {
 	memset(sa, 0, sa->size);
@@ -405,7 +405,7 @@ fill_sa_replay(struct rte_ipsec_sa *sa, uint32_t wnd_sz, uint32_t nb_bucket)
 			((uintptr_t)sa->sqn.inb.rsn[0] + rsn_size(nb_bucket));
 }
 
-int __rte_experimental
+int
 rte_ipsec_sa_size(const struct rte_ipsec_sa_prm *prm)
 {
 	uint64_t type;
@@ -425,7 +425,7 @@ rte_ipsec_sa_size(const struct rte_ipsec_sa_prm *prm)
 	return ipsec_sa_size(type, &wsz, &nb);
 }
 
-int __rte_experimental
+int
 rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	uint32_t size)
 {

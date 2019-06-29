@@ -953,7 +953,7 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_sched_port_pipe_profile_add(struct rte_sched_port *port,
 	struct rte_sched_pipe_params *params,
 	uint32_t *pipe_profile_id)

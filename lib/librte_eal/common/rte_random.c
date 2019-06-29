@@ -137,7 +137,7 @@ rte_rand(void)
 	return __rte_rand_lfsr258(state);
 }
 
-uint64_t __rte_experimental
+uint64_t
 rte_rand_max(uint64_t upper_bound)
 {
 	struct rte_rand_state *state;

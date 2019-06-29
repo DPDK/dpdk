@@ -250,7 +250,7 @@ rte_cryptodev_get_aead_algo_enum(enum rte_crypto_aead_algorithm *algo_enum,
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
 		const char *xform_string)
 {
@@ -338,7 +338,7 @@ param_range_check(uint16_t size, const struct rte_crypto_param_range *range)
 	return -1;
 }
 
-const struct rte_cryptodev_asymmetric_xform_capability * __rte_experimental
+const struct rte_cryptodev_asymmetric_xform_capability *
 rte_cryptodev_asym_capability_get(uint8_t dev_id,
 		const struct rte_cryptodev_asym_capability_idx *idx)
 {
@@ -411,7 +411,7 @@ rte_cryptodev_sym_capability_check_aead(
 
 	return 0;
 }
-int __rte_experimental
+int
 rte_cryptodev_asym_xform_capability_check_optype(
 	const struct rte_cryptodev_asymmetric_xform_capability *capability,
 	enum rte_crypto_asym_op_type op_type)
@@ -422,7 +422,7 @@ rte_cryptodev_asym_xform_capability_check_optype(
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_cryptodev_asym_xform_capability_check_modlen(
 	const struct rte_cryptodev_asymmetric_xform_capability *capability,
 	uint16_t modlen)
@@ -1235,7 +1235,7 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_cryptodev_asym_session_init(uint8_t dev_id,
 		struct rte_cryptodev_asym_session *sess,
 		struct rte_crypto_asym_xform *xforms,
@@ -1270,7 +1270,7 @@ rte_cryptodev_asym_session_init(uint8_t dev_id,
 	return 0;
 }
 
-struct rte_mempool * __rte_experimental
+struct rte_mempool *
 rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
 	uint32_t elt_size, uint32_t cache_size, uint16_t user_data_size,
 	int socket_id)
@@ -1354,7 +1354,7 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mp)
 	return sess;
 }
 
-struct rte_cryptodev_asym_session * __rte_experimental
+struct rte_cryptodev_asym_session *
 rte_cryptodev_asym_session_create(struct rte_mempool *mp)
 {
 	struct rte_cryptodev_asym_session *sess;
@@ -1398,7 +1398,7 @@ rte_cryptodev_sym_session_clear(uint8_t dev_id,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_cryptodev_asym_session_clear(uint8_t dev_id,
 		struct rte_cryptodev_asym_session *sess)
 {
@@ -1438,7 +1438,7 @@ rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_cryptodev_asym_session_free(struct rte_cryptodev_asym_session *sess)
 {
 	uint8_t i;
@@ -1478,7 +1478,7 @@ rte_cryptodev_sym_get_header_session_size(void)
 			rte_cryptodev_sym_session_data_size(&s));
 }
 
-unsigned int __rte_experimental
+unsigned int
 rte_cryptodev_sym_get_existing_header_session_size(
 		struct rte_cryptodev_sym_session *sess)
 {
@@ -1489,7 +1489,7 @@ rte_cryptodev_sym_get_existing_header_session_size(
 				rte_cryptodev_sym_session_data_size(sess));
 }
 
-unsigned int __rte_experimental
+unsigned int
 rte_cryptodev_asym_get_header_session_size(void)
 {
 	/*
@@ -1519,7 +1519,7 @@ rte_cryptodev_sym_get_private_session_size(uint8_t dev_id)
 	return priv_sess_size;
 }
 
-unsigned int __rte_experimental
+unsigned int
 rte_cryptodev_asym_get_private_session_size(uint8_t dev_id)
 {
 	struct rte_cryptodev *dev;
@@ -1542,7 +1542,7 @@ rte_cryptodev_asym_get_private_session_size(uint8_t dev_id)
 
 }
 
-int __rte_experimental
+int
 rte_cryptodev_sym_session_set_user_data(
 					struct rte_cryptodev_sym_session *sess,
 					void *data,
@@ -1558,7 +1558,7 @@ rte_cryptodev_sym_session_set_user_data(
 	return 0;
 }
 
-void * __rte_experimental
+void *
 rte_cryptodev_sym_session_get_user_data(
 					struct rte_cryptodev_sym_session *sess)
 {

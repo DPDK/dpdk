@@ -268,7 +268,7 @@ rte_log_register(const char *name)
 }
 
 /* Register an extended log type and try to pick its level from EAL options */
-int __rte_experimental
+int
 rte_log_register_type_and_pick_level(const char *name, uint32_t level_def)
 {
 	struct rte_eal_opt_loglevel *opt_ll;

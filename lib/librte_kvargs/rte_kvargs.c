@@ -186,7 +186,6 @@ rte_kvargs_parse(const char *args, const char * const valid_keys[])
 	return kvlist;
 }
 
-__rte_experimental
 struct rte_kvargs *
 rte_kvargs_parse_delim(const char *args, const char * const valid_keys[],
 		       const char *valid_ends)
@@ -211,7 +210,6 @@ rte_kvargs_parse_delim(const char *args, const char * const valid_keys[],
 	return kvlist;
 }
 
-__rte_experimental
 int
 rte_kvargs_strcmp(const char *key __rte_unused,
 		  const char *value, void *opaque)

@@ -179,7 +179,7 @@ ip4_hlen(const struct rte_ipv4_hdr *hdr)
 }
 
 /* parse ipv6 extended headers, update offset and return next proto */
-int __rte_experimental
+int
 rte_net_skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 	int *frag)
 {

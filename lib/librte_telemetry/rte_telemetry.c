@@ -970,7 +970,7 @@ close_socket:
 	return -1;
 }
 
-int32_t __rte_experimental
+int32_t
 rte_telemetry_init()
 {
 	int ret;
@@ -1038,7 +1038,7 @@ rte_telemetry_client_cleanup(struct telemetry_client *client)
 	return 0;
 }
 
-int32_t __rte_experimental
+int32_t
 rte_telemetry_cleanup(void)
 {
 	int ret;
@@ -1284,7 +1284,7 @@ rte_telemetry_dummy_client_socket(const char *valid_client_path)
 	return sockfd;
 }
 
-int32_t __rte_experimental
+int32_t
 rte_telemetry_selftest(void)
 {
 	const char *invalid_client_path = SELFTEST_INVALID_CLIENT;

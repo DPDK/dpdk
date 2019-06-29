@@ -23,7 +23,7 @@
 #include "rte_rcu_qsbr.h"
 
 /* Get the memory size of QSBR variable */
-size_t __rte_experimental
+size_t
 rte_rcu_qsbr_get_memsize(uint32_t max_threads)
 {
 	size_t sz;
@@ -49,7 +49,7 @@ rte_rcu_qsbr_get_memsize(uint32_t max_threads)
 }
 
 /* Initialize a quiescent state variable */
-int __rte_experimental
+int
 rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 {
 	size_t sz;
@@ -80,7 +80,7 @@ rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 /* Register a reader thread to report its quiescent state
  * on a QS variable.
  */
-int __rte_experimental
+int
 rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
 	unsigned int i, id, success;
@@ -132,7 +132,7 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 /* Remove a reader thread, from the list of threads reporting their
  * quiescent state on a QS variable.
  */
-int __rte_experimental
+int
 rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
 	unsigned int i, id, success;
@@ -186,7 +186,7 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 }
 
 /* Wait till the reader threads have entered quiescent state. */
-void __rte_experimental
+void
 rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
 	uint64_t t;
@@ -206,7 +206,7 @@ rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id)
 }
 
 /* Dump the details of a single quiescent state variable to a file. */
-int __rte_experimental
+int
 rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 {
 	uint64_t bmap;

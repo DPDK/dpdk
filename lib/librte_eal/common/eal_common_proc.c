@@ -197,7 +197,7 @@ validate_action_name(const char *name)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_mp_action_register(const char *name, rte_mp_t action)
 {
 	struct action_entry *entry;
@@ -231,7 +231,7 @@ rte_mp_action_register(const char *name, rte_mp_t action)
 	return 0;
 }
 
-void __rte_experimental
+void
 rte_mp_action_unregister(const char *name)
 {
 	struct action_entry *entry;
@@ -801,7 +801,7 @@ check_input(const struct rte_mp_msg *msg)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_mp_sendmsg(struct rte_mp_msg *msg)
 {
 	if (check_input(msg) != 0)
@@ -948,7 +948,7 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 		const struct timespec *ts)
 {
@@ -1044,7 +1044,7 @@ end:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 		rte_mp_async_reply_t clb)
 {
@@ -1194,7 +1194,7 @@ fail:
 	return -1;
 }
 
-int __rte_experimental
+int
 rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 {
 	RTE_LOG(DEBUG, EAL, "reply: %s\n", msg->name);

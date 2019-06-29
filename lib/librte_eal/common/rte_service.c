@@ -378,7 +378,7 @@ service_run(uint32_t i, int lcore, struct core_state *cs, uint64_t service_mask)
 	return 0;
 }
 
-int32_t __rte_experimental
+int32_t
 rte_service_may_be_active(uint32_t id)
 {
 	uint32_t ids[RTE_MAX_LCORE] = {0};
@@ -754,7 +754,7 @@ rte_service_attr_get(uint32_t id, uint32_t attr_id, uint64_t *attr_value)
 	}
 }
 
-int32_t __rte_experimental
+int32_t
 rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
 			   uint64_t *attr_value)
 {
@@ -814,7 +814,7 @@ rte_service_attr_reset_all(uint32_t id)
 	return 0;
 }
 
-int32_t __rte_experimental
+int32_t
 rte_service_lcore_attr_reset_all(uint32_t lcore)
 {
 	struct core_state *cs;

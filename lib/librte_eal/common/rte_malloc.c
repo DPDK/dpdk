@@ -196,7 +196,7 @@ rte_malloc_get_socket_stats(int socket,
 /*
  * Function to dump contents of all heaps
  */
-void __rte_experimental
+void
 rte_malloc_dump_heaps(FILE *f)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;

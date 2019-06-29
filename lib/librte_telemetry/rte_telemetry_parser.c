@@ -606,7 +606,7 @@ rte_telemetry_parse_command(struct telemetry_impl *telemetry, int action,
 	return -1;
 }
 
-int32_t __rte_experimental
+int32_t
 rte_telemetry_parse(struct telemetry_impl *telemetry, char *socket_rx_data)
 {
 	int ret, action_int;

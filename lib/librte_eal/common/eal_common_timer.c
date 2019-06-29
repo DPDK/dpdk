@@ -33,7 +33,7 @@ rte_delay_us_block(unsigned int us)
 		rte_pause();
 }
 
-void __rte_experimental
+void
 rte_delay_us_sleep(unsigned int us)
 {
 	struct timespec wait[2];
