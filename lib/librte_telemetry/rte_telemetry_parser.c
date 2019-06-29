@@ -13,6 +13,7 @@
 #include <rte_ethdev.h>
 
 #include "rte_telemetry_internal.h"
+#include "rte_telemetry_parser.h"
 
 typedef int (*command_func)(struct telemetry_impl *, int, json_t *);
 
