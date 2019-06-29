@@ -29,6 +29,15 @@ struct eal_dev_mp_req {
 };
 
 /**
+ * Register all mp action callbacks for hotplug.
+ *
+ * @return
+ *   0 on success, negative on error.
+ */
+int
+eal_mp_dev_hotplug_init(void);
+
+/**
  * This is a synchronous wrapper for secondary process send
  * request to primary process, this is invoked when an attach
  * or detach request is issued from primary process.

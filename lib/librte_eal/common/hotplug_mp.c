@@ -438,7 +438,7 @@ int eal_dev_hotplug_request_to_secondary(struct eal_dev_mp_req *req)
 	return 0;
 }
 
-int rte_mp_dev_hotplug_init(void)
+int eal_mp_dev_hotplug_init(void)
 {
 	int ret;
 

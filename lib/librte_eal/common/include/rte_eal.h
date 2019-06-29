@@ -409,15 +409,6 @@ int __rte_experimental
 rte_mp_reply(struct rte_mp_msg *msg, const char *peer);
 
 /**
- * Register all mp action callbacks for hotplug.
- *
- * @return
- *   0 on success, negative on error.
- */
-int __rte_experimental
-rte_mp_dev_hotplug_init(void);
-
-/**
  * Usage function typedef used by the application usage function.
  *
  * Use this function typedef to define and call rte_set_application_usage_hook()
