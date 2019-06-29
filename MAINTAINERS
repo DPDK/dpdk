@@ -136,6 +136,7 @@ F: doc/guides/rel_notes/deprecation.rst
 F: devtools/validate-abi.sh
 F: devtools/check-symbol-change.sh
 F: buildtools/check-experimental-syms.sh
+F: buildtools/map-list-symbol.sh
 
 Driver information
 M: Neil Horman <nhorman@tuxdriver.com>
