@@ -14,6 +14,9 @@
 #include <rte_ethdev_driver.h>
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
  * Enable MACsec offload.
  *
  * @param port
@@ -29,9 +32,13 @@
  *   - (-ENODEV) if *port* invalid.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  */
+__rte_experimental
 int rte_pmd_atl_macsec_enable(uint16_t port, uint8_t encr, uint8_t repl_prot);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
  * Disable MACsec offload.
  *
  * @param port
@@ -41,9 +48,13 @@ int rte_pmd_atl_macsec_enable(uint16_t port, uint8_t encr, uint8_t repl_prot);
  *   - (-ENODEV) if *port* invalid.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  */
+__rte_experimental
 int rte_pmd_atl_macsec_disable(uint16_t port);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
  * Configure Tx SC (Secure Connection).
  *
  * @param port
@@ -55,9 +66,13 @@ int rte_pmd_atl_macsec_disable(uint16_t port);
  *   - (-ENODEV) if *port* invalid.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  */
+__rte_experimental
 int rte_pmd_atl_macsec_config_txsc(uint16_t port, uint8_t *mac);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
  * Configure Rx SC (Secure Connection).
  *
  * @param port
@@ -71,9 +86,13 @@ int rte_pmd_atl_macsec_config_txsc(uint16_t port, uint8_t *mac);
  *   - (-ENODEV) if *port* invalid.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  */
+__rte_experimental
 int rte_pmd_atl_macsec_config_rxsc(uint16_t port, uint8_t *mac, uint16_t pi);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
  * Enable Tx SA (Secure Association).
  *
  * @param port
@@ -92,10 +111,14 @@ int rte_pmd_atl_macsec_config_rxsc(uint16_t port, uint8_t *mac, uint16_t pi);
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  *   - (-EINVAL) if bad parameter.
  */
+__rte_experimental
 int rte_pmd_atl_macsec_select_txsa(uint16_t port, uint8_t idx, uint8_t an,
 				   uint32_t pn, uint8_t *key);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
  * Enable Rx SA (Secure Association).
  *
  * @param port
@@ -114,6 +137,7 @@ int rte_pmd_atl_macsec_select_txsa(uint16_t port, uint8_t idx, uint8_t an,
  *   - (-ENOTSUP) if hardware doesn't support this feature.
  *   - (-EINVAL) if bad parameter.
  */
+__rte_experimental
 int rte_pmd_atl_macsec_select_rxsa(uint16_t port, uint8_t idx, uint8_t an,
 				   uint32_t pn, uint8_t *key);
 

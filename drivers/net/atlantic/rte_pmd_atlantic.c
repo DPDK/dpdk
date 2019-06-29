@@ -8,7 +8,7 @@
 #include "atl_ethdev.h"
 
 
-__rte_experimental int
+int
 rte_pmd_atl_macsec_enable(uint16_t port,
 			  uint8_t encr, uint8_t repl_prot)
 {
@@ -24,7 +24,7 @@ rte_pmd_atl_macsec_enable(uint16_t port,
 	return atl_macsec_enable(dev, encr, repl_prot);
 }
 
-__rte_experimental int
+int
 rte_pmd_atl_macsec_disable(uint16_t port)
 {
 	struct rte_eth_dev *dev;
@@ -39,7 +39,7 @@ rte_pmd_atl_macsec_disable(uint16_t port)
 	return atl_macsec_disable(dev);
 }
 
-__rte_experimental int
+int
 rte_pmd_atl_macsec_config_txsc(uint16_t port, uint8_t *mac)
 {
 	struct rte_eth_dev *dev;
@@ -54,7 +54,7 @@ rte_pmd_atl_macsec_config_txsc(uint16_t port, uint8_t *mac)
 	return atl_macsec_config_txsc(dev, mac);
 }
 
-__rte_experimental int
+int
 rte_pmd_atl_macsec_config_rxsc(uint16_t port, uint8_t *mac, uint16_t pi)
 {
 	struct rte_eth_dev *dev;
@@ -69,7 +69,7 @@ rte_pmd_atl_macsec_config_rxsc(uint16_t port, uint8_t *mac, uint16_t pi)
 	return atl_macsec_config_rxsc(dev, mac, pi);
 }
 
-__rte_experimental int
+int
 rte_pmd_atl_macsec_select_txsa(uint16_t port, uint8_t idx, uint8_t an,
 				 uint32_t pn, uint8_t *key)
 {
@@ -85,7 +85,7 @@ rte_pmd_atl_macsec_select_txsa(uint16_t port, uint8_t idx, uint8_t an,
 	return atl_macsec_select_txsa(dev, idx, an, pn, key);
 }
 
-__rte_experimental int
+int
 rte_pmd_atl_macsec_select_rxsa(uint16_t port, uint8_t idx, uint8_t an,
 				 uint32_t pn, uint8_t *key)
 {
