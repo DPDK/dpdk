@@ -448,7 +448,7 @@ check_iova(const struct rte_memseg_list *msl __rte_unused,
 #define MAX_DMA_MASK_BITS 63
 
 /* check memseg iovas are within the required range based on dma mask */
-static int __rte_experimental
+static int
 check_dma_mask(uint8_t maskbits, bool thread_unsafe)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
