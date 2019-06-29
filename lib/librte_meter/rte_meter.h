@@ -140,7 +140,8 @@ rte_meter_trtcm_profile_config(struct rte_meter_trtcm_profile *p,
  * @return
  *    0 upon success, error code otherwise
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_meter_trtcm_rfc4115_profile_config(
 	struct rte_meter_trtcm_rfc4115_profile *p,
 	struct rte_meter_trtcm_rfc4115_params *params);
@@ -186,7 +187,8 @@ rte_meter_trtcm_config(struct rte_meter_trtcm *m,
  * @return
  *    0 upon success, error code otherwise
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_meter_trtcm_rfc4115_config(struct rte_meter_trtcm_rfc4115 *m,
 	struct rte_meter_trtcm_rfc4115_profile *p);
 
@@ -293,7 +295,8 @@ rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
  * @return
  *    Color assigned to the current IP packet
  */
-static inline enum rte_color __rte_experimental
+__rte_experimental
+static inline enum rte_color
 rte_meter_trtcm_rfc4115_color_blind_check(
 	struct rte_meter_trtcm_rfc4115 *m,
 	struct rte_meter_trtcm_rfc4115_profile *p,
@@ -319,7 +322,8 @@ rte_meter_trtcm_rfc4115_color_blind_check(
  * @return
  *    Color assigned to the current IP packet
  */
-static inline enum rte_color __rte_experimental
+__rte_experimental
+static inline enum rte_color
 rte_meter_trtcm_rfc4115_color_aware_check(
 	struct rte_meter_trtcm_rfc4115 *m,
 	struct rte_meter_trtcm_rfc4115_profile *p,
@@ -578,7 +582,8 @@ rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
 	return RTE_COLOR_GREEN;
 }
 
-static inline enum rte_color __rte_experimental
+__rte_experimental
+static inline enum rte_color
 rte_meter_trtcm_rfc4115_color_blind_check(
 	struct rte_meter_trtcm_rfc4115 *m,
 	struct rte_meter_trtcm_rfc4115_profile *p,
@@ -621,7 +626,8 @@ rte_meter_trtcm_rfc4115_color_blind_check(
 	return RTE_COLOR_RED;
 }
 
-static inline enum rte_color __rte_experimental
+__rte_experimental
+static inline enum rte_color
 rte_meter_trtcm_rfc4115_color_aware_check(
 	struct rte_meter_trtcm_rfc4115 *m,
 	struct rte_meter_trtcm_rfc4115_profile *p,

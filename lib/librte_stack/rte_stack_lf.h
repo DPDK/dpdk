@@ -23,7 +23,8 @@
  * @return
  *   Actual number of objects enqueued.
  */
-static __rte_always_inline unsigned int __rte_experimental
+__rte_experimental
+static __rte_always_inline unsigned int
 __rte_stack_lf_push(struct rte_stack *s,
 		    void * const *obj_table,
 		    unsigned int n)
@@ -61,7 +62,8 @@ __rte_stack_lf_push(struct rte_stack *s,
  * @return
  *   - Actual number of objects popped.
  */
-static __rte_always_inline unsigned int __rte_experimental
+__rte_experimental
+static __rte_always_inline unsigned int
 __rte_stack_lf_pop(struct rte_stack *s, void **obj_table, unsigned int n)
 {
 	struct rte_stack_lf_elem *first, *last = NULL;

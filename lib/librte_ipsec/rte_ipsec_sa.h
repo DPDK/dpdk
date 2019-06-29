@@ -128,7 +128,8 @@ enum {
  * @return
  *   SA type value.
  */
-uint64_t __rte_experimental
+__rte_experimental
+uint64_t
 rte_ipsec_sa_type(const struct rte_ipsec_sa *sa);
 
 /**
@@ -139,7 +140,8 @@ rte_ipsec_sa_type(const struct rte_ipsec_sa *sa);
  *   - Actual size required for SA with given parameters.
  *   - -EINVAL if the parameters are invalid.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_ipsec_sa_size(const struct rte_ipsec_sa_prm *prm);
 
 /**
@@ -155,7 +157,8 @@ rte_ipsec_sa_size(const struct rte_ipsec_sa_prm *prm);
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOSPC if the size of the provided buffer is not big enough.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	uint32_t size);
 
@@ -164,7 +167,8 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
  * @param sa
  *   Pointer to SA object to de-initialize.
  */
-void __rte_experimental
+__rte_experimental
+void
 rte_ipsec_sa_fini(struct rte_ipsec_sa *sa);
 
 #ifdef __cplusplus

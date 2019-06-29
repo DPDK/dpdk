@@ -1121,7 +1121,8 @@ static inline void rte_atomic64_clear(rte_atomic64_t *v)
  * @return
  *   Non-zero on success; 0 on failure.
  */
-static inline int __rte_experimental
+__rte_experimental
+static inline int
 rte_atomic128_cmp_exchange(rte_int128_t *dst,
 			   rte_int128_t *exp,
 			   const rte_int128_t *src,

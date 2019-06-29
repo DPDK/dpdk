@@ -153,7 +153,8 @@ rte_realloc(void *ptr, size_t size, unsigned int align);
  *     align is not a power of two).
  *   - Otherwise, the pointer to the reallocated memory.
  */
-void * __rte_experimental
+__rte_experimental
+void *
 rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket);
 
 /**
@@ -330,7 +331,8 @@ rte_malloc_get_socket_stats(int socket,
  *     EPERM  - attempted to add memory to a reserved heap
  *     ENOSPC - no more space in internal config to store a new memory chunk
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
 		rte_iova_t iova_addrs[], unsigned int n_pages, size_t page_sz);
 
@@ -361,7 +363,8 @@ rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
  *     ENOENT - heap or memory chunk was not found
  *     EBUSY  - memory chunk still contains data
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_malloc_heap_memory_remove(const char *heap_name, void *va_addr, size_t len);
 
 /**
@@ -385,7 +388,8 @@ rte_malloc_heap_memory_remove(const char *heap_name, void *va_addr, size_t len);
  *     EPERM  - attempted to attach memory to a reserved heap
  *     ENOENT - heap or memory chunk was not found
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_malloc_heap_memory_attach(const char *heap_name, void *va_addr, size_t len);
 
 /**
@@ -409,7 +413,8 @@ rte_malloc_heap_memory_attach(const char *heap_name, void *va_addr, size_t len);
  *     EPERM  - attempted to detach memory from a reserved heap
  *     ENOENT - heap or memory chunk was not found
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_malloc_heap_memory_detach(const char *heap_name, void *va_addr, size_t len);
 
 /**
@@ -428,7 +433,8 @@ rte_malloc_heap_memory_detach(const char *heap_name, void *va_addr, size_t len);
  *     EEXIST - heap by name of ``heap_name`` already exists
  *     ENOSPC - no more space in internal config to store a new heap
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_malloc_heap_create(const char *heap_name);
 
 /**
@@ -451,7 +457,8 @@ rte_malloc_heap_create(const char *heap_name);
  *     EPERM  - attempting to destroy reserved heap
  *     EBUSY  - heap still contains data
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_malloc_heap_destroy(const char *heap_name);
 
 /**
@@ -465,7 +472,8 @@ rte_malloc_heap_destroy(const char *heap_name);
  *     EINVAL - ``name`` was NULL
  *     ENOENT - heap identified by the name ``name`` was not found
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_malloc_heap_get_socket(const char *name);
 
 /**
@@ -480,7 +488,8 @@ rte_malloc_heap_get_socket(const char *name);
  *   0 if socket ID refers to internal DPDK memory
  *   -1 if socket ID is invalid
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_malloc_heap_socket_is_external(int socket_id);
 
 /**
@@ -510,7 +519,8 @@ rte_malloc_dump_stats(FILE *f, const char *type);
  * @param f
  *   A pointer to a file for output
  */
-void __rte_experimental
+__rte_experimental
+void
 rte_malloc_dump_heaps(FILE *f);
 
 /**

@@ -363,7 +363,8 @@ rte_dev_iterator_next(struct rte_dev_iterator *it);
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_dev_event_callback_register(const char *device_name,
 				rte_dev_event_cb_fn cb_fn,
 				void *cb_arg);
@@ -387,7 +388,8 @@ rte_dev_event_callback_register(const char *device_name,
  *  - On success, return the number of callback entities removed.
  *  - On failure, a negative value.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_dev_event_callback_unregister(const char *device_name,
 				  rte_dev_event_cb_fn cb_fn,
 				  void *cb_arg);
@@ -404,7 +406,8 @@ rte_dev_event_callback_unregister(const char *device_name,
  * @param event
  *  the device event type.
  */
-void  __rte_experimental
+__rte_experimental
+void
 rte_dev_event_callback_process(const char *device_name,
 			       enum rte_dev_event_type event);
 
@@ -418,7 +421,8 @@ rte_dev_event_callback_process(const char *device_name,
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_dev_event_monitor_start(void);
 
 /**
@@ -431,7 +435,8 @@ rte_dev_event_monitor_start(void);
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_dev_event_monitor_stop(void);
 
 /**
@@ -444,7 +449,8 @@ rte_dev_event_monitor_stop(void);
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_dev_hotplug_handle_enable(void);
 
 /**
@@ -457,7 +463,8 @@ rte_dev_hotplug_handle_enable(void);
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_dev_hotplug_handle_disable(void);
 
 /**
@@ -480,7 +487,8 @@ rte_dev_hotplug_handle_disable(void);
  *	0 if mapping was successful.
  *	Negative value and rte_errno is set otherwise.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len);
 
 /**
@@ -503,7 +511,8 @@ rte_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len);
  *	0 if un-mapping was successful.
  *	Negative value and rte_errno is set otherwise.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_dev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
 		  size_t len);
 

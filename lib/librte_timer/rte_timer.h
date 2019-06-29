@@ -147,7 +147,8 @@ struct rte_timer
  *   - 0: Success
  *   - -ENOSPC: maximum number of timer data instances already allocated
  */
-int __rte_experimental rte_timer_data_alloc(uint32_t *id_ptr);
+__rte_experimental
+int rte_timer_data_alloc(uint32_t *id_ptr);
 
 /**
  * @warning
@@ -162,7 +163,8 @@ int __rte_experimental rte_timer_data_alloc(uint32_t *id_ptr);
  *   - 0: Success
  *   - -EINVAL: invalid timer data instance identifier
  */
-int __rte_experimental rte_timer_data_dealloc(uint32_t id);
+__rte_experimental
+int rte_timer_data_dealloc(uint32_t id);
 
 /**
  * Initialize the timer library.
@@ -187,7 +189,8 @@ void rte_timer_subsystem_init_v20(void);
  *
  * Free timer subsystem resources.
  */
-void __rte_experimental rte_timer_subsystem_finalize(void);
+__rte_experimental
+void rte_timer_subsystem_finalize(void);
 
 /**
  * Initialize a timer handle.
@@ -408,7 +411,8 @@ void rte_timer_dump_stats_v20(FILE *f);
  *   - (-1): Timer is in the RUNNING or CONFIG state.
  *   - -EINVAL: invalid timer_data_id
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_timer_alt_reset(uint32_t timer_data_id, struct rte_timer *tim,
 		    uint64_t ticks, enum rte_timer_type type,
 		    unsigned int tim_lcore, rte_timer_cb_t fct, void *arg);
@@ -433,7 +437,8 @@ rte_timer_alt_reset(uint32_t timer_data_id, struct rte_timer *tim,
  *   - (-1): The timer is in the RUNNING or CONFIG state.
  *   - -EINVAL: invalid timer_data_id
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_timer_alt_stop(uint32_t timer_data_id, struct rte_timer *tim);
 
 /**
@@ -469,7 +474,8 @@ typedef void (*rte_timer_alt_manage_cb_t)(struct rte_timer *tim);
  *   - 0: success
  *   - -EINVAL: invalid timer_data_id
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_timer_alt_manage(uint32_t timer_data_id, unsigned int *poll_lcores,
 		     int n_poll_lcores, rte_timer_alt_manage_cb_t f);
 
@@ -501,7 +507,8 @@ typedef void (*rte_timer_stop_all_cb_t)(struct rte_timer *tim, void *arg);
  *   - 0: success
  *   - EINVAL: invalid timer_data_id
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
 		   int nb_walk_lcores, rte_timer_stop_all_cb_t f, void *f_arg);
 
@@ -523,7 +530,8 @@ rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
  *   - 0: success
  *   - -EINVAL: invalid timer_data_id
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_timer_alt_dump_stats(uint32_t timer_data_id, FILE *f);
 
 #ifdef __cplusplus

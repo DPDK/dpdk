@@ -1453,7 +1453,8 @@ uint16_t rte_eth_find_next(uint16_t port_id);
  *   Next port id of the device, possibly port_id_start,
  *   RTE_MAX_ETHPORTS if there is none.
  */
-uint16_t __rte_experimental
+__rte_experimental
+uint16_t
 rte_eth_find_next_of(uint16_t port_id_start,
 		const struct rte_device *parent);
 
@@ -1484,7 +1485,8 @@ rte_eth_find_next_of(uint16_t port_id_start,
  *   Next sibling port id, possibly port_id_start or ref_port_id itself,
  *   RTE_MAX_ETHPORTS if there is none.
  */
-uint16_t __rte_experimental
+__rte_experimental
+uint16_t
 rte_eth_find_next_sibling(uint16_t port_id_start,
 		uint16_t ref_port_id);
 
@@ -1516,7 +1518,8 @@ rte_eth_find_next_sibling(uint16_t port_id_start,
  * @return
  *   Negative errno value on error, 0 on success.
  */
-int __rte_experimental rte_eth_dev_owner_new(uint64_t *owner_id);
+__rte_experimental
+int rte_eth_dev_owner_new(uint64_t *owner_id);
 
 /**
  * @warning
@@ -1531,7 +1534,8 @@ int __rte_experimental rte_eth_dev_owner_new(uint64_t *owner_id);
  * @return
  *  Negative errno value on error, 0 on success.
  */
-int __rte_experimental rte_eth_dev_owner_set(const uint16_t port_id,
+__rte_experimental
+int rte_eth_dev_owner_set(const uint16_t port_id,
 		const struct rte_eth_dev_owner *owner);
 
 /**
@@ -1547,7 +1551,8 @@ int __rte_experimental rte_eth_dev_owner_set(const uint16_t port_id,
  * @return
  *  0 on success, negative errno value on error.
  */
-int __rte_experimental rte_eth_dev_owner_unset(const uint16_t port_id,
+__rte_experimental
+int rte_eth_dev_owner_unset(const uint16_t port_id,
 		const uint64_t owner_id);
 
 /**
@@ -1559,7 +1564,8 @@ int __rte_experimental rte_eth_dev_owner_unset(const uint16_t port_id,
  * @param	owner_id
  *  The owner identifier.
  */
-void __rte_experimental rte_eth_dev_owner_delete(const uint64_t owner_id);
+__rte_experimental
+void rte_eth_dev_owner_delete(const uint64_t owner_id);
 
 /**
  * @warning
@@ -1574,7 +1580,8 @@ void __rte_experimental rte_eth_dev_owner_delete(const uint64_t owner_id);
  * @return
  *  0 on success, negative errno value on error..
  */
-int __rte_experimental rte_eth_dev_owner_get(const uint16_t port_id,
+__rte_experimental
+int rte_eth_dev_owner_get(const uint16_t port_id,
 		struct rte_eth_dev_owner *owner);
 
 /**
@@ -1700,7 +1707,8 @@ int rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_queue,
  * @return
  *   1 when the Ethernet device is removed, otherwise 0.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_dev_is_removed(uint16_t port_id);
 
 /**
@@ -2928,7 +2936,8 @@ int rte_eth_dev_rx_intr_ctl_q(uint16_t port_id, uint16_t queue_id,
  *           successful.
  *   - (-1) on error.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_dev_rx_intr_ctl_q_get_fd(uint16_t port_id, uint16_t queue_id);
 
 /**
@@ -3626,7 +3635,8 @@ int rte_eth_dev_set_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
  *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_dev_get_module_info(uint16_t port_id,
 			    struct rte_eth_dev_module_info *modinfo);
 
@@ -3648,7 +3658,8 @@ rte_eth_dev_get_module_info(uint16_t port_id,
  *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_dev_get_module_eeprom(uint16_t port_id,
 			      struct rte_dev_eeprom_info *info);
 
@@ -3840,7 +3851,8 @@ int rte_eth_timesync_write_time(uint16_t port_id, const struct timespec *time);
  *   - -ENODEV: The port ID is invalid.
  *   - -ENOTSUP: The function is not supported by the Ethernet driver.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_read_clock(uint16_t port_id, uint64_t *clock);
 
 /**

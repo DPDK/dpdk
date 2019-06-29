@@ -51,7 +51,8 @@ struct rte_net_hdr_lens {
  *   Protocol that follows IPv6 header.
  *   -1 if an error occurs during mbuf parsing.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_net_skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 	int *frag);
 

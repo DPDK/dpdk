@@ -42,7 +42,8 @@ struct rte_ipsec_group {
  * @return
  *   The pointer to the related *rte_ipsec_session* structure.
  */
-static inline __rte_experimental struct rte_ipsec_session *
+__rte_experimental
+static inline struct rte_ipsec_session *
 rte_ipsec_ses_from_crypto(const struct rte_crypto_op *cop)
 {
 	const struct rte_security_session *ss;
@@ -78,7 +79,8 @@ rte_ipsec_ses_from_crypto(const struct rte_crypto_op *cop)
  * @return
  *   Number of filled elements in *grp* array.
  */
-static inline uint16_t __rte_experimental
+__rte_experimental
+static inline uint16_t
 rte_ipsec_pkt_crypto_group(const struct rte_crypto_op *cop[],
 	struct rte_mbuf *mb[], struct rte_ipsec_group grp[], uint16_t num)
 {

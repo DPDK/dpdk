@@ -165,7 +165,8 @@ void rte_delay_us_block(unsigned int us);
  * @param us
  *   Number of microseconds to wait.
  */
-void __rte_experimental
+__rte_experimental
+void
 rte_delay_us_sleep(unsigned int us);
 
 /**

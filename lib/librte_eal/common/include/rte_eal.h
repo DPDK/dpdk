@@ -275,7 +275,8 @@ typedef int (*rte_mp_async_reply_t)(const struct rte_mp_msg *request,
  *  - 0 on success.
  *  - (<0) on failure.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_mp_action_register(const char *name, rte_mp_t action);
 
 /**
@@ -295,7 +296,8 @@ rte_mp_action_register(const char *name, rte_mp_t action);
  *   The name argument plays as the nonredundant key to find the action.
  *
  */
-void __rte_experimental
+__rte_experimental
+void
 rte_mp_action_unregister(const char *name);
 
 /**
@@ -314,7 +316,8 @@ rte_mp_action_unregister(const char *name);
  *  - On success, return 0.
  *  - On failure, return -1, and the reason will be stored in rte_errno.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_mp_sendmsg(struct rte_mp_msg *msg);
 
 /**
@@ -348,7 +351,8 @@ rte_mp_sendmsg(struct rte_mp_msg *msg);
  *  - On success, return 0.
  *  - On failure, return -1, and the reason will be stored in rte_errno.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	       const struct timespec *ts);
 
@@ -377,7 +381,8 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
  *  - On success, return 0.
  *  - On failure, return -1, and the reason will be stored in rte_errno.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 		rte_mp_async_reply_t clb);
 
@@ -405,7 +410,8 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
  *  - On success, return 0.
  *  - On failure, return -1, and the reason will be stored in rte_errno.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_mp_reply(struct rte_mp_msg *msg, const char *peer);
 
 /**

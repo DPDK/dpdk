@@ -88,7 +88,8 @@ rte_rwlock_read_lock(rte_rwlock_t *rwl)
  *   - -EBUSY if lock could not be acquired for reading because a
  *     writer holds the lock
  */
-static inline __rte_experimental int
+__rte_experimental
+static inline int
 rte_rwlock_read_trylock(rte_rwlock_t *rwl)
 {
 	int32_t x;
@@ -131,7 +132,8 @@ rte_rwlock_read_unlock(rte_rwlock_t *rwl)
  *   - -EBUSY if lock could not be acquired for writing because
  *     it was already locked for reading or writing
  */
-static inline __rte_experimental int
+__rte_experimental
+static inline int
 rte_rwlock_write_trylock(rte_rwlock_t *rwl)
 {
 	int32_t x;

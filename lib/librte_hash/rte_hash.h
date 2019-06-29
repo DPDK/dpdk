@@ -366,7 +366,8 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
  *   - 0 if freed successfully
  *   - -EINVAL if the parameters are invalid.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_hash_free_key_with_position(const struct rte_hash *h,
 				const int32_t position);
 

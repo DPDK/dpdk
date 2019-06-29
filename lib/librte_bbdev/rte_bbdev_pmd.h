@@ -43,7 +43,8 @@ extern "C" {
  * @return
  *   - Slot in the rte_bbdev array for a new device;
  */
-struct rte_bbdev * __rte_experimental
+__rte_experimental
+struct rte_bbdev *
 rte_bbdev_allocate(const char *name);
 
 /**
@@ -55,7 +56,8 @@ rte_bbdev_allocate(const char *name);
  * @return
  *   - 0 on success, negative on error
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_bbdev_release(struct rte_bbdev *bbdev);
 
 /**
@@ -69,7 +71,8 @@ rte_bbdev_release(struct rte_bbdev *bbdev);
  *   - NULL otherwise
  *
  */
-struct rte_bbdev * __rte_experimental
+__rte_experimental
+struct rte_bbdev *
 rte_bbdev_get_named_dev(const char *name);
 
 /**
@@ -187,7 +190,8 @@ struct rte_bbdev_ops {
  * @param ret_param
  *   To pass data back to user application.
  */
-void __rte_experimental
+__rte_experimental
+void
 rte_bbdev_pmd_callback_process(struct rte_bbdev *dev,
 	enum rte_bbdev_event_type event, void *ret_param);
 

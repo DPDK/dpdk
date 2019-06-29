@@ -313,7 +313,8 @@ int rte_vhost_driver_unregister(const char *path);
  * @return
  *  0 on success, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_driver_attach_vdpa_device(const char *path, int did);
 
 /**
@@ -324,7 +325,8 @@ rte_vhost_driver_attach_vdpa_device(const char *path, int did);
  * @return
  *  0 on success, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_driver_detach_vdpa_device(const char *path);
 
 /**
@@ -335,7 +337,8 @@ rte_vhost_driver_detach_vdpa_device(const char *path);
  * @return
  *  Device id, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_driver_get_vdpa_device_id(const char *path);
 
 /**
@@ -403,7 +406,8 @@ int rte_vhost_driver_get_features(const char *path, uint64_t *features);
  * @return
  *  0 on success, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_driver_set_protocol_features(const char *path,
 		uint64_t protocol_features);
 
@@ -417,7 +421,8 @@ rte_vhost_driver_set_protocol_features(const char *path,
  * @return
  *  0 on success, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_driver_get_protocol_features(const char *path,
 		uint64_t *protocol_features);
 
@@ -431,7 +436,8 @@ rte_vhost_driver_get_protocol_features(const char *path,
  * @return
  *  0 on success, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num);
 
 /**
@@ -656,7 +662,8 @@ uint32_t rte_vhost_rx_queue_count(int vid, uint16_t qid);
  * @return
  *  0 on success, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_get_log_base(int vid, uint64_t *log_base, uint64_t *log_size);
 
 /**
@@ -673,7 +680,8 @@ rte_vhost_get_log_base(int vid, uint64_t *log_base, uint64_t *log_size);
  * @return
  *  0 on success, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_get_vring_base(int vid, uint16_t queue_id,
 		uint16_t *last_avail_idx, uint16_t *last_used_idx);
 
@@ -691,7 +699,8 @@ rte_vhost_get_vring_base(int vid, uint16_t queue_id,
  * @return
  *  0 on success, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_set_vring_base(int vid, uint16_t queue_id,
 		uint16_t last_avail_idx, uint16_t last_used_idx);
 
@@ -707,7 +716,8 @@ rte_vhost_set_vring_base(int vid, uint16_t queue_id,
  * @return
  *  0 on success, -1 on failure
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_extern_callback_register(int vid,
 		struct rte_vhost_user_extern_ops const * const ops, void *ctx);
 
@@ -719,7 +729,8 @@ rte_vhost_extern_callback_register(int vid,
  * @return
  *  device id
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_vhost_get_vdpa_device_id(int vid);
 
 #ifdef __cplusplus

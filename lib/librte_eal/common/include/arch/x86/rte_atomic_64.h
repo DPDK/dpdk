@@ -224,7 +224,8 @@ typedef struct {
 	};
 } __rte_aligned(16) rte_int128_t;
 
-static inline int __rte_experimental
+__rte_experimental
+static inline int
 rte_atomic128_cmp_exchange(rte_int128_t *dst,
 			   rte_int128_t *exp,
 			   const rte_int128_t *src,

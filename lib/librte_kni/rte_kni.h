@@ -249,7 +249,8 @@ int rte_kni_unregister_handlers(struct rte_kni *kni);
  *  Previous link state == linkdown: 0
  *  Previous link state == linkup: 1
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_kni_update_link(struct rte_kni *kni, unsigned int linkup);
 
 /**

@@ -183,7 +183,8 @@ rte_lcore_to_socket_id(unsigned int lcore_id);
  * @return
  *   The relative index, or -1 if not enabled.
  */
-__rte_experimental int
+__rte_experimental
+int
 rte_lcore_to_cpu_id(int lcore_id);
 
 /**
@@ -196,7 +197,8 @@ rte_lcore_to_cpu_id(int lcore_id);
  * @return
  *   The cpuset of that lcore
  */
-__rte_experimental rte_cpuset_t
+__rte_experimental
+rte_cpuset_t
 rte_lcore_cpuset(unsigned int lcore_id);
 
 /**

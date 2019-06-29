@@ -230,7 +230,8 @@ rte_cryptodev_sym_capability_get(uint8_t dev_id,
  *   - Return description of the asymmetric crypto capability if exist.
  *   - Return NULL if the capability not exist.
  */
-const struct rte_cryptodev_asymmetric_xform_capability * __rte_experimental
+__rte_experimental
+const struct rte_cryptodev_asymmetric_xform_capability *
 rte_cryptodev_asym_capability_get(uint8_t dev_id,
 		const struct rte_cryptodev_asym_capability_idx *idx);
 
@@ -299,7 +300,8 @@ rte_cryptodev_sym_capability_check_aead(
  *   - Return 1 if the op type is supported
  *   - Return 0 if unsupported
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_cryptodev_asym_xform_capability_check_optype(
 	const struct rte_cryptodev_asymmetric_xform_capability *capability,
 		enum rte_crypto_asym_op_type op_type);
@@ -314,7 +316,8 @@ rte_cryptodev_asym_xform_capability_check_optype(
  *   - Return 0 if the parameters are in range of the capability.
  *   - Return -1 if the parameters are out of range of the capability.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_cryptodev_asym_xform_capability_check_modlen(
 	const struct rte_cryptodev_asymmetric_xform_capability *capability,
 		uint16_t modlen);
@@ -375,7 +378,8 @@ rte_cryptodev_get_aead_algo_enum(enum rte_crypto_aead_algorithm *algo_enum,
  * - Return -1 if string is not valid
  * - Return 0 if the string is valid
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
 		const char *xform_string);
 
@@ -1002,7 +1006,8 @@ struct rte_cryptodev_asym_session {
  *  - On success return size of the session
  *  - On failure returns 0
  */
-struct rte_mempool * __rte_experimental
+__rte_experimental
+struct rte_mempool *
 rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
 	uint32_t elt_size, uint32_t cache_size, uint16_t priv_size,
 	int socket_id);
@@ -1028,7 +1033,8 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mempool);
  *  - On success return pointer to asym-session
  *  - On failure returns NULL
  */
-struct rte_cryptodev_asym_session * __rte_experimental
+__rte_experimental
+struct rte_cryptodev_asym_session *
 rte_cryptodev_asym_session_create(struct rte_mempool *mempool);
 
 /**
@@ -1058,7 +1064,8 @@ rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess);
  *  - -EINVAL if session is NULL.
  *  - -EBUSY if not all device private data has been freed.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_cryptodev_asym_session_free(struct rte_cryptodev_asym_session *sess);
 
 /**
@@ -1098,7 +1105,8 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
  *  - -ENOTSUP if crypto device does not support the crypto transform.
  *  - -ENOMEM if the private session could not be allocated.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_cryptodev_asym_session_init(uint8_t dev_id,
 			struct rte_cryptodev_asym_session *sess,
 			struct rte_crypto_asym_xform *xforms,
@@ -1132,7 +1140,8 @@ rte_cryptodev_sym_session_clear(uint8_t dev_id,
  *  - 0 if successful.
  *  - -EINVAL if device is invalid or session is NULL.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_cryptodev_asym_session_clear(uint8_t dev_id,
 			struct rte_cryptodev_asym_session *sess);
 
@@ -1157,7 +1166,8 @@ rte_cryptodev_sym_get_header_session_size(void);
  *   the private data size defined within sess.
  *   - If sess is NULL, return 0.
  */
-unsigned int __rte_experimental
+__rte_experimental
+unsigned int
 rte_cryptodev_sym_get_existing_header_session_size(
 		struct rte_cryptodev_sym_session *sess);
 
@@ -1167,7 +1177,8 @@ rte_cryptodev_sym_get_existing_header_session_size(
  * @return
  *   Size of the asymmetric header session.
  */
-unsigned int __rte_experimental
+__rte_experimental
+unsigned int
 rte_cryptodev_asym_get_header_session_size(void);
 
 /**
@@ -1194,7 +1205,8 @@ rte_cryptodev_sym_get_private_session_size(uint8_t dev_id);
  *   - Size of the asymmetric private data, if successful
  *   - 0 if device is invalid or does not have private session
  */
-unsigned int __rte_experimental
+__rte_experimental
+unsigned int
 rte_cryptodev_asym_get_private_session_size(uint8_t dev_id);
 
 /**
@@ -1229,7 +1241,8 @@ const char *rte_cryptodev_driver_name_get(uint8_t driver_id);
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_cryptodev_sym_session_set_user_data(
 					struct rte_cryptodev_sym_session *sess,
 					void *data,
@@ -1245,7 +1258,8 @@ rte_cryptodev_sym_session_set_user_data(
  *  - On success return pointer to user data.
  *  - On failure returns NULL.
  */
-void * __rte_experimental
+__rte_experimental
+void *
 rte_cryptodev_sym_session_get_user_data(
 					struct rte_cryptodev_sym_session *sess);
 

@@ -866,7 +866,8 @@ rte_mbuf_from_indirect(struct rte_mbuf *mi)
  * @return
  *   The pointer of the mbuf buffer.
  */
-static inline char * __rte_experimental
+__rte_experimental
+static inline char *
 rte_mbuf_buf_addr(struct rte_mbuf *mb, struct rte_mempool *mp)
 {
 	return (char *)mb + sizeof(*mb) + rte_pktmbuf_priv_size(mp);
@@ -883,10 +884,18 @@ rte_mbuf_buf_addr(struct rte_mbuf *mb, struct rte_mempool *mp)
  * @return
  *   The pointer of the beginning of the mbuf data.
  */
-static inline char * __rte_experimental
-rte_mbuf_data_addr_default(struct rte_mbuf *mb)
+__rte_experimental
+static inline char *
+rte_mbuf_data_addr_default(__rte_unused struct rte_mbuf *mb)
 {
+	/* gcc complains about calling this experimental function even
+	 * when not using it. Hide it with ALLOW_EXPERIMENTAL_API.
+	 */
+#ifdef ALLOW_EXPERIMENTAL_API
 	return rte_mbuf_buf_addr(mb, mb->pool) + RTE_PKTMBUF_HEADROOM;
+#else
+	return NULL;
+#endif
 }
 
 /**
@@ -926,7 +935,8 @@ rte_mbuf_to_baddr(struct rte_mbuf *md)
  * @return
  *   The starting address of the private data area of the given mbuf.
  */
-static inline void * __rte_experimental
+__rte_experimental
+static inline void *
 rte_mbuf_to_priv(struct rte_mbuf *m)
 {
 	return RTE_PTR_ADD(m, sizeof(struct rte_mbuf));

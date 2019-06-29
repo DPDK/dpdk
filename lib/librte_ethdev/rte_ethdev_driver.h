@@ -225,7 +225,8 @@ rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
  * @return
  *   Negative errno value on error, 0 on success.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_switch_domain_alloc(uint16_t *domain_id);
 
 /**
@@ -243,7 +244,8 @@ rte_eth_switch_domain_alloc(uint16_t *domain_id);
  * @return
  *   Negative errno value on error, 0 on success.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_switch_domain_free(uint16_t domain_id);
 
 /** Generic Ethernet device arguments  */
@@ -272,7 +274,8 @@ struct rte_eth_devargs {
  * @return
  *   Negative errno value on error, 0 on success.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_devargs_parse(const char *devargs, struct rte_eth_devargs *eth_devargs);
 
 
@@ -304,7 +307,8 @@ typedef int (*ethdev_bus_specific_init)(struct rte_eth_dev *ethdev,
  * @return
  *   Negative errno value on error, 0 on success.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_dev_create(struct rte_device *device, const char *name,
 	size_t priv_data_size,
 	ethdev_bus_specific_init bus_specific_init, void *bus_init_params,
@@ -328,7 +332,8 @@ typedef int (*ethdev_uninit_t)(struct rte_eth_dev *ethdev);
  * @return
  *   Negative errno value on error, 0 on success.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_eth_dev_destroy(struct rte_eth_dev *ethdev, ethdev_uninit_t ethdev_uninit);
 
 #ifdef __cplusplus

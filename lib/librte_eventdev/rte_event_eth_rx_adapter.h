@@ -413,7 +413,8 @@ int rte_event_eth_rx_adapter_stop(uint8_t id);
  *  - 0: Success, retrieved successfully.
  *  - <0: Error code on failure.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_event_eth_rx_adapter_stats_get(uint8_t id,
 				struct rte_event_eth_rx_adapter_stats *stats);
 
@@ -466,7 +467,8 @@ int rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id);
  *  - 0: Success
  *  - <0: Error code on failure.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_event_eth_rx_adapter_cb_register(uint8_t id,
 				uint16_t eth_dev_id,
 				rte_event_eth_rx_adapter_cb_fn cb_fn,

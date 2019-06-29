@@ -122,7 +122,8 @@ struct rte_rcu_qsbr {
  *   Possible rte_errno codes are:
  *   - EINVAL - max_threads is 0
  */
-size_t __rte_experimental
+__rte_experimental
+size_t
 rte_rcu_qsbr_get_memsize(uint32_t max_threads);
 
 /**
@@ -143,7 +144,8 @@ rte_rcu_qsbr_get_memsize(uint32_t max_threads);
  *   - EINVAL - max_threads is 0 or 'v' is NULL.
  *
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads);
 
 /**
@@ -169,7 +171,8 @@ rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads);
  *   the QS variable. thread_id is a value between 0 and (max_threads - 1).
  *   'max_threads' is the parameter passed in 'rte_rcu_qsbr_init' API.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id);
 
 /**
@@ -190,7 +193,8 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id);
  *   Reader thread with this thread ID will stop reporting its quiescent
  *   state on the QS variable.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id);
 
 /**
@@ -221,7 +225,8 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id);
  *   Reader thread with this thread ID will report its quiescent state on
  *   the QS variable.
  */
-static __rte_always_inline void __rte_experimental
+__rte_experimental
+static __rte_always_inline void
 rte_rcu_qsbr_thread_online(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
 	uint64_t t;
@@ -282,7 +287,8 @@ rte_rcu_qsbr_thread_online(struct rte_rcu_qsbr *v, unsigned int thread_id)
  *   rte_rcu_qsbr_check API will not wait for the reader thread with
  *   this thread ID to report its quiescent state on the QS variable.
  */
-static __rte_always_inline void __rte_experimental
+__rte_experimental
+static __rte_always_inline void
 rte_rcu_qsbr_thread_offline(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
 	RTE_ASSERT(v != NULL && thread_id < v->max_threads);
@@ -322,7 +328,8 @@ rte_rcu_qsbr_thread_offline(struct rte_rcu_qsbr *v, unsigned int thread_id)
  * @param thread_id
  *   Reader thread id
  */
-static __rte_always_inline void __rte_experimental
+__rte_experimental
+static __rte_always_inline void
 rte_rcu_qsbr_lock(__rte_unused struct rte_rcu_qsbr *v,
 			__rte_unused unsigned int thread_id)
 {
@@ -358,7 +365,8 @@ rte_rcu_qsbr_lock(__rte_unused struct rte_rcu_qsbr *v,
  * @param thread_id
  *   Reader thread id
  */
-static __rte_always_inline void __rte_experimental
+__rte_experimental
+static __rte_always_inline void
 rte_rcu_qsbr_unlock(__rte_unused struct rte_rcu_qsbr *v,
 			__rte_unused unsigned int thread_id)
 {
@@ -391,7 +399,8 @@ rte_rcu_qsbr_unlock(__rte_unused struct rte_rcu_qsbr *v,
  *   - This is the token for this call of the API. This should be
  *     passed to rte_rcu_qsbr_check API.
  */
-static __rte_always_inline uint64_t __rte_experimental
+__rte_experimental
+static __rte_always_inline uint64_t
 rte_rcu_qsbr_start(struct rte_rcu_qsbr *v)
 {
 	uint64_t t;
@@ -423,7 +432,8 @@ rte_rcu_qsbr_start(struct rte_rcu_qsbr *v)
  * @param thread_id
  *   Update the quiescent state for the reader with this thread ID.
  */
-static __rte_always_inline void __rte_experimental
+__rte_experimental
+static __rte_always_inline void
 rte_rcu_qsbr_quiescent(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
 	uint64_t t;
@@ -578,7 +588,8 @@ __rte_rcu_qsbr_check_all(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
  *   - 1 if all reader threads have passed through specified number
  *     of quiescent states.
  */
-static __rte_always_inline int __rte_experimental
+__rte_experimental
+static __rte_always_inline int
 rte_rcu_qsbr_check(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 {
 	RTE_ASSERT(v != NULL);
@@ -610,7 +621,8 @@ rte_rcu_qsbr_check(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
  *   on this QS variable (i.e. the calling thread is also part of the
  *   readside critical section). If not, pass RTE_QSBR_THRID_INVALID.
  */
-void __rte_experimental
+__rte_experimental
+void
 rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id);
 
 /**
@@ -631,7 +643,8 @@ rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id);
  *   Possible rte_errno codes are:
  *   - EINVAL - NULL parameters are passed
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v);
 
 #ifdef __cplusplus

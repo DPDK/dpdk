@@ -75,7 +75,8 @@ rte_pmd_softnic_run(uint16_t port_id);
  * @return
  *    Zero on success, error code otherwise.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_pmd_softnic_manage(uint16_t port_id);
 
 #ifdef __cplusplus

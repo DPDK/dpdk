@@ -96,6 +96,11 @@ check_experimental_tags() { # <patch>
 				"headers ("current_file")";
 			ret = 1;
 		}
+		if ($1 != "+__rte_experimental" || $2 != "") {
+			print "__rte_experimental must appear alone on the line" \
+				" immediately preceding the return type of a function."
+			ret = 1;
+		}
 	}
 	END {
 		exit ret;

@@ -113,7 +113,8 @@ struct rte_bpf;
  * @param bpf
  *   BPF handle to destroy.
  */
-void __rte_experimental
+__rte_experimental
+void
 rte_bpf_destroy(struct rte_bpf *bpf);
 
 /**
@@ -128,7 +129,8 @@ rte_bpf_destroy(struct rte_bpf *bpf);
  *   - EINVAL - invalid parameter passed to function
  *   - ENOMEM - can't reserve enough memory
  */
-struct rte_bpf * __rte_experimental
+__rte_experimental
+struct rte_bpf *
 rte_bpf_load(const struct rte_bpf_prm *prm);
 
 /**
@@ -151,7 +153,8 @@ rte_bpf_load(const struct rte_bpf_prm *prm);
  *   - EINVAL - invalid parameter passed to function
  *   - ENOMEM - can't reserve enough memory
  */
-struct rte_bpf * __rte_experimental
+__rte_experimental
+struct rte_bpf *
 rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 		const char *sname);
 /**
@@ -164,7 +167,8 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
  * @return
  *   BPF execution return value.
  */
-uint64_t __rte_experimental
+__rte_experimental
+uint64_t
 rte_bpf_exec(const struct rte_bpf *bpf, void *ctx);
 
 /**
@@ -181,7 +185,8 @@ rte_bpf_exec(const struct rte_bpf *bpf, void *ctx);
  * @return
  *   number of successfully processed inputs.
  */
-uint32_t __rte_experimental
+__rte_experimental
+uint32_t
 rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 		uint32_t num);
 
@@ -196,7 +201,8 @@ rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
  *   - -EINVAL if the parameters are invalid.
  *   - Zero if operation completed successfully.
  */
-int __rte_experimental
+__rte_experimental
+int
 rte_bpf_get_jit(const struct rte_bpf *bpf, struct rte_bpf_jit *jit);
 
 #ifdef __cplusplus
