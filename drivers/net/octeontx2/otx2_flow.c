@@ -1,0 +1,451 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(C) 2019 Marvell International Ltd.
+ */
+
+#include "otx2_ethdev.h"
+#include "otx2_flow.h"
+
+static int
+flow_program_npc(struct otx2_parse_state *pst, struct otx2_mbox *mbox,
+		 struct otx2_npc_flow_info *flow_info)
+{
+	/* This is non-LDATA part in search key */
+	uint64_t key_data[2] = {0ULL, 0ULL};
+	uint64_t key_mask[2] = {0ULL, 0ULL};
+	int intf = pst->flow->nix_intf;
+	int key_len, bit = 0, index;
+	int off, idx, data_off = 0;
+	uint8_t lid, mask, data;
+	uint16_t layer_info;
+	uint64_t lt, flags;
+
+
+	/* Skip till Layer A data start */
+	while (bit < NPC_PARSE_KEX_S_LA_OFFSET) {
+		if (flow_info->keyx_supp_nmask[intf] & (1 << bit))
+			data_off++;
+		bit++;
+	}
+
+	/* Each bit represents 1 nibble */
+	data_off *= 4;
+
+	index = 0;
+	for (lid = 0; lid < NPC_MAX_LID; lid++) {
+		/* Offset in key */
+		off = NPC_PARSE_KEX_S_LID_OFFSET(lid);
+		lt = pst->lt[lid] & 0xf;
+		flags = pst->flags[lid] & 0xff;
+
+		/* NPC_LAYER_KEX_S */
+		layer_info = ((flow_info->keyx_supp_nmask[intf] >> off) & 0x7);
+
+		if (layer_info) {
+			for (idx = 0; idx <= 2 ; idx++) {
+				if (layer_info & (1 << idx)) {
+					if (idx == 2)
+						data = lt;
+					else if (idx == 1)
+						data = ((flags >> 4) & 0xf);
+					else
+						data = (flags & 0xf);
+
+					if (data_off >= 64) {
+						data_off = 0;
+						index++;
+					}
+					key_data[index] |= ((uint64_t)data <<
+							    data_off);
+					mask = 0xf;
+					if (lt == 0)
+						mask = 0;
+					key_mask[index] |= ((uint64_t)mask <<
+							    data_off);
+					data_off += 4;
+				}
+			}
+		}
+	}
+
+	otx2_npc_dbg("Npc prog key data0: 0x%" PRIx64 ", data1: 0x%" PRIx64,
+		     key_data[0], key_data[1]);
+
+	/* Copy this into mcam string */
+	key_len = (pst->npc->keyx_len[intf] + 7) / 8;
+	otx2_npc_dbg("Key_len  = %d", key_len);
+	memcpy(pst->flow->mcam_data, key_data, key_len);
+	memcpy(pst->flow->mcam_mask, key_mask, key_len);
+
+	otx2_npc_dbg("Final flow data");
+	for (idx = 0; idx < OTX2_MAX_MCAM_WIDTH_DWORDS; idx++) {
+		otx2_npc_dbg("data[%d]: 0x%" PRIx64 ", mask[%d]: 0x%" PRIx64,
+			     idx, pst->flow->mcam_data[idx],
+			     idx, pst->flow->mcam_mask[idx]);
+	}
+
+	/*
+	 * Now we have mcam data and mask formatted as
+	 * [Key_len/4 nibbles][0 or 1 nibble hole][data]
+	 * hole is present if key_len is odd number of nibbles.
+	 * mcam data must be split into 64 bits + 48 bits segments
+	 * for each back W0, W1.
+	 */
+
+	return otx2_flow_mcam_alloc_and_write(pst->flow, mbox, pst, flow_info);
+}
+
+static int
+flow_parse_attr(struct rte_eth_dev *eth_dev,
+		const struct rte_flow_attr *attr,
+		struct rte_flow_error *error,
+		struct rte_flow *flow)
+{
+	struct otx2_eth_dev *dev = eth_dev->data->dev_private;
+	const char *errmsg = NULL;
+
+	if (attr == NULL)
+		errmsg = "Attribute can't be empty";
+	else if (attr->group)
+		errmsg = "Groups are not supported";
+	else if (attr->priority >= dev->npc_flow.flow_max_priority)
+		errmsg = "Priority should be with in specified range";
+	else if ((!attr->egress && !attr->ingress) ||
+		 (attr->egress && attr->ingress))
+		errmsg = "Exactly one of ingress or egress must be set";
+
+	if (errmsg != NULL) {
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR,
+				   attr, errmsg);
+		return -ENOTSUP;
+	}
+
+	if (attr->ingress)
+		flow->nix_intf = OTX2_INTF_RX;
+	else
+		flow->nix_intf = OTX2_INTF_TX;
+
+	flow->priority = attr->priority;
+	return 0;
+}
+
+static inline int
+flow_get_free_rss_grp(struct rte_bitmap *bmap,
+		      uint32_t size, uint32_t *pos)
+{
+	for (*pos = 0; *pos < size; ++*pos) {
+		if (!rte_bitmap_get(bmap, *pos))
+			break;
+	}
+
+	return *pos < size ? 0 : -1;
+}
+
+static int
+flow_configure_rss_action(struct otx2_eth_dev *dev,
+			  const struct rte_flow_action_rss *rss,
+			  uint8_t *alg_idx, uint32_t *rss_grp,
+			  int mcam_index)
+{
+	struct otx2_npc_flow_info *flow_info = &dev->npc_flow;
+	uint16_t reta[NIX_RSS_RETA_SIZE_MAX];
+	uint32_t flowkey_cfg, grp_aval, i;
+	uint16_t *ind_tbl = NULL;
+	uint8_t flowkey_algx;
+	int rc;
+
+	rc = flow_get_free_rss_grp(flow_info->rss_grp_entries,
+				   flow_info->rss_grps, &grp_aval);
+	/* RSS group :0 is not usable for flow rss action */
+	if (rc < 0 || grp_aval == 0)
+		return -ENOSPC;
+
+	*rss_grp = grp_aval;
+
+	otx2_nix_rss_set_key(dev, (uint8_t *)(uintptr_t)rss->key,
+			     rss->key_len);
+
+	/* If queue count passed in the rss action is less than
+	 * HW configured reta size, replicate rss action reta
+	 * across HW reta table.
+	 */
+	if (dev->rss_info.rss_size > rss->queue_num) {
+		ind_tbl = reta;
+
+		for (i = 0; i < (dev->rss_info.rss_size / rss->queue_num); i++)
+			memcpy(reta + i * rss->queue_num, rss->queue,
+			       sizeof(uint16_t) * rss->queue_num);
+
+		i = dev->rss_info.rss_size % rss->queue_num;
+		if (i)
+			memcpy(&reta[dev->rss_info.rss_size] - i,
+			       rss->queue, i * sizeof(uint16_t));
+	} else {
+		ind_tbl = (uint16_t *)(uintptr_t)rss->queue;
+	}
+
+	rc = otx2_nix_rss_tbl_init(dev, *rss_grp, ind_tbl);
+	if (rc) {
+		otx2_err("Failed to init rss table rc = %d", rc);
+		return rc;
+	}
+
+	flowkey_cfg = otx2_rss_ethdev_to_nix(dev, rss->types, rss->level);
+
+	rc = otx2_rss_set_hf(dev, flowkey_cfg, &flowkey_algx,
+			     *rss_grp, mcam_index);
+	if (rc) {
+		otx2_err("Failed to set rss hash function rc = %d", rc);
+		return rc;
+	}
+
+	*alg_idx = flowkey_algx;
+
+	rte_bitmap_set(flow_info->rss_grp_entries, *rss_grp);
+
+	return 0;
+}
+
+
+static int
+flow_program_rss_action(struct rte_eth_dev *eth_dev,
+			const struct rte_flow_action actions[],
+			struct rte_flow *flow)
+{
+	struct otx2_eth_dev *dev = eth_dev->data->dev_private;
+	const struct rte_flow_action_rss *rss;
+	uint32_t rss_grp;
+	uint8_t alg_idx;
+	int rc;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
+			rss = (const struct rte_flow_action_rss *)actions->conf;
+
+			rc = flow_configure_rss_action(dev,
+						       rss, &alg_idx, &rss_grp,
+						       flow->mcam_id);
+			if (rc)
+				return rc;
+
+			flow->npc_action |=
+				((uint64_t)(alg_idx & NIX_RSS_ACT_ALG_MASK) <<
+				 NIX_RSS_ACT_ALG_OFFSET) |
+				((uint64_t)(rss_grp & NIX_RSS_ACT_GRP_MASK) <<
+				 NIX_RSS_ACT_GRP_OFFSET);
+		}
+	}
+	return 0;
+}
+
+static int
+flow_parse_meta_items(__rte_unused struct otx2_parse_state *pst)
+{
+	otx2_npc_dbg("Meta Item");
+	return 0;
+}
+
+/*
+ * Parse function of each layer:
+ *  - Consume one or more patterns that are relevant.
+ *  - Update parse_state
+ *  - Set parse_state.pattern = last item consumed
+ *  - Set appropriate error code/message when returning error.
+ */
+typedef int (*flow_parse_stage_func_t)(struct otx2_parse_state *pst);
+
+static int
+flow_parse_pattern(struct rte_eth_dev *dev,
+		   const struct rte_flow_item pattern[],
+		   struct rte_flow_error *error,
+		   struct rte_flow *flow,
+		   struct otx2_parse_state *pst)
+{
+	flow_parse_stage_func_t parse_stage_funcs[] = {
+		flow_parse_meta_items,
+		otx2_flow_parse_la,
+		otx2_flow_parse_lb,
+		otx2_flow_parse_lc,
+		otx2_flow_parse_ld,
+		otx2_flow_parse_le,
+		otx2_flow_parse_lf,
+		otx2_flow_parse_lg,
+		otx2_flow_parse_lh,
+	};
+	struct otx2_eth_dev *hw = dev->data->dev_private;
+	uint8_t layer = 0;
+	int key_offset;
+	int rc;
+
+	if (pattern == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM_NUM, NULL,
+				   "pattern is NULL");
+		return -EINVAL;
+	}
+
+	memset(pst, 0, sizeof(*pst));
+	pst->npc = &hw->npc_flow;
+	pst->error = error;
+	pst->flow = flow;
+
+	/* Use integral byte offset */
+	key_offset = pst->npc->keyx_len[flow->nix_intf];
+	key_offset = (key_offset + 7) / 8;
+
+	/* Location where LDATA would begin */
+	pst->mcam_data = (uint8_t *)flow->mcam_data;
+	pst->mcam_mask = (uint8_t *)flow->mcam_mask;
+
+	while (pattern->type != RTE_FLOW_ITEM_TYPE_END &&
+	       layer < RTE_DIM(parse_stage_funcs)) {
+		otx2_npc_dbg("Pattern type = %d", pattern->type);
+
+		/* Skip place-holders */
+		pattern = otx2_flow_skip_void_and_any_items(pattern);
+
+		pst->pattern = pattern;
+		otx2_npc_dbg("Is tunnel = %d, layer = %d", pst->tunnel, layer);
+		rc = parse_stage_funcs[layer](pst);
+		if (rc != 0)
+			return -rte_errno;
+
+		layer++;
+
+		/*
+		 * Parse stage function sets pst->pattern to
+		 * 1 past the last item it consumed.
+		 */
+		pattern = pst->pattern;
+
+		if (pst->terminate)
+			break;
+	}
+
+	/* Skip trailing place-holders */
+	pattern = otx2_flow_skip_void_and_any_items(pattern);
+
+	/* Are there more items than what we can handle? */
+	if (pattern->type != RTE_FLOW_ITEM_TYPE_END) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ITEM, pattern,
+				   "unsupported item in the sequence");
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+static int
+flow_parse_rule(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error,
+		struct rte_flow *flow,
+		struct otx2_parse_state *pst)
+{
+	int err;
+
+	/* Check attributes */
+	err = flow_parse_attr(dev, attr, error, flow);
+	if (err)
+		return err;
+
+	/* Check actions */
+	err = otx2_flow_parse_actions(dev, attr, actions, error, flow);
+	if (err)
+		return err;
+
+	/* Check pattern */
+	err = flow_parse_pattern(dev, pattern, error, flow, pst);
+	if (err)
+		return err;
+
+	/* Check for overlaps? */
+	return 0;
+}
+
+static int
+otx2_flow_validate(struct rte_eth_dev *dev,
+		   const struct rte_flow_attr *attr,
+		   const struct rte_flow_item pattern[],
+		   const struct rte_flow_action actions[],
+		   struct rte_flow_error *error)
+{
+	struct otx2_parse_state parse_state;
+	struct rte_flow flow;
+
+	memset(&flow, 0, sizeof(flow));
+	return flow_parse_rule(dev, attr, pattern, actions, error, &flow,
+			       &parse_state);
+}
+
+static struct rte_flow *
+otx2_flow_create(struct rte_eth_dev *dev,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_item pattern[],
+		 const struct rte_flow_action actions[],
+		 struct rte_flow_error *error)
+{
+	struct otx2_eth_dev *hw = dev->data->dev_private;
+	struct otx2_parse_state parse_state;
+	struct otx2_mbox *mbox = hw->mbox;
+	struct rte_flow *flow, *flow_iter;
+	struct otx2_flow_list *list;
+	int rc;
+
+	flow = rte_zmalloc("otx2_rte_flow", sizeof(*flow), 0);
+	if (flow == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Memory allocation failed");
+		return NULL;
+	}
+	memset(flow, 0, sizeof(*flow));
+
+	rc = flow_parse_rule(dev, attr, pattern, actions, error, flow,
+			     &parse_state);
+	if (rc != 0)
+		goto err_exit;
+
+	rc = flow_program_npc(&parse_state, mbox, &hw->npc_flow);
+	if (rc != 0) {
+		rte_flow_error_set(error, EIO,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Failed to insert filter");
+		goto err_exit;
+	}
+
+	rc = flow_program_rss_action(dev, actions, flow);
+	if (rc != 0) {
+		rte_flow_error_set(error, EIO,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Failed to program rss action");
+		goto err_exit;
+	}
+
+
+	list = &hw->npc_flow.flow_list[flow->priority];
+	/* List in ascending order of mcam entries */
+	TAILQ_FOREACH(flow_iter, list, next) {
+		if (flow_iter->mcam_id > flow->mcam_id) {
+			TAILQ_INSERT_BEFORE(flow_iter, flow, next);
+			return flow;
+		}
+	}
+
+	TAILQ_INSERT_TAIL(list, flow, next);
+	return flow;
+
+err_exit:
+	rte_free(flow);
+	return NULL;
+}
+
+const struct rte_flow_ops otx2_flow_ops = {
+	.validate = otx2_flow_validate,
+	.create = otx2_flow_create,
+};
