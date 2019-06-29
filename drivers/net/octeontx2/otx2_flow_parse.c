@@ -679,3 +679,279 @@ otx2_flow_parse_la(struct otx2_parse_state *pst)
 	/* Update pst if not validate only? clash check? */
 	return otx2_flow_update_parse_state(pst, &info, lid, lt, 0);
 }
+
+static int
+parse_rss_action(struct rte_eth_dev *dev,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_action *act,
+		 struct rte_flow_error *error)
+{
+	struct otx2_eth_dev *hw = dev->data->dev_private;
+	struct otx2_rss_info *rss_info = &hw->rss_info;
+	const struct rte_flow_action_rss *rss;
+	uint32_t i;
+
+	rss = (const struct rte_flow_action_rss *)act->conf;
+
+	/* Not supported */
+	if (attr->egress) {
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+					  attr, "No support of RSS in egress");
+	}
+
+	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  act, "multi-queue mode is disabled");
+
+	/* Parse RSS related parameters from configuration */
+	if (!rss || !rss->queue_num)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  act, "no valid queues");
+
+	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, act,
+					  "non-default RSS hash functions"
+					  " are not supported");
+
+	if (rss->key_len && rss->key_len > RTE_DIM(rss_info->key))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, act,
+					  "RSS hash key too large");
+
+	if (rss->queue_num > rss_info->rss_size)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "too many queues for RSS context");
+
+	for (i = 0; i < rss->queue_num; i++) {
+		if (rss->queue[i] >= dev->data->nb_rx_queues)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  act,
+						  "queue id > max number"
+						  " of queues");
+	}
+
+	return 0;
+}
+
+int
+otx2_flow_parse_actions(struct rte_eth_dev *dev,
+			const struct rte_flow_attr *attr,
+			const struct rte_flow_action actions[],
+			struct rte_flow_error *error,
+			struct rte_flow *flow)
+{
+	struct otx2_eth_dev *hw = dev->data->dev_private;
+	struct otx2_npc_flow_info *npc = &hw->npc_flow;
+	const struct rte_flow_action_count *act_count;
+	const struct rte_flow_action_mark *act_mark;
+	const struct rte_flow_action_queue *act_q;
+	const char *errmsg = NULL;
+	int sel_act, req_act = 0;
+	uint16_t pf_func;
+	int errcode = 0;
+	int mark = 0;
+	int rq = 0;
+
+	/* Initialize actions */
+	flow->ctr_id = NPC_COUNTER_NONE;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		otx2_npc_dbg("Action type = %d", actions->type);
+
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			act_mark =
+			    (const struct rte_flow_action_mark *)actions->conf;
+
+			/* We have only 16 bits. Use highest val for flag */
+			if (act_mark->id > (OTX2_FLOW_FLAG_VAL - 2)) {
+				errmsg = "mark value must be < 0xfffe";
+				errcode = ENOTSUP;
+				goto err_exit;
+			}
+			mark = act_mark->id + 1;
+			req_act |= OTX2_FLOW_ACT_MARK;
+			rte_atomic32_inc(&npc->mark_actions);
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+			mark = OTX2_FLOW_FLAG_VAL;
+			req_act |= OTX2_FLOW_ACT_FLAG;
+			rte_atomic32_inc(&npc->mark_actions);
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			act_count =
+				(const struct rte_flow_action_count *)
+				actions->conf;
+
+			if (act_count->shared == 1) {
+				errmsg = "Shared Counters not supported";
+				errcode = ENOTSUP;
+				goto err_exit;
+			}
+			/* Indicates, need a counter */
+			flow->ctr_id = 1;
+			req_act |= OTX2_FLOW_ACT_COUNT;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			req_act |= OTX2_FLOW_ACT_DROP;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			/* Applicable only to ingress flow */
+			act_q = (const struct rte_flow_action_queue *)
+				actions->conf;
+			rq = act_q->index;
+			if (rq >= dev->data->nb_rx_queues) {
+				errmsg = "invalid queue index";
+				errcode = EINVAL;
+				goto err_exit;
+			}
+			req_act |= OTX2_FLOW_ACT_QUEUE;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			errcode = parse_rss_action(dev,	attr, actions, error);
+			if (errcode)
+				return -rte_errno;
+
+			req_act |= OTX2_FLOW_ACT_RSS;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_SECURITY:
+			/* Assumes user has already configured security
+			 * session for this flow. Associated conf is
+			 * opaque. When RTE security is implemented for otx2,
+			 * we need to verify that for specified security
+			 * session:
+			 *  action_type ==
+			 *    RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL &&
+			 *  session_protocol ==
+			 *    RTE_SECURITY_PROTOCOL_IPSEC
+			 *
+			 * RSS is not supported with inline ipsec. Get the
+			 * rq from associated conf, or make
+			 * RTE_FLOW_ACTION_TYPE_QUEUE compulsory with this
+			 * action.
+			 * Currently, rq = 0 is assumed.
+			 */
+			req_act |= OTX2_FLOW_ACT_SEC;
+			rq = 0;
+			break;
+		default:
+			errmsg = "Unsupported action specified";
+			errcode = ENOTSUP;
+			goto err_exit;
+		}
+	}
+
+	/* Check if actions specified are compatible */
+	if (attr->egress) {
+		/* Only DROP/COUNT is supported */
+		if (!(req_act & OTX2_FLOW_ACT_DROP)) {
+			errmsg = "DROP is required action for egress";
+			errcode = EINVAL;
+			goto err_exit;
+		} else if (req_act & ~(OTX2_FLOW_ACT_DROP |
+				       OTX2_FLOW_ACT_COUNT)) {
+			errmsg = "Unsupported action specified";
+			errcode = ENOTSUP;
+			goto err_exit;
+		}
+		flow->npc_action = NIX_TX_ACTIONOP_DROP;
+		goto set_pf_func;
+	}
+
+	/* We have already verified the attr, this is ingress.
+	 * - Exactly one terminating action is supported
+	 * - Exactly one of MARK or FLAG is supported
+	 * - If terminating action is DROP, only count is valid.
+	 */
+	sel_act = req_act & OTX2_FLOW_ACT_TERM;
+	if ((sel_act & (sel_act - 1)) != 0) {
+		errmsg = "Only one terminating action supported";
+		errcode = EINVAL;
+		goto err_exit;
+	}
+
+	if (req_act & OTX2_FLOW_ACT_DROP) {
+		sel_act = req_act & ~OTX2_FLOW_ACT_COUNT;
+		if ((sel_act & (sel_act - 1)) != 0) {
+			errmsg = "Only COUNT action is supported "
+				"with DROP ingress action";
+			errcode = ENOTSUP;
+			goto err_exit;
+		}
+	}
+
+	if ((req_act & (OTX2_FLOW_ACT_FLAG | OTX2_FLOW_ACT_MARK))
+	    == (OTX2_FLOW_ACT_FLAG | OTX2_FLOW_ACT_MARK)) {
+		errmsg = "Only one of FLAG or MARK action is supported";
+		errcode = ENOTSUP;
+		goto err_exit;
+	}
+
+	/* Set NIX_RX_ACTIONOP */
+	if (req_act & OTX2_FLOW_ACT_DROP) {
+		flow->npc_action = NIX_RX_ACTIONOP_DROP;
+	} else if (req_act & OTX2_FLOW_ACT_QUEUE) {
+		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
+		flow->npc_action |= (uint64_t)rq << 20;
+	} else if (req_act & OTX2_FLOW_ACT_RSS) {
+		/* When user added a rule for rss, first we will add the
+		 *rule in MCAM and then update the action, once if we have
+		 *FLOW_KEY_ALG index. So, till we update the action with
+		 *flow_key_alg index, set the action to drop.
+		 */
+		if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
+			flow->npc_action = NIX_RX_ACTIONOP_DROP;
+		else
+			flow->npc_action = NIX_RX_ACTIONOP_UCAST;
+	} else if (req_act & OTX2_FLOW_ACT_SEC) {
+		flow->npc_action = NIX_RX_ACTIONOP_UCAST_IPSEC;
+		flow->npc_action |= (uint64_t)rq << 20;
+	} else if (req_act & (OTX2_FLOW_ACT_FLAG | OTX2_FLOW_ACT_MARK)) {
+		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
+	} else if (req_act & OTX2_FLOW_ACT_COUNT) {
+		/* Keep OTX2_FLOW_ACT_COUNT always at the end
+		 * This is default action, when user specify only
+		 * COUNT ACTION
+		 */
+		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
+	} else {
+		/* Should never reach here */
+		errmsg = "Invalid action specified";
+		errcode = EINVAL;
+		goto err_exit;
+	}
+
+	if (mark)
+		flow->npc_action |= (uint64_t)mark << 40;
+
+	if (rte_atomic32_read(&npc->mark_actions) == 1)
+		hw->rx_offload_flags |=
+			NIX_RX_OFFLOAD_MARK_UPDATE_F;
+
+set_pf_func:
+	/* Ideally AF must ensure that correct pf_func is set */
+	pf_func = otx2_pfvf_func(hw->pf, hw->vf);
+	flow->npc_action |= (uint64_t)pf_func << 4;
+
+	return 0;
+
+err_exit:
+	rte_flow_error_set(error, errcode,
+			   RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
+			   errmsg);
+	return -rte_errno;
+}

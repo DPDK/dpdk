@@ -13,6 +13,7 @@
 					 sizeof(uint16_t))
 
 #define NIX_RX_OFFLOAD_PTYPE_F         BIT(1)
+#define NIX_RX_OFFLOAD_MARK_UPDATE_F   BIT(4)
 #define NIX_RX_OFFLOAD_TSTAMP_F        BIT(5)
 
 #define NIX_TIMESYNC_RX_OFFSET		8
