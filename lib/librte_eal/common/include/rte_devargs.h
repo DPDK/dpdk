@@ -151,7 +151,6 @@ __attribute__((format(printf, 2, 0)));
  *   - 0 on success
  *   - Negative on error.
  */
-__rte_experimental
 int
 rte_devargs_insert(struct rte_devargs **da);
 
@@ -183,7 +182,6 @@ int rte_devargs_add(enum rte_devtype devtype, const char *devargs_str);
  *   <0 on error.
  *   >0 if the devargs was not within the user device list.
  */
-__rte_experimental
 int rte_devargs_remove(struct rte_devargs *devargs);
 
 /**
