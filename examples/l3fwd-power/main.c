@@ -2468,10 +2468,12 @@ main(int argc, char **argv)
 		rte_eal_mp_remote_launch(main_empty_poll_loop, NULL,
 				SKIP_MASTER);
 	} else {
+		unsigned int i;
+
 		/* Init metrics library */
 		rte_metrics_init(rte_socket_id());
 		/** Register stats with metrics library */
-		for (unsigned int i = 0; i < num_telstats; i++)
+		for (i = 0; i < num_telstats; i++)
 			ptr_strings[i] = telstats_strings[i].name;
 
 		ret = rte_metrics_reg_names(ptr_strings, num_telstats);
