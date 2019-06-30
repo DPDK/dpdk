@@ -36,6 +36,7 @@ Features of the OCTEON TX2 Ethdev PMD are:
 - Debug utilities - Context dump and error interrupt support
 - IEEE1588 timestamping
 - HW offloaded `ethdev Rx queue` to `eventdev event queue` packet injection
+- Support Rx interrupt
 
 Prerequisites
 -------------

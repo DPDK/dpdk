@@ -102,6 +102,13 @@
 #define OP_ERR			BIT_ULL(CQ_OP_STAT_OP_ERR)
 #define CQ_ERR			BIT_ULL(CQ_OP_STAT_CQ_ERR)
 
+#define CQ_CQE_THRESH_DEFAULT	0x1ULL /* IRQ triggered when
+					* NIX_LF_CINTX_CNT[QCOUNT]
+					* crosses this value
+					*/
+#define CQ_TIMER_THRESH_DEFAULT	0xAULL /* ~1usec i.e (0xA * 100nsec) */
+#define CQ_TIMER_THRESH_MAX     255
+
 #define NIX_RSS_OFFLOAD		(ETH_RSS_PORT | ETH_RSS_IP | ETH_RSS_UDP |\
 				 ETH_RSS_TCP | ETH_RSS_SCTP | \
 				 ETH_RSS_TUNNEL | ETH_RSS_L2_PAYLOAD)
@@ -248,6 +255,7 @@ struct otx2_eth_dev {
 	uint16_t qints;
 	uint8_t configured;
 	uint8_t configured_qints;
+	uint8_t configured_cints;
 	uint8_t configured_nb_rx_qs;
 	uint8_t configured_nb_tx_qs;
 	uint16_t nix_msixoff;
@@ -262,6 +270,7 @@ struct otx2_eth_dev {
 	uint64_t rx_offload_capa;
 	uint64_t tx_offload_capa;
 	struct otx2_qint qints_mem[RTE_MAX_QUEUES_PER_PORT];
+	struct otx2_qint cints_mem[RTE_MAX_QUEUES_PER_PORT];
 	uint16_t txschq[NIX_TXSCH_LVL_CNT];
 	uint16_t txschq_contig[NIX_TXSCH_LVL_CNT];
 	uint16_t txschq_index[NIX_TXSCH_LVL_CNT];
@@ -384,8 +393,15 @@ void otx2_eth_dev_link_status_update(struct otx2_dev *dev,
 /* IRQ */
 int otx2_nix_register_irqs(struct rte_eth_dev *eth_dev);
 int oxt2_nix_register_queue_irqs(struct rte_eth_dev *eth_dev);
+int oxt2_nix_register_cq_irqs(struct rte_eth_dev *eth_dev);
 void otx2_nix_unregister_irqs(struct rte_eth_dev *eth_dev);
 void oxt2_nix_unregister_queue_irqs(struct rte_eth_dev *eth_dev);
+void oxt2_nix_unregister_cq_irqs(struct rte_eth_dev *eth_dev);
+
+int otx2_nix_rx_queue_intr_enable(struct rte_eth_dev *eth_dev,
+				  uint16_t rx_queue_id);
+int otx2_nix_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
+				   uint16_t rx_queue_id);
 
 /* Debug */
 int otx2_nix_reg_dump(struct otx2_eth_dev *dev, uint64_t *data);

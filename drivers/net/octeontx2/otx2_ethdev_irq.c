@@ -5,6 +5,7 @@
 #include <inttypes.h>
 
 #include <rte_bus_pci.h>
+#include <rte_malloc.h>
 
 #include "otx2_ethdev.h"
 
@@ -172,6 +173,18 @@ nix_lf_sq_debug_reg(struct otx2_eth_dev *dev, uint32_t off)
 }
 
 static void
+nix_lf_cq_irq(void *param)
+{
+	struct otx2_qint *cint = (struct otx2_qint *)param;
+	struct rte_eth_dev *eth_dev = cint->eth_dev;
+	struct otx2_eth_dev *dev;
+
+	dev = otx2_eth_pmd_priv(eth_dev);
+	/* Clear interrupt */
+	otx2_write64(BIT_ULL(0), dev->base + NIX_LF_CINTX_INT(cint->qintx));
+}
+
+static void
 nix_lf_q_irq(void *param)
 {
 	struct otx2_qint *qint = (struct otx2_qint *)param;
@@ -316,6 +329,92 @@ oxt2_nix_unregister_queue_irqs(struct rte_eth_dev *eth_dev)
 }
 
 int
+oxt2_nix_register_cq_irqs(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint8_t rc = 0, vec, q;
+
+	dev->configured_cints = RTE_MIN(dev->cints,
+					eth_dev->data->nb_rx_queues);
+
+	for (q = 0; q < dev->configured_cints; q++) {
+		vec = dev->nix_msixoff + NIX_LF_INT_VEC_CINT_START + q;
+
+		/* Clear CINT CNT */
+		otx2_write64(0, dev->base + NIX_LF_CINTX_CNT(q));
+
+		/* Clear interrupt */
+		otx2_write64(BIT_ULL(0), dev->base + NIX_LF_CINTX_ENA_W1C(q));
+
+		dev->cints_mem[q].eth_dev = eth_dev;
+		dev->cints_mem[q].qintx = q;
+
+		/* Sync cints_mem update */
+		rte_smp_wmb();
+
+		/* Register queue irq vector */
+		rc = otx2_register_irq(handle, nix_lf_cq_irq,
+				       &dev->cints_mem[q], vec);
+		if (rc) {
+			otx2_err("Fail to register CQ irq, rc=%d", rc);
+			return rc;
+		}
+
+		if (!handle->intr_vec) {
+			handle->intr_vec = rte_zmalloc("intr_vec",
+					    dev->configured_cints *
+					    sizeof(int), 0);
+			if (!handle->intr_vec) {
+				otx2_err("Failed to allocate %d rx intr_vec",
+					 dev->configured_cints);
+				return -ENOMEM;
+			}
+		}
+		/* VFIO vector zero is resereved for misc interrupt so
+		 * doing required adjustment. (b13bfab4cd)
+		 */
+		handle->intr_vec[q] = RTE_INTR_VEC_RXTX_OFFSET + vec;
+
+		/* Configure CQE interrupt coalescing parameters */
+		otx2_write64(((CQ_CQE_THRESH_DEFAULT) |
+			      (CQ_CQE_THRESH_DEFAULT << 32) |
+			      (CQ_TIMER_THRESH_DEFAULT << 48)),
+			     dev->base + NIX_LF_CINTX_WAIT((q)));
+
+		/* Keeping the CQ interrupt disabled as the rx interrupt
+		 * feature needs to be enabled/disabled on demand.
+		 */
+	}
+
+	return rc;
+}
+
+void
+oxt2_nix_unregister_cq_irqs(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	int vec, q;
+
+	for (q = 0; q < dev->configured_cints; q++) {
+		vec = dev->nix_msixoff + NIX_LF_INT_VEC_CINT_START + q;
+
+		/* Clear CINT CNT */
+		otx2_write64(0, dev->base + NIX_LF_CINTX_CNT(q));
+
+		/* Clear interrupt */
+		otx2_write64(BIT_ULL(0), dev->base + NIX_LF_CINTX_ENA_W1C(q));
+
+		/* Unregister queue irq vector */
+		otx2_unregister_irq(handle, nix_lf_cq_irq,
+				    &dev->cints_mem[q], vec);
+	}
+}
+
+int
 otx2_nix_register_irqs(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
@@ -340,4 +439,30 @@ otx2_nix_unregister_irqs(struct rte_eth_dev *eth_dev)
 {
 	nix_lf_unregister_err_irq(eth_dev);
 	nix_lf_unregister_ras_irq(eth_dev);
+}
+
+int
+otx2_nix_rx_queue_intr_enable(struct rte_eth_dev *eth_dev,
+			      uint16_t rx_queue_id)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
+	/* Enable CINT interrupt */
+	otx2_write64(BIT_ULL(0), dev->base +
+		     NIX_LF_CINTX_ENA_W1S(rx_queue_id));
+
+	return 0;
+}
+
+int
+otx2_nix_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
+			       uint16_t rx_queue_id)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
+	/* Clear and disable CINT interrupt */
+	otx2_write64(BIT_ULL(0), dev->base +
+		     NIX_LF_CINTX_ENA_W1C(rx_queue_id));
+
+	return 0;
 }

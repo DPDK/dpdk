@@ -277,6 +277,8 @@ nix_cq_rq_init(struct rte_eth_dev *eth_dev, struct otx2_eth_dev *dev,
 
 	/* Many to one reduction */
 	aq->cq.qint_idx = qid % dev->qints;
+	/* Map CQ0 [RQ0] to CINT0 and so on till max 64 irqs */
+	aq->cq.cint_idx = qid;
 
 	if (otx2_ethdev_fixup_is_limit_cq_full(dev)) {
 		uint16_t min_rx_drop;
@@ -1223,6 +1225,8 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		otx2_nix_vlan_fini(eth_dev);
 		otx2_flow_free_all_resources(dev);
 		oxt2_nix_unregister_queue_irqs(eth_dev);
+		if (eth_dev->data->dev_conf.intr_conf.rxq)
+			oxt2_nix_unregister_cq_irqs(eth_dev);
 		nix_set_nop_rxtx_function(eth_dev);
 		rc = nix_store_queue_cfg_and_then_release(eth_dev);
 		if (rc)
@@ -1281,6 +1285,27 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	if (rc) {
 		otx2_err("Failed to register queue interrupts rc=%d", rc);
 		goto free_nix_lf;
+	}
+
+	/* Register cq IRQs */
+	if (eth_dev->data->dev_conf.intr_conf.rxq) {
+		if (eth_dev->data->nb_rx_queues > dev->cints) {
+			otx2_err("Rx interrupt cannot be enabled, rxq > %d",
+				 dev->cints);
+			goto free_nix_lf;
+		}
+		/* Rx interrupt feature cannot work with vector mode because,
+		 * vector mode doesn't process packets unless min 4 pkts are
+		 * received, while cq interrupts are generated even for 1 pkt
+		 * in the CQ.
+		 */
+		dev->scalar_ena = true;
+
+		rc = oxt2_nix_register_cq_irqs(eth_dev);
+		if (rc) {
+			otx2_err("Failed to register CQ interrupts rc=%d", rc);
+			goto free_nix_lf;
+		}
 	}
 
 	/* Configure loop back mode */
@@ -1595,6 +1620,8 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.vlan_strip_queue_set	  = otx2_nix_vlan_strip_queue_set,
 	.vlan_tpid_set		  = otx2_nix_vlan_tpid_set,
 	.vlan_pvid_set		  = otx2_nix_vlan_pvid_set,
+	.rx_queue_intr_enable	  = otx2_nix_rx_queue_intr_enable,
+	.rx_queue_intr_disable	  = otx2_nix_rx_queue_intr_disable,
 };
 
 static inline int
@@ -1842,6 +1869,10 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 
 	/* Unregister queue irqs */
 	oxt2_nix_unregister_queue_irqs(eth_dev);
+
+	/* Unregister cq irqs */
+	if (eth_dev->data->dev_conf.intr_conf.rxq)
+		oxt2_nix_unregister_cq_irqs(eth_dev);
 
 	rc = nix_lf_free(dev);
 	if (rc)
