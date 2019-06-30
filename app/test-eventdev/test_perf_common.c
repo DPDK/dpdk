@@ -562,7 +562,8 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 		return -1;
 	}
 
-	if (opt->prod_type == EVT_PROD_TYPE_SYNT) {
+	if (opt->prod_type == EVT_PROD_TYPE_SYNT ||
+			opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR) {
 		/* Validate producer lcores */
 		if (evt_lcores_has_overlap(opt->plcores,
 					rte_get_master_lcore())) {
