@@ -40,6 +40,7 @@ otx2_nix_promisc_config(struct rte_eth_dev *eth_dev, int en)
 
 	otx2_mbox_process(mbox);
 	eth_dev->data->promiscuous = en;
+	otx2_nix_vlan_update_promisc(eth_dev, en);
 }
 
 void

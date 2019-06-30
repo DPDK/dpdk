@@ -1364,6 +1364,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.timesync_adjust_time     = otx2_nix_timesync_adjust_time,
 	.timesync_read_time       = otx2_nix_timesync_read_time,
 	.timesync_write_time      = otx2_nix_timesync_write_time,
+	.vlan_offload_set         = otx2_nix_vlan_offload_set,
 };
 
 static inline int

@@ -221,6 +221,7 @@ struct otx2_vlan_info {
 	uint8_t filter_on;
 	uint8_t strip_on;
 	uint8_t qinq_on;
+	uint8_t promisc_on;
 };
 
 struct otx2_eth_dev {
@@ -447,6 +448,8 @@ int otx2_nix_update_flow_ctrl_mode(struct rte_eth_dev *eth_dev);
 /* VLAN */
 int otx2_nix_vlan_offload_init(struct rte_eth_dev *eth_dev);
 int otx2_nix_vlan_fini(struct rte_eth_dev *eth_dev);
+int otx2_nix_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask);
+void otx2_nix_vlan_update_promisc(struct rte_eth_dev *eth_dev, int enable);
 
 /* Lookup configuration */
 void *otx2_nix_fastpath_lookup_mem_get(void);
