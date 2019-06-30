@@ -450,6 +450,10 @@ int otx2_nix_vlan_offload_init(struct rte_eth_dev *eth_dev);
 int otx2_nix_vlan_fini(struct rte_eth_dev *eth_dev);
 int otx2_nix_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask);
 void otx2_nix_vlan_update_promisc(struct rte_eth_dev *eth_dev, int enable);
+int otx2_nix_vlan_filter_set(struct rte_eth_dev *eth_dev, uint16_t vlan_id,
+			     int on);
+void otx2_nix_vlan_strip_queue_set(struct rte_eth_dev *dev,
+				    uint16_t queue, int on);
 
 /* Lookup configuration */
 void *otx2_nix_fastpath_lookup_mem_get(void);

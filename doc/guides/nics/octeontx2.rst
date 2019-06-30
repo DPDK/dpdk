@@ -22,7 +22,7 @@ Features of the OCTEON TX2 Ethdev PMD are:
 - Lock-free Tx queue
 - Multiple queues for TX and RX
 - Receiver Side Scaling (RSS)
-- MAC filtering
+- MAC/VLAN filtering
 - Generic flow API
 - VLAN/QinQ stripping and insertion
 - Port hardware statistics

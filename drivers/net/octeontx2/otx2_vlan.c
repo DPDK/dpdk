@@ -22,8 +22,8 @@ enum vtag_cfg_dir {
 };
 
 static int
-__rte_unused nix_vlan_mcam_enb_dis(struct otx2_eth_dev *dev,
-				   uint32_t entry, const int enable)
+nix_vlan_mcam_enb_dis(struct otx2_eth_dev *dev,
+		      uint32_t entry, const int enable)
 {
 	struct npc_mcam_ena_dis_entry_req *req;
 	struct otx2_mbox *mbox = dev->mbox;
@@ -460,6 +460,8 @@ nix_vlan_hw_filter(struct rte_eth_dev *eth_dev, const uint8_t enable,
 		   uint16_t vlan_id)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_vlan_info *vlan = &dev->vlan_info;
+	struct vlan_entry *entry;
 	int rc = -EINVAL;
 
 	if (!vlan_id && enable) {
@@ -473,6 +475,24 @@ nix_vlan_hw_filter(struct rte_eth_dev *eth_dev, const uint8_t enable,
 		return 0;
 	}
 
+	/* Enable/disable existing vlan filter entries */
+	TAILQ_FOREACH(entry, &vlan->fltr_tbl, next) {
+		if (vlan_id) {
+			if (entry->vlan_id == vlan_id) {
+				rc = nix_vlan_mcam_enb_dis(dev,
+							   entry->mcam_idx,
+							   enable);
+				if (rc)
+					return rc;
+			}
+		} else {
+			rc = nix_vlan_mcam_enb_dis(dev, entry->mcam_idx,
+						   enable);
+			if (rc)
+				return rc;
+		}
+	}
+
 	if (!vlan_id && !enable) {
 		rc = nix_vlan_handle_default_rx_entry(eth_dev, false, true,
 						      enable);
@@ -484,6 +504,85 @@ nix_vlan_hw_filter(struct rte_eth_dev *eth_dev, const uint8_t enable,
 		return 0;
 	}
 
+	return 0;
+}
+
+/* Enable/disable vlan filtering for the given vlan_id */
+int
+otx2_nix_vlan_filter_set(struct rte_eth_dev *eth_dev, uint16_t vlan_id,
+			 int on)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_vlan_info *vlan = &dev->vlan_info;
+	struct vlan_entry *entry;
+	int entry_exists = 0;
+	int rc = -EINVAL;
+	int mcam_idx;
+
+	if (!vlan_id) {
+		otx2_err("Vlan Id can't be zero");
+		return rc;
+	}
+
+	if (!vlan->def_rx_mcam_idx) {
+		otx2_err("Vlan Filtering is disabled, enable it first");
+		return rc;
+	}
+
+	if (on) {
+		TAILQ_FOREACH(entry, &vlan->fltr_tbl, next) {
+			if (entry->vlan_id == vlan_id) {
+				/* Vlan entry already exists */
+				entry_exists = 1;
+				/* Mcam entry already allocated */
+				if (entry->mcam_idx) {
+					rc = nix_vlan_hw_filter(eth_dev, on,
+								vlan_id);
+					return rc;
+				}
+				break;
+			}
+		}
+
+		if (!entry_exists) {
+			entry = rte_zmalloc("otx2_nix_vlan_entry",
+					    sizeof(struct vlan_entry), 0);
+			if (!entry) {
+				otx2_err("Failed to allocate memory");
+				return -ENOMEM;
+			}
+		}
+
+		/* Enables vlan_id & mac address based filtering */
+		if (eth_dev->data->promiscuous)
+			mcam_idx = nix_vlan_mcam_config(eth_dev, vlan_id,
+							VLAN_ID_MATCH);
+		else
+			mcam_idx = nix_vlan_mcam_config(eth_dev, vlan_id,
+							VLAN_ID_MATCH |
+							MAC_ADDR_MATCH);
+		if (mcam_idx < 0) {
+			otx2_err("Failed to config vlan mcam");
+			TAILQ_REMOVE(&vlan->fltr_tbl, entry, next);
+			rte_free(entry);
+			return mcam_idx;
+		}
+
+		entry->mcam_idx = mcam_idx;
+		if (!entry_exists) {
+			entry->vlan_id  = vlan_id;
+			TAILQ_INSERT_HEAD(&vlan->fltr_tbl, entry, next);
+		}
+	} else {
+		TAILQ_FOREACH(entry, &vlan->fltr_tbl, next) {
+			if (entry->vlan_id == vlan_id) {
+				nix_vlan_mcam_free(dev, entry->mcam_idx);
+				TAILQ_REMOVE(&vlan->fltr_tbl, entry, next);
+				rte_free(entry);
+				break;
+			}
+		}
+	}
 	return 0;
 }
 
@@ -594,6 +693,13 @@ done:
 	return rc;
 }
 
+void otx2_nix_vlan_strip_queue_set(__rte_unused struct rte_eth_dev *dev,
+				   __rte_unused uint16_t queue,
+				   __rte_unused int on)
+{
+	otx2_err("Not Supported");
+}
+
 static int
 nix_vlan_rx_mkex_offset(uint64_t mask)
 {
@@ -646,6 +752,27 @@ nix_vlan_get_mkex_info(struct otx2_eth_dev *dev)
 	return 0;
 }
 
+static void nix_vlan_reinstall_vlan_filters(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct vlan_entry *entry;
+	int rc;
+
+	/* VLAN filters can't be set without setting filtern on */
+	rc = nix_vlan_handle_default_rx_entry(eth_dev, false, true, true);
+	if (rc) {
+		otx2_err("Failed to reinstall vlan filters");
+		return;
+	}
+
+	TAILQ_FOREACH(entry, &dev->vlan_info.fltr_tbl, next) {
+		rc = otx2_nix_vlan_filter_set(eth_dev, entry->vlan_id, true);
+		if (rc)
+			otx2_err("Failed to reinstall filter for vlan:%d",
+				 entry->vlan_id);
+	}
+}
+
 int
 otx2_nix_vlan_offload_init(struct rte_eth_dev *eth_dev)
 {
@@ -661,6 +788,11 @@ otx2_nix_vlan_offload_init(struct rte_eth_dev *eth_dev)
 		}
 
 		TAILQ_INIT(&dev->vlan_info.fltr_tbl);
+	} else {
+		/* Reinstall all mcam entries now if filter offload is set */
+		if (eth_dev->data->dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_VLAN_FILTER)
+			nix_vlan_reinstall_vlan_filters(eth_dev);
 	}
 
 	mask =
@@ -679,7 +811,20 @@ otx2_nix_vlan_fini(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct otx2_vlan_info *vlan = &dev->vlan_info;
+	struct vlan_entry *entry;
 	int rc;
+
+	TAILQ_FOREACH(entry, &vlan->fltr_tbl, next) {
+		if (!dev->configured) {
+			TAILQ_REMOVE(&vlan->fltr_tbl, entry, next);
+			rte_free(entry);
+		} else {
+			/* MCAM entries freed by flow_fini & lf_free on
+			 * port stop.
+			 */
+			entry->mcam_idx = 0;
+		}
+	}
 
 	if (!dev->configured) {
 		if (vlan->def_rx_mcam_idx) {
