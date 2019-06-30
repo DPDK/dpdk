@@ -184,6 +184,19 @@ cgx_intlbk_enable(struct otx2_eth_dev *dev, bool en)
 	return otx2_mbox_process(mbox);
 }
 
+static int
+nix_cgx_stop_link_event(struct otx2_eth_dev *dev)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+
+	if (otx2_dev_is_vf(dev))
+		return 0;
+
+	otx2_mbox_alloc_msg_cgx_stop_linkevents(mbox);
+
+	return otx2_mbox_process(mbox);
+}
+
 static inline void
 nix_rx_queue_reset(struct otx2_eth_rxq *rxq)
 {
@@ -1208,6 +1221,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	if (dev->configured == 1) {
 		otx2_nix_rxchan_bpid_cfg(eth_dev, false);
 		otx2_nix_vlan_fini(eth_dev);
+		otx2_flow_free_all_resources(dev);
 		oxt2_nix_unregister_queue_irqs(eth_dev);
 		nix_set_nop_rxtx_function(eth_dev);
 		rc = nix_store_queue_cfg_and_then_release(eth_dev);
@@ -1425,6 +1439,37 @@ done:
 	return rc;
 }
 
+static void
+otx2_nix_dev_stop(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct rte_mbuf *rx_pkts[32];
+	struct otx2_eth_rxq *rxq;
+	int count, i, j, rc;
+
+	nix_cgx_stop_link_event(dev);
+	npc_rx_disable(dev);
+
+	/* Stop rx queues and free up pkts pending */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rc = otx2_nix_rx_queue_stop(eth_dev, i);
+		if (rc)
+			continue;
+
+		rxq = eth_dev->data->rx_queues[i];
+		count = dev->rx_pkt_burst_no_offload(rxq, rx_pkts, 32);
+		while (count) {
+			for (j = 0; j < count; j++)
+				rte_pktmbuf_free(rx_pkts[j]);
+			count = dev->rx_pkt_burst_no_offload(rxq, rx_pkts, 32);
+		}
+	}
+
+	/* Stop tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		otx2_nix_tx_queue_stop(eth_dev, i);
+}
+
 static int
 otx2_nix_dev_start(struct rte_eth_dev *eth_dev)
 {
@@ -1477,6 +1522,8 @@ rx_disable:
 	return rc;
 }
 
+static int otx2_nix_dev_reset(struct rte_eth_dev *eth_dev);
+static void otx2_nix_dev_close(struct rte_eth_dev *eth_dev);
 
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops otx2_eth_dev_ops = {
@@ -1488,11 +1535,14 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.rx_queue_setup           = otx2_nix_rx_queue_setup,
 	.rx_queue_release         = otx2_nix_rx_queue_release,
 	.dev_start                = otx2_nix_dev_start,
+	.dev_stop                 = otx2_nix_dev_stop,
+	.dev_close                = otx2_nix_dev_close,
 	.tx_queue_start           = otx2_nix_tx_queue_start,
 	.tx_queue_stop            = otx2_nix_tx_queue_stop,
 	.rx_queue_start           = otx2_nix_rx_queue_start,
 	.rx_queue_stop            = otx2_nix_rx_queue_stop,
 	.dev_supported_ptypes_get = otx2_nix_supported_ptypes_get,
+	.dev_reset                = otx2_nix_dev_reset,
 	.stats_get                = otx2_nix_dev_stats_get,
 	.stats_reset              = otx2_nix_dev_stats_reset,
 	.get_reg                  = otx2_nix_dev_get_reg,
@@ -1744,8 +1794,13 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	/* Clear the flag since we are closing down */
+	dev->configured = 0;
+
 	/* Disable nix bpid config */
 	otx2_nix_rxchan_bpid_cfg(eth_dev, false);
+
+	npc_rx_disable(dev);
 
 	/* Disable vlan offloads */
 	otx2_nix_vlan_fini(eth_dev);
@@ -1756,6 +1811,8 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 	/* Disable PTP if already enabled */
 	if (otx2_ethdev_is_ptp_en(dev))
 		otx2_nix_timesync_disable(eth_dev);
+
+	nix_cgx_stop_link_event(dev);
 
 	/* Free up SQs */
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
@@ -1810,6 +1867,24 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 
 	otx2_dev_fini(pci_dev, dev);
 	return 0;
+}
+
+static void
+otx2_nix_dev_close(struct rte_eth_dev *eth_dev)
+{
+	otx2_eth_dev_uninit(eth_dev, true);
+}
+
+static int
+otx2_nix_dev_reset(struct rte_eth_dev *eth_dev)
+{
+	int rc;
+
+	rc = otx2_eth_dev_uninit(eth_dev, false);
+	if (rc)
+		return rc;
+
+	return otx2_eth_dev_init(eth_dev);
 }
 
 static int
