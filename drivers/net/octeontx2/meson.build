@@ -9,6 +9,7 @@ sources = files(
 		'otx2_ptp.c',
 		'otx2_flow.c',
 		'otx2_link.c',
+		'otx2_vlan.c',
 		'otx2_stats.c',
 		'otx2_lookup.c',
 		'otx2_ethdev.c',

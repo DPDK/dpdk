@@ -1102,6 +1102,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	/* Free the resources allocated from the previous configure */
 	if (dev->configured == 1) {
 		otx2_nix_rxchan_bpid_cfg(eth_dev, false);
+		otx2_nix_vlan_fini(eth_dev);
 		oxt2_nix_unregister_queue_irqs(eth_dev);
 		nix_set_nop_rxtx_function(eth_dev);
 		rc = nix_store_queue_cfg_and_then_release(eth_dev);
@@ -1145,6 +1146,12 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	rc = otx2_nix_tm_init_default(eth_dev);
 	if (rc) {
 		otx2_err("Failed to init traffic manager rc=%d", rc);
+		goto free_nix_lf;
+	}
+
+	rc = otx2_nix_vlan_offload_init(eth_dev);
+	if (rc) {
+		otx2_err("Failed to init vlan offload rc=%d", rc);
 		goto free_nix_lf;
 	}
 
@@ -1565,6 +1572,9 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 
 	/* Disable nix bpid config */
 	otx2_nix_rxchan_bpid_cfg(eth_dev, false);
+
+	/* Disable vlan offloads */
+	otx2_nix_vlan_fini(eth_dev);
 
 	/* Disable other rte_flow entries */
 	otx2_flow_fini(dev);

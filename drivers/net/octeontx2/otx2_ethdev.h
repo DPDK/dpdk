@@ -182,6 +182,47 @@ struct otx2_fc_info {
 	uint16_t bpid[NIX_MAX_CHAN];
 };
 
+struct vlan_mkex_info {
+	struct npc_xtract_info la_xtract;
+	struct npc_xtract_info lb_xtract;
+	uint64_t lb_lt_offset;
+};
+
+struct vlan_entry {
+	uint32_t mcam_idx;
+	uint16_t vlan_id;
+	TAILQ_ENTRY(vlan_entry) next;
+};
+
+TAILQ_HEAD(otx2_vlan_filter_tbl, vlan_entry);
+
+struct otx2_vlan_info {
+	struct otx2_vlan_filter_tbl fltr_tbl;
+	/* MKEX layer info */
+	struct mcam_entry def_tx_mcam_ent;
+	struct mcam_entry def_rx_mcam_ent;
+	struct vlan_mkex_info mkex;
+	/* Default mcam entry that matches vlan packets */
+	uint32_t def_rx_mcam_idx;
+	uint32_t def_tx_mcam_idx;
+	/* MCAM entry that matches double vlan packets */
+	uint32_t qinq_mcam_idx;
+	/* Indices of tx_vtag def registers */
+	uint32_t outer_vlan_idx;
+	uint32_t inner_vlan_idx;
+	uint16_t outer_vlan_tpid;
+	uint16_t inner_vlan_tpid;
+	uint16_t pvid;
+	/* QinQ entry allocated before default one */
+	uint8_t qinq_before_def;
+	uint8_t pvid_insert_on;
+	/* Rx vtag action type */
+	uint8_t vtag_type_idx;
+	uint8_t filter_on;
+	uint8_t strip_on;
+	uint8_t qinq_on;
+};
+
 struct otx2_eth_dev {
 	OTX2_DEV; /* Base class */
 	MARKER otx2_eth_dev_data_start;
@@ -233,6 +274,7 @@ struct otx2_eth_dev {
 	uint32_t txmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	uint32_t rxmap[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	struct otx2_npc_flow_info npc_flow;
+	struct otx2_vlan_info vlan_info;
 	struct otx2_eth_qconf *tx_qconf;
 	struct otx2_eth_qconf *rx_qconf;
 	struct rte_eth_dev *eth_dev;
@@ -401,6 +443,10 @@ int otx2_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 int otx2_nix_rxchan_bpid_cfg(struct rte_eth_dev *eth_dev, bool enb);
 
 int otx2_nix_update_flow_ctrl_mode(struct rte_eth_dev *eth_dev);
+
+/* VLAN */
+int otx2_nix_vlan_offload_init(struct rte_eth_dev *eth_dev);
+int otx2_nix_vlan_fini(struct rte_eth_dev *eth_dev);
 
 /* Lookup configuration */
 void *otx2_nix_fastpath_lookup_mem_get(void);
