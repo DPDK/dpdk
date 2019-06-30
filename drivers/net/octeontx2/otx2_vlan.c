@@ -82,6 +82,39 @@ nix_set_rx_vlan_action(struct rte_eth_dev *eth_dev,
 	entry->vtag_action = vtag_action;
 }
 
+static void
+nix_set_tx_vlan_action(struct mcam_entry *entry, enum rte_vlan_type type,
+		       int vtag_index)
+{
+	union {
+		uint64_t reg;
+		struct nix_tx_vtag_action_s act;
+	} vtag_action;
+
+	uint64_t action;
+
+	action = NIX_TX_ACTIONOP_UCAST_DEFAULT;
+
+	/*
+	 * Take offset from LA since in case of untagged packet,
+	 * lbptr is zero.
+	 */
+	if (type == ETH_VLAN_TYPE_OUTER) {
+		vtag_action.act.vtag0_def = vtag_index;
+		vtag_action.act.vtag0_lid = NPC_LID_LA;
+		vtag_action.act.vtag0_op = NIX_TX_VTAGOP_INSERT;
+		vtag_action.act.vtag0_relptr = NIX_TX_VTAGACTION_VTAG0_RELPTR;
+	} else {
+		vtag_action.act.vtag1_def = vtag_index;
+		vtag_action.act.vtag1_lid = NPC_LID_LA;
+		vtag_action.act.vtag1_op = NIX_TX_VTAGOP_INSERT;
+		vtag_action.act.vtag1_relptr = NIX_TX_VTAGACTION_VTAG1_RELPTR;
+	}
+
+	entry->action = action;
+	entry->vtag_action = vtag_action.reg;
+}
+
 static int
 nix_vlan_mcam_free(struct otx2_eth_dev *dev, uint32_t entry)
 {
@@ -416,6 +449,46 @@ nix_vlan_handle_default_rx_entry(struct rte_eth_dev *eth_dev, bool strip,
 	return 0;
 }
 
+/* Installs/Removes default tx entry */
+static int
+nix_vlan_handle_default_tx_entry(struct rte_eth_dev *eth_dev,
+				 enum rte_vlan_type type, int vtag_index,
+				 int enable)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_vlan_info *vlan = &dev->vlan_info;
+	struct mcam_entry entry;
+	uint16_t pf_func;
+	int rc;
+
+	if (!vlan->def_tx_mcam_idx && enable) {
+		memset(&entry, 0, sizeof(struct mcam_entry));
+
+		/* Only pf_func is matched, swap it's bytes */
+		pf_func = (dev->pf_func & 0xff) << 8;
+		pf_func |= (dev->pf_func >> 8) & 0xff;
+
+		/* PF Func extracted to KW1[63:48] */
+		entry.kw[1] = (uint64_t)pf_func << 48;
+		entry.kw_mask[1] = (BIT_ULL(16) - 1) << 48;
+
+		nix_set_tx_vlan_action(&entry, type, vtag_index);
+		vlan->def_tx_mcam_ent = entry;
+
+		return nix_vlan_mcam_alloc_and_write(eth_dev, &entry,
+						     NIX_INTF_TX, 0);
+	}
+
+	if (vlan->def_tx_mcam_idx && !enable) {
+		rc = nix_vlan_mcam_free(dev, vlan->def_tx_mcam_idx);
+		if (rc)
+			return rc;
+		vlan->def_rx_mcam_idx = 0;
+	}
+
+	return 0;
+}
+
 /* Configure vlan stripping on or off */
 static int
 nix_vlan_hw_strip(struct rte_eth_dev *eth_dev, const uint8_t enable)
@@ -691,6 +764,126 @@ otx2_nix_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 
 done:
 	return rc;
+}
+
+int
+otx2_nix_vlan_tpid_set(struct rte_eth_dev *eth_dev,
+		       enum rte_vlan_type type, uint16_t tpid)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct nix_set_vlan_tpid *tpid_cfg;
+	struct otx2_mbox *mbox = dev->mbox;
+	int rc;
+
+	tpid_cfg = otx2_mbox_alloc_msg_nix_set_vlan_tpid(mbox);
+
+	tpid_cfg->tpid = tpid;
+	if (type == ETH_VLAN_TYPE_OUTER)
+		tpid_cfg->vlan_type = NIX_VLAN_TYPE_OUTER;
+	else
+		tpid_cfg->vlan_type = NIX_VLAN_TYPE_INNER;
+
+	rc = otx2_mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	if (type == ETH_VLAN_TYPE_OUTER)
+		dev->vlan_info.outer_vlan_tpid = tpid;
+	else
+		dev->vlan_info.inner_vlan_tpid = tpid;
+	return 0;
+}
+
+int
+otx2_nix_vlan_pvid_set(struct rte_eth_dev *dev,       uint16_t vlan_id, int on)
+{
+	struct otx2_eth_dev *otx2_dev = otx2_eth_pmd_priv(dev);
+	struct otx2_mbox *mbox = otx2_dev->mbox;
+	struct nix_vtag_config *vtag_cfg;
+	struct nix_vtag_config_rsp *rsp;
+	struct otx2_vlan_info *vlan;
+	int rc, rc1, vtag_index = 0;
+
+	if (vlan_id == 0) {
+		otx2_err("vlan id can't be zero");
+		return -EINVAL;
+	}
+
+	vlan = &otx2_dev->vlan_info;
+
+	if (on && vlan->pvid_insert_on && vlan->pvid == vlan_id) {
+		otx2_err("pvid %d is already enabled", vlan_id);
+		return -EINVAL;
+	}
+
+	if (on && vlan->pvid_insert_on && vlan->pvid != vlan_id) {
+		otx2_err("another pvid is enabled, disable that first");
+		return -EINVAL;
+	}
+
+	/* No pvid active */
+	if (!on && !vlan->pvid_insert_on)
+		return 0;
+
+	/* Given pvid already disabled */
+	if (!on && vlan->pvid != vlan_id)
+		return 0;
+
+	vtag_cfg = otx2_mbox_alloc_msg_nix_vtag_cfg(mbox);
+
+	if (on) {
+		vtag_cfg->cfg_type = VTAG_TX;
+		vtag_cfg->vtag_size = NIX_VTAGSIZE_T4;
+
+		if (vlan->outer_vlan_tpid)
+			vtag_cfg->tx.vtag0 =
+				(vlan->outer_vlan_tpid << 16) | vlan_id;
+		else
+			vtag_cfg->tx.vtag0 =
+				((RTE_ETHER_TYPE_VLAN << 16) | vlan_id);
+		vtag_cfg->tx.cfg_vtag0 = 1;
+	} else {
+		vtag_cfg->cfg_type = VTAG_TX;
+		vtag_cfg->vtag_size = NIX_VTAGSIZE_T4;
+
+		vtag_cfg->tx.vtag0_idx = vlan->outer_vlan_idx;
+		vtag_cfg->tx.free_vtag0 = 1;
+	}
+
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	if (on) {
+		vtag_index = rsp->vtag0_idx;
+	} else {
+		vlan->pvid = 0;
+		vlan->pvid_insert_on = 0;
+		vlan->outer_vlan_idx = 0;
+	}
+
+	rc = nix_vlan_handle_default_tx_entry(dev, ETH_VLAN_TYPE_OUTER,
+					      vtag_index, on);
+	if (rc < 0) {
+		printf("Default tx entry failed with rc %d\n", rc);
+		vtag_cfg->tx.vtag0_idx = vtag_index;
+		vtag_cfg->tx.free_vtag0 = 1;
+		vtag_cfg->tx.cfg_vtag0 = 0;
+
+		rc1 = otx2_mbox_process_msg(mbox, (void *)&rsp);
+		if (rc1)
+			otx2_err("Vtag free failed");
+
+		return rc;
+	}
+
+	if (on) {
+		vlan->pvid = vlan_id;
+		vlan->pvid_insert_on = 1;
+		vlan->outer_vlan_idx = vtag_index;
+	}
+
+	return 0;
 }
 
 void otx2_nix_vlan_strip_queue_set(__rte_unused struct rte_eth_dev *dev,

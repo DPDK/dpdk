@@ -1367,6 +1367,8 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.vlan_offload_set         = otx2_nix_vlan_offload_set,
 	.vlan_filter_set	  = otx2_nix_vlan_filter_set,
 	.vlan_strip_queue_set	  = otx2_nix_vlan_strip_queue_set,
+	.vlan_tpid_set		  = otx2_nix_vlan_tpid_set,
+	.vlan_pvid_set		  = otx2_nix_vlan_pvid_set,
 };
 
 static inline int

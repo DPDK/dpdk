@@ -453,7 +453,10 @@ void otx2_nix_vlan_update_promisc(struct rte_eth_dev *eth_dev, int enable);
 int otx2_nix_vlan_filter_set(struct rte_eth_dev *eth_dev, uint16_t vlan_id,
 			     int on);
 void otx2_nix_vlan_strip_queue_set(struct rte_eth_dev *dev,
-				    uint16_t queue, int on);
+				   uint16_t queue, int on);
+int otx2_nix_vlan_tpid_set(struct rte_eth_dev *eth_dev,
+			   enum rte_vlan_type type, uint16_t tpid);
+int otx2_nix_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 
 /* Lookup configuration */
 void *otx2_nix_fastpath_lookup_mem_get(void);
