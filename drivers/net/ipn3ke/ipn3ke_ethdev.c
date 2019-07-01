@@ -48,7 +48,6 @@ ipn3ke_indirect_read(struct ipn3ke_hw *hw, uint32_t *rd_data,
 	if (eth_group_sel != 0 && eth_group_sel != 1)
 		return -1;
 
-	addr &= 0x3FF;
 	target_addr = addr | dev_sel << 17;
 
 	indirect_value = RCMD | target_addr << 32;
@@ -86,7 +85,6 @@ ipn3ke_indirect_write(struct ipn3ke_hw *hw, uint32_t wr_data,
 	if (eth_group_sel != 0 && eth_group_sel != 1)
 		return -1;
 
-	addr &= 0x3FF;
 	target_addr = addr | dev_sel << 17;
 
 	indirect_value = WCMD | target_addr << 32 | wr_data;
