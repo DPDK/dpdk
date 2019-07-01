@@ -15,6 +15,7 @@
 #include "base/ice_dcb.h"
 #include "ice_ethdev.h"
 #include "ice_rxtx.h"
+#include "ice_switch_filter.h"
 
 #define ICE_MAX_QP_NUM "max_queue_pair_num"
 #define ICE_DFLT_OUTER_TAG_TYPE ICE_AQ_VSI_OUTER_TAG_VLAN_9100
@@ -83,6 +84,10 @@ static int ice_xstats_get(struct rte_eth_dev *dev,
 static int ice_xstats_get_names(struct rte_eth_dev *dev,
 				struct rte_eth_xstat_name *xstats_names,
 				unsigned int limit);
+static int ice_dev_filter_ctrl(struct rte_eth_dev *dev,
+			enum rte_filter_type filter_type,
+			enum rte_filter_op filter_op,
+			void *arg);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E810C_BACKPLANE) },
@@ -141,6 +146,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.xstats_get                   = ice_xstats_get,
 	.xstats_get_names             = ice_xstats_get_names,
 	.xstats_reset                 = ice_stats_reset,
+	.filter_ctrl                  = ice_dev_filter_ctrl,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -1478,6 +1484,8 @@ ice_dev_init(struct rte_eth_dev *dev)
 	/* get base queue pairs index  in the device */
 	ice_base_queue_get(pf);
 
+	TAILQ_INIT(&pf->flow_list);
+
 	return 0;
 
 err_pf_setup:
@@ -1621,6 +1629,8 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct rte_flow *p_flow;
 
 	ice_dev_close(dev);
 
@@ -1637,6 +1647,13 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 	/* unregister callback func from eal lib */
 	rte_intr_callback_unregister(intr_handle,
 				     ice_interrupt_handler, dev);
+
+	/* Remove all flows */
+	while ((p_flow = TAILQ_FIRST(&pf->flow_list))) {
+		TAILQ_REMOVE(&pf->flow_list, p_flow, node);
+		ice_free_switch_filter_rule(p_flow->rule);
+		rte_free(p_flow);
+	}
 
 	return 0;
 }
@@ -3620,6 +3637,33 @@ static int ice_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 	}
 
 	return count;
+}
+
+static int
+ice_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
+{
+	int ret = 0;
+
+	if (!dev)
+		return -EINVAL;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &ice_flow_ops;
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+					filter_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
 }
 
 static int

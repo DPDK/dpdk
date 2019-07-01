@@ -93,6 +93,7 @@ New Features
   Updated ice driver with new features and improvements, including:
 
   * Enabled Tx outer/inner L3/L4 checksum offload.
+  * Enabled generic filter framework and supported switch filter.
 
 * **Updated Solarflare network PMD.**
 

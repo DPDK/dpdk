@@ -234,11 +234,15 @@ struct ice_vsi {
 	bool offset_loaded;
 };
 
+extern const struct rte_flow_ops ice_flow_ops;
+
 /* Struct to store flow created. */
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) node;
 	void *rule;
 };
+
+TAILQ_HEAD(ice_flow_list, rte_flow);
 
 struct ice_pf {
 	struct ice_adapter *adapter; /* The adapter this PF associate to */
@@ -266,6 +270,7 @@ struct ice_pf {
 	struct ice_eth_stats internal_stats;
 	bool offset_loaded;
 	bool adapter_stopped;
+	struct ice_flow_list flow_list;
 };
 
 /**

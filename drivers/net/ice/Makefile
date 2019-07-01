@@ -79,5 +79,6 @@ endif
 ifeq ($(CC_AVX2_SUPPORT), 1)
 	SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_rxtx_vec_avx2.c
 endif
+SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_generic_flow.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
