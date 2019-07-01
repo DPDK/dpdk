@@ -65,7 +65,7 @@ struct ice_dummy_pkt_offsets dummy_gre_packet_offsets[] = {
 	{ ICE_IPV4_OFOS,	14 },
 	{ ICE_NVGRE,		34 },
 	{ ICE_MAC_IL,		42 },
-	{ ICE_IPV4_IL,		54 },
+	{ ICE_IPV4_IL,		56 },
 	{ ICE_PROTOCOL_LAST,	0 },
 };
 
