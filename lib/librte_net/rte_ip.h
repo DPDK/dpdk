@@ -355,7 +355,7 @@ struct rte_ipv6_hdr {
 #define RTE_IPV6_HDR_FL_SHIFT 0
 #define RTE_IPV6_HDR_TC_SHIFT 20
 #define RTE_IPV6_HDR_FL_MASK ((1u << RTE_IPV6_HDR_TC_SHIFT) - 1)
-#define RTE_IPV6_HDR_TC_MASK (0xf << RTE_IPV6_HDR_TC_SHIFT)
+#define RTE_IPV6_HDR_TC_MASK (0xff << RTE_IPV6_HDR_TC_SHIFT)
 
 /**
  * Process the pseudo-header checksum of an IPv6 header.
