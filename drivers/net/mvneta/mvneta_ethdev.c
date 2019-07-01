@@ -707,10 +707,7 @@ mvneta_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->imissed += ppio_stats.rx_discard +
 			  ppio_stats.rx_overrun -
 			  priv->prev_stats.imissed;
-
-	stats->ierrors = ppio_stats.rx_packets_err +
-			ppio_stats.rx_errors +
-			ppio_stats.rx_crc_error -
+	stats->ierrors = ppio_stats.rx_packets_err -
 			priv->prev_stats.ierrors;
 	stats->oerrors = ppio_stats.tx_errors - priv->prev_stats.oerrors;
 
