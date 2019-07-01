@@ -32,8 +32,8 @@ enum ice_protocol_type {
 	ICE_MAC_IL,
 	ICE_IPV4_OFOS,
 	ICE_IPV4_IL,
-	ICE_IPV6_IL,
 	ICE_IPV6_OFOS,
+	ICE_IPV6_IL,
 	ICE_TCP_IL,
 	ICE_UDP_OF,
 	ICE_UDP_ILOS,
@@ -200,13 +200,13 @@ struct ice_nvgre {
 };
 
 union ice_prot_hdr {
-		struct ice_ether_hdr eth_hdr;
-		struct ice_ipv4_hdr ipv4_hdr;
-		struct ice_ipv6_hdr ice_ipv6_ofos_hdr;
-		struct ice_l4_hdr l4_hdr;
-		struct ice_sctp_hdr sctp_hdr;
-		struct ice_udp_tnl_hdr tnl_hdr;
-		struct ice_nvgre nvgre_hdr;
+	struct ice_ether_hdr eth_hdr;
+	struct ice_ipv4_hdr ipv4_hdr;
+	struct ice_ipv6_hdr ipv6_hdr;
+	struct ice_l4_hdr l4_hdr;
+	struct ice_sctp_hdr sctp_hdr;
+	struct ice_udp_tnl_hdr tnl_hdr;
+	struct ice_nvgre nvgre_hdr;
 };
 
 /* This is mapping table entry that maps every word within a given protocol
