@@ -94,6 +94,7 @@ New Features
 
   * Enabled Tx outer/inner L3/L4 checksum offload.
   * Enabled generic filter framework and supported switch filter.
+  * Supported UDP tunnel port add.
 
 * **Updated Solarflare network PMD.**
 

@@ -88,6 +88,10 @@ static int ice_dev_filter_ctrl(struct rte_eth_dev *dev,
 			enum rte_filter_type filter_type,
 			enum rte_filter_op filter_op,
 			void *arg);
+static int ice_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+			struct rte_eth_udp_tunnel *udp_tunnel);
+static int ice_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+			struct rte_eth_udp_tunnel *udp_tunnel);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E810C_BACKPLANE) },
@@ -147,6 +151,8 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.xstats_get_names             = ice_xstats_get_names,
 	.xstats_reset                 = ice_stats_reset,
 	.filter_ctrl                  = ice_dev_filter_ctrl,
+	.udp_tunnel_port_add          = ice_dev_udp_tunnel_port_add,
+	.udp_tunnel_port_del          = ice_dev_udp_tunnel_port_del,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -3659,6 +3665,54 @@ ice_dev_filter_ctrl(struct rte_eth_dev *dev,
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
 					filter_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+/* Add UDP tunneling port */
+static int
+ice_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+			     struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	int ret = 0;
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (udp_tunnel == NULL)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		ret = ice_create_tunnel(hw, TNL_VXLAN, udp_tunnel->udp_port);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+/* Delete UDP tunneling port */
+static int
+ice_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+			     struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	int ret = 0;
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (udp_tunnel == NULL)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		ret = ice_destroy_tunnel(hw, udp_tunnel->udp_port, 0);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
 		ret = -EINVAL;
 		break;
 	}
