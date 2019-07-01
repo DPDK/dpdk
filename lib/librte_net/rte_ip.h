@@ -58,6 +58,10 @@ struct rte_ipv4_hdr {
  */
 #define RTE_IPV4_IHL_MULTIPLIER	(4)
 
+/* Type of Service fields */
+#define RTE_IPV4_HDR_DSCP_MASK	(0xfc)
+#define RTE_IPV4_HDR_ECN_MASK	(0x03)
+
 /* Fragment Offset * Flags. */
 #define	RTE_IPV4_HDR_DF_SHIFT	14
 #define	RTE_IPV4_HDR_MF_SHIFT	13
@@ -354,8 +358,10 @@ struct rte_ipv6_hdr {
 /* IPv6 vtc_flow: IPv / TC / flow_label */
 #define RTE_IPV6_HDR_FL_SHIFT 0
 #define RTE_IPV6_HDR_TC_SHIFT 20
-#define RTE_IPV6_HDR_FL_MASK ((1u << RTE_IPV6_HDR_TC_SHIFT) - 1)
-#define RTE_IPV6_HDR_TC_MASK (0xff << RTE_IPV6_HDR_TC_SHIFT)
+#define RTE_IPV6_HDR_FL_MASK	((1u << RTE_IPV6_HDR_TC_SHIFT) - 1)
+#define RTE_IPV6_HDR_TC_MASK	(0xff << RTE_IPV6_HDR_TC_SHIFT)
+#define RTE_IPV6_HDR_DSCP_MASK	(0xfc << RTE_IPV6_HDR_TC_SHIFT)
+#define RTE_IPV6_HDR_ECN_MASK	(0x03 << RTE_IPV6_HDR_TC_SHIFT)
 
 /**
  * Process the pseudo-header checksum of an IPv6 header.
