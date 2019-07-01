@@ -57,6 +57,8 @@ struct mvneta_ifnames {
 
 static int mvneta_dev_num;
 
+static void mvneta_stats_reset(struct rte_eth_dev *dev);
+
 /**
  * Deinitialize packet processor.
  */
@@ -358,6 +360,8 @@ mvneta_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 	priv->ppio_id = priv->ppio->port_id;
+
+	mvneta_stats_reset(dev);
 
 	/*
 	 * In case there are some some stale uc/mc mac addresses flush them
