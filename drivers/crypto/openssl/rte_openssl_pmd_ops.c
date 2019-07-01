@@ -912,14 +912,14 @@ static int openssl_set_asym_session_parameters(
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_RSA;
 		break;
 err_rsa:
-		BN_free(n);
-		BN_free(e);
-		BN_free(d);
-		BN_free(p);
-		BN_free(q);
-		BN_free(dmp1);
-		BN_free(dmq1);
-		BN_free(iqmp);
+		BN_clear_free(n);
+		BN_clear_free(e);
+		BN_clear_free(d);
+		BN_clear_free(p);
+		BN_clear_free(q);
+		BN_clear_free(dmp1);
+		BN_clear_free(dmq1);
+		BN_clear_free(iqmp);
 
 		return -1;
 	}
