@@ -17,6 +17,9 @@ CFLAGS += -I$(RTE_SDK)/drivers/bus/pci
 ifneq ($(CONFIG_RTE_ARCH_64),y)
 CFLAGS += -Wno-int-to-pointer-cast
 CFLAGS += -Wno-pointer-to-int-cast
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
+CFLAGS += -diag-disable 2259
+endif
 endif
 
 EXPORT_MAP := rte_common_octeontx2_version.map
