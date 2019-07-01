@@ -654,239 +654,298 @@ ipn3ke_tm_ops_get(struct rte_eth_dev *ethdev,
 #define IPN3KE_MAC_RX_FRAME_MAXLENGTH_MASK \
 	IPN3KE_MASK(0xFFFF, IPN3KE_MAC_RX_FRAME_MAXLENGTH_SHIFT)
 
-#define IPN3KE_MAC_TX_STATS_CLR    0x0140
-#define IPN3KE_MAC_TX_STATS_CLR_CLEAR_SHIFT    0
-#define IPN3KE_MAC_TX_STATS_CLR_CLEAR_MASK \
-	IPN3KE_MASK(0x1, IPN3KE_MAC_TX_STATS_CLR_CLEAR_SHIFT)
+#define IPN3KE_REGISTER_WIDTH                                        32
 
-#define IPN3KE_MAC_RX_STATS_CLR    0x01C0
-#define IPN3KE_MAC_RX_STATS_CLR_CLEAR_SHIFT    0
-#define IPN3KE_MAC_RX_STATS_CLR_CLEAR_MASK \
-	IPN3KE_MASK(0x1, IPN3KE_MAC_RX_STATS_CLR_CLEAR_SHIFT)
+/*Bits[2:0]: Configuration of TX statistics counters:
+ *Bit[2]: Shadow request (active high): When set to the value of 1,
+ *TX statistics collection is paused. The underlying counters
+ *continue to operate, but the readable values reflect a snapshot at
+ *the time the pause flag was activated. Write a 0 to release.
+ *Bit[1]: Parity-error clear. When software sets this bit, the IP core
+ *clears the parity bit CNTR_TX_STATUS[0]. This bit
+ *(CNTR_TX_CONFIG[1]) is self-clearing.
+ *Bit[0]: Software can set this bit to the value of 1 to reset all of
+ *the TX statistics registers at the same time. This bit is selfclearing.
+ *Bits[31:3] are Reserved
+ */
+#define IPN3KE_25G_TX_STATISTICS_CONFIG                              0x845
+#define IPN3KE_25G_TX_STATISTICS_CONFIG_SHADOW_REQUEST_MASK          0x00000004
 
-/*tx_stats_framesOK*/
-#define IPN3KE_MAC_TX_STATS_FRAMESOK_HI  0x0142
-#define IPN3KE_MAC_TX_STATS_FRAMESOK_LOW 0x0143
+/*Bit[1]: Indicates that the TX statistics registers are paused (while
+ *CNTR_TX_CONFIG[2] is asserted).
+ *Bit[0]: Indicates the presence of at least one parity error in the
+ *TX statistics counters.
+ *Bits[31:2] are Reserved.
+ */
+#define IPN3KE_25G_TX_STATISTICS_STATUS                              0x846
+#define IPN3KE_25G_TX_STATISTICS_STATUS_SHADOW_REQUEST_MASK          0x00000002
 
-/*rx_stats_framesOK*/
-#define IPN3KE_MAC_RX_STATS_FRAMESOK_HI  0x01C2
-#define IPN3KE_MAC_RX_STATS_FRAMESOK_LOW 0x01C3
+#define IPN3KE_25G_CNTR_TX_FRAGMENTS_LO                              0x800
+#define IPN3KE_25G_CNTR_TX_FRAGMENTS_HI                              0x801
+#define IPN3KE_25G_CNTR_TX_JABBERS_LO                                0x802
+#define IPN3KE_25G_CNTR_TX_JABBERS_HI                                0x803
+#define IPN3KE_25G_CNTR_TX_FCS_LO                                    0x804
+#define IPN3KE_25G_CNTR_TX_FCS_HI                                    0x805
+#define IPN3KE_25G_CNTR_TX_CRCERR_LO                                 0x806
+#define IPN3KE_25G_CNTR_TX_CRCERR_HI                                 0x807
+#define IPN3KE_25G_CNTR_TX_MCAST_DATA_ERR_LO                         0x808
+#define IPN3KE_25G_CNTR_TX_MCAST_DATA_ERR_HI                         0x809
+#define IPN3KE_25G_CNTR_TX_BCAST_DATA_ERR_LO                         0x80A
+#define IPN3KE_25G_CNTR_TX_BCAST_DATA_ERR_HI                         0x80B
+#define IPN3KE_25G_CNTR_TX_UCAST_DATA_ERR_LO                         0x80C
+#define IPN3KE_25G_CNTR_TX_UCAST_DATA_ERR_HI                         0x80D
+#define IPN3KE_25G_CNTR_TX_MCAST_CTRL_ERR_LO                         0x80E
+#define IPN3KE_25G_CNTR_TX_MCAST_CTRL_ERR_HI                         0x80F
+#define IPN3KE_25G_CNTR_TX_BCAST_CTRL_ERR_LO                         0x810
+#define IPN3KE_25G_CNTR_TX_BCAST_CTRL_ERR_HI                         0x811
+#define IPN3KE_25G_CNTR_TX_UCAST_CTRL_ERR_LO                         0x812
+#define IPN3KE_25G_CNTR_TX_UCAST_CTRL_ERR_HI                         0x813
+#define IPN3KE_25G_CNTR_TX_PAUSE_ERR_LO                              0x814
+#define IPN3KE_25G_CNTR_TX_PAUSE_ERR_HI                              0x815
+#define IPN3KE_25G_CNTR_TX_64B_LO                                    0x816
+#define IPN3KE_25G_CNTR_TX_64B_HI                                    0x817
+#define IPN3KE_25G_CNTR_TX_65_127B_LO                                0x818
+#define IPN3KE_25G_CNTR_TX_65_127B_HI                                0x819
+#define IPN3KE_25G_CNTR_TX_128_255B_LO                               0x81A
+#define IPN3KE_25G_CNTR_TX_128_255B_HI                               0x81B
+#define IPN3KE_25G_CNTR_TX_256_511B_LO                               0x81C
+#define IPN3KE_25G_CNTR_TX_256_511B_HI                               0x81D
+#define IPN3KE_25G_CNTR_TX_512_1023B_LO                              0x81E
+#define IPN3KE_25G_CNTR_TX_512_1023B_HI                              0x81F
+#define IPN3KE_25G_CNTR_TX_1024_1518B_LO                             0x820
+#define IPN3KE_25G_CNTR_TX_1024_1518B_HI                             0x821
+#define IPN3KE_25G_CNTR_TX_1519_MAXB_LO                              0x822
+#define IPN3KE_25G_CNTR_TX_1519_MAXB_HI                              0x823
+#define IPN3KE_25G_CNTR_TX_OVERSIZE_LO                               0x824
+#define IPN3KE_25G_CNTR_TX_OVERSIZE_HI                               0x825
+#define IPN3KE_25G_CNTR_TX_MCAST_DATA_OK_LO                          0x826
+#define IPN3KE_25G_CNTR_TX_MCAST_DATA_OK_HI                          0x827
+#define IPN3KE_25G_CNTR_TX_BCAST_DATA_OK_LO                          0x828
+#define IPN3KE_25G_CNTR_TX_BCAST_DATA_OK_HI                          0x829
+#define IPN3KE_25G_CNTR_TX_UCAST_DATA_OK_LO                          0x82A
+#define IPN3KE_25G_CNTR_TX_UCAST_DATA_OK_HI                          0x82B
+#define IPN3KE_25G_CNTR_TX_MCAST_CTRL_LO                             0x82C
+#define IPN3KE_25G_CNTR_TX_MCAST_CTRL_HI                             0x82D
+#define IPN3KE_25G_CNTR_TX_BCAST_CTRL_LO                             0x82E
+#define IPN3KE_25G_CNTR_TX_BCAST_CTRL_HI                             0x82F
+#define IPN3KE_25G_CNTR_TX_UCAST_CTRL_LO                             0x830
+#define IPN3KE_25G_CNTR_TX_UCAST_CTRL_HI                             0x831
+#define IPN3KE_25G_CNTR_TX_PAUSE_LO                                  0x832
+#define IPN3KE_25G_CNTR_TX_PAUSE_HI                                  0x833
+#define IPN3KE_25G_CNTR_TX_RUNT_LO                                   0x834
+#define IPN3KE_25G_CNTR_TX_RUNT_HI                                   0x835
+#define IPN3KE_25G_TX_PAYLOAD_OCTETS_OK_LO                           0x860
+#define IPN3KE_25G_TX_PAYLOAD_OCTETS_OK_HI                           0x861
+#define IPN3KE_25G_TX_FRAME_OCTETS_OK_LO                             0x862
+#define IPN3KE_25G_TX_FRAME_OCTETS_OK_HI                             0x863
 
-/*tx_stats_framesErr*/
-#define IPN3KE_MAC_TX_STATS_FRAMESERR_HI  0x0144
-#define IPN3KE_MAC_TX_STATS_FRAMESERR_LOW 0x0145
+/*Bits[2:0]: Configuration of RX statistics counters:
+ *Bit[2]: Shadow request (active high): When set to the value of 1,
+ *RX statistics collection is paused. The underlying counters
+ *continue to operate, but the readable values reflect a snapshot
+ *at the time the pause flag was activated. Write a 0 to release.
+ *Bit[1]: Parity-error clear. When software sets this bit, the IP
+ *core clears the parity bit CNTR_RX_STATUS[0]. This bit
+ *(CNTR_RX_CONFIG[1]) is self-clearing.
+ *Bit[0]: Software can set this bit to the value of 1 to reset all of
+ *the RX statistics registers at the same time. This bit is selfclearing.
+ *Bits[31:3] are Reserved.
+ */
+#define IPN3KE_25G_RX_STATISTICS_CONFIG                              0x945
+#define IPN3KE_25G_RX_STATISTICS_CONFIG_SHADOW_REQUEST_MASK          0x00000004
 
-/*rx_stats_framesErr*/
-#define IPN3KE_MAC_RX_STATS_FRAMESERR_HI  0x01C4
-#define IPN3KE_MAC_RX_STATS_FRAMESERR_LOW 0x01C5
+/*Bit[1]: Indicates that the RX statistics registers are paused
+ *(while CNTR_RX_CONFIG[2] is asserted).
+ *Bit[0]: Indicates the presence of at least one parity error in the
+ *RX statistics counters.
+ *Bits [31:2] are Reserved
+ */
+#define IPN3KE_25G_RX_STATISTICS_STATUS                              0x946
+#define IPN3KE_25G_RX_STATISTICS_STATUS_SHADOW_REQUEST_MASK          0x00000002
 
-/*rx_stats_framesCRCErr*/
-#define IPN3KE_MAC_RX_STATS_FRAMESCRCERR_HI  0x01C6
-#define IPN3KE_MAC_RX_STATS_FRAMESCRCERR_LOW 0x01C7
+#define IPN3KE_25G_CNTR_RX_FRAGMENTS_LO                              0x900
+#define IPN3KE_25G_CNTR_RX_FRAGMENTS_HI                              0x901
+#define IPN3KE_25G_CNTR_RX_JABBERS_LO                                0x902
+#define IPN3KE_25G_CNTR_RX_JABBERS_HI                                0x903
+#define IPN3KE_25G_CNTR_RX_FCS_LO                                    0x904
+#define IPN3KE_25G_CNTR_RX_FCS_HI                                    0x905
+#define IPN3KE_25G_CNTR_RX_CRCERR_LO                                 0x906
+#define IPN3KE_25G_CNTR_RX_CRCERR_HI                                 0x907
+#define IPN3KE_25G_CNTR_RX_MCAST_DATA_ERR_LO                         0x908
+#define IPN3KE_25G_CNTR_RX_MCAST_DATA_ERR_HI                         0x909
+#define IPN3KE_25G_CNTR_RX_BCAST_DATA_ERR_LO                         0x90A
+#define IPN3KE_25G_CNTR_RX_BCAST_DATA_ERR_HI                         0x90B
+#define IPN3KE_25G_CNTR_RX_UCAST_DATA_ERR_LO                         0x90C
+#define IPN3KE_25G_CNTR_RX_UCAST_DATA_ERR_HI                         0x90D
+#define IPN3KE_25G_CNTR_RX_MCAST_CTRL_ERR_LO                         0x90E
+#define IPN3KE_25G_CNTR_RX_MCAST_CTRL_ERR_HI                         0x90F
+#define IPN3KE_25G_CNTR_RX_BCAST_CTRL_ERR_LO                         0x910
+#define IPN3KE_25G_CNTR_RX_BCAST_CTRL_ERR_HI                         0x911
+#define IPN3KE_25G_CNTR_RX_UCAST_CTRL_ERR_LO                         0x912
+#define IPN3KE_25G_CNTR_RX_UCAST_CTRL_ERR_HI                         0x913
+#define IPN3KE_25G_CNTR_RX_PAUSE_ERR_LO                              0x914
+#define IPN3KE_25G_CNTR_RX_PAUSE_ERR_HI                              0x915
+#define IPN3KE_25G_CNTR_RX_64B_LO                                    0x916
+#define IPN3KE_25G_CNTR_RX_64B_HI                                    0x917
+#define IPN3KE_25G_CNTR_RX_65_127B_LO                                0x918
+#define IPN3KE_25G_CNTR_RX_65_127B_HI                                0x919
+#define IPN3KE_25G_CNTR_RX_128_255B_LO                               0x91A
+#define IPN3KE_25G_CNTR_RX_128_255B_HI                               0x91B
+#define IPN3KE_25G_CNTR_RX_256_511B_LO                               0x91C
+#define IPN3KE_25G_CNTR_RX_256_511B_HI                               0x91D
+#define IPN3KE_25G_CNTR_RX_512_1023B_LO                              0x91E
+#define IPN3KE_25G_CNTR_RX_512_1023B_HI                              0x91F
+#define IPN3KE_25G_CNTR_RX_1024_1518B_LO                             0x920
+#define IPN3KE_25G_CNTR_RX_1024_1518B_HI                             0x921
+#define IPN3KE_25G_CNTR_RX_1519_MAXB_LO                              0x922
+#define IPN3KE_25G_CNTR_RX_1519_MAXB_HI                              0x923
+#define IPN3KE_25G_CNTR_RX_OVERSIZE_LO                               0x924
+#define IPN3KE_25G_CNTR_RX_OVERSIZE_HI                               0x925
+#define IPN3KE_25G_CNTR_RX_MCAST_DATA_OK_LO                          0x926
+#define IPN3KE_25G_CNTR_RX_MCAST_DATA_OK_HI                          0x927
+#define IPN3KE_25G_CNTR_RX_BCAST_DATA_OK_LO                          0x928
+#define IPN3KE_25G_CNTR_RX_BCAST_DATA_OK_HI                          0x929
+#define IPN3KE_25G_CNTR_RX_UCAST_DATA_OK_LO                          0x92A
+#define IPN3KE_25G_CNTR_RX_UCAST_DATA_OK_HI                          0x92B
+#define IPN3KE_25G_CNTR_RX_MCAST_CTRL_LO                             0x92C
+#define IPN3KE_25G_CNTR_RX_MCAST_CTRL_HI                             0x92D
+#define IPN3KE_25G_CNTR_RX_BCAST_CTRL_LO                             0x92E
+#define IPN3KE_25G_CNTR_RX_BCAST_CTRL_HI                             0x92F
+#define IPN3KE_25G_CNTR_RX_UCAST_CTRL_LO                             0x930
+#define IPN3KE_25G_CNTR_RX_UCAST_CTRL_HI                             0x931
+#define IPN3KE_25G_CNTR_RX_PAUSE_LO                                  0x932
+#define IPN3KE_25G_CNTR_RX_PAUSE_HI                                  0x933
+#define IPN3KE_25G_CNTR_RX_RUNT_LO                                   0x934
+#define IPN3KE_25G_CNTR_RX_RUNT_HI                                   0x935
+#define IPN3KE_25G_RX_PAYLOAD_OCTETS_OK_LO                           0x960
+#define IPN3KE_25G_RX_PAYLOAD_OCTETS_OK_HI                           0x961
+#define IPN3KE_25G_RX_FRAME_OCTETS_OK_LO                             0x962
+#define IPN3KE_25G_RX_FRAME_OCTETS_OK_HI                             0x963
 
-/*tx_stats_octetsOK 64b*/
-#define IPN3KE_MAC_TX_STATS_OCTETSOK_HI  0x0148
-#define IPN3KE_MAC_TX_STATS_OCTETSOK_LOW 0x0149
+#define IPN3KE_10G_STATS_HI_VALID_MASK                               0x0000000F
 
-/*rx_stats_octetsOK 64b*/
-#define IPN3KE_MAC_RX_STATS_OCTETSOK_HI  0x01C8
-#define IPN3KE_MAC_RX_STATS_OCTETSOK_LOW 0x01C9
+#define IPN3KE_10G_TX_STATS_CLR                                      0x0140
+#define IPN3KE_10G_TX_STATS_CLR_CLEAR_SHIFT    0
+#define IPN3KE_10G_TX_STATS_CLR_CLEAR_MASK \
+	IPN3KE_MASK(0x1, IPN3KE_10G_TX_STATS_CLR_CLEAR_SHIFT)
 
-/*tx_stats_pauseMACCtrl_Frames*/
-#define IPN3KE_MAC_TX_STATS_PAUSEMACCTRL_FRAMES_HI  0x014A
-#define IPN3KE_MAC_TX_STATS_PAUSEMACCTRL_FRAMES_LOW 0x014B
+#define IPN3KE_10G_RX_STATS_CLR                                      0x01C0
+#define IPN3KE_10G_RX_STATS_CLR_CLEAR_SHIFT    0
+#define IPN3KE_10G_RX_STATS_CLR_CLEAR_MASK \
+	IPN3KE_MASK(0x1, IPN3KE_10G_RX_STATS_CLR_CLEAR_SHIFT)
 
-/*rx_stats_pauseMACCtrl_Frames*/
-#define IPN3KE_MAC_RX_STATS_PAUSEMACCTRL_FRAMES_HI  0x01CA
-#define IPN3KE_MAC_RX_STATS_PAUSEMACCTRL_FRAMES_LOW 0x01CB
-
-/*tx_stats_ifErrors*/
-#define IPN3KE_MAC_TX_STATS_IFERRORS_HI  0x014C
-#define IPN3KE_MAC_TX_STATS_IFERRORS_LOW 0x014D
-
-/*rx_stats_ifErrors*/
-#define IPN3KE_MAC_RX_STATS_IFERRORS_HI  0x01CC
-#define IPN3KE_MAC_RX_STATS_IFERRORS_LOW 0x01CD
-
-/*tx_stats_unicast_FramesOK*/
-#define IPN3KE_MAC_TX_STATS_UNICAST_FRAMESOK_HI  0x014E
-#define IPN3KE_MAC_TX_STATS_UNICAST_FRAMESOK_LOW 0x014F
-
-/*rx_stats_unicast_FramesOK*/
-#define IPN3KE_MAC_RX_STATS_UNICAST_FRAMESOK_HI  0x01CE
-#define IPN3KE_MAC_RX_STATS_UNICAST_FRAMESOK_LOW 0x01CF
-
-/*tx_stats_unicast_FramesErr*/
-#define IPN3KE_MAC_TX_STATS_UNICAST_FRAMESERR_HI  0x0150
-#define IPN3KE_MAC_TX_STATS_UNICAST_FRAMESERR_LOW 0x0151
-
-/*rx_stats_unicast_FramesErr*/
-#define IPN3KE_MAC_RX_STATS_UNICAST_FRAMESERR_HI  0x01D0
-#define IPN3KE_MAC_RX_STATS_UNICAST_FRAMESERR_LOW 0x01D1
-
-/*tx_stats_multicast_FramesOK*/
-#define IPN3KE_MAC_TX_STATS_MULTICAST_FRAMESOK_HI  0x0152
-#define IPN3KE_MAC_TX_STATS_MULTICAST_FRAMESOK_LOW 0x0153
-
-/*rx_stats_multicast_FramesOK*/
-#define IPN3KE_MAC_RX_STATS_MULTICAST_FRAMESOK_HI  0x01D2
-#define IPN3KE_MAC_RX_STATS_MULTICAST_FRAMESOK_LOW 0x01D3
-
-/*tx_stats_multicast_FramesErr*/
-#define IPN3KE_MAC_TX_STATS_MULTICAST_FRAMESERR_HI  0x0154
-#define IPN3KE_MAC_TX_STATS_MULTICAST_FRAMESERR_LOW 0x0155
-
-/*rx_stats_multicast_FramesErr*/
-#define IPN3KE_MAC_RX_STATS_MULTICAST_FRAMESERR_HI  0x01D4
-#define IPN3KE_MAC_RX_STATS_MULTICAST_FRAMESERR_LOW 0x01D5
-
-/*tx_stats_broadcast_FramesOK*/
-#define IPN3KE_MAC_TX_STATS_BROADCAST_FRAMESOK_HI  0x0156
-#define IPN3KE_MAC_TX_STATS_BROADCAST_FRAMESOK_LOW 0x0157
-
-/*rx_stats_broadcast_FramesOK*/
-#define IPN3KE_MAC_RX_STATS_BROADCAST_FRAMESOK_HI  0x01D6
-#define IPN3KE_MAC_RX_STATS_BROADCAST_FRAMESOK_LOW 0x01D7
-
-/*tx_stats_broadcast_FramesErr*/
-#define IPN3KE_MAC_TX_STATS_BROADCAST_FRAMESERR_HI  0x0158
-#define IPN3KE_MAC_TX_STATS_BROADCAST_FRAMESERR_LOW 0x0159
-
-/*rx_stats_broadcast_FramesErr*/
-#define IPN3KE_MAC_RX_STATS_BROADCAST_FRAMESERR_HI  0x01D8
-#define IPN3KE_MAC_RX_STATS_BROADCAST_FRAMESERR_LOW 0x01D9
-
-/*tx_stats_etherStatsOctets 64b*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSOCTETS_HI  0x015A
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSOCTETS_LOW 0x015B
-
-/*rx_stats_etherStatsOctets 64b*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSOCTETS_HI  0x01DA
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSOCTETS_LOW 0x01DB
-
-/*tx_stats_etherStatsPkts*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS_HI  0x015C
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS_LOW 0x015D
-
-/*rx_stats_etherStatsPkts*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS_HI  0x01DC
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS_LOW 0x01DD
-
-/*tx_stats_etherStatsUndersizePkts*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSUNDERSIZEPKTS_HI  0x015E
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSUNDERSIZEPKTS_LOW 0x015F
-
-/*rx_stats_etherStatsUndersizePkts*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSUNDERSIZEPKTS_HI  0x01DE
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSUNDERSIZEPKTS_LOW 0x01DF
-
-/*tx_stats_etherStatsOversizePkts*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSOVERSIZEPKTS_HI  0x0160
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSOVERSIZEPKTS_LOW 0x0161
-
-/*rx_stats_etherStatsOversizePkts*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSOVERSIZEPKTS_HI  0x01E0
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSOVERSIZEPKTS_LOW 0x01E1
-
-/*tx_stats_etherStatsPkts64Octets*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS64OCTETS_HI  0x0162
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS64OCTETS_LOW 0x0163
-
-/*rx_stats_etherStatsPkts64Octets*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS64OCTETS_HI  0x01E2
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS64OCTETS_LOW 0x01E3
-
-/*tx_stats_etherStatsPkts65to127Octets*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS65TO127OCTETS_HI  0x0164
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS65TO127OCTETS_LOW 0x0165
-
-/*rx_stats_etherStatsPkts65to127Octets*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS65TO127OCTETS_HI  0x01E4
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS65TO127OCTETS_LOW 0x01E5
-
-/*tx_stats_etherStatsPkts128to255Octets*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS128TO255OCTETS_HI  0x0166
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS128TO255OCTETS_LOW 0x0167
-
-/*rx_stats_etherStatsPkts128to255Octets*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS128TO255OCTETS_HI  0x01E6
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS128TO255OCTETS_LOW 0x01E7
-
-/*tx_stats_etherStatsPkts256to511Octet*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS256TO511OCTET_HI  0x0168
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS256TO511OCTET_LOW 0x0169
-
-/*rx_stats_etherStatsPkts256to511Octets*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS256TO511OCTETS_HI  0x01E8
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS256TO511OCTETS_LOW 0x01E9
-
-/*tx_stats_etherStatsPkts512to1023Octets*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS512TO1023OCTETS_HI  0x016A
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS512TO1023OCTETS_LOW 0x016B
-
-/*rx_stats_etherStatsPkts512to1023Octets*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS512TO1023OCTETS_HI  0x01EA
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS512TO1023OCTETS_LOW 0x01EB
-
-/*tx_stats_etherStatPkts1024to1518Octets*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATPKTS1024TO1518OCTETS_HI  0x016C
-#define IPN3KE_MAC_TX_STATS_ETHERSTATPKTS1024TO1518OCTETS_LOW 0x016D
-
-/*rx_stats_etherStatPkts1024to1518Octets*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATPKTS1024TO1518OCTETS_HI  0x01EC
-#define IPN3KE_MAC_RX_STATS_ETHERSTATPKTS1024TO1518OCTETS_LOW 0x01ED
-
-/*tx_stats_etherStatsPkts1519toXOctets*/
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS1519TOXOCTETS_HI  0x016E
-#define IPN3KE_MAC_TX_STATS_ETHERSTATSPKTS1519TOXOCTETS_LOW 0x016F
-
-/*rx_stats_etherStatsPkts1519toXOctets*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS1519TOXOCTETS_HI  0x01EE
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSPKTS1519TOXOCTETS_LOW 0x01EF
-
-/*rx_stats_etherStatsFragments*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSFRAGMENTS_HI  0x01F0
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSFRAGMENTS_LOW 0x01F1
-
-/*rx_stats_etherStatsJabbers*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSJABBERS_HI  0x01F2
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSJABBERS_LOW 0x01F3
-
-/*rx_stats_etherStatsCRCErr*/
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSCRCERR_HI  0x01F4
-#define IPN3KE_MAC_RX_STATS_ETHERSTATSCRCERR_LOW 0x01F5
-
-/*tx_stats_unicastMACCtrlFrames*/
-#define IPN3KE_MAC_TX_STATS_UNICASTMACCTRLFRAMES_HI  0x0176
-#define IPN3KE_MAC_TX_STATS_UNICASTMACCTRLFRAMES_LOW 0x0177
-
-/*rx_stats_unicastMACCtrlFrames*/
-#define IPN3KE_MAC_RX_STATS_UNICASTMACCTRLFRAMES_HI  0x01F6
-#define IPN3KE_MAC_RX_STATS_UNICASTMACCTRLFRAMES_LOW 0x01F7
-
-/*tx_stats_multicastMACCtrlFrames*/
-#define IPN3KE_MAC_TX_STATS_MULTICASTMACCTRLFRAMES_HI  0x0178
-#define IPN3KE_MAC_TX_STATS_MULTICASTMACCTRLFRAMES_LOW 0x0179
-
-/*rx_stats_multicastMACCtrlFrames*/
-#define IPN3KE_MAC_RX_STATS_MULTICASTMACCTRLFRAMES_HI  0x01F8
-#define IPN3KE_MAC_RX_STATS_MULTICASTMACCTRLFRAMES_LOW 0x01F9
-
-/*tx_stats_broadcastMACCtrlFrames*/
-#define IPN3KE_MAC_TX_STATS_BROADCASTMACCTRLFRAMES_HI  0x017A
-#define IPN3KE_MAC_TX_STATS_BROADCASTMACCTRLFRAMES_LOW 0x017B
-
-/*rx_stats_broadcastMACCtrlFrames*/
-#define IPN3KE_MAC_RX_STATS_BROADCASTMACCTRLFRAMES_HI  0x01FA
-#define IPN3KE_MAC_RX_STATS_BROADCASTMACCTRLFRAMES_LOW 0x01FB
-
-/*tx_stats_PFCMACCtrlFrames*/
-#define IPN3KE_MAC_TX_STATS_PFCMACCTRLFRAMES_HI  0x017C
-#define IPN3KE_MAC_TX_STATS_PFCMACCTRLFRAMES_LOW 0x017D
-
-/*rx_stats_PFCMACCtrlFrames*/
-#define IPN3KE_MAC_RX_STATS_PFCMACCTRLFRAMES_HI  0x01FC
-#define IPN3KE_MAC_RX_STATS_PFCMACCTRLFRAMES_LOW 0x01FD
+#define IPN3KE_10G_TX_STATS_FRAME_OK_LO                              0x0142
+#define IPN3KE_10G_TX_STATS_FRAME_OK_HI                              0x0143
+#define IPN3KE_10G_RX_STATS_FRAME_OK_LO                              0x01C2
+#define IPN3KE_10G_RX_STATS_FRAME_OK_HI                              0x01C3
+#define IPN3KE_10G_TX_STATS_FRAME_ERR_LO                             0x0144
+#define IPN3KE_10G_TX_STATS_FRAME_ERR_HI                             0x0145
+#define IPN3KE_10G_RX_STATS_FRAME_ERR_LO                             0x01C4
+#define IPN3KE_10G_RX_STATS_FRAME_ERR_HI                             0x01C5
+#define IPN3KE_10G_RX_STATS_FRAME_CRC_ERR_LO                         0x01C6
+#define IPN3KE_10G_RX_STATS_FRAME_CRC_ERR_HI                         0x01C7
+#define IPN3KE_10G_TX_STATS_OCTETS_OK_LO                             0x0148
+#define IPN3KE_10G_TX_STATS_OCTETS_OK_HI                             0x0149
+#define IPN3KE_10G_RX_STATS_OCTETS_OK_LO                             0x01C8
+#define IPN3KE_10G_RX_STATS_OCTETS_OK_HI                             0x01C9
+#define IPN3KE_10G_TX_STATS_PAUSE_MAC_CTRL_FRAMES_LO                 0x014A
+#define IPN3KE_10G_TX_STATS_PAUSE_MAC_CTRL_FRAMES_HI                 0x014B
+#define IPN3KE_10G_RX_STATS_PAUSE_MAC_CTRL_FRAMES_LO                 0x01CA
+#define IPN3KE_10G_RX_STATS_PAUSE_MAC_CTRL_FRAMES_HI                 0x01CB
+#define IPN3KE_10G_TX_STATS_IF_ERRORS_LO                             0x014C
+#define IPN3KE_10G_TX_STATS_IF_ERRORS_HI                             0x014D
+#define IPN3KE_10G_RX_STATS_IF_ERRORS_LO                             0x01CC
+#define IPN3KE_10G_RX_STATS_IF_ERRORS_HI                             0x01CD
+#define IPN3KE_10G_TX_STATS_UNICAST_FRAME_OK_LO                      0x014E
+#define IPN3KE_10G_TX_STATS_UNICAST_FRAME_OK_HI                      0x014F
+#define IPN3KE_10G_RX_STATS_UNICAST_FRAME_OK_LO                      0x01CE
+#define IPN3KE_10G_RX_STATS_UNICAST_FRAME_OK_HI                      0x01CF
+#define IPN3KE_10G_TX_STATS_UNICAST_FRAME_ERR_LO                     0x0150
+#define IPN3KE_10G_TX_STATS_UNICAST_FRAME_ERR_HI                     0x0151
+#define IPN3KE_10G_RX_STATS_UNICAST_FRAME_ERR_LO                     0x01D0
+#define IPN3KE_10G_RX_STATS_UNICAST_FRAME_ERR_HI                     0x01D1
+#define IPN3KE_10G_TX_STATS_MULTICAST_FRAME_OK_LO                    0x0152
+#define IPN3KE_10G_TX_STATS_MULTICAST_FRAME_OK_HI                    0x0153
+#define IPN3KE_10G_RX_STATS_MULTICAST_FRAME_OK_LO                    0x01D2
+#define IPN3KE_10G_RX_STATS_MULTICAST_FRAME_OK_HI                    0x01D3
+#define IPN3KE_10G_TX_STATS_MULTICAST_FRAME_ERR_LO                   0x0154
+#define IPN3KE_10G_TX_STATS_MULTICAST_FRAME_ERR_HI                   0x0155
+#define IPN3KE_10G_RX_STATS_MULTICAST_FRAME_ERR_LO                   0x01D4
+#define IPN3KE_10G_RX_STATS_MULTICAST_FRAME_ERR_HI                   0x01D5
+#define IPN3KE_10G_TX_STATS_BROADCAST_FRAME_OK_LO                    0x0156
+#define IPN3KE_10G_TX_STATS_BROADCAST_FRAME_OK_HI                    0x0157
+#define IPN3KE_10G_RX_STATS_BROADCAST_FRAME_OK_LO                    0x01D6
+#define IPN3KE_10G_RX_STATS_BROADCAST_FRAME_OK_HI                    0x01D7
+#define IPN3KE_10G_TX_STATS_BROADCAST_FRAME_ERR_LO                   0x0158
+#define IPN3KE_10G_TX_STATS_BROADCAST_FRAME_ERR_HI                   0x0159
+#define IPN3KE_10G_RX_STATS_BROADCAST_FRAME_ERR_LO                   0x01D8
+#define IPN3KE_10G_RX_STATS_BROADCAST_FRAME_ERR_HI                   0x01D9
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_OCTETS_LO                    0x015A
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_OCTETS_HI                    0x015B
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_OCTETS_LO                    0x01DA
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_OCTETS_HI                    0x01DB
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_LO                      0x015C
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_HI                      0x015D
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_LO                      0x01DC
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_HI                      0x01DD
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_UNDER_SIZE_PKTS_LO           0x015E
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_UNDER_SIZE_PKTS_HI           0x015F
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_UNDER_SIZE_PKTS_LO           0x01DE
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_UNDER_SIZE_PKTS_HI           0x01DF
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_OVER_SIZE_PKTS_LO            0x0160
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_OVER_SIZE_PKTS_HI            0x0161
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_OVER_SIZE_PKTS_LO            0x01E0
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_OVER_SIZE_PKTS_HI            0x01E1
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_64_OCTETS_LO            0x0162
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_64_OCTETS_HI            0x0163
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_64_OCTETS_LO            0x01E2
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_64_OCTETS_HI            0x01E3
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_65_127_OCTETS_LO        0x0164
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_65_127_OCTETS_HI        0x0165
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_65_127_OCTETS_LO        0x01E4
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_65_127_OCTETS_HI        0x01E5
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_128_255_OCTETS_LO       0x0166
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_128_255_OCTETS_HI       0x0167
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_128_255_OCTETS_LO       0x01E6
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_128_255_OCTETS_HI       0x01E7
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_256_511_OCTETS_LO       0x0168
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_256_511_OCTETS_HI       0x0169
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_256_511_OCTETS_LO       0x01E8
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_256_511_OCTETS_HI       0x01E9
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_512_1023_OCTETS_LO      0x016A
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_512_1023_OCTETS_HI      0x016B
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_512_1023_OCTETS_LO      0x01EA
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_512_1023_OCTETS_HI      0x01EB
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_1024_1518_OCTETS_LO     0x016C
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_1024_1518_OCTETS_HI     0x016D
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_1024_1518_OCTETS_LO     0x01EC
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_1024_1518_OCTETS_HI     0x01ED
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_1519_X_OCTETS_LO        0x016E
+#define IPN3KE_10G_TX_STATS_ETHER_STATS_PKTS_1519_X_OCTETS_HI        0x016F
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_1519_X_OCTETS_LO        0x01EE
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_PKTS_1519_X_OCTETS_HI        0x01EF
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_FRAGMENTS_LO                 0x01E0
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_FRAGMENTS_HI                 0x01F1
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_JABBERS_LO                   0x01E2
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_JABBERS_HI                   0x01F3
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_CRC_ERR_LO                   0x01E4
+#define IPN3KE_10G_RX_STATS_ETHER_STATS_CRC_ERR_HI                   0x01F5
+#define IPN3KE_10G_TX_STATS_UNICAST_MAC_CTRL_FRAMES_LO               0x0176
+#define IPN3KE_10G_TX_STATS_UNICAST_MAC_CTRL_FRAMES_HI               0x0177
+#define IPN3KE_10G_RX_STATS_UNICAST_MAC_CTRL_FRAMES_LO               0x01F6
+#define IPN3KE_10G_RX_STATS_UNICAST_MAC_CTRL_FRAMES_HI               0x01F7
+#define IPN3KE_10G_TX_STATS_MULTICAST_MAC_CTRL_FRAMES_LO             0x0178
+#define IPN3KE_10G_TX_STATS_MULTICAST_MAC_CTRL_FRAMES_HI             0x0179
+#define IPN3KE_10G_RX_STATS_MULTICAST_MAC_CTRL_FRAMES_LO             0x01F8
+#define IPN3KE_10G_RX_STATS_MULTICAST_MAC_CTRL_FRAMES_HI             0x01F9
+#define IPN3KE_10G_TX_STATS_BROADCAST_MAC_CTRL_FRAMES_LO             0x017A
+#define IPN3KE_10G_TX_STATS_BROADCAST_MAC_CTRL_FRAMES_HI             0x017B
+#define IPN3KE_10G_RX_STATS_BROADCAST_MAC_CTRL_FRAMES_LO             0x01FA
+#define IPN3KE_10G_RX_STATS_BROADCAST_MAC_CTRL_FRAMES_HI             0x01FB
+#define IPN3KE_10G_TX_STATS_PFC_MAC_CTRL_FRAMES_LO                   0x017C
+#define IPN3KE_10G_TX_STATS_PFC_MAC_CTRL_FRAMES_HI                   0x017D
+#define IPN3KE_10G_RX_STATS_PFC_MAC_CTRL_FRAMES_LO                   0x01FC
+#define IPN3KE_10G_RX_STATS_PFC_MAC_CTRL_FRAMES_HI                   0x01FD
 
 static inline void ipn3ke_xmac_tx_enable(struct ipn3ke_hw *hw,
 		uint32_t mac_num, uint32_t eth_group_sel)
@@ -949,31 +1008,72 @@ static inline void ipn3ke_xmac_smac_ovd_dis(struct ipn3ke_hw *hw,
 					eth_group_sel);
 }
 
-static inline void ipn3ke_xmac_tx_clr_stcs(struct ipn3ke_hw *hw,
-	uint32_t mac_num, uint32_t eth_group_sel)
+static inline void ipn3ke_xmac_tx_clr_10G_stcs
+(struct ipn3ke_hw *hw, uint32_t mac_num, uint32_t eth_group_sel)
 {
-#define IPN3KE_XMAC_TX_CLR_STCS (1 & \
-	(IPN3KE_MAC_TX_STATS_CLR_CLEAR_MASK))
-
+	uint32_t tmp;
+	tmp = 0x00000000;
+	(*hw->f_mac_read)(hw,
+					&tmp,
+					IPN3KE_10G_TX_STATS_CLR,
+					mac_num,
+					eth_group_sel);
+	tmp |= 0x00000001;
 	(*hw->f_mac_write)(hw,
-					IPN3KE_XMAC_TX_CLR_STCS,
-					IPN3KE_MAC_TX_STATS_CLR,
+					tmp,
+					IPN3KE_10G_TX_STATS_CLR,
 					mac_num,
 					eth_group_sel);
 }
 
-static inline void ipn3ke_xmac_rx_clr_stcs(struct ipn3ke_hw *hw,
-	uint32_t mac_num, uint32_t eth_group_sel)
+static inline void ipn3ke_xmac_rx_clr_10G_stcs
+(struct ipn3ke_hw *hw, uint32_t mac_num, uint32_t eth_group_sel)
 {
-#define IPN3KE_XMAC_RX_CLR_STCS (1 & \
-	(IPN3KE_MAC_RX_STATS_CLR_CLEAR_MASK))
-
+	uint32_t tmp;
+	tmp = 0x00000000;
+	(*hw->f_mac_read)(hw,
+					&tmp,
+					IPN3KE_10G_RX_STATS_CLR,
+					mac_num,
+					eth_group_sel);
+	tmp |= 0x00000001;
 	(*hw->f_mac_write)(hw,
-					IPN3KE_XMAC_RX_CLR_STCS,
-					IPN3KE_MAC_RX_STATS_CLR,
+					tmp,
+					IPN3KE_10G_RX_STATS_CLR,
 					mac_num,
 					eth_group_sel);
 }
 
+static inline void ipn3ke_xmac_tx_clr_25G_stcs
+(struct ipn3ke_hw *hw, uint32_t mac_num, uint32_t eth_group_sel)
+{
+	uint32_t tmp = 0x00000001;
+
+	/* Bit[0]: Software can set this bit to the value of 1
+	 * to reset all of the TX statistics registers at the same time.
+	 * This bit is selfclearing.
+	 */
+	(*hw->f_mac_write)(hw,
+					tmp,
+					IPN3KE_25G_TX_STATISTICS_CONFIG,
+					mac_num,
+					eth_group_sel);
+}
+
+static inline void ipn3ke_xmac_rx_clr_25G_stcs
+(struct ipn3ke_hw *hw, uint32_t mac_num, uint32_t eth_group_sel)
+{
+	uint32_t tmp = 0x00000001;
+
+	/* Bit[0]: Software can set this bit to the value of 1
+	 * to reset all of the RX statistics registers at the same time.
+	 * This bit is selfclearing.
+	 */
+	(*hw->f_mac_write)(hw,
+					tmp,
+					IPN3KE_25G_RX_STATISTICS_CONFIG,
+					mac_num,
+					eth_group_sel);
+}
 
 #endif /* _IPN3KE_ETHDEV_H_ */

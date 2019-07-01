@@ -159,11 +159,30 @@ ipn3ke_rpst_dev_start(struct rte_eth_dev *dev)
 		/* Enable the RX path */
 		ipn3ke_xmac_rx_enable(hw, rpst->port_id, 0);
 
-		/* Clear all TX statistics counters */
-		ipn3ke_xmac_tx_clr_stcs(hw, rpst->port_id, 0);
+		/* Clear line side TX statistics counters */
+		ipn3ke_xmac_tx_clr_10G_stcs(hw, rpst->port_id, 0);
 
-		/* Clear all RX statistics counters */
-		ipn3ke_xmac_rx_clr_stcs(hw, rpst->port_id, 0);
+		/* Clear line side RX statistics counters */
+		ipn3ke_xmac_rx_clr_10G_stcs(hw, rpst->port_id, 0);
+
+		/* Clear NIC side TX statistics counters */
+		ipn3ke_xmac_tx_clr_10G_stcs(hw, rpst->port_id, 1);
+
+		/* Clear NIC side RX statistics counters */
+		ipn3ke_xmac_rx_clr_10G_stcs(hw, rpst->port_id, 1);
+	} else if (hw->retimer.mac_type ==
+				IFPGA_RAWDEV_RETIMER_MAC_TYPE_25GE_25GAUI) {
+		/* Clear line side TX statistics counters */
+		ipn3ke_xmac_tx_clr_25G_stcs(hw, rpst->port_id, 0);
+
+		/* Clear line side RX statistics counters */
+		ipn3ke_xmac_rx_clr_25G_stcs(hw, rpst->port_id, 0);
+
+		/* Clear NIC side TX statistics counters */
+		ipn3ke_xmac_tx_clr_25G_stcs(hw, rpst->port_id, 1);
+
+		/* Clear NIC side RX statistics counters */
+		ipn3ke_xmac_rx_clr_25G_stcs(hw, rpst->port_id, 1);
 	}
 
 	ipn3ke_rpst_link_update(dev, 0);

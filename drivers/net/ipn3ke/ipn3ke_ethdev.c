@@ -273,11 +273,33 @@ ipn3ke_hw_init(struct rte_afu_device *afu_dev,
 			/* Enable the RX path */
 			ipn3ke_xmac_rx_enable(hw, i, 1);
 
-			/* Clear all TX statistics counters */
-			ipn3ke_xmac_tx_clr_stcs(hw, i, 1);
+			/* Clear NIC side TX statistics counters */
+			ipn3ke_xmac_tx_clr_10G_stcs(hw, i, 1);
 
-			/* Clear all RX statistics counters */
-			ipn3ke_xmac_rx_clr_stcs(hw, i, 1);
+			/* Clear NIC side RX statistics counters */
+			ipn3ke_xmac_rx_clr_10G_stcs(hw, i, 1);
+
+			/* Clear line side TX statistics counters */
+			ipn3ke_xmac_tx_clr_10G_stcs(hw, i, 0);
+
+			/* Clear line RX statistics counters */
+			ipn3ke_xmac_rx_clr_10G_stcs(hw, i, 0);
+		}
+	} else if (hw->retimer.mac_type ==
+			IFPGA_RAWDEV_RETIMER_MAC_TYPE_25GE_25GAUI) {
+		/* Enable inter connect channel */
+		for (i = 0; i < hw->port_num; i++) {
+			/* Clear NIC side TX statistics counters */
+			ipn3ke_xmac_tx_clr_25G_stcs(hw, i, 1);
+
+			/* Clear NIC side RX statistics counters */
+			ipn3ke_xmac_rx_clr_25G_stcs(hw, i, 1);
+
+			/* Clear line side TX statistics counters */
+			ipn3ke_xmac_tx_clr_25G_stcs(hw, i, 0);
+
+			/* Clear line side RX statistics counters */
+			ipn3ke_xmac_rx_clr_25G_stcs(hw, i, 0);
 		}
 	}
 
@@ -320,11 +342,32 @@ ipn3ke_hw_uninit(struct ipn3ke_hw *hw)
 			/* Disable the RX path */
 			ipn3ke_xmac_rx_disable(hw, i, 1);
 
-			/* Clear all TX statistics counters */
-			ipn3ke_xmac_tx_clr_stcs(hw, i, 1);
+			/* Clear NIC side TX statistics counters */
+			ipn3ke_xmac_tx_clr_10G_stcs(hw, i, 1);
 
-			/* Clear all RX statistics counters */
-			ipn3ke_xmac_rx_clr_stcs(hw, i, 1);
+			/* Clear NIC side RX statistics counters */
+			ipn3ke_xmac_rx_clr_10G_stcs(hw, i, 1);
+
+			/* Clear line side TX statistics counters */
+			ipn3ke_xmac_tx_clr_10G_stcs(hw, i, 0);
+
+			/* Clear line side RX statistics counters */
+			ipn3ke_xmac_rx_clr_10G_stcs(hw, i, 0);
+		}
+	} else if (hw->retimer.mac_type ==
+			IFPGA_RAWDEV_RETIMER_MAC_TYPE_25GE_25GAUI) {
+		for (i = 0; i < hw->port_num; i++) {
+			/* Clear NIC side TX statistics counters */
+			ipn3ke_xmac_tx_clr_25G_stcs(hw, i, 1);
+
+			/* Clear NIC side RX statistics counters */
+			ipn3ke_xmac_rx_clr_25G_stcs(hw, i, 1);
+
+			/* Clear line side TX statistics counters */
+			ipn3ke_xmac_tx_clr_25G_stcs(hw, i, 0);
+
+			/* Clear line side RX statistics counters */
+			ipn3ke_xmac_rx_clr_25G_stcs(hw, i, 0);
 		}
 	}
 }
