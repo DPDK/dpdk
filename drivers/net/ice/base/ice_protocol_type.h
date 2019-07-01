@@ -30,6 +30,7 @@
 enum ice_protocol_type {
 	ICE_MAC_OFOS = 0,
 	ICE_MAC_IL,
+	ICE_ETYPE_OL,
 	ICE_IPV4_OFOS,
 	ICE_IPV4_IL,
 	ICE_IPV6_OFOS,
@@ -108,6 +109,7 @@ enum ice_prot_id {
 
 #define ICE_MAC_OFOS_HW		1
 #define ICE_MAC_IL_HW		4
+#define ICE_ETYPE_OL_HW		9
 #define ICE_IPV4_OFOS_HW	32
 #define ICE_IPV4_IL_HW		33
 #define ICE_IPV6_OFOS_HW	40
@@ -140,6 +142,9 @@ struct ice_protocol_entry {
 struct ice_ether_hdr {
 	u8 dst_addr[ETH_ALEN];
 	u8 src_addr[ETH_ALEN];
+};
+
+struct ice_ethtype_hdr {
 	u16 ethtype_id;
 };
 
@@ -201,6 +206,7 @@ struct ice_nvgre {
 
 union ice_prot_hdr {
 	struct ice_ether_hdr eth_hdr;
+	struct ice_ethtype_hdr ethertype;
 	struct ice_ipv4_hdr ipv4_hdr;
 	struct ice_ipv6_hdr ipv6_hdr;
 	struct ice_l4_hdr l4_hdr;

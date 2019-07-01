@@ -61,6 +61,7 @@ struct ice_dummy_pkt_offsets {
 static const
 struct ice_dummy_pkt_offsets dummy_gre_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
 	{ ICE_IPV4_OFOS,	14 },
 	{ ICE_NVGRE,		34 },
 	{ ICE_MAC_IL,		42 },
@@ -72,7 +73,7 @@ static const
 u8 dummy_gre_packet[] = { 0, 0, 0, 0,		/* ICE_MAC_OFOS 0 */
 			  0, 0, 0, 0,
 			  0, 0, 0, 0,
-			  0x08, 0,
+			  0x08, 0,		/* ICE_ETYPE_OL 12 */
 			  0x45, 0, 0, 0x3E,	/* ICE_IPV4_OFOS 14 */
 			  0, 0, 0, 0,
 			  0, 0x2F, 0, 0,
@@ -94,6 +95,7 @@ u8 dummy_gre_packet[] = { 0, 0, 0, 0,		/* ICE_MAC_OFOS 0 */
 static const
 struct ice_dummy_pkt_offsets dummy_udp_tun_tcp_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
 	{ ICE_IPV4_OFOS,	14 },
 	{ ICE_UDP_OF,		34 },
 	{ ICE_VXLAN,		42 },
@@ -108,7 +110,8 @@ u8 dummy_udp_tun_tcp_packet[] = {
 	0x00, 0x00, 0x00, 0x00,  /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
-	0x08, 0x00,
+
+	0x08, 0x00,		/* ICE_ETYPE_OL 12 */
 
 	0x45, 0x00, 0x00, 0x5a, /* ICE_IPV4_OFOS 14 */
 	0x00, 0x01, 0x00, 0x00,
@@ -143,6 +146,7 @@ u8 dummy_udp_tun_tcp_packet[] = {
 static const
 struct ice_dummy_pkt_offsets dummy_udp_tun_udp_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
 	{ ICE_IPV4_OFOS,	14 },
 	{ ICE_UDP_OF,		34 },
 	{ ICE_VXLAN,		42 },
@@ -157,7 +161,8 @@ u8 dummy_udp_tun_udp_packet[] = {
 	0x00, 0x00, 0x00, 0x00,  /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
-	0x08, 0x00,
+
+	0x08, 0x00,		/* ICE_ETYPE_OL 12 */
 
 	0x45, 0x00, 0x00, 0x4e, /* ICE_IPV4_OFOS 14 */
 	0x00, 0x01, 0x00, 0x00,
@@ -189,6 +194,7 @@ u8 dummy_udp_tun_udp_packet[] = {
 static const
 struct ice_dummy_pkt_offsets dummy_udp_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
 	{ ICE_IPV4_OFOS,	14 },
 	{ ICE_UDP_ILOS,		34 },
 	{ ICE_PROTOCOL_LAST,	0 },
@@ -199,7 +205,8 @@ dummy_udp_packet[] = {
 	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
-	0x08, 0x00,
+
+	0x08, 0x00,		/* ICE_ETYPE_OL 12 */
 
 	0x45, 0x00, 0x00, 0x1c, /* ICE_IPV4_OFOS 14 */
 	0x00, 0x01, 0x00, 0x00,
@@ -216,6 +223,7 @@ dummy_udp_packet[] = {
 static const
 struct ice_dummy_pkt_offsets dummy_tcp_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
 	{ ICE_IPV4_OFOS,	14 },
 	{ ICE_TCP_IL,		34 },
 	{ ICE_PROTOCOL_LAST,	0 },
@@ -226,7 +234,8 @@ dummy_tcp_packet[] = {
 	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
-	0x08, 0x00,
+
+	0x08, 0x00,		/* ICE_ETYPE_OL 12 */
 
 	0x45, 0x00, 0x00, 0x28, /* ICE_IPV4_OFOS 14 */
 	0x00, 0x01, 0x00, 0x00,
@@ -246,6 +255,7 @@ dummy_tcp_packet[] = {
 static const
 struct ice_dummy_pkt_offsets dummy_tcp_ipv6_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
 	{ ICE_IPV6_OFOS,	14 },
 	{ ICE_TCP_IL,		54 },
 	{ ICE_PROTOCOL_LAST,	0 },
@@ -256,7 +266,8 @@ dummy_tcp_ipv6_packet[] = {
 	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
-	0x86, 0xDD,
+
+	0x86, 0xDD,		/* ICE_ETYPE_OL 12 */
 
 	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 40 */
 	0x00, 0x14, 0x06, 0x00, /* Next header is TCP */
@@ -281,6 +292,7 @@ dummy_tcp_ipv6_packet[] = {
 static const
 struct ice_dummy_pkt_offsets dummy_udp_ipv6_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
 	{ ICE_IPV6_OFOS,	14 },
 	{ ICE_UDP_ILOS,		54 },
 	{ ICE_PROTOCOL_LAST,	0 },
@@ -291,7 +303,8 @@ dummy_udp_ipv6_packet[] = {
 	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
-	0x86, 0xDD,
+
+	0x86, 0xDD,		/* ICE_ETYPE_OL 12 */
 
 	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 40 */
 	0x00, 0x08, 0x11, 0x00, /* Next header UDP*/
@@ -4455,6 +4468,7 @@ exit_error:
 static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
 	{ ICE_MAC_OFOS,		{ 0, 2, 4, 6, 8, 10, 12 } },
 	{ ICE_MAC_IL,		{ 0, 2, 4, 6, 8, 10, 12 } },
+	{ ICE_ETYPE_OL,		{ 0 } },
 	{ ICE_IPV4_OFOS,	{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 } },
 	{ ICE_IPV4_IL,		{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 } },
 	{ ICE_IPV6_IL,		{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
@@ -4492,6 +4506,7 @@ static const struct ice_pref_recipe_group ice_recipe_pack[] = {
 static const struct ice_protocol_entry ice_prot_id_tbl[] = {
 	{ ICE_MAC_OFOS,		ICE_MAC_OFOS_HW },
 	{ ICE_MAC_IL,		ICE_MAC_IL_HW },
+	{ ICE_ETYPE_OL,		ICE_ETYPE_OL_HW },
 	{ ICE_IPV4_OFOS,	ICE_IPV4_OFOS_HW },
 	{ ICE_IPV4_IL,		ICE_IPV4_IL_HW },
 	{ ICE_IPV6_OFOS,	ICE_IPV6_OFOS_HW },
@@ -4618,7 +4633,7 @@ ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
 
 	for (j = 0; j < sizeof(rule->m_u) / sizeof(u16); j++)
 		if (((u16 *)&rule->m_u)[j] &&
-		    rule->type < ARRAY_SIZE(ice_prot_ext)) {
+		    (unsigned long)rule->type < ARRAY_SIZE(ice_prot_ext)) {
 			/* No more space to accommodate */
 			if (word >= ICE_MAX_CHAIN_WORDS)
 				return 0;
@@ -5449,6 +5464,9 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		case ICE_MAC_OFOS:
 		case ICE_MAC_IL:
 			len = sizeof(struct ice_ether_hdr);
+			break;
+		case ICE_ETYPE_OL:
+			len = sizeof(struct ice_ethtype_hdr);
 			break;
 		case ICE_IPV4_OFOS:
 		case ICE_IPV4_IL:
