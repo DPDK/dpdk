@@ -6,7 +6,8 @@ objs = [base_objs]
 
 sources = files(
 	'ice_ethdev.c',
-	'ice_rxtx.c'
+	'ice_rxtx.c',
+	'ice_switch_filter.c'
 	)
 
 deps += ['hash']

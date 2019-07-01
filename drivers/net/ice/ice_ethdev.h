@@ -234,6 +234,12 @@ struct ice_vsi {
 	bool offset_loaded;
 };
 
+/* Struct to store flow created. */
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) node;
+	void *rule;
+};
+
 struct ice_pf {
 	struct ice_adapter *adapter; /* The adapter this PF associate to */
 	struct ice_vsi *main_vsi; /* pointer to main VSI structure */
@@ -252,6 +258,7 @@ struct ice_pf {
 	uint16_t hash_lut_size; /* The size of hash lookup table */
 	uint16_t lan_nb_qp_max;
 	uint16_t lan_nb_qps; /* The number of queue pairs of LAN */
+	uint16_t base_queue; /* The base queue pairs index  in the device */
 	struct ice_hw_port_stats stats_offset;
 	struct ice_hw_port_stats stats;
 	/* internal packet statistics, it should be excluded from the total */

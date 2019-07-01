@@ -1364,6 +1364,21 @@ fail_exit:
 	return err;
 }
 
+static void
+ice_base_queue_get(struct ice_pf *pf)
+{
+	uint32_t reg;
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+
+	reg = ICE_READ_REG(hw, PFLAN_RX_QALLOC);
+	if (reg & PFLAN_RX_QALLOC_VALID_M) {
+		pf->base_queue = reg & PFLAN_RX_QALLOC_FIRSTQ_M;
+	} else {
+		PMD_INIT_LOG(WARNING, "Failed to get Rx base queue"
+					" index");
+	}
+}
+
 static int
 ice_dev_init(struct rte_eth_dev *dev)
 {
@@ -1459,6 +1474,9 @@ ice_dev_init(struct rte_eth_dev *dev)
 
 	/* enable uio intr after callback register */
 	rte_intr_enable(intr_handle);
+
+	/* get base queue pairs index  in the device */
+	ice_base_queue_get(pf);
 
 	return 0;
 
