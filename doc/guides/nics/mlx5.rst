@@ -551,12 +551,6 @@ DPDK and must be installed separately:
   This library basically implements send/receive calls to the hardware
   queues.
 
-- **libmnl**
-
-  Minimalistic Netlink library mainly relied on to manage E-Switch flow
-  rules (i.e. those with the "transfer" attribute and typically involving
-  port representors).
-
 - **Kernel modules**
 
   They provide the kernel-side Verbs API and low level device drivers that
@@ -651,19 +645,6 @@ required from that distribution.
    Several versions of Mellanox OFED/EN are available. Installing the version
    this DPDK release was developed and tested against is strongly
    recommended. Please check the `prerequisites`_.
-
-Libmnl
-^^^^^^
-
-Minimal version for libmnl is **1.0.3**.
-
-As a dependency of the **iproute2** suite, this library is often installed
-by default. It is otherwise readily available through standard system
-packages.
-
-Its development headers must be installed in order to compile this PMD.
-These packages are usually named **libmnl-dev** or **libmnl-devel**
-depending on the Linux distribution.
 
 Supported NICs
 --------------

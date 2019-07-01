@@ -84,7 +84,6 @@ toolchain for ARM64. Base on that, additional header files and libraries are
 required:
 
    - libibverbs
-   - libmnl
    - libmlx5
    - libnl-3
    - libnl-route-3
@@ -105,19 +104,16 @@ tarball for the cross toolchain.
         # Copy libraries
         mkdir -p lib64
         cp -a /lib64/libibverbs* lib64/
-        cp -a /lib64/libmnl* lib64/
         cp -a /lib64/libmlx5* lib64/
         cp -a /lib64/libnl-3* lib64/
         cp -a /lib64/libnl-route-3* lib64/
 
         # Copy header files
         mkdir -p usr/include/infiniband
-        mkdir -p usr/include/libmnl
         cp -a /usr/include/infiniband/ib_user_ioctl_verbs.h usr/include/infiniband/
         cp -a /usr/include/infiniband/mlx5*.h usr/include/infiniband/
         cp -a /usr/include/infiniband/tm_types.h usr/include/infiniband/
         cp -a /usr/include/infiniband/verbs*.h usr/include/infiniband/
-        cp -a /usr/include/libmnl/libmnl.h usr/include/libmnl/
 
         # Create supplementary tarball
         popd

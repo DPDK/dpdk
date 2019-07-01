@@ -196,7 +196,6 @@
 enum mlx5_flow_drv_type {
 	MLX5_FLOW_TYPE_MIN,
 	MLX5_FLOW_TYPE_DV,
-	MLX5_FLOW_TYPE_TCF,
 	MLX5_FLOW_TYPE_VERBS,
 	MLX5_FLOW_TYPE_MAX,
 };
@@ -317,22 +316,6 @@ struct mlx5_flow_dv {
 	int actions_n; /**< number of actions. */
 };
 
-/** Linux TC flower driver for E-Switch flow. */
-struct mlx5_flow_tcf {
-	struct nlmsghdr *nlh;
-	struct tcmsg *tcm;
-	uint32_t *ptc_flags; /**< tc rule applied flags. */
-	union { /**< Tunnel encap/decap descriptor. */
-		struct flow_tcf_tunnel_hdr *tunnel;
-		struct flow_tcf_vxlan_decap *vxlan_decap;
-		struct flow_tcf_vxlan_encap *vxlan_encap;
-	};
-	uint32_t applied:1; /**< Whether rule is currently applied. */
-#ifndef NDEBUG
-	uint32_t nlsize; /**< Size of NL message buffer for debug check. */
-#endif
-};
-
 /* Verbs specification header. */
 struct ibv_spec_header {
 	enum ibv_flow_spec_type type;
@@ -363,7 +346,6 @@ struct mlx5_flow {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		struct mlx5_flow_dv dv;
 #endif
-		struct mlx5_flow_tcf tcf;
 		struct mlx5_flow_verbs verbs;
 	};
 };
@@ -520,12 +502,5 @@ int mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 				      uint64_t item_flags,
 				      struct rte_eth_dev *dev,
 				      struct rte_flow_error *error);
-
-/* mlx5_flow_tcf.c */
-
-int mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
-		       unsigned int ifindex, struct rte_flow_error *error);
-struct mlx5_flow_tcf_context *mlx5_flow_tcf_context_create(void);
-void mlx5_flow_tcf_context_destroy(struct mlx5_flow_tcf_context *ctx);
 
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

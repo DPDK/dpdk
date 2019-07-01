@@ -690,8 +690,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		close(priv->nl_socket_route);
 	if (priv->nl_socket_rdma >= 0)
 		close(priv->nl_socket_rdma);
-	if (priv->tcf_context)
-		mlx5_flow_tcf_context_destroy(priv->tcf_context);
 	if (priv->sh) {
 		/*
 		 * Free the shared context in last turn, because the cleanup
@@ -1509,34 +1507,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
 	if (config.vf && config.vf_nl_en)
 		mlx5_nl_mac_addr_sync(eth_dev);
-	priv->tcf_context = mlx5_flow_tcf_context_create();
-	if (!priv->tcf_context) {
-		err = -rte_errno;
-		DRV_LOG(WARNING,
-			"flow rules relying on switch offloads will not be"
-			" supported: cannot open libmnl socket: %s",
-			strerror(rte_errno));
-	} else {
-		struct rte_flow_error error;
-		unsigned int ifindex = mlx5_ifindex(eth_dev);
-
-		if (!ifindex) {
-			err = -rte_errno;
-			error.message =
-				"cannot retrieve network interface index";
-		} else {
-			err = mlx5_flow_tcf_init(priv->tcf_context,
-						 ifindex, &error);
-		}
-		if (err) {
-			DRV_LOG(WARNING,
-				"flow rules relying on switch offloads will"
-				" not be supported: %s: %s",
-				error.message, strerror(rte_errno));
-			mlx5_flow_tcf_context_destroy(priv->tcf_context);
-			priv->tcf_context = NULL;
-		}
-	}
 	TAILQ_INIT(&priv->flows);
 	TAILQ_INIT(&priv->ctrl_flows);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */
@@ -1602,8 +1572,6 @@ error:
 			close(priv->nl_socket_route);
 		if (priv->nl_socket_rdma >= 0)
 			close(priv->nl_socket_rdma);
-		if (priv->tcf_context)
-			mlx5_flow_tcf_context_destroy(priv->tcf_context);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		rte_free(priv);

@@ -42,7 +42,6 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 extern const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops;
 #endif
-extern const struct mlx5_flow_driver_ops mlx5_flow_tcf_drv_ops;
 extern const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops;
 
 const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops;
@@ -52,7 +51,6 @@ const struct mlx5_flow_driver_ops *flow_drv_ops[] = {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	[MLX5_FLOW_TYPE_DV] = &mlx5_flow_dv_drv_ops,
 #endif
-	[MLX5_FLOW_TYPE_TCF] = &mlx5_flow_tcf_drv_ops,
 	[MLX5_FLOW_TYPE_VERBS] = &mlx5_flow_verbs_drv_ops,
 	[MLX5_FLOW_TYPE_MAX] = &mlx5_flow_null_drv_ops
 };
@@ -1037,7 +1035,7 @@ mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
 					  "egress is not supported");
-	if (attributes->transfer)
+	if (attributes->transfer && !priv->config.dv_esw_en)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
 					  NULL, "transfer is not supported");
@@ -1294,7 +1292,7 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
  * @param[in] target_protocol
  *   The next protocol in the previous item.
  * @param[in] flow_mask
- *   mlx5 flow-specific (TCF, DV, verbs, etc.) supported header fields mask.
+ *   mlx5 flow-specific (DV, verbs, etc.) supported header fields mask.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -1784,9 +1782,9 @@ flow_get_drv_type(struct rte_eth_dev *dev, const struct rte_flow_attr *attr)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	enum mlx5_flow_drv_type type = MLX5_FLOW_TYPE_MAX;
 
-	if (attr->transfer && !priv->config.dv_esw_en)
-		type = MLX5_FLOW_TYPE_TCF;
-	else
+	if (attr->transfer && priv->config.dv_esw_en)
+		type = MLX5_FLOW_TYPE_DV;
+	if (!attr->transfer)
 		type = priv->config.dv_flow_en ? MLX5_FLOW_TYPE_DV :
 						 MLX5_FLOW_TYPE_VERBS;
 	return type;
@@ -1833,7 +1831,7 @@ flow_drv_validate(struct rte_eth_dev *dev,
  * initializes the device flow and returns the pointer.
  *
  * @note
- *   This function initializes device flow structure such as dv, tcf or verbs in
+ *   This function initializes device flow structure such as dv or verbs in
  *   struct mlx5_flow. However, it is caller's responsibility to initialize the
  *   rest. For example, adding returning device flow to flow->dev_flow list and
  *   setting backward reference to the flow should be done out of this function.

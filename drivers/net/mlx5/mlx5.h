@@ -248,8 +248,6 @@ struct mlx5_drop {
 	struct mlx5_rxq_ibv *rxq; /* Verbs Rx queue. */
 };
 
-struct mlx5_flow_tcf_context;
-
 /* Per port data of shared IB device. */
 struct mlx5_ibv_shared_port {
 	uint32_t ih_port_id;
@@ -393,7 +391,6 @@ struct mlx5_priv {
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
-	struct mlx5_flow_tcf_context *tcf_context; /* TC flower context. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
