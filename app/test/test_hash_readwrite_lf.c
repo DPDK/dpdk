@@ -565,15 +565,8 @@ test_rwc_reader(__attribute__((unused)) void *arg)
 	uint32_t read_cnt;
 	uint32_t *keys;
 	uint32_t extra_keys;
-	int32_t *pos;
+	int32_t pos[BULK_LOOKUP_SIZE];
 	void *temp_a[BULK_LOOKUP_SIZE];
-
-	/* Used to identify keys not inserted in the hash table */
-	pos = rte_malloc(NULL, sizeof(uint32_t) * BULK_LOOKUP_SIZE, 0);
-	if (pos == NULL) {
-		printf("RTE_MALLOC failed\n");
-		return -1;
-	}
 
 	if (read_type & READ_FAIL) {
 		keys = tbl_rwc_test_param.keys_absent;
