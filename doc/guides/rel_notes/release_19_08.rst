@@ -1,6 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright 2019 The DPDK contributors
 
+.. include:: <isonum.txt>
+
 DPDK Release 19.08
 ==================
 
@@ -117,6 +119,15 @@ New Features
     queues
   * Enabled need_wakeup feature which can provide efficient support for case
     that application and driver executing on the same core.
+
+* **Added Intel QuickData Technology PMD**
+
+  The PMD for Intel\ |reg|  QuickData Technology, part of
+  Intel\ |reg|  I/O Acceleration Technology `(Intel I/OAT)
+  <https://www.intel.com/content/www/us/en/wireless-network/accel-technology.html>`_,
+  allows data copies to be done by hardware instead
+  of via software, reducing cycles spent copying large blocks of data in
+  applications.
 
 * **Updated telemetry library for global metrics support.**
 

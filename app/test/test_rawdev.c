@@ -25,3 +25,11 @@ test_rawdev_selftest_skeleton(void)
 }
 
 REGISTER_TEST_COMMAND(rawdev_autotest, test_rawdev_selftest_skeleton);
+
+static int
+test_rawdev_selftest_ioat(void)
+{
+	return TEST_SKIPPED;
+}
+
+REGISTER_TEST_COMMAND(ioat_rawdev_autotest, test_rawdev_selftest_ioat);

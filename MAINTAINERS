@@ -1090,6 +1090,11 @@ M: Tianfei zhang <tianfei.zhang@intel.com>
 F: drivers/raw/ifpga_rawdev/
 F: doc/guides/rawdevs/ifpga_rawdev.rst
 
+IOAT Rawdev
+M: Bruce Richardson <bruce.richardson@intel.com>
+F: drivers/raw/ioat/
+F: doc/guides/rawdevs/ioat_rawdev.rst
+
 NXP DPAA2 QDMA
 M: Nipun Gupta <nipun.gupta@nxp.com>
 F: drivers/raw/dpaa2_qdma/
