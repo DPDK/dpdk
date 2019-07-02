@@ -30,5 +30,5 @@
 
 include $(RTE_SDK)/mk/rte.helper.mk
 
-MACHINE_CFLAGS += $(call rte_cc_has_argument, -march=-mcpu=armv8.2-a+crc+crypto+lse)
+MACHINE_CFLAGS += $(call rte_cc_has_argument, -march=armv8.2-a+crc+crypto+lse)
 MACHINE_CFLAGS += $(call rte_cc_has_argument, -mcpu=octeontx2)
