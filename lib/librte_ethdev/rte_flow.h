@@ -1244,9 +1244,10 @@ struct rte_flow_item {
 /**
  * Action types.
  *
- * Each possible action is represented by a type. Some have associated
- * configuration structures. Several actions combined in a list can be
- * assigned to a flow rule and are performed in order.
+ * Each possible action is represented by a type.
+ * An action can have an associated configuration object.
+ * Several actions combined in a list can be assigned
+ * to a flow rule and are performed in order.
  *
  * They fall in three categories:
  *
@@ -2192,11 +2193,11 @@ struct rte_flow_action_set_mac {
  *
  * A list of actions is terminated by a END action.
  *
- * For simple actions without a configuration structure, conf remains NULL.
+ * For simple actions without a configuration object, conf remains NULL.
  */
 struct rte_flow_action {
 	enum rte_flow_action_type type; /**< Action type. */
-	const void *conf; /**< Pointer to action configuration structure. */
+	const void *conf; /**< Pointer to action configuration object. */
 };
 
 /**
