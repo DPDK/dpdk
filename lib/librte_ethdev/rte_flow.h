@@ -1650,6 +1650,62 @@ enum rte_flow_action_type {
 	 * See struct rte_flow_action_set_mac.
 	 */
 	RTE_FLOW_ACTION_TYPE_SET_MAC_DST,
+
+	/**
+	 * Increase sequence number in the outermost TCP header.
+	 *
+	 * Action configuration specifies the value to increase
+	 * TCP sequence number as a big-endian 32 bit integer.
+	 *
+	 * @p conf type:
+	 * @code rte_be32_t * @endcode
+	 *
+	 * Using this action on non-matching traffic will result in
+	 * undefined behavior.
+	 */
+	RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ,
+
+	/**
+	 * Decrease sequence number in the outermost TCP header.
+	 *
+	 * Action configuration specifies the value to decrease
+	 * TCP sequence number as a big-endian 32 bit integer.
+	 *
+	 * @p conf type:
+	 * @code rte_be32_t * @endcode
+	 *
+	 * Using this action on non-matching traffic will result in
+	 * undefined behavior.
+	 */
+	RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ,
+
+	/**
+	 * Increase acknowledgment number in the outermost TCP header.
+	 *
+	 * Action configuration specifies the value to increase
+	 * TCP acknowledgment number as a big-endian 32 bit integer.
+	 *
+	 * @p conf type:
+	 * @code rte_be32_t * @endcode
+
+	 * Using this action on non-matching traffic will result in
+	 * undefined behavior.
+	 */
+	RTE_FLOW_ACTION_TYPE_INC_TCP_ACK,
+
+	/**
+	 * Decrease acknowledgment number in the outermost TCP header.
+	 *
+	 * Action configuration specifies the value to decrease
+	 * TCP acknowledgment number as a big-endian 32 bit integer.
+	 *
+	 * @p conf type:
+	 * @code rte_be32_t * @endcode
+	 *
+	 * Using this action on non-matching traffic will result in
+	 * undefined behavior.
+	 */
+	RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK,
 };
 
 /**

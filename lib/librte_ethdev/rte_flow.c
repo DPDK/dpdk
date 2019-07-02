@@ -143,6 +143,10 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(SET_TTL, sizeof(struct rte_flow_action_set_ttl)),
 	MK_FLOW_ACTION(SET_MAC_SRC, sizeof(struct rte_flow_action_set_mac)),
 	MK_FLOW_ACTION(SET_MAC_DST, sizeof(struct rte_flow_action_set_mac)),
+	MK_FLOW_ACTION(INC_TCP_SEQ, sizeof(rte_be32_t)),
+	MK_FLOW_ACTION(DEC_TCP_SEQ, sizeof(rte_be32_t)),
+	MK_FLOW_ACTION(INC_TCP_ACK, sizeof(rte_be32_t)),
+	MK_FLOW_ACTION(DEC_TCP_ACK, sizeof(rte_be32_t)),
 };
 
 static int
