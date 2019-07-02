@@ -44,6 +44,8 @@ intel_ioat_bdw = {'Class': '08', 'Vendor': '8086', 'Device': '6f20,6f21,6f22,6f2
               'SVendor': None, 'SDevice': None}
 intel_ioat_skx = {'Class': '08', 'Vendor': '8086', 'Device': '2021',
               'SVendor': None, 'SDevice': None}
+intel_ntb_skx = {'Class': '06', 'Vendor': '8086', 'Device': '201c',
+              'SVendor': None, 'SDevice': None}
 
 network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
 baseband_devices = [acceleration_class]
@@ -51,7 +53,7 @@ crypto_devices = [encryption_class, intel_processor_class]
 eventdev_devices = [cavium_sso, cavium_tim, octeontx2_sso]
 mempool_devices = [cavium_fpa, octeontx2_npa]
 compress_devices = [cavium_zip]
-misc_devices = [intel_ioat_bdw, intel_ioat_skx, octeontx2_dma]
+misc_devices = [intel_ioat_bdw, intel_ioat_skx, intel_ntb_skx, octeontx2_dma]
 
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties

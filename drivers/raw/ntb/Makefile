@@ -23,5 +23,6 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_NTB_RAWDEV) += ntb.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_NTB_RAWDEV) += ntb_hw_intel.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
