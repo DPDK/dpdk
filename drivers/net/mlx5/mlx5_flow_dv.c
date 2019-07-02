@@ -136,6 +136,8 @@ struct field_modify_info modify_udp[] = {
 struct field_modify_info modify_tcp[] = {
 	{2, 0, MLX5_MODI_OUT_TCP_SPORT},
 	{2, 2, MLX5_MODI_OUT_TCP_DPORT},
+	{4, 4, MLX5_MODI_OUT_TCP_SEQ_NUM},
+	{4, 8, MLX5_MODI_OUT_TCP_ACK_NUM},
 	{0, 0, 0},
 };
 
@@ -557,6 +559,96 @@ flow_dv_convert_action_modify_dec_ttl
 		field = modify_ipv6;
 	}
 	return flow_dv_convert_modify_action(&item, field, resource,
+					     MLX5_MODIFICATION_TYPE_ADD, error);
+}
+
+/**
+ * Convert modify-header increment/decrement TCP Sequence number
+ * to DV specification.
+ *
+ * @param[in,out] resource
+ *   Pointer to the modify-header resource.
+ * @param[in] action
+ *   Pointer to action specification.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_modify_tcp_seq
+			(struct mlx5_flow_dv_modify_hdr_resource *resource,
+			 const struct rte_flow_action *action,
+			 struct rte_flow_error *error)
+{
+	const rte_be32_t *conf = (const rte_be32_t *)(action->conf);
+	uint64_t value = rte_be_to_cpu_32(*conf);
+	struct rte_flow_item item;
+	struct rte_flow_item_tcp tcp;
+	struct rte_flow_item_tcp tcp_mask;
+
+	memset(&tcp, 0, sizeof(tcp));
+	memset(&tcp_mask, 0, sizeof(tcp_mask));
+	if (action->type == RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ)
+		/*
+		 * The HW has no decrement operation, only increment operation.
+		 * To simulate decrement X from Y using increment operation
+		 * we need to add UINT32_MAX X times to Y.
+		 * Each adding of UINT32_MAX decrements Y by 1.
+		 */
+		value *= UINT32_MAX;
+	tcp.hdr.sent_seq = rte_cpu_to_be_32((uint32_t)value);
+	tcp_mask.hdr.sent_seq = RTE_BE32(UINT32_MAX);
+	item.type = RTE_FLOW_ITEM_TYPE_TCP;
+	item.spec = &tcp;
+	item.mask = &tcp_mask;
+	return flow_dv_convert_modify_action(&item, modify_tcp, resource,
+					     MLX5_MODIFICATION_TYPE_ADD, error);
+}
+
+/**
+ * Convert modify-header increment/decrement TCP Acknowledgment number
+ * to DV specification.
+ *
+ * @param[in,out] resource
+ *   Pointer to the modify-header resource.
+ * @param[in] action
+ *   Pointer to action specification.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_modify_tcp_ack
+			(struct mlx5_flow_dv_modify_hdr_resource *resource,
+			 const struct rte_flow_action *action,
+			 struct rte_flow_error *error)
+{
+	const rte_be32_t *conf = (const rte_be32_t *)(action->conf);
+	uint64_t value = rte_be_to_cpu_32(*conf);
+	struct rte_flow_item item;
+	struct rte_flow_item_tcp tcp;
+	struct rte_flow_item_tcp tcp_mask;
+
+	memset(&tcp, 0, sizeof(tcp));
+	memset(&tcp_mask, 0, sizeof(tcp_mask));
+	if (action->type == RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK)
+		/*
+		 * The HW has no decrement operation, only increment operation.
+		 * To simulate decrement X from Y using increment operation
+		 * we need to add UINT32_MAX X times to Y.
+		 * Each adding of UINT32_MAX decrements Y by 1.
+		 */
+		value *= UINT32_MAX;
+	tcp.hdr.recv_ack = rte_cpu_to_be_32((uint32_t)value);
+	tcp_mask.hdr.recv_ack = RTE_BE32(UINT32_MAX);
+	item.type = RTE_FLOW_ITEM_TYPE_TCP;
+	item.spec = &tcp;
+	item.mask = &tcp_mask;
+	return flow_dv_convert_modify_action(&item, modify_tcp, resource,
 					     MLX5_MODIFICATION_TYPE_ADD, error);
 }
 
@@ -1668,6 +1760,96 @@ flow_dv_validate_action_modify_tp(const uint64_t action_flags,
 }
 
 /**
+ * Validate the modify-header actions of increment/decrement
+ * TCP Sequence-number.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the modify action.
+ * @param[in] item_flags
+ *   Holds the items detected.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_modify_tcp_seq(const uint64_t action_flags,
+				       const struct rte_flow_action *action,
+				       const uint64_t item_flags,
+				       struct rte_flow_error *error)
+{
+	int ret = 0;
+
+	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
+	if (!ret) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_TCP))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "no TCP item in"
+						  " pattern");
+		if ((action->type == RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ &&
+			(action_flags & MLX5_FLOW_ACTION_DEC_TCP_SEQ)) ||
+		    (action->type == RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ &&
+			(action_flags & MLX5_FLOW_ACTION_INC_TCP_SEQ)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "cannot decrease and increase"
+						  " TCP sequence number"
+						  " at the same time");
+	}
+	return ret;
+}
+
+/**
+ * Validate the modify-header actions of increment/decrement
+ * TCP Acknowledgment number.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the modify action.
+ * @param[in] item_flags
+ *   Holds the items detected.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_modify_tcp_ack(const uint64_t action_flags,
+				       const struct rte_flow_action *action,
+				       const uint64_t item_flags,
+				       struct rte_flow_error *error)
+{
+	int ret = 0;
+
+	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
+	if (!ret) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_TCP))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "no TCP item in"
+						  " pattern");
+		if ((action->type == RTE_FLOW_ACTION_TYPE_INC_TCP_ACK &&
+			(action_flags & MLX5_FLOW_ACTION_DEC_TCP_ACK)) ||
+		    (action->type == RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK &&
+			(action_flags & MLX5_FLOW_ACTION_INC_TCP_ACK)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "cannot decrease and increase"
+						  " TCP acknowledgment number"
+						  " at the same time");
+	}
+	return ret;
+}
+
+/**
  * Validate the modify-header TTL actions.
  *
  * @param[in] action_flags
@@ -2415,6 +2597,40 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			++actions_n;
 			action_flags |= MLX5_FLOW_ACTION_JUMP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ:
+		case RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ:
+			ret = flow_dv_validate_action_modify_tcp_seq
+								(action_flags,
+								 actions,
+								 item_flags,
+								 error);
+			if (ret < 0)
+				return ret;
+			/* Count all modify-header actions as one action. */
+			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
+				++actions_n;
+			action_flags |= actions->type ==
+					RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ ?
+						MLX5_FLOW_ACTION_INC_TCP_SEQ :
+						MLX5_FLOW_ACTION_DEC_TCP_SEQ;
+			break;
+		case RTE_FLOW_ACTION_TYPE_INC_TCP_ACK:
+		case RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK:
+			ret = flow_dv_validate_action_modify_tcp_ack
+								(action_flags,
+								 actions,
+								 item_flags,
+								 error);
+			if (ret < 0)
+				return ret;
+			/* Count all modify-header actions as one action. */
+			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
+				++actions_n;
+			action_flags |= actions->type ==
+					RTE_FLOW_ACTION_TYPE_INC_TCP_ACK ?
+						MLX5_FLOW_ACTION_INC_TCP_ACK :
+						MLX5_FLOW_ACTION_DEC_TCP_ACK;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -3894,6 +4110,27 @@ cnt_err:
 							     error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_TTL;
+			break;
+		case RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ:
+		case RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ:
+			if (flow_dv_convert_action_modify_tcp_seq(&res, actions,
+								  error))
+				return -rte_errno;
+			action_flags |= actions->type ==
+					RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ ?
+					MLX5_FLOW_ACTION_INC_TCP_SEQ :
+					MLX5_FLOW_ACTION_DEC_TCP_SEQ;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_INC_TCP_ACK:
+		case RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK:
+			if (flow_dv_convert_action_modify_tcp_ack(&res, actions,
+								  error))
+				return -rte_errno;
+			action_flags |= actions->type ==
+					RTE_FLOW_ACTION_TYPE_INC_TCP_ACK ?
+					MLX5_FLOW_ACTION_INC_TCP_ACK :
+					MLX5_FLOW_ACTION_DEC_TCP_ACK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
