@@ -129,6 +129,12 @@ New Features
   of via software, reducing cycles spent copying large blocks of data in
   applications.
 
+* **Introduced NTB PMD.**
+
+  Added a PMD for Intel NTB (Non-transparent Bridge). This PMD implemented
+  handshake between two separate hosts and can share local memory for peer
+  host to directly access.
+
 * **Updated telemetry library for global metrics support.**
 
   Updated ``librte_telemetry`` to fetch the global metrics from the

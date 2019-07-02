@@ -15,4 +15,5 @@ application through rawdev API.
     dpaa2_qdma
     ifpga_rawdev
     ioat_rawdev
+    ntb
     octeontx2_dma

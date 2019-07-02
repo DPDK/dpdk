@@ -1111,6 +1111,12 @@ M: Vamsi Attunuru <vattunuru@marvell.com>
 F: drivers/raw/octeontx2_dma/
 F: doc/guides/rawdevs/octeontx2_dma.rst
 
+NTB
+M: Xiaoyun Li <xiaoyun.li@intel.com>
+M: Jingjing Wu <jingjing.wu@intel.com>
+F: drivers/raw/ntb/
+F: doc/guides/rawdevs/ntb.rst
+
 
 Packet processing
 -----------------

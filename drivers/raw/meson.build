@@ -2,7 +2,7 @@
 # Copyright 2018 NXP
 
 drivers = ['dpaa2_cmdif', 'dpaa2_qdma',
-	'ifpga_rawdev', 'ioat',
+	'ifpga_rawdev', 'ioat', 'ntb',
 	'octeontx2_dma',
 	'skeleton_rawdev']
 std_deps = ['rawdev']
