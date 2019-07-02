@@ -535,6 +535,7 @@ generate_keys(void)
 	       tbl_rwc_test_param.count_keys_ks_extbkt);
 
 	rte_free(found);
+	rte_free(scanned_bkts);
 	rte_hash_free(tbl_rwc_test_param.h);
 	return 0;
 
@@ -545,9 +546,11 @@ err:
 	rte_free(keys_absent);
 	rte_free(found);
 	rte_free(tbl_rwc_test_param.keys_shift_path);
+	rte_free(keys_non_shift_path);
 	rte_free(keys_ext_bkt);
 	rte_free(keys_ks_extbkt);
 	rte_free(scanned_bkts);
+	rte_hash_free(tbl_rwc_test_param.h);
 	return -1;
 }
 
@@ -1429,7 +1432,9 @@ results:
 	rte_free(tbl_rwc_test_param.keys_ks);
 	rte_free(tbl_rwc_test_param.keys_absent);
 	rte_free(tbl_rwc_test_param.keys_shift_path);
-	rte_free(scanned_bkts);
+	rte_free(tbl_rwc_test_param.keys_non_shift_path);
+	rte_free(tbl_rwc_test_param.keys_ext_bkt);
+	rte_free(tbl_rwc_test_param.keys_ks_extbkt);
 	return 0;
 }
 
