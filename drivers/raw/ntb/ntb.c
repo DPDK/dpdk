@@ -28,6 +28,183 @@ static const struct rte_pci_id pci_id_ntb_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+static int
+ntb_set_mw(struct rte_rawdev *dev, int mw_idx, uint64_t mw_size)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	char mw_name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *mz;
+	int ret = 0;
+
+	if (hw->ntb_ops->mw_set_trans == NULL) {
+		NTB_LOG(ERR, "Not supported to set mw.");
+		return -ENOTSUP;
+	}
+
+	snprintf(mw_name, sizeof(mw_name), "ntb_%d_mw_%d",
+		 dev->dev_id, mw_idx);
+
+	mz = rte_memzone_lookup(mw_name);
+	if (mz)
+		return 0;
+
+	/**
+	 * Hardware requires that mapped memory base address should be
+	 * aligned with EMBARSZ and needs continuous memzone.
+	 */
+	mz = rte_memzone_reserve_aligned(mw_name, mw_size, dev->socket_id,
+				RTE_MEMZONE_IOVA_CONTIG, hw->mw_size[mw_idx]);
+	if (!mz) {
+		NTB_LOG(ERR, "Cannot allocate aligned memzone.");
+		return -EIO;
+	}
+	hw->mz[mw_idx] = mz;
+
+	ret = (*hw->ntb_ops->mw_set_trans)(dev, mw_idx, mz->iova, mw_size);
+	if (ret) {
+		NTB_LOG(ERR, "Cannot set mw translation.");
+		return ret;
+	}
+
+	return ret;
+}
+
+static void
+ntb_link_cleanup(struct rte_rawdev *dev)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	int status, i;
+
+	if (hw->ntb_ops->spad_write == NULL ||
+	    hw->ntb_ops->mw_set_trans == NULL) {
+		NTB_LOG(ERR, "Not supported to clean up link.");
+		return;
+	}
+
+	/* Clean spad registers. */
+	for (i = 0; i < hw->spad_cnt; i++) {
+		status = (*hw->ntb_ops->spad_write)(dev, i, 0, 0);
+		if (status)
+			NTB_LOG(ERR, "Failed to clean local spad.");
+	}
+
+	/* Clear mw so that peer cannot access local memory.*/
+	for (i = 0; i < hw->mw_cnt; i++) {
+		status = (*hw->ntb_ops->mw_set_trans)(dev, i, 0, 0);
+		if (status)
+			NTB_LOG(ERR, "Failed to clean mw.");
+	}
+}
+
+static void
+ntb_dev_intr_handler(void *param)
+{
+	struct rte_rawdev *dev = (struct rte_rawdev *)param;
+	struct ntb_hw *hw = dev->dev_private;
+	uint32_t mw_size_h, mw_size_l;
+	uint64_t db_bits = 0;
+	int i = 0;
+
+	if (hw->ntb_ops->db_read == NULL ||
+	    hw->ntb_ops->db_clear == NULL ||
+	    hw->ntb_ops->peer_db_set == NULL) {
+		NTB_LOG(ERR, "Doorbell is not supported.");
+		return;
+	}
+
+	db_bits = (*hw->ntb_ops->db_read)(dev);
+	if (!db_bits)
+		NTB_LOG(ERR, "No doorbells");
+
+	/* Doorbell 0 is for peer device ready. */
+	if (db_bits & 1) {
+		NTB_LOG(DEBUG, "DB0: Peer device is up.");
+		/* Clear received doorbell. */
+		(*hw->ntb_ops->db_clear)(dev, 1);
+
+		/**
+		 * Peer dev is already up. All mw settings are already done.
+		 * Skip them.
+		 */
+		if (hw->peer_dev_up)
+			return;
+
+		if (hw->ntb_ops->spad_read == NULL ||
+		    hw->ntb_ops->spad_write == NULL) {
+			NTB_LOG(ERR, "Scratchpad is not supported.");
+			return;
+		}
+
+		hw->peer_mw_cnt = (*hw->ntb_ops->spad_read)
+				  (dev, SPAD_NUM_MWS, 0);
+		hw->peer_mw_size = rte_zmalloc("uint64_t",
+				   hw->peer_mw_cnt * sizeof(uint64_t), 0);
+		for (i = 0; i < hw->mw_cnt; i++) {
+			mw_size_h = (*hw->ntb_ops->spad_read)
+				    (dev, SPAD_MW0_SZ_H + 2 * i, 0);
+			mw_size_l = (*hw->ntb_ops->spad_read)
+				    (dev, SPAD_MW0_SZ_L + 2 * i, 0);
+			hw->peer_mw_size[i] = ((uint64_t)mw_size_h << 32) |
+					      mw_size_l;
+			NTB_LOG(DEBUG, "Peer %u mw size: 0x%"PRIx64"", i,
+					hw->peer_mw_size[i]);
+		}
+
+		hw->peer_dev_up = 1;
+
+		/**
+		 * Handshake with peer. Spad_write only works when both
+		 * devices are up. So write spad again when db is received.
+		 * And set db again for the later device who may miss
+		 * the 1st db.
+		 */
+		for (i = 0; i < hw->mw_cnt; i++) {
+			(*hw->ntb_ops->spad_write)(dev, SPAD_NUM_MWS,
+						   1, hw->mw_cnt);
+			mw_size_h = hw->mw_size[i] >> 32;
+			(*hw->ntb_ops->spad_write)(dev, SPAD_MW0_SZ_H + 2 * i,
+						   1, mw_size_h);
+
+			mw_size_l = hw->mw_size[i];
+			(*hw->ntb_ops->spad_write)(dev, SPAD_MW0_SZ_L + 2 * i,
+						   1, mw_size_l);
+		}
+		(*hw->ntb_ops->peer_db_set)(dev, 0);
+
+		/* To get the link info. */
+		if (hw->ntb_ops->get_link_status == NULL) {
+			NTB_LOG(ERR, "Not supported to get link status.");
+			return;
+		}
+		(*hw->ntb_ops->get_link_status)(dev);
+		NTB_LOG(INFO, "Link is up. Link speed: %u. Link width: %u",
+			hw->link_speed, hw->link_width);
+		return;
+	}
+
+	if (db_bits & (1 << 1)) {
+		NTB_LOG(DEBUG, "DB1: Peer device is down.");
+		/* Clear received doorbell. */
+		(*hw->ntb_ops->db_clear)(dev, 2);
+
+		/* Peer device will be down, So clean local side too. */
+		ntb_link_cleanup(dev);
+
+		hw->peer_dev_up = 0;
+		/* Response peer's dev_stop request. */
+		(*hw->ntb_ops->peer_db_set)(dev, 2);
+		return;
+	}
+
+	if (db_bits & (1 << 2)) {
+		NTB_LOG(DEBUG, "DB2: Peer device agrees dev to be down.");
+		/* Clear received doorbell. */
+		(*hw->ntb_ops->db_clear)(dev, (1 << 2));
+		hw->peer_dev_up = 0;
+		return;
+	}
+}
+
 static void
 ntb_queue_conf_get(struct rte_rawdev *dev __rte_unused,
 		   uint16_t queue_id __rte_unused,
@@ -147,7 +324,22 @@ ntb_dev_configure(const struct rte_rawdev *dev __rte_unused,
 static int
 ntb_dev_start(struct rte_rawdev *dev)
 {
+	struct ntb_hw *hw = dev->dev_private;
+	int ret, i;
+
 	/* TODO: init queues and start queues. */
+
+	/* Map memory of bar_size to remote. */
+	hw->mz = rte_zmalloc("struct rte_memzone *",
+			     hw->mw_cnt * sizeof(struct rte_memzone *), 0);
+	for (i = 0; i < hw->mw_cnt; i++) {
+		ret = ntb_set_mw(dev, i, hw->mw_size[i]);
+		if (ret) {
+			NTB_LOG(ERR, "Fail to set mw.");
+			return ret;
+		}
+	}
+
 	dev->started = 1;
 
 	return 0;
@@ -156,19 +348,79 @@ ntb_dev_start(struct rte_rawdev *dev)
 static void
 ntb_dev_stop(struct rte_rawdev *dev)
 {
+	struct ntb_hw *hw = dev->dev_private;
+	uint32_t time_out;
+	int status;
+
 	/* TODO: stop rx/tx queues. */
+
+	if (!hw->peer_dev_up)
+		goto clean;
+
+	ntb_link_cleanup(dev);
+
+	/* Notify the peer that device will be down. */
+	if (hw->ntb_ops->peer_db_set == NULL) {
+		NTB_LOG(ERR, "Peer doorbell setting is not supported.");
+		return;
+	}
+	status = (*hw->ntb_ops->peer_db_set)(dev, 1);
+	if (status) {
+		NTB_LOG(ERR, "Failed to tell peer device is down.");
+		return;
+	}
+
+	/*
+	 * Set time out as 1s in case that the peer is stopped accidently
+	 * without any notification.
+	 */
+	time_out = 1000000;
+
+	/* Wait for cleanup work down before db mask clear. */
+	while (hw->peer_dev_up && time_out) {
+		time_out -= 10;
+		rte_delay_us(10);
+	}
+
+clean:
+	/* Clear doorbells mask. */
+	if (hw->ntb_ops->db_set_mask == NULL) {
+		NTB_LOG(ERR, "Doorbell mask setting is not supported.");
+		return;
+	}
+	status = (*hw->ntb_ops->db_set_mask)(dev,
+				(((uint64_t)1 << hw->db_cnt) - 1));
+	if (status)
+		NTB_LOG(ERR, "Failed to clear doorbells.");
+
 	dev->started = 0;
 }
 
 static int
 ntb_dev_close(struct rte_rawdev *dev)
 {
+	struct ntb_hw *hw = dev->dev_private;
+	struct rte_intr_handle *intr_handle;
 	int ret = 0;
 
 	if (dev->started)
 		ntb_dev_stop(dev);
 
 	/* TODO: free queues. */
+
+	intr_handle = &hw->pci_dev->intr_handle;
+	/* Clean datapath event and vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+	/* Disable uio intr before callback unregister */
+	rte_intr_disable(intr_handle);
+
+	/* Unregister callback func to eal lib */
+	rte_intr_callback_unregister(intr_handle,
+				     ntb_dev_intr_handler, dev);
 
 	return ret;
 }
@@ -346,7 +598,9 @@ static int
 ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 {
 	struct ntb_hw *hw = dev->dev_private;
-	int ret;
+	struct rte_intr_handle *intr_handle;
+	uint32_t val;
+	int ret, i;
 
 	hw->pci_dev = pci_dev;
 	hw->peer_dev_up = 0;
@@ -376,6 +630,86 @@ ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 	ret = (*hw->ntb_ops->set_link)(dev, 1);
 	if (ret)
 		return ret;
+
+	/* Init doorbell. */
+	hw->db_valid_mask = RTE_LEN2MASK(hw->db_cnt, uint64_t);
+
+	intr_handle = &pci_dev->intr_handle;
+	/* Register callback func to eal lib */
+	rte_intr_callback_register(intr_handle,
+				   ntb_dev_intr_handler, dev);
+
+	ret = rte_intr_efd_enable(intr_handle, hw->db_cnt);
+	if (ret)
+		return ret;
+
+	/* To clarify, the interrupt for each doorbell is already mapped
+	 * by default for intel gen3. They are mapped to msix vec 1-32,
+	 * and hardware intr is mapped to 0. Map all to 0 for uio.
+	 */
+	if (!rte_intr_cap_multiple(intr_handle)) {
+		for (i = 0; i < hw->db_cnt; i++) {
+			if (hw->ntb_ops->vector_bind == NULL)
+				return -ENOTSUP;
+			ret = (*hw->ntb_ops->vector_bind)(dev, i, 0);
+			if (ret)
+				return ret;
+		}
+	}
+
+	if (hw->ntb_ops->db_set_mask == NULL ||
+	    hw->ntb_ops->peer_db_set == NULL) {
+		NTB_LOG(ERR, "Doorbell is not supported.");
+		return -ENOTSUP;
+	}
+	hw->db_mask = 0;
+	ret = (*hw->ntb_ops->db_set_mask)(dev, hw->db_mask);
+	if (ret) {
+		NTB_LOG(ERR, "Unable to enable intr for all dbs.");
+		return ret;
+	}
+
+	/* enable uio intr after callback register */
+	rte_intr_enable(intr_handle);
+
+	if (hw->ntb_ops->spad_write == NULL) {
+		NTB_LOG(ERR, "Scratchpad is not supported.");
+		return -ENOTSUP;
+	}
+	/* Tell peer the mw_cnt of local side. */
+	ret = (*hw->ntb_ops->spad_write)(dev, SPAD_NUM_MWS, 1, hw->mw_cnt);
+	if (ret) {
+		NTB_LOG(ERR, "Failed to tell peer mw count.");
+		return ret;
+	}
+
+	/* Tell peer each mw size on local side. */
+	for (i = 0; i < hw->mw_cnt; i++) {
+		NTB_LOG(DEBUG, "Local %u mw size: 0x%"PRIx64"", i,
+				hw->mw_size[i]);
+		val = hw->mw_size[i] >> 32;
+		ret = (*hw->ntb_ops->spad_write)
+				(dev, SPAD_MW0_SZ_H + 2 * i, 1, val);
+		if (ret) {
+			NTB_LOG(ERR, "Failed to tell peer mw size.");
+			return ret;
+		}
+
+		val = hw->mw_size[i];
+		ret = (*hw->ntb_ops->spad_write)
+				(dev, SPAD_MW0_SZ_L + 2 * i, 1, val);
+		if (ret) {
+			NTB_LOG(ERR, "Failed to tell peer mw size.");
+			return ret;
+		}
+	}
+
+	/* Ring doorbell 0 to tell peer the device is ready. */
+	ret = (*hw->ntb_ops->peer_db_set)(dev, 0);
+	if (ret) {
+		NTB_LOG(ERR, "Failed to tell peer device is probed.");
+		return ret;
+	}
 
 	return ret;
 }

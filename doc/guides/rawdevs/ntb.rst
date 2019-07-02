@@ -9,6 +9,11 @@ separate hosts so that they can communicate with each other. Thus, many
 user cases can benefit from this, such as fault tolerance and visual
 acceleration.
 
+This PMD allows two hosts to handshake for device start and stop, memory
+allocation for the peer to access and read/write allocated memory from peer.
+Also, the PMD allows to use doorbell registers to notify the peer and share
+some information by using scratchpad registers.
+
 BIOS setting on Intel Skylake
 -----------------------------
 
