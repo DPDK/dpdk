@@ -15,6 +15,11 @@ srcdir=$(dirname $(readlink -f $0))/..
 MESON=${MESON:-meson}
 use_shared="--default-library=shared"
 
+if command -v gmake >/dev/null 2>&1 ; then
+	MAKE=gmake
+else
+	MAKE=make
+fi
 if command -v ninja >/dev/null 2>&1 ; then
 	ninja_cmd=ninja
 elif command -v ninja-build >/dev/null 2>&1 ; then
@@ -92,3 +97,17 @@ if command -v $c >/dev/null 2>&1 ; then
 			$use_shared --cross-file $f
 	done
 fi
+
+# Test installation of the x86-default target, to be used for checking
+# the sample apps build using the pkg-config file for cflags and libs
+build_path=build-x86-default
+export DESTDIR=$(pwd)/$build_path/install-root
+$ninja_cmd -C $build_path install
+
+pc_file=$(find $DESTDIR -name libdpdk.pc)
+export PKG_CONFIG_PATH=$(dirname $pc_file):$PKG_CONFIG_PATH
+
+for example in cmdline helloworld l2fwd l3fwd skeleton timer; do
+	echo "## Building $example"
+	$MAKE -C $DESTDIR/usr/local/share/dpdk/examples/$example clean all
+done
