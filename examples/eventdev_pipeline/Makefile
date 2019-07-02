@@ -20,10 +20,12 @@ shared: build/$(APP)-shared
 static: build/$(APP)-static
 	ln -sf $(APP)-static build/$(APP)
 
-PC_FILE := $(shell pkg-config --path libdpdk)
-CFLAGS += -O3 $(shell pkg-config --cflags libdpdk)
-LDFLAGS_SHARED = $(shell pkg-config --libs libdpdk)
-LDFLAGS_STATIC = -Wl,-Bstatic $(shell pkg-config --static --libs libdpdk)
+PKGCONF=pkg-config --define-prefix
+
+PC_FILE := $(shell $(PKGCONF) --path libdpdk)
+CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
+LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
+LDFLAGS_STATIC = -Wl,-Bstatic $(shell $(PKGCONF) --static --libs libdpdk)
 
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
 	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
