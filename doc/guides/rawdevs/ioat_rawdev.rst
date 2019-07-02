@@ -72,3 +72,14 @@ them to a suitable DPDK-supported kernel driver. When querying the status
 of the devices, they will appear under the category of "Misc (rawdev)
 devices", i.e. the command ``dpdk-devbind.py --status-dev misc`` can be
 used to see the state of those devices alone.
+
+Device Probing and Initialization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once bound to a suitable kernel device driver, the HW devices will be found
+as part of the PCI scan done at application initialization time. No vdev
+parameters need to be passed to create or initialize the device.
+
+Once probed successfully, the device will appear as a ``rawdev``, that is a
+"raw device type" inside DPDK, and can be accessed using APIs from the
+``rte_rawdev`` library.

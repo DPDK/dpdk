@@ -2,6 +2,7 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
+#include <rte_cycles.h>
 #include <rte_bus_pci.h>
 #include <rte_rawdev_pmd.h>
 
@@ -36,15 +37,120 @@ static struct rte_pci_driver ioat_pmd_drv;
 static int
 ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 {
-	RTE_SET_USED(name);
-	RTE_SET_USED(dev);
+	static const struct rte_rawdev_ops ioat_rawdev_ops = {
+	};
+
+	struct rte_rawdev *rawdev = NULL;
+	struct rte_ioat_rawdev *ioat = NULL;
+	const struct rte_memzone *mz = NULL;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	int ret = 0;
+	int retry = 0;
+
+	if (!name) {
+		IOAT_PMD_ERR("Invalid name of the device!");
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	/* Allocate device structure */
+	rawdev = rte_rawdev_pmd_allocate(name, sizeof(struct rte_ioat_rawdev),
+					 dev->device.numa_node);
+	if (rawdev == NULL) {
+		IOAT_PMD_ERR("Unable to allocate raw device");
+		ret = -ENOMEM;
+		goto cleanup;
+	}
+
+	snprintf(mz_name, sizeof(mz_name), "rawdev%u_private", rawdev->dev_id);
+	mz = rte_memzone_reserve(mz_name, sizeof(struct rte_ioat_rawdev),
+			dev->device.numa_node, RTE_MEMZONE_IOVA_CONTIG);
+	if (mz == NULL) {
+		IOAT_PMD_ERR("Unable to reserve memzone for private data\n");
+		ret = -ENOMEM;
+		goto cleanup;
+	}
+
+	rawdev->dev_private = mz->addr;
+	rawdev->dev_ops = &ioat_rawdev_ops;
+	rawdev->device = &dev->device;
+	rawdev->driver_name = dev->device.driver->name;
+
+	ioat = rawdev->dev_private;
+	ioat->rawdev = rawdev;
+	ioat->mz = mz;
+	ioat->regs = dev->mem_resource[0].addr;
+	ioat->ring_size = 0;
+	ioat->desc_ring = NULL;
+	ioat->status_addr = ioat->mz->iova +
+			offsetof(struct rte_ioat_rawdev, status);
+
+	/* do device initialization - reset and set error behaviour */
+	if (ioat->regs->chancnt != 1)
+		IOAT_PMD_ERR("%s: Channel count == %d\n", __func__,
+				ioat->regs->chancnt);
+
+	if (ioat->regs->chanctrl & 0x100) { /* locked by someone else */
+		IOAT_PMD_WARN("%s: Channel appears locked\n", __func__);
+		ioat->regs->chanctrl = 0;
+	}
+
+	ioat->regs->chancmd = RTE_IOAT_CHANCMD_SUSPEND;
+	rte_delay_ms(1);
+	ioat->regs->chancmd = RTE_IOAT_CHANCMD_RESET;
+	rte_delay_ms(1);
+	while (ioat->regs->chancmd & RTE_IOAT_CHANCMD_RESET) {
+		ioat->regs->chainaddr = 0;
+		rte_delay_ms(1);
+		if (++retry >= 200) {
+			IOAT_PMD_ERR("%s: cannot reset device. CHANCMD=0x%"PRIx8", CHANSTS=0x%"PRIx64", CHANERR=0x%"PRIx32"\n",
+					__func__,
+					ioat->regs->chancmd,
+					ioat->regs->chansts,
+					ioat->regs->chanerr);
+			ret = -EIO;
+		}
+	}
+	ioat->regs->chanctrl = RTE_IOAT_CHANCTRL_ANY_ERR_ABORT_EN |
+			RTE_IOAT_CHANCTRL_ERR_COMPLETION_EN;
+
 	return 0;
+
+cleanup:
+	if (rawdev)
+		rte_rawdev_pmd_release(rawdev);
+
+	return ret;
 }
 
 static int
 ioat_rawdev_destroy(const char *name)
 {
-	RTE_SET_USED(name);
+	int ret;
+	struct rte_rawdev *rdev;
+
+	if (!name) {
+		IOAT_PMD_ERR("Invalid device name");
+		return -EINVAL;
+	}
+
+	rdev = rte_rawdev_pmd_get_named_dev(name);
+	if (!rdev) {
+		IOAT_PMD_ERR("Invalid device name (%s)", name);
+		return -EINVAL;
+	}
+
+	if (rdev->dev_private != NULL) {
+		struct rte_ioat_rawdev *ioat = rdev->dev_private;
+		rdev->dev_private = NULL;
+		rte_memzone_free(ioat->mz);
+	}
+
+	/* rte_rawdev_close is called by pmd_release */
+	ret = rte_rawdev_pmd_release(rdev);
+	if (ret)
+		IOAT_PMD_DEBUG("Device cleanup failed");
+
 	return 0;
 }
 
