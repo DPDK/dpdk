@@ -34,10 +34,21 @@ static struct rte_pci_driver ioat_pmd_drv;
 #define IOAT_PMD_ERR(fmt, args...)    IOAT_PMD_LOG(ERR, fmt, ## args)
 #define IOAT_PMD_WARN(fmt, args...)   IOAT_PMD_LOG(WARNING, fmt, ## args)
 
+static void
+ioat_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info)
+{
+	struct rte_ioat_rawdev_config *cfg = dev_info;
+	struct rte_ioat_rawdev *ioat = dev->dev_private;
+
+	if (cfg != NULL)
+		cfg->ring_size = ioat->ring_size;
+}
+
 static int
 ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 {
 	static const struct rte_rawdev_ops ioat_rawdev_ops = {
+			.dev_info_get = ioat_dev_info_get,
 	};
 
 	struct rte_rawdev *rawdev = NULL;

@@ -83,3 +83,37 @@ parameters need to be passed to create or initialize the device.
 Once probed successfully, the device will appear as a ``rawdev``, that is a
 "raw device type" inside DPDK, and can be accessed using APIs from the
 ``rte_rawdev`` library.
+
+Using IOAT Rawdev Devices
+--------------------------
+
+To use the devices from an application, the rawdev API can be used, along
+with definitions taken from the device-specific header file
+``rte_ioat_rawdev.h``. This header is needed to get the definition of
+structure parameters used by some of the rawdev APIs for IOAT rawdev
+devices, as well as providing key functions for using the device for memory
+copies.
+
+Getting Device Information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Basic information about each rawdev device can be queried using the
+``rte_rawdev_info_get()`` API. For most applications, this API will be
+needed to verify that the rawdev in question is of the expected type. For
+example, the following code snippet can be used to identify an IOAT
+rawdev device for use by an application:
+
+.. code-block:: C
+
+        for (i = 0; i < count && !found; i++) {
+                struct rte_rawdev_info info = { .dev_private = NULL };
+                found = (rte_rawdev_info_get(i, &info) == 0 &&
+                                strcmp(info.driver_name,
+                                                IOAT_PMD_RAWDEV_NAME_STR) == 0);
+        }
+
+When calling the ``rte_rawdev_info_get()`` API for an IOAT rawdev device,
+the ``dev_private`` field in the ``rte_rawdev_info`` struct should either
+be NULL, or else be set to point to a structure of type
+``rte_ioat_rawdev_config``, in which case the size of the configured device
+input ring will be returned in that structure.

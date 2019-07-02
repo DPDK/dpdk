@@ -26,6 +26,17 @@
 #define IOAT_PMD_LOG_NAME "rawdev.ioat"
 
 /**
+ * Configuration structure for an ioat rawdev instance
+ *
+ * This structure is to be passed as the ".dev_private" parameter when
+ * calling the rte_rawdev_get_info() and rte_rawdev_configure() APIs on
+ * an ioat rawdev instance.
+ */
+struct rte_ioat_rawdev_config {
+	unsigned short ring_size;
+};
+
+/**
  * @internal
  * Structure representing a device instance
  */
