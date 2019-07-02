@@ -181,9 +181,8 @@
  * The *dequeue* operation gets one or more events from the event ports.
  * The application process the events and send to downstream event queue through
  * rte_event_enqueue_burst() if it is an intermediate stage of event processing,
- * on the final stage, the application may send to different subsystem like
- * ethdev to send the packet/event on the wire using ethdev
- * rte_eth_tx_burst() API.
+ * on the final stage, the application may use Tx adapter API for maintaining
+ * the ingress order and then send the packet/event on the wire.
  *
  * The point at which events are scheduled to ports depends on the device.
  * For hardware devices, scheduling occurs asynchronously without any software
