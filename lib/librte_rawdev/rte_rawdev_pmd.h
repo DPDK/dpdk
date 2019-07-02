@@ -499,7 +499,7 @@ typedef int (*rawdev_firmware_unload_t)(struct rte_rawdev *dev);
  * @return
  *   Return 0 on success
  */
-typedef int (*rawdev_selftest_t)(void);
+typedef int (*rawdev_selftest_t)(uint16_t dev_id);
 
 /** Rawdevice operations function pointer table */
 struct rte_rawdev_ops {

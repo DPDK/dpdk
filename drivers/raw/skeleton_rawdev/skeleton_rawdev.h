@@ -131,6 +131,6 @@ skeleton_rawdev_get_priv(const struct rte_rawdev *rawdev)
 	return rawdev->dev_private;
 }
 
-int test_rawdev_skeldev(void);
+int test_rawdev_skeldev(uint16_t dev_id);
 
 #endif /* __SKELETON_RAWDEV_H__ */

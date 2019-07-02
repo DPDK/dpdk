@@ -378,7 +378,7 @@ rte_rawdev_selftest(uint16_t dev_id)
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_selftest, -ENOTSUP);
-	return (*dev->dev_ops->dev_selftest)();
+	return (*dev->dev_ops->dev_selftest)(dev_id);
 }
 
 int

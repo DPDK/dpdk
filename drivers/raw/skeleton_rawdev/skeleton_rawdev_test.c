@@ -426,8 +426,9 @@ static void skeldev_test_run(int (*setup)(void),
 }
 
 int
-test_rawdev_skeldev(void)
+test_rawdev_skeldev(uint16_t dev_id)
 {
+	test_dev_id = dev_id;
 	testsuite_setup();
 
 	SKELDEV_TEST_RUN(NULL, NULL, test_rawdev_count);
