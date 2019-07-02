@@ -149,3 +149,17 @@ The following code shows how the device is configured in
 
 Once configured, the device can then be made ready for use by calling the
 ``rte_rawdev_start()`` API.
+
+Querying Device Statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The statistics from the IOAT rawdev device can be got via the xstats
+functions in the ``rte_rawdev`` library, i.e.
+``rte_rawdev_xstats_names_get()``, ``rte_rawdev_xstats_get()`` and
+``rte_rawdev_xstats_by_name_get``. The statistics returned for each device
+instance are:
+
+* ``failed_enqueues``
+* ``successful_enqueues``
+* ``copies_started``
+* ``copies_completed``

@@ -54,6 +54,12 @@ struct rte_ioat_rawdev {
 	struct rte_ioat_generic_hw_desc *desc_ring;
 	__m128i *hdls; /* completion handles for returning to user */
 
+	/* some statistics for tracking, if added/changed update xstats fns*/
+	uint64_t enqueue_failed __rte_cache_aligned;
+	uint64_t enqueued;
+	uint64_t started;
+	uint64_t completed;
+
 	/* to report completions, the device will write status back here */
 	volatile uint64_t status __rte_cache_aligned;
 };

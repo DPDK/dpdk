@@ -4,6 +4,7 @@
 
 #include <rte_cycles.h>
 #include <rte_bus_pci.h>
+#include <rte_string_fns.h>
 #include <rte_rawdev_pmd.h>
 
 #include "rte_ioat_rawdev.h"
@@ -119,6 +120,47 @@ ioat_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info)
 		cfg->ring_size = ioat->ring_size;
 }
 
+static const char * const xstat_names[] = {
+		"failed_enqueues", "successful_enqueues",
+		"copies_started", "copies_completed"
+};
+
+static int
+ioat_xstats_get(const struct rte_rawdev *dev, const unsigned int ids[],
+		uint64_t values[], unsigned int n)
+{
+	const struct rte_ioat_rawdev *ioat = dev->dev_private;
+	unsigned int i;
+
+	for (i = 0; i < n; i++) {
+		switch (ids[i]) {
+		case 0: values[i] = ioat->enqueue_failed; break;
+		case 1: values[i] = ioat->enqueued; break;
+		case 2: values[i] = ioat->started; break;
+		case 3: values[i] = ioat->completed; break;
+		default: values[i] = 0; break;
+		}
+	}
+	return n;
+}
+
+static int
+ioat_xstats_get_names(const struct rte_rawdev *dev,
+		struct rte_rawdev_xstats_name *names,
+		unsigned int size)
+{
+	unsigned int i;
+
+	RTE_SET_USED(dev);
+	if (size < RTE_DIM(xstat_names))
+		return RTE_DIM(xstat_names);
+
+	for (i = 0; i < RTE_DIM(xstat_names); i++)
+		strlcpy(names[i].name, xstat_names[i], sizeof(names[i]));
+
+	return RTE_DIM(xstat_names);
+}
+
 extern int ioat_rawdev_test(uint16_t dev_id);
 
 static int
@@ -129,6 +171,8 @@ ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 			.dev_start = ioat_dev_start,
 			.dev_stop = ioat_dev_stop,
 			.dev_info_get = ioat_dev_info_get,
+			.xstats_get = ioat_xstats_get,
+			.xstats_get_names = ioat_xstats_get_names,
 			.dev_selftest = ioat_rawdev_test,
 	};
 
