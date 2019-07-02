@@ -28,23 +28,25 @@ build () # <directory> <meson options>
 {
 	builddir=$1
 	shift
-	if [ ! -f "$builddir/build.ninja" ] ; then
-		options="--werror -Dexamples=all $*"
-		echo "$MESON $options $srcdir $builddir"
-		$MESON $options $srcdir $builddir
-		unset CC
-	fi
-	if [ -n "$TEST_MESON_BUILD_VERY_VERBOSE" ] ; then
-		# for full output from ninja use "-v"
-		echo "$ninja_cmd -v -C $builddir"
-		$ninja_cmd -v -C $builddir
-	elif [ -n "$TEST_MESON_BUILD_VERBOSE" ] ; then
-		# for keeping the history of short cmds, pipe through cat
-		echo "$ninja_cmd -C $builddir | cat"
-		$ninja_cmd -C $builddir | cat
-	else
-		echo "$ninja_cmd -C $builddir"
-		$ninja_cmd -C $builddir
+	if command -v $CC >/dev/null 2>&1 ; then
+		if [ ! -f "$builddir/build.ninja" ] ; then
+			options="--werror -Dexamples=all $*"
+			echo "$MESON $options $srcdir $builddir"
+			$MESON $options $srcdir $builddir
+			unset CC
+		fi
+		if [ -n "$TEST_MESON_BUILD_VERY_VERBOSE" ] ; then
+			# for full output from ninja use "-v"
+			echo "$ninja_cmd -v -C $builddir"
+			$ninja_cmd -v -C $builddir
+		elif [ -n "$TEST_MESON_BUILD_VERBOSE" ] ; then
+			# for keeping the history of short cmds, pipe through cat
+			echo "$ninja_cmd -C $builddir | cat"
+			$ninja_cmd -C $builddir | cat
+		else
+			echo "$ninja_cmd -C $builddir"
+			$ninja_cmd -C $builddir
+		fi
 	fi
 }
 
@@ -80,7 +82,7 @@ build build-x86-default -Dmachine=$default_machine $use_shared
 c=aarch64-linux-gnu-gcc
 if command -v $c >/dev/null 2>&1 ; then
 	# compile the general v8a also for clang to increase coverage
-	export CC="ccache clang"
+	export CC="clang"
 	build build-arm64-host-clang $use_shared \
 		--cross-file $srcdir/config/arm/arm64_armv8_linux_gcc
 
