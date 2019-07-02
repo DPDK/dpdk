@@ -568,7 +568,9 @@ struct rte_rawdev_ops {
  * @param name
  *   Unique identifier name for each device
  * @param dev_private_size
- *   Private data allocated within rte_rawdev object.
+ *   Size of private data memory allocated within rte_rawdev object.
+ *   Set to 0 to disable internal memory allocation and allow for
+ *   self-allocation.
  * @param socket_id
  *   Socket to allocate resources on.
  * @return
