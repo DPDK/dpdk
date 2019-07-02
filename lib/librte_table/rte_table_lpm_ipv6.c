@@ -182,7 +182,7 @@ rte_table_lpm_ipv6_entry_add(
 	struct rte_table_lpm_ipv6 *lpm = table;
 	struct rte_table_lpm_ipv6_key *ip_prefix =
 		key;
-	uint32_t nht_pos, nht_pos0, nht_pos0_valid;
+	uint32_t nht_pos = 0, nht_pos0 = 0, nht_pos0_valid = 0;
 	int status;
 
 	/* Check input parameters */
