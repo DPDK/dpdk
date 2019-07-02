@@ -240,11 +240,19 @@ ntb_enqueue_bufs(struct rte_rawdev *dev,
 		 unsigned int count,
 		 rte_rawdev_obj_t context)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(buffers);
-	RTE_SET_USED(count);
-	RTE_SET_USED(context);
+	/* Not FIFO right now. Just for testing memory write. */
+	struct ntb_hw *hw = dev->dev_private;
+	unsigned int i;
+	void *bar_addr;
+	size_t size;
 
+	if (hw->ntb_ops->get_peer_mw_addr == NULL)
+		return -ENOTSUP;
+	bar_addr = (*hw->ntb_ops->get_peer_mw_addr)(dev, 0);
+	size = (size_t)context;
+
+	for (i = 0; i < count; i++)
+		rte_memcpy(bar_addr, buffers[i]->buf_addr, size);
 	return 0;
 }
 
@@ -254,11 +262,15 @@ ntb_dequeue_bufs(struct rte_rawdev *dev,
 		 unsigned int count,
 		 rte_rawdev_obj_t context)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(buffers);
-	RTE_SET_USED(count);
-	RTE_SET_USED(context);
+	/* Not FIFO. Just for testing memory read. */
+	struct ntb_hw *hw = dev->dev_private;
+	unsigned int i;
+	size_t size;
 
+	size = (size_t)context;
+
+	for (i = 0; i < count; i++)
+		rte_memcpy(buffers[i]->buf_addr, hw->mz[i]->addr, size);
 	return 0;
 }
 

@@ -58,3 +58,4 @@ Sample Applications User Guides
     fips_validation
     ipsec_secgw
     bbdev_app
+    ntb

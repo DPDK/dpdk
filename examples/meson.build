@@ -30,7 +30,7 @@ all_examples = [
 	'multi_process/hotplug_mp',
 	'multi_process/simple_mp',
 	'multi_process/symmetric_mp',
-	'netmap_compat', 'packet_ordering',
+	'netmap_compat', 'ntb', 'packet_ordering',
 	'performance-thread', 'ptpclient',
 	'qos_meter', 'qos_sched',
 	'quota_watermark', 'rxtx_callbacks',

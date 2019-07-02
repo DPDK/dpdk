@@ -1116,6 +1116,8 @@ M: Xiaoyun Li <xiaoyun.li@intel.com>
 M: Jingjing Wu <jingjing.wu@intel.com>
 F: drivers/raw/ntb/
 F: doc/guides/rawdevs/ntb.rst
+F: examples/ntb/
+F: doc/guides/sample_app_ug/ntb.rst
 
 
 Packet processing

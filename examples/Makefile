@@ -53,6 +53,7 @@ DIRS-y += link_status_interrupt
 DIRS-$(CONFIG_RTE_LIBRTE_LPM) += load_balancer
 DIRS-y += multi_process
 DIRS-y += netmap_compat/bridge
+DIRS-y += ntb
 DIRS-$(CONFIG_RTE_LIBRTE_REORDER) += packet_ordering
 ifeq ($(CONFIG_RTE_ARCH_X86_64),y)
 DIRS-y += performance-thread
