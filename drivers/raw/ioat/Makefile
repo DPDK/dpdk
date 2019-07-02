@@ -24,5 +24,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_IOAT_RAWDEV) += ioat_rawdev.c
 
 # export include files
 SYMLINK-y-include += rte_ioat_rawdev.h
+SYMLINK-y-include += rte_ioat_spec.h
 
 include $(RTE_SDK)/mk/rte.lib.mk
