@@ -12,6 +12,7 @@ CFLAGS += $(WERROR_FLAGS)
 
 LDLIBS += -lrte_eal -lrte_rawdev
 LDLIBS += -lrte_pci -lrte_bus_pci
+LDLIBS += -lrte_mbuf -lrte_mempool
 
 # library version
 LIBABIVER := 1
