@@ -584,11 +584,13 @@ struct rte_eth_rss_conf {
 #define ETH_VLAN_STRIP_OFFLOAD   0x0001 /**< VLAN Strip  On/Off */
 #define ETH_VLAN_FILTER_OFFLOAD  0x0002 /**< VLAN Filter On/Off */
 #define ETH_VLAN_EXTEND_OFFLOAD  0x0004 /**< VLAN Extend On/Off */
+#define ETH_QINQ_STRIP_OFFLOAD   0x0008 /**< QINQ Strip On/Off */
 
 /* Definitions used for mask VLAN setting */
 #define ETH_VLAN_STRIP_MASK   0x0001 /**< VLAN Strip  setting mask */
 #define ETH_VLAN_FILTER_MASK  0x0002 /**< VLAN Filter  setting mask*/
 #define ETH_VLAN_EXTEND_MASK  0x0004 /**< VLAN Extend  setting mask*/
+#define ETH_QINQ_STRIP_MASK   0x0008 /**< QINQ Strip  setting mask */
 #define ETH_VLAN_ID_MAX       0x0FFF /**< VLAN ID is in lower 12 bits*/
 
 /* Definitions used for receive MAC address   */
@@ -1017,7 +1019,8 @@ struct rte_eth_conf {
 				 DEV_RX_OFFLOAD_TCP_CKSUM)
 #define DEV_RX_OFFLOAD_VLAN (DEV_RX_OFFLOAD_VLAN_STRIP | \
 			     DEV_RX_OFFLOAD_VLAN_FILTER | \
-			     DEV_RX_OFFLOAD_VLAN_EXTEND)
+			     DEV_RX_OFFLOAD_VLAN_EXTEND | \
+			     DEV_RX_OFFLOAD_QINQ_STRIP)
 
 /*
  * If new Rx offload capabilities are defined, they also must be
@@ -2540,6 +2543,7 @@ int rte_eth_dev_set_vlan_ether_type(uint16_t port_id,
  *       ETH_VLAN_STRIP_OFFLOAD
  *       ETH_VLAN_FILTER_OFFLOAD
  *       ETH_VLAN_EXTEND_OFFLOAD
+ *       ETH_QINQ_STRIP_OFFLOAD
  * @return
  *   - (0) if successful.
  *   - (-ENOSUP) if hardware-assisted VLAN filtering not configured.
@@ -2558,6 +2562,7 @@ int rte_eth_dev_set_vlan_offload(uint16_t port_id, int offload_mask);
  *       ETH_VLAN_STRIP_OFFLOAD
  *       ETH_VLAN_FILTER_OFFLOAD
  *       ETH_VLAN_EXTEND_OFFLOAD
+ *       ETH_QINQ_STRIP_OFFLOAD
  *   - (-ENODEV) if *port_id* invalid.
  */
 int rte_eth_dev_get_vlan_offload(uint16_t port_id);

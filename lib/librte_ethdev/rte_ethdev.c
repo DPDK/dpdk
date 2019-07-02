@@ -2733,51 +2733,54 @@ rte_eth_dev_set_vlan_offload(uint16_t port_id, int offload_mask)
 	int mask = 0;
 	int cur, org = 0;
 	uint64_t orig_offloads;
+	uint64_t *dev_offloads;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	/* save original values in case of failure */
 	orig_offloads = dev->data->dev_conf.rxmode.offloads;
+	dev_offloads = &dev->data->dev_conf.rxmode.offloads;
 
 	/*check which option changed by application*/
 	cur = !!(offload_mask & ETH_VLAN_STRIP_OFFLOAD);
-	org = !!(dev->data->dev_conf.rxmode.offloads &
-		 DEV_RX_OFFLOAD_VLAN_STRIP);
+	org = !!(*dev_offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 	if (cur != org) {
 		if (cur)
-			dev->data->dev_conf.rxmode.offloads |=
-				DEV_RX_OFFLOAD_VLAN_STRIP;
+			*dev_offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
 		else
-			dev->data->dev_conf.rxmode.offloads &=
-				~DEV_RX_OFFLOAD_VLAN_STRIP;
+			*dev_offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
 		mask |= ETH_VLAN_STRIP_MASK;
 	}
 
 	cur = !!(offload_mask & ETH_VLAN_FILTER_OFFLOAD);
-	org = !!(dev->data->dev_conf.rxmode.offloads &
-		 DEV_RX_OFFLOAD_VLAN_FILTER);
+	org = !!(*dev_offloads & DEV_RX_OFFLOAD_VLAN_FILTER);
 	if (cur != org) {
 		if (cur)
-			dev->data->dev_conf.rxmode.offloads |=
-				DEV_RX_OFFLOAD_VLAN_FILTER;
+			*dev_offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
 		else
-			dev->data->dev_conf.rxmode.offloads &=
-				~DEV_RX_OFFLOAD_VLAN_FILTER;
+			*dev_offloads &= ~DEV_RX_OFFLOAD_VLAN_FILTER;
 		mask |= ETH_VLAN_FILTER_MASK;
 	}
 
 	cur = !!(offload_mask & ETH_VLAN_EXTEND_OFFLOAD);
-	org = !!(dev->data->dev_conf.rxmode.offloads &
-		 DEV_RX_OFFLOAD_VLAN_EXTEND);
+	org = !!(*dev_offloads & DEV_RX_OFFLOAD_VLAN_EXTEND);
 	if (cur != org) {
 		if (cur)
-			dev->data->dev_conf.rxmode.offloads |=
-				DEV_RX_OFFLOAD_VLAN_EXTEND;
+			*dev_offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
 		else
-			dev->data->dev_conf.rxmode.offloads &=
-				~DEV_RX_OFFLOAD_VLAN_EXTEND;
+			*dev_offloads &= ~DEV_RX_OFFLOAD_VLAN_EXTEND;
 		mask |= ETH_VLAN_EXTEND_MASK;
+	}
+
+	cur = !!(offload_mask & ETH_QINQ_STRIP_OFFLOAD);
+	org = !!(*dev_offloads & DEV_RX_OFFLOAD_QINQ_STRIP);
+	if (cur != org) {
+		if (cur)
+			*dev_offloads |= DEV_RX_OFFLOAD_QINQ_STRIP;
+		else
+			*dev_offloads &= ~DEV_RX_OFFLOAD_QINQ_STRIP;
+		mask |= ETH_QINQ_STRIP_MASK;
 	}
 
 	/*no change*/
@@ -2788,7 +2791,7 @@ rte_eth_dev_set_vlan_offload(uint16_t port_id, int offload_mask)
 	ret = (*dev->dev_ops->vlan_offload_set)(dev, mask);
 	if (ret) {
 		/* hit an error restore  original values */
-		dev->data->dev_conf.rxmode.offloads = orig_offloads;
+		*dev_offloads = orig_offloads;
 	}
 
 	return eth_err(port_id, ret);
@@ -2798,22 +2801,24 @@ int
 rte_eth_dev_get_vlan_offload(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
+	uint64_t *dev_offloads;
 	int ret = 0;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
+	dev_offloads = &dev->data->dev_conf.rxmode.offloads;
 
-	if (dev->data->dev_conf.rxmode.offloads &
-	    DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (*dev_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
 		ret |= ETH_VLAN_STRIP_OFFLOAD;
 
-	if (dev->data->dev_conf.rxmode.offloads &
-	    DEV_RX_OFFLOAD_VLAN_FILTER)
+	if (*dev_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 		ret |= ETH_VLAN_FILTER_OFFLOAD;
 
-	if (dev->data->dev_conf.rxmode.offloads &
-	    DEV_RX_OFFLOAD_VLAN_EXTEND)
+	if (*dev_offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
 		ret |= ETH_VLAN_EXTEND_OFFLOAD;
+
+	if (*dev_offloads & DEV_RX_OFFLOAD_QINQ_STRIP)
+		ret |= DEV_RX_OFFLOAD_QINQ_STRIP;
 
 	return ret;
 }
