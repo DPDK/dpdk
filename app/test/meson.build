@@ -91,6 +91,7 @@ test_sources = files('commands.c',
 	'test_power_kvm_vm.c',
 	'test_prefetch.c',
 	'test_rand_perf.c',
+	'test_rawdev.c',
 	'test_rcu_qsbr.c',
 	'test_rcu_qsbr_perf.c',
 	'test_reciprocal_division.c',
@@ -142,6 +143,7 @@ test_deps = ['acl',
 	'metrics',
 	'pipeline',
 	'port',
+	'rawdev',
 	'rcu',
 	'reorder',
 	'ring',
@@ -279,6 +281,7 @@ driver_test_names = [
         'link_bonding_autotest',
         'link_bonding_mode4_autotest',
         'link_bonding_rssconf_autotest',
+        'rawdev_autotest',
 ]
 
 dump_test_names = [
