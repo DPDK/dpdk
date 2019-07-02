@@ -139,6 +139,52 @@ get_enabled_cores_list(void)
 	return 0;
 }
 
+static int
+init_params(int rwc_lf, int use_jhash, int htm, int ext_bkt)
+{
+	struct rte_hash *handle;
+
+	struct rte_hash_parameters hash_params = {
+		.entries = TOTAL_ENTRY,
+		.key_len = sizeof(uint32_t),
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+
+	if (use_jhash)
+		hash_params.hash_func = rte_jhash;
+	else
+		hash_params.hash_func = rte_hash_crc;
+
+	if (rwc_lf)
+		hash_params.extra_flag =
+			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF |
+			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
+	else if (htm)
+		hash_params.extra_flag =
+			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT |
+			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
+			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
+	else
+		hash_params.extra_flag =
+			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
+			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
+
+	if (ext_bkt)
+		hash_params.extra_flag |= RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+
+	hash_params.name = "tests";
+
+	handle = rte_hash_create(&hash_params);
+	if (handle == NULL) {
+		printf("hash creation failed");
+		return -1;
+	}
+
+	tbl_rwc_test_param.h = handle;
+	return 0;
+}
+
 static inline int
 check_bucket(uint32_t bkt_idx, uint32_t key)
 {
@@ -212,6 +258,9 @@ generate_keys(void)
 	uint32_t count_keys_ks = 0;
 	uint32_t count_keys_extbkt = 0;
 	uint32_t i;
+
+	if (init_params(0, 0, 0, 0) != 0)
+		return -1;
 
 	/*
 	 * keys will consist of a) keys whose addition to the hash table
@@ -500,52 +549,6 @@ err:
 	rte_free(keys_ks_extbkt);
 	rte_free(scanned_bkts);
 	return -1;
-}
-
-static int
-init_params(int rwc_lf, int use_jhash, int htm, int ext_bkt)
-{
-	struct rte_hash *handle;
-
-	struct rte_hash_parameters hash_params = {
-		.entries = TOTAL_ENTRY,
-		.key_len = sizeof(uint32_t),
-		.hash_func_init_val = 0,
-		.socket_id = rte_socket_id(),
-	};
-
-	if (use_jhash)
-		hash_params.hash_func = rte_jhash;
-	else
-		hash_params.hash_func = rte_hash_crc;
-
-	if (rwc_lf)
-		hash_params.extra_flag =
-			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF |
-			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
-	else if (htm)
-		hash_params.extra_flag =
-			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT |
-			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
-			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
-	else
-		hash_params.extra_flag =
-			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
-			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
-
-	if (ext_bkt)
-		hash_params.extra_flag |= RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
-
-	hash_params.name = "tests";
-
-	handle = rte_hash_create(&hash_params);
-	if (handle == NULL) {
-		printf("hash creation failed");
-		return -1;
-	}
-
-	tbl_rwc_test_param.h = handle;
-	return 0;
 }
 
 static int
@@ -1252,7 +1255,6 @@ test_hash_readwrite_lf_main(void)
 	 */
 	int rwc_lf = 0;
 	int htm;
-	int use_jhash = 0;
 	int ext_bkt = 0;
 
 	if (rte_lcore_count() < 2) {
@@ -1270,8 +1272,6 @@ test_hash_readwrite_lf_main(void)
 	else
 		htm = 0;
 
-	if (init_params(rwc_lf, use_jhash, htm, ext_bkt) != 0)
-		return -1;
 	if (generate_keys() != 0)
 		return -1;
 	if (get_enabled_cores_list() != 0)
