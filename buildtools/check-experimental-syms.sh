@@ -36,8 +36,9 @@ do
 	fi
 done
 
+# Filter out symbols suffixed with a . for icc
 for SYM in `objdump -t $OBJFILE |awk '{
-	if ($2 != "l" && $4 == ".text.experimental") {
+	if ($2 != "l" && $4 == ".text.experimental" && !($NF ~ /\.$/)) {
 		print $NF
 	}
 }'`
