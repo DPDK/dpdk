@@ -21,6 +21,7 @@ EXPORT_MAP := rte_pmd_ioat_version.map
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_IOAT_RAWDEV) += ioat_rawdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_IOAT_RAWDEV) += ioat_rawdev_test.c
 
 # export include files
 SYMLINK-y-include += rte_ioat_rawdev.h

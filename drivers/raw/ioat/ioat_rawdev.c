@@ -34,6 +34,81 @@ static struct rte_pci_driver ioat_pmd_drv;
 #define IOAT_PMD_ERR(fmt, args...)    IOAT_PMD_LOG(ERR, fmt, ## args)
 #define IOAT_PMD_WARN(fmt, args...)   IOAT_PMD_LOG(WARNING, fmt, ## args)
 
+#define DESC_SZ sizeof(struct rte_ioat_generic_hw_desc)
+#define COMPLETION_SZ sizeof(__m128i)
+
+static int
+ioat_dev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
+{
+	struct rte_ioat_rawdev_config *params = config;
+	struct rte_ioat_rawdev *ioat = dev->dev_private;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	unsigned short i;
+
+	if (dev->started)
+		return -EBUSY;
+
+	if (params == NULL)
+		return -EINVAL;
+
+	if (params->ring_size > 4096 || params->ring_size < 64 ||
+			!rte_is_power_of_2(params->ring_size))
+		return -EINVAL;
+
+	ioat->ring_size = params->ring_size;
+	if (ioat->desc_ring != NULL) {
+		rte_memzone_free(ioat->desc_mz);
+		ioat->desc_ring = NULL;
+		ioat->desc_mz = NULL;
+	}
+
+	/* allocate one block of memory for both descriptors
+	 * and completion handles.
+	 */
+	snprintf(mz_name, sizeof(mz_name), "rawdev%u_desc_ring", dev->dev_id);
+	ioat->desc_mz = rte_memzone_reserve(mz_name,
+			(DESC_SZ + COMPLETION_SZ) * ioat->ring_size,
+			dev->device->numa_node, RTE_MEMZONE_IOVA_CONTIG);
+	if (ioat->desc_mz == NULL)
+		return -ENOMEM;
+	ioat->desc_ring = ioat->desc_mz->addr;
+	ioat->hdls = (void *)&ioat->desc_ring[ioat->ring_size];
+
+	ioat->ring_addr = ioat->desc_mz->iova;
+
+	/* configure descriptor ring - each one points to next */
+	for (i = 0; i < ioat->ring_size; i++) {
+		ioat->desc_ring[i].next = ioat->ring_addr +
+				(((i + 1) % ioat->ring_size) * DESC_SZ);
+	}
+
+	return 0;
+}
+
+static int
+ioat_dev_start(struct rte_rawdev *dev)
+{
+	struct rte_ioat_rawdev *ioat = dev->dev_private;
+
+	if (ioat->ring_size == 0 || ioat->desc_ring == NULL)
+		return -EBUSY;
+
+	/* inform hardware of where the descriptor ring is */
+	ioat->regs->chainaddr = ioat->ring_addr;
+	/* inform hardware of where to write the status/completions */
+	ioat->regs->chancmp = ioat->status_addr;
+
+	/* prime the status register to be set to the last element */
+	ioat->status =  ioat->ring_addr + ((ioat->ring_size - 1) * DESC_SZ);
+	return 0;
+}
+
+static void
+ioat_dev_stop(struct rte_rawdev *dev)
+{
+	RTE_SET_USED(dev);
+}
+
 static void
 ioat_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info)
 {
@@ -44,11 +119,17 @@ ioat_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info)
 		cfg->ring_size = ioat->ring_size;
 }
 
+extern int ioat_rawdev_test(uint16_t dev_id);
+
 static int
 ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 {
 	static const struct rte_rawdev_ops ioat_rawdev_ops = {
+			.dev_configure = ioat_dev_configure,
+			.dev_start = ioat_dev_start,
+			.dev_stop = ioat_dev_stop,
 			.dev_info_get = ioat_dev_info_get,
+			.dev_selftest = ioat_rawdev_test,
 	};
 
 	struct rte_rawdev *rawdev = NULL;
@@ -154,6 +235,7 @@ ioat_rawdev_destroy(const char *name)
 	if (rdev->dev_private != NULL) {
 		struct rte_ioat_rawdev *ioat = rdev->dev_private;
 		rdev->dev_private = NULL;
+		rte_memzone_free(ioat->desc_mz);
 		rte_memzone_free(ioat->mz);
 	}
 

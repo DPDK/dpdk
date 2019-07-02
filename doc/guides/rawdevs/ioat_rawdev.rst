@@ -117,3 +117,35 @@ the ``dev_private`` field in the ``rte_rawdev_info`` struct should either
 be NULL, or else be set to point to a structure of type
 ``rte_ioat_rawdev_config``, in which case the size of the configured device
 input ring will be returned in that structure.
+
+Device Configuration
+~~~~~~~~~~~~~~~~~~~~~
+
+Configuring an IOAT rawdev device is done using the
+``rte_rawdev_configure()`` API, which takes the same structure parameters
+as the, previously referenced, ``rte_rawdev_info_get()`` API. The main
+difference is that, because the parameter is used as input rather than
+output, the ``dev_private`` structure element cannot be NULL, and must
+point to a valid ``rte_ioat_rawdev_config`` structure, containing the ring
+size to be used by the device. The ring size must be a power of two,
+between 64 and 4096.
+
+The following code shows how the device is configured in
+``test_ioat_rawdev.c``:
+
+.. code-block:: C
+
+   #define IOAT_TEST_RINGSIZE 512
+        struct rte_ioat_rawdev_config p = { .ring_size = -1 };
+        struct rte_rawdev_info info = { .dev_private = &p };
+
+        /* ... */
+
+        p.ring_size = IOAT_TEST_RINGSIZE;
+        if (rte_rawdev_configure(dev_id, &info) != 0) {
+                printf("Error with rte_rawdev_configure()\n");
+                return -1;
+        }
+
+Once configured, the device can then be made ready for use by calling the
+``rte_rawdev_start()`` API.
