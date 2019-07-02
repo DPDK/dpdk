@@ -272,6 +272,14 @@ enum index {
 	ACTION_SET_MAC_SRC_MAC_SRC,
 	ACTION_SET_MAC_DST,
 	ACTION_SET_MAC_DST_MAC_DST,
+	ACTION_INC_TCP_SEQ,
+	ACTION_INC_TCP_SEQ_VALUE,
+	ACTION_DEC_TCP_SEQ,
+	ACTION_DEC_TCP_SEQ_VALUE,
+	ACTION_INC_TCP_ACK,
+	ACTION_INC_TCP_ACK_VALUE,
+	ACTION_DEC_TCP_ACK,
+	ACTION_DEC_TCP_ACK_VALUE,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -483,6 +491,14 @@ struct token {
 		.hton = 1, \
 		.offset = offsetof(s, f), \
 		.size = sizeof(((s *)0)->f), \
+	})
+
+/** Same as ARGS_ENTRY_HTON() for a single argument, without structure. */
+#define ARG_ENTRY_HTON(s) \
+	(&(const struct arg){ \
+		.hton = 1, \
+		.offset = 0, \
+		.size = sizeof(s), \
 	})
 
 /** Parser output buffer layout expected by cmd_flow_parsed(). */
@@ -885,6 +901,10 @@ static const enum index next_action[] = {
 	ACTION_SET_TTL,
 	ACTION_SET_MAC_SRC,
 	ACTION_SET_MAC_DST,
+	ACTION_INC_TCP_SEQ,
+	ACTION_DEC_TCP_SEQ,
+	ACTION_INC_TCP_ACK,
+	ACTION_DEC_TCP_ACK,
 	ZERO,
 };
 
@@ -1043,6 +1063,30 @@ static const enum index action_jump[] = {
 
 static const enum index action_set_mac_dst[] = {
 	ACTION_SET_MAC_DST_MAC_DST,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_inc_tcp_seq[] = {
+	ACTION_INC_TCP_SEQ_VALUE,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_dec_tcp_seq[] = {
+	ACTION_DEC_TCP_SEQ_VALUE,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_inc_tcp_ack[] = {
+	ACTION_INC_TCP_ACK_VALUE,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_dec_tcp_ack[] = {
+	ACTION_DEC_TCP_ACK_VALUE,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -2852,6 +2896,62 @@ static const struct token token_list[] = {
 		.next = NEXT(action_set_mac_dst, NEXT_ENTRY(MAC_ADDR)),
 		.args = ARGS(ARGS_ENTRY_HTON
 			     (struct rte_flow_action_set_mac, mac_addr)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_INC_TCP_SEQ] = {
+		.name = "inc_tcp_seq",
+		.help = "increase TCP sequence number",
+		.priv = PRIV_ACTION(INC_TCP_SEQ, sizeof(rte_be32_t)),
+		.next = NEXT(action_inc_tcp_seq),
+		.call = parse_vc,
+	},
+	[ACTION_INC_TCP_SEQ_VALUE] = {
+		.name = "value",
+		.help = "the value to increase TCP sequence number by",
+		.next = NEXT(action_inc_tcp_seq, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARG_ENTRY_HTON(rte_be32_t)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_DEC_TCP_SEQ] = {
+		.name = "dec_tcp_seq",
+		.help = "decrease TCP sequence number",
+		.priv = PRIV_ACTION(DEC_TCP_SEQ, sizeof(rte_be32_t)),
+		.next = NEXT(action_dec_tcp_seq),
+		.call = parse_vc,
+	},
+	[ACTION_DEC_TCP_SEQ_VALUE] = {
+		.name = "value",
+		.help = "the value to decrease TCP sequence number by",
+		.next = NEXT(action_dec_tcp_seq, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARG_ENTRY_HTON(rte_be32_t)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_INC_TCP_ACK] = {
+		.name = "inc_tcp_ack",
+		.help = "increase TCP acknowledgment number",
+		.priv = PRIV_ACTION(INC_TCP_ACK, sizeof(rte_be32_t)),
+		.next = NEXT(action_inc_tcp_ack),
+		.call = parse_vc,
+	},
+	[ACTION_INC_TCP_ACK_VALUE] = {
+		.name = "value",
+		.help = "the value to increase TCP acknowledgment number by",
+		.next = NEXT(action_inc_tcp_ack, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARG_ENTRY_HTON(rte_be32_t)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_DEC_TCP_ACK] = {
+		.name = "dec_tcp_ack",
+		.help = "decrease TCP acknowledgment number",
+		.priv = PRIV_ACTION(DEC_TCP_ACK, sizeof(rte_be32_t)),
+		.next = NEXT(action_dec_tcp_ack),
+		.call = parse_vc,
+	},
+	[ACTION_DEC_TCP_ACK_VALUE] = {
+		.name = "value",
+		.help = "the value to decrease TCP acknowledgment number by",
+		.next = NEXT(action_dec_tcp_ack, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARG_ENTRY_HTON(rte_be32_t)),
 		.call = parse_vc_conf,
 	},
 };

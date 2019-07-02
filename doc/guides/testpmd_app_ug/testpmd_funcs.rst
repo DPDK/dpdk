@@ -4106,6 +4106,22 @@ This section lists supported actions and their attributes, if any.
 
   - ``mac_addr {MAC-48}``: new destination MAC address
 
+- ``inc_tcp_seq``: Increase sequence number in the outermost TCP header.
+
+  - ``value {unsigned}``: Value to increase TCP sequence number by.
+
+- ``dec_tcp_seq``: Decrease sequence number in the outermost TCP header.
+
+  - ``value {unsigned}``: Value to decrease TCP sequence number by.
+
+- ``inc_tcp_ack``: Increase acknowledgment number in the outermost TCP header.
+
+  - ``value {unsigned}``: Value to increase TCP acknowledgment number by.
+
+- ``dec_tcp_ack``: Decrease acknowledgment number in the outermost TCP header.
+
+  - ``value {unsigned}``: Value to decrease TCP acknowledgment number by.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
