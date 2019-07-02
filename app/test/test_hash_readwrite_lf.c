@@ -1262,6 +1262,9 @@ test_hash_readwrite_lf_main(void)
 
 	setlocale(LC_NUMERIC, "");
 
+	/* Reset tbl_rwc_test_param to discard values from previous run */
+	memset(&tbl_rwc_test_param, 0, sizeof(tbl_rwc_test_param));
+
 	if (rte_tm_supported())
 		htm = 1;
 	else
