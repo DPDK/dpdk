@@ -262,17 +262,17 @@ struct ndis_lsov2_offload {
 
 struct ndis_ipsecv2_offload {
 	uint32_t			ndis_encap;	/*NDIS_OFFLOAD_ENCAP_*/
-	uint16_t			ndis_ip6;
-	uint16_t			ndis_ip4opt;
-	uint16_t			ndis_ip6ext;
-	uint16_t			ndis_ah;
-	uint16_t			ndis_esp;
-	uint16_t			ndis_ah_esp;
-	uint16_t			ndis_xport;
-	uint16_t			ndis_tun;
-	uint16_t			ndis_xport_tun;
-	uint16_t			ndis_lso;
-	uint16_t			ndis_extseq;
+	uint8_t				ndis_ip6;
+	uint8_t				ndis_ip4opt;
+	uint8_t				ndis_ip6ext;
+	uint8_t				ndis_ah;
+	uint8_t				ndis_esp;
+	uint8_t				ndis_ah_esp;
+	uint8_t				ndis_xport;
+	uint8_t				ndis_tun;
+	uint8_t				ndis_xport_tun;
+	uint8_t				ndis_lso;
+	uint8_t				ndis_extseq;
 	uint32_t			ndis_udp_esp;
 	uint32_t			ndis_auth;
 	uint32_t			ndis_crypto;
@@ -280,8 +280,8 @@ struct ndis_ipsecv2_offload {
 };
 
 struct ndis_rsc_offload {
-	uint16_t			ndis_ip4;
-	uint16_t			ndis_ip6;
+	uint8_t				ndis_ip4;
+	uint8_t				ndis_ip6;
 };
 
 struct ndis_encap_offload {
