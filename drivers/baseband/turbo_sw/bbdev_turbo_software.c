@@ -34,9 +34,9 @@ static int bbdev_turbo_sw_logtype;
 	rte_bbdev_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \
 		##__VA_ARGS__)
 
-#define DEINT_INPUT_BUF_SIZE (((RTE_BBDEV_MAX_CB_SIZE >> 3) + 1) * 48)
+#define DEINT_INPUT_BUF_SIZE (((RTE_BBDEV_TURBO_MAX_CB_SIZE >> 3) + 1) * 48)
 #define DEINT_OUTPUT_BUF_SIZE (DEINT_INPUT_BUF_SIZE * 6)
-#define ADAPTER_OUTPUT_BUF_SIZE ((RTE_BBDEV_MAX_CB_SIZE + 4) * 48)
+#define ADAPTER_OUTPUT_BUF_SIZE ((RTE_BBDEV_TURBO_MAX_CB_SIZE + 4) * 48)
 
 /* private data structure */
 struct bbdev_private {
@@ -103,7 +103,7 @@ compute_idx(uint16_t k)
 {
 	int32_t result = 0;
 
-	if (k < RTE_BBDEV_MIN_CB_SIZE || k > RTE_BBDEV_MAX_CB_SIZE)
+	if (k < RTE_BBDEV_TURBO_MIN_CB_SIZE || k > RTE_BBDEV_TURBO_MAX_CB_SIZE)
 		return -1;
 
 	if (k > 2048) {
@@ -158,9 +158,10 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 					RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP |
 					RTE_BBDEV_TURBO_EARLY_TERMINATION,
 				.max_llr_modulus = 16,
-				.num_buffers_src = RTE_BBDEV_MAX_CODE_BLOCKS,
+				.num_buffers_src =
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
 				.num_buffers_hard_out =
-						RTE_BBDEV_MAX_CODE_BLOCKS,
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
 				.num_buffers_soft_out = 0,
 			}
 		},
@@ -172,8 +173,10 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 						RTE_BBDEV_TURBO_CRC_24A_ATTACH |
 						RTE_BBDEV_TURBO_RATE_MATCH |
 						RTE_BBDEV_TURBO_RV_INDEX_BYPASS,
-				.num_buffers_src = RTE_BBDEV_MAX_CODE_BLOCKS,
-				.num_buffers_dst = RTE_BBDEV_MAX_CODE_BLOCKS,
+				.num_buffers_src =
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
+				.num_buffers_dst =
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
 			}
 		},
 #endif
@@ -257,7 +260,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		return -ENAMETOOLONG;
 	}
 	q->enc_out = rte_zmalloc_socket(name,
-			((RTE_BBDEV_MAX_TB_SIZE >> 3) + 3) *
+			((RTE_BBDEV_TURBO_MAX_TB_SIZE >> 3) + 3) *
 			sizeof(*q->enc_out) * 3,
 			RTE_CACHE_LINE_SIZE, queue_conf->socket);
 	if (q->enc_out == NULL) {
@@ -277,7 +280,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		return -ENAMETOOLONG;
 	}
 	q->enc_in = rte_zmalloc_socket(name,
-			(RTE_BBDEV_MAX_CB_SIZE >> 3) * sizeof(*q->enc_in),
+			(RTE_BBDEV_TURBO_MAX_CB_SIZE >> 3) * sizeof(*q->enc_in),
 			RTE_CACHE_LINE_SIZE, queue_conf->socket);
 	if (q->enc_in == NULL) {
 		rte_bbdev_log(ERR,
@@ -295,7 +298,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		return -ENAMETOOLONG;
 	}
 	q->ag = rte_zmalloc_socket(name,
-			RTE_BBDEV_MAX_CB_SIZE * 10 * sizeof(*q->ag),
+			RTE_BBDEV_TURBO_MAX_CB_SIZE * 10 * sizeof(*q->ag),
 			RTE_CACHE_LINE_SIZE, queue_conf->socket);
 	if (q->ag == NULL) {
 		rte_bbdev_log(ERR,
@@ -313,7 +316,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		return -ENAMETOOLONG;
 	}
 	q->code_block = rte_zmalloc_socket(name,
-			RTE_BBDEV_MAX_CB_SIZE * sizeof(*q->code_block),
+			RTE_BBDEV_TURBO_MAX_CB_SIZE * sizeof(*q->code_block),
 			RTE_CACHE_LINE_SIZE, queue_conf->socket);
 	if (q->code_block == NULL) {
 		rte_bbdev_log(ERR,
@@ -439,9 +442,9 @@ is_enc_input_valid(const uint16_t k, const int32_t k_idx,
 		return -1;
 	}
 
-	if (k > RTE_BBDEV_MAX_CB_SIZE) {
+	if (k > RTE_BBDEV_TURBO_MAX_CB_SIZE) {
 		rte_bbdev_log(ERR, "CB size (%u) is too big, max: %d",
-				k, RTE_BBDEV_MAX_CB_SIZE);
+				k, RTE_BBDEV_TURBO_MAX_CB_SIZE);
 		return -1;
 	}
 
@@ -466,9 +469,9 @@ is_dec_input_valid(int32_t k_idx, int16_t kw, int16_t in_length)
 		return -1;
 	}
 
-	if (kw > RTE_BBDEV_MAX_KW) {
+	if (kw > RTE_BBDEV_TURBO_MAX_KW) {
 		rte_bbdev_log(ERR, "Input length (%u) is too big, max: %d",
-				kw, RTE_BBDEV_MAX_KW);
+				kw, RTE_BBDEV_TURBO_MAX_KW);
 		return -1;
 	}
 
@@ -773,9 +776,9 @@ enqueue_enc_one_op(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	/* Clear op status */
 	op->status = 0;
 
-	if (mbuf_total_left > RTE_BBDEV_MAX_TB_SIZE >> 3) {
+	if (mbuf_total_left > RTE_BBDEV_TURBO_MAX_TB_SIZE >> 3) {
 		rte_bbdev_log(ERR, "TB size (%u) is too big, max: %d",
-				mbuf_total_left, RTE_BBDEV_MAX_TB_SIZE);
+				mbuf_total_left, RTE_BBDEV_TURBO_MAX_TB_SIZE);
 		op->status = 1 << RTE_BBDEV_DATA_ERROR;
 		return;
 	}
@@ -1074,7 +1077,7 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		 * where D is the size of each output from turbo encoder block
 		 * (k + 4).
 		 */
-		kw = RTE_ALIGN_CEIL(k + 4, RTE_BBDEV_C_SUBBLOCK) * 3;
+		kw = RTE_ALIGN_CEIL(k + 4, RTE_BBDEV_TURBO_C_SUBBLOCK) * 3;
 
 		process_dec_cb(q, op, c, k, kw, m_in, m_out_head, m_out,
 				in_offset, out_offset, check_bit(dec->op_flags,

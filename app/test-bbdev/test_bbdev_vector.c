@@ -298,9 +298,9 @@ parse_data_entry(const char *key_token, char *token,
 	op_data = vector->entries[type].segments;
 	nb_ops = &vector->entries[type].nb_segments;
 
-	if (*nb_ops >= RTE_BBDEV_MAX_CODE_BLOCKS) {
+	if (*nb_ops >= RTE_BBDEV_TURBO_MAX_CODE_BLOCKS) {
 		printf("Too many segments (code blocks defined): %u, max %d!\n",
-				*nb_ops, RTE_BBDEV_MAX_CODE_BLOCKS);
+				*nb_ops, RTE_BBDEV_TURBO_MAX_CODE_BLOCKS);
 		return -1;
 	}
 

@@ -46,7 +46,7 @@ struct op_data_buf {
 };
 
 struct op_data_entries {
-	struct op_data_buf segments[RTE_BBDEV_MAX_CODE_BLOCKS];
+	struct op_data_buf segments[RTE_BBDEV_TURBO_MAX_CODE_BLOCKS];
 	unsigned int nb_segments;
 };
 

@@ -607,9 +607,9 @@ fpga_dev_info_get(struct rte_bbdev *dev,
 					RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP,
 				.max_llr_modulus = INT8_MAX,
 				.num_buffers_src =
-						RTE_BBDEV_MAX_CODE_BLOCKS,
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
 				.num_buffers_hard_out =
-					RTE_BBDEV_MAX_CODE_BLOCKS,
+					RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
 				.num_buffers_soft_out = 0
 			}
 		},
@@ -621,9 +621,9 @@ fpga_dev_info_get(struct rte_bbdev *dev,
 					RTE_BBDEV_TURBO_RATE_MATCH |
 					RTE_BBDEV_TURBO_ENC_INTERRUPTS,
 				.num_buffers_src =
-						RTE_BBDEV_MAX_CODE_BLOCKS,
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
 				.num_buffers_dst =
-						RTE_BBDEV_MAX_CODE_BLOCKS
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS
 			}
 		},
 		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
@@ -1332,14 +1332,15 @@ static int
 validate_enc_op(struct rte_bbdev_enc_op *op)
 {
 	struct rte_bbdev_op_turbo_enc *turbo_enc = &op->turbo_enc;
-	struct rte_bbdev_op_enc_cb_params *cb = NULL;
-	struct rte_bbdev_op_enc_tb_params *tb = NULL;
+	struct rte_bbdev_op_enc_turbo_cb_params *cb = NULL;
+	struct rte_bbdev_op_enc_turbo_tb_params *tb = NULL;
 	uint16_t kw, kw_neg, kw_pos;
 
 	if (turbo_enc->input.length >
-			RTE_BBDEV_MAX_TB_SIZE >> 3) {
+			RTE_BBDEV_TURBO_MAX_TB_SIZE >> 3) {
 		rte_bbdev_log(ERR, "TB size (%u) is too big, max: %d",
-				turbo_enc->input.length, RTE_BBDEV_MAX_TB_SIZE);
+				turbo_enc->input.length,
+				RTE_BBDEV_TURBO_MAX_TB_SIZE);
 		op->status = 1 << RTE_BBDEV_DATA_ERROR;
 		return -1;
 	}
@@ -1372,32 +1373,32 @@ validate_enc_op(struct rte_bbdev_enc_op *op)
 
 	if (turbo_enc->code_block_mode == 0) {
 		tb = &turbo_enc->tb_params;
-		if ((tb->k_neg < RTE_BBDEV_MIN_CB_SIZE
-				|| tb->k_neg > RTE_BBDEV_MAX_CB_SIZE)
+		if ((tb->k_neg < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| tb->k_neg > RTE_BBDEV_TURBO_MAX_CB_SIZE)
 				&& tb->c_neg > 0) {
 			rte_bbdev_log(ERR,
 					"k_neg (%u) is out of range %u <= value <= %u",
-					tb->k_neg, RTE_BBDEV_MIN_CB_SIZE,
-					RTE_BBDEV_MAX_CB_SIZE);
+					tb->k_neg, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
 			return -1;
 		}
-		if (tb->k_pos < RTE_BBDEV_MIN_CB_SIZE
-				|| tb->k_pos > RTE_BBDEV_MAX_CB_SIZE) {
+		if (tb->k_pos < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| tb->k_pos > RTE_BBDEV_TURBO_MAX_CB_SIZE) {
 			rte_bbdev_log(ERR,
 					"k_pos (%u) is out of range %u <= value <= %u",
-					tb->k_pos, RTE_BBDEV_MIN_CB_SIZE,
-					RTE_BBDEV_MAX_CB_SIZE);
+					tb->k_pos, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
 			return -1;
 		}
-		if (tb->c_neg > (RTE_BBDEV_MAX_CODE_BLOCKS - 1))
+		if (tb->c_neg > (RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1))
 			rte_bbdev_log(ERR,
 					"c_neg (%u) is out of range 0 <= value <= %u",
 					tb->c_neg,
-					RTE_BBDEV_MAX_CODE_BLOCKS - 1);
-		if (tb->c < 1 || tb->c > RTE_BBDEV_MAX_CODE_BLOCKS) {
+					RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1);
+		if (tb->c < 1 || tb->c > RTE_BBDEV_TURBO_MAX_CODE_BLOCKS) {
 			rte_bbdev_log(ERR,
 					"c (%u) is out of range 1 <= value <= %u",
-					tb->c, RTE_BBDEV_MAX_CODE_BLOCKS);
+					tb->c, RTE_BBDEV_TURBO_MAX_CODE_BLOCKS);
 			return -1;
 		}
 		if (tb->cab > tb->c) {
@@ -1406,23 +1407,23 @@ validate_enc_op(struct rte_bbdev_enc_op *op)
 					tb->cab, tb->c);
 			return -1;
 		}
-		if ((tb->ea < RTE_BBDEV_MIN_CB_SIZE || (tb->ea % 2))
+		if ((tb->ea < RTE_BBDEV_TURBO_MIN_CB_SIZE || (tb->ea % 2))
 				&& tb->r < tb->cab) {
 			rte_bbdev_log(ERR,
 					"ea (%u) is less than %u or it is not even",
-					tb->ea, RTE_BBDEV_MIN_CB_SIZE);
+					tb->ea, RTE_BBDEV_TURBO_MIN_CB_SIZE);
 			return -1;
 		}
-		if ((tb->eb < RTE_BBDEV_MIN_CB_SIZE || (tb->eb % 2))
+		if ((tb->eb < RTE_BBDEV_TURBO_MIN_CB_SIZE || (tb->eb % 2))
 				&& tb->c > tb->cab) {
 			rte_bbdev_log(ERR,
 					"eb (%u) is less than %u or it is not even",
-					tb->eb, RTE_BBDEV_MIN_CB_SIZE);
+					tb->eb, RTE_BBDEV_TURBO_MIN_CB_SIZE);
 			return -1;
 		}
 
 		kw_neg = 3 * RTE_ALIGN_CEIL(tb->k_neg + 4,
-					RTE_BBDEV_C_SUBBLOCK);
+					RTE_BBDEV_TURBO_C_SUBBLOCK);
 		if (tb->ncb_neg < tb->k_neg || tb->ncb_neg > kw_neg) {
 			rte_bbdev_log(ERR,
 					"ncb_neg (%u) is out of range (%u) k_neg <= value <= (%u) kw_neg",
@@ -1431,7 +1432,7 @@ validate_enc_op(struct rte_bbdev_enc_op *op)
 		}
 
 		kw_pos = 3 * RTE_ALIGN_CEIL(tb->k_pos + 4,
-					RTE_BBDEV_C_SUBBLOCK);
+					RTE_BBDEV_TURBO_C_SUBBLOCK);
 		if (tb->ncb_pos < tb->k_pos || tb->ncb_pos > kw_pos) {
 			rte_bbdev_log(ERR,
 					"ncb_pos (%u) is out of range (%u) k_pos <= value <= (%u) kw_pos",
@@ -1446,23 +1447,23 @@ validate_enc_op(struct rte_bbdev_enc_op *op)
 		}
 	} else {
 		cb = &turbo_enc->cb_params;
-		if (cb->k < RTE_BBDEV_MIN_CB_SIZE
-				|| cb->k > RTE_BBDEV_MAX_CB_SIZE) {
+		if (cb->k < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| cb->k > RTE_BBDEV_TURBO_MAX_CB_SIZE) {
 			rte_bbdev_log(ERR,
 					"k (%u) is out of range %u <= value <= %u",
-					cb->k, RTE_BBDEV_MIN_CB_SIZE,
-					RTE_BBDEV_MAX_CB_SIZE);
+					cb->k, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
 			return -1;
 		}
 
-		if (cb->e < RTE_BBDEV_MIN_CB_SIZE || (cb->e % 2)) {
+		if (cb->e < RTE_BBDEV_TURBO_MIN_CB_SIZE || (cb->e % 2)) {
 			rte_bbdev_log(ERR,
 					"e (%u) is less than %u or it is not even",
-					cb->e, RTE_BBDEV_MIN_CB_SIZE);
+					cb->e, RTE_BBDEV_TURBO_MIN_CB_SIZE);
 			return -1;
 		}
 
-		kw = RTE_ALIGN_CEIL(cb->k + 4, RTE_BBDEV_C_SUBBLOCK) * 3;
+		kw = RTE_ALIGN_CEIL(cb->k + 4, RTE_BBDEV_TURBO_C_SUBBLOCK) * 3;
 		if (cb->ncb < cb->k || cb->ncb > kw) {
 			rte_bbdev_log(ERR,
 					"ncb (%u) is out of range (%u) k <= value <= (%u) kw",
@@ -1713,33 +1714,33 @@ validate_dec_op(struct rte_bbdev_dec_op *op)
 		}
 
 		tb = &turbo_dec->tb_params;
-		if ((tb->k_neg < RTE_BBDEV_MIN_CB_SIZE
-				|| tb->k_neg > RTE_BBDEV_MAX_CB_SIZE)
+		if ((tb->k_neg < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| tb->k_neg > RTE_BBDEV_TURBO_MAX_CB_SIZE)
 				&& tb->c_neg > 0) {
 			rte_bbdev_log(ERR,
 					"k_neg (%u) is out of range %u <= value <= %u",
-					tb->k_neg, RTE_BBDEV_MIN_CB_SIZE,
-					RTE_BBDEV_MAX_CB_SIZE);
+					tb->k_neg, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
 			return -1;
 		}
-		if ((tb->k_pos < RTE_BBDEV_MIN_CB_SIZE
-				|| tb->k_pos > RTE_BBDEV_MAX_CB_SIZE)
+		if ((tb->k_pos < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| tb->k_pos > RTE_BBDEV_TURBO_MAX_CB_SIZE)
 				&& tb->c > tb->c_neg) {
 			rte_bbdev_log(ERR,
 					"k_pos (%u) is out of range %u <= value <= %u",
-					tb->k_pos, RTE_BBDEV_MIN_CB_SIZE,
-					RTE_BBDEV_MAX_CB_SIZE);
+					tb->k_pos, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
 			return -1;
 		}
-		if (tb->c_neg > (RTE_BBDEV_MAX_CODE_BLOCKS - 1))
+		if (tb->c_neg > (RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1))
 			rte_bbdev_log(ERR,
 					"c_neg (%u) is out of range 0 <= value <= %u",
 					tb->c_neg,
-					RTE_BBDEV_MAX_CODE_BLOCKS - 1);
-		if (tb->c < 1 || tb->c > RTE_BBDEV_MAX_CODE_BLOCKS) {
+					RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1);
+		if (tb->c < 1 || tb->c > RTE_BBDEV_TURBO_MAX_CODE_BLOCKS) {
 			rte_bbdev_log(ERR,
 					"c (%u) is out of range 1 <= value <= %u",
-					tb->c, RTE_BBDEV_MAX_CODE_BLOCKS);
+					tb->c, RTE_BBDEV_TURBO_MAX_CODE_BLOCKS);
 			return -1;
 		}
 		if (tb->cab > tb->c) {
@@ -1757,12 +1758,12 @@ validate_dec_op(struct rte_bbdev_dec_op *op)
 		}
 
 		cb = &turbo_dec->cb_params;
-		if (cb->k < RTE_BBDEV_MIN_CB_SIZE
-				|| cb->k > RTE_BBDEV_MAX_CB_SIZE) {
+		if (cb->k < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| cb->k > RTE_BBDEV_TURBO_MAX_CB_SIZE) {
 			rte_bbdev_log(ERR,
 					"k (%u) is out of range %u <= value <= %u",
-					cb->k, RTE_BBDEV_MIN_CB_SIZE,
-					RTE_BBDEV_MAX_CB_SIZE);
+					cb->k, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
 			return -1;
 		}
 	}

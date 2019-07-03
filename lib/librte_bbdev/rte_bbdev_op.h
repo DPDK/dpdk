@@ -26,22 +26,22 @@ extern "C" {
 #include <rte_mempool.h>
 
 /* Number of columns in sub-block interleaver (36.212, section 5.1.4.1.1) */
-#define RTE_BBDEV_C_SUBBLOCK (32)
+#define RTE_BBDEV_TURBO_C_SUBBLOCK (32)
 /* Maximum size of Transport Block (36.213, Table, Table 7.1.7.2.5-1) */
-#define RTE_BBDEV_MAX_TB_SIZE (391656)
+#define RTE_BBDEV_TURBO_MAX_TB_SIZE (391656)
 /* Maximum size of Code Block (36.212, Table 5.1.3-3) */
-#define RTE_BBDEV_MAX_CB_SIZE (6144)
+#define RTE_BBDEV_TURBO_MAX_CB_SIZE (6144)
 /* Minimum size of Code Block (36.212, Table 5.1.3-3) */
-#define RTE_BBDEV_MIN_CB_SIZE (40)
+#define RTE_BBDEV_TURBO_MIN_CB_SIZE (40)
 /* Maximum size of circular buffer */
-#define RTE_BBDEV_MAX_KW (18528)
+#define RTE_BBDEV_TURBO_MAX_KW (18528)
 /*
  * Maximum number of Code Blocks in Transport Block. It is calculated based on
  * maximum size of one Code Block and one Transport Block (considering CRC24A
  * and CRC24B):
  * (391656 + 24) / (6144 - 24) = 64
  */
-#define RTE_BBDEV_MAX_CODE_BLOCKS (64)
+#define RTE_BBDEV_TURBO_MAX_CODE_BLOCKS (64)
 
 /** Flags for turbo decoder operation and capability structure */
 enum rte_bbdev_op_td_flag_bitmasks {
@@ -133,7 +133,7 @@ struct rte_bbdev_op_data {
 	 * multiple CBs contiguously located next to each other.
 	 * A Transport Block (TB) represents a whole piece of data that is
 	 * divided into one or more CBs. Maximum number of CBs can be contained
-	 * in one TB is defined by RTE_BBDEV_MAX_CODE_BLOCKS.
+	 * in one TB is defined by RTE_BBDEV_TURBO_MAX_CODE_BLOCKS.
 	 *
 	 * An mbuf data structure cannot represent more than one TB. The
 	 * smallest piece of data that can be contained in one mbuf is one CB.
@@ -204,7 +204,7 @@ struct rte_bbdev_op_dec_tb_params {
 	uint16_t k_pos;
 	/**< The number of CBs that have K- size, [0:63] */
 	uint8_t c_neg;
-	/**< The total number of CBs in the TB, [1:RTE_BBDEV_MAX_CODE_BLOCKS] */
+	/**< The total number of CBs in the TB, [1:RTE_BBDEV_TURBO_MAX_CODE_BLOCKS] */
 	uint8_t c;
 	/**< The number of CBs that uses Ea before switching to Eb, [0:63] */
 	uint8_t cab;
@@ -288,7 +288,7 @@ struct rte_bbdev_op_turbo_dec {
 	};
 };
 
-struct rte_bbdev_op_enc_cb_params {
+struct rte_bbdev_op_enc_turbo_cb_params {
 	/**< The K size of the input CB, in bits [40:6144], as specified in
 	 * 3GPP TS 36.212.
 	 * This size is inclusive of CRC24A, regardless whether it was
@@ -305,7 +305,7 @@ struct rte_bbdev_op_enc_cb_params {
 	uint16_t ncb;
 };
 
-struct rte_bbdev_op_enc_tb_params {
+struct rte_bbdev_op_enc_turbo_tb_params {
 	/**< The K- size of the input CB, in bits [40:6144], that is in the
 	 * Turbo operation when r < C-, as in 3GPP TS 36.212.
 	 * This size is inclusive of CRC24B, regardless whether it was
@@ -320,7 +320,7 @@ struct rte_bbdev_op_enc_tb_params {
 	uint16_t k_pos;
 	/**< The number of CBs that have K- size, [0:63] */
 	uint8_t c_neg;
-	/**< The total number of CBs in the TB, [1:RTE_BBDEV_MAX_CODE_BLOCKS] */
+	/**< The total number of CBs in the TB, [1:RTE_BBDEV_TURBO_MAX_CODE_BLOCKS] */
 	uint8_t c;
 	/**< The number of CBs that uses Ea before switching to Eb, [0:63] */
 	uint8_t cab;
@@ -375,9 +375,9 @@ struct rte_bbdev_op_turbo_enc {
 	uint8_t code_block_mode; /**< [0 - TB : 1 - CB] */
 	union {
 		/**< Struct which stores Code Block specific parameters */
-		struct rte_bbdev_op_enc_cb_params cb_params;
+		struct rte_bbdev_op_enc_turbo_cb_params cb_params;
 		/**< Struct which stores Transport Block specific parameters */
-		struct rte_bbdev_op_enc_tb_params tb_params;
+		struct rte_bbdev_op_enc_turbo_tb_params tb_params;
 	};
 };
 
