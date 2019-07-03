@@ -666,6 +666,50 @@ struct rte_crypto_sym_op {
 					 * For digest generation, the digest result
 					 * will overwrite any data at this location.
 					 *
+					 * @note
+					 * Digest-encrypted case.
+					 * Digest can be generated, appended to
+					 * the end of raw data and encrypted
+					 * together using chained digest
+					 * generation
+					 * (@ref RTE_CRYPTO_AUTH_OP_GENERATE)
+					 * and encryption
+					 * (@ref RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+					 * xforms. Similarly, authentication
+					 * of the raw data against appended,
+					 * decrypted digest, can be performed
+					 * using decryption
+					 * (@ref RTE_CRYPTO_CIPHER_OP_DECRYPT)
+					 * and digest verification
+					 * (@ref RTE_CRYPTO_AUTH_OP_VERIFY)
+					 * chained xforms.
+					 * To perform those operations, a few
+					 * additional conditions must be met:
+					 * - caller must allocate at least
+					 * digest_length of memory at the end of
+					 * source and (in case of out-of-place
+					 * operations) destination buffer; those
+					 * buffers can be linear or split using
+					 * scatter-gather lists,
+					 * - digest data pointer must point to
+					 * the end of source or (in case of
+					 * out-of-place operations) destination
+					 * data, which is pointer to the
+					 * data buffer + auth.data.offset +
+					 * auth.data.length,
+					 * - cipher.data.offset +
+					 * cipher.data.length must be greater
+					 * than auth.data.offset +
+					 * auth.data.length and is typically
+					 * equal to auth.data.offset +
+					 * auth.data.length + digest_length.
+					 *
+					 * Note, that for security reasons, it
+					 * is PMDs' responsibility to not
+					 * leave an unencrypted digest in any
+					 * buffer after performing auth-cipher
+					 * operations.
+					 *
 					 */
 					rte_iova_t phys_addr;
 					/**< Physical address of digest */
