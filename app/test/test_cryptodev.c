@@ -4953,6 +4953,170 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 }
 
 static int
+test_zuc_auth_cipher(const struct wireless_test_data *tdata,
+	uint8_t op_mode, uint8_t verify)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+
+	uint8_t *plaintext = NULL, *ciphertext = NULL;
+	unsigned int plaintext_pad_len;
+	unsigned int plaintext_len;
+	unsigned int ciphertext_pad_len;
+	unsigned int ciphertext_len;
+
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (op_mode == OUT_OF_PLACE) {
+		if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
+			printf("Device doesn't support digest encrypted.\n");
+			return -ENOTSUP;
+		}
+	}
+
+	/* Create KASUMI session */
+	retval = create_wireless_algo_auth_cipher_session(
+			ts_params->valid_devs[0],
+			(verify ? RTE_CRYPTO_CIPHER_OP_DECRYPT
+					: RTE_CRYPTO_CIPHER_OP_ENCRYPT),
+			(verify ? RTE_CRYPTO_AUTH_OP_VERIFY
+					: RTE_CRYPTO_AUTH_OP_GENERATE),
+			RTE_CRYPTO_AUTH_ZUC_EIA3,
+			RTE_CRYPTO_CIPHER_ZUC_EEA3,
+			tdata->key.data, tdata->key.len,
+			tdata->auth_iv.len, tdata->digest.len,
+			tdata->cipher_iv.len);
+
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	if (op_mode == OUT_OF_PLACE)
+		ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	/* clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+		rte_pktmbuf_tailroom(ut_params->ibuf));
+	if (op_mode == OUT_OF_PLACE)
+		memset(rte_pktmbuf_mtod(ut_params->obuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->obuf));
+
+	ciphertext_len = ceil_byte_length(tdata->ciphertext.len);
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+	/* Append data which is padded to a multiple of */
+	/* the algorithms block size */
+	ciphertext_pad_len = RTE_ALIGN_CEIL(ciphertext_len, 16);
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 16);
+
+	if (verify) {
+		ciphertext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+					ciphertext_pad_len);
+		memcpy(ciphertext, tdata->ciphertext.data, ciphertext_len);
+		if (op_mode == OUT_OF_PLACE)
+			rte_pktmbuf_append(ut_params->obuf, ciphertext_pad_len);
+		debug_hexdump(stdout, "ciphertext:", ciphertext,
+			ciphertext_len);
+	} else {
+		plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+					plaintext_pad_len);
+		memcpy(plaintext, tdata->plaintext.data, plaintext_len);
+		if (op_mode == OUT_OF_PLACE)
+			rte_pktmbuf_append(ut_params->obuf, plaintext_pad_len);
+		debug_hexdump(stdout, "plaintext:", plaintext,
+			plaintext_len);
+	}
+
+	/* Create ZUC operation */
+	retval = create_wireless_algo_auth_cipher_operation(
+		tdata->digest.len,
+		tdata->cipher_iv.data, tdata->cipher_iv.len,
+		tdata->auth_iv.data, tdata->auth_iv.len,
+		(tdata->digest.offset_bytes == 0 ?
+		(verify ? ciphertext_pad_len : plaintext_pad_len)
+			: tdata->digest.offset_bytes),
+		tdata->validCipherLenInBits.len,
+		tdata->validCipherOffsetInBits.len,
+		tdata->validAuthLenInBits.len,
+		0,
+		op_mode);
+
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+
+	ut_params->obuf = (op_mode == IN_PLACE ?
+		ut_params->op->sym->m_src : ut_params->op->sym->m_dst);
+
+
+	if (verify) {
+		if (ut_params->obuf)
+			plaintext = rte_pktmbuf_mtod(ut_params->obuf,
+							uint8_t *);
+		else
+			plaintext = ciphertext;
+
+		debug_hexdump(stdout, "plaintext:", plaintext,
+			(tdata->plaintext.len >> 3) - tdata->digest.len);
+		debug_hexdump(stdout, "plaintext expected:",
+			tdata->plaintext.data,
+			(tdata->plaintext.len >> 3) - tdata->digest.len);
+	} else {
+		if (ut_params->obuf)
+			ciphertext = rte_pktmbuf_mtod(ut_params->obuf,
+							uint8_t *);
+		else
+			ciphertext = plaintext;
+
+		debug_hexdump(stdout, "ciphertext:", ciphertext,
+			ciphertext_len);
+		debug_hexdump(stdout, "ciphertext expected:",
+			tdata->ciphertext.data, tdata->ciphertext.len >> 3);
+
+		ut_params->digest = rte_pktmbuf_mtod(
+			ut_params->obuf, uint8_t *) +
+			(tdata->digest.offset_bytes == 0 ?
+			plaintext_pad_len : tdata->digest.offset_bytes);
+
+		debug_hexdump(stdout, "digest:", ut_params->digest,
+			tdata->digest.len);
+		debug_hexdump(stdout, "digest expected:",
+			tdata->digest.data, tdata->digest.len);
+	}
+
+	/* Validate obuf */
+	if (verify) {
+		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+			plaintext,
+			tdata->plaintext.data,
+			tdata->plaintext.len >> 3,
+			"ZUC Plaintext data not as expected");
+	} else {
+		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+			ciphertext,
+			tdata->ciphertext.data,
+			tdata->ciphertext.len >> 3,
+			"ZUC Ciphertext data not as expected");
+
+		TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			ut_params->digest,
+			tdata->digest.data,
+			DIGEST_BYTE_LENGTH_KASUMI_F9,
+			"ZUC Generated auth tag not as expected");
+	}
+	return 0;
+}
+
+static int
 test_kasumi_encryption_test_case_1(void)
 {
 	return test_kasumi_encryption(&kasumi_test_case_1);
@@ -5367,6 +5531,34 @@ static int
 test_zuc_cipher_auth_test_case_2(void)
 {
 	return test_zuc_cipher_auth(&zuc_test_case_cipher_800b_auth_120b);
+}
+
+static int
+test_zuc_auth_cipher_test_case_1(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc_auth_cipher_test_case_1, IN_PLACE, 0);
+}
+
+static int
+test_zuc_auth_cipher_test_case_1_oop(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc_auth_cipher_test_case_1, OUT_OF_PLACE, 0);
+}
+
+static int
+test_zuc_auth_cipher_verify_test_case_1(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc_auth_cipher_test_case_1, IN_PLACE, 1);
+}
+
+static int
+test_zuc_auth_cipher_verify_test_case_1_oop(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc_auth_cipher_test_case_1, OUT_OF_PLACE, 1);
 }
 
 static int
@@ -9479,6 +9671,18 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			test_zuc_cipher_auth_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_cipher_auth_test_case_2),
+
+		/** ZUC generate auth, then encrypt (EEA3) */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_auth_cipher_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_auth_cipher_test_case_1_oop),
+
+		/** ZUC decrypt (EEA3), then verify auth */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_auth_cipher_verify_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_auth_cipher_verify_test_case_1_oop),
 
 		/** HMAC_MD5 Authentication */
 		TEST_CASE_ST(ut_setup, ut_teardown,
