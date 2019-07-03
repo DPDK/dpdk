@@ -711,7 +711,7 @@ vtx1(volatile struct fm10k_tx_desc *txdp,
 		struct rte_mbuf *pkt, uint64_t flags)
 {
 	__m128i descriptor = _mm_set_epi64x(flags << 56 |
-			pkt->vlan_tci << 16 | pkt->data_len,
+			(uint64_t)pkt->vlan_tci << 16 | (uint64_t)pkt->data_len,
 			MBUF_DMA_ADDR(pkt));
 	_mm_store_si128((__m128i *)txdp, descriptor);
 }
