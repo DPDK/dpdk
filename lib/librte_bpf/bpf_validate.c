@@ -925,7 +925,6 @@ eval_func_arg(struct bpf_verifier *bvf, const struct rte_bpf_arg *arg,
 static const char *
 eval_call(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 {
-	uint64_t msk;
 	uint32_t i, idx;
 	struct bpf_reg_val *rv;
 	const struct rte_bpf_xsym *xsym;
@@ -958,10 +957,11 @@ eval_call(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 
 	rv = bvf->evst->rv + EBPF_REG_0;
 	rv->v = xsym->func.ret;
-	msk = (rv->v.type == RTE_BPF_ARG_RAW) ?
-		RTE_LEN2MASK(rv->v.size * CHAR_BIT, uint64_t) : UINTPTR_MAX;
-	eval_max_bound(rv, msk);
-	rv->mask = msk;
+	if (rv->v.type == RTE_BPF_ARG_RAW)
+		eval_fill_max_bound(rv,
+			RTE_LEN2MASK(rv->v.size * CHAR_BIT, uint64_t));
+	else if (RTE_BPF_ARG_PTR_TYPE(rv->v.type) != 0)
+		eval_fill_imm64(rv, UINTPTR_MAX, 0);
 
 	return err;
 }
