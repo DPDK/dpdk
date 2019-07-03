@@ -166,9 +166,9 @@ stopped individually.
 Logical Cores, Memory and Queues Relationships
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The bbdev device Library as the Poll Mode Driver library support NUMA for when
-a processor's logical cores and interfaces utilize its local memory. Therefore
-baseband operations, the mbuf being operated on should be allocated from memory
+The bbdev poll mode device driver library supports NUMA architecture, in which
+a processor's logical cores and interfaces utilize it's local memory. Therefore
+with baseband operations, the mbuf being operated on should be allocated from memory
 pools created in the local memory. The buffers should, if possible, remain on
 the local processor to obtain the best performance results and buffer
 descriptors should be populated with mbufs allocated from a mempool allocated
@@ -220,9 +220,9 @@ relation to Turbo Encoding and Decoding operations.
                     RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP |
                     RTE_BBDEV_TURBO_EARLY_TERMINATION,
                 .max_llr_modulus = 16,
-                .num_buffers_src = RTE_BBDEV_MAX_CODE_BLOCKS,
+                .num_buffers_src = RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
                 .num_buffers_hard_out =
-                        RTE_BBDEV_MAX_CODE_BLOCKS,
+                        RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
                 .num_buffers_soft_out = 0,
             }
         },
@@ -234,8 +234,8 @@ relation to Turbo Encoding and Decoding operations.
                         RTE_BBDEV_TURBO_CRC_24A_ATTACH |
                         RTE_BBDEV_TURBO_RATE_MATCH |
                         RTE_BBDEV_TURBO_RV_INDEX_BYPASS,
-                .num_buffers_src = RTE_BBDEV_MAX_CODE_BLOCKS,
-                .num_buffers_dst = RTE_BBDEV_MAX_CODE_BLOCKS,
+                .num_buffers_src = RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
+                .num_buffers_dst = RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
             }
         },
         RTE_BBDEV_END_OF_CAPABILITIES_LIST()
@@ -266,11 +266,12 @@ information:
     struct rte_bbdev_info {
         int socket_id;
         const char *dev_name;
-        const struct rte_bus *bus;
+        const struct rte_device *device;
         uint16_t num_queues;
         bool started;
         struct rte_bbdev_driver_info drv;
     };
+
 
 Operation Processing
 --------------------
@@ -335,14 +336,20 @@ processed on a particular bbdev device poll mode driver.
         int status;
         struct rte_mempool *mempool;
         void *opaque_data;
-        struct rte_bbdev_op_turbo_enc turbo_enc;
+        union {
+            struct rte_bbdev_op_turbo_enc turbo_enc;
+            struct rte_bbdev_op_ldpc_enc ldpc_enc;
+        }
     };
 
     struct rte_bbdev_dec_op {
         int status;
         struct rte_mempool *mempool;
         void *opaque_data;
-        struct rte_bbdev_op_turbo_dec turbo_dec;
+        union {
+            struct rte_bbdev_op_turbo_dec turbo_enc;
+            struct rte_bbdev_op_ldpc_dec ldpc_enc;
+        }
     };
 
 The operation structure by itself defines the operation type. It includes an
@@ -399,19 +406,31 @@ BBDEV Inbound/Outbound Memory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The bbdev operation structure contains all the mutable data relating to
-performing Turbo coding on a referenced mbuf data buffer. It is used for either
+performing Turbo and LDPC coding on a referenced mbuf data buffer. It is used for either
 encode or decode operations.
 
-Turbo Encode operation accepts one input and one output.
-Turbo Decode operation accepts one input and two outputs, called *hard-decision*
-and *soft-decision* outputs. *Soft-decision* output is optional.
+
+.. csv-table:: Operation I/O
+   :header: "FEC", "In", "Out"
+   :widths: 20, 30, 30
+
+   "Turbo Encode", "input", "output"
+   "Turbo Decode", "input", "hard output"
+   " ", " ", "soft output (optional)"
+   "LDPC Encode", "input", "output"
+   "LDPC Decode", "input", "hard output"
+   "", "HQ combine (optional)", "HQ combine (optional)"
+   " ", "", "soft output (optional)"
+
 
 It is expected that the application provides input and output mbuf pointers
-allocated and ready to use. The baseband framework supports turbo coding on
-Code Blocks (CB) and Transport Blocks (TB).
+allocated and ready to use.
+
+The baseband framework supports FEC coding on Code Blocks (CB) and
+Transport Blocks (TB).
 
 For the output buffer(s), the application is required to provide an allocated
-and free mbuf, so that bbdev write back the resulting output.
+and free mbuf, to which the resulting output will be written.
 
 The support of split "scattered" buffers is a driver-specific feature, so it is
 reported individually by the supporting driver as a capability.
@@ -436,26 +455,26 @@ This structure has three elements:
   This mbuf pointer can point to one Code Block (CB) data buffer or multiple CBs
   contiguously located next to each other. A Transport Block (TB) represents a
   whole piece of data that is divided into one or more CBs. Maximum number of
-  CBs can be contained in one TB is defined by ``RTE_BBDEV_MAX_CODE_BLOCKS``.
+  CBs can be contained in one TB is defined by
+  ``RTE_BBDEV_(TURBO/LDPC)MAX_CODE_BLOCKS``.
 
   An mbuf data structure cannot represent more than one TB. The smallest piece
   of data that can be contained in one mbuf is one CB.
   An mbuf can include one contiguous CB, subset of contiguous CBs that are
-  belonging to one TB, or all contiguous CBs that are belonging to one TB.
+  belonging to one TB, or all contiguous CBs that belong to one TB.
 
   If a BBDEV PMD supports the extended capability "Scatter-Gather", then it is
   capable of collecting (gathering) non-contiguous (scattered) data from
   multiple locations in the memory.
   This capability is reported by the capability flags:
 
-  - ``RTE_BBDEV_TURBO_ENC_SCATTER_GATHER``, and
+  - ``RTE_BBDEV_TURBO_ENC_SCATTER_GATHER``, ``RTE_BBDEV_TURBO_DEC_SCATTER_GATHER``,
 
-  - ``RTE_BBDEV_TURBO_DEC_SCATTER_GATHER``.
+  - ``RTE_BBDEV_LDPC_ENC_SCATTER_GATHER``, ``RTE_BBDEV_LDPC_DEC_SCATTER_GATHER``.
 
-  Only if a BBDEV PMD supports this feature, chained mbuf data structures are
-  accepted. A chained mbuf can represent one non-contiguous CB or multiple
-  non-contiguous CBs.
-  The first mbuf segment in the given chained mbuf represents the first piece
+  Chained mbuf data structures are only accepted if a BBDEV PMD supports this
+  feature. A chained mbuf can represent one non-contiguous CB or multiple non-contiguous
+  CBs. The first mbuf segment in the given chained mbuf represents the first piece
   of the CB. Offset is only applicable to the first segment. ``length`` is the
   total length of the CB.
 
@@ -506,14 +525,22 @@ BBDEV Turbo Encode Operation
         };
     };
 
-The Turbo encode structure is composed of the ``input`` and ``output`` mbuf
-data pointers. The provided mbuf pointer of ``input`` needs to be big enough to
-stretch for extra CRC trailers.
+The Turbo encode structure includes the ``input`` and ``output`` mbuf
+data pointers. The provided mbuf pointer of ``input`` needs to be big
+enough to stretch for extra CRC trailers.
 
-``op_flags`` parameter holds all operation related flags, like whether CRC24A is
-included by the application or not.
+.. csv-table:: **struct rte_bbdev_op_turbo_enc** parameters
+   :header: "Parameter", "Description"
+   :widths: 10, 30
 
-``code_block_mode`` flag identifies the mode in which bbdev is operating in.
+   "input","input CB or TB data"
+   "output","rate matched CB or TB output buffer"
+   "op_flags","bitmask of all active operation capabilities"
+   "rv_index","redundancy version index [0..3]"
+   "code_block_mode","code block or transport block mode"
+   "cb_params", "code block specific parameters (code block mode only)"
+   "tb_params", "transport block specific parameters (transport block mode only)"
+
 
 The encode interface works on both the code block (CB) and the transport block
 (TB). An operation executes in "CB-mode" when the CB is standalone. While
@@ -525,21 +552,21 @@ are being enqueued.
   **NOTE:** It is assumed that all enqueued ops in one ``rte_bbdev_enqueue_enc_ops()``
   call belong to one mode, either CB-mode or TB-mode.
 
-In case that the CB is smaller than Z (6144 bits), then effectively the TB = CB.
+In case that the TB is smaller than Z (6144 bits), then effectively the TB = CB.
 CRC24A is appended to the tail of the CB. The application is responsible for
 calculating and appending CRC24A before calling BBDEV in case that the
 underlying driver does not support CRC24A generation.
 
 In CB-mode, CRC24A/B is an optional operation.
-The input ``k`` is the size of the CB (this maps to K as described in 3GPP TS
-36.212 section 5.1.2), this size is inclusive of CRC24A/B.
+The CB parameter ``k`` is the size of the CB (this maps to K as described
+in 3GPP TS 36.212 section 5.1.2), this size is inclusive of CRC24A/B.
 The ``length`` is inclusive of CRC24A/B and equals to ``k`` in this case.
 
 Not all BBDEV PMDs are capable of CRC24A/B calculation. Flags
 ``RTE_BBDEV_TURBO_CRC_24A_ATTACH`` and ``RTE_BBDEV_TURBO_CRC_24B_ATTACH``
 informs the application with relevant capability. These flags can be set in the
-``op_flags`` parameter to indicate BBDEV to calculate and append CRC24A to CB
-before going forward with Turbo encoding.
+``op_flags`` parameter to indicate to BBDEV to calculate and append CRC24A/B
+to CB before going forward with Turbo encoding.
 
 Output format of the CB encode will have the encoded CB in ``e`` size output
 (this maps to E described in 3GPP TS 36.212 section 5.1.4.1.2). The output mbuf
@@ -600,13 +627,26 @@ BBDEV Turbo Decode Operation
         };
     };
 
-The Turbo decode structure is composed of the ``input`` and ``output`` mbuf
-data pointers.
+The Turbo decode structure includes the ``input``, ``hard_output`` and
+optionally the ``soft_output`` mbuf data pointers.
 
-``op_flags`` parameter holds all operation related flags, like whether CRC24B is
-retained or not.
+.. csv-table:: **struct rte_bbdev_op_turbo_dec** parameters
+   :header: "Parameter", "Description"
+   :widths: 10, 30
 
-``code_block_mode`` flag identifies the mode in which bbdev is operating in.
+   "input","virtual circular buffer, wk, size 3*Kpi for each CB"
+   "hard output","hard decisions buffer, decoded output, size K for each CB"
+   "soft output","soft LLR output buffer (optional)"
+   "op_flags","bitmask of all active operation capabilities"
+   "rv_index","redundancy version index [0..3]"
+   "iter_max","maximum number of iterations to perofrm in decode all CBs"
+   "iter_min","minimum number of iterations to perform in decoding all CBs"
+   "iter_count","number of iterations to performed in decoding all CBs"
+   "ext_scale","scale factor on extrinsic info (5 bits)"
+   "num_maps","number of MAP engines to use in decode"
+   "code_block_mode","code block or transport block mode"
+   "cb_params", "code block specific parameters (code block mode only)"
+   "tb_params", "transport block specific parameters (transport block mode only)"
 
 Similarly, the decode interface works on both the code block (CB) and the
 transport block (TB). An operation executes in "CB-mode" when the CB is
@@ -618,7 +658,8 @@ to a bigger TB are being enqueued.
   **NOTE:** It is assumed that all enqueued ops in one ``rte_bbdev_enqueue_dec_ops()``
   call belong to one mode, either CB-mode or TB-mode.
 
-The input ``k`` is the size of the decoded CB (this maps to K as described in
+
+The CB parameter ``k`` is the size of the decoded CB (this maps to K as described in
 3GPP TS 36.212 section 5.1.2), this size is inclusive of CRC24A/B.
 The ``length`` is inclusive of CRC24A/B and equals to ``k`` in this case.
 
@@ -638,9 +679,9 @@ Soft output is an optional capability for BBDEV PMDs. Setting flag
 CRC24B at the end of each CB. This might be useful for the application in debug
 mode.
 An LLR rate matched output is computed in the ``soft_output`` buffer structure
-for the given ``e`` size (this maps to E described in 3GPP TS 36.212 section
-5.1.4.1.2). The output mbuf buffer size needs to be big enough to hold the
-encoded buffer of size ``e``.
+for the given CB parameter ``e`` size (this maps to E described in
+3GPP TS 36.212 section 5.1.4.1.2). The output mbuf buffer size needs to be big
+enough to hold the encoded buffer of size ``e``.
 
 The first CB Virtual Circular Buffer (VCB) index is given by ``r`` but the
 number of the remaining CB VCBs is calculated automatically by BBDEV before
@@ -668,6 +709,376 @@ TB-mode. CB-mode is a reduced version, where only one CB exists:
 .. figure:: img/turbo_tb_decode.*
 
     Turbo decoding of Code Blocks in mbuf structure
+
+BBDEV LDPC Encode Operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The operation flags that can be set for each LDPC encode operation are
+given below.
+
+  **NOTE:** The actual operation flags that may be used with a specific
+  BBDEV PMD are dependent on the driver capabilities as reported via
+  ``rte_bbdev_info_get()``, and may be a subset of those below.
+
++--------------------------------------------------------------------+
+|Description of LDPC encode capability flags                         |
++====================================================================+
+|RTE_BBDEV_LDPC_INTERLEAVER_BYPASS                                   |
+| Set to bypass bit-level interleaver on output stream               |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_RATE_MATCH                                           |
+| Set to enabling the RATE_MATCHING processing                       |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_CRC_24A_ATTACH                                       |
+| Set to attach transport block CRC-24A                              |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_CRC_24B_ATTACH                                       |
+| Set to attach code block CRC-24B                                   |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_CRC_16_ATTACH                                        |
+| Set to attach code block CRC-16                                    |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_ENC_INTERRUPTS                                       |
+| Set if a device supports encoder dequeue interrupts                |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_ENC_SCATTER_GATHER                                   |
+| Set if a device supports scatter-gather functionality              |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_ENC_CONCATENATION                                    |
+| Set if a device supports concatenation of non byte aligned output  |
++--------------------------------------------------------------------+
+
+The structure passed for each LDPC encode operation is given below,
+with the operation flags forming a bitmask in the ``op_flags`` field.
+
+.. code-block:: c
+
+    struct rte_bbdev_op_ldpc_enc {
+
+        struct rte_bbdev_op_data input;
+        struct rte_bbdev_op_data output;
+
+        uint32_t op_flags;
+        uint8_t rv_index;
+        uint8_t basegraph;
+        uint16_t z_c;
+        uint16_t n_cb;
+        uint8_t q_m;
+        uint16_t n_filler;
+        uint8_t code_block_mode;
+        union {
+            struct rte_bbdev_op_enc_ldpc_cb_params cb_params;
+            struct rte_bbdev_op_enc_ldpc_tb_params tb_params;
+        };
+    };
+
+The LDPC encode parameters are set out in the table below.
+
++----------------+--------------------------------------------------------------------+
+|Parameter       |Description                                                         |
++================+====================================================================+
+|input           |input CB or TB data                                                 |
++----------------+--------------------------------------------------------------------+
+|output          |rate matched CB or TB output buffer                                 |
++----------------+--------------------------------------------------------------------+
+|op_flags        |bitmask of all active operation capabilities                        |
++----------------+--------------------------------------------------------------------+
+|rv_index        |redundancy version index [0..3]                                     |
++----------------+--------------------------------------------------------------------+
+|basegraph       |Basegraph 1 or 2                                                    |
++----------------+--------------------------------------------------------------------+
+|z_c             |Zc, LDPC lifting size                                               |
++----------------+--------------------------------------------------------------------+
+|n_cb            |Ncb, length of the circular buffer in bits.                         |
++----------------+--------------------------------------------------------------------+
+|q_m             |Qm, modulation order {2,4,6,8,10}                                   |
++----------------+--------------------------------------------------------------------+
+|n_filler        |number of filler bits                                               |
++----------------+--------------------------------------------------------------------+
+|code_block_mode |code block or transport block mode                                  |
++----------------+--------------------------------------------------------------------+
+|op_flags        |bitmask of all active operation capabilities                        |
++----------------+--------------------------------------------------------------------+
+|**cb_params**   |code block specific parameters (code block mode only)               |
++----------------+------------+-------------------------------------------------------+
+|                |e           |E, length of the rate matched output sequence in bits  |
++----------------+------------+-------------------------------------------------------+
+|**tb_params**   | transport block specific parameters (transport block mode only)    |
++----------------+------------+-------------------------------------------------------+
+|                |c           |number of CBs in the TB or partial TB                  |
++----------------+------------+-------------------------------------------------------+
+|                |r           |index of the first CB in the inbound mbuf data         |
++----------------+------------+-------------------------------------------------------+
++                +c_ab        +number of CBs that use Ea before switching to Eb       |
++----------------+------------+-------------------------------------------------------+
+|                |ea          |Ea, length of the RM output sequence in bits, r < cab  |
++----------------+------------+-------------------------------------------------------+
+|                |eb          |Eb, length of the RM output sequence in bits, r >= cab |
++----------------+------------+-------------------------------------------------------+
+
+The mbuf input ``input`` is mandatory for all BBDEV PMDs and is the
+incoming code block or transport block data.
+
+The mbuf output ``output`` is mandatory and is the encoded CB(s). In
+CB-mode ut contains the encoded CB of size ``e`` (E  in 3GPP TS 38.212
+section 6.2.5). In TB-mode it contains multiple contiguous encoded CBs
+of size ``ea`` or ``eb``.
+The ``output`` buffer is allocated by the application with enough room
+for the output data.
+
+The encode interface works on both a code block (CB) and a transport
+block (TB) basis.
+
+  **NOTE:** All enqueued ops in one ``rte_bbdev_enqueue_enc_ops()``
+  call belong to one mode, either CB-mode or TB-mode.
+
+The valid modes of operation are:
+
+* CB-mode: one CB (attach CRC24B if required)
+* CB-mode: one CB making up one TB (attach CRC24A if required)
+* TB-mode: one or more CB of a partial TB (attach CRC24B(s) if required)
+* TB-mode: one or more CB of a complete TB (attach CRC24AB(s) if required)
+
+In CB-mode if ``RTE_BBDEV_LDPC_CRC_24A_ATTACH`` is set then CRC24A
+is appended to the CB. If ``RTE_BBDEV_LDPC_CRC_24A_ATTACH`` is not
+set the application is responsible for calculating and appending CRC24A
+before calling BBDEV. The input data mbuf ``length`` is inclusive of
+CRC24A/B where present and is equal to the code block size ``K``.
+
+In TB-mode, CRC24A is assumed to be pre-calculated and appended to the
+inbound TB data buffer, unless the ``RTE_BBDEV_LDPC_CRC_24A_ATTACH``
+flag is set when it is the  responsibility of BBDEV. The input data
+mbuf ``length`` is total size of the CBs inclusive of any CRC24A and
+CRC24B in the case they were appended by the application.
+
+Not all BBDEV PMDs may be capable of CRC24A/B calculation. Flags
+``RTE_BBDEV_LDPC_CRC_24A_ATTACH`` and ``RTE_BBDEV_LDPC_CRC_24B_ATTACH``
+inform the application of the relevant capability. These flags can be set
+in the ``op_flags`` parameter to indicate BBDEV to calculate and append
+CRC24A to CB before going forward with LDPC encoding.
+
+The difference between the partial and full-size TB is that BBDEV needs
+the index of the first CB in this group and the number of CBs in the group.
+The first CB index is given by ``r`` but the number of the CBs is
+calculated by BBDEV before signalling to the driver.
+
+The number of CBs in the group should not be confused with ``c``, the
+total number of CBs in the full TB (``C`` as per 3GPP TS 38.212 section 5.2.2)
+
+Figure 13.1 above showing the Turbo encoding of CBs using BBDEV
+interface in TB-mode is also valid for LDPC encode.
+
+BBDEV LDPC Decode Operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The operation flags that can be set for each LDPC decode operation are
+given below.
+
+  **NOTE:** The actual operation flags that may be used with a specific
+  BBDEV PMD are dependent on the driver capabilities as reported via
+  ``rte_bbdev_info_get()``, and may be a subset of those below.
+
++--------------------------------------------------------------------+
+|Description of LDPC decode capability flags                         |
++====================================================================+
+|RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK                                   |
+| Set for transport block CRC-24A checking                           |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK                                   |
+| Set for code block CRC-24B checking                                |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP                                    |
+| Set to drop the last CRC bits decoding output                      |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS                                 |
+| Set for bit-level de-interleaver bypass on input stream            |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE                                 |
+| Set for HARQ combined input stream enable                          |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE                                |
+| Set for HARQ combined output stream enable                         |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_DECODE_BYPASS                                        |
+| Set for LDPC decoder bypass                                        |
+|                                                                    |
+| RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE must be set                   |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_DECODE_SOFT_OUT                                      |
+| Set for soft-output stream  enable                                 |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_SOFT_OUT_RM_BYPASS                                   |
+| Set for Rate-Matching bypass on soft-out stream                    |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_SOFT_OUT_DEINTERLEAVER_BYPASS                        |
+| Set for bit-level de-interleaver bypass on soft-output stream      |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE                                |
+| Set for iteration stopping on successful decode condition enable   |
+|                                                                    |
+| Where a successful decode is a successful syndrome check           |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_DEC_INTERRUPTS                                       |
+| Set if a device supports decoder dequeue interrupts                |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_DEC_SCATTER_GATHER                                   |
+| Set if a device supports scatter-gather functionality              |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION                                |
+| Set if a device supports input/output HARQ compression             |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_LLR_COMPRESSION                                      |
+| Set if a device supports input LLR compression                     |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE                       |
+| Set if a device supports HARQ input to device's internal memory    |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE                      |
+| Set if a device supports HARQ output to device's internal memory   |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK                        |
+| Set if a device supports loopback access to HARQ internal memory   |
++--------------------------------------------------------------------+
+
+The structure passed for each LDPC decode operation is given below,
+with the operation flags forming a bitmask in the ``op_flags`` field.
+
+.. code-block:: c
+
+
+    struct rte_bbdev_op_ldpc_dec {
+
+        struct rte_bbdev_op_data input;
+        struct rte_bbdev_op_data hard_output;
+        struct rte_bbdev_op_data soft_output;
+        struct rte_bbdev_op_data harq_combined_input;
+        struct rte_bbdev_op_data harq_combined_output;
+
+        uint32_t op_flags;
+        uint8_t rv_index;
+        uint8_t basegraph;
+        uint16_t z_c;
+        uint16_t n_cb;
+        uint8_t q_m;
+        uint16_t n_filler;
+        uint8_t iter_max;
+        uint8_t iter_count;
+        uint8_t code_block_mode;
+        union {
+            struct rte_bbdev_op_dec_ldpc_cb_params cb_params;
+            struct rte_bbdev_op_dec_ldpc_tb_params tb_params;
+        };
+    };
+
+
+The LDPC decode parameters are set out in the table below.
+
++----------------+--------------------------------------------------------------------+
+|Parameter       |Description                                                         |
++================+====================================================================+
+|input           |input CB or TB data                                                 |
++----------------+--------------------------------------------------------------------+
+|hard_output     |hard decisions buffer, decoded output                               |
++----------------+--------------------------------------------------------------------+
+|soft_output     |soft LLR output buffer (optional)                                   |
++----------------+--------------------------------------------------------------------+
+|harq_comb_input |HARQ combined input buffer (optional)                               |
++----------------+--------------------------------------------------------------------+
+|harq_comb_output|HARQ combined output buffer (optional)                              |
++----------------+--------------------------------------------------------------------+
+|op_flags        |bitmask of all active operation capabilities                        |
++----------------+--------------------------------------------------------------------+
+|rv_index        |redundancy version index [0..3]                                     |
++----------------+--------------------------------------------------------------------+
+|basegraph       |Basegraph 1 or 2                                                    |
++----------------+--------------------------------------------------------------------+
+|z_c             |Zc, LDPC lifting size                                               |
++----------------+--------------------------------------------------------------------+
+|n_cb            |Ncb, length of the circular buffer in bits.                         |
++----------------+--------------------------------------------------------------------+
+|q_m             |Qm, modulation order {1,2,4,6,8} from pi/2-BPSK to 256QAM           |
++----------------+--------------------------------------------------------------------+
+|n_filler        |number of filler bits                                               |
++----------------+--------------------------------------------------------------------+
+|iter_max        |maximum number of iterations to perform in decode all CBs           |
++----------------+--------------------------------------------------------------------+
+|iter_count      |number of iterations performed in decoding all CBs                  |
++----------------+--------------------------------------------------------------------+
+|code_block_mode |code block or transport block mode                                  |
++----------------+--------------------------------------------------------------------+
+|op_flags        |bitmask of all active operation capabilities                        |
++----------------+--------------------------------------------------------------------+
+|**cb_params**   |code block specific parameters (code block mode only)               |
++----------------+------------+-------------------------------------------------------+
+|                |e           |E, length of the rate matched output sequence in bits  |
++----------------+------------+-------------------------------------------------------+
+|**tb_params**   | transport block specific parameters (transport block mode only)    |
++----------------+------------+-------------------------------------------------------+
+|                |c           |number of CBs in the TB or partial TB                  |
++----------------+------------+-------------------------------------------------------+
+|                |r           |index of the first CB in the inbound mbuf data         |
++----------------+------------+-------------------------------------------------------+
+|                |c_ab        |number of CBs that use Ea before switching to Eb       |
++----------------+------------+-------------------------------------------------------+
+|                |ea          |Ea, length of the RM output sequence in bits, r < cab  |
++----------------+------------+-------------------------------------------------------+
+|                |eb          |Eb, length of the RM output sequence in bits  r >= cab |
++----------------+------------+-------------------------------------------------------+
+
+The mbuf input ``input`` encoded CB data is mandatory for all BBDEV PMDs
+and is the Virtual Circular Buffer data stream with null padding.
+Each byte in the input circular buffer is the LLR value of each bit of
+the original CB.
+
+The mbuf output ``hard_output`` is mandatory and is the decoded CBs size
+K (CRC24A/B is the last 24-bit in each decoded CB).
+
+The mbuf output ``soft_output`` is optional and is an LLR rate matched
+output of size ``e`` (this is ``E`` as per 3GPP TS 38.212 section 6.2.5).
+
+The mbuf input ``harq_combine_input`` is optional and is a buffer with
+the input to the HARQ combination function of the device. If the
+capability RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE is set
+then the HARQ is stored in memory internal to the device and not visible
+to BBDEV.
+
+The mbuf output ``harq_combine_output`` is optional and is a buffer for
+the output of the HARQ combination function of the device. If the
+capability RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE is set
+then the HARQ is stored in memory internal to the device and not visible
+to BBDEV.
+
+The output mbuf data structures are expected to be allocated by the
+application with enough room for the output data.
+
+As with the LDPC encode, the decode interface works on both a code block
+(CB) and a transport block (TB) basis.
+
+  **NOTE:** All enqueued ops in one ``rte_bbdev_enqueue_dec_ops()``
+  call belong to one mode, either CB-mode or TB-mode.
+
+The valid modes of operation are:
+
+* CB-mode: one CB (check CRC24B if required)
+* CB-mode: one CB making up one TB (check CRC24A if required)
+* TB-mode: one or more CB making up a partial TB (check CRC24B(s) if required)
+* TB-mode: one or more CB making up a complete TB (check CRC24B(s) if required)
+
+The mbuf ``length`` is inclusive of CRC24A/B where present and is equal
+the code block size ``K``.
+
+The first CB Virtual Circular Buffer (VCB) index is given by ``r`` but the
+the number of the remaining CB VCBs is calculated automatically by BBDEV
+and passed down to the driver.
+
+The number of remaining CB VCBs should not be confused with ``c``, the
+total number of CBs in the full TB (``C`` as per 3GPP TS 38.212 section 5.2.2)
+
+The ``length`` is total size of the CBs inclusive of any CRC24A and CRC24B in
+case they were appended by the application.
+
+Figure 13.2 above showing the Turbo decoding of CBs using BBDEV
+interface in TB-mode is also valid for LDPC decode.
 
 
 Sample code
