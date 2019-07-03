@@ -156,8 +156,9 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	uint32_t auth_len = 0, auth_ofs = 0;
 	uint32_t min_ofs = 0;
 	uint64_t src_buf_start = 0, dst_buf_start = 0;
+	uint64_t digest_start = 0;
 	uint8_t do_sgl = 0;
-	uint8_t wireless_auth = 0, in_place = 1;
+	uint8_t in_place = 1;
 	struct rte_crypto_op *op = (struct rte_crypto_op *)in_op;
 	struct qat_sym_op_cookie *cookie =
 				(struct qat_sym_op_cookie *)op_cookie;
@@ -270,7 +271,6 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			}
 			auth_ofs = op->sym->auth.data.offset >> 3;
 			auth_len = op->sym->auth.data.length >> 3;
-			wireless_auth = 1;
 
 			auth_param->u1.aad_adr =
 					rte_crypto_op_ctophys_offset(op,
@@ -493,6 +493,53 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		(cipher_param->cipher_offset + cipher_param->cipher_length)
 		: (auth_param->auth_off + auth_param->auth_len);
 
+	if (do_auth && do_cipher) {
+		if (do_sgl) {
+			uint32_t remaining_off = auth_param->auth_off +
+				auth_param->auth_len;
+			struct rte_mbuf *sgl_buf =
+				(in_place ?
+				op->sym->m_src : op->sym->m_dst);
+			while (remaining_off >= rte_pktmbuf_data_len(
+					sgl_buf)) {
+				remaining_off -= rte_pktmbuf_data_len(
+						sgl_buf);
+				sgl_buf = sgl_buf->next;
+			}
+			digest_start = (uint64_t)rte_pktmbuf_iova_offset(
+				sgl_buf, remaining_off);
+		} else {
+			digest_start = (in_place ?
+				src_buf_start : dst_buf_start) +
+				auth_param->auth_off + auth_param->auth_len;
+		}
+		/* Handle cases of auth-gen-then-cipher and
+		 * cipher-decrypt-then-auth-verify with digest encrypted
+		 */
+		if ((auth_param->auth_off + auth_param->auth_len <
+					cipher_param->cipher_offset +
+					cipher_param->cipher_length) &&
+				(op->sym->auth.digest.phys_addr ==
+					digest_start)) {
+			/* Handle partial digest encryption */
+			if (cipher_param->cipher_offset +
+					cipher_param->cipher_length <
+					auth_param->auth_off +
+					auth_param->auth_len +
+					ctx->digest_length)
+				qat_req->comn_mid.dst_length =
+					qat_req->comn_mid.src_length =
+					auth_param->auth_off +
+					auth_param->auth_len +
+					ctx->digest_length;
+			struct icp_qat_fw_comn_req_hdr *header =
+				&qat_req->comn_hdr;
+			ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
+				header->serv_specif_flags,
+				ICP_QAT_FW_LA_DIGEST_IN_BUFFER);
+		}
+	}
+
 	if (do_sgl) {
 
 		ICP_QAT_FW_COMN_PTR_TYPE_SET(qat_req->comn_hdr.comn_req_flags,
@@ -535,18 +582,6 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	} else {
 		qat_req->comn_mid.src_data_addr = src_buf_start;
 		qat_req->comn_mid.dest_data_addr = dst_buf_start;
-		/* handle case of auth-gen-then-cipher with digest encrypted */
-		if (wireless_auth && in_place &&
-		    (op->sym->auth.digest.phys_addr ==
-				src_buf_start + auth_ofs + auth_len) &&
-		    (auth_ofs + auth_len + ctx->digest_length <=
-				cipher_ofs + cipher_len)) {
-			struct icp_qat_fw_comn_req_hdr *header =
-						&qat_req->comn_hdr;
-			ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
-				header->serv_specif_flags,
-				ICP_QAT_FW_LA_DIGEST_IN_BUFFER);
-		}
 	}
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG

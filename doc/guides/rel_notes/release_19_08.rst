@@ -139,6 +139,11 @@ New Features
   (Programmable  Acceleration Card) N3000.  See the
   :doc:`../bbdevs/fpga_lte_fec` BBDEV guide for more details on this new driver.
 
+* **Updated the QuickAssist Technology (QAT) symmetric crypto PMD.**
+
+  Added support for digest-encrypted cases where digest is appended
+  to the data.
+
 * **Added Intel QuickData Technology PMD**
 
   The PMD for Intel\ |reg|  QuickData Technology, part of
