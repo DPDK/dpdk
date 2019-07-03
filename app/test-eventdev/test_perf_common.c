@@ -28,6 +28,7 @@ perf_test_result(struct evt_test *test, struct evt_options *opt)
 static inline int
 perf_producer(void *arg)
 {
+	int i;
 	struct prod_data *p  = arg;
 	struct test_perf *t = p->t;
 	struct evt_options *opt = t->opt;
@@ -38,7 +39,7 @@ perf_producer(void *arg)
 	const uint32_t nb_flows = t->nb_flows;
 	uint32_t flow_counter = 0;
 	uint64_t count = 0;
-	struct perf_elt *m;
+	struct perf_elt *m[BURST_SIZE + 1] = {NULL};
 	struct rte_event ev;
 
 	if (opt->verbose_level > 1)
@@ -54,19 +55,21 @@ perf_producer(void *arg)
 	ev.sub_event_type = 0; /* stage 0 */
 
 	while (count < nb_pkts && t->done == false) {
-		if (rte_mempool_get(pool, (void **)&m) < 0)
+		if (rte_mempool_get_bulk(pool, (void **)m, BURST_SIZE) < 0)
 			continue;
-
-		ev.flow_id = flow_counter++ % nb_flows;
-		ev.event_ptr = m;
-		m->timestamp = rte_get_timer_cycles();
-		while (rte_event_enqueue_burst(dev_id, port, &ev, 1) != 1) {
-			if (t->done)
-				break;
-			rte_pause();
-			m->timestamp = rte_get_timer_cycles();
+		for (i = 0; i < BURST_SIZE; i++) {
+			ev.flow_id = flow_counter++ % nb_flows;
+			ev.event_ptr = m[i];
+			m[i]->timestamp = rte_get_timer_cycles();
+			while (rte_event_enqueue_burst(dev_id,
+						       port, &ev, 1) != 1) {
+				if (t->done)
+					break;
+				rte_pause();
+				m[i]->timestamp = rte_get_timer_cycles();
+			}
 		}
-		count++;
+		count += BURST_SIZE;
 	}
 
 	return 0;
@@ -75,6 +78,7 @@ perf_producer(void *arg)
 static inline int
 perf_event_timer_producer(void *arg)
 {
+	int i;
 	struct prod_data *p  = arg;
 	struct test_perf *t = p->t;
 	struct evt_options *opt = t->opt;
@@ -85,7 +89,7 @@ perf_event_timer_producer(void *arg)
 	const uint32_t nb_flows = t->nb_flows;
 	const uint64_t nb_timers = opt->nb_timers;
 	struct rte_mempool *pool = t->pool;
-	struct perf_elt *m;
+	struct perf_elt *m[BURST_SIZE + 1] = {NULL};
 	struct rte_event_timer_adapter **adptr = t->timer_adptr;
 	struct rte_event_timer tim;
 	uint64_t timeout_ticks = opt->expiry_nsec / opt->timer_tick_nsec;
@@ -107,23 +111,24 @@ perf_event_timer_producer(void *arg)
 		printf("%s(): lcore %d\n", __func__, rte_lcore_id());
 
 	while (count < nb_timers && t->done == false) {
-		if (rte_mempool_get(pool, (void **)&m) < 0)
+		if (rte_mempool_get_bulk(pool, (void **)m, BURST_SIZE) < 0)
 			continue;
-
-		m->tim = tim;
-		m->tim.ev.flow_id = flow_counter++ % nb_flows;
-		m->tim.ev.event_ptr = m;
-		m->timestamp = rte_get_timer_cycles();
-		while (rte_event_timer_arm_burst(
-				adptr[flow_counter % nb_timer_adptrs],
-				(struct rte_event_timer **)&m, 1) != 1) {
-			if (t->done)
-				break;
-			rte_pause();
-			m->timestamp = rte_get_timer_cycles();
+		for (i = 0; i < BURST_SIZE; i++) {
+			rte_prefetch0(m[i + 1]);
+			m[i]->tim = tim;
+			m[i]->tim.ev.flow_id = flow_counter++ % nb_flows;
+			m[i]->tim.ev.event_ptr = m[i];
+			m[i]->timestamp = rte_get_timer_cycles();
+			while (rte_event_timer_arm_burst(
+			       adptr[flow_counter % nb_timer_adptrs],
+			       (struct rte_event_timer **)&m[i], 1) != 1) {
+				if (t->done)
+					break;
+				m[i]->timestamp = rte_get_timer_cycles();
+			}
+			arm_latency += rte_get_timer_cycles() - m[i]->timestamp;
 		}
-		arm_latency += rte_get_timer_cycles() - m->timestamp;
-		count++;
+		count += BURST_SIZE;
 	}
 	fflush(stdout);
 	rte_delay_ms(1000);
