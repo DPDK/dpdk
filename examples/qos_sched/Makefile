@@ -8,8 +8,7 @@ APP = qos_sched
 SRCS-y := main.c args.c init.c app_thread.c cfg_file.c cmdline.c stats.c
 
 # Build using pkg-config variables if possible
-$(shell pkg-config --exists libdpdk)
-ifeq ($(.SHELLSTATUS),0)
+ifeq ($(shell pkg-config --exists libdpdk && echo 0),0)
 
 all: shared
 .PHONY: shared static

@@ -9,8 +9,7 @@ SRCS-y := main.c
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # Build using pkg-config variables if possible
-$(shell pkg-config --exists libdpdk)
-ifeq ($(.SHELLSTATUS),0)
+ifeq ($(shell pkg-config --exists libdpdk && echo 0),0)
 
 all: shared
 .PHONY: shared static

@@ -8,8 +8,7 @@ APP = l2fwd-cat
 SRCS-y := l2fwd-cat.c cat.c
 
 # Build using pkg-config variables if possible
-$(shell pkg-config --exists libdpdk)
-ifeq ($(.SHELLSTATUS),0)
+ifeq ($(shell pkg-config --exists libdpdk && echo 0),0)
 
 all: shared
 .PHONY: shared static
