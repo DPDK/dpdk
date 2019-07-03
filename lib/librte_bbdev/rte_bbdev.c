@@ -6,7 +6,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include <rte_string_fns.h>
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_errno.h>
@@ -215,7 +214,7 @@ rte_bbdev_allocate(const char *name)
 	bbdev->data->dev_id = dev_id;
 	bbdev->state = RTE_BBDEV_INITIALIZED;
 
-	ret = strlcpy(bbdev->data->name, name, RTE_BBDEV_NAME_MAX_LEN);
+	ret = snprintf(bbdev->data->name, RTE_BBDEV_NAME_MAX_LEN, "%s", name);
 	if ((ret < 0) || (ret >= RTE_BBDEV_NAME_MAX_LEN)) {
 		rte_bbdev_log(ERR, "Copying device name \"%s\" failed", name);
 		return NULL;
@@ -499,7 +498,7 @@ rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
 		if (conf->op_type == RTE_BBDEV_OP_TURBO_DEC &&
 			conf->priority > dev_info.max_ul_queue_priority) {
 			rte_bbdev_log(ERR,
-					"Priority (%u) of queue %u of bdev %u must be <= %u",
+					"Priority (%u) of queue %u of bbdev %u must be <= %u",
 					conf->priority, queue_id, dev_id,
 					dev_info.max_ul_queue_priority);
 			return -EINVAL;
@@ -507,7 +506,7 @@ rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
 		if (conf->op_type == RTE_BBDEV_OP_TURBO_ENC &&
 			conf->priority > dev_info.max_dl_queue_priority) {
 			rte_bbdev_log(ERR,
-					"Priority (%u) of queue %u of bdev %u must be <= %u",
+					"Priority (%u) of queue %u of bbdev %u must be <= %u",
 					conf->priority, queue_id, dev_id,
 					dev_info.max_dl_queue_priority);
 			return -EINVAL;
@@ -796,7 +795,7 @@ rte_bbdev_info_get(uint16_t dev_id, struct rte_bbdev_info *dev_info)
 	memset(dev_info, 0, sizeof(*dev_info));
 	dev_info->dev_name = dev->data->name;
 	dev_info->num_queues = dev->data->num_queues;
-	dev_info->bus = rte_bus_find_by_device(dev->device);
+	dev_info->device = dev->device;
 	dev_info->socket_id = dev->data->socket_id;
 	dev_info->started = dev->data->started;
 
@@ -847,6 +846,12 @@ get_bbdev_op_size(enum rte_bbdev_op_type type)
 	case RTE_BBDEV_OP_TURBO_ENC:
 		result = sizeof(struct rte_bbdev_enc_op);
 		break;
+	case RTE_BBDEV_OP_LDPC_DEC:
+		result = sizeof(struct rte_bbdev_dec_op);
+		break;
+	case RTE_BBDEV_OP_LDPC_ENC:
+		result = sizeof(struct rte_bbdev_enc_op);
+		break;
 	default:
 		break;
 	}
@@ -861,11 +866,12 @@ bbdev_op_init(struct rte_mempool *mempool, void *arg, void *element,
 {
 	enum rte_bbdev_op_type type = *(enum rte_bbdev_op_type *)arg;
 
-	if (type == RTE_BBDEV_OP_TURBO_DEC) {
+	if (type == RTE_BBDEV_OP_TURBO_DEC || type == RTE_BBDEV_OP_LDPC_DEC) {
 		struct rte_bbdev_dec_op *op = element;
 		memset(op, 0, mempool->elt_size);
 		op->mempool = mempool;
-	} else if (type == RTE_BBDEV_OP_TURBO_ENC) {
+	} else if (type == RTE_BBDEV_OP_TURBO_ENC ||
+			type == RTE_BBDEV_OP_LDPC_ENC) {
 		struct rte_bbdev_enc_op *op = element;
 		memset(op, 0, mempool->elt_size);
 		op->mempool = mempool;
@@ -1117,6 +1123,8 @@ rte_bbdev_op_type_str(enum rte_bbdev_op_type op_type)
 		"RTE_BBDEV_OP_NONE",
 		"RTE_BBDEV_OP_TURBO_DEC",
 		"RTE_BBDEV_OP_TURBO_ENC",
+		"RTE_BBDEV_OP_LDPC_DEC",
+		"RTE_BBDEV_OP_LDPC_ENC",
 	};
 
 	if (op_type < RTE_BBDEV_OP_TYPE_COUNT)

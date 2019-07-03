@@ -1656,8 +1656,8 @@ static int
 validate_dec_op(struct rte_bbdev_dec_op *op)
 {
 	struct rte_bbdev_op_turbo_dec *turbo_dec = &op->turbo_dec;
-	struct rte_bbdev_op_dec_cb_params *cb = NULL;
-	struct rte_bbdev_op_dec_tb_params *tb = NULL;
+	struct rte_bbdev_op_dec_turbo_cb_params *cb = NULL;
+	struct rte_bbdev_op_dec_turbo_tb_params *tb = NULL;
 
 	if (op->mempool == NULL) {
 		rte_bbdev_log(ERR, "Invalid mempool pointer");

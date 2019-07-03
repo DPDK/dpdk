@@ -257,6 +257,9 @@ ABI Changes
 
   Disabling unused features would facilitate efficient usage of HW/SW offload.
 
+* bbdev: New operations and parameters added to support new 5GNR operations.
+  The bbdev ABI is still kept experimental.
+
 
 Shared Library Versions
 -----------------------
