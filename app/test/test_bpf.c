@@ -1777,6 +1777,118 @@ static const struct rte_bpf_xsym test_call2_xsym[] = {
 	},
 };
 
+static const struct ebpf_insn test_call3_prog[] = {
+
+	{
+		.code = (BPF_JMP | EBPF_CALL),
+		.imm = 0,
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_2,
+		.src_reg = EBPF_REG_0,
+		.off = offsetof(struct dummy_offset, u8),
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | BPF_H),
+		.dst_reg = EBPF_REG_3,
+		.src_reg = EBPF_REG_0,
+		.off = offsetof(struct dummy_offset, u16),
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | BPF_W),
+		.dst_reg = EBPF_REG_4,
+		.src_reg = EBPF_REG_0,
+		.off = offsetof(struct dummy_offset, u32),
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | EBPF_DW),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_0,
+		.off = offsetof(struct dummy_offset, u64),
+	},
+	/* return sum */
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_4,
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_3,
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_2,
+	},
+	{
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+};
+
+static const struct dummy_offset *
+dummy_func3(const struct dummy_vect8 *p)
+{
+	return &p->in[RTE_DIM(p->in) - 1];
+}
+
+static void
+test_call3_prepare(void *arg)
+{
+	struct dummy_vect8 *pv;
+	struct dummy_offset *df;
+
+	pv = arg;
+	df = (struct dummy_offset *)(uintptr_t)dummy_func3(pv);
+
+	memset(pv, 0, sizeof(*pv));
+	df->u64 = (int32_t)TEST_FILL_1;
+	df->u32 = df->u64;
+	df->u16 = df->u64;
+	df->u8 = df->u64;
+}
+
+static int
+test_call3_check(uint64_t rc, const void *arg)
+{
+	uint64_t v;
+	const struct dummy_vect8 *pv;
+	const struct dummy_offset *dft;
+
+	pv = arg;
+	dft = dummy_func3(pv);
+
+	v = dft->u64;
+	v += dft->u32;
+	v += dft->u16;
+	v += dft->u8;
+
+	return cmp_res(__func__, v, rc, pv, pv, sizeof(*pv));
+}
+
+static const struct rte_bpf_xsym test_call3_xsym[] = {
+	{
+		.name = RTE_STR(dummy_func3),
+		.type = RTE_BPF_XTYPE_FUNC,
+		.func = {
+			.val = (void *)dummy_func3,
+			.nb_args = 1,
+			.args = {
+				[0] = {
+					.type = RTE_BPF_ARG_PTR,
+					.size = sizeof(struct dummy_vect8),
+				},
+			},
+			.ret = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = sizeof(struct dummy_offset),
+			},
+		},
+	},
+};
+
 static const struct bpf_test tests[] = {
 	{
 		.name = "test_store1",
@@ -1965,6 +2077,24 @@ static const struct bpf_test tests[] = {
 		},
 		.prepare = test_store1_prepare,
 		.check_result = test_call2_check,
+		/* for now don't support function calls on 32 bit platform */
+		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
+	},
+	{
+		.name = "test_call3",
+		.arg_sz = sizeof(struct dummy_vect8),
+		.prm = {
+			.ins = test_call3_prog,
+			.nb_ins = RTE_DIM(test_call3_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = sizeof(struct dummy_vect8),
+			},
+			.xsym = test_call3_xsym,
+			.nb_xsym = RTE_DIM(test_call3_xsym),
+		},
+		.prepare = test_call3_prepare,
+		.check_result = test_call3_check,
 		/* for now don't support function calls on 32 bit platform */
 		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
 	},
