@@ -120,6 +120,12 @@ New Features
   * Enabled need_wakeup feature which can provide efficient support for case
     that application and driver executing on the same core.
 
+* **Enabled infinite Rx in the PCAP PMD.**
+
+  Added an infinite Rx feature which allows packets in the Rx PCAP of a PCAP
+  device to be received repeatedly at a high rate. This can be useful for quick
+  performance testing of DPDK apps.
+
 * **Added Intel QuickData Technology PMD**
 
   The PMD for Intel\ |reg|  QuickData Technology, part of
