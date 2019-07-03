@@ -5,20 +5,21 @@ SW Turbo Poll Mode Driver
 =========================
 
 The SW Turbo PMD (**baseband_turbo_sw**) provides a software only poll mode bbdev
-driver that can optionally utilize Intel optimized libraries for LTE Layer 1
-workloads acceleration.
+driver that can optionally utilize Intel optimized libraries for LTE and 5GNR
+Layer 1 workloads acceleration.
 
 Note that the driver can also be built without any dependency with reduced
 functionality for maintenance purpose.
 
 To enable linking to the SDK libraries see detailed installation section below.
-One flag can be enabled depending on whether the target machine can support
-AVX2 instructions sets and the related SDK libraries for vectorized
+Two flags can be enabled depending on whether the target machine can support
+AVX2 and AVX512 instructions sets and the related SDK libraries for vectorized
 signal processing functions are installed :
 - CONFIG_RTE_BBDEV_SDK_AVX2
-
-By default this flag is disabled. For AVX2 machine and SDK
-library installed then this flag can be enabled.
+- CONFIG_RTE_BBDEV_SDK_AVX512
+By default these 2 flags are disabled by default. For AVX2 machine and SDK
+library installed then the first flag can be enabled. For AVX512 machine and
+SDK library installed then both flags can be enabled for full real time capability.
 
 This PMD supports the functions: FEC, Rate Matching and CRC functions detailed
 in the Features section.
@@ -45,11 +46,25 @@ For the LTE decode operation:
 * ``RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP``
 * ``RTE_BBDEV_TURBO_EARLY_TERMINATION``
 
+For the 5G NR LDPC encode operation:
+
+* ``RTE_BBDEV_LDPC_RATE_MATCH``
+* ``RTE_BBDEV_LDPC_CRC_24A_ATTACH``
+* ``RTE_BBDEV_LDPC_CRC_24B_ATTACH``
+
+For the 5G NR LDPC decode operation:
+
+* ``RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK``
+* ``RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK``
+* ``RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP``
+* ``RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE``
+* ``RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE``
+* ``RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE``
 
 Limitations
 -----------
 
-* In-place operations for Turbo encode and decode are not supported
+* In-place operations for encode and decode are not supported
 
 Installation
 ------------
@@ -115,14 +130,13 @@ The following instructions should be followed in this exact order:
 
     .. code-block:: console
 
-        cd build-avx2-icc/
+        cd build-avx512-icc/
         make && make install
-
 
 Initialization
 --------------
 
-In order to enable this virtual bbdev PMD, the user must:
+In order to enable this virtual bbdev PMD, the user may:
 
 * Build the ``FLEXRAN SDK`` libraries (explained in Installation section).
 
@@ -137,9 +151,11 @@ Example:
     export FLEXRAN_SDK=<path-to-workspace>/FlexRAN-FEC-SDK-19-04/sdk/build-avx2-icc/install
     export DIR_WIRELESS_SDK=<path-to-workspace>/FlexRAN-FEC-SDK-19-04/sdk/build-avx2-icc/
 
-* Set ``CONFIG_RTE_BBDEV_SDK_AVX2=y``
+* Set ``CONFIG_RTE_BBDEV_SDK_AVX2=y`` and ``CONFIG_RTE_BBDEV_SDK_AVX512=y``
   in DPDK common configuration file ``config/common_base`` to be able to use
   the SDK libraries as mentioned above.
+  For AVX2 machine it is possible to only enable CONFIG_RTE_BBDEV_SDK_AVX2
+  for limited 4G functionality.
   If no flag are set the PMD driver will still build but its capabilities
   will be limited accordingly.
 
