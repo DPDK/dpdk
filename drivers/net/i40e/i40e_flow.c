@@ -3175,8 +3175,8 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 
 	cons_filter_type = RTE_ETH_FILTER_FDIR;
 
-	if (dev->data->dev_conf.fdir_conf.mode !=
-	    RTE_FDIR_MODE_PERFECT) {
+	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_PERFECT ||
+		pf->fdir.fdir_vsi == NULL) {
 		/* Enable fdir when fdir flow is added at first time. */
 		ret = i40e_fdir_setup(pf);
 		if (ret != I40E_SUCCESS) {
