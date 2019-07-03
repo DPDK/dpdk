@@ -3,7 +3,6 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-
 # library name
 LIB = librte_pmd_bbdev_turbo_sw.a
 
@@ -32,6 +31,20 @@ LDLIBS += -L$(FLEXRAN_SDK)/lib_crc -lcrc
 LDLIBS += -L$(FLEXRAN_SDK)/lib_rate_matching -lrate_matching
 LDLIBS += -L$(FLEXRAN_SDK)/lib_common -lcommon
 LDLIBS += -lstdc++ -lirc -limf -lipps -lsvml
+endif
+
+ifeq ($(CONFIG_RTE_BBDEV_SDK_AVX512),y)
+ifeq ($(CONFIG_RTE_BBDEV_SDK_AVX2),n)
+$(error "CONFIG_RTE_BBDEV_SDK_AVX512 requires CONFIG_RTE_BBDEV_SDK_AVX2 set")
+endif
+CFLAGS += -I$(FLEXRAN_SDK)/lib_ldpc_encoder_5gnr
+CFLAGS += -I$(FLEXRAN_SDK)/lib_ldpc_decoder_5gnr
+CFLAGS += -I$(FLEXRAN_SDK)/lib_LDPC_ratematch_5gnr
+CFLAGS += -I$(FLEXRAN_SDK)/lib_rate_dematching_5gnr
+LDLIBS += -L$(FLEXRAN_SDK)/lib_ldpc_encoder_5gnr -lldpc_encoder_5gnr
+LDLIBS += -L$(FLEXRAN_SDK)/lib_ldpc_decoder_5gnr -lldpc_decoder_5gnr
+LDLIBS += -L$(FLEXRAN_SDK)/lib_LDPC_ratematch_5gnr -lLDPC_ratematch_5gnr
+LDLIBS += -L$(FLEXRAN_SDK)/lib_rate_dematching_5gnr -lrate_dematching_5gnr
 endif
 
 # library version

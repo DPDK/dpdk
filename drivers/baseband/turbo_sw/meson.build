@@ -23,6 +23,16 @@ if dpdk_conf.has('RTE_BBDEV_SDK_AVX2')
 		includes += include_directories(path + '/lib_common')
 	endif
 endif
+if dpdk_conf.has('RTE_BBDEV_SDK_AVX512')
+	ext_deps += cc.find_library('libldpc_encoder_5gnr', dirs: [path + '/lib_ldpc_encoder_5gnr'], required: true)
+	ext_deps += cc.find_library('libldpc_decoder_5gnr', dirs: [path + '/lib_ldpc_decoder_5gnr'], required: true)
+	ext_deps += cc.find_library('libLDPC_ratematch_5gnr', dirs: [path + '/lib_LDPC_ratematch_5gnr'], required: true)
+	ext_deps += cc.find_library('librate_dematching_5gnr', dirs: [path + '/lib_rate_dematching_5gnr'], required: true)
+	includes += include_directories(path + '/lib_ldpc_encoder_5gnr')
+	includes += include_directories(path + '/lib_ldpc_decoder_5gnr')
+	includes += include_directories(path + '/lib_LDPC_ratematch_5gnr')
+	includes += include_directories(path + '/lib_rate_dematching_5gnr')
+endif
 
 deps += ['bbdev', 'bus_vdev', 'ring']
 name = 'bbdev_turbo_sw'

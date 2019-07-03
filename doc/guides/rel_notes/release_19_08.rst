@@ -139,6 +139,14 @@ New Features
   (Programmable  Acceleration Card) N3000.  See the
   :doc:`../bbdevs/fpga_lte_fec` BBDEV guide for more details on this new driver.
 
+* **Updated TURBO_SW bbdev PMD.**
+
+  Updated the ``turbo_sw`` bbdev driver with changes including:
+
+  * Added option to build the driver with or without dependency of external
+    SDK libraries.
+  * Added support for 5GNR encode/decode operations.
+
 * **Updated the QuickAssist Technology (QAT) symmetric crypto PMD.**
 
   Added support for digest-encrypted cases where digest is appended

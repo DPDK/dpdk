@@ -236,7 +236,13 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -L$(FLEXRAN_SDK)/lib_crc -lcr
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -L$(FLEXRAN_SDK)/lib_turbo -lturbo
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -L$(FLEXRAN_SDK)/lib_rate_matching -lrate_matching
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -L$(FLEXRAN_SDK)/lib_common -lcommon
-_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -lirc -limf -lstdc++ -lipps
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -lirc -limf -lstdc++ -lipps -lsvml
+ifeq ($(CONFIG_RTE_BBDEV_SDK_AVX512),y)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -L$(FLEXRAN_SDK)/lib_LDPC_ratematch_5gnr -lLDPC_ratematch_5gnr
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -L$(FLEXRAN_SDK)/lib_ldpc_encoder_5gnr -lldpc_encoder_5gnr
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -L$(FLEXRAN_SDK)/lib_ldpc_decoder_5gnr -lldpc_decoder_5gnr
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += -L$(FLEXRAN_SDK)/lib_rate_dematching_5gnr -lrate_dematching_5gnr
+endif # CONFIG_RTE_BBDEV_SDK_AVX512
 endif # CONFIG_RTE_BBDEV_SDK_AVX2
 endif # CONFIG_RTE_LIBRTE_BBDEV
 
