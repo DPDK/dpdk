@@ -7,7 +7,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_telemetry.a
 
 CFLAGS += -O3
-CFLAGS += -I$(SRCDIR)
+CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 LDLIBS += -lrte_eal -lrte_ethdev

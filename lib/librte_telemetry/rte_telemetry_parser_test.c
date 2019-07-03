@@ -16,6 +16,7 @@
 #include <rte_string_fns.h>
 
 #include "rte_telemetry_parser.h"
+#include "rte_telemetry_internal.h"
 
 enum choices {
 	INV_ACTION_VAL,
@@ -31,7 +32,7 @@ enum choices {
 
 #define TEST_CLIENT "/var/run/dpdk/test_client"
 
-int32_t
+static int32_t
 rte_telemetry_create_test_socket(struct telemetry_impl *telemetry,
 	const char *test_client_path)
 {
@@ -82,7 +83,7 @@ rte_telemetry_create_test_socket(struct telemetry_impl *telemetry,
 	return 0;
 }
 
-int32_t
+static int32_t
 rte_telemetry_format_port_stat_ids(int *port_ids, int num_port_ids,
 	const char * const *stat_names, int num_stat_names, json_t **data)
 {
@@ -165,8 +166,8 @@ fail:
 	return -1;
 }
 
-int32_t
-rte_telemetry_create_json_request(int action, char *command,
+static int32_t
+rte_telemetry_create_json_request(int action, const char *command,
 	const char *client_path, int *port_ids, int num_port_ids,
 	const char * const *stat_names, int num_stat_names, char **request,
 	int inv_choice)
@@ -262,13 +263,13 @@ fail:
 	return -1;
 }
 
-int32_t
+static int32_t
 rte_telemetry_send_get_ports_and_stats_request(struct telemetry_impl *telemetry,
-	int action_choice, char *command_choice, int inv_choice)
+	int action_choice, const char *command_choice, int inv_choice)
 {
 	int ret;
 	char *request;
-	char *client_path_data = NULL;
+	const char *client_path_data = NULL;
 
 	if (telemetry == NULL) {
 		TELEMETRY_LOG_ERR("Telemetry argument has not been initialised");
@@ -302,7 +303,7 @@ rte_telemetry_send_get_ports_and_stats_request(struct telemetry_impl *telemetry,
 	return 0;
 }
 
-int32_t
+static int32_t
 rte_telemetry_send_get_ports_details_request(struct telemetry_impl *telemetry,
 	int action_choice, int *port_ids, int num_port_ids, int inv_choice)
 {
@@ -313,7 +314,7 @@ rte_telemetry_send_get_ports_details_request(struct telemetry_impl *telemetry,
 		return -EINVAL;
 	}
 
-	char *command = "ports_details";
+	const char *command = "ports_details";
 
 	if (inv_choice == INV_ACTION_VAL)
 		action_choice = -1;
@@ -342,7 +343,7 @@ rte_telemetry_send_get_ports_details_request(struct telemetry_impl *telemetry,
 	return 0;
 }
 
-int32_t
+static int32_t
 rte_telemetry_send_stats_values_by_name_request(struct telemetry_impl
 	*telemetry, int action_choice, int *port_ids, int num_port_ids,
 	const char * const *stat_names, int num_stat_names,
@@ -350,7 +351,7 @@ rte_telemetry_send_stats_values_by_name_request(struct telemetry_impl
 {
 	int ret;
 	char *request;
-	char *command = "ports_stats_values_by_name";
+	const char *command = "ports_stats_values_by_name";
 
 	if (telemetry == NULL) {
 		TELEMETRY_LOG_ERR("Telemetry argument has not been initialised");
@@ -386,7 +387,7 @@ rte_telemetry_send_stats_values_by_name_request(struct telemetry_impl
 	return 0;
 }
 
-int32_t
+static int32_t
 rte_telemetry_send_unreg_request(struct telemetry_impl *telemetry,
 	int action_choice, const char *client_path, int inv_choice)
 {
@@ -398,7 +399,7 @@ rte_telemetry_send_unreg_request(struct telemetry_impl *telemetry,
 		return -EINVAL;
 	}
 
-	char *command = "clients";
+	const char *command = "clients";
 
 	if (inv_choice == INV_ACTION_VAL)
 		action_choice = -1;

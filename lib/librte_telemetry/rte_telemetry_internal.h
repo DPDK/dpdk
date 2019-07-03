@@ -105,4 +105,8 @@ rte_telemetry_socket_messaging_testing(int index, int socket);
 int32_t
 rte_telemetry_send_global_stats_values(struct telemetry_encode_param *ep,
 	struct telemetry_impl *telemetry);
+
+int32_t
+rte_telemetry_parser_test(struct telemetry_impl *telemetry);
+
 #endif
