@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2019 Intel Corporation
+
+op_type =
+RTE_BBDEV_OP_LDPC_ENC
+
+input0 =
+0x44FB08C0, 0x661CCC
+
+output0 =
+0x1BACEE95, 0x613ECD04, 0xC0
+
+basegraph=
+2
+
+z_c=
+10
+
+n_cb=
+500
+
+q_m=
+6
+
+n_filler=
+44
+
+e=
+66
+
+rv_index=
+0
+
+code_block_mode=
+1
+
+op_flags=
+RTE_BBDEV_LDPC_RATE_MATCH
+
+expected_status=
+OK

@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2019 Intel Corporation
+
+op_type =
+RTE_BBDEV_OP_LDPC_DEC
+
+input0 =
+0x7F817F81, 0x7F81817F, 0x7F7F7F7F, 0x81818181, 0x7F81817F, 0x817F8181, 0x817F7F7F, 0x7F817F81,
+0x817F7F7F, 0x8181817F, 0x8181817F
+
+output0 =
+0x8C4DEB9F, 0x52
+
+basegraph=
+2
+
+z_c=
+7
+
+n_cb=
+350
+
+q_m=
+2
+
+n_filler=
+30
+
+e =
+44
+
+rv_index =
+0
+
+code_block_mode =
+1
+
+iter_max =
+8
+
+expected_iter_count =
+6
+
+op_flags =
+RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE
+
+expected_status =
+OK
