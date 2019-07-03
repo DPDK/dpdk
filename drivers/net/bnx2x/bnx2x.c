@@ -2015,6 +2015,8 @@ bnx2x_nic_unload(struct bnx2x_softc *sc, uint32_t unload_mode, uint8_t keep_link
 	uint8_t global = FALSE;
 	uint32_t val;
 
+	PMD_INIT_FUNC_TRACE(sc);
+
 	PMD_DRV_LOG(DEBUG, sc, "Starting NIC unload...");
 
 	/* mark driver as unloaded in shmem2 */

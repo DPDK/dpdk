@@ -328,6 +328,7 @@ struct bnx2x_vf_mbx_msg {
 	union resp_tlvs resp;
 };
 
+int bnx2x_vf_teardown_queue(struct bnx2x_softc *sc, int qid);
 int bnx2x_vf_set_mac(struct bnx2x_softc *sc, int set);
 int bnx2x_vf_config_rss(struct bnx2x_softc *sc, struct ecore_config_rss_params *params);
 
