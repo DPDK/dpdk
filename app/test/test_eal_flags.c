@@ -1033,6 +1033,24 @@ test_file_prefix(void)
 	const char *argv4[] = {prgname, "-m",
 			DEFAULT_MEM_SIZE, "--file-prefix=" memtest2 };
 
+	/* primary process with --in-memory mode */
+	const char * const argv5[] = {prgname, "-m",
+		DEFAULT_MEM_SIZE, "--in-memory" };
+
+	/* primary process with memtest1 and --in-memory mode */
+	const char * const argv6[] = {prgname, "-m",
+		DEFAULT_MEM_SIZE, "--in-memory",
+		"--file-prefix=" memtest1 };
+
+	/* primary process with parent file-prefix and --in-memory mode */
+	const char * const argv7[] = {prgname, "-m",
+		DEFAULT_MEM_SIZE, "--in-memory", "--file-prefix", prefix };
+
+	/* primary process with memtest1 and --single-file-segments mode */
+	const char * const argv8[] = {prgname, "-m",
+		DEFAULT_MEM_SIZE, "--single-file-segments",
+		"--file-prefix=" memtest1 };
+
 	/* check if files for current prefix are present */
 	if (process_hugefiles(prefix, HUGEPAGE_CHECK_EXISTS) != 1) {
 		printf("Error - hugepage files for %s were not created!\n", prefix);
@@ -1143,6 +1161,54 @@ test_file_prefix(void)
 	if (process_hugefiles(memtest2, HUGEPAGE_CHECK_EXISTS) != 0) {
 		printf("Error - hugepage files for %s were not deleted!\n",
 				memtest2);
+		return -1;
+	}
+
+	/* check if hugefiles for memtest1 are present */
+	if (process_hugefiles(memtest1, HUGEPAGE_CHECK_EXISTS) != 0) {
+		printf("Error - hugepage files for %s were not deleted!\n",
+				memtest1);
+		return -1;
+	}
+
+	/* this process will run in --in-memory mode, so it should not leave any
+	 * hugepage files behind.
+	 */
+
+	/* test case to check eal-options with --in-memory mode */
+	if (launch_proc(argv5) != 0) {
+		printf("Error - failed to run with --in-memory mode\n");
+		return -1;
+	}
+
+	/*test case to check eal-options with --in-memory mode with
+	 * custom file-prefix.
+	 */
+	if (launch_proc(argv6) != 0) {
+		printf("Error - failed to run with --in-memory mode\n");
+		return -1;
+	}
+
+	/* check if hugefiles for memtest1 are present */
+	if (process_hugefiles(memtest1, HUGEPAGE_CHECK_EXISTS) != 0) {
+		printf("Error - hugepage files for %s were created and not deleted!\n",
+				memtest1);
+		return -1;
+	}
+
+	/* test case to check eal-options with --in-memory mode with
+	 * parent file-prefix.
+	 */
+	if (launch_proc(argv7) != 0) {
+		printf("Error - failed to run with --file-prefix=%s\n", prefix);
+		return -1;
+	}
+
+	/* this process will run in --single-file-segments mode,
+	 * so it should not leave any hugepage files behind.
+	 */
+	if (launch_proc(argv8) != 0) {
+		printf("Error - failed to run with --single-file-segments mode\n");
 		return -1;
 	}
 
