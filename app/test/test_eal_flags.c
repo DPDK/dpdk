@@ -903,6 +903,18 @@ test_misc_flags(void)
 	const char *argv15[] = {prgname, "--file-prefix=intr",
 			"--vfio-intr=invalid"};
 
+	/* With process type as auto-detect */
+	const char * const argv16[] = {prgname, "--file-prefix=auto",
+			"--proc-type=auto"};
+
+	/* With process type as auto-detect with no-shconf */
+	const char * const argv17[] = {prgname, "--proc-type=auto",
+			no_shconf, nosh_prefix, no_huge};
+
+	/* With process type as --create-uio-dev flag */
+	const char * const argv18[] = {prgname, "--file-prefix=uiodev",
+			"--create-uio-dev"};
+
 	/* run all tests also applicable to FreeBSD first */
 
 	if (launch_proc(argv0) == 0) {
@@ -979,6 +991,22 @@ test_misc_flags(void)
 				"--vfio-intr invalid parameter\n");
 		return -1;
 	}
+	if (launch_proc(argv16) != 0) {
+		printf("Error - process did not run ok with "
+				"--proc-type as auto parameter\n");
+		return -1;
+	}
+	if (launch_proc(argv17) != 0) {
+		printf("Error - process did not run ok with "
+				"--proc-type and --no-shconf parameter\n");
+		return -1;
+	}
+	if (launch_proc(argv18) != 0) {
+		printf("Error - process did not run ok with "
+				"--create-uio-dev parameter\n");
+		return -1;
+	}
+
 	return 0;
 }
 
