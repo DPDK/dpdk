@@ -218,9 +218,12 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE(sc);
 
 	/* start the periodic callout */
-	if (atomic_load_acq_long(&sc->periodic_flags) == PERIODIC_STOP) {
-		bnx2x_periodic_start(dev);
-		PMD_DRV_LOG(DEBUG, sc, "Periodic poll re-started");
+	if (IS_PF(sc)) {
+		if (atomic_load_acq_long(&sc->periodic_flags) ==
+		    PERIODIC_STOP) {
+			bnx2x_periodic_start(dev);
+			PMD_DRV_LOG(DEBUG, sc, "Periodic poll re-started");
+		}
 	}
 
 	ret = bnx2x_init(sc);
@@ -258,10 +261,10 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 		rte_intr_disable(&sc->pci_dev->intr_handle);
 		rte_intr_callback_unregister(&sc->pci_dev->intr_handle,
 				bnx2x_interrupt_handler, (void *)dev);
-	}
 
-	/* stop the periodic callout */
-	bnx2x_periodic_stop(dev);
+		/* stop the periodic callout */
+		bnx2x_periodic_stop(dev);
+	}
 
 	ret = bnx2x_nic_unload(sc, UNLOAD_NORMAL, FALSE);
 	if (ret) {
@@ -680,7 +683,9 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 	return 0;
 
 out:
-	bnx2x_periodic_stop(eth_dev);
+	if (IS_PF(sc))
+		bnx2x_periodic_stop(eth_dev);
+
 	return ret;
 }
 
