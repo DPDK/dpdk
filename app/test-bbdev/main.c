@@ -16,11 +16,13 @@
 
 #include "main.h"
 
+
 /* Defines how many testcases can be specified as cmdline args */
 #define MAX_CMDLINE_TESTCASES 8
 
 static const char tc_sep = ',';
 
+/* Declare structure for command line test parameters and options */
 static struct test_params {
 	struct test_command *test_to_run[MAX_CMDLINE_TESTCASES];
 	unsigned int num_tests;
@@ -28,6 +30,7 @@ static struct test_params {
 	unsigned int burst_sz;
 	unsigned int num_lcores;
 	char test_vector_filename[PATH_MAX];
+	bool init_device;
 } test_params;
 
 static struct test_commands_list commands_list =
@@ -46,9 +49,8 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 	unsigned int total = 0, skipped = 0, succeeded = 0, failed = 0;
 	uint64_t start, end;
 
-	printf(
-			"\n + ------------------------------------------------------- +\n");
-	printf(" + Starting Test Suite : %s\n", suite->suite_name);
+	printf("\n===========================================================\n");
+	printf("Starting Test Suite : %s\n", suite->suite_name);
 
 	start = rte_rdtsc_precise();
 
@@ -57,15 +59,13 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 		if (test_result == TEST_FAILED) {
 			printf(" + Test suite setup %s failed!\n",
 					suite->suite_name);
-			printf(
-					" + ------------------------------------------------------- +\n");
+			printf(" + ------------------------------------------------------- +\n");
 			return 1;
 		}
 		if (test_result == TEST_SKIPPED) {
 			printf(" + Test suite setup %s skipped!\n",
 					suite->suite_name);
-			printf(
-					" + ------------------------------------------------------- +\n");
+			printf(" + ------------------------------------------------------- +\n");
 			return 0;
 		}
 	}
@@ -82,15 +82,15 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 
 		if (test_result == TEST_SUCCESS) {
 			succeeded++;
-			printf(" + TestCase [%2d] : %s passed\n", total,
+			printf("TestCase [%2d] : %s passed\n", total,
 					suite->unit_test_cases[total].name);
 		} else if (test_result == TEST_SKIPPED) {
 			skipped++;
-			printf(" + TestCase [%2d] : %s skipped\n", total,
+			printf("TestCase [%2d] : %s skipped\n", total,
 					suite->unit_test_cases[total].name);
 		} else {
 			failed++;
-			printf(" + TestCase [%2d] : %s failed\n", total,
+			printf("TestCase [%2d] : %s failed\n", total,
 					suite->unit_test_cases[total].name);
 		}
 
@@ -103,7 +103,7 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 
 	end = rte_rdtsc_precise();
 
-	printf(" + ------------------------------------------------------- +\n");
+	printf(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +\n");
 	printf(" + Test Suite Summary : %s\n", suite->suite_name);
 	printf(" + Tests Total :       %2d\n", total);
 	printf(" + Tests Skipped :     %2d\n", skipped);
@@ -111,7 +111,7 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 	printf(" + Tests Failed :      %2d\n", failed);
 	printf(" + Tests Lasted :       %lg ms\n",
 			((end - start) * 1000) / (double)rte_get_tsc_hz());
-	printf(" + ------------------------------------------------------- +\n");
+	printf(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +\n");
 
 	return (failed > 0) ? 1 : 0;
 }
@@ -140,12 +140,18 @@ get_num_lcores(void)
 	return test_params.num_lcores;
 }
 
+bool
+get_init_device(void)
+{
+	return test_params.init_device;
+}
+
 static void
 print_usage(const char *prog_name)
 {
 	struct test_command *t;
 
-	printf("Usage: %s [EAL params] [-- [-n/--num-ops NUM_OPS]\n"
+	printf("***Usage: %s [EAL params] [-- [-n/--num-ops NUM_OPS]\n"
 			"\t[-b/--burst-size BURST_SIZE]\n"
 			"\t[-v/--test-vector VECTOR_FILE]\n"
 			"\t[-c/--test-cases TEST_CASE[,TEST_CASE,...]]]\n",
@@ -174,11 +180,12 @@ parse_args(int argc, char **argv, struct test_params *tp)
 		{ "test-cases", 1, 0, 'c' },
 		{ "test-vector", 1, 0, 'v' },
 		{ "lcores", 1, 0, 'l' },
+		{ "init-device", 0, 0, 'i'},
 		{ "help", 0, 0, 'h' },
 		{ NULL,  0, 0, 0 }
 	};
 
-	while ((opt = getopt_long(argc, argv, "hn:b:c:v:l:", lgopts,
+	while ((opt = getopt_long(argc, argv, "hin:b:c:v:l:", lgopts,
 			&option_index)) != EOF)
 		switch (opt) {
 		case 'n':
@@ -226,8 +233,9 @@ parse_args(int argc, char **argv, struct test_params *tp)
 			TEST_ASSERT(strlen(optarg) > 0,
 					"Config file name is null");
 
-			strlcpy(tp->test_vector_filename, optarg,
-				sizeof(tp->test_vector_filename));
+			snprintf(tp->test_vector_filename,
+					sizeof(tp->test_vector_filename),
+					"%s", optarg);
 			break;
 		case 'l':
 			TEST_ASSERT(strlen(optarg) > 0,
@@ -236,6 +244,10 @@ parse_args(int argc, char **argv, struct test_params *tp)
 			TEST_ASSERT(tp->num_lcores <= RTE_MAX_LCORE,
 					"Num of lcores mustn't be greater than %u",
 					RTE_MAX_LCORE);
+			break;
+		case 'i':
+			/* indicate fpga fec config required */
+			tp->init_device = true;
 			break;
 		case 'h':
 			print_usage(argv[0]);
@@ -279,7 +291,7 @@ run_all_tests(void)
 	struct test_command *t;
 
 	TAILQ_FOREACH(t, &commands_list, next)
-		ret |= t->callback();
+		ret |= (int) t->callback();
 
 	return ret;
 }
@@ -291,7 +303,7 @@ run_parsed_tests(struct test_params *tp)
 	unsigned int i;
 
 	for (i = 0; i < tp->num_tests; ++i)
-		ret |= tp->test_to_run[i]->callback();
+		ret |= (int) tp->test_to_run[i]->callback();
 
 	return ret;
 }

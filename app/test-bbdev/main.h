@@ -20,6 +20,7 @@
 #define DEFAULT_BURST 32U
 #define DEFAULT_OPS 64U
 
+
 #define TEST_ASSERT(cond, msg, ...) do {  \
 		if (!(cond)) {  \
 			printf("TestCase %s() line %d failed: " \
@@ -103,7 +104,8 @@ void add_test_command(struct test_command *t);
 		.command = RTE_STR(name), \
 		.callback = test_func_##name, \
 	}; \
-	RTE_INIT(test_register_##name) \
+	static void __attribute__((constructor, used)) \
+	test_register_##name(void) \
 	{ \
 		add_test_command(&test_struct_##name); \
 	}
@@ -115,5 +117,7 @@ unsigned int get_num_ops(void);
 unsigned int get_burst_sz(void);
 
 unsigned int get_num_lcores(void);
+
+bool get_init_device(void);
 
 #endif

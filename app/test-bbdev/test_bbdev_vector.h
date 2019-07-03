@@ -28,15 +28,21 @@ enum {
 	TEST_BBDEV_VF_NCB_NEG = (1ULL << 16),
 	TEST_BBDEV_VF_NCB_POS = (1ULL << 17),
 	TEST_BBDEV_VF_R = (1ULL << 18),
-	TEST_BBDEV_VF_CODE_BLOCK_MODE = (1ULL << 19),
-	TEST_BBDEV_VF_OP_FLAGS = (1ULL << 20),
-	TEST_BBDEV_VF_EXPECTED_STATUS = (1ULL << 21),
+	TEST_BBDEV_VF_BG = (1ULL << 19),
+	TEST_BBDEV_VF_ZC = (1ULL << 20),
+	TEST_BBDEV_VF_F = (1ULL << 21),
+	TEST_BBDEV_VF_QM = (1ULL << 22),
+	TEST_BBDEV_VF_CODE_BLOCK_MODE = (1ULL << 23),
+	TEST_BBDEV_VF_OP_FLAGS = (1ULL << 24),
+	TEST_BBDEV_VF_EXPECTED_STATUS = (1ULL << 25),
 };
 
 enum op_data_type {
 	DATA_INPUT = 0,
 	DATA_SOFT_OUTPUT,
 	DATA_HARD_OUTPUT,
+	DATA_HARQ_INPUT,
+	DATA_HARQ_OUTPUT,
 	DATA_NUM_TYPES,
 };
 
@@ -57,6 +63,8 @@ struct test_bbdev_vector {
 	union {
 		struct rte_bbdev_op_turbo_dec turbo_dec;
 		struct rte_bbdev_op_turbo_enc turbo_enc;
+		struct rte_bbdev_op_ldpc_dec ldpc_dec;
+		struct rte_bbdev_op_ldpc_enc ldpc_enc;
 	};
 	/* Additional storage for op data entries */
 	struct op_data_entries entries[DATA_NUM_TYPES];

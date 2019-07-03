@@ -59,6 +59,9 @@ parser.add_argument("-l", "--num-lcores",
                     type=int,
                     help="Number of lcores to run.",
                     default=16)
+parser.add_argument("-i", "--init-device",
+                    action='store_true',
+                    help="Initialise PF device with default values.")
 
 args = parser.parse_args()
 
@@ -81,6 +84,10 @@ if args.num_lcores:
 if args.test_cases:
     params.extend(["-c"])
     params.extend([",".join(args.test_cases)])
+
+if args.init_device:
+    params.extend(["-i"])
+
 
 exit_status = 0
 for vector in args.test_vector:
