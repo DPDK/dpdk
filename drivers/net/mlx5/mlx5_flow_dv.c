@@ -2435,6 +2435,22 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = MLX5_FLOW_ITEM_METADATA;
 			break;
+		case RTE_FLOW_ITEM_TYPE_ICMP:
+			ret = mlx5_flow_validate_item_icmp(items, item_flags,
+							   next_protocol,
+							   error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_ICMP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ICMP6:
+			ret = mlx5_flow_validate_item_icmp6(items, item_flags,
+							    next_protocol,
+							    error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_ICMP6;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
@@ -3507,6 +3523,102 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 	return 0;
 }
 
+/**
+ * Add ICMP6 item to matcher and to the value.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ */
+static void
+flow_dv_translate_item_icmp6(void *matcher, void *key,
+			      const struct rte_flow_item *item,
+			      int inner)
+{
+	const struct rte_flow_item_icmp6 *icmp6_m = item->mask;
+	const struct rte_flow_item_icmp6 *icmp6_v = item->spec;
+	void *headers_m;
+	void *headers_v;
+	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
+				     misc_parameters_3);
+	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+	if (inner) {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 inner_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+	} else {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 outer_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	}
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xFF);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_ICMPV6);
+	if (!icmp6_v)
+		return;
+	if (!icmp6_m)
+		icmp6_m = &rte_flow_item_icmp6_mask;
+	MLX5_SET(fte_match_set_misc3, misc3_m, icmpv6_type, icmp6_m->type);
+	MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_type,
+		 icmp6_v->type & icmp6_m->type);
+	MLX5_SET(fte_match_set_misc3, misc3_m, icmpv6_code, icmp6_m->code);
+	MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_code,
+		 icmp6_v->code & icmp6_m->code);
+}
+
+/**
+ * Add ICMP item to matcher and to the value.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ */
+static void
+flow_dv_translate_item_icmp(void *matcher, void *key,
+			    const struct rte_flow_item *item,
+			    int inner)
+{
+	const struct rte_flow_item_icmp *icmp_m = item->mask;
+	const struct rte_flow_item_icmp *icmp_v = item->spec;
+	void *headers_m;
+	void *headers_v;
+	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
+				     misc_parameters_3);
+	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+	if (inner) {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 inner_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+	} else {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 outer_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	}
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xFF);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_ICMP);
+	if (!icmp_v)
+		return;
+	if (!icmp_m)
+		icmp_m = &rte_flow_item_icmp_mask;
+	MLX5_SET(fte_match_set_misc3, misc3_m, icmp_type,
+		 icmp_m->hdr.icmp_type);
+	MLX5_SET(fte_match_set_misc3, misc3_v, icmp_type,
+		 icmp_v->hdr.icmp_type & icmp_m->hdr.icmp_type);
+	MLX5_SET(fte_match_set_misc3, misc3_m, icmp_code,
+		 icmp_m->hdr.icmp_code);
+	MLX5_SET(fte_match_set_misc3, misc3_v, icmp_code,
+		 icmp_v->hdr.icmp_code & icmp_m->hdr.icmp_code);
+}
+
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
 
 #define HEADER_IS_ZERO(match_criteria, headers)				     \
@@ -4302,6 +4414,16 @@ cnt_err:
 			flow_dv_translate_item_meta(match_mask, match_value,
 						    items);
 			last_item = MLX5_FLOW_ITEM_METADATA;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ICMP:
+			flow_dv_translate_item_icmp(match_mask, match_value,
+						    items, tunnel);
+			item_flags |= MLX5_FLOW_LAYER_ICMP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ICMP6:
+			flow_dv_translate_item_icmp6(match_mask, match_value,
+						      items, tunnel);
+			item_flags |= MLX5_FLOW_LAYER_ICMP6;
 			break;
 		default:
 			break;

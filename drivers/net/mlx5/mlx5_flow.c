@@ -1048,6 +1048,110 @@ mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate ICMP6 item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_item_icmp6(const struct rte_flow_item *item,
+			       uint64_t item_flags,
+			       uint8_t target_protocol,
+			       struct rte_flow_error *error)
+{
+	const struct rte_flow_item_icmp6 *mask = item->mask;
+	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t l3m = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+				      MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				      MLX5_FLOW_LAYER_OUTER_L4;
+	int ret;
+
+	if (target_protocol != 0xFF && target_protocol != IPPROTO_ICMPV6)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "protocol filtering not compatible"
+					  " with ICMP6 layer");
+	if (!(item_flags & l3m))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "IPv6 is mandatory to filter on"
+					  " ICMP6");
+	if (item_flags & l4m)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple L4 layers not supported");
+	if (!mask)
+		mask = &rte_flow_item_icmp6_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_icmp6_mask,
+		 sizeof(struct rte_flow_item_icmp6), error);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
+/**
+ * Validate ICMP item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_item_icmp(const struct rte_flow_item *item,
+			     uint64_t item_flags,
+			     uint8_t target_protocol,
+			     struct rte_flow_error *error)
+{
+	const struct rte_flow_item_icmp *mask = item->mask;
+	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t l3m = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+				      MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				      MLX5_FLOW_LAYER_OUTER_L4;
+	int ret;
+
+	if (target_protocol != 0xFF && target_protocol != IPPROTO_ICMP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "protocol filtering not compatible"
+					  " with ICMP layer");
+	if (!(item_flags & l3m))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "IPv4 is mandatory to filter"
+					  " on ICMP");
+	if (item_flags & l4m)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple L4 layers not supported");
+	if (!mask)
+		mask = &rte_flow_item_icmp_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_icmp_mask,
+		 sizeof(struct rte_flow_item_icmp), error);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
+/**
  * Validate Ethernet item.
  *
  * @param[in] item

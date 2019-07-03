@@ -111,6 +111,7 @@ New Features
 
   * Updated the packet header modification feature. Added support of TCP header
     sequence number and acknowledgment number modification.
+  * Added support for match on ICMP/ICMP6 code and type.
 
 * **Updated Solarflare network PMD.**
 

@@ -160,6 +160,8 @@ Limitations
   - can be applied to VF ports only.
   - must specify PF port action (packet redirection from VF to PF).
 
+- ICMP/ICMP6 code/type matching cannot be supported togeter with IP-in-IP tunnel.
+
 Statistics
 ----------
 
@@ -524,6 +526,19 @@ Firmware configuration
      mlxconfig -d <mst device> query | grep IP_OVER_VXLAN
      IP_OVER_VXLAN_EN                    True(1)
      IP_OVER_VXLAN_PORT                  <udp dport>
+
+- enable ICMP/ICMP6's code/type field matching
+
+   .. code-block:: console
+
+     mlxconfig -d <mst device> set FLEX_PARSER_PROFILE_ENABLE=2
+
+  Verify configurations are set:
+
+   .. code-block:: console
+
+     mlxconfig -d <mst device> query | grep FLEX_PARSER_PROFILE_ENABLE
+     FLEX_PARSER_PROFILE_ENABLE         2
 
 Prerequisites
 -------------

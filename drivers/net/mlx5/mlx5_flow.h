@@ -50,6 +50,10 @@
 #define MLX5_FLOW_ITEM_METADATA (1u << 16)
 #define MLX5_FLOW_ITEM_PORT_ID (1u << 17)
 
+/* Pattern MISC bits. */
+#define MLX5_FLOW_LAYER_ICMP (1u << 18)
+#define MLX5_FLOW_LAYER_ICMP6 (1u << 19)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -502,5 +506,13 @@ int mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 				      uint64_t item_flags,
 				      struct rte_eth_dev *dev,
 				      struct rte_flow_error *error);
+int mlx5_flow_validate_item_icmp(const struct rte_flow_item *item,
+				 uint64_t item_flags,
+				 uint8_t target_protocol,
+				 struct rte_flow_error *error);
+int mlx5_flow_validate_item_icmp6(const struct rte_flow_item *item,
+				   uint64_t item_flags,
+				   uint8_t target_protocol,
+				   struct rte_flow_error *error);
 
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
