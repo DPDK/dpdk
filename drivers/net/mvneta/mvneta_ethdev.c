@@ -49,6 +49,8 @@ struct mvneta_ifnames {
 static int mvneta_dev_num;
 
 static void mvneta_stats_reset(struct rte_eth_dev *dev);
+static int rte_pmd_mvneta_remove(struct rte_vdev_device *vdev);
+
 
 /**
  * Deinitialize packet processor.
@@ -445,6 +447,14 @@ mvneta_dev_close(struct rte_eth_dev *dev)
 		mvneta_tx_queue_release(dev->data->tx_queues[i]);
 		dev->data->tx_queues[i] = NULL;
 	}
+
+	mvneta_dev_num--;
+
+	if (mvneta_dev_num == 0) {
+		MVNETA_LOG(INFO, "Perform MUSDK deinit");
+		mvneta_neta_deinit();
+		rte_mvep_deinit(MVEP_MOD_T_NETA);
+	}
 }
 
 /**
@@ -808,6 +818,9 @@ mvneta_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	mvneta_set_tx_function(eth_dev);
 	eth_dev->dev_ops = &mvneta_ops;
 
+	/* Flag to call rte_eth_dev_release_port() in rte_eth_dev_close(). */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
 out_free:
@@ -906,20 +919,16 @@ init_devices:
 		ret = mvneta_eth_dev_create(vdev, ifnames.names[i]);
 		if (ret)
 			goto out_cleanup;
+
+		mvneta_dev_num++;
 	}
-	mvneta_dev_num += ifnum;
 
 	rte_kvargs_free(kvlist);
 
 	return 0;
 out_cleanup:
-	for (; i > 0; i--)
-		mvneta_eth_dev_destroy_name(ifnames.names[i]);
+	rte_pmd_mvneta_remove(vdev);
 
-	if (mvneta_dev_num == 0) {
-		mvneta_neta_deinit();
-		rte_mvep_deinit(MVEP_MOD_T_NETA);
-	}
 out_free_kvlist:
 	rte_kvargs_free(kvlist);
 
@@ -938,27 +947,12 @@ out_free_kvlist:
 static int
 rte_pmd_mvneta_remove(struct rte_vdev_device *vdev)
 {
-	int i;
-	const char *name;
+	uint16_t port_id;
 
-	name = rte_vdev_device_name(vdev);
-	if (!name)
-		return -EINVAL;
-
-	MVNETA_LOG(INFO, "Removing %s", name);
-
-	RTE_ETH_FOREACH_DEV(i) {
-		if (rte_eth_devices[i].device != &vdev->device)
+	RTE_ETH_FOREACH_DEV(port_id) {
+		if (rte_eth_devices[port_id].device != &vdev->device)
 			continue;
-
-		mvneta_eth_dev_destroy(&rte_eth_devices[i]);
-		mvneta_dev_num--;
-	}
-
-	if (mvneta_dev_num == 0) {
-		MVNETA_LOG(INFO, "Perform MUSDK deinit");
-		mvneta_neta_deinit();
-		rte_mvep_deinit(MVEP_MOD_T_NETA);
+		rte_eth_dev_close(port_id);
 	}
 
 	return 0;
