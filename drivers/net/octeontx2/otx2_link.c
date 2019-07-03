@@ -106,3 +106,52 @@ otx2_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 
 	return rte_eth_linkstatus_set(eth_dev, &link);
 }
+
+static int
+nix_dev_set_link_state(struct rte_eth_dev *eth_dev, uint8_t enable)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct cgx_set_link_state_msg *req;
+
+	req = otx2_mbox_alloc_msg_cgx_set_link_state(mbox);
+	req->enable = enable;
+	return otx2_mbox_process(mbox);
+}
+
+int
+otx2_nix_dev_set_link_up(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	int rc, i;
+
+	if (otx2_dev_is_vf(dev))
+		return -ENOTSUP;
+
+	rc = nix_dev_set_link_state(eth_dev, 1);
+	if (rc)
+		goto done;
+
+	/* Start tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		otx2_nix_tx_queue_start(eth_dev, i);
+
+done:
+	return rc;
+}
+
+int
+otx2_nix_dev_set_link_down(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	int i;
+
+	if (otx2_dev_is_vf(dev))
+		return -ENOTSUP;
+
+	/* Stop tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		otx2_nix_tx_queue_stop(eth_dev, i);
+
+	return nix_dev_set_link_state(eth_dev, 0);
+}

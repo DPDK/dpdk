@@ -389,6 +389,8 @@ void otx2_nix_toggle_flag_link_cfg(struct otx2_eth_dev *dev, bool set);
 int otx2_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
 void otx2_eth_dev_link_status_update(struct otx2_dev *dev,
 				     struct cgx_link_user_info *link);
+int otx2_nix_dev_set_link_up(struct rte_eth_dev *eth_dev);
+int otx2_nix_dev_set_link_down(struct rte_eth_dev *eth_dev);
 
 /* IRQ */
 int otx2_nix_register_irqs(struct rte_eth_dev *eth_dev);
