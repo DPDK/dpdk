@@ -43,6 +43,9 @@ Supported Feature Flags
    - "RSA PRIV OP KEY QT" feature flag means PMD support RSA private key
      operation (Sign and Decrypt) using quintuple (crt) type key only.
 
+   - "Digest encrypted" feature flag means PMD support hash-cipher cases,
+     where generated digest is appended to and encrypted with the data.
+
 
 Supported Cipher Algorithms
 ---------------------------

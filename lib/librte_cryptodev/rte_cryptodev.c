@@ -490,6 +490,8 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "RSA_PRIV_OP_KEY_EXP";
 	case RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT:
 		return "RSA_PRIV_OP_KEY_QT";
+	case RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED:
+		return "DIGEST_ENCRYPTED";
 	default:
 		return NULL;
 	}
