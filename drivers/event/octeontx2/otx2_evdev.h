@@ -132,7 +132,9 @@ struct otx2_sso_evdev {
 	uint64_t nb_xaq_cfg;
 	rte_iova_t fc_iova;
 	struct rte_mempool *xaq_pool;
+	uint16_t rx_adptr_pool_cnt;
 	uint32_t adptr_xae_cnt;
+	uint64_t *rx_adptr_pools;
 	/* Dev args */
 	uint8_t dual_ws;
 	uint8_t selftest;

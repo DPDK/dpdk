@@ -199,6 +199,29 @@ void
 sso_updt_xae_cnt(struct otx2_sso_evdev *dev, void *data, uint32_t event_type)
 {
 	switch (event_type) {
+	case RTE_EVENT_TYPE_ETHDEV:
+	{
+		struct otx2_eth_rxq *rxq = data;
+		int i, match = false;
+
+		for (i = 0; i < dev->rx_adptr_pool_cnt; i++) {
+			if ((uint64_t)rxq->pool == dev->rx_adptr_pools[i])
+				match = true;
+		}
+
+		if (!match) {
+			dev->rx_adptr_pool_cnt++;
+			dev->rx_adptr_pools = rte_realloc(dev->rx_adptr_pools,
+							  sizeof(uint64_t) *
+							  dev->rx_adptr_pool_cnt
+							  , 0);
+			dev->rx_adptr_pools[dev->rx_adptr_pool_cnt - 1] =
+				(uint64_t)rxq->pool;
+
+			dev->adptr_xae_cnt += rxq->pool->size;
+		}
+		break;
+	}
 	case RTE_EVENT_TYPE_TIMER:
 	{
 		dev->adptr_xae_cnt += (*(uint64_t *)data);
@@ -216,21 +239,30 @@ otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
 {
 	struct otx2_eth_dev *otx2_eth_dev = eth_dev->data->dev_private;
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
 	uint16_t port = eth_dev->data->port_id;
+	struct otx2_eth_rxq *rxq;
 	int i, rc;
 
-	RTE_SET_USED(event_dev);
 	rc = strncmp(eth_dev->device->driver->name, "net_octeontx2", 13);
 	if (rc)
 		return -EINVAL;
 
 	if (rx_queue_id < 0) {
 		for (i = 0 ; i < eth_dev->data->nb_rx_queues; i++) {
+			rxq = eth_dev->data->rx_queues[i];
+			sso_updt_xae_cnt(dev, rxq, RTE_EVENT_TYPE_ETHDEV);
+			rc = sso_xae_reconfigure((struct rte_eventdev *)
+						 (uintptr_t)event_dev);
 			rc |= sso_rxq_enable(otx2_eth_dev, i,
 					     queue_conf->ev.sched_type,
 					     queue_conf->ev.queue_id, port);
 		}
 	} else {
+		rxq = eth_dev->data->rx_queues[rx_queue_id];
+		sso_updt_xae_cnt(dev, rxq, RTE_EVENT_TYPE_ETHDEV);
+		rc = sso_xae_reconfigure((struct rte_eventdev *)
+					 (uintptr_t)event_dev);
 		rc |= sso_rxq_enable(otx2_eth_dev, (uint16_t)rx_queue_id,
 				     queue_conf->ev.sched_type,
 				     queue_conf->ev.queue_id, port);
