@@ -573,7 +573,7 @@ i40evf_fill_virtchnl_vsi_txq_info(struct virtchnl_txq_info *txq_info,
 {
 	txq_info->vsi_id = vsi_id;
 	txq_info->queue_id = queue_id;
-	if (queue_id < nb_txq) {
+	if (queue_id < nb_txq && txq) {
 		txq_info->ring_len = txq->nb_tx_desc;
 		txq_info->dma_ring_addr = txq->tx_ring_phys_addr;
 	}
@@ -590,7 +590,7 @@ i40evf_fill_virtchnl_vsi_rxq_info(struct virtchnl_rxq_info *rxq_info,
 	rxq_info->vsi_id = vsi_id;
 	rxq_info->queue_id = queue_id;
 	rxq_info->max_pkt_size = max_pkt_size;
-	if (queue_id < nb_rxq) {
+	if (queue_id < nb_rxq && rxq) {
 		rxq_info->ring_len = rxq->nb_rx_desc;
 		rxq_info->dma_ring_addr = rxq->rx_ring_phys_addr;
 		rxq_info->databuffer_size =
@@ -623,10 +623,11 @@ i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 
 	for (i = 0, vc_qpi = vc_vqci->qpair; i < nb_qp; i++, vc_qpi++) {
 		i40evf_fill_virtchnl_vsi_txq_info(&vc_qpi->txq,
-			vc_vqci->vsi_id, i, dev->data->nb_tx_queues, txq[i]);
+			vc_vqci->vsi_id, i, dev->data->nb_tx_queues,
+			txq ? txq[i] : NULL);
 		i40evf_fill_virtchnl_vsi_rxq_info(&vc_qpi->rxq,
 			vc_vqci->vsi_id, i, dev->data->nb_rx_queues,
-					vf->max_pkt_len, rxq[i]);
+			vf->max_pkt_len, rxq ? rxq[i] : NULL);
 	}
 	memset(&args, 0, sizeof(args));
 	args.ops = VIRTCHNL_OP_CONFIG_VSI_QUEUES;
