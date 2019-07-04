@@ -167,6 +167,12 @@ New Features
   handshake between two separate hosts and can share local memory for peer
   host to directly access.
 
+* **Updated IPSec library Header Reconstruction.**
+
+  Updated the IPSec library with ECN and DSCP field header reconstruction
+  feature followed by RFC4301. The IPSec-secgw sample application is also
+  updated to support this feature by default.
+
 * **Updated telemetry library for global metrics support.**
 
   Updated ``librte_telemetry`` to fetch the global metrics from the

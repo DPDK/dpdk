@@ -64,7 +64,8 @@ trs_3descbc_sha1_old \
 trs_3descbc_sha1_esn \
 trs_3descbc_sha1_esn_atom"
 
-PKT_TESTS="trs_ipv6opts"
+PKT_TESTS="trs_ipv6opts \
+tun_null_header_reconstruct"
 
 DIR=$(dirname $0)
 
