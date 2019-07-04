@@ -1095,6 +1095,7 @@ otx2_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
 			   sizeof(uintptr_t) * OTX2_SSO_MAX_VHGRP);
 		ws->fc_mem = dev->fc_mem;
 		ws->xaq_lmt = dev->xaq_lmt;
+		ws->tstamp = dev->tstamp;
 		otx2_write64(val, OTX2_SSOW_GET_BASE_ADDR(
 			     ws->ws_state[0].getwrk_op) + SSOW_LF_GWS_NW_TIM);
 		otx2_write64(val, OTX2_SSOW_GET_BASE_ADDR(
@@ -1107,6 +1108,7 @@ otx2_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
 			   sizeof(uintptr_t) * OTX2_SSO_MAX_VHGRP);
 		ws->fc_mem = dev->fc_mem;
 		ws->xaq_lmt = dev->xaq_lmt;
+		ws->tstamp = dev->tstamp;
 		otx2_write64(val, base + SSOW_LF_GWS_NW_TIM);
 	}
 

@@ -16,7 +16,8 @@ static __rte_always_inline uint16_t
 otx2_ssogws_dual_get_work(struct otx2_ssogws_state *ws,
 			  struct otx2_ssogws_state *ws_pair,
 			  struct rte_event *ev, const uint32_t flags,
-			  const void * const lookup_mem)
+			  const void * const lookup_mem,
+			  struct otx2_timesync_info * const tstamp)
 {
 	const uint64_t set_gw = BIT_ULL(16) | 1;
 	union otx2_sso_event event;
@@ -69,6 +70,8 @@ otx2_ssogws_dual_get_work(struct otx2_ssogws_state *ws,
 	    event.event_type == RTE_EVENT_TYPE_ETHDEV) {
 		otx2_wqe_to_mbuf(get_work1, mbuf, event.sub_event_type,
 				 (uint32_t) event.get_work0, flags, lookup_mem);
+		/* Extracting tstamp, if PTP enabled*/
+		otx2_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp, flags);
 		get_work1 = mbuf;
 	}
 

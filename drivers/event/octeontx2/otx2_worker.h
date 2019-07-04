@@ -68,6 +68,9 @@ otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev,
 	    event.event_type == RTE_EVENT_TYPE_ETHDEV) {
 		otx2_wqe_to_mbuf(get_work1, mbuf, event.sub_event_type,
 				 (uint32_t) event.get_work0, flags, lookup_mem);
+		/* Extracting tstamp, if PTP enabled*/
+		otx2_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, ws->tstamp,
+					flags);
 		get_work1 = mbuf;
 	}
 
@@ -127,6 +130,9 @@ otx2_ssogws_get_work_empty(struct otx2_ssogws *ws, struct rte_event *ev,
 	    event.event_type == RTE_EVENT_TYPE_ETHDEV) {
 		otx2_wqe_to_mbuf(get_work1, mbuf, event.sub_event_type,
 				 (uint32_t) event.get_work0, flags, NULL);
+		/* Extracting tstamp, if PTP enabled*/
+		otx2_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, ws->tstamp,
+					flags);
 		get_work1 = mbuf;
 	}
 

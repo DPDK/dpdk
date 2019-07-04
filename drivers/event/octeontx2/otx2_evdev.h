@@ -149,6 +149,8 @@ struct otx2_sso_evdev {
 	/* MSIX offsets */
 	uint16_t sso_msixoff[OTX2_SSO_MAX_VHGRP];
 	uint16_t ssow_msixoff[OTX2_SSO_MAX_VHWS];
+	/* PTP timestamp */
+	struct otx2_timesync_info *tstamp;
 } __rte_cache_aligned;
 
 #define OTX2_SSOGWS_OPS \
@@ -173,6 +175,8 @@ struct otx2_ssogws {
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
 	uintptr_t grps_base[OTX2_SSO_MAX_VHGRP];
+	/* PTP timestamp */
+	struct otx2_timesync_info *tstamp;
 } __rte_cache_aligned;
 
 struct otx2_ssogws_state {
@@ -190,6 +194,8 @@ struct otx2_ssogws_dual {
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
 	uintptr_t grps_base[OTX2_SSO_MAX_VHGRP];
+	/* PTP timestamp */
+	struct otx2_timesync_info *tstamp;
 } __rte_cache_aligned;
 
 static inline struct otx2_sso_evdev *

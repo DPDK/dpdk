@@ -297,6 +297,7 @@ otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 	}
 
 	dev->rx_offloads |= otx2_eth_dev->rx_offload_flags;
+	dev->tstamp = &otx2_eth_dev->tstamp;
 	sso_fastpath_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
 
 	return 0;
