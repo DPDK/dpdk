@@ -3878,11 +3878,14 @@ parse_vc_action_mplsogre_encap(struct context *ctx, const struct token *token,
 			.src_addr = mplsogre_encap_conf.ipv4_src,
 			.dst_addr = mplsogre_encap_conf.ipv4_dst,
 			.next_proto_id = IPPROTO_GRE,
+			.version_ihl = RTE_IPV4_VHL_DEF,
+			.time_to_live = IPDEFTTL,
 		},
 	};
 	struct rte_flow_item_ipv6 ipv6 = {
 		.hdr =  {
 			.proto = IPPROTO_GRE,
+			.hop_limits = IPDEFTTL,
 		},
 	};
 	struct rte_flow_item_gre gre = {
@@ -4066,11 +4069,14 @@ parse_vc_action_mplsoudp_encap(struct context *ctx, const struct token *token,
 			.src_addr = mplsoudp_encap_conf.ipv4_src,
 			.dst_addr = mplsoudp_encap_conf.ipv4_dst,
 			.next_proto_id = IPPROTO_UDP,
+			.version_ihl = RTE_IPV4_VHL_DEF,
+			.time_to_live = IPDEFTTL,
 		},
 	};
 	struct rte_flow_item_ipv6 ipv6 = {
 		.hdr =  {
 			.proto = IPPROTO_UDP,
+			.hop_limits = IPDEFTTL,
 		},
 	};
 	struct rte_flow_item_udp udp = {
