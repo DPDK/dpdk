@@ -1454,6 +1454,50 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 	return 0;
 }
 
+static int
+flow_dv_zero_encap_udp_csum(void *data, struct rte_flow_error *error)
+{
+	struct rte_ether_hdr *eth = NULL;
+	struct rte_vlan_hdr *vlan = NULL;
+	struct rte_ipv6_hdr *ipv6 = NULL;
+	struct rte_udp_hdr *udp = NULL;
+	char *next_hdr;
+	uint16_t proto;
+
+	eth = (struct rte_ether_hdr *)data;
+	next_hdr = (char *)(eth + 1);
+	proto = RTE_BE16(eth->ether_type);
+
+	/* VLAN skipping */
+	while (proto == RTE_ETHER_TYPE_VLAN || proto == RTE_ETHER_TYPE_QINQ) {
+		next_hdr += sizeof(struct rte_vlan_hdr);
+		vlan = (struct rte_vlan_hdr *)next_hdr;
+		proto = RTE_BE16(vlan->eth_proto);
+	}
+
+	/* HW calculates IPv4 csum. no need to proceed */
+	if (proto == RTE_ETHER_TYPE_IPV4)
+		return 0;
+
+	/* non IPv4/IPv6 header. not supported */
+	if (proto != RTE_ETHER_TYPE_IPV6) {
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "Cannot offload non IPv4/IPv6");
+	}
+
+	ipv6 = (struct rte_ipv6_hdr *)next_hdr;
+
+	/* ignore non UDP */
+	if (ipv6->proto != IPPROTO_UDP)
+		return 0;
+
+	udp = (struct rte_udp_hdr *)(ipv6 + 1);
+	udp->dgram_cksum = 0;
+
+	return 0;
+}
+
 /**
  * Convert L2 encap action to DV specification.
  *
@@ -1492,6 +1536,8 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 			(const struct rte_flow_action_raw_encap *)action->conf;
 		res.size = raw_encap_data->size;
 		memcpy(res.buf, raw_encap_data->data, res.size);
+		if (flow_dv_zero_encap_udp_csum(res.buf, error))
+			return -rte_errno;
 	} else {
 		if (action->type == RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP)
 			encap_data =
