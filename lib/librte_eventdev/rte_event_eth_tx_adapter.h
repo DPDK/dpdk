@@ -332,10 +332,10 @@ rte_event_eth_tx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
  *   *rte_event*. If the return value is less than *nb_events*, the remaining
  *   events at the end of ev[] are not consumed and the caller has to take care
  *   of them, and rte_errno is set accordingly. Possible errno values include:
- *   - -EINVAL  The port ID is invalid, device ID is invalid, an event's queue
+ *   - EINVAL   The port ID is invalid, device ID is invalid, an event's queue
  *              ID is invalid, or an event's sched type doesn't match the
  *              capabilities of the destination queue.
- *   - -ENOSPC  The event port was backpressured and unable to enqueue
+ *   - ENOSPC   The event port was backpressured and unable to enqueue
  *              one or more events. This error code is only applicable to
  *              closed systems.
  */
@@ -350,12 +350,12 @@ rte_event_eth_tx_adapter_enqueue(uint8_t dev_id,
 #ifdef RTE_LIBRTE_EVENTDEV_DEBUG
 	if (dev_id >= RTE_EVENT_MAX_DEVS ||
 		!rte_eventdevs[dev_id].attached) {
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return 0;
 	}
 
 	if (port_id >= dev->data->nb_ports) {
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return 0;
 	}
 #endif
