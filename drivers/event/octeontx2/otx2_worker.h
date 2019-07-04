@@ -14,15 +14,19 @@
 /* SSO Operations */
 
 static __rte_always_inline uint16_t
-otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev)
+otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev,
+		     const uint32_t flags, const void * const lookup_mem)
 {
 	union otx2_sso_event event;
 	uint64_t get_work1;
+	uint64_t mbuf;
 
 	otx2_write64(BIT_ULL(16) | /* wait for work. */
 		     1, /* Use Mask set 0. */
 		     ws->getwrk_op);
 
+	if (flags & NIX_RX_OFFLOAD_PTYPE_F)
+		rte_prefetch_non_temporal(lookup_mem);
 #ifdef RTE_ARCH_ARM64
 	asm volatile(
 			"		ldr %[tag], [%[tag_loc]]	\n"
@@ -34,9 +38,12 @@ otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev)
 			"		ldr %[wqp], [%[wqp_loc]]	\n"
 			"		tbnz %[tag], 63, rty%=		\n"
 			"done%=:	dmb ld				\n"
-			"		prfm pldl1keep, [%[wqp]]	\n"
+			"		prfm pldl1keep, [%[wqp], #8]	\n"
+			"		sub %[mbuf], %[wqp], #0x80	\n"
+			"		prfm pldl1keep, [%[mbuf]]	\n"
 			: [tag] "=&r" (event.get_work0),
-			  [wqp] "=&r" (get_work1)
+			  [wqp] "=&r" (get_work1),
+			  [mbuf] "=&r" (mbuf)
 			: [tag_loc] "r" (ws->tag_op),
 			  [wqp_loc] "r" (ws->wqp_op)
 			);
@@ -47,6 +54,8 @@ otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev)
 
 	get_work1 = otx2_read64(ws->wqp_op);
 	rte_prefetch0((const void *)get_work1);
+	mbuf = (uint64_t)((char *)get_work1 - sizeof(struct rte_mbuf));
+	rte_prefetch0((const void *)mbuf);
 #endif
 
 	event.get_work0 = (event.get_work0 & (0x3ull << 32)) << 6 |
@@ -55,6 +64,12 @@ otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev)
 	ws->cur_tt = event.sched_type;
 	ws->cur_grp = event.queue_id;
 
+	if (event.sched_type != SSO_TT_EMPTY &&
+	    event.event_type == RTE_EVENT_TYPE_ETHDEV) {
+		otx2_wqe_to_mbuf(get_work1, mbuf, event.sub_event_type,
+				 (uint32_t) event.get_work0, flags, lookup_mem);
+		get_work1 = mbuf;
+	}
 
 	ev->event = event.get_work0;
 	ev->u64 = get_work1;
@@ -64,10 +79,12 @@ otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev)
 
 /* Used in cleaning up workslot. */
 static __rte_always_inline uint16_t
-otx2_ssogws_get_work_empty(struct otx2_ssogws *ws, struct rte_event *ev)
+otx2_ssogws_get_work_empty(struct otx2_ssogws *ws, struct rte_event *ev,
+			   const uint32_t flags)
 {
 	union otx2_sso_event event;
 	uint64_t get_work1;
+	uint64_t mbuf;
 
 #ifdef RTE_ARCH_ARM64
 	asm volatile(
@@ -80,9 +97,12 @@ otx2_ssogws_get_work_empty(struct otx2_ssogws *ws, struct rte_event *ev)
 			"		ldr %[wqp], [%[wqp_loc]]	\n"
 			"		tbnz %[tag], 63, rty%=		\n"
 			"done%=:	dmb ld				\n"
-			"		prfm pldl1keep, [%[wqp]]	\n"
+			"		prfm pldl1keep, [%[wqp], #8]	\n"
+			"		sub %[mbuf], %[wqp], #0x80	\n"
+			"		prfm pldl1keep, [%[mbuf]]	\n"
 			: [tag] "=&r" (event.get_work0),
-			  [wqp] "=&r" (get_work1)
+			  [wqp] "=&r" (get_work1),
+			  [mbuf] "=&r" (mbuf)
 			: [tag_loc] "r" (ws->tag_op),
 			  [wqp_loc] "r" (ws->wqp_op)
 			);
@@ -92,7 +112,9 @@ otx2_ssogws_get_work_empty(struct otx2_ssogws *ws, struct rte_event *ev)
 		event.get_work0 = otx2_read64(ws->tag_op);
 
 	get_work1 = otx2_read64(ws->wqp_op);
-	rte_prefetch0((const void *)get_work1);
+	rte_prefetch_non_temporal((const void *)get_work1);
+	mbuf = (uint64_t)((char *)get_work1 - sizeof(struct rte_mbuf));
+	rte_prefetch_non_temporal((const void *)mbuf);
 #endif
 
 	event.get_work0 = (event.get_work0 & (0x3ull << 32)) << 6 |
@@ -100,6 +122,13 @@ otx2_ssogws_get_work_empty(struct otx2_ssogws *ws, struct rte_event *ev)
 		(event.get_work0 & 0xffffffff);
 	ws->cur_tt = event.sched_type;
 	ws->cur_grp = event.queue_id;
+
+	if (event.sched_type != SSO_TT_EMPTY &&
+	    event.event_type == RTE_EVENT_TYPE_ETHDEV) {
+		otx2_wqe_to_mbuf(get_work1, mbuf, event.sub_event_type,
+				 (uint32_t) event.get_work0, flags, NULL);
+		get_work1 = mbuf;
+	}
 
 	ev->event = event.get_work0;
 	ev->u64 = get_work1;

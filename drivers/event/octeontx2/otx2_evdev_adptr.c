@@ -232,6 +232,25 @@ sso_updt_xae_cnt(struct otx2_sso_evdev *dev, void *data, uint32_t event_type)
 	}
 }
 
+static inline void
+sso_updt_lookup_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	int i;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		if (dev->dual_ws) {
+			struct otx2_ssogws_dual *ws = event_dev->data->ports[i];
+
+			ws->lookup_mem = lookup_mem;
+		} else {
+			struct otx2_ssogws *ws = event_dev->data->ports[i];
+
+			ws->lookup_mem = lookup_mem;
+		}
+	}
+}
+
 int
 otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 			      const struct rte_eth_dev *eth_dev,
@@ -258,6 +277,8 @@ otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 					     queue_conf->ev.sched_type,
 					     queue_conf->ev.queue_id, port);
 		}
+		rxq = eth_dev->data->rx_queues[0];
+		sso_updt_lookup_mem(event_dev, rxq->lookup_mem);
 	} else {
 		rxq = eth_dev->data->rx_queues[rx_queue_id];
 		sso_updt_xae_cnt(dev, rxq, RTE_EVENT_TYPE_ETHDEV);
@@ -266,6 +287,7 @@ otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 		rc |= sso_rxq_enable(otx2_eth_dev, (uint16_t)rx_queue_id,
 				     queue_conf->ev.sched_type,
 				     queue_conf->ev.queue_id, port);
+		sso_updt_lookup_mem(event_dev, rxq->lookup_mem);
 	}
 
 	if (rc < 0) {
@@ -273,6 +295,9 @@ otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 			 queue_conf->ev.queue_id);
 		return rc;
 	}
+
+	dev->rx_offloads |= otx2_eth_dev->rx_offload_flags;
+	sso_fastpath_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
 
 	return 0;
 }
@@ -302,4 +327,24 @@ otx2_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 			 eth_dev->data->port_id, rx_queue_id);
 
 	return rc;
+}
+
+int
+otx2_sso_rx_adapter_start(const struct rte_eventdev *event_dev,
+			  const struct rte_eth_dev *eth_dev)
+{
+	RTE_SET_USED(event_dev);
+	RTE_SET_USED(eth_dev);
+
+	return 0;
+}
+
+int
+otx2_sso_rx_adapter_stop(const struct rte_eventdev *event_dev,
+			 const struct rte_eth_dev *eth_dev)
+{
+	RTE_SET_USED(event_dev);
+	RTE_SET_USED(eth_dev);
+
+	return 0;
 }

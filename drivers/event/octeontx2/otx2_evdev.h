@@ -132,6 +132,7 @@ struct otx2_sso_evdev {
 	uint64_t nb_xaq_cfg;
 	rte_iova_t fc_iova;
 	struct rte_mempool *xaq_pool;
+	uint64_t rx_offloads;
 	uint16_t rx_adptr_pool_cnt;
 	uint32_t adptr_xae_cnt;
 	uint64_t *rx_adptr_pools;
@@ -166,6 +167,7 @@ struct otx2_ssogws {
 	/* Get Work Fastpath data */
 	OTX2_SSOGWS_OPS;
 	uint8_t swtag_req;
+	void *lookup_mem;
 	uint8_t port;
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
@@ -182,6 +184,7 @@ struct otx2_ssogws_dual {
 	struct otx2_ssogws_state ws_state[2]; /* Ping and Pong */
 	uint8_t swtag_req;
 	uint8_t vws; /* Ping pong bit */
+	void *lookup_mem;
 	uint8_t port;
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
@@ -193,6 +196,28 @@ static inline struct otx2_sso_evdev *
 sso_pmd_priv(const struct rte_eventdev *event_dev)
 {
 	return event_dev->data->dev_private;
+}
+
+static const union mbuf_initializer mbuf_init = {
+	.fields = {
+		.data_off = RTE_PKTMBUF_HEADROOM,
+		.refcnt = 1,
+		.nb_segs = 1,
+		.port = 0
+	}
+};
+
+static __rte_always_inline void
+otx2_wqe_to_mbuf(uint64_t get_work1, const uint64_t mbuf, uint8_t port_id,
+		 const uint32_t tag, const uint32_t flags,
+		 const void * const lookup_mem)
+{
+	struct nix_wqe_hdr_s *wqe = (struct nix_wqe_hdr_s *)get_work1;
+
+	otx2_nix_cqe_to_mbuf((struct nix_cqe_hdr_s *)wqe, tag,
+			     (struct rte_mbuf *)mbuf, lookup_mem,
+			     mbuf_init.value | (uint64_t)port_id << 48, flags);
+
 }
 
 static inline int
@@ -213,6 +238,9 @@ parse_kvargs_value(const char *key, const char *value, void *opaque)
 	return 0;
 }
 
+#define SSO_RX_ADPTR_ENQ_FASTPATH_FUNC	NIX_RX_FASTPATH_MODES
+#define SSO_TX_ADPTR_ENQ_FASTPATH_FUNC	NIX_TX_FASTPATH_MODES
+
 /* Single WS API's */
 uint16_t otx2_ssogws_enq(void *port, const struct rte_event *ev);
 uint16_t otx2_ssogws_enq_burst(void *port, const struct rte_event ev[],
@@ -222,15 +250,6 @@ uint16_t otx2_ssogws_enq_new_burst(void *port, const struct rte_event ev[],
 uint16_t otx2_ssogws_enq_fwd_burst(void *port, const struct rte_event ev[],
 				   uint16_t nb_events);
 
-uint16_t otx2_ssogws_deq(void *port, struct rte_event *ev,
-			 uint64_t timeout_ticks);
-uint16_t otx2_ssogws_deq_burst(void *port, struct rte_event ev[],
-			       uint16_t nb_events, uint64_t timeout_ticks);
-uint16_t otx2_ssogws_deq_timeout(void *port, struct rte_event *ev,
-				 uint64_t timeout_ticks);
-uint16_t otx2_ssogws_deq_timeout_burst(void *port, struct rte_event ev[],
-				       uint16_t nb_events,
-				       uint64_t timeout_ticks);
 /* Dual WS API's */
 uint16_t otx2_ssogws_dual_enq(void *port, const struct rte_event *ev);
 uint16_t otx2_ssogws_dual_enq_burst(void *port, const struct rte_event ev[],
@@ -240,15 +259,63 @@ uint16_t otx2_ssogws_dual_enq_new_burst(void *port, const struct rte_event ev[],
 uint16_t otx2_ssogws_dual_enq_fwd_burst(void *port, const struct rte_event ev[],
 					uint16_t nb_events);
 
-uint16_t otx2_ssogws_dual_deq(void *port, struct rte_event *ev,
-			      uint64_t timeout_ticks);
-uint16_t otx2_ssogws_dual_deq_burst(void *port, struct rte_event ev[],
-				    uint16_t nb_events, uint64_t timeout_ticks);
-uint16_t otx2_ssogws_dual_deq_timeout(void *port, struct rte_event *ev,
-				      uint64_t timeout_ticks);
-uint16_t otx2_ssogws_dual_deq_timeout_burst(void *port, struct rte_event ev[],
-					    uint16_t nb_events,
-					    uint64_t timeout_ticks);
+/* Auto generated API's */
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				       \
+uint16_t otx2_ssogws_deq_ ##name(void *port, struct rte_event *ev,	       \
+				 uint64_t timeout_ticks);		       \
+uint16_t otx2_ssogws_deq_burst_ ##name(void *port, struct rte_event ev[],      \
+				       uint16_t nb_events,		       \
+				       uint64_t timeout_ticks);		       \
+uint16_t otx2_ssogws_deq_timeout_ ##name(void *port,			       \
+					 struct rte_event *ev,		       \
+					 uint64_t timeout_ticks);	       \
+uint16_t otx2_ssogws_deq_timeout_burst_ ##name(void *port,		       \
+					       struct rte_event ev[],	       \
+					       uint16_t nb_events,	       \
+					       uint64_t timeout_ticks);	       \
+uint16_t otx2_ssogws_deq_seg_ ##name(void *port, struct rte_event *ev,	       \
+				     uint64_t timeout_ticks);		       \
+uint16_t otx2_ssogws_deq_seg_burst_ ##name(void *port,			       \
+					   struct rte_event ev[],	       \
+					   uint16_t nb_events,		       \
+					   uint64_t timeout_ticks);	       \
+uint16_t otx2_ssogws_deq_seg_timeout_ ##name(void *port,		       \
+					     struct rte_event *ev,	       \
+					     uint64_t timeout_ticks);	       \
+uint16_t otx2_ssogws_deq_seg_timeout_burst_ ##name(void *port,		       \
+						   struct rte_event ev[],      \
+						   uint16_t nb_events,	       \
+						   uint64_t timeout_ticks);    \
+									       \
+uint16_t otx2_ssogws_dual_deq_ ##name(void *port, struct rte_event *ev,	       \
+				      uint64_t timeout_ticks);		       \
+uint16_t otx2_ssogws_dual_deq_burst_ ##name(void *port,			       \
+					    struct rte_event ev[],	       \
+					    uint16_t nb_events,		       \
+					    uint64_t timeout_ticks);	       \
+uint16_t otx2_ssogws_dual_deq_timeout_ ##name(void *port,		       \
+					      struct rte_event *ev,	       \
+					      uint64_t timeout_ticks);	       \
+uint16_t otx2_ssogws_dual_deq_timeout_burst_ ##name(void *port,		       \
+						    struct rte_event ev[],     \
+						    uint16_t nb_events,	       \
+						    uint64_t timeout_ticks);   \
+uint16_t otx2_ssogws_dual_deq_seg_ ##name(void *port, struct rte_event *ev,    \
+					  uint64_t timeout_ticks);	       \
+uint16_t otx2_ssogws_dual_deq_seg_burst_ ##name(void *port,		       \
+						struct rte_event ev[],	       \
+						uint16_t nb_events,	       \
+						uint64_t timeout_ticks);       \
+uint16_t otx2_ssogws_dual_deq_seg_timeout_ ##name(void *port,		       \
+						  struct rte_event *ev,	       \
+						  uint64_t timeout_ticks);     \
+uint16_t otx2_ssogws_dual_deq_seg_timeout_burst_ ##name(void *port,	       \
+							struct rte_event ev[], \
+							uint16_t nb_events,    \
+						       uint64_t timeout_ticks);\
+
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
 
 void sso_updt_xae_cnt(struct otx2_sso_evdev *dev, void *data,
 		      uint32_t event_type);
@@ -265,7 +332,10 @@ int otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 int otx2_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 				  const struct rte_eth_dev *eth_dev,
 				  int32_t rx_queue_id);
-
+int otx2_sso_rx_adapter_start(const struct rte_eventdev *event_dev,
+			      const struct rte_eth_dev *eth_dev);
+int otx2_sso_rx_adapter_stop(const struct rte_eventdev *event_dev,
+			     const struct rte_eth_dev *eth_dev);
 /* Clean up API's */
 typedef void (*otx2_handle_event_t)(void *arg, struct rte_event ev);
 void ssogws_flush_events(struct otx2_ssogws *ws, uint8_t queue_id,

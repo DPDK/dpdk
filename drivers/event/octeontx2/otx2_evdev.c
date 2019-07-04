@@ -43,17 +43,199 @@ void
 sso_fastpath_fns_set(struct rte_eventdev *event_dev)
 {
 	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	/* Single WS modes */
+	const event_dequeue_t ssogws_deq[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_deq_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_burst_t ssogws_deq_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_deq_burst_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_t ssogws_deq_timeout[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_deq_timeout_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_burst_t
+		ssogws_deq_timeout_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] =				\
+			otx2_ssogws_deq_timeout_burst_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_t ssogws_deq_seg[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_deq_seg_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_burst_t ssogws_deq_seg_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_deq_seg_burst_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_t ssogws_deq_seg_timeout[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_deq_seg_timeout_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_burst_t
+		ssogws_deq_seg_timeout_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] =				\
+				otx2_ssogws_deq_seg_timeout_burst_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+
+	/* Dual WS modes */
+	const event_dequeue_t ssogws_dual_deq[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_dual_deq_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_burst_t ssogws_dual_deq_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_dual_deq_burst_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_t ssogws_dual_deq_timeout[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_dual_deq_timeout_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_burst_t
+		ssogws_dual_deq_timeout_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+	[f5][f4][f3][f2][f1][f0] = otx2_ssogws_dual_deq_timeout_burst_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_t ssogws_dual_deq_seg[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] = otx2_ssogws_dual_deq_seg_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_burst_t
+		ssogws_dual_deq_seg_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] =				\
+				otx2_ssogws_dual_deq_seg_burst_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_t ssogws_dual_deq_seg_timeout[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+		[f5][f4][f3][f2][f1][f0] =				\
+				otx2_ssogws_dual_deq_seg_timeout_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	const event_dequeue_burst_t
+		ssogws_dual_deq_seg_timeout_burst[2][2][2][2][2][2] = {
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+	[f5][f4][f3][f2][f1][f0] =					\
+		otx2_ssogws_dual_deq_seg_timeout_burst_ ##name,
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
 
 	event_dev->enqueue			= otx2_ssogws_enq;
 	event_dev->enqueue_burst		= otx2_ssogws_enq_burst;
 	event_dev->enqueue_new_burst		= otx2_ssogws_enq_new_burst;
 	event_dev->enqueue_forward_burst	= otx2_ssogws_enq_fwd_burst;
-
-	event_dev->dequeue			= otx2_ssogws_deq;
-	event_dev->dequeue_burst		= otx2_ssogws_deq_burst;
-	if (dev->is_timeout_deq) {
-		event_dev->dequeue		= otx2_ssogws_deq_timeout;
-		event_dev->dequeue_burst	= otx2_ssogws_deq_timeout_burst;
+	if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
+		event_dev->dequeue		= ssogws_deq_seg
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_CHECKSUM_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+		event_dev->dequeue_burst	= ssogws_deq_seg_burst
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_CHECKSUM_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+		if (dev->is_timeout_deq) {
+			event_dev->dequeue	= ssogws_deq_seg_timeout
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_CHECKSUM_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+			event_dev->dequeue_burst	=
+				ssogws_deq_seg_timeout_burst
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_CHECKSUM_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+		}
+	} else {
+		event_dev->dequeue			= ssogws_deq
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_CHECKSUM_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+		event_dev->dequeue_burst		= ssogws_deq_burst
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_CHECKSUM_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+		if (dev->is_timeout_deq) {
+			event_dev->dequeue		= ssogws_deq_timeout
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_CHECKSUM_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+			event_dev->dequeue_burst	=
+				ssogws_deq_timeout_burst
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_CHECKSUM_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+			[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+		}
 	}
 
 	if (dev->dual_ws) {
@@ -63,12 +245,112 @@ sso_fastpath_fns_set(struct rte_eventdev *event_dev)
 					otx2_ssogws_dual_enq_new_burst;
 		event_dev->enqueue_forward_burst =
 					otx2_ssogws_dual_enq_fwd_burst;
-		event_dev->dequeue		= otx2_ssogws_dual_deq;
-		event_dev->dequeue_burst	= otx2_ssogws_dual_deq_burst;
-		if (dev->is_timeout_deq) {
-			event_dev->dequeue	= otx2_ssogws_dual_deq_timeout;
-			event_dev->dequeue_burst =
-					otx2_ssogws_dual_deq_timeout_burst;
+
+		if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
+			event_dev->dequeue	= ssogws_dual_deq_seg
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_TSTAMP_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_CHECKSUM_F)]
+				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+			event_dev->dequeue_burst = ssogws_dual_deq_seg_burst
+				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_CHECKSUM_F)]
+				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+			if (dev->is_timeout_deq) {
+				event_dev->dequeue	=
+					ssogws_dual_deq_seg_timeout
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_TSTAMP_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_CHECKSUM_F)]
+					[!!(dev->rx_offloads &
+							NIX_RX_OFFLOAD_PTYPE_F)]
+					[!!(dev->rx_offloads &
+							NIX_RX_OFFLOAD_RSS_F)];
+				event_dev->dequeue_burst =
+					ssogws_dual_deq_seg_timeout_burst
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_TSTAMP_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_CHECKSUM_F)]
+					[!!(dev->rx_offloads &
+							NIX_RX_OFFLOAD_PTYPE_F)]
+					[!!(dev->rx_offloads &
+							NIX_RX_OFFLOAD_RSS_F)];
+			}
+		} else {
+			event_dev->dequeue		= ssogws_dual_deq
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_TSTAMP_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_CHECKSUM_F)]
+				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+			event_dev->dequeue_burst	= ssogws_dual_deq_burst
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_TSTAMP_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+				[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_CHECKSUM_F)]
+				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_PTYPE_F)]
+				[!!(dev->rx_offloads & NIX_RX_OFFLOAD_RSS_F)];
+			if (dev->is_timeout_deq) {
+				event_dev->dequeue	=
+					ssogws_dual_deq_timeout
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_TSTAMP_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_CHECKSUM_F)]
+					[!!(dev->rx_offloads &
+							NIX_RX_OFFLOAD_PTYPE_F)]
+					[!!(dev->rx_offloads &
+							NIX_RX_OFFLOAD_RSS_F)];
+				event_dev->dequeue_burst =
+					ssogws_dual_deq_timeout_burst
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_TSTAMP_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_MARK_UPDATE_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_VLAN_STRIP_F)]
+					[!!(dev->rx_offloads &
+						NIX_RX_OFFLOAD_CHECKSUM_F)]
+					[!!(dev->rx_offloads &
+							NIX_RX_OFFLOAD_PTYPE_F)]
+					[!!(dev->rx_offloads &
+							NIX_RX_OFFLOAD_RSS_F)];
+			}
 		}
 	}
 	rte_mb();
@@ -1126,6 +1408,8 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.eth_rx_adapter_caps_get  = otx2_sso_rx_adapter_caps_get,
 	.eth_rx_adapter_queue_add = otx2_sso_rx_adapter_queue_add,
 	.eth_rx_adapter_queue_del = otx2_sso_rx_adapter_queue_del,
+	.eth_rx_adapter_start = otx2_sso_rx_adapter_start,
+	.eth_rx_adapter_stop = otx2_sso_rx_adapter_stop,
 
 	.timer_adapter_caps_get = otx2_tim_caps_get,
 

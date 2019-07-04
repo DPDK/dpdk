@@ -81,60 +81,132 @@ otx2_ssogws_release_event(struct otx2_ssogws *ws)
 	otx2_ssogws_swtag_flush(ws);
 }
 
-uint16_t __hot
-otx2_ssogws_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
-{
-	struct otx2_ssogws *ws = port;
-
-	RTE_SET_USED(timeout_ticks);
-
-	if (ws->swtag_req) {
-		ws->swtag_req = 0;
-		otx2_ssogws_swtag_wait(ws);
-		return 1;
-	}
-
-	return otx2_ssogws_get_work(ws, ev);
+#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+uint16_t __hot								\
+otx2_ssogws_deq_ ##name(void *port, struct rte_event *ev,		\
+			uint64_t timeout_ticks)				\
+{									\
+	struct otx2_ssogws *ws = port;					\
+									\
+	RTE_SET_USED(timeout_ticks);					\
+									\
+	if (ws->swtag_req) {						\
+		ws->swtag_req = 0;					\
+		otx2_ssogws_swtag_wait(ws);				\
+		return 1;						\
+	}								\
+									\
+	return otx2_ssogws_get_work(ws, ev, flags, ws->lookup_mem);	\
+}									\
+									\
+uint16_t __hot								\
+otx2_ssogws_deq_burst_ ##name(void *port, struct rte_event ev[],	\
+			      uint16_t nb_events,			\
+			      uint64_t timeout_ticks)			\
+{									\
+	RTE_SET_USED(nb_events);					\
+									\
+	return otx2_ssogws_deq_ ##name(port, ev, timeout_ticks);	\
+}									\
+									\
+uint16_t __hot								\
+otx2_ssogws_deq_timeout_ ##name(void *port, struct rte_event *ev,	\
+				uint64_t timeout_ticks)			\
+{									\
+	struct otx2_ssogws *ws = port;					\
+	uint16_t ret = 1;						\
+	uint64_t iter;							\
+									\
+	if (ws->swtag_req) {						\
+		ws->swtag_req = 0;					\
+		otx2_ssogws_swtag_wait(ws);				\
+		return ret;						\
+	}								\
+									\
+	ret = otx2_ssogws_get_work(ws, ev, flags, ws->lookup_mem);	\
+	for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)	\
+		ret = otx2_ssogws_get_work(ws, ev, flags,		\
+					   ws->lookup_mem);		\
+									\
+	return ret;							\
+}									\
+									\
+uint16_t __hot								\
+otx2_ssogws_deq_timeout_burst_ ##name(void *port, struct rte_event ev[],\
+				      uint16_t nb_events,		\
+				      uint64_t timeout_ticks)		\
+{									\
+	RTE_SET_USED(nb_events);					\
+									\
+	return otx2_ssogws_deq_timeout_ ##name(port, ev, timeout_ticks);\
+}									\
+									\
+uint16_t __hot								\
+otx2_ssogws_deq_seg_ ##name(void *port, struct rte_event *ev,		\
+			    uint64_t timeout_ticks)			\
+{									\
+	struct otx2_ssogws *ws = port;					\
+									\
+	RTE_SET_USED(timeout_ticks);					\
+									\
+	if (ws->swtag_req) {						\
+		ws->swtag_req = 0;					\
+		otx2_ssogws_swtag_wait(ws);				\
+		return 1;						\
+	}								\
+									\
+	return otx2_ssogws_get_work(ws, ev, flags | NIX_RX_MULTI_SEG_F,	\
+				    ws->lookup_mem);			\
+}									\
+									\
+uint16_t __hot								\
+otx2_ssogws_deq_seg_burst_ ##name(void *port, struct rte_event ev[],	\
+				  uint16_t nb_events,			\
+				  uint64_t timeout_ticks)		\
+{									\
+	RTE_SET_USED(nb_events);					\
+									\
+	return otx2_ssogws_deq_seg_ ##name(port, ev, timeout_ticks);	\
+}									\
+									\
+uint16_t __hot								\
+otx2_ssogws_deq_seg_timeout_ ##name(void *port, struct rte_event *ev,	\
+				    uint64_t timeout_ticks)		\
+{									\
+	struct otx2_ssogws *ws = port;					\
+	uint16_t ret = 1;						\
+	uint64_t iter;							\
+									\
+	if (ws->swtag_req) {						\
+		ws->swtag_req = 0;					\
+		otx2_ssogws_swtag_wait(ws);				\
+		return ret;						\
+	}								\
+									\
+	ret = otx2_ssogws_get_work(ws, ev, flags | NIX_RX_MULTI_SEG_F,	\
+				   ws->lookup_mem);			\
+	for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)	\
+		ret = otx2_ssogws_get_work(ws, ev,			\
+					   flags | NIX_RX_MULTI_SEG_F,	\
+					   ws->lookup_mem);		\
+									\
+	return ret;							\
+}									\
+									\
+uint16_t __hot								\
+otx2_ssogws_deq_seg_timeout_burst_ ##name(void *port,			\
+					  struct rte_event ev[],	\
+					  uint16_t nb_events,		\
+					  uint64_t timeout_ticks)	\
+{									\
+	RTE_SET_USED(nb_events);					\
+									\
+	return otx2_ssogws_deq_seg_timeout_ ##name(port, ev,		\
+						   timeout_ticks);	\
 }
 
-uint16_t __hot
-otx2_ssogws_deq_burst(void *port, struct rte_event ev[], uint16_t nb_events,
-		      uint64_t timeout_ticks)
-{
-	RTE_SET_USED(nb_events);
-
-	return otx2_ssogws_deq(port, ev, timeout_ticks);
-}
-
-uint16_t __hot
-otx2_ssogws_deq_timeout(void *port, struct rte_event *ev,
-			uint64_t timeout_ticks)
-{
-	struct otx2_ssogws *ws = port;
-	uint16_t ret = 1;
-	uint64_t iter;
-
-	if (ws->swtag_req) {
-		ws->swtag_req = 0;
-		otx2_ssogws_swtag_wait(ws);
-		return ret;
-	}
-
-	ret = otx2_ssogws_get_work(ws, ev);
-	for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)
-		ret = otx2_ssogws_get_work(ws, ev);
-
-	return ret;
-}
-
-uint16_t __hot
-otx2_ssogws_deq_timeout_burst(void *port, struct rte_event ev[],
-			      uint16_t nb_events, uint64_t timeout_ticks)
-{
-	RTE_SET_USED(nb_events);
-
-	return otx2_ssogws_deq_timeout(port, ev, timeout_ticks);
-}
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
 
 uint16_t __hot
 otx2_ssogws_enq(void *port, const struct rte_event *ev)
@@ -221,7 +293,7 @@ ssogws_flush_events(struct otx2_ssogws *ws, uint8_t queue_id, uintptr_t base,
 
 	while (aq_cnt || cq_ds_cnt || ds_cnt) {
 		otx2_write64(val, ws->getwrk_op);
-		otx2_ssogws_get_work_empty(ws, &ev);
+		otx2_ssogws_get_work_empty(ws, &ev, 0);
 		if (fn != NULL && ev.u64 != 0)
 			fn(arg, ev);
 		if (ev.sched_type != SSO_TT_EMPTY)
