@@ -8,6 +8,7 @@
 #include <rte_eventdev.h>
 #include <rte_eventdev_pmd.h>
 #include <rte_event_eth_rx_adapter.h>
+#include <rte_event_eth_tx_adapter.h>
 
 #include "otx2_common.h"
 #include "otx2_dev.h"
@@ -21,6 +22,7 @@
 #define OTX2_SSO_MAX_VHGRP                  RTE_EVENT_MAX_QUEUES_PER_DEV
 #define OTX2_SSO_MAX_VHWS                   (UINT8_MAX)
 #define OTX2_SSO_FC_NAME                    "otx2_evdev_xaq_fc"
+#define OTX2_SSO_SQB_LIMIT                  (0x180)
 #define OTX2_SSO_XAQ_SLACK                  (8)
 #define OTX2_SSO_XAQ_CACHE_CNT              (0x7)
 
@@ -133,6 +135,7 @@ struct otx2_sso_evdev {
 	rte_iova_t fc_iova;
 	struct rte_mempool *xaq_pool;
 	uint64_t rx_offloads;
+	uint64_t tx_offloads;
 	uint16_t rx_adptr_pool_cnt;
 	uint32_t adptr_xae_cnt;
 	uint64_t *rx_adptr_pools;
@@ -323,6 +326,22 @@ uint16_t otx2_ssogws_dual_deq_seg_timeout_burst_ ##name(void *port,	       \
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
 
+#define T(name, f4, f3, f2, f1, f0, sz, flags)				     \
+uint16_t otx2_ssogws_tx_adptr_enq_ ## name(void *port, struct rte_event ev[],\
+					   uint16_t nb_events);		     \
+uint16_t otx2_ssogws_tx_adptr_enq_seg_ ## name(void *port,		     \
+					       struct rte_event ev[],	     \
+					       uint16_t nb_events);	     \
+uint16_t otx2_ssogws_dual_tx_adptr_enq_ ## name(void *port,		     \
+						struct rte_event ev[],	     \
+						uint16_t nb_events);	     \
+uint16_t otx2_ssogws_dual_tx_adptr_enq_seg_ ## name(void *port,		     \
+						    struct rte_event ev[],   \
+						    uint16_t nb_events);     \
+
+SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+#undef T
+
 void sso_updt_xae_cnt(struct otx2_sso_evdev *dev, void *data,
 		      uint32_t event_type);
 int sso_xae_reconfigure(struct rte_eventdev *event_dev);
@@ -342,6 +361,19 @@ int otx2_sso_rx_adapter_start(const struct rte_eventdev *event_dev,
 			      const struct rte_eth_dev *eth_dev);
 int otx2_sso_rx_adapter_stop(const struct rte_eventdev *event_dev,
 			     const struct rte_eth_dev *eth_dev);
+int otx2_sso_tx_adapter_caps_get(const struct rte_eventdev *dev,
+				 const struct rte_eth_dev *eth_dev,
+				 uint32_t *caps);
+int otx2_sso_tx_adapter_queue_add(uint8_t id,
+				  const struct rte_eventdev *event_dev,
+				  const struct rte_eth_dev *eth_dev,
+				  int32_t tx_queue_id);
+
+int otx2_sso_tx_adapter_queue_del(uint8_t id,
+				  const struct rte_eventdev *event_dev,
+				  const struct rte_eth_dev *eth_dev,
+				  int32_t tx_queue_id);
+
 /* Clean up API's */
 typedef void (*otx2_handle_event_t)(void *arg, struct rte_event ev);
 void ssogws_flush_events(struct otx2_ssogws *ws, uint8_t queue_id,

@@ -349,3 +349,89 @@ otx2_sso_rx_adapter_stop(const struct rte_eventdev *event_dev,
 
 	return 0;
 }
+
+int
+otx2_sso_tx_adapter_caps_get(const struct rte_eventdev *dev,
+			     const struct rte_eth_dev *eth_dev, uint32_t *caps)
+{
+	int ret;
+
+	RTE_SET_USED(dev);
+	ret = strncmp(eth_dev->device->driver->name, "net_octeontx2,", 13);
+	if (ret)
+		*caps = 0;
+	else
+		*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT;
+
+	return 0;
+}
+
+static int
+sso_sqb_aura_limit_edit(struct rte_mempool *mp, uint16_t nb_sqb_bufs)
+{
+	struct otx2_npa_lf *npa_lf = otx2_intra_dev_get_cfg()->npa_lf;
+	struct npa_aq_enq_req *aura_req;
+
+	aura_req = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+	aura_req->aura_id = npa_lf_aura_handle_to_aura(mp->pool_id);
+	aura_req->ctype = NPA_AQ_CTYPE_AURA;
+	aura_req->op = NPA_AQ_INSTOP_WRITE;
+
+	aura_req->aura.limit = nb_sqb_bufs;
+	aura_req->aura_mask.limit = ~(aura_req->aura_mask.limit);
+
+	return otx2_mbox_process(npa_lf->mbox);
+}
+
+int
+otx2_sso_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *event_dev,
+			      const struct rte_eth_dev *eth_dev,
+			      int32_t tx_queue_id)
+{
+	struct otx2_eth_dev *otx2_eth_dev = eth_dev->data->dev_private;
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	struct otx2_eth_txq *txq;
+	int i;
+
+	RTE_SET_USED(id);
+	if (tx_queue_id < 0) {
+		for (i = 0 ; i < eth_dev->data->nb_tx_queues; i++) {
+			txq = eth_dev->data->tx_queues[i];
+			sso_sqb_aura_limit_edit(txq->sqb_pool,
+						OTX2_SSO_SQB_LIMIT);
+		}
+	} else {
+		txq = eth_dev->data->tx_queues[tx_queue_id];
+		sso_sqb_aura_limit_edit(txq->sqb_pool, OTX2_SSO_SQB_LIMIT);
+	}
+
+	dev->tx_offloads |= otx2_eth_dev->tx_offload_flags;
+	sso_fastpath_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+
+	return 0;
+}
+
+int
+otx2_sso_tx_adapter_queue_del(uint8_t id, const struct rte_eventdev *event_dev,
+			      const struct rte_eth_dev *eth_dev,
+			      int32_t tx_queue_id)
+{
+	struct otx2_eth_txq *txq;
+	int i;
+
+	RTE_SET_USED(id);
+	RTE_SET_USED(eth_dev);
+	RTE_SET_USED(event_dev);
+	if (tx_queue_id < 0) {
+		for (i = 0 ; i < eth_dev->data->nb_tx_queues; i++) {
+			txq = eth_dev->data->tx_queues[i];
+			sso_sqb_aura_limit_edit(txq->sqb_pool,
+						txq->nb_sqb_bufs);
+		}
+	} else {
+		txq = eth_dev->data->tx_queues[tx_queue_id];
+		sso_sqb_aura_limit_edit(txq->sqb_pool, txq->nb_sqb_bufs);
+	}
+
+	return 0;
+}

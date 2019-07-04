@@ -219,4 +219,53 @@ otx2_ssogws_swtag_wait(struct otx2_ssogws *ws)
 #endif
 }
 
+static __rte_always_inline void
+otx2_ssogws_head_wait(struct otx2_ssogws *ws, const uint8_t wait_flag)
+{
+	while (wait_flag && !(otx2_read64(ws->tag_op) & BIT_ULL(35)))
+		;
+
+	rte_cio_wmb();
+}
+
+static __rte_always_inline const struct otx2_eth_txq *
+otx2_ssogws_xtract_meta(struct rte_mbuf *m)
+{
+	return rte_eth_devices[m->port].data->tx_queues[
+			rte_event_eth_tx_adapter_txq_get(m)];
+}
+
+static __rte_always_inline void
+otx2_ssogws_prepare_pkt(const struct otx2_eth_txq *txq, struct rte_mbuf *m,
+			uint64_t *cmd, const uint32_t flags)
+{
+	otx2_lmt_mov(cmd, txq->cmd, otx2_nix_tx_ext_subs(flags));
+	otx2_nix_xmit_prepare(m, cmd, flags);
+}
+
+static __rte_always_inline uint16_t
+otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
+		     uint64_t *cmd, const uint32_t flags)
+{
+	struct rte_mbuf *m = ev[0].mbuf;
+	const struct otx2_eth_txq *txq = otx2_ssogws_xtract_meta(m);
+
+	otx2_ssogws_head_wait(ws, !ev->sched_type);
+	otx2_ssogws_prepare_pkt(txq, m, cmd, flags);
+
+	if (flags & NIX_TX_MULTI_SEG_F) {
+		const uint16_t segdw = otx2_nix_prepare_mseg(m, cmd, flags);
+		otx2_nix_xmit_prepare_tstamp(cmd, &txq->cmd[0],
+					     m->ol_flags, segdw, flags);
+		otx2_nix_xmit_mseg_one(cmd, txq->lmt_addr, txq->io_addr, segdw);
+	} else {
+		/* Passing no of segdw as 4: HDR + EXT + SG + SMEM */
+		otx2_nix_xmit_prepare_tstamp(cmd, &txq->cmd[0],
+					     m->ol_flags, 4, flags);
+		otx2_nix_xmit_one(cmd, txq->lmt_addr, txq->io_addr, flags);
+	}
+
+	return 1;
+}
+
 #endif

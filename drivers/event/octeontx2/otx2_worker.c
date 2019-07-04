@@ -267,6 +267,35 @@ otx2_ssogws_enq_fwd_burst(void *port, const struct rte_event ev[],
 	return 1;
 }
 
+#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
+uint16_t __hot								\
+otx2_ssogws_tx_adptr_enq_ ## name(void *port, struct rte_event ev[],	\
+				  uint16_t nb_events)			\
+{									\
+	struct otx2_ssogws *ws = port;					\
+	uint64_t cmd[sz];						\
+									\
+	RTE_SET_USED(nb_events);					\
+	return otx2_ssogws_event_tx(ws, ev, cmd, flags);		\
+}
+SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+#undef T
+
+#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
+uint16_t __hot								\
+otx2_ssogws_tx_adptr_enq_seg_ ## name(void *port, struct rte_event ev[],\
+				      uint16_t nb_events)		\
+{									\
+	struct otx2_ssogws *ws = port;					\
+	uint64_t cmd[(sz) + NIX_TX_MSEG_SG_DWORDS - 2];			\
+									\
+	RTE_SET_USED(nb_events);					\
+	return otx2_ssogws_event_tx(ws, ev, cmd, (flags) |		\
+				    NIX_TX_MULTI_SEG_F);		\
+}
+SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+#undef T
+
 void
 ssogws_flush_events(struct otx2_ssogws *ws, uint8_t queue_id, uintptr_t base,
 		    otx2_handle_event_t fn, void *arg)
