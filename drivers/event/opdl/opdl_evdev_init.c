@@ -35,7 +35,7 @@ enqueue_check(struct opdl_port *p,
 					     p->id,
 					     ev[i].queue_id,
 					     p->next_external_qid);
-				rte_errno = -EINVAL;
+				rte_errno = EINVAL;
 				return 0;
 			}
 		}
@@ -63,7 +63,7 @@ enqueue_check(struct opdl_port *p,
 	} else {
 		if (num > 0 &&
 				ev[0].queue_id != p->next_external_qid) {
-			rte_errno = -EINVAL;
+			rte_errno = EINVAL;
 			return 0;
 		}
 	}
@@ -116,7 +116,7 @@ opdl_rx_error_enqueue(struct opdl_port *p,
 	RTE_SET_USED(ev);
 	RTE_SET_USED(num);
 
-	rte_errno = -ENOSPC;
+	rte_errno = ENOSPC;
 
 	return 0;
 }
@@ -145,7 +145,7 @@ opdl_rx_enqueue(struct opdl_port *p,
 
 
 	if (enqueued < num)
-		rte_errno = -ENOSPC;
+		rte_errno = ENOSPC;
 
 	return enqueued;
 }
@@ -164,7 +164,7 @@ opdl_tx_error_dequeue(struct opdl_port *p,
 	RTE_SET_USED(ev);
 	RTE_SET_USED(num);
 
-	rte_errno = -ENOSPC;
+	rte_errno = ENOSPC;
 
 	return 0;
 }
@@ -240,7 +240,7 @@ opdl_claim(struct opdl_port *p, struct rte_event ev[], uint16_t num)
 			     "Attempt to dequeue num of events larger than port (%d) max",
 			     opdl_pmd_dev_id(p->opdl),
 			     p->id);
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return 0;
 	}
 

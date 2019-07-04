@@ -102,7 +102,7 @@ opdl_port_link(struct rte_eventdev *dev,
 			     dev->data->dev_id,
 				queues[0],
 				p->id);
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return 0;
 	}
 
@@ -113,7 +113,7 @@ opdl_port_link(struct rte_eventdev *dev,
 			     dev->data->dev_id,
 				num,
 				p->id);
-		rte_errno = -EDQUOT;
+		rte_errno = EDQUOT;
 		return 0;
 	}
 
@@ -123,7 +123,7 @@ opdl_port_link(struct rte_eventdev *dev,
 			     dev->data->dev_id,
 				p->id,
 				queues[0]);
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return 0;
 	}
 
@@ -134,7 +134,7 @@ opdl_port_link(struct rte_eventdev *dev,
 				p->id,
 				p->external_qid,
 				queues[0]);
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return 0;
 	}
 
@@ -160,7 +160,7 @@ opdl_port_unlink(struct rte_eventdev *dev,
 			     dev->data->dev_id,
 			     queues[0],
 			     p->id);
-		rte_errno = -EINVAL;
+		rte_errno = EINVAL;
 		return 0;
 	}
 	RTE_SET_USED(nb_unlinks);
