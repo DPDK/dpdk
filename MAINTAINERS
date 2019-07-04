@@ -41,7 +41,7 @@ M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 
 Next-net-mlx Tree
-M: Shahaf Shuler <shahafs@mellanox.com>
+M: Raslan Darawsheh <rasland@mellanox.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
 
 Next-virtio Tree
@@ -702,6 +702,7 @@ F: doc/guides/nics/features/mlx4.ini
 Mellanox mlx5
 M: Shahaf Shuler <shahafs@mellanox.com>
 M: Yongseok Koh <yskoh@mellanox.com>
+M: Viacheslav Ovsiienko <viacheslavo@mellanox.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
 F: drivers/net/mlx5/
 F: buildtools/options-ibverbs-static.sh
