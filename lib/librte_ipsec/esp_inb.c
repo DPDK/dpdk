@@ -464,6 +464,8 @@ tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 	uint32_t hl[num], to[num];
 	struct esp_tail espt[num];
 	struct rte_mbuf *ml[num];
+	const void *outh;
+	void *inh;
 
 	/*
 	 * remove icv, esp trailer and high-order
@@ -489,9 +491,16 @@ tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 		if (tun_process_check(mb[i], &ml[i], &to[i], espt[i], adj, tl,
 					sa->proto) == 0) {
 
+			outh = rte_pktmbuf_mtod_offset(mb[i], uint8_t *,
+					mb[i]->l2_len);
+
 			/* modify packet's layout */
-			tun_process_step2(mb[i], ml[i], hl[i], adj, to[i],
-				tl, sqn + k);
+			inh = tun_process_step2(mb[i], ml[i], hl[i], adj,
+					to[i], tl, sqn + k);
+
+			/* update inner ip header */
+			update_tun_inb_l3hdr(sa, outh, inh);
+
 			/* update mbuf's metadata */
 			tun_process_step3(mb[i], sa->tx_offload.msk,
 				sa->tx_offload.val);

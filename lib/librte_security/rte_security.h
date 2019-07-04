@@ -163,6 +163,15 @@ struct rte_security_ipsec_sa_options {
 	 * * 0: Inner packet is not modified.
 	 */
 	uint32_t dec_ttl : 1;
+
+	/**< Explicit Congestion Notification (ECN)
+	 *
+	 * * 1: In tunnel mode, enable outer header ECN Field copied from
+	 *      inner header in tunnel encapsulation, or inner header ECN
+	 *      field construction in decapsulation.
+	 * * 0: Inner/outer header are not modified.
+	 */
+	uint32_t ecn : 1;
 };
 
 /** IPSec security association direction */

@@ -214,6 +214,18 @@ fill_sa_type(const struct rte_ipsec_sa_prm *prm, uint64_t *type)
 	else
 		tp |= RTE_IPSEC_SATP_ESN_ENABLE;
 
+	/* check for ECN flag */
+	if (prm->ipsec_xform.options.ecn == 0)
+		tp |= RTE_IPSEC_SATP_ECN_DISABLE;
+	else
+		tp |= RTE_IPSEC_SATP_ECN_ENABLE;
+
+	/* check for DSCP flag */
+	if (prm->ipsec_xform.options.copy_dscp == 0)
+		tp |= RTE_IPSEC_SATP_DSCP_DISABLE;
+	else
+		tp |= RTE_IPSEC_SATP_DSCP_ENABLE;
+
 	/* interpret flags */
 	if (prm->flags & RTE_IPSEC_SAFLAG_SQN_ATOM)
 		tp |= RTE_IPSEC_SATP_SQN_ATOM;
@@ -309,6 +321,12 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 {
 	static const uint64_t msk = RTE_IPSEC_SATP_DIR_MASK |
 				RTE_IPSEC_SATP_MODE_MASK;
+
+	if (prm->ipsec_xform.options.ecn)
+		sa->tos_mask |= RTE_IPV4_HDR_ECN_MASK;
+
+	if (prm->ipsec_xform.options.copy_dscp)
+		sa->tos_mask |= RTE_IPV4_HDR_DSCP_MASK;
 
 	if (cxf->aead != NULL) {
 		switch (cxf->aead->algo) {

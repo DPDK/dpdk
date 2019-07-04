@@ -10,6 +10,7 @@
 #define IPSEC_MAX_HDR_SIZE	64
 #define IPSEC_MAX_IV_SIZE	16
 #define IPSEC_MAX_IV_QWORD	(IPSEC_MAX_IV_SIZE / sizeof(uint64_t))
+#define TUN_HDR_MSK (RTE_IPSEC_SATP_ECN_MASK | RTE_IPSEC_SATP_DSCP_MASK)
 
 /* padding alignment for different algorithms */
 enum {
@@ -103,6 +104,7 @@ struct rte_ipsec_sa {
 	uint8_t iv_ofs; /* offset for algo-specific IV inside crypto op */
 	uint8_t iv_len;
 	uint8_t pad_align;
+	uint8_t tos_mask;
 
 	/* template for tunnel header */
 	uint8_t hdr[IPSEC_MAX_HDR_SIZE];

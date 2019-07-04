@@ -152,8 +152,8 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	rte_memcpy(ph, sa->hdr, sa->hdr_len);
 
 	/* update original and new ip header fields */
-	update_tun_l3hdr(sa, ph + sa->hdr_l3_off, mb->pkt_len - sqh_len,
-			sa->hdr_l3_off, sqn_low16(sqc));
+	update_tun_outb_l3hdr(sa, ph + sa->hdr_l3_off, ph + hlen,
+			mb->pkt_len - sqh_len, sa->hdr_l3_off, sqn_low16(sqc));
 
 	/* update spi, seqn and iv */
 	esph = (struct rte_esp_hdr *)(ph + sa->hdr_len);
