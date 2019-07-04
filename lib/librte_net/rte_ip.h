@@ -16,7 +16,9 @@
  */
 
 #include <stdint.h>
+#include <sys/types.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 
 #include <rte_byteorder.h>
 #include <rte_mbuf.h>
@@ -95,6 +97,10 @@ struct rte_ipv4_hdr {
 #define RTE_IS_IPV4_MCAST(x) \
 	((x) >= RTE_IPV4_MIN_MCAST && (x) <= RTE_IPV4_MAX_MCAST)
 	/**< check if IPv4 address is multicast */
+
+/* IPv4 default fields values */
+#define RTE_IPV4_MIN_IHL    (0x5)
+#define RTE_IPV4_VHL_DEF    (IPVERSION | RTE_IPV4_MIN_IHL)
 
 /**
  * @internal Calculate a sum of all words in the buffer.
