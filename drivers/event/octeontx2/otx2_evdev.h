@@ -6,9 +6,12 @@
 #define __OTX2_EVDEV_H__
 
 #include <rte_eventdev.h>
+#include <rte_eventdev_pmd.h>
+#include <rte_event_eth_rx_adapter.h>
 
 #include "otx2_common.h"
 #include "otx2_dev.h"
+#include "otx2_ethdev.h"
 #include "otx2_mempool.h"
 
 #define EVENTDEV_NAME_OCTEONTX2_PMD otx2_eventdev
@@ -249,6 +252,18 @@ void sso_updt_xae_cnt(struct otx2_sso_evdev *dev, void *data,
 		      uint32_t event_type);
 int sso_xae_reconfigure(struct rte_eventdev *event_dev);
 void sso_fastpath_fns_set(struct rte_eventdev *event_dev);
+
+int otx2_sso_rx_adapter_caps_get(const struct rte_eventdev *event_dev,
+				 const struct rte_eth_dev *eth_dev,
+				 uint32_t *caps);
+int otx2_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
+				  const struct rte_eth_dev *eth_dev,
+				  int32_t rx_queue_id,
+		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
+int otx2_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
+				  const struct rte_eth_dev *eth_dev,
+				  int32_t rx_queue_id);
+
 /* Clean up API's */
 typedef void (*otx2_handle_event_t)(void *arg, struct rte_event ev);
 void ssogws_flush_events(struct otx2_ssogws *ws, uint8_t queue_id,

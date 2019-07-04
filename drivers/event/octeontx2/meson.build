@@ -31,4 +31,4 @@ foreach flag: extra_flags
 	endif
 endforeach
 
-deps += ['bus_pci', 'common_octeontx2', 'mempool_octeontx2']
+deps += ['bus_pci', 'common_octeontx2', 'mempool_octeontx2', 'pmd_octeontx2']

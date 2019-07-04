@@ -1123,6 +1123,10 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 	.port_unlink      = otx2_sso_port_unlink,
 	.timeout_ticks    = otx2_sso_timeout_ticks,
 
+	.eth_rx_adapter_caps_get  = otx2_sso_rx_adapter_caps_get,
+	.eth_rx_adapter_queue_add = otx2_sso_rx_adapter_queue_add,
+	.eth_rx_adapter_queue_del = otx2_sso_rx_adapter_queue_del,
+
 	.timer_adapter_caps_get = otx2_tim_caps_get,
 
 	.xstats_get       = otx2_sso_xstats_get,

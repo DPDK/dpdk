@@ -32,6 +32,12 @@ Features of the OCTEON TX2 SSO PMD are:
   time granularity of 2.5us.
 - Up to 256 TIM rings aka event timer adapters.
 - Up to 8 rings traversed in parallel.
+- HW managed packets enqueued from ethdev to eventdev exposed through event eth
+  RX adapter.
+- N:1 ethernet device Rx queue to Event queue mapping.
+- Lockfree Tx from event eth Tx adapter using ``DEV_TX_OFFLOAD_MT_LOCKFREE``
+  capability while maintaining receive packet order.
+- Full Rx/Tx offload support defined through ethdev queue config.
 
 Prerequisites and Compilation procedure
 ---------------------------------------
