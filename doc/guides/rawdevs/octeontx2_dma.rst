@@ -88,3 +88,17 @@ Performing Data Transfer
 
 To perform data transfer using OCTEON TX2 DMA rawdev devices use standard
 ``rte_rawdev_enqueue_buffers()`` and ``rte_rawdev_dequeue_buffers()`` APIs.
+
+Self test
+---------
+
+On EAL initialization, dma devices will be probed and populated into the
+raw devices. The rawdev ID of the device can be obtained using
+
+* Invoke ``rte_rawdev_get_dev_id("DPI:x")`` from the application
+  where x is the VF device's bus id specified in "bus:device.func" format. Use this
+  index for further rawdev function calls.
+
+* This PMD supports driver self test, to test DMA internal mode from test
+  application one can directly calls
+  ``rte_rawdev_selftest(rte_rawdev_get_dev_id("DPI:x"))``

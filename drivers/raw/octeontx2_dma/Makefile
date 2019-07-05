@@ -11,7 +11,7 @@ CFLAGS += -O3 $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/common/octeontx2/
 CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx2/
 CFLAGS += -I$(RTE_SDK)/drivers/raw/octeontx2_dma/
-LDLIBS += -lrte_eal -lrte_rawdev -lrte_bus_pci
+LDLIBS += -lrte_eal -lrte_rawdev -lrte_bus_pci -lrte_mbuf
 LDLIBS += -lrte_common_octeontx2 -lrte_mempool
 
 ifneq ($(CONFIG_RTE_ARCH_64),y)
@@ -31,5 +31,6 @@ LIBABIVER := 1
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_DMA_RAWDEV) += otx2_dpi_rawdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_DMA_RAWDEV) += otx2_dpi_msg.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_DMA_RAWDEV) += otx2_dpi_test.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

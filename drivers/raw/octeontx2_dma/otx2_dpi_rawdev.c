@@ -338,6 +338,7 @@ static const struct rte_rawdev_ops dpi_rawdev_ops = {
 	.dev_reset = otx2_dpi_rawdev_reset,
 	.enqueue_bufs = otx2_dpi_rawdev_enqueue_bufs,
 	.dequeue_bufs = otx2_dpi_rawdev_dequeue_bufs,
+	.dev_selftest = test_otx2_dma_rawdev,
 };
 
 static int
