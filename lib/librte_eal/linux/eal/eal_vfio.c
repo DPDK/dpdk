@@ -635,8 +635,6 @@ int
 rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_t *mem_lock = &mcfg->memory_hotplug_lock;
 	struct vfio_group_status group_status = {
 			.argsz = sizeof(group_status)
 	};
@@ -739,7 +737,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 			/* lock memory hotplug before mapping and release it
 			 * after registering callback, to prevent races
 			 */
-			rte_rwlock_read_lock(mem_lock);
+			rte_mcfg_mem_read_lock();
 			if (vfio_cfg == default_vfio_cfg)
 				ret = t->dma_map_func(vfio_container_fd);
 			else
@@ -750,7 +748,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 					dev_addr, errno, strerror(errno));
 				close(vfio_group_fd);
 				rte_vfio_clear_group(vfio_group_fd);
-				rte_rwlock_read_unlock(mem_lock);
+				rte_mcfg_mem_read_unlock();
 				return -1;
 			}
 
@@ -781,7 +779,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 							map->len);
 					rte_spinlock_recursive_unlock(
 							&user_mem_maps->lock);
-					rte_rwlock_read_unlock(mem_lock);
+					rte_mcfg_mem_read_unlock();
 					return -1;
 				}
 			}
@@ -795,7 +793,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 			else
 				ret = 0;
 			/* unlock memory hotplug */
-			rte_rwlock_read_unlock(mem_lock);
+			rte_mcfg_mem_read_unlock();
 
 			if (ret && rte_errno != ENOTSUP) {
 				RTE_LOG(ERR, EAL, "Could not install memory event callback for VFIO\n");
@@ -862,8 +860,6 @@ int
 rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 		    int vfio_dev_fd)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_t *mem_lock = &mcfg->memory_hotplug_lock;
 	struct vfio_group_status group_status = {
 			.argsz = sizeof(group_status)
 	};
@@ -876,7 +872,7 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	 * VFIO device, because this might be the last device and we might need
 	 * to unregister the callback.
 	 */
-	rte_rwlock_read_lock(mem_lock);
+	rte_mcfg_mem_read_lock();
 
 	/* get group number */
 	ret = rte_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
@@ -947,7 +943,7 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	ret = 0;
 
 out:
-	rte_rwlock_read_unlock(mem_lock);
+	rte_mcfg_mem_read_unlock();
 	return ret;
 }
 

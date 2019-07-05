@@ -100,6 +100,30 @@ rte_eal_mcfg_wait_complete(struct rte_mem_config* mcfg)
 		rte_pause();
 }
 
+/**
+ * Lock the internal EAL shared memory configuration for shared access.
+ */
+void
+rte_mcfg_mem_read_lock(void);
+
+/**
+ * Unlock the internal EAL shared memory configuration for shared access.
+ */
+void
+rte_mcfg_mem_read_unlock(void);
+
+/**
+ * Lock the internal EAL shared memory configuration for exclusive access.
+ */
+void
+rte_mcfg_mem_write_lock(void);
+
+/**
+ * Unlock the internal EAL shared memory configuration for exclusive access.
+ */
+void
+rte_mcfg_mem_write_unlock(void);
+
 #ifdef __cplusplus
 }
 #endif

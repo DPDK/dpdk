@@ -125,7 +125,6 @@ is_vhost_user_by_type(const char *path)
 int
 virtio_user_start_device(struct virtio_user_dev *dev)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	uint64_t features;
 	int ret;
 
@@ -142,7 +141,7 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	 * replaced when we get proper supports from the
 	 * memory subsystem in the future.
 	 */
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_lock();
 	pthread_mutex_lock(&dev->mutex);
 
 	if (is_vhost_user_by_type(dev->path) && dev->vhostfd < 0)
@@ -180,12 +179,12 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 
 	dev->started = true;
 	pthread_mutex_unlock(&dev->mutex);
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 
 	return 0;
 error:
 	pthread_mutex_unlock(&dev->mutex);
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 	/* TODO: free resource here or caller to check */
 	return -1;
 }

@@ -44,6 +44,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_timer.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_memzone.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_log.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_launch.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_mcfg.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_memalloc.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_memory.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_tailqs.c

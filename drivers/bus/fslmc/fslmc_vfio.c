@@ -347,14 +347,12 @@ fslmc_dmamap_seg(const struct rte_memseg_list *msl __rte_unused,
 int rte_fslmc_vfio_dmamap(void)
 {
 	int i = 0, ret;
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_t *mem_lock = &mcfg->memory_hotplug_lock;
 
 	/* Lock before parsing and registering callback to memory subsystem */
-	rte_rwlock_read_lock(mem_lock);
+	rte_mcfg_mem_read_lock();
 
 	if (rte_memseg_walk(fslmc_dmamap_seg, &i) < 0) {
-		rte_rwlock_read_unlock(mem_lock);
+		rte_mcfg_mem_read_unlock();
 		return -1;
 	}
 
@@ -378,7 +376,7 @@ int rte_fslmc_vfio_dmamap(void)
 	/* Existing segments have been mapped and memory callback for hotplug
 	 * has been installed.
 	 */
-	rte_rwlock_read_unlock(mem_lock);
+	rte_mcfg_mem_read_unlock();
 
 	return 0;
 }

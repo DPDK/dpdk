@@ -292,6 +292,10 @@ DPDK_19.08 {
 
 	rte_lcore_index;
 	rte_lcore_to_socket_id;
+	rte_mcfg_mem_read_lock;
+	rte_mcfg_mem_read_unlock;
+	rte_mcfg_mem_write_lock;
+	rte_mcfg_mem_write_unlock;
 	rte_rand;
 	rte_srand;
 

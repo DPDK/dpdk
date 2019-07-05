@@ -596,13 +596,12 @@ rte_memseg_contig_walk_thread_unsafe(rte_memseg_contig_walk_t func, void *arg)
 int
 rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int ret = 0;
 
 	/* do not allow allocations/frees/init while we iterate */
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_lock();
 	ret = rte_memseg_contig_walk_thread_unsafe(func, arg);
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 
 	return ret;
 }
@@ -638,13 +637,12 @@ rte_memseg_walk_thread_unsafe(rte_memseg_walk_t func, void *arg)
 int
 rte_memseg_walk(rte_memseg_walk_t func, void *arg)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int ret = 0;
 
 	/* do not allow allocations/frees/init while we iterate */
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_lock();
 	ret = rte_memseg_walk_thread_unsafe(func, arg);
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 
 	return ret;
 }
@@ -671,13 +669,12 @@ rte_memseg_list_walk_thread_unsafe(rte_memseg_list_walk_t func, void *arg)
 int
 rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int ret = 0;
 
 	/* do not allow allocations/frees/init while we iterate */
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_lock();
 	ret = rte_memseg_list_walk_thread_unsafe(func, arg);
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 
 	return ret;
 }
@@ -727,12 +724,11 @@ rte_memseg_get_fd_thread_unsafe(const struct rte_memseg *ms)
 int
 rte_memseg_get_fd(const struct rte_memseg *ms)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int ret;
 
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_lock();
 	ret = rte_memseg_get_fd_thread_unsafe(ms);
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 
 	return ret;
 }
@@ -783,12 +779,11 @@ rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
 int
 rte_memseg_get_fd_offset(const struct rte_memseg *ms, size_t *offset)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int ret;
 
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_lock();
 	ret = rte_memseg_get_fd_offset_thread_unsafe(ms, offset);
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 
 	return ret;
 }
@@ -809,7 +804,7 @@ rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
 		rte_errno = EINVAL;
 		return -1;
 	}
-	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_write_lock();
 
 	/* make sure the segment doesn't already exist */
 	if (malloc_heap_find_external_seg(va_addr, len) != NULL) {
@@ -838,14 +833,13 @@ rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
 	/* memseg list successfully created - increment next socket ID */
 	mcfg->next_socket_id++;
 unlock:
-	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_write_unlock();
 	return ret;
 }
 
 int
 rte_extmem_unregister(void *va_addr, size_t len)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct rte_memseg_list *msl;
 	int ret = 0;
 
@@ -853,7 +847,7 @@ rte_extmem_unregister(void *va_addr, size_t len)
 		rte_errno = EINVAL;
 		return -1;
 	}
-	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_write_lock();
 
 	/* find our segment */
 	msl = malloc_heap_find_external_seg(va_addr, len);
@@ -865,14 +859,13 @@ rte_extmem_unregister(void *va_addr, size_t len)
 
 	ret = malloc_heap_destroy_external_seg(msl);
 unlock:
-	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_write_unlock();
 	return ret;
 }
 
 static int
 sync_memory(void *va_addr, size_t len, bool attach)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct rte_memseg_list *msl;
 	int ret = 0;
 
@@ -880,7 +873,7 @@ sync_memory(void *va_addr, size_t len, bool attach)
 		rte_errno = EINVAL;
 		return -1;
 	}
-	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_write_lock();
 
 	/* find our segment */
 	msl = malloc_heap_find_external_seg(va_addr, len);
@@ -895,7 +888,7 @@ sync_memory(void *va_addr, size_t len, bool attach)
 		ret = rte_fbarray_detach(&msl->memseg_arr);
 
 unlock:
-	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_write_unlock();
 	return ret;
 }
 
@@ -923,7 +916,7 @@ rte_eal_memory_init(void)
 		return -1;
 
 	/* lock mem hotplug here, to prevent races while we init */
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_lock();
 
 	if (rte_eal_memseg_init() < 0)
 		goto fail;
@@ -942,6 +935,6 @@ rte_eal_memory_init(void)
 
 	return 0;
 fail:
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 	return -1;
 }

@@ -580,7 +580,6 @@ mlx5_mr_create_primary(struct rte_eth_dev *dev, struct mlx5_mr_cache *entry,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_dev_config *config = &priv->config;
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	const struct rte_memseg_list *msl;
 	const struct rte_memseg *ms;
 	struct mlx5_mr *mr = NULL;
@@ -684,7 +683,7 @@ alloc_resources:
 	 * just single page. If not, go on with the big chunk atomically from
 	 * here.
 	 */
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_lock();
 	data_re = data;
 	if (len > msl->page_sz &&
 	    !rte_memseg_contig_walk(mr_find_contig_memsegs_cb, &data_re)) {
@@ -702,7 +701,7 @@ alloc_resources:
 		 */
 		data.start = RTE_ALIGN_FLOOR(addr, msl->page_sz);
 		data.end = data.start + msl->page_sz;
-		rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+		rte_mcfg_mem_read_unlock();
 		mr_free(mr);
 		goto alloc_resources;
 	}
@@ -722,7 +721,7 @@ alloc_resources:
 		DEBUG("port %u found MR for %p on final lookup, abort",
 		      dev->data->port_id, (void *)addr);
 		rte_rwlock_write_unlock(&sh->mr.rwlock);
-		rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+		rte_mcfg_mem_read_unlock();
 		/*
 		 * Must be unlocked before calling rte_free() because
 		 * mlx5_mr_mem_event_free_cb() can be called inside.
@@ -790,12 +789,12 @@ alloc_resources:
 	/* Lookup can't fail. */
 	assert(entry->lkey != UINT32_MAX);
 	rte_rwlock_write_unlock(&sh->mr.rwlock);
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 	return entry->lkey;
 err_mrlock:
 	rte_rwlock_write_unlock(&sh->mr.rwlock);
 err_memlock:
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_mcfg_mem_read_unlock();
 err_nolock:
 	/*
 	 * In case of error, as this can be called in a datapath, a warning
