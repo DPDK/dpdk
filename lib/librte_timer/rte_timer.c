@@ -13,6 +13,7 @@
 #include <rte_atomic.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
+#include <rte_eal_memconfig.h>
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
 #include <rte_launch.h>
@@ -61,6 +62,8 @@ struct rte_timer_data {
 };
 
 #define RTE_MAX_DATA_ELS 64
+static const struct rte_memzone *rte_timer_data_mz;
+static int *volatile rte_timer_mz_refcnt;
 static struct rte_timer_data *rte_timer_data_arr;
 static const uint32_t default_data_id;
 static uint32_t rte_timer_subsystem_initialized;
@@ -157,28 +160,30 @@ rte_timer_subsystem_init_v1905(void)
 	int i, lcore_id;
 	static const char *mz_name = "rte_timer_mz";
 	const size_t data_arr_size =
-				RTE_MAX_DATA_ELS * sizeof(*rte_timer_data_arr);
+			RTE_MAX_DATA_ELS * sizeof(*rte_timer_data_arr);
+	const size_t mem_size = data_arr_size + sizeof(*rte_timer_mz_refcnt);
 	bool do_full_init = true;
 
 	if (rte_timer_subsystem_initialized)
 		return -EALREADY;
 
-reserve:
-	rte_errno = 0;
-	mz = rte_memzone_reserve_aligned(mz_name, data_arr_size, SOCKET_ID_ANY,
-					 0, RTE_CACHE_LINE_SIZE);
+	rte_mcfg_timer_lock();
+
+	mz = rte_memzone_lookup(mz_name);
 	if (mz == NULL) {
-		if (rte_errno == EEXIST) {
-			mz = rte_memzone_lookup(mz_name);
-			if (mz == NULL)
-				goto reserve;
-
-			do_full_init = false;
-		} else
+		mz = rte_memzone_reserve_aligned(mz_name, mem_size,
+				SOCKET_ID_ANY, 0, RTE_CACHE_LINE_SIZE);
+		if (mz == NULL) {
+			rte_mcfg_timer_unlock();
 			return -ENOMEM;
-	}
+		}
+		do_full_init = true;
+	} else
+		do_full_init = false;
 
+	rte_timer_data_mz = mz;
 	rte_timer_data_arr = mz->addr;
+	rte_timer_mz_refcnt = (void *)((char *)mz->addr + data_arr_size);
 
 	if (do_full_init) {
 		for (i = 0; i < RTE_MAX_DATA_ELS; i++) {
@@ -195,6 +200,9 @@ reserve:
 	}
 
 	rte_timer_data_arr[default_data_id].internal_flags |= FL_ALLOCATED;
+	(*rte_timer_mz_refcnt)++;
+
+	rte_mcfg_timer_unlock();
 
 	rte_timer_subsystem_initialized = 1;
 
@@ -209,6 +217,13 @@ rte_timer_subsystem_finalize(void)
 {
 	if (!rte_timer_subsystem_initialized)
 		return;
+
+	rte_mcfg_timer_lock();
+
+	if (--(*rte_timer_mz_refcnt) == 0)
+		rte_memzone_free(rte_timer_data_mz);
+
+	rte_mcfg_timer_unlock();
 
 	rte_timer_subsystem_initialized = 0;
 }

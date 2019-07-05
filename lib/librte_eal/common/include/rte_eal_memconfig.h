@@ -5,6 +5,8 @@
 #ifndef _RTE_EAL_MEMCONFIG_H_
 #define _RTE_EAL_MEMCONFIG_H_
 
+#include <rte_compat.h>
+
 /**
  * @file
  *
@@ -86,6 +88,26 @@ rte_mcfg_mempool_write_lock(void);
  */
 void
 rte_mcfg_mempool_write_unlock(void);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Lock the internal EAL Timer Library lock for exclusive access.
+ */
+__rte_experimental
+void
+rte_mcfg_timer_lock(void);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Unlock the internal EAL Timer Library lock for exclusive access.
+ */
+__rte_experimental
+void
+rte_mcfg_timer_unlock(void);
 
 #ifdef __cplusplus
 }

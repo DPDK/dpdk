@@ -405,4 +405,6 @@ EXPERIMENTAL {
 	# added in 19.08
 	rte_lcore_cpuset;
 	rte_lcore_to_cpu_id;
+	rte_mcfg_timer_lock;
+	rte_mcfg_timer_unlock;
 };

@@ -147,3 +147,17 @@ rte_mcfg_mempool_write_unlock(void)
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	rte_rwlock_write_unlock(&mcfg->mplock);
 }
+
+void
+rte_mcfg_timer_lock(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	rte_spinlock_lock(&mcfg->tlock);
+}
+
+void
+rte_mcfg_timer_unlock(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	rte_spinlock_unlock(&mcfg->tlock);
+}

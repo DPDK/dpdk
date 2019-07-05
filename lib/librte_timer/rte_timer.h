@@ -172,10 +172,11 @@ int rte_timer_data_dealloc(uint32_t id);
  * Initializes internal variables (list, locks and so on) for the RTE
  * timer library.
  *
+ * @note
+ *   This function must be called in every process before using the library.
+ *
  * @return
  *   - 0: Success
- *   - -EEXIST: Returned in secondary process when primary process has not
- *      yet initialized the timer subsystem
  *   - -ENOMEM: Unable to allocate memory needed to initialize timer
  *      subsystem
  */
