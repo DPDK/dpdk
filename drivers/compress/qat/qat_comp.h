@@ -24,6 +24,8 @@
 /* fallback to fixed compression threshold */
 #define QAT_FALLBACK_THLD ((uint32_t)(RTE_PMD_QAT_COMP_IM_BUFFER_SIZE / 1.1))
 
+#define QAT_MIN_OUT_BUF_SIZE 46
+
 enum qat_comp_request_type {
 	QAT_COMP_REQUEST_FIXED_COMP_STATELESS,
 	QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS,
@@ -45,6 +47,7 @@ struct qat_comp_op_cookie {
 	phys_addr_t qat_sgl_src_phys_addr;
 	phys_addr_t qat_sgl_dst_phys_addr;
 	/* dynamically created SGLs */
+	uint8_t error;
 	uint8_t socket_id;
 	uint16_t src_nb_elems;
 	uint16_t dst_nb_elems;
@@ -63,7 +66,7 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
 		       enum qat_device_gen qat_dev_gen __rte_unused);
 
 int
-qat_comp_process_response(void **op, uint8_t *resp,
+qat_comp_process_response(void **op, uint8_t *resp, void *op_cookie,
 			  uint64_t *dequeue_err_count);
 
 int

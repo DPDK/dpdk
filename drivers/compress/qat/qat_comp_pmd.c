@@ -168,6 +168,8 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 				QAT_PMD_COMP_SGL_DEF_SEGMENTS;
 
 		cookie->socket_id = dev->data->socket_id;
+
+		cookie->error = 0;
 	}
 
 	return ret;
