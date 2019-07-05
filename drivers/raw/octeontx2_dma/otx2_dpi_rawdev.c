@@ -234,6 +234,65 @@ otx2_dpi_rawdev_enqueue_bufs(struct rte_rawdev *dev,
 	return c;
 }
 
+/* Check for command completion, returns number of commands completed */
+static int
+otx2_dpi_rawdev_dequeue_bufs(struct rte_rawdev *dev __rte_unused,
+			     struct rte_rawdev_buf **buffers,
+			     unsigned int count, rte_rawdev_obj_t context)
+{
+	struct dpi_dma_queue_ctx_s *ctx = (struct dpi_dma_queue_ctx_s *)context;
+	unsigned int i = 0, headp;
+
+	/* No completion ring to poll */
+	if (ctx->c_ring == NULL)
+		return 0;
+
+	headp = ctx->c_ring->head;
+	for (i = 0; i < count && (headp != ctx->c_ring->tail); i++) {
+		struct dpi_dma_req_compl_s *comp_ptr =
+					 ctx->c_ring->compl_data[headp];
+
+		if (comp_ptr->cdata)
+			break;
+
+		/* Request Completed */
+		buffers[i] = (void *)comp_ptr;
+		headp = (headp + 1) % ctx->c_ring->max_cnt;
+	}
+	ctx->c_ring->head = headp;
+
+	return i;
+}
+
+static int
+otx2_dpi_rawdev_start(struct rte_rawdev *dev)
+{
+	dev->started = DPI_QUEUE_START;
+
+	return DPI_DMA_QUEUE_SUCCESS;
+}
+
+static void
+otx2_dpi_rawdev_stop(struct rte_rawdev *dev)
+{
+	dev->started = DPI_QUEUE_STOP;
+}
+
+static int
+otx2_dpi_rawdev_close(struct rte_rawdev *dev)
+{
+	dma_engine_enb_dis(dev->dev_private, false);
+	dma_queue_finish(dev->dev_private);
+
+	return DPI_DMA_QUEUE_SUCCESS;
+}
+
+static int
+otx2_dpi_rawdev_reset(struct rte_rawdev *dev)
+{
+	return dev ? DPI_QUEUE_STOP : DPI_QUEUE_START;
+}
+
 static int
 otx2_dpi_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 {
@@ -273,7 +332,12 @@ otx2_dpi_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 
 static const struct rte_rawdev_ops dpi_rawdev_ops = {
 	.dev_configure = otx2_dpi_rawdev_configure,
+	.dev_start = otx2_dpi_rawdev_start,
+	.dev_stop = otx2_dpi_rawdev_stop,
+	.dev_close = otx2_dpi_rawdev_close,
+	.dev_reset = otx2_dpi_rawdev_reset,
 	.enqueue_bufs = otx2_dpi_rawdev_enqueue_bufs,
+	.dequeue_bufs = otx2_dpi_rawdev_dequeue_bufs,
 };
 
 static int
