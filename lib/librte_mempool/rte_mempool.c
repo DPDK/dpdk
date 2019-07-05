@@ -711,7 +711,7 @@ rte_mempool_free(struct rte_mempool *mp)
 		return;
 
 	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 	/* find out tailq entry */
 	TAILQ_FOREACH(te, mempool_list, next) {
 		if (te->data == (void *)mp)
@@ -722,7 +722,7 @@ rte_mempool_free(struct rte_mempool *mp)
 		TAILQ_REMOVE(mempool_list, te, next);
 		rte_free(te);
 	}
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	rte_mempool_free_memchunks(mp);
 	rte_mempool_ops_free(mp);
@@ -898,9 +898,9 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 
 	te->data = mp;
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 	TAILQ_INSERT_TAIL(mempool_list, te, next);
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
 
 	return mp;

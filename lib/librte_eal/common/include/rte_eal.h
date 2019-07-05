@@ -447,11 +447,6 @@ rte_usage_hook_t
 rte_set_application_usage_hook(rte_usage_hook_t usage_func);
 
 /**
- * macro to get the lock of tailq in mem_config
- */
-#define RTE_EAL_TAILQ_RWLOCK         (&rte_eal_get_configuration()->mem_config->qlock)
-
-/**
  * macro to get the multiple lock of mempool shared by multiple-instance
  */
 #define RTE_EAL_MEMPOOL_RWLOCK            (&rte_eal_get_configuration()->mem_config->mplock)

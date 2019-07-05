@@ -52,13 +52,13 @@ rte_hash_find_existing(const char *name)
 
 	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
 
-	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_lock();
 	TAILQ_FOREACH(te, hash_list, next) {
 		h = (struct rte_hash *) te->data;
 		if (strncmp(name, h->name, RTE_HASH_NAMESIZE) == 0)
 			break;
 	}
-	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_unlock();
 
 	if (te == NULL) {
 		rte_errno = ENOENT;
@@ -239,7 +239,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 	snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name);
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 
 	/* guarantee there's no existing: this is normally already checked
 	 * by ring creation above */
@@ -437,11 +437,11 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 	te->data = (void *) h;
 	TAILQ_INSERT_TAIL(hash_list, te, next);
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	return h;
 err_unlock:
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 err:
 	rte_ring_free(r);
 	rte_ring_free(r_ext);
@@ -466,7 +466,7 @@ rte_hash_free(struct rte_hash *h)
 
 	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 
 	/* find out tailq entry */
 	TAILQ_FOREACH(te, hash_list, next) {
@@ -475,13 +475,13 @@ rte_hash_free(struct rte_hash *h)
 	}
 
 	if (te == NULL) {
-		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+		rte_mcfg_tailq_write_unlock();
 		return;
 	}
 
 	TAILQ_REMOVE(hash_list, te, next);
 
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	if (h->use_local_cache)
 		rte_free(h->local_free_slots);

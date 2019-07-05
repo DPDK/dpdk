@@ -72,7 +72,7 @@ rte_event_ring_create(const char *name, unsigned int count, int socket_id,
 		return NULL;
 	}
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 
 	/*
 	 * reserve a memory zone for this ring. If we can't get rte_config or
@@ -89,7 +89,7 @@ rte_event_ring_create(const char *name, unsigned int count, int socket_id,
 			if (rte_memzone_free(mz) != 0)
 				RTE_LOG(ERR, RING, "Cannot free memzone\n");
 			rte_free(te);
-			rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+			rte_mcfg_tailq_write_unlock();
 			return NULL;
 		}
 
@@ -102,7 +102,7 @@ rte_event_ring_create(const char *name, unsigned int count, int socket_id,
 		RTE_LOG(ERR, RING, "Cannot reserve memory\n");
 		rte_free(te);
 	}
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	return r;
 }
@@ -118,7 +118,7 @@ rte_event_ring_lookup(const char *name)
 	ring_list = RTE_TAILQ_CAST(rte_event_ring_tailq.head,
 			rte_event_ring_list);
 
-	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_lock();
 
 	TAILQ_FOREACH(te, ring_list, next) {
 		r = (struct rte_event_ring *) te->data;
@@ -126,7 +126,7 @@ rte_event_ring_lookup(const char *name)
 			break;
 	}
 
-	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_unlock();
 
 	if (te == NULL) {
 		rte_errno = ENOENT;
@@ -163,7 +163,7 @@ rte_event_ring_free(struct rte_event_ring *r)
 
 	ring_list = RTE_TAILQ_CAST(rte_event_ring_tailq.head,
 			rte_event_ring_list);
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 
 	/* find out tailq entry */
 	TAILQ_FOREACH(te, ring_list, next) {
@@ -172,13 +172,13 @@ rte_event_ring_free(struct rte_event_ring *r)
 	}
 
 	if (te == NULL) {
-		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+		rte_mcfg_tailq_write_unlock();
 		return;
 	}
 
 	TAILQ_REMOVE(ring_list, te, next);
 
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	rte_free(te);
 }

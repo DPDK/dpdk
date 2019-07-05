@@ -645,9 +645,9 @@ rte_distributor_create_v1705(const char *name,
 					  rte_dist_burst_list);
 
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 	TAILQ_INSERT_TAIL(dist_burst_list, d, next);
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	return d;
 }

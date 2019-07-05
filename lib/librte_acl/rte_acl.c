@@ -156,13 +156,13 @@ rte_acl_find_existing(const char *name)
 
 	acl_list = RTE_TAILQ_CAST(rte_acl_tailq.head, rte_acl_list);
 
-	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_lock();
 	TAILQ_FOREACH(te, acl_list, next) {
 		ctx = (struct rte_acl_ctx *) te->data;
 		if (strncmp(name, ctx->name, sizeof(ctx->name)) == 0)
 			break;
 	}
-	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_unlock();
 
 	if (te == NULL) {
 		rte_errno = ENOENT;
@@ -182,7 +182,7 @@ rte_acl_free(struct rte_acl_ctx *ctx)
 
 	acl_list = RTE_TAILQ_CAST(rte_acl_tailq.head, rte_acl_list);
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 
 	/* find our tailq entry */
 	TAILQ_FOREACH(te, acl_list, next) {
@@ -190,13 +190,13 @@ rte_acl_free(struct rte_acl_ctx *ctx)
 			break;
 	}
 	if (te == NULL) {
-		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+		rte_mcfg_tailq_write_unlock();
 		return;
 	}
 
 	TAILQ_REMOVE(acl_list, te, next);
 
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	rte_free(ctx->mem);
 	rte_free(ctx);
@@ -226,7 +226,7 @@ rte_acl_create(const struct rte_acl_param *param)
 	sz = sizeof(*ctx) + param->max_rule_num * param->rule_size;
 
 	/* get EAL TAILQ lock. */
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 
 	/* if we already have one with that name */
 	TAILQ_FOREACH(te, acl_list, next) {
@@ -268,7 +268,7 @@ rte_acl_create(const struct rte_acl_param *param)
 	}
 
 exit:
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 	return ctx;
 }
 
@@ -377,10 +377,10 @@ rte_acl_list_dump(void)
 
 	acl_list = RTE_TAILQ_CAST(rte_acl_tailq.head, rte_acl_list);
 
-	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_lock();
 	TAILQ_FOREACH(te, acl_list, next) {
 		ctx = (struct rte_acl_ctx *) te->data;
 		rte_acl_dump(ctx);
 	}
-	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_unlock();
 }

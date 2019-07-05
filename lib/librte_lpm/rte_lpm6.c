@@ -316,7 +316,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	mem_size = sizeof(*lpm) + (sizeof(lpm->tbl8[0]) *
 			RTE_LPM6_TBL8_GROUP_NUM_ENTRIES * config->number_tbl8s);
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 
 	/* Guarantee there's no existing */
 	TAILQ_FOREACH(te, lpm_list, next) {
@@ -363,11 +363,11 @@ rte_lpm6_create(const char *name, int socket_id,
 	te->data = (void *) lpm;
 
 	TAILQ_INSERT_TAIL(lpm_list, te, next);
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 	return lpm;
 
 fail:
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 fail_wo_unlock:
 	rte_free(tbl8_hdrs);
@@ -389,13 +389,13 @@ rte_lpm6_find_existing(const char *name)
 
 	lpm_list = RTE_TAILQ_CAST(rte_lpm6_tailq.head, rte_lpm6_list);
 
-	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_lock();
 	TAILQ_FOREACH(te, lpm_list, next) {
 		l = (struct rte_lpm6 *) te->data;
 		if (strncmp(name, l->name, RTE_LPM6_NAMESIZE) == 0)
 			break;
 	}
-	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_unlock();
 
 	if (te == NULL) {
 		rte_errno = ENOENT;
@@ -420,7 +420,7 @@ rte_lpm6_free(struct rte_lpm6 *lpm)
 
 	lpm_list = RTE_TAILQ_CAST(rte_lpm6_tailq.head, rte_lpm6_list);
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 
 	/* find our tailq entry */
 	TAILQ_FOREACH(te, lpm_list, next) {
@@ -431,7 +431,7 @@ rte_lpm6_free(struct rte_lpm6 *lpm)
 	if (te != NULL)
 		TAILQ_REMOVE(lpm_list, te, next);
 
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	rte_free(lpm->tbl8_hdrs);
 	rte_free(lpm->tbl8_pool);

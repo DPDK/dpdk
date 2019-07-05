@@ -58,7 +58,7 @@ rte_dump_tailq(FILE *f)
 
 	mcfg = rte_eal_get_configuration()->mem_config;
 
-	rte_rwlock_read_lock(&mcfg->qlock);
+	rte_mcfg_tailq_read_lock();
 	for (i = 0; i < RTE_MAX_TAILQ; i++) {
 		const struct rte_tailq_head *tailq = &mcfg->tailq_head[i];
 		const struct rte_tailq_entry_head *head = &tailq->tailq_head;
@@ -66,7 +66,7 @@ rte_dump_tailq(FILE *f)
 		fprintf(f, "Tailq %u: qname:<%s>, tqh_first:%p, tqh_last:%p\n",
 			i, tailq->name, head->tqh_first, head->tqh_last);
 	}
-	rte_rwlock_read_unlock(&mcfg->qlock);
+	rte_mcfg_tailq_read_unlock();
 }
 
 static struct rte_tailq_head *

@@ -124,6 +124,30 @@ rte_mcfg_mem_write_lock(void);
 void
 rte_mcfg_mem_write_unlock(void);
 
+/**
+ * Lock the internal EAL TAILQ list for shared access.
+ */
+void
+rte_mcfg_tailq_read_lock(void);
+
+/**
+ * Unlock the internal EAL TAILQ list for shared access.
+ */
+void
+rte_mcfg_tailq_read_unlock(void);
+
+/**
+ * Lock the internal EAL TAILQ list for exclusive access.
+ */
+void
+rte_mcfg_tailq_write_lock(void);
+
+/**
+ * Unlock the internal EAL TAILQ list for exclusive access.
+ */
+void
+rte_mcfg_tailq_write_unlock(void);
+
 #ifdef __cplusplus
 }
 #endif

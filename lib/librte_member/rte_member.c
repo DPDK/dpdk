@@ -32,13 +32,13 @@ rte_member_find_existing(const char *name)
 
 	member_list = RTE_TAILQ_CAST(rte_member_tailq.head, rte_member_list);
 
-	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_lock();
 	TAILQ_FOREACH(te, member_list, next) {
 		setsum = (struct rte_member_setsum *) te->data;
 		if (strncmp(name, setsum->name, RTE_MEMBER_NAMESIZE) == 0)
 			break;
 	}
-	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_read_unlock();
 
 	if (te == NULL) {
 		rte_errno = ENOENT;
@@ -56,17 +56,17 @@ rte_member_free(struct rte_member_setsum *setsum)
 	if (setsum == NULL)
 		return;
 	member_list = RTE_TAILQ_CAST(rte_member_tailq.head, rte_member_list);
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 	TAILQ_FOREACH(te, member_list, next) {
 		if (te->data == (void *)setsum)
 			break;
 	}
 	if (te == NULL) {
-		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+		rte_mcfg_tailq_write_unlock();
 		return;
 	}
 	TAILQ_REMOVE(member_list, te, next);
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	switch (setsum->type) {
 	case RTE_MEMBER_TYPE_HT:
@@ -105,7 +105,7 @@ rte_member_create(const struct rte_member_parameters *params)
 
 	member_list = RTE_TAILQ_CAST(rte_member_tailq.head, rte_member_list);
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 
 	TAILQ_FOREACH(te, member_list, next) {
 		setsum = te->data;
@@ -159,13 +159,13 @@ rte_member_create(const struct rte_member_parameters *params)
 
 	te->data = (void *)setsum;
 	TAILQ_INSERT_TAIL(member_list, te, next);
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 	return setsum;
 
 error_unlock_exit:
 	rte_free(te);
 	rte_free(setsum);
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 	return NULL;
 }
 

@@ -392,9 +392,9 @@ rte_distributor_create_v20(const char *name,
 	distributor_list = RTE_TAILQ_CAST(rte_distributor_tailq.head,
 					  rte_distributor_list);
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_lock();
 	TAILQ_INSERT_TAIL(distributor_list, d, next);
-	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+	rte_mcfg_tailq_write_unlock();
 
 	return d;
 }
