@@ -32,6 +32,24 @@ eal_mcfg_wait_complete(void)
 }
 
 void
+eal_mcfg_update_internal(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	internal_config.legacy_mem = mcfg->legacy_mem;
+	internal_config.single_file_segments = mcfg->single_file_segments;
+}
+
+void
+eal_mcfg_update_from_internal(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	mcfg->legacy_mem = internal_config.legacy_mem;
+	mcfg->single_file_segments = internal_config.single_file_segments;
+}
+
+void
 rte_mcfg_mem_read_lock(void)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;

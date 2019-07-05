@@ -379,6 +379,7 @@ rte_config_init(void)
 	case RTE_PROC_PRIMARY:
 		if (rte_eal_config_create() < 0)
 			return -1;
+		eal_mcfg_update_from_internal();
 		break;
 	case RTE_PROC_SECONDARY:
 		if (rte_eal_config_attach() < 0)
@@ -386,6 +387,7 @@ rte_config_init(void)
 		eal_mcfg_wait_complete();
 		if (rte_eal_config_reattach() < 0)
 			return -1;
+		eal_mcfg_update_internal();
 		break;
 	case RTE_PROC_AUTO:
 	case RTE_PROC_INVALID:

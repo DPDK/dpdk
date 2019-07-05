@@ -69,6 +69,14 @@ struct rte_mem_config {
 	uint8_t dma_maskbits; /**< Keeps the more restricted dma mask. */
 };
 
+/* update internal config from shared mem config */
+void
+eal_mcfg_update_internal(void);
+
+/* update shared mem config from internal config */
+void
+eal_mcfg_update_from_internal(void);
+
 /* wait until primary process initialization is complete */
 void
 eal_mcfg_wait_complete(void);
