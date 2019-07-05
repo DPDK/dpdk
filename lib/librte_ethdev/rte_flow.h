@@ -421,6 +421,19 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_meta.
 	 */
 	RTE_FLOW_ITEM_TYPE_META,
+
+	/**
+	 * Matches a GRE optional key field.
+	 *
+	 * The value should a big-endian 32bit integer.
+	 *
+	 * When this item present the K bit is implicitly matched as "1"
+	 * in the default mask.
+	 *
+	 * @p spec/mask type:
+	 * @code rte_be32_t * @endcode
+	 */
+	RTE_FLOW_ITEM_TYPE_GRE_KEY,
 };
 
 /**

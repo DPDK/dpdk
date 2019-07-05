@@ -980,6 +980,15 @@ Matches a GRE header.
 - ``protocol``: protocol type.
 - Default ``mask`` matches protocol only.
 
+Item: ``GRE_KEY``
+^^^^^^^^^^^^^^^^^
+
+Matches a GRE key field.
+This should be preceded by item ``GRE``.
+
+- Value to be matched is a big-endian 32 bit integer.
+- When this item present it implicitly match K bit in default mask as "1"
+
 Item: ``FUZZY``
 ^^^^^^^^^^^^^^^
 
