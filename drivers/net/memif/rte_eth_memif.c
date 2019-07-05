@@ -1224,13 +1224,8 @@ static int
 memif_set_mac(const char *key __rte_unused, const char *value, void *extra_args)
 {
 	struct rte_ether_addr *ether_addr = (struct rte_ether_addr *)extra_args;
-	int ret = 0;
 
-	ret = sscanf(value, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-	       &ether_addr->addr_bytes[0], &ether_addr->addr_bytes[1],
-	       &ether_addr->addr_bytes[2], &ether_addr->addr_bytes[3],
-	       &ether_addr->addr_bytes[4], &ether_addr->addr_bytes[5]);
-	if (ret != 6)
+	if (rte_ether_unformat_addr(value, ether_addr) < 0)
 		MIF_LOG(WARNING, "Failed to parse mac '%s'.", value);
 	return 0;
 }
