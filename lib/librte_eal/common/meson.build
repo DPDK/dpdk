@@ -96,6 +96,7 @@ generic_headers = files(
 	'include/generic/rte_cpuflags.h',
 	'include/generic/rte_cycles.h',
 	'include/generic/rte_io.h',
+	'include/generic/rte_mcslock.h',
 	'include/generic/rte_memcpy.h',
 	'include/generic/rte_pause.h',
 	'include/generic/rte_prefetch.h',

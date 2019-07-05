@@ -21,7 +21,7 @@ INC += rte_reciprocal.h rte_fbarray.h rte_uuid.h
 
 GENERIC_INC := rte_atomic.h rte_byteorder.h rte_cycles.h rte_prefetch.h
 GENERIC_INC += rte_memcpy.h rte_cpuflags.h
-GENERIC_INC += rte_spinlock.h rte_rwlock.h rte_ticketlock.h
+GENERIC_INC += rte_mcslock.h rte_spinlock.h rte_rwlock.h rte_ticketlock.h
 GENERIC_INC += rte_vect.h rte_pause.h rte_io.h
 
 # defined in mk/arch/$(RTE_ARCH)/rte.vars.mk

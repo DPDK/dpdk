@@ -56,6 +56,13 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added MCS lock.**
+
+  MCS lock provides scalability by spinning on a CPU/thread local variable
+  which avoids expensive cache bouncings.
+  It provides fairness by maintaining a list of acquirers and passing
+  the lock to each CPU/thread in the order they acquired the lock.
+
 * **Updated the EAL Pseudo-random Number Generator.**
 
   The lrand48()-based rte_rand() function is replaced with a
