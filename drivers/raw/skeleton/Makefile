@@ -15,7 +15,7 @@ LDLIBS += -lrte_rawdev
 LDLIBS += -lrte_bus_vdev
 LDLIBS += -lrte_kvargs
 
-EXPORT_MAP := rte_pmd_skeleton_rawdev_version.map
+EXPORT_MAP := rte_pmd_skeleton_version.map
 
 LIBABIVER := 1
 

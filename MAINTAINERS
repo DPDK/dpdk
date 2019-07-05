@@ -449,7 +449,7 @@ Raw device API - EXPERIMENTAL
 M: Shreyansh Jain <shreyansh.jain@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: lib/librte_rawdev/
-F: drivers/raw/skeleton_rawdev/
+F: drivers/raw/skeleton/
 F: app/test/test_rawdev.c
 F: doc/guides/prog_guide/rawdev.rst
 
@@ -1103,13 +1103,13 @@ Rawdev Drivers
 Intel FPGA
 M: Rosen Xu <rosen.xu@intel.com>
 M: Tianfei zhang <tianfei.zhang@intel.com>
-F: drivers/raw/ifpga_rawdev/
-F: doc/guides/rawdevs/ifpga_rawdev.rst
+F: drivers/raw/ifpga/
+F: doc/guides/rawdevs/ifpga.rst
 
 IOAT Rawdev
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: drivers/raw/ioat/
-F: doc/guides/rawdevs/ioat_rawdev.rst
+F: doc/guides/rawdevs/ioat.rst
 
 NXP DPAA2 QDMA
 M: Nipun Gupta <nipun.gupta@nxp.com>

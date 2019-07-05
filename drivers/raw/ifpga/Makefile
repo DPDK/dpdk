@@ -21,13 +21,13 @@ LDLIBS += -lrte_kvargs
 LDLIBS += -lrte_bus_pci
 LDLIBS += -lrte_bus_ifpga
 
-EXPORT_MAP := rte_pmd_ifpga_rawdev_version.map
+EXPORT_MAP := rte_pmd_ifpga_version.map
 
 LIBABIVER := 1
 
 VPATH += $(SRCDIR)/base
 
-include $(RTE_SDK)/drivers/raw/ifpga_rawdev/base/Makefile
+include $(RTE_SDK)/drivers/raw/ifpga/base/Makefile
 
 #
 # all source are stored in SRCS-y
