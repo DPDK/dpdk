@@ -16,6 +16,8 @@
 
 #include <otx2_common.h>
 
+#include "otx2_dpi_rawdev.h"
+
 static const struct rte_pci_id pci_dma_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM,
@@ -31,11 +33,13 @@ otx2_dpi_rawdev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		      struct rte_pci_device *pci_dev)
 {
 	char name[RTE_RAWDEV_NAME_MAX_LEN];
+	struct dpi_vf_s *dpivf = NULL;
 	struct rte_rawdev *rawdev;
+	uint16_t vf_id;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
+		return DPI_DMA_QUEUE_SUCCESS;
 
 	if (pci_dev->mem_resource[0].addr == NULL) {
 		otx2_dpi_dbg("Empty bars %p %p", pci_dev->mem_resource[0].addr,
@@ -49,7 +53,8 @@ otx2_dpi_rawdev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		 pci_dev->addr.function);
 
 	/* Allocate device structure */
-	rawdev = rte_rawdev_pmd_allocate(name, 0, rte_socket_id());
+	rawdev = rte_rawdev_pmd_allocate(name, sizeof(struct dpi_vf_s),
+					 rte_socket_id());
 	if (rawdev == NULL) {
 		otx2_err("Rawdev allocation failed");
 		return -EINVAL;
@@ -58,7 +63,21 @@ otx2_dpi_rawdev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	rawdev->device = &pci_dev->device;
 	rawdev->driver_name = pci_dev->driver->driver.name;
 
-	return 0;
+	dpivf = rawdev->dev_private;
+	if (dpivf->state != DPI_QUEUE_STOP) {
+		otx2_dpi_dbg("Device already started!!!");
+		return -ENODEV;
+	}
+
+	vf_id = ((pci_dev->addr.devid & 0x1F) << 3) |
+		 (pci_dev->addr.function & 0x7);
+	vf_id -= 1;
+	dpivf->state = DPI_QUEUE_START;
+	dpivf->vf_id = vf_id;
+	dpivf->vf_bar0 = (uintptr_t)pci_dev->mem_resource[0].addr;
+	dpivf->vf_bar2 = (uintptr_t)pci_dev->mem_resource[2].addr;
+
+	return DPI_DMA_QUEUE_SUCCESS;
 }
 
 static int
