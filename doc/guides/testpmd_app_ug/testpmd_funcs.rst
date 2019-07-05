@@ -3804,6 +3804,10 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``protocol {unsigned}``: protocol type.
 
+- ``gre_key``: match GRE optional key field.
+
+  - ``value {unsigned}``: key value.
+
 - ``fuzzy``: fuzzy pattern match, expect faster than default.
 
   - ``thresh {unsigned}``: accuracy threshold.
