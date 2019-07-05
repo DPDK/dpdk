@@ -5,7 +5,21 @@
 #include <rte_config.h>
 #include <rte_eal_memconfig.h>
 
+#include "eal_internal_cfg.h"
 #include "eal_memcfg.h"
+
+void
+eal_mcfg_complete(void)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+	struct rte_mem_config *mcfg = cfg->mem_config;
+
+	/* ALL shared mem_config related INIT DONE */
+	if (cfg->process_type == RTE_PROC_PRIMARY)
+		mcfg->magic = RTE_MAGIC;
+
+	internal_config.init_complete = 1;
+}
 
 void
 eal_mcfg_wait_complete(void)

@@ -73,4 +73,8 @@ struct rte_mem_config {
 void
 eal_mcfg_wait_complete(void);
 
+/* set mem config as complete */
+void
+eal_mcfg_complete(void);
+
 #endif /* EAL_MEMCFG_H */

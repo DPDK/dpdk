@@ -632,16 +632,6 @@ sync_func(__attribute__((unused)) void *arg)
 	return 0;
 }
 
-inline static void
-rte_eal_mcfg_complete(void)
-{
-	/* ALL shared mem_config related INIT DONE */
-	if (rte_config.process_type == RTE_PROC_PRIMARY)
-		rte_config.mem_config->magic = RTE_MAGIC;
-
-	internal_config.init_complete = 1;
-}
-
 /* return non-zero if hugepages are enabled. */
 int rte_eal_has_hugepages(void)
 {
@@ -925,7 +915,7 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	rte_eal_mcfg_complete();
+	eal_mcfg_complete();
 
 	/* Call each registered callback, if enabled */
 	rte_option_init();
