@@ -63,6 +63,17 @@ entry, `sriov_numvfs` for the corresponding PF driver.
 Once the required VFs are enabled, to be accessible from DPDK, VFs need to be
 bound to vfio-pci driver.
 
+Device Setup
+-------------
+
+The OCTEON TX2 DPI DMA HW devices will need to be bound to a
+user-space IO driver for use. The script ``dpdk-devbind.py`` script
+included with DPDK can be used to view the state of the devices and to bind
+them to a suitable DPDK-supported kernel driver. When querying the status
+of the devices, they will appear under the category of "Misc (rawdev)
+devices", i.e. the command ``dpdk-devbind.py --status-dev misc`` can be
+used to see the state of those devices alone.
+
 Device Configuration
 --------------------
 
