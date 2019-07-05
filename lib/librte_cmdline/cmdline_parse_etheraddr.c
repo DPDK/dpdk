@@ -12,9 +12,9 @@
 #include <ctype.h>
 #include <string.h>
 #include <sys/types.h>
-#include <net/ethernet.h>
 
 #include <rte_string_fns.h>
+#include <rte_ether.h>
 
 #include "cmdline_parse.h"
 #include "cmdline_parse_etheraddr.h"
@@ -26,69 +26,15 @@ struct cmdline_token_ops cmdline_token_etheraddr_ops = {
 	.get_help = cmdline_get_help_etheraddr,
 };
 
-/* the format can be either XX:XX:XX:XX:XX:XX or XXXX:XXXX:XXXX */
-#define ETHER_ADDRSTRLENLONG 18
-#define ETHER_ADDRSTRLENSHORT 15
-
-#ifdef __linux__
-#define ea_oct ether_addr_octet
-#else
-#define ea_oct octet
-#endif
-
-
-static struct ether_addr *
-my_ether_aton(const char *a)
-{
-	int i;
-	char *end;
-	unsigned long o[ETHER_ADDR_LEN];
-	static struct ether_addr ether_addr;
-
-	i = 0;
-	do {
-		errno = 0;
-		o[i] = strtoul(a, &end, 16);
-		if (errno != 0 || end == a || (end[0] != ':' && end[0] != 0))
-			return NULL;
-		a = end + 1;
-	} while (++i != sizeof (o) / sizeof (o[0]) && end[0] != 0);
-
-	/* Junk at the end of line */
-	if (end[0] != 0)
-		return NULL;
-
-	/* Support the format XX:XX:XX:XX:XX:XX */
-	if (i == ETHER_ADDR_LEN) {
-		while (i-- != 0) {
-			if (o[i] > UINT8_MAX)
-				return NULL;
-			ether_addr.ea_oct[i] = (uint8_t)o[i];
-		}
-	/* Support the format XXXX:XXXX:XXXX */
-	} else if (i == ETHER_ADDR_LEN / 2) {
-		while (i-- != 0) {
-			if (o[i] > UINT16_MAX)
-				return NULL;
-			ether_addr.ea_oct[i * 2] = (uint8_t)(o[i] >> 8);
-			ether_addr.ea_oct[i * 2 + 1] = (uint8_t)(o[i] & 0xff);
-		}
-	/* unknown format */
-	} else
-		return NULL;
-
-	return (struct ether_addr *)&ether_addr;
-}
-
 int
 cmdline_parse_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 	const char *buf, void *res, unsigned ressize)
 {
 	unsigned int token_len = 0;
-	char ether_str[ETHER_ADDRSTRLENLONG+1];
-	struct ether_addr *tmp;
+	char ether_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct rte_ether_addr tmp;
 
-	if (res && ressize < sizeof(struct ether_addr))
+	if (res && ressize < sizeof(tmp))
 		return -1;
 
 	if (!buf || ! *buf)
@@ -98,17 +44,16 @@ cmdline_parse_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 		token_len++;
 
 	/* if token doesn't match possible string lengths... */
-	if ((token_len != ETHER_ADDRSTRLENLONG - 1) &&
-			(token_len != ETHER_ADDRSTRLENSHORT - 1))
+	if (token_len >= RTE_ETHER_ADDR_FMT_SIZE)
 		return -1;
 
 	strlcpy(ether_str, buf, token_len + 1);
 
-	tmp = my_ether_aton(ether_str);
-	if (tmp == NULL)
+	if (rte_ether_unformat_addr(ether_str, &tmp) < 0)
 		return -1;
+
 	if (res)
-		memcpy(res, tmp, sizeof(struct ether_addr));
+		memcpy(res, &tmp, sizeof(tmp));
 	return token_len;
 }
 

@@ -11,8 +11,8 @@
 libraries = [
 	'kvargs', # eal depends on kvargs
 	'eal', # everything depends on eal
-	'cmdline', # ethdev depends on cmdline for parsing functions
 	'ring', 'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci', # core
+	'cmdline',
 	'metrics', # bitrate/latency stats depends on this
 	'hash',    # efd depends on this
 	'timer',   # eventdev depends on this
