@@ -830,7 +830,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 		return NULL;
 	}
 
-	rte_rwlock_write_lock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_mcfg_mempool_write_lock();
 
 	/*
 	 * reserve a memory zone for this mempool: private data is
@@ -901,12 +901,12 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	rte_mcfg_tailq_write_lock();
 	TAILQ_INSERT_TAIL(mempool_list, te, next);
 	rte_mcfg_tailq_write_unlock();
-	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_mcfg_mempool_write_unlock();
 
 	return mp;
 
 exit_unlock:
-	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_mcfg_mempool_write_unlock();
 	rte_free(te);
 	rte_mempool_free(mp);
 	return NULL;
@@ -1268,14 +1268,14 @@ rte_mempool_list_dump(FILE *f)
 
 	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
-	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_mcfg_mempool_read_lock();
 
 	TAILQ_FOREACH(te, mempool_list, next) {
 		mp = (struct rte_mempool *) te->data;
 		rte_mempool_dump(f, mp);
 	}
 
-	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_mcfg_mempool_read_unlock();
 }
 
 /* search a mempool from its name */
@@ -1288,7 +1288,7 @@ rte_mempool_lookup(const char *name)
 
 	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
-	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_mcfg_mempool_read_lock();
 
 	TAILQ_FOREACH(te, mempool_list, next) {
 		mp = (struct rte_mempool *) te->data;
@@ -1296,7 +1296,7 @@ rte_mempool_lookup(const char *name)
 			break;
 	}
 
-	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_mcfg_mempool_read_unlock();
 
 	if (te == NULL) {
 		rte_errno = ENOENT;
@@ -1315,11 +1315,11 @@ void rte_mempool_walk(void (*func)(struct rte_mempool *, void *),
 
 	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
-	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_mcfg_mempool_read_lock();
 
 	TAILQ_FOREACH_SAFE(te, mempool_list, next, tmp_te) {
 		(*func)((struct rte_mempool *) te->data, arg);
 	}
 
-	rte_rwlock_read_unlock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_mcfg_mempool_read_unlock();
 }
