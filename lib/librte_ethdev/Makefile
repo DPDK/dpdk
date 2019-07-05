@@ -12,7 +12,7 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_net -lrte_eal -lrte_mempool -lrte_ring
-LDLIBS += -lrte_mbuf -lrte_kvargs -lrte_cmdline -lrte_meter
+LDLIBS += -lrte_mbuf -lrte_kvargs -lrte_meter
 
 EXPORT_MAP := rte_ethdev_version.map
 
