@@ -67,7 +67,7 @@ struct rte_mem_config {
 	/**< stored single file segments parameter. */
 
 	uint8_t dma_maskbits; /**< Keeps the more restricted dma mask. */
-} __attribute__((packed));
+};
 
 static inline void
 rte_eal_mcfg_wait_complete(struct rte_mem_config *mcfg)
