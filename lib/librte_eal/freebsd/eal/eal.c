@@ -52,6 +52,7 @@
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
 #include "eal_options.h"
+#include "eal_memcfg.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
@@ -382,7 +383,7 @@ rte_config_init(void)
 	case RTE_PROC_SECONDARY:
 		if (rte_eal_config_attach() < 0)
 			return -1;
-		rte_eal_mcfg_wait_complete(rte_config.mem_config);
+		eal_mcfg_wait_complete();
 		if (rte_eal_config_reattach() < 0)
 			return -1;
 		break;

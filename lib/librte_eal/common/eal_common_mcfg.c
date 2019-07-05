@@ -8,6 +8,16 @@
 #include "eal_memcfg.h"
 
 void
+eal_mcfg_wait_complete(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	/* wait until shared mem_config finish initialising */
+	while (mcfg->magic != RTE_MAGIC)
+		rte_pause();
+}
+
+void
 rte_mcfg_mem_read_lock(void)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;

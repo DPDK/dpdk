@@ -69,12 +69,8 @@ struct rte_mem_config {
 	uint8_t dma_maskbits; /**< Keeps the more restricted dma mask. */
 };
 
-static inline void
-rte_eal_mcfg_wait_complete(struct rte_mem_config *mcfg)
-{
-	/* wait until shared mem_config finish initialising */
-	while (mcfg->magic != RTE_MAGIC)
-		rte_pause();
-}
+/* wait until primary process initialization is complete */
+void
+eal_mcfg_wait_complete(void);
 
 #endif /* EAL_MEMCFG_H */

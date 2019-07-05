@@ -506,7 +506,7 @@ rte_config_init(void)
 	case RTE_PROC_SECONDARY:
 		if (rte_eal_config_attach() < 0)
 			return -1;
-		rte_eal_mcfg_wait_complete(rte_config.mem_config);
+		eal_mcfg_wait_complete();
 		if (rte_eal_config_reattach() < 0)
 			return -1;
 		eal_update_internal_config();
