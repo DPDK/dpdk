@@ -351,6 +351,9 @@ ABI Changes
 * bbdev: New operations and parameters added to support new 5GNR operations.
   The bbdev ABI is still kept experimental.
 
+* rawdev: The driver names have been changed to ``librte_rawdev_*``.
+  Now they all have the same prefix, and same name with make and meson builds.
+
 
 Shared Library Versions
 -----------------------

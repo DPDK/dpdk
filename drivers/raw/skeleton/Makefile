@@ -6,7 +6,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = librte_pmd_skeleton_rawdev.a
+LIB = librte_rawdev_skeleton.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
@@ -15,7 +15,7 @@ LDLIBS += -lrte_rawdev
 LDLIBS += -lrte_bus_vdev
 LDLIBS += -lrte_kvargs
 
-EXPORT_MAP := rte_pmd_skeleton_version.map
+EXPORT_MAP := rte_rawdev_skeleton_version.map
 
 LIBABIVER := 1
 

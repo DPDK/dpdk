@@ -4,7 +4,7 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 # library name
-LIB = librte_pmd_ioat_rawdev.a
+LIB = librte_rawdev_ioat.a
 
 # build flags
 CFLAGS += -O3
@@ -18,7 +18,7 @@ LDLIBS += -lrte_mbuf -lrte_mempool
 LIBABIVER := 1
 
 # versioning export map
-EXPORT_MAP := rte_pmd_ioat_version.map
+EXPORT_MAP := rte_rawdev_ioat_version.map
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_IOAT_RAWDEV) += ioat_rawdev.c

@@ -6,7 +6,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = librte_pmd_ifpga_rawdev.a
+LIB = librte_rawdev_ifpga.a
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
@@ -21,7 +21,7 @@ LDLIBS += -lrte_kvargs
 LDLIBS += -lrte_bus_pci
 LDLIBS += -lrte_bus_ifpga
 
-EXPORT_MAP := rte_pmd_ifpga_version.map
+EXPORT_MAP := rte_rawdev_ifpga_version.map
 
 LIBABIVER := 1
 

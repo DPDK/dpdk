@@ -5,7 +5,7 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 # library name
-LIB = librte_pmd_octeontx2_dma.a
+LIB = librte_rawdev_octeontx2_dma.a
 
 CFLAGS += -O3 $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/common/octeontx2/
@@ -22,7 +22,7 @@ CFLAGS += -diag-disable 2259
 endif
 endif
 
-EXPORT_MAP := rte_pmd_octeontx2_dma_version.map
+EXPORT_MAP := rte_rawdev_octeontx2_dma_version.map
 
 LIBABIVER := 1
 

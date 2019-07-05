@@ -6,7 +6,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = librte_pmd_dpaa2_qdma.a
+LIB = librte_rawdev_dpaa2_qdma.a
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
@@ -24,7 +24,7 @@ LDLIBS += -lrte_kvargs
 LDLIBS += -lrte_ring
 LDLIBS += -lrte_common_dpaax
 
-EXPORT_MAP := rte_pmd_dpaa2_qdma_version.map
+EXPORT_MAP := rte_rawdev_dpaa2_qdma_version.map
 
 LIBABIVER := 3
 

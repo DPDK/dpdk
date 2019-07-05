@@ -6,7 +6,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = librte_pmd_ntb.a
+LIB = librte_rawdev_ntb.a
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
@@ -15,7 +15,7 @@ LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool
 LDLIBS += -lrte_pci -lrte_bus_pci
 LDLIBS += -lrte_rawdev
 
-EXPORT_MAP := rte_pmd_ntb_version.map
+EXPORT_MAP := rte_rawdev_ntb_version.map
 
 LIBABIVER := 1
 
