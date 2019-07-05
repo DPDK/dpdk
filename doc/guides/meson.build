@@ -11,7 +11,7 @@ if sphinx.found()
 		command: [sphinx, '-b', 'html',
 			'-d', meson.current_build_dir() + '/.doctrees',
 			'@INPUT@', meson.current_build_dir() + '/guides'],
-		build_by_default: false,
+		build_by_default: get_option('enable_docs'),
 		install: get_option('enable_docs'),
 		install_dir: htmldir)
 

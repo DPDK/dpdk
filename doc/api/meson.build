@@ -26,7 +26,7 @@ if doxygen.found()
 		command: [generate_examples, '@INPUT@', '@OUTPUT@'],
 		install: get_option('enable_docs'),
 		install_dir: htmldir,
-		build_by_default: false)
+		build_by_default: get_option('enable_docs'))
 
 	cdata = configuration_data()
 	cdata.set('VERSION', meson.project_version())
@@ -48,7 +48,7 @@ if doxygen.found()
 		command: [generate_doxygen, '@INPUT@', '@OUTPUT@', generate_css],
 		install: get_option('enable_docs'),
 		install_dir: htmldir,
-		build_by_default: false)
+		build_by_default: get_option('enable_docs'))
 
 	doc_targets += doxy_build
 	doc_target_names += 'Doxygen_API'
