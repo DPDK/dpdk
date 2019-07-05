@@ -177,6 +177,12 @@ parallel_test_list = [
         "Report":  None,
     },
     {
+        "Name":    "MCSlock autotest",
+        "Command": "mcslock_autotest",
+        "Func":    mcslock_autotest,
+        "Report":  None,
+    },
+    {
         "Name":    "Byte order autotest",
         "Command": "byteorder_autotest",
         "Func":    default_autotest,

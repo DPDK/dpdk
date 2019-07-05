@@ -226,6 +226,7 @@ F: app/test/test_bitmap.c
 MCSlock - EXPERIMENTAL
 M: Phil Yang <phil.yang@arm.com>
 F: lib/librte_eal/common/include/generic/rte_mcslock.h
+F: app/test/test_mcslock.c
 
 Ticketlock
 M: Joyce Kong <joyce.kong@arm.com>
