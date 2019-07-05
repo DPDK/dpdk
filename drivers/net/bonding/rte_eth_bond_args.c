@@ -7,9 +7,6 @@
 #include <rte_bus_pci.h>
 #include <rte_kvargs.h>
 
-#include <cmdline_parse.h>
-#include <cmdline_parse_etheraddr.h>
-
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_private.h"
 
@@ -281,8 +278,7 @@ bond_ethdev_parse_bond_mac_addr_kvarg(const char *key __rte_unused,
 		return -1;
 
 	/* Parse MAC */
-	return cmdline_parse_etheraddr(NULL, value, extra_args,
-		sizeof(struct rte_ether_addr));
+	return rte_ether_unformat_addr(value, extra_args);
 }
 
 int
