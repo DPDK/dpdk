@@ -14,6 +14,7 @@ LIBABIVER := 1
 
 SRCS-$(CONFIG_RTE_LIBRTE_NET) := rte_net.c
 SRCS-$(CONFIG_RTE_LIBRTE_NET) += rte_net_crc.c
+SRCS-$(CONFIG_RTE_LIBRTE_NET) += rte_ether.c
 SRCS-$(CONFIG_RTE_LIBRTE_NET) += rte_arp.c
 
 # install includes
