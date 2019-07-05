@@ -104,6 +104,9 @@ This section lists dataplane H/W block(s) available in OCTEON TX2 SoC.
 #. **Event Device Driver**
    See :doc:`../eventdevs/octeontx2` for SSO event device driver information.
 
+#. **DMA Rawdev Driver**
+   See :doc:`../rawdevs/octeontx2_dma` for DMA driver information.
+
 Procedure to Setup Platform
 ---------------------------
 
@@ -146,6 +149,8 @@ compatible board:
         # Enable if netdev VF driver required
         CONFIG_OCTEONTX2_VF=y
         CONFIG_CRYPTO_DEV_OCTEONTX2_CPT=y
+        # Enable if OCTEONTX2 DMA PF driver required
+        CONFIG_OCTEONTX2_DPI_PF=n
 
 2. **ARM64 Linux Tool Chain**
 

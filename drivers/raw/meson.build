@@ -3,6 +3,7 @@
 
 drivers = ['dpaa2_cmdif', 'dpaa2_qdma',
 	'ifpga_rawdev', 'ioat',
+	'octeontx2_dma',
 	'skeleton_rawdev']
 std_deps = ['rawdev']
 config_flag_fmt = 'RTE_LIBRTE_PMD_@0@_RAWDEV'

@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(C) 2019 Marvell International Ltd.
+#
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
+# library name
+LIB = librte_pmd_octeontx2_dma.a
+
+CFLAGS += -O3 $(WERROR_FLAGS)
+CFLAGS += -I$(RTE_SDK)/drivers/common/octeontx2/
+CFLAGS += -I$(RTE_SDK)/drivers/raw/octeontx2_dma/
+LDLIBS += -lrte_eal -lrte_rawdev -lrte_bus_pci
+LDLIBS += -lrte_common_octeontx2
+
+EXPORT_MAP := rte_pmd_octeontx2_dma_version.map
+
+LIBABIVER := 1
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_DMA_RAWDEV) += otx2_dpi_rawdev.c
+
+include $(RTE_SDK)/mk/rte.lib.mk
