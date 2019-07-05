@@ -49,7 +49,6 @@
 #include <rte_pmd_bnxt.h>
 #endif
 #include <rte_gro.h>
-#include <cmdline_parse_etheraddr.h>
 #include <rte_config.h>
 
 #include "testpmd.h"
@@ -2278,19 +2277,16 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 void
 set_fwd_eth_peer(portid_t port_id, char *peer_addr)
 {
-	uint8_t c, new_peer_addr[6];
+	struct rte_ether_addr new_peer_addr;
 	if (!rte_eth_dev_is_valid_port(port_id)) {
 		printf("Error: Invalid port number %i\n", port_id);
 		return;
 	}
-	if (cmdline_parse_etheraddr(NULL, peer_addr, &new_peer_addr,
-					sizeof(new_peer_addr)) < 0) {
+	if (rte_ether_unformat_addr(peer_addr, &new_peer_addr) < 0) {
 		printf("Error: Invalid ethernet address: %s\n", peer_addr);
 		return;
 	}
-	for (c = 0; c < 6; c++)
-		peer_eth_addrs[port_id].addr_bytes[c] =
-			new_peer_addr[c];
+	peer_eth_addrs[port_id] = new_peer_addr;
 }
 
 int

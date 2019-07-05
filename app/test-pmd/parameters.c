@@ -39,10 +39,6 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_CMDLINE
-#include <cmdline_parse.h>
-#include <cmdline_parse_etheraddr.h>
-#endif
 #ifdef RTE_LIBRTE_PMD_BOND
 #include <rte_eth_bond.h>
 #endif
@@ -227,8 +223,7 @@ init_peer_eth_addrs(char *config_filename)
 		if (fgets(buf, sizeof(buf), config_file) == NULL)
 			break;
 
-		if (cmdline_parse_etheraddr(NULL, buf, &peer_eth_addrs[i],
-				sizeof(peer_eth_addrs[i])) < 0) {
+		if (rte_ether_unformat_addr(buf, &peer_eth_addrs[i]) < 0) {
 			printf("Bad MAC address format on line %d\n", i+1);
 			fclose(config_file);
 			return -1;
@@ -727,7 +722,6 @@ launch_args_parse(int argc, char** argv)
 			}
 			if (!strcmp(lgopts[opt_idx].name, "eth-peer")) {
 				char *port_end;
-				uint8_t c, peer_addr[6];
 
 				errno = 0;
 				n = strtoul(optarg, &port_end, 10);
@@ -739,14 +733,11 @@ launch_args_parse(int argc, char** argv)
 						 "eth-peer: port %d >= RTE_MAX_ETHPORTS(%d)\n",
 						 n, RTE_MAX_ETHPORTS);
 
-				if (cmdline_parse_etheraddr(NULL, port_end,
-						&peer_addr, sizeof(peer_addr)) < 0)
+				if (rte_ether_unformat_addr(port_end,
+						&peer_eth_addrs[n]) < 0)
 					rte_exit(EXIT_FAILURE,
 						 "Invalid ethernet address: %s\n",
 						 port_end);
-				for (c = 0; c < 6; c++)
-					peer_eth_addrs[n].addr_bytes[c] =
-						peer_addr[c];
 				nb_peer_eth_addrs++;
 			}
 #endif
