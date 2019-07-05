@@ -41,6 +41,34 @@ dma_engine_enb_dis(struct dpi_vf_s *dpivf, const bool enb)
 	return DPI_DMA_QUEUE_SUCCESS;
 }
 
+/* Free DMA Queue instruction buffers, and send close notification to PF */
+static inline int
+dma_queue_finish(struct dpi_vf_s *dpivf)
+{
+	uint32_t timeout = 0, sleep = 1;
+	uint64_t reg = 0ULL;
+
+	/* Wait for SADDR to become idle */
+	reg = otx2_read64(dpivf->vf_bar0 + DPI_VDMA_SADDR);
+	while (!(reg & BIT_ULL(DPI_VDMA_SADDR_REQ_IDLE))) {
+		rte_delay_ms(sleep);
+		timeout++;
+		if (timeout >= DPI_QFINISH_TIMEOUT) {
+			otx2_dpi_dbg("Timeout!!! Closing Forcibly");
+			break;
+		}
+		reg = otx2_read64(dpivf->vf_bar0 + DPI_VDMA_SADDR);
+	}
+
+	if (otx2_dpi_queue_close(dpivf->vf_id) < 0)
+		return -EACCES;
+
+	rte_mempool_put(dpivf->chunk_pool, dpivf->base_ptr);
+	dpivf->vf_bar0 = (uintptr_t)NULL;
+
+	return DPI_DMA_QUEUE_SUCCESS;
+}
+
 static int
 otx2_dpi_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 {
@@ -140,6 +168,7 @@ otx2_dpi_rawdev_remove(struct rte_pci_device *pci_dev)
 {
 	char name[RTE_RAWDEV_NAME_MAX_LEN];
 	struct rte_rawdev *rawdev;
+	struct dpi_vf_s *dpivf;
 
 	if (pci_dev == NULL) {
 		otx2_dpi_dbg("Invalid pci_dev of the device!");
@@ -156,6 +185,10 @@ otx2_dpi_rawdev_remove(struct rte_pci_device *pci_dev)
 		otx2_dpi_dbg("Invalid device name (%s)", name);
 		return -EINVAL;
 	}
+
+	dpivf = (struct dpi_vf_s *)rawdev->dev_private;
+	dma_engine_enb_dis(dpivf, false);
+	dma_queue_finish(dpivf);
 
 	/* rte_rawdev_close is called by pmd_release */
 	return rte_rawdev_pmd_release(rawdev);
