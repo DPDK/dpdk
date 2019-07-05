@@ -224,17 +224,13 @@ out:
 static inline void
 parse_mac(struct virtio_user_dev *dev, const char *mac)
 {
-	int i, r;
-	uint32_t tmp[RTE_ETHER_ADDR_LEN];
+	struct rte_ether_addr tmp;
 
 	if (!mac)
 		return;
 
-	r = sscanf(mac, "%x:%x:%x:%x:%x:%x", &tmp[0],
-			&tmp[1], &tmp[2], &tmp[3], &tmp[4], &tmp[5]);
-	if (r == RTE_ETHER_ADDR_LEN) {
-		for (i = 0; i < RTE_ETHER_ADDR_LEN; ++i)
-			dev->mac_addr[i] = (uint8_t)tmp[i];
+	if (rte_ether_unformat_addr(mac, &tmp) == 0) {
+		memcpy(dev->mac_addr, &tmp, RTE_ETHER_ADDR_LEN);
 		dev->mac_specified = 1;
 	} else {
 		/* ignore the wrong mac, use random mac */
