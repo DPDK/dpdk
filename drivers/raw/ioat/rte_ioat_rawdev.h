@@ -124,8 +124,7 @@ rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 	desc->src_addr = src;
 	desc->dest_addr = dst;
 
-	ioat->hdls[write] = _mm_set_epi64((__m64)((uint64_t)dst_hdl),
-			(__m64)((uint64_t)src_hdl));
+	ioat->hdls[write] = _mm_set_epi64x((int64_t)dst_hdl, (int64_t)src_hdl);
 	rte_prefetch0(&ioat->desc_ring[ioat->next_write & mask]);
 
 	ioat->enqueued++;
