@@ -5,6 +5,9 @@
 #ifndef _DPI_RAWDEV_H_
 #define _DPI_RAWDEV_H_
 
+#include "otx2_common.h"
+#include "otx2_mempool.h"
+
 #define DPI_QUEUE_OPEN	0x1
 #define DPI_QUEUE_CLOSE	0x2
 
@@ -52,5 +55,8 @@ enum dpi_dma_queue_result_e {
 	DPI_DMA_QUEUE_NO_MEMORY = -1,
 	DPI_DMA_QUEUE_INVALID_PARAM = -2,
 };
+
+int otx2_dpi_queue_open(uint16_t vf_id, uint32_t size, uint32_t gaura);
+int otx2_dpi_queue_close(uint16_t vf_id);
 
 #endif /* _DPI_RAWDEV_H_ */

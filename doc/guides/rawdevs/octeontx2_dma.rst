@@ -62,3 +62,23 @@ entry, `sriov_numvfs` for the corresponding PF driver.
 
 Once the required VFs are enabled, to be accessible from DPDK, VFs need to be
 bound to vfio-pci driver.
+
+Device Configuration
+--------------------
+
+Configuring DMA rawdev device is done using the ``rte_rawdev_configure()``
+API, which takes the mempool as parameter. PMD uses this pool to submit DMA
+commands to HW.
+
+The following code shows how the device is configured
+
+.. code-block:: c
+
+   struct dpi_rawdev_conf_s conf = {0};
+   struct rte_rawdev_info rdev_info = {.dev_private = &conf};
+
+   conf.chunk_pool = (void *)rte_mempool_create_empty(...);
+   rte_mempool_set_ops_byname(conf.chunk_pool, rte_mbuf_platform_mempool_ops(), NULL);
+   rte_mempool_populate_default(conf.chunk_pool);
+
+   rte_rawdev_configure(dev_id, (rte_rawdev_obj_t)&rdev_info);
