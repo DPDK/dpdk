@@ -4,6 +4,7 @@
 
 #include <rte_config.h>
 #include <rte_eal_memconfig.h>
+#include <rte_version.h>
 
 #include "eal_internal_cfg.h"
 #include "eal_memcfg.h"
@@ -31,6 +32,18 @@ eal_mcfg_wait_complete(void)
 		rte_pause();
 }
 
+int
+eal_mcfg_check_version(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	/* check if version from memconfig matches compiled in macro */
+	if (mcfg->version != RTE_VERSION)
+		return -1;
+
+	return 0;
+}
+
 void
 eal_mcfg_update_internal(void)
 {
@@ -47,6 +60,8 @@ eal_mcfg_update_from_internal(void)
 
 	mcfg->legacy_mem = internal_config.legacy_mem;
 	mcfg->single_file_segments = internal_config.single_file_segments;
+	/* record current DPDK version */
+	mcfg->version = RTE_VERSION;
 }
 
 void

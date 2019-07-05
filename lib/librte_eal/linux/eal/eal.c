@@ -489,6 +489,10 @@ rte_config_init(void)
 		if (rte_eal_config_attach() < 0)
 			return -1;
 		eal_mcfg_wait_complete();
+		if (eal_mcfg_check_version() < 0) {
+			RTE_LOG(ERR, EAL, "Primary and secondary process DPDK version mismatch\n");
+			return -1;
+		}
 		if (rte_eal_config_reattach() < 0)
 			return -1;
 		eal_mcfg_update_internal();

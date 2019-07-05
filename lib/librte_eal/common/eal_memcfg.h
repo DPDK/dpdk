@@ -19,6 +19,8 @@
  */
 struct rte_mem_config {
 	volatile uint32_t magic;   /**< Magic number - sanity check. */
+	uint32_t version;
+	/**< Prevent secondary processes using different DPDK versions. */
 
 	/* memory topology */
 	uint32_t nchannel;    /**< Number of channels (0 if unknown). */
@@ -80,6 +82,10 @@ eal_mcfg_update_from_internal(void);
 /* wait until primary process initialization is complete */
 void
 eal_mcfg_wait_complete(void);
+
+/* check if DPDK version of current process matches one stored in the config */
+int
+eal_mcfg_check_version(void);
 
 /* set mem config as complete */
 void
