@@ -20,6 +20,7 @@ endif
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_hash
 LDLIBS += -lrte_bus_pci
+LDLIBS += -lpthread
 
 EXPORT_MAP := rte_pmd_hinic_version.map
 

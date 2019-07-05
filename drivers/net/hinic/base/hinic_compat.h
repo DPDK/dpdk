@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 #include <sys/time.h>
+#include <unistd.h>
+#include <pthread.h>
 #include <rte_common.h>
 #include <rte_byteorder.h>
 #include <rte_memzone.h>
@@ -251,6 +253,29 @@ static inline void hinic_be32_to_cpu(void *data, u32 len)
 		*mem = be32_to_cpu(*mem);
 		mem++;
 	}
+}
+
+static inline int hinic_mutex_init(pthread_mutex_t *pthreadmutex,
+					const pthread_mutexattr_t *mattr)
+{
+	int err;
+
+	err = pthread_mutex_init(pthreadmutex, mattr);
+	if (unlikely(err))
+		PMD_DRV_LOG(ERR, "Fail to initialize mutex, error: %d", err);
+
+	return err;
+}
+
+static inline int hinic_mutex_destroy(pthread_mutex_t *pthreadmutex)
+{
+	int err;
+
+	err = pthread_mutex_destroy(pthreadmutex);
+	if (unlikely(err))
+		PMD_DRV_LOG(ERR, "Fail to destroy mutex, error: %d", err);
+
+	return err;
 }
 
 #endif /* _HINIC_COMPAT_H_ */

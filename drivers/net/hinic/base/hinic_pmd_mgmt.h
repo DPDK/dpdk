@@ -81,10 +81,8 @@ enum comm_pf_to_mgmt_event_state {
 struct hinic_msg_pf_to_mgmt {
 	struct hinic_hwdev		*hwdev;
 
-	/* Async cmd can not be scheduling */
-	spinlock_t			async_msg_lock;
-	/* spinlock for sync message */
-	spinlock_t			sync_msg_lock;
+	/* mutex for sync message */
+	pthread_mutex_t			sync_msg_lock;
 
 	void				*async_msg_buf;
 	void				*sync_msg_buf;

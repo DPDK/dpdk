@@ -342,8 +342,9 @@ static int hinic_pf_to_mgmt_init(struct hinic_hwdev *hwdev)
 	hwdev->pf_to_mgmt = pf_to_mgmt;
 	pf_to_mgmt->hwdev = hwdev;
 
-	spin_lock_init(&pf_to_mgmt->async_msg_lock);
-	spin_lock_init(&pf_to_mgmt->sync_msg_lock);
+	err = hinic_mutex_init(&pf_to_mgmt->sync_msg_lock, NULL);
+	if (err)
+		goto mutex_init_err;
 
 	err = alloc_msg_buf(pf_to_mgmt);
 	if (err) {
@@ -363,6 +364,9 @@ api_cmd_init_err:
 	free_msg_buf(pf_to_mgmt);
 
 alloc_msg_buf_err:
+	hinic_mutex_destroy(&pf_to_mgmt->sync_msg_lock);
+
+mutex_init_err:
 	kfree(pf_to_mgmt);
 
 	return err;
@@ -378,6 +382,7 @@ static void hinic_pf_to_mgmt_free(struct hinic_hwdev *hwdev)
 
 	hinic_api_cmd_free(pf_to_mgmt->cmd_chain);
 	free_msg_buf(pf_to_mgmt);
+	hinic_mutex_destroy(&pf_to_mgmt->sync_msg_lock);
 	kfree(pf_to_mgmt);
 }
 
@@ -391,7 +396,7 @@ hinic_pf_to_mgmt_sync(struct hinic_hwdev *hwdev,
 	u32 timeo;
 	int err, i;
 
-	spin_lock(&pf_to_mgmt->sync_msg_lock);
+	pthread_mutex_lock(&pf_to_mgmt->sync_msg_lock);
 
 	SYNC_MSG_ID_INC(pf_to_mgmt);
 	recv_msg = &pf_to_mgmt->recv_resp_msg_from_mgmt;
@@ -450,7 +455,7 @@ hinic_pf_to_mgmt_sync(struct hinic_hwdev *hwdev,
 unlock_sync_msg:
 	if (err && out_size)
 		*out_size = 0;
-	spin_unlock(&pf_to_mgmt->sync_msg_lock);
+	pthread_mutex_unlock(&pf_to_mgmt->sync_msg_lock);
 	return err;
 }
 
@@ -497,13 +502,13 @@ int hinic_msg_to_mgmt_no_ack(void *hwdev, enum hinic_mod_type mod, u8 cmd,
 		return err;
 	}
 
-	spin_lock(&pf_to_mgmt->sync_msg_lock);
+	pthread_mutex_lock(&pf_to_mgmt->sync_msg_lock);
 
 	err = send_msg_to_mgmt_sync(pf_to_mgmt, mod, cmd, buf_in, in_size,
 				    HINIC_MSG_NO_ACK, HINIC_MSG_DIRECT_SEND,
 				    MSG_NO_RESP);
 
-	spin_unlock(&pf_to_mgmt->sync_msg_lock);
+	pthread_mutex_unlock(&pf_to_mgmt->sync_msg_lock);
 
 	return err;
 }
@@ -713,7 +718,7 @@ int hinic_aeq_poll_msg(struct hinic_eq *eq, u32 timeout, void *param)
 			}
 
 			if (timeout != 0)
-				rte_delay_ms(1);
+				usleep(1000);
 		} while (time_before(jiffies, end));
 
 		if (err != HINIC_OK) /*poll time out*/
