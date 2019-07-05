@@ -1870,7 +1870,7 @@ test_compressdev_out_of_space_buffer(void)
 	uint16_t i;
 	const struct rte_compressdev_capabilities *capab;
 
-	RTE_LOG(INFO, USER1, "This is a negative test errors are expected\n");
+	RTE_LOG(ERR, USER1, "This is a negative test errors are expected\n");
 
 	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
 	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
@@ -1901,7 +1901,7 @@ test_compressdev_out_of_space_buffer(void)
 		RTE_COMP_OP_STATELESS,
 		LB_BOTH,
 		ZLIB_DECOMPRESS,
-		1,
+		1,  /* run out-of-space test */
 		0
 	};
 	/* Compress with compressdev, decompress with Zlib */
