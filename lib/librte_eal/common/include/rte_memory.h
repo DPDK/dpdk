@@ -191,7 +191,7 @@ typedef int (*rte_memseg_walk_t)(const struct rte_memseg_list *msl,
 
 /**
  * Memseg contig walk function prototype. This will trigger a callback on every
- * VA-contiguous are starting at memseg ``ms``, so total valid VA space at each
+ * VA-contiguous area starting at memseg ``ms``, so total valid VA space at each
  * callback call will be [``ms->addr``, ``ms->addr + len``).
  *
  * Returning 0 will continue walk
