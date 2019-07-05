@@ -69,6 +69,171 @@ dma_queue_finish(struct dpi_vf_s *dpivf)
 	return DPI_DMA_QUEUE_SUCCESS;
 }
 
+/* Write an arbitrary number of command words to a command queue */
+static __rte_always_inline enum dpi_dma_queue_result_e
+dma_queue_write(struct dpi_vf_s *dpi, uint16_t cmd_count, uint64_t *cmds)
+{
+	if ((cmd_count < 1) || (cmd_count > 64))
+		return DPI_DMA_QUEUE_INVALID_PARAM;
+
+	if (cmds == NULL)
+		return DPI_DMA_QUEUE_INVALID_PARAM;
+
+	/* Room available in the current buffer for the command */
+	if (dpi->index + cmd_count < dpi->pool_size_m1) {
+		uint64_t *ptr = dpi->base_ptr;
+
+		ptr += dpi->index;
+		dpi->index += cmd_count;
+		while (cmd_count--)
+			*ptr++ = *cmds++;
+	} else {
+		void *new_buffer;
+		uint64_t *ptr;
+		int count;
+
+		/* Allocate new command buffer, return if failed */
+		if (rte_mempool_get(dpi->chunk_pool, &new_buffer) ||
+		    new_buffer == NULL) {
+			return DPI_DMA_QUEUE_NO_MEMORY;
+		}
+		ptr = dpi->base_ptr;
+		/* Figure out how many command words will fit in this buffer.
+		 * One location will be needed for the next buffer pointer.
+		 **/
+		count = dpi->pool_size_m1 - dpi->index;
+		ptr += dpi->index;
+		cmd_count -= count;
+		while (count--)
+			*ptr++ = *cmds++;
+		/* Chunk next ptr is 2DWORDs, second DWORD is reserved. */
+		*ptr++ = (uint64_t)new_buffer;
+		*ptr   = 0;
+		/* The current buffer is full and has a link to the next buffer.
+		 * Time to write the rest of the commands into the new buffer.
+		 **/
+		dpi->base_ptr = new_buffer;
+		dpi->index = cmd_count;
+		ptr = new_buffer;
+		while (cmd_count--)
+			*ptr++ = *cmds++;
+		/* queue index may greater than pool size */
+		if (dpi->index >= dpi->pool_size_m1) {
+			if (rte_mempool_get(dpi->chunk_pool, &new_buffer) ||
+			    new_buffer == NULL) {
+				return DPI_DMA_QUEUE_NO_MEMORY;
+			}
+			/* Write next buffer address */
+			*ptr = (uint64_t)new_buffer;
+			dpi->base_ptr = new_buffer;
+			dpi->index = 0;
+		}
+	}
+	return DPI_DMA_QUEUE_SUCCESS;
+}
+
+/* Submit a DMA command to the DMA queues. */
+static __rte_always_inline int
+dma_queue_submit(struct rte_rawdev *dev, uint16_t cmd_count, uint64_t *cmds)
+{
+	struct dpi_vf_s *dpivf = dev->dev_private;
+	enum dpi_dma_queue_result_e result;
+
+	result = dma_queue_write(dpivf, cmd_count, cmds);
+	rte_wmb();
+	if (likely(result == DPI_DMA_QUEUE_SUCCESS))
+		otx2_write64((uint64_t)cmd_count,
+			     dpivf->vf_bar0 + DPI_VDMA_DBELL);
+
+	return result;
+}
+
+/* Enqueue buffers to DMA queue
+ * returns number of buffers enqueued successfully
+ */
+static int
+otx2_dpi_rawdev_enqueue_bufs(struct rte_rawdev *dev,
+			     struct rte_rawdev_buf **buffers,
+			     unsigned int count, rte_rawdev_obj_t context)
+{
+	struct dpi_dma_queue_ctx_s *ctx = (struct dpi_dma_queue_ctx_s *)context;
+	struct dpi_dma_buf_ptr_s *cmd;
+	uint32_t c = 0;
+
+	for (c = 0; c < count; c++) {
+		uint64_t dpi_cmd[DPI_DMA_CMD_SIZE] = {0};
+		union dpi_dma_instr_hdr_u *hdr;
+		uint16_t index = 0, i;
+
+		hdr = (union dpi_dma_instr_hdr_u *)&dpi_cmd[0];
+		cmd = (struct dpi_dma_buf_ptr_s *)buffers[c]->buf_addr;
+
+		hdr->s.xtype = ctx->xtype & DPI_XTYPE_MASK;
+		hdr->s.pt = ctx->pt & DPI_HDR_PT_MASK;
+		/* Request initiated with byte write completion, but completion
+		 * pointer not provided
+		 */
+		if ((hdr->s.pt == DPI_HDR_PT_ZBW_CA ||
+		     hdr->s.pt == DPI_HDR_PT_ZBW_NC) && cmd->comp_ptr == NULL)
+			return c;
+
+		cmd->comp_ptr->cdata = DPI_REQ_CDATA;
+		hdr->s.ptr = (uint64_t)cmd->comp_ptr;
+		hdr->s.deallocv = ctx->deallocv;
+		hdr->s.tt = ctx->tt & DPI_W0_TT_MASK;
+		hdr->s.grp = ctx->grp & DPI_W0_GRP_MASK;
+
+		/* If caller provides completion ring details, then only queue
+		 * completion address for later polling.
+		 */
+		if (ctx->c_ring) {
+			ctx->c_ring->compl_data[ctx->c_ring->tail] =
+								 cmd->comp_ptr;
+			STRM_INC(ctx->c_ring);
+		}
+
+		if (hdr->s.deallocv)
+			hdr->s.pvfe = 1;
+
+		if (hdr->s.pt == DPI_HDR_PT_WQP)
+			hdr->s.ptr = hdr->s.ptr | DPI_HDR_PT_WQP_STATUSNC;
+
+		index += 4;
+		hdr->s.fport = 0;
+		hdr->s.lport = 0;
+
+		/* For inbound case, src pointers are last pointers.
+		 * For all other cases, src pointers are first pointers.
+		 */
+		if (ctx->xtype ==  DPI_XTYPE_INBOUND) {
+			hdr->s.nfst = cmd->wptr_cnt & DPI_MAX_POINTER;
+			hdr->s.nlst = cmd->rptr_cnt & DPI_MAX_POINTER;
+			for (i = 0; i < hdr->s.nfst; i++) {
+				dpi_cmd[index++] = cmd->wptr[i]->u[0];
+				dpi_cmd[index++] = cmd->wptr[i]->u[1];
+			}
+			for (i = 0; i < hdr->s.nlst; i++) {
+				dpi_cmd[index++] = cmd->rptr[i]->u[0];
+				dpi_cmd[index++] = cmd->rptr[i]->u[1];
+			}
+		} else {
+			hdr->s.nfst = cmd->rptr_cnt & DPI_MAX_POINTER;
+			hdr->s.nlst = cmd->wptr_cnt & DPI_MAX_POINTER;
+			for (i = 0; i < hdr->s.nfst; i++) {
+				dpi_cmd[index++] = cmd->rptr[i]->u[0];
+				dpi_cmd[index++] = cmd->rptr[i]->u[1];
+			}
+			for (i = 0; i < hdr->s.nlst; i++) {
+				dpi_cmd[index++] = cmd->wptr[i]->u[0];
+				dpi_cmd[index++] = cmd->wptr[i]->u[1];
+			}
+		}
+		if (dma_queue_submit(dev, index, dpi_cmd))
+			return c;
+	}
+	return c;
+}
+
 static int
 otx2_dpi_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 {
@@ -108,6 +273,7 @@ otx2_dpi_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 
 static const struct rte_rawdev_ops dpi_rawdev_ops = {
 	.dev_configure = otx2_dpi_rawdev_configure,
+	.enqueue_bufs = otx2_dpi_rawdev_enqueue_bufs,
 };
 
 static int
