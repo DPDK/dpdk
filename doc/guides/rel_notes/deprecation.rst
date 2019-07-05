@@ -23,9 +23,6 @@ Deprecation Notices
 * eal: The function ``rte_eal_remote_launch`` will return new error codes
   after read or write error on the pipe, instead of calling ``rte_panic``.
 
-* eal: the ``rte_mem_config`` struct will be made private to remove it from the
-  externally visible ABI and allow it to be updated in the future.
-
 * eal: both declaring and identifying devices will be streamlined in v18.11.
   New functions will appear to query a specific port from buses, classes of
   device and device drivers. Device declaration will be made coherent with the

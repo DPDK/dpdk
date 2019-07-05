@@ -22,9 +22,7 @@ extern "C" {
 #include <rte_common.h>
 #include <rte_compat.h>
 #include <rte_config.h>
-
-/* forward declaration for pointers */
-struct rte_memseg_list;
+#include <rte_fbarray.h>
 
 __extension__
 enum rte_page_sizes {
@@ -103,6 +101,26 @@ struct rte_memseg {
 	uint32_t nrank;             /**< Number of ranks. */
 	uint32_t flags;             /**< Memseg-specific flags */
 } __rte_packed;
+
+/**
+ * memseg list is a special case as we need to store a bunch of other data
+ * together with the array itself.
+ */
+struct rte_memseg_list {
+	RTE_STD_C11
+	union {
+		void *base_va;
+		/**< Base virtual address for this memseg list. */
+		uint64_t addr_64;
+		/**< Makes sure addr is always 64-bits */
+	};
+	uint64_t page_sz; /**< Page size for all memsegs in this list. */
+	int socket_id; /**< Socket ID for all memsegs in this list. */
+	volatile uint32_t version; /**< version number for multiprocess sync. */
+	size_t len; /**< Length of memory area covered by this memseg list. */
+	unsigned int external; /**< 1 if this list points to external memory */
+	struct rte_fbarray memseg_arr;
+};
 
 /**
  * Lock page in physical memory and prevent from swapping.

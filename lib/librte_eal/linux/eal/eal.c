@@ -57,6 +57,7 @@
 #include "eal_internal_cfg.h"
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
+#include "eal_memcfg.h"
 #include "eal_options.h"
 #include "eal_vfio.h"
 #include "hotplug_mp.h"

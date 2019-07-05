@@ -715,7 +715,7 @@ mlx4_init_once(void)
 		ret = mlx4_mp_init_primary();
 		if (ret)
 			goto out;
-		sd->init_done = true;
+		sd->init_done = 1;
 		break;
 	case RTE_PROC_SECONDARY:
 		if (ld->init_done)
@@ -724,7 +724,7 @@ mlx4_init_once(void)
 		if (ret)
 			goto out;
 		++sd->secondary_cnt;
-		ld->init_done = true;
+		ld->init_done = 1;
 		break;
 	default:
 		break;

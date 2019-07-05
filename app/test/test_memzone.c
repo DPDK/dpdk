@@ -19,6 +19,7 @@
 #include <rte_errno.h>
 #include <rte_malloc.h>
 #include "../../lib/librte_eal/common/malloc_elem.h"
+#include "../../lib/librte_eal/common/eal_memcfg.h"
 
 #include "test.h"
 

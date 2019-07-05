@@ -25,6 +25,7 @@
 #include "malloc_elem.h"
 #include "malloc_heap.h"
 #include "eal_memalloc.h"
+#include "eal_memcfg.h"
 
 
 /* Free the memory space back to heap */

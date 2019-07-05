@@ -10,6 +10,7 @@
 #include <rte_string_fns.h>
 
 #include "eal_memalloc.h"
+#include "eal_memcfg.h"
 
 #include "malloc_elem.h"
 #include "malloc_mp.h"

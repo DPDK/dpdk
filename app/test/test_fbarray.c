@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <limits.h>

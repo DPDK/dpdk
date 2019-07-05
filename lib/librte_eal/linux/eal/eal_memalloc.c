@@ -44,6 +44,7 @@
 #include "eal_filesystem.h"
 #include "eal_internal_cfg.h"
 #include "eal_memalloc.h"
+#include "eal_memcfg.h"
 #include "eal_private.h"
 
 const int anonymous_hugepages_supported =

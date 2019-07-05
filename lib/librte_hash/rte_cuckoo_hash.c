@@ -27,6 +27,7 @@
 #include <rte_ring.h>
 #include <rte_compat.h>
 #include <rte_vect.h>
+#include <rte_tailq.h>
 
 #include "rte_hash.h"
 #include "rte_cuckoo_hash.h"

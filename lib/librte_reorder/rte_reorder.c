@@ -11,6 +11,7 @@
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
+#include <rte_tailq.h>
 
 #include "rte_reorder.h"
 

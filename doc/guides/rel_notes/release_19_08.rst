@@ -178,6 +178,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* The ``rte_mem_config`` structure has been made private. The new accessor
+  ``rte_mcfg_*`` functions were introduced to provide replacement for direct
+  access to the shared mem config.
+
 * The network structures, definitions and functions have
   been prefixed by ``rte_`` to resolve conflicts with libc headers.
 
@@ -252,7 +256,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_compressdev.so.1
      librte_cryptodev.so.7
      librte_distributor.so.1
-     librte_eal.so.10
+   + librte_eal.so.11
      librte_efd.so.1
      librte_ethdev.so.12
    + librte_eventdev.so.7

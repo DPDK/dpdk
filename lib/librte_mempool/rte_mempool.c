@@ -30,6 +30,7 @@
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_spinlock.h>
+#include <rte_tailq.h>
 
 #include "rte_mempool.h"
 

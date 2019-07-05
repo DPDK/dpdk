@@ -14,6 +14,7 @@
 #include <rte_string_fns.h>
 #include <rte_eal_memconfig.h>
 #include <rte_pause.h>
+#include <rte_tailq.h>
 
 #include "rte_distributor_private.h"
 #include "rte_distributor.h"

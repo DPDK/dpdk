@@ -10,6 +10,7 @@
 #include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_errno.h>
+#include <rte_tailq.h>
 
 #include "rte_member.h"
 #include "rte_member_ht.h"

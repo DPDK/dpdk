@@ -20,6 +20,7 @@
 #include <rte_ring.h>
 #include <rte_jhash.h>
 #include <rte_hash_crc.h>
+#include <rte_tailq.h>
 
 #include "rte_efd.h"
 #if defined(RTE_ARCH_X86)

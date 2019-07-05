@@ -20,6 +20,7 @@
 #include <rte_eal.h>
 #include <rte_bus.h>
 #include <rte_spinlock.h>
+#include <rte_tailq.h>
 
 #include "eal_filesystem.h"
 

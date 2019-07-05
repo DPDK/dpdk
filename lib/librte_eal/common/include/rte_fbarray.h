@@ -34,7 +34,6 @@
 extern "C" {
 #endif
 
-#include <stdbool.h>
 #include <stdio.h>
 
 #include <rte_compat.h>

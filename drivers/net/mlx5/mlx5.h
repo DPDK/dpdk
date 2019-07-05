@@ -7,6 +7,7 @@
 #define RTE_PMD_MLX5_H_
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <limits.h>
 #include <net/if.h>

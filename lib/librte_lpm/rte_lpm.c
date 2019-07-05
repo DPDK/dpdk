@@ -21,6 +21,7 @@
 #include <rte_errno.h>
 #include <rte_rwlock.h>
 #include <rte_spinlock.h>
+#include <rte_tailq.h>
 
 #include "rte_lpm.h"
 

@@ -20,11 +20,13 @@
 #include <rte_string_fns.h>
 #include <rte_spinlock.h>
 #include <rte_memcpy.h>
+#include <rte_memzone.h>
 #include <rte_atomic.h>
 #include <rte_fbarray.h>
 
 #include "eal_internal_cfg.h"
 #include "eal_memalloc.h"
+#include "eal_memcfg.h"
 #include "malloc_elem.h"
 #include "malloc_heap.h"
 #include "malloc_mp.h"

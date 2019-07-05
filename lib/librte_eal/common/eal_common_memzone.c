@@ -24,6 +24,7 @@
 #include "malloc_heap.h"
 #include "malloc_elem.h"
 #include "eal_private.h"
+#include "eal_memcfg.h"
 
 static inline const struct rte_memzone *
 memzone_lookup_thread_unsafe(const char *name)

@@ -15,6 +15,7 @@
 #include <rte_vfio.h>
 
 #include "eal_filesystem.h"
+#include "eal_memcfg.h"
 #include "eal_vfio.h"
 #include "eal_private.h"
 

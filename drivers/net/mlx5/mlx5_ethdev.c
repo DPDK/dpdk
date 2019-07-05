@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

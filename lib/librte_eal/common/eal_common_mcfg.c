@@ -5,6 +5,8 @@
 #include <rte_config.h>
 #include <rte_eal_memconfig.h>
 
+#include "eal_memcfg.h"
+
 void
 rte_mcfg_mem_read_lock(void)
 {

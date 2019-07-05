@@ -23,6 +23,7 @@
 #include <rte_debug.h>
 
 #include "eal_private.h"
+#include "eal_memcfg.h"
 
 TAILQ_HEAD(rte_tailq_elem_head, rte_tailq_elem);
 /* local tailq list */

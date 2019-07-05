@@ -24,6 +24,7 @@
 #include <rte_hash.h>
 #include <assert.h>
 #include <rte_jhash.h>
+#include <rte_tailq.h>
 
 #include "rte_lpm6.h"
 

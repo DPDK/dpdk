@@ -20,6 +20,7 @@
 #include <rte_cpuflags.h>
 #include <rte_log.h>
 #include <rte_spinlock.h>
+#include <rte_tailq.h>
 
 #include "rte_fbk_hash.h"
 

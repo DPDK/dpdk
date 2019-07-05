@@ -4,6 +4,8 @@
 
 #include <rte_string_fns.h>
 #include <rte_acl.h>
+#include <rte_tailq.h>
+
 #include "acl.h"
 
 TAILQ_HEAD(rte_acl_list, rte_tailq_entry);
