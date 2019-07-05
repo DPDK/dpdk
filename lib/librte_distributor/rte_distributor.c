@@ -596,6 +596,12 @@ rte_distributor_create_v1705(const char *name,
 	RTE_BUILD_BUG_ON((sizeof(*d) & RTE_CACHE_LINE_MASK) != 0);
 	RTE_BUILD_BUG_ON((RTE_DISTRIB_MAX_WORKERS & 7) != 0);
 
+	if (name == NULL || num_workers >=
+		(unsigned int)RTE_MIN(RTE_DISTRIB_MAX_WORKERS, RTE_MAX_LCORE)) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
 	if (alg_type == RTE_DIST_ALG_SINGLE) {
 		d = malloc(sizeof(struct rte_distributor));
 		if (d == NULL) {
@@ -611,11 +617,6 @@ rte_distributor_create_v1705(const char *name,
 		}
 		d->alg_type = alg_type;
 		return d;
-	}
-
-	if (name == NULL || num_workers >= RTE_DISTRIB_MAX_WORKERS) {
-		rte_errno = EINVAL;
-		return NULL;
 	}
 
 	snprintf(mz_name, sizeof(mz_name), RTE_DISTRIB_PREFIX"%s", name);
