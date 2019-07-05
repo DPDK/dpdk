@@ -529,15 +529,7 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 			} else if (!strcmp(pair->key, VDEV_NETVSC_ARG_MAC)) {
 				struct rte_ether_addr tmp;
 
-				if (sscanf(pair->value,
-					   "%" SCNx8 ":%" SCNx8 ":%" SCNx8 ":"
-					   "%" SCNx8 ":%" SCNx8 ":%" SCNx8,
-					   &tmp.addr_bytes[0],
-					   &tmp.addr_bytes[1],
-					   &tmp.addr_bytes[2],
-					   &tmp.addr_bytes[3],
-					   &tmp.addr_bytes[4],
-					   &tmp.addr_bytes[5]) != 6) {
+				if (rte_ether_unformat_addr(pair->value, &tmp) != 0) {
 					DRV_LOG(ERR,
 						"invalid MAC address format"
 						" \"%s\"",
