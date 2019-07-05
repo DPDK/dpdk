@@ -251,6 +251,21 @@ void
 rte_ether_format_addr(char *buf, uint16_t size,
 		      const struct rte_ether_addr *eth_addr);
 /**
+ * Convert string with Ethernet address to an ether_addr.
+ *
+ * @param str
+ *   A pointer to buffer contains the formatted MAC address.
+ * @param eth_addr
+ *   A pointer to a ether_addr structure.
+ * @return
+ *   0 if successful
+ *   -1 and sets rte_errno if invalid string
+ */
+__rte_experimental
+int
+rte_ether_unformat_addr(const char *str, struct rte_ether_addr *eth_addr);
+
+/**
  * Ethernet header: Contains the destination address, source address
  * and frame type.
  */

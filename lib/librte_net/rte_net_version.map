@@ -26,4 +26,5 @@ EXPERIMENTAL {
 
 	rte_net_make_rarp_packet;
 	rte_net_skip_ip6_ext;
+	rte_ether_unformat_addr;
 };
