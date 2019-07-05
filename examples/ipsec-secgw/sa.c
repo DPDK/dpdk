@@ -743,7 +743,7 @@ sa_create(const char *name, int32_t socket_id)
 			RTE_MEMZONE_1GB | RTE_MEMZONE_SIZE_HINT_ONLY);
 	if (mz == NULL) {
 		printf("Failed to allocate SA DB memory\n");
-		rte_errno = -ENOMEM;
+		rte_errno = ENOMEM;
 		return NULL;
 	}
 
