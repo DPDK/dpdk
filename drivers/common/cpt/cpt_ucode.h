@@ -520,16 +520,15 @@ cpt_digest_gen_prep(uint32_t flags,
 
 	/*GP op header */
 	vq_cmd_w0.u64 = 0;
-	vq_cmd_w0.s.param2 = rte_cpu_to_be_16(((uint16_t)hash_type << 8));
+	vq_cmd_w0.s.param2 = ((uint16_t)hash_type << 8);
 	if (ctx->hmac) {
 		opcode.s.major = CPT_MAJOR_OP_HMAC | CPT_DMA_MODE;
-		vq_cmd_w0.s.param1 = rte_cpu_to_be_16(key_len);
-		vq_cmd_w0.s.dlen =
-			rte_cpu_to_be_16((data_len + ROUNDUP8(key_len)));
+		vq_cmd_w0.s.param1 = key_len;
+		vq_cmd_w0.s.dlen = data_len + ROUNDUP8(key_len);
 	} else {
 		opcode.s.major = CPT_MAJOR_OP_HASH | CPT_DMA_MODE;
 		vq_cmd_w0.s.param1 = 0;
-		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(data_len);
+		vq_cmd_w0.s.dlen = data_len;
 	}
 
 	opcode.s.minor = 0;
@@ -540,10 +539,10 @@ cpt_digest_gen_prep(uint32_t flags,
 		/* Minor op is passthrough */
 		opcode.s.minor = 0x03;
 		/* Send out completion code only */
-		vq_cmd_w0.s.param2 = rte_cpu_to_be_16(0x1);
+		vq_cmd_w0.s.param2 = 0x1;
 	}
 
-	vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+	vq_cmd_w0.s.opcode = opcode.flags;
 
 	/* DPTR has SG list */
 	in_buffer = m_vaddr;
@@ -622,7 +621,7 @@ cpt_digest_gen_prep(uint32_t flags,
 	size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
 
 	/* This is DPTR len incase of SG mode */
-	vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+	vq_cmd_w0.s.dlen = size;
 
 	m_vaddr = (uint8_t *)m_vaddr + size;
 	m_dma += size;
@@ -635,11 +634,6 @@ cpt_digest_gen_prep(uint32_t flags,
 
 	req->ist.ei1 = dptr_dma;
 	req->ist.ei2 = rptr_dma;
-	/* First 16-bit swap then 64-bit swap */
-	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
-	 * to eliminate all the swapping
-	 */
-	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
 
 	/* vq command w3 */
 	vq_cmd_w3.u64 = 0;
@@ -798,8 +792,8 @@ cpt_enc_hmac_prep(uint32_t flags,
 
 	/* GP op header */
 	vq_cmd_w0.u64 = 0;
-	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
-	vq_cmd_w0.s.param2 = rte_cpu_to_be_16(auth_data_len);
+	vq_cmd_w0.s.param1 = encr_data_len;
+	vq_cmd_w0.s.param2 = auth_data_len;
 	/*
 	 * In 83XX since we have a limitation of
 	 * IV & Offset control word not part of instruction
@@ -826,9 +820,9 @@ cpt_enc_hmac_prep(uint32_t flags,
 		req->alternate_caddr = (uint64_t *)((uint8_t *)dm_vaddr
 						    + outputlen - iv_len);
 
-		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(inputlen + OFF_CTRL_LEN);
+		vq_cmd_w0.s.dlen = inputlen + OFF_CTRL_LEN;
 
-		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+		vq_cmd_w0.s.opcode = opcode.flags;
 
 		if (likely(iv_len)) {
 			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr
@@ -861,7 +855,7 @@ cpt_enc_hmac_prep(uint32_t flags,
 
 		opcode.s.major |= CPT_DMA_MODE;
 
-		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+		vq_cmd_w0.s.opcode = opcode.flags;
 
 		if (likely(iv_len)) {
 			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr
@@ -1005,7 +999,7 @@ cpt_enc_hmac_prep(uint32_t flags,
 		size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
 
 		/* This is DPTR len incase of SG mode */
-		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+		vq_cmd_w0.s.dlen = size;
 
 		m_vaddr = (uint8_t *)m_vaddr + size;
 		m_dma += size;
@@ -1019,12 +1013,6 @@ cpt_enc_hmac_prep(uint32_t flags,
 		req->ist.ei1 = dptr_dma;
 		req->ist.ei2 = rptr_dma;
 	}
-
-	/* First 16-bit swap then 64-bit swap */
-	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
-	 * to eliminate all the swapping
-	 */
-	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
 
 	ctx_dma = fc_params->ctx_buf.dma_addr +
 		offsetof(struct cpt_ctx, fctx);
@@ -1175,8 +1163,8 @@ cpt_dec_hmac_prep(uint32_t flags,
 		encr_offset = inputlen;
 
 	vq_cmd_w0.u64 = 0;
-	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
-	vq_cmd_w0.s.param2 = rte_cpu_to_be_16(auth_data_len);
+	vq_cmd_w0.s.param1 = encr_data_len;
+	vq_cmd_w0.s.param2 = auth_data_len;
 
 	/*
 	 * In 83XX since we have a limitation of
@@ -1209,9 +1197,9 @@ cpt_dec_hmac_prep(uint32_t flags,
 		 * hmac.
 		 */
 
-		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(inputlen + OFF_CTRL_LEN);
+		vq_cmd_w0.s.dlen = inputlen + OFF_CTRL_LEN;
 
-		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+		vq_cmd_w0.s.opcode = opcode.flags;
 
 		if (likely(iv_len)) {
 			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr +
@@ -1245,7 +1233,7 @@ cpt_dec_hmac_prep(uint32_t flags,
 
 		opcode.s.major |= CPT_DMA_MODE;
 
-		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+		vq_cmd_w0.s.opcode = opcode.flags;
 
 		if (likely(iv_len)) {
 			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr +
@@ -1401,7 +1389,7 @@ cpt_dec_hmac_prep(uint32_t flags,
 		size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
 
 		/* This is DPTR len incase of SG mode */
-		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+		vq_cmd_w0.s.dlen = size;
 
 		m_vaddr = (uint8_t *)m_vaddr + size;
 		m_dma += size;
@@ -1416,12 +1404,6 @@ cpt_dec_hmac_prep(uint32_t flags,
 		req->ist.ei1 = dptr_dma;
 		req->ist.ei2 = rptr_dma;
 	}
-
-	/* First 16-bit swap then 64-bit swap */
-	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
-	 * to eliminate all the swapping
-	 */
-	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
 
 	ctx_dma = fc_params->ctx_buf.dma_addr +
 		offsetof(struct cpt_ctx, fctx);
@@ -1573,8 +1555,8 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 	 * GP op header, lengths are expected in bits.
 	 */
 	vq_cmd_w0.u64 = 0;
-	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
-	vq_cmd_w0.s.param2 = rte_cpu_to_be_16(auth_data_len);
+	vq_cmd_w0.s.param1 = encr_data_len;
+	vq_cmd_w0.s.param2 = auth_data_len;
 
 	/*
 	 * In 83XX since we have a limitation of
@@ -1603,9 +1585,9 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 		req->alternate_caddr = (uint64_t *)((uint8_t *)dm_vaddr
 						    + outputlen - iv_len);
 
-		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(inputlen + OFF_CTRL_LEN);
+		vq_cmd_w0.s.dlen = inputlen + OFF_CTRL_LEN;
 
-		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+		vq_cmd_w0.s.opcode = opcode.flags;
 
 		if (likely(iv_len)) {
 			uint32_t *iv_d = (uint32_t *)((uint8_t *)offset_vaddr
@@ -1632,7 +1614,7 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 
 		opcode.s.major |= CPT_DMA_MODE;
 
-		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+		vq_cmd_w0.s.opcode = opcode.flags;
 
 		/* DPTR has SG list */
 		in_buffer = m_vaddr;
@@ -1734,7 +1716,7 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 		size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
 
 		/* This is DPTR len incase of SG mode */
-		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+		vq_cmd_w0.s.dlen = size;
 
 		m_vaddr = (uint8_t *)m_vaddr + size;
 		m_dma += size;
@@ -1748,12 +1730,6 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 		req->ist.ei1 = dptr_dma;
 		req->ist.ei2 = rptr_dma;
 	}
-
-	/* First 16-bit swap then 64-bit swap */
-	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
-	 * to eliminate all the swapping
-	 */
-	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
 
 	/* vq command w3 */
 	vq_cmd_w3.u64 = 0;
@@ -1874,7 +1850,7 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 	 * GP op header, lengths are expected in bits.
 	 */
 	vq_cmd_w0.u64 = 0;
-	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
+	vq_cmd_w0.s.param1 = encr_data_len;
 
 	/*
 	 * In 83XX since we have a limitation of
@@ -1903,9 +1879,9 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 		req->alternate_caddr = (uint64_t *)((uint8_t *)dm_vaddr
 						    + outputlen - iv_len);
 
-		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(inputlen + OFF_CTRL_LEN);
+		vq_cmd_w0.s.dlen = inputlen + OFF_CTRL_LEN;
 
-		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+		vq_cmd_w0.s.opcode = opcode.flags;
 
 		if (likely(iv_len)) {
 			uint32_t *iv_d = (uint32_t *)((uint8_t *)offset_vaddr
@@ -1933,7 +1909,7 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 
 		opcode.s.major |= CPT_DMA_MODE;
 
-		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+		vq_cmd_w0.s.opcode = opcode.flags;
 
 		/* DPTR has SG list */
 		in_buffer = m_vaddr;
@@ -2008,7 +1984,7 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 		size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
 
 		/* This is DPTR len incase of SG mode */
-		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+		vq_cmd_w0.s.dlen = size;
 
 		m_vaddr = (uint8_t *)m_vaddr + size;
 		m_dma += size;
@@ -2022,12 +1998,6 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 		req->ist.ei1 = dptr_dma;
 		req->ist.ei2 = rptr_dma;
 	}
-
-	/* First 16-bit swap then 64-bit swap */
-	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
-	 * to eliminate all the swapping
-	 */
-	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
 
 	/* vq command w3 */
 	vq_cmd_w3.u64 = 0;
@@ -2138,9 +2108,9 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 	 * GP op header, lengths are expected in bits.
 	 */
 	vq_cmd_w0.u64 = 0;
-	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
-	vq_cmd_w0.s.param2 = rte_cpu_to_be_16(auth_data_len);
-	vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+	vq_cmd_w0.s.param1 = encr_data_len;
+	vq_cmd_w0.s.param2 = auth_data_len;
+	vq_cmd_w0.s.opcode = opcode.flags;
 
 	/* consider iv len */
 	if (flags == 0x0) {
@@ -2267,7 +2237,7 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 	size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
 
 	/* This is DPTR len incase of SG mode */
-	vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+	vq_cmd_w0.s.dlen = size;
 
 	m_vaddr = (uint8_t *)m_vaddr + size;
 	m_dma += size;
@@ -2280,12 +2250,6 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 
 	req->ist.ei1 = dptr_dma;
 	req->ist.ei2 = rptr_dma;
-
-	/* First 16-bit swap then 64-bit swap */
-	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
-	 * to eliminate all the swapping
-	 */
-	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
 
 	/* vq command w3 */
 	vq_cmd_w3.u64 = 0;
@@ -2382,8 +2346,8 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 	 * GP op header, lengths are expected in bits.
 	 */
 	vq_cmd_w0.u64 = 0;
-	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
-	vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+	vq_cmd_w0.s.param1 = encr_data_len;
+	vq_cmd_w0.s.opcode = opcode.flags;
 
 	/* consider iv len */
 	encr_offset += iv_len;
@@ -2468,7 +2432,7 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 	size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
 
 	/* This is DPTR len incase of SG mode */
-	vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+	vq_cmd_w0.s.dlen = size;
 
 	m_vaddr = (uint8_t *)m_vaddr + size;
 	m_dma += size;
@@ -2481,12 +2445,6 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 
 	req->ist.ei1 = dptr_dma;
 	req->ist.ei2 = rptr_dma;
-
-	/* First 16-bit swap then 64-bit swap */
-	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
-	 * to eliminate all the swapping
-	 */
-	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
 
 	/* vq command w3 */
 	vq_cmd_w3.u64 = 0;

@@ -30,10 +30,17 @@
 typedef union {
 	uint64_t u64;
 	struct {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 		uint16_t opcode;
 		uint16_t param1;
 		uint16_t param2;
 		uint16_t dlen;
+#else
+		uint16_t dlen;
+		uint16_t param2;
+		uint16_t param1;
+		uint16_t opcode;
+#endif
 	} s;
 } vq_cmd_word0_t;
 
