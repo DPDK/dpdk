@@ -56,7 +56,7 @@ static int af_xdp_logtype;
 	rte_log(RTE_LOG_ ## level, af_xdp_logtype,	\
 		"%s(): " fmt, __func__, ##args)
 
-#define ETH_AF_XDP_FRAME_SIZE		XSK_UMEM__DEFAULT_FRAME_SIZE
+#define ETH_AF_XDP_FRAME_SIZE		2048
 #define ETH_AF_XDP_NUM_BUFFERS		4096
 #define ETH_AF_XDP_DATA_HEADROOM	0
 #define ETH_AF_XDP_DFLT_NUM_DESCS	XSK_RING_CONS__DEFAULT_NUM_DESCS
