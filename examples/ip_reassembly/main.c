@@ -353,6 +353,9 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 					struct rte_ether_hdr *);
 				ip_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 			}
+
+			/* update offloading flags */
+			m->ol_flags |= (PKT_TX_IPV4 | PKT_TX_IP_CKSUM);
 		}
 		ip_dst = rte_be_to_cpu_32(ip_hdr->dst_addr);
 
