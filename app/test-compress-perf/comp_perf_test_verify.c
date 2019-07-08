@@ -188,6 +188,9 @@ main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 				ops[op_id]->private_xform = priv_xform;
 			}
 
+			if (unlikely(test_data->perf_comp_force_stop))
+				goto end;
+
 			num_enq = rte_compressdev_enqueue_burst(dev_id,
 								mem->qp_id, ops,
 								num_ops);
@@ -268,6 +271,9 @@ main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 
 		/* Dequeue the last operations */
 		while (total_deq_ops < total_ops) {
+			if (unlikely(test_data->perf_comp_force_stop))
+				goto end;
+
 			num_deq = rte_compressdev_dequeue_burst(dev_id,
 							mem->qp_id,
 							deq_ops,
@@ -346,6 +352,14 @@ end:
 	rte_mempool_put_bulk(mem->op_pool, (void **)ops, allocated);
 	rte_compressdev_private_xform_free(dev_id, priv_xform);
 	rte_free(ops);
+
+	if (test_data->perf_comp_force_stop) {
+		RTE_LOG(ERR, USER1,
+		      "lcore: %d Perf. test has been aborted by user\n",
+			mem->lcore_id);
+		res = -1;
+	}
+
 	return res;
 }
 

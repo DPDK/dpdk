@@ -2,6 +2,10 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include <signal.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <rte_malloc.h>
 #include <rte_eal.h>
 #include <rte_log.h>
@@ -35,6 +39,8 @@ static const struct cperf_test cperf_testmap[] = {
 			cperf_verify_test_destructor
 	}
 };
+
+static struct comp_test_data *test_data;
 
 static int
 comp_perf_check_capabilities(struct comp_test_data *test_data, uint8_t cdev_id)
@@ -277,12 +283,24 @@ end:
 	return ret;
 }
 
+static void
+comp_perf_cleanup_on_signal(int signalNumber __rte_unused)
+{
+	test_data->perf_comp_force_stop = 1;
+}
+
+static void
+comp_perf_register_cleanup_on_signal(void)
+{
+	signal(SIGTERM, comp_perf_cleanup_on_signal);
+	signal(SIGINT, comp_perf_cleanup_on_signal);
+}
+
 int
 main(int argc, char **argv)
 {
 	uint8_t level_idx = 0;
 	int ret, i;
-	struct comp_test_data *test_data;
 	void *ctx[RTE_MAX_LCORE] = {};
 	uint8_t enabled_cdevs[RTE_COMPRESS_MAX_DEVS];
 	int nb_compressdevs = 0;
@@ -303,6 +321,8 @@ main(int argc, char **argv)
 	if (test_data == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot reserve memory in socket %d\n",
 				rte_socket_id());
+
+	comp_perf_register_cleanup_on_signal();
 
 	ret = EXIT_SUCCESS;
 	test_data->cleanup = ST_TEST_DATA;
@@ -424,8 +444,10 @@ end:
 		/* fallthrough */
 	case ST_COMPDEV:
 		for (i = 0; i < nb_compressdevs &&
-				i < RTE_COMPRESS_MAX_DEVS; i++)
+		     i < RTE_COMPRESS_MAX_DEVS; i++) {
 			rte_compressdev_stop(enabled_cdevs[i]);
+			rte_compressdev_close(enabled_cdevs[i]);
+		}
 		/* fallthrough */
 	case ST_TEST_DATA:
 		rte_free(test_data);
