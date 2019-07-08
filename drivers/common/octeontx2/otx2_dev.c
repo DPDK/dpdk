@@ -744,9 +744,9 @@ static void
 mbox_unregister_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
 	if (otx2_dev_is_vf(dev))
-		return mbox_unregister_vf_irq(pci_dev, dev);
+		mbox_unregister_vf_irq(pci_dev, dev);
 	else
-		return mbox_unregister_pf_irq(pci_dev, dev);
+		mbox_unregister_pf_irq(pci_dev, dev);
 }
 
 static int
