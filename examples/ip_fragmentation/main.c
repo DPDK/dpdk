@@ -357,12 +357,14 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		/* src addr */
 		rte_ether_addr_copy(&ports_eth_addr[port_out],
 				&eth_hdr->s_addr);
-		if (ipv6)
+		if (ipv6) {
 			eth_hdr->ether_type =
 				rte_be_to_cpu_16(RTE_ETHER_TYPE_IPV6);
-		else
+		} else {
 			eth_hdr->ether_type =
 				rte_be_to_cpu_16(RTE_ETHER_TYPE_IPV4);
+			m->ol_flags |= (PKT_TX_IPV4 | PKT_TX_IP_CKSUM);
+		}
 	}
 
 	len += len2;
