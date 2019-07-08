@@ -208,6 +208,10 @@ New Features
 
   Add support for pdump to exit with primary process.
 
+* **Updated test-compress-perf tool application.**
+
+  Added multiple cores feature to compression perf tool application.
+
 
 Removed Items
 -------------

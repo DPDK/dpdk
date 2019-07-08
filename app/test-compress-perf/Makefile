@@ -13,6 +13,7 @@ CFLAGS += -O3
 SRCS-y := main.c
 SRCS-y += comp_perf_options_parse.c
 SRCS-y += comp_perf_test_verify.c
+SRCS-y += comp_perf_test_benchmark.c
 SRCS-y += comp_perf_test_common.c
 
 include $(RTE_SDK)/mk/rte.app.mk

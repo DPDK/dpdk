@@ -9,6 +9,7 @@
 
 #include "comp_perf_options.h"
 #include "comp_perf_test_verify.h"
+#include "comp_perf_test_benchmark.h"
 #include "comp_perf.h"
 #include "comp_perf_test_common.h"
 
