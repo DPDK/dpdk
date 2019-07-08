@@ -240,6 +240,21 @@ API Changes
   announced at least one release before the ABI change is made. There are no
   ABI breaking changes planned.
 
+* ip_frag: IP fragmentation library converts input mbuf into fragments
+  using input MTU size via ``rte_ipv4_fragment_packet`` interface.
+  Once fragmentation is done, each ``mbuf->ol_flags`` are set to enable IP
+  checksum H/W offload irrespective of the platform capability.
+  Cleared IP checksum H/W offload flag from the library. The application must
+  set this flag if it is supported by the platform and application wishes to
+  use it.
+
+* ip_frag: IP reassembly library converts the list of fragments into a
+  reassembled packet via ``rte_ipv4_frag_reassemble_packet`` interface.
+  Once reassembly is done, ``mbuf->ol_flags`` are set to enable IP checksum H/W
+  offload irrespective of the platform capability. Cleared IP checksum H/W
+  offload flag from the library. The application must set this flag if it is
+  supported by the platform and application wishes to use it.
+
 
 ABI Changes
 -----------

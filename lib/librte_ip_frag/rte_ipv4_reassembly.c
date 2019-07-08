@@ -66,9 +66,6 @@ ipv4_frag_reassemble(struct ip_frag_pkt *fp)
 	m = fp->frags[IP_FIRST_FRAG_IDX].mb;
 	fp->frags[IP_FIRST_FRAG_IDX].mb = NULL;
 
-	/* update mbuf fields for reassembled packet. */
-	m->ol_flags |= PKT_TX_IP_CKSUM;
-
 	/* update ipv4 header for the reassembled packet */
 	ip_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *, m->l2_len);
 
