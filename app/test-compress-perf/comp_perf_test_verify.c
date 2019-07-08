@@ -8,14 +8,49 @@
 #include <rte_compressdev.h>
 
 #include "comp_perf_test_verify.h"
+#include "comp_perf_test_common.h"
+
+void
+cperf_verify_test_destructor(void *arg)
+{
+	if (arg) {
+		comp_perf_free_memory(&((struct cperf_verify_ctx *)arg)->mem);
+		rte_free(arg);
+	}
+}
+
+void *
+cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
+		struct comp_test_data *options)
+{
+	struct cperf_verify_ctx *ctx = NULL;
+
+	ctx = rte_malloc(NULL, sizeof(struct cperf_verify_ctx), 0);
+
+	if (ctx == NULL)
+		return NULL;
+
+	ctx->mem.dev_id = dev_id;
+	ctx->mem.qp_id = qp_id;
+	ctx->options = options;
+
+	if (!comp_perf_allocate_memory(ctx->options, &ctx->mem) &&
+			!prepare_bufs(ctx->options, &ctx->mem))
+		return ctx;
+
+	cperf_verify_test_destructor(ctx);
+	return NULL;
+}
 
 static int
-main_loop(struct comp_test_data *test_data, uint8_t level,
-			enum rte_comp_xform_type type,
-			uint8_t *output_data_ptr,
-			size_t *output_data_sz)
+main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 {
-	uint8_t dev_id = test_data->cdev_id;
+	struct comp_test_data *test_data = ctx->options;
+	uint8_t *output_data_ptr;
+	size_t *output_data_sz;
+	struct cperf_mem_resources *mem = &ctx->mem;
+
+	uint8_t dev_id = mem->dev_id;
 	uint32_t i, iter, num_iter;
 	struct rte_comp_op **ops, **deq_ops;
 	void *priv_xform = NULL;
@@ -33,7 +68,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 	}
 
 	ops = rte_zmalloc_socket(NULL,
-		2 * test_data->total_bufs * sizeof(struct rte_comp_op *),
+		2 * mem->total_bufs * sizeof(struct rte_comp_op *),
 		0, rte_socket_id());
 
 	if (ops == NULL) {
@@ -42,7 +77,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 		return -1;
 	}
 
-	deq_ops = &ops[test_data->total_bufs];
+	deq_ops = &ops[mem->total_bufs];
 
 	if (type == RTE_COMP_COMPRESS) {
 		xform = (struct rte_comp_xform) {
@@ -50,14 +85,16 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 			.compress = {
 				.algo = RTE_COMP_ALGO_DEFLATE,
 				.deflate.huffman = test_data->huffman_enc,
-				.level = level,
+				.level = test_data->level,
 				.window_size = test_data->window_sz,
 				.chksum = RTE_COMP_CHECKSUM_NONE,
 				.hash_algo = RTE_COMP_HASH_ALGO_NONE
 			}
 		};
-		input_bufs = test_data->decomp_bufs;
-		output_bufs = test_data->comp_bufs;
+		output_data_ptr = ctx->mem.compressed_data;
+		output_data_sz = &ctx->comp_data_sz;
+		input_bufs = mem->decomp_bufs;
+		output_bufs = mem->comp_bufs;
 		out_seg_sz = test_data->out_seg_sz;
 	} else {
 		xform = (struct rte_comp_xform) {
@@ -69,8 +106,10 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 				.hash_algo = RTE_COMP_HASH_ALGO_NONE
 			}
 		};
-		input_bufs = test_data->comp_bufs;
-		output_bufs = test_data->decomp_bufs;
+		output_data_ptr = ctx->mem.decompressed_data;
+		output_data_sz = &ctx->decomp_data_sz;
+		input_bufs = mem->comp_bufs;
+		output_bufs = mem->decomp_bufs;
 		out_seg_sz = test_data->seg_sz;
 	}
 
@@ -85,8 +124,8 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 	num_iter = 1;
 
 	for (iter = 0; iter < num_iter; iter++) {
-		uint32_t total_ops = test_data->total_bufs;
-		uint32_t remaining_ops = test_data->total_bufs;
+		uint32_t total_ops = mem->total_bufs;
+		uint32_t remaining_ops = mem->total_bufs;
 		uint32_t total_deq_ops = 0;
 		uint32_t total_enq_ops = 0;
 		uint16_t ops_unused = 0;
@@ -113,7 +152,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 
 			/* Allocate compression operations */
 			if (ops_needed && !rte_comp_op_bulk_alloc(
-						test_data->op_pool,
+						mem->op_pool,
 						&ops[ops_unused],
 						ops_needed)) {
 				RTE_LOG(ERR, USER1,
@@ -149,7 +188,8 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 				ops[op_id]->private_xform = priv_xform;
 			}
 
-			num_enq = rte_compressdev_enqueue_burst(dev_id, 0, ops,
+			num_enq = rte_compressdev_enqueue_burst(dev_id,
+								mem->qp_id, ops,
 								num_ops);
 			if (num_enq == 0) {
 				struct rte_compressdev_stats stats;
@@ -165,7 +205,8 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 			remaining_ops -= num_enq;
 			total_enq_ops += num_enq;
 
-			num_deq = rte_compressdev_dequeue_burst(dev_id, 0,
+			num_deq = rte_compressdev_dequeue_burst(dev_id,
+							   mem->qp_id,
 							   deq_ops,
 							   test_data->burst_sz);
 			total_deq_ops += num_deq;
@@ -220,15 +261,17 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 					}
 				}
 			}
-			rte_mempool_put_bulk(test_data->op_pool,
+			rte_mempool_put_bulk(mem->op_pool,
 					     (void **)deq_ops, num_deq);
 			allocated -= num_deq;
 		}
 
 		/* Dequeue the last operations */
 		while (total_deq_ops < total_ops) {
-			num_deq = rte_compressdev_dequeue_burst(dev_id, 0,
-						deq_ops, test_data->burst_sz);
+			num_deq = rte_compressdev_dequeue_burst(dev_id,
+							mem->qp_id,
+							deq_ops,
+							test_data->burst_sz);
 			if (num_deq == 0) {
 				struct rte_compressdev_stats stats;
 
@@ -291,7 +334,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 					}
 				}
 			}
-			rte_mempool_put_bulk(test_data->op_pool,
+			rte_mempool_put_bulk(mem->op_pool,
 					     (void **)deq_ops, num_deq);
 			allocated -= num_deq;
 		}
@@ -300,45 +343,45 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 	if (output_data_sz)
 		*output_data_sz = output_size;
 end:
-	rte_mempool_put_bulk(test_data->op_pool, (void **)ops, allocated);
+	rte_mempool_put_bulk(mem->op_pool, (void **)ops, allocated);
 	rte_compressdev_private_xform_free(dev_id, priv_xform);
 	rte_free(ops);
 	return res;
 }
 
-
-
 int
-cperf_verification(struct comp_test_data *test_data, uint8_t level)
+cperf_verify_test_runner(void *test_ctx)
 {
+	struct cperf_verify_ctx *ctx = test_ctx;
+	struct comp_test_data *test_data = ctx->options;
 	int ret = EXIT_SUCCESS;
+	static rte_atomic16_t display_once = RTE_ATOMIC16_INIT(0);
+	uint32_t lcore = rte_lcore_id();
+
+	ctx->mem.lcore_id = lcore;
 
 	test_data->ratio = 0;
 
-	if (main_loop(test_data, level, RTE_COMP_COMPRESS,
-		      test_data->compressed_data,
-		      &test_data->comp_data_sz) < 0) {
+	if (main_loop(ctx, RTE_COMP_COMPRESS) < 0) {
 		ret = EXIT_FAILURE;
 		goto end;
 	}
 
-	if (main_loop(test_data, level, RTE_COMP_DECOMPRESS,
-		      test_data->decompressed_data,
-		      &test_data->decomp_data_sz) < 0) {
+	if (main_loop(ctx, RTE_COMP_DECOMPRESS) < 0) {
 		ret = EXIT_FAILURE;
 		goto end;
 	}
 
-	if (test_data->decomp_data_sz != test_data->input_data_sz) {
+	if (ctx->decomp_data_sz != test_data->input_data_sz) {
 		RTE_LOG(ERR, USER1,
 	   "Decompressed data length not equal to input data length\n");
 		RTE_LOG(ERR, USER1,
 			"Decompressed size = %zu, expected = %zu\n",
-			test_data->decomp_data_sz, test_data->input_data_sz);
+			ctx->decomp_data_sz, test_data->input_data_sz);
 		ret = EXIT_FAILURE;
 		goto end;
 	} else {
-		if (memcmp(test_data->decompressed_data,
+		if (memcmp(ctx->mem.decompressed_data,
 				test_data->input_data,
 				test_data->input_data_sz) != 0) {
 			RTE_LOG(ERR, USER1,
@@ -348,8 +391,18 @@ cperf_verification(struct comp_test_data *test_data, uint8_t level)
 		}
 	}
 
-	test_data->ratio = (double) test_data->comp_data_sz /
+	ctx->ratio = (double) ctx->comp_data_sz /
 			test_data->input_data_sz * 100;
+
+	if (!ctx->silent) {
+		if (rte_atomic16_test_and_set(&display_once)) {
+			printf("%12s%6s%12s%17s\n",
+			    "lcore id", "Level", "Comp size", "Comp ratio [%]");
+		}
+		printf("%12u%6u%12zu%17.2f\n",
+		       ctx->mem.lcore_id,
+		       test_data->level, ctx->comp_data_sz, ctx->ratio);
+	}
 
 end:
 	return ret;
