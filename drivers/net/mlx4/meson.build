@@ -2,6 +2,13 @@
 # Copyright 2018 6WIND S.A.
 # Copyright 2018 Mellanox Technologies, Ltd
 
+if not is_linux
+	build = false
+	reason = 'only supported on Linux'
+	subdir_done()
+endif
+build = true
+
 pmd_dlopen = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_pmd_mlx4_glue.so'
 LIB_GLUE_VERSION = '18.02.0'
@@ -13,9 +20,9 @@ if pmd_dlopen
 		'-DMLX4_GLUE_VERSION="@0@"'.format(LIB_GLUE_VERSION),
 	]
 endif
+
 libnames = [ 'mnl', 'mlx4', 'ibverbs' ]
 libs = []
-build = true
 foreach libname:libnames
 	lib = dependency('lib' + libname, required:false)
 	if not lib.found()
@@ -28,7 +35,7 @@ foreach libname:libnames
 		reason = 'missing dependency, "' + libname + '"'
 	endif
 endforeach
-# Compile PMD
+
 if build
 	allow_experimental_apis = true
 	ext_deps += libs
