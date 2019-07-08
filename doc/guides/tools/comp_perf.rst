@@ -30,6 +30,8 @@ Limitations
 Command line options
 --------------------
 
+ ``--ptest [benchmark/verify]``: set test type (default: benchmark)
+
  ``--driver-name NAME``: compress driver to use
 
  ``--input-file NAME``: file to compress and decompress
