@@ -5,8 +5,6 @@
 #ifndef _COMP_PERF_OPS_
 #define _COMP_PERF_OPS_
 
-#define MAX_DRIVER_NAME		64
-#define MAX_INPUT_FILE_NAME	64
 #define MAX_LIST		32
 #define MIN_COMPRESSED_BUF_SIZE 8
 #define EXPANSE_RATIO 1.05
@@ -25,7 +23,7 @@ enum cleanup_st {
 	ST_DURING_TEST
 };
 
-enum cperf_perf_test_type {
+enum cperf_test_type {
 	CPERF_TEST_TYPE_BENCHMARK,
 	CPERF_TEST_TYPE_VERIFY
 };
@@ -45,9 +43,9 @@ struct range_list {
 };
 
 struct comp_test_data {
-	char driver_name[64];
-	char input_file[64];
-	enum cperf_perf_test_type test;
+	char driver_name[RTE_DEV_NAME_MAX_LEN];
+	char input_file[PATH_MAX];
+	enum cperf_test_type test;
 
 	uint8_t *input_data;
 	size_t input_data_sz;

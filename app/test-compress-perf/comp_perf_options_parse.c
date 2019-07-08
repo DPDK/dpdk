@@ -99,7 +99,7 @@ parse_cperf_test_type(struct comp_test_data *test_data, const char *arg)
 		return -1;
 	}
 
-	test_data->test = (enum cperf_perf_test_type)id;
+	test_data->test = (enum cperf_test_type)id;
 
 	return 0;
 }
@@ -614,8 +614,8 @@ comp_perf_options_default(struct comp_test_data *test_data)
 	test_data->huffman_enc = RTE_COMP_HUFFMAN_DYNAMIC;
 	test_data->test_op = COMPRESS_DECOMPRESS;
 	test_data->window_sz = -1;
-	test_data->level_lst.min = 1;
-	test_data->level_lst.max = 9;
+	test_data->level_lst.min = RTE_COMP_LEVEL_MIN;
+	test_data->level_lst.max = RTE_COMP_LEVEL_MAX;
 	test_data->level_lst.inc = 1;
 	test_data->test = CPERF_TEST_TYPE_BENCHMARK;
 }

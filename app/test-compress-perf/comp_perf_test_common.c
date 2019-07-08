@@ -7,11 +7,12 @@
 #include <rte_log.h>
 #include <rte_compressdev.h>
 
-#include "comp_perf_options.h"
-#include "comp_perf_test_verify.h"
-#include "comp_perf_test_benchmark.h"
 #include "comp_perf.h"
+#include "comp_perf_options.h"
+#include "comp_perf_test_benchmark.h"
 #include "comp_perf_test_common.h"
+#include "comp_perf_test_verify.h"
+
 
 #define DIV_CEIL(a, b)  ((a) / (b) + ((a) % (b) != 0))
 
@@ -49,7 +50,7 @@ find_buf_size(uint32_t input_size)
 	 * power of 2 but also should be enough to store incompressible data
 	 */
 
-	/* We're looking for nearest power of 2 buffer size, which is greather
+	/* We're looking for nearest power of 2 buffer size, which is greater
 	 * than input_size
 	 */
 	uint32_t size =
