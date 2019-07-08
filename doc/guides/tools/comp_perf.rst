@@ -6,7 +6,9 @@ dpdk-test-compress-perf Tool
 
 The ``dpdk-test-compress-perf`` tool is a Data Plane Development Kit (DPDK)
 utility that allows measuring performance parameters of PMDs available in the
-compress tree. The tool reads the data from a file (--input-file),
+compress tree. User can use multiple cores to run tests on but only
+one type of compression PMD can be measured during single application
+execution. The tool reads the data from a file (--input-file),
 dumps all the file into a buffer and fills out the data of input mbufs,
 which are passed to compress device with compression operations.
 Then, the output buffers are fed into the decompression stage, and the resulting
@@ -26,9 +28,33 @@ Limitations
 
 * Stateful operation is not supported in this version.
 
+EAL Options
+~~~~~~~~~~~
 
-Command line options
---------------------
+The following are the EAL command-line options that can be used in conjunction
+with the ``dpdk-test-compress-perf`` application.
+See the DPDK Getting Started Guides for more information on these options.
+
+*   ``-c <COREMASK>`` or ``-l <CORELIST>``
+
+	Set the hexadecimal bitmask of the cores to run on. The corelist is a
+	list cores to use.
+
+.. Note::
+
+	One lcore is needed for process admin, tests are run on all other cores.
+	To run tests on two lcores, three lcores must be passed to the tool.
+
+*   ``-w <PCI>``
+
+	Add a PCI device in white list.
+
+*   ``--vdev <driver><id>``
+
+	Add a virtual device.
+
+Application Options
+~~~~~~~~~~~~~~~~~~~
 
  ``--ptest [benchmark/verify]``: set test type (default: benchmark)
 
