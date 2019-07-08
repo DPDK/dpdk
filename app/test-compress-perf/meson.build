@@ -4,6 +4,5 @@
 allow_experimental_apis = true
 sources = files('comp_perf_options_parse.c',
 		'main.c',
-		'comp_perf_test_verify.c',
-		'comp_perf_test_benchmark.c')
+		'comp_perf_test_common.c')
 deps = ['compressdev']

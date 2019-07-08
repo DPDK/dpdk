@@ -13,6 +13,23 @@
 #define MAX_MBUF_DATA_SIZE (UINT16_MAX - RTE_PKTMBUF_HEADROOM)
 #define MAX_SEG_SIZE ((int)(MAX_MBUF_DATA_SIZE / EXPANSE_RATIO))
 
+extern const char *cperf_test_type_strs[];
+
+/* Cleanup state machine */
+enum cleanup_st {
+	ST_CLEAR = 0,
+	ST_TEST_DATA,
+	ST_COMPDEV,
+	ST_INPUT_DATA,
+	ST_MEMORY_ALLOC,
+	ST_DURING_TEST
+};
+
+enum cperf_perf_test_type {
+	CPERF_TEST_TYPE_BENCHMARK,
+	CPERF_TEST_TYPE_VERIFY
+};
+
 enum comp_operation {
 	COMPRESS_ONLY,
 	DECOMPRESS_ONLY,
@@ -30,37 +47,26 @@ struct range_list {
 struct comp_test_data {
 	char driver_name[64];
 	char input_file[64];
-	struct rte_mbuf **comp_bufs;
-	struct rte_mbuf **decomp_bufs;
-	uint32_t total_bufs;
+	enum cperf_perf_test_type test;
+
 	uint8_t *input_data;
 	size_t input_data_sz;
-	uint8_t *compressed_data;
-	uint8_t *decompressed_data;
-	struct rte_mempool *comp_buf_pool;
-	struct rte_mempool *decomp_buf_pool;
-	struct rte_mempool *op_pool;
-	int8_t cdev_id;
+	uint16_t nb_qps;
 	uint16_t seg_sz;
 	uint16_t out_seg_sz;
 	uint16_t burst_sz;
 	uint32_t pool_sz;
 	uint32_t num_iter;
 	uint16_t max_sgl_segs;
+
 	enum rte_comp_huffman huffman_enc;
 	enum comp_operation test_op;
 	int window_sz;
-	struct range_list level;
-	/* Store TSC duration for all levels (including level 0) */
-	uint64_t comp_tsc_duration[RTE_COMP_LEVEL_MAX + 1];
-	uint64_t decomp_tsc_duration[RTE_COMP_LEVEL_MAX + 1];
-	size_t comp_data_sz;
-	size_t decomp_data_sz;
+	struct range_list level_lst;
+	uint8_t level;
+
 	double ratio;
-	double comp_gbps;
-	double decomp_gbps;
-	double comp_tsc_byte;
-	double decomp_tsc_byte;
+	enum cleanup_st cleanup;
 };
 
 int

@@ -468,19 +468,20 @@ parse_level(struct comp_test_data *test_data, const char *arg)
 	 * Try parsing the argument as a range, if it fails,
 	 * arse it as a list
 	 */
-	if (parse_range(arg, &test_data->level.min, &test_data->level.max,
-			&test_data->level.inc) < 0) {
-		ret = parse_list(arg, test_data->level.list,
-					&test_data->level.min,
-					&test_data->level.max);
+	if (parse_range(arg, &test_data->level_lst.min,
+			&test_data->level_lst.max,
+			&test_data->level_lst.inc) < 0) {
+		ret = parse_list(arg, test_data->level_lst.list,
+					&test_data->level_lst.min,
+					&test_data->level_lst.max);
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
 				"Failed to parse compression level/s\n");
 			return -1;
 		}
-		test_data->level.count = ret;
+		test_data->level_lst.count = ret;
 
-		if (test_data->level.max > RTE_COMP_LEVEL_MAX) {
+		if (test_data->level_lst.max > RTE_COMP_LEVEL_MAX) {
 			RTE_LOG(ERR, USER1, "Level cannot be higher than %u\n",
 					RTE_COMP_LEVEL_MAX);
 			return -1;
@@ -500,7 +501,6 @@ struct long_opt_parser {
 };
 
 static struct option lgopts[] = {
-
 	{ CPERF_DRIVER_NAME, required_argument, 0, 0 },
 	{ CPERF_TEST_FILE, required_argument, 0, 0 },
 	{ CPERF_SEG_SIZE, required_argument, 0, 0 },
@@ -574,7 +574,6 @@ comp_perf_options_parse(struct comp_test_data *test_data, int argc, char **argv)
 void
 comp_perf_options_default(struct comp_test_data *test_data)
 {
-	test_data->cdev_id = -1;
 	test_data->seg_sz = 2048;
 	test_data->burst_sz = 32;
 	test_data->pool_sz = 8192;
@@ -583,9 +582,10 @@ comp_perf_options_default(struct comp_test_data *test_data)
 	test_data->huffman_enc = RTE_COMP_HUFFMAN_DYNAMIC;
 	test_data->test_op = COMPRESS_DECOMPRESS;
 	test_data->window_sz = -1;
-	test_data->level.min = 1;
-	test_data->level.max = 9;
-	test_data->level.inc = 1;
+	test_data->level_lst.min = 1;
+	test_data->level_lst.max = 9;
+	test_data->level_lst.inc = 1;
+	test_data->test = CPERF_TEST_TYPE_BENCHMARK;
 }
 
 int
