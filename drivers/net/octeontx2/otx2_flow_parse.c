@@ -751,15 +751,17 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 	const struct rte_flow_action_count *act_count;
 	const struct rte_flow_action_mark *act_mark;
 	const struct rte_flow_action_queue *act_q;
+	const struct rte_flow_action_vf *vf_act;
 	const char *errmsg = NULL;
 	int sel_act, req_act = 0;
-	uint16_t pf_func;
+	uint16_t pf_func, vf_id;
 	int errcode = 0;
 	int mark = 0;
 	int rq = 0;
 
 	/* Initialize actions */
 	flow->ctr_id = NPC_COUNTER_NONE;
+	pf_func = otx2_pfvf_func(hw->pf, hw->vf);
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		otx2_npc_dbg("Action type = %d", actions->type);
@@ -805,6 +807,27 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			req_act |= OTX2_FLOW_ACT_DROP;
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_PF:
+			req_act |= OTX2_FLOW_ACT_PF;
+			pf_func &= (0xfc00);
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_VF:
+			vf_act = (const struct rte_flow_action_vf *)
+				actions->conf;
+			req_act |= OTX2_FLOW_ACT_VF;
+			if (vf_act->original == 0) {
+				vf_id = (vf_act->id & RVU_PFVF_FUNC_MASK) + 1;
+				if (vf_id  >= hw->maxvf) {
+					errmsg = "invalid vf specified";
+					errcode = EINVAL;
+					goto err_exit;
+				}
+				pf_func &= (0xfc00);
+				pf_func = (pf_func | vf_id);
+			}
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
@@ -902,7 +925,11 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 	}
 
 	/* Set NIX_RX_ACTIONOP */
-	if (req_act & OTX2_FLOW_ACT_DROP) {
+	if (req_act & (OTX2_FLOW_ACT_PF | OTX2_FLOW_ACT_VF)) {
+		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
+		if (req_act & OTX2_FLOW_ACT_QUEUE)
+			flow->npc_action |= (uint64_t)rq << 20;
+	} else if (req_act & OTX2_FLOW_ACT_DROP) {
 		flow->npc_action = NIX_RX_ACTIONOP_DROP;
 	} else if (req_act & OTX2_FLOW_ACT_QUEUE) {
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
@@ -946,7 +973,6 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 
 set_pf_func:
 	/* Ideally AF must ensure that correct pf_func is set */
-	pf_func = otx2_pfvf_func(hw->pf, hw->vf);
 	flow->npc_action |= (uint64_t)pf_func << 4;
 
 	return 0;

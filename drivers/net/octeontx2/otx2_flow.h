@@ -52,6 +52,8 @@ enum {
 #define OTX2_FLOW_ACT_DUP     (1 << 5)
 #define OTX2_FLOW_ACT_SEC     (1 << 6)
 #define OTX2_FLOW_ACT_COUNT   (1 << 7)
+#define OTX2_FLOW_ACT_PF      (1 << 8)
+#define OTX2_FLOW_ACT_VF      (1 << 9)
 
 /* terminating actions */
 #define OTX2_FLOW_ACT_TERM    (OTX2_FLOW_ACT_DROP  | \

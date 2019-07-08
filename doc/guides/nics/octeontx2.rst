@@ -292,6 +292,10 @@ Actions:
    +----+--------------------------------+
    | 8  | RTE_FLOW_ACTION_TYPE_SECURITY  |
    +----+--------------------------------+
+   | 9  | RTE_FLOW_ACTION_TYPE_PF        |
+   +----+--------------------------------+
+   | 10 | RTE_FLOW_ACTION_TYPE_VF        |
+   +----+--------------------------------+
 
 .. _table_octeontx2_supported_egress_action_types:
 
