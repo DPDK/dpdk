@@ -600,6 +600,40 @@ npa_lf_aura_pool_pair_free(struct otx2_npa_lf *lf, uint64_t aura_handle)
 }
 
 static int
+npa_lf_aura_range_update_check(uint64_t aura_handle)
+{
+	uint64_t aura_id = npa_lf_aura_handle_to_aura(aura_handle);
+	struct otx2_npa_lf *lf = otx2_npa_lf_obj_get();
+	struct npa_aura_lim *lim = lf->aura_lim;
+	struct npa_aq_enq_req *req;
+	struct npa_aq_enq_rsp *rsp;
+	struct npa_pool_s *pool;
+	int rc;
+
+	req  = otx2_mbox_alloc_msg_npa_aq_enq(lf->mbox);
+
+	req->aura_id = aura_id;
+	req->ctype = NPA_AQ_CTYPE_POOL;
+	req->op = NPA_AQ_INSTOP_READ;
+
+	rc = otx2_mbox_process_msg(lf->mbox, (void *)&rsp);
+	if (rc) {
+		otx2_err("Failed to get pool(0x%"PRIx64") context", aura_id);
+		return rc;
+	}
+
+	pool = &rsp->pool;
+
+	if (lim[aura_id].ptr_start != pool->ptr_start ||
+		lim[aura_id].ptr_end != pool->ptr_end) {
+		otx2_err("Range update failed on pool(0x%"PRIx64")", aura_id);
+		return -ERANGE;
+	}
+
+	return 0;
+}
+
+static int
 otx2_npa_alloc(struct rte_mempool *mp)
 {
 	uint32_t block_size, block_count;
@@ -723,6 +757,9 @@ otx2_npa_populate(struct rte_mempool *mp, unsigned int max_objs, void *vaddr,
 	len -= off;
 
 	npa_lf_aura_op_range_set(mp->pool_id, iova, iova + len);
+
+	if (npa_lf_aura_range_update_check(mp->pool_id) < 0)
+		return -EBUSY;
 
 	return rte_mempool_op_populate_default(mp, max_objs, vaddr, iova, len,
 					       obj_cb, obj_cb_arg);
