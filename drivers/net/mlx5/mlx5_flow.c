@@ -1666,6 +1666,61 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 					  " defined");
 	return 0;
 }
+/**
+ * Validate GRE Key item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit flags to mark detected items.
+ * @param[in] gre_item
+ *   Pointer to gre_item
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_item_gre_key(const struct rte_flow_item *item,
+				uint64_t item_flags,
+				const struct rte_flow_item *gre_item,
+				struct rte_flow_error *error)
+{
+	const rte_be32_t *mask = item->mask;
+	int ret = 0;
+	rte_be32_t gre_key_default_mask = RTE_BE32(UINT32_MAX);
+	const struct rte_flow_item_gre *gre_spec = gre_item->spec;
+	const struct rte_flow_item_gre *gre_mask = gre_item->mask;
+
+	if (item_flags & MLX5_FLOW_LAYER_GRE_KEY)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "Multiple GRE key not support");
+	if (!(item_flags & MLX5_FLOW_LAYER_GRE))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "No preceding GRE header");
+	if (item_flags & MLX5_FLOW_LAYER_INNER)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "GRE key following a wrong item");
+	if (!gre_mask)
+		gre_mask = &rte_flow_item_gre_mask;
+	if (gre_spec && (gre_mask->c_rsvd0_ver & RTE_BE16(0x2000)) &&
+			 !(gre_spec->c_rsvd0_ver & RTE_BE16(0x2000)))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "Key bit must be on");
+
+	if (!mask)
+		mask = &gre_key_default_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&gre_key_default_mask,
+		 sizeof(rte_be32_t), error);
+	return ret;
+}
 
 /**
  * Validate GRE item.
@@ -1691,6 +1746,10 @@ mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
 	const struct rte_flow_item_gre *spec __rte_unused = item->spec;
 	const struct rte_flow_item_gre *mask = item->mask;
 	int ret;
+	const struct rte_flow_item_gre nic_mask = {
+		.c_rsvd0_ver = RTE_BE16(0xB000),
+		.protocol = RTE_BE16(UINT16_MAX),
+	};
 
 	if (target_protocol != 0xff && target_protocol != IPPROTO_GRE)
 		return rte_flow_error_set(error, EINVAL,
@@ -1710,7 +1769,7 @@ mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
 		mask = &rte_flow_item_gre_mask;
 	ret = mlx5_flow_item_acceptable
 		(item, (const uint8_t *)mask,
-		 (const uint8_t *)&rte_flow_item_gre_mask,
+		 (const uint8_t *)&nic_mask,
 		 sizeof(struct rte_flow_item_gre), error);
 	if (ret < 0)
 		return ret;

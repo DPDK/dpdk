@@ -428,7 +428,11 @@ typedef uint8_t u8;
 #define MLX5_FLD_SZ_BYTES(typ, fld) (__mlx5_bit_sz(typ, fld) / 8)
 
 struct mlx5_ifc_fte_match_set_misc_bits {
-	u8 reserved_at_0[0x8];
+	u8 gre_c_present[0x1];
+	u8 reserved_at_1[0x1];
+	u8 gre_k_present[0x1];
+	u8 gre_s_present[0x1];
+	u8 source_vhci_port[0x4];
 	u8 source_sqn[0x18];
 	u8 reserved_at_20[0x10];
 	u8 source_port[0x10];
