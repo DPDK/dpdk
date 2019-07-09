@@ -648,12 +648,3 @@ patch accepted. The general cycle for patch review and acceptance is:
      than rework of the original.
    * Trivial patches may be merged sooner than described above at the tree committer's
      discretion.
-
-DPDK Maintainers
-----------------
-
-The following are the DPDK maintainers as listed in the ``MAINTAINERS`` file
-in the DPDK root directory.
-
-.. literalinclude:: ../../../MAINTAINERS
-   :lines: 3-
