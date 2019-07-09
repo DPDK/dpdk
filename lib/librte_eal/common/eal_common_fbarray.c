@@ -1055,6 +1055,9 @@ rte_fbarray_destroy(struct rte_fbarray *arr)
 	TAILQ_REMOVE(&mem_area_tailq, tmp, next);
 	free(tmp);
 	ret = 0;
+
+	/* reset the fbarray structure */
+	memset(arr, 0, sizeof(*arr));
 out:
 	rte_spinlock_unlock(&mem_area_lock);
 	return ret;
