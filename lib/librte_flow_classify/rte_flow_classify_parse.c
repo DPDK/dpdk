@@ -103,8 +103,6 @@ classify_pattern_skip_void_item(struct rte_flow_item *items,
 			pb = pe;
 			break;
 		}
-
-		pb = pe + 1;
 	}
 	/* Copy the END item. */
 	rte_memcpy(items, pe, sizeof(struct rte_flow_item));
