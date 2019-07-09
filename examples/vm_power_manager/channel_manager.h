@@ -22,6 +22,9 @@ extern "C" {
 /* File socket directory */
 #define CHANNEL_MGR_SOCKET_PATH     "/tmp/powermonitor/"
 
+/* FIFO file name template */
+#define CHANNEL_MGR_FIFO_PATTERN_NAME   "fifo"
+
 #ifndef UNIX_PATH_MAX
 struct sockaddr_un _sockaddr_un;
 #define UNIX_PATH_MAX sizeof(_sockaddr_un.sun_path)
@@ -206,13 +209,13 @@ int add_channels(const char *vm_name, unsigned *channel_list,
 		unsigned num_channels);
 
 /**
- * Set up a fifo by which host applications can send command an policies
+ * Set up fifos by which host applications can send command an policies
  * through a fifo to the vm_power_manager
  *
  * @return
  *  - 0 for success
  */
-int add_host_channel(void);
+int add_host_channels(void);
 
 /**
  * Remove a channel definition from the channel manager. This must only be

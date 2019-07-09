@@ -51,7 +51,7 @@ static volatile unsigned run_loop = 1;
 static int global_event_fd;
 static unsigned int policy_is_set;
 static struct epoll_event *global_events_list;
-static struct policy policies[MAX_CLIENTS];
+static struct policy policies[RTE_MAX_LCORE];
 
 #ifdef USE_JANSSON
 
@@ -130,13 +130,45 @@ set_policy_mac(struct channel_packet *pkt, int idx, char *mac)
 	return 0;
 }
 
+static char*
+get_resource_name_from_chn_path(const char *channel_path)
+{
+	char *substr = NULL;
+
+	substr = strstr(channel_path, CHANNEL_MGR_FIFO_PATTERN_NAME);
+
+	return substr;
+}
 
 static int
-parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
+get_resource_id_from_vmname(const char *vm_name)
+{
+	int result = -1;
+	int off = 0;
+
+	if (vm_name == NULL)
+		return -1;
+
+	while (vm_name[off] != '\0') {
+		if (isdigit(vm_name[off]))
+			break;
+		off++;
+	}
+	result = atoi(&vm_name[off]);
+	if ((result == 0) && (vm_name[off] != '0'))
+		return -1;
+
+	return result;
+}
+
+static int
+parse_json_to_pkt(json_t *element, struct channel_packet *pkt,
+					const char *vm_name)
 {
 	const char *key;
 	json_t *value;
 	int ret;
+	int resource_id;
 
 	memset(pkt, 0, sizeof(struct channel_packet));
 
@@ -147,20 +179,23 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
 	pkt->command = PKT_POLICY;
 	pkt->core_type = CORE_TYPE_PHYSICAL;
 
+	if (vm_name == NULL) {
+		RTE_LOG(ERR, CHANNEL_MONITOR,
+			"vm_name is NULL, request rejected !\n");
+		return -1;
+	}
+
 	json_object_foreach(element, key, value) {
 		if (!strcmp(key, "policy")) {
 			/* Recurse in to get the contents of profile */
-			ret = parse_json_to_pkt(value, pkt);
+			ret = parse_json_to_pkt(value, pkt, vm_name);
 			if (ret)
 				return ret;
 		} else if (!strcmp(key, "instruction")) {
 			/* Recurse in to get the contents of instruction */
-			ret = parse_json_to_pkt(value, pkt);
+			ret = parse_json_to_pkt(value, pkt, vm_name);
 			if (ret)
 				return ret;
-		} else if (!strcmp(key, "name")) {
-			strlcpy(pkt->vm_name, json_string_value(value),
-					sizeof(pkt->vm_name));
 		} else if (!strcmp(key, "command")) {
 			char command[32];
 			strlcpy(command, json_string_value(value), 32);
@@ -223,16 +258,6 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
 						json_array_get(value, i));
 				pkt->timer_policy.quiet_hours[i] = hour;
 			}
-		} else if (!strcmp(key, "core_list")) {
-			unsigned int i;
-			size_t size = json_array_size(value);
-
-			for (i = 0; i < size; i++) {
-				int core = (int)json_integer_value(
-						json_array_get(value, i));
-				pkt->vcpu_to_control[i] = core;
-			}
-			pkt->num_vcpu = size;
 		} else if (!strcmp(key, "mac_list")) {
 			unsigned int i;
 			size_t size = json_array_size(value);
@@ -271,13 +296,21 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
 					"Invalid command received in JSON\n");
 				return -1;
 			}
-		} else if (!strcmp(key, "resource_id")) {
-			pkt->resource_id = (uint32_t)json_integer_value(value);
 		} else {
 			RTE_LOG(ERR, CHANNEL_MONITOR,
 				"Unknown key received in JSON string: %s\n",
 				key);
 		}
+
+		resource_id = get_resource_id_from_vmname(vm_name);
+		if (resource_id < 0) {
+			RTE_LOG(ERR, CHANNEL_MONITOR,
+				"Could not get resource_id from vm_name:%s\n",
+				vm_name);
+			return -1;
+		}
+		rte_strlcpy(pkt->vm_name, vm_name, VM_MAX_NAME_SZ);
+		pkt->resource_id = resource_id;
 	}
 	return 0;
 }
@@ -427,13 +460,13 @@ update_policy(struct channel_packet *pkt)
 {
 
 	unsigned int updated = 0;
-	int i;
+	unsigned int i;
 
 
 	RTE_LOG(INFO, CHANNEL_MONITOR,
 			"Applying policy for %s\n", pkt->vm_name);
 
-	for (i = 0; i < MAX_CLIENTS; i++) {
+	for (i = 0; i < RTE_DIM(policies); i++) {
 		if (strcmp(policies[i].pkt.vm_name, pkt->vm_name) == 0) {
 			/* Copy the contents of *pkt into the policy.pkt */
 			policies[i].pkt = *pkt;
@@ -451,7 +484,7 @@ update_policy(struct channel_packet *pkt)
 		}
 	}
 	if (!updated) {
-		for (i = 0; i < MAX_CLIENTS; i++) {
+		for (i = 0; i < RTE_DIM(policies); i++) {
 			if (policies[i].enabled == 0) {
 				policies[i].pkt = *pkt;
 				get_pcpu_to_control(&policies[i]);
@@ -474,13 +507,13 @@ update_policy(struct channel_packet *pkt)
 static int
 remove_policy(struct channel_packet *pkt __rte_unused)
 {
-	int i;
+	unsigned int i;
 
 	/*
 	 * Disabling the policy is simply a case of setting
 	 * enabled to 0
 	 */
-	for (i = 0; i < MAX_CLIENTS; i++) {
+	for (i = 0; i < RTE_DIM(policies); i++) {
 		if (strcmp(policies[i].pkt.vm_name, pkt->vm_name) == 0) {
 			policies[i].enabled = 0;
 			return 0;
@@ -801,6 +834,8 @@ read_json_packet(struct channel_info *chan_info)
 	int n_bytes, ret;
 	json_t *root;
 	json_error_t error;
+	const char *resource_name;
+
 
 	/* read opening brace to closing brace */
 	do {
@@ -832,13 +867,15 @@ read_json_packet(struct channel_info *chan_info)
 		root = json_loads(json_data, 0, &error);
 
 		if (root) {
+			resource_name = get_resource_name_from_chn_path(
+				chan_info->channel_path);
 			/*
 			 * Because our data is now in the json
 			 * object, we can overwrite the pkt
 			 * with a channel_packet struct, using
 			 * parse_json_to_pkt()
 			 */
-			ret = parse_json_to_pkt(root, &pkt);
+			ret = parse_json_to_pkt(root, &pkt, resource_name);
 			json_decref(root);
 			if (ret) {
 				RTE_LOG(ERR, CHANNEL_MONITOR,
@@ -895,9 +932,9 @@ run_channel_monitor(void)
 		}
 		rte_delay_us(time_period_ms*1000);
 		if (policy_is_set) {
-			int j;
+			unsigned int j;
 
-			for (j = 0; j < MAX_CLIENTS; j++) {
+			for (j = 0; j < RTE_DIM(policies); j++) {
 				if (policies[j].enabled == 1)
 					apply_policy(&policies[j]);
 			}

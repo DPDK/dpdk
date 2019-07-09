@@ -345,10 +345,22 @@ setup_channel_info(struct virtual_machine_info **vm_info_dptr,
 	return 0;
 }
 
-static void
-fifo_path(char *dst, unsigned int len)
+static int
+fifo_path(char *dst, unsigned int len, unsigned int id)
 {
-	snprintf(dst, len, "%sfifo", CHANNEL_MGR_SOCKET_PATH);
+	int cnt;
+
+	cnt = snprintf(dst, len, "%s%s%d", CHANNEL_MGR_SOCKET_PATH,
+			CHANNEL_MGR_FIFO_PATTERN_NAME, id);
+
+	if ((cnt < 0) || (cnt > (int)len - 1)) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Could not create proper "
+			"string for fifo path\n");
+
+		return -1;
+	}
+
+	return 0;
 }
 
 static int
@@ -534,42 +546,70 @@ add_channels(const char *vm_name, unsigned *channel_list,
 }
 
 int
-add_host_channel(void)
+add_host_channels(void)
 {
 	struct channel_info *chan_info;
 	char socket_path[PATH_MAX];
 	int num_channels_enabled = 0;
 	int ret;
+	struct core_info *ci;
+	struct channel_info *chan_infos[RTE_MAX_LCORE];
+	int i;
 
-	fifo_path(socket_path, sizeof(socket_path));
+	for (i = 0; i < RTE_MAX_LCORE; i++)
+		chan_infos[i] = NULL;
 
-	ret = mkfifo(socket_path, 0660);
-	if ((errno != EEXIST) && (ret < 0)) {
-		RTE_LOG(ERR, CHANNEL_MANAGER, "Cannot create fifo '%s' error: "
-				"%s\n", socket_path, strerror(errno));
+	ci = get_core_info();
+	if (ci == NULL) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Cannot allocate memory for core_info\n");
 		return 0;
 	}
 
-	if (access(socket_path, F_OK) < 0) {
-		RTE_LOG(ERR, CHANNEL_MANAGER, "Channel path '%s' error: "
-				"%s\n", socket_path, strerror(errno));
-		return 0;
-	}
-	chan_info = rte_malloc(NULL, sizeof(*chan_info), 0);
-	if (chan_info == NULL) {
-		RTE_LOG(ERR, CHANNEL_MANAGER, "Error allocating memory for "
-				"channel '%s'\n", socket_path);
-		return 0;
-	}
-	rte_strlcpy(chan_info->channel_path, socket_path, UNIX_PATH_MAX);
+	for (i = 0; i < ci->core_count; i++) {
+		if (ci->cd[i].global_enabled_cpus == 0)
+			continue;
 
-	if (setup_host_channel_info(&chan_info, 0) < 0) {
-		rte_free(chan_info);
-		return 0;
+		ret = fifo_path(socket_path, sizeof(socket_path), i);
+		if (ret < 0)
+			goto error;
+
+		ret = mkfifo(socket_path, 0660);
+		RTE_LOG(DEBUG, CHANNEL_MANAGER, "TRY CREATE fifo '%s'\n",
+			socket_path);
+		if ((errno != EEXIST) && (ret < 0)) {
+			RTE_LOG(ERR, CHANNEL_MANAGER, "Cannot create fifo '%s' error: "
+					"%s\n", socket_path, strerror(errno));
+			goto error;
+		}
+		chan_info = rte_malloc(NULL, sizeof(*chan_info), 0);
+		if (chan_info == NULL) {
+			RTE_LOG(ERR, CHANNEL_MANAGER, "Error allocating memory for "
+					"channel '%s'\n", socket_path);
+			goto error;
+		}
+		chan_infos[i] = chan_info;
+		rte_strlcpy(chan_info->channel_path, socket_path,
+				sizeof(chan_info->channel_path));
+
+		if (setup_host_channel_info(&chan_info, i) < 0) {
+			rte_free(chan_info);
+			chan_infos[i] = NULL;
+			goto error;
+		}
+		num_channels_enabled++;
 	}
-	num_channels_enabled++;
 
 	return num_channels_enabled;
+error:
+	/* Clean up the channels opened before we hit an error. */
+	for (i = 0; i < ci->core_count; i++) {
+		if (chan_infos[i] != NULL) {
+			remove_channel_from_monitor(chan_infos[i]);
+			close(chan_infos[i]->fd);
+			rte_free(chan_infos[i]);
+		}
+	}
+	return 0;
 }
 
 int

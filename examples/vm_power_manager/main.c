@@ -434,7 +434,7 @@ main(int argc, char **argv)
 		return -1;
 	}
 
-	add_host_channel();
+	add_host_channels();
 
 	printf("Running core monitor on lcore id %d\n", lcore_id);
 	rte_eal_remote_launch(run_core_monitor, NULL, lcore_id);

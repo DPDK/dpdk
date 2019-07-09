@@ -380,9 +380,16 @@ parsing functionality will not be present in the app.
 
 Sending a command or policy to the power manager application is achieved by
 simply opening a fifo file, writing a JSON string to that fifo, and closing
-the file.
+the file. In actual implementation every core has own dedicated fifo[0..n],
+where n is number of the last available core.
+Having a dedicated fifo file per core allows using standard filesystem permissions
+to ensure a given container can only write JSON commands into fifos it is allowed
+to use.
 
-The fifo is at /tmp/powermonitor/fifo
+The fifo is at /tmp/powermonitor/fifo[0..n]
+
+For example all cmds put to the /tmp/powermonitor/fifo7, will have
+effect only on CPU[7].
 
 The JSON string can be a policy or instruction, and takes the following
 format:
@@ -403,19 +410,6 @@ The pairs are the format of standard JSON name-value pairs. The value type
 varies between the different name/value pairs, and may be integers, strings,
 arrays, etc. Examples of policies follow later in this document. The allowed
 names and value types are as follows:
-
-
-:Pair Name: "name"
-:Description: Name of the VM or Host. Allows the parser to associate the
-  policy with the relevant VM or Host OS.
-:Type: string
-:Values: any valid string
-:Required: yes
-:Example:
-
-    .. code-block:: javascript
-
-      "name", "ubuntu2"
 
 
 :Pair Name: "command"
@@ -509,17 +503,6 @@ names and value types are as follows:
 
     "max_packet_thresh": 500000
 
-:Pair Name: "core_list"
-:Description: The cores to which to apply the policy.
-:Type: array of integers
-:Values: array with list of virtual CPUs.
-:Required: only policy CREATE/DESTROY
-:Example:
-
-  .. code-block:: javascript
-
-    "core_list":[ 10, 11 ]
-
 :Pair Name: "workload"
 :Description: When our policy is of type WORKLOAD, we need to specify how
   heavy our workload is.
@@ -566,17 +549,6 @@ names and value types are as follows:
 
     "unit", "SCALE_MAX"
 
-:Pair Name: "resource_id"
-:Description: The core to which to apply the power command.
-:Type: integer
-:Values: valid core id for VM or host OS.
-:Required: only POWER instruction
-:Example:
-
-  .. code-block:: javascript
-
-    "resource_id": 10
-
 JSON API Examples
 ~~~~~~~~~~~~~~~~~
 
@@ -585,12 +557,10 @@ Profile create example:
   .. code-block:: javascript
 
     {"policy": {
-      "name": "ubuntu",
       "command": "create",
       "policy_type": "TIME",
       "busy_hours":[ 17, 18, 19, 20, 21, 22, 23 ],
-      "quiet_hours":[ 2, 3, 4, 5, 6 ],
-      "core_list":[ 11 ]
+      "quiet_hours":[ 2, 3, 4, 5, 6 ]
     }}
 
 Profile destroy example:
@@ -598,8 +568,7 @@ Profile destroy example:
   .. code-block:: javascript
 
     {"policy": {
-      "name": "ubuntu",
-      "command": "destroy",
+      "command": "destroy"
     }}
 
 Power command example:
@@ -607,18 +576,16 @@ Power command example:
   .. code-block:: javascript
 
     {"instruction": {
-      "name": "ubuntu",
       "command": "power",
-      "unit": "SCALE_MAX",
-      "resource_id": 10
+      "unit": "SCALE_MAX"
     }}
 
 To send a JSON string to the Power Manager application, simply paste the
-example JSON string into a text file and cat it into the fifo:
+example JSON string into a text file and cat it into the proper fifo:
 
   .. code-block:: console
 
-    cat file.json >/tmp/powermonitor/fifo
+    cat file.json >/tmp/powermonitor/fifo[0..n]
 
 The console of the Power Manager application should indicate the command that
 was just received via the fifo.
