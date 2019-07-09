@@ -169,6 +169,19 @@ New Features
   of via software, reducing cycles spent copying large blocks of data in
   applications.
 
+* **Added Marvell OCTEON TX2 drivers.**
+
+  Added the new ``ethdev``, ``eventdev``, ``mempool``, ``eventdev Rx adapter``,
+  ``eventdev Tx adapter``, ``eventdev Timer adapter`` and ``rawdev DMA``
+  drivers for various HW coprocessors available in ``OCTEON TX2`` SoC.
+
+  See :doc:`../platform/octeontx2` and driver informations:
+
+  * :doc:`../nics/octeontx2`
+  * :doc:`../mempool/octeontx2`
+  * :doc:`../eventdevs/octeontx2`
+  * :doc:`../rawdevs/octeontx2_dma`
+
 * **Introduced NTB PMD.**
 
   Added a PMD for Intel NTB (Non-transparent Bridge). This PMD implemented
