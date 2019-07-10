@@ -2312,12 +2312,13 @@ void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 
 		bnxt_clear_hwrm_vnic_filters(bp, vnic);
 
-		if (!BNXT_CHIP_THOR(bp)) {
+		if (BNXT_CHIP_THOR(bp)) {
 			for (j = 0; j < vnic->num_lb_ctxts; j++) {
 				bnxt_hwrm_vnic_ctx_free(bp, vnic,
 							vnic->fw_grp_ids[j]);
 				vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
 			}
+			vnic->num_lb_ctxts = 0;
 		} else {
 			bnxt_hwrm_vnic_ctx_free(bp, vnic, vnic->rss_rule);
 			vnic->rss_rule = INVALID_HW_RING_ID;
