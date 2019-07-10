@@ -274,6 +274,13 @@ struct ice_pf {
 };
 
 /**
+ * Cache devargs parse result.
+ */
+struct ice_devargs {
+	int safe_mode_support;
+};
+
+/**
  * Structure to store private data for each PF/VF instance.
  */
 struct ice_adapter {
@@ -286,6 +293,7 @@ struct ice_adapter {
 	/* ptype mapping table */
 	uint32_t ptype_tbl[ICE_MAX_PKT_TYPE] __rte_cache_min_aligned;
 	bool is_safe_mode;
+	struct ice_devargs devargs;
 };
 
 struct ice_vsi_vlan_pvid_info {

@@ -17,6 +17,14 @@
 #include "ice_rxtx.h"
 #include "ice_switch_filter.h"
 
+/* devargs */
+#define ICE_SAFE_MODE_SUPPORT_ARG "safe-mode-support"
+
+static const char * const ice_valid_args[] = {
+	ICE_SAFE_MODE_SUPPORT_ARG,
+	NULL
+};
+
 #define ICE_DFLT_OUTER_TAG_TYPE ICE_AQ_VSI_OUTER_TAG_VLAN_9100
 #define ICE_DFLT_PKG_FILE "/lib/firmware/intel/ice/ddp/ice.pkg"
 
@@ -1334,6 +1342,50 @@ ice_base_queue_get(struct ice_pf *pf)
 }
 
 static int
+parse_bool(const char *key, const char *value, void *args)
+{
+	int *i = (int *)args;
+	char *end;
+	int num;
+
+	num = strtoul(value, &end, 10);
+
+	if (num != 0 && num != 1) {
+		PMD_DRV_LOG(WARNING, "invalid value:\"%s\" for key:\"%s\", "
+			"value must be 0 or 1",
+			value, key);
+		return -1;
+	}
+
+	*i = num;
+	return 0;
+}
+
+static int ice_parse_devargs(struct rte_eth_dev *dev)
+{
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct rte_devargs *devargs = dev->device->devargs;
+	struct rte_kvargs *kvlist;
+	int ret;
+
+	if (devargs == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, ice_valid_args);
+	if (kvlist == NULL) {
+		PMD_INIT_LOG(ERR, "Invalid kvargs key\n");
+		return -EINVAL;
+	}
+
+	ret = rte_kvargs_process(kvlist, ICE_SAFE_MODE_SUPPORT_ARG,
+				 &parse_bool, &ad->devargs.safe_mode_support);
+
+	rte_kvargs_free(kvlist);
+	return ret;
+}
+
+static int
 ice_dev_init(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev;
@@ -1366,6 +1418,12 @@ ice_dev_init(struct rte_eth_dev *dev)
 	hw->bus.device = pci_dev->addr.devid;
 	hw->bus.func = pci_dev->addr.function;
 
+	ret = ice_parse_devargs(dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to parse devargs");
+		return -EINVAL;
+	}
+
 	ice_init_controlq_parameter(hw);
 
 	ret = ice_init_hw(hw);
@@ -1376,8 +1434,14 @@ ice_dev_init(struct rte_eth_dev *dev)
 
 	ret = ice_load_pkg(dev);
 	if (ret) {
+		if (ad->devargs.safe_mode_support == 0) {
+			PMD_INIT_LOG(ERR, "Failed to load the DDP package,"
+					"Use safe-mode-support=1 to enter Safe Mode");
+			return ret;
+		}
+
 		PMD_INIT_LOG(WARNING, "Failed to load the DDP package,"
-				"Entering Safe Mode");
+					"Entering Safe Mode");
 		ad->is_safe_mode = 1;
 	}
 
@@ -3692,6 +3756,8 @@ static struct rte_pci_driver rte_ice_pmd = {
 RTE_PMD_REGISTER_PCI(net_ice, rte_ice_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ice, pci_id_ice_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ice, "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_ice,
+			      ICE_SAFE_MODE_SUPPORT_ARG "=<0|1>");
 
 RTE_INIT(ice_init_log)
 {
