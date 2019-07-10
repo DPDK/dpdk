@@ -397,8 +397,7 @@ static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 }
 
 static int bnxt_alloc_nq_ring(struct bnxt *bp, int queue_index,
-			      struct bnxt_cp_ring_info *nqr,
-			      bool rx)
+			      struct bnxt_cp_ring_info *nqr)
 {
 	struct bnxt_ring *nq_ring = nqr->cp_ring_struct;
 	uint8_t ring_type;
@@ -413,9 +412,6 @@ static int bnxt_alloc_nq_ring(struct bnxt *bp, int queue_index,
 				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE);
 	if (rc)
 		return rc;
-
-	if (rx)
-		bp->grp_info[queue_index].cp_fw_ring_id = nq_ring->fw_ring_id;
 
 	bnxt_set_db(bp, &nqr->cp_db, ring_type, queue_index,
 		    nq_ring->fw_ring_id);
@@ -443,7 +439,8 @@ static int bnxt_alloc_rx_ring(struct bnxt *bp, int queue_index)
 		return rc;
 
 	rxr->rx_prod = 0;
-	bp->grp_info[queue_index].rx_fw_ring_id = ring->fw_ring_id;
+	if (BNXT_HAS_RING_GRPS(bp))
+		bp->grp_info[queue_index].rx_fw_ring_id = ring->fw_ring_id;
 	bnxt_set_db(bp, &rxr->rx_db, ring_type, queue_index, ring->fw_ring_id);
 	bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
 
@@ -478,7 +475,8 @@ static int bnxt_alloc_rx_agg_ring(struct bnxt *bp, int queue_index)
 		return rc;
 
 	rxr->ag_prod = 0;
-	bp->grp_info[queue_index].ag_fw_ring_id = ring->fw_ring_id;
+	if (BNXT_HAS_RING_GRPS(bp))
+		bp->grp_info[queue_index].ag_fw_ring_id = ring->fw_ring_id;
 	bnxt_set_db(bp, &rxr->ag_db, ring_type, map_idx, ring->fw_ring_id);
 	bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
 
@@ -495,15 +493,17 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	int rc = 0;
 
 	if (BNXT_HAS_NQ(bp)) {
-		if (bnxt_alloc_nq_ring(bp, queue_index, nqr, true))
+		if (bnxt_alloc_nq_ring(bp, queue_index, nqr))
 			goto err_out;
 	}
 
 	if (bnxt_alloc_cmpl_ring(bp, queue_index, cpr, nqr))
 		goto err_out;
 
-	bp->grp_info[queue_index].fw_stats_ctx = cpr->hw_stats_ctx_id;
-	bp->grp_info[queue_index].cp_fw_ring_id = cp_ring->fw_ring_id;
+	if (BNXT_HAS_RING_GRPS(bp)) {
+		bp->grp_info[queue_index].fw_stats_ctx = cpr->hw_stats_ctx_id;
+		bp->grp_info[queue_index].cp_fw_ring_id = cp_ring->fw_ring_id;
+	}
 
 	if (!queue_index) {
 		/*
@@ -570,15 +570,17 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 
 		if (BNXT_HAS_NQ(bp)) {
-			if (bnxt_alloc_nq_ring(bp, i, nqr, true))
+			if (bnxt_alloc_nq_ring(bp, i, nqr))
 				goto err_out;
 		}
 
 		if (bnxt_alloc_cmpl_ring(bp, i, cpr, nqr))
 			goto err_out;
 
-		bp->grp_info[i].fw_stats_ctx = cpr->hw_stats_ctx_id;
-		bp->grp_info[i].cp_fw_ring_id = cp_ring->fw_ring_id;
+		if (BNXT_HAS_RING_GRPS(bp)) {
+			bp->grp_info[i].fw_stats_ctx = cpr->hw_stats_ctx_id;
+			bp->grp_info[i].cp_fw_ring_id = cp_ring->fw_ring_id;
+		}
 
 		bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
 
@@ -623,7 +625,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		unsigned int idx = i + bp->rx_cp_nr_rings;
 
 		if (BNXT_HAS_NQ(bp)) {
-			if (bnxt_alloc_nq_ring(bp, idx, nqr, false))
+			if (bnxt_alloc_nq_ring(bp, idx, nqr))
 				goto err_out;
 		}
 

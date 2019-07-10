@@ -463,9 +463,11 @@ static int bnxt_init_nic(struct bnxt *bp)
 {
 	int rc;
 
-	rc = bnxt_init_ring_grps(bp);
-	if (rc)
-		return rc;
+	if (BNXT_HAS_RING_GRPS(bp)) {
+		rc = bnxt_init_ring_grps(bp);
+		if (rc)
+			return rc;
+	}
 
 	bnxt_init_vnics(bp);
 	bnxt_init_filters(bp);
@@ -3861,14 +3863,17 @@ skip_ext_stats:
 		goto error_free;
 	}
 
-	bp->grp_info = rte_zmalloc("bnxt_grp_info",
-				sizeof(*bp->grp_info) * bp->max_ring_grps, 0);
-	if (!bp->grp_info) {
-		PMD_DRV_LOG(ERR,
-			"Failed to alloc %zu bytes to store group info table\n",
-			sizeof(*bp->grp_info) * bp->max_ring_grps);
-		rc = -ENOMEM;
-		goto error_free;
+	if (BNXT_HAS_RING_GRPS(bp)) {
+		bp->grp_info = rte_zmalloc("bnxt_grp_info",
+					sizeof(*bp->grp_info) *
+						bp->max_ring_grps, 0);
+		if (!bp->grp_info) {
+			PMD_DRV_LOG(ERR,
+				"Failed to alloc %zu bytes for grp info tbl.\n",
+				sizeof(*bp->grp_info) * bp->max_ring_grps);
+			rc = -ENOMEM;
+			goto error_free;
+		}
 	}
 
 	/* Forward all requests if firmware is new enough */
