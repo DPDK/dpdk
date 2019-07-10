@@ -604,11 +604,11 @@ create_mp_ring_vdev(void)
 		mbuf_pool = rte_mempool_lookup(mempool_name);
 		if (mbuf_pool == NULL) {
 			/* create mempool */
-			mbuf_pool = rte_pktmbuf_pool_create(mempool_name,
+			mbuf_pool = rte_pktmbuf_pool_create_by_ops(mempool_name,
 					pt->total_num_mbufs,
 					MBUF_POOL_CACHE_SIZE, 0,
 					pt->mbuf_data_size,
-					rte_socket_id());
+					rte_socket_id(), "ring_mp_mc");
 			if (mbuf_pool == NULL) {
 				cleanup_rings();
 				rte_exit(EXIT_FAILURE,
