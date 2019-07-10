@@ -2100,9 +2100,16 @@ update_telemetry(__attribute__((unused)) struct rte_timer *tim,
 		rte_spinlock_unlock(&stats[lcore_id].telemetry_lock);
 	}
 
-	values[0] = round(app_eps/count);
-	values[1] = round(app_fps/count);
-	values[2] = round(app_br/count);
+	if (count > 0) {
+		values[0] = app_eps/count;
+		values[1] = app_fps/count;
+		values[2] = app_br/count;
+	} else {
+		values[0] = 0;
+		values[1] = 0;
+		values[2] = 0;
+	}
+
 	ret = rte_metrics_update_values(RTE_METRICS_GLOBAL, telstats_index,
 					values, RTE_DIM(values));
 	if (ret < 0)
