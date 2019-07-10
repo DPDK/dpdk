@@ -1282,6 +1282,7 @@ mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
 			     struct rte_flow_error *error)
 {
 	const struct rte_flow_item_ipv4 *mask = item->mask;
+	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 nic_mask = {
 		.hdr = {
 			.src_addr = RTE_BE32(0xffffffff),
@@ -1296,7 +1297,24 @@ mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
 	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
 				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
+	uint8_t next_proto = 0xFF;
 
+	if (item_flags & MLX5_FLOW_LAYER_IPIP) {
+		if (mask && spec)
+			next_proto = mask->hdr.next_proto_id &
+				     spec->hdr.next_proto_id;
+		if (next_proto == IPPROTO_IPIP || next_proto == IPPROTO_IPV6)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "multiple tunnel "
+						  "not supported");
+	}
+	if (item_flags & MLX5_FLOW_LAYER_IPV6_ENCAP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "wrong tunnel type - IPv6 specified "
+					  "but IPv4 item provided");
 	if (item_flags & l3m)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -1346,6 +1364,7 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 			     struct rte_flow_error *error)
 {
 	const struct rte_flow_item_ipv6 *mask = item->mask;
+	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 nic_mask = {
 		.hdr = {
 			.src_addr =
@@ -1365,7 +1384,23 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
 				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
+	uint8_t next_proto = 0xFF;
 
+	if (item_flags & MLX5_FLOW_LAYER_IPV6_ENCAP) {
+		if (mask && spec)
+			next_proto = mask->hdr.proto & spec->hdr.proto;
+		if (next_proto == IPPROTO_IPIP || next_proto == IPPROTO_IPV6)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "multiple tunnel "
+						  "not supported");
+	}
+	if (item_flags & MLX5_FLOW_LAYER_IPIP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "wrong tunnel type - IPv4 specified "
+					  "but IPv6 item provided");
 	if (item_flags & l3m)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,

@@ -141,6 +141,39 @@ struct field_modify_info modify_tcp[] = {
 	{0, 0, 0},
 };
 
+static void
+mlx5_flow_tunnel_ip_check(const struct rte_flow_item *item, uint64_t *flags)
+{
+	uint8_t next_protocol = 0xFF;
+
+	if (item->mask != NULL) {
+		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			next_protocol =
+				((const struct rte_flow_item_ipv4 *)
+				 (item->spec))->hdr.next_proto_id;
+			next_protocol &=
+				((const struct rte_flow_item_ipv4 *)
+				 (item->mask))->hdr.next_proto_id;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			next_protocol =
+				((const struct rte_flow_item_ipv6 *)
+				 (item->spec))->hdr.proto;
+			next_protocol &=
+				((const struct rte_flow_item_ipv6 *)
+				 (item->mask))->hdr.proto;
+			break;
+		default:
+			break;
+		}
+	}
+	if (next_protocol == IPPROTO_IPIP)
+		*flags |= MLX5_FLOW_LAYER_IPIP;
+	if (next_protocol == IPPROTO_IPV6)
+		*flags |= MLX5_FLOW_LAYER_IPV6_ENCAP;
+}
+
 /**
  * Acquire the synchronizing object to protect multithreaded access
  * to shared dv context. Lock occurs only if context is actually
@@ -2356,6 +2389,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				/* Reset for inner layer. */
 				next_protocol = 0xff;
 			}
+			mlx5_flow_tunnel_ip_check(items, &last_item);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
@@ -2377,6 +2411,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				/* Reset for inner layer. */
 				next_protocol = 0xff;
 			}
+			mlx5_flow_tunnel_ip_check(items, &last_item);
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = mlx5_flow_validate_item_tcp
@@ -4427,6 +4462,7 @@ cnt_err:
 					 MLX5_IPV4_IBV_RX_HASH);
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
 					     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+			mlx5_flow_tunnel_ip_check(items, &last_item);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			flow_dv_translate_item_ipv6(match_mask, match_value,
@@ -4439,6 +4475,7 @@ cnt_err:
 					 MLX5_IPV6_IBV_RX_HASH);
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
 					     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			mlx5_flow_tunnel_ip_check(items, &last_item);
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			flow_dv_translate_item_tcp(match_mask, match_value,

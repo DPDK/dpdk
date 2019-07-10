@@ -76,7 +76,7 @@ Features
 - RX interrupts.
 - Statistics query including Basic, Extended and per queue.
 - Rx HW timestamp.
-- Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE, MPLSoGRE, MPLSoUDP.
+- Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE, MPLSoGRE, MPLSoUDP, IP-in-IP.
 - Tunnel HW offloads: packet type, inner/outer RSS, IP and UDP checksum verification.
 - NIC HW offloads: encapsulation (vxlan, gre, mplsoudp, mplsogre), NAT, routing, TTL
   increment/decrement, count, drop, mark. For details please see :ref:`Supported hardware offloads using rte_flow API`.
@@ -539,6 +539,19 @@ Firmware configuration
 
      mlxconfig -d <mst device> query | grep FLEX_PARSER_PROFILE_ENABLE
      FLEX_PARSER_PROFILE_ENABLE         2
+
+- IP-in-IP tunnel enable
+
+   .. code-block:: console
+
+     mlxconfig -d <mst device> set FLEX_PARSER_PROFILE_ENABLE=0
+
+  Verify configurations are set:
+
+   .. code-block:: console
+
+     mlxconfig -d <mst device> query | grep FLEX_PARSER_PROFILE_ENABLE
+     FLEX_PARSER_PROFILE_ENABLE          0
 
 Prerequisites
 -------------
