@@ -49,14 +49,6 @@ Please note that enabling debugging options may affect system performance.
 Runtime Config Options
 ~~~~~~~~~~~~~~~~~~~~~~
 
-- ``Maximum Number of Queue Pairs``
-
-  The maximum number of queue pairs is decided by HW. If not configured, APP
-  uses the number from HW. Users can check the number by calling the API
-  ``rte_eth_dev_info_get``.
-  If users want to limit the number of queues, they can set a smaller number
-  using EAL parameter like ``max_queue_pair_num=n``.
-
 
 Driver compilation and testing
 ------------------------------

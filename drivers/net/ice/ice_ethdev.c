@@ -17,7 +17,6 @@
 #include "ice_rxtx.h"
 #include "ice_switch_filter.h"
 
-#define ICE_MAX_QP_NUM "max_queue_pair_num"
 #define ICE_DFLT_OUTER_TAG_TYPE ICE_AQ_VSI_OUTER_TAG_VLAN_9100
 #define ICE_DFLT_PKG_FILE "/lib/firmware/intel/ice/ddp/ice.pkg"
 
@@ -248,59 +247,6 @@ ice_init_controlq_parameter(struct ice_hw *hw)
 	hw->mailboxq.num_sq_entries = ICE_MAILBOXQ_LEN;
 	hw->mailboxq.rq_buf_size = ICE_MAILBOXQ_BUF_SZ;
 	hw->mailboxq.sq_buf_size = ICE_MAILBOXQ_BUF_SZ;
-}
-
-static int
-ice_check_qp_num(const char *key, const char *qp_value,
-		 __rte_unused void *opaque)
-{
-	char *end = NULL;
-	int num = 0;
-
-	while (isblank(*qp_value))
-		qp_value++;
-
-	num = strtoul(qp_value, &end, 10);
-
-	if (!num || (*end == '-') || errno) {
-		PMD_DRV_LOG(WARNING, "invalid value:\"%s\" for key:\"%s\", "
-			    "value must be > 0",
-			    qp_value, key);
-		return -1;
-	}
-
-	return num;
-}
-
-static int
-ice_config_max_queue_pair_num(struct rte_devargs *devargs)
-{
-	struct rte_kvargs *kvlist;
-	const char *queue_num_key = ICE_MAX_QP_NUM;
-	int ret;
-
-	if (!devargs)
-		return 0;
-
-	kvlist = rte_kvargs_parse(devargs->args, NULL);
-	if (!kvlist)
-		return 0;
-
-	if (!rte_kvargs_count(kvlist, queue_num_key)) {
-		rte_kvargs_free(kvlist);
-		return 0;
-	}
-
-	if (rte_kvargs_process(kvlist, queue_num_key,
-			       ice_check_qp_num, NULL) < 0) {
-		rte_kvargs_free(kvlist);
-		return 0;
-	}
-	ret = rte_kvargs_process(kvlist, queue_num_key,
-				 ice_check_qp_num, NULL);
-	rte_kvargs_free(kvlist);
-
-	return ret;
 }
 
 static int
@@ -1128,13 +1074,9 @@ ice_pf_sw_init(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 
-	if (ice_config_max_queue_pair_num(dev->device->devargs) > 0)
-		pf->lan_nb_qp_max =
-			ice_config_max_queue_pair_num(dev->device->devargs);
-	else
-		pf->lan_nb_qp_max =
-			(uint16_t)RTE_MIN(hw->func_caps.common_cap.num_txq,
-					  hw->func_caps.common_cap.num_rxq);
+	pf->lan_nb_qp_max =
+		(uint16_t)RTE_MIN(hw->func_caps.common_cap.num_txq,
+				  hw->func_caps.common_cap.num_rxq);
 
 	pf->lan_nb_qps = pf->lan_nb_qp_max;
 
@@ -3750,8 +3692,6 @@ static struct rte_pci_driver rte_ice_pmd = {
 RTE_PMD_REGISTER_PCI(net_ice, rte_ice_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ice, pci_id_ice_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ice, "* igb_uio | uio_pci_generic | vfio-pci");
-RTE_PMD_REGISTER_PARAM_STRING(net_ice,
-			      ICE_MAX_QP_NUM "=<int>");
 
 RTE_INIT(ice_init_log)
 {
