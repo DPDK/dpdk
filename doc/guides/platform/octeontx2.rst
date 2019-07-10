@@ -214,54 +214,54 @@ The file structure under ``/sys/kernel/debug`` is as follows
 .. code-block:: console
 
         octeontx2/
-        ├── cgx
-        │   ├── cgx0
-        │   │   └── lmac0
-        │   │       └── stats
-        │   ├── cgx1
-        │   │   ├── lmac0
-        │   │   │   └── stats
-        │   │   └── lmac1
-        │   │       └── stats
-        │   └── cgx2
-        │       └── lmac0
-        │           └── stats
-        ├── cpt
-        │   ├── cpt_engines_info
-        │   ├── cpt_engines_sts
-        │   ├── cpt_err_info
-        │   ├── cpt_lfs_info
-        │   └── cpt_pc
-        ├──── nix
-        │   ├── cq_ctx
-        │   ├── ndc_rx_cache
-        │   ├── ndc_rx_hits_miss
-        │   ├── ndc_tx_cache
-        │   ├── ndc_tx_hits_miss
-        │   ├── qsize
-        │   ├── rq_ctx
-        │   ├── sq_ctx
-        │   └── tx_stall_hwissue
-        ├── npa
-        │   ├── aura_ctx
-        │   ├── ndc_cache
-        │   ├── ndc_hits_miss
-        │   ├── pool_ctx
-        │   └── qsize
-        ├── npc
-        │    ├── mcam_info
-        │    └── rx_miss_act_stats
-        ├── rsrc_alloc
-        └── sso
-             ├── hws
-             │   └── sso_hws_info
-             └── hwgrp
-                 ├── sso_hwgrp_aq_thresh
-                 ├── sso_hwgrp_iaq_walk
-                 ├── sso_hwgrp_pc
-                 ├── sso_hwgrp_free_list_walk
-                 ├── sso_hwgrp_ient_walk
-                 └── sso_hwgrp_taq_walk
+        |-- cgx
+        |   |-- cgx0
+        |   |   '-- lmac0
+        |   |       '-- stats
+        |   |-- cgx1
+        |   |   |-- lmac0
+        |   |   |   '-- stats
+        |   |   '-- lmac1
+        |   |       '-- stats
+        |   '-- cgx2
+        |       '-- lmac0
+        |           '-- stats
+        |-- cpt
+        |   |-- cpt_engines_info
+        |   |-- cpt_engines_sts
+        |   |-- cpt_err_info
+        |   |-- cpt_lfs_info
+        |   '-- cpt_pc
+        |---- nix
+        |   |-- cq_ctx
+        |   |-- ndc_rx_cache
+        |   |-- ndc_rx_hits_miss
+        |   |-- ndc_tx_cache
+        |   |-- ndc_tx_hits_miss
+        |   |-- qsize
+        |   |-- rq_ctx
+        |   |-- sq_ctx
+        |   '-- tx_stall_hwissue
+        |-- npa
+        |   |-- aura_ctx
+        |   |-- ndc_cache
+        |   |-- ndc_hits_miss
+        |   |-- pool_ctx
+        |   '-- qsize
+        |-- npc
+        |    |-- mcam_info
+        |    '-- rx_miss_act_stats
+        |-- rsrc_alloc
+        '-- sso
+             |-- hws
+             |   '-- sso_hws_info
+             '-- hwgrp
+                 |-- sso_hwgrp_aq_thresh
+                 |-- sso_hwgrp_iaq_walk
+                 |-- sso_hwgrp_pc
+                 |-- sso_hwgrp_free_list_walk
+                 |-- sso_hwgrp_ient_walk
+                 '-- sso_hwgrp_taq_walk
 
 RVU block LF allocation:
 
