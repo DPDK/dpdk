@@ -248,8 +248,6 @@ static const struct eth_dev_ops ops = {
 	.mac_addr_add = eth_mac_addr_add,
 };
 
-static struct rte_vdev_driver pmd_ring_drv;
-
 static int
 do_eth_dev_ring_create(const char *name,
 		struct rte_ring * const rx_queues[],
