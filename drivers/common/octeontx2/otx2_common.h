@@ -69,12 +69,9 @@ extern int otx2_logtype_tm;
 extern int otx2_logtype_tim;
 extern int otx2_logtype_dpi;
 
-#define OTX2_CLNRM  "\x1b[0m"
-#define OTX2_CLRED  "\x1b[31m"
-
-#define otx2_err(fmt, args...)						\
-	RTE_LOG(ERR, PMD, ""OTX2_CLRED"%s():%u " fmt OTX2_CLNRM"\n",	\
-				__func__, __LINE__, ## args)
+#define otx2_err(fmt, args...)			\
+	RTE_LOG(ERR, PMD, "%s():%u " fmt "\n",	\
+		__func__, __LINE__, ## args)
 
 #define otx2_info(fmt, args...)						\
 	RTE_LOG(INFO, PMD, fmt"\n", ## args)
