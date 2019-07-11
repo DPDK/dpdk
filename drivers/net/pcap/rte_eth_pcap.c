@@ -349,7 +349,6 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 					mbuf->pkt_len,
 					RTE_ETHER_MAX_JUMBO_FRAME_LEN);
 
-				rte_pktmbuf_free(mbuf);
 				break;
 			}
 		}
@@ -435,7 +434,6 @@ eth_pcap_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 					mbuf->pkt_len,
 					RTE_ETHER_MAX_JUMBO_FRAME_LEN);
 
-				rte_pktmbuf_free(mbuf);
 				break;
 			}
 		}
