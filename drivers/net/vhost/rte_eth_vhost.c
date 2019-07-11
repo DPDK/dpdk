@@ -1199,8 +1199,6 @@ static const struct eth_dev_ops ops = {
 	.rx_queue_intr_disable = eth_rxq_intr_disable,
 };
 
-static struct rte_vdev_driver pmd_vhost_drv;
-
 static int
 eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	int16_t queues, const unsigned int numa_node, uint64_t flags)
