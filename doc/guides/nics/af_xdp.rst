@@ -56,4 +56,4 @@ The following example will set up an af_xdp interface in DPDK:
 
 .. code-block:: console
 
-    --vdev net_af_xdp,iface=ens786f1,queue=0
+    --vdev net_af_xdp,iface=ens786f1
