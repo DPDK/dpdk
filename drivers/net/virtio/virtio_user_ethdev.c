@@ -441,8 +441,6 @@ get_integer_arg(const char *key __rte_unused,
 	return 0;
 }
 
-static struct rte_vdev_driver virtio_user_driver;
-
 static struct rte_eth_dev *
 virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 {
