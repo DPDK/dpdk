@@ -490,8 +490,6 @@ static const struct eth_dev_ops ops = {
 	.rss_hash_conf_get = eth_rss_hash_conf_get
 };
 
-static struct rte_vdev_driver pmd_null_drv;
-
 static int
 eth_dev_null_create(struct rte_vdev_device *dev,
 		unsigned packet_size,
