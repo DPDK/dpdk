@@ -37,9 +37,6 @@ static uint16_t skeldev_init_once;
 /**< Rawdev Skeleton dummy driver name */
 #define SKELETON_PMD_RAWDEV_NAME rawdev_skeleton
 
-/**< Skeleton rawdev driver object */
-static struct rte_vdev_driver skeleton_pmd_drv;
-
 struct queue_buffers {
 	void *bufs[SKELETON_QUEUE_MAX_DEPTH];
 };
