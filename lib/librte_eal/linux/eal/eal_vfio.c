@@ -1445,6 +1445,7 @@ vfio_spapr_create_new_dma_window(int vfio_container_fd,
 	/* create new DMA window */
 	ret = ioctl(vfio_container_fd, VFIO_IOMMU_SPAPR_TCE_CREATE, create);
 	if (ret) {
+#ifdef VFIO_IOMMU_SPAPR_INFO_DDW
 		/* try possible page_shift and levels for workaround */
 		uint32_t levels;
 
@@ -1463,6 +1464,7 @@ vfio_spapr_create_new_dma_window(int vfio_container_fd,
 			if (!ret)
 				break;
 		}
+#endif
 		if (ret) {
 			RTE_LOG(ERR, EAL, "  cannot create new DMA window, "
 					"error %i (%s)\n", errno, strerror(errno));
