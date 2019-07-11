@@ -28,6 +28,19 @@ test_metrics_init(void)
 	return TEST_SUCCESS;
 }
 
+/* Deinitialize metric module. This function must be called
+ * from a primary process after metrics usage is over
+ */
+static int
+test_metrics_deinitialize(void)
+{
+	int err = 0;
+	err = rte_metrics_deinit();
+	TEST_ASSERT(err == 0, "%s, %d", __func__, __LINE__);
+
+	return TEST_SUCCESS;
+}
+
  /* Test Case to check failures when memzone init is not done */
 static int
 test_metrics_without_init(void)
@@ -300,6 +313,10 @@ static struct unit_test_suite metrics_testsuite  = {
 		 * arraylist, count size
 		 */
 		TEST_CASE(test_metrics_get_values),
+
+		/* TEST CASE 8: Test to unregister metrics*/
+		TEST_CASE(test_metrics_deinitialize),
+
 		TEST_CASES_END()
 	}
 };
