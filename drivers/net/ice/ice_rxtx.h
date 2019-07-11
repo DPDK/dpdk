@@ -46,7 +46,7 @@ struct ice_rx_entry {
 struct ice_rx_queue {
 	struct rte_mempool *mp; /* mbuf pool to populate RX ring */
 	volatile union ice_rx_desc *rx_ring;/* RX ring virtual address */
-	uint64_t rx_ring_phys_addr; /* RX ring DMA address */
+	rte_iova_t rx_ring_dma; /* RX ring DMA address */
 	struct ice_rx_entry *sw_ring; /* address of RX soft ring */
 	uint16_t nb_rx_desc; /* number of RX descriptors */
 	uint16_t rx_free_thresh; /* max free RX desc to hold */
@@ -87,7 +87,7 @@ struct ice_tx_entry {
 
 struct ice_tx_queue {
 	uint16_t nb_tx_desc; /* number of TX descriptors */
-	uint64_t tx_ring_phys_addr; /* TX ring DMA address */
+	rte_iova_t tx_ring_dma; /* TX ring DMA address */
 	volatile struct ice_tx_desc *tx_ring; /* TX ring virtual address */
 	struct ice_tx_entry *sw_ring; /* virtual address of SW ring */
 	uint16_t tx_tail; /* current value of tail register */

@@ -70,7 +70,7 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 
 	memset(&rx_ctx, 0, sizeof(rx_ctx));
 
-	rx_ctx.base = rxq->rx_ring_phys_addr / ICE_QUEUE_BASE_ADDR_UNIT;
+	rx_ctx.base = rxq->rx_ring_dma / ICE_QUEUE_BASE_ADDR_UNIT;
 	rx_ctx.qlen = rxq->nb_rx_desc;
 	rx_ctx.dbuf = rxq->rx_buf_len >> ICE_RLAN_CTX_DBUF_S;
 	rx_ctx.hbuf = rxq->rx_hdr_len >> ICE_RLAN_CTX_HBUF_S;
@@ -442,7 +442,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	txq_elem.num_txqs = 1;
 	txq_elem.txqs[0].txq_id = rte_cpu_to_le_16(txq->reg_idx);
 
-	tx_ctx.base = txq->tx_ring_phys_addr / ICE_QUEUE_BASE_ADDR_UNIT;
+	tx_ctx.base = txq->tx_ring_dma / ICE_QUEUE_BASE_ADDR_UNIT;
 	tx_ctx.qlen = txq->nb_tx_desc;
 	tx_ctx.pf_num = hw->pf_id;
 	tx_ctx.vmvf_type = ICE_TLAN_CTX_VMVF_TYPE_PF;
@@ -663,7 +663,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Zero all the descriptors in the ring. */
 	memset(rz->addr, 0, ring_size);
 
-	rxq->rx_ring_phys_addr = rz->phys_addr;
+	rxq->rx_ring_dma = rz->iova;
 	rxq->rx_ring = (union ice_rx_desc *)rz->addr;
 
 #ifdef RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC
@@ -881,7 +881,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->vsi = vsi;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
-	txq->tx_ring_phys_addr = tz->phys_addr;
+	txq->tx_ring_dma = tz->iova;
 	txq->tx_ring = (struct ice_tx_desc *)tz->addr;
 
 	/* Allocate software ring */
