@@ -26,9 +26,6 @@ int dpaa2_cmdif_logtype;
 /* CMDIF driver name */
 #define DPAA2_CMDIF_PMD_NAME dpaa2_dpci
 
-/* CMDIF driver object */
-static struct rte_vdev_driver dpaa2_cmdif_drv;
-
 /*
  * This API provides the DPCI device ID in 'attr_value'.
  * The device ID shall be passed by GPP to the AIOP using CMDIF commands.
