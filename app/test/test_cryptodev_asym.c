@@ -607,6 +607,101 @@ error_exit:
 }
 
 static int
+test_rsa_sign_verify_crt(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_asym_session *sess;
+	struct rte_cryptodev_info dev_info;
+	int status = TEST_SUCCESS;
+
+	/* Test case supports op with quintuple format key only,
+	 * Check im PMD feature flag for RSA quintuple key type support.
+	 */
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT)) {
+		RTE_LOG(INFO, USER1, "Device doesn't support sign op with "
+			"quintuple key type. Test skipped\n");
+		return -ENOTSUP;
+	}
+
+	sess = rte_cryptodev_asym_session_create(sess_mpool);
+
+	if (!sess) {
+		RTE_LOG(ERR, USER1, "Session creation failed for "
+			"sign_verify_crt\n");
+		status = TEST_FAILED;
+		return status;
+	}
+
+	if (rte_cryptodev_asym_session_init(dev_id, sess, &rsa_xform_crt,
+				sess_mpool) < 0) {
+		RTE_LOG(ERR, USER1, "Unable to config asym session for "
+			"sign_verify_crt\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	status = queue_ops_rsa_sign_verify(sess);
+
+error_exit:
+
+	rte_cryptodev_asym_session_clear(dev_id, sess);
+	rte_cryptodev_asym_session_free(sess);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return status;
+}
+
+static int
+test_rsa_enc_dec_crt(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_asym_session *sess;
+	struct rte_cryptodev_info dev_info;
+	int status = TEST_SUCCESS;
+
+	/* Test case supports op with quintuple format key only,
+	 * Check in PMD feature flag for RSA quintuple key type support.
+	 */
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT)) {
+		RTE_LOG(INFO, USER1, "Device doesn't support decrypt op with "
+			"quintuple key type. Test skipped\n");
+		return -ENOTSUP;
+	}
+
+	sess = rte_cryptodev_asym_session_create(sess_mpool);
+
+	if (!sess) {
+		RTE_LOG(ERR, USER1, "Session creation failed for "
+			"enc_dec_crt\n");
+		return TEST_FAILED;
+	}
+
+	if (rte_cryptodev_asym_session_init(dev_id, sess, &rsa_xform_crt,
+				sess_mpool) < 0) {
+		RTE_LOG(ERR, USER1, "Unable to config asym session for "
+			"enc_dec_crt\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	status = queue_ops_rsa_enc_dec(sess);
+
+error_exit:
+
+	rte_cryptodev_asym_session_clear(dev_id, sess);
+	rte_cryptodev_asym_session_free(sess);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return status;
+}
+
+static int
 testsuite_setup(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -1671,6 +1766,8 @@ static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_dh_keygenration),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_rsa_enc_dec),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_rsa_sign_verify),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_rsa_enc_dec_crt),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_rsa_sign_verify_crt),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_mod_inv),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_mod_exp),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_one_by_one),
