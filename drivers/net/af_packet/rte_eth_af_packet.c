@@ -532,8 +532,6 @@ open_packet_iface(const char *key __rte_unused,
 	return 0;
 }
 
-static struct rte_vdev_driver pmd_af_packet_drv;
-
 static int
 rte_pmd_init_internals(struct rte_vdev_device *dev,
                        const int sockfd,
