@@ -67,6 +67,180 @@ static uint32_t test_index;
 static struct crypto_testsuite_params testsuite_params = { NULL };
 
 static int
+queue_ops_rsa_sign_verify(struct rte_cryptodev_asym_session *sess)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_op *op, *result_op;
+	struct rte_crypto_asym_op *asym_op;
+	uint8_t output_buf[TEST_DATA_SIZE];
+	int status = TEST_SUCCESS;
+
+	/* Set up crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!op) {
+		RTE_LOG(ERR, USER1, "Failed to allocate asymmetric crypto "
+			"operation struct\n");
+		return TEST_FAILED;
+	}
+
+	asym_op = op->asym;
+
+	/* Compute sign on the test vector */
+	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
+
+	asym_op->rsa.message.data = rsaplaintext.data;
+	asym_op->rsa.message.length = rsaplaintext.len;
+	asym_op->rsa.sign.data = output_buf;
+	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT1;
+
+	debug_hexdump(stdout, "message", asym_op->rsa.message.data,
+		      asym_op->rsa.message.length);
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1, "Error sending packet for sign\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1, "Failed to process sign op\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	debug_hexdump(stdout, "signed message", asym_op->rsa.sign.data,
+		      asym_op->rsa.sign.length);
+	asym_op = result_op->asym;
+
+	/* Verify sign */
+	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
+	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT1;
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1, "Error sending packet for verify\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1, "Failed to process verify op\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	status = TEST_SUCCESS;
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1, "Failed to process sign-verify op\n");
+		status = TEST_FAILED;
+	}
+
+error_exit:
+
+	rte_crypto_op_free(op);
+
+	return status;
+}
+
+static int
+queue_ops_rsa_enc_dec(struct rte_cryptodev_asym_session *sess)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_op *op, *result_op;
+	struct rte_crypto_asym_op *asym_op;
+	int ret, status = TEST_SUCCESS;
+
+	/* Set up crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!op) {
+		RTE_LOG(ERR, USER1, "Failed to allocate asymmetric crypto "
+			"operation struct\n");
+		return TEST_FAILED;
+	}
+
+	asym_op = op->asym;
+
+	/* Compute encryption on the test vector */
+	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
+
+	asym_op->rsa.message.data = rsaplaintext.data;
+	asym_op->rsa.message.length = rsaplaintext.len;
+	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT2;
+
+	debug_hexdump(stdout, "message", asym_op->rsa.message.data,
+		      asym_op->rsa.message.length);
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1, "Error sending packet for encryption\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1, "Failed to process encryption op\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	debug_hexdump(stdout, "encrypted message", asym_op->rsa.message.data,
+		      asym_op->rsa.message.length);
+
+	/* Use the resulted output as decryption Input vector*/
+	asym_op = result_op->asym;
+	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
+	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT2;
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1, "Error sending packet for decryption\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1, "Failed to process decryption op\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	status = TEST_SUCCESS;
+	ret = rsa_verify(&rsaplaintext, result_op);
+	if (ret)
+		status = TEST_FAILED;
+
+error_exit:
+
+	rte_crypto_op_free(op);
+
+	return status;
+}
+static int
 test_cryptodev_asym_ver(union test_case_structure *data_tc,
 						struct rte_crypto_op *result_op)
 {
@@ -339,143 +513,45 @@ static int
 test_rsa_sign_verify(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	struct rte_mempool *op_mpool = ts_params->op_mpool;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_asym_session *sess;
 	struct rte_cryptodev_info dev_info;
-	struct rte_crypto_asym_op *asym_op = NULL;
-	struct rte_crypto_op *op = NULL, *result_op = NULL;
-	struct rte_cryptodev_asym_session *sess = NULL;
 	int status = TEST_SUCCESS;
-	uint8_t output_buf[TEST_DATA_SIZE] = {0};
-	uint8_t input_buf[TEST_DATA_SIZE] = {0};
 
-	/* test case supports op with exponent key only,
+	/* Test case supports op with exponent key only,
 	 * Check in PMD feature flag for RSA exponent key type support.
 	 */
 	rte_cryptodev_info_get(dev_id, &dev_info);
 	if (!(dev_info.feature_flags &
 				RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP)) {
-		RTE_LOG(INFO, USER1,
-				"Device doesn't support sign op with "
-				"exponent key type. Test Skipped\n");
+		RTE_LOG(INFO, USER1, "Device doesn't support sign op with "
+			"exponent key type. Test Skipped\n");
 		return -ENOTSUP;
 	}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
 
 	if (!sess) {
-		RTE_LOG(ERR, USER1, "line %u "
-				"FAILED: %s", __LINE__,
-				"Session creation failed");
-		status = TEST_FAILED;
-		goto error_exit;
+		RTE_LOG(ERR, USER1, "Session creation failed for "
+			"sign_verify\n");
+		return TEST_FAILED;
 	}
 
 	if (rte_cryptodev_asym_session_init(dev_id, sess, &rsa_xform,
 				sess_mpool) < 0) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "unabled to config sym session");
+		RTE_LOG(ERR, USER1, "Unable to config asym session for "
+			"sign_verify\n");
 		status = TEST_FAILED;
 		goto error_exit;
 	}
 
-	/* set up crypto op data structure */
-	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
-	if (!op) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__,
-				"Failed to allocate asymmetric crypto "
-				"operation struct");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-
-	asym_op = op->asym;
-	/* Compute sign on the test vector */
-	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
-
-	memcpy(input_buf, &rsaplaintext.data,
-			rsaplaintext.len);
-	asym_op->rsa.message.data = input_buf;
-	asym_op->rsa.message.length = rsaplaintext.len;
-	asym_op->rsa.sign.data = output_buf;
-	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT1;
-
-	debug_hexdump(stdout, "message", asym_op->rsa.message.data,
-			asym_op->rsa.message.length);
-
-	/* attach asymmetric crypto session to crypto operations */
-	rte_crypto_op_attach_asym_session(op, sess);
-
-	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
-
-	/* Process crypto operation */
-	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "Error sending packet for operation");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-
-	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
-		rte_pause();
-
-	if (result_op == NULL) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "Failed to process asym crypto op");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-	debug_hexdump(stdout, "signed message", asym_op->rsa.sign.data,
-			asym_op->rsa.sign.length);
-	asym_op = result_op->asym;
-
-	/* Verify sign */
-	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
-	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT2;
-
-	/* Process crypto operation */
-	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "Error sending packet for operation");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-
-	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
-		rte_pause();
-
-	if (result_op == NULL) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "Failed to process asym crypto op");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-	status = TEST_SUCCESS;
-	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "Failed to process asym crypto op");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
+	status = queue_ops_rsa_sign_verify(sess);
 
 error_exit:
 
-	if (sess) {
-		rte_cryptodev_asym_session_clear(dev_id, sess);
-		rte_cryptodev_asym_session_free(sess);
-	}
-
-	if (op)
-		rte_crypto_op_free(op);
+	rte_cryptodev_asym_session_clear(dev_id, sess);
+	rte_cryptodev_asym_session_free(sess);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
@@ -486,137 +562,44 @@ static int
 test_rsa_enc_dec(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	struct rte_mempool *op_mpool = ts_params->op_mpool;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_asym_session *sess;
 	struct rte_cryptodev_info dev_info;
-	struct rte_crypto_asym_op *asym_op = NULL;
-	struct rte_crypto_op *op = NULL, *result_op = NULL;
-	struct rte_cryptodev_asym_session *sess = NULL;
 	int status = TEST_SUCCESS;
-	uint8_t input_buf[TEST_DATA_SIZE] = {0};
 
-	/* test case supports op with exponent key only,
+	/* Test case supports op with exponent key only,
 	 * Check in PMD feature flag for RSA exponent key type support.
 	 */
 	rte_cryptodev_info_get(dev_id, &dev_info);
 	if (!(dev_info.feature_flags &
 				RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP)) {
-		RTE_LOG(INFO, USER1,
-				"Device doesn't support sign op with "
-				"exponent key type. Test Skipped\n");
+		RTE_LOG(INFO, USER1, "Device doesn't support decrypt op with "
+			"exponent key type. Test skipped\n");
 		return -ENOTSUP;
 	}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
 
 	if (!sess) {
-		RTE_LOG(ERR, USER1, "line %u "
-				"FAILED: %s", __LINE__,
-				"Session creation failed");
-		status = TEST_FAILED;
-		goto error_exit;
+		RTE_LOG(ERR, USER1, "Session creation failed for enc_dec\n");
+		return TEST_FAILED;
 	}
 
 	if (rte_cryptodev_asym_session_init(dev_id, sess, &rsa_xform,
 				sess_mpool) < 0) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "unabled to config sym session");
+		RTE_LOG(ERR, USER1, "Unable to config asym session for "
+			"enc_dec\n");
 		status = TEST_FAILED;
 		goto error_exit;
 	}
 
-	/* set up crypto op data structure */
-	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
-	if (!op) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__,
-				"Failed to allocate asymmetric crypto "
-				"operation struct");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-
-	asym_op = op->asym;
-	/*Compute encryption on the test vector */
-	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
-
-	memcpy(input_buf, rsaplaintext.data,
-			rsaplaintext.len);
-	asym_op->rsa.message.data = input_buf;
-	asym_op->rsa.message.length = rsaplaintext.len;
-	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT2;
-
-	debug_hexdump(stdout, "message", asym_op->rsa.message.data,
-			asym_op->rsa.message.length);
-
-	/* attach asymmetric crypto session to crypto operations */
-	rte_crypto_op_attach_asym_session(op, sess);
-
-	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
-
-	/* Process crypto operation */
-	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "Error sending packet for operation");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-
-	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
-		rte_pause();
-
-	if (result_op == NULL) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "Failed to process asym crypto op");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-	debug_hexdump(stdout, "encrypted message", asym_op->rsa.message.data,
-			asym_op->rsa.message.length);
-	/* Use the resulted output as decryption Input vector*/
-	asym_op = result_op->asym;
-	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
-	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT1;
-
-	/* Process crypto operation */
-	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "Error sending packet for operation");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-
-	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
-		rte_pause();
-
-	if (result_op == NULL) {
-		RTE_LOG(ERR, USER1,
-				"line %u FAILED: %s",
-				__LINE__, "Failed to process asym crypto op");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-	status = TEST_SUCCESS;
-	int ret = 0;
-	ret = rsa_verify(&rsaplaintext, result_op);
-	if (ret)
-		status = TEST_FAILED;
+	status = queue_ops_rsa_enc_dec(sess);
 
 error_exit:
 
-	if (sess) {
-		rte_cryptodev_asym_session_clear(dev_id, sess);
-		rte_cryptodev_asym_session_free(sess);
-	}
-
-	if (op)
-		rte_crypto_op_free(op);
+	rte_cryptodev_asym_session_clear(dev_id, sess);
+	rte_cryptodev_asym_session_free(sess);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
@@ -698,6 +681,8 @@ testsuite_setup(void)
 	/* configure device with num qp */
 	ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
+	ts_params->conf.ff_disable = RTE_CRYPTODEV_FF_SECURITY |
+			RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO;
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id,
 			&ts_params->conf),
 			"Failed to configure cryptodev %u with %u qps",
