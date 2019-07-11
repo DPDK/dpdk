@@ -5,7 +5,7 @@
 # Check C files in git repository for duplicated includes.
 # Usage: devtools/check-dup-includes.sh [directory]
 
-dir=${1:-$(dirname $(readlink -m $0))/..}
+dir=${1:-$(dirname $(readlink -f $0))/..}
 cd $dir
 
 # speed up by ignoring Unicode details

@@ -5,7 +5,7 @@
 
 # Load config options:
 # - DPDK_GETMAINTAINER_PATH
-. $(dirname $(readlink -e $0))/load-devel-config
+. $(dirname $(readlink -f $0))/load-devel-config
 
 options="--no-git-fallback"
 options="$options --no-rolestats"

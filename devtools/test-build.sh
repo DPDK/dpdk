@@ -28,7 +28,7 @@ default_path=$PATH
 # - LIBSSO_SNOW3G_PATH
 # - LIBSSO_KASUMI_PATH
 # - LIBSSO_ZUC_PATH
-. $(dirname $(readlink -e $0))/load-devel-config
+. $(dirname $(readlink -f $0))/load-devel-config
 
 print_usage () {
 	echo "usage: $(basename $0) [-h] [-jX] [-s] [config1 [config2] ...]]"
@@ -56,6 +56,10 @@ print_help () {
 	        If no config on command line, DPDK_BUILD_TEST_CONFIGS is used.
 	END_OF_HELP
 }
+
+[ -z $MAKE ] && command -v gmake > /dev/null && MAKE=gmake
+[ -z $MAKE ] && command -v make > /dev/null && MAKE=make
+[ -z $MAKE ] && echo "Cannot find make or gmake" && exit 1
 
 J=$DPDK_MAKE_JOBS
 short=false
@@ -90,7 +94,7 @@ trap "signal=INT ; trap - INT ; kill -INT $$" INT
 # notify result on exit
 trap on_exit EXIT
 
-cd $(dirname $(readlink -m $0))/..
+cd $(dirname $(readlink -f $0))/..
 
 reset_env ()
 {
@@ -127,83 +131,83 @@ config () # <directory> <target> <options>
 	fi
 	if [ ! -e $1/.config ] || $reconfig ; then
 		echo "================== Configure $1"
-		make T=$2 O=$1 config
+		${MAKE} T=$2 O=$1 config
 
 		echo 'Customize configuration'
 		# Built-in options (lowercase)
 		! echo $3 | grep -q '+default' || \
-		sed -ri 's,(RTE_MACHINE=")native,\1default,' $1/.config
+		sed -ri="" 's,(RTE_MACHINE=")native,\1default,' $1/.config
 		echo $3 | grep -q '+next' || \
-		sed -ri           's,(NEXT_ABI=)y,\1n,' $1/.config
+		sed -ri=""           's,(NEXT_ABI=)y,\1n,' $1/.config
 		! echo $3 | grep -q '+shared' || \
-		sed -ri         's,(SHARED_LIB=)n,\1y,' $1/.config
+		sed -ri=""         's,(SHARED_LIB=)n,\1y,' $1/.config
 		! echo $3 | grep -q '+debug' || ( \
-		sed -ri  's,(RTE_LOG_DP_LEVEL=).*,\1RTE_LOG_DEBUG,' $1/.config
-		sed -ri           's,(_DEBUG.*=)n,\1y,' $1/.config
-		sed -ri            's,(_STAT.*=)n,\1y,' $1/.config
-		sed -ri 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config )
+		sed -ri=""  's,(RTE_LOG_DP_LEVEL=).*,\1RTE_LOG_DEBUG,' $1/.config
+		sed -ri=""           's,(_DEBUG.*=)n,\1y,' $1/.config
+		sed -ri=""            's,(_STAT.*=)n,\1y,' $1/.config
+		sed -ri="" 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config )
 
 		# Automatic configuration
 		test "$DPDK_DEP_NUMA" != n || \
-		sed -ri             's,(NUMA.*=)y,\1n,' $1/.config
-		sed -ri    's,(LIBRTE_IEEE1588=)n,\1y,' $1/.config
-		sed -ri             's,(BYPASS=)n,\1y,' $1/.config
+		sed -ri=""             's,(NUMA.*=)y,\1n,' $1/.config
+		sed -ri=""    's,(LIBRTE_IEEE1588=)n,\1y,' $1/.config
+		sed -ri=""             's,(BYPASS=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ARCHIVE" != y || \
-		sed -ri       's,(RESOURCE_TAR=)n,\1y,' $1/.config
+		sed -ri=""       's,(RESOURCE_TAR=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ISAL" != y || \
-		sed -ri           's,(PMD_ISAL=)n,\1y,' $1/.config
+		sed -ri=""           's,(PMD_ISAL=)n,\1y,' $1/.config
 		test "$DPDK_DEP_MLX" != y || \
-		sed -ri           's,(MLX._PMD=)n,\1y,' $1/.config
+		sed -ri=""           's,(MLX._PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SZE" != y || \
-		sed -ri       's,(PMD_SZEDATA2=)n,\1y,' $1/.config
+		sed -ri=""       's,(PMD_SZEDATA2=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ZLIB" != y || \
-		sed -ri          's,(BNX2X_PMD=)n,\1y,' $1/.config
+		sed -ri=""          's,(BNX2X_PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ZLIB" != y || \
-		sed -ri           's,(PMD_ZLIB=)n,\1y,' $1/.config
+		sed -ri=""           's,(PMD_ZLIB=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ZLIB" != y || \
-		sed -ri   's,(COMPRESSDEV_TEST=)n,\1y,' $1/.config
+		sed -ri=""   's,(COMPRESSDEV_TEST=)n,\1y,' $1/.config
 		test "$DPDK_DEP_PCAP" != y || \
-		sed -ri               's,(PCAP=)n,\1y,' $1/.config
+		sed -ri=""               's,(PCAP=)n,\1y,' $1/.config
 		test -z "$ARMV8_CRYPTO_LIB_PATH" || \
-		sed -ri   's,(PMD_ARMV8_CRYPTO=)n,\1y,' $1/.config
+		sed -ri=""   's,(PMD_ARMV8_CRYPTO=)n,\1y,' $1/.config
 		test "$DPDK_DEP_IPSEC_MB" != y || \
-		sed -ri       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
+		sed -ri=""       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
 		test "$DPDK_DEP_IPSEC_MB" != y || \
-		sed -ri      's,(PMD_AESNI_GCM=)n,\1y,' $1/.config
+		sed -ri=""      's,(PMD_AESNI_GCM=)n,\1y,' $1/.config
 		test -z "$LIBSSO_SNOW3G_PATH" || \
-		sed -ri         's,(PMD_SNOW3G=)n,\1y,' $1/.config
+		sed -ri=""         's,(PMD_SNOW3G=)n,\1y,' $1/.config
 		test -z "$LIBSSO_KASUMI_PATH" || \
-		sed -ri         's,(PMD_KASUMI=)n,\1y,' $1/.config
+		sed -ri=""         's,(PMD_KASUMI=)n,\1y,' $1/.config
 		test -z "$LIBSSO_ZUC_PATH" || \
-		sed -ri            's,(PMD_ZUC=)n,\1y,' $1/.config
+		sed -ri=""            's,(PMD_ZUC=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
-		sed -ri            's,(PMD_CCP=)n,\1y,' $1/.config
+		sed -ri=""            's,(PMD_CCP=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
-		sed -ri        's,(PMD_OPENSSL=)n,\1y,' $1/.config
+		sed -ri=""        's,(PMD_OPENSSL=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
-		sed -ri            's,(QAT_SYM=)n,\1y,' $1/.config
+		sed -ri=""            's,(QAT_SYM=)n,\1y,' $1/.config
 		test -z "$FLEXRAN_SDK" || \
-		sed -ri     's,(BBDEV_TURBO_SW=)n,\1y,' $1/.config
-		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config
+		sed -ri=""     's,(BBDEV_TURBO_SW=)n,\1y,' $1/.config
+		sed -ri=""           's,(SCHED_.*=)n,\1y,' $1/.config
 		test -z "$LIBMUSDK_PATH" || \
-		sed -ri   's,(PMD_MVSAM_CRYPTO=)n,\1y,' $1/.config
+		sed -ri=""   's,(PMD_MVSAM_CRYPTO=)n,\1y,' $1/.config
 		test -z "$LIBMUSDK_PATH" || \
-		sed -ri          's,(MVPP2_PMD=)n,\1y,' $1/.config
+		sed -ri=""          's,(MVPP2_PMD=)n,\1y,' $1/.config
 		test -z "$LIBMUSDK_PATH" || \
-		sed -ri         's,(MVNETA_PMD=)n,\1y,' $1/.config
+		sed -ri=""         's,(MVNETA_PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ELF" != y || \
-		sed -ri            's,(BPF_ELF=)n,\1y,' $1/.config
+		sed -ri=""            's,(BPF_ELF=)n,\1y,' $1/.config
 		test "$DPDK_DEP_JSON" != y || \
-		sed -ri          's,(TELEMETRY=)n,\1y,' $1/.config
+		sed -ri=""          's,(TELEMETRY=)n,\1y,' $1/.config
 		build_config_hook $1 $2 $3
 
 		# Explicit enabler/disabler (uppercase)
 		for option in $(echo $3 | sed 's,[~+], &,g') ; do
 			pattern=$(echo $option | cut -c2-)
 			if echo $option | grep -q '^~' ; then
-				sed -ri "s,($pattern=)y,\1n," $1/.config
+				sed -ri="" "s,($pattern=)y,\1n," $1/.config
 			elif echo $option | grep -q '^+' ; then
-				sed -ri "s,($pattern=)n,\1y," $1/.config
+				sed -ri="" "s,($pattern=)n,\1y," $1/.config
 			fi
 		done
 	fi
@@ -220,22 +224,22 @@ for conf in $configs ; do
 	# reload config with DPDK_TARGET set
 	DPDK_TARGET=$target
 	reset_env
-	. $(dirname $(readlink -e $0))/load-devel-config
+	. $(dirname $(readlink -f $0))/load-devel-config
 
 	options=$(echo $conf | sed 's,[^~+]*,,')
 	dir=$conf
 	config $dir $target $options
 
 	echo "================== Build $dir"
-	make -j$J EXTRA_CFLAGS="$maxerr $DPDK_DEP_CFLAGS" \
+	${MAKE} -j$J EXTRA_CFLAGS="$maxerr $DPDK_DEP_CFLAGS" \
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose O=$dir
 	! $short || break
 	echo "================== Build examples for $dir"
 	export RTE_SDK=$(pwd)
 	export RTE_TARGET=$dir
-	make -j$J -sC examples \
+	${MAKE} -j$J -sC examples \
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose \
-		O=$(readlink -m $dir/examples)
+		O=$(readlink -f $dir)/examples
 	unset RTE_TARGET
 	echo "################## $dir done."
 	unset dir
@@ -244,9 +248,9 @@ done
 if ! $short ; then
 	mkdir -p .check
 	echo "================== Build doxygen HTML API"
-	make doc-api-html >/dev/null 2>.check/doc.txt
+	${MAKE} doc-api-html >/dev/null 2>.check/doc.txt
 	echo "================== Build sphinx HTML guides"
-	make doc-guides-html >/dev/null 2>>.check/doc.txt
+	${MAKE} doc-guides-html >/dev/null 2>>.check/doc.txt
 	echo "================== Check docs"
 	diff -u /dev/null .check/doc.txt
 fi

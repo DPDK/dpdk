@@ -7,9 +7,9 @@
 # - DPDK_CHECKPATCH_CODESPELL
 # - DPDK_CHECKPATCH_LINE_LENGTH
 # - DPDK_CHECKPATCH_OPTIONS
-. $(dirname $(readlink -e $0))/load-devel-config
+. $(dirname $(readlink -f $0))/load-devel-config
 
-VALIDATE_NEW_API=$(dirname $(readlink -e $0))/check-symbol-change.sh
+VALIDATE_NEW_API=$(dirname $(readlink -f $0))/check-symbol-change.sh
 
 # Enable codespell by default. This can be overwritten from a config file.
 # Codespell can also be enabled by setting DPDK_CHECKPATCH_CODESPELL to a valid path
@@ -66,7 +66,7 @@ check_forbidden_additions() { # <patch>
 		-v EXPRESSIONS="rte_panic\\\( rte_exit\\\(" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using rte_panic/rte_exit' \
-		-f $(dirname $(readlink -e $0))/check-forbidden-tokens.awk \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
 	# svg figures must be included with wildcard extension
@@ -75,7 +75,7 @@ check_forbidden_additions() { # <patch>
 		-v EXPRESSIONS='::[[:space:]]*[^[:space:]]*\\.svg' \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using explicit .svg extension instead of .*' \
-		-f $(dirname $(readlink -e $0))/check-forbidden-tokens.awk \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
 	return $res

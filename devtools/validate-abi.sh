@@ -181,7 +181,7 @@ case "${dst}" in
 	/*) ;;
 	*) dst=${PWD}/${dst} ;;
 esac
-dpdkroot=$(readlink -e $(dirname $0)/..)
+dpdkroot=$(readlink -f $(dirname $0)/..)
 
 if [ -e "${dst}" -a "$force" = 0 ]; then
 	echo "The ${dst} directory is not empty. Remove it, use another"
