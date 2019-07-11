@@ -71,8 +71,6 @@
 #define TAP_IOV_DEFAULT_MAX 1024
 
 static int tap_devices_count;
-static struct rte_vdev_driver pmd_tap_drv;
-static struct rte_vdev_driver pmd_tun_drv;
 
 static const char *valid_arguments[] = {
 	ETH_TAP_IFACE_ARG,
