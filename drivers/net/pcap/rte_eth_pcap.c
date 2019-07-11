@@ -1085,8 +1085,6 @@ get_infinite_rx_arg(const char *key __rte_unused,
 	return 0;
 }
 
-static struct rte_vdev_driver pmd_pcap_drv;
-
 static int
 pmd_init_internals(struct rte_vdev_device *vdev,
 		const unsigned int nb_rx_queues,
