@@ -11,3 +11,9 @@ DPDK_17.05 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_metrics_deinit;
+};

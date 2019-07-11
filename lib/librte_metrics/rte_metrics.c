@@ -77,6 +77,26 @@ rte_metrics_init(int socket_id)
 }
 
 int
+rte_metrics_deinit(void)
+{
+	struct rte_metrics_data_s *stats;
+	const struct rte_memzone *memzone;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EINVAL;
+
+	memzone = rte_memzone_lookup(RTE_METRICS_MEMZONE_NAME);
+	if (memzone == NULL)
+		return -EIO;
+
+	stats = memzone->addr;
+	memset(stats, 0, sizeof(struct rte_metrics_data_s));
+
+	return rte_memzone_free(memzone);
+
+}
+
+int
 rte_metrics_reg_name(const char *name)
 {
 	const char * const list_names[] = {name};

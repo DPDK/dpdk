@@ -154,6 +154,20 @@ print out all metrics for a given port:
     }
 
 
+Deinitialising the library
+--------------------------
+
+Once the library usage is done, it must be deinitialized by calling
+``rte_metrics_deinit()`` which will free the shared memory reserved
+during initialization.
+
+.. code-block:: c
+
+    err = rte_metrics_deinit(void);
+
+If the return value is negative, it means deinitialization failed.
+This function **must** be called from a primary process.
+
 Bit-rate statistics library
 ---------------------------
 
