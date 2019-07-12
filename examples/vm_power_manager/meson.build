@@ -6,6 +6,13 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
+if not dpdk_conf.has('RTE_LIBRTE_POWER')
+	build = false
+	subdir_done()
+endif
+
+deps += ['power']
+
 if dpdk_conf.has('RTE_LIBRTE_BNXT_PMD')
 	deps += ['pmd_bnxt']
 endif
@@ -17,9 +24,6 @@ endif
 if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
 	deps += ['pmd_ixgbe']
 endif
-
-deps += ['power']
-
 
 sources = files(
 	'channel_manager.c', 'channel_monitor.c', 'main.c', 'parse.c', 'power_manager.c', 'vm_power_cli.c'

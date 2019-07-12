@@ -10,6 +10,11 @@
 # vm_power_manager app because of the way the directories are parsed.
 name = 'guest_cli'
 
+if not dpdk_conf.has('RTE_LIBRTE_POWER')
+        build = false
+        subdir_done()
+endif
+
 deps += ['power']
 
 sources = files(
