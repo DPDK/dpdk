@@ -547,7 +547,7 @@ static int ena_com_wait_and_process_admin_cq_polling(struct ena_comp_ctx *comp_c
 						     struct ena_com_admin_queue *admin_queue)
 {
 	unsigned long flags = 0;
-	unsigned long timeout;
+	uint64_t timeout;
 	int ret;
 
 	timeout = ENA_GET_SYSTEM_TIMEOUT(admin_queue->completion_timeout);
