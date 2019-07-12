@@ -159,6 +159,7 @@ struct mlx4_priv {
 	struct ibv_device_attr device_attr; /**< Device properties. */
 	struct ibv_pd *pd; /**< Protection Domain. */
 	/* Device properties. */
+	unsigned int if_index;	/**< Associated network device index */
 	uint16_t mtu; /**< Configured MTU. */
 	uint8_t port; /**< Physical port number. */
 	uint32_t started:1; /**< Device started, flows enabled. */

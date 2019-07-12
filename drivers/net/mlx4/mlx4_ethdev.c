@@ -616,7 +616,6 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
 	unsigned int max;
-	char ifname[IF_NAMESIZE];
 
 	/* FIXME: we should ask the device for these values. */
 	info->min_rx_bufsize = 32;
@@ -637,8 +636,7 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->rx_queue_offload_capa = mlx4_get_rx_queue_offloads(priv);
 	info->rx_offload_capa = (mlx4_get_rx_port_offloads(priv) |
 				 info->rx_queue_offload_capa);
-	if (mlx4_get_ifname(priv, &ifname) == 0)
-		info->if_index = if_nametoindex(ifname);
+	info->if_index = priv->if_index;
 	info->hash_key_size = MLX4_RSS_HASH_KEY_SIZE;
 	info->speed_capa =
 			ETH_LINK_SPEED_1G |
