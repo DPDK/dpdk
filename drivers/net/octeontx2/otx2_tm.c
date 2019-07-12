@@ -59,7 +59,7 @@ static bool
 nix_tm_have_tl1_access(struct otx2_eth_dev *dev)
 {
 	bool is_lbk = otx2_dev_is_lbk(dev);
-	return otx2_dev_is_pf(dev) && !otx2_dev_is_A0(dev) &&
+	return otx2_dev_is_pf(dev) && !otx2_dev_is_Ax(dev) &&
 		!is_lbk && !dev->maxvf;
 }
 

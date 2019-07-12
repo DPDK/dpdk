@@ -1235,7 +1235,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		nix_lf_free(dev);
 	}
 
-	if (otx2_dev_is_A0(dev) &&
+	if (otx2_dev_is_Ax(dev) &&
 	    (txmode->offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
 	    ((txmode->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
 	    (txmode->offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM))) {
@@ -1787,7 +1787,7 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	dev->tx_offload_capa = nix_get_tx_offload_capa(dev);
 	dev->rx_offload_capa = nix_get_rx_offload_capa(dev);
 
-	if (otx2_dev_is_A0(dev)) {
+	if (otx2_dev_is_Ax(dev)) {
 		dev->hwcap |= OTX2_FIXUP_F_MIN_4K_Q;
 		dev->hwcap |= OTX2_FIXUP_F_LIMIT_CQ_FULL;
 	}

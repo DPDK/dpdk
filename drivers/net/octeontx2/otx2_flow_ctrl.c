@@ -162,8 +162,8 @@ otx2_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 
 	/* Check if TX pause frame is already enabled or not */
 	if (fc->tx_pause ^ tx_pause) {
-		if (otx2_dev_is_A0(dev) && eth_dev->data->dev_started) {
-			/* on A0, CQ should be in disabled state
+		if (otx2_dev_is_Ax(dev) && eth_dev->data->dev_started) {
+			/* on Ax, CQ should be in disabled state
 			 * while setting flow control configuration.
 			 */
 			otx2_info("Stop the port=%d for setting flow control\n",
@@ -207,8 +207,8 @@ otx2_nix_update_flow_ctrl_mode(struct rte_eth_dev *eth_dev)
 	 */
 	otx2_nix_flow_ctrl_get(eth_dev, &fc_conf);
 
-	/* To avoid Link credit deadlock on A0, disable Tx FC if it's enabled */
-	if (otx2_dev_is_A0(dev) &&
+	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
+	if (otx2_dev_is_Ax(dev) &&
 	    (fc_conf.mode == RTE_FC_FULL || fc_conf.mode == RTE_FC_RX_PAUSE)) {
 		fc_conf.mode =
 				(fc_conf.mode == RTE_FC_FULL ||

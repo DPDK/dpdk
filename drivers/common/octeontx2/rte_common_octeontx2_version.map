@@ -3,7 +3,7 @@ DPDK_19.08 {
 
 	otx2_dev_active_vfs;
 	otx2_dev_fini;
-	otx2_dev_init;
+	otx2_dev_priv_init;
 
 	otx2_logtype_base;
 	otx2_logtype_dpi;

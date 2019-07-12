@@ -15,6 +15,7 @@ Supported OCTEON TX2 SoCs
 
 - CN96xx
 - CN93xx
+- CNF95xx
 
 OCTEON TX2 Resource Virtualization Unit architecture
 ----------------------------------------------------

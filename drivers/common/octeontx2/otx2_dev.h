@@ -13,14 +13,18 @@
 #include "otx2_mempool.h"
 
 /* Common HWCAP flags. Use from LSB bits */
-#define OTX2_HWCAP_F_VF		BIT_ULL(0) /* VF device */
+#define OTX2_HWCAP_F_VF		BIT_ULL(8) /* VF device */
 #define otx2_dev_is_vf(dev)	(dev->hwcap & OTX2_HWCAP_F_VF)
 #define otx2_dev_is_pf(dev)	(!(dev->hwcap & OTX2_HWCAP_F_VF))
 #define otx2_dev_is_lbk(dev)	((dev->hwcap & OTX2_HWCAP_F_VF) && \
 				 (dev->tx_chan_base < 0x700))
+#define otx2_dev_revid(dev)	(dev->hwcap & 0xFF)
 
-#define OTX2_HWCAP_F_A0		BIT_ULL(1) /* A0 device */
-#define otx2_dev_is_A0(dev)	(dev->hwcap & OTX2_HWCAP_F_A0)
+#define otx2_dev_is_A0(dev)					\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MINOR(otx2_dev_revid(dev)) == 0x0))
+#define otx2_dev_is_Ax(dev)					\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0))
 
 struct otx2_dev;
 
@@ -61,7 +65,32 @@ struct otx2_dev {
 	OTX2_DEV;
 };
 
-int otx2_dev_init(struct rte_pci_device *pci_dev, void *otx2_dev);
+int otx2_dev_priv_init(struct rte_pci_device *pci_dev, void *otx2_dev);
+
+/* Common dev init and fini routines */
+
+static __rte_always_inline int
+otx2_dev_init(struct rte_pci_device *pci_dev, void *otx2_dev)
+{
+	struct otx2_dev *dev = otx2_dev;
+	uint8_t rev_id;
+	int rc;
+
+	rc = rte_pci_read_config(pci_dev, &rev_id,
+				 1, RVU_PCI_REVISION_ID);
+	if (rc != 1) {
+		otx2_err("Failed to read pci revision id, rc=%d", rc);
+		return rc;
+	}
+
+	if (pci_dev->id.subsystem_device_id == PCI_SUBSYS_DEVID_96XX_95XX)
+		dev->hwcap = rev_id;
+	else
+		dev->hwcap = 0;
+
+	return otx2_dev_priv_init(pci_dev, otx2_dev);
+}
+
 void otx2_dev_fini(struct rte_pci_device *pci_dev, void *otx2_dev);
 int otx2_dev_active_vfs(void *otx2_dev);
 
