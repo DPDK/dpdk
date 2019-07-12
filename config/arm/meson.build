@@ -95,7 +95,7 @@ machine_args_cavium = [
 	['0xa1', ['-mcpu=thunderxt88'], flags_thunderx_extra],
 	['0xa2', ['-mcpu=thunderxt81'], flags_thunderx_extra],
 	['0xa3', ['-mcpu=thunderxt83'], flags_thunderx_extra],
-	['0xaf', ['-mcpu=thunderx2t99'], flags_thunderx2_extra],
+	['0xaf', ['-march=armv8.1-a+crc+crypto','-mcpu=thunderx2t99'], flags_thunderx2_extra],
 	['0xb2', ['-mcpu=octeontx2'], flags_octeontx2_extra]]
 
 ## Arm implementer ID (ARM DDI 0487C.a, Section G7.2.106, Page G7-5321)
