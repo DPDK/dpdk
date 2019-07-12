@@ -2613,11 +2613,11 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	/* Stop the link setup handler before resetting the HW. */
-	rte_eal_alarm_cancel(ixgbe_dev_setup_link_alarm_handler, dev);
-
 	/* disable uio/vfio intr/eventfd mapping */
 	rte_intr_disable(intr_handle);
+	
+	/* Stop the link setup handler before resetting the HW. */
+	rte_eal_alarm_cancel(ixgbe_dev_setup_link_alarm_handler, dev);
 
 	/* stop adapter */
 	hw->adapter_stopped = 0;
@@ -2879,10 +2879,10 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	rte_eal_alarm_cancel(ixgbe_dev_setup_link_alarm_handler, dev);
-
 	/* disable interrupts */
 	ixgbe_disable_intr(hw);
+	
+	rte_eal_alarm_cancel(ixgbe_dev_setup_link_alarm_handler, dev);
 
 	/* reset the NIC */
 	ixgbe_pf_reset_hw(hw);
