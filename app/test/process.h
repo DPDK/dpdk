@@ -5,11 +5,15 @@
 #ifndef _PROCESS_H_
 #define _PROCESS_H_
 
+#include <errno.h>  /* errno */
 #include <limits.h> /* PATH_MAX */
 #include <libgen.h> /* basename et al */
 #include <stdlib.h> /* NULL */
+#include <string.h> /* strerror */
 #include <unistd.h> /* readlink */
 #include <sys/wait.h>
+
+#include <rte_string_fns.h> /* strlcpy */
 
 #ifdef RTE_EXEC_ENV_FREEBSD
 #define self "curproc"
@@ -67,8 +71,15 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		/* set the environment variable */
 		if (setenv(RECURSIVE_ENV_VAR, env_value, 1) != 0)
 			rte_panic("Cannot export environment variable\n");
-		if (execv("/proc/" self "/" exe, argv_cpy) < 0)
-			rte_panic("Cannot exec\n");
+
+		strlcpy(path, "/proc/" self "/" exe, sizeof(path));
+		if (execv(path, argv_cpy) < 0) {
+			if (errno == ENOENT) {
+				printf("Could not find '%s', is procfs mounted?\n",
+						path);
+			}
+			rte_panic("Cannot exec: %s\n", strerror(errno));
+		}
 	}
 	/* parent process does a wait */
 #ifdef RTE_LIBRTE_PDUMP
