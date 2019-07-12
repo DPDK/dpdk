@@ -852,9 +852,13 @@ xdp_get_channels_info(const char *if_name, int *max_queues,
 	ifr.ifr_data = (void *)&channels;
 	strncpy(ifr.ifr_name, if_name, IFNAMSIZ);
 	ret = ioctl(fd, SIOCETHTOOL, &ifr);
-	if (ret && errno != EOPNOTSUPP) {
-		ret = -errno;
-		goto out;
+	if (ret) {
+		if (errno == EOPNOTSUPP) {
+			ret = 0;
+		} else {
+			ret = -errno;
+			goto out;
+		}
 	}
 
 	if (channels.max_combined == 0 || errno == EOPNOTSUPP) {
