@@ -1354,14 +1354,6 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 		}
 
 	} else {
-		ret = ioctl(vfio_container_fd,
-				VFIO_IOMMU_SPAPR_UNREGISTER_MEMORY, &reg);
-		if (ret) {
-			RTE_LOG(ERR, EAL, "  cannot unregister vaddr for IOMMU, error %i (%s)\n",
-					errno, strerror(errno));
-			return -1;
-		}
-
 		memset(&dma_unmap, 0, sizeof(dma_unmap));
 		dma_unmap.argsz = sizeof(struct vfio_iommu_type1_dma_unmap);
 		dma_unmap.size = len;
@@ -1374,28 +1366,56 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 					errno, strerror(errno));
 			return -1;
 		}
+
+		ret = ioctl(vfio_container_fd,
+				VFIO_IOMMU_SPAPR_UNREGISTER_MEMORY, &reg);
+		if (ret) {
+			RTE_LOG(ERR, EAL, "  cannot unregister vaddr for IOMMU, error %i (%s)\n",
+					errno, strerror(errno));
+			return -1;
+		}
 	}
 
 	return 0;
 }
 
+struct spapr_remap_walk_param {
+	int vfio_container_fd;
+	uint64_t addr_64;
+};
+
 static int
 vfio_spapr_map_walk(const struct rte_memseg_list *msl,
 		const struct rte_memseg *ms, void *arg)
 {
-	int *vfio_container_fd = arg;
+	struct spapr_remap_walk_param *param = arg;
 
-	if (msl->external)
+	if (msl->external || ms->addr_64 == param->addr_64)
 		return 0;
 
-	return vfio_spapr_dma_do_map(*vfio_container_fd, ms->addr_64, ms->iova,
+	return vfio_spapr_dma_do_map(param->vfio_container_fd, ms->addr_64, ms->iova,
 			ms->len, 1);
+}
+
+static int
+vfio_spapr_unmap_walk(const struct rte_memseg_list *msl,
+		const struct rte_memseg *ms, void *arg)
+{
+	struct spapr_remap_walk_param *param = arg;
+
+	if (msl->external || ms->addr_64 == param->addr_64)
+		return 0;
+
+	return vfio_spapr_dma_do_map(param->vfio_container_fd, ms->addr_64, ms->iova,
+			ms->len, 0);
 }
 
 struct spapr_walk_param {
 	uint64_t window_size;
 	uint64_t hugepage_sz;
+	uint64_t addr_64;
 };
+
 static int
 vfio_spapr_window_size_walk(const struct rte_memseg_list *msl,
 		const struct rte_memseg *ms, void *arg)
@@ -1404,6 +1424,10 @@ vfio_spapr_window_size_walk(const struct rte_memseg_list *msl,
 	uint64_t max = ms->iova + ms->len;
 
 	if (msl->external)
+		return 0;
+
+	/* do not iterate ms we haven't mapped yet  */
+	if (param->addr_64 && ms->addr_64 == param->addr_64)
 		return 0;
 
 	if (max > param->window_size) {
@@ -1503,6 +1527,7 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 
 	/* check if window size needs to be adjusted */
 	memset(&param, 0, sizeof(param));
+	param.addr_64 = vaddr;
 
 	/* we're inside a callback so use thread-unsafe version */
 	if (rte_memseg_walk_thread_unsafe(vfio_spapr_window_size_walk,
@@ -1516,7 +1541,7 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 	for (i = 0; i < user_mem_maps->n_maps; i++) {
 		uint64_t max = user_mem_maps->maps[i].iova +
 				user_mem_maps->maps[i].len;
-		create.window_size = RTE_MAX(create.window_size, max);
+		param.window_size = RTE_MAX(param.window_size, max);
 	}
 
 	/* sPAPR requires window size to be a power of 2 */
@@ -1525,9 +1550,33 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 	create.levels = 1;
 
 	if (do_map) {
-		void *addr;
 		/* re-create window and remap the entire memory */
-		if (iova > create.window_size) {
+		if (iova + len > create.window_size) {
+			struct spapr_remap_walk_param remap_param = {
+				.vfio_container_fd = vfio_container_fd,
+				.addr_64 = vaddr,
+			};
+
+			/* release all maps before recreating the window */
+			if (rte_memseg_walk_thread_unsafe(vfio_spapr_unmap_walk,
+					&remap_param) < 0) {
+				RTE_LOG(ERR, EAL, "Could not release DMA maps\n");
+				ret = -1;
+				goto out;
+			}
+			/* release all user maps */
+			for (i = 0; i < user_mem_maps->n_maps; i++) {
+				struct user_mem_map *map =
+						&user_mem_maps->maps[i];
+				if (vfio_spapr_dma_do_map(vfio_container_fd,
+						map->addr, map->iova, map->len,
+						0)) {
+					RTE_LOG(ERR, EAL, "Could not release user DMA maps\n");
+					ret = -1;
+					goto out;
+				}
+			}
+			create.window_size = rte_align64pow2(iova + len);
 			if (vfio_spapr_create_new_dma_window(vfio_container_fd,
 					&create) < 0) {
 				RTE_LOG(ERR, EAL, "Could not create new DMA window\n");
@@ -1537,7 +1586,7 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 			/* we're inside a callback, so use thread-unsafe version
 			 */
 			if (rte_memseg_walk_thread_unsafe(vfio_spapr_map_walk,
-					&vfio_container_fd) < 0) {
+					&remap_param) < 0) {
 				RTE_LOG(ERR, EAL, "Could not recreate DMA maps\n");
 				ret = -1;
 				goto out;
@@ -1555,23 +1604,8 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 				}
 			}
 		}
-
-		/* now that we've remapped all of the memory that was present
-		 * before, map the segment that we were requested to map.
-		 *
-		 * however, if we were called by the callback, the memory we
-		 * were called with was already in the memseg list, so previous
-		 * mapping should've mapped that segment already.
-		 *
-		 * virt2memseg_list is a relatively cheap check, so use that. if
-		 * memory is within any memseg list, it's a memseg, so it's
-		 * already mapped.
-		 */
-		addr = (void *)(uintptr_t)vaddr;
-		if (rte_mem_virt2memseg_list(addr) == NULL &&
-				vfio_spapr_dma_do_map(vfio_container_fd,
-					vaddr, iova, len, 1) < 0) {
-			RTE_LOG(ERR, EAL, "Could not map segment\n");
+		if (vfio_spapr_dma_do_map(vfio_container_fd, vaddr, iova, len, 1)) {
+			RTE_LOG(ERR, EAL, "Failed to map DMA\n");
 			ret = -1;
 			goto out;
 		}
@@ -1599,6 +1633,7 @@ vfio_spapr_dma_map(int vfio_container_fd)
 	struct spapr_walk_param param;
 
 	memset(&param, 0, sizeof(param));
+	param.addr_64 = 0UL;
 
 	/* create DMA window from 0 to max(phys_addr + len) */
 	rte_memseg_walk(vfio_spapr_window_size_walk, &param);
