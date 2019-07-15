@@ -85,7 +85,8 @@ static struct rte_timer_data default_timer_data;
 static inline int
 timer_data_valid(uint32_t id)
 {
-	return !!(rte_timer_data_arr[id].internal_flags & FL_ALLOCATED);
+	return rte_timer_data_arr &&
+		(rte_timer_data_arr[id].internal_flags & FL_ALLOCATED);
 }
 
 /* validate ID and retrieve timer data pointer, or return error value */
