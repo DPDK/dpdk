@@ -10,6 +10,7 @@
 #include <netcope/txmac.h>
 
 #include <rte_ethdev_pci.h>
+#include <rte_kvargs.h>
 
 #include "nfb_stats.h"
 #include "nfb_rx.h"
@@ -419,6 +420,7 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_pci_addr *pci_addr = &pci_dev->addr;
 	struct rte_ether_addr eth_addr_init;
+	struct rte_kvargs *kvlist;
 
 	RTE_LOG(INFO, PMD, "Initializing NFB device (" PCI_PRI_FMT ")\n",
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
@@ -428,6 +430,21 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 		"/dev/nfb/by-pci-slot/" PCI_PRI_FMT,
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
 		pci_addr->function);
+
+	/* Check validity of device args */
+	if (dev->device->devargs != NULL &&
+			dev->device->devargs->args != NULL &&
+			strlen(dev->device->devargs->args) > 0) {
+		kvlist = rte_kvargs_parse(dev->device->devargs->args,
+						VALID_KEYS);
+		if (kvlist == NULL) {
+			RTE_LOG(ERR, PMD, "Failed to parse device arguments %s",
+				dev->device->devargs->args);
+			rte_kvargs_free(kvlist);
+			return -EINVAL;
+		}
+		rte_kvargs_free(kvlist);
+	}
 
 	/*
 	 * Get number of available DMA RX and TX queues, which is maximum
@@ -577,3 +594,4 @@ static struct rte_pci_driver nfb_eth_driver = {
 RTE_PMD_REGISTER_PCI(RTE_NFB_DRIVER_NAME, nfb_eth_driver);
 RTE_PMD_REGISTER_PCI_TABLE(RTE_NFB_DRIVER_NAME, nfb_pci_id_table);
 RTE_PMD_REGISTER_KMOD_DEP(RTE_NFB_DRIVER_NAME, "* nfb");
+RTE_PMD_REGISTER_PARAM_STRING(RTE_NFB_DRIVER_NAME, TIMESTAMP_ARG "=<0|1>");

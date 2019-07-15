@@ -69,6 +69,26 @@ These configuration options can be modified before compilation in the
 
    Value **y** enables compilation of nfb PMD.
 
+
+Timestamps
+
+The PMD supports hardware timestamps of frame receipt on physical network interface. In order to use
+the timestamps, the hardware timestamping unit must be enabled (follow the documentation of the NFB
+products) and the device argument `timestamp=1` must be used.
+
+.. code-block:: console
+
+    $RTE_TARGET/app/testpmd -w b3:00.0,timestamp=1 <other EAL params> -- <testpmd params>
+
+When the timestamps are enabled with the *devarg*, a timestamp validity flag is set in the MBUFs
+containing received frames and timestamp is inserted into the `rte_mbuf` struct.
+
+The timestamp is an `uint64_t` field. Its lower 32 bits represent *seconds* portion of the timestamp
+(number of seconds elapsed since 1.1.1970 00:00:00 UTC) and its higher 32 bits represent
+*nanosecond* portion of the timestamp (number of nanoseconds elapsed since the beginning of the
+second in the *seconds* portion.
+
+
 Using the NFB PMD
 ----------------------
 

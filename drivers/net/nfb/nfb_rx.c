@@ -4,8 +4,50 @@
  * All rights reserved.
  */
 
+#include <rte_kvargs.h>
+
 #include "nfb_rx.h"
 #include "nfb.h"
+
+static int
+timestamp_check_handler(__rte_unused const char *key,
+	const char *value, __rte_unused void *opaque)
+{
+	if (strcmp(value, "1"))
+		return -1;
+
+	return 0;
+}
+
+
+static int
+nfb_check_timestamp(struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+
+	if (devargs == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, TIMESTAMP_ARG)) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+	/* Timestamps are enabled when there is
+	 * key-value pair: enable_timestamp=1
+	 */
+	if (rte_kvargs_process(kvlist, TIMESTAMP_ARG,
+		timestamp_check_handler, NULL) < 0) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+	rte_kvargs_free(kvlist);
+
+	return 1;
+}
 
 int
 nfb_eth_rx_queue_start(struct rte_eth_dev *dev, uint16_t rxq_id)
@@ -70,6 +112,8 @@ nfb_eth_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	rxq->flags = 0;
+
 	ret = nfb_eth_rx_queue_init(internals->nfb,
 		rx_queue_id,
 		dev->data->port_id,
@@ -80,6 +124,9 @@ nfb_eth_rx_queue_setup(struct rte_eth_dev *dev,
 		dev->data->rx_queues[rx_queue_id] = rxq;
 	else
 		rte_free(rxq);
+
+	if (nfb_check_timestamp(dev->device->devargs))
+		rxq->flags |= NFB_TIMESTAMP_FLAG;
 
 	return ret;
 }

@@ -13,11 +13,14 @@
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 
+#define NFB_TIMESTAMP_FLAG (1 << 0)
+
 struct ndp_rx_queue {
 	struct nfb_device *nfb;	     /* nfb dev structure */
 	struct ndp_queue *queue;     /* rx queue */
 	uint16_t rx_queue_id;	     /* index */
 	uint8_t in_port;	     /* port */
+	uint8_t flags;               /* setup flags */
 
 	struct rte_mempool *mb_pool; /* memory pool to allocate packets */
 	uint16_t buf_size;           /* mbuf size */
@@ -129,6 +132,7 @@ nfb_eth_ndp_rx(void *queue,
 	uint16_t nb_pkts)
 {
 	struct ndp_rx_queue *ndp = queue;
+	uint8_t timestamping_enabled;
 	uint16_t packet_size;
 	uint64_t num_bytes = 0;
 	uint16_t num_rx;
@@ -145,6 +149,8 @@ nfb_eth_ndp_rx(void *queue,
 		RTE_LOG(ERR, PMD, "RX invalid arguments!\n");
 		return 0;
 	}
+
+	timestamping_enabled = ndp->flags & NFB_TIMESTAMP_FLAG;
 
 	/* returns either all or nothing */
 	i = rte_pktmbuf_alloc_bulk(ndp->mb_pool, mbufs, nb_pkts);
@@ -181,6 +187,21 @@ nfb_eth_ndp_rx(void *queue,
 
 			mbuf->pkt_len = packet_size;
 			mbuf->port = ndp->in_port;
+			mbuf->ol_flags = 0;
+
+			if (timestamping_enabled) {
+				/* nanoseconds */
+				mbuf->timestamp =
+					rte_le_to_cpu_32(*((uint32_t *)
+					(packets[i].header + 4)));
+				mbuf->timestamp <<= 32;
+				/* seconds */
+				mbuf->timestamp |=
+					rte_le_to_cpu_32(*((uint32_t *)
+					(packets[i].header + 8)));
+				mbuf->ol_flags |= PKT_RX_TIMESTAMP;
+			}
+
 			bufs[num_rx++] = mbuf;
 			num_bytes += packet_size;
 		} else {
