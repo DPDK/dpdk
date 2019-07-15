@@ -549,7 +549,7 @@ static int ice_flow_valid_action(struct rte_eth_dev *dev,
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   actions, "Invalid queue ID for"
-					   " ethertype_filter.");
+					   " switch filter.");
 			return -rte_errno;
 		}
 		break;
@@ -596,7 +596,7 @@ ice_flow_validate(struct rte_eth_dev *dev,
 	}
 
 	ret = ice_flow_valid_attr(attr, error);
-	if (!ret)
+	if (ret)
 		return ret;
 
 	inset = ice_flow_valid_pattern(pattern, error);
