@@ -291,7 +291,7 @@ Compression API Stateless operation
 
 An op is processed stateless if it has
 - op_type set to RTE_COMP_OP_STATELESS
-- flush value set to RTE_FLUSH_FULL or RTE_FLUSH_FINAL
+- flush value set to RTE_COMP_FLUSH_FULL or RTE_COMP_FLUSH_FINAL
 (required only on compression side),
 - All required input in source buffer
 
@@ -305,7 +305,7 @@ priv_xform in Stateless operation
 
 priv_xform is PMD internally managed private data that it maintains to do stateless processing.
 priv_xforms are initialized provided a generic xform structure by an application via making call
-to ``rte_comp_private_xform_create``, at an output PMD returns an opaque priv_xform reference.
+to ``rte_compressdev_private_xform_create``, at an output PMD returns an opaque priv_xform reference.
 If PMD support SHAREABLE priv_xform indicated via algorithm feature flag, then application can
 attach same priv_xform with many stateless ops at-a-time. If not, then application needs to
 create as many priv_xforms as it expects to have stateless operations in-flight.
@@ -332,7 +332,7 @@ using priv_xform would look like:
      * pseudocode for stateless compression
      */
 
-    uint8_t cdev_id = rte_compdev_get_dev_id(<pmd name>);
+    uint8_t cdev_id = rte_compressdev_get_dev_id(<pmd name>);
 
     /* configure the device. */
     if (rte_compressdev_configure(cdev_id, &conf) < 0)
@@ -346,7 +346,7 @@ using priv_xform would look like:
         rte_exit(EXIT_FAILURE, "Failed to start device\n");
 
     /* setup compress transform */
-    struct rte_compress_compress_xform compress_xform = {
+    struct rte_comp_xform compress_xform = {
         .type = RTE_COMP_COMPRESS,
         .compress = {
             .algo = RTE_COMP_ALGO_DEFLATE,
@@ -361,26 +361,29 @@ using priv_xform would look like:
     };
 
     /* create priv_xform and initialize it for the compression device. */
+    rte_compressdev_info dev_info;
     void *priv_xform = NULL;
+    int shareable = 1;
     rte_compressdev_info_get(cdev_id, &dev_info);
-    if(dev_info.capability->comps_feature_flag & RTE_COMP_FF_SHAREABLE_PRIV_XFORM) {
-        rte_comp_priv_xform_create(cdev_id, &compress_xform, &priv_xform);
+    if (dev_info.capabilities->comp_feature_flags & RTE_COMP_FF_SHAREABLE_PRIV_XFORM) {
+        rte_compressdev_private_xform_create(cdev_id, &compress_xform, &priv_xform);
     } else {
         shareable = 0;
     }
 
     /* create operation pool via call to rte_comp_op_pool_create and alloc ops */
+    struct rte_comp_op *comp_ops[NUM_OPS];
     rte_comp_op_bulk_alloc(op_pool, comp_ops, NUM_OPS);
 
     /* prepare ops for compression operations */
     for (i = 0; i < NUM_OPS; i++) {
         struct rte_comp_op *op = comp_ops[i];
         if (!shareable)
-            rte_priv_xform_create(cdev_id, &compress_xform, &op->priv_xform)
+            rte_compressdev_private_xform_create(cdev_id, &compress_xform, &op->priv_xform)
         else
-            op->priv_xform = priv_xform;
-        op->type = RTE_COMP_OP_STATELESS;
-        op->flush = RTE_COMP_FLUSH_FINAL;
+            op->private_xform = priv_xform;
+        op->op_type = RTE_COMP_OP_STATELESS;
+        op->flush_flag = RTE_COMP_FLUSH_FINAL;
 
         op->src.offset = 0;
         op->dst.offset = 0;
@@ -428,8 +431,8 @@ application broke data into several ops.
 
 In such case
 - ops are setup with op_type RTE_COMP_OP_STATEFUL,
-- all ops except last set to flush value = RTE_COMP_NO/SYNC_FLUSH
-and last set to flush value RTE_COMP_FULL/FINAL_FLUSH.
+- all ops except last set to flush value = RTE_COMP_FLUSH_NONE/SYNC
+and last set to flush value RTE_COMP_FLUSH_FULL/FINAL.
 
 In case of either one or all of the above conditions, PMD initiates
 stateful processing and releases acquired resources after processing
@@ -444,7 +447,7 @@ Stream in Stateful operation
 `stream` in DPDK compression is a logical entity which identifies related set of ops, say, a one large
 file broken into multiple chunks then file is represented by a stream and each chunk of that file is
 represented by compression op `rte_comp_op`. Whenever application wants a stateful processing of such
-data, then it must get a stream handle via making call to ``rte_comp_stream_create()``
+data, then it must get a stream handle via making call to ``rte_compressdev_stream_create()``
 with xform, at an output the target PMD will return an opaque stream handle to application which
 it must attach to all of the ops carrying data of that stream. In stateful processing, every op
 requires previous op data for compression/decompression. A PMD allocates and set up resources such
@@ -458,8 +461,8 @@ one set of related ops and cannot be reused until all of them are processed with
    Stateful Ops
 
 
-Application should call ``rte_comp_stream_create()`` and attach to op before
-enqueuing them for processing and free via ``rte_comp_stream_free()`` during
+Application should call ``rte_compressdev_stream_create()`` and attach to op before
+enqueuing them for processing and free via ``rte_compressdev_stream_free()`` during
 termination. All ops that are to be processed statefully should carry *same* stream.
 
 See *DPDK API Reference* document for details.
@@ -472,7 +475,7 @@ An example pseudocode to set up and process a stream having NUM_CHUNKS with each
      * pseudocode for stateful compression
      */
 
-    uint8_t cdev_id = rte_compdev_get_dev_id(<pmd name>);
+    uint8_t cdev_id = rte_compressdev_get_dev_id(<pmd name>);
 
     /* configure the  device. */
     if (rte_compressdev_configure(cdev_id, &conf) < 0)
@@ -486,7 +489,7 @@ An example pseudocode to set up and process a stream having NUM_CHUNKS with each
         rte_exit(EXIT_FAILURE, "Failed to start device\n");
 
     /* setup compress transform. */
-    struct rte_compress_compress_xform compress_xform = {
+    struct rte_comp_xform compress_xform = {
         .type = RTE_COMP_COMPRESS,
         .compress = {
             .algo = RTE_COMP_ALGO_DEFLATE,
@@ -496,12 +499,13 @@ An example pseudocode to set up and process a stream having NUM_CHUNKS with each
             .level = RTE_COMP_LEVEL_PMD_DEFAULT,
             .chksum = RTE_COMP_CHECKSUM_NONE,
             .window_size = DEFAULT_WINDOW_SIZE,
-                        .hash_algo = RTE_COMP_HASH_ALGO_NONE
+            .hash_algo = RTE_COMP_HASH_ALGO_NONE
         }
     };
 
     /* create stream */
-    rte_comp_stream_create(cdev_id, &compress_xform, &stream);
+    void *stream;
+    rte_compressdev_stream_create(cdev_id, &compress_xform, &stream);
 
     /* create an op pool and allocate ops */
     rte_comp_op_bulk_alloc(op_pool, comp_ops, NUM_CHUNKS);
@@ -523,13 +527,13 @@ An example pseudocode to set up and process a stream having NUM_CHUNKS with each
         op->stream = stream;
         op->m_src = src_buf[i];
         op->m_dst = dst_buf[i];
-        op->type = RTE_COMP_OP_STATEFUL;
-        if(i == NUM_CHUNKS-1) {
+        op->op_type = RTE_COMP_OP_STATEFUL;
+        if (i == NUM_CHUNKS-1) {
             /* set to final, if last chunk*/
-            op->flush = RTE_COMP_FLUSH_FINAL;
+            op->flush_flag = RTE_COMP_FLUSH_FINAL;
         } else {
             /* set to NONE, for all intermediary ops */
-            op->flush = RTE_COMP_FLUSH_NONE;
+            op->flush_flag = RTE_COMP_FLUSH_NONE;
         }
         op->src.offset = 0;
         op->dst.offset = 0;
@@ -540,7 +544,7 @@ An example pseudocode to set up and process a stream having NUM_CHUNKS with each
         do {
             num_deqd = rte_compressdev_dequeue_burst(cdev_id, 0 , &processed_ops, 1);
         } while (num_deqd < num_enqd);
-        /* push next op*/
+        /* analyze the amount of consumed and produced data before pushing next op*/
     }
 
 
@@ -557,13 +561,13 @@ output buffer with available space.
 Hash in Stateful
 ~~~~~~~~~~~~~~~~
 If enabled, digest buffer will contain valid digest after last op in stream
-(having flush = RTE_COMP_OP_FLUSH_FINAL) is successfully processed i.e. dequeued
+(having flush = RTE_COMP_FLUSH_FINAL) is successfully processed i.e. dequeued
 with status = RTE_COMP_OP_STATUS_SUCCESS.
 
 Checksum in Stateful
 ~~~~~~~~~~~~~~~~~~~~
 If enabled, checksum will only be available after last op in stream
-(having flush = RTE_COMP_OP_FLUSH_FINAL) is successfully processed i.e. dequeued
+(having flush = RTE_COMP_FLUSH_FINAL) is successfully processed i.e. dequeued
 with status = RTE_COMP_OP_STATUS_SUCCESS.
 
 Burst in compression API
@@ -592,11 +596,11 @@ as each op is attached to a different stream i.e. a burst can look like:
 
 Where, op1 .. op5 all belong to different independent data units. op1, op2, op4, op5 must be stateful
 as stateless ops can only use flush full or final and op3 can be of type stateless or stateful.
-Every op with type set to RTE_COMP_OP_TYPE_STATELESS must be attached to priv_xform and
-Every op with type set to RTE_COMP_OP_TYPE_STATEFUL *must* be attached to stream.
+Every op with type set to RTE_COMP_OP_STATELESS must be attached to priv_xform and
+Every op with type set to RTE_COMP_OP_STATEFUL *must* be attached to stream.
 
 Since each operation in a burst is independent and thus can be completed
-out-of-order,  applications which need ordering, should setup per-op user data
+out-of-order, applications which need ordering, should setup per-op user data
 area with reordering information so that it can determine enqueue order at
 dequeue.
 
