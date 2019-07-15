@@ -23,6 +23,7 @@
 #include <rte_dev.h>
 #include "rte_dpaa2_mempool.h"
 
+#include "fslmc_vfio.h"
 #include <fslmc_logs.h>
 #include <mc/fsl_dpbp.h>
 #include <portal/dpaa2_hw_pvt.h>
@@ -405,6 +406,18 @@ dpaa2_populate(struct rte_mempool *mp, unsigned int max_objs,
 	      void *vaddr, rte_iova_t paddr, size_t len,
 	      rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg)
 {
+	struct rte_memseg_list *msl;
+	/* The memsegment list exists incase the memory is not external.
+	 * So, DMA-Map is required only when memory is provided by user,
+	 * i.e. External.
+	 */
+	msl = rte_mem_virt2memseg_list(vaddr);
+
+	if (!msl) {
+		DPAA2_MEMPOOL_DEBUG("Memsegment is External.\n");
+		rte_fslmc_vfio_mem_dmamap((size_t)vaddr,
+				(size_t)paddr, (size_t)len);
+	}
 	/* Insert entry into the PA->VA Table */
 	dpaax_iova_table_update(paddr, vaddr, len);
 
