@@ -209,8 +209,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 	uint64_t input_set = ICE_INSET_NONE;
-	bool outer_ip = true;
-	bool outer_l4 = true;
+	bool is_tunnel = false;
 
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->last) {
@@ -259,19 +258,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 				return 0;
 			}
 
-			if (outer_ip) {
-				if (ipv4_mask->hdr.src_addr == UINT32_MAX)
-					input_set |= ICE_INSET_IPV4_SRC;
-				if (ipv4_mask->hdr.dst_addr == UINT32_MAX)
-					input_set |= ICE_INSET_IPV4_DST;
-				if (ipv4_mask->hdr.type_of_service == UINT8_MAX)
-					input_set |= ICE_INSET_IPV4_TOS;
-				if (ipv4_mask->hdr.time_to_live == UINT8_MAX)
-					input_set |= ICE_INSET_IPV4_TTL;
-				if (ipv4_mask->hdr.next_proto_id == UINT8_MAX)
-					input_set |= ICE_INSET_IPV4_PROTO;
-				outer_ip = false;
-			} else {
+			if (is_tunnel) {
 				if (ipv4_mask->hdr.src_addr == UINT32_MAX)
 					input_set |= ICE_INSET_TUN_IPV4_SRC;
 				if (ipv4_mask->hdr.dst_addr == UINT32_MAX)
@@ -280,6 +267,17 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 					input_set |= ICE_INSET_TUN_IPV4_TTL;
 				if (ipv4_mask->hdr.next_proto_id == UINT8_MAX)
 					input_set |= ICE_INSET_TUN_IPV4_PROTO;
+			} else {
+				if (ipv4_mask->hdr.src_addr == UINT32_MAX)
+					input_set |= ICE_INSET_IPV4_SRC;
+				if (ipv4_mask->hdr.dst_addr == UINT32_MAX)
+					input_set |= ICE_INSET_IPV4_DST;
+				if (ipv4_mask->hdr.time_to_live == UINT8_MAX)
+					input_set |= ICE_INSET_IPV4_TTL;
+				if (ipv4_mask->hdr.next_proto_id == UINT8_MAX)
+					input_set |= ICE_INSET_IPV4_PROTO;
+				if (ipv4_mask->hdr.type_of_service == UINT8_MAX)
+					input_set |= ICE_INSET_IPV4_TOS;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
@@ -302,21 +300,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 				return 0;
 			}
 
-			if (outer_ip) {
-				if (!memcmp(ipv6_mask->hdr.src_addr,
-					    ipv6_addr_mask,
-					    RTE_DIM(ipv6_mask->hdr.src_addr)))
-					input_set |= ICE_INSET_IPV6_SRC;
-				if (!memcmp(ipv6_mask->hdr.dst_addr,
-					    ipv6_addr_mask,
-					    RTE_DIM(ipv6_mask->hdr.dst_addr)))
-					input_set |= ICE_INSET_IPV6_DST;
-				if (ipv6_mask->hdr.proto == UINT8_MAX)
-					input_set |= ICE_INSET_IPV6_PROTO;
-				if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
-					input_set |= ICE_INSET_IPV6_HOP_LIMIT;
-				outer_ip = false;
-			} else {
+			if (is_tunnel) {
 				if (!memcmp(ipv6_mask->hdr.src_addr,
 					    ipv6_addr_mask,
 					    RTE_DIM(ipv6_mask->hdr.src_addr)))
@@ -329,6 +313,19 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 					input_set |= ICE_INSET_TUN_IPV6_PROTO;
 				if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
 					input_set |= ICE_INSET_TUN_IPV6_TTL;
+			} else {
+				if (!memcmp(ipv6_mask->hdr.src_addr,
+					    ipv6_addr_mask,
+					    RTE_DIM(ipv6_mask->hdr.src_addr)))
+					input_set |= ICE_INSET_IPV6_SRC;
+				if (!memcmp(ipv6_mask->hdr.dst_addr,
+					    ipv6_addr_mask,
+					    RTE_DIM(ipv6_mask->hdr.dst_addr)))
+					input_set |= ICE_INSET_IPV6_DST;
+				if (ipv6_mask->hdr.proto == UINT8_MAX)
+					input_set |= ICE_INSET_IPV6_PROTO;
+				if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
+					input_set |= ICE_INSET_IPV6_HOP_LIMIT;
 			}
 
 			break;
@@ -353,17 +350,16 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 				return 0;
 			}
 
-			if (outer_l4) {
-				if (udp_mask->hdr.src_port == UINT16_MAX)
-					input_set |= ICE_INSET_SRC_PORT;
-				if (udp_mask->hdr.dst_port == UINT16_MAX)
-					input_set |= ICE_INSET_DST_PORT;
-				outer_l4 = false;
-			} else {
+			if (is_tunnel) {
 				if (udp_mask->hdr.src_port == UINT16_MAX)
 					input_set |= ICE_INSET_TUN_SRC_PORT;
 				if (udp_mask->hdr.dst_port == UINT16_MAX)
 					input_set |= ICE_INSET_TUN_DST_PORT;
+			} else {
+				if (udp_mask->hdr.src_port == UINT16_MAX)
+					input_set |= ICE_INSET_SRC_PORT;
+				if (udp_mask->hdr.dst_port == UINT16_MAX)
+					input_set |= ICE_INSET_DST_PORT;
 			}
 
 			break;
@@ -393,17 +389,16 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 				return 0;
 			}
 
-			if (outer_l4) {
-				if (tcp_mask->hdr.src_port == UINT16_MAX)
-					input_set |= ICE_INSET_SRC_PORT;
-				if (tcp_mask->hdr.dst_port == UINT16_MAX)
-					input_set |= ICE_INSET_DST_PORT;
-				outer_l4 = false;
-			} else {
+			if (is_tunnel) {
 				if (tcp_mask->hdr.src_port == UINT16_MAX)
 					input_set |= ICE_INSET_TUN_SRC_PORT;
 				if (tcp_mask->hdr.dst_port == UINT16_MAX)
 					input_set |= ICE_INSET_TUN_DST_PORT;
+			} else {
+				if (tcp_mask->hdr.src_port == UINT16_MAX)
+					input_set |= ICE_INSET_SRC_PORT;
+				if (tcp_mask->hdr.dst_port == UINT16_MAX)
+					input_set |= ICE_INSET_DST_PORT;
 			}
 
 			break;
@@ -427,17 +422,16 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 				return 0;
 			}
 
-			if (outer_l4) {
-				if (sctp_mask->hdr.src_port == UINT16_MAX)
-					input_set |= ICE_INSET_SRC_PORT;
-				if (sctp_mask->hdr.dst_port == UINT16_MAX)
-					input_set |= ICE_INSET_DST_PORT;
-				outer_l4 = false;
-			} else {
+			if (is_tunnel) {
 				if (sctp_mask->hdr.src_port == UINT16_MAX)
 					input_set |= ICE_INSET_TUN_SRC_PORT;
 				if (sctp_mask->hdr.dst_port == UINT16_MAX)
 					input_set |= ICE_INSET_TUN_DST_PORT;
+			} else {
+				if (sctp_mask->hdr.src_port == UINT16_MAX)
+					input_set |= ICE_INSET_SRC_PORT;
+				if (sctp_mask->hdr.dst_port == UINT16_MAX)
+					input_set |= ICE_INSET_DST_PORT;
 			}
 
 			break;
@@ -486,6 +480,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 					   "Invalid VXLAN item");
 				return 0;
 			}
+			is_tunnel = 1;
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
@@ -503,6 +498,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 					   "Invalid NVGRE item");
 				return 0;
 			}
+			is_tunnel = 1;
 
 			break;
 		default:
