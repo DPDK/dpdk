@@ -1067,7 +1067,7 @@ F: doc/guides/eventdevs/octeontx2.rst
 
 NXP DPAA eventdev
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
-M: Sunil Kumar Kori <sunil.kori@nxp.com>
+M: Nipun Gupta <nipun.gupta@nxp.com>
 F: drivers/event/dpaa/
 F: doc/guides/eventdevs/dpaa.rst
 
