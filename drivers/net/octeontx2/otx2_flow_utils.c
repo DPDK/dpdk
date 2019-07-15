@@ -124,13 +124,37 @@ flow_mem_is_zero(const void *mem, int len)
 	return 1;
 }
 
+static void
+flow_set_hw_mask(struct otx2_flow_item_info *info,
+		 struct npc_xtract_info *xinfo,
+		 char *hw_mask)
+{
+	int max_off, offset;
+	int j;
+
+	if (xinfo->enable == 0)
+		return;
+
+	if (xinfo->hdr_off < info->hw_hdr_len)
+		return;
+
+	max_off = xinfo->hdr_off + xinfo->len - info->hw_hdr_len;
+
+	if (max_off > info->len)
+		max_off = info->len;
+
+	offset = xinfo->hdr_off - info->hw_hdr_len;
+	for (j = offset; j < max_off; j++)
+		hw_mask[j] = 0xff;
+}
+
 void
 otx2_flow_get_hw_supp_mask(struct otx2_parse_state *pst,
 			   struct otx2_flow_item_info *info, int lid, int lt)
 {
-	struct npc_xtract_info *xinfo;
+	struct npc_xtract_info *xinfo, *lfinfo;
 	char *hw_mask = info->hw_mask;
-	int max_off, offset;
+	int lf_cfg;
 	int i, j;
 	int intf;
 
@@ -139,21 +163,106 @@ otx2_flow_get_hw_supp_mask(struct otx2_parse_state *pst,
 	memset(hw_mask, 0, info->len);
 
 	for (i = 0; i < NPC_MAX_LD; i++) {
-		if (xinfo[i].hdr_off < info->hw_hdr_len)
-			continue;
-
-		max_off = xinfo[i].hdr_off + xinfo[i].len - info->hw_hdr_len;
-
-		if (xinfo[i].enable == 0)
-			continue;
-
-		if (max_off > info->len)
-			max_off = info->len;
-
-		offset = xinfo[i].hdr_off - info->hw_hdr_len;
-		for (j = offset; j < max_off; j++)
-			hw_mask[j] = 0xff;
+		flow_set_hw_mask(info, &xinfo[i], hw_mask);
 	}
+
+	for (i = 0; i < NPC_MAX_LD; i++) {
+
+		if (xinfo[i].flags_enable == 0)
+			continue;
+
+		lf_cfg = pst->npc->prx_lfcfg[i].i;
+		if (lf_cfg == lid) {
+			for (j = 0; j < NPC_MAX_LFL; j++) {
+				lfinfo = pst->npc->prx_fxcfg[intf]
+					[i][j].xtract;
+				flow_set_hw_mask(info, &lfinfo[0], hw_mask);
+			}
+		}
+	}
+}
+
+static int
+flow_update_extraction_data(struct otx2_parse_state *pst,
+			    struct otx2_flow_item_info *info,
+			    struct npc_xtract_info *xinfo)
+{
+	uint8_t int_info_mask[NPC_MAX_EXTRACT_DATA_LEN];
+	uint8_t int_info[NPC_MAX_EXTRACT_DATA_LEN];
+	struct npc_xtract_info *x;
+	int k, idx, hdr_off;
+	int len = 0;
+
+	x = xinfo;
+	len = x->len;
+	hdr_off = x->hdr_off;
+
+	if (hdr_off < info->hw_hdr_len)
+		return 0;
+
+	if (x->enable == 0)
+		return 0;
+
+	otx2_npc_dbg("x->hdr_off = %d, len = %d, info->len = %d,"
+		     "x->key_off = %d", x->hdr_off, len, info->len,
+		     x->key_off);
+
+	hdr_off -= info->hw_hdr_len;
+
+	if (hdr_off + len > info->len)
+		len = info->len - hdr_off;
+
+	/* Check for over-write of previous layer */
+	if (!flow_mem_is_zero(pst->mcam_mask + x->key_off,
+			      len)) {
+		/* Cannot support this data match */
+		rte_flow_error_set(pst->error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   pst->pattern,
+				   "Extraction unsupported");
+		return -rte_errno;
+	}
+
+	len = flow_check_copysz((OTX2_MAX_MCAM_WIDTH_DWORDS * 8)
+				- x->key_off,
+				len);
+	if (len < 0) {
+		rte_flow_error_set(pst->error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   pst->pattern,
+				   "Internal Error");
+		return -rte_errno;
+	}
+
+	/* Need to reverse complete structure so that dest addr is at
+	 * MSB so as to program the MCAM using mcam_data & mcam_mask
+	 * arrays
+	 */
+	flow_prep_mcam_ldata(int_info,
+			     (const uint8_t *)info->spec + hdr_off,
+			     x->len);
+	flow_prep_mcam_ldata(int_info_mask,
+			     (const uint8_t *)info->mask + hdr_off,
+			     x->len);
+
+	otx2_npc_dbg("Spec: ");
+	for (k = 0; k < info->len; k++)
+		otx2_npc_dbg("0x%.2x ",
+			     ((const uint8_t *)info->spec)[k]);
+
+	otx2_npc_dbg("Int_info: ");
+	for (k = 0; k < info->len; k++)
+		otx2_npc_dbg("0x%.2x ", int_info[k]);
+
+	memcpy(pst->mcam_mask + x->key_off, int_info_mask, len);
+	memcpy(pst->mcam_data + x->key_off, int_info, len);
+
+	otx2_npc_dbg("Parse state mcam data & mask");
+	for (idx = 0; idx < len ; idx++)
+		otx2_npc_dbg("data[%d]: 0x%x, mask[%d]: 0x%x", idx,
+			     *(pst->mcam_data + idx + x->key_off), idx,
+			     *(pst->mcam_mask + idx + x->key_off));
+	return 0;
 }
 
 int
@@ -161,12 +270,10 @@ otx2_flow_update_parse_state(struct otx2_parse_state *pst,
 			     struct otx2_flow_item_info *info, int lid, int lt,
 			     uint8_t flags)
 {
-	uint8_t int_info_mask[NPC_MAX_EXTRACT_DATA_LEN];
-	uint8_t int_info[NPC_MAX_EXTRACT_DATA_LEN];
 	struct npc_lid_lt_xtract_info *xinfo;
-	int len = 0;
-	int intf;
-	int i;
+	struct npc_xtract_info *lfinfo;
+	int intf, lf_cfg;
+	int i, j, rc = 0;
 
 	otx2_npc_dbg("Parse state function info mask total %s",
 		     (const uint8_t *)info->mask);
@@ -181,93 +288,35 @@ otx2_flow_update_parse_state(struct otx2_parse_state *pst,
 	if (xinfo->is_terminating)
 		pst->terminate = 1;
 
-	/* Need to check if flags are supported but in latest
-	 * KPU profile, flags are used as enumeration! No way,
-	 * it can be validated unless MBOX is changed to return
-	 * set of valid values out of 2**8 possible values.
-	 */
-	if (info->spec == NULL) {	/* Nothing to match */
+	if (info->spec == NULL) {
 		otx2_npc_dbg("Info spec NULL");
 		goto done;
 	}
 
-	/* Copy spec and mask into mcam match string, mask.
-	 * Since both RTE FLOW and OTX2 MCAM use network-endianness
-	 * for data, we are saved from nasty conversions.
-	 */
 	for (i = 0; i < NPC_MAX_LD; i++) {
-		struct npc_xtract_info *x;
-		int k, idx, hdr_off;
+		rc = flow_update_extraction_data(pst, info, &xinfo->xtract[i]);
+		if (rc != 0)
+			return rc;
+	}
 
-		x = &xinfo->xtract[i];
-		len = x->len;
-		hdr_off = x->hdr_off;
-
-		if (hdr_off < info->hw_hdr_len)
+	for (i = 0; i < NPC_MAX_LD; i++) {
+		if (xinfo->xtract[i].flags_enable == 0)
 			continue;
 
-		if (x->enable == 0)
-			continue;
+		lf_cfg = pst->npc->prx_lfcfg[i].i;
+		if (lf_cfg == lid) {
+			for (j = 0; j < NPC_MAX_LFL; j++) {
+				lfinfo = pst->npc->prx_fxcfg[intf]
+					[i][j].xtract;
+				rc = flow_update_extraction_data(pst, info,
+								 &lfinfo[0]);
+				if (rc != 0)
+					return rc;
 
-		otx2_npc_dbg("x->hdr_off = %d, len = %d, info->len = %d,"
-			      "x->key_off = %d", x->hdr_off, len, info->len,
-			      x->key_off);
-
-		hdr_off -= info->hw_hdr_len;
-
-		if (hdr_off + len > info->len)
-			len = info->len - hdr_off;
-
-		/* Check for over-write of previous layer */
-		if (!flow_mem_is_zero(pst->mcam_mask + x->key_off,
-				      len)) {
-			/* Cannot support this data match */
-			rte_flow_error_set(pst->error, ENOTSUP,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   pst->pattern,
-					   "Extraction unsupported");
-			return -rte_errno;
+				if (lfinfo[0].enable)
+					pst->flags[lid] = j;
+			}
 		}
-
-		len = flow_check_copysz((OTX2_MAX_MCAM_WIDTH_DWORDS * 8)
-					- x->key_off,
-					len);
-		if (len < 0) {
-			rte_flow_error_set(pst->error, ENOTSUP,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   pst->pattern,
-					   "Internal Error");
-			return -rte_errno;
-		}
-
-		/* Need to reverse complete structure so that dest addr is at
-		 * MSB so as to program the MCAM using mcam_data & mcam_mask
-		 * arrays
-		 */
-		flow_prep_mcam_ldata(int_info,
-				     (const uint8_t *)info->spec + hdr_off,
-				     x->len);
-		flow_prep_mcam_ldata(int_info_mask,
-				     (const uint8_t *)info->mask + hdr_off,
-				     x->len);
-
-		otx2_npc_dbg("Spec: ");
-		for (k = 0; k < info->len; k++)
-			otx2_npc_dbg("0x%.2x ",
-				     ((const uint8_t *)info->spec)[k]);
-
-		otx2_npc_dbg("Int_info: ");
-		for (k = 0; k < info->len; k++)
-			otx2_npc_dbg("0x%.2x ", int_info[k]);
-
-		memcpy(pst->mcam_mask + x->key_off, int_info_mask, len);
-		memcpy(pst->mcam_data + x->key_off, int_info, len);
-
-		otx2_npc_dbg("Parse state mcam data & mask");
-		for (idx = 0; idx < len ; idx++)
-			otx2_npc_dbg("data[%d]: 0x%x, mask[%d]: 0x%x", idx,
-				     *(pst->mcam_data + idx + x->key_off), idx,
-				     *(pst->mcam_mask + idx + x->key_off));
 	}
 
 done:

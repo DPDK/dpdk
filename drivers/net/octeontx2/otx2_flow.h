@@ -89,6 +89,7 @@ struct npc_xtract_info {
 	uint8_t hdr_off; /* Byte offset of proto hdr: extract_src */
 	uint8_t key_off; /* Byte offset in MCAM key where data is placed */
 	uint8_t enable; /* Extraction enabled or disabled */
+	uint8_t flags_enable; /* Flags extraction enabled */
 };
 
 /* Information for a given {LAYER, LTYPE} */

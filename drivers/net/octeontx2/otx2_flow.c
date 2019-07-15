@@ -684,6 +684,7 @@ flow_update_kex_info(struct npc_xtract_info *xtract_info,
 	xtract_info->hdr_off = (val >> HDR_OFF_SHIFT) & 0xff;
 	xtract_info->key_off = val & 0x3f;
 	xtract_info->enable = ((val >> 7) & 0x1);
+	xtract_info->flags_enable = ((val >> 6) & 0x1);
 }
 
 static void
