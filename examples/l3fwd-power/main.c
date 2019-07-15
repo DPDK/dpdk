@@ -184,8 +184,8 @@ enum busy_rate {
  * reference CYCLES to be used to
  * measure core busyness based on poll count
  */
-#define MIN_CYCLES 1500000ULL
-#define MAX_CYCLES 2500000ULL
+#define MIN_CYCLES  1500000ULL
+#define MAX_CYCLES 22000000ULL
 
 /* (500ms) */
 #define TELEMETRY_INTERVALS_PER_SEC 2
@@ -1034,7 +1034,7 @@ main_telemetry_loop(__attribute__((unused)) void *dummy)
 				br = FULL;
 			} else if (diff_tsc > MIN_CYCLES &&
 					diff_tsc < MAX_CYCLES) {
-				br = PARTIAL;
+				br = (diff_tsc * 100) / MAX_CYCLES;
 			} else {
 				br = ZERO;
 			}
