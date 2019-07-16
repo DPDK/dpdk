@@ -52,11 +52,6 @@
 
 #define JUMBO_FRAME_MAX_SIZE    0x2600
 
-/* State of virtio device. */
-#define DEVICE_MAC_LEARNING 0
-#define DEVICE_RX	    1
-#define DEVICE_SAFE_REMOVE  2
-
 /* Config_core_flag status definitions. */
 #define REQUEST_DEV_REMOVAL 1
 #define ACK_DEV_REMOVAL     0
