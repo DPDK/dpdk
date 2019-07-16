@@ -20,8 +20,11 @@
 #include <rte_io.h>
 #include <rte_net.h>
 
+extern int cxgbe_logtype;
+
 #define dev_printf(level, fmt, ...) \
-	RTE_LOG(level, PMD, "rte_cxgbe_pmd: " fmt, ##__VA_ARGS__)
+	rte_log(RTE_LOG_ ## level, cxgbe_logtype, \
+		"rte_cxgbe_pmd: " fmt, ##__VA_ARGS__)
 
 #define dev_err(x, fmt, ...) dev_printf(ERR, fmt, ##__VA_ARGS__)
 #define dev_info(x, fmt, ...) dev_printf(INFO, fmt, ##__VA_ARGS__)
@@ -63,7 +66,7 @@
 
 #ifdef RTE_LIBRTE_CXGBE_DEBUG
 #define CXGBE_FUNC_TRACE() \
-	RTE_LOG(DEBUG, PMD, "CXGBE trace: %s\n", __func__)
+	dev_printf(DEBUG, "CXGBE trace: %s\n", __func__)
 #else
 #define CXGBE_FUNC_TRACE() do { } while (0)
 #endif

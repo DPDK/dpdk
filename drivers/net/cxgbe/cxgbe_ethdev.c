@@ -38,6 +38,8 @@
 #include "cxgbe_pfvf.h"
 #include "cxgbe_flow.h"
 
+int cxgbe_logtype;
+
 /*
  * Macros needed to support the PCI Device ID Table ...
  */
@@ -1218,3 +1220,10 @@ RTE_PMD_REGISTER_KMOD_DEP(net_cxgbe, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_cxgbe,
 			      CXGBE_DEVARG_KEEP_OVLAN "=<0|1> "
 			      CXGBE_DEVARG_FORCE_LINK_UP "=<0|1> ");
+
+RTE_INIT(cxgbe_init_log)
+{
+	cxgbe_logtype = rte_log_register("pmd.net.cxgbe");
+	if (cxgbe_logtype >= 0)
+		rte_log_set_level(cxgbe_logtype, RTE_LOG_NOTICE);
+}
