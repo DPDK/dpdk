@@ -1318,7 +1318,7 @@ eth_from_pcaps(struct rte_vdev_device *vdev,
 	/* Assign tx ops. */
 	if (devargs_all->is_tx_pcap)
 		eth_dev->tx_pkt_burst = eth_pcap_tx_dumper;
-	else if (devargs_all->is_tx_iface)
+	else if (devargs_all->is_tx_iface || single_iface)
 		eth_dev->tx_pkt_burst = eth_pcap_tx;
 	else
 		eth_dev->tx_pkt_burst = eth_tx_drop;
