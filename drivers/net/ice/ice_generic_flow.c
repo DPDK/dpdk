@@ -238,13 +238,8 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 			ipv4_spec = item->spec;
 			ipv4_mask = item->mask;
 
-			if (!(ipv4_spec && ipv4_mask)) {
-				rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Invalid IPv4 spec or mask.");
-				return 0;
-			}
+			if (!(ipv4_spec && ipv4_mask))
+				break;
 
 			/* Check IPv4 mask and update input set */
 			if (ipv4_mask->hdr.version_ihl ||
@@ -284,12 +279,8 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 			ipv6_spec = item->spec;
 			ipv6_mask = item->mask;
 
-			if (!(ipv6_spec && ipv6_mask)) {
-				rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM,
-					item, "Invalid IPv6 spec or mask");
-				return 0;
-			}
+			if (!(ipv6_spec && ipv6_mask))
+				break;
 
 			if (ipv6_mask->hdr.payload_len ||
 			    ipv6_mask->hdr.vtc_flow) {
@@ -333,12 +324,8 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 			udp_spec = item->spec;
 			udp_mask = item->mask;
 
-			if (!(udp_spec && udp_mask)) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item, "Invalid UDP mask");
-				return 0;
-			}
+			if (!(udp_spec && udp_mask))
+				break;
 
 			/* Check UDP mask and update input set*/
 			if (udp_mask->hdr.dgram_len ||
@@ -367,12 +354,8 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 			tcp_spec = item->spec;
 			tcp_mask = item->mask;
 
-			if (!(tcp_spec && tcp_mask)) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item, "Invalid TCP mask");
-				return 0;
-			}
+			if (!(tcp_spec && tcp_mask))
+				break;
 
 			/* Check TCP mask and update input set */
 			if (tcp_mask->hdr.sent_seq ||
@@ -406,12 +389,8 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 			sctp_spec = item->spec;
 			sctp_mask = item->mask;
 
-			if (!(sctp_spec && sctp_mask)) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item, "Invalid SCTP mask");
-				return 0;
-			}
+			if (!(sctp_spec && sctp_mask))
+				break;
 
 			/* Check SCTP mask and update input set */
 			if (sctp_mask->hdr.cksum) {
