@@ -669,6 +669,23 @@ rte_ring_dequeue(struct rte_ring *r, void **obj_p)
 }
 
 /**
+ * Flush a ring.
+ *
+ * This function flush all the elements in a ring
+ *
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @warning
+ * Make sure the ring is not in use while calling this function.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ */
+__rte_experimental
+void
+rte_ring_reset(struct rte_ring *r);
+
+/**
  * Return the number of entries in a ring.
  *
  * @param r

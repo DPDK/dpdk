@@ -17,3 +17,10 @@ DPDK_2.2 {
 	rte_ring_free;
 
 } DPDK_2.0;
+
+EXPERIMENTAL {
+	global:
+
+	rte_ring_reset;
+
+};
