@@ -81,7 +81,7 @@ parse_port_id(const char *port_str)
 
 	pci_bus = rte_bus_find_by_name("pci");
 	if (pci_bus == NULL) {
-		RTE_LOG(ERR, PMD, "unable to find PCI bus\n");
+		RTE_BOND_LOG(ERR, "unable to find PCI bus\n");
 		return -1;
 	}
 
