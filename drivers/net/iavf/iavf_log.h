@@ -20,23 +20,30 @@ extern int iavf_logtype_driver;
 	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
 #define PMD_DRV_FUNC_TRACE() PMD_DRV_LOG(DEBUG, " >>")
 
+
 #ifdef RTE_LIBRTE_IAVF_DEBUG_RX
-#define PMD_RX_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+extern int iavf_logtype_rx;
+#define PMD_RX_LOG(level, fmt, args...)			\
+	rte_log(RTE_LOG_ ## level, iavf_logtype_rx,	\
+		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_RX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_IAVF_DEBUG_TX
-#define PMD_TX_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+extern int iavf_logtype_tx;
+#define PMD_TX_LOG(level, fmt, args...)			\
+	rte_log(RTE_LOG_ ## level, iavf_logtype_tx,	\
+		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_IAVF_DEBUG_TX_FREE
-#define PMD_TX_FREE_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+extern int iavf_logtype_tx_free;
+#define PMD_TX_FREE_LOG(level, fmt, args...)			\
+	rte_log(RTE_LOG_ ## level, iavf_logtype_tx_free,	\
+		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_FREE_LOG(level, fmt, args...) do { } while (0)
 #endif
