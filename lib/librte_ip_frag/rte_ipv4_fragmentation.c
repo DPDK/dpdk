@@ -173,7 +173,6 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 		fragment_offset = (uint16_t)(fragment_offset +
 		    out_pkt->pkt_len - sizeof(struct rte_ipv4_hdr));
 
-		out_pkt->ol_flags |= PKT_TX_IP_CKSUM;
 		out_pkt->l3_len = sizeof(struct rte_ipv4_hdr);
 
 		/* Write the fragment to the output list */
