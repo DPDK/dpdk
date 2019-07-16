@@ -1114,6 +1114,9 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	if (!pci_dev->device.devargs)
+		return 1;
+
 	kvlist = rte_kvargs_parse(pci_dev->device.devargs->args,
 			ifcvf_valid_arguments);
 	if (kvlist == NULL)
