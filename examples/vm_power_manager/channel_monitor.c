@@ -835,6 +835,8 @@ read_json_packet(struct channel_info *chan_info)
 	json_t *root;
 	json_error_t error;
 	const char *resource_name;
+	char *start, *end;
+	uint32_t n;
 
 
 	/* read opening brace to closing brace */
@@ -882,7 +884,27 @@ read_json_packet(struct channel_info *chan_info)
 					"Error validating JSON profile data\n");
 				break;
 			}
-			process_request(&pkt, chan_info);
+			start = strstr(pkt.vm_name,
+					CHANNEL_MGR_FIFO_PATTERN_NAME);
+			if (start != NULL) {
+				/* move past pattern to start of fifo id */
+				start += strlen(CHANNEL_MGR_FIFO_PATTERN_NAME);
+
+				end = start;
+				n = (uint32_t)strtoul(start, &end, 10);
+
+				if (end[0] == '\0') {
+					/* Add core id to core list */
+					pkt.num_vcpu = 1;
+					pkt.vcpu_to_control[0] = n;
+					process_request(&pkt, chan_info);
+				} else {
+					RTE_LOG(ERR, CHANNEL_MONITOR,
+						"Cannot extract core id from fifo name\n");
+				}
+			} else {
+				process_request(&pkt, chan_info);
+			}
 		} else {
 			RTE_LOG(ERR, CHANNEL_MONITOR,
 					"JSON error on line %d: %s\n",
