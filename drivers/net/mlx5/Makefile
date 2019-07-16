@@ -8,7 +8,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_mlx5.a
 LIB_GLUE = $(LIB_GLUE_BASE).$(LIB_GLUE_VERSION)
 LIB_GLUE_BASE = librte_pmd_mlx5_glue.so
-LIB_GLUE_VERSION = 19.05.0
+LIB_GLUE_VERSION = 19.08.0
 
 # Sources.
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5.c

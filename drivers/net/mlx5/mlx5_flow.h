@@ -359,25 +359,6 @@ struct mlx5_flow {
 	};
 };
 
-/* Counters information. */
-struct mlx5_flow_counter {
-	LIST_ENTRY(mlx5_flow_counter) next; /**< Pointer to the next counter. */
-	uint32_t shared:1; /**< Share counter ID with other flow rules. */
-	uint32_t ref_cnt:31; /**< Reference counter. */
-	uint32_t id; /**< Counter ID. */
-	union {  /**< Holds the counters for the rule. */
-#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
-		struct ibv_counter_set *cs;
-#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
-		struct ibv_counters *cs;
-#endif
-		struct mlx5_devx_counter_set *dcs;
-	};
-	uint64_t hits; /**< Number of packets matched by the rule. */
-	uint64_t bytes; /**< Number of bytes matched by the rule. */
-	void *action; /**< Pointer to the dv action. */
-};
-
 /* Flow structure. */
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */

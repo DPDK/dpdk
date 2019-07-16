@@ -11,7 +11,7 @@ build = true
 
 pmd_dlopen = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_pmd_mlx5_glue.so'
-LIB_GLUE_VERSION = '19.05.0'
+LIB_GLUE_VERSION = '19.08.0'
 LIB_GLUE = LIB_GLUE_BASE + '.' + LIB_GLUE_VERSION
 if pmd_dlopen
 	dpdk_conf.set('RTE_IBVERBS_LINK_DLOPEN', 1)

@@ -152,15 +152,23 @@ struct mlx5_stats_ctrl {
 	uint64_t imissed_base;
 };
 
-/* devx counter object */
-struct mlx5_devx_counter_set {
-	struct mlx5dv_devx_obj *obj;
-	int id; /* Flow counter ID */
+/* devX creation object */
+struct mlx5_devx_obj {
+	struct mlx5dv_devx_obj *obj; /* The DV object. */
+	int id; /* The object ID. */
+};
+
+struct mlx5_devx_mkey_attr {
+	uint64_t addr;
+	uint64_t size;
+	uint32_t umem_id;
+	uint32_t pd;
 };
 
 /* HCA attributes. */
 struct mlx5_hca_attr {
 	uint32_t eswitch_manager:1;
+	uint8_t flow_counter_bulk_alloc_bitmap;
 };
 
 /* Flow list . */
@@ -248,6 +256,87 @@ struct mlx5_drop {
 	struct mlx5_rxq_ibv *rxq; /* Verbs Rx queue. */
 };
 
+#define MLX5_COUNTERS_PER_POOL 512
+
+struct mlx5_flow_counter_pool;
+
+struct flow_counter_stats {
+	uint64_t hits;
+	uint64_t bytes;
+};
+
+/* Counters information. */
+struct mlx5_flow_counter {
+	TAILQ_ENTRY(mlx5_flow_counter) next;
+	/**< Pointer to the next flow counter structure. */
+	uint32_t shared:1; /**< Share counter ID with other flow rules. */
+	uint32_t batch: 1;
+	/**< Whether the counter was allocated by batch command. */
+	uint32_t ref_cnt:30; /**< Reference counter. */
+	uint32_t id; /**< Counter ID. */
+	union {  /**< Holds the counters for the rule. */
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
+		struct ibv_counter_set *cs;
+#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
+		struct ibv_counters *cs;
+#endif
+		struct mlx5_devx_obj *dcs; /**< Counter Devx object. */
+		struct mlx5_flow_counter_pool *pool; /**< The counter pool. */
+	};
+	uint64_t hits; /**< Reset value of hits packets. */
+	uint64_t bytes; /**< Reset value of bytes. */
+	void *action; /**< Pointer to the dv action. */
+};
+
+TAILQ_HEAD(mlx5_counters, mlx5_flow_counter);
+
+/* Counter pool structure - query is in pool resolution. */
+struct mlx5_flow_counter_pool {
+	TAILQ_ENTRY(mlx5_flow_counter_pool) next;
+	struct mlx5_counters counters; /* Free counter list. */
+	struct mlx5_devx_obj *min_dcs;
+	/* The devx object of the minimum counter ID in the pool. */
+	struct mlx5_counter_stats_raw *raw; /* The counter stats memory raw. */
+	struct mlx5_flow_counter counters_raw[]; /* The counters memory. */
+};
+
+struct mlx5_counter_stats_raw;
+
+/* Memory management structure for group of counter statistics raws. */
+struct mlx5_counter_stats_mem_mng {
+	LIST_ENTRY(mlx5_counter_stats_mem_mng) next;
+	struct mlx5_counter_stats_raw *raws;
+	struct mlx5_devx_obj *dm;
+	struct mlx5dv_devx_umem *umem;
+};
+
+/* Raw memory structure for the counter statistics values of a pool. */
+struct mlx5_counter_stats_raw {
+	LIST_ENTRY(mlx5_counter_stats_raw) next;
+	int min_dcs_id;
+	struct mlx5_counter_stats_mem_mng *mem_mng;
+	volatile struct flow_counter_stats *data;
+};
+
+TAILQ_HEAD(mlx5_counter_pools, mlx5_flow_counter_pool);
+
+/* Container structure for counter pools. */
+struct mlx5_pools_container {
+	uint16_t n_valid; /* Number of valid pools. */
+	uint16_t n; /* Number of pools. */
+	struct mlx5_counter_pools pool_list; /* Counter pool list. */
+	struct mlx5_flow_counter_pool **pools; /* Counter pool array. */
+	struct mlx5_counter_stats_mem_mng *init_mem_mng;
+	/* Hold the memory management for the next allocated pools raws. */
+};
+
+/* Counter global management structure. */
+struct mlx5_flow_counter_mng {
+	struct mlx5_pools_container ccont[2];
+	struct mlx5_counters flow_counters; /* Legacy flow counter list. */
+	LIST_HEAD(mem_mngs, mlx5_counter_stats_mem_mng) mem_mngs;
+};
+
 /* Per port data of shared IB device. */
 struct mlx5_ibv_shared_port {
 	uint32_t ih_port_id;
@@ -314,6 +403,7 @@ struct mlx5_ibv_shared {
 	LIST_HEAD(jump, mlx5_flow_dv_jump_tbl_resource) jump_tbl;
 	LIST_HEAD(port_id_action_list, mlx5_flow_dv_port_id_action_resource)
 		port_id_action_list; /* List of port ID actions. */
+	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	/* Shared interrupt handler section. */
 	pthread_mutex_t intr_mutex; /* Interrupt config mutex. */
 	uint32_t intr_cnt; /* Interrupt handler reference counter. */
@@ -362,8 +452,6 @@ struct mlx5_priv {
 	struct mlx5_drop drop_queue; /* Flow drop queues. */
 	struct mlx5_flows flows; /* RTE Flow rules. */
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
-	LIST_HEAD(counters, mlx5_flow_counter) flow_counters;
-	/* Flow counters. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqibv, mlx5_rxq_ibv) rxqsibv; /* Verbs Rx queues. */
 	LIST_HEAD(hrxq, mlx5_hrxq) hrxqs; /* Verbs Hash Rx queues. */
@@ -584,12 +672,15 @@ int mlx5_nl_switch_info(int nl, unsigned int ifindex,
 
 /* mlx5_devx_cmds.c */
 
-int mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx,
-				     struct mlx5_devx_counter_set *dcx);
-int mlx5_devx_cmd_flow_counter_free(struct mlx5dv_devx_obj *obj);
-int mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_counter_set *dcx,
-				     int clear,
-				     uint64_t *pkts, uint64_t *bytes);
+struct mlx5_devx_obj *mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx,
+						       uint32_t bulk_sz);
+int mlx5_devx_cmd_destroy(struct mlx5_devx_obj *obj);
+int mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs,
+				     int clear, uint32_t n_counters,
+				     uint64_t *pkts, uint64_t *bytes,
+				     uint32_t mkey, void *addr);
 int mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 				 struct mlx5_hca_attr *attr);
+struct mlx5_devx_obj *mlx5_devx_cmd_mkey_create(struct ibv_context *ctx,
+					     struct mlx5_devx_mkey_attr *attr);
 #endif /* RTE_PMD_MLX5_H_ */

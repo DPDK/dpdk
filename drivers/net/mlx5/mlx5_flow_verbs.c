@@ -124,7 +124,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	int ret;
 
 	if (shared) {
-		LIST_FOREACH(cnt, &priv->flow_counters, next) {
+		TAILQ_FOREACH(cnt, &priv->sh->cmng.flow_counters, next) {
 			if (cnt->shared && cnt->id == id) {
 				cnt->ref_cnt++;
 				return cnt;
@@ -144,7 +144,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	/* Create counter with Verbs. */
 	ret = flow_verbs_counter_create(dev, cnt);
 	if (!ret) {
-		LIST_INSERT_HEAD(&priv->flow_counters, cnt, next);
+		TAILQ_INSERT_HEAD(&priv->sh->cmng.flow_counters, cnt, next);
 		return cnt;
 	}
 	/* Some error occurred in Verbs library. */
@@ -156,19 +156,24 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 /**
  * Release a flow counter.
  *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
  * @param[in] counter
  *   Pointer to the counter handler.
  */
 static void
-flow_verbs_counter_release(struct mlx5_flow_counter *counter)
+flow_verbs_counter_release(struct rte_eth_dev *dev,
+			   struct mlx5_flow_counter *counter)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+
 	if (--counter->ref_cnt == 0) {
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 		claim_zero(mlx5_glue->destroy_counter_set(counter->cs));
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 		claim_zero(mlx5_glue->destroy_counters(counter->cs));
 #endif
-		LIST_REMOVE(counter, next);
+		TAILQ_REMOVE(&priv->sh->cmng.flow_counters, counter, next);
 		rte_free(counter);
 	}
 }
@@ -1612,7 +1617,7 @@ flow_verbs_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		rte_free(dev_flow);
 	}
 	if (flow->counter) {
-		flow_verbs_counter_release(flow->counter);
+		flow_verbs_counter_release(dev, flow->counter);
 		flow->counter = NULL;
 	}
 }

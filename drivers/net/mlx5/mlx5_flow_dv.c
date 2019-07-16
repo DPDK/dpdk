@@ -6,6 +6,7 @@
 #include <stdalign.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -2146,8 +2147,344 @@ flow_dv_modify_hdr_resource_register
 	return 0;
 }
 
+#define MLX5_CNT_CONTAINER_SIZE 64
+#define MLX5_CNT_CONTAINER(priv, batch) (&(priv)->sh->cmng.ccont[batch])
+
 /**
- * Get or create a flow counter.
+ * Get a pool by a counter.
+ *
+ * @param[in] cnt
+ *   Pointer to the counter.
+ *
+ * @return
+ *   The counter pool.
+ */
+static struct mlx5_flow_counter_pool *
+flow_dv_counter_pool_get(struct mlx5_flow_counter *cnt)
+{
+	if (!cnt->batch) {
+		cnt -= cnt->dcs->id % MLX5_COUNTERS_PER_POOL;
+		return (struct mlx5_flow_counter_pool *)cnt - 1;
+	}
+	return cnt->pool;
+}
+
+/**
+ * Get a pool by devx counter ID.
+ *
+ * @param[in] cont
+ *   Pointer to the counter container.
+ * @param[in] id
+ *   The counter devx ID.
+ *
+ * @return
+ *   The counter pool pointer if exists, NULL otherwise,
+ */
+static struct mlx5_flow_counter_pool *
+flow_dv_find_pool_by_id(struct mlx5_pools_container *cont, int id)
+{
+	struct mlx5_flow_counter_pool *pool;
+
+	TAILQ_FOREACH(pool, &cont->pool_list, next) {
+		int base = (pool->min_dcs->id / MLX5_COUNTERS_PER_POOL) *
+				MLX5_COUNTERS_PER_POOL;
+
+		if (id >= base && id < base + MLX5_COUNTERS_PER_POOL)
+			return pool;
+	};
+	return NULL;
+}
+
+/**
+ * Allocate a new memory for the counter values wrapped by all the needed
+ * management.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] raws_n
+ *   The raw memory areas - each one for MLX5_COUNTERS_PER_POOL counters.
+ *
+ * @return
+ *   The new memory management pointer on success, otherwise NULL and rte_errno
+ *   is set.
+ */
+static struct mlx5_counter_stats_mem_mng *
+flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
+{
+	struct mlx5_ibv_shared *sh = ((struct mlx5_priv *)
+					(dev->data->dev_private))->sh;
+	struct mlx5dv_pd dv_pd;
+	struct mlx5dv_obj dv_obj;
+	struct mlx5_devx_mkey_attr mkey_attr;
+	struct mlx5_counter_stats_mem_mng *mem_mng;
+	volatile struct flow_counter_stats *raw_data;
+	int size = (sizeof(struct flow_counter_stats) *
+			MLX5_COUNTERS_PER_POOL +
+			sizeof(struct mlx5_counter_stats_raw)) * raws_n +
+			sizeof(struct mlx5_counter_stats_mem_mng);
+	uint8_t *mem = rte_calloc(__func__, 1, size, sysconf(_SC_PAGESIZE));
+	int i;
+
+	if (!mem) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	mem_mng = (struct mlx5_counter_stats_mem_mng *)(mem + size) - 1;
+	size = sizeof(*raw_data) * MLX5_COUNTERS_PER_POOL * raws_n;
+	mem_mng->umem = mlx5_glue->devx_umem_reg(sh->ctx, mem, size,
+						 IBV_ACCESS_LOCAL_WRITE);
+	if (!mem_mng->umem) {
+		rte_errno = errno;
+		rte_free(mem);
+		return NULL;
+	}
+	dv_obj.pd.in = sh->pd;
+	dv_obj.pd.out = &dv_pd;
+	mlx5_glue->dv_init_obj(&dv_obj, MLX5DV_OBJ_PD);
+	mkey_attr.addr = (uintptr_t)mem;
+	mkey_attr.size = size;
+	mkey_attr.umem_id = mem_mng->umem->umem_id;
+	mkey_attr.pd = dv_pd.pdn;
+	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->ctx, &mkey_attr);
+	if (!mem_mng->dm) {
+		mlx5_glue->devx_umem_dereg(mem_mng->umem);
+		rte_errno = errno;
+		rte_free(mem);
+		return NULL;
+	}
+	mem_mng->raws = (struct mlx5_counter_stats_raw *)(mem + size);
+	raw_data = (volatile struct flow_counter_stats *)mem;
+	for (i = 0; i < raws_n; ++i) {
+		mem_mng->raws[i].mem_mng = mem_mng;
+		mem_mng->raws[i].data = raw_data + i * MLX5_COUNTERS_PER_POOL;
+	}
+	LIST_INSERT_HEAD(&sh->cmng.mem_mngs, mem_mng, next);
+	return mem_mng;
+}
+
+/**
+ * Prepare a counter container.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] batch
+ *   Whether the pool is for counter that was allocated by batch command.
+ *
+ * @return
+ *   The container pointer on success, otherwise NULL and rte_errno is set.
+ */
+static struct mlx5_pools_container *
+flow_dv_container_prepare(struct rte_eth_dev *dev, uint32_t batch)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv, batch);
+	struct mlx5_counter_stats_mem_mng *mem_mng;
+	uint32_t size = MLX5_CNT_CONTAINER_SIZE;
+	uint32_t mem_size = sizeof(struct mlx5_flow_counter_pool *) * size;
+
+	cont->pools = rte_calloc(__func__, 1, mem_size, 0);
+	if (!cont->pools) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	mem_mng = flow_dv_create_counter_stat_mem_mng(dev, size);
+	if (!mem_mng) {
+		rte_free(cont->pools);
+		return NULL;
+	}
+	cont->n = size;
+	TAILQ_INIT(&cont->pool_list);
+	cont->init_mem_mng = mem_mng;
+	return cont;
+}
+
+/**
+ * Query a devx flow counter.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] cnt
+ *   Pointer to the flow counter.
+ * @param[out] pkts
+ *   The statistics value of packets.
+ * @param[out] bytes
+ *   The statistics value of bytes.
+ *
+ * @return
+ *   0 on success, otherwise a negative errno value and rte_errno is set.
+ */
+static inline int
+_flow_dv_query_count(struct rte_eth_dev *dev __rte_unused,
+		     struct mlx5_flow_counter *cnt, uint64_t *pkts,
+		     uint64_t *bytes)
+{
+	struct mlx5_flow_counter_pool *pool =
+			flow_dv_counter_pool_get(cnt);
+	uint16_t offset = pool->min_dcs->id % MLX5_COUNTERS_PER_POOL;
+	int ret = mlx5_devx_cmd_flow_counter_query
+		(pool->min_dcs, 0, MLX5_COUNTERS_PER_POOL - offset, NULL,
+		 NULL, pool->raw->mem_mng->dm->id,
+		 (void *)(uintptr_t)(pool->raw->data +
+		 offset));
+
+	if (ret) {
+		DRV_LOG(ERR, "Failed to trigger synchronous"
+			" query for dcs ID %d\n",
+			pool->min_dcs->id);
+		return ret;
+	}
+	offset = cnt - &pool->counters_raw[0];
+	*pkts = rte_be_to_cpu_64(pool->raw->data[offset].hits);
+	*bytes = rte_be_to_cpu_64(pool->raw->data[offset].bytes);
+	return 0;
+}
+
+/**
+ * Create and initialize a new counter pool.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[out] dcs
+ *   The devX counter handle.
+ * @param[in] batch
+ *   Whether the pool is for counter that was allocated by batch command.
+ *
+ * @return
+ *   A new pool pointer on success, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_flow_counter_pool *
+flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
+		    uint32_t batch)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_counter_pool *pool;
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv, batch);
+	uint32_t size;
+
+	if (!cont->n) {
+		cont = flow_dv_container_prepare(dev, batch);
+		if (!cont)
+			return NULL;
+	} else if (cont->n == cont->n_valid) {
+		DRV_LOG(ERR, "No space in container to allocate a new pool\n");
+		rte_errno = ENOSPC;
+		return NULL;
+	}
+	size = sizeof(*pool) + MLX5_COUNTERS_PER_POOL *
+			sizeof(struct mlx5_flow_counter);
+	pool = rte_calloc(__func__, 1, size, 0);
+	if (!pool) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	pool->min_dcs = dcs;
+	pool->raw = cont->init_mem_mng->raws + cont->n_valid;
+	TAILQ_INIT(&pool->counters);
+	TAILQ_INSERT_TAIL(&cont->pool_list, pool, next);
+	cont->pools[cont->n_valid] = pool;
+	cont->n_valid++;
+	return pool;
+}
+
+/**
+ * Prepare a new counter and/or a new counter pool.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[out] cnt_free
+ *   Where to put the pointer of a new counter.
+ * @param[in] batch
+ *   Whether the pool is for counter that was allocated by batch command.
+ *
+ * @return
+ *   The free counter pool pointer and @p cnt_free is set on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_flow_counter_pool *
+flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
+			     struct mlx5_flow_counter **cnt_free,
+			     uint32_t batch)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_counter_pool *pool;
+	struct mlx5_devx_obj *dcs = NULL;
+	struct mlx5_flow_counter *cnt;
+	uint32_t i;
+
+	if (!batch) {
+		/* bulk_bitmap must be 0 for single counter allocation. */
+		dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0);
+		if (!dcs)
+			return NULL;
+		pool = flow_dv_find_pool_by_id(MLX5_CNT_CONTAINER(priv, batch),
+					       dcs->id);
+		if (!pool) {
+			pool = flow_dv_pool_create(dev, dcs, batch);
+			if (!pool) {
+				mlx5_devx_cmd_destroy(dcs);
+				return NULL;
+			}
+		} else if (dcs->id < pool->min_dcs->id) {
+			pool->min_dcs->id = dcs->id;
+		}
+		cnt = &pool->counters_raw[dcs->id % MLX5_COUNTERS_PER_POOL];
+		TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
+		cnt->dcs = dcs;
+		*cnt_free = cnt;
+		return pool;
+	}
+	/* bulk_bitmap is in 128 counters units. */
+	if (priv->config.hca_attr.flow_counter_bulk_alloc_bitmap & 0x4)
+		dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0x4);
+	if (!dcs) {
+		rte_errno = ENODATA;
+		return NULL;
+	}
+	pool = flow_dv_pool_create(dev, dcs, batch);
+	if (!pool) {
+		mlx5_devx_cmd_destroy(dcs);
+		return NULL;
+	}
+	for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
+		cnt = &pool->counters_raw[i];
+		cnt->pool = pool;
+		TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
+	}
+	*cnt_free = &pool->counters_raw[0];
+	return pool;
+}
+
+/**
+ * Search for existed shared counter.
+ *
+ * @param[in] cont
+ *   Pointer to the relevant counter pool container.
+ * @param[in] id
+ *   The shared counter ID to search.
+ *
+ * @return
+ *   NULL if not existed, otherwise pointer to the shared counter.
+ */
+static struct mlx5_flow_counter *
+flow_dv_counter_shared_search(struct mlx5_pools_container *cont,
+			      uint32_t id)
+{
+	static struct mlx5_flow_counter *cnt;
+	struct mlx5_flow_counter_pool *pool;
+	int i;
+
+	TAILQ_FOREACH(pool, &cont->pool_list, next) {
+		for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
+			cnt = &pool->counters_raw[i];
+			if (cnt->ref_cnt && cnt->shared && cnt->id == id)
+				return cnt;
+		}
+	}
+	return NULL;
+}
+
+/**
+ * Allocate a flow counter.
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
@@ -2155,80 +2492,110 @@ flow_dv_modify_hdr_resource_register
  *   Indicate if this counter is shared with other flows.
  * @param[in] id
  *   Counter identifier.
+ * @param[in] group
+ *   Counter flow group.
  *
  * @return
  *   pointer to flow counter on success, NULL otherwise and rte_errno is set.
  */
 static struct mlx5_flow_counter *
-flow_dv_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
+flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
+		      uint16_t group)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_counter *cnt = NULL;
-	struct mlx5_devx_counter_set *dcs = NULL;
-	int ret;
+	struct mlx5_flow_counter_pool *pool = NULL;
+	struct mlx5_flow_counter *cnt_free = NULL;
+	/*
+	 * Currently group 0 flow counter cannot be assigned to a flow if it is
+	 * not the first one in the batch counter allocation, so it is better
+	 * to allocate counters one by one for these flows in a separate
+	 * container.
+	 * A counter can be shared between different groups so need to take
+	 * shared counters from the single container.
+	 */
+	uint32_t batch = (group && !shared) ? 1 : 0;
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv, batch);
 
 	if (!priv->config.devx) {
-		ret = -ENOTSUP;
-		goto error_exit;
+		rte_errno = ENOTSUP;
+		return NULL;
 	}
 	if (shared) {
-		LIST_FOREACH(cnt, &priv->flow_counters, next) {
-			if (cnt->shared && cnt->id == id) {
-				cnt->ref_cnt++;
-				return cnt;
+		cnt_free = flow_dv_counter_shared_search(cont, id);
+		if (cnt_free) {
+			if (cnt_free->ref_cnt + 1 == 0) {
+				rte_errno = E2BIG;
+				return NULL;
 			}
+			cnt_free->ref_cnt++;
+			return cnt_free;
 		}
 	}
-	cnt = rte_calloc(__func__, 1, sizeof(*cnt), 0);
-	dcs = rte_calloc(__func__, 1, sizeof(*dcs), 0);
-	if (!dcs || !cnt) {
-		ret = -ENOMEM;
-		goto error_exit;
+	/* Pools which has a free counters are in the start. */
+	pool = TAILQ_FIRST(&cont->pool_list);
+	if (pool)
+		cnt_free = TAILQ_FIRST(&pool->counters);
+	if (!cnt_free) {
+		pool = flow_dv_counter_pool_prepare(dev, &cnt_free, batch);
+		if (!pool)
+			return NULL;
 	}
-	ret = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, dcs);
-	if (ret)
-		goto error_exit;
-	struct mlx5_flow_counter tmpl = {
-		.shared = shared,
-		.ref_cnt = 1,
-		.id = id,
-		.dcs = dcs,
-	};
-	tmpl.action = mlx5_glue->dv_create_flow_action_counter(dcs->obj, 0);
-	if (!tmpl.action) {
-		ret = errno;
-		goto error_exit;
+	cnt_free->batch = batch;
+	/* Create a DV counter action only in the first time usage. */
+	if (!cnt_free->action) {
+		uint16_t offset;
+		struct mlx5_devx_obj *dcs;
+
+		if (batch) {
+			offset = cnt_free - &pool->counters_raw[0];
+			dcs = pool->min_dcs;
+		} else {
+			offset = 0;
+			dcs = cnt_free->dcs;
+		}
+		cnt_free->action = mlx5_glue->dv_create_flow_action_counter
+					(dcs->obj, offset);
+		if (!cnt_free->action) {
+			rte_errno = errno;
+			return NULL;
+		}
 	}
-	*cnt = tmpl;
-	LIST_INSERT_HEAD(&priv->flow_counters, cnt, next);
-	return cnt;
-error_exit:
-	rte_free(cnt);
-	rte_free(dcs);
-	rte_errno = -ret;
-	return NULL;
+	/* Update the counter reset values. */
+	if (_flow_dv_query_count(dev, cnt_free, &cnt_free->hits,
+				 &cnt_free->bytes))
+		return NULL;
+	cnt_free->shared = shared;
+	cnt_free->ref_cnt = 1;
+	cnt_free->id = id;
+	TAILQ_REMOVE(&pool->counters, cnt_free, next);
+	if (TAILQ_EMPTY(&pool->counters)) {
+		/* Move the pool to the end of the container pool list. */
+		TAILQ_REMOVE(&cont->pool_list, pool, next);
+		TAILQ_INSERT_TAIL(&cont->pool_list, pool, next);
+	}
+	return cnt_free;
 }
 
 /**
  * Release a flow counter.
  *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
  * @param[in] counter
  *   Pointer to the counter handler.
  */
 static void
-flow_dv_counter_release(struct mlx5_flow_counter *counter)
+flow_dv_counter_release(struct rte_eth_dev *dev __rte_unused,
+			struct mlx5_flow_counter *counter)
 {
-	int ret;
-
 	if (!counter)
 		return;
 	if (--counter->ref_cnt == 0) {
-		ret = mlx5_devx_cmd_flow_counter_free(counter->dcs->obj);
-		if (ret)
-			DRV_LOG(ERR, "Failed to free devx counters, %d", ret);
-		LIST_REMOVE(counter, next);
-		rte_free(counter->dcs);
-		rte_free(counter);
+		struct mlx5_flow_counter_pool *pool =
+				flow_dv_counter_pool_get(counter);
+
+		/* Put the counter in the end - the earliest one. */
+		TAILQ_INSERT_TAIL(&pool->counters, counter, next);
 	}
 }
 
@@ -4217,8 +4584,10 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				rte_errno = ENOTSUP;
 				goto cnt_err;
 			}
-			flow->counter = flow_dv_counter_new(dev, count->shared,
-							    count->id);
+			flow->counter = flow_dv_counter_alloc(dev,
+							      count->shared,
+							      count->id,
+							      attr->group);
 			if (flow->counter == NULL)
 				goto cnt_err;
 			dev_flow->dv.actions[actions_n++] =
@@ -4891,7 +5260,7 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		return;
 	flow_dv_remove(dev, flow);
 	if (flow->counter) {
-		flow_dv_counter_release(flow->counter);
+		flow_dv_counter_release(dev, flow->counter);
 		flow->counter = NULL;
 	}
 	if (flow->tag_resource) {
@@ -4936,9 +5305,6 @@ flow_dv_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_query_count *qc = data;
-	uint64_t pkts = 0;
-	uint64_t bytes = 0;
-	int err;
 
 	if (!priv->config.devx)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -4946,15 +5312,14 @@ flow_dv_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 					  NULL,
 					  "counters are not supported");
 	if (flow->counter) {
-		err = mlx5_devx_cmd_flow_counter_query
-						(flow->counter->dcs,
-						 qc->reset, &pkts, &bytes);
+		uint64_t pkts, bytes;
+		int err = _flow_dv_query_count(dev, flow->counter, &pkts,
+					       &bytes);
+
 		if (err)
-			return rte_flow_error_set
-				(error, err,
-				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				 NULL,
-				 "cannot read counters");
+			return rte_flow_error_set(error, -err,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "cannot read counters");
 		qc->hits_set = 1;
 		qc->bytes_set = 1;
 		qc->hits = pkts - flow->counter->hits;

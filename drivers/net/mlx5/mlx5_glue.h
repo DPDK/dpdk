@@ -61,6 +61,7 @@ enum mlx5dv_flow_table_type { flow_table_type = 0, };
 
 #ifndef HAVE_IBV_DEVX_OBJ
 struct mlx5dv_devx_obj;
+struct mlx5dv_devx_umem;
 #endif
 
 #ifndef HAVE_MLX5DV_DR
@@ -209,6 +210,10 @@ struct mlx5_glue {
 	int (*devx_general_cmd)(struct ibv_context *context,
 				const void *in, size_t inlen,
 				void *out, size_t outlen);
+	struct mlx5dv_devx_umem *(*devx_umem_reg)(struct ibv_context *context,
+						  void *addr, size_t size,
+						  uint32_t access);
+	int (*devx_umem_dereg)(struct mlx5dv_devx_umem *dv_devx_umem);
 };
 
 const struct mlx5_glue *mlx5_glue;

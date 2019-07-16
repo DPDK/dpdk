@@ -849,6 +849,33 @@ mlx5_glue_devx_general_cmd(struct ibv_context *ctx,
 #endif
 }
 
+static struct mlx5dv_devx_umem *
+mlx5_glue_devx_umem_reg(struct ibv_context *context, void *addr, size_t size,
+			uint32_t access)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return mlx5dv_devx_umem_reg(context, addr, size, access);
+#else
+	(void)context;
+	(void)addr;
+	(void)size;
+	(void)access;
+	errno = -ENOTSUP;
+	return NULL;
+#endif
+}
+
+static int
+mlx5_glue_devx_umem_dereg(struct mlx5dv_devx_umem *dv_devx_umem)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return mlx5dv_devx_umem_dereg(dv_devx_umem);
+#else
+	(void)dv_devx_umem;
+	return -ENOTSUP;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -930,4 +957,6 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_obj_query = mlx5_glue_devx_obj_query,
 	.devx_obj_modify = mlx5_glue_devx_obj_modify,
 	.devx_general_cmd = mlx5_glue_devx_general_cmd,
+	.devx_umem_reg = mlx5_glue_devx_umem_reg,
+	.devx_umem_dereg = mlx5_glue_devx_umem_dereg,
 };

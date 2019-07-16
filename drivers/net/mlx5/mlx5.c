@@ -157,6 +157,89 @@ static LIST_HEAD(, mlx5_ibv_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
 static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
+ * Initialize the counters management structure.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_ibv_shared object to free
+ */
+static void
+mlx5_flow_counters_mng_init(struct mlx5_ibv_shared *sh)
+{
+	uint8_t i;
+
+	TAILQ_INIT(&sh->cmng.flow_counters);
+	for (i = 0; i < RTE_DIM(sh->cmng.ccont); ++i)
+		TAILQ_INIT(&sh->cmng.ccont[i].pool_list);
+}
+
+/**
+ * Destroy all the resources allocated for a counter memory management.
+ *
+ * @param[in] mng
+ *   Pointer to the memory management structure.
+ */
+static void
+mlx5_flow_destroy_counter_stat_mem_mng(struct mlx5_counter_stats_mem_mng *mng)
+{
+	uint8_t *mem = (uint8_t *)(uintptr_t)mng->raws[0].data;
+
+	LIST_REMOVE(mng, next);
+	claim_zero(mlx5_devx_cmd_destroy(mng->dm));
+	claim_zero(mlx5_glue->devx_umem_dereg(mng->umem));
+	rte_free(mem);
+}
+
+/**
+ * Close and release all the resources of the counters management.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_ibv_shared object to free.
+ */
+static void
+mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
+{
+	struct mlx5_counter_stats_mem_mng *mng;
+	uint8_t i;
+	int j;
+
+	for (i = 0; i < RTE_DIM(sh->cmng.ccont); ++i) {
+		struct mlx5_flow_counter_pool *pool;
+		uint32_t batch = !!(i % 2);
+
+		if (!sh->cmng.ccont[i].pools)
+			continue;
+		pool = TAILQ_FIRST(&sh->cmng.ccont[i].pool_list);
+		while (pool) {
+			if (batch) {
+				if (pool->min_dcs)
+					claim_zero
+					(mlx5_devx_cmd_destroy(pool->min_dcs));
+			}
+			for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j) {
+				if (pool->counters_raw[j].action)
+					claim_zero
+					(mlx5_glue->destroy_flow_action
+					       (pool->counters_raw[j].action));
+				if (!batch && pool->counters_raw[j].dcs)
+					claim_zero(mlx5_devx_cmd_destroy
+						  (pool->counters_raw[j].dcs));
+			}
+			TAILQ_REMOVE(&sh->cmng.ccont[i].pool_list, pool,
+				     next);
+			rte_free(pool);
+			pool = TAILQ_FIRST(&sh->cmng.ccont[i].pool_list);
+		}
+		rte_free(sh->cmng.ccont[i].pools);
+	}
+	mng = LIST_FIRST(&sh->cmng.mem_mngs);
+	while (mng) {
+		mlx5_flow_destroy_counter_stat_mem_mng(mng);
+		mng = LIST_FIRST(&sh->cmng.mem_mngs);
+	}
+	memset(&sh->cmng, 0, sizeof(sh->cmng));
+}
+
+/**
  * Allocate shared IB device context. If there is multiport device the
  * master and representors will share this context, if there is single
  * port dedicated IB device, the context will be used by only given
@@ -260,6 +343,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 		err = rte_errno;
 		goto error;
 	}
+	mlx5_flow_counters_mng_init(sh);
 	LIST_INSERT_HEAD(&mlx5_ibv_list, sh, next);
 exit:
 	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
@@ -314,6 +398,7 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 	 *  Ensure there is no async event handler installed.
 	 *  Only primary process handles async device events.
 	 **/
+	mlx5_flow_counters_mng_close(sh);
 	assert(!sh->intr_cnt);
 	if (sh->intr_cnt)
 		mlx5_intr_callback_unregister
