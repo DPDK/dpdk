@@ -419,6 +419,16 @@ static void ixgbe_l2_tunnel_conf(struct rte_eth_dev *dev);
 int ixgbe_logtype_init;
 int ixgbe_logtype_driver;
 
+#ifdef RTE_LIBRTE_IXGBE_DEBUG_RX
+int ixgbe_logtype_rx;
+#endif
+#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX
+int ixgbe_logtype_tx;
+#endif
+#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX_FREE
+int ixgbe_logtype_tx_free;
+#endif
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -8823,4 +8833,21 @@ RTE_INIT(ixgbe_init_log)
 	ixgbe_logtype_driver = rte_log_register("pmd.net.ixgbe.driver");
 	if (ixgbe_logtype_driver >= 0)
 		rte_log_set_level(ixgbe_logtype_driver, RTE_LOG_NOTICE);
+#ifdef RTE_LIBRTE_IXGBE_DEBUG_RX
+	ixgbe_logtype_rx = rte_log_register("pmd.net.ixgbe.rx");
+	if (ixgbe_logtype_rx >= 0)
+		rte_log_set_level(ixgbe_logtype_rx, RTE_LOG_DEBUG);
+#endif
+
+#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX
+	ixgbe_logtype_tx = rte_log_register("pmd.net.ixgbe.tx");
+	if (ixgbe_logtype_tx >= 0)
+		rte_log_set_level(ixgbe_logtype_tx, RTE_LOG_DEBUG);
+#endif
+
+#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX_FREE
+	ixgbe_logtype_tx_free = rte_log_register("pmd.net.ixgbe.tx_free");
+	if (ixgbe_logtype_tx_free >= 0)
+		rte_log_set_level(ixgbe_logtype_tx_free, RTE_LOG_DEBUG);
+#endif
 }
