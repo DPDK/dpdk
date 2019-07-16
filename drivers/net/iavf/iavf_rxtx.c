@@ -1580,6 +1580,9 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			/* Setup TX context descriptor if required */
 			uint64_t cd_type_cmd_tso_mss =
 				IAVF_TX_DESC_DTYPE_CONTEXT;
+			volatile struct iavf_tx_context_desc *ctx_txd =
+				(volatile struct iavf_tx_context_desc *)
+							&txr[tx_id];
 
 			txn = &sw_ring[txe->next_id];
 			RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
@@ -1592,6 +1595,9 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			if (ol_flags & PKT_TX_TCP_SEG)
 				cd_type_cmd_tso_mss |=
 					iavf_set_tso_ctx(tx_pkt, tx_offload);
+
+			ctx_txd->type_cmd_tso_mss =
+				rte_cpu_to_le_64(cd_type_cmd_tso_mss);
 
 			IAVF_DUMP_TX_DESC(txq, &txr[tx_id], tx_id);
 			txe->last_id = tx_last;
