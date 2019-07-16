@@ -860,11 +860,16 @@ memif_listener_handler(void *arg)
 		rte_free(cc);
 }
 
+#define MEMIF_SOCKET_UN_SIZE	\
+	(offsetof(struct sockaddr_un, sun_path) + MEMIF_SOCKET_KEY_LEN)
+
 static struct memif_socket *
-memif_socket_create(struct pmd_internals *pmd, char *key, uint8_t listener)
+memif_socket_create(struct pmd_internals *pmd,
+		    const char *key, uint8_t listener)
 {
 	struct memif_socket *sock;
-	struct sockaddr_un un;
+	struct sockaddr_un *un;
+	char un_buf[MEMIF_SOCKET_UN_SIZE];
 	int sockfd;
 	int ret;
 	int on = 1;
@@ -876,7 +881,7 @@ memif_socket_create(struct pmd_internals *pmd, char *key, uint8_t listener)
 	}
 
 	sock->listener = listener;
-	rte_memcpy(sock->filename, key, 256);
+	strlcpy(sock->filename, key, MEMIF_SOCKET_KEY_LEN);
 	TAILQ_INIT(&sock->dev_queue);
 
 	if (listener != 0) {
@@ -884,15 +889,16 @@ memif_socket_create(struct pmd_internals *pmd, char *key, uint8_t listener)
 		if (sockfd < 0)
 			goto error;
 
-		un.sun_family = AF_UNIX;
-		memcpy(un.sun_path, sock->filename,
-			sizeof(un.sun_path) - 1);
+		memset(un_buf, 0, sizeof(un_buf));
+		un = (struct sockaddr_un *)un_buf;
+		un->sun_family = AF_UNIX;
+		strlcpy(un->sun_path, sock->filename, MEMIF_SOCKET_KEY_LEN);
 
 		ret = setsockopt(sockfd, SOL_SOCKET, SO_PASSCRED, &on,
 				 sizeof(on));
 		if (ret < 0)
 			goto error;
-		ret = bind(sockfd, (struct sockaddr *)&un, sizeof(un));
+		ret = bind(sockfd, (struct sockaddr *)un, MEMIF_SOCKET_UN_SIZE);
 		if (ret < 0)
 			goto error;
 		ret = listen(sockfd, 1);
@@ -931,9 +937,10 @@ static struct rte_hash *
 memif_create_socket_hash(void)
 {
 	struct rte_hash_parameters params = { 0 };
+
 	params.name = MEMIF_SOCKET_HASH_NAME;
 	params.entries = 256;
-	params.key_len = 256;
+	params.key_len = MEMIF_SOCKET_KEY_LEN;
 	params.hash_func = rte_jhash;
 	params.hash_func_init_val = 0;
 	return rte_hash_create(&params);
@@ -948,7 +955,7 @@ memif_socket_init(struct rte_eth_dev *dev, const char *socket_filename)
 	struct pmd_internals *tmp_pmd;
 	struct rte_hash *hash;
 	int ret;
-	char key[256];
+	char key[MEMIF_SOCKET_KEY_LEN];
 
 	hash = rte_hash_find_existing(MEMIF_SOCKET_HASH_NAME);
 	if (hash == NULL) {
@@ -959,8 +966,8 @@ memif_socket_init(struct rte_eth_dev *dev, const char *socket_filename)
 		}
 	}
 
-	memset(key, 0, 256);
-	rte_memcpy(key, socket_filename, strlen(socket_filename));
+	memset(key, 0, MEMIF_SOCKET_KEY_LEN);
+	strlcpy(key, socket_filename, MEMIF_SOCKET_KEY_LEN);
 	ret = rte_hash_lookup_data(hash, key, (void **)&socket);
 	if (ret < 0) {
 		socket = memif_socket_create(pmd, key,

@@ -79,9 +79,11 @@ struct memif_socket_dev_list_elt {
 };
 
 #define MEMIF_SOCKET_HASH_NAME			"memif-sh"
+#define MEMIF_SOCKET_KEY_LEN		256
+
 struct memif_socket {
 	struct rte_intr_handle intr_handle;	/**< interrupt handle */
-	char filename[256];			/**< socket filename */
+	char filename[MEMIF_SOCKET_KEY_LEN];	/**< socket filename */
 
 	TAILQ_HEAD(, memif_socket_dev_list_elt) dev_queue;
 	/**< Queue of devices using this socket */
