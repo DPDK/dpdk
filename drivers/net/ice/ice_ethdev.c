@@ -41,6 +41,15 @@ static const char * const ice_valid_args[] = {
 
 int ice_logtype_init;
 int ice_logtype_driver;
+#ifdef RTE_LIBRTE_ICE_DEBUG_RX
+int ice_logtype_rx;
+#endif
+#ifdef RTE_LIBRTE_ICE_DEBUG_TX
+int ice_logtype_tx;
+#endif
+#ifdef RTE_LIBRTE_ICE_DEBUG_TX_FREE
+int ice_logtype_tx_free;
+#endif
 
 static int ice_dev_configure(struct rte_eth_dev *dev);
 static int ice_dev_start(struct rte_eth_dev *dev);
@@ -4279,4 +4288,22 @@ RTE_INIT(ice_init_log)
 	ice_logtype_driver = rte_log_register("pmd.net.ice.driver");
 	if (ice_logtype_driver >= 0)
 		rte_log_set_level(ice_logtype_driver, RTE_LOG_NOTICE);
+
+#ifdef RTE_LIBRTE_ICE_DEBUG_RX
+	ice_logtype_rx = rte_log_register("pmd.net.ice.rx");
+	if (ice_logtype_rx >= 0)
+		rte_log_set_level(ice_logtype_rx, RTE_LOG_DEBUG);
+#endif
+
+#ifdef RTE_LIBRTE_ICE_DEBUG_TX
+	ice_logtype_tx = rte_log_register("pmd.net.ice.tx");
+	if (ice_logtype_tx >= 0)
+		rte_log_set_level(ice_logtype_tx, RTE_LOG_DEBUG);
+#endif
+
+#ifdef RTE_LIBRTE_ICE_DEBUG_TX_FREE
+	ice_logtype_tx_free = rte_log_register("pmd.net.ice.tx_free");
+	if (ice_logtype_tx_free >= 0)
+		rte_log_set_level(ice_logtype_tx_free, RTE_LOG_DEBUG);
+#endif
 }
