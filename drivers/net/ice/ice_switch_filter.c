@@ -435,6 +435,11 @@ ice_create_switch_filter(struct ice_pf *pf,
 			tun_type = ICE_SW_TUN_VXLAN;
 		if (item->type == RTE_FLOW_ITEM_TYPE_NVGRE)
 			tun_type = ICE_SW_TUN_NVGRE;
+		/* reserve one more memory slot for ETH which may
+		 * consume 2 lookup items.
+		 */
+		if (item->type == RTE_FLOW_ITEM_TYPE_ETH)
+			item_num++;
 	}
 	rule_info.tun_type = tun_type;
 
