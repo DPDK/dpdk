@@ -2147,7 +2147,7 @@ flow_dv_modify_hdr_resource_register
 	return 0;
 }
 
-#define MLX5_CNT_CONTAINER_SIZE 64
+#define MLX5_CNT_CONTAINER_RESIZE 64
 #define MLX5_CNT_CONTAINER(priv, batch) (&(priv)->sh->cmng.ccont[batch])
 
 /**
@@ -2263,7 +2263,7 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 }
 
 /**
- * Prepare a counter container.
+ * Resize a counter container.
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
@@ -2274,26 +2274,34 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
  *   The container pointer on success, otherwise NULL and rte_errno is set.
  */
 static struct mlx5_pools_container *
-flow_dv_container_prepare(struct rte_eth_dev *dev, uint32_t batch)
+flow_dv_container_resize(struct rte_eth_dev *dev, uint32_t batch)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv, batch);
 	struct mlx5_counter_stats_mem_mng *mem_mng;
-	uint32_t size = MLX5_CNT_CONTAINER_SIZE;
-	uint32_t mem_size = sizeof(struct mlx5_flow_counter_pool *) * size;
-
-	cont->pools = rte_calloc(__func__, 1, mem_size, 0);
-	if (!cont->pools) {
+	uint32_t resize = cont->n + MLX5_CNT_CONTAINER_RESIZE;
+	uint32_t mem_size = sizeof(struct mlx5_flow_counter_pool *) * resize;
+	struct mlx5_flow_counter_pool **new_pools = rte_calloc(__func__, 1,
+							       mem_size, 0);
+	if (!new_pools) {
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	mem_mng = flow_dv_create_counter_stat_mem_mng(dev, size);
+	mem_mng = flow_dv_create_counter_stat_mem_mng(dev,
+						    MLX5_CNT_CONTAINER_RESIZE);
 	if (!mem_mng) {
-		rte_free(cont->pools);
+		rte_free(new_pools);
 		return NULL;
 	}
-	cont->n = size;
-	TAILQ_INIT(&cont->pool_list);
+	if (cont->n) {
+		memcpy(new_pools, cont->pools,
+		       cont->n * sizeof(struct mlx5_flow_counter_pool *));
+		rte_free(cont->pools);
+	} else {
+		TAILQ_INIT(&cont->pool_list);
+	}
+	cont->pools = new_pools;
+	cont->n = resize;
 	cont->init_mem_mng = mem_mng;
 	return cont;
 }
@@ -2361,14 +2369,10 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv, batch);
 	uint32_t size;
 
-	if (!cont->n) {
-		cont = flow_dv_container_prepare(dev, batch);
+	if (cont->n == cont->n_valid) {
+		cont = flow_dv_container_resize(dev, batch);
 		if (!cont)
 			return NULL;
-	} else if (cont->n == cont->n_valid) {
-		DRV_LOG(ERR, "No space in container to allocate a new pool\n");
-		rte_errno = ENOSPC;
-		return NULL;
 	}
 	size = sizeof(*pool) + MLX5_COUNTERS_PER_POOL *
 			sizeof(struct mlx5_flow_counter);
@@ -2378,7 +2382,8 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		return NULL;
 	}
 	pool->min_dcs = dcs;
-	pool->raw = cont->init_mem_mng->raws + cont->n_valid;
+	pool->raw = cont->init_mem_mng->raws + cont->n_valid  %
+			MLX5_CNT_CONTAINER_RESIZE;
 	TAILQ_INIT(&pool->counters);
 	TAILQ_INSERT_TAIL(&cont->pool_list, pool, next);
 	cont->pools[cont->n_valid] = pool;
