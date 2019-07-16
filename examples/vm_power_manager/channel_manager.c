@@ -588,7 +588,7 @@ add_host_channels(void)
 			goto error;
 		}
 		chan_infos[i] = chan_info;
-		rte_strlcpy(chan_info->channel_path, socket_path,
+		strlcpy(chan_info->channel_path, socket_path,
 				sizeof(chan_info->channel_path));
 
 		if (setup_host_channel_info(&chan_info, i) < 0) {

@@ -65,7 +65,7 @@ parse_args(int argc, char **argv)
 		switch (opt) {
 		/* portmask */
 		case 'n':
-			strcpy(policy->vm_name, optarg);
+			strlcpy(policy->vm_name, optarg, VM_MAX_NAME_SZ);
 			printf("Setting VM Name to [%s]\n", policy->vm_name);
 			break;
 		case 'b':

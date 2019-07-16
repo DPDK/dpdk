@@ -309,7 +309,7 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt,
 				vm_name);
 			return -1;
 		}
-		rte_strlcpy(pkt->vm_name, vm_name, VM_MAX_NAME_SZ);
+		strlcpy(pkt->vm_name, vm_name, VM_MAX_NAME_SZ);
 		pkt->resource_id = resource_id;
 	}
 	return 0;
