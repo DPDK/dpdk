@@ -98,11 +98,13 @@ typedef uint64_t dma_addr_t;
 #define ENA_GET_SYSTEM_USECS()						\
 	(rte_get_timer_cycles() * US_PER_S / rte_get_timer_hz())
 
+extern int ena_logtype_com;
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 #define ENA_ASSERT(cond, format, arg...)				\
 	do {								\
 		if (unlikely(!(cond))) {				\
-			RTE_LOG(ERR, PMD, format, ##arg);		\
+			rte_log(RTE_LOGTYPE_ERR, ena_logtype_com,	\
+				format, ##arg);				\
 			rte_panic("line %d\tassert \"" #cond "\""	\
 					"failed\n", __LINE__);		\
 		}							\
@@ -127,14 +129,14 @@ typedef uint64_t dma_addr_t;
 			  (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
 
 #ifdef RTE_LIBRTE_ENA_COM_DEBUG
-#define ena_trc_dbg(format, arg...)					\
-	RTE_LOG(DEBUG, PMD, "[ENA_COM: %s] " format, __func__, ##arg)
-#define ena_trc_info(format, arg...)					\
-	RTE_LOG(INFO, PMD, "[ENA_COM: %s] " format, __func__, ##arg)
-#define ena_trc_warn(format, arg...)					\
-	RTE_LOG(ERR, PMD, "[ENA_COM: %s] " format, __func__, ##arg)
-#define ena_trc_err(format, arg...)					\
-	RTE_LOG(ERR, PMD, "[ENA_COM: %s] " format, __func__, ##arg)
+#define ena_trc_log(level, fmt, arg...) \
+	rte_log(RTE_LOG_ ## level, ena_logtype_com, \
+		"[ENA_COM: %s]" fmt, __func__, ##arg)
+
+#define ena_trc_dbg(format, arg...)	ena_trc_log(DEBUG, format, ##arg)
+#define ena_trc_info(format, arg...)	ena_trc_log(INFO, format, ##arg)
+#define ena_trc_warn(format, arg...)	ena_trc_log(WARNING, format, ##arg)
+#define ena_trc_err(format, arg...)	ena_trc_log(ERR, format, ##arg)
 #else
 #define ena_trc_dbg(format, arg...) do { } while (0)
 #define ena_trc_info(format, arg...) do { } while (0)
