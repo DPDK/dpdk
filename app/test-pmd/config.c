@@ -509,6 +509,10 @@ port_infos_display(portid_t port_id)
 	printf("Min possible number of TXDs per queue: %hu\n",
 		dev_info.tx_desc_lim.nb_min);
 	printf("TXDs number alignment: %hu\n", dev_info.tx_desc_lim.nb_align);
+	printf("Max segment number per packet: %hu\n",
+		dev_info.tx_desc_lim.nb_seg_max);
+	printf("Max segment number per MTU/TSO: %hu\n",
+		dev_info.tx_desc_lim.nb_mtu_seg_max);
 
 	/* Show switch info only if valid switch domain and port id is set */
 	if (dev_info.switch_info.domain_id !=
