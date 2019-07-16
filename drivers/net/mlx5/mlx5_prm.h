@@ -920,7 +920,9 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_343[0x5];
 	u8 log_max_flow_counter_bulk[0x8];
 	u8 max_flow_counter_15_0[0x10];
-	u8 reserved_at_360[0x3];
+	u8 modify_tis[0x1];
+	u8 flow_counters_dump[0x1];
+	u8 reserved_at_360[0x1];
 	u8 log_max_rq[0x5];
 	u8 reserved_at_368[0x3];
 	u8 log_max_sq[0x5];

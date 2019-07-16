@@ -57,7 +57,7 @@ mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx, uint32_t bulk_n_128)
  * @param[in] clear
  *   Whether hardware should clear the counters after the query or not.
  * @param[in] n_counters
- *   The counter number to read.
+ *   0 in case of 1 counter to read, otherwise the counter number to read.
  *  @param pkts
  *   The number of packets that matched the flow.
  *  @param bytes
@@ -271,6 +271,8 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
 	attr->flow_counter_bulk_alloc_bitmap =
 			MLX5_GET(cmd_hca_cap, hcattr, flow_counter_bulk_alloc);
+	attr->flow_counters_dump = MLX5_GET(cmd_hca_cap, hcattr,
+					    flow_counters_dump);
 	attr->eswitch_manager = MLX5_GET(cmd_hca_cap, hcattr, eswitch_manager);
 	return 0;
 }

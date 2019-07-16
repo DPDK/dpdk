@@ -168,6 +168,7 @@ struct mlx5_devx_mkey_attr {
 /* HCA attributes. */
 struct mlx5_hca_attr {
 	uint32_t eswitch_manager:1;
+	uint32_t flow_counters_dump:1;
 	uint8_t flow_counter_bulk_alloc_bitmap;
 };
 
@@ -457,6 +458,7 @@ struct mlx5_priv {
 	unsigned int representor:1; /* Device is a port representor. */
 	unsigned int master:1; /* Device is a E-Switch master. */
 	unsigned int dr_shared:1; /* DV/DR data is shared. */
+	unsigned int counter_fallback:1; /* Use counter fallback management. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	int32_t representor_id; /* Port representor identifier. */

@@ -1624,11 +1624,19 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	mlx5_link_update(eth_dev, 0);
 #ifdef HAVE_IBV_DEVX_OBJ
 	if (config.devx) {
+		priv->counter_fallback = 0;
 		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config.hca_attr);
 		if (err) {
 			err = -err;
 			goto error;
 		}
+		if (!config.hca_attr.flow_counters_dump)
+			priv->counter_fallback = 1;
+#ifndef HAVE_IBV_DEVX_ASYNC
+		priv->counter_fallback = 1;
+#endif
+		if (priv->counter_fallback)
+			DRV_LOG(INFO, "Use fall-back DV counter management\n");
 	}
 #endif
 #ifdef HAVE_MLX5DV_DR_ESWITCH
