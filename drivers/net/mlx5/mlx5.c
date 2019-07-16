@@ -37,6 +37,7 @@
 #include <rte_rwlock.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
+#include <rte_alarm.h>
 
 #include "mlx5.h"
 #include "mlx5_utils.h"
@@ -201,7 +202,15 @@ mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
 	struct mlx5_counter_stats_mem_mng *mng;
 	uint8_t i;
 	int j;
+	int retries = 1024;
 
+	rte_errno = 0;
+	while (--retries) {
+		rte_eal_alarm_cancel(mlx5_flow_query_alarm, sh);
+		if (rte_errno != EINPROGRESS)
+			break;
+		rte_pause();
+	}
 	for (i = 0; i < RTE_DIM(sh->cmng.ccont); ++i) {
 		struct mlx5_flow_counter_pool *pool;
 		uint32_t batch = !!(i % 2);

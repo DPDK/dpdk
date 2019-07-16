@@ -64,6 +64,11 @@ struct mlx5dv_devx_obj;
 struct mlx5dv_devx_umem;
 #endif
 
+#ifndef HAVE_IBV_DEVX_ASYNC
+struct mlx5dv_devx_cmd_comp;
+struct mlx5dv_devx_async_cmd_hdr;
+#endif
+
 #ifndef HAVE_MLX5DV_DR
 enum  mlx5dv_dr_domain_type { unused, };
 struct mlx5dv_dr_domain;
@@ -210,6 +215,16 @@ struct mlx5_glue {
 	int (*devx_general_cmd)(struct ibv_context *context,
 				const void *in, size_t inlen,
 				void *out, size_t outlen);
+	struct mlx5dv_devx_cmd_comp *(*devx_create_cmd_comp)
+					(struct ibv_context *context);
+	void (*devx_destroy_cmd_comp)(struct mlx5dv_devx_cmd_comp *cmd_comp);
+	int (*devx_obj_query_async)(struct mlx5dv_devx_obj *obj,
+				    const void *in, size_t inlen,
+				    size_t outlen, uint64_t wr_id,
+				    struct mlx5dv_devx_cmd_comp *cmd_comp);
+	int (*devx_get_async_cmd_comp)(struct mlx5dv_devx_cmd_comp *cmd_comp,
+				       struct mlx5dv_devx_async_cmd_hdr *resp,
+				       size_t cmd_resp_len);
 	struct mlx5dv_devx_umem *(*devx_umem_reg)(struct ibv_context *context,
 						  void *addr, size_t size,
 						  uint32_t access);

@@ -114,6 +114,8 @@ New Features
   * Added support for match on ICMP/ICMP6 code and type.
   * Added support for matching on GRE's key and C,K,S present bits.
   * Added support for IP-in-IP tunnel.
+  * Accelerate flows with count action creation and destroy.
+  * Accelerate flows counter query.
 
 * **Updated Solarflare network PMD.**
 

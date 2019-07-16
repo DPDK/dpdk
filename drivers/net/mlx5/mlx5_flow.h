@@ -21,6 +21,9 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include <rte_atomic.h>
+#include <rte_alarm.h>
+
 #include "mlx5.h"
 #include "mlx5_prm.h"
 
@@ -413,6 +416,11 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_destroy_t destroy;
 	mlx5_flow_query_t query;
 };
+
+#define MLX5_CNT_CONTAINER(sh, batch, thread) (&(sh)->cmng.ccont \
+	[(((sh)->cmng.mhi[batch] >> (thread)) & 0x1) * 2 + (batch)])
+#define MLX5_CNT_CONTAINER_UNUSED(sh, batch, thread) (&(sh)->cmng.ccont \
+	[(~((sh)->cmng.mhi[batch] >> (thread)) & 0x1) * 2 + (batch)])
 
 /* mlx5_flow.c */
 

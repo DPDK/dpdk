@@ -3174,3 +3174,150 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 	}
 	return 0;
 }
+
+#define MLX5_POOL_QUERY_FREQ_US 1000000
+
+/**
+ * Set the periodic procedure for triggering asynchronous batch queries for all
+ * the counter pools.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_ibv_shared object.
+ */
+void
+mlx5_set_query_alarm(struct mlx5_ibv_shared *sh)
+{
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(sh, 0, 0);
+	uint32_t pools_n = rte_atomic16_read(&cont->n_valid);
+	uint32_t us;
+
+	cont = MLX5_CNT_CONTAINER(sh, 1, 0);
+	pools_n += rte_atomic16_read(&cont->n_valid);
+	us = MLX5_POOL_QUERY_FREQ_US / pools_n;
+	DRV_LOG(DEBUG, "Set alarm for %u pools each %u us\n", pools_n, us);
+	if (rte_eal_alarm_set(us, mlx5_flow_query_alarm, sh)) {
+		sh->cmng.query_thread_on = 0;
+		DRV_LOG(ERR, "Cannot reinitialize query alarm\n");
+	} else {
+		sh->cmng.query_thread_on = 1;
+	}
+}
+
+/**
+ * The periodic procedure for triggering asynchronous batch queries for all the
+ * counter pools. This function is probably called by the host thread.
+ *
+ * @param[in] arg
+ *   The parameter for the alarm process.
+ */
+void
+mlx5_flow_query_alarm(void *arg)
+{
+	struct mlx5_ibv_shared *sh = arg;
+	struct mlx5_devx_obj *dcs;
+	uint16_t offset;
+	int ret;
+	uint8_t batch = sh->cmng.batch;
+	uint16_t pool_index = sh->cmng.pool_index;
+	struct mlx5_pools_container *cont;
+	struct mlx5_pools_container *mcont;
+	struct mlx5_flow_counter_pool *pool;
+
+	if (sh->cmng.pending_queries >= MLX5_MAX_PENDING_QUERIES)
+		goto set_alarm;
+next_container:
+	cont = MLX5_CNT_CONTAINER(sh, batch, 1);
+	mcont = MLX5_CNT_CONTAINER(sh, batch, 0);
+	/* Check if resize was done and need to flip a container. */
+	if (cont != mcont) {
+		if (cont->pools) {
+			/* Clean the old container. */
+			rte_free(cont->pools);
+			memset(cont, 0, sizeof(*cont));
+		}
+		rte_cio_wmb();
+		 /* Flip the host container. */
+		sh->cmng.mhi[batch] ^= (uint8_t)2;
+		cont = mcont;
+	}
+	if (!cont->pools) {
+		/* 2 empty containers case is unexpected. */
+		if (unlikely(batch != sh->cmng.batch))
+			goto set_alarm;
+		batch ^= 0x1;
+		pool_index = 0;
+		goto next_container;
+	}
+	pool = cont->pools[pool_index];
+	if (pool->raw_hw)
+		/* There is a pool query in progress. */
+		goto set_alarm;
+	pool->raw_hw =
+		LIST_FIRST(&sh->cmng.free_stat_raws);
+	if (!pool->raw_hw)
+		/* No free counter statistics raw memory. */
+		goto set_alarm;
+	dcs = (struct mlx5_devx_obj *)(uintptr_t)rte_atomic64_read
+							      (&pool->a64_dcs);
+	offset = batch ? 0 : dcs->id % MLX5_COUNTERS_PER_POOL;
+	ret = mlx5_devx_cmd_flow_counter_query(dcs, 0, MLX5_COUNTERS_PER_POOL -
+					       offset, NULL, NULL,
+					       pool->raw_hw->mem_mng->dm->id,
+					       (void *)(uintptr_t)
+					       (pool->raw_hw->data + offset),
+					       sh->devx_comp,
+					       (uint64_t)(uintptr_t)pool);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to trigger asynchronous query for dcs ID"
+			" %d\n", pool->min_dcs->id);
+		pool->raw_hw = NULL;
+		goto set_alarm;
+	}
+	pool->raw_hw->min_dcs_id = dcs->id;
+	LIST_REMOVE(pool->raw_hw, next);
+	sh->cmng.pending_queries++;
+	pool_index++;
+	if (pool_index >= rte_atomic16_read(&cont->n_valid)) {
+		batch ^= 0x1;
+		pool_index = 0;
+	}
+set_alarm:
+	sh->cmng.batch = batch;
+	sh->cmng.pool_index = pool_index;
+	mlx5_set_query_alarm(sh);
+}
+
+/**
+ * Handler for the HW respond about ready values from an asynchronous batch
+ * query. This function is probably called by the host thread.
+ *
+ * @param[in] sh
+ *   The pointer to the shared IB device context.
+ * @param[in] async_id
+ *   The Devx async ID.
+ * @param[in] status
+ *   The status of the completion.
+ */
+void
+mlx5_flow_async_pool_query_handle(struct mlx5_ibv_shared *sh,
+				  uint64_t async_id, int status)
+{
+	struct mlx5_flow_counter_pool *pool =
+		(struct mlx5_flow_counter_pool *)(uintptr_t)async_id;
+	struct mlx5_counter_stats_raw *raw_to_free;
+
+	if (unlikely(status)) {
+		raw_to_free = pool->raw_hw;
+	} else {
+		raw_to_free = pool->raw;
+		rte_spinlock_lock(&pool->sl);
+		pool->raw = pool->raw_hw;
+		rte_spinlock_unlock(&pool->sl);
+		rte_atomic64_add(&pool->query_gen, 1);
+		/* Be sure the new raw counters data is updated in memory. */
+		rte_cio_wmb();
+	}
+	LIST_INSERT_HEAD(&sh->cmng.free_stat_raws, raw_to_free, next);
+	pool->raw_hw = NULL;
+	sh->cmng.pending_queries--;
+}

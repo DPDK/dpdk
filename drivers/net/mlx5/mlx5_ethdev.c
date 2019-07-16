@@ -1433,6 +1433,38 @@ mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
 }
 
 /**
+ * Handle DEVX interrupts from the NIC.
+ * This function is probably called from the DPDK host thread.
+ *
+ * @param cb_arg
+ *   Callback argument.
+ */
+void
+mlx5_dev_interrupt_handler_devx(void *cb_arg)
+{
+#ifndef HAVE_IBV_DEVX_ASYNC
+	(void)cb_arg;
+	return;
+#else
+	struct mlx5_ibv_shared *sh = cb_arg;
+	union {
+		struct mlx5dv_devx_async_cmd_hdr cmd_resp;
+		uint8_t buf[MLX5_ST_SZ_BYTES(query_flow_counter_out) +
+			    MLX5_ST_SZ_BYTES(traffic_counter) +
+			    sizeof(struct mlx5dv_devx_async_cmd_hdr)];
+	} out;
+	uint8_t *buf = out.buf + sizeof(out.cmd_resp);
+
+	while (!mlx5_glue->devx_get_async_cmd_comp(sh->devx_comp,
+						   &out.cmd_resp,
+						   sizeof(out.buf)))
+		mlx5_flow_async_pool_query_handle
+			(sh, (uint64_t)out.cmd_resp.wr_id,
+			 mlx5_devx_get_out_command_status(buf));
+#endif /* HAVE_IBV_DEVX_ASYNC */
+}
+
+/**
  * Uninstall shared asynchronous device events handler.
  * This function is implemented to support event sharing
  * between multiple ports of single IB device.
@@ -1464,6 +1496,17 @@ mlx5_dev_shared_handler_uninstall(struct rte_eth_dev *dev)
 				     mlx5_dev_interrupt_handler, sh);
 	sh->intr_handle.fd = 0;
 	sh->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+	if (sh->intr_handle_devx.fd) {
+		rte_intr_callback_unregister(&sh->intr_handle_devx,
+					     mlx5_dev_interrupt_handler_devx,
+					     sh);
+		sh->intr_handle_devx.fd = 0;
+		sh->intr_handle_devx.type = RTE_INTR_HANDLE_UNKNOWN;
+	}
+	if (sh->devx_comp) {
+		mlx5_glue->devx_destroy_cmd_comp(sh->devx_comp);
+		sh->devx_comp = NULL;
+	}
 exit:
 	pthread_mutex_unlock(&sh->intr_mutex);
 }
@@ -1507,17 +1550,50 @@ mlx5_dev_shared_handler_install(struct rte_eth_dev *dev)
 	if (ret) {
 		DRV_LOG(INFO, "failed to change file descriptor"
 			      " async event queue");
-		/* Indicate there will be no interrupts. */
-		dev->data->dev_conf.intr_conf.lsc = 0;
-		dev->data->dev_conf.intr_conf.rmv = 0;
-		sh->port[priv->ibv_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
-		goto exit;
+		goto error;
 	}
 	sh->intr_handle.fd = sh->ctx->async_fd;
 	sh->intr_handle.type = RTE_INTR_HANDLE_EXT;
 	rte_intr_callback_register(&sh->intr_handle,
 				   mlx5_dev_interrupt_handler, sh);
+	if (priv->config.devx) {
+#ifndef HAVE_IBV_DEVX_ASYNC
+		goto error_unregister;
+#else
+		sh->devx_comp = mlx5_glue->devx_create_cmd_comp(sh->ctx);
+		if (sh->devx_comp) {
+			flags = fcntl(sh->devx_comp->fd, F_GETFL);
+			ret = fcntl(sh->devx_comp->fd, F_SETFL,
+				    flags | O_NONBLOCK);
+			if (ret) {
+				DRV_LOG(INFO, "failed to change file descriptor"
+					      " devx async event queue");
+				goto error_unregister;
+			}
+			sh->intr_handle_devx.fd = sh->devx_comp->fd;
+			sh->intr_handle_devx.type = RTE_INTR_HANDLE_EXT;
+			rte_intr_callback_register
+				(&sh->intr_handle_devx,
+				 mlx5_dev_interrupt_handler_devx, sh);
+		} else {
+			DRV_LOG(INFO, "failed to create devx async command "
+				"completion");
+			goto error_unregister;
+		}
+#endif /* HAVE_IBV_DEVX_ASYNC */
+	}
 	sh->intr_cnt++;
+	goto exit;
+error_unregister:
+	rte_intr_callback_unregister(&sh->intr_handle,
+				     mlx5_dev_interrupt_handler, sh);
+error:
+	/* Indicate there will be no interrupts. */
+	dev->data->dev_conf.intr_conf.lsc = 0;
+	dev->data->dev_conf.intr_conf.rmv = 0;
+	sh->intr_handle.fd = 0;
+	sh->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+	sh->port[priv->ibv_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
 exit:
 	pthread_mutex_unlock(&sh->intr_mutex);
 }

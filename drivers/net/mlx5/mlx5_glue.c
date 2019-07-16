@@ -849,6 +849,64 @@ mlx5_glue_devx_general_cmd(struct ibv_context *ctx,
 #endif
 }
 
+static struct mlx5dv_devx_cmd_comp *
+mlx5_glue_devx_create_cmd_comp(struct ibv_context *ctx)
+{
+#ifdef HAVE_IBV_DEVX_ASYNC
+	return mlx5dv_devx_create_cmd_comp(ctx);
+#else
+	(void)ctx;
+	errno = -ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void
+mlx5_glue_devx_destroy_cmd_comp(struct mlx5dv_devx_cmd_comp *cmd_comp)
+{
+#ifdef HAVE_IBV_DEVX_ASYNC
+	mlx5dv_devx_destroy_cmd_comp(cmd_comp);
+#else
+	(void)cmd_comp;
+	errno = -ENOTSUP;
+#endif
+}
+
+static int
+mlx5_glue_devx_obj_query_async(struct mlx5dv_devx_obj *obj, const void *in,
+			       size_t inlen, size_t outlen, uint64_t wr_id,
+			       struct mlx5dv_devx_cmd_comp *cmd_comp)
+{
+#ifdef HAVE_IBV_DEVX_ASYNC
+	return mlx5dv_devx_obj_query_async(obj, in, inlen, outlen, wr_id,
+					   cmd_comp);
+#else
+	(void)obj;
+	(void)in;
+	(void)inlen;
+	(void)outlen;
+	(void)wr_id;
+	(void)cmd_comp;
+	return -ENOTSUP;
+#endif
+}
+
+static int
+mlx5_glue_devx_get_async_cmd_comp(struct mlx5dv_devx_cmd_comp *cmd_comp,
+				  struct mlx5dv_devx_async_cmd_hdr *cmd_resp,
+				  size_t cmd_resp_len)
+{
+#ifdef HAVE_IBV_DEVX_ASYNC
+	return mlx5dv_devx_get_async_cmd_comp(cmd_comp, cmd_resp,
+					      cmd_resp_len);
+#else
+	(void)cmd_comp;
+	(void)cmd_resp;
+	(void)cmd_resp_len;
+	return -ENOTSUP;
+#endif
+}
+
 static struct mlx5dv_devx_umem *
 mlx5_glue_devx_umem_reg(struct ibv_context *context, void *addr, size_t size,
 			uint32_t access)
@@ -957,6 +1015,10 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_obj_query = mlx5_glue_devx_obj_query,
 	.devx_obj_modify = mlx5_glue_devx_obj_modify,
 	.devx_general_cmd = mlx5_glue_devx_general_cmd,
+	.devx_create_cmd_comp = mlx5_glue_devx_create_cmd_comp,
+	.devx_destroy_cmd_comp = mlx5_glue_devx_destroy_cmd_comp,
+	.devx_obj_query_async = mlx5_glue_devx_obj_query_async,
+	.devx_get_async_cmd_comp = mlx5_glue_devx_get_async_cmd_comp,
 	.devx_umem_reg = mlx5_glue_devx_umem_reg,
 	.devx_umem_dereg = mlx5_glue_devx_umem_dereg,
 };

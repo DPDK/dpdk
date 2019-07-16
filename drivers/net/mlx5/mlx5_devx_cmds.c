@@ -66,14 +66,21 @@ mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx, uint32_t bulk_n_128)
  *   The mkey key for batch query.
  *  @param addr
  *    The address in the mkey range for batch query.
+ *  @param cmd_comp
+ *   The completion object for asynchronous batch query.
+ *  @param async_id
+ *    The ID to be returned in the asynchronous batch query response.
  *
  * @return
  *   0 on success, a negative value otherwise.
  */
 int
-mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs, int clear,
-				 uint32_t n_counters, uint64_t *pkts,
-				 uint64_t *bytes, uint32_t mkey, void *addr)
+mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs,
+				 int clear, uint32_t n_counters,
+				 uint64_t *pkts, uint64_t *bytes,
+				 uint32_t mkey, void *addr,
+				 struct mlx5dv_devx_cmd_comp *cmd_comp,
+				 uint64_t async_id)
 {
 	int out_len = MLX5_ST_SZ_BYTES(query_flow_counter_out) +
 			MLX5_ST_SZ_BYTES(traffic_counter);
@@ -96,7 +103,13 @@ mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs, int clear,
 		MLX5_SET64(query_flow_counter_in, in, address,
 			   (uint64_t)(uintptr_t)addr);
 	}
-	rc = mlx5_glue->devx_obj_query(dcs->obj, in, sizeof(in), out, out_len);
+	if (!cmd_comp)
+		rc = mlx5_glue->devx_obj_query(dcs->obj, in, sizeof(in), out,
+					       out_len);
+	else
+		rc = mlx5_glue->devx_obj_query_async(dcs->obj, in, sizeof(in),
+						     out_len, async_id,
+						     cmd_comp);
 	if (rc) {
 		DRV_LOG(ERR, "Failed to query devx counters with rc %d\n ", rc);
 		rte_errno = rc;
@@ -166,6 +179,33 @@ mlx5_devx_cmd_mkey_create(struct ibv_context *ctx,
 	mkey->id = MLX5_GET(create_mkey_out, out, mkey_index);
 	mkey->id = (mkey->id << 8) | (attr->umem_id & 0xFF);
 	return mkey;
+}
+
+/**
+ * Get status of devx command response.
+ * Mainly used for asynchronous commands.
+ *
+ * @param[in] out
+ *   The out response buffer.
+ *
+ * @return
+ *   0 on success, non-zero value otherwise.
+ */
+int
+mlx5_devx_get_out_command_status(void *out)
+{
+	int status;
+
+	if (!out)
+		return -EINVAL;
+	status = MLX5_GET(query_flow_counter_out, out, status);
+	if (status) {
+		int syndrome = MLX5_GET(query_flow_counter_out, out, syndrome);
+
+		DRV_LOG(ERR, "Bad devX status %x, syndrome = %x\n", status,
+			syndrome);
+	}
+	return status;
 }
 
 /**

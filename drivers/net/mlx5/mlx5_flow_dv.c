@@ -2148,7 +2148,6 @@ flow_dv_modify_hdr_resource_register
 }
 
 #define MLX5_CNT_CONTAINER_RESIZE 64
-#define MLX5_CNT_CONTAINER(priv, batch) (&(priv)->sh->cmng.ccont[batch])
 
 /**
  * Get a pool by a counter.
@@ -2271,39 +2270,53 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
  *   Whether the pool is for counter that was allocated by batch command.
  *
  * @return
- *   The container pointer on success, otherwise NULL and rte_errno is set.
+ *   The new container pointer on success, otherwise NULL and rte_errno is set.
  */
 static struct mlx5_pools_container *
 flow_dv_container_resize(struct rte_eth_dev *dev, uint32_t batch)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv, batch);
+	struct mlx5_pools_container *cont =
+			MLX5_CNT_CONTAINER(priv->sh, batch, 0);
+	struct mlx5_pools_container *new_cont =
+			MLX5_CNT_CONTAINER_UNUSED(priv->sh, batch, 0);
 	struct mlx5_counter_stats_mem_mng *mem_mng;
 	uint32_t resize = cont->n + MLX5_CNT_CONTAINER_RESIZE;
 	uint32_t mem_size = sizeof(struct mlx5_flow_counter_pool *) * resize;
-	struct mlx5_flow_counter_pool **new_pools = rte_calloc(__func__, 1,
-							       mem_size, 0);
-	if (!new_pools) {
+	int i;
+
+	if (cont != MLX5_CNT_CONTAINER(priv->sh, batch, 1)) {
+		/* The last resize still hasn't detected by the host thread. */
+		rte_errno = EAGAIN;
+		return NULL;
+	}
+	new_cont->pools = rte_calloc(__func__, 1, mem_size, 0);
+	if (!new_cont->pools) {
 		rte_errno = ENOMEM;
 		return NULL;
 	}
+	if (cont->n)
+		memcpy(new_cont->pools, cont->pools, cont->n *
+		       sizeof(struct mlx5_flow_counter_pool *));
 	mem_mng = flow_dv_create_counter_stat_mem_mng(dev,
-						    MLX5_CNT_CONTAINER_RESIZE);
+		MLX5_CNT_CONTAINER_RESIZE + MLX5_MAX_PENDING_QUERIES);
 	if (!mem_mng) {
-		rte_free(new_pools);
+		rte_free(new_cont->pools);
 		return NULL;
 	}
-	if (cont->n) {
-		memcpy(new_pools, cont->pools,
-		       cont->n * sizeof(struct mlx5_flow_counter_pool *));
-		rte_free(cont->pools);
-	} else {
-		TAILQ_INIT(&cont->pool_list);
-	}
-	cont->pools = new_pools;
-	cont->n = resize;
-	cont->init_mem_mng = mem_mng;
-	return cont;
+	for (i = 0; i < MLX5_MAX_PENDING_QUERIES; ++i)
+		LIST_INSERT_HEAD(&priv->sh->cmng.free_stat_raws,
+				 mem_mng->raws + MLX5_CNT_CONTAINER_RESIZE +
+				 i, next);
+	new_cont->n = resize;
+	rte_atomic16_set(&new_cont->n_valid, rte_atomic16_read(&cont->n_valid));
+	TAILQ_INIT(&new_cont->pool_list);
+	TAILQ_CONCAT(&new_cont->pool_list, &cont->pool_list, next);
+	new_cont->init_mem_mng = mem_mng;
+	rte_cio_wmb();
+	 /* Flip the master container. */
+	priv->sh->cmng.mhi[batch] ^= (uint8_t)1;
+	return new_cont;
 }
 
 /**
@@ -2328,22 +2341,22 @@ _flow_dv_query_count(struct rte_eth_dev *dev __rte_unused,
 {
 	struct mlx5_flow_counter_pool *pool =
 			flow_dv_counter_pool_get(cnt);
-	uint16_t offset = pool->min_dcs->id % MLX5_COUNTERS_PER_POOL;
-	int ret = mlx5_devx_cmd_flow_counter_query
-		(pool->min_dcs, 0, MLX5_COUNTERS_PER_POOL - offset, NULL,
-		 NULL, pool->raw->mem_mng->dm->id,
-		 (void *)(uintptr_t)(pool->raw->data +
-		 offset));
+	int offset = cnt - &pool->counters_raw[0];
 
-	if (ret) {
-		DRV_LOG(ERR, "Failed to trigger synchronous"
-			" query for dcs ID %d\n",
-			pool->min_dcs->id);
-		return ret;
+	rte_spinlock_lock(&pool->sl);
+	/*
+	 * The single counters allocation may allocate smaller ID than the
+	 * current allocated in parallel to the host reading.
+	 * In this case the new counter values must be reported as 0.
+	 */
+	if (unlikely(!cnt->batch && cnt->dcs->id < pool->raw->min_dcs_id)) {
+		*pkts = 0;
+		*bytes = 0;
+	} else {
+		*pkts = rte_be_to_cpu_64(pool->raw->data[offset].hits);
+		*bytes = rte_be_to_cpu_64(pool->raw->data[offset].bytes);
 	}
-	offset = cnt - &pool->counters_raw[0];
-	*pkts = rte_be_to_cpu_64(pool->raw->data[offset].hits);
-	*bytes = rte_be_to_cpu_64(pool->raw->data[offset].bytes);
+	rte_spinlock_unlock(&pool->sl);
 	return 0;
 }
 
@@ -2366,10 +2379,12 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv, batch);
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch,
+							       0);
+	int16_t n_valid = rte_atomic16_read(&cont->n_valid);
 	uint32_t size;
 
-	if (cont->n == cont->n_valid) {
+	if (cont->n == n_valid) {
 		cont = flow_dv_container_resize(dev, batch);
 		if (!cont)
 			return NULL;
@@ -2382,12 +2397,21 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		return NULL;
 	}
 	pool->min_dcs = dcs;
-	pool->raw = cont->init_mem_mng->raws + cont->n_valid  %
-			MLX5_CNT_CONTAINER_RESIZE;
+	pool->raw = cont->init_mem_mng->raws + n_valid %
+						     MLX5_CNT_CONTAINER_RESIZE;
+	pool->raw_hw = NULL;
+	rte_spinlock_init(&pool->sl);
+	/*
+	 * The generation of the new allocated counters in this pool is 0, 2 in
+	 * the pool generation makes all the counters valid for allocation.
+	 */
+	rte_atomic64_set(&pool->query_gen, 0x2);
 	TAILQ_INIT(&pool->counters);
 	TAILQ_INSERT_TAIL(&cont->pool_list, pool, next);
-	cont->pools[cont->n_valid] = pool;
-	cont->n_valid++;
+	cont->pools[n_valid] = pool;
+	/* Pool initialization must be updated before host thread access. */
+	rte_cio_wmb();
+	rte_atomic16_add(&cont->n_valid, 1);
 	return pool;
 }
 
@@ -2421,8 +2445,8 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 		dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0);
 		if (!dcs)
 			return NULL;
-		pool = flow_dv_find_pool_by_id(MLX5_CNT_CONTAINER(priv, batch),
-					       dcs->id);
+		pool = flow_dv_find_pool_by_id
+			(MLX5_CNT_CONTAINER(priv->sh, batch, 0), dcs->id);
 		if (!pool) {
 			pool = flow_dv_pool_create(dev, dcs, batch);
 			if (!pool) {
@@ -2430,7 +2454,8 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 				return NULL;
 			}
 		} else if (dcs->id < pool->min_dcs->id) {
-			pool->min_dcs->id = dcs->id;
+			rte_atomic64_set(&pool->a64_dcs,
+					 (int64_t)(uintptr_t)dcs);
 		}
 		cnt = &pool->counters_raw[dcs->id % MLX5_COUNTERS_PER_POOL];
 		TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
@@ -2519,8 +2544,13 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	 * shared counters from the single container.
 	 */
 	uint32_t batch = (group && !shared) ? 1 : 0;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv, batch);
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch,
+							       0);
 
+#ifndef HAVE_IBV_DEVX_ASYNC
+	rte_errno = ENOTSUP;
+	return NULL;
+#endif
 	if (!priv->config.devx) {
 		rte_errno = ENOTSUP;
 		return NULL;
@@ -2537,9 +2567,22 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 		}
 	}
 	/* Pools which has a free counters are in the start. */
-	pool = TAILQ_FIRST(&cont->pool_list);
-	if (pool)
+	TAILQ_FOREACH(pool, &cont->pool_list, next) {
+		/*
+		 * The free counter reset values must be updated between the
+		 * counter release to the counter allocation, so, at least one
+		 * query must be done in this time. ensure it by saving the
+		 * query generation in the release time.
+		 * The free list is sorted according to the generation - so if
+		 * the first one is not updated, all the others are not
+		 * updated too.
+		 */
 		cnt_free = TAILQ_FIRST(&pool->counters);
+		if (cnt_free && cnt_free->query_gen + 1 <
+		    rte_atomic64_read(&pool->query_gen))
+			break;
+		cnt_free = NULL;
+	}
 	if (!cnt_free) {
 		pool = flow_dv_counter_pool_prepare(dev, &cnt_free, batch);
 		if (!pool)
@@ -2572,6 +2615,9 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	cnt_free->shared = shared;
 	cnt_free->ref_cnt = 1;
 	cnt_free->id = id;
+	if (!priv->sh->cmng.query_thread_on)
+		/* Start the asynchronous batch query by the host thread. */
+		mlx5_set_query_alarm(priv->sh);
 	TAILQ_REMOVE(&pool->counters, cnt_free, next);
 	if (TAILQ_EMPTY(&pool->counters)) {
 		/* Move the pool to the end of the container pool list. */
@@ -2599,8 +2645,9 @@ flow_dv_counter_release(struct rte_eth_dev *dev __rte_unused,
 		struct mlx5_flow_counter_pool *pool =
 				flow_dv_counter_pool_get(counter);
 
-		/* Put the counter in the end - the earliest one. */
+		/* Put the counter in the end - the last updated one. */
 		TAILQ_INSERT_TAIL(&pool->counters, counter, next);
+		counter->query_gen = rte_atomic64_read(&pool->query_gen);
 	}
 }
 

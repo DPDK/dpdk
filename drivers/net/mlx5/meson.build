@@ -122,6 +122,8 @@ if build
 		'mlx5dv_devx_obj_create' ],
 		[ 'HAVE_IBV_FLOW_DEVX_COUNTERS', 'infiniband/mlx5dv.h',
 		'MLX5DV_FLOW_ACTION_COUNTERS_DEVX' ],
+		[ 'HAVE_IBV_DEVX_ASYNC', 'infiniband/mlx5dv.h',
+		'mlx5dv_devx_obj_query_async' ],
 		[ 'HAVE_MLX5DV_DR', 'infiniband/mlx5dv.h',
 		'MLX5DV_DR_DOMAIN_TYPE_NIC_RX' ],
 		[ 'HAVE_MLX5DV_DR_ESWITCH', 'infiniband/mlx5dv.h',
