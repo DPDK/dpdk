@@ -15,22 +15,28 @@ extern int fm10k_logtype_init;
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
 #ifdef RTE_LIBRTE_FM10K_DEBUG_RX
-#define PMD_RX_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+extern int fm10k_logtype_rx;
+#define PMD_RX_LOG(level, fmt, args...)			\
+	rte_log(RTE_LOG_ ## level, fm10k_logtype_rx,	\
+		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_RX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_FM10K_DEBUG_TX
-#define PMD_TX_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+extern int fm10k_logtype_tx;
+#define PMD_TX_LOG(level, fmt, args...)			\
+	rte_log(RTE_LOG_ ## level, fm10k_logtype_tx,	\
+		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_FM10K_DEBUG_TX_FREE
-#define PMD_TX_FREE_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+extern int fm10k_logtype_tx_free;
+#define PMD_TX_FREE_LOG(level, fmt, args...)			\
+	rte_log(RTE_LOG_ ## level, fm10k_logtype_tx_free,	\
+		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_FREE_LOG(level, fmt, args...) do { } while (0)
 #endif
