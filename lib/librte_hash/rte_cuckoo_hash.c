@@ -570,7 +570,6 @@ __hash_rw_reader_unlock(const struct rte_hash *h)
 void
 rte_hash_reset(struct rte_hash *h)
 {
-	void *ptr;
 	uint32_t tot_ring_cnt, i;
 
 	if (h == NULL)
@@ -581,16 +580,14 @@ rte_hash_reset(struct rte_hash *h)
 	memset(h->key_store, 0, h->key_entry_size * (h->entries + 1));
 	*h->tbl_chng_cnt = 0;
 
-	/* clear the free ring */
-	while (rte_ring_dequeue(h->free_slots, &ptr) == 0)
-		continue;
+	/* reset the free ring */
+	rte_ring_reset(h->free_slots);
 
-	/* clear free extendable bucket ring and memory */
+	/* flush free extendable bucket ring and memory */
 	if (h->ext_table_support) {
 		memset(h->buckets_ext, 0, h->num_buckets *
 						sizeof(struct rte_hash_bucket));
-		while (rte_ring_dequeue(h->free_ext_bkts, &ptr) == 0)
-			continue;
+		rte_ring_reset(h->free_ext_bkts);
 	}
 
 	/* Repopulate the free slots ring. Entry zero is reserved for key misses */
