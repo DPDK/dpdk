@@ -344,6 +344,12 @@ The command line options are:
 
     Disable check on link status when starting/stopping ports.
 
+*   ``--disable-device-start``
+
+    Do not automatically start all ports. This allows testing
+    configuration of rx and tx queues before device is started
+    for the first time.
+
 *   ``--no-lsc-interrupt``
 
     Disable LSC interrupts for all ports, even those supporting it.

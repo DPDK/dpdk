@@ -340,6 +340,11 @@ uint8_t flow_isolate_all;
 uint8_t no_link_check = 0; /* check by default */
 
 /*
+ * Don't automatically start all ports in interactive mode.
+ */
+uint8_t no_device_start = 0;
+
+/*
  * Enable link status change notification
  */
 uint8_t lsc_interrupt = 1; /* enabled by default */
@@ -3333,7 +3338,7 @@ main(int argc, char** argv)
 		}
 	}
 
-	if (start_port(RTE_PORT_ALL) != 0)
+	if (!no_device_start && start_port(RTE_PORT_ALL) != 0)
 		rte_exit(EXIT_FAILURE, "Start ports failed\n");
 
 	/* set all ports to promiscuous mode by default */
