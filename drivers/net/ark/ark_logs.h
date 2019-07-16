@@ -26,29 +26,32 @@
 #define ARK_SU64X "\n\t%-20s    %#20" PRIx64
 #define ARK_SPTR  "\n\t%-20s    %20p"
 
-
+extern int ark_logtype;
 
 #define PMD_DRV_LOG(level, fmt, args...)	\
-	RTE_LOG(level, PMD, fmt, ## args)
+	rte_log(RTE_LOG_ ##level, ark_logtype, fmt, ## args)
 
 /* Conditional trace definitions */
-#define ARK_TRACE_ON(level, fmt, ...)		\
-	RTE_LOG(level, PMD, fmt, ##__VA_ARGS__)
+#define ARK_TRACE_ON(level, fmt, args...) \
+	PMD_DRV_LOG(level, fmt, ## args)
 
 /* This pattern allows compiler check arguments even if disabled  */
-#define ARK_TRACE_OFF(level, fmt, ...)					\
-	do {if (0) RTE_LOG(level, PMD, fmt, ##__VA_ARGS__); }		\
-	while (0)
-
+#define ARK_TRACE_OFF(level, fmt, args...)			\
+	do {							\
+		if (0)						\
+			PMD_DRV_LOG(level, fmt, ## args);	\
+	} while (0)
 
 /* tracing including the function name */
 #define ARK_FUNC_ON(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt, __func__, ## args)
+	PMD_DRV_LOG(level, "%s(): " fmt, __func__, ## args)
 
 /* tracing including the function name */
 #define ARK_FUNC_OFF(level, fmt, args...)				\
-	do { if (0) RTE_LOG(level, PMD, "%s(): " fmt, __func__, ## args); } \
-	while (0)
+	do {								\
+		if (0)							\
+			PMD_DRV_LOG(level, "%s(): " fmt, __func__, ## args); \
+	} while (0)
 
 
 /* Debug macro for tracing full behavior, function tracing and messages*/
