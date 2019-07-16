@@ -1175,7 +1175,7 @@ octeontx_probe(struct rte_vdev_device *dev)
 	    strlen(rte_vdev_device_args(dev)) == 0) {
 		eth_dev = rte_eth_dev_attach_secondary(dev_name);
 		if (!eth_dev) {
-			RTE_LOG(ERR, PMD, "Failed to probe %s\n", dev_name);
+			PMD_INIT_LOG(ERR, "Failed to probe %s", dev_name);
 			return -1;
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
