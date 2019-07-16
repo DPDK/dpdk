@@ -47,20 +47,21 @@
 #define kzalloc(size, flags) calloc(1, size)
 #define kfree(x) free(x)
 
+extern int enic_pmd_logtype;
+
 #define dev_printk(level, fmt, args...)	\
-	RTE_LOG(level, PMD, "rte_enic_pmd: " fmt, ## args)
+	rte_log(RTE_LOG_ ## level, enic_pmd_logtype, \
+		"PMD: rte_enic_pmd: " fmt, ##args)
 
 #define dev_err(x, args...) dev_printk(ERR, args)
 #define dev_info(x, args...) dev_printk(INFO,  args)
 #define dev_warning(x, args...) dev_printk(WARNING, args)
 #define dev_debug(x, args...) dev_printk(DEBUG, args)
 
-extern int enicpmd_logtype_flow;
-extern int enicpmd_logtype_init;
-
-#define PMD_INIT_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, enicpmd_logtype_init, \
+#define ENICPMD_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, enic_pmd_logtype, \
 		"%s" fmt "\n", __func__, ##args)
+#define ENICPMD_FUNC_TRACE() ENICPMD_LOG(DEBUG, " >>")
 
 #define __le16 u16
 #define __le32 u32

@@ -21,10 +21,7 @@
 #include "vnic_enet.h"
 #include "enic.h"
 
-int enicpmd_logtype_init;
-int enicpmd_logtype_flow;
-
-#define ENICPMD_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
+int enic_pmd_logtype;
 
 /*
  * The set of PCI devices this driver supports
@@ -74,12 +71,9 @@ static const struct vic_speed_capa {
 
 RTE_INIT(enicpmd_init_log)
 {
-	enicpmd_logtype_init = rte_log_register("pmd.net.enic.init");
-	if (enicpmd_logtype_init >= 0)
-		rte_log_set_level(enicpmd_logtype_init, RTE_LOG_NOTICE);
-	enicpmd_logtype_flow = rte_log_register("pmd.net.enic.flow");
-	if (enicpmd_logtype_flow >= 0)
-		rte_log_set_level(enicpmd_logtype_flow, RTE_LOG_NOTICE);
+	enic_pmd_logtype = rte_log_register("pmd.net.enic");
+	if (enic_pmd_logtype >= 0)
+		rte_log_set_level(enic_pmd_logtype, RTE_LOG_NOTICE);
 }
 
 static int
@@ -702,7 +696,7 @@ static void debug_log_add_del_addr(struct rte_ether_addr *addr, bool add)
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 
 	rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE, addr);
-	PMD_INIT_LOG(DEBUG, " %s address %s\n",
+	ENICPMD_LOG(DEBUG, " %s address %s\n",
 		     add ? "add" : "remove", mac_str);
 }
 
@@ -725,7 +719,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 		    rte_is_broadcast_ether_addr(addr)) {
 			rte_ether_format_addr(mac_str,
 					RTE_ETHER_ADDR_FMT_SIZE, addr);
-			PMD_INIT_LOG(ERR, " invalid multicast address %s\n",
+			ENICPMD_LOG(ERR, " invalid multicast address %s\n",
 				     mac_str);
 			return -EINVAL;
 		}
@@ -733,7 +727,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 
 	/* Flush all if requested */
 	if (nb_mc_addr == 0 || mc_addr_set == NULL) {
-		PMD_INIT_LOG(DEBUG, " flush multicast addresses\n");
+		ENICPMD_LOG(DEBUG, " flush multicast addresses\n");
 		for (i = 0; i < enic->mc_count; i++) {
 			addr = &enic->mc_addrs[i];
 			debug_log_add_del_addr(addr, false);
@@ -746,7 +740,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 	}
 
 	if (nb_mc_addr > ENIC_MULTICAST_PERFECT_FILTERS) {
-		PMD_INIT_LOG(ERR, " too many multicast addresses: max=%d\n",
+		ENICPMD_LOG(ERR, " too many multicast addresses: max=%d\n",
 			     ENIC_MULTICAST_PERFECT_FILTERS);
 		return -ENOSPC;
 	}
@@ -966,7 +960,7 @@ static int udp_tunnel_common_check(struct enic *enic,
 	if (tnl->prot_type != RTE_TUNNEL_TYPE_VXLAN)
 		return -ENOTSUP;
 	if (!enic->overlay_offload) {
-		PMD_INIT_LOG(DEBUG, " vxlan (overlay offload) is not "
+		ENICPMD_LOG(DEBUG, " vxlan (overlay offload) is not "
 			     "supported\n");
 		return -ENOTSUP;
 	}
@@ -978,10 +972,10 @@ static int update_vxlan_port(struct enic *enic, uint16_t port)
 	if (vnic_dev_overlay_offload_cfg(enic->vdev,
 					 OVERLAY_CFG_VXLAN_PORT_UPDATE,
 					 port)) {
-		PMD_INIT_LOG(DEBUG, " failed to update vxlan port\n");
+		ENICPMD_LOG(DEBUG, " failed to update vxlan port\n");
 		return -EINVAL;
 	}
-	PMD_INIT_LOG(DEBUG, " updated vxlan port to %u\n", port);
+	ENICPMD_LOG(DEBUG, " updated vxlan port to %u\n", port);
 	enic->vxlan_port = port;
 	return 0;
 }
@@ -1001,7 +995,7 @@ static int enicpmd_dev_udp_tunnel_port_add(struct rte_eth_dev *eth_dev,
 	 * number replaces it.
 	 */
 	if (tnl->udp_port == enic->vxlan_port || tnl->udp_port == 0) {
-		PMD_INIT_LOG(DEBUG, " %u is already configured or invalid\n",
+		ENICPMD_LOG(DEBUG, " %u is already configured or invalid\n",
 			     tnl->udp_port);
 		return -EINVAL;
 	}
@@ -1026,7 +1020,7 @@ static int enicpmd_dev_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 	 * which is tied to inner RSS and TSO.
 	 */
 	if (tnl->udp_port != enic->vxlan_port) {
-		PMD_INIT_LOG(DEBUG, " %u is not a configured vxlan port\n",
+		ENICPMD_LOG(DEBUG, " %u is not a configured vxlan port\n",
 			     tnl->udp_port);
 		return -EINVAL;
 	}

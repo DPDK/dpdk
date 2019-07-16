@@ -537,10 +537,10 @@ static void pick_rx_handler(struct enic *enic)
 	if (enic_use_vector_rx_handler(enic))
 		return;
 	if (enic->rq_count > 0 && enic->rq[0].data_queue_enable == 0) {
-		PMD_INIT_LOG(DEBUG, " use the non-scatter Rx handler");
+		ENICPMD_LOG(DEBUG, " use the non-scatter Rx handler");
 		eth_dev->rx_pkt_burst = &enic_noscatter_recv_pkts;
 	} else {
-		PMD_INIT_LOG(DEBUG, " use the normal Rx handler");
+		ENICPMD_LOG(DEBUG, " use the normal Rx handler");
 		eth_dev->rx_pkt_burst = &enic_recv_pkts;
 	}
 }
@@ -618,12 +618,12 @@ int enic_enable(struct enic *enic)
 		 DEV_TX_OFFLOAD_TCP_CKSUM);
 	if ((eth_dev->data->dev_conf.txmode.offloads &
 	     ~simple_tx_offloads) == 0) {
-		PMD_INIT_LOG(DEBUG, " use the simple tx handler");
+		ENICPMD_LOG(DEBUG, " use the simple tx handler");
 		eth_dev->tx_pkt_burst = &enic_simple_xmit_pkts;
 		for (index = 0; index < enic->wq_count; index++)
 			enic_prep_wq_for_simple_tx(enic, index);
 	} else {
-		PMD_INIT_LOG(DEBUG, " use the default tx handler");
+		ENICPMD_LOG(DEBUG, " use the default tx handler");
 		eth_dev->tx_pkt_burst = &enic_xmit_pkts;
 	}
 
@@ -1742,7 +1742,7 @@ int enic_probe(struct enic *enic)
 	struct rte_pci_device *pdev = enic->pdev;
 	int err = -1;
 
-	dev_debug(enic, " Initializing ENIC PMD\n");
+	dev_debug(enic, "Initializing ENIC PMD\n");
 
 	/* if this is a secondary process the hardware is already initialized */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

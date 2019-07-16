@@ -823,7 +823,7 @@ enic_use_vector_rx_handler(struct enic *enic)
 	if (fconf->mode != RTE_FDIR_MODE_NONE)
 		return false;
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2)) {
-		PMD_INIT_LOG(DEBUG, " use the non-scatter avx2 Rx handler");
+		ENICPMD_LOG(DEBUG, " use the non-scatter avx2 Rx handler");
 		eth_dev->rx_pkt_burst = &enic_noscatter_vec_recv_pkts;
 		return true;
 	}
