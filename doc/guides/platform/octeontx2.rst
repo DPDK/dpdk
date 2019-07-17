@@ -61,6 +61,10 @@ DPDK subsystem.
    +---+-----+--------------------------------------------------------------+
    | 6 | TIM | rte_event_timer_adapter                                      |
    +---+-----+--------------------------------------------------------------+
+   | 7 | LBK | rte_ethdev                                                   |
+   +---+-----+--------------------------------------------------------------+
+   | 8 | DPI | rte_rawdev                                                   |
+   +---+-----+--------------------------------------------------------------+
 
 PF0 is called the administrative / admin function (AF) and has exclusive
 privileges to provision RVU functional block's LFs to each of the PF/VF.
@@ -81,6 +85,23 @@ resource provisioning example where,
 1. PFx and PFx-VF0 bound to Linux netdev driver.
 2. PFx-VF1 ethdev driver bound to the first DPDK application.
 3. PFy ethdev driver, PFy-VF0 ethdev driver, PFz eventdev driver, PFm-VF0 cryptodev driver bound to the second DPDK application.
+
+LBK HW Access
+-------------
+
+Loopback HW Unit (LBK) receives packets from NIX-RX and sends packets back to NIX-TX.
+The loopback block has N channels and contains data buffering that is shared across
+all channels. The LBK HW Unit is abstracted using ethdev subsystem, Where PF0's
+VFs are exposed as ethdev device and odd-even pairs of VFs are tied together,
+that is, packets sent on odd VF end up received on even VF and vice versa.
+This would enable HW accelerated means of communication between two domains
+where even VF bound to the first domain and odd VF bound to the second domain.
+
+Typical application usage models are,
+
+#. Communication between the Linux kernel and DPDK application.
+#. Exception path to Linux kernel from DPDK application as SW ``KNI`` replacement.
+#. Communication between two different DPDK applications.
 
 OCTEON TX2 packet flow
 ----------------------
