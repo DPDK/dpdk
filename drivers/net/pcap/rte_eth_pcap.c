@@ -112,6 +112,8 @@ struct pmd_devargs_all {
 	int single_iface;
 	unsigned int is_tx_pcap;
 	unsigned int is_tx_iface;
+	unsigned int is_rx_pcap;
+	unsigned int is_rx_iface;
 	unsigned int infinite_rx;
 };
 
@@ -293,6 +295,14 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	pcap_q->rx_stat.bytes += rx_bytes;
 
 	return num_rx;
+}
+
+static uint16_t
+eth_null_rx(void *queue __rte_unused,
+		struct rte_mbuf **bufs __rte_unused,
+		uint16_t nb_pkts __rte_unused)
+{
+	return 0;
 }
 
 static inline void
@@ -1312,8 +1322,11 @@ eth_from_pcaps(struct rte_vdev_device *vdev,
 	/* Assign rx ops. */
 	if (infinite_rx)
 		eth_dev->rx_pkt_burst = eth_pcap_rx_infinite;
-	else
+	else if (devargs_all->is_rx_pcap || devargs_all->is_rx_iface ||
+			single_iface)
 		eth_dev->rx_pkt_burst = eth_pcap_rx;
+	else
+		eth_dev->rx_pkt_burst = eth_null_rx;
 
 	/* Assign tx ops. */
 	if (devargs_all->is_tx_pcap)
@@ -1331,13 +1344,12 @@ static int
 pmd_pcap_probe(struct rte_vdev_device *dev)
 {
 	const char *name;
-	unsigned int is_rx_pcap = 0;
 	struct rte_kvargs *kvlist;
 	struct pmd_devargs pcaps = {0};
 	struct pmd_devargs dumpers = {0};
 	struct rte_eth_dev *eth_dev =  NULL;
 	struct pmd_internals *internal;
-	int ret;
+	int ret = 0;
 
 	struct pmd_devargs_all devargs_all = {
 		.single_iface = 0,
@@ -1400,13 +1412,22 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	}
 
 	/*
-	 * We check whether we want to open a RX stream from a real NIC or a
-	 * pcap file
+	 * We check whether we want to open a RX stream from a real NIC, a
+	 * pcap file or open a dummy RX stream
 	 */
-	is_rx_pcap = rte_kvargs_count(kvlist, ETH_PCAP_RX_PCAP_ARG) ? 1 : 0;
+	devargs_all.is_rx_pcap =
+		rte_kvargs_count(kvlist, ETH_PCAP_RX_PCAP_ARG) ? 1 : 0;
+	devargs_all.is_rx_iface =
+		rte_kvargs_count(kvlist, ETH_PCAP_RX_IFACE_ARG) ? 1 : 0;
 	pcaps.num_of_queue = 0;
 
-	if (is_rx_pcap) {
+	devargs_all.is_tx_pcap =
+		rte_kvargs_count(kvlist, ETH_PCAP_TX_PCAP_ARG) ? 1 : 0;
+	devargs_all.is_tx_iface =
+		rte_kvargs_count(kvlist, ETH_PCAP_TX_IFACE_ARG) ? 1 : 0;
+	dumpers.num_of_queue = 0;
+
+	if (devargs_all.is_rx_pcap) {
 		/*
 		 * We check whether we want to infinitely rx the pcap file.
 		 */
@@ -1432,11 +1453,29 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_PCAP_ARG,
 				&open_rx_pcap, &pcaps);
-	} else {
+	} else if (devargs_all.is_rx_iface) {
 		ret = rte_kvargs_process(kvlist, NULL,
 				&rx_iface_args_process, &pcaps);
-	}
+	} else if (devargs_all.is_tx_iface || devargs_all.is_tx_pcap) {
+		unsigned int i;
 
+		/* Count number of tx queue args passed before dummy rx queue
+		 * creation so a dummy rx queue can be created for each tx queue
+		 */
+		unsigned int num_tx_queues =
+			(rte_kvargs_count(kvlist, ETH_PCAP_TX_PCAP_ARG) +
+			rte_kvargs_count(kvlist, ETH_PCAP_TX_IFACE_ARG));
+
+		PMD_LOG(INFO, "Creating null rx queue since no rx queues were provided.");
+
+		/* Creating a dummy rx queue for each tx queue passed */
+		for (i = 0; i < num_tx_queues; i++)
+			ret = add_queue(&pcaps, "dummy_rx", "rx_null", NULL,
+					NULL);
+	} else {
+		PMD_LOG(ERR, "Error - No rx or tx queues provided");
+		ret = -ENOENT;
+	}
 	if (ret < 0)
 		goto free_kvlist;
 
@@ -1444,12 +1483,6 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	 * We check whether we want to open a TX stream to a real NIC,
 	 * a pcap file, or drop packets on tx
 	 */
-	devargs_all.is_tx_pcap =
-		rte_kvargs_count(kvlist, ETH_PCAP_TX_PCAP_ARG) ? 1 : 0;
-	devargs_all.is_tx_iface =
-		rte_kvargs_count(kvlist, ETH_PCAP_TX_IFACE_ARG) ? 1 : 0;
-	dumpers.num_of_queue = 0;
-
 	if (devargs_all.is_tx_pcap) {
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_PCAP_ARG,
 				&open_tx_pcap, &dumpers);
@@ -1463,7 +1496,7 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 
 		/* Add 1 dummy queue per rxq which counts and drops packets. */
 		for (i = 0; i < pcaps.num_of_queue; i++)
-			ret = add_queue(&dumpers, "dummy", "tx_drop", NULL,
+			ret = add_queue(&dumpers, "dummy_tx", "tx_drop", NULL,
 					NULL);
 	}
 

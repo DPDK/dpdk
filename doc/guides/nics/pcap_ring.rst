@@ -126,6 +126,14 @@ Runtime Config Options
 
  In this case, one tx drop queue is created for each rxq on that device.
 
+ - Receive no packets on Rx
+
+ The user may want to run without receiving any packets on Rx. This can be done by not providing a rx_pcap or rx_iface, for example::
+
+   --vdev 'net_pcap0,tx_pcap=file_tx.pcap'
+
+In this case, one dummy rx queue is created for each tx queue argument passed
+
 Examples of Usage
 ^^^^^^^^^^^^^^^^^
 

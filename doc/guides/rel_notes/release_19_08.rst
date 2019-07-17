@@ -145,6 +145,12 @@ New Features
   device to be received repeatedly at a high rate. This can be useful for quick
   performance testing of DPDK apps.
 
+* **Enabled Receiving no packet on PCAP Rx.**
+
+  Added function to allow users to run without receiving any packets on PCAP Rx.
+  When function is called, a dummy queue is created for each Tx queue argument
+  passed.
+
 * **Added a FPGA_LTE_FEC bbdev PMD.**
 
   Added the new ``fpga_lte_fec`` bbdev driver for the Intel® FPGA PAC
