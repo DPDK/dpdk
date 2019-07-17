@@ -5683,6 +5683,7 @@ static const void *
 flow_item_default_mask(const struct rte_flow_item *item)
 {
 	const void *mask = NULL;
+	static rte_be32_t gre_key_default_mask = RTE_BE32(UINT32_MAX);
 
 	switch (item->type) {
 	case RTE_FLOW_ITEM_TYPE_ANY:
@@ -5738,6 +5739,9 @@ flow_item_default_mask(const struct rte_flow_item *item)
 		break;
 	case RTE_FLOW_ITEM_TYPE_GRE:
 		mask = &rte_flow_item_gre_mask;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GRE_KEY:
+		mask = &gre_key_default_mask;
 		break;
 	case RTE_FLOW_ITEM_TYPE_META:
 		mask = &rte_flow_item_meta_mask;
@@ -5823,6 +5827,9 @@ cmd_set_raw_parsed(const struct buffer *in)
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			size = sizeof(struct rte_flow_item_gre);
 			proto = 0x2F;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
+			size = sizeof(rte_be32_t);
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			size = sizeof(struct rte_flow_item_mpls);
