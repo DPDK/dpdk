@@ -89,6 +89,9 @@ void bnxt_free_vnic_attributes(struct bnxt *bp)
 	struct bnxt_vnic_info *vnic;
 	unsigned int i;
 
+	if (bp->vnic_info == NULL)
+		return;
+
 	for (i = 0; i < bp->max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		if (vnic->rss_table) {

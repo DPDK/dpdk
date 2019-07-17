@@ -52,6 +52,9 @@ void bnxt_free_int(struct bnxt *bp)
 {
 	struct bnxt_irq *irq;
 
+	if (bp->irq_tbl == NULL)
+		return;
+
 	irq = bp->irq_tbl;
 	if (irq) {
 		if (irq->requested) {
