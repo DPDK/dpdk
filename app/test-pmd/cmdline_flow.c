@@ -152,6 +152,8 @@ enum index {
 	ITEM_NVGRE_TNI,
 	ITEM_MPLS,
 	ITEM_MPLS_LABEL,
+	ITEM_MPLS_TC,
+	ITEM_MPLS_S,
 	ITEM_GRE,
 	ITEM_GRE_PROTO,
 	ITEM_GRE_C_RSVD0_VER,
@@ -800,6 +802,8 @@ static const enum index item_nvgre[] = {
 
 static const enum index item_mpls[] = {
 	ITEM_MPLS_LABEL,
+	ITEM_MPLS_TC,
+	ITEM_MPLS_S,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1996,6 +2000,22 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_mpls,
 						  label_tc_s,
 						  "\xff\xff\xf0")),
+	},
+	[ITEM_MPLS_TC] = {
+		.name = "tc",
+		.help = "MPLS Traffic Class",
+		.next = NEXT(item_mpls, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_mpls,
+						  label_tc_s,
+						  "\x00\x00\x0e")),
+	},
+	[ITEM_MPLS_S] = {
+		.name = "s",
+		.help = "MPLS Bottom-of-Stack",
+		.next = NEXT(item_mpls, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_mpls,
+						  label_tc_s,
+						  "\x00\x00\x01")),
 	},
 	[ITEM_GRE] = {
 		.name = "gre",
