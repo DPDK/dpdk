@@ -733,33 +733,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port (port_id) queue-region\n"
 			"    show all queue region related configuration info\n\n"
 
-			"vxlan ip-version (ipv4|ipv6) vni (vni) udp-src"
-			" (udp-src) udp-dst (udp-dst) ip-src (ip-src) ip-dst"
-			" (ip-dst) eth-src (eth-src) eth-dst (eth-dst)\n"
-			"       Configure the VXLAN encapsulation for flows.\n\n"
-
-			"vxlan-with-vlan ip-version (ipv4|ipv6) vni (vni)"
-			" udp-src (udp-src) udp-dst (udp-dst) ip-src (ip-src)"
-			" ip-dst (ip-dst) vlan-tci (vlan-tci) eth-src (eth-src)"
-			" eth-dst (eth-dst)\n"
-			"       Configure the VXLAN encapsulation for flows.\n\n"
-
-			"vxlan-tos-ttl ip-version (ipv4|ipv6) vni (vni) udp-src"
-			" (udp-src) udp-dst (udp-dst) ip-tos (ip-tos) ip-ttl (ip-ttl)"
-			" ip-src (ip-src) ip-dst (ip-dst) eth-src (eth-src)"
-			" eth-dst (eth-dst)\n"
-			"       Configure the VXLAN encapsulation for flows.\n\n"
-
-			"nvgre ip-version (ipv4|ipv6) tni (tni) ip-src"
-			" (ip-src) ip-dst (ip-dst) eth-src (eth-src) eth-dst"
-			" (eth-dst)\n"
-			"       Configure the NVGRE encapsulation for flows.\n\n"
-
-			"nvgre-with-vlan ip-version (ipv4|ipv6) tni (tni)"
-			" ip-src (ip-src) ip-dst (ip-dst) vlan-tci (vlan-tci)"
-			" eth-src (eth-src) eth-dst (eth-dst)\n"
-			"       Configure the NVGRE encapsulation for flows.\n\n"
-
 			, list_pkt_forwarding_modes()
 		);
 	}
@@ -1137,6 +1110,34 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"flow isolate {port_id} {boolean}\n"
 			"    Restrict ingress traffic to the defined"
 			" flow rules\n\n"
+
+			"set vxlan ip-version (ipv4|ipv6) vni (vni) udp-src"
+			" (udp-src) udp-dst (udp-dst) ip-src (ip-src) ip-dst"
+			" (ip-dst) eth-src (eth-src) eth-dst (eth-dst)\n"
+			"       Configure the VXLAN encapsulation for flows.\n\n"
+
+			"set vxlan-with-vlan ip-version (ipv4|ipv6) vni (vni)"
+			" udp-src (udp-src) udp-dst (udp-dst) ip-src (ip-src)"
+			" ip-dst (ip-dst) vlan-tci (vlan-tci) eth-src (eth-src)"
+			" eth-dst (eth-dst)\n"
+			"       Configure the VXLAN encapsulation for flows.\n\n"
+
+			"set vxlan-tos-ttl ip-version (ipv4|ipv6) vni (vni) udp-src"
+			" (udp-src) udp-dst (udp-dst) ip-tos (ip-tos) ip-ttl (ip-ttl)"
+			" ip-src (ip-src) ip-dst (ip-dst) eth-src (eth-src)"
+			" eth-dst (eth-dst)\n"
+			"       Configure the VXLAN encapsulation for flows.\n\n"
+
+			"set nvgre ip-version (ipv4|ipv6) tni (tni) ip-src"
+			" (ip-src) ip-dst (ip-dst) eth-src (eth-src) eth-dst"
+			" (eth-dst)\n"
+			"       Configure the NVGRE encapsulation for flows.\n\n"
+
+			"set nvgre-with-vlan ip-version (ipv4|ipv6) tni (tni)"
+			" ip-src (ip-src) ip-dst (ip-dst) vlan-tci (vlan-tci)"
+			" eth-src (eth-src) eth-dst (eth-dst)\n"
+			"       Configure the NVGRE encapsulation for flows.\n\n"
+
 		);
 	}
 
