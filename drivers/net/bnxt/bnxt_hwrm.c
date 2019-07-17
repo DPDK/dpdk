@@ -2089,6 +2089,7 @@ static void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	memset(cpr->cp_desc_ring, 0, cpr->cp_ring_struct->ring_size *
 			sizeof(*cpr->cp_desc_ring));
 	cpr->cp_raw_cons = 0;
+	cpr->valid = 0;
 }
 
 void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
