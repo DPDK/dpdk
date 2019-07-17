@@ -611,6 +611,9 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		}
 	}
 
+	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_STATS_SUPPORTED)
+		bp->flags |= BNXT_FLAG_EXT_STATS_SUPPORTED;
+
 	HWRM_UNLOCK();
 
 	return rc;
@@ -4495,13 +4498,13 @@ int bnxt_hwrm_ext_port_qstats(struct bnxt *bp)
 	req.port_id = rte_cpu_to_le_16(pf->port_id);
 	if (bp->flags & BNXT_FLAG_EXT_TX_PORT_STATS) {
 		req.tx_stat_host_addr =
-			rte_cpu_to_le_64(bp->hw_tx_port_stats_map);
+			rte_cpu_to_le_64(bp->hw_tx_port_stats_ext_map);
 		req.tx_stat_size =
 			rte_cpu_to_le_16(sizeof(struct tx_port_stats_ext));
 	}
 	if (bp->flags & BNXT_FLAG_EXT_RX_PORT_STATS) {
 		req.rx_stat_host_addr =
-			rte_cpu_to_le_64(bp->hw_rx_port_stats_map);
+			rte_cpu_to_le_64(bp->hw_rx_port_stats_ext_map);
 		req.rx_stat_size =
 			rte_cpu_to_le_16(sizeof(struct rx_port_stats_ext));
 	}
