@@ -1523,8 +1523,8 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	int rc = 0;
 	struct hwrm_vnic_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_plcmodes_cfg pmodes = { 0 };
 	uint32_t ctx_enable_flag = 0;
-	struct bnxt_plcmodes_cfg pmodes;
 	uint32_t enables = 0;
 
 	if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
