@@ -991,7 +991,7 @@ main(int argc, char **argv)
 			if (rte_lcore_is_enabled(lcore_id) == 0)
 				continue;
 
-			if (queueid >= rte_eth_devices[portid].data->nb_tx_queues)
+			if (queueid >= dev_info.nb_tx_queues)
 				break;
 
 			socket = (int) rte_lcore_to_socket_id(lcore_id);
