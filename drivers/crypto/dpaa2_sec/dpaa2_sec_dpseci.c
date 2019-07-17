@@ -2165,6 +2165,7 @@ dpaa2_sec_set_session_parameters(struct rte_cryptodev *dev,
 			    struct rte_crypto_sym_xform *xform,	void *sess)
 {
 	dpaa2_sec_session *session = sess;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2180,37 +2181,37 @@ dpaa2_sec_set_session_parameters(struct rte_cryptodev *dev,
 	/* Cipher Only */
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL) {
 		session->ctxt_type = DPAA2_SEC_CIPHER;
-		dpaa2_sec_cipher_init(dev, xform, session);
+		ret = dpaa2_sec_cipher_init(dev, xform, session);
 
 	/* Authentication Only */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
 		   xform->next == NULL) {
 		session->ctxt_type = DPAA2_SEC_AUTH;
-		dpaa2_sec_auth_init(dev, xform, session);
+		ret = dpaa2_sec_auth_init(dev, xform, session);
 
 	/* Cipher then Authenticate */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
 		   xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 		session->ext_params.aead_ctxt.auth_cipher_text = true;
-		dpaa2_sec_aead_chain_init(dev, xform, session);
+		ret = dpaa2_sec_aead_chain_init(dev, xform, session);
 
 	/* Authenticate then Cipher */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
 		   xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		session->ext_params.aead_ctxt.auth_cipher_text = false;
-		dpaa2_sec_aead_chain_init(dev, xform, session);
+		ret = dpaa2_sec_aead_chain_init(dev, xform, session);
 
 	/* AEAD operation for AES-GCM kind of Algorithms */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD &&
 		   xform->next == NULL) {
-		dpaa2_sec_aead_init(dev, xform, session);
+		ret = dpaa2_sec_aead_init(dev, xform, session);
 
 	} else {
 		DPAA2_SEC_ERR("Invalid crypto type");
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int
