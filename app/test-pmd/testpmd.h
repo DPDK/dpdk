@@ -11,6 +11,7 @@
 #include <rte_bus_pci.h>
 #include <rte_gro.h>
 #include <rte_gso.h>
+#include <cmdline.h>
 
 #define RTE_PORT_ALL            (~(portid_t)0x0)
 
@@ -263,6 +264,7 @@ extern struct fwd_engine ieee1588_fwd_engine;
 #endif
 
 extern struct fwd_engine * fwd_engines[]; /**< NULL terminated array. */
+extern cmdline_parse_inst_t cmd_set_raw;
 
 extern uint16_t mempool_flags;
 

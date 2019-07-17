@@ -1815,6 +1815,30 @@ flow rule using the action mplsoudp_decap will use the last configuration set.
 To have a different decapsulation header, one of those commands must be called
 before the flow rule creation.
 
+Config Raw Encapsulation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure the raw data to be used when encapsulating a packet by
+rte_flow_action_raw_encap::
+
+ set raw_encap {item} [/ {item} [...]] / end_set
+
+This command will set an internal buffer inside testpmd, any following flow rule
+using the action raw_encap will use the last configuration set.
+To have a different encapsulation header, this command must be called before the
+flow rule creation.
+
+Config Raw Decapsulation
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure the raw data to be used when decapsulating a packet by
+rte_flow_action_raw_decap::
+
+ set raw_decap {item} [/ {item} [...]] / end_set
+
+This command will set an internal buffer inside testpmd, any following flow rule
+using the action raw_decap will use the last configuration set.
+
 Port Functions
 --------------
 
@@ -4639,6 +4663,30 @@ IPv6 MPLSoUDP with VLAN outer header::
  testpmd> set mplsoudp_decap-with-vlan ip-version ipv6
  testpmd> flow create 0 ingress pattern eth / vlan / ipv6 / udp / mpls / end
         actions mplsoudp_decap / l2_encap / end
+
+Sample Raw encapsulation rule
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Raw encapsulation configuration can be set by the following commands
+
+Eecapsulating VxLAN::
+
+ testpmd> set raw_encap eth src is 10:11:22:33:44:55 / vlan tci is 1
+        inner_type is 0x0800 / ipv4 / udp dst is 4789 / vxlan vni
+        is 2 / end_set
+ testpmd> flow create 0 egress pattern eth / ipv4 / end actions
+        raw_encap / end
+
+Sample Raw decapsulation rule
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Raw decapsulation configuration can be set by the following commands
+
+Decapsulating VxLAN::
+
+ testpmd> set raw_decap eth / ipv4 / udp / vxlan / end_set
+ testpmd> flow create 0 ingress pattern eth / ipv4 / udp / vxlan / eth / ipv4 /
+        end actions raw_decap / queue index 0 / end
 
 BPF Functions
 --------------
