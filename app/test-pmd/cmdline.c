@@ -101,6 +101,7 @@ static void cmd_help_brief_parsed(__attribute__((unused)) void *parsed_result,
 		"    help registers                  : Reading and setting port registers.\n"
 		"    help filters                    : Filters configuration help.\n"
 		"    help traffic_management         : Traffic Management commmands.\n"
+		"    help devices                    : Device related cmds.\n"
 		"    help all                        : All of the above sections.\n\n"
 	);
 
@@ -236,6 +237,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port (port_id) tx_metadata\n"
 			"    Show Tx metadata value set"
 			" for a specific port\n\n"
+
+			"show device info (<identifier>|all)"
+			"       Show general information about devices probed.\n\n"
 		);
 	}
 
@@ -1247,6 +1251,17 @@ static void cmd_help_long_parsed(void *parsed_result,
 		);
 	}
 
+	if (show_all || !strcmp(res->section, "devices")) {
+		cmdline_printf(
+			cl,
+			"\n"
+			"Device Operations:\n"
+			"--------------\n"
+			"device detach (identifier)\n"
+			"       Detach device by identifier.\n\n"
+		);
+	}
+
 }
 
 cmdline_parse_token_string_t cmd_help_long_help =
@@ -1255,13 +1270,13 @@ cmdline_parse_token_string_t cmd_help_long_help =
 cmdline_parse_token_string_t cmd_help_long_section =
 	TOKEN_STRING_INITIALIZER(struct cmd_help_long_result, section,
 			"all#control#display#config#"
-			"ports#registers#filters#traffic_management");
+			"ports#registers#filters#traffic_management#devices");
 
 cmdline_parse_inst_t cmd_help_long = {
 	.f = cmd_help_long_parsed,
 	.data = NULL,
 	.help_str = "help all|control|display|config|ports|register|"
-		"filters|traffic_management: "
+		"filters|traffic_management|devices: "
 		"Show help",
 	.tokens = {
 		(void *)&cmd_help_long_help,
@@ -1500,6 +1515,47 @@ cmdline_parse_inst_t cmd_operate_detach_port = {
 	},
 };
 
+/* *** detach device by identifier *** */
+struct cmd_operate_detach_device_result {
+	cmdline_fixed_string_t device;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t identifier;
+};
+
+static void cmd_operate_detach_device_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_operate_detach_device_result *res = parsed_result;
+
+	if (!strcmp(res->keyword, "detach"))
+		detach_device(res->identifier);
+	else
+		printf("Unknown parameter\n");
+}
+
+cmdline_parse_token_string_t cmd_operate_detach_device_device =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_detach_device_result,
+			device, "device");
+cmdline_parse_token_string_t cmd_operate_detach_device_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_detach_device_result,
+			keyword, "detach");
+cmdline_parse_token_string_t cmd_operate_detach_device_identifier =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_detach_device_result,
+			identifier, NULL);
+
+cmdline_parse_inst_t cmd_operate_detach_device = {
+	.f = cmd_operate_detach_device_parsed,
+	.data = NULL,
+	.help_str = "device detach <identifier>:"
+		"(identifier: pci address or virtual dev name)",
+	.tokens = {
+		(void *)&cmd_operate_detach_device_device,
+		(void *)&cmd_operate_detach_device_keyword,
+		(void *)&cmd_operate_detach_device_identifier,
+		NULL,
+	},
+};
 /* *** configure speed for all ports *** */
 struct cmd_config_speed_all {
 	cmdline_fixed_string_t port;
@@ -7463,6 +7519,51 @@ cmdline_parse_inst_t cmd_showport = {
 	},
 };
 
+/* *** SHOW DEVICE INFO *** */
+struct cmd_showdevice_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t device;
+	cmdline_fixed_string_t what;
+	cmdline_fixed_string_t identifier;
+};
+
+static void cmd_showdevice_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_showdevice_result *res = parsed_result;
+	if (!strcmp(res->what, "info")) {
+		if (!strcmp(res->identifier, "all"))
+			device_infos_display(NULL);
+		else
+			device_infos_display(res->identifier);
+	}
+}
+
+cmdline_parse_token_string_t cmd_showdevice_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_showdevice_result, show,
+				 "show");
+cmdline_parse_token_string_t cmd_showdevice_device =
+	TOKEN_STRING_INITIALIZER(struct cmd_showdevice_result, device, "device");
+cmdline_parse_token_string_t cmd_showdevice_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_showdevice_result, what,
+				 "info");
+cmdline_parse_token_string_t cmd_showdevice_identifier =
+	TOKEN_STRING_INITIALIZER(struct cmd_showdevice_result,
+			identifier, NULL);
+
+cmdline_parse_inst_t cmd_showdevice = {
+	.f = cmd_showdevice_parsed,
+	.data = NULL,
+	.help_str = "show device info <identifier>|all",
+	.tokens = {
+		(void *)&cmd_showdevice_show,
+		(void *)&cmd_showdevice_device,
+		(void *)&cmd_showdevice_what,
+		(void *)&cmd_showdevice_identifier,
+		NULL,
+	},
+};
 /* *** SHOW QUEUE INFO *** */
 struct cmd_showqueue_result {
 	cmdline_fixed_string_t show;
@@ -18730,6 +18831,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_showport,
 	(cmdline_parse_inst_t *)&cmd_showqueue,
 	(cmdline_parse_inst_t *)&cmd_showportall,
+	(cmdline_parse_inst_t *)&cmd_showdevice,
 	(cmdline_parse_inst_t *)&cmd_showcfg,
 	(cmdline_parse_inst_t *)&cmd_showfwdall,
 	(cmdline_parse_inst_t *)&cmd_start,
@@ -18818,6 +18920,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_operate_specific_port,
 	(cmdline_parse_inst_t *)&cmd_operate_attach_port,
 	(cmdline_parse_inst_t *)&cmd_operate_detach_port,
+	(cmdline_parse_inst_t *)&cmd_operate_detach_device,
 	(cmdline_parse_inst_t *)&cmd_set_port_setup_on,
 	(cmdline_parse_inst_t *)&cmd_config_speed_all,
 	(cmdline_parse_inst_t *)&cmd_config_speed_specific,

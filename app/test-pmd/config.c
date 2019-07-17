@@ -386,6 +386,79 @@ tx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 	printf("\n");
 }
 
+static int bus_match_all(const struct rte_bus *bus, const void *data)
+{
+	RTE_SET_USED(bus);
+	RTE_SET_USED(data);
+	return 0;
+}
+
+void
+device_infos_display(const char *identifier)
+{
+	static const char *info_border = "*********************";
+	struct rte_bus *start = NULL, *next;
+	struct rte_dev_iterator dev_iter;
+	char name[RTE_ETH_NAME_MAX_LEN];
+	struct rte_ether_addr mac_addr;
+	struct rte_device *dev;
+	struct rte_devargs da;
+	portid_t port_id;
+	char devstr[128];
+
+	memset(&da, 0, sizeof(da));
+	if (!identifier)
+		goto skip_parse;
+
+	if (rte_devargs_parsef(&da, "%s", identifier)) {
+		printf("cannot parse identifier\n");
+		if (da.args)
+			free(da.args);
+		return;
+	}
+
+skip_parse:
+	while ((next = rte_bus_find(start, bus_match_all, NULL)) != NULL) {
+
+		start = next;
+		if (identifier && da.bus != next)
+			continue;
+
+		/* Skip buses that don't have iterate method */
+		if (!next->dev_iterate)
+			continue;
+
+		snprintf(devstr, sizeof(devstr), "bus=%s", next->name);
+		RTE_DEV_FOREACH(dev, devstr, &dev_iter) {
+
+			if (!dev->driver)
+				continue;
+			/* Check for matching device if identifier is present */
+			if (identifier &&
+			    strncmp(da.name, dev->name, strlen(dev->name)))
+				continue;
+			printf("\n%s Infos for device %s %s\n",
+			       info_border, dev->name, info_border);
+			printf("Bus name: %s", dev->bus->name);
+			printf("\nDriver name: %s", dev->driver->name);
+			printf("\nDevargs: %s",
+			       dev->devargs ? dev->devargs->args : "");
+			printf("\nConnect to socket: %d", dev->numa_node);
+			printf("\n");
+
+			/* List ports with matching device name */
+			RTE_ETH_FOREACH_DEV_OF(port_id, dev) {
+				rte_eth_macaddr_get(port_id, &mac_addr);
+				printf("\n\tPort id: %-2d", port_id);
+				print_ethaddr("\n\tMAC address: ", &mac_addr);
+				rte_eth_dev_get_name_by_port(port_id, name);
+				printf("\n\tDevice name: %s", name);
+				printf("\n");
+			}
+		}
+	};
+}
+
 void
 port_infos_display(portid_t port_id)
 {

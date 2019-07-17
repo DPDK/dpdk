@@ -467,6 +467,29 @@ Show Tx metadata value set for a specific port::
 
    testpmd> show port (port_id) tx_metadata
 
+show device info
+~~~~~~~~~~~~~~~~
+
+Show general information about devices probed::
+
+   testpmd> show device info (<identifier>|all)
+
+For example:
+
+.. code-block:: console
+
+    testpmd> show device info net_pcap0
+
+    ********************* Infos for device net_pcap0 *********************
+    Bus name: vdev
+    Driver name: net_pcap
+    Devargs: iface=enP2p6s0,phy_mac=1
+    Connect to socket: -1
+
+            Port id: 2
+            MAC address: 1E:37:93:28:04:B8
+            Device name: net_pcap0
+
 dump physmem
 ~~~~~~~~~~~~
 
@@ -2312,6 +2335,47 @@ hash of input [IP] packets received on port::
                      ipv6-other|l2-payload|ipv6-ex|ipv6-tcp-ex|\
                      ipv6-udp-ex <string of hex digits \
                      (variable length, NIC dependent)>)
+
+Device Functions
+----------------
+
+The following sections show functions for device operations.
+
+device detach
+~~~~~~~~~~~~~
+
+Detach a device specified by pci address or virtual device args::
+
+   testpmd> device detach (identifier)
+
+Before detaching a device associated with ports, the ports should be stopped and closed.
+
+For example, to detach a pci device whose address is 0002:03:00.0.
+
+.. code-block:: console
+
+    testpmd> device detach 0002:03:00.0
+    Removing a device...
+    Port 1 is now closed
+    EAL: Releasing pci mapped resource for 0002:03:00.0
+    EAL: Calling pci_unmap_resource for 0002:03:00.0 at 0x218a050000
+    EAL: Calling pci_unmap_resource for 0002:03:00.0 at 0x218c050000
+    Device 0002:03:00.0 is detached
+    Now total ports is 1
+
+For example, to detach a port created by pcap PMD.
+
+.. code-block:: console
+
+    testpmd> device detach net_pcap0
+    Removing a device...
+    Port 0 is now closed
+    Device net_pcap0 is detached
+    Now total ports is 0
+    Done
+
+In this case, identifier is ``net_pcap0``.
+This identifier format is the same as ``--vdev`` format of DPDK applications.
 
 Link Bonding Functions
 ----------------------

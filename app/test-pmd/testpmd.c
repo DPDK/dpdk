@@ -2476,6 +2476,51 @@ detach_port_device(portid_t port_id)
 }
 
 void
+detach_device(char *identifier)
+{
+	struct rte_dev_iterator iterator;
+	struct rte_devargs da;
+	portid_t port_id;
+
+	printf("Removing a device...\n");
+
+	memset(&da, 0, sizeof(da));
+	if (rte_devargs_parsef(&da, "%s", identifier)) {
+		printf("cannot parse identifier\n");
+		if (da.args)
+			free(da.args);
+		return;
+	}
+
+	RTE_ETH_FOREACH_MATCHING_DEV(port_id, identifier, &iterator) {
+		if (ports[port_id].port_status != RTE_PORT_CLOSED) {
+			if (ports[port_id].port_status != RTE_PORT_STOPPED) {
+				printf("Port %u not stopped\n", port_id);
+				return;
+			}
+
+			/* sibling ports are forced to be closed */
+			if (ports[port_id].flow_list)
+				port_flow_flush(port_id);
+			ports[port_id].port_status = RTE_PORT_CLOSED;
+			printf("Port %u is now closed\n", port_id);
+		}
+	}
+
+	if (rte_eal_hotplug_remove(da.bus->name, da.name) != 0) {
+		TESTPMD_LOG(ERR, "Failed to detach device %s(%s)\n",
+			    da.name, da.bus->name);
+		return;
+	}
+
+	remove_invalid_ports();
+
+	printf("Device %s is detached\n", identifier);
+	printf("Now total ports is %d\n", nb_ports);
+	printf("Done\n");
+}
+
+void
 pmd_test_exit(void)
 {
 	portid_t pt_id;
