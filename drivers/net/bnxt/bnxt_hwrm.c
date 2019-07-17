@@ -4607,3 +4607,28 @@ int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
 
 	return rc;
 }
+
+int bnxt_hwrm_set_mac(struct bnxt *bp)
+{
+	struct hwrm_func_vf_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_vf_cfg_input req = {0};
+	int rc = 0;
+
+	if (!BNXT_VF(bp))
+		return 0;
+
+	HWRM_PREP(req, FUNC_VF_CFG, BNXT_USE_CHIMP_MB);
+
+	req.enables =
+		rte_cpu_to_le_32(HWRM_FUNC_VF_CFG_INPUT_ENABLES_DFLT_MAC_ADDR);
+	memcpy(req.dflt_mac_addr, bp->mac_addr, RTE_ETHER_ADDR_LEN);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	memcpy(bp->dflt_mac_addr, bp->mac_addr, RTE_ETHER_ADDR_LEN);
+	HWRM_UNLOCK();
+
+	return rc;
+}
