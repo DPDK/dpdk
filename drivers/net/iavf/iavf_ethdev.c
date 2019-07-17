@@ -1047,6 +1047,7 @@ iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->imissed = pstats->rx_discards;
 		stats->oerrors = pstats->tx_errors + pstats->tx_discards;
 		stats->ibytes = pstats->rx_bytes;
+		stats->ibytes -= stats->ipackets * RTE_ETHER_CRC_LEN;
 		stats->obytes = pstats->tx_bytes;
 	} else {
 		PMD_DRV_LOG(ERR, "Get statistics failed");
