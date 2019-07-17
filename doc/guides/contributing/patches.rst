@@ -75,7 +75,6 @@ Trees and maintainers are listed in the ``MAINTAINERS`` file. For example::
     Crypto Drivers
     --------------
     M: Some Name <some.name@email.com>
-    B: Another Name <another.name@email.com>
     T: git://dpdk.org/next/dpdk-next-crypto
 
     Intel AES-NI GCM PMD
@@ -86,7 +85,6 @@ Trees and maintainers are listed in the ``MAINTAINERS`` file. For example::
 Where:
 
 * ``M`` is a tree or component maintainer.
-* ``B`` is a tree backup maintainer.
 * ``T`` is a repository tree.
 * ``F`` is a maintained file or directory.
 
