@@ -296,7 +296,7 @@ jump_out:
 
 	return 0;
 err_out:
-	if (sep)
+	if (!sep_exists && sep)
 		free(sep);
 	return -EINVAL;
 }
