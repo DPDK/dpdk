@@ -246,6 +246,7 @@ struct bnxt_coal {
 #define DBR_TYPE_SRQ				(0x2ULL << 60)
 #define DBR_TYPE_CQ				(0x4ULL << 60)
 #define DBR_TYPE_NQ				(0xaULL << 60)
+#define DBR_TYPE_NQ_ARM				(0xbULL << 60)
 
 #define BNXT_RSS_TBL_SIZE_THOR		512
 #define BNXT_RSS_ENTRIES_PER_CTX_THOR	64

@@ -341,7 +341,7 @@ static void bnxt_set_db(struct bnxt *bp,
 			db->db_key64 = DBR_PATH_L2 | DBR_TYPE_CQ;
 			break;
 		case HWRM_RING_ALLOC_INPUT_RING_TYPE_NQ:
-			db->db_key64 = DBR_PATH_L2 | DBR_TYPE_NQ;
+			db->db_key64 = DBR_PATH_L2;
 			break;
 		}
 		db->db_key64 |= (uint64_t)fid << DBR_XID_SFT;
