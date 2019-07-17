@@ -189,23 +189,22 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 					.rss_key = rss_key,
 					.rss_key_len = 40,
 				};
-				struct rte_eth_dev *eth_dev;
+				struct rte_eth_dev_info dev_info;
 				uint16_t queue[RTE_MAX_QUEUES_PER_PORT];
 				struct rte_flow_action_rss action_rss;
 				unsigned int i;
 				unsigned int j;
 
+				rte_eth_dev_info_get(sa->portid, &dev_info);
 				sa->action[2].type = RTE_FLOW_ACTION_TYPE_END;
 				/* Try RSS. */
 				sa->action[1].type = RTE_FLOW_ACTION_TYPE_RSS;
 				sa->action[1].conf = &action_rss;
-				eth_dev = ctx->device;
 				rte_eth_dev_rss_hash_conf_get(sa->portid,
 							      &rss_conf);
 				for (i = 0, j = 0;
-				     i < eth_dev->data->nb_rx_queues; ++i)
-					if (eth_dev->data->rx_queues[i])
-						queue[j++] = i;
+				     i < dev_info.nb_rx_queues; ++i)
+					queue[j++] = i;
 				action_rss = (struct rte_flow_action_rss){
 					.types = rss_conf.rss_hf,
 					.key_len = rss_conf.rss_key_len,
