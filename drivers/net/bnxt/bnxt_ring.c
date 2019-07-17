@@ -280,7 +280,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	}
 	cp_ring_info->hw_stats_ctx_id = HWRM_NA_SIGNATURE;
 
-	if (BNXT_HAS_NQ(bp)) {
+	if (nq_ring_info) {
 		struct bnxt_ring *nq_ring = nq_ring_info->cp_ring_struct;
 
 		nq_ring->bd = (char *)mz->addr + nq_ring_start;
