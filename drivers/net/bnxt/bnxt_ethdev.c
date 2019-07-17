@@ -779,6 +779,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
 	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
+	bnxt_enable_int(bp);
 	bp->flags |= BNXT_FLAG_INIT_DONE;
 	return 0;
 
@@ -818,6 +819,13 @@ static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
 static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	bnxt_disable_int(bp);
+
+	/* disable uio/vfio intr/eventfd mapping */
+	rte_intr_disable(intr_handle);
 
 	bp->flags &= ~BNXT_FLAG_INIT_DONE;
 	if (bp->eth_dev->data->dev_started) {
@@ -825,6 +833,14 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 		eth_dev->data->dev_link.link_status = 0;
 	}
 	bnxt_set_hwrm_link_config(bp, false);
+
+	/* Clean queue intr-vector mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+
 	bnxt_hwrm_port_clr_stats(bp);
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
@@ -3991,7 +4007,6 @@ skip_init:
 	if (rc)
 		goto error_free_int;
 
-	bnxt_enable_int(bp);
 	bnxt_init_nic(bp);
 
 	return 0;

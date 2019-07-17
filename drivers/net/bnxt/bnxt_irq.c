@@ -58,7 +58,6 @@ void bnxt_free_int(struct bnxt *bp)
 	irq = bp->irq_tbl;
 	if (irq) {
 		if (irq->requested) {
-			rte_intr_disable(&bp->pdev->intr_handle);
 			rte_intr_callback_unregister(&bp->pdev->intr_handle,
 						     irq->handler,
 						     (void *)bp->eth_dev);
@@ -123,7 +122,6 @@ int bnxt_request_int(struct bnxt *bp)
 
 	rte_intr_callback_register(&bp->pdev->intr_handle, irq->handler,
 				   (void *)bp->eth_dev);
-	rte_intr_enable(&bp->pdev->intr_handle);
 
 	irq->requested = 1;
 	return rc;
