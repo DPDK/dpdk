@@ -2325,6 +2325,11 @@ void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 	for (i = bp->nr_vnics - 1; i >= 0; i--) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
 
+		if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
+			PMD_DRV_LOG(DEBUG, "Invalid vNIC ID\n");
+			return;
+		}
+
 		bnxt_clear_hwrm_vnic_flows(bp, vnic);
 
 		bnxt_clear_hwrm_vnic_filters(bp, vnic);
