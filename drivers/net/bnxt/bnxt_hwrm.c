@@ -1763,8 +1763,6 @@ bnxt_hwrm_vnic_rss_cfg_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 					    BNXT_USE_CHIMP_MB);
 
 		HWRM_CHECK_RESULT();
-		if (rc)
-			break;
 	}
 
 	HWRM_UNLOCK();
@@ -3774,16 +3772,7 @@ static int bnxt_hwrm_func_vf_vnic_query(struct bnxt *bp, uint16_t vf,
 		return -ENOMEM;
 	}
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
-	if (rc) {
-		HWRM_UNLOCK();
-		PMD_DRV_LOG(ERR, "hwrm_func_vf_vnic_query failed rc:%d\n", rc);
-		return -1;
-	} else if (resp->error_code) {
-		rc = rte_le_to_cpu_16(resp->error_code);
-		HWRM_UNLOCK();
-		PMD_DRV_LOG(ERR, "hwrm_func_vf_vnic_query error %d\n", rc);
-		return -1;
-	}
+	HWRM_CHECK_RESULT();
 	rc = rte_le_to_cpu_32(resp->vnic_id_cnt);
 
 	HWRM_UNLOCK();
@@ -4192,8 +4181,6 @@ bnxt_vnic_rss_configure_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 					    BNXT_USE_CHIMP_MB);
 
 		HWRM_CHECK_RESULT();
-		if (rc)
-			break;
 	}
 
 	HWRM_UNLOCK();
@@ -4271,8 +4258,7 @@ static int bnxt_hwrm_set_coal_params_thor(struct bnxt *bp,
 
 	HWRM_PREP(req, RING_AGGINT_QCAPS, BNXT_USE_CHIMP_MB);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
-	if (rc)
-		goto out;
+	HWRM_CHECK_RESULT();
 
 	agg_req->num_cmpl_dma_aggr = resp->num_cmpl_dma_aggr_max;
 	agg_req->cmpl_aggr_dma_tmr = resp->cmpl_aggr_dma_tmr_min;
@@ -4285,8 +4271,6 @@ static int bnxt_hwrm_set_coal_params_thor(struct bnxt *bp,
 	 HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_ENABLES_NUM_CMPL_DMA_AGGR;
 	agg_req->enables = rte_cpu_to_le_32(enables);
 
-out:
-	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 	return rc;
 }
@@ -4498,8 +4482,7 @@ int bnxt_hwrm_func_backing_store_cfg(struct bnxt *bp, uint32_t enables)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
-	if (rc)
-		rc = -EIO;
+
 	return rc;
 }
 
