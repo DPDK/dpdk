@@ -101,7 +101,7 @@ struct txq;
 struct rte_flow;
 
 /**
- * Type of objet being allocated.
+ * Type of object being allocated.
  */
 enum mlx4_verbs_alloc_type {
 	MLX4_VERBS_ALLOC_TYPE_NONE,
