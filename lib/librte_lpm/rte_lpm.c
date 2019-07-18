@@ -71,7 +71,7 @@ depth_to_mask(uint8_t depth)
 /*
  * Converts given depth value to its corresponding range value.
  */
-static inline uint32_t __attribute__((pure))
+static uint32_t __attribute__((pure))
 depth_to_range(uint8_t depth)
 {
 	VERIFY_DEPTH(depth);
@@ -400,7 +400,7 @@ MAP_STATIC_SYMBOL(void rte_lpm_free(struct rte_lpm *lpm),
  * are stored in the rule table from 0 - 31.
  * NOTE: Valid range for depth parameter is 1 .. 32 inclusive.
  */
-static inline int32_t
+static int32_t
 rule_add_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked, uint8_t depth,
 	uint8_t next_hop)
 {
@@ -472,7 +472,7 @@ rule_add_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked, uint8_t depth,
 	return rule_index;
 }
 
-static inline int32_t
+static int32_t
 rule_add_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 	uint32_t next_hop)
 {
@@ -548,7 +548,7 @@ rule_add_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
  * Delete a rule from the rule table.
  * NOTE: Valid range for depth parameter is 1 .. 32 inclusive.
  */
-static inline void
+static void
 rule_delete_v20(struct rte_lpm_v20 *lpm, int32_t rule_index, uint8_t depth)
 {
 	int i;
@@ -571,7 +571,7 @@ rule_delete_v20(struct rte_lpm_v20 *lpm, int32_t rule_index, uint8_t depth)
 	lpm->rule_info[depth - 1].used_rules--;
 }
 
-static inline void
+static void
 rule_delete_v1604(struct rte_lpm *lpm, int32_t rule_index, uint8_t depth)
 {
 	int i;
@@ -598,7 +598,7 @@ rule_delete_v1604(struct rte_lpm *lpm, int32_t rule_index, uint8_t depth)
  * Finds a rule in rule table.
  * NOTE: Valid range for depth parameter is 1 .. 32 inclusive.
  */
-static inline int32_t
+static int32_t
 rule_find_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked, uint8_t depth)
 {
 	uint32_t rule_gindex, last_rule, rule_index;
@@ -619,7 +619,7 @@ rule_find_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked, uint8_t depth)
 	return -EINVAL;
 }
 
-static inline int32_t
+static int32_t
 rule_find_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth)
 {
 	uint32_t rule_gindex, last_rule, rule_index;
@@ -643,7 +643,7 @@ rule_find_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth)
 /*
  * Find, clean and allocate a tbl8.
  */
-static inline int32_t
+static int32_t
 tbl8_alloc_v20(struct rte_lpm_tbl_entry_v20 *tbl8)
 {
 	uint32_t group_idx; /* tbl8 group index. */
@@ -670,7 +670,7 @@ tbl8_alloc_v20(struct rte_lpm_tbl_entry_v20 *tbl8)
 	return -ENOSPC;
 }
 
-static inline int32_t
+static int32_t
 tbl8_alloc_v1604(struct rte_lpm_tbl_entry *tbl8, uint32_t number_tbl8s)
 {
 	uint32_t group_idx; /* tbl8 group index. */
@@ -696,21 +696,21 @@ tbl8_alloc_v1604(struct rte_lpm_tbl_entry *tbl8, uint32_t number_tbl8s)
 	return -ENOSPC;
 }
 
-static inline void
+static void
 tbl8_free_v20(struct rte_lpm_tbl_entry_v20 *tbl8, uint32_t tbl8_group_start)
 {
 	/* Set tbl8 group invalid*/
 	tbl8[tbl8_group_start].valid_group = INVALID;
 }
 
-static inline void
+static void
 tbl8_free_v1604(struct rte_lpm_tbl_entry *tbl8, uint32_t tbl8_group_start)
 {
 	/* Set tbl8 group invalid*/
 	tbl8[tbl8_group_start].valid_group = INVALID;
 }
 
-static inline int32_t
+static __rte_noinline int32_t
 add_depth_small_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
 		uint8_t next_hop)
 {
@@ -778,7 +778,7 @@ add_depth_small_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
 	return 0;
 }
 
-static inline int32_t
+static __rte_noinline int32_t
 add_depth_small_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 		uint32_t next_hop)
 {
@@ -847,7 +847,7 @@ add_depth_small_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 	return 0;
 }
 
-static inline int32_t
+static __rte_noinline int32_t
 add_depth_big_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked, uint8_t depth,
 		uint8_t next_hop)
 {
@@ -972,7 +972,7 @@ add_depth_big_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked, uint8_t depth,
 	return 0;
 }
 
-static inline int32_t
+static __rte_noinline int32_t
 add_depth_big_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 		uint32_t next_hop)
 {
@@ -1245,7 +1245,7 @@ BIND_DEFAULT_SYMBOL(rte_lpm_is_rule_present, _v1604, 16.04);
 MAP_STATIC_SYMBOL(int rte_lpm_is_rule_present(struct rte_lpm *lpm, uint32_t ip,
 		uint8_t depth, uint32_t *next_hop), rte_lpm_is_rule_present_v1604);
 
-static inline int32_t
+static int32_t
 find_previous_rule_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
 		uint8_t *sub_rule_depth)
 {
@@ -1267,7 +1267,7 @@ find_previous_rule_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
 	return -1;
 }
 
-static inline int32_t
+static int32_t
 find_previous_rule_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 		uint8_t *sub_rule_depth)
 {
@@ -1289,7 +1289,7 @@ find_previous_rule_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 	return -1;
 }
 
-static inline int32_t
+static int32_t
 delete_depth_small_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked,
 	uint8_t depth, int32_t sub_rule_index, uint8_t sub_rule_depth)
 {
@@ -1382,7 +1382,7 @@ delete_depth_small_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked,
 	return 0;
 }
 
-static inline int32_t
+static int32_t
 delete_depth_small_v1604(struct rte_lpm *lpm, uint32_t ip_masked,
 	uint8_t depth, int32_t sub_rule_index, uint8_t sub_rule_depth)
 {
@@ -1484,7 +1484,7 @@ delete_depth_small_v1604(struct rte_lpm *lpm, uint32_t ip_masked,
  * Return of value > -1 means tbl8 is in use but has all the same values and
  * thus can be recycled
  */
-static inline int32_t
+static int32_t
 tbl8_recycle_check_v20(struct rte_lpm_tbl_entry_v20 *tbl8,
 		uint32_t tbl8_group_start)
 {
@@ -1531,7 +1531,7 @@ tbl8_recycle_check_v20(struct rte_lpm_tbl_entry_v20 *tbl8,
 	return -EINVAL;
 }
 
-static inline int32_t
+static int32_t
 tbl8_recycle_check_v1604(struct rte_lpm_tbl_entry *tbl8,
 		uint32_t tbl8_group_start)
 {
@@ -1578,7 +1578,7 @@ tbl8_recycle_check_v1604(struct rte_lpm_tbl_entry *tbl8,
 	return -EINVAL;
 }
 
-static inline int32_t
+static int32_t
 delete_depth_big_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked,
 	uint8_t depth, int32_t sub_rule_index, uint8_t sub_rule_depth)
 {
@@ -1656,7 +1656,7 @@ delete_depth_big_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked,
 	return 0;
 }
 
-static inline int32_t
+static int32_t
 delete_depth_big_v1604(struct rte_lpm *lpm, uint32_t ip_masked,
 	uint8_t depth, int32_t sub_rule_index, uint8_t sub_rule_depth)
 {
