@@ -1699,26 +1699,28 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
 	if (BNXT_VF(bp) && !BNXT_VF_IS_TRUSTED(bp))
 		return -EPERM;
 
-	memcpy(bp->mac_addr, addr, sizeof(bp->mac_addr));
+	if (rte_is_zero_ether_addr(addr))
+		return -EINVAL;
 
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
 		/* Default Filter is at Index 0 */
 		if (filter->mac_index != 0)
 			continue;
-		rc = bnxt_hwrm_clear_l2_filter(bp, filter);
-		if (rc)
-			return rc;
+
 		memcpy(filter->l2_addr, bp->mac_addr, RTE_ETHER_ADDR_LEN);
 		memset(filter->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
 		filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
 		filter->enables |=
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
+
 		rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
 		if (rc)
 			return rc;
-		filter->mac_index = 0;
+
+		memcpy(bp->mac_addr, addr, RTE_ETHER_ADDR_LEN);
 		PMD_DRV_LOG(DEBUG, "Set MAC addr\n");
+		return 0;
 	}
 
 	return 0;
