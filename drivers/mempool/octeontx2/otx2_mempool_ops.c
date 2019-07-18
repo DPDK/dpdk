@@ -54,7 +54,7 @@ npa_lf_aura_op_search_alloc(const int64_t wdata, int64_t * const addr,
 	return 0;
 }
 
-static __rte_always_inline int
+static __rte_noinline int
 npa_lf_aura_op_alloc_bulk(const int64_t wdata, int64_t * const addr,
 			  unsigned int n, void **obj_table)
 {
