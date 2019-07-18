@@ -281,17 +281,16 @@ rte_cfgfile_create(int flags)
 	cfg->num_sections = 0;
 
 	/* allocate first batch of sections and entries */
-	cfg->sections = malloc(sizeof(struct rte_cfgfile_section) *
-			CFG_ALLOC_SECTION_BATCH);
-
+	cfg->sections = calloc(CFG_ALLOC_SECTION_BATCH,
+			       sizeof(struct rte_cfgfile_section));
 	if (cfg->sections == NULL)
 		goto error1;
 
 	cfg->allocated_sections = CFG_ALLOC_SECTION_BATCH;
 
 	for (i = 0; i < CFG_ALLOC_SECTION_BATCH; i++) {
-		cfg->sections[i].entries = malloc(sizeof(
-			struct rte_cfgfile_entry) * CFG_ALLOC_ENTRY_BATCH);
+		cfg->sections[i].entries = calloc(CFG_ALLOC_ENTRY_BATCH,
+					  sizeof(struct rte_cfgfile_entry));
 
 		if (cfg->sections[i].entries == NULL)
 			goto error1;
