@@ -4134,7 +4134,9 @@ bnxt_vnic_rss_configure_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		req.hash_mode_flags = vnic->hash_mode;
 
 		req.ring_grp_tbl_addr =
-		    rte_cpu_to_le_64(vnic->rss_table_dma_addr);
+		    rte_cpu_to_le_64(vnic->rss_table_dma_addr +
+				     i * BNXT_RSS_ENTRIES_PER_CTX_THOR *
+				     2 * sizeof(*ring_tbl));
 		req.hash_key_tbl_addr =
 		    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
 
