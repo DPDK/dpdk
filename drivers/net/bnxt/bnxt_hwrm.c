@@ -1733,7 +1733,7 @@ bnxt_hwrm_vnic_rss_cfg_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int i;
 	int rc = 0;
-	int nr_ctxs = bp->max_ring_grps;
+	int nr_ctxs = vnic->num_lb_ctxts;
 	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 
@@ -4116,9 +4116,9 @@ bnxt_vnic_rss_configure_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint8_t *rx_queue_state = bp->eth_dev->data->rx_queue_state;
 	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
-	int nr_ctxs = bp->max_ring_grps;
 	struct bnxt_rx_queue **rxqs = bp->rx_queues;
 	uint16_t *ring_tbl = vnic->rss_table;
+	int nr_ctxs = vnic->num_lb_ctxts;
 	int max_rings = bp->rx_nr_rings;
 	int i, j, k, cnt;
 	int rc = 0;
