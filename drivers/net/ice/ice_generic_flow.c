@@ -517,28 +517,31 @@ static int ice_flow_valid_action(struct rte_eth_dev *dev,
 {
 	const struct rte_flow_action_queue *act_q;
 	uint16_t queue;
-
-	switch (actions->type) {
-	case RTE_FLOW_ACTION_TYPE_QUEUE:
-		act_q = actions->conf;
-		queue = act_q->index;
-		if (queue >= dev->data->nb_rx_queues) {
+	const struct rte_flow_action *action;
+	for (action = actions; action->type !=
+			RTE_FLOW_ACTION_TYPE_END; action++) {
+		switch (action->type) {
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			act_q = action->conf;
+			queue = act_q->index;
+			if (queue >= dev->data->nb_rx_queues) {
+				rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						actions, "Invalid queue ID for"
+						" switch filter.");
+				return -rte_errno;
+			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		default:
 			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   actions, "Invalid queue ID for"
-					   " switch filter.");
+					   RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					   "Invalid action.");
 			return -rte_errno;
 		}
-		break;
-	case RTE_FLOW_ACTION_TYPE_DROP:
-		break;
-	default:
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ACTION, actions,
-				   "Invalid action.");
-		return -rte_errno;
 	}
-
 	return 0;
 }
 
