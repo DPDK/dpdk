@@ -465,7 +465,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			nvgre_spec = item->spec;
 			nvgre_mask = item->mask;
-			/* Check if VXLAN item is used to describe protocol.
+			/* Check if NVGRE item is used to describe protocol.
 			 * If yes, both spec and mask should be NULL.
 			 * If no, both spec and mask shouldn't be NULL.
 			 */
@@ -479,6 +479,8 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 			}
 			is_tunnel = 1;
 
+			break;
+		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		default:
 			rte_flow_error_set(error, EINVAL,
