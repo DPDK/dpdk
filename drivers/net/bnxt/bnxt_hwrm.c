@@ -1737,9 +1737,6 @@ bnxt_hwrm_vnic_rss_cfg_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 
-	if (!(vnic->rss_table && vnic->hash_type))
-		return 0;
-
 	HWRM_PREP(req, VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
 
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
@@ -1773,6 +1770,9 @@ int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 	int rc = 0;
 	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (!vnic->rss_table)
+		return 0;
 
 	if (BNXT_CHIP_THOR(bp))
 		return bnxt_hwrm_vnic_rss_cfg_thor(bp, vnic);
