@@ -4025,11 +4025,11 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto error_free;
 
+	bnxt_init_nic(bp);
+
 	rc = bnxt_request_int(bp);
 	if (rc)
 		goto error_free;
-
-	bnxt_init_nic(bp);
 
 	return 0;
 
