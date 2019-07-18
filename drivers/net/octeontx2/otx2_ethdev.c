@@ -586,6 +586,24 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	RTE_BUILD_BUG_ON(PKT_TX_TCP_CKSUM != (1ULL << 52));
 	RTE_BUILD_BUG_ON(PKT_TX_SCTP_CKSUM != (2ULL << 52));
 	RTE_BUILD_BUG_ON(PKT_TX_UDP_CKSUM != (3ULL << 52));
+	RTE_BUILD_BUG_ON(PKT_TX_IP_CKSUM != (1ULL << 54));
+	RTE_BUILD_BUG_ON(PKT_TX_IPV4 != (1ULL << 55));
+	RTE_BUILD_BUG_ON(PKT_TX_OUTER_IP_CKSUM != (1ULL << 58));
+	RTE_BUILD_BUG_ON(PKT_TX_OUTER_IPV4 != (1ULL << 59));
+	RTE_BUILD_BUG_ON(PKT_TX_OUTER_IPV6 != (1ULL << 60));
+	RTE_BUILD_BUG_ON(PKT_TX_OUTER_UDP_CKSUM != (1ULL << 41));
+	RTE_BUILD_BUG_ON(RTE_MBUF_L2_LEN_BITS != 7);
+	RTE_BUILD_BUG_ON(RTE_MBUF_L3_LEN_BITS != 9);
+	RTE_BUILD_BUG_ON(RTE_MBUF_OUTL2_LEN_BITS != 7);
+	RTE_BUILD_BUG_ON(RTE_MBUF_OUTL3_LEN_BITS != 9);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) !=
+			 offsetof(struct rte_mbuf, buf_iova) + 8);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, ol_flags) !=
+			 offsetof(struct rte_mbuf, buf_iova) + 16);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
+			 offsetof(struct rte_mbuf, ol_flags) + 12);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, tx_offload) !=
+			 offsetof(struct rte_mbuf, pool) + 2 * sizeof(void *));
 
 	if (conf & DEV_TX_OFFLOAD_VLAN_INSERT ||
 	    conf & DEV_TX_OFFLOAD_QINQ_INSERT)
