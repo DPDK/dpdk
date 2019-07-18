@@ -1499,141 +1499,98 @@ bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 
 static int bnxt_del_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 {
-	struct bnxt_filter_info *filter, *temp_filter, *new_filter;
+	struct bnxt_filter_info *filter;
 	struct bnxt_vnic_info *vnic;
-	unsigned int i;
 	int rc = 0;
-	uint32_t chk = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN;
+	uint32_t chk = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN;
 
-	/* Cycle through all VNICs */
-	for (i = 0; i < bp->nr_vnics; i++) {
-		/*
-		 * For each VNIC and each associated filter(s)
-		 * if VLAN exists && VLAN matches vlan_id
-		 *      remove the MAC+VLAN filter
-		 *      add a new MAC only filter
-		 * else
-		 *      VLAN filter doesn't exist, just skip and continue
-		 */
-		vnic = &bp->vnic_info[i];
-		filter = STAILQ_FIRST(&vnic->filter);
-		while (filter) {
-			temp_filter = STAILQ_NEXT(filter, next);
+	/* if VLAN exists && VLAN matches vlan_id
+	 *      remove the MAC+VLAN filter
+	 *      add a new MAC only filter
+	 * else
+	 *      VLAN filter doesn't exist, just skip and continue
+	 */
+	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	filter = STAILQ_FIRST(&vnic->filter);
+	while (filter) {
+		/* Search for this matching MAC+VLAN filter */
+		if (filter->enables & chk && filter->l2_ivlan == vlan_id &&
+		    !memcmp(filter->l2_addr,
+			    bp->mac_addr,
+			    RTE_ETHER_ADDR_LEN)) {
+			/* Delete the filter */
+			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
+			if (rc)
+				return rc;
+			STAILQ_REMOVE(&vnic->filter, filter,
+				      bnxt_filter_info, next);
+			STAILQ_INSERT_TAIL(&bp->free_filter_list, filter, next);
 
-			if (filter->enables & chk &&
-			    filter->l2_ovlan == vlan_id) {
-				/* Must delete the filter */
-				STAILQ_REMOVE(&vnic->filter, filter,
-					      bnxt_filter_info, next);
-				bnxt_hwrm_clear_l2_filter(bp, filter);
-				STAILQ_INSERT_TAIL(&bp->free_filter_list,
-						   filter, next);
-
-				/*
-				 * Need to examine to see if the MAC
-				 * filter already existed or not before
-				 * allocating a new one
-				 */
-
-				new_filter = bnxt_alloc_filter(bp);
-				if (!new_filter) {
-					PMD_DRV_LOG(ERR,
-							"MAC/VLAN filter alloc failed\n");
-					rc = -ENOMEM;
-					goto exit;
-				}
-				STAILQ_INSERT_TAIL(&vnic->filter,
-						new_filter, next);
-				/* Inherit MAC from previous filter */
-				new_filter->mac_index =
-					filter->mac_index;
-				memcpy(new_filter->l2_addr, filter->l2_addr,
-				       RTE_ETHER_ADDR_LEN);
-				/* MAC only filter */
-				rc = bnxt_hwrm_set_l2_filter(bp,
-							     vnic->fw_vnic_id,
-							     new_filter);
-				if (rc)
-					goto exit;
-				PMD_DRV_LOG(INFO,
-					    "Del Vlan filter for %d\n",
-					    vlan_id);
-			}
-			filter = temp_filter;
+			PMD_DRV_LOG(INFO,
+				    "Del Vlan filter for %d\n",
+				    vlan_id);
+			return rc;
 		}
+		filter = STAILQ_NEXT(filter, next);
 	}
-exit:
-	return rc;
+	return -ENOENT;
 }
 
 static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 {
-	struct bnxt_filter_info *filter, *temp_filter, *new_filter;
+	struct bnxt_filter_info *filter;
 	struct bnxt_vnic_info *vnic;
-	unsigned int i;
 	int rc = 0;
 	uint32_t en = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN |
 		HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN_MASK;
 	uint32_t chk = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN;
 
-	/* Cycle through all VNICs */
-	for (i = 0; i < bp->nr_vnics; i++) {
-		/*
-		 * For each VNIC and each associated filter(s)
-		 * if VLAN exists:
-		 *   if VLAN matches vlan_id
-		 *      VLAN filter already exists, just skip and continue
-		 *   else
-		 *      add a new MAC+VLAN filter
-		 * else
-		 *   Remove the old MAC only filter
-		 *    Add a new MAC+VLAN filter
-		 */
-		vnic = &bp->vnic_info[i];
-		filter = STAILQ_FIRST(&vnic->filter);
-		while (filter) {
-			temp_filter = STAILQ_NEXT(filter, next);
+	/* Implementation notes on the use of VNIC in this command:
+	 *
+	 * By default, these filters belong to default vnic for the function.
+	 * Once these filters are set up, only destination VNIC can be modified.
+	 * If the destination VNIC is not specified in this command,
+	 * then the HWRM shall only create an l2 context id.
+	 */
 
-			if (filter->enables & chk) {
-				if (filter->l2_ivlan == vlan_id)
-					goto cont;
-			} else {
-				/* Must delete the MAC filter */
-				STAILQ_REMOVE(&vnic->filter, filter,
-						bnxt_filter_info, next);
-				bnxt_hwrm_clear_l2_filter(bp, filter);
-				filter->l2_ovlan = 0;
-				STAILQ_INSERT_TAIL(&bp->free_filter_list,
-						   filter, next);
-			}
-			new_filter = bnxt_alloc_filter(bp);
-			if (!new_filter) {
-				PMD_DRV_LOG(ERR,
-						"MAC/VLAN filter alloc failed\n");
-				rc = -ENOMEM;
-				goto exit;
-			}
-			STAILQ_INSERT_TAIL(&vnic->filter, new_filter, next);
-			/* Inherit MAC from the previous filter */
-			new_filter->mac_index = filter->mac_index;
-			memcpy(new_filter->l2_addr, filter->l2_addr,
-			       RTE_ETHER_ADDR_LEN);
-			/* MAC + VLAN ID filter */
-			new_filter->l2_ivlan = vlan_id;
-			new_filter->l2_ivlan_mask = 0xF000;
-			new_filter->enables |= en;
-			rc = bnxt_hwrm_set_l2_filter(bp,
-					vnic->fw_vnic_id,
-					new_filter);
-			if (rc)
-				goto exit;
-			PMD_DRV_LOG(INFO,
-				    "Added Vlan filter for %d\n", vlan_id);
-cont:
-			filter = temp_filter;
-		}
+	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	filter = STAILQ_FIRST(&vnic->filter);
+	/* Check if the VLAN has already been added */
+	while (filter) {
+		if (filter->enables & chk && filter->l2_ivlan == vlan_id &&
+		    !memcmp(filter->l2_addr, bp->mac_addr, RTE_ETHER_ADDR_LEN))
+			return -EEXIST;
+
+		filter = STAILQ_NEXT(filter, next);
 	}
-exit:
+
+	/* No match found. Alloc a fresh filter and issue the L2_FILTER_ALLOC
+	 * command to create MAC+VLAN filter with the right flags, enables set.
+	 */
+	filter = bnxt_alloc_filter(bp);
+	if (!filter) {
+		PMD_DRV_LOG(ERR,
+			    "MAC/VLAN filter alloc failed\n");
+		return -ENOMEM;
+	}
+	/* MAC + VLAN ID filter */
+	filter->l2_ivlan = vlan_id;
+	filter->l2_ivlan_mask = 0x0FFF;
+	filter->enables |= en;
+	rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
+	if (rc) {
+		/* Free the newly allocated filter as we were
+		 * not able to create the filter in hardware.
+		 */
+		filter->fw_l2_filter_id = UINT64_MAX;
+		STAILQ_INSERT_TAIL(&bp->free_filter_list, filter, next);
+		return rc;
+	}
+
+	/* Add this new filter to the list */
+	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+	PMD_DRV_LOG(INFO,
+		    "Added Vlan filter for %d\n", vlan_id);
 	return rc;
 }
 

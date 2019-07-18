@@ -393,6 +393,7 @@ struct bnxt {
 
 	unsigned int		nr_vnics;
 
+#define BNXT_GET_DEFAULT_VNIC(bp)	(&(bp)->vnic_info[0])
 	struct bnxt_vnic_info	*vnic_info;
 	STAILQ_HEAD(, bnxt_vnic_info)	free_vnic_list;
 
