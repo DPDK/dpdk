@@ -669,7 +669,7 @@ mlx5_txq_ibv_verify(struct rte_eth_dev *dev)
 }
 
 /**
- * Calcuate the total number of WQEBB for Tx queue.
+ * Calculate the total number of WQEBB for Tx queue.
  *
  * Simplified version of calc_sq_size() in rdma-core.
  *

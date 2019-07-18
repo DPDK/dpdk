@@ -232,7 +232,7 @@ struct mlx5_dev_config {
 };
 
 /**
- * Type of objet being allocated.
+ * Type of object being allocated.
  */
 enum mlx5_verbs_alloc_type {
 	MLX5_VERBS_ALLOC_TYPE_NONE,

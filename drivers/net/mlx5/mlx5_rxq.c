@@ -1122,7 +1122,7 @@ mlx5_mprq_free_mp(struct rte_eth_dev *dev)
 		dev->data->port_id, mp->name);
 	/*
 	 * If a buffer in the pool has been externally attached to a mbuf and it
-	 * is still in use by application, destroying the Rx qeueue can spoil
+	 * is still in use by application, destroying the Rx queue can spoil
 	 * the packet. It is unlikely to happen but if application dynamically
 	 * creates and destroys with holding Rx packets, this can happen.
 	 *

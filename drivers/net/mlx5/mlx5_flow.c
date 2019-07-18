@@ -473,7 +473,7 @@ mlx5_flow_item_acceptable(const struct rte_flow_item *item,
  *   Item hash fields.
  *
  * @return
- *   The hash fileds that should be used.
+ *   The hash fields that should be used.
  */
 uint64_t
 mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow,
