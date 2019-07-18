@@ -117,6 +117,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	const struct rte_memzone *mz;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	uint32_t entry_length;
+	size_t rss_table_size;
 	uint16_t max_vnics;
 	int i;
 	rte_iova_t mz_phys_addr;
@@ -125,11 +126,12 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 		       BNXT_MAX_MC_ADDRS * RTE_ETHER_ADDR_LEN;
 
 	if (BNXT_CHIP_THOR(bp))
-		entry_length += BNXT_RSS_TBL_SIZE_THOR *
-				2 * sizeof(*vnic->rss_table);
+		rss_table_size = BNXT_RSS_TBL_SIZE_THOR *
+				 2 * sizeof(*vnic->rss_table);
 	else
-		entry_length += HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table);
-	entry_length = RTE_CACHE_LINE_ROUNDUP(entry_length);
+		rss_table_size = HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table);
+
+	entry_length = RTE_CACHE_LINE_ROUNDUP(entry_length + rss_table_size);
 
 	max_vnics = bp->max_vnics;
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
@@ -170,10 +172,10 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 
 		vnic->rss_table_dma_addr = mz_phys_addr + (entry_length * i);
 		vnic->rss_hash_key = (void *)((char *)vnic->rss_table +
-			     HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table));
+					      rss_table_size);
 
 		vnic->rss_hash_key_dma_addr = vnic->rss_table_dma_addr +
-			     HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table);
+					      rss_table_size;
 		vnic->mc_list = (void *)((char *)vnic->rss_hash_key +
 				HW_HASH_KEY_SIZE);
 		vnic->mc_list_dma_addr = vnic->rss_hash_key_dma_addr +
