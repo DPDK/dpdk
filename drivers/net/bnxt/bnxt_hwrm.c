@@ -1737,16 +1737,16 @@ bnxt_hwrm_vnic_rss_cfg_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 
-	HWRM_PREP(req, VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
-
-	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
-	req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
-	req.hash_mode_flags = vnic->hash_mode;
-
-	req.hash_key_tbl_addr =
-	    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
-
 	for (i = 0; i < nr_ctxs; i++) {
+		HWRM_PREP(req, VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
+
+		req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+		req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
+		req.hash_mode_flags = vnic->hash_mode;
+
+		req.hash_key_tbl_addr =
+			rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
+
 		req.ring_grp_tbl_addr =
 			rte_cpu_to_le_64(vnic->rss_table_dma_addr +
 					 i * HW_HASH_INDEX_SIZE);
@@ -1757,9 +1757,8 @@ bnxt_hwrm_vnic_rss_cfg_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 					    BNXT_USE_CHIMP_MB);
 
 		HWRM_CHECK_RESULT();
+		HWRM_UNLOCK();
 	}
-
-	HWRM_UNLOCK();
 
 	return rc;
 }
@@ -4124,20 +4123,20 @@ bnxt_vnic_rss_configure_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	int i, j, k, cnt;
 	int rc = 0;
 
-	HWRM_PREP(req, VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
-
-	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
-	req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
-	req.hash_mode_flags = vnic->hash_mode;
-
-	req.ring_grp_tbl_addr =
-	    rte_cpu_to_le_64(vnic->rss_table_dma_addr);
-	req.hash_key_tbl_addr =
-	    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
-
 	for (i = 0, k = 0; i < nr_ctxs; i++) {
 		struct bnxt_rx_ring_info *rxr;
 		struct bnxt_cp_ring_info *cpr;
+
+		HWRM_PREP(req, VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
+
+		req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+		req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
+		req.hash_mode_flags = vnic->hash_mode;
+
+		req.ring_grp_tbl_addr =
+		    rte_cpu_to_le_64(vnic->rss_table_dma_addr);
+		req.hash_key_tbl_addr =
+		    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
 
 		req.ring_table_pair_index = i;
 		req.rss_ctx_idx = rte_cpu_to_le_16(vnic->fw_grp_ids[i]);
@@ -4174,9 +4173,8 @@ bnxt_vnic_rss_configure_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 					    BNXT_USE_CHIMP_MB);
 
 		HWRM_CHECK_RESULT();
+		HWRM_UNLOCK();
 	}
-
-	HWRM_UNLOCK();
 
 	return rc;
 }
