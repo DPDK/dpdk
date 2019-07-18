@@ -3472,7 +3472,7 @@ static int bnxt_alloc_ctx_mem_blk(__rte_unused struct bnxt *bp,
 			PMD_DRV_LOG(WARNING,
 				    "Using rte_mem_virt2iova()\n");
 			mz_phys_addr = rte_mem_virt2iova(mz->addr);
-			if (mz_phys_addr == 0) {
+			if (mz_phys_addr == RTE_BAD_IOVA) {
 				PMD_DRV_LOG(ERR,
 					"unable to map addr to phys memory\n");
 				return -ENOMEM;
@@ -3698,7 +3698,7 @@ static int bnxt_alloc_stats_mem(struct bnxt *bp)
 		PMD_DRV_LOG(WARNING,
 			    "Using rte_mem_virt2iova()\n");
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
-		if (mz_phys_addr == 0) {
+		if (mz_phys_addr == RTE_BAD_IOVA) {
 			PMD_DRV_LOG(ERR,
 				    "Can't map address to physical memory\n");
 			return -ENOMEM;
@@ -3736,7 +3736,7 @@ static int bnxt_alloc_stats_mem(struct bnxt *bp)
 		PMD_DRV_LOG(WARNING,
 			    "Using rte_mem_virt2iova()\n");
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
-		if (mz_phys_addr == 0) {
+		if (mz_phys_addr == RTE_BAD_IOVA) {
 			PMD_DRV_LOG(ERR,
 				    "Can't map address to physical memory\n");
 			return -ENOMEM;

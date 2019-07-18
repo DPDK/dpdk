@@ -153,9 +153,9 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 		PMD_DRV_LOG(WARNING,
 			"Using rte_mem_virt2iova()\n");
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
-		if (mz_phys_addr == 0) {
+		if (mz_phys_addr == RTE_BAD_IOVA) {
 			PMD_DRV_LOG(ERR,
-			"unable to map vnic address to physical memory\n");
+				    "unable to map to physical memory\n");
 			return -ENOMEM;
 		}
 	}

@@ -187,7 +187,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			rte_mem_lock_page(((char *)mz->addr) + sz);
 		mz_phys_addr_base = rte_mem_virt2iova(mz->addr);
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
-		if (mz_phys_addr == 0) {
+		if (mz_phys_addr == RTE_BAD_IOVA) {
 			PMD_DRV_LOG(ERR,
 			"unable to map ring address to physical memory\n");
 			return -ENOMEM;
