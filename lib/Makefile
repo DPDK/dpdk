@@ -19,6 +19,7 @@ DEPDIRS-librte_mbuf := librte_eal librte_mempool
 DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
 DEPDIRS-librte_timer := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_CFGFILE) += librte_cfgfile
+DEPDIRS-librte_cfgfile := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
 DEPDIRS-librte_cmdline := librte_eal librte_net
 DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ethdev

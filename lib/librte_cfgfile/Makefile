@@ -11,6 +11,7 @@ LIB = librte_cfgfile.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(SRCDIR)/../librte_eal/common/include
+LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_cfgfile_version.map
 
