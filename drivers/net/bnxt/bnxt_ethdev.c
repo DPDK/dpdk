@@ -915,6 +915,7 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic = &bp->vnic_info[pool];
 	struct bnxt_filter_info *filter;
+	int rc = 0;
 
 	if (BNXT_VF(bp) & !BNXT_VF_IS_TRUSTED(bp)) {
 		PMD_DRV_LOG(ERR, "Cannot add MAC address to a VF interface\n");
@@ -938,10 +939,20 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 		PMD_DRV_LOG(ERR, "L2 filter alloc failed\n");
 		return -ENODEV;
 	}
-	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+
 	filter->mac_index = index;
 	memcpy(filter->l2_addr, mac_addr, RTE_ETHER_ADDR_LEN);
-	return bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
+
+	rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
+	if (!rc) {
+		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+	} else {
+		filter->mac_index = INVALID_MAC_INDEX;
+		memset(&filter->l2_addr, 0, RTE_ETHER_ADDR_LEN);
+		bnxt_free_filter(bp, filter);
+	}
+
+	return rc;
 }
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
