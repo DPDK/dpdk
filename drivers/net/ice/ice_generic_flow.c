@@ -282,8 +282,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 			if (!(ipv6_spec && ipv6_mask))
 				break;
 
-			if (ipv6_mask->hdr.payload_len ||
-			    ipv6_mask->hdr.vtc_flow) {
+			if (ipv6_mask->hdr.payload_len) {
 				rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   item,
@@ -317,6 +316,11 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 					input_set |= ICE_INSET_IPV6_PROTO;
 				if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
 					input_set |= ICE_INSET_IPV6_HOP_LIMIT;
+				if ((ipv6_mask->hdr.vtc_flow &
+					rte_cpu_to_be_32(RTE_IPV6_HDR_TC_MASK))
+						== rte_cpu_to_be_32
+						(RTE_IPV6_HDR_TC_MASK))
+					input_set |= ICE_INSET_IPV6_TOS;
 			}
 
 			break;
@@ -486,7 +490,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   item,
-					   "Invalid mask no exist");
+					   "Invalid pattern");
 			break;
 		}
 	}
