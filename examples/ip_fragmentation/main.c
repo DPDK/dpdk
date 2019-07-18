@@ -245,8 +245,10 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 	uint8_t ipv6;
 	uint16_t port_out;
 	int32_t len2;
+	uint64_t ol_flags;
 
 	ipv6 = 0;
+	ol_flags = 0;
 	rxq = &qconf->rx_queue_list[queueid];
 
 	/* by default, send everything back to the source port */
@@ -288,6 +290,9 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 
 			/* Free input packet */
 			rte_pktmbuf_free(m);
+
+			/* request HW to regenerate IPv4 cksum */
+			ol_flags |= (PKT_TX_IPV4 | PKT_TX_IP_CKSUM);
 
 			/* If we fail to fragment the packet */
 			if (unlikely (len2 < 0))
@@ -348,11 +353,13 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 			rte_panic("No headroom in mbuf.\n");
 		}
 
+		m->ol_flags |= ol_flags;
 		m->l2_len = sizeof(struct rte_ether_hdr);
 
 		/* 02:00:00:00:00:xx */
 		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
-		*((uint64_t *)d_addr_bytes) = 0x000000000002 + ((uint64_t)port_out << 40);
+		*((uint64_t *)d_addr_bytes) = 0x000000000002 +
+			((uint64_t)port_out << 40);
 
 		/* src addr */
 		rte_ether_addr_copy(&ports_eth_addr[port_out],
@@ -363,7 +370,6 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		} else {
 			eth_hdr->ether_type =
 				rte_be_to_cpu_16(RTE_ETHER_TYPE_IPV4);
-			m->ol_flags |= (PKT_TX_IPV4 | PKT_TX_IP_CKSUM);
 		}
 	}
 
