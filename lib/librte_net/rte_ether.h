@@ -252,6 +252,9 @@ rte_ether_format_addr(char *buf, uint16_t size,
  *
  * @param str
  *   A pointer to buffer contains the formatted MAC address.
+ *   The supported formats are:
+ *     XX:XX:XX:XX:XX:XX or XXXX:XXXX:XXXX
+ *   where XX is a hex digit: 0-9, a-f, or A-F.
  * @param eth_addr
  *   A pointer to a ether_addr structure.
  * @return

@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <stdbool.h>
+
 #include <rte_ether.h>
 #include <rte_errno.h>
 
@@ -29,50 +31,85 @@ rte_ether_format_addr(char *buf, uint16_t size,
 		 eth_addr->addr_bytes[5]);
 }
 
+static int8_t get_xdigit(char ch)
+{
+	if (ch >= '0' && ch <= '9')
+		return ch - '0';
+	if (ch >= 'a' && ch <= 'f')
+		return ch - 'a' + 10;
+	if (ch >= 'A' && ch <= 'F')
+		return ch - 'A' + 10;
+	return -1;
+}
+
+/* Convert 00:11:22:33:44:55 to ethernet address */
+static bool get_ether_addr6(const char *s0, struct rte_ether_addr *ea)
+{
+	const char *s = s0;
+	int i;
+
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
+		int8_t x;
+
+		x = get_xdigit(*s++);
+		if (x < 0)
+			return false;
+
+		ea->addr_bytes[i] = x << 4;
+		x = get_xdigit(*s++);
+		if (x < 0)
+			return false;
+		ea->addr_bytes[i] |= x;
+
+		if (i < RTE_ETHER_ADDR_LEN - 1 &&
+		    *s++ != ':')
+			return false;
+	}
+
+	/* return true if at end of string */
+	return *s == '\0';
+}
+
+/* Convert 0011:2233:4455 to ethernet address */
+static bool get_ether_addr3(const char *s, struct rte_ether_addr *ea)
+{
+	int i, j;
+
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i += 2) {
+		uint16_t w = 0;
+
+		for (j = 0; j < 4; j++) {
+			int8_t x;
+
+			x = get_xdigit(*s++);
+			if (x < 0)
+				return false;
+			w = (w << 4) | x;
+		}
+		ea->addr_bytes[i] = w >> 8;
+		ea->addr_bytes[i + 1] = w & 0xff;
+
+		if (i < RTE_ETHER_ADDR_LEN - 2 &&
+		    *s++ != ':')
+			return false;
+	}
+
+	return *s == '\0';
+}
+
 /*
  * Like ether_aton_r but can handle either
  * XX:XX:XX:XX:XX:XX or XXXX:XXXX:XXXX
+ * and is more restrictive.
  */
 int
 rte_ether_unformat_addr(const char *s, struct rte_ether_addr *ea)
 {
-	unsigned int o0, o1, o2, o3, o4, o5;
-	int n;
+	if (get_ether_addr6(s, ea))
+		return 0;
+	if (get_ether_addr3(s, ea))
+		return 0;
 
-	n = sscanf(s, "%x:%x:%x:%x:%x:%x",
-		    &o0, &o1, &o2, &o3, &o4, &o5);
-
-	if (n == 6) {
-		/* Standard format XX:XX:XX:XX:XX:XX */
-		if (o0 > UINT8_MAX || o1 > UINT8_MAX || o2 > UINT8_MAX ||
-		    o3 > UINT8_MAX || o4 > UINT8_MAX || o5 > UINT8_MAX) {
-			rte_errno = ERANGE;
-			return -1;
-		}
-
-		ea->addr_bytes[0] = o0;
-		ea->addr_bytes[1] = o1;
-		ea->addr_bytes[2] = o2;
-		ea->addr_bytes[3] = o3;
-		ea->addr_bytes[4] = o4;
-		ea->addr_bytes[5] = o5;
-	} else if (n == 3) {
-		/* Support the format XXXX:XXXX:XXXX */
-		if (o0 > UINT16_MAX || o1 > UINT16_MAX || o2 > UINT16_MAX) {
-			rte_errno = ERANGE;
-			return -1;
-		}
-
-		ea->addr_bytes[0] = o0 >> 8;
-		ea->addr_bytes[1] = o0 & 0xff;
-		ea->addr_bytes[2] = o1 >> 8;
-		ea->addr_bytes[3] = o1 & 0xff;
-		ea->addr_bytes[4] = o2 >> 8;
-		ea->addr_bytes[5] = o2 & 0xff;
-	} else {
-		/* unknown format */
-		rte_errno = EINVAL;
-		return -1;
-	}
-	return 0;
+	rte_errno = EINVAL;
+	return -1;
 }
