@@ -72,10 +72,8 @@ struct hwrm_resp_hdr {
 #define TLV_TYPE_QUERY_ROCE_CC_GEN1              UINT32_C(0x4)
 /* RoCE slow path command to modify CC Gen1 support. */
 #define TLV_TYPE_MODIFY_ROCE_CC_GEN1             UINT32_C(0x5)
-/* Engine CKV - The device's serial number. */
-#define TLV_TYPE_ENGINE_CKV_DEVICE_SERIAL_NUMBER UINT32_C(0x8001)
-/* Engine CKV - Per-function random nonce data. */
-#define TLV_TYPE_ENGINE_CKV_NONCE                UINT32_C(0x8002)
+/* Engine CKV - The Alias key EC curve and ECC public key information. */
+#define TLV_TYPE_ENGINE_CKV_ALIAS_ECC_PUBLIC_KEY UINT32_C(0x8001)
 /* Engine CKV - Initialization vector. */
 #define TLV_TYPE_ENGINE_CKV_IV                   UINT32_C(0x8003)
 /* Engine CKV - Authentication tag. */
@@ -84,12 +82,14 @@ struct hwrm_resp_hdr {
 #define TLV_TYPE_ENGINE_CKV_CIPHERTEXT           UINT32_C(0x8005)
 /* Engine CKV - Supported algorithms. */
 #define TLV_TYPE_ENGINE_CKV_ALGORITHMS           UINT32_C(0x8006)
-/* Engine CKV - The EC curve name and ECC public key information. */
-#define TLV_TYPE_ENGINE_CKV_ECC_PUBLIC_KEY       UINT32_C(0x8007)
+/* Engine CKV - The Host EC curve name and ECC public key information. */
+#define TLV_TYPE_ENGINE_CKV_HOST_ECC_PUBLIC_KEY  UINT32_C(0x8007)
 /* Engine CKV - The ECDSA signature. */
 #define TLV_TYPE_ENGINE_CKV_ECDSA_SIGNATURE      UINT32_C(0x8008)
+/* Engine CKV - The SRT EC curve name and ECC public key information. */
+#define TLV_TYPE_ENGINE_CKV_SRT_ECC_PUBLIC_KEY   UINT32_C(0x8009)
 #define TLV_TYPE_LAST \
-	TLV_TYPE_ENGINE_CKV_ECDSA_SIGNATURE
+	TLV_TYPE_ENGINE_CKV_SRT_ECC_PUBLIC_KEY
 
 
 /* tlv (size:64b/8B) */
@@ -386,6 +386,10 @@ struct cmd_nums {
 	#define HWRM_FW_QSTATUS                           UINT32_C(0xc1)
 	#define HWRM_FW_HEALTH_CHECK                      UINT32_C(0xc2)
 	#define HWRM_FW_SYNC                              UINT32_C(0xc3)
+	#define HWRM_FW_STATE_BUFFER_QCAPS                UINT32_C(0xc4)
+	#define HWRM_FW_STATE_QUIESCE                     UINT32_C(0xc5)
+	#define HWRM_FW_STATE_BACKUP                      UINT32_C(0xc6)
+	#define HWRM_FW_STATE_RESTORE                     UINT32_C(0xc7)
 	/* Experimental */
 	#define HWRM_FW_SET_TIME                          UINT32_C(0xc8)
 	/* Experimental */
@@ -497,8 +501,6 @@ struct cmd_nums {
 	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS              UINT32_C(0x124)
 	/* Experimental */
 	#define HWRM_CFA_TFLIB                            UINT32_C(0x125)
-	/* Engine CKV - Ping the device and SRT firmware to get the public key. */
-	#define HWRM_ENGINE_CKV_HELLO                     UINT32_C(0x12d)
 	/* Engine CKV - Get the current allocation status of keys provisioned in the key vault. */
 	#define HWRM_ENGINE_CKV_STATUS                    UINT32_C(0x12e)
 	/* Engine CKV - Add a new CKEK used to encrypt keys. */
@@ -589,6 +591,8 @@ struct cmd_nums {
 	#define HWRM_FUNC_VF_BW_CFG                       UINT32_C(0x195)
 	/* Queries the BW of any VF */
 	#define HWRM_FUNC_VF_BW_QCFG                      UINT32_C(0x196)
+	/* Queries pf ids belong to specified host(s) */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY               UINT32_C(0x197)
 	/* Experimental */
 	#define HWRM_SELFTEST_QLIST                       UINT32_C(0x200)
 	/* Experimental */
@@ -835,8 +839,8 @@ struct hwrm_err_output {
 #define HWRM_VERSION_MINOR 10
 #define HWRM_VERSION_UPDATE 0
 /* non-zero means beta version */
-#define HWRM_VERSION_RSVD 74
-#define HWRM_VERSION_STR "1.10.0.74"
+#define HWRM_VERSION_RSVD 91
+#define HWRM_VERSION_STR "1.10.0.91"
 
 /****************
  * hwrm_ver_get *
@@ -1211,7 +1215,13 @@ struct hwrm_ver_get_output {
 	 */
 	uint8_t	flags;
 	/*
-	 * If set to 1, device is not ready.
+	 * If set to 1, it will indicate to host drivers that firmware is
+	 * not ready to start full blown HWRM commands. Host drivers should
+	 * re-try HWRM_VER_GET with some timeout period. The timeout period
+	 * can be selected up to 5 seconds.
+	 * For Example, PCIe hot-plug:
+	 *     Hot plug timing is system dependent. It generally takes up to
+	 *     600 miliseconds for firmware to clear DEV_NOT_RDY flag.
 	 * If set to 0, device is ready to accept all HWRM commands.
 	 */
 	#define HWRM_VER_GET_OUTPUT_FLAGS_DEV_NOT_RDY       UINT32_C(0x1)
@@ -2909,6 +2919,10 @@ struct rx_pkt_cmpl_hi {
 	#define RX_PKT_CMPL_REORDER_SFT 0
 } __attribute__((packed));
 
+/*
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
+ */
 /* rx_tpa_start_cmpl (size:128b/16B) */
 struct rx_tpa_start_cmpl {
 	uint16_t	flags_type;
@@ -3070,7 +3084,12 @@ struct rx_tpa_start_cmpl {
 	uint32_t	rss_hash;
 } __attribute__((packed));
 
-/* Last 16 bytes of rx_tpq_start_cmpl. */
+/*
+ * Last 16 bytes of rx_tpa_start_cmpl.
+ *
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
+ */
 /* rx_tpa_start_cmpl_hi (size:128b/16B) */
 struct rx_tpa_start_cmpl_hi {
 	uint32_t	flags2;
@@ -3079,34 +3098,29 @@ struct rx_tpa_start_cmpl_hi {
 	 * inner packet and that the sum passed for all segments
 	 * included in the aggregation.
 	 */
-	#define RX_TPA_START_CMPL_FLAGS2_IP_CS_CALC \
-		UINT32_C(0x1)
+	#define RX_TPA_START_CMPL_FLAGS2_IP_CS_CALC       UINT32_C(0x1)
 	/*
 	 * This indicates that the TCP, UDP or ICMP checksum was
 	 * calculated for the inner packet and that the sum passed
 	 * for all segments included in the aggregation.
 	 */
-	#define RX_TPA_START_CMPL_FLAGS2_L4_CS_CALC \
-		UINT32_C(0x2)
+	#define RX_TPA_START_CMPL_FLAGS2_L4_CS_CALC       UINT32_C(0x2)
 	/*
 	 * This indicates that the ip checksum was calculated for the
 	 * tunnel header and that the sum passed for all segments
 	 * included in the aggregation.
 	 */
-	#define RX_TPA_START_CMPL_FLAGS2_T_IP_CS_CALC \
-		UINT32_C(0x4)
+	#define RX_TPA_START_CMPL_FLAGS2_T_IP_CS_CALC     UINT32_C(0x4)
 	/*
 	 * This indicates that the UDP checksum was
 	 * calculated for the tunnel packet and that the sum passed for
 	 * all segments included in the aggregation.
 	 */
-	#define RX_TPA_START_CMPL_FLAGS2_T_L4_CS_CALC \
-		UINT32_C(0x8)
+	#define RX_TPA_START_CMPL_FLAGS2_T_L4_CS_CALC     UINT32_C(0x8)
 	/* This value indicates what format the metadata field is. */
-	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_MASK \
-		UINT32_C(0xf0)
-	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_SFT            4
-	/* No metadata informtaion.  Value is zero. */
+	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_MASK UINT32_C(0xf0)
+	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_SFT  4
+	/* No metadata information.  Value is zero. */
 	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_NONE \
 		(UINT32_C(0x0) << 4)
 	/*
@@ -3118,71 +3132,13 @@ struct rx_tpa_start_cmpl_hi {
 	 */
 	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_VLAN \
 		(UINT32_C(0x1) << 4)
-	/*
-	 * If ext_meta_format is equal to 1, the metadata field
-	 * contains the lower 16b of the tunnel ID value, justified
-	 * to LSB
-	 * - VXLAN = VNI[23:0] -> VXLAN Network ID
-	 * - Geneve (NGE) = VNI[23:0] a-> Virtual Network Identifier.
-	 * - NVGRE = TNI[23:0] -> Tenant Network ID
-	 * - GRE = KEY[31:0 -> key fieled with bit mask. zero if K = 0
-	 * - IPV4 = 0 (not populated)
-	 * - IPV6 = Flow Label[19:0]
-	 * - PPPoE = sessionID[15:0]
-	 * - MPLs = Outer label[19:0]
-	 * - UPAR = Selected[31:0] with bit mask
-	 */
-	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_TUNNEL_ID \
-		(UINT32_C(0x2) << 4)
-	/*
-	 * if ext_meta_format is equal to 1, metadata field contains
-	 * 16b metadata from the prepended header (chdr_data).
-	 */
-	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_CHDR_DATA \
-		(UINT32_C(0x3) << 4)
-	/*
-	 * If ext_meta_format is equal to 1, the metadata field contains
-	 * the outer_l3_offset, inner_l2_offset, inner_l3_offset and
-	 * inner_l4_size.
-	 * - metadata[8:0] contains the outer_l3_offset.
-	 * - metadata[17:9] contains the inner_l2_offset.
-	 * - metadata[26:18] contains the inner_l3_offset.
-	 * - metadata[31:27] contains the inner_l4_size.
-	 */
-	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_HDR_OFFSET \
-		(UINT32_C(0x4) << 4)
 	#define RX_TPA_START_CMPL_FLAGS2_META_FORMAT_LAST \
-		RX_TPA_START_CMPL_FLAGS2_META_FORMAT_HDR_OFFSET
+		RX_TPA_START_CMPL_FLAGS2_META_FORMAT_VLAN
 	/*
 	 * This field indicates the IP type for the inner-most IP header.
 	 * A value of '0' indicates IPv4.  A value of '1' indicates IPv6.
 	 */
-	#define RX_TPA_START_CMPL_FLAGS2_IP_TYPE \
-		UINT32_C(0x100)
-	/*
-	 * This indicates that the complete 1's complement checksum was
-	 * calculated for the packet.
-	 */
-	#define RX_TPA_START_CMPL_FLAGS2_COMPLETE_CHECKSUM_CALC \
-		UINT32_C(0x200)
-	/*
-	 * The combination of this value and meta_format indicated what
-	 * format the metadata field is.
-	 */
-	#define RX_TPA_START_CMPL_FLAGS2_EXT_META_FORMAT_MASK \
-		UINT32_C(0xc00)
-	#define RX_TPA_START_CMPL_FLAGS2_EXT_META_FORMAT_SFT        10
-	/*
-	 * This value is the complete 1's complement checksum calculated from
-	 * the start of the outer L3 header to the end of the packet (not
-	 * including the ethernet crc). It is valid when the
-	 * 'complete_checksum_calc' flag is set. For TPA Start completions,
-	 * the complete checksum is calculated for the first packet in the
-	 * aggregation only.
-	 */
-	#define RX_TPA_START_CMPL_FLAGS2_COMPLETE_CHECKSUM_MASK \
-		UINT32_C(0xffff0000)
-	#define RX_TPA_START_CMPL_FLAGS2_COMPLETE_CHECKSUM_SFT      16
+	#define RX_TPA_START_CMPL_FLAGS2_IP_TYPE          UINT32_C(0x100)
 	/*
 	 * This is data from the CFA block as indicated by the meta_format
 	 * field.
@@ -3199,41 +3155,13 @@ struct rx_tpa_start_cmpl_hi {
 	/* When meta_format=1, this value is the VLAN TPID. */
 	#define RX_TPA_START_CMPL_METADATA_TPID_MASK UINT32_C(0xffff0000)
 	#define RX_TPA_START_CMPL_METADATA_TPID_SFT 16
-	uint16_t	errors_v2;
+	uint16_t	v2;
 	/*
 	 * This value is written by the NIC such that it will be different
 	 * for each pass through the completion queue.   The even passes
 	 * will write 1.  The odd passes will write 0.
 	 */
-	#define RX_TPA_START_CMPL_V2                            UINT32_C(0x1)
-	#define RX_TPA_START_CMPL_ERRORS_MASK \
-		UINT32_C(0xfffe)
-	#define RX_TPA_START_CMPL_ERRORS_SFT                    1
-	/*
-	 * This error indicates that there was some sort of problem with
-	 * the BDs for the packet that was found after part of the
-	 * packet was already placed.  The packet should be treated as
-	 * invalid.
-	 */
-	#define RX_TPA_START_CMPL_ERRORS_BUFFER_ERROR_MASK       UINT32_C(0xe)
-	#define RX_TPA_START_CMPL_ERRORS_BUFFER_ERROR_SFT        1
-	/* No buffer error */
-	#define RX_TPA_START_CMPL_ERRORS_BUFFER_ERROR_NO_BUFFER \
-		(UINT32_C(0x0) << 1)
-	/*
-	 * Bad Format:
-	 * BDs were not formatted correctly.
-	 */
-	#define RX_TPA_START_CMPL_ERRORS_BUFFER_ERROR_BAD_FORMAT \
-		(UINT32_C(0x3) << 1)
-	/*
-	 * Flush:
-	 * There was a bad_format error on the previous operation
-	 */
-	#define RX_TPA_START_CMPL_ERRORS_BUFFER_ERROR_FLUSH \
-		(UINT32_C(0x5) << 1)
-	#define RX_TPA_START_CMPL_ERRORS_BUFFER_ERROR_LAST \
-		RX_TPA_START_CMPL_ERRORS_BUFFER_ERROR_FLUSH
+	#define RX_TPA_START_CMPL_V2     UINT32_C(0x1)
 	/*
 	 * This field identifies the CFA action rule that was used for this
 	 * packet.
@@ -3273,6 +3201,10 @@ struct rx_tpa_start_cmpl_hi {
 	#define RX_TPA_START_CMPL_INNER_L4_SIZE_SFT   27
 } __attribute__((packed));
 
+/*
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
+ */
 /* rx_tpa_end_cmpl (size:128b/16B) */
 struct rx_tpa_end_cmpl {
 	uint16_t	flags_type;
@@ -3426,35 +3358,21 @@ struct rx_tpa_end_cmpl {
 	uint32_t	tsdelta;
 } __attribute__((packed));
 
-/* Last 16 bytes of rx_tpa_end_cmpl. */
+/*
+ * Last 16 bytes of rx_tpa_end_cmpl.
+ *
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
+ */
 /* rx_tpa_end_cmpl_hi (size:128b/16B) */
 struct rx_tpa_end_cmpl_hi {
-	/*
-	 * This value is the number of duplicate ACKs that have been
-	 * received as part of the TPA operation.
-	 */
-	uint16_t	tpa_dup_acks;
+	uint32_t	tpa_dup_acks;
 	/*
 	 * This value is the number of duplicate ACKs that have been
 	 * received as part of the TPA operation.
 	 */
 	#define RX_TPA_END_CMPL_TPA_DUP_ACKS_MASK UINT32_C(0xf)
 	#define RX_TPA_END_CMPL_TPA_DUP_ACKS_SFT 0
-	/*
-	 * This value indicated the offset in bytes from the beginning of
-	 * the packet where the inner payload starts. This value is valid
-	 * for TCP, UDP, FCoE and RoCE packets
-	 */
-	uint8_t	payload_offset;
-	/*
-	 * The value is the total number of aggregation buffers that were
-	 * used in the TPA operation. All TPA aggregation buffer completions
-	 * precede the TPA End completion. If the value is zero, then the
-	 * aggregation is completely contained in the buffer space provided
-	 * in the aggregation start completion.
-	 * Note that the field is simply provided as a cross check.
-	 */
-	uint8_t	tpa_agg_bufs;
 	/*
 	 * This value is the valid when TPA completion is active.  It
 	 * indicates the length of the longest segment of the TPA operation
@@ -3485,9 +3403,6 @@ struct rx_tpa_end_cmpl_hi {
 	 */
 	#define RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_MASK        UINT32_C(0xe)
 	#define RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_SFT         1
-	/* No buffer error */
-	#define RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_NO_BUFFER \
-		(UINT32_C(0x0) << 1)
 	/*
 	 * This error occurs when there is a fatal HW problem in
 	 * the chip only.  It indicates that there were not
@@ -3496,12 +3411,6 @@ struct rx_tpa_end_cmpl_hi {
 	 */
 	#define RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_NOT_ON_CHIP \
 		(UINT32_C(0x2) << 1)
-	/*
-	 * Bad Format:
-	 * BDs were not formatted correctly.
-	 */
-	#define RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_BAD_FORMAT \
-		(UINT32_C(0x3) << 1)
 	/*
 	 * This error occurs when TPA block was not configured to
 	 * reserve adequate BDs for TPA operations on this RX
@@ -3514,14 +3423,8 @@ struct rx_tpa_end_cmpl_hi {
 	 */
 	#define RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_RSV_ERROR \
 		(UINT32_C(0x4) << 1)
-	/*
-	 * Flush:
-	 * There was a bad_format error on the previous operation
-	 */
-	#define RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_FLUSH \
-		(UINT32_C(0x5) << 1)
 	#define RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_LAST \
-		RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_FLUSH
+		RX_TPA_END_CMPL_ERRORS_BUFFER_ERROR_RSV_ERROR
 	/* unused5 is 16 b */
 	uint16_t	unused_4;
 	/*
@@ -3529,6 +3432,687 @@ struct rx_tpa_end_cmpl_hi {
 	 * completion that corresponds to this TPA end completion.
 	 */
 	uint32_t	start_opaque;
+} __attribute__((packed));
+
+/*
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
+ */
+/* rx_tpa_v2_start_cmpl (size:128b/16B) */
+struct rx_tpa_v2_start_cmpl {
+	uint16_t	flags_type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define RX_TPA_V2_START_CMPL_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define RX_TPA_V2_START_CMPL_TYPE_SFT                       0
+	/*
+	 * RX L2 TPA Start Completion:
+	 * Completion at the beginning of a TPA operation.
+	 * Length = 32B
+	 */
+	#define RX_TPA_V2_START_CMPL_TYPE_RX_TPA_START \
+		UINT32_C(0x13)
+	#define RX_TPA_V2_START_CMPL_TYPE_LAST \
+		RX_TPA_V2_START_CMPL_TYPE_RX_TPA_START
+	#define RX_TPA_V2_START_CMPL_FLAGS_MASK \
+		UINT32_C(0xffc0)
+	#define RX_TPA_V2_START_CMPL_FLAGS_SFT                      6
+	/* This bit will always be '0' for TPA start completions. */
+	#define RX_TPA_V2_START_CMPL_FLAGS_ERROR \
+		UINT32_C(0x40)
+	/* This field indicates how the packet was placed in the buffer. */
+	#define RX_TPA_V2_START_CMPL_FLAGS_PLACEMENT_MASK \
+		UINT32_C(0x380)
+	#define RX_TPA_V2_START_CMPL_FLAGS_PLACEMENT_SFT             7
+	/*
+	 * Jumbo:
+	 * TPA Packet was placed using jumbo algorithm.  This means
+	 * that the first buffer will be filled with data before
+	 * moving to aggregation buffers.  Each aggregation buffer
+	 * will be filled before moving to the next aggregation
+	 * buffer.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS_PLACEMENT_JUMBO \
+		(UINT32_C(0x1) << 7)
+	/*
+	 * Header/Data Separation:
+	 * Packet was placed using Header/Data separation algorithm.
+	 * The separation location is indicated by the itype field.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS_PLACEMENT_HDS \
+		(UINT32_C(0x2) << 7)
+	/*
+	 * GRO/Jumbo:
+	 * Packet will be placed using GRO/Jumbo where the first
+	 * packet is filled with data. Subsequent packets will be
+	 * placed such that any one packet does not span two
+	 * aggregation buffers unless it starts at the beginning of
+	 * an aggregation buffer.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS_PLACEMENT_GRO_JUMBO \
+		(UINT32_C(0x5) << 7)
+	/*
+	 * GRO/Header-Data Separation:
+	 * Packet will be placed using GRO/HDS where the header
+	 * is in the first packet.
+	 * Payload of each packet will be
+	 * placed such that any one packet does not span two
+	 * aggregation buffers unless it starts at the beginning of
+	 * an aggregation buffer.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS_PLACEMENT_GRO_HDS \
+		(UINT32_C(0x6) << 7)
+	#define RX_TPA_V2_START_CMPL_FLAGS_PLACEMENT_LAST \
+		RX_TPA_V2_START_CMPL_FLAGS_PLACEMENT_GRO_HDS
+	/* This bit is '1' if the RSS field in this completion is valid. */
+	#define RX_TPA_V2_START_CMPL_FLAGS_RSS_VALID \
+		UINT32_C(0x400)
+	/*
+	 * For devices that support timestamps, when this bit is cleared the
+	 * `inner_l4_size_inner_l3_offset_inner_l2_offset_outer_l3_offset`
+	 * field contains the 32b timestamp for
+	 * the packet from the MAC. When this bit is set, the
+	 * `inner_l4_size_inner_l3_offset_inner_l2_offset_outer_l3_offset`
+	 * field contains the outer_l3_offset, inner_l2_offset,
+	 * inner_l3_offset, and inner_l4_size.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS_TIMESTAMP_FLD_FORMAT \
+		UINT32_C(0x800)
+	/*
+	 * This value indicates what the inner packet determined for the
+	 * packet was.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS_ITYPE_MASK \
+		UINT32_C(0xf000)
+	#define RX_TPA_V2_START_CMPL_FLAGS_ITYPE_SFT                 12
+	/*
+	 * TCP Packet:
+	 * Indicates that the packet was IP and TCP.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS_ITYPE_TCP \
+		(UINT32_C(0x2) << 12)
+	#define RX_TPA_V2_START_CMPL_FLAGS_ITYPE_LAST \
+		RX_TPA_V2_START_CMPL_FLAGS_ITYPE_TCP
+	/*
+	 * This value indicates the amount of packet data written to the
+	 * buffer the opaque field in this completion corresponds to.
+	 */
+	uint16_t	len;
+	/*
+	 * This is a copy of the opaque field from the RX BD this completion
+	 * corresponds to.
+	 */
+	uint32_t	opaque;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	uint8_t	v1;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define RX_TPA_V2_START_CMPL_V1 UINT32_C(0x1)
+	#define RX_TPA_V2_START_CMPL_LAST RX_TPA_V2_START_CMPL_V1
+	/*
+	 * This is the RSS hash type for the packet.  The value is packed
+	 * {tuple_extrac_op[1:0],rss_profile_id[4:0],tuple_extrac_op[2]}.
+	 *
+	 * The value of tuple_extrac_op provides the information about
+	 * what fields the hash was computed on.
+	 * * 0: The RSS hash was computed over source IP address,
+	 * destination IP address, source port, and destination port of inner
+	 * IP and TCP or UDP headers. Note: For non-tunneled packets,
+	 * the packet headers are considered inner packet headers for the RSS
+	 * hash computation purpose.
+	 * * 1: The RSS hash was computed over source IP address and destination
+	 * IP address of inner IP header. Note: For non-tunneled packets,
+	 * the packet headers are considered inner packet headers for the RSS
+	 * hash computation purpose.
+	 * * 2: The RSS hash was computed over source IP address,
+	 * destination IP address, source port, and destination port of
+	 * IP and TCP or UDP headers of outer tunnel headers.
+	 * Note: For non-tunneled packets, this value is not applicable.
+	 * * 3: The RSS hash was computed over source IP address and
+	 * destination IP address of IP header of outer tunnel headers.
+	 * Note: For non-tunneled packets, this value is not applicable.
+	 *
+	 * Note that 4-tuples values listed above are applicable
+	 * for layer 4 protocols supported and enabled for RSS in the hardware,
+	 * HWRM firmware, and drivers. For example, if RSS hash is supported and
+	 * enabled for TCP traffic only, then the values of tuple_extract_op
+	 * corresponding to 4-tuples are only valid for TCP traffic.
+	 */
+	uint8_t	rss_hash_type;
+	/*
+	 * This is the aggregation ID that the completion is associated
+	 * with.  Use this number to correlate the TPA start completion
+	 * with the TPA end completion.
+	 */
+	uint16_t	agg_id;
+	/*
+	 * This value is the RSS hash value calculated for the packet
+	 * based on the mode bits and key value in the VNIC.
+	 */
+	uint32_t	rss_hash;
+} __attribute__((packed));
+
+/*
+ * Last 16 bytes of rx_tpa_v2_start_cmpl.
+ *
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
+ */
+/* rx_tpa_v2_start_cmpl_hi (size:128b/16B) */
+struct rx_tpa_v2_start_cmpl_hi {
+	uint32_t	flags2;
+	/*
+	 * This indicates that the ip checksum was calculated for the
+	 * inner packet and that the sum passed for all segments
+	 * included in the aggregation.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_IP_CS_CALC \
+		UINT32_C(0x1)
+	/*
+	 * This indicates that the TCP, UDP or ICMP checksum was
+	 * calculated for the inner packet and that the sum passed
+	 * for all segments included in the aggregation.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_L4_CS_CALC \
+		UINT32_C(0x2)
+	/*
+	 * This indicates that the ip checksum was calculated for the
+	 * tunnel header and that the sum passed for all segments
+	 * included in the aggregation.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_T_IP_CS_CALC \
+		UINT32_C(0x4)
+	/*
+	 * This indicates that the UDP checksum was
+	 * calculated for the tunnel packet and that the sum passed for
+	 * all segments included in the aggregation.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_T_L4_CS_CALC \
+		UINT32_C(0x8)
+	/* This value indicates what format the metadata field is. */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_META_FORMAT_MASK \
+		UINT32_C(0xf0)
+	#define RX_TPA_V2_START_CMPL_FLAGS2_META_FORMAT_SFT            4
+	/* No metadata informtaion.  Value is zero. */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_META_FORMAT_NONE \
+		(UINT32_C(0x0) << 4)
+	/*
+	 * The metadata field contains the VLAN tag and TPID value.
+	 * - metadata[11:0] contains the vlan VID value.
+	 * - metadata[12] contains the vlan DE value.
+	 * - metadata[15:13] contains the vlan PRI value.
+	 * - metadata[31:16] contains the vlan TPID value.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_META_FORMAT_VLAN \
+		(UINT32_C(0x1) << 4)
+	/*
+	 * If ext_meta_format is equal to 1, the metadata field
+	 * contains the lower 16b of the tunnel ID value, justified
+	 * to LSB
+	 * - VXLAN = VNI[23:0] -> VXLAN Network ID
+	 * - Geneve (NGE) = VNI[23:0] a-> Virtual Network Identifier.
+	 * - NVGRE = TNI[23:0] -> Tenant Network ID
+	 * - GRE = KEY[31:0 -> key fieled with bit mask. zero if K = 0
+	 * - IPV4 = 0 (not populated)
+	 * - IPV6 = Flow Label[19:0]
+	 * - PPPoE = sessionID[15:0]
+	 * - MPLs = Outer label[19:0]
+	 * - UPAR = Selected[31:0] with bit mask
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_META_FORMAT_TUNNEL_ID \
+		(UINT32_C(0x2) << 4)
+	/*
+	 * if ext_meta_format is equal to 1, metadata field contains
+	 * 16b metadata from the prepended header (chdr_data).
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_META_FORMAT_CHDR_DATA \
+		(UINT32_C(0x3) << 4)
+	/*
+	 * If ext_meta_format is equal to 1, the metadata field contains
+	 * the outer_l3_offset, inner_l2_offset, inner_l3_offset and
+	 * inner_l4_size.
+	 * - metadata[8:0] contains the outer_l3_offset.
+	 * - metadata[17:9] contains the inner_l2_offset.
+	 * - metadata[26:18] contains the inner_l3_offset.
+	 * - metadata[31:27] contains the inner_l4_size.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_META_FORMAT_HDR_OFFSET \
+		(UINT32_C(0x4) << 4)
+	#define RX_TPA_V2_START_CMPL_FLAGS2_META_FORMAT_LAST \
+		RX_TPA_V2_START_CMPL_FLAGS2_META_FORMAT_HDR_OFFSET
+	/*
+	 * This field indicates the IP type for the inner-most IP header.
+	 * A value of '0' indicates IPv4.  A value of '1' indicates IPv6.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_IP_TYPE \
+		UINT32_C(0x100)
+	/*
+	 * This indicates that the complete 1's complement checksum was
+	 * calculated for the packet.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_COMPLETE_CHECKSUM_CALC \
+		UINT32_C(0x200)
+	/*
+	 * The combination of this value and meta_format indicated what
+	 * format the metadata field is.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_EXT_META_FORMAT_MASK \
+		UINT32_C(0xc00)
+	#define RX_TPA_V2_START_CMPL_FLAGS2_EXT_META_FORMAT_SFT        10
+	/*
+	 * This value is the complete 1's complement checksum calculated from
+	 * the start of the outer L3 header to the end of the packet (not
+	 * including the ethernet crc). It is valid when the
+	 * 'complete_checksum_calc' flag is set. For TPA Start completions,
+	 * the complete checksum is calculated for the first packet in the
+	 * aggregation only.
+	 */
+	#define RX_TPA_V2_START_CMPL_FLAGS2_COMPLETE_CHECKSUM_MASK \
+		UINT32_C(0xffff0000)
+	#define RX_TPA_V2_START_CMPL_FLAGS2_COMPLETE_CHECKSUM_SFT      16
+	/*
+	 * This is data from the CFA block as indicated by the meta_format
+	 * field.
+	 */
+	uint32_t	metadata;
+	/* When {ext_meta_format,meta_format}=1, this value is the VLAN VID. */
+	#define RX_TPA_V2_START_CMPL_METADATA_VID_MASK UINT32_C(0xfff)
+	#define RX_TPA_V2_START_CMPL_METADATA_VID_SFT  0
+	/* When {ext_meta_format,meta_format}=1, this value is the VLAN DE. */
+	#define RX_TPA_V2_START_CMPL_METADATA_DE       UINT32_C(0x1000)
+	/* When {ext_meta_format,meta_format}=1, this value is the VLAN PRI. */
+	#define RX_TPA_V2_START_CMPL_METADATA_PRI_MASK UINT32_C(0xe000)
+	#define RX_TPA_V2_START_CMPL_METADATA_PRI_SFT  13
+	/* When {ext_meta_format,meta_format}=1, this value is the VLAN TPID. */
+	#define RX_TPA_V2_START_CMPL_METADATA_TPID_MASK UINT32_C(0xffff0000)
+	#define RX_TPA_V2_START_CMPL_METADATA_TPID_SFT 16
+	uint16_t	errors_v2;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define RX_TPA_V2_START_CMPL_V2 \
+		UINT32_C(0x1)
+	#define RX_TPA_V2_START_CMPL_ERRORS_MASK \
+		UINT32_C(0xfffe)
+	#define RX_TPA_V2_START_CMPL_ERRORS_SFT                    1
+	/*
+	 * This error indicates that there was some sort of problem with
+	 * the BDs for the packet that was found after part of the
+	 * packet was already placed.  The packet should be treated as
+	 * invalid.
+	 */
+	#define RX_TPA_V2_START_CMPL_ERRORS_BUFFER_ERROR_MASK \
+		UINT32_C(0xe)
+	#define RX_TPA_V2_START_CMPL_ERRORS_BUFFER_ERROR_SFT        1
+	/* No buffer error */
+	#define RX_TPA_V2_START_CMPL_ERRORS_BUFFER_ERROR_NO_BUFFER \
+		(UINT32_C(0x0) << 1)
+	/*
+	 * Bad Format:
+	 * BDs were not formatted correctly.
+	 */
+	#define RX_TPA_V2_START_CMPL_ERRORS_BUFFER_ERROR_BAD_FORMAT \
+		(UINT32_C(0x3) << 1)
+	/*
+	 * Flush:
+	 * There was a bad_format error on the previous operation
+	 */
+	#define RX_TPA_V2_START_CMPL_ERRORS_BUFFER_ERROR_FLUSH \
+		(UINT32_C(0x5) << 1)
+	#define RX_TPA_V2_START_CMPL_ERRORS_BUFFER_ERROR_LAST \
+		RX_TPA_V2_START_CMPL_ERRORS_BUFFER_ERROR_FLUSH
+	/*
+	 * This field identifies the CFA action rule that was used for this
+	 * packet.
+	 */
+	uint16_t	cfa_code;
+	/*
+	 * For devices that support timestamps this field is overridden
+	 * with the timestamp value. When `flags.timestamp_fld_format` is
+	 * cleared, this field contains the 32b timestamp for the packet from the
+	 * MAC.
+	 *
+	 * When `flags.timestamp_fld_format` is set, this field contains the
+	 * outer_l3_offset, inner_l2_offset, inner_l3_offset, and inner_l4_size
+	 * as defined below.
+	 */
+	uint32_t	inner_l4_size_inner_l3_offset_inner_l2_offset_outer_l3_offset;
+	/*
+	 * This is the offset from the beginning of the packet in bytes for
+	 * the outer L3 header.  If there is no outer L3 header, then this
+	 * value is zero.
+	 */
+	#define RX_TPA_V2_START_CMPL_OUTER_L3_OFFSET_MASK UINT32_C(0x1ff)
+	#define RX_TPA_V2_START_CMPL_OUTER_L3_OFFSET_SFT 0
+	/*
+	 * This is the offset from the beginning of the packet in bytes for
+	 * the inner most L2 header.
+	 */
+	#define RX_TPA_V2_START_CMPL_INNER_L2_OFFSET_MASK UINT32_C(0x3fe00)
+	#define RX_TPA_V2_START_CMPL_INNER_L2_OFFSET_SFT 9
+	/*
+	 * This is the offset from the beginning of the packet in bytes for
+	 * the inner most L3 header.
+	 */
+	#define RX_TPA_V2_START_CMPL_INNER_L3_OFFSET_MASK UINT32_C(0x7fc0000)
+	#define RX_TPA_V2_START_CMPL_INNER_L3_OFFSET_SFT 18
+	/*
+	 * This is the size in bytes of the inner most L4 header.
+	 * This can be subtracted from the payload_offset to determine
+	 * the start of the inner most L4 header.
+	 */
+	#define RX_TPA_V2_START_CMPL_INNER_L4_SIZE_MASK  UINT32_C(0xf8000000)
+	#define RX_TPA_V2_START_CMPL_INNER_L4_SIZE_SFT   27
+} __attribute__((packed));
+
+/*
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
+ */
+/* rx_tpa_v2_end_cmpl (size:128b/16B) */
+struct rx_tpa_v2_end_cmpl {
+	uint16_t	flags_type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define RX_TPA_V2_END_CMPL_TYPE_MASK                UINT32_C(0x3f)
+	#define RX_TPA_V2_END_CMPL_TYPE_SFT                 0
+	/*
+	 * RX L2 TPA End Completion:
+	 * Completion at the end of a TPA operation.
+	 * Length = 32B
+	 */
+	#define RX_TPA_V2_END_CMPL_TYPE_RX_TPA_END            UINT32_C(0x15)
+	#define RX_TPA_V2_END_CMPL_TYPE_LAST \
+		RX_TPA_V2_END_CMPL_TYPE_RX_TPA_END
+	#define RX_TPA_V2_END_CMPL_FLAGS_MASK               UINT32_C(0xffc0)
+	#define RX_TPA_V2_END_CMPL_FLAGS_SFT                6
+	/*
+	 * When this bit is '1', it indicates a packet that has an
+	 * error of some type.  Type of error is indicated in
+	 * error_flags.
+	 */
+	#define RX_TPA_V2_END_CMPL_FLAGS_ERROR               UINT32_C(0x40)
+	/* This field indicates how the packet was placed in the buffer. */
+	#define RX_TPA_V2_END_CMPL_FLAGS_PLACEMENT_MASK      UINT32_C(0x380)
+	#define RX_TPA_V2_END_CMPL_FLAGS_PLACEMENT_SFT       7
+	/*
+	 * Jumbo:
+	 * TPA Packet was placed using jumbo algorithm.  This means
+	 * that the first buffer will be filled with data before
+	 * moving to aggregation buffers.  Each aggregation buffer
+	 * will be filled before moving to the next aggregation
+	 * buffer.
+	 */
+	#define RX_TPA_V2_END_CMPL_FLAGS_PLACEMENT_JUMBO \
+		(UINT32_C(0x1) << 7)
+	/*
+	 * Header/Data Separation:
+	 * Packet was placed using Header/Data separation algorithm.
+	 * The separation location is indicated by the itype field.
+	 */
+	#define RX_TPA_V2_END_CMPL_FLAGS_PLACEMENT_HDS \
+		(UINT32_C(0x2) << 7)
+	/*
+	 * GRO/Jumbo:
+	 * Packet will be placed using GRO/Jumbo where the first
+	 * packet is filled with data. Subsequent packets will be
+	 * placed such that any one packet does not span two
+	 * aggregation buffers unless it starts at the beginning of
+	 * an aggregation buffer.
+	 */
+	#define RX_TPA_V2_END_CMPL_FLAGS_PLACEMENT_GRO_JUMBO \
+		(UINT32_C(0x5) << 7)
+	/*
+	 * GRO/Header-Data Separation:
+	 * Packet will be placed using GRO/HDS where the header
+	 * is in the first packet.
+	 * Payload of each packet will be
+	 * placed such that any one packet does not span two
+	 * aggregation buffers unless it starts at the beginning of
+	 * an aggregation buffer.
+	 */
+	#define RX_TPA_V2_END_CMPL_FLAGS_PLACEMENT_GRO_HDS \
+		(UINT32_C(0x6) << 7)
+	#define RX_TPA_V2_END_CMPL_FLAGS_PLACEMENT_LAST \
+		RX_TPA_V2_END_CMPL_FLAGS_PLACEMENT_GRO_HDS
+	/* unused is 2 b */
+	#define RX_TPA_V2_END_CMPL_FLAGS_UNUSED_MASK         UINT32_C(0xc00)
+	#define RX_TPA_V2_END_CMPL_FLAGS_UNUSED_SFT          10
+	/*
+	 * This value indicates what the inner packet determined for the
+	 * packet was.
+	 * - 2 TCP Packet
+	 *     Indicates that the packet was IP and TCP.  This indicates
+	 *     that the ip_cs field is valid and that the tcp_udp_cs
+	 *     field is valid and contains the TCP checksum.
+	 *     This also indicates that the payload_offset field is valid.
+	 */
+	#define RX_TPA_V2_END_CMPL_FLAGS_ITYPE_MASK          UINT32_C(0xf000)
+	#define RX_TPA_V2_END_CMPL_FLAGS_ITYPE_SFT           12
+	/*
+	 * This value is zero for TPA End completions.
+	 * There is no data in the buffer that corresponds to the opaque
+	 * value in this completion.
+	 */
+	uint16_t	len;
+	/*
+	 * This is a copy of the opaque field from the RX BD this completion
+	 * corresponds to.
+	 */
+	uint32_t	opaque;
+	uint8_t	v1;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define RX_TPA_V2_END_CMPL_V1     UINT32_C(0x1)
+	/* This value is the number of segments in the TPA operation. */
+	uint8_t	tpa_segs;
+	/*
+	 * This is the aggregation ID that the completion is associated
+	 * with.  Use this number to correlate the TPA start completion
+	 * with the TPA end completion.
+	 */
+	uint16_t	agg_id;
+	/*
+	 * For non-GRO packets, this value is the
+	 * timestamp delta between earliest and latest timestamp values for
+	 * TPA packet. If packets were not time stamped, then delta will be
+	 * zero.
+	 *
+	 * For GRO packets, this field is zero except for the following
+	 * sub-fields.
+	 * - tsdelta[31]
+	 *     Timestamp present indication.  When '0', no Timestamp
+	 *     option is in the packet.  When '1', then a Timestamp
+	 *     option is present in the packet.
+	 */
+	uint32_t	tsdelta;
+} __attribute__((packed));
+
+/*
+ * Last 16 bytes of rx_tpa_v2_end_cmpl.
+ *
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
+ */
+/* rx_tpa_v2_end_cmpl_hi (size:128b/16B) */
+struct rx_tpa_v2_end_cmpl_hi {
+	/*
+	 * This value is the number of duplicate ACKs that have been
+	 * received as part of the TPA operation.
+	 */
+	uint16_t	tpa_dup_acks;
+	/*
+	 * This value is the number of duplicate ACKs that have been
+	 * received as part of the TPA operation.
+	 */
+	#define RX_TPA_V2_END_CMPL_TPA_DUP_ACKS_MASK UINT32_C(0xf)
+	#define RX_TPA_V2_END_CMPL_TPA_DUP_ACKS_SFT 0
+	/*
+	 * This value indicated the offset in bytes from the beginning of
+	 * the packet where the inner payload starts. This value is valid
+	 * for TCP, UDP, FCoE and RoCE packets
+	 */
+	uint8_t	payload_offset;
+	/*
+	 * The value is the total number of aggregation buffers that were
+	 * used in the TPA operation. All TPA aggregation buffer completions
+	 * precede the TPA End completion. If the value is zero, then the
+	 * aggregation is completely contained in the buffer space provided
+	 * in the aggregation start completion.
+	 * Note that the field is simply provided as a cross check.
+	 */
+	uint8_t	tpa_agg_bufs;
+	/*
+	 * This value is the valid when TPA completion is active.  It
+	 * indicates the length of the longest segment of the TPA operation
+	 * for LRO mode and the length of the first segment in GRO mode.
+	 *
+	 * This value may be used by GRO software to re-construct the original
+	 * packet stream from the TPA packet.  This is the length of all
+	 * but the last segment for GRO.  In LRO mode this value may be used
+	 * to indicate MSS size to the stack.
+	 */
+	uint16_t	tpa_seg_len;
+	uint16_t	unused_1;
+	uint16_t	errors_v2;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define RX_TPA_V2_END_CMPL_V2                             UINT32_C(0x1)
+	#define RX_TPA_V2_END_CMPL_ERRORS_MASK \
+		UINT32_C(0xfffe)
+	#define RX_TPA_V2_END_CMPL_ERRORS_SFT                     1
+	/*
+	 * This error indicates that there was some sort of problem with
+	 * the BDs for the packet that was found after part of the
+	 * packet was already placed.  The packet should be treated as
+	 * invalid.
+	 */
+	#define RX_TPA_V2_END_CMPL_ERRORS_BUFFER_ERROR_MASK \
+		UINT32_C(0xe)
+	#define RX_TPA_V2_END_CMPL_ERRORS_BUFFER_ERROR_SFT         1
+	/* No buffer error */
+	#define RX_TPA_V2_END_CMPL_ERRORS_BUFFER_ERROR_NO_BUFFER \
+		(UINT32_C(0x0) << 1)
+	/*
+	 * This error occurs when there is a fatal HW problem in
+	 * the chip only.  It indicates that there were not
+	 * BDs on chip but that there was adequate reservation.
+	 * provided by the TPA block.
+	 */
+	#define RX_TPA_V2_END_CMPL_ERRORS_BUFFER_ERROR_NOT_ON_CHIP \
+		(UINT32_C(0x2) << 1)
+	/*
+	 * Bad Format:
+	 * BDs were not formatted correctly.
+	 */
+	#define RX_TPA_V2_END_CMPL_ERRORS_BUFFER_ERROR_BAD_FORMAT \
+		(UINT32_C(0x3) << 1)
+	/*
+	 * This error occurs when TPA block was not configured to
+	 * reserve adequate BDs for TPA operations on this RX
+	 * ring.  All data for the TPA operation was not placed.
+	 *
+	 * This error can also be generated when the number of
+	 * segments is not programmed correctly in TPA and the
+	 * 33 total aggregation buffers allowed for the TPA
+	 * operation has been exceeded.
+	 */
+	#define RX_TPA_V2_END_CMPL_ERRORS_BUFFER_ERROR_RSV_ERROR \
+		(UINT32_C(0x4) << 1)
+	/*
+	 * Flush:
+	 * There was a bad_format error on the previous operation
+	 */
+	#define RX_TPA_V2_END_CMPL_ERRORS_BUFFER_ERROR_FLUSH \
+		(UINT32_C(0x5) << 1)
+	#define RX_TPA_V2_END_CMPL_ERRORS_BUFFER_ERROR_LAST \
+		RX_TPA_V2_END_CMPL_ERRORS_BUFFER_ERROR_FLUSH
+	uint16_t	unused_2;
+	/*
+	 * This is the opaque value that was completed for the TPA start
+	 * completion that corresponds to this TPA end completion.
+	 */
+	uint32_t	start_opaque;
+} __attribute__((packed));
+
+/*
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
+ */
+/* rx_tpa_v2_abuf_cmpl (size:128b/16B) */
+struct rx_tpa_v2_abuf_cmpl {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units.  Even values indicate 16B
+	 * records.  Odd values indicate 32B
+	 * records.
+	 */
+	#define RX_TPA_V2_ABUF_CMPL_TYPE_MASK      UINT32_C(0x3f)
+	#define RX_TPA_V2_ABUF_CMPL_TYPE_SFT       0
+	/*
+	 * RX TPA Aggregation Buffer completion :
+	 * Completion of an L2 aggregation buffer in support of
+	 * TPA packet completion.  Length = 16B
+	 */
+	#define RX_TPA_V2_ABUF_CMPL_TYPE_RX_TPA_AGG  UINT32_C(0x16)
+	#define RX_TPA_V2_ABUF_CMPL_TYPE_LAST \
+		RX_TPA_V2_ABUF_CMPL_TYPE_RX_TPA_AGG
+	/*
+	 * This is the length of the data for the packet stored in this
+	 * aggregation buffer identified by the opaque value.  This does not
+	 * include the length of any
+	 * data placed in other aggregation BDs or in the packet or buffer
+	 * BDs.   This length does not include any space added due to
+	 * hdr_offset register during HDS placement mode.
+	 */
+	uint16_t	len;
+	/*
+	 * This is a copy of the opaque field from the RX BD this aggregation
+	 * buffer corresponds to.
+	 */
+	uint32_t	opaque;
+	uint16_t	v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue.   The even passes
+	 * will write 1.  The odd passes will write 0.
+	 */
+	#define RX_TPA_V2_ABUF_CMPL_V     UINT32_C(0x1)
+	/*
+	 * This is the aggregation ID that the completion is associated with. Use
+	 * this number to correlate the TPA agg completion with the TPA start
+	 * completion and the TPA end completion.
+	 */
+	uint16_t	agg_id;
+	uint32_t	unused_1;
 } __attribute__((packed));
 
 /* rx_abuf_cmpl (size:128b/16B) */
@@ -3873,13 +4457,13 @@ struct hwrm_async_event_cmpl {
 	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEBUG_NOTIFICATION \
 		UINT32_C(0x37)
 	/*
-	 * A EEM flow cached memory flush request event being posted to the PF
-	 * driver.
+	 * An EEM flow cached memory flush for all flows request event being
+	 * posted to the PF driver.
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_EEM_CACHE_FLUSH_REQ \
 		UINT32_C(0x38)
 	/*
-	 * A EEM flow cache memory flush completion event being posted to the
+	 * An EEM flow cache memory flush completion event being posted to the
 	 * firmware by the PF driver. This is indication that host EEM flush
 	 * has completed by the PF.
 	 */
@@ -3894,7 +4478,7 @@ struct hwrm_async_event_cmpl {
 	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_TCP_FLAG_ACTION_CHANGE \
 		UINT32_C(0x3a)
 	/*
-	 * A eem flow active event being posted to the PF or trusted VF driver
+	 * An EEM flow active event being posted to the PF or trusted VF driver
 	 * by the firmware. The PF or trusted VF driver should update the
 	 * flow's aging timer after receiving this async event.
 	 */
@@ -7003,6 +7587,16 @@ struct hwrm_func_qcfg_output {
 	#define HWRM_FUNC_QCFG_OUTPUT_FLAGS_SECURE_MODE_ENABLED \
 		UINT32_C(0x80)
 	/*
+	 * If set to 1, then this PF is enabled with a preboot driver that
+	 * requires access to the legacy L2 ring model and legacy 32b
+	 * doorbells. If set to 0, then this PF is not allowed to use
+	 * the legacy L2 rings. This feature is not allowed on VFs and
+	 * is only relevant for devices that require a context backing
+	 * store.
+	 */
+	#define HWRM_FUNC_QCFG_OUTPUT_FLAGS_PREBOOT_LEGACY_L2_RINGS \
+		UINT32_C(0x100)
+	/*
 	 * This value is current MAC address configured for this
 	 * function. A value of 00-00-00-00-00-00 indicates no
 	 * MAC address is currently configured.
@@ -7281,7 +7875,16 @@ struct hwrm_func_qcfg_output {
 	 * the unregister request on PF in the HOT Reset Process.
 	 */
 	uint16_t	registered_vfs;
-	uint8_t	unused_1[3];
+	/*
+	 * The size of the doorbell BAR in KBytes reserved for L2 including
+	 * any area that is shared between L2 and RoCE.  The L2 driver
+	 * should only map the L2 portion of the doorbell BAR.  Any rounding
+	 * of the BAR size to the native CPU page size should be performed
+	 * by the driver.  If the value is zero, no special partitioning
+	 * of the doorbell BAR between L2 and RoCE is required.
+	 */
+	uint16_t	l2_doorbell_bar_size_kb;
+	uint8_t	unused_1;
 	/*
 	 * For backward compatibility this field must be set to 1.
 	 * Older drivers might look for this field to be 1 before
@@ -7522,6 +8125,14 @@ struct hwrm_func_cfg_input {
 	 */
 	#define HWRM_FUNC_CFG_INPUT_FLAGS_TRUSTED_VF_DISABLE \
 		UINT32_C(0x1000000)
+	/*
+	 * This bit is used by preboot drivers on a PF that require access
+	 * to the legacy L2 ring model and legacy 32b doorbells. This
+	 * feature is not allowed on VFs and is only relevant for devices
+	 * that require a context backing store.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_FLAGS_PREBOOT_LEGACY_L2_RINGS \
+		UINT32_C(0x2000000)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the mtu field to be
@@ -12053,6 +12664,212 @@ struct hwrm_func_drv_if_change_output {
 	#define HWRM_FUNC_DRV_IF_CHANGE_OUTPUT_FLAGS_HOT_FW_RESET_DONE \
 		UINT32_C(0x2)
 	uint8_t	unused_0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
+/*******************************
+ * hwrm_func_host_pf_ids_query *
+ *******************************/
+
+
+/* hwrm_func_host_pf_ids_query_input (size:192b/24B) */
+struct hwrm_func_host_pf_ids_query_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint8_t	host;
+	/*
+	 * # If this bit is set to '1', the query will contain PF(s)
+	 * belongs to SOC host.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_HOST_SOC      UINT32_C(0x1)
+	/*
+	 * # If this bit is set to '1', the query will contain PF(s)
+	 * belongs to EP0 host.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_HOST_EP_0     UINT32_C(0x2)
+	/*
+	 * # If this bit is set to '1', the query will contain PF(s)
+	 * belongs to EP1 host.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_HOST_EP_1     UINT32_C(0x4)
+	/*
+	 * # If this bit is set to '1', the query will contain PF(s)
+	 * belongs to EP2 host.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_HOST_EP_2     UINT32_C(0x8)
+	/*
+	 * # If this bit is set to '1', the query will contain PF(s)
+	 * belongs to EP3 host.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_HOST_EP_3     UINT32_C(0x10)
+	/*
+	 * This provides a filter of what PF(s) will be returned in the
+	 * query..
+	 */
+	uint8_t	filter;
+	/*
+	 * all available PF(s) belong to the host(s) (defined in the
+	 * host field). This includes the hidden PFs.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_FILTER_ALL  UINT32_C(0x0)
+	/*
+	 * all available PF(s) belong to the host(s) (defined in the
+	 * host field) that is available for L2 traffic.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_FILTER_L2   UINT32_C(0x1)
+	/*
+	 * all available PF(s) belong to the host(s) (defined in the
+	 * host field) that is available for ROCE traffic.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_FILTER_ROCE UINT32_C(0x2)
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_FILTER_LAST \
+		HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_FILTER_ROCE
+	uint8_t	unused_1[6];
+} __attribute__((packed));
+
+/* hwrm_func_host_pf_ids_query_output (size:128b/16B) */
+struct hwrm_func_host_pf_ids_query_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* This provides the first PF ID of the device. */
+	uint16_t	first_pf_id;
+	uint16_t	pf_ordinal_mask;
+	/*
+	 * When this bit is '1', it indicates first PF belongs to one of
+	 * the hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_0 \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', it indicates 2nd PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_1 \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is '1', it indicates 3rd PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_2 \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is '1', it indicates 4th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_3 \
+		UINT32_C(0x8)
+	/*
+	 * When this bit is '1', it indicates 5th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_4 \
+		UINT32_C(0x10)
+	/*
+	 * When this bit is '1', it indicates 6th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_5 \
+		UINT32_C(0x20)
+	/*
+	 * When this bit is '1', it indicates 7th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_6 \
+		UINT32_C(0x40)
+	/*
+	 * When this bit is '1', it indicates 8th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_7 \
+		UINT32_C(0x80)
+	/*
+	 * When this bit is '1', it indicates 9th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_8 \
+		UINT32_C(0x100)
+	/*
+	 * When this bit is '1', it indicates 10th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_9 \
+		UINT32_C(0x200)
+	/*
+	 * When this bit is '1', it indicates 11th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_10 \
+		UINT32_C(0x400)
+	/*
+	 * When this bit is '1', it indicates 12th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_11 \
+		UINT32_C(0x800)
+	/*
+	 * When this bit is '1', it indicates 13th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_12 \
+		UINT32_C(0x1000)
+	/*
+	 * When this bit is '1', it indicates 14th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_13 \
+		UINT32_C(0x2000)
+	/*
+	 * When this bit is '1', it indicates 15th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_14 \
+		UINT32_C(0x4000)
+	/*
+	 * When this bit is '1', it indicates 16th PF belongs to one of the
+	 * hosts defined in the input request.
+	 */
+	#define HWRM_FUNC_HOST_PF_IDS_QUERY_OUTPUT_PF_ORDINAL_MASK_FUNC_15 \
+		UINT32_C(0x8000)
+	uint8_t	unused_1[3];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -28144,6 +28961,12 @@ struct hwrm_cfa_flow_flush_input {
 	 */
 	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_RESET_ALL \
 		UINT32_C(0x2)
+	/*
+	 * Set to 1 to indicate flow flush operation to cleanup all the flows by the caller.
+	 * This flag is set to 0 by older driver. For older firmware, setting this flag has no effect.
+	 */
+	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_RESET_PORT \
+		UINT32_C(0x4)
 	/* Set to 1 to indicate the flow counter IDs are included in the flow table. */
 	#define HWRM_CFA_FLOW_FLUSH_INPUT_FLAGS_FLOW_HANDLE_INCL_FC \
 		UINT32_C(0x8000000)
@@ -29316,7 +30139,15 @@ struct hwrm_cfa_ctx_mem_qcaps_output {
 	uint16_t	resp_len;
 	/* Indicates the maximum number of context memory which can be registered. */
 	uint16_t	max_entries;
-	uint8_t	unused_0[6];
+	uint8_t	unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
 } __attribute__((packed));
 
 /**********************
@@ -29375,7 +30206,7 @@ struct hwrm_cfa_eem_qcaps_input {
 	uint32_t	unused_0;
 } __attribute__((packed));
 
-/* hwrm_cfa_eem_qcaps_output (size:256b/32B) */
+/* hwrm_cfa_eem_qcaps_output (size:320b/40B) */
 struct hwrm_cfa_eem_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -29420,29 +30251,35 @@ struct hwrm_cfa_eem_qcaps_output {
 	uint32_t	supported;
 	/*
 	 * If set to 1, then EEM KEY0 table is supported using crc32 hash.
-	 * If set to 0 EEM KEY0 table is not supported.
+	 * If set to 0, EEM KEY0 table is not supported.
 	 */
 	#define HWRM_CFA_EEM_QCAPS_OUTPUT_SUPPORTED_KEY0_TABLE \
 		UINT32_C(0x1)
 	/*
 	 * If set to 1, then EEM KEY1 table is supported using lookup3 hash.
-	 * If set to 0 EEM KEY1 table is not supported.
+	 * If set to 0, EEM KEY1 table is not supported.
 	 */
 	#define HWRM_CFA_EEM_QCAPS_OUTPUT_SUPPORTED_KEY1_TABLE \
 		UINT32_C(0x2)
 	/*
 	 * If set to 1, then EEM External Record table is supported.
-	 * If set to 0 EEM External Record table is not supported.
+	 * If set to 0, EEM External Record table is not supported.
 	 * (This table includes action record, EFC pointers, encap pointers)
 	 */
 	#define HWRM_CFA_EEM_QCAPS_OUTPUT_SUPPORTED_EXTERNAL_RECORD_TABLE \
 		UINT32_C(0x4)
 	/*
 	 * If set to 1, then EEM External Flow Counters table is supported.
-	 * If set to 0 EEM External Flow Counters table is not supported.
+	 * If set to 0, EEM External Flow Counters table is not supported.
 	 */
 	#define HWRM_CFA_EEM_QCAPS_OUTPUT_SUPPORTED_EXTERNAL_FLOW_COUNTERS_TABLE \
 		UINT32_C(0x8)
+	/*
+	 * If set to 1, then FID table used for implicit flow flush is supported.
+	 * If set to 0, then FID table used for implicit flow flush is not supported.
+	 */
+	#define HWRM_CFA_EEM_QCAPS_OUTPUT_SUPPORTED_FID_TABLE \
+		UINT32_C(0x10)
 	/*
 	 * The maximum number of entries supported by EEM.   When configuring the host memory
 	 * the number of numbers of entries that can supported are -
@@ -29451,13 +30288,15 @@ struct hwrm_cfa_eem_qcaps_output {
 	 * number of entries.
 	 */
 	uint32_t	max_entries_supported;
-	/* The entry size in bytes of each entry in the KEY0/KEY1 EEM tables. */
+	/* The entry size in bytes of each entry in the EEM KEY0/KEY1 tables. */
 	uint16_t	key_entry_size;
-	/* The entry size in bytes of each entry in the RECORD EEM tables. */
+	/* The entry size in bytes of each entry in the EEM RECORD tables. */
 	uint16_t	record_entry_size;
-	/* The entry size in bytes of each entry in the EFC EEM tables. */
+	/* The entry size in bytes of each entry in the EEM EFC tables. */
 	uint16_t	efc_entry_size;
-	uint8_t	unused_1;
+	/* The FID size in bytes of each entry in the EEM FID tables. */
+	uint16_t	fid_entry_size;
+	uint8_t	unused_1[7];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -29473,7 +30312,7 @@ struct hwrm_cfa_eem_qcaps_output {
  ********************/
 
 
-/* hwrm_cfa_eem_cfg_input (size:320b/40B) */
+/* hwrm_cfa_eem_cfg_input (size:384b/48B) */
 struct hwrm_cfa_eem_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -29545,6 +30384,10 @@ struct hwrm_cfa_eem_cfg_input {
 	uint16_t	record_ctx_id;
 	/* Configured EEM with the given context if for EFC table. */
 	uint16_t	efc_ctx_id;
+	/* Configured EEM with the given context if for EFC table. */
+	uint16_t	fid_ctx_id;
+	uint16_t	unused_2;
+	uint32_t	unused_3;
 } __attribute__((packed));
 
 /* hwrm_cfa_eem_cfg_output (size:128b/16B) */
@@ -29611,7 +30454,7 @@ struct hwrm_cfa_eem_qcfg_input {
 	uint32_t	unused_0;
 } __attribute__((packed));
 
-/* hwrm_cfa_eem_qcfg_output (size:192b/24B) */
+/* hwrm_cfa_eem_qcfg_output (size:256b/32B) */
 struct hwrm_cfa_eem_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -29633,7 +30476,17 @@ struct hwrm_cfa_eem_qcfg_output {
 		UINT32_C(0x4)
 	/* The number of entries the FW has configured for EEM. */
 	uint32_t	num_entries;
-	uint8_t	unused_0[7];
+	/* Configured EEM with the given context if for KEY0 table. */
+	uint16_t	key0_ctx_id;
+	/* Configured EEM with the given context if for KEY1 table. */
+	uint16_t	key1_ctx_id;
+	/* Configured EEM with the given context if for RECORD table. */
+	uint16_t	record_ctx_id;
+	/* Configured EEM with the given context if for EFC table. */
+	uint16_t	efc_ctx_id;
+	/* Configured EEM with the given context if for EFC table. */
+	uint16_t	fid_ctx_id;
+	uint8_t	unused_2[5];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -30287,6 +31140,53 @@ struct ctx_hw_stats {
 	uint64_t	tpa_aborts;
 } __attribute__((packed));
 
+/* Periodic statistics context DMA to host. */
+/* ctx_hw_stats_ext (size:1344b/168B) */
+struct ctx_hw_stats_ext {
+	/* Number of received unicast packets */
+	uint64_t	rx_ucast_pkts;
+	/* Number of received multicast packets */
+	uint64_t	rx_mcast_pkts;
+	/* Number of received broadcast packets */
+	uint64_t	rx_bcast_pkts;
+	/* Number of discarded packets on received path */
+	uint64_t	rx_discard_pkts;
+	/* Number of dropped packets on received path */
+	uint64_t	rx_drop_pkts;
+	/* Number of received bytes for unicast traffic */
+	uint64_t	rx_ucast_bytes;
+	/* Number of received bytes for multicast traffic */
+	uint64_t	rx_mcast_bytes;
+	/* Number of received bytes for broadcast traffic */
+	uint64_t	rx_bcast_bytes;
+	/* Number of transmitted unicast packets */
+	uint64_t	tx_ucast_pkts;
+	/* Number of transmitted multicast packets */
+	uint64_t	tx_mcast_pkts;
+	/* Number of transmitted broadcast packets */
+	uint64_t	tx_bcast_pkts;
+	/* Number of discarded packets on transmit path */
+	uint64_t	tx_discard_pkts;
+	/* Number of dropped packets on transmit path */
+	uint64_t	tx_drop_pkts;
+	/* Number of transmitted bytes for unicast traffic */
+	uint64_t	tx_ucast_bytes;
+	/* Number of transmitted bytes for multicast traffic */
+	uint64_t	tx_mcast_bytes;
+	/* Number of transmitted bytes for broadcast traffic */
+	uint64_t	tx_bcast_bytes;
+	/* Number of TPA eligible packets */
+	uint64_t	rx_tpa_eligible_pkt;
+	/* Number of TPA eligible bytes */
+	uint64_t	rx_tpa_eligible_bytes;
+	/* Number of TPA packets */
+	uint64_t	rx_tpa_pkt;
+	/* Number of TPA bytes */
+	uint64_t	rx_tpa_bytes;
+	/* Number of TPA errors */
+	uint64_t	rx_tpa_errors;
+} __attribute__((packed));
+
 /* Periodic Engine statistics context DMA to host. */
 /* ctx_eng_stats (size:512b/64B) */
 struct ctx_eng_stats {
@@ -30381,6 +31281,11 @@ struct hwrm_stat_ctx_alloc_input {
 	 * shall be never done and the DMA address shall not be used.
 	 * In this case, the stat block can only be read by
 	 * hwrm_stat_ctx_query command.
+	 * On Ethernet/L2 based devices:
+	 *   if tpa v2 supported (hwrm_vnic_qcaps[max_aggs_supported]>0),
+	 *       ctx_hw_stats_ext is used for DMA,
+	 *   else
+	 *       ctx_hw_stats is used for DMA.
 	 */
 	uint32_t	update_period_ms;
 	/*
@@ -30397,7 +31302,13 @@ struct hwrm_stat_ctx_alloc_input {
 	 * used for network traffic or engine traffic.
 	 */
 	#define HWRM_STAT_CTX_ALLOC_INPUT_STAT_CTX_FLAGS_ROCE     UINT32_C(0x1)
-	uint8_t	unused_0[3];
+	uint8_t	unused_0;
+	/*
+	 * This is the size of the structure (ctx_hw_stats or
+	 * ctx_hw_stats_ext) that the driver has allocated to be used
+	 * for the periodic DMA updates.
+	 */
+	uint16_t	stats_dma_length;
 } __attribute__((packed));
 
 /* hwrm_stat_ctx_alloc_output (size:128b/16B) */
@@ -32549,6 +33460,12 @@ struct hwrm_nvm_set_variable_input {
 		(UINT32_C(0x3) << 1)
 	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_LAST \
 		HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_ENCRYPT_MODE_HMAC_SHA1_AUTH
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_FLAGS_UNUSED_0_MASK \
+		UINT32_C(0x70)
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_FLAGS_UNUSED_0_SFT         4
+	/* When this bit is 1, update the factory default region */
+	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_FACTORY_DEFAULT \
+		UINT32_C(0x80)
 	uint8_t	unused_0;
 } __attribute__((packed));
 
