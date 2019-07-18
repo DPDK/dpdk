@@ -92,6 +92,7 @@ queue_ops_rsa_sign_verify(struct rte_cryptodev_asym_session *sess)
 
 	asym_op->rsa.message.data = rsaplaintext.data;
 	asym_op->rsa.message.length = rsaplaintext.len;
+	asym_op->rsa.sign.length = 0;
 	asym_op->rsa.sign.data = output_buf;
 	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT1;
 
@@ -164,6 +165,7 @@ queue_ops_rsa_enc_dec(struct rte_cryptodev_asym_session *sess)
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_op *op, *result_op;
 	struct rte_crypto_asym_op *asym_op;
+	uint8_t cipher_buf[TEST_DATA_SIZE] = {0};
 	int ret, status = TEST_SUCCESS;
 
 	/* Set up crypto op data structure */
@@ -180,6 +182,8 @@ queue_ops_rsa_enc_dec(struct rte_cryptodev_asym_session *sess)
 	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
 
 	asym_op->rsa.message.data = rsaplaintext.data;
+	asym_op->rsa.cipher.data = cipher_buf;
+	asym_op->rsa.cipher.length = 0;
 	asym_op->rsa.message.length = rsaplaintext.len;
 	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT2;
 
@@ -211,6 +215,7 @@ queue_ops_rsa_enc_dec(struct rte_cryptodev_asym_session *sess)
 
 	/* Use the resulted output as decryption Input vector*/
 	asym_op = result_op->asym;
+	asym_op->rsa.message.length = 0;
 	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
 	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT2;
 

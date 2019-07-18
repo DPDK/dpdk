@@ -395,21 +395,50 @@ struct rte_crypto_rsa_op_param {
 
 	rte_crypto_param message;
 	/**<
-	 * Pointer to data
+	 * Pointer to input data
 	 * - to be encrypted for RSA public encrypt.
-	 * - to be decrypted for RSA private decrypt.
 	 * - to be signed for RSA sign generation.
 	 * - to be authenticated for RSA sign verification.
+	 *
+	 * Pointer to output data
+	 * - for RSA private decrypt.
+	 * In this case the underlying array should have been
+	 * allocated with enough memory to hold plaintext output
+	 * (i.e. must be at least RSA key size). The message.length
+	 * field should be 0 and will be overwritten by the PMD
+	 * with the decrypted length.
+	 *
+	 * All data is in Octet-string network byte order format.
+	 */
+
+	rte_crypto_param cipher;
+	/**<
+	 * Pointer to input data
+	 * - to be decrypted for RSA private decrypt.
+	 *
+	 * Pointer to output data
+	 * - for RSA public encrypt.
+	 * In this case the underlying array should have been allocated
+	 * with enough memory to hold ciphertext output (i.e. must be
+	 * at least RSA key size). The cipher.length field should
+	 * be 0 and will be overwritten by the PMD with the encrypted length.
+	 *
+	 * All data is in Octet-string network byte order format.
 	 */
 
 	rte_crypto_param sign;
 	/**<
-	 * Pointer to RSA signature data. If operation is RSA
-	 * sign @ref RTE_CRYPTO_ASYM_OP_SIGN, buffer will be
-	 * over-written with generated signature.
+	 * Pointer to input data
+	 * - to be verified for RSA public decrypt.
 	 *
-	 * Length of the signature data will be equal to the
-	 * RSA modulus length.
+	 * Pointer to output data
+	 * - for RSA private encrypt.
+	 * In this case the underlying array should have been allocated
+	 * with enough memory to hold signature output (i.e. must be
+	 * at least RSA key size). The sign.length field should
+	 * be 0 and will be overwritten by the PMD with the signature length.
+	 *
+	 * All data is in Octet-string network byte order format.
 	 */
 
 	enum rte_crypto_rsa_padding_type pad;
