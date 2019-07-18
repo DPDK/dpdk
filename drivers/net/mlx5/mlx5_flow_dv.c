@@ -2885,7 +2885,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					(dev, items, attr, item_flags, error);
 			if (ret < 0)
 				return ret;
-			last_item |= MLX5_FLOW_ITEM_PORT_ID;
+			last_item = MLX5_FLOW_ITEM_PORT_ID;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			ret = mlx5_flow_validate_item_eth(items, item_flags,
@@ -2981,7 +2981,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				(items, item_flags, gre_item, error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_GRE_KEY;
+			last_item = MLX5_FLOW_LAYER_GRE_KEY;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ret = mlx5_flow_validate_item_vxlan(items, item_flags,
@@ -3019,7 +3019,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							   error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_ICMP;
+			last_item = MLX5_FLOW_LAYER_ICMP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ICMP6:
 			ret = mlx5_flow_validate_item_icmp6(items, item_flags,
@@ -3027,7 +3027,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							    error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_ICMP6;
+			last_item = MLX5_FLOW_LAYER_ICMP6;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -5045,7 +5045,7 @@ cnt_err:
 		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
 			flow_dv_translate_item_gre_key(match_mask,
 						       match_value, items);
-			item_flags |= MLX5_FLOW_LAYER_GRE_KEY;
+			last_item = MLX5_FLOW_LAYER_GRE_KEY;
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			flow_dv_translate_item_nvgre(match_mask, match_value,
@@ -5075,12 +5075,12 @@ cnt_err:
 		case RTE_FLOW_ITEM_TYPE_ICMP:
 			flow_dv_translate_item_icmp(match_mask, match_value,
 						    items, tunnel);
-			item_flags |= MLX5_FLOW_LAYER_ICMP;
+			last_item = MLX5_FLOW_LAYER_ICMP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ICMP6:
 			flow_dv_translate_item_icmp6(match_mask, match_value,
 						      items, tunnel);
-			item_flags |= MLX5_FLOW_LAYER_ICMP6;
+			last_item = MLX5_FLOW_LAYER_ICMP6;
 			break;
 		default:
 			break;
