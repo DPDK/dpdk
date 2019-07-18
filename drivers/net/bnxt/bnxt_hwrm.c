@@ -2884,14 +2884,7 @@ int bnxt_hwrm_func_qcfg_current_vf_vlan(struct bnxt *bp, int vf)
 	HWRM_PREP(req, FUNC_QCFG, BNXT_USE_CHIMP_MB);
 	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "hwrm_func_qcfg failed rc:%d\n", rc);
-		return -1;
-	} else if (resp->error_code) {
-		rc = rte_le_to_cpu_16(resp->error_code);
-		PMD_DRV_LOG(ERR, "hwrm_func_qcfg error %d\n", rc);
-		return -1;
-	}
+	HWRM_CHECK_RESULT();
 	rc = rte_le_to_cpu_16(resp->vlan);
 
 	HWRM_UNLOCK();
