@@ -3574,12 +3574,11 @@ int bnxt_hwrm_nvm_get_dir_info(struct bnxt *bp, uint32_t *entries,
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
-	HWRM_UNLOCK();
 
-	if (!rc) {
-		*entries = rte_le_to_cpu_32(resp->entries);
-		*length = rte_le_to_cpu_32(resp->entry_length);
-	}
+	*entries = rte_le_to_cpu_32(resp->entries);
+	*length = rte_le_to_cpu_32(resp->entry_length);
+
+	HWRM_UNLOCK();
 	return rc;
 }
 
