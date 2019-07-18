@@ -809,7 +809,7 @@ The LDPC encode parameters are set out in the table below.
 +----------------+------------+-------------------------------------------------------+
 |                |r           |index of the first CB in the inbound mbuf data         |
 +----------------+------------+-------------------------------------------------------+
-+                +c_ab        +number of CBs that use Ea before switching to Eb       |
+|                |c_ab        |number of CBs that use Ea before switching to Eb       |
 +----------------+------------+-------------------------------------------------------+
 |                |ea          |Ea, length of the RM output sequence in bits, r < cab  |
 +----------------+------------+-------------------------------------------------------+
@@ -865,8 +865,9 @@ calculated by BBDEV before signalling to the driver.
 The number of CBs in the group should not be confused with ``c``, the
 total number of CBs in the full TB (``C`` as per 3GPP TS 38.212 section 5.2.2)
 
-Figure 13.1 above showing the Turbo encoding of CBs using BBDEV
-interface in TB-mode is also valid for LDPC encode.
+Figure :numref:`figure_turbo_tb_encode` above
+showing the Turbo encoding of CBs using BBDEV interface in TB-mode
+is also valid for LDPC encode.
 
 BBDEV LDPC Decode Operation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1077,8 +1078,9 @@ total number of CBs in the full TB (``C`` as per 3GPP TS 38.212 section 5.2.2)
 The ``length`` is total size of the CBs inclusive of any CRC24A and CRC24B in
 case they were appended by the application.
 
-Figure 13.2 above showing the Turbo decoding of CBs using BBDEV
-interface in TB-mode is also valid for LDPC decode.
+Figure :numref:`figure_turbo_tb_decode` above
+showing the Turbo decoding of CBs using BBDEV interface in TB-mode
+is also valid for LDPC decode.
 
 
 Sample code
