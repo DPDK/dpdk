@@ -88,7 +88,7 @@ struct rte_lpm_tbl_entry_v20 {
 	 */
 	uint8_t valid_group :1;
 	uint8_t depth       :6; /**< Rule depth. */
-};
+} __rte_aligned(sizeof(uint16_t));
 
 __extension__
 struct rte_lpm_tbl_entry {
@@ -121,7 +121,7 @@ struct rte_lpm_tbl_entry_v20 {
 		uint8_t group_idx;
 		uint8_t next_hop;
 	};
-};
+} __rte_aligned(sizeof(uint16_t));
 
 __extension__
 struct rte_lpm_tbl_entry {
