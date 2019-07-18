@@ -3199,6 +3199,9 @@ int bnxt_hwrm_func_buf_unrgtr(struct bnxt *bp)
 	struct hwrm_func_buf_unrgtr_input req = {.req_type = 0 };
 	struct hwrm_func_buf_unrgtr_output *resp = bp->hwrm_cmd_resp_addr;
 
+	if (!(BNXT_PF(bp) && bp->pdev->max_vfs))
+		return 0;
+
 	HWRM_PREP(req, FUNC_BUF_UNRGTR, BNXT_USE_CHIMP_MB);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);

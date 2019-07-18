@@ -3853,8 +3853,16 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 
 	bp->dev_stopped = 1;
 
+	eth_dev->dev_ops = &bnxt_dev_ops;
+	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
+	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
+
+	/*
+	 * For secondary processes, we don't initialise any further
+	 * as primary has already done this work.
+	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		goto skip_init;
+		return 0;
 
 	if (bnxt_vf_pciid(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;
@@ -3871,12 +3879,6 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 			"Board initialization failed rc: %x\n", rc);
 		goto error;
 	}
-skip_init:
-	eth_dev->dev_ops = &bnxt_dev_ops;
-	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
-	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
 
 	rc = bnxt_alloc_hwrm_resources(bp);
 	if (rc) {
@@ -4021,21 +4023,16 @@ skip_init:
 
 	rc = bnxt_alloc_mem(bp);
 	if (rc)
-		goto error_free_int;
+		goto error_free;
 
 	rc = bnxt_request_int(bp);
 	if (rc)
-		goto error_free_int;
+		goto error_free;
 
 	bnxt_init_nic(bp);
 
 	return 0;
 
-error_free_int:
-	bnxt_disable_int(bp);
-	bnxt_hwrm_func_buf_unrgtr(bp);
-	bnxt_free_int(bp);
-	bnxt_free_mem(bp);
 error_free:
 	bnxt_dev_uninit(eth_dev);
 error:
@@ -4055,6 +4052,9 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev)
 	bnxt_disable_int(bp);
 	bnxt_free_int(bp);
 	bnxt_free_mem(bp);
+
+	bnxt_hwrm_func_buf_unrgtr(bp);
+
 	if (bp->grp_info != NULL) {
 		rte_free(bp->grp_info);
 		bp->grp_info = NULL;
