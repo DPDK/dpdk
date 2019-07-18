@@ -199,8 +199,8 @@ struct rte_crypto_rsa_priv_key_qt {
  */
 struct rte_crypto_rsa_xform {
 	rte_crypto_param n;
-	/**< n - Prime modulus
-	 * Prime modulus data of RSA operation in Octet-string network
+	/**< n - Modulus
+	 * Modulus data of RSA operation in Octet-string network
 	 * byte order format.
 	 */
 
@@ -409,7 +409,7 @@ struct rte_crypto_rsa_op_param {
 	 * over-written with generated signature.
 	 *
 	 * Length of the signature data will be equal to the
-	 * RSA prime modulus length.
+	 * RSA modulus length.
 	 */
 
 	enum rte_crypto_rsa_padding_type pad;
