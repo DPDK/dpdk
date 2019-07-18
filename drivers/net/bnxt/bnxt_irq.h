@@ -17,7 +17,7 @@ struct bnxt_irq {
 };
 
 struct bnxt;
-void bnxt_free_int(struct bnxt *bp);
+int bnxt_free_int(struct bnxt *bp);
 void bnxt_disable_int(struct bnxt *bp);
 void bnxt_enable_int(struct bnxt *bp);
 int bnxt_setup_int(struct bnxt *bp);

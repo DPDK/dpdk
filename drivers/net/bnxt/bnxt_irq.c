@@ -5,6 +5,7 @@
 
 #include <inttypes.h>
 
+#include <rte_cycles.h>
 #include <rte_malloc.h>
 
 #include "bnxt.h"
@@ -48,24 +49,45 @@ static void bnxt_int_handler(void *param)
 	B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
 }
 
-void bnxt_free_int(struct bnxt *bp)
+int bnxt_free_int(struct bnxt *bp)
 {
-	struct bnxt_irq *irq;
+	struct rte_intr_handle *intr_handle = &bp->pdev->intr_handle;
+	struct bnxt_irq *irq = bp->irq_tbl;
+	int rc = 0;
 
-	if (bp->irq_tbl == NULL)
-		return;
+	if (!irq)
+		return 0;
 
-	irq = bp->irq_tbl;
-	if (irq) {
-		if (irq->requested) {
-			rte_intr_callback_unregister(&bp->pdev->intr_handle,
-						     irq->handler,
-						     (void *)bp->eth_dev);
-			irq->requested = 0;
+	if (irq->requested) {
+		int count = 0;
+
+		/*
+		 * Callback deregistration will fail with rc -EAGAIN if the
+		 * callback is currently active. Retry every 50 ms until
+		 * successful or 500 ms has elapsed.
+		 */
+		do {
+			rc = rte_intr_callback_unregister(intr_handle,
+							  irq->handler,
+							  bp->eth_dev);
+			if (rc >= 0) {
+				irq->requested = 0;
+				break;
+			}
+			rte_delay_ms(50);
+		} while (count++ < 10);
+
+		if (rc < 0) {
+			PMD_DRV_LOG(ERR, "irq cb unregister failed rc: %d\n",
+				    rc);
+			return rc;
 		}
-		rte_free((void *)bp->irq_tbl);
-		bp->irq_tbl = NULL;
 	}
+
+	rte_free(bp->irq_tbl);
+	bp->irq_tbl = NULL;
+
+	return 0;
 }
 
 void bnxt_disable_int(struct bnxt *bp)
@@ -116,13 +138,20 @@ setup_exit:
 
 int bnxt_request_int(struct bnxt *bp)
 {
+	struct rte_intr_handle *intr_handle = &bp->pdev->intr_handle;
+	struct bnxt_irq *irq = bp->irq_tbl;
 	int rc = 0;
 
-	struct bnxt_irq *irq = bp->irq_tbl;
+	if (!irq)
+		return 0;
 
-	rte_intr_callback_register(&bp->pdev->intr_handle, irq->handler,
-				   (void *)bp->eth_dev);
+	if (!irq->requested) {
+		rc = rte_intr_callback_register(intr_handle,
+						irq->handler,
+						bp->eth_dev);
+		if (!rc)
+			irq->requested = 1;
+	}
 
-	irq->requested = 1;
 	return rc;
 }
