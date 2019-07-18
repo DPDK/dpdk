@@ -394,8 +394,9 @@ static int bnxt_init_chip(struct bnxt *bp)
 					bp->rx_cp_nr_rings);
 			return -ENOTSUP;
 		}
-		if (rte_intr_efd_enable(intr_handle, intr_vector))
-			return -1;
+		rc = rte_intr_efd_enable(intr_handle, intr_vector);
+		if (rc)
+			return rc;
 	}
 
 	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
@@ -406,7 +407,8 @@ static int bnxt_init_chip(struct bnxt *bp)
 		if (intr_handle->intr_vec == NULL) {
 			PMD_DRV_LOG(ERR, "Failed to allocate %d rx_queues"
 				" intr_vec", bp->eth_dev->data->nb_rx_queues);
-			return -ENOMEM;
+			rc = -ENOMEM;
+			goto err_disable;
 		}
 		PMD_DRV_LOG(DEBUG, "intr_handle->intr_vec = %p "
 			"intr_handle->nb_efd = %d intr_handle->max_intr = %d\n",
@@ -421,12 +423,14 @@ static int bnxt_init_chip(struct bnxt *bp)
 	}
 
 	/* enable uio/vfio intr/eventfd mapping */
-	rte_intr_enable(intr_handle);
+	rc = rte_intr_enable(intr_handle);
+	if (rc)
+		goto err_free;
 
 	rc = bnxt_get_hwrm_link_config(bp, &new);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "HWRM Get link config failure rc: %x\n", rc);
-		goto err_out;
+		goto err_free;
 	}
 
 	if (!bp->link_info.link_up) {
@@ -434,16 +438,18 @@ static int bnxt_init_chip(struct bnxt *bp)
 		if (rc) {
 			PMD_DRV_LOG(ERR,
 				"HWRM link config failure rc: %x\n", rc);
-			goto err_out;
+			goto err_free;
 		}
 	}
 	bnxt_print_link_info(bp->eth_dev);
 
 	return 0;
 
+err_free:
+	rte_free(intr_handle->intr_vec);
+err_disable:
+	rte_intr_efd_disable(intr_handle);
 err_out:
-	bnxt_free_all_hwrm_resources(bp);
-
 	/* Some of the error status returned by FW may not be from errno.h */
 	if (rc > 0)
 		rc = -EIO;
@@ -759,7 +765,6 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 			"RxQ cnt %d > CONFIG_RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
 			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	}
-	bp->dev_stopped = 0;
 
 	rc = bnxt_init_chip(bp);
 	if (rc)
@@ -781,6 +786,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
 	bnxt_enable_int(bp);
 	bp->flags |= BNXT_FLAG_INIT_DONE;
+	bp->dev_stopped = 0;
 	return 0;
 
 error:
