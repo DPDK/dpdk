@@ -112,17 +112,9 @@ enum rte_crypto_asym_op_type {
 enum rte_crypto_rsa_padding_type {
 	RTE_CRYPTO_RSA_PADDING_NONE = 0,
 	/**< RSA no padding scheme */
-	RTE_CRYPTO_RSA_PKCS1_V1_5_BT0,
-	/**< RSA PKCS#1 V1.5 Block Type 0 padding scheme
-	 * as described in rfc2313
-	 */
-	RTE_CRYPTO_RSA_PKCS1_V1_5_BT1,
-	/**< RSA PKCS#1 V1.5 Block Type 01 padding scheme
-	 * as described in rfc2313
-	 */
-	RTE_CRYPTO_RSA_PKCS1_V1_5_BT2,
-	/**< RSA PKCS#1 V1.5 Block Type 02 padding scheme
-	 * as described in rfc2313
+	RTE_CRYPTO_RSA_PADDING_PKCS1_5,
+	/**< RSA PKCS#1 PKCS1-v1_5 padding scheme. For signatures block type 01,
+	 * for encryption block type 02 are used.
 	 */
 	RTE_CRYPTO_RSA_PADDING_OAEP,
 	/**< RSA PKCS#1 OAEP padding scheme */

@@ -94,7 +94,7 @@ queue_ops_rsa_sign_verify(struct rte_cryptodev_asym_session *sess)
 	asym_op->rsa.message.length = rsaplaintext.len;
 	asym_op->rsa.sign.length = 0;
 	asym_op->rsa.sign.data = output_buf;
-	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT1;
+	asym_op->rsa.pad = RTE_CRYPTO_RSA_PADDING_PKCS1_5;
 
 	debug_hexdump(stdout, "message", asym_op->rsa.message.data,
 		      asym_op->rsa.message.length);
@@ -126,7 +126,7 @@ queue_ops_rsa_sign_verify(struct rte_cryptodev_asym_session *sess)
 
 	/* Verify sign */
 	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
-	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT1;
+	asym_op->rsa.pad = RTE_CRYPTO_RSA_PADDING_PKCS1_5;
 
 	/* Process crypto operation */
 	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
@@ -185,7 +185,7 @@ queue_ops_rsa_enc_dec(struct rte_cryptodev_asym_session *sess)
 	asym_op->rsa.cipher.data = cipher_buf;
 	asym_op->rsa.cipher.length = 0;
 	asym_op->rsa.message.length = rsaplaintext.len;
-	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT2;
+	asym_op->rsa.pad = RTE_CRYPTO_RSA_PADDING_PKCS1_5;
 
 	debug_hexdump(stdout, "message", asym_op->rsa.message.data,
 		      asym_op->rsa.message.length);
@@ -217,7 +217,7 @@ queue_ops_rsa_enc_dec(struct rte_cryptodev_asym_session *sess)
 	asym_op = result_op->asym;
 	asym_op->rsa.message.length = 0;
 	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
-	asym_op->rsa.pad = RTE_CRYPTO_RSA_PKCS1_V1_5_BT2;
+	asym_op->rsa.pad = RTE_CRYPTO_RSA_PADDING_PKCS1_5;
 
 	/* Process crypto operation */
 	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {

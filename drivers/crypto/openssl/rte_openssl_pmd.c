@@ -1848,9 +1848,7 @@ process_openssl_rsa_op(struct rte_crypto_op *cop,
 	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
 	switch (pad) {
-	case RTE_CRYPTO_RSA_PKCS1_V1_5_BT0:
-	case RTE_CRYPTO_RSA_PKCS1_V1_5_BT1:
-	case RTE_CRYPTO_RSA_PKCS1_V1_5_BT2:
+	case RTE_CRYPTO_RSA_PADDING_PKCS1_5:
 		pad = RSA_PKCS1_PADDING;
 		break;
 	case RTE_CRYPTO_RSA_PADDING_NONE:
