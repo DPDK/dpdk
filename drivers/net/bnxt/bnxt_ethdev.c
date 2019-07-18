@@ -2152,7 +2152,7 @@ bnxt_ethertype_filter(struct rte_eth_dev *dev,
 
 		filter1 = bnxt_get_l2_filter(bp, bfilter, vnic0);
 		if (filter1 == NULL) {
-			ret = -1;
+			ret = -EINVAL;
 			goto cleanup;
 		}
 		bfilter->enables |=
@@ -2346,7 +2346,7 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 	vnic0 = &bp->vnic_info[0];
 	filter1 = STAILQ_FIRST(&vnic0->filter);
 	if (filter1 == NULL) {
-		ret = -1;
+		ret = -EINVAL;
 		goto free_filter;
 	}
 
@@ -3288,7 +3288,6 @@ bnxt_set_eeprom_op(struct rte_eth_dev *dev,
 
 	return bnxt_hwrm_flash_nvram(bp, type, ordinal, ext, attr,
 				     in_eeprom->data, in_eeprom->length);
-	return 0;
 }
 
 /*
@@ -3391,48 +3390,21 @@ bool bnxt_stratus_device(struct bnxt *bp)
 
 static int bnxt_init_board(struct rte_eth_dev *eth_dev)
 {
-	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	int rc;
+	struct bnxt *bp = eth_dev->data->dev_private;
 
 	/* enable device (incl. PCI PM wakeup), and bus-mastering */
-	if (!pci_dev->mem_resource[0].addr) {
-		PMD_DRV_LOG(ERR,
-			"Cannot find PCI device base address, aborting\n");
-		rc = -ENODEV;
-		goto init_err_disable;
+	bp->bar0 = (void *)pci_dev->mem_resource[0].addr;
+	bp->doorbell_base = (void *)pci_dev->mem_resource[2].addr;
+	if (!bp->bar0 || !bp->doorbell_base) {
+		PMD_DRV_LOG(ERR, "Unable to access Hardware\n");
+		return -ENODEV;
 	}
 
 	bp->eth_dev = eth_dev;
 	bp->pdev = pci_dev;
 
-	bp->bar0 = (void *)pci_dev->mem_resource[0].addr;
-	if (!bp->bar0) {
-		PMD_DRV_LOG(ERR, "Cannot map device registers, aborting\n");
-		rc = -ENOMEM;
-		goto init_err_release;
-	}
-
-	if (!pci_dev->mem_resource[2].addr) {
-		PMD_DRV_LOG(ERR,
-			    "Cannot find PCI device BAR 2 address, aborting\n");
-		rc = -ENODEV;
-		goto init_err_release;
-	} else {
-		bp->doorbell_base = (void *)pci_dev->mem_resource[2].addr;
-	}
-
 	return 0;
-
-init_err_release:
-	if (bp->bar0)
-		bp->bar0 = NULL;
-	if (bp->doorbell_base)
-		bp->doorbell_base = NULL;
-
-init_err_disable:
-
-	return rc;
 }
 
 static int bnxt_alloc_ctx_mem_blk(__rte_unused struct bnxt *bp,
@@ -3672,7 +3644,7 @@ int bnxt_alloc_ctx_mem(struct bnxt *bp)
 	else
 		ctx->flags |= BNXT_CTX_FLAG_INITED;
 
-	return 0;
+	return rc;
 }
 
 static int bnxt_alloc_stats_mem(struct bnxt *bp)

@@ -152,14 +152,11 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	}
 
 	if (i >= HWRM_CMD_TIMEOUT) {
-		PMD_DRV_LOG(ERR, "Error sending msg 0x%04x\n",
-			req->req_type);
-		goto err_ret;
+		PMD_DRV_LOG(ERR, "Error(timeout) sending msg 0x%04x\n",
+			    req->req_type);
+		return -ETIMEDOUT;
 	}
 	return 0;
-
-err_ret:
-	return -1;
 }
 
 /*
@@ -1217,7 +1214,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		PMD_DRV_LOG(ERR, "hwrm alloc invalid ring type %d\n",
 			ring_type);
 		HWRM_UNLOCK();
-		return -1;
+		return -EINVAL;
 	}
 	req.enables = rte_cpu_to_le_32(enables);
 
@@ -2930,7 +2927,7 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
 
 	if (!BNXT_PF(bp)) {
 		PMD_DRV_LOG(ERR, "Attempt to allcoate VFs on a VF!\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	rc = bnxt_hwrm_func_qcaps(bp);
@@ -2958,7 +2955,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 
 	if (!BNXT_PF(bp)) {
 		PMD_DRV_LOG(ERR, "Attempt to allcoate VFs on a VF!\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	rc = bnxt_hwrm_func_qcaps(bp);
@@ -3800,10 +3797,9 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	vnic_id_sz = bp->pf.total_vnics * sizeof(*vnic_ids);
 	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query", vnic_id_sz,
 			RTE_CACHE_LINE_SIZE);
-	if (vnic_ids == NULL) {
-		rc = -ENOMEM;
-		return rc;
-	}
+	if (vnic_ids == NULL)
+		return -ENOMEM;
+
 	for (sz = 0; sz < vnic_id_sz; sz += getpagesize())
 		rte_mem_lock_page(((char *)vnic_ids) + sz);
 
@@ -3870,10 +3866,8 @@ int bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(struct bnxt *bp, int vf)
 	vnic_id_sz = bp->pf.total_vnics * sizeof(*vnic_ids);
 	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query", vnic_id_sz,
 			RTE_CACHE_LINE_SIZE);
-	if (vnic_ids == NULL) {
-		rc = -ENOMEM;
-		return rc;
-	}
+	if (vnic_ids == NULL)
+		return -ENOMEM;
 
 	for (sz = 0; sz < vnic_id_sz; sz += getpagesize())
 		rte_mem_lock_page(((char *)vnic_ids) + sz);
@@ -3904,7 +3898,7 @@ int bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(struct bnxt *bp, int vf)
 	PMD_DRV_LOG(ERR, "No default VNIC\n");
 exit:
 	rte_free(vnic_ids);
-	return -1;
+	return rc;
 }
 
 int bnxt_hwrm_set_em_filter(struct bnxt *bp,
