@@ -351,6 +351,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	int rc = 0;
 	unsigned int i;
 	struct bnxt *bp = eth_dev->data->dev_private;
+	unsigned int num_q_stats;
 
 	memset(bnxt_stats, 0, sizeof(*bnxt_stats));
 	if (!(bp->flags & BNXT_FLAG_INIT_DONE)) {
@@ -358,7 +359,10 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings,
+			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
+
+	for (i = 0; i < num_q_stats; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 
@@ -370,7 +374,10 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 				rte_atomic64_read(&rxq->rx_mbuf_alloc_fail);
 	}
 
-	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
+	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings,
+			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
+
+	for (i = 0; i < num_q_stats; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 
