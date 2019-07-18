@@ -973,11 +973,12 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 				"Failed to retrieve link rc = 0x%x!\n", rc);
 			goto out;
 		}
-		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
 
-		if (!wait_to_complete)
+		if (!wait_to_complete || new.link_status)
 			break;
-	} while (!new.link_status && cnt--);
+
+		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
+	} while (cnt--);
 
 out:
 	/* Timed out or success */
