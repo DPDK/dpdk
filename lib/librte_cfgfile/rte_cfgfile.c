@@ -160,9 +160,9 @@ struct rte_cfgfile *
 rte_cfgfile_load_with_params(const char *filename, int flags,
 			     const struct rte_cfgfile_parameters *params)
 {
-	char buffer[CFG_NAME_LEN + CFG_VALUE_LEN + 4] = {0};
+	char buffer[CFG_NAME_LEN + CFG_VALUE_LEN + 4];
 	int lineno = 0;
-	struct rte_cfgfile *cfg = NULL;
+	struct rte_cfgfile *cfg;
 
 	if (rte_cfgfile_check_params(params))
 		return NULL;
@@ -174,7 +174,7 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 	cfg = rte_cfgfile_create(flags);
 
 	while (fgets(buffer, sizeof(buffer), f) != NULL) {
-		char *pos = NULL;
+		char *pos;
 		size_t len = strnlen(buffer, sizeof(buffer));
 		lineno++;
 		if ((len >= sizeof(buffer) - 1) && (buffer[len-1] != '\n')) {
@@ -260,7 +260,7 @@ struct rte_cfgfile *
 rte_cfgfile_create(int flags)
 {
 	int i;
-	struct rte_cfgfile *cfg = NULL;
+	struct rte_cfgfile *cfg;
 
 	cfg = malloc(sizeof(*cfg));
 
