@@ -1803,7 +1803,7 @@ cryptodevs_init(void)
 	struct rte_cryptodev_config dev_conf;
 	struct rte_cryptodev_qp_conf qp_conf;
 	uint16_t idx, max_nb_qps, qp, i;
-	int16_t cdev_id, port_id;
+	int16_t cdev_id;
 	struct rte_hash_parameters params = { 0 };
 
 	const uint64_t mseg_flag = multi_seg_required() ?
@@ -1828,45 +1828,6 @@ cryptodevs_init(void)
 				rte_errno);
 
 	printf("lcore/cryptodev/qp mappings:\n");
-
-	uint32_t max_sess_sz = 0, sess_sz;
-	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
-		void *sec_ctx;
-
-		/* Get crypto priv session size */
-		sess_sz = rte_cryptodev_sym_get_private_session_size(cdev_id);
-		if (sess_sz > max_sess_sz)
-			max_sess_sz = sess_sz;
-
-		/*
-		 * If crypto device is security capable, need to check the
-		 * size of security session as well.
-		 */
-
-		/* Get security context of the crypto device */
-		sec_ctx = rte_cryptodev_get_sec_ctx(cdev_id);
-		if (sec_ctx == NULL)
-			continue;
-
-		/* Get size of security session */
-		sess_sz = rte_security_session_get_size(sec_ctx);
-		if (sess_sz > max_sess_sz)
-			max_sess_sz = sess_sz;
-	}
-	RTE_ETH_FOREACH_DEV(port_id) {
-		void *sec_ctx;
-
-		if ((enabled_port_mask & (1 << port_id)) == 0)
-			continue;
-
-		sec_ctx = rte_eth_dev_get_sec_ctx(port_id);
-		if (sec_ctx == NULL)
-			continue;
-
-		sess_sz = rte_security_session_get_size(sec_ctx);
-		if (sess_sz > max_sess_sz)
-			max_sess_sz = sess_sz;
-	}
 
 	idx = 0;
 	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
@@ -1912,45 +1873,6 @@ cryptodevs_init(void)
 				"Device does not support at least %u "
 				"sessions", CDEV_MP_NB_OBJS);
 
-		if (!socket_ctx[dev_conf.socket_id].session_pool) {
-			char mp_name[RTE_MEMPOOL_NAMESIZE];
-			struct rte_mempool *sess_mp;
-
-			snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
-					"sess_mp_%u", dev_conf.socket_id);
-			sess_mp = rte_cryptodev_sym_session_pool_create(
-					mp_name, CDEV_MP_NB_OBJS,
-					0, CDEV_MP_CACHE_SZ, 0,
-					dev_conf.socket_id);
-			socket_ctx[dev_conf.socket_id].session_pool = sess_mp;
-		}
-
-		if (!socket_ctx[dev_conf.socket_id].session_priv_pool) {
-			char mp_name[RTE_MEMPOOL_NAMESIZE];
-			struct rte_mempool *sess_mp;
-
-			snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
-					"sess_mp_priv_%u", dev_conf.socket_id);
-			sess_mp = rte_mempool_create(mp_name,
-					CDEV_MP_NB_OBJS,
-					max_sess_sz,
-					CDEV_MP_CACHE_SZ,
-					0, NULL, NULL, NULL,
-					NULL, dev_conf.socket_id,
-					0);
-			socket_ctx[dev_conf.socket_id].session_priv_pool =
-					sess_mp;
-		}
-
-		if (!socket_ctx[dev_conf.socket_id].session_priv_pool ||
-				!socket_ctx[dev_conf.socket_id].session_pool)
-			rte_exit(EXIT_FAILURE,
-				"Cannot create session pool on socket %d\n",
-				dev_conf.socket_id);
-		else
-			printf("Allocated session pool on socket %d\n",
-					dev_conf.socket_id);
-
 		if (rte_cryptodev_configure(cdev_id, &dev_conf))
 			rte_panic("Failed to initialize cryptodev %u\n",
 					cdev_id);
@@ -1970,39 +1892,6 @@ cryptodevs_init(void)
 			rte_panic("Failed to start cryptodev %u\n",
 					cdev_id);
 	}
-
-	/* create session pools for eth devices that implement security */
-	RTE_ETH_FOREACH_DEV(port_id) {
-		if ((enabled_port_mask & (1 << port_id)) &&
-				rte_eth_dev_get_sec_ctx(port_id)) {
-			int socket_id = rte_eth_dev_socket_id(port_id);
-
-			if (!socket_ctx[socket_id].session_priv_pool) {
-				char mp_name[RTE_MEMPOOL_NAMESIZE];
-				struct rte_mempool *sess_mp;
-
-				snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
-						"sess_mp_%u", socket_id);
-				sess_mp = rte_mempool_create(mp_name,
-						(CDEV_MP_NB_OBJS * 2),
-						max_sess_sz,
-						CDEV_MP_CACHE_SZ,
-						0, NULL, NULL, NULL,
-						NULL, socket_id,
-						0);
-				if (sess_mp == NULL)
-					rte_exit(EXIT_FAILURE,
-						"Cannot create session pool "
-						"on socket %d\n", socket_id);
-				else
-					printf("Allocated session pool "
-						"on socket %d\n", socket_id);
-				socket_ctx[socket_id].session_priv_pool =
-						sess_mp;
-			}
-		}
-	}
-
 
 	printf("\n");
 
@@ -2173,6 +2062,99 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 		}
 	}
 	printf("\n");
+}
+
+static size_t
+max_session_size(void)
+{
+	size_t max_sz, sz;
+	void *sec_ctx;
+	int16_t cdev_id, port_id, n;
+
+	max_sz = 0;
+	n =  rte_cryptodev_count();
+	for (cdev_id = 0; cdev_id != n; cdev_id++) {
+		sz = rte_cryptodev_sym_get_private_session_size(cdev_id);
+		if (sz > max_sz)
+			max_sz = sz;
+		/*
+		 * If crypto device is security capable, need to check the
+		 * size of security session as well.
+		 */
+
+		/* Get security context of the crypto device */
+		sec_ctx = rte_cryptodev_get_sec_ctx(cdev_id);
+		if (sec_ctx == NULL)
+			continue;
+
+		/* Get size of security session */
+		sz = rte_security_session_get_size(sec_ctx);
+		if (sz > max_sz)
+			max_sz = sz;
+	}
+
+	RTE_ETH_FOREACH_DEV(port_id) {
+		if ((enabled_port_mask & (1 << port_id)) == 0)
+			continue;
+
+		sec_ctx = rte_eth_dev_get_sec_ctx(port_id);
+		if (sec_ctx == NULL)
+			continue;
+
+		sz = rte_security_session_get_size(sec_ctx);
+		if (sz > max_sz)
+			max_sz = sz;
+	}
+
+	return max_sz;
+}
+
+static void
+session_pool_init(struct socket_ctx *ctx, int32_t socket_id, size_t sess_sz)
+{
+	char mp_name[RTE_MEMPOOL_NAMESIZE];
+	struct rte_mempool *sess_mp;
+
+	snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
+			"sess_mp_%u", socket_id);
+	sess_mp = rte_cryptodev_sym_session_pool_create(
+			mp_name, CDEV_MP_NB_OBJS,
+			sess_sz, CDEV_MP_CACHE_SZ, 0,
+			socket_id);
+	ctx->session_pool = sess_mp;
+
+	if (ctx->session_pool == NULL)
+		rte_exit(EXIT_FAILURE,
+			"Cannot init session pool on socket %d\n", socket_id);
+	else
+		printf("Allocated session pool on socket %d\n",	socket_id);
+}
+
+static void
+session_priv_pool_init(struct socket_ctx *ctx, int32_t socket_id,
+	size_t sess_sz)
+{
+	char mp_name[RTE_MEMPOOL_NAMESIZE];
+	struct rte_mempool *sess_mp;
+
+	snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
+			"sess_mp_priv_%u", socket_id);
+	sess_mp = rte_mempool_create(mp_name,
+			CDEV_MP_NB_OBJS,
+			sess_sz,
+			CDEV_MP_CACHE_SZ,
+			0, NULL, NULL, NULL,
+			NULL, socket_id,
+			0);
+	ctx->session_priv_pool = sess_mp;
+
+	if (ctx->session_priv_pool == NULL)
+		rte_exit(EXIT_FAILURE,
+			"Cannot init session priv pool on socket %d\n",
+			socket_id);
+	else
+		printf("Allocated session priv pool on socket %d\n",
+			socket_id);
 }
 
 static void
@@ -2398,9 +2380,11 @@ main(int32_t argc, char **argv)
 {
 	int32_t ret;
 	uint32_t lcore_id;
+	uint32_t i;
 	uint8_t socket_id;
 	uint16_t portid;
 	uint64_t req_rx_offloads, req_tx_offloads;
+	size_t sess_sz;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -2428,7 +2412,8 @@ main(int32_t argc, char **argv)
 
 	nb_lcores = rte_lcore_count();
 
-	/* Replicate each context per socket */
+	sess_sz = max_session_size();
+
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		if (rte_lcore_is_enabled(lcore_id) == 0)
 			continue;
@@ -2438,20 +2423,14 @@ main(int32_t argc, char **argv)
 		else
 			socket_id = 0;
 
+		/* mbuf_pool is initialised by the pool_init() function*/
 		if (socket_ctx[socket_id].mbuf_pool)
 			continue;
 
-		/* initilaze SPD */
-		sp4_init(&socket_ctx[socket_id], socket_id);
-
-		sp6_init(&socket_ctx[socket_id], socket_id);
-
-		/* initilaze SAD */
-		sa_init(&socket_ctx[socket_id], socket_id);
-
-		rt_init(&socket_ctx[socket_id], socket_id);
-
 		pool_init(&socket_ctx[socket_id], socket_id, NB_MBUF);
+		session_pool_init(&socket_ctx[socket_id], socket_id, sess_sz);
+		session_priv_pool_init(&socket_ctx[socket_id], socket_id,
+			sess_sz);
 	}
 
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -2469,7 +2448,11 @@ main(int32_t argc, char **argv)
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
 
-		/* Start device */
+		/*
+		 * Start device
+		 * note: device must be started before a flow rule
+		 * can be installed.
+		 */
 		ret = rte_eth_dev_start(portid);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_dev_start: "
@@ -2492,6 +2475,19 @@ main(int32_t argc, char **argv)
 		ret = reassemble_init();
 		if (ret != 0)
 			rte_exit(EXIT_FAILURE, "failed at reassemble init");
+	}
+
+	/* Replicate each context per socket */
+	for (i = 0; i < NB_SOCKETS && i < rte_socket_count(); i++) {
+		socket_id = rte_socket_id_by_idx(i);
+		if ((socket_ctx[socket_id].mbuf_pool != NULL) &&
+			(socket_ctx[socket_id].sa_in == NULL) &&
+			(socket_ctx[socket_id].sa_out == NULL)) {
+			sa_init(&socket_ctx[socket_id], socket_id);
+			sp4_init(&socket_ctx[socket_id], socket_id);
+			sp6_init(&socket_ctx[socket_id], socket_id);
+			rt_init(&socket_ctx[socket_id], socket_id);
+		}
 	}
 
 	check_all_ports_link_status(enabled_port_mask);

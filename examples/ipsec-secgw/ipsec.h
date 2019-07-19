@@ -338,6 +338,9 @@ void
 enqueue_cop_burst(struct cdev_qp *cqp);
 
 int
-create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa);
+create_lookaside_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa);
+
+int
+create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa);
 
 #endif /* __IPSEC_H__ */

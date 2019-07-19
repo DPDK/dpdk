@@ -95,22 +95,23 @@ fill_ipsec_session(struct rte_ipsec_session *ss, struct ipsec_ctx *ctx,
 	/* setup crypto section */
 	if (ss->type == RTE_SECURITY_ACTION_TYPE_NONE) {
 		if (sa->crypto_session == NULL) {
-			rc = create_session(ctx, sa);
+			rc = create_lookaside_session(ctx, sa);
 			if (rc != 0)
 				return rc;
 		}
 		ss->crypto.ses = sa->crypto_session;
 	/* setup session action type */
-	} else {
+	} else if (sa->type == RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL) {
 		if (sa->sec_session == NULL) {
-			rc = create_session(ctx, sa);
+			rc = create_lookaside_session(ctx, sa);
 			if (rc != 0)
 				return rc;
 		}
 		ss->security.ses = sa->sec_session;
 		ss->security.ctx = sa->security_ctx;
 		ss->security.ol_flags = sa->ol_flags;
-	}
+	} else
+		RTE_ASSERT(0);
 
 	rc = rte_ipsec_session_prepare(ss);
 	if (rc != 0)
