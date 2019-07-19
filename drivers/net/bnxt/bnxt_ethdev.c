@@ -734,13 +734,11 @@ bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 {
 #ifdef RTE_ARCH_X86
 	/*
-	 * Vector mode receive can be enabled only if scatter tx is not
-	 * in use and tx offloads other than VLAN insertion are not
-	 * in use.
+	 * Vector mode transmit can be enabled only if not using scatter rx
+	 * or tx offloads.
 	 */
 	if (!eth_dev->data->scattered_rx &&
-	    !(eth_dev->data->dev_conf.txmode.offloads &
-	      ~DEV_TX_OFFLOAD_VLAN_INSERT)) {
+	    !eth_dev->data->dev_conf.txmode.offloads) {
 		PMD_DRV_LOG(INFO, "Using vector mode transmit for port %d\n",
 			    eth_dev->data->port_id);
 		return bnxt_xmit_pkts_vec;
