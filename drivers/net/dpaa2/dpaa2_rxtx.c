@@ -370,8 +370,9 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 	DPAA2_SET_FD_LEN(fd, mbuf->pkt_len);
 	DPAA2_SET_ONLY_FD_BPID(fd, bpid);
 	DPAA2_SET_FD_OFFSET(fd, temp->data_off);
-	DPAA2_SET_FD_ASAL(fd, DPAA2_ASAL_VAL);
 	DPAA2_FD_SET_FORMAT(fd, qbman_fd_sg);
+	DPAA2_RESET_FD_FRC(fd);
+	DPAA2_RESET_FD_CTRL(fd);
 	/*Set Scatter gather table and Scatter gather entries*/
 	sgt = (struct qbman_sge *)(
 			(size_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
