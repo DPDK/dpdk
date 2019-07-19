@@ -239,9 +239,6 @@ static int bnxt_init_chip(struct bnxt *bp)
 	unsigned int i, j;
 	int rc;
 
-	/* disable uio/vfio intr/eventfd mapping */
-	rte_intr_disable(intr_handle);
-
 	if (bp->eth_dev->data->mtu > RTE_ETHER_MTU) {
 		bp->eth_dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
