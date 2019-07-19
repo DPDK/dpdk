@@ -61,6 +61,16 @@ Deprecation Notices
   structure would be made internal (or removed if all dependencies are cleared)
   in future releases.
 
+* net: The Ethernet address and header definitions will change
+  attributes. The Ethernet address struct will no longer be marked as
+  packed since the packed attribute is meaningless on a byte
+  array. The Ethernet header will be marked as aligned on a 2-byte
+  boundary and will no longer have the packed attribute. This allows
+  for efficient access on CPU architectures where unaligned access is
+  expensive. These changes should not impact normal usage because drivers
+  naturally align the Ethernet header on receive and all known
+  encapsulations preserve the alignment of the header.
+
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
   as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,
