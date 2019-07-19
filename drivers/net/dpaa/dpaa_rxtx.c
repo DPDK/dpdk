@@ -957,6 +957,16 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 					goto send_pkts;
 				}
 			} else {
+				/* TODO not supporting sg for external bufs*/
+				if (unlikely(mbuf->nb_segs > 1)) {
+					/* Set frames_to_send & nb_bufs so
+					 * that packets are transmitted till
+					 * previous frame.
+					 */
+					frames_to_send = loop;
+					nb_bufs = loop;
+					goto send_pkts;
+				}
 				state = tx_on_external_pool(q, mbuf,
 							    &fd_arr[loop]);
 				if (unlikely(state)) {
