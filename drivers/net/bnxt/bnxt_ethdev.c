@@ -74,7 +74,8 @@ int bnxt_logtype_driver;
 #define BROADCOM_DEV_ID_57508 0x1750
 #define BROADCOM_DEV_ID_57504 0x1751
 #define BROADCOM_DEV_ID_57502 0x1752
-#define BROADCOM_DEV_ID_57500_VF 0x1807
+#define BROADCOM_DEV_ID_57500_VF1 0x1806
+#define BROADCOM_DEV_ID_57500_VF2 0x1807
 #define BROADCOM_DEV_ID_58802 0xd802
 #define BROADCOM_DEV_ID_58804 0xd804
 #define BROADCOM_DEV_ID_58808 0x16f0
@@ -126,7 +127,8 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57508) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57504) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57502) },
-	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57500_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57500_VF1) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57500_VF2) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
@@ -3329,7 +3331,8 @@ static bool bnxt_vf_pciid(uint16_t id)
 	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF1 ||
 	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF2 ||
 	    id == BROADCOM_DEV_ID_58802_VF ||
-	    id == BROADCOM_DEV_ID_57500_VF)
+	    id == BROADCOM_DEV_ID_57500_VF1 ||
+	    id == BROADCOM_DEV_ID_57500_VF2)
 		return true;
 	return false;
 }
@@ -3799,7 +3802,8 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	if (pci_dev->id.device_id == BROADCOM_DEV_ID_57508 ||
 	    pci_dev->id.device_id == BROADCOM_DEV_ID_57504 ||
 	    pci_dev->id.device_id == BROADCOM_DEV_ID_57502 ||
-	    pci_dev->id.device_id == BROADCOM_DEV_ID_57500_VF)
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_57500_VF1 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_57500_VF2)
 		bp->flags |= BNXT_FLAG_THOR_CHIP;
 
 	rc = bnxt_init_board(eth_dev);
