@@ -374,7 +374,7 @@ bnxt_rx_queue_intr_enable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 			return rc;
 		}
 		cpr = rxq->cp_ring;
-		B_CP_DB_ARM(cpr);
+		B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
 	}
 	return rc;
 }
