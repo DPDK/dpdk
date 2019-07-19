@@ -13,6 +13,7 @@
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
 #include <rte_malloc.h>
+#include <rte_tailq.h>
 
 #include "ice_ethdev.h"
 #include "ice_generic_flow.h"
@@ -664,9 +665,10 @@ ice_flow_flush(struct rte_eth_dev *dev,
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_flow *p_flow;
+	void *temp;
 	int ret = 0;
 
-	TAILQ_FOREACH(p_flow, &pf->flow_list, node) {
+	TAILQ_FOREACH_SAFE(p_flow, &pf->flow_list, node, temp) {
 		ret = ice_flow_destroy(dev, p_flow, error);
 		if (ret) {
 			rte_flow_error_set(error, -ret,
