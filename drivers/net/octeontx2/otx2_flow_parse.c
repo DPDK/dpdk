@@ -517,6 +517,13 @@ otx2_flow_parse_lc(struct otx2_parse_state *pst)
 		info.def_mask = &rte_flow_item_arp_eth_ipv4_mask;
 		info.len = sizeof(struct rte_flow_item_arp_eth_ipv4);
 		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6_EXT:
+		lid = NPC_LID_LC;
+		lt = NPC_LT_LC_IP6_EXT;
+		info.def_mask = &rte_flow_item_ipv6_ext_mask;
+		info.len = sizeof(struct rte_flow_item_ipv6_ext);
+		info.hw_hdr_len = 40;
+		break;
 	default:
 		/* No match at this layer */
 		return 0;

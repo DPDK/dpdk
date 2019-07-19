@@ -262,9 +262,11 @@ Patterns:
    +----+--------------------------------+
    | 19 | RTE_FLOW_ITEM_TYPE_VXLAN_GPE   |
    +----+--------------------------------+
-   | 20 | RTE_FLOW_ITEM_TYPE_VOID        |
+   | 20 | RTE_FLOW_ITEM_TYPE_IPV6_EXT    |
    +----+--------------------------------+
-   | 21 | RTE_FLOW_ITEM_TYPE_ANY         |
+   | 21 | RTE_FLOW_ITEM_TYPE_VOID        |
+   +----+--------------------------------+
+   | 22 | RTE_FLOW_ITEM_TYPE_ANY         |
    +----+--------------------------------+
 
 Actions:
