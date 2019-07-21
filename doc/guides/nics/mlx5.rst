@@ -351,24 +351,102 @@ Run-time configuration
 - ``txq_inline`` parameter [int]
 
   Amount of data to be inlined during TX operations. This parameter is
-  deprecated and ignored, kept for compatibility issue.
+  deprecated and converted to the new parameter ``txq_inline_max`` providing
+  partial compatibility.
 
 - ``txqs_min_inline`` parameter [int]
 
-  Enable inline send only when the number of TX queues is greater or equal
+  Enable inline data send only when the number of TX queues is greater or equal
   to this value.
 
-  This option should be used in combination with ``txq_inline`` above.
+  This option should be used in combination with ``txq_inline_max`` and
+  ``txq_inline_mpw`` below and does not affect ``txq_inline_min`` settings above.
 
-  On ConnectX-4, ConnectX-4 LX, ConnectX-5, ConnectX-6 and BlueField without
-  Enhanced MPW:
+  If this option is not specified the default value 16 is used for BlueField
+  and 8 for other platforms
 
-        - Disabled by default.
-        - In case ``txq_inline`` is set recommendation is 4.
+  The data inlining consumes the CPU cycles, so this option is intended to
+  auto enable inline data if we have enough Tx queues, which means we have
+  enough CPU cores and PCI bandwidth is getting more critical and CPU
+  is not supposed to be bottleneck anymore.
 
-  On ConnectX-5, ConnectX-6 and BlueField with Enhanced MPW:
+  The copying data into WQE improves latency and can improve PPS performance
+  when PCI back pressure is detected and may be useful for scenarios involving
+  heavy traffic on many queues.
 
-        - Set to 8 by default.
+  Because additional software logic is necessary to handle this mode, this
+  option should be used with care, as it may lower performance when back
+  pressure is not expected.
+
+- ``txq_inline_min`` parameter [int]
+
+  Minimal amount of data to be inlined into WQE during Tx operations. NICs
+  may require this minimal data amount to operate correctly. The exact value
+  may depend on NIC operation mode, requested offloads, etc.
+
+  If ``txq_inline_min`` key is present the specified value (may be aligned
+  by the driver in order not to exceed the limits and provide better descriptor
+  space utilization) will be used by the driver and it is guaranteed the
+  requested data bytes are inlined into the WQE beside other inline settings.
+  This keys also may update ``txq_inline_max`` value (default of specified
+  explicitly in devargs) to reserve the space for inline data.
+
+  If ``txq_inline_min`` key is not present, the value may be queried by the
+  driver from the NIC via DevX if this feature is available. If there is no DevX
+  enabled/supported the value 18 (supposing L2 header including VLAN) is set
+  for ConnectX-4, value 58 (supposing L2-L4 headers, required by configurations
+  over E-Switch) is set for ConnectX-4 Lx, and 0 is set by default for ConnectX-5
+  and newer NICs. If packet is shorter the ``txq_inline_min`` value, the entire
+  packet is inlined.
+
+  For the ConnectX-4 and ConnectX-4 Lx NICs driver does not allow to set
+  this value below 18 (minimal L2 header, including VLAN).
+
+  Please, note, this minimal data inlining disengages eMPW feature (Enhanced
+  Multi-Packet Write), because last one does not support partial packet inlining.
+  This is not very critical due to minimal data inlining is mostly required
+  by ConnectX-4 and ConnectX-4 Lx, these NICs do not support eMPW feature.
+
+- ``txq_inline_max`` parameter [int]
+
+  Specifies the maximal packet length to be completely inlined into WQE
+  Ethernet Segment for ordinary SEND method. If packet is larger than specified
+  value, the packet data won't be copied by the driver at all, data buffer
+  is addressed with a pointer. If packet length is less or equal all packet
+  data will be copied into WQE. This may improve PCI bandwidth utilization for
+  short packets significantly but requires the extra CPU cycles.
+
+  The data inline feature is controlled by number of Tx queues, if number of Tx
+  queues is larger than ``txqs_min_inline`` key parameter, the inline feature
+  is engaged, if there are not enough Tx queues (which means not enough CPU cores
+  and CPU resources are scarce), data inline is not performed by the driver.
+  Assigning ``txqs_min_inline`` with zero always enables the data inline.
+
+  The default ``txq_inline_max`` value is 290. The specified value may be adjusted
+  by the driver in order not to exceed the limit (930 bytes) and to provide better
+  WQE space filling without gaps, the adjustment is reflected in the debug log.
+
+- ``txq_inline_mpw`` parameter [int]
+
+  Specifies the maximal packet length to be completely inlined into WQE for
+  Enhanced MPW method. If packet is large the specified value, the packet data
+  won't be copied, and data buffer is addressed with pointer. If packet length
+  is less or equal, all packet data will be copied into WQE. This may improve PCI
+  bandwidth utilization for short packets significantly but requires the extra
+  CPU cycles.
+
+  The data inline feature is controlled by number of TX queues, if number of Tx
+  queues is larger than ``txqs_min_inline`` key parameter, the inline feature
+  is engaged, if there are not enough Tx queues (which means not enough CPU cores
+  and CPU resources are scarce), data inline is not performed by the driver.
+  Assigning ``txqs_min_inline`` with zero always enables the data inline.
+
+  The default ``txq_inline_mpw`` value is 188. The specified value may be adjusted
+  by the driver in order not to exceed the limit (930 bytes) and to provide better
+  WQE space filling without gaps, the adjustment is reflected in the debug log.
+  Due to multiple packets may be included to the same WQE with Enhanced Multi
+  Packet Write Method and overall WQE size is limited it is not recommended to
+  specify large values for the ``txq_inline_mpw``.
 
 - ``txqs_max_vec`` parameter [int]
 
@@ -376,39 +454,11 @@ Run-time configuration
   equal to this value. This parameter is deprecated and ignored, kept
   for compatibility issue to not prevent driver from probing.
 
-- ``txq_mpw_en`` parameter [int]
-
-  A nonzero value enables multi-packet send (MPS) for ConnectX-4 Lx and
-  enhanced multi-packet send (Enhanced MPS) for ConnectX-5, ConnectX-6 and BlueField.
-  MPS allows the TX burst function to pack up multiple packets in a
-  single descriptor session in order to save PCI bandwidth and improve
-  performance at the cost of a slightly higher CPU usage. When
-  ``txq_inline`` is set along with ``txq_mpw_en``, TX burst function tries
-  to copy entire packet data on to TX descriptor instead of including
-  pointer of packet only if there is enough room remained in the
-  descriptor. ``txq_inline`` sets per-descriptor space for either pointers
-  or inlined packets. In addition, Enhanced MPS supports hybrid mode -
-  mixing inlined packets and pointers in the same descriptor.
-
-  This option cannot be used with certain offloads such as ``DEV_TX_OFFLOAD_TCP_TSO,
-  DEV_TX_OFFLOAD_VXLAN_TNL_TSO, DEV_TX_OFFLOAD_GRE_TNL_TSO, DEV_TX_OFFLOAD_VLAN_INSERT``.
-  When those offloads are requested the MPS send function will not be used.
-
-  It is currently only supported on the ConnectX-4 Lx, ConnectX-5, ConnectX-6 and BlueField
-  families of adapters.
-  On ConnectX-4 Lx the MPW is considered un-secure hence disabled by default.
-  Users which enable the MPW should be aware that application which provides incorrect
-  mbuf descriptors in the Tx burst can lead to serious errors in the host including, on some cases,
-  NIC to get stuck.
-  On ConnectX-5, ConnectX-6 and BlueField the MPW is secure and enabled by default.
-
 - ``txq_mpw_hdr_dseg_en`` parameter [int]
 
   A nonzero value enables including two pointers in the first block of TX
   descriptor. The parameter is deprecated and ignored, kept for compatibility
   issue.
-
-  Effective only when Enhanced MPS is supported. Disabled by default.
 
 - ``txq_max_inline_len`` parameter [int]
 
@@ -416,19 +466,28 @@ Run-time configuration
   be inlined. If the size of a packet is larger than configured value, the
   packet isn't inlined even though there's enough space remained in the
   descriptor. Instead, the packet is included with pointer. This parameter
-  is deprecated.
+  is deprecated and converted directly to ``txq_inline_mpw`` providing full
+  compatibility. Valid only if eMPW feature is engaged.
+
+- ``txq_mpw_en`` parameter [int]
+
+  A nonzero value enables Enhanced Multi-Packet Write (eMPW) for ConnectX-5,
+  ConnectX-6 and BlueField. eMPW allows the TX burst function to pack up multiple
+  packets in a single descriptor session in order to save PCI bandwidth and improve
+  performance at the cost of a slightly higher CPU usage. When ``txq_inline_mpw``
+  is set along with ``txq_mpw_en``, TX burst function copies entire packet
+  data on to TX descriptor instead of including pointer of packet.
+
+  The Enhanced Multi-Packet Write feature is enabled by default if NIC supports
+  it, can be disabled by explicit specifying 0 value for ``txq_mpw_en`` option.
+  Also, if minimal data inlining is requested by non-zero ``txq_inline_min``
+  option or reported by the NIC, the eMPW feature is disengaged.
 
 - ``tx_vec_en`` parameter [int]
 
   A nonzero value enables Tx vector on ConnectX-5, ConnectX-6 and BlueField
   NICs if the number of global Tx queues on the port is less than
   ``txqs_max_vec``. The parameter is deprecated and ignored.
-
-  This option cannot be used with certain offloads such as ``DEV_TX_OFFLOAD_TCP_TSO,
-  DEV_TX_OFFLOAD_VXLAN_TNL_TSO, DEV_TX_OFFLOAD_GRE_TNL_TSO, DEV_TX_OFFLOAD_VLAN_INSERT``.
-  When those offloads are requested the MPS send function will not be used.
-
-  Enabled by default on ConnectX-5, ConnectX-6 and BlueField.
 
 - ``rx_vec_en`` parameter [int]
 

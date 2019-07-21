@@ -116,6 +116,7 @@ New Features
   * Added support for IP-in-IP tunnel.
   * Accelerate flows with count action creation and destroy.
   * Accelerate flows counter query.
+  * Improved Tx datapath performance with enabled HW offloads.
 
 * **Updated Solarflare network PMD.**
 

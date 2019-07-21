@@ -198,6 +198,7 @@ struct mlx5_dev_config {
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
 	unsigned int cqe_pad:1; /* CQE padding is enabled. */
 	unsigned int tso:1; /* Whether TSO is supported. */
+	unsigned int tx_inline:1; /* Engage TX data inlining. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
 	unsigned int mr_ext_memseg_en:1;
 	/* Whether memseg should be extended for MR creation. */
@@ -223,6 +224,9 @@ struct mlx5_dev_config {
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	unsigned int max_dump_files_num; /* Maximum dump files per queue. */
 	int txqs_inline; /* Queue number threshold for inlining. */
+	int txq_inline_min; /* Minimal amount of data bytes to inline. */
+	int txq_inline_max; /* Max packet size for inlining with SEND. */
+	int txq_inline_mpw; /* Max packet size for inlining with eMPW. */
 	struct mlx5_hca_attr hca_attr; /* HCA attributes. */
 };
 
