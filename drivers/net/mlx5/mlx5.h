@@ -519,15 +519,9 @@ int mlx5_proc_priv_init(struct rte_eth_dev *dev);
 /* mlx5_ethdev.c */
 
 int mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE]);
-int mlx5_get_ifname_base(const struct rte_eth_dev *base,
-			 const struct rte_eth_dev *dev,
-			 char (*ifname)[IF_NAMESIZE]);
 int mlx5_get_master_ifname(const char *ibdev_path, char (*ifname)[IF_NAMESIZE]);
 unsigned int mlx5_ifindex(const struct rte_eth_dev *dev);
 int mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr);
-int mlx5_ifreq_base(const struct rte_eth_dev *base,
-		    const struct rte_eth_dev *dev,
-		    int req, struct ifreq *ifr);
 int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
 int mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep,
 		   unsigned int flags);
