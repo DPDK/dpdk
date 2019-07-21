@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2015 6WIND S.A.
- * Copyright 2015 Mellanox Technologies, Ltd
+ * Copyright 2015-2019 Mellanox Technologies, Ltd
  */
 
 #include <assert.h>
@@ -33,6 +33,57 @@
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 #include "mlx5_prm.h"
+
+/* TX burst subroutines return codes. */
+enum mlx5_txcmp_code {
+	MLX5_TXCMP_CODE_EXIT = 0,
+	MLX5_TXCMP_CODE_ERROR,
+	MLX5_TXCMP_CODE_SINGLE,
+	MLX5_TXCMP_CODE_MULTI,
+	MLX5_TXCMP_CODE_TSO,
+	MLX5_TXCMP_CODE_EMPW,
+};
+
+/*
+ * These defines are used to configure Tx burst routine option set
+ * supported at compile time. The not specified options are optimized out
+ * out due to if conditions can be explicitly calculated at compile time.
+ * The offloads with bigger runtime check (require more CPU cycles to
+ * skip) overhead should have the bigger index - this is needed to
+ * select the better matching routine function if no exact match and
+ * some offloads are not actually requested.
+ */
+#define MLX5_TXOFF_CONFIG_MULTI (1u << 0) /* Multi-segment packets.*/
+#define MLX5_TXOFF_CONFIG_TSO (1u << 1) /* TCP send offload supported.*/
+#define MLX5_TXOFF_CONFIG_SWP (1u << 2) /* Tunnels/SW Parser offloads.*/
+#define MLX5_TXOFF_CONFIG_CSUM (1u << 3) /* Check Sums offloaded. */
+#define MLX5_TXOFF_CONFIG_INLINE (1u << 4) /* Data inlining supported. */
+#define MLX5_TXOFF_CONFIG_VLAN (1u << 5) /* VLAN insertion supported.*/
+#define MLX5_TXOFF_CONFIG_METADATA (1u << 6) /* Flow metadata. */
+#define MLX5_TXOFF_CONFIG_EMPW (1u << 8) /* Enhanced MPW supported.*/
+
+/* The most common offloads groups. */
+#define MLX5_TXOFF_CONFIG_NONE 0
+#define MLX5_TXOFF_CONFIG_FULL (MLX5_TXOFF_CONFIG_MULTI | \
+				MLX5_TXOFF_CONFIG_TSO | \
+				MLX5_TXOFF_CONFIG_SWP | \
+				MLX5_TXOFF_CONFIG_CSUM | \
+				MLX5_TXOFF_CONFIG_INLINE | \
+				MLX5_TXOFF_CONFIG_VLAN | \
+				MLX5_TXOFF_CONFIG_METADATA)
+
+#define MLX5_TXOFF_CONFIG(mask) (olx & MLX5_TXOFF_CONFIG_##mask)
+
+#define MLX5_TXOFF_DECL(func, olx) \
+static uint16_t mlx5_tx_burst_##func(void *txq, \
+				     struct rte_mbuf **pkts, \
+				    uint16_t pkts_n) \
+{ \
+	return mlx5_tx_burst_tmpl((struct mlx5_txq_data *)txq, \
+		    pkts, pkts_n, (olx)); \
+}
+
+#define MLX5_TXOFF_INFO(func, olx) {mlx5_tx_burst_##func, olx},
 
 static __rte_always_inline uint32_t
 rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe);
@@ -1531,7 +1582,323 @@ mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
 }
 
 /**
- * Configure the TX function to use.
+ * DPDK Tx callback template. This is configured template
+ * used to generate routines optimized for specified offload setup.
+ * One of this generated functions is chosen at SQ configuration
+ * time.
+ *
+ * @param txq
+ *   Generic pointer to TX queue structure.
+ * @param[in] pkts
+ *   Packets to transmit.
+ * @param pkts_n
+ *   Number of packets in array.
+ * @param olx
+ *   Configured offloads mask, presents the bits of MLX5_TXOFF_CONFIG_xxx
+ *   values. Should be static to take compile time static configuration
+ *   advantages.
+ *
+ * @return
+ *   Number of packets successfully transmitted (<= pkts_n).
+ */
+static __rte_always_inline uint16_t
+mlx5_tx_burst_tmpl(struct mlx5_txq_data *restrict txq,
+		   struct rte_mbuf **restrict pkts,
+		   uint16_t pkts_n,
+		   unsigned int olx)
+{
+	(void)txq;
+	(void)pkts;
+	(void)pkts_n;
+	(void)olx;
+	return 0;
+}
+
+/* Generate routines with Enhanced Multi-Packet Write support. */
+MLX5_TXOFF_DECL(full_empw,
+		MLX5_TXOFF_CONFIG_FULL | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(none_empw,
+		MLX5_TXOFF_CONFIG_NONE | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(md_empw,
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(mt_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(mtsc_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(mti_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(mtv_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(mtiv_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(sc_empw,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(sci_empw,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(scv_empw,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(sciv_empw,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(i_empw,
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(v_empw,
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(iv_empw,
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+/* Generate routines without Enhanced Multi-Packet Write support. */
+MLX5_TXOFF_DECL(full,
+		MLX5_TXOFF_CONFIG_FULL)
+
+MLX5_TXOFF_DECL(none,
+		MLX5_TXOFF_CONFIG_NONE)
+
+MLX5_TXOFF_DECL(md,
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_DECL(mt,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_DECL(mtsc,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_DECL(mti,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+
+MLX5_TXOFF_DECL(mtv,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+
+MLX5_TXOFF_DECL(mtiv,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_DECL(sc,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_DECL(sci,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+
+MLX5_TXOFF_DECL(scv,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+
+MLX5_TXOFF_DECL(sciv,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_DECL(i,
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_DECL(v,
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_DECL(iv,
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+/*
+ * Array of declared and compiled Tx burst function and corresponding
+ * supported offloads set. The array is used to select the Tx burst
+ * function for specified offloads set at Tx queue configuration time.
+ */
+const struct {
+	eth_tx_burst_t func;
+	unsigned int olx;
+} txoff_func[] = {
+MLX5_TXOFF_INFO(full_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(none_empw,
+		MLX5_TXOFF_CONFIG_NONE | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(md_empw,
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(mt_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(mtsc_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(mti_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(mtv_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(mtiv_empw,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(sc_empw,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(sci_empw,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(scv_empw,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(sciv_empw,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(i_empw,
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(v_empw,
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(iv_empw,
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(full,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(none,
+		MLX5_TXOFF_CONFIG_NONE)
+
+MLX5_TXOFF_INFO(md,
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(mt,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(mtsc,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(mti,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+
+MLX5_TXOFF_INFO(mtv,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(mtiv,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(sc,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(sci,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(scv,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(sciv,
+		MLX5_TXOFF_CONFIG_SWP |	MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(i,
+		MLX5_TXOFF_CONFIG_INLINE |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(v,
+		MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+
+MLX5_TXOFF_INFO(iv,
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA)
+};
+
+/**
+ * Configure the Tx function to use. The routine checks configured
+ * Tx offloads for the device and selects appropriate Tx burst
+ * routine. There are multiple Tx burst routines compiled from
+ * the same template in the most optimal way for the dedicated
+ * Tx offloads set.
  *
  * @param dev
  *   Pointer to private data structure.
@@ -1542,8 +1909,153 @@ mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
 eth_tx_burst_t
 mlx5_select_tx_function(struct rte_eth_dev *dev)
 {
-	(void)dev;
-	return removed_tx_burst;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
+	unsigned int diff = 0, olx = 0, i, m;
+
+	static_assert(MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE <=
+		      MLX5_DSEG_MAX, "invalid WQE max size");
+	static_assert(MLX5_WQE_CSEG_SIZE == MLX5_WSEG_SIZE,
+		      "invalid WQE Control Segment size");
+	static_assert(MLX5_WQE_ESEG_SIZE == MLX5_WSEG_SIZE,
+		      "invalid WQE Ethernet Segment size");
+	static_assert(MLX5_WQE_DSEG_SIZE == MLX5_WSEG_SIZE,
+		      "invalid WQE Data Segment size");
+	static_assert(MLX5_WQE_SIZE == 4 * MLX5_WSEG_SIZE,
+		      "invalid WQE size");
+	assert(priv);
+	if (tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS) {
+		/* We should support Multi-Segment Packets. */
+		olx |= MLX5_TXOFF_CONFIG_MULTI;
+	}
+	if (tx_offloads & (DEV_TX_OFFLOAD_TCP_TSO |
+			   DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+			   DEV_TX_OFFLOAD_GRE_TNL_TSO |
+			   DEV_TX_OFFLOAD_IP_TNL_TSO |
+			   DEV_TX_OFFLOAD_UDP_TNL_TSO)) {
+		/* We should support TCP Send Offload. */
+		olx |= MLX5_TXOFF_CONFIG_TSO;
+	}
+	if (tx_offloads & (DEV_TX_OFFLOAD_IP_TNL_TSO |
+			   DEV_TX_OFFLOAD_UDP_TNL_TSO |
+			   DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
+		/* We should support Software Parser for Tunnels. */
+		olx |= MLX5_TXOFF_CONFIG_SWP;
+	}
+	if (tx_offloads & (DEV_TX_OFFLOAD_IPV4_CKSUM |
+			   DEV_TX_OFFLOAD_UDP_CKSUM |
+			   DEV_TX_OFFLOAD_TCP_CKSUM |
+			   DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
+		/* We should support IP/TCP/UDP Checksums. */
+		olx |= MLX5_TXOFF_CONFIG_CSUM;
+	}
+	if (tx_offloads & DEV_TX_OFFLOAD_VLAN_INSERT) {
+		/* We should support VLAN insertion. */
+		olx |= MLX5_TXOFF_CONFIG_VLAN;
+	}
+	if (priv->txqs_n && (*priv->txqs)[0]) {
+		struct mlx5_txq_data *txd = (*priv->txqs)[0];
+
+		if (txd->inlen_send) {
+			/*
+			 * Check the data inline requirements. Data inline
+			 * is enabled on per device basis, we can check
+			 * the first Tx queue only.
+			 *
+			 * If device does not support VLAN insertion in WQE
+			 * and some queues are requested to perform VLAN
+			 * insertion offload than inline must be enabled.
+			 */
+			olx |= MLX5_TXOFF_CONFIG_INLINE;
+		}
+	}
+	if (config->mps == MLX5_MPW_ENHANCED &&
+	    config->txq_inline_min <= 0) {
+		/*
+		 * The NIC supports Enhanced Multi-Packet Write.
+		 * We do not support legacy MPW due to its
+		 * hardware related problems, so we just ignore
+		 * legacy MLX5_MPW settings. There should be no
+		 * minimal required inline data.
+		 */
+		olx |= MLX5_TXOFF_CONFIG_EMPW;
+	}
+	if (tx_offloads & DEV_TX_OFFLOAD_MATCH_METADATA) {
+		/* We should support Flow metadata. */
+		olx |= MLX5_TXOFF_CONFIG_METADATA;
+	}
+	/*
+	 * Scan the routines table to find the minimal
+	 * satisfying routine with requested offloads.
+	 */
+	m = RTE_DIM(txoff_func);
+	for (i = 0; i < RTE_DIM(txoff_func); i++) {
+		unsigned int tmp;
+
+		tmp = txoff_func[i].olx;
+		if (tmp == olx) {
+			/* Meets requested offloads exactly.*/
+			m = i;
+			break;
+		}
+		if ((tmp & olx) != olx) {
+			/* Does not meet requested offloads at all. */
+			continue;
+		}
+		if ((olx ^ tmp) & MLX5_TXOFF_CONFIG_EMPW)
+			/* Do not enable eMPW if not configured. */
+			continue;
+		if ((olx ^ tmp) & MLX5_TXOFF_CONFIG_INLINE)
+			/* Do not enable inlining if not configured. */
+			continue;
+		/*
+		 * Some routine meets the requirements.
+		 * Check whether it has minimal amount
+		 * of not requested offloads.
+		 */
+		tmp = __builtin_popcountl(tmp & ~olx);
+		if (m >= RTE_DIM(txoff_func) || tmp < diff) {
+			/* First or better match, save and continue. */
+			m = i;
+			diff = tmp;
+			continue;
+		}
+		if (tmp == diff) {
+			tmp = txoff_func[i].olx ^ txoff_func[m].olx;
+			if (__builtin_ffsl(txoff_func[i].olx & ~tmp) <
+			    __builtin_ffsl(txoff_func[m].olx & ~tmp)) {
+				/* Lighter not requested offload. */
+				m = i;
+			}
+		}
+	}
+	if (m >= RTE_DIM(txoff_func)) {
+		DRV_LOG(DEBUG, "port %u has no selected Tx function"
+			       " for requested offloads %04X",
+				dev->data->port_id, olx);
+		return NULL;
+	}
+	DRV_LOG(DEBUG, "port %u has selected Tx function"
+		       " supporting offloads %04X/%04X",
+			dev->data->port_id, olx, txoff_func[m].olx);
+	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_MULTI)
+		DRV_LOG(DEBUG, "\tMULTI (multi segment)");
+	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_TSO)
+		DRV_LOG(DEBUG, "\tTSO   (TCP send offload)");
+	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_SWP)
+		DRV_LOG(DEBUG, "\tSWP   (software parser)");
+	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_CSUM)
+		DRV_LOG(DEBUG, "\tCSUM  (checksum offload)");
+	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_INLINE)
+		DRV_LOG(DEBUG, "\tINLIN (inline data)");
+	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_VLAN)
+		DRV_LOG(DEBUG, "\tVLANI (VLAN insertion)");
+	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_METADATA)
+		DRV_LOG(DEBUG, "\tMETAD (tx Flow metadata)");
+	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_EMPW)
+		DRV_LOG(DEBUG, "\tEMPW  (Enhanced MPW)");
+	return txoff_func[m].func;
 }
 
 
