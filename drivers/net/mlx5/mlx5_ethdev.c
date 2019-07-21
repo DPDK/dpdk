@@ -592,6 +592,42 @@ mlx5_set_default_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 }
 
 /**
+ * Sets tx mbuf limiting parameters.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] info
+ *   Info structure output buffer.
+ */
+static void
+mlx5_set_txlimit_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+	unsigned int inlen;
+	uint16_t nb_max;
+
+	inlen = (config->txq_inline_max == MLX5_ARG_UNSET) ?
+		MLX5_SEND_DEF_INLINE_LEN :
+		(unsigned int)config->txq_inline_max;
+	assert(config->txq_inline_min >= 0);
+	inlen = RTE_MAX(inlen, (unsigned int)config->txq_inline_min);
+	inlen = RTE_MIN(inlen, MLX5_WQE_SIZE_MAX +
+			       MLX5_ESEG_MIN_INLINE_SIZE -
+			       MLX5_WQE_CSEG_SIZE -
+			       MLX5_WQE_ESEG_SIZE -
+			       MLX5_WQE_DSEG_SIZE * 2);
+	nb_max = (MLX5_WQE_SIZE_MAX +
+		  MLX5_ESEG_MIN_INLINE_SIZE -
+		  MLX5_WQE_CSEG_SIZE -
+		  MLX5_WQE_ESEG_SIZE -
+		  MLX5_WQE_DSEG_SIZE -
+		  inlen) / MLX5_WSEG_SIZE;
+	info->tx_desc_lim.nb_seg_max = nb_max;
+	info->tx_desc_lim.nb_mtu_seg_max = nb_max;
+}
+
+/**
  * DPDK callback to get information about the device.
  *
  * @param dev
@@ -634,6 +670,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->speed_capa = priv->link_speed_capa;
 	info->flow_type_rss_offloads = ~MLX5_RSS_HF_MASK;
 	mlx5_set_default_params(dev, info);
+	mlx5_set_txlimit_params(dev, info);
 	info->switch_info.name = dev->data->name;
 	info->switch_info.domain_id = priv->domain_id;
 	info->switch_info.port_id = priv->representor_id;
