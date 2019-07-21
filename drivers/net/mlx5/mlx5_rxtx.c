@@ -507,7 +507,7 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *txq,
 			MKSTR(err_str, "Unexpected CQE error syndrome "
 			      "0x%02x CQN = %u SQN = %u wqe_counter = %u "
 			      "wq_ci = %u cq_ci = %u", err_cqe->syndrome,
-			      txq_ctrl->cqn, txq->qp_num_8s >> 8,
+			      txq->cqe_s, txq->qp_num_8s >> 8,
 			      rte_be_to_cpu_16(err_cqe->wqe_counter),
 			      txq->wqe_ci, txq->cq_ci);
 			MKSTR(name, "dpdk_mlx5_port_%u_txq_%u_index_%u_%u",
@@ -516,7 +516,7 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *txq,
 			mlx5_dump_debug_information(name, NULL, err_str, 0);
 			mlx5_dump_debug_information(name, "MLX5 Error CQ:",
 						    (const void *)((uintptr_t)
-						    &(*txq->cqes)[0]),
+						    txq->cqes),
 						    sizeof(*err_cqe) *
 						    (1 << txq->cqe_n));
 			mlx5_dump_debug_information(name, "MLX5 Error SQ:",

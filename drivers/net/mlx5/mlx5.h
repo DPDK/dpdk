@@ -194,6 +194,7 @@ TAILQ_HEAD(mlx5_flows, rte_flow);
 struct mlx5_dev_config {
 	unsigned int hw_csum:1; /* Checksum offload is supported. */
 	unsigned int hw_vlan_strip:1; /* VLAN stripping is supported. */
+	unsigned int hw_vlan_insert:1; /* VLAN insertion in WQE is supported. */
 	unsigned int hw_fcs_strip:1; /* FCS stripping is supported. */
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
 	unsigned int vf:1; /* This is a VF. */
@@ -203,7 +204,6 @@ struct mlx5_dev_config {
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
 	unsigned int cqe_pad:1; /* CQE padding is enabled. */
 	unsigned int tso:1; /* Whether TSO is supported. */
-	unsigned int tx_inline:1; /* Engage TX data inlining. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
 	unsigned int mr_ext_memseg_en:1;
 	/* Whether memseg should be extended for MR creation. */

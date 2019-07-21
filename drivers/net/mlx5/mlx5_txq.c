@@ -47,7 +47,7 @@ txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl)
 	unsigned int i;
 
 	for (i = 0; (i != elts_n); ++i)
-		(*txq_ctrl->txq.elts)[i] = NULL;
+		txq_ctrl->txq.elts[i] = NULL;
 	DRV_LOG(DEBUG, "port %u Tx queue %u allocated and configured %u WRs",
 		PORT_ID(txq_ctrl->priv), txq_ctrl->txq.idx, elts_n);
 	txq_ctrl->txq.elts_head = 0;
@@ -68,7 +68,7 @@ txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
 	const uint16_t elts_m = elts_n - 1;
 	uint16_t elts_head = txq_ctrl->txq.elts_head;
 	uint16_t elts_tail = txq_ctrl->txq.elts_tail;
-	struct rte_mbuf *(*elts)[elts_n] = txq_ctrl->txq.elts;
+	struct rte_mbuf *(*elts)[elts_n] = &txq_ctrl->txq.elts;
 
 	DRV_LOG(DEBUG, "port %u Tx queue %u freeing WRs",
 		PORT_ID(txq_ctrl->priv), txq_ctrl->txq.idx);
@@ -411,7 +411,8 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	attr.cq = (struct ibv_cq_init_attr_ex){
 		.comp_mask = 0,
 	};
-	cqe_n = desc / MLX5_TX_COMP_THRESH + 1;
+	cqe_n = desc / MLX5_TX_COMP_THRESH +
+		1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
 	tmpl.cq = mlx5_glue->create_cq(priv->sh->ctx, cqe_n, NULL, NULL, 0);
 	if (tmpl.cq == NULL) {
 		DRV_LOG(ERR, "port %u Tx queue %u CQ creation failure",
@@ -449,7 +450,7 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		.pd = priv->sh->pd,
 		.comp_mask = IBV_QP_INIT_ATTR_PD,
 	};
-	if (txq_data->max_inline)
+	if (txq_data->inlen_send)
 		attr.init.cap.max_inline_data = txq_ctrl->max_inline_data;
 	if (txq_data->tso_en) {
 		attr.init.max_tso_header = txq_ctrl->max_tso_header;
@@ -523,25 +524,29 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	txq_data->cqe_n = log2above(cq_info.cqe_cnt);
+	txq_data->cqe_s = 1 << txq_data->cqe_n;
+	txq_data->cqe_m = txq_data->cqe_s - 1;
 	txq_data->qp_num_8s = tmpl.qp->qp_num << 8;
 	txq_data->wqes = qp.sq.buf;
 	txq_data->wqe_n = log2above(qp.sq.wqe_cnt);
+	txq_data->wqe_s = 1 << txq_data->wqe_n;
+	txq_data->wqe_m = txq_data->wqe_s - 1;
+	txq_data->wqes_end = txq_data->wqes + txq_data->wqe_s;
 	txq_data->qp_db = &qp.dbrec[MLX5_SND_DBR];
 	txq_data->cq_db = cq_info.dbrec;
-	txq_data->cqes =
-		(volatile struct mlx5_cqe (*)[])
-		(uintptr_t)cq_info.buf;
+	txq_data->cqes = (volatile struct mlx5_cqe *)cq_info.buf;
 	txq_data->cq_ci = 0;
 #ifndef NDEBUG
 	txq_data->cq_pi = 0;
 #endif
 	txq_data->wqe_ci = 0;
 	txq_data->wqe_pi = 0;
+	txq_data->wqe_comp = 0;
+	txq_data->wqe_thres = txq_data->wqe_s / MLX5_TX_COMP_THRESH_INLINE_DIV;
 	txq_ibv->qp = tmpl.qp;
 	txq_ibv->cq = tmpl.cq;
 	rte_atomic32_inc(&txq_ibv->refcnt);
 	txq_ctrl->bf_reg = qp.bf.reg;
-	txq_ctrl->cqn = cq_info.cqn;
 	txq_uar_init(txq_ctrl);
 	if (qp.comp_mask & MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
 		txq_ctrl->uar_mmap_offset = qp.uar_mmap_offset;
@@ -663,7 +668,11 @@ txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl)
 	unsigned int wqe_size;
 	const unsigned int desc = 1 << txq_ctrl->txq.elts_n;
 
-	wqe_size = MLX5_WQE_SIZE + txq_ctrl->max_inline_data;
+	wqe_size = MLX5_WQE_CSEG_SIZE +
+		   MLX5_WQE_ESEG_SIZE +
+		   MLX5_WSEG_SIZE -
+		   MLX5_ESEG_MIN_INLINE_SIZE +
+		   txq_ctrl->max_inline_data;
 	return rte_align32pow2(wqe_size * desc) / MLX5_WQE_SIZE;
 }
 
@@ -676,7 +685,189 @@ txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl)
 static void
 txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 {
-	(void)txq_ctrl;
+	struct mlx5_priv *priv = txq_ctrl->priv;
+	struct mlx5_dev_config *config = &priv->config;
+	unsigned int inlen_send; /* Inline data for ordinary SEND.*/
+	unsigned int inlen_empw; /* Inline data for enhanced MPW. */
+	unsigned int inlen_mode; /* Minimal required Inline data. */
+	unsigned int txqs_inline; /* Min Tx queues to enable inline. */
+	uint64_t dev_txoff = priv->dev_data->dev_conf.txmode.offloads;
+	bool tso = txq_ctrl->txq.offloads & (DEV_TX_OFFLOAD_TCP_TSO |
+					    DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+					    DEV_TX_OFFLOAD_GRE_TNL_TSO |
+					    DEV_TX_OFFLOAD_IP_TNL_TSO |
+					    DEV_TX_OFFLOAD_UDP_TNL_TSO);
+	bool vlan_inline;
+	unsigned int temp;
+
+	if (config->txqs_inline == MLX5_ARG_UNSET)
+		txqs_inline =
+#if defined(RTE_ARCH_ARM64)
+		(priv->sh->pci_dev->id.device_id ==
+			PCI_DEVICE_ID_MELLANOX_CONNECTX5BF) ?
+			MLX5_INLINE_MAX_TXQS_BLUEFIELD :
+#endif
+			MLX5_INLINE_MAX_TXQS;
+	else
+		txqs_inline = (unsigned int)config->txqs_inline;
+	inlen_send = (config->txq_inline_max == MLX5_ARG_UNSET) ?
+		     MLX5_SEND_DEF_INLINE_LEN :
+		     (unsigned int)config->txq_inline_max;
+	inlen_empw = (config->txq_inline_mpw == MLX5_ARG_UNSET) ?
+		     MLX5_EMPW_DEF_INLINE_LEN :
+		     (unsigned int)config->txq_inline_mpw;
+	inlen_mode = (config->txq_inline_min == MLX5_ARG_UNSET) ?
+		     0 : (unsigned int)config->txq_inline_min;
+	if (config->mps != MLX5_MPW_ENHANCED)
+		inlen_empw = 0;
+	/*
+	 * If there is requested minimal amount of data to inline
+	 * we MUST enable inlining. This is a case for ConnectX-4
+	 * which usually requires L2 inlined for correct operating
+	 * and ConnectX-4LX which requires L2-L4 inlined to
+	 * support E-Switch Flows.
+	 */
+	if (inlen_mode) {
+		if (inlen_mode <= MLX5_ESEG_MIN_INLINE_SIZE) {
+			/*
+			 * Optimize minimal inlining for single
+			 * segment packets to fill one WQEBB
+			 * without gaps.
+			 */
+			temp = MLX5_ESEG_MIN_INLINE_SIZE;
+		} else {
+			temp = inlen_mode - MLX5_ESEG_MIN_INLINE_SIZE;
+			temp = RTE_ALIGN(temp, MLX5_WSEG_SIZE) +
+			       MLX5_ESEG_MIN_INLINE_SIZE;
+			temp = RTE_MIN(temp, MLX5_SEND_MAX_INLINE_LEN);
+		}
+		if (temp != inlen_mode) {
+			DRV_LOG(INFO,
+				"port %u minimal required inline setting"
+				" aligned from %u to %u",
+				PORT_ID(priv), inlen_mode, temp);
+			inlen_mode = temp;
+		}
+	}
+	/*
+	 * If port is configured to support VLAN insertion and device
+	 * does not support this feature by HW (for NICs before ConnectX-5
+	 * or in case of wqe_vlan_insert flag is not set) we must enable
+	 * data inline on all queues because it is supported by single
+	 * tx_burst routine.
+	 */
+	txq_ctrl->txq.vlan_en = config->hw_vlan_insert;
+	vlan_inline = (dev_txoff & DEV_TX_OFFLOAD_VLAN_INSERT) &&
+		      !config->hw_vlan_insert;
+	if (vlan_inline)
+		inlen_send = RTE_MAX(inlen_send, MLX5_ESEG_MIN_INLINE_SIZE);
+	/*
+	 * If there are few Tx queues it is prioritized
+	 * to save CPU cycles and disable data inlining at all.
+	 */
+	if ((inlen_send && priv->txqs_n >= txqs_inline) || vlan_inline) {
+		/*
+		 * The data sent with ordinal MLX5_OPCODE_SEND
+		 * may be inlined in Ethernet Segment, align the
+		 * length accordingly to fit entire WQEBBs.
+		 */
+		temp = (inlen_send / MLX5_WQE_SIZE) * MLX5_WQE_SIZE +
+			MLX5_ESEG_MIN_INLINE_SIZE + MLX5_WQE_DSEG_SIZE;
+		temp = RTE_MIN(temp, MLX5_WQE_SIZE_MAX +
+				     MLX5_ESEG_MIN_INLINE_SIZE -
+				     MLX5_WQE_CSEG_SIZE -
+				     MLX5_WQE_ESEG_SIZE -
+				     MLX5_WQE_DSEG_SIZE * 2);
+		temp = RTE_MIN(temp, MLX5_SEND_MAX_INLINE_LEN);
+		temp = RTE_MAX(temp, inlen_mode);
+		if (temp != inlen_send) {
+			DRV_LOG(INFO,
+				"port %u ordinary send inline setting"
+				" aligned from %u to %u",
+				PORT_ID(priv), inlen_send, temp);
+			inlen_send = temp;
+		}
+		/*
+		 * Not aligned to cache lines, but to WQEs.
+		 * First bytes of data (initial alignment)
+		 * is going to be copied explicitly at the
+		 * beginning of inlining buffer in Ethernet
+		 * Segment.
+		 */
+		assert(inlen_send >= MLX5_ESEG_MIN_INLINE_SIZE);
+		assert(inlen_send <= MLX5_WQE_SIZE_MAX +
+				     MLX5_ESEG_MIN_INLINE_SIZE -
+				     MLX5_WQE_CSEG_SIZE -
+				     MLX5_WQE_ESEG_SIZE -
+				     MLX5_WQE_DSEG_SIZE * 2);
+		txq_ctrl->txq.inlen_send = inlen_send;
+		txq_ctrl->txq.inlen_mode = inlen_mode;
+		txq_ctrl->txq.inlen_empw = 0;
+	} else {
+		/*
+		 * If minimal inlining is requested we must
+		 * enable inlining in general, despite the
+		 * number of configured queues.
+		 */
+		inlen_send = inlen_mode;
+		if (inlen_mode) {
+			/*
+			 * Extend space for inline data to allow
+			 * optional alignment of data buffer
+			 * start address, it may improve PCIe
+			 * performance.
+			 */
+			inlen_send = RTE_MIN(inlen_send + MLX5_WQE_SIZE,
+					     MLX5_SEND_MAX_INLINE_LEN);
+		}
+		txq_ctrl->txq.inlen_send = inlen_send;
+		txq_ctrl->txq.inlen_mode = inlen_mode;
+		txq_ctrl->txq.inlen_empw = 0;
+		inlen_send = 0;
+		inlen_empw = 0;
+	}
+	if (inlen_send && inlen_empw && priv->txqs_n >= txqs_inline) {
+		/*
+		 * The data sent with MLX5_OPCODE_ENHANCED_MPSW
+		 * may be inlined in Data Segment, align the
+		 * length accordingly to fit entire WQEBBs.
+		 */
+		temp = (inlen_empw + MLX5_WQE_SIZE - 1) / MLX5_WQE_SIZE;
+		temp = temp * MLX5_WQE_SIZE +
+		       MLX5_DSEG_MIN_INLINE_SIZE - MLX5_WQE_DSEG_SIZE;
+		temp = RTE_MIN(temp, MLX5_WQE_SIZE_MAX +
+				     MLX5_DSEG_MIN_INLINE_SIZE -
+				     MLX5_WQE_CSEG_SIZE -
+				     MLX5_WQE_ESEG_SIZE -
+				     MLX5_WQE_DSEG_SIZE);
+		temp = RTE_MIN(temp, MLX5_EMPW_MAX_INLINE_LEN);
+		if (temp != inlen_empw) {
+			DRV_LOG(INFO,
+				"port %u enhanced empw inline setting"
+				" aligned from %u to %u",
+				PORT_ID(priv), inlen_empw, temp);
+			inlen_empw = temp;
+		}
+		assert(inlen_empw >= MLX5_ESEG_MIN_INLINE_SIZE);
+		assert(inlen_empw <= MLX5_WQE_SIZE_MAX +
+				     MLX5_DSEG_MIN_INLINE_SIZE -
+				     MLX5_WQE_CSEG_SIZE -
+				     MLX5_WQE_ESEG_SIZE -
+				     MLX5_WQE_DSEG_SIZE);
+		txq_ctrl->txq.inlen_empw = inlen_empw;
+	}
+	txq_ctrl->max_inline_data = RTE_MAX(inlen_send, inlen_empw);
+	if (tso) {
+		txq_ctrl->max_tso_header = MLX5_MAX_TSO_HEADER;
+		txq_ctrl->max_inline_data = RTE_MAX(txq_ctrl->max_inline_data,
+						    MLX5_MAX_TSO_HEADER);
+		txq_ctrl->txq.tso_en = 1;
+	}
+	txq_ctrl->txq.tunnel_en = config->tunnel_en | config->swp;
+	txq_ctrl->txq.swp_en = ((DEV_TX_OFFLOAD_IP_TNL_TSO |
+				 DEV_TX_OFFLOAD_UDP_TNL_TSO |
+				 DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) &
+				txq_ctrl->txq.offloads) && config->swp;
 }
 
 /**
@@ -724,6 +915,8 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->priv = priv;
 	tmpl->socket = socket;
 	tmpl->txq.elts_n = log2above(desc);
+	tmpl->txq.elts_s = desc;
+	tmpl->txq.elts_m = desc - 1;
 	tmpl->txq.port_id = dev->data->port_id;
 	tmpl->txq.idx = idx;
 	txq_set_params(tmpl);
@@ -737,8 +930,6 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	tmpl->txq.elts =
-		(struct rte_mbuf *(*)[1 << tmpl->txq.elts_n])(tmpl + 1);
 	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->txqsctrl, tmpl, next);
 	return tmpl;

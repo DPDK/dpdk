@@ -188,37 +188,61 @@ struct mlx5_hrxq {
 	uint8_t rss_key[]; /* Hash key. */
 };
 
+/* TX queue send local data. */
+__extension__
+struct mlx5_txq_local {
+	struct mlx5_wqe *wqe_last; /* last sent WQE pointer. */
+	struct rte_mbuf *mbuf; /* first mbuf to process. */
+	uint16_t pkts_copy; /* packets copied to elts. */
+	uint16_t pkts_sent; /* packets sent. */
+	uint16_t elts_free; /* available elts remain. */
+	uint16_t wqe_free; /* available wqe remain. */
+	uint16_t mbuf_off; /* data offset in current mbuf. */
+	uint16_t mbuf_nseg; /* number of remaining mbuf. */
+};
+
 /* TX queue descriptor. */
 __extension__
 struct mlx5_txq_data {
 	uint16_t elts_head; /* Current counter in (*elts)[]. */
 	uint16_t elts_tail; /* Counter of first element awaiting completion. */
-	uint16_t elts_comp; /* Counter since last completion request. */
-	uint16_t mpw_comp; /* WQ index since last completion request. */
-	uint16_t cq_ci; /* Consumer index for completion queue. */
-#ifndef NDEBUG
-	uint16_t cq_pi; /* Producer index for completion queue. */
-#endif
+	uint16_t elts_comp; /* elts index since last completion request. */
+	uint16_t elts_s; /* Number of mbuf elements. */
+	uint16_t elts_m; /* Mask for mbuf elements indices. */
+	/* Fields related to elts mbuf storage. */
 	uint16_t wqe_ci; /* Consumer index for work queue. */
 	uint16_t wqe_pi; /* Producer index for work queue. */
-	uint16_t elts_n:4; /* (*elts)[] length (in log2). */
+	uint16_t wqe_s; /* Number of WQ elements. */
+	uint16_t wqe_m; /* Mask Number for WQ elements. */
+	uint16_t wqe_comp; /* WQE index since last completion request. */
+	uint16_t wqe_thres; /* WQE threshold to request completion in CQ. */
+	/* WQ related fields. */
+	uint16_t cq_ci; /* Consumer index for completion queue. */
+#ifndef NDEBUG
+	uint16_t cq_pi; /* Counter of issued CQE "always" requests. */
+#endif
+	uint16_t cqe_s; /* Number of CQ elements. */
+	uint16_t cqe_m; /* Mask for CQ indices. */
+	/* CQ related fields. */
+	uint16_t elts_n:4; /* elts[] length (in log2). */
 	uint16_t cqe_n:4; /* Number of CQ elements (in log2). */
-	uint16_t wqe_n:4; /* Number of of WQ elements (in log2). */
+	uint16_t wqe_n:4; /* Number of WQ elements (in log2). */
 	uint16_t tso_en:1; /* When set hardware TSO is enabled. */
 	uint16_t tunnel_en:1;
 	/* When set TX offload for tunneled packets are supported. */
 	uint16_t swp_en:1; /* Whether SW parser is enabled. */
-	uint16_t mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */
-	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
-	uint16_t inline_max_packet_sz; /* Max packet size for inlining. */
+	uint16_t vlan_en:1; /* VLAN insertion in WQE is supported. */
+	uint16_t inlen_send; /* Ordinary send data inline size. */
+	uint16_t inlen_empw; /* eMPW max packet size to inline. */
+	uint16_t inlen_mode; /* Minimal data length to inline. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	uint64_t offloads; /* Offloads for Tx Queue. */
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
-	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
-	volatile void *wqes; /* Work queue (use volatile to write into). */
+	struct mlx5_wqe *wqes; /* Work queue. */
+	struct mlx5_wqe *wqes_end; /* Work queue array limit. */
+	volatile struct mlx5_cqe *cqes; /* Completion queue. */
 	volatile uint32_t *qp_db; /* Work queue doorbell. */
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
-	struct rte_mbuf *(*elts)[]; /* TX elements. */
 	uint16_t port_id; /* Port ID of device. */
 	uint16_t idx; /* Queue index. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
@@ -226,6 +250,8 @@ struct mlx5_txq_data {
 	rte_spinlock_t *uar_lock;
 	/* UAR access lock required for 32bit implementations */
 #endif
+	struct rte_mbuf *elts[0];
+	/* Storage for queued packets, must be the last field. */
 } __rte_cache_aligned;
 
 /* Verbs Rx queue elements. */
@@ -239,7 +265,6 @@ struct mlx5_txq_ibv {
 
 /* TX queue control descriptor. */
 struct mlx5_txq_ctrl {
-	struct mlx5_txq_data txq; /* Data path structure. */
 	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	unsigned int socket; /* CPU socket ID for allocations. */
@@ -249,8 +274,9 @@ struct mlx5_txq_ctrl {
 	struct mlx5_priv *priv; /* Back pointer to private data. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 	void *bf_reg; /* BlueFlame register from Verbs. */
-	uint32_t cqn; /* CQ number. */
 	uint16_t dump_file_n; /* Number of dump files. */
+	struct mlx5_txq_data txq; /* Data path structure. */
+	/* Must be the last field in the structure, contains elts[]. */
 };
 
 #define MLX5_TX_BFREG(txq) \

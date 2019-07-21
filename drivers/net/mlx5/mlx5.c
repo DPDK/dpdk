@@ -1185,6 +1185,127 @@ out:
 }
 
 /**
+ * Configures the minimal amount of data to inline into WQE
+ * while sending packets.
+ *
+ * - the txq_inline_min has the maximal priority, if this
+ *   key is specified in devargs
+ * - if DevX is enabled the inline mode is queried from the
+ *   device (HCA attributes and NIC vport context if needed).
+ * - otherwise L2 mode (18 bytes) is assumed for ConnectX-4/4LX
+ *   and none (0 bytes) for other NICs
+ *
+ * @param spawn
+ *   Verbs device parameters (name, port, switch_info) to spawn.
+ * @param config
+ *   Device configuration parameters.
+ */
+static void
+mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
+		    struct mlx5_dev_config *config)
+{
+	if (config->txq_inline_min != MLX5_ARG_UNSET) {
+		/* Application defines size of inlined data explicitly. */
+		switch (spawn->pci_dev->id.device_id) {
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
+			if (config->txq_inline_min <
+				       (int)MLX5_INLINE_HSIZE_L2) {
+				DRV_LOG(DEBUG,
+					"txq_inline_mix aligned to minimal"
+					" ConnectX-4 required value %d",
+					(int)MLX5_INLINE_HSIZE_L2);
+				config->txq_inline_min = MLX5_INLINE_HSIZE_L2;
+			}
+			break;
+		}
+		goto exit;
+	}
+	if (config->hca_attr.eth_net_offloads) {
+		/* We have DevX enabled, inline mode queried successfully. */
+		switch (config->hca_attr.wqe_inline_mode) {
+		case MLX5_CAP_INLINE_MODE_L2:
+			/* outer L2 header must be inlined. */
+			config->txq_inline_min = MLX5_INLINE_HSIZE_L2;
+			goto exit;
+		case MLX5_CAP_INLINE_MODE_NOT_REQUIRED:
+			/* No inline data are required by NIC. */
+			config->txq_inline_min = MLX5_INLINE_HSIZE_NONE;
+			config->hw_vlan_insert =
+				config->hca_attr.wqe_vlan_insert;
+			DRV_LOG(DEBUG, "Tx VLAN insertion is supported");
+			goto exit;
+		case MLX5_CAP_INLINE_MODE_VPORT_CONTEXT:
+			/* inline mode is defined by NIC vport context. */
+			if (!config->hca_attr.eth_virt)
+				break;
+			switch (config->hca_attr.vport_inline_mode) {
+			case MLX5_INLINE_MODE_NONE:
+				config->txq_inline_min =
+					MLX5_INLINE_HSIZE_NONE;
+				goto exit;
+			case MLX5_INLINE_MODE_L2:
+				config->txq_inline_min =
+					MLX5_INLINE_HSIZE_L2;
+				goto exit;
+			case MLX5_INLINE_MODE_IP:
+				config->txq_inline_min =
+					MLX5_INLINE_HSIZE_L3;
+				goto exit;
+			case MLX5_INLINE_MODE_TCP_UDP:
+				config->txq_inline_min =
+					MLX5_INLINE_HSIZE_L4;
+				goto exit;
+			case MLX5_INLINE_MODE_INNER_L2:
+				config->txq_inline_min =
+					MLX5_INLINE_HSIZE_INNER_L2;
+				goto exit;
+			case MLX5_INLINE_MODE_INNER_IP:
+				config->txq_inline_min =
+					MLX5_INLINE_HSIZE_INNER_L3;
+				goto exit;
+			case MLX5_INLINE_MODE_INNER_TCP_UDP:
+				config->txq_inline_min =
+					MLX5_INLINE_HSIZE_INNER_L4;
+				goto exit;
+			}
+		}
+	}
+	/*
+	 * We get here if we are unable to deduce
+	 * inline data size with DevX. Try PCI ID
+	 * to determine old NICs.
+	 */
+	switch (spawn->pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
+		config->txq_inline_min = MLX5_INLINE_HSIZE_L2;
+		config->hw_vlan_insert = 0;
+		break;
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5EX:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
+		/*
+		 * These NICs support VLAN insertion from WQE and
+		 * report the wqe_vlan_insert flag. But there is the bug
+		 * and PFC control may be broken, so disable feature.
+		 */
+		config->hw_vlan_insert = 0;
+		break;
+	default:
+		config->txq_inline_min = MLX5_INLINE_HSIZE_NONE;
+		break;
+	}
+exit:
+	DRV_LOG(DEBUG, "min tx inline configured: %d", config->txq_inline_min);
+}
+
+/**
  * Spawn an Ethernet device from Verbs information.
  *
  * @param dpdk_dev
@@ -1677,6 +1798,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 #else
 	config.dv_esw_en = 0;
 #endif
+	/* Detect minimal data bytes to inline. */
+	mlx5_set_min_inline(spawn, &config);
 	/* Store device configuration on private structure. */
 	priv->config = config;
 	if (config.dv_flow_en) {
