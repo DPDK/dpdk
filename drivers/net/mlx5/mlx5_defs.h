@@ -60,6 +60,24 @@
 /* Maximum Packet headers size (L2+L3+L4) for TSO. */
 #define MLX5_MAX_TSO_HEADER (128u + 34u)
 
+/* Inline data size required by NICs. */
+#define MLX5_INLINE_HSIZE_NONE 0
+#define MLX5_INLINE_HSIZE_L2 (sizeof(struct rte_ether_hdr) + \
+			      sizeof(struct rte_vlan_hdr))
+#define MLX5_INLINE_HSIZE_L3 (MLX5_INLINE_HSIZE_L2 + \
+			      sizeof(struct rte_ipv6_hdr))
+#define MLX5_INLINE_HSIZE_L4 (MLX5_INLINE_HSIZE_L3 + \
+			      sizeof(struct rte_tcp_hdr))
+#define MLX5_INLINE_HSIZE_INNER_L2 (MLX5_INLINE_HSIZE_L3 + \
+				    sizeof(struct rte_udp_hdr) + \
+				    sizeof(struct rte_vxlan_hdr) + \
+				    sizeof(struct rte_ether_hdr) + \
+				    sizeof(struct rte_vlan_hdr))
+#define MLX5_INLINE_HSIZE_INNER_L3 (MLX5_INLINE_HSIZE_INNER_L2 + \
+				    sizeof(struct rte_ipv6_hdr))
+#define MLX5_INLINE_HSIZE_INNER_L4 (MLX5_INLINE_HSIZE_INNER_L3 + \
+				    sizeof(struct rte_tcp_hdr))
+
 /* Threshold of buffer replenishment for vectorized Rx. */
 #define MLX5_VPMD_RXQ_RPLNSH_THRESH(n) \
 	(RTE_MIN(MLX5_VPMD_RX_MAX_BURST, (unsigned int)(n) >> 2))

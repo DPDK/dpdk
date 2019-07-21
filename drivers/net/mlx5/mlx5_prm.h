@@ -626,6 +626,7 @@ enum {
 enum {
 	MLX5_CMD_OP_QUERY_HCA_CAP = 0x100,
 	MLX5_CMD_OP_CREATE_MKEY = 0x200,
+	MLX5_CMD_OP_QUERY_NIC_VPORT_CONTEXT = 0x754,
 	MLX5_CMD_OP_ALLOC_FLOW_COUNTER = 0x939,
 	MLX5_CMD_OP_QUERY_FLOW_COUNTER = 0x93b,
 };
@@ -785,12 +786,30 @@ struct mlx5_ifc_create_mkey_in_bits {
 
 enum {
 	MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE = 0x0 << 1,
-	MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP        = 0xc << 1,
+	MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS = 0x1 << 1,
+	MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP = 0xc << 1,
 };
 
 enum {
 	MLX5_HCA_CAP_OPMOD_GET_MAX   = 0,
 	MLX5_HCA_CAP_OPMOD_GET_CUR   = 1,
+};
+
+enum {
+	MLX5_CAP_INLINE_MODE_L2,
+	MLX5_CAP_INLINE_MODE_VPORT_CONTEXT,
+	MLX5_CAP_INLINE_MODE_NOT_REQUIRED,
+};
+
+enum {
+	MLX5_INLINE_MODE_NONE,
+	MLX5_INLINE_MODE_L2,
+	MLX5_INLINE_MODE_IP,
+	MLX5_INLINE_MODE_TCP_UDP,
+	MLX5_INLINE_MODE_RESERVED4,
+	MLX5_INLINE_MODE_INNER_L2,
+	MLX5_INLINE_MODE_INNER_IP,
+	MLX5_INLINE_MODE_INNER_TCP_UDP,
 };
 
 struct mlx5_ifc_cmd_hca_cap_bits {
@@ -1065,6 +1084,42 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_61f[0x1e1];
 };
 
+struct mlx5_ifc_per_protocol_networking_offload_caps_bits {
+	u8 csum_cap[0x1];
+	u8 vlan_cap[0x1];
+	u8 lro_cap[0x1];
+	u8 lro_psh_flag[0x1];
+	u8 lro_time_stamp[0x1];
+	u8 reserved_at_5[0x2];
+	u8 wqe_vlan_insert[0x1];
+	u8 self_lb_en_modifiable[0x1];
+	u8 reserved_at_9[0x2];
+	u8 max_lso_cap[0x5];
+	u8 multi_pkt_send_wqe[0x2];
+	u8 wqe_inline_mode[0x2];
+	u8 rss_ind_tbl_cap[0x4];
+	u8 reg_umr_sq[0x1];
+	u8 scatter_fcs[0x1];
+	u8 enhanced_multi_pkt_send_wqe[0x1];
+	u8 tunnel_lso_const_out_ip_id[0x1];
+	u8 reserved_at_1c[0x2];
+	u8 tunnel_stateless_gre[0x1];
+	u8 tunnel_stateless_vxlan[0x1];
+	u8 swp[0x1];
+	u8 swp_csum[0x1];
+	u8 swp_lso[0x1];
+	u8 reserved_at_23[0xd];
+	u8 max_vxlan_udp_ports[0x8];
+	u8 reserved_at_38[0x6];
+	u8 max_geneve_opt_len[0x1];
+	u8 tunnel_stateless_geneve_rx[0x1];
+	u8 reserved_at_40[0x10];
+	u8 lro_min_mss_size[0x10];
+	u8 reserved_at_60[0x120];
+	u8 lro_timer_supported_periods[4][0x20];
+	u8 reserved_at_200[0x600];
+};
+
 struct mlx5_ifc_qos_cap_bits {
 	u8 packet_pacing[0x1];
 	u8 esw_scheduling[0x1];
@@ -1092,6 +1147,8 @@ struct mlx5_ifc_qos_cap_bits {
 
 union mlx5_ifc_hca_cap_union_bits {
 	struct mlx5_ifc_cmd_hca_cap_bits cmd_hca_cap;
+	struct mlx5_ifc_per_protocol_networking_offload_caps_bits
+	       per_protocol_networking_offload_caps;
 	struct mlx5_ifc_qos_cap_bits qos_cap;
 	u8 reserved_at_0[0x8000];
 };
@@ -1110,6 +1167,69 @@ struct mlx5_ifc_query_hca_cap_in_bits {
 	u8 reserved_at_20[0x10];
 	u8 op_mod[0x10];
 	u8 reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_mac_address_layout_bits {
+	u8 reserved_at_0[0x10];
+	u8 mac_addr_47_32[0x10];
+	u8 mac_addr_31_0[0x20];
+};
+
+struct mlx5_ifc_nic_vport_context_bits {
+	u8 reserved_at_0[0x5];
+	u8 min_wqe_inline_mode[0x3];
+	u8 reserved_at_8[0x15];
+	u8 disable_mc_local_lb[0x1];
+	u8 disable_uc_local_lb[0x1];
+	u8 roce_en[0x1];
+	u8 arm_change_event[0x1];
+	u8 reserved_at_21[0x1a];
+	u8 event_on_mtu[0x1];
+	u8 event_on_promisc_change[0x1];
+	u8 event_on_vlan_change[0x1];
+	u8 event_on_mc_address_change[0x1];
+	u8 event_on_uc_address_change[0x1];
+	u8 reserved_at_40[0xc];
+	u8 affiliation_criteria[0x4];
+	u8 affiliated_vhca_id[0x10];
+	u8 reserved_at_60[0xd0];
+	u8 mtu[0x10];
+	u8 system_image_guid[0x40];
+	u8 port_guid[0x40];
+	u8 node_guid[0x40];
+	u8 reserved_at_200[0x140];
+	u8 qkey_violation_counter[0x10];
+	u8 reserved_at_350[0x430];
+	u8 promisc_uc[0x1];
+	u8 promisc_mc[0x1];
+	u8 promisc_all[0x1];
+	u8 reserved_at_783[0x2];
+	u8 allowed_list_type[0x3];
+	u8 reserved_at_788[0xc];
+	u8 allowed_list_size[0xc];
+	struct mlx5_ifc_mac_address_layout_bits permanent_address;
+	u8 reserved_at_7e0[0x20];
+};
+
+struct mlx5_ifc_query_nic_vport_context_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+	struct mlx5_ifc_nic_vport_context_bits nic_vport_context;
+};
+
+struct mlx5_ifc_query_nic_vport_context_in_bits {
+	u8 opcode[0x10];
+	u8 reserved_at_10[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 other_vport[0x1];
+	u8 reserved_at_41[0xf];
+	u8 vport_number[0x10];
+	u8 reserved_at_60[0x5];
+	u8 allowed_list_type[0x3];
+	u8 reserved_at_68[0x18];
 };
 
 /* CQE format mask. */

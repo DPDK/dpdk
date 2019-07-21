@@ -230,6 +230,59 @@ mlx5_devx_cmd_destroy(struct mlx5_devx_obj *obj)
 }
 
 /**
+ * Query NIC vport context.
+ * Fills minimal inline attribute.
+ *
+ * @param[in] ctx
+ *   ibv contexts returned from mlx5dv_open_device.
+ * @param[in] vport
+ *   vport index
+ * @param[out] attr
+ *   Attributes device values.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+static int
+mlx5_devx_cmd_query_nic_vport_context(struct ibv_context *ctx,
+				      unsigned int vport,
+				      struct mlx5_hca_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_nic_vport_context_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_nic_vport_context_out)] = {0};
+	void *vctx;
+	int status, syndrome, rc;
+
+	/* Query NIC vport context to determine inline mode. */
+	MLX5_SET(query_nic_vport_context_in, in, opcode,
+		 MLX5_CMD_OP_QUERY_NIC_VPORT_CONTEXT);
+	MLX5_SET(query_nic_vport_context_in, in, vport_number, vport);
+	if (vport)
+		MLX5_SET(query_nic_vport_context_in, in, other_vport, 1);
+	rc = mlx5_glue->devx_general_cmd(ctx,
+					 in, sizeof(in),
+					 out, sizeof(out));
+	if (rc)
+		goto error;
+	status = MLX5_GET(query_nic_vport_context_out, out, status);
+	syndrome = MLX5_GET(query_nic_vport_context_out, out, syndrome);
+	if (status) {
+		DRV_LOG(DEBUG, "Failed to query NIC vport context, "
+			"status %x, syndrome = %x",
+			status, syndrome);
+		return -1;
+	}
+	vctx = MLX5_ADDR_OF(query_nic_vport_context_out, out,
+			    nic_vport_context);
+	attr->vport_inline_mode = MLX5_GET(nic_vport_context, vctx,
+					   min_wqe_inline_mode);
+	return 0;
+error:
+	rc = (rc > 0) ? -rc : rc;
+	return rc;
+}
+
+/**
  * Query HCA attributes.
  * Using those attributes we can check on run time if the device
  * is having the required capabilities.
@@ -259,7 +312,7 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 	rc = mlx5_glue->devx_general_cmd(ctx,
 					 in, sizeof(in), out, sizeof(out));
 	if (rc)
-		return rc;
+		goto error;
 	status = MLX5_GET(query_hca_cap_out, out, status);
 	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
 	if (status) {
@@ -274,5 +327,52 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 	attr->flow_counters_dump = MLX5_GET(cmd_hca_cap, hcattr,
 					    flow_counters_dump);
 	attr->eswitch_manager = MLX5_GET(cmd_hca_cap, hcattr, eswitch_manager);
+	attr->eth_net_offloads = MLX5_GET(cmd_hca_cap, hcattr,
+					  eth_net_offloads);
+	attr->eth_virt = MLX5_GET(cmd_hca_cap, hcattr, eth_virt);
+	if (!attr->eth_net_offloads)
+		return 0;
+
+	/* Query HCA offloads for Ethernet protocol. */
+	memset(in, 0, sizeof(in));
+	memset(out, 0, sizeof(out));
+	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
+	MLX5_SET(query_hca_cap_in, in, op_mod,
+		 MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS |
+		 MLX5_HCA_CAP_OPMOD_GET_CUR);
+
+	rc = mlx5_glue->devx_general_cmd(ctx,
+					 in, sizeof(in),
+					 out, sizeof(out));
+	if (rc) {
+		attr->eth_net_offloads = 0;
+		goto error;
+	}
+	status = MLX5_GET(query_hca_cap_out, out, status);
+	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
+	if (status) {
+		DRV_LOG(DEBUG, "Failed to query devx HCA capabilities, "
+			"status %x, syndrome = %x",
+			status, syndrome);
+		attr->eth_net_offloads = 0;
+		return -1;
+	}
+	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
+	attr->wqe_vlan_insert = MLX5_GET(per_protocol_networking_offload_caps,
+					 hcattr, wqe_vlan_insert);
+	attr->wqe_inline_mode = MLX5_GET(per_protocol_networking_offload_caps,
+					 hcattr, wqe_inline_mode);
+	if (attr->wqe_inline_mode != MLX5_CAP_INLINE_MODE_VPORT_CONTEXT)
+		return 0;
+	if (attr->eth_virt) {
+		rc = mlx5_devx_cmd_query_nic_vport_context(ctx, 0, attr);
+		if (rc) {
+			attr->eth_virt = 0;
+			goto error;
+		}
+	}
 	return 0;
+error:
+	rc = (rc > 0) ? -rc : rc;
+	return rc;
 }
