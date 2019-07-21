@@ -225,10 +225,7 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
 
 	assert(priv);
 	assert(priv->sh);
-	ifindex = priv->nl_socket_rdma >= 0 ?
-		  mlx5_nl_ifindex(priv->nl_socket_rdma,
-				  priv->sh->ibdev_name,
-				  priv->ibv_port) : 0;
+	ifindex = mlx5_ifindex(dev);
 	if (!ifindex) {
 		if (!priv->representor)
 			return mlx5_get_master_ifname(priv->sh->ibdev_path,
@@ -299,14 +296,14 @@ mlx5_get_ifname_base(const struct rte_eth_dev *base,
 unsigned int
 mlx5_ifindex(const struct rte_eth_dev *dev)
 {
-	char ifname[IF_NAMESIZE];
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int ifindex;
 
-	if (mlx5_get_ifname(dev, &ifname))
-		return 0;
-	ifindex = if_nametoindex(ifname);
+	assert(priv);
+	assert(priv->if_index);
+	ifindex = priv->if_index;
 	if (!ifindex)
-		rte_errno = errno;
+		rte_errno = ENXIO;
 	return ifindex;
 }
 
@@ -641,7 +638,6 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *config = &priv->config;
 	unsigned int max;
-	char ifname[IF_NAMESIZE];
 
 	/* FIXME: we should ask the device for these values. */
 	info->min_rx_bufsize = 32;
@@ -662,8 +658,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->rx_offload_capa = (mlx5_get_rx_port_offloads() |
 				 info->rx_queue_offload_capa);
 	info->tx_offload_capa = mlx5_get_tx_port_offloads(dev);
-	if (mlx5_get_ifname(dev, &ifname) == 0)
-		info->if_index = if_nametoindex(ifname);
+	info->if_index = mlx5_ifindex(dev);
 	info->reta_size = priv->reta_idx_n ?
 		priv->reta_idx_n : config->ind_table_max_size;
 	info->hash_key_size = MLX5_RSS_HASH_KEY_LEN;

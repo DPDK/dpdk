@@ -1706,6 +1706,13 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 		eth_dev->data->representor_id = priv->representor_id;
 	}
+	/*
+	 * Store associated network device interface index. This index
+	 * is permanent throughout the lifetime of device. So, we may store
+	 * the ifindex here and use the cached value further.
+	 */
+	assert(spawn->ifindex);
+	priv->if_index = spawn->ifindex;
 	eth_dev->data->dev_private = priv;
 	priv->dev_data = eth_dev->data;
 	eth_dev->data->mac_addrs = priv->mac;
