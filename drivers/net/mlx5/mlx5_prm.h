@@ -39,14 +39,85 @@
 /* Invalidate a CQE. */
 #define MLX5_CQE_INVALIDATE (MLX5_CQE_INVALID << 4)
 
-/* WQE DWORD size */
-#define MLX5_WQE_DWORD_SIZE 16
+/* WQE Segment sizes in bytes. */
+#define MLX5_WSEG_SIZE 16u
+#define MLX5_WQE_CSEG_SIZE sizeof(struct mlx5_wqe_cseg)
+#define MLX5_WQE_DSEG_SIZE sizeof(struct mlx5_wqe_dseg)
+#define MLX5_WQE_ESEG_SIZE sizeof(struct mlx5_wqe_eseg)
 
-/* WQE size */
-#define MLX5_WQE_SIZE (4 * MLX5_WQE_DWORD_SIZE)
+/* WQE/WQEBB size in bytes. */
+#define MLX5_WQE_SIZE sizeof(struct mlx5_wqe)
 
-#define MLX5_OPC_MOD_ENHANCED_MPSW 0
-#define MLX5_OPCODE_ENHANCED_MPSW 0x29
+/*
+ * Max size of a WQE session.
+ * Absolute maximum size is 63 (MLX5_DSEG_MAX) segments,
+ * the WQE size field in Control Segment is 6 bits wide.
+ */
+#define MLX5_WQE_SIZE_MAX (60 * MLX5_WSEG_SIZE)
+
+/*
+ * Default minimum number of Tx queues for inlining packets.
+ * If there are less queues as specified we assume we have
+ * no enough CPU resources (cycles) to perform inlining,
+ * the PCIe throughput is not supposed as bottleneck and
+ * inlining is disabled.
+ */
+#define MLX5_INLINE_MAX_TXQS 8u
+#define MLX5_INLINE_MAX_TXQS_BLUEFIELD 16u
+
+/*
+ * Default packet length threshold to be inlined with
+ * enhanced MPW. If packet length exceeds the threshold
+ * the data are not inlined. Should be aligned in WQEBB
+ * boundary with accounting the title Control and Ethernet
+ * segments.
+ */
+#define MLX5_EMPW_DEF_INLINE_LEN (3U * MLX5_WQE_SIZE + \
+				  MLX5_DSEG_MIN_INLINE_SIZE - \
+				  MLX5_WQE_DSEG_SIZE)
+/*
+ * Maximal inline data length sent with enhanced MPW.
+ * Is based on maximal WQE size.
+ */
+#define MLX5_EMPW_MAX_INLINE_LEN (MLX5_WQE_SIZE_MAX - \
+				  MLX5_WQE_CSEG_SIZE - \
+				  MLX5_WQE_ESEG_SIZE - \
+				  MLX5_WQE_DSEG_SIZE + \
+				  MLX5_DSEG_MIN_INLINE_SIZE)
+/*
+ * Minimal amount of packets to be sent with EMPW.
+ * This limits the minimal required size of sent EMPW.
+ * If there are no enough resources to built minimal
+ * EMPW the sending loop exits.
+ */
+#define MLX5_EMPW_MIN_PACKETS (2 + 3 * 4)
+#define MLX5_EMPW_MAX_PACKETS ((MLX5_WQE_SIZE_MAX - \
+				MLX5_WQE_CSEG_SIZE - \
+				MLX5_WQE_ESEG_SIZE) / \
+				MLX5_WSEG_SIZE)
+/*
+ * Default packet length threshold to be inlined with
+ * ordinary SEND. Inlining saves the MR key search
+ * and extra PCIe data fetch transaction, but eats the
+ * CPU cycles.
+ */
+#define MLX5_SEND_DEF_INLINE_LEN (5U * MLX5_WQE_SIZE + \
+				  MLX5_ESEG_MIN_INLINE_SIZE - \
+				  MLX5_WQE_CSEG_SIZE - \
+				  MLX5_WQE_ESEG_SIZE - \
+				  MLX5_WQE_DSEG_SIZE)
+/*
+ * Maximal inline data length sent with ordinary SEND.
+ * Is based on maximal WQE size.
+ */
+#define MLX5_SEND_MAX_INLINE_LEN (MLX5_WQE_SIZE_MAX - \
+				  MLX5_WQE_CSEG_SIZE - \
+				  MLX5_WQE_ESEG_SIZE - \
+				  MLX5_WQE_DSEG_SIZE + \
+				  MLX5_ESEG_MIN_INLINE_SIZE)
+
+/* Missed in mlv5dv.h, should define here. */
+#define MLX5_OPCODE_ENHANCED_MPSW 0x29u
 
 /* CQE value to inform that VLAN is stripped. */
 #define MLX5_CQE_VLAN_STRIPPED (1u << 0)
@@ -114,6 +185,12 @@
 /* Inner L3 type is IPV6. */
 #define MLX5_ETH_WQE_L3_INNER_IPV6 (1u << 0)
 
+/* VLAN insertion flag. */
+#define MLX5_ETH_WQE_VLAN_INSERT (1u << 31)
+
+/* Data inline segment flag. */
+#define MLX5_ETH_WQE_DATA_INLINE (1u << 31)
+
 /* Is flow mark valid. */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #define MLX5_FLOW_MARK_IS_VALID(val) ((val) & 0xffffff00)
@@ -130,11 +207,20 @@
 /* Default mark value used when none is provided. */
 #define MLX5_FLOW_MARK_DEFAULT 0xffffff
 
-/* Maximum number of DS in WQE. */
+/* Maximum number of DS in WQE. Limited by 6-bit field. */
 #define MLX5_DSEG_MAX 63
 
 /* The completion mode offset in the WQE control segment line 2. */
 #define MLX5_COMP_MODE_OFFSET 2
+
+/* Amount of data bytes in minimal inline data segment. */
+#define MLX5_DSEG_MIN_INLINE_SIZE 12u
+
+/* Amount of data bytes in minimal inline eth segment. */
+#define MLX5_ESEG_MIN_INLINE_SIZE 18u
+
+/* Amount of data bytes after eth data segment. */
+#define MLX5_ESEG_EXTRA_DATA_SIZE 32u
 
 /* Completion mode. */
 enum mlx5_completion_mode {
@@ -144,17 +230,69 @@ enum mlx5_completion_mode {
 	MLX5_COMP_CQE_AND_EQE = 0x3,
 };
 
-/* Small common part of the WQE. */
-struct mlx5_wqe {
-	uint32_t ctrl[4];
-};
-
 /* MPW mode. */
 enum mlx5_mpw_mode {
 	MLX5_MPW_DISABLED,
 	MLX5_MPW,
 	MLX5_MPW_ENHANCED, /* Enhanced Multi-Packet Send WQE, a.k.a MPWv2. */
 };
+
+/* WQE Control segment. */
+struct mlx5_wqe_cseg {
+	uint32_t opcode;
+	uint32_t sq_ds;
+	uint32_t flags;
+	uint32_t misc;
+} __rte_packed __rte_aligned(MLX5_WSEG_SIZE);
+
+/* Header of data segment. Minimal size Data Segment */
+struct mlx5_wqe_dseg {
+	uint32_t bcount;
+	union {
+		uint8_t inline_data[MLX5_DSEG_MIN_INLINE_SIZE];
+		struct {
+			uint32_t lkey;
+			uint64_t pbuf;
+		} __rte_packed;
+	};
+} __rte_packed;
+
+/* Subset of struct WQE Ethernet Segment. */
+struct mlx5_wqe_eseg {
+	union {
+		struct {
+			uint32_t swp_offs;
+			uint8_t	cs_flags;
+			uint8_t	swp_flags;
+			uint16_t mss;
+			uint32_t metadata;
+			uint16_t inline_hdr_sz;
+			union {
+				uint16_t inline_data;
+				uint16_t vlan_tag;
+			};
+		} __rte_packed;
+		struct {
+			uint32_t offsets;
+			uint32_t flags;
+			uint32_t flow_metadata;
+			uint32_t inline_hdr;
+		} __rte_packed;
+	};
+} __rte_packed;
+
+/* The title WQEBB, header of WQE. */
+struct mlx5_wqe {
+	union {
+		struct mlx5_wqe_cseg cseg;
+		uint32_t ctrl[4];
+	};
+	struct mlx5_wqe_eseg eseg;
+	union {
+		struct mlx5_wqe_dseg dseg[2];
+		uint8_t data[MLX5_ESEG_EXTRA_DATA_SIZE];
+	};
+} __rte_packed;
 
 /* WQE for Multi-Packet RQ. */
 struct mlx5_wqe_mprq {

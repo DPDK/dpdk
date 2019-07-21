@@ -58,7 +58,7 @@
 #define MLX5_MAX_XSTATS 32
 
 /* Maximum Packet headers size (L2+L3+L4) for TSO. */
-#define MLX5_MAX_TSO_HEADER 192
+#define MLX5_MAX_TSO_HEADER (128u + 34u)
 
 /* Threshold of buffer replenishment for vectorized Rx. */
 #define MLX5_VPMD_RXQ_RPLNSH_THRESH(n) \
