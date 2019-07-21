@@ -350,13 +350,8 @@ Run-time configuration
 
 - ``txq_inline`` parameter [int]
 
-  Amount of data to be inlined during TX operations. Improves latency.
-  Can improve PPS performance when PCI back pressure is detected and may be
-  useful for scenarios involving heavy traffic on many queues.
-
-  Because additional software logic is necessary to handle this mode, this
-  option should be used with care, as it can lower performance when back
-  pressure is not expected.
+  Amount of data to be inlined during TX operations. This parameter is
+  deprecated and ignored, kept for compatibility issue.
 
 - ``txqs_min_inline`` parameter [int]
 
@@ -378,16 +373,8 @@ Run-time configuration
 - ``txqs_max_vec`` parameter [int]
 
   Enable vectorized Tx only when the number of TX queues is less than or
-  equal to this value. Effective only when ``tx_vec_en`` is enabled.
-
-  On ConnectX-5:
-
-        - Set to 8 by default on ARMv8.
-        - Set to 4 by default otherwise.
-
-  On BlueField
-
-        - Set to 16 by default.
+  equal to this value. This parameter is deprecated and ignored, kept
+  for compatibility issue to not prevent driver from probing.
 
 - ``txq_mpw_en`` parameter [int]
 
@@ -418,7 +405,8 @@ Run-time configuration
 - ``txq_mpw_hdr_dseg_en`` parameter [int]
 
   A nonzero value enables including two pointers in the first block of TX
-  descriptor. This can be used to lessen CPU load for memory copy.
+  descriptor. The parameter is deprecated and ignored, kept for compatibility
+  issue.
 
   Effective only when Enhanced MPS is supported. Disabled by default.
 
@@ -427,14 +415,14 @@ Run-time configuration
   Maximum size of packet to be inlined. This limits the size of packet to
   be inlined. If the size of a packet is larger than configured value, the
   packet isn't inlined even though there's enough space remained in the
-  descriptor. Instead, the packet is included with pointer.
-
-  Effective only when Enhanced MPS is supported. The default value is 256.
+  descriptor. Instead, the packet is included with pointer. This parameter
+  is deprecated.
 
 - ``tx_vec_en`` parameter [int]
 
-  A nonzero value enables Tx vector on ConnectX-5, ConnectX-6 and BlueField NICs if the number of
-  global Tx queues on the port is less than ``txqs_max_vec``.
+  A nonzero value enables Tx vector on ConnectX-5, ConnectX-6 and BlueField
+  NICs if the number of global Tx queues on the port is less than
+  ``txqs_max_vec``. The parameter is deprecated and ignored.
 
   This option cannot be used with certain offloads such as ``DEV_TX_OFFLOAD_TCP_TSO,
   DEV_TX_OFFLOAD_VXLAN_TNL_TSO, DEV_TX_OFFLOAD_GRE_TNL_TSO, DEV_TX_OFFLOAD_VLAN_INSERT``.

@@ -1653,64 +1653,6 @@ mlx5_set_link_up(struct rte_eth_dev *dev)
 }
 
 /**
- * Configure the TX function to use.
- *
- * @param dev
- *   Pointer to private data structure.
- *
- * @return
- *   Pointer to selected Tx burst function.
- */
-eth_tx_burst_t
-mlx5_select_tx_function(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	eth_tx_burst_t tx_pkt_burst = mlx5_tx_burst;
-	struct mlx5_dev_config *config = &priv->config;
-	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
-	int tso = !!(tx_offloads & (DEV_TX_OFFLOAD_TCP_TSO |
-				    DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				    DEV_TX_OFFLOAD_GRE_TNL_TSO |
-				    DEV_TX_OFFLOAD_IP_TNL_TSO |
-				    DEV_TX_OFFLOAD_UDP_TNL_TSO));
-	int swp = !!(tx_offloads & (DEV_TX_OFFLOAD_IP_TNL_TSO |
-				    DEV_TX_OFFLOAD_UDP_TNL_TSO |
-				    DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM));
-	int vlan_insert = !!(tx_offloads & DEV_TX_OFFLOAD_VLAN_INSERT);
-
-	assert(priv != NULL);
-	/* Select appropriate TX function. */
-	if (vlan_insert || tso || swp)
-		return tx_pkt_burst;
-	if (config->mps == MLX5_MPW_ENHANCED) {
-		if (mlx5_check_vec_tx_support(dev) > 0) {
-			if (mlx5_check_raw_vec_tx_support(dev) > 0)
-				tx_pkt_burst = mlx5_tx_burst_raw_vec;
-			else
-				tx_pkt_burst = mlx5_tx_burst_vec;
-			DRV_LOG(DEBUG,
-				"port %u selected enhanced MPW Tx vectorized"
-				" function",
-				dev->data->port_id);
-		} else {
-			tx_pkt_burst = mlx5_tx_burst_empw;
-			DRV_LOG(DEBUG,
-				"port %u selected enhanced MPW Tx function",
-				dev->data->port_id);
-		}
-	} else if (config->mps && (config->txq_inline > 0)) {
-		tx_pkt_burst = mlx5_tx_burst_mpw_inline;
-		DRV_LOG(DEBUG, "port %u selected MPW inline Tx function",
-			dev->data->port_id);
-	} else if (config->mps) {
-		tx_pkt_burst = mlx5_tx_burst_mpw;
-		DRV_LOG(DEBUG, "port %u selected MPW Tx function",
-			dev->data->port_id);
-	}
-	return tx_pkt_burst;
-}
-
-/**
  * Configure the RX function to use.
  *
  * @param dev

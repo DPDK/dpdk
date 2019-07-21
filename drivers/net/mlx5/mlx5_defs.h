@@ -60,28 +60,12 @@
 /* Maximum Packet headers size (L2+L3+L4) for TSO. */
 #define MLX5_MAX_TSO_HEADER 192
 
-/* Default maximum number of Tx queues for vectorized Tx. */
-#if defined(RTE_ARCH_ARM64)
-#define MLX5_VPMD_MAX_TXQS 8
-#define MLX5_VPMD_MAX_TXQS_BLUEFIELD 16
-#else
-#define MLX5_VPMD_MAX_TXQS 4
-#define MLX5_VPMD_MAX_TXQS_BLUEFIELD MLX5_VPMD_MAX_TXQS
-#endif
-
 /* Threshold of buffer replenishment for vectorized Rx. */
 #define MLX5_VPMD_RXQ_RPLNSH_THRESH(n) \
 	(RTE_MIN(MLX5_VPMD_RX_MAX_BURST, (unsigned int)(n) >> 2))
 
 /* Maximum size of burst for vectorized Rx. */
 #define MLX5_VPMD_RX_MAX_BURST 64U
-
-/*
- * Maximum size of burst for vectorized Tx. This is related to the maximum size
- * of Enhanced MPW (eMPW) WQE as vectorized Tx is supported with eMPW.
- * Careful when changing, large value can cause WQE DS to overlap.
- */
-#define MLX5_VPMD_TX_MAX_BURST        32U
 
 /* Number of packets vectorized Rx can simultaneously process in a loop. */
 #define MLX5_VPMD_DESCS_PER_LOOP      4

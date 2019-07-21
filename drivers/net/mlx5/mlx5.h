@@ -198,9 +198,7 @@ struct mlx5_dev_config {
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
 	unsigned int cqe_pad:1; /* CQE padding is enabled. */
 	unsigned int tso:1; /* Whether TSO is supported. */
-	unsigned int tx_vec_en:1; /* Tx vector is enabled. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
-	unsigned int mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */
 	unsigned int mr_ext_memseg_en:1;
 	/* Whether memseg should be extended for MR creation. */
 	unsigned int l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
@@ -224,10 +222,7 @@ struct mlx5_dev_config {
 	unsigned int tso_max_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	unsigned int max_dump_files_num; /* Maximum dump files per queue. */
-	int txq_inline; /* Maximum packet size for inlining. */
 	int txqs_inline; /* Queue number threshold for inlining. */
-	int txqs_vec; /* Queue number threshold for vectorized Tx. */
-	int inline_max_packet_sz; /* Max packet size for inlining. */
 	struct mlx5_hca_attr hca_attr; /* HCA attributes. */
 };
 

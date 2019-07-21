@@ -69,7 +69,7 @@
 /* Device parameter to set the minimum number of Rx queues to enable MPRQ. */
 #define MLX5_RXQS_MIN_MPRQ "rxqs_min_mprq"
 
-/* Device parameter to configure inline send. */
+/* Device parameter to configure inline send. Deprecated, ignored.*/
 #define MLX5_TXQ_INLINE "txq_inline"
 
 /*
@@ -80,20 +80,29 @@
 
 /*
  * Device parameter to configure the number of TX queues threshold for
- * enabling vectorized Tx.
+ * enabling vectorized Tx, deprecated, ignored (no vectorized Tx routines).
  */
 #define MLX5_TXQS_MAX_VEC "txqs_max_vec"
 
 /* Device parameter to enable multi-packet send WQEs. */
 #define MLX5_TXQ_MPW_EN "txq_mpw_en"
 
-/* Device parameter to include 2 dsegs in the title WQEBB. */
+/*
+ * Device parameter to include 2 dsegs in the title WQEBB.
+ * Deprecated, ignored.
+ */
 #define MLX5_TXQ_MPW_HDR_DSEG_EN "txq_mpw_hdr_dseg_en"
 
-/* Device parameter to limit the size of inlining packet. */
+/*
+ * Device parameter to limit the size of inlining packet.
+ * Deprecated, ignored.
+ */
 #define MLX5_TXQ_MAX_INLINE_LEN "txq_max_inline_len"
 
-/* Device parameter to enable hardware Tx vector. */
+/*
+ * Device parameter to enable hardware Tx vector.
+ * Deprecated, ignored (no vectorized Tx routines anymore).
+ */
 #define MLX5_TX_VEC_EN "tx_vec_en"
 
 /* Device parameter to enable hardware Rx vector. */
@@ -997,19 +1006,19 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	} else if (strcmp(MLX5_RXQS_MIN_MPRQ, key) == 0) {
 		config->mprq.min_rxqs_num = tmp;
 	} else if (strcmp(MLX5_TXQ_INLINE, key) == 0) {
-		config->txq_inline = tmp;
+		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_TXQS_MIN_INLINE, key) == 0) {
 		config->txqs_inline = tmp;
 	} else if (strcmp(MLX5_TXQS_MAX_VEC, key) == 0) {
-		config->txqs_vec = tmp;
+		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
 		config->mps = !!tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_HDR_DSEG_EN, key) == 0) {
-		config->mpw_hdr_dseg = !!tmp;
+		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_TXQ_MAX_INLINE_LEN, key) == 0) {
-		config->inline_max_packet_sz = tmp;
+		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_TX_VEC_EN, key) == 0) {
-		config->tx_vec_en = !!tmp;
+		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_RX_VEC_EN, key) == 0) {
 		config->rx_vec_en = !!tmp;
 	} else if (strcmp(MLX5_L3_VXLAN_EN, key) == 0) {
@@ -2016,12 +2025,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	dev_config = (struct mlx5_dev_config){
 		.hw_padding = 0,
 		.mps = MLX5_ARG_UNSET,
-		.tx_vec_en = 1,
 		.rx_vec_en = 1,
-		.txq_inline = MLX5_ARG_UNSET,
 		.txqs_inline = MLX5_ARG_UNSET,
-		.txqs_vec = MLX5_ARG_UNSET,
-		.inline_max_packet_sz = MLX5_ARG_UNSET,
 		.vf_nl_en = 1,
 		.mr_ext_memseg_en = 1,
 		.mprq = {
@@ -2034,9 +2039,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	};
 	/* Device specific configuration. */
 	switch (pci_dev->id.device_id) {
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BF:
-		dev_config.txqs_vec = MLX5_VPMD_MAX_TXQS_BLUEFIELD;
-		break;
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
@@ -2046,9 +2048,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	default:
 		break;
 	}
-	/* Set architecture-dependent default value if unset. */
-	if (dev_config.txqs_vec == MLX5_ARG_UNSET)
-		dev_config.txqs_vec = MLX5_VPMD_MAX_TXQS;
 	for (i = 0; i != ns; ++i) {
 		uint32_t restore;
 

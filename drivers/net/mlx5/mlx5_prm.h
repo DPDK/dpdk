@@ -39,31 +39,11 @@
 /* Invalidate a CQE. */
 #define MLX5_CQE_INVALIDATE (MLX5_CQE_INVALID << 4)
 
-/* Maximum number of packets a multi-packet WQE can handle. */
-#define MLX5_MPW_DSEG_MAX 5
-
 /* WQE DWORD size */
 #define MLX5_WQE_DWORD_SIZE 16
 
 /* WQE size */
 #define MLX5_WQE_SIZE (4 * MLX5_WQE_DWORD_SIZE)
-
-/* Max size of a WQE session. */
-#define MLX5_WQE_SIZE_MAX 960U
-
-/* Compute the number of DS. */
-#define MLX5_WQE_DS(n) \
-	(((n) + MLX5_WQE_DWORD_SIZE - 1) / MLX5_WQE_DWORD_SIZE)
-
-/* Room for inline data in multi-packet WQE. */
-#define MLX5_MWQE64_INL_DATA 28
-
-/* Default minimum number of Tx queues for inlining packets. */
-#define MLX5_EMPW_MIN_TXQS 8
-
-/* Default max packet length to be inlined. */
-#define MLX5_EMPW_MAX_INLINE_LEN (4U * MLX5_WQE_SIZE)
-
 
 #define MLX5_OPC_MOD_ENHANCED_MPSW 0
 #define MLX5_OPCODE_ENHANCED_MPSW 0x29
@@ -164,73 +144,16 @@ enum mlx5_completion_mode {
 	MLX5_COMP_CQE_AND_EQE = 0x3,
 };
 
-/* Subset of struct mlx5_wqe_eth_seg. */
-struct mlx5_wqe_eth_seg_small {
-	uint32_t rsvd0;
-	uint8_t	cs_flags;
-	uint8_t	rsvd1;
-	uint16_t mss;
-	uint32_t flow_table_metadata;
-	uint16_t inline_hdr_sz;
-	uint8_t inline_hdr[2];
-} __rte_aligned(MLX5_WQE_DWORD_SIZE);
-
-struct mlx5_wqe_inl_small {
-	uint32_t byte_cnt;
-	uint8_t raw;
-} __rte_aligned(MLX5_WQE_DWORD_SIZE);
-
-struct mlx5_wqe_ctrl {
-	uint32_t ctrl0;
-	uint32_t ctrl1;
-	uint32_t ctrl2;
-	uint32_t ctrl3;
-} __rte_aligned(MLX5_WQE_DWORD_SIZE);
-
 /* Small common part of the WQE. */
 struct mlx5_wqe {
 	uint32_t ctrl[4];
-	struct mlx5_wqe_eth_seg_small eseg;
 };
-
-/* Vectorize WQE header. */
-struct mlx5_wqe_v {
-	rte_v128u32_t ctrl;
-	rte_v128u32_t eseg;
-};
-
-/* WQE. */
-struct mlx5_wqe64 {
-	struct mlx5_wqe hdr;
-	uint8_t raw[32];
-} __rte_aligned(MLX5_WQE_SIZE);
 
 /* MPW mode. */
 enum mlx5_mpw_mode {
 	MLX5_MPW_DISABLED,
 	MLX5_MPW,
 	MLX5_MPW_ENHANCED, /* Enhanced Multi-Packet Send WQE, a.k.a MPWv2. */
-};
-
-/* MPW session status. */
-enum mlx5_mpw_state {
-	MLX5_MPW_STATE_OPENED,
-	MLX5_MPW_INL_STATE_OPENED,
-	MLX5_MPW_ENHANCED_STATE_OPENED,
-	MLX5_MPW_STATE_CLOSED,
-};
-
-/* MPW session descriptor. */
-struct mlx5_mpw {
-	enum mlx5_mpw_state state;
-	unsigned int pkts_n;
-	unsigned int len;
-	unsigned int total_len;
-	volatile struct mlx5_wqe *wqe;
-	union {
-		volatile struct mlx5_wqe_data_seg *dseg[MLX5_MPW_DSEG_MAX];
-		volatile uint8_t *raw;
-	} data;
 };
 
 /* WQE for Multi-Packet RQ. */

@@ -365,25 +365,6 @@ error:
 }
 
 /**
- * Check if the burst function is using eMPW.
- *
- * @param tx_pkt_burst
- *   Tx burst function pointer.
- *
- * @return
- *   1 if the burst function is using eMPW, 0 otherwise.
- */
-static int
-is_empw_burst_func(eth_tx_burst_t tx_pkt_burst)
-{
-	if (tx_pkt_burst == mlx5_tx_burst_raw_vec ||
-	    tx_pkt_burst == mlx5_tx_burst_vec ||
-	    tx_pkt_burst == mlx5_tx_burst_empw)
-		return 1;
-	return 0;
-}
-
-/**
  * Create the Tx queue Verbs object.
  *
  * @param dev
@@ -414,7 +395,6 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_obj obj;
 	const int desc = 1 << txq_data->elts_n;
-	eth_tx_burst_t tx_pkt_burst = mlx5_select_tx_function(dev);
 	int ret = 0;
 
 	assert(txq_data);
@@ -432,8 +412,6 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		.comp_mask = 0,
 	};
 	cqe_n = desc / MLX5_TX_COMP_THRESH + 1;
-	if (is_empw_burst_func(tx_pkt_burst))
-		cqe_n += MLX5_TX_COMP_THRESH_INLINE_DIV;
 	tmpl.cq = mlx5_glue->create_cq(priv->sh->ctx, cqe_n, NULL, NULL, 0);
 	if (tmpl.cq == NULL) {
 		DRV_LOG(ERR, "port %u Tx queue %u CQ creation failure",
@@ -698,93 +676,7 @@ txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl)
 static void
 txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 {
-	struct mlx5_priv *priv = txq_ctrl->priv;
-	struct mlx5_dev_config *config = &priv->config;
-	const unsigned int max_tso_inline =
-		((MLX5_MAX_TSO_HEADER + (RTE_CACHE_LINE_SIZE - 1)) /
-		 RTE_CACHE_LINE_SIZE);
-	unsigned int txq_inline;
-	unsigned int txqs_inline;
-	unsigned int inline_max_packet_sz;
-	eth_tx_burst_t tx_pkt_burst =
-		mlx5_select_tx_function(ETH_DEV(priv));
-	int is_empw_func = is_empw_burst_func(tx_pkt_burst);
-	int tso = !!(txq_ctrl->txq.offloads & (DEV_TX_OFFLOAD_TCP_TSO |
-					       DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-					       DEV_TX_OFFLOAD_GRE_TNL_TSO |
-					       DEV_TX_OFFLOAD_IP_TNL_TSO |
-					       DEV_TX_OFFLOAD_UDP_TNL_TSO));
-
-	txq_inline = (config->txq_inline == MLX5_ARG_UNSET) ?
-		0 : config->txq_inline;
-	txqs_inline = (config->txqs_inline == MLX5_ARG_UNSET) ?
-		0 : config->txqs_inline;
-	inline_max_packet_sz =
-		(config->inline_max_packet_sz == MLX5_ARG_UNSET) ?
-		0 : config->inline_max_packet_sz;
-	if (is_empw_func) {
-		if (config->txq_inline == MLX5_ARG_UNSET)
-			txq_inline = MLX5_WQE_SIZE_MAX - MLX5_WQE_SIZE;
-		if (config->txqs_inline == MLX5_ARG_UNSET)
-			txqs_inline = MLX5_EMPW_MIN_TXQS;
-		if (config->inline_max_packet_sz == MLX5_ARG_UNSET)
-			inline_max_packet_sz = MLX5_EMPW_MAX_INLINE_LEN;
-		txq_ctrl->txq.mpw_hdr_dseg = config->mpw_hdr_dseg;
-		txq_ctrl->txq.inline_max_packet_sz = inline_max_packet_sz;
-	}
-	if (txq_inline && priv->txqs_n >= txqs_inline) {
-		unsigned int ds_cnt;
-
-		txq_ctrl->txq.max_inline =
-			((txq_inline + (RTE_CACHE_LINE_SIZE - 1)) /
-			 RTE_CACHE_LINE_SIZE);
-		if (is_empw_func) {
-			/* To minimize the size of data set, avoid requesting
-			 * too large WQ.
-			 */
-			txq_ctrl->max_inline_data =
-				((RTE_MIN(txq_inline,
-					  inline_max_packet_sz) +
-				  (RTE_CACHE_LINE_SIZE - 1)) /
-				 RTE_CACHE_LINE_SIZE) * RTE_CACHE_LINE_SIZE;
-		} else {
-			txq_ctrl->max_inline_data =
-				txq_ctrl->txq.max_inline * RTE_CACHE_LINE_SIZE;
-		}
-		/*
-		 * Check if the inline size is too large in a way which
-		 * can make the WQE DS to overflow.
-		 * Considering in calculation:
-		 *      WQE CTRL (1 DS)
-		 *      WQE ETH  (1 DS)
-		 *      Inline part (N DS)
-		 */
-		ds_cnt = 2 + (txq_ctrl->txq.max_inline / MLX5_WQE_DWORD_SIZE);
-		if (ds_cnt > MLX5_DSEG_MAX) {
-			unsigned int max_inline = (MLX5_DSEG_MAX - 2) *
-						  MLX5_WQE_DWORD_SIZE;
-
-			max_inline = max_inline - (max_inline %
-						   RTE_CACHE_LINE_SIZE);
-			DRV_LOG(WARNING,
-				"port %u txq inline is too large (%d) setting"
-				" it to the maximum possible: %d\n",
-				PORT_ID(priv), txq_inline, max_inline);
-			txq_ctrl->txq.max_inline = max_inline /
-						   RTE_CACHE_LINE_SIZE;
-		}
-	}
-	if (tso) {
-		txq_ctrl->max_tso_header = max_tso_inline * RTE_CACHE_LINE_SIZE;
-		txq_ctrl->txq.max_inline = RTE_MAX(txq_ctrl->txq.max_inline,
-						   max_tso_inline);
-		txq_ctrl->txq.tso_en = 1;
-	}
-	txq_ctrl->txq.tunnel_en = config->tunnel_en | config->swp;
-	txq_ctrl->txq.swp_en = ((DEV_TX_OFFLOAD_IP_TNL_TSO |
-				 DEV_TX_OFFLOAD_UDP_TNL_TSO |
-				 DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) &
-				txq_ctrl->txq.offloads) && config->swp;
+	(void)txq_ctrl;
 }
 
 /**
