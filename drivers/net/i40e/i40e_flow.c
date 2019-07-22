@@ -2442,6 +2442,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	uint64_t input_set = I40E_INSET_NONE;
 	uint16_t frag_off;
 	enum rte_flow_item_type item_type;
+	enum rte_flow_item_type next_type;
 	enum rte_flow_item_type l3 = RTE_FLOW_ITEM_TYPE_END;
 	enum rte_flow_item_type cus_proto = RTE_FLOW_ITEM_TYPE_END;
 	uint32_t i, j;
@@ -2482,6 +2483,16 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			eth_spec = item->spec;
 			eth_mask = item->mask;
+			next_type = (item + 1)->type;
+
+			if (next_type == RTE_FLOW_ITEM_TYPE_END &&
+						(!eth_spec || !eth_mask)) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "NULL eth spec/mask.");
+				return -rte_errno;
+			}
 
 			if (eth_spec && eth_mask) {
 				if (!rte_is_zero_ether_addr(&eth_mask->src) ||
@@ -2494,8 +2505,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				}
 			}
 			if (eth_spec && eth_mask && eth_mask->type) {
-				enum rte_flow_item_type next = (item + 1)->type;
-
 				if (eth_mask->type != RTE_BE16(0xffff)) {
 					rte_flow_error_set(error, EINVAL,
 						      RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2506,7 +2515,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 				ether_type = rte_be_to_cpu_16(eth_spec->type);
 
-				if (next == RTE_FLOW_ITEM_TYPE_VLAN ||
+				if (next_type == RTE_FLOW_ITEM_TYPE_VLAN ||
 				    ether_type == RTE_ETHER_TYPE_IPV4 ||
 				    ether_type == RTE_ETHER_TYPE_IPV6 ||
 				    ether_type == RTE_ETHER_TYPE_ARP ||
