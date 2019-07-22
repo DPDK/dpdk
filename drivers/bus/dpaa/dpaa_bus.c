@@ -699,7 +699,7 @@ dpaa_bus_dev_iterate(const void *start, const char *str,
 
 	/* Expectation is that device would be name=device_name */
 	if (strncmp(str, "name=", 5) != 0) {
-		DPAA_BUS_ERR("Invalid device string (%s)\n", str);
+		DPAA_BUS_DEBUG("Invalid device string (%s)\n", str);
 		return NULL;
 	}
 
