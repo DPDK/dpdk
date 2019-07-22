@@ -155,6 +155,21 @@
 /* Tunnel packet bit in the CQE. */
 #define MLX5_CQE_RX_TUNNEL_PACKET (1u << 0)
 
+/* Mask for LRO push flag in the CQE lro_tcppsh_abort_dupack field. */
+#define MLX5_CQE_LRO_PUSH_MASK 0x40
+
+/* Mask for L4 type in the CQE hdr_type_etc field. */
+#define MLX5_CQE_L4_TYPE_MASK 0x70
+
+/* The bit index of L4 type in CQE hdr_type_etc field. */
+#define MLX5_CQE_L4_TYPE_SHIFT 0x4
+
+/* L4 type to indicate TCP packet without acknowledgment. */
+#define MLX5_L4_HDR_TYPE_TCP_EMPTY_ACK 0x3
+
+/* L4 type to indicate TCP packet with acknowledgment. */
+#define MLX5_L4_HDR_TYPE_TCP_WITH_ACL 0x4
+
 /* Inner L3 checksum offload (Tunneled packets only). */
 #define MLX5_ETH_WQE_L3_INNER_CSUM (1u << 4)
 

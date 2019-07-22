@@ -1374,6 +1374,101 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	return i;
 }
 
+/**
+ * Update LRO packet TCP header.
+ * The HW LRO feature doesn't update the TCP header after coalescing the
+ * TCP segments but supplies information in CQE to fill it by SW.
+ *
+ * @param tcp
+ *   Pointer to the TCP header.
+ * @param cqe
+ *   Pointer to the completion entry..
+ * @param phcsum
+ *   The L3 pseudo-header checksum.
+ */
+static inline void
+mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *restrict tcp,
+			volatile struct mlx5_cqe *restrict cqe,
+			uint32_t phcsum)
+{
+	uint8_t l4_type = (rte_be_to_cpu_16(cqe->hdr_type_etc) &
+			   MLX5_CQE_L4_TYPE_MASK) >> MLX5_CQE_L4_TYPE_SHIFT;
+	/*
+	 * The HW calculates only the TCP payload checksum, need to complete
+	 * the TCP header checksum and the L3 pseudo-header checksum.
+	 */
+	uint32_t csum = phcsum + cqe->csum;
+
+	if (l4_type == MLX5_L4_HDR_TYPE_TCP_EMPTY_ACK ||
+	    l4_type == MLX5_L4_HDR_TYPE_TCP_WITH_ACL) {
+		tcp->tcp_flags |= RTE_TCP_ACK_FLAG;
+		tcp->recv_ack = cqe->lro_ack_seq_num;
+		tcp->rx_win = cqe->lro_tcp_win;
+	}
+	if (cqe->lro_tcppsh_abort_dupack & MLX5_CQE_LRO_PUSH_MASK)
+		tcp->tcp_flags |= RTE_TCP_PSH_FLAG;
+	tcp->cksum = 0;
+	csum += rte_raw_cksum(tcp, (tcp->data_off & 0xF) * 4);
+	csum = ((csum & 0xffff0000) >> 16) + (csum & 0xffff);
+	csum = (~csum) & 0xffff;
+	if (csum == 0)
+		csum = 0xffff;
+	tcp->cksum = csum;
+}
+
+/**
+ * Update LRO packet headers.
+ * The HW LRO feature doesn't update the L3/TCP headers after coalescing the
+ * TCP segments but supply information in CQE to fill it by SW.
+ *
+ * @param padd
+ *   The packet address.
+ * @param cqe
+ *   Pointer to the completion entry..
+ * @param len
+ *   The packet length.
+ */
+static inline void
+mlx5_lro_update_hdr(uint8_t *restrict padd,
+		    volatile struct mlx5_cqe *restrict cqe,
+		    uint32_t len)
+{
+	union {
+		struct rte_ether_hdr *eth;
+		struct rte_vlan_hdr *vlan;
+		struct rte_ipv4_hdr *ipv4;
+		struct rte_ipv6_hdr *ipv6;
+		struct rte_tcp_hdr *tcp;
+		uint8_t *hdr;
+	} h = {
+			.hdr = padd,
+	};
+	uint16_t proto = h.eth->ether_type;
+	uint32_t phcsum;
+
+	h.eth++;
+	while (proto == RTE_BE16(RTE_ETHER_TYPE_VLAN) ||
+	       proto == RTE_BE16(RTE_ETHER_TYPE_QINQ)) {
+		proto = h.vlan->eth_proto;
+		h.vlan++;
+	}
+	if (proto == RTE_BE16(RTE_ETHER_TYPE_IPV4)) {
+		h.ipv4->time_to_live = cqe->lro_min_ttl;
+		h.ipv4->total_length = rte_cpu_to_be_16(len - (h.hdr - padd));
+		h.ipv4->hdr_checksum = 0;
+		h.ipv4->hdr_checksum = rte_ipv4_cksum(h.ipv4);
+		phcsum = rte_ipv4_phdr_cksum(h.ipv4, 0);
+		h.ipv4++;
+	} else {
+		h.ipv6->hop_limits = cqe->lro_min_ttl;
+		h.ipv6->payload_len = rte_cpu_to_be_16(len - (h.hdr - padd) -
+						       sizeof(*h.ipv6));
+		phcsum = rte_ipv6_phdr_cksum(h.ipv6, 0);
+		h.ipv6++;
+	}
+	mlx5_lro_update_tcp_hdr(h.tcp, cqe, phcsum);
+}
+
 void
 mlx5_mprq_buf_free_cb(void *addr __rte_unused, void *opaque)
 {
@@ -1458,6 +1553,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint32_t byte_cnt;
 		volatile struct mlx5_mini_cqe8 *mcqe = NULL;
 		uint32_t rss_hash_res = 0;
+		uint8_t lro_num_seg;
 
 		if (consumed_strd == strd_n) {
 			/* Replace WQE only if the buffer is still in use. */
@@ -1503,6 +1599,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		assert(strd_idx < strd_n);
 		assert(!((rte_be_to_cpu_16(cqe->wqe_id) ^ rq_ci) & wq_mask));
+		lro_num_seg = cqe->lro_num_seg;
 		/*
 		 * Currently configured to receive a packet per a stride. But if
 		 * MTU is adjusted through kernel interface, device could
@@ -1510,7 +1607,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 * case, the packet should be dropped because it is bigger than
 		 * the max_rx_pkt_len.
 		 */
-		if (unlikely(strd_cnt > 1)) {
+		if (unlikely(!lro_num_seg && strd_cnt > 1)) {
 			++rxq->stats.idropped;
 			continue;
 		}
@@ -1547,19 +1644,20 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			rte_iova_t buf_iova;
 			struct rte_mbuf_ext_shared_info *shinfo;
 			uint16_t buf_len = strd_cnt * strd_sz;
+			void *buf_addr;
 
 			/* Increment the refcnt of the whole chunk. */
 			rte_atomic16_add_return(&buf->refcnt, 1);
 			assert((uint16_t)rte_atomic16_read(&buf->refcnt) <=
 			       strd_n + 1);
-			addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);
+			buf_addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);
 			/*
 			 * MLX5 device doesn't use iova but it is necessary in a
 			 * case where the Rx packet is transmitted via a
 			 * different PMD.
 			 */
 			buf_iova = rte_mempool_virt2iova(buf) +
-				   RTE_PTR_DIFF(addr, buf);
+				   RTE_PTR_DIFF(buf_addr, buf);
 			shinfo = &buf->shinfos[strd_idx];
 			rte_mbuf_ext_refcnt_set(shinfo, 1);
 			/*
@@ -1568,8 +1666,8 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 * will be added below by calling rxq_cq_to_mbuf().
 			 * Other fields will be overwritten.
 			 */
-			rte_pktmbuf_attach_extbuf(pkt, addr, buf_iova, buf_len,
-						  shinfo);
+			rte_pktmbuf_attach_extbuf(pkt, buf_addr, buf_iova,
+						  buf_len, shinfo);
 			rte_pktmbuf_reset_headroom(pkt);
 			assert(pkt->ol_flags == EXT_ATTACHED_MBUF);
 			/*
@@ -1583,6 +1681,11 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			}
 		}
 		rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
+		if (lro_num_seg > 1) {
+			mlx5_lro_update_hdr(addr, cqe, len);
+			pkt->ol_flags |= PKT_RX_LRO;
+			pkt->tso_segsz = strd_sz;
+		}
 		PKT_LEN(pkt) = len;
 		DATA_LEN(pkt) = len;
 		PORT(pkt) = rxq->port_id;
