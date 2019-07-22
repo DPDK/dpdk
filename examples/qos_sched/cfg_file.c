@@ -29,6 +29,9 @@ cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port_params
 	if (!cfg || !port_params)
 		return -1;
 
+	memset(active_queues, 0, sizeof(active_queues));
+	n_active_queues = 0;
+
 	entry = rte_cfgfile_get_entry(cfg, "port", "frame overhead");
 	if (entry)
 		port_params->frame_overhead = (uint32_t)atoi(entry);
@@ -45,12 +48,25 @@ cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port_params
 	if (entry) {
 		char *next;
 
-		for(j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j++) {
+		for (j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j++) {
 			port_params->qsize[j] = (uint16_t)strtol(entry, &next, 10);
 			if (next == NULL)
 				break;
 			entry = next;
 		}
+
+		for (j = 0; j < RTE_SCHED_TRAFFIC_CLASS_BE; j++)
+			if (port_params->qsize[j]) {
+				active_queues[n_active_queues] = j;
+				n_active_queues++;
+			}
+
+		if (port_params->qsize[RTE_SCHED_TRAFFIC_CLASS_BE])
+			for (j = 0; j < RTE_SCHED_BE_QUEUES_PER_PIPE; j++) {
+				active_queues[n_active_queues] =
+					RTE_SCHED_TRAFFIC_CLASS_BE + j;
+				n_active_queues++;
+			}
 	}
 
 #ifdef RTE_SCHED_RED
@@ -173,46 +189,50 @@ cfg_load_pipe(struct rte_cfgfile *cfg, struct rte_sched_pipe_params *pipe_params
 		if (entry)
 			pipe_params[j].tc_rate[3] = (uint32_t)atoi(entry);
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
-		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 3 oversubscription weight");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 4 rate");
+		if (entry)
+			pipe_params[j].tc_rate[4] = (uint32_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 5 rate");
+		if (entry)
+			pipe_params[j].tc_rate[5] = (uint32_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 6 rate");
+		if (entry)
+			pipe_params[j].tc_rate[6] = (uint32_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 7 rate");
+		if (entry)
+			pipe_params[j].tc_rate[7] = (uint32_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 8 rate");
+		if (entry)
+			pipe_params[j].tc_rate[8] = (uint32_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 9 rate");
+		if (entry)
+			pipe_params[j].tc_rate[9] = (uint32_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 10 rate");
+		if (entry)
+			pipe_params[j].tc_rate[10] = (uint32_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 11 rate");
+		if (entry)
+			pipe_params[j].tc_rate[11] = (uint32_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 12 rate");
+		if (entry)
+			pipe_params[j].tc_rate[12] = (uint32_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 12 oversubscription weight");
 		if (entry)
 			pipe_params[j].tc_ov_weight = (uint8_t)atoi(entry);
-#endif
 
-		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 0 wrr weights");
+		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 12 wrr weights");
 		if (entry) {
-			for(i = 0; i < RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS; i++) {
-				pipe_params[j].wrr_weights[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE*0 + i] =
-					(uint8_t)strtol(entry, &next, 10);
-				if (next == NULL)
-					break;
-				entry = next;
-			}
-		}
-		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 1 wrr weights");
-		if (entry) {
-			for(i = 0; i < RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS; i++) {
-				pipe_params[j].wrr_weights[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE*1 + i] =
-					(uint8_t)strtol(entry, &next, 10);
-				if (next == NULL)
-					break;
-				entry = next;
-			}
-		}
-		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 2 wrr weights");
-		if (entry) {
-			for(i = 0; i < RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS; i++) {
-				pipe_params[j].wrr_weights[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE*2 + i] =
-					(uint8_t)strtol(entry, &next, 10);
-				if (next == NULL)
-					break;
-				entry = next;
-			}
-		}
-		entry = rte_cfgfile_get_entry(cfg, pipe_name, "tc 3 wrr weights");
-		if (entry) {
-			for(i = 0; i < RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS; i++) {
-				pipe_params[j].wrr_weights[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE*3 + i] =
+			for (i = 0; i < RTE_SCHED_BE_QUEUES_PER_PIPE; i++) {
+				pipe_params[j].wrr_weights[i] =
 					(uint8_t)strtol(entry, &next, 10);
 				if (next == NULL)
 					break;
@@ -266,6 +286,42 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 3 rate");
 			if (entry)
 				subport_params[i].tc_rate[3] = (uint32_t)atoi(entry);
+
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 4 rate");
+			if (entry)
+				subport_params[i].tc_rate[4] = (uint32_t)atoi(entry);
+
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 5 rate");
+			if (entry)
+				subport_params[i].tc_rate[5] = (uint32_t)atoi(entry);
+
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 6 rate");
+			if (entry)
+				subport_params[i].tc_rate[6] = (uint32_t)atoi(entry);
+
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 7 rate");
+			if (entry)
+				subport_params[i].tc_rate[7] = (uint32_t)atoi(entry);
+
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 8 rate");
+			if (entry)
+				subport_params[i].tc_rate[8] = (uint32_t)atoi(entry);
+
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 9 rate");
+			if (entry)
+				subport_params[i].tc_rate[9] = (uint32_t)atoi(entry);
+
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 10 rate");
+			if (entry)
+				subport_params[i].tc_rate[10] = (uint32_t)atoi(entry);
+
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 11 rate");
+			if (entry)
+				subport_params[i].tc_rate[11] = (uint32_t)atoi(entry);
+
+			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 12 rate");
+			if (entry)
+				subport_params[i].tc_rate[12] = (uint32_t)atoi(entry);
 
 			int n_entries = rte_cfgfile_section_num_entries(cfg, sec_name);
 			struct rte_cfgfile_entry entries[n_entries];

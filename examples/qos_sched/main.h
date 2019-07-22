@@ -50,6 +50,7 @@ extern "C" {
 #define MAX_DATA_STREAMS (APP_MAX_LCORE/2)
 #define MAX_SCHED_SUBPORTS		8
 #define MAX_SCHED_PIPES		4096
+#define MAX_SCHED_PIPE_PROFILES		256
 
 #ifndef APP_COLLECT_STAT
 #define APP_COLLECT_STAT		1
@@ -146,6 +147,9 @@ extern struct ring_conf ring_conf;
 extern struct burst_conf burst_conf;
 extern struct ring_thresh rx_thresh;
 extern struct ring_thresh tx_thresh;
+
+uint32_t active_queues[RTE_SCHED_QUEUES_PER_PIPE];
+uint32_t n_active_queues;
 
 extern struct rte_sched_port_params port_params;
 
