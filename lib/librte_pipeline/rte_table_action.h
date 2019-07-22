@@ -181,10 +181,10 @@ struct rte_table_action_lb_params {
  * RTE_TABLE_ACTION_MTR
  */
 /** Max number of traffic classes (TCs). */
-#define RTE_TABLE_ACTION_TC_MAX                                  4
+#define RTE_TABLE_ACTION_TC_MAX                                  16
 
 /** Max number of queues per traffic class. */
-#define RTE_TABLE_ACTION_TC_QUEUE_MAX                            4
+#define RTE_TABLE_ACTION_TC_QUEUE_MAX                            16
 
 /** Differentiated Services Code Point (DSCP) translation table entry. */
 struct rte_table_action_dscp_table_entry {

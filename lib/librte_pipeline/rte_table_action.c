@@ -401,7 +401,6 @@ pkt_work_tm(struct rte_mbuf *mbuf,
 {
 	struct dscp_table_entry_data *dscp_entry = &dscp_table->entry[dscp];
 	uint32_t queue_id = data->queue_id |
-				(dscp_entry->tc << 2) |
 				dscp_entry->tc_queue;
 	rte_mbuf_sched_set(mbuf, queue_id, dscp_entry->tc,
 				(uint8_t)dscp_entry->color);
