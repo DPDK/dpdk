@@ -236,6 +236,7 @@ struct mlx5_dev_config {
 	unsigned int dv_flow_en:1; /* Enable DV flow. */
 	unsigned int swp:1; /* Tx generic tunnel checksum and TSO offload. */
 	unsigned int devx:1; /* Whether devx interface is available or not. */
+	unsigned int dest_tir:1; /* Whether advanced DR API is available. */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */

@@ -1423,6 +1423,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	if (!sh)
 		return NULL;
 	config.devx = sh->devx;
+#ifdef HAVE_MLX5DV_DR_ACTION_DEST_DEVX_TIR
+	config.dest_tir = 1;
+#endif
 #ifdef HAVE_IBV_MLX5_MOD_SWP
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
 #endif

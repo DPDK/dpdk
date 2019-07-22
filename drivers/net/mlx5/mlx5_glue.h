@@ -187,6 +187,7 @@ struct mlx5_glue {
 			  size_t num_actions, void *actions[]);
 	void *(*dv_create_flow_action_counter)(void *obj, uint32_t  offset);
 	void *(*dv_create_flow_action_dest_ibv_qp)(void *qp);
+	void *(*dv_create_flow_action_dest_devx_tir)(void *tir);
 	void *(*dv_create_flow_action_modify_header)
 		(struct ibv_context *ctx, enum mlx5dv_flow_table_type ft_type,
 		 void *domain, uint64_t flags, size_t actions_sz,

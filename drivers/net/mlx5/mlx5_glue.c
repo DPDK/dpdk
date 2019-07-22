@@ -628,6 +628,18 @@ mlx5_glue_dv_create_flow_action_dest_ibv_qp(void *qp)
 }
 
 static void *
+mlx5_glue_dv_create_flow_action_dest_devx_tir(void *tir)
+{
+#ifdef HAVE_MLX5DV_DR_ACTION_DEST_DEVX_TIR
+	return mlx5dv_dr_action_create_dest_devx_tir(tir);
+#else
+	(void)tir;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void *
 mlx5_glue_dv_create_flow_action_modify_header
 					(struct ibv_context *ctx,
 					 enum mlx5dv_flow_table_type ft_type,
@@ -1020,6 +1032,8 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 		mlx5_glue_dv_create_flow_action_counter,
 	.dv_create_flow_action_dest_ibv_qp =
 		mlx5_glue_dv_create_flow_action_dest_ibv_qp,
+	.dv_create_flow_action_dest_devx_tir =
+		mlx5_glue_dv_create_flow_action_dest_devx_tir,
 	.dv_create_flow_action_modify_header =
 		mlx5_glue_dv_create_flow_action_modify_header,
 	.dv_create_flow_action_packet_reformat =
