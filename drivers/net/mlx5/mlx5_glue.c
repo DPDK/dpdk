@@ -934,6 +934,24 @@ mlx5_glue_devx_umem_dereg(struct mlx5dv_devx_umem *dv_devx_umem)
 #endif
 }
 
+static int
+mlx5_glue_devx_qp_query(struct ibv_qp *qp,
+			const void *in, size_t inlen,
+			void *out, size_t outlen)
+{
+#ifdef HAVE_IBV_DEVX_ASYNC
+	return mlx5dv_devx_qp_query(qp, in, inlen, out, outlen);
+#else
+	(void)qp;
+	(void)in;
+	(void)inlen;
+	(void)out;
+	(void)outlen;
+	errno = ENOTSUP;
+	return errno;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -1021,4 +1039,5 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_get_async_cmd_comp = mlx5_glue_devx_get_async_cmd_comp,
 	.devx_umem_reg = mlx5_glue_devx_umem_reg,
 	.devx_umem_dereg = mlx5_glue_devx_umem_dereg,
+	.devx_qp_query = mlx5_glue_devx_qp_query,
 };

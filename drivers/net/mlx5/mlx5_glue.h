@@ -229,6 +229,9 @@ struct mlx5_glue {
 						  void *addr, size_t size,
 						  uint32_t access);
 	int (*devx_umem_dereg)(struct mlx5dv_devx_umem *dv_devx_umem);
+	int (*devx_qp_query)(struct ibv_qp *qp,
+			     const void *in, size_t inlen,
+			     void *out, size_t outlen);
 };
 
 const struct mlx5_glue *mlx5_glue;
