@@ -737,6 +737,11 @@ eth_em_stop(struct rte_eth_dev *dev)
 	em_lsc_intr_disable(hw);
 
 	e1000_reset_hw(hw);
+
+	/* Flush desc rings for i219 */
+	if (hw->mac.type >= e1000_pch_spt)
+		em_flush_desc_rings(dev);
+
 	if (hw->mac.type >= e1000_82544)
 		E1000_WRITE_REG(hw, E1000_WUC, 0);
 

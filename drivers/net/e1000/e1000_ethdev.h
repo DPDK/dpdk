@@ -35,6 +35,9 @@
 #define IGB_MAX_RX_QUEUE_NUM           8
 #define IGB_MAX_RX_QUEUE_NUM_82576     16
 
+#define E1000_I219_MAX_RX_QUEUE_NUM		2
+#define E1000_I219_MAX_TX_QUEUE_NUM		2
+
 #define E1000_SYN_FILTER_ENABLE        0x00000001 /* syn filter enable field */
 #define E1000_SYN_FILTER_QUEUE         0x0000000E /* syn filter queue field */
 #define E1000_SYN_FILTER_QUEUE_SHIFT   1          /* syn filter queue field */
@@ -522,5 +525,6 @@ int igb_action_rss_same(const struct rte_flow_action_rss *comp,
 int igb_config_rss_filter(struct rte_eth_dev *dev,
 			struct igb_rte_flow_rss_conf *conf,
 			bool add);
+void em_flush_desc_rings(struct rte_eth_dev *dev);
 
 #endif /* _E1000_ETHDEV_H_ */
