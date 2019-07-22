@@ -94,17 +94,6 @@ extern "C" {
  */
 #define RTE_SCHED_TRAFFIC_CLASS_BE    (RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE - 1)
 
-/** Number of queues per pipe traffic class. Cannot be changed. */
-#define RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS    4
-
-
-/** Maximum number of pipe profiles that can be defined per port.
- * Compile-time configurable.
- */
-#ifndef RTE_SCHED_PIPE_PROFILES_PER_PORT
-#define RTE_SCHED_PIPE_PROFILES_PER_PORT      256
-#endif
-
 /*
  * Ethernet framing overhead. Overhead fields per Ethernet frame:
  * 1. Preamble:                             7 bytes;

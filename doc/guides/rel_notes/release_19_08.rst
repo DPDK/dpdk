@@ -281,6 +281,14 @@ API Changes
   offload flag from the library. The application must set this flag if it is
   supported by the platform and application wishes to use it.
 
+* sched: Macros ``RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS`` and
+  ``RTE_SCHED_PIPE_PROFILES_PER_PORT`` are removed for flexible configuration
+  of pipe traffic classes and their queues size, and for runtime configuration
+  of maximum number of pipe profiles, respectively. In addtion, wrr_weights
+  field of struct ``rte_sched_pipe_params`` is modifed to be used only for
+  best-effort tc, and qsize field of struct ``rte_sched_port_params`` is
+  changed to allow different size of the each queue.
+
 
 ABI Changes
 -----------
@@ -393,7 +401,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_rcu.so.1
      librte_reorder.so.1
      librte_ring.so.2
-     librte_sched.so.2
+   + librte_sched.so.3
      librte_security.so.2
      librte_stack.so.1
      librte_table.so.3
