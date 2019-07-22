@@ -60,13 +60,11 @@ S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, pkt_info) == 0);
 #endif
 S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, rx_hash_res) ==
 		  offsetof(struct mlx5_cqe, pkt_info) + 12);
-S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, rsvd1) +
-		  sizeof(((struct mlx5_cqe *)0)->rsvd1) ==
+S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, rsvd1) + 11 ==
 		  offsetof(struct mlx5_cqe, hdr_type_etc));
 S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, vlan_info) ==
 		  offsetof(struct mlx5_cqe, hdr_type_etc) + 2);
-S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, rsvd2) +
-		  sizeof(((struct mlx5_cqe *)0)->rsvd2) ==
+S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, lro_num_seg) + 12 ==
 		  offsetof(struct mlx5_cqe, byte_cnt));
 S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, sop_drop_qpn) ==
 		  RTE_ALIGN(offsetof(struct mlx5_cqe, sop_drop_qpn), 8));

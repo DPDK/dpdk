@@ -533,12 +533,12 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		cqe_tmp1 = _mm_load_si128((__m128i *)&cq[pos + p2]);
 		cqes[3] = _mm_blendv_epi8(cqes[3], cqe_tmp2, blend_mask);
 		cqes[2] = _mm_blendv_epi8(cqes[2], cqe_tmp1, blend_mask);
-		cqe_tmp2 = _mm_loadu_si128((__m128i *)&cq[pos + p3].rsvd1[3]);
-		cqe_tmp1 = _mm_loadu_si128((__m128i *)&cq[pos + p2].rsvd1[3]);
+		cqe_tmp2 = _mm_loadu_si128((__m128i *)&cq[pos + p3].csum);
+		cqe_tmp1 = _mm_loadu_si128((__m128i *)&cq[pos + p2].csum);
 		cqes[3] = _mm_blend_epi16(cqes[3], cqe_tmp2, 0x30);
 		cqes[2] = _mm_blend_epi16(cqes[2], cqe_tmp1, 0x30);
-		cqe_tmp2 = _mm_loadl_epi64((__m128i *)&cq[pos + p3].rsvd2[10]);
-		cqe_tmp1 = _mm_loadl_epi64((__m128i *)&cq[pos + p2].rsvd2[10]);
+		cqe_tmp2 = _mm_loadl_epi64((__m128i *)&cq[pos + p3].rsvd3[9]);
+		cqe_tmp1 = _mm_loadl_epi64((__m128i *)&cq[pos + p2].rsvd3[9]);
 		cqes[3] = _mm_blend_epi16(cqes[3], cqe_tmp2, 0x04);
 		cqes[2] = _mm_blend_epi16(cqes[2], cqe_tmp1, 0x04);
 		/* C.2 generate final structure for mbuf with swapping bytes. */
@@ -560,12 +560,12 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		cqe_tmp1 = _mm_load_si128((__m128i *)&cq[pos]);
 		cqes[1] = _mm_blendv_epi8(cqes[1], cqe_tmp2, blend_mask);
 		cqes[0] = _mm_blendv_epi8(cqes[0], cqe_tmp1, blend_mask);
-		cqe_tmp2 = _mm_loadu_si128((__m128i *)&cq[pos + p1].rsvd1[3]);
-		cqe_tmp1 = _mm_loadu_si128((__m128i *)&cq[pos].rsvd1[3]);
+		cqe_tmp2 = _mm_loadu_si128((__m128i *)&cq[pos + p1].csum);
+		cqe_tmp1 = _mm_loadu_si128((__m128i *)&cq[pos].csum);
 		cqes[1] = _mm_blend_epi16(cqes[1], cqe_tmp2, 0x30);
 		cqes[0] = _mm_blend_epi16(cqes[0], cqe_tmp1, 0x30);
-		cqe_tmp2 = _mm_loadl_epi64((__m128i *)&cq[pos + p1].rsvd2[10]);
-		cqe_tmp1 = _mm_loadl_epi64((__m128i *)&cq[pos].rsvd2[10]);
+		cqe_tmp2 = _mm_loadl_epi64((__m128i *)&cq[pos + p1].rsvd3[9]);
+		cqe_tmp1 = _mm_loadl_epi64((__m128i *)&cq[pos].rsvd3[9]);
 		cqes[1] = _mm_blend_epi16(cqes[1], cqe_tmp2, 0x04);
 		cqes[0] = _mm_blend_epi16(cqes[0], cqe_tmp1, 0x04);
 		/* C.2 generate final structure for mbuf with swapping bytes. */
