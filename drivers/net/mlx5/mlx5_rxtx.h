@@ -141,13 +141,23 @@ struct mlx5_rxq_data {
 	uint32_t tunnel; /* Tunnel information. */
 } __rte_cache_aligned;
 
-/* Verbs Rx queue elements. */
-struct mlx5_rxq_ibv {
-	LIST_ENTRY(mlx5_rxq_ibv) next; /* Pointer to the next element. */
+enum mlx5_rxq_obj_type {
+	MLX5_RXQ_OBJ_TYPE_IBV,		/* mlx5_rxq_obj with ibv_wq. */
+	MLX5_RXQ_OBJ_TYPE_DEVX_RQ,	/* mlx5_rxq_obj with mlx5_devx_rq. */
+};
+
+/* Verbs/DevX Rx queue elements. */
+struct mlx5_rxq_obj {
+	LIST_ENTRY(mlx5_rxq_obj) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_rxq_ctrl *rxq_ctrl; /* Back pointer to parent. */
 	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_wq *wq; /* Work Queue. */
+	enum mlx5_rxq_obj_type type;
+	RTE_STD_C11
+	union {
+		struct ibv_wq *wq; /* Work Queue. */
+		struct mlx5_devx_obj *rq; /* DevX object for Rx Queue. */
+	};
 	struct ibv_comp_channel *channel;
 };
 
@@ -156,7 +166,7 @@ struct mlx5_rxq_ctrl {
 	struct mlx5_rxq_data rxq; /* Data path structure. */
 	LIST_ENTRY(mlx5_rxq_ctrl) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
-	struct mlx5_rxq_ibv *ibv; /* Verbs elements. */
+	struct mlx5_rxq_obj *obj; /* Verbs/DevX elements. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
@@ -300,8 +310,8 @@ int mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev);
 void mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev);
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-struct mlx5_rxq_ibv *mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx);
-int mlx5_rxq_ibv_verify(struct rte_eth_dev *dev);
+struct mlx5_rxq_obj *mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx);
+int mlx5_rxq_obj_verify(struct rte_eth_dev *dev);
 struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
 				   const struct rte_eth_rxconf *conf,

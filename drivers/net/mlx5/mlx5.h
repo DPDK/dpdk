@@ -375,7 +375,7 @@ LIST_HEAD(mlx5_mr_list, mlx5_mr);
 /* Flow drop context necessary due to Verbs API. */
 struct mlx5_drop {
 	struct mlx5_hrxq *hrxq; /* Hash Rx queue queue. */
-	struct mlx5_rxq_ibv *rxq; /* Verbs Rx queue. */
+	struct mlx5_rxq_obj *rxq; /* Rx queue object. */
 };
 
 #define MLX5_COUNTERS_PER_POOL 512
@@ -613,7 +613,7 @@ struct mlx5_priv {
 	struct mlx5_flows flows; /* RTE Flow rules. */
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
-	LIST_HEAD(rxqibv, mlx5_rxq_ibv) rxqsibv; /* Verbs Rx queues. */
+	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
 	LIST_HEAD(hrxq, mlx5_hrxq) hrxqs; /* Verbs Hash Rx queues. */
 	LIST_HEAD(txq, mlx5_txq_ctrl) txqsctrl; /* DPDK Tx queues. */
 	LIST_HEAD(txqibv, mlx5_txq_ibv) txqsibv; /* Verbs Tx queues. */

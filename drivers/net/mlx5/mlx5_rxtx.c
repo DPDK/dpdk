@@ -815,7 +815,7 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 		struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 
-		ret = mlx5_glue->modify_wq(rxq_ctrl->ibv->wq, &mod);
+		ret = mlx5_glue->modify_wq(rxq_ctrl->obj->wq, &mod);
 		if (ret) {
 			DRV_LOG(ERR, "Cannot change Rx WQ state to %u  - %s\n",
 					sm->state, strerror(errno));

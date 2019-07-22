@@ -123,10 +123,10 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		ret = rxq_alloc_elts(rxq_ctrl);
 		if (ret)
 			goto error;
-		rxq_ctrl->ibv = mlx5_rxq_ibv_new(dev, i);
-		if (!rxq_ctrl->ibv)
+		rxq_ctrl->obj = mlx5_rxq_obj_new(dev, i);
+		if (!rxq_ctrl->obj)
 			goto error;
-		rxq_ctrl->wqn = rxq_ctrl->ibv->wq->wq_num;
+		rxq_ctrl->wqn = rxq_ctrl->obj->wq->wq_num;
 	}
 	return 0;
 error:
