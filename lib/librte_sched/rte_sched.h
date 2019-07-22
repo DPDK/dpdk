@@ -220,6 +220,8 @@ struct rte_sched_port_params {
 	/**< Pipe profile table.
 	 * Every pipe is configured using one of the profiles from this table. */
 	uint32_t n_pipe_profiles;        /**< Profiles in the pipe profile table */
+	uint32_t n_max_pipe_profiles;
+	/**< Max profiles allowed in the pipe profile table */
 #ifdef RTE_SCHED_RED
 	struct rte_red_params red_params[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][RTE_COLORS]; /**< RED parameters */
 #endif

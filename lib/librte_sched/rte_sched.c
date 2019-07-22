@@ -179,6 +179,7 @@ struct rte_sched_port {
 	uint32_t frame_overhead;
 	uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	uint32_t n_pipe_profiles;
+	uint32_t n_max_pipe_profiles;
 	uint32_t pipe_tc3_rate_max;
 #ifdef RTE_SCHED_RED
 	struct rte_red_config red_config[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][RTE_COLORS];
@@ -380,7 +381,7 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 	/* pipe_profiles and n_pipe_profiles */
 	if (params->pipe_profiles == NULL ||
 	    params->n_pipe_profiles == 0 ||
-	    params->n_pipe_profiles > RTE_SCHED_PIPE_PROFILES_PER_PORT)
+	    params->n_pipe_profiles > params->n_max_pipe_profiles)
 		return -9;
 
 	for (i = 0; i < params->n_pipe_profiles; i++) {
@@ -409,7 +410,7 @@ rte_sched_port_get_array_base(struct rte_sched_port_params *params, enum rte_sch
 	uint32_t size_queue_extra
 		= n_queues_per_port * sizeof(struct rte_sched_queue_extra);
 	uint32_t size_pipe_profiles
-		= RTE_SCHED_PIPE_PROFILES_PER_PORT * sizeof(struct rte_sched_pipe_profile);
+		= params->n_max_pipe_profiles * sizeof(struct rte_sched_pipe_profile);
 	uint32_t size_bmp_array = rte_bitmap_get_memory_footprint(n_queues_per_port);
 	uint32_t size_per_pipe_queue_array, size_queue_array;
 
@@ -686,6 +687,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	port->frame_overhead = params->frame_overhead;
 	memcpy(port->qsize, params->qsize, sizeof(params->qsize));
 	port->n_pipe_profiles = params->n_pipe_profiles;
+	port->n_max_pipe_profiles = params->n_max_pipe_profiles;
 
 #ifdef RTE_SCHED_RED
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
@@ -1039,7 +1041,7 @@ rte_sched_port_pipe_profile_add(struct rte_sched_port *port,
 		return -1;
 
 	/* Pipe profiles not exceeds the max limit */
-	if (port->n_pipe_profiles >= RTE_SCHED_PIPE_PROFILES_PER_PORT)
+	if (port->n_pipe_profiles >= port->n_max_pipe_profiles)
 		return -2;
 
 	/* Pipe params */
