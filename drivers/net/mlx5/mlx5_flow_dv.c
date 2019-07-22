@@ -2966,13 +2966,20 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
-		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			ret = mlx5_flow_validate_item_gre(items, item_flags,
 							  next_protocol, error);
 			if (ret < 0)
 				return ret;
 			gre_item = items;
 			last_item = MLX5_FLOW_LAYER_GRE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
+			ret = mlx5_flow_validate_item_nvgre(items, item_flags,
+							    next_protocol,
+							    error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_LAYER_NVGRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
 			ret = mlx5_flow_validate_item_gre_key
@@ -3919,7 +3926,21 @@ flow_dv_translate_item_nvgre(void *matcher, void *key,
 	int size;
 	int i;
 
-	flow_dv_translate_item_gre(matcher, key, item, inner);
+	/* For NVGRE, GRE header fields must be set with defined values. */
+	const struct rte_flow_item_gre gre_spec = {
+		.c_rsvd0_ver = RTE_BE16(0x2000),
+		.protocol = RTE_BE16(RTE_ETHER_TYPE_TEB)
+	};
+	const struct rte_flow_item_gre gre_mask = {
+		.c_rsvd0_ver = RTE_BE16(0xB000),
+		.protocol = RTE_BE16(UINT16_MAX),
+	};
+	const struct rte_flow_item gre_item = {
+		.spec = &gre_spec,
+		.mask = &gre_mask,
+		.last = NULL,
+	};
+	flow_dv_translate_item_gre(matcher, key, &gre_item, inner);
 	if (!nvgre_v)
 		return;
 	if (!nvgre_m)

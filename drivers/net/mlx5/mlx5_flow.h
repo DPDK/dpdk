@@ -48,6 +48,7 @@
 #define MLX5_FLOW_LAYER_VXLAN_GPE (1u << 13)
 #define MLX5_FLOW_LAYER_GRE (1u << 14)
 #define MLX5_FLOW_LAYER_MPLS (1u << 15)
+/* List of tunnel Layer bits continued below. */
 
 /* General pattern items bits. */
 #define MLX5_FLOW_ITEM_METADATA (1u << 16)
@@ -58,8 +59,10 @@
 #define MLX5_FLOW_LAYER_ICMP6 (1u << 19)
 #define MLX5_FLOW_LAYER_GRE_KEY (1u << 20)
 
+/* Pattern tunnel Layer bits (continued). */
 #define MLX5_FLOW_LAYER_IPIP (1u << 21)
 #define MLX5_FLOW_LAYER_IPV6_ENCAP (1u << 22)
+#define MLX5_FLOW_LAYER_NVGRE (1u << 23)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
@@ -79,7 +82,7 @@
 /* Tunnel Masks. */
 #define MLX5_FLOW_LAYER_TUNNEL \
 	(MLX5_FLOW_LAYER_VXLAN | MLX5_FLOW_LAYER_VXLAN_GPE | \
-	 MLX5_FLOW_LAYER_GRE | MLX5_FLOW_LAYER_MPLS | \
+	 MLX5_FLOW_LAYER_GRE | MLX5_FLOW_LAYER_NVGRE | MLX5_FLOW_LAYER_MPLS | \
 	 MLX5_FLOW_LAYER_IPIP | MLX5_FLOW_LAYER_IPV6_ENCAP)
 
 /* Inner Masks. */
@@ -518,5 +521,8 @@ int mlx5_flow_validate_item_icmp6(const struct rte_flow_item *item,
 				   uint64_t item_flags,
 				   uint8_t target_protocol,
 				   struct rte_flow_error *error);
-
+int mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
+				  uint64_t item_flags,
+				  uint8_t target_protocol,
+				  struct rte_flow_error *error);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

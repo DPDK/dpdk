@@ -40,7 +40,7 @@
 #include "mlx5_glue.h"
 
 /* Support tunnel matching. */
-#define MLX5_FLOW_TUNNEL 5
+#define MLX5_FLOW_TUNNEL 6
 
 struct mlx5_rxq_stats {
 #ifdef MLX5_PMD_SOFT_COUNTERS

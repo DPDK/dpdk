@@ -298,6 +298,10 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 		.tunnel = MLX5_FLOW_LAYER_MPLS,
 		.ptype = RTE_PTYPE_TUNNEL_MPLS_IN_GRE,
 	},
+	{
+		.tunnel = MLX5_FLOW_LAYER_NVGRE,
+		.ptype = RTE_PTYPE_TUNNEL_NVGRE,
+	},
 };
 
 /**
@@ -1323,6 +1327,11 @@ mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L3 cannot follow an L4 layer.");
+	else if ((item_flags & MLX5_FLOW_LAYER_NVGRE) &&
+		  !(item_flags & MLX5_FLOW_LAYER_INNER_L2))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "L3 cannot follow an NVGRE layer.");
 	if (!mask)
 		mask = &rte_flow_item_ipv4_mask;
 	else if (mask->hdr.next_proto_id != 0 &&
@@ -1409,6 +1418,11 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L3 cannot follow an L4 layer.");
+	else if ((item_flags & MLX5_FLOW_LAYER_NVGRE) &&
+		  !(item_flags & MLX5_FLOW_LAYER_INNER_L2))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "L3 cannot follow an NVGRE layer.");
 	if (!mask)
 		mask = &rte_flow_item_ipv6_mask;
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
@@ -1885,6 +1899,55 @@ mlx5_flow_validate_item_mpls(struct rte_eth_dev *dev __rte_unused,
 				  RTE_FLOW_ERROR_TYPE_ITEM, item,
 				  "MPLS is not supported by Verbs, please"
 				  " update.");
+}
+
+/**
+ * Validate NVGRE item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit flags to mark detected items.
+ * @param[in] target_protocol
+ *   The next protocol in the previous item.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
+			      uint64_t item_flags,
+			      uint8_t target_protocol,
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_item_nvgre *mask = item->mask;
+	int ret;
+
+	if (target_protocol != 0xff && target_protocol != IPPROTO_GRE)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "protocol filtering not compatible"
+					  " with this GRE layer");
+	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple tunnel layers not"
+					  " supported");
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "L3 Layer is missing");
+	if (!mask)
+		mask = &rte_flow_item_nvgre_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_nvgre_mask,
+		 sizeof(struct rte_flow_item_nvgre), error);
+	if (ret < 0)
+		return ret;
+	return 0;
 }
 
 static int
