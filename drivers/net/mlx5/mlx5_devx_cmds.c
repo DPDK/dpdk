@@ -576,3 +576,75 @@ mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 	}
 	return ret;
 }
+
+/**
+ * Create TIR using DevX API.
+ *
+ * @param[in] ctx
+ *   ibv_context returned from mlx5dv_open_device.
+ * @param [in] tir_attr
+ *   Pointer to TIR attributes structure.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_tir(struct ibv_context *ctx,
+			 struct mlx5_devx_tir_attr *tir_attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_tir_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(create_tir_out)] = {0};
+	void *tir_ctx, *outer, *inner;
+	struct mlx5_devx_obj *tir = NULL;
+	int i;
+
+	tir = rte_calloc(__func__, 1, sizeof(*tir), 0);
+	if (!tir) {
+		DRV_LOG(ERR, "Failed to allocate TIR data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(create_tir_in, in, opcode, MLX5_CMD_OP_CREATE_TIR);
+	tir_ctx = MLX5_ADDR_OF(create_tir_in, in, ctx);
+	MLX5_SET(tirc, tir_ctx, disp_type, tir_attr->disp_type);
+	MLX5_SET(tirc, tir_ctx, lro_timeout_period_usecs,
+		 tir_attr->lro_timeout_period_usecs);
+	MLX5_SET(tirc, tir_ctx, lro_enable_mask, tir_attr->lro_enable_mask);
+	MLX5_SET(tirc, tir_ctx, lro_max_msg_sz, tir_attr->lro_max_msg_sz);
+	MLX5_SET(tirc, tir_ctx, inline_rqn, tir_attr->inline_rqn);
+	MLX5_SET(tirc, tir_ctx, rx_hash_symmetric, tir_attr->rx_hash_symmetric);
+	MLX5_SET(tirc, tir_ctx, tunneled_offload_en,
+		 tir_attr->tunneled_offload_en);
+	MLX5_SET(tirc, tir_ctx, indirect_table, tir_attr->indirect_table);
+	MLX5_SET(tirc, tir_ctx, rx_hash_fn, tir_attr->rx_hash_fn);
+	MLX5_SET(tirc, tir_ctx, self_lb_block, tir_attr->self_lb_block);
+	MLX5_SET(tirc, tir_ctx, transport_domain, tir_attr->transport_domain);
+	for (i = 0; i < 10; i++) {
+		MLX5_SET(tirc, tir_ctx, rx_hash_toeplitz_key[i],
+			 tir_attr->rx_hash_toeplitz_key[i]);
+	}
+	outer = MLX5_ADDR_OF(tirc, tir_ctx, rx_hash_field_selector_outer);
+	MLX5_SET(rx_hash_field_select, outer, l3_prot_type,
+		 tir_attr->rx_hash_field_selector_outer.l3_prot_type);
+	MLX5_SET(rx_hash_field_select, outer, l4_prot_type,
+		 tir_attr->rx_hash_field_selector_outer.l4_prot_type);
+	MLX5_SET(rx_hash_field_select, outer, selected_fields,
+		 tir_attr->rx_hash_field_selector_outer.selected_fields);
+	inner = MLX5_ADDR_OF(tirc, tir_ctx, rx_hash_field_selector_inner);
+	MLX5_SET(rx_hash_field_select, inner, l3_prot_type,
+		 tir_attr->rx_hash_field_selector_inner.l3_prot_type);
+	MLX5_SET(rx_hash_field_select, inner, l4_prot_type,
+		 tir_attr->rx_hash_field_selector_inner.l4_prot_type);
+	MLX5_SET(rx_hash_field_select, inner, selected_fields,
+		 tir_attr->rx_hash_field_selector_inner.selected_fields);
+	tir->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+						   out, sizeof(out));
+	if (!tir->obj) {
+		DRV_LOG(ERR, "Failed to create TIR using DevX");
+		rte_errno = errno;
+		rte_free(tir);
+		return NULL;
+	}
+	tir->id = MLX5_GET(create_tir_out, out, tirn);
+	return tir;
+}

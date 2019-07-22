@@ -320,6 +320,30 @@ struct mlx5_devx_modify_rq_attr {
 	uint32_t lwm:16; /* Contained WQ lwm. */
 };
 
+struct mlx5_rx_hash_field_select {
+	uint32_t l3_prot_type:1;
+	uint32_t l4_prot_type:1;
+	uint32_t selected_fields:30;
+};
+
+/* TIR attributes structure, used by TIR operations. */
+struct mlx5_devx_tir_attr {
+	uint32_t disp_type:4;
+	uint32_t lro_timeout_period_usecs:16;
+	uint32_t lro_enable_mask:4;
+	uint32_t lro_max_msg_sz:8;
+	uint32_t inline_rqn:24;
+	uint32_t rx_hash_symmetric:1;
+	uint32_t tunneled_offload_en:1;
+	uint32_t indirect_table:24;
+	uint32_t rx_hash_fn:4;
+	uint32_t self_lb_block:2;
+	uint32_t transport_domain:24;
+	uint32_t rx_hash_toeplitz_key[10];
+	struct mlx5_rx_hash_field_select rx_hash_field_selector_outer;
+	struct mlx5_rx_hash_field_select rx_hash_field_selector_inner;
+};
+
 /**
  * Type of object being allocated.
  */
@@ -805,5 +829,7 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_rq(struct ibv_context *ctx,
 				int socket);
 int mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 			    struct mlx5_devx_modify_rq_attr *rq_attr);
+struct mlx5_devx_obj *mlx5_devx_cmd_create_tir(struct ibv_context *ctx,
+					struct mlx5_devx_tir_attr *tir_attr);
 
 #endif /* RTE_PMD_MLX5_H_ */
