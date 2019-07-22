@@ -1402,8 +1402,7 @@ static int eth_iavf_pci_remove(struct rte_pci_device *pci_dev)
 /* Adaptive virtual function driver struct */
 static struct rte_pci_driver rte_iavf_pmd = {
 	.id_table = pci_id_iavf_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-		     RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_iavf_pci_probe,
 	.remove = eth_iavf_pci_remove,
 };

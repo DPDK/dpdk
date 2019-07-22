@@ -1142,8 +1142,7 @@ static struct rte_pci_driver mlx4_driver = {
 	},
 	.id_table = mlx4_pci_id_map,
 	.probe = mlx4_pci_probe,
-	.drv_flags = RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV |
-		     RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV,
 };
 
 #ifdef RTE_IBVERBS_LINK_DLOPEN

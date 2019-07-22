@@ -3737,8 +3737,7 @@ ice_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_ice_pmd = {
 	.id_table = pci_id_ice_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-		     RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = ice_pci_probe,
 	.remove = ice_pci_remove,
 };

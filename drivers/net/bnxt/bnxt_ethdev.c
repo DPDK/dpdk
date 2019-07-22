@@ -4028,8 +4028,7 @@ static int bnxt_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver bnxt_rte_pmd = {
 	.id_table = bnxt_pci_id_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING |
-		RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = bnxt_pci_probe,
 	.remove = bnxt_pci_remove,
 };

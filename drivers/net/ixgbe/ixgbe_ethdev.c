@@ -1869,8 +1869,7 @@ static int eth_ixgbe_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_ixgbe_pmd = {
 	.id_table = pci_id_ixgbe_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-		     RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_ixgbe_pci_probe,
 	.remove = eth_ixgbe_pci_remove,
 };
@@ -1892,7 +1891,7 @@ static int eth_ixgbevf_pci_remove(struct rte_pci_device *pci_dev)
  */
 static struct rte_pci_driver rte_ixgbevf_pmd = {
 	.id_table = pci_id_ixgbevf_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 	.probe = eth_ixgbevf_pci_probe,
 	.remove = eth_ixgbevf_pci_remove,
 };

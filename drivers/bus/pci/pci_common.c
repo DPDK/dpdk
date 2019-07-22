@@ -169,8 +169,22 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	 * This needs to be before rte_pci_map_device(), as it enables to use
 	 * driver flags for adjusting configuration.
 	 */
-	if (!already_probed)
+	if (!already_probed) {
+		enum rte_iova_mode dev_iova_mode;
+		enum rte_iova_mode iova_mode;
+
+		dev_iova_mode = pci_device_iova_mode(dr, dev);
+		iova_mode = rte_eal_iova_mode();
+		if (dev_iova_mode != RTE_IOVA_DC &&
+		    dev_iova_mode != iova_mode) {
+			RTE_LOG(ERR, EAL, "  Expecting '%s' IOVA mode but current mode is '%s', not initializing\n",
+				dev_iova_mode == RTE_IOVA_PA ? "PA" : "VA",
+				iova_mode == RTE_IOVA_PA ? "PA" : "VA");
+			return -EINVAL;
+		}
+
 		dev->driver = dr;
+	}
 
 	if (!already_probed && (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)) {
 		/* map resources for devices that use igb_uio */
@@ -629,12 +643,16 @@ rte_pci_get_iommu_class(void)
 				devices_want_va = true;
 		}
 	}
-	if (devices_want_pa) {
-		iova_mode = RTE_IOVA_PA;
-		if (devices_want_va)
-			RTE_LOG(WARNING, EAL, "Some devices want 'VA' but forcing 'PA' because other devices want it\n");
-	} else if (devices_want_va) {
+	if (devices_want_va && !devices_want_pa) {
 		iova_mode = RTE_IOVA_VA;
+	} else if (devices_want_pa && !devices_want_va) {
+		iova_mode = RTE_IOVA_PA;
+	} else {
+		iova_mode = RTE_IOVA_DC;
+		if (devices_want_va) {
+			RTE_LOG(WARNING, EAL, "Some devices want 'VA' but forcing 'DC' because other devices want 'PA'.\n");
+			RTE_LOG(WARNING, EAL, "Depending on the final decision by the EAL, not all devices may be able to initialize.\n");
+		}
 	}
 	return iova_mode;
 }

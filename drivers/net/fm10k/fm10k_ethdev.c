@@ -3268,8 +3268,7 @@ static const struct rte_pci_id pci_id_fm10k_map[] = {
 
 static struct rte_pci_driver rte_pmd_fm10k = {
 	.id_table = pci_id_fm10k_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-		     RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_fm10k_pci_probe,
 	.remove = eth_fm10k_pci_remove,
 };

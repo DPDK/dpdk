@@ -187,8 +187,8 @@ struct rte_pci_bus {
 #define RTE_PCI_DRV_INTR_RMV 0x0010
 /** Device driver needs to keep mapped resources if unsupported dev detected */
 #define RTE_PCI_DRV_KEEP_MAPPED_RES 0x0020
-/** Device driver supports IOVA as VA */
-#define RTE_PCI_DRV_IOVA_AS_VA 0X0040
+/** Device driver only supports IOVA as VA and cannot work with IOVA as PA */
+#define RTE_PCI_DRV_IOVA_AS_VA 0x0040
 
 /**
  * Map the PCI device resources in user space virtual memory address

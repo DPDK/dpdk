@@ -3760,16 +3760,14 @@ static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_nfp_net_pf_pmd = {
 	.id_table = pci_id_nfp_pf_net_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-		     RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = nfp_pf_pci_probe,
 	.remove = eth_nfp_pci_remove,
 };
 
 static struct rte_pci_driver rte_nfp_net_vf_pmd = {
 	.id_table = pci_id_nfp_vf_net_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-		     RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_nfp_pci_probe,
 	.remove = eth_nfp_pci_remove,
 };

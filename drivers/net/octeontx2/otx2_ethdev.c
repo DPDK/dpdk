@@ -1188,11 +1188,6 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail;
 	}
 
-	if (rte_eal_iova_mode() != RTE_IOVA_VA) {
-		otx2_err("iova mode should be va");
-		goto fail;
-	}
-
 	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
 		otx2_err("Setting link speed/duplex not supported");
 		goto fail;

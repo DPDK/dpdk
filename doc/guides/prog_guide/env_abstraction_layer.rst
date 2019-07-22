@@ -419,6 +419,37 @@ Misc Functions
 
 Locks and atomic operations are per-architecture (i686 and x86_64).
 
+IOVA Mode Detection
+~~~~~~~~~~~~~~~~~~~
+
+IOVA Mode is selected by considering what the current usable Devices on the
+system require and/or support.
+
+Below is the 2-step heuristic for this choice.
+
+For the first step, EAL asks each bus its requirement in terms of IOVA mode
+and decides on a preferred IOVA mode.
+
+- if all buses report RTE_IOVA_PA, then the preferred IOVA mode is RTE_IOVA_PA,
+- if all buses report RTE_IOVA_VA, then the preferred IOVA mode is RTE_IOVA_VA,
+- if all buses report RTE_IOVA_DC, no bus expressed a preferrence, then the
+  preferred mode is RTE_IOVA_DC,
+- if the buses disagree (at least one wants RTE_IOVA_PA and at least one wants
+  RTE_IOVA_VA), then the preferred IOVA mode is RTE_IOVA_DC (see below with the
+  check on Physical Addresses availability),
+
+The second step checks if the preferred mode complies with the Physical
+Addresses availability since those are only available to root user in recent
+kernels.
+
+- if the preferred mode is RTE_IOVA_PA but there is no access to Physical
+  Addresses, then EAL init fails early, since later probing of the devices
+  would fail anyway,
+- if the preferred mode is RTE_IOVA_DC then based on the Physical Addresses
+  availability, the preferred mode is adjusted to RTE_IOVA_PA or RTE_IOVA_VA.
+  In the case when the buses had disagreed on the IOVA Mode at the first step,
+  part of the buses won't work because of this decision.
+
 IOVA Mode Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
 

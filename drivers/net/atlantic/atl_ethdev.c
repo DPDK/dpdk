@@ -157,8 +157,7 @@ static const struct rte_pci_id pci_id_atl_map[] = {
 
 static struct rte_pci_driver rte_atl_pmd = {
 	.id_table = pci_id_atl_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-		     RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_atl_pci_probe,
 	.remove = eth_atl_pci_remove,
 };
