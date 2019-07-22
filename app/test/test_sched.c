@@ -20,14 +20,16 @@
 #define SUBPORT         0
 #define PIPE            1
 #define TC              2
-#define QUEUE           3
+#define QUEUE           0
 
 static struct rte_sched_subport_params subport_param[] = {
 	{
 		.tb_rate = 1250000000,
 		.tb_size = 1000000,
 
-		.tc_rate = {1250000000, 1250000000, 1250000000, 1250000000},
+		.tc_rate = {1250000000, 1250000000, 1250000000, 1250000000,
+			1250000000, 1250000000, 1250000000, 1250000000, 1250000000,
+			1250000000, 1250000000, 1250000000, 1250000000},
 		.tc_period = 10,
 	},
 };
@@ -37,8 +39,10 @@ static struct rte_sched_pipe_params pipe_profile[] = {
 		.tb_rate = 305175,
 		.tb_size = 1000000,
 
-		.tc_rate = {305175, 305175, 305175, 305175},
+		.tc_rate = {305175, 305175, 305175, 305175, 305175, 305175,
+			305175, 305175, 305175, 305175, 305175, 305175, 305175},
 		.tc_period = 40,
+		.tc_ov_weight = 1,
 
 		.wrr_weights = {1, 1, 1, 1},
 	},
@@ -51,9 +55,10 @@ static struct rte_sched_port_params port_param = {
 	.frame_overhead = RTE_SCHED_FRAME_OVERHEAD_DEFAULT,
 	.n_subports_per_port = 1,
 	.n_pipes_per_subport = 1024,
-	.qsize = {32, 32, 32, 32},
+	.qsize = {32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32},
 	.pipe_profiles = pipe_profile,
 	.n_pipe_profiles = 1,
+	.n_max_pipe_profiles = 1,
 };
 
 #define NB_MBUF          32
