@@ -2319,8 +2319,6 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 {
 	struct mlx5_ibv_shared *sh = ((struct mlx5_priv *)
 					(dev->data->dev_private))->sh;
-	struct mlx5dv_pd dv_pd;
-	struct mlx5dv_obj dv_obj;
 	struct mlx5_devx_mkey_attr mkey_attr;
 	struct mlx5_counter_stats_mem_mng *mem_mng;
 	volatile struct flow_counter_stats *raw_data;
@@ -2344,13 +2342,10 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 		rte_free(mem);
 		return NULL;
 	}
-	dv_obj.pd.in = sh->pd;
-	dv_obj.pd.out = &dv_pd;
-	mlx5_glue->dv_init_obj(&dv_obj, MLX5DV_OBJ_PD);
 	mkey_attr.addr = (uintptr_t)mem;
 	mkey_attr.size = size;
 	mkey_attr.umem_id = mem_mng->umem->umem_id;
-	mkey_attr.pd = dv_pd.pdn;
+	mkey_attr.pd = sh->pdn;
 	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->ctx, &mkey_attr);
 	if (!mem_mng->dm) {
 		mlx5_glue->devx_umem_dereg(mem_mng->umem);

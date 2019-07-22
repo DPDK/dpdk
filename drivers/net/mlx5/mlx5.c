@@ -270,6 +270,37 @@ mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
 }
 
 /**
+ * Extract pdn of PD object using DV API.
+ *
+ * @param[in] pd
+ *   Pointer to the verbs PD object.
+ * @param[out] pdn
+ *   Pointer to the PD object number variable.
+ *
+ * @return
+ *   0 on success, error value otherwise.
+ */
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+static int
+mlx5_get_pdn(struct ibv_pd *pd __rte_unused, uint32_t *pdn __rte_unused)
+{
+	struct mlx5dv_obj obj;
+	struct mlx5dv_pd pd_info;
+	int ret = 0;
+
+	obj.pd.in = pd;
+	obj.pd.out = &pd_info;
+	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
+	if (ret) {
+		DRV_LOG(DEBUG, "Fail to get PD object info");
+		return ret;
+	}
+	*pdn = pd_info.pdn;
+	return 0;
+}
+#endif /* HAVE_IBV_FLOW_DV_SUPPORT */
+
+/**
  * Allocate shared IB device context. If there is multiport device the
  * master and representors will share this context, if there is single
  * port dedicated IB device, the context will be used by only given
@@ -357,6 +388,13 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 		err = ENOMEM;
 		goto error;
 	}
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	err = mlx5_get_pdn(sh->pd, &sh->pdn);
+	if (err) {
+		DRV_LOG(ERR, "Fail to extract pdn from PD");
+		goto error;
+	}
+#endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 	/*
 	 * Once the device is added to the list of memory event
 	 * callback, its global MR cache table cannot be expanded

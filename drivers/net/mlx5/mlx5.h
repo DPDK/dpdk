@@ -525,6 +525,7 @@ struct mlx5_ibv_shared {
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct ibv_context *ctx; /* Verbs/DV context. */
 	struct ibv_pd *pd; /* Protection Domain. */
+	uint32_t pdn; /* Protection Domain number. */
 	uint32_t tdn; /* Transport Domain number. */
 	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
