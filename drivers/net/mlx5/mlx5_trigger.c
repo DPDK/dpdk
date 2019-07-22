@@ -99,6 +99,9 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 	int ret = 0;
+	unsigned int lro_on = mlx5_lro_on(dev);
+	enum mlx5_rxq_obj_type obj_type = lro_on ? MLX5_RXQ_OBJ_TYPE_DEVX_RQ :
+						   MLX5_RXQ_OBJ_TYPE_IBV;
 
 	/* Allocate/reuse/resize mempool for Multi-Packet RQ. */
 	if (mlx5_mprq_alloc_mp(dev)) {
@@ -123,11 +126,13 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		ret = rxq_alloc_elts(rxq_ctrl);
 		if (ret)
 			goto error;
-		rxq_ctrl->obj = mlx5_rxq_obj_new(dev, i,
-						 MLX5_RXQ_OBJ_TYPE_DEVX_RQ);
+		rxq_ctrl->obj = mlx5_rxq_obj_new(dev, i, obj_type);
 		if (!rxq_ctrl->obj)
 			goto error;
-		rxq_ctrl->wqn = rxq_ctrl->obj->wq->wq_num;
+		if (obj_type == MLX5_RXQ_OBJ_TYPE_IBV)
+			rxq_ctrl->wqn = rxq_ctrl->obj->wq->wq_num;
+		else if (obj_type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ)
+			rxq_ctrl->wqn = rxq_ctrl->obj->rq->id;
 	}
 	return 0;
 error:

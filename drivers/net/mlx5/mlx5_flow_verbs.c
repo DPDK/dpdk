@@ -1669,7 +1669,8 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 						     (*flow->queue),
 						     flow->rss.queue_num,
 						     !!(dev_flow->layers &
-						      MLX5_FLOW_LAYER_TUNNEL));
+							MLX5_FLOW_LAYER_TUNNEL),
+						     0);
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,

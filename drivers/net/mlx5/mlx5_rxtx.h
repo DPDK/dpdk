@@ -346,7 +346,7 @@ struct mlx5_hrxq *mlx5_hrxq_new(struct rte_eth_dev *dev,
 				const uint8_t *rss_key, uint32_t rss_key_len,
 				uint64_t hash_fields,
 				const uint16_t *queues, uint32_t queues_n,
-				int tunnel __rte_unused);
+				int tunnel __rte_unused, int lro);
 struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
 				const uint8_t *rss_key, uint32_t rss_key_len,
 				uint64_t hash_fields,

@@ -62,6 +62,9 @@ union flow_dv_attr {
 	uint32_t attr;
 };
 
+#define MLX5_FLOW_IPV4_LRO (1 << 0)
+#define MLX5_FLOW_IPV6_LRO (1 << 1)
+
 /**
  * Initialize flow attributes structure according to flow items' types.
  *
@@ -5161,13 +5164,27 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					     dv->hash_fields,
 					     (*flow->queue),
 					     flow->rss.queue_num);
-			if (!hrxq)
+			if (!hrxq) {
+				int lro = 0;
+
+				if (mlx5_lro_on(dev)) {
+					if ((dev_flow->layers &
+					     MLX5_FLOW_LAYER_IPV4_LRO)
+					    == MLX5_FLOW_LAYER_IPV4_LRO)
+						lro = MLX5_FLOW_IPV4_LRO;
+					else if ((dev_flow->layers &
+						  MLX5_FLOW_LAYER_IPV6_LRO)
+						 == MLX5_FLOW_LAYER_IPV6_LRO)
+						lro = MLX5_FLOW_IPV6_LRO;
+				}
 				hrxq = mlx5_hrxq_new
 					(dev, flow->key, MLX5_RSS_HASH_KEY_LEN,
 					 dv->hash_fields, (*flow->queue),
 					 flow->rss.queue_num,
 					 !!(dev_flow->layers &
-					    MLX5_FLOW_LAYER_TUNNEL));
+					    MLX5_FLOW_LAYER_TUNNEL), lro);
+			}
+
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,
