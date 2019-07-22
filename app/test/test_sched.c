@@ -40,7 +40,7 @@ static struct rte_sched_pipe_params pipe_profile[] = {
 		.tc_rate = {305175, 305175, 305175, 305175},
 		.tc_period = 40,
 
-		.wrr_weights = {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
+		.wrr_weights = {1, 1, 1, 1},
 	},
 };
 

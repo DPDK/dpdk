@@ -186,7 +186,7 @@ static struct rte_sched_pipe_params pipe_profiles[RTE_SCHED_PIPE_PROFILES_PER_PO
 		.tc_ov_weight = 1,
 #endif
 
-		.wrr_weights = {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
+		.wrr_weights = {1, 1, 1, 1},
 	},
 };
 

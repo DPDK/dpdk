@@ -66,18 +66,35 @@ extern "C" {
 #include "rte_red.h"
 #endif
 
+/** Maximum number of queues per pipe.
+ * Note that the multiple queues (power of 2) can only be assigned to
+ * lowest priority (best-effort) traffic class. Other higher priority traffic
+ * classes can only have one queue.
+ * Can not change.
+ *
+ * @see struct rte_sched_port_params
+ */
+#define RTE_SCHED_QUEUES_PER_PIPE    16
+
+/** Number of WRR queues for best-effort traffic class per pipe.
+ *
+ * @see struct rte_sched_pipe_params
+ */
+#define RTE_SCHED_BE_QUEUES_PER_PIPE    4
+
 /** Number of traffic classes per pipe (as well as subport).
  * Cannot be changed.
  */
 #define RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE    4
 
+/** Best-effort traffic class ID
+ * Can not change.
+ */
+#define RTE_SCHED_TRAFFIC_CLASS_BE    (RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE - 1)
+
 /** Number of queues per pipe traffic class. Cannot be changed. */
 #define RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS    4
 
-/** Number of queues per pipe. */
-#define RTE_SCHED_QUEUES_PER_PIPE             \
-	(RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE *     \
-	RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS)
 
 /** Maximum number of pipe profiles that can be defined per port.
  * Compile-time configurable.
@@ -165,7 +182,7 @@ struct rte_sched_pipe_params {
 #endif
 
 	/* Pipe queues */
-	uint8_t  wrr_weights[RTE_SCHED_QUEUES_PER_PIPE]; /**< WRR weights */
+	uint8_t  wrr_weights[RTE_SCHED_BE_QUEUES_PER_PIPE]; /**< WRR weights */
 };
 
 /** Queue statistics */
