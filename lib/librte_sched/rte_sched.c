@@ -145,15 +145,15 @@ struct rte_sched_grinder {
 	struct rte_sched_pipe_profile *pipe_params;
 
 	/* TC cache */
-	uint8_t tccache_qmask[4];
-	uint32_t tccache_qindex[4];
+	uint8_t tccache_qmask[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint32_t tccache_qindex[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	uint32_t tccache_w;
 	uint32_t tccache_r;
 
 	/* Current TC */
 	uint32_t tc_index;
-	struct rte_sched_queue *queue[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
-	struct rte_mbuf **qbase[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	struct rte_sched_queue *queue[RTE_SCHED_MAX_QUEUES_PER_TC];
+	struct rte_mbuf **qbase[RTE_SCHED_MAX_QUEUES_PER_TC];
 	uint32_t qindex[RTE_SCHED_MAX_QUEUES_PER_TC];
 	uint16_t qsize;
 	uint32_t qmask;
@@ -171,6 +171,9 @@ struct rte_sched_port {
 	uint32_t n_subports_per_port;
 	uint32_t n_pipes_per_subport;
 	uint32_t n_pipes_per_subport_log2;
+	uint16_t pipe_queue[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint8_t pipe_tc[RTE_SCHED_QUEUES_PER_PIPE];
+	uint8_t tc_queue[RTE_SCHED_QUEUES_PER_PIPE];
 	uint32_t rate;
 	uint32_t mtu;
 	uint32_t frame_overhead;
@@ -256,14 +259,38 @@ rte_sched_port_qbase(struct rte_sched_port *port, uint32_t qindex)
 static inline uint16_t
 rte_sched_port_qsize(struct rte_sched_port *port, uint32_t qindex)
 {
-	uint32_t tc = (qindex >> 2) & 0x3;
+	uint32_t tc = port->pipe_tc[qindex & (RTE_SCHED_QUEUES_PER_PIPE - 1)];
 
 	return port->qsize[tc];
 }
 
+static inline uint16_t
+rte_sched_port_pipe_queue(struct rte_sched_port *port, uint32_t traffic_class)
+{
+	uint16_t pipe_queue = port->pipe_queue[traffic_class];
+
+	return pipe_queue;
+}
+
+static inline uint8_t
+rte_sched_port_pipe_tc(struct rte_sched_port *port, uint32_t qindex)
+{
+	uint8_t pipe_tc = port->pipe_tc[qindex & (RTE_SCHED_QUEUES_PER_PIPE - 1)];
+
+	return pipe_tc;
+}
+
+static inline uint8_t
+rte_sched_port_tc_queue(struct rte_sched_port *port, uint32_t qindex)
+{
+	uint8_t tc_queue = port->tc_queue[qindex & (RTE_SCHED_QUEUES_PER_PIPE - 1)];
+
+	return tc_queue;
+}
+
 static int
 pipe_profile_check(struct rte_sched_pipe_params *params,
-	uint32_t rate)
+	uint32_t rate, uint16_t *qsize)
 {
 	uint32_t i;
 
@@ -280,25 +307,27 @@ pipe_profile_check(struct rte_sched_pipe_params *params,
 	if (params->tb_size == 0)
 		return -12;
 
-	/* TC rate: non-zero, less than pipe rate */
+	/* TC rate: non-zero if qsize non-zero, less than pipe rate */
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
-		if (params->tc_rate[i] == 0 ||
-			params->tc_rate[i] > params->tb_rate)
+		if ((qsize[i] == 0 && params->tc_rate[i] != 0) ||
+			(qsize[i] != 0 && (params->tc_rate[i] == 0 ||
+			params->tc_rate[i] > params->tb_rate)))
 			return -13;
 	}
+	if (params->tc_rate[RTE_SCHED_TRAFFIC_CLASS_BE] == 0 ||
+		qsize[RTE_SCHED_TRAFFIC_CLASS_BE] == 0)
+		return -13;
 
 	/* TC period: non-zero */
 	if (params->tc_period == 0)
 		return -14;
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 	/* TC3 oversubscription weight: non-zero */
 	if (params->tc_ov_weight == 0)
 		return -15;
-#endif
 
 	/* Queue WRR weights: non-zero */
-	for (i = 0; i < RTE_SCHED_QUEUES_PER_PIPE; i++) {
+	for (i = 0; i < RTE_SCHED_BE_QUEUES_PER_PIPE; i++) {
 		if (params->wrr_weights[i] == 0)
 			return -16;
 	}
@@ -343,7 +372,8 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
 		uint16_t qsize = params->qsize[i];
 
-		if (qsize == 0 || !rte_is_power_of_2(qsize))
+		if ((qsize != 0 && !rte_is_power_of_2(qsize)) ||
+			((i == RTE_SCHED_TRAFFIC_CLASS_BE) && (qsize == 0)))
 			return -8;
 	}
 
@@ -357,7 +387,7 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 		struct rte_sched_pipe_params *p = params->pipe_profiles + i;
 		int status;
 
-		status = pipe_profile_check(p, params->rate);
+		status = pipe_profile_check(p, params->rate, &params->qsize[0]);
 		if (status != 0)
 			return status;
 	}
@@ -387,8 +417,12 @@ rte_sched_port_get_array_base(struct rte_sched_port_params *params, enum rte_sch
 
 	size_per_pipe_queue_array = 0;
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
-		size_per_pipe_queue_array += RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS
-			* params->qsize[i] * sizeof(struct rte_mbuf *);
+		if (i < RTE_SCHED_TRAFFIC_CLASS_BE)
+			size_per_pipe_queue_array +=
+				params->qsize[i] * sizeof(struct rte_mbuf *);
+		else
+			size_per_pipe_queue_array += RTE_SCHED_MAX_QUEUES_PER_TC *
+				params->qsize[i] * sizeof(struct rte_mbuf *);
 	}
 	size_queue_array = n_pipes_per_port * size_per_pipe_queue_array;
 
@@ -448,31 +482,27 @@ rte_sched_port_get_memory_footprint(struct rte_sched_port_params *params)
 static void
 rte_sched_port_config_qsize(struct rte_sched_port *port)
 {
-	/* TC 0 */
+	uint32_t i;
+
 	port->qsize_add[0] = 0;
-	port->qsize_add[1] = port->qsize_add[0] + port->qsize[0];
-	port->qsize_add[2] = port->qsize_add[1] + port->qsize[0];
-	port->qsize_add[3] = port->qsize_add[2] + port->qsize[0];
 
-	/* TC 1 */
-	port->qsize_add[4] = port->qsize_add[3] + port->qsize[0];
-	port->qsize_add[5] = port->qsize_add[4] + port->qsize[1];
-	port->qsize_add[6] = port->qsize_add[5] + port->qsize[1];
-	port->qsize_add[7] = port->qsize_add[6] + port->qsize[1];
+	/* Strict prority traffic class */
+	for (i = 1; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+		port->qsize_add[i] = port->qsize_add[i-1] + port->qsize[i-1];
 
-	/* TC 2 */
-	port->qsize_add[8] = port->qsize_add[7] + port->qsize[1];
-	port->qsize_add[9] = port->qsize_add[8] + port->qsize[2];
-	port->qsize_add[10] = port->qsize_add[9] + port->qsize[2];
-	port->qsize_add[11] = port->qsize_add[10] + port->qsize[2];
+	/* Best-effort traffic class */
+	port->qsize_add[RTE_SCHED_TRAFFIC_CLASS_BE + 1] =
+		port->qsize_add[RTE_SCHED_TRAFFIC_CLASS_BE] +
+		port->qsize[RTE_SCHED_TRAFFIC_CLASS_BE];
+	port->qsize_add[RTE_SCHED_TRAFFIC_CLASS_BE + 2] =
+		port->qsize_add[RTE_SCHED_TRAFFIC_CLASS_BE + 1] +
+		port->qsize[RTE_SCHED_TRAFFIC_CLASS_BE];
+	port->qsize_add[RTE_SCHED_TRAFFIC_CLASS_BE + 3] =
+		port->qsize_add[RTE_SCHED_TRAFFIC_CLASS_BE + 2] +
+		port->qsize[RTE_SCHED_TRAFFIC_CLASS_BE];
 
-	/* TC 3 */
-	port->qsize_add[12] = port->qsize_add[11] + port->qsize[2];
-	port->qsize_add[13] = port->qsize_add[12] + port->qsize[3];
-	port->qsize_add[14] = port->qsize_add[13] + port->qsize[3];
-	port->qsize_add[15] = port->qsize_add[14] + port->qsize[3];
-
-	port->qsize_sum = port->qsize_add[15] + port->qsize[3];
+	port->qsize_sum = port->qsize_add[RTE_SCHED_TRAFFIC_CLASS_BE + 3] +
+		port->qsize[RTE_SCHED_TRAFFIC_CLASS_BE];
 }
 
 static void
@@ -481,10 +511,11 @@ rte_sched_port_log_pipe_profile(struct rte_sched_port *port, uint32_t i)
 	struct rte_sched_pipe_profile *p = port->pipe_profiles + i;
 
 	RTE_LOG(DEBUG, SCHED, "Low level config for pipe profile %u:\n"
-		"    Token bucket: period = %u, credits per period = %u, size = %u\n"
-		"    Traffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
-		"    Traffic class 3 oversubscription: weight = %hhu\n"
-		"    WRR cost: [%hhu, %hhu, %hhu, %hhu]\n",
+		"	Token bucket: period = %u, credits per period = %u, size = %u\n"
+		"	Traffic classes: period = %u,\n"
+		"	credits per period = [%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u]\n"
+		"	Best-effort traffic class oversubscription: weight = %hhu\n"
+		"	WRR cost: [%hhu, %hhu, %hhu, %hhu]\n",
 		i,
 
 		/* Token bucket */
@@ -498,6 +529,15 @@ rte_sched_port_log_pipe_profile(struct rte_sched_port *port, uint32_t i)
 		p->tc_credits_per_period[1],
 		p->tc_credits_per_period[2],
 		p->tc_credits_per_period[3],
+		p->tc_credits_per_period[4],
+		p->tc_credits_per_period[5],
+		p->tc_credits_per_period[6],
+		p->tc_credits_per_period[7],
+		p->tc_credits_per_period[8],
+		p->tc_credits_per_period[9],
+		p->tc_credits_per_period[10],
+		p->tc_credits_per_period[11],
+		p->tc_credits_per_period[12],
 
 		/* Traffic class 3 oversubscription */
 		p->tc_ov_weight,
@@ -517,7 +557,8 @@ rte_sched_time_ms_to_bytes(uint32_t time_ms, uint32_t rate)
 }
 
 static void
-rte_sched_pipe_profile_convert(struct rte_sched_pipe_params *src,
+rte_sched_pipe_profile_convert(struct rte_sched_port *port,
+	struct rte_sched_pipe_params *src,
 	struct rte_sched_pipe_profile *dst,
 	uint32_t rate)
 {
@@ -545,13 +586,12 @@ rte_sched_pipe_profile_convert(struct rte_sched_pipe_params *src,
 						rate);
 
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-		dst->tc_credits_per_period[i]
-			= rte_sched_time_ms_to_bytes(src->tc_period,
-				src->tc_rate[i]);
+		if (port->qsize[i])
+			dst->tc_credits_per_period[i]
+				= rte_sched_time_ms_to_bytes(src->tc_period,
+					src->tc_rate[i]);
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 	dst->tc_ov_weight = src->tc_ov_weight;
-#endif
 
 	/* WRR queues */
 	wrr_cost[0] = src->wrr_weights[0];
@@ -584,14 +624,14 @@ rte_sched_port_config_pipe_profile_table(struct rte_sched_port *port,
 		struct rte_sched_pipe_params *src = params->pipe_profiles + i;
 		struct rte_sched_pipe_profile *dst = port->pipe_profiles + i;
 
-		rte_sched_pipe_profile_convert(src, dst, params->rate);
+		rte_sched_pipe_profile_convert(port, src, dst, params->rate);
 		rte_sched_port_log_pipe_profile(port, i);
 	}
 
 	port->pipe_tc3_rate_max = 0;
 	for (i = 0; i < port->n_pipe_profiles; i++) {
 		struct rte_sched_pipe_params *src = params->pipe_profiles + i;
-		uint32_t pipe_tc3_rate = src->tc_rate[3];
+		uint32_t pipe_tc3_rate = src->tc_rate[RTE_SCHED_TRAFFIC_CLASS_BE];
 
 		if (port->pipe_tc3_rate_max < pipe_tc3_rate)
 			port->pipe_tc3_rate_max = pipe_tc3_rate;
@@ -602,7 +642,7 @@ struct rte_sched_port *
 rte_sched_port_config(struct rte_sched_port_params *params)
 {
 	struct rte_sched_port *port = NULL;
-	uint32_t mem_size, bmp_mem_size, n_queues_per_port, i, cycles_per_byte;
+	uint32_t mem_size, bmp_mem_size, n_queues_per_port, i, j, cycles_per_byte;
 
 	/* Check user parameters. Determine the amount of memory to allocate */
 	mem_size = rte_sched_port_get_memory_footprint(params);
@@ -624,6 +664,23 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	port->n_pipes_per_subport = params->n_pipes_per_subport;
 	port->n_pipes_per_subport_log2 =
 			__builtin_ctz(params->n_pipes_per_subport);
+
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+		port->pipe_queue[i] = i;
+
+	for (i = 0, j = 0; i < RTE_SCHED_QUEUES_PER_PIPE; i++) {
+		port->pipe_tc[i] = j;
+
+		if (j < RTE_SCHED_TRAFFIC_CLASS_BE)
+			j++;
+	}
+
+	for (i = 0, j = 0; i < RTE_SCHED_QUEUES_PER_PIPE; i++) {
+		port->tc_queue[i] = j;
+
+		if (i >= RTE_SCHED_TRAFFIC_CLASS_BE)
+			j++;
+	}
 	port->rate = params->rate;
 	port->mtu = params->mtu + params->frame_overhead;
 	port->frame_overhead = params->frame_overhead;
@@ -733,12 +790,14 @@ rte_sched_port_free(struct rte_sched_port *port)
 	for (qindex = 0; qindex < n_queues_per_port; qindex++) {
 		struct rte_mbuf **mbufs = rte_sched_port_qbase(port, qindex);
 		uint16_t qsize = rte_sched_port_qsize(port, qindex);
-		struct rte_sched_queue *queue = port->queue + qindex;
-		uint16_t qr = queue->qr & (qsize - 1);
-		uint16_t qw = queue->qw & (qsize - 1);
+		if (qsize != 0) {
+			struct rte_sched_queue *queue = port->queue + qindex;
+			uint16_t qr = queue->qr & (qsize - 1);
+			uint16_t qw = queue->qw & (qsize - 1);
 
-		for (; qr != qw; qr = (qr + 1) & (qsize - 1))
-			rte_pktmbuf_free(mbufs[qr]);
+			for (; qr != qw; qr = (qr + 1) & (qsize - 1))
+				rte_pktmbuf_free(mbufs[qr]);
+		}
 	}
 
 	rte_bitmap_free(port->bmp);
@@ -751,9 +810,10 @@ rte_sched_port_log_subport_config(struct rte_sched_port *port, uint32_t i)
 	struct rte_sched_subport *s = port->subport + i;
 
 	RTE_LOG(DEBUG, SCHED, "Low level config for subport %u:\n"
-		"    Token bucket: period = %u, credits per period = %u, size = %u\n"
-		"    Traffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
-		"    Traffic class 3 oversubscription: wm min = %u, wm max = %u\n",
+		"	Token bucket: period = %u, credits per period = %u, size = %u\n"
+		"	Traffic classes: period = %u\n"
+		"	credits per period = [%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u]\n"
+		"	Best effort traffic class oversubscription: wm min = %u, wm max = %u\n",
 		i,
 
 		/* Token bucket */
@@ -767,6 +827,15 @@ rte_sched_port_log_subport_config(struct rte_sched_port *port, uint32_t i)
 		s->tc_credits_per_period[1],
 		s->tc_credits_per_period[2],
 		s->tc_credits_per_period[3],
+		s->tc_credits_per_period[4],
+		s->tc_credits_per_period[5],
+		s->tc_credits_per_period[6],
+		s->tc_credits_per_period[7],
+		s->tc_credits_per_period[8],
+		s->tc_credits_per_period[9],
+		s->tc_credits_per_period[10],
+		s->tc_credits_per_period[11],
+		s->tc_credits_per_period[12],
 
 		/* Traffic class 3 oversubscription */
 		s->tc_ov_wm_min,
@@ -794,10 +863,18 @@ rte_sched_subport_config(struct rte_sched_port *port,
 		return -3;
 
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
-		if (params->tc_rate[i] == 0 ||
-		    params->tc_rate[i] > params->tb_rate)
+		uint32_t tc_rate = params->tc_rate[i];
+		uint16_t qsize = port->qsize[i];
+
+		if ((qsize == 0 && tc_rate != 0) ||
+			(qsize != 0 && tc_rate == 0) ||
+			(tc_rate > params->tb_rate))
 			return -4;
 	}
+
+	if (port->qsize[RTE_SCHED_TRAFFIC_CLASS_BE] == 0 ||
+		params->tc_rate[RTE_SCHED_TRAFFIC_CLASS_BE] == 0)
+		return -4;
 
 	if (params->tc_period == 0)
 		return -5;
@@ -822,15 +899,17 @@ rte_sched_subport_config(struct rte_sched_port *port,
 	/* Traffic Classes (TCs) */
 	s->tc_period = rte_sched_time_ms_to_bytes(params->tc_period, port->rate);
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
-		s->tc_credits_per_period[i]
-			= rte_sched_time_ms_to_bytes(params->tc_period,
-						     params->tc_rate[i]);
+		if (port->qsize[i])
+			s->tc_credits_per_period[i]
+				= rte_sched_time_ms_to_bytes(params->tc_period,
+								 params->tc_rate[i]);
+
 	}
 	s->tc_time = port->time + s->tc_period;
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-		s->tc_credits[i] = s->tc_credits_per_period[i];
+		if (port->qsize[i])
+			s->tc_credits[i] = s->tc_credits_per_period[i];
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 	/* TC oversubscription */
 	s->tc_ov_wm_min = port->mtu;
 	s->tc_ov_wm_max = rte_sched_time_ms_to_bytes(params->tc_period,
@@ -840,7 +919,6 @@ rte_sched_subport_config(struct rte_sched_port *port,
 	s->tc_ov = 0;
 	s->tc_ov_n = 0;
 	s->tc_ov_rate = 0;
-#endif
 
 	rte_sched_port_log_subport_config(port, subport_id);
 
@@ -880,10 +958,11 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 	if (p->tb_time) {
 		params = port->pipe_profiles + p->profile;
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
-		double subport_tc3_rate = (double) s->tc_credits_per_period[3]
+		double subport_tc3_rate =
+			(double) s->tc_credits_per_period[RTE_SCHED_TRAFFIC_CLASS_BE]
 			/ (double) s->tc_period;
-		double pipe_tc3_rate = (double) params->tc_credits_per_period[3]
+		double pipe_tc3_rate =
+			(double) params->tc_credits_per_period[RTE_SCHED_TRAFFIC_CLASS_BE]
 			/ (double) params->tc_period;
 		uint32_t tc3_ov = s->tc_ov;
 
@@ -897,7 +976,6 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 				"Subport %u TC3 oversubscription is OFF (%.4lf >= %.4lf)\n",
 				subport_id, subport_tc3_rate, s->tc_ov_rate);
 		}
-#endif
 
 		/* Reset the pipe */
 		memset(p, 0, sizeof(struct rte_sched_pipe));
@@ -916,15 +994,18 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 
 	/* Traffic Classes (TCs) */
 	p->tc_time = port->time + params->tc_period;
-	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-		p->tc_credits[i] = params->tc_credits_per_period[i];
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+		if (port->qsize[i])
+			p->tc_credits[i] = params->tc_credits_per_period[i];
+
 	{
 		/* Subport TC3 oversubscription */
-		double subport_tc3_rate = (double) s->tc_credits_per_period[3]
+		double subport_tc3_rate =
+			(double) s->tc_credits_per_period[RTE_SCHED_TRAFFIC_CLASS_BE]
 			/ (double) s->tc_period;
-		double pipe_tc3_rate = (double) params->tc_credits_per_period[3]
+		double pipe_tc3_rate =
+			(double) params->tc_credits_per_period[RTE_SCHED_TRAFFIC_CLASS_BE]
 			/ (double) params->tc_period;
 		uint32_t tc3_ov = s->tc_ov;
 
@@ -940,7 +1021,6 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 		p->tc_ov_period_id = s->tc_ov_period_id;
 		p->tc_ov_credits = s->tc_ov_wm;
 	}
-#endif
 
 	return 0;
 }
@@ -963,12 +1043,12 @@ rte_sched_port_pipe_profile_add(struct rte_sched_port *port,
 		return -2;
 
 	/* Pipe params */
-	status = pipe_profile_check(params, port->rate);
+	status = pipe_profile_check(params, port->rate, &port->qsize[0]);
 	if (status != 0)
 		return status;
 
 	pp = &port->pipe_profiles[port->n_pipe_profiles];
-	rte_sched_pipe_profile_convert(params, pp, port->rate);
+	rte_sched_pipe_profile_convert(port, params, pp, port->rate);
 
 	/* Pipe profile not exists */
 	for (i = 0; i < port->n_pipe_profiles; i++)
@@ -979,8 +1059,8 @@ rte_sched_port_pipe_profile_add(struct rte_sched_port *port,
 	*pipe_profile_id = port->n_pipe_profiles;
 	port->n_pipe_profiles++;
 
-	if (port->pipe_tc3_rate_max < params->tc_rate[3])
-		port->pipe_tc3_rate_max = params->tc_rate[3];
+	if (port->pipe_tc3_rate_max < params->tc_rate[RTE_SCHED_TRAFFIC_CLASS_BE])
+		port->pipe_tc3_rate_max = params->tc_rate[RTE_SCHED_TRAFFIC_CLASS_BE];
 
 	rte_sched_port_log_pipe_profile(port, *pipe_profile_id);
 
@@ -997,9 +1077,8 @@ rte_sched_port_qindex(struct rte_sched_port *port,
 	return ((subport & (port->n_subports_per_port - 1)) <<
 			(port->n_pipes_per_subport_log2 + 4)) |
 			((pipe & (port->n_pipes_per_subport - 1)) << 4) |
-			((traffic_class &
-			    (RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE - 1)) << 2) |
-			(queue & (RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS - 1));
+			((rte_sched_port_pipe_queue(port, traffic_class) + queue) &
+			(RTE_SCHED_QUEUES_PER_PIPE - 1));
 }
 
 void
@@ -1009,8 +1088,9 @@ rte_sched_port_pkt_write(struct rte_sched_port *port,
 			 uint32_t traffic_class,
 			 uint32_t queue, enum rte_color color)
 {
-	uint32_t queue_id = rte_sched_port_qindex(port, subport, pipe,
-			traffic_class, queue);
+	uint32_t queue_id =
+		rte_sched_port_qindex(port, subport, pipe, traffic_class, queue);
+
 	rte_mbuf_sched_set(pkt, queue_id, traffic_class, (uint8_t)color);
 }
 
@@ -1024,9 +1104,8 @@ rte_sched_port_pkt_read_tree_path(struct rte_sched_port *port,
 
 	*subport = queue_id >> (port->n_pipes_per_subport_log2 + 4);
 	*pipe = (queue_id >> 4) & (port->n_pipes_per_subport - 1);
-	*traffic_class = (queue_id >> 2) &
-				(RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE - 1);
-	*queue = queue_id & (RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS - 1);
+	*traffic_class = rte_sched_port_pipe_tc(port, queue_id);
+	*queue = rte_sched_port_tc_queue(port, queue_id);
 }
 
 enum rte_color
@@ -1107,7 +1186,7 @@ static inline void
 rte_sched_port_update_subport_stats(struct rte_sched_port *port, uint32_t qindex, struct rte_mbuf *pkt)
 {
 	struct rte_sched_subport *s = port->subport + (qindex / rte_sched_port_queues_per_subport(port));
-	uint32_t tc_index = (qindex >> 2) & 0x3;
+	uint32_t tc_index = rte_sched_port_pipe_tc(port, qindex);
 	uint32_t pkt_len = pkt->pkt_len;
 
 	s->stats.n_pkts_tc[tc_index] += 1;
@@ -1127,7 +1206,7 @@ rte_sched_port_update_subport_stats_on_drop(struct rte_sched_port *port,
 #endif
 {
 	struct rte_sched_subport *s = port->subport + (qindex / rte_sched_port_queues_per_subport(port));
-	uint32_t tc_index = (qindex >> 2) & 0x3;
+	uint32_t tc_index = rte_sched_port_pipe_tc(port, qindex);
 	uint32_t pkt_len = pkt->pkt_len;
 
 	s->stats.n_pkts_tc_dropped[tc_index] += 1;
@@ -1182,7 +1261,7 @@ rte_sched_port_red_drop(struct rte_sched_port *port, struct rte_mbuf *pkt, uint3
 	uint32_t tc_index;
 	enum rte_color color;
 
-	tc_index = (qindex >> 2) & 0x3;
+	tc_index = rte_sched_port_pipe_tc(port, qindex);
 	color = rte_sched_port_pkt_read_color(pkt);
 	red_cfg = &port->red_config[tc_index][color];
 
@@ -1499,6 +1578,7 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 	struct rte_sched_pipe *pipe = grinder->pipe;
 	struct rte_sched_pipe_profile *params = grinder->pipe_params;
 	uint64_t n_periods;
+	uint32_t i;
 
 	/* Subport TB */
 	n_periods = (port->time - subport->tb_time) / subport->tb_period;
@@ -1514,19 +1594,17 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 
 	/* Subport TCs */
 	if (unlikely(port->time >= subport->tc_time)) {
-		subport->tc_credits[0] = subport->tc_credits_per_period[0];
-		subport->tc_credits[1] = subport->tc_credits_per_period[1];
-		subport->tc_credits[2] = subport->tc_credits_per_period[2];
-		subport->tc_credits[3] = subport->tc_credits_per_period[3];
+		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+			subport->tc_credits[i] = subport->tc_credits_per_period[i];
+
 		subport->tc_time = port->time + subport->tc_period;
 	}
 
 	/* Pipe TCs */
 	if (unlikely(port->time >= pipe->tc_time)) {
-		pipe->tc_credits[0] = params->tc_credits_per_period[0];
-		pipe->tc_credits[1] = params->tc_credits_per_period[1];
-		pipe->tc_credits[2] = params->tc_credits_per_period[2];
-		pipe->tc_credits[3] = params->tc_credits_per_period[3];
+		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+			pipe->tc_credits[i] = params->tc_credits_per_period[i];
+
 		pipe->tc_time = port->time + params->tc_period;
 	}
 }
@@ -1539,21 +1617,29 @@ grinder_tc_ov_credits_update(struct rte_sched_port *port, uint32_t pos)
 	struct rte_sched_grinder *grinder = port->grinder + pos;
 	struct rte_sched_subport *subport = grinder->subport;
 	uint32_t tc_ov_consumption[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
-	uint32_t tc_ov_consumption_max;
+	uint32_t tc_consumption = 0, tc_ov_consumption_max;
 	uint32_t tc_ov_wm = subport->tc_ov_wm;
+	uint32_t i;
 
 	if (subport->tc_ov == 0)
 		return subport->tc_ov_wm_max;
 
-	tc_ov_consumption[0] = subport->tc_credits_per_period[0] - subport->tc_credits[0];
-	tc_ov_consumption[1] = subport->tc_credits_per_period[1] - subport->tc_credits[1];
-	tc_ov_consumption[2] = subport->tc_credits_per_period[2] - subport->tc_credits[2];
-	tc_ov_consumption[3] = subport->tc_credits_per_period[3] - subport->tc_credits[3];
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASS_BE; i++) {
+		tc_ov_consumption[i] =
+			subport->tc_credits_per_period[i] - subport->tc_credits[i];
+		tc_consumption += tc_ov_consumption[i];
+	}
 
-	tc_ov_consumption_max = subport->tc_credits_per_period[3] -
-		(tc_ov_consumption[0] + tc_ov_consumption[1] + tc_ov_consumption[2]);
+	tc_ov_consumption[RTE_SCHED_TRAFFIC_CLASS_BE] =
+		subport->tc_credits_per_period[RTE_SCHED_TRAFFIC_CLASS_BE] -
+		subport->tc_credits[RTE_SCHED_TRAFFIC_CLASS_BE];
 
-	if (tc_ov_consumption[3] > (tc_ov_consumption_max - port->mtu)) {
+	tc_ov_consumption_max =
+		subport->tc_credits_per_period[RTE_SCHED_TRAFFIC_CLASS_BE] -
+			tc_consumption;
+
+	if (tc_ov_consumption[RTE_SCHED_TRAFFIC_CLASS_BE] >
+		(tc_ov_consumption_max - port->mtu)) {
 		tc_ov_wm  -= tc_ov_wm >> 7;
 		if (tc_ov_wm < subport->tc_ov_wm_min)
 			tc_ov_wm = subport->tc_ov_wm_min;
@@ -1576,6 +1662,7 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 	struct rte_sched_pipe *pipe = grinder->pipe;
 	struct rte_sched_pipe_profile *params = grinder->pipe_params;
 	uint64_t n_periods;
+	uint32_t i;
 
 	/* Subport TB */
 	n_periods = (port->time - subport->tb_time) / subport->tb_period;
@@ -1593,10 +1680,8 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 	if (unlikely(port->time >= subport->tc_time)) {
 		subport->tc_ov_wm = grinder_tc_ov_credits_update(port, pos);
 
-		subport->tc_credits[0] = subport->tc_credits_per_period[0];
-		subport->tc_credits[1] = subport->tc_credits_per_period[1];
-		subport->tc_credits[2] = subport->tc_credits_per_period[2];
-		subport->tc_credits[3] = subport->tc_credits_per_period[3];
+		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+			subport->tc_credits[i] = subport->tc_credits_per_period[i];
 
 		subport->tc_time = port->time + subport->tc_period;
 		subport->tc_ov_period_id++;
@@ -1604,10 +1689,8 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 
 	/* Pipe TCs */
 	if (unlikely(port->time >= pipe->tc_time)) {
-		pipe->tc_credits[0] = params->tc_credits_per_period[0];
-		pipe->tc_credits[1] = params->tc_credits_per_period[1];
-		pipe->tc_credits[2] = params->tc_credits_per_period[2];
-		pipe->tc_credits[3] = params->tc_credits_per_period[3];
+		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+			pipe->tc_credits[i] = params->tc_credits_per_period[i];
 		pipe->tc_time = port->time + params->tc_period;
 	}
 
@@ -1672,10 +1755,17 @@ grinder_credits_check(struct rte_sched_port *port, uint32_t pos)
 	uint32_t subport_tc_credits = subport->tc_credits[tc_index];
 	uint32_t pipe_tb_credits = pipe->tb_credits;
 	uint32_t pipe_tc_credits = pipe->tc_credits[tc_index];
-	uint32_t pipe_tc_ov_mask1[] = {UINT32_MAX, UINT32_MAX, UINT32_MAX, pipe->tc_ov_credits};
-	uint32_t pipe_tc_ov_mask2[] = {0, 0, 0, UINT32_MAX};
-	uint32_t pipe_tc_ov_credits = pipe_tc_ov_mask1[tc_index];
+	uint32_t pipe_tc_ov_mask1[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint32_t pipe_tc_ov_mask2[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE] = {0};
+	uint32_t pipe_tc_ov_credits, i;
 	int enough_credits;
+
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+		pipe_tc_ov_mask1[i] = UINT32_MAX;
+
+	pipe_tc_ov_mask1[RTE_SCHED_TRAFFIC_CLASS_BE] = pipe->tc_ov_credits;
+	pipe_tc_ov_mask2[RTE_SCHED_TRAFFIC_CLASS_BE] = UINT32_MAX;
+	pipe_tc_ov_credits = pipe_tc_ov_mask1[tc_index];
 
 	/* Check pipe and subport credits */
 	enough_credits = (pkt_len <= subport_tb_credits) &&
@@ -1831,31 +1921,23 @@ static inline void
 grinder_tccache_populate(struct rte_sched_port *port, uint32_t pos, uint32_t qindex, uint16_t qmask)
 {
 	struct rte_sched_grinder *grinder = port->grinder + pos;
-	uint8_t b[4];
+	uint8_t b, i;
 
 	grinder->tccache_w = 0;
 	grinder->tccache_r = 0;
 
-	b[0] = (uint8_t) (qmask & 0xF);
-	b[1] = (uint8_t) ((qmask >> 4) & 0xF);
-	b[2] = (uint8_t) ((qmask >> 8) & 0xF);
-	b[3] = (uint8_t) ((qmask >> 12) & 0xF);
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASS_BE; i++) {
+		b = (uint8_t) ((qmask >> i) & 0x1);
+		grinder->tccache_qmask[grinder->tccache_w] = b;
+		grinder->tccache_qindex[grinder->tccache_w] = qindex + i;
+		grinder->tccache_w += (b != 0);
+	}
 
-	grinder->tccache_qmask[grinder->tccache_w] = b[0];
-	grinder->tccache_qindex[grinder->tccache_w] = qindex;
-	grinder->tccache_w += (b[0] != 0);
-
-	grinder->tccache_qmask[grinder->tccache_w] = b[1];
-	grinder->tccache_qindex[grinder->tccache_w] = qindex + 4;
-	grinder->tccache_w += (b[1] != 0);
-
-	grinder->tccache_qmask[grinder->tccache_w] = b[2];
-	grinder->tccache_qindex[grinder->tccache_w] = qindex + 8;
-	grinder->tccache_w += (b[2] != 0);
-
-	grinder->tccache_qmask[grinder->tccache_w] = b[3];
-	grinder->tccache_qindex[grinder->tccache_w] = qindex + 12;
-	grinder->tccache_w += (b[3] != 0);
+	b = (uint8_t) (qmask >> (RTE_SCHED_TRAFFIC_CLASS_BE));
+	grinder->tccache_qmask[grinder->tccache_w] = b;
+	grinder->tccache_qindex[grinder->tccache_w] = qindex +
+		RTE_SCHED_TRAFFIC_CLASS_BE;
+	grinder->tccache_w += (b != 0);
 }
 
 static inline int
@@ -1873,14 +1955,18 @@ grinder_next_tc(struct rte_sched_port *port, uint32_t pos)
 	qbase = rte_sched_port_qbase(port, qindex);
 	qsize = rte_sched_port_qsize(port, qindex);
 
-	grinder->tc_index = (qindex >> 2) & 0x3;
+	grinder->tc_index = rte_sched_port_pipe_tc(port, qindex);
 	grinder->qmask = grinder->tccache_qmask[grinder->tccache_r];
 	grinder->qsize = qsize;
 
-	grinder->qindex[0] = qindex;
-	grinder->qindex[1] = qindex + 1;
-	grinder->qindex[2] = qindex + 2;
-	grinder->qindex[3] = qindex + 3;
+	if (grinder->tc_index < RTE_SCHED_TRAFFIC_CLASS_BE) {
+		grinder->queue[0] = port->queue + qindex;
+		grinder->qbase[0] = qbase;
+		grinder->qindex[0] = qindex;
+		grinder->tccache_r++;
+
+		return 1;
+	}
 
 	grinder->queue[0] = port->queue + qindex;
 	grinder->queue[1] = port->queue + qindex + 1;
@@ -1891,6 +1977,11 @@ grinder_next_tc(struct rte_sched_port *port, uint32_t pos)
 	grinder->qbase[1] = qbase + qsize;
 	grinder->qbase[2] = qbase + 2 * qsize;
 	grinder->qbase[3] = qbase + 3 * qsize;
+
+	grinder->qindex[0] = qindex;
+	grinder->qindex[1] = qindex + 1;
+	grinder->qindex[2] = qindex + 2;
+	grinder->qindex[3] = qindex + 3;
 
 	grinder->tccache_r++;
 	return 1;

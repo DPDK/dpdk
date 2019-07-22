@@ -85,7 +85,8 @@ extern "C" {
 /** Number of traffic classes per pipe (as well as subport).
  * Cannot be changed.
  */
-#define RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE    4
+#define RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE    \
+(RTE_SCHED_QUEUES_PER_PIPE - RTE_SCHED_BE_QUEUES_PER_PIPE + 1)
 
 /** Best-effort traffic class ID
  * Can not change.
@@ -177,9 +178,7 @@ struct rte_sched_pipe_params {
 	/**< Traffic class rates (measured in bytes per second) */
 	uint32_t tc_period;
 	/**< Enforcement period (measured in milliseconds) */
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 	uint8_t tc_ov_weight;		 /**< Weight Traffic class 3 oversubscription */
-#endif
 
 	/* Pipe queues */
 	uint8_t  wrr_weights[RTE_SCHED_BE_QUEUES_PER_PIPE]; /**< WRR weights */
