@@ -526,3 +526,53 @@ mlx5_devx_cmd_create_rq(struct ibv_context *ctx,
 	rq->id = MLX5_GET(create_rq_out, out, rqn);
 	return rq;
 }
+
+/**
+ * Modify RQ using DevX API.
+ *
+ * @param[in] rq
+ *   Pointer to RQ object structure.
+ * @param [in] rq_attr
+ *   Pointer to modify RQ attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
+			struct mlx5_devx_modify_rq_attr *rq_attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(modify_rq_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(modify_rq_out)] = {0};
+	void *rq_ctx, *wq_ctx;
+	int ret;
+
+	MLX5_SET(modify_rq_in, in, opcode, MLX5_CMD_OP_MODIFY_RQ);
+	MLX5_SET(modify_rq_in, in, rq_state, rq_attr->rq_state);
+	MLX5_SET(modify_rq_in, in, rqn, rq->id);
+	MLX5_SET64(modify_rq_in, in, modify_bitmask, rq_attr->modify_bitmask);
+	rq_ctx = MLX5_ADDR_OF(modify_rq_in, in, ctx);
+	MLX5_SET(rqc, rq_ctx, state, rq_attr->state);
+	if (rq_attr->modify_bitmask &
+			MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_SCATTER_FCS)
+		MLX5_SET(rqc, rq_ctx, scatter_fcs, rq_attr->scatter_fcs);
+	if (rq_attr->modify_bitmask & MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_VSD)
+		MLX5_SET(rqc, rq_ctx, vsd, rq_attr->vsd);
+	if (rq_attr->modify_bitmask &
+			MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_RQ_COUNTER_SET_ID)
+		MLX5_SET(rqc, rq_ctx, counter_set_id, rq_attr->counter_set_id);
+	MLX5_SET(rqc, rq_ctx, hairpin_peer_sq, rq_attr->hairpin_peer_sq);
+	MLX5_SET(rqc, rq_ctx, hairpin_peer_vhca, rq_attr->hairpin_peer_vhca);
+	if (rq_attr->modify_bitmask & MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_WQ_LWM) {
+		wq_ctx = MLX5_ADDR_OF(rqc, rq_ctx, wq);
+		MLX5_SET(wq, wq_ctx, lwm, rq_attr->lwm);
+	}
+	ret = mlx5_glue->devx_obj_modify(rq->obj, in, sizeof(in),
+					 out, sizeof(out));
+	if (ret) {
+		DRV_LOG(ERR, "Failed to modify RQ using DevX");
+		rte_errno = errno;
+		return -errno;
+	}
+	return ret;
+}

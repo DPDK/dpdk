@@ -306,6 +306,20 @@ struct mlx5_devx_create_rq_attr {
 	struct mlx5_devx_wq_attr wq_attr;
 };
 
+/* Modify RQ attributes structure, used by modify RQ operation. */
+struct mlx5_devx_modify_rq_attr {
+	uint32_t rqn:24;
+	uint32_t rq_state:4; /* Current RQ state. */
+	uint32_t state:4; /* Required RQ state. */
+	uint32_t scatter_fcs:1;
+	uint32_t vsd:1;
+	uint32_t counter_set_id:8;
+	uint32_t hairpin_peer_sq:24;
+	uint32_t hairpin_peer_vhca:16;
+	uint64_t modify_bitmask;
+	uint32_t lwm:16; /* Contained WQ lwm. */
+};
+
 /**
  * Type of object being allocated.
  */
@@ -789,5 +803,7 @@ int mlx5_devx_cmd_qp_query_tis_td(struct ibv_qp *qp, uint32_t tis_num,
 struct mlx5_devx_obj *mlx5_devx_cmd_create_rq(struct ibv_context *ctx,
 				struct mlx5_devx_create_rq_attr *rq_attr,
 				int socket);
+int mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
+			    struct mlx5_devx_modify_rq_attr *rq_attr);
 
 #endif /* RTE_PMD_MLX5_H_ */

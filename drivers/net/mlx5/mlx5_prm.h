@@ -628,6 +628,7 @@ enum {
 	MLX5_CMD_OP_CREATE_MKEY = 0x200,
 	MLX5_CMD_OP_QUERY_NIC_VPORT_CONTEXT = 0x754,
 	MLX5_CMD_OP_CREATE_RQ = 0x908,
+	MLX5_CMD_OP_MODIFY_RQ = 0x909,
 	MLX5_CMD_OP_QUERY_TIS = 0x915,
 	MLX5_CMD_OP_ALLOC_FLOW_COUNTER = 0x939,
 	MLX5_CMD_OP_QUERY_FLOW_COUNTER = 0x93b,
@@ -1375,6 +1376,34 @@ struct mlx5_ifc_create_rq_in_bits {
 	u8 reserved_at_20[0x10];
 	u8 op_mod[0x10];
 	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_rqc_bits ctx;
+};
+
+struct mlx5_ifc_modify_rq_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+};
+
+enum {
+	MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_WQ_LWM = 1ULL << 0,
+	MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_VSD = 1ULL << 1,
+	MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_SCATTER_FCS = 1ULL << 2,
+	MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_RQ_COUNTER_SET_ID = 1ULL << 3,
+};
+
+struct mlx5_ifc_modify_rq_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 rq_state[0x4];
+	u8 reserved_at_44[0x4];
+	u8 rqn[0x18];
+	u8 reserved_at_60[0x20];
+	u8 modify_bitmask[0x40];
+	u8 reserved_at_c0[0x40];
 	struct mlx5_ifc_rqc_bits ctx;
 };
 
