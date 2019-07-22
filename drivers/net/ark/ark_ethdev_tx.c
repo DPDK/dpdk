@@ -211,9 +211,7 @@ eth_ark_tx_queue_setup(struct rte_eth_dev *dev,
 	struct ark_tx_queue *queue;
 	int status;
 
-	/* Future: divide the Q's evenly with multi-ports */
-	int port = dev->data->port_id;
-	int qidx = port + queue_idx;
+	int qidx = queue_idx;
 
 	if (!rte_is_power_of_2(nb_desc)) {
 		PMD_DRV_LOG(ERR,

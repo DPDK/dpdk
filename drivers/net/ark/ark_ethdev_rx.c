@@ -127,9 +127,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	uint32_t i;
 	int status;
 
-	/* Future works: divide the Q's evenly with multi-ports */
-	int port = dev->data->port_id;
-	int qidx = port + queue_idx;
+	int qidx = queue_idx;
 
 	/* We may already be setup, free memory prior to re-allocation */
 	if (dev->data->rx_queues[queue_idx] != NULL) {
