@@ -831,6 +831,75 @@ exit:
 }
 
 /**
+ * Create a CQ Verbs object.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param priv
+ *   Pointer to device private data.
+ * @param rxq_data
+ *   Pointer to Rx queue data.
+ * @param cqe_n
+ *   Number of CQEs in CQ.
+ * @param rxq_obj
+ *   Pointer to Rx queue object data.
+ *
+ * @return
+ *   The Verbs object initialised, NULL otherwise and rte_errno is set.
+ */
+static struct ibv_cq *
+mlx5_ibv_cq_new(struct rte_eth_dev *dev, struct mlx5_priv *priv,
+		struct mlx5_rxq_data *rxq_data,
+		unsigned int cqe_n, struct mlx5_rxq_obj *rxq_obj)
+{
+	struct {
+		struct ibv_cq_init_attr_ex ibv;
+		struct mlx5dv_cq_init_attr mlx5;
+	} cq_attr;
+
+	cq_attr.ibv = (struct ibv_cq_init_attr_ex){
+		.cqe = cqe_n,
+		.channel = rxq_obj->channel,
+		.comp_mask = 0,
+	};
+	cq_attr.mlx5 = (struct mlx5dv_cq_init_attr){
+		.comp_mask = 0,
+	};
+	if (priv->config.cqe_comp && !rxq_data->hw_timestamp) {
+		cq_attr.mlx5.comp_mask |=
+				MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
+#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+		cq_attr.mlx5.cqe_comp_res_format =
+				mlx5_rxq_mprq_enabled(rxq_data) ?
+				MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX :
+				MLX5DV_CQE_RES_FORMAT_HASH;
+#else
+		cq_attr.mlx5.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
+#endif
+		/*
+		 * For vectorized Rx, it must not be doubled in order to
+		 * make cq_ci and rq_ci aligned.
+		 */
+		if (mlx5_rxq_check_vec_support(rxq_data) < 0)
+			cq_attr.ibv.cqe *= 2;
+	} else if (priv->config.cqe_comp && rxq_data->hw_timestamp) {
+		DRV_LOG(DEBUG,
+			"port %u Rx CQE compression is disabled for HW"
+			" timestamp",
+			dev->data->port_id);
+	}
+#ifdef HAVE_IBV_MLX5_MOD_CQE_128B_PAD
+	if (priv->config.cqe_pad) {
+		cq_attr.mlx5.comp_mask |= MLX5DV_CQ_INIT_ATTR_MASK_FLAGS;
+		cq_attr.mlx5.flags |= MLX5DV_CQ_INIT_ATTR_FLAGS_CQE_PAD;
+	}
+#endif
+	return mlx5_glue->cq_ex_to_cq(mlx5_glue->dv_create_cq(priv->sh->ctx,
+							      &cq_attr.ibv,
+							      &cq_attr.mlx5));
+}
+
+/**
  * Create the Rx queue Verbs/DevX object.
  *
  * @param dev
@@ -849,18 +918,12 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	struct ibv_wq_attr mod;
-	union {
-		struct {
-			struct ibv_cq_init_attr_ex ibv;
-			struct mlx5dv_cq_init_attr mlx5;
-		} cq;
-		struct {
-			struct ibv_wq_init_attr ibv;
+	struct {
+		struct ibv_wq_init_attr ibv;
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-			struct mlx5dv_wq_init_attr mlx5;
+		struct mlx5dv_wq_init_attr mlx5;
 #endif
-		} wq;
-	} attr;
+	} wq_attr;
 	unsigned int cqe_n;
 	unsigned int wqe_n = 1 << rxq_data->elts_n;
 	struct mlx5_rxq_obj *tmpl = NULL;
@@ -872,7 +935,7 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	const int mprq_en = mlx5_rxq_mprq_enabled(rxq_data);
 
 	assert(rxq_data);
-	assert(!rxq_ctrl->ibv);
+	assert(!rxq_ctrl->obj);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_RX_QUEUE;
 	priv->verbs_alloc_ctx.obj = rxq_ctrl;
 	tmpl = rte_calloc_socket(__func__, 1, sizeof(*tmpl), 0,
@@ -898,46 +961,8 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		cqe_n = wqe_n * (1 << rxq_data->strd_num_n) - 1;
 	else
 		cqe_n = wqe_n  - 1;
-	attr.cq.ibv = (struct ibv_cq_init_attr_ex){
-		.cqe = cqe_n,
-		.channel = tmpl->channel,
-		.comp_mask = 0,
-	};
-	attr.cq.mlx5 = (struct mlx5dv_cq_init_attr){
-		.comp_mask = 0,
-	};
-	if (config->cqe_comp && !rxq_data->hw_timestamp) {
-		attr.cq.mlx5.comp_mask |=
-			MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
-#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-		attr.cq.mlx5.cqe_comp_res_format =
-			mprq_en ? MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX :
-				  MLX5DV_CQE_RES_FORMAT_HASH;
-#else
-		attr.cq.mlx5.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
-#endif
-		/*
-		 * For vectorized Rx, it must not be doubled in order to
-		 * make cq_ci and rq_ci aligned.
-		 */
-		if (mlx5_rxq_check_vec_support(rxq_data) < 0)
-			attr.cq.ibv.cqe *= 2;
-	} else if (config->cqe_comp && rxq_data->hw_timestamp) {
-		DRV_LOG(DEBUG,
-			"port %u Rx CQE compression is disabled for HW"
-			" timestamp",
-			dev->data->port_id);
-	}
-#ifdef HAVE_IBV_MLX5_MOD_CQE_128B_PAD
-	if (config->cqe_pad) {
-		attr.cq.mlx5.comp_mask |= MLX5DV_CQ_INIT_ATTR_MASK_FLAGS;
-		attr.cq.mlx5.flags |= MLX5DV_CQ_INIT_ATTR_FLAGS_CQE_PAD;
-	}
-#endif
-	tmpl->cq = mlx5_glue->cq_ex_to_cq
-		(mlx5_glue->dv_create_cq(priv->sh->ctx, &attr.cq.ibv,
-					 &attr.cq.mlx5));
-	if (tmpl->cq == NULL) {
+	tmpl->cq = mlx5_ibv_cq_new(dev, priv, rxq_data, cqe_n, tmpl);
+	if (!tmpl->cq) {
 		DRV_LOG(ERR, "port %u Rx queue %u CQ creation failure",
 			dev->data->port_id, idx);
 		rte_errno = ENOMEM;
@@ -947,7 +972,7 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		dev->data->port_id, priv->sh->device_attr.orig_attr.max_qp_wr);
 	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
 		dev->data->port_id, priv->sh->device_attr.orig_attr.max_sge);
-	attr.wq.ibv = (struct ibv_wq_init_attr){
+	wq_attr.ibv = (struct ibv_wq_init_attr){
 		.wq_context = NULL, /* Could be useful in the future. */
 		.wq_type = IBV_WQT_RQ,
 		/* Max number of outstanding WRs. */
@@ -965,37 +990,37 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	};
 	/* By default, FCS (CRC) is stripped by hardware. */
 	if (rxq_data->crc_present) {
-		attr.wq.ibv.create_flags |= IBV_WQ_FLAGS_SCATTER_FCS;
-		attr.wq.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
+		wq_attr.ibv.create_flags |= IBV_WQ_FLAGS_SCATTER_FCS;
+		wq_attr.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 	}
 	if (config->hw_padding) {
 #if defined(HAVE_IBV_WQ_FLAG_RX_END_PADDING)
-		attr.wq.ibv.create_flags |= IBV_WQ_FLAG_RX_END_PADDING;
-		attr.wq.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
+		wq_attr.ibv.create_flags |= IBV_WQ_FLAG_RX_END_PADDING;
+		wq_attr.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 #elif defined(HAVE_IBV_WQ_FLAGS_PCI_WRITE_END_PADDING)
-		attr.wq.ibv.create_flags |= IBV_WQ_FLAGS_PCI_WRITE_END_PADDING;
-		attr.wq.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
+		wq_attr.ibv.create_flags |= IBV_WQ_FLAGS_PCI_WRITE_END_PADDING;
+		wq_attr.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 #endif
 	}
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-	attr.wq.mlx5 = (struct mlx5dv_wq_init_attr){
+	wq_attr.mlx5 = (struct mlx5dv_wq_init_attr){
 		.comp_mask = 0,
 	};
 	if (mprq_en) {
 		struct mlx5dv_striding_rq_init_attr *mprq_attr =
-			&attr.wq.mlx5.striding_rq_attrs;
+			&wq_attr.mlx5.striding_rq_attrs;
 
-		attr.wq.mlx5.comp_mask |= MLX5DV_WQ_INIT_ATTR_MASK_STRIDING_RQ;
+		wq_attr.mlx5.comp_mask |= MLX5DV_WQ_INIT_ATTR_MASK_STRIDING_RQ;
 		*mprq_attr = (struct mlx5dv_striding_rq_init_attr){
 			.single_stride_log_num_of_bytes = rxq_data->strd_sz_n,
 			.single_wqe_log_num_of_strides = rxq_data->strd_num_n,
 			.two_byte_shift_en = MLX5_MPRQ_TWO_BYTE_SHIFT,
 		};
 	}
-	tmpl->wq = mlx5_glue->dv_create_wq(priv->sh->ctx, &attr.wq.ibv,
-					   &attr.wq.mlx5);
+	tmpl->wq = mlx5_glue->dv_create_wq(priv->sh->ctx, &wq_attr.ibv,
+					   &wq_attr.mlx5);
 #else
-	tmpl->wq = mlx5_glue->create_wq(priv->sh->ctx, &attr.wq.ibv);
+	tmpl->wq = mlx5_glue->create_wq(priv->sh->ctx, &wq_attr.ibv);
 #endif
 	if (tmpl->wq == NULL) {
 		DRV_LOG(ERR, "port %u Rx queue %u WQ creation failure",
@@ -1007,14 +1032,14 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	 * Make sure number of WRs*SGEs match expectations since a queue
 	 * cannot allocate more than "desc" buffers.
 	 */
-	if (attr.wq.ibv.max_wr != (wqe_n >> rxq_data->sges_n) ||
-	    attr.wq.ibv.max_sge != (1u << rxq_data->sges_n)) {
+	if (wq_attr.ibv.max_wr != (wqe_n >> rxq_data->sges_n) ||
+	    wq_attr.ibv.max_sge != (1u << rxq_data->sges_n)) {
 		DRV_LOG(ERR,
 			"port %u Rx queue %u requested %u*%u but got %u*%u"
 			" WRs*SGEs",
 			dev->data->port_id, idx,
 			wqe_n >> rxq_data->sges_n, (1 << rxq_data->sges_n),
-			attr.wq.ibv.max_wr, attr.wq.ibv.max_sge);
+			wq_attr.ibv.max_wr, wq_attr.ibv.max_sge);
 		rte_errno = EINVAL;
 		goto error;
 	}
