@@ -2001,7 +2001,7 @@ static const struct rte_pci_id pci_nix_map[] = {
 
 static struct rte_pci_driver pci_nix = {
 	.id_table = pci_nix_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_IOVA_AS_VA |
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_NEED_IOVA_AS_VA |
 			RTE_PCI_DRV_INTR_LSC,
 	.probe = nix_probe,
 	.remove = nix_remove,

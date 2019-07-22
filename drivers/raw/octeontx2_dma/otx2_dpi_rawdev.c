@@ -427,7 +427,7 @@ otx2_dpi_rawdev_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_dpi_rawdev_pmd = {
 	.id_table  = pci_dma_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_NEED_IOVA_AS_VA,
 	.probe     = otx2_dpi_rawdev_probe,
 	.remove    = otx2_dpi_rawdev_remove,
 };

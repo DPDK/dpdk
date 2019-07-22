@@ -140,7 +140,7 @@ static const struct rte_pci_id pci_timvf_map[] = {
 
 static struct rte_pci_driver pci_timvf = {
 	.id_table = pci_timvf_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_NEED_IOVA_AS_VA,
 	.probe = timvf_probe,
 	.remove = NULL,
 };

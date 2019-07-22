@@ -1630,7 +1630,7 @@ static const struct rte_pci_id pci_sso_map[] = {
 
 static struct rte_pci_driver pci_sso = {
 	.id_table = pci_sso_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_NEED_IOVA_AS_VA,
 	.probe = otx2_sso_probe,
 	.remove = otx2_sso_remove,
 };

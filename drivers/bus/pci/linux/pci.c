@@ -580,7 +580,7 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 		}
 		if (is_vfio_noiommu_enabled != 0)
 			iova_mode = RTE_IOVA_PA;
-		else if ((pdrv->drv_flags & RTE_PCI_DRV_IOVA_AS_VA) != 0)
+		else if ((pdrv->drv_flags & RTE_PCI_DRV_NEED_IOVA_AS_VA) != 0)
 			iova_mode = RTE_IOVA_VA;
 #endif
 		break;
@@ -592,7 +592,7 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 		break;
 
 	default:
-		if ((pdrv->drv_flags & RTE_PCI_DRV_IOVA_AS_VA) != 0)
+		if ((pdrv->drv_flags & RTE_PCI_DRV_NEED_IOVA_AS_VA) != 0)
 			iova_mode = RTE_IOVA_VA;
 		break;
 	}

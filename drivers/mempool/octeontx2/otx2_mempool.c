@@ -443,7 +443,7 @@ static const struct rte_pci_id pci_npa_map[] = {
 
 static struct rte_pci_driver pci_npa = {
 	.id_table = pci_npa_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_NEED_IOVA_AS_VA,
 	.probe = npa_probe,
 	.remove = npa_remove,
 };
