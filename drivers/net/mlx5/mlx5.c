@@ -1683,6 +1683,38 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	} else if (config.cqe_pad) {
 		DRV_LOG(INFO, "Rx CQE padding is enabled");
 	}
+	if (config.devx) {
+		priv->counter_fallback = 0;
+		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config.hca_attr);
+		if (err) {
+			err = -err;
+			goto error;
+		}
+		if (!config.hca_attr.flow_counters_dump)
+			priv->counter_fallback = 1;
+#ifndef HAVE_IBV_DEVX_ASYNC
+		priv->counter_fallback = 1;
+#endif
+		if (priv->counter_fallback)
+			DRV_LOG(INFO, "Use fall-back DV counter management\n");
+		/* Check for LRO support. */
+		if (config.dest_tir && mprq && config.hca_attr.lro_cap) {
+			/* TBD check tunnel lro caps. */
+			config.lro.supported = config.hca_attr.lro_cap;
+			DRV_LOG(DEBUG, "Device supports LRO");
+			/*
+			 * If LRO timeout is not configured by application,
+			 * use the minimal supported value.
+			 */
+			if (!config.lro.timeout)
+				config.lro.timeout =
+				config.hca_attr.lro_timer_supported_periods[0];
+			DRV_LOG(DEBUG, "LRO session timeout set to %d usec",
+				config.lro.timeout);
+			config.mprq.enabled = 1;
+			DRV_LOG(DEBUG, "Enable MPRQ for LRO use");
+		}
+	}
 	if (config.mprq.enabled && mprq) {
 		if (config.mprq.stride_num_n > mprq_max_stride_num_n ||
 		    config.mprq.stride_num_n < mprq_min_stride_num_n) {
@@ -1790,23 +1822,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Verbs context returned by ibv_open_device().
 	 */
 	mlx5_link_update(eth_dev, 0);
-#ifdef HAVE_IBV_DEVX_OBJ
-	if (config.devx) {
-		priv->counter_fallback = 0;
-		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config.hca_attr);
-		if (err) {
-			err = -err;
-			goto error;
-		}
-		if (!config.hca_attr.flow_counters_dump)
-			priv->counter_fallback = 1;
-#ifndef HAVE_IBV_DEVX_ASYNC
-		priv->counter_fallback = 1;
-#endif
-		if (priv->counter_fallback)
-			DRV_LOG(INFO, "Use fall-back DV counter management\n");
-	}
-#endif
 #ifdef HAVE_MLX5DV_DR_ESWITCH
 	if (!(config.hca_attr.eswitch_manager && config.dv_flow_en &&
 	      (switch_info->representor || switch_info->master)))

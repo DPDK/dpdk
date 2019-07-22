@@ -389,6 +389,7 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	const uint8_t use_app_rss_key =
 		!!dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
 	int ret = 0;
+	unsigned int lro_on = mlx5_lro_on(dev);
 
 	if (use_app_rss_key &&
 	    (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len !=
@@ -432,6 +433,12 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 			dev->data->port_id, priv->rxqs_n, rxqs_n);
 		priv->rxqs_n = rxqs_n;
 		/*
+		 * WHen using LRO, MPRQ is implicitly enabled.
+		 * Adjust threshold value to ensure MPRQ can be enabled.
+		 */
+		if (lro_on && priv->config.mprq.min_rxqs_num > priv->rxqs_n)
+			priv->config.mprq.min_rxqs_num = priv->rxqs_n;
+		/*
 		 * If the requested number of RX queues is not a power of two,
 		 * use the maximum indirection table size for better balancing.
 		 * The result is always rounded to the next power of two.
@@ -452,6 +459,11 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 			if (++j == rxqs_n)
 				j = 0;
 		}
+	}
+	if (lro_on && priv->config.cqe_comp) {
+		/* CQE compressing is not supported for LRO CQEs. */
+		DRV_LOG(WARNING, "Rx CQE compression isn't supported with LRO");
+		priv->config.cqe_comp = 0;
 	}
 	ret = mlx5_proc_priv_init(dev);
 	if (ret)

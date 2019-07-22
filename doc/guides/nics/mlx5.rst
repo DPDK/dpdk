@@ -163,6 +163,10 @@ Limitations
 
 - ICMP/ICMP6 code/type matching cannot be supported togeter with IP-in-IP tunnel.
 
+- LRO:
+
+  - ``scatter_fcs`` is disabled when LRO is configured.
+
 Statistics
 ----------
 

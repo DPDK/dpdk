@@ -93,6 +93,7 @@ mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq)
 
 /**
  * Check whether Multi-Packet RQ is enabled for the device.
+ * MPRQ can be enabled explicitly, or implicitly by enabling LRO.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -1431,7 +1432,18 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.crc_present = 0;
 	if (offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
 		if (config->hw_fcs_strip) {
-			tmpl->rxq.crc_present = 1;
+			/*
+			 * RQs used for LRO-enabled TIRs should not be
+			 * configured to scatter the FCS.
+			 */
+			if (mlx5_lro_on(dev))
+				DRV_LOG(WARNING,
+					"port %u CRC stripping has been "
+					"disabled but will still be performed "
+					"by hardware, because LRO is enabled",
+					dev->data->port_id);
+			else
+				tmpl->rxq.crc_present = 1;
 		} else {
 			DRV_LOG(WARNING,
 				"port %u CRC stripping has been disabled but will"
