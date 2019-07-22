@@ -1358,14 +1358,22 @@ mlx5_rxq_obj_verify(struct rte_eth_dev *dev)
  * Callback function to initialize mbufs for Multi-Packet RQ.
  */
 static inline void
-mlx5_mprq_buf_init(struct rte_mempool *mp, void *opaque_arg __rte_unused,
+mlx5_mprq_buf_init(struct rte_mempool *mp, void *opaque_arg,
 		    void *_m, unsigned int i __rte_unused)
 {
 	struct mlx5_mprq_buf *buf = _m;
+	struct rte_mbuf_ext_shared_info *shinfo;
+	unsigned int strd_n = (unsigned int)(uintptr_t)opaque_arg;
+	unsigned int j;
 
 	memset(_m, 0, sizeof(*buf));
 	buf->mp = mp;
 	rte_atomic16_set(&buf->refcnt, 1);
+	for (j = 0; j != strd_n; ++j) {
+		shinfo = &buf->shinfos[j];
+		shinfo->free_cb = mlx5_mprq_buf_free_cb;
+		shinfo->fcb_opaque = buf;
+	}
 }
 
 /**
@@ -1460,7 +1468,8 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 	}
 	assert(strd_num_n && strd_sz_n);
 	buf_len = (1 << strd_num_n) * (1 << strd_sz_n);
-	obj_size = buf_len + sizeof(struct mlx5_mprq_buf);
+	obj_size = sizeof(struct mlx5_mprq_buf) + buf_len + (1 << strd_num_n) *
+		sizeof(struct rte_mbuf_ext_shared_info) + RTE_PKTMBUF_HEADROOM;
 	/*
 	 * Received packets can be either memcpy'd or externally referenced. In
 	 * case that the packet is attached to an mbuf as an external buffer, as
@@ -1505,7 +1514,8 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 	}
 	snprintf(name, sizeof(name), "port-%u-mprq", dev->data->port_id);
 	mp = rte_mempool_create(name, obj_num, obj_size, MLX5_MPRQ_MP_CACHE_SZ,
-				0, NULL, NULL, mlx5_mprq_buf_init, NULL,
+				0, NULL, NULL, mlx5_mprq_buf_init,
+				(void *)(uintptr_t)(1 << strd_num_n),
 				dev->device->numa_node, 0);
 	if (mp == NULL) {
 		DRV_LOG(ERR,
@@ -1591,10 +1601,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 *  Otherwise, enable Rx scatter if necessary.
 	 */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
-	mprq_stride_size =
-		dev->data->dev_conf.rxmode.max_rx_pkt_len +
-		sizeof(struct rte_mbuf_ext_shared_info) +
-		RTE_PKTMBUF_HEADROOM;
+	mprq_stride_size = dev->data->dev_conf.rxmode.max_rx_pkt_len +
+				RTE_PKTMBUF_HEADROOM;
 	if (mprq_en &&
 	    desc > (1U << config->mprq.stride_num_n) &&
 	    mprq_stride_size <= (1U << config->mprq.max_stride_size_n)) {

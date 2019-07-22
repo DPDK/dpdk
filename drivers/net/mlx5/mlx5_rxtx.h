@@ -75,10 +75,20 @@ struct mlx5_mprq_buf {
 	struct rte_mempool *mp;
 	rte_atomic16_t refcnt; /* Atomically accessed refcnt. */
 	uint8_t pad[RTE_PKTMBUF_HEADROOM]; /* Headroom for the first packet. */
+	struct rte_mbuf_ext_shared_info shinfos[];
+	/*
+	 * Shared information per stride.
+	 * More memory will be allocated for the first stride head-room and for
+	 * the strides data.
+	 */
 } __rte_cache_aligned;
 
 /* Get pointer to the first stride. */
-#define mlx5_mprq_buf_addr(ptr) ((ptr) + 1)
+#define mlx5_mprq_buf_addr(ptr, strd_n) (RTE_PTR_ADD((ptr), \
+				sizeof(struct mlx5_mprq_buf) + \
+				(strd_n) * \
+				sizeof(struct rte_mbuf_ext_shared_info) + \
+				RTE_PKTMBUF_HEADROOM))
 
 #define MLX5_MIN_SINGLE_STRIDE_LOG_NUM_BYTES 6
 #define MLX5_MIN_SINGLE_WQE_LOG_NUM_STRIDES 9

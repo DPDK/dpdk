@@ -100,7 +100,8 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 	       volatile struct mlx5_cqe *cqe, uint32_t rss_hash_res);
 
 static __rte_always_inline void
-mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx);
+mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx,
+		 const unsigned int strd_n);
 
 static int
 mlx5_queue_state_modify(struct rte_eth_dev *dev,
@@ -756,7 +757,8 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 
 			scat = &((volatile struct mlx5_wqe_mprq *)
 				rxq->wqes)[i].dseg;
-			addr = (uintptr_t)mlx5_mprq_buf_addr(buf);
+			addr = (uintptr_t)mlx5_mprq_buf_addr(buf,
+							 1 << rxq->strd_num_n);
 			byte_count = (1 << rxq->strd_sz_n) *
 					(1 << rxq->strd_num_n);
 		} else {
@@ -1392,7 +1394,8 @@ mlx5_mprq_buf_free(struct mlx5_mprq_buf *buf)
 }
 
 static inline void
-mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx)
+mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx,
+		 const unsigned int strd_n)
 {
 	struct mlx5_mprq_buf *rep = rxq->mprq_repl;
 	volatile struct mlx5_wqe_data_seg *wqe =
@@ -1403,7 +1406,7 @@ mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx)
 	/* Replace MPRQ buf. */
 	(*rxq->mprq_bufs)[rq_idx] = rep;
 	/* Replace WQE. */
-	addr = mlx5_mprq_buf_addr(rep);
+	addr = mlx5_mprq_buf_addr(rep, strd_n);
 	wqe->addr = rte_cpu_to_be_64((uintptr_t)addr);
 	/* If there's only one MR, no need to replace LKey in WQE. */
 	if (unlikely(mlx5_mr_btree_len(&rxq->mr_ctrl.cache_bh) > 1))
@@ -1459,7 +1462,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (consumed_strd == strd_n) {
 			/* Replace WQE only if the buffer is still in use. */
 			if (rte_atomic16_read(&buf->refcnt) > 1) {
-				mprq_buf_replace(rxq, rq_ci & wq_mask);
+				mprq_buf_replace(rxq, rq_ci & wq_mask, strd_n);
 				/* Release the old buffer. */
 				mlx5_mprq_buf_free(buf);
 			} else if (unlikely(rxq->mprq_repl == NULL)) {
@@ -1521,7 +1524,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (rxq->crc_present)
 			len -= RTE_ETHER_CRC_LEN;
 		offset = strd_idx * strd_sz + strd_shift;
-		addr = RTE_PTR_ADD(mlx5_mprq_buf_addr(buf), offset);
+		addr = RTE_PTR_ADD(mlx5_mprq_buf_addr(buf, strd_n), offset);
 		/* Initialize the offload flag. */
 		pkt->ol_flags = 0;
 		/*
@@ -1557,8 +1560,8 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 */
 			buf_iova = rte_mempool_virt2iova(buf) +
 				   RTE_PTR_DIFF(addr, buf);
-			shinfo = rte_pktmbuf_ext_shinfo_init_helper(addr,
-					&buf_len, mlx5_mprq_buf_free_cb, buf);
+			shinfo = &buf->shinfos[strd_idx];
+			rte_mbuf_ext_refcnt_set(shinfo, 1);
 			/*
 			 * EXT_ATTACHED_MBUF will be set to pkt->ol_flags when
 			 * attaching the stride to mbuf and more offload flags
