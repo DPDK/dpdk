@@ -815,7 +815,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		mlx5_free_shared_ibctx(priv->sh);
 		priv->sh = NULL;
 	}
-	ret = mlx5_hrxq_ibv_verify(dev);
+	ret = mlx5_hrxq_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some hash Rx queue still remain",
 			dev->data->port_id);

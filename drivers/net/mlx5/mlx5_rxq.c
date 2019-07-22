@@ -1741,7 +1741,7 @@ mlx5_ind_table_obj_verify(struct rte_eth_dev *dev)
  *   Tunnel type.
  *
  * @return
- *   The Verbs object initialised, NULL otherwise and rte_errno is set.
+ *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
  */
 struct mlx5_hrxq *
 mlx5_hrxq_new(struct rte_eth_dev *dev,
@@ -1937,7 +1937,7 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
  *   The number of object not released.
  */
 int
-mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev)
+mlx5_hrxq_verify(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
@@ -1945,7 +1945,7 @@ mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev)
 
 	LIST_FOREACH(hrxq, &priv->hrxqs, next) {
 		DRV_LOG(DEBUG,
-			"port %u Verbs hash Rx queue %p still referenced",
+			"port %u hash Rx queue %p still referenced",
 			dev->data->port_id, (void *)hrxq);
 		++ret;
 	}
@@ -2106,7 +2106,7 @@ mlx5_ind_table_obj_drop_release(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device.
  *
  * @return
- *   The Verbs object initialised, NULL otherwise and rte_errno is set.
+ *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
  */
 struct mlx5_hrxq *
 mlx5_hrxq_drop_new(struct rte_eth_dev *dev)

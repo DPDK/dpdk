@@ -200,7 +200,11 @@ struct mlx5_hrxq {
 	LIST_ENTRY(mlx5_hrxq) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
-	struct ibv_qp *qp; /* Verbs queue pair. */
+	RTE_STD_C11
+	union {
+		struct ibv_qp *qp; /* Verbs queue pair. */
+		struct mlx5_devx_obj *tir; /* DevX TIR object. */
+	};
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	void *action; /* DV QP action pointer. */
 #endif
@@ -341,7 +345,7 @@ struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
 				uint64_t hash_fields,
 				const uint16_t *queues, uint32_t queues_n);
 int mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hxrq);
-int mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev);
+int mlx5_hrxq_verify(struct rte_eth_dev *dev);
 struct mlx5_hrxq *mlx5_hrxq_drop_new(struct rte_eth_dev *dev);
 void mlx5_hrxq_drop_release(struct rte_eth_dev *dev);
 uint64_t mlx5_get_rx_port_offloads(struct rte_eth_dev *dev);
