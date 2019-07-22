@@ -1540,6 +1540,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	unsigned int i = 0;
 	uint32_t rq_ci = rxq->rq_ci;
 	uint16_t consumed_strd = rxq->consumed_strd;
+	uint16_t headroom_sz = rxq->strd_headroom_en * RTE_PKTMBUF_HEADROOM;
 	struct mlx5_mprq_buf *buf = (*rxq->mprq_bufs)[rq_ci & wq_mask];
 
 	while (i < pkts_n) {
@@ -1650,7 +1651,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			rte_atomic16_add_return(&buf->refcnt, 1);
 			assert((uint16_t)rte_atomic16_read(&buf->refcnt) <=
 			       strd_n + 1);
-			buf_addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);
+			buf_addr = RTE_PTR_SUB(addr, headroom_sz);
 			/*
 			 * MLX5 device doesn't use iova but it is necessary in a
 			 * case where the Rx packet is transmitted via a
@@ -1668,7 +1669,8 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 */
 			rte_pktmbuf_attach_extbuf(pkt, buf_addr, buf_iova,
 						  buf_len, shinfo);
-			rte_pktmbuf_reset_headroom(pkt);
+			/* Set mbuf head-room. */
+			pkt->data_off = headroom_sz;
 			assert(pkt->ol_flags == EXT_ATTACHED_MBUF);
 			/*
 			 * Prevent potential overflow due to MTU change through

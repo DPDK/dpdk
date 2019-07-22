@@ -165,6 +165,7 @@ Limitations
 
 - LRO:
 
+  - No mbuf headroom space is created for RX packets when LRO is configured.
   - ``scatter_fcs`` is disabled when LRO is configured.
 
 Statistics

@@ -114,7 +114,8 @@ struct mlx5_rxq_data {
 	unsigned int strd_sz_n:4; /* Log 2 of stride size. */
 	unsigned int strd_shift_en:1; /* Enable 2bytes shift on a stride. */
 	unsigned int err_state:2; /* enum mlx5_rxq_err_state. */
-	unsigned int :4; /* Remaining bits. */
+	unsigned int strd_headroom_en:1; /* Enable mbuf headroom in MPRQ. */
+	unsigned int :3; /* Remaining bits. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;

@@ -1566,6 +1566,12 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	unsigned int mprq_stride_size;
 	struct mlx5_dev_config *config = &priv->config;
 	/*
+	 * LRO packet may consume all the stride memory, hence we cannot
+	 * guaranty head-room. A new striding RQ feature may be added in CX6 DX
+	 * to allow head-room and tail-room for the LRO packets.
+	 */
+	unsigned int strd_headroom_en = mlx5_lro_on(dev) ? 0 : 1;
+	/*
 	 * Always allocate extra slots, even if eventually
 	 * the vector Rx will not be used.
 	 */
@@ -1600,9 +1606,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 *    stride.
 	 *  Otherwise, enable Rx scatter if necessary.
 	 */
-	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
+	assert(mb_len >= RTE_PKTMBUF_HEADROOM * strd_headroom_en);
 	mprq_stride_size = dev->data->dev_conf.rxmode.max_rx_pkt_len +
-				RTE_PKTMBUF_HEADROOM;
+				RTE_PKTMBUF_HEADROOM * strd_headroom_en;
 	if (mprq_en &&
 	    desc > (1U << config->mprq.stride_num_n) &&
 	    mprq_stride_size <= (1U << config->mprq.max_stride_size_n)) {
@@ -1614,9 +1620,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		tmpl->rxq.strd_sz_n = RTE_MAX(log2above(mprq_stride_size),
 					      config->mprq.min_stride_size_n);
 		tmpl->rxq.strd_shift_en = MLX5_MPRQ_TWO_BYTE_SHIFT;
-		tmpl->rxq.mprq_max_memcpy_len =
-			RTE_MIN(mb_len - RTE_PKTMBUF_HEADROOM,
-				config->mprq.max_memcpy_len);
+		tmpl->rxq.strd_headroom_en = strd_headroom_en;
+		tmpl->rxq.mprq_max_memcpy_len = RTE_MIN(mb_len -
+			    RTE_PKTMBUF_HEADROOM, config->mprq.max_memcpy_len);
 		DRV_LOG(DEBUG,
 			"port %u Rx queue %u: Multi-Packet RQ is enabled"
 			" strd_num_n = %u, strd_sz_n = %u",
