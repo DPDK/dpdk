@@ -161,13 +161,15 @@ TAILQ_HEAD(softnic_link_list, softnic_link);
 #define TM_MAX_PIPES_PER_SUBPORT			4096
 #endif
 
+#ifndef TM_MAX_PIPE_PROFILE
+#define TM_MAX_PIPE_PROFILE				256
+#endif
 struct tm_params {
 	struct rte_sched_port_params port_params;
 
 	struct rte_sched_subport_params subport_params[TM_MAX_SUBPORTS];
 
-	struct rte_sched_pipe_params
-		pipe_profiles[RTE_SCHED_PIPE_PROFILES_PER_PORT];
+	struct rte_sched_pipe_params pipe_profiles[TM_MAX_PIPE_PROFILE];
 	uint32_t n_pipe_profiles;
 	uint32_t pipe_to_profile[TM_MAX_SUBPORTS * TM_MAX_PIPES_PER_SUBPORT];
 };
