@@ -424,3 +424,105 @@ mlx5_devx_cmd_qp_query_tis_td(struct ibv_qp *qp, uint32_t tis_num,
 	*tis_td = MLX5_GET(tisc, tis_ctx, transport_domain);
 	return 0;
 }
+
+/**
+ * Fill WQ data for DevX API command.
+ * Utility function for use when creating DevX objects containing a WQ.
+ *
+ * @param[in] wq_ctx
+ *   Pointer to WQ context to fill with data.
+ * @param [in] wq_attr
+ *   Pointer to WQ attributes structure to fill in WQ context.
+ */
+static void
+devx_cmd_fill_wq_data(void *wq_ctx, struct mlx5_devx_wq_attr *wq_attr)
+{
+	MLX5_SET(wq, wq_ctx, wq_type, wq_attr->wq_type);
+	MLX5_SET(wq, wq_ctx, wq_signature, wq_attr->wq_signature);
+	MLX5_SET(wq, wq_ctx, end_padding_mode, wq_attr->end_padding_mode);
+	MLX5_SET(wq, wq_ctx, cd_slave, wq_attr->cd_slave);
+	MLX5_SET(wq, wq_ctx, hds_skip_first_sge, wq_attr->hds_skip_first_sge);
+	MLX5_SET(wq, wq_ctx, log2_hds_buf_size, wq_attr->log2_hds_buf_size);
+	MLX5_SET(wq, wq_ctx, page_offset, wq_attr->page_offset);
+	MLX5_SET(wq, wq_ctx, lwm, wq_attr->lwm);
+	MLX5_SET(wq, wq_ctx, pd, wq_attr->pd);
+	MLX5_SET(wq, wq_ctx, uar_page, wq_attr->uar_page);
+	MLX5_SET64(wq, wq_ctx, dbr_addr, wq_attr->dbr_addr);
+	MLX5_SET(wq, wq_ctx, hw_counter, wq_attr->hw_counter);
+	MLX5_SET(wq, wq_ctx, sw_counter, wq_attr->sw_counter);
+	MLX5_SET(wq, wq_ctx, log_wq_stride, wq_attr->log_wq_stride);
+	MLX5_SET(wq, wq_ctx, log_wq_pg_sz, wq_attr->log_wq_pg_sz);
+	MLX5_SET(wq, wq_ctx, log_wq_sz, wq_attr->log_wq_sz);
+	MLX5_SET(wq, wq_ctx, dbr_umem_valid, wq_attr->dbr_umem_valid);
+	MLX5_SET(wq, wq_ctx, wq_umem_valid, wq_attr->wq_umem_valid);
+	MLX5_SET(wq, wq_ctx, log_hairpin_num_packets,
+		 wq_attr->log_hairpin_num_packets);
+	MLX5_SET(wq, wq_ctx, log_hairpin_data_sz, wq_attr->log_hairpin_data_sz);
+	MLX5_SET(wq, wq_ctx, single_wqe_log_num_of_strides,
+		 wq_attr->single_wqe_log_num_of_strides);
+	MLX5_SET(wq, wq_ctx, two_byte_shift_en, wq_attr->two_byte_shift_en);
+	MLX5_SET(wq, wq_ctx, single_stride_log_num_of_bytes,
+		 wq_attr->single_stride_log_num_of_bytes);
+	MLX5_SET(wq, wq_ctx, dbr_umem_id, wq_attr->dbr_umem_id);
+	MLX5_SET(wq, wq_ctx, wq_umem_id, wq_attr->wq_umem_id);
+	MLX5_SET64(wq, wq_ctx, wq_umem_offset, wq_attr->wq_umem_offset);
+}
+
+/**
+ * Create RQ using DevX API.
+ *
+ * @param[in] ctx
+ *   ibv_context returned from mlx5dv_open_device.
+ * @param [in] rq_attr
+ *   Pointer to create RQ attributes structure.
+ * @param [in] socket
+ *   CPU socket ID for allocations.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_rq(struct ibv_context *ctx,
+			struct mlx5_devx_create_rq_attr *rq_attr,
+			int socket)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_rq_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(create_rq_out)] = {0};
+	void *rq_ctx, *wq_ctx;
+	struct mlx5_devx_wq_attr *wq_attr;
+	struct mlx5_devx_obj *rq = NULL;
+
+	rq = rte_calloc_socket(__func__, 1, sizeof(*rq), 0, socket);
+	if (!rq) {
+		DRV_LOG(ERR, "Failed to allocate RQ data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(create_rq_in, in, opcode, MLX5_CMD_OP_CREATE_RQ);
+	rq_ctx = MLX5_ADDR_OF(create_rq_in, in, ctx);
+	MLX5_SET(rqc, rq_ctx, rlky, rq_attr->rlky);
+	MLX5_SET(rqc, rq_ctx, delay_drop_en, rq_attr->delay_drop_en);
+	MLX5_SET(rqc, rq_ctx, scatter_fcs, rq_attr->scatter_fcs);
+	MLX5_SET(rqc, rq_ctx, vsd, rq_attr->vsd);
+	MLX5_SET(rqc, rq_ctx, mem_rq_type, rq_attr->mem_rq_type);
+	MLX5_SET(rqc, rq_ctx, state, rq_attr->state);
+	MLX5_SET(rqc, rq_ctx, flush_in_error_en, rq_attr->flush_in_error_en);
+	MLX5_SET(rqc, rq_ctx, hairpin, rq_attr->hairpin);
+	MLX5_SET(rqc, rq_ctx, user_index, rq_attr->user_index);
+	MLX5_SET(rqc, rq_ctx, cqn, rq_attr->cqn);
+	MLX5_SET(rqc, rq_ctx, counter_set_id, rq_attr->counter_set_id);
+	MLX5_SET(rqc, rq_ctx, rmpn, rq_attr->rmpn);
+	wq_ctx = MLX5_ADDR_OF(rqc, rq_ctx, wq);
+	wq_attr = &rq_attr->wq_attr;
+	devx_cmd_fill_wq_data(wq_ctx, wq_attr);
+	rq->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+						  out, sizeof(out));
+	if (!rq->obj) {
+		DRV_LOG(ERR, "Failed to create RQ using DevX");
+		rte_errno = errno;
+		rte_free(rq);
+		return NULL;
+	}
+	rq->id = MLX5_GET(create_rq_out, out, rqn);
+	return rq;
+}

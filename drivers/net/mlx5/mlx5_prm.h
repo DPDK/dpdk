@@ -627,6 +627,7 @@ enum {
 	MLX5_CMD_OP_QUERY_HCA_CAP = 0x100,
 	MLX5_CMD_OP_CREATE_MKEY = 0x200,
 	MLX5_CMD_OP_QUERY_NIC_VPORT_CONTEXT = 0x754,
+	MLX5_CMD_OP_CREATE_RQ = 0x908,
 	MLX5_CMD_OP_QUERY_TIS = 0x915,
 	MLX5_CMD_OP_ALLOC_FLOW_COUNTER = 0x939,
 	MLX5_CMD_OP_QUERY_FLOW_COUNTER = 0x93b,
@@ -1266,6 +1267,115 @@ struct mlx5_ifc_query_tis_in_bits {
 	u8 reserved_at_40[0x8];
 	u8 tisn[0x18];
 	u8 reserved_at_60[0x20];
+};
+
+enum {
+	MLX5_WQ_TYPE_LINKED_LIST                = 0x0,
+	MLX5_WQ_TYPE_CYCLIC                     = 0x1,
+	MLX5_WQ_TYPE_LINKED_LIST_STRIDING_RQ    = 0x2,
+	MLX5_WQ_TYPE_CYCLIC_STRIDING_RQ         = 0x3,
+};
+
+enum {
+	MLX5_WQ_END_PAD_MODE_NONE  = 0x0,
+	MLX5_WQ_END_PAD_MODE_ALIGN = 0x1,
+};
+
+struct mlx5_ifc_wq_bits {
+	u8 wq_type[0x4];
+	u8 wq_signature[0x1];
+	u8 end_padding_mode[0x2];
+	u8 cd_slave[0x1];
+	u8 reserved_at_8[0x18];
+	u8 hds_skip_first_sge[0x1];
+	u8 log2_hds_buf_size[0x3];
+	u8 reserved_at_24[0x7];
+	u8 page_offset[0x5];
+	u8 lwm[0x10];
+	u8 reserved_at_40[0x8];
+	u8 pd[0x18];
+	u8 reserved_at_60[0x8];
+	u8 uar_page[0x18];
+	u8 dbr_addr[0x40];
+	u8 hw_counter[0x20];
+	u8 sw_counter[0x20];
+	u8 reserved_at_100[0xc];
+	u8 log_wq_stride[0x4];
+	u8 reserved_at_110[0x3];
+	u8 log_wq_pg_sz[0x5];
+	u8 reserved_at_118[0x3];
+	u8 log_wq_sz[0x5];
+	u8 dbr_umem_valid[0x1];
+	u8 wq_umem_valid[0x1];
+	u8 reserved_at_122[0x1];
+	u8 log_hairpin_num_packets[0x5];
+	u8 reserved_at_128[0x3];
+	u8 log_hairpin_data_sz[0x5];
+	u8 reserved_at_130[0x4];
+	u8 single_wqe_log_num_of_strides[0x4];
+	u8 two_byte_shift_en[0x1];
+	u8 reserved_at_139[0x4];
+	u8 single_stride_log_num_of_bytes[0x3];
+	u8 dbr_umem_id[0x20];
+	u8 wq_umem_id[0x20];
+	u8 wq_umem_offset[0x40];
+	u8 reserved_at_1c0[0x440];
+};
+
+enum {
+	MLX5_RQC_MEM_RQ_TYPE_MEMORY_RQ_INLINE  = 0x0,
+	MLX5_RQC_MEM_RQ_TYPE_MEMORY_RQ_RMP     = 0x1,
+};
+
+enum {
+	MLX5_RQC_STATE_RST  = 0x0,
+	MLX5_RQC_STATE_RDY  = 0x1,
+	MLX5_RQC_STATE_ERR  = 0x3,
+};
+
+struct mlx5_ifc_rqc_bits {
+	u8 rlky[0x1];
+	u8 delay_drop_en[0x1];
+	u8 scatter_fcs[0x1];
+	u8 vsd[0x1];
+	u8 mem_rq_type[0x4];
+	u8 state[0x4];
+	u8 reserved_at_c[0x1];
+	u8 flush_in_error_en[0x1];
+	u8 hairpin[0x1];
+	u8 reserved_at_f[0x11];
+	u8 reserved_at_20[0x8];
+	u8 user_index[0x18];
+	u8 reserved_at_40[0x8];
+	u8 cqn[0x18];
+	u8 counter_set_id[0x8];
+	u8 reserved_at_68[0x18];
+	u8 reserved_at_80[0x8];
+	u8 rmpn[0x18];
+	u8 reserved_at_a0[0x8];
+	u8 hairpin_peer_sq[0x18];
+	u8 reserved_at_c0[0x10];
+	u8 hairpin_peer_vhca[0x10];
+	u8 reserved_at_e0[0xa0];
+	struct mlx5_ifc_wq_bits wq; /* Not used in LRO RQ. */
+};
+
+struct mlx5_ifc_create_rq_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x8];
+	u8 rqn[0x18];
+	u8 reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_create_rq_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_rqc_bits ctx;
 };
 
 /* CQE format mask. */

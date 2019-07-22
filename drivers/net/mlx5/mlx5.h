@@ -260,6 +260,52 @@ struct mlx5_dev_config {
 	struct mlx5_lro_config lro; /* LRO configuration. */
 };
 
+struct mlx5_devx_wq_attr {
+	uint32_t wq_type:4;
+	uint32_t wq_signature:1;
+	uint32_t end_padding_mode:2;
+	uint32_t cd_slave:1;
+	uint32_t hds_skip_first_sge:1;
+	uint32_t log2_hds_buf_size:3;
+	uint32_t page_offset:5;
+	uint32_t lwm:16;
+	uint32_t pd:24;
+	uint32_t uar_page:24;
+	uint64_t dbr_addr;
+	uint32_t hw_counter;
+	uint32_t sw_counter;
+	uint32_t log_wq_stride:4;
+	uint32_t log_wq_pg_sz:5;
+	uint32_t log_wq_sz:5;
+	uint32_t dbr_umem_valid:1;
+	uint32_t wq_umem_valid:1;
+	uint32_t log_hairpin_num_packets:5;
+	uint32_t log_hairpin_data_sz:5;
+	uint32_t single_wqe_log_num_of_strides:4;
+	uint32_t two_byte_shift_en:1;
+	uint32_t single_stride_log_num_of_bytes:3;
+	uint32_t dbr_umem_id;
+	uint32_t wq_umem_id;
+	uint64_t wq_umem_offset;
+};
+
+/* Create RQ attributes structure, used by create RQ operation. */
+struct mlx5_devx_create_rq_attr {
+	uint32_t rlky:1;
+	uint32_t delay_drop_en:1;
+	uint32_t scatter_fcs:1;
+	uint32_t vsd:1;
+	uint32_t mem_rq_type:4;
+	uint32_t state:4;
+	uint32_t flush_in_error_en:1;
+	uint32_t hairpin:1;
+	uint32_t user_index:24;
+	uint32_t cqn:24;
+	uint32_t counter_set_id:8;
+	uint32_t rmpn:24;
+	struct mlx5_devx_wq_attr wq_attr;
+};
+
 /**
  * Type of object being allocated.
  */
@@ -740,4 +786,8 @@ struct mlx5_devx_obj *mlx5_devx_cmd_mkey_create(struct ibv_context *ctx,
 int mlx5_devx_get_out_command_status(void *out);
 int mlx5_devx_cmd_qp_query_tis_td(struct ibv_qp *qp, uint32_t tis_num,
 				  uint32_t *tis_td);
+struct mlx5_devx_obj *mlx5_devx_cmd_create_rq(struct ibv_context *ctx,
+				struct mlx5_devx_create_rq_attr *rq_attr,
+				int socket);
+
 #endif /* RTE_PMD_MLX5_H_ */
