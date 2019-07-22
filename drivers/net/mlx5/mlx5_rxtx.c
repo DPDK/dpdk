@@ -788,7 +788,7 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 }
 
 /**
- * Modify a Verbs queue state.
+ * Modify a Verbs/DevX queue state.
  * This must be called from the primary process.
  *
  * @param dev
@@ -807,15 +807,34 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (sm->is_wq) {
-		struct ibv_wq_attr mod = {
-			.attr_mask = IBV_WQ_ATTR_STATE,
-			.wq_state = sm->state,
-		};
 		struct mlx5_rxq_data *rxq = (*priv->rxqs)[sm->queue_id];
 		struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 
-		ret = mlx5_glue->modify_wq(rxq_ctrl->obj->wq, &mod);
+		if (rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
+			struct ibv_wq_attr mod = {
+				.attr_mask = IBV_WQ_ATTR_STATE,
+				.wq_state = sm->state,
+			};
+
+			ret = mlx5_glue->modify_wq(rxq_ctrl->obj->wq, &mod);
+		} else { /* rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ. */
+			struct mlx5_devx_modify_rq_attr rq_attr;
+
+			memset(&rq_attr, 0, sizeof(rq_attr));
+			if (sm->state == IBV_WQS_RESET) {
+				rq_attr.rq_state = MLX5_RQC_STATE_ERR;
+				rq_attr.state = MLX5_RQC_STATE_RST;
+			} else if (sm->state == IBV_WQS_RDY) {
+				rq_attr.rq_state = MLX5_RQC_STATE_RST;
+				rq_attr.state = MLX5_RQC_STATE_RDY;
+			} else if (sm->state == IBV_WQS_ERR) {
+				rq_attr.rq_state = MLX5_RQC_STATE_RDY;
+				rq_attr.state = MLX5_RQC_STATE_ERR;
+			}
+			ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq,
+						      &rq_attr);
+		}
 		if (ret) {
 			DRV_LOG(ERR, "Cannot change Rx WQ state to %u  - %s\n",
 					sm->state, strerror(errno));
