@@ -987,6 +987,7 @@ main(int argc, char **argv)
 		printf("\n");
 
 		/* init one TX queue per couple (lcore,port) */
+		rte_eth_dev_info_get(portid, &dev_info);
 		queueid = 0;
 		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 			if (rte_lcore_is_enabled(lcore_id) == 0)
