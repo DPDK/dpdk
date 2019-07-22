@@ -3168,7 +3168,8 @@ i40e_set_default_pctype_table(struct rte_eth_dev *dev)
 	ad->pctypes_tbl[RTE_ETH_FLOW_L2_PAYLOAD] =
 				(1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD);
 
-	if (hw->mac.type == I40E_MAC_X722) {
+	if (hw->mac.type == I40E_MAC_X722 ||
+		hw->mac.type == I40E_MAC_X722_VF) {
 		ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] |=
 			(1ULL << I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP);
 		ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] |=

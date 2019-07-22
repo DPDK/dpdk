@@ -1486,7 +1486,6 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 	i40e_set_default_ptype_table(eth_dev);
-	i40e_set_default_pctype_table(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	hw->vendor_id = pci_dev->id.vendor_id;
@@ -1504,6 +1503,7 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
+	i40e_set_default_pctype_table(eth_dev);
 	rte_eal_alarm_set(I40EVF_ALARM_INTERVAL,
 			  i40evf_dev_alarm_handler, eth_dev);
 
