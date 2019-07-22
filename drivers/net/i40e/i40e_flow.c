@@ -4771,7 +4771,7 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 		       &((struct i40e_fdir_filter *)flow->rule)->fdir, 0);
 
 		/* If the last flow is destroyed, disable fdir. */
-		if (!ret && !TAILQ_EMPTY(&pf->fdir.fdir_list)) {
+		if (!ret && TAILQ_EMPTY(&pf->fdir.fdir_list)) {
 			i40e_fdir_teardown(pf);
 			dev->data->dev_conf.fdir_conf.mode =
 				   RTE_FDIR_MODE_NONE;
