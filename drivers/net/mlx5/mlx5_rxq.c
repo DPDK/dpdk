@@ -1576,14 +1576,14 @@ mlx5_rxq_verify(struct rte_eth_dev *dev)
  *   Number of queues in the array.
  *
  * @return
- *   The Verbs object initialised, NULL otherwise and rte_errno is set.
+ *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
  */
-static struct mlx5_ind_table_ibv *
-mlx5_ind_table_ibv_new(struct rte_eth_dev *dev, const uint16_t *queues,
+static struct mlx5_ind_table_obj *
+mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		       uint32_t queues_n)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_ibv *ind_tbl;
+	struct mlx5_ind_table_obj *ind_tbl;
 	const unsigned int wq_n = rte_is_power_of_2(queues_n) ?
 		log2above(queues_n) :
 		log2above(priv->config.ind_table_max_size);
@@ -1642,12 +1642,12 @@ error:
  * @return
  *   An indirection table if found.
  */
-static struct mlx5_ind_table_ibv *
-mlx5_ind_table_ibv_get(struct rte_eth_dev *dev, const uint16_t *queues,
+static struct mlx5_ind_table_obj *
+mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
 		       uint32_t queues_n)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_ibv *ind_tbl;
+	struct mlx5_ind_table_obj *ind_tbl;
 
 	LIST_FOREACH(ind_tbl, &priv->ind_tbls, next) {
 		if ((ind_tbl->queues_n == queues_n) &&
@@ -1678,8 +1678,8 @@ mlx5_ind_table_ibv_get(struct rte_eth_dev *dev, const uint16_t *queues,
  *   1 while a reference on it exists, 0 when freed.
  */
 static int
-mlx5_ind_table_ibv_release(struct rte_eth_dev *dev,
-			   struct mlx5_ind_table_ibv *ind_tbl)
+mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
+			   struct mlx5_ind_table_obj *ind_tbl)
 {
 	unsigned int i;
 
@@ -1706,15 +1706,15 @@ mlx5_ind_table_ibv_release(struct rte_eth_dev *dev,
  *   The number of object not released.
  */
 int
-mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev)
+mlx5_ind_table_obj_verify(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_ibv *ind_tbl;
+	struct mlx5_ind_table_obj *ind_tbl;
 	int ret = 0;
 
 	LIST_FOREACH(ind_tbl, &priv->ind_tbls, next) {
 		DRV_LOG(DEBUG,
-			"port %u Verbs indirection table %p still referenced",
+			"port %u indirection table obj %p still referenced",
 			dev->data->port_id, (void *)ind_tbl);
 		++ret;
 	}
@@ -1752,7 +1752,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
-	struct mlx5_ind_table_ibv *ind_tbl;
+	struct mlx5_ind_table_obj *ind_tbl;
 	struct ibv_qp *qp;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	struct mlx5dv_qp_init_attr qp_init_attr;
@@ -1760,9 +1760,9 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	int err;
 
 	queues_n = hash_fields ? queues_n : 1;
-	ind_tbl = mlx5_ind_table_ibv_get(dev, queues, queues_n);
+	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
 	if (!ind_tbl)
-		ind_tbl = mlx5_ind_table_ibv_new(dev, queues, queues_n);
+		ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n);
 	if (!ind_tbl) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -1844,7 +1844,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	return hrxq;
 error:
 	err = rte_errno; /* Save rte_errno before cleanup. */
-	mlx5_ind_table_ibv_release(dev, ind_tbl);
+	mlx5_ind_table_obj_release(dev, ind_tbl);
 	if (qp)
 		claim_zero(mlx5_glue->destroy_qp(qp));
 	rte_errno = err; /* Restore rte_errno. */
@@ -1878,7 +1878,7 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 
 	queues_n = hash_fields ? queues_n : 1;
 	LIST_FOREACH(hrxq, &priv->hrxqs, next) {
-		struct mlx5_ind_table_ibv *ind_tbl;
+		struct mlx5_ind_table_obj *ind_tbl;
 
 		if (hrxq->rss_key_len != rss_key_len)
 			continue;
@@ -1886,11 +1886,11 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 			continue;
 		if (hrxq->hash_fields != hash_fields)
 			continue;
-		ind_tbl = mlx5_ind_table_ibv_get(dev, queues, queues_n);
+		ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
 		if (!ind_tbl)
 			continue;
 		if (ind_tbl != hrxq->ind_table) {
-			mlx5_ind_table_ibv_release(dev, ind_tbl);
+			mlx5_ind_table_obj_release(dev, ind_tbl);
 			continue;
 		}
 		rte_atomic32_inc(&hrxq->refcnt);
@@ -1918,12 +1918,12 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 		mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
 		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
-		mlx5_ind_table_ibv_release(dev, hrxq->ind_table);
+		mlx5_ind_table_obj_release(dev, hrxq->ind_table);
 		LIST_REMOVE(hrxq, next);
 		rte_free(hrxq);
 		return 0;
 	}
-	claim_nonzero(mlx5_ind_table_ibv_release(dev, hrxq->ind_table));
+	claim_nonzero(mlx5_ind_table_obj_release(dev, hrxq->ind_table));
 	return 1;
 }
 
@@ -2042,15 +2042,15 @@ mlx5_rxq_obj_drop_release(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device.
  *
  * @return
- *   The Verbs object initialised, NULL otherwise and rte_errno is set.
+ *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
  */
-static struct mlx5_ind_table_ibv *
-mlx5_ind_table_ibv_drop_new(struct rte_eth_dev *dev)
+static struct mlx5_ind_table_obj *
+mlx5_ind_table_obj_drop_new(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_ibv *ind_tbl;
+	struct mlx5_ind_table_obj *ind_tbl;
 	struct mlx5_rxq_obj *rxq;
-	struct mlx5_ind_table_ibv tmpl;
+	struct mlx5_ind_table_obj tmpl;
 
 	rxq = mlx5_rxq_obj_drop_new(dev);
 	if (!rxq)
@@ -2088,10 +2088,10 @@ error:
  *   Pointer to Ethernet device.
  */
 static void
-mlx5_ind_table_ibv_drop_release(struct rte_eth_dev *dev)
+mlx5_ind_table_obj_drop_release(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_ibv *ind_tbl = priv->drop_queue.hrxq->ind_table;
+	struct mlx5_ind_table_obj *ind_tbl = priv->drop_queue.hrxq->ind_table;
 
 	claim_zero(mlx5_glue->destroy_rwq_ind_table(ind_tbl->ind_table));
 	mlx5_rxq_obj_drop_release(dev);
@@ -2112,7 +2112,7 @@ struct mlx5_hrxq *
 mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_ibv *ind_tbl;
+	struct mlx5_ind_table_obj *ind_tbl;
 	struct ibv_qp *qp;
 	struct mlx5_hrxq *hrxq;
 
@@ -2120,7 +2120,7 @@ mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 		rte_atomic32_inc(&priv->drop_queue.hrxq->refcnt);
 		return priv->drop_queue.hrxq;
 	}
-	ind_tbl = mlx5_ind_table_ibv_drop_new(dev);
+	ind_tbl = mlx5_ind_table_obj_drop_new(dev);
 	if (!ind_tbl)
 		return NULL;
 	qp = mlx5_glue->create_qp_ex(priv->sh->ctx,
@@ -2168,7 +2168,7 @@ mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 	return hrxq;
 error:
 	if (ind_tbl)
-		mlx5_ind_table_ibv_drop_release(dev);
+		mlx5_ind_table_obj_drop_release(dev);
 	return NULL;
 }
 
@@ -2189,7 +2189,7 @@ mlx5_hrxq_drop_release(struct rte_eth_dev *dev)
 		mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
 		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
-		mlx5_ind_table_ibv_drop_release(dev);
+		mlx5_ind_table_obj_drop_release(dev);
 		rte_free(hrxq);
 		priv->drop_queue.hrxq = NULL;
 	}

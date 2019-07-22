@@ -819,7 +819,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(WARNING, "port %u some hash Rx queue still remain",
 			dev->data->port_id);
-	ret = mlx5_ind_table_ibv_verify(dev);
+	ret = mlx5_ind_table_obj_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some indirection table still remain",
 			dev->data->port_id);

@@ -617,8 +617,8 @@ struct mlx5_priv {
 	LIST_HEAD(hrxq, mlx5_hrxq) hrxqs; /* Verbs Hash Rx queues. */
 	LIST_HEAD(txq, mlx5_txq_ctrl) txqsctrl; /* DPDK Tx queues. */
 	LIST_HEAD(txqibv, mlx5_txq_ibv) txqsibv; /* Verbs Tx queues. */
-	/* Verbs Indirection tables. */
-	LIST_HEAD(ind_tables, mlx5_ind_table_ibv) ind_tbls;
+	/* Indirection tables. */
+	LIST_HEAD(ind_tables, mlx5_ind_table_obj) ind_tbls;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
 	struct ibv_flow_action *verbs_action;

@@ -176,11 +176,21 @@ struct mlx5_rxq_ctrl {
 	uint16_t dump_file_n; /* Number of dump files. */
 };
 
+enum mlx5_ind_tbl_type {
+	MLX5_IND_TBL_TYPE_IBV,
+	MLX5_IND_TBL_TYPE_DEVX,
+};
+
 /* Indirection table. */
-struct mlx5_ind_table_ibv {
-	LIST_ENTRY(mlx5_ind_table_ibv) next; /* Pointer to the next element. */
+struct mlx5_ind_table_obj {
+	LIST_ENTRY(mlx5_ind_table_obj) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
-	struct ibv_rwq_ind_table *ind_table; /**< Indirection table. */
+	enum mlx5_ind_tbl_type type;
+	RTE_STD_C11
+	union {
+		struct ibv_rwq_ind_table *ind_table; /**< Indirection table. */
+		struct mlx5_devx_obj *rqt; /* DevX RQT object. */
+	};
 	uint32_t queues_n; /**< Number of queues in the list. */
 	uint16_t queues[]; /**< Queue list. */
 };
@@ -189,7 +199,7 @@ struct mlx5_ind_table_ibv {
 struct mlx5_hrxq {
 	LIST_ENTRY(mlx5_hrxq) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
-	struct mlx5_ind_table_ibv *ind_table; /* Indirection table. */
+	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
 	struct ibv_qp *qp; /* Verbs queue pair. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	void *action; /* DV QP action pointer. */
@@ -320,7 +330,7 @@ struct mlx5_rxq_ctrl *mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
-int mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev);
+int mlx5_ind_table_obj_verify(struct rte_eth_dev *dev);
 struct mlx5_hrxq *mlx5_hrxq_new(struct rte_eth_dev *dev,
 				const uint8_t *rss_key, uint32_t rss_key_len,
 				uint64_t hash_fields,
