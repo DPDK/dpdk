@@ -124,6 +124,21 @@ mlx5_mprq_enabled(struct rte_eth_dev *dev)
 }
 
 /**
+ * Check whether LRO is supported and enabled for the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 if disabled, 1 if enabled.
+ */
+inline int
+mlx5_lro_on(struct rte_eth_dev *dev)
+{
+	return (MLX5_LRO_SUPPORTED(dev) && MLX5_LRO_ENABLED(dev));
+}
+
+/**
  * Allocate RX queue elements for Multi-Packet RQ.
  *
  * @param rxq_ctrl
@@ -386,14 +401,19 @@ mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev)
 /**
  * Returns the per-port supported offloads.
  *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
  * @return
  *   Supported Rx offloads.
  */
 uint64_t
-mlx5_get_rx_port_offloads(void)
+mlx5_get_rx_port_offloads(struct rte_eth_dev *dev)
 {
 	uint64_t offloads = DEV_RX_OFFLOAD_VLAN_FILTER;
 
+	if (MLX5_LRO_SUPPORTED(dev))
+		offloads |= DEV_RX_OFFLOAD_TCP_LRO;
 	return offloads;
 }
 

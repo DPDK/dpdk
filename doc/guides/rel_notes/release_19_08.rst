@@ -117,6 +117,7 @@ New Features
   * Accelerate flows with count action creation and destroy.
   * Accelerate flows counter query.
   * Improved Tx datapath performance with enabled HW offloads.
+  * Added support for LRO.
 
 * **Updated Solarflare network PMD.**
 

@@ -565,7 +565,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_tx_queues = max;
 	info->max_mac_addrs = MLX5_MAX_UC_MAC_ADDRESSES;
 	info->rx_queue_offload_capa = mlx5_get_rx_queue_offloads(dev);
-	info->rx_offload_capa = (mlx5_get_rx_port_offloads() |
+	info->rx_offload_capa = (mlx5_get_rx_port_offloads(dev) |
 				 info->rx_queue_offload_capa);
 	info->tx_offload_capa = mlx5_get_tx_port_offloads(dev);
 	info->if_index = mlx5_ifindex(dev);

@@ -82,6 +82,7 @@ Features
   increment/decrement, count, drop, mark. For details please see :ref:`Supported hardware offloads using rte_flow API`.
 - Flow insertion rate of more then million flows per second, when using Direct Rules.
 - Support for multiple rte_flow groups.
+- Hardware LRO.
 
 Limitations
 -----------
@@ -555,6 +556,14 @@ Run-time configuration
   The files will be created in /var/log directory or in current directory.
 
   set to 128 by default.
+
+- ``lro_timeout_usec`` parameter [int]
+
+  The maximum allowed duration of an LRO session, in micro-seconds.
+  PMD will set the nearest value supported by HW, which is not bigger than
+  the input ``lro_timeout_usec`` value.
+  If this parameter is not specified, by default PMD will set
+  the smallest value supported by HW.
 
 Firmware configuration
 ~~~~~~~~~~~~~~~~~~~~~~

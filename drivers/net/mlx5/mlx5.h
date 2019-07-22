@@ -183,6 +183,21 @@ TAILQ_HEAD(mlx5_flows, rte_flow);
 /* Default PMD specific parameter value. */
 #define MLX5_ARG_UNSET (-1)
 
+#define MLX5_LRO_SUPPORTED(dev) \
+	(((struct mlx5_priv *)((dev)->data->dev_private))->config.lro.supported)
+
+#define MLX5_LRO_ENABLED(dev) \
+	((dev)->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO)
+
+#define MLX5_FLOW_IPV4_LRO	(1 << 0)
+#define MLX5_FLOW_IPV6_LRO	(1 << 1)
+
+/* LRO configurations structure. */
+struct mlx5_lro_config {
+	uint32_t supported:1; /* Whether LRO is supported. */
+	uint32_t timeout; /* User configuration. */
+};
+
 /*
  * Device configuration structure.
  *
@@ -233,6 +248,7 @@ struct mlx5_dev_config {
 	int txq_inline_max; /* Max packet size for inlining with SEND. */
 	int txq_inline_mpw; /* Max packet size for inlining with eMPW. */
 	struct mlx5_hca_attr hca_attr; /* HCA attributes. */
+	struct mlx5_lro_config lro; /* LRO configuration. */
 };
 
 /**

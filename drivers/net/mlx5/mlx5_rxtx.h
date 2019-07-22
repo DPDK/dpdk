@@ -323,8 +323,9 @@ int mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hxrq);
 int mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev);
 struct mlx5_hrxq *mlx5_hrxq_drop_new(struct rte_eth_dev *dev);
 void mlx5_hrxq_drop_release(struct rte_eth_dev *dev);
-uint64_t mlx5_get_rx_port_offloads(void);
+uint64_t mlx5_get_rx_port_offloads(struct rte_eth_dev *dev);
 uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
+int mlx5_lro_on(struct rte_eth_dev *dev);
 
 /* mlx5_txq.c */
 

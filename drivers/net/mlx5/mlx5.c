@@ -138,6 +138,9 @@
 /* Device parameter to configure the maximum number of dump files per queue. */
 #define MLX5_MAX_DUMP_FILES_NUM "max_dump_files_num"
 
+/* Configure timeout of LRO session (in microseconds). */
+#define MLX5_LRO_TIMEOUT_USEC "lro_timeout_usec"
+
 #ifndef HAVE_IBV_MLX5_MOD_MPW
 #define MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED (1 << 2)
 #define MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW (1 << 3)
@@ -1052,6 +1055,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->mr_ext_memseg_en = !!tmp;
 	} else if (strcmp(MLX5_MAX_DUMP_FILES_NUM, key) == 0) {
 		config->max_dump_files_num = tmp;
+	} else if (strcmp(MLX5_LRO_TIMEOUT_USEC, key) == 0) {
+		config->lro.timeout = tmp;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -1100,6 +1105,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_MR_EXT_MEMSEG_EN,
 		MLX5_REPRESENTOR,
 		MLX5_MAX_DUMP_FILES_NUM,
+		MLX5_LRO_TIMEOUT_USEC,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
