@@ -360,6 +360,20 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
 	attr->wqe_vlan_insert = MLX5_GET(per_protocol_networking_offload_caps,
 					 hcattr, wqe_vlan_insert);
+	attr->lro_cap = MLX5_GET(per_protocol_networking_offload_caps, hcattr,
+				 lro_cap);
+	attr->tunnel_lro_gre = MLX5_GET(per_protocol_networking_offload_caps,
+					hcattr, tunnel_lro_gre);
+	attr->tunnel_lro_vxlan = MLX5_GET(per_protocol_networking_offload_caps,
+					  hcattr, tunnel_lro_vxlan);
+	attr->lro_max_msg_sz_mode = MLX5_GET
+					(per_protocol_networking_offload_caps,
+					 hcattr, lro_max_msg_sz_mode);
+	for (int i = 0 ; i < MLX5_LRO_NUM_SUPP_PERIODS ; i++) {
+		attr->lro_timer_supported_periods[i] =
+			MLX5_GET(per_protocol_networking_offload_caps, hcattr,
+				 lro_timer_supported_periods[i]);
+	}
 	attr->wqe_inline_mode = MLX5_GET(per_protocol_networking_offload_caps,
 					 hcattr, wqe_inline_mode);
 	if (attr->wqe_inline_mode != MLX5_CAP_INLINE_MODE_VPORT_CONTEXT)

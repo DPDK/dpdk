@@ -165,6 +165,9 @@ struct mlx5_devx_mkey_attr {
 	uint32_t pd;
 };
 
+/* HCA supports this number of time periods for LRO. */
+#define MLX5_LRO_NUM_SUPP_PERIODS 4
+
 /* HCA attributes. */
 struct mlx5_hca_attr {
 	uint32_t eswitch_manager:1;
@@ -175,6 +178,11 @@ struct mlx5_hca_attr {
 	uint32_t wqe_vlan_insert:1;
 	uint32_t wqe_inline_mode:2;
 	uint32_t vport_inline_mode:3;
+	uint32_t lro_cap:1;
+	uint32_t tunnel_lro_gre:1;
+	uint32_t tunnel_lro_vxlan:1;
+	uint32_t lro_max_msg_sz_mode:2;
+	uint32_t lro_timer_supported_periods[MLX5_LRO_NUM_SUPP_PERIODS];
 };
 
 /* Flow list . */
