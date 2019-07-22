@@ -396,6 +396,11 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	const int desc = 1 << txq_data->elts_n;
 	int ret = 0;
 
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	/* If using DevX, need additional mask to read tisn value. */
+	if (priv->config.devx && !priv->sh->tdn)
+		qp.comp_mask |= MLX5DV_QP_MASK_RAW_QP_HANDLES;
+#endif
 	assert(txq_data);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_TX_QUEUE;
 	priv->verbs_alloc_ctx.obj = txq_ctrl;
@@ -542,6 +547,27 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->wqe_pi = 0;
 	txq_data->wqe_comp = 0;
 	txq_data->wqe_thres = txq_data->wqe_s / MLX5_TX_COMP_THRESH_INLINE_DIV;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	/*
+	 * If using DevX need to query and store TIS transport domain value.
+	 * This is done once per port.
+	 * Will use this value on Rx, when creating matching TIR.
+	 */
+	if (priv->config.devx && !priv->sh->tdn) {
+		ret = mlx5_devx_cmd_qp_query_tis_td(tmpl.qp, qp.tisn,
+						    &priv->sh->tdn);
+		if (ret) {
+			DRV_LOG(ERR, "Fail to query port %u Tx queue %u QP TIS "
+				"transport domain", dev->data->port_id, idx);
+			rte_errno = EINVAL;
+			goto error;
+		} else {
+			DRV_LOG(DEBUG, "port %u Tx queue %u TIS number %d "
+				"transport domain %d", dev->data->port_id,
+				idx, qp.tisn, priv->sh->tdn);
+		}
+	}
+#endif
 	txq_ibv->qp = tmpl.qp;
 	txq_ibv->cq = tmpl.cq;
 	rte_atomic32_inc(&txq_ibv->refcnt);
