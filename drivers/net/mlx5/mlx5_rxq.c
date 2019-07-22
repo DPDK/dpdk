@@ -561,6 +561,23 @@ mlx5_rxq_obj_get(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /**
+ * Release the resources allocated for an RQ DevX object.
+ *
+ * @param rxq_ctrl
+ *   DevX Rx queue object.
+ */
+static void
+rxq_release_rq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
+{
+	if (rxq_ctrl->rxq.wqes) {
+		rte_free((void *)(uintptr_t)rxq_ctrl->rxq.wqes);
+		rxq_ctrl->rxq.wqes = NULL;
+	}
+	if (rxq_ctrl->wq_umem)
+		mlx5_glue->devx_umem_dereg(rxq_ctrl->wq_umem);
+}
+
+/**
  * Release an Rx verbs/DevX queue object.
  *
  * @param rxq_obj
@@ -573,11 +590,17 @@ static int
 mlx5_rxq_obj_release(struct mlx5_rxq_obj *rxq_obj)
 {
 	assert(rxq_obj);
-	assert(rxq_obj->wq);
+	if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_IBV)
+		assert(rxq_obj->wq);
 	assert(rxq_obj->cq);
 	if (rte_atomic32_dec_and_test(&rxq_obj->refcnt)) {
 		rxq_free_elts(rxq_obj->rxq_ctrl);
-		claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
+		if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
+			claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
+		} else if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ) {
+			claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
+			rxq_release_rq_resources(rxq_obj->rxq_ctrl);
+		}
 		claim_zero(mlx5_glue->destroy_cq(rxq_obj->cq));
 		if (rxq_obj->channel)
 			claim_zero(mlx5_glue->destroy_comp_channel
@@ -1000,18 +1023,147 @@ mlx5_ibv_wq_new(struct rte_eth_dev *dev, struct mlx5_priv *priv,
 }
 
 /**
+ * Fill common fields of create RQ attributes structure.
+ *
+ * @param rxq_data
+ *   Pointer to Rx queue data.
+ * @param cqn
+ *   CQ number to use with this RQ.
+ * @param rq_attr
+ *   RQ attributes structure to fill..
+ */
+static void
+mlx5_devx_create_rq_attr_fill(struct mlx5_rxq_data *rxq_data, uint32_t cqn,
+			      struct mlx5_devx_create_rq_attr *rq_attr)
+{
+	rq_attr->state = MLX5_RQC_STATE_RST;
+	rq_attr->vsd = (rxq_data->vlan_strip) ? 0 : 1;
+	rq_attr->cqn = cqn;
+	rq_attr->scatter_fcs = (rxq_data->crc_present) ? 1 : 0;
+}
+
+/**
+ * Fill common fields of DevX WQ attributes structure.
+ *
+ * @param priv
+ *   Pointer to device private data.
+ * @param rxq_ctrl
+ *   Pointer to Rx queue control structure.
+ * @param wq_attr
+ *   WQ attributes structure to fill..
+ */
+static void
+mlx5_devx_wq_attr_fill(struct mlx5_priv *priv, struct mlx5_rxq_ctrl *rxq_ctrl,
+		       struct mlx5_devx_wq_attr *wq_attr)
+{
+	wq_attr->end_padding_mode = priv->config.cqe_pad ?
+					MLX5_WQ_END_PAD_MODE_ALIGN :
+					MLX5_WQ_END_PAD_MODE_NONE;
+	wq_attr->pd = priv->sh->pdn;
+	wq_attr->dbr_addr = rxq_ctrl->dbr_offset;
+	wq_attr->dbr_umem_id = rxq_ctrl->dbr_umem_id;
+	wq_attr->dbr_umem_valid = 1;
+	wq_attr->wq_umem_id = rxq_ctrl->wq_umem->umem_id;
+	wq_attr->wq_umem_valid = 1;
+}
+
+/**
+ * Create a RQ object using DevX.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   Queue index in DPDK Rx queue array
+ * @param cqn
+ *   CQ number to use with this RQ.
+ *
+ * @return
+ *   The DevX object initialised, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_devx_obj *
+mlx5_devx_rq_new(struct rte_eth_dev *dev, uint16_t idx, uint32_t cqn)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_devx_create_rq_attr rq_attr;
+	uint32_t wqe_n = 1 << rxq_data->elts_n;
+	uint32_t wq_size = 0;
+	uint32_t wqe_size = 0;
+	uint32_t log_wqe_size = 0;
+	void *buf = NULL;
+	struct mlx5_devx_obj *rq;
+
+	memset(&rq_attr, 0, sizeof(rq_attr));
+	/* Fill RQ attributes. */
+	rq_attr.mem_rq_type = MLX5_RQC_MEM_RQ_TYPE_MEMORY_RQ_INLINE;
+	rq_attr.flush_in_error_en = 1;
+	mlx5_devx_create_rq_attr_fill(rxq_data, cqn, &rq_attr);
+	/* Fill WQ attributes for this RQ. */
+	if (mlx5_rxq_mprq_enabled(rxq_data)) {
+		rq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC_STRIDING_RQ;
+		/*
+		 * Number of strides in each WQE:
+		 * 512*2^single_wqe_log_num_of_strides.
+		 */
+		rq_attr.wq_attr.single_wqe_log_num_of_strides =
+				rxq_data->strd_num_n -
+				MLX5_MIN_SINGLE_WQE_LOG_NUM_STRIDES;
+		/* Stride size = (2^single_stride_log_num_of_bytes)*64B. */
+		rq_attr.wq_attr.single_stride_log_num_of_bytes =
+				rxq_data->strd_sz_n -
+				MLX5_MIN_SINGLE_STRIDE_LOG_NUM_BYTES;
+		wqe_size = sizeof(struct mlx5_wqe_mprq);
+	} else {
+		int max_sge = 0;
+		int num_scatter = 0;
+
+		rq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
+		max_sge = 1 << rxq_data->sges_n;
+		num_scatter = RTE_MAX(max_sge, 1);
+		wqe_size = sizeof(struct mlx5_wqe_data_seg) * num_scatter;
+	}
+	log_wqe_size = log2above(wqe_size);
+	rq_attr.wq_attr.log_wq_stride = log_wqe_size;
+	rq_attr.wq_attr.log_wq_sz = rxq_data->elts_n;
+	/* Calculate and allocate WQ memory space. */
+	wqe_size = 1 << log_wqe_size; /* round up power of two.*/
+	wq_size = wqe_n * wqe_size;
+	buf = rte_calloc_socket(__func__, 1, wq_size, RTE_CACHE_LINE_SIZE,
+				rxq_ctrl->socket);
+	if (!buf)
+		return NULL;
+	rxq_data->wqes = buf;
+	rxq_ctrl->wq_umem = mlx5_glue->devx_umem_reg(priv->sh->ctx,
+						     buf, wq_size, 0);
+	if (!rxq_ctrl->wq_umem) {
+		rte_free(buf);
+		return NULL;
+	}
+	mlx5_devx_wq_attr_fill(priv, rxq_ctrl, &rq_attr.wq_attr);
+	rq = mlx5_devx_cmd_create_rq(priv->sh->ctx, &rq_attr, rxq_ctrl->socket);
+	if (!rq)
+		rxq_release_rq_resources(rxq_ctrl);
+	return rq;
+}
+
+/**
  * Create the Rx queue Verbs/DevX object.
  *
  * @param dev
  *   Pointer to Ethernet device.
  * @param idx
  *   Queue index in DPDK Rx queue array
+ * @param type
+ *   Type of Rx queue object to create.
  *
  * @return
  *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
  */
 struct mlx5_rxq_obj *
-mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
+mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
+		 enum mlx5_rxq_obj_type type)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
@@ -1039,6 +1191,7 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = ENOMEM;
 		goto error;
 	}
+	tmpl->type = type;
 	tmpl->rxq_ctrl = rxq_ctrl;
 	if (rxq_ctrl->irq) {
 		tmpl->channel = mlx5_glue->create_comp_channel(priv->sh->ctx);
@@ -1060,35 +1213,9 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	DRV_LOG(DEBUG, "port %u device_attr.max_qp_wr is %d",
-		dev->data->port_id, priv->sh->device_attr.orig_attr.max_qp_wr);
-	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
-		dev->data->port_id, priv->sh->device_attr.orig_attr.max_sge);
-	tmpl->wq = mlx5_ibv_wq_new(dev, priv, rxq_data, idx, wqe_n, tmpl);
-	if (!tmpl->wq) {
-		DRV_LOG(ERR, "port %u Rx queue %u WQ creation failure",
-			dev->data->port_id, idx);
-		rte_errno = ENOMEM;
-		goto error;
-	}
-	/* Change queue state to ready. */
-	mod = (struct ibv_wq_attr){
-		.attr_mask = IBV_WQ_ATTR_STATE,
-		.wq_state = IBV_WQS_RDY,
-	};
-	ret = mlx5_glue->modify_wq(tmpl->wq, &mod);
-	if (ret) {
-		DRV_LOG(ERR,
-			"port %u Rx queue %u WQ state to IBV_WQS_RDY failed",
-			dev->data->port_id, idx);
-		rte_errno = ret;
-		goto error;
-	}
 	obj.cq.in = tmpl->cq;
 	obj.cq.out = &cq_info;
-	obj.rwq.in = tmpl->wq;
-	obj.rwq.out = &rwq;
-	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_RWQ);
+	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_CQ);
 	if (ret) {
 		rte_errno = ret;
 		goto error;
@@ -1101,9 +1228,73 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = EINVAL;
 		goto error;
 	}
+	DRV_LOG(DEBUG, "port %u device_attr.max_qp_wr is %d",
+		dev->data->port_id, priv->sh->device_attr.orig_attr.max_qp_wr);
+	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
+		dev->data->port_id, priv->sh->device_attr.orig_attr.max_sge);
+	/* Allocate door-bell for types created with DevX. */
+	if (tmpl->type != MLX5_RXQ_OBJ_TYPE_IBV) {
+		struct mlx5_devx_dbr_page *dbr_page;
+		int64_t dbr_offset;
+
+		dbr_offset = mlx5_get_dbr(dev, &dbr_page);
+		if (dbr_offset < 0)
+			goto error;
+		rxq_ctrl->dbr_offset = dbr_offset;
+		rxq_ctrl->dbr_umem_id = dbr_page->umem->umem_id;
+		rxq_data->rq_db = (uint32_t *)((uintptr_t)dbr_page->dbrs +
+					       (uintptr_t)rxq_ctrl->dbr_offset);
+	}
+	if (tmpl->type == MLX5_RXQ_OBJ_TYPE_IBV) {
+		tmpl->wq = mlx5_ibv_wq_new(dev, priv, rxq_data, idx, wqe_n,
+					   tmpl);
+		if (!tmpl->wq) {
+			DRV_LOG(ERR, "port %u Rx queue %u WQ creation failure",
+				dev->data->port_id, idx);
+			rte_errno = ENOMEM;
+			goto error;
+		}
+		/* Change queue state to ready. */
+		mod = (struct ibv_wq_attr){
+			.attr_mask = IBV_WQ_ATTR_STATE,
+			.wq_state = IBV_WQS_RDY,
+		};
+		ret = mlx5_glue->modify_wq(tmpl->wq, &mod);
+		if (ret) {
+			DRV_LOG(ERR,
+				"port %u Rx queue %u WQ state to IBV_WQS_RDY"
+				" failed", dev->data->port_id, idx);
+			rte_errno = ret;
+			goto error;
+		}
+		obj.rwq.in = tmpl->wq;
+		obj.rwq.out = &rwq;
+		ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_RWQ);
+		if (ret) {
+			rte_errno = ret;
+			goto error;
+		}
+		rxq_data->wqes = rwq.buf;
+		rxq_data->rq_db = rwq.dbrec;
+	} else if (tmpl->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ) {
+		struct mlx5_devx_modify_rq_attr rq_attr;
+
+		memset(&rq_attr, 0, sizeof(rq_attr));
+		tmpl->rq = mlx5_devx_rq_new(dev, idx, cq_info.cqn);
+		if (!tmpl->rq) {
+			DRV_LOG(ERR, "port %u Rx queue %u RQ creation failure",
+				dev->data->port_id, idx);
+			rte_errno = ENOMEM;
+			goto error;
+		}
+		/* Change queue state to ready. */
+		rq_attr.rq_state = MLX5_RQC_STATE_RST;
+		rq_attr.state = MLX5_RQC_STATE_RDY;
+		ret = mlx5_devx_cmd_modify_rq(tmpl->rq, &rq_attr);
+		if (ret)
+			goto error;
+	}
 	/* Fill the rings. */
-	rxq_data->wqes = rwq.buf;
-	rxq_data->rq_db = rwq.dbrec;
 	rxq_data->cqe_n = log2above(cq_info.cqe_cnt);
 	rxq_data->cq_db = cq_info.dbrec;
 	rxq_data->cqes = (volatile struct mlx5_cqe (*)[])(uintptr_t)cq_info.buf;
@@ -1121,8 +1312,10 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 error:
 	if (tmpl) {
 		ret = rte_errno; /* Save rte_errno before cleanup. */
-		if (tmpl->wq)
+		if (tmpl->type == MLX5_RXQ_OBJ_TYPE_IBV && tmpl->wq)
 			claim_zero(mlx5_glue->destroy_wq(tmpl->wq));
+		else if (tmpl->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ && tmpl->rq)
+			claim_zero(mlx5_devx_cmd_destroy(tmpl->rq));
 		if (tmpl->cq)
 			claim_zero(mlx5_glue->destroy_cq(tmpl->cq));
 		if (tmpl->channel)
@@ -1131,6 +1324,8 @@ error:
 		rte_free(tmpl);
 		rte_errno = ret; /* Restore rte_errno. */
 	}
+	if (type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ)
+		rxq_release_rq_resources(rxq_ctrl);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return NULL;
 }
@@ -1585,6 +1780,8 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (rxq_ctrl->obj && !mlx5_rxq_obj_release(rxq_ctrl->obj))
 		rxq_ctrl->obj = NULL;
 	if (rte_atomic32_dec_and_test(&rxq_ctrl->refcnt)) {
+		claim_zero(mlx5_release_dbr(dev, rxq_ctrl->dbr_umem_id,
+					    rxq_ctrl->dbr_offset));
 		mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
 		LIST_REMOVE(rxq_ctrl, next);
 		rte_free(rxq_ctrl);
@@ -1633,16 +1830,11 @@ mlx5_rxq_verify(struct rte_eth_dev *dev)
  */
 static struct mlx5_ind_table_obj *
 mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
-		       uint32_t queues_n)
+		       uint32_t queues_n, enum mlx5_ind_tbl_type type)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ind_table_obj *ind_tbl;
-	const unsigned int wq_n = rte_is_power_of_2(queues_n) ?
-		log2above(queues_n) :
-		log2above(priv->config.ind_table_max_size);
-	struct ibv_wq *wq[1 << wq_n];
-	unsigned int i;
-	unsigned int j;
+	unsigned int i = 0, j = 0, k = 0;
 
 	ind_tbl = rte_calloc(__func__, 1, sizeof(*ind_tbl) +
 			     queues_n * sizeof(uint16_t), 0);
@@ -1650,33 +1842,75 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	for (i = 0; i != queues_n; ++i) {
-		struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev, queues[i]);
+	ind_tbl->type = type;
+	if (ind_tbl->type == MLX5_IND_TBL_TYPE_IBV) {
+		const unsigned int wq_n = rte_is_power_of_2(queues_n) ?
+			log2above(queues_n) :
+			log2above(priv->config.ind_table_max_size);
+		struct ibv_wq *wq[1 << wq_n];
 
-		if (!rxq)
+		for (i = 0; i != queues_n; ++i) {
+			struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev,
+								 queues[i]);
+			if (!rxq)
+				goto error;
+			wq[i] = rxq->obj->wq;
+			ind_tbl->queues[i] = queues[i];
+		}
+		ind_tbl->queues_n = queues_n;
+		/* Finalise indirection table. */
+		k = i; /* Retain value of i for use in error case. */
+		for (j = 0; k != (unsigned int)(1 << wq_n); ++k, ++j)
+			wq[k] = wq[j];
+		ind_tbl->ind_table = mlx5_glue->create_rwq_ind_table
+			(priv->sh->ctx,
+			 &(struct ibv_rwq_ind_table_init_attr){
+				.log_ind_tbl_size = wq_n,
+				.ind_tbl = wq,
+				.comp_mask = 0,
+			});
+		if (!ind_tbl->ind_table) {
+			rte_errno = errno;
 			goto error;
-		wq[i] = rxq->obj->wq;
-		ind_tbl->queues[i] = queues[i];
-	}
-	ind_tbl->queues_n = queues_n;
-	/* Finalise indirection table. */
-	for (j = 0; i != (unsigned int)(1 << wq_n); ++i, ++j)
-		wq[i] = wq[j];
-	ind_tbl->ind_table = mlx5_glue->create_rwq_ind_table
-		(priv->sh->ctx,
-		 &(struct ibv_rwq_ind_table_init_attr){
-			.log_ind_tbl_size = wq_n,
-			.ind_tbl = wq,
-			.comp_mask = 0,
-		 });
-	if (!ind_tbl->ind_table) {
-		rte_errno = errno;
-		goto error;
+		}
+	} else { /* ind_tbl->type == MLX5_IND_TBL_TYPE_DEVX */
+		struct mlx5_devx_rqt_attr *rqt_attr = NULL;
+
+		rqt_attr = rte_calloc(__func__, 1, sizeof(*rqt_attr) +
+				      queues_n * sizeof(uint16_t), 0);
+		if (!rqt_attr) {
+			DRV_LOG(ERR, "port %u cannot allocate RQT resources",
+				dev->data->port_id);
+			rte_errno = ENOMEM;
+			goto error;
+		}
+		rqt_attr->rqt_max_size = priv->config.ind_table_max_size;
+		rqt_attr->rqt_actual_size = queues_n;
+		for (i = 0; i != queues_n; ++i) {
+			struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev,
+								 queues[i]);
+			if (!rxq)
+				goto error;
+			rqt_attr->rq_list[i] = rxq->obj->rq->id;
+			ind_tbl->queues[i] = queues[i];
+		}
+		ind_tbl->rqt = mlx5_devx_cmd_create_rqt(priv->sh->ctx,
+							rqt_attr);
+		rte_free(rqt_attr);
+		if (!ind_tbl->rqt) {
+			DRV_LOG(ERR, "port %u cannot create DevX RQT",
+				dev->data->port_id);
+			rte_errno = errno;
+			goto error;
+		}
+		ind_tbl->queues_n = queues_n;
 	}
 	rte_atomic32_inc(&ind_tbl->refcnt);
 	LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
 	return ind_tbl;
 error:
+	for (j = 0; j < i; j++)
+		mlx5_rxq_release(dev, ind_tbl->queues[j]);
 	rte_free(ind_tbl);
 	DEBUG("port %u cannot create indirection table", dev->data->port_id);
 	return NULL;
@@ -1736,9 +1970,13 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 {
 	unsigned int i;
 
-	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt))
-		claim_zero(mlx5_glue->destroy_rwq_ind_table
-			   (ind_tbl->ind_table));
+	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt)) {
+		if (ind_tbl->type == MLX5_IND_TBL_TYPE_IBV)
+			claim_zero(mlx5_glue->destroy_rwq_ind_table
+							(ind_tbl->ind_table));
+		else if (ind_tbl->type == MLX5_IND_TBL_TYPE_DEVX)
+			claim_zero(mlx5_devx_cmd_destroy(ind_tbl->rqt));
+	}
 	for (i = 0; i != ind_tbl->queues_n; ++i)
 		claim_nonzero(mlx5_rxq_release(dev, ind_tbl->queues[i]));
 	if (!rte_atomic32_read(&ind_tbl->refcnt)) {
@@ -1805,93 +2043,145 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
+	struct ibv_qp *qp = NULL;
 	struct mlx5_ind_table_obj *ind_tbl;
-	struct ibv_qp *qp;
-#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	struct mlx5dv_qp_init_attr qp_init_attr;
-#endif
 	int err;
+	struct mlx5_devx_obj *tir = NULL;
 
 	queues_n = hash_fields ? queues_n : 1;
 	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
-	if (!ind_tbl)
-		ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n);
+	if (!ind_tbl) {
+		struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[queues[0]];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+		enum mlx5_ind_tbl_type type;
+
+		type = rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV ?
+				MLX5_IND_TBL_TYPE_IBV : MLX5_IND_TBL_TYPE_DEVX;
+		ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n, type);
+	}
 	if (!ind_tbl) {
 		rte_errno = ENOMEM;
 		return NULL;
 	}
+	if (ind_tbl->type == MLX5_IND_TBL_TYPE_IBV) {
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	memset(&qp_init_attr, 0, sizeof(qp_init_attr));
-	if (tunnel) {
-		qp_init_attr.comp_mask =
+		struct mlx5dv_qp_init_attr qp_init_attr;
+
+		memset(&qp_init_attr, 0, sizeof(qp_init_attr));
+		if (tunnel) {
+			qp_init_attr.comp_mask =
 				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
-		qp_init_attr.create_flags = MLX5DV_QP_CREATE_TUNNEL_OFFLOADS;
-	}
+			qp_init_attr.create_flags =
+				MLX5DV_QP_CREATE_TUNNEL_OFFLOADS;
+		}
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	if (dev->data->dev_conf.lpbk_mode) {
-		/* Allow packet sent from NIC loop back w/o source MAC check. */
-		qp_init_attr.comp_mask |=
+		if (dev->data->dev_conf.lpbk_mode) {
+			/*
+			 * Allow packet sent from NIC loop back
+			 * w/o source MAC check.
+			 */
+			qp_init_attr.comp_mask |=
 				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
-		qp_init_attr.create_flags |=
+			qp_init_attr.create_flags |=
 				MLX5DV_QP_CREATE_TIR_ALLOW_SELF_LOOPBACK_UC;
-	}
+		}
 #endif
-	qp = mlx5_glue->dv_create_qp
-		(priv->sh->ctx,
-		 &(struct ibv_qp_init_attr_ex){
-			.qp_type = IBV_QPT_RAW_PACKET,
-			.comp_mask =
-				IBV_QP_INIT_ATTR_PD |
-				IBV_QP_INIT_ATTR_IND_TABLE |
-				IBV_QP_INIT_ATTR_RX_HASH,
-			.rx_hash_conf = (struct ibv_rx_hash_conf){
-				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = rss_key_len,
-				.rx_hash_key = (void *)(uintptr_t)rss_key,
-				.rx_hash_fields_mask = hash_fields,
-			},
-			.rwq_ind_tbl = ind_tbl->ind_table,
-			.pd = priv->sh->pd,
-		 },
-		 &qp_init_attr);
+		qp = mlx5_glue->dv_create_qp
+			(priv->sh->ctx,
+			 &(struct ibv_qp_init_attr_ex){
+				.qp_type = IBV_QPT_RAW_PACKET,
+				.comp_mask =
+					IBV_QP_INIT_ATTR_PD |
+					IBV_QP_INIT_ATTR_IND_TABLE |
+					IBV_QP_INIT_ATTR_RX_HASH,
+				.rx_hash_conf = (struct ibv_rx_hash_conf){
+					.rx_hash_function =
+						IBV_RX_HASH_FUNC_TOEPLITZ,
+					.rx_hash_key_len = rss_key_len,
+					.rx_hash_key =
+						(void *)(uintptr_t)rss_key,
+					.rx_hash_fields_mask = hash_fields,
+				},
+				.rwq_ind_tbl = ind_tbl->ind_table,
+				.pd = priv->sh->pd,
+			  },
+			  &qp_init_attr);
 #else
-	qp = mlx5_glue->create_qp_ex
-		(priv->sh->ctx,
-		 &(struct ibv_qp_init_attr_ex){
-			.qp_type = IBV_QPT_RAW_PACKET,
-			.comp_mask =
-				IBV_QP_INIT_ATTR_PD |
-				IBV_QP_INIT_ATTR_IND_TABLE |
-				IBV_QP_INIT_ATTR_RX_HASH,
-			.rx_hash_conf = (struct ibv_rx_hash_conf){
-				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = rss_key_len,
-				.rx_hash_key = (void *)(uintptr_t)rss_key,
-				.rx_hash_fields_mask = hash_fields,
-			},
-			.rwq_ind_tbl = ind_tbl->ind_table,
-			.pd = priv->sh->pd,
-		 });
+		qp = mlx5_glue->create_qp_ex
+			(priv->sh->ctx,
+			 &(struct ibv_qp_init_attr_ex){
+				.qp_type = IBV_QPT_RAW_PACKET,
+				.comp_mask =
+					IBV_QP_INIT_ATTR_PD |
+					IBV_QP_INIT_ATTR_IND_TABLE |
+					IBV_QP_INIT_ATTR_RX_HASH,
+				.rx_hash_conf = (struct ibv_rx_hash_conf){
+					.rx_hash_function =
+						IBV_RX_HASH_FUNC_TOEPLITZ,
+					.rx_hash_key_len = rss_key_len,
+					.rx_hash_key =
+						(void *)(uintptr_t)rss_key,
+					.rx_hash_fields_mask = hash_fields,
+				},
+				.rwq_ind_tbl = ind_tbl->ind_table,
+				.pd = priv->sh->pd,
+			 });
 #endif
-	if (!qp) {
-		rte_errno = errno;
-		goto error;
+		if (!qp) {
+			rte_errno = errno;
+			goto error;
+		}
+	} else { /* ind_tbl->type == MLX5_IND_TBL_TYPE_DEVX */
+		struct mlx5_devx_tir_attr tir_attr;
+
+		memset(&tir_attr, 0, sizeof(tir_attr));
+		tir_attr.disp_type = MLX5_TIRC_DISP_TYPE_INDIRECT;
+		tir_attr.rx_hash_fn = MLX5_RX_HASH_FN_TOEPLITZ;
+		memcpy(&tir_attr.rx_hash_field_selector_outer, &hash_fields,
+		       sizeof(uint64_t));
+		tir_attr.transport_domain = priv->sh->tdn;
+		memcpy(tir_attr.rx_hash_toeplitz_key, rss_key, rss_key_len);
+		tir_attr.indirect_table = ind_tbl->rqt->id;
+		if (dev->data->dev_conf.lpbk_mode)
+			tir_attr.self_lb_block =
+					MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
+		tir = mlx5_devx_cmd_create_tir(priv->sh->ctx, &tir_attr);
+		if (!tir) {
+			DRV_LOG(ERR, "port %u cannot create DevX TIR",
+				dev->data->port_id);
+			rte_errno = errno;
+			goto error;
+		}
 	}
 	hrxq = rte_calloc(__func__, 1, sizeof(*hrxq) + rss_key_len, 0);
 	if (!hrxq)
 		goto error;
 	hrxq->ind_table = ind_tbl;
-	hrxq->qp = qp;
+	if (ind_tbl->type == MLX5_IND_TBL_TYPE_IBV) {
+		hrxq->qp = qp;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+		hrxq->action =
+			mlx5_glue->dv_create_flow_action_dest_ibv_qp(hrxq->qp);
+		if (!hrxq->action) {
+			rte_errno = errno;
+			goto error;
+		}
+#endif
+	} else { /* ind_tbl->type == MLX5_IND_TBL_TYPE_DEVX */
+		hrxq->tir = tir;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+		hrxq->action = mlx5_glue->dv_create_flow_action_dest_devx_tir
+							(hrxq->tir->obj);
+		if (!hrxq->action) {
+			rte_errno = errno;
+			goto error;
+		}
+#endif
+	}
 	hrxq->rss_key_len = rss_key_len;
 	hrxq->hash_fields = hash_fields;
 	memcpy(hrxq->rss_key, rss_key, rss_key_len);
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	hrxq->action = mlx5_glue->dv_create_flow_action_dest_ibv_qp(hrxq->qp);
-	if (!hrxq->action) {
-		rte_errno = errno;
-		goto error;
-	}
-#endif
 	rte_atomic32_inc(&hrxq->refcnt);
 	LIST_INSERT_HEAD(&priv->hrxqs, hrxq, next);
 	return hrxq;
@@ -1900,6 +2190,8 @@ error:
 	mlx5_ind_table_obj_release(dev, ind_tbl);
 	if (qp)
 		claim_zero(mlx5_glue->destroy_qp(qp));
+	else if (tir)
+		claim_zero(mlx5_devx_cmd_destroy(tir));
 	rte_errno = err; /* Restore rte_errno. */
 	return NULL;
 }
@@ -1970,7 +2262,10 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
-		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
+		if (hrxq->ind_table->type == MLX5_IND_TBL_TYPE_IBV)
+			claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
+		else /* hrxq->ind_table->type == MLX5_IND_TBL_TYPE_DEVX */
+			claim_zero(mlx5_devx_cmd_destroy(hrxq->tir));
 		mlx5_ind_table_obj_release(dev, hrxq->ind_table);
 		LIST_REMOVE(hrxq, next);
 		rte_free(hrxq);

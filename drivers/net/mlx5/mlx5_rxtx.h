@@ -80,6 +80,9 @@ struct mlx5_mprq_buf {
 /* Get pointer to the first stride. */
 #define mlx5_mprq_buf_addr(ptr) ((ptr) + 1)
 
+#define MLX5_MIN_SINGLE_STRIDE_LOG_NUM_BYTES 6
+#define MLX5_MIN_SINGLE_WQE_LOG_NUM_STRIDES 9
+
 enum mlx5_rxq_err_state {
 	MLX5_RXQ_ERR_STATE_NO_ERROR = 0,
 	MLX5_RXQ_ERR_STATE_NEED_RESET,
@@ -174,6 +177,9 @@ struct mlx5_rxq_ctrl {
 	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
 	uint32_t wqn; /* WQ number. */
 	uint16_t dump_file_n; /* Number of dump files. */
+	uint32_t dbr_umem_id; /* Storing door-bell information, */
+	uint64_t dbr_offset;  /* needed when freeing door-bell. */
+	struct mlx5dv_devx_umem *wq_umem; /* WQ buffer registration info. */
 };
 
 enum mlx5_ind_tbl_type {
@@ -324,7 +330,8 @@ int mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev);
 void mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev);
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-struct mlx5_rxq_obj *mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx);
+struct mlx5_rxq_obj *mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
+				      enum mlx5_rxq_obj_type type);
 int mlx5_rxq_obj_verify(struct rte_eth_dev *dev);
 struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
