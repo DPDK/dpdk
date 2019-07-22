@@ -344,6 +344,13 @@ struct mlx5_devx_tir_attr {
 	struct mlx5_rx_hash_field_select rx_hash_field_selector_inner;
 };
 
+/* RQT attributes structure, used by RQT operations. */
+struct mlx5_devx_rqt_attr {
+	uint32_t rqt_max_size:16;
+	uint32_t rqt_actual_size:16;
+	uint32_t rq_list[];
+};
+
 /**
  * Type of object being allocated.
  */
@@ -831,5 +838,7 @@ int mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 			    struct mlx5_devx_modify_rq_attr *rq_attr);
 struct mlx5_devx_obj *mlx5_devx_cmd_create_tir(struct ibv_context *ctx,
 					struct mlx5_devx_tir_attr *tir_attr);
+struct mlx5_devx_obj *mlx5_devx_cmd_create_rqt(struct ibv_context *ctx,
+					struct mlx5_devx_rqt_attr *rqt_attr);
 
 #endif /* RTE_PMD_MLX5_H_ */

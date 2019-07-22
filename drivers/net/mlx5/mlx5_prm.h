@@ -631,6 +631,7 @@ enum {
 	MLX5_CMD_OP_CREATE_RQ = 0x908,
 	MLX5_CMD_OP_MODIFY_RQ = 0x909,
 	MLX5_CMD_OP_QUERY_TIS = 0x915,
+	MLX5_CMD_OP_CREATE_RQT = 0x916,
 	MLX5_CMD_OP_ALLOC_FLOW_COUNTER = 0x939,
 	MLX5_CMD_OP_QUERY_FLOW_COUNTER = 0x93b,
 };
@@ -1487,6 +1488,45 @@ struct mlx5_ifc_create_tir_in_bits {
 	u8 reserved_at_40[0xc0];
 	struct mlx5_ifc_tirc_bits ctx;
 };
+
+struct mlx5_ifc_rq_num_bits {
+	u8 reserved_at_0[0x8];
+	u8 rq_num[0x18];
+};
+
+struct mlx5_ifc_rqtc_bits {
+	u8 reserved_at_0[0xa0];
+	u8 reserved_at_a0[0x10];
+	u8 rqt_max_size[0x10];
+	u8 reserved_at_c0[0x10];
+	u8 rqt_actual_size[0x10];
+	u8 reserved_at_e0[0x6a0];
+	struct mlx5_ifc_rq_num_bits rq_num[];
+};
+
+struct mlx5_ifc_create_rqt_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x8];
+	u8 rqtn[0x18];
+	u8 reserved_at_60[0x20];
+};
+
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+struct mlx5_ifc_create_rqt_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_rqtc_bits rqt_context;
+};
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
 
 /* CQE format mask. */
 #define MLX5E_CQE_FORMAT_MASK 0xc

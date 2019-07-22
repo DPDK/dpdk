@@ -648,3 +648,57 @@ mlx5_devx_cmd_create_tir(struct ibv_context *ctx,
 	tir->id = MLX5_GET(create_tir_out, out, tirn);
 	return tir;
 }
+
+/**
+ * Create RQT using DevX API.
+ *
+ * @param[in] ctx
+ *   ibv_context returned from mlx5dv_open_device.
+ * @param [in] rqt_attr
+ *   Pointer to RQT attributes structure.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_rqt(struct ibv_context *ctx,
+			 struct mlx5_devx_rqt_attr *rqt_attr)
+{
+	uint32_t *in = NULL;
+	uint32_t inlen = MLX5_ST_SZ_BYTES(create_rqt_in) +
+			 rqt_attr->rqt_actual_size * sizeof(uint32_t);
+	uint32_t out[MLX5_ST_SZ_DW(create_rqt_out)] = {0};
+	void *rqt_ctx;
+	struct mlx5_devx_obj *rqt = NULL;
+	int i;
+
+	in = rte_calloc(__func__, 1, inlen, 0);
+	if (!in) {
+		DRV_LOG(ERR, "Failed to allocate RQT IN data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	rqt = rte_calloc(__func__, 1, sizeof(*rqt), 0);
+	if (!rqt) {
+		DRV_LOG(ERR, "Failed to allocate RQT data");
+		rte_errno = ENOMEM;
+		rte_free(in);
+		return NULL;
+	}
+	MLX5_SET(create_rqt_in, in, opcode, MLX5_CMD_OP_CREATE_RQT);
+	rqt_ctx = MLX5_ADDR_OF(create_rqt_in, in, rqt_context);
+	MLX5_SET(rqtc, rqt_ctx, rqt_max_size, rqt_attr->rqt_max_size);
+	MLX5_SET(rqtc, rqt_ctx, rqt_actual_size, rqt_attr->rqt_actual_size);
+	for (i = 0; i < rqt_attr->rqt_actual_size; i++)
+		MLX5_SET(rqtc, rqt_ctx, rq_num[i], rqt_attr->rq_list[i]);
+	rqt->obj = mlx5_glue->devx_obj_create(ctx, in, inlen, out, sizeof(out));
+	rte_free(in);
+	if (!rqt->obj) {
+		DRV_LOG(ERR, "Failed to create RQT using DevX");
+		rte_errno = errno;
+		rte_free(rqt);
+		return NULL;
+	}
+	rqt->id = MLX5_GET(create_rqt_out, out, rqtn);
+	return rqt;
+}
