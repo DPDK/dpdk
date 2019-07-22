@@ -1203,33 +1203,41 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	/* Sanity checks */
 	if (rte_eal_has_hugepages() == 0) {
 		otx2_err("Huge page is not configured");
-		goto fail;
+		goto fail_configure;
 	}
 
 	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
 		otx2_err("Setting link speed/duplex not supported");
-		goto fail;
+		goto fail_configure;
 	}
 
 	if (conf->dcb_capability_en == 1) {
 		otx2_err("dcb enable is not supported");
-		goto fail;
+		goto fail_configure;
 	}
 
 	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
 		otx2_err("Flow director is not supported");
-		goto fail;
+		goto fail_configure;
 	}
 
 	if (rxmode->mq_mode != ETH_MQ_RX_NONE &&
 	    rxmode->mq_mode != ETH_MQ_RX_RSS) {
 		otx2_err("Unsupported mq rx mode %d", rxmode->mq_mode);
-		goto fail;
+		goto fail_configure;
 	}
 
 	if (txmode->mq_mode != ETH_MQ_TX_NONE) {
 		otx2_err("Unsupported mq tx mode %d", txmode->mq_mode);
-		goto fail;
+		goto fail_configure;
+	}
+
+	if (otx2_dev_is_Ax(dev) &&
+	    (txmode->offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
+	    ((txmode->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
+	    (txmode->offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM))) {
+		otx2_err("Outer IP and SCTP checksum unsupported");
+		goto fail_configure;
 	}
 
 	/* Free the resources allocated from the previous configure */
@@ -1243,18 +1251,9 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		nix_set_nop_rxtx_function(eth_dev);
 		rc = nix_store_queue_cfg_and_then_release(eth_dev);
 		if (rc)
-			goto fail;
+			goto fail_configure;
 		otx2_nix_tm_fini(eth_dev);
 		nix_lf_free(dev);
-	}
-
-	if (otx2_dev_is_Ax(dev) &&
-	    (txmode->offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
-	    ((txmode->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
-	    (txmode->offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM))) {
-		otx2_err("Outer IP and SCTP checksum unsupported");
-		rc = -EINVAL;
-		goto fail;
 	}
 
 	dev->rx_offloads = rxmode->offloads;
@@ -1270,7 +1269,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	rc = nix_lf_alloc(dev, nb_rxq, nb_txq);
 	if (rc) {
 		otx2_err("Failed to init nix_lf rc=%d", rc);
-		goto fail;
+		goto fail_offloads;
 	}
 
 	/* Configure RSS */
@@ -1290,14 +1289,14 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	rc = otx2_nix_vlan_offload_init(eth_dev);
 	if (rc) {
 		otx2_err("Failed to init vlan offload rc=%d", rc);
-		goto free_nix_lf;
+		goto tm_fini;
 	}
 
 	/* Register queue IRQs */
 	rc = oxt2_nix_register_queue_irqs(eth_dev);
 	if (rc) {
 		otx2_err("Failed to register queue interrupts rc=%d", rc);
-		goto free_nix_lf;
+		goto vlan_fini;
 	}
 
 	/* Register cq IRQs */
@@ -1305,7 +1304,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		if (eth_dev->data->nb_rx_queues > dev->cints) {
 			otx2_err("Rx interrupt cannot be enabled, rxq > %d",
 				 dev->cints);
-			goto free_nix_lf;
+			goto q_irq_fini;
 		}
 		/* Rx interrupt feature cannot work with vector mode because,
 		 * vector mode doesn't process packets unless min 4 pkts are
@@ -1317,7 +1316,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		rc = oxt2_nix_register_cq_irqs(eth_dev);
 		if (rc) {
 			otx2_err("Failed to register CQ interrupts rc=%d", rc);
-			goto free_nix_lf;
+			goto q_irq_fini;
 		}
 	}
 
@@ -1325,13 +1324,13 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	rc = cgx_intlbk_enable(dev, eth_dev->data->dev_conf.lpbk_mode);
 	if (rc) {
 		otx2_err("Failed to configure cgx loop back mode rc=%d", rc);
-		goto free_nix_lf;
+		goto q_irq_fini;
 	}
 
 	rc = otx2_nix_rxchan_bpid_cfg(eth_dev, true);
 	if (rc) {
 		otx2_err("Failed to configure nix rx chan bpid cfg rc=%d", rc);
-		goto free_nix_lf;
+		goto q_irq_fini;
 	}
 
 	/* Enable PTP if it was requested by the app or if it is already
@@ -1351,7 +1350,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	if (dev->configured == 1) {
 		rc = nix_restore_queue_cfg(eth_dev);
 		if (rc)
-			goto free_nix_lf;
+			goto cq_fini;
 	}
 
 	/* Update the mac address */
@@ -1375,9 +1374,21 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	dev->configured_nb_tx_qs = data->nb_tx_queues;
 	return 0;
 
+cq_fini:
+	oxt2_nix_unregister_cq_irqs(eth_dev);
+q_irq_fini:
+	oxt2_nix_unregister_queue_irqs(eth_dev);
+vlan_fini:
+	otx2_nix_vlan_fini(eth_dev);
+tm_fini:
+	otx2_nix_tm_fini(eth_dev);
 free_nix_lf:
-	rc = nix_lf_free(dev);
-fail:
+	nix_lf_free(dev);
+fail_offloads:
+	dev->rx_offload_flags &= ~nix_rx_offload_flags(eth_dev);
+	dev->tx_offload_flags &= ~nix_tx_offload_flags(eth_dev);
+fail_configure:
+	dev->configured = 0;
 	return rc;
 }
 
