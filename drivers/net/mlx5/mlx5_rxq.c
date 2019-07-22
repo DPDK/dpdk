@@ -839,7 +839,6 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 			struct mlx5dv_wq_init_attr mlx5;
 #endif
 		} wq;
-		struct ibv_cq_ex cq_attr;
 	} attr;
 	unsigned int cqe_n;
 	unsigned int wqe_n = 1 << rxq_data->elts_n;

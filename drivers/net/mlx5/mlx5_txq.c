@@ -388,7 +388,6 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		struct ibv_qp_init_attr_ex init;
 		struct ibv_cq_init_attr_ex cq;
 		struct ibv_qp_attr mod;
-		struct ibv_cq_ex cq_attr;
 	} attr;
 	unsigned int cqe_n;
 	struct mlx5dv_qp qp = { .comp_mask = MLX5DV_QP_MASK_UAR_MMAP_OFFSET };
