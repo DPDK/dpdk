@@ -1541,6 +1541,39 @@ exit:
 }
 
 /**
+ * Adjust the maximum LRO massage size.
+ * LRO massage is contained in the MPRQ strides.
+ * While the LRO massage size cannot be bigger than 65280 according to the
+ * PRM, the strides which contain it may be bigger.
+ * Adjust the maximum LRO massage size to avoid the above option.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param strd_n
+ *   Number of strides per WQE..
+ * @param strd_sz
+ *   The stride size.
+ */
+static void
+mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint32_t strd_n,
+			     uint32_t strd_sz)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t max_buf_len = strd_sz * strd_n;
+
+	if (max_buf_len > (uint64_t)UINT16_MAX)
+		max_buf_len = RTE_ALIGN_FLOOR((uint32_t)UINT16_MAX, strd_sz);
+	max_buf_len /= 256;
+	max_buf_len = RTE_MIN(max_buf_len, (uint32_t)UINT8_MAX);
+	assert(max_buf_len);
+	if (priv->max_lro_msg_size)
+		priv->max_lro_msg_size =
+			RTE_MIN((uint32_t)priv->max_lro_msg_size, max_buf_len);
+	else
+		priv->max_lro_msg_size = max_buf_len;
+}
+
+/**
  * Create a DPDK Rx queue.
  *
  * @param dev
@@ -1623,6 +1656,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		tmpl->rxq.strd_headroom_en = strd_headroom_en;
 		tmpl->rxq.mprq_max_memcpy_len = RTE_MIN(mb_len -
 			    RTE_PKTMBUF_HEADROOM, config->mprq.max_memcpy_len);
+		mlx5_max_lro_msg_size_adjust(dev, (1 << tmpl->rxq.strd_num_n),
+					     (1 << tmpl->rxq.strd_sz_n));
 		DRV_LOG(DEBUG,
 			"port %u Rx queue %u: Multi-Packet RQ is enabled"
 			" strd_num_n = %u, strd_sz_n = %u",
@@ -2165,7 +2200,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		if (lro) {
 			tir_attr.lro_timeout_period_usecs =
 					priv->config.lro.timeout;
-			tir_attr.lro_max_msg_sz = 0xff;
+			tir_attr.lro_max_msg_sz = priv->max_lro_msg_size;
 			tir_attr.lro_enable_mask = lro;
 		}
 		tir = mlx5_devx_cmd_create_tir(priv->sh->ctx, &tir_attr);

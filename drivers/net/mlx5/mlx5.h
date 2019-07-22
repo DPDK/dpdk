@@ -625,6 +625,7 @@ struct mlx5_priv {
 	struct ibv_flow_action *verbs_action;
 	/**< Verbs modify header action object. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
+	uint8_t max_lro_msg_size;
 	/* Tags resources cache. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
