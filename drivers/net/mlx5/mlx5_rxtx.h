@@ -29,6 +29,7 @@
 #include <rte_spinlock.h>
 #include <rte_io.h>
 #include <rte_bus_pci.h>
+#include <rte_malloc.h>
 
 #include "mlx5_utils.h"
 #include "mlx5.h"

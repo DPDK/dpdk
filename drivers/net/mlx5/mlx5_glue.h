@@ -61,7 +61,7 @@ enum mlx5dv_flow_table_type { flow_table_type = 0, };
 
 #ifndef HAVE_IBV_DEVX_OBJ
 struct mlx5dv_devx_obj;
-struct mlx5dv_devx_umem;
+struct mlx5dv_devx_umem { uint32_t umem_id; };
 #endif
 
 #ifndef HAVE_IBV_DEVX_ASYNC

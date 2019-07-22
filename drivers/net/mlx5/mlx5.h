@@ -36,6 +36,7 @@
 #include "mlx5_mr.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
+#include "mlx5_glue.h"
 
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,
@@ -498,6 +499,21 @@ struct mlx5_flow_tbl_resource {
 #define MLX5_MAX_TABLES_FDB 32
 #define MLX5_GROUP_FACTOR 1
 
+#define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
+#define MLX5_DBR_SIZE 8
+#define MLX5_DBR_PER_PAGE (MLX5_DBR_PAGE_SIZE / MLX5_DBR_SIZE)
+#define MLX5_DBR_BITMAP_SIZE (MLX5_DBR_PER_PAGE / 64)
+
+struct mlx5_devx_dbr_page {
+	/* Door-bell records, must be first member in structure. */
+	uint8_t dbrs[MLX5_DBR_PAGE_SIZE];
+	LIST_ENTRY(mlx5_devx_dbr_page) next; /* Pointer to the next element. */
+	struct mlx5dv_devx_umem *umem;
+	uint32_t dbr_count; /* Number of door-bell records in use. */
+	/* 1 bit marks matching door-bell is in use. */
+	uint64_t dbr_bitmap[MLX5_DBR_BITMAP_SIZE];
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -618,6 +634,7 @@ struct mlx5_priv {
 	int nl_socket_rdma; /* Netlink socket (NETLINK_RDMA). */
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
 	uint32_t nl_sn; /* Netlink message sequence number. */
+	LIST_HEAD(dbrpage, mlx5_devx_dbr_page) dbrpgs; /* Door-bell pages. */
 #ifndef RTE_ARCH_64
 	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
@@ -632,6 +649,10 @@ struct mlx5_priv {
 
 int mlx5_getenv_int(const char *);
 int mlx5_proc_priv_init(struct rte_eth_dev *dev);
+int64_t mlx5_get_dbr(struct rte_eth_dev *dev,
+		     struct mlx5_devx_dbr_page **dbr_page);
+int32_t mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id,
+			 uint64_t offset);
 
 /* mlx5_ethdev.c */
 
