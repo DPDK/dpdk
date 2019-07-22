@@ -18,6 +18,7 @@
 #include <rte_ethdev.h>
 #include <rte_byteorder.h>
 #include <cmdline_parse.h>
+#include <cmdline_parse_etheraddr.h>
 #include <rte_flow.h>
 
 #include "testpmd.h"
@@ -4978,8 +4979,8 @@ parse_mac_addr(struct context *ctx, const struct token *token,
 	/* Only network endian is supported. */
 	if (!arg->hton)
 		goto error;
-	ret = rte_ether_unformat_addr(str, &tmp);
-	if (ret < 0)
+	ret = cmdline_parse_etheraddr(NULL, str, &tmp, size);
+	if (ret < 0 || (unsigned int)ret != len)
 		goto error;
 	if (!ctx->object)
 		return len;
