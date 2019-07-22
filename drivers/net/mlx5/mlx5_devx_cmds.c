@@ -390,3 +390,37 @@ error:
 	rc = (rc > 0) ? -rc : rc;
 	return rc;
 }
+
+/**
+ * Query TIS transport domain from QP verbs object using DevX API.
+ *
+ * @param[in] qp
+ *   Pointer to verbs QP returned by ibv_create_qp .
+ * @param[in] tis_num
+ *   TIS number of TIS to query.
+ * @param[out] tis_td
+ *   Pointer to TIS transport domain variable, to be set by the routine.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int
+mlx5_devx_cmd_qp_query_tis_td(struct ibv_qp *qp, uint32_t tis_num,
+			      uint32_t *tis_td)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_tis_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_tis_out)] = {0};
+	int rc;
+	void *tis_ctx;
+
+	MLX5_SET(query_tis_in, in, opcode, MLX5_CMD_OP_QUERY_TIS);
+	MLX5_SET(query_tis_in, in, tisn, tis_num);
+	rc = mlx5_glue->devx_qp_query(qp, in, sizeof(in), out, sizeof(out));
+	if (rc) {
+		DRV_LOG(ERR, "Failed to query QP using DevX");
+		return -rc;
+	};
+	tis_ctx = MLX5_ADDR_OF(query_tis_out, out, tis_context);
+	*tis_td = MLX5_GET(tisc, tis_ctx, transport_domain);
+	return 0;
+}

@@ -737,4 +737,6 @@ int mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 struct mlx5_devx_obj *mlx5_devx_cmd_mkey_create(struct ibv_context *ctx,
 					     struct mlx5_devx_mkey_attr *attr);
 int mlx5_devx_get_out_command_status(void *out);
+int mlx5_devx_cmd_qp_query_tis_td(struct ibv_qp *qp, uint32_t tis_num,
+				  uint32_t *tis_td);
 #endif /* RTE_PMD_MLX5_H_ */
