@@ -19,7 +19,7 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_prefetch.h>
-#include <rte_ioat_spec.h>
+#include "rte_ioat_spec.h"
 
 /** Name of the device driver */
 #define IOAT_PMD_RAWDEV_NAME rawdev_ioat
