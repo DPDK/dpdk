@@ -755,6 +755,12 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	char *contig_buf = NULL;
 	uint64_t compress_checksum[num_bufs];
 
+	if (capa == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Compress device does not support DEFLATE\n");
+		return -1;
+	}
+
 	/* Initialize all arrays to NULL */
 	memset(uncomp_bufs, 0, sizeof(struct rte_mbuf *) * num_bufs);
 	memset(comp_bufs, 0, sizeof(struct rte_mbuf *) * num_bufs);
@@ -975,7 +981,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		enum rte_comp_huffman huffman_type =
 			compress_xform->deflate.huffman;
 		char engine[] = "zlib (directly, not PMD)";
-		if (zlib_dir != ZLIB_COMPRESS || zlib_dir != ZLIB_ALL)
+		if (zlib_dir != ZLIB_COMPRESS && zlib_dir != ZLIB_ALL)
 			strlcpy(engine, "PMD", sizeof(engine));
 
 		RTE_LOG(DEBUG, USER1, "Buffer %u compressed by %s from %u to"
@@ -1211,7 +1217,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	for (i = 0; i < num_bufs; i++) {
 		priv_data = (struct priv_op_data *)(ops_processed[i] + 1);
 		char engine[] = "zlib, (directly, no PMD)";
-		if (zlib_dir != ZLIB_DECOMPRESS || zlib_dir != ZLIB_ALL)
+		if (zlib_dir != ZLIB_DECOMPRESS && zlib_dir != ZLIB_ALL)
 			strlcpy(engine, "pmd", sizeof(engine));
 		RTE_LOG(DEBUG, USER1,
 			"Buffer %u decompressed by %s from %u to %u bytes\n",
