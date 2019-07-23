@@ -147,8 +147,10 @@ comp_perf_allocate_memory(struct comp_test_data *test_data,
 	 * if data cannot be compressed
 	 */
 	mem->compressed_data = rte_zmalloc_socket(NULL,
-				test_data->input_data_sz * EXPANSE_RATIO
-						+ MIN_COMPRESSED_BUF_SIZE, 0,
+				RTE_MAX(
+				    (size_t) test_data->out_seg_sz * total_segs,
+				    (size_t) MIN_COMPRESSED_BUF_SIZE),
+				0,
 				rte_socket_id());
 	if (mem->compressed_data == NULL) {
 		RTE_LOG(ERR, USER1, "Memory to hold the data from the input "
@@ -287,7 +289,6 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 
 			data_addr = (uint8_t *)rte_pktmbuf_append(next_seg,
 				test_data->out_seg_sz);
-
 			if (data_addr == NULL) {
 				RTE_LOG(ERR, USER1, "Could not append data\n");
 				return -1;
