@@ -42,7 +42,7 @@ static enum ice_status ice_set_mac_type(struct ice_hw *hw)
 {
 	enum ice_status status = ICE_SUCCESS;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_set_mac_type\n");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	if (hw->vendor_id == ICE_INTEL_VENDOR_ID) {
 		switch (hw->device_id) {

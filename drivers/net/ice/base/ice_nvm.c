@@ -202,7 +202,7 @@ read_nvm_buf_aq_exit:
 static enum ice_status
 ice_acquire_nvm(struct ice_hw *hw, enum ice_aq_res_access_type access)
 {
-	ice_debug(hw, ICE_DBG_TRACE, "ice_acquire_nvm\n");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	if (hw->nvm.blank_nvm_mode)
 		return ICE_SUCCESS;
@@ -218,7 +218,7 @@ ice_acquire_nvm(struct ice_hw *hw, enum ice_aq_res_access_type access)
  */
 static void ice_release_nvm(struct ice_hw *hw)
 {
-	ice_debug(hw, ICE_DBG_TRACE, "ice_release_nvm\n");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	if (hw->nvm.blank_nvm_mode)
 		return;

@@ -706,7 +706,7 @@ ice_acquire_global_cfg_lock(struct ice_hw *hw,
 {
 	enum ice_status status;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_acquire_global_cfg_lock");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	status = ice_acquire_res(hw, ICE_GLOBAL_CFG_LOCK_RES_ID, access,
 				 ICE_GLOBAL_CFG_LOCK_TIMEOUT);
@@ -739,7 +739,7 @@ static void ice_release_global_cfg_lock(struct ice_hw *hw)
 enum ice_status
 ice_acquire_change_lock(struct ice_hw *hw, enum ice_aq_res_access_type access)
 {
-	ice_debug(hw, ICE_DBG_TRACE, "ice_acquire_change_lock");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	return ice_acquire_res(hw, ICE_CHANGE_LOCK_RES_ID, access,
 			       ICE_CHANGE_LOCK_TIMEOUT);
@@ -753,7 +753,7 @@ ice_acquire_change_lock(struct ice_hw *hw, enum ice_aq_res_access_type access)
  */
 void ice_release_change_lock(struct ice_hw *hw)
 {
-	ice_debug(hw, ICE_DBG_TRACE, "ice_release_change_lock");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	ice_release_res(hw, ICE_CHANGE_LOCK_RES_ID);
 }
@@ -779,7 +779,7 @@ ice_aq_download_pkg(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
 	struct ice_aq_desc desc;
 	enum ice_status status;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_download_pkg");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	if (error_offset)
 		*error_offset = 0;
@@ -830,7 +830,7 @@ ice_aq_update_pkg(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf, u16 buf_size,
 	struct ice_aq_desc desc;
 	enum ice_status status;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_update_pkg");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	if (error_offset)
 		*error_offset = 0;
@@ -1018,7 +1018,7 @@ ice_aq_get_pkg_info_list(struct ice_hw *hw,
 {
 	struct ice_aq_desc desc;
 
-	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_get_pkg_info_list");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_pkg_info_list);
 
 	return ice_aq_send_cmd(hw, &desc, pkg_info, buf_size, cd);

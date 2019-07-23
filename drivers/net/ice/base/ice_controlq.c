@@ -722,7 +722,7 @@ static void ice_shutdown_ctrlq(struct ice_hw *hw, enum ice_ctl_q q_type)
  */
 void ice_shutdown_all_ctrlq(struct ice_hw *hw)
 {
-	ice_debug(hw, ICE_DBG_TRACE, "ice_shutdown_all_ctrlq\n");
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 	/* Shutdown FW admin queue */
 	ice_shutdown_ctrlq(hw, ICE_CTL_Q_ADMIN);
 	/* Shutdown PF-VF Mailbox */
