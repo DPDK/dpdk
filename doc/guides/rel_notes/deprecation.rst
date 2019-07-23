@@ -79,6 +79,20 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
+* ethdev: Update API functions returning ``void`` to return ``int`` with
+  negative errno values to indicate various error conditions (e.g.
+  invalid port ID, unsupported operation, failed operation):
+
+  - ``rte_eth_dev_info_get``
+  - ``rte_eth_promiscuous_enable`` and ``rte_eth_promiscuous_disable``
+  - ``rte_eth_allmulticast_enable`` and ``rte_eth_allmulticast_disable``
+  - ``rte_eth_link_get`` and ``rte_eth_link_get_nowait``
+  - ``rte_eth_dev_stop``
+  - ``rte_eth_dev_close``
+  - ``rte_eth_xstats_reset``
+  - ``rte_eth_macaddr_get``
+  - ``rte_eth_dev_owner_delete``
+
 * cryptodev: support for using IV with all sizes is added, J0 still can
   be used but only when IV length in following structs ``rte_crypto_auth_xform``,
   ``rte_crypto_aead_xform`` is set to zero. When IV length is greater or equal
