@@ -387,6 +387,15 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+int
+rte_intr_ack(const struct rte_intr_handle *intr_handle)
+{
+	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV)
+		return 0;
+
+	return -1;
+}
+
 static void
 eal_intr_process_interrupts(struct kevent *events, int nfds)
 {

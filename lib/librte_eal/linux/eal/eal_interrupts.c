@@ -197,6 +197,28 @@ vfio_disable_intx(const struct rte_intr_handle *intr_handle) {
 	return 0;
 }
 
+/* unmask/ack legacy (INTx) interrupts */
+static int
+vfio_ack_intx(const struct rte_intr_handle *intr_handle)
+{
+	struct vfio_irq_set irq_set;
+
+	/* unmask INTx */
+	memset(&irq_set, 0, sizeof(irq_set));
+	irq_set.argsz = sizeof(irq_set);
+	irq_set.count = 1;
+	irq_set.flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_UNMASK;
+	irq_set.index = VFIO_PCI_INTX_IRQ_INDEX;
+	irq_set.start = 0;
+
+	if (ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, &irq_set)) {
+		RTE_LOG(ERR, EAL, "Error unmasking INTx interrupts for fd %d\n",
+			intr_handle->fd);
+		return -1;
+	}
+	return 0;
+}
+
 /* enable MSI interrupts */
 static int
 vfio_enable_msi(const struct rte_intr_handle *intr_handle) {
@@ -687,6 +709,66 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 		RTE_LOG(ERR, EAL,
 			"Unknown handle type of fd %d\n",
 					intr_handle->fd);
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * PMD generally calls this function at the end of its IRQ callback.
+ * Internally, it unmasks the interrupt if possible.
+ *
+ * For INTx, unmasking is required as the interrupt is auto-masked prior to
+ * invoking callback.
+ *
+ * For MSI/MSI-X, unmasking is typically not needed as the interrupt is not
+ * auto-masked. In fact, for interrupt handle types VFIO_MSIX and VFIO_MSI,
+ * this function is no-op.
+ */
+int
+rte_intr_ack(const struct rte_intr_handle *intr_handle)
+{
+	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV)
+		return 0;
+
+	if (!intr_handle || intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0)
+		return -1;
+
+	switch (intr_handle->type) {
+	/* Both acking and enabling are same for UIO */
+	case RTE_INTR_HANDLE_UIO:
+		if (uio_intr_enable(intr_handle))
+			return -1;
+		break;
+	case RTE_INTR_HANDLE_UIO_INTX:
+		if (uio_intx_intr_enable(intr_handle))
+			return -1;
+		break;
+	/* not used at this moment */
+	case RTE_INTR_HANDLE_ALARM:
+		return -1;
+#ifdef VFIO_PRESENT
+	/* VFIO MSI* is implicitly acked unlike INTx, nothing to do */
+	case RTE_INTR_HANDLE_VFIO_MSIX:
+	case RTE_INTR_HANDLE_VFIO_MSI:
+		return 0;
+	case RTE_INTR_HANDLE_VFIO_LEGACY:
+		if (vfio_ack_intx(intr_handle))
+			return -1;
+		break;
+#ifdef HAVE_VFIO_DEV_REQ_INTERFACE
+	case RTE_INTR_HANDLE_VFIO_REQ:
+		return -1;
+#endif
+#endif
+	/* not used at this moment */
+	case RTE_INTR_HANDLE_DEV_EVENT:
+		return -1;
+	/* unknown handle type */
+	default:
+		RTE_LOG(ERR, EAL, "Unknown handle type of fd %d\n",
+			intr_handle->fd);
 		return -1;
 	}
 

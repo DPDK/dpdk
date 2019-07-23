@@ -403,6 +403,7 @@ EXPERIMENTAL {
 	rte_realloc_socket;
 
 	# added in 19.08
+	rte_intr_ack;
 	rte_lcore_cpuset;
 	rte_lcore_to_cpu_id;
 	rte_mcfg_timer_lock;
