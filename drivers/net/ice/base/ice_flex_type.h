@@ -526,7 +526,7 @@ struct ice_prof_map {
 	u64 context;
 	u8 prof_id;
 	u8 ptype_count;
-	u8 ptype[ICE_MAX_PTYPE_PER_PROFILE];
+	u16 ptype[ICE_MAX_PTYPE_PER_PROFILE];
 };
 
 #define ICE_INVALID_TCAM	0xFFFF

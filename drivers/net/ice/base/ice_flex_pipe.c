@@ -4376,7 +4376,8 @@ ice_add_prof_to_lst(struct ice_hw *hw, enum ice_block blk,
 		p->tcam[i].prof_id = map->prof_id;
 		p->tcam[i].tcam_idx = ICE_INVALID_TCAM;
 
-		ice_ptg_find_ptype(hw, blk, map->ptype[i], &ptg);
+		if (ice_ptg_find_ptype(hw, blk, map->ptype[i], &ptg))
+			return ICE_ERR_CFG;
 
 		p->tcam[i].ptg = ptg;
 	}
