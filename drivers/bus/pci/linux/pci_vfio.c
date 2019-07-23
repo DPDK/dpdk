@@ -187,11 +187,8 @@ pci_vfio_set_bus_master(int dev_fd, bool op)
 static int
 pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 {
-	char irq_set_buf[sizeof(struct vfio_irq_set) + sizeof(int)];
-	struct vfio_irq_set *irq_set;
-	enum rte_intr_mode intr_mode;
 	int i, ret, intr_idx;
-	int fd;
+	enum rte_intr_mode intr_mode;
 
 	/* default to invalid index */
 	intr_idx = VFIO_PCI_NUM_IRQS;
@@ -223,6 +220,7 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 	/* start from MSI-X interrupt type */
 	for (i = VFIO_PCI_MSIX_IRQ_INDEX; i >= 0; i--) {
 		struct vfio_irq_info irq = { .argsz = sizeof(irq) };
+		int fd = -1;
 
 		/* skip interrupt modes we don't want */
 		if (intr_mode != RTE_INTR_MODE_NONE &&
@@ -238,51 +236,51 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 			return -1;
 		}
 
-		/* found a usable interrupt mode */
-		if ((irq.flags & VFIO_IRQ_INFO_EVENTFD) != 0)
-			break;
-
 		/* if this vector cannot be used with eventfd, fail if we explicitly
 		 * specified interrupt type, otherwise continue */
-		if (intr_mode != RTE_INTR_MODE_NONE) {
-			RTE_LOG(ERR, EAL, "  interrupt vector does not support eventfd!\n");
+		if ((irq.flags & VFIO_IRQ_INFO_EVENTFD) == 0) {
+			if (intr_mode != RTE_INTR_MODE_NONE) {
+				RTE_LOG(ERR, EAL,
+						"  interrupt vector does not support eventfd!\n");
+				return -1;
+			} else
+				continue;
+		}
+
+		/* set up an eventfd for interrupts */
+		fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+		if (fd < 0) {
+			RTE_LOG(ERR, EAL, "  cannot set up eventfd, "
+					"error %i (%s)\n", errno, strerror(errno));
 			return -1;
 		}
+
+		dev->intr_handle.fd = fd;
+		dev->intr_handle.vfio_dev_fd = vfio_dev_fd;
+
+		switch (i) {
+		case VFIO_PCI_MSIX_IRQ_INDEX:
+			intr_mode = RTE_INTR_MODE_MSIX;
+			dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_MSIX;
+			break;
+		case VFIO_PCI_MSI_IRQ_INDEX:
+			intr_mode = RTE_INTR_MODE_MSI;
+			dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_MSI;
+			break;
+		case VFIO_PCI_INTX_IRQ_INDEX:
+			intr_mode = RTE_INTR_MODE_LEGACY;
+			dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_LEGACY;
+			break;
+		default:
+			RTE_LOG(ERR, EAL, "  unknown interrupt type!\n");
+			return -1;
+		}
+
+		return 0;
 	}
 
-	if (i < 0)
-		return -1;
-
-	fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "  cannot set up eventfd, error %i (%s)\n",
-			errno, strerror(errno));
-		return -1;
-	}
-
-	irq_set = (struct vfio_irq_set *)irq_set_buf;
-	irq_set->argsz = sizeof(irq_set_buf);
-	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD|VFIO_IRQ_SET_ACTION_TRIGGER;
-	irq_set->index = i;
-	irq_set->start = 0;
-	irq_set->count = 1;
-	memcpy(&irq_set->data, &fd, sizeof(int));
-	if (ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set) < 0) {
-		RTE_LOG(ERR, EAL, "  error configuring interrupt\n");
-		close(fd);
-		return -1;
-	}
-
-	dev->intr_handle.fd = fd;
-	dev->intr_handle.vfio_dev_fd = vfio_dev_fd;
-	if (i == VFIO_PCI_MSIX_IRQ_INDEX)
-		dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_MSIX;
-	else if (i == VFIO_PCI_MSI_IRQ_INDEX)
-		dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_MSI;
-	else if (i == VFIO_PCI_INTX_IRQ_INDEX)
-		dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_LEGACY;
-
-	return 0;
+	/* if we're here, we haven't found a suitable interrupt vector */
+	return -1;
 }
 
 #ifdef HAVE_VFIO_DEV_REQ_INTERFACE
