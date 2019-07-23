@@ -1019,9 +1019,6 @@ enum ice_status ice_check_reset(struct ice_hw *hw)
 	 * or EMPR has occurred. The grst delay value is in 100ms units.
 	 * Add 1sec for outstanding AQ commands that can take a long time.
 	 */
-#define GLGEN_RSTCTL		0x000B8180 /* Reset Source: POR */
-#define GLGEN_RSTCTL_GRSTDEL_S	0
-#define GLGEN_RSTCTL_GRSTDEL_M	MAKEMASK(0x3F, GLGEN_RSTCTL_GRSTDEL_S)
 	grst_delay = ((rd32(hw, GLGEN_RSTCTL) & GLGEN_RSTCTL_GRSTDEL_M) >>
 		      GLGEN_RSTCTL_GRSTDEL_S) + 10;
 
