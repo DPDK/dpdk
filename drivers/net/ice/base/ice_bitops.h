@@ -191,8 +191,7 @@ ice_and_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 	 * size value alone.
 	 */
 	mask = LAST_CHUNK_MASK(size);
-	dst[i] &= ~mask;
-	dst[i] |= (bmp1[i] & bmp2[i]) & mask;
+	dst[i] = (dst[i] & ~mask) | ((bmp1[i] & bmp2[i]) & mask);
 	res |= dst[i] & mask;
 
 	return res != 0;
@@ -226,8 +225,7 @@ ice_or_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 	 * within the specified size.
 	 */
 	mask = LAST_CHUNK_MASK(size);
-	dst[i] &= ~mask;
-	dst[i] |= (bmp1[i] | bmp2[i]) & mask;
+	dst[i] = (dst[i] & ~mask) | ((bmp1[i] | bmp2[i]) & mask);
 }
 
 /**
