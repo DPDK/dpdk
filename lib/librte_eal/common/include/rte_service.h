@@ -400,9 +400,6 @@ rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
 			   uint64_t *attr_value);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Reset all attribute values of a service core.
  *
  * @param lcore The service core to reset all the statistics of
