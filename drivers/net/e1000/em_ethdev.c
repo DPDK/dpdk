@@ -1000,7 +1000,7 @@ eth_em_rx_queue_intr_enable(struct rte_eth_dev *dev, __rte_unused uint16_t queue
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	em_rxq_intr_enable(hw);
-	rte_intr_enable(intr_handle);
+	rte_intr_ack(intr_handle);
 
 	return 0;
 }
@@ -1567,7 +1567,7 @@ eth_em_interrupt_action(struct rte_eth_dev *dev,
 		return -1;
 
 	intr->flags &= ~E1000_FLAG_NEED_LINK_UPDATE;
-	rte_intr_enable(intr_handle);
+	rte_intr_ack(intr_handle);
 
 	/* set get_link_status to check register later */
 	hw->mac.get_link_status = 1;

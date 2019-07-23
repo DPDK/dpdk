@@ -1412,7 +1412,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	if (hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) {
 		/* If MSI-X auto-masking is used, clear the entry */
 		rte_wmb();
-		rte_intr_enable(&pci_dev->intr_handle);
+		rte_intr_ack(&pci_dev->intr_handle);
 	} else {
 		/* Make sure all updates are written before un-masking */
 		rte_wmb();

@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Aquantia Corporation
 
+allow_experimental_apis = true
+
 sources = files(
 	'atl_rxtx.c',
 	'atl_ethdev.c',

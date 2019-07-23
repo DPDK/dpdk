@@ -2875,7 +2875,7 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev,
 	}
 
 	igb_intr_enable(dev);
-	rte_intr_enable(intr_handle);
+	rte_intr_ack(intr_handle);
 
 	if (intr->flags & E1000_FLAG_NEED_LINK_UPDATE) {
 		intr->flags &= ~E1000_FLAG_NEED_LINK_UPDATE;
@@ -2986,7 +2986,7 @@ eth_igbvf_interrupt_action(struct rte_eth_dev *dev, struct rte_intr_handle *intr
 	}
 
 	igbvf_intr_enable(dev);
-	rte_intr_enable(intr_handle);
+	rte_intr_ack(intr_handle);
 
 	return 0;
 }
@@ -5499,7 +5499,7 @@ eth_igb_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	E1000_WRITE_REG(hw, E1000_EIMS, regval | mask);
 	E1000_WRITE_FLUSH(hw);
 
-	rte_intr_enable(intr_handle);
+	rte_intr_ack(intr_handle);
 
 	return 0;
 }

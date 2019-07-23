@@ -713,7 +713,7 @@ avp_dev_interrupt_handler(void *data)
 			    status);
 
 	/* re-enable UIO interrupt handling */
-	ret = rte_intr_enable(&pci_dev->intr_handle);
+	ret = rte_intr_ack(&pci_dev->intr_handle);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to re-enable UIO interrupts, ret=%d\n",
 			    ret);

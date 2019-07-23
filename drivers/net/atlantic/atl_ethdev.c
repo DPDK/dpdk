@@ -1393,7 +1393,7 @@ atl_dev_interrupt_action(struct rte_eth_dev *dev,
 	}
 done:
 	atl_enable_intr(dev);
-	rte_intr_enable(intr_handle);
+	rte_intr_ack(intr_handle);
 
 	return 0;
 }

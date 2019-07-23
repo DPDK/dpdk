@@ -4501,7 +4501,7 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 
 	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler S[%08x]", eicr);
 	ixgbe_enable_intr(dev);
-	rte_intr_enable(intr_handle);
+	rte_intr_ack(intr_handle);
 }
 
 /**
@@ -5762,7 +5762,7 @@ ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	RTE_SET_USED(queue_id);
 	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, intr->mask);
 
-	rte_intr_enable(intr_handle);
+	rte_intr_ack(intr_handle);
 
 	return 0;
 }
@@ -5811,7 +5811,7 @@ ixgbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 		mask &= (1 << (queue_id - 32));
 		IXGBE_WRITE_REG(hw, IXGBE_EIMS_EX(1), mask);
 	}
-	rte_intr_enable(intr_handle);
+	rte_intr_ack(intr_handle);
 
 	return 0;
 }

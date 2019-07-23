@@ -79,7 +79,7 @@ sfc_intr_line_handler(void *cb_arg)
 	if (qmask & (1 << sa->mgmt_evq_index))
 		sfc_intr_handle_mgmt_evq(sa);
 
-	if (rte_intr_enable(&pci_dev->intr_handle) != 0)
+	if (rte_intr_ack(&pci_dev->intr_handle) != 0)
 		sfc_err(sa, "cannot reenable interrupts");
 
 	sfc_log_init(sa, "done");
@@ -123,7 +123,7 @@ sfc_intr_message_handler(void *cb_arg)
 
 	sfc_intr_handle_mgmt_evq(sa);
 
-	if (rte_intr_enable(&pci_dev->intr_handle) != 0)
+	if (rte_intr_ack(&pci_dev->intr_handle) != 0)
 		sfc_err(sa, "cannot reenable interrupts");
 
 	sfc_log_init(sa, "done");

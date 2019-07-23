@@ -1118,7 +1118,7 @@ ice_interrupt_handler(void *param)
 done:
 	/* Enable interrupt */
 	ice_pf_enable_irq0(hw);
-	rte_intr_enable(dev->intr_handle);
+	rte_intr_ack(dev->intr_handle);
 }
 
 /*  Initialize SW parameters of PF */
@@ -3002,7 +3002,7 @@ static int ice_rx_queue_intr_enable(struct rte_eth_dev *dev,
 	val &= ~GLINT_DYN_CTL_WB_ON_ITR_M;
 
 	ICE_WRITE_REG(hw, GLINT_DYN_CTL(msix_intr), val);
-	rte_intr_enable(&pci_dev->intr_handle);
+	rte_intr_ack(&pci_dev->intr_handle);
 
 	return 0;
 }

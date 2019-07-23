@@ -6,6 +6,8 @@ if not is_linux
 	reason = 'only supported on linux'
 endif
 
+allow_experimental_apis = true
+
 sources = files('axgbe_ethdev.c',
 		'axgbe_dev.c',
 		'axgbe_mdio.c',

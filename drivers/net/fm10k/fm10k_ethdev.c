@@ -2381,7 +2381,7 @@ fm10k_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	else
 		FM10K_WRITE_REG(hw, FM10K_VFITR(Q2V(pdev, queue_id)),
 			FM10K_ITR_AUTOMASK | FM10K_ITR_MASK_CLEAR);
-	rte_intr_enable(&pdev->intr_handle);
+	rte_intr_ack(&pdev->intr_handle);
 	return 0;
 }
 
@@ -2680,7 +2680,7 @@ fm10k_dev_interrupt_handler_pf(void *param)
 	FM10K_WRITE_REG(hw, FM10K_ITR(0), FM10K_ITR_AUTOMASK |
 					FM10K_ITR_MASK_CLEAR);
 	/* Re-enable interrupt from host side */
-	rte_intr_enable(dev->intr_handle);
+	rte_intr_ack(dev->intr_handle);
 }
 
 /**
@@ -2760,7 +2760,7 @@ fm10k_dev_interrupt_handler_vf(void *param)
 	FM10K_WRITE_REG(hw, FM10K_VFITR(0), FM10K_ITR_AUTOMASK |
 					FM10K_ITR_MASK_CLEAR);
 	/* Re-enable interrupt from host side */
-	rte_intr_enable(dev->intr_handle);
+	rte_intr_ack(dev->intr_handle);
 }
 
 /* Mailbox message handler in VF */

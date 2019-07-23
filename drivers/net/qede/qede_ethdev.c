@@ -248,8 +248,8 @@ qede_interrupt_handler_intx(void *param)
 	if (status & 0x1) {
 		qede_interrupt_action(ECORE_LEADING_HWFN(edev));
 
-		if (rte_intr_enable(eth_dev->intr_handle))
-			DP_ERR(edev, "rte_intr_enable failed\n");
+		if (rte_intr_ack(eth_dev->intr_handle))
+			DP_ERR(edev, "rte_intr_ack failed\n");
 	}
 }
 
@@ -261,8 +261,8 @@ qede_interrupt_handler(void *param)
 	struct ecore_dev *edev = &qdev->edev;
 
 	qede_interrupt_action(ECORE_LEADING_HWFN(edev));
-	if (rte_intr_enable(eth_dev->intr_handle))
-		DP_ERR(edev, "rte_intr_enable failed\n");
+	if (rte_intr_ack(eth_dev->intr_handle))
+		DP_ERR(edev, "rte_intr_ack failed\n");
 }
 
 static void

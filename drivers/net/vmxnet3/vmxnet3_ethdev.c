@@ -1426,7 +1426,7 @@ vmxnet3_interrupt_handler(void *param)
 
 	vmxnet3_process_events(dev);
 
-	if (rte_intr_enable(&pci_dev->intr_handle) < 0)
+	if (rte_intr_ack(&pci_dev->intr_handle) < 0)
 		PMD_DRV_LOG(ERR, "interrupt enable failed");
 }
 

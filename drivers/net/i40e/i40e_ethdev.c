@@ -11645,7 +11645,7 @@ i40e_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 			       I40E_PFINT_DYN_CTLN_ITR_INDX_MASK);
 
 	I40E_WRITE_FLUSH(hw);
-	rte_intr_enable(&pci_dev->intr_handle);
+	rte_intr_ack(&pci_dev->intr_handle);
 
 	return 0;
 }

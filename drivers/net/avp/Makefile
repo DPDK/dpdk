@@ -10,6 +10,7 @@ LIB = librte_pmd_avp.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_bus_pci

@@ -136,8 +136,8 @@ axgbe_dev_interrupt_handler(void *param)
 					   DMA_CH_SR, dma_ch_isr);
 		}
 	}
-	/* Enable interrupts since disabled after generation*/
-	rte_intr_enable(&pdata->pci_dev->intr_handle);
+	/* Unmask interrupts since disabled after generation */
+	rte_intr_ack(&pdata->pci_dev->intr_handle);
 }
 
 /*

@@ -1098,7 +1098,7 @@ iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	IAVF_WRITE_FLUSH(hw);
 
-	rte_intr_enable(&pci_dev->intr_handle);
+	rte_intr_ack(&pci_dev->intr_handle);
 
 	return 0;
 }
