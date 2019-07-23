@@ -1232,6 +1232,19 @@ rte_vfio_get_group_num(const char *sysfs_base,
 }
 
 static int
+type1_map_contig(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
+		size_t len, void *arg)
+{
+	int *vfio_container_fd = arg;
+
+	if (msl->external)
+		return 0;
+
+	return vfio_type1_dma_mem_map(*vfio_container_fd, ms->addr_64, ms->iova,
+			len, 1);
+}
+
+static int
 type1_map(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 		void *arg)
 {
@@ -1300,6 +1313,13 @@ vfio_type1_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 static int
 vfio_type1_dma_map(int vfio_container_fd)
 {
+	if (rte_eal_iova_mode() == RTE_IOVA_VA) {
+		/* with IOVA as VA mode, we can get away with mapping contiguous
+		 * chunks rather than going page-by-page.
+		 */
+		return rte_memseg_contig_walk(type1_map_contig,
+				&vfio_container_fd);
+	}
 	return rte_memseg_walk(type1_map, &vfio_container_fd);
 }
 
