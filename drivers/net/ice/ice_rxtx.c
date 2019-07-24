@@ -664,7 +664,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	memset(rz->addr, 0, ring_size);
 
 	rxq->rx_ring_dma = rz->iova;
-	rxq->rx_ring = (union ice_rx_desc *)rz->addr;
+	rxq->rx_ring = rz->addr;
 
 #ifdef RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC
 	len = (uint16_t)(nb_desc + ICE_RX_MAX_BURST);
@@ -882,7 +882,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
 	txq->tx_ring_dma = tz->iova;
-	txq->tx_ring = (struct ice_tx_desc *)tz->addr;
+	txq->tx_ring = tz->addr;
 
 	/* Allocate software ring */
 	txq->sw_ring =
