@@ -1019,7 +1019,7 @@ sfc_rx_mb_pool_buf_size(struct sfc_adapter *sa, struct rte_mempool *mb_pool)
 		 * Start is aligned the same or better than end,
 		 * just align length.
 		 */
-		buf_size = P2ALIGN(buf_size, nic_align_end);
+		buf_size = EFX_P2ALIGN(uint32_t, buf_size, nic_align_end);
 	}
 
 	return buf_size;
