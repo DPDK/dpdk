@@ -359,7 +359,7 @@ dpdk_test = executable('dpdk-test',
 	dependencies: test_dep_objs,
 	c_args: [cflags, '-DALLOW_EXPERIMENTAL_API'],
 	install_rpath: driver_install_path,
-	install: false)
+	install: true)
 
 # some perf tests (eg: memcpy perf autotest)take very long
 # to complete, so timeout to 10 minutes
