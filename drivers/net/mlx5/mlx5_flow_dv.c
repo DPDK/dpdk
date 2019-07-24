@@ -143,36 +143,20 @@ struct field_modify_info modify_tcp[] = {
 };
 
 static void
-mlx5_flow_tunnel_ip_check(const struct rte_flow_item *item, uint64_t *flags)
+mlx5_flow_tunnel_ip_check(const struct rte_flow_item *item __rte_unused,
+			  uint8_t next_protocol, uint64_t *item_flags,
+			  int *tunnel)
 {
-	uint8_t next_protocol = 0xFF;
-
-	if (item->mask != NULL) {
-		switch (item->type) {
-		case RTE_FLOW_ITEM_TYPE_IPV4:
-			next_protocol =
-				((const struct rte_flow_item_ipv4 *)
-				 (item->spec))->hdr.next_proto_id;
-			next_protocol &=
-				((const struct rte_flow_item_ipv4 *)
-				 (item->mask))->hdr.next_proto_id;
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6:
-			next_protocol =
-				((const struct rte_flow_item_ipv6 *)
-				 (item->spec))->hdr.proto;
-			next_protocol &=
-				((const struct rte_flow_item_ipv6 *)
-				 (item->mask))->hdr.proto;
-			break;
-		default:
-			break;
-		}
+	assert(item->type == RTE_FLOW_ITEM_TYPE_IPV4 ||
+	       item->type == RTE_FLOW_ITEM_TYPE_IPV6);
+	if (next_protocol == IPPROTO_IPIP) {
+		*item_flags |= MLX5_FLOW_LAYER_IPIP;
+		*tunnel = 1;
 	}
-	if (next_protocol == IPPROTO_IPIP)
-		*flags |= MLX5_FLOW_LAYER_IPIP;
-	if (next_protocol == IPPROTO_IPV6)
-		*flags |= MLX5_FLOW_LAYER_IPV6_ENCAP;
+	if (next_protocol == IPPROTO_IPV6) {
+		*item_flags |= MLX5_FLOW_LAYER_IPV6_ENCAP;
+		*tunnel = 1;
+	}
 }
 
 /**
@@ -2899,6 +2883,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					     MLX5_FLOW_LAYER_OUTER_VLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
+			mlx5_flow_tunnel_ip_check(items, next_protocol,
+						  &item_flags, &tunnel);
 			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
 							   NULL, error);
 			if (ret < 0)
@@ -2918,9 +2904,10 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				/* Reset for inner layer. */
 				next_protocol = 0xff;
 			}
-			mlx5_flow_tunnel_ip_check(items, &last_item);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
+			mlx5_flow_tunnel_ip_check(items, next_protocol,
+						  &item_flags, &tunnel);
 			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
 							   NULL, error);
 			if (ret < 0)
@@ -2940,7 +2927,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				/* Reset for inner layer. */
 				next_protocol = 0xff;
 			}
-			mlx5_flow_tunnel_ip_check(items, &last_item);
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = mlx5_flow_validate_item_tcp
@@ -4690,6 +4676,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	uint32_t modify_action_position = UINT32_MAX;
 	void *match_mask = matcher.mask.buf;
 	void *match_value = dev_flow->dv.value.buf;
+	uint8_t next_protocol = 0xff;
 
 	flow->group = attr->group;
 	if (attr->transfer)
@@ -5012,6 +4999,8 @@ cnt_err:
 					      MLX5_FLOW_LAYER_OUTER_VLAN);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
+			mlx5_flow_tunnel_ip_check(items, next_protocol,
+						  &item_flags, &tunnel);
 			flow_dv_translate_item_ipv4(match_mask, match_value,
 						    items, tunnel, attr->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
@@ -5022,9 +5011,23 @@ cnt_err:
 					 MLX5_IPV4_IBV_RX_HASH);
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
 					     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
-			mlx5_flow_tunnel_ip_check(items, &last_item);
+			if (items->mask != NULL &&
+			    ((const struct rte_flow_item_ipv4 *)
+			     items->mask)->hdr.next_proto_id) {
+				next_protocol =
+					((const struct rte_flow_item_ipv4 *)
+					 (items->spec))->hdr.next_proto_id;
+				next_protocol &=
+					((const struct rte_flow_item_ipv4 *)
+					 (items->mask))->hdr.next_proto_id;
+			} else {
+				/* Reset for inner layer. */
+				next_protocol = 0xff;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
+			mlx5_flow_tunnel_ip_check(items, next_protocol,
+						  &item_flags, &tunnel);
 			flow_dv_translate_item_ipv6(match_mask, match_value,
 						    items, tunnel, attr->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
@@ -5035,7 +5038,19 @@ cnt_err:
 					 MLX5_IPV6_IBV_RX_HASH);
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
 					     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
-			mlx5_flow_tunnel_ip_check(items, &last_item);
+			if (items->mask != NULL &&
+			    ((const struct rte_flow_item_ipv6 *)
+			     items->mask)->hdr.proto) {
+				next_protocol =
+					((const struct rte_flow_item_ipv6 *)
+					 items->spec)->hdr.proto;
+				next_protocol &=
+					((const struct rte_flow_item_ipv6 *)
+					 items->mask)->hdr.proto;
+			} else {
+				/* Reset for inner layer. */
+				next_protocol = 0xff;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			flow_dv_translate_item_tcp(match_mask, match_value,
