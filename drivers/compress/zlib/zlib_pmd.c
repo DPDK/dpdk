@@ -30,6 +30,7 @@ process_zlib_deflate(struct rte_comp_op *op, z_stream *strm)
 	default:
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		ZLIB_PMD_ERR("Invalid flush value\n");
+		return;
 	}
 
 	if (unlikely(!strm)) {
