@@ -14,7 +14,7 @@
 #include "testpmd.h"
 
 static inline void
-print_ether_addr(const char *what, struct rte_ether_addr *eth_addr)
+print_ether_addr(const char *what, const struct rte_ether_addr *eth_addr)
 {
 	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
@@ -26,7 +26,8 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 	      uint16_t nb_pkts, int is_rx)
 {
 	struct rte_mbuf  *mb;
-	struct rte_ether_hdr *eth_hdr;
+	const struct rte_ether_hdr *eth_hdr;
+	struct rte_ether_hdr _eth_hdr;
 	uint16_t eth_type;
 	uint64_t ol_flags;
 	uint16_t i, packet_type;
@@ -46,7 +47,7 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 	       (unsigned int) nb_pkts);
 	for (i = 0; i < nb_pkts; i++) {
 		mb = pkts[i];
-		eth_hdr = rte_pktmbuf_mtod(mb, struct rte_ether_hdr *);
+		eth_hdr = rte_pktmbuf_read(mb, 0, sizeof(_eth_hdr), &_eth_hdr);
 		eth_type = RTE_BE_TO_CPU_16(eth_hdr->ether_type);
 		ol_flags = mb->ol_flags;
 		packet_type = mb->packet_type;
