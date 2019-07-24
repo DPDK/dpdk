@@ -363,7 +363,7 @@ main(int argc, char **argv)
 
 	printf("App uses socket: %u\n", rte_socket_id());
 	printf("Burst size = %u\n", test_data->burst_sz);
-	printf("File size = %zu\n", test_data->input_data_sz);
+	printf("Input data size = %zu\n", test_data->input_data_sz);
 
 	test_data->cleanup = ST_DURING_TEST;
 	total_nb_qps = nb_compressdevs * test_data->nb_qps;
@@ -389,6 +389,8 @@ main(int argc, char **argv)
 			cdev_index++;
 		i++;
 	}
+
+	print_test_dynamics(); /* constructors must be executed first */
 
 	while (test_data->level <= test_data->level_lst.max) {
 

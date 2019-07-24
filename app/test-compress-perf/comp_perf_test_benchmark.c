@@ -329,9 +329,26 @@ cperf_benchmark_test_runner(void *test_ctx)
 	struct comp_test_data *test_data = ctx->ver.options;
 	uint32_t lcore = rte_lcore_id();
 	static rte_atomic16_t display_once = RTE_ATOMIC16_INIT(0);
+	int i, ret = EXIT_SUCCESS;
 
 	ctx->ver.mem.lcore_id = lcore;
-	int i, ret = EXIT_SUCCESS;
+
+	/*
+	 * printing information about current compression thread
+	 */
+	if (rte_atomic16_test_and_set(&ctx->ver.mem.print_info_once))
+		printf("    lcore: %u,"
+				" driver name: %s,"
+				" device name: %s,"
+				" device id: %u,"
+				" socket id: %u,"
+				" queue pair id: %u\n",
+			lcore,
+			ctx->ver.options->driver_name,
+			rte_compressdev_name_get(ctx->ver.mem.dev_id),
+			ctx->ver.mem.dev_id,
+			rte_compressdev_socket_id(ctx->ver.mem.dev_id),
+			ctx->ver.mem.qp_id);
 
 	/*
 	 * First the verification part is needed
@@ -374,7 +391,7 @@ cperf_benchmark_test_runner(void *test_ctx)
 			1000000000;
 
 	if (rte_atomic16_test_and_set(&display_once)) {
-		printf("%12s%6s%12s%17s%15s%16s\n",
+		printf("\n%12s%6s%12s%17s%15s%16s\n",
 			"lcore id", "Level", "Comp size", "Comp ratio [%]",
 			"Comp [Gbps]", "Decomp [Gbps]");
 	}

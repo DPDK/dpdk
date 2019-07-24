@@ -16,6 +16,18 @@
 
 #define DIV_CEIL(a, b)  ((a) / (b) + ((a) % (b) != 0))
 
+struct cperf_buffer_info {
+	uint16_t total_segments;
+	uint16_t segment_sz;
+	uint16_t last_segment_sz;
+	uint32_t total_buffs;	      /*number of buffers = number of ops*/
+	uint16_t segments_per_buff;
+	uint16_t segments_per_last_buff;
+	size_t input_data_sz;
+};
+
+static struct cperf_buffer_info buffer_info;
+
 int
 param_range_check(uint16_t size, const struct rte_param_log2_range *range)
 {
@@ -170,6 +182,13 @@ comp_perf_allocate_memory(struct comp_test_data *test_data,
 				" could not be allocated\n");
 		return -1;
 	}
+
+	buffer_info.total_segments = total_segs;
+	buffer_info.segment_sz = test_data->seg_sz;
+	buffer_info.total_buffs = mem->total_bufs;
+	buffer_info.segments_per_buff = test_data->max_sgl_segs;
+	buffer_info.input_data_sz = test_data->input_data_sz;
+
 	return 0;
 }
 
@@ -178,9 +197,10 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 {
 	uint32_t remaining_data = test_data->input_data_sz;
 	uint8_t *input_data_ptr = test_data->input_data;
-	size_t data_sz;
+	size_t data_sz = 0;
 	uint8_t *data_addr;
 	uint32_t i, j;
+	uint16_t segs_per_mbuf = 0;
 
 	for (i = 0; i < mem->total_bufs; i++) {
 		/* Allocate data in input mbuf and copy data from input file */
@@ -204,7 +224,7 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 		remaining_data -= data_sz;
 
 		/* Already one segment in the mbuf */
-		uint16_t segs_per_mbuf = 1;
+		segs_per_mbuf = 1;
 
 		/* Chain mbufs if needed for input mbufs */
 		while (segs_per_mbuf < test_data->max_sgl_segs
@@ -281,5 +301,75 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 		}
 	}
 
+	buffer_info.segments_per_last_buff = segs_per_mbuf;
+	buffer_info.last_segment_sz = data_sz;
+
 	return 0;
+}
+
+void
+print_test_dynamics(void)
+{
+	uint32_t opt_total_segs = DIV_CEIL(buffer_info.input_data_sz,
+			MAX_SEG_SIZE);
+
+	if (buffer_info.total_buffs > 1) {
+		printf("\nWarning: for the current input parameters, number"
+				" of ops is higher than one, which may result"
+				" in sub-optimal performance.\n");
+		printf("To improve the performance (for the current"
+				" input data) following parameters are"
+				" suggested:\n");
+		printf("	* Segment size: %d\n", MAX_SEG_SIZE);
+		printf("	* Number of segments: %u\n", opt_total_segs);
+	} else if (buffer_info.total_buffs == 1) {
+		printf("\nInfo: there is only one op with %u segments -"
+				" the compression ratio is the best.\n",
+			buffer_info.segments_per_last_buff);
+		if (buffer_info.segment_sz < MAX_SEG_SIZE)
+			printf("To reduce compression time, please use"
+					" bigger segment size: %d.\n",
+				MAX_SEG_SIZE);
+		else if (buffer_info.segment_sz == MAX_SEG_SIZE)
+			printf("Segment size is optimal for the best"
+					" performance.\n");
+	} else
+		printf("Warning: something wrong happened!!\n");
+
+	printf("\nFor the current input parameters (segment size = %u,"
+			" maximum segments per SGL = %u):\n",
+		buffer_info.segment_sz,
+		buffer_info.segments_per_buff);
+	printf("	* Total number of buffers: %d\n",
+		buffer_info.total_segments);
+	printf("	* %u buffer(s) %u bytes long, last buffer %u"
+			" byte(s) long\n",
+		buffer_info.total_segments - 1,
+		buffer_info.segment_sz,
+		buffer_info.last_segment_sz);
+	printf("	* Number of ops: %u\n", buffer_info.total_buffs);
+	printf("	* Total memory allocation: %u\n",
+		(buffer_info.total_segments - 1) * buffer_info.segment_sz
+		+ buffer_info.last_segment_sz);
+	if (buffer_info.total_buffs > 1)
+		printf("	* %u ops: %u segment(s) in each,"
+				" segment size %u\n",
+			buffer_info.total_buffs - 1,
+			buffer_info.segments_per_buff,
+			buffer_info.segment_sz);
+	if (buffer_info.segments_per_last_buff > 1) {
+		printf("	* 1 op %u segments:\n",
+				buffer_info.segments_per_last_buff);
+		printf("		o %u segment size %u\n",
+			buffer_info.segments_per_last_buff - 1,
+			buffer_info.segment_sz);
+		printf("		o last segment size %u\n",
+			buffer_info.last_segment_sz);
+	} else if (buffer_info.segments_per_last_buff == 1) {
+		printf("	* 1 op (the last one): %u segment %u"
+				" byte(s) long\n\n",
+			buffer_info.segments_per_last_buff,
+			buffer_info.last_segment_sz);
+	}
+	printf("\n");
 }

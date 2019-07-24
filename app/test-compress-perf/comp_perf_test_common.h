@@ -13,6 +13,9 @@ struct cperf_mem_resources {
 	uint8_t dev_id;
 	uint16_t qp_id;
 	uint8_t lcore_id;
+
+	rte_atomic16_t print_info_once;
+
 	uint32_t total_bufs;
 	uint8_t *compressed_data;
 	uint8_t *decompressed_data;
@@ -37,5 +40,8 @@ comp_perf_allocate_memory(struct comp_test_data *test_data,
 
 int
 prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem);
+
+void
+print_test_dynamics(void);
 
 #endif /* _COMP_PERF_TEST_COMMON_H_ */
