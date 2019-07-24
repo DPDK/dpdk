@@ -257,7 +257,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
 
 			rx_pkts[nb_rx_pkts++] = mbuf;
-		} else {
+		} else if (!BNXT_NUM_ASYNC_CPR(rxq->bp)) {
 			evt =
 			bnxt_event_hwrm_resp_handler(rxq->bp,
 						     (struct cmpl_base *)rxcmp);

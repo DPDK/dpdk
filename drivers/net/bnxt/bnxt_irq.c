@@ -22,7 +22,7 @@ static void bnxt_int_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
+	struct bnxt_cp_ring_info *cpr = bp->async_cp_ring;
 	struct cmpl_base *cmp;
 	uint32_t raw_cons;
 	uint32_t cons;
@@ -43,10 +43,13 @@ static void bnxt_int_handler(void *param)
 
 		bnxt_event_hwrm_resp_handler(bp, cmp);
 		raw_cons = NEXT_RAW_CMP(raw_cons);
-	};
+	}
 
 	cpr->cp_raw_cons = raw_cons;
-	B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
+	if (BNXT_HAS_NQ(bp))
+		bnxt_db_nq_arm(cpr);
+	else
+		B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
 }
 
 int bnxt_free_int(struct bnxt *bp)
@@ -92,19 +95,35 @@ int bnxt_free_int(struct bnxt *bp)
 
 void bnxt_disable_int(struct bnxt *bp)
 {
-	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
+	struct bnxt_cp_ring_info *cpr = bp->async_cp_ring;
+
+	if (BNXT_NUM_ASYNC_CPR(bp) == 0)
+		return;
+
+	if (!cpr || !cpr->cp_db.doorbell)
+		return;
 
 	/* Only the default completion ring */
-	if (cpr != NULL && cpr->cp_db.doorbell != NULL)
+	if (BNXT_HAS_NQ(bp))
+		bnxt_db_nq(cpr);
+	else
 		B_CP_DB_DISARM(cpr);
 }
 
 void bnxt_enable_int(struct bnxt *bp)
 {
-	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
+	struct bnxt_cp_ring_info *cpr = bp->async_cp_ring;
+
+	if (BNXT_NUM_ASYNC_CPR(bp) == 0)
+		return;
+
+	if (!cpr || !cpr->cp_db.doorbell)
+		return;
 
 	/* Only the default completion ring */
-	if (cpr != NULL && cpr->cp_db.doorbell != NULL)
+	if (BNXT_HAS_NQ(bp))
+		bnxt_db_nq_arm(cpr);
+	else
 		B_CP_DB_ARM(cpr);
 }
 
@@ -112,7 +131,7 @@ int bnxt_setup_int(struct bnxt *bp)
 {
 	uint16_t total_vecs;
 	const int len = sizeof(bp->irq_tbl[0].name);
-	int i, rc = 0;
+	int i;
 
 	/* DPDK host only supports 1 MSI-X vector */
 	total_vecs = 1;
@@ -126,14 +145,11 @@ int bnxt_setup_int(struct bnxt *bp)
 			bp->irq_tbl[i].handler = bnxt_int_handler;
 		}
 	} else {
-		rc = -ENOMEM;
-		goto setup_exit;
+		PMD_DRV_LOG(ERR, "bnxt_irq_tbl setup failed\n");
+		return -ENOMEM;
 	}
-	return 0;
 
-setup_exit:
-	PMD_DRV_LOG(ERR, "bnxt_irq_tbl setup failed\n");
-	return rc;
+	return 0;
 }
 
 int bnxt_request_int(struct bnxt *bp)

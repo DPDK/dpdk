@@ -564,7 +564,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				nb_rx_pkts++;
 			if (rc == -EBUSY)	/* partial completion */
 				break;
-		} else {
+		} else if (!BNXT_NUM_ASYNC_CPR(rxq->bp)) {
 			evt =
 			bnxt_event_hwrm_resp_handler(rxq->bp,
 						     (struct cmpl_base *)rxcmp);

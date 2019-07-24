@@ -411,10 +411,11 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -EINVAL;
 	}
 
-	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
-
 	bnxt_free_hwrm_rx_ring(bp, rx_queue_id);
-	bnxt_alloc_hwrm_rx_ring(bp, rx_queue_id);
+	rc = bnxt_alloc_hwrm_rx_ring(bp, rx_queue_id);
+	if (rc)
+		return rc;
+
 	PMD_DRV_LOG(INFO, "Rx queue started %d\n", rx_queue_id);
 
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
@@ -435,8 +436,16 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
-	if (rc == 0)
+	if (rc == 0) {
+		dev->data->rx_queue_state[rx_queue_id] =
+				RTE_ETH_QUEUE_STATE_STARTED;
 		rxq->rx_deferred_start = false;
+	}
+
+	PMD_DRV_LOG(INFO,
+		    "queue %d, rx_deferred_start %d, state %d!\n",
+		    rx_queue_id, rxq->rx_deferred_start,
+		    bp->eth_dev->data->rx_queue_state[rx_queue_id]);
 
 	return rc;
 }
@@ -449,8 +458,11 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct bnxt_rx_queue *rxq = NULL;
 	int rc = 0;
 
-	/* Rx CQ 0 also works as Default CQ for async notifications */
-	if (!rx_queue_id) {
+	/* For the stingray platform and other platforms needing tighter
+	 * control of resource utilization, Rx CQ 0 also works as
+	 * Default CQ for async notifications
+	 */
+	if (!BNXT_NUM_ASYNC_CPR(bp) && !rx_queue_id) {
 		PMD_DRV_LOG(ERR, "Cannot stop Rx queue id %d\n", rx_queue_id);
 		return -EINVAL;
 	}

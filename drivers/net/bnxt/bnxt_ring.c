@@ -5,6 +5,7 @@
 
 #include <rte_bitmap.h>
 #include <rte_memzone.h>
+#include <rte_malloc.h>
 #include <unistd.h>
 
 #include "bnxt.h"
@@ -369,6 +370,7 @@ static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 {
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 	uint32_t nq_ring_id = HWRM_NA_SIGNATURE;
+	int cp_ring_index = queue_index + BNXT_NUM_ASYNC_CPR(bp);
 	uint8_t ring_type;
 	int rc = 0;
 
@@ -383,13 +385,13 @@ static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 		}
 	}
 
-	rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, queue_index,
+	rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, cp_ring_index,
 				  HWRM_NA_SIGNATURE, nq_ring_id);
 	if (rc)
 		return rc;
 
 	cpr->cp_cons = 0;
-	bnxt_set_db(bp, &cpr->cp_db, ring_type, queue_index,
+	bnxt_set_db(bp, &cpr->cp_db, ring_type, cp_ring_index,
 		    cp_ring->fw_ring_id);
 	bnxt_db_cq(cpr);
 
@@ -400,6 +402,7 @@ static int bnxt_alloc_nq_ring(struct bnxt *bp, int queue_index,
 			      struct bnxt_cp_ring_info *nqr)
 {
 	struct bnxt_ring *nq_ring = nqr->cp_ring_struct;
+	int nq_ring_index = queue_index + BNXT_NUM_ASYNC_CPR(bp);
 	uint8_t ring_type;
 	int rc = 0;
 
@@ -408,12 +411,12 @@ static int bnxt_alloc_nq_ring(struct bnxt *bp, int queue_index,
 
 	ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_NQ;
 
-	rc = bnxt_hwrm_ring_alloc(bp, nq_ring, ring_type, queue_index,
+	rc = bnxt_hwrm_ring_alloc(bp, nq_ring, ring_type, nq_ring_index,
 				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE);
 	if (rc)
 		return rc;
 
-	bnxt_set_db(bp, &nqr->cp_db, ring_type, queue_index,
+	bnxt_set_db(bp, &nqr->cp_db, ring_type, nq_ring_index,
 		    nq_ring->fw_ring_id);
 	bnxt_db_nq(nqr);
 
@@ -490,14 +493,16 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 	struct bnxt_cp_ring_info *nqr = rxq->nq_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	int rc = 0;
+	int rc;
 
 	if (BNXT_HAS_NQ(bp)) {
-		if (bnxt_alloc_nq_ring(bp, queue_index, nqr))
+		rc = bnxt_alloc_nq_ring(bp, queue_index, nqr);
+		if (rc)
 			goto err_out;
 	}
 
-	if (bnxt_alloc_cmpl_ring(bp, queue_index, cpr, nqr))
+	rc = bnxt_alloc_cmpl_ring(bp, queue_index, cpr, nqr);
+	if (rc)
 		goto err_out;
 
 	if (BNXT_HAS_RING_GRPS(bp)) {
@@ -505,22 +510,24 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 		bp->grp_info[queue_index].cp_fw_ring_id = cp_ring->fw_ring_id;
 	}
 
-	if (!queue_index) {
+	if (!BNXT_NUM_ASYNC_CPR(bp) && !queue_index) {
 		/*
-		 * In order to save completion resources, use the first
-		 * completion ring from PF or VF as the default completion ring
-		 * for async event and HWRM forward response handling.
+		 * If a dedicated async event completion ring is not enabled,
+		 * use the first completion ring from PF or VF as the default
+		 * completion ring for async event handling.
 		 */
-		bp->def_cp_ring = cpr;
+		bp->async_cp_ring = cpr;
 		rc = bnxt_hwrm_set_async_event_cr(bp);
 		if (rc)
 			goto err_out;
 	}
 
-	if (bnxt_alloc_rx_ring(bp, queue_index))
+	rc = bnxt_alloc_rx_ring(bp, queue_index);
+	if (rc)
 		goto err_out;
 
-	if (bnxt_alloc_rx_agg_ring(bp, queue_index))
+	rc = bnxt_alloc_rx_agg_ring(bp, queue_index);
+	if (rc)
 		goto err_out;
 
 	rxq->rx_buf_use_size = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
@@ -539,12 +546,13 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 		bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
 	}
 	rxq->index = queue_index;
-	PMD_DRV_LOG(INFO,
-		    "queue %d, rx_deferred_start %d, state %d!\n",
-		    queue_index, rxq->rx_deferred_start,
-		    bp->eth_dev->data->rx_queue_state[queue_index]);
+
+	return 0;
 
 err_out:
+	PMD_DRV_LOG(ERR,
+		    "Failed to allocate receive queue %d, rc %d.\n",
+		    queue_index, rc);
 	return rc;
 }
 
@@ -583,15 +591,13 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		}
 
 		bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
-
-		if (!i) {
+		if (!BNXT_NUM_ASYNC_CPR(bp) && !i) {
 			/*
-			 * In order to save completion resource, use the first
-			 * completion ring from PF or VF as the default
-			 * completion ring for async event & HWRM
-			 * forward response handling.
+			 * If a dedicated async event completion ring is not
+			 * enabled, use the first completion ring as the default
+			 * completion ring for async event handling.
 			 */
-			bp->def_cp_ring = cpr;
+			bp->async_cp_ring = cpr;
 			rc = bnxt_hwrm_set_async_event_cr(bp);
 			if (rc)
 				goto err_out;
@@ -651,4 +657,99 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 
 err_out:
 	return rc;
+}
+
+/* Allocate dedicated async completion ring. */
+int bnxt_alloc_async_cp_ring(struct bnxt *bp)
+{
+	struct bnxt_cp_ring_info *cpr = bp->async_cp_ring;
+	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
+	uint8_t ring_type;
+	int rc;
+
+	if (BNXT_NUM_ASYNC_CPR(bp) == 0)
+		return 0;
+
+	if (BNXT_HAS_NQ(bp))
+		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_NQ;
+	else
+		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL;
+
+	rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, 0,
+				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE);
+
+	if (rc)
+		return rc;
+
+	cpr->cp_cons = 0;
+	cpr->valid = 0;
+	bnxt_set_db(bp, &cpr->cp_db, ring_type, 0,
+		    cp_ring->fw_ring_id);
+
+	if (BNXT_HAS_NQ(bp))
+		bnxt_db_nq(cpr);
+	else
+		bnxt_db_cq(cpr);
+
+	return bnxt_hwrm_set_async_event_cr(bp);
+}
+
+/* Free dedicated async completion ring. */
+void bnxt_free_async_cp_ring(struct bnxt *bp)
+{
+	struct bnxt_cp_ring_info *cpr = bp->async_cp_ring;
+
+	if (BNXT_NUM_ASYNC_CPR(bp) == 0 || cpr == NULL)
+		return;
+
+	if (BNXT_HAS_NQ(bp))
+		bnxt_free_nq_ring(bp, cpr);
+	else
+		bnxt_free_cp_ring(bp, cpr);
+
+	bnxt_free_ring(cpr->cp_ring_struct);
+	rte_free(cpr->cp_ring_struct);
+	cpr->cp_ring_struct = NULL;
+	rte_free(cpr);
+	bp->async_cp_ring = NULL;
+}
+
+int bnxt_alloc_async_ring_struct(struct bnxt *bp)
+{
+	struct bnxt_cp_ring_info *cpr = NULL;
+	struct bnxt_ring *ring = NULL;
+	unsigned int socket_id;
+
+	if (BNXT_NUM_ASYNC_CPR(bp) == 0)
+		return 0;
+
+	socket_id = rte_lcore_to_socket_id(rte_get_master_lcore());
+
+	cpr = rte_zmalloc_socket("cpr",
+				 sizeof(struct bnxt_cp_ring_info),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (cpr == NULL)
+		return -ENOMEM;
+
+	ring = rte_zmalloc_socket("bnxt_cp_ring_struct",
+				  sizeof(struct bnxt_ring),
+				  RTE_CACHE_LINE_SIZE, socket_id);
+	if (ring == NULL) {
+		rte_free(cpr);
+		return -ENOMEM;
+	}
+
+	ring->bd = (void *)cpr->cp_desc_ring;
+	ring->bd_dma = cpr->cp_desc_mapping;
+	ring->ring_size = rte_align32pow2(DEFAULT_CP_RING_SIZE);
+	ring->ring_mask = ring->ring_size - 1;
+	ring->vmem_size = 0;
+	ring->vmem = NULL;
+
+	bp->async_cp_ring = cpr;
+	cpr->cp_ring_struct = ring;
+
+	return bnxt_alloc_rings(bp, 0, NULL, NULL,
+				bp->async_cp_ring, NULL,
+				"def_cp");
 }

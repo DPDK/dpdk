@@ -737,9 +737,12 @@ int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp, bool test)
 	req.num_tx_rings = rte_cpu_to_le_16(bp->tx_nr_rings);
 	req.num_rx_rings = rte_cpu_to_le_16(bp->rx_nr_rings *
 					    AGG_RING_MULTIPLIER);
-	req.num_stat_ctxs = rte_cpu_to_le_16(bp->rx_nr_rings + bp->tx_nr_rings);
+	req.num_stat_ctxs = rte_cpu_to_le_16(bp->rx_nr_rings +
+					     bp->tx_nr_rings +
+					     BNXT_NUM_ASYNC_CPR(bp));
 	req.num_cmpl_rings = rte_cpu_to_le_16(bp->rx_nr_rings +
-					      bp->tx_nr_rings);
+					      bp->tx_nr_rings +
+					      BNXT_NUM_ASYNC_CPR(bp));
 	req.num_vnics = rte_cpu_to_le_16(bp->rx_nr_rings);
 	if (bp->vf_resv_strategy ==
 	    HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESV_STRATEGY_MINIMAL_STATIC) {
@@ -2073,7 +2076,7 @@ int bnxt_free_all_hwrm_ring_grps(struct bnxt *bp)
 	return rc;
 }
 
-static void bnxt_free_nq_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
+void bnxt_free_nq_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 {
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 
@@ -2083,9 +2086,10 @@ static void bnxt_free_nq_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	memset(cpr->cp_desc_ring, 0, cpr->cp_ring_struct->ring_size *
 				     sizeof(*cpr->cp_desc_ring));
 	cpr->cp_raw_cons = 0;
+	cpr->valid = 0;
 }
 
-static void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
+void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 {
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 
@@ -3212,7 +3216,7 @@ int bnxt_hwrm_func_cfg_def_cp(struct bnxt *bp)
 	req.enables = rte_cpu_to_le_32(
 			HWRM_FUNC_CFG_INPUT_ENABLES_ASYNC_EVENT_CR);
 	req.async_event_cr = rte_cpu_to_le_16(
-			bp->def_cp_ring->cp_ring_struct->fw_ring_id);
+			bp->async_cp_ring->cp_ring_struct->fw_ring_id);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
@@ -3232,7 +3236,7 @@ int bnxt_hwrm_vf_func_cfg_def_cp(struct bnxt *bp)
 	req.enables = rte_cpu_to_le_32(
 			HWRM_FUNC_VF_CFG_INPUT_ENABLES_ASYNC_EVENT_CR);
 	req.async_event_cr = rte_cpu_to_le_16(
-			bp->def_cp_ring->cp_ring_struct->fw_ring_id);
+			bp->async_cp_ring->cp_ring_struct->fw_ring_id);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();

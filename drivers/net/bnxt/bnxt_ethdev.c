@@ -200,11 +200,16 @@ static void bnxt_free_mem(struct bnxt *bp)
 	bnxt_free_stats(bp);
 	bnxt_free_tx_rings(bp);
 	bnxt_free_rx_rings(bp);
+	bnxt_free_async_cp_ring(bp);
 }
 
 static int bnxt_alloc_mem(struct bnxt *bp)
 {
 	int rc;
+
+	rc = bnxt_alloc_async_ring_struct(bp);
+	if (rc)
+		goto alloc_mem_err;
 
 	rc = bnxt_alloc_vnic_mem(bp);
 	if (rc)
@@ -215,6 +220,10 @@ static int bnxt_alloc_mem(struct bnxt *bp)
 		goto alloc_mem_err;
 
 	rc = bnxt_alloc_filter_mem(bp);
+	if (rc)
+		goto alloc_mem_err;
+
+	rc = bnxt_alloc_async_cp_ring(bp);
 	if (rc)
 		goto alloc_mem_err;
 
@@ -617,8 +626,8 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	/* Inherit new configurations */
 	if (eth_dev->data->nb_rx_queues > bp->max_rx_rings ||
 	    eth_dev->data->nb_tx_queues > bp->max_tx_rings ||
-	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues >
-	    bp->max_cp_rings ||
+	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues
+		+ BNXT_NUM_ASYNC_CPR(bp) > bp->max_cp_rings ||
 	    eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues >
 	    bp->max_stat_ctx)
 		goto resource_error;
@@ -3801,6 +3810,12 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	    pci_dev->id.device_id == BROADCOM_DEV_ID_57500_VF1 ||
 	    pci_dev->id.device_id == BROADCOM_DEV_ID_57500_VF2)
 		bp->flags |= BNXT_FLAG_THOR_CHIP;
+
+	if (pci_dev->id.device_id == BROADCOM_DEV_ID_58802 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_58804 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_58808 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_58802_VF)
+		bp->flags |= BNXT_FLAG_STINGRAY;
 
 	rc = bnxt_init_board(eth_dev);
 	if (rc) {

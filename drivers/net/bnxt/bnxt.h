@@ -33,6 +33,12 @@
 #define BNXT_MAX_RX_RING_DESC	8192
 #define BNXT_DB_SIZE		0x80
 
+#ifdef RTE_ARCH_ARM64
+#define BNXT_NUM_ASYNC_CPR(bp) (BNXT_STINGRAY(bp) ? 0 : 1)
+#else
+#define BNXT_NUM_ASYNC_CPR(bp) 1
+#endif
+
 /* Chimp Communication Channel */
 #define GRCPF_REG_CHIMP_CHANNEL_OFFSET		0x0
 #define GRCPF_REG_CHIMP_COMM_TRIGGER		0x100
@@ -351,6 +357,7 @@ struct bnxt {
 #define BNXT_FLAG_TRUSTED_VF_EN	(1 << 11)
 #define BNXT_FLAG_DFLT_VNIC_SET	(1 << 12)
 #define BNXT_FLAG_THOR_CHIP	(1 << 13)
+#define BNXT_FLAG_STINGRAY	(1 << 14)
 #define BNXT_FLAG_EXT_STATS_SUPPORTED	(1 << 29)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1U << 31)
@@ -363,6 +370,7 @@ struct bnxt {
 #define BNXT_USE_KONG(bp)	((bp)->flags & BNXT_FLAG_KONG_MB_EN)
 #define BNXT_VF_IS_TRUSTED(bp)	((bp)->flags & BNXT_FLAG_TRUSTED_VF_EN)
 #define BNXT_CHIP_THOR(bp)	((bp)->flags & BNXT_FLAG_THOR_CHIP)
+#define BNXT_STINGRAY(bp)	((bp)->flags & BNXT_FLAG_STINGRAY)
 #define BNXT_HAS_NQ(bp)		BNXT_CHIP_THOR(bp)
 #define BNXT_HAS_RING_GRPS(bp)	(!BNXT_CHIP_THOR(bp))
 
@@ -387,7 +395,7 @@ struct bnxt {
 	uint16_t		fw_tx_port_stats_ext_size;
 
 	/* Default completion ring */
-	struct bnxt_cp_ring_info	*def_cp_ring;
+	struct bnxt_cp_ring_info	*async_cp_ring;
 	uint32_t		max_ring_grps;
 	struct bnxt_ring_grp_info	*grp_info;
 

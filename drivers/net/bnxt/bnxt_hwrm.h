@@ -119,6 +119,8 @@ int bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp);
 int bnxt_free_all_hwrm_rings(struct bnxt *bp);
 int bnxt_free_all_hwrm_ring_grps(struct bnxt *bp);
 int bnxt_alloc_all_hwrm_ring_grps(struct bnxt *bp);
+void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
+void bnxt_free_nq_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
 int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_clear_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 void bnxt_free_all_hwrm_resources(struct bnxt *bp);
