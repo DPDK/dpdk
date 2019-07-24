@@ -3,7 +3,6 @@
  */
 
 #include <stdio.h>
-#include <stdbool.h>
 #include <rte_pause.h>
 #include <rte_rcu_qsbr.h>
 #include <rte_hash.h>
