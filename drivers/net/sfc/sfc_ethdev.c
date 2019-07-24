@@ -937,7 +937,7 @@ sfc_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	if (pdu > EFX_MAC_PDU_MAX) {
 		sfc_err(sa, "too big MTU %u (PDU size %u greater than max %u)",
 			(unsigned int)mtu, (unsigned int)pdu,
-			EFX_MAC_PDU_MAX);
+			(unsigned int)EFX_MAC_PDU_MAX);
 		goto fail_inval;
 	}
 

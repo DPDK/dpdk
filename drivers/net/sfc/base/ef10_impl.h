@@ -1439,10 +1439,11 @@ ef10_proxy_auth_get_privilege_mask(
 #define	EFX_RX_PACKED_STREAM_RX_PREFIX_SIZE 8
 
 /* Minimum space for packet in packed stream mode */
-#define	EFX_RX_PACKED_STREAM_MIN_PACKET_SPACE		     \
-	P2ROUNDUP(EFX_RX_PACKED_STREAM_RX_PREFIX_SIZE +	     \
-	    EFX_MAC_PDU_MIN +				     \
-	    EFX_RX_PACKED_STREAM_ALIGNMENT,		     \
+#define	EFX_RX_PACKED_STREAM_MIN_PACKET_SPACE		\
+	EFX_P2ROUNDUP(size_t,				\
+	    EFX_RX_PACKED_STREAM_RX_PREFIX_SIZE +	\
+	    EFX_MAC_PDU_MIN +				\
+	    EFX_RX_PACKED_STREAM_ALIGNMENT,		\
 	    EFX_RX_PACKED_STREAM_ALIGNMENT)
 
 /* Maximum number of credits */
