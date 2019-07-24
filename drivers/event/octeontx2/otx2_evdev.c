@@ -1404,7 +1404,12 @@ sso_xae_reconfigure(struct rte_eventdev *event_dev)
 
 	prev_xaq_pool = dev->xaq_pool;
 	dev->xaq_pool = NULL;
-	sso_xaq_allocate(dev);
+	rc = sso_xaq_allocate(dev);
+	if (rc < 0) {
+		otx2_err("Failed to alloc xaq pool %d", rc);
+		rte_mempool_free(prev_xaq_pool);
+		return rc;
+	}
 	rc = sso_ggrp_alloc_xaq(dev);
 	if (rc < 0) {
 		otx2_err("Failed to alloc xaq to ggrp %d", rc);
@@ -1517,6 +1522,7 @@ parse_queue_param(char *value, void *opaque)
 	uint8_t *val = (uint8_t *)&queue_qos;
 	struct otx2_sso_evdev *dev = opaque;
 	char *tok = strtok(value, "-");
+	struct otx2_sso_qos *old_ptr;
 
 	if (!strlen(value))
 		return;
@@ -1533,9 +1539,15 @@ parse_queue_param(char *value, void *opaque)
 	}
 
 	dev->qos_queue_cnt++;
+	old_ptr = dev->qos_parse_data;
 	dev->qos_parse_data = rte_realloc(dev->qos_parse_data,
 					  sizeof(struct otx2_sso_qos) *
 					  dev->qos_queue_cnt, 0);
+	if (dev->qos_parse_data == NULL) {
+		dev->qos_parse_data = old_ptr;
+		dev->qos_queue_cnt--;
+		return;
+	}
 	dev->qos_parse_data[dev->qos_queue_cnt - 1] = queue_qos;
 }
 
@@ -1553,7 +1565,7 @@ parse_qos_list(const char *value, void *opaque)
 		else if (*s == ']')
 			end = s;
 
-		if (start < end && *start) {
+		if (start && start < end) {
 			*end = 0;
 			parse_queue_param(start + 1, opaque);
 			s = end;

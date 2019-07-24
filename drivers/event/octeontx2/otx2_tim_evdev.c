@@ -549,6 +549,7 @@ tim_parse_ring_param(char *value, void *opaque)
 	struct otx2_tim_evdev *dev = opaque;
 	struct otx2_tim_ctl ring_ctl = {0};
 	char *tok = strtok(value, "-");
+	struct otx2_tim_ctl *old_ptr;
 	uint16_t *val;
 
 	val = (uint16_t *)&ring_ctl;
@@ -569,8 +570,16 @@ tim_parse_ring_param(char *value, void *opaque)
 	}
 
 	dev->ring_ctl_cnt++;
+	old_ptr = dev->ring_ctl_data;
 	dev->ring_ctl_data = rte_realloc(dev->ring_ctl_data,
-			sizeof(struct otx2_tim_ctl), 0);
+					 sizeof(struct otx2_tim_ctl) *
+					 dev->ring_ctl_cnt, 0);
+	if (dev->ring_ctl_data == NULL) {
+		dev->ring_ctl_data = old_ptr;
+		dev->ring_ctl_cnt--;
+		return;
+	}
+
 	dev->ring_ctl_data[dev->ring_ctl_cnt - 1] = ring_ctl;
 }
 
@@ -588,7 +597,7 @@ tim_parse_ring_ctl_list(const char *value, void *opaque)
 		else if (*s == ']')
 			end = s;
 
-		if (start < end && *start) {
+		if (start && start < end) {
 			*end = 0;
 			tim_parse_ring_param(start + 1, opaque);
 			start = end;
@@ -635,6 +644,8 @@ tim_parse_devargs(struct rte_devargs *devargs, struct otx2_tim_evdev *dev)
 			   &dev->min_ring_cnt);
 	rte_kvargs_process(kvlist, OTX2_TIM_RING_CTL,
 			   &tim_parse_kvargs_dict, &dev);
+
+	rte_kvargs_free(kvlist);
 }
 
 void

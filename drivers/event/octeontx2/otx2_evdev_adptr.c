@@ -203,6 +203,7 @@ sso_updt_xae_cnt(struct otx2_sso_evdev *dev, void *data, uint32_t event_type)
 	{
 		struct otx2_eth_rxq *rxq = data;
 		int i, match = false;
+		uint64_t *old_ptr;
 
 		for (i = 0; i < dev->rx_adptr_pool_cnt; i++) {
 			if ((uint64_t)rxq->pool == dev->rx_adptr_pools[i])
@@ -211,10 +212,17 @@ sso_updt_xae_cnt(struct otx2_sso_evdev *dev, void *data, uint32_t event_type)
 
 		if (!match) {
 			dev->rx_adptr_pool_cnt++;
+			old_ptr = dev->rx_adptr_pools;
 			dev->rx_adptr_pools = rte_realloc(dev->rx_adptr_pools,
 							  sizeof(uint64_t) *
 							  dev->rx_adptr_pool_cnt
 							  , 0);
+			if (dev->rx_adptr_pools == NULL) {
+				dev->adptr_xae_cnt += rxq->pool->size;
+				dev->rx_adptr_pools = old_ptr;
+				dev->rx_adptr_pool_cnt--;
+				return;
+			}
 			dev->rx_adptr_pools[dev->rx_adptr_pool_cnt - 1] =
 				(uint64_t)rxq->pool;
 
