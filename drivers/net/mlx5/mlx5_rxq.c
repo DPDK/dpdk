@@ -1242,6 +1242,7 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 			goto error;
 		rxq_ctrl->dbr_offset = dbr_offset;
 		rxq_ctrl->dbr_umem_id = dbr_page->umem->umem_id;
+		rxq_ctrl->dbr_umem_id_valid = 1;
 		rxq_data->rq_db = (uint32_t *)((uintptr_t)dbr_page->dbrs +
 					       (uintptr_t)rxq_ctrl->dbr_offset);
 	}
@@ -1829,8 +1830,9 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (rxq_ctrl->obj && !mlx5_rxq_obj_release(rxq_ctrl->obj))
 		rxq_ctrl->obj = NULL;
 	if (rte_atomic32_dec_and_test(&rxq_ctrl->refcnt)) {
-		claim_zero(mlx5_release_dbr(dev, rxq_ctrl->dbr_umem_id,
-					    rxq_ctrl->dbr_offset));
+		if (rxq_ctrl->dbr_umem_id_valid)
+			claim_zero(mlx5_release_dbr(dev, rxq_ctrl->dbr_umem_id,
+						    rxq_ctrl->dbr_offset));
 		mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
 		LIST_REMOVE(rxq_ctrl, next);
 		rte_free(rxq_ctrl);

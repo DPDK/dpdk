@@ -1460,6 +1460,7 @@ mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id, uint64_t offset)
 		rte_free(page);
 	} else {
 		/* Mark in bitmap that this door-bell is not in use. */
+		offset /= MLX5_DBR_SIZE;
 		int i = offset / 64;
 		int j = offset % 64;
 
