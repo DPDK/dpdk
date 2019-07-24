@@ -8,12 +8,24 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define FREQ_WINDOW_SIZE 32
+
+enum {
+	FREQ_UNKNOWN,
+	FREQ_MIN,
+	FREQ_MAX
+};
+
 struct core_details {
 	uint64_t last_branches;
 	uint64_t last_branch_misses;
 	uint16_t global_enabled_cpus;
 	uint16_t oob_enabled;
 	int msr_fd;
+	uint16_t freq_directions[FREQ_WINDOW_SIZE];
+	uint16_t freq_window_idx;
+	uint16_t freq_state;
 };
 
 struct core_info {

@@ -39,6 +39,7 @@ apply_policy(int core)
 	int64_t hits_diff, miss_diff;
 	float ratio;
 	int ret;
+	int freq_window_idx, up_count = 0, i;
 
 	g_active = 0;
 	ci = get_core_info();
@@ -101,10 +102,37 @@ apply_policy(int core)
 
 	ratio = (float)miss_diff * (float)100 / (float)hits_diff;
 
-	if (ratio < ci->branch_ratio_threshold)
-		power_manager_scale_core_min(core);
+	/*
+	 * Store the last few directions that the ratio indicates
+	 * we should take. If there's on 'up', then we scale up
+	 * quickly. If all indicate 'down', only then do we scale
+	 * down. Each core_details struct has it's own array.
+	 */
+	freq_window_idx = ci->cd[core].freq_window_idx;
+	if (ratio > ci->branch_ratio_threshold)
+		ci->cd[core].freq_directions[freq_window_idx] = 1;
 	else
-		power_manager_scale_core_max(core);
+		ci->cd[core].freq_directions[freq_window_idx] = 0;
+
+	freq_window_idx++;
+	freq_window_idx = freq_window_idx & (FREQ_WINDOW_SIZE-1);
+	ci->cd[core].freq_window_idx = freq_window_idx;
+
+	up_count = 0;
+	for (i = 0; i < FREQ_WINDOW_SIZE; i++)
+		up_count +=  ci->cd[core].freq_directions[i];
+
+	if (up_count == 0) {
+		if (ci->cd[core].freq_state != FREQ_MIN) {
+			power_manager_scale_core_min(core);
+			ci->cd[core].freq_state = FREQ_MIN;
+		}
+	} else {
+		if (ci->cd[core].freq_state != FREQ_MAX) {
+			power_manager_scale_core_max(core);
+			ci->cd[core].freq_state = FREQ_MAX;
+		}
+	}
 
 	g_active = 1;
 	return ratio;
