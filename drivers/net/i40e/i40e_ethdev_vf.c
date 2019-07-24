@@ -140,6 +140,8 @@ static int
 i40evf_set_mc_addr_list(struct rte_eth_dev *dev,
 			struct rte_ether_addr *mc_addr_set,
 			uint32_t nb_mc_addr);
+static void
+i40evf_dev_alarm_handler(void *param);
 
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_VFQF_HKEY_MAX_INDEX + 1];
@@ -1051,10 +1053,14 @@ i40evf_request_queues(struct rte_eth_dev *dev, uint16_t num)
 	args.in_args_size = sizeof(vfres);
 	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
+
+	rte_eal_alarm_cancel(i40evf_dev_alarm_handler, dev);
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command OP_REQUEST_QUEUES");
 
+	rte_eal_alarm_set(I40EVF_ALARM_INTERVAL,
+			  i40evf_dev_alarm_handler, dev);
 	return err;
 }
 
