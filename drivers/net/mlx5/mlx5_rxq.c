@@ -573,8 +573,10 @@ rxq_release_rq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
 		rte_free((void *)(uintptr_t)rxq_ctrl->rxq.wqes);
 		rxq_ctrl->rxq.wqes = NULL;
 	}
-	if (rxq_ctrl->wq_umem)
+	if (rxq_ctrl->wq_umem) {
 		mlx5_glue->devx_umem_dereg(rxq_ctrl->wq_umem);
+		rxq_ctrl->wq_umem = NULL;
+	}
 }
 
 /**
