@@ -69,10 +69,6 @@ enum {
 	OPT_IOVA_MODE_NUM,
 #define OPT_MATCH_ALLOCATIONS  "match-allocations"
 	OPT_MATCH_ALLOCATIONS_NUM,
-#ifdef RTE_LIBRTE_TELEMETRY
-	#define OPT_TELEMETRY          "telemetry"
-		OPT_TELEMETRY_NUM,
-#endif
 	OPT_LONG_MAX_NUM
 };
 

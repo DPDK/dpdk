@@ -81,9 +81,6 @@ eal_long_options[] = {
 	{OPT_LEGACY_MEM,        0, NULL, OPT_LEGACY_MEM_NUM       },
 	{OPT_SINGLE_FILE_SEGMENTS, 0, NULL, OPT_SINGLE_FILE_SEGMENTS_NUM},
 	{OPT_MATCH_ALLOCATIONS, 0, NULL, OPT_MATCH_ALLOCATIONS_NUM},
-#ifdef RTE_LIBRTE_TELEMETRY
-	{OPT_TELEMETRY,         0, NULL, OPT_TELEMETRY_NUM        },
-#endif
 	{0,                     0, NULL, 0                        }
 };
 
