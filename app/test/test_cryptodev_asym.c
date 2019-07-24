@@ -710,9 +710,10 @@ static int
 testsuite_setup(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t valid_devs[RTE_CRYPTO_MAX_DEVS];
 	struct rte_cryptodev_info info;
-	uint32_t i = 0, nb_devs, dev_id;
-	int ret;
+	int ret, dev_id = -1;
+	uint32_t i, nb_devs;
 	uint16_t qp_id;
 
 	memset(ts_params, 0, sizeof(*ts_params));
@@ -748,35 +749,35 @@ testsuite_setup(void)
 		}
 	}
 
-	nb_devs = rte_cryptodev_count();
+	/* Get list of valid crypto devs */
+	nb_devs = rte_cryptodev_devices_get(
+				rte_cryptodev_driver_name_get(gbl_driver_id),
+				valid_devs, RTE_CRYPTO_MAX_DEVS);
 	if (nb_devs < 1) {
 		RTE_LOG(ERR, USER1, "No crypto devices found?\n");
 		return TEST_FAILED;
 	}
 
-	/* Create list of valid crypto devs */
-	for (i = 0; i < nb_devs; i++) {
-		rte_cryptodev_info_get(i, &info);
-		if (info.driver_id == gbl_driver_id)
-			ts_params->valid_devs[ts_params->valid_dev_count++] = i;
+	/*
+	 * Get first valid asymmetric device found in test suite param and
+	 * break
+	 */
+	for (i = 0; i < nb_devs ; i++) {
+		rte_cryptodev_info_get(valid_devs[i], &info);
+		if (info.feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
+			dev_id = ts_params->valid_devs[0] = valid_devs[i];
+			break;
+		}
 	}
 
-	if (ts_params->valid_dev_count < 1)
-		return TEST_FAILED;
-
-	/* Set up all the qps on the first of the valid devices found */
-
-	dev_id = ts_params->valid_devs[0];
-
-	rte_cryptodev_info_get(dev_id, &info);
-
-	/* check if device support asymmetric, skip if not */
-	if (!(info.feature_flags &
-				RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO)) {
+	if (dev_id == -1) {
 		RTE_LOG(ERR, USER1, "Device doesn't support asymmetric. "
-				"Test Skipped.\n");
+			"Test skipped.\n");
 		return TEST_FAILED;
 	}
+
+	/* Set valid device count */
+	ts_params->valid_dev_count = nb_devs;
 
 	/* configure device with num qp */
 	ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
