@@ -60,6 +60,8 @@ misc_devices = [intel_ioat_bdw, intel_ioat_skx, intel_ntb_skx, octeontx2_dma]
 devices = {}
 # list of supported DPDK drivers
 dpdk_drivers = ["igb_uio", "vfio-pci", "uio_pci_generic"]
+# list of currently loaded kernel modules
+loaded_modules = None
 
 # command-line arg flags
 b_flag = None
@@ -146,6 +148,28 @@ def check_output(args, stderr=None):
     return subprocess.Popen(args, stdout=subprocess.PIPE,
                             stderr=stderr).communicate()[0]
 
+# check if a specific kernel module is loaded
+def module_is_loaded(module):
+    global loaded_modules
+
+    if loaded_modules:
+        return module in loaded_modules
+
+    # Get list of sysfs modules (both built-in and dynamically loaded)
+    sysfs_path = '/sys/module/'
+
+    # Get the list of directories in sysfs_path
+    sysfs_mods = [m for m in os.listdir(sysfs_path)
+                  if os.path.isdir(os.path.join(sysfs_path, m))]
+
+    # special case for vfio_pci (module is named vfio-pci,
+    # but its .ko is named vfio_pci)
+    sysfs_mods = [a if a != 'vfio_pci' else 'vfio-pci' for a in sysfs_mods]
+
+    loaded_modules = sysfs_mods
+
+    return module in sysfs_mods
+
 
 def check_modules():
     '''Checks that igb_uio is loaded'''
@@ -155,35 +179,13 @@ def check_modules():
     mods = [{"Name": driver, "Found": False} for driver in dpdk_drivers]
 
     # first check if module is loaded
-    try:
-        # Get list of sysfs modules (both built-in and dynamically loaded)
-        sysfs_path = '/sys/module/'
-
-        # Get the list of directories in sysfs_path
-        sysfs_mods = [os.path.join(sysfs_path, o) for o
-                      in os.listdir(sysfs_path)
-                      if os.path.isdir(os.path.join(sysfs_path, o))]
-
-        # Extract the last element of '/sys/module/abc' in the array
-        sysfs_mods = [a.split('/')[-1] for a in sysfs_mods]
-
-        # special case for vfio_pci (module is named vfio-pci,
-        # but its .ko is named vfio_pci)
-        sysfs_mods = [a if a != 'vfio_pci' else 'vfio-pci' for a in sysfs_mods]
-
-        for mod in mods:
-            if mod["Name"] in sysfs_mods:
-                mod["Found"] = True
-    except:
-        pass
+    for mod in mods:
+        if module_is_loaded(mod["Name"]):
+            mod["Found"] = True
 
     # check if we have at least one loaded module
     if True not in [mod["Found"] for mod in mods] and b_flag is not None:
-        if b_flag in dpdk_drivers:
-            print("Error - no supported modules(DPDK driver) are loaded")
-            sys.exit(1)
-        else:
-            print("Warning - no supported modules(DPDK driver) are loaded")
+        print("Warning: no supported DPDK kernel modules are loaded")
 
     # change DPDK driver list to only contain drivers that are loaded
     dpdk_drivers = [mod["Name"] for mod in mods if mod["Found"]]
@@ -518,6 +520,10 @@ def bind_all(dev_list, driver, force=False):
     except ValueError:
         # driver generated error - it's not a valid device ID, so all is well
         pass
+
+    # check if we're attempting to bind to a driver that isn't loaded
+    if not module_is_loaded(driver):
+        sys.exit("Error: Driver '%s' is not loaded." % driver)
 
     try:
         dev_list = map(dev_id_from_dev_name, dev_list)
