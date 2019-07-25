@@ -342,9 +342,8 @@ def dev_id_from_dev_name(dev_name):
             if dev_name in devices[d]["Interface"].split(","):
                 return devices[d]["Slot"]
     # if nothing else matches - error
-    print("Unknown device: %s. "
-          "Please specify device in \"bus:slot.func\" format" % dev_name)
-    sys.exit(1)
+    raise ValueError("Unknown device: %s. "
+                     "Please specify device in \"bus:slot.func\" format" % dev_name)
 
 
 def unbind_one(dev_id, force):
@@ -493,7 +492,12 @@ def unbind_all(dev_list, force=False):
                     unbind_one(devices[d]["Slot"], force)
         return
 
-    dev_list = map(dev_id_from_dev_name, dev_list)
+    try:
+        dev_list = map(dev_id_from_dev_name, dev_list)
+    except ValueError as ex:
+        print(ex)
+        sys.exit(1)
+
     for d in dev_list:
         unbind_one(d, force)
 
@@ -502,7 +506,23 @@ def bind_all(dev_list, driver, force=False):
     """Bind method, takes a list of device locations"""
     global devices
 
-    dev_list = map(dev_id_from_dev_name, dev_list)
+    # a common user error is to forget to specify the driver the devices need to
+    # be bound to. check if the driver is a valid device, and if it is, show
+    # a meaningful error.
+    try:
+        dev_id_from_dev_name(driver)
+        # if we've made it this far, this means that the "driver" was a valid
+        # device string, so it's probably not a valid driver name.
+        sys.exit("Error: Driver '%s' does not look like a valid driver. " \
+                 "Did you forget to specify the driver to bind devices to?" % driver)
+    except ValueError:
+        # driver generated error - it's not a valid device ID, so all is well
+        pass
+
+    try:
+        dev_list = map(dev_id_from_dev_name, dev_list)
+    except ValueError as ex:
+        sys.exit(ex)
 
     for d in dev_list:
         bind_one(d, driver, force)
