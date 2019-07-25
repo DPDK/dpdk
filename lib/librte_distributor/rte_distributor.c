@@ -542,6 +542,9 @@ rte_distributor_flush_v1705(struct rte_distributor *d)
 	while (total_outstanding(d) > 0)
 		rte_distributor_process(d, NULL, 0);
 
+	/* wait 10ms to allow all worker drain the pkts */
+	rte_delay_us(10000);
+
 	/*
 	 * Send empty burst to all workers to allow them to exit
 	 * gracefully, should they need to.
