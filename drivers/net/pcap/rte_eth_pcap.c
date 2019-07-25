@@ -242,7 +242,6 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct rte_mbuf *mbuf;
 	struct pcap_rx_queue *pcap_q = queue;
 	uint16_t num_rx = 0;
-	uint16_t buf_size;
 	uint32_t rx_bytes = 0;
 	pcap_t *pcap;
 
@@ -265,11 +264,7 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		if (unlikely(mbuf == NULL))
 			break;
 
-		/* Now get the space available for data in the mbuf */
-		buf_size = rte_pktmbuf_data_room_size(pcap_q->mb_pool) -
-				RTE_PKTMBUF_HEADROOM;
-
-		if (header.caplen <= buf_size) {
+		if (header.caplen <= rte_pktmbuf_tailroom(mbuf)) {
 			/* pcap packet will fit in the mbuf, can copy it */
 			rte_memcpy(rte_pktmbuf_mtod(mbuf, void *), packet,
 					header.caplen);
