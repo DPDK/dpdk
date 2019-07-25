@@ -46,7 +46,6 @@
 #define RTE_PMD_PCAP_MAX_QUEUES 16
 
 static char errbuf[PCAP_ERRBUF_SIZE];
-static unsigned char tx_pcap_data[RTE_ETH_PCAP_SNAPLEN];
 static struct timeval start_time;
 static uint64_t start_cycles;
 static uint64_t hz;
@@ -180,21 +179,6 @@ eth_pcap_rx_jumbo(struct rte_mempool *mb_pool, struct rte_mbuf *mbuf,
 	return mbuf->nb_segs;
 }
 
-/* Copy data from mbuf chain to a buffer suitable for writing to a PCAP file. */
-static void
-eth_pcap_gather_data(unsigned char *data, struct rte_mbuf *mbuf)
-{
-	uint16_t data_len = 0;
-
-	while (mbuf) {
-		rte_memcpy(data + data_len, rte_pktmbuf_mtod(mbuf, void *),
-			mbuf->data_len);
-
-		data_len += mbuf->data_len;
-		mbuf = mbuf->next;
-	}
-}
-
 static uint16_t
 eth_pcap_rx_infinite(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
@@ -325,6 +309,8 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint32_t tx_bytes = 0;
 	struct pcap_pkthdr header;
 	pcap_dumper_t *dumper;
+	unsigned char temp_data[RTE_ETH_PCAP_SNAPLEN];
+	size_t len;
 
 	pp = rte_eth_devices[dumper_q->port_id].process_private;
 	dumper = pp->tx_dumper[dumper_q->queue_id];
@@ -336,31 +322,28 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	 * dumper */
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = bufs[i];
-		calculate_timestamp(&header.ts);
-		header.len = mbuf->pkt_len;
-		header.caplen = header.len;
-
-		if (likely(mbuf->nb_segs == 1)) {
-			pcap_dump((u_char *)dumper, &header,
-				  rte_pktmbuf_mtod(mbuf, void*));
-		} else {
-			if (mbuf->pkt_len <= RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
-				eth_pcap_gather_data(tx_pcap_data, mbuf);
-				pcap_dump((u_char *)dumper, &header,
-					  tx_pcap_data);
-			} else {
-				PMD_LOG(ERR,
-					"Dropping PCAP packet. Size (%d) > max jumbo size (%d).",
-					mbuf->pkt_len,
-					RTE_ETHER_MAX_JUMBO_FRAME_LEN);
-
-				rte_pktmbuf_free(mbuf);
-				continue;
-			}
+		len = rte_pktmbuf_pkt_len(mbuf);
+		if (unlikely(!rte_pktmbuf_is_contiguous(mbuf) &&
+				len > sizeof(temp_data))) {
+			PMD_LOG(ERR,
+				"Dropping multi segment PCAP packet. Size (%zd) > max size (%zd).",
+				len, sizeof(temp_data));
+			rte_pktmbuf_free(mbuf);
+			continue;
 		}
 
+		calculate_timestamp(&header.ts);
+		header.len = len;
+		header.caplen = header.len;
+		/* rte_pktmbuf_read() returns a pointer to the data directly
+		 * in the mbuf (when the mbuf is contiguous) or, otherwise,
+		 * a pointer to temp_data after copying into it.
+		 */
+		pcap_dump((u_char *)dumper, &header,
+			rte_pktmbuf_read(mbuf, 0, len, temp_data));
+
 		num_tx++;
-		tx_bytes += mbuf->pkt_len;
+		tx_bytes += len;
 		rte_pktmbuf_free(mbuf);
 	}
 
@@ -415,6 +398,8 @@ eth_pcap_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint16_t num_tx = 0;
 	uint32_t tx_bytes = 0;
 	pcap_t *pcap;
+	unsigned char temp_data[RTE_ETH_PCAP_SNAPLEN];
+	size_t len;
 
 	pp = rte_eth_devices[tx_queue->port_id].process_private;
 	pcap = pp->tx_pcap[tx_queue->queue_id];
@@ -424,31 +409,26 @@ eth_pcap_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = bufs[i];
-
-		if (likely(mbuf->nb_segs == 1)) {
-			ret = pcap_sendpacket(pcap,
-					rte_pktmbuf_mtod(mbuf, u_char *),
-					mbuf->pkt_len);
-		} else {
-			if (mbuf->pkt_len <= RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
-				eth_pcap_gather_data(tx_pcap_data, mbuf);
-				ret = pcap_sendpacket(pcap,
-						tx_pcap_data, mbuf->pkt_len);
-			} else {
-				PMD_LOG(ERR,
-					"Dropping PCAP packet. Size (%d) > max jumbo size (%d).",
-					mbuf->pkt_len,
-					RTE_ETHER_MAX_JUMBO_FRAME_LEN);
-
-				rte_pktmbuf_free(mbuf);
-				continue;
-			}
+		len = rte_pktmbuf_pkt_len(mbuf);
+		if (unlikely(!rte_pktmbuf_is_contiguous(mbuf) &&
+				len > sizeof(temp_data))) {
+			PMD_LOG(ERR,
+				"Dropping multi segment PCAP packet. Size (%zd) > max size (%zd).",
+				len, sizeof(temp_data));
+			rte_pktmbuf_free(mbuf);
+			continue;
 		}
 
+		/* rte_pktmbuf_read() returns a pointer to the data directly
+		 * in the mbuf (when the mbuf is contiguous) or, otherwise,
+		 * a pointer to temp_data after copying into it.
+		 */
+		ret = pcap_sendpacket(pcap,
+			rte_pktmbuf_read(mbuf, 0, len, temp_data), len);
 		if (unlikely(ret != 0))
 			break;
 		num_tx++;
-		tx_bytes += mbuf->pkt_len;
+		tx_bytes += len;
 		rte_pktmbuf_free(mbuf);
 	}
 
