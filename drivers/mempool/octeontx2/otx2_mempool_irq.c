@@ -123,7 +123,7 @@ npa_lf_q_irq_get_and_clear(struct otx2_npa_lf *lf, uint32_t q,
 
 	qint = reg & 0xff;
 	wdata &= mask;
-	otx2_write64(wdata, lf->base + off);
+	otx2_write64(wdata | qint, lf->base + off);
 
 	return qint;
 }

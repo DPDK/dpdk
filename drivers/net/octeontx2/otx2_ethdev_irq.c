@@ -138,7 +138,7 @@ nix_lf_q_irq_get_and_clear(struct otx2_eth_dev *dev, uint16_t q,
 
 	qint = reg & 0xff;
 	wdata &= mask;
-	otx2_write64(wdata, dev->base + off);
+	otx2_write64(wdata | qint, dev->base + off);
 
 	return qint;
 }
