@@ -3,6 +3,7 @@
 # Copyright(c) 2010-2014 Intel Corporation
 #
 
+from __future__ import print_function
 import sys
 import os
 import getopt
@@ -185,7 +186,7 @@ def check_modules():
 
     # check if we have at least one loaded module
     if True not in [mod["Found"] for mod in mods] and b_flag is not None:
-        print("Warning: no supported DPDK kernel modules are loaded")
+        print("Warning: no supported DPDK kernel modules are loaded", file=sys.stderr)
 
     # change DPDK driver list to only contain drivers that are loaded
     dpdk_drivers = [mod["Name"] for mod in mods if mod["Found"]]
@@ -352,14 +353,14 @@ def unbind_one(dev_id, force):
     '''Unbind the device identified by "dev_id" from its current driver'''
     dev = devices[dev_id]
     if not has_driver(dev_id):
-        print("%s %s %s is not currently managed by any driver\n" %
-              (dev["Slot"], dev["Device_str"], dev["Interface"]))
+        print("Notice: %s %s %s is not currently managed by any driver" %
+              (dev["Slot"], dev["Device_str"], dev["Interface"]), file=sys.stderr)
         return
 
     # prevent us disconnecting ourselves
     if dev["Ssh_if"] and not force:
-        print("Routing table indicates that interface %s is active. "
-              "Skipping unbind" % (dev_id))
+        print("Warning: routing table indicates that interface %s is active. "
+              "Skipping unbind" % dev_id, file=sys.stderr)
         return
 
     # write to /sys to unbind
@@ -367,9 +368,8 @@ def unbind_one(dev_id, force):
     try:
         f = open(filename, "a")
     except:
-        print("Error: unbind failed for %s - Cannot open %s"
-              % (dev_id, filename))
-        sys.exit(1)
+        sys.exit("Error: unbind failed for %s - Cannot open %s" %
+                 (dev_id, filename))
     f.write(dev_id)
     f.close()
 
@@ -382,15 +382,15 @@ def bind_one(dev_id, driver, force):
 
     # prevent disconnection of our ssh session
     if dev["Ssh_if"] and not force:
-        print("Routing table indicates that interface %s is active. "
-              "Not modifying" % (dev_id))
+        print("Warning: routing table indicates that interface %s is active. "
+              "Not modifying" % dev_id, file=sys.stderr)
         return
 
     # unbind any existing drivers we don't want
     if has_driver(dev_id):
         if dev["Driver_str"] == driver:
-            print("%s already bound to driver %s, skipping\n"
-                  % (dev_id, driver))
+            print("Notice: %s already bound to driver %s, skipping" %
+                  (dev_id, driver), file=sys.stderr)
             return
         else:
             saved_driver = dev["Driver_str"]
@@ -410,14 +410,14 @@ def bind_one(dev_id, driver, force):
                 f = open(filename, "w")
             except:
                 print("Error: bind failed for %s - Cannot open %s"
-                      % (dev_id, filename))
+                      % (dev_id, filename), file=sys.stderr)
                 return
             try:
                 f.write("%s" % driver)
                 f.close()
             except:
                 print("Error: bind failed for %s - Cannot write driver %s to "
-                      "PCI ID " % (dev_id, driver))
+                      "PCI ID " % (dev_id, driver), file=sys.stderr)
                 return
         # For kernels < 3.15 use new_id to add PCI id's to the driver
         else:
@@ -426,7 +426,7 @@ def bind_one(dev_id, driver, force):
                 f = open(filename, "w")
             except:
                 print("Error: bind failed for %s - Cannot open %s"
-                      % (dev_id, filename))
+                      % (dev_id, filename), file=sys.stderr)
                 return
             try:
                 # Convert Device and Vendor Id to int to write to new_id
@@ -435,7 +435,7 @@ def bind_one(dev_id, driver, force):
                 f.close()
             except:
                 print("Error: bind failed for %s - Cannot write new PCI ID to "
-                      "driver %s" % (dev_id, driver))
+                      "driver %s" % (dev_id, driver), file=sys.stderr)
                 return
 
     # do the bind by writing to /sys
@@ -444,7 +444,7 @@ def bind_one(dev_id, driver, force):
         f = open(filename, "a")
     except:
         print("Error: bind failed for %s - Cannot open %s"
-              % (dev_id, filename))
+              % (dev_id, filename), file=sys.stderr)
         if saved_driver is not None:  # restore any previous driver
             bind_one(dev_id, saved_driver, force)
         return
@@ -459,7 +459,7 @@ def bind_one(dev_id, driver, force):
         if "Driver_str" in tmp and tmp["Driver_str"] == driver:
             return
         print("Error: bind failed for %s - Cannot bind to driver %s"
-              % (dev_id, driver))
+              % (dev_id, driver), file=sys.stderr)
         if saved_driver is not None:  # restore any previous driver
             bind_one(dev_id, saved_driver, force)
         return
@@ -472,16 +472,14 @@ def bind_one(dev_id, driver, force):
         try:
             f = open(filename, "w")
         except:
-            print("Error: unbind failed for %s - Cannot open %s"
+            sys.exit("Error: unbind failed for %s - Cannot open %s"
                   % (dev_id, filename))
-            sys.exit(1)
         try:
             f.write("\00")
             f.close()
         except:
-            print("Error: unbind failed for %s - Cannot open %s"
+            sys.exit("Error: unbind failed for %s - Cannot open %s"
                   % (dev_id, filename))
-            sys.exit(1)
 
 
 def unbind_all(dev_list, force=False):
@@ -676,8 +674,7 @@ def parse_args():
             force_flag = True
         if opt == "-b" or opt == "-u" or opt == "--bind" or opt == "--unbind":
             if b_flag is not None:
-                print("Error - Only one bind or unbind may be specified\n")
-                sys.exit(1)
+                sys.exit("Error: binding and unbinding are mutually exclusive")
             if opt == "-u" or opt == "--unbind":
                 b_flag = "none"
             else:
@@ -692,14 +689,14 @@ def do_arg_actions():
     global args
 
     if b_flag is None and not status_flag:
-        print("Error: No action specified for devices."
-              "Please give a -b or -u option")
-        print("Run '%s --usage' for further information" % sys.argv[0])
+        print("Error: No action specified for devices. "
+              "Please give a -b or -u option", file=sys.stderr)
+        usage()
         sys.exit(1)
 
     if b_flag is not None and len(args) == 0:
-        print("Error: No devices specified.")
-        print("Run '%s --usage' for further information" % sys.argv[0])
+        print("Error: No devices specified.", file=sys.stderr)
+        usage()
         sys.exit(1)
 
     if b_flag == "none" or b_flag == "None":
@@ -727,8 +724,7 @@ def main():
         ret = subprocess.call(['which', 'lspci'],
                               stdout=devnull, stderr=devnull)
         if ret != 0:
-            print("'lspci' not found - please install 'pciutils'")
-            sys.exit(1)
+            sys.exit("'lspci' not found - please install 'pciutils'")
     parse_args()
     check_modules()
     clear_data()
