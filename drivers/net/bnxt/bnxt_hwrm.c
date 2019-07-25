@@ -4571,7 +4571,7 @@ int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint32_t *type)
 	HWRM_CHECK_RESULT();
 
 	if (type)
-		*type = resp->tunnel_mask;
+		*type = rte_le_to_cpu_32(resp->tunnel_mask);
 
 	HWRM_UNLOCK();
 
@@ -4593,7 +4593,7 @@ int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
 	HWRM_CHECK_RESULT();
 
 	if (dst_fid)
-		*dst_fid = resp->dest_fid;
+		*dst_fid = rte_le_to_cpu_16(resp->dest_fid);
 
 	PMD_DRV_LOG(DEBUG, "dst_fid: %x\n", resp->dest_fid);
 
