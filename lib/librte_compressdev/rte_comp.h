@@ -323,6 +323,12 @@ struct rte_comp_op {
 	 * If the output data is expected to be bigger than this a chain of
 	 * mbufs can be passed to the PMD if the PMD's capabilities indicate
 	 * it supports this.
+	 *
+	 * @note, if incompressible data is passed to an engine for compression
+	 * using RTE_COMP_ALGO_DEFLATE, it's possible for the output data
+	 * to be larger than the uncompressed data, due to the inclusion
+	 * of the DEFLATE header blocks. The size of m_dst should accommodate
+	 * this, else OUT_OF_SPACE errors can be expected in this case.
 	 */
 
 	struct {
