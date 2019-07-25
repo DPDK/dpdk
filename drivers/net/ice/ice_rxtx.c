@@ -2332,35 +2332,46 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 	int i;
 	bool use_avx2 = false;
 
-	if (!ice_rx_vec_dev_check(dev)) {
-		for (i = 0; i < dev->data->nb_rx_queues; i++) {
-			rxq = dev->data->rx_queues[i];
-			(void)ice_rxq_vec_setup(rxq);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (!ice_rx_vec_dev_check(dev) && ad->rx_bulk_alloc_allowed) {
+			ad->rx_vec_allowed = true;
+			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				rxq = dev->data->rx_queues[i];
+				if (rxq && ice_rxq_vec_setup(rxq)) {
+					ad->rx_vec_allowed = false;
+					break;
+				}
+			}
+
+			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)
+				use_avx2 = true;
+
+		} else {
+			ad->rx_vec_allowed = false;
 		}
+	}
 
-		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
-		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)
-			use_avx2 = true;
-
+	if (ad->rx_vec_allowed) {
 		if (dev->data->scattered_rx) {
 			PMD_DRV_LOG(DEBUG,
-				    "Using %sVector Scattered Rx (port %d).",
-				    use_avx2 ? "avx2 " : "",
-				    dev->data->port_id);
+					"Using %sVector Scattered Rx (port %d).",
+					use_avx2 ? "avx2 " : "",
+					dev->data->port_id);
 			dev->rx_pkt_burst = use_avx2 ?
-					    ice_recv_scattered_pkts_vec_avx2 :
-					    ice_recv_scattered_pkts_vec;
+					ice_recv_scattered_pkts_vec_avx2 :
+					ice_recv_scattered_pkts_vec;
 		} else {
 			PMD_DRV_LOG(DEBUG, "Using %sVector Rx (port %d).",
-				    use_avx2 ? "avx2 " : "",
-				    dev->data->port_id);
+					use_avx2 ? "avx2 " : "",
+					dev->data->port_id);
 			dev->rx_pkt_burst = use_avx2 ?
-					    ice_recv_pkts_vec_avx2 :
-					    ice_recv_pkts_vec;
+						ice_recv_pkts_vec_avx2 :
+						ice_recv_pkts_vec;
 		}
-
 		return;
 	}
+
 #endif
 
 	if (dev->data->scattered_rx) {
@@ -2464,16 +2475,27 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 	int i;
 	bool use_avx2 = false;
 
-	if (!ice_tx_vec_dev_check(dev)) {
-		for (i = 0; i < dev->data->nb_tx_queues; i++) {
-			txq = dev->data->tx_queues[i];
-			(void)ice_txq_vec_setup(txq);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (!ice_tx_vec_dev_check(dev)) {
+			ad->tx_vec_allowed = true;
+			for (i = 0; i < dev->data->nb_tx_queues; i++) {
+				txq = dev->data->tx_queues[i];
+				if (txq && ice_txq_vec_setup(txq)) {
+					ad->tx_vec_allowed = false;
+					break;
+				}
+			}
+
+			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)
+				use_avx2 = true;
+
+		} else {
+			ad->tx_vec_allowed = false;
 		}
+	}
 
-		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
-		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)
-			use_avx2 = true;
-
+	if (ad->tx_vec_allowed) {
 		PMD_DRV_LOG(DEBUG, "Using %sVector Tx (port %d).",
 			    use_avx2 ? "avx2 " : "",
 			    dev->data->port_id);

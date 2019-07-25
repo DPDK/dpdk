@@ -289,6 +289,8 @@ struct ice_adapter {
 	struct rte_eth_dev *eth_dev;
 	struct ice_pf pf;
 	bool rx_bulk_alloc_allowed;
+	bool rx_vec_allowed;
+	bool tx_vec_allowed;
 	bool tx_simple_allowed;
 	/* ptype mapping table */
 	uint32_t ptype_tbl[ICE_MAX_PKT_TYPE] __rte_cache_min_aligned;

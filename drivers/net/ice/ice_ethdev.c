@@ -1434,6 +1434,15 @@ ice_dev_init(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = ice_xmit_pkts;
 	dev->tx_pkt_prepare = ice_prep_pkts;
 
+	/* for secondary processes, we don't initialise any further as primary
+	 * has already done this work.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		ice_set_rx_function(dev);
+		ice_set_tx_function(dev);
+		return 0;
+	}
+
 	ice_set_default_ptype_table(dev);
 	pci_dev = RTE_DEV_TO_PCI(dev->device);
 	intr_handle = &pci_dev->intr_handle;
@@ -1681,6 +1690,9 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_flow *p_flow;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	ice_dev_close(dev);
 
