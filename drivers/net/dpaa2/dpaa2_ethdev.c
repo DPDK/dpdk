@@ -2319,6 +2319,16 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 	struct rte_eth_dev *eth_dev;
 	int diag;
 
+	if ((DPAA2_MBUF_HW_ANNOTATION + DPAA2_FD_PTA_SIZE) >
+		RTE_PKTMBUF_HEADROOM) {
+		DPAA2_PMD_ERR(
+		"RTE_PKTMBUF_HEADROOM(%d) shall be > DPAA2 Annotation req(%d)",
+		RTE_PKTMBUF_HEADROOM,
+		DPAA2_MBUF_HW_ANNOTATION + DPAA2_FD_PTA_SIZE);
+
+		return -1;
+	}
+
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		eth_dev = rte_eth_dev_allocate(dpaa2_dev->device.name);
 		if (!eth_dev)
