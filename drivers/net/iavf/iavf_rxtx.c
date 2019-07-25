@@ -144,7 +144,8 @@ check_rx_bulk_allow(struct iavf_rx_queue *rxq)
 static inline void
 reset_rx_queue(struct iavf_rx_queue *rxq)
 {
-	uint16_t len, i;
+	uint16_t len;
+	uint32_t i;
 
 	if (!rxq)
 		return;
@@ -174,7 +175,8 @@ static inline void
 reset_tx_queue(struct iavf_tx_queue *txq)
 {
 	struct iavf_tx_entry *txe;
-	uint16_t i, prev, size;
+	uint32_t i, size;
+	uint16_t prev;
 
 	if (!txq) {
 		PMD_DRV_LOG(DEBUG, "Pointer to txq is NULL");
