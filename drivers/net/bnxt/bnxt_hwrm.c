@@ -2265,7 +2265,7 @@ bnxt_clear_hwrm_vnic_flows(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	STAILQ_FOREACH(flow, &vnic->flow_list, next) {
 		filter = flow->filter;
-		PMD_DRV_LOG(ERR, "filter type %d\n", filter->filter_type);
+		PMD_DRV_LOG(DEBUG, "filter type %d\n", filter->filter_type);
 		if (filter->filter_type == HWRM_CFA_EM_FILTER)
 			rc = bnxt_hwrm_clear_em_filter(bp, filter);
 		else if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
