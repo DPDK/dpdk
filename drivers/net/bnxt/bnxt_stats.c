@@ -427,8 +427,12 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	bnxt_hwrm_port_qstats(bp);
 	bnxt_hwrm_func_qstats_tx_drop(bp, 0xffff, &tx_drop_pkts);
 	bnxt_hwrm_ext_port_qstats(bp);
-	rx_port_stats_ext_cnt = bp->fw_rx_port_stats_ext_size / stat_size;
-	tx_port_stats_ext_cnt = bp->fw_tx_port_stats_ext_size / stat_size;
+	rx_port_stats_ext_cnt = RTE_MIN(RTE_DIM(bnxt_rx_ext_stats_strings),
+					(bp->fw_rx_port_stats_ext_size /
+					 stat_size));
+	tx_port_stats_ext_cnt = RTE_MIN(RTE_DIM(bnxt_tx_ext_stats_strings),
+					(bp->fw_tx_port_stats_ext_size /
+					 stat_size));
 
 	count = RTE_DIM(bnxt_rx_stats_strings) +
 		RTE_DIM(bnxt_tx_stats_strings) + 1/* For tx_drop_pkts */ +
@@ -463,22 +467,22 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	xstats[count].value = rte_le_to_cpu_64(tx_drop_pkts);
 	count++;
 
-	for (i = 0; i < tx_port_stats_ext_cnt; i++) {
-		uint64_t *tx_stats_ext = (uint64_t *)bp->hw_tx_port_stats_ext;
-
-		xstats[count].value = rte_le_to_cpu_64
-					(*(uint64_t *)((char *)tx_stats_ext +
-					 bnxt_tx_ext_stats_strings[i].offset));
-
-		count++;
-	}
-
 	for (i = 0; i < rx_port_stats_ext_cnt; i++) {
 		uint64_t *rx_stats_ext = (uint64_t *)bp->hw_rx_port_stats_ext;
 
 		xstats[count].value = rte_le_to_cpu_64
 					(*(uint64_t *)((char *)rx_stats_ext +
 					 bnxt_rx_ext_stats_strings[i].offset));
+
+		count++;
+	}
+
+	for (i = 0; i < tx_port_stats_ext_cnt; i++) {
+		uint64_t *tx_stats_ext = (uint64_t *)bp->hw_tx_port_stats_ext;
+
+		xstats[count].value = rte_le_to_cpu_64
+					(*(uint64_t *)((char *)tx_stats_ext +
+					 bnxt_tx_ext_stats_strings[i].offset));
 
 		count++;
 	}
