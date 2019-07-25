@@ -22,10 +22,6 @@
 #define DPAA_MBUF_HW_ANNOTATION		64
 #define DPAA_FD_PTA_SIZE		64
 
-#if (DPAA_MBUF_HW_ANNOTATION + DPAA_FD_PTA_SIZE) > RTE_PKTMBUF_HEADROOM
-#error "Annotation requirement is more than RTE_PKTMBUF_HEADROOM"
-#endif
-
 /* mbuf->seqn will be used to store event entry index for
  * driver specific usage. For parallel mode queues, invalid
  * index will be set and for atomic mode queues, valid value

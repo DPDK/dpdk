@@ -1469,6 +1469,16 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 
 	PMD_INIT_FUNC_TRACE();
 
+	if ((DPAA_MBUF_HW_ANNOTATION + DPAA_FD_PTA_SIZE) >
+		RTE_PKTMBUF_HEADROOM) {
+		DPAA_PMD_ERR(
+		"RTE_PKTMBUF_HEADROOM(%d) shall be > DPAA Annotation req(%d)",
+		RTE_PKTMBUF_HEADROOM,
+		DPAA_MBUF_HW_ANNOTATION + DPAA_FD_PTA_SIZE);
+
+		return -1;
+	}
+
 	/* In case of secondary process, the device is already configured
 	 * and no further action is required, except portal initialization
 	 * and verifying secondary attachment to port name.
