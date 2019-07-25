@@ -80,6 +80,7 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(PPPOED, sizeof(struct rte_flow_item_pppoe)),
 	MK_FLOW_ITEM(PPPOE_PROTO_ID,
 			sizeof(struct rte_flow_item_pppoe_proto_id)),
+	MK_FLOW_ITEM(NSH, sizeof(struct rte_flow_item_nsh)),
 };
 
 /** Generate flow_action[] entry. */
