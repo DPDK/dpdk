@@ -1265,6 +1265,18 @@ Matches a network service header (RFC 8300).
 - Default ``mask`` matches mdtype, next_proto, spi, sindex.
 
 
+Item: ``IGMP``
+^^^^^^^^^^^^^^
+
+Matches a Internet Group Management Protocol (RFC 2236).
+
+- ``type``: IGMP message type (Query/Report).
+- ``max_resp_time``: max time allowed before sending report.
+- ``checksum``: checksum, 1s complement of whole IGMP message.
+- ``group_addr``: group address, for Query value will be 0.
+- Default ``mask`` matches group_addr.
+
+
 Actions
 ~~~~~~~
 

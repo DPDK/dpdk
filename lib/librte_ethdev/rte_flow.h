@@ -477,6 +477,13 @@ enum rte_flow_item_type {
 	 *
 	 */
 	RTE_FLOW_ITEM_TYPE_NSH,
+
+	/**
+	 * Matches Internet Group Management Protocol (IGMP).
+	 * See struct rte_flow_item_igmp.
+	 *
+	 */
+	RTE_FLOW_ITEM_TYPE_IGMP,
 };
 
 /**
@@ -1343,6 +1350,29 @@ static const struct rte_flow_item_nsh rte_flow_item_nsh_mask = {
 	.next_proto = 0xff,
 	.spi = 0xffffff,
 	.sindex = 0xff,
+};
+#endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ITEM_TYPE_IGMP
+ *
+ * Match Internet Group Management Protocol (IGMP), RFC 2236
+ *
+ */
+struct rte_flow_item_igmp {
+	uint32_t type:8;
+	uint32_t max_resp_time:8;
+	uint32_t checksum:16;
+	uint32_t group_addr;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_IGMP. */
+#ifndef __cplusplus
+static const struct rte_flow_item_igmp rte_flow_item_igmp_mask = {
+	.group_addr = 0xffffffff,
 };
 #endif
 
