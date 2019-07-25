@@ -178,7 +178,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			mbuf = (struct rte_mbuf *)((uintptr_t)mbuf0 -
 				offsetof(struct rte_mbuf, buf_iova));
 
-			if (rte_pktmbuf_prefree_seg(mbuf) == NULL)
+			if (otx2_nix_prefree_seg(mbuf))
 				vsetq_lane_u64(0x80000, xmask01, 0);
 			else
 				__mempool_check_cookies(mbuf->pool,
@@ -187,7 +187,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			mbuf = (struct rte_mbuf *)((uintptr_t)mbuf1 -
 				offsetof(struct rte_mbuf, buf_iova));
-			if (rte_pktmbuf_prefree_seg(mbuf) == NULL)
+			if (otx2_nix_prefree_seg(mbuf))
 				vsetq_lane_u64(0x80000, xmask01, 1);
 			else
 				__mempool_check_cookies(mbuf->pool,
@@ -196,7 +196,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			mbuf = (struct rte_mbuf *)((uintptr_t)mbuf2 -
 				offsetof(struct rte_mbuf, buf_iova));
-			if (rte_pktmbuf_prefree_seg(mbuf) == NULL)
+			if (otx2_nix_prefree_seg(mbuf))
 				vsetq_lane_u64(0x80000, xmask23, 0);
 			else
 				__mempool_check_cookies(mbuf->pool,
@@ -205,7 +205,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			mbuf = (struct rte_mbuf *)((uintptr_t)mbuf3 -
 				offsetof(struct rte_mbuf, buf_iova));
-			if (rte_pktmbuf_prefree_seg(mbuf) == NULL)
+			if (otx2_nix_prefree_seg(mbuf))
 				vsetq_lane_u64(0x80000, xmask23, 1);
 			else
 				__mempool_check_cookies(mbuf->pool,

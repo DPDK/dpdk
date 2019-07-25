@@ -58,6 +58,72 @@ otx2_nix_xmit_prepare_tstamp(uint64_t *cmd,  const uint64_t *send_mem_desc,
 	}
 }
 
+static __rte_always_inline uint64_t
+otx2_pktmbuf_detach(struct rte_mbuf *m)
+{
+	struct rte_mempool *mp = m->pool;
+	uint32_t mbuf_size, buf_len;
+	struct rte_mbuf *md;
+	uint16_t priv_size;
+	uint16_t refcount;
+
+	/* Update refcount of direct mbuf */
+	md = rte_mbuf_from_indirect(m);
+	refcount = rte_mbuf_refcnt_update(md, -1);
+
+	priv_size = rte_pktmbuf_priv_size(mp);
+	mbuf_size = (uint32_t)(sizeof(struct rte_mbuf) + priv_size);
+	buf_len = rte_pktmbuf_data_room_size(mp);
+
+	m->priv_size = priv_size;
+	m->buf_addr = (char *)m + mbuf_size;
+	m->buf_iova = rte_mempool_virt2iova(m) + mbuf_size;
+	m->buf_len = (uint16_t)buf_len;
+	rte_pktmbuf_reset_headroom(m);
+	m->data_len = 0;
+	m->ol_flags = 0;
+	m->next = NULL;
+	m->nb_segs = 1;
+
+	/* Now indirect mbuf is safe to free */
+	rte_pktmbuf_free(m);
+
+	if (refcount == 0) {
+		rte_mbuf_refcnt_set(md, 1);
+		md->data_len = 0;
+		md->ol_flags = 0;
+		md->next = NULL;
+		md->nb_segs = 1;
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+static __rte_always_inline uint64_t
+otx2_nix_prefree_seg(struct rte_mbuf *m)
+{
+	if (likely(rte_mbuf_refcnt_read(m) == 1)) {
+		if (!RTE_MBUF_DIRECT(m))
+			return otx2_pktmbuf_detach(m);
+
+		m->next = NULL;
+		m->nb_segs = 1;
+		return 0;
+	} else if (rte_mbuf_refcnt_update(m, -1) == 0) {
+		if (!RTE_MBUF_DIRECT(m))
+			return otx2_pktmbuf_detach(m);
+
+		rte_mbuf_refcnt_set(m, 1);
+		m->next = NULL;
+		m->nb_segs = 1;
+		return 0;
+	}
+
+	/* Mbuf is having refcount more than 1 so need not to be freed */
+	return 1;
+}
+
 static inline void
 otx2_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 {
@@ -189,9 +255,11 @@ otx2_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		*(rte_iova_t *)(++sg) = rte_mbuf_data_iova(m);
 
 		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
-			/* Set don't free bit if reference count > 1 */
-			if (rte_pktmbuf_prefree_seg(m) == NULL)
-				send_hdr->w0.df = 1; /* SET DF */
+			/* DF bit = 1 if refcount of current mbuf or parent mbuf
+			 *		is greater than 1
+			 * DF bit = 0 otherwise
+			 */
+			send_hdr->w0.df = otx2_nix_prefree_seg(m);
 		}
 		/* Mark mempool object as "put" since it is freed by NIX */
 		if (!send_hdr->w0.df)
@@ -233,6 +301,8 @@ otx2_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		off = 0;
 
 	sg = (union nix_send_sg_s *)&cmd[2 + off];
+	/* Clear sg->u header before use */
+	sg->u &= 0xFC00000000000000;
 	sg_u = sg->u;
 	slist = &cmd[3 + off];
 
@@ -244,11 +314,9 @@ otx2_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		m_next = m->next;
 		sg_u = sg_u | ((uint64_t)m->data_len << (i << 4));
 		*slist = rte_mbuf_data_iova(m);
-		/* Set invert df if reference count > 1 */
+		/* Set invert df if buffer is not to be freed by H/W */
 		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
-			sg_u |=
-			((uint64_t)(rte_pktmbuf_prefree_seg(m) == NULL) <<
-			 (i + 55));
+			sg_u |=	(otx2_nix_prefree_seg(m) << (i + 55));
 		/* Mark mempool object as "put" since it is freed by NIX */
 		if (!(sg_u & (1ULL << (i + 55)))) {
 			m->next = NULL;
