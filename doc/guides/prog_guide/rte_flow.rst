@@ -1277,6 +1277,19 @@ Matches a Internet Group Management Protocol (RFC 2236).
 - Default ``mask`` matches group_addr.
 
 
+Item: ``AH``
+^^^^^^^^^^^^
+
+Matches a IP Authentication Header (RFC 4302).
+
+- ``next_hdr``: next payload after AH.
+- ``payload_len``: total length of AH in 4B words.
+- ``reserved``: reserved bits.
+- ``spi``: security parameters index.
+- ``seq_num``: counter value increased by 1 on each packet sent.
+- Default ``mask`` matches spi.
+
+
 Actions
 ~~~~~~~
 

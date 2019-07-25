@@ -484,6 +484,13 @@ enum rte_flow_item_type {
 	 *
 	 */
 	RTE_FLOW_ITEM_TYPE_IGMP,
+
+	/**
+	 * Matches IP Authentication Header (AH).
+	 * See struct rte_flow_item_ah.
+	 *
+	 */
+	RTE_FLOW_ITEM_TYPE_AH,
 };
 
 /**
@@ -1373,6 +1380,30 @@ struct rte_flow_item_igmp {
 #ifndef __cplusplus
 static const struct rte_flow_item_igmp rte_flow_item_igmp_mask = {
 	.group_addr = 0xffffffff,
+};
+#endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ITEM_TYPE_AH
+ *
+ * Match IP Authentication Header (AH), RFC 4302
+ *
+ */
+struct rte_flow_item_ah {
+	uint32_t next_hdr:8;
+	uint32_t payload_len:8;
+	uint32_t reserved:16;
+	uint32_t spi;
+	uint32_t seq_num;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_AH. */
+#ifndef __cplusplus
+static const struct rte_flow_item_ah rte_flow_item_ah_mask = {
+	.spi = 0xffffffff,
 };
 #endif
 
