@@ -1845,7 +1845,14 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 	int ret;
 
-	RTE_BUILD_BUG_ON(RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr_mrg_rxbuf));
+	if (sizeof(struct virtio_net_hdr_mrg_rxbuf) > RTE_PKTMBUF_HEADROOM) {
+		PMD_INIT_LOG(ERR,
+			"Not sufficient headroom required = %d, avail = %d",
+			(int)sizeof(struct virtio_net_hdr_mrg_rxbuf),
+			RTE_PKTMBUF_HEADROOM);
+
+		return -1;
+	}
 
 	eth_dev->dev_ops = &virtio_eth_dev_ops;
 
