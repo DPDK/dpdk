@@ -3105,7 +3105,7 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 	NEXT_ITEM_OF_ACTION(act, actions, index);
 	switch (act->type) {
 	case RTE_FLOW_ACTION_TYPE_MARK:
-		if (!mark_spec) {
+		if (mark_spec) {
 			/* Double MARK actions requested */
 			rte_flow_error_set(error, EINVAL,
 			   RTE_FLOW_ERROR_TYPE_ACTION, act,
@@ -3117,7 +3117,7 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 		filter->soft_id = mark_spec->id;
 		break;
 	case RTE_FLOW_ACTION_TYPE_FLAG:
-		if (!mark_spec) {
+		if (mark_spec) {
 			/* MARK + FLAG not supported */
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ACTION, act,
