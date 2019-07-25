@@ -4528,10 +4528,10 @@ bnxt_hwrm_tunnel_redirect(struct bnxt *bp, uint8_t type)
 		bp->hwrm_cmd_resp_addr;
 	int rc = 0;
 
-	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_ALLOC, BNXT_USE_KONG(bp));
+	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_ALLOC, BNXT_USE_CHIMP_MB);
 	req.tunnel_type = type;
 	req.dest_fid = bp->fw_fid;
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT();
 
 	HWRM_UNLOCK();
@@ -4547,10 +4547,10 @@ bnxt_hwrm_tunnel_redirect_free(struct bnxt *bp, uint8_t type)
 		bp->hwrm_cmd_resp_addr;
 	int rc = 0;
 
-	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_FREE, BNXT_USE_KONG(bp));
+	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_FREE, BNXT_USE_CHIMP_MB);
 	req.tunnel_type = type;
 	req.dest_fid = bp->fw_fid;
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT();
 
 	HWRM_UNLOCK();
@@ -4565,9 +4565,9 @@ int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint32_t *type)
 		bp->hwrm_cmd_resp_addr;
 	int rc = 0;
 
-	HWRM_PREP(req, CFA_REDIRECT_QUERY_TUNNEL_TYPE, BNXT_USE_KONG(bp));
+	HWRM_PREP(req, CFA_REDIRECT_QUERY_TUNNEL_TYPE, BNXT_USE_CHIMP_MB);
 	req.src_fid = bp->fw_fid;
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT();
 
 	if (type)
@@ -4586,10 +4586,10 @@ int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
 		bp->hwrm_cmd_resp_addr;
 	int rc = 0;
 
-	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_INFO, BNXT_USE_KONG(bp));
+	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_INFO, BNXT_USE_CHIMP_MB);
 	req.src_fid = bp->fw_fid;
 	req.tunnel_type = tun_type;
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT();
 
 	if (dst_fid)
