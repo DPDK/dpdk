@@ -233,7 +233,11 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 
 	/* Enable timesync timestamping for the Ethernet device */
-	rte_eth_timesync_enable(port);
+	retval = rte_eth_timesync_enable(port);
+	if (retval < 0) {
+		printf("Timesync enable failed: %d\n", retval);
+		return retval;
+	}
 
 	/* Enable RX in promiscuous mode for the Ethernet device. */
 	rte_eth_promiscuous_enable(port);
@@ -413,6 +417,9 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 		ptp_msg->delay_req.hdr.ver = 2;
 		ptp_msg->delay_req.hdr.control = 1;
 		ptp_msg->delay_req.hdr.log_message_interval = 127;
+		ptp_msg->delay_req.hdr.message_length =
+			htons(sizeof(struct delay_req_msg));
+		ptp_msg->delay_req.hdr.domain_number = ptp_hdr->domain_number;
 
 		/* Set up clock id. */
 		client_clkid =
