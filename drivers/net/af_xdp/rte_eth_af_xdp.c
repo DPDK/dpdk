@@ -97,7 +97,6 @@ struct pkt_rx_queue {
 
 struct tx_stats {
 	uint64_t tx_pkts;
-	uint64_t err_pkts;
 	uint64_t tx_bytes;
 };
 
@@ -456,7 +455,6 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->imissed += xdp_stats.rx_dropped;
 
 		stats->opackets += stats->q_opackets[i];
-		stats->oerrors += txq->stats.err_pkts;
 		stats->obytes += stats->q_obytes[i];
 	}
 
