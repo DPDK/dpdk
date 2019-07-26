@@ -83,7 +83,6 @@ eth_kni_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	nb_pkts = rte_kni_rx_burst(kni, bufs, nb_bufs);
 
 	kni_q->rx.pkts += nb_pkts;
-	kni_q->rx.err_pkts += nb_bufs - nb_pkts;
 
 	return nb_pkts;
 }
