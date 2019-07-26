@@ -1081,7 +1081,7 @@ static int
 eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	unsigned i;
-	unsigned long rx_total = 0, tx_total = 0, tx_missed_total = 0;
+	unsigned long rx_total = 0, tx_total = 0;
 	unsigned long rx_total_bytes = 0, tx_total_bytes = 0;
 	struct vhost_queue *vq;
 
@@ -1103,7 +1103,6 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			continue;
 		vq = dev->data->tx_queues[i];
 		stats->q_opackets[i] = vq->stats.pkts;
-		tx_missed_total += vq->stats.missed_pkts;
 		tx_total += stats->q_opackets[i];
 
 		stats->q_obytes[i] = vq->stats.bytes;
@@ -1112,7 +1111,6 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	stats->ipackets = rx_total;
 	stats->opackets = tx_total;
-	stats->oerrors = tx_missed_total;
 	stats->ibytes = rx_total_bytes;
 	stats->obytes = tx_total_bytes;
 
