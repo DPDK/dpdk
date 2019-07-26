@@ -121,7 +121,6 @@ static const struct rte_virtio_xstats_name_off rte_virtio_rxq_stat_strings[] = {
 static const struct rte_virtio_xstats_name_off rte_virtio_txq_stat_strings[] = {
 	{"good_packets",           offsetof(struct virtnet_tx, stats.packets)},
 	{"good_bytes",             offsetof(struct virtnet_tx, stats.bytes)},
-	{"errors",                 offsetof(struct virtnet_tx, stats.errors)},
 	{"multicast_packets",      offsetof(struct virtnet_tx, stats.multicast)},
 	{"broadcast_packets",      offsetof(struct virtnet_tx, stats.broadcast)},
 	{"undersize_packets",      offsetof(struct virtnet_tx, stats.size_bins[0])},
@@ -944,7 +943,6 @@ virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 		stats->opackets += txvq->stats.packets;
 		stats->obytes += txvq->stats.bytes;
-		stats->oerrors += txvq->stats.errors;
 
 		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			stats->q_opackets[i] = txvq->stats.packets;
@@ -1082,7 +1080,6 @@ virtio_dev_stats_reset(struct rte_eth_dev *dev)
 
 		txvq->stats.packets = 0;
 		txvq->stats.bytes = 0;
-		txvq->stats.errors = 0;
 		txvq->stats.multicast = 0;
 		txvq->stats.broadcast = 0;
 		memset(txvq->stats.size_bins, 0,
