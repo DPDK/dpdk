@@ -479,7 +479,6 @@ no_free_slots:
 		}
 	}
 
-	mq->n_err += nb_pkts - n_tx_pkts;
 	mq->n_pkts += n_tx_pkts;
 	return n_tx_pkts;
 }
@@ -857,7 +856,6 @@ memif_tx_queue_setup(struct rte_eth_dev *dev,
 	    (pmd->role == MEMIF_ROLE_SLAVE) ? MEMIF_RING_S2M : MEMIF_RING_M2S;
 	mq->n_pkts = 0;
 	mq->n_bytes = 0;
-	mq->n_err = 0;
 	mq->intr_handle.fd = -1;
 	mq->intr_handle.type = RTE_INTR_HANDLE_EXT;
 	dev->data->tx_queues[qid] = mq;
@@ -886,7 +884,6 @@ memif_rx_queue_setup(struct rte_eth_dev *dev,
 	mq->type = (pmd->role == MEMIF_ROLE_SLAVE) ? MEMIF_RING_M2S : MEMIF_RING_S2M;
 	mq->n_pkts = 0;
 	mq->n_bytes = 0;
-	mq->n_err = 0;
 	mq->intr_handle.fd = -1;
 	mq->intr_handle.type = RTE_INTR_HANDLE_EXT;
 	mq->mempool = mb_pool;
@@ -938,7 +935,6 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->ibytes = 0;
 	stats->opackets = 0;
 	stats->obytes = 0;
-	stats->oerrors = 0;
 
 	tmp = (pmd->role == MEMIF_ROLE_SLAVE) ? pmd->run.num_s2m_rings :
 	    pmd->run.num_m2s_rings;
@@ -966,7 +962,6 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->q_obytes[i] = mq->n_bytes;
 		stats->opackets += mq->n_pkts;
 		stats->obytes += mq->n_bytes;
-		stats->oerrors += mq->n_err;
 	}
 	return 0;
 }
@@ -983,14 +978,12 @@ memif_stats_reset(struct rte_eth_dev *dev)
 		    dev->data->rx_queues[i];
 		mq->n_pkts = 0;
 		mq->n_bytes = 0;
-		mq->n_err = 0;
 	}
 	for (i = 0; i < pmd->run.num_m2s_rings; i++) {
 		mq = (pmd->role == MEMIF_ROLE_SLAVE) ? dev->data->rx_queues[i] :
 		    dev->data->tx_queues[i];
 		mq->n_pkts = 0;
 		mq->n_bytes = 0;
-		mq->n_err = 0;
 	}
 }
 

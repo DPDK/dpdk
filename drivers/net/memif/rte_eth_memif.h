@@ -66,7 +66,6 @@ struct memif_queue {
 	/* rx/tx info */
 	uint64_t n_pkts;			/**< number of rx/tx packets */
 	uint64_t n_bytes;			/**< number of rx/tx bytes */
-	uint64_t n_err;				/**< number of tx errors */
 
 	memif_ring_t *ring;			/**< pointer to ring */
 
