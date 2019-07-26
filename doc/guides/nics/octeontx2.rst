@@ -268,6 +268,13 @@ Patterns:
    +----+--------------------------------+
    | 22 | RTE_FLOW_ITEM_TYPE_ANY         |
    +----+--------------------------------+
+   | 23 | RTE_FLOW_ITEM_TYPE_GRE_KEY     |
+   +----+--------------------------------+
+
+.. note::
+
+   ``RTE_FLOW_ITEM_TYPE_GRE_KEY`` works only when checksum and routing
+   bits in the GRE header are equal to 0.
 
 Actions:
 

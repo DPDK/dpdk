@@ -389,6 +389,7 @@ int
 otx2_flow_parse_ld(struct otx2_parse_state *pst)
 {
 	char hw_mask[NPC_MAX_EXTRACT_DATA_LEN];
+	uint32_t gre_key_mask = 0xffffffff;
 	struct otx2_flow_item_info info;
 	int lid, lt, lflags;
 	int rc;
@@ -449,6 +450,12 @@ otx2_flow_parse_ld(struct otx2_parse_state *pst)
 		lt = NPC_LT_LD_GRE;
 		info.def_mask = &rte_flow_item_gre_mask;
 		info.len = sizeof(struct rte_flow_item_gre);
+		break;
+	case RTE_FLOW_ITEM_TYPE_GRE_KEY:
+		lt = NPC_LT_LD_GRE;
+		info.def_mask = &gre_key_mask;
+		info.len = sizeof(gre_key_mask);
+		info.hw_hdr_len = 4;
 		break;
 	case RTE_FLOW_ITEM_TYPE_NVGRE:
 		lt = NPC_LT_LD_GRE;
