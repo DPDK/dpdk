@@ -8523,19 +8523,19 @@ cmd_set_vf_rxmode_parsed(void *parsed_result,
 		       __attribute__((unused)) void *data)
 {
 	int ret = -ENOTSUP;
-	uint16_t rx_mode = 0;
+	uint16_t vf_rxmode = 0;
 	struct cmd_set_vf_rxmode *res = parsed_result;
 
 	int is_on = (strcmp(res->on, "on") == 0) ? 1 : 0;
 	if (!strcmp(res->what,"rxmode")) {
 		if (!strcmp(res->mode, "AUPE"))
-			rx_mode |= ETH_VMDQ_ACCEPT_UNTAG;
+			vf_rxmode |= ETH_VMDQ_ACCEPT_UNTAG;
 		else if (!strcmp(res->mode, "ROPE"))
-			rx_mode |= ETH_VMDQ_ACCEPT_HASH_UC;
+			vf_rxmode |= ETH_VMDQ_ACCEPT_HASH_UC;
 		else if (!strcmp(res->mode, "BAM"))
-			rx_mode |= ETH_VMDQ_ACCEPT_BROADCAST;
+			vf_rxmode |= ETH_VMDQ_ACCEPT_BROADCAST;
 		else if (!strncmp(res->mode, "MPE",3))
-			rx_mode |= ETH_VMDQ_ACCEPT_MULTICAST;
+			vf_rxmode |= ETH_VMDQ_ACCEPT_MULTICAST;
 	}
 
 	RTE_SET_USED(is_on);
@@ -8543,12 +8543,12 @@ cmd_set_vf_rxmode_parsed(void *parsed_result,
 #ifdef RTE_LIBRTE_IXGBE_PMD
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_vf_rxmode(res->port_id, res->vf_id,
-						  rx_mode, (uint8_t)is_on);
+						  vf_rxmode, (uint8_t)is_on);
 #endif
 #ifdef RTE_LIBRTE_BNXT_PMD
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_vf_rxmode(res->port_id, res->vf_id,
-						 rx_mode, (uint8_t)is_on);
+						 vf_rxmode, (uint8_t)is_on);
 #endif
 	if (ret < 0)
 		printf("bad VF receive mode parameter, return code = %d \n",
