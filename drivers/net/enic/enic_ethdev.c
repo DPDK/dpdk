@@ -73,7 +73,7 @@ RTE_INIT(enicpmd_init_log)
 {
 	enic_pmd_logtype = rte_log_register("pmd.net.enic");
 	if (enic_pmd_logtype >= 0)
-		rte_log_set_level(enic_pmd_logtype, RTE_LOG_NOTICE);
+		rte_log_set_level(enic_pmd_logtype, RTE_LOG_INFO);
 }
 
 static int
