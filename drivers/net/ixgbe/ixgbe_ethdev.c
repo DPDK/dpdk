@@ -3926,6 +3926,8 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 				     dev_info->rx_queue_offload_capa);
 	dev_info->tx_queue_offload_capa = ixgbe_get_tx_queue_offloads(dev);
 	dev_info->tx_offload_capa = ixgbe_get_tx_port_offloads(dev);
+	dev_info->hash_key_size = IXGBE_HKEY_MAX_INDEX * sizeof(uint32_t);
+	dev_info->reta_size = ixgbe_reta_size_get(hw->mac.type);
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -7437,6 +7439,9 @@ ixgbe_reta_size_get(enum ixgbe_mac_type mac_type) {
 	case ixgbe_mac_X550EM_x_vf:
 	case ixgbe_mac_X550EM_a_vf:
 		return ETH_RSS_RETA_SIZE_64;
+	case ixgbe_mac_X540_vf:
+	case ixgbe_mac_82599_vf:
+		return 0;
 	default:
 		return ETH_RSS_RETA_SIZE_128;
 	}
