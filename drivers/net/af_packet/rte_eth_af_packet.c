@@ -51,7 +51,6 @@ struct pkt_rx_queue {
 	uint16_t in_port;
 
 	volatile unsigned long rx_pkts;
-	volatile unsigned long err_pkts;
 	volatile unsigned long rx_bytes;
 };
 
