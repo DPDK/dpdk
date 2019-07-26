@@ -62,7 +62,6 @@ struct null_queue {
 
 	rte_atomic64_t rx_pkts;
 	rte_atomic64_t tx_pkts;
-	rte_atomic64_t err_pkts;
 };
 
 struct pmd_internals {
@@ -311,7 +310,7 @@ static int
 eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 {
 	unsigned i, num_stats;
-	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
+	unsigned long rx_total = 0, tx_total = 0;
 	const struct pmd_internals *internal;
 
 	if ((dev == NULL) || (igb_stats == NULL))
@@ -334,12 +333,10 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 		igb_stats->q_opackets[i] =
 			internal->tx_null_queues[i].tx_pkts.cnt;
 		tx_total += igb_stats->q_opackets[i];
-		tx_err_total += internal->tx_null_queues[i].err_pkts.cnt;
 	}
 
 	igb_stats->ipackets = rx_total;
 	igb_stats->opackets = tx_total;
-	igb_stats->oerrors = tx_err_total;
 
 	return 0;
 }
@@ -356,10 +353,8 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	internal = dev->data->dev_private;
 	for (i = 0; i < RTE_DIM(internal->rx_null_queues); i++)
 		internal->rx_null_queues[i].rx_pkts.cnt = 0;
-	for (i = 0; i < RTE_DIM(internal->tx_null_queues); i++) {
+	for (i = 0; i < RTE_DIM(internal->tx_null_queues); i++)
 		internal->tx_null_queues[i].tx_pkts.cnt = 0;
-		internal->tx_null_queues[i].err_pkts.cnt = 0;
-	}
 }
 
 static void
