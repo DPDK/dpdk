@@ -14,7 +14,7 @@
 
 #define otx2_store_pair(val0, val1, addr) ({		\
 	asm volatile(					\
-	"stp %x[x0], %x[x1], [%x[p1]]"			\
+	"stp %x[x0], %x[x1], [%x[p1],#0]!"		\
 	::[x0]"r"(val0), [x1]"r"(val1), [p1]"r"(addr)	\
 	); })
 
