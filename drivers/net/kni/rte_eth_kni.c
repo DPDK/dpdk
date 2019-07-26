@@ -35,7 +35,6 @@ struct eth_kni_args {
 struct pmd_queue_stats {
 	uint64_t pkts;
 	uint64_t bytes;
-	uint64_t err_pkts;
 };
 
 struct pmd_queue {
@@ -97,7 +96,6 @@ eth_kni_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	nb_pkts =  rte_kni_tx_burst(kni, bufs, nb_bufs);
 
 	kni_q->tx.pkts += nb_pkts;
-	kni_q->tx.err_pkts += nb_bufs - nb_pkts;
 
 	return nb_pkts;
 }
@@ -269,7 +267,6 @@ eth_kni_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	unsigned long rx_packets_total = 0, rx_bytes_total = 0;
 	unsigned long tx_packets_total = 0, tx_bytes_total = 0;
 	struct rte_eth_dev_data *data = dev->data;
-	unsigned long tx_packets_err_total = 0;
 	unsigned int i, num_stats;
 	struct pmd_queue *q;
 
@@ -291,14 +288,12 @@ eth_kni_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->q_obytes[i] = q->tx.bytes;
 		tx_packets_total += stats->q_opackets[i];
 		tx_bytes_total += stats->q_obytes[i];
-		tx_packets_err_total += q->tx.err_pkts;
 	}
 
 	stats->ipackets = rx_packets_total;
 	stats->ibytes = rx_bytes_total;
 	stats->opackets = tx_packets_total;
 	stats->obytes = tx_bytes_total;
-	stats->oerrors = tx_packets_err_total;
 
 	return 0;
 }
@@ -319,7 +314,6 @@ eth_kni_stats_reset(struct rte_eth_dev *dev)
 		q = data->tx_queues[i];
 		q->tx.pkts = 0;
 		q->tx.bytes = 0;
-		q->tx.err_pkts = 0;
 	}
 }
 
