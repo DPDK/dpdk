@@ -625,6 +625,9 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (conf & DEV_TX_OFFLOAD_MULTI_SEGS)
 		flags |= NIX_TX_MULTI_SEG_F;
 
+	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
+		flags |= NIX_TX_OFFLOAD_TSTAMP_F;
+
 	return flags;
 }
 
@@ -1333,16 +1336,6 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto q_irq_fini;
 	}
 
-	/* Enable PTP if it was requested by the app or if it is already
-	 * enabled in PF owning this VF
-	 */
-	memset(&dev->tstamp, 0, sizeof(struct otx2_timesync_info));
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) ||
-	    otx2_ethdev_is_ptp_en(dev))
-		otx2_nix_timesync_enable(eth_dev);
-	else
-		otx2_nix_timesync_disable(eth_dev);
-
 	/*
 	 * Restore queue config when reconfigure followed by
 	 * reconfigure and no queue configure invoked from application case.
@@ -1550,6 +1543,16 @@ otx2_nix_dev_start(struct rte_eth_dev *eth_dev)
 		otx2_err("Failed to update flow ctrl mode %d", rc);
 		return rc;
 	}
+
+	/* Enable PTP if it was requested by the app or if it is already
+	 * enabled in PF owning this VF
+	 */
+	memset(&dev->tstamp, 0, sizeof(struct otx2_timesync_info));
+	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) ||
+	    otx2_ethdev_is_ptp_en(dev))
+		otx2_nix_timesync_enable(eth_dev);
+	else
+		otx2_nix_timesync_disable(eth_dev);
 
 	rc = npc_rx_enable(dev);
 	if (rc) {
