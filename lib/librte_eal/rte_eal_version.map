@@ -315,55 +315,71 @@ DPDK_19.08 {
 EXPERIMENTAL {
 	global:
 
-	rte_class_find;
-	rte_class_find_by_name;
-	rte_class_register;
-	rte_class_unregister;
-	rte_delay_us_sleep;
-	rte_dev_dma_map;
-	rte_dev_dma_unmap;
-	rte_dev_event_callback_process;
+	# added in 18.02
+	rte_mp_action_register;
+	rte_mp_action_unregister;
+	rte_mp_reply;
+	rte_mp_sendmsg;
+
+	# added in 18.05
 	rte_dev_event_callback_register;
 	rte_dev_event_callback_unregister;
 	rte_dev_event_monitor_start;
 	rte_dev_event_monitor_stop;
-	rte_dev_hotplug_handle_disable;
-	rte_dev_hotplug_handle_enable;
-	rte_dev_iterator_init;
-	rte_dev_iterator_next;
-	rte_extmem_attach;
-	rte_extmem_detach;
-	rte_extmem_register;
-	rte_extmem_unregister;
 	rte_fbarray_attach;
 	rte_fbarray_destroy;
 	rte_fbarray_detach;
 	rte_fbarray_dump_metadata;
-	rte_fbarray_find_idx;
-	rte_fbarray_find_biggest_free;
-	rte_fbarray_find_biggest_used;
-	rte_fbarray_find_next_free;
-	rte_fbarray_find_next_used;
-	rte_fbarray_find_next_n_free;
-	rte_fbarray_find_next_n_used;
-	rte_fbarray_find_prev_free;
-	rte_fbarray_find_prev_used;
-	rte_fbarray_find_prev_n_free;
-	rte_fbarray_find_prev_n_used;
 	rte_fbarray_find_contig_free;
 	rte_fbarray_find_contig_used;
-	rte_fbarray_find_rev_biggest_free;
-	rte_fbarray_find_rev_biggest_used;
-	rte_fbarray_find_rev_contig_free;
-	rte_fbarray_find_rev_contig_used;
+	rte_fbarray_find_idx;
+	rte_fbarray_find_next_free;
+	rte_fbarray_find_next_n_free;
+	rte_fbarray_find_next_n_used;
+	rte_fbarray_find_next_used;
 	rte_fbarray_get;
 	rte_fbarray_init;
 	rte_fbarray_is_used;
 	rte_fbarray_set_free;
 	rte_fbarray_set_used;
-	rte_intr_callback_unregister_pending;
 	rte_log_register_type_and_pick_level;
 	rte_malloc_dump_heaps;
+	rte_mem_alloc_validator_register;
+	rte_mem_alloc_validator_unregister;
+	rte_mem_check_dma_mask;
+	rte_mem_event_callback_register;
+	rte_mem_event_callback_unregister;
+	rte_mem_iova2virt;
+	rte_mem_virt2memseg;
+	rte_mem_virt2memseg_list;
+	rte_memseg_contig_walk;
+	rte_memseg_list_walk;
+	rte_memseg_walk;
+	rte_mp_request_async;
+	rte_mp_request_sync;
+
+	# added in 18.08
+	rte_class_find;
+	rte_class_find_by_name;
+	rte_class_register;
+	rte_class_unregister;
+	rte_dev_iterator_init;
+	rte_dev_iterator_next;
+	rte_fbarray_find_prev_free;
+	rte_fbarray_find_prev_n_free;
+	rte_fbarray_find_prev_n_used;
+	rte_fbarray_find_prev_used;
+	rte_fbarray_find_rev_contig_free;
+	rte_fbarray_find_rev_contig_used;
+	rte_memseg_contig_walk_thread_unsafe;
+	rte_memseg_list_walk_thread_unsafe;
+	rte_memseg_walk_thread_unsafe;
+
+	# added in 18.11
+	rte_delay_us_sleep;
+	rte_dev_event_callback_process;
+	rte_dev_hotplug_handle_disable;
+	rte_dev_hotplug_handle_enable;
 	rte_malloc_heap_create;
 	rte_malloc_heap_destroy;
 	rte_malloc_heap_get_socket;
@@ -372,34 +388,28 @@ EXPERIMENTAL {
 	rte_malloc_heap_memory_detach;
 	rte_malloc_heap_memory_remove;
 	rte_malloc_heap_socket_is_external;
-	rte_mem_alloc_validator_register;
-	rte_mem_alloc_validator_unregister;
-	rte_mem_check_dma_mask;
 	rte_mem_check_dma_mask_thread_unsafe;
-	rte_mem_event_callback_register;
-	rte_mem_event_callback_unregister;
-	rte_mem_iova2virt;
 	rte_mem_set_dma_mask;
-	rte_mem_virt2memseg;
-	rte_mem_virt2memseg_list;
-	rte_memseg_contig_walk;
-	rte_memseg_contig_walk_thread_unsafe;
 	rte_memseg_get_fd;
 	rte_memseg_get_fd_offset;
-	rte_memseg_get_fd_thread_unsafe;
 	rte_memseg_get_fd_offset_thread_unsafe;
-	rte_memseg_list_walk;
-	rte_memseg_list_walk_thread_unsafe;
-	rte_memseg_walk;
-	rte_memseg_walk_thread_unsafe;
-	rte_mp_action_register;
-	rte_mp_action_unregister;
-	rte_mp_reply;
-	rte_mp_request_sync;
-	rte_mp_request_async;
-	rte_mp_sendmsg;
+	rte_memseg_get_fd_thread_unsafe;
 	rte_option_register;
-	rte_rand_max;
+
+	# added in 19.02
+	rte_extmem_attach;
+	rte_extmem_detach;
+	rte_extmem_register;
+	rte_extmem_unregister;
+
+	# added in 19.05
+	rte_dev_dma_map;
+	rte_dev_dma_unmap;
+	rte_fbarray_find_biggest_free;
+	rte_fbarray_find_biggest_used;
+	rte_fbarray_find_rev_biggest_free;
+	rte_fbarray_find_rev_biggest_used;
+	rte_intr_callback_unregister_pending;
 	rte_realloc_socket;
 
 	# added in 19.08
@@ -408,4 +418,5 @@ EXPERIMENTAL {
 	rte_lcore_to_cpu_id;
 	rte_mcfg_timer_lock;
 	rte_mcfg_timer_unlock;
+	rte_rand_max;
 };
