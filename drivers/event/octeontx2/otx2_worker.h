@@ -18,6 +18,7 @@ otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev,
 		     const uint32_t flags, const void * const lookup_mem)
 {
 	union otx2_sso_event event;
+	uint64_t tstamp_ptr;
 	uint64_t get_work1;
 	uint64_t mbuf;
 
@@ -69,8 +70,10 @@ otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev,
 		otx2_wqe_to_mbuf(get_work1, mbuf, event.sub_event_type,
 				 (uint32_t) event.get_work0, flags, lookup_mem);
 		/* Extracting tstamp, if PTP enabled*/
+		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)get_work1)
+					     + OTX2_SSO_WQE_SG_PTR);
 		otx2_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, ws->tstamp,
-					flags);
+					flags, (uint64_t *)tstamp_ptr);
 		get_work1 = mbuf;
 	}
 
@@ -86,6 +89,7 @@ otx2_ssogws_get_work_empty(struct otx2_ssogws *ws, struct rte_event *ev,
 			   const uint32_t flags)
 {
 	union otx2_sso_event event;
+	uint64_t tstamp_ptr;
 	uint64_t get_work1;
 	uint64_t mbuf;
 
@@ -131,8 +135,10 @@ otx2_ssogws_get_work_empty(struct otx2_ssogws *ws, struct rte_event *ev,
 		otx2_wqe_to_mbuf(get_work1, mbuf, event.sub_event_type,
 				 (uint32_t) event.get_work0, flags, NULL);
 		/* Extracting tstamp, if PTP enabled*/
+		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)get_work1)
+					     + OTX2_SSO_WQE_SG_PTR);
 		otx2_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, ws->tstamp,
-					flags);
+					flags, (uint64_t *)tstamp_ptr);
 		get_work1 = mbuf;
 	}
 

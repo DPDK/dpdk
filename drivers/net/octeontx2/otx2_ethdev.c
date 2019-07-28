@@ -874,8 +874,6 @@ otx2_nix_form_default_desc(struct otx2_eth_txq *txq)
 			send_mem = (struct nix_send_mem_s *)(txq->cmd +
 						(send_hdr->w0.sizem1 << 1));
 			send_mem->subdc = NIX_SUBDC_MEM;
-			send_mem->dsz = 0x0;
-			send_mem->wmem = 0x1;
 			send_mem->alg = NIX_SENDMEMALG_SETTSTMP;
 			send_mem->addr = txq->dev->tstamp.tx_tstamp_iova;
 		}

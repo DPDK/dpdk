@@ -68,7 +68,8 @@ nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		otx2_nix_cqe_to_mbuf(cq, cq->tag, mbuf, lookup_mem, mbuf_init,
 				     flags);
-		otx2_nix_mbuf_to_tstamp(mbuf, rxq->tstamp, flags);
+		otx2_nix_mbuf_to_tstamp(mbuf, rxq->tstamp, flags,
+				(uint64_t *)((uint8_t *)mbuf + data_off));
 		rx_pkts[packets++] = mbuf;
 		otx2_prefetch_store_keep(mbuf);
 		head++;

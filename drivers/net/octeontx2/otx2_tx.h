@@ -43,18 +43,29 @@ otx2_nix_xmit_prepare_tstamp(uint64_t *cmd,  const uint64_t *send_mem_desc,
 	if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
 		struct nix_send_mem_s *send_mem;
 		uint16_t off = (no_segdw - 1) << 1;
+		const uint8_t is_ol_tstamp = !(ol_flags & PKT_TX_IEEE1588_TMST);
 
 		send_mem = (struct nix_send_mem_s *)(cmd + off);
-		if (flags & NIX_TX_MULTI_SEG_F)
+		if (flags & NIX_TX_MULTI_SEG_F) {
 			/* Retrieving the default desc values */
 			cmd[off] = send_mem_desc[6];
 
+			/* Using compiler barier to avoid voilation of C
+			 * aliasing rules.
+			 */
+			rte_compiler_barrier();
+		}
+
 		/* Packets for which PKT_TX_IEEE1588_TMST is not set, tx tstamp
-		 * should not be updated at tx tstamp registered address, rather
-		 * a dummy address which is eight bytes ahead would be updated
+		 * should not be recorded, hence changing the alg type to
+		 * NIX_SENDMEMALG_SET and also changing send mem addr field to
+		 * next 8 bytes as it corrpt the actual tx tstamp registered
+		 * address.
 		 */
+		send_mem->alg = NIX_SENDMEMALG_SETTSTMP - (is_ol_tstamp);
+
 		send_mem->addr = (rte_iova_t)((uint64_t *)send_mem_desc[7] +
-				!(ol_flags & PKT_TX_IEEE1588_TMST));
+					      (is_ol_tstamp));
 	}
 }
 

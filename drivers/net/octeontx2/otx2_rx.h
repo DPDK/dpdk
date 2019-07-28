@@ -50,22 +50,26 @@ union mbuf_initializer {
 
 static __rte_always_inline void
 otx2_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
-			struct otx2_timesync_info *tstamp, const uint16_t flag)
+			struct otx2_timesync_info *tstamp, const uint16_t flag,
+			uint64_t *tstamp_ptr)
 {
 	if ((flag & NIX_RX_OFFLOAD_TSTAMP_F) &&
-	    mbuf->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC &&
 	    (mbuf->data_off == RTE_PKTMBUF_HEADROOM +
 	     NIX_TIMESYNC_RX_OFFSET)) {
-		uint64_t *tstamp_ptr;
 
-		/* Deal with rx timestamp */
-		tstamp_ptr = rte_pktmbuf_mtod_offset(mbuf, uint64_t *,
-						     -NIX_TIMESYNC_RX_OFFSET);
+		/* Reading the rx timestamp inserted by CGX, viz at
+		 * starting of the packet data.
+		 */
 		mbuf->timestamp = rte_be_to_cpu_64(*tstamp_ptr);
-		tstamp->rx_tstamp = mbuf->timestamp;
-		tstamp->rx_ready = 1;
-		mbuf->ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST
-			| PKT_RX_TIMESTAMP;
+		/* PKT_RX_IEEE1588_TMST flag needs to be set only in case
+		 * PTP packets are received.
+		 */
+		if (mbuf->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC) {
+			tstamp->rx_tstamp = mbuf->timestamp;
+			tstamp->rx_ready = 1;
+			mbuf->ol_flags |= PKT_RX_IEEE1588_PTP |
+				PKT_RX_IEEE1588_TMST | PKT_RX_TIMESTAMP;
+		}
 	}
 }
 

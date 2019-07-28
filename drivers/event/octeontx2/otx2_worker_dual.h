@@ -21,6 +21,7 @@ otx2_ssogws_dual_get_work(struct otx2_ssogws_state *ws,
 {
 	const uint64_t set_gw = BIT_ULL(16) | 1;
 	union otx2_sso_event event;
+	uint64_t tstamp_ptr;
 	uint64_t get_work1;
 	uint64_t mbuf;
 
@@ -70,8 +71,17 @@ otx2_ssogws_dual_get_work(struct otx2_ssogws_state *ws,
 	    event.event_type == RTE_EVENT_TYPE_ETHDEV) {
 		otx2_wqe_to_mbuf(get_work1, mbuf, event.sub_event_type,
 				 (uint32_t) event.get_work0, flags, lookup_mem);
-		/* Extracting tstamp, if PTP enabled*/
-		otx2_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp, flags);
+		/* Extracting tstamp, if PTP enabled. CGX will prepend the
+		 * timestamp at starting of packet data and it can be derieved
+		 * from WQE 9 dword which corresponds to SG iova.
+		 * rte_pktmbuf_mtod_offset can be used for this purpose but it
+		 * brings down the performance as it reads mbuf->buf_addr which
+		 * is not part of cache in general fast path.
+		 */
+		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)get_work1)
+					     + OTX2_SSO_WQE_SG_PTR);
+		otx2_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp, flags,
+					(uint64_t *)tstamp_ptr);
 		get_work1 = mbuf;
 	}
 
