@@ -3,7 +3,6 @@
  */
 
 #include <inttypes.h>
-#include <math.h>
 
 #include <rte_ethdev_pci.h>
 #include <rte_io.h>
@@ -521,6 +520,20 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 
 	eth_dev->data->rx_queues[rq] = rxq;
 	eth_dev->data->rx_queue_state[rq] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	/* Calculating delta and freq mult between PTP HI clock and tsc.
+	 * These are needed in deriving raw clock value from tsc counter.
+	 * read_clock eth op returns raw clock value.
+	 */
+	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) ||
+	    otx2_ethdev_is_ptp_en(dev)) {
+		rc = otx2_nix_raw_clock_tsc_conv(dev);
+		if (rc) {
+			otx2_err("Failed to calculate delta and freq mult");
+			goto fail;
+		}
+	}
+
 	return 0;
 
 free_rxq:
@@ -1649,6 +1662,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.vlan_pvid_set		  = otx2_nix_vlan_pvid_set,
 	.rx_queue_intr_enable	  = otx2_nix_rx_queue_intr_enable,
 	.rx_queue_intr_disable	  = otx2_nix_rx_queue_intr_disable,
+	.read_clock		  = otx2_nix_read_clock,
 };
 
 static inline int

@@ -5,6 +5,7 @@
 #ifndef __OTX2_ETHDEV_H__
 #define __OTX2_ETHDEV_H__
 
+#include <math.h>
 #include <stdint.h>
 
 #include <rte_common.h>
@@ -300,6 +301,8 @@ struct otx2_eth_dev {
 	struct rte_timecounter  systime_tc;
 	struct rte_timecounter  rx_tstamp_tc;
 	struct rte_timecounter  tx_tstamp_tc;
+	double clk_freq_mult;
+	uint64_t clk_delta;
 } __rte_cache_aligned;
 
 struct otx2_eth_txq {
@@ -527,5 +530,7 @@ int otx2_nix_timesync_write_time(struct rte_eth_dev *eth_dev,
 int otx2_nix_timesync_read_time(struct rte_eth_dev *eth_dev,
 				struct timespec *ts);
 int otx2_eth_dev_ptp_info_update(struct otx2_dev *dev, bool ptp_en);
+int otx2_nix_read_clock(struct rte_eth_dev *eth_dev, uint64_t *time);
+int otx2_nix_raw_clock_tsc_conv(struct otx2_eth_dev *dev);
 
 #endif /* __OTX2_ETHDEV_H__ */

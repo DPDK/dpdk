@@ -1354,11 +1354,13 @@ struct ptp_req {
 	struct mbox_msghdr hdr;
 	uint8_t __otx2_io op;
 	int64_t __otx2_io scaled_ppm;
+	uint8_t __otx2_io is_pmu;
 };
 
 struct ptp_rsp {
 	struct mbox_msghdr hdr;
 	uint64_t __otx2_io clk;
+	uint64_t __otx2_io tsc;
 };
 
 struct get_hw_cap_rsp {

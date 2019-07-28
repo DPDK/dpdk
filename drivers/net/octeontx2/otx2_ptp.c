@@ -8,6 +8,81 @@
 
 #define PTP_FREQ_ADJUST (1 << 9)
 
+static int
+nix_read_raw_clock(struct otx2_eth_dev *dev, uint64_t *clock, uint64_t *tsc,
+		   uint8_t is_pmu)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	struct ptp_req *req;
+	struct ptp_rsp *rsp;
+	int rc;
+
+	req = otx2_mbox_alloc_msg_ptp_op(mbox);
+	req->op = PTP_OP_GET_CLOCK;
+	req->is_pmu = is_pmu;
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto fail;
+
+	if (clock)
+		*clock = rsp->clk;
+	if (tsc)
+		*tsc = rsp->tsc;
+
+fail:
+	return rc;
+}
+
+/* This function calculates two parameters "clk_freq_mult" and
+ * "clk_delta" which is useful in deriving PTP HI clock from
+ * timestamp counter (tsc) value.
+ */
+int
+otx2_nix_raw_clock_tsc_conv(struct otx2_eth_dev *dev)
+{
+	uint64_t ticks_base = 0, ticks = 0, tsc = 0, t_freq;
+	int rc, val;
+
+	/* Calculating the frequency at which PTP HI clock is running */
+	rc = nix_read_raw_clock(dev, &ticks_base, &tsc, false);
+	if (rc) {
+		otx2_err("Failed to read the raw clock value: %d", rc);
+		goto fail;
+	}
+
+	rte_delay_ms(100);
+
+	rc = nix_read_raw_clock(dev, &ticks, &tsc, false);
+	if (rc) {
+		otx2_err("Failed to read the raw clock value: %d", rc);
+		goto fail;
+	}
+
+	t_freq = (ticks - ticks_base) * 10;
+
+	/* Calculating the freq multiplier viz the ratio between the
+	 * frequency at which PTP HI clock works and tsc clock runs
+	 */
+	dev->clk_freq_mult =
+		(double)pow(10, floor(log10(t_freq))) / rte_get_timer_hz();
+
+	val = false;
+#ifdef RTE_ARM_EAL_RDTSC_USE_PMU
+	val = true;
+#endif
+	rc = nix_read_raw_clock(dev, &ticks, &tsc, val);
+	if (rc) {
+		otx2_err("Failed to read the raw clock value: %d", rc);
+		goto fail;
+	}
+
+	/* Calculating delta between PTP HI clock and tsc */
+	dev->clk_delta = ((uint64_t)(ticks / dev->clk_freq_mult) - tsc);
+
+fail:
+	return rc;
+}
+
 static void
 nix_start_timecounters(struct rte_eth_dev *eth_dev)
 {
@@ -224,6 +299,13 @@ otx2_nix_timesync_adjust_time(struct rte_eth_dev *eth_dev, int64_t delta)
 		rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
 		if (rc)
 			return rc;
+		/* Since the frequency of PTP comp register is tuned, delta and
+		 * freq mult calculation for deriving PTP_HI from timestamp
+		 * counter should be done again.
+		 */
+		rc = otx2_nix_raw_clock_tsc_conv(dev);
+		if (rc)
+			otx2_err("Failed to calculate delta and freq mult");
 	}
 	dev->systime_tc.nsec += delta;
 	dev->rx_tstamp_tc.nsec += delta;
@@ -268,6 +350,24 @@ otx2_nix_timesync_read_time(struct rte_eth_dev *eth_dev, struct timespec *ts)
 	*ts = rte_ns_to_timespec(ns);
 
 	otx2_nix_dbg("PTP time read: %ld.%09ld", ts->tv_sec, ts->tv_nsec);
+
+	return 0;
+}
+
+
+int
+otx2_nix_read_clock(struct rte_eth_dev *eth_dev, uint64_t *clock)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
+	/* This API returns the raw PTP HI clock value. Since LFs doesn't
+	 * have direct access to PTP registers and it requires mbox msg
+	 * to AF for this value. In fastpath reading this value for every
+	 * packet (which involes mbox call) becomes very expensive, hence
+	 * we should be able to derive PTP HI clock value from tsc by
+	 * using freq_mult and clk_delta calculated during configure stage.
+	 */
+	*clock = (rte_get_tsc_cycles() + dev->clk_delta) * dev->clk_freq_mult;
 
 	return 0;
 }
