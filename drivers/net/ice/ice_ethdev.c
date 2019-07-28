@@ -1385,6 +1385,38 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 	return ret;
 }
 
+/* Forward LLDP packets to default VSI by set switch rules */
+static int
+ice_vsi_config_sw_lldp(struct ice_vsi *vsi,  bool on)
+{
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	struct ice_fltr_list_entry *s_list_itr = NULL;
+	struct LIST_HEAD_TYPE list_head;
+	int ret = 0;
+
+	INIT_LIST_HEAD(&list_head);
+
+	s_list_itr = (struct ice_fltr_list_entry *)
+			ice_malloc(hw, sizeof(*s_list_itr));
+	if (!s_list_itr)
+		return -ENOMEM;
+	s_list_itr->fltr_info.lkup_type = ICE_SW_LKUP_ETHERTYPE;
+	s_list_itr->fltr_info.vsi_handle = vsi->idx;
+	s_list_itr->fltr_info.l_data.ethertype_mac.ethertype =
+			RTE_ETHER_TYPE_LLDP;
+	s_list_itr->fltr_info.fltr_act = ICE_FWD_TO_VSI;
+	s_list_itr->fltr_info.flag = ICE_FLTR_RX;
+	s_list_itr->fltr_info.src_id = ICE_SRC_ID_LPORT;
+	LIST_ADD(&s_list_itr->list_entry, &list_head);
+	if (on)
+		ret = ice_add_eth_mac(hw, &list_head);
+	else
+		ret = ice_remove_eth_mac(hw, &list_head);
+
+	rte_free(s_list_itr);
+	return ret;
+}
+
 static int
 ice_dev_init(struct rte_eth_dev *dev)
 {
@@ -1483,7 +1515,13 @@ ice_dev_init(struct rte_eth_dev *dev)
 	ret = ice_aq_stop_lldp(hw, TRUE, FALSE, NULL);
 	if (ret != ICE_SUCCESS)
 		PMD_INIT_LOG(DEBUG, "lldp has already stopped\n");
-
+	ret = ice_init_dcb(hw, TRUE);
+	if (ret != ICE_SUCCESS)
+		PMD_INIT_LOG(DEBUG, "Failed to init DCB\n");
+	/* Forward LLDP packets to default VSI */
+	ret = ice_vsi_config_sw_lldp(vsi, TRUE);
+	if (ret != ICE_SUCCESS)
+		PMD_INIT_LOG(DEBUG, "Failed to cfg lldp\n");
 	/* register callback func to eal lib */
 	rte_intr_callback_register(intr_handle,
 				   ice_interrupt_handler, dev);
