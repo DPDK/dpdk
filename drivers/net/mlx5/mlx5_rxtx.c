@@ -2027,13 +2027,13 @@ static void
 mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 			  unsigned int olx __rte_unused)
 {
+	unsigned int count = MLX5_TX_COMP_MAX_CQE;
 	bool update = false;
+	uint16_t tail = txq->elts_tail;
 	int ret;
 
 	do {
-		volatile struct mlx5_wqe_cseg *cseg;
 		volatile struct mlx5_cqe *cqe;
-		uint16_t tail;
 
 		cqe = &txq->cqes[txq->cq_ci & txq->cqe_m];
 		ret = check_cqe(cqe, txq->cqe_s, txq->cq_ci);
@@ -2041,19 +2041,21 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 			if (likely(ret != MLX5_CQE_STATUS_ERR)) {
 				/* No new CQEs in completion queue. */
 				assert(ret == MLX5_CQE_STATUS_HW_OWN);
-				if (likely(update)) {
-					/* Update the consumer index. */
-					rte_compiler_barrier();
-					*txq->cq_db =
-						rte_cpu_to_be_32(txq->cq_ci);
-				}
-				return;
+				break;
 			}
 			/* Some error occurred, try to restart. */
 			rte_wmb();
 			tail = mlx5_tx_error_cqe_handle
 				(txq, (volatile struct mlx5_err_cqe *)cqe);
+			if (likely(tail != txq->elts_tail)) {
+				mlx5_tx_free_elts(txq, tail, olx);
+				assert(tail == txq->elts_tail);
+			}
+			/* Allow flushing all CQEs from the queue. */
+			count = txq->cqe_s;
 		} else {
+			volatile struct mlx5_wqe_cseg *cseg;
+
 			/* Normal transmit completion. */
 			++txq->cq_ci;
 			rte_cio_rmb();
@@ -2066,13 +2068,27 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 		if (txq->cq_pi)
 			--txq->cq_pi;
 #endif
-		if (likely(tail != txq->elts_tail)) {
-			/* Free data buffers from elts. */
-			mlx5_tx_free_elts(txq, tail, olx);
-			assert(tail == txq->elts_tail);
-		}
 		update = true;
-	} while (true);
+	/*
+	 * We have to restrict the amount of processed CQEs
+	 * in one tx_burst routine call. The CQ may be large
+	 * and many CQEs may be updated by the NIC in one
+	 * transaction. Buffers freeing is time consuming,
+	 * multiple iterations may introduce significant
+	 * latency.
+	 */
+	} while (--count);
+	if (likely(tail != txq->elts_tail)) {
+		/* Free data buffers from elts. */
+		mlx5_tx_free_elts(txq, tail, olx);
+		assert(tail == txq->elts_tail);
+	}
+	if (likely(update)) {
+		/* Update the consumer index. */
+		rte_compiler_barrier();
+		*txq->cq_db =
+		rte_cpu_to_be_32(txq->cq_ci);
+	}
 }
 
 /**

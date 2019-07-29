@@ -37,6 +37,13 @@
  */
 #define MLX5_TX_COMP_THRESH_INLINE_DIV (1 << 3)
 
+/*
+ * Maximal amount of normal completion CQEs
+ * processed in one call of tx_burst() routine.
+ */
+#define MLX5_TX_COMP_MAX_CQE 2u
+
+
 /* Size of per-queue MR cache array for linear search. */
 #define MLX5_MR_CACHE_N 8
 
