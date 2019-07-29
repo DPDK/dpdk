@@ -2100,8 +2100,6 @@ mlx5_ind_table_obj_verify(struct rte_eth_dev *dev)
  *   Number of queues.
  * @param tunnel
  *   Tunnel type.
- * @param lro
- *   Flow rule is relevant for LRO, i.e. contains IPv4/IPv6 and TCP.
  *
  * @return
  *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
@@ -2111,7 +2109,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
 	      const uint16_t *queues, uint32_t queues_n,
-	      int tunnel __rte_unused, int lro)
+	      int tunnel __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
@@ -2218,11 +2216,13 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		if (dev->data->dev_conf.lpbk_mode)
 			tir_attr.self_lb_block =
 					MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
-		if (lro) {
+		if (mlx5_lro_on(dev)) {
 			tir_attr.lro_timeout_period_usecs =
 					priv->config.lro.timeout;
 			tir_attr.lro_max_msg_sz = priv->max_lro_msg_size;
-			tir_attr.lro_enable_mask = lro;
+			tir_attr.lro_enable_mask =
+					MLX5_TIRC_LRO_ENABLE_MASK_IPV4_LRO |
+					MLX5_TIRC_LRO_ENABLE_MASK_IPV6_LRO;
 		}
 		tir = mlx5_devx_cmd_create_tir(priv->sh->ctx, &tir_attr);
 		if (!tir) {
