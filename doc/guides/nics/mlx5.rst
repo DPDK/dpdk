@@ -165,7 +165,9 @@ Limitations
 
 - LRO:
 
-  - scatter_fcs is disabled when LRO is configured.
+  - KEEP_CRC offload cannot be supported with LRO.
+  - The first mbuf length, without head-room,  must be big enough to include the
+    TCP header (122B).
 
 Statistics
 ----------

@@ -107,6 +107,16 @@ static int
 mlx5_queue_state_modify(struct rte_eth_dev *dev,
 			struct mlx5_mp_arg_queue_state_modify *sm);
 
+static inline void
+mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *restrict tcp,
+			volatile struct mlx5_cqe *restrict cqe,
+			uint32_t phcsum);
+
+static inline void
+mlx5_lro_update_hdr(uint8_t *restrict padd,
+		    volatile struct mlx5_cqe *restrict cqe,
+		    uint32_t len);
+
 uint32_t mlx5_ptype_table[] __rte_cache_aligned = {
 	[0xff] = RTE_PTYPE_ALL_MASK, /* Last entry for errored packet. */
 };
@@ -1323,6 +1333,13 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			if (rxq->crc_present)
 				len -= RTE_ETHER_CRC_LEN;
 			PKT_LEN(pkt) = len;
+			if (cqe->lro_num_seg > 1) {
+				mlx5_lro_update_hdr
+					(rte_pktmbuf_mtod(pkt, uint8_t *), cqe,
+					 len);
+				pkt->ol_flags |= PKT_RX_LRO;
+				pkt->tso_segsz = len / cqe->lro_num_seg;
+			}
 		}
 		DATA_LEN(rep) = DATA_LEN(seg);
 		PKT_LEN(rep) = PKT_LEN(seg);

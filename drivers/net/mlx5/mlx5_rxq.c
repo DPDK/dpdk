@@ -1541,6 +1541,11 @@ exit:
 #define MLX5_MAX_TCP_HDR_OFFSET ((unsigned int)(sizeof(struct rte_ether_hdr) + \
 					sizeof(struct rte_vlan_hdr) * 2 + \
 					sizeof(struct rte_ipv6_hdr)))
+#define MAX_TCP_OPTION_SIZE 40u
+#define MLX5_MAX_LRO_HEADER_FIX ((unsigned int)(MLX5_MAX_TCP_HDR_OFFSET + \
+				 sizeof(struct rte_tcp_hdr) + \
+				 MAX_TCP_OPTION_SIZE))
+
 /**
  * Adjust the maximum LRO massage size.
  *
@@ -1607,6 +1612,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	unsigned int non_scatter_min_mbuf_size = max_rx_pkt_len +
 							RTE_PKTMBUF_HEADROOM;
 	unsigned int max_lro_size = 0;
+	unsigned int first_mb_free_size = mb_len - RTE_PKTMBUF_HEADROOM;
 
 	if (non_scatter_min_mbuf_size > mb_len && !(offloads &
 						    DEV_RX_OFFLOAD_SCATTER)) {
@@ -1670,8 +1676,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 					      config->mprq.min_stride_size_n);
 		tmpl->rxq.strd_shift_en = MLX5_MPRQ_TWO_BYTE_SHIFT;
 		tmpl->rxq.strd_headroom_en = strd_headroom_en;
-		tmpl->rxq.mprq_max_memcpy_len = RTE_MIN(mb_len -
-			    RTE_PKTMBUF_HEADROOM, config->mprq.max_memcpy_len);
+		tmpl->rxq.mprq_max_memcpy_len = RTE_MIN(first_mb_free_size,
+				config->mprq.max_memcpy_len);
 		max_lro_size = RTE_MIN(max_rx_pkt_len,
 				       (1u << tmpl->rxq.strd_num_n) *
 				       (1u << tmpl->rxq.strd_sz_n));
@@ -1680,13 +1686,21 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			" strd_num_n = %u, strd_sz_n = %u",
 			dev->data->port_id, idx,
 			tmpl->rxq.strd_num_n, tmpl->rxq.strd_sz_n);
-	} else if (max_rx_pkt_len <= (mb_len - RTE_PKTMBUF_HEADROOM)) {
+	} else if (max_rx_pkt_len <= first_mb_free_size) {
 		tmpl->rxq.sges_n = 0;
 		max_lro_size = max_rx_pkt_len;
 	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
 		unsigned int size = non_scatter_min_mbuf_size;
 		unsigned int sges_n;
 
+		if (mlx5_lro_on(dev) && first_mb_free_size <
+		    MLX5_MAX_LRO_HEADER_FIX) {
+			DRV_LOG(ERR, "Not enough space in the first segment(%u)"
+				" to include the max header size(%u) for LRO",
+				first_mb_free_size, MLX5_MAX_LRO_HEADER_FIX);
+			rte_errno = ENOTSUP;
+			goto error;
+		}
 		/*
 		 * Determine the number of SGEs needed for a full packet
 		 * and round it to the next power of two.
