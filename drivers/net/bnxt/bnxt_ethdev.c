@@ -3399,8 +3399,9 @@ static int bnxt_alloc_ctx_mem_blk(__rte_unused struct bnxt *bp,
 	valid_bits = PTU_PTE_VALID;
 
 	if (rmem->nr_pages > 1) {
-		snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_pg_tbl%s_%x",
-			 suffix, idx);
+		snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
+			 "bnxt_ctx_pg_tbl%s_%x_%d",
+			 suffix, idx, bp->eth_dev->data->port_id);
 		mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
 		mz = rte_memzone_lookup(mz_name);
 		if (!mz) {
@@ -3436,7 +3437,8 @@ static int bnxt_alloc_ctx_mem_blk(__rte_unused struct bnxt *bp,
 		rmem->pg_tbl_mz = mz;
 	}
 
-	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_%s_%x", suffix, idx);
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_%s_%x_%d",
+		 suffix, idx, bp->eth_dev->data->port_id);
 	mz = rte_memzone_lookup(mz_name);
 	if (!mz) {
 		mz = rte_memzone_reserve_aligned(mz_name,
