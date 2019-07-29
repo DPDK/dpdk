@@ -1090,7 +1090,7 @@ mlx5_devx_rq_new(struct rte_eth_dev *dev, uint16_t idx, uint32_t cqn)
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	struct mlx5_devx_create_rq_attr rq_attr;
-	uint32_t wqe_n = 1 << rxq_data->elts_n;
+	uint32_t wqe_n = 1 << (rxq_data->elts_n - rxq_data->sges_n);
 	uint32_t wq_size = 0;
 	uint32_t wqe_size = 0;
 	uint32_t log_wqe_size = 0;
@@ -1118,17 +1118,11 @@ mlx5_devx_rq_new(struct rte_eth_dev *dev, uint16_t idx, uint32_t cqn)
 				MLX5_MIN_SINGLE_STRIDE_LOG_NUM_BYTES;
 		wqe_size = sizeof(struct mlx5_wqe_mprq);
 	} else {
-		int max_sge = 0;
-		int num_scatter = 0;
-
-		rq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
-		max_sge = 1 << rxq_data->sges_n;
-		num_scatter = RTE_MAX(max_sge, 1);
-		wqe_size = sizeof(struct mlx5_wqe_data_seg) * num_scatter;
+		wqe_size = sizeof(struct mlx5_wqe_data_seg);
 	}
-	log_wqe_size = log2above(wqe_size);
+	log_wqe_size = log2above(wqe_size) + rxq_data->sges_n;
 	rq_attr.wq_attr.log_wq_stride = log_wqe_size;
-	rq_attr.wq_attr.log_wq_sz = rxq_data->elts_n;
+	rq_attr.wq_attr.log_wq_sz = rxq_data->elts_n - rxq_data->sges_n;
 	/* Calculate and allocate WQ memory space. */
 	wqe_size = 1 << log_wqe_size; /* round up power of two.*/
 	wq_size = wqe_n * wqe_size;
