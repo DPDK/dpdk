@@ -151,6 +151,8 @@ mlx5_check_vec_rx_support(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	if (mlx5_mprq_enabled(dev))
 		return -ENOTSUP;
+	if (mlx5_lro_on(dev))
+		return -ENOTSUP;
 	/* All the configured queues should support. */
 	for (i = 0; i < priv->rxqs_n; ++i) {
 		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];

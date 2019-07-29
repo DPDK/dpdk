@@ -1856,7 +1856,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		if (priv->counter_fallback)
 			DRV_LOG(INFO, "Use fall-back DV counter management\n");
 		/* Check for LRO support. */
-		if (config.dest_tir && mprq && config.hca_attr.lro_cap) {
+		if (config.dest_tir && config.hca_attr.lro_cap) {
 			/* TBD check tunnel lro caps. */
 			config.lro.supported = config.hca_attr.lro_cap;
 			DRV_LOG(DEBUG, "Device supports LRO");
@@ -1869,8 +1869,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 				config.hca_attr.lro_timer_supported_periods[0];
 			DRV_LOG(DEBUG, "LRO session timeout set to %d usec",
 				config.lro.timeout);
-			config.mprq.enabled = 1;
-			DRV_LOG(DEBUG, "Enable MPRQ for LRO use");
 		}
 	}
 	if (config.mprq.enabled && mprq) {

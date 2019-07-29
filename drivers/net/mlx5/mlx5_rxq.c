@@ -93,7 +93,6 @@ mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq)
 
 /**
  * Check whether Multi-Packet RQ is enabled for the device.
- * MPRQ can be enabled explicitly, or implicitly by enabling LRO.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -1607,6 +1606,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	unsigned int max_rx_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	unsigned int non_scatter_min_mbuf_size = max_rx_pkt_len +
 							RTE_PKTMBUF_HEADROOM;
+	unsigned int max_lro_size = 0;
 
 	if (non_scatter_min_mbuf_size > mb_len && !(offloads &
 						    DEV_RX_OFFLOAD_SCATTER)) {
@@ -1672,8 +1672,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		tmpl->rxq.strd_headroom_en = strd_headroom_en;
 		tmpl->rxq.mprq_max_memcpy_len = RTE_MIN(mb_len -
 			    RTE_PKTMBUF_HEADROOM, config->mprq.max_memcpy_len);
-		mlx5_max_lro_msg_size_adjust(dev, RTE_MIN(max_rx_pkt_len,
-		   (1u << tmpl->rxq.strd_num_n) * (1u << tmpl->rxq.strd_sz_n)));
+		max_lro_size = RTE_MIN(max_rx_pkt_len,
+				       (1u << tmpl->rxq.strd_num_n) *
+				       (1u << tmpl->rxq.strd_sz_n));
 		DRV_LOG(DEBUG,
 			"port %u Rx queue %u: Multi-Packet RQ is enabled"
 			" strd_num_n = %u, strd_sz_n = %u",
@@ -1681,6 +1682,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			tmpl->rxq.strd_num_n, tmpl->rxq.strd_sz_n);
 	} else if (max_rx_pkt_len <= (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		tmpl->rxq.sges_n = 0;
+		max_lro_size = max_rx_pkt_len;
 	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
 		unsigned int size = non_scatter_min_mbuf_size;
 		unsigned int sges_n;
@@ -1690,20 +1692,18 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		 * and round it to the next power of two.
 		 */
 		sges_n = log2above((size / mb_len) + !!(size % mb_len));
-		tmpl->rxq.sges_n = sges_n;
-		/* Make sure rxq.sges_n did not overflow. */
-		size = mb_len * (1 << tmpl->rxq.sges_n);
-		size -= RTE_PKTMBUF_HEADROOM;
-		if (size < max_rx_pkt_len) {
+		if (sges_n > MLX5_MAX_LOG_RQ_SEGS) {
 			DRV_LOG(ERR,
 				"port %u too many SGEs (%u) needed to handle"
-				" requested maximum packet size %u",
-				dev->data->port_id,
-				1 << sges_n,
-				max_rx_pkt_len);
-			rte_errno = EOVERFLOW;
+				" requested maximum packet size %u, the maximum"
+				" supported are %u", dev->data->port_id,
+				1 << sges_n, max_rx_pkt_len,
+				1u << MLX5_MAX_LOG_RQ_SEGS);
+			rte_errno = ENOTSUP;
 			goto error;
 		}
+		tmpl->rxq.sges_n = sges_n;
+		max_lro_size = max_rx_pkt_len;
 	}
 	if (mprq_en && !mlx5_rxq_mprq_enabled(&tmpl->rxq))
 		DRV_LOG(WARNING,
@@ -1725,6 +1725,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = EINVAL;
 		goto error;
 	}
+	mlx5_max_lro_msg_size_adjust(dev, max_lro_size);
 	/* Toggle RX checksum offload if hardware supports it. */
 	tmpl->rxq.csum = !!(offloads & DEV_RX_OFFLOAD_CHECKSUM);
 	tmpl->rxq.hw_timestamp = !!(offloads & DEV_RX_OFFLOAD_TIMESTAMP);

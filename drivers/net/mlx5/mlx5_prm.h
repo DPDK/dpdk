@@ -237,6 +237,9 @@
 /* Amount of data bytes after eth data segment. */
 #define MLX5_ESEG_EXTRA_DATA_SIZE 32u
 
+/* The maximum log value of segments per RQ WQE. */
+#define MLX5_MAX_LOG_RQ_SEGS 5u
+
 /* Completion mode. */
 enum mlx5_completion_mode {
 	MLX5_COMP_ONLY_ERR = 0x0,

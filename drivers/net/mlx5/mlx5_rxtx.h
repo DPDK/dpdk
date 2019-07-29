@@ -105,7 +105,7 @@ struct mlx5_rxq_data {
 	unsigned int hw_timestamp:1; /* Enable HW timestamp. */
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
 	unsigned int crc_present:1; /* CRC must be subtracted. */
-	unsigned int sges_n:2; /* Log 2 of SGEs (max buffers per packet). */
+	unsigned int sges_n:3; /* Log 2 of SGEs (max buffers per packet). */
 	unsigned int cqe_n:4; /* Log 2 of CQ elements. */
 	unsigned int elts_n:4; /* Log 2 of Mbufs. */
 	unsigned int rss_hash:1; /* RSS hash result is enabled. */
@@ -115,7 +115,7 @@ struct mlx5_rxq_data {
 	unsigned int strd_shift_en:1; /* Enable 2bytes shift on a stride. */
 	unsigned int err_state:2; /* enum mlx5_rxq_err_state. */
 	unsigned int strd_headroom_en:1; /* Enable mbuf headroom in MPRQ. */
-	unsigned int :3; /* Remaining bits. */
+	unsigned int :2; /* Remaining bits. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;

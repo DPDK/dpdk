@@ -433,12 +433,6 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 			dev->data->port_id, priv->rxqs_n, rxqs_n);
 		priv->rxqs_n = rxqs_n;
 		/*
-		 * WHen using LRO, MPRQ is implicitly enabled.
-		 * Adjust threshold value to ensure MPRQ can be enabled.
-		 */
-		if (lro_on && priv->config.mprq.min_rxqs_num > priv->rxqs_n)
-			priv->config.mprq.min_rxqs_num = priv->rxqs_n;
-		/*
 		 * If the requested number of RX queues is not a power of two,
 		 * use the maximum indirection table size for better balancing.
 		 * The result is always rounded to the next power of two.
