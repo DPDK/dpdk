@@ -1616,7 +1616,20 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	uint64_t offloads = conf->offloads |
 			   dev->data->dev_conf.rxmode.offloads;
 	const int mprq_en = mlx5_check_mprq_support(dev) > 0;
+	unsigned int max_rx_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	unsigned int non_scatter_min_mbuf_size = max_rx_pkt_len +
+							RTE_PKTMBUF_HEADROOM;
 
+	if (non_scatter_min_mbuf_size > mb_len && !(offloads &
+						    DEV_RX_OFFLOAD_SCATTER)) {
+		DRV_LOG(ERR, "port %u Rx queue %u: Scatter offload is not"
+			" configured and no enough mbuf space(%u) to contain "
+			"the maximum RX packet length(%u) with head-room(%u)",
+			dev->data->port_id, idx, mb_len, max_rx_pkt_len,
+			RTE_PKTMBUF_HEADROOM);
+		rte_errno = ENOSPC;
+		return NULL;
+	}
 	tmpl = rte_calloc_socket("RXQ", 1,
 				 sizeof(*tmpl) +
 				 desc_n * sizeof(struct rte_mbuf *),
@@ -1642,9 +1655,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 *    stride.
 	 *  Otherwise, enable Rx scatter if necessary.
 	 */
-	assert(mb_len >= RTE_PKTMBUF_HEADROOM * strd_headroom_en);
-	mprq_stride_size = dev->data->dev_conf.rxmode.max_rx_pkt_len +
-				RTE_PKTMBUF_HEADROOM * strd_headroom_en;
+	mprq_stride_size = max_rx_pkt_len + RTE_PKTMBUF_HEADROOM *
+				strd_headroom_en;
 	if (mprq_en &&
 	    desc > (1U << config->mprq.stride_num_n) &&
 	    mprq_stride_size <= (1U << config->mprq.max_stride_size_n)) {
@@ -1666,13 +1678,10 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			" strd_num_n = %u, strd_sz_n = %u",
 			dev->data->port_id, idx,
 			tmpl->rxq.strd_num_n, tmpl->rxq.strd_sz_n);
-	} else if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
-		   (mb_len - RTE_PKTMBUF_HEADROOM)) {
+	} else if (max_rx_pkt_len <= (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		tmpl->rxq.sges_n = 0;
 	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
-		unsigned int size =
-			RTE_PKTMBUF_HEADROOM +
-			dev->data->dev_conf.rxmode.max_rx_pkt_len;
+		unsigned int size = non_scatter_min_mbuf_size;
 		unsigned int sges_n;
 
 		/*
@@ -1684,24 +1693,16 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		/* Make sure rxq.sges_n did not overflow. */
 		size = mb_len * (1 << tmpl->rxq.sges_n);
 		size -= RTE_PKTMBUF_HEADROOM;
-		if (size < dev->data->dev_conf.rxmode.max_rx_pkt_len) {
+		if (size < max_rx_pkt_len) {
 			DRV_LOG(ERR,
 				"port %u too many SGEs (%u) needed to handle"
 				" requested maximum packet size %u",
 				dev->data->port_id,
 				1 << sges_n,
-				dev->data->dev_conf.rxmode.max_rx_pkt_len);
+				max_rx_pkt_len);
 			rte_errno = EOVERFLOW;
 			goto error;
 		}
-	} else {
-		DRV_LOG(WARNING,
-			"port %u the requested maximum Rx packet size (%u) is"
-			" larger than a single mbuf (%u) and scattered mode has"
-			" not been requested",
-			dev->data->port_id,
-			dev->data->dev_conf.rxmode.max_rx_pkt_len,
-			mb_len - RTE_PKTMBUF_HEADROOM);
 	}
 	if (mprq_en && !mlx5_rxq_mprq_enabled(&tmpl->rxq))
 		DRV_LOG(WARNING,
