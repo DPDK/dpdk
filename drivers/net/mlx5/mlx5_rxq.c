@@ -1118,6 +1118,7 @@ mlx5_devx_rq_new(struct rte_eth_dev *dev, uint16_t idx, uint32_t cqn)
 				MLX5_MIN_SINGLE_STRIDE_LOG_NUM_BYTES;
 		wqe_size = sizeof(struct mlx5_wqe_mprq);
 	} else {
+		rq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
 		wqe_size = sizeof(struct mlx5_wqe_data_seg);
 	}
 	log_wqe_size = log2above(wqe_size) + rxq_data->sges_n;
