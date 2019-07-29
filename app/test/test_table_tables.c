@@ -464,7 +464,7 @@ test_table_lpm_ipv6(void)
 	struct rte_table_lpm_ipv6_params lpm_params = {
 		.name = "LPM",
 		.n_rules = 1 << 24,
-		.number_tbl8s = 1 << 21,
+		.number_tbl8s = 1 << 18,
 		.entry_unique_size = entry_size,
 		.offset = APP_METADATA_OFFSET(32)
 	};
@@ -492,7 +492,7 @@ test_table_lpm_ipv6(void)
 	if (table != NULL)
 		return -4;
 
-	lpm_params.number_tbl8s = 1 << 21;
+	lpm_params.number_tbl8s = 1 << 18;
 	lpm_params.entry_unique_size = 0;
 	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
 	if (table != NULL)
