@@ -1623,8 +1623,6 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			len -= RTE_ETHER_CRC_LEN;
 		offset = strd_idx * strd_sz + strd_shift;
 		addr = RTE_PTR_ADD(mlx5_mprq_buf_addr(buf, strd_n), offset);
-		/* Initialize the offload flag. */
-		pkt->ol_flags = 0;
 		/*
 		 * Memcpy packets to the target mbuf if:
 		 * - The size of packet is smaller than mprq_max_memcpy_len.
