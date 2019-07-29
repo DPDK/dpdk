@@ -1543,37 +1543,35 @@ exit:
 	return 0;
 }
 
+#define MLX5_MAX_LRO_SIZE (UINT8_MAX * 256u)
+#define MLX5_MAX_TCP_HDR_OFFSET ((unsigned int)(sizeof(struct rte_ether_hdr) + \
+					sizeof(struct rte_vlan_hdr) * 2 + \
+					sizeof(struct rte_ipv6_hdr)))
 /**
  * Adjust the maximum LRO massage size.
- * LRO massage is contained in the MPRQ strides.
- * While the LRO massage size cannot be bigger than 65280 according to the
- * PRM, the strides which contain it may be bigger.
- * Adjust the maximum LRO massage size to avoid the above option.
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param strd_n
- *   Number of strides per WQE..
- * @param strd_sz
- *   The stride size.
+ * @param max_lro_size
+ *   The maximum size for LRO packet.
  */
 static void
-mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint32_t strd_n,
-			     uint32_t strd_sz)
+mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint32_t max_lro_size)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t max_buf_len = strd_sz * strd_n;
 
-	if (max_buf_len > (uint64_t)UINT16_MAX)
-		max_buf_len = RTE_ALIGN_FLOOR((uint32_t)UINT16_MAX, strd_sz);
-	max_buf_len /= 256;
-	max_buf_len = RTE_MIN(max_buf_len, (uint32_t)UINT8_MAX);
-	assert(max_buf_len);
+	if (priv->config.hca_attr.lro_max_msg_sz_mode ==
+	    MLX5_LRO_MAX_MSG_SIZE_START_FROM_L4 && max_lro_size >
+	    MLX5_MAX_TCP_HDR_OFFSET)
+		max_lro_size -= MLX5_MAX_TCP_HDR_OFFSET;
+	max_lro_size = RTE_MIN(max_lro_size, MLX5_MAX_LRO_SIZE);
+	assert(max_lro_size >= 256u);
+	max_lro_size /= 256u;
 	if (priv->max_lro_msg_size)
 		priv->max_lro_msg_size =
-			RTE_MIN((uint32_t)priv->max_lro_msg_size, max_buf_len);
+			RTE_MIN((uint32_t)priv->max_lro_msg_size, max_lro_size);
 	else
-		priv->max_lro_msg_size = max_buf_len;
+		priv->max_lro_msg_size = max_lro_size;
 }
 
 /**
@@ -1671,8 +1669,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		tmpl->rxq.strd_headroom_en = strd_headroom_en;
 		tmpl->rxq.mprq_max_memcpy_len = RTE_MIN(mb_len -
 			    RTE_PKTMBUF_HEADROOM, config->mprq.max_memcpy_len);
-		mlx5_max_lro_msg_size_adjust(dev, (1 << tmpl->rxq.strd_num_n),
-					     (1 << tmpl->rxq.strd_sz_n));
+		mlx5_max_lro_msg_size_adjust(dev, RTE_MIN(max_rx_pkt_len,
+		   (1u << tmpl->rxq.strd_num_n) * (1u << tmpl->rxq.strd_sz_n)));
 		DRV_LOG(DEBUG,
 			"port %u Rx queue %u: Multi-Packet RQ is enabled"
 			" strd_num_n = %u, strd_sz_n = %u",

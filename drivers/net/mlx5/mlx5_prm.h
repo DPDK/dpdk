@@ -1465,6 +1465,11 @@ enum {
 	MLX5_TIRC_SELF_LB_BLOCK_BLOCK_MULTICAST  = 0x2,
 };
 
+enum {
+	MLX5_LRO_MAX_MSG_SIZE_START_FROM_L4    = 0x0,
+	MLX5_LRO_MAX_MSG_SIZE_START_FROM_L2  = 0x1,
+};
+
 struct mlx5_ifc_tirc_bits {
 	u8 reserved_at_0[0x20];
 	u8 disp_type[0x4];
