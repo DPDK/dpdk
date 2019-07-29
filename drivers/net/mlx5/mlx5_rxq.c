@@ -1599,12 +1599,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	unsigned int mb_len = rte_pktmbuf_data_room_size(mp);
 	unsigned int mprq_stride_size;
 	struct mlx5_dev_config *config = &priv->config;
-	/*
-	 * LRO packet may consume all the stride memory, hence we cannot
-	 * guaranty head-room. A new striding RQ feature may be added in CX6 DX
-	 * to allow head-room and tail-room for the LRO packets.
-	 */
-	unsigned int strd_headroom_en = mlx5_lro_on(dev) ? 0 : 1;
+	unsigned int strd_headroom_en;
 	/*
 	 * Always allocate extra slots, even if eventually
 	 * the vector Rx will not be used.
@@ -1645,6 +1640,21 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (dev->data->dev_conf.intr_conf.rxq)
 		tmpl->irq = 1;
 	/*
+	 * LRO packet may consume all the stride memory, hence we cannot
+	 * guaranty head-room near the packet memory in the stride.
+	 * In this case scatter is, for sure, enabled and an empty mbuf may be
+	 * added in the start for the head-room.
+	 */
+	if (mlx5_lro_on(dev) && RTE_PKTMBUF_HEADROOM > 0 &&
+	    non_scatter_min_mbuf_size > mb_len) {
+		strd_headroom_en = 0;
+		mprq_stride_size = RTE_MIN(max_rx_pkt_len,
+					1u << config->mprq.max_stride_size_n);
+	} else {
+		strd_headroom_en = 1;
+		mprq_stride_size = non_scatter_min_mbuf_size;
+	}
+	/*
 	 * This Rx queue can be configured as a Multi-Packet RQ if all of the
 	 * following conditions are met:
 	 *  - MPRQ is enabled.
@@ -1653,8 +1663,6 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 *    stride.
 	 *  Otherwise, enable Rx scatter if necessary.
 	 */
-	mprq_stride_size = max_rx_pkt_len + RTE_PKTMBUF_HEADROOM *
-				strd_headroom_en;
 	if (mprq_en &&
 	    desc > (1U << config->mprq.stride_num_n) &&
 	    mprq_stride_size <= (1U << config->mprq.max_stride_size_n)) {

@@ -1639,6 +1639,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				continue;
 			}
 			rte_memcpy(rte_pktmbuf_mtod(pkt, void *), addr, len);
+			DATA_LEN(pkt) = len;
 		} else {
 			rte_iova_t buf_iova;
 			struct rte_mbuf_ext_shared_info *shinfo;
@@ -1679,6 +1680,26 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				++rxq->stats.idropped;
 				continue;
 			}
+			DATA_LEN(pkt) = len;
+			/*
+			 * LRO packet may consume all the stride memory, in this
+			 * case packet head-room space is not guaranteed so must
+			 * to add an empty mbuf for the head-room.
+			 */
+			if (!rxq->strd_headroom_en) {
+				struct rte_mbuf *headroom_mbuf =
+						rte_pktmbuf_alloc(rxq->mp);
+
+				if (unlikely(headroom_mbuf == NULL)) {
+					rte_pktmbuf_free_seg(pkt);
+					++rxq->stats.rx_nombuf;
+					break;
+				}
+				PORT(pkt) = rxq->port_id;
+				NEXT(headroom_mbuf) = pkt;
+				pkt = headroom_mbuf;
+				NB_SEGS(pkt) = 2;
+			}
 		}
 		rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
 		if (lro_num_seg > 1) {
@@ -1687,7 +1708,6 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			pkt->tso_segsz = strd_sz;
 		}
 		PKT_LEN(pkt) = len;
-		DATA_LEN(pkt) = len;
 		PORT(pkt) = rxq->port_id;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment bytes counter. */
