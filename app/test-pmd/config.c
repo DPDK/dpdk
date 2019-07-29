@@ -119,9 +119,12 @@ nic_stats_display(portid_t port_id)
 {
 	static uint64_t prev_pkts_rx[RTE_MAX_ETHPORTS];
 	static uint64_t prev_pkts_tx[RTE_MAX_ETHPORTS];
+	static uint64_t prev_bytes_rx[RTE_MAX_ETHPORTS];
+	static uint64_t prev_bytes_tx[RTE_MAX_ETHPORTS];
 	static uint64_t prev_cycles[RTE_MAX_ETHPORTS];
-	uint64_t diff_pkts_rx, diff_pkts_tx, diff_cycles;
-	uint64_t mpps_rx, mpps_tx;
+	uint64_t diff_pkts_rx, diff_pkts_tx, diff_bytes_rx, diff_bytes_tx,
+								diff_cycles;
+	uint64_t mpps_rx, mpps_tx, mbps_rx, mbps_tx;
 	struct rte_eth_stats stats;
 	struct rte_port *port = &ports[port_id];
 	uint8_t i;
@@ -192,9 +195,22 @@ nic_stats_display(portid_t port_id)
 		diff_pkts_rx * rte_get_tsc_hz() / diff_cycles : 0;
 	mpps_tx = diff_cycles > 0 ?
 		diff_pkts_tx * rte_get_tsc_hz() / diff_cycles : 0;
+
+	diff_bytes_rx = (stats.ibytes > prev_bytes_rx[port_id]) ?
+		(stats.ibytes - prev_bytes_rx[port_id]) : 0;
+	diff_bytes_tx = (stats.obytes > prev_bytes_tx[port_id]) ?
+		(stats.obytes - prev_bytes_tx[port_id]) : 0;
+	prev_bytes_rx[port_id] = stats.ibytes;
+	prev_bytes_tx[port_id] = stats.obytes;
+	mbps_rx = diff_cycles > 0 ?
+		diff_bytes_rx * rte_get_tsc_hz() / diff_cycles : 0;
+	mbps_tx = diff_cycles > 0 ?
+		diff_bytes_tx * rte_get_tsc_hz() / diff_cycles : 0;
+
 	printf("\n  Throughput (since last show)\n");
-	printf("  Rx-pps: %12"PRIu64"\n  Tx-pps: %12"PRIu64"\n",
-			mpps_rx, mpps_tx);
+	printf("  Rx-pps: %12"PRIu64"          Rx-bps: %12"PRIu64"\n  Tx-pps: %12"
+	       PRIu64"          Tx-bps: %12"PRIu64"\n", mpps_rx, mbps_rx * 8,
+	       mpps_tx, mbps_tx * 8);
 
 	printf("  %s############################%s\n",
 	       nic_stats_border, nic_stats_border);
