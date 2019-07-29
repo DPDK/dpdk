@@ -28,7 +28,7 @@
  * Request TX completion every time descriptors reach this threshold since
  * the previous request. Must be a power of two for performance reasons.
  */
-#define MLX5_TX_COMP_THRESH 32
+#define MLX5_TX_COMP_THRESH 32u
 
 /*
  * Request TX completion every time the total number of WQEBBs used for inlining

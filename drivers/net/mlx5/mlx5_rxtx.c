@@ -2098,8 +2098,6 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
  *
  * @param txq
  *   Pointer to TX queue structure.
- * @param n_mbuf
- *   Number of mbuf not stored yet in elts array.
  * @param loc
  *   Pointer to burst routine local context.
  * @param olx
@@ -2108,18 +2106,23 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
  */
 static __rte_always_inline void
 mlx5_tx_request_completion(struct mlx5_txq_data *restrict txq,
-			   unsigned int n_mbuf,
 			   struct mlx5_txq_local *restrict loc,
-			   unsigned int olx __rte_unused)
+			   unsigned int olx)
 {
-	uint16_t head = txq->elts_head + n_mbuf;
+	uint16_t head = txq->elts_head;
+	unsigned int part;
 
+	part = MLX5_TXOFF_CONFIG(INLINE) ? 0 : loc->pkts_sent -
+		(MLX5_TXOFF_CONFIG(MULTI) ? loc->pkts_copy : 0);
+	head += part;
 	if ((uint16_t)(head - txq->elts_comp) >= MLX5_TX_COMP_THRESH ||
-	    (uint16_t)(txq->wqe_ci - txq->wqe_comp) >= txq->wqe_thres) {
+	     (MLX5_TXOFF_CONFIG(INLINE) &&
+	     (uint16_t)(txq->wqe_ci - txq->wqe_comp) >= txq->wqe_thres)) {
 		volatile struct mlx5_wqe *last = loc->wqe_last;
 
 		txq->elts_comp = head;
-		txq->wqe_comp = txq->wqe_ci;
+		if (MLX5_TXOFF_CONFIG(INLINE))
+			txq->wqe_comp = txq->wqe_ci;
 		/* Request unconditional completion on last WQE. */
 		last->cseg.flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 					    MLX5_COMP_MODE_OFFSET);
@@ -3058,6 +3061,8 @@ mlx5_tx_packet_multi_tso(struct mlx5_txq_data *restrict txq,
 	wqe->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
+	/* Request CQE generation if limits are reached. */
+	mlx5_tx_request_completion(txq, loc, olx);
 	return MLX5_TXCMP_CODE_MULTI;
 }
 
@@ -3166,6 +3171,8 @@ mlx5_tx_packet_multi_send(struct mlx5_txq_data *restrict txq,
 	} while (true);
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
+	/* Request CQE generation if limits are reached. */
+	mlx5_tx_request_completion(txq, loc, olx);
 	return MLX5_TXCMP_CODE_MULTI;
 }
 
@@ -3322,6 +3329,8 @@ do_align:
 	wqe->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
+	/* Request CQE generation if limits are reached. */
+	mlx5_tx_request_completion(txq, loc, olx);
 	return MLX5_TXCMP_CODE_MULTI;
 }
 
@@ -3531,6 +3540,8 @@ mlx5_tx_burst_tso(struct mlx5_txq_data *restrict txq,
 		--loc->elts_free;
 		++loc->pkts_sent;
 		--pkts_n;
+		/* Request CQE generation if limits are reached. */
+		mlx5_tx_request_completion(txq, loc, olx);
 		if (unlikely(!pkts_n || !loc->elts_free || !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
 		loc->mbuf = *pkts++;
@@ -3672,7 +3683,7 @@ mlx5_tx_sdone_empw(struct mlx5_txq_data *restrict txq,
 		   struct mlx5_txq_local *restrict loc,
 		   unsigned int ds,
 		   unsigned int slen,
-		   unsigned int olx __rte_unused)
+		   unsigned int olx)
 {
 	assert(!MLX5_TXOFF_CONFIG(INLINE));
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -3687,6 +3698,8 @@ mlx5_tx_sdone_empw(struct mlx5_txq_data *restrict txq,
 	loc->wqe_last->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
+	/* Request CQE generation if limits are reached. */
+	mlx5_tx_request_completion(txq, loc, olx);
 }
 
 /*
@@ -3729,6 +3742,8 @@ mlx5_tx_idone_empw(struct mlx5_txq_data *restrict txq,
 	loc->wqe_last->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | len);
 	txq->wqe_ci += (len + 3) / 4;
 	loc->wqe_free -= (len + 3) / 4;
+	/* Request CQE generation if limits are reached. */
+	mlx5_tx_request_completion(txq, loc, olx);
 }
 
 /**
@@ -3900,6 +3915,7 @@ next_empw:
 				if (unlikely(!loc->elts_free ||
 					     !loc->wqe_free))
 					return MLX5_TXCMP_CODE_EXIT;
+				pkts_n -= part;
 				goto next_empw;
 			}
 			/* Packet attributes match, continue the same eMPW. */
@@ -3919,6 +3935,8 @@ next_empw:
 		txq->wqe_ci += (2 + part + 3) / 4;
 		loc->wqe_free -= (2 + part + 3) / 4;
 		pkts_n -= part;
+		/* Request CQE generation if limits are reached. */
+		mlx5_tx_request_completion(txq, loc, olx);
 		if (unlikely(!pkts_n || !loc->elts_free || !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
 		loc->mbuf = *pkts++;
@@ -3957,10 +3975,14 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 		struct mlx5_wqe_dseg *restrict dseg;
 		struct mlx5_wqe_eseg *restrict eseg;
 		enum mlx5_txcmp_code ret;
-		unsigned int room, part;
+		unsigned int room, part, nlim;
 		unsigned int slen = 0;
 
-next_empw:
+		/*
+		 * Limits the amount of packets in one WQE
+		 * to improve CQE latency generation.
+		 */
+		nlim = RTE_MIN(pkts_n, MLX5_EMPW_MAX_PACKETS);
 		/* Check whether we have minimal amount WQEs */
 		if (unlikely(loc->wqe_free <
 			    ((2 + MLX5_EMPW_MIN_PACKETS + 3) / 4)))
@@ -4079,12 +4101,6 @@ next_mbuf:
 				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
 				return MLX5_TXCMP_CODE_EXIT;
 			}
-			/* Check if we have minimal room left. */
-			if (room < MLX5_WQE_DSEG_SIZE) {
-				part -= room;
-				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
-				goto next_empw;
-			}
 			loc->mbuf = *pkts++;
 			if (likely(pkts_n > 1))
 				rte_prefetch0(*pkts);
@@ -4124,6 +4140,10 @@ next_mbuf:
 				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
 				return MLX5_TXCMP_CODE_ERROR;
 			}
+			/* Check if we have minimal room left. */
+			nlim--;
+			if (unlikely(!nlim || room < MLX5_WQE_DSEG_SIZE))
+				break;
 			/*
 			 * Check whether packet parameters coincide
 			 * within assumed eMPW batch:
@@ -4149,7 +4169,7 @@ next_mbuf:
 		if (unlikely(!loc->elts_free ||
 			     !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
-		goto next_empw;
+		/* Continue the loop with new eMPW session. */
 	}
 	assert(false);
 }
@@ -4390,6 +4410,8 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
 		}
 		++loc->pkts_sent;
 		--pkts_n;
+		/* Request CQE generation if limits are reached. */
+		mlx5_tx_request_completion(txq, loc, olx);
 		if (unlikely(!pkts_n || !loc->elts_free || !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
 		loc->mbuf = *pkts++;
@@ -4665,9 +4687,6 @@ enter_send_single:
 	/* Take a shortcut if nothing is sent. */
 	if (unlikely(loc.pkts_sent == 0))
 		return 0;
-	/* Not all of the mbufs may be stored into elts yet. */
-	part = MLX5_TXOFF_CONFIG(INLINE) ? 0 : loc.pkts_sent - loc.pkts_copy;
-	mlx5_tx_request_completion(txq, part, &loc, olx);
 	/*
 	 * Ring QP doorbell immediately after WQE building completion
 	 * to improve latencies. The pure software related data treatment
@@ -4675,10 +4694,13 @@ enter_send_single:
 	 * processed in this thread only by the polling.
 	 */
 	mlx5_tx_dbrec_cond_wmb(txq, loc.wqe_last, 0);
+	/* Not all of the mbufs may be stored into elts yet. */
+	part = MLX5_TXOFF_CONFIG(INLINE) ? 0 : loc.pkts_sent -
+		(MLX5_TXOFF_CONFIG(MULTI) ? loc.pkts_copy : 0);
 	if (!MLX5_TXOFF_CONFIG(INLINE) && part) {
 		/*
 		 * There are some single-segment mbufs not stored in elts.
-		 * It can be only if last packet was single-segment.
+		 * It can be only if the last packet was single-segment.
 		 * The copying is gathered into one place due to it is
 		 * a good opportunity to optimize that with SIMD.
 		 * Unfortunately if inlining is enabled the gaps in

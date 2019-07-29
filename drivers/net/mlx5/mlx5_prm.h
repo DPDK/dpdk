@@ -72,7 +72,7 @@
  * boundary with accounting the title Control and Ethernet
  * segments.
  */
-#define MLX5_EMPW_DEF_INLINE_LEN (3U * MLX5_WQE_SIZE + \
+#define MLX5_EMPW_DEF_INLINE_LEN (3u * MLX5_WQE_SIZE + \
 				  MLX5_DSEG_MIN_INLINE_SIZE - \
 				  MLX5_WQE_DSEG_SIZE)
 /*
@@ -90,11 +90,16 @@
  * If there are no enough resources to built minimal
  * EMPW the sending loop exits.
  */
-#define MLX5_EMPW_MIN_PACKETS (2 + 3 * 4)
-#define MLX5_EMPW_MAX_PACKETS ((MLX5_WQE_SIZE_MAX - \
-				MLX5_WQE_CSEG_SIZE - \
-				MLX5_WQE_ESEG_SIZE) / \
-				MLX5_WSEG_SIZE)
+#define MLX5_EMPW_MIN_PACKETS (2u + 3u * 4u)
+/*
+ * Maximal amount of packets to be sent with EMPW.
+ * This value is not recommended to exceed MLX5_TX_COMP_THRESH,
+ * otherwise there might be up to MLX5_EMPW_MAX_PACKETS mbufs
+ * without CQE generation request, being multiplied by
+ * MLX5_TX_COMP_MAX_CQE it may cause significant latency
+ * in tx burst routine at the moment of freeing multiple mbufs.
+ */
+#define MLX5_EMPW_MAX_PACKETS MLX5_TX_COMP_THRESH
 /*
  * Default packet length threshold to be inlined with
  * ordinary SEND. Inlining saves the MR key search
