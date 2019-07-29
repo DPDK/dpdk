@@ -56,6 +56,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **EAL will now pick IOVA as VA mode as the default in most cases.**
+
+  Previously, preferred default IOVA mode was selected to be IOVA as PA. The
+  behavior has now been changed to handle IOVA mode detection in a more complex
+  manner, and will default to IOVA as VA in most cases.
+
 * **Added MCS lock.**
 
   MCS lock provides scalability by spinning on a CPU/thread local variable
@@ -437,6 +443,15 @@ Known Issues
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
+
+* **Unsuitable IOVA mode may be picked as the default**
+
+  Not all kernel drivers and not all devices support all IOVA modes. EAL will
+  attempt to pick a reasonable default based on a number of factors, but
+  there may be cases where the default may be unsuitable.
+
+  It is recommended to use the `--iova-mode` command-line parameter if the
+  default is not suitable.
 
 
 Tested Platforms

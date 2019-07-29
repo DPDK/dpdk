@@ -425,7 +425,8 @@ IOVA Mode Detection
 IOVA Mode is selected by considering what the current usable Devices on the
 system require and/or support.
 
-Below is the 2-step heuristic for this choice.
+On FreeBSD, RTE_IOVA_PA is always the default. On Linux, the IOVA mode is
+detected based on a 2-step heuristic detailed below.
 
 For the first step, EAL asks each bus its requirement in terms of IOVA mode
 and decides on a preferred IOVA mode.
@@ -438,20 +439,26 @@ and decides on a preferred IOVA mode.
   RTE_IOVA_VA), then the preferred IOVA mode is RTE_IOVA_DC (see below with the
   check on Physical Addresses availability),
 
+If the buses have expressed no preference on which IOVA mode to pick, then a
+default is selected using the following logic:
+
+- if physical addresses are not available, RTE_IOVA_VA mode is used
+- if /sys/kernel/iommu_groups is not empty, RTE_IOVA_VA mode is used
+- otherwise, RTE_IOVA_PA mode is used
+
+In the case when the buses had disagreed on their preferred IOVA mode, part of
+the buses won't work because of this decision.
+
 The second step checks if the preferred mode complies with the Physical
 Addresses availability since those are only available to root user in recent
-kernels.
-
-- if the preferred mode is RTE_IOVA_PA but there is no access to Physical
-  Addresses, then EAL init fails early, since later probing of the devices
-  would fail anyway,
-- if the preferred mode is RTE_IOVA_DC then EAL selects the RTE_IOVA_VA mode.
-  In the case when the buses had disagreed on the IOVA Mode at the first step,
-  part of the buses won't work because of this decision.
+kernels. Namely, if the preferred mode is RTE_IOVA_PA but there is no access to
+Physical Addresses, then EAL init fails early, since later probing of the
+devices would fail anyway.
 
 .. note::
 
-    The RTE_IOVA_VA mode is selected as the default for the following reasons:
+    The RTE_IOVA_VA mode is preferred as the default in most cases for the
+    following reasons:
 
     - All drivers are expected to work in RTE_IOVA_VA mode, irrespective of
       physical address availability.

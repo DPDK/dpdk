@@ -861,3 +861,30 @@ AVX-512 support disabled
 
 **Driver/Module**:
     ALL.
+
+
+Unsuitable IOVA mode may be picked as the default
+-------------------------------------------------
+
+**Description**
+   Not all kernel drivers and not all devices support all IOVA modes. EAL will
+   attempt to pick a reasonable default based on a number of factors, but there
+   may be cases where the default may be unsuitable (for example, hotplugging
+   devices using `igb_uio` driver while having picked IOVA as VA mode on EAL
+   initialization).
+
+**Implication**
+   Some devices (hotplugged or otherwise) may not work due to incompatible IOVA
+   mode being automatically picked by EAL.
+
+**Resolution/Workaround**:
+   It is possible to force EAL to pick a particular IOVA mode by using the
+   `--iova-mode` command-line parameter. If conflicting requirements are present
+   (such as one device requiring IOVA as PA and one requiring IOVA as VA mode),
+   there is no workaround.
+
+**Affected Environment/Platform**:
+   Linux.
+
+**Driver/Module**:
+   ALL.

@@ -66,6 +66,8 @@
 
 #define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)
 
+#define KERNEL_IOMMU_GROUPS_PATH "/sys/kernel/iommu_groups"
+
 /* Allow the application to print its usage message too if set */
 static rte_usage_hook_t	rte_application_usage_hook = NULL;
 
@@ -951,6 +953,33 @@ static void rte_eal_init_alert(const char *msg)
 	RTE_LOG(ERR, EAL, "%s\n", msg);
 }
 
+/*
+ * On Linux 3.6+, even if VFIO is not loaded, whenever IOMMU is enabled in the
+ * BIOS and in the kernel, /sys/kernel/iommu_groups path will contain kernel
+ * IOMMU groups. If IOMMU is not enabled, that path would be empty.
+ * Therefore, checking if the path is empty will tell us if IOMMU is enabled.
+ */
+static bool
+is_iommu_enabled(void)
+{
+	DIR *dir = opendir(KERNEL_IOMMU_GROUPS_PATH);
+	struct dirent *d;
+	int n = 0;
+
+	/* if directory doesn't exist, assume IOMMU is not enabled */
+	if (dir == NULL)
+		return false;
+
+	while ((d = readdir(dir)) != NULL) {
+		/* skip dot and dot-dot */
+		if (++n > 2)
+			break;
+	}
+	closedir(dir);
+
+	return n > 2;
+}
+
 /* Launch threads, called at application init(). */
 int
 rte_eal_init(int argc, char **argv)
@@ -1061,8 +1090,25 @@ rte_eal_init(int argc, char **argv)
 		enum rte_iova_mode iova_mode = rte_bus_get_iommu_class();
 
 		if (iova_mode == RTE_IOVA_DC) {
-			iova_mode = RTE_IOVA_VA;
-			RTE_LOG(DEBUG, EAL, "Buses did not request a specific IOVA mode, select IOVA as VA mode.\n");
+			RTE_LOG(DEBUG, EAL, "Buses did not request a specific IOVA mode.\n");
+
+			if (!phys_addrs) {
+				/* if we have no access to physical addresses,
+				 * pick IOVA as VA mode.
+				 */
+				iova_mode = RTE_IOVA_VA;
+				RTE_LOG(DEBUG, EAL, "Physical addresses are unavailable, selecting IOVA as VA mode.\n");
+			} else if (is_iommu_enabled()) {
+				/* we have an IOMMU, pick IOVA as VA mode */
+				iova_mode = RTE_IOVA_VA;
+				RTE_LOG(DEBUG, EAL, "IOMMU is available, selecting IOVA as VA mode.\n");
+			} else {
+				/* physical addresses available, and no IOMMU
+				 * found, so pick IOVA as PA.
+				 */
+				iova_mode = RTE_IOVA_PA;
+				RTE_LOG(DEBUG, EAL, "IOMMU is not available, selecting IOVA as PA mode.\n");
+			}
 		}
 #ifdef RTE_LIBRTE_KNI
 		/* Workaround for KNI which requires physical address to work */
