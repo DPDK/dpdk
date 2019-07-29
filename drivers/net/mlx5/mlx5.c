@@ -1253,8 +1253,6 @@ mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 		switch (spawn->pci_dev->id.device_id) {
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:
-		case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
 			if (config->txq_inline_min <
 				       (int)MLX5_INLINE_HSIZE_L2) {
 				DRV_LOG(DEBUG,
@@ -1325,9 +1323,12 @@ mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 	switch (spawn->pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
+		config->txq_inline_min = MLX5_INLINE_HSIZE_L2;
+		config->hw_vlan_insert = 0;
+		break;
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
-		config->txq_inline_min = MLX5_INLINE_HSIZE_L2;
+		config->txq_inline_min = MLX5_INLINE_HSIZE_NONE;
 		config->hw_vlan_insert = 0;
 		break;
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5:
