@@ -1126,7 +1126,7 @@ mlx5_devx_rq_new(struct rte_eth_dev *dev, uint16_t idx, uint32_t cqn)
 	/* Calculate and allocate WQ memory space. */
 	wqe_size = 1 << log_wqe_size; /* round up power of two.*/
 	wq_size = wqe_n * wqe_size;
-	buf = rte_calloc_socket(__func__, 1, wq_size, RTE_CACHE_LINE_SIZE,
+	buf = rte_calloc_socket(__func__, 1, wq_size, MLX5_WQE_BUF_ALIGNMENT,
 				rxq_ctrl->socket);
 	if (!buf)
 		return NULL;

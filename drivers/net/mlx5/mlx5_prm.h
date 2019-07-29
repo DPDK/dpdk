@@ -240,6 +240,9 @@
 /* The maximum log value of segments per RQ WQE. */
 #define MLX5_MAX_LOG_RQ_SEGS 5u
 
+/* The alignment needed for WQ buffer. */
+#define MLX5_WQE_BUF_ALIGNMENT 512
+
 /* Completion mode. */
 enum mlx5_completion_mode {
 	MLX5_COMP_ONLY_ERR = 0x0,
