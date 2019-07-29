@@ -115,7 +115,8 @@ struct mlx5_rxq_data {
 	unsigned int strd_shift_en:1; /* Enable 2bytes shift on a stride. */
 	unsigned int err_state:2; /* enum mlx5_rxq_err_state. */
 	unsigned int strd_headroom_en:1; /* Enable mbuf headroom in MPRQ. */
-	unsigned int :2; /* Remaining bits. */
+	unsigned int lro:1; /* Enable LRO. */
+	unsigned int :1; /* Remaining bits. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
@@ -367,9 +368,8 @@ int mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hxrq);
 int mlx5_hrxq_verify(struct rte_eth_dev *dev);
 struct mlx5_hrxq *mlx5_hrxq_drop_new(struct rte_eth_dev *dev);
 void mlx5_hrxq_drop_release(struct rte_eth_dev *dev);
-uint64_t mlx5_get_rx_port_offloads(struct rte_eth_dev *dev);
+uint64_t mlx5_get_rx_port_offloads(void);
 uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
-int mlx5_lro_on(struct rte_eth_dev *dev);
 
 /* mlx5_txq.c */
 

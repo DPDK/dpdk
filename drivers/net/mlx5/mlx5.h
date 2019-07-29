@@ -195,9 +195,6 @@ TAILQ_HEAD(mlx5_flows, rte_flow);
 #define MLX5_LRO_SUPPORTED(dev) \
 	(((struct mlx5_priv *)((dev)->data->dev_private))->config.lro.supported)
 
-#define MLX5_LRO_ENABLED(dev) \
-	((dev)->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO)
-
 /* LRO configurations structure. */
 struct mlx5_lro_config {
 	uint32_t supported:1; /* Whether LRO is supported. */
