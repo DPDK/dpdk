@@ -1221,8 +1221,8 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
 	const struct rte_flow_item_vlan nic_mask = {
-		.tci = RTE_BE16(0x0fff),
-		.inner_type = RTE_BE16(0xffff),
+		.tci = RTE_BE16(UINT16_MAX),
+		.inner_type = RTE_BE16(UINT16_MAX),
 	};
 	uint16_t vlan_tag = 0;
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
