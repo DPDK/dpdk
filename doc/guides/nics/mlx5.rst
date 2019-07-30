@@ -57,6 +57,7 @@ Features
 - Several RSS hash keys, one for each flow type.
 - Default RSS operation with no hash key specification.
 - Configurable RETA table.
+- Link flow control (pause frame).
 - Support for multiple MAC addresses.
 - VLAN filtering.
 - RX VLAN stripping.
