@@ -1452,11 +1452,11 @@ compute_ctrl_threads_cpuset(struct internal_config *internal_cfg)
 	unsigned int lcore_id;
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (eal_cpu_detected(lcore_id) &&
-				rte_lcore_has_role(lcore_id, ROLE_OFF)) {
-			CPU_SET(lcore_id, cpuset);
-		}
+		if (rte_lcore_has_role(lcore_id, ROLE_OFF))
+			continue;
+		RTE_CPU_OR(cpuset, cpuset, &lcore_config[lcore_id].cpuset);
 	}
+	RTE_CPU_NOT(cpuset, cpuset);
 
 	if (pthread_getaffinity_np(pthread_self(), sizeof(rte_cpuset_t),
 				&default_set))
@@ -1464,9 +1464,11 @@ compute_ctrl_threads_cpuset(struct internal_config *internal_cfg)
 
 	RTE_CPU_AND(cpuset, cpuset, &default_set);
 
-	/* if no detected CPU is off, use master core */
-	if (!CPU_COUNT(cpuset))
-		CPU_SET(rte_get_master_lcore(), cpuset);
+	/* if no remaining cpu, use master lcore cpu affinity */
+	if (!CPU_COUNT(cpuset)) {
+		memcpy(cpuset, &lcore_config[rte_get_master_lcore()].cpuset,
+			sizeof(*cpuset));
+	}
 }
 
 int

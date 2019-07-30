@@ -25,6 +25,20 @@ extern "C" {
 #if defined(__linux__)
 typedef	cpu_set_t rte_cpuset_t;
 #define RTE_CPU_AND(dst, src1, src2) CPU_AND(dst, src1, src2)
+#define RTE_CPU_OR(dst, src1, src2) CPU_OR(dst, src1, src2)
+#define RTE_CPU_FILL(set) do \
+{ \
+	unsigned int i; \
+	CPU_ZERO(set); \
+	for (i = 0; i < CPU_SETSIZE; i++) \
+		CPU_SET(i, set); \
+} while (0)
+#define RTE_CPU_NOT(dst, src) do \
+{ \
+	cpu_set_t tmp; \
+	RTE_CPU_FILL(&tmp); \
+	CPU_XOR(dst, &tmp, src); \
+} while (0)
 #elif defined(__FreeBSD__)
 #include <pthread_np.h>
 typedef cpuset_t rte_cpuset_t;
@@ -33,6 +47,21 @@ typedef cpuset_t rte_cpuset_t;
 	cpuset_t tmp; \
 	CPU_COPY(src1, &tmp); \
 	CPU_AND(&tmp, src2); \
+	CPU_COPY(&tmp, dst); \
+} while (0)
+#define RTE_CPU_OR(dst, src1, src2) do \
+{ \
+	cpuset_t tmp; \
+	CPU_COPY(src1, &tmp); \
+	CPU_OR(&tmp, src2); \
+	CPU_COPY(&tmp, dst); \
+} while (0)
+#define RTE_CPU_FILL(set) CPU_FILL(set)
+#define RTE_CPU_NOT(dst, src) do \
+{ \
+	cpuset_t tmp; \
+	CPU_FILL(&tmp); \
+	CPU_NAND(&tmp, src); \
 	CPU_COPY(&tmp, dst); \
 } while (0)
 #endif
