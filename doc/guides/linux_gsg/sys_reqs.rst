@@ -81,6 +81,11 @@ Compilation of the DPDK
 
 *   Python, version 2.7+ or 3.2+, to use various helper scripts included in the DPDK package.
 
+.. note::
+
+   Please ensure that the latest patches are applied to third party libraries
+   and software to avoid any known vulnerabilities.
+
 
 **Optional Tools:**
 
