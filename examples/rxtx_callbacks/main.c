@@ -117,6 +117,15 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
+	if (hw_timestamping) {
+		if (!(dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TIMESTAMP)) {
+			printf("\nERROR: Port %u does not support hardware timestamping\n"
+					, port);
+			return -1;
+		}
+		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
+	}
+
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval != 0)
 		return retval;
@@ -126,15 +135,6 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 
 	rxconf = dev_info.default_rxconf;
-
-	if (hw_timestamping) {
-		if (!(dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TIMESTAMP)) {
-			printf("\nERROR: Port %u does not support hardware timestamping\n"
-					, port);
-			return -1;
-		}
-		rxconf.offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
-	}
 
 	for (q = 0; q < rx_rings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, nb_rxd,
