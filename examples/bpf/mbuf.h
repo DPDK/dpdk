@@ -13,7 +13,6 @@
 
 #include <stdint.h>
 #include <rte_common.h>
-#include <rte_memory.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -364,6 +363,23 @@ typedef struct {
 	volatile int16_t cnt; /**< An internal counter value. */
 } rte_atomic16_t;
 
+#define RTE_CACHE_LINE_MIN_SIZE 64      /**< Minimum Cache line size. */
+
+/**
+ * Force minimum cache line alignment.
+ */
+#define __rte_cache_min_aligned __rte_aligned(RTE_CACHE_LINE_MIN_SIZE)
+
+/**
+ * IO virtual address type.
+ * When the physical addressing mode (IOVA as PA) is in use,
+ * the translation from an IO virtual address (IOVA) to a physical address
+ * is a direct mapping, i.e. the same value.
+ * Otherwise, in virtual mode (IOVA as VA), an IOMMU may do the translation.
+ */
+typedef uint64_t rte_iova_t;
+#define RTE_BAD_IOVA ((rte_iova_t)-1)
+
 /**
  * The generic rte_mbuf, containing a packet mbuf.
  */
@@ -377,7 +393,11 @@ struct rte_mbuf {
 	 * same mbuf cacheline0 layout for 32-bit and 64-bit. This makes
 	 * working on vector drivers easier.
 	 */
-	phys_addr_t buf_physaddr __rte_aligned(sizeof(phys_addr_t));
+	RTE_STD_C11
+	union {
+		rte_iova_t buf_iova;
+		rte_iova_t buf_physaddr; /**< deprecated */
+	} __rte_aligned(sizeof(rte_iova_t));
 
 	/* next 8 bytes are initialised on RX descriptor rearm */
 	MARKER64 rearm_data;
