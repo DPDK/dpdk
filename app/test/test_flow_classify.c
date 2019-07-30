@@ -125,7 +125,6 @@ static struct rte_flow_item  udp_item_bad = { RTE_FLOW_ITEM_TYPE_UDP,
 
 static struct rte_flow_item  end_item = { RTE_FLOW_ITEM_TYPE_END,
 	0, 0, 0 };
-static struct rte_flow_item  end_item_bad = { -1, 0, 0, 0 };
 
 /* test TCP pattern:
  * "eth / ipv4 src spec 1.2.3.4 src mask 255.255.255.00 dst spec 5.6.7.8
@@ -181,7 +180,6 @@ static struct rte_flow_action count_action = { RTE_FLOW_ACTION_TYPE_COUNT,
 static struct rte_flow_action count_action_bad = { -1, 0};
 
 static struct rte_flow_action end_action = { RTE_FLOW_ACTION_TYPE_END, 0};
-static struct rte_flow_action end_action_bad =	{ -1, 0};
 
 static struct rte_flow_action actions[2];
 
@@ -384,7 +382,7 @@ test_invalid_patterns(void)
 
 	pattern[1] = ipv4_udp_item_1;
 	pattern[2] = udp_item_bad;
-	pattern[3] = end_item_bad;
+	pattern[3] = end_item;
 
 	ret = rte_flow_classify_validate(cls->cls, &attr, pattern,
 			actions, &error);
@@ -458,32 +456,6 @@ test_invalid_actions(void)
 		return -1;
 	}
 
-	actions[0] = count_action;
-	actions[1] = end_action_bad;
-
-	ret = rte_flow_classify_validate(cls->cls, &attr, pattern,
-			actions, &error);
-	if (!ret) {
-		printf("Line %i: rte_flow_classify_validate", __LINE__);
-		printf(" should have failed!\n");
-		return -1;
-	}
-
-	rule = rte_flow_classify_table_entry_add(cls->cls, &attr, pattern,
-			actions, &key_found, &error);
-	if (rule) {
-		printf("Line %i: flow_classify_table_entry_add", __LINE__);
-		printf(" should have failed!\n");
-		return -1;
-	}
-
-	ret = rte_flow_classify_table_entry_delete(cls->cls, rule);
-	if (!ret) {
-		printf("Line %i: rte_flow_classify_table_entry_delete",
-			__LINE__);
-		printf("should have failed!\n");
-		return -1;
-	}
 	return 0;
 }
 
