@@ -355,6 +355,30 @@ enum mlx5_verbs_alloc_type {
 	MLX5_VERBS_ALLOC_TYPE_RX_QUEUE,
 };
 
+/* VLAN netdev for VLAN workaround. */
+struct mlx5_vlan_dev {
+	uint32_t refcnt;
+	uint32_t ifindex; /**< Own interface index. */
+};
+
+/* Structure for VF VLAN workaround. */
+struct mlx5_vf_vlan {
+	uint32_t tag:12;
+	uint32_t created:1;
+};
+
+/*
+ * Array of VLAN devices created on the base of VF
+ * used for workaround in virtual environments.
+ */
+struct mlx5_vlan_vmwa_context {
+	int nl_socket;
+	uint32_t nl_sn;
+	uint32_t vf_ifindex;
+	struct rte_eth_dev *dev;
+	struct mlx5_vlan_dev vlan_dev[4096];
+};
+
 /**
  * Verbs allocator needs a context to know in the callback which kind of
  * resources it is allocating.
@@ -631,6 +655,7 @@ struct mlx5_priv {
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
 	uint32_t nl_sn; /* Netlink message sequence number. */
 	LIST_HEAD(dbrpage, mlx5_devx_dbr_page) dbrpgs; /* Door-bell pages. */
+	struct mlx5_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
 #ifndef RTE_ARCH_64
 	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
@@ -829,6 +854,14 @@ unsigned int mlx5_nl_portnum(int nl, const char *name);
 unsigned int mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex);
 int mlx5_nl_switch_info(int nl, unsigned int ifindex,
 			struct mlx5_switch_info *info);
+
+struct mlx5_vlan_vmwa_context *mlx5_vlan_vmwa_init(struct rte_eth_dev *dev,
+						   uint32_t ifindex);
+void mlx5_vlan_vmwa_exit(struct mlx5_vlan_vmwa_context *ctx);
+void mlx5_vlan_vmwa_release(struct rte_eth_dev *dev,
+			    struct mlx5_vf_vlan *vf_vlan);
+void mlx5_vlan_vmwa_acquire(struct rte_eth_dev *dev,
+			    struct mlx5_vf_vlan *vf_vlan);
 
 /* mlx5_devx_cmds.c */
 

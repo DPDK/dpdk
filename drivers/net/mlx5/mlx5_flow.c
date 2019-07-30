@@ -1204,6 +1204,8 @@ mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
  *   Item specification.
  * @param[in] item_flags
  *   Bit-fields that holds the items detected until now.
+ * @param[in] dev
+ *   Ethernet device flow is being created on.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -1213,6 +1215,7 @@ mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
 int
 mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 			     uint64_t item_flags,
+			     struct rte_eth_dev *dev,
 			     struct rte_flow_error *error)
 {
 	const struct rte_flow_item_vlan *spec = item->spec;
@@ -1247,6 +1250,25 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 					error);
 	if (ret)
 		return ret;
+	if (!tunnel && mask->tci != RTE_BE16(0x0fff)) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+
+		if (priv->vmwa_context) {
+			/*
+			 * Non-NULL context means we have a virtual machine
+			 * and SR-IOV enabled, we have to create VLAN interface
+			 * to make hypervisor to setup E-Switch vport
+			 * context correctly. We avoid creating the multiple
+			 * VLAN interfaces, so we cannot support VLAN tag mask.
+			 */
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "VLAN tag mask is not"
+						  " supported in virtual"
+						  " environment");
+		}
+	}
 	if (spec) {
 		vlan_tag = spec->tci;
 		vlan_tag &= mask->tci;

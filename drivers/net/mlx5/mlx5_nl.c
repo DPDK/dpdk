@@ -12,11 +12,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdalign.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #include <rte_errno.h>
+#include <rte_malloc.h>
+#include <rte_hypervisor.h>
 
 #include "mlx5.h"
 #include "mlx5_utils.h"
@@ -28,6 +31,8 @@
 /* Receive buffer size for the Netlink socket */
 #define MLX5_RECV_BUF_SIZE 32768
 
+/** Parameters of VLAN devices created by driver. */
+#define MLX5_VMWA_VLAN_DEVICE_PFX "evmlx"
 /*
  * Define NDA_RTA as defined in iproute2 sources.
  *
@@ -986,4 +991,293 @@ mlx5_nl_switch_info(int nl, unsigned int ifindex, struct mlx5_switch_info *info)
 		ret = -rte_errno;
 	}
 	return ret;
+}
+
+/*
+ * Delete VLAN network device by ifindex.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_vlan_vmwa_init().
+ * @param[in] ifindex
+ *   Interface index of network device to delete.
+ */
+static void
+mlx5_vlan_vmwa_delete(struct mlx5_vlan_vmwa_context *vmwa,
+		      uint32_t ifindex)
+{
+	int ret;
+	struct {
+		struct nlmsghdr nh;
+		struct ifinfomsg info;
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+			.nlmsg_type = RTM_DELLINK,
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
+		},
+		.info = {
+			.ifi_family = AF_UNSPEC,
+			.ifi_index = ifindex,
+		},
+	};
+
+	if (ifindex) {
+		++vmwa->nl_sn;
+		if (!vmwa->nl_sn)
+			++vmwa->nl_sn;
+		ret = mlx5_nl_send(vmwa->nl_socket, &req.nh, vmwa->nl_sn);
+		if (ret >= 0)
+			ret = mlx5_nl_recv(vmwa->nl_socket,
+					   vmwa->nl_sn,
+					   NULL, NULL);
+		if (ret < 0)
+			DRV_LOG(WARNING, "netlink: error deleting"
+					 " VLAN WA ifindex %u, %d",
+					 ifindex, ret);
+	}
+}
+
+/* Set of subroutines to build Netlink message. */
+static struct nlattr *
+nl_msg_tail(struct nlmsghdr *nlh)
+{
+	return (struct nlattr *)
+		(((uint8_t *)nlh) + NLMSG_ALIGN(nlh->nlmsg_len));
+}
+
+static void
+nl_attr_put(struct nlmsghdr *nlh, int type, const void *data, int alen)
+{
+	struct nlattr *nla = nl_msg_tail(nlh);
+
+	nla->nla_type = type;
+	nla->nla_len = NLMSG_ALIGN(sizeof(struct nlattr) + alen);
+	nlh->nlmsg_len = NLMSG_ALIGN(nlh->nlmsg_len) + nla->nla_len;
+
+	if (alen)
+		memcpy((uint8_t *)nla + sizeof(struct nlattr), data, alen);
+}
+
+static struct nlattr *
+nl_attr_nest_start(struct nlmsghdr *nlh, int type)
+{
+	struct nlattr *nest = (struct nlattr *)nl_msg_tail(nlh);
+
+	nl_attr_put(nlh, type, NULL, 0);
+	return nest;
+}
+
+static void
+nl_attr_nest_end(struct nlmsghdr *nlh, struct nlattr *nest)
+{
+	nest->nla_len = (uint8_t *)nl_msg_tail(nlh) - (uint8_t *)nest;
+}
+
+/*
+ * Create network VLAN device with specified VLAN tag.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_vlan_vmwa_init().
+ * @param[in] ifindex
+ *   Base network interface index.
+ * @param[in] tag
+ *   VLAN tag for VLAN network device to create.
+ */
+static uint32_t
+mlx5_vlan_vmwa_create(struct mlx5_vlan_vmwa_context *vmwa,
+		      uint32_t ifindex,
+		      uint16_t tag)
+{
+	struct nlmsghdr *nlh;
+	struct ifinfomsg *ifm;
+	char name[sizeof(MLX5_VMWA_VLAN_DEVICE_PFX) + 32];
+
+	alignas(RTE_CACHE_LINE_SIZE)
+	uint8_t buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct ifinfomsg)) +
+		    NLMSG_ALIGN(sizeof(struct nlattr)) * 8 +
+		    NLMSG_ALIGN(sizeof(uint32_t)) +
+		    NLMSG_ALIGN(sizeof(name)) +
+		    NLMSG_ALIGN(sizeof("vlan")) +
+		    NLMSG_ALIGN(sizeof(uint32_t)) +
+		    NLMSG_ALIGN(sizeof(uint16_t)) + 16];
+	struct nlattr *na_info;
+	struct nlattr *na_vlan;
+	int ret;
+
+	memset(buf, 0, sizeof(buf));
+	++vmwa->nl_sn;
+	if (!vmwa->nl_sn)
+		++vmwa->nl_sn;
+	nlh = (struct nlmsghdr *)buf;
+	nlh->nlmsg_len = sizeof(struct nlmsghdr);
+	nlh->nlmsg_type = RTM_NEWLINK;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE |
+			   NLM_F_EXCL | NLM_F_ACK;
+	ifm = (struct ifinfomsg *)nl_msg_tail(nlh);
+	nlh->nlmsg_len += sizeof(struct ifinfomsg);
+	ifm->ifi_family = AF_UNSPEC;
+	ifm->ifi_type = 0;
+	ifm->ifi_index = 0;
+	ifm->ifi_flags = IFF_UP;
+	ifm->ifi_change = 0xffffffff;
+	nl_attr_put(nlh, IFLA_LINK, &ifindex, sizeof(ifindex));
+	ret = snprintf(name, sizeof(name), "%s.%u.%u",
+		       MLX5_VMWA_VLAN_DEVICE_PFX, ifindex, tag);
+	nl_attr_put(nlh, IFLA_IFNAME, name, ret + 1);
+	na_info = nl_attr_nest_start(nlh, IFLA_LINKINFO);
+	nl_attr_put(nlh, IFLA_INFO_KIND, "vlan", sizeof("vlan"));
+	na_vlan = nl_attr_nest_start(nlh, IFLA_INFO_DATA);
+	nl_attr_put(nlh, IFLA_VLAN_ID, &tag, sizeof(tag));
+	nl_attr_nest_end(nlh, na_vlan);
+	nl_attr_nest_end(nlh, na_info);
+	assert(sizeof(buf) >= nlh->nlmsg_len);
+	ret = mlx5_nl_send(vmwa->nl_socket, nlh, vmwa->nl_sn);
+	if (ret >= 0)
+		ret = mlx5_nl_recv(vmwa->nl_socket, vmwa->nl_sn, NULL, NULL);
+	if (ret < 0) {
+		DRV_LOG(WARNING,
+			"netlink: VLAN %s create failure (%d)",
+			name, ret);
+	}
+	// Try to get ifindex of created or pre-existing device.
+	ret = if_nametoindex(name);
+	if (!ret) {
+		DRV_LOG(WARNING,
+			"VLAN %s failed to get index (%d)",
+			name, errno);
+		return 0;
+	}
+	return ret;
+}
+
+/*
+ * Release VLAN network device, created for VM workaround.
+ *
+ * @param[in] dev
+ *   Ethernet device object, Netlink context provider.
+ * @param[in] vlan
+ *   Object representing the network device to release.
+ */
+void mlx5_vlan_vmwa_release(struct rte_eth_dev *dev,
+			    struct mlx5_vf_vlan *vlan)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_vlan_vmwa_context *vmwa = priv->vmwa_context;
+	struct mlx5_vlan_dev *vlan_dev = &vmwa->vlan_dev[0];
+
+	assert(vlan->created);
+	assert(priv->vmwa_context);
+	if (!vlan->created || !vmwa)
+		return;
+	vlan->created = 0;
+	assert(vlan_dev[vlan->tag].refcnt);
+	if (--vlan_dev[vlan->tag].refcnt == 0 &&
+	    vlan_dev[vlan->tag].ifindex) {
+		mlx5_vlan_vmwa_delete(vmwa, vlan_dev[vlan->tag].ifindex);
+		vlan_dev[vlan->tag].ifindex = 0;
+	}
+}
+
+/**
+ * Acquire VLAN interface with specified tag for VM workaround.
+ *
+ * @param[in] dev
+ *   Ethernet device object, Netlink context provider.
+ * @param[in] vlan
+ *   Object representing the network device to acquire.
+ */
+void mlx5_vlan_vmwa_acquire(struct rte_eth_dev *dev,
+			    struct mlx5_vf_vlan *vlan)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_vlan_vmwa_context *vmwa = priv->vmwa_context;
+	struct mlx5_vlan_dev *vlan_dev = &vmwa->vlan_dev[0];
+
+	assert(!vlan->created);
+	assert(priv->vmwa_context);
+	if (vlan->created || !vmwa)
+		return;
+	if (vlan_dev[vlan->tag].refcnt == 0) {
+		assert(!vlan_dev[vlan->tag].ifindex);
+		vlan_dev[vlan->tag].ifindex =
+			mlx5_vlan_vmwa_create(vmwa,
+					      vmwa->vf_ifindex,
+					      vlan->tag);
+	}
+	if (vlan_dev[vlan->tag].ifindex) {
+		vlan_dev[vlan->tag].refcnt++;
+		vlan->created = 1;
+	}
+}
+
+/*
+ * Create per ethernet device VLAN VM workaround context
+ */
+struct mlx5_vlan_vmwa_context *
+mlx5_vlan_vmwa_init(struct rte_eth_dev *dev,
+		    uint32_t ifindex)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+	struct mlx5_vlan_vmwa_context *vmwa;
+	enum rte_hypervisor hv_type;
+
+	/* Do not engage workaround over PF. */
+	if (!config->vf)
+		return NULL;
+	/* Check whether there is desired virtual environment */
+	hv_type = rte_hypervisor_get();
+	switch (hv_type) {
+	case RTE_HYPERVISOR_UNKNOWN:
+	case RTE_HYPERVISOR_VMWARE:
+		/*
+		 * The "white list" of configurations
+		 * to engage the workaround.
+		 */
+		break;
+	default:
+		/*
+		 * The configuration is not found in the "white list".
+		 * We should not engage the VLAN workaround.
+		 */
+		return NULL;
+	}
+	vmwa = rte_zmalloc(__func__, sizeof(*vmwa), sizeof(uint32_t));
+	if (!vmwa) {
+		DRV_LOG(WARNING,
+			"Can not allocate memory"
+			" for VLAN workaround context");
+		return NULL;
+	}
+	vmwa->nl_socket = mlx5_nl_init(NETLINK_ROUTE);
+	if (vmwa->nl_socket < 0) {
+		DRV_LOG(WARNING,
+			"Can not create Netlink socket"
+			" for VLAN workaround context");
+		rte_free(vmwa);
+		return NULL;
+	}
+	vmwa->nl_sn = random();
+	vmwa->vf_ifindex = ifindex;
+	vmwa->dev = dev;
+	/* Cleanup for existing VLAN devices. */
+	return vmwa;
+}
+
+/*
+ * Destroy per ethernet device VLAN VM workaround context
+ */
+void mlx5_vlan_vmwa_exit(struct mlx5_vlan_vmwa_context *vmwa)
+{
+	unsigned int i;
+
+	/* Delete all remaining VLAN devices. */
+	for (i = 0; i < RTE_DIM(vmwa->vlan_dev); i++) {
+		if (vmwa->vlan_dev[i].ifindex)
+			mlx5_vlan_vmwa_delete(vmwa, vmwa->vlan_dev[i].ifindex);
+	}
+	if (vmwa->nl_socket >= 0)
+		close(vmwa->nl_socket);
+	rte_free(vmwa);
 }

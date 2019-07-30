@@ -391,6 +391,9 @@ flow_verbs_translate_item_vlan(struct mlx5_flow *dev_flow,
 		flow_verbs_spec_add(&dev_flow->verbs, &eth, size);
 	else
 		flow_verbs_item_vlan_update(dev_flow->verbs.attr, &eth);
+	if (!tunnel)
+		dev_flow->verbs.vf_vlan.tag =
+			rte_be_to_cpu_16(spec->tci) & 0x0fff;
 }
 
 /**
@@ -1054,7 +1057,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			ret = mlx5_flow_validate_item_vlan(items, item_flags,
-							   error);
+							   dev, error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
@@ -1592,6 +1595,10 @@ flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 				mlx5_hrxq_release(dev, verbs->hrxq);
 			verbs->hrxq = NULL;
 		}
+		if (dev_flow->verbs.vf_vlan.tag &&
+		    dev_flow->verbs.vf_vlan.created) {
+			mlx5_vlan_vmwa_release(dev, &dev_flow->verbs.vf_vlan);
+		}
 	}
 }
 
@@ -1639,6 +1646,7 @@ static int
 flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		 struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_verbs *verbs;
 	struct mlx5_flow *dev_flow;
 	int err;
@@ -1688,6 +1696,17 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					   "hardware refuses to create flow");
 			goto error;
 		}
+		if (priv->vmwa_context &&
+		    dev_flow->verbs.vf_vlan.tag &&
+		    !dev_flow->verbs.vf_vlan.created) {
+			/*
+			 * The rule contains the VLAN pattern.
+			 * For VF we are going to create VLAN
+			 * interface to make hypervisor set correct
+			 * e-Switch vport context.
+			 */
+			mlx5_vlan_vmwa_acquire(dev, &dev_flow->verbs.vf_vlan);
+		}
 	}
 	return 0;
 error:
@@ -1700,6 +1719,10 @@ error:
 			else
 				mlx5_hrxq_release(dev, verbs->hrxq);
 			verbs->hrxq = NULL;
+		}
+		if (dev_flow->verbs.vf_vlan.tag &&
+		    dev_flow->verbs.vf_vlan.created) {
+			mlx5_vlan_vmwa_release(dev, &dev_flow->verbs.vf_vlan);
 		}
 	}
 	rte_errno = err; /* Restore rte_errno. */

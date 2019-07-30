@@ -330,6 +330,8 @@ struct mlx5_flow_dv {
 	/**< Pointer to the jump action resource. */
 	struct mlx5_flow_dv_port_id_action_resource *port_id_action;
 	/**< Pointer to port ID action resource. */
+	struct mlx5_vf_vlan vf_vlan;
+	/**< Structure for VF VLAN workaround. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
 	/**< Action list. */
@@ -355,6 +357,8 @@ struct mlx5_flow_verbs {
 	struct ibv_flow *flow; /**< Verbs flow pointer. */
 	struct mlx5_hrxq *hrxq; /**< Hash Rx queue object. */
 	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
+	struct mlx5_vf_vlan vf_vlan;
+	/**< Structure for VF VLAN workaround. */
 };
 
 /** Device flow structure. */
@@ -505,6 +509,7 @@ int mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
 				struct rte_flow_error *error);
 int mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 				 uint64_t item_flags,
+				 struct rte_eth_dev *dev,
 				 struct rte_flow_error *error);
 int mlx5_flow_validate_item_vxlan(const struct rte_flow_item *item,
 				  uint64_t item_flags,

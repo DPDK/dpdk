@@ -843,6 +843,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		close(priv->nl_socket_route);
 	if (priv->nl_socket_rdma >= 0)
 		close(priv->nl_socket_rdma);
+	if (priv->vmwa_context)
+		mlx5_vlan_vmwa_exit(priv->vmwa_context);
 	if (priv->sh) {
 		/*
 		 * Free the shared context in last turn, because the cleanup
@@ -1990,6 +1992,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	mlx5_set_min_inline(spawn, &config);
 	/* Store device configuration on private structure. */
 	priv->config = config;
+	/* Create context for virtual machine VLAN workaround. */
+	priv->vmwa_context = mlx5_vlan_vmwa_init(eth_dev, spawn->ifindex);
 	if (config.dv_flow_en) {
 		err = mlx5_alloc_shared_dr(priv);
 		if (err)
@@ -2016,6 +2020,8 @@ error:
 			close(priv->nl_socket_route);
 		if (priv->nl_socket_rdma >= 0)
 			close(priv->nl_socket_rdma);
+		if (priv->vmwa_context)
+			mlx5_vlan_vmwa_exit(priv->vmwa_context);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		rte_free(priv);
