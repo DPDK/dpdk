@@ -58,20 +58,20 @@ New Features
 
 * **EAL will now pick IOVA as VA mode as the default in most cases.**
 
-  Previously, preferred default IOVA mode was selected to be IOVA as PA. The
+  Previously, the preferred default IOVA mode was selected to be IOVA as PA. The
   behavior has now been changed to handle IOVA mode detection in a more complex
   manner, and will default to IOVA as VA in most cases.
 
 * **Added MCS lock.**
 
   MCS lock provides scalability by spinning on a CPU/thread local variable
-  which avoids expensive cache bouncings.
+  which avoids expensive cache bouncing.
   It provides fairness by maintaining a list of acquirers and passing
   the lock to each CPU/thread in the order they acquired the lock.
 
 * **Updated the EAL Pseudo-random Number Generator.**
 
-  The lrand48()-based rte_rand() function is replaced with a
+  The ``lrand48()`` based ``rte_rand()`` function is replaced with a
   DPDK-native combined Linear Feedback Shift Register (LFSR)
   pseudo-random number generator (PRNG).
 
@@ -79,33 +79,33 @@ New Features
   higher-quality pseudo-random numbers (including full 64 bit
   support) and improved performance.
 
-  In addition, <rte_random.h> is extended with a new function
-  rte_rand_max() which supplies unbiased, bounded pseudo-random
+  In addition, ``<rte_random.h>`` is extended with a new function
+  ``rte_rand_max()`` which supplies unbiased, bounded pseudo-random
   numbers.
 
-* **Updated the bnxt PMD.**
+* **Updated the Broadcom bnxt PMD.**
 
-  Updated the bnxt PMD. The major enhancements include:
+  Updated the Broadcom bnxt PMD. The major enhancements include:
 
-  * Performance optimizations in non-vector Tx path
-  * Added support for SSE vector mode
-  * Updated HWRM API to version 1.10.0.91
+  * Performance optimizations in non-vector Tx path.
+  * Added support for SSE vector mode.
+  * Updated HWRM API to version 1.10.0.91.
 
 * **Added support for Broadcom NetXtreme-E BCM57500 Ethernet controllers.**
 
-  Added support to the bnxt PMD for the BCM57500 (a.k.a. "Thor") family
+  Added support to the Broadcom bnxt PMD for the BCM57500 (a.k.a. "Thor") family
   of Ethernet controllers. These controllers support link speeds up to
   200Gbps, 50G PAM-4, and PCIe 4.0.
 
-* **Added hinic PMD.**
+* **Added Huawei hinic PMD.**
 
   Added the new ``hinic`` net driver for Huawei Intelligent PCIE Network
   Adapters based on the Huawei Ethernet Controller Hi1822.
   See the :doc:`../nics/hinic` guide for more details on this new driver.
 
-* **Updated the ice driver.**
+* **Updated the Intel ice driver.**
 
-  Updated ice driver with new features and improvements, including:
+  Updated the Intel ice driver with new features and improvements, including:
 
   * Enabled Tx outer/inner L3/L4 checksum offload.
   * Enabled generic filter framework and supported switch filter.
@@ -120,8 +120,8 @@ New Features
   * Added support for match on ICMP/ICMP6 code and type.
   * Added support for matching on GRE's key and C,K,S present bits.
   * Added support for IP-in-IP tunnel.
-  * Accelerate flows with count action creation and destroy.
-  * Accelerate flows counter query.
+  * Accelerated flows with count action creation and destroy.
+  * Accelerated flows counter query.
   * Improved Tx datapath performance with enabled HW offloads.
   * Added support for LRO.
 
@@ -133,7 +133,7 @@ New Features
 
 * **Added memif PMD.**
 
-  Added the new Shared Memory Packet Interface (``memif``) PMD.
+  Added a new Shared Memory Packet Interface (``memif``) PMD.
   See the :doc:`../nics/memif` guide for more details on this new driver.
 
 * **Updated the AF_XDP PMD.**
@@ -141,31 +141,31 @@ New Features
   Updated the AF_XDP PMD. The new features include:
 
   * Enabled zero copy through mbuf's external memory mechanism to achieve
-    high performance
+    higher performance.
   * Added multi-queue support to allow one af_xdp vdev with multiple netdev
-    queues
-  * Enabled need_wakeup feature which can provide efficient support for case
-    that application and driver executing on the same core.
+    queues.
+  * Enabled "need_wakeup" feature which can provide efficient support for the
+    usecase where the application and driver executing on the same core.
 
 * **Enabled infinite Rx in the PCAP PMD.**
 
-  Added an infinite Rx feature which allows packets in the Rx PCAP of a PCAP
-  device to be received repeatedly at a high rate. This can be useful for quick
+  Added an infinite Rx feature to the PCAP PMD which allows packets in the Rx
+  PCAP to be received repeatedly at a high rate. This can be useful for quick
   performance testing of DPDK apps.
 
-* **Enabled Receiving no packet on PCAP Rx.**
+* **Enabled receiving no packet in the PCAP PMD.**
 
-  Added function to allow users to run without receiving any packets on PCAP Rx.
-  When function is called, a dummy queue is created for each Tx queue argument
-  passed.
+  Added function to allow users to run the PCAP PMD without receiving any
+  packets on PCAP Rx. When the function is called, a dummy queue is created
+  for each Tx queue argument passed.
 
 * **Added a FPGA_LTE_FEC bbdev PMD.**
 
-  Added the new ``fpga_lte_fec`` bbdev driver for the Intel® FPGA PAC
+  Added a new ``fpga_lte_fec`` bbdev driver for the Intel\ |reg| FPGA PAC
   (Programmable  Acceleration Card) N3000.  See the
   :doc:`../bbdevs/fpga_lte_fec` BBDEV guide for more details on this new driver.
 
-* **Updated TURBO_SW bbdev PMD.**
+* **Updated the TURBO_SW bbdev PMD.**
 
   Updated the ``turbo_sw`` bbdev driver with changes including:
 
@@ -173,17 +173,17 @@ New Features
     SDK libraries.
   * Added support for 5GNR encode/decode operations.
 
-* **Updated the QuickAssist Technology (QAT) symmetric crypto PMD.**
+* **Updated the Intel QuickAssist Technology (QAT) symmetric crypto PMD.**
 
   Added support for digest-encrypted cases where digest is appended
   to the data.
 
-* **Added Intel QuickData Technology PMD**
+* **Added the Intel QuickData Technology PMD.**
 
-  The PMD for Intel\ |reg|  QuickData Technology, part of
+  Added a PMD for the Intel\ |reg|  QuickData Technology, part of
   Intel\ |reg|  I/O Acceleration Technology `(Intel I/OAT)
   <https://www.intel.com/content/www/us/en/wireless-network/accel-technology.html>`_,
-  allows data copies to be done by hardware instead
+  which allows data copies to be done by hardware instead
   of via software, reducing cycles spent copying large blocks of data in
   applications.
 
@@ -191,25 +191,25 @@ New Features
 
   Added the new ``ethdev``, ``eventdev``, ``mempool``, ``eventdev Rx adapter``,
   ``eventdev Tx adapter``, ``eventdev Timer adapter`` and ``rawdev DMA``
-  drivers for various HW coprocessors available in ``OCTEON TX2`` SoC.
+  drivers for various HW co-processors available in ``OCTEON TX2`` SoC.
 
-  See :doc:`../platform/octeontx2` and driver informations:
+  See :doc:`../platform/octeontx2` and driver information:
 
   * :doc:`../nics/octeontx2`
   * :doc:`../mempool/octeontx2`
   * :doc:`../eventdevs/octeontx2`
   * :doc:`../rawdevs/octeontx2_dma`
 
-* **Introduced NTB PMD.**
+* **Introduced the Intel NTB PMD.**
 
-  Added a PMD for Intel NTB (Non-transparent Bridge). This PMD implemented
-  handshake between two separate hosts and can share local memory for peer
+  Added a PMD for Intel NTB (Non-transparent Bridge). This PMD implements
+  a handshake between two separate hosts and can share local memory for peer
   host to directly access.
 
-* **Updated IPSec library and IPsec Security Gateway application.**
+* **Updated the IPSec library and IPsec Security Gateway application.**
 
   Added the following features to ``librte_ipsec``. Corresponding changes are
-  also added in ``ipsec-secgw`` sample application.
+  also added in the ``ipsec-secgw`` sample application.
 
   * ECN and DSCP field header reconstruction as per RFC4301.
   * Transport mode with IPv6 extension headers.
@@ -222,8 +222,8 @@ New Features
 
 * **Added new telemetry mode for l3fwd-power application.**
 
-  Added telemetry mode to l3fwd-power application to report
-  application level busyness, empty and full polls of rte_eth_rx_burst().
+  Added a telemetry mode to the ``l3fwd-power`` application to report
+  application level busyness, empty and full polls of ``rte_eth_rx_burst()``.
 
 * **Updated the pdump application.**
 
@@ -231,7 +231,7 @@ New Features
 
 * **Updated test-compress-perf tool application.**
 
-  Added multiple cores feature to compression perf tool application.
+  Added a multiple cores feature to the compression perf tool application.
 
 
 Removed Items
@@ -246,7 +246,7 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-* Removed KNI ethtool, CONFIG_RTE_KNI_KMOD_ETHTOOL, support.
+* Removed KNI ethtool, ``CONFIG_RTE_KNI_KMOD_ETHTOOL``, support.
 
 * build: armv8 crypto extension is disabled.
 
@@ -266,17 +266,17 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-* The ``rte_mem_config`` structure has been made private. The new accessor
+* The ``rte_mem_config`` structure has been made private. New accessor
   ``rte_mcfg_*`` functions were introduced to provide replacement for direct
   access to the shared mem config.
 
 * The network structures, definitions and functions have
   been prefixed by ``rte_`` to resolve conflicts with libc headers.
 
-* malloc: The function ``rte_malloc_set_limit`` was never implemented
-  is deprecated and will be removed in a future release.
+* malloc: The function ``rte_malloc_set_limit()`` was never implemented.
+  It is deprecated and will be removed in a future release.
 
-* cryptodev: the ``uint8_t *data`` member of ``key`` structure in the xforms
+* cryptodev: the ``uint8_t *data`` member of the ``key`` structure in the xforms
   structure (``rte_crypto_cipher_xform``, ``rte_crypto_auth_xform``, and
   ``rte_crypto_aead_xform``) have been changed to ``const uint8_t *data``.
 
@@ -287,8 +287,8 @@ API Changes
   announced at least one release before the ABI change is made. There are no
   ABI breaking changes planned.
 
-* ip_frag: IP fragmentation library converts input mbuf into fragments
-  using input MTU size via ``rte_ipv4_fragment_packet`` interface.
+* ip_frag: The IP fragmentation library converts input mbuf into fragments
+  using input MTU size via the ``rte_ipv4_fragment_packet()`` interface.
   Once fragmentation is done, each ``mbuf->ol_flags`` are set to enable IP
   checksum H/W offload irrespective of the platform capability.
   Cleared IP checksum H/W offload flag from the library. The application must
@@ -296,7 +296,7 @@ API Changes
   use it.
 
 * ip_frag: IP reassembly library converts the list of fragments into a
-  reassembled packet via ``rte_ipv4_frag_reassemble_packet`` interface.
+  reassembled packet via ``rte_ipv4_frag_reassemble_packet()`` interface.
   Once reassembly is done, ``mbuf->ol_flags`` are set to enable IP checksum H/W
   offload irrespective of the platform capability. Cleared IP checksum H/W
   offload flag from the library. The application must set this flag if it is
@@ -305,10 +305,11 @@ API Changes
 * sched: Macros ``RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS`` and
   ``RTE_SCHED_PIPE_PROFILES_PER_PORT`` are removed for flexible configuration
   of pipe traffic classes and their queues size, and for runtime configuration
-  of maximum number of pipe profiles, respectively. In addtion, wrr_weights
-  field of struct ``rte_sched_pipe_params`` is modifed to be used only for
-  best-effort tc, and qsize field of struct ``rte_sched_port_params`` is
-  changed to allow different size of the each queue.
+  of the maximum number of pipe profiles, respectively. In addition, the
+  ``wrr_weights`` field of struct ``rte_sched_pipe_params`` is modified to be
+  used only for best-effort tc, and the ``qsize`` field of struct
+  ``rte_sched_port_params`` is changed to allow different sizes for each
+  queue.
 
 
 ABI Changes
@@ -342,14 +343,14 @@ ABI Changes
   disable features supported by the crypto device. Only the following features
   would be allowed to be disabled this way,
 
-  - ``RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO``
-  - ``RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO``
-  - ``RTE_CRYPTODEV_FF_SECURITY``
+  - ``RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO``.
+  - ``RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO``.
+  - ``RTE_CRYPTODEV_FF_SECURITY``.
 
   Disabling unused features would facilitate efficient usage of HW/SW offload.
 
-* bbdev: New operations and parameters added to support new 5GNR operations.
-  The bbdev ABI is still kept experimental.
+* bbdev: New operations and parameters have been added to support new 5GNR
+  operations. The bbdev ABI is still kept experimental.
 
 * rawdev: The driver names have been changed to ``librte_rawdev_*``.
   Now they all have the same prefix, and same name with make and meson builds.
@@ -447,11 +448,11 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-* **Unsuitable IOVA mode may be picked as the default**
+* **Unsuitable IOVA mode may be picked as the default.**
 
   Not all kernel drivers and not all devices support all IOVA modes. EAL will
   attempt to pick a reasonable default based on a number of factors, but
-  there may be cases where the default may be unsuitable.
+  there may be cases where the default is unsuitable.
 
   It is recommended to use the `--iova-mode` command-line parameter if the
   default is not suitable.
@@ -558,4 +559,3 @@ Tested Platforms
        * Firmware version: 3.25, 0x800006eb
        * Device id (pf): 8086:1533
        * Driver version: 5.4.0-k(igb)
-
