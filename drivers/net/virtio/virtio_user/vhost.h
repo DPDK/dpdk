@@ -67,7 +67,7 @@ enum vhost_user_request {
 	VHOST_USER_MAX
 };
 
-const char * const vhost_msg_strings[VHOST_USER_MAX];
+extern const char * const vhost_msg_strings[VHOST_USER_MAX];
 
 struct vhost_memory_region {
 	uint64_t guest_phys_addr;
