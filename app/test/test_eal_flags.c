@@ -244,7 +244,7 @@ test_whitelist_flag(void)
 	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
 
-	const char *wlinval[][11] = {
+	const char *wlinval[][7] = {
 		{prgname, prefix, mp_flag,
 				pci_whitelist, "error", "", ""},
 		{prgname, prefix, mp_flag,
@@ -310,7 +310,7 @@ test_invalid_b_flag(void)
 	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
 
-	const char *blinval[][9] = {
+	const char *blinval[][5] = {
 		{prgname, prefix, mp_flag, "-b", "error"},
 		{prgname, prefix, mp_flag, "-b", "0:0:0"},
 		{prgname, prefix, mp_flag, "-b", "0:error:0.1"},
@@ -414,7 +414,7 @@ test_invalid_r_flag(void)
 	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 #endif
 
-	const char *rinval[][9] = {
+	const char *rinval[][5] = {
 			{prgname, prefix, mp_flag, "-r", "error"},
 			{prgname, prefix, mp_flag, "-r", "0"},
 			{prgname, prefix, mp_flag, "-r", "-1"},
