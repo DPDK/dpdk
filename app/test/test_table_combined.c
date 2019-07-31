@@ -840,4 +840,3 @@ test_table_hash_cuckoo_combined(void)
 
 	return 0;
 }
-

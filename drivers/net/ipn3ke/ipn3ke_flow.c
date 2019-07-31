@@ -1372,4 +1372,3 @@ const struct rte_flow_ops ipn3ke_flow_ops = {
 	.destroy = ipn3ke_flow_destroy,
 	.flush = ipn3ke_flow_flush,
 };
-

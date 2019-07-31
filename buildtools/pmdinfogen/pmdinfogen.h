@@ -122,4 +122,3 @@ struct elf_info {
 
 	struct pmd_driver *drivers;
 };
-

@@ -227,4 +227,3 @@ parse_perf_core_list(const char *corelist)
 
 	return 0;
 }
-

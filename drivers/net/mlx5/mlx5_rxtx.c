@@ -5161,5 +5161,3 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 		DRV_LOG(DEBUG, "\tEMPW  (Enhanced MPW)");
 	return txoff_func[m].func;
 }
-
-

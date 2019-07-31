@@ -2060,4 +2060,3 @@ ipn3ke_tm_ops_get(struct rte_eth_dev *ethdev,
 
 	return 0;
 }
-

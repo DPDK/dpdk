@@ -36,7 +36,3 @@ static inline int verify_modexp(uint8_t *mod_exp,
 }
 
 #endif /* TEST_CRYPTODEV_ASYM_TEST_UTIL_H__ */
-
-
-
-

@@ -98,4 +98,3 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 
 	return flow;
 }
-

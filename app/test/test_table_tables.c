@@ -911,7 +911,7 @@ test_table_hash_cuckoo(void)
 		.n_keys = 1 << 16,
 		.n_buckets = 1 << 16,
 		.f_hash = pipeline_test_hash_cuckoo,
-		.seed = 0, 
+		.seed = 0,
 	};
 
 	table = rte_table_hash_cuckoo_ops.f_create(NULL, 0, entry_size);
@@ -1051,4 +1051,3 @@ test_table_hash_cuckoo(void)
 
 	return 0;
 }
-
