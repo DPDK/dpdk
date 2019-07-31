@@ -300,12 +300,6 @@ dump_test_names = [
 if dpdk_conf.has('RTE_LIBRTE_PDUMP')
 	test_deps += 'pdump'
 endif
-if dpdk_conf.has('RTE_LIBRTE_I40E_PMD')
-	test_deps += 'pmd_i40e'
-endif
-if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
-	test_deps += 'pmd_ixgbe'
-endif
 if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
 	test_deps += 'pmd_bond'
 endif
