@@ -1343,6 +1343,7 @@ mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 		 * and PFC control may be broken, so disable feature.
 		 */
 		config->hw_vlan_insert = 0;
+		config->txq_inline_min = MLX5_INLINE_HSIZE_NONE;
 		break;
 	default:
 		config->txq_inline_min = MLX5_INLINE_HSIZE_NONE;
