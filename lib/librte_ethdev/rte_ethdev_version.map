@@ -239,25 +239,7 @@ DPDK_19.05 {
 EXPERIMENTAL {
 	global:
 
-	rte_eth_devargs_parse;
-	rte_eth_dev_create;
-	rte_eth_dev_destroy;
-	rte_eth_dev_get_module_eeprom;
-	rte_eth_dev_get_module_info;
-	rte_eth_dev_is_removed;
-	rte_eth_dev_owner_delete;
-	rte_eth_dev_owner_get;
-	rte_eth_dev_owner_new;
-	rte_eth_dev_owner_set;
-	rte_eth_dev_owner_unset;
-	rte_eth_dev_rx_intr_ctl_q_get_fd;
-	rte_eth_find_next_of;
-	rte_eth_find_next_sibling;
-	rte_eth_read_clock;
-	rte_eth_switch_domain_alloc;
-	rte_eth_switch_domain_free;
-	rte_flow_conv;
-	rte_flow_expand_rss;
+	# added in 17.11
 	rte_mtr_capabilities_get;
 	rte_mtr_create;
 	rte_mtr_destroy;
@@ -270,4 +252,35 @@ EXPERIMENTAL {
 	rte_mtr_policer_actions_update;
 	rte_mtr_stats_read;
 	rte_mtr_stats_update;
+
+	# added in 18.02
+	rte_eth_dev_is_removed;
+	rte_eth_dev_owner_delete;
+	rte_eth_dev_owner_get;
+	rte_eth_dev_owner_new;
+	rte_eth_dev_owner_set;
+	rte_eth_dev_owner_unset;
+
+	# added in 18.05
+	rte_eth_dev_create;
+	rte_eth_dev_destroy;
+	rte_eth_dev_get_module_eeprom;
+	rte_eth_dev_get_module_info;
+	rte_eth_devargs_parse;
+	rte_eth_switch_domain_alloc;
+	rte_eth_switch_domain_free;
+
+	# added in 18.08
+	rte_flow_expand_rss;
+
+	# added in 18.11
+	rte_eth_dev_rx_intr_ctl_q_get_fd;
+	rte_flow_conv;
+
+	# added in 19.05
+	rte_eth_find_next_of;
+	rte_eth_find_next_sibling;
+
+	# added in 19.08
+	rte_eth_read_clock;
 };
