@@ -320,7 +320,7 @@ acl_add_ptr_range(struct acl_build_context *context,
 	for (n = 0; n < UINT8_MAX + 1; n++)
 		if (n >= low && n <= high)
 			bitset.bits[n / (sizeof(bits_t) * 8)] |=
-				1 << (n % (sizeof(bits_t) * 8));
+				1U << (n % (sizeof(bits_t) * CHAR_BIT));
 
 	return acl_add_ptr(context, root, node, &bitset);
 }
@@ -343,7 +343,7 @@ acl_gen_mask(struct rte_acl_bitset *bitset, uint32_t value, uint32_t mask)
 		if ((n & mask) == value) {
 			range++;
 			bitset->bits[n / (sizeof(bits_t) * 8)] |=
-				1 << (n % (sizeof(bits_t) * 8));
+				1U << (n % (sizeof(bits_t) * CHAR_BIT));
 		}
 	}
 	return range;
@@ -972,7 +972,7 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 				sizeof(*end->mrt));
 
 		for (m = context->cfg.num_categories; 0 != m--; ) {
-			if (rule->f->data.category_mask & (1 << m)) {
+			if (rule->f->data.category_mask & (1U << m)) {
 				end->mrt->results[m] = rule->f->data.userdata;
 				end->mrt->priority[m] = rule->f->data.priority;
 			} else {

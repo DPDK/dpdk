@@ -133,7 +133,7 @@ acl_node_fill_dfa(const struct rte_acl_node *node,
 		for (n = 0; n < RTE_ACL_DFA_SIZE; n++) {
 
 			if (bits->bits[n / (sizeof(bits_t) * CHAR_BIT)] &
-				(1 << (n % (sizeof(bits_t) * CHAR_BIT)))) {
+				(1U << (n % (sizeof(bits_t) * CHAR_BIT)))) {
 
 				dfa[n] = resolved ? child->node_index : x;
 				ranges += (last_bit == 0);
@@ -175,7 +175,7 @@ acl_count_sequential_groups(struct rte_acl_bitset *bits, int zero_one)
 	}
 	for (n = 0; n < QRANGE_MIN; n++) {
 		if (bits->bits[n / (sizeof(bits_t) * 8)] &
-				(1 << (n % (sizeof(bits_t) * 8)))) {
+				(1U << (n % (sizeof(bits_t) * CHAR_BIT)))) {
 			if (zero_one == 1 && last_bit != 1)
 				ranges++;
 			last_bit = 1;
