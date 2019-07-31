@@ -38,7 +38,8 @@ rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role)
 	return cfg->lcore_role[lcore_id] == role;
 }
 
-int eal_cpuset_socket_id(rte_cpuset_t *cpusetp)
+static int
+eal_cpuset_socket_id(rte_cpuset_t *cpusetp)
 {
 	unsigned cpu = 0;
 	int socket_id = SOCKET_ID_ANY;
