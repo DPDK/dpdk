@@ -1709,7 +1709,7 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 }
 
 static int
-ice_dev_configure(__rte_unused struct rte_eth_dev *dev)
+ice_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
