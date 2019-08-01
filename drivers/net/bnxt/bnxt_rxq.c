@@ -436,11 +436,9 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
-	if (rc == 0) {
+	if (rc == 0)
 		dev->data->rx_queue_state[rx_queue_id] =
 				RTE_ETH_QUEUE_STATE_STARTED;
-		rxq->rx_deferred_start = false;
-	}
 
 	PMD_DRV_LOG(INFO,
 		    "queue %d, rx_deferred_start %d, state %d!\n",
@@ -475,7 +473,6 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
-	rxq->rx_deferred_start = true;
 	PMD_DRV_LOG(DEBUG, "Rx queue stopped\n");
 
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {

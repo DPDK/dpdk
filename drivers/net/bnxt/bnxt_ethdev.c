@@ -1754,7 +1754,7 @@ bnxt_rxq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
 	qinfo->conf.rx_drop_en = 0;
-	qinfo->conf.rx_deferred_start = 0;
+	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
 }
 
 static void

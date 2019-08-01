@@ -506,7 +506,6 @@ int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	bnxt_handle_tx_cp(txq);
 
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
-	txq->tx_deferred_start = true;
 	PMD_DRV_LOG(DEBUG, "Tx queue stopped\n");
 
 	return 0;

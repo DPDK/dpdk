@@ -131,6 +131,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	txq->queue_id = queue_idx;
 	txq->port_id = eth_dev->data->port_id;
+	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
 	/* Allocate TX ring hardware descriptors */
 	if (bnxt_alloc_rings(bp, queue_idx, txq, NULL, txq->cp_ring,
