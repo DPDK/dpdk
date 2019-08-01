@@ -513,8 +513,8 @@ struct mlx5_flow_tbl_resource {
 	rte_atomic32_t refcnt; /**< Reference counter. */
 };
 
-#define MLX5_MAX_TABLES 1024
-#define MLX5_MAX_TABLES_FDB 32
+#define MLX5_MAX_TABLES 0xffff
+#define MLX5_MAX_TABLES_FDB 0xffff
 #define MLX5_GROUP_FACTOR 1
 
 #define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */

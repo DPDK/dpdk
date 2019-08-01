@@ -2817,7 +2817,7 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 				(error, EINVAL,
 				 RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
 				 NULL, "group must be smaller than "
-				 RTE_STR(MLX5_MAX_FDB_TABLES));
+				 RTE_STR(MLX5_MAX_TABLES_FDB));
 	}
 	if (!(attributes->egress ^ attributes->ingress))
 		return rte_flow_error_set(error, ENOTSUP,
