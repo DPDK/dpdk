@@ -297,20 +297,37 @@ dump_test_names = [
         'dump_memzone',
 ]
 
-if dpdk_conf.has('RTE_LIBRTE_PDUMP')
-	test_deps += 'pdump'
+# The following linkages are an exception to allow running the
+# unit tests without requiring that the developer install the
+# DPDK libraries.  Explicit linkage of drivers (plugin libraries)
+# in applications should not be used.
+if dpdk_conf.has('RTE_LIBRTE_RING_MEMPOOL')
+	test_deps += 'mempool_ring'
 endif
+if dpdk_conf.has('RTE_LIBRTE_STACK_MEMPOOL')
+	test_deps += 'mempool_stack'
+endif
+if dpdk_conf.has('RTE_LIBRTE_SKELETON_EVENTDEV_PMD')
+	test_deps += 'pmd_skeleton_event'
+endif
+
+# The following linkages of drivers are required because
+# they are used via a driver-specific API.
 if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
 	test_deps += 'pmd_bond'
 endif
 if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
 	test_deps += 'pmd_ring'
 endif
+
 if dpdk_conf.has('RTE_LIBRTE_POWER')
 	test_deps += 'power'
 endif
 if dpdk_conf.has('RTE_LIBRTE_KNI')
 	test_deps += 'kni'
+endif
+if dpdk_conf.has('RTE_LIBRTE_PDUMP')
+	test_deps += 'pdump'
 endif
 
 cflags = machine_args
