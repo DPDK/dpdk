@@ -3236,19 +3236,21 @@ main(int argc, char** argv)
 
 	testpmd_logtype = rte_log_register("testpmd");
 	if (testpmd_logtype < 0)
-		rte_panic("Cannot register log type");
+		rte_exit(EXIT_FAILURE, "Cannot register log type");
 	rte_log_set_level(testpmd_logtype, RTE_LOG_DEBUG);
 
 	diag = rte_eal_init(argc, argv);
 	if (diag < 0)
-		rte_panic("Cannot init EAL\n");
+		rte_exit(EXIT_FAILURE, "Cannot init EAL: %s\n",
+			 rte_strerror(rte_errno));
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-		rte_panic("Secondary process type not supported.\n");
+		rte_exit(EXIT_FAILURE,
+			 "Secondary process type not supported.\n");
 
 	ret = register_eth_event_callback();
 	if (ret != 0)
-		rte_panic("Cannot register for ethdev events");
+		rte_exit(EXIT_FAILURE, "Cannot register for ethdev events");
 
 #ifdef RTE_LIBRTE_PDUMP
 	/* initialize packet capture framework */
@@ -3269,8 +3271,8 @@ main(int argc, char** argv)
 
 	set_def_fwd_config();
 	if (nb_lcores == 0)
-		rte_panic("Empty set of forwarding logical cores - check the "
-			  "core mask supplied in the command parameters\n");
+		rte_exit(EXIT_FAILURE, "No cores defined for forwarding\n"
+			 "Check the core mask argument\n");
 
 	/* Bitrate/latency stats disabled by default */
 #ifdef RTE_LIBRTE_BITRATE
