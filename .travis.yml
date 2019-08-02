@@ -30,6 +30,7 @@ env:
   - DEF_LIB="shared"
   - DEF_LIB="static" OPTS="-Denable_kmods=false"
   - DEF_LIB="shared" OPTS="-Denable_kmods=false"
+  - DEF_LIB="shared" RUN_TESTS=1 BUILD_DOCS=1
 
 matrix:
   include:
@@ -51,7 +52,7 @@ matrix:
       apt:
         packages:
           - *extra_packages
-  - env: DEF_LIB="shared" EXTRA_PACKAGES=1
+  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 RUN_TESTS=1 BUILD_DOCS=1
     compiler: gcc
     addons:
       apt:
@@ -76,6 +77,12 @@ matrix:
         packages:
           - *extra_packages
   - env: DEF_LIB="shared" EXTRA_PACKAGES=1
+    compiler: clang
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 RUN_TESTS=1 BUILD_DOCS=1
     compiler: clang
     addons:
       apt:
