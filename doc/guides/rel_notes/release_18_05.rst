@@ -282,7 +282,7 @@ New Features
   with OPAE (Open Programmable Acceleration Engine) shared code to provide common FPGA
   management ops for FPGA operation.
 
-  See the :doc:`../rawdevs/ifpga_rawdev` programmer's guide for more details.
+  See the :doc:`../rawdevs/ifpga` programmer's guide for more details.
 
 * **Added DPAA2 QDMA Driver (in rawdev).**
 
