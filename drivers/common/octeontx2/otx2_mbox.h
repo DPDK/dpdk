@@ -553,16 +553,16 @@ struct npa_aq_enq_req {
 		 * LF fills the pool_id in aura.pool_addr. AF will translate
 		 * the pool_id to pool context pointer.
 		 */
-		struct npa_aura_s aura;
+		__otx2_io struct npa_aura_s aura;
 		/* Valid when op == WRITE/INIT and ctype == POOL */
-		struct npa_pool_s pool;
+		__otx2_io struct npa_pool_s pool;
 	};
 	/* Mask data when op == WRITE (1=write, 0=don't write) */
 	union {
 		/* Valid when op == WRITE and ctype == AURA */
-		struct npa_aura_s aura_mask;
+		__otx2_io struct npa_aura_s aura_mask;
 		/* Valid when op == WRITE and ctype == POOL */
-		struct npa_pool_s pool_mask;
+		__otx2_io struct npa_pool_s pool_mask;
 	};
 };
 
@@ -570,9 +570,9 @@ struct npa_aq_enq_rsp {
 	struct mbox_msghdr hdr;
 	union {
 		/* Valid when op == READ and ctype == AURA */
-		struct npa_aura_s aura;
+		__otx2_io struct npa_aura_s aura;
 		/* Valid when op == READ and ctype == POOL */
-		struct npa_pool_s pool;
+		__otx2_io struct npa_pool_s pool;
 	};
 };
 
@@ -656,39 +656,39 @@ struct nix_aq_enq_req {
 	uint8_t __otx2_io op;
 	union {
 		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_RQ */
-		struct nix_rq_ctx_s rq;
+		__otx2_io struct nix_rq_ctx_s rq;
 		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_SQ */
-		struct nix_sq_ctx_s sq;
+		__otx2_io struct nix_sq_ctx_s sq;
 		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_CQ */
-		struct nix_cq_ctx_s cq;
+		__otx2_io struct nix_cq_ctx_s cq;
 		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_RSS */
-		struct nix_rsse_s rss;
+		__otx2_io struct nix_rsse_s rss;
 		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_MCE */
-		struct nix_rx_mce_s mce;
+		__otx2_io struct nix_rx_mce_s mce;
 	};
 	/* Mask data when op == WRITE (1=write, 0=don't write) */
 	union {
 		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_RQ */
-		struct nix_rq_ctx_s rq_mask;
+		__otx2_io struct nix_rq_ctx_s rq_mask;
 		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_SQ */
-		struct nix_sq_ctx_s sq_mask;
+		__otx2_io struct nix_sq_ctx_s sq_mask;
 		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_CQ */
-		struct nix_cq_ctx_s cq_mask;
+		__otx2_io struct nix_cq_ctx_s cq_mask;
 		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_RSS */
-		struct nix_rsse_s rss_mask;
+		__otx2_io struct nix_rsse_s rss_mask;
 		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_MCE */
-		struct nix_rx_mce_s mce_mask;
+		__otx2_io struct nix_rx_mce_s mce_mask;
 	};
 };
 
 struct nix_aq_enq_rsp {
 	struct mbox_msghdr hdr;
 	union {
-		struct nix_rq_ctx_s rq;
-		struct nix_sq_ctx_s sq;
-		struct nix_cq_ctx_s cq;
-		struct nix_rsse_s   rss;
-		struct nix_rx_mce_s mce;
+		__otx2_io struct nix_rq_ctx_s rq;
+		__otx2_io struct nix_sq_ctx_s sq;
+		__otx2_io struct nix_cq_ctx_s cq;
+		__otx2_io struct nix_rsse_s   rss;
+		__otx2_io struct nix_rx_mce_s mce;
 	};
 };
 

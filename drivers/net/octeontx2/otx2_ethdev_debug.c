@@ -235,7 +235,7 @@ otx2_nix_dev_get_reg(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
 }
 
 static inline void
-nix_lf_sq_dump(struct  nix_sq_ctx_s *ctx)
+nix_lf_sq_dump(__otx2_io struct nix_sq_ctx_s *ctx)
 {
 	nix_dump("W0: sqe_way_mask \t\t%d\nW0: cq \t\t\t\t%d",
 		 ctx->sqe_way_mask, ctx->cq);
@@ -295,7 +295,7 @@ nix_lf_sq_dump(struct  nix_sq_ctx_s *ctx)
 }
 
 static inline void
-nix_lf_rq_dump(struct  nix_rq_ctx_s *ctx)
+nix_lf_rq_dump(__otx2_io struct nix_rq_ctx_s *ctx)
 {
 	nix_dump("W0: wqe_aura \t\t\t%d\nW0: substream \t\t\t0x%03x",
 		 ctx->wqe_aura, ctx->substream);
@@ -355,7 +355,7 @@ nix_lf_rq_dump(struct  nix_rq_ctx_s *ctx)
 }
 
 static inline void
-nix_lf_cq_dump(struct nix_cq_ctx_s *ctx)
+nix_lf_cq_dump(__otx2_io struct nix_cq_ctx_s *ctx)
 {
 	nix_dump("W0: base \t\t\t0x%" PRIx64 "\n", ctx->base);
 
