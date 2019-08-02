@@ -265,6 +265,9 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 
 		mbuf->pkt_len = (uint16_t)header.caplen;
+		mbuf->timestamp = (uint64_t)header.ts.tv_sec * 1000000
+							+ header.ts.tv_usec;
+		mbuf->ol_flags |= PKT_RX_TIMESTAMP;
 		mbuf->port = pcap_q->port_id;
 		bufs[num_rx] = mbuf;
 		num_rx++;
