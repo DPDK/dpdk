@@ -3243,6 +3243,9 @@ main(int argc, char** argv)
 	if (diag < 0)
 		rte_panic("Cannot init EAL\n");
 
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		rte_panic("Secondary process type not supported.\n");
+
 	ret = register_eth_event_callback();
 	if (ret != 0)
 		rte_panic("Cannot register for ethdev events");
