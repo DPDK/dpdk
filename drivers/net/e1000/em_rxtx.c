@@ -2109,20 +2109,32 @@ em_flush_desc_rings(struct rte_eth_dev *dev)
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	uint16_t pci_cfg_status = 0;
+	int ret;
 
 	fextnvm11 = E1000_READ_REG(hw, E1000_FEXTNVM11);
 	E1000_WRITE_REG(hw, E1000_FEXTNVM11,
 			fextnvm11 | E1000_FEXTNVM11_DISABLE_MULR_FIX);
 	tdlen = E1000_READ_REG(hw, E1000_TDLEN(0));
-	rte_pci_read_config(pci_dev, &pci_cfg_status, sizeof(pci_cfg_status),
-				PCI_CFG_STATUS_REG);
+	ret = rte_pci_read_config(pci_dev, &pci_cfg_status,
+		   sizeof(pci_cfg_status), PCI_CFG_STATUS_REG);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x",
+			    PCI_CFG_STATUS_REG);
+		return;
+	}
 
 	/* do nothing if we're not in faulty state, or if the queue is empty */
 	if ((pci_cfg_status & FLUSH_DESC_REQUIRED) && tdlen) {
 		/* flush desc ring */
 		e1000_flush_tx_ring(dev);
-		rte_pci_read_config(pci_dev, &pci_cfg_status,
+		ret = rte_pci_read_config(pci_dev, &pci_cfg_status,
 				sizeof(pci_cfg_status), PCI_CFG_STATUS_REG);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x",
+					PCI_CFG_STATUS_REG);
+			return;
+		}
+
 		if (pci_cfg_status & FLUSH_DESC_REQUIRED)
 			e1000_flush_rx_ring(dev);
 	}
