@@ -62,7 +62,7 @@ TAILQ_HEAD(otx2_nix_tm_node_list, otx2_nix_tm_node);
 TAILQ_HEAD(otx2_nix_tm_shaper_profile_list, otx2_nix_tm_shaper_profile);
 
 #define MAX_SCHED_WEIGHT ((uint8_t)~0)
-#define NIX_TM_RR_QUANTUM_MAX ((1 << 24) - 1)
+#define NIX_TM_RR_QUANTUM_MAX (BIT_ULL(24) - 1)
 
 /* DEFAULT_RR_WEIGHT * NIX_TM_RR_QUANTUM_MAX / MAX_SCHED_WEIGHT  */
 /* = NIX_MAX_HW_MTU */

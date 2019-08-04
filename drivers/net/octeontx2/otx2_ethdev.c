@@ -754,7 +754,8 @@ nix_sq_uninit(struct otx2_eth_txq *txq)
 	while (count) {
 		void *next_sqb;
 
-		next_sqb = *(void **)((uintptr_t)sqb_buf + ((sqes_per_sqb - 1) *
+		next_sqb = *(void **)((uintptr_t)sqb_buf + (uint32_t)
+				      ((sqes_per_sqb - 1) *
 				      nix_sq_max_sqe_sz(txq)));
 		npa_lf_aura_op_free(txq->sqb_pool->pool_id, 1,
 				    (uint64_t)sqb_buf);

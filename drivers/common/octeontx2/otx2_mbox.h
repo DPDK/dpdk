@@ -13,8 +13,8 @@
 
 #include <otx2_common.h>
 
-#define SZ_64K			(64 * 1024)
-#define SZ_1K			(1 * 1024)
+#define SZ_64K			(64ULL * 1024ULL)
+#define SZ_1K			(1ULL * 1024ULL)
 #define MBOX_SIZE		SZ_64K
 
 /* AF/PF: PF initiated, PF/VF VF initiated */

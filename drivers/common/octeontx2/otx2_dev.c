@@ -791,9 +791,8 @@ otx2_pf_vf_flr_irq(void *param)
 			if (!(intr & (1ULL << vf)))
 				continue;
 
-			vf = 64 * i + vf;
 			otx2_base_dbg("FLR: i :%d intr: 0x%" PRIx64 ", vf-%d",
-				      i, intr, vf);
+				      i, intr, (64 * i + vf));
 			/* Clear interrupt */
 			otx2_write64(BIT_ULL(vf), bar2 + RVU_PF_VFFLR_INTX(i));
 			/* Disable the interrupt */

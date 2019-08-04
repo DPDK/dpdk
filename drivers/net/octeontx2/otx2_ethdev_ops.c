@@ -352,10 +352,15 @@ nix_get_fwdata(struct otx2_eth_dev *dev)
 {
 	struct otx2_mbox *mbox = dev->mbox;
 	struct cgx_fw_data *rsp = NULL;
+	int rc;
 
 	otx2_mbox_alloc_msg_cgx_get_aux_link_info(mbox);
 
-	otx2_mbox_process_msg(mbox, (void *)&rsp);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc) {
+		otx2_err("Failed to get fw data: %d", rc);
+		return NULL;
+	}
 
 	return rsp;
 }

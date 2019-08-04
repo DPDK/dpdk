@@ -91,7 +91,7 @@ otx2_mempool_ctx_dump(struct otx2_npa_lf *lf)
 	struct npa_aq_enq_req *aq;
 	struct npa_aq_enq_rsp *rsp;
 	uint32_t q;
-	int rc;
+	int rc = 0;
 
 	for (q = 0; q < lf->nr_pools; q++) {
 		/* Skip disabled POOL */

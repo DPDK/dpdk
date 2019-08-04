@@ -102,7 +102,7 @@ nix_ptp_config(struct rte_eth_dev *eth_dev, int en)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct otx2_mbox *mbox = dev->mbox;
-	uint8_t rc = 0;
+	uint8_t rc = -EINVAL;
 
 	if (otx2_dev_is_vf(dev))
 		return rc;
@@ -136,8 +136,15 @@ int
 otx2_eth_dev_ptp_info_update(struct otx2_dev *dev, bool ptp_en)
 {
 	struct otx2_eth_dev *otx2_dev = (struct otx2_eth_dev *)dev;
-	struct rte_eth_dev *eth_dev = otx2_dev->eth_dev;
+	struct rte_eth_dev *eth_dev;
 	int i;
+
+	if (!dev)
+		return -EINVAL;
+
+	eth_dev = otx2_dev->eth_dev;
+	if (!eth_dev)
+		return -EINVAL;
 
 	otx2_dev->ptp_en = ptp_en;
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
@@ -174,8 +181,10 @@ otx2_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 	ts = rte_eth_dma_zone_reserve(eth_dev, "otx2_ts",
 				      0, OTX2_ALIGN, OTX2_ALIGN,
 				      dev->node);
-	if (ts == NULL)
+	if (ts == NULL) {
 		otx2_err("Failed to allocate mem for tx tstamp addr");
+		return -ENOMEM;
+	}
 
 	dev->tstamp.tx_tstamp_iova = ts->iova;
 	dev->tstamp.tx_tstamp = ts->addr;

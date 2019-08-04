@@ -52,10 +52,14 @@ otx2_eth_dev_link_status_update(struct otx2_dev *dev,
 				struct cgx_link_user_info *link)
 {
 	struct otx2_eth_dev *otx2_dev = (struct otx2_eth_dev *)dev;
-	struct rte_eth_dev *eth_dev = otx2_dev->eth_dev;
 	struct rte_eth_link eth_link;
+	struct rte_eth_dev *eth_dev;
 
-	if (!link || !dev || !eth_dev->data->dev_conf.intr_conf.lsc)
+	if (!link || !dev)
+		return;
+
+	eth_dev = otx2_dev->eth_dev;
+	if (!eth_dev || !eth_dev->data->dev_conf.intr_conf.lsc)
 		return;
 
 	if (nix_wait_for_link_cfg(otx2_dev)) {
