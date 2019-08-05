@@ -774,72 +774,52 @@ Quick Start Guide on OFED/EN
 
 
 2. Install the required libraries and kernel modules either by installing
-   only the required set, or by installing the entire Mellanox OFED/EN:
-
-   .. code-block:: console
+   only the required set, or by installing the entire Mellanox OFED/EN::
 
         ./mlnxofedinstall --upstream-libs --dpdk
 
-3. Verify the firmware is the correct one:
-
-   .. code-block:: console
+3. Verify the firmware is the correct one::
 
         ibv_devinfo
 
-4. Verify all ports links are set to Ethernet:
-
-   .. code-block:: console
+4. Verify all ports links are set to Ethernet::
 
         mlxconfig -d <mst device> query | grep LINK_TYPE
         LINK_TYPE_P1                        ETH(2)
         LINK_TYPE_P2                        ETH(2)
 
-   Link types may have to be configured to Ethernet:
-
-   .. code-block:: console
+   Link types may have to be configured to Ethernet::
 
         mlxconfig -d <mst device> set LINK_TYPE_P1/2=1/2/3
 
         * LINK_TYPE_P1=<1|2|3> , 1=Infiniband 2=Ethernet 3=VPI(auto-sense)
 
-   For hypervisors verify SR-IOV is enabled on the NIC:
-
-   .. code-block:: console
+   For hypervisors, verify SR-IOV is enabled on the NIC::
 
         mlxconfig -d <mst device> query | grep SRIOV_EN
         SRIOV_EN                            True(1)
 
-   If needed, set enable the set the relevant fields:
-
-   .. code-block:: console
+   If needed, configure SR-IOV::
 
         mlxconfig -d <mst device> set SRIOV_EN=1 NUM_OF_VFS=16
         mlxfwreset -d <mst device> reset
 
-5. Restart the driver:
-
-   .. code-block:: console
+5. Restart the driver::
 
         /etc/init.d/openibd restart
 
-   or:
-
-   .. code-block:: console
+   or::
 
         service openibd restart
 
-   If link type was changed, firmware must be reset as well:
-
-   .. code-block:: console
+   If link type was changed, firmware must be reset as well::
 
         mlxfwreset -d <mst device> reset
 
    For hypervisors, after reset write the sysfs number of virtual functions
    needed for the PF.
 
-   To dynamically instantiate a given number of virtual functions (VFs):
-
-   .. code-block:: console
+   To dynamically instantiate a given number of virtual functions (VFs)::
 
         echo [num_vfs] > /sys/class/infiniband/mlx5_0/device/sriov_numvfs
 
@@ -860,54 +840,38 @@ flow should be offloaded to the E-Switch. After offloading the flow packet
 that the VF that are matching the flow will not be received any more by
 the DPDK application.
 
-1. Enable SRIOV mode:
-
-  .. code-block:: console
+1. Enable SRIOV mode::
 
         mlxconfig -d <mst device> set SRIOV_EN=true
 
-2. Configure the max number of VFs:
-
-  .. code-block:: console
+2. Configure the max number of VFs::
 
         mlxconfig -d <mst device> set NUM_OF_VFS=<num of vfs>
 
-3. Reset the FW:
-
-  .. code-block:: console
+3. Reset the FW::
 
         mlxfwreset -d <mst device> reset
 
-3. Configure the actual number of VFs:
-
-  .. code-block:: console
+3. Configure the actual number of VFs::
 
         echo <num of vfs > /sys/class/net/<net device>/device/sriov_numvfs
 
-4. Unbind the device (can be rebind after the switchdev mode):
-
-  .. code-block:: console
+4. Unbind the device (can be rebind after the switchdev mode)::
 
         echo -n "<device pci address" > /sys/bus/pci/drivers/mlx5_core/unbind
 
-5. Enbale switchdev mode:
-
-  .. code-block:: console
+5. Enbale switchdev mode::
 
         echo switchdev > /sys/class/net/<net device>/compat/devlink/mode
 
 Performance tuning
 ------------------
 
-1. Configure aggressive CQE Zipping for maximum performance:
-
-  .. code-block:: console
+1. Configure aggressive CQE Zipping for maximum performance::
 
         mlxconfig -d <mst device> s CQE_COMPRESSION=1
 
-  To set it back to the default CQE Zipping mode use:
-
-  .. code-block:: console
+  To set it back to the default CQE Zipping mode use::
 
         mlxconfig -d <mst device> s CQE_COMPRESSION=0
 
@@ -921,9 +885,7 @@ Performance tuning
 
 3. Use the CPU near local NUMA node to which the PCIe adapter is connected,
    for better performance. For VMs, verify that the right CPU
-   and NUMA node are pinned according to the above. Run:
-
-   .. code-block:: console
+   and NUMA node are pinned according to the above. Run::
 
         lstopo-no-graphics
 
@@ -935,9 +897,7 @@ Performance tuning
    This in order to forward packets from one to the other without
    NUMA performance penalty.
 
-5. Disable pause frames:
-
-   .. code-block:: console
+5. Disable pause frames::
 
         ethtool -A <netdev> rx off tx off
 
@@ -951,15 +911,11 @@ Performance tuning
         to set the PCI max read request parameter to 1K. This can be
         done in the following way:
 
-        To query the read request size use:
-
-        .. code-block:: console
+        To query the read request size use::
 
                 setpci -s <NIC PCI address> 68.w
 
-        If the output is different than 3XXX, set it by:
-
-        .. code-block:: console
+        If the output is different than 3XXX, set it by::
 
                 setpci -s <NIC PCI address> 68.w=3XXX
 
@@ -1034,9 +990,7 @@ port, librte_pmd_mlx5 supports per-protocol RSS configuration.
 Since ``testpmd`` defaults to IP RSS mode and there is currently no
 command-line parameter to enable additional protocols (UDP and TCP as well
 as IP), the following commands must be entered from its CLI to get the same
-behavior as librte_pmd_mlx4:
-
-.. code-block:: console
+behavior as librte_pmd_mlx4::
 
    > port stop all
    > port config all rss all
@@ -1048,16 +1002,12 @@ Usage example
 This section demonstrates how to launch **testpmd** with Mellanox
 ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices managed by librte_pmd_mlx5.
 
-#. Load the kernel modules:
-
-   .. code-block:: console
+#. Load the kernel modules::
 
       modprobe -a ib_uverbs mlx5_core mlx5_ib
 
    Alternatively if MLNX_OFED/MLNX_EN is fully installed, the following script
-   can be run:
-
-   .. code-block:: console
+   can be run::
 
       /etc/init.d/openibd restart
 
@@ -1067,24 +1017,18 @@ ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices managed by librte_pmd_mlx5.
       not have to be loaded.
 
 #. Make sure Ethernet interfaces are in working order and linked to kernel
-   verbs. Related sysfs entries should be present:
-
-   .. code-block:: console
+   verbs. Related sysfs entries should be present::
 
       ls -d /sys/class/net/*/device/infiniband_verbs/uverbs* | cut -d / -f 5
 
-   Example output:
-
-   .. code-block:: console
+   Example output::
 
       eth30
       eth31
       eth32
       eth33
 
-#. Optionally, retrieve their PCI bus addresses for whitelisting:
-
-   .. code-block:: console
+#. Optionally, retrieve their PCI bus addresses for whitelisting::
 
       {
           for intf in eth2 eth3 eth4 eth5;
@@ -1094,30 +1038,22 @@ ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices managed by librte_pmd_mlx5.
       } |
       sed -n 's,.*/\(.*\),-w \1,p'
 
-   Example output:
-
-   .. code-block:: console
+   Example output::
 
       -w 0000:05:00.1
       -w 0000:06:00.0
       -w 0000:06:00.1
       -w 0000:05:00.0
 
-#. Request huge pages:
-
-   .. code-block:: console
+#. Request huge pages::
 
       echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages/nr_hugepages
 
-#. Start testpmd with basic parameters:
-
-   .. code-block:: console
+#. Start testpmd with basic parameters::
 
       testpmd -l 8-15 -n 4 -w 05:00.0 -w 05:00.1 -w 06:00.0 -w 06:00.1 -- --rxq=2 --txq=2 -i
 
-   Example output:
-
-   .. code-block:: console
+   Example output::
 
       [...]
       EAL: PCI device 0000:05:00.0 on NUMA socket 0
