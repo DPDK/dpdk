@@ -239,6 +239,7 @@ struct mlx5_txq_local {
 	struct rte_mbuf *mbuf; /* first mbuf to process. */
 	uint16_t pkts_copy; /* packets copied to elts. */
 	uint16_t pkts_sent; /* packets sent. */
+	uint16_t pkts_loop; /* packets sent on loop entry. */
 	uint16_t elts_free; /* available elts remain. */
 	uint16_t wqe_free; /* available wqe remain. */
 	uint16_t mbuf_off; /* data offset in current mbuf. */
