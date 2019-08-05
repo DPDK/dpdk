@@ -20,12 +20,12 @@ There is also a `section dedicated to this poll mode driver
 
 .. note::
 
-   Due to external dependencies, this driver is disabled by default. It must
-   be enabled manually by setting ``CONFIG_RTE_LIBRTE_MLX5_PMD=y`` and
-   recompiling DPDK.
+   Due to external dependencies, this driver is disabled in default configuration
+   of the "make" build. It can be enabled with ``CONFIG_RTE_LIBRTE_MLX5_PMD=y``
+   or by using "meson" build system which will detect dependencies.
 
-Implementation details
-----------------------
+Design
+------
 
 Besides its dependency on libibverbs (that implies libmlx5 and associated
 kernel support), librte_pmd_mlx5 relies heavily on system calls for control
@@ -43,6 +43,16 @@ long as they share the same MAC address.
 This means legacy linux control tools (for example: ethtool, ifconfig and
 more) can operate on the same network interfaces that owned by the DPDK
 application.
+
+The PMD can use libibverbs and libmlx5 to access the device firmware
+or directly the hardware components.
+There are different levels of objects and bypassing abilities
+to get the best performances:
+
+- Verbs is a complete high-level generic API
+- Direct Verbs is a device-specific API
+- DevX allows to access firmware objects
+- Direct Rules manages flow steering at low-level hardware layer
 
 Enabling librte_pmd_mlx5 causes DPDK applications to be linked against
 libibverbs.
