@@ -267,26 +267,31 @@ nix_cq_rq_init(struct rte_eth_dev *eth_dev, struct otx2_eth_dev *dev,
 	aq->cq.cq_err_int_ena = BIT(NIX_CQERRINT_CQE_FAULT);
 	aq->cq.cq_err_int_ena |= BIT(NIX_CQERRINT_DOOR_ERR);
 
-	/* TX pause frames enable flowctrl on RX side */
-	if (dev->fc_info.tx_pause) {
-		/* Single bpid is allocated for all rx channels for now */
-		aq->cq.bpid = dev->fc_info.bpid[0];
-		aq->cq.bp = NIX_CQ_BP_LEVEL;
-		aq->cq.bp_ena = 1;
-	}
-
 	/* Many to one reduction */
 	aq->cq.qint_idx = qid % dev->qints;
 	/* Map CQ0 [RQ0] to CINT0 and so on till max 64 irqs */
 	aq->cq.cint_idx = qid;
 
 	if (otx2_ethdev_fixup_is_limit_cq_full(dev)) {
+		const float rx_cq_skid = NIX_CQ_FULL_ERRATA_SKID;
 		uint16_t min_rx_drop;
-		const float rx_cq_skid = 1024 * 256;
 
 		min_rx_drop = ceil(rx_cq_skid / (float)cq_size);
 		aq->cq.drop = min_rx_drop;
 		aq->cq.drop_ena = 1;
+		rxq->cq_drop = min_rx_drop;
+	} else {
+		rxq->cq_drop = NIX_CQ_THRESH_LEVEL;
+		aq->cq.drop = rxq->cq_drop;
+		aq->cq.drop_ena = 1;
+	}
+
+	/* TX pause frames enable flowctrl on RX side */
+	if (dev->fc_info.tx_pause) {
+		/* Single bpid is allocated for all rx channels for now */
+		aq->cq.bpid = dev->fc_info.bpid[0];
+		aq->cq.bp = rxq->cq_drop;
+		aq->cq.bp_ena = 1;
 	}
 
 	rc = otx2_mbox_process(mbox);
@@ -325,8 +330,7 @@ nix_cq_rq_init(struct rte_eth_dev *eth_dev, struct otx2_eth_dev *dev,
 	/* Many to one reduction */
 	aq->rq.qint_idx = qid % dev->qints;
 
-	if (otx2_ethdev_fixup_is_limit_cq_full(dev))
-		aq->rq.xqe_drop_ena = 1;
+	aq->rq.xqe_drop_ena = 1;
 
 	rc = otx2_mbox_process(mbox);
 	if (rc) {
@@ -1827,7 +1831,8 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	dev->tx_offload_capa = nix_get_tx_offload_capa(dev);
 	dev->rx_offload_capa = nix_get_rx_offload_capa(dev);
 
-	if (otx2_dev_is_Ax(dev)) {
+	if (otx2_dev_is_96xx_A0(dev) ||
+	    otx2_dev_is_95xx_Ax(dev)) {
 		dev->hwcap |= OTX2_FIXUP_F_MIN_4K_Q;
 		dev->hwcap |= OTX2_FIXUP_F_LIMIT_CQ_FULL;
 	}

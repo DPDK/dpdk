@@ -26,6 +26,22 @@
 #define otx2_dev_is_Ax(dev)					\
 	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0))
 
+#define otx2_dev_is_95xx_A0(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MINOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x1))
+#define otx2_dev_is_95xx_Ax(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x1))
+
+#define otx2_dev_is_96xx_A0(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MINOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x0))
+#define otx2_dev_is_96xx_Ax(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x0))
+
 struct otx2_dev;
 
 /* Link status callback */

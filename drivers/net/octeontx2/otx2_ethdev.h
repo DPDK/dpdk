@@ -81,6 +81,7 @@
 #define NIX_CQ_ALIGN			512
 #define NIX_SQB_LOWER_THRESH		90
 #define LMT_SLOT_MASK			0x7f
+#define NIX_RX_DEFAULT_RING_SZ		4096
 
 /* If PTP is enabled additional SEND MEM DESC is required which
  * takes 2 words, hence max 7 iova address are possible
@@ -95,8 +96,9 @@
 	((RTE_ALIGN_MUL_CEIL(NIX_TX_NB_SEG_MAX, 3) / 3)	\
 	 + NIX_TX_NB_SEG_MAX)
 
-/* Apply BP when CQ is 75% full */
-#define NIX_CQ_BP_LEVEL (25 * 256 / 100)
+/* Apply BP/DROP when CQ is 95% full */
+#define NIX_CQ_THRESH_LEVEL	(5 * 256 / 100)
+#define NIX_CQ_FULL_ERRATA_SKID	(1024ull * 256)
 
 #define CQ_OP_STAT_OP_ERR	63
 #define CQ_OP_STAT_CQ_ERR	46
@@ -345,6 +347,7 @@ struct otx2_eth_rxq {
 	enum nix_q_size_e qsize;
 	struct rte_eth_dev *eth_dev;
 	struct otx2_eth_qconf qconf;
+	uint16_t cq_drop;
 } __rte_cache_aligned;
 
 static inline struct otx2_eth_dev *

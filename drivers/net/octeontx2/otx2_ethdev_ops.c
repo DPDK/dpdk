@@ -431,6 +431,10 @@ otx2_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 		.offloads = 0,
 	};
 
+	devinfo->default_rxportconf = (struct rte_eth_dev_portconf) {
+		.ring_size = NIX_RX_DEFAULT_RING_SZ,
+	};
+
 	devinfo->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = UINT16_MAX,
 		.nb_min = NIX_RX_MIN_DESC,

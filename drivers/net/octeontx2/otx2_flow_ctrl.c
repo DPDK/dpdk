@@ -110,7 +110,7 @@ otx2_nix_cq_bp_cfg(struct rte_eth_dev *eth_dev, bool enb)
 		if (enb) {
 			aq->cq.bpid = fc->bpid[0];
 			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
-			aq->cq.bp = NIX_CQ_BP_LEVEL;
+			aq->cq.bp = rxq->cq_drop;
 			aq->cq_mask.bp = ~(aq->cq_mask.bp);
 		}
 
