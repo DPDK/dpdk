@@ -498,8 +498,8 @@ error:
 }
 
 #if defined(RTE_ARCH_X86)
-static bool
-pci_one_device_iommu_support_va(const struct rte_pci_device *dev)
+bool
+pci_device_iommu_support_va(const struct rte_pci_device *dev)
 {
 #define VTD_CAP_MGAW_SHIFT	16
 #define VTD_CAP_MGAW_MASK	(0x3fULL << VTD_CAP_MGAW_SHIFT)
@@ -546,14 +546,14 @@ pci_one_device_iommu_support_va(const struct rte_pci_device *dev)
 	return true;
 }
 #elif defined(RTE_ARCH_PPC_64)
-static bool
-pci_one_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
+bool
+pci_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
 {
 	return false;
 }
 #else
-static bool
-pci_one_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
+bool
+pci_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
 {
 	return true;
 }
@@ -564,7 +564,6 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 		     const struct rte_pci_device *pdev)
 {
 	enum rte_iova_mode iova_mode = RTE_IOVA_DC;
-	static int iommu_no_va = -1;
 
 	switch (pdev->kdrv) {
 	case RTE_KDRV_VFIO: {
@@ -594,18 +593,6 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 		if ((pdrv->drv_flags & RTE_PCI_DRV_NEED_IOVA_AS_VA) != 0)
 			iova_mode = RTE_IOVA_VA;
 		break;
-	}
-
-	if (iova_mode != RTE_IOVA_PA) {
-		/*
-		 * We can check this only once, because the IOMMU hardware is
-		 * the same for all of them.
-		 */
-		if (iommu_no_va == -1)
-			iommu_no_va = pci_one_device_iommu_support_va(pdev)
-					? 0 : 1;
-		if (iommu_no_va != 0)
-			iova_mode = RTE_IOVA_PA;
 	}
 	return iova_mode;
 }

@@ -376,6 +376,12 @@ error:
 	return -1;
 }
 
+bool
+pci_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
+{
+	return false;
+}
+
 enum rte_iova_mode
 pci_device_iova_mode(const struct rte_pci_driver *pdrv __rte_unused,
 		     const struct rte_pci_device *pdev)

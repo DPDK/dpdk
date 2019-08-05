@@ -616,8 +616,16 @@ rte_pci_get_iommu_class(void)
 	const struct rte_pci_driver *drv;
 	bool devices_want_va = false;
 	bool devices_want_pa = false;
+	int iommu_no_va = -1;
 
 	FOREACH_DEVICE_ON_PCIBUS(dev) {
+		/*
+		 * We can check this only once, because the IOMMU hardware is
+		 * the same for all of them.
+		 */
+		if (iommu_no_va == -1)
+			iommu_no_va = pci_device_iommu_support_va(dev)
+					? 0 : 1;
 		if (pci_ignore_device(dev))
 			continue;
 		if (dev->kdrv == RTE_KDRV_UNKNOWN ||
@@ -643,7 +651,13 @@ rte_pci_get_iommu_class(void)
 				devices_want_va = true;
 		}
 	}
-	if (devices_want_va && !devices_want_pa) {
+	if (iommu_no_va == 1) {
+		iova_mode = RTE_IOVA_PA;
+		if (devices_want_va) {
+			RTE_LOG(WARNING, EAL, "Some devices want 'VA' but IOMMU does not support 'VA'.\n");
+			RTE_LOG(WARNING, EAL, "The devices that want 'VA' won't initialize.\n");
+		}
+	} else if (devices_want_va && !devices_want_pa) {
 		iova_mode = RTE_IOVA_VA;
 	} else if (devices_want_pa && !devices_want_va) {
 		iova_mode = RTE_IOVA_PA;
