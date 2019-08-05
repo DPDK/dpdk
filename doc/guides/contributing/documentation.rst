@@ -62,7 +62,7 @@ added to by the developer.
 
   The Release Notes document which features have been added in the current and previous releases of DPDK and highlight
   any known issues.
-  The Releases Notes also contain notifications of features that will change ABI compatibility in the next major release.
+  The Releases Notes also contain notifications of features that will change ABI compatibility in the next release.
 
   Developers should include updates to the Release Notes with patch sets that relate to any of the following sections:
 

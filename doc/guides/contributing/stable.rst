@@ -25,7 +25,7 @@ Release to indicate longer term support.
 Stable Releases
 ---------------
 
-Any major release of DPDK can be designated as a Stable Release if a
+Any release of DPDK can be designated as a Stable Release if a
 maintainer volunteers to maintain it and there is a commitment from major
 contributors to validate it before releases. If a release is to be designated
 as a Stable Release, it should be done by 1 month after the master release.
