@@ -2594,7 +2594,7 @@ mlx5_tx_eseg_mdat(struct mlx5_txq_data *restrict txq,
 				 sizeof(struct rte_vlan_hdr) +
 				 2 * RTE_ETHER_ADDR_LEN),
 		      "invalid Ethernet Segment data size");
-	assert(inlen > MLX5_ESEG_MIN_INLINE_SIZE);
+	assert(inlen >= MLX5_ESEG_MIN_INLINE_SIZE);
 	es->inline_hdr_sz = rte_cpu_to_be_16(inlen);
 	pdst = (uint8_t *)&es->inline_data;
 	if (MLX5_TXOFF_CONFIG(VLAN) && vlan) {
