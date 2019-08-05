@@ -72,9 +72,8 @@
  * boundary with accounting the title Control and Ethernet
  * segments.
  */
-#define MLX5_EMPW_DEF_INLINE_LEN (3u * MLX5_WQE_SIZE + \
-				  MLX5_DSEG_MIN_INLINE_SIZE - \
-				  MLX5_WQE_DSEG_SIZE)
+#define MLX5_EMPW_DEF_INLINE_LEN (4u * MLX5_WQE_SIZE + \
+				  MLX5_DSEG_MIN_INLINE_SIZE)
 /*
  * Maximal inline data length sent with enhanced MPW.
  * Is based on maximal WQE size.

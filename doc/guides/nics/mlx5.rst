@@ -449,7 +449,7 @@ Run-time configuration
   and CPU resources are scarce), data inline is not performed by the driver.
   Assigning ``txqs_min_inline`` with zero always enables the data inline.
 
-  The default ``txq_inline_mpw`` value is 188. The specified value may be adjusted
+  The default ``txq_inline_mpw`` value is 268. The specified value may be adjusted
   by the driver in order not to exceed the limit (930 bytes) and to provide better
   WQE space filling without gaps, the adjustment is reflected in the debug log.
   Due to multiple packets may be included to the same WQE with Enhanced Multi
