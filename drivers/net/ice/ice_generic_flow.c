@@ -464,7 +464,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 					   "Invalid VXLAN item");
 				return 0;
 			}
-			if (vxlan_mask->vni[0] == UINT8_MAX &&
+			if (vxlan_mask && vxlan_mask->vni[0] == UINT8_MAX &&
 					vxlan_mask->vni[1] == UINT8_MAX &&
 					vxlan_mask->vni[2] == UINT8_MAX)
 				input_set |= ICE_INSET_TUN_ID;
@@ -486,7 +486,7 @@ static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
 					   "Invalid NVGRE item");
 				return 0;
 			}
-			if (nvgre_mask->tni[0] == UINT8_MAX &&
+			if (nvgre_mask && nvgre_mask->tni[0] == UINT8_MAX &&
 					nvgre_mask->tni[1] == UINT8_MAX &&
 					nvgre_mask->tni[2] == UINT8_MAX)
 				input_set |= ICE_INSET_TUN_ID;
