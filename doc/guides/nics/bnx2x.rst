@@ -33,7 +33,7 @@ BNX2X Poll Mode Driver
 The BNX2X poll mode driver library (**librte_pmd_bnx2x**) implements support
 for **QLogic 578xx** 10/20 Gbps family of adapters as well as their virtual
 functions (VF) in SR-IOV context. It is supported on several standard Linux
-distros like Red Hat 7.x and SLES12 OS. It is compile-tested under FreeBSD OS.
+distros like RHEL and SLES. It is compile-tested under FreeBSD OS.
 
 More information can be found at `QLogic Corporation's Official Website
 <http://www.qlogic.com>`_.
@@ -64,14 +64,26 @@ The features not yet supported include:
 Co-existence considerations
 ---------------------------
 
-- BCM578xx being a CNA can have both NIC and Storage personalities.
-  However, coexistence with storage protocol drivers (cnic, bnx2fc and
-  bnx2fi) is not supported on the same adapter. So storage personality
-  has to be disabled on that adapter when used in DPDK applications.
+- QLogic 578xx CNAs support Ethernet, iSCSI and FCoE functionalities.
+  These functionalities are supported using QLogic Linux kernel
+  drivers bnx2x, cnic, bnx2i and bnx2fc. DPDK is supported on these
+  adapters using bnx2x PMD.
 
-- For SR-IOV case, bnx2x PMD will be used to bind to SR-IOV VF device and
-  Linux native kernel driver (bnx2x) will be attached to SR-IOV PF.
+- When SR-IOV is not enabled on the adapter,
+  QLogic Linux kernel drivers (bnx2x, cnic, bnx2i and bnx2fc) and bnx2x
+  PMD can’t be attached to different PFs on a given QLogic 578xx
+  adapter.
+  A given adapter needs to be completely used by DPDK or Linux drivers.
+  Before binding DPDK driver to one or more PFs on the adapter,
+  please make sure to unbind Linux drivers from all PFs of the adapter.
+  If there are multiple adapters on the system, one or more adapters
+  can be used by DPDK driver completely and other adapters can be used
+  by Linux drivers completely.
 
+- When SR-IOV is enabled on the adapter,
+  Linux kernel drivers (bnx2x, cnic, bnx2i and bnx2fc) can be bound
+  to the PFs of a given adapter and either bnx2x PMD or Linux drivers
+  bnx2x can be bound to the VFs of the adapter.
 
 Supported QLogic NICs
 ---------------------
