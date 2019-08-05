@@ -400,7 +400,7 @@ extern uint8_t mlx5_swp_types_table[];
 void mlx5_set_ptype_table(void);
 void mlx5_set_cksum_table(void);
 void mlx5_set_swp_types_table(void);
-__rte_noinline uint16_t mlx5_tx_error_cqe_handle
+__rte_noinline int mlx5_tx_error_cqe_handle
 				(struct mlx5_txq_data *restrict txq,
 				 volatile struct mlx5_err_cqe *err_cqe);
 uint16_t mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
@@ -499,9 +499,9 @@ __mlx5_uar_write64(uint64_t val, void *addr, rte_spinlock_t *lock)
 
 /* CQE status. */
 enum mlx5_cqe_status {
-	MLX5_CQE_STATUS_SW_OWN,
-	MLX5_CQE_STATUS_HW_OWN,
-	MLX5_CQE_STATUS_ERR,
+	MLX5_CQE_STATUS_SW_OWN = -1,
+	MLX5_CQE_STATUS_HW_OWN = -2,
+	MLX5_CQE_STATUS_ERR = -3,
 };
 
 /**

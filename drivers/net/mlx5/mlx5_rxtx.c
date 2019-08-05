@@ -654,9 +654,10 @@ check_err_cqe_seen(volatile struct mlx5_err_cqe *err_cqe)
  *   Pointer to the error CQE.
  *
  * @return
- *   The last Tx buffer element to free.
+ *   Negative value if queue recovery failed,
+ *   the last Tx buffer element to free otherwise.
  */
-uint16_t
+int
 mlx5_tx_error_cqe_handle(struct mlx5_txq_data *restrict txq,
 			 volatile struct mlx5_err_cqe *err_cqe)
 {
@@ -706,6 +707,7 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *restrict txq,
 			return txq->elts_head;
 		}
 		/* Recovering failed - try again later on the same WQE. */
+		return -1;
 	} else {
 		txq->cq_ci++;
 	}
@@ -2010,6 +2012,45 @@ mlx5_tx_copy_elts(struct mlx5_txq_data *restrict txq,
 }
 
 /**
+ * Update completion queue consuming index via doorbell
+ * and flush the completed data buffers.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param valid CQE pointer
+ *   if not NULL update txq->wqe_pi and flush the buffers
+ * @param itail
+ *   if not negative - flush the buffers till this index.
+ * @param olx
+ *   Configured Tx offloads mask. It is fully defined at
+ *   compile time and may be used for optimization.
+ */
+static __rte_always_inline void
+mlx5_tx_comp_flush(struct mlx5_txq_data *restrict txq,
+		   volatile struct mlx5_cqe *last_cqe,
+		   int itail,
+		   unsigned int olx __rte_unused)
+{
+	uint16_t tail;
+
+	if (likely(last_cqe != NULL)) {
+		txq->wqe_pi = rte_be_to_cpu_16(last_cqe->wqe_counter);
+		tail = ((volatile struct mlx5_wqe_cseg *)
+			(txq->wqes + (txq->wqe_pi & txq->wqe_m)))->misc;
+	} else if (itail >= 0) {
+		tail = (uint16_t)itail;
+	} else {
+		return;
+	}
+	rte_compiler_barrier();
+	*txq->cq_db = rte_cpu_to_be_32(txq->cq_ci);
+	if (likely(tail != txq->elts_tail)) {
+		mlx5_tx_free_elts(txq, tail, olx);
+		assert(tail == txq->elts_tail);
+	}
+}
+
+/**
  * Manage TX completions. This routine checks the CQ for
  * arrived CQEs, deduces the last accomplished WQE in SQ,
  * updates SQ producing index and frees all completed mbufs.
@@ -2028,10 +2069,11 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 			  unsigned int olx __rte_unused)
 {
 	unsigned int count = MLX5_TX_COMP_MAX_CQE;
-	bool update = false;
-	uint16_t tail = txq->elts_tail;
+	volatile struct mlx5_cqe *last_cqe = NULL;
 	int ret;
 
+	static_assert(MLX5_CQE_STATUS_HW_OWN < 0, "Must be negative value");
+	static_assert(MLX5_CQE_STATUS_SW_OWN < 0, "Must be negative value");
 	do {
 		volatile struct mlx5_cqe *cqe;
 
@@ -2043,32 +2085,30 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 				assert(ret == MLX5_CQE_STATUS_HW_OWN);
 				break;
 			}
-			/* Some error occurred, try to restart. */
+			/*
+			 * Some error occurred, try to restart.
+			 * We have no barrier after WQE related Doorbell
+			 * written, make sure all writes are completed
+			 * here, before we might perform SQ reset.
+			 */
 			rte_wmb();
-			tail = mlx5_tx_error_cqe_handle
+			ret = mlx5_tx_error_cqe_handle
 				(txq, (volatile struct mlx5_err_cqe *)cqe);
-			if (likely(tail != txq->elts_tail)) {
-				mlx5_tx_free_elts(txq, tail, olx);
-				assert(tail == txq->elts_tail);
-			}
-			/* Allow flushing all CQEs from the queue. */
-			count = txq->cqe_s;
-		} else {
-			volatile struct mlx5_wqe_cseg *cseg;
-
-			/* Normal transmit completion. */
-			++txq->cq_ci;
-			rte_cio_rmb();
-			txq->wqe_pi = rte_be_to_cpu_16(cqe->wqe_counter);
-			cseg = (volatile struct mlx5_wqe_cseg *)
-				(txq->wqes + (txq->wqe_pi & txq->wqe_m));
-			tail = cseg->misc;
+			/*
+			 * Flush buffers, update consuming index
+			 * if recovery succeeded. Otherwise
+			 * just try to recover later.
+			 */
+			last_cqe = NULL;
+			break;
 		}
+		/* Normal transmit completion. */
+		++txq->cq_ci;
+		last_cqe = cqe;
 #ifndef NDEBUG
 		if (txq->cq_pi)
 			--txq->cq_pi;
 #endif
-		update = true;
 	/*
 	 * We have to restrict the amount of processed CQEs
 	 * in one tx_burst routine call. The CQ may be large
@@ -2078,17 +2118,7 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 	 * latency.
 	 */
 	} while (--count);
-	if (likely(tail != txq->elts_tail)) {
-		/* Free data buffers from elts. */
-		mlx5_tx_free_elts(txq, tail, olx);
-		assert(tail == txq->elts_tail);
-	}
-	if (likely(update)) {
-		/* Update the consumer index. */
-		rte_compiler_barrier();
-		*txq->cq_db =
-		rte_cpu_to_be_32(txq->cq_ci);
-	}
+	mlx5_tx_comp_flush(txq, last_cqe, ret, olx);
 }
 
 /**
