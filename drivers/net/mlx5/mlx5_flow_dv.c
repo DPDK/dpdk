@@ -4324,11 +4324,9 @@ flow_dv_matcher_enable(uint32_t *match_criteria)
 	match_criteria_enable |=
 		(!HEADER_IS_ZERO(match_criteria, misc_parameters_2)) <<
 		MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT;
-#ifdef HAVE_MLX5DV_DR
 	match_criteria_enable |=
 		(!HEADER_IS_ZERO(match_criteria, misc_parameters_3)) <<
 		MLX5_MATCH_CRITERIA_ENABLE_MISC3_BIT;
-#endif
 	return match_criteria_enable;
 }
 
