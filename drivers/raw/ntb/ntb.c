@@ -447,13 +447,15 @@ static int
 ntb_attr_set(struct rte_rawdev *dev, const char *attr_name,
 				 uint64_t attr_value)
 {
-	struct ntb_hw *hw = dev->dev_private;
-	int index = 0;
+	struct ntb_hw *hw;
+	int index;
 
 	if (dev == NULL || attr_name == NULL) {
 		NTB_LOG(ERR, "Invalid arguments for setting attributes");
 		return -EINVAL;
 	}
+
+	hw = dev->dev_private;
 
 	if (!strncmp(attr_name, NTB_SPAD_USER, NTB_SPAD_USER_LEN)) {
 		if (hw->ntb_ops->spad_write == NULL)
@@ -475,13 +477,15 @@ static int
 ntb_attr_get(struct rte_rawdev *dev, const char *attr_name,
 				 uint64_t *attr_value)
 {
-	struct ntb_hw *hw = dev->dev_private;
-	int index = 0;
+	struct ntb_hw *hw;
+	int index;
 
 	if (dev == NULL || attr_name == NULL || attr_value == NULL) {
 		NTB_LOG(ERR, "Invalid arguments for getting attributes");
 		return -EINVAL;
 	}
+
+	hw = dev->dev_private;
 
 	if (!strncmp(attr_name, NTB_TOPO_NAME, NTB_ATTR_NAME_LEN)) {
 		*attr_value = hw->topo;
@@ -735,7 +739,7 @@ ntb_create(struct rte_pci_device *pci_dev, int socket_id)
 
 	if (pci_dev == NULL) {
 		NTB_LOG(ERR, "Invalid pci_dev.");
-		ret = -EINVAL;
+		return -EINVAL;
 	}
 
 	memset(name, 0, sizeof(name));
@@ -750,7 +754,7 @@ ntb_create(struct rte_pci_device *pci_dev, int socket_id)
 					 socket_id);
 	if (rawdev == NULL) {
 		NTB_LOG(ERR, "Unable to allocate rawdev.");
-		ret = -EINVAL;
+		return -EINVAL;
 	}
 
 	rawdev->dev_ops = &ntb_ops;
@@ -766,7 +770,7 @@ ntb_create(struct rte_pci_device *pci_dev, int socket_id)
 	return ret;
 
 fail:
-	if (rawdev)
+	if (rawdev != NULL)
 		rte_rawdev_pmd_release(rawdev);
 
 	return ret;
