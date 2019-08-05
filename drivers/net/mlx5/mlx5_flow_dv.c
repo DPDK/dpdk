@@ -1504,9 +1504,9 @@ flow_dv_zero_encap_udp_csum(void *data, struct rte_flow_error *error)
 
 	/* VLAN skipping */
 	while (proto == RTE_ETHER_TYPE_VLAN || proto == RTE_ETHER_TYPE_QINQ) {
-		next_hdr += sizeof(struct rte_vlan_hdr);
 		vlan = (struct rte_vlan_hdr *)next_hdr;
 		proto = RTE_BE16(vlan->eth_proto);
+		next_hdr += sizeof(struct rte_vlan_hdr);
 	}
 
 	/* HW calculates IPv4 csum. no need to proceed */
