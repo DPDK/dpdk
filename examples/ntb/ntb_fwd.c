@@ -125,9 +125,15 @@ cmd_sendfile_parsed(void *parsed_result,
 		return;
 	}
 
-	fseek(file, 0, SEEK_END);
+	if (fseek(file, 0, SEEK_END) < 0) {
+		printf("Fail to get file size.\n");
+		return;
+	}
 	size = ftell(file);
-	fseek(file, 0, SEEK_SET);
+	if (fseek(file, 0, SEEK_SET) < 0) {
+		printf("Fail to get file size.\n");
+		return;
+	}
 
 	/**
 	 * No FIFO now. Only test memory. Limit sending file
