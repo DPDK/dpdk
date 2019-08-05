@@ -172,10 +172,13 @@ Limitations
   - can be applied to VF ports only.
   - must specify PF port action (packet redirection from VF to PF).
 
-- ICMP/ICMP6 code/type matching cannot be supported togeter with IP-in-IP tunnel.
+- ICMP/ICMP6 code/type matching, IP-in-IP and MPLS flow matching are all
+  mutually exclusive features which cannot be supported together
+  (see :ref:`mlx5_firmware_config`).
 
 - LRO:
 
+  - Requires DevX to be enabled.
   - KEEP_CRC offload cannot be supported with LRO.
   - The first mbuf length, without head-room,  must be big enough to include the
     TCP header (122B).
@@ -582,6 +585,8 @@ Run-time configuration
   If this parameter is not specified, by default PMD will set
   the smallest value supported by HW.
 
+.. _mlx5_firmware_config:
+
 Firmware configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -616,6 +621,10 @@ Below are some firmware configurations listed.
 
     NUM_OF_VFS=<max>
 
+- enable DevX (required by Direct Rules and other features)::
+
+    UCTX_EN=1
+
 - aggressive CQE zipping::
 
     CQE_COMPRESSION=1
@@ -628,6 +637,10 @@ Below are some firmware configurations listed.
 - enable IP-in-IP tunnel flow matching::
 
     FLEX_PARSER_PROFILE_ENABLE=0
+
+- enable MPLS flow matching::
+
+    FLEX_PARSER_PROFILE_ENABLE=1
 
 - enable ICMP/ICMP6 code/type fields matching::
 
@@ -940,10 +953,22 @@ Performance tuning
 
 .. _mlx5_offloads_support:
 
-Supported hardware offloads using rte_flow API
-----------------------------------------------
+Supported hardware offloads
+---------------------------
 
-.. table:: Supported hardware offloads using rte_flow API
+.. table:: Minimal SW/HW versions for queue offloads
+
+   ============== ===== ===== ========= ===== ========== ==========
+   Offload        DPDK  Linux rdma-core OFED   firmware   hardware
+   ============== ===== ===== ========= ===== ========== ==========
+   common base    17.11  4.14    16     4.2-1 12.21.1000 ConnectX-4
+   checksums      17.11  4.14    16     4.2-1 12.21.1000 ConnectX-4
+   Rx timestamp   17.11  4.14    16     4.2-1 12.21.1000 ConnectX-4
+   TSO            17.11  4.14    16     4.2-1 12.21.1000 ConnectX-4
+   LRO            19.08  N/A     N/A    4.6-4 16.25.6406 ConnectX-5
+   ============== ===== ===== ========= ===== ========== ==========
+
+.. table:: Minimal SW/HW versions for rte_flow offloads
 
    +-----------------------+-----------------+-----------------+
    | Offload               | with E-Switch   | with vNIC       |
@@ -976,7 +1001,7 @@ Supported hardware offloads using rte_flow API
    | | set_mac_dst)        |                 |                 |
    +-----------------------+-----------------+-----------------+
    | Jump                  | | DPDK 19.05    | | DPDK 19.02    |
-   |                       | | OFED 4.6-2    | | OFED 4.6-2    |
+   |                       | | OFED 4.6-4    | | OFED 4.6-4    |
    |                       | | rdma-core 24  | | N/A           |
    |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
