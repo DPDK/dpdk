@@ -5,6 +5,6 @@
 #ifndef _ARGS_H_
 #define _ARGS_H_
 
-int parse_app_args(uint16_t max_ports, int argc, char *argv[]);
+int parse_app_args(int argc, char *argv[]);
 
 #endif /* ifndef _ARGS_H_ */

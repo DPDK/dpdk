@@ -10,6 +10,7 @@
 #include <errno.h>
 
 #include <rte_memory.h>
+#include <rte_ethdev.h>
 #include <rte_string_fns.h>
 
 #include "common.h"
@@ -41,31 +42,34 @@ usage(void)
  * array variable
  */
 static int
-parse_portmask(uint8_t max_ports, const char *portmask)
+parse_portmask(const char *portmask)
 {
 	char *end = NULL;
-	unsigned long pm;
-	uint16_t count = 0;
+	unsigned long long pm;
+	uint16_t id;
 
 	if (portmask == NULL || *portmask == '\0')
 		return -1;
 
 	/* convert parameter to a number and verify */
-	pm = strtoul(portmask, &end, 16);
-	if (end == NULL || *end != '\0' || pm == 0)
+	errno = 0;
+	pm = strtoull(portmask, &end, 16);
+	if (errno != 0 || end == NULL || *end != '\0')
 		return -1;
 
-	/* loop through bits of the mask and mark ports */
-	while (pm != 0){
-		if (pm & 0x01){ /* bit is set in mask, use port */
-			if (count >= max_ports)
-				printf("WARNING: requested port %u not present"
-				" - ignoring\n", (unsigned)count);
-			else
-			    ports->id[ports->num_ports++] = count;
-		}
-		pm = (pm >> 1);
-		count++;
+	RTE_ETH_FOREACH_DEV(id) {
+		unsigned long msk = 1u << id;
+
+		if ((pm & msk) == 0)
+			continue;
+
+		pm &= ~msk;
+		ports->id[ports->num_ports++] = id;
+	}
+
+	if (pm != 0) {
+		printf("WARNING: leftover ports in mask %#llx - ignoring\n",
+		       pm);
 	}
 
 	return 0;
@@ -99,7 +103,7 @@ parse_num_clients(const char *clients)
  * on error.
  */
 int
-parse_app_args(uint16_t max_ports, int argc, char *argv[])
+parse_app_args(int argc, char *argv[])
 {
 	int option_index, opt;
 	char **argvopt = argv;
@@ -112,7 +116,7 @@ parse_app_args(uint16_t max_ports, int argc, char *argv[])
 		&option_index)) != EOF){
 		switch (opt){
 			case 'p':
-				if (parse_portmask(max_ports, optarg) != 0){
+				if (parse_portmask(optarg) != 0) {
 					usage();
 					return -1;
 				}

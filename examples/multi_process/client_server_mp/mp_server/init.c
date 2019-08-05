@@ -248,7 +248,7 @@ init(int argc, char *argv[])
 {
 	int retval;
 	const struct rte_memzone *mz;
-	uint16_t i, total_ports;
+	uint16_t i;
 
 	/* init EAL, parsing EAL args */
 	retval = rte_eal_init(argc, argv);
@@ -256,9 +256,6 @@ init(int argc, char *argv[])
 		return -1;
 	argc -= retval;
 	argv += retval;
-
-	/* get total number of ports */
-	total_ports = rte_eth_dev_count_total();
 
 	/* set up array for port data */
 	mz = rte_memzone_reserve(MZ_PORT_INFO, sizeof(*ports),
@@ -269,7 +266,7 @@ init(int argc, char *argv[])
 	ports = mz->addr;
 
 	/* parse additional, application arguments */
-	retval = parse_app_args(total_ports, argc, argv);
+	retval = parse_app_args(argc, argv);
 	if (retval != 0)
 		return -1;
 
