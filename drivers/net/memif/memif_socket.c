@@ -852,7 +852,7 @@ memif_listener_handler(void *arg)
 	return;
 
  error:
-	if (sockfd > 0) {
+	if (sockfd >= 0) {
 		close(sockfd);
 		sockfd = -1;
 	}
@@ -921,6 +921,8 @@ memif_socket_create(struct pmd_internals *pmd, char *key, uint8_t listener)
 		rte_vdev_device_name(pmd->vdev), key, strerror(errno));
 	if (sock != NULL)
 		rte_free(sock);
+	if (sockfd >= 0)
+		close(sockfd);
 	return NULL;
 }
 
@@ -1010,6 +1012,7 @@ memif_socket_remove_device(struct rte_eth_dev *dev)
 	struct memif_socket *socket = NULL;
 	struct memif_socket_dev_list_elt *elt, *next;
 	struct rte_hash *hash;
+	int ret;
 
 	hash = rte_hash_find_existing(MEMIF_SOCKET_HASH_NAME);
 	if (hash == NULL)
@@ -1037,7 +1040,10 @@ memif_socket_remove_device(struct rte_eth_dev *dev)
 			/* remove listener socket file,
 			 * so we can create new one later.
 			 */
-			remove(socket->filename);
+			ret = remove(socket->filename);
+			if (ret < 0)
+				MIF_LOG(ERR, "Failed to remove socket file: %s",
+					socket->filename);
 		}
 		rte_free(socket);
 	}
@@ -1113,7 +1119,7 @@ memif_connect_slave(struct rte_eth_dev *dev)
 	return 0;
 
  error:
-	if (sockfd > 0) {
+	if (sockfd >= 0) {
 		close(sockfd);
 		sockfd = -1;
 	}
