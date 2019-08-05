@@ -575,46 +575,53 @@ Run-time configuration
 Firmware configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
-- L3 VXLAN and VXLAN-GPE destination UDP port
+Firmware features can be configured as key/value pairs.
 
-   .. code-block:: console
+The command to set a value is::
 
-     mlxconfig -d <mst device> set IP_OVER_VXLAN_EN=1
-     mlxconfig -d <mst device> set IP_OVER_VXLAN_PORT=<udp dport>
+  mlxconfig -d <device> set <key>=<value>
 
-  Verify configurations are set:
+The command to query a value is::
 
-   .. code-block:: console
+  mlxconfig -d <device> query | grep <key>
 
-     mlxconfig -d <mst device> query | grep IP_OVER_VXLAN
-     IP_OVER_VXLAN_EN                    True(1)
-     IP_OVER_VXLAN_PORT                  <udp dport>
+The device name for the command ``mlxconfig`` can be either the PCI address,
+or the mst device name found with::
 
-- enable ICMP/ICMP6's code/type field matching
+  mst status
 
-   .. code-block:: console
+Below are some firmware configurations listed.
 
-     mlxconfig -d <mst device> set FLEX_PARSER_PROFILE_ENABLE=2
+- link type::
 
-  Verify configurations are set:
+    LINK_TYPE_P1
+    LINK_TYPE_P2
+    value: 1=Infiniband 2=Ethernet 3=VPI(auto-sense)
 
-   .. code-block:: console
+- enable SR-IOV::
 
-     mlxconfig -d <mst device> query | grep FLEX_PARSER_PROFILE_ENABLE
-     FLEX_PARSER_PROFILE_ENABLE         2
+    SRIOV_EN=1
 
-- IP-in-IP tunnel enable
+- maximum number of SR-IOV virtual functions::
 
-   .. code-block:: console
+    NUM_OF_VFS=<max>
 
-     mlxconfig -d <mst device> set FLEX_PARSER_PROFILE_ENABLE=0
+- aggressive CQE zipping::
 
-  Verify configurations are set:
+    CQE_COMPRESSION=1
 
-   .. code-block:: console
+- L3 VXLAN and VXLAN-GPE destination UDP port::
 
-     mlxconfig -d <mst device> query | grep FLEX_PARSER_PROFILE_ENABLE
-     FLEX_PARSER_PROFILE_ENABLE          0
+    IP_OVER_VXLAN_EN=1
+    IP_OVER_VXLAN_PORT=<udp dport>
+
+- enable IP-in-IP tunnel flow matching::
+
+    FLEX_PARSER_PROFILE_ENABLE=0
+
+- enable ICMP/ICMP6 code/type fields matching::
+
+    FLEX_PARSER_PROFILE_ENABLE=2
 
 Prerequisites
 -------------
