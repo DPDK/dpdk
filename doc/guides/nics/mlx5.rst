@@ -32,9 +32,9 @@ kernel support), librte_pmd_mlx5 relies heavily on system calls for control
 operations such as querying/updating the MTU and flow control parameters.
 
 For security reasons and robustness, this driver only deals with virtual
-memory addresses. The way resources allocations are handled by the kernel
-combined with hardware specifications that allow it to handle virtual memory
-addresses directly ensure that DPDK applications cannot access random
+memory addresses. The way resources allocations are handled by the kernel,
+combined with hardware specifications that allow to handle virtual memory
+addresses directly, ensure that DPDK applications cannot access random
 physical memory (or memory that does not belong to the current process).
 
 This capability allows the PMD to coexist with kernel network interfaces
@@ -80,7 +80,7 @@ Features
 - Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE, MPLSoGRE, MPLSoUDP, IP-in-IP.
 - Tunnel HW offloads: packet type, inner/outer RSS, IP and UDP checksum verification.
 - NIC HW offloads: encapsulation (vxlan, gre, mplsoudp, mplsogre), NAT, routing, TTL
-  increment/decrement, count, drop, mark. For details please see :ref:`Supported hardware offloads using rte_flow API`.
+  increment/decrement, count, drop, mark. For details please see :ref:`mlx5_offloads_support`.
 - Flow insertion rate of more then million flows per second, when using Direct Rules.
 - Support for multiple rte_flow groups.
 - Hardware LRO.
@@ -173,7 +173,7 @@ Limitations
 Statistics
 ----------
 
-MLX5 supports various of methods to report statistics:
+MLX5 supports various methods to report statistics:
 
 Port statistics can be queried using ``rte_eth_stats_get()``. The received and sent statistics are through SW only and counts the number of packets received or sent successfully by the PMD. The imissed counter is the amount of packets that could not be delivered to SW because a queue was full. Packets not received due to congestion in the bus or on the NIC can be queried via the rx_discards_phy xstats counter.
 
@@ -972,61 +972,58 @@ Performance tuning
    - Configure per-lcore cache when creating Mempools for packet buffer.
    - Refrain from dynamically allocating/freeing memory in run-time.
 
+.. _mlx5_offloads_support:
+
 Supported hardware offloads using rte_flow API
 ----------------------------------------------
-
-.. _Supported hardware offloads using rte_flow API:
 
 .. table:: Supported hardware offloads using rte_flow API
 
    +-----------------------+-----------------+-----------------+
-   | Offload               | E-Switch        | NIC             |
-   |                       |                 |                 |
+   | Offload               | with E-Switch   | with vNIC       |
    +=======================+=================+=================+
    | Count                 | | DPDK 19.05    | | DPDK 19.02    |
    |                       | | OFED 4.6      | | OFED 4.6      |
-   |                       | | RDMA-CORE V24 | | RDMA-CORE V23 |
+   |                       | | rdma-core 24  | | rdma-core 23  |
    |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
    | Drop / Queue / RSS    | | DPDK 19.05    | | DPDK 18.11    |
    |                       | | OFED 4.6      | | OFED 4.5      |
-   |                       | | RDMA-CORE V24 | | RDMA-CORE V23 |
+   |                       | | rdma-core 24  | | rdma-core 23  |
    |                       | | ConnectX-5    | | ConnectX-4    |
    +-----------------------+-----------------+-----------------+
    | Encapsulation         | | DPDK 19.05    | | DPDK 19.02    |
-   | (VXLAN / NVGRE / RAW) | | OFED 4.6.2    | | OFED 4.6      |
-   |                       | | RDMA-CORE V24 | | RDMA-CORE V23 |
+   | (VXLAN / NVGRE / RAW) | | OFED 4.6-2    | | OFED 4.6      |
+   |                       | | rdma-core 24  | | rdma-core 23  |
    |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
-   | Header rewrite        | | DPDK 19.05    | | DPDK 19.02    |
-   | (set_ipv4_src /       | | OFED 4.6.2    | | OFED 4.6.2    |
-   | set_ipv4_dst /        | | RDMA-CORE V24 | | RDMA-CORE V23 |
-   | set_ipv6_src /        | | ConnectX-5    | | ConnectX-5    |
-   | set_ipv6_dst /        |                 |                 |
-   | set_tp_src /          |                 |                 |
-   | set_tp_dst /          |                 |                 |
-   | dec_ttl /             |                 |                 |
-   | set_ttl /             |                 |                 |
-   | set_mac_src /         |                 |                 |
-   | set_mac_dst)          |                 |                 |
+   | | Header rewrite      | | DPDK 19.05    | | DPDK 19.02    |
+   | | (set_ipv4_src /     | | OFED 4.6-2    | | OFED 4.6-2    |
+   | | set_ipv4_dst /      | | rdma-core 24  | | rdma-core 23  |
+   | | set_ipv6_src /      | | ConnectX-5    | | ConnectX-5    |
+   | | set_ipv6_dst /      |                 |                 |
+   | | set_tp_src /        |                 |                 |
+   | | set_tp_dst /        |                 |                 |
+   | | dec_ttl /           |                 |                 |
+   | | set_ttl /           |                 |                 |
+   | | set_mac_src /       |                 |                 |
+   | | set_mac_dst)        |                 |                 |
    +-----------------------+-----------------+-----------------+
    | Jump                  | | DPDK 19.05    | | DPDK 19.02    |
-   |                       | | OFED 4.6.2    | | OFED 4.6.2    |
-   |                       | | RDMA-CORE V24 | | N/A           |
+   |                       | | OFED 4.6-2    | | OFED 4.6-2    |
+   |                       | | rdma-core 24  | | N/A           |
    |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
    | Mark / Flag           | | DPDK 19.05    | | DPDK 18.11    |
    |                       | | OFED 4.6      | | OFED 4.5      |
-   |                       | | RDMA-CORE V24 | | RDMA-CORE V23 |
+   |                       | | rdma-core 24  | | rdma-core 23  |
    |                       | | ConnectX-5    | | ConnectX-4    |
    +-----------------------+-----------------+-----------------+
    | Port ID               | | DPDK 19.05    |     | N/A       |
    |                       | | OFED 4.6      |     | N/A       |
-   |                       | | RDMA-CORE V24 |     | N/A       |
+   |                       | | rdma-core 24  |     | N/A       |
    |                       | | ConnectX-5    |     | N/A       |
    +-----------------------+-----------------+-----------------+
-
-* Minimum version for each component and nic.
 
 Notes for testpmd
 -----------------
