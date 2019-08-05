@@ -784,13 +784,11 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 	txq_ctrl->txq.vlan_en = config->hw_vlan_insert;
 	vlan_inline = (dev_txoff & DEV_TX_OFFLOAD_VLAN_INSERT) &&
 		      !config->hw_vlan_insert;
-	if (vlan_inline)
-		inlen_send = RTE_MAX(inlen_send, MLX5_ESEG_MIN_INLINE_SIZE);
 	/*
 	 * If there are few Tx queues it is prioritized
 	 * to save CPU cycles and disable data inlining at all.
 	 */
-	if ((inlen_send && priv->txqs_n >= txqs_inline) || vlan_inline) {
+	if (inlen_send && priv->txqs_n >= txqs_inline) {
 		/*
 		 * The data sent with ordinal MLX5_OPCODE_SEND
 		 * may be inlined in Ethernet Segment, align the
@@ -825,32 +823,31 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 				     MLX5_WQE_CSEG_SIZE -
 				     MLX5_WQE_ESEG_SIZE -
 				     MLX5_WQE_DSEG_SIZE * 2);
-		txq_ctrl->txq.inlen_send = inlen_send;
-		txq_ctrl->txq.inlen_mode = inlen_mode;
-		txq_ctrl->txq.inlen_empw = 0;
-	} else {
+	} else if (inlen_mode) {
 		/*
 		 * If minimal inlining is requested we must
 		 * enable inlining in general, despite the
-		 * number of configured queues.
+		 * number of configured queues. Ignore the
+		 * txq_inline_max devarg, this is not
+		 * full-featured inline.
 		 */
 		inlen_send = inlen_mode;
-		if (inlen_mode) {
-			/*
-			 * Extend space for inline data to allow
-			 * optional alignment of data buffer
-			 * start address, it may improve PCIe
-			 * performance.
-			 */
-			inlen_send = RTE_MIN(inlen_send + MLX5_WQE_SIZE,
-					     MLX5_SEND_MAX_INLINE_LEN);
-		}
-		txq_ctrl->txq.inlen_send = inlen_send;
-		txq_ctrl->txq.inlen_mode = inlen_mode;
-		txq_ctrl->txq.inlen_empw = 0;
+		inlen_empw = 0;
+	} else if (vlan_inline) {
+		/*
+		 * Hardware does not report offload for
+		 * VLAN insertion, we must enable data inline
+		 * to implement feature by software.
+		 */
+		inlen_send = MLX5_ESEG_MIN_INLINE_SIZE;
+		inlen_empw = 0;
+	} else {
 		inlen_send = 0;
 		inlen_empw = 0;
 	}
+	txq_ctrl->txq.inlen_send = inlen_send;
+	txq_ctrl->txq.inlen_mode = inlen_mode;
+	txq_ctrl->txq.inlen_empw = 0;
 	if (inlen_send && inlen_empw && priv->txqs_n >= txqs_inline) {
 		/*
 		 * The data sent with MLX5_OPCODE_ENHANCED_MPSW
