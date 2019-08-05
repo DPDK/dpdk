@@ -908,7 +908,8 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 			dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
-	dev_link.link_speed = ecmd->speed;
+	dev_link.link_speed = (ecmd->speed == UINT32_MAX) ? ETH_SPEED_NUM_NONE :
+							    ecmd->speed;
 	sc = ecmd->link_mode_masks[0] |
 		((uint64_t)ecmd->link_mode_masks[1] << 32);
 	priv->link_speed_capa = 0;
