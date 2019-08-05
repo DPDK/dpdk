@@ -811,7 +811,7 @@ nix_alloc_sqb_pool(int port, struct otx2_eth_txq *txq, uint16_t nb_desc)
 
 	nb_sqb_bufs = nb_desc / sqes_per_sqb;
 	/* Clamp up to devarg passed SQB count */
-	nb_sqb_bufs =  RTE_MIN(dev->max_sqb_count, RTE_MAX(NIX_MIN_SQB,
+	nb_sqb_bufs =  RTE_MIN(dev->max_sqb_count, RTE_MAX(NIX_DEF_SQB,
 			      nb_sqb_bufs + NIX_SQB_LIST_SPACE));
 
 	txq->sqb_pool = rte_mempool_create_empty(name, NIX_MAX_SQB, blk_sz,

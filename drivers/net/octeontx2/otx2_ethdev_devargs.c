@@ -160,6 +160,6 @@ RTE_PMD_REGISTER_PARAM_STRING(net_octeontx2,
 			      OTX2_RSS_RETA_SIZE "=<64|128|256>"
 			      OTX2_PTYPE_DISABLE "=1"
 			      OTX2_SCL_ENABLE "=1"
-			      OTX2_MAX_SQB_COUNT "=<32-512>"
+			      OTX2_MAX_SQB_COUNT "=<8-512>"
 			      OTX2_FLOW_PREALLOC_SIZE "=<1-32>"
 			      OTX2_FLOW_MAX_PRIORITY "=<1-32>");

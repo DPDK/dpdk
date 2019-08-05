@@ -66,7 +66,8 @@
 	(NIX_MAX_FRS - NIX_L2_OVERHEAD)
 
 #define NIX_MAX_SQB			512
-#define NIX_MIN_SQB			32
+#define NIX_DEF_SQB			16
+#define NIX_MIN_SQB			8
 #define NIX_SQB_LIST_SPACE		2
 #define NIX_RSS_RETA_SIZE_MAX		256
 /* Group 0 will be used for RSS, 1 -7 will be used for rte_flow RSS action*/
