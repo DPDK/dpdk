@@ -1610,12 +1610,6 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		}
 		r++;
 	}
-
-	if (mbuf_total_left != 0) {
-		op->status |= 1 << RTE_BBDEV_DATA_ERROR;
-		rte_bbdev_log(ERR,
-				"Mismatch between mbuf length and included Circular buffer sizes");
-	}
 }
 
 static inline void
@@ -1705,12 +1699,6 @@ enqueue_ldpc_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 			out_offset += out_length;
 		}
 		r++;
-	}
-
-	if (mbuf_total_left != 0) {
-		op->status |= 1 << RTE_BBDEV_DATA_ERROR;
-		rte_bbdev_log(ERR,
-				"Mismatch between mbuf length and included Circular buffer sizes");
 	}
 }
 
