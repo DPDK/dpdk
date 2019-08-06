@@ -412,6 +412,12 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 		goto error;
 	}
 	mlx5_flow_counters_mng_init(sh);
+	/* Add device to memory callback list. */
+	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
+	LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,
+			 sh, mem_event_cb);
+	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
+	/* Add context to the global device list. */
 	LIST_INSERT_HEAD(&mlx5_ibv_list, sh, next);
 exit:
 	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
@@ -461,6 +467,11 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 		goto exit;
 	/* Release created Memory Regions. */
 	mlx5_mr_release(sh);
+	/* Remove from memory callback device list. */
+	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
+	LIST_REMOVE(sh, mem_event_cb);
+	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
+	/* Remove context from the global device list. */
 	LIST_REMOVE(sh, next);
 	/*
 	 *  Ensure there is no async event handler installed.
@@ -827,11 +838,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	}
 	mlx5_proc_priv_uninit(dev);
 	mlx5_mprq_free_mp(dev);
-	/* Remove from memory callback device list. */
-	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
-	assert(priv->sh);
-	LIST_REMOVE(priv->sh, mem_event_cb);
-	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	mlx5_free_shared_dr(priv);
 	if (priv->rss_conf.rss_key != NULL)
 		rte_free(priv->rss_conf.rss_key);
@@ -2004,11 +2010,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	priv->config.flow_prio = err;
-	/* Add device to memory callback list. */
-	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
-	LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,
-			 sh, mem_event_cb);
-	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	return eth_dev;
 error:
 	if (priv) {
