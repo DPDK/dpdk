@@ -1265,7 +1265,7 @@ rte_pmd_memif_probe(struct rte_vdev_device *vdev)
 		eth_dev->dev_ops = &ops;
 		eth_dev->device = &vdev->device;
 		eth_dev->rx_pkt_burst = eth_memif_rx;
-		eth_dev->tx_pkt_burst = eth_memif_rx;
+		eth_dev->tx_pkt_burst = eth_memif_tx;
 
 		if (!rte_eal_primary_proc_alive(NULL)) {
 			MIF_LOG(ERR, "Primary process is missing");
