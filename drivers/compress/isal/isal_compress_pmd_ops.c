@@ -216,7 +216,7 @@ isal_comp_pmd_qp_set_unique_name(struct rte_compressdev *dev,
 struct isal_comp_qp *qp)
 {
 	unsigned int n = snprintf(qp->name, sizeof(qp->name),
-			"isal_compression_pmd_%u_qp_%u",
+			"isal_comp_pmd_%u_qp_%u",
 			dev->data->dev_id, qp->id);
 
 	if (n >= sizeof(qp->name))
