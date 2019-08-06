@@ -127,9 +127,13 @@ comp_perf_initialize_compressdev(struct comp_test_data *test_data,
 	 * if there are more available than cores.
 	 */
 	if (enabled_cdev_count > nb_lcores) {
+		if (nb_lcores == 0) {
+			RTE_LOG(ERR, USER1, "Cannot run with 0 cores! Increase the number of cores\n");
+			return -EINVAL;
+		}
 		enabled_cdev_count = nb_lcores;
 		RTE_LOG(INFO, USER1,
-			" There's more available devices than cores!"
+			"There's more available devices than cores!"
 			" The number of devices has been aligned to %d cores\n",
 			nb_lcores);
 	}
