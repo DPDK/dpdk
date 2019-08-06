@@ -469,12 +469,10 @@ cmd_tmgr_pipe_profile(char **tokens,
 		return;
 	}
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 	if (parser_read_uint8(&p.tc_ov_weight, tokens[19]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tc_ov_weight");
 		return;
 	}
-#endif
 
 	for (i = 0; i < RTE_SCHED_BE_QUEUES_PER_PIPE; i++)
 		if (parser_read_uint8(&p.wrr_weights[i], tokens[20 + i]) != 0) {
