@@ -124,9 +124,10 @@ Limitations
 
   Will match any ipv4 packet (VLAN included).
 
-- A multi segment packet must have less than 6 segments in case the Tx burst function
-  is set to multi-packet send or Enhanced multi-packet send. Otherwise it must have
-  less than 50 segments.
+- A multi segment packet must have not more segments than reported by dev_infos_get()
+  in tx_desc_lim.nb_seg_max field. This value depends on maximal supported Tx descriptor
+  size and ``txq_inline_min`` settings and may be from 2 (worst case forced by maximal
+  inline settings) to 58.
 
 - Flows with a VXLAN Network Identifier equal (or ends to be equal)
   to 0 are not supported.
@@ -403,25 +404,31 @@ Run-time configuration
 
   Minimal amount of data to be inlined into WQE during Tx operations. NICs
   may require this minimal data amount to operate correctly. The exact value
-  may depend on NIC operation mode, requested offloads, etc.
+  may depend on NIC operation mode, requested offloads, etc. It is strongly
+  recommended to omit this parameter and use the default values. Anyway,
+  applications using this parameter should take into consideration that
+  specifying an inconsistent value may prevent the NIC from sending packets.
 
   If ``txq_inline_min`` key is present the specified value (may be aligned
   by the driver in order not to exceed the limits and provide better descriptor
-  space utilization) will be used by the driver and it is guaranteed the
-  requested data bytes are inlined into the WQE beside other inline settings.
-  This keys also may update ``txq_inline_max`` value (default of specified
-  explicitly in devargs) to reserve the space for inline data.
+  space utilization) will be used by the driver and it is guaranteed that
+  requested amount of data bytes are inlined into the WQE beside other inline
+  settings. This key also may update ``txq_inline_max`` value (default
+  or specified explicitly in devargs) to reserve the space for inline data.
 
   If ``txq_inline_min`` key is not present, the value may be queried by the
   driver from the NIC via DevX if this feature is available. If there is no DevX
   enabled/supported the value 18 (supposing L2 header including VLAN) is set
-  for ConnectX-4, value 58 (supposing L2-L4 headers, required by configurations
-  over E-Switch) is set for ConnectX-4 Lx, and 0 is set by default for ConnectX-5
+  for ConnectX-4 and ConnectX-4LX, and 0 is set by default for ConnectX-5
   and newer NICs. If packet is shorter the ``txq_inline_min`` value, the entire
   packet is inlined.
 
-  For the ConnectX-4 and ConnectX-4 Lx NICs driver does not allow to set
-  this value below 18 (minimal L2 header, including VLAN).
+  For ConnectX-4 NIC, driver does not allow specifying value below 18
+  (minimal L2 header, including VLAN), error will be raised.
+
+  For ConnectX-4LX NIC, it is allowed to specify values below 18, but
+  it is not recommended and may prevent NIC from sending packets over
+  some configurations.
 
   Please, note, this minimal data inlining disengages eMPW feature (Enhanced
   Multi-Packet Write), because last one does not support partial packet inlining.
