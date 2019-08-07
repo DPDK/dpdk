@@ -225,8 +225,8 @@ test_mcslock(void)
 	RTE_LCORE_FOREACH_SLAVE(i) {
 		rte_eal_remote_launch(test_mcslock_try, NULL, i);
 	}
-	rte_mcslock_unlock(&p_ml_try, &ml_try_me);
 	rte_eal_mp_wait_lcore();
+	rte_mcslock_unlock(&p_ml_try, &ml_try_me);
 
 	/* Test is_locked API */
 	if (rte_mcslock_is_locked(p_ml)) {
