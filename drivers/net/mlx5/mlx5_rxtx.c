@@ -2130,6 +2130,9 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
  *   Pointer to TX queue structure.
  * @param loc
  *   Pointer to burst routine local context.
+ * @param multi,
+ *   Routine is called from multi-segment sending loop,
+ *   do not correct the elts_head according to the pkts_copy.
  * @param olx
  *   Configured Tx offloads mask. It is fully defined at
  *   compile time and may be used for optimization.
@@ -2137,12 +2140,14 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 static __rte_always_inline void
 mlx5_tx_request_completion(struct mlx5_txq_data *restrict txq,
 			   struct mlx5_txq_local *restrict loc,
+			   bool multi,
 			   unsigned int olx)
 {
 	uint16_t head = txq->elts_head;
 	unsigned int part;
 
-	part = MLX5_TXOFF_CONFIG(INLINE) ? 0 : loc->pkts_sent - loc->pkts_copy;
+	part = (MLX5_TXOFF_CONFIG(INLINE) || multi) ?
+	       0 : loc->pkts_sent - loc->pkts_copy;
 	head += part;
 	if ((uint16_t)(head - txq->elts_comp) >= MLX5_TX_COMP_THRESH ||
 	     (MLX5_TXOFF_CONFIG(INLINE) &&
@@ -3091,7 +3096,7 @@ mlx5_tx_packet_multi_tso(struct mlx5_txq_data *restrict txq,
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
 	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, olx);
+	mlx5_tx_request_completion(txq, loc, true, olx);
 	return MLX5_TXCMP_CODE_MULTI;
 }
 
@@ -3201,7 +3206,7 @@ mlx5_tx_packet_multi_send(struct mlx5_txq_data *restrict txq,
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
 	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, olx);
+	mlx5_tx_request_completion(txq, loc, true, olx);
 	return MLX5_TXCMP_CODE_MULTI;
 }
 
@@ -3359,7 +3364,7 @@ do_align:
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
 	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, olx);
+	mlx5_tx_request_completion(txq, loc, true, olx);
 	return MLX5_TXCMP_CODE_MULTI;
 }
 
@@ -3570,7 +3575,7 @@ mlx5_tx_burst_tso(struct mlx5_txq_data *restrict txq,
 		++loc->pkts_sent;
 		--pkts_n;
 		/* Request CQE generation if limits are reached. */
-		mlx5_tx_request_completion(txq, loc, olx);
+		mlx5_tx_request_completion(txq, loc, false, olx);
 		if (unlikely(!pkts_n || !loc->elts_free || !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
 		loc->mbuf = *pkts++;
@@ -3728,7 +3733,7 @@ mlx5_tx_sdone_empw(struct mlx5_txq_data *restrict txq,
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
 	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, olx);
+	mlx5_tx_request_completion(txq, loc, false, olx);
 }
 
 /*
@@ -3772,7 +3777,7 @@ mlx5_tx_idone_empw(struct mlx5_txq_data *restrict txq,
 	txq->wqe_ci += (len + 3) / 4;
 	loc->wqe_free -= (len + 3) / 4;
 	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, olx);
+	mlx5_tx_request_completion(txq, loc, false, olx);
 }
 
 /**
@@ -3965,7 +3970,7 @@ next_empw:
 		loc->wqe_free -= (2 + part + 3) / 4;
 		pkts_n -= part;
 		/* Request CQE generation if limits are reached. */
-		mlx5_tx_request_completion(txq, loc, olx);
+		mlx5_tx_request_completion(txq, loc, false, olx);
 		if (unlikely(!pkts_n || !loc->elts_free || !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
 		loc->mbuf = *pkts++;
@@ -4440,7 +4445,7 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
 		++loc->pkts_sent;
 		--pkts_n;
 		/* Request CQE generation if limits are reached. */
-		mlx5_tx_request_completion(txq, loc, olx);
+		mlx5_tx_request_completion(txq, loc, false, olx);
 		if (unlikely(!pkts_n || !loc->elts_free || !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
 		loc->mbuf = *pkts++;
