@@ -725,12 +725,14 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id)
 
 		cryptodev->data = *cryptodev_data;
 
-		strlcpy(cryptodev->data->name, name,
-			RTE_CRYPTODEV_NAME_MAX_LEN);
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			strlcpy(cryptodev->data->name, name,
+				RTE_CRYPTODEV_NAME_MAX_LEN);
 
-		cryptodev->data->dev_id = dev_id;
-		cryptodev->data->socket_id = socket_id;
-		cryptodev->data->dev_started = 0;
+			cryptodev->data->dev_id = dev_id;
+			cryptodev->data->socket_id = socket_id;
+			cryptodev->data->dev_started = 0;
+		}
 
 		/* init user callbacks */
 		TAILQ_INIT(&(cryptodev->link_intr_cbs));
