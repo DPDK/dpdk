@@ -918,7 +918,8 @@ memif_socket_create(struct pmd_internals *pmd, char *key, uint8_t listener)
 
  error:
 	MIF_LOG(ERR, "%s: Failed to setup socket %s: %s",
-		rte_vdev_device_name(pmd->vdev), key, strerror(errno));
+		rte_vdev_device_name(pmd->vdev) ?
+		rte_vdev_device_name(pmd->vdev) : "NULL", key, strerror(errno));
 	if (sock != NULL)
 		rte_free(sock);
 	if (sockfd >= 0)
