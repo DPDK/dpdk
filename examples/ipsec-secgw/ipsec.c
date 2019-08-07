@@ -248,7 +248,14 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa)
 			/* Try RSS. */
 			sa->action[1].type = RTE_FLOW_ACTION_TYPE_RSS;
 			sa->action[1].conf = &action_rss;
-			rte_eth_dev_rss_hash_conf_get(sa->portid, &rss_conf);
+			ret = rte_eth_dev_rss_hash_conf_get(sa->portid,
+					&rss_conf);
+			if (ret != 0) {
+				RTE_LOG(ERR, IPSEC,
+					"rte_eth_dev_rss_hash_conf_get:ret=%d\n",
+					ret);
+				return -1;
+			}
 			for (i = 0, j = 0; i < dev_info.nb_rx_queues; ++i)
 				queue[j++] = i;
 
