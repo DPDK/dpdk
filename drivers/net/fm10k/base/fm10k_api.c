@@ -205,8 +205,14 @@ s32 fm10k_read_mac_addr(struct fm10k_hw *hw)
  * */
 void fm10k_update_hw_stats(struct fm10k_hw *hw, struct fm10k_hw_stats *stats)
 {
-	if (hw->mac.ops.update_hw_stats)
-		hw->mac.ops.update_hw_stats(hw, stats);
+	switch (hw->mac.type) {
+	case fm10k_mac_pf:
+		return fm10k_update_hw_stats_pf(hw, stats);
+	case fm10k_mac_vf:
+		return fm10k_update_hw_stats_vf(hw, stats);
+	default:
+		break;
+	}
 }
 
 /**
@@ -217,8 +223,14 @@ void fm10k_update_hw_stats(struct fm10k_hw *hw, struct fm10k_hw_stats *stats)
  * */
 void fm10k_rebind_hw_stats(struct fm10k_hw *hw, struct fm10k_hw_stats *stats)
 {
-	if (hw->mac.ops.rebind_hw_stats)
-		hw->mac.ops.rebind_hw_stats(hw, stats);
+	switch (hw->mac.type) {
+	case fm10k_mac_pf:
+		return fm10k_rebind_hw_stats_pf(hw, stats);
+	case fm10k_mac_vf:
+		return fm10k_rebind_hw_stats_vf(hw, stats);
+	default:
+		break;
+	}
 }
 
 /**

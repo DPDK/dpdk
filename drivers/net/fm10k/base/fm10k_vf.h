@@ -60,4 +60,9 @@ extern const struct fm10k_tlv_attr fm10k_1588_msg_attr[];
 	FM10K_MSG_HANDLER(FM10K_VF_MSG_ID_1588, fm10k_1588_msg_attr, func)
 
 s32 fm10k_init_ops_vf(struct fm10k_hw *hw);
+
+void fm10k_update_hw_stats_vf(struct fm10k_hw *hw,
+				     struct fm10k_hw_stats *stats);
+void fm10k_rebind_hw_stats_vf(struct fm10k_hw *hw,
+				     struct fm10k_hw_stats *stats);
 #endif /* _FM10K_VF_H */

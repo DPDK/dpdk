@@ -497,7 +497,7 @@ const struct fm10k_tlv_attr fm10k_1588_msg_attr[] = {
  *
  *  This function collects and aggregates per queue hardware statistics.
  **/
-STATIC void fm10k_update_hw_stats_vf(struct fm10k_hw *hw,
+void fm10k_update_hw_stats_vf(struct fm10k_hw *hw,
 				     struct fm10k_hw_stats *stats)
 {
 	DEBUGFUNC("fm10k_update_hw_stats_vf");
@@ -512,7 +512,7 @@ STATIC void fm10k_update_hw_stats_vf(struct fm10k_hw *hw,
  *
  *  This function resets the base for queue hardware statistics.
  **/
-STATIC void fm10k_rebind_hw_stats_vf(struct fm10k_hw *hw,
+void fm10k_rebind_hw_stats_vf(struct fm10k_hw *hw,
 				     struct fm10k_hw_stats *stats)
 {
 	DEBUGFUNC("fm10k_rebind_hw_stats_vf");

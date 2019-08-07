@@ -1482,7 +1482,7 @@ const struct fm10k_msg_data fm10k_iov_msg_data_pf[] = {
  *  This function collects and aggregates global and per queue hardware
  *  statistics.
  **/
-STATIC void fm10k_update_hw_stats_pf(struct fm10k_hw *hw,
+void fm10k_update_hw_stats_pf(struct fm10k_hw *hw,
 				     struct fm10k_hw_stats *stats)
 {
 	u32 timeout, ur, ca, um, xec, vlan_drop, loopback_drop, nodesc_drop;
@@ -1555,7 +1555,7 @@ STATIC void fm10k_update_hw_stats_pf(struct fm10k_hw *hw,
  *  This function resets the base for global and per queue hardware
  *  statistics.
  **/
-STATIC void fm10k_rebind_hw_stats_pf(struct fm10k_hw *hw,
+void fm10k_rebind_hw_stats_pf(struct fm10k_hw *hw,
 				     struct fm10k_hw_stats *stats)
 {
 	DEBUGFUNC("fm10k_rebind_hw_stats_pf");

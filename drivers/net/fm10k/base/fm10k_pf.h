@@ -155,4 +155,10 @@ extern const struct fm10k_msg_data fm10k_iov_msg_data_pf[];
 #endif
 
 s32 fm10k_init_ops_pf(struct fm10k_hw *hw);
+
+void fm10k_update_hw_stats_pf(struct fm10k_hw *hw,
+				     struct fm10k_hw_stats *stats);
+
+void fm10k_rebind_hw_stats_pf(struct fm10k_hw *hw,
+				     struct fm10k_hw_stats *stats);
 #endif /* _FM10K_PF_H */
