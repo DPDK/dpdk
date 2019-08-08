@@ -37,6 +37,9 @@ Deprecation Notices
 * eal: The ``rte_cpu_check_supported`` function has been deprecated since
   v17.08 and will be removed.
 
+* eal: The ``rte_malloc_virt2phy`` function has been deprecated and replaced
+  by ``rte_malloc_virt2iova`` since v17.11 and will be removed.
+
 * vfio: removal of ``rte_vfio_dma_map`` and ``rte_vfio_dma_unmap`` APIs which
   have been replaced with ``rte_dev_dma_map`` and ``rte_dev_dma_unmap``
   functions.  The due date for the removal targets DPDK 20.02.
