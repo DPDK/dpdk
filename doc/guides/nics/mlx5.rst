@@ -162,6 +162,12 @@ Limitations
   To receive IPv6 Multicast messages on VM, explicitly set the relevant
   MAC address using rte_eth_dev_mac_addr_add() API.
 
+- The amount of descriptors in Tx queue may be limited by data inline settings.
+  Inline data require the more descriptor building blocks and overall block
+  amount may exceed the hardware supported limits. The application should
+  reduce the requested Tx size or adjust data inline settings with
+  ``txq_inline_max`` and ``txq_inline_mpw`` devargs keys.
+
 - E-Switch decapsulation Flow:
 
   - can be applied to PF port only.
@@ -399,6 +405,10 @@ Run-time configuration
   Because additional software logic is necessary to handle this mode, this
   option should be used with care, as it may lower performance when back
   pressure is not expected.
+
+  If inline data are enabled it may affect the maximal size of Tx queue in
+  descriptors because the inline data increase the descriptor size and
+  queue size limits supported by hardware may be exceeded.
 
 - ``txq_inline_min`` parameter [int]
 
