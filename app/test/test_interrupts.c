@@ -370,9 +370,13 @@ test_interrupt_full_path_check(enum test_interrupt_handle_type intr_type)
 		rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
 
 	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
-	if (rte_intr_callback_unregister(&test_intr_handle,
-			test_interrupt_callback, &test_intr_handle) < 0)
-		return -1;
+	while ((count =
+		rte_intr_callback_unregister(&test_intr_handle,
+					     test_interrupt_callback,
+					     &test_intr_handle)) < 0) {
+		if (count != -EAGAIN)
+			return -1;
+	}
 
 	if (flag == 0) {
 		printf("callback has not been called\n");
