@@ -533,7 +533,8 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	rxq->rx_buf_use_size = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
 		RTE_ETHER_CRC_LEN + (2 * VLAN_TAG_SIZE);
 
-	if (!rxq->rx_deferred_start) {
+	if (bp->eth_dev->data->rx_queue_state[queue_index] ==
+	    RTE_ETH_QUEUE_STATE_STARTED) {
 		if (bnxt_init_one_rx_ring(rxq)) {
 			RTE_LOG(ERR, PMD,
 				"bnxt_init_one_rx_ring failed!\n");
