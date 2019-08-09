@@ -156,7 +156,7 @@ app_pkt_handle(struct rte_mbuf *pkt, uint64_t time)
 		&PROFILE,
 		time,
 		pkt_len,
-		(enum rte_meter_color) input_color);
+		(enum rte_color) input_color);
 
 	/* Apply policing and set the output color */
 	action = policer_table[input_color][output_color];
