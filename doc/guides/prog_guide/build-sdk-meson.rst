@@ -1,5 +1,5 @@
-INSTALLING DPDK USING THE MESON BUILD SYSTEM
----------------------------------------------
+Installing DPDK Using the meson build system
+============================================
 
 Summary
 --------
@@ -165,7 +165,8 @@ command::
 
 For example if the target machine is arm64 we can use the following
 command::
-	meson arm-build --cross-file config/arm/arm64_armv8_linux_gcc
+
+        meson arm-build --cross-file config/arm/arm64_armv8_linux_gcc
 
 where config/arm/arm64_armv8_linux_gcc contains settings for the compilers
 and other build tools to be used, as well as characteristics of the target
