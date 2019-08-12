@@ -83,6 +83,7 @@ endif
 # User-defined CFLAGS.
 ifeq ($(CONFIG_RTE_LIBRTE_MLX5_DEBUG),y)
 CFLAGS += -pedantic -UNDEBUG -DPEDANTIC
+AUTO_CONFIG_CFLAGS += -Wno-pedantic
 else
 CFLAGS += -DNDEBUG -UPEDANTIC
 endif
@@ -92,7 +93,7 @@ include $(RTE_SDK)/mk/rte.lib.mk
 # Generate and clean-up mlx5_autoconf.h.
 
 export CC CFLAGS CPPFLAGS EXTRA_CFLAGS EXTRA_CPPFLAGS
-export AUTO_CONFIG_CFLAGS = -Wno-error
+export AUTO_CONFIG_CFLAGS += -Wno-error
 
 ifndef V
 AUTOCONF_OUTPUT := >/dev/null
