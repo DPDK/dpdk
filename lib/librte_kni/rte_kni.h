@@ -48,6 +48,9 @@ struct rte_kni_ops {
 
 	/* Pointer to function of configuring promiscuous mode */
 	int (*config_promiscusity)(uint16_t port_id, uint8_t to_on);
+
+	/* Pointer to function of configuring allmulticast mode */
+	int (*config_allmulticast)(uint16_t port_id, uint8_t to_on);
 };
 
 /**

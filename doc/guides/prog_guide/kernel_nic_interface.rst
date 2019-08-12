@@ -235,6 +235,15 @@ application functions:
     will be called which calls ``rte_eth_promiscuous_<enable|disable>()``
     on the specified ``port_id``.
 
+``config_allmulticast``:
+
+    Called when the user changes the allmulticast state of the KNI interface.
+    For example, when the user runs ``ifconfig <ifaceX> [-]allmulti``. If the
+    user sets this callback function to NULL, but sets the ``port_id`` field to
+    a value other than -1, a default callback handler in the rte_kni library
+    ``kni_config_allmulticast()`` will be called which calls
+    ``rte_eth_allmulticast_<enable|disable>()`` on the specified ``port_id``.
+
 In order to run these callbacks, the application must periodically call
 the ``rte_kni_handle_request()`` function.  Any user callback function
 registered will be called directly from ``rte_kni_handle_request()`` so

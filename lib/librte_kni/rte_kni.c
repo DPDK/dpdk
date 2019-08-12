@@ -496,6 +496,26 @@ kni_config_promiscusity(uint16_t port_id, uint8_t to_on)
 	return ret;
 }
 
+/* default callback for request of configuring allmulticast mode */
+static int
+kni_config_allmulticast(uint16_t port_id, uint8_t to_on)
+{
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		RTE_LOG(ERR, KNI, "Invalid port id %d\n", port_id);
+		return -EINVAL;
+	}
+
+	RTE_LOG(INFO, KNI, "Configure allmulticast mode of %d to %d\n",
+		port_id, to_on);
+
+	if (to_on)
+		rte_eth_allmulticast_enable(port_id);
+	else
+		rte_eth_allmulticast_disable(port_id);
+
+	return 0;
+}
+
 int
 rte_kni_handle_request(struct rte_kni *kni)
 {
@@ -542,6 +562,14 @@ rte_kni_handle_request(struct rte_kni *kni)
 		else if (kni->ops.port_id != UINT16_MAX)
 			req->result = kni_config_promiscusity(
 					kni->ops.port_id, req->promiscusity);
+		break;
+	case RTE_KNI_REQ_CHANGE_ALLMULTI: /* Change ALLMULTICAST MODE */
+		if (kni->ops.config_allmulticast)
+			req->result = kni->ops.config_allmulticast(
+					kni->ops.port_id, req->allmulti);
+		else if (kni->ops.port_id != UINT16_MAX)
+			req->result = kni_config_allmulticast(
+					kni->ops.port_id, req->allmulti);
 		break;
 	default:
 		RTE_LOG(ERR, KNI, "Unknown request id %u\n", req->req_id);
@@ -692,7 +720,8 @@ kni_check_request_register(struct rte_kni_ops *ops)
 	if (ops->change_mtu == NULL
 	    && ops->config_network_if == NULL
 	    && ops->config_mac_address == NULL
-	    && ops->config_promiscusity == NULL)
+	    && ops->config_promiscusity == NULL
+	    && ops->config_allmulticast == NULL)
 		return KNI_REQ_NO_REGISTER;
 
 	return KNI_REQ_REGISTERED;
