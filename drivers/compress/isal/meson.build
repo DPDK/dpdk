@@ -10,6 +10,5 @@ endif
 deps += 'bus_vdev'
 sources = files('isal_compress_pmd.c', 'isal_compress_pmd_ops.c')
 ext_deps += dep
-pkgconfig_extra_libs += '-lisal'
 
 allow_experimental_apis = true
