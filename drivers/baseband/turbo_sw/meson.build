@@ -7,6 +7,7 @@ if dpdk_conf.has('RTE_BBDEV_SDK_AVX2')
 	lib = cc.find_library('libturbo', dirs: [path + '/lib_turbo'], required: false)
 	if not lib.found()
 		build = false
+		reason = 'missing dependency, "libturbo"'
 	else
 		ext_deps += cc.find_library('libturbo', dirs: [path + '/lib_turbo'], required: true)
 		ext_deps += cc.find_library('libcrc', dirs: [path + '/lib_crc'], required: true)

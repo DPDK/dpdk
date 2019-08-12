@@ -2,6 +2,7 @@
 # Copyright 2019 Intel Corporation
 
 build = dpdk_conf.has('RTE_ARCH_X86')
+reason = 'only supported on x86'
 sources = files('ioat_rawdev.c',
 		'ioat_rawdev_test.c')
 deps += ['rawdev', 'bus_pci', 'mbuf']
