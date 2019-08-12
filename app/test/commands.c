@@ -10,11 +10,6 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <termios.h>
-#ifndef __linux__
-#ifndef __FreeBSD__
-#include <net/socket.h>
-#endif
-#endif
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/queue.h>

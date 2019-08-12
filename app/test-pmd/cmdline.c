@@ -11,12 +11,8 @@
 #include <termios.h>
 #include <unistd.h>
 #include <inttypes.h>
-#ifndef __linux__
-#ifndef __FreeBSD__
-#include <net/socket.h>
-#else
+#ifdef __FreeBSD__
 #include <sys/socket.h>
-#endif
 #endif
 #include <netinet/in.h>
 

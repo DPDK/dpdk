@@ -12,12 +12,8 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <termios.h>
-#ifndef __linux__
-	#ifdef __FreeBSD__
-		#include <sys/socket.h>
-	#else
-		#include <net/socket.h>
-	#endif
+#ifdef __FreeBSD__
+#include <sys/socket.h>
 #endif
 
 #include <cmdline_rdline.h>
