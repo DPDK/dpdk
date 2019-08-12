@@ -18,14 +18,15 @@ then
 	exit 0
 fi
 
+DUMPFILE=$(mktemp -t dpdk.${0##*/}.XXX.objdump)
+trap 'rm -f "$DUMPFILE"' EXIT
+objdump -t $OBJFILE >$DUMPFILE
+
 ret=0
 for SYM in `$LIST_SYMBOL -S EXPERIMENTAL $MAPFILE`
 do
-	objdump -t $OBJFILE | grep -q "\.text.*$SYM$"
-	IN_TEXT=$?
-	objdump -t $OBJFILE | grep -q "\.text\.experimental.*$SYM$"
-	IN_EXP=$?
-	if [ $IN_TEXT -eq 0 -a $IN_EXP -ne 0 ]
+	if grep -q "\.text.*$SYM$" $DUMPFILE &&
+		! grep -q "\.text\.experimental.*$SYM$" $DUMPFILE
 	then
 		cat >&2 <<- END_OF_MESSAGE
 		$SYM is not flagged as experimental
@@ -37,11 +38,11 @@ do
 done
 
 # Filter out symbols suffixed with a . for icc
-for SYM in `objdump -t $OBJFILE |awk '{
+for SYM in `awk '{
 	if ($2 != "l" && $4 == ".text.experimental" && !($NF ~ /\.$/)) {
 		print $NF
 	}
-}'`
+}' $DUMPFILE`
 do
 	$LIST_SYMBOL -S EXPERIMENTAL -s $SYM -q $MAPFILE || {
 		cat >&2 <<- END_OF_MESSAGE
