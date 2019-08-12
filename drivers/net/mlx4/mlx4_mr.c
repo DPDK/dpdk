@@ -26,6 +26,7 @@
 
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
+#include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>

@@ -8,7 +8,6 @@
 #include <stdbool.h>
 
 #include <rte_memory.h>
-#include <rte_eal_memconfig.h>
 
 /*
  * Allocate segment of specified page size.

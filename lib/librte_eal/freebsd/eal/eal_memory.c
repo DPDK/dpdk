@@ -11,7 +11,6 @@
 #include <fcntl.h>
 
 #include <rte_eal.h>
-#include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>

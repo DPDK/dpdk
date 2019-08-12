@@ -6,7 +6,6 @@
 #define EAL_MEMCFG_H
 
 #include <rte_config.h>
-#include <rte_eal_memconfig.h>
 #include <rte_malloc_heap.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>

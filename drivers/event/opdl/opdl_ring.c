@@ -16,7 +16,6 @@
 #include <rte_memcpy.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_eal_memconfig.h>
 
 #include "opdl_ring.h"
 #include "opdl_log.h"

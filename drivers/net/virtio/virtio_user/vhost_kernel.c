@@ -8,7 +8,6 @@
 #include <unistd.h>
 
 #include <rte_memory.h>
-#include <rte_eal_memconfig.h>
 
 #include "vhost.h"
 #include "virtio_user_dev.h"

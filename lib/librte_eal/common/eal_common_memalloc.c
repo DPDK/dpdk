@@ -9,7 +9,6 @@
 #include <rte_fbarray.h>
 #include <rte_memzone.h>
 #include <rte_memory.h>
-#include <rte_eal_memconfig.h>
 #include <rte_string_fns.h>
 #include <rte_rwlock.h>
 

@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <rte_eal_memconfig.h>
 #include <rte_string_fns.h>
 #include <rte_acl.h>
 #include <rte_tailq.h>

@@ -13,7 +13,6 @@
 
 #include <rte_string_fns.h>
 #include <rte_fbarray.h>
-#include <rte_eal_memconfig.h>
 
 #include "vhost.h"
 #include "virtio_user_dev.h"

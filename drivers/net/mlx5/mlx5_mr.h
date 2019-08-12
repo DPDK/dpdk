@@ -21,7 +21,6 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
-#include <rte_eal_memconfig.h>
 #include <rte_ethdev.h>
 #include <rte_rwlock.h>
 #include <rte_bitmap.h>
