@@ -29,6 +29,16 @@ else
 	exit 1
 fi
 
+default_path=$PATH
+default_pkgpath=$PKG_CONFIG_PATH
+
+reset_env ()
+{
+	export PATH=$default_path
+	export PKG_CONFIG_PATH=$default_pkgpath
+	unset DPDK_MESON_OPTIONS
+}
+
 build () # <directory> <target compiler> <meson options>
 {
 	builddir=$1
@@ -38,8 +48,15 @@ build () # <directory> <target compiler> <meson options>
 	# skip build if compiler not available
 	command -v $CC >/dev/null 2>&1 || return 0
 	command -v $targetcc >/dev/null 2>&1 || return 0
+	reset_env
+	DPDK_TARGET=$($targetcc -v 2>&1 | sed -n 's,^Target: ,,p')
+	. $srcdir/devtools/load-devel-config
 	if [ ! -f "$builddir/build.ninja" ] ; then
-		options="--werror -Dexamples=all $*"
+		options="--werror -Dexamples=all"
+		for option in $DPDK_MESON_OPTIONS ; do
+			options="$options -D$option"
+		done
+		options="$options $*"
 		echo "$MESON $options $srcdir $builddir"
 		$MESON $options $srcdir $builddir
 		unset CC
