@@ -15,6 +15,16 @@
 
 #include "mlx4.h"
 
+/*
+ * Compilation workaround for PPC64 when AltiVec is fully enabled, e.g. std=c11.
+ * Otherwise there would be a type conflict between stdbool and altivec.
+ */
+#if defined(__PPC64__) && !defined(__APPLE_ALTIVEC__)
+#undef bool
+/* redefine as in stdbool.h */
+#define bool _Bool
+#endif
+
 extern int mlx4_logtype;
 
 #ifndef NDEBUG
