@@ -7,7 +7,6 @@ Poll Mode Driver for Emulated Virtio NIC
 Virtio is a para-virtualization framework initiated by IBM, and supported by KVM hypervisor.
 In the Data Plane Development Kit (DPDK),
 we provide a virtio Poll Mode Driver (PMD) as a software solution, comparing to SRIOV hardware solution,
-
 for fast guest VM to guest VM communication and guest VM to host communication.
 
 Vhost is a kernel acceleration module for virtio qemu backend.
