@@ -5,7 +5,7 @@
 #ifndef CAAM_JR_PVT_H
 #define CAAM_JR_PVT_H
 
-#include <hw/desc/ipsec.h>
+#include <desc/ipsec.h>
 #include <dpaax_iova_table.h>
 
 /* NXP CAAM JR PMD device name */

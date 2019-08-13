@@ -14,4 +14,4 @@ sources = files('dpaa2_sec_dpseci.c',
 
 allow_experimental_apis = true
 
-includes += include_directories('mc', 'hw')
+includes += include_directories('mc', '../../common/dpaax/caamflib')

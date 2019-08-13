@@ -20,6 +20,7 @@ CFLAGS += -Wno-implicit-fallthrough
 endif
 endif
 
+CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax/caamflib
 CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec/
 CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec/mc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/

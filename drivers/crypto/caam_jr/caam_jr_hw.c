@@ -16,11 +16,6 @@
 #include <caam_jr_pvt.h>
 #include <caam_jr_log.h>
 
-/* RTA header files */
-#include <hw/desc/common.h>
-#include <hw/desc/algo.h>
-#include <hw/desc/ipsec.h>
-
 /* Used to retry resetting a job ring in SEC hardware. */
 #define SEC_TIMEOUT 100000
 

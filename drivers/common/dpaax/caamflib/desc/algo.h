@@ -8,7 +8,7 @@
 #ifndef __DESC_ALGO_H__
 #define __DESC_ALGO_H__
 
-#include "hw/rta.h"
+#include "rta.h"
 #include "common.h"
 
 /**

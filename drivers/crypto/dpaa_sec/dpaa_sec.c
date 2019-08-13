@@ -30,10 +30,10 @@
 #include <of.h>
 
 /* RTA header files */
-#include <hw/desc/common.h>
-#include <hw/desc/algo.h>
-#include <hw/desc/ipsec.h>
-#include <hw/desc/pdcp.h>
+#include <desc/common.h>
+#include <desc/algo.h>
+#include <desc/ipsec.h>
+#include <desc/pdcp.h>
 
 #include <rte_dpaa_bus.h>
 #include <dpaa_sec.h>

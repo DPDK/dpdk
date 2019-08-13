@@ -8,7 +8,7 @@
 #ifndef __DESC_COMMON_H__
 #define __DESC_COMMON_H__
 
-#include "hw/rta.h"
+#include "rta.h"
 
 /**
  * DOC: Shared Descriptor Constructors - shared structures

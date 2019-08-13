@@ -23,11 +23,6 @@
 #include <caam_jr_pvt.h>
 #include <caam_jr_log.h>
 
-/* RTA header files */
-#include <hw/desc/common.h>
-#include <hw/desc/algo.h>
-#include <hw/desc/ipsec.h>
-
 /* Prefix path to sysfs directory where UIO device attributes are exported.
  * Path for UIO device X is /sys/class/uio/uioX
  */

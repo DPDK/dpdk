@@ -13,9 +13,9 @@
 #ifndef __RTA_DESC_H__
 #define __RTA_DESC_H__
 
-/* hw/compat.h is not delivered in kernel */
+/* compat.h is not delivered in kernel */
 #ifndef __KERNEL__
-#include "hw/compat.h"
+#include "compat.h"
 #endif
 
 extern enum rta_sec_era rta_sec_era;

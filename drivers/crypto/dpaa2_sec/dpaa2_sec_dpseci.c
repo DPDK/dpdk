@@ -37,9 +37,9 @@
 typedef uint64_t	dma_addr_t;
 
 /* RTA header files */
-#include <hw/desc/ipsec.h>
-#include <hw/desc/pdcp.h>
-#include <hw/desc/algo.h>
+#include <desc/ipsec.h>
+#include <desc/pdcp.h>
+#include <desc/algo.h>
 
 /* Minimum job descriptor consists of a oneword job descriptor HEADER and
  * a pointer to the shared descriptor

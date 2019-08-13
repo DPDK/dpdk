@@ -18,8 +18,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa
 CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa/include
 CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa/base/qbman
 CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa_sec/
-#sharing the hw flib headers from dpaa2_sec pmd
-CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec/
+CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax/caamflib/
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
