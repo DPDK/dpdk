@@ -215,8 +215,8 @@ Rx callbacks:
    Vector version without mergeable Rx buffer support, also fixes the available
    ring indexes and uses vector instructions to optimize performance.
 
-#. ``virtio_recv_mergeable_pkts_inorder``:
-   In-order version with mergeable Rx buffer support.
+#. ``virtio_recv_pkts_inorder``:
+   In-order version with mergeable and non-mergeable Rx buffer support.
 
 Tx callbacks:
 
@@ -250,8 +250,7 @@ Example of using the vector version of the virtio poll mode driver in
 
 In-order callbacks only work on simulated virtio user vdev.
 
-*   For Rx: If mergeable Rx buffers is enabled and in-order is enabled then
-    ``virtio_recv_mergeable_pkts_inorder`` is used.
+*   For Rx: If in-order is enabled then ``virtio_recv_pkts_inorder`` is used.
 
 *   For Tx: If in-order is enabled then ``virtio_xmit_pkts_inorder`` is used.
 
