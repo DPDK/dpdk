@@ -24,15 +24,19 @@ standard qemu vhost back end and vhost kni back end.
 Virtio Implementation in DPDK
 -----------------------------
 
-For details about the virtio spec, refer to Virtio PCI Card Specification written by Rusty Russell.
+For details about the virtio spec, refer to the latest
+`VIRTIO (Virtual I/O) Device Specification
+<https://www.oasis-open.org/committees/tc_home.php?wg_abbrev=virtio>`_.
 
-As a PMD, virtio provides packet reception and transmission callbacks virtio_recv_pkts and virtio_xmit_pkts.
+As a PMD, virtio provides packet reception and transmission callbacks.
 
-In virtio_recv_pkts, index in range [vq->vq_used_cons_idx , vq->vq_ring.used->idx) in vring is available for virtio to burst out.
+In Rx, packets described by the used descriptors in vring are available
+for virtio to burst out.
 
-In virtio_xmit_pkts, same index range in vring is available for virtio to clean.
-Virtio will enqueue to be transmitted packets into vring, advance the vq->vq_ring.avail->idx,
-and then notify the host back end if necessary.
+In Tx, packets described by the used descriptors in vring are available
+for virtio to clean. Virtio will enqueue to be transmitted packets into
+vring, make them available to the device, and then notify the host back
+end if necessary.
 
 Features and Limitations of virtio PMD
 --------------------------------------
@@ -201,37 +205,52 @@ The packet transmission flow is:
 Virtio PMD Rx/Tx Callbacks
 --------------------------
 
-Virtio driver has 4 Rx callbacks and 2 Tx callbacks.
+Virtio driver has 6 Rx callbacks and 3 Tx callbacks.
 
 Rx callbacks:
 
 #. ``virtio_recv_pkts``:
-   Regular version without mergeable Rx buffer support.
+   Regular version without mergeable Rx buffer support for split virtqueue.
 
 #. ``virtio_recv_mergeable_pkts``:
-   Regular version with mergeable Rx buffer support.
+   Regular version with mergeable Rx buffer support for split virtqueue.
 
 #. ``virtio_recv_pkts_vec``:
    Vector version without mergeable Rx buffer support, also fixes the available
-   ring indexes and uses vector instructions to optimize performance.
+   ring indexes and uses vector instructions to optimize performance for split
+   virtqueue.
 
 #. ``virtio_recv_pkts_inorder``:
-   In-order version with mergeable and non-mergeable Rx buffer support.
+   In-order version with mergeable and non-mergeable Rx buffer support
+   for split virtqueue.
+
+#. ``virtio_recv_pkts_packed``:
+   Regular and in-order version without mergeable Rx buffer support for
+   packed virtqueue.
+
+#. ``virtio_recv_mergeable_pkts_packed``:
+   Regular and in-order version with mergeable Rx buffer support for packed
+   virtqueue.
 
 Tx callbacks:
 
 #. ``virtio_xmit_pkts``:
-   Regular version.
+   Regular version for split virtqueue.
 
 #. ``virtio_xmit_pkts_inorder``:
-   In-order version.
+   In-order version for split virtqueue.
+
+#. ``virtio_xmit_pkts_packed``:
+   Regular and in-order version for packed virtqueue.
 
 By default, the non-vector callbacks are used:
 
-*   For Rx: If mergeable Rx buffers is disabled then ``virtio_recv_pkts`` is
-    used; otherwise ``virtio_recv_mergeable_pkts``.
+*   For Rx: If mergeable Rx buffers is disabled then ``virtio_recv_pkts``
+    or ``virtio_recv_pkts_packed`` will be used, otherwise
+    ``virtio_recv_mergeable_pkts`` or ``virtio_recv_mergeable_pkts_packed``
+    will be used.
 
-*   For Tx: ``virtio_xmit_pkts``.
+*   For Tx: ``virtio_xmit_pkts`` or ``virtio_xmit_pkts_packed`` will be used.
 
 
 Vector callbacks will be used when:
@@ -242,6 +261,8 @@ The corresponding callbacks are:
 
 *   For Rx: ``virtio_recv_pkts_vec``.
 
+There is no vector callbacks for packed virtqueue for now.
+
 
 Example of using the vector version of the virtio poll mode driver in
 ``testpmd``::
@@ -250,9 +271,14 @@ Example of using the vector version of the virtio poll mode driver in
 
 In-order callbacks only work on simulated virtio user vdev.
 
+For split virtqueue:
+
 *   For Rx: If in-order is enabled then ``virtio_recv_pkts_inorder`` is used.
 
 *   For Tx: If in-order is enabled then ``virtio_xmit_pkts_inorder`` is used.
+
+For packed virtqueue, the default callbacks already support the
+in-order feature.
 
 Interrupt mode
 --------------
@@ -372,3 +398,8 @@ Below devargs are supported by the virtio-user vdev:
 
     It is used to enable virtio device in-order feature.
     (Default: 1 (enabled))
+
+#.  ``packed_vq``:
+
+    It is used to enable virtio device packed virtqueue feature.
+    (Default: 0 (disabled))
