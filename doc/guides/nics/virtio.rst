@@ -322,7 +322,7 @@ Here we use l3fwd-power as an example to show how to get started.
 Virtio PMD arguments
 --------------------
 
-The user can specify below argument in devargs.
+Below devargs are supported by the PCI virtio driver:
 
 #.  ``vdpa``:
 
@@ -331,12 +331,44 @@ The user can specify below argument in devargs.
     a virtio device needs to work in vDPA mode.
     (Default: 0 (disabled))
 
-#. ``mrg_rxbuf``:
+Below devargs are supported by the virtio-user vdev:
+
+#.  ``path``:
+
+    It is used to specify a path to connect to vhost backend.
+
+#.  ``mac``:
+
+    It is used to specify the MAC address.
+
+#.  ``cq``:
+
+    It is used to enable the control queue. (Default: 0 (disabled))
+
+#.  ``queue_size``:
+
+    It is used to specify the queue size. (Default: 256)
+
+#.  ``queues``:
+
+    It is used to specify the queue number. (Default: 1)
+
+#.  ``iface``:
+
+    It is used to specify the host interface name for vhost-kernel
+    backend.
+
+#.  ``server``:
+
+    It is used to enable the server mode when using vhost-user backend.
+    (Default: 0 (disabled))
+
+#.  ``mrg_rxbuf``:
 
     It is used to enable virtio device mergeable Rx buffer feature.
     (Default: 1 (enabled))
 
-#. ``in_order``:
+#.  ``in_order``:
 
     It is used to enable virtio device in-order feature.
     (Default: 1 (enabled))
