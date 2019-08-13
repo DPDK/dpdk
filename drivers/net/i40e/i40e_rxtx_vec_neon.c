@@ -307,9 +307,6 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			rte_mbuf_prefetch_part2(rx_pkts[pos + 3]);
 		}
 
-		/* avoid compiler reorder optimization */
-		rte_compiler_barrier();
-
 		/* pkt 3,4 shift the pktlen field to be 16-bit aligned*/
 		uint32x4_t len3 = vshlq_u32(vreinterpretq_u32_u64(descs[3]),
 					    len_shl);
