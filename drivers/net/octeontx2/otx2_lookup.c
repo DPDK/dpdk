@@ -53,6 +53,7 @@ otx2_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 		RTE_PTYPE_INNER_L4_UDP,  /* LH */
 		RTE_PTYPE_INNER_L4_SCTP, /* LH */
 		RTE_PTYPE_INNER_L4_ICMP, /* LH */
+		RTE_PTYPE_UNKNOWN,
 	};
 
 	if (dev->rx_offload_flags & NIX_RX_OFFLOAD_PTYPE_F)
