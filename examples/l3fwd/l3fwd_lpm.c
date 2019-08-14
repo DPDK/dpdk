@@ -400,10 +400,17 @@ lpm_cb_parse_ptype(uint16_t port __rte_unused, uint16_t queue __rte_unused,
 		   uint16_t max_pkts __rte_unused,
 		   void *user_param __rte_unused)
 {
-	unsigned i;
+	unsigned int i;
 
-	for (i = 0; i < nb_pkts; ++i)
+	if (unlikely(nb_pkts == 0))
+		return nb_pkts;
+	rte_prefetch0(rte_pktmbuf_mtod(pkts[0], struct ether_hdr *));
+	for (i = 0; i < (unsigned int) (nb_pkts - 1); ++i) {
+		rte_prefetch0(rte_pktmbuf_mtod(pkts[i+1],
+			struct ether_hdr *));
 		lpm_parse_ptype(pkts[i]);
+	}
+	lpm_parse_ptype(pkts[i]);
 
 	return nb_pkts;
 }
