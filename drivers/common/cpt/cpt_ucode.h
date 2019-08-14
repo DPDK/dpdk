@@ -1467,7 +1467,8 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 	opcode.s.major = CPT_MAJOR_OP_ZUC_SNOW3G;
 
 	/* indicates CPTR ctx, operation type, KEY & IV mode from DPTR */
-	opcode.s.minor = ((1 << 6) | (snow3g << 5) | (0 << 4) |
+
+	opcode.s.minor = ((1 << 7) | (snow3g << 5) | (0 << 4) |
 			  (0 << 3) | (flags & 0x7));
 
 	if (flags == 0x1) {
@@ -1791,7 +1792,8 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 	opcode.s.major = CPT_MAJOR_OP_ZUC_SNOW3G;
 
 	/* indicates CPTR ctx, operation type, KEY & IV mode from DPTR */
-	opcode.s.minor = ((1 << 6) | (snow3g << 5) | (0 << 4) |
+
+	opcode.s.minor = ((1 << 7) | (snow3g << 5) | (0 << 4) |
 			  (0 << 3) | (flags & 0x7));
 
 	/* consider iv len */

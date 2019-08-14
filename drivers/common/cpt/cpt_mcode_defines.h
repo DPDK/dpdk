@@ -303,8 +303,8 @@ struct cpt_ctx {
 	uint64_t hmac		:1;
 	uint64_t zsk_flags	:3;
 	uint64_t k_ecb		:1;
-	uint64_t snow3g		:1;
-	uint64_t rsvd		:22;
+	uint64_t snow3g		:2;
+	uint64_t rsvd		:21;
 	/* Below fields are accessed by hardware */
 	union {
 		mc_fc_context_t fctx;
