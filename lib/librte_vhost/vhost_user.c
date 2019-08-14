@@ -1163,10 +1163,11 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 				goto err_mmap;
 			}
 			RTE_LOG(INFO, VHOST_CONFIG,
-				"\t userfaultfd registered for range : %llx - %llx\n",
-				reg_struct.range.start,
-				reg_struct.range.start +
-				reg_struct.range.len - 1);
+				"\t userfaultfd registered for range : "
+				"%" PRIx64 " - %" PRIx64 "\n",
+				(uint64_t)reg_struct.range.start,
+				(uint64_t)reg_struct.range.start +
+				(uint64_t)reg_struct.range.len - 1);
 #else
 			goto err_mmap;
 #endif
