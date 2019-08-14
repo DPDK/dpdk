@@ -32,7 +32,7 @@ enum rte_bpf_arg_type {
 	RTE_BPF_ARG_RAW,        /**< scalar value */
 	RTE_BPF_ARG_PTR = 0x10, /**< pointer to data buffer */
 	RTE_BPF_ARG_PTR_MBUF,   /**< pointer to rte_mbuf */
-	RTE_BPF_ARG_PTR_STACK,
+	RTE_BPF_ARG_RESERVED,   /**< reserved for internal use */
 };
 
 /**

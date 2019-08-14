@@ -15,6 +15,8 @@
 
 #include "bpf_impl.h"
 
+#define BPF_ARG_PTR_STACK RTE_BPF_ARG_RESERVED
+
 struct bpf_reg_val {
 	struct rte_bpf_arg v;
 	uint64_t mask;
@@ -710,7 +712,7 @@ eval_ptr(struct bpf_verifier *bvf, struct bpf_reg_val *rm, uint32_t opsz,
 	if (rm->u.max % align !=  0)
 		return "unaligned memory access";
 
-	if (rm->v.type == RTE_BPF_ARG_PTR_STACK) {
+	if (rm->v.type == BPF_ARG_PTR_STACK) {
 
 		if (rm->u.max != rm->u.min || rm->s.max != rm->s.min ||
 				rm->u.max != (uint64_t)rm->s.max)
@@ -764,7 +766,7 @@ eval_load(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 	if (err != NULL)
 		return err;
 
-	if (rs.v.type == RTE_BPF_ARG_PTR_STACK) {
+	if (rs.v.type == BPF_ARG_PTR_STACK) {
 
 		sv = st->sv + rs.u.max / sizeof(uint64_t);
 		if (sv->v.type == RTE_BPF_ARG_UNDEF || sv->mask < msk)
@@ -859,7 +861,7 @@ eval_store(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 	if (err != NULL)
 		return err;
 
-	if (rd.v.type == RTE_BPF_ARG_PTR_STACK) {
+	if (rd.v.type == BPF_ARG_PTR_STACK) {
 
 		sv = st->sv + rd.u.max / sizeof(uint64_t);
 		if (BPF_CLASS(ins->code) == BPF_STX &&
@@ -908,7 +910,7 @@ eval_func_arg(struct bpf_verifier *bvf, const struct rte_bpf_arg *arg,
 		 * pointer to the variable on the stack is passed
 		 * as an argument, mark stack space it occupies as initialized.
 		 */
-		if (err == NULL && rv->v.type == RTE_BPF_ARG_PTR_STACK) {
+		if (err == NULL && rv->v.type == BPF_ARG_PTR_STACK) {
 
 			i = rv->u.max / sizeof(uint64_t);
 			n = i + arg->size / sizeof(uint64_t);
@@ -2131,7 +2133,7 @@ evaluate(struct bpf_verifier *bvf)
 	/* initial state of frame pointer */
 	static const struct bpf_reg_val rvfp = {
 		.v = {
-			.type = RTE_BPF_ARG_PTR_STACK,
+			.type = BPF_ARG_PTR_STACK,
 			.size = MAX_BPF_STACK_SIZE,
 		},
 		.mask = UINT64_MAX,
