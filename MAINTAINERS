@@ -127,7 +127,7 @@ F: buildtools/symlink-drivers-solibs.sh
 
 Public CI
 M: Aaron Conole <aconole@redhat.com>
-M: Michael Santana <msantana@redhat.com>
+M: Michael Santana <maicolgabriel@hotmail.com>
 F: .travis.yml
 F: .ci/
 
