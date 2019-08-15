@@ -1957,7 +1957,9 @@ flow_dv_validate_action_modify_ttl(const uint64_t action_flags,
  * Validate jump action.
  *
  * @param[in] action
- *   Pointer to the modify action.
+ *   Pointer to the jump action.
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
  * @param[in] group
  *   The group of the current flow.
  * @param[out] error
@@ -1968,10 +1970,17 @@ flow_dv_validate_action_modify_ttl(const uint64_t action_flags,
  */
 static int
 flow_dv_validate_action_jump(const struct rte_flow_action *action,
+			     uint64_t action_flags,
 			     uint32_t group,
 			     struct rte_flow_error *error)
 {
-	if (action->type != RTE_FLOW_ACTION_TYPE_JUMP && !action->conf)
+	if (action_flags & (MLX5_FLOW_FATE_ACTIONS |
+			    MLX5_FLOW_FATE_ESWITCH_ACTIONS))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't have 2 fate actions in"
+					  " same flow");
+	if (!action->conf)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL, "action configuration not set");
@@ -3226,6 +3235,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			ret = flow_dv_validate_action_jump(actions,
+							   action_flags,
 							   attr->group, error);
 			if (ret)
 				return ret;
