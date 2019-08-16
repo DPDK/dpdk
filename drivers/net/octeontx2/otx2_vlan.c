@@ -468,9 +468,9 @@ nix_vlan_handle_default_tx_entry(struct rte_eth_dev *eth_dev,
 		pf_func = (dev->pf_func & 0xff) << 8;
 		pf_func |= (dev->pf_func >> 8) & 0xff;
 
-		/* PF Func extracted to KW1[63:48] */
-		entry.kw[1] = (uint64_t)pf_func << 48;
-		entry.kw_mask[1] = (BIT_ULL(16) - 1) << 48;
+		/* PF Func extracted to KW1[47:32] */
+		entry.kw[0] = (uint64_t)pf_func << 32;
+		entry.kw_mask[0] = (BIT_ULL(16) - 1) << 32;
 
 		nix_set_tx_vlan_action(&entry, type, vtag_index);
 		vlan->def_tx_mcam_ent = entry;
