@@ -264,7 +264,7 @@ vfio_open_group_fd(int iommu_group_num)
 	int vfio_group_fd;
 	char filename[PATH_MAX];
 	struct rte_mp_msg mp_req, *mp_rep;
-	struct rte_mp_reply mp_reply;
+	struct rte_mp_reply mp_reply = {0};
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
 
@@ -320,9 +320,9 @@ vfio_open_group_fd(int iommu_group_num)
 			RTE_LOG(ERR, EAL, "  bad VFIO group fd\n");
 			vfio_group_fd = 0;
 		}
-		free(mp_reply.msgs);
 	}
 
+	free(mp_reply.msgs);
 	if (vfio_group_fd < 0)
 		RTE_LOG(ERR, EAL, "  cannot request group fd\n");
 	return vfio_group_fd;
@@ -554,7 +554,7 @@ static int
 vfio_sync_default_container(void)
 {
 	struct rte_mp_msg mp_req, *mp_rep;
-	struct rte_mp_reply mp_reply;
+	struct rte_mp_reply mp_reply = {0};
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
 	int iommu_type_id;
@@ -584,8 +584,8 @@ vfio_sync_default_container(void)
 		p = (struct vfio_mp_param *)mp_rep->param;
 		if (p->result == SOCKET_OK)
 			iommu_type_id = p->iommu_type_id;
-		free(mp_reply.msgs);
 	}
+	free(mp_reply.msgs);
 	if (iommu_type_id < 0) {
 		RTE_LOG(ERR, EAL, "Could not get IOMMU type for default container\n");
 		return -1;
@@ -1021,7 +1021,7 @@ int
 vfio_get_default_container_fd(void)
 {
 	struct rte_mp_msg mp_req, *mp_rep;
-	struct rte_mp_reply mp_reply;
+	struct rte_mp_reply mp_reply = {0};
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
 
@@ -1049,9 +1049,9 @@ vfio_get_default_container_fd(void)
 			free(mp_reply.msgs);
 			return mp_rep->fds[0];
 		}
-		free(mp_reply.msgs);
 	}
 
+	free(mp_reply.msgs);
 	RTE_LOG(ERR, EAL, "  cannot request default container fd\n");
 	return -1;
 }
@@ -1127,7 +1127,7 @@ rte_vfio_get_container_fd(void)
 {
 	int ret, vfio_container_fd;
 	struct rte_mp_msg mp_req, *mp_rep;
-	struct rte_mp_reply mp_reply;
+	struct rte_mp_reply mp_reply = {0};
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
 
@@ -1181,9 +1181,9 @@ rte_vfio_get_container_fd(void)
 			free(mp_reply.msgs);
 			return vfio_container_fd;
 		}
-		free(mp_reply.msgs);
 	}
 
+	free(mp_reply.msgs);
 	RTE_LOG(ERR, EAL, "  cannot request container fd\n");
 	return -1;
 }
