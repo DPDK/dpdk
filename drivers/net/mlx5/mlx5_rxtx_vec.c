@@ -35,6 +35,8 @@
 #include "mlx5_rxtx_vec_sse.h"
 #elif defined RTE_ARCH_ARM64
 #include "mlx5_rxtx_vec_neon.h"
+#elif defined RTE_ARCH_PPC_64
+#include "mlx5_rxtx_vec_altivec.h"
 #else
 #error "This should not be compiled if SIMD instructions are not supported."
 #endif

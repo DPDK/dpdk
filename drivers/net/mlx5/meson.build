@@ -59,7 +59,9 @@ if build
 		'mlx5_vlan.c',
 		'mlx5_devx_cmds.c',
 	)
-	if dpdk_conf.has('RTE_ARCH_X86_64') or dpdk_conf.has('RTE_ARCH_ARM64')
+	if (dpdk_conf.has('RTE_ARCH_X86_64')
+		or dpdk_conf.has('RTE_ARCH_ARM64')
+		or dpdk_conf.has('RTE_ARCH_PPC_64'))
 		sources += files('mlx5_rxtx_vec.c')
 	endif
 	if not pmd_dlopen
