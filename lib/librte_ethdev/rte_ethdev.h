@@ -911,7 +911,7 @@ enum rte_fdir_status_mode {
  * A structure used to configure the Flow Director (FDIR) feature
  * of an Ethernet port.
  *
- * If mode is RTE_FDIR_DISABLE, the pballoc value is ignored.
+ * If mode is RTE_FDIR_MODE_NONE, the pballoc value is ignored.
  */
 struct rte_fdir_conf {
 	enum rte_fdir_mode mode; /**< Flow Director mode. */
