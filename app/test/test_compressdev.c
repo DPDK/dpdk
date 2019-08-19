@@ -729,7 +729,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	unsigned int out_of_space = test_data->out_of_space;
 	unsigned int big_data = test_data->big_data;
 	enum zlib_direction zlib_dir = test_data->zlib_dir;
-	int ret_status = -1;
+	int ret_status = TEST_FAILED;
 	int ret;
 	struct rte_mbuf *uncomp_bufs[num_bufs];
 	struct rte_mbuf *comp_bufs[num_bufs];
@@ -758,7 +758,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	if (capa == NULL) {
 		RTE_LOG(ERR, USER1,
 			"Compress device does not support DEFLATE\n");
-		return -1;
+		return -ENOTSUP;
 	}
 
 	/* Initialize all arrays to NULL */
@@ -1007,8 +1007,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		if (out_of_space && oos_zlib_decompress) {
 			if (ops_processed[i]->status !=
 					RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED) {
-				ret_status = -1;
-
+				ret_status = TEST_FAILED;
 				RTE_LOG(ERR, USER1,
 					"Operation without expected out of "
 					"space status error\n");
@@ -1028,7 +1027,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	}
 
 	if (out_of_space && oos_zlib_decompress) {
-		ret_status = 0;
+		ret_status = TEST_SUCCESS;
 		goto exit;
 	}
 
@@ -1234,8 +1233,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		if (out_of_space && oos_zlib_compress) {
 			if (ops_processed[i]->status !=
 					RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED) {
-				ret_status = -1;
-
+				ret_status = TEST_FAILED;
 				RTE_LOG(ERR, USER1,
 					"Operation without expected out of "
 					"space status error\n");
@@ -1255,7 +1253,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	}
 
 	if (out_of_space && oos_zlib_compress) {
-		ret_status = 0;
+		ret_status = TEST_SUCCESS;
 		goto exit;
 	}
 
@@ -1297,7 +1295,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		contig_buf = NULL;
 	}
 
-	ret_status = 0;
+	ret_status = TEST_SUCCESS;
 
 exit:
 	/* Free resources */
@@ -1367,17 +1365,15 @@ test_compressdev_deflate_stateless_fixed(void)
 
 		/* Compress with compressdev, decompress with Zlib */
 		test_data.zlib_dir = ZLIB_DECOMPRESS;
-		if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-			ret = TEST_FAILED;
+		ret = test_deflate_comp_decomp(&int_data, &test_data);
+		if (ret < 0)
 			goto exit;
-		}
 
 		/* Compress with Zlib, decompress with compressdev */
 		test_data.zlib_dir = ZLIB_COMPRESS;
-		if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-			ret = TEST_FAILED;
+		ret = test_deflate_comp_decomp(&int_data, &test_data);
+		if (ret < 0)
 			goto exit;
-		}
 	}
 
 	ret = TEST_SUCCESS;
@@ -1438,17 +1434,15 @@ test_compressdev_deflate_stateless_dynamic(void)
 
 		/* Compress with compressdev, decompress with Zlib */
 		test_data.zlib_dir = ZLIB_DECOMPRESS;
-		if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-			ret = TEST_FAILED;
+		ret = test_deflate_comp_decomp(&int_data, &test_data);
+		if (ret < 0)
 			goto exit;
-		}
 
 		/* Compress with Zlib, decompress with compressdev */
 		test_data.zlib_dir = ZLIB_COMPRESS;
-		if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-			ret = TEST_FAILED;
+		ret = test_deflate_comp_decomp(&int_data, &test_data);
+		if (ret < 0)
 			goto exit;
-		}
 	}
 
 	ret = TEST_SUCCESS;
@@ -1465,6 +1459,7 @@ test_compressdev_deflate_stateless_multi_op(void)
 	uint16_t num_bufs = RTE_DIM(compress_test_bufs);
 	uint16_t buf_idx[num_bufs];
 	uint16_t i;
+	int ret;
 
 	for (i = 0; i < num_bufs; i++)
 		buf_idx[i] = i;
@@ -1488,13 +1483,15 @@ test_compressdev_deflate_stateless_multi_op(void)
 
 	/* Compress with compressdev, decompress with Zlib */
 	test_data.zlib_dir = ZLIB_DECOMPRESS;
-	if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
-		return TEST_FAILED;
+	ret = test_deflate_comp_decomp(&int_data, &test_data);
+	if (ret < 0)
+		return ret;
 
 	/* Compress with Zlib, decompress with compressdev */
 	test_data.zlib_dir = ZLIB_COMPRESS;
-	if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
-		return TEST_FAILED;
+	ret = test_deflate_comp_decomp(&int_data, &test_data);
+	if (ret < 0)
+		return ret;
 
 	return TEST_SUCCESS;
 }
@@ -1545,10 +1542,9 @@ test_compressdev_deflate_stateless_multi_level(void)
 			compress_xform->compress.level = level;
 			/* Compress with compressdev, decompress with Zlib */
 			test_data.zlib_dir = ZLIB_DECOMPRESS;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-				ret = TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
 				goto exit;
-			}
 		}
 	}
 
@@ -1571,7 +1567,6 @@ test_compressdev_deflate_stateless_multi_xform(void)
 	uint16_t i;
 	unsigned int level = RTE_COMP_LEVEL_MIN;
 	uint16_t buf_idx[num_bufs];
-
 	int ret;
 
 	/* Create multiple xforms with various levels */
@@ -1627,12 +1622,12 @@ test_compressdev_deflate_stateless_multi_xform(void)
 	};
 
 	/* Compress with compressdev, decompress with Zlib */
-	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-		ret = TEST_FAILED;
+	ret = test_deflate_comp_decomp(&int_data, &test_data);
+	if (ret < 0)
 		goto exit;
-	}
 
 	ret = TEST_SUCCESS;
+
 exit:
 	for (i = 0; i < NUM_XFORMS; i++) {
 		rte_free(compress_xforms[i]);
@@ -1647,6 +1642,7 @@ test_compressdev_deflate_stateless_sgl(void)
 {
 	struct comp_testsuite_params *ts_params = &testsuite_params;
 	uint16_t i;
+	int ret;
 	const struct rte_compressdev_capabilities *capab;
 
 	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
@@ -1678,47 +1674,50 @@ test_compressdev_deflate_stateless_sgl(void)
 
 		/* Compress with compressdev, decompress with Zlib */
 		test_data.zlib_dir = ZLIB_DECOMPRESS;
-		if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
-			return TEST_FAILED;
+		ret = test_deflate_comp_decomp(&int_data, &test_data);
+		if (ret < 0)
+			return ret;
 
 		/* Compress with Zlib, decompress with compressdev */
 		test_data.zlib_dir = ZLIB_COMPRESS;
-		if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
-			return TEST_FAILED;
+		ret = test_deflate_comp_decomp(&int_data, &test_data);
+		if (ret < 0)
+			return ret;
 
 		if (capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_LB_OUT) {
 			/* Compress with compressdev, decompress with Zlib */
 			test_data.zlib_dir = ZLIB_DECOMPRESS;
 			test_data.buff_type = SGL_TO_LB;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
-				return TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
+				return ret;
 
 			/* Compress with Zlib, decompress with compressdev */
 			test_data.zlib_dir = ZLIB_COMPRESS;
 			test_data.buff_type = SGL_TO_LB;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
-				return TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
+				return ret;
 		}
 
 		if (capab->comp_feature_flags & RTE_COMP_FF_OOP_LB_IN_SGL_OUT) {
 			/* Compress with compressdev, decompress with Zlib */
 			test_data.zlib_dir = ZLIB_DECOMPRESS;
 			test_data.buff_type = LB_TO_SGL;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
-				return TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
+				return ret;
 
 			/* Compress with Zlib, decompress with compressdev */
 			test_data.zlib_dir = ZLIB_COMPRESS;
 			test_data.buff_type = LB_TO_SGL;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
-				return TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
+				return ret;
 		}
-
-
 	}
 
 	return TEST_SUCCESS;
-
 }
 
 static int
@@ -1744,8 +1743,7 @@ test_compressdev_deflate_stateless_checksum(void)
 			rte_malloc(NULL, sizeof(struct rte_comp_xform), 0);
 	if (compress_xform == NULL) {
 		RTE_LOG(ERR, USER1, "Compress xform could not be created\n");
-		ret = TEST_FAILED;
-		return ret;
+		return TEST_FAILED;
 	}
 
 	memcpy(compress_xform, ts_params->def_comp_xform,
@@ -1756,8 +1754,7 @@ test_compressdev_deflate_stateless_checksum(void)
 	if (decompress_xform == NULL) {
 		RTE_LOG(ERR, USER1, "Decompress xform could not be created\n");
 		rte_free(compress_xform);
-		ret = TEST_FAILED;
-		return ret;
+		return TEST_FAILED;
 	}
 
 	memcpy(decompress_xform, ts_params->def_decomp_xform,
@@ -1794,19 +1791,17 @@ test_compressdev_deflate_stateless_checksum(void)
 			 * drivers decompression checksum
 			 */
 			test_data.zlib_dir = ZLIB_COMPRESS;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-				ret = TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
 				goto exit;
-			}
 
 			/* Generate compression and decompression
 			 * checksum of selected driver
 			 */
 			test_data.zlib_dir = ZLIB_NONE;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-				ret = TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
 				goto exit;
-			}
 		}
 	}
 
@@ -1823,18 +1818,16 @@ test_compressdev_deflate_stateless_checksum(void)
 			 * drivers decompression checksum
 			 */
 			test_data.zlib_dir = ZLIB_COMPRESS;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-				ret = TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
 				goto exit;
-			}
 			/* Generate compression and decompression
 			 * checksum of selected driver
 			 */
 			test_data.zlib_dir = ZLIB_NONE;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-				ret = TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
 				goto exit;
-			}
 		}
 	}
 
@@ -1853,10 +1846,9 @@ test_compressdev_deflate_stateless_checksum(void)
 			 * checksum of selected driver
 			 */
 			test_data.zlib_dir = ZLIB_NONE;
-			if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-				ret = TEST_FAILED;
+			ret = test_deflate_comp_decomp(&int_data, &test_data);
+			if (ret < 0)
 				goto exit;
-			}
 		}
 	}
 
@@ -1912,34 +1904,30 @@ test_compressdev_out_of_space_buffer(void)
 	};
 	/* Compress with compressdev, decompress with Zlib */
 	test_data.zlib_dir = ZLIB_DECOMPRESS;
-	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-		ret = TEST_FAILED;
+	ret = test_deflate_comp_decomp(&int_data, &test_data);
+	if (ret < 0)
 		goto exit;
-	}
 
 	/* Compress with Zlib, decompress with compressdev */
 	test_data.zlib_dir = ZLIB_COMPRESS;
-	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-		ret = TEST_FAILED;
+	ret = test_deflate_comp_decomp(&int_data, &test_data);
+	if (ret < 0)
 		goto exit;
-	}
 
 	if (capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) {
 		/* Compress with compressdev, decompress with Zlib */
 		test_data.zlib_dir = ZLIB_DECOMPRESS;
 		test_data.buff_type = SGL_BOTH;
-		if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-			ret = TEST_FAILED;
+		ret = test_deflate_comp_decomp(&int_data, &test_data);
+		if (ret < 0)
 			goto exit;
-		}
 
 		/* Compress with Zlib, decompress with compressdev */
 		test_data.zlib_dir = ZLIB_COMPRESS;
 		test_data.buff_type = SGL_BOTH;
-		if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-			ret = TEST_FAILED;
+		ret = test_deflate_comp_decomp(&int_data, &test_data);
+		if (ret < 0)
 			goto exit;
-		}
 	}
 
 	ret  = TEST_SUCCESS;
@@ -1954,7 +1942,7 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 {
 	struct comp_testsuite_params *ts_params = &testsuite_params;
 	uint16_t i = 0;
-	int ret = TEST_SUCCESS;
+	int ret;
 	int j;
 	const struct rte_compressdev_capabilities *capab;
 	char *test_buffer = NULL;
@@ -2003,19 +1991,19 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 
 	/* Compress with compressdev, decompress with Zlib */
 	test_data.zlib_dir = ZLIB_DECOMPRESS;
-	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-		ret = TEST_FAILED;
-		goto end;
-	}
+	ret = test_deflate_comp_decomp(&int_data, &test_data);
+	if (ret < 0)
+		goto exit;
 
 	/* Compress with Zlib, decompress with compressdev */
 	test_data.zlib_dir = ZLIB_COMPRESS;
-	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
-		ret = TEST_FAILED;
-		goto end;
-	}
+	ret = test_deflate_comp_decomp(&int_data, &test_data);
+	if (ret < 0)
+		goto exit;
 
-end:
+	ret = TEST_SUCCESS;
+
+exit:
 	ts_params->def_comp_xform->compress.deflate.huffman =
 						RTE_COMP_HUFFMAN_DEFAULT;
 	rte_free(test_buffer);
