@@ -15,7 +15,8 @@ otx2_sso_rx_adapter_caps_get(const struct rte_eventdev *event_dev,
 	if (rc)
 		*caps = RTE_EVENT_ETH_RX_ADAPTER_SW_CAP;
 	else
-		*caps = RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT;
+		*caps = RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT |
+			RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ;
 
 	return 0;
 }
