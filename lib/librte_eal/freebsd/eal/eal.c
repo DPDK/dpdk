@@ -340,6 +340,7 @@ rte_eal_config_reattach(void)
 		/* errno is stale, don't use */
 		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config at [%p], got [%p]\n",
 			  rte_mem_cfg_addr, mem_config);
+		munmap(mem_config, sizeof(struct rte_mem_config));
 		return -1;
 	}
 

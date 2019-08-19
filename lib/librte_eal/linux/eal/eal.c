@@ -437,6 +437,7 @@ rte_eal_config_reattach(void)
 			RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config at [%p], got [%p]"
 				" - please use '--base-virtaddr' option\n",
 				rte_mem_cfg_addr, mem_config);
+			munmap(mem_config, sizeof(struct rte_mem_config));
 			return -1;
 		}
 		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config! error %i (%s)\n",
