@@ -785,22 +785,33 @@ rte_vhost_avail_entries(int vid, uint16_t queue_id)
 {
 	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
+	uint16_t ret = 0;
 
 	dev = get_device(vid);
 	if (!dev)
 		return 0;
 
 	vq = dev->virtqueue[queue_id];
-	if (!vq->enabled)
-		return 0;
 
-	return *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx;
+	rte_spinlock_lock(&vq->access_lock);
+
+	if (unlikely(!vq->enabled || vq->avail == NULL))
+		goto out;
+
+	ret = *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx;
+
+out:
+	rte_spinlock_unlock(&vq->access_lock);
+	return ret;
 }
 
-static inline void
+static inline int
 vhost_enable_notify_split(struct virtio_net *dev,
 		struct vhost_virtqueue *vq, int enable)
 {
+	if (vq->used == NULL)
+		return -1;
+
 	if (!(dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))) {
 		if (enable)
 			vq->used->flags &= ~VRING_USED_F_NO_NOTIFY;
@@ -810,17 +821,21 @@ vhost_enable_notify_split(struct virtio_net *dev,
 		if (enable)
 			vhost_avail_event(vq) = vq->last_avail_idx;
 	}
+	return 0;
 }
 
-static inline void
+static inline int
 vhost_enable_notify_packed(struct virtio_net *dev,
 		struct vhost_virtqueue *vq, int enable)
 {
 	uint16_t flags;
 
+	if (vq->device_event == NULL)
+		return -1;
+
 	if (!enable) {
 		vq->device_event->flags = VRING_EVENT_F_DISABLE;
-		return;
+		return 0;
 	}
 
 	flags = VRING_EVENT_F_ENABLE;
@@ -833,6 +848,7 @@ vhost_enable_notify_packed(struct virtio_net *dev,
 	rte_smp_wmb();
 
 	vq->device_event->flags = flags;
+	return 0;
 }
 
 int
@@ -840,18 +856,23 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 {
 	struct virtio_net *dev = get_device(vid);
 	struct vhost_virtqueue *vq;
+	int ret;
 
 	if (!dev)
 		return -1;
 
 	vq = dev->virtqueue[queue_id];
 
-	if (vq_is_packed(dev))
-		vhost_enable_notify_packed(dev, vq, enable);
-	else
-		vhost_enable_notify_split(dev, vq, enable);
+	rte_spinlock_lock(&vq->access_lock);
 
-	return 0;
+	if (vq_is_packed(dev))
+		ret = vhost_enable_notify_packed(dev, vq, enable);
+	else
+		ret = vhost_enable_notify_split(dev, vq, enable);
+
+	rte_spinlock_unlock(&vq->access_lock);
+
+	return ret;
 }
 
 void
@@ -890,6 +911,7 @@ rte_vhost_rx_queue_count(int vid, uint16_t qid)
 {
 	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
+	uint32_t ret = 0;
 
 	dev = get_device(vid);
 	if (dev == NULL)
@@ -905,10 +927,16 @@ rte_vhost_rx_queue_count(int vid, uint16_t qid)
 	if (vq == NULL)
 		return 0;
 
-	if (unlikely(vq->enabled == 0 || vq->avail == NULL))
-		return 0;
+	rte_spinlock_lock(&vq->access_lock);
 
-	return *((volatile uint16_t *)&vq->avail->idx) - vq->last_avail_idx;
+	if (unlikely(vq->enabled == 0 || vq->avail == NULL))
+		goto out;
+
+	ret = *((volatile uint16_t *)&vq->avail->idx) - vq->last_avail_idx;
+
+out:
+	rte_spinlock_unlock(&vq->access_lock);
+	return ret;
 }
 
 int rte_vhost_get_vdpa_device_id(int vid)
