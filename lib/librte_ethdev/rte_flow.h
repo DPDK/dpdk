@@ -935,7 +935,7 @@ struct rte_flow_item_esp {
 #ifndef __cplusplus
 static const struct rte_flow_item_esp rte_flow_item_esp_mask = {
 	.hdr = {
-		.spi = 0xffffffff,
+		.spi = RTE_BE32(0xffffffff),
 	},
 };
 #endif
