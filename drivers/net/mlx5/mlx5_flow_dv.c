@@ -949,6 +949,8 @@ flow_dv_validate_action_raw_encap(uint64_t action_flags,
 				  const struct rte_flow_attr *attr,
 				  struct rte_flow_error *error)
 {
+	const struct rte_flow_action_raw_encap *raw_encap =
+		(const struct rte_flow_action_raw_encap *)action->conf;
 	if (!(action->conf))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -970,6 +972,10 @@ flow_dv_validate_action_raw_encap(uint64_t action_flags,
 					  NULL,
 					  "encap action not supported for "
 					  "ingress");
+	if (!raw_encap->size || !raw_encap->data)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "raw encap data cannot be empty");
 	return 0;
 }
 
