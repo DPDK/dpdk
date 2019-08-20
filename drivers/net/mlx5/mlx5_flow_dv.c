@@ -2804,7 +2804,7 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 		if (!(priv->representor || priv->master))
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				 NULL, "E-Switch configurationd can only be"
+				 NULL, "E-Switch configuration can only be"
 				 " done by a master or a representor device");
 		if (attributes->egress)
 			return rte_flow_error_set
