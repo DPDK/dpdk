@@ -3446,7 +3446,7 @@ mlx5_tx_burst_mseg(struct mlx5_txq_data *restrict txq,
 			continue;
 		/* Here ends the series of multi-segment packets. */
 		if (MLX5_TXOFF_CONFIG(TSO) &&
-		    unlikely(!(loc->mbuf->ol_flags & PKT_TX_TCP_SEG)))
+		    unlikely(loc->mbuf->ol_flags & PKT_TX_TCP_SEG))
 			return MLX5_TXCMP_CODE_TSO;
 		return MLX5_TXCMP_CODE_SINGLE;
 	}
@@ -3584,7 +3584,7 @@ mlx5_tx_burst_tso(struct mlx5_txq_data *restrict txq,
 		if (MLX5_TXOFF_CONFIG(MULTI) &&
 		    unlikely(NB_SEGS(loc->mbuf) > 1))
 			return MLX5_TXCMP_CODE_MULTI;
-		if (unlikely(!(loc->mbuf->ol_flags & PKT_TX_TCP_SEG)))
+		if (likely(!(loc->mbuf->ol_flags & PKT_TX_TCP_SEG)))
 			return MLX5_TXCMP_CODE_SINGLE;
 		/* Continue with the next TSO packet. */
 	}
