@@ -715,8 +715,8 @@ F: doc/guides/nics/mlx4.rst
 F: doc/guides/nics/features/mlx4.ini
 
 Mellanox mlx5
+M: Matan Azrad <matan@mellanox.com>
 M: Shahaf Shuler <shahafs@mellanox.com>
-M: Yongseok Koh <yskoh@mellanox.com>
 M: Viacheslav Ovsiienko <viacheslavo@mellanox.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
 F: drivers/net/mlx5/
