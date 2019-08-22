@@ -972,6 +972,7 @@ rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 	struct pmd_internals *internals;
+	struct tpacket_req *req;
 	unsigned q;
 
 	PMD_LOG(INFO, "Closing AF_PACKET ethdev on numa socket %u",
@@ -992,7 +993,10 @@ rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 		return rte_eth_dev_release_port(eth_dev);
 
 	internals = eth_dev->data->dev_private;
+	req = &internals->req;
 	for (q = 0; q < internals->nb_queues; q++) {
+		munmap(internals->rx_queue[q].map,
+			2 * req->tp_block_size * req->tp_block_nr);
 		rte_free(internals->rx_queue[q].rd);
 		rte_free(internals->tx_queue[q].rd);
 	}
