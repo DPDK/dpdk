@@ -353,6 +353,7 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 		RTE_LOG(ERR, IPSEC, "Unsupported packet type 0x%x\n",
 			rte_be_to_cpu_16(eth->ether_type));
 		rte_pktmbuf_free(pkt);
+		return;
 	}
 
 	/* Check if the packet has been processed inline. For inline protocol
