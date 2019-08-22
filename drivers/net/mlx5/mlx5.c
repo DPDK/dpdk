@@ -745,6 +745,31 @@ mlx5_free_verbs_buf(void *ptr, void *data __rte_unused)
 }
 
 /**
+ * DPDK callback to add udp tunnel port
+ *
+ * @param[in] dev
+ *   A pointer to eth_dev
+ * @param[in] udp_tunnel
+ *   A pointer to udp tunnel
+ *
+ * @return
+ *   0 on valid udp ports and tunnels, -ENOTSUP otherwise.
+ */
+int
+mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev __rte_unused,
+			 struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	assert(udp_tunnel != NULL);
+	if (udp_tunnel->prot_type == RTE_TUNNEL_TYPE_VXLAN &&
+	    udp_tunnel->udp_port == 4789)
+		return 0;
+	if (udp_tunnel->prot_type == RTE_TUNNEL_TYPE_VXLAN_GPE &&
+	    udp_tunnel->udp_port == 4790)
+		return 0;
+	return -ENOTSUP;
+}
+
+/**
  * Initialize process private data structure.
  *
  * @param dev
@@ -962,6 +987,7 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.rx_queue_intr_enable = mlx5_rx_intr_enable,
 	.rx_queue_intr_disable = mlx5_rx_intr_disable,
 	.is_removed = mlx5_is_removed,
+	.udp_tunnel_port_add  = mlx5_udp_tunnel_port_add,
 };
 
 /* Available operations from secondary process. */

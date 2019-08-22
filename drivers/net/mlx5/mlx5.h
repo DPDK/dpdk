@@ -674,6 +674,8 @@ int64_t mlx5_get_dbr(struct rte_eth_dev *dev,
 		     struct mlx5_devx_dbr_page **dbr_page);
 int32_t mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id,
 			 uint64_t offset);
+int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
+			      struct rte_eth_udp_tunnel *udp_tunnel);
 
 /* mlx5_ethdev.c */
 
