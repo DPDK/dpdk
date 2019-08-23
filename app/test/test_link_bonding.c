@@ -1202,6 +1202,11 @@ lsc_timeout(int wait_us)
 	ts.tv_sec = tp.tv_sec;
 	ts.tv_nsec = tp.tv_usec * 1000;
 	ts.tv_nsec += wait_us * 1000;
+	/* Normalize tv_nsec to [0,999999999L] */
+	while (ts.tv_nsec > 1000000000L) {
+		ts.tv_nsec -= 1000000000L;
+		ts.tv_sec += 1;
+	}
 
 	pthread_mutex_lock(&mutex);
 	if (test_lsc_interrupt_count < 1)
