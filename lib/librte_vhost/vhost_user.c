@@ -386,6 +386,8 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 		vq->nr_zmbuf = 0;
 		vq->last_zmbuf_idx = 0;
 		vq->zmbuf_size = vq->size;
+		if (vq->zmbufs)
+			rte_free(vq->zmbufs);
 		vq->zmbufs = rte_zmalloc(NULL, vq->zmbuf_size *
 					 sizeof(struct zcopy_mbuf), 0);
 		if (vq->zmbufs == NULL) {
@@ -398,6 +400,8 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 	}
 
 	if (vq_is_packed(dev)) {
+		if (vq->shadow_used_packed)
+			rte_free(vq->shadow_used_packed);
 		vq->shadow_used_packed = rte_malloc(NULL,
 				vq->size *
 				sizeof(struct vring_used_elem_packed),
@@ -409,6 +413,8 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 		}
 
 	} else {
+		if (vq->shadow_used_split)
+			rte_free(vq->shadow_used_split);
 		vq->shadow_used_split = rte_malloc(NULL,
 				vq->size * sizeof(struct vring_used_elem),
 				RTE_CACHE_LINE_SIZE);
@@ -419,6 +425,8 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 		}
 	}
 
+	if (vq->batch_copy_elems)
+		rte_free(vq->batch_copy_elems);
 	vq->batch_copy_elems = rte_malloc(NULL,
 				vq->size * sizeof(struct batch_copy_elem),
 				RTE_CACHE_LINE_SIZE);
