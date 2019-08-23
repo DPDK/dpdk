@@ -1168,7 +1168,7 @@ test_adding_slave_after_bonded_device_started(void)
 }
 
 #define TEST_STATUS_INTERRUPT_SLAVE_COUNT	4
-#define TEST_LSC_WAIT_TIMEOUT_MS	500
+#define TEST_LSC_WAIT_TIMEOUT_US	500000
 
 int test_lsc_interrupt_count;
 
@@ -1261,7 +1261,7 @@ test_status_interrupt(void)
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[3], 0);
 
-	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_MS) == 0,
+	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_US) == 0,
 			"timed out waiting for interrupt");
 
 	TEST_ASSERT(test_lsc_interrupt_count > 0,
@@ -1280,7 +1280,7 @@ test_status_interrupt(void)
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[0], 1);
 
-	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_MS) == 0,
+	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_US) == 0,
 			"timed out waiting for interrupt");
 
 	/* test that we have received another lsc interrupt */
@@ -1294,7 +1294,7 @@ test_status_interrupt(void)
 	virtual_ethdev_simulate_link_status_interrupt(
 			test_params->slave_port_ids[0], 1);
 
-	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_MS) != 0,
+	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_US) != 0,
 			"received unexpected interrupt");
 
 	TEST_ASSERT_EQUAL(test_lsc_interrupt_count, 0,
