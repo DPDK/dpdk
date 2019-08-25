@@ -573,6 +573,12 @@ ipsec_dequeue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 					rte_pktmbuf_free(pkt);
 					continue;
 				}
+			} else if (sa->type ==
+				RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL) {
+				if (cops[j]->status) {
+					rte_pktmbuf_free(pkt);
+					continue;
+				}
 			}
 			pkts[nb_pkts++] = pkt;
 		}
