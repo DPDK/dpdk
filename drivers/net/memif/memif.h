@@ -169,9 +169,9 @@ typedef struct {
 	uint32_t cookie;			/**< MEMIF_COOKIE */
 	uint16_t flags;				/**< flags */
 #define MEMIF_RING_FLAG_MASK_INT 1		/**< disable interrupt mode */
-	volatile uint16_t head;			/**< pointer to ring buffer head */
+	uint16_t head;			/**< pointer to ring buffer head */
 	MEMIF_CACHELINE_ALIGN_MARK(cacheline1);
-	volatile uint16_t tail;			/**< pointer to ring buffer tail */
+	uint16_t tail;			/**< pointer to ring buffer tail */
 	MEMIF_CACHELINE_ALIGN_MARK(cacheline2);
 	memif_desc_t desc[0];			/**< buffer descriptors */
 } memif_ring_t;
