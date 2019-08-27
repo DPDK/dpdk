@@ -515,7 +515,6 @@ struct mlx5_flow_tbl_resource {
 
 #define MLX5_MAX_TABLES 0xffff
 #define MLX5_MAX_TABLES_FDB 0xffff
-#define MLX5_GROUP_FACTOR 1
 
 #define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
 #define MLX5_DBR_SIZE 8

@@ -4476,7 +4476,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot allocate matcher memory");
-	tbl = flow_dv_tbl_resource_get(dev, matcher->group * MLX5_GROUP_FACTOR,
+	tbl = flow_dv_tbl_resource_get(dev, matcher->group,
 				       matcher->egress, matcher->transfer,
 				       error);
 	if (!tbl) {
@@ -4866,8 +4866,7 @@ cnt_err:
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			jump_data = action->conf;
-			tbl = flow_dv_tbl_resource_get(dev, jump_data->group *
-						       MLX5_GROUP_FACTOR,
+			tbl = flow_dv_tbl_resource_get(dev, jump_data->group,
 						       attr->egress,
 						       attr->transfer, error);
 			if (!tbl)
