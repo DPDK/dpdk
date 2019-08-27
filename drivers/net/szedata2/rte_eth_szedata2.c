@@ -1157,11 +1157,14 @@ eth_tx_queue_release(void *q)
 static void
 eth_dev_close(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *internals = dev->data->dev_private;
 	uint16_t i;
 	uint16_t nb_rx = dev->data->nb_rx_queues;
 	uint16_t nb_tx = dev->data->nb_tx_queues;
 
 	eth_dev_stop(dev);
+
+	free(internals->sze_dev_path);
 
 	for (i = 0; i < nb_rx; i++) {
 		eth_rx_queue_release(dev->data->rx_queues[i]);
@@ -1173,6 +1176,9 @@ eth_dev_close(struct rte_eth_dev *dev)
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;
+
+	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
 }
 
 static int
@@ -1475,6 +1481,9 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev, struct port_info *pi)
 	PMD_INIT_LOG(INFO, "Initializing eth_dev %s (driver %s)", data->name,
 			RTE_STR(RTE_SZEDATA2_DRIVER_NAME));
 
+	/* Let rte_eth_dev_close() release the port resources */
+	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	/* Fill internal private structure. */
 	internals->dev = dev;
 	/* Get index of szedata2 device file and create path to device file */
@@ -1537,12 +1546,9 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev, struct port_info *pi)
 static int
 rte_szedata2_eth_dev_uninit(struct rte_eth_dev *dev)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
-	free(internals->sze_dev_path);
+	eth_dev_close(dev);
 
 	PMD_DRV_LOG(INFO, "%s device %s successfully uninitialized",
 			RTE_STR(RTE_SZEDATA2_DRIVER_NAME), dev->data->name);
