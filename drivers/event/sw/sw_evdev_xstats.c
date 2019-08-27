@@ -491,7 +491,7 @@ sw_xstats_update(struct sw_evdev *sw, enum rte_event_dev_xstats_mode mode,
 			values[xidx] = val;
 
 		if (xs->reset_allowed && reset)
-			xs->reset_value = val;
+			xs->reset_value += val;
 
 		xidx++;
 	}
@@ -544,8 +544,7 @@ sw_xstats_reset_range(struct sw_evdev *sw, uint32_t start, uint32_t num)
 		if (!xs->reset_allowed)
 			continue;
 
-		uint64_t val = xs->fn(sw, xs->obj_idx, xs->stat, xs->extra_arg)
-					- xs->reset_value;
+		uint64_t val = xs->fn(sw, xs->obj_idx, xs->stat, xs->extra_arg);
 		xs->reset_value = val;
 	}
 }
