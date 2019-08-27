@@ -2099,91 +2099,14 @@ Set the maximum packet length::
 
 This is equivalent to the ``--max-pkt-len`` command-line option.
 
-port config - CRC Strip
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Set hardware CRC stripping on or off for all ports::
-
-   testpmd> port config all crc-strip (on|off)
-
-CRC stripping is on by default.
-
-The ``off`` option is equivalent to the ``--disable-crc-strip`` command-line option.
-
-port config - scatter
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Set RX scatter mode on or off for all ports::
-
-   testpmd> port config all scatter (on|off)
-
-RX scatter mode is off by default.
-
-The ``on`` option is equivalent to the ``--enable-scatter`` command-line option.
-
-port config - RX Checksum
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set hardware RX checksum offload to on or off for all ports::
-
-   testpmd> port config all rx-cksum (on|off)
-
-Checksum offload is off by default.
-
-The ``on`` option is equivalent to the ``--enable-rx-cksum`` command-line option.
-
-port config - VLAN
-~~~~~~~~~~~~~~~~~~
-
-Set hardware VLAN on or off for all ports::
-
-   testpmd> port config all hw-vlan (on|off)
-
-Hardware VLAN is off by default.
-
-The ``on`` option is equivalent to the ``--enable-hw-vlan`` command-line option.
-
-port config - VLAN filter
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set hardware VLAN filter on or off for all ports::
-
-   testpmd> port config all hw-vlan-filter (on|off)
-
-Hardware VLAN filter is off by default.
-
-The ``on`` option is equivalent to the ``--enable-hw-vlan-filter`` command-line option.
-
-port config - VLAN strip
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set hardware VLAN strip on or off for all ports::
-
-   testpmd> port config all hw-vlan-strip (on|off)
-
-Hardware VLAN strip is off by default.
-
-The ``on`` option is equivalent to the ``--enable-hw-vlan-strip`` command-line option.
-
-port config - VLAN extend
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set hardware VLAN extend on or off for all ports::
-
-   testpmd> port config all hw-vlan-extend (on|off)
-
-Hardware VLAN extend is off by default.
-
-The ``on`` option is equivalent to the ``--enable-hw-vlan-extend`` command-line option.
-
 port config - Drop Packets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Set packet drop for packets with no descriptors on or off for all ports::
+Enable or disable packet drop on all RX queues of all ports when no receive buffers available::
 
    testpmd> port config all drop-en (on|off)
 
-Packet dropping for packets with no descriptors is off by default.
+Packet dropping when no receive buffers available is off by default.
 
 The ``on`` option is equivalent to the ``--enable-drop-en`` command-line option.
 

@@ -778,11 +778,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config all max-pkt-len (value)\n"
 			"    Set the max packet length.\n\n"
 
-			"port config all (crc-strip|scatter|rx-cksum|rx-timestamp|hw-vlan|hw-vlan-filter|"
-			"hw-vlan-strip|hw-vlan-extend|drop-en)"
-			" (on|off)\n"
-			"    Set crc-strip/scatter/rx-checksum/hardware-vlan/drop_en"
-			" for ports.\n\n"
+			"port config all drop-en (on|off)\n"
+			"    Enable or disable packet drop on all RX queues of all ports when no "
+			"receive buffers available.\n\n"
 
 			"port config all rss (all|default|ip|tcp|udp|sctp|"
 			"ether|port|vxlan|geneve|nvgre|vxlan-gpe|none|<flowtype_id>)\n"
@@ -2109,112 +2107,24 @@ cmd_config_rx_mode_flag_parsed(void *parsed_result,
 				__attribute__((unused)) void *data)
 {
 	struct cmd_config_rx_mode_flag *res = parsed_result;
-	portid_t pid;
-	int k;
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
 		return;
 	}
 
-	RTE_ETH_FOREACH_DEV(pid) {
-		struct rte_port *port;
-		uint64_t rx_offloads;
-
-		port = &ports[pid];
-		rx_offloads = port->dev_conf.rxmode.offloads;
-		if (!strcmp(res->name, "crc-strip")) {
-			if (!strcmp(res->value, "on")) {
-				rx_offloads &= ~DEV_RX_OFFLOAD_KEEP_CRC;
-			} else if (!strcmp(res->value, "off")) {
-				rx_offloads |= DEV_RX_OFFLOAD_KEEP_CRC;
-			} else {
-				printf("Unknown parameter\n");
-				return;
-			}
-		} else if (!strcmp(res->name, "scatter")) {
-			if (!strcmp(res->value, "on")) {
-				rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
-			} else if (!strcmp(res->value, "off")) {
-				rx_offloads &= ~DEV_RX_OFFLOAD_SCATTER;
-			} else {
-				printf("Unknown parameter\n");
-				return;
-			}
-		} else if (!strcmp(res->name, "rx-cksum")) {
-			if (!strcmp(res->value, "on"))
-				rx_offloads |= DEV_RX_OFFLOAD_CHECKSUM;
-			else if (!strcmp(res->value, "off"))
-				rx_offloads &= ~DEV_RX_OFFLOAD_CHECKSUM;
-			else {
-				printf("Unknown parameter\n");
-				return;
-			}
-		} else if (!strcmp(res->name, "rx-timestamp")) {
-			if (!strcmp(res->value, "on"))
-				rx_offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
-			else if (!strcmp(res->value, "off"))
-				rx_offloads &= ~DEV_RX_OFFLOAD_TIMESTAMP;
-			else {
-				printf("Unknown parameter\n");
-				return;
-			}
-		} else if (!strcmp(res->name, "hw-vlan")) {
-			if (!strcmp(res->value, "on")) {
-				rx_offloads |= (DEV_RX_OFFLOAD_VLAN_FILTER |
-						DEV_RX_OFFLOAD_VLAN_STRIP);
-			} else if (!strcmp(res->value, "off")) {
-				rx_offloads &= ~(DEV_RX_OFFLOAD_VLAN_FILTER |
-						DEV_RX_OFFLOAD_VLAN_STRIP);
-			} else {
-				printf("Unknown parameter\n");
-				return;
-			}
-		} else if (!strcmp(res->name, "hw-vlan-filter")) {
-			if (!strcmp(res->value, "on"))
-				rx_offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
-			else if (!strcmp(res->value, "off"))
-				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_FILTER;
-			else {
-				printf("Unknown parameter\n");
-				return;
-			}
-		} else if (!strcmp(res->name, "hw-vlan-strip")) {
-			if (!strcmp(res->value, "on"))
-				rx_offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
-			else if (!strcmp(res->value, "off"))
-				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
-			else {
-				printf("Unknown parameter\n");
-				return;
-			}
-		} else if (!strcmp(res->name, "hw-vlan-extend")) {
-			if (!strcmp(res->value, "on"))
-				rx_offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
-			else if (!strcmp(res->value, "off"))
-				rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_EXTEND;
-			else {
-				printf("Unknown parameter\n");
-				return;
-			}
-		} else if (!strcmp(res->name, "drop-en")) {
-			if (!strcmp(res->value, "on"))
-				rx_drop_en = 1;
-			else if (!strcmp(res->value, "off"))
-				rx_drop_en = 0;
-			else {
-				printf("Unknown parameter\n");
-				return;
-			}
-		} else {
+	if (!strcmp(res->name, "drop-en")) {
+		if (!strcmp(res->value, "on"))
+			rx_drop_en = 1;
+		else if (!strcmp(res->value, "off"))
+			rx_drop_en = 0;
+		else {
 			printf("Unknown parameter\n");
 			return;
 		}
-		port->dev_conf.rxmode.offloads = rx_offloads;
-		/* Apply Rx offloads configuration */
-		for (k = 0; k < port->dev_info.max_rx_queues; k++)
-			port->rx_conf[k].offloads =
-				port->dev_conf.rxmode.offloads;
+	} else {
+		printf("Unknown parameter\n");
+		return;
 	}
 
 	init_port_config();
@@ -2231,8 +2141,7 @@ cmdline_parse_token_string_t cmd_config_rx_mode_flag_all =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, all, "all");
 cmdline_parse_token_string_t cmd_config_rx_mode_flag_name =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, name,
-					"crc-strip#scatter#rx-cksum#rx-timestamp#hw-vlan#"
-					"hw-vlan-filter#hw-vlan-strip#hw-vlan-extend");
+					"drop-en");
 cmdline_parse_token_string_t cmd_config_rx_mode_flag_value =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, value,
 							"on#off");
@@ -2240,8 +2149,7 @@ cmdline_parse_token_string_t cmd_config_rx_mode_flag_value =
 cmdline_parse_inst_t cmd_config_rx_mode_flag = {
 	.f = cmd_config_rx_mode_flag_parsed,
 	.data = NULL,
-	.help_str = "port config all crc-strip|scatter|rx-cksum|rx-timestamp|hw-vlan|"
-		"hw-vlan-filter|hw-vlan-strip|hw-vlan-extend on|off",
+	.help_str = "port config all drop-en on|off",
 	.tokens = {
 		(void *)&cmd_config_rx_mode_flag_port,
 		(void *)&cmd_config_rx_mode_flag_keyword,
