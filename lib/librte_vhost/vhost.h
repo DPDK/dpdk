@@ -543,13 +543,19 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 		if ((vhost_need_event(vhost_used_event(vq), new, old) &&
 					(vq->callfd >= 0)) ||
-				unlikely(!signalled_used_valid))
+				unlikely(!signalled_used_valid)) {
 			eventfd_write(vq->callfd, (eventfd_t) 1);
+			if (dev->notify_ops->guest_notified)
+				dev->notify_ops->guest_notified(dev->vid);
+		}
 	} else {
 		/* Kick the guest if necessary. */
 		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
-				&& (vq->callfd >= 0))
+				&& (vq->callfd >= 0)) {
 			eventfd_write(vq->callfd, (eventfd_t)1);
+			if (dev->notify_ops->guest_notified)
+				dev->notify_ops->guest_notified(dev->vid);
+		}
 	}
 }
 
@@ -600,8 +606,11 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (vhost_need_event(off, new, old))
 		kick = true;
 kick:
-	if (kick)
+	if (kick) {
 		eventfd_write(vq->callfd, (eventfd_t)1);
+		if (dev->notify_ops->guest_notified)
+			dev->notify_ops->guest_notified(dev->vid);
+	}
 }
 
 static __rte_always_inline void

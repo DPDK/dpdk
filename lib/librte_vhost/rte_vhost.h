@@ -172,7 +172,15 @@ struct vhost_device_ops {
 	int (*new_connection)(int vid);
 	void (*destroy_connection)(int vid);
 
-	void *reserved[2]; /**< Reserved for future extension */
+	/**
+	 * This callback gets called each time a guest gets notified
+	 * about waiting packets. This is the interrupt handling trough
+	 * the eventfd_write(callfd), which can be used for counting these
+	 * "slow" syscalls.
+	 */
+	void (*guest_notified)(int vid);
+
+	void *reserved[1]; /**< Reserved for future extension */
 };
 
 /**
