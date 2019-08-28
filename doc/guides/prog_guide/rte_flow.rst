@@ -1214,6 +1214,25 @@ Matches a GTP PDU extension header with type 0x85.
 - ``qfi``: QoS flow identifier.
 - Default ``mask`` matches QFI only.
 
+Item: ``PPPOES``, ``PPPOED``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches a PPPoE header.
+
+- ``version_type``: version (4b), type (4b).
+- ``code``: message type.
+- ``session_id``: session identifier.
+- ``length``: payload length.
+
+Item: ``PPPOE_PROTO_ID``
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches a PPPoE session protocol identifier.
+
+- ``proto_id``: PPP protocol identifier.
+- Default ``mask`` matches proto_id only.
+
+
 .. _table_rte_flow_item_meta:
 
 .. table:: META

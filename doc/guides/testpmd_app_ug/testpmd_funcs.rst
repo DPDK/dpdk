@@ -3892,6 +3892,14 @@ This section lists supported pattern items and their attributes, if any.
   - ``pdu_type {unsigned}``: PDU type.
   - ``qfi {unsigned}``: QoS flow identifier.
 
+- ``pppoes``, ``pppoed``: match PPPoE header.
+
+  - ``session_id {unsigned}``: session identifier.
+
+- ``pppoe_proto_id``: match PPPoE session protocol identifier.
+
+  - ``proto_id {unsigned}``: PPP protocol identifier.
+
 Actions list
 ^^^^^^^^^^^^
 

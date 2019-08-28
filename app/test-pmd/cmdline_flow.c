@@ -199,6 +199,10 @@ enum index {
 	ITEM_GTP_PSC,
 	ITEM_GTP_PSC_QFI,
 	ITEM_GTP_PSC_PDU_T,
+	ITEM_PPPOES,
+	ITEM_PPPOED,
+	ITEM_PPPOE_SEID,
+	ITEM_PPPOE_PROTO_ID,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -667,6 +671,9 @@ static const enum index next_item[] = {
 	ITEM_META,
 	ITEM_GRE_KEY,
 	ITEM_GTP_PSC,
+	ITEM_PPPOES,
+	ITEM_PPPOED,
+	ITEM_PPPOE_PROTO_ID,
 	END_SET,
 	ZERO,
 };
@@ -909,6 +916,24 @@ static const enum index item_meta[] = {
 static const enum index item_gtp_psc[] = {
 	ITEM_GTP_PSC_QFI,
 	ITEM_GTP_PSC_PDU_T,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_pppoed[] = {
+	ITEM_PPPOE_SEID,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_pppoes[] = {
+	ITEM_PPPOE_SEID,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_pppoe_proto_id[] = {
+	ITEM_PPPOE_PROTO_ID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2364,7 +2389,35 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gtp_psc,
 					pdu_type)),
 	},
-
+	[ITEM_PPPOES] = {
+		.name = "pppoes",
+		.help = "match PPPoE session header",
+		.priv = PRIV_ITEM(PPPOES, sizeof(struct rte_flow_item_pppoe)),
+		.next = NEXT(item_pppoes),
+		.call = parse_vc,
+	},
+	[ITEM_PPPOED] = {
+		.name = "pppoed",
+		.help = "match PPPoE discovery header",
+		.priv = PRIV_ITEM(PPPOED, sizeof(struct rte_flow_item_pppoe)),
+		.next = NEXT(item_pppoed),
+		.call = parse_vc,
+	},
+	[ITEM_PPPOE_SEID] = {
+		.name = "seid",
+		.help = "session identifier",
+		.next = NEXT(item_pppoes, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_pppoe,
+					session_id)),
+	},
+	[ITEM_PPPOE_PROTO_ID] = {
+		.name = "proto_id",
+		.help = "match PPPoE session protocol identifier",
+		.priv = PRIV_ITEM(PPPOE_PROTO_ID,
+				sizeof(struct rte_flow_item_pppoe_proto_id)),
+		.next = NEXT(item_pppoe_proto_id),
+		.call = parse_vc,
+	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
 		.name = "actions",
@@ -5796,6 +5849,8 @@ flow_item_default_mask(const struct rte_flow_item *item)
 	case RTE_FLOW_ITEM_TYPE_GTP_PSC:
 		mask = &rte_flow_item_gtp_psc_mask;
 		break;
+	case RTE_FLOW_ITEM_TYPE_PPPOE_PROTO_ID:
+		mask = &rte_flow_item_pppoe_proto_id_mask;
 	default:
 		break;
 	}

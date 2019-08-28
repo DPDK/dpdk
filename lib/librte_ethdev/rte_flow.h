@@ -443,6 +443,33 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_gtp_psc.
 	 */
 	RTE_FLOW_ITEM_TYPE_GTP_PSC,
+
+	/**
+	 * Matches a PPPoE header.
+	 *
+	 * Configure flow for PPPoE session packets.
+	 *
+	 * See struct rte_flow_item_pppoe.
+	 */
+	RTE_FLOW_ITEM_TYPE_PPPOES,
+
+	/**
+	 * Matches a PPPoE header.
+	 *
+	 * Configure flow for PPPoE discovery packets.
+	 *
+	 * See struct rte_flow_item_pppoe.
+	 */
+	RTE_FLOW_ITEM_TYPE_PPPOED,
+
+	/**
+	 * Matches a PPPoE optional proto_id field.
+	 *
+	 * It only applies to PPPoE session packets.
+	 *
+	 * See struct rte_flow_item_pppoe_proto_id.
+	 */
+	RTE_FLOW_ITEM_TYPE_PPPOE_PROTO_ID,
 };
 
 /**
@@ -1216,6 +1243,45 @@ struct rte_flow_item_gtp_psc {
 static const struct rte_flow_item_gtp_psc
 rte_flow_item_gtp_psc_mask = {
 	.qfi = 0x3f,
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_PPPOE.
+ *
+ * Matches a PPPoE header.
+ */
+struct rte_flow_item_pppoe {
+	/**
+	 * Version (4b), type (4b).
+	 */
+	uint8_t version_type;
+	uint8_t code; /**< Message type. */
+	rte_be16_t session_id; /**< Session identifier. */
+	rte_be16_t length; /**< Payload length. */
+};
+
+/**
+ * RTE_FLOW_ITEM_TYPE_PPPOE_PROTO_ID.
+ *
+ * Matches a PPPoE optional proto_id field.
+ *
+ * It only applies to PPPoE session packets.
+ *
+ * Normally preceded by any of:
+ *
+ * - RTE_FLOW_ITEM_TYPE_PPPOE
+ * - RTE_FLOW_ITEM_TYPE_PPPOE_PROTO_ID
+ */
+struct rte_flow_item_pppoe_proto_id {
+	rte_be16_t proto_id; /**< PPP protocol identifier. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_PPPOE_PROTO_ID. */
+#ifndef __cplusplus
+static const struct rte_flow_item_pppoe_proto_id
+rte_flow_item_pppoe_proto_id_mask = {
+	.proto_id = RTE_BE16(0xffff),
 };
 #endif
 
