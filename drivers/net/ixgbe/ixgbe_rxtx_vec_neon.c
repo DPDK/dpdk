@@ -214,13 +214,13 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		uint32_t var = 0;
 		uint32_t stat;
 
-		/* B.1 load 1 mbuf point */
+		/* B.1 load 2 mbuf point */
 		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		vst1q_u64((uint64_t *)&rx_pkts[pos], mbp1);
 
-		/* B.1 load 1 mbuf point */
+		/* B.1 load 2 mbuf point */
 		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2]);
 
 		/* A. load 4 pkts descs */
@@ -228,7 +228,6 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		descs[1] =  vld1q_u64((uint64_t *)(rxdp + 1));
 		descs[2] =  vld1q_u64((uint64_t *)(rxdp + 2));
 		descs[3] =  vld1q_u64((uint64_t *)(rxdp + 3));
-		rte_smp_rmb();
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		vst1q_u64((uint64_t *)&rx_pkts[pos + 2], mbp2);
