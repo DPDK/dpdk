@@ -144,6 +144,7 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 
 #define IXGBE_VPMD_DESC_DD_MASK		0x01010101
 #define IXGBE_VPMD_DESC_EOP_MASK	0x02020202
+#define IXGBE_UINT8_BIT			(CHAR_BIT * sizeof(uint8_t))
 
 static inline uint16_t
 _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
@@ -211,7 +212,6 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		uint64x2_t mbp1, mbp2;
 		uint8x16_t staterr;
 		uint16x8_t tmp;
-		uint32_t var = 0;
 		uint32_t stat;
 
 		/* B.1 load 2 mbuf point */
@@ -256,7 +256,6 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 		/* C.2 get 4 pkts staterr value  */
 		staterr = vzipq_u8(sterr_tmp1.val[1], sterr_tmp2.val[1]).val[0];
-		stat = vgetq_lane_u32(vreinterpretq_u32_u8(staterr), 0);
 
 		/* set ol_flags with vlan packet type */
 		desc_to_olflags_v(sterr_tmp1, sterr_tmp2, staterr,
@@ -282,11 +281,19 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 		/* C* extract and record EOP bit */
 		if (split_packet) {
+			stat = vgetq_lane_u32(vreinterpretq_u32_u8(staterr), 0);
 			/* and with mask to extract bits, flipping 1-0 */
 			*(int *)split_packet = ~stat & IXGBE_VPMD_DESC_EOP_MASK;
 
 			split_packet += RTE_IXGBE_DESCS_PER_LOOP;
 		}
+
+		/* C.4 expand DD bit to saturate UINT8 */
+		staterr = vshlq_n_u8(staterr, IXGBE_UINT8_BIT - 1);
+		staterr = vreinterpretq_u8_s8
+				(vshrq_n_s8(vreinterpretq_s8_u8(staterr),
+					IXGBE_UINT8_BIT - 1));
+		stat = ~vgetq_lane_u32(vreinterpretq_u32_u8(staterr), 0);
 
 		rte_prefetch_non_temporal(rxdp + RTE_IXGBE_DESCS_PER_LOOP);
 
@@ -296,18 +303,12 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		vst1q_u8((uint8_t *)&rx_pkts[pos]->rx_descriptor_fields1,
 			 pkt_mb1);
 
-		stat &= IXGBE_VPMD_DESC_DD_MASK;
-
-		/* C.4 calc avaialbe number of desc */
-		if (likely(stat != IXGBE_VPMD_DESC_DD_MASK)) {
-			while (stat & 0x01) {
-				++var;
-				stat = stat >> 8;
-			}
-			nb_pkts_recd += var;
-			break;
-		} else {
+		/* C.5 calc available number of desc */
+		if (unlikely(stat == 0)) {
 			nb_pkts_recd += RTE_IXGBE_DESCS_PER_LOOP;
+		} else {
+			nb_pkts_recd += __builtin_ctz(stat) / IXGBE_UINT8_BIT;
+			break;
 		}
 	}
 
