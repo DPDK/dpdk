@@ -1205,6 +1205,15 @@ Matches an application specific 32 bit metadata item.
 
 - Default ``mask`` matches the specified metadata value.
 
+Item: ``GTP_PSC``
+^^^^^^^^^^^^^^^^^
+
+Matches a GTP PDU extension header with type 0x85.
+
+- ``pdu_type``: PDU type.
+- ``qfi``: QoS flow identifier.
+- Default ``mask`` matches QFI only.
+
 .. _table_rte_flow_item_meta:
 
 .. table:: META

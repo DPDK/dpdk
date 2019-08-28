@@ -196,6 +196,9 @@ enum index {
 	ITEM_META_DATA,
 	ITEM_GRE_KEY,
 	ITEM_GRE_KEY_VALUE,
+	ITEM_GTP_PSC,
+	ITEM_GTP_PSC_QFI,
+	ITEM_GTP_PSC_PDU_T,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -663,6 +666,7 @@ static const enum index next_item[] = {
 	ITEM_ICMP6_ND_OPT_TLA_ETH,
 	ITEM_META,
 	ITEM_GRE_KEY,
+	ITEM_GTP_PSC,
 	END_SET,
 	ZERO,
 };
@@ -898,6 +902,13 @@ static const enum index item_icmp6_nd_opt_tla_eth[] = {
 
 static const enum index item_meta[] = {
 	ITEM_META_DATA,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_gtp_psc[] = {
+	ITEM_GTP_PSC_QFI,
+	ITEM_GTP_PSC_PDU_T,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2330,6 +2341,28 @@ static const struct token token_list[] = {
 		.help = "key value",
 		.next = NEXT(item_gre_key, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARG_ENTRY_HTON(rte_be32_t)),
+	},
+	[ITEM_GTP_PSC] = {
+		.name = "gtp_psc",
+		.help = "match GTP extension header with type 0x85",
+		.priv = PRIV_ITEM(GTP_PSC,
+				sizeof(struct rte_flow_item_gtp_psc)),
+		.next = NEXT(item_gtp_psc),
+		.call = parse_vc,
+	},
+	[ITEM_GTP_PSC_QFI] = {
+		.name = "qfi",
+		.help = "QoS flow identifier",
+		.next = NEXT(item_gtp_psc, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gtp_psc,
+					qfi)),
+	},
+	[ITEM_GTP_PSC_PDU_T] = {
+		.name = "pdu_t",
+		.help = "PDU type",
+		.next = NEXT(item_gtp_psc, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gtp_psc,
+					pdu_type)),
 	},
 
 	/* Validate/create actions. */
@@ -5759,6 +5792,9 @@ flow_item_default_mask(const struct rte_flow_item *item)
 		break;
 	case RTE_FLOW_ITEM_TYPE_ESP:
 		mask = &rte_flow_item_esp_mask;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GTP_PSC:
+		mask = &rte_flow_item_gtp_psc_mask;
 		break;
 	default:
 		break;

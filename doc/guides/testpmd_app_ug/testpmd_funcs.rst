@@ -3887,6 +3887,11 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``data {unsigned}``: metadata value.
 
+- ``gtp_psc``: match GTP PDU extension header with type 0x85.
+
+  - ``pdu_type {unsigned}``: PDU type.
+  - ``qfi {unsigned}``: QoS flow identifier.
+
 Actions list
 ^^^^^^^^^^^^
 

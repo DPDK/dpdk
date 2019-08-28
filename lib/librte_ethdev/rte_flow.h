@@ -434,6 +434,15 @@ enum rte_flow_item_type {
 	 * @code rte_be32_t * @endcode
 	 */
 	RTE_FLOW_ITEM_TYPE_GRE_KEY,
+
+	/**
+	 * Matches a GTP extension header: PDU session container.
+	 *
+	 * Configure flow for GTP packets with extension header type 0x85.
+	 *
+	 * See struct rte_flow_item_gtp_psc.
+	 */
+	RTE_FLOW_ITEM_TYPE_GTP_PSC,
 };
 
 /**
@@ -1189,6 +1198,24 @@ struct rte_flow_item_meta {
 #ifndef __cplusplus
 static const struct rte_flow_item_meta rte_flow_item_meta_mask = {
 	.data = RTE_BE32(UINT32_MAX),
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_GTP_PSC.
+ *
+ * Matches a GTP PDU extension header with type 0x85.
+ */
+struct rte_flow_item_gtp_psc {
+	uint8_t pdu_type; /**< PDU type. */
+	uint8_t qfi; /**< QoS flow identifier. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_GTP_PSC. */
+#ifndef __cplusplus
+static const struct rte_flow_item_gtp_psc
+rte_flow_item_gtp_psc_mask = {
+	.qfi = 0x3f,
 };
 #endif
 
