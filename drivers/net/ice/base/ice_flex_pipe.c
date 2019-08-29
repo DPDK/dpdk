@@ -961,9 +961,19 @@ ice_dwnld_cfg_bufs(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 	if (LE32_TO_CPU(bh->section_entry[0].type) & ICE_METADATA_BUF)
 		return ICE_SUCCESS;
 
+	/* reset pkg_dwnld_status in case this function is called in the
+	 * reset/rebuild flow
+	 */
+	hw->pkg_dwnld_status = ICE_AQ_RC_OK;
+
 	status = ice_acquire_global_cfg_lock(hw, ICE_RES_WRITE);
-	if (status)
+	if (status) {
+		if (status == ICE_ERR_AQ_NO_WORK)
+			hw->pkg_dwnld_status = ICE_AQ_RC_EEXIST;
+		else
+			hw->pkg_dwnld_status = hw->adminq.sq_last_status;
 		return status;
+	}
 
 	for (i = 0; i < count; i++) {
 		bool last = ((i + 1) == count);
@@ -986,6 +996,9 @@ ice_dwnld_cfg_bufs(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 
 		status = ice_aq_download_pkg(hw, bh, ICE_PKG_BUF_SIZE, last,
 					     &offset, &info, NULL);
+
+		/* Save AQ status from download package */
+		hw->pkg_dwnld_status = hw->adminq.sq_last_status;
 		if (status) {
 			ice_debug(hw, ICE_DBG_PKG,
 				  "Pkg download failed: err %d off %d inf %d\n",
