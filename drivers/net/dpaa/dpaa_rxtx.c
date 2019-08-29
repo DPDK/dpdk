@@ -642,53 +642,6 @@ uint16_t dpaa_eth_queue_rx(void *q,
 	return num_rx;
 }
 
-static void *dpaa_get_pktbuf(struct dpaa_bp_info *bp_info)
-{
-	int ret;
-	size_t buf = 0;
-	struct bm_buffer bufs;
-
-	ret = bman_acquire(bp_info->bp, &bufs, 1, 0);
-	if (ret <= 0) {
-		DPAA_PMD_WARN("Failed to allocate buffers %d", ret);
-		return (void *)buf;
-	}
-
-	DPAA_DP_LOG(DEBUG, "got buffer 0x%" PRIx64 " from pool %d",
-		    (uint64_t)bufs.addr, bufs.bpid);
-
-	buf = (size_t)DPAA_MEMPOOL_PTOV(bp_info, bufs.addr)
-				- bp_info->meta_data_size;
-	if (!buf)
-		goto out;
-
-out:
-	return (void *)buf;
-}
-
-static struct rte_mbuf *dpaa_get_dmable_mbuf(struct rte_mbuf *mbuf,
-					     struct dpaa_if *dpaa_intf)
-{
-	struct rte_mbuf *dpaa_mbuf;
-
-	/* allocate pktbuffer on bpid for dpaa port */
-	dpaa_mbuf = dpaa_get_pktbuf(dpaa_intf->bp_info);
-	if (!dpaa_mbuf)
-		return NULL;
-
-	memcpy((uint8_t *)(dpaa_mbuf->buf_addr) + RTE_PKTMBUF_HEADROOM, (void *)
-		((uint8_t *)(mbuf->buf_addr) + mbuf->data_off), mbuf->pkt_len);
-
-	/* Copy only the required fields */
-	dpaa_mbuf->data_off = RTE_PKTMBUF_HEADROOM;
-	dpaa_mbuf->pkt_len = mbuf->pkt_len;
-	dpaa_mbuf->ol_flags = mbuf->ol_flags;
-	dpaa_mbuf->packet_type = mbuf->packet_type;
-	dpaa_mbuf->tx_offload = mbuf->tx_offload;
-	rte_pktmbuf_free(mbuf);
-	return dpaa_mbuf;
-}
-
 int
 dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		struct qm_fd *fd,
@@ -862,26 +815,84 @@ tx_on_dpaa_pool(struct rte_mbuf *mbuf,
 }
 
 /* Handle all mbufs on an external pool (non-dpaa) */
-static inline uint16_t
-tx_on_external_pool(struct qman_fq *txq, struct rte_mbuf *mbuf,
-		    struct qm_fd *fd_arr)
+static inline struct rte_mbuf *
+reallocate_mbuf(struct qman_fq *txq, struct rte_mbuf *mbuf)
 {
 	struct dpaa_if *dpaa_intf = txq->dpaa_intf;
-	struct rte_mbuf *dmable_mbuf;
+	struct dpaa_bp_info *bp_info = dpaa_intf->bp_info;
+	struct rte_mbuf *new_mbufs[DPAA_SGT_MAX_ENTRIES + 1] = {0};
+	struct rte_mbuf *temp_mbuf;
+	int num_new_segs, mbuf_greater, ret, extra_seg = 0, i = 0;
+	uint64_t mbufs_size, bytes_to_copy, offset1 = 0, offset2 = 0;
+	char *data;
 
-	DPAA_DP_LOG(DEBUG, "Non-BMAN offloaded buffer."
-		    "Allocating an offloaded buffer");
-	dmable_mbuf = dpaa_get_dmable_mbuf(mbuf, dpaa_intf);
-	if (!dmable_mbuf) {
-		DPAA_DP_LOG(DEBUG, "no dpaa buffers.");
-		return 1;
+	DPAA_DP_LOG(DEBUG, "Reallocating transmit buffer");
+
+	mbufs_size = bp_info->size -
+		bp_info->meta_data_size - RTE_PKTMBUF_HEADROOM;
+	extra_seg = !!(mbuf->pkt_len % mbufs_size);
+	num_new_segs = (mbuf->pkt_len / mbufs_size) + extra_seg;
+
+	ret = rte_pktmbuf_alloc_bulk(bp_info->mp, new_mbufs, num_new_segs);
+	if (ret != 0) {
+		DPAA_DP_LOG(DEBUG, "Allocation for new buffers failed");
+		return NULL;
 	}
 
-	DPAA_MBUF_TO_CONTIG_FD(dmable_mbuf, fd_arr, dpaa_intf->bp_info->bpid);
-	if (mbuf->ol_flags & DPAA_TX_CKSUM_OFFLOAD_MASK)
-		dpaa_unsegmented_checksum(mbuf, fd_arr);
+	temp_mbuf = mbuf;
 
-	return 0;
+	while (temp_mbuf) {
+		/* If mbuf data is less than new mbuf remaining memory */
+		if ((temp_mbuf->data_len - offset1) < (mbufs_size - offset2)) {
+			bytes_to_copy = temp_mbuf->data_len - offset1;
+			mbuf_greater = -1;
+		/* If mbuf data is greater than new mbuf remaining memory */
+		} else if ((temp_mbuf->data_len - offset1) >
+			   (mbufs_size - offset2)) {
+			bytes_to_copy = mbufs_size - offset2;
+			mbuf_greater = 1;
+		/* if mbuf data is equal to new mbuf remaining memory */
+		} else {
+			bytes_to_copy = temp_mbuf->data_len - offset1;
+			mbuf_greater = 0;
+		}
+
+		/* Copy the data */
+		data = rte_pktmbuf_append(new_mbufs[0], bytes_to_copy);
+
+		rte_memcpy((uint8_t *)data, rte_pktmbuf_mtod_offset(mbuf,
+			   void *, offset1), bytes_to_copy);
+
+		/* Set new offsets and the temp buffers */
+		if (mbuf_greater == -1) {
+			offset1 = 0;
+			offset2 += bytes_to_copy;
+			temp_mbuf = temp_mbuf->next;
+		} else if (mbuf_greater == 1) {
+			offset2 = 0;
+			offset1 += bytes_to_copy;
+			new_mbufs[i]->next = new_mbufs[i + 1];
+			new_mbufs[0]->nb_segs++;
+			i++;
+		} else {
+			offset1 = 0;
+			offset2 = 0;
+			temp_mbuf = temp_mbuf->next;
+			new_mbufs[i]->next = new_mbufs[i + 1];
+			if (new_mbufs[i + 1])
+				new_mbufs[0]->nb_segs++;
+			i++;
+		}
+	}
+
+	/* Copy other required fields */
+	new_mbufs[0]->ol_flags = mbuf->ol_flags;
+	new_mbufs[0]->packet_type = mbuf->packet_type;
+	new_mbufs[0]->tx_offload = mbuf->tx_offload;
+
+	rte_pktmbuf_free(mbuf);
+
+	return new_mbufs[0];
 }
 
 uint16_t
@@ -893,7 +904,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	struct qm_fd fd_arr[DPAA_TX_BURST_SIZE];
 	uint32_t frames_to_send, loop, sent = 0;
 	uint16_t state;
-	int ret;
+	int ret, realloc_mbuf = 0;
 	uint32_t seqn, index, flags[DPAA_TX_BURST_SIZE] = {0};
 
 	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
@@ -911,6 +922,13 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 				DPAA_TX_BURST_SIZE : nb_bufs;
 		for (loop = 0; loop < frames_to_send; loop++) {
 			mbuf = *(bufs++);
+			/* In case the data offset is not multiple of 16,
+			 * FMAN can stall because of an errata. So reallocate
+			 * the buffer in such case.
+			 */
+			if (dpaa_svr_family == SVR_LS1043A_FAMILY &&
+					(mbuf->data_off & 0xFF) != 0x0)
+				realloc_mbuf = 1;
 			seqn = mbuf->seqn;
 			if (seqn != DPAA_INVALID_MBUF_SEQN) {
 				index = seqn - 1;
@@ -930,6 +948,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 				if (likely(mp->ops_index ==
 						bp_info->dpaa_ops_index &&
 					mbuf->nb_segs == 1 &&
+					realloc_mbuf == 0 &&
 					rte_mbuf_refcnt_read(mbuf) == 1)) {
 					DPAA_MBUF_TO_CONTIG_FD(mbuf,
 						&fd_arr[loop], bp_info->bpid);
@@ -945,10 +964,12 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 			}
 
 			bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
-			if (likely(mp->ops_index == bp_info->dpaa_ops_index)) {
-				state = tx_on_dpaa_pool(mbuf, bp_info,
-							&fd_arr[loop]);
-				if (unlikely(state)) {
+			if (unlikely(mp->ops_index != bp_info->dpaa_ops_index ||
+				     realloc_mbuf == 1)) {
+				struct rte_mbuf *temp_mbuf;
+
+				temp_mbuf = reallocate_mbuf(q, mbuf);
+				if (!temp_mbuf) {
 					/* Set frames_to_send & nb_bufs so
 					 * that packets are transmitted till
 					 * previous frame.
@@ -957,28 +978,20 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 					nb_bufs = loop;
 					goto send_pkts;
 				}
-			} else {
-				/* TODO not supporting sg for external bufs*/
-				if (unlikely(mbuf->nb_segs > 1)) {
-					/* Set frames_to_send & nb_bufs so
-					 * that packets are transmitted till
-					 * previous frame.
-					 */
-					frames_to_send = loop;
-					nb_bufs = loop;
-					goto send_pkts;
-				}
-				state = tx_on_external_pool(q, mbuf,
-							    &fd_arr[loop]);
-				if (unlikely(state)) {
-					/* Set frames_to_send & nb_bufs so
-					 * that packets are transmitted till
-					 * previous frame.
-					 */
-					frames_to_send = loop;
-					nb_bufs = loop;
-					goto send_pkts;
-				}
+				mbuf = temp_mbuf;
+				realloc_mbuf = 0;
+			}
+
+			state = tx_on_dpaa_pool(mbuf, bp_info,
+						&fd_arr[loop]);
+			if (unlikely(state)) {
+				/* Set frames_to_send & nb_bufs so
+				 * that packets are transmitted till
+				 * previous frame.
+				 */
+				frames_to_send = loop;
+				nb_bufs = loop;
+				goto send_pkts;
 			}
 		}
 
