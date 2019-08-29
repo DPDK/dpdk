@@ -1506,10 +1506,83 @@ ice_sw_fv_handler(u32 sect_type, void *section, u32 index, u32 *offset)
 }
 
 /**
+ * ice_get_sw_prof_type - determine switch profile type
+ * @hw: pointer to the HW structure
+ * @fv: pointer to the switch field vector
+ */
+static enum ice_prof_type
+ice_get_sw_prof_type(struct ice_hw *hw, struct ice_fv *fv)
+{
+	u16 i;
+
+	for (i = 0; i < hw->blk[ICE_BLK_SW].es.fvw; i++) {
+		/* UDP tunnel will have UDP_OF protocol ID and VNI offset */
+		if (fv->ew[i].prot_id == (u8)ICE_PROT_UDP_OF &&
+		    fv->ew[i].off == ICE_VNI_OFFSET)
+			return ICE_PROF_TUN_UDP;
+
+		/* GRE tunnel will have GRE protocol */
+		if (fv->ew[i].prot_id == (u8)ICE_PROT_GRE_OF)
+			return ICE_PROF_TUN_GRE;
+
+		/* PPPOE tunnel will have PPPOE protocol */
+		if (fv->ew[i].prot_id == (u8)ICE_PROT_PPPOE)
+			return ICE_PROF_TUN_PPPOE;
+	}
+
+	return ICE_PROF_NON_TUN;
+}
+
+/**
+ * ice_get_sw_fv_bitmap - Get switch field vector bitmap based on profile type
+ * @hw: pointer to hardware structure
+ * @type: type of profiles requested
+ * @bm: pointer to memory for returning the bitmap of field vectors
+ */
+void
+ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type type,
+		     ice_bitmap_t *bm)
+{
+	struct ice_pkg_enum state;
+	struct ice_seg *ice_seg;
+	struct ice_fv *fv;
+
+	if (type == ICE_PROF_ALL) {
+		u16 i;
+
+		for (i = 0; i < ICE_MAX_NUM_PROFILES; i++)
+			ice_set_bit(i, bm);
+		return;
+	}
+
+	ice_zero_bitmap(bm, ICE_MAX_NUM_PROFILES);
+
+	ice_seg = hw->seg;
+	do {
+		enum ice_prof_type prof_type;
+		u32 offset;
+
+		fv = (struct ice_fv *)
+			ice_pkg_enum_entry(ice_seg, &state, ICE_SID_FLD_VEC_SW,
+					   &offset, ice_sw_fv_handler);
+		ice_seg = NULL;
+
+		if (fv) {
+			/* Determine field vector type */
+			prof_type = ice_get_sw_prof_type(hw, fv);
+
+			if (type & prof_type)
+				ice_set_bit((u16)offset, bm);
+		}
+	} while (fv);
+}
+
+/**
  * ice_get_sw_fv_list
  * @hw: pointer to the HW structure
  * @prot_ids: field vector to search for with a given protocol ID
  * @ids_cnt: lookup/protocol count
+ * @bm: bitmap of field vectors to consider
  * @fv_list: Head of a list
  *
  * Finds all the field vector entries from switch block that contain
@@ -1521,7 +1594,7 @@ ice_sw_fv_handler(u32 sect_type, void *section, u32 index, u32 *offset)
  */
 enum ice_status
 ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u8 ids_cnt,
-		   struct LIST_HEAD_TYPE *fv_list)
+		   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list)
 {
 	struct ice_sw_fv_list_entry *fvl;
 	struct ice_sw_fv_list_entry *tmp;
@@ -1540,8 +1613,17 @@ ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u8 ids_cnt,
 		fv = (struct ice_fv *)
 			ice_pkg_enum_entry(ice_seg, &state, ICE_SID_FLD_VEC_SW,
 					   &offset, ice_sw_fv_handler);
+		if (!fv)
+			break;
+		ice_seg = NULL;
 
-		for (i = 0; i < ids_cnt && fv; i++) {
+		/* If field vector is not in the bitmap list, then skip this
+		 * profile.
+		 */
+		if (!ice_is_bit_set(bm, (u16)offset))
+			continue;
+
+		for (i = 0; i < ids_cnt; i++) {
 			int j;
 
 			/* This code assumes that if a switch field vector line
@@ -1565,7 +1647,6 @@ ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u8 ids_cnt,
 				break;
 			}
 		}
-		ice_seg = NULL;
 	} while (fv);
 	if (LIST_EMPTY(fv_list))
 		return ICE_ERR_CFG;

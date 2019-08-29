@@ -49,7 +49,8 @@ enum ice_protocol_type {
 };
 
 enum ice_sw_tunnel_type {
-	ICE_NON_TUN,
+	ICE_NON_TUN = 0,
+	ICE_SW_TUN_AND_NON_TUN,
 	ICE_SW_TUN_VXLAN_GPE,
 	ICE_SW_TUN_GENEVE,
 	ICE_SW_TUN_VXLAN,
@@ -110,6 +111,8 @@ enum ice_prot_id {
 	ICE_PROT_META_ID	= 255, /* when offset == metaddata */
 	ICE_PROT_INVALID	= 255  /* when offset == 0xFF */
 };
+
+#define ICE_VNI_OFFSET		12 /* offset of VNI from ICE_PROT_UDP_OF */
 
 
 #define ICE_MAC_OFOS_HW		1

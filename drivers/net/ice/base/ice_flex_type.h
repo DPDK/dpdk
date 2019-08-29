@@ -710,4 +710,12 @@ struct ice_chs_chg {
 
 #define ICE_FLOW_PTYPE_MAX		ICE_XLT1_CNT
 
+enum ice_prof_type {
+	ICE_PROF_NON_TUN = 0x1,
+	ICE_PROF_TUN_UDP = 0x2,
+	ICE_PROF_TUN_GRE = 0x4,
+	ICE_PROF_TUN_PPPOE = 0x8,
+	ICE_PROF_TUN_ALL = 0xE,
+	ICE_PROF_ALL = 0xFF,
+};
 #endif /* _ICE_FLEX_TYPE_H_ */

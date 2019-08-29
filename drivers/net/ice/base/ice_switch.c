@@ -5463,11 +5463,12 @@ out:
  * @lkups: lookup elements or match criteria for the advanced recipe, one
  *	   structure per protocol header
  * @lkups_cnt: number of protocols
+ * @bm: bitmap of field vectors to consider
  * @fv_list: pointer to a list that holds the returned field vectors
  */
 static enum ice_status
 ice_get_fv(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
-	   struct LIST_HEAD_TYPE *fv_list)
+	   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list)
 {
 	enum ice_status status;
 	u16 *prot_ids;
@@ -5484,11 +5485,51 @@ ice_get_fv(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		}
 
 	/* Find field vectors that include all specified protocol types */
-	status = ice_get_sw_fv_list(hw, prot_ids, lkups_cnt, fv_list);
+	status = ice_get_sw_fv_list(hw, prot_ids, lkups_cnt, bm, fv_list);
 
 free_mem:
 	ice_free(hw, prot_ids);
 	return status;
+}
+
+/* ice_get_compat_fv_bitmap - Get compatible field vector bitmap for rule
+ * @hw: pointer to hardware structure
+ * @rinfo: other information regarding the rule e.g. priority and action info
+ * @bm: pointer to memory for returning the bitmap of field vectors
+ */
+static void
+ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
+			 ice_bitmap_t *bm)
+{
+	enum ice_prof_type type;
+
+	switch (rinfo->tun_type) {
+	case ICE_NON_TUN:
+		type = ICE_PROF_NON_TUN;
+		break;
+	case ICE_ALL_TUNNELS:
+		type = ICE_PROF_TUN_ALL;
+		break;
+	case ICE_SW_TUN_VXLAN_GPE:
+	case ICE_SW_TUN_GENEVE:
+	case ICE_SW_TUN_VXLAN:
+	case ICE_SW_TUN_UDP:
+	case ICE_SW_TUN_GTP:
+		type = ICE_PROF_TUN_UDP;
+		break;
+	case ICE_SW_TUN_NVGRE:
+		type = ICE_PROF_TUN_GRE;
+		break;
+	case ICE_SW_TUN_PPPOE:
+		type = ICE_PROF_TUN_PPPOE;
+		break;
+	case ICE_SW_TUN_AND_NON_TUN:
+	default:
+		type = ICE_PROF_ALL;
+		break;
+	}
+
+	ice_get_sw_fv_bitmap(hw, type, bm);
 }
 
 /**
@@ -5504,6 +5545,7 @@ static enum ice_status
 ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		   u16 lkups_cnt, struct ice_adv_rule_info *rinfo, u16 *rid)
 {
+	ice_declare_bitmap(fv_bitmap, ICE_MAX_NUM_PROFILES);
 	ice_declare_bitmap(profiles, ICE_MAX_NUM_PROFILES);
 	struct ice_prot_lkup_ext *lkup_exts;
 	struct ice_recp_grp_entry *r_entry;
@@ -5553,7 +5595,13 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	INIT_LIST_HEAD(&rm->fv_list);
 	INIT_LIST_HEAD(&rm->rg_list);
 
-	status = ice_get_fv(hw, lkups, lkups_cnt, &rm->fv_list);
+	/* Get bitmap of field vectors (profiles) that are compatible with the
+	 * rule request; only these will be searched in the subsequent call to
+	 * ice_get_fv.
+	 */
+	ice_get_compat_fv_bitmap(hw, rinfo, fv_bitmap);
+
+	status = ice_get_fv(hw, lkups, lkups_cnt, fv_bitmap, &rm->fv_list);
 	if (status)
 		goto err_unroll;
 
