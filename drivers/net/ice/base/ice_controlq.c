@@ -859,7 +859,7 @@ static bool ice_sq_done(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 }
 
 /**
- * ice_sq_send_cmd - send command to Control Queue (ATQ)
+ * ice_sq_send_cmd_nolock - send command to Control Queue (ATQ)
  * @hw: pointer to the HW struct
  * @cq: pointer to the specific Control queue
  * @desc: prefilled descriptor describing the command (non DMA mem)
@@ -870,10 +870,10 @@ static bool ice_sq_done(struct ice_hw *hw, struct ice_ctl_q_info *cq)
  * This is the main send command routine for the ATQ. It runs the queue,
  * cleans the queue, etc.
  */
-enum ice_status
-ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
-		struct ice_aq_desc *desc, void *buf, u16 buf_size,
-		struct ice_sq_cd *cd)
+static enum ice_status
+ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
+		       struct ice_aq_desc *desc, void *buf, u16 buf_size,
+		       struct ice_sq_cd *cd)
 {
 	struct ice_dma_mem *dma_buf = NULL;
 	struct ice_aq_desc *desc_on_ring;
@@ -887,7 +887,6 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	/* if reset is in progress return a soft error */
 	if (hw->reset_ongoing)
 		return ICE_ERR_RESET_ONGOING;
-	ice_acquire_lock(&cq->sq_lock);
 
 	cq->sq_last_status = ICE_AQ_RC_OK;
 
@@ -1040,7 +1039,36 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	}
 
 sq_send_command_error:
+	return status;
+}
+
+/**
+ * ice_sq_send_cmd - send command to Control Queue (ATQ)
+ * @hw: pointer to the HW struct
+ * @cq: pointer to the specific Control queue
+ * @desc: prefilled descriptor describing the command (non DMA mem)
+ * @buf: buffer to use for indirect commands (or NULL for direct commands)
+ * @buf_size: size of buffer for indirect commands (or 0 for direct commands)
+ * @cd: pointer to command details structure
+ *
+ * This is the main send command routine for the ATQ. It runs the queue,
+ * cleans the queue, etc.
+ */
+enum ice_status
+ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
+		struct ice_aq_desc *desc, void *buf, u16 buf_size,
+		struct ice_sq_cd *cd)
+{
+	enum ice_status status = ICE_SUCCESS;
+
+	/* if reset is in progress return a soft error */
+	if (hw->reset_ongoing)
+		return ICE_ERR_RESET_ONGOING;
+
+	ice_acquire_lock(&cq->sq_lock);
+	status = ice_sq_send_cmd_nolock(hw, cq, desc, buf, buf_size, cd);
 	ice_release_lock(&cq->sq_lock);
+
 	return status;
 }
 
