@@ -149,6 +149,8 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 int dpaa2_eth_eventq_detach(const struct rte_eth_dev *dev,
 		int eth_rx_queue_id);
 
+uint16_t dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts);
+
 uint16_t dpaa2_dev_loopback_rx(void *queue, struct rte_mbuf **bufs,
 				uint16_t nb_pkts);
 

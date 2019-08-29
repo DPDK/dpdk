@@ -727,6 +727,111 @@ dpaa2_dev_process_ordered_event(struct qbman_swp *swp,
 	qbman_swp_dqrr_consume(swp, dq);
 }
 
+uint16_t
+dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	/* Function receive frames for a given device and VQ */
+	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)queue;
+	struct qbman_result *dq_storage;
+	uint32_t fqid = dpaa2_q->fqid;
+	int ret, num_rx = 0, next_pull = nb_pkts, num_pulled;
+	uint8_t pending, status;
+	struct qbman_swp *swp;
+	const struct qbman_fd *fd, *next_fd;
+	struct qbman_pull_desc pulldesc;
+	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
+
+	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+		ret = dpaa2_affine_qbman_swp();
+		if (ret) {
+			DPAA2_PMD_ERR("Failure in affining portal\n");
+			return 0;
+		}
+	}
+	swp = DPAA2_PER_LCORE_PORTAL;
+
+	do {
+		dq_storage = dpaa2_q->q_storage->dq_storage[0];
+		qbman_pull_desc_clear(&pulldesc);
+		qbman_pull_desc_set_fq(&pulldesc, fqid);
+		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
+				(size_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
+
+		if (next_pull > dpaa2_dqrr_size) {
+			qbman_pull_desc_set_numframes(&pulldesc,
+				dpaa2_dqrr_size);
+			next_pull -= dpaa2_dqrr_size;
+		} else {
+			qbman_pull_desc_set_numframes(&pulldesc, next_pull);
+			next_pull = 0;
+		}
+
+		while (1) {
+			if (qbman_swp_pull(swp, &pulldesc)) {
+				DPAA2_PMD_DP_DEBUG(
+					"VDQ command is not issued.QBMAN is busy\n");
+				/* Portal was busy, try again */
+				continue;
+			}
+			break;
+		}
+
+		rte_prefetch0((void *)((size_t)(dq_storage + 1)));
+		/* Check if the previous issued command is completed. */
+		while (!qbman_check_command_complete(dq_storage))
+			;
+
+		num_pulled = 0;
+		pending = 1;
+		do {
+			/* Loop until the dq_storage is updated with
+			 * new token by QBMAN
+			 */
+			while (!qbman_check_new_result(dq_storage))
+				;
+			rte_prefetch0((void *)((size_t)(dq_storage + 2)));
+			/* Check whether Last Pull command is Expired and
+			 * setting Condition for Loop termination
+			 */
+			if (qbman_result_DQ_is_pull_complete(dq_storage)) {
+				pending = 0;
+				/* Check for valid frame. */
+				status = qbman_result_DQ_flags(dq_storage);
+				if (unlikely((status &
+					QBMAN_DQ_STAT_VALIDFRAME) == 0))
+					continue;
+			}
+			fd = qbman_result_DQ_fd(dq_storage);
+
+			next_fd = qbman_result_DQ_fd(dq_storage + 1);
+			/* Prefetch Annotation address for the parse results */
+			rte_prefetch0(
+				(void *)(size_t)(DPAA2_GET_FD_ADDR(next_fd)
+					+ DPAA2_FD_PTA_SIZE + 16));
+
+			if (unlikely(DPAA2_FD_GET_FORMAT(fd) == qbman_fd_sg))
+				bufs[num_rx] = eth_sg_fd_to_mbuf(fd);
+			else
+				bufs[num_rx] = eth_fd_to_mbuf(fd);
+			bufs[num_rx]->port = eth_data->port_id;
+
+		if (eth_data->dev_conf.rxmode.offloads &
+				DEV_RX_OFFLOAD_VLAN_STRIP) {
+			rte_vlan_strip(bufs[num_rx]);
+		}
+
+			dq_storage++;
+			num_rx++;
+			num_pulled++;
+		} while (pending);
+	/* Last VDQ provided all packets and more packets are requested */
+	} while (next_pull && num_pulled == dpaa2_dqrr_size);
+
+	dpaa2_q->rx_pkts += num_rx;
+
+	return num_rx;
+}
+
 /*
  * Callback to handle sending packets through WRIOP based interface
  */

@@ -29,6 +29,7 @@
 #include <fsl_qbman_debug.h>
 
 #define DRIVER_LOOPBACK_MODE "drv_loopback"
+#define DRIVER_NO_PREFETCH_MODE "drv_no_prefetch"
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
@@ -752,6 +753,7 @@ dpaa2_supported_ptypes_get(struct rte_eth_dev *dev)
 	};
 
 	if (dev->rx_pkt_burst == dpaa2_dev_prefetch_rx ||
+		dev->rx_pkt_burst == dpaa2_dev_rx ||
 		dev->rx_pkt_burst == dpaa2_dev_loopback_rx)
 		return ptypes;
 	return NULL;
@@ -2128,6 +2130,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		eth_dev->dev_ops = &dpaa2_ethdev_ops;
 		if (dpaa2_get_devargs(dev->devargs, DRIVER_LOOPBACK_MODE))
 			eth_dev->rx_pkt_burst = dpaa2_dev_loopback_rx;
+		else if (dpaa2_get_devargs(dev->devargs,
+					DRIVER_NO_PREFETCH_MODE))
+			eth_dev->rx_pkt_burst = dpaa2_dev_rx;
 		else
 			eth_dev->rx_pkt_burst = dpaa2_dev_prefetch_rx;
 		eth_dev->tx_pkt_burst = dpaa2_dev_tx;
@@ -2246,6 +2251,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	if (dpaa2_get_devargs(dev->devargs, DRIVER_LOOPBACK_MODE)) {
 		eth_dev->rx_pkt_burst = dpaa2_dev_loopback_rx;
 		DPAA2_PMD_INFO("Loopback mode");
+	} else if (dpaa2_get_devargs(dev->devargs, DRIVER_NO_PREFETCH_MODE)) {
+		eth_dev->rx_pkt_burst = dpaa2_dev_rx;
+		DPAA2_PMD_INFO("No Prefetch mode");
 	} else {
 		eth_dev->rx_pkt_burst = dpaa2_dev_prefetch_rx;
 	}
@@ -2405,7 +2413,8 @@ static struct rte_dpaa2_driver rte_dpaa2_pmd = {
 
 RTE_PMD_REGISTER_DPAA2(net_dpaa2, rte_dpaa2_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(net_dpaa2,
-		DRIVER_LOOPBACK_MODE "=<int>");
+		DRIVER_LOOPBACK_MODE "=<int> "
+		DRIVER_NO_PREFETCH_MODE "=<int>");
 RTE_INIT(dpaa2_pmd_init_log)
 {
 	dpaa2_logtype_pmd = rte_log_register("pmd.net.dpaa2");
