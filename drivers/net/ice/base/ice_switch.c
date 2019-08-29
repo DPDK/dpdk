@@ -2978,8 +2978,6 @@ ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
 					ICE_AQC_RES_TYPE_FLAG_SHARED : 0));
 	cmd->ops.cmd.first_desc = CPU_TO_LE16(*desc_id);
 
-	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
-
 	status = ice_aq_send_cmd(hw, &desc, buf, buf_size, cd);
 	if (!status)
 		*desc_id = LE16_TO_CPU(cmd->ops.resp.next_desc);
