@@ -29,6 +29,8 @@ static inline uint32_t __attribute__((hot))
 dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 			struct dpaa2_annot_hdr *annotation);
 
+static void enable_tx_tstamp(struct qbman_fd *fd) __attribute__((unused));
+
 #define DPAA2_MBUF_TO_CONTIG_FD(_mbuf, _fd, _bpid)  do { \
 	DPAA2_SET_FD_ADDR(_fd, DPAA2_MBUF_VADDR_TO_IOVA(_mbuf)); \
 	DPAA2_SET_FD_LEN(_fd, _mbuf->data_len); \
@@ -130,6 +132,11 @@ dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 	DPAA2_PMD_DP_DEBUG("(slow parse)annotation(3)=0x%" PRIx64 "\t"
 			"(4)=0x%" PRIx64 "\t",
 			annotation->word3, annotation->word4);
+
+#if defined(RTE_LIBRTE_IEEE1588)
+	if (BIT_ISSET_AT_POS(annotation->word1, DPAA2_ETH_FAS_PTP))
+		mbuf->ol_flags |= PKT_RX_IEEE1588_PTP;
+#endif
 
 	if (BIT_ISSET_AT_POS(annotation->word3, L2_VLAN_1_PRESENT)) {
 		vlan_tci = rte_pktmbuf_mtod_offset(mbuf, uint16_t *,
@@ -511,6 +518,9 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct qbman_pull_desc pulldesc;
 	struct queue_storage_info_t *q_storage = dpaa2_q->q_storage;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
+#if defined(RTE_LIBRTE_IEEE1588)
+	struct dpaa2_dev_priv *priv = eth_data->dev_private;
+#endif
 
 	if (unlikely(!DPAA2_PER_LCORE_ETHRX_DPIO)) {
 		ret = dpaa2_affine_qbman_ethrx_swp();
@@ -615,6 +625,9 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		else
 			bufs[num_rx] = eth_fd_to_mbuf(fd);
 		bufs[num_rx]->port = eth_data->port_id;
+#if defined(RTE_LIBRTE_IEEE1588)
+		priv->rx_timestamp = bufs[num_rx]->timestamp;
+#endif
 
 		if (eth_data->dev_conf.rxmode.offloads &
 				DEV_RX_OFFLOAD_VLAN_STRIP)
@@ -846,6 +859,11 @@ uint16_t dpaa2_dev_tx_conf(void *queue)
 	struct qbman_release_desc releasedesc;
 	uint32_t bpid;
 	uint64_t buf;
+#if defined(RTE_LIBRTE_IEEE1588)
+	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
+	struct dpaa2_dev_priv *priv = eth_data->dev_private;
+	struct dpaa2_annot_hdr *annotation;
+#endif
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
@@ -926,6 +944,12 @@ uint16_t dpaa2_dev_tx_conf(void *queue)
 			dq_storage++;
 			num_tx_conf++;
 			num_pulled++;
+#if defined(RTE_LIBRTE_IEEE1588)
+			annotation = (struct dpaa2_annot_hdr *)((size_t)
+				DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)) +
+				DPAA2_FD_PTA_SIZE);
+			priv->tx_timestamp = annotation->word2;
+#endif
 		} while (pending);
 
 	/* Last VDQ provided all packets and more packets are requested */
@@ -934,6 +958,28 @@ uint16_t dpaa2_dev_tx_conf(void *queue)
 	dpaa2_q->rx_pkts += num_tx_conf;
 
 	return num_tx_conf;
+}
+
+/* Configure the egress frame annotation for timestamp update */
+static void enable_tx_tstamp(struct qbman_fd *fd)
+{
+	struct dpaa2_faead *fd_faead;
+
+	/* Set frame annotation status field as valid */
+	(fd)->simple.frc |= DPAA2_FD_FRC_FASV;
+
+	/* Set frame annotation egress action descriptor as valid */
+	(fd)->simple.frc |= DPAA2_FD_FRC_FAEADV;
+
+	/* Set Annotation Length as 128B */
+	(fd)->simple.ctrl |= DPAA2_FD_CTRL_ASAL;
+
+	/* enable update of confirmation frame annotation */
+	fd_faead = (struct dpaa2_faead *)((size_t)
+			DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)) +
+			DPAA2_FD_PTA_SIZE + DPAA2_FD_HW_ANNOT_FAEAD_OFFSET);
+	fd_faead->ctrl = DPAA2_ANNOT_FAEAD_A2V | DPAA2_ANNOT_FAEAD_UPDV |
+				DPAA2_ANNOT_FAEAD_UPD;
 }
 
 /*
@@ -969,6 +1015,15 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	DPAA2_PMD_DP_DEBUG("===> eth_data =%p, fqid =%d\n",
 			eth_data, dpaa2_q->fqid);
+
+#ifdef RTE_LIBRTE_IEEE1588
+	/* IEEE1588 driver need pointer to tx confirmation queue
+	 * corresponding to last packet transmitted for reading
+	 * the timestamp
+	 */
+	priv->next_tx_conf_queue = dpaa2_q->tx_conf_queue;
+	dpaa2_dev_tx_conf(dpaa2_q->tx_conf_queue);
+#endif
 
 	/*Prepare enqueue descriptor*/
 	qbman_eq_desc_clear(&eqdesc);
@@ -1020,6 +1075,9 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 					DPAA2_MBUF_TO_CONTIG_FD((*bufs),
 					&fd_arr[loop], mempool_to_bpid(mp));
 					bufs++;
+#ifdef RTE_LIBRTE_IEEE1588
+					enable_tx_tstamp(&fd_arr[loop]);
+#endif
 					continue;
 				}
 			} else {
@@ -1068,6 +1126,9 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 						       &fd_arr[loop], bpid);
 				}
 			}
+#ifdef RTE_LIBRTE_IEEE1588
+			enable_tx_tstamp(&fd_arr[loop]);
+#endif
 			bufs++;
 		}
 		loop = 0;

@@ -2388,6 +2388,11 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	priv->max_mac_filters = attr.mac_filter_entries;
 	priv->max_vlan_filters = attr.vlan_filter_entries;
 	priv->flags = 0;
+#if defined(RTE_LIBRTE_IEEE1588)
+	priv->tx_conf_en = 1;
+#else
+	priv->tx_conf_en = 0;
+#endif
 
 	/* Allocate memory for hardware structure for queues */
 	ret = dpaa2_alloc_rx_tx_queues(eth_dev);
