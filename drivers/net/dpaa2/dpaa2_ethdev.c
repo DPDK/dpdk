@@ -84,6 +84,8 @@ static const struct rte_dpaa2_xstats_name_off dpaa2_xstats_strings[] = {
 	{"ingress_nobuffer_discards", 2, 2},
 	{"egress_discarded_frames", 2, 3},
 	{"egress_confirmed_frames", 2, 4},
+	{"cgr_reject_frames", 4, 0},
+	{"cgr_reject_bytes", 4, 1},
 };
 
 static const enum rte_filter_op dpaa2_supported_filter_ops[] = {
@@ -1381,7 +1383,7 @@ dpaa2_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	int32_t  retcode;
-	union dpni_statistics value[3] = {};
+	union dpni_statistics value[5] = {};
 	unsigned int i = 0, num = RTE_DIM(dpaa2_xstats_strings);
 
 	if (n < num)
@@ -1407,6 +1409,18 @@ dpaa2_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 				      2, 0, &value[2]);
 	if (retcode)
 		goto err;
+
+	for (i = 0; i < priv->max_cgs; i++) {
+		if (!priv->cgid_in_use[i]) {
+			/* Get Counters from page_4*/
+			retcode = dpni_get_statistics(dpni, CMD_PRI_LOW,
+						      priv->token,
+						      4, 0, &value[4]);
+			if (retcode)
+				goto err;
+			break;
+		}
+	}
 
 	for (i = 0; i < num; i++) {
 		xstats[i].id = i;
@@ -1449,7 +1463,7 @@ dpaa2_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		struct dpaa2_dev_priv *priv = dev->data->dev_private;
 		struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 		int32_t  retcode;
-		union dpni_statistics value[3] = {};
+		union dpni_statistics value[5] = {};
 
 		if (n < stat_cnt)
 			return stat_cnt;
@@ -1472,6 +1486,12 @@ dpaa2_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		/* Get Counters from page_2*/
 		retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
 					      2, 0, &value[2]);
+		if (retcode)
+			return 0;
+
+		/* Get Counters from page_4*/
+		retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+					      4, 0, &value[4]);
 		if (retcode)
 			return 0;
 
