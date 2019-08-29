@@ -2114,6 +2114,10 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 			ice_debug(hw, ICE_DBG_INIT,
 				  "%s: valid functions = %d\n", prefix,
 				  caps->valid_functions);
+
+			/* store func count for resource management purposes */
+			if (dev_p)
+				dev_p->num_funcs = ice_hweight32(number);
 			break;
 		case ICE_AQC_CAPS_VSI:
 			if (dev_p) {
@@ -2230,7 +2234,7 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 	 * physical ports; i.e. some features are not supported or function
 	 * differently on devices with more than 4 ports.
 	 */
-	if (caps && (ice_hweight32(caps->valid_functions) > 4)) {
+	if (hw->dev_caps.num_funcs > 4) {
 		/* Max 4 TCs per port */
 		caps->maxtc = 4;
 		ice_debug(hw, ICE_DBG_INIT,
