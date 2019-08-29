@@ -4772,6 +4772,47 @@ ice_find_prof_vsig(struct ice_hw *hw, enum ice_block blk, u64 hdl, u16 *vsig)
 }
 
 /**
+ * ice_add_vsi_flow - add VSI flow
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ * @vsi: input VSI
+ * @vsig: target VSIG to include the input VSI
+ *
+ * Calling this function will add the VSI to a given VSIG and
+ * update the HW tables accordingly. This call can be used to
+ * add multiple VSIs to a VSIG if we know beforehand that those
+ * VSIs have the same characteristics of the VSIG. This will
+ * save time in generating a new VSIG and TCAMs till a match is
+ * found and subsequent rollback when a matching VSIG is found.
+ */
+enum ice_status
+ice_add_vsi_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
+{
+	struct ice_chs_chg *tmp, *del;
+	struct LIST_HEAD_TYPE chg;
+	enum ice_status status;
+
+	/* if target VSIG is default the move is invalid */
+	if ((vsig & ICE_VSIG_IDX_M) == ICE_DEFAULT_VSIG)
+		return ICE_ERR_PARAM;
+
+	INIT_LIST_HEAD(&chg);
+
+	/* move VSI to the VSIG that matches */
+	status = ice_move_vsi(hw, blk, vsi, vsig, &chg);
+	/* update hardware if success */
+	if (!status)
+		status = ice_upd_prof_hw(hw, blk, &chg);
+
+	LIST_FOR_EACH_ENTRY_SAFE(del, tmp, &chg, ice_chs_chg, list_entry) {
+		LIST_DEL(&del->list_entry);
+		ice_free(hw, del);
+	}
+
+	return status;
+}
+
+/**
  * ice_add_prof_id_flow - add profile flow
  * @hw: pointer to the HW struct
  * @blk: hardware block

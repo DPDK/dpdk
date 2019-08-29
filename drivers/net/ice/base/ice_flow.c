@@ -1112,6 +1112,34 @@ ice_flow_rem_prof_sync(struct ice_hw *hw, enum ice_block blk,
 }
 
 /**
+ * ice_flow_assoc_vsig_vsi - associate a VSI with VSIG
+ * @hw: pointer to the hardware structure
+ * @blk: classification stage
+ * @vsi_handle: software VSI handle
+ * @vsig: target VSI group
+ *
+ * Assumption: the caller has already verified that the VSI to
+ * be added has the same characteristics as the VSIG and will
+ * thereby have access to all resources added to that VSIG.
+ */
+enum ice_status
+ice_flow_assoc_vsig_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi_handle,
+			u16 vsig)
+{
+	enum ice_status status;
+
+	if (!ice_is_vsi_valid(hw, vsi_handle) || blk >= ICE_BLK_COUNT)
+		return ICE_ERR_PARAM;
+
+	ice_acquire_lock(&hw->fl_profs_locks[blk]);
+	status = ice_add_vsi_flow(hw, blk, ice_get_hw_vsi_num(hw, vsi_handle),
+				  vsig);
+	ice_release_lock(&hw->fl_profs_locks[blk]);
+
+	return status;
+}
+
+/**
  * ice_flow_assoc_prof - associate a VSI with a flow profile
  * @hw: pointer to the hardware structure
  * @blk: classification stage
