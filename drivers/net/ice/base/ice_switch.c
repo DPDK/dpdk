@@ -6360,14 +6360,11 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		 u16 lkups_cnt, struct ice_adv_rule_info *rinfo)
 {
 	struct ice_adv_fltr_mgmt_list_entry *list_elem;
-	const struct ice_dummy_pkt_offsets *offsets;
 	struct ice_prot_lkup_ext lkup_exts;
-	u16 rule_buf_sz, pkt_len, i, rid;
 	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
 	enum ice_status status = ICE_SUCCESS;
 	bool remove_rule = false;
-	const u8 *pkt = NULL;
-	u16 vsi_handle;
+	u16 i, rid, vsi_handle;
 
 	ice_memset(&lkup_exts, 0, sizeof(lkup_exts), ICE_NONDMA_MEM);
 	for (i = 0; i < lkups_cnt; i++) {
@@ -6419,10 +6416,9 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	ice_release_lock(rule_lock);
 	if (remove_rule) {
 		struct ice_aqc_sw_rules_elem *s_rule;
+		u16 rule_buf_sz;
 
-		ice_find_dummy_packet(lkups, lkups_cnt, rinfo->tun_type, &pkt,
-				      &pkt_len, &offsets);
-		rule_buf_sz = ICE_SW_RULE_RX_TX_NO_HDR_SIZE + pkt_len;
+		rule_buf_sz = ICE_SW_RULE_RX_TX_NO_HDR_SIZE;
 		s_rule =
 			(struct ice_aqc_sw_rules_elem *)ice_malloc(hw,
 								   rule_buf_sz);
