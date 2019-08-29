@@ -411,3 +411,240 @@ enum ice_status ice_nvm_validate_checksum(struct ice_hw *hw)
 
 	return status;
 }
+
+/**
+ * ice_nvm_access_get_features - Return the NVM access features structure
+ * @cmd: NVM access command to process
+ * @data: storage for the driver NVM features
+ *
+ * Fill in the data section of the NVM access request with a copy of the NVM
+ * features structure.
+ */
+enum ice_status
+ice_nvm_access_get_features(struct ice_nvm_access_cmd *cmd,
+			    union ice_nvm_access_data *data)
+{
+	/* The provided data_size must be at least as large as our NVM
+	 * features structure. A larger size should not be treated as an
+	 * error, to allow future extensions to to the features structure to
+	 * work on older drivers.
+	 */
+	if (cmd->data_size < sizeof(struct ice_nvm_features))
+		return ICE_ERR_NO_MEMORY;
+
+	/* Initialize the data buffer to zeros */
+	ice_memset(data, 0, cmd->data_size, ICE_NONDMA_MEM);
+
+	/* Fill in the features data */
+	data->drv_features.major = ICE_NVM_ACCESS_MAJOR_VER;
+	data->drv_features.minor = ICE_NVM_ACCESS_MINOR_VER;
+	data->drv_features.size = sizeof(struct ice_nvm_features);
+	data->drv_features.features[0] = ICE_NVM_FEATURES_0_REG_ACCESS;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_nvm_access_get_module - Helper function to read module value
+ * @cmd: NVM access command structure
+ *
+ * Reads the module value out of the NVM access config field.
+ */
+u32 ice_nvm_access_get_module(struct ice_nvm_access_cmd *cmd)
+{
+	return ((cmd->config & ICE_NVM_CFG_MODULE_M) >> ICE_NVM_CFG_MODULE_S);
+}
+
+/**
+ * ice_nvm_access_get_flags - Helper function to read flags value
+ * @cmd: NVM access command structure
+ *
+ * Reads the flags value out of the NVM access config field.
+ */
+u32 ice_nvm_access_get_flags(struct ice_nvm_access_cmd *cmd)
+{
+	return ((cmd->config & ICE_NVM_CFG_FLAGS_M) >> ICE_NVM_CFG_FLAGS_S);
+}
+
+/**
+ * ice_nvm_access_get_adapter - Helper function to read adapter info
+ * @cmd: NVM access command structure
+ *
+ * Read the adapter info value out of the NVM access config field.
+ */
+u32 ice_nvm_access_get_adapter(struct ice_nvm_access_cmd *cmd)
+{
+	return ((cmd->config & ICE_NVM_CFG_ADAPTER_INFO_M) >>
+		ICE_NVM_CFG_ADAPTER_INFO_S);
+}
+
+/**
+ * ice_validate_nvm_rw_reg - Check than an NVM access request is valid
+ * @cmd: NVM access command structure
+ *
+ * Validates that an NVM access structure is request to read or write a valid
+ * register offset. First validates that the module and flags are correct, and
+ * then ensures that the register offset is one of the accepted registers.
+ */
+static enum ice_status
+ice_validate_nvm_rw_reg(struct ice_nvm_access_cmd *cmd)
+{
+	u32 module, flags, offset;
+	u16 i;
+
+	module = ice_nvm_access_get_module(cmd);
+	flags = ice_nvm_access_get_flags(cmd);
+	offset = cmd->offset;
+
+	/* Make sure the module and flags indicate a read/write request */
+	if (module != ICE_NVM_REG_RW_MODULE ||
+	    flags != ICE_NVM_REG_RW_FLAGS ||
+	    cmd->data_size != FIELD_SIZEOF(union ice_nvm_access_data, regval))
+		return ICE_ERR_PARAM;
+
+	switch (offset) {
+	case GL_HICR:
+	case GL_HICR_EN: /* Note, this register is read only */
+	case GL_FWSTS:
+	case GL_MNG_FWSM:
+	case GLGEN_CSR_DEBUG_C:
+	case GLPCI_LBARCTRL:
+	case GLNVM_GENS:
+	case GLNVM_FLA:
+	case PF_FUNC_RID:
+		return ICE_SUCCESS;
+	default:
+		break;
+	}
+
+	for (i = 0; i <= ICE_NVM_ACCESS_GL_HIDA_MAX; i++)
+		if (offset == (u32)GL_HIDA(i))
+			return ICE_SUCCESS;
+
+	for (i = 0; i <= ICE_NVM_ACCESS_GL_HIBA_MAX; i++)
+		if (offset == (u32)GL_HIBA(i))
+			return ICE_SUCCESS;
+
+	/* All other register offsets are not valid */
+	return ICE_ERR_OUT_OF_RANGE;
+}
+
+/**
+ * ice_nvm_access_read - Handle an NVM read request
+ * @hw: pointer to the HW struct
+ * @cmd: NVM access command to process
+ * @data: storage for the register value read
+ *
+ * Process an NVM access request to read a register.
+ */
+enum ice_status
+ice_nvm_access_read(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
+		    union ice_nvm_access_data *data)
+{
+	enum ice_status status;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
+	/* Always initialize the output data, even on failure */
+	ice_memset(data, 0, cmd->data_size, ICE_NONDMA_MEM);
+
+	/* Make sure this is a valid read/write access request */
+	status = ice_validate_nvm_rw_reg(cmd);
+	if (status)
+		return status;
+
+	ice_debug(hw, ICE_DBG_NVM, "NVM access: reading register %08x\n",
+		  cmd->offset);
+
+	/* Read the register and store the contents in the data field */
+	data->regval = rd32(hw, cmd->offset);
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_nvm_access_write - Handle an NVM write request
+ * @hw: pointer to the HW struct
+ * @cmd: NVM access command to process
+ * @data: NVM access data to write
+ *
+ * Process an NVM access request to write a register.
+ */
+enum ice_status
+ice_nvm_access_write(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
+		     union ice_nvm_access_data *data)
+{
+	enum ice_status status;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
+	/* Make sure this is a valid read/write access request */
+	status = ice_validate_nvm_rw_reg(cmd);
+	if (status)
+		return status;
+
+	/* The HICR_EN register is read-only */
+	if (cmd->offset == GL_HICR_EN)
+		return ICE_ERR_OUT_OF_RANGE;
+
+	ice_debug(hw, ICE_DBG_NVM,
+		  "NVM access: writing register %08x with value %08x\n",
+		  cmd->offset, data->regval);
+
+	/* Write the data field to the specified register */
+	wr32(hw, cmd->offset, data->regval);
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_handle_nvm_access - Handle an NVM access request
+ * @hw: pointer to the HW struct
+ * @cmd: NVM access command info
+ * @data: pointer to read or return data
+ *
+ * Process an NVM access request. Read the command structure information and
+ * determine if it is valid. If not, report an error indicating the command
+ * was invalid.
+ *
+ * For valid commands, perform the necessary function, copying the data into
+ * the provided data buffer.
+ */
+enum ice_status
+ice_handle_nvm_access(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
+		      union ice_nvm_access_data *data)
+{
+	u32 module, flags, adapter_info;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
+	/* Extended flags are currently reserved and must be zero */
+	if ((cmd->config & ICE_NVM_CFG_EXT_FLAGS_M) != 0)
+		return ICE_ERR_PARAM;
+
+	/* Adapter info must match the HW device ID */
+	adapter_info = ice_nvm_access_get_adapter(cmd);
+	if (adapter_info != hw->device_id)
+		return ICE_ERR_PARAM;
+
+	switch (cmd->command) {
+	case ICE_NVM_CMD_READ:
+		module = ice_nvm_access_get_module(cmd);
+		flags = ice_nvm_access_get_flags(cmd);
+
+		/* Getting the driver's NVM features structure shares the same
+		 * command type as reading a register. Read the config field
+		 * to determine if this is a request to get features.
+		 */
+		if (module == ICE_NVM_GET_FEATURES_MODULE &&
+		    flags == ICE_NVM_GET_FEATURES_FLAGS &&
+		    cmd->offset == 0)
+			return ice_nvm_access_get_features(cmd, data);
+		else
+			return ice_nvm_access_read(hw, cmd, data);
+	case ICE_NVM_CMD_WRITE:
+		return ice_nvm_access_write(hw, cmd, data);
+	default:
+		return ICE_ERR_PARAM;
+	}
+}
