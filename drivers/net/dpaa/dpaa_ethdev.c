@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017 NXP
+ *   Copyright 2017-2019 NXP
  *
  */
 /* System headers */
@@ -1027,6 +1027,40 @@ dpaa_dev_set_mac_addr(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static int dpaa_dev_queue_intr_enable(struct rte_eth_dev *dev,
+				      uint16_t queue_id)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct qman_fq *rxq = &dpaa_intf->rx_queues[queue_id];
+
+	if (!rxq->is_static)
+		return -EINVAL;
+
+	return qman_fq_portal_irqsource_add(rxq->qp, QM_PIRQ_DQRI);
+}
+
+static int dpaa_dev_queue_intr_disable(struct rte_eth_dev *dev,
+				       uint16_t queue_id)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct qman_fq *rxq = &dpaa_intf->rx_queues[queue_id];
+	uint32_t temp;
+	ssize_t temp1;
+
+	if (!rxq->is_static)
+		return -EINVAL;
+
+	qman_fq_portal_irqsource_remove(rxq->qp, ~0);
+
+	temp1 = read(rxq->q_fd, &temp, sizeof(temp));
+	if (temp1 != sizeof(temp))
+		DPAA_EVENTDEV_ERR("irq read error");
+
+	qman_fq_portal_thread_irq(rxq->qp);
+
+	return 0;
+}
+
 static struct eth_dev_ops dpaa_devops = {
 	.dev_configure		  = dpaa_eth_dev_configure,
 	.dev_start		  = dpaa_eth_dev_start,
@@ -1064,6 +1098,9 @@ static struct eth_dev_ops dpaa_devops = {
 	.mac_addr_set		  = dpaa_dev_set_mac_addr,
 
 	.fw_version_get		  = dpaa_fw_version_get,
+
+	.rx_queue_intr_enable	  = dpaa_dev_queue_intr_enable,
+	.rx_queue_intr_disable	  = dpaa_dev_queue_intr_disable,
 };
 
 static bool

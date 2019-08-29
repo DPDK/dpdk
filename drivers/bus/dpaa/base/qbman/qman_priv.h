@@ -157,6 +157,8 @@ qman_init_portal(struct qman_portal *portal,
 struct qman_portal *qman_alloc_global_portal(struct qm_portal_config *q_pcfg);
 int qman_free_global_portal(struct qman_portal *portal);
 
+void qman_portal_uninhibit_isr(struct qman_portal *portal);
+
 struct qm_portal_config *qm_get_unused_portal(void);
 struct qm_portal_config *qm_get_unused_portal_idx(uint32_t idx);
 

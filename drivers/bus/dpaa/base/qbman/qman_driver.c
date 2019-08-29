@@ -121,6 +121,11 @@ void qman_thread_irq(void)
 	out_be32(qpcfg.addr_virt[DPAA_PORTAL_CI] + 0x36C0, 0);
 }
 
+void qman_fq_portal_thread_irq(struct qman_portal *qp)
+{
+	qman_portal_uninhibit_isr(qp);
+}
+
 struct qman_portal *fsl_qman_fq_portal_create(int *fd)
 {
 	struct qman_portal *portal = NULL;

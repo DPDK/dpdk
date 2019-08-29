@@ -127,5 +127,8 @@ DPDK_19.11 {
 	global:
 
 	fsl_qman_fq_portal_create;
+	qman_fq_portal_irqsource_add;
+	qman_fq_portal_irqsource_remove;
+	qman_fq_portal_thread_irq;
 
 } DPDK_19.05;

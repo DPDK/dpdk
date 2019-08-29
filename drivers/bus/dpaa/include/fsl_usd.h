@@ -67,6 +67,7 @@ int bman_thread_fd(void);
  */
 void qman_thread_irq(void);
 void bman_thread_irq(void);
+void qman_fq_portal_thread_irq(struct qman_portal *qp);
 
 void qman_clear_irq(void);
 
