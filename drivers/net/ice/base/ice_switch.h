@@ -183,6 +183,7 @@ struct ice_sw_recipe {
 	/* For a chained recipe the root recipe is what should be used for
 	 * programming rules
 	 */
+	u8 is_root;
 	u8 root_rid;
 	u8 recp_created;
 
@@ -225,6 +226,10 @@ struct ice_sw_recipe {
 #define ICE_MAX_NUM_PROFILES 256
 	/* Profiles this recipe is associated with */
 	u8 num_profs, *prof_ids;
+
+	/* Possible result indexes are 44, 45, 46 and 47 */
+#define ICE_POSSIBLE_RES_IDX 0x0000F00000000000ULL
+	ice_declare_bitmap(res_idxs, ICE_MAX_FV_WORDS);
 
 	/* This allows user to specify the recipe priority.
 	 * For now, this becomes 'fwd_priority' when recipe
