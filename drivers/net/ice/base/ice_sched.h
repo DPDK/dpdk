@@ -183,6 +183,6 @@ ice_sched_set_vsi_bw_shared_lmt(struct ice_port_info *pi, u16 vsi_handle,
 enum ice_status
 ice_sched_set_agg_bw_shared_lmt(struct ice_port_info *pi, u32 agg_id, u32 bw);
 enum ice_status
-ice_sched_cfg_sibl_node_prio(struct ice_hw *hw, struct ice_sched_node *node,
-			     u8 priority);
+ice_sched_cfg_sibl_node_prio(struct ice_port_info *pi,
+			     struct ice_sched_node *node, u8 priority);
 #endif /* _ICE_SCHED_H_ */

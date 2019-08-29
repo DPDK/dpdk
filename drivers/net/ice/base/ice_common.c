@@ -4158,7 +4158,7 @@ static enum ice_status ice_replay_pre_init(struct ice_hw *hw)
 				  &sw->recp_list[i].filt_replay_rules);
 	ice_sched_replay_agg_vsi_preinit(hw);
 
-	return ice_sched_replay_tc_node_bw(hw);
+	return ice_sched_replay_tc_node_bw(hw->port_info);
 }
 
 /**

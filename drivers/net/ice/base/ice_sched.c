@@ -1480,7 +1480,7 @@ ice_sched_get_vsi_node(struct ice_port_info *pi, struct ice_sched_node *tc_node,
 
 /**
  * ice_sched_get_agg_node - Get an aggregator node based on aggregator ID
- * @hw: pointer to the HW struct
+ * @pi: pointer to the port information structure
  * @tc_node: pointer to the TC node
  * @agg_id: aggregator ID
  *
@@ -1488,14 +1488,17 @@ ice_sched_get_vsi_node(struct ice_port_info *pi, struct ice_sched_node *tc_node,
  * a given TC branch
  */
 static struct ice_sched_node *
-ice_sched_get_agg_node(struct ice_hw *hw, struct ice_sched_node *tc_node,
+ice_sched_get_agg_node(struct ice_port_info *pi, struct ice_sched_node *tc_node,
 		       u32 agg_id)
 {
 	struct ice_sched_node *node;
+	struct ice_hw *hw = pi->hw;
 	u8 agg_layer;
 
+	if (!hw)
+		return NULL;
 	agg_layer = ice_sched_get_agg_layer(hw);
-	node = ice_sched_get_first_node(hw->port_info, tc_node, agg_layer);
+	node = ice_sched_get_first_node(pi, tc_node, agg_layer);
 
 	/* Check whether it already exists */
 	while (node) {
@@ -2251,7 +2254,7 @@ ice_sched_move_vsi_to_agg(struct ice_port_info *pi, u16 vsi_handle, u32 agg_id,
 	if (!tc_node)
 		return ICE_ERR_CFG;
 
-	agg_node = ice_sched_get_agg_node(pi->hw, tc_node, agg_id);
+	agg_node = ice_sched_get_agg_node(pi, tc_node, agg_id);
 	if (!agg_node)
 		return ICE_ERR_DOES_NOT_EXIST;
 
@@ -2388,7 +2391,7 @@ ice_sched_rm_agg_cfg(struct ice_port_info *pi, u32 agg_id, u8 tc)
 	if (!tc_node)
 		return ICE_ERR_CFG;
 
-	agg_node = ice_sched_get_agg_node(hw, tc_node, agg_id);
+	agg_node = ice_sched_get_agg_node(pi, tc_node, agg_id);
 	if (!agg_node)
 		return ICE_ERR_DOES_NOT_EXIST;
 
@@ -2497,7 +2500,7 @@ ice_sched_add_agg_cfg(struct ice_port_info *pi, u32 agg_id, u8 tc)
 	if (!tc_node)
 		return ICE_ERR_CFG;
 
-	agg_node = ice_sched_get_agg_node(hw, tc_node, agg_id);
+	agg_node = ice_sched_get_agg_node(pi, tc_node, agg_id);
 	/* Does Agg node already exist ? */
 	if (agg_node)
 		return status;
@@ -3445,7 +3448,6 @@ ice_cfg_vsi_q_priority(struct ice_port_info *pi, u16 num_qs, u32 *q_ids,
 		       u8 *q_prio)
 {
 	enum ice_status status = ICE_ERR_PARAM;
-	struct ice_hw *hw = pi->hw;
 	u16 i;
 
 	ice_acquire_lock(&pi->sched_lock);
@@ -3460,7 +3462,7 @@ ice_cfg_vsi_q_priority(struct ice_port_info *pi, u16 num_qs, u32 *q_ids,
 			break;
 		}
 		/* Configure Priority */
-		status = ice_sched_cfg_sibl_node_prio(hw, node, q_prio[i]);
+		status = ice_sched_cfg_sibl_node_prio(pi, node, q_prio[i]);
 		if (status)
 			break;
 	}
@@ -3508,7 +3510,7 @@ ice_cfg_agg_vsi_priority_per_tc(struct ice_port_info *pi, u32 agg_id,
 	if (!tc_node)
 		goto exit_agg_priority_per_tc;
 
-	agg_node = ice_sched_get_agg_node(hw, tc_node, agg_id);
+	agg_node = ice_sched_get_agg_node(pi, tc_node, agg_id);
 	if (!agg_node)
 		goto exit_agg_priority_per_tc;
 
@@ -3542,7 +3544,7 @@ ice_cfg_agg_vsi_priority_per_tc(struct ice_port_info *pi, u32 agg_id,
 
 		if (ice_sched_find_node_in_subtree(hw, agg_node, vsi_node)) {
 			/* Configure Priority */
-			status = ice_sched_cfg_sibl_node_prio(hw, vsi_node,
+			status = ice_sched_cfg_sibl_node_prio(pi, vsi_node,
 							      node_prio[i]);
 			if (status)
 				break;
@@ -3654,7 +3656,7 @@ ice_cfg_agg_bw_alloc(struct ice_port_info *pi, u32 agg_id, u8 ena_tcmap,
 		if (!tc_node)
 			continue;
 
-		agg_node = ice_sched_get_agg_node(hw, tc_node, agg_id);
+		agg_node = ice_sched_get_agg_node(pi, tc_node, agg_id);
 		if (!agg_node)
 			continue;
 
@@ -4453,19 +4455,17 @@ static enum ice_status
 ice_sched_save_tc_node_bw(struct ice_port_info *pi, u8 tc,
 			  enum ice_rl_type rl_type, u32 bw)
 {
-	struct ice_hw *hw = pi->hw;
-
 	if (tc >= ICE_MAX_TRAFFIC_CLASS)
 		return ICE_ERR_PARAM;
 	switch (rl_type) {
 	case ICE_MIN_BW:
-		ice_set_clear_cir_bw(&hw->tc_node_bw_t_info[tc], bw);
+		ice_set_clear_cir_bw(&pi->tc_node_bw_t_info[tc], bw);
 		break;
 	case ICE_MAX_BW:
-		ice_set_clear_eir_bw(&hw->tc_node_bw_t_info[tc], bw);
+		ice_set_clear_eir_bw(&pi->tc_node_bw_t_info[tc], bw);
 		break;
 	case ICE_SHARED_BW:
-		ice_set_clear_shared_bw(&hw->tc_node_bw_t_info[tc], bw);
+		ice_set_clear_shared_bw(&pi->tc_node_bw_t_info[tc], bw);
 		break;
 	default:
 		return ICE_ERR_PARAM;
@@ -4552,17 +4552,15 @@ static enum ice_status
 ice_sched_save_tc_node_bw_alloc(struct ice_port_info *pi, u8 tc,
 				enum ice_rl_type rl_type, u16 bw_alloc)
 {
-	struct ice_hw *hw = pi->hw;
-
 	if (tc >= ICE_MAX_TRAFFIC_CLASS)
 		return ICE_ERR_PARAM;
 	switch (rl_type) {
 	case ICE_MIN_BW:
-		ice_set_clear_cir_bw_alloc(&hw->tc_node_bw_t_info[tc],
+		ice_set_clear_cir_bw_alloc(&pi->tc_node_bw_t_info[tc],
 					   bw_alloc);
 		break;
 	case ICE_MAX_BW:
-		ice_set_clear_eir_bw_alloc(&hw->tc_node_bw_t_info[tc],
+		ice_set_clear_eir_bw_alloc(&pi->tc_node_bw_t_info[tc],
 					   bw_alloc);
 		break;
 	default:
@@ -4710,7 +4708,7 @@ ice_sched_get_node_by_id_type(struct ice_port_info *pi, u32 id,
 
 		tc_node = ice_sched_get_tc_node(pi, tc);
 		if (tc_node)
-			node = ice_sched_get_agg_node(pi->hw, tc_node, id);
+			node = ice_sched_get_agg_node(pi, tc_node, id);
 		break;
 	}
 
@@ -4921,7 +4919,7 @@ ice_sched_validate_agg_srl_node(struct ice_port_info *pi, u32 agg_id)
 		if (!tc_node)
 			continue;
 
-		agg_node = ice_sched_get_agg_node(pi->hw, tc_node, agg_id);
+		agg_node = ice_sched_get_agg_node(pi, tc_node, agg_id);
 		if (!agg_node)
 			continue;
 		/* SRL bandwidth layer selection */
@@ -4992,7 +4990,7 @@ ice_sched_set_agg_bw_shared_lmt(struct ice_port_info *pi, u32 agg_id, u32 bw)
 		if (!tc_node)
 			continue;
 
-		agg_node = ice_sched_get_agg_node(pi->hw, tc_node, agg_id);
+		agg_node = ice_sched_get_agg_node(pi, tc_node, agg_id);
 		if (!agg_node)
 			continue;
 
@@ -5017,7 +5015,7 @@ exit_agg_bw_shared_lmt:
 
 /**
  * ice_sched_cfg_sibl_node_prio - configure node sibling priority
- * @hw: pointer to the HW struct
+ * @pi: port information structure
  * @node: sched node to configure
  * @priority: sibling priority
  *
@@ -5025,13 +5023,16 @@ exit_agg_bw_shared_lmt:
  * function needs to be called with scheduler lock held.
  */
 enum ice_status
-ice_sched_cfg_sibl_node_prio(struct ice_hw *hw, struct ice_sched_node *node,
-			     u8 priority)
+ice_sched_cfg_sibl_node_prio(struct ice_port_info *pi,
+			     struct ice_sched_node *node, u8 priority)
 {
 	struct ice_aqc_txsched_elem_data buf;
 	struct ice_aqc_txsched_elem *data;
+	struct ice_hw *hw = pi->hw;
 	enum ice_status status;
 
+	if (!hw)
+		return ICE_ERR_PARAM;
 	buf = node->info;
 	data = &buf.data;
 	data->valid_sections |= ICE_AQC_ELEM_VALID_GENERIC;
@@ -5198,7 +5199,7 @@ ice_sched_replay_agg_bw(struct ice_hw *hw, struct ice_sched_agg_info *agg_info)
 			status = ICE_ERR_PARAM;
 			break;
 		}
-		agg_node = ice_sched_get_agg_node(hw, tc_node,
+		agg_node = ice_sched_get_agg_node(hw->port_info, tc_node,
 						  agg_info->agg_id);
 		if (!agg_node) {
 			status = ICE_ERR_PARAM;
@@ -5310,26 +5311,27 @@ void ice_sched_replay_agg_vsi_preinit(struct ice_hw *hw)
 
 /**
  * ice_sched_replay_tc_node_bw - replay TC node(s) BW
- * @hw: pointer to the HW struct
+ * @pi: port information structure
  *
- * This function replay TC nodes. The caller needs to hold the scheduler lock.
+ * This function replay TC nodes.
  */
 enum ice_status
-ice_sched_replay_tc_node_bw(struct ice_hw *hw)
+ice_sched_replay_tc_node_bw(struct ice_port_info *pi)
 {
-	struct ice_port_info *pi = hw->port_info;
 	enum ice_status status = ICE_SUCCESS;
 	u8 tc;
 
+	if (!pi->hw)
+		return ICE_ERR_PARAM;
 	ice_acquire_lock(&pi->sched_lock);
 	ice_for_each_traffic_class(tc) {
 		struct ice_sched_node *tc_node;
 
-		tc_node = ice_sched_get_tc_node(hw->port_info, tc);
+		tc_node = ice_sched_get_tc_node(pi, tc);
 		if (!tc_node)
 			continue; /* TC not present */
-		status = ice_sched_replay_node_bw(hw, tc_node,
-						  &hw->tc_node_bw_t_info[tc]);
+		status = ice_sched_replay_node_bw(pi->hw, tc_node,
+						  &pi->tc_node_bw_t_info[tc]);
 		if (status)
 			break;
 	}
