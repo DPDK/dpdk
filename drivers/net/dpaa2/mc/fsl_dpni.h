@@ -96,6 +96,12 @@ struct fsl_mc_io;
  */
 #define DPNI_OPT_CUSTOM_CG				0x000200
 
+
+/**
+ * Software sequence maximum layout size
+ */
+#define DPNI_SW_SEQUENCE_LAYOUT_SIZE 33
+
 int dpni_open(struct fsl_mc_io *mc_io,
 	      uint32_t cmd_flags,
 	      int dpni_id,
@@ -1423,5 +1429,132 @@ struct dpni_custom_tpid_cfg {
 
 int dpni_get_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 		uint16_t token, struct dpni_custom_tpid_cfg *tpid);
+
+/**
+ * enum dpni_soft_sequence_dest - Enumeration of WRIOP software sequence
+ *				destinations
+ * @DPNI_SS_INGRESS: Ingress parser
+ * @DPNI_SS_EGRESS: Egress parser
+ */
+enum dpni_soft_sequence_dest {
+	DPNI_SS_INGRESS = 0,
+	DPNI_SS_EGRESS = 1,
+};
+
+/**
+ * struct dpni_load_ss_cfg - Structure for Software Sequence load configuration
+ * @dest:	Destination of the Software Sequence: ingress or egress parser
+ * @ss_size: Size of the Software Sequence
+ * @ss_offset:	The offset where to load the Software Sequence (0x20-0x7FD)
+ * @ss_iova: I/O virtual address of the Software Sequence
+ */
+struct dpni_load_ss_cfg {
+	enum dpni_soft_sequence_dest dest;
+	uint16_t ss_size;
+	uint16_t ss_offset;
+	uint64_t ss_iova;
+};
+
+/**
+ * struct dpni_enable_ss_cfg - Structure for software sequence enable
+ *				configuration
+ * @dest:	Destination of the Software Sequence: ingress or egress parser
+ * @hxs: HXS to attach the software sequence to
+ * @set_start: If the Software Sequence or HDR it is attached to is set as
+ *		parser start
+ *		If hxs=DUMMY_LAST_HXS the ss_offset is set directly as parser
+ *			start else the hdr index code is set as parser start
+ * @ss_offset: The offset of the Software Sequence to enable or set as parse
+ *		start
+ * @param_size: Size of the software sequence parameters
+ * @param_offset: Offset in the parameter zone for the software sequence
+ *			parameters
+ * @param_iova: I/O virtual address of the parameters
+ */
+struct dpni_enable_ss_cfg {
+	enum dpni_soft_sequence_dest dest;
+	uint16_t hxs;
+	uint8_t set_start;
+	uint16_t ss_offset;
+	uint8_t param_size;
+	uint8_t param_offset;
+	uint64_t param_iova;
+};
+
+/**
+ * dpni_load_sw_sequence() - Loads a software sequence in parser memory.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cfg:	Software sequence load configuration
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_load_sw_sequence(struct fsl_mc_io *mc_io,
+	      uint32_t cmd_flags,
+	      uint16_t token,
+		  struct dpni_load_ss_cfg *cfg);
+
+/**
+ * dpni_eanble_sw_sequence() - Enables a software sequence in the parser
+ *				profile
+ * corresponding to the ingress or egress of the DPNI.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cfg:	Software sequence enable configuration
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_enable_sw_sequence(struct fsl_mc_io *mc_io,
+			    uint32_t cmd_flags,
+			    uint16_t token,
+			    struct dpni_enable_ss_cfg *cfg);
+
+/**
+ * struct dpni_sw_sequence_layout - Structure for software sequence enable
+ *				configuration
+ * @num_ss:	Number of software sequences returned
+ * @ss: Array of software sequence entries. The number of valid entries
+ *			must match 'num_ss' value
+ */
+struct dpni_sw_sequence_layout {
+	uint8_t num_ss;
+	struct {
+		uint16_t ss_offset;
+		uint16_t ss_size;
+		uint8_t param_offset;
+		uint8_t param_size;
+	} ss[DPNI_SW_SEQUENCE_LAYOUT_SIZE];
+};
+
+/**
+ * dpni_get_sw_sequence_layout() - Get the soft sequence layout
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @src:	Source of the layout (WRIOP Rx or Tx)
+ * @ss_layout_iova:  I/O virtual address of 264 bytes DMA-able memory
+ *
+ * warning: After calling this function, call dpni_extract_sw_sequence_layout()
+ *		to get the layout
+ *
+ * Return:	'0' on Success; error code otherwise.
+ */
+int dpni_get_sw_sequence_layout(struct fsl_mc_io *mc_io,
+				uint32_t cmd_flags,
+				uint16_t token,
+				enum dpni_soft_sequence_dest src,
+				uint64_t ss_layout_iova);
+
+/**
+ * dpni_extract_sw_sequence_layout() - extract the software sequence layout
+ * @layout:		software sequence layout
+ * @sw_sequence_layout_buf:	Zeroed 264 bytes of memory before mapping it
+ *				to DMA
+ *
+ * This function has to be called after dpni_get_sw_sequence_layout
+ *
+ */
+void dpni_extract_sw_sequence_layout(struct dpni_sw_sequence_layout *layout,
+				     const uint8_t *sw_sequence_layout_buf);
 
 #endif /* __FSL_DPNI_H */
