@@ -373,10 +373,34 @@ enum ice_rx_prog_status_desc_error_bits {
 	ICE_RX_PROG_STATUS_DESC_NO_FD_ENTRY_S	= 1,
 };
 
-/* Rx Flex Descriptor
- * This descriptor is used instead of the legacy version descriptor when
+/* Rx Flex Descriptors
+ * These descriptors are used instead of the legacy version descriptors when
  * ice_rlan_ctx.adv_desc is set
  */
+union ice_16b_rx_flex_desc {
+	struct {
+		__le64 pkt_addr; /* Packet buffer address */
+		__le64 hdr_addr; /* Header buffer address */
+				 /* bit 0 of hdr_addr is DD bit */
+	} read;
+	struct {
+		/* Qword 0 */
+		u8 rxdid; /* descriptor builder profile ID */
+		u8 mir_id_umb_cast; /* mirror=[5:0], umb=[7:6] */
+		__le16 ptype_flex_flags0; /* ptype=[9:0], ff0=[15:10] */
+		__le16 pkt_len; /* [15:14] are reserved */
+		__le16 hdr_len_sph_flex_flags1; /* header=[10:0] */
+						/* sph=[11:11] */
+						/* ff1/ext=[15:12] */
+
+		/* Qword 1 */
+		__le16 status_error0;
+		__le16 l2tag1;
+		__le16 flex_meta0;
+		__le16 flex_meta1;
+	} wb; /* writeback */
+};
+
 union ice_32b_rx_flex_desc {
 	struct {
 		__le64 pkt_addr; /* Packet buffer address */
