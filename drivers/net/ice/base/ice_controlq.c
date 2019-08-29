@@ -982,7 +982,7 @@ ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		if (ice_sq_done(hw, cq))
 			break;
 
-		ice_msec_delay(1, false);
+		ice_usec_delay(ICE_CTL_Q_SQ_CMD_USEC, false);
 		total_delay++;
 	} while (total_delay < cq->sq_cmd_timeout);
 
