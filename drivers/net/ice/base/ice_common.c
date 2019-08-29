@@ -2613,6 +2613,53 @@ ice_cache_phy_user_req(struct ice_port_info *pi,
 }
 
 /**
+ * ice_caps_to_fc_mode
+ * @caps: PHY capabilities
+ *
+ * Convert PHY FC capabilities to ice FC mode
+ */
+enum ice_fc_mode ice_caps_to_fc_mode(u8 caps)
+{
+	if (caps & ICE_AQC_PHY_EN_TX_LINK_PAUSE &&
+	    caps & ICE_AQC_PHY_EN_RX_LINK_PAUSE)
+		return ICE_FC_FULL;
+
+	if (caps & ICE_AQC_PHY_EN_TX_LINK_PAUSE)
+		return ICE_FC_TX_PAUSE;
+
+	if (caps & ICE_AQC_PHY_EN_RX_LINK_PAUSE)
+		return ICE_FC_RX_PAUSE;
+
+	return ICE_FC_NONE;
+}
+
+/**
+ * ice_caps_to_fec_mode
+ * @caps: PHY capabilities
+ * @fec_options: Link FEC options
+ *
+ * Convert PHY FEC capabilities to ice FEC mode
+ */
+enum ice_fec_mode ice_caps_to_fec_mode(u8 caps, u8 fec_options)
+{
+	if (caps & ICE_AQC_PHY_EN_AUTO_FEC)
+		return ICE_FEC_AUTO;
+
+	if (fec_options & (ICE_AQC_PHY_FEC_10G_KR_40G_KR4_EN |
+			   ICE_AQC_PHY_FEC_10G_KR_40G_KR4_REQ |
+			   ICE_AQC_PHY_FEC_25G_KR_CLAUSE74_EN |
+			   ICE_AQC_PHY_FEC_25G_KR_REQ))
+		return ICE_FEC_BASER;
+
+	if (fec_options & (ICE_AQC_PHY_FEC_25G_RS_528_REQ |
+			   ICE_AQC_PHY_FEC_25G_RS_544_REQ |
+			   ICE_AQC_PHY_FEC_25G_RS_CLAUSE91_EN))
+		return ICE_FEC_RS;
+
+	return ICE_FEC_NONE;
+}
+
+/**
  * ice_set_fc
  * @pi: port information structure
  * @aq_failures: pointer to status code, specific to ice_set_fc routine
@@ -2716,6 +2763,42 @@ ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
 out:
 	ice_free(hw, pcaps);
 	return status;
+}
+
+/**
+ * ice_phy_caps_equals_cfg
+ * @phy_caps: PHY capabilities
+ * @phy_cfg: PHY configuration
+ *
+ * Helper function to determine if PHY capabilities matches PHY
+ * configuration
+ */
+bool
+ice_phy_caps_equals_cfg(struct ice_aqc_get_phy_caps_data *phy_caps,
+			struct ice_aqc_set_phy_cfg_data *phy_cfg)
+{
+	u8 caps_mask, cfg_mask;
+
+	if (!phy_caps || !phy_cfg)
+		return false;
+
+	/* These bits are not common between capabilities and configuration.
+	 * Do not use them to determine equality.
+	 */
+	caps_mask = ICE_AQC_PHY_CAPS_MASK & ~(ICE_AQC_PHY_AN_MODE |
+					      ICE_AQC_PHY_EN_MOD_QUAL);
+	cfg_mask = ICE_AQ_PHY_ENA_VALID_MASK & ~ICE_AQ_PHY_ENA_AUTO_LINK_UPDT;
+
+	if (phy_caps->phy_type_low != phy_cfg->phy_type_low ||
+	    phy_caps->phy_type_high != phy_cfg->phy_type_high ||
+	    ((phy_caps->caps & caps_mask) != (phy_cfg->caps & cfg_mask)) ||
+	    phy_caps->low_power_ctrl != phy_cfg->low_power_ctrl ||
+	    phy_caps->eee_cap != phy_cfg->eee_cap ||
+	    phy_caps->eeer_value != phy_cfg->eeer_value ||
+	    phy_caps->link_fec_options != phy_cfg->link_fec_opt)
+		return false;
+
+	return true;
 }
 
 /**
