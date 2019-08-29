@@ -5826,6 +5826,55 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 }
 
 /**
+ * ice_fill_adv_packet_tun - fill dummy packet with udp tunnel port
+ * @hw: pointer to the hardware structure
+ * @tun_type: tunnel type
+ * @pkt: dummy packet to fill in
+ * @offsets: offset info for the dummy packet
+ */
+static enum ice_status
+ice_fill_adv_packet_tun(struct ice_hw *hw, enum ice_sw_tunnel_type tun_type,
+			u8 *pkt, const struct ice_dummy_pkt_offsets *offsets)
+{
+	u16 open_port, i;
+
+	switch (tun_type) {
+	case ICE_SW_TUN_AND_NON_TUN:
+	case ICE_SW_TUN_VXLAN_GPE:
+	case ICE_SW_TUN_VXLAN:
+	case ICE_SW_TUN_UDP:
+		if (!ice_get_open_tunnel_port(hw, TNL_VXLAN, &open_port))
+			return ICE_ERR_CFG;
+		break;
+
+	case ICE_SW_TUN_GENEVE:
+		if (!ice_get_open_tunnel_port(hw, TNL_GENEVE, &open_port))
+			return ICE_ERR_CFG;
+		break;
+
+	default:
+		/* Nothing needs to be done for this tunnel type */
+		return ICE_SUCCESS;
+	}
+
+	/* Find the outer UDP protocol header and insert the port number */
+	for (i = 0; offsets[i].type != ICE_PROTOCOL_LAST; i++) {
+		if (offsets[i].type == ICE_UDP_OF) {
+			struct ice_l4_hdr *hdr;
+			u16 offset;
+
+			offset = offsets[i].offset;
+			hdr = (struct ice_l4_hdr *)&pkt[offset];
+			hdr->dst_port = open_port << 8 | open_port >> 8;
+
+			return ICE_SUCCESS;
+		}
+	}
+
+	return ICE_ERR_CFG;
+}
+
+/**
  * ice_find_adv_rule_entry - Search a rule entry
  * @hw: pointer to the hardware structure
  * @lkups: lookup elements or match criteria for the advanced recipe, one
@@ -6128,6 +6177,14 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 
 	ice_fill_adv_dummy_packet(lkups, lkups_cnt, s_rule, pkt, pkt_len,
 				  pkt_offsets);
+
+	if (rinfo->tun_type != ICE_NON_TUN) {
+		status = ice_fill_adv_packet_tun(hw, rinfo->tun_type,
+						 s_rule->pdata.lkup_tx_rx.hdr,
+						 pkt_offsets);
+		if (status)
+			goto err_ice_add_adv_rule;
+	}
 
 	status = ice_aq_sw_rules(hw, (struct ice_aqc_sw_rules *)s_rule,
 				 rule_buf_sz, 1, ice_aqc_opc_add_sw_rules,
