@@ -3799,10 +3799,12 @@ ice_sched_add_rl_profile(struct ice_port_info *pi,
 	struct ice_aqc_rl_profile_generic_elem *buf;
 	struct ice_aqc_rl_profile_info *rl_prof_elem;
 	u16 profiles_added = 0, num_profiles = 1;
-	enum ice_status status = ICE_ERR_PARAM;
+	enum ice_status status;
 	struct ice_hw *hw;
 	u8 profile_type;
 
+	if (layer_num >= ICE_AQC_TOPO_MAX_LEVEL_NUM)
+		return NULL;
 	switch (rl_type) {
 	case ICE_MIN_BW:
 		profile_type = ICE_AQC_RL_PROFILE_TYPE_CIR;
@@ -4049,6 +4051,8 @@ ice_sched_rm_rl_profile(struct ice_port_info *pi, u8 layer_num, u8 profile_type,
 	struct ice_aqc_rl_profile_info *rl_prof_elem;
 	enum ice_status status = ICE_SUCCESS;
 
+	if (layer_num >= ICE_AQC_TOPO_MAX_LEVEL_NUM)
+		return ICE_ERR_PARAM;
 	/* Check the existing list for RL profile */
 	LIST_FOR_EACH_ENTRY(rl_prof_elem, &pi->rl_prof_list[layer_num],
 			    ice_aqc_rl_profile_info, list_entry)
