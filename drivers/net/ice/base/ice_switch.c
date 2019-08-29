@@ -4709,6 +4709,11 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts)
 						&refresh_required))
 				continue;
 
+		/* Skip inverse action recipes */
+		if (recp[i].root_buf && recp[i].root_buf->content.act_ctrl &
+		    ICE_AQ_RECIPE_ACT_INV_ACT)
+			continue;
+
 		/* if number of words we are looking for match */
 		if (lkup_exts->n_val_words == recp[i].lkup_exts.n_val_words) {
 			struct ice_fv_word *a = lkup_exts->fv_words;
