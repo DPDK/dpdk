@@ -106,6 +106,12 @@ enum ice_status
 ice_aq_add_lan_txq(struct ice_hw *hw, u8 count,
 		   struct ice_aqc_add_tx_qgrp *qg_list, u16 buf_size,
 		   struct ice_sq_cd *cd);
+enum ice_status
+ice_aq_move_recfg_lan_txq(struct ice_hw *hw, u8 num_qs, bool is_move,
+			  bool is_tc_change, bool subseq_call, bool flush_pipe,
+			  u8 timeout, u32 *blocked_cgds,
+			  struct ice_aqc_move_txqs_data *buf, u16 buf_size,
+			  u8 *txqs_moved, struct ice_sq_cd *cd);
 
 bool ice_check_sq_alive(struct ice_hw *hw, struct ice_ctl_q_info *cq);
 enum ice_status ice_aq_q_shutdown(struct ice_hw *hw, bool unloading);

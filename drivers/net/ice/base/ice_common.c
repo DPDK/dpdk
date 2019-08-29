@@ -3415,6 +3415,77 @@ do_aq:
 	return status;
 }
 
+/**
+ * ice_aq_move_recfg_lan_txq
+ * @hw: pointer to the hardware structure
+ * @num_qs: number of queues to move/reconfigure
+ * @is_move: true if this operation involves node movement
+ * @is_tc_change: true if this operation involves a TC change
+ * @subseq_call: true if this operation is a subsequent call
+ * @flush_pipe: on timeout, true to flush pipe, false to return EAGAIN
+ * @timeout: timeout in units of 100 usec (valid values 0-50)
+ * @blocked_cgds: out param, bitmap of CGDs that timed out if returning EAGAIN
+ * @buf: struct containing src/dest TEID and per-queue info
+ * @buf_size: size of buffer for indirect command
+ * @txqs_moved: out param, number of queues successfully moved
+ * @cd: pointer to command details structure or NULL
+ *
+ * Move / Reconfigure Tx LAN queues (0x0C32)
+ */
+enum ice_status
+ice_aq_move_recfg_lan_txq(struct ice_hw *hw, u8 num_qs, bool is_move,
+			  bool is_tc_change, bool subseq_call, bool flush_pipe,
+			  u8 timeout, u32 *blocked_cgds,
+			  struct ice_aqc_move_txqs_data *buf, u16 buf_size,
+			  u8 *txqs_moved, struct ice_sq_cd *cd)
+{
+	struct ice_aqc_move_txqs *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+
+	cmd = &desc.params.move_txqs;
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_move_recfg_txqs);
+
+#define ICE_LAN_TXQ_MOVE_TIMEOUT_MAX 50
+	if (timeout > ICE_LAN_TXQ_MOVE_TIMEOUT_MAX)
+		return ICE_ERR_PARAM;
+
+	if (is_tc_change && !flush_pipe && !blocked_cgds)
+		return ICE_ERR_PARAM;
+
+	if (!is_move && !is_tc_change)
+		return ICE_ERR_PARAM;
+
+	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
+
+	if (is_move)
+		cmd->cmd_type |= ICE_AQC_Q_CMD_TYPE_MOVE;
+
+	if (is_tc_change)
+		cmd->cmd_type |= ICE_AQC_Q_CMD_TYPE_TC_CHANGE;
+
+	if (subseq_call)
+		cmd->cmd_type |= ICE_AQC_Q_CMD_SUBSEQ_CALL;
+
+	if (flush_pipe)
+		cmd->cmd_type |= ICE_AQC_Q_CMD_FLUSH_PIPE;
+
+	cmd->num_qs = num_qs;
+	cmd->timeout = ((timeout << ICE_AQC_Q_CMD_TIMEOUT_S) &
+			ICE_AQC_Q_CMD_TIMEOUT_M);
+
+	status = ice_aq_send_cmd(hw, &desc, buf, buf_size, cd);
+
+	if (!status && txqs_moved)
+		*txqs_moved = cmd->num_qs;
+
+	if (hw->adminq.sq_last_status == ICE_AQ_RC_EAGAIN &&
+	    is_tc_change && !flush_pipe)
+		*blocked_cgds = LE32_TO_CPU(cmd->blocked_cgds);
+
+	return status;
+}
+
 
 /* End of FW Admin Queue command wrappers */
 
