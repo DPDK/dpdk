@@ -194,7 +194,6 @@ enum ice_status
 ice_cfg_tc_node_bw_alloc(struct ice_port_info *pi, u8 tc,
 			 enum ice_rl_type rl_type, u8 bw_alloc);
 enum ice_status ice_cfg_rl_burst_size(struct ice_hw *hw, u32 bytes);
-void ice_output_fw_log(struct ice_hw *hw, struct ice_aq_desc *desc, void *buf);
 void
 ice_stat_update40(struct ice_hw *hw, u32 reg, bool prev_stat_loaded,
 		  u64 *prev_stat, u64 *cur_stat);
