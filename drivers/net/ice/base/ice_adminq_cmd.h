@@ -1684,6 +1684,28 @@ struct ice_aqc_nvm {
 	__le32 addr_low;
 };
 
+/* NVM Module_Type ID, needed offset and read_len for struct ice_aqc_nvm. */
+#define ICE_AQC_NVM_SECTOR_UNIT			4096 /* In Bytes */
+#define ICE_AQC_NVM_WORD_UNIT			2 /* In Bytes */
+
+#define ICE_AQC_NVM_START_POINT			0
+#define ICE_AQC_NVM_EMP_SR_PTR_OFFSET		0x90
+#define ICE_AQC_NVM_EMP_SR_PTR_RD_LEN		2 /* In Bytes */
+#define ICE_AQC_NVM_EMP_SR_PTR_M		MAKEMASK(0x7FFF, 0)
+#define ICE_AQC_NVM_EMP_SR_PTR_TYPE_S		15
+#define ICE_AQC_NVM_EMP_SR_PTR_TYPE_M		BIT(15)
+#define ICE_AQC_NVM_EMP_SR_PTR_TYPE_SECTOR	1
+
+#define ICE_AQC_NVM_LLDP_CFG_PTR_OFFSET		0x46
+#define ICE_AQC_NVM_LLDP_CFG_HEADER_LEN		2 /* In Bytes */
+#define ICE_AQC_NVM_LLDP_CFG_PTR_RD_LEN		2 /* In Bytes */
+
+#define ICE_AQC_NVM_LLDP_PRESERVED_MOD_ID	0x129
+#define ICE_AQC_NVM_CUR_LLDP_PERSIST_RD_OFFSET	2 /* In Bytes */
+#define ICE_AQC_NVM_LLDP_STATUS_M		MAKEMASK(0xF, 0)
+#define ICE_AQC_NVM_LLDP_STATUS_M_LEN		4 /* In Bits */
+#define ICE_AQC_NVM_LLDP_STATUS_RD_LEN		4 /* In Bytes */
+
 
 /* Used for 0x0704 as well as for 0x0705 commands */
 struct ice_aqc_nvm_cfg {

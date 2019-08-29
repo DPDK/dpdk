@@ -6,6 +6,7 @@
 #define _ICE_DCB_H_
 
 #include "ice_type.h"
+#include "ice_common.h"
 
 #define ICE_DCBX_OFFLOAD_DIS		0
 #define ICE_DCBX_OFFLOAD_ENABLED	1
