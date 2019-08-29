@@ -380,7 +380,64 @@ dummy_udp_ipv6_packet[] = {
 	0x00, 0x00, /* 2 bytes for 4 byte alignment */
 };
 
-/* this is a recipe to profile bitmap association */
+static const
+struct ice_dummy_pkt_offsets dummy_udp_gtp_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_UDP_OF,		34 },
+	{ ICE_GTP,		42 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8
+dummy_udp_gtp_packet[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x30, /* ICE_IPV4_OFOS 14 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x11, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x08, 0x68, /* ICE_UDP_OF 34 */
+	0x00, 0x1c, 0x00, 0x00,
+
+	0x34, 0xff, 0x00, 0x0c, /* ICE_GTP 42 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x85,
+
+	0x02, 0x00, 0x00, 0x00, /* PDU Session extension header */
+	0x00, 0x00, 0x00, 0x00,
+};
+
+static const
+struct ice_dummy_pkt_offsets dummy_pppoe_packet_offsets[] = {
+	{ ICE_MAC_OFOS,			0 },
+	{ ICE_PPPOE,			14 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8
+dummy_pppoe_packet[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x88, 0x64,
+
+	0x11, 0x00, 0x00, 0x01, /* ICE_PPPOE 14 */
+	0x00, 0x4e, 0x00, 0x21,
+
+	0x45, 0x00, 0x00, 0x30, /* PDU */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x11, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+};
+
+/* this is a recipe to profile association bitmap */
 static ice_declare_bitmap(recipe_to_profile[ICE_MAX_NUM_RECIPES],
 			  ICE_MAX_NUM_PROFILES);
 static ice_declare_bitmap(available_result_ids, ICE_CHAIN_FV_INDEX_START + 1);
@@ -4541,6 +4598,8 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
 	{ ICE_GENEVE,		{ 8, 10, 12, 14 } },
 	{ ICE_VXLAN_GPE,	{ 0, 2, 4 } },
 	{ ICE_NVGRE,		{ 0, 2, 4, 6 } },
+	{ ICE_GTP,		{ 8, 10, 12, 14, 16, 18, 20 } },
+	{ ICE_PPPOE,		{ 0, 2, 4, 6 } },
 	{ ICE_PROTOCOL_LAST,	{ 0 } }
 };
 
@@ -4577,6 +4636,8 @@ static const struct ice_protocol_entry ice_prot_id_tbl[] = {
 	{ ICE_GENEVE,		ICE_UDP_OF_HW },
 	{ ICE_VXLAN_GPE,	ICE_UDP_OF_HW },
 	{ ICE_NVGRE,		ICE_GRE_OF_HW },
+	{ ICE_GTP,		ICE_UDP_OF_HW },
+	{ ICE_PPPOE,		ICE_PPPOE_HW },
 	{ ICE_PROTOCOL_LAST,	0 }
 };
 
@@ -5418,6 +5479,18 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 	bool tcp = false, udp = false, ipv6 = false;
 	u16 i;
 
+	if (tun_type == ICE_SW_TUN_GTP) {
+		*pkt = dummy_udp_gtp_packet;
+		*pkt_len = sizeof(dummy_udp_gtp_packet);
+		*offsets = dummy_udp_gtp_packet_offsets;
+		return;
+	}
+	if (tun_type == ICE_SW_TUN_PPPOE) {
+		*pkt = dummy_pppoe_packet;
+		*pkt_len = sizeof(dummy_pppoe_packet);
+		*offsets = dummy_pppoe_packet_offsets;
+		return;
+	}
 	for (i = 0; i < lkups_cnt; i++) {
 		if (lkups[i].type == ICE_UDP_ILOS)
 			udp = true;
@@ -5563,6 +5636,10 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		case ICE_GENEVE:
 		case ICE_VXLAN_GPE:
 			len = sizeof(struct ice_udp_tnl_hdr);
+			break;
+
+		case ICE_GTP:
+			len = sizeof(struct ice_udp_gtp_hdr);
 			break;
 		default:
 			return ICE_ERR_PARAM;

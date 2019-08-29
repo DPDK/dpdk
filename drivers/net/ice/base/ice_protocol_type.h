@@ -43,6 +43,8 @@ enum ice_protocol_type {
 	ICE_GENEVE,
 	ICE_VXLAN_GPE,
 	ICE_NVGRE,
+	ICE_GTP,
+	ICE_PPPOE,
 	ICE_PROTOCOL_LAST
 };
 
@@ -55,6 +57,8 @@ enum ice_sw_tunnel_type {
 	ICE_SW_TUN_UDP, /* This means all "UDP" tunnel types: VXLAN-GPE, VXLAN
 			 * and GENEVE
 			 */
+	ICE_SW_TUN_GTP,
+	ICE_SW_TUN_PPPOE,
 	ICE_ALL_TUNNELS /* All tunnel types including NVGRE */
 };
 
@@ -97,6 +101,7 @@ enum ice_prot_id {
 	ICE_PROT_ICMPV6_IL	= 100,
 	ICE_PROT_VRRP_F		= 101,
 	ICE_PROT_OSPF		= 102,
+	ICE_PROT_PPPOE		= 103,
 	ICE_PROT_ATAOE_OF	= 114,
 	ICE_PROT_CTRL_OF	= 116,
 	ICE_PROT_LLDP_OF	= 117,
@@ -115,9 +120,9 @@ enum ice_prot_id {
 #define ICE_IPV6_OFOS_HW	40
 #define ICE_IPV6_IL_HW		41
 #define ICE_TCP_IL_HW		49
-#define ICE_UDP_OF_HW		52
 #define ICE_UDP_ILOS_HW		53
 #define ICE_SCTP_IL_HW		96
+#define ICE_PPPOE_HW		103
 
 /* ICE_UDP_OF is used to identify all 3 tunnel types
  * VXLAN, GENEVE and VXLAN_GPE. To differentiate further
@@ -198,6 +203,30 @@ struct ice_udp_tnl_hdr {
 	u32 vni;	/* only use lower 24-bits */
 };
 
+#pragma pack(1)
+struct ice_udp_gtp_hdr {
+	u8 flags;
+	u8 msg_type;
+	u16 rsrvd_len;
+	u32 teid;
+	u16 rsrvd_seq_nbr;
+	u8 rsrvd_n_pdu_nbr;
+	u8 rsrvd_next_ext;
+	u8 rsvrd_ext_len;
+	u8 pdu_type;
+	u8 qfi;
+	u8 rsvrd;
+};
+
+struct ice_pppoe_hdr {
+	u8 rsrvd_ver_type;
+	u8 rsrved_code;
+	u16 session_id;
+	u16 length;
+	u16 ppp_prot_id; /* control and data only */
+};
+#pragma pack()
+
 struct ice_nvgre {
 	u16 flags;
 	u16 protocol;
@@ -213,6 +242,8 @@ union ice_prot_hdr {
 	struct ice_sctp_hdr sctp_hdr;
 	struct ice_udp_tnl_hdr tnl_hdr;
 	struct ice_nvgre nvgre_hdr;
+	struct ice_udp_gtp_hdr gtp_hdr;
+	struct ice_pppoe_hdr pppoe_hdr;
 };
 
 /* This is mapping table entry that maps every word within a given protocol

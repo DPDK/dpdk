@@ -41,6 +41,17 @@
 #define ICE_HASH_SCTP_IPV4	(ICE_FLOW_HASH_IPV4 | ICE_FLOW_HASH_SCTP_PORT)
 #define ICE_HASH_SCTP_IPV6	(ICE_FLOW_HASH_IPV6 | ICE_FLOW_HASH_SCTP_PORT)
 
+#define ICE_FLOW_HASH_GTP_TEID \
+	(ICE_FLOW_HASH_FLD(ICE_FLOW_FIELD_IDX_GTPC_TEID))
+
+#define ICE_FLOW_HASH_GTP_IPV4_TEID \
+	(ICE_FLOW_HASH_IPV4 | ICE_FLOW_HASH_GTP_TEID)
+#define ICE_FLOW_HASH_GTP_IPV6_TEID \
+	(ICE_FLOW_HASH_IPV6 | ICE_FLOW_HASH_GTP_TEID)
+
+#define ICE_FLOW_HASH_PPPOE_SESS_ID \
+	(ICE_FLOW_HASH_FLD(ICE_FLOW_FIELD_IDX_PPPOE_SESS_ID))
+
 /* Protocol header fields within a packet segment. A segment consists of one or
  * more protocol headers that make up a logical group of protocol headers. Each
  * logical group of protocol headers encapsulates or is encapsulated using/by
@@ -48,18 +59,36 @@
  * VxLAN, etc.
  */
 enum ice_flow_seg_hdr {
-	ICE_FLOW_SEG_HDR_NONE	= 0x00000000,
-	ICE_FLOW_SEG_HDR_ETH	= 0x00000001,
-	ICE_FLOW_SEG_HDR_VLAN	= 0x00000002,
-	ICE_FLOW_SEG_HDR_IPV4	= 0x00000004,
-	ICE_FLOW_SEG_HDR_IPV6	= 0x00000008,
-	ICE_FLOW_SEG_HDR_ARP	= 0x00000010,
-	ICE_FLOW_SEG_HDR_ICMP	= 0x00000020,
-	ICE_FLOW_SEG_HDR_TCP	= 0x00000040,
-	ICE_FLOW_SEG_HDR_UDP	= 0x00000080,
-	ICE_FLOW_SEG_HDR_SCTP	= 0x00000100,
-	ICE_FLOW_SEG_HDR_GRE	= 0x00000200,
+	ICE_FLOW_SEG_HDR_NONE		= 0x00000000,
+	ICE_FLOW_SEG_HDR_ETH		= 0x00000001,
+	ICE_FLOW_SEG_HDR_VLAN		= 0x00000002,
+	ICE_FLOW_SEG_HDR_IPV4		= 0x00000004,
+	ICE_FLOW_SEG_HDR_IPV6		= 0x00000008,
+	ICE_FLOW_SEG_HDR_ARP		= 0x00000010,
+	ICE_FLOW_SEG_HDR_ICMP		= 0x00000020,
+	ICE_FLOW_SEG_HDR_TCP		= 0x00000040,
+	ICE_FLOW_SEG_HDR_UDP		= 0x00000080,
+	ICE_FLOW_SEG_HDR_SCTP		= 0x00000100,
+	ICE_FLOW_SEG_HDR_GRE		= 0x00000200,
+	ICE_FLOW_SEG_HDR_GTPC		= 0x00000400,
+	ICE_FLOW_SEG_HDR_GTPC_TEID	= 0x00000800,
+	ICE_FLOW_SEG_HDR_GTPU_IP	= 0x00001000,
+	ICE_FLOW_SEG_HDR_GTPU_DWN	= 0x00002000,
+	ICE_FLOW_SEG_HDR_GTPU_UP	= 0x00004000,
+	ICE_FLOW_SEG_HDR_PPPOE		= 0x00008000,
 };
+
+/* These segements all have the same PTYPES, but are otherwise distinguished by
+ * the value of the gtp_eh_pdu and gtp_eh_pdu_link flags:
+ *
+ *                                gtp_eh_pdu     gtp_eh_pdu_link
+ * ICE_FLOW_SEG_HDR_GTPU_IP           0              0
+ * ICE_FLOW_SEG_HDR_GTPU_DWN          1              0
+ * ICE_FLOW_SEG_HDR_GTPU_UP           1              1
+ */
+#define ICE_FLOW_SEG_HDR_GTPU (ICE_FLOW_SEG_HDR_GTPU_IP | \
+			       ICE_FLOW_SEG_HDR_GTPU_DWN | \
+			       ICE_FLOW_SEG_HDR_GTPU_UP)
 
 enum ice_flow_field {
 	/* L2 */
@@ -95,6 +124,16 @@ enum ice_flow_field {
 	ICE_FLOW_FIELD_IDX_ICMP_CODE,
 	/* GRE */
 	ICE_FLOW_FIELD_IDX_GRE_KEYID,
+	/* GTPC_TEID */
+	ICE_FLOW_FIELD_IDX_GTPC_TEID,
+	/* GTPU_IP */
+	ICE_FLOW_FIELD_IDX_GTPU_IP_TEID,
+	/* GTPU_UP */
+	ICE_FLOW_FIELD_IDX_GTPU_UP_TEID,
+	/* GTPU_DWN */
+	ICE_FLOW_FIELD_IDX_GTPU_DWN_TEID,
+	/* PPPOE */
+	ICE_FLOW_FIELD_IDX_PPPOE_SESS_ID,
 	 /* The total number of enums must not exceed 64 */
 	ICE_FLOW_FIELD_IDX_MAX
 };

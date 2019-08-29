@@ -19,6 +19,8 @@
 #define ICE_FLOW_FLD_SZ_ICMP_CODE	1
 #define ICE_FLOW_FLD_SZ_ARP_OPER	2
 #define ICE_FLOW_FLD_SZ_GRE_KEYID	4
+#define ICE_FLOW_FLD_SZ_GTP_TEID	4
+#define ICE_FLOW_FLD_SZ_PPPOE_SESS_ID   2
 
 /* Protocol header fields are extracted at the word boundaries as word-sized
  * values. Specify the displacement value of some non-word-aligned fields needed
@@ -115,6 +117,23 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	/* GRE */
 	/* ICE_FLOW_FIELD_IDX_GRE_KEYID */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_GRE, 12, ICE_FLOW_FLD_SZ_GRE_KEYID),
+	/* GTP */
+	/* ICE_FLOW_FIELD_IDX_GTPC_TEID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_GTPC_TEID, 12,
+			  ICE_FLOW_FLD_SZ_GTP_TEID),
+	/* ICE_FLOW_FIELD_IDX_GTPU_IP_TEID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_GTPU_IP, 12,
+			  ICE_FLOW_FLD_SZ_GTP_TEID),
+	/* ICE_FLOW_FIELD_IDX_GTPU_UP_TEID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_GTPU_UP, 12,
+			  ICE_FLOW_FLD_SZ_GTP_TEID),
+	/* ICE_FLOW_FIELD_IDX_GTPU_DWN_TEID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_GTPU_DWN, 12,
+			  ICE_FLOW_FLD_SZ_GTP_TEID),
+	/* PPPOE */
+	/* ICE_FLOW_FIELD_IDX_PPPOE_SESS_ID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_PPPOE, 2,
+			  ICE_FLOW_FLD_SZ_PPPOE_SESS_ID),
 };
 
 /* Bitmaps indicating relevant packet types for a particular protocol header
@@ -290,6 +309,42 @@ static const u32 ice_ptypes_mac_il[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
+/* Packet types for GTPC */
+static const u32 ice_ptypes_gtpc[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000180, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
+/* Packet types for GTPC with TEID */
+static const u32 ice_ptypes_gtpc_tid[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000060, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
+/* Packet types for GTPU */
+static const u32 ice_ptypes_gtpu[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x7FFFF800, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
 /* Manage parameters and info. used during the creation of a flow profile */
 struct ice_flow_prof_params {
 	enum ice_block blk;
@@ -317,10 +372,13 @@ static bool ice_is_pow2(u64 val)
 #define ICE_FLOW_SEG_HDRS_L2_MASK	\
 	(ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_VLAN)
 #define ICE_FLOW_SEG_HDRS_L3_MASK	\
-	(ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_ARP)
+	(ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV6 | \
+	 ICE_FLOW_SEG_HDR_ARP | ICE_FLOW_SEG_HDR_PPPOE)
 #define ICE_FLOW_SEG_HDRS_L4_MASK	\
 	(ICE_FLOW_SEG_HDR_ICMP | ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_UDP | \
-	 ICE_FLOW_SEG_HDR_SCTP)
+	 ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_GTPC | \
+	 ICE_FLOW_SEG_HDR_GTPC_TEID | ICE_FLOW_SEG_HDR_GTPU_IP | \
+	 ICE_FLOW_SEG_HDR_GTPU_UP | ICE_FLOW_SEG_HDR_GTPU_DWN)
 
 /**
  * ice_flow_val_hdrs - validates packet segments for valid protocol headers
@@ -431,21 +489,18 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 				(const ice_bitmap_t *)ice_ptypes_mac_il;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
-			hdrs &= ~ICE_FLOW_SEG_HDR_ETH;
 		}
 
 		if (i && hdrs & ICE_FLOW_SEG_HDR_VLAN) {
 			src = (const ice_bitmap_t *)ice_ptypes_macvlan_il;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
-			hdrs &= ~ICE_FLOW_SEG_HDR_VLAN;
 		}
 
 		if (!i && hdrs & ICE_FLOW_SEG_HDR_ARP) {
 			ice_and_bitmap(params->ptypes, params->ptypes,
 				       (const ice_bitmap_t *)ice_ptypes_arp_of,
 				       ICE_FLOW_PTYPE_MAX);
-			hdrs &= ~ICE_FLOW_SEG_HDR_ARP;
 		}
 
 		if (hdrs & ICE_FLOW_SEG_HDR_IPV4) {
@@ -453,13 +508,11 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 				(const ice_bitmap_t *)ice_ptypes_ipv4_il;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
-			hdrs &= ~ICE_FLOW_SEG_HDR_IPV4;
 		} else if (hdrs & ICE_FLOW_SEG_HDR_IPV6) {
 			src = !i ? (const ice_bitmap_t *)ice_ptypes_ipv6_ofos :
 				(const ice_bitmap_t *)ice_ptypes_ipv6_il;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
-			hdrs &= ~ICE_FLOW_SEG_HDR_IPV6;
 		}
 
 		if (hdrs & ICE_FLOW_SEG_HDR_ICMP) {
@@ -467,29 +520,42 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 				(const ice_bitmap_t *)ice_ptypes_icmp_il;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
-			hdrs &= ~ICE_FLOW_SEG_HDR_ICMP;
 		} else if (hdrs & ICE_FLOW_SEG_HDR_UDP) {
 			src = (const ice_bitmap_t *)ice_ptypes_udp_il;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
-			hdrs &= ~ICE_FLOW_SEG_HDR_UDP;
 		} else if (hdrs & ICE_FLOW_SEG_HDR_TCP) {
 			ice_and_bitmap(params->ptypes, params->ptypes,
 				       (const ice_bitmap_t *)ice_ptypes_tcp_il,
 				       ICE_FLOW_PTYPE_MAX);
-			hdrs &= ~ICE_FLOW_SEG_HDR_TCP;
 		} else if (hdrs & ICE_FLOW_SEG_HDR_SCTP) {
 			src = (const ice_bitmap_t *)ice_ptypes_sctp_il;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
-			hdrs &= ~ICE_FLOW_SEG_HDR_SCTP;
 		} else if (hdrs & ICE_FLOW_SEG_HDR_GRE) {
 			if (!i) {
 				src = (const ice_bitmap_t *)ice_ptypes_gre_of;
 				ice_and_bitmap(params->ptypes, params->ptypes,
 					       src, ICE_FLOW_PTYPE_MAX);
 			}
-			hdrs &= ~ICE_FLOW_SEG_HDR_GRE;
+		} else if (hdrs & ICE_FLOW_SEG_HDR_GTPC) {
+			if (!i) {
+				src = (const ice_bitmap_t *)ice_ptypes_gtpc;
+				ice_and_bitmap(params->ptypes, params->ptypes,
+					       src, ICE_FLOW_PTYPE_MAX);
+			}
+		} else if (hdrs & ICE_FLOW_SEG_HDR_GTPC_TEID) {
+			if (!i) {
+				src = (const ice_bitmap_t *)ice_ptypes_gtpc_tid;
+				ice_and_bitmap(params->ptypes, params->ptypes,
+					       src, ICE_FLOW_PTYPE_MAX);
+			}
+		} else if (hdrs & ICE_FLOW_SEG_HDR_GTPU) {
+			if (!i) {
+				src = (const ice_bitmap_t *)ice_ptypes_gtpu;
+				ice_and_bitmap(params->ptypes, params->ptypes,
+					       src, ICE_FLOW_PTYPE_MAX);
+			}
 		}
 	}
 
@@ -618,6 +684,16 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	case ICE_FLOW_FIELD_IDX_SCTP_SRC_PORT:
 	case ICE_FLOW_FIELD_IDX_SCTP_DST_PORT:
 		prot_id = ICE_PROT_SCTP_IL;
+		break;
+	case ICE_FLOW_FIELD_IDX_GTPC_TEID:
+	case ICE_FLOW_FIELD_IDX_GTPU_IP_TEID:
+	case ICE_FLOW_FIELD_IDX_GTPU_UP_TEID:
+	case ICE_FLOW_FIELD_IDX_GTPU_DWN_TEID:
+		/* GTP is accessed through UDP OF protocol */
+		prot_id = ICE_PROT_UDP_OF;
+		break;
+	case ICE_FLOW_FIELD_IDX_PPPOE_SESS_ID:
+		prot_id = ICE_PROT_PPPOE;
 		break;
 	case ICE_FLOW_FIELD_IDX_ARP_SIP:
 	case ICE_FLOW_FIELD_IDX_ARP_DIP:
@@ -1601,11 +1677,12 @@ ice_flow_add_fld_raw(struct ice_flow_seg_info *seg, u16 off, u8 len,
 }
 
 #define ICE_FLOW_RSS_SEG_HDR_L3_MASKS \
-	(ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV6)
+	(ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_PPPOE)
 
 #define ICE_FLOW_RSS_SEG_HDR_L4_MASKS \
 	(ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_UDP | \
-	 ICE_FLOW_SEG_HDR_SCTP)
+	 ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_GTPC_TEID)
+
 
 #define ICE_FLOW_RSS_SEG_HDR_VAL_MASKS \
 	(ICE_FLOW_RSS_SEG_HDR_L3_MASKS | \
