@@ -1849,21 +1849,6 @@ static void ice_fill_sw_info(struct ice_hw *hw, struct ice_fltr_info *fi)
 }
 
 /**
- * ice_ilog2 - Calculates integer log base 2 of a number
- * @n: number on which to perform operation
- */
-static int ice_ilog2(u64 n)
-{
-	int i;
-
-	for (i = 63; i >= 0; i--)
-		if (((u64)1 << i) & n)
-			return i;
-
-	return -1;
-}
-
-/**
  * ice_fill_sw_rule - Helper function to fill switch rule structure
  * @hw: pointer to the hardware structure
  * @f_info: entry containing packet forwarding information

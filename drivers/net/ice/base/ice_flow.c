@@ -360,15 +360,6 @@ struct ice_flow_prof_params {
 	ice_declare_bitmap(ptypes, ICE_FLOW_PTYPE_MAX);
 };
 
-/**
- * ice_is_pow2 - check if integer value is a power of 2
- * @val: unsigned integer to be validated
- */
-static bool ice_is_pow2(u64 val)
-{
-	return (val && !(val & (val - 1)));
-}
-
 #define ICE_FLOW_SEG_HDRS_L2_MASK	\
 	(ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_VLAN)
 #define ICE_FLOW_SEG_HDRS_L3_MASK	\

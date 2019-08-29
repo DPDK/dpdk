@@ -22,6 +22,16 @@
 #define ICE_BYTES_PER_DWORD	4
 #define ICE_MAX_TRAFFIC_CLASS	8
 
+/**
+ * ROUND_UP - round up to next arbitrary multiple (not a power of 2)
+ * @a: value to round up
+ * @b: arbitrary multiple
+ *
+ * Round up to the next multiple of the arbitrary b.
+ * Note, when b is a power of 2 use ICE_ALIGN() instead.
+ */
+#define ROUND_UP(a, b)	((b) * DIVIDE_AND_ROUND_UP((a), (b)))
+
 #define MIN_T(_t, _a, _b)	min((_t)(_a), (_t)(_b))
 
 #define IS_ASCII(_ch)	((_ch) < 0x80)
@@ -35,6 +45,30 @@
 #include "ice_lan_tx_rx.h"
 #include "ice_flex_type.h"
 #include "ice_protocol_type.h"
+
+/**
+ * ice_is_pow2 - check if integer value is a power of 2
+ * @val: unsigned integer to be validated
+ */
+static inline bool ice_is_pow2(u64 val)
+{
+	return (val && !(val & (val - 1)));
+}
+
+/**
+ * ice_ilog2 - Calculates integer log base 2 of a number
+ * @n: number on which to perform operation
+ */
+static inline int ice_ilog2(u64 n)
+{
+	int i;
+
+	for (i = 63; i >= 0; i--)
+		if (((u64)1 << i) & n)
+			return i;
+
+	return -1;
+}
 
 static inline bool ice_is_tc_ena(ice_bitmap_t bitmap, u8 tc)
 {
@@ -103,6 +137,11 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 
 
 
+
+#define IS_ETHER_ADDR_EQUAL(addr1, addr2) \
+	(((bool)((((u16 *)(addr1))[0] == ((u16 *)(addr2))[0]))) && \
+	 ((bool)((((u16 *)(addr1))[1] == ((u16 *)(addr2))[1]))) && \
+	 ((bool)((((u16 *)(addr1))[2] == ((u16 *)(addr2))[2]))))
 
 enum ice_aq_res_ids {
 	ICE_NVM_RES_ID = 1,
