@@ -670,7 +670,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		break;
 	case ICE_FLOW_FIELD_IDX_UDP_SRC_PORT:
 	case ICE_FLOW_FIELD_IDX_UDP_DST_PORT:
-		prot_id = seg == 0 ? ICE_PROT_UDP_IL_OR_S : ICE_PROT_UDP_OF;
+		prot_id = ICE_PROT_UDP_IL_OR_S;
 		break;
 	case ICE_FLOW_FIELD_IDX_SCTP_SRC_PORT:
 	case ICE_FLOW_FIELD_IDX_SCTP_DST_PORT:
