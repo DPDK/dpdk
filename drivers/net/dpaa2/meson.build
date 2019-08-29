@@ -14,6 +14,7 @@ sources = files('base/dpaa2_hw_dpni.c',
 		'dpaa2_ethdev.c',
 		'dpaa2_flow.c',
 		'dpaa2_rxtx.c',
+		'dpaa2_sparser.c',
 		'mc/dpkg.c',
 		'mc/dpdmux.c',
 		'mc/dpni.c')

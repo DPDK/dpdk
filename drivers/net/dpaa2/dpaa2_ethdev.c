@@ -26,6 +26,7 @@
 #include <dpaa2_hw_dpio.h>
 #include <mc/fsl_dpmng.h>
 #include "dpaa2_ethdev.h"
+#include "dpaa2_sparser.h"
 #include <fsl_qbman_debug.h>
 
 #define DRIVER_LOOPBACK_MODE "drv_loopback"
@@ -2509,6 +2510,29 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		goto init_err;
 	}
 
+	/*TODO To enable soft parser support DPAA2 driver needs to integrate
+	 * with external entity to receive byte code for software sequence
+	 * and same will be offload to the H/W using MC interface.
+	 * Currently it is assumed that DPAA2 driver has byte code by some
+	 * mean and same if offloaded to H/W.
+	 */
+	if (getenv("DPAA2_ENABLE_SOFT_PARSER")) {
+		WRIOP_SS_INITIALIZER(priv);
+		ret = dpaa2_eth_load_wriop_soft_parser(priv, DPNI_SS_INGRESS);
+		if (ret < 0) {
+			DPAA2_PMD_ERR(" Error(%d) in loading softparser\n",
+				      ret);
+			return ret;
+		}
+
+		ret = dpaa2_eth_enable_wriop_soft_parser(priv,
+							 DPNI_SS_INGRESS);
+		if (ret < 0) {
+			DPAA2_PMD_ERR(" Error(%d) in enabling softparser\n",
+				      ret);
+			return ret;
+		}
+	}
 	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
 	return 0;
 init_err:
