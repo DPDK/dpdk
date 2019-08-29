@@ -38,7 +38,8 @@ static uint64_t dev_rx_offloads_sup =
 		DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_JUMBO_FRAME;
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_TIMESTAMP;
 
 /* Rx offloads which cannot be disabled */
 static uint64_t dev_rx_offloads_nodis =
@@ -458,6 +459,9 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		DPAA2_PMD_ERR("Error to get RX l4 csum:Error = %d", ret);
 		return ret;
 	}
+
+	if (rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP)
+		dpaa2_enable_ts = true;
 
 	if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
 		tx_l3_csum_offload = true;
