@@ -36,6 +36,9 @@ ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type type,
 enum ice_status
 ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u8 ids_cnt,
 		   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list);
+bool
+ice_get_open_tunnel_port(struct ice_hw *hw, enum ice_tunnel_type type,
+			 u16 *port);
 enum ice_status
 ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port);
 enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all);
