@@ -4253,6 +4253,57 @@ ice_stat_update32(struct ice_hw *hw, u32 reg, bool prev_stat_loaded,
 	*prev_stat = new_data;
 }
 
+/**
+ * ice_stat_update_repc - read GLV_REPC stats from chip and update stat values
+ * @hw: ptr to the hardware info
+ * @vsi_handle: VSI handle
+ * @prev_stat_loaded: bool to specify if the previous stat values are loaded
+ * @cur_stats: ptr to current stats structure
+ *
+ * The GLV_REPC statistic register actually tracks two 16bit statistics, and
+ * thus cannot be read using the normal ice_stat_update32 function.
+ *
+ * Read the GLV_REPC register associated with the given VSI, and update the
+ * rx_no_desc and rx_error values in the ice_eth_stats structure.
+ *
+ * Because the statistics in GLV_REPC stick at 0xFFFF, the register must be
+ * cleared each time it's read.
+ *
+ * Note that the GLV_RDPC register also counts the causes that would trigger
+ * GLV_REPC. However, it does not give the finer grained detail about why the
+ * packets are being dropped. The GLV_REPC values can be used to distinguish
+ * whether Rx packets are dropped due to errors or due to no available
+ * descriptors.
+ */
+void
+ice_stat_update_repc(struct ice_hw *hw, u16 vsi_handle, bool prev_stat_loaded,
+		     struct ice_eth_stats *cur_stats)
+{
+	u16 vsi_num, no_desc, error_cnt;
+	u32 repc;
+
+	if (!ice_is_vsi_valid(hw, vsi_handle))
+		return;
+
+	vsi_num = ice_get_hw_vsi_num(hw, vsi_handle);
+
+	/* If we haven't loaded stats yet, just clear the current value */
+	if (!prev_stat_loaded) {
+		wr32(hw, GLV_REPC(vsi_num), 0);
+		return;
+	}
+
+	repc = rd32(hw, GLV_REPC(vsi_num));
+	no_desc = (repc & GLV_REPC_NO_DESC_CNT_M) >> GLV_REPC_NO_DESC_CNT_S;
+	error_cnt = (repc & GLV_REPC_ERROR_CNT_M) >> GLV_REPC_ERROR_CNT_S;
+
+	/* Clear the count by writing to the stats register */
+	wr32(hw, GLV_REPC(vsi_num), 0);
+
+	cur_stats->rx_no_desc += no_desc;
+	cur_stats->rx_errors += error_cnt;
+}
+
 
 /**
  * ice_sched_query_elem - query element information from HW

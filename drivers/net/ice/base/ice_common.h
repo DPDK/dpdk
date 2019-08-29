@@ -211,6 +211,9 @@ void
 ice_stat_update32(struct ice_hw *hw, u32 reg, bool prev_stat_loaded,
 		  u64 *prev_stat, u64 *cur_stat);
 void
+ice_stat_update_repc(struct ice_hw *hw, u16 vsi_handle, bool prev_stat_loaded,
+		     struct ice_eth_stats *cur_stats);
+void
 ice_get_nvm_version(struct ice_hw *hw, u8 *oem_ver, u16 *oem_build,
 		    u8 *oem_patch, u8 *ver_hi, u8 *ver_lo);
 enum ice_fw_modes ice_get_fw_mode(struct ice_hw *hw);

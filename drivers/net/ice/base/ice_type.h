@@ -833,6 +833,8 @@ struct ice_eth_stats {
 	u64 tx_broadcast;		/* bptc */
 	u64 tx_discards;		/* tdpc */
 	u64 tx_errors;			/* tepc */
+	u64 rx_no_desc;			/* repc */
+	u64 rx_errors;			/* repc */
 };
 
 #define ICE_MAX_UP	8
