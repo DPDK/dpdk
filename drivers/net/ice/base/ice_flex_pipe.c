@@ -4200,7 +4200,7 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 				index = i + 1;
 
 			/* check for room */
-			if (first_free + 1 < ice_fd_pairs[index].count)
+			if (first_free + 1 < (s8)ice_fd_pairs[index].count)
 				return ICE_ERR_MAX_LIMIT;
 
 			/* place in extraction sequence */
@@ -4209,6 +4209,9 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 					ice_fd_pairs[index].prot_id;
 				es[first_free - k].off =
 					ice_fd_pairs[index].off + (k * 2);
+
+				if (k > first_free)
+					return ICE_ERR_OUT_OF_RANGE;
 
 				/* keep track of non-relevant fields */
 				mask_sel |= 1 << (first_free - k);
