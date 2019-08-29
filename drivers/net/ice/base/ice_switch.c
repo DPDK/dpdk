@@ -594,11 +594,14 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 		/* Propagate some data to the recipe database */
 		recps[idx].is_root = is_root;
 		recps[idx].priority = root_bufs.content.act_ctrl_fwd_priority;
-		if (root_bufs.content.result_indx & ICE_AQ_RECIPE_RESULT_EN)
+		ice_zero_bitmap(recps[idx].res_idxs, ICE_MAX_FV_WORDS);
+		if (root_bufs.content.result_indx & ICE_AQ_RECIPE_RESULT_EN) {
 			recps[idx].chain_idx = root_bufs.content.result_indx &
 				~ICE_AQ_RECIPE_RESULT_EN;
-		else
+			ice_set_bit(recps[idx].chain_idx, recps[idx].res_idxs);
+		} else {
 			recps[idx].chain_idx = ICE_INVAL_CHAIN_IND;
+		}
 
 		if (!is_root)
 			continue;
@@ -609,11 +612,11 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 		recps[idx].root_rid = root_bufs.content.rid &
 			~ICE_AQ_RECIPE_ID_IS_ROOT;
 		recps[idx].priority = root_bufs.content.act_ctrl_fwd_priority;
-		recps[idx].big_recp = (recps[rid].n_grp_count > 1);
 	}
 
 	/* Complete initialization of the root recipe entry */
 	lkup_exts->n_val_words = fv_word_idx;
+	recps[rid].big_recp = (num_recps > 1);
 	recps[rid].n_grp_count = num_recps;
 	recps[rid].root_buf = (struct ice_aqc_recipe_data_elem *)
 		ice_calloc(hw, recps[rid].n_grp_count,
@@ -5287,6 +5290,7 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 		recp->n_ext_words = entry->r_group.n_val_pairs;
 		recp->chain_idx = entry->chain_idx;
 		recp->priority = buf[buf_idx].content.act_ctrl_fwd_priority;
+		recp->n_grp_count = rm->n_grp_count;
 		recp->tun_type = rm->tun_type;
 		recp->recp_created = true;
 		recp->adv_rule = 1;
@@ -5568,6 +5572,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	LIST_FOR_EACH_ENTRY(fvit, &rm->fv_list, ice_sw_fv_list_entry,
 			    list_entry) {
 		ice_declare_bitmap(r_bitmap, ICE_MAX_NUM_RECIPES);
+		u16 j;
 
 		status = ice_aq_get_recipe_to_profile(hw, fvit->profile_id,
 						      (u8 *)r_bitmap, NULL);
@@ -5587,6 +5592,16 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 
 		if (status)
 			goto err_unroll;
+
+		/* Update profile to recipe bitmap array */
+		ice_memcpy(profile_to_recipe[fvit->profile_id], rm->r_bitmap,
+			   sizeof(rm->r_bitmap), ICE_NONDMA_TO_NONDMA);
+
+		/* Update recipe to profile bitmap array */
+		for (j = 0; j < ICE_MAX_NUM_RECIPES; j++)
+			if (ice_is_bit_set(rm->r_bitmap, j))
+				ice_set_bit((u16)fvit->profile_id,
+					    recipe_to_profile[j]);
 	}
 
 	*rid = rm->root_rid;
