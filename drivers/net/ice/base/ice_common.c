@@ -759,9 +759,12 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 	if (status)
 		goto err_unroll_cqinit;
 
+	status = ice_init_nvm(hw);
+	if (status)
+		goto err_unroll_cqinit;
+
 	if (ice_get_fw_mode(hw) == ICE_FW_MODE_ROLLBACK)
 		ice_print_rollback_msg(hw);
-
 
 	status = ice_clear_pf_cfg(hw);
 	if (status)
@@ -773,9 +776,6 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 
 	ice_clear_pxe_mode(hw);
 
-	status = ice_init_nvm(hw);
-	if (status)
-		goto err_unroll_cqinit;
 
 	status = ice_get_caps(hw);
 	if (status)
