@@ -1575,7 +1575,12 @@ struct ice_aqc_get_link_status_data {
 #define ICE_AQ_LINK_TX_ACTIVE		0
 #define ICE_AQ_LINK_TX_DRAINED		1
 #define ICE_AQ_LINK_TX_FLUSHED		3
-	u8 reserved2;
+	u8 lb_status;
+#define ICE_AQ_LINK_LB_PHY_LCL		BIT(0)
+#define ICE_AQ_LINK_LB_PHY_RMT		BIT(1)
+#define ICE_AQ_LINK_LB_MAC_LCL		BIT(2)
+#define ICE_AQ_LINK_LB_PHY_IDX_S	3
+#define ICE_AQ_LINK_LB_PHY_IDX_M	(0x7 << ICE_AQ_LB_PHY_IDX_S)
 	__le16 max_frame_size;
 	u8 cfg;
 #define ICE_AQ_LINK_25G_KR_FEC_EN	BIT(0)
@@ -1631,6 +1636,8 @@ struct ice_aqc_set_event_mask {
 #define ICE_AQ_LINK_EVENT_AN_COMPLETED		BIT(7)
 #define ICE_AQ_LINK_EVENT_MODULE_QUAL_FAIL	BIT(8)
 #define ICE_AQ_LINK_EVENT_PORT_TX_SUSPENDED	BIT(9)
+#define ICE_AQ_LINK_EVENT_TOPO_CONFLICT		BIT(10)
+#define ICE_AQ_LINK_EVENT_MEDIA_CONFLICT	BIT(11)
 	u8	reserved1[6];
 };
 
@@ -1690,20 +1697,26 @@ struct ice_aqc_sff_eeprom {
 
 /* NVM Read command (indirect 0x0701)
  * NVM Erase commands (direct 0x0702)
- * NVM Update commands (indirect 0x0703)
+ * NVM Write commands (indirect 0x0703)
+ * NVM Write Activate commands (direct 0x0707)
+ * NVM Shadow RAM Dump commands (direct 0x0707)
  */
 struct ice_aqc_nvm {
 	__le16 offset_low;
 	u8 offset_high;
 	u8 cmd_flags;
 #define ICE_AQC_NVM_LAST_CMD		BIT(0)
-#define ICE_AQC_NVM_PCIR_REQ		BIT(0)	/* Used by NVM Update reply */
-#define ICE_AQC_NVM_PRESERVATION_S	1
+#define ICE_AQC_NVM_PCIR_REQ		BIT(0)	/* Used by NVM Write reply */
+#define ICE_AQC_NVM_PRESERVATION_S	1 /* Used by NVM Write Activate only */
 #define ICE_AQC_NVM_PRESERVATION_M	(3 << ICE_AQC_NVM_PRESERVATION_S)
 #define ICE_AQC_NVM_NO_PRESERVATION	(0 << ICE_AQC_NVM_PRESERVATION_S)
 #define ICE_AQC_NVM_PRESERVE_ALL	BIT(1)
 #define ICE_AQC_NVM_FACTORY_DEFAULT	(2 << ICE_AQC_NVM_PRESERVATION_S)
 #define ICE_AQC_NVM_PRESERVE_SELECTED	(3 << ICE_AQC_NVM_PRESERVATION_S)
+#define ICE_AQC_NVM_ACTIV_SEL_NVM	BIT(3) /* Write Activate/SR Dump only */
+#define ICE_AQC_NVM_ACTIV_SEL_OROM	BIT(4)
+#define ICE_AQC_NVM_ACTIV_SEL_NETLIST	BIT(5)
+#define ICE_AQC_NVM_ACTIV_SEL_MASK	MAKEMASK(0x7, 3)
 #define ICE_AQC_NVM_FLASH_ONLY		BIT(7)
 	__le16 module_typeid;
 	__le16 length;
@@ -2292,6 +2305,7 @@ struct ice_aq_desc {
 		struct ice_aqc_set_mac_cfg set_mac_cfg;
 		struct ice_aqc_set_event_mask set_event_mask;
 		struct ice_aqc_get_link_status get_link_status;
+		struct ice_aqc_event_lan_overflow lan_overflow;
 	} params;
 };
 
@@ -2465,10 +2479,14 @@ enum ice_adminq_opc {
 	/* NVM commands */
 	ice_aqc_opc_nvm_read				= 0x0701,
 	ice_aqc_opc_nvm_erase				= 0x0702,
-	ice_aqc_opc_nvm_update				= 0x0703,
+	ice_aqc_opc_nvm_write				= 0x0703,
 	ice_aqc_opc_nvm_cfg_read			= 0x0704,
 	ice_aqc_opc_nvm_cfg_write			= 0x0705,
 	ice_aqc_opc_nvm_checksum			= 0x0706,
+	ice_aqc_opc_nvm_write_activate			= 0x0707,
+	ice_aqc_opc_nvm_sr_dump				= 0x0707,
+	ice_aqc_opc_nvm_save_factory_settings		= 0x0708,
+	ice_aqc_opc_nvm_update_empr			= 0x0709,
 
 	/* LLDP commands */
 	ice_aqc_opc_lldp_get_mib			= 0x0A00,
