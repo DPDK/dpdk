@@ -2500,6 +2500,102 @@ ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 }
 
 /**
+ * ice_prof_has_mask_idx - determine if profile index masking is identical
+ * @hw: pointer to the hardware structure
+ * @blk: HW block
+ * @prof: profile to check
+ * @idx: profile index to check
+ * @masks: masks to match
+ */
+static bool
+ice_prof_has_mask_idx(struct ice_hw *hw, enum ice_block blk, u8 prof, u16 idx,
+		      u16 mask)
+{
+	bool expect_no_mask = false;
+	bool found = false;
+	bool match = false;
+	u16 i;
+
+	/* If mask is 0x0000 or 0xffff, then there is no masking */
+	if (mask == 0 || mask == 0xffff)
+		expect_no_mask = true;
+
+	/* Scan the enabled masks on this profile, for the specified idx */
+	for (i = 0; i < ICE_PROFILE_MASK_COUNT; i++)
+		if (hw->blk[blk].es.mask_ena[prof] & BIT(i))
+			if (hw->blk[blk].masks.masks[i].in_use &&
+			    hw->blk[blk].masks.masks[i].idx == idx) {
+				found = true;
+				if (hw->blk[blk].masks.masks[i].mask == mask)
+					match = true;
+				break;
+			}
+
+	if (expect_no_mask) {
+		if (found)
+			return false;
+	} else {
+		if (!match)
+			return false;
+	}
+
+	return true;
+}
+
+/**
+ * ice_prof_has_mask - determine if profile masking is identical
+ * @hw: pointer to the hardware structure
+ * @blk: HW block
+ * @prof: profile to check
+ * @masks: masks to match
+ */
+static bool
+ice_prof_has_mask(struct ice_hw *hw, enum ice_block blk, u8 prof, u16 *masks)
+{
+	u16 i;
+
+	/* es->mask_ena[prof] will have the mask */
+	for (i = 0; i < hw->blk[blk].es.fvw; i++)
+		if (!ice_prof_has_mask_idx(hw, blk, prof, i, masks[i]))
+			return false;
+
+	return true;
+}
+
+/**
+ * ice_find_prof_id_with_mask - find profile ID for a given field vector
+ * @hw: pointer to the hardware structure
+ * @blk: HW block
+ * @fv: field vector to search for
+ * @masks: masks for fv
+ * @prof_id: receives the profile ID
+ */
+static enum ice_status
+ice_find_prof_id_with_mask(struct ice_hw *hw, enum ice_block blk,
+			   struct ice_fv_word *fv, u16 *masks, u8 *prof_id)
+{
+	struct ice_es *es = &hw->blk[blk].es;
+	u16 i;
+
+	for (i = 0; i < es->count; i++) {
+		u16 off = i * es->fvw;
+		u16 j;
+
+		if (memcmp(&es->t[off], fv, es->fvw * sizeof(*fv)))
+			continue;
+
+		/* check if masks settings are the same for this profile */
+		if (!ice_prof_has_mask(hw, blk, i, masks))
+			continue;
+
+		*prof_id = i;
+		return ICE_SUCCESS;
+	}
+
+	return ICE_ERR_DOES_NOT_EXIST;
+}
+
+/**
  * ice_find_prof_id - find profile ID for a given field vector
  * @hw: pointer to the hardware structure
  * @blk: HW block
@@ -2687,6 +2783,334 @@ ice_prof_inc_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 }
 
 /**
+ * ice_write_prof_mask_reg - write profile mask register
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ * @mask_idx: mask index
+ * @idx: index of the FV which will use the mask
+ * @mask: the 16-bit mask
+ */
+static void
+ice_write_prof_mask_reg(struct ice_hw *hw, enum ice_block blk, u16 mask_idx,
+			u16 idx, u16 mask)
+{
+	u32 offset;
+	u32 val;
+
+	switch (blk) {
+	case ICE_BLK_RSS:
+		offset = GLQF_HMASK(mask_idx);
+		val = (idx << GLQF_HMASK_MSK_INDEX_S) &
+			GLQF_HMASK_MSK_INDEX_M;
+		val |= (mask << GLQF_HMASK_MASK_S) & GLQF_HMASK_MASK_M;
+		break;
+	case ICE_BLK_FD:
+		offset = GLQF_FDMASK(mask_idx);
+		val = (idx << GLQF_FDMASK_MSK_INDEX_S) &
+			GLQF_FDMASK_MSK_INDEX_M;
+		val |= (mask << GLQF_FDMASK_MASK_S) &
+			GLQF_FDMASK_MASK_M;
+		break;
+	default:
+		ice_debug(hw, ICE_DBG_PKG, "No profile masks for block %d\n",
+			  blk);
+		return;
+	}
+
+	wr32(hw, offset, val);
+	ice_debug(hw, ICE_DBG_PKG, "write mask, blk %d (%d): %x = %x\n",
+		  blk, idx, offset, val);
+}
+
+/**
+ * ice_write_prof_mask_enable_res - write profile mask enable register
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ * @prof_id: profile id
+ * @enable_mask: enable mask
+ */
+static void
+ice_write_prof_mask_enable_res(struct ice_hw *hw, enum ice_block blk,
+			       u16 prof_id, u32 enable_mask)
+{
+	u32 offset;
+
+	switch (blk) {
+	case ICE_BLK_RSS:
+		offset = GLQF_HMASK_SEL(prof_id);
+		break;
+	case ICE_BLK_FD:
+		offset = GLQF_FDMASK_SEL(prof_id);
+		break;
+	default:
+		ice_debug(hw, ICE_DBG_PKG, "No profile masks for block %d\n",
+			  blk);
+		return;
+	}
+
+	wr32(hw, offset, enable_mask);
+	ice_debug(hw, ICE_DBG_PKG, "write mask enable, blk %d (%d): %x = %x\n",
+		  blk, prof_id, offset, enable_mask);
+}
+
+/**
+ * ice_init_prof_masks - initial prof masks
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ */
+static void ice_init_prof_masks(struct ice_hw *hw, enum ice_block blk)
+{
+#define MAX_NUM_PORTS    8
+	u16 num_ports = MAX_NUM_PORTS;
+	u16 i;
+
+	ice_init_lock(&hw->blk[blk].masks.lock);
+
+	hw->blk[blk].masks.count = ICE_PROFILE_MASK_COUNT / num_ports;
+	hw->blk[blk].masks.first = hw->pf_id * hw->blk[blk].masks.count;
+
+	ice_memset(hw->blk[blk].masks.masks, 0,
+		   sizeof(hw->blk[blk].masks.masks), ICE_NONDMA_MEM);
+
+	for (i = hw->blk[blk].masks.first;
+	     i < hw->blk[blk].masks.first + hw->blk[blk].masks.count; i++)
+		ice_write_prof_mask_reg(hw, blk, i, 0, 0);
+}
+
+/**
+ * ice_init_all_prof_masks - initial all prof masks
+ * @hw: pointer to the HW struct
+ */
+void ice_init_all_prof_masks(struct ice_hw *hw)
+{
+	ice_init_prof_masks(hw, ICE_BLK_RSS);
+	ice_init_prof_masks(hw, ICE_BLK_FD);
+}
+
+/**
+ * ice_alloc_prof_mask - allocate profile mask
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ * @idx: index of FV which will use the mask
+ * @mask: the 16-bit mask
+ * @mask_idx: variable to receive the mask index
+ */
+static enum ice_status
+ice_alloc_prof_mask(struct ice_hw *hw, enum ice_block blk, u16 idx, u16 mask,
+		    u16 *mask_idx)
+{
+	bool found_unused = false, found_copy = false;
+	enum ice_status status = ICE_ERR_MAX_LIMIT;
+	u16 unused_idx = 0, copy_idx = 0;
+	u16 i;
+
+	if (blk != ICE_BLK_RSS && blk != ICE_BLK_FD)
+		return ICE_ERR_PARAM;
+
+	ice_acquire_lock(&hw->blk[blk].masks.lock);
+
+	for (i = hw->blk[blk].masks.first;
+	     i < hw->blk[blk].masks.first + hw->blk[blk].masks.count; i++)
+		if (hw->blk[blk].masks.masks[i].in_use) {
+			/* if mask is in use and it exactly duplicates the
+			 * desired mask and index, then in can be reused
+			 */
+			if (hw->blk[blk].masks.masks[i].mask == mask &&
+			    hw->blk[blk].masks.masks[i].idx == idx) {
+				found_copy = true;
+				copy_idx = i;
+				break;
+			}
+		} else {
+			/* save off unused index, but keep searching in case
+			 * there is an exact match later on
+			 */
+			if (!found_unused) {
+				found_unused = true;
+				unused_idx = i;
+			}
+		}
+
+	if (found_copy)
+		i = copy_idx;
+	else if (found_unused)
+		i = unused_idx;
+	else
+		goto err_ice_alloc_prof_mask;
+
+	/* update mask for a new entry */
+	if (found_unused) {
+		hw->blk[blk].masks.masks[i].in_use = true;
+		hw->blk[blk].masks.masks[i].mask = mask;
+		hw->blk[blk].masks.masks[i].idx = idx;
+		hw->blk[blk].masks.masks[i].ref = 0;
+		ice_write_prof_mask_reg(hw, blk, i, idx, mask);
+	}
+
+	hw->blk[blk].masks.masks[i].ref++;
+	*mask_idx = i;
+	status = ICE_SUCCESS;
+
+err_ice_alloc_prof_mask:
+	ice_release_lock(&hw->blk[blk].masks.lock);
+
+	return status;
+}
+
+/**
+ * ice_free_prof_mask - free profile mask
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ * @mask_idx: index of mask
+ */
+static enum ice_status
+ice_free_prof_mask(struct ice_hw *hw, enum ice_block blk, u16 mask_idx)
+{
+	if (blk != ICE_BLK_RSS && blk != ICE_BLK_FD)
+		return ICE_ERR_PARAM;
+
+	if (!(mask_idx >= hw->blk[blk].masks.first &&
+	      mask_idx < hw->blk[blk].masks.first + hw->blk[blk].masks.count))
+		return ICE_ERR_DOES_NOT_EXIST;
+
+	ice_acquire_lock(&hw->blk[blk].masks.lock);
+
+	if (!hw->blk[blk].masks.masks[mask_idx].in_use)
+		goto exit_ice_free_prof_mask;
+
+	if (hw->blk[blk].masks.masks[mask_idx].ref > 1) {
+		hw->blk[blk].masks.masks[mask_idx].ref--;
+		goto exit_ice_free_prof_mask;
+	}
+
+	/* remove mask */
+	hw->blk[blk].masks.masks[mask_idx].in_use = false;
+	hw->blk[blk].masks.masks[mask_idx].mask = 0;
+	hw->blk[blk].masks.masks[mask_idx].idx = 0;
+
+	/* update mask as unused entry */
+	ice_debug(hw, ICE_DBG_PKG, "Free mask, blk %d, mask %d", blk, mask_idx);
+	ice_write_prof_mask_reg(hw, blk, mask_idx, 0, 0);
+
+exit_ice_free_prof_mask:
+	ice_release_lock(&hw->blk[blk].masks.lock);
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_free_prof_masks - free all profile masks for a profile
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ * @prof_id: profile id
+ */
+static enum ice_status
+ice_free_prof_masks(struct ice_hw *hw, enum ice_block blk, u16 prof_id)
+{
+	u32 mask_bm;
+	u16 i;
+
+	if (blk != ICE_BLK_RSS && blk != ICE_BLK_FD)
+		return ICE_ERR_PARAM;
+
+	mask_bm = hw->blk[blk].es.mask_ena[prof_id];
+	for (i = 0; i < BITS_PER_BYTE * sizeof(mask_bm); i++)
+		if (mask_bm & BIT(i))
+			ice_free_prof_mask(hw, blk, i);
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_shutdown_prof_masks - releases lock for masking
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ *
+ * This should be called before unloading the driver
+ */
+static void ice_shutdown_prof_masks(struct ice_hw *hw, enum ice_block blk)
+{
+	u16 i;
+
+	ice_acquire_lock(&hw->blk[blk].masks.lock);
+
+	for (i = hw->blk[blk].masks.first;
+	     i < hw->blk[blk].masks.first + hw->blk[blk].masks.count; i++) {
+		ice_write_prof_mask_reg(hw, blk, i, 0, 0);
+
+		hw->blk[blk].masks.masks[i].in_use = false;
+		hw->blk[blk].masks.masks[i].idx = 0;
+		hw->blk[blk].masks.masks[i].mask = 0;
+	}
+
+	ice_release_lock(&hw->blk[blk].masks.lock);
+	ice_destroy_lock(&hw->blk[blk].masks.lock);
+}
+
+/**
+ * ice_shutdown_all_prof_masks - releases all locks for masking
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ *
+ * This should be called before unloading the driver
+ */
+void ice_shutdown_all_prof_masks(struct ice_hw *hw)
+{
+	ice_shutdown_prof_masks(hw, ICE_BLK_RSS);
+	ice_shutdown_prof_masks(hw, ICE_BLK_FD);
+}
+
+/**
+ * ice_update_prof_masking - set registers according to masking
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ * @prof_id: profile id
+ * @es: field vector
+ * @masks: masks
+ */
+static enum ice_status
+ice_update_prof_masking(struct ice_hw *hw, enum ice_block blk, u16 prof_id,
+			struct ice_fv_word *es, u16 *masks)
+{
+	bool err = false;
+	u32 ena_mask = 0;
+	u16 idx;
+	u16 i;
+
+	/* Only support FD and RSS masking, otherwise nothing to be done */
+	if (blk != ICE_BLK_RSS && blk != ICE_BLK_FD)
+		return ICE_SUCCESS;
+
+	for (i = 0; i < hw->blk[blk].es.fvw; i++)
+		if (masks[i] && masks[i] != 0xFFFF) {
+			if (!ice_alloc_prof_mask(hw, blk, i, masks[i], &idx)) {
+				ena_mask |= BIT(idx);
+			} else {
+				/* not enough bitmaps */
+				err = true;
+				break;
+			}
+		}
+
+	if (err) {
+		/* free any bitmaps we have allocated */
+		for (i = 0; i < BITS_PER_BYTE * sizeof(ena_mask); i++)
+			if (ena_mask & BIT(i))
+				ice_free_prof_mask(hw, blk, i);
+
+		return ICE_ERR_OUT_OF_RANGE;
+	}
+
+	/* enable the masks for this profile */
+	ice_write_prof_mask_enable_res(hw, blk, prof_id, ena_mask);
+
+	/* store enabled masks with profile so that they can be freed later */
+	hw->blk[blk].es.mask_ena[prof_id] = ena_mask;
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_write_es - write an extraction sequence to hardware
  * @hw: pointer to the HW struct
  * @blk: the block in which to write the extraction sequence
@@ -2725,6 +3149,7 @@ ice_prof_dec_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 	if (hw->blk[blk].es.ref_count[prof_id] > 0) {
 		if (!--hw->blk[blk].es.ref_count[prof_id]) {
 			ice_write_es(hw, blk, prof_id, NULL);
+			ice_free_prof_masks(hw, blk, prof_id);
 			return ice_free_prof_id(hw, blk, prof_id);
 		}
 	}
@@ -3089,6 +3514,7 @@ void ice_free_hw_tbls(struct ice_hw *hw)
 		ice_free(hw, hw->blk[i].es.t);
 		ice_free(hw, hw->blk[i].es.ref_count);
 		ice_free(hw, hw->blk[i].es.written);
+		ice_free(hw, hw->blk[i].es.mask_ena);
 	}
 
 	LIST_FOR_EACH_ENTRY_SAFE(r, rt, &hw->rss_list_head,
@@ -3097,6 +3523,7 @@ void ice_free_hw_tbls(struct ice_hw *hw)
 		ice_free(hw, r);
 	}
 	ice_destroy_lock(&hw->rss_locks);
+	ice_shutdown_all_prof_masks(hw);
 	ice_memset(hw->blk, 0, sizeof(hw->blk), ICE_NONDMA_MEM);
 }
 
@@ -3121,6 +3548,7 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 
 	ice_init_lock(&hw->rss_locks);
 	INIT_LIST_HEAD(&hw->rss_list_head);
+	ice_init_all_prof_masks(hw);
 	for (i = 0; i < ICE_BLK_COUNT; i++) {
 		struct ice_prof_redir *prof_redir = &hw->blk[i].prof_redir;
 		struct ice_prof_tcam *prof = &hw->blk[i].prof;
@@ -3212,7 +3640,8 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 
 		es->written = (u8 *)
 			ice_calloc(hw, es->count, sizeof(*es->written));
-
+		es->mask_ena = (u32 *)
+			ice_calloc(hw, es->count, sizeof(*es->mask_ena));
 		if (!es->ref_count)
 			goto err;
 	}
@@ -3851,6 +4280,115 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 	ice_update_fd_mask(hw, prof_id, mask_sel);
 
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_add_prof_with_mask - add profile
+ * @hw: pointer to the HW struct
+ * @blk: hardware block
+ * @id: profile tracking ID
+ * @ptypes: array of bitmaps indicating ptypes (ICE_FLOW_PTYPE_MAX bits)
+ * @es: extraction sequence (length of array is determined by the block)
+ * @masks: extraction sequence (length of array is determined by the block)
+ *
+ * This function registers a profile, which matches a set of PTYPES with a
+ * particular extraction sequence. While the hardware profile is allocated
+ * it will not be written until the first call to ice_add_flow that specifies
+ * the ID value used here.
+ */
+enum ice_status
+ice_add_prof_with_mask(struct ice_hw *hw, enum ice_block blk, u64 id,
+		       u8 ptypes[], struct ice_fv_word *es, u16 *masks)
+{
+	u32 bytes = DIVIDE_AND_ROUND_UP(ICE_FLOW_PTYPE_MAX, BITS_PER_BYTE);
+	struct ice_prof_map *prof;
+	enum ice_status status;
+	u32 byte = 0;
+	u8 prof_id;
+
+	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
+
+	/* search for existing profile */
+	status = ice_find_prof_id_with_mask(hw, blk, es, masks, &prof_id);
+	if (status) {
+		/* allocate profile ID */
+		status = ice_alloc_prof_id(hw, blk, &prof_id);
+		if (status)
+			goto err_ice_add_prof;
+		if (blk == ICE_BLK_FD) {
+			/* For Flow Director block, the extraction sequence may
+			 * need to be altered in the case where there are paired
+			 * fields that have no match. This is necessary because
+			 * for Flow Director, src and dest fields need to paired
+			 * for filter programming and these values are swapped
+			 * during Tx.
+			 */
+			status = ice_update_fd_swap(hw, prof_id, es);
+			if (status)
+				goto err_ice_add_prof;
+		}
+		status = ice_update_prof_masking(hw, blk, prof_id, es, masks);
+		if (status)
+			goto err_ice_add_prof;
+
+		/* and write new es */
+		ice_write_es(hw, blk, prof_id, es);
+	}
+
+	ice_prof_inc_ref(hw, blk, prof_id);
+
+	/* add profile info */
+
+	prof = (struct ice_prof_map *)ice_malloc(hw, sizeof(*prof));
+	if (!prof)
+		goto err_ice_add_prof;
+
+	prof->profile_cookie = id;
+	prof->prof_id = prof_id;
+	prof->ptype_count = 0;
+	prof->context = 0;
+
+	/* build list of ptgs */
+	while (bytes && prof->ptype_count < ICE_MAX_PTYPE_PER_PROFILE) {
+		u32 bit;
+
+		if (!ptypes[byte]) {
+			bytes--;
+			byte++;
+			continue;
+		}
+		/* Examine 8 bits per byte */
+		for (bit = 0; bit < 8; bit++) {
+			if (ptypes[byte] & BIT(bit)) {
+				u16 ptype;
+				u8 m;
+
+				ptype = byte * BITS_PER_BYTE + bit;
+				if (ptype < ICE_FLOW_PTYPE_MAX) {
+					prof->ptype[prof->ptype_count] = ptype;
+
+					if (++prof->ptype_count >=
+						ICE_MAX_PTYPE_PER_PROFILE)
+						break;
+				}
+
+				/* nothing left in byte, then exit */
+				m = ~((1 << (bit + 1)) - 1);
+				if (!(ptypes[byte] & m))
+					break;
+			}
+		}
+
+		bytes--;
+		byte++;
+	}
+
+	LIST_ADD(&prof->list, &hw->blk[blk].es.prof_map);
+	status = ICE_SUCCESS;
+
+err_ice_add_prof:
+	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
+	return status;
 }
 
 /**

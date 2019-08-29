@@ -34,12 +34,21 @@ struct ice_flow_field_info {
 	enum ice_flow_seg_hdr hdr;
 	s16 off;	/* Offset from start of a protocol header, in bits */
 	u16 size;	/* Size of fields in bits */
+	u16 mask;	/* 16-bit mask for field */
 };
 
 #define ICE_FLOW_FLD_INFO(_hdr, _offset_bytes, _size_bytes) { \
 	.hdr = _hdr, \
-	.off = _offset_bytes * BITS_PER_BYTE, \
-	.size = _size_bytes * BITS_PER_BYTE, \
+	.off = (_offset_bytes) * BITS_PER_BYTE, \
+	.size = (_size_bytes) * BITS_PER_BYTE, \
+	.mask = 0, \
+}
+
+#define ICE_FLOW_FLD_INFO_MSK(_hdr, _offset_bytes, _size_bytes, _mask) { \
+	.hdr = _hdr, \
+	.off = (_offset_bytes) * BITS_PER_BYTE, \
+	.size = (_size_bytes) * BITS_PER_BYTE, \
+	.mask = _mask, \
 }
 
 /* Table containing properties of supported protocol header fields */
@@ -292,7 +301,7 @@ struct ice_flow_prof_params {
 	 * This will give us the direction flags.
 	 */
 	struct ice_fv_word es[ICE_MAX_FV_WORDS];
-
+	u16 mask[ICE_MAX_FV_WORDS];
 	ice_declare_bitmap(ptypes, ICE_FLOW_PTYPE_MAX);
 };
 
@@ -544,6 +553,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	struct ice_flow_fld_info *flds;
 	u16 cnt, ese_bits, i;
 	s16 adj = 0;
+	u16 mask;
 	u16 off;
 
 	flds = params->prof->segs[seg].fields;
@@ -652,6 +662,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 
 	/* Fill in the extraction sequence entries needed for this field */
 	off = flds[fld].xtrct.off;
+	mask = ice_flds_info[fld].mask;
 	for (i = 0; i < cnt; i++) {
 		/* Only consume an extraction sequence entry if there is no
 		 * sibling field associated with this field or the sibling entry
@@ -676,6 +687,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 
 			params->es[idx].prot_id = prot_id;
 			params->es[idx].off = off;
+			params->mask[idx] = mask;
 			params->es_cnt++;
 		}
 
@@ -1048,7 +1060,8 @@ ice_flow_add_prof_sync(struct ice_hw *hw, enum ice_block blk,
 	}
 
 	/* Add a HW profile for this flow profile */
-	status = ice_add_prof(hw, blk, prof_id, (u8 *)params.ptypes, params.es);
+	status = ice_add_prof_with_mask(hw, blk, prof_id, (u8 *)params.ptypes,
+					params.es, params.mask);
 	if (status) {
 		ice_debug(hw, ICE_DBG_FLOW, "Error adding a HW flow profile\n");
 		goto out;
