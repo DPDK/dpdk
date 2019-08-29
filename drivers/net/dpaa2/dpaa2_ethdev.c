@@ -397,20 +397,20 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	/* Rx offloads validation */
+	/* Rx offloads which are enabled by default */
 	if (dev_rx_offloads_nodis & ~rx_offloads) {
-		DPAA2_PMD_WARN(
-		"Rx offloads non configurable - requested 0x%" PRIx64
-		" ignored 0x%" PRIx64,
-			rx_offloads, dev_rx_offloads_nodis);
+		DPAA2_PMD_INFO(
+		"Some of rx offloads enabled by default - requested 0x%" PRIx64
+		" fixed are 0x%" PRIx64,
+		rx_offloads, dev_rx_offloads_nodis);
 	}
 
-	/* Tx offloads validation */
+	/* Tx offloads which are enabled by default */
 	if (dev_tx_offloads_nodis & ~tx_offloads) {
-		DPAA2_PMD_WARN(
-		"Tx offloads non configurable - requested 0x%" PRIx64
-		" ignored 0x%" PRIx64,
-			tx_offloads, dev_tx_offloads_nodis);
+		DPAA2_PMD_INFO(
+		"Some of tx offloads enabled by default - requested 0x%" PRIx64
+		" fixed are 0x%" PRIx64,
+		tx_offloads, dev_tx_offloads_nodis);
 	}
 
 	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
