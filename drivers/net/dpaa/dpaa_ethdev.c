@@ -335,7 +335,7 @@ static int dpaa_eth_dev_info(struct rte_eth_dev *dev,
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
-	PMD_INIT_FUNC_TRACE();
+	DPAA_PMD_DEBUG(": %s", dpaa_intf->name);
 
 	dev_info->max_rx_queues = dpaa_intf->nb_rx_queues;
 	dev_info->max_tx_queues = dpaa_intf->nb_tx_queues;
@@ -1186,8 +1186,6 @@ static int dpaa_rx_queue_init(struct qman_fq *fq, struct qman_cgr *cgr_rx,
 		}
 	};
 
-	PMD_INIT_FUNC_TRACE();
-
 	if (fqid) {
 		ret = qman_reserve_fqid(fqid);
 		if (ret) {
@@ -1238,8 +1236,6 @@ static int dpaa_tx_queue_init(struct qman_fq *fq,
 {
 	struct qm_mcc_initfq opts = {0};
 	int ret;
-
-	PMD_INIT_FUNC_TRACE();
 
 	ret = qman_create_fq(0, QMAN_FQ_FLAG_DYNAMIC_FQID |
 			     QMAN_FQ_FLAG_TO_DCPORTAL, fq);
