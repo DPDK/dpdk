@@ -735,7 +735,7 @@ ice_sched_del_rl_profile(struct ice_hw *hw,
  */
 static void ice_sched_clear_rl_prof(struct ice_port_info *pi)
 {
-	u8 ln;
+	u16 ln;
 
 	for (ln = 0; ln < pi->hw->num_tx_sched_layers; ln++) {
 		struct ice_aqc_rl_profile_info *rl_prof_elem;
@@ -2181,12 +2181,11 @@ static enum ice_status
 ice_sched_move_nodes(struct ice_port_info *pi, struct ice_sched_node *parent,
 		     u16 num_items, u32 *list)
 {
+	enum ice_status status = ICE_SUCCESS;
 	struct ice_aqc_move_elem *buf;
 	struct ice_sched_node *node;
-	enum ice_status status = ICE_SUCCESS;
+	u16 i, grps_movd = 0;
 	struct ice_hw *hw;
-	u16 grps_movd = 0;
-	u8 i;
 
 	hw = pi->hw;
 
@@ -2802,7 +2801,7 @@ ice_sched_assoc_vsi_to_agg(struct ice_port_info *pi, u32 agg_id,
  */
 static void ice_sched_rm_unused_rl_prof(struct ice_port_info *pi)
 {
-	u8 ln;
+	u16 ln;
 
 	for (ln = 0; ln < pi->hw->num_tx_sched_layers; ln++) {
 		struct ice_aqc_rl_profile_info *rl_prof_elem;
