@@ -814,6 +814,49 @@ static void ice_get_itr_intrl_gran(struct ice_hw *hw)
 }
 
 /**
+ * ice_get_nvm_version - get cached NVM version data
+ * @hw: pointer to the hardware structure
+ * @oem_ver: 8 bit NVM version
+ * @oem_build: 16 bit NVM build number
+ * @oem_patch: 8 NVM patch number
+ * @ver_hi: high 16 bits of the NVM version
+ * @ver_lo: low 16 bits of the NVM version
+ */
+void
+ice_get_nvm_version(struct ice_hw *hw, u8 *oem_ver, u16 *oem_build,
+		    u8 *oem_patch, u8 *ver_hi, u8 *ver_lo)
+{
+	struct ice_nvm_info *nvm = &hw->nvm;
+
+	*oem_ver = (u8)((nvm->oem_ver & ICE_OEM_VER_MASK) >> ICE_OEM_VER_SHIFT);
+	*oem_patch = (u8)(nvm->oem_ver & ICE_OEM_VER_PATCH_MASK);
+	*oem_build = (u16)((nvm->oem_ver & ICE_OEM_VER_BUILD_MASK) >>
+			   ICE_OEM_VER_BUILD_SHIFT);
+	*ver_hi = (nvm->ver & ICE_NVM_VER_HI_MASK) >> ICE_NVM_VER_HI_SHIFT;
+	*ver_lo = (nvm->ver & ICE_NVM_VER_LO_MASK) >> ICE_NVM_VER_LO_SHIFT;
+}
+
+/**
+ * ice_print_rollback_msg - print FW rollback message
+ * @hw: pointer to the hardware structure
+ */
+void ice_print_rollback_msg(struct ice_hw *hw)
+{
+	char nvm_str[ICE_NVM_VER_LEN] = { 0 };
+	u8 oem_ver, oem_patch, ver_hi, ver_lo;
+	u16 oem_build;
+
+	ice_get_nvm_version(hw, &oem_ver, &oem_build, &oem_patch, &ver_hi,
+			    &ver_lo);
+	SNPRINTF(nvm_str, sizeof(nvm_str), "%x.%02x 0x%x %d.%d.%d", ver_hi,
+		 ver_lo, hw->nvm.eetrack, oem_ver, oem_build, oem_patch);
+
+	ice_warn(hw,
+		 "Firmware rollback mode detected. Current version is NVM: %s, FW: %d.%d. Device may exhibit limited functionality. Refer to the Intel(R) Ethernet Adapters and Devices User Guide for details on firmware rollback mode",
+		 nvm_str, hw->fw_maj_ver, hw->fw_min_ver);
+}
+
+/**
  * ice_init_hw - main hardware initialization routine
  * @hw: pointer to the hardware structure
  */
@@ -847,6 +890,9 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 	status = ice_create_all_ctrlq(hw);
 	if (status)
 		goto err_unroll_cqinit;
+
+	if (ice_get_fw_mode(hw) == ICE_FW_MODE_ROLLBACK)
+		ice_print_rollback_msg(hw);
 
 	/* Enable FW logging. Not fatal if this fails. */
 	status = ice_cfg_fw_log(hw, true);

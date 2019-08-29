@@ -292,7 +292,7 @@ enum ice_status ice_init_nvm(struct ice_hw *hw)
 		return status;
 	}
 
-	status = ice_read_sr_word(hw, ICE_SR_NVM_DEV_STARTER_VER, &hw->nvm.ver);
+	status = ice_read_sr_word(hw, ICE_SR_NVM_DEV_STARTER_VER, &nvm->ver);
 	if (status) {
 		ice_debug(hw, ICE_DBG_INIT,
 			  "Failed to read DEV starter version.\n");
@@ -310,7 +310,7 @@ enum ice_status ice_init_nvm(struct ice_hw *hw)
 		return status;
 	}
 
-	hw->nvm.eetrack = (eetrack_hi << 16) | eetrack_lo;
+	nvm->eetrack = (eetrack_hi << 16) | eetrack_lo;
 
 	status = ice_read_sr_word(hw, ICE_SR_BOOT_CFG_PTR, &cfg_ptr);
 	if (status) {
@@ -331,7 +331,7 @@ enum ice_status ice_init_nvm(struct ice_hw *hw)
 		return status;
 	}
 
-	hw->nvm.oem_ver = ((u32)oem_hi << 16) | oem_lo;
+	nvm->oem_ver = ((u32)oem_hi << 16) | oem_lo;
 	return status;
 }
 
