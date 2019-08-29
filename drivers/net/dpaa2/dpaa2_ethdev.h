@@ -107,8 +107,9 @@ struct dpaa2_dev_priv {
 	uint32_t options;
 	void *rx_vq[MAX_RX_QUEUES];
 	void *tx_vq[MAX_TX_QUEUES];
-
 	struct dpaa2_bp_list *bp_list; /**<Attached buffer pool list */
+	void *tx_conf_vq[MAX_TX_QUEUES];
+	uint8_t tx_conf_en;
 	uint8_t max_mac_filters;
 	uint8_t max_vlan_filters;
 	uint8_t num_rx_tc;
@@ -179,5 +180,6 @@ uint16_t dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs,
 uint16_t dummy_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts);
 void dpaa2_dev_free_eqresp_buf(uint16_t eqresp_ci);
 void dpaa2_flow_clean(struct rte_eth_dev *dev);
+uint16_t dpaa2_dev_tx_conf(void *queue)  __attribute__((unused));
 
 #endif /* _DPAA2_ETHDEV_H */

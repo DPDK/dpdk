@@ -292,7 +292,10 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	num_rxqueue_per_tc = (priv->nb_rx_queues / priv->num_rx_tc);
-	tot_queues = priv->nb_rx_queues + priv->nb_tx_queues;
+	if (priv->tx_conf_en)
+		tot_queues = priv->nb_rx_queues + 2 * priv->nb_tx_queues;
+	else
+		tot_queues = priv->nb_rx_queues + priv->nb_tx_queues;
 	mc_q = rte_malloc(NULL, sizeof(struct dpaa2_queue) * tot_queues,
 			  RTE_CACHE_LINE_SIZE);
 	if (!mc_q) {
@@ -327,6 +330,28 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 			goto fail_tx;
 	}
 
+	if (priv->tx_conf_en) {
+		/*Setup tx confirmation queues*/
+		for (i = 0; i < priv->nb_tx_queues; i++) {
+			mc_q->eth_data = dev->data;
+			mc_q->tc_index = i;
+			mc_q->flow_id = 0;
+			priv->tx_conf_vq[i] = mc_q++;
+			dpaa2_q = (struct dpaa2_queue *)priv->tx_conf_vq[i];
+			dpaa2_q->q_storage =
+				rte_malloc("dq_storage",
+					sizeof(struct queue_storage_info_t),
+					RTE_CACHE_LINE_SIZE);
+			if (!dpaa2_q->q_storage)
+				goto fail_tx_conf;
+
+			memset(dpaa2_q->q_storage, 0,
+			       sizeof(struct queue_storage_info_t));
+			if (dpaa2_alloc_dq_storage(dpaa2_q->q_storage))
+				goto fail_tx_conf;
+		}
+	}
+
 	vq_id = 0;
 	for (dist_idx = 0; dist_idx < priv->nb_rx_queues; dist_idx++) {
 		mcq = (struct dpaa2_queue *)priv->rx_vq[vq_id];
@@ -336,6 +361,14 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	}
 
 	return 0;
+fail_tx_conf:
+	i -= 1;
+	while (i >= 0) {
+		dpaa2_q = (struct dpaa2_queue *)priv->tx_conf_vq[i];
+		rte_free(dpaa2_q->q_storage);
+		priv->tx_conf_vq[i--] = NULL;
+	}
+	i = priv->nb_tx_queues;
 fail_tx:
 	i -= 1;
 	while (i >= 0) {
@@ -378,6 +411,14 @@ dpaa2_free_rx_tx_queues(struct rte_eth_dev *dev)
 		for (i = 0; i < priv->nb_tx_queues; i++) {
 			dpaa2_q = (struct dpaa2_queue *)priv->tx_vq[i];
 			rte_free(dpaa2_q->cscn);
+		}
+		if (priv->tx_conf_en) {
+			/* cleanup tx conf queue storage */
+			for (i = 0; i < priv->nb_tx_queues; i++) {
+				dpaa2_q = (struct dpaa2_queue *)
+						priv->tx_conf_vq[i];
+				rte_free(dpaa2_q->q_storage);
+			}
 		}
 		/*free memory for all queues (RX+TX) */
 		rte_free(priv->rx_vq[0]);
@@ -675,6 +716,8 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)
 		priv->tx_vq[tx_queue_id];
+	struct dpaa2_queue *dpaa2_tx_conf_q = (struct dpaa2_queue *)
+		priv->tx_conf_vq[tx_queue_id];
 	struct fsl_mc_io *dpni = priv->hw;
 	struct dpni_queue tx_conf_cfg;
 	struct dpni_queue tx_flow_cfg;
@@ -710,9 +753,14 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	if (tx_queue_id == 0) {
 		/*Set tx-conf and error configuration*/
-		ret = dpni_set_tx_confirmation_mode(dpni, CMD_PRI_LOW,
-						    priv->token,
-						    DPNI_CONF_DISABLE);
+		if (priv->tx_conf_en)
+			ret = dpni_set_tx_confirmation_mode(dpni, CMD_PRI_LOW,
+							    priv->token,
+							    DPNI_CONF_AFFINE);
+		else
+			ret = dpni_set_tx_confirmation_mode(dpni, CMD_PRI_LOW,
+							    priv->token,
+							    DPNI_CONF_DISABLE);
 		if (ret) {
 			DPAA2_PMD_ERR("Error in set tx conf mode settings: "
 				      "err=%d", ret);
@@ -763,6 +811,31 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 	dpaa2_q->cb_eqresp_free = dpaa2_dev_free_eqresp_buf;
 	dev->data->tx_queues[tx_queue_id] = dpaa2_q;
+
+	if (priv->tx_conf_en) {
+		dpaa2_q->tx_conf_queue = dpaa2_tx_conf_q;
+		options = options | DPNI_QUEUE_OPT_USER_CTX;
+		tx_conf_cfg.user_context = (size_t)(dpaa2_q);
+		ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token,
+			     DPNI_QUEUE_TX_CONFIRM, dpaa2_tx_conf_q->tc_index,
+			     dpaa2_tx_conf_q->flow_id, options, &tx_conf_cfg);
+		if (ret) {
+			DPAA2_PMD_ERR("Error in setting the tx conf flow: "
+			      "tc_index=%d, flow=%d err=%d",
+			      dpaa2_tx_conf_q->tc_index,
+			      dpaa2_tx_conf_q->flow_id, ret);
+			return -1;
+		}
+
+		ret = dpni_get_queue(dpni, CMD_PRI_LOW, priv->token,
+			     DPNI_QUEUE_TX_CONFIRM, dpaa2_tx_conf_q->tc_index,
+			     dpaa2_tx_conf_q->flow_id, &tx_conf_cfg, &qid);
+		if (ret) {
+			DPAA2_PMD_ERR("Error in getting LFQID err=%d", ret);
+			return -1;
+		}
+		dpaa2_tx_conf_q->fqid = qid.fqid;
+	}
 	return 0;
 }
 
@@ -2347,7 +2420,13 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* ... tx buffer layout ... */
 	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
-	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS;
+	if (priv->tx_conf_en) {
+		layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
+				 DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
+		layout.pass_timestamp = true;
+	} else {
+		layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS;
+	}
 	layout.pass_frame_status = 1;
 	ret = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, priv->token,
 				     DPNI_QUEUE_TX, &layout);
@@ -2358,7 +2437,13 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* ... tx-conf and error buffer layout ... */
 	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
-	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS;
+	if (priv->tx_conf_en) {
+		layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
+				 DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
+		layout.pass_timestamp = true;
+	} else {
+		layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS;
+	}
 	layout.pass_frame_status = 1;
 	ret = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, priv->token,
 				     DPNI_QUEUE_TX_CONFIRM, &layout);
@@ -2470,6 +2555,7 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 		struct rte_dpaa2_device *dpaa2_dev)
 {
 	struct rte_eth_dev *eth_dev;
+	struct dpaa2_dev_priv *priv;
 	int diag;
 
 	if ((DPAA2_MBUF_HW_ANNOTATION + DPAA2_FD_PTA_SIZE) >
@@ -2516,6 +2602,9 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
+
+	priv = eth_dev->data->dev_private;
+	priv->tx_conf_en = 0;
 
 	rte_eth_dev_release_port(eth_dev);
 	return diag;

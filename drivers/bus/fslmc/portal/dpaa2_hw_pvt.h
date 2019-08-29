@@ -161,6 +161,8 @@ struct dpaa2_queue {
 	dpaa2_queue_cb_dqrr_t *cb;
 	dpaa2_queue_cb_eqresp_free_t *cb_eqresp_free;
 	struct dpaa2_bp_info *bp_array;
+	/*to store tx_conf_queue corresponding to tx_queue*/
+	struct dpaa2_queue *tx_conf_queue;
 };
 
 struct swp_active_dqs {

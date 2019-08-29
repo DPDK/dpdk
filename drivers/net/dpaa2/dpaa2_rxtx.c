@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2018 NXP
+ *   Copyright 2016-2019 NXP
  *
  */
 
@@ -830,6 +830,110 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	dpaa2_q->rx_pkts += num_rx;
 
 	return num_rx;
+}
+
+uint16_t dpaa2_dev_tx_conf(void *queue)
+{
+	/* Function receive frames for a given device and VQ */
+	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)queue;
+	struct qbman_result *dq_storage;
+	uint32_t fqid = dpaa2_q->fqid;
+	int ret, num_tx_conf = 0, num_pulled;
+	uint8_t pending, status;
+	struct qbman_swp *swp;
+	const struct qbman_fd *fd, *next_fd;
+	struct qbman_pull_desc pulldesc;
+	struct qbman_release_desc releasedesc;
+	uint32_t bpid;
+	uint64_t buf;
+
+	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+		ret = dpaa2_affine_qbman_swp();
+		if (ret) {
+			DPAA2_PMD_ERR("Failure in affining portal\n");
+			return 0;
+		}
+	}
+	swp = DPAA2_PER_LCORE_PORTAL;
+
+	do {
+		dq_storage = dpaa2_q->q_storage->dq_storage[0];
+		qbman_pull_desc_clear(&pulldesc);
+		qbman_pull_desc_set_fq(&pulldesc, fqid);
+		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
+				(size_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
+
+		qbman_pull_desc_set_numframes(&pulldesc, dpaa2_dqrr_size);
+
+		while (1) {
+			if (qbman_swp_pull(swp, &pulldesc)) {
+				DPAA2_PMD_DP_DEBUG("VDQ command is not issued."
+						   "QBMAN is busy\n");
+				/* Portal was busy, try again */
+				continue;
+			}
+			break;
+		}
+
+		rte_prefetch0((void *)((size_t)(dq_storage + 1)));
+		/* Check if the previous issued command is completed. */
+		while (!qbman_check_command_complete(dq_storage))
+			;
+
+		num_pulled = 0;
+		pending = 1;
+		do {
+			/* Loop until the dq_storage is updated with
+			 * new token by QBMAN
+			 */
+			while (!qbman_check_new_result(dq_storage))
+				;
+			rte_prefetch0((void *)((size_t)(dq_storage + 2)));
+			/* Check whether Last Pull command is Expired and
+			 * setting Condition for Loop termination
+			 */
+			if (qbman_result_DQ_is_pull_complete(dq_storage)) {
+				pending = 0;
+				/* Check for valid frame. */
+				status = qbman_result_DQ_flags(dq_storage);
+				if (unlikely((status &
+					QBMAN_DQ_STAT_VALIDFRAME) == 0))
+					continue;
+			}
+			fd = qbman_result_DQ_fd(dq_storage);
+
+			next_fd = qbman_result_DQ_fd(dq_storage + 1);
+			/* Prefetch Annotation address for the parse results */
+			rte_prefetch0((void *)(size_t)
+				(DPAA2_GET_FD_ADDR(next_fd) +
+				 DPAA2_FD_PTA_SIZE + 16));
+
+			bpid = DPAA2_GET_FD_BPID(fd);
+
+			/* Create a release descriptor required for releasing
+			 * buffers into QBMAN
+			 */
+			qbman_release_desc_clear(&releasedesc);
+			qbman_release_desc_set_bpid(&releasedesc, bpid);
+
+			buf = DPAA2_GET_FD_ADDR(fd);
+			/* feed them to bman */
+			do {
+				ret = qbman_swp_release(swp, &releasedesc,
+							&buf, 1);
+			} while (ret == -EBUSY);
+
+			dq_storage++;
+			num_tx_conf++;
+			num_pulled++;
+		} while (pending);
+
+	/* Last VDQ provided all packets and more packets are requested */
+	} while (num_pulled == dpaa2_dqrr_size);
+
+	dpaa2_q->rx_pkts += num_tx_conf;
+
+	return num_tx_conf;
 }
 
 /*
