@@ -679,6 +679,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	struct dpni_queue tx_conf_cfg;
 	struct dpni_queue tx_flow_cfg;
 	uint8_t options = 0, flow_id;
+	struct dpni_queue_id qid;
 	uint32_t tc_id;
 	int ret;
 
@@ -719,6 +720,15 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		}
 	}
 	dpaa2_q->tc_index = tc_id;
+
+	ret = dpni_get_queue(dpni, CMD_PRI_LOW, priv->token,
+			     DPNI_QUEUE_TX, dpaa2_q->tc_index,
+			     dpaa2_q->flow_id, &tx_flow_cfg, &qid);
+	if (ret) {
+		DPAA2_PMD_ERR("Error in getting LFQID err=%d", ret);
+		return -1;
+	}
+	dpaa2_q->fqid = qid.fqid;
 
 	if (!(priv->flags & DPAA2_TX_CGR_OFF)) {
 		struct dpni_congestion_notification_cfg cong_notif_cfg = {0};
