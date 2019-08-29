@@ -61,6 +61,8 @@ void ice_clear_pxe_mode(struct ice_hw *hw);
 
 enum ice_status ice_get_caps(struct ice_hw *hw);
 
+void ice_set_safe_mode_caps(struct ice_hw *hw);
+
 /* Define a macro that will align a pointer to point to the next memory address
  * that falls on the given power of 2 (i.e., 2, 4, 8, 16, 32, 64...). For
  * example, given the variable pointer = 0x1006, then after the following call:
