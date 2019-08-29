@@ -968,7 +968,7 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	}
 
 	/* Debug desc and buffer */
-	ice_debug(hw, ICE_DBG_AQ_MSG,
+	ice_debug(hw, ICE_DBG_AQ_DESC,
 		  "ATQ: Control Send queue desc and buffer:\n");
 
 	ice_debug_cq(hw, (void *)desc_on_ring, buf, buf_size);
@@ -1008,7 +1008,8 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		retval = LE16_TO_CPU(desc->retval);
 		if (retval) {
 			ice_debug(hw, ICE_DBG_AQ_MSG,
-				  "Control Send Queue command completed with error 0x%x\n",
+				  "Control Send Queue command 0x%04X completed with error 0x%X\n",
+				  LE16_TO_CPU(desc->opcode),
 				  retval);
 
 			/* strip off FW internal code */
@@ -1113,7 +1114,8 @@ ice_clean_rq_elem(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	if (flags & ICE_AQ_FLAG_ERR) {
 		ret_code = ICE_ERR_AQ_ERROR;
 		ice_debug(hw, ICE_DBG_AQ_MSG,
-			  "Control Receive Queue Event received with error 0x%x\n",
+			  "Control Receive Queue Event 0x%04X received with error 0x%X\n",
+			  LE16_TO_CPU(desc->opcode),
 			  cq->rq_last_status);
 	}
 	ice_memcpy(&e->desc, desc, sizeof(e->desc), ICE_DMA_TO_NONDMA);
@@ -1123,7 +1125,7 @@ ice_clean_rq_elem(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		ice_memcpy(e->msg_buf, cq->rq.r.rq_bi[desc_idx].va,
 			   e->msg_len, ICE_DMA_TO_NONDMA);
 
-	ice_debug(hw, ICE_DBG_AQ_MSG, "ARQ: desc and buffer:\n");
+	ice_debug(hw, ICE_DBG_AQ_DESC, "ARQ: desc and buffer:\n");
 
 	ice_debug_cq(hw, (void *)desc, e->msg_buf,
 		     cq->rq_buf_size);
