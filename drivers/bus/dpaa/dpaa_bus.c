@@ -218,7 +218,7 @@ dpaa_create_device_list(void)
 		 * allocated for dev->name/
 		 */
 		memset(dev->name, 0, RTE_ETH_NAME_MAX_LEN);
-		sprintf(dev->name, "dpaa-sec%d", i);
+		sprintf(dev->name, "dpaa_sec-%d", i+1);
 		DPAA_BUS_LOG(INFO, "%s cryptodev added", dev->name);
 		dev->device.name = dev->name;
 		dev->device.devargs = dpaa_devargs_lookup(dev);
@@ -397,7 +397,7 @@ rte_dpaa_bus_parse(const char *name, void *out_name)
 	 * without separator. Both need to be handled.
 	 * It is also possible that "name=fm1-mac3" is passed along.
 	 */
-	DPAA_BUS_DEBUG("Parse device name (%s)\n", name);
+	DPAA_BUS_DEBUG("Parse device name (%s)", name);
 
 	/* Check for dpaa_bus:fm1-mac3 style */
 	dup_name = strdup(name);
@@ -428,7 +428,7 @@ rte_dpaa_bus_parse(const char *name, void *out_name)
 	for (i = 0; i < RTE_LIBRTE_DPAA_MAX_CRYPTODEV; i++) {
 		char sec_name[16];
 
-		snprintf(sec_name, 16, "dpaa-sec%d", i);
+		snprintf(sec_name, 16, "dpaa_sec-%d", i+1);
 		if (strcmp(sec_name, sep) == 0) {
 			if (out_name)
 				strcpy(out_name, sep);

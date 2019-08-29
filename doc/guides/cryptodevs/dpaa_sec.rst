@@ -85,11 +85,11 @@ For blacklisting a DPAA device, following commands can be used.
 
  .. code-block:: console
 
-    <dpdk app> <EAL args> -b "dpaa_bus:dpaa-secX" -- ...
-    e.g. "dpaa_bus:dpaa-sec0"
+    <dpdk app> <EAL args> -b "dpaa:dpaa_sec-X" -- ...
+    e.g. "dpaa:dpaa_sec-1"
 
     or to disable all 4 SEC devices
-    -b "dpaa_sec:dpaa-sec0"  -b "dpaa_sec:dpaa-sec1" -b "dpaa_sec:dpaa-sec2" -b "dpaa_sec:dpaa-sec3"
+    -b "dpaa:dpaa_sec-1"  -b "dpaa:dpaa_sec-2" -b "dpaa:dpaa_sec-3" -b "dpaa:dpaa_sec-4"
 
 Limitations
 -----------
