@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017 NXP
+ * Copyright 2017,2019 NXP
  *
  */
 
@@ -32,31 +32,9 @@ static __thread struct dpaa_ioctl_portal_map map = {
 
 static int fsl_qman_portal_init(uint32_t index, int is_shared)
 {
-	cpu_set_t cpuset;
 	struct qman_portal *portal;
-	int loop, ret;
 	struct dpaa_ioctl_irq_map irq_map;
-
-	/* Verify the thread's cpu-affinity */
-	ret = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t),
-				     &cpuset);
-	if (ret) {
-		error(0, ret, "pthread_getaffinity_np()");
-		return ret;
-	}
-	qpcfg.cpu = -1;
-	for (loop = 0; loop < CPU_SETSIZE; loop++)
-		if (CPU_ISSET(loop, &cpuset)) {
-			if (qpcfg.cpu != -1) {
-				pr_err("Thread is not affine to 1 cpu\n");
-				return -EINVAL;
-			}
-			qpcfg.cpu = loop;
-		}
-	if (qpcfg.cpu == -1) {
-		pr_err("Bug in getaffinity handling!\n");
-		return -EINVAL;
-	}
+	int ret;
 
 	/* Allocate and map a qman portal */
 	map.index = index;
@@ -145,43 +123,15 @@ void qman_thread_irq(void)
 
 struct qman_portal *fsl_qman_portal_create(void)
 {
-	cpu_set_t cpuset;
 	struct qman_portal *res;
-
 	struct qm_portal_config *q_pcfg;
-	int loop, ret;
 	struct dpaa_ioctl_irq_map irq_map;
 	struct dpaa_ioctl_portal_map q_map = {0};
-	int q_fd;
+	int q_fd, ret;
 
 	q_pcfg = kzalloc((sizeof(struct qm_portal_config)), 0);
 	if (!q_pcfg) {
 		error(0, -1, "q_pcfg kzalloc failed");
-		return NULL;
-	}
-
-	/* Verify the thread's cpu-affinity */
-	ret = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t),
-				     &cpuset);
-	if (ret) {
-		error(0, ret, "pthread_getaffinity_np()");
-		kfree(q_pcfg);
-		return NULL;
-	}
-
-	q_pcfg->cpu = -1;
-	for (loop = 0; loop < CPU_SETSIZE; loop++)
-		if (CPU_ISSET(loop, &cpuset)) {
-			if (q_pcfg->cpu != -1) {
-				pr_err("Thread is not affine to 1 cpu\n");
-				kfree(q_pcfg);
-				return NULL;
-			}
-			q_pcfg->cpu = loop;
-		}
-	if (q_pcfg->cpu == -1) {
-		pr_err("Bug in getaffinity handling!\n");
-		kfree(q_pcfg);
 		return NULL;
 	}
 
