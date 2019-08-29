@@ -518,16 +518,16 @@ struct ice_ptg_ptype {
 	u8 ptg;
 };
 
-#define ICE_MAX_TCAM_PER_PROFILE	8
-#define ICE_MAX_PTYPE_PER_PROFILE	8
+#define ICE_MAX_TCAM_PER_PROFILE	32
+#define ICE_MAX_PTG_PER_PROFILE		32
 
 struct ice_prof_map {
 	struct LIST_ENTRY_TYPE list;
 	u64 profile_cookie;
 	u64 context;
 	u8 prof_id;
-	u8 ptype_count;
-	u16 ptype[ICE_MAX_PTYPE_PER_PROFILE];
+	u8 ptg_cnt;
+	u8 ptg[ICE_MAX_PTG_PER_PROFILE];
 };
 
 #define ICE_INVALID_TCAM	0xFFFF
