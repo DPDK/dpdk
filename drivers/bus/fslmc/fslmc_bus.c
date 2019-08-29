@@ -190,6 +190,8 @@ scan_one_fslmc_device(char *dev_name)
 		dev->dev_type = DPAA2_QDMA;
 	else if (!strncmp("dpdmux", t_ptr, 6))
 		dev->dev_type = DPAA2_MUX;
+	else if (!strncmp("dprtc", t_ptr, 5))
+		dev->dev_type = DPAA2_DPRTC;
 	else
 		dev->dev_type = DPAA2_UNKNOWN;
 

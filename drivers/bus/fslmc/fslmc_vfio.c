@@ -612,6 +612,7 @@ fslmc_process_iodevices(struct rte_dpaa2_device *dev)
 	case DPAA2_IO:
 	case DPAA2_CI:
 	case DPAA2_BPOOL:
+	case DPAA2_DPRTC:
 	case DPAA2_MUX:
 		TAILQ_FOREACH(object, &dpaa2_obj_list, next) {
 			if (dev->dev_type == object->dev_type)
@@ -768,6 +769,7 @@ fslmc_vfio_process_group(void)
 		case DPAA2_CON:
 		case DPAA2_CI:
 		case DPAA2_BPOOL:
+		case DPAA2_DPRTC:
 		case DPAA2_MUX:
 			/* IN case of secondary processes, all control objects
 			 * like dpbp, dpcon, dpci are not initialized/required

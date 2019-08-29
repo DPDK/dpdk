@@ -2188,6 +2188,15 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.rss_hash_update      = dpaa2_dev_rss_hash_update,
 	.rss_hash_conf_get    = dpaa2_dev_rss_hash_conf_get,
 	.filter_ctrl          = dpaa2_dev_flow_ctrl,
+#if defined(RTE_LIBRTE_IEEE1588)
+	.timesync_enable      = dpaa2_timesync_enable,
+	.timesync_disable     = dpaa2_timesync_disable,
+	.timesync_read_time   = dpaa2_timesync_read_time,
+	.timesync_write_time  = dpaa2_timesync_write_time,
+	.timesync_adjust_time = dpaa2_timesync_adjust_time,
+	.timesync_read_rx_timestamp = dpaa2_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp = dpaa2_timesync_read_tx_timestamp,
+#endif
 };
 
 /* Populate the mac address from physically available (u-boot/firmware) and/or

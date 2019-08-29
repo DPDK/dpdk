@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2015-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016 NXP
+ *   Copyright 2016-2019 NXP
  *
  */
 
@@ -130,6 +130,17 @@ struct dpaa2_dev_priv {
 		uint64_t qos_extract_param;
 		uint64_t fs_extract_param[MAX_TCS];
 	} extract;
+
+#if defined(RTE_LIBRTE_IEEE1588)
+	/*stores timestamp of last received packet on dev*/
+	uint64_t rx_timestamp;
+	/*stores timestamp of last received tx confirmation packet on dev*/
+	uint64_t tx_timestamp;
+	/* stores pointer to next tx_conf queue that should be processed,
+	 * it corresponds to last packet transmitted
+	 */
+	struct dpaa2_queue *next_tx_conf_queue;
+#endif
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 };
 
@@ -182,4 +193,18 @@ void dpaa2_dev_free_eqresp_buf(uint16_t eqresp_ci);
 void dpaa2_flow_clean(struct rte_eth_dev *dev);
 uint16_t dpaa2_dev_tx_conf(void *queue)  __attribute__((unused));
 
+#if defined(RTE_LIBRTE_IEEE1588)
+int dpaa2_timesync_enable(struct rte_eth_dev *dev);
+int dpaa2_timesync_disable(struct rte_eth_dev *dev);
+int dpaa2_timesync_read_time(struct rte_eth_dev *dev,
+					struct timespec *timestamp);
+int dpaa2_timesync_write_time(struct rte_eth_dev *dev,
+					const struct timespec *timestamp);
+int dpaa2_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
+int dpaa2_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+						struct timespec *timestamp,
+						uint32_t flags __rte_unused);
+int dpaa2_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+					  struct timespec *timestamp);
+#endif
 #endif /* _DPAA2_ETHDEV_H */

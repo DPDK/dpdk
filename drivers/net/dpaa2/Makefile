@@ -38,6 +38,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_PMD) += mc/dpni.c
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_PMD) += mc/dpkg.c
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_PMD) += mc/dpdmux.c
 SRCS-$(CONFIG_RTE_LIBRTE_IEEE1588)  += mc/dprtc.c
+SRCS-$(CONFIG_RTE_LIBRTE_IEEE1588)  += dpaa2_ptp.c
 
 LDLIBS += -lrte_bus_fslmc
 LDLIBS += -lrte_mempool_dpaa2

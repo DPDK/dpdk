@@ -20,6 +20,7 @@ sources = files('base/dpaa2_hw_dpni.c',
 
 if dpdk_conf.has('RTE_LIBRTE_IEEE1588')
 	sources += files('mc/dprtc.c')
+	sources += files('dpaa2_ptp.c')
 endif
 
 includes += include_directories('base', 'mc')

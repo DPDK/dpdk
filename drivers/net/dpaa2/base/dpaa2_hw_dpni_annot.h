@@ -279,7 +279,7 @@ struct dpaa2_faead {
 #define DPAA2_ETH_FAS_DISC	      0x80000000
 /* MACSEC frame */
 #define DPAA2_ETH_FAS_MS		0x40000000
-#define DPAA2_ETH_FAS_PTP	       0x08000000
+#define DPAA2_ETH_FAS_PTP	       BIT_POS(59)
 /* Ethernet multicast frame */
 #define DPAA2_ETH_FAS_MC		0x04000000
 /* Ethernet broadcast frame */
