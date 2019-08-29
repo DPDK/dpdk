@@ -949,8 +949,9 @@ ice_flow_find_prof_conds(struct ice_hw *hw, enum ice_block blk,
 			 enum ice_flow_dir dir, struct ice_flow_seg_info *segs,
 			 u8 segs_cnt, u16 vsi_handle, u32 conds)
 {
-	struct ice_flow_prof *p;
+	struct ice_flow_prof *p, *prof = NULL;
 
+	ice_acquire_lock(&hw->fl_profs_locks[blk]);
 	LIST_FOR_EACH_ENTRY(p, &hw->fl_profs[blk], ice_flow_prof, l_entry) {
 		if ((p->dir == dir || conds & ICE_FLOW_FIND_PROF_NOT_CHK_DIR) &&
 		    segs_cnt && segs_cnt == p->segs_cnt) {
@@ -972,12 +973,15 @@ ice_flow_find_prof_conds(struct ice_hw *hw, enum ice_block blk,
 					break;
 
 			/* A match is found if all segments are matched */
-			if (i == segs_cnt)
-				return p;
+			if (i == segs_cnt) {
+				prof = p;
+				break;
+			}
 		}
 	}
+	ice_release_lock(&hw->fl_profs_locks[blk]);
 
-	return NULL;
+	return prof;
 }
 
 /**
@@ -994,10 +998,8 @@ ice_flow_find_prof(struct ice_hw *hw, enum ice_block blk, enum ice_flow_dir dir,
 {
 	struct ice_flow_prof *p;
 
-	ice_acquire_lock(&hw->fl_profs_locks[blk]);
 	p = ice_flow_find_prof_conds(hw, blk, dir, segs, segs_cnt,
 				     ICE_MAX_VSI, ICE_FLOW_FIND_PROF_CHK_FLDS);
-	ice_release_lock(&hw->fl_profs_locks[blk]);
 
 	return p ? p->id : ICE_FLOW_PROF_ID_INVAL;
 }
@@ -1497,9 +1499,12 @@ ice_flow_add_entry(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 		goto out;
 	}
 
-	ice_acquire_lock(&prof->entries_lock);
-	LIST_ADD(&e->l_entry, &prof->entries);
-	ice_release_lock(&prof->entries_lock);
+	if (blk != ICE_BLK_ACL) {
+		/* ACL will handle the entry management */
+		ice_acquire_lock(&prof->entries_lock);
+		LIST_ADD(&e->l_entry, &prof->entries);
+		ice_release_lock(&prof->entries_lock);
+	}
 
 	*entry_h = ICE_FLOW_ENTRY_HNDL(e);
 
@@ -1930,7 +1935,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 
 		/* Remove profile if it has no VSIs associated */
 		if (!ice_is_any_bit_set(prof->vsis, ICE_MAX_VSI)) {
-			status = ice_flow_rem_prof_sync(hw, blk, prof);
+			status = ice_flow_rem_prof(hw, blk, prof->id);
 			if (status)
 				goto exit;
 		}
@@ -1963,7 +1968,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	 * be removed.
 	 */
 	if (status) {
-		ice_flow_rem_prof_sync(hw, blk, prof);
+		ice_flow_rem_prof(hw, blk, prof->id);
 		goto exit;
 	}
 
@@ -2047,7 +2052,7 @@ ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	ice_rem_rss_list(hw, vsi_handle, prof);
 
 	if (!ice_is_any_bit_set(prof->vsis, ICE_MAX_VSI))
-		status = ice_flow_rem_prof_sync(hw, blk, prof);
+		status = ice_flow_rem_prof(hw, blk, prof->id);
 
 out:
 	ice_free(hw, segs);
