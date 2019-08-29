@@ -141,6 +141,9 @@ struct dpaa2_dev_priv {
 	 */
 	struct dpaa2_queue *next_tx_conf_queue;
 #endif
+
+	struct rte_eth_dev *eth_dev; /**< Pointer back to holding ethdev */
+
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 };
 
