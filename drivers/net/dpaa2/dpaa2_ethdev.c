@@ -32,11 +32,11 @@
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_CHECKSUM |
+		DEV_RX_OFFLOAD_SCTP_CKSUM |
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
+		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_VLAN_FILTER |
 		DEV_RX_OFFLOAD_JUMBO_FRAME;
 
@@ -51,13 +51,13 @@ static uint64_t dev_tx_offloads_sup =
 		DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_CKSUM |
 		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_MT_LOCKFREE |
+		DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
 /* Tx offloads which cannot be disabled */
 static uint64_t dev_tx_offloads_nodis =
-		DEV_TX_OFFLOAD_MULTI_SEGS |
-		DEV_TX_OFFLOAD_MT_LOCKFREE |
-		DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		DEV_TX_OFFLOAD_MULTI_SEGS;
 
 /* enable timestamp in mbuf */
 enum pmd_dpaa2_ts dpaa2_enable_ts;
@@ -441,7 +441,8 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		rx_l3_csum_offload = true;
 
 	if ((rx_offloads & DEV_RX_OFFLOAD_UDP_CKSUM) ||
-		(rx_offloads & DEV_RX_OFFLOAD_TCP_CKSUM))
+		(rx_offloads & DEV_RX_OFFLOAD_TCP_CKSUM) ||
+		(rx_offloads & DEV_RX_OFFLOAD_SCTP_CKSUM))
 		rx_l4_csum_offload = true;
 
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
