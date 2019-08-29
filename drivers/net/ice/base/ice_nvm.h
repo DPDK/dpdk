@@ -84,4 +84,8 @@ ice_nvm_access_get_features(struct ice_nvm_access_cmd *cmd,
 enum ice_status
 ice_handle_nvm_access(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 		      union ice_nvm_access_data *data);
+enum ice_status ice_init_nvm(struct ice_hw *hw);
+enum ice_status ice_read_sr_word(struct ice_hw *hw, u16 offset, u16 *data);
+enum ice_status
+ice_read_sr_buf(struct ice_hw *hw, u16 offset, u16 *words, u16 *data);
 #endif /* _ICE_NVM_H_ */
