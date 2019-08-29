@@ -19,6 +19,16 @@
 	     (((mdid) << GLFLXP_RXDID_FLX_WRD_##idx##_PROT_MDID_S) & \
 	      GLFLXP_RXDID_FLX_WRD_##idx##_PROT_MDID_M))
 
+#define ICE_PROG_FLEX_ENTRY_EXTRACT(hw, rxdid, protid, off, idx) \
+	wr32((hw), GLFLXP_RXDID_FLX_WRD_##idx(rxdid), \
+	     ((ICE_RX_OPC_EXTRACT << \
+	       GLFLXP_RXDID_FLX_WRD_##idx##_RXDID_OPCODE_S) & \
+	      GLFLXP_RXDID_FLX_WRD_##idx##_RXDID_OPCODE_M) | \
+	     (((protid) << GLFLXP_RXDID_FLX_WRD_##idx##_PROT_MDID_S) & \
+	      GLFLXP_RXDID_FLX_WRD_##idx##_PROT_MDID_M) | \
+	     (((off) << GLFLXP_RXDID_FLX_WRD_##idx##_EXTRACTION_OFFSET_S) & \
+	      GLFLXP_RXDID_FLX_WRD_##idx##_EXTRACTION_OFFSET_M))
+
 #define ICE_PROG_FLG_ENTRY(hw, rxdid, flg_0, flg_1, flg_2, flg_3, idx) \
 	wr32((hw), GLFLXP_RXDID_FLAGS(rxdid, idx), \
 	     (((flg_0) << GLFLXP_RXDID_FLAGS_FLEXIFLAG_4N_S) & \
@@ -412,6 +422,8 @@ static void ice_init_flex_flags(struct ice_hw *hw, enum ice_rxdid prof_id)
  */
 static void ice_init_flex_flds(struct ice_hw *hw, enum ice_rxdid prof_id)
 {
+	enum ice_prot_id protid_0, protid_1;
+	u16 offset_0, offset_1;
 	enum ice_flex_mdid mdid;
 
 	switch (prof_id) {
@@ -428,7 +440,80 @@ static void ice_init_flex_flds(struct ice_hw *hw, enum ice_rxdid prof_id)
 
 		ice_init_flex_flags(hw, prof_id);
 		break;
+	case ICE_RXDID_COMMS_GENERIC:
+	case ICE_RXDID_COMMS_AUX_VLAN:
+	case ICE_RXDID_COMMS_AUX_IPV4:
+	case ICE_RXDID_COMMS_AUX_IPV6:
+	case ICE_RXDID_COMMS_AUX_IPV6_FLOW:
+	case ICE_RXDID_COMMS_AUX_TCP:
+		ICE_PROG_FLEX_ENTRY(hw, prof_id, ICE_MDID_RX_HASH_LOW, 0);
+		ICE_PROG_FLEX_ENTRY(hw, prof_id, ICE_MDID_RX_HASH_HIGH, 1);
+		ICE_PROG_FLEX_ENTRY(hw, prof_id, ICE_MDID_FLOW_ID_LOWER, 2);
+		ICE_PROG_FLEX_ENTRY(hw, prof_id, ICE_MDID_FLOW_ID_HIGH, 3);
 
+		if (prof_id == ICE_RXDID_COMMS_AUX_VLAN) {
+			/* FlexiMD.4: VLAN1 - single or EVLAN (first for QinQ).
+			 * FlexiMD.5: VLAN2 - C-VLAN (second for QinQ).
+			 */
+			protid_0 = ICE_PROT_EVLAN_O;
+			offset_0 = 0;
+			protid_1 = ICE_PROT_VLAN_O;
+			offset_1 = 0;
+		} else if (prof_id == ICE_RXDID_COMMS_AUX_IPV4) {
+			/* FlexiMD.4: IPHDR1 - IPv4 header word 4, "TTL" and
+			 * "Protocol" fields.
+			 * FlexiMD.5: IPHDR0 - IPv4 header word 0, "Ver",
+			 * "Hdr Len" and "Type of Service" fields.
+			 */
+			protid_0 = ICE_PROT_IPV4_OF_OR_S;
+			offset_0 = 8;
+			protid_1 = ICE_PROT_IPV4_OF_OR_S;
+			offset_1 = 0;
+		} else if (prof_id == ICE_RXDID_COMMS_AUX_IPV6) {
+			/* FlexiMD.4: IPHDR1 - IPv6 header word 3,
+			 * "Next Header" and "Hop Limit" fields.
+			 * FlexiMD.5: IPHDR0 - IPv6 header word 0,
+			 * "Ver", "Traffic class" and high 4 bits of
+			 * "Flow Label" fields.
+			 */
+			protid_0 = ICE_PROT_IPV6_OF_OR_S;
+			offset_0 = 6;
+			protid_1 = ICE_PROT_IPV6_OF_OR_S;
+			offset_1 = 0;
+		} else if (prof_id == ICE_RXDID_COMMS_AUX_IPV6_FLOW) {
+			/* FlexiMD.4: IPHDR1 - IPv6 header word 1,
+			 * 16 low bits of the "Flow Label" field.
+			 * FlexiMD.5: IPHDR0 - IPv6 header word 0,
+			 * "Ver", "Traffic class" and high 4 bits
+			 * of "Flow Label" fields.
+			 */
+			protid_0 = ICE_PROT_IPV6_OF_OR_S;
+			offset_0 = 2;
+			protid_1 = ICE_PROT_IPV6_OF_OR_S;
+			offset_1 = 0;
+		} else if (prof_id == ICE_RXDID_COMMS_AUX_TCP) {
+			/* FlexiMD.4: TCPHDR - TCP header word 6,
+			 * "Data Offset" and "Flags" fields.
+			 * FlexiMD.5: Reserved
+			 */
+			protid_0 = ICE_PROT_TCP_IL;
+			offset_0 = 12;
+			protid_1 = ICE_PROT_ID_INVAL;
+			offset_1 = 0;
+		} else {
+			protid_0 = ICE_PROT_ID_INVAL;
+			offset_0 = 0;
+			protid_1 = ICE_PROT_ID_INVAL;
+			offset_1 = 0;
+		}
+
+		ICE_PROG_FLEX_ENTRY_EXTRACT(hw, prof_id,
+					    protid_0, offset_0, 4);
+		ICE_PROG_FLEX_ENTRY_EXTRACT(hw, prof_id,
+					    protid_1, offset_1, 5);
+
+		ice_init_flex_flags(hw, prof_id);
+		break;
 	default:
 		ice_debug(hw, ICE_DBG_INIT,
 			  "Field init for profile ID %d not supported\n",
@@ -1001,6 +1086,12 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 
 	ice_init_flex_flds(hw, ICE_RXDID_FLEX_NIC);
 	ice_init_flex_flds(hw, ICE_RXDID_FLEX_NIC_2);
+	ice_init_flex_flds(hw, ICE_RXDID_COMMS_GENERIC);
+	ice_init_flex_flds(hw, ICE_RXDID_COMMS_AUX_VLAN);
+	ice_init_flex_flds(hw, ICE_RXDID_COMMS_AUX_IPV4);
+	ice_init_flex_flds(hw, ICE_RXDID_COMMS_AUX_IPV6);
+	ice_init_flex_flds(hw, ICE_RXDID_COMMS_AUX_IPV6_FLOW);
+	ice_init_flex_flds(hw, ICE_RXDID_COMMS_AUX_TCP);
 	/* Obtain counter base index which would be used by flow director */
 	status = ice_alloc_fd_res_cntr(hw, &hw->fd_ctr_base);
 	if (status)
