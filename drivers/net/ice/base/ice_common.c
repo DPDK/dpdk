@@ -4102,16 +4102,25 @@ ice_sched_query_elem(struct ice_hw *hw, u32 node_teid,
 }
 
 /**
- * ice_is_fw_in_rec_mode
+ * ice_get_fw_mode - returns FW mode
  * @hw: pointer to the HW struct
- *
- * This function returns true if fw is in recovery mode
  */
-bool ice_is_fw_in_rec_mode(struct ice_hw *hw)
+enum ice_fw_modes ice_get_fw_mode(struct ice_hw *hw)
 {
-	u32 reg;
+#define ICE_FW_MODE_DBG_M BIT(0)
+#define ICE_FW_MODE_REC_M BIT(1)
+#define ICE_FW_MODE_ROLLBACK_M BIT(2)
+	u32 fw_mode;
 
 	/* check the current FW mode */
-	reg = rd32(hw, GL_MNG_FWSM);
-	return (reg & GL_MNG_FWSM_FW_MODES_M) > ICE_FW_MODE_DBG;
+	fw_mode = rd32(hw, GL_MNG_FWSM) & GL_MNG_FWSM_FW_MODES_M;
+
+	if (fw_mode & ICE_FW_MODE_DBG_M)
+		return ICE_FW_MODE_DBG;
+	else if (fw_mode & ICE_FW_MODE_REC_M)
+		return ICE_FW_MODE_REC;
+	else if (fw_mode & ICE_FW_MODE_ROLLBACK_M)
+		return ICE_FW_MODE_ROLLBACK;
+	else
+		return ICE_FW_MODE_NORMAL;
 }

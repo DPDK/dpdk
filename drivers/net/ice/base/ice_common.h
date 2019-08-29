@@ -14,7 +14,7 @@ enum ice_fw_modes {
 	ICE_FW_MODE_NORMAL,
 	ICE_FW_MODE_DBG,
 	ICE_FW_MODE_REC,
-	ICE_FW_MODE_DBG_REC
+	ICE_FW_MODE_ROLLBACK
 };
 
 enum ice_status ice_nvm_validate_checksum(struct ice_hw *hw);
@@ -198,8 +198,8 @@ ice_stat_update40(struct ice_hw *hw, u32 reg, bool prev_stat_loaded,
 void
 ice_stat_update32(struct ice_hw *hw, u32 reg, bool prev_stat_loaded,
 		  u64 *prev_stat, u64 *cur_stat);
+enum ice_fw_modes ice_get_fw_mode(struct ice_hw *hw);
 enum ice_status
 ice_sched_query_elem(struct ice_hw *hw, u32 node_teid,
 		     struct ice_aqc_get_elem *buf);
-bool ice_is_fw_in_rec_mode(struct ice_hw *hw);
 #endif /* _ICE_COMMON_H_ */
