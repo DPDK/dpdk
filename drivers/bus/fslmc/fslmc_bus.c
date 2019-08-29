@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2016,2018 NXP
+ *   Copyright 2016,2018-2019 NXP
  *
  */
 
@@ -324,8 +324,7 @@ rte_fslmc_scan(void)
 		goto scan_fail;
 
 	/* Scan devices on the group */
-	snprintf(fslmc_dirpath, sizeof(fslmc_dirpath), "%s/%d/devices",
-			VFIO_IOMMU_GROUP_PATH, groupid);
+	sprintf(fslmc_dirpath, "%s/%s", SYSFS_FSL_MC_DEVICES, fslmc_container);
 	dir = opendir(fslmc_dirpath);
 	if (!dir) {
 		DPAA2_BUS_ERR("Unable to open VFIO group directory");
@@ -333,7 +332,7 @@ rte_fslmc_scan(void)
 	}
 
 	while ((entry = readdir(dir)) != NULL) {
-		if (entry->d_name[0] == '.' || entry->d_type != DT_LNK)
+		if (entry->d_name[0] == '.' || entry->d_type != DT_DIR)
 			continue;
 
 		ret = scan_one_fslmc_device(entry->d_name);

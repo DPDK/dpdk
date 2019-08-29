@@ -40,16 +40,13 @@
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"
 
-/** Pathname of FSL-MC devices directory. */
-#define SYSFS_FSL_MC_DEVICES "/sys/bus/fsl-mc/devices"
-
 #define FSLMC_CONTAINER_MAX_LEN 8 /**< Of the format dprc.XX */
 
 /* Number of VFIO containers & groups with in */
 static struct fslmc_vfio_group vfio_group;
 static struct fslmc_vfio_container vfio_container;
 static int container_device_fd;
-static char *fslmc_container;
+char *fslmc_container;
 static int fslmc_iommu_type;
 static uint32_t *msi_intr_vaddr;
 void *(*rte_mcp_ptr_list);
@@ -435,28 +432,136 @@ int rte_fslmc_vfio_dmamap(void)
 	return 0;
 }
 
-static int64_t vfio_map_mcp_obj(struct fslmc_vfio_group *group, char *mcp_obj)
+static int
+fslmc_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
+		int *vfio_dev_fd, struct vfio_device_info *device_info)
+{
+	struct vfio_group_status group_status = {
+			.argsz = sizeof(group_status)
+	};
+	int vfio_group_fd, vfio_container_fd, iommu_group_no, ret;
+
+	/* get group number */
+	ret = rte_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_no);
+	if (ret < 0)
+		return -1;
+
+	/* get the actual group fd */
+	vfio_group_fd = rte_vfio_get_group_fd(iommu_group_no);
+	if (vfio_group_fd < 0)
+		return -1;
+
+	/* if group_fd == 0, that means the device isn't managed by VFIO */
+	if (vfio_group_fd == 0) {
+		RTE_LOG(WARNING, EAL, " %s not managed by VFIO driver, skipping\n",
+				dev_addr);
+		return 1;
+	}
+
+	/* Opens main vfio file descriptor which represents the "container" */
+	vfio_container_fd = rte_vfio_get_container_fd();
+	if (vfio_container_fd < 0) {
+		DPAA2_BUS_ERR("Failed to open VFIO container");
+		return -errno;
+	}
+
+	/* check if the group is viable */
+	ret = ioctl(vfio_group_fd, VFIO_GROUP_GET_STATUS, &group_status);
+	if (ret) {
+		DPAA2_BUS_ERR("  %s cannot get group status, "
+				"error %i (%s)\n", dev_addr,
+				errno, strerror(errno));
+		close(vfio_group_fd);
+		rte_vfio_clear_group(vfio_group_fd);
+		return -1;
+	} else if (!(group_status.flags & VFIO_GROUP_FLAGS_VIABLE)) {
+		DPAA2_BUS_ERR("  %s VFIO group is not viable!\n", dev_addr);
+		close(vfio_group_fd);
+		rte_vfio_clear_group(vfio_group_fd);
+		return -1;
+	}
+	/* At this point, we know that this group is viable (meaning,
+	 * all devices are either bound to VFIO or not bound to anything)
+	 */
+
+	/* check if group does not have a container yet */
+	if (!(group_status.flags & VFIO_GROUP_FLAGS_CONTAINER_SET)) {
+
+		/* add group to a container */
+		ret = ioctl(vfio_group_fd, VFIO_GROUP_SET_CONTAINER,
+				&vfio_container_fd);
+		if (ret) {
+			DPAA2_BUS_ERR("  %s cannot add VFIO group to container, "
+					"error %i (%s)\n", dev_addr,
+					errno, strerror(errno));
+			close(vfio_group_fd);
+			close(vfio_container_fd);
+			rte_vfio_clear_group(vfio_group_fd);
+			return -1;
+		}
+
+		/*
+		 * set an IOMMU type for container
+		 *
+		 */
+		if (ioctl(vfio_container_fd, VFIO_CHECK_EXTENSION,
+			  fslmc_iommu_type)) {
+			ret = ioctl(vfio_container_fd, VFIO_SET_IOMMU,
+				    fslmc_iommu_type);
+			if (ret) {
+				DPAA2_BUS_ERR("Failed to setup VFIO iommu");
+				close(vfio_group_fd);
+				close(vfio_container_fd);
+				return -errno;
+			}
+		} else {
+			DPAA2_BUS_ERR("No supported IOMMU available");
+			close(vfio_group_fd);
+			close(vfio_container_fd);
+			return -EINVAL;
+		}
+	}
+
+	/* get a file descriptor for the device */
+	*vfio_dev_fd = ioctl(vfio_group_fd, VFIO_GROUP_GET_DEVICE_FD, dev_addr);
+	if (*vfio_dev_fd < 0) {
+		/* if we cannot get a device fd, this implies a problem with
+		 * the VFIO group or the container not having IOMMU configured.
+		 */
+
+		DPAA2_BUS_WARN("Getting a vfio_dev_fd for %s failed", dev_addr);
+		close(vfio_group_fd);
+		close(vfio_container_fd);
+		rte_vfio_clear_group(vfio_group_fd);
+		return -1;
+	}
+
+	/* test and setup the device */
+	ret = ioctl(*vfio_dev_fd, VFIO_DEVICE_GET_INFO, device_info);
+	if (ret) {
+		DPAA2_BUS_ERR("  %s cannot get device info, error %i (%s)",
+				dev_addr, errno, strerror(errno));
+		close(*vfio_dev_fd);
+		close(vfio_group_fd);
+		close(vfio_container_fd);
+		rte_vfio_clear_group(vfio_group_fd);
+		return -1;
+	}
+
+	return 0;
+}
+
+static intptr_t vfio_map_mcp_obj(const char *mcp_obj)
 {
 	intptr_t v_addr = (intptr_t)MAP_FAILED;
 	int32_t ret, mc_fd;
+	struct vfio_group_status status = { .argsz = sizeof(status) };
 
 	struct vfio_device_info d_info = { .argsz = sizeof(d_info) };
 	struct vfio_region_info reg_info = { .argsz = sizeof(reg_info) };
 
-	/* getting the mcp object's fd*/
-	mc_fd = ioctl(group->fd, VFIO_GROUP_GET_DEVICE_FD, mcp_obj);
-	if (mc_fd < 0) {
-		DPAA2_BUS_ERR("Error in VFIO get dev %s fd from group %d",
-			      mcp_obj, group->fd);
-		return v_addr;
-	}
-
-	/* getting device info*/
-	ret = ioctl(mc_fd, VFIO_DEVICE_GET_INFO, &d_info);
-	if (ret < 0) {
-		DPAA2_BUS_ERR("Error in VFIO getting DEVICE_INFO");
-		goto MC_FAILURE;
-	}
+	fslmc_vfio_setup_device(SYSFS_FSL_MC_DEVICES, mcp_obj,
+			&mc_fd, &d_info);
 
 	/* getting device region info*/
 	ret = ioctl(mc_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info);
@@ -589,19 +694,8 @@ fslmc_process_iodevices(struct rte_dpaa2_device *dev)
 	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
 	struct rte_dpaa2_object *object = NULL;
 
-	dev_fd = ioctl(vfio_group.fd, VFIO_GROUP_GET_DEVICE_FD,
-		       dev->device.name);
-	if (dev_fd <= 0) {
-		DPAA2_BUS_ERR("Unable to obtain device FD for device:%s",
-			      dev->device.name);
-		return -1;
-	}
-
-	if (ioctl(dev_fd, VFIO_DEVICE_GET_INFO, &device_info)) {
-		DPAA2_BUS_ERR("Unable to obtain information for device:%s",
-			      dev->device.name);
-		return -1;
-	}
+	fslmc_vfio_setup_device(SYSFS_FSL_MC_DEVICES, dev->device.name,
+			&dev_fd, &device_info);
 
 	switch (dev->dev_type) {
 	case DPAA2_ETH:
@@ -654,7 +748,7 @@ fslmc_process_mcp(struct rte_dpaa2_device *dev)
 		goto cleanup;
 	}
 
-	v_addr = vfio_map_mcp_obj(&vfio_group, dev_name);
+	v_addr = vfio_map_mcp_obj(dev->device.name);
 	if (v_addr == (intptr_t)MAP_FAILED) {
 		DPAA2_BUS_ERR("Error mapping region (errno = %d)", errno);
 		ret = -1;
