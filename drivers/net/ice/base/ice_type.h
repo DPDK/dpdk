@@ -773,6 +773,7 @@ struct ice_hw {
 	/* Active package version (currently active) */
 	struct ice_pkg_ver active_pkg_ver;
 	u8 active_pkg_name[ICE_PKG_NAME_SIZE];
+	u8 active_pkg_in_nvm;
 
 	/* Driver's package ver - (from the Metadata seg) */
 	struct ice_pkg_ver pkg_ver;

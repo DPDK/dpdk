@@ -1144,6 +1144,7 @@ static enum ice_status ice_get_pkg_info(struct ice_hw *hw)
 				   pkg_info->pkg_info[i].name,
 				   sizeof(hw->active_pkg_name),
 				   ICE_NONDMA_TO_NONDMA);
+			hw->active_pkg_in_nvm = pkg_info->pkg_info[i].is_in_nvm;
 		}
 		if (pkg_info->pkg_info[i].is_active_at_boot)
 			flags[place++] = 'B';
