@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2019 NXP
  */
 
 #include <sys/queue.h>
@@ -60,18 +60,12 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 {
 	struct dpaa2_dpdmux_dev *dpdmux_dev;
 	struct dpkg_profile_cfg kg_cfg;
-	const struct rte_flow_item_ipv4 *spec;
 	const struct rte_flow_action_vf *vf_conf;
 	struct dpdmux_cls_action dpdmux_action;
 	struct rte_flow *flow = NULL;
 	void *key_iova, *mask_iova, *key_cfg_iova = NULL;
+	uint8_t key_size = 0;
 	int ret;
-
-	if (pattern[0]->type != RTE_FLOW_ITEM_TYPE_IPV4) {
-		DPAA2_PMD_ERR("Not supported pattern type: %d",
-			      pattern[0]->type);
-		return NULL;
-	}
 
 	/* Find the DPDMUX from dpdmux_id in our list */
 	dpdmux_dev = get_dpdmux_from_id(dpdmux_id);
@@ -86,16 +80,63 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
 		return NULL;
 	}
+	flow = rte_zmalloc(NULL, sizeof(struct rte_flow) +
+			   (2 * DIST_PARAM_IOVA_SIZE), RTE_CACHE_LINE_SIZE);
+	if (!flow) {
+		DPAA2_PMD_ERR(
+			"Memory allocation failure for rule configration\n");
+		goto creation_error;
+	}
+	key_iova = (void *)((size_t)flow + sizeof(struct rte_flow));
+	mask_iova = (void *)((size_t)key_iova + DIST_PARAM_IOVA_SIZE);
 
 	/* Currently taking only IP protocol as an extract type.
 	 * This can be exended to other fields using pattern->type.
 	 */
 	memset(&kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
-	kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_IP;
-	kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_IP_PROTO;
-	kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
-	kg_cfg.extracts[0].extract.from_hdr.type = DPKG_FULL_FIELD;
-	kg_cfg.num_extracts = 1;
+
+	switch (pattern[0]->type) {
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+	{
+		const struct rte_flow_item_ipv4 *spec;
+		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_IP;
+		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_IP_PROTO;
+		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
+		kg_cfg.extracts[0].extract.from_hdr.type = DPKG_FULL_FIELD;
+		kg_cfg.num_extracts = 1;
+
+		spec = (const struct rte_flow_item_ipv4 *)pattern[0]->spec;
+		memcpy(key_iova, (const void *)(&spec->hdr.next_proto_id),
+			sizeof(uint8_t));
+		memcpy(mask_iova, pattern[0]->mask, sizeof(uint8_t));
+		key_size = sizeof(uint8_t);
+	}
+	break;
+
+	case RTE_FLOW_ITEM_TYPE_ETH:
+	{
+		const struct rte_flow_item_eth *spec;
+		uint16_t eth_type;
+		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_ETH;
+		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_ETH_TYPE;
+		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
+		kg_cfg.extracts[0].extract.from_hdr.type = DPKG_FULL_FIELD;
+		kg_cfg.num_extracts = 1;
+
+		spec = (const struct rte_flow_item_eth *)pattern[0]->spec;
+		eth_type = rte_constant_bswap16(spec->type);
+		memcpy((void *)key_iova, (const void *)&eth_type,
+							sizeof(rte_be16_t));
+		memcpy(mask_iova, pattern[0]->mask, sizeof(uint16_t));
+		key_size = sizeof(uint16_t);
+	}
+	break;
+
+	default:
+		DPAA2_PMD_ERR("Not supported pattern type: %d",
+				pattern[0]->type);
+		goto creation_error;
+	}
 
 	ret = dpkg_prepare_key_cfg(&kg_cfg, key_cfg_iova);
 	if (ret) {
@@ -114,24 +155,9 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 	/* As now our key extract parameters are set, let us configure
 	 * the rule.
 	 */
-	flow = rte_zmalloc(NULL, sizeof(struct rte_flow) +
-			   (2 * DIST_PARAM_IOVA_SIZE), RTE_CACHE_LINE_SIZE);
-	if (!flow) {
-		DPAA2_PMD_ERR(
-			"Memory allocation failure for rule configration\n");
-		goto creation_error;
-	}
-	key_iova = (void *)((size_t)flow + sizeof(struct rte_flow));
-	mask_iova = (void *)((size_t)key_iova + DIST_PARAM_IOVA_SIZE);
-
-	spec = (const struct rte_flow_item_ipv4 *)pattern[0]->spec;
-	memcpy(key_iova, (const void *)&spec->hdr.next_proto_id,
-	       sizeof(uint8_t));
-	memcpy(mask_iova, pattern[0]->mask, sizeof(uint8_t));
-
 	flow->rule.key_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(key_iova));
 	flow->rule.mask_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(mask_iova));
-	flow->rule.key_size = sizeof(uint8_t);
+	flow->rule.key_size = key_size;
 
 	vf_conf = (const struct rte_flow_action_vf *)(actions[0]->conf);
 	if (vf_conf->id == 0 || vf_conf->id > dpdmux_dev->num_ifs) {
