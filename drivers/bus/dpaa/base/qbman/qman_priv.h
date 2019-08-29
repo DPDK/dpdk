@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017 NXP
+ * Copyright 2017,2019 NXP
  *
  */
 
@@ -145,10 +145,17 @@ int qm_get_wpm(int *wpm);
 
 struct qman_portal *qman_create_affine_portal(
 			const struct qm_portal_config *config,
-			const struct qman_cgrs *cgrs,
-			int alloc);
+			const struct qman_cgrs *cgrs);
 const struct qm_portal_config *
 qman_destroy_affine_portal(struct qman_portal *q);
+
+struct qman_portal *
+qman_init_portal(struct qman_portal *portal,
+		   const struct qm_portal_config *c,
+		   const struct qman_cgrs *cgrs);
+
+struct qman_portal *qman_alloc_global_portal(struct qm_portal_config *q_pcfg);
+int qman_free_global_portal(struct qman_portal *portal);
 
 struct qm_portal_config *qm_get_unused_portal(void);
 struct qm_portal_config *qm_get_unused_portal_idx(uint32_t idx);

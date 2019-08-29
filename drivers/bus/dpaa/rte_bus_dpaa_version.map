@@ -90,20 +90,20 @@ DPDK_18.02 {
 	rte_dpaa_portal_fq_close;
 	rte_dpaa_portal_fq_init;
 
-	local: *;
 } DPDK_17.11;
 
 DPDK_18.08 {
 	global:
+
 	fman_if_get_sg_enable;
 	fman_if_set_sg;
 	of_get_mac_address;
 
-	local: *;
 } DPDK_18.02;
 
 DPDK_18.11 {
 	global:
+
 	bman_thread_irq;
 	fman_if_get_sg_enable;
 	fman_if_set_sg;
@@ -114,12 +114,18 @@ DPDK_18.11 {
 	qman_thread_fd;
 	qman_thread_irq;
 
-	local: *;
 } DPDK_18.08;
 
 DPDK_19.05 {
 	global:
+
 	qman_set_fq_lookup_table;
 
-	local: *;
 } DPDK_18.11;
+
+DPDK_19.11 {
+	global:
+
+	fsl_qman_fq_portal_create;
+
+} DPDK_19.05;

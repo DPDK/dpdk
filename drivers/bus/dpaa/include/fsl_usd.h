@@ -2,6 +2,7 @@
  *
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * All rights reserved.
+ * Copyright 2019 NXP
  *
  */
 
@@ -74,8 +75,9 @@ int qman_global_init(void);
 int bman_global_init(void);
 
 /* Direct portal create and destroy */
-struct qman_portal *fsl_qman_portal_create(void);
-int fsl_qman_portal_destroy(struct qman_portal *qp);
+struct qman_portal *fsl_qman_fq_portal_create(void);
+int fsl_qman_fq_portal_destroy(struct qman_portal *qp);
+int fsl_qman_fq_portal_init(struct qman_portal *qp);
 
 #ifdef __cplusplus
 }

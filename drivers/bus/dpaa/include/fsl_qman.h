@@ -1217,7 +1217,8 @@ struct qman_fq {
 	u32 fqid_le;
 	u16 ch_id;
 	u8 cgr_groupid;
-	u8 is_static;
+	u8 is_static:4;
+	u8 qp_initialized:4;
 
 	/* DPDK Interface */
 	void *dpaa_intf;

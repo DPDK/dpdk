@@ -498,11 +498,10 @@ static inline void qm_mr_pvb_update(struct qm_portal *portal)
 	dcbit_ro(res);
 }
 
-static inline
-struct qman_portal *qman_create_portal(
-			struct qman_portal *portal,
-			      const struct qm_portal_config *c,
-			      const struct qman_cgrs *cgrs)
+struct qman_portal *
+qman_init_portal(struct qman_portal *portal,
+		   const struct qm_portal_config *c,
+		   const struct qman_cgrs *cgrs)
 {
 	struct qm_portal *p;
 	char buf[16];
@@ -510,6 +509,9 @@ struct qman_portal *qman_create_portal(
 	u32 isdr;
 
 	p = &portal->p;
+
+	if (!c)
+		c = portal->config;
 
 	if (dpaa_svr_family == SVR_LS1043A_FAMILY)
 		portal->use_eqcr_ci_stashing = 3;
@@ -632,21 +634,23 @@ fail_eqcr:
 static struct qman_portal global_portals[MAX_GLOBAL_PORTALS];
 static rte_atomic16_t global_portals_used[MAX_GLOBAL_PORTALS];
 
-static struct qman_portal *
-qman_alloc_global_portal(void)
+struct qman_portal *
+qman_alloc_global_portal(struct qm_portal_config *q_pcfg)
 {
 	unsigned int i;
 
 	for (i = 0; i < MAX_GLOBAL_PORTALS; i++) {
-		if (rte_atomic16_test_and_set(&global_portals_used[i]))
+		if (rte_atomic16_test_and_set(&global_portals_used[i])) {
+			global_portals[i].config = q_pcfg;
 			return &global_portals[i];
+		}
 	}
 	pr_err("No portal available (%x)\n", MAX_GLOBAL_PORTALS);
 
 	return NULL;
 }
 
-static int
+int
 qman_free_global_portal(struct qman_portal *portal)
 {
 	unsigned int i;
@@ -661,22 +665,15 @@ qman_free_global_portal(struct qman_portal *portal)
 }
 
 struct qman_portal *qman_create_affine_portal(const struct qm_portal_config *c,
-					      const struct qman_cgrs *cgrs,
-					      int alloc)
+					      const struct qman_cgrs *cgrs)
 {
 	struct qman_portal *res;
-	struct qman_portal *portal;
-
-	if (alloc)
-		portal = qman_alloc_global_portal();
-	else
-		portal = get_affine_portal();
+	struct qman_portal *portal = get_affine_portal();
 
 	/* A criteria for calling this function (from qman_driver.c) is that
 	 * we're already affine to the cpu and won't schedule onto another cpu.
 	 */
-
-	res = qman_create_portal(portal, c, cgrs);
+	res = qman_init_portal(portal, c, cgrs);
 	if (res) {
 		spin_lock(&affine_mask_lock);
 		CPU_SET(c->cpu, &affine_mask);

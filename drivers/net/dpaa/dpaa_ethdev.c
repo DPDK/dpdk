@@ -643,6 +643,8 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		dev->data->dev_conf.rxmode.max_rx_pkt_len);
 	/* checking if push mode only, no error check for now */
 	if (dpaa_push_mode_max_queue > dpaa_push_queue_idx) {
+		struct qman_portal *qp;
+
 		dpaa_push_queue_idx++;
 		opts.we_mask = QM_INITFQ_WE_FQCTRL | QM_INITFQ_WE_CONTEXTA;
 		opts.fqd.fq_ctrl = QM_FQCTRL_AVOIDBLOCK |
@@ -686,6 +688,14 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		}
 
 		rxq->is_static = true;
+
+		/* Allocate qman specific portals */
+		qp = fsl_qman_fq_portal_create();
+		if (!qp) {
+			DPAA_PMD_ERR("Unable to alloc fq portal");
+			return -1;
+		}
+		rxq->qp = qp;
 	}
 	rxq->bp_array = rte_dpaa_bpid_info;
 	dev->data->rx_queues[queue_idx] = rxq;

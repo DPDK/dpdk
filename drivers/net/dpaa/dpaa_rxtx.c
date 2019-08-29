@@ -517,12 +517,13 @@ dpaa_eth_queue_portal_rx(struct qman_fq *fq,
 {
 	int ret;
 
-	if (unlikely(fq->qp == NULL)) {
+	if (unlikely(!fq->qp_initialized)) {
 		ret = rte_dpaa_portal_fq_init((void *)0, fq);
 		if (ret) {
 			DPAA_PMD_ERR("Failure in affining portal %d", ret);
 			return 0;
 		}
+		fq->qp_initialized = 1;
 	}
 
 	return qman_portal_poll_rx(nb_bufs, (void **)bufs, fq->qp);

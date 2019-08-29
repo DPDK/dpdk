@@ -62,7 +62,7 @@ static int fsl_qman_portal_init(uint32_t index, int is_shared)
 	qpcfg.node = NULL;
 	qpcfg.irq = qmfd;
 
-	portal = qman_create_affine_portal(&qpcfg, NULL, 0);
+	portal = qman_create_affine_portal(&qpcfg, NULL);
 	if (!portal) {
 		pr_err("Qman portal initialisation failed (%d)\n",
 		       qpcfg.cpu);
@@ -121,13 +121,13 @@ void qman_thread_irq(void)
 	out_be32(qpcfg.addr_virt[DPAA_PORTAL_CI] + 0x36C0, 0);
 }
 
-struct qman_portal *fsl_qman_portal_create(void)
+struct qman_portal *fsl_qman_fq_portal_create(void)
 {
-	struct qman_portal *res;
+	struct qman_portal *portal = NULL;
 	struct qm_portal_config *q_pcfg;
 	struct dpaa_ioctl_irq_map irq_map;
 	struct dpaa_ioctl_portal_map q_map = {0};
-	int q_fd, ret;
+	int q_fd = 0, ret;
 
 	q_pcfg = kzalloc((sizeof(struct qm_portal_config)), 0);
 	if (!q_pcfg) {
@@ -155,38 +155,58 @@ struct qman_portal *fsl_qman_portal_create(void)
 	q_fd = open(QMAN_PORTAL_IRQ_PATH, O_RDONLY);
 	if (q_fd == -1) {
 		pr_err("QMan irq init failed\n");
-		goto err1;
+		goto err;
 	}
 
 	q_pcfg->irq = q_fd;
 
-	res = qman_create_affine_portal(q_pcfg, NULL, true);
-	if (!res) {
+	portal = qman_alloc_global_portal(q_pcfg);
+	if (!portal) {
 		pr_err("Qman portal initialisation failed (%d)\n",
 		       q_pcfg->cpu);
-		goto err2;
+		goto err;
 	}
 
 	irq_map.type = dpaa_portal_qman;
 	irq_map.portal_cinh = q_map.addr.cinh;
 	process_portal_irq_map(q_fd, &irq_map);
 
-	return res;
-err2:
-	close(q_fd);
-err1:
+	return portal;
+err:
+	if (portal)
+		qman_free_global_portal(portal);
+	if (q_fd)
+		close(q_fd);
 	process_portal_unmap(&q_map.addr);
 	kfree(q_pcfg);
 	return NULL;
 }
 
-int fsl_qman_portal_destroy(struct qman_portal *qp)
+int fsl_qman_fq_portal_init(struct qman_portal *qp)
+{
+	struct qman_portal *res;
+
+	res = qman_init_portal(qp, NULL, NULL);
+	if (!res) {
+		pr_err("Qman portal initialisation failed\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int fsl_qman_fq_portal_destroy(struct qman_portal *qp)
 {
 	const struct qm_portal_config *cfg;
 	struct dpaa_portal_map addr;
 	int ret;
 
 	cfg = qman_destroy_affine_portal(qp);
+
+	ret = qman_free_global_portal(qp);
+	if (ret)
+		pr_err("qman_free_global_portal() (%d)\n", ret);
+
 	kfree(qp);
 
 	process_portal_irq_unmap(cfg->irq);
