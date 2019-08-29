@@ -37,9 +37,9 @@
 #define CONG_RETRY_COUNT 18000
 
 /* RX queue tail drop threshold
- * currently considering 32 KB packets
+ * currently considering 64 KB packets
  */
-#define CONG_THRESHOLD_RX_Q  (64 * 1024)
+#define CONG_THRESHOLD_RX_BYTES_Q  (64 * 1024)
 #define CONG_RX_OAL	128
 
 /* Size of the input SMMU mapped memory required by MC */
@@ -115,6 +115,8 @@ struct dpaa2_dev_priv {
 	uint8_t flags; /*dpaa2 config flags */
 	uint8_t en_ordered;
 	uint8_t en_loose_ordered;
+	uint8_t max_cgs;
+	uint8_t cgid_in_use[MAX_RX_QUEUES];
 
 	struct pattern_s {
 		uint8_t item_count;

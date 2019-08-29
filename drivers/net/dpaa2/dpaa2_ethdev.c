@@ -516,7 +516,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 static int
 dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t rx_queue_id,
-			 uint16_t nb_rx_desc __rte_unused,
+			 uint16_t nb_rx_desc,
 			 unsigned int socket_id __rte_unused,
 			 const struct rte_eth_rxconf *rx_conf __rte_unused,
 			 struct rte_mempool *mb_pool)
@@ -528,7 +528,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	uint8_t options = 0;
 	uint8_t flow_id;
 	uint32_t bpid;
-	int ret;
+	int i, ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -547,11 +547,27 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	dpaa2_q->bp_array = rte_dpaa2_bpid_info;
 
 	/*Get the flow id from given VQ id*/
-	flow_id = rx_queue_id % priv->nb_rx_queues;
+	flow_id = dpaa2_q->flow_id;
 	memset(&cfg, 0, sizeof(struct dpni_queue));
 
 	options = options | DPNI_QUEUE_OPT_USER_CTX;
 	cfg.user_context = (size_t)(dpaa2_q);
+
+	/* check if a private cgr available. */
+	for (i = 0; i < priv->max_cgs; i++) {
+		if (!priv->cgid_in_use[i]) {
+			priv->cgid_in_use[i] = 1;
+			break;
+		}
+	}
+
+	if (i < priv->max_cgs) {
+		options |= DPNI_QUEUE_OPT_SET_CGID;
+		cfg.cgid = i;
+		dpaa2_q->cgid = cfg.cgid;
+	} else {
+		dpaa2_q->cgid = 0xff;
+	}
 
 	/*if ls2088 or rev2 device, enable the stashing */
 
@@ -581,15 +597,56 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		struct dpni_taildrop taildrop;
 
 		taildrop.enable = 1;
-		/*enabling per rx queue congestion control */
-		taildrop.threshold = CONG_THRESHOLD_RX_Q;
-		taildrop.units = DPNI_CONGESTION_UNIT_BYTES;
-		taildrop.oal = CONG_RX_OAL;
-		DPAA2_PMD_DEBUG("Enabling Early Drop on queue = %d",
-				rx_queue_id);
-		ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
+
+		/* Private CGR will use tail drop length as nb_rx_desc.
+		 * for rest cases we can use standard byte based tail drop.
+		 * There is no HW restriction, but number of CGRs are limited,
+		 * hence this restriction is placed.
+		 */
+		if (dpaa2_q->cgid != 0xff) {
+			/*enabling per rx queue congestion control */
+			taildrop.threshold = nb_rx_desc;
+			taildrop.units = DPNI_CONGESTION_UNIT_FRAMES;
+			taildrop.oal = 0;
+			DPAA2_PMD_DEBUG("Enabling CG Tail Drop on queue = %d",
+					rx_queue_id);
+			ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
+						DPNI_CP_CONGESTION_GROUP,
+						DPNI_QUEUE_RX,
+						dpaa2_q->tc_index,
+						flow_id, &taildrop);
+		} else {
+			/*enabling per rx queue congestion control */
+			taildrop.threshold = CONG_THRESHOLD_RX_BYTES_Q;
+			taildrop.units = DPNI_CONGESTION_UNIT_BYTES;
+			taildrop.oal = CONG_RX_OAL;
+			DPAA2_PMD_DEBUG("Enabling Byte based Drop on queue= %d",
+					rx_queue_id);
+			ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
+						DPNI_CP_QUEUE, DPNI_QUEUE_RX,
+						dpaa2_q->tc_index, flow_id,
+						&taildrop);
+		}
+		if (ret) {
+			DPAA2_PMD_ERR("Error in setting taildrop. err=(%d)",
+				      ret);
+			return -1;
+		}
+	} else { /* Disable tail Drop */
+		struct dpni_taildrop taildrop = {0};
+		DPAA2_PMD_INFO("Tail drop is disabled on queue");
+
+		taildrop.enable = 0;
+		if (dpaa2_q->cgid != 0xff) {
+			ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
+					DPNI_CP_CONGESTION_GROUP, DPNI_QUEUE_RX,
+					dpaa2_q->tc_index,
+					flow_id, &taildrop);
+		} else {
+			ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
 					DPNI_CP_QUEUE, DPNI_QUEUE_RX,
 					dpaa2_q->tc_index, flow_id, &taildrop);
+		}
 		if (ret) {
 			DPAA2_PMD_ERR("Error in setting taildrop. err=(%d)",
 				      ret);
@@ -657,7 +714,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	dpaa2_q->tc_index = tc_id;
 
 	if (!(priv->flags & DPAA2_TX_CGR_OFF)) {
-		struct dpni_congestion_notification_cfg cong_notif_cfg;
+		struct dpni_congestion_notification_cfg cong_notif_cfg = {0};
 
 		cong_notif_cfg.units = DPNI_CONGESTION_UNIT_FRAMES;
 		cong_notif_cfg.threshold_entry = CONG_ENTER_TX_THRESHOLD;
@@ -695,7 +752,29 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 static void
 dpaa2_dev_rx_queue_release(void *q __rte_unused)
 {
+	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)q;
+	struct dpaa2_dev_priv *priv = dpaa2_q->eth_data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	uint8_t options = 0;
+	int ret;
+	struct dpni_queue cfg;
+
+	memset(&cfg, 0, sizeof(struct dpni_queue));
 	PMD_INIT_FUNC_TRACE();
+	if (dpaa2_q->cgid != 0xff) {
+		options = DPNI_QUEUE_OPT_CLEAR_CGID;
+		cfg.cgid = dpaa2_q->cgid;
+
+		ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token,
+				     DPNI_QUEUE_RX,
+				     dpaa2_q->tc_index, dpaa2_q->flow_id,
+				     options, &cfg);
+		if (ret)
+			DPAA2_PMD_ERR("Unable to clear CGR from q=%u err=%d",
+					dpaa2_q->fqid, ret);
+		priv->cgid_in_use[dpaa2_q->cgid] = 0;
+		dpaa2_q->cgid = 0xff;
+	}
 }
 
 static void
@@ -2176,6 +2255,14 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	priv->num_rx_tc = attr.num_rx_tcs;
+	/* only if the custom CG is enabled */
+	if (attr.options & DPNI_OPT_CUSTOM_CG)
+		priv->max_cgs = attr.num_cgs;
+	else
+		priv->max_cgs = 0;
+
+	for (i = 0; i < priv->max_cgs; i++)
+		priv->cgid_in_use[i] = 0;
 
 	for (i = 0; i < attr.num_rx_tcs; i++)
 		priv->nb_rx_queues += attr.num_queues;
@@ -2183,9 +2270,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	/* Using number of TX queues as number of TX TCs */
 	priv->nb_tx_queues = attr.num_tx_tcs;
 
-	DPAA2_PMD_DEBUG("RX-TC= %d, nb_rx_queues= %d, nb_tx_queues=%d",
+	DPAA2_PMD_DEBUG("RX-TC= %d, rx_queues= %d, tx_queues=%d, max_cgs=%d",
 			priv->num_rx_tc, priv->nb_rx_queues,
-			priv->nb_tx_queues);
+			priv->nb_tx_queues, priv->max_cgs);
 
 	priv->hw = dpni_dev;
 	priv->hw_id = hw_id;
