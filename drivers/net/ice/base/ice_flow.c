@@ -379,16 +379,9 @@ struct ice_flow_prof_params {
 static enum ice_status
 ice_flow_val_hdrs(struct ice_flow_seg_info *segs, u8 segs_cnt)
 {
-	const u32 masks = (ICE_FLOW_SEG_HDRS_L2_MASK |
-			   ICE_FLOW_SEG_HDRS_L3_MASK |
-			   ICE_FLOW_SEG_HDRS_L4_MASK);
 	u8 i;
 
 	for (i = 0; i < segs_cnt; i++) {
-		/* No header specified */
-		if (!(segs[i].hdrs & masks) || (segs[i].hdrs & ~masks))
-			return ICE_ERR_PARAM;
-
 		/* Multiple L3 headers */
 		if (segs[i].hdrs & ICE_FLOW_SEG_HDRS_L3_MASK &&
 		    !ice_is_pow2(segs[i].hdrs & ICE_FLOW_SEG_HDRS_L3_MASK))
@@ -1866,11 +1859,22 @@ ice_add_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
 #define ICE_FLOW_PROF_HASH_S	0
 #define ICE_FLOW_PROF_HASH_M	(0xFFFFFFFFULL << ICE_FLOW_PROF_HASH_S)
 #define ICE_FLOW_PROF_HDR_S	32
-#define ICE_FLOW_PROF_HDR_M	(0xFFFFFFFFULL << ICE_FLOW_PROF_HDR_S)
+#define ICE_FLOW_PROF_HDR_M	(0x3FFFFFFFULL << ICE_FLOW_PROF_HDR_S)
+#define ICE_FLOW_PROF_ENCAP_S	63
+#define ICE_FLOW_PROF_ENCAP_M	(BIT_ULL(ICE_FLOW_PROF_ENCAP_S))
 
-#define ICE_FLOW_GEN_PROFID(hash, hdr) \
+#define ICE_RSS_OUTER_HEADERS	1
+#define ICE_RSS_INNER_HEADERS	2
+
+/* Flow profile ID format:
+ * [0:31] - Packet match fields
+ * [32:62] - Protocol header
+ * [63] - Encapsulation flag, 0 if non-tunneled, 1 if tunneled
+ */
+#define ICE_FLOW_GEN_PROFID(hash, hdr, segs_cnt) \
 	(u64)(((u64)(hash) & ICE_FLOW_PROF_HASH_M) | \
-	      (((u64)(hdr) << ICE_FLOW_PROF_HDR_S) & ICE_FLOW_PROF_HDR_M))
+	      (((u64)(hdr) << ICE_FLOW_PROF_HDR_S) & ICE_FLOW_PROF_HDR_M) | \
+	      ((u8)((segs_cnt) - 1) ? ICE_FLOW_PROF_ENCAP_M : 0))
 
 /**
  * ice_add_rss_cfg_sync - add an RSS configuration
@@ -1878,24 +1882,30 @@ ice_add_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
  * @vsi_handle: software VSI handle
  * @hashed_flds: hash bit fields (ICE_FLOW_HASH_*) to configure
  * @addl_hdrs: protocol header fields
+ * @segs_cnt: packet segment count
  *
  * Assumption: lock has already been acquired for RSS list
  */
 static enum ice_status
 ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
-		     u32 addl_hdrs)
+		     u32 addl_hdrs, u8 segs_cnt)
 {
 	const enum ice_block blk = ICE_BLK_RSS;
 	struct ice_flow_prof *prof = NULL;
 	struct ice_flow_seg_info *segs;
 	enum ice_status status = ICE_SUCCESS;
 
-	segs = (struct ice_flow_seg_info *)ice_malloc(hw, sizeof(*segs));
+	if (!segs_cnt || segs_cnt > ICE_FLOW_SEG_MAX)
+		return ICE_ERR_PARAM;
+
+	segs = (struct ice_flow_seg_info *)ice_calloc(hw, segs_cnt,
+						      sizeof(*segs));
 	if (!segs)
 		return ICE_ERR_NO_MEMORY;
 
 	/* Construct the packet segment info from the hashed fields */
-	status = ice_flow_set_rss_seg_info(segs, hashed_flds, addl_hdrs);
+	status = ice_flow_set_rss_seg_info(&segs[segs_cnt - 1], hashed_flds,
+					   addl_hdrs);
 	if (status)
 		goto exit;
 
@@ -1903,7 +1913,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	 * and has the input VSI associated to it. If found, no further
 	 * operations required and exit.
 	 */
-	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, 1,
+	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, segs_cnt,
 					vsi_handle,
 					ICE_FLOW_FIND_PROF_CHK_FLDS |
 					ICE_FLOW_FIND_PROF_CHK_VSI);
@@ -1915,7 +1925,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	 * this profile. The VSI will be added to a new profile created with
 	 * the protocol header and new hash field configuration.
 	 */
-	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, 1,
+	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, segs_cnt,
 					vsi_handle, ICE_FLOW_FIND_PROF_CHK_VSI);
 	if (prof) {
 		status = ice_flow_disassoc_prof(hw, blk, prof, vsi_handle);
@@ -1935,7 +1945,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	/* Search for a profile that has same match fields only. If this
 	 * exists then associate the VSI to this profile.
 	 */
-	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, 1,
+	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, segs_cnt,
 					vsi_handle,
 					ICE_FLOW_FIND_PROF_CHK_FLDS);
 	if (prof) {
@@ -1949,8 +1959,10 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	 * segment information.
 	 */
 	status = ice_flow_add_prof(hw, blk, ICE_FLOW_RX,
-				   ICE_FLOW_GEN_PROFID(hashed_flds, segs->hdrs),
-				   segs, 1, NULL, 0, &prof);
+				   ICE_FLOW_GEN_PROFID(hashed_flds,
+						       segs[segs_cnt - 1].hdrs,
+						       segs_cnt),
+				   segs, segs_cnt, NULL, 0, &prof);
 	if (status)
 		goto exit;
 
@@ -1992,7 +2004,11 @@ ice_add_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 		return ICE_ERR_PARAM;
 
 	ice_acquire_lock(&hw->rss_locks);
-	status = ice_add_rss_cfg_sync(hw, vsi_handle, hashed_flds, addl_hdrs);
+	status = ice_add_rss_cfg_sync(hw, vsi_handle, hashed_flds, addl_hdrs,
+				      ICE_RSS_OUTER_HEADERS);
+	if (!status)
+		status = ice_add_rss_cfg_sync(hw, vsi_handle, hashed_flds,
+					      addl_hdrs, ICE_RSS_INNER_HEADERS);
 	ice_release_lock(&hw->rss_locks);
 
 	return status;
@@ -2004,12 +2020,13 @@ ice_add_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
  * @vsi_handle: software VSI handle
  * @hashed_flds: Packet hash types (ICE_FLOW_HASH_*) to remove
  * @addl_hdrs: Protocol header fields within a packet segment
+ * @segs_cnt: packet segment count
  *
  * Assumption: lock has already been acquired for RSS list
  */
 static enum ice_status
 ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
-		     u32 addl_hdrs)
+		     u32 addl_hdrs, u8 segs_cnt)
 {
 	const enum ice_block blk = ICE_BLK_RSS;
 	struct ice_flow_seg_info *segs;
@@ -2025,7 +2042,7 @@ ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	if (status)
 		goto out;
 
-	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, 1,
+	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, segs_cnt,
 					vsi_handle,
 					ICE_FLOW_FIND_PROF_CHK_FLDS);
 	if (!prof) {
@@ -2047,6 +2064,40 @@ ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 
 out:
 	ice_free(hw, segs);
+	return status;
+}
+
+/**
+ * ice_rem_rss_cfg - remove an existing RSS config with matching hashed fields
+ * @hw: pointer to the hardware structure
+ * @vsi_handle: software VSI handle
+ * @hashed_flds: Packet hash types (ICE_FLOW_HASH_*) to remove
+ * @addl_hdrs: Protocol header fields within a packet segment
+ *
+ * This function will lookup the flow profile based on the input
+ * hash field bitmap, iterate through the profile entry list of
+ * that profile and find entry associated with input VSI to be
+ * removed. Calls are made to underlying flow apis which will in
+ * turn build or update buffers for RSS XLT1 section.
+ */
+enum ice_status
+ice_rem_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
+		u32 addl_hdrs)
+{
+	enum ice_status status;
+
+	if (hashed_flds == ICE_HASH_INVALID ||
+	    !ice_is_vsi_valid(hw, vsi_handle))
+		return ICE_ERR_PARAM;
+
+	ice_acquire_lock(&hw->rss_locks);
+	status = ice_rem_rss_cfg_sync(hw, vsi_handle, hashed_flds, addl_hdrs,
+				      ICE_RSS_OUTER_HEADERS);
+	if (!status)
+		status = ice_rem_rss_cfg_sync(hw, vsi_handle, hashed_flds,
+					      addl_hdrs, ICE_RSS_INNER_HEADERS);
+	ice_release_lock(&hw->rss_locks);
+
 	return status;
 }
 
@@ -2179,36 +2230,6 @@ ice_add_avf_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 avf_hash)
 }
 
 /**
- * ice_rem_rss_cfg - remove an existing RSS config with matching hashed fields
- * @hw: pointer to the hardware structure
- * @vsi_handle: software VSI handle
- * @hashed_flds: Packet hash types (ICE_FLOW_HASH_*) to remove
- * @addl_hdrs: Protocol header fields within a packet segment
- *
- * This function will lookup the flow profile based on the input
- * hash field bitmap, iterate through the profile entry list of
- * that profile and find entry associated with input VSI to be
- * removed. Calls are made to underlying flow apis which will in
- * turn build or update buffers for RSS XLT1 section.
- */
-enum ice_status
-ice_rem_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
-		u32 addl_hdrs)
-{
-	enum ice_status status;
-
-	if (hashed_flds == ICE_HASH_INVALID ||
-	    !ice_is_vsi_valid(hw, vsi_handle))
-		return ICE_ERR_PARAM;
-
-	ice_acquire_lock(&hw->rss_locks);
-	status = ice_rem_rss_cfg_sync(hw, vsi_handle, hashed_flds, addl_hdrs);
-	ice_release_lock(&hw->rss_locks);
-
-	return status;
-}
-
-/**
  * ice_replay_rss_cfg - replay RSS configurations associated with VSI
  * @hw: pointer to the hardware structure
  * @vsi_handle: software VSI handle
@@ -2227,7 +2248,14 @@ enum ice_status ice_replay_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 		if (ice_is_bit_set(r->vsis, vsi_handle)) {
 			status = ice_add_rss_cfg_sync(hw, vsi_handle,
 						      r->hashed_flds,
-						      r->packet_hdr);
+						      r->packet_hdr,
+						      ICE_RSS_OUTER_HEADERS);
+			if (status)
+				break;
+			status = ice_add_rss_cfg_sync(hw, vsi_handle,
+						      r->hashed_flds,
+						      r->packet_hdr,
+						      ICE_RSS_INNER_HEADERS);
 			if (status)
 				break;
 		}
