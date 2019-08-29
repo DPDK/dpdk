@@ -4651,7 +4651,7 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
 	{ ICE_SCTP_IL,		{ 0, 2 } },
 	{ ICE_VXLAN,		{ 8, 10, 12, 14 } },
 	{ ICE_GENEVE,		{ 8, 10, 12, 14 } },
-	{ ICE_VXLAN_GPE,	{ 0, 2, 4 } },
+	{ ICE_VXLAN_GPE,	{ 8, 10, 12, 14 } },
 	{ ICE_NVGRE,		{ 0, 2, 4, 6 } },
 	{ ICE_GTP,		{ 8, 10, 12, 14, 16, 18, 20 } },
 	{ ICE_PPPOE,		{ 0, 2, 4, 6 } },
@@ -4950,7 +4950,7 @@ ice_create_first_fit_recp_def(struct ice_hw *hw,
  * Helper function to fill in the field vector indices for protocol-offset
  * pairs. These indexes are then ultimately programmed into a recipe.
  */
-static void
+static enum ice_status
 ice_fill_fv_word_index(struct ice_hw *hw, struct LIST_HEAD_TYPE *fv_list,
 		       struct LIST_HEAD_TYPE *rg_list)
 {
@@ -4959,7 +4959,7 @@ ice_fill_fv_word_index(struct ice_hw *hw, struct LIST_HEAD_TYPE *fv_list,
 	struct ice_fv_word *fv_ext;
 
 	if (LIST_EMPTY(fv_list))
-		return;
+		return ICE_SUCCESS;
 
 	fv = LIST_FIRST_ENTRY(fv_list, struct ice_sw_fv_list_entry, list_entry);
 	fv_ext = fv->fv_ptr->ew;
@@ -4969,6 +4969,7 @@ ice_fill_fv_word_index(struct ice_hw *hw, struct LIST_HEAD_TYPE *fv_list,
 
 		for (i = 0; i < rg->r_group.n_val_pairs; i++) {
 			struct ice_fv_word *pr;
+			bool found = false;
 			u16 mask;
 			u8 j;
 
@@ -4978,6 +4979,8 @@ ice_fill_fv_word_index(struct ice_hw *hw, struct LIST_HEAD_TYPE *fv_list,
 			for (j = 0; j < hw->blk[ICE_BLK_SW].es.fvw; j++)
 				if (fv_ext[j].prot_id == pr->prot_id &&
 				    fv_ext[j].off == pr->off) {
+					found = true;
+
 					/* Store index of field vector */
 					rg->fv_idx[i] = j;
 					/* Mask is given by caller as big
@@ -4987,8 +4990,16 @@ ice_fill_fv_word_index(struct ice_hw *hw, struct LIST_HEAD_TYPE *fv_list,
 					rg->fv_mask[i] = mask << 8 | mask >> 8;
 					break;
 				}
+
+			/* Protocol/offset could not be found, caller gave an
+			 * invalid pair
+			 */
+			if (!found)
+				return ICE_ERR_PARAM;
 		}
 	}
+
+	return ICE_SUCCESS;
 }
 
 /**
@@ -5627,7 +5638,9 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	/* Find offsets from the field vector. Pick the first one for all the
 	 * recipes.
 	 */
-	ice_fill_fv_word_index(hw, &rm->fv_list, &rm->rg_list);
+	status = ice_fill_fv_word_index(hw, &rm->fv_list, &rm->rg_list);
+	if (status)
+		goto err_unroll;
 
 	/* get bitmap of all profiles the recipe will be associated with */
 	ice_zero_bitmap(profiles, ICE_MAX_NUM_PROFILES);
