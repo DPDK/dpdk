@@ -4655,17 +4655,6 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
  * following combinations, then the recipe needs to be chained as per the
  * following policy.
  */
-static const struct ice_pref_recipe_group ice_recipe_pack[] = {
-	{3, { { ICE_MAC_OFOS_HW, 0, 0 }, { ICE_MAC_OFOS_HW, 2, 0 },
-	      { ICE_MAC_OFOS_HW, 4, 0 } }, { 0xffff, 0xffff, 0xffff, 0xffff } },
-	{4, { { ICE_MAC_IL_HW, 0, 0 }, { ICE_MAC_IL_HW, 2, 0 },
-	      { ICE_MAC_IL_HW, 4, 0 }, { ICE_META_DATA_ID_HW, 44, 0 } },
-		{ 0xffff, 0xffff, 0xffff, 0xffff } },
-	{2, { { ICE_IPV4_IL_HW, 0, 0 }, { ICE_IPV4_IL_HW, 2, 0 } },
-		{ 0xffff, 0xffff, 0xffff, 0xffff } },
-	{2, { { ICE_IPV4_IL_HW, 12, 0 }, { ICE_IPV4_IL_HW, 14, 0 } },
-		{ 0xffff, 0xffff, 0xffff, 0xffff } },
-};
 
 static const struct ice_protocol_entry ice_prot_id_tbl[] = {
 	{ ICE_MAC_OFOS,		ICE_MAC_OFOS_HW },
@@ -4812,75 +4801,7 @@ ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
 	return ret_val;
 }
 
-/**
- * ice_find_prot_off_ind - check for specific ID and offset in rule
- * @lkup_exts: an array of protocol header extractions
- * @prot_type: protocol type to check
- * @off: expected offset of the extraction
- *
- * Check if the prot_ext has given protocol ID and offset
- */
-static u8
-ice_find_prot_off_ind(struct ice_prot_lkup_ext *lkup_exts, u8 prot_type,
-		      u16 off)
-{
-	u8 j;
 
-	for (j = 0; j < lkup_exts->n_val_words; j++)
-		if (lkup_exts->fv_words[j].off == off &&
-		    lkup_exts->fv_words[j].prot_id == prot_type)
-			return j;
-
-	return ICE_MAX_CHAIN_WORDS;
-}
-
-/**
- * ice_is_recipe_subset - check if recipe group policy is a subset of lookup
- * @lkup_exts: an array of protocol header extractions
- * @r_policy: preferred recipe grouping policy
- *
- * Helper function to check if given recipe group is subset we need to check if
- * all the words described by the given recipe group exist in the advanced rule
- * look up information
- */
-static bool
-ice_is_recipe_subset(struct ice_prot_lkup_ext *lkup_exts,
-		     const struct ice_pref_recipe_group *r_policy)
-{
-	u8 ind[ICE_NUM_WORDS_RECIPE];
-	u8 count = 0;
-	u8 i;
-
-	/* check if everything in the r_policy is part of the entire rule */
-	for (i = 0; i < r_policy->n_val_pairs; i++) {
-		u8 j;
-
-		j = ice_find_prot_off_ind(lkup_exts, r_policy->pairs[i].prot_id,
-					  r_policy->pairs[i].off);
-		if (j >= ICE_MAX_CHAIN_WORDS)
-			return false;
-
-		/* store the indexes temporarily found by the find function
-		 * this will be used to mark the words as 'done'
-		 */
-		ind[count++] = j;
-	}
-
-	/* If the entire policy recipe was a true match, then mark the fields
-	 * that are covered by the recipe as 'done' meaning that these words
-	 * will be clumped together in one recipe.
-	 * "Done" here means in our searching if certain recipe group
-	 * matches or is subset of the given rule, then we mark all
-	 * the corresponding offsets as found. So the remaining recipes should
-	 * be created with whatever words that were left.
-	 */
-	for (i = 0; i < count; i++) {
-		u8 in = ind[i];
-
-		ice_set_bit(in, lkup_exts->done);
-	}
-	return true;
-}
 
 /**
  * ice_create_first_fit_recp_def - Create a recipe grouping
@@ -5389,50 +5310,10 @@ static enum ice_status
 ice_create_recipe_group(struct ice_hw *hw, struct ice_sw_recipe *rm,
 			struct ice_prot_lkup_ext *lkup_exts)
 {
-	struct ice_recp_grp_entry *entry;
-	struct ice_recp_grp_entry *tmp;
 	enum ice_status status;
 	u8 recp_count = 0;
-	u16 groups, i;
 
 	rm->n_grp_count = 0;
-
-
-	if (lkup_exts->n_val_words > ICE_NUM_WORDS_RECIPE) {
-		/* Each switch recipe can match up to 5 words or metadata. One
-		 * word in each recipe is used to match the switch ID. Four
-		 * words are left for matching other values. If the new advanced
-		 * recipe requires more than 4 words, it needs to be split into
-		 * multiple recipes which are chained together using the
-		 * intermediate result that each produces as input to the other
-		 * recipes in the sequence.
-		 */
-		groups = ARRAY_SIZE(ice_recipe_pack);
-
-		/* Check if any of the preferred recipes from the grouping
-		 * policy matches.
-		 */
-		for (i = 0; i < groups; i++)
-			/* Check if the recipe from the preferred grouping
-			 * matches or is a subset of the fields that needs to be
-			 * looked up.
-			 */
-			if (ice_is_recipe_subset(lkup_exts,
-						 &ice_recipe_pack[i])) {
-				/* This recipe can be used by itself or grouped
-				 * with other recipes.
-				 */
-				entry = (struct ice_recp_grp_entry *)
-					ice_malloc(hw, sizeof(*entry));
-				if (!entry) {
-					status = ICE_ERR_NO_MEMORY;
-					goto err_unroll;
-				}
-				entry->r_group = ice_recipe_pack[i];
-				LIST_ADD(&entry->l_entry, &rm->rg_list);
-				rm->n_grp_count++;
-			}
-	}
 
 	/* Create recipes for words that are marked not done by packing them
 	 * as best fit.
@@ -5446,17 +5327,8 @@ ice_create_recipe_group(struct ice_hw *hw, struct ice_sw_recipe *rm,
 			   sizeof(rm->ext_words), ICE_NONDMA_TO_NONDMA);
 		ice_memcpy(rm->word_masks, lkup_exts->field_mask,
 			   sizeof(rm->word_masks), ICE_NONDMA_TO_NONDMA);
-		goto out;
 	}
 
-err_unroll:
-	LIST_FOR_EACH_ENTRY_SAFE(entry, tmp, &rm->rg_list, ice_recp_grp_entry,
-				 l_entry) {
-		LIST_DEL(&entry->l_entry);
-		ice_free(hw, entry);
-	}
-
-out:
 	return status;
 }
 
