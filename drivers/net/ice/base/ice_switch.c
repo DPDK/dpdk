@@ -6319,9 +6319,7 @@ ice_adv_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
 				  tmp_fltr.fwd_id.hw_vsi_id, status);
 			return status;
 		}
-	}
 
-	if (fm_list->vsi_count == 1) {
 		/* Remove the VSI list since it is no longer used */
 		status = ice_remove_vsi_list_rule(hw, vsi_list_id, lkup_type);
 		if (status) {
