@@ -455,29 +455,24 @@ static void ice_get_recp_to_prof_map(struct ice_hw *hw);
 static void ice_collect_result_idx(struct ice_aqc_recipe_data_elem *buf,
 				   struct ice_sw_recipe *recp)
 {
-	if (buf->content.result_indx & ICE_AQ_RECIPE_ID_IS_ROOT)
+	if (buf->content.result_indx & ICE_AQ_RECIPE_RESULT_EN)
 		ice_set_bit(buf->content.result_indx &
-			    ~ICE_AQ_RECIPE_ID_IS_ROOT, recp->res_idxs);
+			    ~ICE_AQ_RECIPE_RESULT_EN, recp->res_idxs);
 }
 
 /**
- * ice_collect_result_idx_from_bitmap - copy result index values using bitmap
- * @hw: pointer to hardware structure
- * @recp: the recipe struct to copy data into
+ * ice_init_possible_res_bm - initialize possible result bitmap
+ * @pos_result_bm: pointer to the bitmap to initialize
  */
-static void
-ice_collect_result_idx_from_bitmap(struct ice_hw *hw,
-				   struct ice_sw_recipe *recp)
+static void ice_init_possible_res_bm(ice_bitmap_t *pos_result_bm)
 {
-	u16 bit = 0;
+	u16 bit;
 
-	while (ICE_MAX_NUM_RECIPES >
-	       (bit = ice_find_next_bit(recp->r_bitmap, ICE_MAX_NUM_RECIPES,
-					bit))) {
-		ice_collect_result_idx(hw->switch_info->recp_list[bit].root_buf,
-				       recp);
-		bit++;
-	}
+	ice_zero_bitmap(pos_result_bm, ICE_MAX_FV_WORDS);
+
+	for (bit = 0; bit < ICE_MAX_FV_WORDS; bit++)
+		if (ICE_POSSIBLE_RES_IDX & BIT_ULL(bit))
+			ice_set_bit(bit, pos_result_bm);
 }
 
 /**
@@ -495,14 +490,16 @@ static enum ice_status
 ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 		    bool *refresh_required)
 {
-	u16 i, sub_recps, fv_word_idx = 0, result_idx = 0;
-	ice_declare_bitmap(r_bitmap, ICE_MAX_NUM_PROFILES);
-	u16 result_idxs[ICE_MAX_CHAIN_RECIPE] = { 0 };
+	ice_declare_bitmap(possible_idx, ICE_MAX_FV_WORDS);
+	ice_declare_bitmap(result_bm, ICE_MAX_FV_WORDS);
 	struct ice_aqc_recipe_data_elem *tmp;
 	u16 num_recps = ICE_MAX_NUM_RECIPES;
 	struct ice_prot_lkup_ext *lkup_exts;
+	u16 i, sub_recps, fv_word_idx = 0;
 	enum ice_status status;
-	u8 is_root;
+
+	ice_zero_bitmap(result_bm, ICE_MAX_FV_WORDS);
+	ice_init_possible_res_bm(possible_idx);
 
 	/* we need a buffer big enough to accommodate all the recipes */
 	tmp = (struct ice_aqc_recipe_data_elem *)ice_calloc(hw,
@@ -528,14 +525,18 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 		ice_get_recp_to_prof_map(hw);
 		*refresh_required = false;
 	}
-	lkup_exts = &recps[rid].lkup_exts;
-	/* start populating all the entries for recps[rid] based on lkups from
-	 * firmware
+
+	/* Start populating all the entries for recps[rid] based on lkups from
+	 * firmware. Note that we are only creating the root recipe in our
+	 * database.
 	 */
+	lkup_exts = &recps[rid].lkup_exts;
+
 	for (sub_recps = 0; sub_recps < num_recps; sub_recps++) {
 		struct ice_aqc_recipe_data_elem root_bufs = tmp[sub_recps];
 		struct ice_recp_grp_entry *rg_entry;
-		u8 prof_id, prot = 0;
+		u8 prof_id, idx, prot = 0;
+		bool is_root;
 		u16 off = 0;
 
 		rg_entry = (struct ice_recp_grp_entry *)
@@ -544,15 +545,18 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 			status = ICE_ERR_NO_MEMORY;
 			goto err_unroll;
 		}
-		/* When copying, clear the result index enable bit */
-		result_idxs[result_idx] = root_bufs.content.result_indx &
-			~ICE_AQ_RECIPE_RESULT_EN;
 
-		ice_memcpy(r_bitmap,
-			   recipe_to_profile[tmp[sub_recps].recipe_indx],
-			   sizeof(r_bitmap), ICE_NONDMA_TO_NONDMA);
+		idx = root_bufs.recipe_indx;
+		is_root = root_bufs.content.rid & ICE_AQ_RECIPE_ID_IS_ROOT;
+
+		/* Mark all result indices in this chain */
+		if (root_bufs.content.result_indx & ICE_AQ_RECIPE_RESULT_EN)
+			ice_set_bit(root_bufs.content.result_indx &
+				    ~ICE_AQ_RECIPE_RESULT_EN, result_bm);
+
 		/* get the first profile that is associated with rid */
-		prof_id = ice_find_first_bit(r_bitmap, ICE_MAX_NUM_PROFILES);
+		prof_id = ice_find_first_bit(recipe_to_profile[idx],
+					     ICE_MAX_NUM_PROFILES);
 		for (i = 0; i < ICE_NUM_WORDS_RECIPE; i++) {
 			u8 lkup_indx = root_bufs.content.lkup_indx[i + 1];
 
@@ -569,12 +573,8 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 			 * has ICE_AQ_RECIPE_LKUP_IGNORE or 0 since it isn't a
 			 * valid offset value.
 			 */
-			if (result_idxs[0] == rg_entry->fv_idx[i] ||
-			    result_idxs[1] == rg_entry->fv_idx[i] ||
-			    result_idxs[2] == rg_entry->fv_idx[i] ||
-			    result_idxs[3] == rg_entry->fv_idx[i] ||
-			    result_idxs[4] == rg_entry->fv_idx[i] ||
-			    rg_entry->fv_idx[i] == ICE_AQ_RECIPE_LKUP_IGNORE ||
+			if (ice_is_bit_set(possible_idx, rg_entry->fv_idx[i]) ||
+			    rg_entry->fv_idx[i] & ICE_AQ_RECIPE_LKUP_IGNORE ||
 			    rg_entry->fv_idx[i] == 0)
 				continue;
 
@@ -588,7 +588,29 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 		 * recipe
 		 */
 		LIST_ADD(&rg_entry->l_entry, &recps[rid].rg_list);
+
+		/* Propagate some data to the recipe database */
+		recps[idx].is_root = is_root;
+		recps[idx].priority = root_bufs.content.act_ctrl_fwd_priority;
+		if (root_bufs.content.result_indx & ICE_AQ_RECIPE_RESULT_EN)
+			recps[idx].chain_idx = root_bufs.content.result_indx &
+				~ICE_AQ_RECIPE_RESULT_EN;
+		else
+			recps[idx].chain_idx = ICE_INVAL_CHAIN_IND;
+
+		if (!is_root)
+			continue;
+
+		/* Only do the following for root recipes entries */
+		ice_memcpy(recps[idx].r_bitmap, root_bufs.recipe_bitmap,
+			   sizeof(recps[idx].r_bitmap), ICE_NONDMA_TO_NONDMA);
+		recps[idx].root_rid = root_bufs.content.rid &
+			~ICE_AQ_RECIPE_ID_IS_ROOT;
+		recps[idx].priority = root_bufs.content.act_ctrl_fwd_priority;
+		recps[idx].big_recp = (recps[rid].n_grp_count > 1);
 	}
+
+	/* Complete initialization of the root recipe entry */
 	lkup_exts->n_val_words = fv_word_idx;
 	recps[rid].n_grp_count = num_recps;
 	recps[rid].root_buf = (struct ice_aqc_recipe_data_elem *)
@@ -600,26 +622,9 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	ice_memcpy(recps[rid].root_buf, tmp, recps[rid].n_grp_count *
 		   sizeof(*recps[rid].root_buf), ICE_NONDMA_TO_NONDMA);
 
-	ice_memcpy(recps[rid].r_bitmap, tmp->recipe_bitmap,
-		   sizeof(recps[rid].r_bitmap), ICE_NONDMA_TO_NONDMA);
-
-	if (tmp->content.result_indx & ICE_AQ_RECIPE_RESULT_EN)
-		recps[rid].chain_idx = tmp->content.result_indx &
-			~ICE_AQ_RECIPE_RESULT_EN;
-	else
-		recps[rid].chain_idx = ICE_INVAL_CHAIN_IND;
-
-	recps[rid].root_rid = tmp->content.rid & ~ICE_AQ_RECIPE_ID_IS_ROOT;
-	is_root = (tmp->content.rid & ICE_AQ_RECIPE_ID_IS_ROOT) != 0;
-	recps[rid].is_root = is_root;
-	recps[rid].big_recp = (is_root && recps[rid].n_grp_count > 1);
-
-	/* Copy non-result fv index values to recipe. This call will also update
-	 * the result index bitmap appropriately.
-	 */
-	ice_collect_result_idx_from_bitmap(hw, &recps[rid]);
-
-	recps[rid].priority = tmp->content.act_ctrl_fwd_priority;
+	/* Copy result indexes */
+	ice_memcpy(recps[rid].res_idxs, result_bm, sizeof(recps[rid].res_idxs),
+		   ICE_NONDMA_TO_NONDMA);
 	recps[rid].recp_created = true;
 
 err_unroll:
@@ -5038,10 +5043,10 @@ ice_find_free_recp_res_idx(struct ice_hw *hw, const ice_bitmap_t *profiles,
 	u16 count = 0;
 	u16 bit;
 
-	ice_zero_bitmap(possible_idx, ICE_MAX_FV_WORDS);
 	ice_zero_bitmap(free_idx, ICE_MAX_FV_WORDS);
 	ice_zero_bitmap(used_idx, ICE_MAX_FV_WORDS);
 	ice_zero_bitmap(recipes, ICE_MAX_NUM_RECIPES);
+	ice_init_possible_res_bm(possible_idx);
 
 	for (bit = 0; bit < ICE_MAX_FV_WORDS; bit++)
 		if (ICE_POSSIBLE_RES_IDX & BIT_ULL(bit))
@@ -5503,6 +5508,34 @@ free_mem:
 	return status;
 }
 
+/**
+ * ice_add_special_words - Add words that are not protocols, such as metadata
+ * @rinfo: other information regarding the rule e.g. priority and action info
+ * @lkup_exts: lookup word structure
+ */
+static enum ice_status
+ice_add_special_words(struct ice_adv_rule_info *rinfo,
+		      struct ice_prot_lkup_ext *lkup_exts)
+{
+	/* If this is a tunneled packet, then add recipe index to match the
+	 * tunnel bit in the packet metadata flags.
+	 */
+	if (rinfo->tun_type != ICE_NON_TUN) {
+		if (lkup_exts->n_val_words < ICE_MAX_CHAIN_WORDS) {
+			u8 word = lkup_exts->n_val_words++;
+
+			lkup_exts->fv_words[word].prot_id = ICE_META_DATA_ID_HW;
+			lkup_exts->fv_words[word].off = ICE_TUN_FLAG_MDID *
+				ICE_MDID_SIZE;
+			lkup_exts->field_mask[word] = ICE_TUN_FLAG_MASK;
+		} else {
+			return ICE_ERR_MAX_LIMIT;
+		}
+	}
+
+	return ICE_SUCCESS;
+}
+
 /* ice_get_compat_fv_bitmap - Get compatible field vector bitmap for rule
  * @hw: pointer to hardware structure
  * @rinfo: other information regarding the rule e.g. priority and action info
@@ -5649,6 +5682,13 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		ice_debug(hw, ICE_DBG_SW, "profile: %d\n", fvit->profile_id);
 		ice_set_bit((u16)fvit->profile_id, profiles);
 	}
+
+	/* Create any special protocol/offset pairs, such as looking at tunnel
+	 * bits by extracting metadata
+	 */
+	status = ice_add_special_words(rinfo, lkup_exts);
+	if (status)
+		goto err_free_lkup_exts;
 
 	/* Look for a recipe which matches our requested fv / mask list */
 	*rid = ice_find_recp(hw, lkup_exts);
@@ -6424,6 +6464,14 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		if (!count)
 			return ICE_ERR_CFG;
 	}
+
+	/* Create any special protocol/offset pairs, such as looking at tunnel
+	 * bits by extracting metadata
+	 */
+	status = ice_add_special_words(rinfo, &lkup_exts);
+	if (status)
+		return status;
+
 	rid = ice_find_recp(hw, &lkup_exts);
 	/* If did not find a recipe that match the existing criteria */
 	if (rid == ICE_MAX_NUM_RECIPES)

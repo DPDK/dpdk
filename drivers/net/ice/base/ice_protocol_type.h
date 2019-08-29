@@ -135,6 +135,8 @@ enum ice_prot_id {
 #define ICE_GRE_OF_HW	64 /* NVGRE */
 #define ICE_META_DATA_ID_HW 255 /* this is used for tunnel type */
 
+#define ICE_MDID_SIZE 2
+#define ICE_TUN_FLAG_MDID 21
 #define ICE_TUN_FLAG_MASK 0xFF
 #define ICE_TUN_FLAG_FV_IND 2
 
