@@ -567,7 +567,7 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
  * ice_flow_xtract_pkt_flags - Create an extr sequence entry for packet flags
  * @hw: pointer to the HW struct
  * @params: information about the flow to be processed
- * @flags: The value of pkt_flags[x:x] in RX/TX MDID metadata.
+ * @flags: The value of pkt_flags[x:x] in Rx/Tx MDID metadata.
  *
  * This function will allocate an extraction sequence entries for a DWORD size
  * chunk of the packet flags.

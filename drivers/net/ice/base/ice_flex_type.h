@@ -577,7 +577,7 @@ struct ice_xlt1 {
 
 /* Vsig bit layout:
  * [0:12]: incremental vsig index 1 to ICE_MAX_VSIGS
- * [13:15]: pf number of device
+ * [13:15]: PF number of device
  */
 #define ICE_VSIG_IDX_M	(0x1FFF)
 #define ICE_PF_NUM_S	13

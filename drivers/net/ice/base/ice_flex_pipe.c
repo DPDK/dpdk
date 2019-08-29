@@ -1921,7 +1921,7 @@ ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port)
 	if (!bld)
 		return ICE_ERR_NO_MEMORY;
 
-	/* allocate 2 sections, one for RX parser, one for TX parser */
+	/* allocate 2 sections, one for Rx parser, one for Tx parser */
 	if (ice_pkg_buf_reserve_section(bld, 2))
 		goto ice_create_tunnel_err;
 
@@ -1951,7 +1951,7 @@ ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port)
 		    offsetof(struct ice_boost_key_value, hv_dst_port_key),
 		    sizeof(sect_rx->tcam[0].key.key.hv_dst_port_key));
 
-	/* exact copy of entry to TX section entry */
+	/* exact copy of entry to Tx section entry */
 	ice_memcpy(sect_tx->tcam, sect_rx->tcam, sizeof(*sect_tx->tcam),
 		   ICE_NONDMA_TO_NONDMA);
 
@@ -2002,7 +2002,7 @@ enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 	if (!bld)
 		return ICE_ERR_NO_MEMORY;
 
-	/* allocate 2 sections, one for RX parser, one for TX parser */
+	/* allocate 2 sections, one for Rx parser, one for Tx parser */
 	if (ice_pkg_buf_reserve_section(bld, 2))
 		goto ice_destroy_tunnel_err;
 
@@ -2020,8 +2020,8 @@ enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 		goto ice_destroy_tunnel_err;
 	sect_tx->count = CPU_TO_LE16(1);
 
-	/* copy original boost entry to update package buffer, one copy to RX
-	 * section, another copy to the TX section
+	/* copy original boost entry to update package buffer, one copy to Rx
+	 * section, another copy to the Tx section
 	 */
 	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
 		if (hw->tnl.tbl[i].valid && hw->tnl.tbl[i].in_use &&
@@ -2919,7 +2919,7 @@ ice_write_prof_mask_reg(struct ice_hw *hw, enum ice_block blk, u16 mask_idx,
  * ice_write_prof_mask_enable_res - write profile mask enable register
  * @hw: pointer to the HW struct
  * @blk: hardware block
- * @prof_id: profile id
+ * @prof_id: profile ID
  * @enable_mask: enable mask
  */
 static void
@@ -3095,7 +3095,7 @@ exit_ice_free_prof_mask:
  * ice_free_prof_masks - free all profile masks for a profile
  * @hw: pointer to the HW struct
  * @blk: hardware block
- * @prof_id: profile id
+ * @prof_id: profile ID
  */
 static enum ice_status
 ice_free_prof_masks(struct ice_hw *hw, enum ice_block blk, u16 prof_id)
@@ -3157,7 +3157,7 @@ void ice_shutdown_all_prof_masks(struct ice_hw *hw)
  * ice_update_prof_masking - set registers according to masking
  * @hw: pointer to the HW struct
  * @blk: hardware block
- * @prof_id: profile id
+ * @prof_id: profile ID
  * @es: field vector
  * @masks: masks
  */
@@ -3377,7 +3377,7 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 	void *sect;
 
 	/* if the HW segment pointer is null then the first iteration of
-	 * ice_pkg_enum_section() will fail. In this case the Hw tables will
+	 * ice_pkg_enum_section() will fail. In this case the HW tables will
 	 * not be filled and return success.
 	 */
 	if (!hw->seg) {
@@ -3469,7 +3469,7 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 			return;
 
 		/* if the sum of section size and offset exceed destination size
-		 * then we are out of bounds of the Hw table size for that PF.
+		 * then we are out of bounds of the HW table size for that PF.
 		 * Changing section length to fill the remaining table space
 		 * of that PF.
 		 */
@@ -3488,7 +3488,7 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
  *
  * Reads the current package contents and populates the driver
  * database with the data iteratively for all advanced feature
- * blocks. Assume that the Hw tables have been allocated.
+ * blocks. Assume that the HW tables have been allocated.
  */
 void ice_fill_blk_tbls(struct ice_hw *hw)
 {

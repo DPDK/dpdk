@@ -412,7 +412,7 @@ do {									\
 	/* free the buffer info list */					\
 	if ((qi)->ring.cmd_buf)						\
 		ice_free(hw, (qi)->ring.cmd_buf);			\
-	/* free dma head */						\
+	/* free DMA head */						\
 	ice_free(hw, (qi)->ring.dma_head);				\
 } while (0)
 
