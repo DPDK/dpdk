@@ -420,8 +420,11 @@ rte_fslmc_probe(void)
 	 *
 	 * Error is ignored as relevant logs are handled within dpaax and
 	 * handling for unavailable dpaax table too is transparent to caller.
+	 *
+	 * And, the IOVA table is only applicable in case of PA mode.
 	 */
-	dpaax_iova_table_populate();
+	if (rte_eal_iova_mode() == RTE_IOVA_PA)
+		dpaax_iova_table_populate();
 
 	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
 		TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
@@ -518,7 +521,8 @@ rte_fslmc_driver_unregister(struct rte_dpaa2_driver *driver)
 	/* Cleanup the PA->VA Translation table; From whereever this function
 	 * is called from.
 	 */
-	dpaax_iova_table_depopulate();
+	if (rte_eal_iova_mode() == RTE_IOVA_PA)
+		dpaax_iova_table_depopulate();
 
 	TAILQ_REMOVE(&fslmc_bus->driver_list, driver, next);
 	/* Update Bus references */
