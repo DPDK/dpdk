@@ -642,8 +642,10 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		fman_if_get_sg_enable(dpaa_intf->fif),
 		dev->data->dev_conf.rxmode.max_rx_pkt_len);
 	/* checking if push mode only, no error check for now */
-	if (dpaa_push_mode_max_queue > dpaa_push_queue_idx) {
+	if (!rxq->is_static &&
+	    dpaa_push_mode_max_queue > dpaa_push_queue_idx) {
 		struct qman_portal *qp;
+		int q_fd;
 
 		dpaa_push_queue_idx++;
 		opts.we_mask = QM_INITFQ_WE_FQCTRL | QM_INITFQ_WE_CONTEXTA;
@@ -690,12 +692,35 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		rxq->is_static = true;
 
 		/* Allocate qman specific portals */
-		qp = fsl_qman_fq_portal_create();
+		qp = fsl_qman_fq_portal_create(&q_fd);
 		if (!qp) {
 			DPAA_PMD_ERR("Unable to alloc fq portal");
 			return -1;
 		}
 		rxq->qp = qp;
+
+		/* Set up the device interrupt handler */
+		if (!dev->intr_handle) {
+			struct rte_dpaa_device *dpaa_dev;
+			struct rte_device *rdev = dev->device;
+
+			dpaa_dev = container_of(rdev, struct rte_dpaa_device,
+						device);
+			dev->intr_handle = &dpaa_dev->intr_handle;
+			dev->intr_handle->intr_vec = rte_zmalloc(NULL,
+					dpaa_push_mode_max_queue, 0);
+			if (!dev->intr_handle->intr_vec) {
+				DPAA_PMD_ERR("intr_vec alloc failed");
+				return -ENOMEM;
+			}
+			dev->intr_handle->nb_efd = dpaa_push_mode_max_queue;
+			dev->intr_handle->max_intr = dpaa_push_mode_max_queue;
+		}
+
+		dev->intr_handle->type = RTE_INTR_HANDLE_EXT;
+		dev->intr_handle->intr_vec[queue_idx] = queue_idx + 1;
+		dev->intr_handle->efds[queue_idx] = q_fd;
+		rxq->q_fd = q_fd;
 	}
 	rxq->bp_array = rte_dpaa_bpid_info;
 	dev->data->rx_queues[queue_idx] = rxq;

@@ -75,7 +75,7 @@ int qman_global_init(void);
 int bman_global_init(void);
 
 /* Direct portal create and destroy */
-struct qman_portal *fsl_qman_fq_portal_create(void);
+struct qman_portal *fsl_qman_fq_portal_create(int *fd);
 int fsl_qman_fq_portal_destroy(struct qman_portal *qp);
 int fsl_qman_fq_portal_init(struct qman_portal *qp);
 

@@ -121,7 +121,7 @@ void qman_thread_irq(void)
 	out_be32(qpcfg.addr_virt[DPAA_PORTAL_CI] + 0x36C0, 0);
 }
 
-struct qman_portal *fsl_qman_fq_portal_create(void)
+struct qman_portal *fsl_qman_fq_portal_create(int *fd)
 {
 	struct qman_portal *portal = NULL;
 	struct qm_portal_config *q_pcfg;
@@ -171,6 +171,7 @@ struct qman_portal *fsl_qman_fq_portal_create(void)
 	irq_map.portal_cinh = q_map.addr.cinh;
 	process_portal_irq_map(q_fd, &irq_map);
 
+	*fd = q_fd;
 	return portal;
 err:
 	if (portal)
