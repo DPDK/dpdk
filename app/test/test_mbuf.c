@@ -29,16 +29,28 @@
 #include <rte_random.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
+#include <rte_ether.h>
+#include <rte_ip.h>
+#include <rte_tcp.h>
 
 #include "test.h"
 
+#define MEMPOOL_CACHE_SIZE      32
 #define MBUF_DATA_SIZE          2048
 #define NB_MBUF                 128
 #define MBUF_TEST_DATA_LEN      1464
 #define MBUF_TEST_DATA_LEN2     50
+#define MBUF_TEST_DATA_LEN3     256
 #define MBUF_TEST_HDR1_LEN      20
 #define MBUF_TEST_HDR2_LEN      30
 #define MBUF_TEST_ALL_HDRS_LEN  (MBUF_TEST_HDR1_LEN+MBUF_TEST_HDR2_LEN)
+#define MBUF_TEST_SEG_SIZE      64
+#define MBUF_TEST_BURST         8
+#define EXT_BUF_TEST_DATA_LEN   1024
+#define MBUF_MAX_SEG            16
+#define MBUF_NO_HEADER		0
+#define MBUF_HEADER		1
+#define MBUF_NEG_TEST_READ	2
 
 /* chain length in bulk test */
 #define CHAIN_LEN 16
@@ -661,7 +673,6 @@ fail:
 		rte_pktmbuf_free(clone2);
 	return -1;
 }
-#undef GOTO_FAIL
 
 /*
  * test allocation and free of mbufs
@@ -1450,6 +1461,723 @@ test_tx_offload(void)
 }
 
 static int
+test_mbuf_validate_tx_offload(const char *test_name,
+		struct rte_mempool *pktmbuf_pool,
+		uint64_t ol_flags,
+		uint16_t segsize,
+		int expected_retval)
+{
+	struct rte_mbuf *m = NULL;
+	int ret = 0;
+
+	/* alloc a mbuf and do sanity check */
+	m = rte_pktmbuf_alloc(pktmbuf_pool);
+	if (m == NULL)
+		GOTO_FAIL("%s: mbuf allocation failed!\n", __func__);
+	if (rte_pktmbuf_pkt_len(m) != 0)
+		GOTO_FAIL("%s: Bad packet length\n", __func__);
+	rte_mbuf_sanity_check(m, 0);
+	m->ol_flags = ol_flags;
+	m->tso_segsz = segsize;
+	ret = rte_validate_tx_offload(m);
+	if (ret != expected_retval)
+		GOTO_FAIL("%s(%s): expected ret val: %d; received: %d\n",
+				__func__, test_name, expected_retval, ret);
+	rte_pktmbuf_free(m);
+	m = NULL;
+	return 0;
+fail:
+	if (m) {
+		rte_pktmbuf_free(m);
+		m = NULL;
+	}
+	return -1;
+}
+
+static int
+test_mbuf_validate_tx_offload_one(struct rte_mempool *pktmbuf_pool)
+{
+	/* test to validate tx offload flags */
+	uint64_t ol_flags = 0;
+
+	/* test to validate if IP checksum is counted only for IPV4 packet */
+	/* set both IP checksum and IPV6 flags */
+	ol_flags |= PKT_TX_IP_CKSUM;
+	ol_flags |= PKT_TX_IPV6;
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_IP_CKSUM_IPV6_SET",
+				pktmbuf_pool,
+				ol_flags, 0, -EINVAL) < 0)
+		GOTO_FAIL("%s failed: IP cksum is set incorrect.\n", __func__);
+	/* resetting ol_flags for next testcase */
+	ol_flags = 0;
+
+	/* test to validate if IP type is set when required */
+	ol_flags |= PKT_TX_L4_MASK;
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_IP_TYPE_NOT_SET",
+				pktmbuf_pool,
+				ol_flags, 0, -EINVAL) < 0)
+		GOTO_FAIL("%s failed: IP type is not set.\n", __func__);
+
+	/* test if IP type is set when TCP SEG is on */
+	ol_flags |= PKT_TX_TCP_SEG;
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_IP_TYPE_NOT_SET",
+				pktmbuf_pool,
+				ol_flags, 0, -EINVAL) < 0)
+		GOTO_FAIL("%s failed: IP type is not set.\n", __func__);
+
+	ol_flags = 0;
+	/* test to confirm IP type (IPV4/IPV6) is set */
+	ol_flags = PKT_TX_L4_MASK;
+	ol_flags |= PKT_TX_IPV6;
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_IP_TYPE_SET",
+				pktmbuf_pool,
+				ol_flags, 0, 0) < 0)
+		GOTO_FAIL("%s failed: tx offload flag error.\n", __func__);
+
+	ol_flags = 0;
+	/* test to check TSO segment size is non-zero */
+	ol_flags |= PKT_TX_IPV4;
+	ol_flags |= PKT_TX_TCP_SEG;
+	/* set 0 tso segment size */
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_NULL_TSO_SEGSZ",
+				pktmbuf_pool,
+				ol_flags, 0, -EINVAL) < 0)
+		GOTO_FAIL("%s failed: tso segment size is null.\n", __func__);
+
+	/* retain IPV4 and PKT_TX_TCP_SEG mask */
+	/* set valid tso segment size but IP CKSUM not set */
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_TSO_IP_CKSUM_NOT_SET",
+				pktmbuf_pool,
+				ol_flags, 512, -EINVAL) < 0)
+		GOTO_FAIL("%s failed: IP CKSUM is not set.\n", __func__);
+
+	/* test to validate if IP checksum is set for TSO capability */
+	/* retain IPV4, TCP_SEG, tso_seg size */
+	ol_flags |= PKT_TX_IP_CKSUM;
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_TSO_IP_CKSUM_SET",
+				pktmbuf_pool,
+				ol_flags, 512, 0) < 0)
+		GOTO_FAIL("%s failed: tx offload flag error.\n", __func__);
+
+	/* test to confirm TSO for IPV6 type */
+	ol_flags = 0;
+	ol_flags |= PKT_TX_IPV6;
+	ol_flags |= PKT_TX_TCP_SEG;
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_TSO_IPV6_SET",
+				pktmbuf_pool,
+				ol_flags, 512, 0) < 0)
+		GOTO_FAIL("%s failed: TSO req not met.\n", __func__);
+
+	ol_flags = 0;
+	/* test if outer IP checksum set for non outer IPv4 packet */
+	ol_flags |= PKT_TX_IPV6;
+	ol_flags |= PKT_TX_OUTER_IP_CKSUM;
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_OUTER_IPV4_NOT_SET",
+				pktmbuf_pool,
+				ol_flags, 512, -EINVAL) < 0)
+		GOTO_FAIL("%s failed: Outer IP cksum set.\n", __func__);
+
+	ol_flags = 0;
+	/* test to confirm outer IP checksum is set for outer IPV4 packet */
+	ol_flags |= PKT_TX_OUTER_IP_CKSUM;
+	ol_flags |= PKT_TX_OUTER_IPV4;
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_OUTER_IPV4_SET",
+				pktmbuf_pool,
+				ol_flags, 512, 0) < 0)
+		GOTO_FAIL("%s failed: tx offload flag error.\n", __func__);
+
+	ol_flags = 0;
+	/* test to confirm if packets with no TX_OFFLOAD_MASK are skipped */
+	if (test_mbuf_validate_tx_offload("MBUF_TEST_OL_MASK_NOT_SET",
+				pktmbuf_pool,
+				ol_flags, 512, 0) < 0)
+		GOTO_FAIL("%s failed: tx offload flag error.\n", __func__);
+	return 0;
+fail:
+	return -1;
+}
+
+/*
+ * Test for allocating a bulk of mbufs
+ * define an array with positive sizes for mbufs allocations.
+ */
+static int
+test_pktmbuf_alloc_bulk(struct rte_mempool *pktmbuf_pool)
+{
+	int ret = 0;
+	unsigned int idx, loop;
+	unsigned int alloc_counts[] = {
+		0,
+		MEMPOOL_CACHE_SIZE - 1,
+		MEMPOOL_CACHE_SIZE + 1,
+		MEMPOOL_CACHE_SIZE * 1.5,
+		MEMPOOL_CACHE_SIZE * 2,
+		MEMPOOL_CACHE_SIZE * 2 - 1,
+		MEMPOOL_CACHE_SIZE * 2 + 1,
+		MEMPOOL_CACHE_SIZE,
+	};
+
+	/* allocate a large array of mbuf pointers */
+	struct rte_mbuf *mbufs[NB_MBUF] = { 0 };
+	for (idx = 0; idx < RTE_DIM(alloc_counts); idx++) {
+		ret = rte_pktmbuf_alloc_bulk(pktmbuf_pool, mbufs,
+				alloc_counts[idx]);
+		if (ret == 0) {
+			for (loop = 0; loop < alloc_counts[idx] &&
+					mbufs[loop] != NULL; loop++)
+				rte_pktmbuf_free(mbufs[loop]);
+		} else if (ret != 0) {
+			printf("%s: Bulk alloc failed count(%u); ret val(%d)\n",
+					__func__, alloc_counts[idx], ret);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/*
+ * Negative testing for allocating a bulk of mbufs
+ */
+static int
+test_neg_pktmbuf_alloc_bulk(struct rte_mempool *pktmbuf_pool)
+{
+	int ret = 0;
+	unsigned int idx, loop;
+	unsigned int neg_alloc_counts[] = {
+		MEMPOOL_CACHE_SIZE - NB_MBUF,
+		NB_MBUF + 1,
+		NB_MBUF * 8,
+		UINT_MAX
+	};
+	struct rte_mbuf *mbufs[NB_MBUF * 8] = { 0 };
+
+	for (idx = 0; idx < RTE_DIM(neg_alloc_counts); idx++) {
+		ret = rte_pktmbuf_alloc_bulk(pktmbuf_pool, mbufs,
+				neg_alloc_counts[idx]);
+		if (ret == 0) {
+			printf("%s: Bulk alloc must fail! count(%u); ret(%d)\n",
+					__func__, neg_alloc_counts[idx], ret);
+			for (loop = 0; loop < neg_alloc_counts[idx] &&
+					mbufs[loop] != NULL; loop++)
+				rte_pktmbuf_free(mbufs[loop]);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/*
+ * Test to read mbuf packet using rte_pktmbuf_read
+ */
+static int
+test_pktmbuf_read(struct rte_mempool *pktmbuf_pool)
+{
+	struct rte_mbuf *m = NULL;
+	char *data = NULL;
+	const char *data_copy = NULL;
+	int off;
+
+	/* alloc a mbuf */
+	m = rte_pktmbuf_alloc(pktmbuf_pool);
+	if (m == NULL)
+		GOTO_FAIL("%s: mbuf allocation failed!\n", __func__);
+	if (rte_pktmbuf_pkt_len(m) != 0)
+		GOTO_FAIL("%s: Bad packet length\n", __func__);
+	rte_mbuf_sanity_check(m, 0);
+
+	data = rte_pktmbuf_append(m, MBUF_TEST_DATA_LEN2);
+	if (data == NULL)
+		GOTO_FAIL("%s: Cannot append data\n", __func__);
+	if (rte_pktmbuf_pkt_len(m) != MBUF_TEST_DATA_LEN2)
+		GOTO_FAIL("%s: Bad packet length\n", __func__);
+	memset(data, 0xfe, MBUF_TEST_DATA_LEN2);
+
+	/* read the data from mbuf */
+	data_copy = rte_pktmbuf_read(m, 0, MBUF_TEST_DATA_LEN2, NULL);
+	if (data_copy == NULL)
+		GOTO_FAIL("%s: Error in reading data!\n", __func__);
+	for (off = 0; off < MBUF_TEST_DATA_LEN2; off++) {
+		if (data_copy[off] != (char)0xfe)
+			GOTO_FAIL("Data corrupted at offset %u", off);
+	}
+	rte_pktmbuf_free(m);
+	m = NULL;
+
+	return 0;
+fail:
+	if (m) {
+		rte_pktmbuf_free(m);
+		m = NULL;
+	}
+	return -1;
+}
+
+/*
+ * Test to read mbuf packet data from offset
+ */
+static int
+test_pktmbuf_read_from_offset(struct rte_mempool *pktmbuf_pool)
+{
+	struct rte_mbuf *m = NULL;
+	struct ether_hdr *hdr = NULL;
+	char *data = NULL;
+	const char *data_copy = NULL;
+	unsigned int off;
+	unsigned int hdr_len = sizeof(struct rte_ether_hdr);
+
+	/* alloc a mbuf */
+	m = rte_pktmbuf_alloc(pktmbuf_pool);
+	if (m == NULL)
+		GOTO_FAIL("%s: mbuf allocation failed!\n", __func__);
+
+	if (rte_pktmbuf_pkt_len(m) != 0)
+		GOTO_FAIL("%s: Bad packet length\n", __func__);
+	rte_mbuf_sanity_check(m, 0);
+
+	/* prepend an ethernet header */
+	hdr = (struct ether_hdr *)rte_pktmbuf_prepend(m, hdr_len);
+	if (hdr == NULL)
+		GOTO_FAIL("%s: Cannot prepend header\n", __func__);
+	if (rte_pktmbuf_pkt_len(m) != hdr_len)
+		GOTO_FAIL("%s: Bad pkt length", __func__);
+	if (rte_pktmbuf_data_len(m) != hdr_len)
+		GOTO_FAIL("%s: Bad data length", __func__);
+	memset(hdr, 0xde, hdr_len);
+
+	/* read mbuf header info from 0 offset */
+	data_copy = rte_pktmbuf_read(m, 0, hdr_len, NULL);
+	if (data_copy == NULL)
+		GOTO_FAIL("%s: Error in reading header!\n", __func__);
+	for (off = 0; off < hdr_len; off++) {
+		if (data_copy[off] != (char)0xde)
+			GOTO_FAIL("Header info corrupted at offset %u", off);
+	}
+
+	/* append sample data after ethernet header */
+	data = rte_pktmbuf_append(m, MBUF_TEST_DATA_LEN2);
+	if (data == NULL)
+		GOTO_FAIL("%s: Cannot append data\n", __func__);
+	if (rte_pktmbuf_pkt_len(m) != hdr_len + MBUF_TEST_DATA_LEN2)
+		GOTO_FAIL("%s: Bad packet length\n", __func__);
+	if (rte_pktmbuf_data_len(m) != hdr_len + MBUF_TEST_DATA_LEN2)
+		GOTO_FAIL("%s: Bad data length\n", __func__);
+	memset(data, 0xcc, MBUF_TEST_DATA_LEN2);
+
+	/* read mbuf data after header info */
+	data_copy = rte_pktmbuf_read(m, hdr_len, MBUF_TEST_DATA_LEN2, NULL);
+	if (data_copy == NULL)
+		GOTO_FAIL("%s: Error in reading header data!\n", __func__);
+	for (off = 0; off < MBUF_TEST_DATA_LEN2; off++) {
+		if (data_copy[off] != (char)0xcc)
+			GOTO_FAIL("Data corrupted at offset %u", off);
+	}
+
+	/* partial reading of mbuf data */
+	data_copy = rte_pktmbuf_read(m, hdr_len + 5, MBUF_TEST_DATA_LEN2 - 5,
+			NULL);
+	if (data_copy == NULL)
+		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
+	if (strlen(data_copy) != MBUF_TEST_DATA_LEN2 - 5)
+		GOTO_FAIL("%s: Incorrect data length!\n", __func__);
+	for (off = 0; off < MBUF_TEST_DATA_LEN2 - 5; off++) {
+		if (data_copy[off] != (char)0xcc)
+			GOTO_FAIL("Data corrupted at offset %u", off);
+	}
+
+	/* read length greater than mbuf data_len */
+	if (rte_pktmbuf_read(m, hdr_len, rte_pktmbuf_data_len(m) + 1,
+				NULL) != NULL)
+		GOTO_FAIL("%s: Requested len is larger than mbuf data len!\n",
+				__func__);
+
+	/* read length greater than mbuf pkt_len */
+	if (rte_pktmbuf_read(m, hdr_len, rte_pktmbuf_pkt_len(m) + 1,
+				NULL) != NULL)
+		GOTO_FAIL("%s: Requested len is larger than mbuf pkt len!\n",
+				__func__);
+
+	/* read data of zero len from valid offset */
+	data_copy = rte_pktmbuf_read(m, hdr_len, 0, NULL);
+	if (data_copy == NULL)
+		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
+	if (strlen(data_copy) != MBUF_TEST_DATA_LEN2)
+		GOTO_FAIL("%s: Corrupted data content!\n", __func__);
+	for (off = 0; off < MBUF_TEST_DATA_LEN2; off++) {
+		if (data_copy[off] != (char)0xcc)
+			GOTO_FAIL("Data corrupted at offset %u", off);
+	}
+
+	/* read data of zero length from zero offset */
+	data_copy = rte_pktmbuf_read(m, 0, 0, NULL);
+	if (data_copy == NULL)
+		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
+	/* check if the received address is the beginning of header info */
+	if (hdr != (const struct ether_hdr *)data_copy)
+		GOTO_FAIL("%s: Corrupted data address!\n", __func__);
+
+	/* read data of max length from valid offset */
+	data_copy = rte_pktmbuf_read(m, hdr_len, UINT_MAX, NULL);
+	if (data_copy == NULL)
+		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
+	/* check if the received address is the beginning of data segment */
+	if (data_copy != data)
+		GOTO_FAIL("%s: Corrupted data address!\n", __func__);
+
+	/* try to read from mbuf with max size offset */
+	data_copy = rte_pktmbuf_read(m, UINT_MAX, 0, NULL);
+	if (data_copy != NULL)
+		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
+
+	/* try to read from mbuf with max size offset and len */
+	data_copy = rte_pktmbuf_read(m, UINT_MAX, UINT_MAX, NULL);
+	if (data_copy != NULL)
+		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
+
+	rte_pktmbuf_dump(stdout, m, rte_pktmbuf_pkt_len(m));
+
+	rte_pktmbuf_free(m);
+	m = NULL;
+
+	return 0;
+fail:
+	if (m) {
+		rte_pktmbuf_free(m);
+		m = NULL;
+	}
+	return -1;
+}
+
+struct test_case {
+	unsigned int seg_count;
+	unsigned int flags;
+	uint32_t read_off;
+	uint32_t read_len;
+	unsigned int seg_lengths[MBUF_MAX_SEG];
+};
+
+/* create a mbuf with different sized segments
+ *  and fill with data [0x00 0x01 0x02 ...]
+ */
+static struct rte_mbuf *
+create_packet(struct rte_mempool *pktmbuf_pool,
+		struct test_case *test_data)
+{
+	uint16_t i, ret, seg, seg_len = 0;
+	uint32_t last_index = 0;
+	unsigned int seg_lengths[MBUF_MAX_SEG];
+	unsigned int hdr_len;
+	struct rte_mbuf *pkt = NULL;
+	struct rte_mbuf	*pkt_seg = NULL;
+	char *hdr = NULL;
+	char *data = NULL;
+
+	memcpy(seg_lengths, test_data->seg_lengths,
+			sizeof(unsigned int)*test_data->seg_count);
+	for (seg = 0; seg < test_data->seg_count; seg++) {
+		hdr_len = 0;
+		seg_len =  seg_lengths[seg];
+		pkt_seg = rte_pktmbuf_alloc(pktmbuf_pool);
+		if (pkt_seg == NULL)
+			GOTO_FAIL("%s: mbuf allocation failed!\n", __func__);
+		if (rte_pktmbuf_pkt_len(pkt_seg) != 0)
+			GOTO_FAIL("%s: Bad packet length\n", __func__);
+		rte_mbuf_sanity_check(pkt_seg, 0);
+		/* Add header only for the first segment */
+		if (test_data->flags == MBUF_HEADER && seg == 0) {
+			hdr_len = sizeof(struct rte_ether_hdr);
+			/* prepend a header and fill with dummy data */
+			hdr = (char *)rte_pktmbuf_prepend(pkt_seg, hdr_len);
+			if (hdr == NULL)
+				GOTO_FAIL("%s: Cannot prepend header\n",
+						__func__);
+			if (rte_pktmbuf_pkt_len(pkt_seg) != hdr_len)
+				GOTO_FAIL("%s: Bad pkt length", __func__);
+			if (rte_pktmbuf_data_len(pkt_seg) != hdr_len)
+				GOTO_FAIL("%s: Bad data length", __func__);
+			for (i = 0; i < hdr_len; i++)
+				hdr[i] = (last_index + i) % 0xffff;
+			last_index += hdr_len;
+		}
+		/* skip appending segment with 0 length */
+		if (seg_len == 0)
+			continue;
+		data = rte_pktmbuf_append(pkt_seg, seg_len);
+		if (data == NULL)
+			GOTO_FAIL("%s: Cannot append data segment\n", __func__);
+		if (rte_pktmbuf_pkt_len(pkt_seg) != hdr_len + seg_len)
+			GOTO_FAIL("%s: Bad packet segment length: %d\n",
+					__func__, rte_pktmbuf_pkt_len(pkt_seg));
+		if (rte_pktmbuf_data_len(pkt_seg) != hdr_len + seg_len)
+			GOTO_FAIL("%s: Bad data length\n", __func__);
+		for (i = 0; i < seg_len; i++)
+			data[i] = (last_index + i) % 0xffff;
+		/* to fill continuous data from one seg to another */
+		last_index += i;
+		/* create chained mbufs */
+		if (seg == 0)
+			pkt = pkt_seg;
+		else {
+			ret = rte_pktmbuf_chain(pkt, pkt_seg);
+			if (ret != 0)
+				GOTO_FAIL("%s:FAIL: Chained mbuf creation %d\n",
+						__func__, ret);
+		}
+
+		pkt_seg = pkt_seg->next;
+	}
+	return pkt;
+fail:
+	if (pkt != NULL) {
+		rte_pktmbuf_free(pkt);
+		pkt = NULL;
+	}
+	if (pkt_seg != NULL) {
+		rte_pktmbuf_free(pkt_seg);
+		pkt_seg = NULL;
+	}
+	return NULL;
+}
+
+static int
+test_pktmbuf_read_from_chain(struct rte_mempool *pktmbuf_pool)
+{
+	struct rte_mbuf *m;
+	struct test_case test_cases[] = {
+		{
+			.seg_lengths = { 100, 100, 100 },
+			.seg_count = 3,
+			.flags = MBUF_NO_HEADER,
+			.read_off = 0,
+			.read_len = 300
+		},
+		{
+			.seg_lengths = { 100, 125, 150 },
+			.seg_count = 3,
+			.flags = MBUF_NO_HEADER,
+			.read_off = 99,
+			.read_len = 201
+		},
+		{
+			.seg_lengths = { 100, 100 },
+			.seg_count = 2,
+			.flags = MBUF_NO_HEADER,
+			.read_off = 0,
+			.read_len = 100
+		},
+		{
+			.seg_lengths = { 100, 200 },
+			.seg_count = 2,
+			.flags = MBUF_HEADER,
+			.read_off = sizeof(struct rte_ether_hdr),
+			.read_len = 150
+		},
+		{
+			.seg_lengths = { 1000, 100 },
+			.seg_count = 2,
+			.flags = MBUF_NO_HEADER,
+			.read_off = 0,
+			.read_len = 1000
+		},
+		{
+			.seg_lengths = { 1024, 0, 100 },
+			.seg_count = 3,
+			.flags = MBUF_NO_HEADER,
+			.read_off = 100,
+			.read_len = 1001
+		},
+		{
+			.seg_lengths = { 1000, 1, 1000 },
+			.seg_count = 3,
+			.flags = MBUF_NO_HEADER,
+			.read_off = 1000,
+			.read_len = 2
+		},
+		{
+			.seg_lengths = { MBUF_TEST_DATA_LEN,
+					MBUF_TEST_DATA_LEN2,
+					MBUF_TEST_DATA_LEN3, 800, 10 },
+			.seg_count = 5,
+			.flags = MBUF_NEG_TEST_READ,
+			.read_off = 1000,
+			.read_len = MBUF_DATA_SIZE
+		},
+	};
+
+	uint32_t i, pos;
+	const char *data_copy = NULL;
+	char data_buf[MBUF_DATA_SIZE];
+
+	memset(data_buf, 0, MBUF_DATA_SIZE);
+
+	for (i = 0; i < RTE_DIM(test_cases); i++) {
+		m = create_packet(pktmbuf_pool, &test_cases[i]);
+		if (m == NULL)
+			GOTO_FAIL("%s: mbuf allocation failed!\n", __func__);
+
+		data_copy = rte_pktmbuf_read(m, test_cases[i].read_off,
+				test_cases[i].read_len, data_buf);
+		if (test_cases[i].flags == MBUF_NEG_TEST_READ) {
+			if (data_copy != NULL)
+				GOTO_FAIL("%s: mbuf data read should fail!\n",
+						__func__);
+			else {
+				rte_pktmbuf_free(m);
+				m = NULL;
+				continue;
+			}
+		}
+		if (data_copy == NULL)
+			GOTO_FAIL("%s: Error in reading packet data!\n",
+					__func__);
+		for (pos = 0; pos < test_cases[i].read_len; pos++) {
+			if (data_copy[pos] !=
+					(char)((test_cases[i].read_off + pos)
+						% 0xffff))
+				GOTO_FAIL("Data corrupted at offset %u is %2X",
+						pos, data_copy[pos]);
+		}
+		rte_pktmbuf_dump(stdout, m, rte_pktmbuf_pkt_len(m));
+		rte_pktmbuf_free(m);
+		m = NULL;
+	}
+	return 0;
+
+fail:
+	if (m != NULL) {
+		rte_pktmbuf_free(m);
+		m = NULL;
+	}
+	return -1;
+}
+
+/* Define a free call back function to be used for external buffer */
+static void
+ext_buf_free_callback_fn(void *addr __rte_unused, void *opaque)
+{
+	void *ext_buf_addr = opaque;
+
+	if (ext_buf_addr == NULL) {
+		printf("External buffer address is invalid\n");
+		return;
+	}
+	rte_free(ext_buf_addr);
+	ext_buf_addr = NULL;
+	printf("External buffer freed via callback\n");
+}
+
+/*
+ * Test to initialize shared data in external buffer before attaching to mbuf
+ *  - Allocate mbuf with no data.
+ *  - Allocate external buffer with size should be large enough to accommodate
+ *     rte_mbuf_ext_shared_info.
+ *  - Invoke pktmbuf_ext_shinfo_init_helper to initialize shared data.
+ *  - Invoke rte_pktmbuf_attach_extbuf to attach external buffer to the mbuf.
+ *  - Clone another mbuf and attach the same external buffer to it.
+ *  - Invoke rte_pktmbuf_detach_extbuf to detach the external buffer from mbuf.
+ */
+static int
+test_pktmbuf_ext_shinfo_init_helper(struct rte_mempool *pktmbuf_pool)
+{
+	struct rte_mbuf *m = NULL;
+	struct rte_mbuf *clone = NULL;
+	struct rte_mbuf_ext_shared_info *ret_shinfo = NULL;
+	rte_iova_t buf_iova;
+	void *ext_buf_addr = NULL;
+	uint16_t buf_len = EXT_BUF_TEST_DATA_LEN +
+				sizeof(struct rte_mbuf_ext_shared_info);
+
+	/* alloc a mbuf */
+	m = rte_pktmbuf_alloc(pktmbuf_pool);
+	if (m == NULL)
+		GOTO_FAIL("%s: mbuf allocation failed!\n", __func__);
+	if (rte_pktmbuf_pkt_len(m) != 0)
+		GOTO_FAIL("%s: Bad packet length\n", __func__);
+	rte_mbuf_sanity_check(m, 0);
+
+	ext_buf_addr = rte_malloc("External buffer", buf_len,
+			RTE_CACHE_LINE_SIZE);
+	if (ext_buf_addr == NULL)
+		GOTO_FAIL("%s: External buffer allocation failed\n", __func__);
+
+	ret_shinfo = rte_pktmbuf_ext_shinfo_init_helper(ext_buf_addr, &buf_len,
+		ext_buf_free_callback_fn, ext_buf_addr);
+	if (ret_shinfo == NULL)
+		GOTO_FAIL("%s: Shared info initialization failed!\n", __func__);
+
+	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 1)
+		GOTO_FAIL("%s: External refcount is not 1\n", __func__);
+
+	if (rte_mbuf_refcnt_read(m) != 1)
+		GOTO_FAIL("%s: Invalid refcnt in mbuf\n", __func__);
+
+	buf_iova = rte_mempool_virt2iova(ext_buf_addr);
+	rte_pktmbuf_attach_extbuf(m, ext_buf_addr, buf_iova, buf_len,
+		ret_shinfo);
+	if (m->ol_flags != EXT_ATTACHED_MBUF)
+		GOTO_FAIL("%s: External buffer is not attached to mbuf\n",
+				__func__);
+
+	/* allocate one more mbuf */
+	clone = rte_pktmbuf_clone(m, pktmbuf_pool);
+	if (clone == NULL)
+		GOTO_FAIL("%s: mbuf clone allocation failed!\n", __func__);
+	if (rte_pktmbuf_pkt_len(clone) != 0)
+		GOTO_FAIL("%s: Bad packet length\n", __func__);
+
+	/* attach the same external buffer to the cloned mbuf */
+	rte_pktmbuf_attach_extbuf(clone, ext_buf_addr, buf_iova, buf_len,
+			ret_shinfo);
+	if (clone->ol_flags != EXT_ATTACHED_MBUF)
+		GOTO_FAIL("%s: External buffer is not attached to mbuf\n",
+				__func__);
+
+	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 2)
+		GOTO_FAIL("%s: Invalid ext_buf ref_cnt\n", __func__);
+
+	/* test to manually update ext_buf_ref_cnt from 2 to 3*/
+	rte_mbuf_ext_refcnt_update(ret_shinfo, 1);
+	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 3)
+		GOTO_FAIL("%s: Update ext_buf ref_cnt failed\n", __func__);
+
+	/* reset the ext_refcnt before freeing the external buffer */
+	rte_mbuf_ext_refcnt_set(ret_shinfo, 2);
+	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 2)
+		GOTO_FAIL("%s: set ext_buf ref_cnt failed\n", __func__);
+
+	/* detach the external buffer from mbufs */
+	rte_pktmbuf_detach_extbuf(m);
+	/* check if ref cnt is decremented */
+	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 1)
+		GOTO_FAIL("%s: Invalid ext_buf ref_cnt\n", __func__);
+
+	rte_pktmbuf_detach_extbuf(clone);
+	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 0)
+		GOTO_FAIL("%s: Invalid ext_buf ref_cnt\n", __func__);
+
+	rte_pktmbuf_free(m);
+	m = NULL;
+	rte_pktmbuf_free(clone);
+	clone = NULL;
+
+	return 0;
+
+fail:
+	if (m) {
+		rte_pktmbuf_free(m);
+		m = NULL;
+	}
+	if (clone) {
+		rte_pktmbuf_free(clone);
+		clone = NULL;
+	}
+	if (ext_buf_addr != NULL) {
+		rte_free(ext_buf_addr);
+		ext_buf_addr = NULL;
+	}
+	return -1;
+}
+
+static int
 test_mbuf(void)
 {
 	int ret = -1;
@@ -1461,7 +2189,8 @@ test_mbuf(void)
 
 	/* create pktmbuf pool if it does not exist */
 	pktmbuf_pool = rte_pktmbuf_pool_create("test_pktmbuf_pool",
-			NB_MBUF, 32, 0, MBUF_DATA_SIZE, SOCKET_ID_ANY);
+			NB_MBUF, MEMPOOL_CACHE_SIZE, 0, MBUF_DATA_SIZE,
+			SOCKET_ID_ANY);
 
 	if (pktmbuf_pool == NULL) {
 		printf("cannot allocate mbuf pool\n");
@@ -1471,7 +2200,8 @@ test_mbuf(void)
 	/* create a specific pktmbuf pool with a priv_size != 0 and no data
 	 * room size */
 	pktmbuf_pool2 = rte_pktmbuf_pool_create("test_pktmbuf_pool2",
-			NB_MBUF, 32, MBUF2_PRIV_SIZE, 0, SOCKET_ID_ANY);
+			NB_MBUF, MEMPOOL_CACHE_SIZE, MBUF2_PRIV_SIZE, 0,
+			SOCKET_ID_ANY);
 
 	if (pktmbuf_pool2 == NULL) {
 		printf("cannot allocate mbuf pool\n");
@@ -1564,11 +2294,53 @@ test_mbuf(void)
 		goto err;
 	}
 
+	if (test_mbuf_validate_tx_offload_one(pktmbuf_pool) < 0) {
+		printf("test_mbuf_validate_tx_offload_one() failed\n");
+		goto err;
+	}
+
+	/* test for allocating a bulk of mbufs with various sizes */
+	if (test_pktmbuf_alloc_bulk(pktmbuf_pool) < 0) {
+		printf("test_rte_pktmbuf_alloc_bulk() failed\n");
+		goto err;
+	}
+
+	/* test for allocating a bulk of mbufs with various sizes */
+	if (test_neg_pktmbuf_alloc_bulk(pktmbuf_pool) < 0) {
+		printf("test_neg_rte_pktmbuf_alloc_bulk() failed\n");
+		goto err;
+	}
+
+	/* test to read mbuf packet */
+	if (test_pktmbuf_read(pktmbuf_pool) < 0) {
+		printf("test_rte_pktmbuf_read() failed\n");
+		goto err;
+	}
+
+	/* test to read mbuf packet from offset */
+	if (test_pktmbuf_read_from_offset(pktmbuf_pool) < 0) {
+		printf("test_rte_pktmbuf_read_from_offset() failed\n");
+		goto err;
+	}
+
+	/* test to read data from chain of mbufs with data segments */
+	if (test_pktmbuf_read_from_chain(pktmbuf_pool) < 0) {
+		printf("test_rte_pktmbuf_read_from_chain() failed\n");
+		goto err;
+	}
+
+	/* test to initialize shared info. at the end of external buffer */
+	if (test_pktmbuf_ext_shinfo_init_helper(pktmbuf_pool) < 0) {
+		printf("test_pktmbuf_ext_shinfo_init_helper() failed\n");
+		goto err;
+	}
+
 	ret = 0;
 err:
 	rte_mempool_free(pktmbuf_pool);
 	rte_mempool_free(pktmbuf_pool2);
 	return ret;
 }
+#undef GOTO_FAIL
 
 REGISTER_TEST_COMMAND(mbuf_autotest, test_mbuf);
