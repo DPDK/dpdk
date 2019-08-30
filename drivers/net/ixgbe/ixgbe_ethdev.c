@@ -4138,7 +4138,6 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 			link.link_speed = ETH_SPEED_NUM_10M;
 		else
 			link.link_speed = ETH_SPEED_NUM_100M;
-		link.link_duplex = ETH_LINK_FULL_DUPLEX;
 		break;
 
 	case IXGBE_LINK_SPEED_100_FULL:
