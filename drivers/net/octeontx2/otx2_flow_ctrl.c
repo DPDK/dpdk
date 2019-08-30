@@ -14,9 +14,6 @@ otx2_nix_rxchan_bpid_cfg(struct rte_eth_dev *eth_dev, bool enb)
 	struct nix_bp_cfg_rsp *rsp;
 	int rc;
 
-	if (otx2_dev_is_vf(dev))
-		return 0;
-
 	if (enb) {
 		req = otx2_mbox_alloc_msg_nix_bp_enable(mbox);
 		req->chan_base = 0;
@@ -52,9 +49,6 @@ otx2_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 	struct cgx_pause_frm_cfg *req, *rsp;
 	struct otx2_mbox *mbox = dev->mbox;
 	int rc;
-
-	if (otx2_dev_is_vf(dev))
-		return -ENOTSUP;
 
 	req = otx2_mbox_alloc_msg_cgx_cfg_pause_frm(mbox);
 	req->set = 0;
@@ -143,9 +137,6 @@ otx2_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	uint8_t tx_pause, rx_pause;
 	int rc = 0;
 
-	if (otx2_dev_is_vf(dev))
-		return -ENOTSUP;
-
 	if (fc_conf->high_water || fc_conf->low_water || fc_conf->pause_time ||
 	    fc_conf->mac_ctrl_frame_fwd || fc_conf->autoneg) {
 		otx2_info("Flowctrl parameter is not supported");
@@ -197,9 +188,6 @@ otx2_nix_update_flow_ctrl_mode(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct rte_eth_fc_conf fc_conf;
-
-	if (otx2_dev_is_vf(dev))
-		return 0;
 
 	memset(&fc_conf, 0, sizeof(struct rte_eth_fc_conf));
 	/* Both Rx & Tx flow ctrl get enabled(RTE_FC_FULL) in HW
