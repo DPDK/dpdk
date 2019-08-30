@@ -51,6 +51,7 @@
 #define MBUF_NO_HEADER		0
 #define MBUF_HEADER		1
 #define MBUF_NEG_TEST_READ	2
+#define VAL_NAME(flag)          { flag, #flag }
 
 /* chain length in bulk test */
 #define CHAIN_LEN 16
@@ -1461,6 +1462,239 @@ test_tx_offload(void)
 }
 
 static int
+test_get_rx_ol_flag_list(void)
+{
+	int len = 6, ret = 0;
+	char buf[256] = "";
+	int buflen = 0;
+
+	/* Test case to check with null buffer */
+	ret = rte_get_rx_ol_flag_list(0, NULL, 0);
+	if (ret != -1)
+		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
+
+	/* Test case to check with zero buffer len */
+	ret = rte_get_rx_ol_flag_list(PKT_RX_L4_CKSUM_MASK, buf, 0);
+	if (ret != -1)
+		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
+
+	buflen = strlen(buf);
+	if (buflen != 0)
+		GOTO_FAIL("%s buffer should be empty, received = %d\n",
+				__func__, buflen);
+
+	/* Test case to check with reduced buffer len */
+	ret = rte_get_rx_ol_flag_list(0, buf, len);
+	if (ret != -1)
+		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
+
+	buflen = strlen(buf);
+	if (buflen != (len - 1))
+		GOTO_FAIL("%s invalid buffer length retrieved, expected: %d,"
+				"received = %d\n", __func__,
+				(len - 1), buflen);
+
+	/* Test case to check with zero mask value */
+	ret = rte_get_rx_ol_flag_list(0, buf, sizeof(buf));
+	if (ret != 0)
+		GOTO_FAIL("%s expected: 0, received = %d\n", __func__, ret);
+
+	buflen = strlen(buf);
+	if (buflen == 0)
+		GOTO_FAIL("%s expected: %s, received length = 0\n", __func__,
+				"non-zero, buffer should not be empty");
+
+	/* Test case to check with valid mask value */
+	ret = rte_get_rx_ol_flag_list(PKT_RX_SEC_OFFLOAD, buf, sizeof(buf));
+	if (ret != 0)
+		GOTO_FAIL("%s expected: 0, received = %d\n", __func__, ret);
+
+	buflen = strlen(buf);
+	if (buflen == 0)
+		GOTO_FAIL("%s expected: %s, received length = 0\n", __func__,
+				"non-zero, buffer should not be empty");
+
+	return 0;
+fail:
+	return -1;
+}
+
+static int
+test_get_tx_ol_flag_list(void)
+{
+	int len = 6, ret = 0;
+	char buf[256] = "";
+	int buflen = 0;
+
+	/* Test case to check with null buffer */
+	ret = rte_get_tx_ol_flag_list(0, NULL, 0);
+	if (ret != -1)
+		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
+
+	/* Test case to check with zero buffer len */
+	ret = rte_get_tx_ol_flag_list(PKT_TX_IP_CKSUM, buf, 0);
+	if (ret != -1)
+		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
+
+	buflen = strlen(buf);
+	if (buflen != 0) {
+		GOTO_FAIL("%s buffer should be empty, received = %d\n",
+				__func__, buflen);
+	}
+
+	/* Test case to check with reduced buffer len */
+	ret = rte_get_tx_ol_flag_list(0, buf, len);
+	if (ret != -1)
+		GOTO_FAIL("%s expected: -1, received = %d\n", __func__, ret);
+
+	buflen = strlen(buf);
+	if (buflen != (len - 1))
+		GOTO_FAIL("%s invalid buffer length retrieved, expected: %d,"
+				"received = %d\n", __func__,
+				(len - 1), buflen);
+
+	/* Test case to check with zero mask value */
+	ret = rte_get_tx_ol_flag_list(0, buf, sizeof(buf));
+	if (ret != 0)
+		GOTO_FAIL("%s expected: 0, received = %d\n", __func__, ret);
+
+	buflen = strlen(buf);
+	if (buflen == 0)
+		GOTO_FAIL("%s expected: %s, received length = 0\n", __func__,
+				"non-zero, buffer should not be empty");
+
+	/* Test case to check with valid mask value */
+	ret = rte_get_tx_ol_flag_list(PKT_TX_UDP_CKSUM, buf, sizeof(buf));
+	if (ret != 0)
+		GOTO_FAIL("%s expected: 0, received = %d\n", __func__, ret);
+
+	buflen = strlen(buf);
+	if (buflen == 0)
+		GOTO_FAIL("%s expected: %s, received length = 0\n", __func__,
+				"non-zero, buffer should not be empty");
+
+	return 0;
+fail:
+	return -1;
+
+}
+
+struct flag_name {
+	uint64_t flag;
+	const char *name;
+};
+
+static int
+test_get_rx_ol_flag_name(void)
+{
+	uint16_t i;
+	const char *flag_str = NULL;
+	const struct flag_name rx_flags[] = {
+		VAL_NAME(PKT_RX_VLAN),
+		VAL_NAME(PKT_RX_RSS_HASH),
+		VAL_NAME(PKT_RX_FDIR),
+		VAL_NAME(PKT_RX_L4_CKSUM_BAD),
+		VAL_NAME(PKT_RX_L4_CKSUM_GOOD),
+		VAL_NAME(PKT_RX_L4_CKSUM_NONE),
+		VAL_NAME(PKT_RX_IP_CKSUM_BAD),
+		VAL_NAME(PKT_RX_IP_CKSUM_GOOD),
+		VAL_NAME(PKT_RX_IP_CKSUM_NONE),
+		VAL_NAME(PKT_RX_EIP_CKSUM_BAD),
+		VAL_NAME(PKT_RX_VLAN_STRIPPED),
+		VAL_NAME(PKT_RX_IEEE1588_PTP),
+		VAL_NAME(PKT_RX_IEEE1588_TMST),
+		VAL_NAME(PKT_RX_FDIR_ID),
+		VAL_NAME(PKT_RX_FDIR_FLX),
+		VAL_NAME(PKT_RX_QINQ_STRIPPED),
+		VAL_NAME(PKT_RX_LRO),
+		VAL_NAME(PKT_RX_TIMESTAMP),
+		VAL_NAME(PKT_RX_SEC_OFFLOAD),
+		VAL_NAME(PKT_RX_SEC_OFFLOAD_FAILED),
+		VAL_NAME(PKT_RX_OUTER_L4_CKSUM_BAD),
+		VAL_NAME(PKT_RX_OUTER_L4_CKSUM_GOOD),
+		VAL_NAME(PKT_RX_OUTER_L4_CKSUM_INVALID),
+	};
+
+	/* Test case to check with valid flag */
+	for (i = 0; i < RTE_DIM(rx_flags); i++) {
+		flag_str = rte_get_rx_ol_flag_name(rx_flags[i].flag);
+		if (flag_str == NULL)
+			GOTO_FAIL("%s: Expected flagname = %s; received null\n",
+					__func__, rx_flags[i].name);
+		if (strcmp(flag_str, rx_flags[i].name) != 0)
+			GOTO_FAIL("%s: Expected flagname = %s; received = %s\n",
+				__func__, rx_flags[i].name, flag_str);
+	}
+	/* Test case to check with invalid flag */
+	flag_str = rte_get_rx_ol_flag_name(0);
+	if (flag_str != NULL) {
+		GOTO_FAIL("%s: Expected flag name = null; received = %s\n",
+				__func__, flag_str);
+	}
+
+	return 0;
+fail:
+	return -1;
+}
+
+static int
+test_get_tx_ol_flag_name(void)
+{
+	uint16_t i;
+	const char *flag_str = NULL;
+	const struct flag_name tx_flags[] = {
+		VAL_NAME(PKT_TX_VLAN),
+		VAL_NAME(PKT_TX_IP_CKSUM),
+		VAL_NAME(PKT_TX_TCP_CKSUM),
+		VAL_NAME(PKT_TX_SCTP_CKSUM),
+		VAL_NAME(PKT_TX_UDP_CKSUM),
+		VAL_NAME(PKT_TX_IEEE1588_TMST),
+		VAL_NAME(PKT_TX_TCP_SEG),
+		VAL_NAME(PKT_TX_IPV4),
+		VAL_NAME(PKT_TX_IPV6),
+		VAL_NAME(PKT_TX_OUTER_IP_CKSUM),
+		VAL_NAME(PKT_TX_OUTER_IPV4),
+		VAL_NAME(PKT_TX_OUTER_IPV6),
+		VAL_NAME(PKT_TX_TUNNEL_VXLAN),
+		VAL_NAME(PKT_TX_TUNNEL_GRE),
+		VAL_NAME(PKT_TX_TUNNEL_IPIP),
+		VAL_NAME(PKT_TX_TUNNEL_GENEVE),
+		VAL_NAME(PKT_TX_TUNNEL_MPLSINUDP),
+		VAL_NAME(PKT_TX_TUNNEL_VXLAN_GPE),
+		VAL_NAME(PKT_TX_TUNNEL_IP),
+		VAL_NAME(PKT_TX_TUNNEL_UDP),
+		VAL_NAME(PKT_TX_QINQ),
+		VAL_NAME(PKT_TX_MACSEC),
+		VAL_NAME(PKT_TX_SEC_OFFLOAD),
+		VAL_NAME(PKT_TX_UDP_SEG),
+		VAL_NAME(PKT_TX_OUTER_UDP_CKSUM),
+		VAL_NAME(PKT_TX_METADATA),
+	};
+
+	/* Test case to check with valid flag */
+	for (i = 0; i < RTE_DIM(tx_flags); i++) {
+		flag_str = rte_get_tx_ol_flag_name(tx_flags[i].flag);
+		if (flag_str == NULL)
+			GOTO_FAIL("%s: Expected flagname = %s; received null\n",
+				__func__, tx_flags[i].name);
+		if (strcmp(flag_str, tx_flags[i].name) != 0)
+			GOTO_FAIL("%s: Expected flagname = %s; received = %s\n",
+				__func__, tx_flags[i].name, flag_str);
+	}
+	/* Test case to check with invalid flag */
+	flag_str = rte_get_tx_ol_flag_name(0);
+	if (flag_str != NULL) {
+		GOTO_FAIL("%s: Expected flag name = null; received = %s\n",
+				__func__, flag_str);
+	}
+
+	return 0;
+fail:
+	return -1;
+
+}
+
+static int
 test_mbuf_validate_tx_offload(const char *test_name,
 		struct rte_mempool *pktmbuf_pool,
 		uint64_t ol_flags,
@@ -2291,6 +2525,26 @@ test_mbuf(void)
 
 	if (test_tx_offload() < 0) {
 		printf("test_tx_offload() failed\n");
+		goto err;
+	}
+
+	if (test_get_rx_ol_flag_list() < 0) {
+		printf("test_rte_get_rx_ol_flag_list() failed\n");
+		goto err;
+	}
+
+	if (test_get_tx_ol_flag_list() < 0) {
+		printf("test_rte_get_tx_ol_flag_list() failed\n");
+		goto err;
+	}
+
+	if (test_get_rx_ol_flag_name() < 0) {
+		printf("test_rte_get_rx_ol_flag_name() failed\n");
+		goto err;
+	}
+
+	if (test_get_tx_ol_flag_name() < 0) {
+		printf("test_rte_get_tx_ol_flag_name() failed\n");
 		goto err;
 	}
 
