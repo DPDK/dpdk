@@ -2109,33 +2109,38 @@ dpaa_sec_sym_session_configure(struct rte_cryptodev *dev,
 	return 0;
 }
 
+static inline void
+free_session_memory(struct rte_cryptodev *dev, dpaa_sec_session *s)
+{
+	struct dpaa_sec_dev_private *qi = dev->data->dev_private;
+	struct rte_mempool *sess_mp = rte_mempool_from_obj((void *)s);
+	uint8_t i;
+
+	for (i = 0; i < MAX_DPAA_CORES; i++) {
+		if (s->inq[i])
+			dpaa_sec_detach_rxq(qi, s->inq[i]);
+		s->inq[i] = NULL;
+		s->qp[i] = NULL;
+	}
+	rte_free(s->cipher_key.data);
+	rte_free(s->auth_key.data);
+	memset(s, 0, sizeof(dpaa_sec_session));
+	rte_mempool_put(sess_mp, (void *)s);
+}
+
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
 dpaa_sec_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
-	struct dpaa_sec_dev_private *qi = dev->data->dev_private;
-	uint8_t index = dev->driver_id, i;
-	void *sess_priv = get_sym_session_private_data(sess, index);
-
 	PMD_INIT_FUNC_TRACE();
-
+	uint8_t index = dev->driver_id;
+	void *sess_priv = get_sym_session_private_data(sess, index);
 	dpaa_sec_session *s = (dpaa_sec_session *)sess_priv;
 
 	if (sess_priv) {
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
-		for (i = 0; i < MAX_DPAA_CORES; i++) {
-			if (s->inq[i])
-				dpaa_sec_detach_rxq(qi, s->inq[i]);
-			s->inq[i] = NULL;
-			s->qp[i] = NULL;
-		}
-		rte_free(s->cipher_key.data);
-		rte_free(s->auth_key.data);
-		memset(s, 0, sizeof(dpaa_sec_session));
+		free_session_memory(dev, s);
 		set_sym_session_private_data(sess, index, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
 	}
 }
 
@@ -2445,21 +2450,14 @@ dpaa_sec_security_session_destroy(void *dev __rte_unused,
 {
 	PMD_INIT_FUNC_TRACE();
 	void *sess_priv = get_sec_session_private_data(sess);
-
 	dpaa_sec_session *s = (dpaa_sec_session *)sess_priv;
 
 	if (sess_priv) {
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
-		rte_free(s->cipher_key.data);
-		rte_free(s->auth_key.data);
-		memset(s, 0, sizeof(dpaa_sec_session));
+		free_session_memory((struct rte_cryptodev *)dev, s);
 		set_sec_session_private_data(sess, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
 	}
 	return 0;
 }
-
 
 static int
 dpaa_sec_dev_configure(struct rte_cryptodev *dev,
