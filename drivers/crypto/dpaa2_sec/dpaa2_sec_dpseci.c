@@ -2489,6 +2489,8 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 			PDBOPTS_ESP_IVSRC |
 			PDBHMO_ESP_ENCAP_DTTL |
 			PDBHMO_ESP_SNR;
+		if (ipsec_xform->options.esn)
+			encap_pdb.options |= PDBOPTS_ESP_ESN;
 		encap_pdb.spi = ipsec_xform->spi;
 		encap_pdb.ip_hdr_len = sizeof(struct ip);
 
@@ -2502,6 +2504,8 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		flc->dhr = SEC_FLC_DHR_INBOUND;
 		memset(&decap_pdb, 0, sizeof(struct ipsec_decap_pdb));
 		decap_pdb.options = sizeof(struct ip) << 16;
+		if (ipsec_xform->options.esn)
+			decap_pdb.options |= PDBOPTS_ESP_ESN;
 		session->dir = DIR_DEC;
 		bufsize = cnstr_shdsc_ipsec_new_decap(priv->flc_desc[0].desc,
 				1, 0, SHR_SERIAL,
