@@ -28,8 +28,11 @@
 #include <hw/desc/common.h>
 #include <hw/desc/algo.h>
 #include <of.h>
-
+#ifdef RTE_LIBRTE_PMD_CAAM_JR_DEBUG
+#define CAAM_JR_DBG	1
+#else
 #define CAAM_JR_DBG	0
+#endif
 #define CRYPTODEV_NAME_CAAM_JR_PMD	crypto_caam_jr
 static uint8_t cryptodev_driver_id;
 int caam_jr_logtype;
@@ -62,14 +65,12 @@ struct sec_outring_entry {
 static inline phys_addr_t
 caam_jr_vtop_ctx(struct caam_jr_op_ctx *ctx, void *vaddr)
 {
-	PMD_INIT_FUNC_TRACE();
 	return (size_t)vaddr - ctx->vtop_offset;
 }
 
 static inline void
 caam_jr_op_ending(struct caam_jr_op_ctx *ctx)
 {
-	PMD_INIT_FUNC_TRACE();
 	/* report op status to sym->op and then free the ctx memory  */
 	rte_mempool_put(ctx->ctx_pool, (void *)ctx);
 }
@@ -80,7 +81,6 @@ caam_jr_alloc_ctx(struct caam_jr_session *ses)
 	struct caam_jr_op_ctx *ctx;
 	int ret;
 
-	PMD_INIT_FUNC_TRACE();
 	ret = rte_mempool_get(ses->ctx_pool, (void **)(&ctx));
 	if (!ctx || ret) {
 		CAAM_JR_DP_WARN("Alloc sec descriptor failed!");
@@ -158,7 +158,6 @@ void caam_jr_stats_reset(struct rte_cryptodev *dev)
 static inline int
 is_cipher_only(struct caam_jr_session *ses)
 {
-	PMD_INIT_FUNC_TRACE();
 	return ((ses->cipher_alg != RTE_CRYPTO_CIPHER_NULL) &&
 		(ses->auth_alg == RTE_CRYPTO_AUTH_NULL));
 }
@@ -166,7 +165,6 @@ is_cipher_only(struct caam_jr_session *ses)
 static inline int
 is_auth_only(struct caam_jr_session *ses)
 {
-	PMD_INIT_FUNC_TRACE();
 	return ((ses->cipher_alg == RTE_CRYPTO_CIPHER_NULL) &&
 		(ses->auth_alg != RTE_CRYPTO_AUTH_NULL));
 }
@@ -174,7 +172,6 @@ is_auth_only(struct caam_jr_session *ses)
 static inline int
 is_aead(struct caam_jr_session *ses)
 {
-	PMD_INIT_FUNC_TRACE();
 	return ((ses->cipher_alg == 0) &&
 		(ses->auth_alg == 0) &&
 		(ses->aead_alg != 0));
@@ -183,7 +180,6 @@ is_aead(struct caam_jr_session *ses)
 static inline int
 is_auth_cipher(struct caam_jr_session *ses)
 {
-	PMD_INIT_FUNC_TRACE();
 	return ((ses->cipher_alg != RTE_CRYPTO_CIPHER_NULL) &&
 		(ses->auth_alg != RTE_CRYPTO_AUTH_NULL) &&
 		(ses->proto_alg != RTE_SECURITY_PROTOCOL_IPSEC));
@@ -192,28 +188,24 @@ is_auth_cipher(struct caam_jr_session *ses)
 static inline int
 is_proto_ipsec(struct caam_jr_session *ses)
 {
-	PMD_INIT_FUNC_TRACE();
 	return (ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC);
 }
 
 static inline int
 is_encode(struct caam_jr_session *ses)
 {
-	PMD_INIT_FUNC_TRACE();
 	return ses->dir == DIR_ENC;
 }
 
 static inline int
 is_decode(struct caam_jr_session *ses)
 {
-	PMD_INIT_FUNC_TRACE();
 	return ses->dir == DIR_DEC;
 }
 
 static inline void
 caam_auth_alg(struct caam_jr_session *ses, struct alginfo *alginfo_a)
 {
-	PMD_INIT_FUNC_TRACE();
 	switch (ses->auth_alg) {
 	case RTE_CRYPTO_AUTH_NULL:
 		ses->digest_length = 0;
@@ -262,7 +254,6 @@ caam_auth_alg(struct caam_jr_session *ses, struct alginfo *alginfo_a)
 static inline void
 caam_cipher_alg(struct caam_jr_session *ses, struct alginfo *alginfo_c)
 {
-	PMD_INIT_FUNC_TRACE();
 	switch (ses->cipher_alg) {
 	case RTE_CRYPTO_CIPHER_NULL:
 		break;
@@ -292,7 +283,6 @@ caam_cipher_alg(struct caam_jr_session *ses, struct alginfo *alginfo_c)
 static inline void
 caam_aead_alg(struct caam_jr_session *ses, struct alginfo *alginfo)
 {
-	PMD_INIT_FUNC_TRACE();
 	switch (ses->aead_alg) {
 	case RTE_CRYPTO_AEAD_AES_GCM:
 		alginfo->algtype = OP_ALG_ALGSEL_AES;
@@ -317,7 +307,6 @@ caam_jr_prep_cdb(struct caam_jr_session *ses)
 	int swap = true;
 #endif
 
-	PMD_INIT_FUNC_TRACE();
 	if (ses->cdb)
 		caam_jr_dma_free(ses->cdb);
 
@@ -505,7 +494,6 @@ hw_flush_job_ring(struct sec_job_ring_t *job_ring,
 	int32_t jobs_no_to_discard = 0;
 	int32_t discarded_descs_no = 0;
 
-	PMD_INIT_FUNC_TRACE();
 	CAAM_JR_DEBUG("Jr[%p] pi[%d] ci[%d].Flushing jr notify desc=[%d]",
 		job_ring, job_ring->pidx, job_ring->cidx, do_notify);
 
@@ -559,7 +547,6 @@ hw_poll_job_ring(struct sec_job_ring_t *job_ring,
 	phys_addr_t *temp_addr;
 	struct caam_jr_op_ctx *ctx;
 
-	PMD_INIT_FUNC_TRACE();
 	/* TODO check for ops have memory*/
 	/* check here if any JR error that cannot be written
 	 * in the output status word has occurred
@@ -682,7 +669,6 @@ caam_jr_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 	int num_rx;
 	int ret;
 
-	PMD_INIT_FUNC_TRACE();
 	CAAM_JR_DP_DEBUG("Jr[%p]Polling. limit[%d]", ring, nb_ops);
 
 	/* Poll job ring
@@ -739,7 +725,6 @@ build_auth_only_sg(struct rte_crypto_op *op, struct caam_jr_session *ses)
 	struct sec_job_descriptor_t *jobdescr;
 	uint8_t extra_segs;
 
-	PMD_INIT_FUNC_TRACE();
 	if (is_decode(ses))
 		extra_segs = 2;
 	else
@@ -824,7 +809,6 @@ build_auth_only(struct rte_crypto_op *op, struct caam_jr_session *ses)
 	uint64_t sdesc_offset;
 	struct sec_job_descriptor_t *jobdescr;
 
-	PMD_INIT_FUNC_TRACE();
 	ctx = caam_jr_alloc_ctx(ses);
 	if (!ctx)
 		return NULL;
@@ -893,7 +877,6 @@ build_cipher_only_sg(struct rte_crypto_op *op, struct caam_jr_session *ses)
 	struct sec_job_descriptor_t *jobdescr;
 	uint8_t reg_segs;
 
-	PMD_INIT_FUNC_TRACE();
 	if (sym->m_dst) {
 		mbuf = sym->m_dst;
 		reg_segs = mbuf->nb_segs + sym->m_src->nb_segs + 2;
@@ -1008,7 +991,6 @@ build_cipher_only(struct rte_crypto_op *op, struct caam_jr_session *ses)
 			ses->iv.offset);
 	struct sec_job_descriptor_t *jobdescr;
 
-	PMD_INIT_FUNC_TRACE();
 	ctx = caam_jr_alloc_ctx(ses);
 	if (!ctx)
 		return NULL;
@@ -1086,7 +1068,6 @@ build_cipher_auth_sg(struct rte_crypto_op *op, struct caam_jr_session *ses)
 	struct sec_job_descriptor_t *jobdescr;
 	uint32_t auth_only_len;
 
-	PMD_INIT_FUNC_TRACE();
 	auth_only_len = op->sym->auth.data.length -
 				op->sym->cipher.data.length;
 
@@ -1229,7 +1210,6 @@ build_cipher_auth(struct rte_crypto_op *op, struct caam_jr_session *ses)
 	struct sec_job_descriptor_t *jobdescr;
 	uint32_t auth_only_len;
 
-	PMD_INIT_FUNC_TRACE();
 	auth_only_len = op->sym->auth.data.length -
 				op->sym->cipher.data.length;
 
@@ -1335,7 +1315,6 @@ build_proto(struct rte_crypto_op *op, struct caam_jr_session *ses)
 	uint64_t sdesc_offset;
 	struct sec_job_descriptor_t *jobdescr;
 
-	PMD_INIT_FUNC_TRACE();
 	ctx = caam_jr_alloc_ctx(ses);
 	if (!ctx)
 		return NULL;
@@ -1376,7 +1355,6 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 	struct caam_jr_op_ctx *ctx = NULL;
 	struct sec_job_descriptor_t *jobdescr __rte_unused;
 
-	PMD_INIT_FUNC_TRACE();
 	switch (op->sess_type) {
 	case RTE_CRYPTO_OP_WITH_SESSION:
 		ses = (struct caam_jr_session *)
@@ -1497,8 +1475,6 @@ caam_jr_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 	int32_t ret;
 	struct caam_jr_qp *jr_qp = (struct caam_jr_qp *)qp;
 	uint16_t num_tx = 0;
-
-	PMD_INIT_FUNC_TRACE();
 	/*Prepare each packet which is to be sent*/
 	for (loop = 0; loop < nb_ops; loop++) {
 		ret = caam_jr_enqueue_op(ops[loop], jr_qp);
@@ -1586,7 +1562,6 @@ caam_jr_cipher_init(struct rte_cryptodev *dev __rte_unused,
 		    struct rte_crypto_sym_xform *xform,
 		    struct caam_jr_session *session)
 {
-	PMD_INIT_FUNC_TRACE();
 	session->cipher_alg = xform->cipher.algo;
 	session->iv.length = xform->cipher.iv.length;
 	session->iv.offset = xform->cipher.iv.offset;
@@ -1611,7 +1586,6 @@ caam_jr_auth_init(struct rte_cryptodev *dev __rte_unused,
 		  struct rte_crypto_sym_xform *xform,
 		  struct caam_jr_session *session)
 {
-	PMD_INIT_FUNC_TRACE();
 	session->auth_alg = xform->auth.algo;
 	session->auth_key.data = rte_zmalloc(NULL, xform->auth.key.length,
 					     RTE_CACHE_LINE_SIZE);
@@ -1635,7 +1609,6 @@ caam_jr_aead_init(struct rte_cryptodev *dev __rte_unused,
 		  struct rte_crypto_sym_xform *xform,
 		  struct caam_jr_session *session)
 {
-	PMD_INIT_FUNC_TRACE();
 	session->aead_alg = xform->aead.algo;
 	session->iv.length = xform->aead.iv.length;
 	session->iv.offset = xform->aead.iv.offset;
@@ -1951,7 +1924,6 @@ caam_jr_security_session_create(void *dev,
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
 	int ret;
 
-	PMD_INIT_FUNC_TRACE();
 	if (rte_mempool_get(mempool, &sess_private_data)) {
 		CAAM_JR_ERR("Couldn't get object from session mempool");
 		return -ENOMEM;
@@ -2109,7 +2081,6 @@ static struct rte_security_ops caam_jr_security_ops = {
 static void
 close_job_ring(struct sec_job_ring_t *job_ring)
 {
-	PMD_INIT_FUNC_TRACE();
 	if (job_ring->irq_fd) {
 		/* Producer index is frozen. If consumer index is not equal
 		 * with producer index, then we have descs to flush.
