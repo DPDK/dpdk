@@ -44,6 +44,17 @@ struct a64_jit_ctx {
 };
 
 static int
+check_mov_hw(bool is64, const uint8_t val)
+{
+	if (val == 16 || val == 0)
+		return 0;
+	else if (is64 && val != 64 && val != 48 && val != 32)
+		return 1;
+
+	return 0;
+}
+
+static int
 check_reg(uint8_t r)
 {
 	return (r > 31) ? 1 : 0;
@@ -167,6 +178,179 @@ static void
 emit_stack_pop(struct a64_jit_ctx *ctx, uint8_t rt, uint8_t rt2)
 {
 	emit_ls_pair_64(ctx, rt, rt2, A64_SP, 0, 1, 0);
+}
+
+#define A64_MOVN 0
+#define A64_MOVZ 2
+#define A64_MOVK 3
+static void
+mov_imm(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t type,
+	uint16_t imm16, uint8_t shift)
+{
+	uint32_t insn;
+
+	insn = (!!is64) << 31;
+	insn |= type << 29;
+	insn |= 0x25 << 23;
+	insn |= (shift/16) << 21;
+	insn |= imm16 << 5;
+	insn |= rd;
+
+	emit_insn(ctx, insn, check_reg(rd) || check_mov_hw(is64, shift));
+}
+
+static void
+emit_mov_imm32(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint32_t val)
+{
+	uint16_t upper = val >> 16;
+	uint16_t lower = val & 0xffff;
+
+	/* Positive number */
+	if ((val & 1UL << 31) == 0) {
+		mov_imm(ctx, is64, rd, A64_MOVZ, lower, 0);
+		if (upper)
+			mov_imm(ctx, is64, rd, A64_MOVK, upper, 16);
+	} else { /* Negative number */
+		if (upper == 0xffff) {
+			mov_imm(ctx, is64, rd, A64_MOVN, ~lower, 0);
+		} else {
+			mov_imm(ctx, is64, rd, A64_MOVN, ~upper, 16);
+			if (lower != 0xffff)
+				mov_imm(ctx, is64, rd, A64_MOVK, lower, 0);
+		}
+	}
+}
+
+static int
+u16_blocks_weight(const uint64_t val, bool one)
+{
+	return (((val >>  0) & 0xffff) == (one ? 0xffff : 0x0000)) +
+	       (((val >> 16) & 0xffff) == (one ? 0xffff : 0x0000)) +
+	       (((val >> 32) & 0xffff) == (one ? 0xffff : 0x0000)) +
+	       (((val >> 48) & 0xffff) == (one ? 0xffff : 0x0000));
+}
+
+static void
+emit_mov_imm(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint64_t val)
+{
+	uint64_t nval = ~val;
+	int movn, sr;
+
+	if (is64 == 0)
+		return emit_mov_imm32(ctx, 0, rd, (uint32_t)(val & 0xffffffff));
+
+	/* Find MOVN or MOVZ first */
+	movn = u16_blocks_weight(val, true) > u16_blocks_weight(val, false);
+	/* Find shift right value */
+	sr = movn ? rte_fls_u64(nval) - 1 : rte_fls_u64(val) - 1;
+	sr = RTE_ALIGN_FLOOR(sr, 16);
+	sr = RTE_MAX(sr, 0);
+
+	if (movn)
+		mov_imm(ctx, 1, rd, A64_MOVN, (nval >> sr) & 0xffff, sr);
+	else
+		mov_imm(ctx, 1, rd, A64_MOVZ, (val >> sr) & 0xffff, sr);
+
+	sr -= 16;
+	while (sr >= 0) {
+		if (((val >> sr) & 0xffff) != (movn ? 0xffff : 0x0000))
+			mov_imm(ctx, 1, rd, A64_MOVK, (val >> sr) & 0xffff, sr);
+		sr -= 16;
+	}
+}
+
+#define A64_ADD 0x58
+#define A64_SUB 0x258
+static void
+emit_add_sub(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rn,
+	     uint8_t rm, uint16_t op)
+{
+	uint32_t insn;
+
+	insn = (!!is64) << 31;
+	insn |= op << 21; /* shift == 0 */
+	insn |= rm << 16;
+	insn |= rn << 5;
+	insn |= rd;
+
+	emit_insn(ctx, insn, check_reg(rd) || check_reg(rm));
+}
+
+static void
+emit_add(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rm)
+{
+	emit_add_sub(ctx, is64, rd, rd, rm, A64_ADD);
+}
+
+static void
+emit_sub(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rm)
+{
+	emit_add_sub(ctx, is64, rd, rd, rm, A64_SUB);
+}
+
+static void
+emit_mul(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rm)
+{
+	uint32_t insn;
+
+	insn = (!!is64) << 31;
+	insn |= 0xd8 << 21;
+	insn |= rm << 16;
+	insn |= A64_ZR << 10;
+	insn |= rd << 5;
+	insn |= rd;
+
+	emit_insn(ctx, insn, check_reg(rd) || check_reg(rm));
+}
+
+#define A64_UDIV 0x2
+static void
+emit_data_process_two_src(struct a64_jit_ctx *ctx, bool is64, uint8_t rd,
+			  uint8_t rn, uint8_t rm, uint16_t op)
+
+{
+	uint32_t insn;
+
+	insn = (!!is64) << 31;
+	insn |= 0xd6 << 21;
+	insn |= rm << 16;
+	insn |= op << 10;
+	insn |= rn << 5;
+	insn |= rd;
+
+	emit_insn(ctx, insn, check_reg(rd) || check_reg(rm));
+}
+
+static void
+emit_div(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rm)
+{
+	emit_data_process_two_src(ctx, is64, rd, rd, rm, A64_UDIV);
+}
+
+static void
+emit_msub(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rn,
+	  uint8_t rm, uint8_t ra)
+{
+	uint32_t insn;
+
+	insn = (!!is64) << 31;
+	insn |= 0xd8 << 21;
+	insn |= rm << 16;
+	insn |= 0x1 << 15;
+	insn |= ra << 10;
+	insn |= rn << 5;
+	insn |= rd;
+
+	emit_insn(ctx, insn, check_reg(rd) || check_reg(rn) || check_reg(rm) ||
+		  check_reg(ra));
+}
+
+static void
+emit_mod(struct a64_jit_ctx *ctx, bool is64, uint8_t tmp, uint8_t rd,
+	 uint8_t rm)
+{
+	emit_data_process_two_src(ctx, is64, tmp, rd, rm, A64_UDIV);
+	emit_msub(ctx, is64, rd, tmp, rm, rd);
 }
 
 static uint8_t
@@ -366,6 +550,44 @@ emit_epilogue(struct a64_jit_ctx *ctx)
 }
 
 static void
+emit_cbnz(struct a64_jit_ctx *ctx, bool is64, uint8_t rt, int32_t imm19)
+{
+	uint32_t insn, imm;
+
+	imm = mask_imm(19, imm19);
+	insn = (!!is64) << 31;
+	insn |= 0x35 << 24;
+	insn |= imm << 5;
+	insn |= rt;
+
+	emit_insn(ctx, insn, check_reg(rt) || check_imm(19, imm19));
+}
+
+static void
+emit_b(struct a64_jit_ctx *ctx, int32_t imm26)
+{
+	uint32_t insn, imm;
+
+	imm = mask_imm(26, imm26);
+	insn = 0x5 << 26;
+	insn |= imm;
+
+	emit_insn(ctx, insn, check_imm(26, imm26));
+}
+
+static void
+emit_return_zero_if_src_zero(struct a64_jit_ctx *ctx, bool is64, uint8_t src)
+{
+	uint8_t r0 = ebpf_to_a64_reg(ctx, EBPF_REG_0);
+	uint16_t jump_to_epilogue;
+
+	emit_cbnz(ctx, is64, src, 3);
+	emit_mov_imm(ctx, is64, r0, 0);
+	jump_to_epilogue = (ctx->program_start + ctx->program_sz) - ctx->idx;
+	emit_b(ctx, jump_to_epilogue);
+}
+
+static void
 check_program_has_call(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 {
 	const struct ebpf_insn *ins;
@@ -391,15 +613,19 @@ check_program_has_call(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 static int
 emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 {
-	uint8_t op;
+	uint8_t op, dst, src, tmp1, tmp2;
 	const struct ebpf_insn *ins;
+	int32_t imm;
 	uint32_t i;
+	bool is64;
 	int rc;
 
 	/* Reset context fields */
 	ctx->idx = 0;
 	/* arm64 SP must be aligned to 16 */
 	ctx->stack_sz = RTE_ALIGN_MUL_CEIL(bpf->stack_sz, 16);
+	tmp1 = ebpf_to_a64_reg(ctx, TMP_REG_1);
+	tmp2 = ebpf_to_a64_reg(ctx, TMP_REG_2);
 
 	emit_prologue(ctx);
 
@@ -407,8 +633,80 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 
 		ins = bpf->prm.ins + i;
 		op = ins->code;
+		imm = ins->imm;
+
+		dst = ebpf_to_a64_reg(ctx, ins->dst_reg);
+		src = ebpf_to_a64_reg(ctx, ins->src_reg);
+		is64 = (BPF_CLASS(op) == EBPF_ALU64);
 
 		switch (op) {
+		/* dst = src */
+		case (BPF_ALU | EBPF_MOV | BPF_X):
+		case (EBPF_ALU64 | EBPF_MOV | BPF_X):
+			emit_mov(ctx, is64, dst, src);
+			break;
+		/* dst = imm */
+		case (BPF_ALU | EBPF_MOV | BPF_K):
+		case (EBPF_ALU64 | EBPF_MOV | BPF_K):
+			emit_mov_imm(ctx, is64, dst, imm);
+			break;
+		/* dst += src */
+		case (BPF_ALU | BPF_ADD | BPF_X):
+		case (EBPF_ALU64 | BPF_ADD | BPF_X):
+			emit_add(ctx, is64, dst, src);
+			break;
+		/* dst += imm */
+		case (BPF_ALU | BPF_ADD | BPF_K):
+		case (EBPF_ALU64 | BPF_ADD | BPF_K):
+			emit_mov_imm(ctx, is64, tmp1, imm);
+			emit_add(ctx, is64, dst, tmp1);
+			break;
+		/* dst -= src */
+		case (BPF_ALU | BPF_SUB | BPF_X):
+		case (EBPF_ALU64 | BPF_SUB | BPF_X):
+			emit_sub(ctx, is64, dst, src);
+			break;
+		/* dst -= imm */
+		case (BPF_ALU | BPF_SUB | BPF_K):
+		case (EBPF_ALU64 | BPF_SUB | BPF_K):
+			emit_mov_imm(ctx, is64, tmp1, imm);
+			emit_sub(ctx, is64, dst, tmp1);
+			break;
+		/* dst *= src */
+		case (BPF_ALU | BPF_MUL | BPF_X):
+		case (EBPF_ALU64 | BPF_MUL | BPF_X):
+			emit_mul(ctx, is64, dst, src);
+			break;
+		/* dst *= imm */
+		case (BPF_ALU | BPF_MUL | BPF_K):
+		case (EBPF_ALU64 | BPF_MUL | BPF_K):
+			emit_mov_imm(ctx, is64, tmp1, imm);
+			emit_mul(ctx, is64, dst, tmp1);
+			break;
+		/* dst /= src */
+		case (BPF_ALU | BPF_DIV | BPF_X):
+		case (EBPF_ALU64 | BPF_DIV | BPF_X):
+			emit_return_zero_if_src_zero(ctx, is64, src);
+			emit_div(ctx, is64, dst, src);
+			break;
+		/* dst /= imm */
+		case (BPF_ALU | BPF_DIV | BPF_K):
+		case (EBPF_ALU64 | BPF_DIV | BPF_K):
+			emit_mov_imm(ctx, is64, tmp1, imm);
+			emit_div(ctx, is64, dst, tmp1);
+			break;
+		/* dst %= src */
+		case (BPF_ALU | BPF_MOD | BPF_X):
+		case (EBPF_ALU64 | BPF_MOD | BPF_X):
+			emit_return_zero_if_src_zero(ctx, is64, src);
+			emit_mod(ctx, is64, tmp1, dst, src);
+			break;
+		/* dst %= imm */
+		case (BPF_ALU | BPF_MOD | BPF_K):
+		case (EBPF_ALU64 | BPF_MOD | BPF_K):
+			emit_mov_imm(ctx, is64, tmp1, imm);
+			emit_mod(ctx, is64, tmp2, dst, tmp1);
+			break;
 		/* Return r0 */
 		case (BPF_JMP | EBPF_EXIT):
 			emit_epilogue(ctx);
