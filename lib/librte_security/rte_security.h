@@ -172,6 +172,14 @@ struct rte_security_ipsec_sa_options {
 	 * * 0: Inner/outer header are not modified.
 	 */
 	uint32_t ecn : 1;
+
+	/** Security statistics
+	 *
+	 * * 1: Enable per session security statistics collection for
+	 *      this SA, if supported by the driver.
+	 * * 0: Disable per session security statistics collection for this SA.
+	 */
+	uint32_t stats : 1;
 };
 
 /** IPSec security association direction */
@@ -482,8 +490,14 @@ struct rte_security_macsec_stats {
 };
 
 struct rte_security_ipsec_stats {
-	uint64_t reserved;
-
+	uint64_t ipackets;  /**< Successfully received IPsec packets. */
+	uint64_t opackets;  /**< Successfully transmitted IPsec packets.*/
+	uint64_t ibytes;    /**< Successfully received IPsec bytes. */
+	uint64_t obytes;    /**< Successfully transmitted IPsec bytes. */
+	uint64_t ierrors;   /**< IPsec packets receive/decrypt errors. */
+	uint64_t oerrors;   /**< IPsec packets transmit/encrypt errors. */
+	uint64_t reserved1; /**< Reserved for future use. */
+	uint64_t reserved2; /**< Reserved for future use. */
 };
 
 struct rte_security_pdcp_stats {
@@ -507,10 +521,13 @@ struct rte_security_stats {
  *
  * @param	instance	security instance
  * @param	sess		security session
+ * If security session is NULL then global (per security instance) statistics
+ * will be retrieved, if supported. Global statistics collection is not
+ * dependent on the per session statistics configuration.
  * @param	stats		statistics
  * @return
- *  - On success return 0
- *  - On failure errno
+ *  - On success, return 0
+ *  - On failure, a negative value
  */
 __rte_experimental
 int
