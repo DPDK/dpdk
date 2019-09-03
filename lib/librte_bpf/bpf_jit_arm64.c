@@ -105,6 +105,112 @@ check_invalid_args(struct a64_jit_ctx *ctx, uint32_t limit)
 	return 0;
 }
 
+static int
+jump_offset_init(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
+{
+	uint32_t i;
+
+	ctx->map = malloc(bpf->prm.nb_ins * sizeof(ctx->map[0]));
+	if (ctx->map == NULL)
+		return -ENOMEM;
+
+	/* Fill with fake offsets */
+	for (i = 0; i != bpf->prm.nb_ins; i++) {
+		ctx->map[i].off = INT32_MAX;
+		ctx->map[i].off_to_b = 0;
+	}
+	return 0;
+}
+
+static void
+jump_offset_fini(struct a64_jit_ctx *ctx)
+{
+	free(ctx->map);
+}
+
+static void
+jump_offset_update(struct a64_jit_ctx *ctx, uint32_t ebpf_idx)
+{
+	if (is_first_pass(ctx))
+		ctx->map[ebpf_idx].off = ctx->idx;
+}
+
+static void
+jump_offset_to_branch_update(struct a64_jit_ctx *ctx, uint32_t ebpf_idx)
+{
+	if (is_first_pass(ctx))
+		ctx->map[ebpf_idx].off_to_b = ctx->idx - ctx->map[ebpf_idx].off;
+
+}
+
+static int32_t
+jump_offset_get(struct a64_jit_ctx *ctx, uint32_t from, int16_t offset)
+{
+	int32_t a64_from, a64_to;
+
+	a64_from = ctx->map[from].off +  ctx->map[from].off_to_b;
+	a64_to = ctx->map[from + offset + 1].off;
+
+	if (a64_to == INT32_MAX)
+		return a64_to;
+
+	return a64_to - a64_from;
+}
+
+enum a64_cond_e {
+	A64_EQ = 0x0, /* == */
+	A64_NE = 0x1, /* != */
+	A64_CS = 0x2, /* Unsigned >= */
+	A64_CC = 0x3, /* Unsigned < */
+	A64_MI = 0x4, /* < 0 */
+	A64_PL = 0x5, /* >= 0 */
+	A64_VS = 0x6, /* Overflow */
+	A64_VC = 0x7, /* No overflow */
+	A64_HI = 0x8, /* Unsigned > */
+	A64_LS = 0x9, /* Unsigned <= */
+	A64_GE = 0xa, /* Signed >= */
+	A64_LT = 0xb, /* Signed < */
+	A64_GT = 0xc, /* Signed > */
+	A64_LE = 0xd, /* Signed <= */
+	A64_AL = 0xe, /* Always */
+};
+
+static int
+check_cond(uint8_t cond)
+{
+	return (cond >= A64_AL) ? 1 : 0;
+}
+
+static uint8_t
+ebpf_to_a64_cond(uint8_t op)
+{
+	switch (BPF_OP(op)) {
+	case BPF_JEQ:
+		return A64_EQ;
+	case BPF_JGT:
+		return A64_HI;
+	case EBPF_JLT:
+		return A64_CC;
+	case BPF_JGE:
+		return A64_CS;
+	case EBPF_JLE:
+		return A64_LS;
+	case BPF_JSET:
+	case EBPF_JNE:
+		return A64_NE;
+	case EBPF_JSGT:
+		return A64_GT;
+	case EBPF_JSLT:
+		return A64_LT;
+	case EBPF_JSGE:
+		return A64_GE;
+	case EBPF_JSLE:
+		return A64_LE;
+	default:
+		return UINT8_MAX;
+	}
+}
+
 /* Emit an instruction */
 static inline void
 emit_insn(struct a64_jit_ctx *ctx, uint32_t insn, int error)
@@ -526,6 +632,17 @@ emit_mod(struct a64_jit_ctx *ctx, bool is64, uint8_t tmp, uint8_t rd,
 }
 
 static void
+emit_blr(struct a64_jit_ctx *ctx, uint8_t rn)
+{
+	uint32_t insn;
+
+	insn = 0xd63f0000;
+	insn |= rn << 5;
+
+	emit_insn(ctx, insn, check_reg(rn));
+}
+
+static void
 emit_zero_extend(struct a64_jit_ctx *ctx, uint8_t rd, int32_t imm)
 {
 	switch (imm) {
@@ -800,6 +917,16 @@ emit_epilogue(struct a64_jit_ctx *ctx)
 }
 
 static void
+emit_call(struct a64_jit_ctx *ctx, uint8_t tmp, void *func)
+{
+	uint8_t r0 = ebpf_to_a64_reg(ctx, EBPF_REG_0);
+
+	emit_mov_imm(ctx, 1, tmp, (uint64_t)func);
+	emit_blr(ctx, tmp);
+	emit_mov_64(ctx, r0, A64_R(0));
+}
+
+static void
 emit_cbnz(struct a64_jit_ctx *ctx, bool is64, uint8_t rt, int32_t imm19)
 {
 	uint32_t insn, imm;
@@ -914,6 +1041,54 @@ emit_xadd(struct a64_jit_ctx *ctx, uint8_t op, uint8_t tmp1, uint8_t tmp2,
 	}
 }
 
+#define A64_CMP 0x6b00000f
+#define A64_TST 0x6a00000f
+static void
+emit_cmp_tst(struct a64_jit_ctx *ctx, bool is64, uint8_t rn, uint8_t rm,
+	     uint32_t opc)
+{
+	uint32_t insn;
+
+	insn = opc;
+	insn |= (!!is64) << 31;
+	insn |= rm << 16;
+	insn |= rn << 5;
+
+	emit_insn(ctx, insn, check_reg(rn) || check_reg(rm));
+}
+
+static void
+emit_cmp(struct a64_jit_ctx *ctx, bool is64, uint8_t rn, uint8_t rm)
+{
+	emit_cmp_tst(ctx, is64, rn, rm, A64_CMP);
+}
+
+static void
+emit_tst(struct a64_jit_ctx *ctx, bool is64, uint8_t rn, uint8_t rm)
+{
+	emit_cmp_tst(ctx, is64, rn, rm, A64_TST);
+}
+
+static void
+emit_b_cond(struct a64_jit_ctx *ctx, uint8_t cond, int32_t imm19)
+{
+	uint32_t insn, imm;
+
+	imm = mask_imm(19, imm19);
+	insn = 0x15 << 26;
+	insn |= imm << 5;
+	insn |= cond;
+
+	emit_insn(ctx, insn, check_cond(cond) || check_imm(19, imm19));
+}
+
+static void
+emit_branch(struct a64_jit_ctx *ctx, uint8_t op, uint32_t i, int16_t off)
+{
+	jump_offset_to_branch_update(ctx, i);
+	emit_b_cond(ctx, ebpf_to_a64_cond(op), jump_offset_get(ctx, i, off));
+}
+
 static void
 check_program_has_call(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 {
@@ -961,6 +1136,7 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 
 	for (i = 0; i != bpf->prm.nb_ins; i++) {
 
+		jump_offset_update(ctx, i);
 		ins = bpf->prm.ins + i;
 		op = ins->code;
 		off = ins->off;
@@ -1150,6 +1326,52 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 		case (BPF_STX | EBPF_XADD | EBPF_DW):
 			emit_xadd(ctx, op, tmp1, tmp2, tmp3, dst, off, src);
 			break;
+		/* PC += off */
+		case (BPF_JMP | BPF_JA):
+			emit_b(ctx, jump_offset_get(ctx, i, off));
+			break;
+		/* PC += off if dst COND imm */
+		case (BPF_JMP | BPF_JEQ | BPF_K):
+		case (BPF_JMP | EBPF_JNE | BPF_K):
+		case (BPF_JMP | BPF_JGT | BPF_K):
+		case (BPF_JMP | EBPF_JLT | BPF_K):
+		case (BPF_JMP | BPF_JGE | BPF_K):
+		case (BPF_JMP | EBPF_JLE | BPF_K):
+		case (BPF_JMP | EBPF_JSGT | BPF_K):
+		case (BPF_JMP | EBPF_JSLT | BPF_K):
+		case (BPF_JMP | EBPF_JSGE | BPF_K):
+		case (BPF_JMP | EBPF_JSLE | BPF_K):
+			emit_mov_imm(ctx, 1, tmp1, imm);
+			emit_cmp(ctx, 1, dst, tmp1);
+			emit_branch(ctx, op, i, off);
+			break;
+		case (BPF_JMP | BPF_JSET | BPF_K):
+			emit_mov_imm(ctx, 1, tmp1, imm);
+			emit_tst(ctx, 1, dst, tmp1);
+			emit_branch(ctx, op, i, off);
+			break;
+		/* PC += off if dst COND src */
+		case (BPF_JMP | BPF_JEQ | BPF_X):
+		case (BPF_JMP | EBPF_JNE | BPF_X):
+		case (BPF_JMP | BPF_JGT | BPF_X):
+		case (BPF_JMP | EBPF_JLT | BPF_X):
+		case (BPF_JMP | BPF_JGE | BPF_X):
+		case (BPF_JMP | EBPF_JLE | BPF_X):
+		case (BPF_JMP | EBPF_JSGT | BPF_X):
+		case (BPF_JMP | EBPF_JSLT | BPF_X):
+		case (BPF_JMP | EBPF_JSGE | BPF_X):
+		case (BPF_JMP | EBPF_JSLE | BPF_X):
+			emit_cmp(ctx, 1, dst, src);
+			emit_branch(ctx, op, i, off);
+			break;
+		case (BPF_JMP | BPF_JSET | BPF_X):
+			emit_tst(ctx, 1, dst, src);
+			emit_branch(ctx, op, i, off);
+			break;
+		/* Call imm */
+		case (BPF_JMP | EBPF_CALL):
+			emit_call(ctx, tmp1, bpf->prm.xsym[ins->imm].func.val);
+			break;
 		/* Return r0 */
 		case (BPF_JMP | EBPF_EXIT):
 			emit_epilogue(ctx);
@@ -1178,6 +1400,11 @@ bpf_jit_arm64(struct rte_bpf *bpf)
 
 	/* Init JIT context */
 	memset(&ctx, 0, sizeof(ctx));
+
+	/* Initialize the memory for eBPF to a64 insn offset map for jump */
+	rc = jump_offset_init(&ctx, bpf);
+	if (rc)
+		goto error;
 
 	/* Find eBPF program has call class or not */
 	check_program_has_call(&ctx, bpf);
@@ -1218,5 +1445,7 @@ bpf_jit_arm64(struct rte_bpf *bpf)
 munmap:
 	munmap(ctx.ins, size);
 finish:
+	jump_offset_fini(&ctx);
+error:
 	return rc;
 }
