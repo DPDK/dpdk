@@ -133,12 +133,15 @@ rte_reciprocal_value_u64(uint64_t d)
 {
 	struct rte_reciprocal_u64 R;
 	uint64_t m;
+	uint64_t r;
 	int l;
 
 	l = 63 - __builtin_clzll(d);
 
-	m = divide_128_div_64_to_64((1ULL << l), 0, d, NULL) << 1;
-	m = (1ULL << l) - d ? m + 2 : 1;
+	m = divide_128_div_64_to_64((1ULL << l), 0, d, &r) << 1;
+	if (r << 1 < r || r << 1 >= d)
+		m++;
+	m = (1ULL << l) - d ? m + 1 : 1;
 	R.m = m;
 
 	R.sh1 = l > 1 ? 1 : l;
