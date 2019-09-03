@@ -30,7 +30,7 @@ The library API provides the following basic operations:
 Not currently supported eBPF features
 -------------------------------------
 
- - JIT for non X86_64 platforms
+ - JIT support only available for X86_64 and arm64 platforms
  - cBPF
  - tail-pointer call
  - eBPF MAP

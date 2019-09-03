@@ -110,6 +110,11 @@ New Features
   Added stateful decompression support in the Intel QuickAssist Technology PMD.
   Please note that stateful compression is not supported.
 
+* **Added eBPF JIT support for arm64.**
+
+  Added eBPF JIT support for arm64 architecture to improve the eBPF program
+  performance.
+
 
 Removed Items
 -------------

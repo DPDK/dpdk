@@ -251,6 +251,7 @@ M: Gavin Hu <gavin.hu@arm.com>
 F: lib/librte_eal/common/include/arch/arm/*_64.h
 F: lib/librte_net/net_crc_neon.h
 F: lib/librte_acl/acl_run_neon.*
+F: lib/librte_bpf/bpf_jit_arm64.c
 F: lib/librte_lpm/rte_lpm_neon.h
 F: lib/librte_hash/rte*_arm64.h
 F: lib/librte_efd/rte*_arm64.h

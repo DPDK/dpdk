@@ -41,8 +41,10 @@ bpf_jit(struct rte_bpf *bpf)
 {
 	int32_t rc;
 
-#ifdef RTE_ARCH_X86_64
+#if defined(RTE_ARCH_X86_64)
 	rc = bpf_jit_x86(bpf);
+#elif defined(RTE_ARCH_ARM64)
+	rc = bpf_jit_arm64(bpf);
 #else
 	rc = -ENOTSUP;
 #endif
