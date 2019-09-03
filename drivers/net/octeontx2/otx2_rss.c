@@ -243,6 +243,9 @@ otx2_rss_ethdev_to_nix(struct otx2_eth_dev *dev, uint64_t ethdev_rss,
 	if (ethdev_rss & ETH_RSS_GENEVE)
 		flowkey_cfg |= FLOW_KEY_TYPE_GENEVE;
 
+	if (ethdev_rss & ETH_RSS_GTPU)
+		flowkey_cfg |= FLOW_KEY_TYPE_GTPU;
+
 	return flowkey_cfg;
 }
 
