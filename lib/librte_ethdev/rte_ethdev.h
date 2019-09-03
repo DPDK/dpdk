@@ -479,7 +479,8 @@ struct rte_eth_rss_conf {
 #define RTE_ETH_FLOW_GENEVE             20 /**< GENEVE protocol based flow */
 #define RTE_ETH_FLOW_NVGRE              21 /**< NVGRE protocol based flow */
 #define RTE_ETH_FLOW_VXLAN_GPE          22 /**< VXLAN-GPE protocol based flow */
-#define RTE_ETH_FLOW_MAX                23
+#define RTE_ETH_FLOW_GTPU               23 /**< GTPU protocol based flow */
+#define RTE_ETH_FLOW_MAX                24
 
 /*
  * The RSS offload types are defined based on flow types.
@@ -507,6 +508,7 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_VXLAN              (1ULL << RTE_ETH_FLOW_VXLAN)
 #define ETH_RSS_GENEVE             (1ULL << RTE_ETH_FLOW_GENEVE)
 #define ETH_RSS_NVGRE              (1ULL << RTE_ETH_FLOW_NVGRE)
+#define ETH_RSS_GTPU               (1ULL << RTE_ETH_FLOW_GTPU)
 
 #define ETH_RSS_IP ( \
 	ETH_RSS_IPV4 | \
