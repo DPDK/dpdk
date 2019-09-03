@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include <rte_common.h>
+#include <rte_byteorder.h>
 
 #include "bpf_impl.h"
 
@@ -474,6 +475,84 @@ emit_mod(struct a64_jit_ctx *ctx, bool is64, uint8_t tmp, uint8_t rd,
 	emit_msub(ctx, is64, rd, tmp, rm, rd);
 }
 
+static void
+emit_zero_extend(struct a64_jit_ctx *ctx, uint8_t rd, int32_t imm)
+{
+	switch (imm) {
+	case 16:
+		/* Zero-extend 16 bits into 64 bits */
+		emit_bitfield(ctx, 1, rd, rd, 0, 15, A64_UBFM);
+		break;
+	case 32:
+		/* Zero-extend 32 bits into 64 bits */
+		emit_bitfield(ctx, 1, rd, rd, 0, 31, A64_UBFM);
+		break;
+	case 64:
+		break;
+	default:
+		/* Generate error */
+		emit_insn(ctx, 0, 1);
+	}
+}
+
+static void
+emit_rev(struct a64_jit_ctx *ctx, uint8_t rd, int32_t imm)
+{
+	uint32_t insn;
+
+	insn = 0xdac00000;
+	insn |= rd << 5;
+	insn |= rd;
+
+	switch (imm) {
+	case 16:
+		insn |= 1 << 10;
+		emit_insn(ctx, insn, check_reg(rd));
+		emit_zero_extend(ctx, rd, 16);
+		break;
+	case 32:
+		insn |= 2 << 10;
+		emit_insn(ctx, insn, check_reg(rd));
+		/* Upper 32 bits already cleared */
+		break;
+	case 64:
+		insn |= 3 << 10;
+		emit_insn(ctx, insn, check_reg(rd));
+		break;
+	default:
+		/* Generate error */
+		emit_insn(ctx, insn, 1);
+	}
+}
+
+static int
+is_be(void)
+{
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	return 1;
+#else
+	return 0;
+#endif
+}
+
+static void
+emit_be(struct a64_jit_ctx *ctx, uint8_t rd, int32_t imm)
+{
+	if (is_be())
+		emit_zero_extend(ctx, rd, imm);
+	else
+		emit_rev(ctx, rd, imm);
+}
+
+static void
+emit_le(struct a64_jit_ctx *ctx, uint8_t rd, int32_t imm)
+{
+	if (is_be())
+		emit_rev(ctx, rd, imm);
+	else
+		emit_zero_extend(ctx, rd, imm);
+}
+
 static uint8_t
 ebpf_to_a64_reg(struct a64_jit_ctx *ctx, uint8_t reg)
 {
@@ -895,6 +974,14 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 		case BPF_ALU | EBPF_ARSH | BPF_K:
 		case EBPF_ALU64 | EBPF_ARSH | BPF_K:
 			emit_asr(ctx, is64, dst, imm);
+			break;
+		/* dst = be##imm(dst) */
+		case (BPF_ALU | EBPF_END | EBPF_TO_BE):
+			emit_be(ctx, dst, imm);
+			break;
+		/* dst = le##imm(dst) */
+		case (BPF_ALU | EBPF_END | EBPF_TO_LE):
+			emit_le(ctx, dst, imm);
 			break;
 		/* Return r0 */
 		case (BPF_JMP | EBPF_EXIT):
