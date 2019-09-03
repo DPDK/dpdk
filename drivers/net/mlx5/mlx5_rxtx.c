@@ -2861,13 +2861,14 @@ mlx5_tx_dseg_vlan(struct mlx5_txq_data *restrict txq,
 	memcpy(pdst, buf, MLX5_DSEG_MIN_INLINE_SIZE);
 	buf += MLX5_DSEG_MIN_INLINE_SIZE;
 	pdst += MLX5_DSEG_MIN_INLINE_SIZE;
+	len -= MLX5_DSEG_MIN_INLINE_SIZE;
 	/* Insert VLAN ethertype + VLAN tag. Pointer is aligned. */
 	assert(pdst == RTE_PTR_ALIGN(pdst, MLX5_WSEG_SIZE));
+	if (unlikely(pdst >= (uint8_t *)txq->wqes_end))
+		pdst = (uint8_t *)txq->wqes;
 	*(uint32_t *)pdst = rte_cpu_to_be_32((RTE_ETHER_TYPE_VLAN << 16) |
 					      loc->mbuf->vlan_tci);
 	pdst += sizeof(struct rte_vlan_hdr);
-	if (unlikely(pdst >= (uint8_t *)txq->wqes_end))
-		pdst = (uint8_t *)txq->wqes;
 	/*
 	 * The WQEBB space availability is checked by caller.
 	 * Here we should be aware of WQE ring buffer wraparound only.
