@@ -67,6 +67,15 @@ check_mov_hw(bool is64, const uint8_t val)
 }
 
 static int
+check_ls_sz(uint8_t sz)
+{
+	if (sz == BPF_B || sz == BPF_H || sz == BPF_W || sz == EBPF_DW)
+		return 0;
+
+	return 1;
+}
+
+static int
 check_reg(uint8_t r)
 {
 	return (r > 31) ? 1 : 0;
@@ -269,6 +278,47 @@ emit_mov_imm(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint64_t val)
 			mov_imm(ctx, 1, rd, A64_MOVK, (val >> sr) & 0xffff, sr);
 		sr -= 16;
 	}
+}
+
+static void
+emit_ls(struct a64_jit_ctx *ctx, uint8_t sz, uint8_t rt, uint8_t rn, uint8_t rm,
+	bool load)
+{
+	uint32_t insn;
+
+	insn = 0x1c1 << 21;
+	if (load)
+		insn |= 1 << 22;
+	if (sz == BPF_B)
+		insn |= 0 << 30;
+	else if (sz == BPF_H)
+		insn |= 1 << 30;
+	else if (sz == BPF_W)
+		insn |= 2 << 30;
+	else if (sz == EBPF_DW)
+		insn |= 3 << 30;
+
+	insn |= rm << 16;
+	insn |= 0x1a << 10; /* LSL and S = 0 */
+	insn |= rn << 5;
+	insn |= rt;
+
+	emit_insn(ctx, insn, check_reg(rt) || check_reg(rn) || check_reg(rm) ||
+		  check_ls_sz(sz));
+}
+
+static void
+emit_str(struct a64_jit_ctx *ctx, uint8_t sz, uint8_t rt, uint8_t rn,
+	 uint8_t rm)
+{
+	emit_ls(ctx, sz, rt, rn, rm, 0);
+}
+
+static void
+emit_ldr(struct a64_jit_ctx *ctx, uint8_t sz, uint8_t rt, uint8_t rn,
+	 uint8_t rm)
+{
+	emit_ls(ctx, sz, rt, rn, rm, 1);
 }
 
 #define A64_ADD 0x58
@@ -815,6 +865,8 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 {
 	uint8_t op, dst, src, tmp1, tmp2;
 	const struct ebpf_insn *ins;
+	uint64_t u64;
+	int16_t off;
 	int32_t imm;
 	uint32_t i;
 	bool is64;
@@ -833,6 +885,7 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 
 		ins = bpf->prm.ins + i;
 		op = ins->code;
+		off = ins->off;
 		imm = ins->imm;
 
 		dst = ebpf_to_a64_reg(ctx, ins->dst_reg);
@@ -982,6 +1035,37 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 		/* dst = le##imm(dst) */
 		case (BPF_ALU | EBPF_END | EBPF_TO_LE):
 			emit_le(ctx, dst, imm);
+			break;
+		/* dst = *(size *) (src + off) */
+		case (BPF_LDX | BPF_MEM | BPF_B):
+		case (BPF_LDX | BPF_MEM | BPF_H):
+		case (BPF_LDX | BPF_MEM | BPF_W):
+		case (BPF_LDX | BPF_MEM | EBPF_DW):
+			emit_mov_imm(ctx, 1, tmp1, off);
+			emit_ldr(ctx, BPF_SIZE(op), dst, src, tmp1);
+			break;
+		/* dst = imm64 */
+		case (BPF_LD | BPF_IMM | EBPF_DW):
+			u64 = ((uint64_t)ins[1].imm << 32) | (uint32_t)imm;
+			emit_mov_imm(ctx, 1, dst, u64);
+			i++;
+			break;
+		/* *(size *)(dst + off) = src */
+		case (BPF_STX | BPF_MEM | BPF_B):
+		case (BPF_STX | BPF_MEM | BPF_H):
+		case (BPF_STX | BPF_MEM | BPF_W):
+		case (BPF_STX | BPF_MEM | EBPF_DW):
+			emit_mov_imm(ctx, 1, tmp1, off);
+			emit_str(ctx, BPF_SIZE(op), src, dst, tmp1);
+			break;
+		/* *(size *)(dst + off) = imm */
+		case (BPF_ST | BPF_MEM | BPF_B):
+		case (BPF_ST | BPF_MEM | BPF_H):
+		case (BPF_ST | BPF_MEM | BPF_W):
+		case (BPF_ST | BPF_MEM | EBPF_DW):
+			emit_mov_imm(ctx, 1, tmp1, imm);
+			emit_mov_imm(ctx, 1, tmp2, off);
+			emit_str(ctx, BPF_SIZE(op), tmp1, dst, tmp2);
 			break;
 		/* Return r0 */
 		case (BPF_JMP | EBPF_EXIT):
