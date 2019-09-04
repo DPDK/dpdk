@@ -1441,7 +1441,7 @@ crypto_virtio_pci_probe(
 {
 	struct rte_cryptodev_pmd_init_params init_params = {
 		.name = "",
-		.socket_id = rte_socket_id(),
+		.socket_id = pci_dev->device.numa_node,
 		.private_data_size = sizeof(struct virtio_crypto_hw)
 	};
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
