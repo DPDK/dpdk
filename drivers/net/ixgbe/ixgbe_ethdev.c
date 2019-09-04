@@ -5895,7 +5895,8 @@ ixgbe_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 		IXGBE_WRITE_REG(hw, IXGBE_IVAR(idx), tmp);
 	} else if ((hw->mac.type == ixgbe_mac_82599EB) ||
 			(hw->mac.type == ixgbe_mac_X540) ||
-			(hw->mac.type == ixgbe_mac_X550)) {
+			(hw->mac.type == ixgbe_mac_X550) ||
+			(hw->mac.type == ixgbe_mac_X550EM_x)) {
 		if (direction == -1) {
 			/* other causes */
 			idx = ((queue & 1) * 8);
@@ -6025,6 +6026,7 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 		case ixgbe_mac_82599EB:
 		case ixgbe_mac_X540:
 		case ixgbe_mac_X550:
+		case ixgbe_mac_X550EM_x:
 			ixgbe_set_ivar_map(hw, -1, 1, IXGBE_MISC_VEC_ID);
 			break;
 		default:
