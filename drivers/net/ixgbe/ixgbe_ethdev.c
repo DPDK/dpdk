@@ -3928,6 +3928,7 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->tx_offload_capa = ixgbe_get_tx_port_offloads(dev);
 	dev_info->hash_key_size = IXGBE_HKEY_MAX_INDEX * sizeof(uint32_t);
 	dev_info->reta_size = ixgbe_reta_size_get(hw->mac.type);
+	dev_info->flow_type_rss_offloads = IXGBE_RSS_OFFLOAD_ALL;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
