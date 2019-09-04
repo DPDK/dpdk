@@ -654,6 +654,12 @@ ipn3ke_tm_ops_get(struct rte_eth_dev *ethdev,
 #define IPN3KE_MAC_RX_FRAME_MAXLENGTH_MASK \
 	IPN3KE_MASK(0xFFFF, IPN3KE_MAC_RX_FRAME_MAXLENGTH_SHIFT)
 
+#define IPN3KE_25G_MAX_TX_SIZE_CONFIG                                0x407
+#define IPN3KE_25G_MAX_RX_SIZE_CONFIG                                0x506
+
+#define IPN3KE_10G_TX_FRAME_MAXLENGTH                                0x002C
+#define IPN3KE_10G_RX_FRAME_MAXLENGTH                                0x00AE
+
 #define IPN3KE_REGISTER_WIDTH                                        32
 
 /*Bits[2:0]: Configuration of TX statistics counters:
