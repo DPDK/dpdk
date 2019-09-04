@@ -8,9 +8,10 @@
 /* Default mark value used when none is provided. */
 #define OTX2_FLOW_ACTION_FLAG_DEFAULT	0xffff
 
-#define PTYPE_WIDTH 12
-#define PTYPE_NON_TUNNEL_ARRAY_SZ	BIT(PTYPE_WIDTH)
-#define PTYPE_TUNNEL_ARRAY_SZ		BIT(PTYPE_WIDTH)
+#define PTYPE_NON_TUNNEL_WIDTH		16
+#define PTYPE_TUNNEL_WIDTH		12
+#define PTYPE_NON_TUNNEL_ARRAY_SZ	BIT(PTYPE_NON_TUNNEL_WIDTH)
+#define PTYPE_TUNNEL_ARRAY_SZ		BIT(PTYPE_TUNNEL_WIDTH)
 #define PTYPE_ARRAY_SZ			((PTYPE_NON_TUNNEL_ARRAY_SZ +\
 					 PTYPE_TUNNEL_ARRAY_SZ) *\
 					 sizeof(uint16_t))
@@ -97,11 +98,11 @@ static __rte_always_inline uint32_t
 nix_ptype_get(const void * const lookup_mem, const uint64_t in)
 {
 	const uint16_t * const ptype = lookup_mem;
-	const uint16_t lg_lf_le = (in & 0xFFF000000000000) >> 48;
-	const uint16_t tu_l2 = ptype[(in & 0x000FFF000000000) >> 36];
-	const uint16_t il4_tu = ptype[PTYPE_NON_TUNNEL_ARRAY_SZ + lg_lf_le];
+	const uint16_t lh_lg_lf = (in & 0xFFF0000000000000) >> 52;
+	const uint16_t tu_l2 = ptype[(in & 0x000FFFF000000000) >> 36];
+	const uint16_t il4_tu = ptype[PTYPE_NON_TUNNEL_ARRAY_SZ + lh_lg_lf];
 
-	return (il4_tu << PTYPE_WIDTH) | tu_l2;
+	return (il4_tu << PTYPE_NON_TUNNEL_WIDTH) | tu_l2;
 }
 
 static __rte_always_inline uint32_t

@@ -79,7 +79,8 @@ static void
 nix_create_non_tunnel_ptype_array(uint16_t *ptype)
 {
 	uint8_t lb, lc, ld, le;
-	uint16_t idx, val;
+	uint16_t val;
+	uint32_t idx;
 
 	for (idx = 0; idx < PTYPE_NON_TUNNEL_ARRAY_SZ; idx++) {
 		lb = idx & 0xF;
@@ -181,28 +182,29 @@ nix_create_non_tunnel_ptype_array(uint16_t *ptype)
 	}
 }
 
-#define TU_SHIFT(x) ((x) >> PTYPE_WIDTH)
+#define TU_SHIFT(x) ((x) >> PTYPE_NON_TUNNEL_WIDTH)
 static void
 nix_create_tunnel_ptype_array(uint16_t *ptype)
 {
-	uint8_t le, lf, lg;
-	uint16_t idx, val;
+	uint8_t lf, lg, lh;
+	uint16_t val;
+	uint32_t idx;
 
 	/* Skip non tunnel ptype array memory */
 	ptype = ptype + PTYPE_NON_TUNNEL_ARRAY_SZ;
 
 	for (idx = 0; idx < PTYPE_TUNNEL_ARRAY_SZ; idx++) {
-		le = idx & 0xF;
-		lf = (idx & 0xF0) >> 4;
-		lg = (idx & 0xF00) >> 8;
+		lf = idx & 0xF;
+		lg = (idx & 0xF0) >> 4;
+		lh = (idx & 0xF00) >> 8;
 		val = RTE_PTYPE_UNKNOWN;
 
-		switch (le) {
+		switch (lf) {
 		case NPC_LT_LF_TU_ETHER:
 			val |= TU_SHIFT(RTE_PTYPE_INNER_L2_ETHER);
 			break;
 		}
-		switch (lf) {
+		switch (lg) {
 		case NPC_LT_LG_TU_IP:
 			val |= TU_SHIFT(RTE_PTYPE_INNER_L3_IPV4);
 			break;
@@ -210,7 +212,7 @@ nix_create_tunnel_ptype_array(uint16_t *ptype)
 			val |= TU_SHIFT(RTE_PTYPE_INNER_L3_IPV6);
 			break;
 		}
-		switch (lg) {
+		switch (lh) {
 		case NPC_LT_LH_TU_TCP:
 			val |= TU_SHIFT(RTE_PTYPE_INNER_L4_TCP);
 			break;
