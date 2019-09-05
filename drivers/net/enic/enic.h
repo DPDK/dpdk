@@ -42,6 +42,8 @@
 
 #define PCI_DEVICE_ID_CISCO_VIC_ENET         0x0043  /* ethernet vnic */
 #define PCI_DEVICE_ID_CISCO_VIC_ENET_VF      0x0071  /* enet SRIOV VF */
+/* enet SRIOV Standalone vNic VF */
+#define PCI_DEVICE_ID_CISCO_VIC_ENET_SN      0x02B7
 
 /* Special Filter id for non-specific packet flagging. Don't change value */
 #define ENIC_MAGIC_FILTER_ID 0xffff
