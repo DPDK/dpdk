@@ -17,7 +17,7 @@
 
 #include <zip_regs.h>
 
-int octtx_zip_logtype_driver;
+extern int octtx_zip_logtype_driver;
 
 /* ZIP VF Control/Status registers (CSRs): */
 /* VF_BAR0: */

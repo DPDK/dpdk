@@ -11,6 +11,8 @@
 
 #include "otx_zip.h"
 
+int octtx_zip_logtype_driver;
+
 static const struct rte_compressdev_capabilities
 				octtx_zip_pmd_capabilities[] = {
 	{	.algo = RTE_COMP_ALGO_DEFLATE,
