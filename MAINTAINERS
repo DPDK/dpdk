@@ -68,8 +68,8 @@ M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 T: git://dpdk.org/next/dpdk-next-pipeline
 
 Stable Branches
-M: Yuanhan Liu <yliu@fridaylinux.org>
 M: Luca Boccassi <bluca@debian.org>
+M: Kevin Traynor <ktraynor@redhat.com>
 T: git://dpdk.org/dpdk-stable
 
 Security Issues
