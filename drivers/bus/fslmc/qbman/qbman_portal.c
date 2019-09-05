@@ -61,6 +61,8 @@ enum qbman_sdqcr_fc {
 #define MAX_QBMAN_PORTALS  64
 static struct qbman_swp *portal_idx_map[MAX_QBMAN_PORTALS];
 
+uint32_t qman_version;
+
 /* Internal Function declaration */
 static int
 qbman_swp_enqueue_array_mode_direct(struct qbman_swp *s,
