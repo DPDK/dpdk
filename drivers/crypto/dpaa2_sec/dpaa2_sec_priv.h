@@ -41,6 +41,8 @@ enum shr_desc_type {
 #define DIR_ENC                 1
 #define DIR_DEC                 0
 
+#define DPAA2_IPv6_DEFAULT_VTC_FLOW	0x60000000
+
 #define DPAA2_SET_FLC_EWS(flc)  (flc->word1_bits23_16 |= 0x1)
 #define DPAA2_SET_FLC_RSC(flc)  (flc->word1_bits31_24 |= 0x1)
 #define DPAA2_SET_FLC_REUSE_BS(flc) (flc->mode_bits |= 0x8000)
