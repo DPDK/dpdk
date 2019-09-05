@@ -84,7 +84,25 @@ aesni_mb_get_chain_order(const struct rte_crypto_sym_xform *xform)
 		if (xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER)
 			return AESNI_MB_OP_HASH_CIPHER;
 	}
-
+#if IMB_VERSION_NUM > IMB_VERSION(0, 52, 0)
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		if (xform->aead.op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
+			/*
+			 * CCM requires to hash first and cipher later
+			 * when encrypting
+			 */
+			if (xform->aead.algo == RTE_CRYPTO_AEAD_AES_CCM)
+				return AESNI_MB_OP_AEAD_HASH_CIPHER;
+			else
+				return AESNI_MB_OP_AEAD_CIPHER_HASH;
+		} else {
+			if (xform->aead.algo == RTE_CRYPTO_AEAD_AES_CCM)
+				return AESNI_MB_OP_AEAD_CIPHER_HASH;
+			else
+				return AESNI_MB_OP_AEAD_HASH_CIPHER;
+		}
+	}
+#else
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		if (xform->aead.algo == RTE_CRYPTO_AEAD_AES_CCM ||
 				xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
@@ -94,6 +112,7 @@ aesni_mb_get_chain_order(const struct rte_crypto_sym_xform *xform)
 				return AESNI_MB_OP_AEAD_HASH_CIPHER;
 		}
 	}
+#endif
 
 	return AESNI_MB_OP_NOT_SUPPORTED;
 }
