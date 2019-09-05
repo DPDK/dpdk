@@ -10,6 +10,7 @@
 #include "null_crypto_pmd_private.h"
 
 static uint8_t cryptodev_driver_id;
+int null_logtype_driver;
 
 /** verify and set session parameters */
 int
