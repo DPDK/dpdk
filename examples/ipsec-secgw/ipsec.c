@@ -33,8 +33,20 @@ set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
 
 			memcpy((uint8_t *)&tunnel->ipv4.dst_ip,
 				(uint8_t *)&sa->dst.ip.ip4, 4);
+		} else if (IS_IP6_TUNNEL(sa->flags)) {
+			tunnel->type =
+				RTE_SECURITY_IPSEC_TUNNEL_IPV6;
+			tunnel->ipv6.hlimit = IPDEFTTL;
+			tunnel->ipv6.dscp = 0;
+			tunnel->ipv6.flabel = 0;
+
+			memcpy((uint8_t *)&tunnel->ipv6.src_addr,
+				(uint8_t *)&sa->src.ip.ip6.ip6_b, 16);
+
+			memcpy((uint8_t *)&tunnel->ipv6.dst_addr,
+				(uint8_t *)&sa->dst.ip.ip6.ip6_b, 16);
 		}
-		/* TODO support for Transport and IPV6 tunnel */
+		/* TODO support for Transport */
 	}
 	ipsec->esn_soft_limit = IPSEC_OFFLOAD_ESN_SOFTLIMIT;
 }
