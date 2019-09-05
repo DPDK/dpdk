@@ -727,7 +727,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 			rxq->decompressed -= n;
 		}
 	}
-	rte_compiler_barrier();
+	rte_cio_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	return rcvd_pkt;
 }
