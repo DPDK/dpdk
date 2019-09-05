@@ -327,9 +327,7 @@ struct action_rss_data {
 	uint16_t queue[ACTION_RSS_QUEUE_NUM];
 };
 
-/** Maximum number of items in struct rte_flow_action_vxlan_encap. */
-#define ACTION_VXLAN_ENCAP_ITEMS_NUM 6
-
+/** Maximum data size in struct rte_flow_action_raw_encap. */
 #define ACTION_RAW_ENCAP_MAX_DATA 128
 
 /** Storage for struct rte_flow_action_raw_encap. */
@@ -341,6 +339,13 @@ struct raw_encap_conf {
 
 struct raw_encap_conf raw_encap_conf = {.size = 0};
 
+/** Storage for struct rte_flow_action_raw_encap including external data. */
+struct action_raw_encap_data {
+	struct rte_flow_action_raw_encap conf;
+	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
+	uint8_t preserve[ACTION_RAW_ENCAP_MAX_DATA];
+};
+
 /** Storage for struct rte_flow_action_raw_decap. */
 struct raw_decap_conf {
 	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
@@ -348,6 +353,35 @@ struct raw_decap_conf {
 };
 
 struct raw_decap_conf raw_decap_conf = {.size = 0};
+
+/** Storage for struct rte_flow_action_raw_decap including external data. */
+struct action_raw_decap_data {
+	struct rte_flow_action_raw_decap conf;
+	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
+};
+
+struct vxlan_encap_conf vxlan_encap_conf = {
+	.select_ipv4 = 1,
+	.select_vlan = 0,
+	.select_tos_ttl = 0,
+	.vni = "\x00\x00\x00",
+	.udp_src = 0,
+	.udp_dst = RTE_BE16(4789),
+	.ipv4_src = RTE_IPV4(127, 0, 0, 1),
+	.ipv4_dst = RTE_IPV4(255, 255, 255, 255),
+	.ipv6_src = "\x00\x00\x00\x00\x00\x00\x00\x00"
+		"\x00\x00\x00\x00\x00\x00\x00\x01",
+	.ipv6_dst = "\x00\x00\x00\x00\x00\x00\x00\x00"
+		"\x00\x00\x00\x00\x00\x00\x11\x11",
+	.vlan_tci = 0,
+	.ip_tos = 0,
+	.ip_ttl = 255,
+	.eth_src = "\x00\x00\x00\x00\x00\x00",
+	.eth_dst = "\xff\xff\xff\xff\xff\xff",
+};
+
+/** Maximum number of items in struct rte_flow_action_vxlan_encap. */
+#define ACTION_VXLAN_ENCAP_ITEMS_NUM 6
 
 /** Storage for struct rte_flow_action_vxlan_encap including external data. */
 struct action_vxlan_encap_data {
@@ -361,6 +395,21 @@ struct action_vxlan_encap_data {
 	};
 	struct rte_flow_item_udp item_udp;
 	struct rte_flow_item_vxlan item_vxlan;
+};
+
+struct nvgre_encap_conf nvgre_encap_conf = {
+	.select_ipv4 = 1,
+	.select_vlan = 0,
+	.tni = "\x00\x00\x00",
+	.ipv4_src = RTE_IPV4(127, 0, 0, 1),
+	.ipv4_dst = RTE_IPV4(255, 255, 255, 255),
+	.ipv6_src = "\x00\x00\x00\x00\x00\x00\x00\x00"
+		"\x00\x00\x00\x00\x00\x00\x00\x01",
+	.ipv6_dst = "\x00\x00\x00\x00\x00\x00\x00\x00"
+		"\x00\x00\x00\x00\x00\x00\x11\x11",
+	.vlan_tci = 0,
+	.eth_src = "\x00\x00\x00\x00\x00\x00",
+	.eth_dst = "\xff\xff\xff\xff\xff\xff",
 };
 
 /** Maximum number of items in struct rte_flow_action_nvgre_encap. */
@@ -379,21 +428,17 @@ struct action_nvgre_encap_data {
 	struct rte_flow_item_nvgre item_nvgre;
 };
 
-/** Maximum data size in struct rte_flow_action_raw_encap. */
-#define ACTION_RAW_ENCAP_MAX_DATA 128
+struct l2_encap_conf l2_encap_conf;
 
-/** Storage for struct rte_flow_action_raw_encap including external data. */
-struct action_raw_encap_data {
-	struct rte_flow_action_raw_encap conf;
-	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
-	uint8_t preserve[ACTION_RAW_ENCAP_MAX_DATA];
-};
+struct l2_decap_conf l2_decap_conf;
 
-/** Storage for struct rte_flow_action_raw_decap including external data. */
-struct action_raw_decap_data {
-	struct rte_flow_action_raw_decap conf;
-	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
-};
+struct mplsogre_encap_conf mplsogre_encap_conf;
+
+struct mplsogre_decap_conf mplsogre_decap_conf;
+
+struct mplsoudp_encap_conf mplsoudp_encap_conf;
+
+struct mplsoudp_decap_conf mplsoudp_decap_conf;
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
 #define CTX_STACK_SIZE 16
