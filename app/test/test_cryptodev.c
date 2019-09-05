@@ -473,7 +473,7 @@ testsuite_setup(void)
 			"Failed to configure cryptodev %u with %u qps",
 			dev_id, ts_params->conf.nb_queue_pairs);
 
-	ts_params->qp_conf.nb_descriptors = DEFAULT_NUM_OPS_INFLIGHT;
+	ts_params->qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT;
 	ts_params->qp_conf.mp_session = ts_params->session_mpool;
 	ts_params->qp_conf.mp_session_private = ts_params->session_priv_mpool;
 
