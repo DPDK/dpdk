@@ -18,9 +18,9 @@
 #define BIT_NUM_PACKETS 10
 #define QUEUE_ID 0
 
-uint16_t portid;
-struct rte_stats_bitrates *bitrate_data;
-struct rte_ring *ring;
+static uint16_t portid;
+static struct rte_stats_bitrates *bitrate_data;
+static struct rte_ring *ring;
 
 /* To test whether rte_stats_bitrate_create is successful */
 static int

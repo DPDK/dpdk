@@ -65,18 +65,18 @@ static uint32_t hashtest_key_lens[] = {
 };
 
 /* Array to store number of cycles per operation */
-uint64_t cycles[NUM_TYPE][NUM_KEYSIZES][NUM_OPERATIONS];
-uint64_t false_data[NUM_TYPE][NUM_KEYSIZES];
-uint64_t false_data_bulk[NUM_TYPE][NUM_KEYSIZES];
-uint64_t false_data_multi[NUM_TYPE][NUM_KEYSIZES];
-uint64_t false_data_multi_bulk[NUM_TYPE][NUM_KEYSIZES];
+static uint64_t cycles[NUM_TYPE][NUM_KEYSIZES][NUM_OPERATIONS];
+static uint64_t false_data[NUM_TYPE][NUM_KEYSIZES];
+static uint64_t false_data_bulk[NUM_TYPE][NUM_KEYSIZES];
+static uint64_t false_data_multi[NUM_TYPE][NUM_KEYSIZES];
+static uint64_t false_data_multi_bulk[NUM_TYPE][NUM_KEYSIZES];
 
-uint64_t false_hit[NUM_TYPE][NUM_KEYSIZES];
+static uint64_t false_hit[NUM_TYPE][NUM_KEYSIZES];
 
-member_set_t data[NUM_TYPE][/* Array to store the data */KEYS_TO_ADD];
+static member_set_t data[NUM_TYPE][/* Array to store the data */KEYS_TO_ADD];
 
 /* Array to store all input keys */
-uint8_t keys[KEYS_TO_ADD][MAX_KEYSIZE];
+static uint8_t keys[KEYS_TO_ADD][MAX_KEYSIZE];
 
 /* Shuffle the keys that have been added, so lookups will be totally random */
 static void

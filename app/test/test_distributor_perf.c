@@ -25,7 +25,7 @@ static volatile unsigned worker_idx;
 struct worker_stats {
 	volatile unsigned handled_packets;
 } __rte_cache_aligned;
-struct worker_stats worker_stats[RTE_MAX_LCORE];
+static struct worker_stats worker_stats[RTE_MAX_LCORE];
 
 /*
  * worker thread used for testing the time to do a round-trip of a cache

@@ -25,8 +25,8 @@
 /* Make sure that this has the same value as __RTE_QSBR_CNT_INIT */
 #define TEST_RCU_QSBR_CNT_INIT 1
 
-uint16_t enabled_core_ids[RTE_MAX_LCORE];
-unsigned int num_cores;
+static uint16_t enabled_core_ids[RTE_MAX_LCORE];
+static unsigned int num_cores;
 
 static uint32_t *keys;
 #define TOTAL_ENTRY (1024 * 8)
@@ -35,8 +35,8 @@ static uint32_t *hash_data[RTE_MAX_LCORE][TOTAL_ENTRY];
 static uint8_t writer_done;
 
 static struct rte_rcu_qsbr *t[RTE_MAX_LCORE];
-struct rte_hash *h[RTE_MAX_LCORE];
-char hash_name[RTE_MAX_LCORE][8];
+static struct rte_hash *h[RTE_MAX_LCORE];
+static char hash_name[RTE_MAX_LCORE][8];
 
 struct test_rcu_thread_info {
 	/* Index in RCU array */
@@ -46,7 +46,7 @@ struct test_rcu_thread_info {
 	/* lcore IDs registered on the RCU variable */
 	uint16_t r_core_ids[2];
 };
-struct test_rcu_thread_info thread_info[RTE_MAX_LCORE/4];
+static struct test_rcu_thread_info thread_info[RTE_MAX_LCORE/4];
 
 static int
 alloc_rcu(void)

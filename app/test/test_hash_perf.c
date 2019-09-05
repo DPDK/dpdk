@@ -53,22 +53,22 @@ static uint32_t hashtest_key_lens[] = {
 struct rte_hash *h[NUM_KEYSIZES];
 
 /* Array that stores if a slot is full */
-uint8_t slot_taken[MAX_ENTRIES];
+static uint8_t slot_taken[MAX_ENTRIES];
 
 /* Array to store number of cycles per operation */
-uint64_t cycles[NUM_KEYSIZES][NUM_OPERATIONS][2][2];
+static uint64_t cycles[NUM_KEYSIZES][NUM_OPERATIONS][2][2];
 
 /* Array to store all input keys */
-uint8_t keys[KEYS_TO_ADD][MAX_KEYSIZE];
+static uint8_t keys[KEYS_TO_ADD][MAX_KEYSIZE];
 
 /* Array to store the precomputed hash for 'keys' */
-hash_sig_t signatures[KEYS_TO_ADD];
+static hash_sig_t signatures[KEYS_TO_ADD];
 
 /* Array to store how many busy entries have each bucket */
-uint8_t buckets[NUM_BUCKETS];
+static uint8_t buckets[NUM_BUCKETS];
 
 /* Array to store the positions where keys are added */
-int32_t positions[KEYS_TO_ADD];
+static int32_t positions[KEYS_TO_ADD];
 
 /* Parameters used for hash table in unit test functions. */
 static struct rte_hash_parameters ut_params = {

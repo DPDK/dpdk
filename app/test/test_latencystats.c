@@ -17,10 +17,10 @@
 #define LATENCY_NUM_PACKETS 10
 #define QUEUE_ID 0
 
-uint16_t portid;
-struct rte_ring *ring;
+static uint16_t portid;
+static struct rte_ring *ring;
 
-struct rte_metric_name lat_stats_strings[] = {
+static struct rte_metric_name lat_stats_strings[] = {
 	{"min_latency_ns"},
 	{"avg_latency_ns"},
 	{"max_latency_ns"},
