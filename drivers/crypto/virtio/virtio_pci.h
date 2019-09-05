@@ -201,10 +201,10 @@ struct virtio_hw_internal {
 	struct rte_pci_ioport io;
 };
 
-#define VTPCI_OPS(hw)	(virtio_hw_internal[(hw)->dev_id].vtpci_ops)
-#define VTPCI_IO(hw)	(&virtio_hw_internal[(hw)->dev_id].io)
+#define VTPCI_OPS(hw)	(crypto_virtio_hw_internal[(hw)->dev_id].vtpci_ops)
+#define VTPCI_IO(hw)	(&crypto_virtio_hw_internal[(hw)->dev_id].io)
 
-extern struct virtio_hw_internal virtio_hw_internal[RTE_MAX_VIRTIO_CRYPTO];
+extern struct virtio_hw_internal crypto_virtio_hw_internal[RTE_MAX_VIRTIO_CRYPTO];
 
 /*
  * How many bits to shift physical queue address written to QUEUE_PFN.
