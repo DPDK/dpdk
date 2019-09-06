@@ -420,7 +420,7 @@ sfc_ev_link_change(void *arg, efx_link_mode_t link_mode)
 	struct rte_eth_link new_link;
 
 	sfc_port_link_mode_to_info(link_mode, &new_link);
-	if (rte_eth_linkstatus_set(sa->eth_dev, &new_link))
+	if (rte_eth_linkstatus_set(sa->eth_dev, &new_link) == 0)
 		evq->sa->port.lsc_seq++;
 
 	return B_FALSE;
