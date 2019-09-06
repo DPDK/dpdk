@@ -199,8 +199,9 @@ test_op_forward_mode(uint8_t session_less)
 		TEST_ASSERT_NOT_NULL(sess, "Session creation failed\n");
 
 		/* Create Crypto session*/
-		rte_cryptodev_sym_session_init(TEST_CDEV_ID, sess,
+		ret = rte_cryptodev_sym_session_init(TEST_CDEV_ID, sess,
 				&cipher_xform, params.session_priv_mpool);
+		TEST_ASSERT_SUCCESS(ret, "Failed to init session\n");
 
 		ret = rte_event_crypto_adapter_caps_get(TEST_ADAPTER_ID,
 							evdev, &cap);
@@ -398,8 +399,10 @@ test_op_new_mode(uint8_t session_less)
 			rte_cryptodev_sym_session_set_user_data(sess,
 						&m_data, sizeof(m_data));
 		}
-		rte_cryptodev_sym_session_init(TEST_CDEV_ID, sess,
+		ret = rte_cryptodev_sym_session_init(TEST_CDEV_ID, sess,
 				&cipher_xform, params.session_priv_mpool);
+		TEST_ASSERT_SUCCESS(ret, "Failed to init session\n");
+
 		rte_crypto_op_attach_sym_session(op, sess);
 	} else {
 		struct rte_crypto_sym_xform *first_xform;
