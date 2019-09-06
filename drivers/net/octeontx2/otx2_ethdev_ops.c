@@ -282,7 +282,7 @@ otx2_nix_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	struct otx2_eth_rxq *rxq = rx_queue;
 	uint32_t head, tail;
 
-	if (rxq->qlen >= offset)
+	if (rxq->qlen <= offset)
 		return -EINVAL;
 
 	nix_rx_head_tail_get(otx2_eth_pmd_priv(rxq->eth_dev),
@@ -292,6 +292,42 @@ otx2_nix_rx_descriptor_status(void *rx_queue, uint16_t offset)
 		return RTE_ETH_RX_DESC_DONE;
 	else
 		return RTE_ETH_RX_DESC_AVAIL;
+}
+
+static void
+nix_tx_head_tail_get(struct otx2_eth_dev *dev,
+		     uint32_t *head, uint32_t *tail, uint16_t queue_idx)
+{
+	uint64_t reg, val;
+
+	if (head == NULL || tail == NULL)
+		return;
+
+	reg = (((uint64_t)queue_idx) << 32);
+	val = otx2_atomic64_add_nosync(reg, (int64_t *)
+				       (dev->base + NIX_LF_SQ_OP_STATUS));
+	if (val & OP_ERR)
+		val = 0;
+
+	*tail = (uint32_t)((val >> 28) & 0x3F);
+	*head = (uint32_t)((val >> 20) & 0x3F);
+}
+
+int
+otx2_nix_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	struct otx2_eth_txq *txq = tx_queue;
+	uint32_t head, tail;
+
+	if (txq->qconf.nb_desc <= offset)
+		return -EINVAL;
+
+	nix_tx_head_tail_get(txq->dev, &head, &tail, txq->sq);
+
+	if (nix_offset_has_packet(head, tail, offset))
+		return RTE_ETH_TX_DESC_DONE;
+	else
+		return RTE_ETH_TX_DESC_FULL;
 }
 
 /* It is a NOP for octeontx2 as HW frees the buffer on xmit */
