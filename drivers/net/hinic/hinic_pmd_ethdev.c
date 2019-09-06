@@ -1203,14 +1203,17 @@ hinic_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void hinic_dev_stats_reset(struct rte_eth_dev *dev)
+static int hinic_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	int qid;
 	struct hinic_rxq	*rxq = NULL;
 	struct hinic_txq	*txq = NULL;
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	int ret;
 
-	hinic_clear_vport_stats(nic_dev->hwdev);
+	ret = hinic_clear_vport_stats(nic_dev->hwdev);
+	if (ret != 0)
+		return ret;
 
 	for (qid = 0; qid < nic_dev->num_rq; qid++) {
 		rxq = nic_dev->rxqs[qid];
@@ -1221,6 +1224,8 @@ static void hinic_dev_stats_reset(struct rte_eth_dev *dev)
 		txq = nic_dev->txqs[qid];
 		hinic_txq_stats_reset(txq);
 	}
+
+	return 0;
 }
 
 /**
@@ -1229,14 +1234,22 @@ static void hinic_dev_stats_reset(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  **/
-static void hinic_dev_xstats_reset(struct rte_eth_dev *dev)
+static int hinic_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	int ret;
 
-	hinic_dev_stats_reset(dev);
+	ret = hinic_dev_stats_reset(dev);
+	if (ret != 0)
+		return ret;
 
-	if (hinic_func_type(nic_dev->hwdev) != TYPE_VF)
-		hinic_clear_phy_port_stats(nic_dev->hwdev);
+	if (hinic_func_type(nic_dev->hwdev) != TYPE_VF) {
+		ret = hinic_clear_phy_port_stats(nic_dev->hwdev);
+		if (ret != 0)
+			return ret;
+	}
+
+	return 0;
 }
 
 static void hinic_gen_random_mac_addr(struct rte_ether_addr *mac_addr)

@@ -1429,12 +1429,12 @@ dpaa2_xstats_get_names_by_id(
 	return limit;
 }
 
-static void
+static int
 dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
-	int32_t  retcode;
+	int retcode;
 	int i;
 	struct dpaa2_queue *dpaa2_q;
 
@@ -1442,7 +1442,7 @@ dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
 
 	if (dpni == NULL) {
 		DPAA2_PMD_ERR("dpni is NULL");
-		return;
+		return -EINVAL;
 	}
 
 	retcode =  dpni_reset_statistics(dpni, CMD_PRI_LOW, priv->token);
@@ -1462,11 +1462,11 @@ dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
 			dpaa2_q->tx_pkts = 0;
 	}
 
-	return;
+	return 0;
 
 error:
 	DPAA2_PMD_ERR("Operation not completed:Error Code = %d", retcode);
-	return;
+	return retcode;
 };
 
 /* return 0 means link status changed, -1 means not changed */

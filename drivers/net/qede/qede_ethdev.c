@@ -1710,7 +1710,7 @@ qede_get_xstats(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	return stat_idx;
 }
 
-static void
+static int
 qede_reset_xstats(struct rte_eth_dev *dev)
 {
 	struct qede_dev *qdev = dev->data->dev_private;
@@ -1718,6 +1718,8 @@ qede_reset_xstats(struct rte_eth_dev *dev)
 
 	ecore_reset_vport_stats(edev);
 	qede_reset_queue_stats(qdev, true);
+
+	return 0;
 }
 
 int qede_dev_set_link_state(struct rte_eth_dev *eth_dev, bool link_up)
@@ -1747,13 +1749,15 @@ static int qede_dev_set_link_down(struct rte_eth_dev *eth_dev)
 	return qede_dev_set_link_state(eth_dev, false);
 }
 
-static void qede_reset_stats(struct rte_eth_dev *eth_dev)
+static int qede_reset_stats(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 
 	ecore_reset_vport_stats(edev);
 	qede_reset_queue_stats(qdev, false);
+
+	return 0;
 }
 
 static void qede_allmulticast_enable(struct rte_eth_dev *eth_dev)

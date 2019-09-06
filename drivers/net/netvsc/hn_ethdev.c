@@ -630,7 +630,7 @@ static int hn_dev_stats_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static int
 hn_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned int i;
@@ -653,13 +653,20 @@ hn_dev_stats_reset(struct rte_eth_dev *dev)
 
 		memset(&rxq->stats, 0, sizeof(struct hn_stats));
 	}
+
+	return 0;
 }
 
-static void
+static int
 hn_dev_xstats_reset(struct rte_eth_dev *dev)
 {
-	hn_dev_stats_reset(dev);
-	hn_vf_xstats_reset(dev);
+	int ret;
+
+	ret = hn_dev_stats_reset(dev);
+	if (ret != 0)
+		return 0;
+
+	return hn_vf_xstats_reset(dev);
 }
 
 static int

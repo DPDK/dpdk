@@ -191,7 +191,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned int i;
@@ -201,6 +201,8 @@ eth_stats_reset(struct rte_eth_dev *dev)
 		internal->rx_ring_queues[i].rx_pkts.cnt = 0;
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		internal->tx_ring_queues[i].tx_pkts.cnt = 0;
+
+	return 0;
 }
 
 static void

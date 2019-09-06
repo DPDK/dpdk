@@ -318,7 +318,7 @@ eth_kni_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 eth_kni_stats_reset(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
@@ -335,6 +335,8 @@ eth_kni_stats_reset(struct rte_eth_dev *dev)
 		q->tx.pkts = 0;
 		q->tx.bytes = 0;
 	}
+
+	return 0;
 }
 
 static const struct eth_dev_ops eth_kni_ops = {

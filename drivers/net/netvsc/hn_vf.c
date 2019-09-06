@@ -395,9 +395,9 @@ void hn_vf_close(struct rte_eth_dev *dev)
 	rte_spinlock_unlock(&hv->vf_lock);
 }
 
-void hn_vf_stats_reset(struct rte_eth_dev *dev)
+int hn_vf_stats_reset(struct rte_eth_dev *dev)
 {
-	VF_ETHDEV_FUNC(dev, rte_eth_stats_reset);
+	VF_ETHDEV_FUNC_RET_STATUS(dev, rte_eth_stats_reset);
 }
 
 void hn_vf_allmulticast_enable(struct rte_eth_dev *dev)
@@ -573,16 +573,21 @@ int hn_vf_xstats_get(struct rte_eth_dev *dev,
 	return count;
 }
 
-void hn_vf_xstats_reset(struct rte_eth_dev *dev)
+int hn_vf_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_eth_dev *vf_dev;
+	int ret;
 
 	rte_spinlock_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
 	if (vf_dev)
-		rte_eth_xstats_reset(vf_dev->data->port_id);
+		ret = rte_eth_xstats_reset(vf_dev->data->port_id);
+	else
+		ret = -EINVAL;
 	rte_spinlock_unlock(&hv->vf_lock);
+
+	return ret;
 }
 
 int hn_vf_rss_hash_update(struct rte_eth_dev *dev,

@@ -703,7 +703,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned int i;
@@ -719,6 +719,8 @@ eth_stats_reset(struct rte_eth_dev *dev)
 		internal->tx_queue[i].tx_stat.bytes = 0;
 		internal->tx_queue[i].tx_stat.err_pkts = 0;
 	}
+
+	return 0;
 }
 
 static void

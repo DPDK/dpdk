@@ -392,22 +392,25 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
-void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
+int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	unsigned int i;
+	int ret;
 
 	if (!(bp->flags & BNXT_FLAG_INIT_DONE)) {
 		PMD_DRV_LOG(ERR, "Device Initialization not complete!\n");
-		return;
+		return -EINVAL;
 	}
 
-	bnxt_clear_all_hwrm_stat_ctxs(bp);
+	ret = bnxt_clear_all_hwrm_stat_ctxs(bp);
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 
 		rte_atomic64_clear(&rxq->rx_mbuf_alloc_fail);
 	}
+
+	return ret;
 }
 
 int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
@@ -543,19 +546,36 @@ int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
 	return stat_cnt;
 }
 
-void bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
+int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
+	int ret;
 
-	if (bp->flags & BNXT_FLAG_PORT_STATS && BNXT_SINGLE_PF(bp))
-		bnxt_hwrm_port_clr_stats(bp);
+	if (bp->flags & BNXT_FLAG_PORT_STATS && BNXT_SINGLE_PF(bp)) {
+		ret = bnxt_hwrm_port_clr_stats(bp);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Operation failed: %s\n",
+				    strerror(-ret));
+			return ret;
+		}
+	}
 
-	if (BNXT_VF(bp))
+	ret = 0;
+
+	if (BNXT_VF(bp)) {
 		PMD_DRV_LOG(ERR, "Operation not supported on a VF device\n");
-	if (!BNXT_SINGLE_PF(bp))
+		ret = -ENOTSUP;
+	}
+	if (!BNXT_SINGLE_PF(bp)) {
 		PMD_DRV_LOG(ERR, "Operation not supported on a MF device\n");
-	if (!(bp->flags & BNXT_FLAG_PORT_STATS))
+		ret = -ENOTSUP;
+	}
+	if (!(bp->flags & BNXT_FLAG_PORT_STATS)) {
 		PMD_DRV_LOG(ERR, "Operation not supported\n");
+		ret = -ENOTSUP;
+	}
+
+	return ret;
 }
 
 int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,

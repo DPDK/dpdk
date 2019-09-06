@@ -98,8 +98,8 @@ static int eth_igb_xstats_get_names(struct rte_eth_dev *dev,
 static int eth_igb_xstats_get_names_by_id(struct rte_eth_dev *dev,
 		struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
 		unsigned int limit);
-static void eth_igb_stats_reset(struct rte_eth_dev *dev);
-static void eth_igb_xstats_reset(struct rte_eth_dev *dev);
+static int eth_igb_stats_reset(struct rte_eth_dev *dev);
+static int eth_igb_xstats_reset(struct rte_eth_dev *dev);
 static int eth_igb_fw_version_get(struct rte_eth_dev *dev,
 				   char *fw_version, size_t fw_size);
 static int eth_igb_infos_get(struct rte_eth_dev *dev,
@@ -168,7 +168,7 @@ static int eth_igbvf_xstats_get(struct rte_eth_dev *dev,
 static int eth_igbvf_xstats_get_names(struct rte_eth_dev *dev,
 				      struct rte_eth_xstat_name *xstats_names,
 				      unsigned limit);
-static void eth_igbvf_stats_reset(struct rte_eth_dev *dev);
+static int eth_igbvf_stats_reset(struct rte_eth_dev *dev);
 static int igbvf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on);
@@ -1870,7 +1870,7 @@ eth_igb_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	return 0;
 }
 
-static void
+static int
 eth_igb_stats_reset(struct rte_eth_dev *dev)
 {
 	struct e1000_hw_stats *hw_stats =
@@ -1881,9 +1881,11 @@ eth_igb_stats_reset(struct rte_eth_dev *dev)
 
 	/* Reset software totals */
 	memset(hw_stats, 0, sizeof(*hw_stats));
+
+	return 0;
 }
 
-static void
+static int
 eth_igb_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct e1000_hw_stats *stats =
@@ -1894,6 +1896,8 @@ eth_igb_xstats_reset(struct rte_eth_dev *dev)
 
 	/* Reset software totals */
 	memset(stats, 0, sizeof(*stats));
+
+	return 0;
 }
 
 static int eth_igb_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
@@ -2127,7 +2131,7 @@ eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	return 0;
 }
 
-static void
+static int
 eth_igbvf_stats_reset(struct rte_eth_dev *dev)
 {
 	struct e1000_vf_stats *hw_stats = (struct e1000_vf_stats*)
@@ -2139,6 +2143,8 @@ eth_igbvf_stats_reset(struct rte_eth_dev *dev)
 	/* reset HW current stats*/
 	memset(&hw_stats->gprc, 0, sizeof(*hw_stats) -
 	       offsetof(struct e1000_vf_stats, gprc));
+
+	return 0;
 }
 
 static int

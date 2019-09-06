@@ -131,14 +131,16 @@ otx2_nix_dev_stats_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-void
+int
 otx2_nix_dev_stats_reset(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct otx2_mbox *mbox = dev->mbox;
 
-	otx2_mbox_alloc_msg_nix_stats_rst(mbox);
-	otx2_mbox_process(mbox);
+	if (otx2_mbox_alloc_msg_nix_stats_rst(mbox) == NULL)
+		return -ENOMEM;
+
+	return otx2_mbox_process(mbox);
 }
 
 int
@@ -296,7 +298,7 @@ otx2_nix_xstats_get_by_id(struct rte_eth_dev *eth_dev, const uint64_t *ids,
 	return n;
 }
 
-static void
+static int
 nix_queue_stats_reset(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
@@ -314,7 +316,7 @@ nix_queue_stats_reset(struct rte_eth_dev *eth_dev)
 		rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
 		if (rc) {
 			otx2_err("Failed to read rq context");
-			return;
+			return rc;
 		}
 		aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
 		aq->qidx = i;
@@ -336,7 +338,7 @@ nix_queue_stats_reset(struct rte_eth_dev *eth_dev)
 		rc = otx2_mbox_process(mbox);
 		if (rc) {
 			otx2_err("Failed to write rq context");
-			return;
+			return rc;
 		}
 	}
 
@@ -348,7 +350,7 @@ nix_queue_stats_reset(struct rte_eth_dev *eth_dev)
 		rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
 		if (rc) {
 			otx2_err("Failed to read sq context");
-			return;
+			return rc;
 		}
 		aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
 		aq->qidx = i;
@@ -368,20 +370,27 @@ nix_queue_stats_reset(struct rte_eth_dev *eth_dev)
 		rc = otx2_mbox_process(mbox);
 		if (rc) {
 			otx2_err("Failed to write sq context");
-			return;
+			return rc;
 		}
 	}
+
+	return 0;
 }
 
-void
+int
 otx2_nix_xstats_reset(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct otx2_mbox *mbox = dev->mbox;
+	int ret;
 
-	otx2_mbox_alloc_msg_nix_stats_rst(mbox);
-	otx2_mbox_process(mbox);
+	if (otx2_mbox_alloc_msg_nix_stats_rst(mbox) == NULL)
+		return -ENOMEM;
+
+	ret = otx2_mbox_process(mbox);
+	if (ret != 0)
+		return ret;
 
 	/* Reset queue stats */
-	nix_queue_stats_reset(eth_dev);
+	return nix_queue_stats_reset(eth_dev);
 }

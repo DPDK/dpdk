@@ -2137,6 +2137,7 @@ int rte_eth_stats_get(uint16_t port_id, struct rte_eth_stats *stats);
  *   - (0) if device notified to reset stats.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (<0): Error code of the driver stats reset function.
  */
 int rte_eth_stats_reset(uint16_t port_id);
 
@@ -2289,6 +2290,7 @@ int rte_eth_xstats_get_id_by_name(uint16_t port_id, const char *xstat_name,
  *   - (-ENOTSUP) if pmd doesn't support both
  *     extended stats and basic stats reset.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (<0): Error code of the driver xstats reset function.
  */
 int rte_eth_xstats_reset(uint16_t port_id);
 

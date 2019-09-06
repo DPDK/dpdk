@@ -40,7 +40,7 @@ static int atl_dev_stats_get(struct rte_eth_dev *dev,
 static int atl_dev_xstats_get(struct rte_eth_dev *dev,
 			      struct rte_eth_xstat *stats, unsigned int n);
 
-static void atl_dev_stats_reset(struct rte_eth_dev *dev);
+static int atl_dev_stats_reset(struct rte_eth_dev *dev);
 
 static int atl_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 			      size_t fw_size);
@@ -975,7 +975,7 @@ atl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 atl_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct atl_adapter *adapter = ATL_DEV_TO_ADAPTER(dev);
@@ -987,6 +987,8 @@ atl_dev_stats_reset(struct rte_eth_dev *dev)
 	memset(&hw->curr_stats, 0, sizeof(hw->curr_stats));
 
 	memset(&adapter->sw_stats, 0, sizeof(adapter->sw_stats));
+
+	return 0;
 }
 
 static int

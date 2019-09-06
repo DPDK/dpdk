@@ -724,7 +724,7 @@ static int cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 /*
  * Reset port statistics.
  */
-static void cxgbe_dev_stats_reset(struct rte_eth_dev *eth_dev)
+static int cxgbe_dev_stats_reset(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
@@ -747,6 +747,8 @@ static void cxgbe_dev_stats_reset(struct rte_eth_dev *eth_dev)
 		txq->stats.tx_bytes = 0;
 		txq->stats.mapping_err = 0;
 	}
+
+	return 0;
 }
 
 static int cxgbe_flow_ctrl_get(struct rte_eth_dev *eth_dev,

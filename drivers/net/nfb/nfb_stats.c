@@ -52,7 +52,7 @@ nfb_eth_stats_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-void
+int
 nfb_eth_stats_reset(struct rte_eth_dev *dev)
 {
 	uint16_t i;
@@ -74,4 +74,6 @@ nfb_eth_stats_reset(struct rte_eth_dev *dev)
 		tx_queue[i].tx_bytes = 0;
 		tx_queue[i].err_pkts = 0;
 	}
+
+	return 0;
 }

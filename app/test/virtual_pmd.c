@@ -197,7 +197,7 @@ virtual_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 virtual_ethdev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
@@ -208,6 +208,8 @@ virtual_ethdev_stats_reset(struct rte_eth_dev *dev)
 
 	/* Reset internal statistics */
 	memset(&dev_private->eth_stats, 0, sizeof(dev_private->eth_stats));
+
+	return 0;
 }
 
 static int

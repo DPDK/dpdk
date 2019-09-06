@@ -968,7 +968,7 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 memif_stats_reset(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
@@ -987,6 +987,8 @@ memif_stats_reset(struct rte_eth_dev *dev)
 		mq->n_pkts = 0;
 		mq->n_bytes = 0;
 	}
+
+	return 0;
 }
 
 static int

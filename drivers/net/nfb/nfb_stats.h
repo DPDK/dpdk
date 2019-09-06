@@ -31,8 +31,11 @@ nfb_eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise.
  */
-void
+int
 nfb_eth_stats_reset(struct rte_eth_dev *dev);
 
 #endif /* _NFB_STATS_H_ */

@@ -422,7 +422,7 @@ void otx2_nix_cqe_dump(const struct nix_cqe_hdr_s *cq);
 /* Stats */
 int otx2_nix_dev_stats_get(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_stats *stats);
-void otx2_nix_dev_stats_reset(struct rte_eth_dev *eth_dev);
+int otx2_nix_dev_stats_reset(struct rte_eth_dev *eth_dev);
 
 int otx2_nix_queue_stats_mapping(struct rte_eth_dev *dev,
 				 uint16_t queue_id, uint8_t stat_idx,
@@ -432,7 +432,7 @@ int otx2_nix_xstats_get(struct rte_eth_dev *eth_dev,
 int otx2_nix_xstats_get_names(struct rte_eth_dev *eth_dev,
 			      struct rte_eth_xstat_name *xstats_names,
 			      unsigned int limit);
-void otx2_nix_xstats_reset(struct rte_eth_dev *eth_dev);
+int otx2_nix_xstats_reset(struct rte_eth_dev *eth_dev);
 
 int otx2_nix_xstats_get_by_id(struct rte_eth_dev *eth_dev,
 			      const uint64_t *ids,

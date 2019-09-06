@@ -105,7 +105,7 @@ static int nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 static int nfp_net_start(struct rte_eth_dev *dev);
 static int nfp_net_stats_get(struct rte_eth_dev *dev,
 			      struct rte_eth_stats *stats);
-static void nfp_net_stats_reset(struct rte_eth_dev *dev);
+static int nfp_net_stats_reset(struct rte_eth_dev *dev);
 static void nfp_net_stop(struct rte_eth_dev *dev);
 static uint16_t nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
@@ -1149,7 +1149,7 @@ nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return -EINVAL;
 }
 
-static void
+static int
 nfp_net_stats_reset(struct rte_eth_dev *dev)
 {
 	int i;
@@ -1210,6 +1210,8 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 
 	hw->eth_stats_base.imissed =
 		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_DISCARDS);
+
+	return 0;
 }
 
 static int

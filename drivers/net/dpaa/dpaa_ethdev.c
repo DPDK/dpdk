@@ -399,13 +399,15 @@ static int dpaa_eth_stats_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void dpaa_eth_stats_reset(struct rte_eth_dev *dev)
+static int dpaa_eth_stats_reset(struct rte_eth_dev *dev)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
 	fman_if_stats_reset(dpaa_intf->fif);
+
+	return 0;
 }
 
 static int

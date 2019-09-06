@@ -228,12 +228,12 @@ octeontx_port_stats(struct octeontx_nic *nic, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 octeontx_port_stats_clr(struct octeontx_nic *nic)
 {
 	PMD_INIT_FUNC_TRACE();
 
-	octeontx_bgx_port_stats_clr(nic->port_id);
+	return octeontx_bgx_port_stats_clr(nic->port_id);
 }
 
 static inline void
@@ -549,13 +549,13 @@ octeontx_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return octeontx_port_stats(nic, stats);
 }
 
-static void
+static int
 octeontx_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 
 	PMD_INIT_FUNC_TRACE();
-	octeontx_port_stats_clr(nic);
+	return octeontx_port_stats_clr(nic);
 }
 
 static int

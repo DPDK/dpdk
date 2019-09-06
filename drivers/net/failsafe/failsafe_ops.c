@@ -814,19 +814,31 @@ inc:
 	return 0;
 }
 
-static void
+static int
 fs_stats_reset(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
 	uint8_t i;
+	int ret;
 
 	fs_lock(dev, 0);
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
-		rte_eth_stats_reset(PORT_ID(sdev));
+		ret = rte_eth_stats_reset(PORT_ID(sdev));
+		if (ret) {
+			if (!fs_err(sdev, ret))
+				continue;
+
+			ERROR("Operation rte_eth_stats_reset failed for sub_device %d with error %d",
+			      i, ret);
+			fs_unlock(dev, 0);
+			return ret;
+		}
 		memset(&sdev->stats_snapshot, 0, sizeof(struct rte_eth_stats));
 	}
 	memset(&PRIV(dev)->stats_accumulator, 0, sizeof(struct rte_eth_stats));
 	fs_unlock(dev, 0);
+
+	return 0;
 }
 
 static void

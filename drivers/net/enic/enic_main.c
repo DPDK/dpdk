@@ -115,11 +115,18 @@ static void enic_init_soft_stats(struct enic *enic)
 	enic_clear_soft_stats(enic);
 }
 
-void enic_dev_stats_clear(struct enic *enic)
+int enic_dev_stats_clear(struct enic *enic)
 {
-	if (vnic_dev_stats_clear(enic->vdev))
+	int ret;
+
+	ret = vnic_dev_stats_clear(enic->vdev);
+	if (ret != 0) {
 		dev_err(enic, "Error in clearing stats\n");
+		return ret;
+	}
 	enic_clear_soft_stats(enic);
+
+	return 0;
 }
 
 int enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)

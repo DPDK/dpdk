@@ -61,7 +61,7 @@ static int virtio_dev_xstats_get(struct rte_eth_dev *dev,
 static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
 				       struct rte_eth_xstat_name *xstats_names,
 				       unsigned limit);
-static void virtio_dev_stats_reset(struct rte_eth_dev *dev);
+static int virtio_dev_stats_reset(struct rte_eth_dev *dev);
 static void virtio_dev_free_mbufs(struct rte_eth_dev *dev);
 static int virtio_vlan_filter_set(struct rte_eth_dev *dev,
 				uint16_t vlan_id, int on);
@@ -1076,7 +1076,7 @@ virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 virtio_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned int i;
@@ -1107,6 +1107,8 @@ virtio_dev_stats_reset(struct rte_eth_dev *dev)
 		memset(rxvq->stats.size_bins, 0,
 		       sizeof(rxvq->stats.size_bins[0]) * 8);
 	}
+
+	return 0;
 }
 
 static void

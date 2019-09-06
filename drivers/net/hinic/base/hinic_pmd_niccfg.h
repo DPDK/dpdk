@@ -651,8 +651,8 @@ int hinic_set_fast_recycle_mode(void *hwdev, u8 mode);
 
 int hinic_get_base_qpn(void *hwdev, u16 *global_qpn);
 
-void hinic_clear_vport_stats(struct hinic_hwdev *hwdev);
+int hinic_clear_vport_stats(struct hinic_hwdev *hwdev);
 
-void hinic_clear_phy_port_stats(struct hinic_hwdev *hwdev);
+int hinic_clear_phy_port_stats(struct hinic_hwdev *hwdev);
 
 #endif /* _HINIC_PMD_NICCFG_H_ */

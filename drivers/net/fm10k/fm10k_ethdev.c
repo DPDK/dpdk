@@ -1355,7 +1355,7 @@ fm10k_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 fm10k_stats_reset(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1366,6 +1366,8 @@ fm10k_stats_reset(struct rte_eth_dev *dev)
 
 	memset(hw_stats, 0, sizeof(*hw_stats));
 	fm10k_rebind_hw_stats(hw, hw_stats);
+
+	return 0;
 }
 
 static int
@@ -3114,7 +3116,11 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	}
 
 	/* Reset the hw statistics */
-	fm10k_stats_reset(dev);
+	diag = fm10k_stats_reset(dev);
+	if (diag != 0) {
+		PMD_INIT_LOG(ERR, "Stats reset failed: %d", diag);
+		return diag;
+	}
 
 	/* Reset the hw */
 	diag = fm10k_reset_hw(hw);

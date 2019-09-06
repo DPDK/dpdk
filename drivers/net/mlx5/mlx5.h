@@ -769,10 +769,10 @@ void mlx5_allmulticast_disable(struct rte_eth_dev *dev);
 
 void mlx5_stats_init(struct rte_eth_dev *dev);
 int mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
-void mlx5_stats_reset(struct rte_eth_dev *dev);
+int mlx5_stats_reset(struct rte_eth_dev *dev);
 int mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 		    unsigned int n);
-void mlx5_xstats_reset(struct rte_eth_dev *dev);
+int mlx5_xstats_reset(struct rte_eth_dev *dev);
 int mlx5_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 			  struct rte_eth_xstat_name *xstats_names,
 			  unsigned int n);

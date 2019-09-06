@@ -1131,7 +1131,7 @@ int hinic_set_fast_recycle_mode(void *hwdev, u8 mode)
 	return 0;
 }
 
-void hinic_clear_vport_stats(struct hinic_hwdev *hwdev)
+int hinic_clear_vport_stats(struct hinic_hwdev *hwdev)
 {
 	struct hinic_clear_vport_stats clear_vport_stats;
 	u16 out_size = sizeof(clear_vport_stats);
@@ -1139,7 +1139,7 @@ void hinic_clear_vport_stats(struct hinic_hwdev *hwdev)
 
 	if (!hwdev) {
 		PMD_DRV_LOG(ERR, "Hwdev is NULL");
-		return;
+		return -EINVAL;
 	}
 
 	memset(&clear_vport_stats, 0, sizeof(clear_vport_stats));
@@ -1153,10 +1153,13 @@ void hinic_clear_vport_stats(struct hinic_hwdev *hwdev)
 	if (err || !out_size || clear_vport_stats.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to clear vport statistics, err: %d, status: 0x%x, out size: 0x%x",
 			err, clear_vport_stats.mgmt_msg_head.status, out_size);
+		return -EINVAL;
 	}
+
+	return 0;
 }
 
-void hinic_clear_phy_port_stats(struct hinic_hwdev *hwdev)
+int hinic_clear_phy_port_stats(struct hinic_hwdev *hwdev)
 {
 	struct hinic_clear_port_stats clear_phy_port_stats;
 	u16 out_size = sizeof(clear_phy_port_stats);
@@ -1164,7 +1167,7 @@ void hinic_clear_phy_port_stats(struct hinic_hwdev *hwdev)
 
 	if (!hwdev) {
 		PMD_DRV_LOG(ERR, "Hwdev is NULL");
-		return;
+		return -EINVAL;
 	}
 
 	memset(&clear_phy_port_stats, 0, sizeof(clear_phy_port_stats));
@@ -1180,7 +1183,10 @@ void hinic_clear_phy_port_stats(struct hinic_hwdev *hwdev)
 		PMD_DRV_LOG(ERR, "Failed to clear phy port statistics, err: %d, status: 0x%x, out size: 0x%x",
 			err, clear_phy_port_stats.mgmt_msg_head.status,
 			out_size);
+		return -EINVAL;
 	}
+
+	return 0;
 }
 
 int hinic_set_link_status_follow(void *hwdev,

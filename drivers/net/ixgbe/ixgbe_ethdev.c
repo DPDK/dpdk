@@ -164,8 +164,8 @@ static int ixgbevf_dev_xstats_get(struct rte_eth_dev *dev,
 static int
 ixgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		uint64_t *values, unsigned int n);
-static void ixgbe_dev_stats_reset(struct rte_eth_dev *dev);
-static void ixgbe_dev_xstats_reset(struct rte_eth_dev *dev);
+static int ixgbe_dev_stats_reset(struct rte_eth_dev *dev);
+static int ixgbe_dev_xstats_reset(struct rte_eth_dev *dev);
 static int ixgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names,
 	unsigned int size);
@@ -255,7 +255,7 @@ static void ixgbevf_intr_disable(struct rte_eth_dev *dev);
 static void ixgbevf_intr_enable(struct rte_eth_dev *dev);
 static int ixgbevf_dev_stats_get(struct rte_eth_dev *dev,
 		struct rte_eth_stats *stats);
-static void ixgbevf_dev_stats_reset(struct rte_eth_dev *dev);
+static int ixgbevf_dev_stats_reset(struct rte_eth_dev *dev);
 static int ixgbevf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static void ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev,
@@ -3317,7 +3317,7 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 ixgbe_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw_stats *stats =
@@ -3328,6 +3328,8 @@ ixgbe_dev_stats_reset(struct rte_eth_dev *dev)
 
 	/* Reset software totals */
 	memset(stats, 0, sizeof(*stats));
+
+	return 0;
 }
 
 /* This function calculates the number of xstats based on the current config */
@@ -3649,7 +3651,7 @@ ixgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	return n;
 }
 
-static void
+static int
 ixgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw_stats *stats =
@@ -3666,6 +3668,8 @@ ixgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 	/* Reset software totals */
 	memset(stats, 0, sizeof(*stats));
 	memset(macsec_stats, 0, sizeof(*macsec_stats));
+
+	return 0;
 }
 
 static void
@@ -3740,7 +3744,7 @@ ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 ixgbevf_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats *)
@@ -3754,6 +3758,8 @@ ixgbevf_dev_stats_reset(struct rte_eth_dev *dev)
 	hw_stats->vfgorc = 0;
 	hw_stats->vfgptc = 0;
 	hw_stats->vfgotc = 0;
+
+	return 0;
 }
 
 static int

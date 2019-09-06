@@ -746,8 +746,11 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   alwasy 0 on success
  */
-void
+int
 mlx4_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned int i;
@@ -768,6 +771,8 @@ mlx4_stats_reset(struct rte_eth_dev *dev)
 				.idx = txq->stats.idx,
 			};
 	}
+
+	return 0;
 }
 
 /**

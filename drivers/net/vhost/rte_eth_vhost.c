@@ -216,7 +216,7 @@ static const struct vhost_xstats_name_off vhost_txport_stat_strings[] = {
 #define VHOST_NB_XSTATS_TXPORT (sizeof(vhost_txport_stat_strings) / \
 				sizeof(vhost_txport_stat_strings[0]))
 
-static void
+static int
 vhost_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct vhost_queue *vq = NULL;
@@ -234,6 +234,8 @@ vhost_dev_xstats_reset(struct rte_eth_dev *dev)
 			continue;
 		memset(&vq->stats, 0, sizeof(vq->stats));
 	}
+
+	return 0;
 }
 
 static int
@@ -1119,7 +1121,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
 	struct vhost_queue *vq;
@@ -1140,6 +1142,8 @@ eth_stats_reset(struct rte_eth_dev *dev)
 		vq->stats.bytes = 0;
 		vq->stats.missed_pkts = 0;
 	}
+
+	return 0;
 }
 
 static void

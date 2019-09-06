@@ -43,7 +43,7 @@ static int eth_em_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static int eth_em_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
-static void eth_em_stats_reset(struct rte_eth_dev *dev);
+static int eth_em_stats_reset(struct rte_eth_dev *dev);
 static int eth_em_infos_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int eth_em_flow_ctrl_get(struct rte_eth_dev *dev,
@@ -984,7 +984,7 @@ eth_em_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	return 0;
 }
 
-static void
+static int
 eth_em_stats_reset(struct rte_eth_dev *dev)
 {
 	struct e1000_hw_stats *hw_stats =
@@ -995,6 +995,8 @@ eth_em_stats_reset(struct rte_eth_dev *dev)
 
 	/* Reset software totals */
 	memset(hw_stats, 0, sizeof(*hw_stats));
+
+	return 0;
 }
 
 static int

@@ -315,20 +315,22 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 	return 0;
 }
 
-static void
+static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned i;
 	struct pmd_internals *internal;
 
 	if (dev == NULL)
-		return;
+		return -EINVAL;
 
 	internal = dev->data->dev_private;
 	for (i = 0; i < RTE_DIM(internal->rx_null_queues); i++)
 		internal->rx_null_queues[i].rx_pkts.cnt = 0;
 	for (i = 0; i < RTE_DIM(internal->tx_null_queues); i++)
 		internal->tx_null_queues[i].tx_pkts.cnt = 0;
+
+	return 0;
 }
 
 static void

@@ -463,7 +463,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
@@ -475,6 +475,8 @@ eth_stats_reset(struct rte_eth_dev *dev)
 		memset(&internals->tx_queues[i].stats, 0,
 					sizeof(struct tx_stats));
 	}
+
+	return 0;
 }
 
 static void

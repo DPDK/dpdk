@@ -2472,14 +2472,21 @@ bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 bond_ethdev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 	int i;
+	int err;
+	int ret;
 
-	for (i = 0; i < internals->slave_count; i++)
-		rte_eth_stats_reset(internals->slaves[i].port_id);
+	for (i = 0, err = 0; i < internals->slave_count; i++) {
+		ret = rte_eth_stats_reset(internals->slaves[i].port_id);
+		if (ret != 0)
+			err = ret;
+	}
+
+	return err;
 }
 
 static int

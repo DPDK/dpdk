@@ -86,7 +86,7 @@ static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
 static int i40evf_dev_xstats_get_names(struct rte_eth_dev *dev,
 				       struct rte_eth_xstat_name *xstats_names,
 				       unsigned limit);
-static void i40evf_dev_xstats_reset(struct rte_eth_dev *dev);
+static int i40evf_dev_xstats_reset(struct rte_eth_dev *dev);
 static int i40evf_vlan_filter_set(struct rte_eth_dev *dev,
 				  uint16_t vlan_id, int on);
 static int i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
@@ -950,7 +950,7 @@ i40evf_update_stats(struct i40e_vsi *vsi,
 	i40evf_stat_update_32(&oes->tx_discards, &nes->tx_discards);
 }
 
-static void
+static int
 i40evf_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	int ret;
@@ -963,6 +963,8 @@ i40evf_dev_xstats_reset(struct rte_eth_dev *dev)
 	/* set stats offset base on current values */
 	if (ret == 0)
 		vf->vsi.eth_stats_offset = *pstats;
+
+	return ret;
 }
 
 static int i40evf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,

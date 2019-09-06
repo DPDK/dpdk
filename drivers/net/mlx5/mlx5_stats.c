@@ -434,8 +434,11 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   always 0 on success and stats is reset
  */
-void
+int
 mlx5_stats_reset(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -458,6 +461,8 @@ mlx5_stats_reset(struct rte_eth_dev *dev)
 #ifndef MLX5_PMD_SOFT_COUNTERS
 	/* FIXME: reset hardware counters. */
 #endif
+
+	return 0;
 }
 
 /**
@@ -465,8 +470,12 @@ mlx5_stats_reset(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success and stats is reset, negative errno value otherwise and
+ *   rte_errno is set.
  */
-void
+int
 mlx5_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -481,7 +490,7 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
 	if (stats_n < 0) {
 		DRV_LOG(ERR, "port %u cannot get stats: %s", dev->data->port_id,
 			strerror(-stats_n));
-		return;
+		return stats_n;
 	}
 	if (xstats_ctrl->stats_n != stats_n)
 		mlx5_stats_init(dev);
@@ -489,10 +498,12 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
 	if (ret) {
 		DRV_LOG(ERR, "port %u cannot read device counters: %s",
 			dev->data->port_id, strerror(rte_errno));
-		return;
+		return ret;
 	}
 	for (i = 0; i != n; ++i)
 		xstats_ctrl->base[i] = counters[i];
+
+	return 0;
 }
 
 /**

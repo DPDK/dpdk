@@ -264,12 +264,12 @@ i40e_vf_representor_stats_get(struct rte_eth_dev *ethdev,
 	return ret;
 }
 
-static void
+static int
 i40e_vf_representor_stats_reset(struct rte_eth_dev *ethdev)
 {
 	struct i40e_vf_representor *representor = ethdev->data->dev_private;
 
-	rte_pmd_i40e_get_vf_native_stats(
+	return rte_pmd_i40e_get_vf_native_stats(
 		representor->adapter->eth_dev->data->port_id,
 		representor->vf_id, &representor->stats_offset);
 }

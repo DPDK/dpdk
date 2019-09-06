@@ -1111,7 +1111,7 @@ eth_stats_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
 	uint16_t i;
@@ -1130,6 +1130,8 @@ eth_stats_reset(struct rte_eth_dev *dev)
 		txq->tx_bytes = 0;
 		txq->err_pkts = 0;
 	}
+
+	return 0;
 }
 
 static void

@@ -362,7 +362,7 @@ nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return ptypes;
 }
 
-static void
+static int
 nicvf_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	int i;
@@ -370,6 +370,7 @@ nicvf_dev_stats_reset(struct rte_eth_dev *dev)
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	uint16_t rx_start, rx_end;
 	uint16_t tx_start, tx_end;
+	int ret;
 
 	/* Reset all primary nic counters */
 	nicvf_rx_range(dev, nic, &rx_start, &rx_end);
@@ -380,7 +381,9 @@ nicvf_dev_stats_reset(struct rte_eth_dev *dev)
 	for (i = tx_start; i <= tx_end; i++)
 		txqs |= (0x3 << (i * 2));
 
-	nicvf_mbox_reset_stat_counters(nic, 0x3FFF, 0x1F, rxqs, txqs);
+	ret = nicvf_mbox_reset_stat_counters(nic, 0x3FFF, 0x1F, rxqs, txqs);
+	if (ret != 0)
+		return ret;
 
 	/* Reset secondary nic queue counters */
 	for (i = 0; i < nic->sqs_count; i++) {
@@ -396,8 +399,12 @@ nicvf_dev_stats_reset(struct rte_eth_dev *dev)
 		for (i = tx_start; i <= tx_end; i++)
 			txqs |= (0x3 << ((i % MAX_SND_QUEUES_PER_QS) * 2));
 
-		nicvf_mbox_reset_stat_counters(snic, 0, 0, rxqs, txqs);
+		ret = nicvf_mbox_reset_stat_counters(snic, 0, 0, rxqs, txqs);
+		if (ret != 0)
+			return ret;
 	}
+
+	return 0;
 }
 
 /* Promiscuous mode enabled by default in LMAC to VF 1:1 map configuration */

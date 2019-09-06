@@ -42,7 +42,7 @@ static int iavf_dev_info_get(struct rte_eth_dev *dev,
 static const uint32_t *iavf_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int iavf_dev_stats_get(struct rte_eth_dev *dev,
 			     struct rte_eth_stats *stats);
-static void iavf_dev_stats_reset(struct rte_eth_dev *dev);
+static int iavf_dev_stats_reset(struct rte_eth_dev *dev);
 static int iavf_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int iavf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void iavf_dev_allmulticast_enable(struct rte_eth_dev *dev);
@@ -1065,7 +1065,7 @@ iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return -EIO;
 }
 
-static void
+static int
 iavf_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	int ret;
@@ -1077,10 +1077,13 @@ iavf_dev_stats_reset(struct rte_eth_dev *dev)
 
 	/* read stat values to clear hardware registers */
 	ret = iavf_query_stats(adapter, &pstats);
+	if (ret != 0)
+		return ret;
 
 	/* set stats offset base on current values */
-	if (ret == 0)
-		vsi->eth_stats_offset = *pstats;
+	vsi->eth_stats_offset = *pstats;
+
+	return 0;
 }
 
 static int

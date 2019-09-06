@@ -474,12 +474,12 @@ static int enicpmd_dev_stats_get(struct rte_eth_dev *eth_dev,
 	return enic_dev_stats_get(enic, stats);
 }
 
-static void enicpmd_dev_stats_reset(struct rte_eth_dev *eth_dev)
+static int enicpmd_dev_stats_reset(struct rte_eth_dev *eth_dev)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
 	ENICPMD_FUNC_TRACE();
-	enic_dev_stats_clear(enic);
+	return enic_dev_stats_clear(enic);
 }
 
 static uint32_t speed_capa_from_pci_id(struct rte_eth_dev *eth_dev)

@@ -116,8 +116,26 @@ typedef int (*eth_stats_get_t)(struct rte_eth_dev *dev,
 				struct rte_eth_stats *igb_stats);
 /**< @internal Get global I/O statistics of an Ethernet device. */
 
-typedef void (*eth_stats_reset_t)(struct rte_eth_dev *dev);
-/**< @internal Reset global I/O statistics of an Ethernet device to 0. */
+/**
+ * @internal
+ * Reset global I/O statistics of an Ethernet device to 0.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, statistics has been reset.
+ * @retval -ENOTSUP
+ *   Resetting statistics is not supported.
+ * @retval -EINVAL
+ *   Resetting statistics is not valid.
+ * @retval -ENOMEM
+ *   Not enough memory to get the stats.
+ */
+typedef int (*eth_stats_reset_t)(struct rte_eth_dev *dev);
 
 typedef int (*eth_xstats_get_t)(struct rte_eth_dev *dev,
 	struct rte_eth_xstat *stats, unsigned n);
@@ -129,8 +147,26 @@ typedef int (*eth_xstats_get_by_id_t)(struct rte_eth_dev *dev,
 				      unsigned int n);
 /**< @internal Get extended stats of an Ethernet device. */
 
-typedef void (*eth_xstats_reset_t)(struct rte_eth_dev *dev);
-/**< @internal Reset extended stats of an Ethernet device. */
+/**
+ * @internal
+ * Reset extended stats of an Ethernet device.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, statistics has been reset.
+ * @retval -ENOTSUP
+ *   Resetting statistics is not supported.
+ * @retval -EINVAL
+ *   Resetting statistics is not valid.
+ * @retval -ENOMEM
+ *   Not enough memory to get the stats.
+ */
+typedef int (*eth_xstats_reset_t)(struct rte_eth_dev *dev);
 
 typedef int (*eth_xstats_get_names_t)(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, unsigned size);

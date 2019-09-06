@@ -23,7 +23,7 @@ static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 				 int wait_to_complete);
 static int axgbe_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
-static void axgbe_dev_stats_reset(struct rte_eth_dev *dev);
+static int axgbe_dev_stats_reset(struct rte_eth_dev *dev);
 static int  axgbe_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
 
@@ -337,7 +337,7 @@ axgbe_dev_stats_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static int
 axgbe_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct axgbe_rx_queue *rxq;
@@ -356,6 +356,8 @@ axgbe_dev_stats_reset(struct rte_eth_dev *dev)
 		txq->bytes = 0;
 		txq->errors = 0;
 	}
+
+	return 0;
 }
 
 static int

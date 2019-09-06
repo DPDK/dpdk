@@ -76,7 +76,7 @@ static int vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 static void vmxnet3_hw_stats_save(struct vmxnet3_hw *hw);
 static int vmxnet3_dev_stats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_stats *stats);
-static void vmxnet3_dev_stats_reset(struct rte_eth_dev *dev);
+static int vmxnet3_dev_stats_reset(struct rte_eth_dev *dev);
 static int vmxnet3_dev_xstats_get_names(struct rte_eth_dev *dev,
 					struct rte_eth_xstat_name *xstats,
 					unsigned int n);
@@ -1125,7 +1125,7 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 vmxnet3_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned int i;
@@ -1147,6 +1147,8 @@ vmxnet3_dev_stats_reset(struct rte_eth_dev *dev)
 		memcpy(&hw->snapshot_rx_stats[i], &rxStats,
 			sizeof(hw->snapshot_rx_stats[0]));
 	}
+
+	return 0;
 }
 
 static int

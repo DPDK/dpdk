@@ -2047,7 +2047,7 @@ uint16_t port_id)
 		0);
 }
 
-static void
+static int
 ipn3ke_rpst_stats_reset(struct rte_eth_dev *ethdev)
 {
 	uint16_t port_id = 0;
@@ -2058,18 +2058,18 @@ ipn3ke_rpst_stats_reset(struct rte_eth_dev *ethdev)
 
 	if (!ethdev) {
 		IPN3KE_AFU_PMD_ERR("ethernet device to reset is NULL!");
-		return;
+		return -EINVAL;
 	}
 
 	afu_dev = RTE_ETH_DEV_TO_AFU(ethdev);
 	if (!afu_dev) {
 		IPN3KE_AFU_PMD_ERR("afu device to reset is NULL!");
-		return;
+		return -EINVAL;
 	}
 
 	if (!afu_dev->shared.data) {
 		IPN3KE_AFU_PMD_ERR("hardware data to reset is NULL!");
-		return;
+		return -EINVAL;
 	}
 
 	hw = afu_dev->shared.data;
@@ -2077,7 +2077,7 @@ ipn3ke_rpst_stats_reset(struct rte_eth_dev *ethdev)
 	ch = ethdev->data->name;
 	if (!ch) {
 		IPN3KE_AFU_PMD_ERR("ethdev name is NULL!");
-		return;
+		return -EINVAL;
 	}
 	while (ch) {
 		if (*ch == '_')
@@ -2088,7 +2088,7 @@ ipn3ke_rpst_stats_reset(struct rte_eth_dev *ethdev)
 	}
 	if (!ch) {
 		IPN3KE_AFU_PMD_ERR("Can not get port_id from ethdev name!");
-		return;
+		return -EINVAL;
 	}
 	port_id = atoi(ch);
 
@@ -2104,6 +2104,8 @@ ipn3ke_rpst_stats_reset(struct rte_eth_dev *ethdev)
 		ipn3ke_rpst_10g_lineside_tx_stats_reset(hw, port_id);
 		ipn3ke_rpst_10g_lineside_rx_stats_reset(hw, port_id);
 	}
+
+	return 0;
 }
 
 static int

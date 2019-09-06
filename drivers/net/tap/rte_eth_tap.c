@@ -986,7 +986,7 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 	return 0;
 }
 
-static void
+static int
 tap_stats_reset(struct rte_eth_dev *dev)
 {
 	int i;
@@ -1002,6 +1002,8 @@ tap_stats_reset(struct rte_eth_dev *dev)
 		pmd->txq[i].stats.errs = 0;
 		pmd->txq[i].stats.obytes = 0;
 	}
+
+	return 0;
 }
 
 static void

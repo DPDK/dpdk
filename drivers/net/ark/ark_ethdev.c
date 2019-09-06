@@ -39,7 +39,7 @@ static int eth_ark_dev_set_link_up(struct rte_eth_dev *dev);
 static int eth_ark_dev_set_link_down(struct rte_eth_dev *dev);
 static int eth_ark_dev_stats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_stats *stats);
-static void eth_ark_dev_stats_reset(struct rte_eth_dev *dev);
+static int eth_ark_dev_stats_reset(struct rte_eth_dev *dev);
 static int eth_ark_set_default_mac_addr(struct rte_eth_dev *dev,
 					 struct rte_ether_addr *mac_addr);
 static int eth_ark_macaddr_add(struct rte_eth_dev *dev,
@@ -813,7 +813,7 @@ eth_ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static void
+static int
 eth_ark_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	uint16_t i;
@@ -826,6 +826,8 @@ eth_ark_dev_stats_reset(struct rte_eth_dev *dev)
 	if (ark->user_ext.stats_reset)
 		ark->user_ext.stats_reset(dev,
 			  ark->user_data[dev->data->port_id]);
+
+	return 0;
 }
 
 static int

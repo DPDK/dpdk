@@ -637,7 +637,7 @@ unlock:
 	return -ret;
 }
 
-static void
+static int
 sfc_stats_reset(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
@@ -650,12 +650,15 @@ sfc_stats_reset(struct rte_eth_dev *dev)
 		 * will be scheduled to be done during the next port start
 		 */
 		port->mac_stats_reset_pending = B_TRUE;
-		return;
+		return 0;
 	}
 
 	rc = sfc_port_reset_mac_stats(sa);
 	if (rc != 0)
 		sfc_err(sa, "failed to reset statistics (rc = %d)", rc);
+
+	SFC_ASSERT(rc >= 0);
+	return -rc;
 }
 
 static int

@@ -48,7 +48,7 @@ struct mvneta_ifnames {
 
 static int mvneta_dev_num;
 
-static void mvneta_stats_reset(struct rte_eth_dev *dev);
+static int mvneta_stats_reset(struct rte_eth_dev *dev);
 static int rte_pmd_mvneta_remove(struct rte_vdev_device *vdev);
 
 
@@ -736,19 +736,24 @@ mvneta_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
  */
-static void
+static int
 mvneta_stats_reset(struct rte_eth_dev *dev)
 {
 	struct mvneta_priv *priv = dev->data->dev_private;
 	unsigned int ret;
 
 	if (!priv->ppio)
-		return;
+		return 0;
 
 	ret = mvneta_stats_get(dev, &priv->prev_stats);
 	if (unlikely(ret))
 		RTE_LOG(ERR, PMD, "Failed to reset port statistics");
+
+	return ret;
 }
 
 

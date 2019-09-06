@@ -2039,12 +2039,16 @@ int
 rte_eth_stats_reset(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->stats_reset, -ENOTSUP);
-	(*dev->dev_ops->stats_reset)(dev);
+	ret = (*dev->dev_ops->stats_reset)(dev);
+	if (ret != 0)
+		return eth_err(port_id, ret);
+
 	dev->data->rx_mbuf_alloc_failed = 0;
 
 	return 0;
@@ -2529,10 +2533,8 @@ rte_eth_xstats_reset(uint16_t port_id)
 	dev = &rte_eth_devices[port_id];
 
 	/* implemented by the driver */
-	if (dev->dev_ops->xstats_reset != NULL) {
-		(*dev->dev_ops->xstats_reset)(dev);
-		return 0;
-	}
+	if (dev->dev_ops->xstats_reset != NULL)
+		return eth_err(port_id, (*dev->dev_ops->xstats_reset)(dev));
 
 	/* fallback to default */
 	return rte_eth_stats_reset(port_id);

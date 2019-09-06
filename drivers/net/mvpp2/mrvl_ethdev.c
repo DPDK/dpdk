@@ -1315,15 +1315,18 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
  */
-static void
+static int
 mrvl_stats_reset(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int i;
 
 	if (!priv->ppio)
-		return;
+		return 0;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct mrvl_rxq *rxq = dev->data->rx_queues[i];
@@ -1341,7 +1344,7 @@ mrvl_stats_reset(struct rte_eth_dev *dev)
 		txq->bytes_sent = 0;
 	}
 
-	pp2_ppio_get_statistics(priv->ppio, NULL, 1);
+	return pp2_ppio_get_statistics(priv->ppio, NULL, 1);
 }
 
 /**
@@ -1392,11 +1395,14 @@ mrvl_xstats_get(struct rte_eth_dev *dev,
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
  */
-static void
+static int
 mrvl_xstats_reset(struct rte_eth_dev *dev)
 {
-	mrvl_stats_reset(dev);
+	return mrvl_stats_reset(dev);
 }
 
 /**

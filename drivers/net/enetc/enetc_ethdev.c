@@ -492,7 +492,7 @@ int enetc_stats_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static int
 enetc_stats_reset(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw =
@@ -500,6 +500,8 @@ enetc_stats_reset(struct rte_eth_dev *dev)
 	struct enetc_hw *enetc_hw = &hw->hw;
 
 	enetc_port_wr(enetc_hw, ENETC_PM0_STAT_CONFIG, ENETC_CLEAR_STATS);
+
+	return 0;
 }
 
 static void

@@ -236,7 +236,7 @@ static int i40e_dev_xstats_get(struct rte_eth_dev *dev,
 static int i40e_dev_xstats_get_names(struct rte_eth_dev *dev,
 				     struct rte_eth_xstat_name *xstats_names,
 				     unsigned limit);
-static void i40e_dev_stats_reset(struct rte_eth_dev *dev);
+static int i40e_dev_stats_reset(struct rte_eth_dev *dev);
 static int i40e_fw_version_get(struct rte_eth_dev *dev,
 				char *fw_version, size_t fw_size);
 static int i40e_dev_info_get(struct rte_eth_dev *dev,
@@ -3313,7 +3313,7 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 }
 
 /* Reset the statistics */
-static void
+static int
 i40e_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -3326,6 +3326,8 @@ i40e_dev_stats_reset(struct rte_eth_dev *dev)
 
 	/* read the stats, reading current register values into offset */
 	i40e_read_stats_registers(pf, hw);
+
+	return 0;
 }
 
 static uint32_t
