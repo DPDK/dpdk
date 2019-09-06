@@ -580,8 +580,16 @@ err:
 static void
 nic_xstats_clear(uint16_t port_id)
 {
+	int ret;
+
 	printf("\n Clearing NIC xstats for port %d\n", port_id);
-	rte_eth_xstats_reset(port_id);
+	ret = rte_eth_xstats_reset(port_id);
+	if (ret != 0) {
+		printf("\n Error clearing xstats for port %d: %s\n", port_id,
+		       strerror(-ret));
+		return;
+	}
+
 	printf("\n  NIC extended statistics for port %d cleared\n", port_id);
 }
 

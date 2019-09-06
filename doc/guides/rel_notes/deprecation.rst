@@ -92,7 +92,6 @@ Deprecation Notices
   - ``rte_eth_link_get`` and ``rte_eth_link_get_nowait``
   - ``rte_eth_dev_stop``
   - ``rte_eth_dev_close``
-  - ``rte_eth_xstats_reset``
   - ``rte_eth_macaddr_get``
   - ``rte_eth_dev_owner_delete``
 

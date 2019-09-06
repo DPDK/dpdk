@@ -273,7 +273,13 @@ nic_xstats_display(portid_t port_id)
 void
 nic_xstats_clear(portid_t port_id)
 {
-	rte_eth_xstats_reset(port_id);
+	int ret;
+
+	ret = rte_eth_xstats_reset(port_id);
+	if (ret != 0) {
+		printf("%s: Error: failed to reset xstats (port %u): %s",
+		       __func__, port_id, strerror(ret));
+	}
 }
 
 void

@@ -2284,8 +2284,13 @@ int rte_eth_xstats_get_id_by_name(uint16_t port_id, const char *xstat_name,
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if device notified to reset extended stats.
+ *   - (-ENOTSUP) if pmd doesn't support both
+ *     extended stats and basic stats reset.
+ *   - (-ENODEV) if *port_id* invalid.
  */
-void rte_eth_xstats_reset(uint16_t port_id);
+int rte_eth_xstats_reset(uint16_t port_id);
 
 /**
  *  Set a mapping for the specified transmit queue to the specified per-queue

@@ -2520,22 +2520,22 @@ rte_eth_xstats_get(uint16_t port_id, struct rte_eth_xstat *xstats,
 }
 
 /* reset ethdev extended statistics */
-void
+int
 rte_eth_xstats_reset(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	/* implemented by the driver */
 	if (dev->dev_ops->xstats_reset != NULL) {
 		(*dev->dev_ops->xstats_reset)(dev);
-		return;
+		return 0;
 	}
 
 	/* fallback to default */
-	rte_eth_stats_reset(port_id);
+	return rte_eth_stats_reset(port_id);
 }
 
 static int
