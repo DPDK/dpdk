@@ -90,7 +90,7 @@ nix_create_non_tunnel_ptype_array(uint16_t *ptype)
 		val = RTE_PTYPE_UNKNOWN;
 
 		switch (lb) {
-		case NPC_LT_LB_QINQ:
+		case NPC_LT_LB_STAG_QINQ:
 			val |= RTE_PTYPE_L2_ETHER_QINQ;
 			break;
 		case NPC_LT_LB_CTAG:

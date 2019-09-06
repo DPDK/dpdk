@@ -599,11 +599,11 @@ otx2_flow_parse_lb(struct otx2_parse_state *pst)
 			lt = NPC_LT_LB_CTAG;
 			break;
 		case 2:
-			lt = NPC_LT_LB_STAG;
+			lt = NPC_LT_LB_STAG_QINQ;
 			lflags = NPC_F_STAG_CTAG;
 			break;
 		case 3:
-			lt = NPC_LT_LB_STAG;
+			lt = NPC_LT_LB_STAG_QINQ;
 			lflags = NPC_F_STAG_STAG_CTAG;
 			break;
 		default:

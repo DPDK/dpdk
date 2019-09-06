@@ -300,8 +300,11 @@ nix_vlan_mcam_config(struct rte_eth_dev *eth_dev,
 
 	/* Adds vlan_id & LB CTAG flag to MCAM KW */
 	if (flags & VLAN_ID_MATCH) {
-		entry.kw[kwi] |= NPC_LT_LB_CTAG << mkex->lb_lt_offset;
-		entry.kw_mask[kwi] |= 0xFULL << mkex->lb_lt_offset;
+		entry.kw[kwi] |= (NPC_LT_LB_CTAG | NPC_LT_LB_STAG_QINQ)
+							<< mkex->lb_lt_offset;
+		entry.kw_mask[kwi] |=
+			(0xF & ~(NPC_LT_LB_CTAG ^ NPC_LT_LB_STAG_QINQ))
+							<< mkex->lb_lt_offset;
 
 		mcam_data = ((uint32_t)vlan_id << 16);
 		mcam_mask = (BIT_ULL(16) - 1) << 16;
@@ -313,15 +316,16 @@ nix_vlan_mcam_config(struct rte_eth_dev *eth_dev,
 
 	/* Adds LB STAG flag to MCAM KW */
 	if (flags & QINQ_F_MATCH) {
-		entry.kw[kwi] |= NPC_LT_LB_STAG << mkex->lb_lt_offset;
+		entry.kw[kwi] |= NPC_LT_LB_STAG_QINQ << mkex->lb_lt_offset;
 		entry.kw_mask[kwi] |= 0xFULL << mkex->lb_lt_offset;
 	}
 
 	/* Adds LB CTAG & LB STAG flags to MCAM KW */
 	if (flags & VTAG_F_MATCH) {
-		entry.kw[kwi] |= (NPC_LT_LB_CTAG | NPC_LT_LB_STAG)
+		entry.kw[kwi] |= (NPC_LT_LB_CTAG | NPC_LT_LB_STAG_QINQ)
 							<< mkex->lb_lt_offset;
-		entry.kw_mask[kwi] |= (NPC_LT_LB_CTAG & NPC_LT_LB_STAG)
+		entry.kw_mask[kwi] |=
+			(0xF & ~(NPC_LT_LB_CTAG ^ NPC_LT_LB_STAG_QINQ))
 							<< mkex->lb_lt_offset;
 	}
 
