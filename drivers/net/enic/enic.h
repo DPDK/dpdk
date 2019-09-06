@@ -136,6 +136,7 @@ struct enic {
 	bool udp_rss_weak;    /* Bodega style UDP RSS */
 	uint8_t ig_vlan_rewrite_mode; /* devargs ig-vlan-rewrite */
 	uint16_t vxlan_port;  /* current vxlan port pushed to NIC */
+	int use_simple_tx_handler;
 
 	unsigned int flags;
 	unsigned int priv_flags;
@@ -335,7 +336,9 @@ uint16_t enic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 int enic_set_mtu(struct enic *enic, uint16_t new_mtu);
 int enic_link_update(struct enic *enic);
-bool enic_use_vector_rx_handler(struct enic *enic);
+bool enic_use_vector_rx_handler(struct rte_eth_dev *eth_dev);
+void enic_pick_rx_handler(struct rte_eth_dev *eth_dev);
+void enic_pick_tx_handler(struct rte_eth_dev *eth_dev);
 void enic_fdir_info(struct enic *enic);
 void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *stats);
 extern const struct rte_flow_ops enic_flow_ops;

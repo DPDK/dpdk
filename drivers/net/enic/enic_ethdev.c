@@ -1227,12 +1227,18 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 
 	ENICPMD_FUNC_TRACE();
 
-	enic->port_id = eth_dev->data->port_id;
-	enic->rte_dev = eth_dev;
 	eth_dev->dev_ops = &enicpmd_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &enic_recv_pkts;
 	eth_dev->tx_pkt_burst = &enic_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &enic_prep_pkts;
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		enic_pick_tx_handler(eth_dev);
+		enic_pick_rx_handler(eth_dev);
+		return 0;
+	}
+	/* Only the primary sets up adapter and other data in shared memory */
+	enic->port_id = eth_dev->data->port_id;
+	enic->rte_dev = eth_dev;
 	/* Let rte_eth_dev_close() release the port resources */
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 

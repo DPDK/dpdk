@@ -806,12 +806,11 @@ enic_noscatter_vec_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 bool
-enic_use_vector_rx_handler(struct enic *enic)
+enic_use_vector_rx_handler(struct rte_eth_dev *eth_dev)
 {
-	struct rte_eth_dev *eth_dev;
+	struct enic *enic = pmd_priv(eth_dev);
 	struct rte_fdir_conf *fconf;
 
-	eth_dev = enic->rte_dev;
 	/* User needs to request for the avx2 handler */
 	if (!enic->enable_avx2_rx)
 		return false;
