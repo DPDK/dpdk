@@ -424,9 +424,9 @@ enic_free_consistent(void *priv,
 	rte_free(mze);
 }
 
-int enic_link_update(struct enic *enic)
+int enic_link_update(struct rte_eth_dev *eth_dev)
 {
-	struct rte_eth_dev *eth_dev = enic->rte_dev;
+	struct enic *enic = pmd_priv(eth_dev);
 	struct rte_eth_link link;
 
 	memset(&link, 0, sizeof(link));
@@ -445,7 +445,7 @@ enic_intr_handler(void *arg)
 
 	vnic_intr_return_all_credits(&enic->intr[ENICPMD_LSC_INTR_OFFSET]);
 
-	enic_link_update(enic);
+	enic_link_update(dev);
 	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	enic_log_q_error(enic);
 }
@@ -738,31 +738,31 @@ void enic_free_rq(void *rxq)
 
 void enic_start_wq(struct enic *enic, uint16_t queue_idx)
 {
-	struct rte_eth_dev *eth_dev = enic->rte_dev;
+	struct rte_eth_dev_data *data = enic->dev_data;
 	vnic_wq_enable(&enic->wq[queue_idx]);
-	eth_dev->data->tx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STARTED;
+	data->tx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STARTED;
 }
 
 int enic_stop_wq(struct enic *enic, uint16_t queue_idx)
 {
-	struct rte_eth_dev *eth_dev = enic->rte_dev;
+	struct rte_eth_dev_data *data = enic->dev_data;
 	int ret;
 
 	ret = vnic_wq_disable(&enic->wq[queue_idx]);
 	if (ret)
 		return ret;
 
-	eth_dev->data->tx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	data->tx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;
 }
 
 void enic_start_rq(struct enic *enic, uint16_t queue_idx)
 {
+	struct rte_eth_dev_data *data = enic->dev_data;
 	struct vnic_rq *rq_sop;
 	struct vnic_rq *rq_data;
 	rq_sop = &enic->rq[enic_rte_rq_idx_to_sop_idx(queue_idx)];
 	rq_data = &enic->rq[rq_sop->data_queue_idx];
-	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
 	if (rq_data->in_use) {
 		vnic_rq_enable(rq_data);
@@ -771,13 +771,13 @@ void enic_start_rq(struct enic *enic, uint16_t queue_idx)
 	rte_mb();
 	vnic_rq_enable(rq_sop);
 	enic_initial_post_rx(enic, rq_sop);
-	eth_dev->data->rx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STARTED;
+	data->rx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STARTED;
 }
 
 int enic_stop_rq(struct enic *enic, uint16_t queue_idx)
 {
+	struct rte_eth_dev_data *data = enic->dev_data;
 	int ret1 = 0, ret2 = 0;
-	struct rte_eth_dev *eth_dev = enic->rte_dev;
 	struct vnic_rq *rq_sop;
 	struct vnic_rq *rq_data;
 	rq_sop = &enic->rq[enic_rte_rq_idx_to_sop_idx(queue_idx)];
@@ -793,7 +793,7 @@ int enic_stop_rq(struct enic *enic, uint16_t queue_idx)
 	else if (ret1)
 		return ret1;
 
-	eth_dev->data->rx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	data->rx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;
 }
 

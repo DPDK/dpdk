@@ -112,6 +112,7 @@ struct enic {
 	unsigned int port_id;
 	bool overlay_offload;
 	struct rte_eth_dev *rte_dev;
+	struct rte_eth_dev_data *dev_data;
 	struct enic_fdir fdir;
 	char bdf_name[ENICPMD_BDF_LENGTH];
 	int dev_fd;
@@ -335,7 +336,7 @@ uint16_t enic_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 uint16_t enic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 int enic_set_mtu(struct enic *enic, uint16_t new_mtu);
-int enic_link_update(struct enic *enic);
+int enic_link_update(struct rte_eth_dev *eth_dev);
 bool enic_use_vector_rx_handler(struct rte_eth_dev *eth_dev);
 void enic_pick_rx_handler(struct rte_eth_dev *eth_dev);
 void enic_pick_tx_handler(struct rte_eth_dev *eth_dev);
