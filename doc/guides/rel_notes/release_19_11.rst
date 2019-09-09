@@ -252,4 +252,5 @@ Tested Platforms
 
   * Added support for VLAN pop flow offload command.
   * Added support for VLAN push flow offload command.
+  * Added support for VLAN set PCP offload command.
 

@@ -132,6 +132,8 @@ Limitations
 
 - VLAN push offload is not supported on ingress traffic.
 
+- VLAN set PCP offload is not supported on existing headers.
+
 - A multi segment packet must have not more segments than reported by dev_infos_get()
   in tx_desc_lim.nb_seg_max field. This value depends on maximal supported Tx descriptor
   size and ``txq_inline_min`` settings and may be from 2 (worst case forced by maximal
@@ -1042,7 +1044,8 @@ Supported hardware offloads
    +-----------------------+-----------------+-----------------+
    | | VLAN                | | DPDK 19.11    | | DPDK 19.11    |
    | | (of_pop_vlan /      | | OFED 4.6-4    | | OFED 4.6-4    |
-   | | of_push_vlan)       | | ConnectX-5    | | ConnectX-5    |
+   | | of_push_vlan /      | | ConnectX-5    | | ConnectX-5    |
+   | | of_set_vlan_pcp)    |                 |                 |
    +-----------------------+-----------------+-----------------+
 
 Notes for testpmd
