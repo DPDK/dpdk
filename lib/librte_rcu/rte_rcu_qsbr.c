@@ -157,7 +157,7 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	/* Check if the thread is already unregistered */
 	old_bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
 					__ATOMIC_RELAXED);
-	if (old_bmap & ~(1UL << id))
+	if (!(old_bmap & (1UL << id)))
 		return 0;
 
 	do {
@@ -174,7 +174,7 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 		if (success)
 			__atomic_fetch_sub(&v->num_threads,
 						1, __ATOMIC_RELAXED);
-		else if (old_bmap & ~(1UL << id))
+		else if (!(old_bmap & (1UL << id)))
 			/* Someone else unregistered this thread.
 			 * Counter should not be incremented.
 			 */
