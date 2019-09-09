@@ -43,7 +43,9 @@ struct rte_eth_dev_module_info {
 #define RTE_ETH_MODULE_SFF_8472_LEN         512
 #define RTE_ETH_MODULE_SFF_8636             0x3
 #define RTE_ETH_MODULE_SFF_8636_LEN         256
+#define RTE_ETH_MODULE_SFF_8636_MAX_LEN     640
 #define RTE_ETH_MODULE_SFF_8436             0x4
 #define RTE_ETH_MODULE_SFF_8436_LEN         256
+#define RTE_ETH_MODULE_SFF_8436_MAX_LEN     640
 
 #endif /* _RTE_DEV_INFO_H_ */
