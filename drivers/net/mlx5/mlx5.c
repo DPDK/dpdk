@@ -996,6 +996,8 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.rx_queue_intr_disable = mlx5_rx_intr_disable,
 	.is_removed = mlx5_is_removed,
 	.udp_tunnel_port_add  = mlx5_udp_tunnel_port_add,
+	.get_module_info = mlx5_get_module_info,
+	.get_module_eeprom = mlx5_get_module_eeprom,
 };
 
 /* Available operations from secondary process. */
@@ -1009,6 +1011,8 @@ static const struct eth_dev_ops mlx5_dev_sec_ops = {
 	.dev_infos_get = mlx5_dev_infos_get,
 	.rx_descriptor_status = mlx5_rx_descriptor_status,
 	.tx_descriptor_status = mlx5_tx_descriptor_status,
+	.get_module_info = mlx5_get_module_info,
+	.get_module_eeprom = mlx5_get_module_eeprom,
 };
 
 /* Available operations in flow isolated mode. */
@@ -1052,6 +1056,8 @@ const struct eth_dev_ops mlx5_dev_ops_isolate = {
 	.rx_queue_intr_enable = mlx5_rx_intr_enable,
 	.rx_queue_intr_disable = mlx5_rx_intr_disable,
 	.is_removed = mlx5_is_removed,
+	.get_module_info = mlx5_get_module_info,
+	.get_module_eeprom = mlx5_get_module_eeprom,
 };
 
 /**

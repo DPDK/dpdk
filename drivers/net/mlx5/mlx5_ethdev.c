@@ -1928,3 +1928,89 @@ mlx5_translate_port_name(const char *port_name_in,
 	port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN;
 	return;
 }
+
+/**
+ * DPDK callback to retrieve plug-in module EEPROM information (type and size).
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] modinfo
+ *   Storage for plug-in module EEPROM information.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_get_module_info(struct rte_eth_dev *dev,
+		     struct rte_eth_dev_module_info *modinfo)
+{
+	struct ethtool_modinfo info = {
+		.cmd = ETHTOOL_GMODULEINFO,
+	};
+	struct ifreq ifr = (struct ifreq) {
+		.ifr_data = (void *)&info,
+	};
+	int ret = 0;
+
+	if (!dev || !modinfo) {
+		DRV_LOG(WARNING, "missing argument, cannot get module info");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
+		DRV_LOG(WARNING, "port %u ioctl(SIOCETHTOOL) failed: %s",
+			dev->data->port_id, strerror(rte_errno));
+		return ret;
+	}
+	modinfo->type = info.type;
+	modinfo->eeprom_len = info.eeprom_len;
+	return ret;
+}
+
+/**
+ * DPDK callback to retrieve plug-in module EEPROM data.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] info
+ *   Storage for plug-in module EEPROM data.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
+			   struct rte_dev_eeprom_info *info)
+{
+	struct ethtool_eeprom *eeprom;
+	struct ifreq ifr;
+	int ret = 0;
+
+	if (!dev || !info) {
+		DRV_LOG(WARNING, "missing argument, cannot get module eeprom");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	eeprom = rte_calloc(__func__, 1,
+			    (sizeof(struct ethtool_eeprom) + info->length), 0);
+	if (!eeprom) {
+		DRV_LOG(WARNING, "port %u cannot allocate memory for "
+			"eeprom data", dev->data->port_id);
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	eeprom->cmd = ETHTOOL_GMODULEEEPROM;
+	eeprom->offset = info->offset;
+	eeprom->len = info->length;
+	ifr = (struct ifreq) {
+		.ifr_data = (void *)eeprom,
+	};
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret)
+		DRV_LOG(WARNING, "port %u ioctl(SIOCETHTOOL) failed: %s",
+			dev->data->port_id, strerror(rte_errno));
+	else
+		rte_memcpy(info->data, eeprom->data, info->length);
+	rte_free(eeprom);
+	return ret;
+}

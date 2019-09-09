@@ -728,6 +728,10 @@ void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
 void mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
 				   rte_intr_callback_fn cb_fn, void *cb_arg);
+int mlx5_get_module_info(struct rte_eth_dev *dev,
+			 struct rte_eth_dev_module_info *modinfo);
+int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
+			   struct rte_dev_eeprom_info *info);
 
 /* mlx5_mac.c */
 
