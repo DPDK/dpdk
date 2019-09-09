@@ -442,6 +442,9 @@ uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow, int tunnel,
 				     uint64_t hash_fields);
 uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority);
+const struct rte_flow_action *mlx5_flow_find_action
+					(const struct rte_flow_action *actions,
+					 enum rte_flow_action_type action);
 int mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    struct rte_flow_error *error);

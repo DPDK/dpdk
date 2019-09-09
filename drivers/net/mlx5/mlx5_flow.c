@@ -697,6 +697,29 @@ flow_rxq_flags_clear(struct rte_eth_dev *dev)
 }
 
 /*
+ * return a pointer to the desired action in the list of actions.
+ *
+ * @param[in] actions
+ *   The list of actions to search the action in.
+ * @param[in] action
+ *   The action to find.
+ *
+ * @return
+ *   Pointer to the action in the list, if found. NULL otherwise.
+ */
+const struct rte_flow_action *
+mlx5_flow_find_action(const struct rte_flow_action *actions,
+		      enum rte_flow_action_type action)
+{
+	if (actions == NULL)
+		return NULL;
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++)
+		if (actions->type == action)
+			return actions;
+	return NULL;
+}
+
+/*
  * Validate the flag action.
  *
  * @param[in] action_flags
