@@ -548,6 +548,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		sh->esw_drop_action = mlx5_glue->dr_create_flow_action_drop();
 	}
 #endif
+	sh->pop_vlan_action = mlx5_glue->dr_create_flow_action_pop_vlan();
 	sh->dv_refcnt++;
 	priv->dr_shared = 1;
 	return 0;
@@ -569,6 +570,10 @@ error:
 	if (sh->esw_drop_action) {
 		mlx5_glue->destroy_flow_action(sh->esw_drop_action);
 		sh->esw_drop_action = NULL;
+	}
+	if (sh->pop_vlan_action) {
+		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
+		sh->pop_vlan_action = NULL;
 	}
 	return err;
 #else
@@ -615,6 +620,10 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 		sh->esw_drop_action = NULL;
 	}
 #endif
+	if (sh->pop_vlan_action) {
+		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
+		sh->pop_vlan_action = NULL;
+	}
 	pthread_mutex_destroy(&sh->dv_mutex);
 #else
 	(void)priv;

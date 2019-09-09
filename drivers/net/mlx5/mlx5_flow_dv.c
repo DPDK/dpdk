@@ -815,6 +815,61 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate the pop VLAN action.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the pop vlan action.
+ * @param[in] item_flags
+ *   The items found in this flow rule.
+ * @param[in] attr
+ *   Pointer to flow attributes.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_pop_vlan(struct rte_eth_dev *dev,
+				 uint64_t action_flags,
+				 const struct rte_flow_action *action,
+				 uint64_t item_flags,
+				 const struct rte_flow_attr *attr,
+				 struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	(void)action;
+	(void)attr;
+	if (!priv->sh->pop_vlan_action)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "pop vlan action is not supported");
+	/*
+	 * Check for inconsistencies:
+	 *  fail strip_vlan in a flow that matches packets without VLAN tags.
+	 *  fail strip_vlan in a flow that matches packets without explicitly a
+	 *  matching on VLAN tag ?
+	 */
+	if (action_flags & MLX5_FLOW_ACTION_OF_POP_VLAN)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "no support for multiple vlan pop "
+					  "actions");
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_VLAN))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "cannot pop vlan without a "
+					  "match on (outer) vlan in the flow");
+	return 0;
+}
+
+/**
  * Validate count action.
  *
  * @param[in] dev
@@ -3109,6 +3164,16 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			++actions_n;
 			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+			if (flow_dv_validate_action_pop_vlan(dev,
+							     action_flags,
+							     actions,
+							     item_flags, attr,
+							     error))
+				return -rte_errno;
+			action_flags |= MLX5_FLOW_ACTION_OF_POP_VLAN;
+			++actions_n;
+			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			ret = flow_dv_validate_action_l2_encap(action_flags,
@@ -3283,6 +3348,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  "action not supported");
 		}
 	}
+	if ((action_flags & MLX5_FLOW_LAYER_TUNNEL) &&
+	    (action_flags & MLX5_FLOW_VLAN_ACTIONS))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  actions,
+					  "can't have vxlan and vlan"
+					  " actions in the same rule");
 	/* Eswitch has few restrictions on using items and actions */
 	if (attr->transfer) {
 		if (action_flags & MLX5_FLOW_ACTION_FLAG)
@@ -4801,6 +4873,12 @@ cnt_err:
 						 action,
 						 "cannot create counter"
 						  " object.");
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+			dev_flow->dv.actions[actions_n++] =
+						priv->sh->pop_vlan_action;
+			action_flags |= MLX5_FLOW_ACTION_OF_POP_VLAN;
+			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			if (flow_dv_create_action_l2_encap(dev, actions,
