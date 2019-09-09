@@ -579,6 +579,8 @@ struct mlx5_ibv_shared {
 	LIST_HEAD(jump, mlx5_flow_dv_jump_tbl_resource) jump_tbl;
 	LIST_HEAD(port_id_action_list, mlx5_flow_dv_port_id_action_resource)
 		port_id_action_list; /* List of port ID actions. */
+	LIST_HEAD(push_vlan_action_list, mlx5_flow_dv_push_vlan_action_resource)
+		push_vlan_action_list; /* List of push VLAN actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	/* Shared interrupt handler section. */
 	pthread_mutex_t intr_mutex; /* Interrupt config mutex. */

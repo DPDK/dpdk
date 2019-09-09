@@ -130,6 +130,8 @@ Limitations
     are lacking a match on VLAN as one of their items are not supported.
   - The command is not supported on egress traffic.
 
+- VLAN push offload is not supported on ingress traffic.
+
 - A multi segment packet must have not more segments than reported by dev_infos_get()
   in tx_desc_lim.nb_seg_max field. This value depends on maximal supported Tx descriptor
   size and ``txq_inline_min`` settings and may be from 2 (worst case forced by maximal
@@ -1039,8 +1041,8 @@ Supported hardware offloads
    |                       | | ConnectX-5    |     | N/A       |
    +-----------------------+-----------------+-----------------+
    | | VLAN                | | DPDK 19.11    | | DPDK 19.11    |
-   | | (of_pop_vlan)       | | OFED 4.6-4    | | OFED 4.6-4    |
-   |                       | | ConnectX-5    | | ConnectX-5    |
+   | | (of_pop_vlan /      | | OFED 4.6-4    | | OFED 4.6-4    |
+   | | of_push_vlan)       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
 
 Notes for testpmd

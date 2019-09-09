@@ -251,4 +251,5 @@ Tested Platforms
   Updated Mellanox mlx5 driver with new features and improvements, including:
 
   * Added support for VLAN pop flow offload command.
+  * Added support for VLAN push flow offload command.
 

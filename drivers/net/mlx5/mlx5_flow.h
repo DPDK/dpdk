@@ -150,7 +150,8 @@
 
 #define MLX5_FLOW_ENCAP_ACTIONS	(MLX5_FLOW_ACTION_VXLAN_ENCAP | \
 				 MLX5_FLOW_ACTION_NVGRE_ENCAP | \
-				 MLX5_FLOW_ACTION_RAW_ENCAP)
+				 MLX5_FLOW_ACTION_RAW_ENCAP | \
+				 MLX5_FLOW_ACTION_OF_PUSH_VLAN)
 
 #define MLX5_FLOW_DECAP_ACTIONS	(MLX5_FLOW_ACTION_VXLAN_DECAP | \
 				 MLX5_FLOW_ACTION_NVGRE_DECAP | \
@@ -172,7 +173,8 @@
 				      MLX5_FLOW_ACTION_INC_TCP_ACK | \
 				      MLX5_FLOW_ACTION_DEC_TCP_ACK)
 
-#define MLX5_FLOW_VLAN_ACTIONS (MLX5_FLOW_ACTION_OF_POP_VLAN)
+#define MLX5_FLOW_VLAN_ACTIONS (MLX5_FLOW_ACTION_OF_POP_VLAN | \
+				MLX5_FLOW_ACTION_OF_PUSH_VLAN)
 
 #ifndef IPPROTO_MPLS
 #define IPPROTO_MPLS 137
@@ -309,6 +311,16 @@ struct mlx5_flow_dv_port_id_action_resource {
 	uint32_t port_id; /**< Port ID value. */
 };
 
+/* Push VLAN action resource structure */
+struct mlx5_flow_dv_push_vlan_action_resource {
+	LIST_ENTRY(mlx5_flow_dv_push_vlan_action_resource) next;
+	/* Pointer to next element. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+	void *action; /**< Direct verbs action object. */
+	uint8_t ft_type; /**< Flow table type, Rx, Tx or FDB. */
+	rte_be32_t vlan_tag; /**< VLAN tag value. */
+};
+
 /*
  * Max number of actions per DV flow.
  * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
@@ -335,6 +347,8 @@ struct mlx5_flow_dv {
 	/**< Pointer to port ID action resource. */
 	struct mlx5_vf_vlan vf_vlan;
 	/**< Structure for VF VLAN workaround. */
+	struct mlx5_flow_dv_push_vlan_action_resource *push_vlan_res;
+	/**< Pointer to push VLAN action resource in cache. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
 	/**< Action list. */
