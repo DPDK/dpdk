@@ -130,6 +130,8 @@ if build
 		'MLX5DV_DR_DOMAIN_TYPE_NIC_RX' ],
 		[ 'HAVE_MLX5DV_DR_ESWITCH', 'infiniband/mlx5dv.h',
 		'MLX5DV_DR_DOMAIN_TYPE_FDB' ],
+		[ 'HAVE_MLX5DV_DR_VLAN', 'infiniband/mlx5dv.h',
+		'mlx5dv_dr_action_create_push_vlan' ],
 		[ 'HAVE_SUPPORTED_40000baseKR4_Full', 'linux/ethtool.h',
 		'SUPPORTED_40000baseKR4_Full' ],
 		[ 'HAVE_SUPPORTED_40000baseCR4_Full', 'linux/ethtool.h',

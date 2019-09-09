@@ -415,6 +415,31 @@ mlx5_glue_dr_create_flow_action_drop(void)
 }
 
 static void *
+mlx5_glue_dr_create_flow_action_push_vlan(struct mlx5dv_dr_domain *domain,
+					  rte_be32_t vlan_tag)
+{
+#ifdef HAVE_MLX5DV_DR_VLAN
+	return mlx5dv_dr_action_create_push_vlan(domain, vlan_tag);
+#else
+	(void)domain;
+	(void)vlan_tag;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void *
+mlx5_glue_dr_create_flow_action_pop_vlan(void)
+{
+#ifdef HAVE_MLX5DV_DR_VLAN
+	return mlx5dv_dr_action_create_pop_vlan();
+#else
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void *
 mlx5_glue_dr_create_flow_tbl(void *domain, uint32_t level)
 {
 #ifdef HAVE_MLX5DV_DR
@@ -1016,6 +1041,10 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 		mlx5_glue_dr_create_flow_action_dest_vport,
 	.dr_create_flow_action_drop =
 		mlx5_glue_dr_create_flow_action_drop,
+	.dr_create_flow_action_push_vlan =
+		mlx5_glue_dr_create_flow_action_push_vlan,
+	.dr_create_flow_action_pop_vlan =
+		mlx5_glue_dr_create_flow_action_pop_vlan,
 	.dr_create_flow_tbl = mlx5_glue_dr_create_flow_tbl,
 	.dr_destroy_flow_tbl = mlx5_glue_dr_destroy_flow_tbl,
 	.dr_create_domain = mlx5_glue_dr_create_domain,
