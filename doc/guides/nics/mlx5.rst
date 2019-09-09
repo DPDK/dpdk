@@ -134,8 +134,6 @@ Limitations
 
 - VLAN set PCP offload is not supported on existing headers.
 
-- VLAN set VID offload is not supported on existing headers.
-
 - A multi segment packet must have not more segments than reported by dev_infos_get()
   in tx_desc_lim.nb_seg_max field. This value depends on maximal supported Tx descriptor
   size and ``txq_inline_min`` settings and may be from 2 (worst case forced by maximal
@@ -1021,13 +1019,17 @@ Supported hardware offloads
    | | (set_ipv4_src /     | | OFED 4.6-2    | | OFED 4.6-2    |
    | | set_ipv4_dst /      | | rdma-core 24  | | rdma-core 23  |
    | | set_ipv6_src /      | | ConnectX-5    | | ConnectX-5    |
-   | | set_ipv6_dst /      |                 |                 |
-   | | set_tp_src /        |                 |                 |
-   | | set_tp_dst /        |                 |                 |
-   | | dec_ttl /           |                 |                 |
-   | | set_ttl /           |                 |                 |
-   | | set_mac_src /       |                 |                 |
-   | | set_mac_dst)        |                 |                 |
+   | | set_ipv6_dst /      | |               | |               |
+   | | set_tp_src /        | |               | |               |
+   | | set_tp_dst /        | |               | |               |
+   | | dec_ttl /           | |               | |               |
+   | | set_ttl /           | |               | |               |
+   | | set_mac_src /       | |               | |               |
+   | | set_mac_dst)        | |               | |               |
+   | |                     | |               | |               |
+   | | (of_set_vlan_vid)   | | DPDK 19.11    | | DPDK 19.11    |
+   |                       | | OFED 4.6-4    | | OFED 4.6-4    |
+   |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
    | Jump                  | | DPDK 19.05    | | DPDK 19.02    |
    |                       | | OFED 4.6-4    | | OFED 4.6-4    |

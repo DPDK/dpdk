@@ -115,6 +115,12 @@ struct field_modify_info modify_eth[] = {
 	{0, 0, 0},
 };
 
+struct field_modify_info modify_vlan_out_first_vid[] = {
+	/* Size in bits !!! */
+	{12, 0, MLX5_MODI_OUT_FIRST_VID},
+	{0, 0, 0},
+};
+
 struct field_modify_info modify_ipv4[] = {
 	{1,  8, MLX5_MODI_OUT_IPV4_TTL},
 	{4, 12, MLX5_MODI_OUT_SIPV4},
@@ -394,6 +400,46 @@ flow_dv_convert_action_modify_mac
 	item.mask = &eth_mask;
 	return flow_dv_convert_modify_action(&item, modify_eth, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
+}
+
+/**
+ * Convert modify-header set VLAN VID action to DV specification.
+ *
+ * @param[in,out] resource
+ *   Pointer to the modify-header resource.
+ * @param[in] action
+ *   Pointer to action specification.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_modify_vlan_vid
+			(struct mlx5_flow_dv_modify_hdr_resource *resource,
+			 const struct rte_flow_action *action,
+			 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_of_set_vlan_vid *conf =
+		(const struct rte_flow_action_of_set_vlan_vid *)(action->conf);
+	int i = resource->actions_num;
+	struct mlx5_modification_cmd *actions = &resource->actions[i];
+	struct field_modify_info *field = modify_vlan_out_first_vid;
+
+	if (i >= MLX5_MODIFY_NUM)
+		return rte_flow_error_set(error, EINVAL,
+			 RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+			 "too many items to modify");
+	actions[i].action_type = MLX5_MODIFICATION_TYPE_SET;
+	actions[i].field = field->id;
+	actions[i].length = field->size;
+	actions[i].offset = field->offset;
+	actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
+	actions[i].data1 = conf->vlan_vid;
+	actions[i].data1 = actions[i].data1 << 16;
+	resource->actions_num = ++i;
+	return 0;
 }
 
 /**
@@ -1017,8 +1063,8 @@ flow_dv_validate_action_set_vlan_pcp(uint64_t action_flags,
 /**
  * Validate the set VLAN VID.
  *
- * @param[in] action_flags
- *   Holds the actions detected until now.
+ * @param[in] item_flags
+ *   Holds the items detected in this rule.
  * @param[in] actions
  *   Pointer to the list of actions remaining in the flow rule.
  * @param[in] attr
@@ -1030,7 +1076,7 @@ flow_dv_validate_action_set_vlan_pcp(uint64_t action_flags,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_validate_action_set_vlan_vid(uint64_t action_flags,
+flow_dv_validate_action_set_vlan_vid(uint64_t item_flags,
 				     const struct rte_flow_action actions[],
 				     struct rte_flow_error *error)
 {
@@ -1041,17 +1087,27 @@ flow_dv_validate_action_set_vlan_vid(uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "VLAN VID value is too big");
+	/* If a push VLAN action follows then it will handle this action */
 	if (mlx5_flow_find_action(actions,
-				  RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN) == NULL)
+				  RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN))
+		return 0;
+
+	/*
+	 * Action is on an existing VLAN header:
+	 *    Need to verify this is a single modify CID action.
+	 *   Rule mast include a match on outer VLAN.
+	 */
+	if (mlx5_flow_find_action(++action,
+				  RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "set VLAN VID can only be used "
-					  "with push VLAN action");
-	if (action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN)
-		return rte_flow_error_set(error, ENOTSUP,
+					  "Multiple VLAN VID modifications are "
+					  "not supported");
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_VLAN))
+		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "set VLAN VID action must precede "
-					  "the push VLAN action");
+					  "match on VLAN is required in order "
+					  "to set VLAN VID");
 	return 0;
 }
 
@@ -3487,7 +3543,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 			ret = flow_dv_validate_action_set_vlan_vid
-						(action_flags, actions, error);
+						(item_flags, actions, error);
 			if (ret < 0)
 				return ret;
 			/* Count VID with push_vlan command. */
@@ -5214,6 +5270,8 @@ cnt_err:
 			dev_flow->dv.actions[actions_n++] =
 					   dev_flow->dv.push_vlan_res->action;
 			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
+			/* Push VLAN command is also handling this VLAN_VID */
+			action_flags &= ~MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
 			if (!vlan_inherited) {
@@ -5238,6 +5296,15 @@ cnt_err:
 			    (((const struct rte_flow_action_of_set_vlan_vid *)
 						     actions->conf)->vlan_vid);
 			/* Push VLAN command will use this value */
+			if (mlx5_flow_find_action
+				(actions,
+				 RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN))
+				break;
+			/* If no VLAN push - this is a modify header action */
+			if (flow_dv_convert_action_modify_vlan_vid
+							(&res, actions, error))
+				return -rte_errno;
+			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
