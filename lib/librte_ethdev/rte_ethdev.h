@@ -2093,8 +2093,12 @@ int rte_eth_allmulticast_get(uint16_t port_id);
  * @param link
  *   A pointer to an *rte_eth_link* structure to be filled with
  *   the status, the speed and the mode of the Ethernet device link.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if the function is not supported in PMD driver.
+ *   - (-ENODEV) if *port_id* invalid.
  */
-void rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link);
+int rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link);
 
 /**
  * Retrieve the status (ON/OFF), the speed (in Mbps) and the mode (HALF-DUPLEX
@@ -2106,8 +2110,12 @@ void rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link);
  * @param link
  *   A pointer to an *rte_eth_link* structure to be filled with
  *   the status, the speed and the mode of the Ethernet device link.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if the function is not supported in PMD driver.
+ *   - (-ENODEV) if *port_id* invalid.
  */
-void rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *link);
+int rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *link);
 
 /**
  * Retrieve the general I/O statistics of an Ethernet device.

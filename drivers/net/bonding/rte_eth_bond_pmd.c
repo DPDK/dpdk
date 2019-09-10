@@ -2358,7 +2358,7 @@ bond_ethdev_slave_link_status_change_monitor(void *cb_arg)
 static int
 bond_ethdev_link_update(struct rte_eth_dev *ethdev, int wait_to_complete)
 {
-	void (*link_update)(uint16_t port_id, struct rte_eth_link *eth_link);
+	int (*link_update)(uint16_t port_id, struct rte_eth_link *eth_link);
 
 	struct bond_dev_private *bond_ctx;
 	struct rte_eth_link slave_link;

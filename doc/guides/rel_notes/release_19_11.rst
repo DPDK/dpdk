@@ -133,6 +133,10 @@ API Changes
 * ethdev: changed ``rte_eth_dev_xstats_reset`` return value from ``void`` to
   ``int`` to provide a way to report various error conditions.
 
+* ethdev: changed ``rte_eth_link_get`` and ``rte_eth_link_get_nowait``
+  return value from ``void`` to ``int`` to provide a way to report various
+  error conditions.
+
 
 ABI Changes
 -----------
