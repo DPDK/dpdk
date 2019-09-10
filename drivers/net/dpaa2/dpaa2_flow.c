@@ -1505,7 +1505,8 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 			index = flow->index + (flow->tc_id * nic_attr.fs_entries);
 			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
 						priv->token, &flow->rule,
-						flow->tc_id, index);
+						flow->tc_id, index,
+						0, 0);
 			if (ret < 0) {
 				DPAA2_PMD_ERR(
 				"Error in addnig entry to QoS table(%d)", ret);
@@ -1607,7 +1608,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 			index = flow->index + (flow->tc_id * nic_attr.fs_entries);
 			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW, priv->token,
 						&flow->rule, flow->tc_id,
-						index);
+						index, 0, 0);
 			if (ret < 0) {
 				DPAA2_PMD_ERR(
 				"Error in entry addition in QoS table(%d)",

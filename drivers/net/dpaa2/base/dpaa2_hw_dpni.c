@@ -365,6 +365,7 @@ dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv,
 	}
 
 	/*Attach buffer pool to the network interface as described by the user*/
+	memset(&bpool_cfg, 0, sizeof(struct dpni_pools_cfg));
 	bpool_cfg.num_dpbp = 1;
 	bpool_cfg.pools[0].dpbp_id = bp_list->buf_pool.dpbp_node->dpbp_id;
 	bpool_cfg.pools[0].backup_pool = 0;

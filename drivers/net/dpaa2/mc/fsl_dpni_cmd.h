@@ -9,7 +9,7 @@
 
 /* DPNI Version */
 #define DPNI_VER_MAJOR				7
-#define DPNI_VER_MINOR				9
+#define DPNI_VER_MINOR				13
 
 #define DPNI_CMD_BASE_VERSION			1
 #define DPNI_CMD_VERSION_2			2
@@ -40,7 +40,7 @@
 #define DPNI_CMDID_GET_IRQ_STATUS		DPNI_CMD(0x016)
 #define DPNI_CMDID_CLEAR_IRQ_STATUS		DPNI_CMD(0x017)
 
-#define DPNI_CMDID_SET_POOLS			DPNI_CMD_V2(0x200)
+#define DPNI_CMDID_SET_POOLS			DPNI_CMD_V3(0x200)
 #define DPNI_CMDID_SET_ERRORS_BEHAVIOR		DPNI_CMD(0x20B)
 
 #define DPNI_CMDID_GET_QDID			DPNI_CMD(0x210)
@@ -58,19 +58,19 @@
 #define DPNI_CMDID_GET_UNICAST_PROMISC		DPNI_CMD(0x223)
 #define DPNI_CMDID_SET_PRIM_MAC			DPNI_CMD(0x224)
 #define DPNI_CMDID_GET_PRIM_MAC			DPNI_CMD(0x225)
-#define DPNI_CMDID_ADD_MAC_ADDR			DPNI_CMD(0x226)
+#define DPNI_CMDID_ADD_MAC_ADDR			DPNI_CMD_V2(0x226)
 #define DPNI_CMDID_REMOVE_MAC_ADDR		DPNI_CMD(0x227)
 #define DPNI_CMDID_CLR_MAC_FILTERS		DPNI_CMD(0x228)
 
 #define DPNI_CMDID_ENABLE_VLAN_FILTER		DPNI_CMD(0x230)
-#define DPNI_CMDID_ADD_VLAN_ID			DPNI_CMD(0x231)
+#define DPNI_CMDID_ADD_VLAN_ID			DPNI_CMD_V2(0x231)
 #define DPNI_CMDID_REMOVE_VLAN_ID		DPNI_CMD(0x232)
 #define DPNI_CMDID_CLR_VLAN_FILTERS		DPNI_CMD(0x233)
 
 #define DPNI_CMDID_SET_RX_TC_DIST		DPNI_CMD_V3(0x235)
 
 #define DPNI_CMDID_SET_QOS_TBL			DPNI_CMD_V2(0x240)
-#define DPNI_CMDID_ADD_QOS_ENT			DPNI_CMD(0x241)
+#define DPNI_CMDID_ADD_QOS_ENT			DPNI_CMD_V2(0x241)
 #define DPNI_CMDID_REMOVE_QOS_ENT		DPNI_CMD(0x242)
 #define DPNI_CMDID_CLR_QOS_TBL			DPNI_CMD(0x243)
 #define DPNI_CMDID_ADD_FS_ENT			DPNI_CMD(0x244)
@@ -153,7 +153,8 @@ struct dpni_cmd_pool {
 struct dpni_cmd_set_pools {
 	uint8_t num_dpbp;
 	uint8_t backup_pool_mask;
-	uint16_t pad;
+	uint8_t pad;
+	uint8_t pool_options;
 	struct dpni_cmd_pool pool[8];
 	uint16_t buffer_size[8];
 };
@@ -392,9 +393,14 @@ struct dpni_rsp_get_port_mac_addr {
 	uint8_t mac_addr[6];
 };
 
+#define DPNI_MAC_SET_QUEUE_ACTION 1
+
 struct dpni_cmd_add_mac_addr {
-	uint16_t pad;
+	uint8_t flags;
+	uint8_t pad;
 	uint8_t mac_addr[6];
+	uint8_t tc_id;
+	uint8_t fq_id;
 };
 
 struct dpni_cmd_remove_mac_addr {
@@ -417,8 +423,13 @@ struct dpni_cmd_enable_vlan_filter {
 	uint8_t en;
 };
 
+#define DPNI_VLAN_SET_QUEUE_ACTION 1
+
 struct dpni_cmd_vlan_id {
-	uint32_t pad;
+	uint8_t flags;
+	uint8_t tc_id;
+	uint8_t flow_id;
+	uint8_t pad;
 	uint16_t vlan_id;
 };
 
@@ -534,8 +545,12 @@ struct dpni_cmd_set_qos_table {
 	uint64_t key_cfg_iova;
 };
 
+#define DPNI_QOS_OPT_SET_TC_ONLY 0x0
+#define DPNI_QOS_OPT_SET_FLOW_ID 0x1
+
 struct dpni_cmd_add_qos_entry {
-	uint16_t pad;
+	uint8_t flags;
+	uint8_t flow_id;
 	uint8_t tc_id;
 	uint8_t key_size;
 	uint16_t index;

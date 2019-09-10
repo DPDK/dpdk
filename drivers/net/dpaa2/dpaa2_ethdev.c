@@ -128,8 +128,8 @@ dpaa2_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	}
 
 	if (on)
-		ret = dpni_add_vlan_id(dpni, CMD_PRI_LOW,
-				       priv->token, vlan_id);
+		ret = dpni_add_vlan_id(dpni, CMD_PRI_LOW, priv->token,
+				       vlan_id, 0, 0, 0);
 	else
 		ret = dpni_remove_vlan_id(dpni, CMD_PRI_LOW,
 					  priv->token, vlan_id);
@@ -1326,8 +1326,8 @@ dpaa2_dev_add_mac_addr(struct rte_eth_dev *dev,
 		return -1;
 	}
 
-	ret = dpni_add_mac_addr(dpni, CMD_PRI_LOW,
-				priv->token, addr->addr_bytes);
+	ret = dpni_add_mac_addr(dpni, CMD_PRI_LOW, priv->token,
+				addr->addr_bytes, 0, 0, 0);
 	if (ret)
 		DPAA2_PMD_ERR(
 			"error: Adding the MAC ADDR failed: err = %d", ret);

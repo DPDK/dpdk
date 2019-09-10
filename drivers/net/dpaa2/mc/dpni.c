@@ -200,6 +200,7 @@ int dpni_set_pools(struct fsl_mc_io *mc_io,
 					  token);
 	cmd_params = (struct dpni_cmd_set_pools *)cmd.params;
 	cmd_params->num_dpbp = cfg->num_dpbp;
+	cmd_params->pool_options = cfg->pool_options;
 	for (i = 0; i < cmd_params->num_dpbp; i++) {
 		cmd_params->pool[i].dpbp_id =
 			cpu_to_le16(cfg->pools[i].dpbp_id);
@@ -1211,13 +1212,24 @@ int dpni_get_primary_mac_addr(struct fsl_mc_io *mc_io,
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
  * @mac_addr:	MAC address to add
- *
+ * @flags :	0 - tc_id and flow_id will be ignored.
+ *		  Pkt with this mac_id will be passed to the next
+ *		  classification stages
+ *		DPNI_MAC_SET_QUEUE_ACTION
+ *		  Pkt with this mac will be forward directly to
+ *		  queue defined by the tc_id and flow_id
+ * @tc_id : Traffic class selection (0-7)
+ * @flow_id : Selects the specific queue out of the set allocated for the
+ *            same as tc_id. Value must be in range 0 to NUM_QUEUES - 1
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpni_add_mac_addr(struct fsl_mc_io *mc_io,
 		      uint32_t cmd_flags,
 		      uint16_t token,
-		      const uint8_t mac_addr[6])
+		      const uint8_t mac_addr[6],
+			  uint8_t flags,
+			  uint8_t tc_id,
+			  uint8_t flow_id)
 {
 	struct mc_command cmd = { 0 };
 	struct dpni_cmd_add_mac_addr *cmd_params;
@@ -1228,6 +1240,10 @@ int dpni_add_mac_addr(struct fsl_mc_io *mc_io,
 					  cmd_flags,
 					  token);
 	cmd_params = (struct dpni_cmd_add_mac_addr *)cmd.params;
+	cmd_params->flags = flags;
+	cmd_params->tc_id = tc_id;
+	cmd_params->fq_id = flow_id;
+
 	for (i = 0; i < 6; i++)
 		cmd_params->mac_addr[i] = mac_addr[5 - i];
 
@@ -1371,13 +1387,26 @@ int dpni_enable_vlan_filter(struct fsl_mc_io *mc_io,
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
  * @vlan_id:	VLAN ID to add
+ * @flags:	0 - tc_id and flow_id will be ignored.
+ *		  Pkt with this vlan_id will be passed to the next
+ *		  classification stages
+ *		DPNI_VLAN_SET_QUEUE_ACTION
+ *		  Pkt with this vlan_id will be forward directly to
+ *		  queue defined by the tc_id and flow_id
+ *
+ * @tc_id: Traffic class selection (0-7)
+ * @flow_id: Selects the specific queue out of the set allocated for the
+ *           same as tc_id. Value must be in range 0 to NUM_QUEUES - 1
  *
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpni_add_vlan_id(struct fsl_mc_io *mc_io,
 		     uint32_t cmd_flags,
 		     uint16_t token,
-		     uint16_t vlan_id)
+		     uint16_t vlan_id,
+			 uint8_t flags,
+			 uint8_t tc_id,
+			 uint8_t flow_id)
 {
 	struct dpni_cmd_vlan_id *cmd_params;
 	struct mc_command cmd = { 0 };
@@ -1387,6 +1416,9 @@ int dpni_add_vlan_id(struct fsl_mc_io *mc_io,
 					  cmd_flags,
 					  token);
 	cmd_params = (struct dpni_cmd_vlan_id *)cmd.params;
+	cmd_params->flags = flags;
+	cmd_params->tc_id = tc_id;
+	cmd_params->flow_id =  flow_id;
 	cmd_params->vlan_id = cpu_to_le16(vlan_id);
 
 	/* send command to mc*/
@@ -1589,7 +1621,9 @@ int dpni_add_qos_entry(struct fsl_mc_io *mc_io,
 		       uint16_t token,
 		       const struct dpni_rule_cfg *cfg,
 		       uint8_t tc_id,
-		       uint16_t index)
+		       uint16_t index,
+			   uint8_t flags,
+			   uint8_t flow_id)
 {
 	struct dpni_cmd_add_qos_entry *cmd_params;
 	struct mc_command cmd = { 0 };
@@ -1599,6 +1633,8 @@ int dpni_add_qos_entry(struct fsl_mc_io *mc_io,
 					  cmd_flags,
 					  token);
 	cmd_params = (struct dpni_cmd_add_qos_entry *)cmd.params;
+	cmd_params->flags = flags;
+	cmd_params->flow_id = flow_id;
 	cmd_params->tc_id = tc_id;
 	cmd_params->key_size = cfg->key_size;
 	cmd_params->index = cpu_to_le16(index);
@@ -2031,7 +2067,7 @@ int dpni_get_queue(struct fsl_mc_io *mc_io,
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
  * @page:	Selects the statistics page to retrieve, see
- *		DPNI_GET_STATISTICS output. Pages are numbered 0 to 3.
+ *		DPNI_GET_STATISTICS output. Pages are numbered 0 to 6.
  * @param:	Custom parameter for some pages used to select
  *		a certain statistic source, for example the TC.
  * @stat:	Structure containing the statistics

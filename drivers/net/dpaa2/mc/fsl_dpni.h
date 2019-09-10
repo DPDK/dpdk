@@ -199,6 +199,8 @@ int dpni_destroy(struct fsl_mc_io *mc_io,
 /**
  * struct dpni_pools_cfg - Structure representing buffer pools configuration
  * @num_dpbp:	Number of DPBPs
+ * @pool_options: Buffer assignment options
+ *                This field is a combination of DPNI_POOL_ASSOC_flags
  * @pools:	Array of buffer pools parameters; The number of valid entries
  *		must match 'num_dpbp' value
  * @pools.dpbp_id:     DPBP object ID
@@ -207,8 +209,13 @@ int dpni_destroy(struct fsl_mc_io *mc_io,
  * @pools.buffer_size: Buffer size
  * @pools.backup_pool: Backup pool
  */
+
+#define DPNI_POOL_ASSOC_QPRI	0
+#define DPNI_POOL_ASSOC_QDBIN	1
+
 struct dpni_pools_cfg {
 	uint8_t num_dpbp;
+	uint8_t pool_options;
 	struct {
 		int		dpbp_id;
 		uint8_t		priority_mask;
@@ -581,6 +588,7 @@ int dpni_get_tx_data_offset(struct fsl_mc_io *mc_io,
  * @page_5.policer_cnt_green: number of green colored frames
  * @page_5.policer_cnt_re_red: number of recolored red frames
  * @page_5.policer_cnt_re_yellow: number of recolored yellow frames
+ * @page_6.tx_pending_frames_cnt: total number of frames pending in Tx queues
  * @raw: raw statistics structure, used to index counters
  */
 union dpni_statistics {
@@ -624,6 +632,9 @@ union dpni_statistics {
 		uint64_t policer_cnt_re_red;
 		uint64_t policer_cnt_re_yellow;
 	} page_5;
+	struct {
+		uint64_t tx_pending_frames_cnt;
+	} page_6;
 	struct {
 		uint64_t counter[DPNI_STATISTICS_CNT];
 	} raw;
@@ -773,7 +784,10 @@ int dpni_get_primary_mac_addr(struct fsl_mc_io *mc_io,
 int dpni_add_mac_addr(struct fsl_mc_io *mc_io,
 		      uint32_t cmd_flags,
 		      uint16_t token,
-		      const uint8_t mac_addr[6]);
+		      const uint8_t mac_addr[6],
+			  uint8_t flags,
+			  uint8_t tc_id,
+			  uint8_t flow_id);
 
 int dpni_remove_mac_addr(struct fsl_mc_io *mc_io,
 			 uint32_t cmd_flags,
@@ -796,10 +810,18 @@ int dpni_enable_vlan_filter(struct fsl_mc_io *mc_io,
 			    uint16_t token,
 			    int en);
 
+/**
+ * Set vlan filter queue action
+ */
+#define DPNI_VLAN_SET_QUEUE_ACTION 1
+
 int dpni_add_vlan_id(struct fsl_mc_io *mc_io,
 		     uint32_t cmd_flags,
 		     uint16_t token,
-		     uint16_t vlan_id);
+		     uint16_t vlan_id,
+			 uint8_t flags,
+			 uint8_t tc_id,
+			 uint8_t flow_id);
 
 int dpni_remove_vlan_id(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
@@ -1181,7 +1203,9 @@ int dpni_add_qos_entry(struct fsl_mc_io *mc_io,
 		       uint16_t token,
 		       const struct dpni_rule_cfg *cfg,
 		       uint8_t tc_id,
-		       uint16_t index);
+		       uint16_t index,
+			   uint8_t flags,
+			   uint8_t flow_id);
 
 int dpni_remove_qos_entry(struct fsl_mc_io *mc_io,
 			  uint32_t cmd_flags,
