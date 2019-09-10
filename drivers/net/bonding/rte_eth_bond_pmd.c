@@ -846,8 +846,14 @@ bandwidth_left(uint16_t port_id, uint64_t load, uint8_t update_idx,
 		struct bwg_slave *bwg_slave)
 {
 	struct rte_eth_link link_status;
+	int ret;
 
-	rte_eth_link_get_nowait(port_id, &link_status);
+	ret = rte_eth_link_get_nowait(port_id, &link_status);
+	if (ret < 0) {
+		RTE_BOND_LOG(ERR, "Slave (port %u) link get failed: %s",
+			     port_id, rte_strerror(-ret));
+		return;
+	}
 	uint64_t link_bwg = link_status.link_speed * 1000000ULL / 8;
 	if (link_bwg == 0)
 		return;
@@ -2363,7 +2369,9 @@ bond_ethdev_link_update(struct rte_eth_dev *ethdev, int wait_to_complete)
 	struct bond_dev_private *bond_ctx;
 	struct rte_eth_link slave_link;
 
+	bool one_link_update_succeeded;
 	uint32_t idx;
+	int ret;
 
 	bond_ctx = ethdev->data->dev_private;
 
@@ -2396,7 +2404,17 @@ bond_ethdev_link_update(struct rte_eth_dev *ethdev, int wait_to_complete)
 		 * greater than this are attempted
 		 */
 		for (idx = 0; idx < bond_ctx->active_slave_count; idx++) {
-			link_update(bond_ctx->active_slaves[idx], &slave_link);
+			ret = link_update(bond_ctx->active_slaves[idx],
+					  &slave_link);
+			if (ret < 0) {
+				ethdev->data->dev_link.link_speed =
+					ETH_SPEED_NUM_NONE;
+				RTE_BOND_LOG(ERR,
+					"Slave (port %u) link get failed: %s",
+					bond_ctx->active_slaves[idx],
+					rte_strerror(-ret));
+				return 0;
+			}
 
 			if (slave_link.link_speed <
 					ethdev->data->dev_link.link_speed)
@@ -2406,7 +2424,13 @@ bond_ethdev_link_update(struct rte_eth_dev *ethdev, int wait_to_complete)
 		break;
 	case BONDING_MODE_ACTIVE_BACKUP:
 		/* Current primary slave */
-		link_update(bond_ctx->current_primary_port, &slave_link);
+		ret = link_update(bond_ctx->current_primary_port, &slave_link);
+		if (ret < 0) {
+			RTE_BOND_LOG(ERR, "Slave (port %u) link get failed: %s",
+				bond_ctx->current_primary_port,
+				rte_strerror(-ret));
+			return 0;
+		}
 
 		ethdev->data->dev_link.link_speed = slave_link.link_speed;
 		break;
@@ -2426,12 +2450,27 @@ bond_ethdev_link_update(struct rte_eth_dev *ethdev, int wait_to_complete)
 		 * of all the slaves
 		 */
 		ethdev->data->dev_link.link_speed = ETH_SPEED_NUM_NONE;
+		one_link_update_succeeded = false;
 
 		for (idx = 0; idx < bond_ctx->active_slave_count; idx++) {
-			link_update(bond_ctx->active_slaves[idx], &slave_link);
+			ret = link_update(bond_ctx->active_slaves[idx],
+					&slave_link);
+			if (ret < 0) {
+				RTE_BOND_LOG(ERR,
+					"Slave (port %u) link get failed: %s",
+					bond_ctx->active_slaves[idx],
+					rte_strerror(-ret));
+				continue;
+			}
 
+			one_link_update_succeeded = true;
 			ethdev->data->dev_link.link_speed +=
 					slave_link.link_speed;
+		}
+
+		if (!one_link_update_succeeded) {
+			RTE_BOND_LOG(ERR, "All slaves link get failed");
+			return 0;
 		}
 	}
 
@@ -2685,6 +2724,7 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 	struct bond_dev_private *internals;
 	struct rte_eth_link link;
 	int rc = -1;
+	int ret;
 
 	uint8_t lsc_flag = 0;
 	int valid_slave = 0;
@@ -2725,8 +2765,11 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 	active_pos = find_slave_by_id(internals->active_slaves,
 			internals->active_slave_count, port_id);
 
-	rte_eth_link_get_nowait(port_id, &link);
-	if (link.link_status) {
+	ret = rte_eth_link_get_nowait(port_id, &link);
+	if (ret < 0)
+		RTE_BOND_LOG(ERR, "Slave (port %u) link get failed", port_id);
+
+	if (ret == 0 && link.link_status) {
 		if (active_pos < internals->active_slave_count)
 			goto link_update;
 

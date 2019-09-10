@@ -557,9 +557,6 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 		}
 	}
 
-	/* Add slave details to bonded device */
-	slave_eth_dev->data->dev_flags |= RTE_ETH_DEV_BONDED_SLAVE;
-
 	/* Update all slave devices MACs */
 	mac_address_slaves_update(bonded_eth_dev);
 
@@ -571,7 +568,18 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 	/* If bonded device is started then we can add the slave to our active
 	 * slave array */
 	if (bonded_eth_dev->data->dev_started) {
-		rte_eth_link_get_nowait(slave_port_id, &link_props);
+		ret = rte_eth_link_get_nowait(slave_port_id, &link_props);
+		if (ret < 0) {
+			rte_eth_dev_callback_unregister(slave_port_id,
+					RTE_ETH_EVENT_INTR_LSC,
+					bond_ethdev_lsc_event_callback,
+					&bonded_eth_dev->data->port_id);
+			internals->slave_count--;
+			RTE_BOND_LOG(ERR,
+				"Slave (port %u) link get failed: %s\n",
+				slave_port_id, rte_strerror(-ret));
+			return -1;
+		}
 
 		 if (link_props.link_status == ETH_LINK_UP) {
 			if (internals->active_slave_count == 0 &&
@@ -580,6 +588,9 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 							slave_port_id);
 		}
 	}
+
+	/* Add slave details to bonded device */
+	slave_eth_dev->data->dev_flags |= RTE_ETH_DEV_BONDED_SLAVE;
 
 	slave_vlan_filter_set(bonded_port_id, slave_port_id);
 

@@ -675,6 +675,7 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 	uint16_t default_slave = 0;
 	uint8_t mode_count_id, mode_band_id;
 	struct rte_eth_link link_info;
+	int ret;
 
 	slaves = internals->active_slaves;
 	slaves_count = internals->active_slave_count;
@@ -687,8 +688,14 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 		if (agg->aggregator_port_id != slaves[i])
 			continue;
 
+		ret = rte_eth_link_get_nowait(slaves[i], &link_info);
+		if (ret < 0) {
+			RTE_BOND_LOG(ERR,
+				"Slave (port %u) link get failed: %s\n",
+				slaves[i], rte_strerror(-ret));
+			continue;
+		}
 		agg_count[agg->aggregator_port_id] += 1;
-		rte_eth_link_get_nowait(slaves[i], &link_info);
 		agg_bandwidth[agg->aggregator_port_id] += link_info.link_speed;
 
 		/* Actors system ID is not checked since all slave device have the same
@@ -821,18 +828,25 @@ bond_mode_8023ad_periodic_cb(void *arg)
 	/* Update link status on each port */
 	for (i = 0; i < internals->active_slave_count; i++) {
 		uint16_t key;
+		int ret;
 
 		slave_id = internals->active_slaves[i];
-		rte_eth_link_get_nowait(slave_id, &link_info);
-		rte_eth_macaddr_get(slave_id, &slave_addr);
+		ret = rte_eth_link_get_nowait(slave_id, &link_info);
+		if (ret < 0) {
+			RTE_BOND_LOG(ERR,
+				"Slave (port %u) link get failed: %s\n",
+				slave_id, rte_strerror(-ret));
+		}
 
-		if (link_info.link_status != 0) {
+		if (ret >= 0 && link_info.link_status != 0) {
 			key = link_speed_key(link_info.link_speed) << 1;
 			if (link_info.link_duplex == ETH_LINK_FULL_DUPLEX)
 				key |= BOND_LINK_FULL_DUPLEX_KEY;
-		} else
+		} else {
 			key = 0;
+		}
 
+		rte_eth_macaddr_get(slave_id, &slave_addr);
 		port = &bond_mode_8023ad_ports[slave_id];
 
 		key = rte_cpu_to_be_16(key);
