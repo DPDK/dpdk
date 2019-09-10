@@ -90,12 +90,18 @@ struct mlx5_nl_mac_addr {
 	int mac_n; /**< Number of addresses in the array. */
 };
 
+#define MLX5_NL_CMD_GET_IB_NAME (1 << 0)
+#define MLX5_NL_CMD_GET_IB_INDEX (1 << 1)
+#define MLX5_NL_CMD_GET_NET_INDEX (1 << 2)
+#define MLX5_NL_CMD_GET_PORT_INDEX (1 << 3)
+
 /** Data structure used by mlx5_nl_cmdget_cb(). */
 struct mlx5_nl_ifindex_data {
 	const char *name; /**< IB device name (in). */
+	uint32_t flags; /**< found attribute flags (out). */
 	uint32_t ibindex; /**< IB device index (out). */
 	uint32_t ifindex; /**< Network interface index (out). */
-	uint32_t portnum; /**< IB device max port number. */
+	uint32_t portnum; /**< IB device max port number (out). */
 };
 
 /**
@@ -704,11 +710,10 @@ static int
 mlx5_nl_cmdget_cb(struct nlmsghdr *nh, void *arg)
 {
 	struct mlx5_nl_ifindex_data *data = arg;
+	struct mlx5_nl_ifindex_data local = {
+		.flags = 0,
+	};
 	size_t off = NLMSG_HDRLEN;
-	uint32_t ibindex = 0;
-	uint32_t ifindex = 0;
-	uint32_t portnum = 0;
-	int found = 0;
 
 	if (nh->nlmsg_type !=
 	    RDMA_NL_GET_TYPE(RDMA_NL_NLDEV, RDMA_NLDEV_CMD_GET) &&
@@ -723,27 +728,37 @@ mlx5_nl_cmdget_cb(struct nlmsghdr *nh, void *arg)
 			goto error;
 		switch (na->nla_type) {
 		case RDMA_NLDEV_ATTR_DEV_INDEX:
-			ibindex = *(uint32_t *)payload;
+			local.ibindex = *(uint32_t *)payload;
+			local.flags |= MLX5_NL_CMD_GET_IB_INDEX;
 			break;
 		case RDMA_NLDEV_ATTR_DEV_NAME:
 			if (!strcmp(payload, data->name))
-				found = 1;
+				local.flags |= MLX5_NL_CMD_GET_IB_NAME;
 			break;
 		case RDMA_NLDEV_ATTR_NDEV_INDEX:
-			ifindex = *(uint32_t *)payload;
+			local.ifindex = *(uint32_t *)payload;
+			local.flags |= MLX5_NL_CMD_GET_NET_INDEX;
 			break;
 		case RDMA_NLDEV_ATTR_PORT_INDEX:
-			portnum = *(uint32_t *)payload;
+			local.portnum = *(uint32_t *)payload;
+			local.flags |= MLX5_NL_CMD_GET_PORT_INDEX;
 			break;
 		default:
 			break;
 		}
 		off += NLA_ALIGN(na->nla_len);
 	}
-	if (found) {
-		data->ibindex = ibindex;
-		data->ifindex = ifindex;
-		data->portnum = portnum;
+	/*
+	 * It is possible to have multiple messages for all
+	 * Infiniband devices in the system with appropriate name.
+	 * So we should gather parameters locally and copy to
+	 * query context only in case of coinciding device name.
+	 */
+	if (local.flags & MLX5_NL_CMD_GET_IB_NAME) {
+		data->flags = local.flags;
+		data->ibindex = local.ibindex;
+		data->ifindex = local.ifindex;
+		data->portnum = local.portnum;
 	}
 	return 0;
 error:
@@ -774,6 +789,7 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
 	uint32_t seq = random();
 	struct mlx5_nl_ifindex_data data = {
 		.name = name,
+		.flags = 0,
 		.ibindex = 0, /* Determined during first pass. */
 		.ifindex = 0, /* Determined during second pass. */
 	};
@@ -799,8 +815,10 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
 	ret = mlx5_nl_recv(nl, seq, mlx5_nl_cmdget_cb, &data);
 	if (ret < 0)
 		return 0;
-	if (!data.ibindex)
+	if (!(data.flags & MLX5_NL_CMD_GET_IB_NAME) ||
+	    !(data.flags & MLX5_NL_CMD_GET_IB_INDEX))
 		goto error;
+	data.flags = 0;
 	++seq;
 	req.nh.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
 					     RDMA_NLDEV_CMD_PORT_GET);
@@ -822,7 +840,10 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
 	ret = mlx5_nl_recv(nl, seq, mlx5_nl_cmdget_cb, &data);
 	if (ret < 0)
 		return 0;
-	if (!data.ifindex)
+	if (!(data.flags & MLX5_NL_CMD_GET_IB_NAME) ||
+	    !(data.flags & MLX5_NL_CMD_GET_IB_INDEX) ||
+	    !(data.flags & MLX5_NL_CMD_GET_NET_INDEX) ||
+	    !data.ifindex)
 		goto error;
 	return data.ifindex;
 error:
@@ -847,8 +868,8 @@ mlx5_nl_portnum(int nl, const char *name)
 {
 	uint32_t seq = random();
 	struct mlx5_nl_ifindex_data data = {
+		.flags = 0,
 		.name = name,
-		.ibindex = 0,
 		.ifindex = 0,
 		.portnum = 0,
 	};
@@ -866,7 +887,9 @@ mlx5_nl_portnum(int nl, const char *name)
 	ret = mlx5_nl_recv(nl, seq, mlx5_nl_cmdget_cb, &data);
 	if (ret < 0)
 		return 0;
-	if (!data.ibindex) {
+	if (!(data.flags & MLX5_NL_CMD_GET_IB_NAME) ||
+	    !(data.flags & MLX5_NL_CMD_GET_IB_INDEX) ||
+	    !(data.flags & MLX5_NL_CMD_GET_PORT_INDEX)) {
 		rte_errno = ENODEV;
 		return 0;
 	}
