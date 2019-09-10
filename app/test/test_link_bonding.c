@@ -554,6 +554,7 @@ test_start_bonded_device(void)
 
 	int current_slave_count, current_bonding_mode, primary_port;
 	uint16_t slaves[RTE_MAX_ETHPORTS];
+	int retval;
 
 	/* Add slave to bonded device*/
 	TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
@@ -590,7 +591,10 @@ test_start_bonded_device(void)
 			"Primary port (%d) is not expected value (%d).",
 			primary_port, test_params->slave_port_ids[0]);
 
-	rte_eth_link_get(test_params->bonded_port_id, &link_status);
+	retval = rte_eth_link_get(test_params->bonded_port_id, &link_status);
+	TEST_ASSERT(retval >= 0,
+			"Bonded port (%d) link get failed: %s\n",
+			test_params->bonded_port_id, rte_strerror(-retval));
 	TEST_ASSERT_EQUAL(link_status.link_status, 1,
 			"Bonded port (%d) status (%d) is not expected value (%d).\n",
 			test_params->bonded_port_id, link_status.link_status, 1);
@@ -605,10 +609,14 @@ test_stop_bonded_device(void)
 	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	struct rte_eth_link link_status;
+	int retval;
 
 	rte_eth_dev_stop(test_params->bonded_port_id);
 
-	rte_eth_link_get(test_params->bonded_port_id, &link_status);
+	retval = rte_eth_link_get(test_params->bonded_port_id, &link_status);
+	TEST_ASSERT(retval >= 0,
+			"Bonded port (%d) link get failed: %s\n",
+			test_params->bonded_port_id, rte_strerror(-retval));
 	TEST_ASSERT_EQUAL(link_status.link_status, 0,
 			"Bonded port (%d) status (%d) is not expected value (%d).",
 			test_params->bonded_port_id, link_status.link_status, 0);

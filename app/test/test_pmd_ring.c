@@ -24,6 +24,7 @@ test_ethdev_configure_port(int port)
 {
 	struct rte_eth_conf null_conf;
 	struct rte_eth_link link;
+	int ret;
 
 	memset(&null_conf, 0, sizeof(struct rte_eth_conf));
 
@@ -54,7 +55,12 @@ test_ethdev_configure_port(int port)
 		return -1;
 	}
 
-	rte_eth_link_get(port, &link);
+	ret = rte_eth_link_get(port, &link);
+	if (ret < 0) {
+		printf("Link get failed for port %u: %s",
+		       port, rte_strerror(-ret));
+		return -1;
+	}
 
 	return 0;
 }

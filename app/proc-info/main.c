@@ -678,13 +678,18 @@ show_port(void)
 		printf("  - generic config\n");
 
 		printf("\t  -- Socket %d\n", rte_eth_dev_socket_id(i));
-		rte_eth_link_get(i, &link);
-		printf("\t  -- link speed %d duplex %d,"
-				" auto neg %d status %d\n",
-				link.link_speed,
-				link.link_duplex,
-				link.link_autoneg,
-				link.link_status);
+		ret = rte_eth_link_get(i, &link);
+		if (ret < 0) {
+			printf("Link get failed (port %u): %s\n",
+			       i, rte_strerror(-ret));
+		} else {
+			printf("\t  -- link speed %d duplex %d,"
+					" auto neg %d status %d\n",
+					link.link_speed,
+					link.link_duplex,
+					link.link_autoneg,
+					link.link_status);
+		}
 		printf("\t  -- promiscuous (%d)\n",
 				rte_eth_promiscuous_get(i));
 		ret = rte_eth_dev_get_mtu(i, &mtu);
