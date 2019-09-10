@@ -2395,8 +2395,8 @@ bond_ethdev_link_update(struct rte_eth_dev *ethdev, int wait_to_complete)
 		 * packet loss will occur on this slave if transmission at rates
 		 * greater than this are attempted
 		 */
-		for (idx = 1; idx < bond_ctx->active_slave_count; idx++) {
-			link_update(bond_ctx->active_slaves[0],	&slave_link);
+		for (idx = 0; idx < bond_ctx->active_slave_count; idx++) {
+			link_update(bond_ctx->active_slaves[idx], &slave_link);
 
 			if (slave_link.link_speed <
 					ethdev->data->dev_link.link_speed)
