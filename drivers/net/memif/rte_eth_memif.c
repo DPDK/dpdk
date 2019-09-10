@@ -266,7 +266,10 @@ eth_memif_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		return 0;
 	if (unlikely(ring == NULL)) {
 		/* Secondary process will attempt to request regions. */
-		rte_eth_link_get(mq->in_port, &link);
+		ret = rte_eth_link_get(mq->in_port, &link);
+		if (ret < 0)
+			MIF_LOG(ERR, "Failed to get port %u link info: %s",
+				mq->in_port, rte_strerror(-ret));
 		return 0;
 	}
 
@@ -392,8 +395,13 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	if (unlikely((pmd->flags & ETH_MEMIF_FLAG_CONNECTED) == 0))
 		return 0;
 	if (unlikely(ring == NULL)) {
+		int ret;
+
 		/* Secondary process will attempt to request regions. */
-		rte_eth_link_get(mq->in_port, &link);
+		ret = rte_eth_link_get(mq->in_port, &link);
+		if (ret < 0)
+			MIF_LOG(ERR, "Failed to get port %u link info: %s",
+				mq->in_port, rte_strerror(-ret));
 		return 0;
 	}
 
