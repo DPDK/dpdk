@@ -161,10 +161,19 @@ app_ports_check_link(void)
 	for (i = 0; i < app.n_ports; i++) {
 		struct rte_eth_link link;
 		uint16_t port;
+		int ret;
 
 		port = app.ports[i];
 		memset(&link, 0, sizeof(link));
-		rte_eth_link_get_nowait(port, &link);
+		ret = rte_eth_link_get_nowait(port, &link);
+		if (ret < 0) {
+			RTE_LOG(INFO, USER1,
+				"Failed to get port %u link status: %s\n",
+				port, rte_strerror(-ret));
+			all_ports_up = 0;
+			continue;
+		}
+
 		RTE_LOG(INFO, USER1, "Port %u (%u Gbps) %s\n",
 			port,
 			link.link_speed / 1000,
