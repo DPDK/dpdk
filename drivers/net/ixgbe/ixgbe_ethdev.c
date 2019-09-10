@@ -2514,9 +2514,12 @@ ixgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
 	uint32_t queue_end;
 	uint16_t total_rate = 0;
 	struct rte_pci_device *pci_dev;
+	int ret;
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	rte_eth_link_get_nowait(dev->data->port_id, &link);
+	ret = rte_eth_link_get_nowait(dev->data->port_id, &link);
+	if (ret < 0)
+		return ret;
 
 	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
