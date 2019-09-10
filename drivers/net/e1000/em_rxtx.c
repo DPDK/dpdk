@@ -2049,13 +2049,12 @@ e1000_flush_tx_ring(struct rte_eth_dev *dev)
 		tx_desc->lower.data = rte_cpu_to_le_32(txd_lower | size);
 		tx_desc->upper.data = 0;
 
-		rte_wmb();
+		rte_cio_wmb();
 		txq->tx_tail++;
 		if (txq->tx_tail == txq->nb_tx_desc)
 			txq->tx_tail = 0;
-		rte_io_wmb();
 		tdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_TDT(i));
-		E1000_PCI_REG_WRITE_RELAXED(tdt_reg_addr, txq->tx_tail);
+		E1000_PCI_REG_WRITE(tdt_reg_addr, txq->tx_tail);
 		usec_delay(250);
 	}
 }
