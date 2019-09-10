@@ -713,24 +713,12 @@ static ssize_t
 otx2_npa_calc_mem_size(const struct rte_mempool *mp, uint32_t obj_num,
 		       uint32_t pg_shift, size_t *min_chunk_size, size_t *align)
 {
-	ssize_t mem_size;
-
 	/*
 	 * Simply need space for one more object to be able to
 	 * fulfill alignment requirements.
 	 */
-	mem_size = rte_mempool_op_calc_mem_size_default(mp, obj_num + 1,
-							pg_shift,
-							min_chunk_size, align);
-	if (mem_size >= 0) {
-		/*
-		 * Memory area which contains objects must be physically
-		 * contiguous.
-		 */
-		*min_chunk_size = mem_size;
-	}
-
-	return mem_size;
+	return rte_mempool_op_calc_mem_size_default(mp, obj_num + 1, pg_shift,
+						    min_chunk_size, align);
 }
 
 static int
