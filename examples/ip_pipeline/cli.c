@@ -248,12 +248,19 @@ print_link_info(struct link *link, char *out, size_t out_size)
 	struct rte_ether_addr mac_addr;
 	struct rte_eth_link eth_link;
 	uint16_t mtu;
+	int ret;
 
 	memset(&stats, 0, sizeof(stats));
 	rte_eth_stats_get(link->port_id, &stats);
 
 	rte_eth_macaddr_get(link->port_id, &mac_addr);
-	rte_eth_link_get(link->port_id, &eth_link);
+	ret = rte_eth_link_get(link->port_id, &eth_link);
+	if (ret < 0) {
+		snprintf(out, out_size, "\n%s: link get failed: %s",
+			 link->name, rte_strerror(-ret));
+		return;
+	}
+
 	rte_eth_dev_get_mtu(link->port_id, &mtu);
 
 	snprintf(out, out_size,

@@ -124,9 +124,13 @@ int
 rte_ethtool_get_link(uint16_t port_id)
 {
 	struct rte_eth_link link;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	rte_eth_link_get(port_id, &link);
+	ret = rte_eth_link_get(port_id, &link);
+	if (ret < 0)
+		return ret;
+
 	return link.link_status;
 }
 

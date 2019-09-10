@@ -312,6 +312,7 @@ check_port_link_status(uint16_t port_id)
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
 	uint8_t count;
 	struct rte_eth_link link;
+	int link_get_err = -EINVAL;
 
 	printf("\nChecking link status.");
 	fflush(stdout);
@@ -319,9 +320,9 @@ check_port_link_status(uint16_t port_id)
 	for (count = 0; count <= MAX_CHECK_TIME &&
 			!rte_atomic16_read(&global_exit_flag); count++) {
 		memset(&link, 0, sizeof(link));
-		rte_eth_link_get_nowait(port_id, &link);
+		link_get_err = rte_eth_link_get_nowait(port_id, &link);
 
-		if (link.link_status) {
+		if (link_get_err >= 0 && link.link_status) {
 			const char *dp = (link.link_duplex ==
 				ETH_LINK_FULL_DUPLEX) ?
 				"full-duplex" : "half-duplex";
@@ -334,7 +335,12 @@ check_port_link_status(uint16_t port_id)
 		rte_delay_ms(CHECK_INTERVAL);
 	}
 
-	printf("\nPort %d Link Down\n", port_id);
+	if (link_get_err >= 0)
+		printf("\nPort %d Link Down\n", port_id);
+	else
+		printf("\nGet link failed (port %d): %s\n", port_id,
+		       rte_strerror(-link_get_err));
+
 	return 0;
 }
 

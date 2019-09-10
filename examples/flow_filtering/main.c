@@ -100,15 +100,19 @@ assert_link_status(void)
 {
 	struct rte_eth_link link;
 	uint8_t rep_cnt = MAX_REPEAT_TIMES;
+	int link_get_err = -EINVAL;
 
 	memset(&link, 0, sizeof(link));
 	do {
-		rte_eth_link_get(port_id, &link);
-		if (link.link_status == ETH_LINK_UP)
+		link_get_err = rte_eth_link_get(port_id, &link);
+		if (link_get_err == 0 && link.link_status == ETH_LINK_UP)
 			break;
 		rte_delay_ms(CHECK_INTERVAL);
 	} while (--rep_cnt);
 
+	if (link_get_err < 0)
+		rte_exit(EXIT_FAILURE, ":: error: link get is failing: %s\n",
+			 rte_strerror(-link_get_err));
 	if (link.link_status == ETH_LINK_DOWN)
 		rte_exit(EXIT_FAILURE, ":: error: link is still down\n");
 }

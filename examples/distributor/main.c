@@ -173,12 +173,18 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 
 	struct rte_eth_link link;
-	rte_eth_link_get_nowait(port, &link);
-	while (!link.link_status) {
+	do {
+		retval = rte_eth_link_get_nowait(port, &link);
+		if (retval < 0) {
+			printf("Failed link get (port %u): %s\n",
+				port, rte_strerror(-retval));
+			return retval;
+		} else if (link.link_status)
+			break;
+
 		printf("Waiting for Link up on port %"PRIu16"\n", port);
 		sleep(1);
-		rte_eth_link_get_nowait(port, &link);
-	}
+	} while (!link.link_status);
 
 	if (!link.link_status) {
 		printf("Link down on port %"PRIu16"\n", port);

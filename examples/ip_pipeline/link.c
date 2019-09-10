@@ -264,7 +264,8 @@ link_is_up(const char *name)
 		return 0;
 
 	/* Resource */
-	rte_eth_link_get(link->port_id, &link_params);
+	if (rte_eth_link_get(link->port_id, &link_params) < 0)
+		return 0;
 
 	return (link_params.link_status == ETH_LINK_DOWN) ? 0 : 1;
 }

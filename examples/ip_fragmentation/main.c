@@ -592,6 +592,7 @@ check_all_ports_link_status(uint32_t port_mask)
 	uint16_t portid;
 	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
+	int ret;
 
 	printf("\nChecking link status");
 	fflush(stdout);
@@ -601,7 +602,14 @@ check_all_ports_link_status(uint32_t port_mask)
 			if ((port_mask & (1 << portid)) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
-			rte_eth_link_get_nowait(portid, &link);
+			ret = rte_eth_link_get_nowait(portid, &link);
+			if (ret < 0) {
+				all_ports_up = 0;
+				if (print_flag == 1)
+					printf("Port %u link get failed: %s\n",
+						portid, rte_strerror(-ret));
+				continue;
+			}
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)

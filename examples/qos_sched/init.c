@@ -154,7 +154,12 @@ app_init_port(uint16_t portid, struct rte_mempool *mp)
 	printf("done: ");
 
 	/* get link status */
-	rte_eth_link_get(portid, &link);
+	ret = rte_eth_link_get(portid, &link);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE,
+			 "rte_eth_link_get: err=%d, port=%u: %s\n",
+			 ret, portid, rte_strerror(-ret));
+
 	if (link.link_status) {
 		printf(" Link Up - speed %u Mbps - %s\n",
 			(uint32_t) link.link_speed,
@@ -295,7 +300,11 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 	uint32_t pipe, subport;
 	int err;
 
-	rte_eth_link_get(portid, &link);
+	err = rte_eth_link_get(portid, &link);
+	if (err < 0)
+		rte_exit(EXIT_FAILURE,
+			 "rte_eth_link_get: err=%d, port=%u: %s\n",
+			 err, portid, rte_strerror(-err));
 
 	port_params.socket = socketid;
 	port_params.rate = (uint64_t) link.link_speed * 1000 * 1000 / 8;
