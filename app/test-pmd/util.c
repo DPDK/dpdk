@@ -261,3 +261,16 @@ eth_set_promisc_mode(uint16_t port, int enable)
 			enable ? "enabling" : "disabling",
 			port, rte_strerror(-ret));
 }
+
+int
+eth_link_get_nowait_print_err(uint16_t port_id, struct rte_eth_link *link)
+{
+	int ret;
+
+	ret = rte_eth_link_get_nowait(port_id, link);
+	if (ret < 0)
+		printf("Device (port %u) link get (without wait) failed: %s\n",
+			port_id, rte_strerror(-ret));
+
+	return ret;
+}
