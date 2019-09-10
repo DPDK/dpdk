@@ -292,10 +292,13 @@ jump_out:
 		goto err_out;
 	}
 
-	if (addr)
+	if (addr) {
 		strcpy(addr, sep);
+		if (!sep_exists && sep)
+			free(sep);
+		return 0;
+	}
 
-	return 0;
 err_out:
 	if (!sep_exists && sep)
 		free(sep);
