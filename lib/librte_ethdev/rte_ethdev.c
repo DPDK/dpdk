@@ -2671,14 +2671,16 @@ rte_eth_dev_get_supported_ptypes(uint16_t port_id, uint32_t ptype_mask,
 	return j;
 }
 
-void
+int
 rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr)
 {
 	struct rte_eth_dev *dev;
 
-	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 	rte_ether_addr_copy(&dev->data->mac_addrs[0], mac_addr);
+
+	return 0;
 }
 
 

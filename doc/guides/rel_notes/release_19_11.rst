@@ -137,6 +137,9 @@ API Changes
   return value from ``void`` to ``int`` to provide a way to report various
   error conditions.
 
+* ethdev: changed ``rte_eth_macaddr_get`` return value from ``void`` to
+  ``int`` to provide a way to report various error conditions.
+
 
 ABI Changes
 -----------

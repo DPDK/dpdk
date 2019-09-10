@@ -2351,8 +2351,11 @@ int rte_eth_dev_set_rx_queue_stats_mapping(uint16_t port_id,
  * @param mac_addr
  *   A pointer to a structure of type *ether_addr* to be filled with
  *   the Ethernet address of the Ethernet device.
+ * @return
+ *   - (0) if successful
+ *   - (-ENODEV) if *port_id* invalid.
  */
-void rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
+int rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
 
 /**
  * Retrieve the contextual information of an Ethernet device.
