@@ -2209,8 +2209,8 @@ start_port(portid_t pid)
 			RTE_PORT_HANDLING, RTE_PORT_STARTED) == 0)
 			printf("Port %d can not be set into started\n", pi);
 
-		rte_eth_macaddr_get(pi, &mac_addr);
-		printf("Port %d: %02X:%02X:%02X:%02X:%02X:%02X\n", pi,
+		if (eth_macaddr_get_print_err(pi, &mac_addr) == 0)
+			printf("Port %d: %02X:%02X:%02X:%02X:%02X:%02X\n", pi,
 				mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
 				mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
 				mac_addr.addr_bytes[4], mac_addr.addr_bytes[5]);
@@ -2984,7 +2984,9 @@ init_port_config(void)
 
 		rxtx_port_config(port);
 
-		rte_eth_macaddr_get(pid, &port->eth_addr);
+		ret = eth_macaddr_get_print_err(pid, &port->eth_addr);
+		if (ret != 0)
+			return;
 
 		map_port_queue_stats_mapping_registers(pid, port);
 #if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
@@ -3187,7 +3189,10 @@ init_port_dcb_config(portid_t pid,
 	for (i = 0; i < RTE_DIM(vlan_tags); i++)
 		rx_vft_set(pid, vlan_tags[i], 1);
 
-	rte_eth_macaddr_get(pid, &rte_port->eth_addr);
+	retval = eth_macaddr_get_print_err(pid, &rte_port->eth_addr);
+	if (retval != 0)
+		return retval;
+
 	map_port_queue_stats_mapping_registers(pid, rte_port);
 
 	rte_port->dcb_flag = 1;

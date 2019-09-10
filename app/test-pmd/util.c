@@ -274,3 +274,16 @@ eth_link_get_nowait_print_err(uint16_t port_id, struct rte_eth_link *link)
 
 	return ret;
 }
+
+int
+eth_macaddr_get_print_err(uint16_t port_id, struct rte_ether_addr *mac_addr)
+{
+	int ret;
+
+	ret = rte_eth_macaddr_get(port_id, mac_addr);
+	if (ret != 0)
+		printf("Error getting device (port %u) mac address: %s\n",
+				port_id, rte_strerror(-ret));
+
+	return ret;
+}

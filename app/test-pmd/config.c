@@ -454,9 +454,11 @@ skip_parse:
 
 			/* List ports with matching device name */
 			RTE_ETH_FOREACH_DEV_OF(port_id, dev) {
-				rte_eth_macaddr_get(port_id, &mac_addr);
 				printf("\n\tPort id: %-2d", port_id);
-				print_ethaddr("\n\tMAC address: ", &mac_addr);
+				if (eth_macaddr_get_print_err(port_id,
+							      &mac_addr) == 0)
+					print_ethaddr("\n\tMAC address: ",
+						      &mac_addr);
 				rte_eth_dev_get_name_by_port(port_id, name);
 				printf("\n\tDevice name: %s", name);
 				printf("\n");
@@ -494,8 +496,8 @@ port_infos_display(portid_t port_id)
 
 	printf("\n%s Infos for port %-2d %s\n",
 	       info_border, port_id, info_border);
-	rte_eth_macaddr_get(port_id, &mac_addr);
-	print_ethaddr("MAC address: ", &mac_addr);
+	if (eth_macaddr_get_print_err(port_id, &mac_addr) == 0)
+		print_ethaddr("MAC address: ", &mac_addr);
 	rte_eth_dev_get_name_by_port(port_id, name);
 	printf("\nDevice name: %s", name);
 	printf("\nDriver name: %s", dev_info.driver_name);
@@ -646,7 +648,9 @@ port_summary_display(portid_t port_id)
 		return;
 
 	rte_eth_dev_get_name_by_port(port_id, name);
-	rte_eth_macaddr_get(port_id, &mac_addr);
+	ret = eth_macaddr_get_print_err(port_id, &mac_addr);
+	if (ret != 0)
+		return;
 
 	printf("%-4d %02X:%02X:%02X:%02X:%02X:%02X %-12s %-14s %-8s %uMbps\n",
 		port_id, mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],

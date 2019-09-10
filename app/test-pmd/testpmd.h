@@ -826,6 +826,8 @@ int eth_dev_info_get_print_err(uint16_t port_id,
 			struct rte_eth_dev_info *dev_info);
 void eth_set_promisc_mode(uint16_t port_id, int enable);
 int eth_link_get_nowait_print_err(uint16_t port_id, struct rte_eth_link *link);
+int eth_macaddr_get_print_err(uint16_t port_id,
+			struct rte_ether_addr *mac_addr);
 
 
 /* Functions to manage the set of filtered Multicast MAC addresses */
