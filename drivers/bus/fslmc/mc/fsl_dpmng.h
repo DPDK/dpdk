@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2015 Freescale Semiconductor Inc.
- * Copyright 2017 NXP
+ * Copyright 2017-2019 NXP
  *
  */
 #ifndef __FSL_DPMNG_H
@@ -18,7 +18,7 @@ struct fsl_mc_io;
  * Management Complex firmware version information
  */
 #define MC_VER_MAJOR 10
-#define MC_VER_MINOR 14
+#define MC_VER_MINOR 18
 
 /**
  * struct mc_version

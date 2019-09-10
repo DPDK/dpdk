@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2017 NXP
+ * Copyright 2016-2019 NXP
  *
  */
 #ifndef _FSL_DPIO_CMD_H
@@ -9,7 +9,7 @@
 
 /* DPIO Version */
 #define DPIO_VER_MAJOR			4
-#define DPIO_VER_MINOR			2
+#define DPIO_VER_MINOR			3
 
 #define DPIO_CMD_BASE_VERSION		1
 #define DPIO_CMD_ID_OFFSET		4
