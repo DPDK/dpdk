@@ -687,10 +687,11 @@ rte_eth_dev_owner_unset(const uint16_t port_id, const uint64_t owner_id)
 	return ret;
 }
 
-void
+int
 rte_eth_dev_owner_delete(const uint64_t owner_id)
 {
 	uint16_t port_id;
+	int ret = 0;
 
 	rte_eth_dev_shared_data_prepare();
 
@@ -708,9 +709,12 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 		RTE_ETHDEV_LOG(ERR,
 			       "Invalid owner id=%016"PRIx64"\n",
 			       owner_id);
+		ret = -EINVAL;
 	}
 
 	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
+
+	return ret;
 }
 
 int

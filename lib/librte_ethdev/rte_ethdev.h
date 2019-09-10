@@ -1566,9 +1566,11 @@ int rte_eth_dev_owner_unset(const uint16_t port_id,
  *
  * @param	owner_id
  *  The owner identifier.
+ * @return
+ *  0 on success, negative errno value on error.
  */
 __rte_experimental
-void rte_eth_dev_owner_delete(const uint64_t owner_id);
+int rte_eth_dev_owner_delete(const uint64_t owner_id);
 
 /**
  * @warning

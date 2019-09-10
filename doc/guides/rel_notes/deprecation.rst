@@ -91,7 +91,6 @@ Deprecation Notices
   - ``rte_eth_allmulticast_enable`` and ``rte_eth_allmulticast_disable``
   - ``rte_eth_dev_stop``
   - ``rte_eth_dev_close``
-  - ``rte_eth_dev_owner_delete``
 
 * ethdev: New offload flags ``DEV_RX_OFFLOAD_RSS_HASH`` and
   ``DEV_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.

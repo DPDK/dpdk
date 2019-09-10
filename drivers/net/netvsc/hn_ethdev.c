@@ -1004,6 +1004,7 @@ static int
 eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct hn_data *hv = eth_dev->data->dev_private;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1021,7 +1022,9 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 	hn_tx_pool_uninit(eth_dev);
 	rte_vmbus_chan_close(hv->primary->chan);
 	rte_free(hv->primary);
-	rte_eth_dev_owner_delete(hv->owner.id);
+	ret = rte_eth_dev_owner_delete(hv->owner.id);
+	if (ret != 0)
+		return ret;
 
 	return 0;
 }
