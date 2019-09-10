@@ -724,7 +724,12 @@ test_pmd_perf(void)
 				"Cannot configure device: err=%d, port=%d\n",
 				 ret, portid);
 
-		rte_eth_macaddr_get(portid, &ports_eth_addr[portid]);
+		ret = rte_eth_macaddr_get(portid, &ports_eth_addr[portid]);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				"Cannot get mac address: err=%d, port=%d\n",
+				 ret, portid);
+
 		printf("Port %u ", portid);
 		print_ethaddr("Address:", &ports_eth_addr[portid]);
 		printf("\n");

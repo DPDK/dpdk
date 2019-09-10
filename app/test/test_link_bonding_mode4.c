@@ -225,6 +225,7 @@ static int
 add_slave(struct slave_conf *slave, uint8_t start)
 {
 	struct rte_ether_addr addr, addr_check;
+	int retval;
 
 	/* Some sanity check */
 	RTE_VERIFY(test_params.slave_ports <= slave &&
@@ -252,7 +253,9 @@ add_slave(struct slave_conf *slave, uint8_t start)
 			"Failed to start slave %u", slave->port_id);
 	}
 
-	rte_eth_macaddr_get(slave->port_id, &addr_check);
+	retval = rte_eth_macaddr_get(slave->port_id, &addr_check);
+	TEST_ASSERT_SUCCESS(retval, "Failed to get slave mac address: %s",
+			    strerror(-retval));
 	TEST_ASSERT_EQUAL(rte_is_same_ether_addr(&addr, &addr_check), 1,
 			"Slave MAC address is not as expected");
 
@@ -816,7 +819,9 @@ test_mode4_rx(void)
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
-	rte_eth_macaddr_get(test_params.bonded_port_id, &bonded_mac);
+	retval = rte_eth_macaddr_get(test_params.bonded_port_id, &bonded_mac);
+	TEST_ASSERT_SUCCESS(retval, "Failed to get mac address: %s",
+			    strerror(-retval));
 	rte_ether_addr_copy(&bonded_mac, &dst_mac);
 
 	/* Assert that dst address is not bonding address.  Do not set the
@@ -1002,8 +1007,9 @@ test_mode4_tx_burst(void)
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
-	rte_eth_macaddr_get(test_params.bonded_port_id, &bonded_mac);
-
+	retval = rte_eth_macaddr_get(test_params.bonded_port_id, &bonded_mac);
+	TEST_ASSERT_SUCCESS(retval, "Failed to get mac address: %s",
+			    strerror(-retval));
 	/* Prepare burst */
 	for (pkts_cnt = 0; pkts_cnt < RTE_DIM(pkts); pkts_cnt++) {
 		dst_mac.addr_bytes[RTE_ETHER_ADDR_LEN - 1] = pkts_cnt;

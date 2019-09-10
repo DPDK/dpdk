@@ -606,7 +606,10 @@ configure_vdev(uint16_t port_id)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "dev start failed\n");
 
-	rte_eth_macaddr_get(port_id, &addr);
+	ret = rte_eth_macaddr_get(port_id, &addr);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE, "macaddr get failed\n");
+
 	printf("Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
 			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
 			port_id,

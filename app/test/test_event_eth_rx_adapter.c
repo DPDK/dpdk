@@ -81,7 +81,9 @@ port_init_common(uint16_t port, const struct rte_eth_conf *port_conf,
 
 	/* Display the port MAC address. */
 	struct rte_ether_addr addr;
-	rte_eth_macaddr_get(port, &addr);
+	retval = rte_eth_macaddr_get(port, &addr);
+	if (retval < 0)
+		return retval;
 	printf("Port %u MAC: %02" PRIx8 " %02" PRIx8 " %02" PRIx8
 			   " %02" PRIx8 " %02" PRIx8 " %02" PRIx8 "\n",
 			(unsigned int)port,
