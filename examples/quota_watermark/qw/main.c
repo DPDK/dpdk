@@ -52,10 +52,19 @@ static void send_pause_frame(uint16_t port_id, uint16_t duration)
 	struct ether_fc_frame *pause_frame;
 	struct rte_ether_hdr *hdr;
 	struct rte_ether_addr mac_addr;
+	int ret;
 
 	RTE_LOG_DP(DEBUG, USER1,
 			"Sending PAUSE frame (duration=%d) on port %d\n",
 			duration, port_id);
+
+	ret = rte_eth_macaddr_get(port_id, &mac_addr);
+	if (ret != 0) {
+		RTE_LOG_DP(ERR, USER1,
+				"Failed to get MAC address (port %u): %s\n",
+				port_id, rte_strerror(-ret));
+		return;
+	}
 
 	/* Get a mbuf from the pool */
 	mbuf = rte_pktmbuf_alloc(mbuf_pool);
@@ -66,7 +75,6 @@ static void send_pause_frame(uint16_t port_id, uint16_t duration)
 	hdr = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
 	pause_frame = (struct ether_fc_frame *) &hdr[1];
 
-	rte_eth_macaddr_get(port_id, &mac_addr);
 	rte_ether_addr_copy(&mac_addr, &hdr->s_addr);
 
 	void *tmp = &hdr->d_addr.addr_bytes[0];

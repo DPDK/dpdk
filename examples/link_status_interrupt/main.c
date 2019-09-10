@@ -657,8 +657,12 @@ main(int argc, char **argv)
 		rte_eth_dev_callback_register(portid,
 			RTE_ETH_EVENT_INTR_LSC, lsi_event_callback, NULL);
 
-		rte_eth_macaddr_get(portid,
+		ret = rte_eth_macaddr_get(portid,
 				    &lsi_ports_eth_addr[portid]);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "rte_eth_macaddr_get: err=%d, port=%u\n",
+				 ret, (unsigned int)portid);
 
 		/* init one RX queue */
 		fflush(stdout);

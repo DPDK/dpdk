@@ -490,7 +490,13 @@ initialize_ports(struct app_config_params *app_params,
 		return ret;
 	}
 
-	rte_eth_macaddr_get(port_id, &bbdev_port_eth_addr);
+	ret = rte_eth_macaddr_get(port_id, &bbdev_port_eth_addr);
+	if (ret < 0) {
+		printf("rte_eth_macaddr_get: err=%d, queue=%u\n",
+			ret, q);
+		return -1;
+	}
+
 	print_mac(port_id, &bbdev_port_eth_addr);
 
 	return 0;

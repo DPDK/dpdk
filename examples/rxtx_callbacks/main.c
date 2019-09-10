@@ -188,7 +188,12 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 
 	struct rte_ether_addr addr;
 
-	rte_eth_macaddr_get(port, &addr);
+	retval = rte_eth_macaddr_get(port, &addr);
+	if (retval < 0) {
+		printf("Failed to get MAC address on port %u: %s\n",
+			port, rte_strerror(-retval));
+		return retval;
+	}
 	printf("Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
 			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
 			(unsigned)port,

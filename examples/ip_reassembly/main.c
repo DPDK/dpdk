@@ -1132,7 +1132,14 @@ main(int argc, char **argv)
 				ret, portid);
 		}
 
-		rte_eth_macaddr_get(portid, &ports_eth_addr[portid]);
+		ret = rte_eth_macaddr_get(portid, &ports_eth_addr[portid]);
+		if (ret < 0) {
+			printf("\n");
+			rte_exit(EXIT_FAILURE,
+				"rte_eth_macaddr_get: err=%d, port=%d\n",
+				ret, portid);
+		}
+
 		print_ethaddr(" Address:", &ports_eth_addr[portid]);
 		printf("\n");
 

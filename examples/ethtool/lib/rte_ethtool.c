@@ -314,10 +314,15 @@ rte_ethtool_net_stop(uint16_t port_id)
 int
 rte_ethtool_net_get_mac_addr(uint16_t port_id, struct rte_ether_addr *addr)
 {
+	int ret;
+
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	if (addr == NULL)
 		return -EINVAL;
-	rte_eth_macaddr_get(port_id, addr);
+
+	ret = rte_eth_macaddr_get(port_id, addr);
+	if (ret != 0)
+		return ret;
 
 	return 0;
 }

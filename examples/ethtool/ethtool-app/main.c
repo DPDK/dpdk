@@ -156,7 +156,12 @@ static void setup_ports(struct app_config *app_cfg, int cnt_ports)
 				 "%s:%i: rte_eth_dev_start failed",
 				 __FILE__, __LINE__
 				);
-		rte_eth_macaddr_get(idx_port, &ptr_port->mac_addr);
+		ret = rte_eth_macaddr_get(idx_port, &ptr_port->mac_addr);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"rte_eth_macaddr_get failed (port %u): %s\n",
+				idx_port, rte_strerror(-ret));
+
 		rte_spinlock_init(&ptr_port->lock);
 	}
 }
@@ -182,6 +187,7 @@ static int slave_main(__attribute__((unused)) void *ptr_data)
 	uint16_t cnt_sent;
 	uint16_t idx_port;
 	uint16_t lock_result;
+	int ret;
 
 	while (app_cfg.exit_now == 0) {
 		for (idx_port = 0; idx_port < app_cfg.cnt_ports; idx_port++) {
@@ -198,8 +204,16 @@ static int slave_main(__attribute__((unused)) void *ptr_data)
 
 			/* MAC address was updated */
 			if (ptr_port->port_dirty == 1) {
-				rte_eth_macaddr_get(ptr_port->idx_port,
+				ret = rte_eth_macaddr_get(ptr_port->idx_port,
 					&ptr_port->mac_addr);
+				if (ret != 0) {
+					rte_spinlock_unlock(&ptr_port->lock);
+					printf("Failed to get MAC address (port %u): %s",
+					       ptr_port->idx_port,
+					       rte_strerror(-ret));
+					return ret;
+				}
+
 				ptr_port->port_dirty = 0;
 			}
 

@@ -324,7 +324,13 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	/* Display the port MAC address. */
 	struct rte_ether_addr addr;
-	rte_eth_macaddr_get(port, &addr);
+	retval = rte_eth_macaddr_get(port, &addr);
+	if (retval != 0) {
+		printf("Failed to get MAC address (port %u): %s\n",
+				port, rte_strerror(-retval));
+		return retval;
+	}
+
 	printf("Port %u MAC: %02" PRIx8 " %02" PRIx8 " %02" PRIx8
 			   " %02" PRIx8 " %02" PRIx8 " %02" PRIx8 "\n",
 			(unsigned int)port,

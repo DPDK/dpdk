@@ -74,7 +74,10 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 
 	/* Display the port MAC address. */
 	struct rte_ether_addr addr;
-	rte_eth_macaddr_get(port, &addr);
+	retval = rte_eth_macaddr_get(port, &addr);
+	if (retval < 0)
+		return retval;
+
 	printf("Port %u MAC: %02" PRIx8 " %02" PRIx8 " %02" PRIx8
 			   " %02" PRIx8 " %02" PRIx8 " %02" PRIx8 "\n",
 			port,

@@ -61,12 +61,18 @@ get_printable_mac_addr(uint16_t port)
 {
 	static const char err_address[] = "00:00:00:00:00:00";
 	static char addresses[RTE_MAX_ETHPORTS][sizeof(err_address)];
+	int ret;
 
 	if (unlikely(port >= RTE_MAX_ETHPORTS))
 		return err_address;
 	if (unlikely(addresses[port][0]=='\0')){
 		struct rte_ether_addr mac;
-		rte_eth_macaddr_get(port, &mac);
+		ret = rte_eth_macaddr_get(port, &mac);
+		if (ret != 0) {
+			printf("Failed to get MAC address (port %u): %s\n",
+			       port, rte_strerror(-ret));
+			return err_address;
+		}
 		snprintf(addresses[port], sizeof(addresses[port]),
 				"%02x:%02x:%02x:%02x:%02x:%02x\n",
 				mac.addr_bytes[0], mac.addr_bytes[1], mac.addr_bytes[2],

@@ -940,8 +940,12 @@ kni_alloc(uint16_t port_id)
 					port_id, strerror(-ret));
 
 			/* Get the interface default mac address */
-			rte_eth_macaddr_get(port_id,
+			ret = rte_eth_macaddr_get(port_id,
 				(struct rte_ether_addr *)&conf.mac_addr);
+			if (ret != 0)
+				rte_exit(EXIT_FAILURE,
+					"Failed to get MAC address (port %u): %s\n",
+					port_id, rte_strerror(-ret));
 
 			rte_eth_dev_get_mtu(port_id, &conf.mtu);
 

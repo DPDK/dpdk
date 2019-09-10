@@ -182,7 +182,10 @@ vxlan_port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	retval = rte_eth_dev_udp_tunnel_port_add(port, &tunnel_udp);
 	if (retval < 0)
 		return retval;
-	rte_eth_macaddr_get(port, &ports_eth_addr[port]);
+	retval = rte_eth_macaddr_get(port, &ports_eth_addr[port]);
+	if (retval < 0)
+		return retval;
+
 	RTE_LOG(INFO, PORT, "Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
 			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
 			port,

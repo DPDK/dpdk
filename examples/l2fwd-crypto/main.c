@@ -2589,7 +2589,13 @@ initialize_ports(struct l2fwd_crypto_options *options)
 			return -1;
 		}
 
-		rte_eth_macaddr_get(portid, &l2fwd_ports_eth_addr[portid]);
+		retval = rte_eth_macaddr_get(portid,
+					     &l2fwd_ports_eth_addr[portid]);
+		if (retval < 0) {
+			printf("rte_eth_macaddr_get :err=%d, port=%u\n",
+					retval, portid);
+			return -1;
+		}
 
 		printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
 				portid,

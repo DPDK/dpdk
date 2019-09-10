@@ -1934,7 +1934,12 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 
 	printf("Configuring device port %u:\n", portid);
 
-	rte_eth_macaddr_get(portid, &ethaddr);
+	ret = rte_eth_macaddr_get(portid, &ethaddr);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Error getting MAC address (port %u): %s\n",
+			portid, rte_strerror(-ret));
+
 	ethaddr_tbl[portid].src = ETHADDR_TO_UINT64(&ethaddr);
 	print_ethaddr("Address: ", &ethaddr);
 	printf("\n");

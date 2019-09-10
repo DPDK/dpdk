@@ -253,7 +253,13 @@ print_link_info(struct link *link, char *out, size_t out_size)
 	memset(&stats, 0, sizeof(stats));
 	rte_eth_stats_get(link->port_id, &stats);
 
-	rte_eth_macaddr_get(link->port_id, &mac_addr);
+	ret = rte_eth_macaddr_get(link->port_id, &mac_addr);
+	if (ret != 0) {
+		snprintf(out, out_size, "\n%s: MAC address get failed: %s",
+			 link->name, rte_strerror(-ret));
+		return;
+	}
+
 	ret = rte_eth_link_get(link->port_id, &eth_link);
 	if (ret < 0) {
 		snprintf(out, out_size, "\n%s: link get failed: %s",

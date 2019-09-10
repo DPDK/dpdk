@@ -51,9 +51,15 @@ set_policy_mac(int port, int idx)
 {
 	struct channel_packet *policy;
 	union PFID pfid;
+	int ret;
 
 	/* Use port MAC address as the vfid */
-	rte_eth_macaddr_get(port, &pfid.addr);
+	ret = rte_eth_macaddr_get(port, &pfid.addr);
+	if (retval != 0) {
+		printf("Failed to get device (port %u) MAC address: %s\n",
+				port, rte_strerror(-retval));
+		return retval;
+	}
 
 	printf("Port %u MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8 ":"
 			"%02" PRIx8 ":%02" PRIx8 ":%02" PRIx8 "\n",
@@ -66,10 +72,15 @@ set_policy_mac(int port, int idx)
 	return 0;
 }
 
-void
+int
 set_policy_defaults(struct channel_packet *pkt)
 {
-	set_policy_mac(0, 0);
+	int ret;
+
+	ret = set_policy_mac(0, 0);
+	if (ret != 0)
+		return ret;
+
 	pkt->nb_mac_to_monitor = 1;
 
 	pkt->t_boost_status.tbEnabled = false;
