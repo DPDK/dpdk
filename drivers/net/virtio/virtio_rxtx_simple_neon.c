@@ -42,7 +42,7 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct virtnet_rx *rxvq = rx_queue;
 	struct virtqueue *vq = rxvq->vq;
 	struct virtio_hw *hw = vq->hw;
-	uint16_t nb_used;
+	uint16_t nb_used, nb_total;
 	uint16_t desc_idx;
 	struct vring_used_elem *rused;
 	struct rte_mbuf **sw_ring;
@@ -106,9 +106,10 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			virtqueue_notify(vq);
 	}
 
+	nb_total = nb_used;
 	ref_rx_pkts = rx_pkts;
 	for (nb_pkts_received = 0;
-		nb_pkts_received < nb_used;) {
+		nb_pkts_received < nb_total;) {
 		uint64x2_t desc[RTE_VIRTIO_DESC_PER_LOOP / 2];
 		uint64x2_t mbp[RTE_VIRTIO_DESC_PER_LOOP / 2];
 		uint64x2_t pkt_mb[RTE_VIRTIO_DESC_PER_LOOP];
