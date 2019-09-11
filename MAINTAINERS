@@ -928,12 +928,14 @@ F: doc/guides/cryptodevs/scheduler.rst
 
 Intel AES-NI GCM
 M: Declan Doherty <declan.doherty@intel.com>
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/aesni_gcm/
 F: doc/guides/cryptodevs/aesni_gcm.rst
 F: doc/guides/cryptodevs/features/aesni_gcm.ini
 
 Intel AES-NI Multi-Buffer
 M: Declan Doherty <declan.doherty@intel.com>
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/aesni_mb/
 F: doc/guides/cryptodevs/aesni_mb.rst
 F: doc/guides/cryptodevs/features/aesni_mb.ini
