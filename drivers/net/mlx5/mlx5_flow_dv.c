@@ -2366,8 +2366,10 @@ flow_dv_validate_action_modify_ttl(const uint64_t action_flags,
  *   Pointer to the jump action.
  * @param[in] action_flags
  *   Holds the actions detected until now.
- * @param[in] group
- *   The group of the current flow.
+ * @param[in] attributes
+ *   Pointer to flow attributes
+ * @param[in] external
+ *   Action belongs to flow rule created by request external to PMD.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -2377,9 +2379,14 @@ flow_dv_validate_action_modify_ttl(const uint64_t action_flags,
 static int
 flow_dv_validate_action_jump(const struct rte_flow_action *action,
 			     uint64_t action_flags,
-			     uint32_t group,
-			     struct rte_flow_error *error)
+			     const struct rte_flow_attr *attributes,
+			     bool external, struct rte_flow_error *error)
 {
+	uint32_t max_group = attributes->transfer ? MLX5_MAX_TABLES_FDB :
+						    MLX5_MAX_TABLES;
+	uint32_t target_group, table;
+	int ret = 0;
+
 	if (action_flags & (MLX5_FLOW_FATE_ACTIONS |
 			    MLX5_FLOW_FATE_ESWITCH_ACTIONS))
 		return rte_flow_error_set(error, EINVAL,
@@ -2390,10 +2397,20 @@ flow_dv_validate_action_jump(const struct rte_flow_action *action,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL, "action configuration not set");
-	if (group >= ((const struct rte_flow_action_jump *)action->conf)->group)
+	target_group =
+		((const struct rte_flow_action_jump *)action->conf)->group;
+	ret = mlx5_flow_group_to_table(attributes, external, target_group,
+				       &table, error);
+	if (ret)
+		return ret;
+	if (table >= max_group)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP, NULL,
+					  "target group index out of range");
+	if (attributes->group >= target_group)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "target group must be higher then"
+					  "target group must be higher than"
 					  " the current flow group");
 	return 0;
 }
@@ -3174,6 +3191,8 @@ flow_dv_counter_release(struct rte_eth_dev *dev,
  *   Pointer to dev struct.
  * @param[in] attributes
  *   Pointer to flow attributes
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -3183,6 +3202,7 @@ flow_dv_counter_release(struct rte_eth_dev *dev,
 static int
 flow_dv_validate_attributes(struct rte_eth_dev *dev,
 			    const struct rte_flow_attr *attributes,
+			    bool external __rte_unused,
 			    struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -3193,7 +3213,22 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
 					  NULL,
-					  "groups is not supported");
+					  "groups are not supported");
+#else
+	uint32_t max_group = attributes->transfer ? MLX5_MAX_TABLES_FDB :
+						    MLX5_MAX_TABLES;
+	uint32_t table;
+	int ret;
+
+	ret = mlx5_flow_group_to_table(attributes, external,
+				       attributes->group,
+				       &table, error);
+	if (ret)
+		return ret;
+	if (table >= max_group)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP, NULL,
+					  "group index out of range");
 #endif
 	if (attributes->priority != MLX5_FLOW_PRIO_RSVD &&
 	    attributes->priority >= priority_max)
@@ -3217,12 +3252,6 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 				(error, ENOTSUP,
 				 RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, attributes,
 				 "egress is not supported");
-		if (attributes->group >= MLX5_MAX_TABLES_FDB)
-			return rte_flow_error_set
-				(error, EINVAL,
-				 RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
-				 NULL, "group must be smaller than "
-				 RTE_STR(MLX5_MAX_TABLES_FDB));
 	}
 	if (!(attributes->egress ^ attributes->ingress))
 		return rte_flow_error_set(error, ENOTSUP,
@@ -3243,6 +3272,8 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
  *   Pointer to the list of items.
  * @param[in] actions
  *   Pointer to the list of actions.
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -3253,7 +3284,7 @@ static int
 flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
 		 const struct rte_flow_action actions[],
-		 struct rte_flow_error *error)
+		 bool external, struct rte_flow_error *error)
 {
 	int ret;
 	uint64_t action_flags = 0;
@@ -3272,7 +3303,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 
 	if (items == NULL)
 		return -1;
-	ret = flow_dv_validate_attributes(dev, attr, error);
+	ret = flow_dv_validate_attributes(dev, attr, external, error);
 	if (ret < 0)
 		return ret;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
@@ -3675,7 +3706,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			ret = flow_dv_validate_action_jump(actions,
 							   action_flags,
-							   attr->group, error);
+							   attr, external,
+							   error);
 			if (ret)
 				return ret;
 			++actions_n;
@@ -5142,8 +5174,14 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	struct rte_vlan_hdr vlan = { 0 };
 	bool vlan_inherited = false;
 	uint16_t vlan_tci;
+	uint32_t table;
+	int ret = 0;
 
-	flow->group = attr->group;
+	ret = mlx5_flow_group_to_table(attr, dev_flow->external, attr->group,
+				       &table, error);
+	if (ret)
+		return ret;
+	flow->group = table;
 	if (attr->transfer)
 		res.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
 	if (priority == MLX5_FLOW_PRIO_RSVD)
@@ -5229,7 +5267,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			flow->counter = flow_dv_counter_alloc(dev,
 							      count->shared,
 							      count->id,
-							      attr->group);
+							      flow->group);
 			if (flow->counter == NULL)
 				goto cnt_err;
 			dev_flow->dv.actions[actions_n++] =
@@ -5371,7 +5409,12 @@ cnt_err:
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			jump_data = action->conf;
-			tbl = flow_dv_tbl_resource_get(dev, jump_data->group,
+			ret = mlx5_flow_group_to_table(attr, dev_flow->external,
+						       jump_data->group, &table,
+						       error);
+			if (ret)
+				return ret;
+			tbl = flow_dv_tbl_resource_get(dev, table,
 						       attr->egress,
 						       attr->transfer, error);
 			if (!tbl)
@@ -5522,7 +5565,7 @@ cnt_err:
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
 						  &item_flags, &tunnel);
 			flow_dv_translate_item_ipv4(match_mask, match_value,
-						    items, tunnel, attr->group);
+						    items, tunnel, flow->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
 			dev_flow->dv.hash_fields |=
 				mlx5_flow_hashfields_adjust
@@ -5549,7 +5592,7 @@ cnt_err:
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
 						  &item_flags, &tunnel);
 			flow_dv_translate_item_ipv6(match_mask, match_value,
-						    items, tunnel, attr->group);
+						    items, tunnel, flow->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
 			dev_flow->dv.hash_fields |=
 				mlx5_flow_hashfields_adjust
@@ -5668,7 +5711,7 @@ cnt_err:
 	matcher.priority = mlx5_flow_adjust_priority(dev, priority,
 						     matcher.priority);
 	matcher.egress = attr->egress;
-	matcher.group = attr->group;
+	matcher.group = flow->group;
 	matcher.transfer = attr->transfer;
 	if (flow_dv_matcher_register(dev, &matcher, dev_flow, error))
 		return -rte_errno;

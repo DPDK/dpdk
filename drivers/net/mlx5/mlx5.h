@@ -513,8 +513,8 @@ struct mlx5_flow_tbl_resource {
 	rte_atomic32_t refcnt; /**< Reference counter. */
 };
 
-#define MLX5_MAX_TABLES 0xffff
-#define MLX5_MAX_TABLES_FDB 0xffff
+#define MLX5_MAX_TABLES UINT16_MAX
+#define MLX5_MAX_TABLES_FDB UINT16_MAX
 
 #define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
 #define MLX5_DBR_SIZE 8
@@ -829,6 +829,7 @@ int mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 int mlx5_ctrl_flow(struct rte_eth_dev *dev,
 		   struct rte_flow_item_eth *eth_spec,
 		   struct rte_flow_item_eth *eth_mask);
+struct rte_flow *mlx5_flow_create_esw_table_zero_flow(struct rte_eth_dev *dev);
 int mlx5_flow_create_drop_queue(struct rte_eth_dev *dev);
 void mlx5_flow_delete_drop_queue(struct rte_eth_dev *dev);
 void mlx5_flow_async_pool_query_handle(struct mlx5_ibv_shared *sh,

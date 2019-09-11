@@ -391,6 +391,7 @@ struct mlx5_flow {
 #endif
 		struct mlx5_flow_verbs verbs;
 	};
+	bool external; /**< true if the flow is created external to PMD. */
 };
 
 /* Flow structure. */
@@ -417,6 +418,7 @@ typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    const struct rte_flow_item items[],
 				    const struct rte_flow_action actions[],
+				    bool external,
 				    struct rte_flow_error *error);
 typedef struct mlx5_flow *(*mlx5_flow_prepare_t)
 	(const struct rte_flow_attr *attr, const struct rte_flow_item items[],
@@ -455,6 +457,9 @@ struct mlx5_flow_driver_ops {
 
 /* mlx5_flow.c */
 
+int mlx5_flow_group_to_table(const struct rte_flow_attr *attributes,
+			     bool external, uint32_t group, uint32_t *table,
+			     struct rte_flow_error *error);
 uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow, int tunnel,
 				     uint64_t layer_types,
 				     uint64_t hash_fields);

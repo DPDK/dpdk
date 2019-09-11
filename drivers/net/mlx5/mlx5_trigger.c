@@ -286,6 +286,9 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	unsigned int j;
 	int ret;
 
+	if (priv->config.dv_esw_en && !priv->config.vf)
+		if (!mlx5_flow_create_esw_table_zero_flow(dev))
+			goto error;
 	if (priv->isolated)
 		return 0;
 	if (dev->data->promiscuous) {

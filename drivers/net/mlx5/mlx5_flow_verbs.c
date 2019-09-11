@@ -1016,6 +1016,8 @@ flow_verbs_translate_action_count(struct mlx5_flow *dev_flow,
  *   Pointer to the list of items.
  * @param[in] actions
  *   Pointer to the list of actions.
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -1027,6 +1029,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		    const struct rte_flow_attr *attr,
 		    const struct rte_flow_item items[],
 		    const struct rte_flow_action actions[],
+		    bool external __rte_unused,
 		    struct rte_flow_error *error)
 {
 	int ret;
