@@ -2141,13 +2141,15 @@ i40evf_dev_link_update(struct rte_eth_dev *dev,
 		new_link.link_speed = ETH_SPEED_NUM_40G;
 		break;
 	default:
-		new_link.link_speed = ETH_SPEED_NUM_100M;
+		new_link.link_speed = ETH_SPEED_NUM_NONE;
 		break;
 	}
 	/* full duplex only */
 	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	new_link.link_status = vf->link_up ? ETH_LINK_UP :
-					     ETH_LINK_DOWN;
+	new_link.link_status = vf->link_up &&
+				new_link.link_speed != ETH_SPEED_NUM_NONE
+				? ETH_LINK_UP
+				: ETH_LINK_DOWN;
 	new_link.link_autoneg =
 		!(dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED);
 

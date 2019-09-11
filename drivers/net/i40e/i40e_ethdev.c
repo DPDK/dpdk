@@ -2832,7 +2832,7 @@ update_link_aq(struct i40e_hw *hw, struct rte_eth_link *link,
 		status = i40e_aq_get_link_info(hw, enable_lse,
 						&link_status, NULL);
 		if (unlikely(status != I40E_SUCCESS)) {
-			link->link_speed = ETH_SPEED_NUM_100M;
+			link->link_speed = ETH_SPEED_NUM_NONE;
 			link->link_duplex = ETH_LINK_FULL_DUPLEX;
 			PMD_DRV_LOG(ERR, "Failed to get link info");
 			return;
@@ -2866,7 +2866,7 @@ update_link_aq(struct i40e_hw *hw, struct rte_eth_link *link,
 		link->link_speed = ETH_SPEED_NUM_40G;
 		break;
 	default:
-		link->link_speed = ETH_SPEED_NUM_100M;
+		link->link_speed = ETH_SPEED_NUM_NONE;
 		break;
 	}
 }
