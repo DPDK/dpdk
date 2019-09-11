@@ -458,7 +458,7 @@ otx2_flow_parse_ld(struct otx2_parse_state *pst)
 		info.hw_hdr_len = 4;
 		break;
 	case RTE_FLOW_ITEM_TYPE_NVGRE:
-		lt = NPC_LT_LD_GRE;
+		lt = NPC_LT_LD_NVGRE;
 		lflags = NPC_F_GRE_NVGRE;
 		info.def_mask = &rte_flow_item_nvgre_mask;
 		info.len = sizeof(struct rte_flow_item_nvgre);
