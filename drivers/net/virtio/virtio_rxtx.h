@@ -59,5 +59,7 @@ struct virtnet_ctl {
 };
 
 int virtio_rxq_vec_setup(struct virtnet_rx *rxvq);
+void virtio_update_packet_stats(struct virtnet_stats *stats,
+				struct rte_mbuf *mbuf);
 
 #endif /* _VIRTIO_RXTX_H_ */

@@ -106,7 +106,7 @@ vq_ring_free_id_packed(struct virtqueue *vq, uint16_t id)
 	dxp->next = VQ_RING_DESC_CHAIN_END;
 }
 
-static inline void
+void
 virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 {
 	uint32_t s = mbuf->pkt_len;
