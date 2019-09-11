@@ -51,7 +51,6 @@ M: Tiwei Bie <tiwei.bie@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 
 Next-crypto Tree
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 M: Akhil Goyal <akhil.goyal@nxp.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 
@@ -385,7 +384,6 @@ F: examples/bbdev_app/
 F: doc/guides/sample_app_ug/bbdev_app.rst
 
 Crypto API
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 M: Declan Doherty <declan.doherty@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_cryptodev/
@@ -401,7 +399,6 @@ F: doc/guides/prog_guide/rte_security.rst
 
 Compression API - EXPERIMENTAL
 M: Fiona Trahe <fiona.trahe@intel.com>
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 M: Ashish Gupta <ashish.gupta@marvell.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_compressdev/
@@ -902,7 +899,6 @@ F: doc/guides/nics/features/memif.ini
 
 Crypto Drivers
 --------------
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: doc/guides/cryptodevs/features/default.ini
 
@@ -1019,7 +1015,6 @@ F: doc/guides/cryptodevs/features/zuc.ini
 
 Compression Drivers
 -------------------
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 
 Cavium OCTEON TX zipvf
@@ -1247,7 +1242,6 @@ F: doc/guides/sample_app_ug/l3_forward_access_ctrl.rst
 
 EFD
 M: Byron Marohn <byron.marohn@intel.com>
-M: Pablo de Lara Guarch <pablo.de.lara.guarch@intel.com>
 F: lib/librte_efd/
 F: doc/guides/prog_guide/efd_lib.rst
 F: app/test/test_efd*
@@ -1258,7 +1252,6 @@ Hashes
 M: Yipeng Wang <yipeng1.wang@intel.com>
 M: Sameh Gobriel <sameh.gobriel@intel.com>
 M: Bruce Richardson <bruce.richardson@intel.com>
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: lib/librte_hash/
 F: doc/guides/prog_guide/hash_lib.rst
 F: app/test/test_*hash*
@@ -1341,7 +1334,6 @@ F: examples/timer/
 F: doc/guides/sample_app_ug/timer.rst
 
 Job statistics
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: lib/librte_jobstats/
 F: examples/l2fwd-jobstats/
 F: doc/guides/sample_app_ug/l2_forward_job_stats.rst
@@ -1404,7 +1396,6 @@ F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
 Compression performance test application
-M: Pablo De Lara Guarch <pablo.de.lara.guarch@intel.com>
 F: app/test-compress-perf/
 F: doc/guides/tools/comp_perf.rst
 
@@ -1445,7 +1436,6 @@ F: examples/flow_filtering/
 F: doc/guides/sample_app_ug/flow_filtering.rst
 
 M: Bruce Richardson <bruce.richardson@intel.com>
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/helloworld/
 F: doc/guides/sample_app_ug/hello_world.rst
 
@@ -1458,7 +1448,6 @@ F: examples/ipv4_multicast/
 F: doc/guides/sample_app_ug/ipv4_multicast.rst
 
 M: Bruce Richardson <bruce.richardson@intel.com>
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/l2fwd/
 F: doc/guides/sample_app_ug/l2_forward_real_virtual.rst
 
@@ -1486,7 +1475,6 @@ M: John McNamara <john.mcnamara@intel.com>
 F: examples/performance-thread/
 F: doc/guides/sample_app_ug/performance_thread.rst
 
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/ptpclient/
 
 F: examples/quota_watermark/
