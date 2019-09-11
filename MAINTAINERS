@@ -1244,6 +1244,7 @@ F: doc/guides/sample_app_ug/l3_forward_access_ctrl.rst
 
 EFD
 M: Byron Marohn <byron.marohn@intel.com>
+M: Yipeng Wang <yipeng1.wang@intel.com>
 F: lib/librte_efd/
 F: doc/guides/prog_guide/efd_lib.rst
 F: app/test/test_efd*
