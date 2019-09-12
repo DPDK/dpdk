@@ -1914,7 +1914,11 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 	struct rte_ether_addr ethaddr;
 	struct rte_eth_conf local_port_conf = port_conf;
 
-	rte_eth_dev_info_get(portid, &dev_info);
+	ret = rte_eth_dev_info_get(portid, &dev_info);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Error during getting device (port %u) info: %s\n",
+			portid, strerror(-ret));
 
 	/* limit allowed HW offloafs, as user requested */
 	dev_info.rx_offload_capa &= dev_rx_offload;

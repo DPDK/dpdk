@@ -756,8 +756,16 @@ static int
 check_eth_dev_caps(uint16_t portid, uint32_t inbound)
 {
 	struct rte_eth_dev_info dev_info;
+	int retval;
 
-	rte_eth_dev_info_get(portid, &dev_info);
+	retval = rte_eth_dev_info_get(portid, &dev_info);
+	if (retval != 0) {
+		RTE_LOG(ERR, IPSEC,
+			"Error during getting device (port %u) info: %s\n",
+			portid, strerror(-retval));
+
+		return retval;
+	}
 
 	if (inbound) {
 		if ((dev_info.rx_offload_capa &

@@ -255,7 +255,14 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa)
 			unsigned int i;
 			unsigned int j;
 
-			rte_eth_dev_info_get(sa->portid, &dev_info);
+			ret = rte_eth_dev_info_get(sa->portid, &dev_info);
+			if (ret != 0) {
+				RTE_LOG(ERR, IPSEC,
+					"Error during getting device (port %u) info: %s\n",
+					sa->portid, strerror(-ret));
+				return ret;
+			}
+
 			sa->action[2].type = RTE_FLOW_ACTION_TYPE_END;
 			/* Try RSS. */
 			sa->action[1].type = RTE_FLOW_ACTION_TYPE_RSS;
