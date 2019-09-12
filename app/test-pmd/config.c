@@ -471,6 +471,7 @@ port_infos_display(portid_t port_id)
 	static const char *info_border = "*********************";
 	uint16_t mtu;
 	char name[RTE_ETH_NAME_MAX_LEN];
+	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		print_valid_ports();
@@ -478,7 +479,11 @@ port_infos_display(portid_t port_id)
 	}
 	port = &ports[port_id];
 	rte_eth_link_get_nowait(port_id, &link);
-	rte_eth_dev_info_get(port_id, &dev_info);
+
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	printf("\n%s Infos for port %-2d %s\n",
 	       info_border, port_id, info_border);
 	rte_eth_macaddr_get(port_id, &mac_addr);
@@ -617,6 +622,7 @@ port_summary_display(portid_t port_id)
 	struct rte_eth_link link;
 	struct rte_eth_dev_info dev_info;
 	char name[RTE_ETH_NAME_MAX_LEN];
+	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		print_valid_ports();
@@ -624,7 +630,11 @@ port_summary_display(portid_t port_id)
 	}
 
 	rte_eth_link_get_nowait(port_id, &link);
-	rte_eth_dev_info_get(port_id, &dev_info);
+
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	rte_eth_dev_get_name_by_port(port_id, name);
 	rte_eth_macaddr_get(port_id, &mac_addr);
 
@@ -641,11 +651,14 @@ port_offload_cap_display(portid_t port_id)
 {
 	struct rte_eth_dev_info dev_info;
 	static const char *info_border = "************";
+	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
 
 	printf("\n%s Port %d supported offload features: %s\n",
 		info_border, port_id, info_border);
@@ -1139,10 +1152,15 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 {
 	int diag;
 	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
-	rte_eth_dev_info_get(port_id, &dev_info);
+
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (mtu > dev_info.max_mtu || mtu < dev_info.min_mtu) {
 		printf("Set MTU failed. MTU:%u is not in valid range, min:%u - max:%u\n",
 			mtu, dev_info.min_mtu, dev_info.max_mtu);
@@ -1617,12 +1635,16 @@ ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
 #endif
 			   uint16_t desc_id)
 {
+	int ret;
 	struct igb_ring_desc_16_bytes *ring =
 		(struct igb_ring_desc_16_bytes *)ring_mz->addr;
 #ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
 	struct rte_eth_dev_info dev_info;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (strstr(dev_info.driver_name, "i40e") != NULL) {
 		/* 32 bytes RX descriptor, i40e only */
 		struct igb_ring_desc_32_bytes *ring =
@@ -1832,11 +1854,15 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 	int diag;
 	struct rte_eth_dev_info dev_info;
 	uint8_t hash_key_size;
+	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (dev_info.hash_key_size > 0 &&
 			dev_info.hash_key_size <= sizeof(rss_key))
 		hash_key_size = dev_info.hash_key_size;
@@ -2794,11 +2820,15 @@ add_rx_dump_callbacks(portid_t portid)
 {
 	struct rte_eth_dev_info dev_info;
 	uint16_t queue;
+	int ret;
 
 	if (port_id_is_invalid(portid, ENABLED_WARN))
 		return;
 
-	rte_eth_dev_info_get(portid, &dev_info);
+	ret = eth_dev_info_get_print_err(portid, &dev_info);
+	if (ret != 0)
+		return;
+
 	for (queue = 0; queue < dev_info.nb_rx_queues; queue++)
 		if (!ports[portid].rx_dump_cb[queue])
 			ports[portid].rx_dump_cb[queue] =
@@ -2811,10 +2841,15 @@ add_tx_dump_callbacks(portid_t portid)
 {
 	struct rte_eth_dev_info dev_info;
 	uint16_t queue;
+	int ret;
 
 	if (port_id_is_invalid(portid, ENABLED_WARN))
 		return;
-	rte_eth_dev_info_get(portid, &dev_info);
+
+	ret = eth_dev_info_get_print_err(portid, &dev_info);
+	if (ret != 0)
+		return;
+
 	for (queue = 0; queue < dev_info.nb_tx_queues; queue++)
 		if (!ports[portid].tx_dump_cb[queue])
 			ports[portid].tx_dump_cb[queue] =
@@ -2827,10 +2862,15 @@ remove_rx_dump_callbacks(portid_t portid)
 {
 	struct rte_eth_dev_info dev_info;
 	uint16_t queue;
+	int ret;
 
 	if (port_id_is_invalid(portid, ENABLED_WARN))
 		return;
-	rte_eth_dev_info_get(portid, &dev_info);
+
+	ret = eth_dev_info_get_print_err(portid, &dev_info);
+	if (ret != 0)
+		return;
+
 	for (queue = 0; queue < dev_info.nb_rx_queues; queue++)
 		if (ports[portid].rx_dump_cb[queue]) {
 			rte_eth_remove_rx_callback(portid, queue,
@@ -2844,10 +2884,15 @@ remove_tx_dump_callbacks(portid_t portid)
 {
 	struct rte_eth_dev_info dev_info;
 	uint16_t queue;
+	int ret;
 
 	if (port_id_is_invalid(portid, ENABLED_WARN))
 		return;
-	rte_eth_dev_info_get(portid, &dev_info);
+
+	ret = eth_dev_info_get_print_err(portid, &dev_info);
+	if (ret != 0)
+		return;
+
 	for (queue = 0; queue < dev_info.nb_tx_queues; queue++)
 		if (ports[portid].tx_dump_cb[queue]) {
 			rte_eth_remove_tx_callback(portid, queue,
@@ -3035,6 +3080,7 @@ void
 tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 {
 	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
@@ -3046,7 +3092,11 @@ tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 		printf("Error, as QinQ has been enabled.\n");
 		return;
 	}
-	rte_eth_dev_info_get(port_id, &dev_info);
+
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if ((dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VLAN_INSERT) == 0) {
 		printf("Error: vlan insert is not supported by port %d\n",
 			port_id);
@@ -3062,6 +3112,7 @@ void
 tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer)
 {
 	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
@@ -3070,7 +3121,10 @@ tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer)
 	if (vlan_id_is_invalid(vlan_id_outer))
 		return;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if ((dev_info.tx_offload_capa & DEV_TX_OFFLOAD_QINQ_INSERT) == 0) {
 		printf("Error: qinq insert not supported by port %d\n",
 			port_id);

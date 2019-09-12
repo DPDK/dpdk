@@ -1012,17 +1012,21 @@ queueid_t
 get_allowed_max_nb_rxq(portid_t *pid)
 {
 	queueid_t allowed_max_rxq = MAX_QUEUE_ID;
+	bool max_rxq_valid = false;
 	portid_t pi;
 	struct rte_eth_dev_info dev_info;
 
 	RTE_ETH_FOREACH_DEV(pi) {
-		rte_eth_dev_info_get(pi, &dev_info);
+		if (eth_dev_info_get_print_err(pi, &dev_info) != 0)
+			continue;
+
+		max_rxq_valid = true;
 		if (dev_info.max_rx_queues < allowed_max_rxq) {
 			allowed_max_rxq = dev_info.max_rx_queues;
 			*pid = pi;
 		}
 	}
-	return allowed_max_rxq;
+	return max_rxq_valid ? allowed_max_rxq : 0;
 }
 
 /*
@@ -1058,17 +1062,21 @@ queueid_t
 get_allowed_max_nb_txq(portid_t *pid)
 {
 	queueid_t allowed_max_txq = MAX_QUEUE_ID;
+	bool max_txq_valid = false;
 	portid_t pi;
 	struct rte_eth_dev_info dev_info;
 
 	RTE_ETH_FOREACH_DEV(pi) {
-		rte_eth_dev_info_get(pi, &dev_info);
+		if (eth_dev_info_get_print_err(pi, &dev_info) != 0)
+			continue;
+
+		max_txq_valid = true;
 		if (dev_info.max_tx_queues < allowed_max_txq) {
 			allowed_max_txq = dev_info.max_tx_queues;
 			*pid = pi;
 		}
 	}
-	return allowed_max_txq;
+	return max_txq_valid ? allowed_max_txq : 0;
 }
 
 /*
@@ -1109,6 +1117,7 @@ init_config(void)
 	uint16_t data_size;
 	bool warning = 0;
 	int k;
+	int ret;
 
 	memset(port_per_socket,0,RTE_MAX_NUMA_NODES);
 
@@ -1136,7 +1145,11 @@ init_config(void)
 		/* Apply default TxRx configuration for all ports */
 		port->dev_conf.txmode = tx_mode;
 		port->dev_conf.rxmode = rx_mode;
-		rte_eth_dev_info_get(pid, &port->dev_info);
+
+		ret = eth_dev_info_get_print_err(pid, &port->dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				 "rte_eth_dev_info_get() failed\n");
 
 		if (!(port->dev_info.tx_offload_capa &
 		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
@@ -1295,10 +1308,14 @@ void
 reconfig(portid_t new_port_id, unsigned socket_id)
 {
 	struct rte_port *port;
+	int ret;
 
 	/* Reconfiguration of Ethernet ports. */
 	port = &ports[new_port_id];
-	rte_eth_dev_info_get(new_port_id, &port->dev_info);
+
+	ret = eth_dev_info_get_print_err(new_port_id, &port->dev_info);
+	if (ret != 0)
+		return;
 
 	/* set flag to initialize port/queue */
 	port->need_reconfig = 1;
@@ -2927,11 +2944,16 @@ init_port_config(void)
 {
 	portid_t pid;
 	struct rte_port *port;
+	int ret;
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
 		port->dev_conf.fdir_conf = fdir_conf;
-		rte_eth_dev_info_get(pid, &port->dev_info);
+
+		ret = eth_dev_info_get_print_err(pid, &port->dev_info);
+		if (ret != 0)
+			return;
+
 		if (nb_rxq > 1) {
 			port->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
 			port->dev_conf.rx_adv_conf.rss_conf.rss_hf =
@@ -3106,7 +3128,10 @@ init_port_dcb_config(portid_t pid,
 	retval = rte_eth_dev_configure(pid, nb_rxq, nb_rxq, &port_conf);
 	if (retval < 0)
 		return retval;
-	rte_eth_dev_info_get(pid, &rte_port->dev_info);
+
+	retval = eth_dev_info_get_print_err(pid, &rte_port->dev_info);
+	if (retval != 0)
+		return retval;
 
 	/* If dev_info.vmdq_pool_base is greater than 0,
 	 * the queue id of vmdq pools is started after pf queues.

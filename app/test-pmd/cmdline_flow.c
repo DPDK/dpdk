@@ -3549,8 +3549,12 @@ parse_vc_action_rss(struct context *ctx, const struct token *token,
 	if (!port_id_is_invalid(ctx->port, DISABLED_WARN) &&
 	    ctx->port != (portid_t)RTE_PORT_ALL) {
 		struct rte_eth_dev_info info;
+		int ret2;
 
-		rte_eth_dev_info_get(ctx->port, &info);
+		ret2 = rte_eth_dev_info_get(ctx->port, &info);
+		if (ret2 != 0)
+			return ret2;
+
 		action_rss_data->conf.key_len =
 			RTE_MIN(sizeof(action_rss_data->key),
 				info.hash_key_size);

@@ -2181,6 +2181,7 @@ cmd_config_rss_parsed(void *parsed_result,
 	int all_updated = 1;
 	int diag;
 	uint16_t i;
+	int ret;
 
 	if (!strcmp(res->value, "all"))
 		rss_conf.rss_hf = ETH_RSS_IP | ETH_RSS_TCP |
@@ -2220,7 +2221,10 @@ cmd_config_rss_parsed(void *parsed_result,
 	RTE_ETH_FOREACH_DEV(i) {
 		struct rte_eth_rss_conf local_rss_conf;
 
-		rte_eth_dev_info_get(i, &dev_info);
+		ret = eth_dev_info_get_print_err(i, &dev_info);
+		if (ret != 0)
+			return;
+
 		if (use_default)
 			rss_conf.rss_hf = dev_info.flow_type_rss_offloads;
 
@@ -2318,8 +2322,12 @@ cmd_config_rss_hash_key_parsed(void *parsed_result,
 	struct rte_eth_dev_info dev_info;
 	uint8_t hash_key_size;
 	uint32_t key_len;
+	int ret;
 
-	rte_eth_dev_info_get(res->port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(res->port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (dev_info.hash_key_size > 0 &&
 			dev_info.hash_key_size <= sizeof(hash_key))
 		hash_key_size = dev_info.hash_key_size;
@@ -2851,7 +2859,10 @@ cmd_set_rss_reta_parsed(void *parsed_result,
 	struct rte_eth_rss_reta_entry64 reta_conf[8];
 	struct cmd_config_rss_reta *res = parsed_result;
 
-	rte_eth_dev_info_get(res->port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(res->port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (dev_info.reta_size == 0) {
 		printf("Redirection table size is 0 which is "
 					"invalid for RSS\n");
@@ -2969,8 +2980,12 @@ cmd_showport_reta_parsed(void *parsed_result,
 	struct rte_eth_rss_reta_entry64 reta_conf[8];
 	struct rte_eth_dev_info dev_info;
 	uint16_t max_reta_size;
+	int ret;
 
-	rte_eth_dev_info_get(res->port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(res->port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	max_reta_size = RTE_MIN(dev_info.reta_size, ETH_RSS_RETA_SIZE_512);
 	if (res->size == 0 || res->size > max_reta_size) {
 		printf("Invalid redirection table size: %u (1-%u)\n",
@@ -3197,6 +3212,7 @@ cmd_config_burst_parsed(void *parsed_result,
 	struct cmd_config_burst *res = parsed_result;
 	struct rte_eth_dev_info dev_info;
 	uint16_t rec_nb_pkts;
+	int ret;
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
@@ -3210,7 +3226,10 @@ cmd_config_burst_parsed(void *parsed_result,
 			 * size for all ports, so assume all ports are the same
 			 * NIC model and use the values from Port 0.
 			 */
-			rte_eth_dev_info_get(0, &dev_info);
+			ret = eth_dev_info_get_print_err(0, &dev_info);
+			if (ret != 0)
+				return;
+
 			rec_nb_pkts = dev_info.default_rxportconf.burst_size;
 
 			if (rec_nb_pkts == 0) {
@@ -4280,6 +4299,7 @@ csum_show(int port_id)
 {
 	struct rte_eth_dev_info dev_info;
 	uint64_t tx_offloads;
+	int ret;
 
 	tx_offloads = ports[port_id].dev_conf.txmode.offloads;
 	printf("Parse tunnel is %s\n",
@@ -4298,7 +4318,10 @@ csum_show(int port_id)
 		(tx_offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) ? "hw" : "sw");
 
 	/* display warnings if configuration is not supported by the NIC */
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if ((tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) &&
 		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0) {
 		printf("Warning: hardware IP checksum enabled but not "
@@ -4352,6 +4375,7 @@ cmd_csum_parsed(void *parsed_result,
 	int hw = 0;
 	uint64_t csum_offloads = 0;
 	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN)) {
 		printf("invalid port %d\n", res->port_id);
@@ -4362,7 +4386,10 @@ cmd_csum_parsed(void *parsed_result,
 		return;
 	}
 
-	rte_eth_dev_info_get(res->port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(res->port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (!strcmp(res->mode, "set")) {
 
 		if (!strcmp(res->hwsw, "hw"))
@@ -4550,6 +4577,7 @@ cmd_tso_set_parsed(void *parsed_result,
 {
 	struct cmd_tso_set_result *res = parsed_result;
 	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
@@ -4561,7 +4589,10 @@ cmd_tso_set_parsed(void *parsed_result,
 	if (!strcmp(res->mode, "set"))
 		ports[res->port_id].tso_segsz = res->tso_segsz;
 
-	rte_eth_dev_info_get(res->port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(res->port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if ((ports[res->port_id].tso_segsz != 0) &&
 		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_TSO) == 0) {
 		printf("Error: TSO is not supported by port %d\n",
@@ -4582,7 +4613,10 @@ cmd_tso_set_parsed(void *parsed_result,
 	cmd_config_queue_tx_offloads(&ports[res->port_id]);
 
 	/* display warnings if configuration is not supported by the NIC */
-	rte_eth_dev_info_get(res->port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(res->port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if ((ports[res->port_id].tso_segsz != 0) &&
 		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_TSO) == 0) {
 		printf("Warning: TSO enabled but not "
@@ -4651,7 +4685,9 @@ check_tunnel_tso_nic_support(portid_t port_id)
 {
 	struct rte_eth_dev_info dev_info;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	if (eth_dev_info_get_print_err(port_id, &dev_info) != 0)
+		return dev_info;
+
 	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
 		printf("Warning: VXLAN TUNNEL TSO not supported therefore "
 		       "not enabled for port %d\n", port_id);
@@ -11088,7 +11124,11 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		else if (!strncmp(res->pf_vf, "vf", 2)) {
 			struct rte_eth_dev_info dev_info;
 
-			rte_eth_dev_info_get(res->port_id, &dev_info);
+			ret = eth_dev_info_get_print_err(res->port_id,
+						&dev_info);
+			if (ret != 0)
+				return;
+
 			errno = 0;
 			vf_id = strtoul(res->pf_vf + 2, &end, 10);
 			if (errno != 0 || *end != '\0' ||
@@ -14080,7 +14120,10 @@ cmd_set_macsec_offload_on_parsed(
 		return;
 	}
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MACSEC_INSERT) {
 #ifdef RTE_LIBRTE_IXGBE_PMD
 		ret = rte_pmd_ixgbe_macsec_enable(port_id, en, rp);
@@ -14174,7 +14217,10 @@ cmd_set_macsec_offload_off_parsed(
 		return;
 	}
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MACSEC_INSERT) {
 #ifdef RTE_LIBRTE_IXGBE_PMD
 		ret = rte_pmd_ixgbe_macsec_disable(port_id);
@@ -17884,8 +17930,12 @@ cmd_rx_offload_get_capa_parsed(
 	portid_t port_id = res->port_id;
 	uint64_t queue_offloads;
 	uint64_t port_offloads;
+	int ret;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	queue_offloads = dev_info.rx_queue_offload_capa;
 	port_offloads = dev_info.rx_offload_capa ^ queue_offloads;
 
@@ -17957,6 +18007,7 @@ cmd_rx_offload_get_configuration_parsed(
 	uint64_t queue_offloads;
 	uint16_t nb_rx_queues;
 	int q;
+	int ret;
 
 	printf("Rx Offloading Configuration of port %d :\n", port_id);
 
@@ -17965,7 +18016,10 @@ cmd_rx_offload_get_configuration_parsed(
 	print_rx_offloads(port_offloads);
 	printf("\n");
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	nb_rx_queues = dev_info.nb_rx_queues;
 	for (q = 0; q < nb_rx_queues; q++) {
 		queue_offloads = port->rx_conf[q].offloads;
@@ -18064,6 +18118,7 @@ cmd_config_per_port_rx_offload_parsed(void *parsed_result,
 	uint64_t single_offload;
 	uint16_t nb_rx_queues;
 	int q;
+	int ret;
 
 	if (port->port_status != RTE_PORT_STOPPED) {
 		printf("Error: Can't config offload when Port %d "
@@ -18077,7 +18132,10 @@ cmd_config_per_port_rx_offload_parsed(void *parsed_result,
 		return;
 	}
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	nb_rx_queues = dev_info.nb_rx_queues;
 	if (!strcmp(res->on_off, "on")) {
 		port->dev_conf.rxmode.offloads |= single_offload;
@@ -18165,6 +18223,7 @@ cmd_config_per_queue_rx_offload_parsed(void *parsed_result,
 	uint16_t queue_id = res->queue_id;
 	struct rte_port *port = &ports[port_id];
 	uint64_t single_offload;
+	int ret;
 
 	if (port->port_status != RTE_PORT_STOPPED) {
 		printf("Error: Can't config offload when Port %d "
@@ -18172,7 +18231,10 @@ cmd_config_per_queue_rx_offload_parsed(void *parsed_result,
 		return;
 	}
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (queue_id >= dev_info.nb_rx_queues) {
 		printf("Error: input queue_id should be 0 ... "
 		       "%d\n", dev_info.nb_rx_queues - 1);
@@ -18278,8 +18340,12 @@ cmd_tx_offload_get_capa_parsed(
 	portid_t port_id = res->port_id;
 	uint64_t queue_offloads;
 	uint64_t port_offloads;
+	int ret;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	queue_offloads = dev_info.tx_queue_offload_capa;
 	port_offloads = dev_info.tx_offload_capa ^ queue_offloads;
 
@@ -18351,6 +18417,7 @@ cmd_tx_offload_get_configuration_parsed(
 	uint64_t queue_offloads;
 	uint16_t nb_tx_queues;
 	int q;
+	int ret;
 
 	printf("Tx Offloading Configuration of port %d :\n", port_id);
 
@@ -18359,7 +18426,10 @@ cmd_tx_offload_get_configuration_parsed(
 	print_tx_offloads(port_offloads);
 	printf("\n");
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	nb_tx_queues = dev_info.nb_tx_queues;
 	for (q = 0; q < nb_tx_queues; q++) {
 		queue_offloads = port->tx_conf[q].offloads;
@@ -18463,6 +18533,7 @@ cmd_config_per_port_tx_offload_parsed(void *parsed_result,
 	uint64_t single_offload;
 	uint16_t nb_tx_queues;
 	int q;
+	int ret;
 
 	if (port->port_status != RTE_PORT_STOPPED) {
 		printf("Error: Can't config offload when Port %d "
@@ -18476,7 +18547,10 @@ cmd_config_per_port_tx_offload_parsed(void *parsed_result,
 		return;
 	}
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	nb_tx_queues = dev_info.nb_tx_queues;
 	if (!strcmp(res->on_off, "on")) {
 		port->dev_conf.txmode.offloads |= single_offload;
@@ -18567,6 +18641,7 @@ cmd_config_per_queue_tx_offload_parsed(void *parsed_result,
 	uint16_t queue_id = res->queue_id;
 	struct rte_port *port = &ports[port_id];
 	uint64_t single_offload;
+	int ret;
 
 	if (port->port_status != RTE_PORT_STOPPED) {
 		printf("Error: Can't config offload when Port %d "
@@ -18574,7 +18649,10 @@ cmd_config_per_queue_tx_offload_parsed(void *parsed_result,
 		return;
 	}
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
 	if (queue_id >= dev_info.nb_tx_queues) {
 		printf("Error: input queue_id should be 0 ... "
 		       "%d\n", dev_info.nb_tx_queues - 1);
