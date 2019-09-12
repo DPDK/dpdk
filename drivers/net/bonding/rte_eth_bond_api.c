@@ -452,6 +452,7 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 	struct bond_dev_private *internals;
 	struct rte_eth_link link_props;
 	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
 	internals = bonded_eth_dev->data->dev_private;
@@ -465,7 +466,14 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 		return -1;
 	}
 
-	rte_eth_dev_info_get(slave_port_id, &dev_info);
+	ret = rte_eth_dev_info_get(slave_port_id, &dev_info);
+	if (ret != 0) {
+		RTE_BOND_LOG(ERR,
+			"%s: Error during getting device (port %u) info: %s\n",
+			__func__, slave_port_id, strerror(-ret));
+
+		return ret;
+	}
 	if (dev_info.max_rx_pktlen < internals->max_rx_pktlen) {
 		RTE_BOND_LOG(ERR, "Slave (port %u) max_rx_pktlen too small",
 			     slave_port_id);

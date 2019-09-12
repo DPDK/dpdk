@@ -186,7 +186,15 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 		return -1;
 	}
 
-	rte_eth_dev_info_get(slave_port, &slave_info);
+	ret = rte_eth_dev_info_get(slave_port, &slave_info);
+	if (ret != 0) {
+		RTE_BOND_LOG(ERR,
+			"%s: Error during getting device (port %u) info: %s\n",
+			__func__, slave_port, strerror(-ret));
+
+		return ret;
+	}
+
 	if (slave_info.max_rx_queues < bond_dev->data->nb_rx_queues ||
 			slave_info.max_tx_queues < bond_dev->data->nb_tx_queues) {
 		RTE_BOND_LOG(ERR,
@@ -204,10 +212,19 @@ bond_8023ad_slow_pkt_hw_filter_supported(uint16_t port_id) {
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	struct rte_eth_dev_info bond_info;
 	uint16_t idx;
+	int ret;
 
 	/* Verify if all slaves in bonding supports flow director and */
 	if (internals->slave_count > 0) {
-		rte_eth_dev_info_get(bond_dev->data->port_id, &bond_info);
+		ret = rte_eth_dev_info_get(bond_dev->data->port_id, &bond_info);
+		if (ret != 0) {
+			RTE_BOND_LOG(ERR,
+				"%s: Error during getting device (port %u) info: %s\n",
+				__func__, bond_dev->data->port_id,
+				strerror(-ret));
+
+			return ret;
+		}
 
 		internals->mode4.dedicated_queues.rx_qid = bond_info.nb_rx_queues;
 		internals->mode4.dedicated_queues.tx_qid = bond_info.nb_tx_queues;
@@ -2102,6 +2119,8 @@ static void
 bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
+	struct bond_slave_details slave;
+	int ret;
 
 	uint16_t max_nb_rx_queues = UINT16_MAX;
 	uint16_t max_nb_tx_queues = UINT16_MAX;
@@ -2123,8 +2142,17 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		uint16_t idx;
 
 		for (idx = 0; idx < internals->slave_count; idx++) {
-			rte_eth_dev_info_get(internals->slaves[idx].port_id,
-					&slave_info);
+			slave = internals->slaves[idx];
+			ret = rte_eth_dev_info_get(slave.port_id, &slave_info);
+			if (ret != 0) {
+				RTE_BOND_LOG(ERR,
+					"%s: Error during getting device (port %u) info: %s\n",
+					__func__,
+					slave.port_id,
+					strerror(-ret));
+
+				return;
+			}
 
 			if (slave_info.max_rx_queues < max_nb_rx_queues)
 				max_nb_rx_queues = slave_info.max_rx_queues;
