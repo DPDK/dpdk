@@ -1477,7 +1477,7 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 	struct ecore_eth_stats stats;
-	unsigned int i = 0, j = 0, qid;
+	unsigned int i = 0, j = 0, qid, idx, hw_fn;
 	unsigned int rxq_stat_cntrs, txq_stat_cntrs;
 	struct qede_tx_queue *txq;
 
@@ -1525,32 +1525,47 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 		       " appropriately and retry.\n");
 
 	for (qid = 0; qid < eth_dev->data->nb_rx_queues; qid++) {
-		eth_stats->q_ipackets[i] =
-			*(uint64_t *)(
-				((char *)(qdev->fp_array[qid].rxq)) +
-				offsetof(struct qede_rx_queue,
-				rcv_pkts));
-		eth_stats->q_errors[i] =
-			*(uint64_t *)(
-				((char *)(qdev->fp_array[qid].rxq)) +
-				offsetof(struct qede_rx_queue,
-				rx_hw_errors)) +
-			*(uint64_t *)(
-				((char *)(qdev->fp_array[qid].rxq)) +
-				offsetof(struct qede_rx_queue,
-				rx_alloc_errors));
+		eth_stats->q_ipackets[i] = 0;
+		eth_stats->q_errors[i] = 0;
+
+		for_each_hwfn(edev, hw_fn) {
+			idx = qid * edev->num_hwfns + hw_fn;
+
+			eth_stats->q_ipackets[i] +=
+				*(uint64_t *)
+					(((char *)(qdev->fp_array[idx].rxq)) +
+					 offsetof(struct qede_rx_queue,
+					 rcv_pkts));
+			eth_stats->q_errors[i] +=
+				*(uint64_t *)
+					(((char *)(qdev->fp_array[idx].rxq)) +
+					 offsetof(struct qede_rx_queue,
+					 rx_hw_errors)) +
+				*(uint64_t *)
+					(((char *)(qdev->fp_array[idx].rxq)) +
+					 offsetof(struct qede_rx_queue,
+					 rx_alloc_errors));
+		}
+
 		i++;
 		if (i == rxq_stat_cntrs)
 			break;
 	}
 
 	for (qid = 0; qid < eth_dev->data->nb_tx_queues; qid++) {
-		txq = qdev->fp_array[qid].txq;
-		eth_stats->q_opackets[j] =
-			*((uint64_t *)(uintptr_t)
-				(((uint64_t)(uintptr_t)(txq)) +
-				 offsetof(struct qede_tx_queue,
-					  xmit_pkts)));
+		eth_stats->q_opackets[j] = 0;
+
+		for_each_hwfn(edev, hw_fn) {
+			idx = qid * edev->num_hwfns + hw_fn;
+
+			txq = qdev->fp_array[idx].txq;
+			eth_stats->q_opackets[j] +=
+				*((uint64_t *)(uintptr_t)
+					(((uint64_t)(uintptr_t)(txq)) +
+					 offsetof(struct qede_tx_queue,
+						  xmit_pkts)));
+		}
+
 		j++;
 		if (j == txq_stat_cntrs)
 			break;
@@ -1583,42 +1598,43 @@ qede_get_xstats_names(struct rte_eth_dev *dev,
 	struct qede_dev *qdev = dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 	const unsigned int stat_cnt = qede_get_xstats_count(qdev);
-	unsigned int i, qid, stat_idx = 0;
-	unsigned int rxq_stat_cntrs;
+	unsigned int i, qid, hw_fn, stat_idx = 0;
 
-	if (xstats_names != NULL) {
-		for (i = 0; i < RTE_DIM(qede_xstats_strings); i++) {
+	if (xstats_names == NULL)
+		return stat_cnt;
+
+	for (i = 0; i < RTE_DIM(qede_xstats_strings); i++) {
+		strlcpy(xstats_names[stat_idx].name,
+			qede_xstats_strings[i].name,
+			sizeof(xstats_names[stat_idx].name));
+		stat_idx++;
+	}
+
+	if (ECORE_IS_BB(edev)) {
+		for (i = 0; i < RTE_DIM(qede_bb_xstats_strings); i++) {
 			strlcpy(xstats_names[stat_idx].name,
-				qede_xstats_strings[i].name,
+				qede_bb_xstats_strings[i].name,
 				sizeof(xstats_names[stat_idx].name));
 			stat_idx++;
 		}
-
-		if (ECORE_IS_BB(edev)) {
-			for (i = 0; i < RTE_DIM(qede_bb_xstats_strings); i++) {
-				strlcpy(xstats_names[stat_idx].name,
-					qede_bb_xstats_strings[i].name,
-					sizeof(xstats_names[stat_idx].name));
-				stat_idx++;
-			}
-		} else {
-			for (i = 0; i < RTE_DIM(qede_ah_xstats_strings); i++) {
-				strlcpy(xstats_names[stat_idx].name,
-					qede_ah_xstats_strings[i].name,
-					sizeof(xstats_names[stat_idx].name));
-				stat_idx++;
-			}
+	} else {
+		for (i = 0; i < RTE_DIM(qede_ah_xstats_strings); i++) {
+			strlcpy(xstats_names[stat_idx].name,
+				qede_ah_xstats_strings[i].name,
+				sizeof(xstats_names[stat_idx].name));
+			stat_idx++;
 		}
+	}
 
-		rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(dev),
-					 RTE_ETHDEV_QUEUE_STAT_CNTRS);
-		for (qid = 0; qid < rxq_stat_cntrs; qid++) {
+	for (qid = 0; qid < QEDE_RSS_COUNT(dev); qid++) {
+		for_each_hwfn(edev, hw_fn) {
 			for (i = 0; i < RTE_DIM(qede_rxq_xstats_strings); i++) {
 				snprintf(xstats_names[stat_idx].name,
-					sizeof(xstats_names[stat_idx].name),
-					"%.4s%d%s",
-					qede_rxq_xstats_strings[i].name, qid,
-					qede_rxq_xstats_strings[i].name + 4);
+					 RTE_ETH_XSTATS_NAME_SIZE,
+					 "%.4s%d.%d%s",
+					 qede_rxq_xstats_strings[i].name,
+					 hw_fn, qid,
+					 qede_rxq_xstats_strings[i].name + 4);
 				stat_idx++;
 			}
 		}
@@ -1635,8 +1651,7 @@ qede_get_xstats(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	struct ecore_dev *edev = &qdev->edev;
 	struct ecore_eth_stats stats;
 	const unsigned int num = qede_get_xstats_count(qdev);
-	unsigned int i, qid, stat_idx = 0;
-	unsigned int rxq_stat_cntrs;
+	unsigned int i, qid, hw_fn, fpidx, stat_idx = 0;
 
 	if (n < num)
 		return num;
@@ -1668,15 +1683,17 @@ qede_get_xstats(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		}
 	}
 
-	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(dev),
-				 RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	for (qid = 0; qid < rxq_stat_cntrs; qid++) {
-		for (i = 0; i < RTE_DIM(qede_rxq_xstats_strings); i++) {
-			xstats[stat_idx].value = *(uint64_t *)
-				(((char *)(qdev->fp_array[qid].rxq)) +
-				 qede_rxq_xstats_strings[i].offset);
-			xstats[stat_idx].id = stat_idx;
-			stat_idx++;
+	for (qid = 0; qid < dev->data->nb_rx_queues; qid++) {
+		for_each_hwfn(edev, hw_fn) {
+			for (i = 0; i < RTE_DIM(qede_rxq_xstats_strings); i++) {
+				fpidx = qid * edev->num_hwfns + hw_fn;
+				xstats[stat_idx].value = *(uint64_t *)
+					(((char *)(qdev->fp_array[fpidx].rxq)) +
+					 qede_rxq_xstats_strings[i].offset);
+				xstats[stat_idx].id = stat_idx;
+				stat_idx++;
+			}
+
 		}
 	}
 
