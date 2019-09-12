@@ -145,7 +145,15 @@ int rte_pmd_bnxt_set_vf_mac_addr(uint16_t port, uint16_t vf,
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
+
 	bp = dev->data->dev_private;
 
 	if (vf >= dev_info.max_vfs || mac_addr == NULL)
@@ -179,7 +187,14 @@ int rte_pmd_bnxt_set_vf_rate_limit(uint16_t port, uint16_t vf,
 	if (!is_bnxt_supported(eth_dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = eth_dev->data->dev_private;
 
 	if (!bp->pf.active_vfs)
@@ -230,7 +245,14 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
@@ -282,7 +304,14 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
@@ -332,7 +361,14 @@ rte_pmd_bnxt_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (vf >= dev_info.max_vfs)
@@ -369,7 +405,14 @@ int rte_pmd_bnxt_set_vf_rxmode(uint16_t port, uint16_t vf,
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (!bp->pf.vf_info)
@@ -545,12 +588,20 @@ int rte_pmd_bnxt_get_vf_stats(uint16_t port,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct bnxt *bp;
+	int rc;
 
 	dev = &rte_eth_devices[port];
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
@@ -572,12 +623,20 @@ int rte_pmd_bnxt_reset_vf_stats(uint16_t port,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct bnxt *bp;
+	int rc;
 
 	dev = &rte_eth_devices[port];
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
@@ -598,12 +657,20 @@ int rte_pmd_bnxt_get_vf_rx_status(uint16_t port, uint16_t vf_id)
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct bnxt *bp;
+	int rc;
 
 	dev = &rte_eth_devices[port];
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
@@ -625,12 +692,20 @@ int rte_pmd_bnxt_get_vf_tx_drop_count(uint16_t port, uint16_t vf_id,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct bnxt *bp;
+	int rc;
 
 	dev = &rte_eth_devices[port];
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
@@ -662,7 +737,14 @@ int rte_pmd_bnxt_mac_addr_add(uint16_t port, struct rte_ether_addr *addr,
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (vf_id >= dev_info.max_vfs)
@@ -738,7 +820,14 @@ rte_pmd_bnxt_set_vf_vlan_insert(uint16_t port, uint16_t vf,
 	if (!is_bnxt_supported(dev))
 		return -ENOTSUP;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (vf >= dev_info.max_vfs)
@@ -775,7 +864,14 @@ int rte_pmd_bnxt_set_vf_persist_stats(uint16_t port, uint16_t vf, uint8_t on)
 		return -EINVAL;
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	rc = rte_eth_dev_info_get(port, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-rc));
+
+		return rc;
+	}
 	bp = dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
