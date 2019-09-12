@@ -478,7 +478,6 @@ port_infos_display(portid_t port_id)
 	}
 	port = &ports[port_id];
 	rte_eth_link_get_nowait(port_id, &link);
-	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(port_id, &dev_info);
 	printf("\n%s Infos for port %-2d %s\n",
 	       info_border, port_id, info_border);
@@ -1623,7 +1622,6 @@ ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
 #ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
 	struct rte_eth_dev_info dev_info;
 
-	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(port_id, &dev_info);
 	if (strstr(dev_info.driver_name, "i40e") != NULL) {
 		/* 32 bytes RX descriptor, i40e only */

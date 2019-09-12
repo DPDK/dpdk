@@ -2319,7 +2319,6 @@ cmd_config_rss_hash_key_parsed(void *parsed_result,
 	uint8_t hash_key_size;
 	uint32_t key_len;
 
-	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(res->port_id, &dev_info);
 	if (dev_info.hash_key_size > 0 &&
 			dev_info.hash_key_size <= sizeof(hash_key))
@@ -2852,7 +2851,6 @@ cmd_set_rss_reta_parsed(void *parsed_result,
 	struct rte_eth_rss_reta_entry64 reta_conf[8];
 	struct cmd_config_rss_reta *res = parsed_result;
 
-	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(res->port_id, &dev_info);
 	if (dev_info.reta_size == 0) {
 		printf("Redirection table size is 0 which is "
@@ -2972,7 +2970,6 @@ cmd_showport_reta_parsed(void *parsed_result,
 	struct rte_eth_dev_info dev_info;
 	uint16_t max_reta_size;
 
-	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(res->port_id, &dev_info);
 	max_reta_size = RTE_MIN(dev_info.reta_size, ETH_RSS_RETA_SIZE_512);
 	if (res->size == 0 || res->size > max_reta_size) {
@@ -11091,7 +11088,6 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		else if (!strncmp(res->pf_vf, "vf", 2)) {
 			struct rte_eth_dev_info dev_info;
 
-			memset(&dev_info, 0, sizeof(dev_info));
 			rte_eth_dev_info_get(res->port_id, &dev_info);
 			errno = 0;
 			vf_id = strtoul(res->pf_vf + 2, &end, 10);
