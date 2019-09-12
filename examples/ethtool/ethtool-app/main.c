@@ -95,6 +95,7 @@ static void setup_ports(struct app_config *app_cfg, int cnt_ports)
 	char str_name[16];
 	uint16_t nb_rxd = PORT_RX_QUEUE_SIZE;
 	uint16_t nb_txd = PORT_TX_QUEUE_SIZE;
+	int ret;
 
 	memset(&cfg_port, 0, sizeof(cfg_port));
 	cfg_port.txmode.mq_mode = ETH_MQ_TX_NONE;
@@ -102,7 +103,12 @@ static void setup_ports(struct app_config *app_cfg, int cnt_ports)
 	for (idx_port = 0; idx_port < cnt_ports; idx_port++) {
 		struct app_port *ptr_port = &app_cfg->ports[idx_port];
 
-		rte_eth_dev_info_get(idx_port, &dev_info);
+		ret = rte_eth_dev_info_get(idx_port, &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Error during getting device (port %u) info: %s\n",
+				idx_port, strerror(-ret));
+
 		size_pktpool = dev_info.rx_desc_lim.nb_max +
 			dev_info.tx_desc_lim.nb_max + PKTPOOL_EXTRA_SIZE;
 

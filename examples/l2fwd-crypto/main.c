@@ -2513,7 +2513,14 @@ initialize_ports(struct l2fwd_crypto_options *options)
 		/* init port */
 		printf("Initializing port %u... ", portid);
 		fflush(stdout);
-		rte_eth_dev_info_get(portid, &dev_info);
+
+		retval = rte_eth_dev_info_get(portid, &dev_info);
+		if (retval != 0) {
+			printf("Error during getting device (port %u) info: %s\n",
+					portid, strerror(-retval));
+			return retval;
+		}
+
 		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=
 				DEV_TX_OFFLOAD_MBUF_FAST_FREE;

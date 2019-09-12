@@ -595,7 +595,13 @@ init_port(uint16_t port)
 	/* Initialise device and RX/TX queues */
 	RTE_LOG(INFO, APP, "Initialising port %u ...\n", (unsigned)port);
 	fflush(stdout);
-	rte_eth_dev_info_get(port, &dev_info);
+
+	ret = rte_eth_dev_info_get(port, &dev_info);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-ret));
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		local_port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
@@ -780,7 +786,15 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 				"for port%u (%d)\n", (unsigned int)port_id,
 				ret);
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0) {
+		RTE_LOG(ERR, APP,
+			"Error during getting device (port %u) info: %s\n",
+			port_id, strerror(-ret));
+
+		return ret;
+	}
+
 	rxq_conf = dev_info.default_rxconf;
 	rxq_conf.offloads = conf.rxmode.offloads;
 	ret = rte_eth_rx_queue_setup(port_id, 0, nb_rxd,
@@ -869,6 +883,7 @@ kni_alloc(uint16_t port_id)
 	struct rte_kni *kni;
 	struct rte_kni_conf conf;
 	struct kni_port_params **params = kni_port_params_array;
+	int ret;
 
 	if (port_id >= RTE_MAX_ETHPORTS || !params[port_id])
 		return -1;
@@ -898,7 +913,11 @@ kni_alloc(uint16_t port_id)
 			struct rte_kni_ops ops;
 			struct rte_eth_dev_info dev_info;
 
-			rte_eth_dev_info_get(port_id, &dev_info);
+			ret = rte_eth_dev_info_get(port_id, &dev_info);
+			if (ret != 0)
+				rte_exit(EXIT_FAILURE,
+					"Error during getting device (port %u) info: %s\n",
+					port_id, strerror(-ret));
 
 			/* Get the interface default mac address */
 			rte_eth_macaddr_get(port_id,

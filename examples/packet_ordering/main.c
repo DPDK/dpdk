@@ -283,7 +283,13 @@ configure_eth_port(uint16_t port_id)
 	if (!rte_eth_dev_is_valid_port(port_id))
 		return -1;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0) {
+		printf("Error during getting device (port %u) info: %s\n",
+				port_id, strerror(-ret));
+		return ret;
+	}
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;

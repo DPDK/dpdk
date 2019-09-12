@@ -684,7 +684,14 @@ rte_netmap_init_port(uint16_t portid, const struct rte_netmap_port_conf *conf)
 		return -EINVAL;
 	}
 
-	rte_eth_dev_info_get(portid, &dev_info);
+	ret = rte_eth_dev_info_get(portid, &dev_info);
+	if (ret != 0) {
+		RTE_LOG(ERR, USER1,
+			"Error during getting device (port %u) info: %s\n",
+			portid, strerror(-ret));
+		return ret;
+	}
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		conf->eth_conf->txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;

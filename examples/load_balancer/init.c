@@ -411,7 +411,12 @@ app_init_nics(void)
 
 		/* Init port */
 		printf("Initializing NIC port %u ...\n", port);
-		rte_eth_dev_info_get(port, &dev_info);
+
+		ret = rte_eth_dev_info_get(port, &dev_info);
+		if (ret != 0)
+			rte_panic("Error during getting device (port %u) info: %s\n",
+				port, strerror(-ret));
+
 		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=
 				DEV_TX_OFFLOAD_MBUF_FAST_FREE;

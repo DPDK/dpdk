@@ -111,7 +111,10 @@ init_port(uint16_t port_num)
 	printf("Port %u init ... ", port_num);
 	fflush(stdout);
 
-	rte_eth_dev_info_get(port_num, &dev_info);
+	retval = rte_eth_dev_info_get(port_num, &dev_info);
+	if (retval != 0)
+		return retval;
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;

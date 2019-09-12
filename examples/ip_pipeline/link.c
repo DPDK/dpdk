@@ -129,7 +129,8 @@ link_create(const char *name, struct link_params *params)
 		if (!rte_eth_dev_is_valid_port(port_id))
 			return NULL;
 
-	rte_eth_dev_info_get(port_id, &port_info);
+	if (rte_eth_dev_info_get(port_id, &port_info) != 0)
+		return NULL;
 
 	mempool = mempool_find(params->rx.mempool_name);
 	if (mempool == NULL)

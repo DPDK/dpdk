@@ -148,7 +148,12 @@ slave_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 	if (!rte_eth_dev_is_valid_port(portid))
 		rte_exit(EXIT_FAILURE, "Invalid port\n");
 
-	rte_eth_dev_info_get(portid, &dev_info);
+	retval = rte_eth_dev_info_get(portid, &dev_info);
+	if (retval != 0)
+		rte_exit(EXIT_FAILURE,
+			"Error during getting device (port %u) info: %s\n",
+			portid, strerror(-retval));
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		local_port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
@@ -230,7 +235,12 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 
 	BOND_PORT = retval;
 
-	rte_eth_dev_info_get(BOND_PORT, &dev_info);
+	retval = rte_eth_dev_info_get(BOND_PORT, &dev_info);
+	if (retval != 0)
+		rte_exit(EXIT_FAILURE,
+			"Error during getting device (port %u) info: %s\n",
+			BOND_PORT, strerror(-retval));
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		local_port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;

@@ -432,7 +432,12 @@ init_port(uint16_t port)
 	/* Initialise device and RX/TX queues */
 	PRINT_INFO("Initialising port %u ...", port);
 	fflush(stdout);
-	rte_eth_dev_info_get(port, &dev_info);
+
+	ret = rte_eth_dev_info_get(port, &dev_info);
+	if (ret != 0)
+		FATAL_ERROR("Error during getting device (port %u) info: %s\n",
+			port, strerror(-ret));
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		local_port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;

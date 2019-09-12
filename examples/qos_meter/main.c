@@ -329,7 +329,13 @@ main(int argc, char **argv)
 
 	/* NIC init */
 	conf = port_conf;
-	rte_eth_dev_info_get(port_rx, &dev_info);
+
+	ret = rte_eth_dev_info_get(port_rx, &dev_info);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Error during getting device (port %u) info: %s\n",
+			port_rx, strerror(-ret));
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		conf.txmode.offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
@@ -369,7 +375,13 @@ main(int argc, char **argv)
 	rte_exit(EXIT_FAILURE, "Port %d TX queue setup error (%d)\n", port_rx, ret);
 
 	conf = port_conf;
-	rte_eth_dev_info_get(port_tx, &dev_info);
+
+	ret = rte_eth_dev_info_get(port_tx, &dev_info);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Error during getting device (port %u) info: %s\n",
+			port_tx, strerror(-ret));
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		conf.txmode.offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 

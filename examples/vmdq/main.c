@@ -169,7 +169,13 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	 * The max pool number from dev_info will be used to validate the pool
 	 * number specified in cmd line
 	 */
-	rte_eth_dev_info_get(port, &dev_info);
+	retval = rte_eth_dev_info_get(port, &dev_info);
+	if (retval != 0) {
+		printf("Error during getting device (port %u) info: %s\n",
+				port, strerror(-retval));
+		return retval;
+	}
+
 	max_nb_pools = (uint32_t)dev_info.max_vmdq_pools;
 	/*
 	 * We allow to process part of VMDQ pools specified by num_pools in
@@ -214,7 +220,13 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	rxRings = (uint16_t)dev_info.max_rx_queues;
 	txRings = (uint16_t)dev_info.max_tx_queues;
 
-	rte_eth_dev_info_get(port, &dev_info);
+	retval = rte_eth_dev_info_get(port, &dev_info);
+	if (retval != 0) {
+		printf("Error during getting device (port %u) info: %s\n",
+				port, strerror(-retval));
+		return retval;
+	}
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;

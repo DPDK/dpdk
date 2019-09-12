@@ -41,7 +41,13 @@ rte_ethtool_get_drvinfo(uint16_t port_id, struct ethtool_drvinfo *drvinfo)
 		printf("Insufficient fw version buffer size, "
 		       "the minimum size should be %d\n", ret);
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0) {
+		printf("Error during getting device (port %u) info: %s\n",
+		       port_id, strerror(-ret));
+
+		return ret;
+	}
 
 	strlcpy(drvinfo->driver, dev_info.driver_name,
 		sizeof(drvinfo->driver));
@@ -370,8 +376,12 @@ rte_ethtool_net_set_rx_mode(uint16_t port_id)
 	uint16_t num_vfs;
 	struct rte_eth_dev_info dev_info;
 	uint16_t vf;
+	int ret;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
+
 	num_vfs = dev_info.max_vfs;
 
 	/* Set VF vf_rx_mode, VF unsupport status is discard */
@@ -397,11 +407,14 @@ rte_ethtool_get_ringparam(uint16_t port_id,
 	struct rte_eth_rxq_info rx_qinfo;
 	struct rte_eth_txq_info tx_qinfo;
 	int stat;
+	int ret;
 
 	if (ring_param == NULL)
 		return -EINVAL;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
 
 	stat = rte_eth_rx_queue_info_get(port_id, 0, &rx_qinfo);
 	if (stat != 0)

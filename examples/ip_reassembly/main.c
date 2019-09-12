@@ -1038,7 +1038,12 @@ main(int argc, char **argv)
 		qconf = &lcore_queue_conf[rx_lcore_id];
 
 		/* limit the frame size to the maximum supported by NIC */
-		rte_eth_dev_info_get(portid, &dev_info);
+		ret = rte_eth_dev_info_get(portid, &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Error during getting device (port %u) info: %s\n",
+				portid, strerror(-ret));
+
 		local_port_conf.rxmode.max_rx_pkt_len = RTE_MIN(
 		    dev_info.max_rx_pktlen,
 		    local_port_conf.rxmode.max_rx_pkt_len);

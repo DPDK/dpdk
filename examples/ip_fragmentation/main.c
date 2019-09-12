@@ -903,7 +903,12 @@ main(int argc, char **argv)
 		qconf = &lcore_queue_conf[rx_lcore_id];
 
 		/* limit the frame size to the maximum supported by NIC */
-		rte_eth_dev_info_get(portid, &dev_info);
+		ret = rte_eth_dev_info_get(portid, &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Error during getting device (port %u) info: %s\n",
+				portid, strerror(-ret));
+
 		local_port_conf.rxmode.max_rx_pkt_len = RTE_MIN(
 		    dev_info.max_rx_pktlen,
 		    local_port_conf.rxmode.max_rx_pkt_len);
@@ -984,7 +989,12 @@ main(int argc, char **argv)
 		printf("\n");
 
 		/* init one TX queue per couple (lcore,port) */
-		rte_eth_dev_info_get(portid, &dev_info);
+		ret = rte_eth_dev_info_get(portid, &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Error during getting device (port %u) info: %s\n",
+				portid, strerror(-ret));
+
 		queueid = 0;
 		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 			if (rte_lcore_is_enabled(lcore_id) == 0)
