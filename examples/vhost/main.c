@@ -228,7 +228,14 @@ port_init(uint16_t port)
 	uint16_t q;
 
 	/* The max pool number from dev_info will be used to validate the pool number specified in cmd line */
-	rte_eth_dev_info_get (port, &dev_info);
+	retval = rte_eth_dev_info_get(port, &dev_info);
+	if (retval != 0) {
+		RTE_LOG(ERR, VHOST_PORT,
+			"Error during getting device (port %u) info: %s\n",
+			port, strerror(-retval));
+
+		return retval;
+	}
 
 	rxconf = &dev_info.default_rxconf;
 	txconf = &dev_info.default_txconf;
