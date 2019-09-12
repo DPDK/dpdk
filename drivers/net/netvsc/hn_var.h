@@ -201,7 +201,7 @@ hn_get_vf_dev(const struct hn_data *hv)
 		return &rte_eth_devices[vf_port];
 }
 
-void	hn_vf_info_get(struct hn_data *hv,
+int	hn_vf_info_get(struct hn_data *hv,
 		       struct rte_eth_dev_info *info);
 int	hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv);
 int	hn_vf_configure(struct rte_eth_dev *dev,
