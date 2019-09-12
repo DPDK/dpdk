@@ -124,35 +124,19 @@ qede_calc_rx_buf_size(struct rte_eth_dev *dev, uint16_t mbufsz,
 	return QEDE_FLOOR_TO_CACHE_LINE_SIZE(rx_buf_size);
 }
 
-int
-qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
-		    uint16_t nb_desc, unsigned int socket_id,
-		    __rte_unused const struct rte_eth_rxconf *rx_conf,
-		    struct rte_mempool *mp)
+static struct qede_rx_queue *
+qede_alloc_rx_queue_mem(struct rte_eth_dev *dev,
+			uint16_t queue_idx,
+			uint16_t nb_desc,
+			unsigned int socket_id,
+			struct rte_mempool *mp,
+			uint16_t bufsz)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct qede_rx_queue *rxq;
-	uint16_t max_rx_pkt_len;
-	uint16_t bufsz;
 	size_t size;
 	int rc;
-
-	PMD_INIT_FUNC_TRACE(edev);
-
-	/* Note: Ring size/align is controlled by struct rte_eth_desc_lim */
-	if (!rte_is_power_of_2(nb_desc)) {
-		DP_ERR(edev, "Ring size %u is not power of 2\n",
-			  nb_desc);
-		return -EINVAL;
-	}
-
-	/* Free memory prior to re-allocation if needed... */
-	if (dev->data->rx_queues[queue_idx] != NULL) {
-		qede_rx_queue_release(dev->data->rx_queues[queue_idx]);
-		dev->data->rx_queues[queue_idx] = NULL;
-	}
 
 	/* First allocate the rx queue data structure */
 	rxq = rte_zmalloc_socket("qede_rx_queue", sizeof(struct qede_rx_queue),
@@ -161,7 +145,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (!rxq) {
 		DP_ERR(edev, "Unable to allocate memory for rxq on socket %u",
 			  socket_id);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	rxq->qdev = qdev;
@@ -170,27 +154,8 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
 
-	max_rx_pkt_len = (uint16_t)rxmode->max_rx_pkt_len;
 
-	/* Fix up RX buffer size */
-	bufsz = (uint16_t)rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
-	/* cache align the mbuf size to simplfy rx_buf_size calculation */
-	bufsz = QEDE_FLOOR_TO_CACHE_LINE_SIZE(bufsz);
-	if ((rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)	||
-	    (max_rx_pkt_len + QEDE_ETH_OVERHEAD) > bufsz) {
-		if (!dev->data->scattered_rx) {
-			DP_INFO(edev, "Forcing scatter-gather mode\n");
-			dev->data->scattered_rx = 1;
-		}
-	}
-
-	rc = qede_calc_rx_buf_size(dev, bufsz, max_rx_pkt_len);
-	if (rc < 0) {
-		rte_free(rxq);
-		return rc;
-	}
-
-	rxq->rx_buf_size = rc;
+	rxq->rx_buf_size = bufsz;
 
 	DP_INFO(edev, "mtu %u mbufsz %u bd_max_bytes %u scatter_mode %d\n",
 		qdev->mtu, bufsz, rxq->rx_buf_size, dev->data->scattered_rx);
@@ -203,7 +168,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		DP_ERR(edev, "Memory allocation fails for sw_rx_ring on"
 		       " socket %u\n", socket_id);
 		rte_free(rxq);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	/* Allocate FW Rx ring  */
@@ -221,7 +186,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		       " on socket %u\n", socket_id);
 		rte_free(rxq->sw_rx_ring);
 		rte_free(rxq);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	/* Allocate FW completion ring */
@@ -240,14 +205,71 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		qdev->ops->common->chain_free(edev, &rxq->rx_bd_ring);
 		rte_free(rxq->sw_rx_ring);
 		rte_free(rxq);
-		return -ENOMEM;
+		return NULL;
 	}
 
-	dev->data->rx_queues[queue_idx] = rxq;
-	qdev->fp_array[queue_idx].rxq = rxq;
+	return rxq;
+}
+
+int
+qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid,
+		    uint16_t nb_desc, unsigned int socket_id,
+		    __rte_unused const struct rte_eth_rxconf *rx_conf,
+		    struct rte_mempool *mp)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	struct qede_rx_queue *rxq;
+	uint16_t max_rx_pkt_len;
+	uint16_t bufsz;
+	int rc;
+
+	PMD_INIT_FUNC_TRACE(edev);
+
+	/* Note: Ring size/align is controlled by struct rte_eth_desc_lim */
+	if (!rte_is_power_of_2(nb_desc)) {
+		DP_ERR(edev, "Ring size %u is not power of 2\n",
+			  nb_desc);
+		return -EINVAL;
+	}
+
+	/* Free memory prior to re-allocation if needed... */
+	if (dev->data->rx_queues[qid] != NULL) {
+		qede_rx_queue_release(dev->data->rx_queues[qid]);
+		dev->data->rx_queues[qid] = NULL;
+	}
+
+	max_rx_pkt_len = (uint16_t)rxmode->max_rx_pkt_len;
+
+	/* Fix up RX buffer size */
+	bufsz = (uint16_t)rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
+	/* cache align the mbuf size to simplfy rx_buf_size calculation */
+	bufsz = QEDE_FLOOR_TO_CACHE_LINE_SIZE(bufsz);
+	if ((rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)	||
+	    (max_rx_pkt_len + QEDE_ETH_OVERHEAD) > bufsz) {
+		if (!dev->data->scattered_rx) {
+			DP_INFO(edev, "Forcing scatter-gather mode\n");
+			dev->data->scattered_rx = 1;
+		}
+	}
+
+	rc = qede_calc_rx_buf_size(dev, bufsz, max_rx_pkt_len);
+	if (rc < 0)
+		return rc;
+
+	bufsz = rc;
+
+	rxq = qede_alloc_rx_queue_mem(dev, qid, nb_desc,
+				      socket_id, mp, bufsz);
+	if (!rxq)
+		return -ENOMEM;
+
+	dev->data->rx_queues[qid] = rxq;
+	qdev->fp_array[qid].rxq = rxq;
 
 	DP_INFO(edev, "rxq %d num_desc %u rx_buf_size=%u socket %u\n",
-		  queue_idx, nb_desc, rxq->rx_buf_size, socket_id);
+		  qid, nb_desc, rxq->rx_buf_size, socket_id);
 
 	return 0;
 }
@@ -278,6 +300,17 @@ static void qede_rx_queue_release_mbufs(struct qede_rx_queue *rxq)
 	}
 }
 
+static void _qede_rx_queue_release(struct qede_dev *qdev,
+				   struct ecore_dev *edev,
+				   struct qede_rx_queue *rxq)
+{
+	qede_rx_queue_release_mbufs(rxq);
+	qdev->ops->common->chain_free(edev, &rxq->rx_bd_ring);
+	qdev->ops->common->chain_free(edev, &rxq->rx_comp_ring);
+	rte_free(rxq->sw_rx_ring);
+	rte_free(rxq);
+}
+
 void qede_rx_queue_release(void *rx_queue)
 {
 	struct qede_rx_queue *rxq = rx_queue;
@@ -288,11 +321,7 @@ void qede_rx_queue_release(void *rx_queue)
 		qdev = rxq->qdev;
 		edev = QEDE_INIT_EDEV(qdev);
 		PMD_INIT_FUNC_TRACE(edev);
-		qede_rx_queue_release_mbufs(rxq);
-		qdev->ops->common->chain_free(edev, &rxq->rx_bd_ring);
-		qdev->ops->common->chain_free(edev, &rxq->rx_comp_ring);
-		rte_free(rxq->sw_rx_ring);
-		rte_free(rxq);
+		_qede_rx_queue_release(qdev, edev, rxq);
 	}
 }
 
@@ -306,8 +335,8 @@ static int qede_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 	int hwfn_index;
 	int rc;
 
-	if (rx_queue_id < eth_dev->data->nb_rx_queues) {
-		rxq = eth_dev->data->rx_queues[rx_queue_id];
+	if (rx_queue_id < qdev->num_rx_queues) {
+		rxq = qdev->fp_array[rx_queue_id].rxq;
 		hwfn_index = rx_queue_id % edev->num_hwfns;
 		p_hwfn = &edev->hwfns[hwfn_index];
 		rc = ecore_eth_rx_queue_stop(p_hwfn, rxq->handle,
@@ -329,31 +358,17 @@ static int qede_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 	return rc;
 }
 
-int
-qede_tx_queue_setup(struct rte_eth_dev *dev,
-		    uint16_t queue_idx,
-		    uint16_t nb_desc,
-		    unsigned int socket_id,
-		    const struct rte_eth_txconf *tx_conf)
+static struct qede_tx_queue *
+qede_alloc_tx_queue_mem(struct rte_eth_dev *dev,
+			uint16_t queue_idx,
+			uint16_t nb_desc,
+			unsigned int socket_id,
+			const struct rte_eth_txconf *tx_conf)
 {
 	struct qede_dev *qdev = dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 	struct qede_tx_queue *txq;
 	int rc;
-
-	PMD_INIT_FUNC_TRACE(edev);
-
-	if (!rte_is_power_of_2(nb_desc)) {
-		DP_ERR(edev, "Ring size %u is not power of 2\n",
-		       nb_desc);
-		return -EINVAL;
-	}
-
-	/* Free memory prior to re-allocation if needed... */
-	if (dev->data->tx_queues[queue_idx] != NULL) {
-		qede_tx_queue_release(dev->data->tx_queues[queue_idx]);
-		dev->data->tx_queues[queue_idx] = NULL;
-	}
 
 	txq = rte_zmalloc_socket("qede_tx_queue", sizeof(struct qede_tx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
@@ -362,7 +377,7 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 		DP_ERR(edev,
 		       "Unable to allocate memory for txq on socket %u",
 		       socket_id);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	txq->nb_tx_desc = nb_desc;
@@ -382,7 +397,7 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 		       "Unable to allocate memory for txbd ring on socket %u",
 		       socket_id);
 		qede_tx_queue_release(txq);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	/* Allocate software ring */
@@ -397,7 +412,7 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 		       socket_id);
 		qdev->ops->common->chain_free(edev, &txq->tx_pbl);
 		qede_tx_queue_release(txq);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	txq->queue_id = queue_idx;
@@ -408,12 +423,44 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 	    tx_conf->tx_free_thresh ? tx_conf->tx_free_thresh :
 	    (txq->nb_tx_desc - QEDE_DEFAULT_TX_FREE_THRESH);
 
-	dev->data->tx_queues[queue_idx] = txq;
-	qdev->fp_array[queue_idx].txq = txq;
-
 	DP_INFO(edev,
 		  "txq %u num_desc %u tx_free_thresh %u socket %u\n",
 		  queue_idx, nb_desc, txq->tx_free_thresh, socket_id);
+	return txq;
+}
+
+int
+qede_tx_queue_setup(struct rte_eth_dev *dev,
+		    uint16_t queue_idx,
+		    uint16_t nb_desc,
+		    unsigned int socket_id,
+		    const struct rte_eth_txconf *tx_conf)
+{
+	struct qede_dev *qdev = dev->data->dev_private;
+	struct ecore_dev *edev = &qdev->edev;
+	struct qede_tx_queue *txq;
+
+	PMD_INIT_FUNC_TRACE(edev);
+
+	if (!rte_is_power_of_2(nb_desc)) {
+		DP_ERR(edev, "Ring size %u is not power of 2\n",
+		       nb_desc);
+		return -EINVAL;
+	}
+
+	/* Free memory prior to re-allocation if needed... */
+	if (dev->data->tx_queues[queue_idx] != NULL) {
+		qede_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		dev->data->tx_queues[queue_idx] = NULL;
+	}
+
+	txq = qede_alloc_tx_queue_mem(dev, queue_idx, nb_desc,
+				      socket_id, tx_conf);
+	if (!txq)
+		return -ENOMEM;
+
+	dev->data->tx_queues[queue_idx] = txq;
+	qdev->fp_array[queue_idx].txq = txq;
 
 	return 0;
 }
@@ -443,6 +490,16 @@ static void qede_tx_queue_release_mbufs(struct qede_tx_queue *txq)
 	}
 }
 
+static void _qede_tx_queue_release(struct qede_dev *qdev,
+				   struct ecore_dev *edev,
+				   struct qede_tx_queue *txq)
+{
+	qede_tx_queue_release_mbufs(txq);
+	qdev->ops->common->chain_free(edev, &txq->tx_pbl);
+	rte_free(txq->sw_tx_ring);
+	rte_free(txq);
+}
+
 void qede_tx_queue_release(void *tx_queue)
 {
 	struct qede_tx_queue *txq = tx_queue;
@@ -453,10 +510,7 @@ void qede_tx_queue_release(void *tx_queue)
 		qdev = txq->qdev;
 		edev = QEDE_INIT_EDEV(qdev);
 		PMD_INIT_FUNC_TRACE(edev);
-		qede_tx_queue_release_mbufs(txq);
-		qdev->ops->common->chain_free(edev, &txq->tx_pbl);
-		rte_free(txq->sw_tx_ring);
-		rte_free(txq);
+		_qede_tx_queue_release(qdev, edev, txq);
 	}
 }
 
