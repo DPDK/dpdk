@@ -304,6 +304,7 @@ static void qede_print_adapter_info(struct qede_dev *qdev)
 
 static void qede_reset_queue_stats(struct qede_dev *qdev, bool xstats)
 {
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)qdev->ethdev;
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	unsigned int i = 0, j = 0, qid;
 	unsigned int rxq_stat_cntrs, txq_stat_cntrs;
@@ -311,12 +312,12 @@ static void qede_reset_queue_stats(struct qede_dev *qdev, bool xstats)
 
 	DP_VERBOSE(edev, ECORE_MSG_DEBUG, "Clearing queue stats\n");
 
-	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(qdev),
+	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(dev),
 			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	txq_stat_cntrs = RTE_MIN(QEDE_TSS_COUNT(qdev),
+	txq_stat_cntrs = RTE_MIN(QEDE_TSS_COUNT(dev),
 			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
-	for_each_rss(qid) {
+	for (qid = 0; qid < qdev->num_rx_queues; qid++) {
 		OSAL_MEMSET(((char *)(qdev->fp_array[qid].rxq)) +
 			     offsetof(struct qede_rx_queue, rcv_pkts), 0,
 			    sizeof(uint64_t));
@@ -342,7 +343,7 @@ static void qede_reset_queue_stats(struct qede_dev *qdev, bool xstats)
 
 	i = 0;
 
-	for_each_tss(qid) {
+	for (qid = 0; qid < qdev->num_tx_queues; qid++) {
 		txq = qdev->fp_array[qid].txq;
 
 		OSAL_MEMSET((uint64_t *)(uintptr_t)
@@ -991,7 +992,7 @@ int qede_config_rss(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++) {
 		id = i / RTE_RETA_GROUP_SIZE;
 		pos = i % RTE_RETA_GROUP_SIZE;
-		q = i % QEDE_RSS_COUNT(qdev);
+		q = i % QEDE_RSS_COUNT(eth_dev);
 		reta_conf[id].reta[pos] = q;
 	}
 	if (qede_rss_reta_update(eth_dev, &reta_conf[0],
@@ -1165,22 +1166,6 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE(edev);
 
-	/* Check requirements for 100G mode */
-	if (ECORE_IS_CMT(edev)) {
-		if (eth_dev->data->nb_rx_queues < 2 ||
-		    eth_dev->data->nb_tx_queues < 2) {
-			DP_ERR(edev, "100G mode needs min. 2 RX/TX queues\n");
-			return -EINVAL;
-		}
-
-		if ((eth_dev->data->nb_rx_queues % 2 != 0) ||
-		    (eth_dev->data->nb_tx_queues % 2 != 0)) {
-			DP_ERR(edev,
-			       "100G mode needs even no. of RX/TX queues\n");
-			return -EINVAL;
-		}
-	}
-
 	/* We need to have min 1 RX queue.There is no min check in
 	 * rte_eth_dev_configure(), so we are checking it here.
 	 */
@@ -1207,8 +1192,9 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		return -ENOTSUP;
 
 	qede_dealloc_fp_resc(eth_dev);
-	qdev->num_tx_queues = eth_dev->data->nb_tx_queues;
-	qdev->num_rx_queues = eth_dev->data->nb_rx_queues;
+	qdev->num_tx_queues = eth_dev->data->nb_tx_queues * edev->num_hwfns;
+	qdev->num_rx_queues = eth_dev->data->nb_rx_queues * edev->num_hwfns;
+
 	if (qede_alloc_fp_resc(qdev))
 		return -ENOMEM;
 
@@ -1233,7 +1219,12 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		return ret;
 
 	DP_INFO(edev, "Device configured with RSS=%d TSS=%d\n",
-			QEDE_RSS_COUNT(qdev), QEDE_TSS_COUNT(qdev));
+			QEDE_RSS_COUNT(eth_dev), QEDE_TSS_COUNT(eth_dev));
+
+	if (ECORE_IS_CMT(edev))
+		DP_INFO(edev, "Actual HW queues for CMT mode - RX = %d TX = %d\n",
+			qdev->num_rx_queues, qdev->num_tx_queues);
+
 
 	return 0;
 }
@@ -1275,6 +1266,10 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	else
 		dev_info->max_rx_queues = (uint16_t)RTE_MIN(
 			QEDE_MAX_RSS_CNT(qdev), ECORE_MAX_VF_CHAINS_PER_PF);
+	/* Since CMT mode internally doubles the number of queues */
+	if (ECORE_IS_CMT(edev))
+		dev_info->max_rx_queues  = dev_info->max_rx_queues / 2;
+
 	dev_info->max_tx_queues = dev_info->max_rx_queues;
 
 	dev_info->max_mac_addrs = qdev->dev_info.num_mac_filters;
@@ -1518,18 +1513,18 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 	eth_stats->oerrors = stats.common.tx_err_drop_pkts;
 
 	/* Queue stats */
-	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(qdev),
+	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(eth_dev),
 			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	txq_stat_cntrs = RTE_MIN(QEDE_TSS_COUNT(qdev),
+	txq_stat_cntrs = RTE_MIN(QEDE_TSS_COUNT(eth_dev),
 			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	if ((rxq_stat_cntrs != (unsigned int)QEDE_RSS_COUNT(qdev)) ||
-	    (txq_stat_cntrs != (unsigned int)QEDE_TSS_COUNT(qdev)))
+	if (rxq_stat_cntrs != (unsigned int)QEDE_RSS_COUNT(eth_dev) ||
+	    txq_stat_cntrs != (unsigned int)QEDE_TSS_COUNT(eth_dev))
 		DP_VERBOSE(edev, ECORE_MSG_DEBUG,
 		       "Not all the queue stats will be displayed. Set"
 		       " RTE_ETHDEV_QUEUE_STAT_CNTRS config param"
 		       " appropriately and retry.\n");
 
-	for_each_rss(qid) {
+	for (qid = 0; qid < eth_dev->data->nb_rx_queues; qid++) {
 		eth_stats->q_ipackets[i] =
 			*(uint64_t *)(
 				((char *)(qdev->fp_array[qid].rxq)) +
@@ -1549,7 +1544,7 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 			break;
 	}
 
-	for_each_tss(qid) {
+	for (qid = 0; qid < eth_dev->data->nb_tx_queues; qid++) {
 		txq = qdev->fp_array[qid].txq;
 		eth_stats->q_opackets[j] =
 			*((uint64_t *)(uintptr_t)
@@ -1566,18 +1561,18 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 
 static unsigned
 qede_get_xstats_count(struct qede_dev *qdev) {
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)qdev->ethdev;
+
 	if (ECORE_IS_BB(&qdev->edev))
 		return RTE_DIM(qede_xstats_strings) +
 		       RTE_DIM(qede_bb_xstats_strings) +
 		       (RTE_DIM(qede_rxq_xstats_strings) *
-			RTE_MIN(QEDE_RSS_COUNT(qdev),
-				RTE_ETHDEV_QUEUE_STAT_CNTRS));
+			QEDE_RSS_COUNT(dev) * qdev->edev.num_hwfns);
 	else
 		return RTE_DIM(qede_xstats_strings) +
 		       RTE_DIM(qede_ah_xstats_strings) +
 		       (RTE_DIM(qede_rxq_xstats_strings) *
-			RTE_MIN(QEDE_RSS_COUNT(qdev),
-				RTE_ETHDEV_QUEUE_STAT_CNTRS));
+			QEDE_RSS_COUNT(dev));
 }
 
 static int
@@ -1615,7 +1610,7 @@ qede_get_xstats_names(struct rte_eth_dev *dev,
 			}
 		}
 
-		rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(qdev),
+		rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(dev),
 					 RTE_ETHDEV_QUEUE_STAT_CNTRS);
 		for (qid = 0; qid < rxq_stat_cntrs; qid++) {
 			for (i = 0; i < RTE_DIM(qede_rxq_xstats_strings); i++) {
@@ -1673,17 +1668,15 @@ qede_get_xstats(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		}
 	}
 
-	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(qdev),
+	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(dev),
 				 RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	for (qid = 0; qid < rxq_stat_cntrs; qid++) {
-		for_each_rss(qid) {
-			for (i = 0; i < RTE_DIM(qede_rxq_xstats_strings); i++) {
-				xstats[stat_idx].value = *(uint64_t *)(
-					((char *)(qdev->fp_array[qid].rxq)) +
-					 qede_rxq_xstats_strings[i].offset);
-				xstats[stat_idx].id = stat_idx;
-				stat_idx++;
-			}
+		for (i = 0; i < RTE_DIM(qede_rxq_xstats_strings); i++) {
+			xstats[stat_idx].value = *(uint64_t *)
+				(((char *)(qdev->fp_array[qid].rxq)) +
+				 qede_rxq_xstats_strings[i].offset);
+			xstats[stat_idx].id = stat_idx;
+			stat_idx++;
 		}
 	}
 
@@ -1938,7 +1931,8 @@ qede_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 		RTE_PTYPE_UNKNOWN
 	};
 
-	if (eth_dev->rx_pkt_burst == qede_recv_pkts)
+	if (eth_dev->rx_pkt_burst == qede_recv_pkts ||
+	    eth_dev->rx_pkt_burst == qede_recv_pkts_cmt)
 		return ptypes;
 
 	return NULL;
@@ -2005,7 +1999,7 @@ int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 	vport_update_params.vport_id = 0;
 	/* pass the L2 handles instead of qids */
 	for (i = 0 ; i < ECORE_RSS_IND_TABLE_SIZE ; i++) {
-		idx = i % QEDE_RSS_COUNT(qdev);
+		idx = i % QEDE_RSS_COUNT(eth_dev);
 		rss_params.rss_ind_table[i] = qdev->fp_array[idx].rxq->handle;
 	}
 	vport_update_params.rss_params = &rss_params;
@@ -2257,7 +2251,7 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	qdev->mtu = mtu;
 
 	/* Fix up RX buf size for all queues of the port */
-	for_each_rss(i) {
+	for (i = 0; i < qdev->num_rx_queues; i++) {
 		fp = &qdev->fp_array[i];
 		if (fp->rxq != NULL) {
 			bufsz = (uint16_t)rte_pktmbuf_data_room_size(
@@ -2286,9 +2280,13 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	/* update max frame size */
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_rx_pkt_len;
 	/* Reassign back */
-	dev->rx_pkt_burst = qede_recv_pkts;
-	dev->tx_pkt_burst = qede_xmit_pkts;
-
+	if (ECORE_IS_CMT(edev)) {
+		dev->rx_pkt_burst = qede_recv_pkts_cmt;
+		dev->tx_pkt_burst = qede_xmit_pkts_cmt;
+	} else {
+		dev->rx_pkt_burst = qede_recv_pkts;
+		dev->tx_pkt_burst = qede_xmit_pkts;
+	}
 	return 0;
 }
 
@@ -2429,10 +2427,6 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		 pci_addr.bus, pci_addr.devid, pci_addr.function,
 		 eth_dev->data->port_id);
 
-	eth_dev->rx_pkt_burst = qede_recv_pkts;
-	eth_dev->tx_pkt_burst = qede_xmit_pkts;
-	eth_dev->tx_pkt_prepare = qede_xmit_prep_pkts;
-
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		DP_ERR(edev, "Skipping device init from secondary process\n");
 		return 0;
@@ -2489,6 +2483,16 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	params.drv_eng = QEDE_PMD_VERSION_PATCH;
 	strncpy((char *)params.name, QEDE_PMD_VER_PREFIX,
 		QEDE_PMD_DRV_VER_STR_SIZE);
+
+	if (ECORE_IS_CMT(edev)) {
+		eth_dev->rx_pkt_burst = qede_recv_pkts_cmt;
+		eth_dev->tx_pkt_burst = qede_xmit_pkts_cmt;
+	} else {
+		eth_dev->rx_pkt_burst = qede_recv_pkts;
+		eth_dev->tx_pkt_burst = qede_xmit_pkts;
+	}
+
+	eth_dev->tx_pkt_prepare = qede_xmit_prep_pkts;
 
 	/* For CMT mode device do periodic polling for slowpath events.
 	 * This is required since uio device uses only one MSI-x

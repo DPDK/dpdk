@@ -81,10 +81,8 @@
 				 ETH_RSS_VXLAN			|\
 				 ETH_RSS_GENEVE)
 
-#define for_each_rss(i)		for (i = 0; i < qdev->num_rx_queues; i++)
-#define for_each_tss(i)		for (i = 0; i < qdev->num_tx_queues; i++)
 #define QEDE_RXTX_MAX(qdev) \
-	(RTE_MAX(QEDE_RSS_COUNT(qdev), QEDE_TSS_COUNT(qdev)))
+	(RTE_MAX(qdev->num_rx_queues, qdev->num_tx_queues))
 
 /* Macros for non-tunnel packet types lkup table */
 #define QEDE_PKT_TYPE_UNKNOWN				0x0
@@ -179,6 +177,8 @@ struct qede_agg_info {
  * Structure associated with each RX queue.
  */
 struct qede_rx_queue {
+	/* Always keep qdev as first member */
+	struct qede_dev *qdev;
 	struct rte_mempool *mb_pool;
 	struct ecore_chain rx_bd_ring;
 	struct ecore_chain rx_comp_ring;
@@ -199,7 +199,6 @@ struct qede_rx_queue {
 	uint64_t rx_hw_errors;
 	uint64_t rx_alloc_errors;
 	struct qede_agg_info tpa_info[ETH_TPA_MAX_AGGS_NUM];
-	struct qede_dev *qdev;
 	void *handle;
 };
 
@@ -217,6 +216,8 @@ union db_prod {
 };
 
 struct qede_tx_queue {
+	/* Always keep qdev as first member */
+	struct qede_dev *qdev;
 	struct ecore_chain tx_pbl;
 	struct qede_tx_entry *sw_tx_ring;
 	uint16_t nb_tx_desc;
@@ -231,7 +232,6 @@ struct qede_tx_queue {
 	uint16_t port_id;
 	uint64_t xmit_pkts;
 	bool is_legacy;
-	struct qede_dev *qdev;
 	void *handle;
 };
 
@@ -239,6 +239,18 @@ struct qede_fastpath {
 	struct ecore_sb_info *sb_info;
 	struct qede_rx_queue *rxq;
 	struct qede_tx_queue *txq;
+};
+
+/* This structure holds the inforation of fast path queues
+ * belonging to individual engines in CMT mode.
+ */
+struct qede_fastpath_cmt {
+	/* Always keep this a first element */
+	struct qede_dev *qdev;
+	/* fastpath info of engine 0 */
+	struct qede_fastpath *fp0;
+	/* fastpath info of engine 1 */
+	struct qede_fastpath *fp1;
 };
 
 /*
@@ -261,12 +273,16 @@ void qede_tx_queue_release(void *tx_queue);
 
 uint16_t qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
+uint16_t qede_xmit_pkts_cmt(void *p_txq, struct rte_mbuf **tx_pkts,
+			    uint16_t nb_pkts);
 
 uint16_t qede_xmit_prep_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
 			     uint16_t nb_pkts);
 
 uint16_t qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
+uint16_t qede_recv_pkts_cmt(void *p_rxq, struct rte_mbuf **rx_pkts,
+			    uint16_t nb_pkts);
 
 uint16_t qede_rxtx_pkts_dummy(void *p_rxq,
 			      struct rte_mbuf **pkts,

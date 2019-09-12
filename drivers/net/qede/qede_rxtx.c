@@ -260,13 +260,30 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid,
 
 	bufsz = rc;
 
-	rxq = qede_alloc_rx_queue_mem(dev, qid, nb_desc,
-				      socket_id, mp, bufsz);
-	if (!rxq)
-		return -ENOMEM;
+	if (ECORE_IS_CMT(edev)) {
+		rxq = qede_alloc_rx_queue_mem(dev, qid * 2, nb_desc,
+					      socket_id, mp, bufsz);
+		if (!rxq)
+			return -ENOMEM;
 
-	dev->data->rx_queues[qid] = rxq;
-	qdev->fp_array[qid].rxq = rxq;
+		qdev->fp_array[qid * 2].rxq = rxq;
+		rxq = qede_alloc_rx_queue_mem(dev, qid * 2 + 1, nb_desc,
+					      socket_id, mp, bufsz);
+		if (!rxq)
+			return -ENOMEM;
+
+		qdev->fp_array[qid * 2 + 1].rxq = rxq;
+		/* provide per engine fp struct as rx queue */
+		dev->data->rx_queues[qid] = &qdev->fp_array_cmt[qid];
+	} else {
+		rxq = qede_alloc_rx_queue_mem(dev, qid, nb_desc,
+					      socket_id, mp, bufsz);
+		if (!rxq)
+			return -ENOMEM;
+
+		dev->data->rx_queues[qid] = rxq;
+		qdev->fp_array[qid].rxq = rxq;
+	}
 
 	DP_INFO(edev, "rxq %d num_desc %u rx_buf_size=%u socket %u\n",
 		  qid, nb_desc, rxq->rx_buf_size, socket_id);
@@ -314,6 +331,7 @@ static void _qede_rx_queue_release(struct qede_dev *qdev,
 void qede_rx_queue_release(void *rx_queue)
 {
 	struct qede_rx_queue *rxq = rx_queue;
+	struct qede_fastpath_cmt *fp_cmt;
 	struct qede_dev *qdev;
 	struct ecore_dev *edev;
 
@@ -321,7 +339,13 @@ void qede_rx_queue_release(void *rx_queue)
 		qdev = rxq->qdev;
 		edev = QEDE_INIT_EDEV(qdev);
 		PMD_INIT_FUNC_TRACE(edev);
-		_qede_rx_queue_release(qdev, edev, rxq);
+		if (ECORE_IS_CMT(edev)) {
+			fp_cmt = rx_queue;
+			_qede_rx_queue_release(qdev, edev, fp_cmt->fp0->rxq);
+			_qede_rx_queue_release(qdev, edev, fp_cmt->fp1->rxq);
+		} else {
+			_qede_rx_queue_release(qdev, edev, rxq);
+		}
 	}
 }
 
@@ -454,13 +478,30 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 		dev->data->tx_queues[queue_idx] = NULL;
 	}
 
-	txq = qede_alloc_tx_queue_mem(dev, queue_idx, nb_desc,
-				      socket_id, tx_conf);
-	if (!txq)
-		return -ENOMEM;
+	if (ECORE_IS_CMT(edev)) {
+		txq = qede_alloc_tx_queue_mem(dev, queue_idx * 2, nb_desc,
+					      socket_id, tx_conf);
+		if (!txq)
+			return -ENOMEM;
 
-	dev->data->tx_queues[queue_idx] = txq;
-	qdev->fp_array[queue_idx].txq = txq;
+		qdev->fp_array[queue_idx * 2].txq = txq;
+		txq = qede_alloc_tx_queue_mem(dev, (queue_idx * 2) + 1, nb_desc,
+					      socket_id, tx_conf);
+		if (!txq)
+			return -ENOMEM;
+
+		qdev->fp_array[(queue_idx * 2) + 1].txq = txq;
+		dev->data->tx_queues[queue_idx] =
+					&qdev->fp_array_cmt[queue_idx];
+	} else {
+		txq = qede_alloc_tx_queue_mem(dev, queue_idx, nb_desc,
+					      socket_id, tx_conf);
+		if (!txq)
+			return -ENOMEM;
+
+		dev->data->tx_queues[queue_idx] = txq;
+		qdev->fp_array[queue_idx].txq = txq;
+	}
 
 	return 0;
 }
@@ -503,6 +544,7 @@ static void _qede_tx_queue_release(struct qede_dev *qdev,
 void qede_tx_queue_release(void *tx_queue)
 {
 	struct qede_tx_queue *txq = tx_queue;
+	struct qede_fastpath_cmt *fp_cmt;
 	struct qede_dev *qdev;
 	struct ecore_dev *edev;
 
@@ -510,7 +552,14 @@ void qede_tx_queue_release(void *tx_queue)
 		qdev = txq->qdev;
 		edev = QEDE_INIT_EDEV(qdev);
 		PMD_INIT_FUNC_TRACE(edev);
-		_qede_tx_queue_release(qdev, edev, txq);
+
+		if (ECORE_IS_CMT(edev)) {
+			fp_cmt = tx_queue;
+			_qede_tx_queue_release(qdev, edev, fp_cmt->fp0->txq);
+			_qede_tx_queue_release(qdev, edev, fp_cmt->fp1->txq);
+		} else {
+			_qede_tx_queue_release(qdev, edev, txq);
+		}
 	}
 }
 
@@ -548,6 +597,7 @@ int qede_alloc_fp_resc(struct qede_dev *qdev)
 	struct qede_fastpath *fp;
 	uint32_t num_sbs;
 	uint16_t sb_idx;
+	int i;
 
 	if (IS_VF(edev))
 		ecore_vf_get_num_sbs(ECORE_LEADING_HWFN(edev), &num_sbs);
@@ -570,6 +620,28 @@ int qede_alloc_fp_resc(struct qede_dev *qdev)
 
 	memset((void *)qdev->fp_array, 0, QEDE_RXTX_MAX(qdev) *
 			sizeof(*qdev->fp_array));
+
+	if (ECORE_IS_CMT(edev)) {
+		qdev->fp_array_cmt = rte_calloc("fp_cmt",
+						QEDE_RXTX_MAX(qdev) / 2,
+						sizeof(*qdev->fp_array_cmt),
+						RTE_CACHE_LINE_SIZE);
+
+		if (!qdev->fp_array_cmt) {
+			DP_ERR(edev, "fp array for CMT allocation failed\n");
+			return -ENOMEM;
+		}
+
+		memset((void *)qdev->fp_array_cmt, 0,
+		       (QEDE_RXTX_MAX(qdev) / 2) * sizeof(*qdev->fp_array_cmt));
+
+		/* Establish the mapping of fp_array with fp_array_cmt */
+		for (i = 0; i < QEDE_RXTX_MAX(qdev) / 2; i++) {
+			qdev->fp_array_cmt[i].qdev = qdev;
+			qdev->fp_array_cmt[i].fp0 = &qdev->fp_array[i * 2];
+			qdev->fp_array_cmt[i].fp1 = &qdev->fp_array[i * 2 + 1];
+		}
+	}
 
 	for (sb_idx = 0; sb_idx < QEDE_RXTX_MAX(qdev); sb_idx++) {
 		fp = &qdev->fp_array[sb_idx];
@@ -635,6 +707,10 @@ void qede_dealloc_fp_resc(struct rte_eth_dev *eth_dev)
 	if (qdev->fp_array)
 		rte_free(qdev->fp_array);
 	qdev->fp_array = NULL;
+
+	if (qdev->fp_array_cmt)
+		rte_free(qdev->fp_array_cmt);
+	qdev->fp_array_cmt = NULL;
 }
 
 static inline void
@@ -686,9 +762,9 @@ qede_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 	int hwfn_index;
 	int rc;
 
-	if (rx_queue_id < eth_dev->data->nb_rx_queues) {
+	if (rx_queue_id < qdev->num_rx_queues) {
 		fp = &qdev->fp_array[rx_queue_id];
-		rxq = eth_dev->data->rx_queues[rx_queue_id];
+		rxq = fp->rxq;
 		/* Allocate buffers for the Rx ring */
 		for (j = 0; j < rxq->nb_rx_desc; j++) {
 			rc = qede_alloc_rx_buffer(rxq);
@@ -757,9 +833,9 @@ qede_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 	int hwfn_index;
 	int rc;
 
-	if (tx_queue_id < eth_dev->data->nb_tx_queues) {
-		txq = eth_dev->data->tx_queues[tx_queue_id];
+	if (tx_queue_id < qdev->num_tx_queues) {
 		fp = &qdev->fp_array[tx_queue_id];
+		txq = fp->txq;
 		memset(&params, 0, sizeof(params));
 		params.queue_id = tx_queue_id / edev->num_hwfns;
 		params.vport_id = 0;
@@ -900,8 +976,8 @@ static int qede_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 	int hwfn_index;
 	int rc;
 
-	if (tx_queue_id < eth_dev->data->nb_tx_queues) {
-		txq = eth_dev->data->tx_queues[tx_queue_id];
+	if (tx_queue_id < qdev->num_tx_queues) {
+		txq = qdev->fp_array[tx_queue_id].txq;
 		/* Drain txq */
 		if (qede_drain_txq(qdev, txq, true))
 			return -1; /* For the lack of retcodes */
@@ -932,13 +1008,13 @@ int qede_start_queues(struct rte_eth_dev *eth_dev)
 	uint8_t id;
 	int rc = -1;
 
-	for_each_rss(id) {
+	for (id = 0; id < qdev->num_rx_queues; id++) {
 		rc = qede_rx_queue_start(eth_dev, id);
 		if (rc != ECORE_SUCCESS)
 			return -1;
 	}
 
-	for_each_tss(id) {
+	for (id = 0; id < qdev->num_tx_queues; id++) {
 		rc = qede_tx_queue_start(eth_dev, id);
 		if (rc != ECORE_SUCCESS)
 			return -1;
@@ -953,13 +1029,11 @@ void qede_stop_queues(struct rte_eth_dev *eth_dev)
 	uint8_t id;
 
 	/* Stopping RX/TX queues */
-	for_each_tss(id) {
+	for (id = 0; id < qdev->num_tx_queues; id++)
 		qede_tx_queue_stop(eth_dev, id);
-	}
 
-	for_each_rss(id) {
+	for (id = 0; id < qdev->num_rx_queues; id++)
 		qede_rx_queue_stop(eth_dev, id);
-	}
 }
 
 static inline bool qede_tunn_exist(uint16_t flag)
@@ -1741,6 +1815,23 @@ next_cqe:
 	return rx_pkt;
 }
 
+uint16_t
+qede_recv_pkts_cmt(void *p_fp_cmt, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct qede_fastpath_cmt *fp_cmt = p_fp_cmt;
+	uint16_t eng0_pkts, eng1_pkts;
+
+	eng0_pkts = nb_pkts / 2;
+
+	eng0_pkts = qede_recv_pkts(fp_cmt->fp0->rxq, rx_pkts, eng0_pkts);
+
+	eng1_pkts = nb_pkts - eng0_pkts;
+
+	eng1_pkts = qede_recv_pkts(fp_cmt->fp1->rxq, rx_pkts + eng0_pkts,
+				   eng1_pkts);
+
+	return eng0_pkts + eng1_pkts;
+}
 
 /* Populate scatter gather buffer descriptor fields */
 static inline uint16_t
@@ -2261,6 +2352,24 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		   nb_pkts, nb_pkt_sent, TX_PROD(txq), rte_lcore_id());
 
 	return nb_pkt_sent;
+}
+
+uint16_t
+qede_xmit_pkts_cmt(void *p_fp_cmt, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct qede_fastpath_cmt *fp_cmt = p_fp_cmt;
+	uint16_t eng0_pkts, eng1_pkts;
+
+	eng0_pkts = nb_pkts / 2;
+
+	eng0_pkts = qede_xmit_pkts(fp_cmt->fp0->txq, tx_pkts, eng0_pkts);
+
+	eng1_pkts = nb_pkts - eng0_pkts;
+
+	eng1_pkts = qede_xmit_pkts(fp_cmt->fp1->txq, tx_pkts + eng0_pkts,
+				   eng1_pkts);
+
+	return eng0_pkts + eng1_pkts;
 }
 
 uint16_t
