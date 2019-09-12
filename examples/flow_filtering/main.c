@@ -136,7 +136,12 @@ init_port(void)
 	struct rte_eth_rxconf rxq_conf;
 	struct rte_eth_dev_info dev_info;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Error during getting device (port %u) info: %s\n",
+			port_id, strerror(-ret));
+
 	port_conf.txmode.offloads &= dev_info.tx_offload_capa;
 	printf(":: initializing port: %d\n", port_id);
 	ret = rte_eth_dev_configure(port_id,
