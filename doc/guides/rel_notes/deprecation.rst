@@ -88,7 +88,6 @@ Deprecation Notices
   negative errno values to indicate various error conditions (e.g.
   invalid port ID, unsupported operation, failed operation):
 
-  - ``rte_eth_dev_info_get``
   - ``rte_eth_promiscuous_enable`` and ``rte_eth_promiscuous_disable``
   - ``rte_eth_allmulticast_enable`` and ``rte_eth_allmulticast_disable``
   - ``rte_eth_link_get`` and ``rte_eth_link_get_nowait``

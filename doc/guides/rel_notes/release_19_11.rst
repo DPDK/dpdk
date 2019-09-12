@@ -117,6 +117,9 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* ethdev: changed ``rte_eth_dev_infos_get`` return value from ``void`` to
+  ``int`` to provide a way to report various error conditions.
+
 
 ABI Changes
 -----------
@@ -168,7 +171,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_distributor.so.1
      librte_eal.so.11
      librte_efd.so.1
-     librte_ethdev.so.12
+   + librte_ethdev.so.13
      librte_eventdev.so.7
      librte_flow_classify.so.1
      librte_gro.so.1

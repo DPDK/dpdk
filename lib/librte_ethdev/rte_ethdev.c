@@ -1125,7 +1125,6 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	dev = &rte_eth_devices[port_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
 
 	if (dev->data->dev_started) {
@@ -1144,7 +1143,9 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 */
 	memcpy(&dev->data->dev_conf, dev_conf, sizeof(dev->data->dev_conf));
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		goto rollback;
 
 	/* If number of queues specified by application for both Rx and Tx is
 	 * zero, use driver preferred values. This cannot be done individually
@@ -1406,6 +1407,7 @@ rte_eth_dev_start(uint16_t port_id)
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	int diag;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -1420,7 +1422,9 @@ rte_eth_dev_start(uint16_t port_id)
 		return 0;
 	}
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
 
 	/* Lets restore MAC now if device does not support live change */
 	if (*dev_info.dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR)
@@ -1584,7 +1588,6 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		return -EINVAL;
 	}
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_setup, -ENOTSUP);
 
 	/*
@@ -1592,7 +1595,10 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	 * This value must be provided in the private data of the memory pool.
 	 * First check that the memory pool has a valid private data.
 	 */
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
+
 	if (mp->private_data_size < sizeof(struct rte_pktmbuf_pool_private)) {
 		RTE_ETHDEV_LOG(ERR, "%s private_data_size %d < %d\n",
 			mp->name, (int)mp->private_data_size,
@@ -1703,6 +1709,7 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf local_conf;
 	void **txq;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -1712,10 +1719,11 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 		return -EINVAL;
 	}
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_setup, -ENOTSUP);
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
 
 	/* Use default specified by driver, if nb_tx_desc is zero */
 	if (nb_tx_desc == 0) {
@@ -2540,7 +2548,7 @@ rte_eth_dev_fw_version_get(uint16_t port_id, char *fw_version, size_t fw_size)
 							fw_version, fw_size));
 }
 
-void
+int
 rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 {
 	struct rte_eth_dev *dev;
@@ -2558,7 +2566,7 @@ rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 	 */
 	memset(dev_info, 0, sizeof(struct rte_eth_dev_info));
 
-	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	dev_info->rx_desc_lim = lim;
@@ -2567,13 +2575,15 @@ rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->max_mtu = UINT16_MAX;
 
-	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->dev_infos_get);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
 	dev_info->driver_name = dev->device->driver->name;
 	dev_info->nb_rx_queues = dev->data->nb_rx_queues;
 	dev_info->nb_tx_queues = dev->data->nb_tx_queues;
 
 	dev_info->dev_flags = &dev->data->dev_flags;
+
+	return 0;
 }
 
 int
@@ -2643,7 +2653,10 @@ rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu)
 	 * which relies on dev->dev_ops->dev_infos_get.
 	 */
 	if (*dev->dev_ops->dev_infos_get != NULL) {
-		rte_eth_dev_info_get(port_id, &dev_info);
+		ret = rte_eth_dev_info_get(port_id, &dev_info);
+		if (ret != 0)
+			return ret;
+
 		if (mtu < dev_info.min_mtu || mtu > dev_info.max_mtu)
 			return -EINVAL;
 	}
@@ -2991,10 +3004,15 @@ rte_eth_dev_rss_hash_update(uint16_t port_id,
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info = { .flow_type_rss_offloads = 0, };
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
+
 	dev = &rte_eth_devices[port_id];
-	rte_eth_dev_info_get(port_id, &dev_info);
 	if ((dev_info.flow_type_rss_offloads | rss_conf->rss_hf) !=
 	    dev_info.flow_type_rss_offloads) {
 		RTE_ETHDEV_LOG(ERR,
@@ -3100,9 +3118,11 @@ get_mac_addr_index(uint16_t port_id, const struct rte_ether_addr *addr)
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	unsigned i;
+	int ret;
 
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return -1;
 
 	for (i = 0; i < dev_info.max_mac_addrs; i++)
 		if (memcmp(addr, &dev->data->mac_addrs[i],
@@ -3233,8 +3253,12 @@ get_hash_mac_addr_index(uint16_t port_id, const struct rte_ether_addr *addr)
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	unsigned i;
+	int ret;
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return -1;
+
 	if (!dev->data->hash_mac_addrs)
 		return -1;
 
@@ -3319,11 +3343,15 @@ int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_link link;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
+
 	dev = &rte_eth_devices[port_id];
-	rte_eth_dev_info_get(port_id, &dev_info);
 	link = dev->data->dev_link;
 
 	if (queue_idx > dev_info.max_tx_queues) {
@@ -4363,15 +4391,14 @@ rte_eth_dev_adjust_nb_rx_tx_desc(uint16_t port_id,
 				 uint16_t *nb_rx_desc,
 				 uint16_t *nb_tx_desc)
 {
-	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
-	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
-
-	rte_eth_dev_info_get(port_id, &dev_info);
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
 
 	if (nb_rx_desc != NULL)
 		rte_eth_dev_adjust_nb_desc(nb_rx_desc, &dev_info.rx_desc_lim);
