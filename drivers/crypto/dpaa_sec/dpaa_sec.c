@@ -38,6 +38,7 @@
 #include <rte_dpaa_bus.h>
 #include <dpaa_sec.h>
 #include <dpaa_sec_log.h>
+#include <dpaax_iova_table.h>
 
 enum rta_sec_era rta_sec_era;
 
@@ -100,8 +101,10 @@ dpaa_mem_vtop(void *vaddr)
 	const struct rte_memseg *ms;
 
 	ms = rte_mem_virt2memseg(vaddr, NULL);
-	if (ms)
+	if (ms) {
+		dpaax_iova_table_update(ms->iova, ms->addr, ms->len);
 		return ms->iova + RTE_PTR_DIFF(vaddr, ms->addr);
+	}
 	return (size_t)NULL;
 }
 
