@@ -333,7 +333,14 @@ set_pdump_rxtx_cbs(const struct pdump_request *p)
 	if (queue == RTE_PDUMP_ALL_QUEUES) {
 		struct rte_eth_dev_info dev_info;
 
-		rte_eth_dev_info_get(port, &dev_info);
+		ret = rte_eth_dev_info_get(port, &dev_info);
+		if (ret != 0) {
+			RTE_LOG(ERR, PDUMP,
+				"Error during getting device (port %u) info: %s\n",
+				port, strerror(-ret));
+			return ret;
+		}
+
 		nb_rx_q = dev_info.nb_rx_queues;
 		nb_tx_q = dev_info.nb_tx_queues;
 		if (nb_rx_q == 0 && flags & RTE_PDUMP_FLAG_RX) {
