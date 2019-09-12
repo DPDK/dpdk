@@ -86,13 +86,15 @@ static int pmd_softnic_logtype;
 	rte_log(RTE_LOG_ ## level, pmd_softnic_logtype, \
 		"%s(): " fmt "\n", __func__, ##args)
 
-static void
+static int
 pmd_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	struct rte_eth_dev_info *dev_info)
 {
 	dev_info->max_rx_pktlen = UINT32_MAX;
 	dev_info->max_rx_queues = UINT16_MAX;
 	dev_info->max_tx_queues = UINT16_MAX;
+
+	return 0;
 }
 
 static int

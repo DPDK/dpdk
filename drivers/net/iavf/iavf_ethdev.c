@@ -37,7 +37,7 @@ static int iavf_dev_configure(struct rte_eth_dev *dev);
 static int iavf_dev_start(struct rte_eth_dev *dev);
 static void iavf_dev_stop(struct rte_eth_dev *dev);
 static void iavf_dev_close(struct rte_eth_dev *dev);
-static void iavf_dev_info_get(struct rte_eth_dev *dev,
+static int iavf_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static const uint32_t *iavf_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int iavf_dev_stats_get(struct rte_eth_dev *dev,
@@ -495,7 +495,7 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	hw->adapter_stopped = 1;
 }
 
-static void
+static int
 iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
@@ -556,6 +556,8 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_min = IAVF_MIN_RING_DESC,
 		.nb_align = IAVF_ALIGN_RING_DESC,
 	};
+
+	return 0;
 }
 
 static const uint32_t *

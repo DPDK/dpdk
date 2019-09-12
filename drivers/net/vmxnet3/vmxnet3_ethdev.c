@@ -82,8 +82,8 @@ static int vmxnet3_dev_xstats_get_names(struct rte_eth_dev *dev,
 					unsigned int n);
 static int vmxnet3_dev_xstats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_xstat *xstats, unsigned int n);
-static void vmxnet3_dev_info_get(struct rte_eth_dev *dev,
-				 struct rte_eth_dev_info *dev_info);
+static int vmxnet3_dev_info_get(struct rte_eth_dev *dev,
+				struct rte_eth_dev_info *dev_info);
 static const uint32_t *
 vmxnet3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev,
@@ -1149,7 +1149,7 @@ vmxnet3_dev_stats_reset(struct rte_eth_dev *dev)
 	}
 }
 
-static void
+static int
 vmxnet3_dev_info_get(struct rte_eth_dev *dev __rte_unused,
 		     struct rte_eth_dev_info *dev_info)
 {
@@ -1186,6 +1186,8 @@ vmxnet3_dev_info_get(struct rte_eth_dev *dev __rte_unused,
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->tx_offload_capa = VMXNET3_TX_OFFLOAD_CAP;
 	dev_info->tx_queue_offload_capa = 0;
+
+	return 0;
 }
 
 static const uint32_t *

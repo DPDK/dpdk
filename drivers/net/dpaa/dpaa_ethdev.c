@@ -124,7 +124,7 @@ static const struct rte_dpaa_xstats_name_off dpaa_xstats_strings[] = {
 
 static struct rte_dpaa_driver rte_dpaa_pmd;
 
-static void
+static int
 dpaa_eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info);
 
 static inline void
@@ -330,8 +330,8 @@ dpaa_fw_version_get(struct rte_eth_dev *dev __rte_unused,
 		return 0;
 }
 
-static void dpaa_eth_dev_info(struct rte_eth_dev *dev,
-			      struct rte_eth_dev_info *dev_info)
+static int dpaa_eth_dev_info(struct rte_eth_dev *dev,
+			     struct rte_eth_dev_info *dev_info)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
@@ -346,13 +346,15 @@ static void dpaa_eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_vmdq_pools = ETH_16_POOLS;
 	dev_info->flow_type_rss_offloads = DPAA_RSS_OFFLOAD_ALL;
 
-	if (dpaa_intf->fif->mac_type == fman_mac_1g)
+	if (dpaa_intf->fif->mac_type == fman_mac_1g) {
 		dev_info->speed_capa = ETH_LINK_SPEED_1G;
-	else if (dpaa_intf->fif->mac_type == fman_mac_10g)
+	} else if (dpaa_intf->fif->mac_type == fman_mac_10g) {
 		dev_info->speed_capa = (ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G);
-	else
+	} else {
 		DPAA_PMD_ERR("invalid link_speed: %s, %d",
 			     dpaa_intf->name, dpaa_intf->fif->mac_type);
+		return -EINVAL;
+	}
 
 	dev_info->rx_offload_capa = dev_rx_offloads_sup |
 					dev_rx_offloads_nodis;
@@ -360,6 +362,8 @@ static void dpaa_eth_dev_info(struct rte_eth_dev *dev,
 					dev_tx_offloads_nodis;
 	dev_info->default_rxportconf.burst_size = DPAA_DEF_RX_BURST_SIZE;
 	dev_info->default_txportconf.burst_size = DPAA_DEF_TX_BURST_SIZE;
+
+	return 0;
 }
 
 static int dpaa_eth_link_update(struct rte_eth_dev *dev,

@@ -144,7 +144,7 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 	return 0;
 }
 
-static void
+static int
 enetc_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 		    struct rte_eth_dev_info *dev_info)
 {
@@ -168,6 +168,8 @@ enetc_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 		 DEV_RX_OFFLOAD_TCP_CKSUM |
 		 DEV_RX_OFFLOAD_KEEP_CRC |
 		 DEV_RX_OFFLOAD_JUMBO_FRAME);
+
+	return 0;
 }
 
 static int

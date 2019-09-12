@@ -227,8 +227,8 @@ static int ena_queue_start(struct ena_ring *ring);
 static int ena_queue_start_all(struct rte_eth_dev *dev,
 			       enum ena_ring_type ring_type);
 static void ena_stats_restart(struct rte_eth_dev *dev);
-static void ena_infos_get(struct rte_eth_dev *dev,
-			  struct rte_eth_dev_info *dev_info);
+static int ena_infos_get(struct rte_eth_dev *dev,
+			 struct rte_eth_dev_info *dev_info);
 static int ena_rss_reta_update(struct rte_eth_dev *dev,
 			       struct rte_eth_rss_reta_entry64 *reta_conf,
 			       uint16_t reta_size);
@@ -1909,7 +1909,7 @@ static void ena_init_rings(struct ena_adapter *adapter)
 	}
 }
 
-static void ena_infos_get(struct rte_eth_dev *dev,
+static int ena_infos_get(struct rte_eth_dev *dev,
 			  struct rte_eth_dev_info *dev_info)
 {
 	struct ena_adapter *adapter;
@@ -1982,6 +1982,8 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 					adapter->max_tx_sgl_size);
 	dev_info->tx_desc_lim.nb_mtu_seg_max = RTE_MIN(ENA_PKT_MAX_BUFS,
 					adapter->max_tx_sgl_size);
+
+	return 0;
 }
 
 static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,

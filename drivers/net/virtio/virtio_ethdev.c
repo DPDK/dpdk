@@ -45,7 +45,7 @@ static void virtio_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void virtio_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void virtio_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void virtio_dev_allmulticast_disable(struct rte_eth_dev *dev);
-static void virtio_dev_info_get(struct rte_eth_dev *dev,
+static int virtio_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int virtio_dev_link_update(struct rte_eth_dev *dev,
 	int wait_to_complete);
@@ -2394,7 +2394,7 @@ virtio_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	return 0;
 }
 
-static void
+static int
 virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	uint64_t tso_mask, host_features;
@@ -2436,6 +2436,8 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		(1ULL << VIRTIO_NET_F_HOST_TSO6);
 	if ((host_features & tso_mask) == tso_mask)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
+
+	return 0;
 }
 
 /*

@@ -34,7 +34,7 @@ ixgbe_vf_representor_mac_addr_set(struct rte_eth_dev *ethdev,
 		representor->vf_id, mac_addr);
 }
 
-static void
+static int
 ixgbe_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 	struct rte_eth_dev_info *dev_info)
 {
@@ -76,6 +76,8 @@ ixgbe_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 		representor->pf_ethdev->device->name;
 	dev_info->switch_info.domain_id = representor->switch_domain_id;
 	dev_info->switch_info.port_id = representor->vf_id;
+
+	return 0;
 }
 
 static int ixgbe_vf_representor_dev_configure(

@@ -188,7 +188,7 @@ nfb_eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
  * @param[out] info
  *   Info structure output buffer.
  */
-static void
+static int
 nfb_eth_dev_info(struct rte_eth_dev *dev,
 	struct rte_eth_dev_info *dev_info)
 {
@@ -197,6 +197,8 @@ nfb_eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = dev->data->nb_rx_queues;
 	dev_info->max_tx_queues = dev->data->nb_tx_queues;
 	dev_info->speed_capa = ETH_LINK_SPEED_100G;
+
+	return 0;
 }
 
 /**

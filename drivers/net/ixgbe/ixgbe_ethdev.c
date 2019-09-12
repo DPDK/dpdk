@@ -182,11 +182,11 @@ static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint8_t is_rx);
 static int ixgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 				 size_t fw_size);
-static void ixgbe_dev_info_get(struct rte_eth_dev *dev,
-			       struct rte_eth_dev_info *dev_info);
+static int ixgbe_dev_info_get(struct rte_eth_dev *dev,
+			      struct rte_eth_dev_info *dev_info);
 static const uint32_t *ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
-static void ixgbevf_dev_info_get(struct rte_eth_dev *dev,
-				 struct rte_eth_dev_info *dev_info);
+static int ixgbevf_dev_info_get(struct rte_eth_dev *dev,
+				struct rte_eth_dev_info *dev_info);
 static int ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static int ixgbe_vlan_filter_set(struct rte_eth_dev *dev,
@@ -3777,7 +3777,7 @@ ixgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 		return 0;
 }
 
-static void
+static int
 ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -3861,6 +3861,8 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txportconf.nb_queues = 1;
 	dev_info->default_rxportconf.ring_size = 256;
 	dev_info->default_txportconf.ring_size = 256;
+
+	return 0;
 }
 
 static const uint32_t *
@@ -3902,7 +3904,7 @@ ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
-static void
+static int
 ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 		     struct rte_eth_dev_info *dev_info)
 {
@@ -3954,6 +3956,8 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 
 	dev_info->rx_desc_lim = rx_desc_lim;
 	dev_info->tx_desc_lim = tx_desc_lim;
+
+	return 0;
 }
 
 static int
@@ -5018,8 +5022,11 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	struct rte_eth_dev_info dev_info;
 	uint32_t frame_size = mtu + IXGBE_ETH_OVERHEAD;
 	struct rte_eth_dev_data *dev_data = dev->data;
+	int ret;
 
-	ixgbe_dev_info_get(dev, &dev_info);
+	ret = ixgbe_dev_info_get(dev, &dev_info);
+	if (ret != 0)
+		return ret;
 
 	/* check that mtu is within the allowed range */
 	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)

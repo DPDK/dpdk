@@ -403,7 +403,7 @@ eth_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
@@ -421,6 +421,8 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txportconf.nb_queues = 1;
 	dev_info->default_rxportconf.ring_size = ETH_AF_XDP_DFLT_NUM_DESCS;
 	dev_info->default_txportconf.ring_size = ETH_AF_XDP_DFLT_NUM_DESCS;
+
+	return 0;
 }
 
 static int

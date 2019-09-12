@@ -1246,7 +1246,7 @@ static const struct rte_eth_desc_lim qede_tx_desc_lim = {
 	.nb_mtu_seg_max = ETH_TX_MAX_BDS_PER_NON_LSO_PACKET
 };
 
-static void
+static int
 qede_dev_info_get(struct rte_eth_dev *eth_dev,
 		  struct rte_eth_dev_info *dev_info)
 {
@@ -1330,6 +1330,8 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	if (link.adv_speed & NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_BB_100G)
 		speed_cap |= ETH_LINK_SPEED_100G;
 	dev_info->speed_capa = speed_cap;
+
+	return 0;
 }
 
 /* return 0 means link status changed, -1 means not changed */
@@ -2185,7 +2187,11 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	int i, rc;
 
 	PMD_INIT_FUNC_TRACE(edev);
-	qede_dev_info_get(dev, &dev_info);
+	rc = qede_dev_info_get(dev, &dev_info);
+	if (rc != 0) {
+		DP_ERR(edev, "Error during getting ethernet device info\n");
+		return rc;
+	}
 	max_rx_pkt_len = mtu + QEDE_MAX_ETHER_HDR_LEN;
 	frame_size = max_rx_pkt_len;
 	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen) {

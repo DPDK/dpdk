@@ -2559,6 +2559,7 @@ rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 		.nb_seg_max = UINT16_MAX,
 		.nb_mtu_seg_max = UINT16_MAX,
 	};
+	int diag;
 
 	/*
 	 * Init dev_info before port_id check since caller does not have
@@ -2576,7 +2577,13 @@ rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mtu = UINT16_MAX;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
-	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
+	diag = (*dev->dev_ops->dev_infos_get)(dev, dev_info);
+	if (diag != 0) {
+		/* Cleanup already filled in device information */
+		memset(dev_info, 0, sizeof(struct rte_eth_dev_info));
+		return eth_err(port_id, diag);
+	}
+
 	dev_info->driver_name = dev->device->driver->name;
 	dev_info->nb_rx_queues = dev->data->nb_rx_queues;
 	dev_info->nb_tx_queues = dev->data->nb_tx_queues;

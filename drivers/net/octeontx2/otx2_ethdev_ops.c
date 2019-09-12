@@ -403,7 +403,7 @@ otx2_nix_get_module_eeprom(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-void
+int
 otx2_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -467,4 +467,6 @@ otx2_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 
 	devinfo->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 				RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
+
+	return 0;
 }

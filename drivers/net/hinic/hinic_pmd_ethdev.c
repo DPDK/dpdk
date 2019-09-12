@@ -664,7 +664,7 @@ static void hinic_get_speed_capa(struct rte_eth_dev *dev, uint32_t *speed_capa)
  * @param info
  *   Pointer to Info structure output buffer.
  */
-static void
+static int
 hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
@@ -697,6 +697,8 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->flow_type_rss_offloads = HINIC_RSS_OFFLOAD_ALL;
 	info->rx_desc_lim = hinic_rx_desc_lim;
 	info->tx_desc_lim = hinic_tx_desc_lim;
+
+	return 0;
 }
 
 static int hinic_config_rx_mode(struct hinic_nic_dev *nic_dev, u32 rx_mode_ctrl)

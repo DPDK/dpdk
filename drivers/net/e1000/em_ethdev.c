@@ -44,7 +44,7 @@ static int eth_em_link_update(struct rte_eth_dev *dev,
 static int eth_em_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
 static void eth_em_stats_reset(struct rte_eth_dev *dev);
-static void eth_em_infos_get(struct rte_eth_dev *dev,
+static int eth_em_infos_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int eth_em_flow_ctrl_get(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
@@ -1048,7 +1048,7 @@ em_get_max_pktlen(struct rte_eth_dev *dev)
 	}
 }
 
-static void
+static int
 eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1107,6 +1107,8 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txportconf.nb_queues = 1;
 	dev_info->default_txportconf.ring_size = 256;
 	dev_info->default_rxportconf.ring_size = 256;
+
+	return 0;
 }
 
 /* return 0 means link status changed, -1 means not changed */
@@ -1776,8 +1778,12 @@ eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	struct e1000_hw *hw;
 	uint32_t frame_size;
 	uint32_t rctl;
+	int ret;
 
-	eth_em_infos_get(dev, &dev_info);
+	ret = eth_em_infos_get(dev, &dev_info);
+	if (ret != 0)
+		return ret;
+
 	frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
 		VLAN_TAG_SIZE;
 

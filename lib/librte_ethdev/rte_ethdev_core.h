@@ -103,8 +103,8 @@ typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
 					     uint8_t is_rx);
 /**< @internal Set a queue statistics mapping for a tx/rx queue of an Ethernet device. */
 
-typedef void (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
-				    struct rte_eth_dev_info *dev_info);
+typedef int (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
+				   struct rte_eth_dev_info *dev_info);
 /**< @internal Get specific information of an Ethernet device. */
 
 typedef const uint32_t *(*eth_dev_supported_ptypes_get_t)(struct rte_eth_dev *dev);

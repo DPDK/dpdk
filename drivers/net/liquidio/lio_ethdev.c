@@ -367,7 +367,7 @@ lio_dev_stats_reset(struct rte_eth_dev *eth_dev)
 	}
 }
 
-static void
+static int
 lio_dev_info_get(struct rte_eth_dev *eth_dev,
 		 struct rte_eth_dev_info *devinfo)
 {
@@ -393,6 +393,7 @@ lio_dev_info_get(struct rte_eth_dev *eth_dev,
 		devinfo->speed_capa = ETH_LINK_SPEED_10G;
 		lio_dev_err(lio_dev,
 			    "Unknown CN23XX subsystem device id. Setting 10G as default link speed.\n");
+		return -EINVAL;
 	}
 
 	devinfo->max_rx_queues = lio_dev->max_rx_queues;
@@ -423,6 +424,7 @@ lio_dev_info_get(struct rte_eth_dev *eth_dev,
 					   ETH_RSS_NONFRAG_IPV6_TCP	|
 					   ETH_RSS_IPV6_EX		|
 					   ETH_RSS_IPV6_TCP_EX);
+	return 0;
 }
 
 static int

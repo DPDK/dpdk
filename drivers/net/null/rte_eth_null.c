@@ -259,14 +259,14 @@ eth_mtu_set(struct rte_eth_dev *dev __rte_unused, uint16_t mtu __rte_unused)
 	return 0;
 }
 
-static void
+static int
 eth_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
 	struct pmd_internals *internals;
 
 	if ((dev == NULL) || (dev_info == NULL))
-		return;
+		return -EINVAL;
 
 	internals = dev->data->dev_private;
 	dev_info->max_mac_addrs = 1;
@@ -276,6 +276,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->min_rx_bufsize = 0;
 	dev_info->reta_size = internals->reta_size;
 	dev_info->flow_type_rss_offloads = internals->flow_type_rss_offloads;
+
+	return 0;
 }
 
 static int

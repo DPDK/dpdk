@@ -24,7 +24,7 @@ static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 static int axgbe_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static void axgbe_dev_stats_reset(struct rte_eth_dev *dev);
-static void axgbe_dev_info_get(struct rte_eth_dev *dev,
+static int  axgbe_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
 
 /* The set of PCI devices this driver supports */
@@ -354,7 +354,7 @@ axgbe_dev_stats_reset(struct rte_eth_dev *dev)
 	}
 }
 
-static void
+static int
 axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
@@ -393,6 +393,8 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = AXGBE_TX_FREE_THRESH,
 	};
+
+	return 0;
 }
 
 static void axgbe_get_all_hw_features(struct axgbe_port *pdata)

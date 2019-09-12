@@ -500,7 +500,7 @@ static uint32_t speed_capa_from_pci_id(struct rte_eth_dev *eth_dev)
 	return ETH_LINK_SPEED_10G;
 }
 
-static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
+static int enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	struct rte_eth_dev_info *device_info)
 {
 	struct enic *enic = pmd_priv(eth_dev);
@@ -555,6 +555,8 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 		.nb_queues = ENIC_DEFAULT_TX_RINGS,
 	};
 	device_info->speed_capa = speed_capa_from_pci_id(eth_dev);
+
+	return 0;
 }
 
 static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)

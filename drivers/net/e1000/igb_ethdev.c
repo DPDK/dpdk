@@ -102,10 +102,10 @@ static void eth_igb_stats_reset(struct rte_eth_dev *dev);
 static void eth_igb_xstats_reset(struct rte_eth_dev *dev);
 static int eth_igb_fw_version_get(struct rte_eth_dev *dev,
 				   char *fw_version, size_t fw_size);
-static void eth_igb_infos_get(struct rte_eth_dev *dev,
+static int eth_igb_infos_get(struct rte_eth_dev *dev,
 			      struct rte_eth_dev_info *dev_info);
 static const uint32_t *eth_igb_supported_ptypes_get(struct rte_eth_dev *dev);
-static void eth_igbvf_infos_get(struct rte_eth_dev *dev,
+static int eth_igbvf_infos_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int  eth_igb_flow_ctrl_get(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
@@ -2193,7 +2193,7 @@ eth_igb_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 		return 0;
 }
 
-static void
+static int
 eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2255,7 +2255,7 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	default:
 		/* Should not happen */
-		break;
+		return -EINVAL;
 	}
 	dev_info->hash_key_size = IGB_HKEY_MAX_INDEX * sizeof(uint32_t);
 	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
@@ -2291,6 +2291,7 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mtu = dev_info->max_rx_pktlen - E1000_ETH_OVERHEAD;
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
+	return 0;
 }
 
 static const uint32_t *
@@ -2320,7 +2321,7 @@ eth_igb_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
-static void
+static int
 eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2345,7 +2346,7 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		break;
 	default:
 		/* Should not happen */
-		break;
+		return -EINVAL;
 	}
 
 	dev_info->rx_queue_offload_capa = igb_get_rx_queue_offloads_capa(dev);
@@ -2377,6 +2378,8 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->rx_desc_lim = rx_desc_lim;
 	dev_info->tx_desc_lim = tx_desc_lim;
+
+	return 0;
 }
 
 /* return 0 means link status changed, -1 means not changed */
@@ -2794,6 +2797,7 @@ eth_igb_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on)
 static int eth_igb_rxq_interrupt_setup(struct rte_eth_dev *dev)
 {
 	uint32_t mask, regval;
+	int ret;
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -2802,7 +2806,9 @@ static int eth_igb_rxq_interrupt_setup(struct rte_eth_dev *dev)
 	struct rte_eth_dev_info dev_info;
 
 	memset(&dev_info, 0, sizeof(dev_info));
-	eth_igb_infos_get(dev, &dev_info);
+	ret = eth_igb_infos_get(dev, &dev_info);
+	if (ret != 0)
+		return ret;
 
 	mask = (0xFFFFFFFF >> (32 - dev_info.max_rx_queues)) << misc_shift;
 	regval = E1000_READ_REG(hw, E1000_EIMS);
@@ -3176,9 +3182,12 @@ igbvf_stop_adapter(struct rte_eth_dev *dev)
 	u16 i;
 	struct rte_eth_dev_info dev_info;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
 
 	memset(&dev_info, 0, sizeof(dev_info));
-	eth_igbvf_infos_get(dev, &dev_info);
+	ret = eth_igbvf_infos_get(dev, &dev_info);
+	if (ret != 0)
+		return;
 
 	/* Clear interrupt mask to stop from interrupts being generated */
 	igbvf_intr_disable(hw);
@@ -4475,6 +4484,7 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	struct e1000_hw *hw;
 	struct rte_eth_dev_info dev_info;
 	uint32_t frame_size = mtu + E1000_ETH_OVERHEAD;
+	int ret;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -4483,7 +4493,9 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (hw->mac.type == e1000_82571)
 		return -ENOTSUP;
 #endif
-	eth_igb_infos_get(dev, &dev_info);
+	ret = eth_igb_infos_get(dev, &dev_info);
+	if (ret != 0)
+		return ret;
 
 	/* check that mtu is within the allowed range */
 	if (mtu < RTE_ETHER_MIN_MTU ||

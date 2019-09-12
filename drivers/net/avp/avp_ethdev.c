@@ -41,8 +41,8 @@ static int avp_dev_configure(struct rte_eth_dev *dev);
 static int avp_dev_start(struct rte_eth_dev *dev);
 static void avp_dev_stop(struct rte_eth_dev *dev);
 static void avp_dev_close(struct rte_eth_dev *dev);
-static void avp_dev_info_get(struct rte_eth_dev *dev,
-			     struct rte_eth_dev_info *dev_info);
+static int avp_dev_info_get(struct rte_eth_dev *dev,
+			    struct rte_eth_dev_info *dev_info);
 static int avp_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static int avp_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 static void avp_dev_promiscuous_enable(struct rte_eth_dev *dev);
@@ -2185,7 +2185,7 @@ avp_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 	rte_spinlock_unlock(&avp->lock);
 }
 
-static void
+static int
 avp_dev_info_get(struct rte_eth_dev *eth_dev,
 		 struct rte_eth_dev_info *dev_info)
 {
@@ -2200,6 +2200,8 @@ avp_dev_info_get(struct rte_eth_dev *eth_dev,
 		dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
 		dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
 	}
+
+	return 0;
 }
 
 static int

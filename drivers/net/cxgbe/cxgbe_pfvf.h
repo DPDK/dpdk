@@ -10,8 +10,8 @@ void cxgbe_dev_rx_queue_release(void *q);
 void cxgbe_dev_tx_queue_release(void *q);
 void cxgbe_dev_stop(struct rte_eth_dev *eth_dev);
 void cxgbe_dev_close(struct rte_eth_dev *eth_dev);
-void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
-			struct rte_eth_dev_info *device_info);
+int cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
+		       struct rte_eth_dev_info *device_info);
 void cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev);
 void cxgbe_dev_promiscuous_disable(struct rte_eth_dev *eth_dev);
 void cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev);

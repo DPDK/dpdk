@@ -60,8 +60,8 @@ static void fm10k_set_tx_function(struct rte_eth_dev *dev);
 static int fm10k_check_ftag(struct rte_devargs *devargs);
 static int fm10k_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 
-static void fm10k_dev_infos_get(struct rte_eth_dev *dev,
-				struct rte_eth_dev_info *dev_info);
+static int fm10k_dev_infos_get(struct rte_eth_dev *dev,
+			       struct rte_eth_dev_info *dev_info);
 static uint64_t fm10k_get_rx_queue_offloads_capa(struct rte_eth_dev *dev);
 static uint64_t fm10k_get_rx_port_offloads_capa(struct rte_eth_dev *dev);
 static uint64_t fm10k_get_tx_queue_offloads_capa(struct rte_eth_dev *dev);
@@ -1360,7 +1360,7 @@ fm10k_stats_reset(struct rte_eth_dev *dev)
 	fm10k_rebind_hw_stats(hw, hw_stats);
 }
 
-static void
+static int
 fm10k_dev_infos_get(struct rte_eth_dev *dev,
 	struct rte_eth_dev_info *dev_info)
 {
@@ -1438,6 +1438,8 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_2_5G |
 			ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G |
 			ETH_LINK_SPEED_40G | ETH_LINK_SPEED_100G;
+
+	return 0;
 }
 
 #ifdef RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE

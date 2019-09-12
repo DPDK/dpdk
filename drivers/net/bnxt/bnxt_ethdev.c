@@ -494,8 +494,8 @@ static int bnxt_init_nic(struct bnxt *bp)
  * Device configuration and status function
  */
 
-static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
-				  struct rte_eth_dev_info *dev_info)
+static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
+				struct rte_eth_dev_info *dev_info)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint16_t max_vnics, i, j, vpool, vrxq;
@@ -588,6 +588,8 @@ found:
 
 	dev_info->vmdq_pool_base = 0;
 	dev_info->vmdq_queue_base = 0;
+
+	return 0;
 }
 
 /* Configure the device based on the configuration provided */
@@ -1787,7 +1789,11 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	new_pkt_size = new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
 		       VLAN_TAG_SIZE * BNXT_NUM_VLANS;
 
-	bnxt_dev_info_get_op(eth_dev, &dev_info);
+	rc = bnxt_dev_info_get_op(eth_dev, &dev_info);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR, "Error during getting ethernet device info\n");
+		return rc;
+	}
 
 	if (new_mtu < RTE_ETHER_MIN_MTU || new_mtu > BNXT_MAX_MTU) {
 		PMD_DRV_LOG(ERR, "MTU requested must be within (%d, %d)\n",

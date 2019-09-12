@@ -239,8 +239,8 @@ static int i40e_dev_xstats_get_names(struct rte_eth_dev *dev,
 static void i40e_dev_stats_reset(struct rte_eth_dev *dev);
 static int i40e_fw_version_get(struct rte_eth_dev *dev,
 				char *fw_version, size_t fw_size);
-static void i40e_dev_info_get(struct rte_eth_dev *dev,
-			      struct rte_eth_dev_info *dev_info);
+static int i40e_dev_info_get(struct rte_eth_dev *dev,
+			     struct rte_eth_dev_info *dev_info);
 static int i40e_vlan_filter_set(struct rte_eth_dev *dev,
 				uint16_t vlan_id,
 				int on);
@@ -3483,7 +3483,7 @@ i40e_need_stop_lldp(struct rte_eth_dev *dev)
 	return false;
 }
 
-static void
+static int
 i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -3620,6 +3620,8 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	}
 	dev_info->default_rxportconf.burst_size = 32;
 	dev_info->default_txportconf.burst_size = 32;
+
+	return 0;
 }
 
 static int

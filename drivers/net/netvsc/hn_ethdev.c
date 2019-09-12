@@ -238,10 +238,11 @@ hn_dev_link_update(struct rte_eth_dev *dev,
 	return rte_eth_linkstatus_set(dev, &link);
 }
 
-static void hn_dev_info_get(struct rte_eth_dev *dev,
-			    struct rte_eth_dev_info *dev_info)
+static int hn_dev_info_get(struct rte_eth_dev *dev,
+			   struct rte_eth_dev_info *dev_info)
 {
 	struct hn_data *hv = dev->data->dev_private;
+	int rc;
 
 	dev_info->speed_capa = ETH_LINK_SPEED_10G;
 	dev_info->min_rx_bufsize = HN_MIN_RX_BUF_SIZE;
@@ -255,8 +256,15 @@ static void hn_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = hv->max_queues;
 	dev_info->max_tx_queues = hv->max_queues;
 
-	hn_rndis_get_offload(hv, dev_info);
-	hn_vf_info_get(hv, dev_info);
+	rc = hn_rndis_get_offload(hv, dev_info);
+	if (rc != 0)
+		return rc;
+
+	rc = hn_vf_info_get(hv, dev_info);
+	if (rc != 0)
+		return rc;
+
+	return 0;
 }
 
 static int hn_rss_reta_update(struct rte_eth_dev *dev,

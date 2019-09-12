@@ -75,8 +75,8 @@ enum i40evf_aq_result {
 static int i40evf_dev_configure(struct rte_eth_dev *dev);
 static int i40evf_dev_start(struct rte_eth_dev *dev);
 static void i40evf_dev_stop(struct rte_eth_dev *dev);
-static void i40evf_dev_info_get(struct rte_eth_dev *dev,
-				struct rte_eth_dev_info *dev_info);
+static int i40evf_dev_info_get(struct rte_eth_dev *dev,
+			       struct rte_eth_dev_info *dev_info);
 static int i40evf_dev_link_update(struct rte_eth_dev *dev,
 				  int wait_to_complete);
 static int i40evf_dev_stats_get(struct rte_eth_dev *dev,
@@ -2216,7 +2216,7 @@ i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 		vf->promisc_multicast_enabled = FALSE;
 }
 
-static void
+static int
 i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
@@ -2292,6 +2292,8 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_min = I40E_MIN_RING_DESC,
 		.nb_align = I40E_ALIGN_RING_DESC,
 	};
+
+	return 0;
 }
 
 static int

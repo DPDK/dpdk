@@ -81,8 +81,8 @@ static int nfp_net_configure(struct rte_eth_dev *dev);
 static void nfp_net_dev_interrupt_handler(void *param);
 static void nfp_net_dev_interrupt_delayed_handler(void *param);
 static int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
-static void nfp_net_infos_get(struct rte_eth_dev *dev,
-			      struct rte_eth_dev_info *dev_info);
+static int nfp_net_infos_get(struct rte_eth_dev *dev,
+			     struct rte_eth_dev_info *dev_info);
 static int nfp_net_init(struct rte_eth_dev *eth_dev);
 static int nfp_net_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 static void nfp_net_promisc_enable(struct rte_eth_dev *dev);
@@ -1204,7 +1204,7 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_DISCARDS);
 }
 
-static void
+static int
 nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct nfp_net_hw *hw;
@@ -1275,6 +1275,8 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
 			       ETH_LINK_SPEED_25G | ETH_LINK_SPEED_40G |
 			       ETH_LINK_SPEED_50G | ETH_LINK_SPEED_100G;
+
+	return 0;
 }
 
 static const uint32_t *

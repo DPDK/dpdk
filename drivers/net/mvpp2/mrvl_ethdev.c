@@ -1422,7 +1422,7 @@ mrvl_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
  * @param info
  *   Info structure output buffer.
  */
-static void
+static int
 mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 		   struct rte_eth_dev_info *info)
 {
@@ -1457,6 +1457,8 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	info->default_rxconf.rx_drop_en = 1;
 
 	info->max_rx_pktlen = MRVL_PKT_SIZE_MAX;
+
+	return 0;
 }
 
 /**

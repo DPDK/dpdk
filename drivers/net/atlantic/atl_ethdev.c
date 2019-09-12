@@ -117,7 +117,7 @@ static int eth_atl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev);
 static int eth_atl_pci_remove(struct rte_pci_device *pci_dev);
 
-static void atl_dev_info_get(struct rte_eth_dev *dev,
+static int atl_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 
 int atl_logtype_init;
@@ -1074,7 +1074,7 @@ atl_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 	return 0;
 }
 
-static void
+static int
 atl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -1115,6 +1115,8 @@ atl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->speed_capa |= ETH_LINK_SPEED_100M;
 	dev_info->speed_capa |= ETH_LINK_SPEED_2_5G;
 	dev_info->speed_capa |= ETH_LINK_SPEED_5G;
+
+	return 0;
 }
 
 static const uint32_t *
@@ -1600,9 +1602,12 @@ static int
 atl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct rte_eth_dev_info dev_info;
+	int ret;
 	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
-	atl_dev_info_get(dev, &dev_info);
+	ret = atl_dev_info_get(dev, &dev_info);
+	if (ret != 0)
+		return ret;
 
 	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)
 		return -EINVAL;

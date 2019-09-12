@@ -36,8 +36,8 @@ static int ice_dev_start(struct rte_eth_dev *dev);
 static void ice_dev_stop(struct rte_eth_dev *dev);
 static void ice_dev_close(struct rte_eth_dev *dev);
 static int ice_dev_reset(struct rte_eth_dev *dev);
-static void ice_dev_info_get(struct rte_eth_dev *dev,
-			     struct rte_eth_dev_info *dev_info);
+static int ice_dev_info_get(struct rte_eth_dev *dev,
+			    struct rte_eth_dev_info *dev_info);
 static int ice_link_update(struct rte_eth_dev *dev,
 			   int wait_to_complete);
 static int ice_dev_set_link_up(struct rte_eth_dev *dev);
@@ -2105,7 +2105,7 @@ ice_dev_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -2225,6 +2225,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txportconf.nb_queues = 1;
 	dev_info->default_rxportconf.ring_size = ICE_BUF_SIZE_MIN;
 	dev_info->default_txportconf.ring_size = ICE_BUF_SIZE_MIN;
+
+	return 0;
 }
 
 static inline int

@@ -164,7 +164,7 @@ memif_mp_request_regions(struct rte_eth_dev *dev)
 	return memif_connect(dev);
 }
 
-static void
+static int
 memif_dev_info(struct rte_eth_dev *dev __rte_unused, struct rte_eth_dev_info *dev_info)
 {
 	dev_info->max_mac_addrs = 1;
@@ -172,6 +172,8 @@ memif_dev_info(struct rte_eth_dev *dev __rte_unused, struct rte_eth_dev_info *de
 	dev_info->max_rx_queues = ETH_MEMIF_MAX_NUM_Q_PAIRS;
 	dev_info->max_tx_queues = ETH_MEMIF_MAX_NUM_Q_PAIRS;
 	dev_info->min_rx_bufsize = 0;
+
+	return 0;
 }
 
 static memif_ring_t *

@@ -1044,7 +1044,7 @@ eth_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
@@ -1061,6 +1061,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->tx_queue_offload_capa = 0;
 	dev_info->speed_capa = ETH_LINK_SPEED_100G;
+
+	return 0;
 }
 
 static int

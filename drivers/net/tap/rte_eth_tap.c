@@ -915,7 +915,7 @@ tap_dev_speed_capa(void)
 	return capa;
 }
 
-static void
+static int
 tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
@@ -939,6 +939,8 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 * functions together and not in partial combinations
 	 */
 	dev_info->flow_type_rss_offloads = ~TAP_RSS_HF_MASK;
+
+	return 0;
 }
 
 static int

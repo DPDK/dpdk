@@ -1054,7 +1054,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	return 0;
 }
 
-static void
+static int
 eth_dev_info(struct rte_eth_dev *dev,
 	     struct rte_eth_dev_info *dev_info)
 {
@@ -1063,7 +1063,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 	internal = dev->data->dev_private;
 	if (internal == NULL) {
 		VHOST_LOG(ERR, "Invalid device specified\n");
-		return;
+		return -ENODEV;
 	}
 
 	dev_info->max_mac_addrs = 1;
@@ -1075,6 +1075,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS |
 				DEV_TX_OFFLOAD_VLAN_INSERT;
 	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+
+	return 0;
 }
 
 static int

@@ -569,7 +569,7 @@ octeontx_dev_default_mac_addr_set(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static void
+static int
 octeontx_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
@@ -600,6 +600,8 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 
 	dev_info->rx_offload_capa = OCTEONTX_RX_OFFLOADS;
 	dev_info->tx_offload_capa = OCTEONTX_TX_OFFLOADS;
+
+	return 0;
 }
 
 static void

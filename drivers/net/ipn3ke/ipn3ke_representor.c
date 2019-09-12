@@ -40,7 +40,7 @@ static rte_spinlock_t ipn3ke_link_notify_list_lk = RTE_SPINLOCK_INITIALIZER;
 static int
 ipn3ke_rpst_link_check(struct ipn3ke_rpst *rpst);
 
-static void
+static int
 ipn3ke_rpst_dev_infos_get(struct rte_eth_dev *ethdev,
 	struct rte_eth_dev_info *dev_info)
 {
@@ -101,6 +101,8 @@ ipn3ke_rpst_dev_infos_get(struct rte_eth_dev *ethdev,
 	dev_info->switch_info.name = ethdev->device->name;
 	dev_info->switch_info.domain_id = rpst->switch_domain_id;
 	dev_info->switch_info.port_id = rpst->port_id;
+
+	return 0;
 }
 
 static int

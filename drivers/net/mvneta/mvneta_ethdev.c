@@ -153,7 +153,7 @@ mvneta_dev_configure(struct rte_eth_dev *dev)
  * @param info
  *   Info structure output buffer.
  */
-static void
+static int
 mvneta_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 		   struct rte_eth_dev_info *info)
 {
@@ -187,6 +187,8 @@ mvneta_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	info->default_txconf.offloads = 0;
 
 	info->max_rx_pktlen = MVNETA_PKT_SIZE_MAX;
+
+	return 0;
 }
 
 /**

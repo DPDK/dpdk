@@ -219,8 +219,8 @@ int mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 int mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 void mlx4_stats_reset(struct rte_eth_dev *dev);
 int mlx4_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
-void mlx4_dev_infos_get(struct rte_eth_dev *dev,
-			struct rte_eth_dev_info *info);
+int mlx4_dev_infos_get(struct rte_eth_dev *dev,
+		       struct rte_eth_dev_info *info);
 int mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 int mlx4_flow_ctrl_get(struct rte_eth_dev *dev,
 		       struct rte_eth_fc_conf *fc_conf);

@@ -860,7 +860,7 @@ fs_dev_merge_info(struct rte_eth_dev_info *info,
  *      all sub_devices and the default capabilities.
  *
  */
-static void
+static int
 fs_dev_infos_get(struct rte_eth_dev *dev,
 		  struct rte_eth_dev_info *infos)
 {
@@ -937,10 +937,12 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 		ret = rte_eth_dev_info_get(PORT_ID(sdev), &sub_info);
 		ret = fs_err(sdev, ret);
 		if (ret != 0)
-			return;
+			return ret;
 
 		fs_dev_merge_info(infos, &sub_info);
 	}
+
+	return 0;
 }
 
 static const uint32_t *

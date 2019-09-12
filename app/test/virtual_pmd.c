@@ -78,7 +78,7 @@ virtual_ethdev_configure_fail(struct rte_eth_dev *dev __rte_unused)
 	return -1;
 }
 
-static void
+static int
 virtual_ethdev_info_get(struct rte_eth_dev *dev __rte_unused,
 		struct rte_eth_dev_info *dev_info)
 {
@@ -91,6 +91,8 @@ virtual_ethdev_info_get(struct rte_eth_dev *dev __rte_unused,
 	dev_info->max_tx_queues = (uint16_t)512;
 
 	dev_info->min_rx_bufsize = 0;
+
+	return 0;
 }
 
 static int

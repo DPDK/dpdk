@@ -1393,7 +1393,7 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	return 0;
 }
 
-static void
+static int
 nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct nicvf *nic = nicvf_pmd_priv(dev);
@@ -1440,6 +1440,8 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			DEV_TX_OFFLOAD_UDP_CKSUM          |
 			DEV_TX_OFFLOAD_TCP_CKSUM,
 	};
+
+	return 0;
 }
 
 static nicvf_iova_addr_t

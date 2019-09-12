@@ -542,7 +542,7 @@ mlx5_set_txlimit_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
  * @param[out] info
  *   Info structure output buffer.
  */
-void
+int
 mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -600,6 +600,8 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 			break;
 		}
 	}
+
+	return 0;
 }
 
 /**

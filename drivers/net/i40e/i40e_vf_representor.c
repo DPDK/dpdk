@@ -22,7 +22,7 @@ i40e_vf_representor_link_update(struct rte_eth_dev *ethdev,
 	return i40e_dev_link_update(representor->adapter->eth_dev,
 		wait_to_complete);
 }
-static void
+static int
 i40e_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 	struct rte_eth_dev_info *dev_info)
 {
@@ -100,6 +100,8 @@ i40e_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 		representor->adapter->eth_dev->device->name;
 	dev_info->switch_info.domain_id = representor->switch_domain_id;
 	dev_info->switch_info.port_id = representor->vf_id;
+
+	return 0;
 }
 
 static int

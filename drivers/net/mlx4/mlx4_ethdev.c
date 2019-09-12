@@ -611,7 +611,7 @@ mlx4_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
  * @param[out] info
  *   Info structure output buffer.
  */
-void
+int
 mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
@@ -645,6 +645,8 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 			ETH_LINK_SPEED_40G |
 			ETH_LINK_SPEED_56G;
 	info->flow_type_rss_offloads = mlx4_conv_rss_types(priv, 0, 1);
+
+	return 0;
 }
 
 /**

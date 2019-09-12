@@ -2115,7 +2115,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 /* forward declaration */
 static int bond_ethdev_configure(struct rte_eth_dev *dev);
 
-static void
+static int
 bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
@@ -2151,7 +2151,7 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 					slave.port_id,
 					strerror(-ret));
 
-				return;
+				return ret;
 			}
 
 			if (slave_info.max_rx_queues < max_nb_rx_queues)
@@ -2198,6 +2198,8 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->flow_type_rss_offloads = internals->flow_type_rss_offloads;
 
 	dev_info->reta_size = internals->reta_size;
+
+	return 0;
 }
 
 static int

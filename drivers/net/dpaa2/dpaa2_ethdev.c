@@ -243,7 +243,7 @@ dpaa2_fw_version_get(struct rte_eth_dev *dev,
 		return 0;
 }
 
-static void
+static int
 dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
@@ -269,6 +269,8 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_vfs = 0;
 	dev_info->max_vmdq_pools = ETH_16_POOLS;
 	dev_info->flow_type_rss_offloads = DPAA2_RSS_OFFLOAD_ALL;
+
+	return 0;
 }
 
 static int

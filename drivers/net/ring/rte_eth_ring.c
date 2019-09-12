@@ -151,7 +151,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 }
 
 
-static void
+static int
 eth_dev_info(struct rte_eth_dev *dev,
 	     struct rte_eth_dev_info *dev_info)
 {
@@ -162,6 +162,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = (uint16_t)internals->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)internals->max_tx_queues;
 	dev_info->min_rx_bufsize = 0;
+
+	return 0;
 }
 
 static int

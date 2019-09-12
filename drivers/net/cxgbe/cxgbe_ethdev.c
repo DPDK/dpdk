@@ -111,7 +111,7 @@ uint16_t cxgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return work_done;
 }
 
-void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
+int cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 			struct rte_eth_dev_info *device_info)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
@@ -146,6 +146,8 @@ void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 	device_info->rx_desc_lim = cxgbe_desc_lim;
 	device_info->tx_desc_lim = cxgbe_desc_lim;
 	cxgbe_get_speed_caps(pi, &device_info->speed_capa);
+
+	return 0;
 }
 
 void cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
@@ -281,7 +283,9 @@ int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	int err;
 	uint16_t new_mtu = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
-	cxgbe_dev_info_get(eth_dev, &dev_info);
+	err = cxgbe_dev_info_get(eth_dev, &dev_info);
+	if (err != 0)
+		return err;
 
 	/* Must accommodate at least RTE_ETHER_MIN_MTU */
 	if (new_mtu < RTE_ETHER_MIN_MTU || new_mtu > dev_info.max_rx_pktlen)
@@ -587,7 +591,12 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		  __func__, eth_dev->data->nb_rx_queues, queue_idx, nb_desc,
 		  socket_id, mp);
 
-	cxgbe_dev_info_get(eth_dev, &dev_info);
+	err = cxgbe_dev_info_get(eth_dev, &dev_info);
+	if (err != 0) {
+		dev_err(adap, "%s: error during getting ethernet device info",
+			__func__);
+		return err;
+	}
 
 	/* Must accommodate at least RTE_ETHER_MIN_MTU */
 	if ((pkt_len < dev_info.min_rx_bufsize) ||
