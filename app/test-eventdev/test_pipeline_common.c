@@ -159,6 +159,7 @@ int
 pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 {
 	uint16_t i;
+	int ret;
 	uint8_t nb_queues = 1;
 	struct test_pipeline *t = evt_test_priv(test);
 	struct rte_eth_rxconf rx_conf;
@@ -191,7 +192,13 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		if (!(caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT))
 			t->internal_port = 0;
 
-		rte_eth_dev_info_get(i, &dev_info);
+		ret = rte_eth_dev_info_get(i, &dev_info);
+		if (ret != 0) {
+			evt_err("Error during getting device (port %u) info: %s\n",
+				i, strerror(-ret));
+			return ret;
+		}
+
 		rx_conf = dev_info.default_rxconf;
 		rx_conf.offloads = port_conf.rxmode.offloads;
 

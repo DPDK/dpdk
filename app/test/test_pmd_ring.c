@@ -490,10 +490,17 @@ static int
 test_command_line_ring_port(void)
 {
 	int port, cmdl_port0 = -1;
+	int ret;
+
 	/* find a port created with the --vdev=net_ring0 command line option */
 	RTE_ETH_FOREACH_DEV(port) {
 		struct rte_eth_dev_info dev_info;
-		rte_eth_dev_info_get(port, &dev_info);
+
+		ret = rte_eth_dev_info_get(port, &dev_info);
+		TEST_ASSERT((ret == 0),
+				"Error during getting device (port %d) info: %s\n",
+				port, strerror(-ret));
+
 		if (!strcmp(dev_info.driver_name, "Rings PMD")) {
 			printf("found a command line ring port=%d\n", port);
 			cmdl_port0 = port;

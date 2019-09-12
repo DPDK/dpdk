@@ -683,7 +683,12 @@ show_port(void)
 		if (ret == 0)
 			printf("\t  -- mtu (%d)\n", mtu);
 
-		rte_eth_dev_info_get(i, &dev_info);
+		ret = rte_eth_dev_info_get(i, &dev_info);
+		if (ret != 0) {
+			printf("Error during getting device (port %u) info: %s\n",
+				i, strerror(-ret));
+			return;
+		}
 
 		printf("  - queue\n");
 		for (j = 0; j < dev_info.nb_rx_queues; j++) {
@@ -836,7 +841,13 @@ show_tm(void)
 		memset(&cap, 0, sizeof(cap));
 		memset(&error, 0, sizeof(error));
 
-		rte_eth_dev_info_get(i, &dev_info);
+		ret = rte_eth_dev_info_get(i, &dev_info);
+		if (ret != 0) {
+			printf("Error during getting device (port %u) info: %s\n",
+				i, strerror(-ret));
+			return;
+		}
+
 		printf("  - Generic for port (%u)\n"
 			"\t  -- driver name %s\n"
 			"\t  -- max vf (%u)\n"
