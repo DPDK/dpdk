@@ -179,6 +179,7 @@ struct qede_arfs_entry {
 	uint32_t soft_id; /* unused for now */
 	uint16_t pkt_len; /* actual packet length to match */
 	uint16_t rx_queue; /* queue to be steered to */
+	bool is_drop; /* drop action */
 	const struct rte_memzone *mz; /* mz used to hold L2 frame */
 	struct qede_arfs_tuple tuple;
 	SLIST_ENTRY(qede_arfs_entry) list;

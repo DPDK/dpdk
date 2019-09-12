@@ -1782,6 +1782,8 @@ static void __ecore_get_vport_tstats(struct ecore_hwfn *p_hwfn,
 		HILO_64_REGPAIR(tstats.mftag_filter_discard);
 	p_stats->common.mac_filter_discards +=
 		HILO_64_REGPAIR(tstats.eth_mac_filter_discard);
+	p_stats->common.gft_filter_drop +=
+		HILO_64_REGPAIR(tstats.eth_gft_drop_pkt);
 }
 
 static void __ecore_get_vport_ustats_addrlen(struct ecore_hwfn *p_hwfn,
@@ -2140,9 +2142,7 @@ void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t
 ecore_configure_rfs_ntuple_filter(struct ecore_hwfn *p_hwfn,
 				  struct ecore_spq_comp_cb *p_cb,
-				  dma_addr_t p_addr, u16 length,
-				  u16 qid, u8 vport_id,
-				  bool b_is_add)
+				  struct ecore_ntuple_filter_params *p_params)
 {
 	struct rx_update_gft_filter_data *p_ramrod = OSAL_NULL;
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
@@ -2150,14 +2150,6 @@ ecore_configure_rfs_ntuple_filter(struct ecore_hwfn *p_hwfn,
 	u16 abs_rx_q_id = 0;
 	u8 abs_vport_id = 0;
 	enum _ecore_status_t rc = ECORE_NOTIMPL;
-
-	rc = ecore_fw_vport(p_hwfn, vport_id, &abs_vport_id);
-	if (rc != ECORE_SUCCESS)
-		return rc;
-
-	rc = ecore_fw_l2_queue(p_hwfn, qid, &abs_rx_q_id);
-	if (rc != ECORE_SUCCESS)
-		return rc;
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
@@ -2180,27 +2172,41 @@ ecore_configure_rfs_ntuple_filter(struct ecore_hwfn *p_hwfn,
 
 	p_ramrod = &p_ent->ramrod.rx_update_gft;
 
-	DMA_REGPAIR_LE(p_ramrod->pkt_hdr_addr, p_addr);
-	p_ramrod->pkt_hdr_length = OSAL_CPU_TO_LE16(length);
+	DMA_REGPAIR_LE(p_ramrod->pkt_hdr_addr, p_params->addr);
+	p_ramrod->pkt_hdr_length = OSAL_CPU_TO_LE16(p_params->length);
 
-	p_ramrod->action_icid_valid = 0;
-	p_ramrod->action_icid = 0;
+	if (p_params->b_is_drop) {
+		p_ramrod->vport_id = OSAL_CPU_TO_LE16(ETH_GFT_TRASHCAN_VPORT);
+	} else {
+		rc = ecore_fw_vport(p_hwfn, p_params->vport_id,
+				    &abs_vport_id);
+		if (rc)
+			return rc;
 
-	p_ramrod->rx_qid_valid = 1;
-	p_ramrod->rx_qid = OSAL_CPU_TO_LE16(abs_rx_q_id);
+		if (p_params->qid != ECORE_RFS_NTUPLE_QID_RSS) {
+			rc = ecore_fw_l2_queue(p_hwfn, p_params->qid,
+					       &abs_rx_q_id);
+			if (rc)
+				return rc;
+
+			p_ramrod->rx_qid_valid = 1;
+			p_ramrod->rx_qid = OSAL_CPU_TO_LE16(abs_rx_q_id);
+		}
+
+		p_ramrod->vport_id = OSAL_CPU_TO_LE16((u16)abs_vport_id);
+	}
 
 	p_ramrod->flow_id_valid = 0;
 	p_ramrod->flow_id = 0;
 
-	p_ramrod->vport_id = OSAL_CPU_TO_LE16((u16)abs_vport_id);
-	p_ramrod->filter_action = b_is_add ? GFT_ADD_FILTER
-					   : GFT_DELETE_FILTER;
+	p_ramrod->filter_action = p_params->b_is_add ? GFT_ADD_FILTER
+						     : GFT_DELETE_FILTER;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "V[%0x], Q[%04x] - %s filter from 0x%lx [length %04xb]\n",
 		   abs_vport_id, abs_rx_q_id,
-		   b_is_add ? "Adding" : "Removing",
-		   (unsigned long)p_addr, length);
+		   p_params->b_is_add ? "Adding" : "Removing",
+		   (unsigned long)p_params->addr, p_params->length);
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }

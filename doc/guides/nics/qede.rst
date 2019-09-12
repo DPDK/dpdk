@@ -39,6 +39,7 @@ Supported Features
 - GENEVE Tunneling offload
 - VXLAN Tunneling offload
 - MPLSoUDP Tx Tunneling offload
+- Generic flow API
 
 Non-supported Features
 ----------------------
@@ -136,6 +137,44 @@ Driver compilation and testing
 
 Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 for details.
+
+RTE Flow Support
+----------------
+
+QLogic FastLinQ QL4xxxx NICs has support for the following patterns and
+actions.
+
+Patterns:
+
+.. _table_qede_supported_flow_item_types:
+
+.. table:: Item types
+
+   +----+--------------------------------+
+   | #  | Pattern Type                   |
+   +====+================================+
+   | 1  | RTE_FLOW_ITEM_TYPE_IPV4        |
+   +----+--------------------------------+
+   | 2  | RTE_FLOW_ITEM_TYPE_IPV6        |
+   +----+--------------------------------+
+   | 3  | RTE_FLOW_ITEM_TYPE_UDP         |
+   +----+--------------------------------+
+   | 4  | RTE_FLOW_ITEM_TYPE_TCP         |
+   +----+--------------------------------+
+
+Actions:
+
+.. _table_qede_supported_ingress_action_types:
+
+.. table:: Ingress action types
+
+   +----+--------------------------------+
+   | #  | Action Type                    |
+   +====+================================+
+   | 1  | RTE_FLOW_ACTION_TYPE_QUEUE     |
+   +----+--------------------------------+
+   | 2  | RTE_FLOW_ACTION_TYPE_DROP      |
+   +----+--------------------------------+
 
 SR-IOV: Prerequisites and Sample Application Notes
 --------------------------------------------------

@@ -272,6 +272,7 @@ qede_config_arfs_filter(struct rte_eth_dev *eth_dev,
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_ntuple_filter_params params;
 	char mz_name[RTE_MEMZONE_NAMESIZE] = {0};
 	struct qede_arfs_entry *tmp = NULL;
 	const struct rte_memzone *mz;
@@ -344,12 +345,18 @@ qede_config_arfs_filter(struct rte_eth_dev *eth_dev,
 		ecore_arfs_mode_configure(p_hwfn, p_hwfn->p_arfs_ptt,
 					  &qdev->arfs_info.arfs);
 	}
+
+	memset(&params, 0, sizeof(params));
+	params.addr = (dma_addr_t)mz->iova;
+	params.length = pkt_len;
+	params.qid = arfs->rx_queue;
+	params.vport_id = 0;
+	params.b_is_add = add;
+	params.b_is_drop = arfs->is_drop;
+
 	/* configure filter with ECORE_SPQ_MODE_EBLOCK */
 	rc = ecore_configure_rfs_ntuple_filter(p_hwfn, NULL,
-					       (dma_addr_t)mz->iova,
-					       pkt_len,
-					       arfs->rx_queue,
-					       0, add);
+					       &params);
 	if (rc == ECORE_SUCCESS) {
 		if (add) {
 			arfs->pkt_len = pkt_len;
@@ -1371,12 +1378,15 @@ qede_flow_parse_actions(struct rte_eth_dev *dev,
 				flow->entry.rx_queue = queue->index;
 
 			break;
-
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			if (flow)
+				flow->entry.is_drop = true;
+			break;
 		default:
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   actions,
-					   "Action is not supported - only ACTION_TYPE_QUEUE supported");
+					   "Action is not supported - only ACTION_TYPE_QUEUE and ACTION_TYPE_DROP supported");
 			return -rte_errno;
 		}
 	}

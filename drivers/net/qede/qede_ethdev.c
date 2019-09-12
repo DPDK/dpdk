@@ -125,6 +125,8 @@ static const struct rte_qede_xstats_name_off qede_xstats_strings[] = {
 		offsetof(struct ecore_eth_stats_common, mftag_filter_discards)},
 	{"rx_mac_filter_discards",
 		offsetof(struct ecore_eth_stats_common, mac_filter_discards)},
+	{"rx_gft_filter_drop",
+		offsetof(struct ecore_eth_stats_common, gft_filter_drop)},
 	{"rx_hw_buffer_truncates",
 		offsetof(struct ecore_eth_stats_common, brb_truncates)},
 	{"rx_hw_buffer_discards",

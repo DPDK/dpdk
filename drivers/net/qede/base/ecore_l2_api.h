@@ -448,6 +448,31 @@ void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
 			       struct ecore_ptt *p_ptt,
 			       struct ecore_arfs_config_params *p_cfg_params);
 
+struct ecore_ntuple_filter_params {
+	/* Physically mapped address containing header of buffer to be used
+	 * as filter.
+	 */
+	dma_addr_t addr;
+
+	/* Length of header in bytes */
+	u16 length;
+
+	/* Relative queue-id to receive classified packet */
+	#define ECORE_RFS_NTUPLE_QID_RSS ((u16)-1)
+	u16 qid;
+
+	/* Identifier can either be according to vport-id or vfid */
+	bool b_is_vf;
+	u8 vport_id;
+	u8 vf_id;
+
+	/* true if this filter is to be added. Else to be removed */
+	bool b_is_add;
+
+	/* If packet needs to be dropped */
+	bool b_is_drop;
+};
+
 /**
  * @brief - ecore_configure_rfs_ntuple_filter
  *
@@ -457,22 +482,12 @@ void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
  * @params p_cb		Used for ECORE_SPQ_MODE_CB,where client would initialize
  *			it with cookie and callback function address, if not
  *			using this mode then client must pass NULL.
- * @params p_addr	p_addr is an actual packet header that needs to be
- *			filter. It has to mapped with IO to read prior to
- *			calling this, [contains 4 tuples- src ip, dest ip,
- *			src port, dest port].
- * @params length	length of p_addr header up to past the transport header.
- * @params qid		receive packet will be directed to this queue.
- * @params vport_id
- * @params b_is_add	flag to add or remove filter.
- *
+ * @params p_params
  */
 enum _ecore_status_t
 ecore_configure_rfs_ntuple_filter(struct ecore_hwfn *p_hwfn,
 				  struct ecore_spq_comp_cb *p_cb,
-				  dma_addr_t p_addr, u16 length,
-				  u16 qid, u8 vport_id,
-				  bool b_is_add);
+				  struct ecore_ntuple_filter_params *p_params);
 
 /**
  * @brief - ecore_update_eth_rss_ind_table_entry
