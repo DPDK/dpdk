@@ -866,6 +866,7 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 {
 	struct sub_device *sdev;
 	uint8_t i;
+	int ret;
 
 	/* Use maximum upper bounds by default */
 	infos->max_rx_pktlen = UINT32_MAX;
@@ -933,7 +934,10 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
 		struct rte_eth_dev_info sub_info;
 
-		rte_eth_dev_info_get(PORT_ID(sdev), &sub_info);
+		ret = rte_eth_dev_info_get(PORT_ID(sdev), &sub_info);
+		ret = fs_err(sdev, ret);
+		if (ret != 0)
+			return;
 
 		fs_dev_merge_info(infos, &sub_info);
 	}
