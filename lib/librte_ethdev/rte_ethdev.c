@@ -2936,7 +2936,7 @@ rte_eth_dev_get_vlan_offload(uint16_t port_id)
 		ret |= ETH_VLAN_EXTEND_OFFLOAD;
 
 	if (*dev_offloads & DEV_RX_OFFLOAD_QINQ_STRIP)
-		ret |= DEV_RX_OFFLOAD_QINQ_STRIP;
+		ret |= ETH_QINQ_STRIP_OFFLOAD;
 
 	return ret;
 }
