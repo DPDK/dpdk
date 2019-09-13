@@ -8,18 +8,19 @@ default_path=$PATH
 # - ARMV8_CRYPTO_LIB_PATH
 # - DPDK_BUILD_TEST_CONFIGS (defconfig1+option1+option2 defconfig2)
 # - DPDK_DEP_ARCHIVE
+# - DPDK_DEP_BPF (y/[n])
 # - DPDK_DEP_CFLAGS
 # - DPDK_DEP_ELF (y/[n])
 # - DPDK_DEP_ISAL (y/[n])
 # - DPDK_DEP_JSON (y/[n])
 # - DPDK_DEP_LDFLAGS
 # - DPDK_DEP_MLX (y/[n])
+# - DPDK_DEP_NFB (y/[n])
 # - DPDK_DEP_NUMA ([y]/n)
 # - DPDK_DEP_PCAP (y/[n])
 # - DPDK_DEP_SSL (y/[n])
 # - DPDK_DEP_IPSEC_MB (y/[n])
 # - DPDK_DEP_SZE (y/[n])
-# - DPDK_DEP_NFB (y/[n])
 # - DPDK_DEP_ZLIB (y/[n])
 # - DPDK_MAKE_JOBS (int)
 # - DPDK_NOTIFY (notify-send)
@@ -101,12 +102,14 @@ reset_env ()
 	export PATH=$default_path
 	unset CROSS
 	unset DPDK_DEP_ARCHIVE
+	unset DPDK_DEP_BPF
 	unset DPDK_DEP_CFLAGS
 	unset DPDK_DEP_ELF
 	unset DPDK_DEP_ISAL
 	unset DPDK_DEP_JSON
 	unset DPDK_DEP_LDFLAGS
 	unset DPDK_DEP_MLX
+	unset DPDK_DEP_NFB
 	unset DPDK_DEP_NUMA
 	unset DPDK_DEP_PCAP
 	unset DPDK_DEP_SSL
@@ -154,10 +157,14 @@ config () # <directory> <target> <options>
 		sed -ri=""             's,(BYPASS=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ARCHIVE" != y || \
 		sed -ri=""       's,(RESOURCE_TAR=)n,\1y,' $1/.config
+		test "$DPDK_DEP_BPF" != y || \
+		sed -ri=""         's,(PMD_AF_XDP=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ISAL" != y || \
 		sed -ri=""           's,(PMD_ISAL=)n,\1y,' $1/.config
 		test "$DPDK_DEP_MLX" != y || \
 		sed -ri=""           's,(MLX._PMD=)n,\1y,' $1/.config
+		test "$DPDK_DEP_NFB" != y || \
+		sed -ri=""            's,(NFB_PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SZE" != y || \
 		sed -ri=""       's,(PMD_SZEDATA2=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ZLIB" != y || \
