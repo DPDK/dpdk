@@ -28,6 +28,11 @@ else
 	echo "ERROR: ninja is not found" >&2
 	exit 1
 fi
+if command -v ccache >/dev/null 2>&1 ; then
+	CCACHE=ccache
+else
+	CCACHE=
+fi
 
 default_path=$PATH
 default_pkgpath=$PKG_CONFIG_PATH
@@ -46,7 +51,7 @@ build () # <directory> <target compiler> <meson options>
 	targetcc=$1
 	shift
 	# skip build if compiler not available
-	command -v $CC >/dev/null 2>&1 || return 0
+	command -v ${CC##* } >/dev/null 2>&1 || return 0
 	command -v $targetcc >/dev/null 2>&1 || return 0
 	reset_env
 	DPDK_TARGET=$($targetcc -v 2>&1 | sed -n 's,^Target: ,,p')
@@ -90,7 +95,7 @@ fi
 for c in gcc clang ; do
 	command -v $c >/dev/null 2>&1 || continue
 	for s in static shared ; do
-		export CC="ccache $c"
+		export CC="$CCACHE $c"
 		build build-$c-$s $c --default-library=$s
 	done
 done
@@ -112,7 +117,7 @@ build build-arm64-host-clang $c $use_shared \
 	--cross-file $srcdir/config/arm/arm64_armv8_linux_gcc
 # all gcc/arm configurations
 for f in $srcdir/config/arm/arm*gcc ; do
-	export CC="ccache gcc"
+	export CC="$CCACHE gcc"
 	build build-$(basename $f | tr '_' '-' | cut -d'-' -f-2) $c \
 		$use_shared --cross-file $f
 done
