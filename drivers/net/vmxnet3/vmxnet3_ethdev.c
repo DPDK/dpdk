@@ -1150,7 +1150,7 @@ vmxnet3_dev_stats_reset(struct rte_eth_dev *dev)
 }
 
 static int
-vmxnet3_dev_info_get(struct rte_eth_dev *dev __rte_unused,
+vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 		     struct rte_eth_dev_info *dev_info)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
