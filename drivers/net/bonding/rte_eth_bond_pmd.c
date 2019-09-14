@@ -2487,6 +2487,8 @@ bond_ethdev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
 	int i;
+	int ret = 0;
+	uint16_t port_id;
 
 	switch (internals->mode) {
 	/* Promiscuous mode is propagated to all slaves */
@@ -2495,9 +2497,13 @@ bond_ethdev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 	case BONDING_MODE_BROADCAST:
 	case BONDING_MODE_8023AD:
 		for (i = 0; i < internals->slave_count; i++) {
-			uint16_t port_id = internals->slaves[i].port_id;
+			port_id = internals->slaves[i].port_id;
 
-			rte_eth_promiscuous_enable(port_id);
+			ret = rte_eth_promiscuous_enable(port_id);
+			if (ret != 0)
+				RTE_BOND_LOG(ERR,
+					"Failed to enable promiscuous mode for port %u: %s",
+					port_id, rte_strerror(-ret));
 		}
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
@@ -2508,7 +2514,12 @@ bond_ethdev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 		/* Do not touch promisc when there cannot be primary ports */
 		if (internals->slave_count == 0)
 			break;
-		rte_eth_promiscuous_enable(internals->current_primary_port);
+		port_id = internals->current_primary_port;
+		ret = rte_eth_promiscuous_enable(port_id);
+		if (ret != 0)
+			RTE_BOND_LOG(ERR,
+				"Failed to enable promiscuous mode for port %u: %s",
+				port_id, rte_strerror(-ret));
 	}
 }
 
@@ -2517,6 +2528,8 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 	int i;
+	int ret;
+	uint16_t port_id;
 
 	switch (internals->mode) {
 	/* Promiscuous mode is propagated to all slaves */
@@ -2525,13 +2538,17 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 	case BONDING_MODE_BROADCAST:
 	case BONDING_MODE_8023AD:
 		for (i = 0; i < internals->slave_count; i++) {
-			uint16_t port_id = internals->slaves[i].port_id;
+			port_id = internals->slaves[i].port_id;
 
 			if (internals->mode == BONDING_MODE_8023AD &&
 			    bond_mode_8023ad_ports[port_id].forced_rx_flags ==
 					BOND_8023AD_FORCED_PROMISC)
 				continue;
-			rte_eth_promiscuous_disable(port_id);
+			ret = rte_eth_promiscuous_disable(port_id);
+			if (ret != 0)
+				RTE_BOND_LOG(ERR,
+					"Failed to disable promiscuous mode for port %u: %s",
+					port_id, rte_strerror(-ret));
 		}
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
@@ -2542,7 +2559,12 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 		/* Do not touch promisc when there cannot be primary ports */
 		if (internals->slave_count == 0)
 			break;
-		rte_eth_promiscuous_disable(internals->current_primary_port);
+		port_id = internals->current_primary_port;
+		ret = rte_eth_promiscuous_disable(port_id);
+		if (ret != 0)
+			RTE_BOND_LOG(ERR,
+				"Failed to disable promiscuous mode for port %u: %s",
+				port_id, rte_strerror(-ret));
 	}
 }
 

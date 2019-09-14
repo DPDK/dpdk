@@ -913,6 +913,8 @@ bond_mode_8023ad_periodic_cb(void *arg)
 static int
 bond_mode_8023ad_register_lacp_mac(uint16_t slave_id)
 {
+	int ret;
+
 	rte_eth_allmulticast_enable(slave_id);
 	if (rte_eth_allmulticast_get(slave_id)) {
 		RTE_BOND_LOG(DEBUG, "forced allmulti for port %u",
@@ -922,7 +924,12 @@ bond_mode_8023ad_register_lacp_mac(uint16_t slave_id)
 		return 0;
 	}
 
-	rte_eth_promiscuous_enable(slave_id);
+	ret = rte_eth_promiscuous_enable(slave_id);
+	if (ret != 0) {
+		RTE_BOND_LOG(ERR,
+			"failed to enable promiscuous mode for port %u: %s",
+			slave_id, rte_strerror(-ret));
+	}
 	if (rte_eth_promiscuous_get(slave_id)) {
 		RTE_BOND_LOG(DEBUG, "forced promiscuous for port %u",
 			     slave_id);
@@ -937,6 +944,8 @@ bond_mode_8023ad_register_lacp_mac(uint16_t slave_id)
 static void
 bond_mode_8023ad_unregister_lacp_mac(uint16_t slave_id)
 {
+	int ret;
+
 	switch (bond_mode_8023ad_ports[slave_id].forced_rx_flags) {
 	case BOND_8023AD_FORCED_ALLMULTI:
 		RTE_BOND_LOG(DEBUG, "unset allmulti for port %u", slave_id);
@@ -945,7 +954,11 @@ bond_mode_8023ad_unregister_lacp_mac(uint16_t slave_id)
 
 	case BOND_8023AD_FORCED_PROMISC:
 		RTE_BOND_LOG(DEBUG, "unset promisc for port %u", slave_id);
-		rte_eth_promiscuous_disable(slave_id);
+		ret = rte_eth_promiscuous_disable(slave_id);
+		if (ret != 0)
+			RTE_BOND_LOG(ERR,
+				"failed to disable promiscuous mode for port %u: %s",
+				slave_id, rte_strerror(-ret));
 		break;
 
 	default:
