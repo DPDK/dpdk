@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-dep = cc.find_library('sze2', required: false)
+dep = dependency('libsze2', required: false)
 build = dep.found()
 reason = 'missing dependency, "libsze2"'
 ext_deps += dep
