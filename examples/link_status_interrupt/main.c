@@ -689,7 +689,11 @@ main(int argc, char **argv)
 				  ret, (unsigned) portid);
 		printf("done:\n");
 
-		rte_eth_promiscuous_enable(portid);
+		ret = rte_eth_promiscuous_enable(portid);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"rte_eth_promiscuous_enable: err=%s, port=%u\n",
+				rte_strerror(-ret), portid);
 
 		printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
 				(unsigned) portid,

@@ -440,7 +440,11 @@ app_init_nics(void)
 		if (ret < 0) {
 			rte_panic("Cannot init NIC port %u (%d)\n", port, ret);
 		}
-		rte_eth_promiscuous_enable(port);
+
+		ret = rte_eth_promiscuous_enable(port);
+		if (ret != 0)
+			rte_panic("Cannot enable promiscuous mode on port %u (%s)\n",
+				port, rte_strerror(-ret));
 
 		nic_rx_ring_size = app.nic_rx_ring_size;
 		nic_tx_ring_size = app.nic_tx_ring_size;

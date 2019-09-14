@@ -150,7 +150,9 @@ init_port(uint16_t port_num)
 			return retval;
 	}
 
-	rte_eth_promiscuous_enable(port_num);
+	retval = rte_eth_promiscuous_enable(port_num);
+	if (retval != 0)
+		return retval;
 
 	retval = rte_eth_dev_start(port_num);
 	if (retval < 0)

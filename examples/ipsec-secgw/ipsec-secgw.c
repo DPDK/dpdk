@@ -2470,8 +2470,13 @@ main(int32_t argc, char **argv)
 		 * to itself through 2 cross-connected  ports of the
 		 * target machine.
 		 */
-		if (promiscuous_on)
-			rte_eth_promiscuous_enable(portid);
+		if (promiscuous_on) {
+			ret = rte_eth_promiscuous_enable(portid);
+			if (ret != 0)
+				rte_exit(EXIT_FAILURE,
+					"rte_eth_promiscuous_enable: err=%s, port=%d\n",
+					rte_strerror(-ret), portid);
+		}
 
 		rte_eth_dev_callback_register(portid,
 			RTE_ETH_EVENT_IPSEC, inline_ipsec_event_callback, NULL);

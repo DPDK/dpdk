@@ -439,9 +439,17 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d start error (%d)\n", port_tx, ret);
 
-	rte_eth_promiscuous_enable(port_rx);
+	ret = rte_eth_promiscuous_enable(port_rx);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Port %d promiscuous mode enable error (%s)\n",
+			port_rx, rte_strerror(-ret));
 
-	rte_eth_promiscuous_enable(port_tx);
+	ret = rte_eth_promiscuous_enable(port_tx);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Port %d promiscuous mode enable error (%s)\n",
+			port_rx, rte_strerror(-ret));
 
 	/* App configuration */
 	ret = app_configure_flow_table();

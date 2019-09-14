@@ -103,7 +103,11 @@ void configure_eth_port(uint16_t port_id)
 				(unsigned int) port_id, ret);
 
 	/* Put it in promiscuous mode */
-	rte_eth_promiscuous_enable(port_id);
+	ret = rte_eth_promiscuous_enable(port_id);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Failed to enable promiscuous mode for port %u: %s\n",
+			port_id, rte_strerror(-ret));
 }
 
 void

@@ -261,7 +261,11 @@ int main(int argc, char *argv[])
 			rte_exit(EXIT_FAILURE, "Couldn't setup port %hhu\n",
 				ports.p[i].id);
 
-		rte_eth_promiscuous_enable(ports.p[i].id);
+		err = rte_eth_promiscuous_enable(ports.p[i].id);
+		if (err != 0)
+			rte_exit(EXIT_FAILURE,
+				"Couldn't enable promiscuous mode on port %u: %s\n",
+				ports.p[i].id, rte_strerror(-err));
 	}
 
 	for (i = 0; i != ports.num; i++) {

@@ -336,8 +336,15 @@ port_init(uint16_t port)
 		return retval;
 	}
 
-	if (promiscuous)
-		rte_eth_promiscuous_enable(port);
+	if (promiscuous) {
+		retval = rte_eth_promiscuous_enable(port);
+		if (retval != 0) {
+			RTE_LOG(ERR, VHOST_PORT,
+				"Failed to enable promiscuous mode on port %u: %s\n",
+				port, rte_strerror(-retval));
+			return retval;
+		}
+	}
 
 	rte_eth_macaddr_get(port, &vmdq_ports_eth_addr[port]);
 	RTE_LOG(INFO, VHOST_PORT, "Max virtio devices supported: %u\n", num_devices);

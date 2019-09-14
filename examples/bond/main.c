@@ -299,7 +299,13 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 			rte_exit(-1, "\nFailed to activate slaves\n");
 	}
 
-	rte_eth_promiscuous_enable(BOND_PORT);
+	retval = rte_eth_promiscuous_enable(BOND_PORT);
+	if (retval != 0) {
+		rte_exit(EXIT_FAILURE,
+				"port %u: promiscuous mode enable failed: %s\n",
+				BOND_PORT, rte_strerror(-retval));
+		return;
+	}
 
 	struct rte_ether_addr addr;
 

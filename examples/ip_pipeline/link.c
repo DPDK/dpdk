@@ -176,8 +176,11 @@ link_create(const char *name, struct link_params *params)
 	if (status < 0)
 		return NULL;
 
-	if (params->promiscuous)
-		rte_eth_promiscuous_enable(port_id);
+	if (params->promiscuous) {
+		status = rte_eth_promiscuous_enable(port_id);
+		if (status != 0)
+			return NULL;
+	}
 
 	/* Port RX */
 	for (i = 0; i < params->rx.n_queues; i++) {

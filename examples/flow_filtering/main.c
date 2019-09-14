@@ -180,7 +180,12 @@ init_port(void)
 		}
 	}
 
-	rte_eth_promiscuous_enable(port_id);
+	ret = rte_eth_promiscuous_enable(port_id);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			":: promiscuous mode enable failed: err=%s, port=%u\n",
+			rte_strerror(-ret), port_id);
+
 	ret = rte_eth_dev_start(port_id);
 	if (ret < 0) {
 		rte_exit(EXIT_FAILURE,

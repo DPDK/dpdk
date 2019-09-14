@@ -2574,7 +2574,12 @@ initialize_ports(struct l2fwd_crypto_options *options)
 			return -1;
 		}
 
-		rte_eth_promiscuous_enable(portid);
+		retval = rte_eth_promiscuous_enable(portid);
+		if (retval != 0) {
+			printf("rte_eth_promiscuous_enable:err=%s, port=%u\n",
+				rte_strerror(-retval), portid);
+			return -1;
+		}
 
 		rte_eth_macaddr_get(portid, &l2fwd_ports_eth_addr[portid]);
 

@@ -473,7 +473,10 @@ init_port(uint16_t port)
 	if (ret < 0)
 		FATAL_ERROR("Could not start port%u (%d)", port, ret);
 
-	rte_eth_promiscuous_enable(port);
+	ret = rte_eth_promiscuous_enable(port);
+	if (ret != 0)
+		FATAL_ERROR("Could not enable promiscuous mode for port%u (%s)",
+			    port, rte_strerror(-ret));
 }
 
 /* Check the link status of all ports in up to 9s, and print them finally */

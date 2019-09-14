@@ -477,7 +477,12 @@ initialize_ports(struct app_config_params *app_params,
 		}
 	}
 
-	rte_eth_promiscuous_enable(port_id);
+	ret = rte_eth_promiscuous_enable(port_id);
+	if (ret != 0) {
+		printf("Cannot enable promiscuous mode: err=%s, port=%u\n",
+			rte_strerror(-ret), port_id);
+		return ret;
+	}
 
 	rte_eth_macaddr_get(port_id, &bbdev_port_eth_addr);
 	print_mac(port_id, &bbdev_port_eth_addr);

@@ -247,7 +247,12 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	}
 
 	/* Enable RX in promiscuous mode for the Ethernet device. */
-	rte_eth_promiscuous_enable(port);
+	retval = rte_eth_promiscuous_enable(port);
+	if (retval != 0) {
+		printf("Promiscuous mode enable failed: %s\n",
+			rte_strerror(-retval));
+		return retval;
+	}
 
 	return 0;
 }
