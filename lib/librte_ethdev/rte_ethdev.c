@@ -1391,16 +1391,24 @@ rte_eth_dev_config_restore(struct rte_eth_dev *dev,
 		rte_eth_dev_mac_restore(dev, dev_info);
 
 	/* replay promiscuous configuration */
-	if (rte_eth_promiscuous_get(port_id) == 1) {
-		ret = rte_eth_promiscuous_enable(port_id);
+	/*
+	 * use callbacks directly since we don't need port_id check and
+	 * would like to bypass the same value set
+	 */
+	if (rte_eth_promiscuous_get(port_id) == 1 &&
+	    *dev->dev_ops->promiscuous_enable != NULL) {
+		ret = eth_err(port_id,
+			      (*dev->dev_ops->promiscuous_enable)(dev));
 		if (ret != 0 && ret != -ENOTSUP) {
 			RTE_ETHDEV_LOG(ERR,
 				"Failed to enable promiscuous mode for device (port %u): %s\n",
 				port_id, rte_strerror(-ret));
 			return ret;
 		}
-	} else if (rte_eth_promiscuous_get(port_id) == 0) {
-		ret = rte_eth_promiscuous_disable(port_id);
+	} else if (rte_eth_promiscuous_get(port_id) == 0 &&
+		   *dev->dev_ops->promiscuous_disable != NULL) {
+		ret = eth_err(port_id,
+			      (*dev->dev_ops->promiscuous_disable)(dev));
 		if (ret != 0 && ret != -ENOTSUP) {
 			RTE_ETHDEV_LOG(ERR,
 				"Failed to disable promiscuous mode for device (port %u): %s\n",
@@ -1892,16 +1900,17 @@ int
 rte_eth_promiscuous_enable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
-	uint8_t old_promiscuous;
-	int diag;
+	int diag = 0;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->promiscuous_enable, -ENOTSUP);
-	old_promiscuous = dev->data->promiscuous;
-	diag = (*dev->dev_ops->promiscuous_enable)(dev);
-	dev->data->promiscuous = (diag == 0) ? 1 : old_promiscuous;
+
+	if (dev->data->promiscuous == 0) {
+		diag = (*dev->dev_ops->promiscuous_enable)(dev);
+		dev->data->promiscuous = (diag == 0) ? 1 : 0;
+	}
 
 	return eth_err(port_id, diag);
 }
@@ -1910,18 +1919,19 @@ int
 rte_eth_promiscuous_disable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
-	uint8_t old_promiscuous;
-	int diag;
+	int diag = 0;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->promiscuous_disable, -ENOTSUP);
-	old_promiscuous = dev->data->promiscuous;
-	dev->data->promiscuous = 0;
-	diag = (*dev->dev_ops->promiscuous_disable)(dev);
-	if (diag != 0)
-		dev->data->promiscuous = old_promiscuous;
+
+	if (dev->data->promiscuous == 1) {
+		dev->data->promiscuous = 0;
+		diag = (*dev->dev_ops->promiscuous_disable)(dev);
+		if (diag != 0)
+			dev->data->promiscuous = 1;
+	}
 
 	return eth_err(port_id, diag);
 }
