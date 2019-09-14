@@ -149,7 +149,9 @@ Forwarding application is shown below:
             return retval;
 
         /* Enable RX in promiscuous mode for the Ethernet device. */
-        rte_eth_promiscuous_enable(port);
+        retval = rte_eth_promiscuous_enable(port);
+        if (retval != 0)
+            return retval;
 
         return 0;
     }
@@ -177,7 +179,7 @@ Finally the RX port is set in promiscuous mode:
 
 .. code-block:: c
 
-        rte_eth_promiscuous_enable(port);
+        retval = rte_eth_promiscuous_enable(port);
 
 
 The Lcores Main

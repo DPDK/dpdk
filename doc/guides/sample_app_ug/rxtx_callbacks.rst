@@ -117,8 +117,9 @@ comments:
             return retval;
 
         /* Enable RX in promiscuous mode for the Ethernet device. */
-        rte_eth_promiscuous_enable(port);
-
+        retval = rte_eth_promiscuous_enable(port);
+        if (retval != 0)
+            return retval;
 
         /* Add the callbacks for RX and TX.*/
         rte_eth_add_rx_callback(port, 0, add_timestamps, NULL);

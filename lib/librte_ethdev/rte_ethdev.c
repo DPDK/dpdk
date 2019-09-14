@@ -1381,24 +1381,41 @@ rte_eth_dev_mac_restore(struct rte_eth_dev *dev,
 	}
 }
 
-static void
+static int
 rte_eth_dev_config_restore(struct rte_eth_dev *dev,
 			   struct rte_eth_dev_info *dev_info, uint16_t port_id)
 {
+	int ret;
+
 	if (!(*dev_info->dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR))
 		rte_eth_dev_mac_restore(dev, dev_info);
 
 	/* replay promiscuous configuration */
-	if (rte_eth_promiscuous_get(port_id) == 1)
-		rte_eth_promiscuous_enable(port_id);
-	else if (rte_eth_promiscuous_get(port_id) == 0)
-		rte_eth_promiscuous_disable(port_id);
+	if (rte_eth_promiscuous_get(port_id) == 1) {
+		ret = rte_eth_promiscuous_enable(port_id);
+		if (ret != 0 && ret != -ENOTSUP) {
+			RTE_ETHDEV_LOG(ERR,
+				"Failed to enable promiscuous mode for device (port %u): %s\n",
+				port_id, rte_strerror(-ret));
+			return ret;
+		}
+	} else if (rte_eth_promiscuous_get(port_id) == 0) {
+		ret = rte_eth_promiscuous_disable(port_id);
+		if (ret != 0 && ret != -ENOTSUP) {
+			RTE_ETHDEV_LOG(ERR,
+				"Failed to disable promiscuous mode for device (port %u): %s\n",
+				port_id, rte_strerror(-ret));
+			return ret;
+		}
+	}
 
 	/* replay all multicast configuration */
 	if (rte_eth_allmulticast_get(port_id) == 1)
 		rte_eth_allmulticast_enable(port_id);
 	else if (rte_eth_allmulticast_get(port_id) == 0)
 		rte_eth_allmulticast_disable(port_id);
+
+	return 0;
 }
 
 int
@@ -1436,7 +1453,14 @@ rte_eth_dev_start(uint16_t port_id)
 	else
 		return eth_err(port_id, diag);
 
-	rte_eth_dev_config_restore(dev, &dev_info, port_id);
+	ret = rte_eth_dev_config_restore(dev, &dev_info, port_id);
+	if (ret != 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Error during restoring configuration for device (port %u): %s\n",
+			port_id, rte_strerror(-ret));
+		rte_eth_dev_stop(port_id);
+		return ret;
+	}
 
 	if (dev->data->dev_conf.intr_conf.lsc == 0) {
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->link_update, -ENOTSUP);
@@ -1864,30 +1888,34 @@ rte_eth_tx_done_cleanup(uint16_t port_id, uint16_t queue_id, uint32_t free_cnt)
 	return eth_err(port_id, ret);
 }
 
-void
+int
 rte_eth_promiscuous_enable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
-	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->promiscuous_enable);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->promiscuous_enable, -ENOTSUP);
 	(*dev->dev_ops->promiscuous_enable)(dev);
 	dev->data->promiscuous = 1;
+
+	return 0;
 }
 
-void
+int
 rte_eth_promiscuous_disable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
-	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->promiscuous_disable);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->promiscuous_disable, -ENOTSUP);
 	dev->data->promiscuous = 0;
 	(*dev->dev_ops->promiscuous_disable)(dev);
+
+	return 0;
 }
 
 int

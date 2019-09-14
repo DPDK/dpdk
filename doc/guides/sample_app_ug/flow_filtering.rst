@@ -193,7 +193,13 @@ application is shown below:
                    }
           }
 
-           rte_eth_promiscuous_enable(port_id);
+           ret = rte_eth_promiscuous_enable(port_id);
+           if (ret != 0) {
+                   rte_exit(EXIT_FAILURE,
+                           ":: cannot enable promiscuous mode: err=%d, port=%u\n",
+                           ret, port_id);
+           }
+
            ret = rte_eth_dev_start(port_id);
            if (ret < 0) {
                    rte_exit(EXIT_FAILURE,
@@ -278,7 +284,12 @@ We are setting the RX port to promiscuous mode:
 
 .. code-block:: c
 
-   rte_eth_promiscuous_enable(port_id);
+   ret = rte_eth_promiscuous_enable(port_id);
+   if (ret != 0) {
+        rte_exit(EXIT_FAILURE,
+                 ":: cannot enable promiscuous mode: err=%d, port=%u\n",
+                 ret, port_id);
+   }
 
 The last step is to start the port.
 

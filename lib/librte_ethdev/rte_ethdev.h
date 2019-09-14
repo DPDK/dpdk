@@ -2022,16 +2022,26 @@ int rte_eth_dev_reset(uint16_t port_id);
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if support for promiscuous_enable() does not exist
+ *     for the device.
+ *   - (-ENODEV) if *port_id* invalid.
  */
-void rte_eth_promiscuous_enable(uint16_t port_id);
+int rte_eth_promiscuous_enable(uint16_t port_id);
 
 /**
  * Disable receipt in promiscuous mode for an Ethernet device.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if support for promiscuous_disable() does not exist
+ *     for the device.
+ *   - (-ENODEV) if *port_id* invalid.
  */
-void rte_eth_promiscuous_disable(uint16_t port_id);
+int rte_eth_promiscuous_disable(uint16_t port_id);
 
 /**
  * Return the value of promiscuous mode for an Ethernet device.
