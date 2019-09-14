@@ -636,8 +636,13 @@ init_port(uint16_t port)
 		rte_exit(EXIT_FAILURE, "Could not start port%u (%d)\n",
 						(unsigned)port, ret);
 
-	if (promiscuous_on)
-		rte_eth_promiscuous_enable(port);
+	if (promiscuous_on) {
+		ret = rte_eth_promiscuous_enable(port);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Could not enable promiscuous mode for port%u: %s\n",
+				port, rte_strerror(-ret));
+	}
 }
 
 /* Check the link status of all ports in up to 9s, and print them finally */

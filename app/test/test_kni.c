@@ -601,7 +601,12 @@ test_kni(void)
 		printf("fail to start port %d\n", port_id);
 		return -1;
 	}
-	rte_eth_promiscuous_enable(port_id);
+	ret = rte_eth_promiscuous_enable(port_id);
+	if (ret != 0) {
+		printf("fail to enable promiscuous mode for port %d: %s\n",
+			port_id, rte_strerror(-ret));
+		return -1;
+	}
 
 	/* basic test of kni processing */
 	fd = fopen(KNI_MODULE_PARAM_LO, "r");
