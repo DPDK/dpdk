@@ -37,11 +37,15 @@ fi
 default_path=$PATH
 default_pkgpath=$PKG_CONFIG_PATH
 
-reset_env ()
+load_env () # <target compiler>
 {
+	targetcc=$1
 	export PATH=$default_path
 	export PKG_CONFIG_PATH=$default_pkgpath
 	unset DPDK_MESON_OPTIONS
+	command -v $targetcc >/dev/null 2>&1 || return 1
+	DPDK_TARGET=$($targetcc -v 2>&1 | sed -n 's,^Target: ,,p')
+	. $srcdir/devtools/load-devel-config
 }
 
 build () # <directory> <target compiler> <meson options>
@@ -52,10 +56,7 @@ build () # <directory> <target compiler> <meson options>
 	shift
 	# skip build if compiler not available
 	command -v ${CC##* } >/dev/null 2>&1 || return 0
-	command -v $targetcc >/dev/null 2>&1 || return 0
-	reset_env
-	DPDK_TARGET=$($targetcc -v 2>&1 | sed -n 's,^Target: ,,p')
-	. $srcdir/devtools/load-devel-config
+	load_env $targetcc || return 0
 	if [ ! -f "$builddir/build.ninja" ] ; then
 		options="--werror -Dexamples=all"
 		for option in $DPDK_MESON_OPTIONS ; do
@@ -128,6 +129,7 @@ build_path=build-x86-default
 export DESTDIR=$(pwd)/$build_path/install-root
 $ninja_cmd -C $build_path install
 
+load_env cc
 pc_file=$(find $DESTDIR -name libdpdk.pc)
 export PKG_CONFIG_PATH=$(dirname $pc_file):$PKG_CONFIG_PATH
 
