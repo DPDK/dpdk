@@ -85,8 +85,8 @@ static int nfp_net_infos_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static int nfp_net_init(struct rte_eth_dev *eth_dev);
 static int nfp_net_link_update(struct rte_eth_dev *dev, int wait_to_complete);
-static void nfp_net_promisc_enable(struct rte_eth_dev *dev);
-static void nfp_net_promisc_disable(struct rte_eth_dev *dev);
+static int nfp_net_promisc_enable(struct rte_eth_dev *dev);
+static int nfp_net_promisc_disable(struct rte_eth_dev *dev);
 static int nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq);
 static uint32_t nfp_net_rx_queue_count(struct rte_eth_dev *dev,
 				       uint16_t queue_idx);
@@ -931,11 +931,12 @@ nfp_net_close(struct rte_eth_dev *dev)
 	 */
 }
 
-static void
+static int
 nfp_net_promisc_enable(struct rte_eth_dev *dev)
 {
 	uint32_t new_ctrl, update = 0;
 	struct nfp_net_hw *hw;
+	int ret;
 
 	PMD_DRV_LOG(DEBUG, "Promiscuous mode enable");
 
@@ -943,12 +944,12 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 
 	if (!(hw->cap & NFP_NET_CFG_CTRL_PROMISC)) {
 		PMD_INIT_LOG(INFO, "Promiscuous mode not supported");
-		return;
+		return -ENOTSUP;
 	}
 
 	if (hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) {
 		PMD_DRV_LOG(INFO, "Promiscuous mode already enabled");
-		return;
+		return 0;
 	}
 
 	new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_PROMISC;
@@ -958,23 +959,27 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	 * DPDK sets promiscuous mode on just after this call assuming
 	 * it can not fail ...
 	 */
-	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
-		return;
+	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	if (ret < 0)
+		return ret;
 
 	hw->ctrl = new_ctrl;
+
+	return 0;
 }
 
-static void
+static int
 nfp_net_promisc_disable(struct rte_eth_dev *dev)
 {
 	uint32_t new_ctrl, update = 0;
 	struct nfp_net_hw *hw;
+	int ret;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) == 0) {
 		PMD_DRV_LOG(INFO, "Promiscuous mode already disabled");
-		return;
+		return 0;
 	}
 
 	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_PROMISC;
@@ -984,10 +989,13 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 	 * DPDK sets promiscuous mode off just before this call
 	 * assuming it can not fail ...
 	 */
-	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
-		return;
+	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	if (ret < 0)
+		return ret;
 
 	hw->ctrl = new_ctrl;
+
+	return 0;
 }
 
 /*

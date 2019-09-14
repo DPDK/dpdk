@@ -35,8 +35,8 @@ static int eth_em_configure(struct rte_eth_dev *dev);
 static int eth_em_start(struct rte_eth_dev *dev);
 static void eth_em_stop(struct rte_eth_dev *dev);
 static void eth_em_close(struct rte_eth_dev *dev);
-static void eth_em_promiscuous_enable(struct rte_eth_dev *dev);
-static void eth_em_promiscuous_disable(struct rte_eth_dev *dev);
+static int eth_em_promiscuous_enable(struct rte_eth_dev *dev);
+static int eth_em_promiscuous_disable(struct rte_eth_dev *dev);
 static void eth_em_allmulticast_enable(struct rte_eth_dev *dev);
 static void eth_em_allmulticast_disable(struct rte_eth_dev *dev);
 static int eth_em_link_update(struct rte_eth_dev *dev,
@@ -1263,7 +1263,7 @@ em_release_manageability(struct e1000_hw *hw)
 	}
 }
 
-static void
+static int
 eth_em_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
@@ -1273,9 +1273,11 @@ eth_em_promiscuous_enable(struct rte_eth_dev *dev)
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl |= (E1000_RCTL_UPE | E1000_RCTL_MPE);
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	return 0;
 }
 
-static void
+static int
 eth_em_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
@@ -1289,6 +1291,8 @@ eth_em_promiscuous_disable(struct rte_eth_dev *dev)
 	else
 		rctl &= (~E1000_RCTL_MPE);
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	return 0;
 }
 
 static void

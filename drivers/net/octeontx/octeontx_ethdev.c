@@ -174,7 +174,7 @@ octeontx_port_stop(struct octeontx_nic *nic)
 	return octeontx_bgx_port_stop(nic->port_id);
 }
 
-static void
+static int
 octeontx_port_promisc_set(struct octeontx_nic *nic, int en)
 {
 	struct rte_eth_dev *dev;
@@ -185,15 +185,19 @@ octeontx_port_promisc_set(struct octeontx_nic *nic, int en)
 	dev = nic->dev;
 
 	res = octeontx_bgx_port_promisc_set(nic->port_id, en);
-	if (res < 0)
+	if (res < 0) {
 		octeontx_log_err("failed to set promiscuous mode %d",
 				nic->port_id);
+		return res;
+	}
 
 	/* Set proper flag for the mode */
 	dev->data->promiscuous = (en != 0) ? 1 : 0;
 
 	octeontx_log_dbg("port %d : promiscuous mode %s",
 			nic->port_id, en ? "set" : "unset");
+
+	return 0;
 }
 
 static int
@@ -444,22 +448,22 @@ octeontx_dev_stop(struct rte_eth_dev *dev)
 	}
 }
 
-static void
+static int
 octeontx_dev_promisc_enable(struct rte_eth_dev *dev)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 
 	PMD_INIT_FUNC_TRACE();
-	octeontx_port_promisc_set(nic, 1);
+	return octeontx_port_promisc_set(nic, 1);
 }
 
-static void
+static int
 octeontx_dev_promisc_disable(struct rte_eth_dev *dev)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 
 	PMD_INIT_FUNC_TRACE();
-	octeontx_port_promisc_set(nic, 0);
+	return octeontx_port_promisc_set(nic, 0);
 }
 
 static int

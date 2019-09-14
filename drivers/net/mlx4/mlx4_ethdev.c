@@ -341,13 +341,17 @@ enum rxmode_toggle {
  *   Pointer to Ethernet device structure.
  * @param toggle
  *   Toggle to set.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static void
+static int
 mlx4_rxmode_toggle(struct rte_eth_dev *dev, enum rxmode_toggle toggle)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
 	const char *mode;
 	struct rte_flow_error error;
+	int ret;
 
 	switch (toggle) {
 	case RXMODE_TOGGLE_PROMISC_OFF:
@@ -363,12 +367,16 @@ mlx4_rxmode_toggle(struct rte_eth_dev *dev, enum rxmode_toggle toggle)
 	default:
 		mode = "undefined";
 	}
-	if (!mlx4_flow_sync(priv, &error))
-		return;
+
+	ret = mlx4_flow_sync(priv, &error);
+	if (!ret)
+		return 0;
+
 	ERROR("cannot toggle %s mode (code %d, \"%s\"),"
 	      " flow error type %d, cause %p, message: %s",
 	      mode, rte_errno, strerror(rte_errno), error.type, error.cause,
 	      error.message ? error.message : "(unspecified)");
+	return ret;
 }
 
 /**
@@ -376,11 +384,14 @@ mlx4_rxmode_toggle(struct rte_eth_dev *dev, enum rxmode_toggle toggle)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-void
+int
 mlx4_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_PROMISC_ON);
+	return mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_PROMISC_ON);
 }
 
 /**
@@ -388,11 +399,14 @@ mlx4_promiscuous_enable(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-void
+int
 mlx4_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_PROMISC_OFF);
+	return mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_PROMISC_OFF);
 }
 
 /**

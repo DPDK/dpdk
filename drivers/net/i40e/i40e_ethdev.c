@@ -223,8 +223,8 @@ static int i40e_dev_start(struct rte_eth_dev *dev);
 static void i40e_dev_stop(struct rte_eth_dev *dev);
 static void i40e_dev_close(struct rte_eth_dev *dev);
 static int  i40e_dev_reset(struct rte_eth_dev *dev);
-static void i40e_dev_promiscuous_enable(struct rte_eth_dev *dev);
-static void i40e_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static int i40e_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static int i40e_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void i40e_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void i40e_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int i40e_dev_set_link_up(struct rte_eth_dev *dev);
@@ -2564,7 +2564,7 @@ i40e_dev_reset(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static void
+static int
 i40e_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -2574,17 +2574,25 @@ i40e_dev_promiscuous_enable(struct rte_eth_dev *dev)
 
 	status = i40e_aq_set_vsi_unicast_promiscuous(hw, vsi->seid,
 						     true, NULL, true);
-	if (status != I40E_SUCCESS)
+	if (status != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to enable unicast promiscuous");
+		return -EAGAIN;
+	}
 
 	status = i40e_aq_set_vsi_multicast_promiscuous(hw, vsi->seid,
 							TRUE, NULL);
-	if (status != I40E_SUCCESS)
+	if (status != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to enable multicast promiscuous");
+		/* Rollback unicast promiscuous mode */
+		i40e_aq_set_vsi_unicast_promiscuous(hw, vsi->seid,
+						    false, NULL, true);
+		return -EAGAIN;
+	}
 
+	return 0;
 }
 
-static void
+static int
 i40e_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -2594,17 +2602,26 @@ i40e_dev_promiscuous_disable(struct rte_eth_dev *dev)
 
 	status = i40e_aq_set_vsi_unicast_promiscuous(hw, vsi->seid,
 						     false, NULL, true);
-	if (status != I40E_SUCCESS)
+	if (status != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to disable unicast promiscuous");
+		return -EAGAIN;
+	}
 
 	/* must remain in all_multicast mode */
 	if (dev->data->all_multicast == 1)
-		return;
+		return 0;
 
 	status = i40e_aq_set_vsi_multicast_promiscuous(hw, vsi->seid,
 							false, NULL);
-	if (status != I40E_SUCCESS)
+	if (status != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to disable multicast promiscuous");
+		/* Rollback unicast promiscuous mode */
+		i40e_aq_set_vsi_unicast_promiscuous(hw, vsi->seid,
+						    true, NULL, true);
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
 static void

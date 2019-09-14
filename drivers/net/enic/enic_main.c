@@ -1364,10 +1364,10 @@ int enic_set_vlan_strip(struct enic *enic)
 			       enic->rss_enable);
 }
 
-void enic_add_packet_filter(struct enic *enic)
+int enic_add_packet_filter(struct enic *enic)
 {
 	/* Args -> directed, multicast, broadcast, promisc, allmulti */
-	vnic_dev_packet_filter(enic->vdev, 1, 1, 1,
+	return vnic_dev_packet_filter(enic->vdev, 1, 1, 1,
 		enic->promisc, enic->allmulti);
 }
 

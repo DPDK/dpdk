@@ -362,6 +362,20 @@ void hn_vf_stop(struct rte_eth_dev *dev)
 		rte_spinlock_unlock(&hv->vf_lock);		\
 	}
 
+/* If VF is present, then cascade configuration down */
+#define VF_ETHDEV_FUNC_RET_STATUS(dev, func)			\
+	{							\
+		struct hn_data *hv = (dev)->data->dev_private;	\
+		struct rte_eth_dev *vf_dev;			\
+		int ret = 0;					\
+		rte_spinlock_lock(&hv->vf_lock);		\
+		vf_dev = hn_get_vf_dev(hv);			\
+		if (vf_dev)					\
+			ret = func(vf_dev->data->port_id);	\
+		rte_spinlock_unlock(&hv->vf_lock);		\
+		return ret;					\
+	}
+
 void hn_vf_reset(struct rte_eth_dev *dev)
 {
 	VF_ETHDEV_FUNC(dev, rte_eth_dev_reset);
@@ -396,14 +410,14 @@ void hn_vf_allmulticast_disable(struct rte_eth_dev *dev)
 	VF_ETHDEV_FUNC(dev, rte_eth_allmulticast_disable);
 }
 
-void hn_vf_promiscuous_enable(struct rte_eth_dev *dev)
+int hn_vf_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	VF_ETHDEV_FUNC(dev, rte_eth_promiscuous_enable);
+	VF_ETHDEV_FUNC_RET_STATUS(dev, rte_eth_promiscuous_enable);
 }
 
-void hn_vf_promiscuous_disable(struct rte_eth_dev *dev)
+int hn_vf_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	VF_ETHDEV_FUNC(dev, rte_eth_promiscuous_disable);
+	VF_ETHDEV_FUNC_RET_STATUS(dev, rte_eth_promiscuous_disable);
 }
 
 int hn_vf_mc_addr_list(struct rte_eth_dev *dev,

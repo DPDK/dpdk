@@ -24,8 +24,8 @@ static int  atl_dev_set_link_up(struct rte_eth_dev *dev);
 static int  atl_dev_set_link_down(struct rte_eth_dev *dev);
 static void atl_dev_close(struct rte_eth_dev *dev);
 static int  atl_dev_reset(struct rte_eth_dev *dev);
-static void atl_dev_promiscuous_enable(struct rte_eth_dev *dev);
-static void atl_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static int  atl_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static int  atl_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void atl_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void atl_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int  atl_dev_link_update(struct rte_eth_dev *dev, int wait);
@@ -1207,20 +1207,24 @@ atl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused)
 	return 0;
 }
 
-static void
+static int
 atl_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	hw_atl_rpfl2promiscuous_mode_en_set(hw, true);
+
+	return 0;
 }
 
-static void
+static int
 atl_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	hw_atl_rpfl2promiscuous_mode_en_set(hw, false);
+
+	return 0;
 }
 
 static void

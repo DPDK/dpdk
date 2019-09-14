@@ -45,8 +45,8 @@ static int avp_dev_info_get(struct rte_eth_dev *dev,
 			    struct rte_eth_dev_info *dev_info);
 static int avp_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static int avp_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete);
-static void avp_dev_promiscuous_enable(struct rte_eth_dev *dev);
-static void avp_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static int avp_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static int avp_dev_promiscuous_disable(struct rte_eth_dev *dev);
 
 static int avp_dev_rx_queue_setup(struct rte_eth_dev *dev,
 				  uint16_t rx_queue_id,
@@ -2157,7 +2157,7 @@ avp_dev_link_update(struct rte_eth_dev *eth_dev,
 	return -1;
 }
 
-static void
+static int
 avp_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
@@ -2169,9 +2169,11 @@ avp_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 			    eth_dev->data->port_id);
 	}
 	rte_spinlock_unlock(&avp->lock);
+
+	return 0;
 }
 
-static void
+static int
 avp_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
@@ -2183,6 +2185,8 @@ avp_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 			    eth_dev->data->port_id);
 	}
 	rte_spinlock_unlock(&avp->lock);
+
+	return 0;
 }
 
 static int

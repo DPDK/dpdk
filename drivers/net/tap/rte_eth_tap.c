@@ -1100,28 +1100,60 @@ tap_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	return 0;
 }
 
-static void
+static int
 tap_promisc_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct ifreq ifr = { .ifr_flags = IFF_PROMISC };
+	int ret;
 
-	dev->data->promiscuous = 1;
-	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
-	if (pmd->remote_if_index && !pmd->flow_isolate)
-		tap_flow_implicit_create(pmd, TAP_REMOTE_PROMISC);
+	ret = tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
+	if (ret != 0)
+		return ret;
+
+	if (pmd->remote_if_index && !pmd->flow_isolate) {
+		dev->data->promiscuous = 1;
+		ret = tap_flow_implicit_create(pmd, TAP_REMOTE_PROMISC);
+		if (ret != 0) {
+			/* Rollback promisc flag */
+			tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
+			/*
+			 * rte_eth_dev_promiscuous_enable() rollback
+			 * dev->data->promiscuous in the case of failure.
+			 */
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
-static void
+static int
 tap_promisc_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct ifreq ifr = { .ifr_flags = IFF_PROMISC };
+	int ret;
 
-	dev->data->promiscuous = 0;
-	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
-	if (pmd->remote_if_index && !pmd->flow_isolate)
-		tap_flow_implicit_destroy(pmd, TAP_REMOTE_PROMISC);
+	ret = tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
+	if (ret != 0)
+		return ret;
+
+	if (pmd->remote_if_index && !pmd->flow_isolate) {
+		dev->data->promiscuous = 0;
+		ret = tap_flow_implicit_destroy(pmd, TAP_REMOTE_PROMISC);
+		if (ret != 0) {
+			/* Rollback promisc flag */
+			tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
+			/*
+			 * rte_eth_dev_promiscuous_disable() rollback
+			 * dev->data->promiscuous in the case of failure.
+			 */
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
 static void

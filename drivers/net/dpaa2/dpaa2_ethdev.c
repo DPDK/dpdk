@@ -987,7 +987,7 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 	rte_eth_linkstatus_set(dev, &link);
 }
 
-static void
+static int
 dpaa2_dev_promiscuous_enable(
 		struct rte_eth_dev *dev)
 {
@@ -999,7 +999,7 @@ dpaa2_dev_promiscuous_enable(
 
 	if (dpni == NULL) {
 		DPAA2_PMD_ERR("dpni is NULL");
-		return;
+		return -ENODEV;
 	}
 
 	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
@@ -1009,9 +1009,11 @@ dpaa2_dev_promiscuous_enable(
 	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
 	if (ret < 0)
 		DPAA2_PMD_ERR("Unable to enable M promisc mode %d", ret);
+
+	return ret;
 }
 
-static void
+static int
 dpaa2_dev_promiscuous_disable(
 		struct rte_eth_dev *dev)
 {
@@ -1023,7 +1025,7 @@ dpaa2_dev_promiscuous_disable(
 
 	if (dpni == NULL) {
 		DPAA2_PMD_ERR("dpni is NULL");
-		return;
+		return -ENODEV;
 	}
 
 	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, false);
@@ -1037,6 +1039,8 @@ dpaa2_dev_promiscuous_disable(
 			DPAA2_PMD_ERR("Unable to disable M promisc mode %d",
 				      ret);
 	}
+
+	return ret;
 }
 
 static void

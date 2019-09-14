@@ -416,16 +416,16 @@ static int hn_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static int
 hn_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
 
 	hn_rndis_set_rxfilter(hv, NDIS_PACKET_TYPE_PROMISCUOUS);
-	hn_vf_promiscuous_enable(dev);
+	return hn_vf_promiscuous_enable(dev);
 }
 
-static void
+static int
 hn_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
@@ -435,7 +435,7 @@ hn_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	if (dev->data->all_multicast)
 		filter |= NDIS_PACKET_TYPE_ALL_MULTICAST;
 	hn_rndis_set_rxfilter(hv, filter);
-	hn_vf_promiscuous_disable(dev);
+	return hn_vf_promiscuous_disable(dev);
 }
 
 static void

@@ -379,8 +379,8 @@ int otx2_nix_rx_descriptor_done(void *rxq, uint16_t offset);
 int otx2_nix_rx_descriptor_status(void *rx_queue, uint16_t offset);
 
 void otx2_nix_promisc_config(struct rte_eth_dev *eth_dev, int en);
-void otx2_nix_promisc_enable(struct rte_eth_dev *eth_dev);
-void otx2_nix_promisc_disable(struct rte_eth_dev *eth_dev);
+int otx2_nix_promisc_enable(struct rte_eth_dev *eth_dev);
+int otx2_nix_promisc_disable(struct rte_eth_dev *eth_dev);
 void otx2_nix_allmulticast_enable(struct rte_eth_dev *eth_dev);
 void otx2_nix_allmulticast_disable(struct rte_eth_dev *eth_dev);
 int otx2_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx);

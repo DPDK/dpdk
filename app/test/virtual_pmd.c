@@ -210,13 +210,17 @@ virtual_ethdev_stats_reset(struct rte_eth_dev *dev)
 	memset(&dev_private->eth_stats, 0, sizeof(dev_private->eth_stats));
 }
 
-static void
+static int
 virtual_ethdev_promiscuous_mode_enable(struct rte_eth_dev *dev __rte_unused)
-{}
+{
+	return 0;
+}
 
-static void
+static int
 virtual_ethdev_promiscuous_mode_disable(struct rte_eth_dev *dev __rte_unused)
-{}
+{
+	return 0;
+}
 
 static int
 virtual_ethdev_mac_address_set(__rte_unused struct rte_eth_dev *dev,

@@ -52,11 +52,55 @@ typedef int (*eth_dev_reset_t)(struct rte_eth_dev *dev);
 typedef int (*eth_is_removed_t)(struct rte_eth_dev *dev);
 /**< @internal Function used to detect an Ethernet device removal. */
 
-typedef void (*eth_promiscuous_enable_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to enable the RX promiscuous mode of an Ethernet device. */
+/**
+ * @internal
+ * Function used to enable the Rx promiscuous mode of an Ethernet device.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, promiscuous mode is enabled.
+ * @retval -ENOTSUP
+ *   Promiscuous mode is not supported.
+ * @retval -ENODEV
+ *   Device is gone.
+ * @retval -E_RTE_SECONDARY
+ *   Function was called from a secondary process instance and not supported.
+ * @retval -ETIMEDOUT
+ *   Attempt to enable promiscuos mode failed because of timeout.
+ * @retval -EAGAIN
+ *   Failed to enable promiscuous mode.
+ */
+typedef int (*eth_promiscuous_enable_t)(struct rte_eth_dev *dev);
 
-typedef void (*eth_promiscuous_disable_t)(struct rte_eth_dev *dev);
-/**< @internal Function used to disable the RX promiscuous mode of an Ethernet device. */
+/**
+ * @internal
+ * Function used to disable the Rx promiscuous mode of an Ethernet device.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, promiscuous mode is disabled.
+ * @retval -ENOTSUP
+ *   Promiscuous mode disabling is not supported.
+ * @retval -ENODEV
+ *   Device is gone.
+ * @retval -E_RTE_SECONDARY
+ *   Function was called from a secondary process instance and not supported.
+ * @retval -ETIMEDOUT
+ *   Attempt to disable promiscuos mode failed because of timeout.
+ * @retval -EAGAIN
+ *   Failed to disable promiscuous mode.
+ */
+typedef int (*eth_promiscuous_disable_t)(struct rte_eth_dev *dev);
 
 typedef void (*eth_allmulticast_enable_t)(struct rte_eth_dev *dev);
 /**< @internal Enable the receipt of all multicast packets by an Ethernet device. */

@@ -523,7 +523,7 @@ enetc_dev_close(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
-static void
+static int
 enetc_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw =
@@ -537,9 +537,11 @@ enetc_promiscuous_enable(struct rte_eth_dev *dev)
 	psipmr |= ENETC_PSIPMR_SET_UP(0) | ENETC_PSIPMR_SET_MP(0);
 
 	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
+
+	return 0;
 }
 
-static void
+static int
 enetc_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw =
@@ -555,6 +557,8 @@ enetc_promiscuous_disable(struct rte_eth_dev *dev)
 		psipmr &= (~ENETC_PSIPMR_SET_MP(0));
 
 	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
+
+	return 0;
 }
 
 static void

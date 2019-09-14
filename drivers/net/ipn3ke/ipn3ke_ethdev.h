@@ -539,9 +539,9 @@ ipn3ke_rpst_dev_set_link_down(struct rte_eth_dev *dev);
 int
 ipn3ke_rpst_link_update(struct rte_eth_dev *ethdev,
 	__rte_unused int wait_to_complete);
-void
+int
 ipn3ke_rpst_promiscuous_enable(struct rte_eth_dev *ethdev);
-void
+int
 ipn3ke_rpst_promiscuous_disable(struct rte_eth_dev *ethdev);
 void
 ipn3ke_rpst_allmulticast_enable(struct rte_eth_dev *ethdev);

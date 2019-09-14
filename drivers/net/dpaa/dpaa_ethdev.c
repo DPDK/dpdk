@@ -514,22 +514,26 @@ dpaa_xstats_get_names_by_id(
 	return limit;
 }
 
-static void dpaa_eth_promiscuous_enable(struct rte_eth_dev *dev)
+static int dpaa_eth_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
 	fman_if_promiscuous_enable(dpaa_intf->fif);
+
+	return 0;
 }
 
-static void dpaa_eth_promiscuous_disable(struct rte_eth_dev *dev)
+static int dpaa_eth_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
 	fman_if_promiscuous_disable(dpaa_intf->fif);
+
+	return 0;
 }
 
 static void dpaa_eth_multicast_enable(struct rte_eth_dev *dev)

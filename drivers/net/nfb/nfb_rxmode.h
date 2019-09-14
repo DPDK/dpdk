@@ -26,8 +26,10 @@ nfb_eth_promiscuous_get(struct rte_eth_dev *dev);
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return always 0
  */
-void
+int
 nfb_eth_promiscuous_enable(struct rte_eth_dev *dev);
 
 /**
@@ -35,8 +37,10 @@ nfb_eth_promiscuous_enable(struct rte_eth_dev *dev);
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return always 0
  */
-void
+int
 nfb_eth_promiscuous_disable(struct rte_eth_dev *dev);
 
 /**

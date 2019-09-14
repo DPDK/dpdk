@@ -67,8 +67,8 @@ static int ice_rss_hash_update(struct rte_eth_dev *dev,
 			       struct rte_eth_rss_conf *rss_conf);
 static int ice_rss_hash_conf_get(struct rte_eth_dev *dev,
 				 struct rte_eth_rss_conf *rss_conf);
-static void ice_promisc_enable(struct rte_eth_dev *dev);
-static void ice_promisc_disable(struct rte_eth_dev *dev);
+static int ice_promisc_enable(struct rte_eth_dev *dev);
+static int ice_promisc_disable(struct rte_eth_dev *dev);
 static void ice_allmulti_enable(struct rte_eth_dev *dev);
 static void ice_allmulti_disable(struct rte_eth_dev *dev);
 static int ice_vlan_filter_set(struct rte_eth_dev *dev,
@@ -3103,7 +3103,7 @@ ice_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static int
 ice_promisc_enable(struct rte_eth_dev *dev)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -3111,18 +3111,26 @@ ice_promisc_enable(struct rte_eth_dev *dev)
 	struct ice_vsi *vsi = pf->main_vsi;
 	enum ice_status status;
 	uint8_t pmask;
+	int ret = 0;
 
 	pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX |
 		ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
 
 	status = ice_set_vsi_promisc(hw, vsi->idx, pmask, 0);
-	if (status == ICE_ERR_ALREADY_EXISTS)
+	switch (status) {
+	case ICE_ERR_ALREADY_EXISTS:
 		PMD_DRV_LOG(DEBUG, "Promisc mode has already been enabled");
-	else if (status != ICE_SUCCESS)
+	case ICE_SUCCESS:
+		break;
+	default:
 		PMD_DRV_LOG(ERR, "Failed to enable promisc, err=%d", status);
+		ret = -EAGAIN;
+	}
+
+	return ret;
 }
 
-static void
+static int
 ice_promisc_disable(struct rte_eth_dev *dev)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -3130,13 +3138,18 @@ ice_promisc_disable(struct rte_eth_dev *dev)
 	struct ice_vsi *vsi = pf->main_vsi;
 	enum ice_status status;
 	uint8_t pmask;
+	int ret = 0;
 
 	pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX |
 		ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
 
 	status = ice_clear_vsi_promisc(hw, vsi->idx, pmask, 0);
-	if (status != ICE_SUCCESS)
+	if (status != ICE_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to clear promisc, err=%d", status);
+		ret = -EAGAIN;
+	}
+
+	return ret;
 }
 
 static void

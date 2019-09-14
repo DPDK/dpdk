@@ -1344,18 +1344,20 @@ eth_mac_addr_set(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
-static void
+static int
 eth_promiscuous_enable(struct rte_eth_dev *dev __rte_unused)
 {
 	PMD_DRV_LOG(WARNING, "Enabling promiscuous mode is not supported. "
 			"The card is always in promiscuous mode.");
+	return 0;
 }
 
-static void
+static int
 eth_promiscuous_disable(struct rte_eth_dev *dev __rte_unused)
 {
 	PMD_DRV_LOG(WARNING, "Disabling promiscuous mode is not supported. "
 			"The card is always in promiscuous mode.");
+	return -ENOTSUP;
 }
 
 static void

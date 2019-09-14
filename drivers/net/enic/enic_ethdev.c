@@ -603,29 +603,39 @@ static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
-static void enicpmd_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
+static int enicpmd_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
 	struct enic *enic = pmd_priv(eth_dev);
+	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return;
+		return -E_RTE_SECONDARY;
 
 	ENICPMD_FUNC_TRACE();
 
 	enic->promisc = 1;
-	enic_add_packet_filter(enic);
+	ret = enic_add_packet_filter(enic);
+	if (ret != 0)
+		enic->promisc = 0;
+
+	return ret;
 }
 
-static void enicpmd_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
+static int enicpmd_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 {
 	struct enic *enic = pmd_priv(eth_dev);
+	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return;
+		return -E_RTE_SECONDARY;
 
 	ENICPMD_FUNC_TRACE();
 	enic->promisc = 0;
-	enic_add_packet_filter(enic);
+	ret = enic_add_packet_filter(enic);
+	if (ret != 0)
+		enic->promisc = 1;
+
+	return ret;
 }
 
 static void enicpmd_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)

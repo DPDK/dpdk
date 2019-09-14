@@ -274,22 +274,22 @@ i40e_vf_representor_stats_reset(struct rte_eth_dev *ethdev)
 		representor->vf_id, &representor->stats_offset);
 }
 
-static void
+static int
 i40e_vf_representor_promiscuous_enable(struct rte_eth_dev *ethdev)
 {
 	struct i40e_vf_representor *representor = ethdev->data->dev_private;
 
-	rte_pmd_i40e_set_vf_unicast_promisc(
+	return rte_pmd_i40e_set_vf_unicast_promisc(
 		representor->adapter->eth_dev->data->port_id,
 		representor->vf_id, 1);
 }
 
-static void
+static int
 i40e_vf_representor_promiscuous_disable(struct rte_eth_dev *ethdev)
 {
 	struct i40e_vf_representor *representor = ethdev->data->dev_private;
 
-	rte_pmd_i40e_set_vf_unicast_promisc(
+	return rte_pmd_i40e_set_vf_unicast_promisc(
 		representor->adapter->eth_dev->data->port_id,
 		representor->vf_id, 0);
 }

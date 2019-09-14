@@ -366,7 +366,7 @@ sfc_dev_close(struct rte_eth_dev *dev)
 	free(sa);
 }
 
-static void
+static int
 sfc_dev_filter_set(struct rte_eth_dev *dev, enum sfc_dev_filter_mode mode,
 		   boolean_t enabled)
 {
@@ -375,6 +375,7 @@ sfc_dev_filter_set(struct rte_eth_dev *dev, enum sfc_dev_filter_mode mode,
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	boolean_t allmulti = (mode == SFC_DEV_FILTER_MODE_ALLMULTI);
 	const char *desc = (allmulti) ? "all-multi" : "promiscuous";
+	int rc = 0;
 
 	sfc_adapter_lock(sa);
 
@@ -390,7 +391,7 @@ sfc_dev_filter_set(struct rte_eth_dev *dev, enum sfc_dev_filter_mode mode,
 				     "start provided that isolated mode is "
 				     "disabled prior the next start");
 		} else if ((sa->state == SFC_ADAPTER_STARTED) &&
-			   (sfc_set_rx_mode(sa) != 0)) {
+			   ((rc = sfc_set_rx_mode(sa)) != 0)) {
 			*toggle = !(enabled);
 			sfc_warn(sa, "Failed to %s %s mode",
 				 ((enabled) ? "enable" : "disable"), desc);
@@ -398,18 +399,19 @@ sfc_dev_filter_set(struct rte_eth_dev *dev, enum sfc_dev_filter_mode mode,
 	}
 
 	sfc_adapter_unlock(sa);
+	return rc;
 }
 
-static void
+static int
 sfc_dev_promisc_enable(struct rte_eth_dev *dev)
 {
-	sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_PROMISC, B_TRUE);
+	return sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_PROMISC, B_TRUE);
 }
 
-static void
+static int
 sfc_dev_promisc_disable(struct rte_eth_dev *dev)
 {
-	sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_PROMISC, B_FALSE);
+	return sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_PROMISC, B_FALSE);
 }
 
 static void

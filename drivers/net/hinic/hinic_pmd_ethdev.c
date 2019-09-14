@@ -1325,8 +1325,12 @@ static void hinic_deinit_mac_addr(struct rte_eth_dev *eth_dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success,
+ *   negative error value otherwise.
  */
-static void hinic_dev_promiscuous_enable(struct rte_eth_dev *dev)
+static int hinic_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	int rc = HINIC_OK;
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
@@ -1338,6 +1342,8 @@ static void hinic_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	rc = hinic_set_dev_promiscuous(nic_dev, true);
 	if (rc)
 		PMD_DRV_LOG(ERR, "Enable promiscuous failed");
+
+	return rc;
 }
 
 /**
@@ -1345,8 +1351,12 @@ static void hinic_dev_promiscuous_enable(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success,
+ *   negative error value otherwise.
  */
-static void hinic_dev_promiscuous_disable(struct rte_eth_dev *dev)
+static int hinic_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	int rc = HINIC_OK;
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
@@ -1358,6 +1368,8 @@ static void hinic_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	rc = hinic_set_dev_promiscuous(nic_dev, false);
 	if (rc)
 		PMD_DRV_LOG(ERR, "Disable promiscuous failed");
+
+	return rc;
 }
 
 /**

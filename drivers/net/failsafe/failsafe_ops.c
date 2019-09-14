@@ -654,7 +654,7 @@ fs_dev_free_queues(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
-static void
+static int
 fs_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
@@ -682,9 +682,11 @@ fs_promiscuous_enable(struct rte_eth_dev *dev)
 		}
 	}
 	fs_unlock(dev, 0);
+
+	return ret;
 }
 
-static void
+static int
 fs_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
@@ -712,6 +714,8 @@ fs_promiscuous_disable(struct rte_eth_dev *dev)
 		}
 	}
 	fs_unlock(dev, 0);
+
+	return ret;
 }
 
 static void

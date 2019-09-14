@@ -129,18 +129,22 @@ otx2_nix_promisc_config(struct rte_eth_dev *eth_dev, int en)
 	otx2_nix_vlan_update_promisc(eth_dev, en);
 }
 
-void
+int
 otx2_nix_promisc_enable(struct rte_eth_dev *eth_dev)
 {
 	otx2_nix_promisc_config(eth_dev, 1);
 	nix_cgx_promisc_config(eth_dev, 1);
+
+	return 0;
 }
 
-void
+int
 otx2_nix_promisc_disable(struct rte_eth_dev *eth_dev)
 {
 	otx2_nix_promisc_config(eth_dev, 0);
 	nix_cgx_promisc_config(eth_dev, 0);
+
+	return 0;
 }
 
 static void

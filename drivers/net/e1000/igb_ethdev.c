@@ -79,8 +79,8 @@ static int  eth_igb_dev_set_link_up(struct rte_eth_dev *dev);
 static int  eth_igb_dev_set_link_down(struct rte_eth_dev *dev);
 static void eth_igb_close(struct rte_eth_dev *dev);
 static int eth_igb_reset(struct rte_eth_dev *dev);
-static void eth_igb_promiscuous_enable(struct rte_eth_dev *dev);
-static void eth_igb_promiscuous_disable(struct rte_eth_dev *dev);
+static int  eth_igb_promiscuous_enable(struct rte_eth_dev *dev);
+static int  eth_igb_promiscuous_disable(struct rte_eth_dev *dev);
 static void eth_igb_allmulticast_enable(struct rte_eth_dev *dev);
 static void eth_igb_allmulticast_disable(struct rte_eth_dev *dev);
 static int  eth_igb_link_update(struct rte_eth_dev *dev,
@@ -156,8 +156,8 @@ static int igbvf_dev_configure(struct rte_eth_dev *dev);
 static int igbvf_dev_start(struct rte_eth_dev *dev);
 static void igbvf_dev_stop(struct rte_eth_dev *dev);
 static void igbvf_dev_close(struct rte_eth_dev *dev);
-static void igbvf_promiscuous_enable(struct rte_eth_dev *dev);
-static void igbvf_promiscuous_disable(struct rte_eth_dev *dev);
+static int igbvf_promiscuous_enable(struct rte_eth_dev *dev);
+static int igbvf_promiscuous_disable(struct rte_eth_dev *dev);
 static void igbvf_allmulticast_enable(struct rte_eth_dev *dev);
 static void igbvf_allmulticast_disable(struct rte_eth_dev *dev);
 static int eth_igbvf_link_update(struct e1000_hw *hw);
@@ -2519,7 +2519,7 @@ igb_release_manageability(struct e1000_hw *hw)
 	}
 }
 
-static void
+static int
 eth_igb_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
@@ -2529,9 +2529,11 @@ eth_igb_promiscuous_enable(struct rte_eth_dev *dev)
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl |= (E1000_RCTL_UPE | E1000_RCTL_MPE);
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	return 0;
 }
 
-static void
+static int
 eth_igb_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
@@ -2545,6 +2547,8 @@ eth_igb_promiscuous_disable(struct rte_eth_dev *dev)
 	else
 		rctl &= (~E1000_RCTL_MPE);
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	return 0;
 }
 
 static void
@@ -3390,16 +3394,18 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 	igbvf_default_mac_addr_set(dev, &addr);
 }
 
-static void
+static int
 igbvf_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	/* Set both unicast and multicast promisc */
 	e1000_promisc_set_vf(hw, e1000_promisc_enabled);
+
+	return 0;
 }
 
-static void
+static int
 igbvf_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -3409,6 +3415,8 @@ igbvf_promiscuous_disable(struct rte_eth_dev *dev)
 		e1000_promisc_set_vf(hw, e1000_promisc_multicast);
 	else
 		e1000_promisc_set_vf(hw, e1000_promisc_disabled);
+
+	return 0;
 }
 
 static void

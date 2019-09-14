@@ -458,41 +458,47 @@ eth_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
-static void
+static int
 eth_dev_change_flags(char *if_name, uint32_t flags, uint32_t mask)
 {
 	struct ifreq ifr;
+	int ret = 0;
 	int s;
 
 	s = socket(PF_INET, SOCK_DGRAM, 0);
 	if (s < 0)
-		return;
+		return -errno;
 
 	strlcpy(ifr.ifr_name, if_name, IFNAMSIZ);
-	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0)
+	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0) {
+		ret = -errno;
 		goto out;
+	}
 	ifr.ifr_flags &= mask;
 	ifr.ifr_flags |= flags;
-	if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0)
+	if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0) {
+		ret = -errno;
 		goto out;
+	}
 out:
 	close(s);
+	return ret;
 }
 
-static void
+static int
 eth_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 
-	eth_dev_change_flags(internals->if_name, IFF_PROMISC, ~0);
+	return eth_dev_change_flags(internals->if_name, IFF_PROMISC, ~0);
 }
 
-static void
+static int
 eth_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 
-	eth_dev_change_flags(internals->if_name, 0, ~IFF_PROMISC);
+	return eth_dev_change_flags(internals->if_name, 0, ~IFF_PROMISC);
 }
 
 static const struct eth_dev_ops ops = {

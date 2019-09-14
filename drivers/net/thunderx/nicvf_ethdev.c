@@ -401,9 +401,10 @@ nicvf_dev_stats_reset(struct rte_eth_dev *dev)
 }
 
 /* Promiscuous mode enabled by default in LMAC to VF 1:1 map configuration */
-static void
+static int
 nicvf_dev_promisc_enable(struct rte_eth_dev *dev __rte_unused)
 {
+	return 0;
 }
 
 static inline uint64_t

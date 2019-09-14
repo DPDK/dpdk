@@ -15,8 +15,8 @@ static int  axgbe_dev_start(struct rte_eth_dev *dev);
 static void axgbe_dev_stop(struct rte_eth_dev *dev);
 static void axgbe_dev_interrupt_handler(void *param);
 static void axgbe_dev_close(struct rte_eth_dev *dev);
-static void axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
-static void axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static int axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static int axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void axgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int axgbe_dev_link_update(struct rte_eth_dev *dev,
@@ -236,7 +236,7 @@ axgbe_dev_close(struct rte_eth_dev *dev)
 	axgbe_dev_clear_queues(dev);
 }
 
-static void
+static int
 axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
@@ -244,9 +244,11 @@ axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, PR, 1);
+
+	return 0;
 }
 
-static void
+static int
 axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
@@ -254,6 +256,8 @@ axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, PR, 0);
+
+	return 0;
 }
 
 static void

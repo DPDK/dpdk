@@ -149,8 +149,8 @@ static int  ixgbe_dev_set_link_up(struct rte_eth_dev *dev);
 static int  ixgbe_dev_set_link_down(struct rte_eth_dev *dev);
 static void ixgbe_dev_close(struct rte_eth_dev *dev);
 static int  ixgbe_dev_reset(struct rte_eth_dev *dev);
-static void ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
-static void ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static int ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static int ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void ixgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int ixgbe_dev_link_update(struct rte_eth_dev *dev,
@@ -270,8 +270,8 @@ static int ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 static void ixgbevf_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 				 uint8_t queue, uint8_t msix_vector);
 static void ixgbevf_configure_msix(struct rte_eth_dev *dev);
-static void ixgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev);
-static void ixgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static int ixgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static int ixgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
@@ -4181,7 +4181,7 @@ ixgbevf_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	return ixgbe_dev_link_update_share(dev, wait_to_complete, 1);
 }
 
-static void
+static int
 ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -4190,9 +4190,11 @@ ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	fctrl = IXGBE_READ_REG(hw, IXGBE_FCTRL);
 	fctrl |= (IXGBE_FCTRL_UPE | IXGBE_FCTRL_MPE);
 	IXGBE_WRITE_REG(hw, IXGBE_FCTRL, fctrl);
+
+	return 0;
 }
 
-static void
+static int
 ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -4205,6 +4207,8 @@ ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	else
 		fctrl &= (~IXGBE_FCTRL_MPE);
 	IXGBE_WRITE_REG(hw, IXGBE_FCTRL, fctrl);
+
+	return 0;
 }
 
 static void
@@ -8402,20 +8406,46 @@ ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static void
+static int
 ixgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
 
-	hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_PROMISC);
+	switch (hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_PROMISC)) {
+	case IXGBE_SUCCESS:
+		ret = 0;
+		break;
+	case IXGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
 }
 
-static void
+static int
 ixgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
 
-	hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_NONE);
+	switch (hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_NONE)) {
+	case IXGBE_SUCCESS:
+		ret = 0;
+		break;
+	case IXGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
 }
 
 static void

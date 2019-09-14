@@ -2618,7 +2618,7 @@ ipn3ke_rpst_scan_check(void)
 	return 0;
 }
 
-void
+int
 ipn3ke_rpst_promiscuous_enable(struct rte_eth_dev *ethdev)
 {
 	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(ethdev);
@@ -2641,9 +2641,11 @@ ipn3ke_rpst_promiscuous_enable(struct rte_eth_dev *ethdev)
 				rpst->port_id,
 				0);
 	}
+
+	return 0;
 }
 
-void
+int
 ipn3ke_rpst_promiscuous_disable(struct rte_eth_dev *ethdev)
 {
 	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(ethdev);
@@ -2666,6 +2668,8 @@ ipn3ke_rpst_promiscuous_disable(struct rte_eth_dev *ethdev)
 				rpst->port_id,
 				0);
 	}
+
+	return 0;
 }
 
 void

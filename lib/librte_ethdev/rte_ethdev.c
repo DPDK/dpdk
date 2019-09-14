@@ -1892,30 +1892,38 @@ int
 rte_eth_promiscuous_enable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
+	uint8_t old_promiscuous;
+	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->promiscuous_enable, -ENOTSUP);
-	(*dev->dev_ops->promiscuous_enable)(dev);
-	dev->data->promiscuous = 1;
+	old_promiscuous = dev->data->promiscuous;
+	diag = (*dev->dev_ops->promiscuous_enable)(dev);
+	dev->data->promiscuous = (diag == 0) ? 1 : old_promiscuous;
 
-	return 0;
+	return eth_err(port_id, diag);
 }
 
 int
 rte_eth_promiscuous_disable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
+	uint8_t old_promiscuous;
+	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->promiscuous_disable, -ENOTSUP);
+	old_promiscuous = dev->data->promiscuous;
 	dev->data->promiscuous = 0;
-	(*dev->dev_ops->promiscuous_disable)(dev);
+	diag = (*dev->dev_ops->promiscuous_disable)(dev);
+	if (diag != 0)
+		dev->data->promiscuous = old_promiscuous;
 
-	return 0;
+	return eth_err(port_id, diag);
 }
 
 int

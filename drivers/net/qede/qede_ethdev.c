@@ -1380,33 +1380,39 @@ qede_link_update(struct rte_eth_dev *eth_dev, __rte_unused int wait_to_complete)
 	return rte_eth_linkstatus_set(eth_dev, &link);
 }
 
-static void qede_promiscuous_enable(struct rte_eth_dev *eth_dev)
+static int qede_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 	enum qed_filter_rx_mode_type type = QED_FILTER_RX_MODE_TYPE_PROMISC;
+	enum _ecore_status_t ecore_status;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
 	if (rte_eth_allmulticast_get(eth_dev->data->port_id) == 1)
 		type |= QED_FILTER_RX_MODE_TYPE_MULTI_PROMISC;
 
-	qed_configure_filter_rx_mode(eth_dev, type);
+	ecore_status = qed_configure_filter_rx_mode(eth_dev, type);
+
+	return ecore_status >= ECORE_SUCCESS ? 0 : -EAGAIN;
 }
 
-static void qede_promiscuous_disable(struct rte_eth_dev *eth_dev)
+static int qede_promiscuous_disable(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
+	enum _ecore_status_t ecore_status;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
 	if (rte_eth_allmulticast_get(eth_dev->data->port_id) == 1)
-		qed_configure_filter_rx_mode(eth_dev,
+		ecore_status = qed_configure_filter_rx_mode(eth_dev,
 				QED_FILTER_RX_MODE_TYPE_MULTI_PROMISC);
 	else
-		qed_configure_filter_rx_mode(eth_dev,
+		ecore_status = qed_configure_filter_rx_mode(eth_dev,
 				QED_FILTER_RX_MODE_TYPE_REGULAR);
+
+	return ecore_status >= ECORE_SUCCESS ? 0 : -EAGAIN;
 }
 
 static void qede_poll_sp_sb_cb(void *param)

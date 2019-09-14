@@ -7,7 +7,7 @@
 #include "nfb_rxmode.h"
 #include "nfb.h"
 
-void
+int
 nfb_eth_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
@@ -20,9 +20,11 @@ nfb_eth_promiscuous_enable(struct rte_eth_dev *dev)
 		nc_rxmac_mac_filter_enable(internals->rxmac[i],
 			RXMAC_MAC_FILTER_PROMISCUOUS);
 	}
+
+	return 0;
 }
 
-void
+int
 nfb_eth_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
@@ -33,12 +35,14 @@ nfb_eth_promiscuous_disable(struct rte_eth_dev *dev)
 
 	/* if promisc is not enabled, do nothing */
 	if (!nfb_eth_promiscuous_get(dev))
-		return;
+		return 0;
 
 	for (i = 0; i < internals->max_rxmac; ++i) {
 		nc_rxmac_mac_filter_enable(internals->rxmac[i],
 			RXMAC_MAC_FILTER_TABLE);
 	}
+
+	return 0;
 }
 
 int

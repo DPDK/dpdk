@@ -760,8 +760,8 @@ int mlx5_dev_rss_reta_update(struct rte_eth_dev *dev,
 
 /* mlx5_rxmode.c */
 
-void mlx5_promiscuous_enable(struct rte_eth_dev *dev);
-void mlx5_promiscuous_disable(struct rte_eth_dev *dev);
+int mlx5_promiscuous_enable(struct rte_eth_dev *dev);
+int mlx5_promiscuous_disable(struct rte_eth_dev *dev);
 void mlx5_allmulticast_enable(struct rte_eth_dev *dev);
 void mlx5_allmulticast_disable(struct rte_eth_dev *dev);
 
