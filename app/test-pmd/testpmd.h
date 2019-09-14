@@ -824,6 +824,7 @@ void show_gro(portid_t port_id);
 void setup_gso(const char *mode, portid_t port_id);
 int eth_dev_info_get_print_err(uint16_t port_id,
 			struct rte_eth_dev_info *dev_info);
+void eth_set_promisc_mode(uint16_t port_id, int enable);
 
 
 /* Functions to manage the set of filtered Multicast MAC addresses */

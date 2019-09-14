@@ -6082,6 +6082,7 @@ static void cmd_create_bonded_device_parsed(void *parsed_result,
 	struct cmd_create_bonded_device_result *res = parsed_result;
 	char ethdev_name[RTE_ETH_NAME_MAX_LEN];
 	int port_id;
+	int ret;
 
 	if (test_done == 0) {
 		printf("Please stop forwarding first\n");
@@ -6103,7 +6104,11 @@ static void cmd_create_bonded_device_parsed(void *parsed_result,
 		/* Update number of ports */
 		nb_ports = rte_eth_dev_count_avail();
 		reconfig(port_id, res->socket);
-		rte_eth_promiscuous_enable(port_id);
+		ret = rte_eth_promiscuous_enable(port_id);
+		if (ret != 0)
+			printf("Failed to enable promiscuous mode for port %u: %s - ignore\n",
+				port_id, rte_strerror(-ret));
+
 		ports[port_id].need_setup = 0;
 		ports[port_id].port_status = RTE_PORT_STOPPED;
 	}
@@ -6525,18 +6530,10 @@ static void cmd_set_promisc_mode_parsed(void *parsed_result,
 
 	/* all ports */
 	if (allports) {
-		RTE_ETH_FOREACH_DEV(i) {
-			if (enable)
-				rte_eth_promiscuous_enable(i);
-			else
-				rte_eth_promiscuous_disable(i);
-		}
-	}
-	else {
-		if (enable)
-			rte_eth_promiscuous_enable(res->port_num);
-		else
-			rte_eth_promiscuous_disable(res->port_num);
+		RTE_ETH_FOREACH_DEV(i)
+			eth_set_promisc_mode(i, enable);
+	} else {
+		eth_set_promisc_mode(res->port_num, enable);
 	}
 }
 

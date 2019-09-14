@@ -245,3 +245,19 @@ eth_dev_info_get_print_err(uint16_t port_id,
 
 	return ret;
 }
+
+void
+eth_set_promisc_mode(uint16_t port, int enable)
+{
+	int ret;
+
+	if (enable)
+		ret = rte_eth_promiscuous_enable(port);
+	else
+		ret = rte_eth_promiscuous_disable(port);
+
+	if (ret != 0)
+		printf("Error during %s promiscuous mode for port %u: %s\n",
+			enable ? "enabling" : "disabling",
+			port, rte_strerror(-ret));
+}

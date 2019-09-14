@@ -2433,13 +2433,17 @@ static void
 setup_attached_port(portid_t pi)
 {
 	unsigned int socket_id;
+	int ret;
 
 	socket_id = (unsigned)rte_eth_dev_socket_id(pi);
 	/* if socket_id is invalid, set to the first available socket. */
 	if (check_socket_id(socket_id) < 0)
 		socket_id = socket_ids[0];
 	reconfig(pi, socket_id);
-	rte_eth_promiscuous_enable(pi);
+	ret = rte_eth_promiscuous_enable(pi);
+	if (ret != 0)
+		printf("Error during enabling promiscuous mode for port %u: %s - ignore\n",
+			pi, rte_strerror(-ret));
 
 	ports_ids[nb_ports++] = pi;
 	fwd_ports_ids[nb_fwd_ports++] = pi;
@@ -3373,8 +3377,12 @@ main(int argc, char** argv)
 		rte_exit(EXIT_FAILURE, "Start ports failed\n");
 
 	/* set all ports to promiscuous mode by default */
-	RTE_ETH_FOREACH_DEV(port_id)
-		rte_eth_promiscuous_enable(port_id);
+	RTE_ETH_FOREACH_DEV(port_id) {
+		ret = rte_eth_promiscuous_enable(port_id);
+		if (ret != 0)
+			printf("Error during enabling promiscuous mode for port %u: %s - ignore\n",
+				port_id, rte_strerror(-ret));
+	}
 
 	/* Init metrics library */
 	rte_metrics_init(rte_socket_id());
