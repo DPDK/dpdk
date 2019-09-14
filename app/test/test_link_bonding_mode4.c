@@ -312,6 +312,7 @@ static int
 initialize_bonded_device_with_slaves(uint16_t slave_count, uint8_t external_sm)
 {
 	uint8_t i;
+	int ret;
 
 	RTE_VERIFY(test_params.bonded_port_id != INVALID_PORT_ID);
 
@@ -323,7 +324,10 @@ initialize_bonded_device_with_slaves(uint16_t slave_count, uint8_t external_sm)
 
 	/* Reset mode 4 configuration */
 	rte_eth_bond_8023ad_setup(test_params.bonded_port_id, NULL);
-	rte_eth_promiscuous_disable(test_params.bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params.bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed disable promiscuous mode for port %d: %s",
+		test_params.bonded_port_id, rte_strerror(-ret));
 
 	if (external_sm) {
 		struct rte_eth_bond_8023ad_conf conf;
@@ -824,7 +828,10 @@ test_mode4_rx(void)
 	/* First try with promiscuous mode enabled.
 	 * Add 2 packets to each slave. First with bonding MAC address, second with
 	 * different. Check if we received all of them. */
-	rte_eth_promiscuous_enable(test_params.bonded_port_id);
+	retval = rte_eth_promiscuous_enable(test_params.bonded_port_id);
+	TEST_ASSERT_SUCCESS(retval,
+			"Failed to enable promiscuous mode for port %d: %s",
+			test_params.bonded_port_id, rte_strerror(-retval));
 
 	expected_pkts_cnt = 0;
 	FOR_EACH_SLAVE(i, slave) {
@@ -869,7 +876,10 @@ test_mode4_rx(void)
 
 	/* Now, disable promiscuous mode. When promiscuous mode is disabled we
 	 * expect to receive only packets that are directed to bonding port. */
-	rte_eth_promiscuous_disable(test_params.bonded_port_id);
+	retval = rte_eth_promiscuous_disable(test_params.bonded_port_id);
+	TEST_ASSERT_SUCCESS(retval,
+		"Failed to disable promiscuous mode for port %d: %s",
+		test_params.bonded_port_id, rte_strerror(-retval));
 
 	expected_pkts_cnt = 0;
 	FOR_EACH_SLAVE(i, slave) {

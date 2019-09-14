@@ -1760,13 +1760,17 @@ static int
 test_roundrobin_verify_promiscuous_enable_disable(void)
 {
 	int i, promiscuous_en;
+	int ret;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
 			BONDING_MODE_ROUND_ROBIN, 0, 4, 1),
 			"Failed to initialize bonded device with slaves");
 
-	rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to enable promiscuous mode for port %d: %s",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
 	TEST_ASSERT_EQUAL(promiscuous_en, 1,
@@ -1781,7 +1785,10 @@ test_roundrobin_verify_promiscuous_enable_disable(void)
 				test_params->slave_port_ids[i]);
 	}
 
-	rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to disable promiscuous mode for port %d: %s",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
 	TEST_ASSERT_EQUAL(promiscuous_en, 0,
@@ -2200,6 +2207,7 @@ static int
 test_activebackup_verify_promiscuous_enable_disable(void)
 {
 	int i, primary_port, promiscuous_en;
+	int ret;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
@@ -2211,7 +2219,10 @@ test_activebackup_verify_promiscuous_enable_disable(void)
 			"failed to get primary slave for bonded port (%d)",
 			test_params->bonded_port_id);
 
-	rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to enable promiscuous mode for port %d: %s",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 1,
 			"Port (%d) promiscuous mode not enabled",
@@ -2232,7 +2243,10 @@ test_activebackup_verify_promiscuous_enable_disable(void)
 
 	}
 
-	rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to disable promiscuous mode for port %d: %s",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 0,
 			"Port (%d) promiscuous mode not disabled\n",
@@ -3110,13 +3124,17 @@ static int
 test_balance_verify_promiscuous_enable_disable(void)
 {
 	int i;
+	int ret;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
 			BONDING_MODE_BALANCE, 0, 4, 1),
 			"Failed to initialise bonded device");
 
-	rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to enable promiscuous mode for port %d: %s",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 1,
 			"Port (%d) promiscuous mode not enabled",
@@ -3129,7 +3147,10 @@ test_balance_verify_promiscuous_enable_disable(void)
 				test_params->slave_port_ids[i]);
 	}
 
-	rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to disable promiscuous mode for port %d: %s",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 0,
 			"Port (%d) promiscuous mode not disabled",
@@ -3696,13 +3717,17 @@ static int
 test_broadcast_verify_promiscuous_enable_disable(void)
 {
 	int i;
+	int ret;
 
 	/* Initialize bonded device with 4 slaves in round robin mode */
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
 			BONDING_MODE_BROADCAST, 0, 4, 1),
 			"Failed to initialise bonded device");
 
-	rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to enable promiscuous mode for port %d: %s",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 
 	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 1,
@@ -3716,7 +3741,10 @@ test_broadcast_verify_promiscuous_enable_disable(void)
 				test_params->slave_port_ids[i]);
 	}
 
-	rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to disable promiscuous mode for port %d: %s",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 0,
 			"Port (%d) promiscuous mode not disabled",
@@ -4174,6 +4202,7 @@ static int
 test_tlb_verify_promiscuous_enable_disable(void)
 {
 	int i, primary_port, promiscuous_en;
+	int ret;
 
 	/* Initialize bonded device with 4 slaves in transmit load balancing mode */
 	TEST_ASSERT_SUCCESS( initialize_bonded_device_with_slaves(
@@ -4185,7 +4214,10 @@ test_tlb_verify_promiscuous_enable_disable(void)
 			"failed to get primary slave for bonded port (%d)",
 			test_params->bonded_port_id);
 
-	rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to enable promiscuous mode for port %d: %s",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
 	TEST_ASSERT_EQUAL(promiscuous_en, (int)1,
@@ -4206,7 +4238,10 @@ test_tlb_verify_promiscuous_enable_disable(void)
 
 	}
 
-	rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(ret,
+		"Failed to disable promiscuous mode for port %d: %s\n",
+		test_params->bonded_port_id, rte_strerror(-ret));
 
 	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
 	TEST_ASSERT_EQUAL(promiscuous_en, (int)0,

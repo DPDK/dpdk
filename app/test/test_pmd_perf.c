@@ -745,7 +745,11 @@ test_pmd_perf(void)
 				ret, portid);
 
 		/* always eanble promiscuous */
-		rte_eth_promiscuous_enable(portid);
+		ret = rte_eth_promiscuous_enable(portid);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				 "rte_eth_promiscuous_enable: err=%s, port=%d\n",
+				 rte_strerror(-ret), portid);
 
 		lcore_conf[slave_id].portlist[num++] = portid;
 		lcore_conf[slave_id].nb_ports++;

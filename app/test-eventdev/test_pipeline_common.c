@@ -233,7 +233,12 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 			return -EINVAL;
 		}
 
-		rte_eth_promiscuous_enable(i);
+		ret = rte_eth_promiscuous_enable(i);
+		if (ret != 0) {
+			evt_err("Failed to enable promiscuous mode for eth port [%d]: %s",
+				i, rte_strerror(-ret));
+			return ret;
+		}
 	}
 
 	return 0;

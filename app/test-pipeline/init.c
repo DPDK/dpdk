@@ -200,7 +200,10 @@ app_init_ports(void)
 		if (ret < 0)
 			rte_panic("Cannot init NIC port %u (%d)\n", port, ret);
 
-		rte_eth_promiscuous_enable(port);
+		ret = rte_eth_promiscuous_enable(port);
+		if (ret != 0)
+			rte_panic("Cannot enable promiscuous mode for port %u: %s\n",
+				port, rte_strerror(-ret));
 
 		/* Init RX queues */
 		ret = rte_eth_rx_queue_setup(
