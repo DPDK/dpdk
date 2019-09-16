@@ -402,8 +402,6 @@ ice_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -ENOMEM;
 	}
 
-	rte_wmb();
-
 	/* Init the RX tail register. */
 	ICE_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 
@@ -1275,7 +1273,6 @@ ice_rx_alloc_bufs(struct ice_rx_queue *rxq)
 	}
 
 	/* Update rx tail regsiter */
-	rte_wmb();
 	ICE_PCI_REG_WRITE(rxq->qrx_tail, rxq->rx_free_trigger);
 
 	rxq->rx_free_trigger =
@@ -2177,8 +2174,6 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					 ICE_TXD_QW1_CMD_S);
 	}
 end_of_tx:
-	rte_wmb();
-
 	/* update Tail register */
 	ICE_PCI_REG_WRITE(txq->qtx_tail, tx_id);
 	txq->tx_tail = tx_id;
@@ -2334,7 +2329,6 @@ tx_xmit_pkts(struct ice_tx_queue *txq,
 		txq->tx_tail = 0;
 
 	/* Update the tx tail register */
-	rte_wmb();
 	ICE_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
