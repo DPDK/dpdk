@@ -564,8 +564,7 @@ i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
 	}
 
 	/* Update rx tail regsiter */
-	rte_wmb();
-	I40E_PCI_REG_WRITE_RELAXED(rxq->qrx_tail, rxq->rx_free_trigger);
+	I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->rx_free_trigger);
 
 	rxq->rx_free_trigger =
 		(uint16_t)(rxq->rx_free_trigger + rxq->rx_free_thresh);
@@ -1208,13 +1207,11 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	}
 
 end_of_tx:
-	rte_wmb();
-
 	PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u tx_tail=%u nb_tx=%u",
 		   (unsigned) txq->port_id, (unsigned) txq->queue_id,
 		   (unsigned) tx_id, (unsigned) nb_tx);
 
-	I40E_PCI_REG_WRITE_RELAXED(txq->qtx_tail, tx_id);
+	I40E_PCI_REG_WRITE(txq->qtx_tail, tx_id);
 	txq->tx_tail = tx_id;
 
 	return nb_tx;
@@ -1365,8 +1362,7 @@ tx_xmit_pkts(struct i40e_tx_queue *txq,
 		txq->tx_tail = 0;
 
 	/* Update the tx tail register */
-	rte_wmb();
-	I40E_PCI_REG_WRITE_RELAXED(txq->qtx_tail, txq->tx_tail);
+	I40E_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
 }
@@ -1543,8 +1539,6 @@ i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf");
 		return err;
 	}
-
-	rte_wmb();
 
 	/* Init the RX tail regieter. */
 	I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
