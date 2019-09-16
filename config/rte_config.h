@@ -98,6 +98,9 @@
 #define RTE_SCHED_PORT_N_GRINDERS 8
 #undef RTE_SCHED_VECTOR
 
+/* KNI defines */
+#define RTE_KNI_PREEMPT_DEFAULT 1
+
 /****** driver defines ********/
 
 /* QuickAssist device */
