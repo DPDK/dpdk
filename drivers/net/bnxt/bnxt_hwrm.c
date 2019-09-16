@@ -127,9 +127,6 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		data = (uint32_t *)&short_input;
 		msg_len = sizeof(short_input);
 
-		/* Sync memory write before updating doorbell */
-		rte_wmb();
-
 		max_req_len = BNXT_HWRM_SHORT_REQ_LEN;
 	}
 
