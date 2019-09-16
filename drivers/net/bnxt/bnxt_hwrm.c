@@ -150,7 +150,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	/* Poll for the valid bit */
 	for (i = 0; i < timeout; i++) {
 		/* Sanity check on the resp->resp_len */
-		rte_rmb();
+		rte_cio_rmb();
 		if (resp->resp_len && resp->resp_len <= bp->max_resp_len) {
 			/* Last byte of resp contains the valid key */
 			valid = (uint8_t *)resp + resp->resp_len - 1;
