@@ -19,7 +19,10 @@
 #include <rte_byteorder.h>
 #include <cmdline_parse.h>
 #include <cmdline_parse_etheraddr.h>
+#include <cmdline_parse_string.h>
+#include <cmdline_parse_num.h>
 #include <rte_flow.h>
+#include <rte_hexdump.h>
 
 #include "testpmd.h"
 
@@ -51,6 +54,7 @@ enum index {
 	/* Sub-leve commands. */
 	SET_RAW_ENCAP,
 	SET_RAW_DECAP,
+	SET_RAW_INDEX,
 
 	/* Top-level command. */
 	FLOW,
@@ -308,6 +312,10 @@ enum index {
 	ACTION_DEC_TCP_ACK_VALUE,
 	ACTION_RAW_ENCAP,
 	ACTION_RAW_DECAP,
+	ACTION_RAW_ENCAP_INDEX,
+	ACTION_RAW_ENCAP_INDEX_VALUE,
+	ACTION_RAW_DECAP_INDEX,
+	ACTION_RAW_DECAP_INDEX_VALUE,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -329,6 +337,7 @@ struct action_rss_data {
 
 /** Maximum data size in struct rte_flow_action_raw_encap. */
 #define ACTION_RAW_ENCAP_MAX_DATA 128
+#define RAW_ENCAP_CONFS_MAX_NUM 8
 
 /** Storage for struct rte_flow_action_raw_encap. */
 struct raw_encap_conf {
@@ -337,13 +346,14 @@ struct raw_encap_conf {
 	size_t size;
 };
 
-struct raw_encap_conf raw_encap_conf = {.size = 0};
+struct raw_encap_conf raw_encap_confs[RAW_ENCAP_CONFS_MAX_NUM];
 
 /** Storage for struct rte_flow_action_raw_encap including external data. */
 struct action_raw_encap_data {
 	struct rte_flow_action_raw_encap conf;
 	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
 	uint8_t preserve[ACTION_RAW_ENCAP_MAX_DATA];
+	uint16_t idx;
 };
 
 /** Storage for struct rte_flow_action_raw_decap. */
@@ -352,12 +362,13 @@ struct raw_decap_conf {
 	size_t size;
 };
 
-struct raw_decap_conf raw_decap_conf = {.size = 0};
+struct raw_decap_conf raw_decap_confs[RAW_ENCAP_CONFS_MAX_NUM];
 
 /** Storage for struct rte_flow_action_raw_decap including external data. */
 struct action_raw_decap_data {
 	struct rte_flow_action_raw_decap conf;
 	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
+	uint16_t idx;
 };
 
 struct vxlan_encap_conf vxlan_encap_conf = {
@@ -995,6 +1006,12 @@ static const enum index item_higig2[] = {
 	ZERO,
 };
 
+static const enum index next_set_raw[] = {
+	SET_RAW_INDEX,
+	ITEM_ETH,
+	ZERO,
+};
+
 static const enum index next_action[] = {
 	ACTION_END,
 	ACTION_VOID,
@@ -1236,6 +1253,18 @@ static const enum index action_dec_tcp_ack[] = {
 	ZERO,
 };
 
+static const enum index action_raw_encap[] = {
+	ACTION_RAW_ENCAP_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_raw_decap[] = {
+	ACTION_RAW_DECAP_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
 static int parse_set_raw_encap_decap(struct context *, const struct token *,
 				     const char *, unsigned int,
 				     void *, unsigned int);
@@ -1294,6 +1323,12 @@ static int parse_vc_action_raw_encap(struct context *,
 static int parse_vc_action_raw_decap(struct context *,
 				     const struct token *, const char *,
 				     unsigned int, void *, unsigned int);
+static int parse_vc_action_raw_encap_index(struct context *,
+					   const struct token *, const char *,
+					   unsigned int, void *, unsigned int);
+static int parse_vc_action_raw_decap_index(struct context *,
+					   const struct token *, const char *,
+					   unsigned int, void *, unsigned int);
 static int parse_destroy(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
@@ -1353,6 +1388,8 @@ static int comp_vc_action_rss_type(struct context *, const struct token *,
 				   unsigned int, char *, unsigned int);
 static int comp_vc_action_rss_queue(struct context *, const struct token *,
 				    unsigned int, char *, unsigned int);
+static int comp_set_raw_index(struct context *, const struct token *,
+			      unsigned int, char *, unsigned int);
 
 /** Token definitions. */
 static const struct token token_list[] = {
@@ -3266,23 +3303,49 @@ static const struct token token_list[] = {
 		.name = "raw_encap",
 		.help = "encapsulation data, defined by set raw_encap",
 		.priv = PRIV_ACTION(RAW_ENCAP,
-			sizeof(struct rte_flow_action_raw_encap)),
-		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+			sizeof(struct action_raw_encap_data)),
+		.next = NEXT(action_raw_encap),
 		.call = parse_vc_action_raw_encap,
+	},
+	[ACTION_RAW_ENCAP_INDEX] = {
+		.name = "index",
+		.help = "the index of raw_encap_confs",
+		.next = NEXT(NEXT_ENTRY(ACTION_RAW_ENCAP_INDEX_VALUE)),
+	},
+	[ACTION_RAW_ENCAP_INDEX_VALUE] = {
+		.name = "{index}",
+		.type = "UNSIGNED",
+		.help = "unsigned integer value",
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_raw_encap_index,
+		.comp = comp_set_raw_index,
 	},
 	[ACTION_RAW_DECAP] = {
 		.name = "raw_decap",
 		.help = "decapsulation data, defined by set raw_encap",
 		.priv = PRIV_ACTION(RAW_DECAP,
-			sizeof(struct rte_flow_action_raw_decap)),
-		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+			sizeof(struct action_raw_decap_data)),
+		.next = NEXT(action_raw_decap),
 		.call = parse_vc_action_raw_decap,
+	},
+	[ACTION_RAW_DECAP_INDEX] = {
+		.name = "index",
+		.help = "the index of raw_encap_confs",
+		.next = NEXT(NEXT_ENTRY(ACTION_RAW_DECAP_INDEX_VALUE)),
+	},
+	[ACTION_RAW_DECAP_INDEX_VALUE] = {
+		.name = "{index}",
+		.type = "UNSIGNED",
+		.help = "unsigned integer value",
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_raw_decap_index,
+		.comp = comp_set_raw_index,
 	},
 	/* Top level command. */
 	[SET] = {
 		.name = "set",
 		.help = "set raw encap/decap data",
-		.type = "set raw_encap|raw_decap <pattern>",
+		.type = "set raw_encap|raw_decap <index> <pattern>",
 		.next = NEXT(NEXT_ENTRY
 			     (SET_RAW_ENCAP,
 			      SET_RAW_DECAP)),
@@ -3292,14 +3355,29 @@ static const struct token token_list[] = {
 	[SET_RAW_ENCAP] = {
 		.name = "raw_encap",
 		.help = "set raw encap data",
-		.next = NEXT(next_item),
+		.next = NEXT(next_set_raw),
+		.args = ARGS(ARGS_ENTRY_ARB_BOUNDED
+				(offsetof(struct buffer, port),
+				 sizeof(((struct buffer *)0)->port),
+				 0, RAW_ENCAP_CONFS_MAX_NUM - 1)),
 		.call = parse_set_raw_encap_decap,
 	},
 	[SET_RAW_DECAP] = {
 		.name = "raw_decap",
 		.help = "set raw decap data",
-		.next = NEXT(next_item),
+		.next = NEXT(next_set_raw),
+		.args = ARGS(ARGS_ENTRY_ARB_BOUNDED
+				(offsetof(struct buffer, port),
+				 sizeof(((struct buffer *)0)->port),
+				 0, RAW_ENCAP_CONFS_MAX_NUM - 1)),
 		.call = parse_set_raw_encap_decap,
+	},
+	[SET_RAW_INDEX] = {
+		.name = "{index}",
+		.type = "UNSIGNED",
+		.help = "index of raw_encap/raw_decap data",
+		.next = NEXT(next_item),
+		.call = parse_port,
 	}
 };
 
@@ -4602,14 +4680,91 @@ parse_vc_action_mplsoudp_decap(struct context *ctx, const struct token *token,
 }
 
 static int
+parse_vc_action_raw_decap_index(struct context *ctx, const struct token *token,
+				const char *str, unsigned int len, void *buf,
+				unsigned int size)
+{
+	struct action_raw_decap_data *action_raw_decap_data;
+	struct rte_flow_action *action;
+	const struct arg *arg;
+	struct buffer *out = buf;
+	int ret;
+	uint16_t idx;
+
+	RTE_SET_USED(token);
+	RTE_SET_USED(buf);
+	RTE_SET_USED(size);
+	arg = ARGS_ENTRY_ARB_BOUNDED
+		(offsetof(struct action_raw_decap_data, idx),
+		 sizeof(((struct action_raw_decap_data *)0)->idx),
+		 0, RAW_ENCAP_CONFS_MAX_NUM - 1);
+	if (push_args(ctx, arg))
+		return -1;
+	ret = parse_int(ctx, token, str, len, NULL, 0);
+	if (ret < 0) {
+		pop_args(ctx);
+		return -1;
+	}
+	if (!ctx->object)
+		return len;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	action_raw_decap_data = ctx->object;
+	idx = action_raw_decap_data->idx;
+	action_raw_decap_data->conf.data = raw_decap_confs[idx].data;
+	action_raw_decap_data->conf.size = raw_decap_confs[idx].size;
+	action->conf = &action_raw_decap_data->conf;
+	return len;
+}
+
+
+static int
+parse_vc_action_raw_encap_index(struct context *ctx, const struct token *token,
+				const char *str, unsigned int len, void *buf,
+				unsigned int size)
+{
+	struct action_raw_encap_data *action_raw_encap_data;
+	struct rte_flow_action *action;
+	const struct arg *arg;
+	struct buffer *out = buf;
+	int ret;
+	uint16_t idx;
+
+	RTE_SET_USED(token);
+	RTE_SET_USED(buf);
+	RTE_SET_USED(size);
+	if (ctx->curr != ACTION_RAW_ENCAP_INDEX_VALUE)
+		return -1;
+	arg = ARGS_ENTRY_ARB_BOUNDED
+		(offsetof(struct action_raw_encap_data, idx),
+		 sizeof(((struct action_raw_encap_data *)0)->idx),
+		 0, RAW_ENCAP_CONFS_MAX_NUM - 1);
+	if (push_args(ctx, arg))
+		return -1;
+	ret = parse_int(ctx, token, str, len, NULL, 0);
+	if (ret < 0) {
+		pop_args(ctx);
+		return -1;
+	}
+	if (!ctx->object)
+		return len;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	action_raw_encap_data = ctx->object;
+	idx = action_raw_encap_data->idx;
+	action_raw_encap_data->conf.data = raw_encap_confs[idx].data;
+	action_raw_encap_data->conf.size = raw_encap_confs[idx].size;
+	action_raw_encap_data->conf.preserve = NULL;
+	action->conf = &action_raw_encap_data->conf;
+	return len;
+}
+
+static int
 parse_vc_action_raw_encap(struct context *ctx, const struct token *token,
 			  const char *str, unsigned int len, void *buf,
 			  unsigned int size)
 {
 	struct buffer *out = buf;
 	struct rte_flow_action *action;
-	struct rte_flow_action_raw_encap *action_raw_encap_conf = NULL;
-	uint8_t *data = NULL;
+	struct action_raw_encap_data *action_raw_encap_data = NULL;
 	int ret;
 
 	ret = parse_vc(ctx, token, str, len, buf, size);
@@ -4625,14 +4780,11 @@ parse_vc_action_raw_encap(struct context *ctx, const struct token *token,
 	ctx->object = out->args.vc.data;
 	ctx->objmask = NULL;
 	/* Copy the headers to the buffer. */
-	action_raw_encap_conf = ctx->object;
-	/* data stored from tail of data buffer */
-	data = (uint8_t *)&(raw_encap_conf.data) +
-		ACTION_RAW_ENCAP_MAX_DATA - raw_encap_conf.size;
-	action_raw_encap_conf->data = data;
-	action_raw_encap_conf->preserve = NULL;
-	action_raw_encap_conf->size = raw_encap_conf.size;
-	action->conf = action_raw_encap_conf;
+	action_raw_encap_data = ctx->object;
+	action_raw_encap_data->conf.data = raw_encap_confs[0].data;
+	action_raw_encap_data->conf.preserve = NULL;
+	action_raw_encap_data->conf.size = raw_encap_confs[0].size;
+	action->conf = &action_raw_encap_data->conf;
 	return ret;
 }
 
@@ -4643,8 +4795,7 @@ parse_vc_action_raw_decap(struct context *ctx, const struct token *token,
 {
 	struct buffer *out = buf;
 	struct rte_flow_action *action;
-	struct rte_flow_action_raw_decap *action_raw_decap_conf = NULL;
-	uint8_t *data = NULL;
+	struct action_raw_decap_data *action_raw_decap_data = NULL;
 	int ret;
 
 	ret = parse_vc(ctx, token, str, len, buf, size);
@@ -4660,13 +4811,10 @@ parse_vc_action_raw_decap(struct context *ctx, const struct token *token,
 	ctx->object = out->args.vc.data;
 	ctx->objmask = NULL;
 	/* Copy the headers to the buffer. */
-	action_raw_decap_conf = ctx->object;
-	/* data stored from tail of data buffer */
-	data = (uint8_t *)&(raw_decap_conf.data) +
-		ACTION_RAW_ENCAP_MAX_DATA - raw_decap_conf.size;
-	action_raw_decap_conf->data = data;
-	action_raw_decap_conf->size = raw_decap_conf.size;
-	action->conf = action_raw_decap_conf;
+	action_raw_decap_data = ctx->object;
+	action_raw_decap_data->conf.data = raw_decap_confs[0].data;
+	action_raw_decap_data->conf.size = raw_decap_confs[0].size;
+	action->conf = &action_raw_decap_data->conf;
 	return ret;
 }
 
@@ -5345,6 +5493,7 @@ parse_set_raw_encap_decap(struct context *ctx, const struct token *token,
 		return -1;
 	ctx->objdata = 0;
 	ctx->objmask = NULL;
+	ctx->object = out;
 	if (!out->command)
 		return -1;
 	out->command = ctx->curr;
@@ -5519,6 +5668,24 @@ comp_vc_action_rss_queue(struct context *ctx, const struct token *token,
 	if (ent == nb_rxq)
 		return snprintf(buf, size, "end");
 	return -1;
+}
+
+/** Complete index number for set raw_encap/raw_decap commands. */
+static int
+comp_set_raw_index(struct context *ctx, const struct token *token,
+		   unsigned int ent, char *buf, unsigned int size)
+{
+	uint16_t idx = 0;
+	uint16_t nb = 0;
+
+	RTE_SET_USED(ctx);
+	RTE_SET_USED(token);
+	for (idx = 0; idx < RAW_ENCAP_CONFS_MAX_NUM; ++idx) {
+		if (buf && idx == ent)
+			return snprintf(buf, size, "%u", idx);
+		++nb;
+	}
+	return nb;
 }
 
 /** Internal context. */
@@ -5960,15 +6127,16 @@ cmd_set_raw_parsed(const struct buffer *in)
 	size_t *total_size = NULL;
 	uint16_t upper_layer = 0;
 	uint16_t proto = 0;
+	uint16_t idx = in->port; /* We borrow port field as index */
 
 	RTE_ASSERT(in->command == SET_RAW_ENCAP ||
 		   in->command == SET_RAW_DECAP);
 	if (in->command == SET_RAW_ENCAP) {
-		total_size = &raw_encap_conf.size;
-		data = (uint8_t *)&raw_encap_conf.data;
+		total_size = &raw_encap_confs[idx].size;
+		data = (uint8_t *)&raw_encap_confs[idx].data;
 	} else {
-		total_size = &raw_decap_conf.size;
-		data = (uint8_t *)&raw_decap_conf.data;
+		total_size = &raw_decap_confs[idx].size;
+		data = (uint8_t *)&raw_decap_confs[idx].data;
 	}
 	*total_size = 0;
 	memset(data, 0x00, ACTION_RAW_ENCAP_MAX_DATA);
@@ -6041,6 +6209,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 	if (verbose_level & 0x1)
 		printf("total data size is %zu\n", (*total_size));
 	RTE_ASSERT((*total_size) <= ACTION_RAW_ENCAP_MAX_DATA);
+	memmove(data, (data_tail - (*total_size)), *total_size);
 }
 
 /** Populate help strings for current token (cmdline API). */
@@ -6124,4 +6293,81 @@ cmdline_parse_inst_t cmd_set_raw = {
 	.tokens = {
 		NULL,
 	}, /**< Tokens are returned by cmd_flow_tok(). */
+};
+
+/* *** display raw_encap/raw_decap buf */
+struct cmd_show_set_raw_result {
+	cmdline_fixed_string_t cmd_show;
+	cmdline_fixed_string_t cmd_what;
+	cmdline_fixed_string_t cmd_all;
+	uint16_t cmd_index;
+};
+
+static void
+cmd_show_set_raw_parsed(void *parsed_result, struct cmdline *cl, void *data)
+{
+	struct cmd_show_set_raw_result *res = parsed_result;
+	uint16_t index = res->cmd_index;
+	uint8_t all = 0;
+	uint8_t *raw_data = NULL;
+	size_t raw_size = 0;
+	char title[16] = {0};
+
+	RTE_SET_USED(cl);
+	RTE_SET_USED(data);
+	if (!strcmp(res->cmd_all, "all")) {
+		all = 1;
+		index = 0;
+	} else if (index >= RAW_ENCAP_CONFS_MAX_NUM) {
+		printf("index should be 0-%u\n", RAW_ENCAP_CONFS_MAX_NUM - 1);
+		return;
+	}
+	do {
+		if (!strcmp(res->cmd_what, "raw_encap")) {
+			raw_data = (uint8_t *)&raw_encap_confs[index].data;
+			raw_size = raw_encap_confs[index].size;
+			snprintf(title, 16, "\nindex: %u", index);
+			rte_hexdump(stdout, title, raw_data, raw_size);
+		} else {
+			raw_data = (uint8_t *)&raw_decap_confs[index].data;
+			raw_size = raw_decap_confs[index].size;
+			snprintf(title, 16, "\nindex: %u", index);
+			rte_hexdump(stdout, title, raw_data, raw_size);
+		}
+	} while (all && ++index < RAW_ENCAP_CONFS_MAX_NUM);
+}
+
+cmdline_parse_token_string_t cmd_show_set_raw_cmd_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_set_raw_result,
+			cmd_show, "show");
+cmdline_parse_token_string_t cmd_show_set_raw_cmd_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_set_raw_result,
+			cmd_what, "raw_encap#raw_decap");
+cmdline_parse_token_num_t cmd_show_set_raw_cmd_index =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_set_raw_result,
+			cmd_index, UINT16);
+cmdline_parse_token_string_t cmd_show_set_raw_cmd_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_set_raw_result,
+			cmd_all, "all");
+cmdline_parse_inst_t cmd_show_set_raw = {
+	.f = cmd_show_set_raw_parsed,
+	.data = NULL,
+	.help_str = "show <raw_encap|raw_decap> <index>",
+	.tokens = {
+		(void *)&cmd_show_set_raw_cmd_show,
+		(void *)&cmd_show_set_raw_cmd_what,
+		(void *)&cmd_show_set_raw_cmd_index,
+		NULL,
+	},
+};
+cmdline_parse_inst_t cmd_show_set_raw_all = {
+	.f = cmd_show_set_raw_parsed,
+	.data = NULL,
+	.help_str = "show <raw_encap|raw_decap> all",
+	.tokens = {
+		(void *)&cmd_show_set_raw_cmd_show,
+		(void *)&cmd_show_set_raw_cmd_what,
+		(void *)&cmd_show_set_raw_cmd_all,
+		NULL,
+	},
 };

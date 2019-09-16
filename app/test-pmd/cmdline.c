@@ -19205,6 +19205,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_tx_metadata_specific,
 	(cmdline_parse_inst_t *)&cmd_show_tx_metadata,
 	(cmdline_parse_inst_t *)&cmd_set_raw,
+	(cmdline_parse_inst_t *)&cmd_show_set_raw,
+	(cmdline_parse_inst_t *)&cmd_show_set_raw_all,
 	NULL,
 };
 

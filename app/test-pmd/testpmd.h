@@ -265,6 +265,8 @@ extern struct fwd_engine ieee1588_fwd_engine;
 
 extern struct fwd_engine * fwd_engines[]; /**< NULL terminated array. */
 extern cmdline_parse_inst_t cmd_set_raw;
+extern cmdline_parse_inst_t cmd_show_set_raw;
+extern cmdline_parse_inst_t cmd_show_set_raw_all;
 
 extern uint16_t mempool_flags;
 

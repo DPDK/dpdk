@@ -545,6 +545,25 @@ Dumps the log level for all the dpdk modules::
 
    testpmd> dump_log_types
 
+show (raw_encap|raw_decap)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Display content of raw_encap/raw_decap buffers in hex::
+
+  testpmd> show <raw_encap|raw_decap> <index>
+  testpmd> show <raw_encap|raw_decap> all
+
+For example::
+
+  testpmd> show raw_encap 6
+
+  index: 6 at [0x1c565b0], len=50
+  00000000: 00 00 00 00 00 00 16 26 36 46 56 66 08 00 45 00 | .......&6FVf..E.
+  00000010: 00 00 00 00 00 00 00 11 00 00 C0 A8 01 06 C0 A8 | ................
+  00000020: 03 06 00 00 00 FA 00 00 00 00 08 00 00 00 00 00 | ................
+  00000030: 06 00                                           | ..
+
+
 Configuration Functions
 -----------------------
 
@@ -1834,12 +1853,22 @@ Config Raw Encapsulation
 Configure the raw data to be used when encapsulating a packet by
 rte_flow_action_raw_encap::
 
+ set raw_encap {index} {item} [/ {item} [...]] / end_set
+
+There are multiple global buffers for ``raw_encap``, this command will set one
+internal buffer index by ``{index}``.
+If there is no ``{index}`` specified::
+
  set raw_encap {item} [/ {item} [...]] / end_set
 
-This command will set an internal buffer inside testpmd, any following flow rule
-using the action raw_encap will use the last configuration set.
-To have a different encapsulation header, this command must be called before the
-flow rule creation.
+the default index ``0`` is used.
+In order to use different encapsulating header, ``index`` must be specified
+during the flow rule creation::
+
+ testpmd> flow create 0 egress pattern eth / ipv4 / end actions
+        raw_encap index 2 / end
+
+Otherwise the default index ``0`` is used.
 
 Config Raw Decapsulation
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1847,10 +1876,22 @@ Config Raw Decapsulation
 Configure the raw data to be used when decapsulating a packet by
 rte_flow_action_raw_decap::
 
+ set raw_decap {index} {item} [/ {item} [...]] / end_set
+
+There are multiple global buffers for ``raw_decap``, this command will set
+one internal buffer index by ``{index}``.
+If there is no ``{index}`` specified::
+
  set raw_decap {item} [/ {item} [...]] / end_set
 
-This command will set an internal buffer inside testpmd, any following flow rule
-using the action raw_decap will use the last configuration set.
+the default index ``0`` is used.
+In order to use different decapsulating header, ``index`` must be specified
+during the flow rule creation::
+
+ testpmd> flow create 0 egress pattern eth / ipv4 / end actions
+          raw_encap index 3 / end
+
+Otherwise the default index ``0`` is used.
 
 Port Functions
 --------------
@@ -4670,11 +4711,11 @@ Raw encapsulation configuration can be set by the following commands
 
 Eecapsulating VxLAN::
 
- testpmd> set raw_encap eth src is 10:11:22:33:44:55 / vlan tci is 1
+ testpmd> set raw_encap 4 eth src is 10:11:22:33:44:55 / vlan tci is 1
         inner_type is 0x0800 / ipv4 / udp dst is 4789 / vxlan vni
         is 2 / end_set
  testpmd> flow create 0 egress pattern eth / ipv4 / end actions
-        raw_encap / end
+        raw_encap index 4 / end
 
 Sample Raw decapsulation rule
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
