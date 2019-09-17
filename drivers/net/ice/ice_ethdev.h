@@ -124,6 +124,13 @@
 #define ICE_ETH_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + ICE_VLAN_TAG_SIZE * 2)
 
+/* DDP package type */
+enum ice_pkg_type {
+	ICE_PKG_TYPE_UNKNOWN,
+	ICE_PKG_TYPE_OS_DEFAULT,
+	ICE_PKG_TYPE_COMMS,
+};
+
 struct ice_adapter;
 
 /**
@@ -296,6 +303,7 @@ struct ice_adapter {
 	uint32_t ptype_tbl[ICE_MAX_PKT_TYPE] __rte_cache_min_aligned;
 	bool is_safe_mode;
 	struct ice_devargs devargs;
+	enum ice_pkg_type active_pkg_type; /* loaded ddp package type */
 };
 
 struct ice_vsi_vlan_pvid_info {

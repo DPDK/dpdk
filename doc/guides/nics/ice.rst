@@ -118,10 +118,22 @@ The Intel E810 requires a programmable pipeline package be downloaded
 by the driver to support normal operations. The E810 has a limited
 functionality built in to allow PXE boot and other use cases, but the
 driver must download a package file during the driver initialization
-stage. The file must be in the /lib/firmware/intel/ice/ddp directory
-and it must be named ice.pkg. A symbolic link to this file is also ok.
-The same package file is used by both the kernel driver and the DPDK PMD.
+stage.
 
+The default DDP package file name is ice.pkg. For a specific NIC, the
+DDP package supposed to be loaded can have a filename: ice-xxxxxx.pkg,
+where 'xxxxxx' is the 64-bit PCIe Device Serial Number of the NIC. For
+example, if the NIC's device serial number is 00-CC-BB-FF-FF-AA-05-68,
+the device-specific DDP package filename is ice-00ccbbffffaa0568.pkg
+(in hex and all low case). During initialization, the driver searches
+in the following paths in order: /lib/firmware/updates/intel/ice/ddp
+and /lib/firmware/intel/ice/ddp. The corresponding device-specific DDP
+package will be downloaded first if the file exists. If not, then the
+driver tries to load the default package. The type of loaded package
+is stored in ``ice_adapter->active_pkg_type``.
+
+A symbolic link to the DDP package file is also ok. The same package
+file is used by both the kernel driver and the DPDK PMD.
 
 19.02 limitation
 ~~~~~~~~~~~~~~~~

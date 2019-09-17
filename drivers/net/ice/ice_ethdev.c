@@ -26,7 +26,16 @@ static const char * const ice_valid_args[] = {
 };
 
 #define ICE_DFLT_OUTER_TAG_TYPE ICE_AQ_VSI_OUTER_TAG_VLAN_9100
-#define ICE_DFLT_PKG_FILE "/lib/firmware/intel/ice/ddp/ice.pkg"
+
+/* DDP package search path */
+#define ICE_PKG_FILE_DEFAULT "/lib/firmware/intel/ice/ddp/ice.pkg"
+#define ICE_PKG_FILE_UPDATES "/lib/firmware/updates/intel/ice/ddp/ice.pkg"
+#define ICE_PKG_FILE_SEARCH_PATH_DEFAULT "/lib/firmware/intel/ice/ddp/"
+#define ICE_PKG_FILE_SEARCH_PATH_UPDATES "/lib/firmware/updates/intel/ice/ddp/"
+
+#define ICE_OS_DEFAULT_PKG_NAME		"ICE OS Default Package"
+#define ICE_COMMS_PKG_NAME			"ICE COMMS Package"
+#define ICE_MAX_PKG_FILENAME_SIZE   256
 
 int ice_logtype_init;
 int ice_logtype_driver;
@@ -1263,15 +1272,132 @@ ice_pf_setup(struct ice_pf *pf)
 	return 0;
 }
 
+/* PCIe configuration space setting */
+#define PCI_CFG_SPACE_SIZE          256
+#define PCI_CFG_SPACE_EXP_SIZE      4096
+#define PCI_EXT_CAP_ID(header)      (int)((header) & 0x0000ffff)
+#define PCI_EXT_CAP_NEXT(header)    (((header) >> 20) & 0xffc)
+#define PCI_EXT_CAP_ID_DSN          0x03
+
+static int
+ice_pci_find_next_ext_capability(struct rte_pci_device *dev, int cap)
+{
+	uint32_t header;
+	int ttl;
+	int pos = PCI_CFG_SPACE_SIZE;
+
+	/* minimum 8 bytes per capability */
+	ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
+
+	if (rte_pci_read_config(dev, &header, 4, pos) < 0) {
+		PMD_INIT_LOG(ERR, "ice error reading extended capabilities\n");
+		return -1;
+	}
+
+	/*
+	 * If we have no capabilities, this is indicated by cap ID,
+	 * cap version and next pointer all being 0.
+	 */
+	if (header == 0)
+		return 0;
+
+	while (ttl-- > 0) {
+		if (PCI_EXT_CAP_ID(header) == cap)
+			return pos;
+
+		pos = PCI_EXT_CAP_NEXT(header);
+
+		if (pos < PCI_CFG_SPACE_SIZE)
+			break;
+
+		if (rte_pci_read_config(dev, &header, 4, pos) < 0) {
+			PMD_INIT_LOG(ERR, "ice error reading extended capabilities\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Extract device serial number from PCIe Configuration Space and
+ * determine the pkg file path according to the DSN.
+ */
+static int
+ice_pkg_file_search_path(struct rte_pci_device *pci_dev, char *pkg_file)
+{
+	int pos;
+	char opt_ddp_filename[ICE_MAX_PKG_FILENAME_SIZE];
+	uint32_t dsn_low, dsn_high;
+	memset(opt_ddp_filename, 0, ICE_MAX_PKG_FILENAME_SIZE);
+
+	pos = ice_pci_find_next_ext_capability(pci_dev, PCI_EXT_CAP_ID_DSN);
+
+	if (pos) {
+		rte_pci_read_config(pci_dev, &dsn_low, 4, pos + 4);
+		rte_pci_read_config(pci_dev, &dsn_high, 4, pos + 8);
+		snprintf(opt_ddp_filename, ICE_MAX_PKG_FILENAME_SIZE,
+			 "ice-%08x%08x.pkg", dsn_high, dsn_low);
+	} else {
+		PMD_INIT_LOG(ERR, "Failed to read device serial number\n");
+		goto fail_dsn;
+	}
+
+	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_UPDATES,
+		ICE_MAX_PKG_FILENAME_SIZE);
+	if (!access(strcat(pkg_file, opt_ddp_filename), 0))
+		return 0;
+
+	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_DEFAULT,
+		ICE_MAX_PKG_FILENAME_SIZE);
+	if (!access(strcat(pkg_file, opt_ddp_filename), 0))
+		return 0;
+
+fail_dsn:
+	strncpy(pkg_file, ICE_PKG_FILE_UPDATES, ICE_MAX_PKG_FILENAME_SIZE);
+	if (!access(pkg_file, 0))
+		return 0;
+	strncpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
+	return 0;
+}
+
+static enum ice_pkg_type
+ice_load_pkg_type(struct ice_hw *hw)
+{
+	enum ice_pkg_type package_type;
+
+	/* store the activated package type (OS default or Comms) */
+	if (!strncmp((char *)hw->active_pkg_name, ICE_OS_DEFAULT_PKG_NAME,
+		ICE_PKG_NAME_SIZE))
+		package_type = ICE_PKG_TYPE_OS_DEFAULT;
+	else if (!strncmp((char *)hw->active_pkg_name, ICE_COMMS_PKG_NAME,
+		ICE_PKG_NAME_SIZE))
+		package_type = ICE_PKG_TYPE_COMMS;
+	else
+		package_type = ICE_PKG_TYPE_UNKNOWN;
+
+	PMD_INIT_LOG(NOTICE, "Active package is: %d.%d.%d.%d, %s",
+		hw->active_pkg_ver.major, hw->active_pkg_ver.minor,
+		hw->active_pkg_ver.update, hw->active_pkg_ver.draft,
+		hw->active_pkg_name);
+
+	return package_type;
+}
+
 static int ice_load_pkg(struct rte_eth_dev *dev)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	const char *pkg_file = ICE_DFLT_PKG_FILE;
+	char pkg_file[ICE_MAX_PKG_FILENAME_SIZE];
 	int err;
 	uint8_t *buf;
 	int buf_len;
 	FILE *file;
 	struct stat fstat;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	ice_pkg_file_search_path(pci_dev, pkg_file);
 
 	file = fopen(pkg_file, "rb");
 	if (!file)  {
@@ -1311,6 +1437,10 @@ static int ice_load_pkg(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "ice_copy_and_init_hw failed: %d\n", err);
 		goto fail_exit;
 	}
+
+	/* store the loaded pkg type info */
+	ad->active_pkg_type = ice_load_pkg_type(hw);
+
 	err = ice_init_hw_tbls(hw);
 	if (err) {
 		PMD_INIT_LOG(ERR, "ice_init_hw_tbls failed: %d\n", err);

@@ -56,6 +56,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Updated the Intel ice driver.**
+
+  Updated the Intel ice driver with new features and improvements, including:
+
+  * Added support for device-specific DDP package loading.
+
 * **Added Marvell NITROX symmetric crypto PMD.**
 
   Added a symmetric crypto PMD for Marvell NITROX V security processor.
