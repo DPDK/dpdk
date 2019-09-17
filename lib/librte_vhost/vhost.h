@@ -344,7 +344,7 @@ vq_is_packed(struct virtio_net *dev)
 static inline bool
 desc_is_avail(struct vring_packed_desc *desc, bool wrap_counter)
 {
-	uint16_t flags = *((volatile uint16_t *) &desc->flags);
+	uint16_t flags = __atomic_load_n(&desc->flags, __ATOMIC_ACQUIRE);
 
 	return wrap_counter == !!(flags & VRING_DESC_F_AVAIL) &&
 		wrap_counter != !!(flags & VRING_DESC_F_USED);

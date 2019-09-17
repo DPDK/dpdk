@@ -54,6 +54,27 @@ virtio_wmb(uint8_t weak_barriers)
 		rte_cio_wmb();
 }
 
+static inline void
+virtqueue_store_flags_packed(struct vring_packed_desc *dp,
+			      uint16_t flags, uint8_t weak_barriers)
+{
+	if (weak_barriers) {
+/* x86 prefers to using rte_smp_wmb over __atomic_store_n as it reports
+ * a better perf(~1.5%), which comes from the saved branch by the compiler.
+ * The if and else branch are identical with the smp and cio barriers both
+ * defined as compiler barriers on x86.
+ */
+#ifdef RTE_ARCH_X86_64
+		rte_smp_wmb();
+		dp->flags = flags;
+#else
+		__atomic_store_n(&dp->flags, flags, __ATOMIC_RELEASE);
+#endif
+	} else {
+		rte_cio_wmb();
+		dp->flags = flags;
+	}
+}
 #ifdef RTE_PMD_PACKET_PREFETCH
 #define rte_packet_prefetch(p)  rte_prefetch1(p)
 #else

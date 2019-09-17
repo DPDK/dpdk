@@ -503,14 +503,13 @@ fill_vec_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	if (avail_idx < vq->last_avail_idx)
 		wrap_counter ^= 1;
 
+	/*
+	 * Perform a load-acquire barrier in desc_is_avail to
+	 * enforce the ordering between desc flags and desc
+	 * content.
+	 */
 	if (unlikely(!desc_is_avail(&descs[avail_idx], wrap_counter)))
 		return -1;
-
-	/*
-	 * The ordering between desc flags and desc
-	 * content reads need to be enforced.
-	 */
-	rte_smp_rmb();
 
 	*desc_count = 0;
 	*len = 0;

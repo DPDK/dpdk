@@ -498,8 +498,10 @@ virtqueue_enqueue_recv_refill_packed(struct virtqueue *vq,
 		vq->vq_desc_head_idx = dxp->next;
 		if (vq->vq_desc_head_idx == VQ_RING_DESC_CHAIN_END)
 			vq->vq_desc_tail_idx = vq->vq_desc_head_idx;
-		virtio_wmb(hw->weak_barriers);
-		start_dp[idx].flags = flags;
+
+		virtqueue_store_flags_packed(&start_dp[idx], flags,
+					     hw->weak_barriers);
+
 		if (++vq->vq_avail_idx >= vq->vq_nentries) {
 			vq->vq_avail_idx -= vq->vq_nentries;
 			vq->vq_packed.cached_flags ^=
@@ -713,8 +715,7 @@ virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
 			vq->vq_desc_tail_idx = VQ_RING_DESC_CHAIN_END;
 	}
 
-	virtio_wmb(vq->hw->weak_barriers);
-	dp->flags = flags;
+	virtqueue_store_flags_packed(dp, flags, vq->hw->weak_barriers);
 }
 
 static inline void
@@ -808,8 +809,8 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 			vq->vq_desc_tail_idx = VQ_RING_DESC_CHAIN_END;
 	}
 
-	virtio_wmb(vq->hw->weak_barriers);
-	head_dp->flags = head_flags;
+	virtqueue_store_flags_packed(head_dp, head_flags,
+				     vq->hw->weak_barriers);
 }
 
 static inline void

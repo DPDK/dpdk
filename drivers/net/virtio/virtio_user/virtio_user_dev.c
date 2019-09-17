@@ -624,7 +624,7 @@ virtio_user_handle_ctrl_msg(struct virtio_user_dev *dev, struct vring *vring,
 static inline int
 desc_is_avail(struct vring_packed_desc *desc, bool wrap_counter)
 {
-	uint16_t flags = desc->flags;
+	uint16_t flags = __atomic_load_n(&desc->flags, __ATOMIC_ACQUIRE);
 
 	return wrap_counter == !!(flags & VRING_PACKED_DESC_F_AVAIL) &&
 		wrap_counter != !!(flags & VRING_PACKED_DESC_F_USED);
@@ -684,6 +684,10 @@ virtio_user_handle_cq_packed(struct virtio_user_dev *dev, uint16_t queue_idx)
 	struct vring_packed *vring = &dev->packed_vrings[queue_idx];
 	uint16_t n_descs, flags;
 
+	/* Perform a load-acquire barrier in desc_is_avail to
+	 * enforce the ordering between desc flags and desc
+	 * content.
+	 */
 	while (desc_is_avail(&vring->desc[vq->used_idx],
 			     vq->used_wrap_counter)) {
 
