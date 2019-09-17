@@ -308,9 +308,8 @@ struct eth_group_device *eth_group_probe(void *base)
 
 void eth_group_release(struct eth_group_device *dev)
 {
-	eth_group_hw_uinit(dev);
-
 	if (dev) {
+		eth_group_hw_uinit(dev);
 		dev->status = ETH_GROUP_DEV_NOUSED;
 		opae_free(dev);
 	}
