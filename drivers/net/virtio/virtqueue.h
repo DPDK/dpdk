@@ -54,6 +54,32 @@ virtio_wmb(uint8_t weak_barriers)
 		rte_cio_wmb();
 }
 
+static inline uint16_t
+virtqueue_fetch_flags_packed(struct vring_packed_desc *dp,
+			      uint8_t weak_barriers)
+{
+	uint16_t flags;
+
+	if (weak_barriers) {
+/* x86 prefers to using rte_smp_rmb over __atomic_load_n as it reports
+ * a better perf(~1.5%), which comes from the saved branch by the compiler.
+ * The if and else branch are identical with the smp and cio barriers both
+ * defined as compiler barriers on x86.
+ */
+#ifdef RTE_ARCH_X86_64
+		flags = dp->flags;
+		rte_smp_rmb();
+#else
+		flags = __atomic_load_n(&dp->flags, __ATOMIC_ACQUIRE);
+#endif
+	} else {
+		flags = dp->flags;
+		rte_cio_rmb();
+	}
+
+	return flags;
+}
+
 static inline void
 virtqueue_store_flags_packed(struct vring_packed_desc *dp,
 			      uint16_t flags, uint8_t weak_barriers)
@@ -307,7 +333,7 @@ desc_is_used(struct vring_packed_desc *desc, struct virtqueue *vq)
 {
 	uint16_t used, avail, flags;
 
-	flags = desc->flags;
+	flags = virtqueue_fetch_flags_packed(desc, vq->hw->weak_barriers);
 	used = !!(flags & VRING_PACKED_DESC_F_USED);
 	avail = !!(flags & VRING_PACKED_DESC_F_AVAIL);
 

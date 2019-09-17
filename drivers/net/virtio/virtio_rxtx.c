@@ -164,9 +164,11 @@ virtqueue_dequeue_burst_rx_packed(struct virtqueue *vq,
 
 	for (i = 0; i < num; i++) {
 		used_idx = vq->vq_used_cons_idx;
+		/* desc_is_used has a load-acquire or rte_cio_rmb inside
+		 * and wait for used desc in virtqueue.
+		 */
 		if (!desc_is_used(&desc[used_idx], vq))
 			return i;
-		virtio_rmb(vq->hw->weak_barriers);
 		len[i] = desc[used_idx].len;
 		id = desc[used_idx].id;
 		cookie = (struct rte_mbuf *)vq->vq_descx[id].cookie;
@@ -275,8 +277,10 @@ virtio_xmit_cleanup_inorder_packed(struct virtqueue *vq, int num)
 	struct vq_desc_extra *dxp;
 
 	used_idx = vq->vq_used_cons_idx;
+	/* desc_is_used has a load-acquire or rte_cio_rmb inside
+	 * and wait for used desc in virtqueue.
+	 */
 	while (num > 0 && desc_is_used(&desc[used_idx], vq)) {
-		virtio_rmb(vq->hw->weak_barriers);
 		id = desc[used_idx].id;
 		do {
 			curr_id = used_idx;
@@ -307,8 +311,10 @@ virtio_xmit_cleanup_normal_packed(struct virtqueue *vq, int num)
 	struct vq_desc_extra *dxp;
 
 	used_idx = vq->vq_used_cons_idx;
+	/* desc_is_used has a load-acquire or rte_cio_rmb inside
+	 * and wait for used desc in virtqueue.
+	 */
 	while (num-- && desc_is_used(&desc[used_idx], vq)) {
-		virtio_rmb(vq->hw->weak_barriers);
 		id = desc[used_idx].id;
 		dxp = &vq->vq_descx[id];
 		vq->vq_used_cons_idx += dxp->ndescs;

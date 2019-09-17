@@ -698,8 +698,8 @@ virtio_user_handle_cq_packed(struct virtio_user_dev *dev, uint16_t queue_idx)
 		if (vq->used_wrap_counter)
 			flags |= VRING_PACKED_DESC_F_AVAIL_USED;
 
-		rte_smp_wmb();
-		vring->desc[vq->used_idx].flags = flags;
+		__atomic_store_n(&vring->desc[vq->used_idx].flags, flags,
+				 __ATOMIC_RELEASE);
 
 		vq->used_idx += n_descs;
 		if (vq->used_idx >= dev->queue_size) {

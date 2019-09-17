@@ -110,8 +110,6 @@ flush_shadow_used_ring_packed(struct virtio_net *dev,
 			used_idx -= vq->size;
 	}
 
-	rte_smp_wmb();
-
 	for (i = 0; i < vq->shadow_used_idx; i++) {
 		uint16_t flags;
 
@@ -147,7 +145,8 @@ flush_shadow_used_ring_packed(struct virtio_net *dev,
 		}
 	}
 
-	vq->desc_packed[head_idx].flags = head_flags;
+	__atomic_store_n(&vq->desc_packed[head_idx].flags, head_flags,
+			 __ATOMIC_RELEASE);
 
 	vhost_log_cache_used_vring(dev, vq,
 				head_idx *
