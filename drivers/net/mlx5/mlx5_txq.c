@@ -572,7 +572,6 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_ibv->cq = tmpl.cq;
 	rte_atomic32_inc(&txq_ibv->refcnt);
 	txq_ctrl->bf_reg = qp.bf.reg;
-	txq_uar_init(txq_ctrl);
 	if (qp.comp_mask & MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
 		txq_ctrl->uar_mmap_offset = qp.uar_mmap_offset;
 		DRV_LOG(DEBUG, "port %u: uar_mmap_offset 0x%"PRIx64,
@@ -585,6 +584,7 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = EINVAL;
 		goto error;
 	}
+	txq_uar_init(txq_ctrl);
 	LIST_INSERT_HEAD(&priv->txqsibv, txq_ibv, next);
 	txq_ibv->txq_ctrl = txq_ctrl;
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
