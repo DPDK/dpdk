@@ -106,6 +106,48 @@ vq_ring_free_id_packed(struct virtqueue *vq, uint16_t id)
 	dxp->next = VQ_RING_DESC_CHAIN_END;
 }
 
+static inline void
+virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
+{
+	uint32_t s = mbuf->pkt_len;
+	struct rte_ether_addr *ea;
+
+	stats->bytes += s;
+
+	if (s == 64) {
+		stats->size_bins[1]++;
+	} else if (s > 64 && s < 1024) {
+		uint32_t bin;
+
+		/* count zeros, and offset into correct bin */
+		bin = (sizeof(s) * 8) - __builtin_clz(s) - 5;
+		stats->size_bins[bin]++;
+	} else {
+		if (s < 64)
+			stats->size_bins[0]++;
+		else if (s < 1519)
+			stats->size_bins[6]++;
+		else
+			stats->size_bins[7]++;
+	}
+
+	ea = rte_pktmbuf_mtod(mbuf, struct rte_ether_addr *);
+	if (rte_is_multicast_ether_addr(ea)) {
+		if (rte_is_broadcast_ether_addr(ea))
+			stats->broadcast++;
+		else
+			stats->multicast++;
+	}
+}
+
+static inline void
+virtio_rx_stats_updated(struct virtnet_rx *rxvq, struct rte_mbuf *m)
+{
+	VIRTIO_DUMP_PACKET(m, m->data_len);
+
+	virtio_update_packet_stats(&rxvq->stats, m);
+}
+
 static uint16_t
 virtqueue_dequeue_burst_rx_packed(struct virtqueue *vq,
 				  struct rte_mbuf **rx_pkts,
@@ -317,7 +359,7 @@ virtio_xmit_cleanup(struct virtqueue *vq, uint16_t num)
 }
 
 /* Cleanup from completed inorder transmits. */
-static void
+static __rte_always_inline void
 virtio_xmit_cleanup_inorder(struct virtqueue *vq, uint16_t num)
 {
 	uint16_t i, idx = vq->vq_used_cons_idx;
@@ -596,6 +638,7 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 		dxp = &vq->vq_descx[vq->vq_avail_idx & (vq->vq_nentries - 1)];
 		dxp->cookie = (void *)cookies[i];
 		dxp->ndescs = 1;
+		virtio_update_packet_stats(&txvq->stats, cookies[i]);
 
 		hdr = (struct virtio_net_hdr *)
 			rte_pktmbuf_prepend(cookies[i], head_size);
@@ -1081,48 +1124,6 @@ virtio_discard_rxbuf_inorder(struct virtqueue *vq, struct rte_mbuf *m)
 		RTE_LOG(ERR, PMD, "cannot requeue discarded mbuf");
 		rte_pktmbuf_free(m);
 	}
-}
-
-static inline void
-virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
-{
-	uint32_t s = mbuf->pkt_len;
-	struct rte_ether_addr *ea;
-
-	stats->bytes += s;
-
-	if (s == 64) {
-		stats->size_bins[1]++;
-	} else if (s > 64 && s < 1024) {
-		uint32_t bin;
-
-		/* count zeros, and offset into correct bin */
-		bin = (sizeof(s) * 8) - __builtin_clz(s) - 5;
-		stats->size_bins[bin]++;
-	} else {
-		if (s < 64)
-			stats->size_bins[0]++;
-		else if (s < 1519)
-			stats->size_bins[6]++;
-		else
-			stats->size_bins[7]++;
-	}
-
-	ea = rte_pktmbuf_mtod(mbuf, struct rte_ether_addr *);
-	if (rte_is_multicast_ether_addr(ea)) {
-		if (rte_is_broadcast_ether_addr(ea))
-			stats->broadcast++;
-		else
-			stats->multicast++;
-	}
-}
-
-static inline void
-virtio_rx_stats_updated(struct virtnet_rx *rxvq, struct rte_mbuf *m)
-{
-	VIRTIO_DUMP_PACKET(m, m->data_len);
-
-	virtio_update_packet_stats(&rxvq->stats, m);
 }
 
 /* Optionally fill offload information in structure */
@@ -2198,7 +2199,6 @@ virtio_xmit_pkts_inorder(void *tx_queue,
 			inorder_pkts[nb_inorder_pkts] = txm;
 			nb_inorder_pkts++;
 
-			virtio_update_packet_stats(&txvq->stats, txm);
 			continue;
 		}
 
