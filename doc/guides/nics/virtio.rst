@@ -56,7 +56,7 @@ In this release, the virtio PMD driver provides the basic functionality of packe
 *   Features of mac/vlan filter are supported, negotiation with vhost/backend are needed to support them.
     When backend can't support vlan filter, virtio app on guest should not enable vlan filter in order
     to make sure the virtio port is configured correctly. E.g. do not specify '--enable-hw-vlan' in testpmd
-    command line.
+    command line. Note that, mac/vlan filter is best effort: unwanted packets could still arrive.
 
 *   "RTE_PKTMBUF_HEADROOM" should be defined
     no less than "sizeof(struct virtio_net_hdr_mrg_rxbuf)", which is 12 bytes when mergeable or
