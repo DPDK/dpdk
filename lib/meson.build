@@ -154,7 +154,9 @@ foreach l:libraries
 			dpdk_static_libraries = [static_lib] + dpdk_static_libraries
 		endif # sources.length() > 0
 
-		set_variable('shared_' + libname, shared_dep)
-		set_variable('static_' + libname, static_dep)
+		set_variable('shared_rte_' + name, shared_dep)
+		set_variable('static_rte_' + name, static_dep)
+		message('lib/@0@: Defining dependency "@1@"'.format(
+				dir_name, name))
 	endif # if build
 endforeach
