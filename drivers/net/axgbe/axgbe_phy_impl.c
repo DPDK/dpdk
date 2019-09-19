@@ -412,14 +412,14 @@ static int axgbe_phy_get_comm_ownership(struct axgbe_port *pdata)
 	uint64_t timeout;
 	unsigned int mutex_id;
 
-	if (phy_data->comm_owned)
-		return 0;
-
 	/* The I2C and MDIO/GPIO bus is multiplexed between multiple devices,
 	 * the driver needs to take the software mutex and then the hardware
 	 * mutexes before being able to use the busses.
 	 */
 	pthread_mutex_lock(&pdata->phy_mutex);
+
+	if (phy_data->comm_owned)
+		return 0;
 
 	/* Clear the mutexes */
 	XP_IOWRITE(pdata, XP_I2C_MUTEX, AXGBE_MUTEX_RELEASE);
