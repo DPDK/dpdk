@@ -163,6 +163,11 @@ New Features
   Added eBPF JIT support for arm64 architecture to improve the eBPF program
   performance.
 
+* **Updated testpmd.**
+
+  * Added a console command to testpmd app, ``show port (port_id) ptypes`` which
+    gives ability to print port supported ptypes in different protocol layers.
+
 
 Removed Items
 -------------

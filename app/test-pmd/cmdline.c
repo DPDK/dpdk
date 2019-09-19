@@ -234,6 +234,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Show Tx metadata value set"
 			" for a specific port\n\n"
 
+			"show port (port_id) ptypes\n"
+			"    Show port supported ptypes"
+			" for a specific port\n\n"
+
 			"show device info (<identifier>|all)"
 			"       Show general information about devices probed.\n\n"
 		);
@@ -18798,6 +18802,114 @@ cmdline_parse_inst_t cmd_show_tx_metadata = {
 	},
 };
 
+/* show port supported ptypes */
+
+/* Common result structure for show port ptypes */
+struct cmd_show_port_supported_ptypes_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t ptypes;
+};
+
+/* Common CLI fields for show port ptypes */
+cmdline_parse_token_string_t cmd_show_port_supported_ptypes_show =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_port_supported_ptypes_result,
+		 show, "show");
+cmdline_parse_token_string_t cmd_show_port_supported_ptypes_port =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_port_supported_ptypes_result,
+		 port, "port");
+cmdline_parse_token_num_t cmd_show_port_supported_ptypes_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_show_port_supported_ptypes_result,
+		 port_id, UINT16);
+cmdline_parse_token_string_t cmd_show_port_supported_ptypes_ptypes =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_port_supported_ptypes_result,
+		 ptypes, "ptypes");
+
+static void
+cmd_show_port_supported_ptypes_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+#define RSVD_PTYPE_MASK       0xf0000000
+#define MAX_PTYPES_PER_LAYER  16
+#define LTYPE_NAMESIZE        32
+#define PTYPE_NAMESIZE        256
+	struct cmd_show_port_supported_ptypes_result *res = parsed_result;
+	char buf[PTYPE_NAMESIZE], ltype[LTYPE_NAMESIZE];
+	uint32_t ptype_mask = RTE_PTYPE_L2_MASK;
+	uint32_t ptypes[MAX_PTYPES_PER_LAYER];
+	uint16_t port_id = res->port_id;
+	int ret, i;
+
+	ret = rte_eth_dev_get_supported_ptypes(port_id, ptype_mask, NULL, 0);
+	if (ret < 0)
+		return;
+
+	while (ptype_mask != RSVD_PTYPE_MASK) {
+
+		switch (ptype_mask) {
+		case RTE_PTYPE_L2_MASK:
+			strlcpy(ltype, "L2", sizeof(ltype));
+			break;
+		case RTE_PTYPE_L3_MASK:
+			strlcpy(ltype, "L3", sizeof(ltype));
+			break;
+		case RTE_PTYPE_L4_MASK:
+			strlcpy(ltype, "L4", sizeof(ltype));
+			break;
+		case RTE_PTYPE_TUNNEL_MASK:
+			strlcpy(ltype, "Tunnel", sizeof(ltype));
+			break;
+		case RTE_PTYPE_INNER_L2_MASK:
+			strlcpy(ltype, "Inner L2", sizeof(ltype));
+			break;
+		case RTE_PTYPE_INNER_L3_MASK:
+			strlcpy(ltype, "Inner L3", sizeof(ltype));
+			break;
+		case RTE_PTYPE_INNER_L4_MASK:
+			strlcpy(ltype, "Inner L4", sizeof(ltype));
+			break;
+		default:
+			return;
+		}
+
+		ret = rte_eth_dev_get_supported_ptypes(res->port_id,
+						       ptype_mask, ptypes,
+						       MAX_PTYPES_PER_LAYER);
+
+		if (ret > 0)
+			printf("Supported %s ptypes:\n", ltype);
+		else
+			printf("%s ptypes unsupported\n", ltype);
+
+		for (i = 0; i < ret; ++i) {
+			rte_get_ptype_name(ptypes[i], buf, sizeof(buf));
+			printf("%s\n", buf);
+		}
+
+		ptype_mask <<= 4;
+	}
+}
+
+cmdline_parse_inst_t cmd_show_port_supported_ptypes = {
+	.f = cmd_show_port_supported_ptypes_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> ptypes",
+	.tokens = {
+		(void *)&cmd_show_port_supported_ptypes_show,
+		(void *)&cmd_show_port_supported_ptypes_port,
+		(void *)&cmd_show_port_supported_ptypes_port_id,
+		(void *)&cmd_show_port_supported_ptypes_ptypes,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -19036,6 +19148,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_clear_input_set,
 	(cmdline_parse_inst_t *)&cmd_show_vf_stats,
 	(cmdline_parse_inst_t *)&cmd_clear_vf_stats,
+	(cmdline_parse_inst_t *)&cmd_show_port_supported_ptypes,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_get,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_replace,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_reset,

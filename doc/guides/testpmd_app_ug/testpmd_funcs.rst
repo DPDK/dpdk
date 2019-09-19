@@ -467,6 +467,13 @@ Show Tx metadata value set for a specific port::
 
    testpmd> show port (port_id) tx_metadata
 
+show port supported ptypes
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show ptypes supported for a specific port::
+
+   testpmd> show port (port_id) ptypes
+
 show device info
 ~~~~~~~~~~~~~~~~
 
