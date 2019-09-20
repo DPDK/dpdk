@@ -479,4 +479,77 @@ struct icp_qat_fw_comp_resp {
 	/**< Common response params (checksums and byte counts) */
 };
 
+/* RAM Bank definitions */
+#define QAT_FW_COMP_BANK_FLAG_MASK 0x1
+
+#define QAT_FW_COMP_BANK_I_BITPOS 8
+#define QAT_FW_COMP_BANK_H_BITPOS 7
+#define QAT_FW_COMP_BANK_G_BITPOS 6
+#define QAT_FW_COMP_BANK_F_BITPOS 5
+#define QAT_FW_COMP_BANK_E_BITPOS 4
+#define QAT_FW_COMP_BANK_D_BITPOS 3
+#define QAT_FW_COMP_BANK_C_BITPOS 2
+#define QAT_FW_COMP_BANK_B_BITPOS 1
+#define QAT_FW_COMP_BANK_A_BITPOS 0
+
+/**
+ *****************************************************************************
+ * @ingroup icp_qat_fw_comp
+ *      Definition of the ram bank enabled values
+ * @description
+ *      Enumeration used to define whether a ram bank is enabled or not
+ *
+ *****************************************************************************/
+enum icp_qat_fw_comp_bank_enabled {
+	ICP_QAT_FW_COMP_BANK_DISABLED = 0, /*!< BANK DISABLED */
+	ICP_QAT_FW_COMP_BANK_ENABLED = 1,  /*!< BANK ENABLED */
+	ICP_QAT_FW_COMP_BANK_DELIMITER = 2 /**< Delimiter type */
+};
+
+/**
+ ******************************************************************************
+ * @ingroup icp_qat_fw_comp
+ *
+ * @description
+ *      Build the ram bank flags in the compression content descriptor
+ *      which specify which banks are used to save history
+ *
+ * @param bank_i_enable
+ * @param bank_h_enable
+ * @param bank_g_enable
+ * @param bank_f_enable
+ * @param bank_e_enable
+ * @param bank_d_enable
+ * @param bank_c_enable
+ * @param bank_b_enable
+ * @param bank_a_enable
+ *****************************************************************************/
+#define ICP_QAT_FW_COMP_RAM_FLAGS_BUILD(bank_i_enable,                         \
+					bank_h_enable,                         \
+					bank_g_enable,                         \
+					bank_f_enable,                         \
+					bank_e_enable,                         \
+					bank_d_enable,                         \
+					bank_c_enable,                         \
+					bank_b_enable,                         \
+					bank_a_enable)                         \
+	((((bank_i_enable)&QAT_FW_COMP_BANK_FLAG_MASK)                         \
+		<< QAT_FW_COMP_BANK_I_BITPOS) |                                \
+	(((bank_h_enable)&QAT_FW_COMP_BANK_FLAG_MASK)                          \
+		<< QAT_FW_COMP_BANK_H_BITPOS) |                                \
+	(((bank_g_enable)&QAT_FW_COMP_BANK_FLAG_MASK)                          \
+		<< QAT_FW_COMP_BANK_G_BITPOS) |                                \
+	(((bank_f_enable)&QAT_FW_COMP_BANK_FLAG_MASK)                          \
+		<< QAT_FW_COMP_BANK_F_BITPOS) |                                \
+	(((bank_e_enable)&QAT_FW_COMP_BANK_FLAG_MASK)                          \
+		<< QAT_FW_COMP_BANK_E_BITPOS) |                                \
+	(((bank_d_enable)&QAT_FW_COMP_BANK_FLAG_MASK)                          \
+		<< QAT_FW_COMP_BANK_D_BITPOS) |                                \
+	(((bank_c_enable)&QAT_FW_COMP_BANK_FLAG_MASK)                          \
+		<< QAT_FW_COMP_BANK_C_BITPOS) |                                \
+	(((bank_b_enable)&QAT_FW_COMP_BANK_FLAG_MASK)                          \
+		<< QAT_FW_COMP_BANK_B_BITPOS) |                                \
+	(((bank_a_enable)&QAT_FW_COMP_BANK_FLAG_MASK)                          \
+		<< QAT_FW_COMP_BANK_A_BITPOS))
+
 #endif
