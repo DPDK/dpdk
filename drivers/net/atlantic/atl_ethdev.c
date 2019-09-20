@@ -1544,11 +1544,11 @@ atl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	if (fc == AQ_NIC_FC_OFF)
 		fc_conf->mode = RTE_FC_NONE;
-	else if (fc & (AQ_NIC_FC_RX | AQ_NIC_FC_TX))
+	else if ((fc & AQ_NIC_FC_RX) && (fc & AQ_NIC_FC_TX))
 		fc_conf->mode = RTE_FC_FULL;
 	else if (fc & AQ_NIC_FC_RX)
 		fc_conf->mode = RTE_FC_RX_PAUSE;
-	else if (fc & AQ_NIC_FC_RX)
+	else if (fc & AQ_NIC_FC_TX)
 		fc_conf->mode = RTE_FC_TX_PAUSE;
 
 	return 0;
