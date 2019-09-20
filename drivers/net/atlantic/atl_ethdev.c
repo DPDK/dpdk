@@ -407,6 +407,8 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 
 	hw->aq_nic_cfg = &adapter->hw_cfg;
 
+	pthread_mutex_init(&hw->mbox_mutex, NULL);
+
 	/* disable interrupt */
 	atl_disable_intr(hw);
 
@@ -470,6 +472,8 @@ eth_atl_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
+
+	pthread_mutex_destroy(&hw->mbox_mutex);
 
 	return 0;
 }

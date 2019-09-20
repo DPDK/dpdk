@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <netinet/in.h>
+#include <pthread.h>
 
 typedef uint8_t		u8;
 typedef int8_t		s8;
@@ -137,6 +138,8 @@ struct aq_hw_s {
 	u32 rpc_addr;
 	u32 rpc_tid;
 	struct hw_aq_atl_utils_fw_rpc rpc;
+
+	pthread_mutex_t mbox_mutex;
 };
 
 struct aq_fw_ops {

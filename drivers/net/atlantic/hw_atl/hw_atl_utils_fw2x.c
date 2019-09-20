@@ -6,6 +6,7 @@
  */
 
 #include <rte_ether.h>
+#include <pthread.h>
 #include "../atl_hw_regs.h"
 
 #include "../atl_types.h"
@@ -217,13 +218,15 @@ int aq_fw2x_get_mac_permanent(struct aq_hw_s *self, u8 *mac)
 	u32 mac_addr[2] = { 0 };
 	u32 efuse_addr = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_EFUSE_ADDR);
 
+	pthread_mutex_lock(&self->mbox_mutex);
+
 	if (efuse_addr != 0) {
 		err = hw_atl_utils_fw_downld_dwords(self,
 						    efuse_addr + (40U * 4U),
 						    mac_addr,
 						    ARRAY_SIZE(mac_addr));
 		if (err)
-			return err;
+			goto exit;
 		mac_addr[0] = rte_constant_bswap32(mac_addr[0]);
 		mac_addr[1] = rte_constant_bswap32(mac_addr[1]);
 	}
@@ -252,6 +255,10 @@ int aq_fw2x_get_mac_permanent(struct aq_hw_s *self, u8 *mac)
 		h >>= 8;
 		mac[0] = (u8)(0xFFU & h);
 	}
+
+exit:
+	pthread_mutex_unlock(&self->mbox_mutex);
+
 	return err;
 }
 
@@ -260,6 +267,9 @@ static int aq_fw2x_update_stats(struct aq_hw_s *self)
 	int err = 0;
 	u32 mpi_opts = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL2_ADDR);
 	u32 orig_stats_val = mpi_opts & BIT(CAPS_HI_STATISTICS);
+
+
+	pthread_mutex_lock(&self->mbox_mutex);
 
 	/* Toggle statistics bit for FW to update */
 	mpi_opts = mpi_opts ^ BIT(CAPS_HI_STATISTICS);
@@ -271,9 +281,15 @@ static int aq_fw2x_update_stats(struct aq_hw_s *self)
 				       BIT(CAPS_HI_STATISTICS)),
 		       1U, 10000U);
 	if (err)
-		return err;
+		goto exit;
 
-	return hw_atl_utils_update_stats(self);
+	err = hw_atl_utils_update_stats(self);
+
+exit:
+	pthread_mutex_unlock(&self->mbox_mutex);
+
+	return err;
+
 }
 
 static int aq_fw2x_get_temp(struct aq_hw_s *self, int *temp)
@@ -282,6 +298,8 @@ static int aq_fw2x_get_temp(struct aq_hw_s *self, int *temp)
 	u32 mpi_opts = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL2_ADDR);
 	u32 temp_val = mpi_opts & BIT(CAPS_HI_TEMPERATURE);
 	u32 temp_res;
+
+	pthread_mutex_lock(&self->mbox_mutex);
 
 	/* Toggle statistics bit for FW to 0x36C.18 (CAPS_HI_TEMPERATURE) */
 	mpi_opts = mpi_opts ^ BIT(CAPS_HI_TEMPERATURE);
@@ -297,6 +315,9 @@ static int aq_fw2x_get_temp(struct aq_hw_s *self, int *temp)
 				offsetof(struct hw_aq_info, phy_temperature),
 				&temp_res,
 				sizeof(temp_res) / sizeof(u32));
+
+
+	pthread_mutex_unlock(&self->mbox_mutex);
 
 	if (err)
 		return err;
@@ -515,6 +536,8 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 	if ((self->caps_lo & BIT(CAPS_LO_SMBUS_READ)) == 0)
 		return -EOPNOTSUPP;
 
+	pthread_mutex_lock(&self->mbox_mutex);
+
 	request.msg_id = 0;
 	request.device_id = dev_addr;
 	request.address = offset;
@@ -526,7 +549,7 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 				sizeof(request) / sizeof(u32));
 
 	if (err < 0)
-		return err;
+		goto exit;
 
 	/* Toggle 0x368.CAPS_LO_SMBUS_READ bit */
 	mpi_opts = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR);
@@ -541,17 +564,19 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 		10U, 10000U);
 
 	if (err < 0)
-		return err;
+		goto exit;
 
 	err = hw_atl_utils_fw_downld_dwords(self, self->rpc_addr + sizeof(u32),
 			&result,
 			sizeof(result) / sizeof(u32));
 
 	if (err < 0)
-		return err;
+		goto exit;
 
-	if (result)
-		return -EIO;
+	if (result) {
+		err = -EIO;
+		goto exit;
+	}
 
 	if (num_dwords) {
 		err = hw_atl_utils_fw_downld_dwords(self,
@@ -560,7 +585,7 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 			num_dwords);
 
 		if (err < 0)
-			return err;
+			goto exit;
 	}
 
 	if (bytes_remains) {
@@ -573,13 +598,16 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 			1);
 
 		if (err < 0)
-			return err;
+			goto exit;
 
 		rte_memcpy((u8 *)data + len - bytes_remains,
 				&val, bytes_remains);
 	}
 
-	return 0;
+exit:
+	pthread_mutex_unlock(&self->mbox_mutex);
+
+	return err;
 }
 
 
@@ -598,13 +626,15 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
 	request.address = offset;
 	request.length = len;
 
+	pthread_mutex_lock(&self->mbox_mutex);
+
 	/* Write SMBUS request to cfg memory */
 	err = hw_atl_utils_fw_upload_dwords(self, self->rpc_addr,
 				(u32 *)(void *)&request,
 				sizeof(request) / sizeof(u32));
 
 	if (err < 0)
-		return err;
+		goto exit;
 
 	/* Write SMBUS data to cfg memory */
 	u32 num_dwords = len / sizeof(u32);
@@ -617,7 +647,7 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
 			num_dwords);
 
 		if (err < 0)
-			return err;
+			goto exit;
 	}
 
 	if (bytes_remains) {
@@ -633,7 +663,7 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
 			1);
 
 		if (err < 0)
-			return err;
+			goto exit;
 	}
 
 	/* Toggle 0x368.CAPS_LO_SMBUS_WRITE bit */
@@ -648,7 +678,7 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
 		10U, 10000U);
 
 	if (err < 0)
-		return err;
+		goto exit;
 
 	/* Read status of write operation */
 	err = hw_atl_utils_fw_downld_dwords(self, self->rpc_addr + sizeof(u32),
@@ -656,12 +686,17 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
 				sizeof(result) / sizeof(u32));
 
 	if (err < 0)
-		return err;
+		goto exit;
 
-	if (result)
-		return -EIO;
+	if (result) {
+		err = -EIO;
+		goto exit;
+	}
 
-	return 0;
+exit:
+	pthread_mutex_unlock(&self->mbox_mutex);
+
+	return err;
 }
 
 static int aq_fw2x_send_macsec_request(struct aq_hw_s *self,
@@ -677,13 +712,15 @@ static int aq_fw2x_send_macsec_request(struct aq_hw_s *self,
 	if ((self->caps_lo & BIT(CAPS_LO_MACSEC)) == 0)
 		return -EOPNOTSUPP;
 
+	pthread_mutex_lock(&self->mbox_mutex);
+
 	/* Write macsec request to cfg memory */
 	err = hw_atl_utils_fw_upload_dwords(self, self->rpc_addr,
 		(u32 *)(void *)req,
 		RTE_ALIGN(sizeof(*req) / sizeof(u32), sizeof(u32)));
 
 	if (err < 0)
-		return err;
+		goto exit;
 
 	/* Toggle 0x368.CAPS_LO_MACSEC bit */
 	mpi_opts = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR);
@@ -697,12 +734,15 @@ static int aq_fw2x_send_macsec_request(struct aq_hw_s *self,
 		1000U, 10000U);
 
 	if (err < 0)
-		return err;
+		goto exit;
 
 	/* Read status of write operation */
 	err = hw_atl_utils_fw_downld_dwords(self, self->rpc_addr + sizeof(u32),
 		(u32 *)(void *)response,
 		RTE_ALIGN(sizeof(*response) / sizeof(u32), sizeof(u32)));
+
+exit:
+	pthread_mutex_unlock(&self->mbox_mutex);
 
 	return err;
 }
