@@ -992,20 +992,42 @@ atl_dev_stats_reset(struct rte_eth_dev *dev)
 }
 
 static int
+atl_dev_xstats_get_count(struct rte_eth_dev *dev)
+{
+	struct atl_adapter *adapter =
+		(struct atl_adapter *)dev->data->dev_private;
+
+	struct aq_hw_s *hw = &adapter->hw;
+	unsigned int i, count = 0;
+
+	for (i = 0; i < RTE_DIM(atl_xstats_tbl); i++) {
+		if (atl_xstats_tbl[i].type == XSTATS_TYPE_MACSEC &&
+			((hw->caps_lo & BIT(CAPS_LO_MACSEC)) == 0))
+			continue;
+
+		count++;
+	}
+
+	return count;
+}
+
+static int
 atl_dev_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 			 struct rte_eth_xstat_name *xstats_names,
 			 unsigned int size)
 {
 	unsigned int i;
+	unsigned int count = atl_dev_xstats_get_count(dev);
 
-	if (!xstats_names)
-		return RTE_DIM(atl_xstats_tbl);
+	if (xstats_names) {
+		for (i = 0; i < size && i < count; i++) {
+			snprintf(xstats_names[i].name,
+				RTE_ETH_XSTATS_NAME_SIZE, "%s",
+				atl_xstats_tbl[i].name);
+		}
+	}
 
-	for (i = 0; i < size && i < RTE_DIM(atl_xstats_tbl); i++)
-		strlcpy(xstats_names[i].name, atl_xstats_tbl[i].name,
-			RTE_ETH_XSTATS_NAME_SIZE);
-
-	return i;
+	return count;
 }
 
 static int
@@ -1019,9 +1041,10 @@ atl_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 	struct macsec_msg_fw_response resp = { 0 };
 	int err = -1;
 	unsigned int i;
+	unsigned int count = atl_dev_xstats_get_count(dev);
 
 	if (!stats)
-		return 0;
+		return count;
 
 	if (hw->aq_fw_ops->send_macsec_req != NULL) {
 		req.ingress_sa_index = 0xff;
@@ -1034,7 +1057,7 @@ atl_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 		err = hw->aq_fw_ops->send_macsec_req(hw, &msg, &resp);
 	}
 
-	for (i = 0; i < n && i < RTE_DIM(atl_xstats_tbl); i++) {
+	for (i = 0; i < n && i < count; i++) {
 		stats[i].id = i;
 
 		switch (atl_xstats_tbl[i].type) {
@@ -1043,14 +1066,15 @@ atl_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 					 atl_xstats_tbl[i].offset);
 			break;
 		case XSTATS_TYPE_MACSEC:
-			if (err)
-				goto done;
-			stats[i].value = *(u64 *)((uint8_t *)&resp.stats +
-					 atl_xstats_tbl[i].offset);
+			if (!err) {
+				stats[i].value =
+					*(u64 *)((uint8_t *)&resp.stats +
+					atl_xstats_tbl[i].offset);
+			}
 			break;
 		}
 	}
-done:
+
 	return i;
 }
 
