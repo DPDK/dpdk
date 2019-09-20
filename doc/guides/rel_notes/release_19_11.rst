@@ -56,6 +56,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Updated the Intel QuickAssist Technology (QAT) compression PMD.**
+
+  Added stateful decompression support in the Intel QuickAssist Technology PMD.
+  Please note that stateful compression is not supported.
+
 
 Removed Items
 -------------

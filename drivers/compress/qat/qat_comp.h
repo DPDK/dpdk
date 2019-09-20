@@ -26,6 +26,16 @@
 
 #define QAT_MIN_OUT_BUF_SIZE 46
 
+/* maximum size of the state registers */
+#define QAT_STATE_REGISTERS_MAX_SIZE 64
+
+/* decompressor context size */
+#define QAT_INFLATE_CONTEXT_SIZE_GEN1 36864
+#define QAT_INFLATE_CONTEXT_SIZE_GEN2 34032
+#define QAT_INFLATE_CONTEXT_SIZE_GEN3 34032
+#define QAT_INFLATE_CONTEXT_SIZE RTE_MAX(RTE_MAX(QAT_INFLATE_CONTEXT_SIZE_GEN1,\
+		QAT_INFLATE_CONTEXT_SIZE_GEN2), QAT_INFLATE_CONTEXT_SIZE_GEN3)
+
 enum qat_comp_request_type {
 	QAT_COMP_REQUEST_FIXED_COMP_STATELESS,
 	QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS,
@@ -61,6 +71,17 @@ struct qat_comp_xform {
 	enum rte_comp_checksum_type checksum_type;
 };
 
+struct qat_comp_stream {
+	struct qat_comp_xform qat_xform;
+	void *state_registers_decomp;
+	phys_addr_t state_registers_decomp_phys;
+	void *inflate_context;
+	phys_addr_t inflate_context_phys;
+	const struct rte_memzone *memzone;
+	uint8_t start_of_packet;
+	volatile uint8_t op_in_progress;
+};
+
 int
 qat_comp_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
 		       enum qat_device_gen qat_dev_gen __rte_unused);
@@ -79,6 +100,17 @@ qat_comp_private_xform_free(struct rte_compressdev *dev, void *private_xform);
 
 unsigned int
 qat_comp_xform_size(void);
+
+unsigned int
+qat_comp_stream_size(void);
+
+int
+qat_comp_stream_create(struct rte_compressdev *dev,
+		       const struct rte_comp_xform *xform,
+		       void **stream);
+
+int
+qat_comp_stream_free(struct rte_compressdev *dev, void *stream);
 
 #endif
 #endif

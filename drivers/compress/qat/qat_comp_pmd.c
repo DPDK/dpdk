@@ -9,6 +9,12 @@
 
 #define QAT_PMD_COMP_SGL_DEF_SEGMENTS 16
 
+struct stream_create_info {
+	struct qat_comp_dev_private *comp_dev;
+	int socket_id;
+	int error;
+};
+
 static const struct rte_compressdev_capabilities qat_comp_gen_capabilities[] = {
 	{/* COMPRESSION - deflate */
 	 .algo = RTE_COMP_ALGO_DEFLATE,
@@ -21,7 +27,8 @@ static const struct rte_compressdev_capabilities qat_comp_gen_capabilities[] = {
 				RTE_COMP_FF_HUFFMAN_DYNAMIC |
 				RTE_COMP_FF_OOP_SGL_IN_SGL_OUT |
 				RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
-				RTE_COMP_FF_OOP_LB_IN_SGL_OUT,
+				RTE_COMP_FF_OOP_LB_IN_SGL_OUT |
+				RTE_COMP_FF_STATEFUL_DECOMPRESSION,
 	 .window_size = {.min = 15, .max = 15, .increment = 0} },
 	{RTE_COMP_ALGO_LIST_END, 0, {0, 0, 0} } };
 
@@ -316,6 +323,120 @@ qat_comp_create_xform_pool(struct qat_comp_dev_private *comp_dev,
 }
 
 static void
+qat_comp_stream_init(struct rte_mempool *mp __rte_unused, void *opaque,
+		     void *obj, unsigned int obj_idx)
+{
+	struct stream_create_info *info = opaque;
+	struct qat_comp_stream *stream = obj;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *memzone;
+	struct qat_inter_sgl *ram_banks_desc;
+
+	/* find a memzone for RAM banks */
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "%s_%u_rambanks",
+		 info->comp_dev->qat_dev->name, obj_idx);
+	memzone = rte_memzone_lookup(mz_name);
+	if (memzone == NULL) {
+		/* allocate a memzone for compression state and RAM banks */
+		memzone = rte_memzone_reserve_aligned(mz_name,
+			QAT_STATE_REGISTERS_MAX_SIZE
+				+ sizeof(struct qat_inter_sgl)
+				+ QAT_INFLATE_CONTEXT_SIZE,
+			info->socket_id,
+			RTE_MEMZONE_IOVA_CONTIG, QAT_64_BYTE_ALIGN);
+		if (memzone == NULL) {
+			QAT_LOG(ERR,
+			    "Can't allocate RAM banks for device %s, object %u",
+				info->comp_dev->qat_dev->name, obj_idx);
+			info->error = -ENOMEM;
+			return;
+		}
+	}
+
+	/* prepare the buffer list descriptor for RAM banks */
+	ram_banks_desc = (struct qat_inter_sgl *)
+		(((uint8_t *) memzone->addr) + QAT_STATE_REGISTERS_MAX_SIZE);
+	ram_banks_desc->num_bufs = 1;
+	ram_banks_desc->buffers[0].len = QAT_INFLATE_CONTEXT_SIZE;
+	ram_banks_desc->buffers[0].addr = memzone->iova
+			+ QAT_STATE_REGISTERS_MAX_SIZE
+			+ sizeof(struct qat_inter_sgl);
+
+	memset(stream, 0, qat_comp_stream_size());
+	stream->memzone = memzone;
+	stream->state_registers_decomp = memzone->addr;
+	stream->state_registers_decomp_phys = memzone->iova;
+	stream->inflate_context = ((uint8_t *) memzone->addr)
+			+ QAT_STATE_REGISTERS_MAX_SIZE;
+	stream->inflate_context_phys = memzone->iova
+			+ QAT_STATE_REGISTERS_MAX_SIZE;
+}
+
+static void
+qat_comp_stream_destroy(struct rte_mempool *mp __rte_unused,
+			void *opaque __rte_unused, void *obj,
+			unsigned obj_idx __rte_unused)
+{
+	struct qat_comp_stream *stream = obj;
+
+	rte_memzone_free(stream->memzone);
+}
+
+static struct rte_mempool *
+qat_comp_create_stream_pool(struct qat_comp_dev_private *comp_dev,
+			    int socket_id,
+			    uint32_t num_elements)
+{
+	char stream_pool_name[RTE_MEMPOOL_NAMESIZE];
+	struct rte_mempool *mp;
+
+	snprintf(stream_pool_name, RTE_MEMPOOL_NAMESIZE,
+		 "%s_streams", comp_dev->qat_dev->name);
+
+	QAT_LOG(DEBUG, "streampool: %s", stream_pool_name);
+	mp = rte_mempool_lookup(stream_pool_name);
+
+	if (mp != NULL) {
+		QAT_LOG(DEBUG, "streampool already created");
+		if (mp->size != num_elements) {
+			QAT_LOG(DEBUG, "streampool wrong size - delete it");
+			rte_mempool_obj_iter(mp, qat_comp_stream_destroy, NULL);
+			rte_mempool_free(mp);
+			mp = NULL;
+			comp_dev->streampool = NULL;
+		}
+	}
+
+	if (mp == NULL) {
+		struct stream_create_info info = {
+			.comp_dev = comp_dev,
+			.socket_id = socket_id,
+			.error = 0
+		};
+		mp = rte_mempool_create(stream_pool_name,
+				num_elements,
+				qat_comp_stream_size(), 0, 0,
+				NULL, NULL, qat_comp_stream_init, &info,
+				socket_id, 0);
+		if (mp == NULL) {
+			QAT_LOG(ERR,
+			     "Err creating mempool %s w %d elements of size %d",
+			     stream_pool_name, num_elements,
+			     qat_comp_stream_size());
+		} else if (info.error) {
+			rte_mempool_obj_iter(mp, qat_comp_stream_destroy, NULL);
+			QAT_LOG(ERR,
+			     "Destoying mempool %s as at least one element failed initialisation",
+			     stream_pool_name);
+			rte_mempool_free(mp);
+			mp = NULL;
+		}
+	}
+
+	return mp;
+}
+
+static void
 _qat_comp_dev_config_clear(struct qat_comp_dev_private *comp_dev)
 {
 	/* Free intermediate buffers */
@@ -330,6 +451,14 @@ _qat_comp_dev_config_clear(struct qat_comp_dev_private *comp_dev)
 		rte_mempool_free(comp_dev->xformpool);
 		comp_dev->xformpool = NULL;
 	}
+
+	/* Free stream pool */
+	if (comp_dev->streampool) {
+		rte_mempool_obj_iter(comp_dev->streampool,
+				     qat_comp_stream_destroy, NULL);
+		rte_mempool_free(comp_dev->streampool);
+		comp_dev->streampool = NULL;
+	}
 }
 
 static int
@@ -338,12 +467,6 @@ qat_comp_dev_config(struct rte_compressdev *dev,
 {
 	struct qat_comp_dev_private *comp_dev = dev->data->dev_private;
 	int ret = 0;
-
-	if (config->max_nb_streams != 0) {
-		QAT_LOG(ERR,
-	"QAT device does not support STATEFUL so max_nb_streams must be 0");
-		return -EINVAL;
-	}
 
 	if (RTE_PMD_QAT_COMP_IM_BUFFER_SIZE == 0) {
 		QAT_LOG(WARNING,
@@ -360,13 +483,26 @@ qat_comp_dev_config(struct rte_compressdev *dev,
 		}
 	}
 
-	comp_dev->xformpool = qat_comp_create_xform_pool(comp_dev, config,
-					config->max_nb_priv_xforms);
-	if (comp_dev->xformpool == NULL) {
+	if (config->max_nb_priv_xforms) {
+		comp_dev->xformpool = qat_comp_create_xform_pool(comp_dev,
+					    config, config->max_nb_priv_xforms);
+		if (comp_dev->xformpool == NULL) {
+			ret = -ENOMEM;
+			goto error_out;
+		}
+	} else
+		comp_dev->xformpool = NULL;
 
-		ret = -ENOMEM;
-		goto error_out;
-	}
+	if (config->max_nb_streams) {
+		comp_dev->streampool = qat_comp_create_stream_pool(comp_dev,
+				     config->socket_id, config->max_nb_streams);
+		if (comp_dev->streampool == NULL) {
+			ret = -ENOMEM;
+			goto error_out;
+		}
+	} else
+		comp_dev->streampool = NULL;
+
 	return 0;
 
 error_out:
@@ -508,7 +644,9 @@ static struct rte_compressdev_ops compress_qat_ops = {
 
 	/* Compression related operations */
 	.private_xform_create	= qat_comp_private_xform_create,
-	.private_xform_free	= qat_comp_private_xform_free
+	.private_xform_free	= qat_comp_private_xform_free,
+	.stream_create		= qat_comp_stream_create,
+	.stream_free		= qat_comp_stream_free
 };
 
 /* An rte_driver is needed in the registration of the device with compressdev.

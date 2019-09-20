@@ -30,6 +30,8 @@ struct qat_comp_dev_private {
 	/**< The device's memory for intermediate buffers */
 	struct rte_mempool *xformpool;
 	/**< The device's pool for qat_comp_xforms */
+	struct rte_mempool *streampool;
+	/**< The device's pool for qat_comp_streams */
 };
 
 int

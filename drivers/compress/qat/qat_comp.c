@@ -27,21 +27,50 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 	struct rte_comp_op *op = in_op;
 	struct qat_comp_op_cookie *cookie =
 			(struct qat_comp_op_cookie *)op_cookie;
-	struct qat_comp_xform *qat_xform = op->private_xform;
-	const uint8_t *tmpl = (uint8_t *)&qat_xform->qat_comp_req_tmpl;
+	struct qat_comp_stream *stream;
+	struct qat_comp_xform *qat_xform;
+	const uint8_t *tmpl;
 	struct icp_qat_fw_comp_req *comp_req =
 	    (struct icp_qat_fw_comp_req *)out_msg;
 
-	if (unlikely(op->op_type != RTE_COMP_OP_STATELESS)) {
-		QAT_DP_LOG(ERR, "QAT PMD only supports stateless compression "
-				"operation requests, op (%p) is not a "
-				"stateless operation.", op);
-		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
-		return -EINVAL;
+	if (op->op_type == RTE_COMP_OP_STATEFUL) {
+		stream = op->stream;
+		qat_xform = &stream->qat_xform;
+		if (unlikely(qat_xform->qat_comp_request_type !=
+			     QAT_COMP_REQUEST_DECOMPRESS)) {
+			QAT_DP_LOG(ERR, "QAT PMD does not support stateful compression");
+			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+			return -EINVAL;
+		}
+		if (unlikely(stream->op_in_progress)) {
+			QAT_DP_LOG(ERR, "QAT PMD does not support running multiple stateful operations on the same stream at once");
+			op->status = RTE_COMP_OP_STATUS_INVALID_STATE;
+			return -EINVAL;
+		}
+		stream->op_in_progress = 1;
+	} else {
+		stream = NULL;
+		qat_xform = op->private_xform;
 	}
+	tmpl = (uint8_t *)&qat_xform->qat_comp_req_tmpl;
 
 	rte_mov128(out_msg, tmpl);
 	comp_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)op;
+
+	if (op->op_type == RTE_COMP_OP_STATEFUL) {
+		comp_req->comp_pars.req_par_flags =
+			ICP_QAT_FW_COMP_REQ_PARAM_FLAGS_BUILD(
+				(stream->start_of_packet) ?
+					ICP_QAT_FW_COMP_SOP
+				      : ICP_QAT_FW_COMP_NOT_SOP,
+				(op->flush_flag == RTE_COMP_FLUSH_FULL ||
+				 op->flush_flag == RTE_COMP_FLUSH_FINAL) ?
+					ICP_QAT_FW_COMP_EOP
+				      : ICP_QAT_FW_COMP_NOT_EOP,
+				ICP_QAT_FW_COMP_NOT_BFINAL,
+				ICP_QAT_FW_COMP_NO_CNV,
+				ICP_QAT_FW_COMP_NO_CNV_RECOVERY);
+	}
 
 	if (likely(qat_xform->qat_comp_request_type ==
 		    QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS)) {
@@ -94,6 +123,9 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 					   " for %d elements of SGL",
 					   op->m_src->nb_segs);
 				op->status = RTE_COMP_OP_STATUS_ERROR;
+				/* clear op-in-progress flag */
+				if (stream)
+					stream->op_in_progress = 0;
 				return -ENOMEM;
 			}
 			/* new SGL is valid now */
@@ -111,6 +143,9 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 		if (ret) {
 			QAT_DP_LOG(ERR, "QAT PMD Cannot fill source sgl array");
 			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+			/* clear op-in-progress flag */
+			if (stream)
+				stream->op_in_progress = 0;
 			return ret;
 		}
 
@@ -129,6 +164,9 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 					   " for %d elements of SGL",
 					   op->m_dst->nb_segs);
 				op->status = RTE_COMP_OP_STATUS_ERROR;
+				/* clear op-in-progress flag */
+				if (stream)
+					stream->op_in_progress = 0;
 				return -ENOMEM;
 			}
 			/* new SGL is valid now */
@@ -146,6 +184,9 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 		if (ret) {
 			QAT_DP_LOG(ERR, "QAT PMD Cannot fill dest. sgl array");
 			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+			/* clear op-in-progress flag */
+			if (stream)
+				stream->op_in_progress = 0;
 			return ret;
 		}
 
@@ -202,11 +243,21 @@ qat_comp_process_response(void **op, uint8_t *resp, void *op_cookie,
 			(struct qat_comp_op_cookie *)op_cookie;
 	struct rte_comp_op *rx_op = (struct rte_comp_op *)(uintptr_t)
 			(resp_msg->opaque_data);
-	struct qat_comp_xform *qat_xform = (struct qat_comp_xform *)
-				(rx_op->private_xform);
+	struct qat_comp_stream *stream;
+	struct qat_comp_xform *qat_xform;
 	int err = resp_msg->comn_resp.comn_status &
 			((1 << QAT_COMN_RESP_CMP_STATUS_BITPOS) |
 			 (1 << QAT_COMN_RESP_XLAT_STATUS_BITPOS));
+
+	if (rx_op->op_type == RTE_COMP_OP_STATEFUL) {
+		stream = rx_op->stream;
+		qat_xform = &stream->qat_xform;
+		/* clear op-in-progress flag */
+		stream->op_in_progress = 0;
+	} else {
+		stream = NULL;
+		qat_xform = rx_op->private_xform;
+	}
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	QAT_DP_LOG(DEBUG, "Direction: %s",
@@ -254,7 +305,21 @@ qat_comp_process_response(void **op, uint8_t *resp, void *op_cookie,
 		int8_t xlat_err_code =
 			(int8_t)resp_msg->comn_resp.comn_error.xlat_err_code;
 
-		if ((cmp_err_code == ERR_CODE_OVERFLOW_ERROR && !xlat_err_code)
+		/* handle recoverable out-of-buffer condition in stateful */
+		/* decompression scenario */
+		if (cmp_err_code == ERR_CODE_OVERFLOW_ERROR && !xlat_err_code
+				&& qat_xform->qat_comp_request_type
+					== QAT_COMP_REQUEST_DECOMPRESS
+				&& rx_op->op_type == RTE_COMP_OP_STATEFUL) {
+			struct icp_qat_fw_resp_comp_pars *comp_resp =
+					&resp_msg->comp_resp_pars;
+			rx_op->status =
+				RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE;
+			rx_op->consumed = comp_resp->input_byte_counter;
+			rx_op->produced = comp_resp->output_byte_counter;
+			stream->start_of_packet = 0;
+		} else if ((cmp_err_code == ERR_CODE_OVERFLOW_ERROR
+			  && !xlat_err_code)
 				||
 		    (!cmp_err_code && xlat_err_code == ERR_CODE_OVERFLOW_ERROR)
 				||
@@ -275,6 +340,8 @@ qat_comp_process_response(void **op, uint8_t *resp, void *op_cookie,
 		rx_op->status = RTE_COMP_OP_STATUS_SUCCESS;
 		rx_op->consumed = comp_resp->input_byte_counter;
 		rx_op->produced = comp_resp->output_byte_counter;
+		if (stream)
+			stream->start_of_packet = 0;
 
 		if (qat_xform->checksum_type != RTE_COMP_CHECKSUM_NONE) {
 			if (qat_xform->checksum_type == RTE_COMP_CHECKSUM_CRC32)
@@ -297,6 +364,12 @@ qat_comp_xform_size(void)
 	return RTE_ALIGN_CEIL(sizeof(struct qat_comp_xform), 8);
 }
 
+unsigned int
+qat_comp_stream_size(void)
+{
+	return RTE_ALIGN_CEIL(sizeof(struct qat_comp_stream), 8);
+}
+
 static void qat_comp_create_req_hdr(struct icp_qat_fw_comn_req_hdr *header,
 				    enum qat_comp_request_type request)
 {
@@ -317,7 +390,9 @@ static void qat_comp_create_req_hdr(struct icp_qat_fw_comn_req_hdr *header,
 
 static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 			const struct rte_memzone *interm_buff_mz,
-			const struct rte_comp_xform *xform)
+			const struct rte_comp_xform *xform,
+			const struct qat_comp_stream *stream,
+			enum rte_comp_op_type op_type)
 {
 	struct icp_qat_fw_comp_req *comp_req;
 	int comp_level, algo;
@@ -327,6 +402,18 @@ static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 	if (unlikely(qat_xform == NULL)) {
 		QAT_LOG(ERR, "Session was not created for this device");
 		return -EINVAL;
+	}
+
+	if (op_type == RTE_COMP_OP_STATEFUL) {
+		if (unlikely(stream == NULL)) {
+			QAT_LOG(ERR, "Stream must be non null for stateful op");
+			return -EINVAL;
+		}
+		if (unlikely(qat_xform->qat_comp_request_type !=
+			     QAT_COMP_REQUEST_DECOMPRESS)) {
+			QAT_LOG(ERR, "QAT PMD does not support stateful compression");
+			return -ENOTSUP;
+		}
 	}
 
 	if (qat_xform->qat_comp_request_type == QAT_COMP_REQUEST_DECOMPRESS) {
@@ -376,12 +463,43 @@ static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 	qat_comp_create_req_hdr(&comp_req->comn_hdr,
 					qat_xform->qat_comp_request_type);
 
-	comp_req->comn_hdr.serv_specif_flags = ICP_QAT_FW_COMP_FLAGS_BUILD(
-	    ICP_QAT_FW_COMP_STATELESS_SESSION,
-	    ICP_QAT_FW_COMP_NOT_AUTO_SELECT_BEST,
-	    ICP_QAT_FW_COMP_NOT_ENH_AUTO_SELECT_BEST,
-	    ICP_QAT_FW_COMP_NOT_DISABLE_TYPE0_ENH_AUTO_SELECT_BEST,
-	    ICP_QAT_FW_COMP_ENABLE_SECURE_RAM_USED_AS_INTMD_BUF);
+	if (op_type == RTE_COMP_OP_STATEFUL) {
+		comp_req->comn_hdr.serv_specif_flags =
+				ICP_QAT_FW_COMP_FLAGS_BUILD(
+			ICP_QAT_FW_COMP_STATEFUL_SESSION,
+			ICP_QAT_FW_COMP_NOT_AUTO_SELECT_BEST,
+			ICP_QAT_FW_COMP_NOT_ENH_AUTO_SELECT_BEST,
+			ICP_QAT_FW_COMP_NOT_DISABLE_TYPE0_ENH_AUTO_SELECT_BEST,
+			ICP_QAT_FW_COMP_ENABLE_SECURE_RAM_USED_AS_INTMD_BUF);
+
+		/* Decompression state registers */
+		comp_req->comp_cd_ctrl.comp_state_addr =
+				stream->state_registers_decomp_phys;
+
+		/* Enable A, B, C, D, and E (CAMs). */
+		comp_req->comp_cd_ctrl.ram_bank_flags =
+			ICP_QAT_FW_COMP_RAM_FLAGS_BUILD(
+				ICP_QAT_FW_COMP_BANK_DISABLED, /* Bank I */
+				ICP_QAT_FW_COMP_BANK_DISABLED, /* Bank H */
+				ICP_QAT_FW_COMP_BANK_DISABLED, /* Bank G */
+				ICP_QAT_FW_COMP_BANK_DISABLED, /* Bank F */
+				ICP_QAT_FW_COMP_BANK_ENABLED,  /* Bank E */
+				ICP_QAT_FW_COMP_BANK_ENABLED,  /* Bank D */
+				ICP_QAT_FW_COMP_BANK_ENABLED,  /* Bank C */
+				ICP_QAT_FW_COMP_BANK_ENABLED,  /* Bank B */
+				ICP_QAT_FW_COMP_BANK_ENABLED); /* Bank A */
+
+		comp_req->comp_cd_ctrl.ram_banks_addr =
+				stream->inflate_context_phys;
+	} else {
+		comp_req->comn_hdr.serv_specif_flags =
+				ICP_QAT_FW_COMP_FLAGS_BUILD(
+			ICP_QAT_FW_COMP_STATELESS_SESSION,
+			ICP_QAT_FW_COMP_NOT_AUTO_SELECT_BEST,
+			ICP_QAT_FW_COMP_NOT_ENH_AUTO_SELECT_BEST,
+			ICP_QAT_FW_COMP_NOT_DISABLE_TYPE0_ENH_AUTO_SELECT_BEST,
+			ICP_QAT_FW_COMP_ENABLE_SECURE_RAM_USED_AS_INTMD_BUF);
+	}
 
 	comp_req->cd_pars.sl.comp_slice_cfg_word[0] =
 	    ICP_QAT_HW_COMPRESSION_CONFIG_BUILD(
@@ -497,7 +615,8 @@ qat_comp_private_xform_create(struct rte_compressdev *dev,
 		qat_xform->checksum_type = xform->decompress.chksum;
 	}
 
-	if (qat_comp_create_templates(qat_xform, qat->interm_buff_mz, xform)) {
+	if (qat_comp_create_templates(qat_xform, qat->interm_buff_mz, xform,
+				      NULL, RTE_COMP_OP_STATELESS)) {
 		QAT_LOG(ERR, "QAT: Problem with setting compression");
 		return -EINVAL;
 	}
@@ -528,6 +647,105 @@ qat_comp_private_xform_free(struct rte_compressdev *dev __rte_unused,
 		struct rte_mempool *mp = rte_mempool_from_obj(qat_xform);
 
 		rte_mempool_put(mp, qat_xform);
+		return 0;
+	}
+	return -EINVAL;
+}
+
+/**
+ * Reset stream state for the next use.
+ *
+ * @param stream
+ *   handle of pmd's private stream data
+ */
+static void
+qat_comp_stream_reset(struct qat_comp_stream *stream)
+{
+	if (stream) {
+		memset(&stream->qat_xform, 0, sizeof(struct qat_comp_xform));
+		stream->start_of_packet = 1;
+		stream->op_in_progress = 0;
+	}
+}
+
+/**
+ * Create driver private stream data.
+ *
+ * @param dev
+ *   Compressdev device
+ * @param xform
+ *   xform data
+ * @param stream
+ *   ptr where handle of pmd's private stream data should be stored
+ * @return
+ *  - Returns 0 if private stream structure has been created successfully.
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -ENOTSUP if comp device does not support STATEFUL operations.
+ *  - Returns -ENOTSUP if comp device does not support the comp transform.
+ *  - Returns -ENOMEM if the private stream could not be allocated.
+ */
+int
+qat_comp_stream_create(struct rte_compressdev *dev,
+		       const struct rte_comp_xform *xform,
+		       void **stream)
+{
+	struct qat_comp_dev_private *qat = dev->data->dev_private;
+	struct qat_comp_stream *ptr;
+
+	if (unlikely(stream == NULL)) {
+		QAT_LOG(ERR, "QAT: stream parameter is NULL");
+		return -EINVAL;
+	}
+	if (unlikely(xform->type == RTE_COMP_COMPRESS)) {
+		QAT_LOG(ERR, "QAT: stateful compression not supported");
+		return -ENOTSUP;
+	}
+	if (unlikely(qat->streampool == NULL)) {
+		QAT_LOG(ERR, "QAT device has no stream mempool");
+		return -ENOMEM;
+	}
+	if (rte_mempool_get(qat->streampool, stream)) {
+		QAT_LOG(ERR, "Couldn't get object from qat stream mempool");
+		return -ENOMEM;
+	}
+
+	ptr = (struct qat_comp_stream *) *stream;
+	qat_comp_stream_reset(ptr);
+	ptr->qat_xform.qat_comp_request_type = QAT_COMP_REQUEST_DECOMPRESS;
+	ptr->qat_xform.checksum_type = xform->decompress.chksum;
+
+	if (qat_comp_create_templates(&ptr->qat_xform, qat->interm_buff_mz,
+				      xform, ptr, RTE_COMP_OP_STATEFUL)) {
+		QAT_LOG(ERR, "QAT: problem with creating descriptor template for stream");
+		rte_mempool_put(qat->streampool, *stream);
+		*stream = NULL;
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
+ * Free driver private stream data.
+ *
+ * @param dev
+ *   Compressdev device
+ * @param stream
+ *   handle of pmd's private stream data
+ * @return
+ *  - 0 if successful
+ *  - <0 in error cases
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -ENOTSUP if comp device does not support STATEFUL operations.
+ *  - Returns -EBUSY if can't free stream as there are inflight operations
+ */
+int
+qat_comp_stream_free(struct rte_compressdev *dev, void *stream)
+{
+	if (stream) {
+		struct qat_comp_dev_private *qat = dev->data->dev_private;
+		qat_comp_stream_reset((struct qat_comp_stream *) stream);
+		rte_mempool_put(qat->streampool, stream);
 		return 0;
 	}
 	return -EINVAL;
