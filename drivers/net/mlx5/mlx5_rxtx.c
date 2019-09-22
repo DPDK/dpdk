@@ -940,14 +940,15 @@ mlx5_queue_state_modify(struct rte_eth_dev *dev,
  *
  * @param[in] rxq
  *   Pointer to RX queue structure.
- * @param[in] mbuf_prepare
- *   Whether to prepare mbufs for the RQ.
+ * @param[in] vec
+ *   1 when called from vectorized Rx burst, need to prepare mbufs for the RQ.
+ *   0 when called from non-vectorized Rx burst.
  *
  * @return
  *   -1 in case of recovery error, otherwise the CQE status.
  */
 int
-mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t mbuf_prepare)
+mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 {
 	const uint16_t cqe_n = 1 << rxq->cqe_n;
 	const uint16_t cqe_mask = cqe_n - 1;
@@ -1014,7 +1015,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t mbuf_prepare)
 			if (mlx5_queue_state_modify(ETH_DEV(rxq_ctrl->priv),
 						    &sm))
 				return -1;
-			if (mbuf_prepare) {
+			if (vec) {
 				const uint16_t q_mask = wqe_n - 1;
 				uint16_t elt_idx;
 				struct rte_mbuf **elt;
@@ -1038,6 +1039,16 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t mbuf_prepare)
 						return -1;
 					}
 				}
+				for (i = 0; i < (int)wqe_n; ++i) {
+					elt = &(*rxq->elts)[i];
+					DATA_LEN(*elt) =
+						(uint16_t)((*elt)->buf_len -
+						rte_pktmbuf_headroom(*elt));
+				}
+				/* Padding with a fake mbuf for vec Rx. */
+				for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
+					(*rxq->elts)[wqe_n + i] =
+								&rxq->fake_mbuf;
 			}
 			mlx5_rxq_initialize(rxq);
 			rxq->err_state = MLX5_RXQ_ERR_STATE_NO_ERROR;
