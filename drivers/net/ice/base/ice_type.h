@@ -296,13 +296,19 @@ enum ice_fltr_ptype {
 	ICE_FLTR_PTYPE_MAX,
 };
 
+enum ice_fd_hw_seg {
+	ICE_FD_HW_SEG_NON_TUN = 0,
+	ICE_FD_HW_SEG_TUN,
+	ICE_FD_HW_SEG_MAX,
+};
+
 /* 2 VSI = 1 ICE_VSI_PF + 1 ICE_VSI_CTRL */
 #define ICE_MAX_FDIR_VSI_PER_FILTER	2
 
 struct ice_fd_hw_prof {
-	struct ice_flow_seg_info *fdir_seg;
+	struct ice_flow_seg_info *fdir_seg[ICE_FD_HW_SEG_MAX];
 	int cnt;
-	u64 entry_h[ICE_MAX_FDIR_VSI_PER_FILTER];
+	u64 entry_h[ICE_MAX_FDIR_VSI_PER_FILTER][ICE_FD_HW_SEG_MAX];
 	u16 vsi_h[ICE_MAX_FDIR_VSI_PER_FILTER];
 };
 

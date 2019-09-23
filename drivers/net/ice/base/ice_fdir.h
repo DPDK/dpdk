@@ -58,7 +58,8 @@ enum ice_status ice_clear_pf_fd_table(struct ice_hw *hw);
 #define ICE_IP_PROTO_IP			0
 #define ICE_IP_PROTO_ESP		50
 
-#define ICE_FDIR_MAX_RAW_PKT_SIZE	512
+#define ICE_FDIR_TUN_PKT_OFF		50
+#define ICE_FDIR_MAX_RAW_PKT_SIZE	(512 + ICE_FDIR_TUN_PKT_OFF)
 #define ICE_FDIR_BUF_FULL_MARGIN	10
 #define ICE_FDIR_BUF_HEAD_ROOM		32
 
@@ -175,11 +176,16 @@ struct ice_fdir_base_pkt {
 	enum ice_fltr_ptype flow;
 	u16 pkt_len;
 	const u8 *pkt;
+	u16 tun_pkt_len;
+	const u8 *tun_pkt;
 };
 
 void
 ice_fdir_get_prgm_desc(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		       struct ice_fltr_desc *fdesc, bool add);
+enum ice_status
+ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
+			  u8 *pkt, bool frag, bool tun);
 enum ice_status
 ice_fdir_get_prgm_pkt(struct ice_fdir_fltr *input, u8 *pkt, bool frag);
 enum ice_status
