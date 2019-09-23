@@ -835,11 +835,6 @@ struct ice_hw {
 	/* tunneling info */
 	struct ice_tunnel_table tnl;
 
-#define ICE_PKG_FILENAME	"package_file"
-#define ICE_PKG_FILENAME_EXT	"pkg"
-#define ICE_PKG_FILE_MAJ_VER	1
-#define ICE_PKG_FILE_MIN_VER	0
-
 	/* HW block tables */
 	struct ice_blk_info blk[ICE_BLK_COUNT];
 	struct ice_lock fl_profs_locks[ICE_BLK_COUNT];	/* lock fltr profiles */
