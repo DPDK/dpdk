@@ -5581,14 +5581,14 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		if (status)
 			goto err_unroll;
 
-		ice_or_bitmap(rm->r_bitmap, r_bitmap, rm->r_bitmap,
+		ice_or_bitmap(r_bitmap, r_bitmap, rm->r_bitmap,
 			      ICE_MAX_NUM_RECIPES);
 		status = ice_acquire_change_lock(hw, ICE_RES_WRITE);
 		if (status)
 			goto err_unroll;
 
 		status = ice_aq_map_recipe_to_profile(hw, fvit->profile_id,
-						      (u8 *)rm->r_bitmap,
+						      (u8 *)r_bitmap,
 						      NULL);
 		ice_release_change_lock(hw);
 
@@ -5596,12 +5596,12 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 			goto err_unroll;
 
 		/* Update profile to recipe bitmap array */
-		ice_memcpy(profile_to_recipe[fvit->profile_id], rm->r_bitmap,
-			   sizeof(rm->r_bitmap), ICE_NONDMA_TO_NONDMA);
+		ice_memcpy(profile_to_recipe[fvit->profile_id], r_bitmap,
+			   sizeof(r_bitmap), ICE_NONDMA_TO_NONDMA);
 
 		/* Update recipe to profile bitmap array */
 		for (j = 0; j < ICE_MAX_NUM_RECIPES; j++)
-			if (ice_is_bit_set(rm->r_bitmap, j))
+			if (ice_is_bit_set(r_bitmap, j))
 				ice_set_bit((u16)fvit->profile_id,
 					    recipe_to_profile[j]);
 	}
