@@ -74,7 +74,6 @@ void ice_set_safe_mode_caps(struct ice_hw *hw);
 enum ice_status
 ice_write_rxq_ctx(struct ice_hw *hw, struct ice_rlan_ctx *rlan_ctx,
 		  u32 rxq_index);
-#if !defined(NO_UNUSED_CTX_CODE) || defined(AE_DRIVER)
 enum ice_status ice_clear_rxq_ctx(struct ice_hw *hw, u32 rxq_index);
 enum ice_status
 ice_clear_tx_cmpltnq_ctx(struct ice_hw *hw, u32 tx_cmpltnq_index);
@@ -88,7 +87,6 @@ enum ice_status
 ice_write_tx_drbell_q_ctx(struct ice_hw *hw,
 			  struct ice_tx_drbell_q_ctx *tx_drbell_q_ctx,
 			  u32 tx_drbell_q_index);
-#endif /* !NO_UNUSED_CTX_CODE || AE_DRIVER */
 
 enum ice_status
 ice_aq_get_rss_lut(struct ice_hw *hw, u16 vsi_handle, u8 lut_type, u8 *lut,

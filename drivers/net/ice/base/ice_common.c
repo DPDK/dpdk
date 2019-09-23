@@ -1068,7 +1068,6 @@ ice_write_rxq_ctx(struct ice_hw *hw, struct ice_rlan_ctx *rlan_ctx,
 	return ice_copy_rxq_ctx_to_hw(hw, ctx_buf, rxq_index);
 }
 
-#if !defined(NO_UNUSED_CTX_CODE) || defined(AE_DRIVER)
 /**
  * ice_clear_rxq_ctx
  * @hw: pointer to the hardware structure
@@ -1089,7 +1088,6 @@ enum ice_status ice_clear_rxq_ctx(struct ice_hw *hw, u32 rxq_index)
 
 	return ICE_SUCCESS;
 }
-#endif /* !NO_UNUSED_CTX_CODE || AE_DRIVER */
 
 /* LAN Tx Queue Context */
 const struct ice_ctx_ele ice_tlan_ctx_info[] = {
@@ -1125,7 +1123,6 @@ const struct ice_ctx_ele ice_tlan_ctx_info[] = {
 	{ 0 }
 };
 
-#if !defined(NO_UNUSED_CTX_CODE) || defined(AE_DRIVER)
 /**
  * ice_copy_tx_cmpltnq_ctx_to_hw
  * @hw: pointer to the hardware structure
@@ -1306,7 +1303,6 @@ ice_clear_tx_drbell_q_ctx(struct ice_hw *hw, u32 tx_drbell_q_index)
 
 	return ICE_SUCCESS;
 }
-#endif /* !NO_UNUSED_CTX_CODE || AE_DRIVER */
 
 /* FW Admin Queue command wrappers */
 

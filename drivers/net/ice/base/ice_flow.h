@@ -362,9 +362,6 @@ struct ice_flow_action {
 	} data;
 };
 
-/* TDD esp in the linux code doesn't like prototypes, so
- * ifdef them all out, so they stop conflicting with our mocks
- */
 u64
 ice_flow_find_prof(struct ice_hw *hw, enum ice_block blk, enum ice_flow_dir dir,
 		   struct ice_flow_seg_info *segs, u8 segs_cnt);

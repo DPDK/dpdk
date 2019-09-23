@@ -2701,7 +2701,6 @@ ice_find_prof_id_with_mask(struct ice_hw *hw, enum ice_block blk,
 
 	for (i = 0; i < es->count; i++) {
 		u16 off = i * es->fvw;
-		u16 j;
 
 		if (memcmp(&es->t[off], fv, es->fvw * sizeof(*fv)))
 			continue;
