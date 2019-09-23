@@ -173,7 +173,6 @@ struct ice_fltr_desc {
 			(0xFFFFFFFFULL << ICE_FXD_FLTR_QW1_FDID_S)
 #define ICE_FXD_FLTR_QW1_FDID_ZERO	0x0ULL
 
-
 enum ice_rx_desc_status_bits {
 	/* Note: These are predefined bit offsets */
 	ICE_RX_DESC_STATUS_DD_S			= 0,
@@ -204,14 +203,12 @@ enum ice_rx_desc_status_bits {
 #define ICE_RXD_QW1_STATUS_TSYNVALID_S ICE_RX_DESC_STATUS_TSYNVALID_S
 #define ICE_RXD_QW1_STATUS_TSYNVALID_M BIT_ULL(ICE_RXD_QW1_STATUS_TSYNVALID_S)
 
-
 enum ice_rx_desc_fltstat_values {
 	ICE_RX_DESC_FLTSTAT_NO_DATA	= 0,
 	ICE_RX_DESC_FLTSTAT_RSV_FD_ID	= 1, /* 16byte desc? FD_ID : RSV */
 	ICE_RX_DESC_FLTSTAT_RSV		= 2,
 	ICE_RX_DESC_FLTSTAT_RSS_HASH	= 3,
 };
-
 
 #define ICE_RXD_QW1_ERROR_S	19
 #define ICE_RXD_QW1_ERROR_M		(0xFFUL << ICE_RXD_QW1_ERROR_S)
@@ -310,7 +307,6 @@ enum ice_rx_ptype_payload_layer {
 	ICE_RX_PTYPE_PAYLOAD_LAYER_PAY4	= 3,
 };
 
-
 #define ICE_RXD_QW1_LEN_PBUF_S	38
 #define ICE_RXD_QW1_LEN_PBUF_M	(0x3FFFULL << ICE_RXD_QW1_LEN_PBUF_S)
 
@@ -319,7 +315,6 @@ enum ice_rx_ptype_payload_layer {
 
 #define ICE_RXD_QW1_LEN_SPH_S	63
 #define ICE_RXD_QW1_LEN_SPH_M	BIT_ULL(ICE_RXD_QW1_LEN_SPH_S)
-
 
 enum ice_rx_desc_ext_status_bits {
 	/* Note: These are predefined bit offsets */
@@ -330,7 +325,6 @@ enum ice_rx_desc_ext_status_bits {
 	ICE_RX_DESC_EXT_STATUS_FDLONGB_S	= 9,
 	ICE_RX_DESC_EXT_STATUS_PELONGB_S	= 11,
 };
-
 
 enum ice_rx_desc_pe_status_bits {
 	/* Note: These are predefined bit offsets */
@@ -351,7 +345,6 @@ enum ice_rx_desc_pe_status_bits {
 #define ICE_RX_PROG_STATUS_DESC_QW1_PROGID_S	2
 #define ICE_RX_PROG_STATUS_DESC_QW1_PROGID_M	\
 			(0x7UL << ICE_RX_PROG_STATUS_DESC_QW1_PROGID_S)
-
 
 #define ICE_RX_PROG_STATUS_DESC_QW1_ERROR_S	19
 #define ICE_RX_PROG_STATUS_DESC_QW1_ERROR_M	\
@@ -840,7 +833,6 @@ enum ice_rx_flex_desc_exstat_bits {
 	ICE_RX_FLEX_DESC_EXSTAT_OVERSIZE_S = 3,
 };
 
-
 #define ICE_RXQ_CTX_SIZE_DWORDS		8
 #define ICE_RXQ_CTX_SZ			(ICE_RXQ_CTX_SIZE_DWORDS * sizeof(u32))
 #define ICE_TX_CMPLTNQ_CTX_SIZE_DWORDS	22
@@ -1055,7 +1047,6 @@ enum ice_tx_ctx_desc_eipt_offload {
 
 #define ICE_TXD_CTX_QW0_L4T_CS_S	23
 #define ICE_TXD_CTX_QW0_L4T_CS_M	BIT_ULL(ICE_TXD_CTX_QW0_L4T_CS_S)
-
 
 #define ICE_LAN_TXQ_MAX_QGRPS	127
 #define ICE_LAN_TXQ_MAX_QDIS	1023

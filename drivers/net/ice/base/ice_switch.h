@@ -15,7 +15,6 @@
 #define ICE_FLTR_TX BIT(1)
 #define ICE_FLTR_TX_RX (ICE_FLTR_RX | ICE_FLTR_TX)
 
-
 /* Worst case buffer length for ice_aqc_opc_get_res_alloc */
 #define ICE_MAX_RES_TYPES 0x80
 #define ICE_AQ_GET_RES_ALLOC_BUF_LEN \
@@ -390,7 +389,6 @@ ice_add_mac_with_sw_marker(struct ice_hw *hw, struct ice_fltr_info *f_info,
 enum ice_status
 ice_add_mac_with_counter(struct ice_hw *hw, struct ice_fltr_info *f_info);
 void ice_remove_vsi_fltr(struct ice_hw *hw, u16 vsi_handle);
-
 
 /* Promisc/defport setup for VSIs */
 enum ice_status

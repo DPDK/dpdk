@@ -134,10 +134,6 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 #define __ALWAYS_UNUSED
 #endif
 
-
-
-
-
 #define IS_ETHER_ADDR_EQUAL(addr1, addr2) \
 	(((bool)((((u16 *)(addr1))[0] == ((u16 *)(addr2))[0]))) && \
 	 ((bool)((((u16 *)(addr1))[1] == ((u16 *)(addr2))[1]))) && \
@@ -384,7 +380,6 @@ struct ice_hw_common_caps {
 	u8 proxy_support;
 };
 
-
 /* Function specific capabilities */
 struct ice_hw_func_caps {
 	struct ice_hw_common_caps common_cap;
@@ -400,7 +395,6 @@ struct ice_hw_dev_caps {
 	u32 num_flow_director_fltr;	/* Number of FD filters available */
 	u32 num_funcs;
 };
-
 
 /* Information about MAC such as address, etc... */
 struct ice_mac_info {
@@ -567,7 +561,6 @@ enum ice_rl_type {
 #define ICE_TXSCHED_GET_RL_WAKEUP_MV(p) LE16_TO_CPU((p)->info.wake_up_calc)
 #define ICE_TXSCHED_GET_RL_ENCODE(p) LE16_TO_CPU((p)->info.rl_encode)
 
-
 /* The following tree example shows the naming conventions followed under
  * ice_port_info struct for default scheduler tree topology.
  *
@@ -729,7 +722,6 @@ struct ice_switch_info {
 	struct ice_sw_recipe *recp_list;
 };
 
-
 /* Port hardware description */
 struct ice_hw {
 	u8 *hw_addr;
@@ -786,7 +778,6 @@ struct ice_hw {
 	u8 fw_min_ver;		/* firmware minor version */
 	u8 fw_patch;		/* firmware patch version */
 	u32 fw_build;		/* firmware build number */
-
 
 /* Device max aggregate bandwidths corresponding to the GL_PWR_MODE_CTL
  * register. Used for determining the ITR/INTRL granularity during

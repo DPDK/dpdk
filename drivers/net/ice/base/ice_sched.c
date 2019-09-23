@@ -4,7 +4,6 @@
 
 #include "ice_sched.h"
 
-
 /**
  * ice_sched_add_root_node - Insert the Tx scheduler root node in SW DB
  * @pi: port information structure
@@ -876,7 +875,6 @@ ice_aq_cfg_l2_node_cgd(struct ice_hw *hw, u16 num_l2_nodes,
 	return ice_aq_send_cmd(hw, &desc, buf, buf_size, cd);
 }
 
-
 /**
  * ice_sched_add_elems - add nodes to HW and SW DB
  * @pi: port information structure
@@ -1365,7 +1363,6 @@ enum ice_status ice_sched_query_res_alloc(struct ice_hw *hw)
 		status = ICE_ERR_NO_MEMORY;
 		goto sched_query_out;
 	}
-
 
 sched_query_out:
 	ice_free(hw, buf);
@@ -2020,7 +2017,6 @@ enum ice_status ice_rm_vsi_lan_cfg(struct ice_port_info *pi, u16 vsi_handle)
 {
 	return ice_sched_rm_vsi_cfg(pi, vsi_handle, ICE_SCHED_NODE_OWNER_LAN);
 }
-
 
 /**
  * ice_sched_is_tree_balanced - Check tree nodes are identical or not

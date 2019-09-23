@@ -114,7 +114,6 @@ enum ice_prot_id {
 
 #define ICE_VNI_OFFSET		12 /* offset of VNI from ICE_PROT_UDP_OF */
 
-
 #define ICE_MAC_OFOS_HW		1
 #define ICE_MAC_IL_HW		4
 #define ICE_ETYPE_OL_HW		9
@@ -147,7 +146,6 @@ struct ice_protocol_entry {
 	enum ice_protocol_type type;
 	u8 protocol_id;
 };
-
 
 struct ice_ether_hdr {
 	u8 dst_addr[ETH_ALEN];

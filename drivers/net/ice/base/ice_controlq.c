@@ -4,7 +4,6 @@
 
 #include "ice_common.h"
 
-
 #define ICE_CQ_INIT_REGS(qinfo, prefix)				\
 do {								\
 	(qinfo)->sq.head = prefix##_ATQH;			\
@@ -52,7 +51,6 @@ static void ice_mailbox_init_regs(struct ice_hw *hw)
 
 	ICE_CQ_INIT_REGS(cq, PF_MBX);
 }
-
 
 /**
  * ice_check_sq_alive
@@ -521,7 +519,6 @@ shutdown_rq_out:
 	return ret_code;
 }
 
-
 /**
  * ice_init_check_adminq - Check version for Admin Queue to know if its alive
  * @hw: pointer to the hardware structure
@@ -533,11 +530,9 @@ static enum ice_status ice_init_check_adminq(struct ice_hw *hw)
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
-
 	status = ice_aq_get_fw_ver(hw, NULL);
 	if (status)
 		goto init_ctrlq_free_rq;
-
 
 	if (!ice_aq_ver_check(hw)) {
 		status = ICE_ERR_FW_API_VER;
@@ -632,7 +627,6 @@ enum ice_status ice_init_all_ctrlq(struct ice_hw *hw)
 	enum ice_status ret_code;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
-
 
 	/* Init FW admin queue */
 	ret_code = ice_init_ctrlq(hw, ICE_CTL_Q_ADMIN);
@@ -972,7 +966,6 @@ ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 
 	ice_debug_cq(hw, (void *)desc_on_ring, buf, buf_size);
 
-
 	(cq->sq.next_to_use)++;
 	if (cq->sq.next_to_use == cq->sq.count)
 		cq->sq.next_to_use = 0;
@@ -1024,7 +1017,6 @@ ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		  "ATQ: desc and buffer writeback:\n");
 
 	ice_debug_cq(hw, (void *)desc, buf, buf_size);
-
 
 	/* save writeback AQ if requested */
 	if (details->wb_desc)
@@ -1157,7 +1149,6 @@ ice_clean_rq_elem(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 
 	ice_debug_cq(hw, (void *)desc, e->msg_buf,
 		     cq->rq_buf_size);
-
 
 	/* Restore the original datalen and buffer address in the desc,
 	 * FW updates datalen to indicate the event message size

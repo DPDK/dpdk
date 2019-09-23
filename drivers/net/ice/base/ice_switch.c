@@ -6,7 +6,6 @@
 #include "ice_flex_type.h"
 #include "ice_flow.h"
 
-
 #define ICE_ETH_DA_OFFSET		0
 #define ICE_ETH_ETHTYPE_OFFSET		12
 #define ICE_ETH_VLAN_TCI_OFFSET		14
@@ -742,7 +741,6 @@ ice_aq_get_sw_cfg(struct ice_hw *hw, struct ice_aqc_get_sw_cfg_resp *buf,
 
 	return status;
 }
-
 
 /**
  * ice_alloc_sw - allocate resources specific to switch
@@ -1787,12 +1785,10 @@ enum ice_status ice_get_initial_sw_cfg(struct ice_hw *hw)
 		}
 	} while (req_desc && !status);
 
-
 out:
 	ice_free(hw, (void *)rbuf);
 	return status;
 }
-
 
 /**
  * ice_fill_sw_info - Helper function to populate lb_en and lan_en
@@ -3424,7 +3420,6 @@ ice_remove_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
 	return ICE_SUCCESS;
 }
 
-
 /**
  * ice_rem_sw_rule_info
  * @hw: pointer to the hardware structure
@@ -3822,7 +3817,6 @@ ice_add_to_vsi_fltr_list(struct ice_hw *hw, u16 vsi_handle,
 	}
 	return status;
 }
-
 
 /**
  * ice_determine_promisc_mask
@@ -4810,8 +4804,6 @@ ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
 
 	return ret_val;
 }
-
-
 
 /**
  * ice_create_first_fit_recp_def - Create a recipe grouping

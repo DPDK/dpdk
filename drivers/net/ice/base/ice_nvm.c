@@ -4,7 +4,6 @@
 
 #include "ice_common.h"
 
-
 /**
  * ice_aq_read_nvm
  * @hw: pointer to the HW struct
@@ -137,7 +136,6 @@ ice_read_sr_word_aq(struct ice_hw *hw, u16 offset, u16 *data)
 
 	return status;
 }
-
 
 /**
  * ice_read_sr_buf_aq - Reads Shadow RAM buf via AQ
@@ -354,7 +352,6 @@ enum ice_status ice_init_nvm(struct ice_hw *hw)
 	return ICE_SUCCESS;
 }
 
-
 /**
  * ice_read_sr_buf - Reads Shadow RAM buf and acquire lock if necessary
  * @hw: pointer to the HW structure
@@ -379,7 +376,6 @@ ice_read_sr_buf(struct ice_hw *hw, u16 offset, u16 *words, u16 *data)
 
 	return status;
 }
-
 
 /**
  * ice_nvm_validate_checksum

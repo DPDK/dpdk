@@ -7,7 +7,6 @@
 
 #include "ice_adminq_cmd.h"
 
-
 /* Maximum buffer lengths for all control queue types */
 #define ICE_AQ_MAX_BUF_LEN 4096
 #define ICE_MBXQ_MAX_BUF_LEN 4096

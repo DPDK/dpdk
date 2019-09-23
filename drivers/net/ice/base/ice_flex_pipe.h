@@ -46,7 +46,6 @@ bool ice_tunnel_port_in_use(struct ice_hw *hw, u16 port, u16 *index);
 bool
 ice_tunnel_get_type(struct ice_hw *hw, u16 port, enum ice_tunnel_type *type);
 
-
 /* XLT2/VSI group functions */
 enum ice_status
 ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig);

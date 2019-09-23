@@ -808,7 +808,6 @@ ice_aq_download_pkg(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
 	return status;
 }
 
-
 /**
  * ice_aq_update_pkg
  * @hw: pointer to the hardware structure
@@ -1179,7 +1178,6 @@ init_pkg_free_alloc:
 
 	return status;
 }
-
 
 /**
  * ice_verify_pkg - verify package
@@ -2084,7 +2082,6 @@ ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
 
 /* PTG Management */
 
-
 /**
  * ice_ptg_find_ptype - Search for packet type group using packet type (ptype)
  * @hw: pointer to the hardware structure
@@ -2120,7 +2117,6 @@ void ice_ptg_alloc_val(struct ice_hw *hw, enum ice_block blk, u8 ptg)
 {
 	hw->blk[blk].xlt1.ptg_tbl[ptg].in_use = true;
 }
-
 
 /**
  * ice_ptg_remove_ptype - Removes ptype from a particular packet type group
@@ -2314,7 +2310,6 @@ ice_match_prop_lst(struct LIST_HEAD_TYPE *list1, struct LIST_HEAD_TYPE *list2)
 }
 
 /* VSIG Management */
-
 
 /**
  * ice_vsig_find_vsi - find a VSIG that contains a specified VSI

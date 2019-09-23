@@ -8,7 +8,6 @@
 /* Define the size of the bitmap chunk */
 typedef u32 ice_bitmap_t;
 
-
 /* Number of bits per bitmap chunk */
 #define BITS_PER_CHUNK		(BITS_PER_BYTE * sizeof(ice_bitmap_t))
 /* Determine which chunk a bit belongs in */
@@ -371,6 +370,5 @@ ice_cmp_bitmap(ice_bitmap_t *bmp1, ice_bitmap_t *bmp2, u16 size)
 
 	return true;
 }
-
 
 #endif /* _ICE_BITOPS_H_ */

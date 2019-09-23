@@ -6,8 +6,6 @@
 #ifndef _ICE_HW_AUTOGEN_H_
 #define _ICE_HW_AUTOGEN_H_
 
-
-
 #define GL_RDPU_CNTRL				0x00052054 /* Reset Source: CORER */
 #define GL_RDPU_CNTRL_RX_PAD_EN_S		0
 #define GL_RDPU_CNTRL_RX_PAD_EN_M		BIT(0)

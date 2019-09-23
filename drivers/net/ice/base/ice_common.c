@@ -11,7 +11,6 @@
 
 #define ICE_PF_RESET_WAIT_COUNT	200
 
-
 /**
  * ice_set_mac_type - Sets MAC type
  * @hw: pointer to the HW structure
@@ -40,7 +39,6 @@ static enum ice_status ice_set_mac_type(struct ice_hw *hw)
 
 	return status;
 }
-
 
 /**
  * ice_clear_pf_cfg - Clear PF configuration
@@ -113,7 +111,6 @@ ice_aq_manage_mac_read(struct ice_hw *hw, void *buf, u16 buf_size,
 				   ETH_ALEN, ICE_DMA_TO_NONDMA);
 			break;
 		}
-
 	return ICE_SUCCESS;
 }
 
@@ -533,7 +530,6 @@ static void ice_cleanup_fltr_mgmt_struct(struct ice_hw *hw)
 	ice_free(hw, sw);
 }
 
-
 /**
  * ice_get_itr_intrl_gran
  * @hw: pointer to the HW struct
@@ -598,7 +594,6 @@ void ice_print_rollback_msg(struct ice_hw *hw)
 			    &ver_lo);
 	SNPRINTF(nvm_str, sizeof(nvm_str), "%x.%02x 0x%x %d.%d.%d", ver_hi,
 		 ver_lo, hw->nvm.eetrack, oem_ver, oem_build, oem_patch);
-
 	ice_warn(hw,
 		 "Firmware rollback mode detected. Current version is NVM: %s, FW: %d.%d. Device may exhibit limited functionality. Refer to the Intel(R) Ethernet Adapters and Devices User Guide for details on firmware rollback mode",
 		 nvm_str, hw->fw_maj_ver, hw->fw_min_ver);
@@ -617,7 +612,6 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
-
 	/* Set MAC type based on DeviceID */
 	status = ice_set_mac_type(hw);
 	if (status)
@@ -627,13 +621,11 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 			 PF_FUNC_RID_FUNCTION_NUMBER_M) >>
 		PF_FUNC_RID_FUNCTION_NUMBER_S;
 
-
 	status = ice_reset(hw, ICE_RESET_PFR);
 	if (status)
 		return status;
 
 	ice_get_itr_intrl_gran(hw);
-
 
 	status = ice_create_all_ctrlq(hw);
 	if (status)
@@ -686,7 +678,6 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 		goto err_unroll_alloc;
 	}
 
-
 	/* Initialize port_info struct with scheduler data */
 	status = ice_sched_init_port(hw->port_info);
 	if (status)
@@ -724,7 +715,6 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 	status = ice_init_fltr_mgmt_struct(hw);
 	if (status)
 		goto err_unroll_sched;
-
 
 	/* Get MAC information */
 	/* A single port can report up to two (LAN and WoL) addresses */
@@ -926,7 +916,6 @@ enum ice_status ice_reset(struct ice_hw *hw, enum ice_reset_req req)
 	wr32(hw, GLGEN_RTRIG, val);
 	ice_flush(hw);
 
-
 	/* wait for the FW to be ready */
 	return ice_check_reset(hw);
 }
@@ -996,8 +985,6 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 	/* Module does not exist */
 	return ICE_ERR_DOES_NOT_EXIST;
 }
-
-
 
 /**
  * ice_copy_rxq_ctx_to_hw
@@ -1320,7 +1307,6 @@ ice_clear_tx_drbell_q_ctx(struct ice_hw *hw, u32 tx_drbell_q_index)
 	return ICE_SUCCESS;
 }
 #endif /* !NO_UNUSED_CTX_CODE || AE_DRIVER */
-
 
 /* FW Admin Queue command wrappers */
 
@@ -2142,7 +2128,6 @@ ice_aq_manage_mac_write(struct ice_hw *hw, const u8 *mac_addr, u8 flags,
 
 	cmd->flags = flags;
 
-
 	/* Prep values for flags, sah, sal */
 	cmd->sah = HTONS(*((const u16 *)mac_addr));
 	cmd->sal = HTONL(*((const u32 *)(mac_addr + 2)));
@@ -2178,7 +2163,6 @@ void ice_clear_pxe_mode(struct ice_hw *hw)
 	if (ice_check_sq_alive(hw, &hw->adminq))
 		ice_aq_clear_pxe_mode(hw);
 }
-
 
 /**
  * ice_get_link_speed_based_on_phy_type - returns link speed
@@ -2848,7 +2832,6 @@ ice_aq_set_mac_loopback(struct ice_hw *hw, bool ena_lpbk, struct ice_sq_cd *cd)
 	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
 }
 
-
 /**
  * ice_aq_set_port_id_led
  * @pi: pointer to the port information
@@ -2868,7 +2851,6 @@ ice_aq_set_port_id_led(struct ice_port_info *pi, bool is_orig_mode,
 	cmd = &desc.params.set_port_id_led;
 
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_port_id_led);
-
 
 	if (is_orig_mode)
 		cmd->ident_mode = ICE_AQC_PORT_IDENT_LED_ORIG;
@@ -3357,7 +3339,6 @@ ice_aq_move_recfg_lan_txq(struct ice_hw *hw, u8 num_qs, bool is_move,
 	return status;
 }
 
-
 /* End of FW Admin Queue command wrappers */
 
 /**
@@ -3580,9 +3561,6 @@ ice_set_ctx(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 
 	return ICE_SUCCESS;
 }
-
-
-
 
 /**
  * ice_read_byte - read context byte into struct
@@ -4047,8 +4025,6 @@ ice_cfg_vsi_lan(struct ice_port_info *pi, u16 vsi_handle, u8 tc_bitmap,
 			      ICE_SCHED_NODE_OWNER_LAN);
 }
 
-
-
 /**
  * ice_replay_pre_init - replay pre initialization
  * @hw: pointer to the HW struct
@@ -4245,7 +4221,6 @@ ice_stat_update_repc(struct ice_hw *hw, u16 vsi_handle, bool prev_stat_loaded,
 	cur_stats->rx_no_desc += no_desc;
 	cur_stats->rx_errors += error_cnt;
 }
-
 
 /**
  * ice_sched_query_elem - query element information from HW

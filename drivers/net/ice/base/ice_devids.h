@@ -5,7 +5,6 @@
 #ifndef _ICE_DEVIDS_H_
 #define _ICE_DEVIDS_H_
 
-
 /* Device IDs */
 /* Intel(R) Ethernet Controller E810-C for backplane */
 #define ICE_DEV_ID_E810C_BACKPLANE	0x1591
