@@ -418,8 +418,9 @@ dummy_udp_gtp_packet[] = {
 
 static const
 struct ice_dummy_pkt_offsets dummy_pppoe_packet_offsets[] = {
-	{ ICE_MAC_OFOS,			0 },
-	{ ICE_PPPOE,			14 },
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_VLAN_OFOS,	14},
+	{ ICE_PPPOE,		18 },
 	{ ICE_PROTOCOL_LAST,	0 },
 };
 
@@ -428,9 +429,11 @@ dummy_pppoe_packet[] = {
 	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
-	0x88, 0x64,
+	0x81, 0x00,
 
-	0x11, 0x00, 0x00, 0x01, /* ICE_PPPOE 14 */
+	0x00, 0x00, 0x88, 0x64, /* ICE_VLAN_OFOS 14 */
+
+	0x11, 0x00, 0x00, 0x01, /* ICE_PPPOE 18 */
 	0x00, 0x4e, 0x00, 0x21,
 
 	0x45, 0x00, 0x00, 0x30, /* PDU */
@@ -4632,6 +4635,7 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
 	{ ICE_MAC_OFOS,		{ 0, 2, 4, 6, 8, 10, 12 } },
 	{ ICE_MAC_IL,		{ 0, 2, 4, 6, 8, 10, 12 } },
 	{ ICE_ETYPE_OL,		{ 0 } },
+	{ ICE_VLAN_OFOS,	{ 0, 2 } },
 	{ ICE_IPV4_OFOS,	{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 } },
 	{ ICE_IPV4_IL,		{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 } },
 	{ ICE_IPV6_IL,		{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
@@ -4661,6 +4665,7 @@ static const struct ice_protocol_entry ice_prot_id_tbl[] = {
 	{ ICE_MAC_OFOS,		ICE_MAC_OFOS_HW },
 	{ ICE_MAC_IL,		ICE_MAC_IL_HW },
 	{ ICE_ETYPE_OL,		ICE_ETYPE_OL_HW },
+	{ ICE_VLAN_OFOS,	ICE_VLAN_OL_HW },
 	{ ICE_IPV4_OFOS,	ICE_IPV4_OFOS_HW },
 	{ ICE_IPV4_IL,		ICE_IPV4_IL_HW },
 	{ ICE_IPV6_OFOS,	ICE_IPV6_OFOS_HW },
@@ -5784,6 +5789,9 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		case ICE_ETYPE_OL:
 			len = sizeof(struct ice_ethtype_hdr);
 			break;
+		case ICE_VLAN_OFOS:
+			len = sizeof(struct ice_vlan_hdr);
+			break;
 		case ICE_IPV4_OFOS:
 		case ICE_IPV4_IL:
 			len = sizeof(struct ice_ipv4_hdr);
@@ -5811,6 +5819,9 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 
 		case ICE_GTP:
 			len = sizeof(struct ice_udp_gtp_hdr);
+			break;
+		case ICE_PPPOE:
+			len = sizeof(struct ice_pppoe_hdr);
 			break;
 		default:
 			return ICE_ERR_PARAM;
