@@ -615,8 +615,7 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 		goto err_unroll;
 
 	/* Copy result indexes */
-	ice_memcpy(recps[rid].res_idxs, result_bm, sizeof(recps[rid].res_idxs),
-		   ICE_NONDMA_TO_NONDMA);
+	ice_cp_bitmap(recps[rid].res_idxs, result_bm, ICE_MAX_FV_WORDS);
 	recps[rid].recp_created = true;
 
 err_unroll:
@@ -645,8 +644,8 @@ ice_get_recp_to_prof_map(struct ice_hw *hw)
 		ice_zero_bitmap(r_bitmap, ICE_MAX_NUM_RECIPES);
 		if (ice_aq_get_recipe_to_profile(hw, i, (u8 *)r_bitmap, NULL))
 			continue;
-		ice_memcpy(profile_to_recipe[i], r_bitmap,
-			   sizeof(profile_to_recipe[i]), ICE_NONDMA_TO_NONDMA);
+		ice_cp_bitmap(profile_to_recipe[i], r_bitmap,
+			      ICE_MAX_NUM_RECIPES);
 		for (j = 0; j < ICE_MAX_NUM_RECIPES; j++)
 			if (ice_is_bit_set(r_bitmap, j))
 				ice_set_bit(i, recipe_to_profile[j]);
@@ -5586,8 +5585,8 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 			goto err_unroll;
 
 		/* Update profile to recipe bitmap array */
-		ice_memcpy(profile_to_recipe[fvit->profile_id], r_bitmap,
-			   sizeof(r_bitmap), ICE_NONDMA_TO_NONDMA);
+		ice_cp_bitmap(profile_to_recipe[fvit->profile_id], r_bitmap,
+			      ICE_MAX_NUM_RECIPES);
 
 		/* Update recipe to profile bitmap array */
 		for (j = 0; j < ICE_MAX_NUM_RECIPES; j++)
