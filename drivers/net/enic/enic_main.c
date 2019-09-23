@@ -357,7 +357,7 @@ enic_initial_post_rx(struct enic *enic, struct vnic_rq *rq)
 	rq->need_initial_post = false;
 }
 
-static void *
+void *
 enic_alloc_consistent(void *priv, size_t size,
 	dma_addr_t *dma_handle, u8 *name)
 {
@@ -397,7 +397,7 @@ enic_alloc_consistent(void *priv, size_t size,
 	return vaddr;
 }
 
-static void
+void
 enic_free_consistent(void *priv,
 		     __rte_unused size_t size,
 		     void *vaddr,
@@ -606,6 +606,9 @@ int enic_enable(struct enic *enic)
 	if (enic_clsf_init(enic))
 		dev_warning(enic, "Init of hash table for clsf failed."\
 			"Flow director feature will not work\n");
+
+	if (enic_fm_init(enic))
+		dev_warning(enic, "Init of flowman failed.\n");
 
 	for (index = 0; index < enic->rq_count; index++) {
 		err = enic_alloc_rx_queue_mbufs(enic,
@@ -1064,6 +1067,7 @@ int enic_disable(struct enic *enic)
 	vnic_dev_disable(enic->vdev);
 
 	enic_clsf_destroy(enic);
+	enic_fm_destroy(enic);
 
 	if (!enic_is_sriov_vf(enic))
 		vnic_dev_del_addr(enic->vdev, enic->mac_addr);

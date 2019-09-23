@@ -85,17 +85,20 @@ int enic_get_vnic_config(struct enic *enic)
 	vnic_dev_capable_udp_rss_weak(enic->vdev, &enic->nic_cfg_chk,
 				      &enic->udp_rss_weak);
 
-	dev_info(enic, "Flow api filter mode: %s Actions: %s%s%s\n",
+	dev_info(enic, "Flow api filter mode: %s Actions: %s%s%s%s\n",
+		((enic->flow_filter_mode == FILTER_FLOWMAN) ? "FLOWMAN" :
 		((enic->flow_filter_mode == FILTER_DPDK_1) ? "DPDK" :
 		((enic->flow_filter_mode == FILTER_USNIC_IP) ? "USNIC" :
 		((enic->flow_filter_mode == FILTER_IPV4_5TUPLE) ? "5TUPLE" :
-		"NONE"))),
+		"NONE")))),
 		((enic->filter_actions & FILTER_ACTION_RQ_STEERING_FLAG) ?
 		 "steer " : ""),
 		((enic->filter_actions & FILTER_ACTION_FILTER_ID_FLAG) ?
 		 "tag " : ""),
 		((enic->filter_actions & FILTER_ACTION_DROP_FLAG) ?
-		 "drop " : ""));
+		 "drop " : ""),
+		((enic->filter_actions & FILTER_ACTION_COUNTER_FLAG) ?
+		 "count " : ""));
 
 	c->wq_desc_count =
 		min_t(u32, ENIC_MAX_WQ_DESCS,

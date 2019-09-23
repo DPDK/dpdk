@@ -10,6 +10,7 @@ sources = files(
 	'enic_clsf.c',
 	'enic_ethdev.c',
 	'enic_flow.c',
+	'enic_fm_flow.c',
 	'enic_main.c',
 	'enic_res.c',
 	'enic_rxtx.c',

@@ -68,6 +68,7 @@ New Features
 * **Updated the enic driver.**
 
   * Added support for Geneve with options offload.
+  * Added flow API implementation based on VIC Flow Manager API.
 
 * **Added Hisilicon hns3 PMD.**
 

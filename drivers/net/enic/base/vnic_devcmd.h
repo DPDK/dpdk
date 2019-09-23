@@ -600,6 +600,16 @@ enum vnic_devcmd_cmd {
 	 *                       a3 = bitmask of supported actions
 	 */
 	CMD_ADD_ADV_FILTER = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 77),
+
+	/*
+	 * Perform a Flow Manager Operation (see flowman_api.h)
+	 * in:	(u32) a0 = sub-command
+	 *	(u64) a1..15 = (sub-command specific)
+	 *
+	 * All arguments that have not been assigned a meaning should be
+	 * initialized to 0 to allow for better driver forward compatibility.
+	 */
+	CMD_FLOW_MANAGER_OP = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 88),
 };
 
 /* Modes for exchanging advanced filter capabilities. The modes supported by
@@ -865,6 +875,7 @@ struct filter_action {
 #define FILTER_ACTION_RQ_STEERING_FLAG	(1 << 0)
 #define FILTER_ACTION_FILTER_ID_FLAG	(1 << 1)
 #define FILTER_ACTION_DROP_FLAG		(1 << 2)
+#define FILTER_ACTION_COUNTER_FLAG	(1 << 3)
 #define FILTER_ACTION_V2_ALL		(FILTER_ACTION_RQ_STEERING_FLAG \
 					 | FILTER_ACTION_DROP_FLAG \
 					 | FILTER_ACTION_FILTER_ID_FLAG)
@@ -889,6 +900,7 @@ enum filter_type {
 	FILTER_NVGRE_VMQ = 4,
 	FILTER_USNIC_IP = 5,
 	FILTER_DPDK_1 = 6,
+	FILTER_FLOWMAN = 7,
 	FILTER_MAX
 };
 

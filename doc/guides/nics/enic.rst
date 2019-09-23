@@ -248,6 +248,15 @@ selected via CIMC or UCSM followed by a reboot of the server.
   - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
   - In total, up to 64 bytes of mask is allowed across all headers
 
+- **1400 and later series VICs with Flow Manager API enabled**
+
+  - Attributes: ingress, egress
+  - Items: eth, vlan, ipv4, ipv6, sctp, udp, tcp, vxlan, raw, inner eth, vlan, ipv4, ipv6, sctp, udp, tcp
+  - Ingress Actions: count, drop, flag, jump, mark, port_id, passthru, queue, rss, vxlan_decap, vxlan_encap, and void
+  - Egress Actions: count, drop, jump, passthru, vxlan_encap, and void
+  - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
+  - In total, up to 64 bytes of mask is allowed across all headers
+
 The VIC performs packet matching after applying VLAN strip. If VLAN
 stripping is enabled, EtherType in the ETH item corresponds to the
 stripped VLAN header's EtherType. Stripping does not affect the VLAN

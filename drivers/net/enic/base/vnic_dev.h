@@ -182,6 +182,7 @@ int vnic_dev_deinit_done(struct vnic_dev *vdev, int *status);
 int vnic_dev_set_mac_addr(struct vnic_dev *vdev, u8 *mac_addr);
 int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
 	struct filter_v2 *data, struct filter_action_v2 *action_v2);
+int vnic_dev_flowman_cmd(struct vnic_dev *vdev, u64 *args, int nargs);
 int vnic_dev_overlay_offload_ctrl(struct vnic_dev *vdev,
 	u8 overlay, u8 config);
 int vnic_dev_overlay_offload_cfg(struct vnic_dev *vdev, u8 overlay,
