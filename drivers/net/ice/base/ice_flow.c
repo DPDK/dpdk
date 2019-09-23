@@ -372,15 +372,18 @@ struct ice_flow_prof_params {
 	ice_declare_bitmap(ptypes, ICE_FLOW_PTYPE_MAX);
 };
 
+#define ICE_FLOW_RSS_HDRS_INNER_MASK \
+	(ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_GTPC | \
+	 ICE_FLOW_SEG_HDR_GTPC_TEID | ICE_FLOW_SEG_HDR_GTPU)
+
 #define ICE_FLOW_SEG_HDRS_L2_MASK	\
 	(ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_VLAN)
 #define ICE_FLOW_SEG_HDRS_L3_MASK	\
 	(ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV6 | \
-	 ICE_FLOW_SEG_HDR_ARP | ICE_FLOW_SEG_HDR_PPPOE)
+	 ICE_FLOW_SEG_HDR_ARP)
 #define ICE_FLOW_SEG_HDRS_L4_MASK	\
 	(ICE_FLOW_SEG_HDR_ICMP | ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_UDP | \
-	 ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_GTPC | \
-	 ICE_FLOW_SEG_HDR_GTPC_TEID | ICE_FLOW_SEG_HDR_GTPU)
+	 ICE_FLOW_SEG_HDR_SCTP)
 
 /**
  * ice_flow_val_hdrs - validates packet segments for valid protocol headers
@@ -1686,13 +1689,11 @@ ice_flow_add_fld_raw(struct ice_flow_seg_info *seg, u16 off, u8 len,
 (ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_VLAN)
 
 #define ICE_FLOW_RSS_SEG_HDR_L3_MASKS \
-	(ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_PPPOE)
+	(ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV6)
 
 #define ICE_FLOW_RSS_SEG_HDR_L4_MASKS \
 	(ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_UDP | \
-	 ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_GTPC_TEID | \
-	 ICE_FLOW_SEG_HDR_GTPU)
-
+	 ICE_FLOW_SEG_HDR_SCTP)
 
 #define ICE_FLOW_RSS_SEG_HDR_VAL_MASKS \
 	(ICE_FLOW_RSS_SEG_HDR_L2_MASKS | \
@@ -1729,11 +1730,12 @@ ice_flow_set_rss_seg_info(struct ice_flow_seg_info *segs, u64 hash_fields,
 	}
 	ICE_FLOW_SET_HDRS(segs, flow_hdr);
 
-	if (segs->hdrs & ~ICE_FLOW_RSS_SEG_HDR_VAL_MASKS)
+	if (segs->hdrs & ~ICE_FLOW_RSS_SEG_HDR_VAL_MASKS &
+	    ~ICE_FLOW_RSS_HDRS_INNER_MASK)
 		return ICE_ERR_PARAM;
 
 	val = (u64)(segs->hdrs & ICE_FLOW_RSS_SEG_HDR_L3_MASKS);
-	if (!ice_is_pow2(val))
+	if (val && !ice_is_pow2(val))
 		return ICE_ERR_CFG;
 
 	val = (u64)(segs->hdrs & ICE_FLOW_RSS_SEG_HDR_L4_MASKS);
