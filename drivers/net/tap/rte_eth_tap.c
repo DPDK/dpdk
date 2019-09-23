@@ -353,10 +353,8 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	if (trigger == rxq->trigger_seen)
 		return 0;
-	if (trigger)
-		rxq->trigger_seen = trigger;
+
 	process_private = rte_eth_devices[rxq->in_port].process_private;
-	rte_compiler_barrier();
 	for (num_rx = 0; num_rx < nb_pkts; ) {
 		struct rte_mbuf *mbuf = rxq->pool;
 		struct rte_mbuf *seg = NULL;
@@ -432,6 +430,9 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 end:
 	rxq->stats.ipackets += num_rx;
 	rxq->stats.ibytes += num_rx_bytes;
+
+	if (trigger && num_rx < nb_pkts)
+		rxq->trigger_seen = trigger;
 
 	return num_rx;
 }
