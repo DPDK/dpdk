@@ -4939,11 +4939,10 @@ ice_get_profs_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 		struct ice_vsig_prof *p;
 
 		/* copy to the input list */
-		p = (struct ice_vsig_prof *)ice_malloc(hw, sizeof(*p));
+		p = (struct ice_vsig_prof *)ice_memdup(hw, ent1, sizeof(*p),
+						       ICE_NONDMA_TO_NONDMA);
 		if (!p)
 			goto err_ice_get_profs_vsig;
-
-		ice_memcpy(p, ent1, sizeof(*p), ICE_NONDMA_TO_NONDMA);
 
 		LIST_ADD_TAIL(&p->list, lst);
 	}

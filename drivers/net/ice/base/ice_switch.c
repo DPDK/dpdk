@@ -623,13 +623,10 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	recps[rid].big_recp = (num_recps > 1);
 	recps[rid].n_grp_count = num_recps;
 	recps[rid].root_buf = (struct ice_aqc_recipe_data_elem *)
-		ice_calloc(hw, recps[rid].n_grp_count,
-			   sizeof(struct ice_aqc_recipe_data_elem));
+		ice_memdup(hw, tmp, recps[rid].n_grp_count *
+			   sizeof(*recps[rid].root_buf), ICE_NONDMA_TO_NONDMA);
 	if (!recps[rid].root_buf)
 		goto err_unroll;
-
-	ice_memcpy(recps[rid].root_buf, tmp, recps[rid].n_grp_count *
-		   sizeof(*recps[rid].root_buf), ICE_NONDMA_TO_NONDMA);
 
 	/* Copy result indexes */
 	ice_memcpy(recps[rid].res_idxs, result_bm, sizeof(recps[rid].res_idxs),
