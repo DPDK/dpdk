@@ -4631,16 +4631,16 @@ exit_error:
  * matching entry describing its field. This needs to be updated if new
  * structure is added to that union.
  */
-static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
+static const struct ice_prot_ext_tbl_entry ice_prot_ext[ICE_PROTOCOL_LAST] = {
 	{ ICE_MAC_OFOS,		{ 0, 2, 4, 6, 8, 10, 12 } },
 	{ ICE_MAC_IL,		{ 0, 2, 4, 6, 8, 10, 12 } },
 	{ ICE_ETYPE_OL,		{ 0 } },
 	{ ICE_VLAN_OFOS,	{ 0, 2 } },
 	{ ICE_IPV4_OFOS,	{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 } },
 	{ ICE_IPV4_IL,		{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 } },
-	{ ICE_IPV6_IL,		{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
-				 26, 28, 30, 32, 34, 36, 38 } },
 	{ ICE_IPV6_OFOS,	{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
+				 26, 28, 30, 32, 34, 36, 38 } },
+	{ ICE_IPV6_IL,		{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
 				 26, 28, 30, 32, 34, 36, 38 } },
 	{ ICE_TCP_IL,		{ 0, 2 } },
 	{ ICE_UDP_OF,		{ 0, 2 } },
@@ -4652,7 +4652,6 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
 	{ ICE_NVGRE,		{ 0, 2, 4, 6 } },
 	{ ICE_GTP,		{ 8, 10, 12, 14, 16, 18, 20 } },
 	{ ICE_PPPOE,		{ 0, 2, 4, 6 } },
-	{ ICE_PROTOCOL_LAST,	{ 0 } }
 };
 
 /* The following table describes preferred grouping of recipes.
@@ -4661,7 +4660,7 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[] = {
  * following policy.
  */
 
-static const struct ice_protocol_entry ice_prot_id_tbl[] = {
+static const struct ice_protocol_entry ice_prot_id_tbl[ICE_PROTOCOL_LAST] = {
 	{ ICE_MAC_OFOS,		ICE_MAC_OFOS_HW },
 	{ ICE_MAC_IL,		ICE_MAC_IL_HW },
 	{ ICE_ETYPE_OL,		ICE_ETYPE_OL_HW },
@@ -4680,7 +4679,6 @@ static const struct ice_protocol_entry ice_prot_id_tbl[] = {
 	{ ICE_NVGRE,		ICE_GRE_OF_HW },
 	{ ICE_GTP,		ICE_UDP_OF_HW },
 	{ ICE_PPPOE,		ICE_PPPOE_HW },
-	{ ICE_PROTOCOL_LAST,	0 }
 };
 
 /**
