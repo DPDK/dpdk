@@ -33,6 +33,8 @@ ice_find_label_value(struct ice_seg *ice_seg, char const *name, u32 type,
 void
 ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type type,
 		     ice_bitmap_t *bm);
+void
+ice_init_prof_result_bm(struct ice_hw *hw);
 enum ice_status
 ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u8 ids_cnt,
 		   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list);

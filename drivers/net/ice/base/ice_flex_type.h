@@ -16,6 +16,8 @@ struct ice_fv_word {
 };
 #pragma pack()
 
+#define ICE_MAX_NUM_PROFILES 256
+
 #define ICE_MAX_FV_WORDS 48
 struct ice_fv {
 	struct ice_fv_word ew[ICE_MAX_FV_WORDS];

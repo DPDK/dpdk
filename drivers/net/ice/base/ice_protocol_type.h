@@ -110,7 +110,7 @@ enum ice_prot_id {
 	ICE_PROT_ARP_OF		= 118,
 	ICE_PROT_EAPOL_OF	= 120,
 	ICE_PROT_META_ID	= 255, /* when offset == metaddata */
-	ICE_PROT_INVALID	= 255  /* when offset == 0xFF */
+	ICE_PROT_INVALID	= 255  /* when offset == ICE_FV_OFFSET_INVAL */
 };
 
 #define ICE_VNI_OFFSET		12 /* offset of VNI from ICE_PROT_UDP_OF */

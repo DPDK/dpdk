@@ -467,21 +467,6 @@ static void ice_collect_result_idx(struct ice_aqc_recipe_data_elem *buf,
 }
 
 /**
- * ice_init_possible_res_bm - initialize possible result bitmap
- * @pos_result_bm: pointer to the bitmap to initialize
- */
-static void ice_init_possible_res_bm(ice_bitmap_t *pos_result_bm)
-{
-	u16 bit;
-
-	ice_zero_bitmap(pos_result_bm, ICE_MAX_FV_WORDS);
-
-	for (bit = 0; bit < ICE_MAX_FV_WORDS; bit++)
-		if (ICE_POSSIBLE_RES_IDX & BIT_ULL(bit))
-			ice_set_bit(bit, pos_result_bm);
-}
-
-/**
  * ice_get_recp_frm_fw - update SW bookkeeping from FW recipe entries
  * @hw: pointer to hardware structure
  * @recps: struct that we need to populate
@@ -496,7 +481,6 @@ static enum ice_status
 ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 		    bool *refresh_required)
 {
-	ice_declare_bitmap(possible_idx, ICE_MAX_FV_WORDS);
 	ice_declare_bitmap(result_bm, ICE_MAX_FV_WORDS);
 	struct ice_aqc_recipe_data_elem *tmp;
 	u16 num_recps = ICE_MAX_NUM_RECIPES;
@@ -505,7 +489,6 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	enum ice_status status;
 
 	ice_zero_bitmap(result_bm, ICE_MAX_FV_WORDS);
-	ice_init_possible_res_bm(possible_idx);
 
 	/* we need a buffer big enough to accommodate all the recipes */
 	tmp = (struct ice_aqc_recipe_data_elem *)ice_calloc(hw,
@@ -541,7 +524,7 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	for (sub_recps = 0; sub_recps < num_recps; sub_recps++) {
 		struct ice_aqc_recipe_data_elem root_bufs = tmp[sub_recps];
 		struct ice_recp_grp_entry *rg_entry;
-		u8 prof_id, idx, prot = 0;
+		u8 prof, idx, prot = 0;
 		bool is_root;
 		u16 off = 0;
 
@@ -561,8 +544,8 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 				    ~ICE_AQ_RECIPE_RESULT_EN, result_bm);
 
 		/* get the first profile that is associated with rid */
-		prof_id = ice_find_first_bit(recipe_to_profile[idx],
-					     ICE_MAX_NUM_PROFILES);
+		prof = ice_find_first_bit(recipe_to_profile[idx],
+					  ICE_MAX_NUM_PROFILES);
 		for (i = 0; i < ICE_NUM_WORDS_RECIPE; i++) {
 			u8 lkup_indx = root_bufs.content.lkup_indx[i + 1];
 
@@ -579,12 +562,13 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 			 * has ICE_AQ_RECIPE_LKUP_IGNORE or 0 since it isn't a
 			 * valid offset value.
 			 */
-			if (ice_is_bit_set(possible_idx, rg_entry->fv_idx[i]) ||
+			if (ice_is_bit_set(hw->switch_info->prof_res_bm[prof],
+					   rg_entry->fv_idx[i]) ||
 			    rg_entry->fv_idx[i] & ICE_AQ_RECIPE_LKUP_IGNORE ||
 			    rg_entry->fv_idx[i] == 0)
 				continue;
 
-			ice_find_prot_off(hw, ICE_BLK_SW, prof_id,
+			ice_find_prot_off(hw, ICE_BLK_SW, prof,
 					  rg_entry->fv_idx[i], &prot, &off);
 			lkup_exts->fv_words[fv_word_idx].prot_id = prot;
 			lkup_exts->fv_words[fv_word_idx].off = off;
@@ -4950,30 +4934,32 @@ ice_find_free_recp_res_idx(struct ice_hw *hw, const ice_bitmap_t *profiles,
 			   ice_bitmap_t *free_idx)
 {
 	ice_declare_bitmap(possible_idx, ICE_MAX_FV_WORDS);
-	ice_declare_bitmap(used_idx, ICE_MAX_FV_WORDS);
 	ice_declare_bitmap(recipes, ICE_MAX_NUM_RECIPES);
+	ice_declare_bitmap(used_idx, ICE_MAX_FV_WORDS);
 	u16 count = 0;
 	u16 bit;
 
-	ice_zero_bitmap(free_idx, ICE_MAX_FV_WORDS);
-	ice_zero_bitmap(used_idx, ICE_MAX_FV_WORDS);
+	ice_zero_bitmap(possible_idx, ICE_MAX_FV_WORDS);
 	ice_zero_bitmap(recipes, ICE_MAX_NUM_RECIPES);
-	ice_init_possible_res_bm(possible_idx);
+	ice_zero_bitmap(used_idx, ICE_MAX_FV_WORDS);
+	ice_zero_bitmap(free_idx, ICE_MAX_FV_WORDS);
 
-	for (bit = 0; bit < ICE_MAX_FV_WORDS; bit++)
-		if (ICE_POSSIBLE_RES_IDX & BIT_ULL(bit))
-			ice_set_bit(bit, possible_idx);
+	for (count = 0; count < ICE_MAX_FV_WORDS; count++)
+		ice_set_bit(count, possible_idx);
 
 	/* For each profile we are going to associate the recipe with, add the
 	 * recipes that are associated with that profile. This will give us
-	 * the set of recipes that our recipe may collide with.
+	 * the set of recipes that our recipe may collide with. Also, determine
+	 * what possible result indexes are usable given this set of profiles.
 	 */
 	bit = 0;
 	while (ICE_MAX_NUM_PROFILES >
 	       (bit = ice_find_next_bit(profiles, ICE_MAX_NUM_PROFILES, bit))) {
 		ice_or_bitmap(recipes, recipes, profile_to_recipe[bit],
 			      ICE_MAX_NUM_RECIPES);
-
+		ice_and_bitmap(possible_idx, possible_idx,
+			       hw->switch_info->prof_res_bm[bit],
+			       ICE_MAX_FV_WORDS);
 		bit++;
 	}
 
@@ -4981,14 +4967,16 @@ ice_find_free_recp_res_idx(struct ice_hw *hw, const ice_bitmap_t *profiles,
 	 * which indexes have been used.
 	 */
 	for (bit = 0; bit < ICE_MAX_NUM_RECIPES; bit++)
-		if (ice_is_bit_set(recipes, bit))
+		if (ice_is_bit_set(recipes, bit)) {
 			ice_or_bitmap(used_idx, used_idx,
 				      hw->switch_info->recp_list[bit].res_idxs,
 				      ICE_MAX_FV_WORDS);
+		}
 
 	ice_xor_bitmap(free_idx, used_idx, possible_idx, ICE_MAX_FV_WORDS);
 
 	/* return number of free indexes */
+	count = 0;
 	bit = 0;
 	while (ICE_MAX_FV_WORDS >
 	       (bit = ice_find_next_bit(free_idx, ICE_MAX_FV_WORDS, bit))) {
@@ -5028,6 +5016,9 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 	 /* check number of free result indices */
 	ice_zero_bitmap(result_idx_bm, ICE_MAX_FV_WORDS);
 	free_res_idx = ice_find_free_recp_res_idx(hw, profiles, result_idx_bm);
+
+	ice_debug(hw, ICE_DBG_SW, "Result idx slots: %d, need %d\n",
+		  free_res_idx, rm->n_grp_count);
 
 	if (rm->n_grp_count > 1) {
 		if (rm->n_grp_count > free_res_idx)
@@ -6080,6 +6071,12 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	u16 word_cnt;
 	u32 act = 0;
 	u8 q_rgn;
+
+	/* Initialize profile to result index bitmap */
+	if (!hw->switch_info->prof_res_bm_init) {
+		hw->switch_info->prof_res_bm_init = 1;
+		ice_init_prof_result_bm(hw);
+	}
 
 	if (!lkups_cnt)
 		return ICE_ERR_PARAM;

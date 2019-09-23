@@ -1661,6 +1661,47 @@ err:
 }
 
 /**
+ * ice_init_profile_to_result_bm - Initialize the profile result index bitmap
+ * @hw: pointer to hardware structure
+ */
+void
+ice_init_prof_result_bm(struct ice_hw *hw)
+{
+	struct ice_pkg_enum state;
+	struct ice_seg *ice_seg;
+	struct ice_fv *fv;
+
+	if (!hw->seg)
+		return;
+
+	ice_seg = hw->seg;
+	do {
+		u32 off;
+		u16 i;
+
+		fv = (struct ice_fv *)
+			ice_pkg_enum_entry(ice_seg, &state, ICE_SID_FLD_VEC_SW,
+					   &off, ice_sw_fv_handler);
+		ice_seg = NULL;
+		if (!fv)
+			break;
+
+		ice_zero_bitmap(hw->switch_info->prof_res_bm[off],
+				ICE_MAX_FV_WORDS);
+
+		/* Determine empty field vector indices, these can be
+		 * used for recipe results. Skip index 0, since it is
+		 * always used for Switch ID.
+		 */
+		for (i = 1; i < ICE_MAX_FV_WORDS; i++)
+			if (fv->ew[i].prot_id == ICE_PROT_INVALID &&
+			    fv->ew[i].off == ICE_FV_OFFSET_INVAL)
+				ice_set_bit(i,
+					    hw->switch_info->prof_res_bm[off]);
+	} while (fv);
+}
+
+/**
  * ice_pkg_buf_free
  * @hw: pointer to the HW structure
  * @bld: pointer to pkg build (allocated by ice_pkg_buf_alloc())

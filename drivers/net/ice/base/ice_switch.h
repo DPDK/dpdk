@@ -222,7 +222,6 @@ struct ice_sw_recipe {
 	/* Profiles this recipe should be associated with */
 	struct LIST_HEAD_TYPE fv_list;
 
-#define ICE_MAX_NUM_PROFILES 256
 	/* Profiles this recipe is associated with */
 	u8 num_profs, *prof_ids;
 
