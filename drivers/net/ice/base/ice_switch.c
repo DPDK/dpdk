@@ -5785,6 +5785,19 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			break;
 		case ICE_IPV6_OFOS:
 		case ICE_IPV6_IL:
+			/* Based on the same mechanism below, if tc (Traffic
+			 * Class) for IPv6 has mask, it means tc field is set.
+			 * Since tc is only one byte, we have to handle the
+			 * big/little endian issue before it can be inserted.
+			 */
+			if (lkups[i].m_u.ipv6_hdr.tc) {
+				((u16 *)&lkups[i].h_u)[0] =
+					(((u16 *)&lkups[i].h_u)[0] << 8) |
+					(((u16 *)&lkups[i].h_u)[0] >> 8);
+				((u16 *)&lkups[i].m_u)[0] =
+					(((u16 *)&lkups[i].m_u)[0] << 8) |
+					(((u16 *)&lkups[i].m_u)[0] >> 8);
+			}
 			len = sizeof(struct ice_ipv6_hdr);
 			break;
 		case ICE_TCP_IL:

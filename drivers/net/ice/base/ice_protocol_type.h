@@ -183,9 +183,9 @@ struct ice_ipv4_hdr {
 };
 
 struct ice_ipv6_hdr {
-	u8 version;
-	u8 tc;
-	u16 flow_label;
+	u32 version:4;
+	u32 tc:8;
+	u32 flow_label:20;
 	u16 payload_len;
 	u8 next_hdr;
 	u8 hop_limit;
