@@ -2185,12 +2185,14 @@ ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	struct ice_flow_prof *prof;
 	enum ice_status status;
 
-	segs = (struct ice_flow_seg_info *)ice_malloc(hw, sizeof(*segs));
+	segs = (struct ice_flow_seg_info *)ice_calloc(hw, segs_cnt,
+						      sizeof(*segs));
 	if (!segs)
 		return ICE_ERR_NO_MEMORY;
 
 	/* Construct the packet segment info from the hashed fields */
-	status = ice_flow_set_rss_seg_info(segs, hashed_flds, addl_hdrs);
+	status = ice_flow_set_rss_seg_info(&segs[segs_cnt - 1], hashed_flds,
+					   addl_hdrs);
 	if (status)
 		goto out;
 
