@@ -131,8 +131,9 @@ static struct ice_buf_table *ice_find_buf_table(struct ice_seg *ice_seg)
 {
 	struct ice_nvm_table *nvms;
 
-	nvms = (struct ice_nvm_table *)(ice_seg->device_table +
-		LE32_TO_CPU(ice_seg->device_table_count));
+	nvms = (struct ice_nvm_table *)
+		(ice_seg->device_table +
+		 LE32_TO_CPU(ice_seg->device_table_count));
 
 	return (_FORCE_ struct ice_buf_table *)
 		(nvms->vers + LE32_TO_CPU(nvms->table_count));
