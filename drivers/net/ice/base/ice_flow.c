@@ -1876,6 +1876,7 @@ ice_add_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
 
 	rss_cfg->hashed_flds = prof->segs[prof->segs_cnt - 1].match;
 	rss_cfg->packet_hdr = prof->segs[prof->segs_cnt - 1].hdrs;
+	rss_cfg->symm = prof->cfg.symm;
 	ice_set_bit(vsi_handle, rss_cfg->vsis);
 
 	LIST_ADD_TAIL(&rss_cfg->l_entry, &hw->rss_list_head);
@@ -1903,6 +1904,107 @@ ice_add_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
 	      (((u64)(hdr) << ICE_FLOW_PROF_HDR_S) & ICE_FLOW_PROF_HDR_M) | \
 	      ((u8)((segs_cnt) - 1) ? ICE_FLOW_PROF_ENCAP_M : 0))
 
+static void
+ice_rss_config_xor_word(struct ice_hw *hw, u8 prof_id, u8 src, u8 dst)
+{
+	u32 s = ((src % 4) << 3); /* byte shift */
+	u32 v = dst | 0x80; /* value to program */
+	u8 i = src / 4; /* register index */
+	u32 reg;
+
+	reg = rd32(hw, GLQF_HSYMM(prof_id, i));
+	reg = (reg & ~(0xff << s)) | (v << s);
+	wr32(hw, GLQF_HSYMM(prof_id, i), reg);
+}
+
+static void
+ice_rss_config_xor(struct ice_hw *hw, u8 prof_id, u8 src, u8 dst, u8 len)
+{
+	int fv_last_word =
+		ICE_FLOW_SW_FIELD_VECTOR_MAX / ICE_FLOW_FV_EXTRACT_SZ - 1;
+	int i;
+
+	for (i = 0; i < len; i++) {
+		ice_rss_config_xor_word(hw, prof_id,
+					/* Yes, field vector in GLQF_HSYMM and
+					 * GLQF_HINSET is inversed!
+					 */
+					fv_last_word - (src + i),
+					fv_last_word - (dst + i));
+		ice_rss_config_xor_word(hw, prof_id,
+					fv_last_word - (dst + i),
+					fv_last_word - (src + i));
+	}
+}
+
+static void
+ice_rss_update_symm(struct ice_hw *hw,
+		    struct ice_flow_prof *prof)
+{
+	struct ice_prof_map *map;
+	u8 prof_id, m;
+
+	map = ice_search_prof_id(hw, ICE_BLK_RSS, prof->id);
+	prof_id = map->prof_id;
+
+	/* clear to default */
+	for (m = 0; m < 6; m++)
+		wr32(hw, GLQF_HSYMM(prof_id, m), 0);
+	if (prof->cfg.symm) {
+		struct ice_flow_seg_info *seg =
+			&prof->segs[prof->segs_cnt - 1];
+
+		struct ice_flow_seg_xtrct *ipv4_src =
+			&seg->fields[ICE_FLOW_FIELD_IDX_IPV4_SA].xtrct;
+		struct ice_flow_seg_xtrct *ipv4_dst =
+			&seg->fields[ICE_FLOW_FIELD_IDX_IPV4_DA].xtrct;
+		struct ice_flow_seg_xtrct *ipv6_src =
+			&seg->fields[ICE_FLOW_FIELD_IDX_IPV6_SA].xtrct;
+		struct ice_flow_seg_xtrct *ipv6_dst =
+			&seg->fields[ICE_FLOW_FIELD_IDX_IPV6_DA].xtrct;
+
+		struct ice_flow_seg_xtrct *tcp_src =
+			&seg->fields[ICE_FLOW_FIELD_IDX_TCP_SRC_PORT].xtrct;
+		struct ice_flow_seg_xtrct *tcp_dst =
+			&seg->fields[ICE_FLOW_FIELD_IDX_TCP_DST_PORT].xtrct;
+
+		struct ice_flow_seg_xtrct *udp_src =
+			&seg->fields[ICE_FLOW_FIELD_IDX_UDP_SRC_PORT].xtrct;
+		struct ice_flow_seg_xtrct *udp_dst =
+			&seg->fields[ICE_FLOW_FIELD_IDX_UDP_DST_PORT].xtrct;
+
+		struct ice_flow_seg_xtrct *sctp_src =
+			&seg->fields[ICE_FLOW_FIELD_IDX_SCTP_SRC_PORT].xtrct;
+		struct ice_flow_seg_xtrct *sctp_dst =
+			&seg->fields[ICE_FLOW_FIELD_IDX_SCTP_DST_PORT].xtrct;
+
+		/* xor IPv4 */
+		if (ipv4_src->prot_id != 0 && ipv4_dst->prot_id != 0)
+			ice_rss_config_xor(hw, prof_id,
+					   ipv4_src->idx, ipv4_dst->idx, 2);
+
+		/* xor IPv6 */
+		if (ipv6_src->prot_id != 0 && ipv6_dst->prot_id != 0)
+			ice_rss_config_xor(hw, prof_id,
+					   ipv6_src->idx, ipv6_dst->idx, 8);
+
+		/* xor TCP */
+		if (tcp_src->prot_id != 0 && tcp_dst->prot_id != 0)
+			ice_rss_config_xor(hw, prof_id,
+					   tcp_src->idx, tcp_dst->idx, 1);
+
+		/* xor UDP */
+		if (udp_src->prot_id != 0 && udp_dst->prot_id != 0)
+			ice_rss_config_xor(hw, prof_id,
+					   udp_src->idx, udp_dst->idx, 1);
+
+		/* xor SCTP */
+		if (sctp_src->prot_id != 0 && sctp_dst->prot_id != 0)
+			ice_rss_config_xor(hw, prof_id,
+					   sctp_src->idx, sctp_dst->idx, 1);
+	}
+}
+
 /**
  * ice_add_rss_cfg_sync - add an RSS configuration
  * @hw: pointer to the hardware structure
@@ -1910,12 +2012,13 @@ ice_add_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
  * @hashed_flds: hash bit fields (ICE_FLOW_HASH_*) to configure
  * @addl_hdrs: protocol header fields
  * @segs_cnt: packet segment count
+ * @symm: symmetric hash enable/disable
  *
  * Assumption: lock has already been acquired for RSS list
  */
 static enum ice_status
 ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
-		     u32 addl_hdrs, u8 segs_cnt)
+		     u32 addl_hdrs, u8 segs_cnt, bool symm)
 {
 	const enum ice_block blk = ICE_BLK_RSS;
 	struct ice_flow_prof *prof = NULL;
@@ -1944,8 +2047,12 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 					vsi_handle,
 					ICE_FLOW_FIND_PROF_CHK_FLDS |
 					ICE_FLOW_FIND_PROF_CHK_VSI);
-	if (prof)
-		goto exit;
+	if (prof) {
+		if (prof->cfg.symm == symm)
+			goto exit;
+		prof->cfg.symm = symm;
+		goto update_symm;
+	}
 
 	/* Check if a flow profile exists with the same protocol headers and
 	 * associated with the input VSI. If so disasscociate the VSI from
@@ -1976,9 +2083,18 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 					vsi_handle,
 					ICE_FLOW_FIND_PROF_CHK_FLDS);
 	if (prof) {
-		status = ice_flow_assoc_prof(hw, blk, prof, vsi_handle);
-		if (!status)
-			status = ice_add_rss_list(hw, vsi_handle, prof);
+		if (prof->cfg.symm == symm) {
+			status = ice_flow_assoc_prof(hw, blk, prof,
+						     vsi_handle);
+			if (!status)
+				status = ice_add_rss_list(hw, vsi_handle,
+							  prof);
+		} else {
+			/* if a profile exist but with different symmetric
+			 * requirement, just return error.
+			 */
+			status = ICE_ERR_NOT_SUPPORTED;
+		}
 		goto exit;
 	}
 
@@ -2004,6 +2120,13 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 
 	status = ice_add_rss_list(hw, vsi_handle, prof);
 
+	prof->cfg.symm = symm;
+	if (!symm)
+		goto exit;
+
+update_symm:
+	ice_rss_update_symm(hw, prof);
+
 exit:
 	ice_free(hw, segs);
 	return status;
@@ -2015,6 +2138,7 @@ exit:
  * @vsi_handle: software VSI handle
  * @hashed_flds: hash bit fields (ICE_FLOW_HASH_*) to configure
  * @addl_hdrs: protocol header fields
+ * @symm: symmetric hash enable/disable
  *
  * This function will generate a flow profile based on fields associated with
  * the input fields to hash on, the flow type and use the VSI number to add
@@ -2022,7 +2146,7 @@ exit:
  */
 enum ice_status
 ice_add_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
-		u32 addl_hdrs)
+		u32 addl_hdrs, bool symm)
 {
 	enum ice_status status;
 
@@ -2032,10 +2156,11 @@ ice_add_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 
 	ice_acquire_lock(&hw->rss_locks);
 	status = ice_add_rss_cfg_sync(hw, vsi_handle, hashed_flds, addl_hdrs,
-				      ICE_RSS_OUTER_HEADERS);
+				      ICE_RSS_OUTER_HEADERS, symm);
 	if (!status)
 		status = ice_add_rss_cfg_sync(hw, vsi_handle, hashed_flds,
-					      addl_hdrs, ICE_RSS_INNER_HEADERS);
+					      addl_hdrs, ICE_RSS_INNER_HEADERS,
+					      symm);
 	ice_release_lock(&hw->rss_locks);
 
 	return status;
@@ -2148,13 +2273,15 @@ enum ice_status ice_replay_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 			status = ice_add_rss_cfg_sync(hw, vsi_handle,
 						      r->hashed_flds,
 						      r->packet_hdr,
-						      ICE_RSS_OUTER_HEADERS);
+						      ICE_RSS_OUTER_HEADERS,
+						      r->symm);
 			if (status)
 				break;
 			status = ice_add_rss_cfg_sync(hw, vsi_handle,
 						      r->hashed_flds,
 						      r->packet_hdr,
-						      ICE_RSS_INNER_HEADERS);
+						      ICE_RSS_INNER_HEADERS,
+						      r->symm);
 			if (status)
 				break;
 		}

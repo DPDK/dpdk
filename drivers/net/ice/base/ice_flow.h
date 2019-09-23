@@ -315,6 +315,8 @@ struct ice_flow_prof {
 		/* struct sw_recipe */
 		/* struct fd */
 		u32 data;
+		/* Symmetric Hash for RSS */
+		bool symm;
 	} cfg;
 
 	/* Default actions */
@@ -327,6 +329,7 @@ struct ice_rss_cfg {
 	ice_declare_bitmap(vsis, ICE_MAX_VSI);
 	u64 hashed_flds;
 	u32 packet_hdr;
+	bool symm;
 };
 
 enum ice_flow_action_type {
@@ -402,7 +405,7 @@ ice_add_avf_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds);
 enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle);
 enum ice_status
 ice_add_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
-		u32 addl_hdrs);
+		u32 addl_hdrs, bool symm);
 enum ice_status
 ice_rem_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 		u32 addl_hdrs);
