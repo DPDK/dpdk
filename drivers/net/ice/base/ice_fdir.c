@@ -496,6 +496,28 @@ static void ice_pkt_insert_u8(u8 *pkt, int offset, u8 data)
 }
 
 /**
+ * ice_pkt_insert_u8_tc - insert a u8 value into a memory buffer for tc ipv6.
+ * @pkt: packet buffer
+ * @offset: offset into buffer
+ * @data: 8 bit value to convert and insert into pkt at offset
+ *
+ * This function is designed for inserting Traffic Class (tc) for IPv6,
+ * since that tc is not aligned in number of bytes. Here we split it out
+ * into two part and fill each byte with data copy from pkt, then insert
+ * the two bytes data one by one.
+ */
+static void ice_pkt_insert_u8_tc(u8 *pkt, int offset, u8 data)
+{
+	u8 high, low;
+
+	high = (data >> 4) + (*(pkt + offset) & 0xF0);
+	ice_memcpy(pkt + offset, &high, sizeof(high), ICE_NONDMA_TO_NONDMA);
+
+	low = (*(pkt + offset + 1) & 0x0F) + ((data & 0x0F) << 4);
+	ice_memcpy(pkt + offset + 1, &low, sizeof(low), ICE_NONDMA_TO_NONDMA);
+}
+
+/**
  * ice_pkt_insert_u16 - insert a be16 value into a memory buffer.
  * @pkt: packet buffer
  * @offset: offset into buffer
@@ -647,6 +669,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v6.dst_port);
 		ice_pkt_insert_u16(loc, ICE_IPV6_TCP_SRC_PORT_OFFSET,
 				   input->ip.v6.src_port);
+		ice_pkt_insert_u8_tc(loc, ICE_IPV6_TC_OFFSET, input->ip.v6.tc);
+		ice_pkt_insert_u8(loc, ICE_IPV6_HLIM_OFFSET, input->ip.v6.hlim);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_UDP:
 		ice_pkt_insert_ipv6_addr(loc, ICE_IPV6_DST_ADDR_OFFSET,
@@ -657,6 +681,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v6.dst_port);
 		ice_pkt_insert_u16(loc, ICE_IPV6_UDP_SRC_PORT_OFFSET,
 				   input->ip.v6.src_port);
+		ice_pkt_insert_u8_tc(loc, ICE_IPV6_TC_OFFSET, input->ip.v6.tc);
+		ice_pkt_insert_u8(loc, ICE_IPV6_HLIM_OFFSET, input->ip.v6.hlim);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_SCTP:
 		ice_pkt_insert_ipv6_addr(loc, ICE_IPV6_DST_ADDR_OFFSET,
@@ -667,12 +693,18 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v6.dst_port);
 		ice_pkt_insert_u16(loc, ICE_IPV6_SCTP_SRC_PORT_OFFSET,
 				   input->ip.v6.src_port);
+		ice_pkt_insert_u8_tc(loc, ICE_IPV6_TC_OFFSET, input->ip.v6.tc);
+		ice_pkt_insert_u8(loc, ICE_IPV6_HLIM_OFFSET, input->ip.v6.hlim);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_OTHER:
 		ice_pkt_insert_ipv6_addr(loc, ICE_IPV6_DST_ADDR_OFFSET,
 					 input->ip.v6.dst_ip);
 		ice_pkt_insert_ipv6_addr(loc, ICE_IPV6_SRC_ADDR_OFFSET,
 					 input->ip.v6.src_ip);
+		ice_pkt_insert_u8_tc(loc, ICE_IPV6_TC_OFFSET, input->ip.v6.tc);
+		ice_pkt_insert_u8(loc, ICE_IPV6_HLIM_OFFSET, input->ip.v6.hlim);
+		ice_pkt_insert_u8(loc, ICE_IPV6_PROTO_OFFSET,
+				  input->ip.v6.proto);
 		break;
 	default:
 		return ICE_ERR_PARAM;

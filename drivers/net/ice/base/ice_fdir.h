@@ -84,6 +84,9 @@ enum ice_status ice_clear_pf_fd_table(struct ice_hw *hw);
 
 #define ICE_IPV4_TOS_OFFSET		15
 #define ICE_IPV4_TTL_OFFSET		22
+#define ICE_IPV6_TC_OFFSET		14
+#define ICE_IPV6_HLIM_OFFSET		21
+#define ICE_IPV6_PROTO_OFFSET		20
 
 #define ICE_FDIR_MAX_FLTRS		16384
 
@@ -140,6 +143,7 @@ struct ice_fdir_v6 {
 	__be32 sec_parm_idx; /* security parameter index */
 	u8 tc;
 	u8 proto;
+	u8 hlim;
 };
 
 struct ice_fdir_extra {
