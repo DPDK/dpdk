@@ -1284,7 +1284,6 @@ static void ice_init_pkg_regs(struct ice_hw *hw)
 
 /**
  * ice_chk_pkg_version - check package version for compatibility with driver
- * @hw: pointer to the hardware structure
  * @pkg_ver: pointer to a version structure to check
  *
  * Check to make sure that the package about to be downloaded is compatible with
@@ -1292,18 +1291,11 @@ static void ice_init_pkg_regs(struct ice_hw *hw)
  * version must match our ICE_PKG_SUPP_VER_MAJ and ICE_PKG_SUPP_VER_MNR
  * definitions.
  */
-static enum ice_status
-ice_chk_pkg_version(struct ice_hw *hw, struct ice_pkg_ver *pkg_ver)
+static enum ice_status ice_chk_pkg_version(struct ice_pkg_ver *pkg_ver)
 {
 	if (pkg_ver->major != ICE_PKG_SUPP_VER_MAJ ||
-	    pkg_ver->minor != ICE_PKG_SUPP_VER_MNR) {
-		ice_info(hw, "ERROR: Incompatible package: %d.%d.%d.%d - requires package version: %d.%d.*.*\n",
-			 pkg_ver->major, pkg_ver->minor, pkg_ver->update,
-			 pkg_ver->draft, ICE_PKG_SUPP_VER_MAJ,
-			 ICE_PKG_SUPP_VER_MNR);
-
+	    pkg_ver->minor != ICE_PKG_SUPP_VER_MNR)
 		return ICE_ERR_NOT_SUPPORTED;
-	}
 
 	return ICE_SUCCESS;
 }
@@ -1358,7 +1350,7 @@ enum ice_status ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
 	/* before downloading the package, check package version for
 	 * compatibility with driver
 	 */
-	status = ice_chk_pkg_version(hw, &hw->pkg_ver);
+	status = ice_chk_pkg_version(&hw->pkg_ver);
 	if (status)
 		return status;
 
@@ -1384,7 +1376,7 @@ enum ice_status ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
 	if (!status) {
 		status = ice_get_pkg_info(hw);
 		if (!status)
-			status = ice_chk_pkg_version(hw, &hw->active_pkg_ver);
+			status = ice_chk_pkg_version(&hw->active_pkg_ver);
 	}
 
 	if (!status) {
