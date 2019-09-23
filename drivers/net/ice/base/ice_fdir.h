@@ -176,6 +176,7 @@ struct ice_fdir_fltr {
 	u16 q_index;
 	u16 dest_vsi;
 	u8 dest_ctl;
+	u8 cnt_ena;
 	u8 fltr_status;
 	u16 cnt_index;
 	u32 fltr_id;
