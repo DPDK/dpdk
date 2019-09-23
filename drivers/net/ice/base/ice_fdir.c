@@ -485,6 +485,17 @@ static void ice_pkt_insert_ipv6_addr(u8 *pkt, int offset, __be32 *addr)
 }
 
 /**
+ * ice_pkt_insert_u8 - insert a u8 value into a memory buffer.
+ * @pkt: packet buffer
+ * @offset: offset into buffer
+ * @data: 8 bit value to convert and insert into pkt at offset
+ */
+static void ice_pkt_insert_u8(u8 *pkt, int offset, u8 data)
+{
+	ice_memcpy(pkt + offset, &data, sizeof(data), ICE_NONDMA_TO_NONDMA);
+}
+
+/**
  * ice_pkt_insert_u16 - insert a be16 value into a memory buffer.
  * @pkt: packet buffer
  * @offset: offset into buffer
@@ -534,11 +545,9 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		case ICE_IP_PROTO_SCTP:
 			flow = ICE_FLTR_PTYPE_NONF_IPV4_SCTP;
 			break;
-		case ICE_IP_PROTO_IP:
+		default:
 			flow = ICE_FLTR_PTYPE_NONF_IPV4_OTHER;
 			break;
-		default:
-			return ICE_ERR_PARAM;
 		}
 	} else if (input->flow_type == ICE_FLTR_PTYPE_NONF_IPV6_OTHER) {
 		switch (input->ip.v6.proto) {
@@ -551,11 +560,9 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		case ICE_IP_PROTO_SCTP:
 			flow = ICE_FLTR_PTYPE_NONF_IPV6_SCTP;
 			break;
-		case ICE_IP_PROTO_IP:
+		default:
 			flow = ICE_FLTR_PTYPE_NONF_IPV6_OTHER;
 			break;
-		default:
-			return ICE_ERR_PARAM;
 		}
 	} else {
 		flow = input->flow_type;
@@ -592,6 +599,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v4.src_ip);
 		ice_pkt_insert_u16(loc, ICE_IPV4_TCP_SRC_PORT_OFFSET,
 				   input->ip.v4.src_port);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
 		if (frag)
 			loc[20] = ICE_FDIR_IPV4_PKT_FLAG_DF;
 		break;
@@ -604,6 +613,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v4.src_ip);
 		ice_pkt_insert_u16(loc, ICE_IPV4_UDP_SRC_PORT_OFFSET,
 				   input->ip.v4.src_port);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_SCTP:
 		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
@@ -614,13 +625,18 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v4.src_ip);
 		ice_pkt_insert_u16(loc, ICE_IPV4_SCTP_SRC_PORT_OFFSET,
 				   input->ip.v4.src_port);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_OTHER:
 		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
 				   input->ip.v4.dst_ip);
 		ice_pkt_insert_u32(loc, ICE_IPV4_SRC_ADDR_OFFSET,
 				   input->ip.v4.src_ip);
-		ice_pkt_insert_u16(loc, ICE_IPV4_PROTO_OFFSET, 0);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
+		ice_pkt_insert_u8(loc, ICE_IPV4_PROTO_OFFSET,
+				  input->ip.v4.proto);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_TCP:
 		ice_pkt_insert_ipv6_addr(loc, ICE_IPV6_DST_ADDR_OFFSET,

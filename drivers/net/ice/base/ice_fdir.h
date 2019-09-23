@@ -82,6 +82,9 @@ enum ice_status ice_clear_pf_fd_table(struct ice_hw *hw);
 #define ICE_IPV6_SCTP_SRC_PORT_OFFSET	54
 #define ICE_IPV6_SCTP_DST_PORT_OFFSET	56
 
+#define ICE_IPV4_TOS_OFFSET		15
+#define ICE_IPV4_TTL_OFFSET		22
+
 #define ICE_FDIR_MAX_FLTRS		16384
 
 /* IP v4 has 2 flag bits that enable fragment processing: DF and MF. DF
@@ -123,6 +126,7 @@ struct ice_fdir_v4 {
 	u8 tos;
 	u8 ip_ver;
 	u8 proto;
+	u8 ttl;
 };
 
 #define ICE_IPV6_ADDR_LEN_AS_U32		4
