@@ -68,6 +68,7 @@ static const struct vic_speed_capa {
 
 #define ENIC_DEVARG_DISABLE_OVERLAY "disable-overlay"
 #define ENIC_DEVARG_ENABLE_AVX2_RX "enable-avx2-rx"
+#define ENIC_DEVARG_GENEVE_OPT "geneve-opt"
 #define ENIC_DEVARG_IG_VLAN_REWRITE "ig-vlan-rewrite"
 
 RTE_INIT(enicpmd_init_log)
@@ -128,10 +129,17 @@ enicpmd_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_op filter_op,
 		     void *arg)
 {
+	struct enic *enic = pmd_priv(dev);
 	int ret = 0;
 
 	ENICPMD_FUNC_TRACE();
 
+	/*
+	 * Currently, when Geneve with options offload is enabled, host
+	 * cannot insert match-action rules.
+	 */
+	if (enic->geneve_opt_enabled)
+		return -ENOTSUP;
 	switch (filter_type) {
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)
@@ -1144,6 +1152,8 @@ static int enic_parse_zero_one(const char *key,
 		enic->disable_overlay = b;
 	if (strcmp(key, ENIC_DEVARG_ENABLE_AVX2_RX) == 0)
 		enic->enable_avx2_rx = b;
+	if (strcmp(key, ENIC_DEVARG_GENEVE_OPT) == 0)
+		enic->geneve_opt_request = b;
 	return 0;
 }
 
@@ -1185,6 +1195,7 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 	static const char *const valid_keys[] = {
 		ENIC_DEVARG_DISABLE_OVERLAY,
 		ENIC_DEVARG_ENABLE_AVX2_RX,
+		ENIC_DEVARG_GENEVE_OPT,
 		ENIC_DEVARG_IG_VLAN_REWRITE,
 		NULL};
 	struct enic *enic = pmd_priv(dev);
@@ -1194,6 +1205,7 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 
 	enic->disable_overlay = false;
 	enic->enable_avx2_rx = false;
+	enic->geneve_opt_request = false;
 	enic->ig_vlan_rewrite_mode = IG_VLAN_REWRITE_MODE_PASS_THRU;
 	if (!dev->device->devargs)
 		return 0;
@@ -1203,6 +1215,8 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 	if (rte_kvargs_process(kvlist, ENIC_DEVARG_DISABLE_OVERLAY,
 			       enic_parse_zero_one, enic) < 0 ||
 	    rte_kvargs_process(kvlist, ENIC_DEVARG_ENABLE_AVX2_RX,
+			       enic_parse_zero_one, enic) < 0 ||
+	    rte_kvargs_process(kvlist, ENIC_DEVARG_GENEVE_OPT,
 			       enic_parse_zero_one, enic) < 0 ||
 	    rte_kvargs_process(kvlist, ENIC_DEVARG_IG_VLAN_REWRITE,
 			       enic_parse_ig_vlan_rewrite, enic) < 0) {
@@ -1280,4 +1294,5 @@ RTE_PMD_REGISTER_KMOD_DEP(net_enic, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_enic,
 	ENIC_DEVARG_DISABLE_OVERLAY "=0|1 "
 	ENIC_DEVARG_ENABLE_AVX2_RX "=0|1 "
+	ENIC_DEVARG_GENEVE_OPT "=0|1 "
 	ENIC_DEVARG_IG_VLAN_REWRITE "=trunk|untag|priority|pass");

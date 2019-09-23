@@ -65,6 +65,10 @@ New Features
 
   The lock-free stack implementation is enabled for aarch64 platforms.
 
+* **Updated the enic driver.**
+
+  * Added support for Geneve with options offload.
+
 * **Added Hisilicon hns3 PMD.**
 
   Added the new ``hns3`` net driver for the inbuilt Hisilicon Network

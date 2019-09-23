@@ -1120,3 +1120,14 @@ int vnic_dev_capable_vxlan(struct vnic_dev *vdev)
 		(a1 & (FEATURE_VXLAN_IPV6 | FEATURE_VXLAN_MULTI_WQ)) ==
 		(FEATURE_VXLAN_IPV6 | FEATURE_VXLAN_MULTI_WQ);
 }
+
+int vnic_dev_capable_geneve(struct vnic_dev *vdev)
+{
+	u64 a0 = VIC_FEATURE_GENEVE;
+	u64 a1 = 0;
+	int wait = 1000;
+	int ret;
+
+	ret = vnic_dev_cmd(vdev, CMD_GET_SUPP_FEATURE_VER, &a0, &a1, wait);
+	return ret == 0 && (a1 & FEATURE_GENEVE_OPTIONS);
+}

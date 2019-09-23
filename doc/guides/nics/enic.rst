@@ -310,6 +310,18 @@ it through ``rte_eth_dev_udp_tunnel_port_{add,delete}``. However, as
 the current NIC has a single VXLAN port number, the user cannot
 configure multiple port numbers.
 
+Geneve headers with non-zero options are not supported by default. To
+use Geneve with options, update the VIC firmware to the latest version
+and then set ``devargs`` parameter ``geneve-opt=1``. When Geneve with
+options is enabled, flow API cannot be used as the features are
+currently mutually exclusive. When this feature is successfully
+enabled, PMD prints the following message.
+
+.. code-block:: console
+
+    Geneve with options is enabled
+
+
 Ingress VLAN Rewrite
 --------------------
 

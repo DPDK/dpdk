@@ -133,6 +133,9 @@ struct enic {
 	bool vxlan;
 	bool disable_overlay; /* devargs disable_overlay=1 */
 	uint8_t enable_avx2_rx;  /* devargs enable-avx2-rx=1 */
+	uint8_t geneve_opt_avail;    /* Geneve with options offload available */
+	uint8_t geneve_opt_enabled;  /* Geneve with options offload enabled */
+	uint8_t geneve_opt_request;  /* devargs geneve-opt=1 */
 	bool nic_cfg_chk;     /* NIC_CFG_CHK available */
 	bool udp_rss_weak;    /* Bodega style UDP RSS */
 	uint8_t ig_vlan_rewrite_mode; /* devargs ig-vlan-rewrite */

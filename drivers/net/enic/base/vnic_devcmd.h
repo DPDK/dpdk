@@ -537,6 +537,7 @@ enum vnic_devcmd_cmd {
 	 * Control (Enable/Disable) overlay offloads on the given vnic
 	 * in: (u8) a0 = OVERLAY_FEATURE_NVGRE : NVGRE
 	 *          a0 = OVERLAY_FEATURE_VXLAN : VxLAN
+	 *          a0 = OVERLAY_FEATURE_GENEVE : Geneve
 	 * in: (u8) a1 = OVERLAY_OFFLOAD_ENABLE : Enable or
 	 *          a1 = OVERLAY_OFFLOAD_DISABLE : Disable or
 	 *          a1 = OVERLAY_OFFLOAD_ENABLE_V2 : Enable with version 2
@@ -547,6 +548,7 @@ enum vnic_devcmd_cmd {
 	/*
 	 * Configuration of overlay offloads feature on a given vNIC
 	 * in: (u8) a0 = OVERLAY_CFG_VXLAN_PORT_UPDATE : VxLAN
+	 *               OVERLAY_CFG_GENEVE_PORT_UPDATE : Geneve
 	 * in: (u16) a1 = unsigned short int port information
 	 */
 	CMD_OVERLAY_OFFLOAD_CFG = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 73),
@@ -1081,6 +1083,7 @@ struct devcmd2_result {
 typedef enum {
 	OVERLAY_FEATURE_NVGRE = 1,
 	OVERLAY_FEATURE_VXLAN,
+	OVERLAY_FEATURE_GENEVE,
 	OVERLAY_FEATURE_MAX,
 } overlay_feature_t;
 
@@ -1089,6 +1092,7 @@ typedef enum {
 #define OVERLAY_OFFLOAD_ENABLE_V2       2
 
 #define OVERLAY_CFG_VXLAN_PORT_UPDATE 0
+#define OVERLAY_CFG_GENEVE_PORT_UPDATE 1
 
 /*
  * Use this enum to get the supported versions for each of these features
@@ -1098,6 +1102,7 @@ typedef enum {
 typedef enum {
 	VIC_FEATURE_VXLAN,
 	VIC_FEATURE_RDMA,
+	VIC_FEATURE_GENEVE,
 	VIC_FEATURE_MAX,
 } vic_feature_t;
 
@@ -1112,6 +1117,8 @@ typedef enum {
 
 #define FEATURE_VXLAN_IPV6		(FEATURE_VXLAN_IPV6_INNER | \
 					 FEATURE_VXLAN_IPV6_OUTER)
+/* Support Geneve option bytes */
+#define FEATURE_GENEVE_OPTIONS		(1 << 0)
 
 /*
  * CMD_CONFIG_GRPINTR subcommands
