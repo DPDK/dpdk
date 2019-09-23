@@ -156,6 +156,7 @@ struct ice_dummy_pkt_offsets dummy_udp_tun_tcp_packet_offsets[] = {
 	{ ICE_UDP_OF,		34 },
 	{ ICE_VXLAN,		42 },
 	{ ICE_GENEVE,		42 },
+	{ ICE_VXLAN_GPE,	42 },
 	{ ICE_MAC_IL,		50 },
 	{ ICE_IPV4_IL,		64 },
 	{ ICE_TCP_IL,		84 },
@@ -208,6 +209,7 @@ struct ice_dummy_pkt_offsets dummy_udp_tun_udp_packet_offsets[] = {
 	{ ICE_UDP_OF,		34 },
 	{ ICE_VXLAN,		42 },
 	{ ICE_GENEVE,		42 },
+	{ ICE_VXLAN_GPE,	42 },
 	{ ICE_MAC_IL,		50 },
 	{ ICE_IPV4_IL,		64 },
 	{ ICE_UDP_ILOS,		84 },
@@ -6189,8 +6191,10 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	s_rule->pdata.lkup_tx_rx.recipe_id = CPU_TO_LE16(rid);
 	s_rule->pdata.lkup_tx_rx.act = CPU_TO_LE32(act);
 
-	ice_fill_adv_dummy_packet(lkups, lkups_cnt, s_rule, pkt, pkt_len,
-				  pkt_offsets);
+	status = ice_fill_adv_dummy_packet(lkups, lkups_cnt, s_rule, pkt,
+					   pkt_len, pkt_offsets);
+	if (status)
+		goto err_ice_add_adv_rule;
 
 	if (rinfo->tun_type != ICE_NON_TUN) {
 		status = ice_fill_adv_packet_tun(hw, rinfo->tun_type,

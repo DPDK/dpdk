@@ -869,9 +869,12 @@ ice_flow_create_xtrct_seq(struct ice_hw *hw,
 	/* For ACL, we also need to extract the direction bit (Rx,Tx) data from
 	 * packet flags
 	 */
-	if (params->blk == ICE_BLK_ACL)
-		ice_flow_xtract_pkt_flags(hw, params,
-					  ICE_RX_MDID_PKT_FLAGS_15_0);
+	if (params->blk == ICE_BLK_ACL) {
+		status = ice_flow_xtract_pkt_flags(hw, params,
+						   ICE_RX_MDID_PKT_FLAGS_15_0);
+		if (status)
+			return status;
+	}
 
 	for (i = 0; i < params->prof->segs_cnt; i++) {
 		u64 match = params->prof->segs[i].match;
