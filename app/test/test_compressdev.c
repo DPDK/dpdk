@@ -104,6 +104,12 @@ struct test_data_params {
 	/* stateful decompression specific parameters */
 	unsigned int decompress_output_block_size;
 	unsigned int decompress_steps_max;
+	/* external mbufs specific parameters */
+	unsigned int use_external_mbufs;
+	unsigned int inbuf_data_size;
+	const struct rte_memzone *inbuf_memzone;
+	const struct rte_memzone *compbuf_memzone;
+	const struct rte_memzone *uncompbuf_memzone;
 };
 
 static struct comp_testsuite_params testsuite_params = { 0 };
@@ -714,6 +720,11 @@ prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 	return 0;
 }
 
+static void
+extbuf_free_callback(void *addr __rte_unused, void *opaque __rte_unused)
+{
+}
+
 /*
  * Compresses and decompresses buffer with compressdev API and Zlib API
  */
@@ -735,6 +746,9 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	unsigned int big_data = test_data->big_data;
 	enum zlib_direction zlib_dir = test_data->zlib_dir;
 	int ret_status = TEST_FAILED;
+	struct rte_mbuf_ext_shared_info inbuf_info;
+	struct rte_mbuf_ext_shared_info compbuf_info;
+	struct rte_mbuf_ext_shared_info decompbuf_info;
 	int ret;
 	struct rte_mbuf *uncomp_bufs[num_bufs];
 	struct rte_mbuf *comp_bufs[num_bufs];
@@ -803,7 +817,20 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		goto exit;
 	}
 
-	if (buff_type == SGL_BOTH || buff_type == SGL_TO_LB) {
+	if (test_data->use_external_mbufs) {
+		inbuf_info.free_cb = extbuf_free_callback;
+		inbuf_info.fcb_opaque = NULL;
+		rte_mbuf_ext_refcnt_set(&inbuf_info, 1);
+		for (i = 0; i < num_bufs; i++) {
+			rte_pktmbuf_attach_extbuf(uncomp_bufs[i],
+					test_data->inbuf_memzone->addr,
+					test_data->inbuf_memzone->iova,
+					test_data->inbuf_data_size,
+					&inbuf_info);
+			rte_pktmbuf_append(uncomp_bufs[i],
+					test_data->inbuf_data_size);
+		}
+	} else if (buff_type == SGL_BOTH || buff_type == SGL_TO_LB) {
 		for (i = 0; i < num_bufs; i++) {
 			data_size = strlen(test_bufs[i]) + 1;
 			if (prepare_sgl_bufs(test_bufs[i], uncomp_bufs[i],
@@ -831,7 +858,20 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		goto exit;
 	}
 
-	if (buff_type == SGL_BOTH || buff_type == LB_TO_SGL) {
+	if (test_data->use_external_mbufs) {
+		compbuf_info.free_cb = extbuf_free_callback;
+		compbuf_info.fcb_opaque = NULL;
+		rte_mbuf_ext_refcnt_set(&compbuf_info, 1);
+		for (i = 0; i < num_bufs; i++) {
+			rte_pktmbuf_attach_extbuf(comp_bufs[i],
+					test_data->compbuf_memzone->addr,
+					test_data->compbuf_memzone->iova,
+					test_data->compbuf_memzone->len,
+					&compbuf_info);
+			rte_pktmbuf_append(comp_bufs[i],
+					test_data->compbuf_memzone->len);
+		}
+	} else if (buff_type == SGL_BOTH || buff_type == LB_TO_SGL) {
 		for (i = 0; i < num_bufs; i++) {
 			if (out_of_space == 1 && oos_zlib_decompress)
 				data_size = OUT_OF_SPACE_BUF;
@@ -1058,7 +1098,20 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		goto exit;
 	}
 
-	if (buff_type == SGL_BOTH || buff_type == LB_TO_SGL) {
+	if (test_data->use_external_mbufs) {
+		decompbuf_info.free_cb = extbuf_free_callback;
+		decompbuf_info.fcb_opaque = NULL;
+		rte_mbuf_ext_refcnt_set(&decompbuf_info, 1);
+		for (i = 0; i < num_bufs; i++) {
+			rte_pktmbuf_attach_extbuf(uncomp_bufs[i],
+					test_data->uncompbuf_memzone->addr,
+					test_data->uncompbuf_memzone->iova,
+					test_data->uncompbuf_memzone->len,
+					&decompbuf_info);
+			rte_pktmbuf_append(uncomp_bufs[i],
+					test_data->uncompbuf_memzone->len);
+		}
+	} else if (buff_type == SGL_BOTH || buff_type == LB_TO_SGL) {
 		for (i = 0; i < num_bufs; i++) {
 			priv_data = (struct priv_op_data *)
 					(ops_processed[i] + 1);
@@ -1386,8 +1439,13 @@ next_step:
 	 */
 	for (i = 0; i < num_bufs; i++) {
 		priv_data = (struct priv_op_data *)(ops_processed[i] + 1);
-		const char *buf1 = test_bufs[priv_data->orig_idx];
+		const char *buf1 = test_data->use_external_mbufs ?
+				test_data->inbuf_memzone->addr :
+				test_bufs[priv_data->orig_idx];
 		const char *buf2;
+		data_size = test_data->use_external_mbufs ?
+				test_data->inbuf_data_size :
+				strlen(buf1) + 1;
 		contig_buf = rte_malloc(NULL, ops_processed[i]->produced, 0);
 		if (contig_buf == NULL) {
 			RTE_LOG(ERR, USER1, "Contiguous buffer could not "
@@ -1397,7 +1455,7 @@ next_step:
 
 		buf2 = rte_pktmbuf_read(ops_processed[i]->m_dst, 0,
 				ops_processed[i]->produced, contig_buf);
-		if (compare_buffers(buf1, strlen(buf1) + 1,
+		if (compare_buffers(buf1, data_size,
 				buf2, ops_processed[i]->produced) < 0)
 			goto exit;
 
@@ -1478,14 +1536,12 @@ test_compressdev_deflate_stateless_fixed(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATELESS,
-		LB_BOTH,
-		ZLIB_DECOMPRESS,
-		0,
-		0,
-		0,
-		0
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 0
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -1550,14 +1606,12 @@ test_compressdev_deflate_stateless_dynamic(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATELESS,
-		LB_BOTH,
-		ZLIB_DECOMPRESS,
-		0,
-		0,
-		0,
-		0
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 0
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -1606,14 +1660,12 @@ test_compressdev_deflate_stateless_multi_op(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATELESS,
-		LB_BOTH,
-		ZLIB_DECOMPRESS,
-		0,
-		0,
-		0,
-		0
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 0
 	};
 
 	/* Compress with compressdev, decompress with Zlib */
@@ -1661,14 +1713,12 @@ test_compressdev_deflate_stateless_multi_level(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATELESS,
-		LB_BOTH,
-		ZLIB_DECOMPRESS,
-		0,
-		0,
-		0,
-		0
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 0
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -1752,14 +1802,12 @@ test_compressdev_deflate_stateless_multi_xform(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATELESS,
-		LB_BOTH,
-		ZLIB_DECOMPRESS,
-		0,
-		0,
-		0,
-		0
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 0
 	};
 
 	/* Compress with compressdev, decompress with Zlib */
@@ -1802,14 +1850,12 @@ test_compressdev_deflate_stateless_sgl(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATELESS,
-		SGL_BOTH,
-		ZLIB_DECOMPRESS,
-		0,
-		0,
-		0,
-		0
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 0
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -1914,14 +1960,12 @@ test_compressdev_deflate_stateless_checksum(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATELESS,
-		LB_BOTH,
-		ZLIB_DECOMPRESS,
-		0,
-		0,
-		0,
-		0
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 0
 	};
 
 	/* Check if driver supports crc32 checksum and test */
@@ -2033,14 +2077,12 @@ test_compressdev_out_of_space_buffer(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATELESS,
-		LB_BOTH,
-		ZLIB_DECOMPRESS,
-		1,  /* run out-of-space test */
-		0,
-		0,
-		0
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 1,  /* run out-of-space test */
+		.big_data = 0
 	};
 	/* Compress with compressdev, decompress with Zlib */
 	test_data.zlib_dir = ZLIB_DECOMPRESS;
@@ -2112,14 +2154,12 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATELESS,
-		SGL_BOTH,
-		ZLIB_DECOMPRESS,
-		0,
-		1,
-		0,
-		0
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 1
 	};
 
 	ts_params->def_comp_xform->compress.deflate.huffman =
@@ -2176,14 +2216,14 @@ test_compressdev_deflate_stateful_decomp(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATEFUL,
-		LB_BOTH,
-		ZLIB_COMPRESS,
-		0,
-		0,
-		2000,
-		4
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATEFUL,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_COMPRESS,
+		.out_of_space = 0,
+		.big_data = 0,
+		.decompress_output_block_size = 2000,
+		.decompress_steps_max = 4
 	};
 
 	/* Compress with Zlib, decompress with compressdev */
@@ -2258,14 +2298,14 @@ test_compressdev_deflate_stateful_decomp_checksum(void)
 	};
 
 	struct test_data_params test_data = {
-		RTE_COMP_OP_STATELESS,
-		RTE_COMP_OP_STATEFUL,
-		LB_BOTH,
-		ZLIB_COMPRESS,
-		0,
-		0,
-		2000,
-		4
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATEFUL,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_COMPRESS,
+		.out_of_space = 0,
+		.big_data = 0,
+		.decompress_output_block_size = 2000,
+		.decompress_steps_max = 4
 	};
 
 	/* Check if driver supports crc32 checksum and test */
@@ -2346,6 +2386,92 @@ exit:
 	return ret;
 }
 
+static const struct rte_memzone *
+make_memzone(const char *name, size_t size)
+{
+	unsigned int socket_id = rte_socket_id();
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *memzone;
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "%s_%u", name, socket_id);
+	memzone = rte_memzone_lookup(mz_name);
+	if (memzone != NULL && memzone->len != size) {
+		rte_memzone_free(memzone);
+		memzone = NULL;
+	}
+	if (memzone == NULL) {
+		memzone = rte_memzone_reserve_aligned(mz_name, size, socket_id,
+				RTE_MEMZONE_IOVA_CONTIG, RTE_CACHE_LINE_SIZE);
+		if (memzone == NULL)
+			RTE_LOG(ERR, USER1, "Can't allocate memory zone %s",
+				mz_name);
+	}
+	return memzone;
+}
+
+static int
+test_compressdev_external_mbufs(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	size_t data_len = 0;
+	uint16_t i;
+	int ret = TEST_FAILED;
+
+	for (i = 0; i < RTE_DIM(compress_test_bufs); i++)
+		data_len = RTE_MAX(data_len, strlen(compress_test_bufs[i]) + 1);
+
+	struct interim_data_params int_data = {
+		NULL,
+		1,
+		NULL,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 0,
+		.use_external_mbufs = 1,
+		.inbuf_data_size = data_len,
+		.inbuf_memzone = make_memzone("inbuf", data_len),
+		.compbuf_memzone = make_memzone("compbuf", data_len *
+						COMPRESS_BUF_SIZE_RATIO),
+		.uncompbuf_memzone = make_memzone("decompbuf", data_len)
+	};
+
+	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
+		/* prepare input data */
+		data_len = strlen(compress_test_bufs[i]) + 1;
+		rte_memcpy(test_data.inbuf_memzone->addr, compress_test_bufs[i],
+			   data_len);
+		test_data.inbuf_data_size = data_len;
+		int_data.buf_idx = &i;
+
+		/* Compress with compressdev, decompress with Zlib */
+		test_data.zlib_dir = ZLIB_DECOMPRESS;
+		if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
+			goto exit;
+
+		/* Compress with Zlib, decompress with compressdev */
+		test_data.zlib_dir = ZLIB_COMPRESS;
+		if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
+			goto exit;
+	}
+
+	ret = TEST_SUCCESS;
+
+exit:
+	rte_memzone_free(test_data.inbuf_memzone);
+	rte_memzone_free(test_data.compbuf_memzone);
+	rte_memzone_free(test_data.uncompbuf_memzone);
+	return ret;
+}
+
 static struct unit_test_suite compressdev_testsuite  = {
 	.suite_name = "compressdev unit test suite",
 	.setup = testsuite_setup,
@@ -2375,6 +2501,8 @@ static struct unit_test_suite compressdev_testsuite  = {
 			test_compressdev_deflate_stateful_decomp),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
 			test_compressdev_deflate_stateful_decomp_checksum),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_external_mbufs),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
