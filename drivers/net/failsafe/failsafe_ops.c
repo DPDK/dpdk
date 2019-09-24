@@ -723,10 +723,28 @@ fs_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
 	uint8_t i;
+	int ret = 0;
 
 	fs_lock(dev, 0);
-	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE)
-		rte_eth_allmulticast_enable(PORT_ID(sdev));
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		ret = rte_eth_allmulticast_enable(PORT_ID(sdev));
+		ret = fs_err(sdev, ret);
+		if (ret != 0) {
+			ERROR("All-multicast mode enable failed for subdevice %d",
+				PORT_ID(sdev));
+			break;
+		}
+	}
+	if (ret != 0) {
+		/* Rollback in the case of failure */
+		FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+			ret = rte_eth_allmulticast_disable(PORT_ID(sdev));
+			ret = fs_err(sdev, ret);
+			if (ret != 0)
+				ERROR("All-multicast mode disable during rollback failed for subdevice %d",
+					PORT_ID(sdev));
+		}
+	}
 	fs_unlock(dev, 0);
 }
 
@@ -735,10 +753,28 @@ fs_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
 	uint8_t i;
+	int ret = 0;
 
 	fs_lock(dev, 0);
-	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE)
-		rte_eth_allmulticast_disable(PORT_ID(sdev));
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		ret = rte_eth_allmulticast_disable(PORT_ID(sdev));
+		ret = fs_err(sdev, ret);
+		if (ret != 0) {
+			ERROR("All-multicast mode disable failed for subdevice %d",
+				PORT_ID(sdev));
+			break;
+		}
+	}
+	if (ret != 0) {
+		/* Rollback in the case of failure */
+		FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+			ret = rte_eth_allmulticast_enable(PORT_ID(sdev));
+			ret = fs_err(sdev, ret);
+			if (ret != 0)
+				ERROR("All-multicast mode enable during rollback failed for subdevice %d",
+					PORT_ID(sdev));
+		}
+	}
 	fs_unlock(dev, 0);
 }
 
