@@ -13,7 +13,6 @@
 		PKT_TX_TCP_SEG |		 \
 		PKT_TX_OUTER_IP_CKSUM)
 
-#define ICE_RX_ERR_BITS 0x3f
 
 static enum ice_status
 ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
@@ -25,17 +24,8 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	enum ice_status err;
 	uint16_t buf_size, len;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	uint32_t rxdid = ICE_RXDID_COMMS_GENERIC;
 	uint32_t regval;
-
-	/**
-	 * The kernel driver uses flex descriptor. It sets the register
-	 * to flex descriptor mode.
-	 * DPDK uses legacy descriptor. It should set the register back
-	 * to the default value, then uses legacy descriptor mode.
-	 */
-	regval = (0x01 << QRXFLXP_CNTXT_RXDID_PRIO_S) &
-		 QRXFLXP_CNTXT_RXDID_PRIO_M;
-	ICE_WRITE_REG(hw, QRXFLXP_CNTXT(rxq->reg_idx), regval);
 
 	/* Set buffer size as the head split is disabled. */
 	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
@@ -93,6 +83,21 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	rx_ctx.l2tsel = 1;
 	rx_ctx.showiv = 0;
 	rx_ctx.crcstrip = (rxq->crc_len == 0) ? 1 : 0;
+
+	/* Enable Flexible Descriptors in the queue context which
+	 * allows this driver to select a specific receive descriptor format
+	 */
+	regval = (rxdid << QRXFLXP_CNTXT_RXDID_IDX_S) &
+		QRXFLXP_CNTXT_RXDID_IDX_M;
+
+	/* increasing context priority to pick up profile ID;
+	 * default is 0x01; setting to 0x03 to ensure profile
+	 * is programming if prev context is of same priority
+	 */
+	regval |= (0x03 << QRXFLXP_CNTXT_RXDID_PRIO_S) &
+		QRXFLXP_CNTXT_RXDID_PRIO_M;
+
+	ICE_WRITE_REG(hw, QRXFLXP_CNTXT(rxq->reg_idx), regval);
 
 	err = ice_clear_rxq_ctx(hw, rxq->reg_idx);
 	if (err) {
@@ -961,16 +966,15 @@ uint32_t
 ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 #define ICE_RXQ_SCAN_INTERVAL 4
-	volatile union ice_rx_desc *rxdp;
+	volatile union ice_rx_flex_desc *rxdp;
 	struct ice_rx_queue *rxq;
 	uint16_t desc = 0;
 
 	rxq = dev->data->rx_queues[rx_queue_id];
-	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	rxdp = (volatile union ice_rx_flex_desc *)&rxq->rx_ring[rxq->rx_tail];
 	while ((desc < rxq->nb_rx_desc) &&
-	       ((rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
-		 ICE_RXD_QW1_STATUS_M) >> ICE_RXD_QW1_STATUS_S) &
-	       (1 << ICE_RX_DESC_STATUS_DD_S)) {
+	       rte_le_to_cpu_16(rxdp->wb.status_error0) &
+	       (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S)) {
 		/**
 		 * Check the DD bit of a rx descriptor of each 4 in a group,
 		 * to avoid checking too frequently and downgrading performance
@@ -979,85 +983,98 @@ ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		desc += ICE_RXQ_SCAN_INTERVAL;
 		rxdp += ICE_RXQ_SCAN_INTERVAL;
 		if (rxq->rx_tail + desc >= rxq->nb_rx_desc)
-			rxdp = &(rxq->rx_ring[rxq->rx_tail +
+			rxdp = (volatile union ice_rx_flex_desc *)
+				&(rxq->rx_ring[rxq->rx_tail +
 				 desc - rxq->nb_rx_desc]);
 	}
 
 	return desc;
 }
 
-/* Translate the rx descriptor status to pkt flags */
-static inline uint64_t
-ice_rxd_status_to_pkt_flags(uint64_t qword)
-{
-	uint64_t flags;
-
-	/* Check if RSS_HASH */
-	flags = (((qword >> ICE_RX_DESC_STATUS_FLTSTAT_S) &
-		  ICE_RX_DESC_FLTSTAT_RSS_HASH) ==
-		 ICE_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
-
-	return flags;
-}
+#define ICE_RX_FLEX_ERR0_BITS	\
+	((1 << ICE_RX_FLEX_DESC_STATUS0_HBO_S) |	\
+	 (1 << ICE_RX_FLEX_DESC_STATUS0_XSUM_IPE_S) |	\
+	 (1 << ICE_RX_FLEX_DESC_STATUS0_XSUM_L4E_S) |	\
+	 (1 << ICE_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S) |	\
+	 (1 << ICE_RX_FLEX_DESC_STATUS0_XSUM_EUDPE_S) |	\
+	 (1 << ICE_RX_FLEX_DESC_STATUS0_RXE_S))
 
 /* Rx L3/L4 checksum */
 static inline uint64_t
-ice_rxd_error_to_pkt_flags(uint64_t qword)
+ice_rxd_error_to_pkt_flags(uint16_t stat_err0)
 {
 	uint64_t flags = 0;
-	uint64_t error_bits = (qword >> ICE_RXD_QW1_ERROR_S);
 
-	if (likely((error_bits & ICE_RX_ERR_BITS) == 0)) {
+	/* check if HW has decoded the packet and checksum */
+	if (unlikely(!(stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_L3L4P_S))))
+		return 0;
+
+	if (likely(!(stat_err0 & ICE_RX_FLEX_ERR0_BITS))) {
 		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
 		return flags;
 	}
 
-	if (unlikely(error_bits & (1 << ICE_RX_DESC_ERROR_IPE_S)))
+	if (unlikely(stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_XSUM_IPE_S)))
 		flags |= PKT_RX_IP_CKSUM_BAD;
 	else
 		flags |= PKT_RX_IP_CKSUM_GOOD;
 
-	if (unlikely(error_bits & (1 << ICE_RX_DESC_ERROR_L4E_S)))
+	if (unlikely(stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_XSUM_L4E_S)))
 		flags |= PKT_RX_L4_CKSUM_BAD;
 	else
 		flags |= PKT_RX_L4_CKSUM_GOOD;
 
-	if (unlikely(error_bits & (1 << ICE_RX_DESC_ERROR_EIPE_S)))
+	if (unlikely(stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S)))
 		flags |= PKT_RX_EIP_CKSUM_BAD;
 
 	return flags;
 }
 
 static inline void
-ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_desc *rxdp)
+ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_flex_desc *rxdp)
 {
-	if (rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
-	    (1 << ICE_RX_DESC_STATUS_L2TAG1P_S)) {
+	if (rte_le_to_cpu_16(rxdp->wb.status_error0) &
+	    (1 << ICE_RX_FLEX_DESC_STATUS0_L2TAG1P_S)) {
 		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		mb->vlan_tci =
-			rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1);
+			rte_le_to_cpu_16(rxdp->wb.l2tag1);
 		PMD_RX_LOG(DEBUG, "Descriptor l2tag1: %u",
-			   rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1));
+			   rte_le_to_cpu_16(rxdp->wb.l2tag1));
 	} else {
 		mb->vlan_tci = 0;
 	}
 
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-	if (rte_le_to_cpu_16(rxdp->wb.qword2.ext_status) &
-	    (1 << ICE_RX_DESC_EXT_STATUS_L2TAG2P_S)) {
+	if (rte_le_to_cpu_16(rxdp->wb.status_error1) &
+	    (1 << ICE_RX_FLEX_DESC_STATUS1_L2TAG2P_S)) {
 		mb->ol_flags |= PKT_RX_QINQ_STRIPPED | PKT_RX_QINQ |
 				PKT_RX_VLAN_STRIPPED | PKT_RX_VLAN;
 		mb->vlan_tci_outer = mb->vlan_tci;
-		mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_2);
+		mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd);
 		PMD_RX_LOG(DEBUG, "Descriptor l2tag2_1: %u, l2tag2_2: %u",
-			   rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_1),
-			   rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_2));
+			   rte_le_to_cpu_16(rxdp->wb.l2tag2_1st),
+			   rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd));
 	} else {
 		mb->vlan_tci_outer = 0;
 	}
 #endif
 	PMD_RX_LOG(DEBUG, "Mbuf vlan_tci: %u, vlan_tci_outer: %u",
 		   mb->vlan_tci, mb->vlan_tci_outer);
+}
+
+static inline void
+ice_rxd_to_pkt_fields(struct rte_mbuf *mb,
+		      volatile union ice_rx_flex_desc *rxdp)
+{
+	volatile struct ice_32b_rx_flex_desc_comms *desc =
+			(volatile struct ice_32b_rx_flex_desc_comms *)rxdp;
+	uint16_t stat_err;
+
+	stat_err = rte_le_to_cpu_16(desc->status_error0);
+	if (likely(stat_err & (1 << ICE_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
+		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+	}
 }
 
 #ifdef RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC
@@ -1068,25 +1085,23 @@ ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_desc *rxdp)
 static inline int
 ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 {
-	volatile union ice_rx_desc *rxdp;
+	volatile union ice_rx_flex_desc *rxdp;
 	struct ice_rx_entry *rxep;
 	struct rte_mbuf *mb;
+	uint16_t stat_err0;
 	uint16_t pkt_len;
-	uint64_t qword1;
-	uint32_t rx_status;
 	int32_t s[ICE_LOOK_AHEAD], nb_dd;
 	int32_t i, j, nb_rx = 0;
 	uint64_t pkt_flags = 0;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
-	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	rxdp = (volatile union ice_rx_flex_desc *)&rxq->rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
 
-	qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
-	rx_status = (qword1 & ICE_RXD_QW1_STATUS_M) >> ICE_RXD_QW1_STATUS_S;
+	stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
 
 	/* Make sure there is at least 1 packet to receive */
-	if (!(rx_status & (1 << ICE_RX_DESC_STATUS_DD_S)))
+	if (!(stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S)))
 		return 0;
 
 	/**
@@ -1096,42 +1111,31 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 	for (i = 0; i < ICE_RX_MAX_BURST; i += ICE_LOOK_AHEAD,
 	     rxdp += ICE_LOOK_AHEAD, rxep += ICE_LOOK_AHEAD) {
 		/* Read desc statuses backwards to avoid race condition */
-		for (j = ICE_LOOK_AHEAD - 1; j >= 0; j--) {
-			qword1 = rte_le_to_cpu_64(
-					rxdp[j].wb.qword1.status_error_len);
-			s[j] = (qword1 & ICE_RXD_QW1_STATUS_M) >>
-			       ICE_RXD_QW1_STATUS_S;
-		}
+		for (j = ICE_LOOK_AHEAD - 1; j >= 0; j--)
+			s[j] = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
 
 		rte_smp_rmb();
 
 		/* Compute how many status bits were set */
 		for (j = 0, nb_dd = 0; j < ICE_LOOK_AHEAD; j++)
-			nb_dd += s[j] & (1 << ICE_RX_DESC_STATUS_DD_S);
+			nb_dd += s[j] & (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S);
 
 		nb_rx += nb_dd;
 
 		/* Translate descriptor info to mbuf parameters */
 		for (j = 0; j < nb_dd; j++) {
 			mb = rxep[j].mbuf;
-			qword1 = rte_le_to_cpu_64(
-					rxdp[j].wb.qword1.status_error_len);
-			pkt_len = ((qword1 & ICE_RXD_QW1_LEN_PBUF_M) >>
-				   ICE_RXD_QW1_LEN_PBUF_S) - rxq->crc_len;
+			pkt_len = (rte_le_to_cpu_16(rxdp[j].wb.pkt_len) &
+				   ICE_RX_FLX_DESC_PKT_LEN_M) - rxq->crc_len;
 			mb->data_len = pkt_len;
 			mb->pkt_len = pkt_len;
 			mb->ol_flags = 0;
-			pkt_flags = ice_rxd_status_to_pkt_flags(qword1);
-			pkt_flags |= ice_rxd_error_to_pkt_flags(qword1);
-			if (pkt_flags & PKT_RX_RSS_HASH)
-				mb->hash.rss =
-					rte_le_to_cpu_32(
-						rxdp[j].wb.qword0.hi_dword.rss);
-			mb->packet_type = ptype_tbl[(uint8_t)(
-						(qword1 &
-						 ICE_RXD_QW1_PTYPE_M) >>
-						ICE_RXD_QW1_PTYPE_S)];
+			stat_err0 = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
+			pkt_flags = ice_rxd_error_to_pkt_flags(stat_err0);
+			mb->packet_type = ptype_tbl[ICE_RX_FLEX_DESC_PTYPE_M &
+				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			ice_rxd_to_vlan_tci(mb, &rxdp[j]);
+			ice_rxd_to_pkt_fields(mb, &rxdp[j]);
 
 			mb->ol_flags |= pkt_flags;
 		}
@@ -1312,8 +1316,8 @@ ice_recv_scattered_pkts(void *rx_queue,
 {
 	struct ice_rx_queue *rxq = rx_queue;
 	volatile union ice_rx_desc *rx_ring = rxq->rx_ring;
-	volatile union ice_rx_desc *rxdp;
-	union ice_rx_desc rxd;
+	volatile union ice_rx_flex_desc *rxdp;
+	union ice_rx_flex_desc rxd;
 	struct ice_rx_entry *sw_ring = rxq->sw_ring;
 	struct ice_rx_entry *rxe;
 	struct rte_mbuf *first_seg = rxq->pkt_first_seg;
@@ -1324,21 +1328,18 @@ ice_recv_scattered_pkts(void *rx_queue,
 	uint16_t nb_rx = 0;
 	uint16_t nb_hold = 0;
 	uint16_t rx_packet_len;
-	uint32_t rx_status;
-	uint64_t qword1;
+	uint16_t rx_stat_err0;
 	uint64_t dma_addr;
-	uint64_t pkt_flags = 0;
+	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 	struct rte_eth_dev *dev;
 
 	while (nb_rx < nb_pkts) {
-		rxdp = &rx_ring[rx_id];
-		qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
-		rx_status = (qword1 & ICE_RXD_QW1_STATUS_M) >>
-			    ICE_RXD_QW1_STATUS_S;
+		rxdp = (volatile union ice_rx_flex_desc *)&rx_ring[rx_id];
+		rx_stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
 
 		/* Check the DD bit first */
-		if (!(rx_status & (1 << ICE_RX_DESC_STATUS_DD_S)))
+		if (!(rx_stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S)))
 			break;
 
 		/* allocate mbuf */
@@ -1377,14 +1378,10 @@ ice_recv_scattered_pkts(void *rx_queue,
 		/* Set data buffer address and data length of the mbuf */
 		rxdp->read.hdr_addr = 0;
 		rxdp->read.pkt_addr = dma_addr;
-		rx_packet_len = (qword1 & ICE_RXD_QW1_LEN_PBUF_M) >>
-				ICE_RXD_QW1_LEN_PBUF_S;
+		rx_packet_len = rte_le_to_cpu_16(rxd.wb.pkt_len) &
+				ICE_RX_FLX_DESC_PKT_LEN_M;
 		rxm->data_len = rx_packet_len;
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
-		ice_rxd_to_vlan_tci(rxm, rxdp);
-		rxm->packet_type = ptype_tbl[(uint8_t)((qword1 &
-							ICE_RXD_QW1_PTYPE_M) >>
-						       ICE_RXD_QW1_PTYPE_S)];
 
 		/**
 		 * If this is the first buffer of the received packet, set the
@@ -1410,7 +1407,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 		 * update the pointer to the last mbuf of the current scattered
 		 * packet and continue to parse the RX ring.
 		 */
-		if (!(rx_status & (1 << ICE_RX_DESC_STATUS_EOF_S))) {
+		if (!(rx_stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_EOF_S))) {
 			last_seg = rxm;
 			continue;
 		}
@@ -1442,13 +1439,11 @@ ice_recv_scattered_pkts(void *rx_queue,
 
 		first_seg->port = rxq->port_id;
 		first_seg->ol_flags = 0;
-
-		pkt_flags = ice_rxd_status_to_pkt_flags(qword1);
-		pkt_flags |= ice_rxd_error_to_pkt_flags(qword1);
-		if (pkt_flags & PKT_RX_RSS_HASH)
-			first_seg->hash.rss =
-				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
-
+		first_seg->packet_type = ptype_tbl[ICE_RX_FLEX_DESC_PTYPE_M &
+			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
+		ice_rxd_to_vlan_tci(first_seg, &rxd);
+		ice_rxd_to_pkt_fields(first_seg, &rxd);
+		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 		first_seg->ol_flags |= pkt_flags;
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
@@ -1538,9 +1533,8 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 int
 ice_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
+	volatile union ice_rx_flex_desc *rxdp;
 	struct ice_rx_queue *rxq = rx_queue;
-	volatile uint64_t *status;
-	uint64_t mask;
 	uint32_t desc;
 
 	if (unlikely(offset >= rxq->nb_rx_desc))
@@ -1553,10 +1547,9 @@ ice_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	if (desc >= rxq->nb_rx_desc)
 		desc -= rxq->nb_rx_desc;
 
-	status = &rxq->rx_ring[desc].wb.qword1.status_error_len;
-	mask = rte_cpu_to_le_64((1ULL << ICE_RX_DESC_STATUS_DD_S) <<
-				ICE_RXD_QW1_STATUS_S);
-	if (*status & mask)
+	rxdp = (volatile union ice_rx_flex_desc *)&rxq->rx_ring[desc];
+	if (rte_le_to_cpu_16(rxdp->wb.status_error0) &
+	    (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S))
 		return RTE_ETH_RX_DESC_DONE;
 
 	return RTE_ETH_RX_DESC_AVAIL;
@@ -1642,8 +1635,8 @@ ice_recv_pkts(void *rx_queue,
 {
 	struct ice_rx_queue *rxq = rx_queue;
 	volatile union ice_rx_desc *rx_ring = rxq->rx_ring;
-	volatile union ice_rx_desc *rxdp;
-	union ice_rx_desc rxd;
+	volatile union ice_rx_flex_desc *rxdp;
+	union ice_rx_flex_desc rxd;
 	struct ice_rx_entry *sw_ring = rxq->sw_ring;
 	struct ice_rx_entry *rxe;
 	struct rte_mbuf *nmb; /* new allocated mbuf */
@@ -1652,21 +1645,18 @@ ice_recv_pkts(void *rx_queue,
 	uint16_t nb_rx = 0;
 	uint16_t nb_hold = 0;
 	uint16_t rx_packet_len;
-	uint32_t rx_status;
-	uint64_t qword1;
+	uint16_t rx_stat_err0;
 	uint64_t dma_addr;
-	uint64_t pkt_flags = 0;
+	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 	struct rte_eth_dev *dev;
 
 	while (nb_rx < nb_pkts) {
-		rxdp = &rx_ring[rx_id];
-		qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
-		rx_status = (qword1 & ICE_RXD_QW1_STATUS_M) >>
-			    ICE_RXD_QW1_STATUS_S;
+		rxdp = (volatile union ice_rx_flex_desc *)&rx_ring[rx_id];
+		rx_stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
 
 		/* Check the DD bit first */
-		if (!(rx_status & (1 << ICE_RX_DESC_STATUS_DD_S)))
+		if (!(rx_stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S)))
 			break;
 
 		/* allocate mbuf */
@@ -1696,8 +1686,8 @@ ice_recv_pkts(void *rx_queue,
 		rxdp->read.pkt_addr = dma_addr;
 
 		/* calculate rx_packet_len of the received pkt */
-		rx_packet_len = ((qword1 & ICE_RXD_QW1_LEN_PBUF_M) >>
-				ICE_RXD_QW1_LEN_PBUF_S) - rxq->crc_len;
+		rx_packet_len = (rte_le_to_cpu_16(rxd.wb.pkt_len) &
+				 ICE_RX_FLX_DESC_PKT_LEN_M) - rxq->crc_len;
 
 		/* fill old mbuf with received descriptor: rxd */
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
@@ -1707,15 +1697,11 @@ ice_recv_pkts(void *rx_queue,
 		rxm->pkt_len = rx_packet_len;
 		rxm->data_len = rx_packet_len;
 		rxm->port = rxq->port_id;
-		ice_rxd_to_vlan_tci(rxm, rxdp);
-		rxm->packet_type = ptype_tbl[(uint8_t)((qword1 &
-							ICE_RXD_QW1_PTYPE_M) >>
-						       ICE_RXD_QW1_PTYPE_S)];
-		pkt_flags = ice_rxd_status_to_pkt_flags(qword1);
-		pkt_flags |= ice_rxd_error_to_pkt_flags(qword1);
-		if (pkt_flags & PKT_RX_RSS_HASH)
-			rxm->hash.rss =
-				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
+		rxm->packet_type = ptype_tbl[ICE_RX_FLEX_DESC_PTYPE_M &
+			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
+		ice_rxd_to_vlan_tci(rxm, &rxd);
+		ice_rxd_to_pkt_fields(rxm, &rxd);
+		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 		rxm->ol_flags |= pkt_flags;
 		/* copy old mbuf to rx_pkts */
 		rx_pkts[nb_rx++] = rxm;
