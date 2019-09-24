@@ -1297,6 +1297,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	/* AdminQ will pass absolute VF id, transfer to internal vf id */
 	uint16_t vf_id = abs_vf_id - hw->func_caps.vf_base_id;
 	struct rte_pmd_i40e_mb_event_param ret_param;
+	uint64_t first_cycle, cur_cycle;
 	bool b_op = TRUE;
 	int ret;
 
@@ -1306,11 +1307,18 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	}
 
 	vf = &pf->vfs[vf_id];
+
+	cur_cycle = rte_get_timer_cycles();
+
+	/* if the VF being blocked, ignore the message and return */
+	if (cur_cycle < vf->ignore_end_cycle)
+		return;
+
 	if (!vf->vsi) {
 		PMD_DRV_LOG(ERR, "NO VSI associated with VF found");
 		i40e_pf_host_send_msg_to_vf(vf, opcode,
 			I40E_ERR_NO_AVAILABLE_VSI, NULL, 0);
-		return;
+		goto check;
 	}
 
 	/* perform basic checks on the msg */
@@ -1334,7 +1342,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 			    vf_id, opcode, msglen);
 		i40e_pf_host_send_msg_to_vf(vf, opcode,
 					    I40E_ERR_PARAM, NULL, 0);
-		return;
+		goto check;
 	}
 
 	/**
@@ -1456,6 +1464,37 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 								NULL, 0);
 		break;
 	}
+
+check:
+	/* if message validation not enabled */
+	if (!pf->vf_msg_cfg.max_msg)
+		return;
+
+	/* store current cycle */
+	vf->msg_timestamps[vf->msg_index++] = cur_cycle;
+	vf->msg_index %= pf->vf_msg_cfg.max_msg;
+
+	/* read the timestamp of earliest message */
+	first_cycle = vf->msg_timestamps[vf->msg_index];
+
+	/*
+	 * If the time span from the arrival time of first message to
+	 * the arrival time of current message smaller than `period`,
+	 * that mean too much message in this statistic period.
+	 */
+	if (first_cycle && cur_cycle < first_cycle +
+			(uint64_t)pf->vf_msg_cfg.period * rte_get_timer_hz()) {
+		PMD_DRV_LOG(WARNING, "VF %u too much messages(%u in %u"
+				" seconds),\n\tany new message from which"
+				" will be ignored during next %u seconds!",
+				vf_id, pf->vf_msg_cfg.max_msg,
+				(uint32_t)((cur_cycle - first_cycle +
+				rte_get_timer_hz() - 1) / rte_get_timer_hz()),
+				pf->vf_msg_cfg.ignore_second);
+		vf->ignore_end_cycle = rte_get_timer_cycles() +
+				pf->vf_msg_cfg.ignore_second *
+				rte_get_timer_hz();
+	}
 }
 
 int
@@ -1463,6 +1502,7 @@ i40e_pf_host_init(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	size_t size;
 	int ret, i;
 	uint32_t val;
 
@@ -1489,10 +1529,24 @@ i40e_pf_host_init(struct rte_eth_dev *dev)
 	I40E_WRITE_REG(hw, I40E_PFGEN_PORTMDIO_NUM, val);
 	I40E_WRITE_FLUSH(hw);
 
+	/* calculate the memory size for storing timestamp of messages */
+	size = pf->vf_msg_cfg.max_msg * sizeof(uint64_t);
+
 	for (i = 0; i < pf->vf_num; i++) {
 		pf->vfs[i].pf = pf;
 		pf->vfs[i].state = I40E_VF_INACTIVE;
 		pf->vfs[i].vf_idx = i;
+
+		if (size) {
+			/* allocate memory for store timestamp of messages */
+			pf->vfs[i].msg_timestamps =
+					rte_zmalloc("i40e_pf_vf", size, 0);
+			if (pf->vfs[i].msg_timestamps == NULL) {
+				ret = -ENOMEM;
+				goto fail;
+			}
+		}
+
 		ret = i40e_pf_host_vf_reset(&pf->vfs[i], 0);
 		if (ret != I40E_SUCCESS)
 			goto fail;
@@ -1505,6 +1559,8 @@ i40e_pf_host_init(struct rte_eth_dev *dev)
 	return I40E_SUCCESS;
 
 fail:
+	for (; i >= 0; i--)
+		rte_free(pf->vfs[i].msg_timestamps);
 	rte_free(pf->vfs);
 	i40e_pf_enable_irq0(hw);
 
@@ -1517,6 +1573,7 @@ i40e_pf_host_uninit(struct rte_eth_dev *dev)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	uint32_t val;
+	int i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1528,6 +1585,10 @@ i40e_pf_host_uninit(struct rte_eth_dev *dev)
 		(pf->vf_num == 0) ||
 		(pf->vf_nb_qps == 0))
 		return I40E_SUCCESS;
+
+	/* free memory for store timestamp of messages */
+	for (i = 0; i < pf->vf_num; i++)
+		rte_free(pf->vfs[i].msg_timestamps);
 
 	/* free memory to store VF structure */
 	rte_free(pf->vfs);

@@ -185,6 +185,16 @@ Runtime Config Options
 
   -w 84:00.0,use-latest-supported-vec=1
 
+- ``Enable validation for VF message`` (default ``not enabled``)
+
+  The PF counts messages from each VF. If in any period of seconds the message
+  statistic from a VF exceeds maximal limitation, the PF will ignore any new message
+  from that VF for some seconds.
+  Format -- "maximal-message@period-seconds:ignore-seconds"
+  For example::
+
+  -w 84:00.0,vf_msg_cfg=80@120:180
+
 Vector RX Pre-conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~
 For Vector RX it is assumed that the number of descriptor rings will be a power
