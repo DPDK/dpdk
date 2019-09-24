@@ -549,8 +549,10 @@ send_single_packet(struct rte_mbuf *m, uint16_t port, uint8_t proto)
 		len++;
 
 	/* need to fragment the packet */
-	} else
+	} else if (frag_tbl_sz > 0)
 		len = send_fragment_packet(qconf, m, port, proto);
+	else
+		rte_pktmbuf_free(m);
 
 	/* enough pkts to be sent */
 	if (unlikely(len == MAX_PKT_BURST)) {
