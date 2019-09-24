@@ -929,7 +929,12 @@ bond_mode_8023ad_register_lacp_mac(uint16_t slave_id)
 {
 	int ret;
 
-	rte_eth_allmulticast_enable(slave_id);
+	ret = rte_eth_allmulticast_enable(slave_id);
+	if (ret != 0) {
+		RTE_BOND_LOG(ERR,
+			"failed to enable allmulti mode for port %u: %s",
+			slave_id, rte_strerror(-ret));
+	}
 	if (rte_eth_allmulticast_get(slave_id)) {
 		RTE_BOND_LOG(DEBUG, "forced allmulti for port %u",
 			     slave_id);
@@ -963,7 +968,11 @@ bond_mode_8023ad_unregister_lacp_mac(uint16_t slave_id)
 	switch (bond_mode_8023ad_ports[slave_id].forced_rx_flags) {
 	case BOND_8023AD_FORCED_ALLMULTI:
 		RTE_BOND_LOG(DEBUG, "unset allmulti for port %u", slave_id);
-		rte_eth_allmulticast_disable(slave_id);
+		ret = rte_eth_allmulticast_disable(slave_id);
+		if (ret != 0)
+			RTE_BOND_LOG(ERR,
+				"failed to disable allmulti mode for port %u: %s",
+				slave_id, rte_strerror(-ret));
 		break;
 
 	case BOND_8023AD_FORCED_PROMISC:
