@@ -21,8 +21,10 @@
 
 #ifdef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 #define ice_rx_desc ice_16byte_rx_desc
+#define ice_rx_flex_desc ice_16b_rx_flex_desc
 #else
 #define ice_rx_desc ice_32byte_rx_desc
+#define ice_rx_flex_desc ice_32b_rx_flex_desc
 #endif
 
 #define ICE_SUPPORT_CHAIN_NUM 5
