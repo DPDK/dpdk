@@ -1422,10 +1422,23 @@ rte_eth_dev_config_restore(struct rte_eth_dev *dev,
 	}
 
 	/* replay all multicast configuration */
-	if (rte_eth_allmulticast_get(port_id) == 1)
-		rte_eth_allmulticast_enable(port_id);
-	else if (rte_eth_allmulticast_get(port_id) == 0)
-		rte_eth_allmulticast_disable(port_id);
+	if (rte_eth_allmulticast_get(port_id) == 1) {
+		ret = rte_eth_allmulticast_enable(port_id);
+		if (ret != 0 && ret != -ENOTSUP) {
+			RTE_ETHDEV_LOG(ERR,
+				"Failed to enable allmulticast mode for device (port %u): %s\n",
+				port_id, rte_strerror(-ret));
+			return ret;
+		}
+	} else if (rte_eth_allmulticast_get(port_id) == 0) {
+		ret = rte_eth_allmulticast_disable(port_id);
+		if (ret != 0 && ret != -ENOTSUP) {
+			RTE_ETHDEV_LOG(ERR,
+				"Failed to disable allmulticast mode for device (port %u): %s\n",
+				port_id, rte_strerror(-ret));
+			return ret;
+		}
+	}
 
 	return 0;
 }
@@ -1951,30 +1964,34 @@ rte_eth_promiscuous_get(uint16_t port_id)
 	return dev->data->promiscuous;
 }
 
-void
+int
 rte_eth_allmulticast_enable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
-	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->allmulticast_enable);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->allmulticast_enable, -ENOTSUP);
 	(*dev->dev_ops->allmulticast_enable)(dev);
 	dev->data->all_multicast = 1;
+
+	return 0;
 }
 
-void
+int
 rte_eth_allmulticast_disable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
-	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->allmulticast_disable);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->allmulticast_disable, -ENOTSUP);
 	dev->data->all_multicast = 0;
 	(*dev->dev_ops->allmulticast_disable)(dev);
+
+	return 0;
 }
 
 int

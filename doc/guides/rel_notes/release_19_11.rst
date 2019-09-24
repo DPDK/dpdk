@@ -130,6 +130,10 @@ API Changes
   ``rte_eth_promiscuous_disable`` return value from ``void`` to ``int`` to
   provide a way to report various error conditions.
 
+* ethdev: changed ``rte_eth_allmulticast_enable`` and
+  ``rte_eth_allmulticast_disable`` return value from ``void`` to ``int`` to
+  provide a way to report various error conditions.
+
 * ethdev: changed ``rte_eth_dev_xstats_reset`` return value from ``void`` to
   ``int`` to provide a way to report various error conditions.
 

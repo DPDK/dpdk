@@ -2062,16 +2062,26 @@ int rte_eth_promiscuous_get(uint16_t port_id);
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if support for allmulticast_enable() does not exist
+ *     for the device.
+ *   - (-ENODEV) if *port_id* invalid.
  */
-void rte_eth_allmulticast_enable(uint16_t port_id);
+int rte_eth_allmulticast_enable(uint16_t port_id);
 
 /**
  * Disable the receipt of all multicast frames by an Ethernet device.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if support for allmulticast_disable() does not exist
+ *     for the device.
+ *   - (-ENODEV) if *port_id* invalid.
  */
-void rte_eth_allmulticast_disable(uint16_t port_id);
+int rte_eth_allmulticast_disable(uint16_t port_id);
 
 /**
  * Return the value of allmulticast mode for an Ethernet device.
