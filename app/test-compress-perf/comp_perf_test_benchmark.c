@@ -15,7 +15,8 @@ cperf_benchmark_test_destructor(void *arg)
 {
 	if (arg) {
 		comp_perf_free_memory(
-				&((struct cperf_benchmark_ctx *)arg)->ver.mem);
+			((struct cperf_benchmark_ctx *)arg)->ver.options,
+			&((struct cperf_benchmark_ctx *)arg)->ver.mem);
 		rte_free(arg);
 	}
 }

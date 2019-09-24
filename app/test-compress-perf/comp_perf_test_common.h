@@ -26,13 +26,20 @@ struct cperf_mem_resources {
 	struct rte_mempool *comp_buf_pool;
 	struct rte_mempool *decomp_buf_pool;
 	struct rte_mempool *op_pool;
+
+	/* external mbuf support */
+	const struct rte_memzone **comp_memzones;
+	const struct rte_memzone **decomp_memzones;
+	struct rte_mbuf_ext_shared_info *comp_buf_infos;
+	struct rte_mbuf_ext_shared_info *decomp_buf_infos;
 };
 
 int
 param_range_check(uint16_t size, const struct rte_param_log2_range *range);
 
 void
-comp_perf_free_memory(struct cperf_mem_resources *mem);
+comp_perf_free_memory(struct comp_test_data *test_data,
+		      struct cperf_mem_resources *mem);
 
 int
 comp_perf_allocate_memory(struct comp_test_data *test_data,

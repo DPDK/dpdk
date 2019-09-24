@@ -28,6 +28,7 @@
 #define CPERF_HUFFMAN_ENC	("huffman-enc")
 #define CPERF_LEVEL		("compress-level")
 #define CPERF_WINDOW_SIZE	("window-sz")
+#define CPERF_EXTERNAL_MBUFS	("external-mbufs")
 
 struct name_id_map {
 	const char *name;
@@ -58,6 +59,8 @@ usage(char *progname)
 		"		(default: range between 1 and 9)\n"
 		" --window-sz N: base two log value of compression window size\n"
 		"		(e.g.: 15 => 32k, default: max supported by PMD)\n"
+		" --external-mbufs: use memzones as external buffers instead of\n"
+		"		keeping the data directly in mbuf area\n"
 		" -h: prints this help\n",
 		progname);
 }
@@ -520,6 +523,14 @@ parse_level(struct comp_test_data *test_data, const char *arg)
 	return 0;
 }
 
+static int
+parse_external_mbufs(struct comp_test_data *test_data,
+		     const char *arg __rte_unused)
+{
+	test_data->use_external_mbufs = 1;
+	return 0;
+}
+
 typedef int (*option_parser_t)(struct comp_test_data *test_data,
 		const char *arg);
 
@@ -544,8 +555,10 @@ static struct option lgopts[] = {
 	{ CPERF_HUFFMAN_ENC, required_argument, 0, 0 },
 	{ CPERF_LEVEL, required_argument, 0, 0 },
 	{ CPERF_WINDOW_SIZE, required_argument, 0, 0 },
+	{ CPERF_EXTERNAL_MBUFS, 0, 0, 0 },
 	{ NULL, 0, 0, 0 }
 };
+
 static int
 comp_perf_opts_parse_long(int opt_idx, struct comp_test_data *test_data)
 {
@@ -563,6 +576,7 @@ comp_perf_opts_parse_long(int opt_idx, struct comp_test_data *test_data)
 		{ CPERF_HUFFMAN_ENC,	parse_huffman_enc },
 		{ CPERF_LEVEL,		parse_level },
 		{ CPERF_WINDOW_SIZE,	parse_window_sz },
+		{ CPERF_EXTERNAL_MBUFS,	parse_external_mbufs },
 	};
 	unsigned int i;
 
@@ -618,6 +632,7 @@ comp_perf_options_default(struct comp_test_data *test_data)
 	test_data->level_lst.max = RTE_COMP_LEVEL_MAX;
 	test_data->level_lst.inc = 1;
 	test_data->test = CPERF_TEST_TYPE_BENCHMARK;
+	test_data->use_external_mbufs = 0;
 }
 
 int

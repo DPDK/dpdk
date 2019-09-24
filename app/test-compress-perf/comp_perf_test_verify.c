@@ -14,7 +14,9 @@ void
 cperf_verify_test_destructor(void *arg)
 {
 	if (arg) {
-		comp_perf_free_memory(&((struct cperf_verify_ctx *)arg)->mem);
+		comp_perf_free_memory(
+				((struct cperf_verify_ctx *)arg)->options,
+				&((struct cperf_verify_ctx *)arg)->mem);
 		rte_free(arg);
 	}
 }

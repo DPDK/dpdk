@@ -56,12 +56,14 @@ struct comp_test_data {
 	uint32_t pool_sz;
 	uint32_t num_iter;
 	uint16_t max_sgl_segs;
+	uint32_t total_segs;
 
 	enum rte_comp_huffman huffman_enc;
 	enum comp_operation test_op;
 	int window_sz;
 	struct range_list level_lst;
 	uint8_t level;
+	int use_external_mbufs;
 
 	double ratio;
 	enum cleanup_st cleanup;
