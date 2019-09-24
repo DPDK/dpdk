@@ -137,6 +137,19 @@ if libbsd.found()
 	dpdk_conf.set('RTE_USE_LIBBSD', 1)
 endif
 
+# check for pcap
+pcap_dep = dependency('pcap', required: false)
+if pcap_dep.found()
+	# pcap got a pkg-config file only in 1.9.0 and before that meson uses
+	# an internal pcap-config finder, which is not compatible with
+	# cross-compilation, so try to fallback to find_library
+	pcap_dep = cc.find_library('pcap', required: false)
+endif
+if pcap_dep.found() and cc.has_header('pcap.h', dependencies: pcap_dep)
+	dpdk_conf.set('RTE_PORT_PCAP', 1)
+	dpdk_extra_ldflags += '-lpcap'
+endif
+
 # add -include rte_config to cflags
 add_project_arguments('-include', 'rte_config.h', language: 'c')
 
