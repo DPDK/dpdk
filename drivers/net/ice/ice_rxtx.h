@@ -21,10 +21,8 @@
 #define ICE_CHK_Q_ENA_INTERVAL_US  100
 
 #ifdef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-#define ice_rx_desc ice_16byte_rx_desc
 #define ice_rx_flex_desc ice_16b_rx_flex_desc
 #else
-#define ice_rx_desc ice_32byte_rx_desc
 #define ice_rx_flex_desc ice_32b_rx_flex_desc
 #endif
 
@@ -48,7 +46,7 @@ struct ice_rx_entry {
 
 struct ice_rx_queue {
 	struct rte_mempool *mp; /* mbuf pool to populate RX ring */
-	volatile union ice_rx_desc *rx_ring;/* RX ring virtual address */
+	volatile union ice_rx_flex_desc *rx_ring;/* RX ring virtual address */
 	rte_iova_t rx_ring_dma; /* RX ring DMA address */
 	struct ice_rx_entry *sw_ring; /* address of RX soft ring */
 	uint16_t nb_rx_desc; /* number of RX descriptors */

@@ -22,7 +22,7 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 					  RTE_PKTMBUF_HEADROOM);
 	__m128i dma_addr0, dma_addr1;
 
-	rxdp = (union ice_rx_flex_desc *)rxq->rx_ring + rxq->rxrearm_start;
+	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
 	/* Pull 'n' more MBUFs into the software ring */
 	if (rte_mempool_get_bulk(rxq->mp,
@@ -273,7 +273,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	/* Just the act of getting into the function from the application is
 	 * going to cost about 7 cycles
 	 */
-	rxdp = (union ice_rx_flex_desc *)rxq->rx_ring + rxq->rx_tail;
+	rxdp = rxq->rx_ring + rxq->rx_tail;
 
 	rte_prefetch0(rxdp);
 

@@ -170,7 +170,7 @@ ice_alloc_rx_queue_mbufs(struct ice_rx_queue *rxq)
 	uint16_t i;
 
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
-		volatile union ice_rx_desc *rxd;
+		volatile union ice_rx_flex_desc *rxd;
 		struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mp);
 
 		if (unlikely(!mbuf)) {
@@ -345,7 +345,7 @@ ice_reset_rx_queue(struct ice_rx_queue *rxq)
 #endif /* RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC */
 		len = rxq->nb_rx_desc;
 
-	for (i = 0; i < len * sizeof(union ice_rx_desc); i++)
+	for (i = 0; i < len * sizeof(union ice_rx_flex_desc); i++)
 		((volatile char *)rxq->rx_ring)[i] = 0;
 
 #ifdef RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC
@@ -690,7 +690,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 #endif
 
 	/* Allocate the maximum number of RX ring hardware descriptor. */
-	ring_size = sizeof(union ice_rx_desc) * len;
+	ring_size = sizeof(union ice_rx_flex_desc) * len;
 	ring_size = RTE_ALIGN(ring_size, ICE_DMA_MEM_ALIGN);
 	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
 				      ring_size, ICE_RING_BASE_ALIGN,
@@ -1007,7 +1007,7 @@ ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	uint16_t desc = 0;
 
 	rxq = dev->data->rx_queues[rx_queue_id];
-	rxdp = (volatile union ice_rx_flex_desc *)&rxq->rx_ring[rxq->rx_tail];
+	rxdp = &rxq->rx_ring[rxq->rx_tail];
 	while ((desc < rxq->nb_rx_desc) &&
 	       rte_le_to_cpu_16(rxdp->wb.status_error0) &
 	       (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S)) {
@@ -1019,8 +1019,7 @@ ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		desc += ICE_RXQ_SCAN_INTERVAL;
 		rxdp += ICE_RXQ_SCAN_INTERVAL;
 		if (rxq->rx_tail + desc >= rxq->nb_rx_desc)
-			rxdp = (volatile union ice_rx_flex_desc *)
-				&(rxq->rx_ring[rxq->rx_tail +
+			rxdp = &(rxq->rx_ring[rxq->rx_tail +
 				 desc - rxq->nb_rx_desc]);
 	}
 
@@ -1155,7 +1154,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 	uint64_t pkt_flags = 0;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
-	rxdp = (volatile union ice_rx_flex_desc *)&rxq->rx_ring[rxq->rx_tail];
+	rxdp = &rxq->rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
 
 	stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
@@ -1240,7 +1239,7 @@ ice_rx_fill_from_stage(struct ice_rx_queue *rxq,
 static inline int
 ice_rx_alloc_bufs(struct ice_rx_queue *rxq)
 {
-	volatile union ice_rx_desc *rxdp;
+	volatile union ice_rx_flex_desc *rxdp;
 	struct ice_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t alloc_idx, i;
@@ -1375,7 +1374,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 			uint16_t nb_pkts)
 {
 	struct ice_rx_queue *rxq = rx_queue;
-	volatile union ice_rx_desc *rx_ring = rxq->rx_ring;
+	volatile union ice_rx_flex_desc *rx_ring = rxq->rx_ring;
 	volatile union ice_rx_flex_desc *rxdp;
 	union ice_rx_flex_desc rxd;
 	struct ice_rx_entry *sw_ring = rxq->sw_ring;
@@ -1395,7 +1394,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 	struct rte_eth_dev *dev;
 
 	while (nb_rx < nb_pkts) {
-		rxdp = (volatile union ice_rx_flex_desc *)&rx_ring[rx_id];
+		rxdp = &rx_ring[rx_id];
 		rx_stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
 
 		/* Check the DD bit first */
@@ -1607,7 +1606,7 @@ ice_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	if (desc >= rxq->nb_rx_desc)
 		desc -= rxq->nb_rx_desc;
 
-	rxdp = (volatile union ice_rx_flex_desc *)&rxq->rx_ring[desc];
+	rxdp = &rxq->rx_ring[desc];
 	if (rte_le_to_cpu_16(rxdp->wb.status_error0) &
 	    (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S))
 		return RTE_ETH_RX_DESC_DONE;
@@ -1694,7 +1693,7 @@ ice_recv_pkts(void *rx_queue,
 	      uint16_t nb_pkts)
 {
 	struct ice_rx_queue *rxq = rx_queue;
-	volatile union ice_rx_desc *rx_ring = rxq->rx_ring;
+	volatile union ice_rx_flex_desc *rx_ring = rxq->rx_ring;
 	volatile union ice_rx_flex_desc *rxdp;
 	union ice_rx_flex_desc rxd;
 	struct ice_rx_entry *sw_ring = rxq->sw_ring;
@@ -1712,7 +1711,7 @@ ice_recv_pkts(void *rx_queue,
 	struct rte_eth_dev *dev;
 
 	while (nb_rx < nb_pkts) {
-		rxdp = (volatile union ice_rx_flex_desc *)&rx_ring[rx_id];
+		rxdp = &rx_ring[rx_id];
 		rx_stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
 
 		/* Check the DD bit first */

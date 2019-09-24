@@ -18,7 +18,7 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 	volatile union ice_rx_flex_desc *rxdp;
 	struct ice_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 
-	rxdp = (union ice_rx_flex_desc *)rxq->rx_ring + rxq->rxrearm_start;
+	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
 	/* Pull 'n' more MBUFs into the software ring */
 	if (rte_mempool_get_bulk(rxq->mp,
@@ -142,8 +142,7 @@ _ice_recv_raw_pkts_vec_avx2(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0,
 			0, rxq->mbuf_initializer);
 	struct ice_rx_entry *sw_ring = &rxq->sw_ring[rxq->rx_tail];
-	volatile union ice_rx_flex_desc *rxdp =
-		(union ice_rx_flex_desc *)rxq->rx_ring + rxq->rx_tail;
+	volatile union ice_rx_flex_desc *rxdp = rxq->rx_ring + rxq->rx_tail;
 	const int avx_aligned = ((rxq->rx_tail & 1) == 0);
 
 	rte_prefetch0(rxdp);
