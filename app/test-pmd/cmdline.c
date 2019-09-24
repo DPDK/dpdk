@@ -6603,17 +6603,11 @@ static void cmd_set_allmulti_mode_parsed(void *parsed_result,
 	/* all ports */
 	if (allports) {
 		RTE_ETH_FOREACH_DEV(i) {
-			if (enable)
-				rte_eth_allmulticast_enable(i);
-			else
-				rte_eth_allmulticast_disable(i);
+			eth_set_allmulticast_mode(i, enable);
 		}
 	}
 	else {
-		if (enable)
-			rte_eth_allmulticast_enable(res->port_num);
-		else
-			rte_eth_allmulticast_disable(res->port_num);
+		eth_set_allmulticast_mode(res->port_num, enable);
 	}
 }
 
