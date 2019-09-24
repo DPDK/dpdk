@@ -15,6 +15,7 @@ if not cc.has_header('linux/virtio_scsi.h')
 endif
 
 deps += 'vhost'
+allow_experimental_apis = true
 sources = files(
 	'scsi.c', 'vhost_scsi.c'
 )

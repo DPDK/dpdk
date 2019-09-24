@@ -58,6 +58,7 @@ please change the definition of the RTE_TARGET environment variable)
 all:
 else
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -D_FILE_OFFSET_BITS=64
 CFLAGS += -O2
 CFLAGS += $(WERROR_FLAGS)
