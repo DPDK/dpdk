@@ -2882,7 +2882,7 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 	}
 
 	if (mtu)
-		*mtu = resp->mtu;
+		*mtu = rte_le_to_cpu_16(resp->mtu);
 
 	switch (resp->port_partition_type) {
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0:
