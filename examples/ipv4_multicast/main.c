@@ -783,7 +783,11 @@ main(int argc, char **argv)
 			qconf->tx_queue_id[portid] = queueid;
 			queueid++;
 		}
-		rte_eth_allmulticast_enable(portid);
+		ret = rte_eth_allmulticast_enable(portid);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				"rte_eth_allmulticast_enable: err=%d, port=%d\n",
+				ret, portid);
 		/* Start device */
 		ret = rte_eth_dev_start(portid);
 		if (ret < 0)
