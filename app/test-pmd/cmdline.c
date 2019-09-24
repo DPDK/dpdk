@@ -758,6 +758,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port close (port_id|all)\n"
 			"    Close all ports or port_id.\n\n"
 
+			"port reset (port_id|all)\n"
+			"    Reset all ports or port_id.\n\n"
+
 			"port attach (ident)\n"
 			"    Attach physical or virtual dev by pci address or virtual device name\n\n"
 

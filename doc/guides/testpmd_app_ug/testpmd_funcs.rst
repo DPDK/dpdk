@@ -2041,6 +2041,15 @@ Close all ports or a specific port::
 
    testpmd> port close (port_id|all)
 
+port reset
+~~~~~~~~~~
+
+Reset all ports or a specific port::
+
+   testpmd> port reset (port_id|all)
+
+User should stop port(s) before resetting and (re-)start after reset.
+
 port config - queue ring size
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
