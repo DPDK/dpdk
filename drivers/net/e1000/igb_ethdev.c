@@ -81,8 +81,8 @@ static void eth_igb_close(struct rte_eth_dev *dev);
 static int eth_igb_reset(struct rte_eth_dev *dev);
 static int  eth_igb_promiscuous_enable(struct rte_eth_dev *dev);
 static int  eth_igb_promiscuous_disable(struct rte_eth_dev *dev);
-static void eth_igb_allmulticast_enable(struct rte_eth_dev *dev);
-static void eth_igb_allmulticast_disable(struct rte_eth_dev *dev);
+static int  eth_igb_allmulticast_enable(struct rte_eth_dev *dev);
+static int  eth_igb_allmulticast_disable(struct rte_eth_dev *dev);
 static int  eth_igb_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static int eth_igb_stats_get(struct rte_eth_dev *dev,
@@ -158,8 +158,8 @@ static void igbvf_dev_stop(struct rte_eth_dev *dev);
 static void igbvf_dev_close(struct rte_eth_dev *dev);
 static int igbvf_promiscuous_enable(struct rte_eth_dev *dev);
 static int igbvf_promiscuous_disable(struct rte_eth_dev *dev);
-static void igbvf_allmulticast_enable(struct rte_eth_dev *dev);
-static void igbvf_allmulticast_disable(struct rte_eth_dev *dev);
+static int igbvf_allmulticast_enable(struct rte_eth_dev *dev);
+static int igbvf_allmulticast_disable(struct rte_eth_dev *dev);
 static int eth_igbvf_link_update(struct e1000_hw *hw);
 static int eth_igbvf_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
@@ -2557,7 +2557,7 @@ eth_igb_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_igb_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
@@ -2567,9 +2567,11 @@ eth_igb_allmulticast_enable(struct rte_eth_dev *dev)
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl |= E1000_RCTL_MPE;
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	return 0;
 }
 
-static void
+static int
 eth_igb_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
@@ -2577,10 +2579,12 @@ eth_igb_allmulticast_disable(struct rte_eth_dev *dev)
 	uint32_t rctl;
 
 	if (dev->data->promiscuous == 1)
-		return; /* must remain in all_multicast mode */
+		return 0; /* must remain in all_multicast mode */
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl &= (~E1000_RCTL_MPE);
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	return 0;
 }
 
 static int
@@ -3425,7 +3429,7 @@ igbvf_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 igbvf_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -3433,9 +3437,11 @@ igbvf_allmulticast_enable(struct rte_eth_dev *dev)
 	/* In promiscuous mode multicast promisc already set */
 	if (dev->data->promiscuous == 0)
 		e1000_promisc_set_vf(hw, e1000_promisc_multicast);
+
+	return 0;
 }
 
-static void
+static int
 igbvf_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -3443,6 +3449,8 @@ igbvf_allmulticast_disable(struct rte_eth_dev *dev)
 	/* In promiscuous mode leave multicast promisc enabled */
 	if (dev->data->promiscuous == 0)
 		e1000_promisc_set_vf(hw, e1000_promisc_disabled);
+
+	return 0;
 }
 
 static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on)

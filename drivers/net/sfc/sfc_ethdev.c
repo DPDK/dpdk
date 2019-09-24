@@ -414,16 +414,16 @@ sfc_dev_promisc_disable(struct rte_eth_dev *dev)
 	return sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_PROMISC, B_FALSE);
 }
 
-static void
+static int
 sfc_dev_allmulti_enable(struct rte_eth_dev *dev)
 {
-	sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_ALLMULTI, B_TRUE);
+	return sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_ALLMULTI, B_TRUE);
 }
 
-static void
+static int
 sfc_dev_allmulti_disable(struct rte_eth_dev *dev)
 {
-	sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_ALLMULTI, B_FALSE);
+	return sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_ALLMULTI, B_FALSE);
 }
 
 static int

@@ -543,9 +543,9 @@ int
 ipn3ke_rpst_promiscuous_enable(struct rte_eth_dev *ethdev);
 int
 ipn3ke_rpst_promiscuous_disable(struct rte_eth_dev *ethdev);
-void
+int
 ipn3ke_rpst_allmulticast_enable(struct rte_eth_dev *ethdev);
-void
+int
 ipn3ke_rpst_allmulticast_disable(struct rte_eth_dev *ethdev);
 int
 ipn3ke_rpst_mac_addr_set(struct rte_eth_dev *ethdev,

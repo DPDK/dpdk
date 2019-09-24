@@ -538,22 +538,26 @@ static int dpaa_eth_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void dpaa_eth_multicast_enable(struct rte_eth_dev *dev)
+static int dpaa_eth_multicast_enable(struct rte_eth_dev *dev)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
 	fman_if_set_mcast_filter_table(dpaa_intf->fif);
+
+	return 0;
 }
 
-static void dpaa_eth_multicast_disable(struct rte_eth_dev *dev)
+static int dpaa_eth_multicast_disable(struct rte_eth_dev *dev)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
 	fman_if_reset_mcast_filter_table(dpaa_intf->fif);
+
+	return 0;
 }
 
 static

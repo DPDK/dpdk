@@ -14,8 +14,8 @@ int cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 		       struct rte_eth_dev_info *device_info);
 int cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev);
 int cxgbe_dev_promiscuous_disable(struct rte_eth_dev *eth_dev);
-void cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev);
-void cxgbe_dev_allmulticast_disable(struct rte_eth_dev *eth_dev);
+int cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev);
+int cxgbe_dev_allmulticast_disable(struct rte_eth_dev *eth_dev);
 int cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr);
 int cxgbe_dev_configure(struct rte_eth_dev *eth_dev);
 int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t queue_idx,

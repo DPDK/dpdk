@@ -1760,25 +1760,32 @@ static int qede_reset_stats(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static void qede_allmulticast_enable(struct rte_eth_dev *eth_dev)
+static int qede_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	enum qed_filter_rx_mode_type type =
 	    QED_FILTER_RX_MODE_TYPE_MULTI_PROMISC;
+	enum _ecore_status_t ecore_status;
 
 	if (rte_eth_promiscuous_get(eth_dev->data->port_id) == 1)
 		type |= QED_FILTER_RX_MODE_TYPE_PROMISC;
 
-	qed_configure_filter_rx_mode(eth_dev, type);
+	ecore_status = qed_configure_filter_rx_mode(eth_dev, type);
+
+	return ecore_status >= ECORE_SUCCESS ? 0 : -EAGAIN;
 }
 
-static void qede_allmulticast_disable(struct rte_eth_dev *eth_dev)
+static int qede_allmulticast_disable(struct rte_eth_dev *eth_dev)
 {
+	enum _ecore_status_t ecore_status;
+
 	if (rte_eth_promiscuous_get(eth_dev->data->port_id) == 1)
-		qed_configure_filter_rx_mode(eth_dev,
+		ecore_status = qed_configure_filter_rx_mode(eth_dev,
 				QED_FILTER_RX_MODE_TYPE_PROMISC);
 	else
-		qed_configure_filter_rx_mode(eth_dev,
+		ecore_status = qed_configure_filter_rx_mode(eth_dev,
 				QED_FILTER_RX_MODE_TYPE_REGULAR);
+
+	return ecore_status >= ECORE_SUCCESS ? 0 : -EAGAIN;
 }
 
 static int

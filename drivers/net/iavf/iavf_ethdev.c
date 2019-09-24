@@ -45,8 +45,8 @@ static int iavf_dev_stats_get(struct rte_eth_dev *dev,
 static int iavf_dev_stats_reset(struct rte_eth_dev *dev);
 static int iavf_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int iavf_dev_promiscuous_disable(struct rte_eth_dev *dev);
-static void iavf_dev_allmulticast_enable(struct rte_eth_dev *dev);
-static void iavf_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int iavf_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static int iavf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int iavf_dev_add_mac_addr(struct rte_eth_dev *dev,
 				struct rte_ether_addr *addr,
 				uint32_t index,
@@ -674,7 +674,7 @@ iavf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static void
+static int
 iavf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct iavf_adapter *adapter =
@@ -683,14 +683,18 @@ iavf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	int ret;
 
 	if (vf->promisc_multicast_enabled)
-		return;
+		return 0;
 
 	ret = iavf_config_promisc(adapter, vf->promisc_unicast_enabled, TRUE);
 	if (!ret)
 		vf->promisc_multicast_enabled = TRUE;
+	else
+		ret = -EAGAIN;
+
+	return ret;
 }
 
-static void
+static int
 iavf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct iavf_adapter *adapter =
@@ -699,11 +703,15 @@ iavf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	int ret;
 
 	if (!vf->promisc_multicast_enabled)
-		return;
+		return 0;
 
 	ret = iavf_config_promisc(adapter, vf->promisc_unicast_enabled, FALSE);
 	if (!ret)
 		vf->promisc_multicast_enabled = FALSE;
+	else
+		ret = -EAGAIN;
+
+	return ret;
 }
 
 static int

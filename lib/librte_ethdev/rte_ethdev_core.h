@@ -102,11 +102,55 @@ typedef int (*eth_promiscuous_enable_t)(struct rte_eth_dev *dev);
  */
 typedef int (*eth_promiscuous_disable_t)(struct rte_eth_dev *dev);
 
-typedef void (*eth_allmulticast_enable_t)(struct rte_eth_dev *dev);
-/**< @internal Enable the receipt of all multicast packets by an Ethernet device. */
+/**
+ * @internal
+ * Enable the receipt of all multicast packets by an Ethernet device.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, all-multicast mode is enabled.
+ * @retval -ENOTSUP
+ *   All-multicast mode is not supported.
+ * @retval -ENODEV
+ *   Device is gone.
+ * @retval -E_RTE_SECONDARY
+ *   Function was called from a secondary process instance and not supported.
+ * @retval -ETIMEDOUT
+ *   Attempt to enable all-multicast mode failed because of timeout.
+ * @retval -EAGAIN
+ *   Failed to enable all-multicast mode.
+ */
+typedef int (*eth_allmulticast_enable_t)(struct rte_eth_dev *dev);
 
-typedef void (*eth_allmulticast_disable_t)(struct rte_eth_dev *dev);
-/**< @internal Disable the receipt of all multicast packets by an Ethernet device. */
+/**
+ * @internal
+ * Disable the receipt of all multicast packets by an Ethernet device.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, all-multicast mode is disabled.
+ * @retval -ENOTSUP
+ *   All-multicast mode disabling is not supported.
+ * @retval -ENODEV
+ *   Device is gone.
+ * @retval -E_RTE_SECONDARY
+ *   Function was called from a secondary process instance and not supported.
+ * @retval -ETIMEDOUT
+ *   Attempt to disable all-multicast mode failed because of timeout.
+ * @retval -EAGAIN
+ *   Failed to disable all-multicast mode.
+ */
+typedef int (*eth_allmulticast_disable_t)(struct rte_eth_dev *dev);
 
 typedef int (*eth_link_update_t)(struct rte_eth_dev *dev,
 				int wait_to_complete);

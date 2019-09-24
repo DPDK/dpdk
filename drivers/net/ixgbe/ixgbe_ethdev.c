@@ -151,8 +151,8 @@ static void ixgbe_dev_close(struct rte_eth_dev *dev);
 static int  ixgbe_dev_reset(struct rte_eth_dev *dev);
 static int ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
-static void ixgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
-static void ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int ixgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static int ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int ixgbe_dev_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static int ixgbe_dev_stats_get(struct rte_eth_dev *dev,
@@ -272,8 +272,8 @@ static void ixgbevf_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 static void ixgbevf_configure_msix(struct rte_eth_dev *dev);
 static int ixgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int ixgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev);
-static void ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev);
-static void ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static int ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
 /* For Eth VMDQ APIs support */
 static int ixgbe_uc_hash_table_set(struct rte_eth_dev *dev, struct
@@ -4220,7 +4220,7 @@ ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 ixgbe_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -4229,20 +4229,24 @@ ixgbe_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	fctrl = IXGBE_READ_REG(hw, IXGBE_FCTRL);
 	fctrl |= IXGBE_FCTRL_MPE;
 	IXGBE_WRITE_REG(hw, IXGBE_FCTRL, fctrl);
+
+	return 0;
 }
 
-static void
+static int
 ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t fctrl;
 
 	if (dev->data->promiscuous == 1)
-		return; /* must remain in all_multicast mode */
+		return 0; /* must remain in all_multicast mode */
 
 	fctrl = IXGBE_READ_REG(hw, IXGBE_FCTRL);
 	fctrl &= (~IXGBE_FCTRL_MPE);
 	IXGBE_WRITE_REG(hw, IXGBE_FCTRL, fctrl);
+
+	return 0;
 }
 
 /**
@@ -8457,20 +8461,47 @@ ixgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static void
+static int
 ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+	int mode = IXGBEVF_XCAST_MODE_ALLMULTI;
 
-	hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_ALLMULTI);
+	switch (hw->mac.ops.update_xcast_mode(hw, mode)) {
+	case IXGBE_SUCCESS:
+		ret = 0;
+		break;
+	case IXGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
 }
 
-static void
+static int
 ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
 
-	hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_MULTI);
+	switch (hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_MULTI)) {
+	case IXGBE_SUCCESS:
+		ret = 0;
+		break;
+	case IXGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
 }
 
 static void ixgbevf_mbx_process(struct rte_eth_dev *dev)

@@ -1158,28 +1158,60 @@ tap_promisc_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 tap_allmulti_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct ifreq ifr = { .ifr_flags = IFF_ALLMULTI };
+	int ret;
 
-	dev->data->all_multicast = 1;
-	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
-	if (pmd->remote_if_index && !pmd->flow_isolate)
-		tap_flow_implicit_create(pmd, TAP_REMOTE_ALLMULTI);
+	ret = tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
+	if (ret != 0)
+		return ret;
+
+	if (pmd->remote_if_index && !pmd->flow_isolate) {
+		dev->data->all_multicast = 1;
+		ret = tap_flow_implicit_create(pmd, TAP_REMOTE_ALLMULTI);
+		if (ret != 0) {
+			/* Rollback allmulti flag */
+			tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
+			/*
+			 * rte_eth_dev_allmulticast_enable() rollback
+			 * dev->data->all_multicast in the case of failure.
+			 */
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
-static void
+static int
 tap_allmulti_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct ifreq ifr = { .ifr_flags = IFF_ALLMULTI };
+	int ret;
 
-	dev->data->all_multicast = 0;
-	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
-	if (pmd->remote_if_index && !pmd->flow_isolate)
-		tap_flow_implicit_destroy(pmd, TAP_REMOTE_ALLMULTI);
+	ret = tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
+	if (ret != 0)
+		return ret;
+
+	if (pmd->remote_if_index && !pmd->flow_isolate) {
+		dev->data->all_multicast = 0;
+		ret = tap_flow_implicit_destroy(pmd, TAP_REMOTE_ALLMULTI);
+		if (ret != 0) {
+			/* Rollback allmulti flag */
+			tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
+			/*
+			 * rte_eth_dev_allmulticast_disable() rollback
+			 * dev->data->all_multicast in the case of failure.
+			 */
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
 static int

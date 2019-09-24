@@ -2642,12 +2642,12 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static void
+static int
 bond_ethdev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
 	int i;
-	int ret;
+	int ret = 0;
 	uint16_t port_id;
 
 	switch (internals->mode) {
@@ -2655,7 +2655,9 @@ bond_ethdev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 	case BONDING_MODE_ROUND_ROBIN:
 	case BONDING_MODE_BALANCE:
 	case BONDING_MODE_BROADCAST:
-	case BONDING_MODE_8023AD:
+	case BONDING_MODE_8023AD: {
+		unsigned int slave_ok = 0;
+
 		for (i = 0; i < internals->slave_count; i++) {
 			port_id = internals->slaves[i].port_id;
 
@@ -2664,8 +2666,17 @@ bond_ethdev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 				RTE_BOND_LOG(ERR,
 					"Failed to enable allmulti mode for port %u: %s",
 					port_id, rte_strerror(-ret));
+			else
+				slave_ok++;
 		}
+		/*
+		 * Report success if operation is successful on at least
+		 * on one slave. Otherwise return last error code.
+		 */
+		if (slave_ok > 0)
+			ret = 0;
 		break;
+	}
 	/* allmulti mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
 	case BONDING_MODE_TLB:
@@ -2681,14 +2692,16 @@ bond_ethdev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 				"Failed to enable allmulti mode for port %u: %s",
 				port_id, rte_strerror(-ret));
 	}
+
+	return ret;
 }
 
-static void
+static int
 bond_ethdev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 {
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
 	int i;
-	int ret;
+	int ret = 0;
 	uint16_t port_id;
 
 	switch (internals->mode) {
@@ -2696,7 +2709,9 @@ bond_ethdev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 	case BONDING_MODE_ROUND_ROBIN:
 	case BONDING_MODE_BALANCE:
 	case BONDING_MODE_BROADCAST:
-	case BONDING_MODE_8023AD:
+	case BONDING_MODE_8023AD: {
+		unsigned int slave_ok = 0;
+
 		for (i = 0; i < internals->slave_count; i++) {
 			uint16_t port_id = internals->slaves[i].port_id;
 
@@ -2710,8 +2725,17 @@ bond_ethdev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 				RTE_BOND_LOG(ERR,
 					"Failed to disable allmulti mode for port %u: %s",
 					port_id, rte_strerror(-ret));
+			else
+				slave_ok++;
 		}
+		/*
+		 * Report success if operation is successful on at least
+		 * on one slave. Otherwise return last error code.
+		 */
+		if (slave_ok > 0)
+			ret = 0;
 		break;
+	}
 	/* allmulti mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
 	case BONDING_MODE_TLB:
@@ -2727,6 +2751,8 @@ bond_ethdev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 				"Failed to disable allmulti mode for port %u: %s",
 				port_id, rte_strerror(-ret));
 	}
+
+	return ret;
 }
 
 static void

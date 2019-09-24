@@ -1049,7 +1049,7 @@ lio_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 	return lio_change_dev_flag(eth_dev);
 }
 
-static void
+static int
 lio_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -1057,14 +1057,14 @@ lio_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 	if (!lio_dev->intf_open) {
 		lio_dev_err(lio_dev, "Port %d down, can't enable multicast\n",
 			    lio_dev->port_id);
-		return;
+		return -EAGAIN;
 	}
 
 	lio_dev->ifflags |= LIO_IFFLAG_ALLMULTI;
-	lio_change_dev_flag(eth_dev);
+	return lio_change_dev_flag(eth_dev);
 }
 
-static void
+static int
 lio_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -1072,11 +1072,11 @@ lio_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 	if (!lio_dev->intf_open) {
 		lio_dev_err(lio_dev, "Port %d down, can't disable multicast\n",
 			    lio_dev->port_id);
-		return;
+		return -EAGAIN;
 	}
 
 	lio_dev->ifflags &= ~LIO_IFFLAG_ALLMULTI;
-	lio_change_dev_flag(eth_dev);
+	return lio_change_dev_flag(eth_dev);
 }
 
 static void

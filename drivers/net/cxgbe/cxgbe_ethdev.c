@@ -168,26 +168,26 @@ int cxgbe_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 			     0, -1, 1, -1, false);
 }
 
-void cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
+int cxgbe_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
 
 	/* TODO: address filters ?? */
 
-	t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
-		      -1, 1, 1, -1, false);
+	return t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
+			     -1, 1, 1, -1, false);
 }
 
-void cxgbe_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
+int cxgbe_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
 
 	/* TODO: address filters ?? */
 
-	t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
-		      -1, 0, 1, -1, false);
+	return t4_set_rxmode(adapter, adapter->mbox, pi->viid, -1,
+			     -1, 0, 1, -1, false);
 }
 
 int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,

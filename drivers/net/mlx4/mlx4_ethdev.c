@@ -414,11 +414,14 @@ mlx4_promiscuous_disable(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-void
+int
 mlx4_allmulticast_enable(struct rte_eth_dev *dev)
 {
-	mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_ALLMULTI_ON);
+	return mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_ALLMULTI_ON);
 }
 
 /**
@@ -426,11 +429,14 @@ mlx4_allmulticast_enable(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-void
+int
 mlx4_allmulticast_disable(struct rte_eth_dev *dev)
 {
-	mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_ALLMULTI_OFF);
+	return mlx4_rxmode_toggle(dev, RXMODE_TOGGLE_ALLMULTI_OFF);
 }
 
 /**

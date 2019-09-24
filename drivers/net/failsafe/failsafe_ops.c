@@ -718,7 +718,7 @@ fs_promiscuous_disable(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static void
+static int
 fs_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
@@ -746,9 +746,11 @@ fs_allmulticast_enable(struct rte_eth_dev *dev)
 		}
 	}
 	fs_unlock(dev, 0);
+
+	return ret;
 }
 
-static void
+static int
 fs_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
@@ -776,6 +778,8 @@ fs_allmulticast_disable(struct rte_eth_dev *dev)
 		}
 	}
 	fs_unlock(dev, 0);
+
+	return ret;
 }
 
 static int

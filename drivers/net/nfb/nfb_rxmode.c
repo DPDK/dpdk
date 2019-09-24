@@ -59,7 +59,7 @@ nfb_eth_promiscuous_get(struct rte_eth_dev *dev)
 	return (status.mac_filter == RXMAC_MAC_FILTER_PROMISCUOUS);
 }
 
-void
+int
 nfb_eth_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
@@ -70,9 +70,11 @@ nfb_eth_allmulticast_enable(struct rte_eth_dev *dev)
 		nc_rxmac_mac_filter_enable(internals->rxmac[i],
 			RXMAC_MAC_FILTER_TABLE_BCAST_MCAST);
 	}
+
+	return 0;
 }
 
-void
+int
 nfb_eth_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
@@ -82,12 +84,14 @@ nfb_eth_allmulticast_disable(struct rte_eth_dev *dev)
 
 	/* if multicast is not enabled do nothing */
 	if (!nfb_eth_allmulticast_get(dev))
-		return;
+		return 0;
 
 	for (i = 0; i < internals->max_rxmac; ++i) {
 		nc_rxmac_mac_filter_enable(internals->rxmac[i],
 			internals->rx_filter_original);
 	}
+
+	return 0;
 }
 
 int

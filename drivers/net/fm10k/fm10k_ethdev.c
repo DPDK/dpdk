@@ -46,8 +46,8 @@ int fm10k_logtype_driver;
 static void fm10k_close_mbx_service(struct fm10k_hw *hw);
 static int fm10k_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev);
-static void fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev);
-static void fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static int fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static inline int fm10k_glort_valid(struct fm10k_hw *hw);
 static int
 fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
@@ -964,7 +964,7 @@ fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -974,7 +974,7 @@ fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev)
 
 	/* Return if it didn't acquire valid glort range */
 	if ((hw->mac.type == fm10k_mac_pf) && !fm10k_glort_valid(hw))
-		return;
+		return 0;
 
 	/* If promiscuous mode is enabled, it doesn't make sense to enable
 	 * allmulticast and disable promiscuous since fm10k only can select
@@ -983,7 +983,7 @@ fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	if (dev->data->promiscuous) {
 		PMD_INIT_LOG(INFO, "Promiscuous mode is enabled, "\
 			"needn't enable allmulticast");
-		return;
+		return 0;
 	}
 
 	fm10k_mbx_lock(hw);
@@ -991,11 +991,15 @@ fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev)
 				FM10K_XCAST_MODE_ALLMULTI);
 	fm10k_mbx_unlock(hw);
 
-	if (status != FM10K_SUCCESS)
+	if (status != FM10K_SUCCESS) {
 		PMD_INIT_LOG(ERR, "Failed to enable allmulticast mode");
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
-static void
+static int
 fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1005,12 +1009,12 @@ fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev)
 
 	/* Return if it didn't acquire valid glort range */
 	if ((hw->mac.type == fm10k_mac_pf) && !fm10k_glort_valid(hw))
-		return;
+		return 0;
 
 	if (dev->data->promiscuous) {
 		PMD_INIT_LOG(ERR, "Failed to disable allmulticast mode "\
 			"since promisc mode is enabled");
-		return;
+		return -EINVAL;
 	}
 
 	fm10k_mbx_lock(hw);
@@ -1019,8 +1023,12 @@ fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev)
 				FM10K_XCAST_MODE_NONE);
 	fm10k_mbx_unlock(hw);
 
-	if (status != FM10K_SUCCESS)
+	if (status != FM10K_SUCCESS) {
 		PMD_INIT_LOG(ERR, "Failed to disable allmulticast mode");
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
 static void

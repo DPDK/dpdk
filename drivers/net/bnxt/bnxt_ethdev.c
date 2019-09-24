@@ -1048,32 +1048,46 @@ static int bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	return rc;
 }
 
-static void bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
+static int bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic;
+	uint32_t old_flags;
+	int rc;
 
 	if (bp->vnic_info == NULL)
-		return;
+		return 0;
 
 	vnic = &bp->vnic_info[0];
 
+	old_flags = vnic->flags;
 	vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
+	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
+	if (rc != 0)
+		vnic->flags = old_flags;
+
+	return rc;
 }
 
-static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
+static int bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic;
+	uint32_t old_flags;
+	int rc;
 
 	if (bp->vnic_info == NULL)
-		return;
+		return 0;
 
 	vnic = &bp->vnic_info[0];
 
+	old_flags = vnic->flags;
 	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
+	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
+	if (rc != 0)
+		vnic->flags = old_flags;
+
+	return rc;
 }
 
 /* Return bnxt_rx_queue pointer corresponding to a given rxq. */

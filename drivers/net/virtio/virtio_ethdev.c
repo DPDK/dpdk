@@ -43,8 +43,8 @@ static int  virtio_dev_start(struct rte_eth_dev *dev);
 static void virtio_dev_stop(struct rte_eth_dev *dev);
 static int virtio_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int virtio_dev_promiscuous_disable(struct rte_eth_dev *dev);
-static void virtio_dev_allmulticast_enable(struct rte_eth_dev *dev);
-static void virtio_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int virtio_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static int virtio_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int virtio_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int virtio_dev_link_update(struct rte_eth_dev *dev,
@@ -800,7 +800,7 @@ virtio_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 virtio_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
@@ -810,7 +810,7 @@ virtio_dev_allmulticast_enable(struct rte_eth_dev *dev)
 
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
 		PMD_INIT_LOG(INFO, "host does not support rx control");
-		return;
+		return -ENOTSUP;
 	}
 
 	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
@@ -819,11 +819,15 @@ virtio_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	dlen[0] = 1;
 
 	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
-	if (ret)
+	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to enable allmulticast");
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
-static void
+static int
 virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
@@ -833,7 +837,7 @@ virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
 		PMD_INIT_LOG(INFO, "host does not support rx control");
-		return;
+		return -ENOTSUP;
 	}
 
 	ctrl.hdr.class = VIRTIO_NET_CTRL_RX;
@@ -842,8 +846,12 @@ virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	dlen[0] = 1;
 
 	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
-	if (ret)
+	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to disable allmulticast");
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
 #define VLAN_TAG_LEN           4    /* 802.3ac tag (not DMA'd) */

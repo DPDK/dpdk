@@ -67,8 +67,8 @@ static void vmxnet3_dev_close(struct rte_eth_dev *dev);
 static void vmxnet3_dev_set_rxmode(struct vmxnet3_hw *hw, uint32_t feature, int set);
 static int vmxnet3_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev);
-static void vmxnet3_dev_allmulticast_enable(struct rte_eth_dev *dev);
-static void vmxnet3_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int vmxnet3_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static int vmxnet3_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int __vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 				     int wait_to_complete);
 static int vmxnet3_dev_link_update(struct rte_eth_dev *dev,
@@ -1299,21 +1299,25 @@ vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 }
 
 /* Allmulticast supported only if Vmxnet3_DriverShared is initialized in adapter */
-static void
+static int
 vmxnet3_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_ALL_MULTI, 1);
+
+	return 0;
 }
 
 /* Allmulticast supported only if Vmxnet3_DriverShared is initialized in adapter */
-static void
+static int
 vmxnet3_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_ALL_MULTI, 0);
+
+	return 0;
 }
 
 /* Enable/disable filter on vlan */

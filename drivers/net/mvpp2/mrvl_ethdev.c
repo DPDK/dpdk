@@ -1024,22 +1024,29 @@ mrvl_promiscuous_enable(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
  */
-static void
+static int
 mrvl_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
 	if (!priv->ppio)
-		return;
+		return 0;
 
 	if (priv->isolated)
-		return;
+		return 0;
 
 	ret = pp2_ppio_set_mc_promisc(priv->ppio, 1);
-	if (ret)
+	if (ret) {
 		MRVL_LOG(ERR, "Failed enable all-multicast mode");
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
 /**
@@ -1074,19 +1081,26 @@ mrvl_promiscuous_disable(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
  */
-static void
+static int
 mrvl_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
 	if (!priv->ppio)
-		return;
+		return 0;
 
 	ret = pp2_ppio_set_mc_promisc(priv->ppio, 0);
-	if (ret)
+	if (ret) {
 		MRVL_LOG(ERR, "Failed to disable all-multicast mode");
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
 /**

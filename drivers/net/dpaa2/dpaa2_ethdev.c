@@ -1043,7 +1043,7 @@ dpaa2_dev_promiscuous_disable(
 	return ret;
 }
 
-static void
+static int
 dpaa2_dev_allmulticast_enable(
 		struct rte_eth_dev *dev)
 {
@@ -1055,15 +1055,17 @@ dpaa2_dev_allmulticast_enable(
 
 	if (dpni == NULL) {
 		DPAA2_PMD_ERR("dpni is NULL");
-		return;
+		return -ENODEV;
 	}
 
 	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
 	if (ret < 0)
 		DPAA2_PMD_ERR("Unable to enable multicast mode %d", ret);
+
+	return ret;
 }
 
-static void
+static int
 dpaa2_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	int ret;
@@ -1074,16 +1076,18 @@ dpaa2_dev_allmulticast_disable(struct rte_eth_dev *dev)
 
 	if (dpni == NULL) {
 		DPAA2_PMD_ERR("dpni is NULL");
-		return;
+		return -ENODEV;
 	}
 
 	/* must remain on for all promiscuous */
 	if (dev->data->promiscuous == 1)
-		return;
+		return 0;
 
 	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, false);
 	if (ret < 0)
 		DPAA2_PMD_ERR("Unable to disable multicast mode %d", ret);
+
+	return ret;
 }
 
 static int

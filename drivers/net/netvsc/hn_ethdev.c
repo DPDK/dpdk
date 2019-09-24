@@ -438,7 +438,7 @@ hn_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return hn_vf_promiscuous_disable(dev);
 }
 
-static void
+static int
 hn_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
@@ -446,17 +446,17 @@ hn_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	hn_rndis_set_rxfilter(hv, NDIS_PACKET_TYPE_DIRECTED |
 			      NDIS_PACKET_TYPE_ALL_MULTICAST |
 			NDIS_PACKET_TYPE_BROADCAST);
-	hn_vf_allmulticast_enable(dev);
+	return hn_vf_allmulticast_enable(dev);
 }
 
-static void
+static int
 hn_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
 
 	hn_rndis_set_rxfilter(hv, NDIS_PACKET_TYPE_DIRECTED |
 			     NDIS_PACKET_TYPE_BROADCAST);
-	hn_vf_allmulticast_disable(dev);
+	return hn_vf_allmulticast_disable(dev);
 }
 
 static int

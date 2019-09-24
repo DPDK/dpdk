@@ -212,8 +212,8 @@ void	hn_vf_reset(struct rte_eth_dev *dev);
 void	hn_vf_stop(struct rte_eth_dev *dev);
 void	hn_vf_close(struct rte_eth_dev *dev);
 
-void	hn_vf_allmulticast_enable(struct rte_eth_dev *dev);
-void	hn_vf_allmulticast_disable(struct rte_eth_dev *dev);
+int	hn_vf_allmulticast_enable(struct rte_eth_dev *dev);
+int	hn_vf_allmulticast_disable(struct rte_eth_dev *dev);
 int	hn_vf_promiscuous_enable(struct rte_eth_dev *dev);
 int	hn_vf_promiscuous_disable(struct rte_eth_dev *dev);
 int	hn_vf_mc_addr_list(struct rte_eth_dev *dev,

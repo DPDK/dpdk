@@ -37,8 +37,8 @@ static void eth_em_stop(struct rte_eth_dev *dev);
 static void eth_em_close(struct rte_eth_dev *dev);
 static int eth_em_promiscuous_enable(struct rte_eth_dev *dev);
 static int eth_em_promiscuous_disable(struct rte_eth_dev *dev);
-static void eth_em_allmulticast_enable(struct rte_eth_dev *dev);
-static void eth_em_allmulticast_disable(struct rte_eth_dev *dev);
+static int eth_em_allmulticast_enable(struct rte_eth_dev *dev);
+static int eth_em_allmulticast_disable(struct rte_eth_dev *dev);
 static int eth_em_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static int eth_em_stats_get(struct rte_eth_dev *dev,
@@ -1297,7 +1297,7 @@ eth_em_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_em_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
@@ -1307,9 +1307,11 @@ eth_em_allmulticast_enable(struct rte_eth_dev *dev)
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl |= E1000_RCTL_MPE;
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	return 0;
 }
 
-static void
+static int
 eth_em_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw =
@@ -1317,10 +1319,12 @@ eth_em_allmulticast_disable(struct rte_eth_dev *dev)
 	uint32_t rctl;
 
 	if (dev->data->promiscuous == 1)
-		return; /* must remain in all_multicast mode */
+		return 0; /* must remain in all_multicast mode */
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl &= (~E1000_RCTL_MPE);
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+	return 0;
 }
 
 static int

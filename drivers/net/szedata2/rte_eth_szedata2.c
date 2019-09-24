@@ -1362,16 +1362,18 @@ eth_promiscuous_disable(struct rte_eth_dev *dev __rte_unused)
 	return -ENOTSUP;
 }
 
-static void
+static int
 eth_allmulticast_enable(struct rte_eth_dev *dev __rte_unused)
 {
 	PMD_DRV_LOG(WARNING, "Enabling allmulticast mode is not supported.");
+	return -ENOTSUP;
 }
 
-static void
+static int
 eth_allmulticast_disable(struct rte_eth_dev *dev __rte_unused)
 {
 	PMD_DRV_LOG(WARNING, "Disabling allmulticast mode is not supported.");
+	return -ENOTSUP;
 }
 
 static const struct eth_dev_ops ops = {

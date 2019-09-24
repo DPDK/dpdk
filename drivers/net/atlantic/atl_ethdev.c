@@ -26,8 +26,8 @@ static void atl_dev_close(struct rte_eth_dev *dev);
 static int  atl_dev_reset(struct rte_eth_dev *dev);
 static int  atl_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int  atl_dev_promiscuous_disable(struct rte_eth_dev *dev);
-static void atl_dev_allmulticast_enable(struct rte_eth_dev *dev);
-static void atl_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int atl_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static int atl_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int  atl_dev_link_update(struct rte_eth_dev *dev, int wait);
 
 static int atl_dev_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
@@ -1229,23 +1229,27 @@ atl_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 atl_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	hw_atl_rpfl2_accept_all_mc_packets_set(hw, true);
+
+	return 0;
 }
 
-static void
+static int
 atl_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (dev->data->promiscuous == 1)
-		return; /* must remain in all_multicast mode */
+		return 0; /* must remain in all_multicast mode */
 
 	hw_atl_rpfl2_accept_all_mc_packets_set(hw, false);
+
+	return 0;
 }
 
 /**

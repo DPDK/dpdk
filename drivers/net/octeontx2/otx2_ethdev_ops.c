@@ -167,16 +167,20 @@ nix_allmulticast_config(struct rte_eth_dev *eth_dev, int en)
 	otx2_mbox_process(mbox);
 }
 
-void
+int
 otx2_nix_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	nix_allmulticast_config(eth_dev, 1);
+
+	return 0;
 }
 
-void
+int
 otx2_nix_allmulticast_disable(struct rte_eth_dev *eth_dev)
 {
 	nix_allmulticast_config(eth_dev, 0);
+
+	return 0;
 }
 
 void

@@ -400,14 +400,14 @@ int hn_vf_stats_reset(struct rte_eth_dev *dev)
 	VF_ETHDEV_FUNC_RET_STATUS(dev, rte_eth_stats_reset);
 }
 
-void hn_vf_allmulticast_enable(struct rte_eth_dev *dev)
+int hn_vf_allmulticast_enable(struct rte_eth_dev *dev)
 {
-	VF_ETHDEV_FUNC(dev, rte_eth_allmulticast_enable);
+	VF_ETHDEV_FUNC_RET_STATUS(dev, rte_eth_allmulticast_enable);
 }
 
-void hn_vf_allmulticast_disable(struct rte_eth_dev *dev)
+int hn_vf_allmulticast_disable(struct rte_eth_dev *dev)
 {
-	VF_ETHDEV_FUNC(dev, rte_eth_allmulticast_disable);
+	VF_ETHDEV_FUNC_RET_STATUS(dev, rte_eth_allmulticast_disable);
 }
 
 int hn_vf_promiscuous_enable(struct rte_eth_dev *dev)

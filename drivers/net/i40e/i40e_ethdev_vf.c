@@ -94,8 +94,8 @@ static void i40evf_dev_close(struct rte_eth_dev *dev);
 static int  i40evf_dev_reset(struct rte_eth_dev *dev);
 static int i40evf_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int i40evf_dev_promiscuous_disable(struct rte_eth_dev *dev);
-static void i40evf_dev_allmulticast_enable(struct rte_eth_dev *dev);
-static void i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int i40evf_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static int i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int i40evf_init_vlan(struct rte_eth_dev *dev);
 static int i40evf_dev_rx_queue_start(struct rte_eth_dev *dev,
 				     uint16_t rx_queue_id);
@@ -2196,7 +2196,7 @@ i40evf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static void
+static int
 i40evf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
@@ -2204,14 +2204,18 @@ i40evf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 
 	/* If enabled, just return */
 	if (vf->promisc_multicast_enabled)
-		return;
+		return 0;
 
 	ret = i40evf_config_promisc(dev, vf->promisc_unicast_enabled, 1);
 	if (ret == 0)
 		vf->promisc_multicast_enabled = TRUE;
+	else
+		ret = -EAGAIN;
+
+	return ret;
 }
 
-static void
+static int
 i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
@@ -2219,11 +2223,15 @@ i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 
 	/* If enabled, just return */
 	if (!vf->promisc_multicast_enabled)
-		return;
+		return 0;
 
 	ret = i40evf_config_promisc(dev, vf->promisc_unicast_enabled, 0);
 	if (ret == 0)
 		vf->promisc_multicast_enabled = FALSE;
+	else
+		ret = -EAGAIN;
+
+	return ret;
 }
 
 static int

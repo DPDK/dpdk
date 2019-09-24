@@ -1968,30 +1968,38 @@ int
 rte_eth_allmulticast_enable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
+	uint8_t old_allmulticast;
+	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->allmulticast_enable, -ENOTSUP);
-	(*dev->dev_ops->allmulticast_enable)(dev);
-	dev->data->all_multicast = 1;
+	old_allmulticast = dev->data->all_multicast;
+	diag = (*dev->dev_ops->allmulticast_enable)(dev);
+	dev->data->all_multicast = (diag == 0) ? 1 : old_allmulticast;
 
-	return 0;
+	return eth_err(port_id, diag);
 }
 
 int
 rte_eth_allmulticast_disable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
+	uint8_t old_allmulticast;
+	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->allmulticast_disable, -ENOTSUP);
+	old_allmulticast = dev->data->all_multicast;
 	dev->data->all_multicast = 0;
-	(*dev->dev_ops->allmulticast_disable)(dev);
+	diag = (*dev->dev_ops->allmulticast_disable)(dev);
+	if (diag != 0)
+		dev->data->all_multicast = old_allmulticast;
 
-	return 0;
+	return eth_err(port_id, diag);
 }
 
 int

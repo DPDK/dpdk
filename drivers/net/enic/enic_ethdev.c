@@ -638,28 +638,38 @@ static int enicpmd_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 	return ret;
 }
 
-static void enicpmd_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
+static int enicpmd_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	struct enic *enic = pmd_priv(eth_dev);
+	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return;
+		return -E_RTE_SECONDARY;
 
 	ENICPMD_FUNC_TRACE();
 	enic->allmulti = 1;
-	enic_add_packet_filter(enic);
+	ret = enic_add_packet_filter(enic);
+	if (ret != 0)
+		enic->allmulti = 0;
+
+	return ret;
 }
 
-static void enicpmd_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
+static int enicpmd_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 {
 	struct enic *enic = pmd_priv(eth_dev);
+	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return;
+		return -E_RTE_SECONDARY;
 
 	ENICPMD_FUNC_TRACE();
 	enic->allmulti = 0;
-	enic_add_packet_filter(enic);
+	ret = enic_add_packet_filter(enic);
+	if (ret != 0)
+		enic->allmulti = 1;
+
+	return ret;
 }
 
 static int enicpmd_add_mac_addr(struct rte_eth_dev *eth_dev,

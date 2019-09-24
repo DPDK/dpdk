@@ -563,7 +563,7 @@ enetc_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 enetc_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw =
@@ -577,9 +577,11 @@ enetc_allmulticast_enable(struct rte_eth_dev *dev)
 	psipmr |= ENETC_PSIPMR_SET_MP(0);
 
 	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
+
+	return 0;
 }
 
-static void
+static int
 enetc_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw =
@@ -588,13 +590,15 @@ enetc_allmulticast_disable(struct rte_eth_dev *dev)
 	uint32_t psipmr = 0;
 
 	if (dev->data->promiscuous == 1)
-		return; /* must remain in all_multicast mode */
+		return 0; /* must remain in all_multicast mode */
 
 	/* Setting to disable all multicast mode for SI0*/
 	psipmr = enetc_port_rd(enetc_hw, ENETC_PSIPMR) &
 			       ~(ENETC_PSIPMR_SET_MP(0));
 
 	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
+
+	return 0;
 }
 
 static int

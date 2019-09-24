@@ -320,7 +320,7 @@ bnx2x_promisc_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 bnx2x_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
@@ -330,9 +330,11 @@ bnx2x_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	if (rte_eth_promiscuous_get(dev->data->port_id) == 1)
 		sc->rx_mode = BNX2X_RX_MODE_ALLMULTI_PROMISC;
 	bnx2x_set_rx_mode(sc);
+
+	return 0;
 }
 
-static void
+static int
 bnx2x_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
@@ -342,6 +344,8 @@ bnx2x_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	if (rte_eth_promiscuous_get(dev->data->port_id) == 1)
 		sc->rx_mode = BNX2X_RX_MODE_PROMISC;
 	bnx2x_set_rx_mode(sc);
+
+	return 0;
 }
 
 static int

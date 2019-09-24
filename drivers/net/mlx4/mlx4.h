@@ -207,8 +207,8 @@ int mlx4_dev_set_link_down(struct rte_eth_dev *dev);
 int mlx4_dev_set_link_up(struct rte_eth_dev *dev);
 int mlx4_promiscuous_enable(struct rte_eth_dev *dev);
 int mlx4_promiscuous_disable(struct rte_eth_dev *dev);
-void mlx4_allmulticast_enable(struct rte_eth_dev *dev);
-void mlx4_allmulticast_disable(struct rte_eth_dev *dev);
+int mlx4_allmulticast_enable(struct rte_eth_dev *dev);
+int mlx4_allmulticast_disable(struct rte_eth_dev *dev);
 void mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 int mlx4_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		      uint32_t index, uint32_t vmdq);

@@ -101,8 +101,11 @@ mlx5_promiscuous_disable(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-void
+int
 mlx5_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -114,14 +117,23 @@ mlx5_allmulticast_enable(struct rte_eth_dev *dev)
 			"port %u cannot enable allmulticast mode"
 			" in flow isolation mode",
 			dev->data->port_id);
-		return;
+		return 0;
 	}
-	if (priv->config.vf)
-		mlx5_nl_allmulti(dev, 1);
+	if (priv->config.vf) {
+		ret = mlx5_nl_allmulti(dev, 1);
+		if (ret)
+			goto error;
+	}
 	ret = mlx5_traffic_restart(dev);
 	if (ret)
 		DRV_LOG(ERR, "port %u cannot enable allmulicast mode: %s",
 			dev->data->port_id, strerror(rte_errno));
+error:
+	/*
+	 * rte_eth_allmulticast_enable() rollback
+	 * dev->data->all_multicast in the case of failure.
+	 */
+	return ret;
 }
 
 /**
@@ -129,18 +141,30 @@ mlx5_allmulticast_enable(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-void
+int
 mlx5_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
 	dev->data->all_multicast = 0;
-	if (priv->config.vf)
-		mlx5_nl_allmulti(dev, 0);
+	if (priv->config.vf) {
+		ret = mlx5_nl_allmulti(dev, 0);
+		if (ret)
+			goto error;
+	}
 	ret = mlx5_traffic_restart(dev);
 	if (ret)
 		DRV_LOG(ERR, "port %u cannot disable allmulicast mode: %s",
 			dev->data->port_id, strerror(rte_errno));
+error:
+	/*
+	 * rte_eth_allmulticast_disable() rollback
+	 * dev->data->all_multicast in the case of failure.
+	 */
+	return ret;
 }

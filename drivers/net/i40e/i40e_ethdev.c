@@ -225,8 +225,8 @@ static void i40e_dev_close(struct rte_eth_dev *dev);
 static int  i40e_dev_reset(struct rte_eth_dev *dev);
 static int i40e_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int i40e_dev_promiscuous_disable(struct rte_eth_dev *dev);
-static void i40e_dev_allmulticast_enable(struct rte_eth_dev *dev);
-static void i40e_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int i40e_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static int i40e_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int i40e_dev_set_link_up(struct rte_eth_dev *dev);
 static int i40e_dev_set_link_down(struct rte_eth_dev *dev);
 static int i40e_dev_stats_get(struct rte_eth_dev *dev,
@@ -2624,7 +2624,7 @@ i40e_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 i40e_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -2633,11 +2633,15 @@ i40e_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	int ret;
 
 	ret = i40e_aq_set_vsi_multicast_promiscuous(hw, vsi->seid, TRUE, NULL);
-	if (ret != I40E_SUCCESS)
+	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to enable multicast promiscuous");
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
-static void
+static int
 i40e_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -2646,12 +2650,16 @@ i40e_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	int ret;
 
 	if (dev->data->promiscuous == 1)
-		return; /* must remain in all_multicast mode */
+		return 0; /* must remain in all_multicast mode */
 
 	ret = i40e_aq_set_vsi_multicast_promiscuous(hw,
 				vsi->seid, FALSE, NULL);
-	if (ret != I40E_SUCCESS)
+	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to disable multicast promiscuous");
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
 /*
