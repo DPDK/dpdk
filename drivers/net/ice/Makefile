@@ -82,4 +82,7 @@ ifeq ($(CC_AVX2_SUPPORT), 1)
 endif
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_generic_flow.c
 
+# install this header file
+SYMLINK-$(CONFIG_RTE_LIBRTE_ICE_PMD)-include := rte_pmd_ice.h
+
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -270,6 +270,7 @@ struct ice_pf {
 	uint16_t lan_nb_qp_max;
 	uint16_t lan_nb_qps; /* The number of queue pairs of LAN */
 	uint16_t base_queue; /* The base queue pairs index  in the device */
+	uint8_t *proto_xtr; /* Protocol extraction type for all queues */
 	struct ice_hw_port_stats stats_offset;
 	struct ice_hw_port_stats stats;
 	/* internal packet statistics, it should be excluded from the total */
@@ -280,11 +281,14 @@ struct ice_pf {
 	struct ice_flow_list flow_list;
 };
 
+#define ICE_MAX_QUEUE_NUM  2048
+
 /**
  * Cache devargs parse result.
  */
 struct ice_devargs {
 	int safe_mode_support;
+	uint8_t proto_xtr[ICE_MAX_QUEUE_NUM];
 };
 
 /**

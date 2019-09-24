@@ -19,9 +19,11 @@
 
 /* devargs */
 #define ICE_SAFE_MODE_SUPPORT_ARG "safe-mode-support"
+#define ICE_PROTO_XTR_ARG         "proto_xtr"
 
 static const char * const ice_valid_args[] = {
 	ICE_SAFE_MODE_SUPPORT_ARG,
+	ICE_PROTO_XTR_ARG,
 	NULL
 };
 
@@ -264,6 +266,280 @@ ice_init_controlq_parameter(struct ice_hw *hw)
 	hw->mailboxq.num_sq_entries = ICE_MAILBOXQ_LEN;
 	hw->mailboxq.rq_buf_size = ICE_MAILBOXQ_BUF_SZ;
 	hw->mailboxq.sq_buf_size = ICE_MAILBOXQ_BUF_SZ;
+}
+
+static int
+lookup_proto_xtr_type(const char *xtr_name)
+{
+	static struct {
+		const char *name;
+		enum proto_xtr_type type;
+	} xtr_type_map[] = {
+		{ "vlan",      PROTO_XTR_VLAN      },
+		{ "ipv4",      PROTO_XTR_IPV4      },
+		{ "ipv6",      PROTO_XTR_IPV6      },
+		{ "ipv6_flow", PROTO_XTR_IPV6_FLOW },
+		{ "tcp",       PROTO_XTR_TCP       },
+	};
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(xtr_type_map); i++) {
+		if (strcmp(xtr_name, xtr_type_map[i].name) == 0)
+			return xtr_type_map[i].type;
+	}
+
+	return -1;
+}
+
+/*
+ * Parse elem, the elem could be single number/range or '(' ')' group
+ * 1) A single number elem, it's just a simple digit. e.g. 9
+ * 2) A single range elem, two digits with a '-' between. e.g. 2-6
+ * 3) A group elem, combines multiple 1) or 2) with '( )'. e.g (0,2-4,6)
+ *    Within group elem, '-' used for a range separator;
+ *                       ',' used for a single number.
+ */
+static int
+parse_queue_set(const char *input, int xtr_type, struct ice_devargs *devargs)
+{
+	const char *str = input;
+	char *end = NULL;
+	uint32_t min, max;
+	uint32_t idx;
+
+	while (isblank(*str))
+		str++;
+
+	if (!isdigit(*str) && *str != '(')
+		return -1;
+
+	/* process single number or single range of number */
+	if (*str != '(') {
+		errno = 0;
+		idx = strtoul(str, &end, 10);
+		if (errno || end == NULL || idx >= ICE_MAX_QUEUE_NUM)
+			return -1;
+
+		while (isblank(*end))
+			end++;
+
+		min = idx;
+		max = idx;
+
+		/* process single <number>-<number> */
+		if (*end == '-') {
+			end++;
+			while (isblank(*end))
+				end++;
+			if (!isdigit(*end))
+				return -1;
+
+			errno = 0;
+			idx = strtoul(end, &end, 10);
+			if (errno || end == NULL || idx >= ICE_MAX_QUEUE_NUM)
+				return -1;
+
+			max = idx;
+			while (isblank(*end))
+				end++;
+		}
+
+		if (*end != ':')
+			return -1;
+
+		for (idx = RTE_MIN(min, max);
+		     idx <= RTE_MAX(min, max); idx++)
+			devargs->proto_xtr[idx] = xtr_type;
+
+		return 0;
+	}
+
+	/* process set within bracket */
+	str++;
+	while (isblank(*str))
+		str++;
+	if (*str == '\0')
+		return -1;
+
+	min = ICE_MAX_QUEUE_NUM;
+	do {
+		/* go ahead to the first digit */
+		while (isblank(*str))
+			str++;
+		if (!isdigit(*str))
+			return -1;
+
+		/* get the digit value */
+		errno = 0;
+		idx = strtoul(str, &end, 10);
+		if (errno || end == NULL || idx >= ICE_MAX_QUEUE_NUM)
+			return -1;
+
+		/* go ahead to separator '-',',' and ')' */
+		while (isblank(*end))
+			end++;
+		if (*end == '-') {
+			if (min == ICE_MAX_QUEUE_NUM)
+				min = idx;
+			else /* avoid continuous '-' */
+				return -1;
+		} else if (*end == ',' || *end == ')') {
+			max = idx;
+			if (min == ICE_MAX_QUEUE_NUM)
+				min = idx;
+
+			for (idx = RTE_MIN(min, max);
+			     idx <= RTE_MAX(min, max); idx++)
+				devargs->proto_xtr[idx] = xtr_type;
+
+			min = ICE_MAX_QUEUE_NUM;
+		} else {
+			return -1;
+		}
+
+		str = end + 1;
+	} while (*end != ')' && *end != '\0');
+
+	return 0;
+}
+
+static int
+parse_queue_proto_xtr(const char *queues, struct ice_devargs *devargs)
+{
+	const char *queue_start;
+	uint32_t idx;
+	int xtr_type;
+	char xtr_name[32];
+
+	while (isblank(*queues))
+		queues++;
+
+	if (*queues != '[') {
+		xtr_type = lookup_proto_xtr_type(queues);
+		if (xtr_type < 0)
+			return -1;
+
+		memset(devargs->proto_xtr, xtr_type,
+		       sizeof(devargs->proto_xtr));
+
+		return 0;
+	}
+
+	queues++;
+	do {
+		while (isblank(*queues))
+			queues++;
+		if (*queues == '\0')
+			return -1;
+
+		queue_start = queues;
+
+		/* go across a complete bracket */
+		if (*queue_start == '(') {
+			queues += strcspn(queues, ")");
+			if (*queues != ')')
+				return -1;
+		}
+
+		/* scan the separator ':' */
+		queues += strcspn(queues, ":");
+		if (*queues++ != ':')
+			return -1;
+		while (isblank(*queues))
+			queues++;
+
+		for (idx = 0; ; idx++) {
+			if (isblank(queues[idx]) ||
+			    queues[idx] == ',' ||
+			    queues[idx] == ']' ||
+			    queues[idx] == '\0')
+				break;
+
+			if (idx > sizeof(xtr_name) - 2)
+				return -1;
+
+			xtr_name[idx] = queues[idx];
+		}
+		xtr_name[idx] = '\0';
+		xtr_type = lookup_proto_xtr_type(xtr_name);
+		if (xtr_type < 0)
+			return -1;
+
+		queues += idx;
+
+		while (isblank(*queues) || *queues == ',' || *queues == ']')
+			queues++;
+
+		if (parse_queue_set(queue_start, xtr_type, devargs) < 0)
+			return -1;
+	} while (*queues != '\0');
+
+	return 0;
+}
+
+static int
+handle_proto_xtr_arg(__rte_unused const char *key, const char *value,
+		     void *extra_args)
+{
+	struct ice_devargs *devargs = extra_args;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	if (parse_queue_proto_xtr(value, devargs) < 0) {
+		PMD_DRV_LOG(ERR,
+			    "The protocol extraction parameter is wrong : '%s'",
+			    value);
+		return -1;
+	}
+
+	return 0;
+}
+
+static bool
+ice_proto_xtr_support(struct ice_hw *hw)
+{
+#define FLX_REG(val, fld, idx) \
+	(((val) & GLFLXP_RXDID_FLX_WRD_##idx##_##fld##_M) >> \
+	 GLFLXP_RXDID_FLX_WRD_##idx##_##fld##_S)
+	static struct {
+		uint32_t rxdid;
+		uint16_t protid_0;
+		uint16_t protid_1;
+	} xtr_sets[] = {
+		{ ICE_RXDID_COMMS_AUX_VLAN, ICE_PROT_EVLAN_O, ICE_PROT_VLAN_O },
+		{ ICE_RXDID_COMMS_AUX_IPV4, ICE_PROT_IPV4_OF_OR_S,
+		  ICE_PROT_IPV4_OF_OR_S },
+		{ ICE_RXDID_COMMS_AUX_IPV6, ICE_PROT_IPV6_OF_OR_S,
+		  ICE_PROT_IPV6_OF_OR_S },
+		{ ICE_RXDID_COMMS_AUX_IPV6_FLOW, ICE_PROT_IPV6_OF_OR_S,
+		  ICE_PROT_IPV6_OF_OR_S },
+		{ ICE_RXDID_COMMS_AUX_TCP, ICE_PROT_TCP_IL, ICE_PROT_ID_INVAL },
+	};
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(xtr_sets); i++) {
+		uint32_t rxdid = xtr_sets[i].rxdid;
+		uint32_t v;
+
+		if (xtr_sets[i].protid_0 != ICE_PROT_ID_INVAL) {
+			v = ICE_READ_REG(hw, GLFLXP_RXDID_FLX_WRD_4(rxdid));
+
+			if (FLX_REG(v, PROT_MDID, 4) != xtr_sets[i].protid_0 ||
+			    FLX_REG(v, RXDID_OPCODE, 4) != ICE_RX_OPC_EXTRACT)
+				return false;
+		}
+
+		if (xtr_sets[i].protid_1 != ICE_PROT_ID_INVAL) {
+			v = ICE_READ_REG(hw, GLFLXP_RXDID_FLX_WRD_5(rxdid));
+
+			if (FLX_REG(v, PROT_MDID, 5) != xtr_sets[i].protid_1 ||
+			    FLX_REG(v, RXDID_OPCODE, 5) != ICE_RX_OPC_EXTRACT)
+				return false;
+		}
+	}
+
+	return true;
 }
 
 static int
@@ -1088,6 +1364,8 @@ done:
 static int
 ice_pf_sw_init(struct rte_eth_dev *dev)
 {
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 
@@ -1096,6 +1374,16 @@ ice_pf_sw_init(struct rte_eth_dev *dev)
 				  hw->func_caps.common_cap.num_rxq);
 
 	pf->lan_nb_qps = pf->lan_nb_qp_max;
+
+	if (ice_proto_xtr_support(hw))
+		pf->proto_xtr = rte_zmalloc(NULL, pf->lan_nb_qps, 0);
+
+	if (pf->proto_xtr != NULL)
+		rte_memcpy(pf->proto_xtr, ad->devargs.proto_xtr,
+			   RTE_MIN((size_t)pf->lan_nb_qps,
+				   sizeof(ad->devargs.proto_xtr)));
+	else
+		PMD_DRV_LOG(NOTICE, "Protocol extraction is disabled");
 
 	return 0;
 }
@@ -1508,9 +1796,18 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	memset(ad->devargs.proto_xtr, PROTO_XTR_NONE,
+	       sizeof(ad->devargs.proto_xtr));
+
+	ret = rte_kvargs_process(kvlist, ICE_PROTO_XTR_ARG,
+				 &handle_proto_xtr_arg, &ad->devargs);
+	if (ret)
+		goto bail;
+
 	ret = rte_kvargs_process(kvlist, ICE_SAFE_MODE_SUPPORT_ARG,
 				 &parse_bool, &ad->devargs.safe_mode_support);
 
+bail:
 	rte_kvargs_free(kvlist);
 	return ret;
 }
@@ -1686,6 +1983,7 @@ err_init_mac:
 	ice_sched_cleanup_all(hw);
 	rte_free(hw->port_info);
 	ice_shutdown_all_ctrlq(hw);
+	rte_free(pf->proto_xtr);
 
 	return ret;
 }
@@ -1811,6 +2109,8 @@ ice_dev_close(struct rte_eth_dev *dev)
 	rte_free(hw->port_info);
 	hw->port_info = NULL;
 	ice_shutdown_all_ctrlq(hw);
+	rte_free(pf->proto_xtr);
+	pf->proto_xtr = NULL;
 }
 
 static int
@@ -3970,6 +4270,7 @@ RTE_PMD_REGISTER_PCI(net_ice, rte_ice_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ice, pci_id_ice_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ice, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_ice,
+			      ICE_PROTO_XTR_ARG "=[queue:]<vlan|ipv4|ipv6|ipv6_flow|tcp>"
 			      ICE_SAFE_MODE_SUPPORT_ARG "=<0|1>");
 
 RTE_INIT(ice_init_log)

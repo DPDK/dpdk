@@ -234,6 +234,9 @@ ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 	if (rxq->nb_rx_desc % rxq->rx_free_thresh)
 		return -1;
 
+	if (rxq->proto_xtr != PROTO_XTR_NONE)
+		return -1;
+
 	return 0;
 }
 

@@ -61,6 +61,8 @@ New Features
   Updated the Intel ice driver with new features and improvements, including:
 
   * Added support for device-specific DDP package loading.
+  * Added support for handling Receive Flex Descriptor.
+  * Added support for protocol extraction on per Rx queue.
 
 * **Added Marvell NITROX symmetric crypto PMD.**
 

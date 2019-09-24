@@ -5,6 +5,7 @@
 #ifndef _ICE_RXTX_H_
 #define _ICE_RXTX_H_
 
+#include "rte_pmd_ice.h"
 #include "ice_ethdev.h"
 
 #define ICE_ALIGN_RING_DESC  32
@@ -78,6 +79,7 @@ struct ice_rx_queue {
 	uint16_t max_pkt_len; /* Maximum packet length */
 	bool q_set; /* indicate if rx queue has been configured */
 	bool rx_deferred_start; /* don't start this queue in dev start */
+	uint8_t proto_xtr; /* Protocol extraction from flexible descriptor */
 	ice_rx_release_mbufs_t rx_rel_mbufs;
 };
 
