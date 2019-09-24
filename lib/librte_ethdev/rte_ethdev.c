@@ -1422,16 +1422,24 @@ rte_eth_dev_config_restore(struct rte_eth_dev *dev,
 	}
 
 	/* replay all multicast configuration */
-	if (rte_eth_allmulticast_get(port_id) == 1) {
-		ret = rte_eth_allmulticast_enable(port_id);
+	/*
+	 * use callbacks directly since we don't need port_id check and
+	 * would like to bypass the same value set
+	 */
+	if (rte_eth_allmulticast_get(port_id) == 1 &&
+	    *dev->dev_ops->allmulticast_enable != NULL) {
+		ret = eth_err(port_id,
+			      (*dev->dev_ops->allmulticast_enable)(dev));
 		if (ret != 0 && ret != -ENOTSUP) {
 			RTE_ETHDEV_LOG(ERR,
 				"Failed to enable allmulticast mode for device (port %u): %s\n",
 				port_id, rte_strerror(-ret));
 			return ret;
 		}
-	} else if (rte_eth_allmulticast_get(port_id) == 0) {
-		ret = rte_eth_allmulticast_disable(port_id);
+	} else if (rte_eth_allmulticast_get(port_id) == 0 &&
+		   *dev->dev_ops->allmulticast_disable != NULL) {
+		ret = eth_err(port_id,
+			      (*dev->dev_ops->allmulticast_disable)(dev));
 		if (ret != 0 && ret != -ENOTSUP) {
 			RTE_ETHDEV_LOG(ERR,
 				"Failed to disable allmulticast mode for device (port %u): %s\n",
@@ -1968,16 +1976,17 @@ int
 rte_eth_allmulticast_enable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
-	uint8_t old_allmulticast;
 	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
+	if (dev->data->all_multicast == 1)
+		return 0;
+
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->allmulticast_enable, -ENOTSUP);
-	old_allmulticast = dev->data->all_multicast;
 	diag = (*dev->dev_ops->allmulticast_enable)(dev);
-	dev->data->all_multicast = (diag == 0) ? 1 : old_allmulticast;
+	dev->data->all_multicast = (diag == 0) ? 1 : 0;
 
 	return eth_err(port_id, diag);
 }
@@ -1986,18 +1995,19 @@ int
 rte_eth_allmulticast_disable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
-	uint8_t old_allmulticast;
 	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
+	if (dev->data->all_multicast == 0)
+		return 0;
+
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->allmulticast_disable, -ENOTSUP);
-	old_allmulticast = dev->data->all_multicast;
 	dev->data->all_multicast = 0;
 	diag = (*dev->dev_ops->allmulticast_disable)(dev);
 	if (diag != 0)
-		dev->data->all_multicast = old_allmulticast;
+		dev->data->all_multicast = 1;
 
 	return eth_err(port_id, diag);
 }
