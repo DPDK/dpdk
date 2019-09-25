@@ -66,6 +66,19 @@ foreach l:libraries
 	dir_name = 'librte_' + l
 	subdir(dir_name)
 
+	if build
+		shared_deps = ext_deps
+		static_deps = ext_deps
+		foreach d:deps
+			if not is_variable('shared_rte_' + d)
+				error('Missing internal dependency "@0@" for @1@ [@2@]'
+						.format(d, name, 'lib/' + dir_name))
+			endif
+			shared_deps += [get_variable('shared_rte_' + d)]
+			static_deps += [get_variable('static_rte_' + d)]
+		endforeach
+	endif
+
 	if not build
 		dpdk_libs_disabled += name
 		set_variable(name.underscorify() + '_disable_reason', reason)
@@ -82,16 +95,6 @@ foreach l:libraries
 			shared_dep = declare_dependency(include_directories: includes)
 			static_dep = shared_dep
 		else
-			shared_deps = ext_deps
-			static_deps = ext_deps
-			foreach d:deps
-				if not is_variable('shared_rte_' + d)
-					error('Missing dependency ' + d +
-						' for library ' + libname)
-				endif
-				shared_deps += [get_variable('shared_rte_' + d)]
-				static_deps += [get_variable('static_rte_' + d)]
-			endforeach
 
 			if allow_experimental_apis
 				cflags += '-DALLOW_EXPERIMENTAL_API'

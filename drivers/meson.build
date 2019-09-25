@@ -59,6 +59,20 @@ foreach class:dpdk_driver_classes
 		# pull in driver directory which should assign to each of the above
 		subdir(drv_path)
 
+		if build
+			# get dependency objs from strings
+			shared_deps = ext_deps
+			static_deps = ext_deps
+			foreach d:deps
+				if not is_variable('shared_rte_' + d)
+					error('Missing internal dependency "@0@" for @1@ [@2@]'
+							.format(d, name, 'drivers/' + drv_path))
+				endif
+				shared_deps += [get_variable('shared_rte_' + d)]
+				static_deps += [get_variable('static_rte_' + d)]
+			endforeach
+		endif
+
 		if not build
 			# some driver directories are placeholders which
 			# are never built, so we allow suppression of the
@@ -78,19 +92,6 @@ foreach class:dpdk_driver_classes
 				cflags += '-DALLOW_EXPERIMENTAL_API'
 			endif
 
-			# get dependency objs from strings
-			shared_deps = []
-			static_deps = []
-			foreach d:deps
-				if not is_variable('shared_rte_' + d)
-					error('Missing dependency ' + d +
-						' for driver ' + lib_name)
-				endif
-				shared_deps += [get_variable('shared_rte_' + d)]
-				static_deps += [get_variable('static_rte_' + d)]
-			endforeach
-			shared_deps += ext_deps
-			static_deps += ext_deps
 			dpdk_extra_ldflags += pkgconfig_extra_libs
 
 			# generate pmdinfo sources by building a temporary
