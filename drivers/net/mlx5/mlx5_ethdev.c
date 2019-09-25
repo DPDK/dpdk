@@ -1131,10 +1131,10 @@ mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 }
 
 /**
- * Get PCI information from struct ibv_device.
+ * Get PCI information by sysfs device path.
  *
- * @param device
- *   Pointer to Ethernet device structure.
+ * @param dev_path
+ *   Pointer to device sysfs folder name.
  * @param[out] pci_addr
  *   PCI bus address output buffer.
  *
@@ -1142,12 +1142,12 @@ mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_ibv_device_to_pci_addr(const struct ibv_device *device,
-			    struct rte_pci_addr *pci_addr)
+mlx5_dev_to_pci_addr(const char *dev_path,
+		     struct rte_pci_addr *pci_addr)
 {
 	FILE *file;
 	char line[32];
-	MKSTR(path, "%s/device/uevent", device->ibdev_path);
+	MKSTR(path, "%s/device/uevent", dev_path);
 
 	file = fopen(path, "rb");
 	if (file == NULL) {

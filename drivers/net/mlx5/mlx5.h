@@ -701,8 +701,8 @@ int mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev,
 			   struct rte_eth_fc_conf *fc_conf);
 int mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev,
 			   struct rte_eth_fc_conf *fc_conf);
-int mlx5_ibv_device_to_pci_addr(const struct ibv_device *device,
-				struct rte_pci_addr *pci_addr);
+int mlx5_dev_to_pci_addr(const char *dev_path,
+			 struct rte_pci_addr *pci_addr);
 void mlx5_dev_link_status_handler(void *arg);
 void mlx5_dev_interrupt_handler(void *arg);
 void mlx5_dev_interrupt_handler_devx(void *arg);

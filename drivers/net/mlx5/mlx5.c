@@ -2183,7 +2183,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_addr pci_addr;
 
 		DRV_LOG(DEBUG, "checking device \"%s\"", ibv_list[ret]->name);
-		if (mlx5_ibv_device_to_pci_addr(ibv_list[ret], &pci_addr))
+		if (mlx5_dev_to_pci_addr
+			(ibv_list[ret]->ibdev_path, &pci_addr))
 			continue;
 		if (pci_dev->addr.domain != pci_addr.domain ||
 		    pci_dev->addr.bus != pci_addr.bus ||
