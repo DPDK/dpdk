@@ -1584,11 +1584,23 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		}
 	}
 	/* Build device name. */
-	if (!switch_info->representor)
-		strlcpy(name, dpdk_dev->name, sizeof(name));
-	else
-		snprintf(name, sizeof(name), "%s_representor_%u",
-			 dpdk_dev->name, switch_info->port_name);
+	if (spawn->pf_bond <  0) {
+		/* Single device. */
+		if (!switch_info->representor)
+			strlcpy(name, dpdk_dev->name, sizeof(name));
+		else
+			snprintf(name, sizeof(name), "%s_representor_%u",
+				 dpdk_dev->name, switch_info->port_name);
+	} else {
+		/* Bonding device. */
+		if (!switch_info->representor)
+			snprintf(name, sizeof(name), "%s_%s",
+				 dpdk_dev->name, spawn->ibv_dev->name);
+		else
+			snprintf(name, sizeof(name), "%s_%s_representor_%u",
+				 dpdk_dev->name, spawn->ibv_dev->name,
+				 switch_info->port_name);
+	}
 	/* check if the device is already spawned */
 	if (rte_eth_dev_get_port_by_name(name, &port_id) == 0) {
 		rte_errno = EEXIST;
