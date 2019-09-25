@@ -1518,6 +1518,53 @@ mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id, uint64_t offset)
 }
 
 /**
+ * Check sibling device configurations.
+ *
+ * Sibling devices sharing the Infiniband device context
+ * should have compatible configurations. This regards
+ * representors and bonding slaves.
+ *
+ * @param priv
+ *   Private device descriptor.
+ * @param config
+ *   Configuration of the device is going to be created.
+ *
+ * @return
+ *   0 on success, EINVAL otherwise
+ */
+static int
+mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
+			      struct mlx5_dev_config *config)
+{
+	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_dev_config *sh_conf = NULL;
+	uint16_t port_id;
+
+	assert(sh);
+	/* Nothing to compare for the single/first device. */
+	if (sh->refcnt == 1)
+		return 0;
+	/* Find the device with shared context. */
+	MLX5_ETH_FOREACH_DEV(port_id) {
+		struct mlx5_priv *opriv =
+			rte_eth_devices[port_id].data->dev_private;
+
+		if (opriv && opriv != priv && opriv->sh == sh) {
+			sh_conf = &opriv->config;
+			break;
+		}
+	}
+	if (!sh_conf)
+		return 0;
+	if (sh_conf->dv_flow_en ^ config->dv_flow_en) {
+		DRV_LOG(ERR, "\"dv_flow_en\" configuration mismatch"
+			     " for shared %s context", sh->ibdev_name);
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+	return 0;
+}
+/**
  * Spawn an Ethernet device from Verbs information.
  *
  * @param dpdk_dev
@@ -1885,6 +1932,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			strerror(rte_errno));
 		goto error;
 	}
+	err = mlx5_dev_check_sibling_config(priv, &config);
+	if (err)
+		goto error;
 	config.hw_csum = !!(sh->device_attr.device_cap_flags_ex &
 			    IBV_DEVICE_RAW_IP_CSUM);
 	DRV_LOG(DEBUG, "checksum offloading is %ssupported",
