@@ -681,6 +681,13 @@ int32_t mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id,
 			 uint64_t offset);
 int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			      struct rte_eth_udp_tunnel *udp_tunnel);
+uint16_t mlx5_eth_find_next(uint16_t port_id);
+
+/* Macro to iterate over all valid ports for mlx5 driver. */
+#define MLX5_ETH_FOREACH_DEV(port_id) \
+	for (port_id = mlx5_eth_find_next(0); \
+	     port_id < RTE_MAX_ETHPORTS; \
+	     port_id = mlx5_eth_find_next(port_id + 1))
 
 /* mlx5_ethdev.c */
 
@@ -715,9 +722,6 @@ int mlx5_set_link_up(struct rte_eth_dev *dev);
 int mlx5_is_removed(struct rte_eth_dev *dev);
 eth_tx_burst_t mlx5_select_tx_function(struct rte_eth_dev *dev);
 eth_rx_burst_t mlx5_select_rx_function(struct rte_eth_dev *dev);
-unsigned int mlx5_dev_to_port_id(const struct rte_device *dev,
-				 uint16_t *port_list,
-				 unsigned int port_list_n);
 struct mlx5_priv *mlx5_port_to_eswitch_info(uint16_t port);
 struct mlx5_priv *mlx5_dev_to_eswitch_info(struct rte_eth_dev *dev);
 int mlx5_sysfs_switch_info(unsigned int ifindex,

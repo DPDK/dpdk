@@ -580,16 +580,15 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->switch_info.domain_id = priv->domain_id;
 	info->switch_info.port_id = priv->representor_id;
 	if (priv->representor) {
-		unsigned int i = mlx5_dev_to_port_id(dev->device, NULL, 0);
-		uint16_t port_id[i];
+		uint16_t port_id;
 
-		i = RTE_MIN(mlx5_dev_to_port_id(dev->device, port_id, i), i);
-		while (i--) {
+		MLX5_ETH_FOREACH_DEV(port_id) {
 			struct mlx5_priv *opriv =
-				rte_eth_devices[port_id[i]].data->dev_private;
+				rte_eth_devices[port_id].data->dev_private;
 
 			if (!opriv ||
 			    opriv->representor ||
+			    opriv->sh != priv->sh ||
 			    opriv->domain_id != priv->domain_id)
 				continue;
 			/*
@@ -600,7 +599,6 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 			break;
 		}
 	}
-
 	return 0;
 }
 
@@ -717,11 +715,13 @@ mlx5_find_master_dev(struct rte_eth_dev *dev)
 	priv = dev->data->dev_private;
 	domain_id = priv->domain_id;
 	assert(priv->representor);
-	RTE_ETH_FOREACH_DEV_OF(port_id, dev->device) {
-		priv = rte_eth_devices[port_id].data->dev_private;
-		if (priv &&
-		    priv->master &&
-		    priv->domain_id == domain_id)
+	MLX5_ETH_FOREACH_DEV(port_id) {
+		struct mlx5_priv *opriv =
+			rte_eth_devices[port_id].data->dev_private;
+		if (opriv &&
+		    opriv->master &&
+		    opriv->domain_id == domain_id &&
+		    opriv->sh == priv->sh)
 			return &rte_eth_devices[port_id];
 	}
 	return NULL;
@@ -1627,36 +1627,6 @@ mlx5_is_removed(struct rte_eth_dev *dev)
 	if (mlx5_glue->query_device(priv->sh->ctx, &device_attr) == EIO)
 		return 1;
 	return 0;
-}
-
-/**
- * Get port ID list of mlx5 instances sharing a common device.
- *
- * @param[in] dev
- *   Device to look for.
- * @param[out] port_list
- *   Result buffer for collected port IDs.
- * @param port_list_n
- *   Maximum number of entries in result buffer. If 0, @p port_list can be
- *   NULL.
- *
- * @return
- *   Number of matching instances regardless of the @p port_list_n
- *   parameter, 0 if none were found.
- */
-unsigned int
-mlx5_dev_to_port_id(const struct rte_device *dev, uint16_t *port_list,
-		    unsigned int port_list_n)
-{
-	uint16_t id;
-	unsigned int n = 0;
-
-	RTE_ETH_FOREACH_DEV_OF(id, dev) {
-		if (n < port_list_n)
-			port_list[n] = id;
-		n++;
-	}
-	return n;
 }
 
 /**

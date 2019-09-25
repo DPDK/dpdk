@@ -926,7 +926,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		unsigned int c = 0;
 		uint16_t port_id;
 
-		RTE_ETH_FOREACH_DEV_OF(port_id, dev->device) {
+		MLX5_ETH_FOREACH_DEV(port_id) {
 			struct mlx5_priv *opriv =
 				rte_eth_devices[port_id].data->dev_private;
 
@@ -935,6 +935,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 			    &rte_eth_devices[port_id] == dev)
 				continue;
 			++c;
+			break;
 		}
 		if (!c)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
@@ -1854,11 +1855,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Look for sibling devices in order to reuse their switch domain
 	 * if any, otherwise allocate one.
 	 */
-	RTE_ETH_FOREACH_DEV_OF(port_id, dpdk_dev) {
+	MLX5_ETH_FOREACH_DEV(port_id) {
 		const struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 
 		if (!opriv ||
+		    opriv->sh != priv->sh ||
 			opriv->domain_id ==
 			RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
 			continue;
@@ -2726,6 +2728,25 @@ exit:
 	assert(ibv_list);
 	mlx5_glue->free_device_list(ibv_list);
 	return ret;
+}
+
+uint16_t
+mlx5_eth_find_next(uint16_t port_id)
+{
+	while (port_id < RTE_MAX_ETHPORTS) {
+		struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+		if (dev->state != RTE_ETH_DEV_UNUSED &&
+		    dev->device &&
+		    dev->device->driver &&
+		    dev->device->driver->name &&
+		    !strcmp(dev->device->driver->name, MLX5_DRIVER_NAME))
+			break;
+		port_id++;
+	}
+	if (port_id >= RTE_MAX_ETHPORTS)
+		return RTE_MAX_ETHPORTS;
+	return port_id;
 }
 
 /**
