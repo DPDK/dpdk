@@ -2153,6 +2153,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * Actually this is the number of iterations to spawn.
 	 */
 	unsigned int ns = 0;
+	struct mlx5_dev_spawn_data *list = NULL;
 	struct mlx5_dev_config dev_config;
 	int ret;
 
@@ -2175,8 +2176,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * matching ones, gathering into the list.
 	 */
 	struct ibv_device *ibv_match[ret + 1];
-	int nl_route = -1;
-	int nl_rdma = -1;
+	int nl_route = mlx5_nl_init(NETLINK_ROUTE);
+	int nl_rdma = mlx5_nl_init(NETLINK_RDMA);
 	unsigned int i;
 
 	while (ret-- > 0) {
@@ -2198,7 +2199,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ibv_match[nd] = NULL;
 	if (!nd) {
 		/* No device matches, just complain and bail out. */
-		mlx5_glue->free_device_list(ibv_list);
 		DRV_LOG(WARNING,
 			"no Verbs device matches PCI device " PCI_PRI_FMT ","
 			" are kernel drivers loaded?",
@@ -2206,10 +2206,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			pci_dev->addr.devid, pci_dev->addr.function);
 		rte_errno = ENOENT;
 		ret = -rte_errno;
-		return ret;
+		goto exit;
 	}
-	nl_route = mlx5_nl_init(NETLINK_ROUTE);
-	nl_rdma = mlx5_nl_init(NETLINK_RDMA);
 	if (nd == 1) {
 		/*
 		 * Found single matching device may have multiple ports.
@@ -2226,8 +2224,16 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * Now we can determine the maximal
 	 * amount of devices to be spawned.
 	 */
-	struct mlx5_dev_spawn_data list[np ? np : nd];
-
+	list = rte_zmalloc("device spawn data",
+			 sizeof(struct mlx5_dev_spawn_data) *
+			 (np ? np : nd),
+			 RTE_CACHE_LINE_SIZE);
+	if (!list) {
+		DRV_LOG(ERR, "spawn data array allocation failure");
+		rte_errno = ENOMEM;
+		ret = -rte_errno;
+		goto exit;
+	}
 	if (np > 1) {
 		/*
 		 * Single IB device with multiple ports found,
@@ -2476,12 +2482,15 @@ exit:
 	/*
 	 * Do the routine cleanup:
 	 * - close opened Netlink sockets
+	 * - free allocated spawn data array
 	 * - free the Infiniband device list
 	 */
 	if (nl_rdma >= 0)
 		close(nl_rdma);
 	if (nl_route >= 0)
 		close(nl_route);
+	if (list)
+		rte_free(list);
 	assert(ibv_list);
 	mlx5_glue->free_device_list(ibv_list);
 	return ret;
