@@ -14,6 +14,8 @@
 #include <rte_byteorder.h>
 #include <rte_errno.h>
 #include <rte_bpf.h>
+#include <rte_ether.h>
+#include <rte_ip.h>
 
 #include "test.h"
 
@@ -35,6 +37,12 @@ struct dummy_vect8 {
 	struct dummy_offset out[8];
 };
 
+struct dummy_net {
+	struct rte_ether_hdr eth_hdr;
+	struct rte_vlan_hdr vlan_hdr;
+	struct rte_ipv4_hdr ip_hdr;
+};
+
 #define	TEST_FILL_1	0xDEADBEEF
 
 #define	TEST_MUL_1	21
@@ -53,6 +61,20 @@ struct dummy_vect8 {
 #define TEST_IMM_3	((uint64_t)INT64_MAX + INT32_MAX)
 #define TEST_IMM_4	((uint64_t)UINT32_MAX)
 #define TEST_IMM_5	((uint64_t)UINT32_MAX + 1)
+
+#define TEST_MEMFROB	0x2a2a2a2a
+
+#define STRING_GEEK	0x6B656567
+#define STRING_WEEK	0x6B656577
+
+#define TEST_NETMASK 0xffffff00
+#define TEST_SUBNET  0xaca80200
+
+uint8_t src_mac[] = { 0x00, 0xFF, 0xAA, 0xFF, 0xAA, 0xFF };
+uint8_t dst_mac[] = { 0x00, 0xAA, 0xFF, 0xAA, 0xFF, 0xAA };
+
+uint32_t ip_src_addr = (172U << 24) | (168U << 16) | (2 << 8) | 1;
+uint32_t ip_dst_addr = (172U << 24) | (168U << 16) | (2 << 8) | 2;
 
 struct bpf_test {
 	const char *name;
@@ -864,6 +886,171 @@ test_jump1_check(uint64_t rc, const void *arg)
 		rv |= 0x80;
 
 	return cmp_res(__func__, rv, rc, &rv, &rc, sizeof(rv));
+}
+
+/* Jump test case - check ip4_dest in particular subnet */
+static const struct ebpf_insn test_jump2_prog[] = {
+
+	[0] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_2,
+		.imm = 0xe,
+	},
+	[1] = {
+		.code = (BPF_LDX | BPF_MEM | BPF_H),
+		.dst_reg = EBPF_REG_3,
+		.src_reg = EBPF_REG_1,
+		.off = 12,
+	},
+	[2] = {
+		.code = (BPF_JMP | EBPF_JNE | BPF_K),
+		.dst_reg = EBPF_REG_3,
+		.off = 2,
+		.imm = 0x81,
+	},
+	[3] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_2,
+		.imm = 0x12,
+	},
+	[4] = {
+		.code = (BPF_LDX | BPF_MEM | BPF_H),
+		.dst_reg = EBPF_REG_3,
+		.src_reg = EBPF_REG_1,
+		.off = 16,
+	},
+	[5] = {
+		.code = (EBPF_ALU64 | BPF_AND | BPF_K),
+		.dst_reg = EBPF_REG_3,
+		.imm = 0xffff,
+	},
+	[6] = {
+		.code = (BPF_JMP | EBPF_JNE | BPF_K),
+		.dst_reg = EBPF_REG_3,
+		.off = 9,
+		.imm = 0x8,
+	},
+	[7] = {
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_2,
+	},
+	[8] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = 0,
+	},
+	[9] = {
+		.code = (BPF_LDX | BPF_MEM | BPF_W),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_1,
+		.off = 16,
+	},
+	[10] = {
+		.code = (BPF_ALU | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_3,
+		.imm = TEST_NETMASK,
+	},
+	[11] = {
+		.code = (BPF_ALU | EBPF_END | EBPF_TO_BE),
+		.dst_reg = EBPF_REG_3,
+		.imm = sizeof(uint32_t) * CHAR_BIT,
+	},
+	[12] = {
+		.code = (BPF_ALU | BPF_AND | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_3,
+	},
+	[13] = {
+		.code = (BPF_ALU | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_3,
+		.imm = TEST_SUBNET,
+	},
+	[14] = {
+		.code = (BPF_ALU | EBPF_END | EBPF_TO_BE),
+		.dst_reg = EBPF_REG_3,
+		.imm = sizeof(uint32_t) * CHAR_BIT,
+	},
+	[15] = {
+		.code = (BPF_JMP | BPF_JEQ | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_3,
+		.off = 1,
+	},
+	[16] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = -1,
+	},
+	[17] = {
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+};
+
+/* Preparing a vlan packet */
+static void
+test_jump2_prepare(void *arg)
+{
+	struct dummy_net *dn;
+
+	dn = arg;
+	memset(dn, 0, sizeof(*dn));
+
+	/*
+	 * Initialize ether header.
+	 */
+	rte_ether_addr_copy((struct rte_ether_addr *)dst_mac,
+			    &dn->eth_hdr.d_addr);
+	rte_ether_addr_copy((struct rte_ether_addr *)src_mac,
+			    &dn->eth_hdr.s_addr);
+	dn->eth_hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
+
+	/*
+	 * Initialize vlan header.
+	 */
+	dn->vlan_hdr.eth_proto =  rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+	dn->vlan_hdr.vlan_tci = 32;
+
+	/*
+	 * Initialize IP header.
+	 */
+	dn->ip_hdr.version_ihl   = 0x45;    /*IP_VERSION | IP_HDRLEN*/
+	dn->ip_hdr.time_to_live   = 64;   /* IP_DEFTTL */
+	dn->ip_hdr.next_proto_id = IPPROTO_TCP;
+	dn->ip_hdr.packet_id = rte_cpu_to_be_16(0x463c);
+	dn->ip_hdr.total_length   = rte_cpu_to_be_16(60);
+	dn->ip_hdr.src_addr = rte_cpu_to_be_32(ip_src_addr);
+	dn->ip_hdr.dst_addr = rte_cpu_to_be_32(ip_dst_addr);
+}
+
+static int
+test_jump2_check(uint64_t rc, const void *arg)
+{
+	const struct rte_ether_hdr *eth_hdr = arg;
+	const struct rte_ipv4_hdr *ipv4_hdr;
+	const void *next = eth_hdr;
+	uint16_t eth_type;
+	uint64_t v = -1;
+
+	if (eth_hdr->ether_type == htons(0x8100)) {
+		const struct rte_vlan_hdr *vlan_hdr =
+			(const void *)(eth_hdr + 1);
+		eth_type = vlan_hdr->eth_proto;
+		next = vlan_hdr + 1;
+	} else {
+		eth_type = eth_hdr->ether_type;
+		next = eth_hdr + 1;
+	}
+
+	if (eth_type == htons(0x0800)) {
+		ipv4_hdr = next;
+		if ((ipv4_hdr->dst_addr & rte_cpu_to_be_32(TEST_NETMASK)) ==
+		    rte_cpu_to_be_32(TEST_SUBNET)) {
+			v = 0;
+		}
+	}
+
+	return cmp_res(__func__, v, rc, arg, arg, sizeof(arg));
 }
 
 /* alu (add, sub, and, or, xor, neg)  test-cases */
@@ -1889,6 +2076,388 @@ static const struct rte_bpf_xsym test_call3_xsym[] = {
 	},
 };
 
+/* Test for stack corruption in multiple function calls */
+static const struct ebpf_insn test_call4_prog[] = {
+	{
+		.code = (BPF_ST | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_10,
+		.off = -4,
+		.imm = 1,
+	},
+	{
+		.code = (BPF_ST | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_10,
+		.off = -3,
+		.imm = 2,
+	},
+	{
+		.code = (BPF_ST | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_10,
+		.off = -2,
+		.imm = 3,
+	},
+	{
+		.code = (BPF_ST | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_10,
+		.off = -1,
+		.imm = 4,
+	},
+	{
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_10,
+	},
+	{
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_2,
+		.imm = 4,
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_SUB | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_2,
+	},
+	{
+		.code = (BPF_JMP | EBPF_CALL),
+		.imm = 0,
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_10,
+		.off = -4,
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_2,
+		.src_reg = EBPF_REG_10,
+		.off = -3,
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_3,
+		.src_reg = EBPF_REG_10,
+		.off = -2,
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_4,
+		.src_reg = EBPF_REG_10,
+		.off = -1,
+	},
+	{
+		.code = (BPF_JMP | EBPF_CALL),
+		.imm = 1,
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_XOR | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = TEST_MEMFROB,
+	},
+	{
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+};
+
+/* Gathering the bytes together */
+static uint32_t
+dummy_func4_1(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
+{
+	return (a << 24) | (b << 16) | (c << 8) | (d << 0);
+}
+
+/* Implementation of memfrob */
+static uint32_t
+dummy_func4_0(uint32_t *s, uint8_t n)
+{
+	char *p = (char *) s;
+	while (n-- > 0)
+		*p++ ^= 42;
+	return *s;
+}
+
+
+static int
+test_call4_check(uint64_t rc, const void *arg)
+{
+	uint8_t a[4] = {1, 2, 3, 4};
+	uint32_t s, v = 0;
+
+	RTE_SET_USED(arg);
+
+	s = dummy_func4_0((uint32_t *)a, 4);
+
+	s = dummy_func4_1(a[0], a[1], a[2], a[3]);
+
+	v = s ^ TEST_MEMFROB;
+
+	return cmp_res(__func__, v, rc, &v, &rc, sizeof(v));
+}
+
+static const struct rte_bpf_xsym test_call4_xsym[] = {
+	[0] = {
+		.name = RTE_STR(dummy_func4_0),
+		.type = RTE_BPF_XTYPE_FUNC,
+		.func = {
+			.val = (void *)dummy_func4_0,
+			.nb_args = 2,
+			.args = {
+				[0] = {
+					.type = RTE_BPF_ARG_PTR,
+					.size = 4 * sizeof(uint8_t),
+				},
+				[1] = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uint8_t),
+				},
+			},
+			.ret = {
+				.type = RTE_BPF_ARG_RAW,
+				.size = sizeof(uint32_t),
+			},
+		},
+	},
+	[1] = {
+		.name = RTE_STR(dummy_func4_1),
+		.type = RTE_BPF_XTYPE_FUNC,
+		.func = {
+			.val = (void *)dummy_func4_1,
+			.nb_args = 4,
+			.args = {
+				[0] = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uint8_t),
+				},
+				[1] = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uint8_t),
+				},
+				[2] = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uint8_t),
+				},
+				[3] = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uint8_t),
+				},
+			},
+			.ret = {
+				.type = RTE_BPF_ARG_RAW,
+				.size = sizeof(uint32_t),
+			},
+		},
+	},
+};
+
+/* string compare test case */
+static const struct ebpf_insn test_call5_prog[] = {
+
+	[0] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_1,
+		.imm = STRING_GEEK,
+	},
+	[1] = {
+		.code = (BPF_STX | BPF_MEM | BPF_W),
+		.dst_reg = EBPF_REG_10,
+		.src_reg = EBPF_REG_1,
+		.off = -8,
+	},
+	[2] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_6,
+		.imm = 0,
+	},
+	[3] = {
+		.code = (BPF_STX | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_10,
+		.src_reg = EBPF_REG_6,
+		.off = -4,
+	},
+	[4] = {
+		.code = (BPF_STX | BPF_MEM | BPF_W),
+		.dst_reg = EBPF_REG_10,
+		.src_reg = EBPF_REG_6,
+		.off = -12,
+	},
+	[5] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_1,
+		.imm = STRING_WEEK,
+	},
+	[6] = {
+		.code = (BPF_STX | BPF_MEM | BPF_W),
+		.dst_reg = EBPF_REG_10,
+		.src_reg = EBPF_REG_1,
+		.off = -16,
+	},
+	[7] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_10,
+	},
+	[8] = {
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_K),
+		.dst_reg = EBPF_REG_1,
+		.imm = -8,
+	},
+	[9] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_2,
+		.src_reg = EBPF_REG_1,
+	},
+	[10] = {
+		.code = (BPF_JMP | EBPF_CALL),
+		.imm = 0,
+	},
+	[11] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_0,
+	},
+	[12] = {
+		.code = (BPF_ALU | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = -1,
+	},
+	[13] = {
+		.code = (EBPF_ALU64 | BPF_LSH | BPF_K),
+		.dst_reg = EBPF_REG_1,
+		.imm = 0x20,
+	},
+	[14] = {
+		.code = (EBPF_ALU64 | BPF_RSH | BPF_K),
+		.dst_reg = EBPF_REG_1,
+		.imm = 0x20,
+	},
+	[15] = {
+		.code = (BPF_JMP | EBPF_JNE | BPF_K),
+		.dst_reg = EBPF_REG_1,
+		.off = 11,
+		.imm = 0,
+	},
+	[16] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_10,
+	},
+	[17] = {
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_K),
+		.dst_reg = EBPF_REG_1,
+		.imm = -8,
+	},
+	[18] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_2,
+		.src_reg = EBPF_REG_10,
+	},
+	[19] = {
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_K),
+		.dst_reg = EBPF_REG_2,
+		.imm = -16,
+	},
+	[20] = {
+		.code = (BPF_JMP | EBPF_CALL),
+		.imm = 0,
+	},
+	[21] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_0,
+	},
+	[22] = {
+		.code = (EBPF_ALU64 | BPF_LSH | BPF_K),
+		.dst_reg = EBPF_REG_1,
+		.imm = 0x20,
+	},
+	[23] = {
+		.code = (EBPF_ALU64 | BPF_RSH | BPF_K),
+		.dst_reg = EBPF_REG_1,
+		.imm = 0x20,
+	},
+	[24] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_1,
+	},
+	[25] = {
+		.code = (BPF_JMP | BPF_JEQ | BPF_X),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_6,
+		.off = 1,
+	},
+	[26] = {
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = 0,
+	},
+	[27] = {
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+};
+
+/* String comparision impelementation, return 0 if equal else difference */
+static uint32_t
+dummy_func5(const char *s1, const char *s2)
+{
+	while (*s1 && (*s1 == *s2)) {
+		s1++;
+		s2++;
+	}
+	return *(const unsigned char *)s1 - *(const unsigned char *)s2;
+}
+
+static int
+test_call5_check(uint64_t rc, const void *arg)
+{
+	char a[] = "geek";
+	char b[] = "week";
+	uint32_t v;
+
+	RTE_SET_USED(arg);
+
+	v = dummy_func5(a, a);
+	if (v != 0) {
+		v = -1;
+		goto fail;
+	}
+
+	v = dummy_func5(a, b);
+	if (v == 0)
+		goto fail;
+
+	v = 0;
+
+fail:
+
+	return cmp_res(__func__, v, rc, &v, &rc, sizeof(v));
+}
+
+static const struct rte_bpf_xsym test_call5_xsym[] = {
+	[0] = {
+		.name = RTE_STR(dummy_func5),
+		.type = RTE_BPF_XTYPE_FUNC,
+		.func = {
+			.val = (void *)dummy_func5,
+			.nb_args = 2,
+			.args = {
+				[0] = {
+					.type = RTE_BPF_ARG_PTR,
+					.size = sizeof(char),
+				},
+				[1] = {
+					.type = RTE_BPF_ARG_PTR,
+					.size = sizeof(char),
+				},
+			},
+			.ret = {
+				.type = RTE_BPF_ARG_RAW,
+				.size = sizeof(uint32_t),
+			},
+		},
+	},
+};
+
 static const struct bpf_test tests[] = {
 	{
 		.name = "test_store1",
@@ -1987,6 +2556,20 @@ static const struct bpf_test tests[] = {
 		},
 		.prepare = test_jump1_prepare,
 		.check_result = test_jump1_check,
+	},
+	{
+		.name = "test_jump2",
+		.arg_sz = sizeof(struct dummy_net),
+		.prm = {
+			.ins = test_jump2_prog,
+			.nb_ins = RTE_DIM(test_jump2_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = sizeof(struct dummy_net),
+			},
+		},
+		.prepare = test_jump2_prepare,
+		.check_result = test_jump2_check,
 	},
 	{
 		.name = "test_alu1",
@@ -2095,6 +2678,42 @@ static const struct bpf_test tests[] = {
 		},
 		.prepare = test_call3_prepare,
 		.check_result = test_call3_check,
+		/* for now don't support function calls on 32 bit platform */
+		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
+	},
+	{
+		.name = "test_call4",
+		.arg_sz = sizeof(struct dummy_offset),
+		.prm = {
+			.ins = test_call4_prog,
+			.nb_ins = RTE_DIM(test_call4_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = 2 * sizeof(struct dummy_offset),
+			},
+			.xsym = test_call4_xsym,
+			.nb_xsym = RTE_DIM(test_call4_xsym),
+		},
+		.prepare = test_store1_prepare,
+		.check_result = test_call4_check,
+		/* for now don't support function calls on 32 bit platform */
+		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
+	},
+	{
+		.name = "test_call5",
+		.arg_sz = sizeof(struct dummy_offset),
+		.prm = {
+			.ins = test_call5_prog,
+			.nb_ins = RTE_DIM(test_call5_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = sizeof(struct dummy_offset),
+			},
+			.xsym = test_call5_xsym,
+			.nb_xsym = RTE_DIM(test_call5_xsym),
+		},
+		.prepare = test_store1_prepare,
+		.check_result = test_call5_check,
 		/* for now don't support function calls on 32 bit platform */
 		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
 	},
