@@ -1788,6 +1788,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
 	priv->vport_meta_tag = 0;
 	priv->vport_meta_mask = 0;
+	priv->pf_bond = spawn->pf_bond;
 #ifdef HAVE_MLX5DV_DR_DEVX_PORT
 	/*
 	 * The DevX port query API is implemented. E-Switch may use

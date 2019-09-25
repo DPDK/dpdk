@@ -623,6 +623,7 @@ struct mlx5_priv {
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
 	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
 	int32_t representor_id; /* Port representor identifier. */
+	int32_t pf_bond; /* >=0 means PF index in bonding configuration. */
 	unsigned int if_index; /* Associated kernel network device index. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */

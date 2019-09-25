@@ -582,6 +582,25 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	if (priv->representor) {
 		uint16_t port_id;
 
+		if (priv->pf_bond >= 0) {
+			/*
+			 * Switch port ID is opaque value with driver defined
+			 * format. Push the PF index in bonding configurations
+			 * in upper four bits of port ID. If we get too many
+			 * representors (more than 4K) or PFs (more than 15)
+			 * this approach must be reconsidered.
+			 */
+			if ((info->switch_info.port_id >>
+				MLX5_PORT_ID_BONDING_PF_SHIFT) ||
+			    priv->pf_bond > MLX5_PORT_ID_BONDING_PF_MASK) {
+				DRV_LOG(ERR, "can't update switch port ID"
+					     " for bonding device");
+				assert(false);
+				return -ENODEV;
+			}
+			info->switch_info.port_id |=
+				priv->pf_bond << MLX5_PORT_ID_BONDING_PF_SHIFT;
+		}
 		MLX5_ETH_FOREACH_DEV(port_id) {
 			struct mlx5_priv *opriv =
 				rte_eth_devices[port_id].data->dev_private;
