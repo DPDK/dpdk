@@ -168,6 +168,7 @@ struct mlx5_dev_spawn_data {
 	uint32_t ifindex; /**< Network interface index. */
 	uint32_t max_port; /**< IB device maximal port index. */
 	uint32_t ibv_port; /**< IB device physical port index. */
+	int pf_bond; /**< bonding device PF index. < 0 - no bonding */
 	struct mlx5_switch_info info; /**< Switch information. */
 	struct ibv_device *ibv_dev; /**< Associated IB device. */
 	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
@@ -2118,6 +2119,105 @@ mlx5_dev_spawn_data_cmp(const void *a, const void *b)
 }
 
 /**
+ * Match PCI information for possible slaves of bonding device.
+ *
+ * @param[in] ibv_dev
+ *   Pointer to Infiniband device structure.
+ * @param[in] pci_dev
+ *   Pointer to PCI device structure to match PCI address.
+ * @param[in] nl_rdma
+ *   Netlink RDMA group socket handle.
+ *
+ * @return
+ *   negative value if no bonding device found, otherwise
+ *   positive index of slave PF in bonding.
+ */
+static int
+mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
+			   const struct rte_pci_device *pci_dev,
+			   int nl_rdma)
+{
+	char ifname[IF_NAMESIZE + 1];
+	unsigned int ifindex;
+	unsigned int np, i;
+	FILE *file = NULL;
+	int pf = -1;
+
+	/*
+	 * Try to get master device name. If something goes
+	 * wrong suppose the lack of kernel support and no
+	 * bonding devices.
+	 */
+	if (nl_rdma < 0)
+		return -1;
+	if (!strstr(ibv_dev->name, "bond"))
+		return -1;
+	np = mlx5_nl_portnum(nl_rdma, ibv_dev->name);
+	if (!np)
+		return -1;
+	/*
+	 * The Master device might not be on the predefined
+	 * port (not on port index 1, it is not garanted),
+	 * we have to scan all Infiniband device port and
+	 * find master.
+	 */
+	for (i = 1; i <= np; ++i) {
+		/* Check whether Infiniband port is populated. */
+		ifindex = mlx5_nl_ifindex(nl_rdma, ibv_dev->name, i);
+		if (!ifindex)
+			continue;
+		if (!if_indextoname(ifindex, ifname))
+			continue;
+		/* Try to read bonding slave names from sysfs. */
+		MKSTR(slaves,
+		      "/sys/class/net/%s/master/bonding/slaves", ifname);
+		file = fopen(slaves, "r");
+		if (file)
+			break;
+	}
+	if (!file)
+		return -1;
+	/* Use safe format to check maximal buffer length. */
+	assert(atol(RTE_STR(IF_NAMESIZE)) == IF_NAMESIZE);
+	while (fscanf(file, "%" RTE_STR(IF_NAMESIZE) "s", ifname) == 1) {
+		char tmp_str[IF_NAMESIZE + 32];
+		struct rte_pci_addr pci_addr;
+		struct mlx5_switch_info	info;
+
+		/* Process slave interface names in the loop. */
+		snprintf(tmp_str, sizeof(tmp_str),
+			 "/sys/class/net/%s", ifname);
+		if (mlx5_dev_to_pci_addr(tmp_str, &pci_addr)) {
+			DRV_LOG(WARNING, "can not get PCI address"
+					 " for netdev \"%s\"", ifname);
+			continue;
+		}
+		if (pci_dev->addr.domain != pci_addr.domain ||
+		    pci_dev->addr.bus != pci_addr.bus ||
+		    pci_dev->addr.devid != pci_addr.devid ||
+		    pci_dev->addr.function != pci_addr.function)
+			continue;
+		/* Slave interface PCI address match found. */
+		fclose(file);
+		snprintf(tmp_str, sizeof(tmp_str),
+			 "/sys/class/net/%s/phys_port_name", ifname);
+		file = fopen(tmp_str, "rb");
+		if (!file)
+			break;
+		info.name_type = MLX5_PHYS_PORT_NAME_TYPE_NOTSET;
+		if (fscanf(file, "%32s", tmp_str) == 1)
+			mlx5_translate_port_name(tmp_str, &info);
+		if (info.name_type == MLX5_PHYS_PORT_NAME_TYPE_LEGACY ||
+		    info.name_type == MLX5_PHYS_PORT_NAME_TYPE_UPLINK)
+			pf = info.port_name;
+		break;
+	}
+	if (file)
+		fclose(file);
+	return pf;
+}
+
+/**
  * DPDK callback to register a PCI device.
  *
  * This function spawns Ethernet devices out of a given PCI device.
@@ -2153,6 +2253,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * Actually this is the number of iterations to spawn.
 	 */
 	unsigned int ns = 0;
+	/*
+	 * Bonding device
+	 *   < 0 - no bonding device (single one)
+	 *  >= 0 - bonding device (value is slave PF index)
+	 */
+	int bd = -1;
 	struct mlx5_dev_spawn_data *list = NULL;
 	struct mlx5_dev_config dev_config;
 	int ret;
@@ -2184,6 +2290,30 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_addr pci_addr;
 
 		DRV_LOG(DEBUG, "checking device \"%s\"", ibv_list[ret]->name);
+		bd = mlx5_device_bond_pci_match
+				(ibv_list[ret], pci_dev, nl_rdma);
+		if (bd >= 0) {
+			/*
+			 * Bonding device detected. Only one match is allowed,
+			 * the bonding is supported over multi-port IB device,
+			 * there should be no matches on representor PCI
+			 * functions or non VF LAG bonding devices with
+			 * specified address.
+			 */
+			if (nd) {
+				DRV_LOG(ERR,
+					"multiple PCI match on bonding device"
+					"\"%s\" found", ibv_list[ret]->name);
+				rte_errno = ENOENT;
+				ret = -rte_errno;
+				goto exit;
+			}
+			DRV_LOG(INFO, "PCI information matches for"
+				      " slave %d bonding device \"%s\"",
+				      bd, ibv_list[ret]->name);
+			ibv_match[nd++] = ibv_list[ret];
+			break;
+		}
 		if (mlx5_dev_to_pci_addr
 			(ibv_list[ret]->ibdev_path, &pci_addr))
 			continue;
@@ -2219,6 +2349,13 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (!np)
 			DRV_LOG(WARNING, "can not get IB device \"%s\""
 					 " ports number", ibv_match[0]->name);
+		if (bd >= 0 && !np) {
+			DRV_LOG(ERR, "can not get ports"
+				     " for bonding device");
+			rte_errno = ENOENT;
+			ret = -rte_errno;
+			goto exit;
+		}
 	}
 	/*
 	 * Now we can determine the maximal
@@ -2234,7 +2371,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		ret = -rte_errno;
 		goto exit;
 	}
-	if (np > 1) {
+	if (bd >= 0 || np > 1) {
 		/*
 		 * Single IB device with multiple ports found,
 		 * it may be E-Switch master device and representors.
@@ -2243,12 +2380,14 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		assert(nl_rdma >= 0);
 		assert(ns == 0);
 		assert(nd == 1);
+		assert(np);
 		for (i = 1; i <= np; ++i) {
 			list[ns].max_port = np;
 			list[ns].ibv_port = i;
 			list[ns].ibv_dev = ibv_match[0];
 			list[ns].eth_dev = NULL;
 			list[ns].pci_dev = pci_dev;
+			list[ns].pf_bond = bd;
 			list[ns].ifindex = mlx5_nl_ifindex
 					(nl_rdma, list[ns].ibv_dev->name, i);
 			if (!list[ns].ifindex) {
@@ -2277,6 +2416,21 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				ret =  mlx5_sysfs_switch_info
 						(list[ns].ifindex,
 						 &list[ns].info);
+			}
+			if (!ret && bd >= 0) {
+				switch (list[ns].info.name_type) {
+				case MLX5_PHYS_PORT_NAME_TYPE_UPLINK:
+					if (list[ns].info.port_name == bd)
+						ns++;
+					break;
+				case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
+					if (list[ns].info.pf_num == bd)
+						ns++;
+					break;
+				default:
+					break;
+				}
+				continue;
 			}
 			if (!ret && (list[ns].info.representor ^
 				     list[ns].info.master))
@@ -2316,6 +2470,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			list[ns].ibv_dev = ibv_match[i];
 			list[ns].eth_dev = NULL;
 			list[ns].pci_dev = pci_dev;
+			list[ns].pf_bond = -1;
 			list[ns].ifindex = 0;
 			if (nl_rdma >= 0)
 				list[ns].ifindex = mlx5_nl_ifindex
