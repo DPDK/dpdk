@@ -169,6 +169,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		func mlx5dv_dr_action_create_push_vlan \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_MLX5DV_DR_DEVX_PORT \
+		infiniband/mlx5dv.h \
+		func mlx5dv_query_devx_port \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_IBV_DEVX_OBJ \
 		infiniband/mlx5dv.h \
 		func mlx5dv_devx_obj_create \

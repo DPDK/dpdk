@@ -2369,6 +2369,19 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			goto exit;
 		}
 	}
+#ifndef HAVE_MLX5DV_DR_DEVX_PORT
+	if (bd >= 0) {
+		/*
+		 * This may happen if there is VF LAG kernel support and
+		 * application is compiled with older rdma_core library.
+		 */
+		DRV_LOG(ERR,
+			"No kernel/verbs support for VF LAG bonding found.");
+		rte_errno = ENOTSUP;
+		ret = -rte_errno;
+		goto exit;
+	}
+#endif
 	/*
 	 * Now we can determine the maximal
 	 * amount of devices to be spawned.
