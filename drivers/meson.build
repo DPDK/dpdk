@@ -79,18 +79,18 @@ foreach class:dpdk_driver_classes
 			endif
 
 			# get dependency objs from strings
-			shared_objs = []
-			static_objs = []
+			shared_deps = []
+			static_deps = []
 			foreach d:deps
 				if not is_variable('shared_rte_' + d)
 					error('Missing dependency ' + d +
 						' for driver ' + lib_name)
 				endif
-				shared_objs += [get_variable('shared_rte_' + d)]
-				static_objs += [get_variable('static_rte_' + d)]
+				shared_deps += [get_variable('shared_rte_' + d)]
+				static_deps += [get_variable('static_rte_' + d)]
 			endforeach
-			shared_objs += ext_deps
-			static_objs += ext_deps
+			shared_deps += ext_deps
+			static_deps += ext_deps
 			dpdk_extra_ldflags += pkgconfig_extra_libs
 
 			# generate pmdinfo sources by building a temporary
@@ -101,7 +101,7 @@ foreach class:dpdk_driver_classes
 			tmp_lib = static_library('tmp_' + lib_name,
 					sources,
 					include_directories: includes,
-					dependencies: static_objs,
+					dependencies: static_deps,
 					c_args: cflags)
 			objs += tmp_lib.extract_all_objects()
 			sources = custom_target(out_filename,
@@ -123,7 +123,7 @@ foreach class:dpdk_driver_classes
 				sources,
 				objects: objs,
 				include_directories: includes,
-				dependencies: static_objs,
+				dependencies: static_deps,
 				c_args: cflags,
 				install: true)
 
@@ -135,7 +135,7 @@ foreach class:dpdk_driver_classes
 				sources,
 				objects: objs,
 				include_directories: includes,
-				dependencies: shared_objs,
+				dependencies: shared_deps,
 				c_args: cflags,
 				link_args: '-Wl,--version-script=' + version_map,
 				link_depends: version_map,
@@ -148,10 +148,10 @@ foreach class:dpdk_driver_classes
 			# testpmd or other built-in apps can find it if necessary
 			shared_dep = declare_dependency(link_with: shared_lib,
 					include_directories: includes,
-					dependencies: shared_objs)
+					dependencies: shared_deps)
 			static_dep = declare_dependency(link_with: static_lib,
 					include_directories: includes,
-					dependencies: static_objs)
+					dependencies: static_deps)
 
 			dpdk_drivers += static_lib
 
