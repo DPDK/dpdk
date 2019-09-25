@@ -342,7 +342,7 @@ otx2_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 			w1.il4type = NIX_SENDL4TYPE_TCP_CKSUM;
 			w1.ol4type = is_udp_tun ? NIX_SENDL4TYPE_UDP_CKSUM : 0;
 			/* Update format for UDP tunneled packet */
-			send_hdr_ext->w0.lso_format += (is_udp_tun << 1);
+			send_hdr_ext->w0.lso_format += is_udp_tun ? 2 : 6;
 
 			send_hdr_ext->w0.lso_format +=
 				!!(ol_flags & PKT_TX_OUTER_IPV6) << 1;
