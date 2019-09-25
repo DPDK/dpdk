@@ -718,8 +718,8 @@ eth_rx_burst_t mlx5_select_rx_function(struct rte_eth_dev *dev);
 unsigned int mlx5_dev_to_port_id(const struct rte_device *dev,
 				 uint16_t *port_list,
 				 unsigned int port_list_n);
-int mlx5_port_to_eswitch_info(uint16_t port, uint16_t *es_domain_id,
-			      uint16_t *es_port_id);
+struct mlx5_priv *mlx5_port_to_eswitch_info(uint16_t port);
+struct mlx5_priv *mlx5_dev_to_eswitch_info(struct rte_eth_dev *dev);
 int mlx5_sysfs_switch_info(unsigned int ifindex,
 			   struct mlx5_switch_info *info);
 void mlx5_sysfs_check_switch_info(bool device_dir,

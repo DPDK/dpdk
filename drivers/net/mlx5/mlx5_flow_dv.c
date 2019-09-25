@@ -813,8 +813,8 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 	const struct rte_flow_item_port_id switch_mask = {
 			.id = 0xffffffff,
 	};
-	uint16_t esw_domain_id;
-	uint16_t item_port_esw_domain_id;
+	struct mlx5_priv *esw_priv;
+	struct mlx5_priv *dev_priv;
 	int ret;
 
 	if (!attr->transfer)
@@ -845,22 +845,20 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 		return ret;
 	if (!spec)
 		return 0;
-	ret = mlx5_port_to_eswitch_info(spec->id, &item_port_esw_domain_id,
-					NULL);
-	if (ret)
-		return rte_flow_error_set(error, -ret,
+	esw_priv = mlx5_port_to_eswitch_info(spec->id);
+	if (!esw_priv)
+		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, spec,
 					  "failed to obtain E-Switch info for"
 					  " port");
-	ret = mlx5_port_to_eswitch_info(dev->data->port_id,
-					&esw_domain_id, NULL);
-	if (ret < 0)
-		return rte_flow_error_set(error, -ret,
+	dev_priv = mlx5_dev_to_eswitch_info(dev);
+	if (!dev_priv)
+		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "failed to obtain E-Switch info");
-	if (item_port_esw_domain_id != esw_domain_id)
-		return rte_flow_error_set(error, -ret,
+	if (esw_priv->domain_id != dev_priv->domain_id)
+		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, spec,
 					  "cannot match on a port from a"
 					  " different E-Switch");
@@ -2440,10 +2438,9 @@ flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
 				struct rte_flow_error *error)
 {
 	const struct rte_flow_action_port_id *port_id;
+	struct mlx5_priv *act_priv;
+	struct mlx5_priv *dev_priv;
 	uint16_t port;
-	uint16_t esw_domain_id;
-	uint16_t act_port_domain_id;
-	int ret;
 
 	if (!attr->transfer)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -2463,24 +2460,23 @@ flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can have only one fate actions in"
 					  " a flow");
-	ret = mlx5_port_to_eswitch_info(dev->data->port_id,
-					&esw_domain_id, NULL);
-	if (ret < 0)
-		return rte_flow_error_set(error, -ret,
+	dev_priv = mlx5_dev_to_eswitch_info(dev);
+	if (!dev_priv)
+		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "failed to obtain E-Switch info");
 	port_id = action->conf;
 	port = port_id->original ? dev->data->port_id : port_id->id;
-	ret = mlx5_port_to_eswitch_info(port, &act_port_domain_id, NULL);
-	if (ret)
+	act_priv = mlx5_port_to_eswitch_info(port);
+	if (!act_priv)
 		return rte_flow_error_set
-				(error, -ret,
+				(error, rte_errno,
 				 RTE_FLOW_ERROR_TYPE_ACTION_CONF, port_id,
 				 "failed to obtain E-Switch port id for port");
-	if (act_port_domain_id != esw_domain_id)
+	if (act_priv->domain_id != dev_priv->domain_id)
 		return rte_flow_error_set
-				(error, -ret,
+				(error, EINVAL,
 				 RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 				 "port does not belong to"
 				 " E-Switch being configured");
@@ -4664,15 +4660,16 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 {
 	const struct rte_flow_item_port_id *pid_m = item ? item->mask : NULL;
 	const struct rte_flow_item_port_id *pid_v = item ? item->spec : NULL;
-	uint16_t mask, val, id;
-	int ret;
+	struct mlx5_priv *priv;
+	uint16_t mask, id;
 
 	mask = pid_m ? pid_m->id : 0xffff;
 	id = pid_v ? pid_v->id : dev->data->port_id;
-	ret = mlx5_port_to_eswitch_info(id, NULL, &val);
-	if (ret)
-		return ret;
-	flow_dv_translate_item_source_vport(matcher, key, val, mask);
+	priv = mlx5_port_to_eswitch_info(id);
+	if (!priv)
+		return -rte_errno;
+	flow_dv_translate_item_source_vport(matcher, key,
+					    priv->vport_id, mask);
 	return 0;
 }
 
@@ -5105,19 +5102,18 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 				 struct rte_flow_error *error)
 {
 	uint32_t port;
-	uint16_t port_id;
-	int ret;
+	struct mlx5_priv *priv;
 	const struct rte_flow_action_port_id *conf =
 			(const struct rte_flow_action_port_id *)action->conf;
 
 	port = conf->original ? dev->data->port_id : conf->id;
-	ret = mlx5_port_to_eswitch_info(port, NULL, &port_id);
-	if (ret)
-		return rte_flow_error_set(error, -ret,
+	priv = mlx5_port_to_eswitch_info(port);
+	if (!priv)
+		return rte_flow_error_set(error, -rte_errno,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "No eswitch info was found for port");
-	*dst_port_id = port_id;
+	*dst_port_id = priv->vport_id;
 	return 0;
 }
 

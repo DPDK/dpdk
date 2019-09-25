@@ -1660,7 +1660,7 @@ mlx5_dev_to_port_id(const struct rte_device *dev, uint16_t *port_list,
 }
 
 /**
- * Get the E-Switch domain id this port belongs to.
+ * Get the E-Switch parameters by port id.
  *
  * @param[in] port
  *   Device port id.
@@ -1670,34 +1670,57 @@ mlx5_dev_to_port_id(const struct rte_device *dev, uint16_t *port_list,
  *   The port id of the port in the E-Switch.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   pointer to device private data structure containing data needed
+ *   on success, NULL otherwise and rte_errno is set.
  */
-int
-mlx5_port_to_eswitch_info(uint16_t port,
-			  uint16_t *es_domain_id, uint16_t *es_port_id)
+struct mlx5_priv *
+mlx5_port_to_eswitch_info(uint16_t port)
 {
 	struct rte_eth_dev *dev;
 	struct mlx5_priv *priv;
 
 	if (port >= RTE_MAX_ETHPORTS) {
 		rte_errno = EINVAL;
-		return -rte_errno;
+		return NULL;
 	}
 	if (!rte_eth_dev_is_valid_port(port)) {
 		rte_errno = ENODEV;
-		return -rte_errno;
+		return NULL;
 	}
 	dev = &rte_eth_devices[port];
 	priv = dev->data->dev_private;
 	if (!(priv->representor || priv->master)) {
 		rte_errno = EINVAL;
-		return -rte_errno;
+		return NULL;
 	}
-	if (es_domain_id)
-		*es_domain_id = priv->domain_id;
-	if (es_port_id)
-		*es_port_id = priv->vport_id;
-	return 0;
+	return priv;
+}
+
+/**
+ * Get the E-Switch parameters by device instance.
+ *
+ * @param[in] port
+ *   Device port id.
+ * @param[out] es_domain_id
+ *   E-Switch domain id.
+ * @param[out] es_port_id
+ *   The port id of the port in the E-Switch.
+ *
+ * @return
+ *   pointer to device private data structure containing data needed
+ *   on success, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_priv *
+mlx5_dev_to_eswitch_info(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv;
+
+	priv = dev->data->dev_private;
+	if (!(priv->representor || priv->master)) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	return priv;
 }
 
 /**
