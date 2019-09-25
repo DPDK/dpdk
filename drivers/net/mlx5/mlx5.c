@@ -1562,6 +1562,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int own_domain_id = 0;
 	uint16_t port_id;
 	unsigned int i;
+#ifdef HAVE_MLX5DV_DR_DEVX_PORT
+	struct mlx5dv_devx_port devx_port;
+#endif
 
 	/* Determine if this port representor is supposed to be spawned. */
 	if (switch_info->representor && dpdk_dev->devargs) {
@@ -1782,8 +1785,56 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->representor = !!switch_info->representor;
 	priv->master = !!switch_info->master;
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
+	priv->vport_meta_tag = 0;
+	priv->vport_meta_mask = 0;
+#ifdef HAVE_MLX5DV_DR_DEVX_PORT
 	/*
-	 * Currently we support single E-Switch per PF configurations
+	 * The DevX port query API is implemented. E-Switch may use
+	 * either vport or reg_c[0] metadata register to match on
+	 * vport index. The engaged part of metadata register is
+	 * defined by mask.
+	 */
+	devx_port.comp_mask = MLX5DV_DEVX_PORT_VPORT |
+			      MLX5DV_DEVX_PORT_MATCH_REG_C_0;
+	err = mlx5dv_query_devx_port(sh->ctx, spawn->ibv_port, &devx_port);
+	if (err) {
+		DRV_LOG(WARNING, "can't query devx port %d on device %s\n",
+			spawn->ibv_port, spawn->ibv_dev->name);
+		devx_port.comp_mask = 0;
+	}
+	if (devx_port.comp_mask & MLX5DV_DEVX_PORT_MATCH_REG_C_0) {
+		priv->vport_meta_tag = devx_port.reg_c_0.value;
+		priv->vport_meta_mask = devx_port.reg_c_0.mask;
+		if (!priv->vport_meta_mask) {
+			DRV_LOG(ERR, "vport zero mask for port %d"
+				     " on bonding device %s\n",
+				     spawn->ibv_port, spawn->ibv_dev->name);
+			err = ENOTSUP;
+			goto error;
+		}
+		if (priv->vport_meta_tag & ~priv->vport_meta_mask) {
+			DRV_LOG(ERR, "invalid vport tag for port %d"
+				     " on bonding device %s\n",
+				     spawn->ibv_port, spawn->ibv_dev->name);
+			err = ENOTSUP;
+			goto error;
+		}
+	} else if (devx_port.comp_mask & MLX5DV_DEVX_PORT_VPORT) {
+		priv->vport_id = devx_port.vport_num;
+	} else if (spawn->pf_bond >= 0) {
+		DRV_LOG(ERR, "can't deduce vport index for port %d"
+			     " on bonding device %s\n",
+			     spawn->ibv_port, spawn->ibv_dev->name);
+		err = ENOTSUP;
+		goto error;
+	} else {
+		/* Suppose vport index in compatible way. */
+		priv->vport_id = switch_info->representor ?
+				 switch_info->port_name + 1 : -1;
+	}
+#else
+	/*
+	 * Kernel/rdma_core support single E-Switch per PF configurations
 	 * only and vport_id field contains the vport index for
 	 * associated VF, which is deduced from representor port name.
 	 * For example, let's have the IB device port 10, it has
@@ -1795,7 +1846,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 */
 	priv->vport_id = switch_info->representor ?
 			 switch_info->port_name + 1 : -1;
-	/* representor_id field keeps the unmodified port/VF index. */
+#endif
+	/* representor_id field keeps the unmodified VF index. */
 	priv->representor_id = switch_info->representor ?
 			       switch_info->port_name : -1;
 	/*

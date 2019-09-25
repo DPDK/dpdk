@@ -620,6 +620,8 @@ struct mlx5_priv {
 	unsigned int counter_fallback:1; /* Use counter fallback management. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
+	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
+	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
 	int32_t representor_id; /* Port representor identifier. */
 	unsigned int if_index; /* Associated kernel network device index. */
 	/* RX/TX queues. */
