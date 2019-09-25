@@ -1649,10 +1649,10 @@ ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
 #endif
 			   uint16_t desc_id)
 {
-	int ret;
 	struct igb_ring_desc_16_bytes *ring =
 		(struct igb_ring_desc_16_bytes *)ring_mz->addr;
 #ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+	int ret;
 	struct rte_eth_dev_info dev_info;
 
 	ret = eth_dev_info_get_print_err(port_id, &dev_info);
