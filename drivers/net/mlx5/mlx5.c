@@ -2425,6 +2425,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BFVF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX6VF:
 		dev_config.vf = 1;
 		break;
 	default:
