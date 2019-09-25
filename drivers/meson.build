@@ -16,6 +16,8 @@ dpdk_driver_classes = ['common',
 	       'baseband', # depends on common and bus.
 	       'raw']     # depends on common, bus, mempool, net and event.
 
+disabled_drivers = get_option('disable_drivers').split(',')
+
 default_cflags = machine_args
 if cc.has_argument('-Wno-format-truncation')
 	default_cflags += '-Wno-format-truncation'
@@ -59,17 +61,23 @@ foreach class:dpdk_driver_classes
 		# pull in driver directory which should assign to each of the above
 		subdir(drv_path)
 
-		if build
+		if drv_path in disabled_drivers
+			build = false
+			reason = 'Explicitly disabled via build config'
+		elif build
 			# get dependency objs from strings
 			shared_deps = ext_deps
 			static_deps = ext_deps
 			foreach d:deps
 				if not is_variable('shared_rte_' + d)
-					error('Missing internal dependency "@0@" for @1@ [@2@]'
+					build = false
+					reason = 'Missing internal dependency, "@0@"'.format(d)
+					message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
 							.format(d, name, 'drivers/' + drv_path))
+				else
+					shared_deps += [get_variable('shared_rte_' + d)]
+					static_deps += [get_variable('static_rte_' + d)]
 				endif
-				shared_deps += [get_variable('shared_rte_' + d)]
-				static_deps += [get_variable('static_rte_' + d)]
 			endforeach
 		endif
 

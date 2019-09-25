@@ -2,6 +2,8 @@
 
 option('allow_invalid_socket_id', type: 'boolean', value: false,
 	description: 'allow out-of-range NUMA socket id\'s for platforms that don\'t report the value correctly')
+option('disable_drivers', type: 'string', value: '',
+	description: 'Comma-separated list of drivers to explicitly disable.')
 option('drivers_install_subdir', type: 'string', value: 'dpdk/pmds-<VERSION>',
 	description: 'Subdirectory of libdir where to install PMDs. Defaults to using a versioned subdirectory.')
 option('enable_docs', type: 'boolean', value: false,
