@@ -687,7 +687,7 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 		return -1;
 	}
 
-#ifdef RTE_ARCH_PPC64
+#ifdef RTE_ARCH_PPC_64
 	/* for PPC64 we go through the list backwards */
 	for (cur_page = seg_end - 1; cur_page >= seg_start;
 			cur_page--, ms_idx++) {
