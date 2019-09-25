@@ -728,7 +728,7 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 	if (config->txqs_inline == MLX5_ARG_UNSET)
 		txqs_inline =
 #if defined(RTE_ARCH_ARM64)
-		(priv->sh->pci_dev->id.device_id ==
+		(priv->pci_dev->id.device_id ==
 			PCI_DEVICE_ID_MELLANOX_CONNECTX5BF) ?
 			MLX5_INLINE_MAX_TXQS_BLUEFIELD :
 #endif

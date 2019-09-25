@@ -372,7 +372,6 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 		sizeof(sh->ibdev_name));
 	strncpy(sh->ibdev_path, sh->ctx->device->ibdev_path,
 		sizeof(sh->ibdev_path));
-	sh->pci_dev = spawn->pci_dev;
 	pthread_mutex_init(&sh->intr_mutex, NULL);
 	/*
 	 * Setting port_id to max unallowed value means
@@ -405,7 +404,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 	 */
 	err = mlx5_mr_btree_init(&sh->mr.cache,
 				 MLX5_MR_BTREE_CACHE_N * 2,
-				 sh->pci_dev->device.numa_node);
+				 spawn->pci_dev->device.numa_node);
 	if (err) {
 		err = rte_errno;
 		goto error;
@@ -1755,6 +1754,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	priv->sh = sh;
 	priv->ibv_port = spawn->ibv_port;
+	priv->pci_dev = spawn->pci_dev;
 	priv->mtu = RTE_ETHER_MTU;
 #ifndef RTE_ARCH_64
 	/* Initialize UAR access locks for 32bit implementations. */

@@ -547,7 +547,6 @@ struct mlx5_ibv_shared {
 	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
-	struct rte_pci_device *pci_dev; /* Backend PCI device. */
 	LIST_ENTRY(mlx5_ibv_shared) mem_event_cb;
 	/**< Called by memory event callback. */
 	struct {
@@ -606,6 +605,7 @@ struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_ibv_shared *sh; /* Shared IB device context. */
 	uint32_t ibv_port; /* IB device port number. */
+	struct rte_pci_device *pci_dev; /* Backend PCI device. */
 	struct rte_ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
 	BITFIELD_DECLARE(mac_own, uint64_t, MLX5_MAX_MAC_ADDRESSES);
 	/* Bit-field of MAC addresses owned by the PMD. */
