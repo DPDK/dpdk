@@ -212,6 +212,8 @@ writeback_tdes_hex_str(const char *key, char *dst, struct fips_val *val)
 		tmp_val.val = val->val + 8;
 	else if (strstr(key, KEY3_STR))
 		tmp_val.val = val->val + 16;
+	else
+		return -EINVAL;
 
 	return writeback_hex_str(key, dst, &tmp_val);
 }
