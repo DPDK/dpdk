@@ -614,7 +614,14 @@ struct mlx5_ifc_fte_match_set_misc2_bits {
 	struct mlx5_ifc_fte_match_mpls_bits inner_first_mpls;
 	struct mlx5_ifc_fte_match_mpls_bits outer_first_mpls_over_gre;
 	struct mlx5_ifc_fte_match_mpls_bits outer_first_mpls_over_udp;
-	u8 reserved_at_80[0x100];
+	u8 metadata_reg_c_7[0x20];
+	u8 metadata_reg_c_6[0x20];
+	u8 metadata_reg_c_5[0x20];
+	u8 metadata_reg_c_4[0x20];
+	u8 metadata_reg_c_3[0x20];
+	u8 metadata_reg_c_2[0x20];
+	u8 metadata_reg_c_1[0x20];
+	u8 metadata_reg_c_0[0x20];
 	u8 metadata_reg_a[0x20];
 	u8 reserved_at_1a0[0x60];
 };

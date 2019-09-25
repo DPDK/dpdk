@@ -4617,6 +4617,29 @@ flow_dv_translate_item_meta(void *matcher, void *key,
 }
 
 /**
+ * Add vport metadata Reg C0 item to matcher
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] reg
+ *   Flow pattern to translate.
+ */
+static void
+flow_dv_translate_item_meta_vport(void *matcher, void *key,
+				  uint32_t value, uint32_t mask)
+{
+	void *misc2_m =
+		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_2);
+	void *misc2_v =
+		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
+
+	MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_0, mask);
+	MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_0, value);
+}
+
+/**
  * Add source vport match to the specified matcher.
  *
  * @param[in, out] matcher
@@ -4668,8 +4691,14 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 	priv = mlx5_port_to_eswitch_info(id);
 	if (!priv)
 		return -rte_errno;
-	flow_dv_translate_item_source_vport(matcher, key,
-					    priv->vport_id, mask);
+	/* Translate to vport field or to metadata, depending on mode. */
+	if (priv->vport_meta_mask)
+		flow_dv_translate_item_meta_vport(matcher, key,
+						  priv->vport_meta_tag,
+						  priv->vport_meta_mask);
+	else
+		flow_dv_translate_item_source_vport(matcher, key,
+						    priv->vport_id, mask);
 	return 0;
 }
 
@@ -5113,7 +5142,10 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "No eswitch info was found for port");
-	*dst_port_id = priv->vport_id;
+	if (priv->vport_meta_mask)
+		*dst_port_id = priv->vport_meta_tag;
+	else
+		*dst_port_id = priv->vport_id;
 	return 0;
 }
 
