@@ -267,7 +267,7 @@ otx2_ssogws_enq_fwd_burst(void *port, const struct rte_event ev[],
 	return 1;
 }
 
-#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)			\
 uint16_t __hot								\
 otx2_ssogws_tx_adptr_enq_ ## name(void *port, struct rte_event ev[],	\
 				  uint16_t nb_events)			\
@@ -281,7 +281,7 @@ otx2_ssogws_tx_adptr_enq_ ## name(void *port, struct rte_event ev[],	\
 SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
 
-#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)			\
 uint16_t __hot								\
 otx2_ssogws_tx_adptr_enq_seg_ ## name(void *port, struct rte_event ev[],\
 				      uint16_t nb_events)		\

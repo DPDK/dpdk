@@ -1376,4 +1376,16 @@ struct nix_lso_format {
 	uint64_t rsvd_19_63  : 45;
 };
 
+#define NIX_LSO_FIELD_MAX	(8)
+#define NIX_LSO_FIELD_ALG_MASK	GENMASK(18, 16)
+#define NIX_LSO_FIELD_SZ_MASK	GENMASK(13, 12)
+#define NIX_LSO_FIELD_LY_MASK	GENMASK(9, 8)
+#define NIX_LSO_FIELD_OFF_MASK	GENMASK(7, 0)
+
+#define NIX_LSO_FIELD_MASK			\
+		(NIX_LSO_FIELD_OFF_MASK |	\
+		 NIX_LSO_FIELD_LY_MASK |	\
+		 NIX_LSO_FIELD_SZ_MASK |	\
+		 NIX_LSO_FIELD_ALG_MASK)
+
 #endif /* __OTX2_NIX_HW_H__ */

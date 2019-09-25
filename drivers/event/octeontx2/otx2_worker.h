@@ -256,6 +256,8 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
 	struct rte_mbuf *m = ev[0].mbuf;
 	const struct otx2_eth_txq *txq = otx2_ssogws_xtract_meta(m);
 
+	/* Perform header writes before barrier for TSO */
+	otx2_nix_xmit_prepare_tso(m, flags);
 	otx2_ssogws_head_wait(ws, !ev->sched_type);
 	otx2_ssogws_prepare_pkt(txq, m, cmd, flags);
 

@@ -169,33 +169,35 @@ SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 	};
 
 	/* Tx modes */
-	const event_tx_adapter_enqueue ssogws_tx_adptr_enq[2][2][2][2][2] = {
-#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
-		[f4][f3][f2][f1][f0] =  otx2_ssogws_tx_adptr_enq_ ## name,
+	const event_tx_adapter_enqueue ssogws_tx_adptr_enq[2][2][2][2][2][2] = {
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)			\
+		[f5][f4][f3][f2][f1][f0] =  otx2_ssogws_tx_adptr_enq_ ## name,
 SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
 	};
 
 	const event_tx_adapter_enqueue
-		ssogws_tx_adptr_enq_seg[2][2][2][2][2] = {
-#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
-		[f4][f3][f2][f1][f0] =  otx2_ssogws_tx_adptr_enq_seg_ ## name,
+		ssogws_tx_adptr_enq_seg[2][2][2][2][2][2] = {
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)			\
+		[f5][f4][f3][f2][f1][f0] =				\
+			otx2_ssogws_tx_adptr_enq_seg_ ## name,
 SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
 	};
 
 	const event_tx_adapter_enqueue
-		ssogws_dual_tx_adptr_enq[2][2][2][2][2] = {
-#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
-		[f4][f3][f2][f1][f0] =  otx2_ssogws_dual_tx_adptr_enq_ ## name,
+		ssogws_dual_tx_adptr_enq[2][2][2][2][2][2] = {
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)			\
+		[f5][f4][f3][f2][f1][f0] =				\
+			otx2_ssogws_dual_tx_adptr_enq_ ## name,
 SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
 	};
 
 	const event_tx_adapter_enqueue
-		ssogws_dual_tx_adptr_enq_seg[2][2][2][2][2] = {
-#define T(name, f4, f3, f2, f1, f0, sz, flags)				\
-		[f4][f3][f2][f1][f0] =					\
+		ssogws_dual_tx_adptr_enq_seg[2][2][2][2][2][2] = {
+#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)			\
+		[f5][f4][f3][f2][f1][f0] =				\
 			otx2_ssogws_dual_tx_adptr_enq_seg_ ## name,
 SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
@@ -274,6 +276,7 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F) {
 		/* [TSMP] [MBUF_NOFF] [VLAN] [OL3_L4_CSUM] [L3_L4_CSUM] */
 		event_dev->txa_enqueue = ssogws_tx_adptr_enq_seg
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSO_F)]
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F)]
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_MBUF_NOFF_F)]
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_VLAN_QINQ_F)]
@@ -281,6 +284,7 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_L3_L4_CSUM_F)];
 	} else {
 		event_dev->txa_enqueue = ssogws_tx_adptr_enq
+			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSO_F)]
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F)]
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_MBUF_NOFF_F)]
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_VLAN_QINQ_F)]
@@ -406,6 +410,7 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 		if (dev->tx_offloads & NIX_TX_MULTI_SEG_F) {
 		/* [TSMP] [MBUF_NOFF] [VLAN] [OL3_L4_CSUM] [L3_L4_CSUM] */
 			event_dev->txa_enqueue = ssogws_dual_tx_adptr_enq_seg
+				[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSO_F)]
 				[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F)]
 				[!!(dev->tx_offloads &
 						NIX_TX_OFFLOAD_MBUF_NOFF_F)]
@@ -417,6 +422,7 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 						NIX_TX_OFFLOAD_L3_L4_CSUM_F)];
 		} else {
 			event_dev->txa_enqueue = ssogws_dual_tx_adptr_enq
+				[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSO_F)]
 				[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F)]
 				[!!(dev->tx_offloads &
 						NIX_TX_OFFLOAD_MBUF_NOFF_F)]

@@ -869,7 +869,6 @@ struct nix_mark_format_cfg_rsp {
 struct nix_lso_format_cfg {
 	struct mbox_msghdr hdr;
 	uint64_t __otx2_io field_mask;
-#define NIX_LSO_FIELD_MAX	(8)
 	uint64_t __otx2_io fields[NIX_LSO_FIELD_MAX];
 };
 

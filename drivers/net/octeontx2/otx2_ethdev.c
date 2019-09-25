@@ -27,9 +27,14 @@ nix_get_rx_offload_capa(struct otx2_eth_dev *dev)
 static inline uint64_t
 nix_get_tx_offload_capa(struct otx2_eth_dev *dev)
 {
-	RTE_SET_USED(dev);
+	uint64_t capa = NIX_TX_OFFLOAD_CAPA;
 
-	return NIX_TX_OFFLOAD_CAPA;
+	/* TSO not supported for earlier chip revisions */
+	if (otx2_dev_is_96xx_A0(dev) || otx2_dev_is_95xx_Ax(dev))
+		capa &= ~(DEV_TX_OFFLOAD_TCP_TSO |
+			  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+			  DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+	return capa;
 }
 
 static const struct otx2_dev_ops otx2_dev_ops = {
@@ -643,6 +648,18 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (conf & DEV_TX_OFFLOAD_MULTI_SEGS)
 		flags |= NIX_TX_MULTI_SEG_F;
 
+	/* Enable Inner checksum for TSO */
+	if (conf & DEV_TX_OFFLOAD_TCP_TSO)
+		flags |= (NIX_TX_OFFLOAD_TSO_F |
+			  NIX_TX_OFFLOAD_L3_L4_CSUM_F);
+
+	/* Enable Inner and Outer checksum for Tunnel TSO */
+	if (conf & (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+		    DEV_TX_OFFLOAD_GENEVE_TNL_TSO))
+		flags |= (NIX_TX_OFFLOAD_TSO_F |
+			  NIX_TX_OFFLOAD_OL3_OL4_CSUM_F |
+			  NIX_TX_OFFLOAD_L3_L4_CSUM_F);
+
 	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
 		flags |= NIX_TX_OFFLOAD_TSTAMP_F;
 
@@ -1205,6 +1222,201 @@ nix_set_nop_rxtx_function(struct rte_eth_dev *eth_dev)
 	rte_mb();
 }
 
+static void
+nix_lso_tcp(struct nix_lso_format_cfg *req, bool v4)
+{
+	volatile struct nix_lso_format *field;
+
+	/* Format works only with TCP packet marked by OL3/OL4 */
+	field = (volatile struct nix_lso_format *)&req->fields[0];
+	req->field_mask = NIX_LSO_FIELD_MASK;
+	/* Outer IPv4/IPv6 */
+	field->layer = NIX_TXLAYER_OL3;
+	field->offset = v4 ? 2 : 4;
+	field->sizem1 = 1; /* 2B */
+	field->alg = NIX_LSOALG_ADD_PAYLEN;
+	field++;
+	if (v4) {
+		/* IPID field */
+		field->layer = NIX_TXLAYER_OL3;
+		field->offset = 4;
+		field->sizem1 = 1;
+		/* Incremented linearly per segment */
+		field->alg = NIX_LSOALG_ADD_SEGNUM;
+		field++;
+	}
+
+	/* TCP sequence number update */
+	field->layer = NIX_TXLAYER_OL4;
+	field->offset = 4;
+	field->sizem1 = 3; /* 4 bytes */
+	field->alg = NIX_LSOALG_ADD_OFFSET;
+	field++;
+	/* TCP flags field */
+	field->layer = NIX_TXLAYER_OL4;
+	field->offset = 12;
+	field->sizem1 = 1;
+	field->alg = NIX_LSOALG_TCP_FLAGS;
+	field++;
+}
+
+static void
+nix_lso_udp_tun_tcp(struct nix_lso_format_cfg *req,
+		    bool outer_v4, bool inner_v4)
+{
+	volatile struct nix_lso_format *field;
+
+	field = (volatile struct nix_lso_format *)&req->fields[0];
+	req->field_mask = NIX_LSO_FIELD_MASK;
+	/* Outer IPv4/IPv6 len */
+	field->layer = NIX_TXLAYER_OL3;
+	field->offset = outer_v4 ? 2 : 4;
+	field->sizem1 = 1; /* 2B */
+	field->alg = NIX_LSOALG_ADD_PAYLEN;
+	field++;
+	if (outer_v4) {
+		/* IPID */
+		field->layer = NIX_TXLAYER_OL3;
+		field->offset = 4;
+		field->sizem1 = 1;
+		/* Incremented linearly per segment */
+		field->alg = NIX_LSOALG_ADD_SEGNUM;
+		field++;
+	}
+
+	/* Outer UDP length */
+	field->layer = NIX_TXLAYER_OL4;
+	field->offset = 4;
+	field->sizem1 = 1;
+	field->alg = NIX_LSOALG_ADD_PAYLEN;
+	field++;
+
+	/* Inner IPv4/IPv6 */
+	field->layer = NIX_TXLAYER_IL3;
+	field->offset = inner_v4 ? 2 : 4;
+	field->sizem1 = 1; /* 2B */
+	field->alg = NIX_LSOALG_ADD_PAYLEN;
+	field++;
+	if (inner_v4) {
+		/* IPID field */
+		field->layer = NIX_TXLAYER_IL3;
+		field->offset = 4;
+		field->sizem1 = 1;
+		/* Incremented linearly per segment */
+		field->alg = NIX_LSOALG_ADD_SEGNUM;
+		field++;
+	}
+
+	/* TCP sequence number update */
+	field->layer = NIX_TXLAYER_IL4;
+	field->offset = 4;
+	field->sizem1 = 3; /* 4 bytes */
+	field->alg = NIX_LSOALG_ADD_OFFSET;
+	field++;
+
+	/* TCP flags field */
+	field->layer = NIX_TXLAYER_IL4;
+	field->offset = 12;
+	field->sizem1 = 1;
+	field->alg = NIX_LSOALG_TCP_FLAGS;
+	field++;
+}
+
+static int
+nix_setup_lso_formats(struct otx2_eth_dev *dev)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_lso_format_cfg_rsp *rsp;
+	struct nix_lso_format_cfg *req;
+	uint8_t base;
+	int rc;
+
+	/* Skip if TSO was not requested */
+	if (!(dev->tx_offload_flags & NIX_TX_OFFLOAD_TSO_F))
+		return 0;
+	/*
+	 * IPv4/TCP LSO
+	 */
+	req = otx2_mbox_alloc_msg_nix_lso_format_cfg(mbox);
+	nix_lso_tcp(req, true);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	base = rsp->lso_format_idx;
+	if (base != NIX_LSO_FORMAT_IDX_TSOV4)
+		return -EFAULT;
+	dev->lso_base_idx = base;
+	otx2_nix_dbg("tcpv4 lso fmt=%u", base);
+
+
+	/*
+	 * IPv6/TCP LSO
+	 */
+	req = otx2_mbox_alloc_msg_nix_lso_format_cfg(mbox);
+	nix_lso_tcp(req, false);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	if (rsp->lso_format_idx != base + 1)
+		return -EFAULT;
+	otx2_nix_dbg("tcpv6 lso fmt=%u\n", base + 1);
+
+	/*
+	 * IPv4/UDP/TUN HDR/IPv4/TCP LSO
+	 */
+	req = otx2_mbox_alloc_msg_nix_lso_format_cfg(mbox);
+	nix_lso_udp_tun_tcp(req, true, true);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	if (rsp->lso_format_idx != base + 2)
+		return -EFAULT;
+	otx2_nix_dbg("udp tun v4v4 fmt=%u\n", base + 2);
+
+	/*
+	 * IPv4/UDP/TUN HDR/IPv6/TCP LSO
+	 */
+	req = otx2_mbox_alloc_msg_nix_lso_format_cfg(mbox);
+	nix_lso_udp_tun_tcp(req, true, false);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	if (rsp->lso_format_idx != base + 3)
+		return -EFAULT;
+	otx2_nix_dbg("udp tun v4v6 fmt=%u\n", base + 3);
+
+	/*
+	 * IPv6/UDP/TUN HDR/IPv4/TCP LSO
+	 */
+	req = otx2_mbox_alloc_msg_nix_lso_format_cfg(mbox);
+	nix_lso_udp_tun_tcp(req, false, true);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	if (rsp->lso_format_idx != base + 4)
+		return -EFAULT;
+	otx2_nix_dbg("udp tun v6v4 fmt=%u\n", base + 4);
+
+	/*
+	 * IPv6/UDP/TUN HDR/IPv6/TCP LSO
+	 */
+	req = otx2_mbox_alloc_msg_nix_lso_format_cfg(mbox);
+	nix_lso_udp_tun_tcp(req, false, false);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+	if (rsp->lso_format_idx != base + 5)
+		return -EFAULT;
+	otx2_nix_dbg("udp tun v6v6 fmt=%u\n", base + 5);
+
+	return 0;
+}
+
 static int
 otx2_nix_configure(struct rte_eth_dev *eth_dev)
 {
@@ -1290,6 +1502,12 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	if (rc) {
 		otx2_err("Failed to init nix_lf rc=%d", rc);
 		goto fail_offloads;
+	}
+
+	rc = nix_setup_lso_formats(dev);
+	if (rc) {
+		otx2_err("failed to setup nix lso format fields, rc=%d", rc);
+		goto free_nix_lf;
 	}
 
 	/* Configure RSS */

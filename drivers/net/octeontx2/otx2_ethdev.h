@@ -127,6 +127,9 @@
 	DEV_TX_OFFLOAD_TCP_CKSUM	| \
 	DEV_TX_OFFLOAD_UDP_CKSUM	| \
 	DEV_TX_OFFLOAD_SCTP_CKSUM	| \
+	DEV_TX_OFFLOAD_TCP_TSO		| \
+	DEV_TX_OFFLOAD_VXLAN_TNL_TSO    | \
+	DEV_TX_OFFLOAD_GENEVE_TNL_TSO   | \
 	DEV_TX_OFFLOAD_MULTI_SEGS	| \
 	DEV_TX_OFFLOAD_IPV4_CKSUM)
 
@@ -249,6 +252,7 @@ struct otx2_eth_dev {
 	uint8_t tx_chan_cnt;
 	uint8_t lso_tsov4_idx;
 	uint8_t lso_tsov6_idx;
+	uint8_t lso_base_idx;
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	uint8_t mkex_pfl_name[MKEX_NAME_LEN];
 	uint8_t max_mac_entries;
