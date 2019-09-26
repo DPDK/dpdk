@@ -1936,7 +1936,7 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		struct mlx5_devx_rqt_attr *rqt_attr = NULL;
 
 		rqt_attr = rte_calloc(__func__, 1, sizeof(*rqt_attr) +
-				      queues_n * sizeof(uint16_t), 0);
+				      queues_n * sizeof(uint32_t), 0);
 		if (!rqt_attr) {
 			DRV_LOG(ERR, "port %u cannot allocate RQT resources",
 				dev->data->port_id);
