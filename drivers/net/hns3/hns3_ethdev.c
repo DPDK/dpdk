@@ -24,6 +24,7 @@
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"
 #include "hns3_regs.h"
+#include "hns3_dcb.h"
 
 #define HNS3_DEFAULT_PORT_CONF_BURST_SIZE	32
 #define HNS3_DEFAULT_PORT_CONF_QUEUES_NUM	1
@@ -2504,6 +2505,12 @@ hns3_init_hardware(struct hns3_adapter *hns)
 		goto err_mac_init;
 	}
 
+	ret = hns3_dcb_init(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to init dcb: %d", ret);
+		goto err_mac_init;
+	}
+
 	ret = hns3_init_fd_config(hns);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init flow director: %d", ret);
@@ -2627,11 +2634,200 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	hw->adapter_state = HNS3_NIC_CLOSED;
 }
 
+static int
+hns3_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	fc_conf->pause_time = pf->pause_time;
+
+	/* return fc current mode */
+	switch (hw->current_mode) {
+	case HNS3_FC_FULL:
+		fc_conf->mode = RTE_FC_FULL;
+		break;
+	case HNS3_FC_TX_PAUSE:
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+		break;
+	case HNS3_FC_RX_PAUSE:
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+		break;
+	case HNS3_FC_NONE:
+	default:
+		fc_conf->mode = RTE_FC_NONE;
+		break;
+	}
+
+	return 0;
+}
+
+static void
+hns3_get_fc_mode(struct hns3_hw *hw, enum rte_eth_fc_mode mode)
+{
+	switch (mode) {
+	case RTE_FC_NONE:
+		hw->requested_mode = HNS3_FC_NONE;
+		break;
+	case RTE_FC_RX_PAUSE:
+		hw->requested_mode = HNS3_FC_RX_PAUSE;
+		break;
+	case RTE_FC_TX_PAUSE:
+		hw->requested_mode = HNS3_FC_TX_PAUSE;
+		break;
+	case RTE_FC_FULL:
+		hw->requested_mode = HNS3_FC_FULL;
+		break;
+	default:
+		hw->requested_mode = HNS3_FC_NONE;
+		hns3_warn(hw, "fc_mode(%u) exceeds member scope and is "
+			  "configured to RTE_FC_NONE", mode);
+		break;
+	}
+}
+
+static int
+hns3_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	int ret;
+
+	if (fc_conf->high_water || fc_conf->low_water ||
+	    fc_conf->send_xon || fc_conf->mac_ctrl_frame_fwd) {
+		hns3_err(hw, "Unsupported flow control settings specified, "
+			 "high_water(%u), low_water(%u), send_xon(%u) and "
+			 "mac_ctrl_frame_fwd(%u) must be set to '0'",
+			 fc_conf->high_water, fc_conf->low_water,
+			 fc_conf->send_xon, fc_conf->mac_ctrl_frame_fwd);
+		return -EINVAL;
+	}
+	if (fc_conf->autoneg) {
+		hns3_err(hw, "Unsupported fc auto-negotiation setting.");
+		return -EINVAL;
+	}
+	if (!fc_conf->pause_time) {
+		hns3_err(hw, "Invalid pause time %d setting.",
+			 fc_conf->pause_time);
+		return -EINVAL;
+	}
+
+	if (!(hw->current_fc_status == HNS3_FC_STATUS_NONE ||
+	    hw->current_fc_status == HNS3_FC_STATUS_MAC_PAUSE)) {
+		hns3_err(hw, "PFC is enabled. Cannot set MAC pause. "
+			 "current_fc_status = %d", hw->current_fc_status);
+		return -EOPNOTSUPP;
+	}
+
+	hns3_get_fc_mode(hw, fc_conf->mode);
+	if (hw->requested_mode == hw->current_mode &&
+	    pf->pause_time == fc_conf->pause_time)
+		return 0;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_fc_enable(dev, fc_conf);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_priority_flow_ctrl_set(struct rte_eth_dev *dev,
+			    struct rte_eth_pfc_conf *pfc_conf)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	uint8_t priority;
+	int ret;
+
+	if (!hns3_dev_dcb_supported(hw)) {
+		hns3_err(hw, "This port does not support dcb configurations.");
+		return -EOPNOTSUPP;
+	}
+
+	if (pfc_conf->fc.high_water || pfc_conf->fc.low_water ||
+	    pfc_conf->fc.send_xon || pfc_conf->fc.mac_ctrl_frame_fwd) {
+		hns3_err(hw, "Unsupported flow control settings specified, "
+			 "high_water(%u), low_water(%u), send_xon(%u) and "
+			 "mac_ctrl_frame_fwd(%u) must be set to '0'",
+			 pfc_conf->fc.high_water, pfc_conf->fc.low_water,
+			 pfc_conf->fc.send_xon,
+			 pfc_conf->fc.mac_ctrl_frame_fwd);
+		return -EINVAL;
+	}
+	if (pfc_conf->fc.autoneg) {
+		hns3_err(hw, "Unsupported fc auto-negotiation setting.");
+		return -EINVAL;
+	}
+	if (pfc_conf->fc.pause_time == 0) {
+		hns3_err(hw, "Invalid pause time %d setting.",
+			 pfc_conf->fc.pause_time);
+		return -EINVAL;
+	}
+
+	if (!(hw->current_fc_status == HNS3_FC_STATUS_NONE ||
+	    hw->current_fc_status == HNS3_FC_STATUS_PFC)) {
+		hns3_err(hw, "MAC pause is enabled. Cannot set PFC."
+			     "current_fc_status = %d", hw->current_fc_status);
+		return -EOPNOTSUPP;
+	}
+
+	priority = pfc_conf->priority;
+	hns3_get_fc_mode(hw, pfc_conf->fc.mode);
+	if (hw->dcb_info.pfc_en & BIT(priority) &&
+	    hw->requested_mode == hw->current_mode &&
+	    pfc_conf->fc.pause_time == pf->pause_time)
+		return 0;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_dcb_pfc_enable(dev, pfc_conf);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_get_dcb_info(struct rte_eth_dev *dev, struct rte_eth_dcb_info *dcb_info)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	enum rte_eth_rx_mq_mode mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	int i;
+
+	rte_spinlock_lock(&hw->lock);
+	if ((uint32_t)mq_mode & ETH_MQ_RX_DCB_FLAG)
+		dcb_info->nb_tcs = pf->local_max_tc;
+	else
+		dcb_info->nb_tcs = 1;
+
+	for (i = 0; i < HNS3_MAX_USER_PRIO; i++)
+		dcb_info->prio_tc[i] = hw->dcb_info.prio_tc[i];
+	for (i = 0; i < dcb_info->nb_tcs; i++)
+		dcb_info->tc_bws[i] = hw->dcb_info.pg_info[0].tc_dwrr[i];
+
+	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
+		dcb_info->tc_queue.tc_rxq[0][i].base =
+					hw->tc_queue[i].tqp_offset;
+		dcb_info->tc_queue.tc_txq[0][i].base =
+					hw->tc_queue[i].tqp_offset;
+		dcb_info->tc_queue.tc_rxq[0][i].nb_queue =
+					hw->tc_queue[i].tqp_count;
+		dcb_info->tc_queue.tc_txq[0][i].nb_queue =
+					hw->tc_queue[i].tqp_count;
+	}
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+}
+
 static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.dev_close          = hns3_dev_close,
 	.mtu_set            = hns3_dev_mtu_set,
 	.dev_infos_get          = hns3_dev_infos_get,
 	.fw_version_get         = hns3_fw_version_get,
+	.flow_ctrl_get          = hns3_flow_ctrl_get,
+	.flow_ctrl_set          = hns3_flow_ctrl_set,
+	.priority_flow_ctrl_set = hns3_priority_flow_ctrl_set,
 	.mac_addr_add           = hns3_add_mac_addr,
 	.mac_addr_remove        = hns3_remove_mac_addr,
 	.mac_addr_set           = hns3_set_default_mac_addr,
@@ -2642,13 +2838,17 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.reta_update            = hns3_dev_rss_reta_update,
 	.reta_query             = hns3_dev_rss_reta_query,
 	.filter_ctrl            = hns3_dev_filter_ctrl,
+	.get_dcb_info           = hns3_get_dcb_info,
 };
 
 static int
 hns3_dev_init(struct rte_eth_dev *eth_dev)
 {
+	struct rte_device *dev = eth_dev->device;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
+	uint16_t device_id = pci_dev->id.device_id;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2668,6 +2868,12 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	hw->adapter_state = HNS3_NIC_UNINITIALIZED;
+
+	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
+	    device_id == HNS3_DEV_ID_50GE_RDMA ||
+	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC)
+		hns3_set_bit(hw->flag, HNS3_DEV_SUPPORT_DCB_B, 1);
+
 	hns->is_vf = false;
 	hw->data = eth_dev->data;
 

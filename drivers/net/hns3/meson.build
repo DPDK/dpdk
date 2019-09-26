@@ -14,6 +14,7 @@ if arch_subdir != 'x86' and arch_subdir != 'arm' or not dpdk_conf.get('RTE_ARCH_
 endif
 
 sources = files('hns3_cmd.c',
+	'hns3_dcb.c',
 	'hns3_ethdev.c',
 	'hns3_fdir.c',
 	'hns3_flow.c',
