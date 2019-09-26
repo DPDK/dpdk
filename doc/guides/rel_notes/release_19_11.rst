@@ -114,6 +114,11 @@ New Features
   Added stateful decompression support in the Intel QuickAssist Technology PMD.
   Please note that stateful compression is not supported.
 
+* **Introduced FIFO for NTB PMD.**
+
+  Introduced FIFO for NTB (Non-transparent Bridge) PMD to support
+  packet based processing.
+
 * **Added eBPF JIT support for arm64.**
 
   Added eBPF JIT support for arm64 architecture to improve the eBPF program

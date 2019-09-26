@@ -25,4 +25,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_NTB_RAWDEV) += ntb.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_NTB_RAWDEV) += ntb_hw_intel.c
 
+# install this header file
+SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_NTB_RAWDEV)-include := rte_pmd_ntb.h
+
 include $(RTE_SDK)/mk/rte.lib.mk

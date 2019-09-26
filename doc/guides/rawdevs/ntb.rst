@@ -45,8 +45,52 @@ to use, i.e. igb_uio, vfio. The ``dpdk-devbind.py`` script can be used to
 show devices status and to bind them to a suitable kernel driver. They will
 appear under the category of "Misc (rawdev) devices".
 
+Ring Layout
+-----------
+
+Since read/write remote system's memory are through PCI bus, remote read
+is much more expensive than remote write. Thus, the enqueue and dequeue
+based on ntb ring should avoid remote read. The ring layout for ntb is
+like the following:
+
+- Ring Format::
+
+   desc_ring:
+
+      0               16                                              64
+      +---------------------------------------------------------------+
+      |                        buffer address                         |
+      +---------------+-----------------------------------------------+
+      | buffer length |                      resv                     |
+      +---------------+-----------------------------------------------+
+
+   used_ring:
+
+      0               16              32
+      +---------------+---------------+
+      | packet length |     flags     |
+      +---------------+---------------+
+
+- Ring Layout::
+
+      +------------------------+   +------------------------+
+      | used_ring              |   | desc_ring              |
+      | +---+                  |   | +---+                  |
+      | |   |                  |   | |   |                  |
+      | +---+      +--------+  |   | +---+                  |
+      | |   | ---> | buffer | <+---+-|   |                  |
+      | +---+      +--------+  |   | +---+                  |
+      | |   |                  |   | |   |                  |
+      | +---+                  |   | +---+                  |
+      |  ...                   |   |  ...                   |
+      |                        |   |                        |
+      |            +---------+ |   |            +---------+ |
+      |            | tx_tail | |   |            | rx_tail | |
+      | System A   +---------+ |   | System B   +---------+ |
+      +------------------------+   +------------------------+
+                    <---------traffic---------
+
 Limitation
 ----------
 
-- The FIFO hasn't been introduced and will come in 19.11 release.
 - This PMD only supports Intel Skylake platform.

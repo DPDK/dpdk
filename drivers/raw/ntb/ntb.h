@@ -2,8 +2,8 @@
  * Copyright(c) 2019 Intel Corporation.
  */
 
-#ifndef _NTB_RAWDEV_H_
-#define _NTB_RAWDEV_H_
+#ifndef _NTB_H_
+#define _NTB_H_
 
 #include <stdbool.h>
 
@@ -19,38 +19,13 @@ extern int ntb_logtype;
 /* Device IDs */
 #define NTB_INTEL_DEV_ID_B2B_SKX    0x201C
 
-#define NTB_TOPO_NAME               "topo"
-#define NTB_LINK_STATUS_NAME        "link_status"
-#define NTB_SPEED_NAME              "speed"
-#define NTB_WIDTH_NAME              "width"
-#define NTB_MW_CNT_NAME             "mw_count"
-#define NTB_DB_CNT_NAME             "db_count"
-#define NTB_SPAD_CNT_NAME           "spad_count"
 /* Reserved to app to use. */
 #define NTB_SPAD_USER               "spad_user_"
 #define NTB_SPAD_USER_LEN           (sizeof(NTB_SPAD_USER) - 1)
-#define NTB_SPAD_USER_MAX_NUM       10
+#define NTB_SPAD_USER_MAX_NUM       4
 #define NTB_ATTR_NAME_LEN           30
-#define NTB_ATTR_VAL_LEN            30
-#define NTB_ATTR_MAX                20
 
-/* NTB Attributes */
-struct ntb_attr {
-	/**< Name of the attribute */
-	char name[NTB_ATTR_NAME_LEN];
-	/**< Value or reference of value of attribute */
-	char value[NTB_ATTR_NAME_LEN];
-};
-
-enum ntb_attr_idx {
-	NTB_TOPO_ID = 0,
-	NTB_LINK_STATUS_ID,
-	NTB_SPEED_ID,
-	NTB_WIDTH_ID,
-	NTB_MW_CNT_ID,
-	NTB_DB_CNT_ID,
-	NTB_SPAD_CNT_ID,
-};
+#define NTB_DFLT_TX_FREE_THRESH     256
 
 enum ntb_topo {
 	NTB_TOPO_NONE = 0,
@@ -87,10 +62,15 @@ enum ntb_spad_idx {
 	SPAD_NUM_MWS = 1,
 	SPAD_NUM_QPS,
 	SPAD_Q_SZ,
+	SPAD_USED_MWS,
 	SPAD_MW0_SZ_H,
 	SPAD_MW0_SZ_L,
 	SPAD_MW1_SZ_H,
 	SPAD_MW1_SZ_L,
+	SPAD_MW0_BA_H,
+	SPAD_MW0_BA_L,
+	SPAD_MW1_BA_H,
+	SPAD_MW1_BA_L,
 };
 
 /**
@@ -110,26 +90,97 @@ enum ntb_spad_idx {
  * @vector_bind: Bind vector source [intr] to msix vector [msix].
  */
 struct ntb_dev_ops {
-	int (*ntb_dev_init)(struct rte_rawdev *dev);
-	void *(*get_peer_mw_addr)(struct rte_rawdev *dev, int mw_idx);
-	int (*mw_set_trans)(struct rte_rawdev *dev, int mw_idx,
+	int (*ntb_dev_init)(const struct rte_rawdev *dev);
+	void *(*get_peer_mw_addr)(const struct rte_rawdev *dev, int mw_idx);
+	int (*mw_set_trans)(const struct rte_rawdev *dev, int mw_idx,
 			    uint64_t addr, uint64_t size);
-	int (*get_link_status)(struct rte_rawdev *dev);
-	int (*set_link)(struct rte_rawdev *dev, bool up);
-	uint32_t (*spad_read)(struct rte_rawdev *dev, int spad, bool peer);
-	int (*spad_write)(struct rte_rawdev *dev, int spad,
+	int (*get_link_status)(const struct rte_rawdev *dev);
+	int (*set_link)(const struct rte_rawdev *dev, bool up);
+	uint32_t (*spad_read)(const struct rte_rawdev *dev, int spad,
+			      bool peer);
+	int (*spad_write)(const struct rte_rawdev *dev, int spad,
 			  bool peer, uint32_t spad_v);
-	uint64_t (*db_read)(struct rte_rawdev *dev);
-	int (*db_clear)(struct rte_rawdev *dev, uint64_t db_bits);
-	int (*db_set_mask)(struct rte_rawdev *dev, uint64_t db_mask);
-	int (*peer_db_set)(struct rte_rawdev *dev, uint8_t db_bit);
-	int (*vector_bind)(struct rte_rawdev *dev, uint8_t intr, uint8_t msix);
+	uint64_t (*db_read)(const struct rte_rawdev *dev);
+	int (*db_clear)(const struct rte_rawdev *dev, uint64_t db_bits);
+	int (*db_set_mask)(const struct rte_rawdev *dev, uint64_t db_mask);
+	int (*peer_db_set)(const struct rte_rawdev *dev, uint8_t db_bit);
+	int (*vector_bind)(const struct rte_rawdev *dev, uint8_t intr,
+			   uint8_t msix);
+};
+
+struct ntb_desc {
+	uint64_t addr; /* buffer addr */
+	uint16_t len;  /* buffer length */
+	uint16_t rsv1;
+	uint32_t rsv2;
+};
+
+#define NTB_FLAG_EOP    1 /* end of packet */
+struct ntb_used {
+	uint16_t len;     /* buffer length */
+	uint16_t flags;   /* flags */
+};
+
+struct ntb_rx_entry {
+	struct rte_mbuf *mbuf;
+};
+
+struct ntb_rx_queue {
+	struct ntb_desc *rx_desc_ring;
+	volatile struct ntb_used *rx_used_ring;
+	uint16_t *avail_cnt;
+	volatile uint16_t *used_cnt;
+	uint16_t last_avail;
+	uint16_t last_used;
+	uint16_t nb_rx_desc;
+
+	uint16_t rx_free_thresh;
+
+	struct rte_mempool *mpool; /* mempool for mbuf allocation */
+	struct ntb_rx_entry *sw_ring;
+
+	uint16_t queue_id;         /* DPDK queue index. */
+	uint16_t port_id;          /* Device port identifier. */
+
+	struct ntb_hw *hw;
+};
+
+struct ntb_tx_entry {
+	struct rte_mbuf *mbuf;
+	uint16_t next_id;
+	uint16_t last_id;
+};
+
+struct ntb_tx_queue {
+	volatile struct ntb_desc *tx_desc_ring;
+	struct ntb_used *tx_used_ring;
+	volatile uint16_t *avail_cnt;
+	uint16_t *used_cnt;
+	uint16_t last_avail;          /* Next need to be free. */
+	uint16_t last_used;           /* Next need to be sent. */
+	uint16_t nb_tx_desc;
+
+	/* Total number of TX descriptors ready to be allocated. */
+	uint16_t nb_tx_free;
+	uint16_t tx_free_thresh;
+
+	struct ntb_tx_entry *sw_ring;
+
+	uint16_t queue_id;            /* DPDK queue index. */
+	uint16_t port_id;             /* Device port identifier. */
+
+	struct ntb_hw *hw;
+};
+
+struct ntb_header {
+	uint16_t avail_cnt __rte_cache_aligned;
+	uint16_t used_cnt __rte_cache_aligned;
+	struct ntb_desc desc_ring[] __rte_cache_aligned;
 };
 
 /* ntb private data. */
 struct ntb_hw {
 	uint8_t mw_cnt;
-	uint8_t peer_mw_cnt;
 	uint8_t db_cnt;
 	uint8_t spad_cnt;
 
@@ -147,18 +198,26 @@ struct ntb_hw {
 	struct rte_pci_device *pci_dev;
 	char *hw_addr;
 
-	uint64_t *mw_size;
-	uint64_t *peer_mw_size;
 	uint8_t peer_dev_up;
+	uint64_t *mw_size;
+	/* remote mem base addr */
+	uint64_t *peer_mw_base;
 
 	uint16_t queue_pairs;
 	uint16_t queue_size;
+	uint32_t hdr_size_per_queue;
 
-	/**< mem zone to populate RX ring. */
+	struct ntb_rx_queue **rx_queues;
+	struct ntb_tx_queue **tx_queues;
+
+	/* memzone to populate RX ring. */
 	const struct rte_memzone **mz;
+	uint8_t used_mw_num;
+
+	uint8_t peer_used_mws;
 
 	/* Reserve several spad for app to use. */
 	int spad_user_list[NTB_SPAD_USER_MAX_NUM];
 };
 
-#endif /* _NTB_RAWDEV_H_ */
+#endif /* _NTB_H_ */
