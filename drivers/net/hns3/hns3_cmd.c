@@ -476,6 +476,9 @@ hns3_cmd_init(struct hns3_hw *hw)
 	hw->cmq.csq.next_to_use = 0;
 	hw->cmq.crq.next_to_clean = 0;
 	hw->cmq.crq.next_to_use = 0;
+	hw->mbx_resp.head = 0;
+	hw->mbx_resp.tail = 0;
+	hw->mbx_resp.lost = 0;
 	hns3_cmd_init_regs(hw);
 
 	rte_spinlock_unlock(&hw->cmq.crq.lock);

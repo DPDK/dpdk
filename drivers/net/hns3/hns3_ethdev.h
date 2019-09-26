@@ -9,6 +9,7 @@
 #include <rte_alarm.h>
 
 #include "hns3_cmd.h"
+#include "hns3_mbx.h"
 #include "hns3_rss.h"
 #include "hns3_fdir.h"
 
@@ -332,6 +333,9 @@ struct hns3_hw {
 	struct rte_eth_dev_data *data;
 	void *io_base;
 	struct hns3_cmq cmq;
+	struct hns3_mbx_resp_status mbx_resp; /* mailbox response */
+	struct hns3_mbx_arq_ring arq;         /* mailbox async rx queue */
+	pthread_t irq_thread_id;
 	struct hns3_mac mac;
 	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
 	uint32_t fw_version;
