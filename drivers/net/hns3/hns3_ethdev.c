@@ -30,9 +30,700 @@
 #define HNS3_DEFAULT_PORT_CONF_QUEUES_NUM	1
 
 #define HNS3_SERVICE_INTERVAL		1000000 /* us */
+#define HNS3_PORT_BASE_VLAN_DISABLE	0
+#define HNS3_PORT_BASE_VLAN_ENABLE	1
+#define HNS3_INVLID_PVID		0xFFFF
+
+#define HNS3_FILTER_TYPE_VF		0
+#define HNS3_FILTER_TYPE_PORT		1
+#define HNS3_FILTER_FE_EGRESS_V1_B	BIT(0)
+#define HNS3_FILTER_FE_NIC_INGRESS_B	BIT(0)
+#define HNS3_FILTER_FE_NIC_EGRESS_B	BIT(1)
+#define HNS3_FILTER_FE_ROCE_INGRESS_B	BIT(2)
+#define HNS3_FILTER_FE_ROCE_EGRESS_B	BIT(3)
+#define HNS3_FILTER_FE_EGRESS		(HNS3_FILTER_FE_NIC_EGRESS_B \
+					| HNS3_FILTER_FE_ROCE_EGRESS_B)
+#define HNS3_FILTER_FE_INGRESS		(HNS3_FILTER_FE_NIC_INGRESS_B \
+					| HNS3_FILTER_FE_ROCE_INGRESS_B)
 
 int hns3_logtype_init;
 int hns3_logtype_driver;
+
+static int hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid,
+				    int on);
+
+static int
+hns3_set_port_vlan_filter(struct hns3_adapter *hns, uint16_t vlan_id, int on)
+{
+#define HNS3_VLAN_OFFSET_160		160
+	struct hns3_vlan_filter_pf_cfg_cmd *req;
+	struct hns3_hw *hw = &hns->hw;
+	uint8_t vlan_offset_byte_val;
+	struct hns3_cmd_desc desc;
+	uint8_t vlan_offset_byte;
+	uint8_t vlan_offset_160;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_VLAN_FILTER_PF_CFG, false);
+
+	vlan_offset_160 = vlan_id / HNS3_VLAN_OFFSET_160;
+	vlan_offset_byte = (vlan_id % HNS3_VLAN_OFFSET_160) / 8;
+	vlan_offset_byte_val = 1 << (vlan_id % 8);
+
+	req = (struct hns3_vlan_filter_pf_cfg_cmd *)desc.data;
+	req->vlan_offset = vlan_offset_160;
+	req->vlan_cfg = on ? 0 : 1;
+	req->vlan_offset_bitmap[vlan_offset_byte] = vlan_offset_byte_val;
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "set port vlan id failed, vlan_id =%u, ret =%d",
+			 vlan_id, ret);
+
+	return ret;
+}
+
+static void
+hns3_rm_dev_vlan_table(struct hns3_adapter *hns, uint16_t vlan_id)
+{
+	struct hns3_user_vlan_table *vlan_entry;
+	struct hns3_pf *pf = &hns->pf;
+
+	LIST_FOREACH(vlan_entry, &pf->vlan_list, next) {
+		if (vlan_entry->vlan_id == vlan_id) {
+			if (vlan_entry->hd_tbl_status)
+				hns3_set_port_vlan_filter(hns, vlan_id, 0);
+			LIST_REMOVE(vlan_entry, next);
+			rte_free(vlan_entry);
+			break;
+		}
+	}
+}
+
+static void
+hns3_add_dev_vlan_table(struct hns3_adapter *hns, uint16_t vlan_id,
+			bool writen_to_tbl)
+{
+	struct hns3_user_vlan_table *vlan_entry;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_pf *pf = &hns->pf;
+
+	vlan_entry = rte_zmalloc("hns3_vlan_tbl", sizeof(*vlan_entry), 0);
+	if (vlan_entry == NULL) {
+		hns3_err(hw, "Failed to malloc hns3 vlan table");
+		return;
+	}
+
+	vlan_entry->hd_tbl_status = writen_to_tbl;
+	vlan_entry->vlan_id = vlan_id;
+
+	LIST_INSERT_HEAD(&pf->vlan_list, vlan_entry, next);
+}
+
+static int
+hns3_vlan_filter_configure(struct hns3_adapter *hns, uint16_t vlan_id, int on)
+{
+	struct hns3_pf *pf = &hns->pf;
+	bool writen_to_tbl = false;
+	int ret = 0;
+
+	/*
+	 * When vlan filter is enabled, hardware regards vlan id 0 as the entry
+	 * for normal packet, deleting vlan id 0 is not allowed.
+	 */
+	if (on == 0 && vlan_id == 0)
+		return 0;
+
+	/*
+	 * When port base vlan enabled, we use port base vlan as the vlan
+	 * filter condition. In this case, we don't update vlan filter table
+	 * when user add new vlan or remove exist vlan, just update the
+	 * vlan list. The vlan id in vlan list will be writen in vlan filter
+	 * table until port base vlan disabled
+	 */
+	if (pf->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_DISABLE) {
+		ret = hns3_set_port_vlan_filter(hns, vlan_id, on);
+		writen_to_tbl = true;
+	}
+
+	if (ret == 0 && vlan_id) {
+		if (on)
+			hns3_add_dev_vlan_table(hns, vlan_id, writen_to_tbl);
+		else
+			hns3_rm_dev_vlan_table(hns, vlan_id);
+	}
+	return ret;
+}
+
+static int
+hns3_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_vlan_filter_configure(hns, vlan_id, on);
+	rte_spinlock_unlock(&hw->lock);
+	return ret;
+}
+
+static int
+hns3_vlan_tpid_configure(struct hns3_adapter *hns, enum rte_vlan_type vlan_type,
+			 uint16_t tpid)
+{
+	struct hns3_rx_vlan_type_cfg_cmd *rx_req;
+	struct hns3_tx_vlan_type_cfg_cmd *tx_req;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_cmd_desc desc;
+	int ret;
+
+	if ((vlan_type != ETH_VLAN_TYPE_INNER &&
+	     vlan_type != ETH_VLAN_TYPE_OUTER)) {
+		hns3_err(hw, "Unsupported vlan type, vlan_type =%d", vlan_type);
+		return -EINVAL;
+	}
+
+	if (tpid != RTE_ETHER_TYPE_VLAN) {
+		hns3_err(hw, "Unsupported vlan tpid, vlan_type =%d", vlan_type);
+		return -EINVAL;
+	}
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MAC_VLAN_TYPE_ID, false);
+	rx_req = (struct hns3_rx_vlan_type_cfg_cmd *)desc.data;
+
+	if (vlan_type == ETH_VLAN_TYPE_OUTER) {
+		rx_req->ot_fst_vlan_type = rte_cpu_to_le_16(tpid);
+		rx_req->ot_sec_vlan_type = rte_cpu_to_le_16(tpid);
+	} else if (vlan_type == ETH_VLAN_TYPE_INNER) {
+		rx_req->ot_fst_vlan_type = rte_cpu_to_le_16(tpid);
+		rx_req->ot_sec_vlan_type = rte_cpu_to_le_16(tpid);
+		rx_req->in_fst_vlan_type = rte_cpu_to_le_16(tpid);
+		rx_req->in_sec_vlan_type = rte_cpu_to_le_16(tpid);
+	}
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "Send rxvlan protocol type command fail, ret =%d",
+			 ret);
+		return ret;
+	}
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MAC_VLAN_INSERT, false);
+
+	tx_req = (struct hns3_tx_vlan_type_cfg_cmd *)desc.data;
+	tx_req->ot_vlan_type = rte_cpu_to_le_16(tpid);
+	tx_req->in_vlan_type = rte_cpu_to_le_16(tpid);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "Send txvlan protocol type command fail, ret =%d",
+			 ret);
+	return ret;
+}
+
+static int
+hns3_vlan_tpid_set(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type,
+		   uint16_t tpid)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_vlan_tpid_configure(hns, vlan_type, tpid);
+	rte_spinlock_unlock(&hw->lock);
+	return ret;
+}
+
+static int
+hns3_set_vlan_rx_offload_cfg(struct hns3_adapter *hns,
+			     struct hns3_rx_vtag_cfg *vcfg)
+{
+	struct hns3_vport_vtag_rx_cfg_cmd *req;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_cmd_desc desc;
+	uint16_t vport_id;
+	uint8_t bitmap;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_VLAN_PORT_RX_CFG, false);
+
+	req = (struct hns3_vport_vtag_rx_cfg_cmd *)desc.data;
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_REM_TAG1_EN_B,
+		     vcfg->strip_tag1_en ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_REM_TAG2_EN_B,
+		     vcfg->strip_tag2_en ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_SHOW_TAG1_EN_B,
+		     vcfg->vlan1_vlan_prionly ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_SHOW_TAG2_EN_B,
+		     vcfg->vlan2_vlan_prionly ? 1 : 0);
+
+	/*
+	 * In current version VF is not supported when PF is driven by DPDK
+	 * driver, the PF-related vf_id is 0, just need to configure parameters
+	 * for vport_id 0.
+	 */
+	vport_id = 0;
+	req->vf_offset = vport_id / HNS3_VF_NUM_PER_CMD;
+	bitmap = 1 << (vport_id % HNS3_VF_NUM_PER_BYTE);
+	req->vf_bitmap[req->vf_offset] = bitmap;
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "Send port rxvlan cfg command fail, ret =%d", ret);
+	return ret;
+}
+
+static void
+hns3_update_rx_offload_cfg(struct hns3_adapter *hns,
+			   struct hns3_rx_vtag_cfg *vcfg)
+{
+	struct hns3_pf *pf = &hns->pf;
+	memcpy(&pf->vtag_config.rx_vcfg, vcfg, sizeof(pf->vtag_config.rx_vcfg));
+}
+
+static void
+hns3_update_tx_offload_cfg(struct hns3_adapter *hns,
+			   struct hns3_tx_vtag_cfg *vcfg)
+{
+	struct hns3_pf *pf = &hns->pf;
+	memcpy(&pf->vtag_config.tx_vcfg, vcfg, sizeof(pf->vtag_config.tx_vcfg));
+}
+
+static int
+hns3_en_hw_strip_rxvtag(struct hns3_adapter *hns, bool enable)
+{
+	struct hns3_rx_vtag_cfg rxvlan_cfg;
+	struct hns3_pf *pf = &hns->pf;
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	if (pf->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_DISABLE) {
+		rxvlan_cfg.strip_tag1_en = false;
+		rxvlan_cfg.strip_tag2_en = enable;
+	} else {
+		rxvlan_cfg.strip_tag1_en = enable;
+		rxvlan_cfg.strip_tag2_en = true;
+	}
+
+	rxvlan_cfg.vlan1_vlan_prionly = false;
+	rxvlan_cfg.vlan2_vlan_prionly = false;
+	rxvlan_cfg.rx_vlan_offload_en = enable;
+
+	ret = hns3_set_vlan_rx_offload_cfg(hns, &rxvlan_cfg);
+	if (ret) {
+		hns3_err(hw, "enable strip rx vtag failed, ret =%d", ret);
+		return ret;
+	}
+
+	hns3_update_rx_offload_cfg(hns, &rxvlan_cfg);
+
+	return ret;
+}
+
+static int
+hns3_set_vlan_filter_ctrl(struct hns3_hw *hw, uint8_t vlan_type,
+			  uint8_t fe_type, bool filter_en, uint8_t vf_id)
+{
+	struct hns3_vlan_filter_ctrl_cmd *req;
+	struct hns3_cmd_desc desc;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_VLAN_FILTER_CTRL, false);
+
+	req = (struct hns3_vlan_filter_ctrl_cmd *)desc.data;
+	req->vlan_type = vlan_type;
+	req->vlan_fe = filter_en ? fe_type : 0;
+	req->vf_id = vf_id;
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "set vlan filter fail, ret =%d", ret);
+
+	return ret;
+}
+
+static int
+hns3_enable_vlan_filter(struct hns3_adapter *hns, bool enable)
+{
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	ret = hns3_set_vlan_filter_ctrl(hw, HNS3_FILTER_TYPE_VF,
+					HNS3_FILTER_FE_EGRESS, false, 0);
+	if (ret) {
+		hns3_err(hw, "hns3 enable filter fail, ret =%d", ret);
+		return ret;
+	}
+
+	ret = hns3_set_vlan_filter_ctrl(hw, HNS3_FILTER_TYPE_PORT,
+					HNS3_FILTER_FE_INGRESS, enable, 0);
+	if (ret)
+		hns3_err(hw, "hns3 enable filter fail, ret =%d", ret);
+
+	return ret;
+}
+
+static int
+hns3_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	struct rte_eth_rxmode *rxmode;
+	unsigned int tmp_mask;
+	bool enable;
+	int ret = 0;
+
+	rte_spinlock_lock(&hw->lock);
+	rxmode = &dev->data->dev_conf.rxmode;
+	tmp_mask = (unsigned int)mask;
+	if (tmp_mask & ETH_VLAN_STRIP_MASK) {
+		/* Enable or disable VLAN stripping */
+		enable = rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP ?
+		    true : false;
+
+		ret = hns3_en_hw_strip_rxvtag(hns, enable);
+		if (ret) {
+			rte_spinlock_unlock(&hw->lock);
+			hns3_err(hw, "failed to enable rx strip, ret =%d", ret);
+			return ret;
+		}
+	}
+
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_set_vlan_tx_offload_cfg(struct hns3_adapter *hns,
+			     struct hns3_tx_vtag_cfg *vcfg)
+{
+	struct hns3_vport_vtag_tx_cfg_cmd *req;
+	struct hns3_cmd_desc desc;
+	struct hns3_hw *hw = &hns->hw;
+	uint16_t vport_id;
+	uint8_t bitmap;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_VLAN_PORT_TX_CFG, false);
+
+	req = (struct hns3_vport_vtag_tx_cfg_cmd *)desc.data;
+	req->def_vlan_tag1 = vcfg->default_tag1;
+	req->def_vlan_tag2 = vcfg->default_tag2;
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_ACCEPT_TAG1_B,
+		     vcfg->accept_tag1 ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_ACCEPT_UNTAG1_B,
+		     vcfg->accept_untag1 ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_ACCEPT_TAG2_B,
+		     vcfg->accept_tag2 ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_ACCEPT_UNTAG2_B,
+		     vcfg->accept_untag2 ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_PORT_INS_TAG1_EN_B,
+		     vcfg->insert_tag1_en ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_PORT_INS_TAG2_EN_B,
+		     vcfg->insert_tag2_en ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_CFG_NIC_ROCE_SEL_B, 0);
+
+	/*
+	 * In current version VF is not supported when PF is driven by DPDK
+	 * driver, the PF-related vf_id is 0, just need to configure parameters
+	 * for vport_id 0.
+	 */
+	vport_id = 0;
+	req->vf_offset = vport_id / HNS3_VF_NUM_PER_CMD;
+	bitmap = 1 << (vport_id % HNS3_VF_NUM_PER_BYTE);
+	req->vf_bitmap[req->vf_offset] = bitmap;
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "Send port txvlan cfg command fail, ret =%d", ret);
+
+	return ret;
+}
+
+static int
+hns3_vlan_txvlan_cfg(struct hns3_adapter *hns, uint16_t port_base_vlan_state,
+		     uint16_t pvid)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_tx_vtag_cfg txvlan_cfg;
+	int ret;
+
+	if (port_base_vlan_state == HNS3_PORT_BASE_VLAN_DISABLE) {
+		txvlan_cfg.accept_tag1 = true;
+		txvlan_cfg.insert_tag1_en = false;
+		txvlan_cfg.default_tag1 = 0;
+	} else {
+		txvlan_cfg.accept_tag1 = false;
+		txvlan_cfg.insert_tag1_en = true;
+		txvlan_cfg.default_tag1 = pvid;
+	}
+
+	txvlan_cfg.accept_untag1 = true;
+	txvlan_cfg.accept_tag2 = true;
+	txvlan_cfg.accept_untag2 = true;
+	txvlan_cfg.insert_tag2_en = false;
+	txvlan_cfg.default_tag2 = 0;
+
+	ret = hns3_set_vlan_tx_offload_cfg(hns, &txvlan_cfg);
+	if (ret) {
+		hns3_err(hw, "pf vlan set pvid failed, pvid =%u ,ret =%d", pvid,
+			 ret);
+		return ret;
+	}
+
+	hns3_update_tx_offload_cfg(hns, &txvlan_cfg);
+	return ret;
+}
+
+static void
+hns3_store_port_base_vlan_info(struct hns3_adapter *hns, uint16_t pvid, int on)
+{
+	struct hns3_pf *pf = &hns->pf;
+
+	pf->port_base_vlan_cfg.state = on ?
+	    HNS3_PORT_BASE_VLAN_ENABLE : HNS3_PORT_BASE_VLAN_DISABLE;
+
+	pf->port_base_vlan_cfg.pvid = pvid;
+}
+
+static void
+hns3_rm_all_vlan_table(struct hns3_adapter *hns, bool is_del_list)
+{
+	struct hns3_user_vlan_table *vlan_entry;
+	struct hns3_pf *pf = &hns->pf;
+
+	LIST_FOREACH(vlan_entry, &pf->vlan_list, next) {
+		if (vlan_entry->hd_tbl_status)
+			hns3_set_port_vlan_filter(hns, vlan_entry->vlan_id, 0);
+
+		vlan_entry->hd_tbl_status = false;
+	}
+
+	if (is_del_list) {
+		vlan_entry = LIST_FIRST(&pf->vlan_list);
+		while (vlan_entry) {
+			LIST_REMOVE(vlan_entry, next);
+			rte_free(vlan_entry);
+			vlan_entry = LIST_FIRST(&pf->vlan_list);
+		}
+	}
+}
+
+static void
+hns3_add_all_vlan_table(struct hns3_adapter *hns)
+{
+	struct hns3_user_vlan_table *vlan_entry;
+	struct hns3_pf *pf = &hns->pf;
+
+	LIST_FOREACH(vlan_entry, &pf->vlan_list, next) {
+		if (!vlan_entry->hd_tbl_status)
+			hns3_set_port_vlan_filter(hns, vlan_entry->vlan_id, 1);
+
+		vlan_entry->hd_tbl_status = true;
+	}
+}
+
+static int
+hns3_update_vlan_filter_entries(struct hns3_adapter *hns,
+				uint16_t port_base_vlan_state,
+				uint16_t new_pvid, uint16_t old_pvid)
+{
+	struct hns3_pf *pf = &hns->pf;
+	struct hns3_hw *hw = &hns->hw;
+	int ret = 0;
+
+	if (port_base_vlan_state == HNS3_PORT_BASE_VLAN_ENABLE) {
+		if (old_pvid != HNS3_INVLID_PVID && old_pvid != 0) {
+			ret = hns3_set_port_vlan_filter(hns, old_pvid, 0);
+			if (ret) {
+				hns3_err(hw,
+					 "Failed to clear clear old pvid filter, ret =%d",
+					 ret);
+				return ret;
+			}
+		}
+
+		hns3_rm_all_vlan_table(hns, false);
+		return hns3_set_port_vlan_filter(hns, new_pvid, 1);
+	}
+
+	if (new_pvid != 0) {
+		ret = hns3_set_port_vlan_filter(hns, new_pvid, 0);
+		if (ret) {
+			hns3_err(hw, "Failed to set port vlan filter, ret =%d",
+				 ret);
+			return ret;
+		}
+	}
+
+	if (new_pvid == pf->port_base_vlan_cfg.pvid)
+		hns3_add_all_vlan_table(hns);
+
+	return ret;
+}
+
+static int
+hns3_en_rx_strip_all(struct hns3_adapter *hns, int on)
+{
+	struct hns3_rx_vtag_cfg rx_vlan_cfg;
+	struct hns3_hw *hw = &hns->hw;
+	bool rx_strip_en;
+	int ret;
+
+	rx_strip_en = on ? true : false;
+	rx_vlan_cfg.strip_tag1_en = rx_strip_en;
+	rx_vlan_cfg.strip_tag2_en = rx_strip_en;
+	rx_vlan_cfg.vlan1_vlan_prionly = false;
+	rx_vlan_cfg.vlan2_vlan_prionly = false;
+	rx_vlan_cfg.rx_vlan_offload_en = rx_strip_en;
+
+	ret = hns3_set_vlan_rx_offload_cfg(hns, &rx_vlan_cfg);
+	if (ret) {
+		hns3_err(hw, "enable strip rx failed, ret =%d", ret);
+		return ret;
+	}
+
+	hns3_update_rx_offload_cfg(hns, &rx_vlan_cfg);
+	return ret;
+}
+
+static int
+hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid, int on)
+{
+	struct hns3_pf *pf = &hns->pf;
+	struct hns3_hw *hw = &hns->hw;
+	uint16_t port_base_vlan_state;
+	uint16_t old_pvid;
+	int ret;
+
+	if (on == 0 && pvid != pf->port_base_vlan_cfg.pvid) {
+		if (pf->port_base_vlan_cfg.pvid != HNS3_INVLID_PVID)
+			hns3_warn(hw, "Invalid operation! As current pvid set "
+				  "is %u, disable pvid %u is invalid",
+				  pf->port_base_vlan_cfg.pvid, pvid);
+		return 0;
+	}
+
+	port_base_vlan_state = on ? HNS3_PORT_BASE_VLAN_ENABLE :
+				    HNS3_PORT_BASE_VLAN_DISABLE;
+	ret = hns3_vlan_txvlan_cfg(hns, port_base_vlan_state, pvid);
+	if (ret) {
+		hns3_err(hw, "Failed to config tx vlan, ret =%d", ret);
+		return ret;
+	}
+
+	ret = hns3_en_rx_strip_all(hns, on);
+	if (ret) {
+		hns3_err(hw, "Failed to config rx vlan strip, ret =%d", ret);
+		return ret;
+	}
+
+	if (pvid == HNS3_INVLID_PVID)
+		goto out;
+	old_pvid = pf->port_base_vlan_cfg.pvid;
+	ret = hns3_update_vlan_filter_entries(hns, port_base_vlan_state, pvid,
+					      old_pvid);
+	if (ret) {
+		hns3_err(hw, "Failed to update vlan filter entries, ret =%d",
+			 ret);
+		return ret;
+	}
+
+out:
+	hns3_store_port_base_vlan_info(hns, pvid, on);
+	return ret;
+}
+
+static int
+hns3_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_vlan_pvid_configure(hns, pvid, on);
+	rte_spinlock_unlock(&hw->lock);
+	return ret;
+}
+
+static void
+init_port_base_vlan_info(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct hns3_pf *pf = &hns->pf;
+
+	pf->port_base_vlan_cfg.state = HNS3_PORT_BASE_VLAN_DISABLE;
+	pf->port_base_vlan_cfg.pvid = HNS3_INVLID_PVID;
+}
+
+static int
+hns3_default_vlan_config(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	ret = hns3_set_port_vlan_filter(hns, 0, 1);
+	if (ret)
+		hns3_err(hw, "default vlan 0 config failed, ret =%d", ret);
+	return ret;
+}
+
+static int
+hns3_init_vlan_config(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	/*
+	 * This function can be called in the initialization and reset process,
+	 * when in reset process, it means that hardware had been reseted
+	 * successfully and we need to restore the hardware configuration to
+	 * ensure that the hardware configuration remains unchanged before and
+	 * after reset.
+	 */
+	if (rte_atomic16_read(&hw->reset.resetting) == 0)
+		init_port_base_vlan_info(hw);
+
+	ret = hns3_enable_vlan_filter(hns, true);
+	if (ret) {
+		hns3_err(hw, "vlan init fail in pf, ret =%d", ret);
+		return ret;
+	}
+
+	ret = hns3_vlan_tpid_configure(hns, ETH_VLAN_TYPE_INNER,
+				       RTE_ETHER_TYPE_VLAN);
+	if (ret) {
+		hns3_err(hw, "tpid set fail in pf, ret =%d", ret);
+		return ret;
+	}
+
+	/*
+	 * When in the reinit dev stage of the reset process, the following
+	 * vlan-related configurations may differ from those at initialization,
+	 * we will restore configurations to hardware in hns3_restore_vlan_table
+	 * and hns3_restore_vlan_conf later.
+	 */
+	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
+		ret = hns3_vlan_pvid_configure(hns, HNS3_INVLID_PVID, 0);
+		if (ret) {
+			hns3_err(hw, "pvid set fail in pf, ret =%d", ret);
+			return ret;
+		}
+
+		ret = hns3_en_hw_strip_rxvtag(hns, false);
+		if (ret) {
+			hns3_err(hw, "rx strip configure fail in pf, ret =%d",
+				 ret);
+			return ret;
+		}
+	}
+
+	return hns3_default_vlan_config(hns);
+}
 
 static int
 hns3_config_tso(struct hns3_hw *hw, unsigned int tso_mss_min,
@@ -2505,6 +3196,12 @@ hns3_init_hardware(struct hns3_adapter *hns)
 		goto err_mac_init;
 	}
 
+	ret = hns3_init_vlan_config(hns);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to init vlan: %d", ret);
+		goto err_mac_init;
+	}
+
 	ret = hns3_dcb_init(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init dcb: %d", ret);
@@ -2838,6 +3535,10 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.reta_update            = hns3_dev_rss_reta_update,
 	.reta_query             = hns3_dev_rss_reta_query,
 	.filter_ctrl            = hns3_dev_filter_ctrl,
+	.vlan_filter_set        = hns3_vlan_filter_set,
+	.vlan_tpid_set          = hns3_vlan_tpid_set,
+	.vlan_offload_set       = hns3_vlan_offload_set,
+	.vlan_pvid_set          = hns3_vlan_pvid_set,
 	.get_dcb_info           = hns3_get_dcb_info,
 };
 
