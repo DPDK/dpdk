@@ -95,4 +95,5 @@
 
 #define HNS3_TQP_INTR_REG_SIZE			4
 
+int hns3_get_regs(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs);
 #endif /* _HNS3_REGS_H_ */

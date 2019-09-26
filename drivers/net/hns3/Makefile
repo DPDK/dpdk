@@ -30,6 +30,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_rss.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_fdir.c
+SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_regs.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_dcb.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

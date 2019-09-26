@@ -1134,6 +1134,7 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.filter_ctrl        = hns3_dev_filter_ctrl,
 	.vlan_filter_set    = hns3vf_vlan_filter_set,
 	.vlan_offload_set   = hns3vf_vlan_offload_set,
+	.get_reg            = hns3_get_regs,
 	.dev_supported_ptypes_get = hns3_dev_supported_ptypes_get,
 };
 

@@ -4050,6 +4050,7 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.vlan_tpid_set          = hns3_vlan_tpid_set,
 	.vlan_offload_set       = hns3_vlan_offload_set,
 	.vlan_pvid_set          = hns3_vlan_pvid_set,
+	.get_reg                = hns3_get_regs,
 	.get_dcb_info           = hns3_get_dcb_info,
 	.dev_supported_ptypes_get = hns3_dev_supported_ptypes_get,
 };
