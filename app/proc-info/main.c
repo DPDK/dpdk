@@ -203,7 +203,7 @@ proc_info_preparse_args(int argc, char **argv)
 		int err = gethostname(host_id, MAX_LONG_OPT_SZ-1);
 
 		if (err)
-			strcpy(host_id, "unknown");
+			strlcpy(host_id, "unknown", sizeof(host_id));
 	}
 
 	return 0;
@@ -398,50 +398,50 @@ static void collectd_resolve_cnt_type(char *cnt_type, size_t cnt_type_len,
 	if ((type_end != NULL) &&
 	    (strncmp(cnt_name, "rx_", strlen("rx_")) == 0)) {
 		if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
-			strncpy(cnt_type, "if_rx_errors", cnt_type_len);
+			strlcpy(cnt_type, "if_rx_errors", cnt_type_len);
 		else if (strncmp(type_end, "_dropped", strlen("_dropped")) == 0)
-			strncpy(cnt_type, "if_rx_dropped", cnt_type_len);
+			strlcpy(cnt_type, "if_rx_dropped", cnt_type_len);
 		else if (strncmp(type_end, "_bytes", strlen("_bytes")) == 0)
-			strncpy(cnt_type, "if_rx_octets", cnt_type_len);
+			strlcpy(cnt_type, "if_rx_octets", cnt_type_len);
 		else if (strncmp(type_end, "_packets", strlen("_packets")) == 0)
-			strncpy(cnt_type, "if_rx_packets", cnt_type_len);
+			strlcpy(cnt_type, "if_rx_packets", cnt_type_len);
 		else if (strncmp(type_end, "_placement",
 				 strlen("_placement")) == 0)
-			strncpy(cnt_type, "if_rx_errors", cnt_type_len);
+			strlcpy(cnt_type, "if_rx_errors", cnt_type_len);
 		else if (strncmp(type_end, "_buff", strlen("_buff")) == 0)
-			strncpy(cnt_type, "if_rx_errors", cnt_type_len);
+			strlcpy(cnt_type, "if_rx_errors", cnt_type_len);
 		else
 			/* Does not fit obvious type: use a more generic one */
-			strncpy(cnt_type, "derive", cnt_type_len);
+			strlcpy(cnt_type, "derive", cnt_type_len);
 	} else if ((type_end != NULL) &&
 		(strncmp(cnt_name, "tx_", strlen("tx_"))) == 0) {
 		if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
-			strncpy(cnt_type, "if_tx_errors", cnt_type_len);
+			strlcpy(cnt_type, "if_tx_errors", cnt_type_len);
 		else if (strncmp(type_end, "_dropped", strlen("_dropped")) == 0)
-			strncpy(cnt_type, "if_tx_dropped", cnt_type_len);
+			strlcpy(cnt_type, "if_tx_dropped", cnt_type_len);
 		else if (strncmp(type_end, "_bytes", strlen("_bytes")) == 0)
-			strncpy(cnt_type, "if_tx_octets", cnt_type_len);
+			strlcpy(cnt_type, "if_tx_octets", cnt_type_len);
 		else if (strncmp(type_end, "_packets", strlen("_packets")) == 0)
-			strncpy(cnt_type, "if_tx_packets", cnt_type_len);
+			strlcpy(cnt_type, "if_tx_packets", cnt_type_len);
 		else
 			/* Does not fit obvious type: use a more generic one */
-			strncpy(cnt_type, "derive", cnt_type_len);
+			strlcpy(cnt_type, "derive", cnt_type_len);
 	} else if ((type_end != NULL) &&
 		   (strncmp(cnt_name, "flow_", strlen("flow_"))) == 0) {
 		if (strncmp(type_end, "_filters", strlen("_filters")) == 0)
-			strncpy(cnt_type, "operations", cnt_type_len);
+			strlcpy(cnt_type, "operations", cnt_type_len);
 		else if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
-			strncpy(cnt_type, "errors", cnt_type_len);
+			strlcpy(cnt_type, "errors", cnt_type_len);
 		else if (strncmp(type_end, "_filters", strlen("_filters")) == 0)
-			strncpy(cnt_type, "filter_result", cnt_type_len);
+			strlcpy(cnt_type, "filter_result", cnt_type_len);
 	} else if ((type_end != NULL) &&
 		   (strncmp(cnt_name, "mac_", strlen("mac_"))) == 0) {
 		if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
-			strncpy(cnt_type, "errors", cnt_type_len);
+			strlcpy(cnt_type, "errors", cnt_type_len);
 	} else {
 		/* Does not fit obvious type, or strrchr error: */
 		/* use a more generic type */
-		strncpy(cnt_type, "derive", cnt_type_len);
+		strlcpy(cnt_type, "derive", cnt_type_len);
 	}
 }
 
@@ -1349,7 +1349,7 @@ main(int argc, char **argv)
 	if (ret)
 		printf("Error from rte_eal_cleanup(), %d\n", ret);
 
-	snprintf(bdr_str, MAX_STRING_LEN, " ");
+	strlcpy(bdr_str, " ", MAX_STRING_LEN);
 	STATS_BDR_STR(50, bdr_str);
 
 	return 0;
