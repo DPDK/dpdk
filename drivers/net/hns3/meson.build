@@ -16,6 +16,7 @@ endif
 sources = files('hns3_cmd.c',
 	'hns3_dcb.c',
 	'hns3_ethdev.c',
+	'hns3_ethdev_vf.c',
 	'hns3_fdir.c',
 	'hns3_flow.c',
 	'hns3_mbx.c',
