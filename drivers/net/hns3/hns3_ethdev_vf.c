@@ -38,12 +38,20 @@
 #define HNS3VF_RESET_WAIT_MS	20
 #define HNS3VF_RESET_WAIT_CNT	2000
 
+/* Reset related Registers */
+#define HNS3_GLOBAL_RESET_BIT		0
+#define HNS3_CORE_RESET_BIT		1
+#define HNS3_IMP_RESET_BIT		2
+#define HNS3_FUN_RST_ING_B		0
+
 enum hns3vf_evt_cause {
 	HNS3VF_VECTOR0_EVENT_RST,
 	HNS3VF_VECTOR0_EVENT_MBX,
 	HNS3VF_VECTOR0_EVENT_OTHER,
 };
 
+static enum hns3_reset_level hns3vf_get_reset_level(struct hns3_hw *hw,
+						    uint64_t *levels);
 static int hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int hns3vf_dev_configure_vlan(struct rte_eth_dev *dev);
 
@@ -427,6 +435,11 @@ hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
+	if (rte_atomic16_read(&hw->reset.resetting)) {
+		hns3_err(hw, "Failed to set mtu during resetting");
+		return -EIO;
+	}
+
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3vf_config_mtu(hw, mtu);
 	if (ret) {
@@ -528,10 +541,31 @@ hns3vf_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 	struct hns3_hw *hw = &hns->hw;
 	enum hns3vf_evt_cause ret;
 	uint32_t cmdq_stat_reg;
+	uint32_t rst_ing_reg;
 	uint32_t val;
 
 	/* Fetch the events from their corresponding regs */
 	cmdq_stat_reg = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_STAT_REG);
+
+	if (BIT(HNS3_VECTOR0_RST_INT_B) & cmdq_stat_reg) {
+		rst_ing_reg = hns3_read_dev(hw, HNS3_FUN_RST_ING);
+		hns3_warn(hw, "resetting reg: 0x%x", rst_ing_reg);
+		hns3_atomic_set_bit(HNS3_VF_RESET, &hw->reset.pending);
+		rte_atomic16_set(&hw->reset.disable_cmd, 1);
+		val = hns3_read_dev(hw, HNS3_VF_RST_ING);
+		hns3_write_dev(hw, HNS3_VF_RST_ING, val | HNS3_VF_RST_ING_BIT);
+		val = cmdq_stat_reg & ~BIT(HNS3_VECTOR0_RST_INT_B);
+		if (clearval) {
+			hw->reset.stats.global_cnt++;
+			hns3_warn(hw, "Global reset detected, clear reset status");
+		} else {
+			hns3_schedule_delayed_reset(hns);
+			hns3_warn(hw, "Global reset detected, don't clear reset status");
+		}
+
+		ret = HNS3VF_VECTOR0_EVENT_RST;
+		goto out;
+	}
 
 	/* Check for vector0 mailbox(=CMDQ RX) event source */
 	if (BIT(HNS3_VECTOR0_RX_CMDQ_INT_B) & cmdq_stat_reg) {
@@ -567,6 +601,9 @@ hns3vf_interrupt_handler(void *param)
 	event_cause = hns3vf_check_event_cause(hns, &clearval);
 
 	switch (event_cause) {
+	case HNS3VF_VECTOR0_EVENT_RST:
+		hns3_schedule_reset(hns);
+		break;
 	case HNS3VF_VECTOR0_EVENT_MBX:
 		hns3_dev_handle_mbx_msg(hw);
 		break;
@@ -742,6 +779,12 @@ hns3vf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
+	if (rte_atomic16_read(&hw->reset.resetting)) {
+		hns3_err(hw,
+			 "vf set vlan id failed during resetting, vlan_id =%u",
+			 vlan_id);
+		return -EIO;
+	}
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3vf_vlan_filter_configure(hns, vlan_id, on);
 	rte_spinlock_unlock(&hw->lock);
@@ -787,6 +830,73 @@ hns3vf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	return 0;
+}
+
+static int
+hns3vf_handle_all_vlan_table(struct hns3_adapter *hns, int on)
+{
+	struct rte_vlan_filter_conf *vfc;
+	struct hns3_hw *hw = &hns->hw;
+	uint16_t vlan_id;
+	uint64_t vbit;
+	uint64_t ids;
+	int ret = 0;
+	uint32_t i;
+
+	vfc = &hw->data->vlan_filter_conf;
+	for (i = 0; i < RTE_DIM(vfc->ids); i++) {
+		if (vfc->ids[i] == 0)
+			continue;
+		ids = vfc->ids[i];
+		while (ids) {
+			/*
+			 * 64 means the num bits of ids, one bit corresponds to
+			 * one vlan id
+			 */
+			vlan_id = 64 * i;
+			/* count trailing zeroes */
+			vbit = ~ids & (ids - 1);
+			/* clear least significant bit set */
+			ids ^= (ids ^ (ids - 1)) ^ vbit;
+			for (; vbit;) {
+				vbit >>= 1;
+				vlan_id++;
+			}
+			ret = hns3vf_vlan_filter_configure(hns, vlan_id, on);
+			if (ret) {
+				hns3_err(hw,
+					 "VF handle vlan table failed, ret =%d, on = %d",
+					 ret, on);
+				return ret;
+			}
+		}
+	}
+
+	return ret;
+}
+
+static int
+hns3vf_remove_all_vlan_table(struct hns3_adapter *hns)
+{
+	return hns3vf_handle_all_vlan_table(hns, 0);
+}
+
+static int
+hns3vf_restore_vlan_conf(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct rte_eth_conf *dev_conf;
+	bool en;
+	int ret;
+
+	dev_conf = &hw->data->dev_conf;
+	en = dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP ? true
+								   : false;
+	ret = hns3vf_en_hw_strip_rxvtag(hw, en);
+	if (ret)
+		hns3_err(hw, "VF restore vlan conf fail, en =%d, ret =%d", en,
+			 ret);
+	return ret;
 }
 
 static int
@@ -848,7 +958,19 @@ hns3vf_service_handler(void *param)
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 
-	hns3vf_request_link_info(hw);
+	/*
+	 * The query link status and reset processing are executed in the
+	 * interrupt thread.When the IMP reset occurs, IMP will not respond,
+	 * and the query operation will time out after 30ms. In the case of
+	 * multiple PF/VFs, each query failure timeout causes the IMP reset
+	 * interrupt to fail to respond within 100ms.
+	 * Before querying the link status, check whether there is a reset
+	 * pending, and if so, abandon the query.
+	 */
+	if (!hns3vf_is_reset_pending(hns))
+		hns3vf_request_link_info(hw);
+	else
+		hns3_warn(hw, "Cancel the query when reset is pending");
 
 	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler,
 			  eth_dev);
@@ -997,12 +1119,16 @@ static int
 hns3vf_do_stop(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
+	bool reset_queue;
 
 	hw->mac.link_status = ETH_LINK_DOWN;
 
-	hns3vf_configure_mac_addr(hns, true);
-
-	return 0;
+	if (rte_atomic16_read(&hw->reset.disable_cmd) == 0) {
+		hns3vf_configure_mac_addr(hns, true);
+		reset_queue = true;
+	} else
+		reset_queue = false;
+	return hns3_stop_queues(hns, reset_queue);
 }
 
 static void
@@ -1017,9 +1143,11 @@ hns3vf_dev_stop(struct rte_eth_dev *eth_dev)
 	hns3_set_rxtx_function(eth_dev);
 
 	rte_spinlock_lock(&hw->lock);
-	hns3vf_do_stop(hns);
-	hns3_dev_release_mbufs(hns);
-	hw->adapter_state = HNS3_NIC_CONFIGURED;
+	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
+		hns3vf_do_stop(hns);
+		hns3_dev_release_mbufs(hns);
+		hw->adapter_state = HNS3_NIC_CONFIGURED;
+	}
 	rte_spinlock_unlock(&hw->lock);
 }
 
@@ -1033,14 +1161,17 @@ hns3vf_dev_close(struct rte_eth_dev *eth_dev)
 		hns3vf_dev_stop(eth_dev);
 
 	hw->adapter_state = HNS3_NIC_CLOSING;
+	hns3_reset_abort(hns);
+	hw->adapter_state = HNS3_NIC_CLOSED;
 	rte_eal_alarm_cancel(hns3vf_keep_alive_handler, eth_dev);
 	rte_eal_alarm_cancel(hns3vf_service_handler, eth_dev);
 	hns3vf_configure_all_mc_mac_addr(hns, true);
+	hns3vf_remove_all_vlan_table(hns);
 	hns3vf_uninit_vf(eth_dev);
 	hns3_free_all_queues(eth_dev);
+	rte_free(hw->reset.wait_data);
 	rte_free(eth_dev->process_private);
 	eth_dev->process_private = NULL;
-	hw->adapter_state = HNS3_NIC_CLOSED;
 	hns3_warn(hw, "Close port %d finished", hw->data->port_id);
 }
 
@@ -1105,6 +1236,8 @@ hns3vf_dev_start(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+	if (rte_atomic16_read(&hw->reset.resetting))
+		return -EBUSY;
 	rte_spinlock_lock(&hw->lock);
 	hw->adapter_state = HNS3_NIC_STARTING;
 	ret = hns3vf_do_start(hns, true);
@@ -1117,6 +1250,265 @@ hns3vf_dev_start(struct rte_eth_dev *eth_dev)
 	rte_spinlock_unlock(&hw->lock);
 	hns3_set_rxtx_function(eth_dev);
 	return 0;
+}
+
+static bool
+is_vf_reset_done(struct hns3_hw *hw)
+{
+#define HNS3_FUN_RST_ING_BITS \
+	(BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) | \
+	 BIT(HNS3_VECTOR0_CORERESET_INT_B) | \
+	 BIT(HNS3_VECTOR0_IMPRESET_INT_B) | \
+	 BIT(HNS3_VECTOR0_FUNCRESET_INT_B))
+
+	uint32_t val;
+
+	if (hw->reset.level == HNS3_VF_RESET) {
+		val = hns3_read_dev(hw, HNS3_VF_RST_ING);
+		if (val & HNS3_VF_RST_ING_BIT)
+			return false;
+	} else {
+		val = hns3_read_dev(hw, HNS3_FUN_RST_ING);
+		if (val & HNS3_FUN_RST_ING_BITS)
+			return false;
+	}
+	return true;
+}
+
+bool
+hns3vf_is_reset_pending(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	enum hns3_reset_level reset;
+
+	hns3vf_check_event_cause(hns, NULL);
+	reset = hns3vf_get_reset_level(hw, &hw->reset.pending);
+	if (hw->reset.level != HNS3_NONE_RESET && hw->reset.level < reset) {
+		hns3_warn(hw, "High level reset %d is pending", reset);
+		return true;
+	}
+	return false;
+}
+
+static int
+hns3vf_wait_hardware_ready(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_wait_data *wait_data = hw->reset.wait_data;
+	struct timeval tv;
+
+	if (wait_data->result == HNS3_WAIT_SUCCESS)
+		return 0;
+	else if (wait_data->result == HNS3_WAIT_TIMEOUT) {
+		gettimeofday(&tv, NULL);
+		hns3_warn(hw, "Reset step4 hardware not ready after reset time=%ld.%.6ld",
+			  tv.tv_sec, tv.tv_usec);
+		return -ETIME;
+	} else if (wait_data->result == HNS3_WAIT_REQUEST)
+		return -EAGAIN;
+
+	wait_data->hns = hns;
+	wait_data->check_completion = is_vf_reset_done;
+	wait_data->end_ms = (uint64_t)HNS3VF_RESET_WAIT_CNT *
+				      HNS3VF_RESET_WAIT_MS + get_timeofday_ms();
+	wait_data->interval = HNS3VF_RESET_WAIT_MS * USEC_PER_MSEC;
+	wait_data->count = HNS3VF_RESET_WAIT_CNT;
+	wait_data->result = HNS3_WAIT_REQUEST;
+	rte_eal_alarm_set(wait_data->interval, hns3_wait_callback, wait_data);
+	return -EAGAIN;
+}
+
+static int
+hns3vf_prepare_reset(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	int ret = 0;
+
+	if (hw->reset.level == HNS3_VF_FUNC_RESET) {
+		ret = hns3_send_mbx_msg(hw, HNS3_MBX_RESET, 0, NULL,
+					0, true, NULL, 0);
+	}
+	rte_atomic16_set(&hw->reset.disable_cmd, 1);
+
+	return ret;
+}
+
+static int
+hns3vf_stop_service(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct rte_eth_dev *eth_dev;
+
+	eth_dev = &rte_eth_devices[hw->data->port_id];
+	rte_eal_alarm_cancel(hns3vf_service_handler, eth_dev);
+	hw->mac.link_status = ETH_LINK_DOWN;
+
+	hns3_set_rxtx_function(eth_dev);
+
+	rte_spinlock_lock(&hw->lock);
+	if (hw->adapter_state == HNS3_NIC_STARTED ||
+	    hw->adapter_state == HNS3_NIC_STOPPING) {
+		hns3vf_do_stop(hns);
+		hw->reset.mbuf_deferred_free = true;
+	} else
+		hw->reset.mbuf_deferred_free = false;
+
+	/*
+	 * It is cumbersome for hardware to pick-and-choose entries for deletion
+	 * from table space. Hence, for function reset software intervention is
+	 * required to delete the entries.
+	 */
+	if (rte_atomic16_read(&hw->reset.disable_cmd) == 0)
+		hns3vf_configure_all_mc_mac_addr(hns, true);
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+}
+
+static int
+hns3vf_start_service(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct rte_eth_dev *eth_dev;
+
+	eth_dev = &rte_eth_devices[hw->data->port_id];
+	hns3_set_rxtx_function(eth_dev);
+
+	hns3vf_service_handler(eth_dev);
+	return 0;
+}
+
+static int
+hns3vf_restore_conf(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	ret = hns3vf_configure_mac_addr(hns, false);
+	if (ret)
+		return ret;
+
+	ret = hns3vf_configure_all_mc_mac_addr(hns, false);
+	if (ret)
+		goto err_mc_mac;
+
+	ret = hns3vf_restore_vlan_conf(hns);
+	if (ret)
+		goto err_vlan_table;
+
+	if (hw->adapter_state == HNS3_NIC_STARTED) {
+		ret = hns3vf_do_start(hns, false);
+		if (ret)
+			goto err_vlan_table;
+		hns3_info(hw, "hns3vf dev restart successful!");
+	} else if (hw->adapter_state == HNS3_NIC_STOPPING)
+		hw->adapter_state = HNS3_NIC_CONFIGURED;
+	return 0;
+
+err_vlan_table:
+	hns3vf_configure_all_mc_mac_addr(hns, true);
+err_mc_mac:
+	hns3vf_configure_mac_addr(hns, true);
+	return ret;
+}
+
+static enum hns3_reset_level
+hns3vf_get_reset_level(struct hns3_hw *hw, uint64_t *levels)
+{
+	enum hns3_reset_level reset_level;
+
+	/* return the highest priority reset level amongst all */
+	if (hns3_atomic_test_bit(HNS3_VF_RESET, levels))
+		reset_level = HNS3_VF_RESET;
+	else if (hns3_atomic_test_bit(HNS3_VF_FULL_RESET, levels))
+		reset_level = HNS3_VF_FULL_RESET;
+	else if (hns3_atomic_test_bit(HNS3_VF_PF_FUNC_RESET, levels))
+		reset_level = HNS3_VF_PF_FUNC_RESET;
+	else if (hns3_atomic_test_bit(HNS3_VF_FUNC_RESET, levels))
+		reset_level = HNS3_VF_FUNC_RESET;
+	else if (hns3_atomic_test_bit(HNS3_FLR_RESET, levels))
+		reset_level = HNS3_FLR_RESET;
+	else
+		reset_level = HNS3_NONE_RESET;
+
+	if (hw->reset.level != HNS3_NONE_RESET && reset_level < hw->reset.level)
+		return HNS3_NONE_RESET;
+
+	return reset_level;
+}
+
+static void
+hns3vf_reset_service(void *param)
+{
+	struct hns3_adapter *hns = (struct hns3_adapter *)param;
+	struct hns3_hw *hw = &hns->hw;
+	enum hns3_reset_level reset_level;
+	struct timeval tv_delta;
+	struct timeval tv_start;
+	struct timeval tv;
+	uint64_t msec;
+
+	/*
+	 * The interrupt is not triggered within the delay time.
+	 * The interrupt may have been lost. It is necessary to handle
+	 * the interrupt to recover from the error.
+	 */
+	if (rte_atomic16_read(&hns->hw.reset.schedule) == SCHEDULE_DEFERRED) {
+		rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_REQUESTED);
+		hns3_err(hw, "Handling interrupts in delayed tasks");
+		hns3vf_interrupt_handler(&rte_eth_devices[hw->data->port_id]);
+	}
+	rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_NONE);
+
+	/*
+	 * Hardware reset has been notified, we now have to poll & check if
+	 * hardware has actually completed the reset sequence.
+	 */
+	reset_level = hns3vf_get_reset_level(hw, &hw->reset.pending);
+	if (reset_level != HNS3_NONE_RESET) {
+		gettimeofday(&tv_start, NULL);
+		hns3_reset_process(hns, reset_level);
+		gettimeofday(&tv, NULL);
+		timersub(&tv, &tv_start, &tv_delta);
+		msec = tv_delta.tv_sec * MSEC_PER_SEC +
+		       tv_delta.tv_usec / USEC_PER_MSEC;
+		if (msec > HNS3_RESET_PROCESS_MS)
+			hns3_err(hw, "%d handle long time delta %" PRIx64
+				 " ms time=%ld.%.6ld",
+				 hw->reset.level, msec, tv.tv_sec, tv.tv_usec);
+	}
+}
+
+static int
+hns3vf_reinit_dev(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	/* Firmware command initialize */
+	ret = hns3_cmd_init(hw);
+	if (ret) {
+		hns3_err(hw, "Failed to init cmd: %d", ret);
+		return ret;
+	}
+
+	ret = hns3_reset_all_queues(hns);
+	if (ret) {
+		hns3_err(hw, "Failed to reset all queues: %d", ret);
+		goto err_init;
+	}
+
+	ret = hns3vf_init_hardware(hns);
+	if (ret) {
+		hns3_err(hw, "Failed to init hardware: %d", ret);
+		goto err_init;
+	}
+
+	return 0;
+
+err_init:
+	hns3_cmd_uninit(hw);
+	return ret;
 }
 
 static const struct eth_dev_ops hns3vf_eth_dev_ops = {
@@ -1153,6 +1545,16 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.dev_supported_ptypes_get = hns3_dev_supported_ptypes_get,
 };
 
+static const struct hns3_reset_ops hns3vf_reset_ops = {
+	.reset_service       = hns3vf_reset_service,
+	.stop_service        = hns3vf_stop_service,
+	.prepare_reset       = hns3vf_prepare_reset,
+	.wait_hardware_ready = hns3vf_wait_hardware_ready,
+	.reinit_dev          = hns3vf_reinit_dev,
+	.restore_conf        = hns3vf_restore_conf,
+	.start_service       = hns3vf_start_service,
+};
+
 static int
 hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -1183,6 +1585,11 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 	hns->is_vf = true;
 	hw->data = eth_dev->data;
 
+	ret = hns3_reset_init(hw);
+	if (ret)
+		goto err_init_reset;
+	hw->reset.ops = &hns3vf_reset_ops;
+
 	ret = hns3vf_init_vf(eth_dev);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init vf: %d", ret);
@@ -1211,6 +1618,13 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 	 */
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
+	if (rte_atomic16_read(&hns->hw.reset.schedule) == SCHEDULE_PENDING) {
+		hns3_err(hw, "Reschedule reset service after dev_init");
+		hns3_schedule_reset(hns);
+	} else {
+		/* IMP will wait ready flag before reset */
+		hns3_notify_reset_ready(hw, false);
+	}
 	rte_eal_alarm_set(HNS3VF_KEEP_ALIVE_INTERVAL, hns3vf_keep_alive_handler,
 			  eth_dev);
 	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler,
@@ -1221,6 +1635,9 @@ err_rte_zmalloc:
 	hns3vf_uninit_vf(eth_dev);
 
 err_init_vf:
+	rte_free(hw->reset.wait_data);
+
+err_init_reset:
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;

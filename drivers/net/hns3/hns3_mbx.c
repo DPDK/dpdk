@@ -81,6 +81,7 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code0, uint16_t code1,
 		  uint8_t *resp_data, uint16_t resp_len)
 {
 #define HNS3_MAX_RETRY_MS	500
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_mbx_resp_status *mbx_resp;
 	bool in_irq = false;
 	uint64_t now;
@@ -96,6 +97,19 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code0, uint16_t code1,
 	end = now + HNS3_MAX_RETRY_MS;
 	while ((hw->mbx_resp.head != hw->mbx_resp.tail + hw->mbx_resp.lost) &&
 	       (now < end)) {
+		if (rte_atomic16_read(&hw->reset.disable_cmd)) {
+			hns3_err(hw, "Don't wait for mbx respone because of "
+				 "disable_cmd");
+			return -EBUSY;
+		}
+
+		if (is_reset_pending(hns)) {
+			hw->mbx_resp.req_msg_data = 0;
+			hns3_err(hw, "Don't wait for mbx respone because of "
+				 "reset pending");
+			return -EIO;
+		}
+
 		/*
 		 * The mbox response is running on the interrupt thread.
 		 * Sending mbox in the interrupt thread cannot wait for the
@@ -224,6 +238,7 @@ hns3_mbx_handler(struct hns3_hw *hw)
 
 			hns3_warn(hw, "PF inform reset level %d", reset_level);
 			hw->reset.stats.request_cnt++;
+			hns3_schedule_reset(HNS3_DEV_HW_TO_ADAPTER(hw));
 			break;
 		default:
 			hns3_err(hw, "Fetched unsupported(%d) message from arq",

@@ -1651,9 +1651,26 @@ end_of_tx:
 	return nb_tx;
 }
 
+static uint16_t
+hns3_dummy_rxtx_burst(void *dpdk_txq __rte_unused,
+		      struct rte_mbuf **pkts __rte_unused,
+		      uint16_t pkts_n __rte_unused)
+{
+	return 0;
+}
+
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 {
-	eth_dev->rx_pkt_burst = hns3_recv_pkts;
-	eth_dev->tx_pkt_burst = hns3_xmit_pkts;
-	eth_dev->tx_pkt_prepare = hns3_prep_pkts;
+	struct hns3_adapter *hns = eth_dev->data->dev_private;
+
+	if (hns->hw.adapter_state == HNS3_NIC_STARTED &&
+	    rte_atomic16_read(&hns->hw.reset.resetting) == 0) {
+		eth_dev->rx_pkt_burst = hns3_recv_pkts;
+		eth_dev->tx_pkt_burst = hns3_xmit_pkts;
+		eth_dev->tx_pkt_prepare = hns3_prep_pkts;
+	} else {
+		eth_dev->rx_pkt_burst = hns3_dummy_rxtx_burst;
+		eth_dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
+		eth_dev->tx_pkt_prepare = hns3_dummy_rxtx_burst;
+	}
 }

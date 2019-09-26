@@ -49,6 +49,8 @@
 #define HNS3_SSU_COMMON_ERR_INT_MASK		GENMASK(9, 0)
 #define HNS3_SSU_PORT_INT_MSIX_MASK		0x7BFF
 
+#define HNS3_RESET_PROCESS_MS			200
+
 struct hns3_hw_blk {
 	const char *name;
 	int (*enable_err_intr)(struct hns3_adapter *hns, bool en);
@@ -64,5 +66,14 @@ int hns3_enable_hw_error_intr(struct hns3_adapter *hns, bool state);
 void hns3_handle_msix_error(struct hns3_adapter *hns, uint64_t *levels);
 void hns3_intr_unregister(const struct rte_intr_handle *hdl,
 			  rte_intr_callback_fn cb_fn, void *cb_arg);
+void hns3_notify_reset_ready(struct hns3_hw *hw, bool enable);
+int hns3_reset_init(struct hns3_hw *hw);
+void hns3_wait_callback(void *param);
+void hns3_schedule_reset(struct hns3_adapter *hns);
+void hns3_schedule_delayed_reset(struct hns3_adapter *hns);
+int hns3_reset_req_hw_reset(struct hns3_adapter *hns);
+int hns3_reset_process(struct hns3_adapter *hns,
+		       enum hns3_reset_level reset_level);
+void hns3_reset_abort(struct hns3_adapter *hns);
 
 #endif /* _HNS3_INTR_H_ */

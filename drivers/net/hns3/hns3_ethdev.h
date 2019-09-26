@@ -628,5 +628,18 @@ int hns3_config_gro(struct hns3_hw *hw, bool en);
 int hns3_dev_filter_ctrl(struct rte_eth_dev *dev,
 			 enum rte_filter_type filter_type,
 			 enum rte_filter_op filter_op, void *arg);
+bool hns3_is_reset_pending(struct hns3_adapter *hns);
+bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
+
+static inline bool
+is_reset_pending(struct hns3_adapter *hns)
+{
+	bool ret;
+	if (hns->is_vf)
+		ret = hns3vf_is_reset_pending(hns);
+	else
+		ret = hns3_is_reset_pending(hns);
+	return ret;
+}
 
 #endif /* _HNS3_ETHDEV_H_ */
