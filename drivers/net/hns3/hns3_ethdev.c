@@ -143,6 +143,772 @@ hns3_uninit_umv_space(struct hns3_hw *hw)
 	return 0;
 }
 
+static bool
+hns3_is_umv_space_full(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct hns3_pf *pf = &hns->pf;
+	bool is_full;
+
+	is_full = (pf->used_umv_size >= pf->max_umv_size);
+
+	return is_full;
+}
+
+static void
+hns3_update_umv_space(struct hns3_hw *hw, bool is_free)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct hns3_pf *pf = &hns->pf;
+
+	if (is_free) {
+		if (pf->used_umv_size > 0)
+			pf->used_umv_size--;
+	} else
+		pf->used_umv_size++;
+}
+
+static void
+hns3_prepare_mac_addr(struct hns3_mac_vlan_tbl_entry_cmd *new_req,
+		      const uint8_t *addr, bool is_mc)
+{
+	const unsigned char *mac_addr = addr;
+	uint32_t high_val = ((uint32_t)mac_addr[3] << 24) |
+			    ((uint32_t)mac_addr[2] << 16) |
+			    ((uint32_t)mac_addr[1] << 8) |
+			    (uint32_t)mac_addr[0];
+	uint32_t low_val = ((uint32_t)mac_addr[5] << 8) | (uint32_t)mac_addr[4];
+
+	hns3_set_bit(new_req->flags, HNS3_MAC_VLAN_BIT0_EN_B, 1);
+	if (is_mc) {
+		hns3_set_bit(new_req->entry_type, HNS3_MAC_VLAN_BIT0_EN_B, 0);
+		hns3_set_bit(new_req->entry_type, HNS3_MAC_VLAN_BIT1_EN_B, 1);
+		hns3_set_bit(new_req->mc_mac_en, HNS3_MAC_VLAN_BIT0_EN_B, 1);
+	}
+
+	new_req->mac_addr_hi32 = rte_cpu_to_le_32(high_val);
+	new_req->mac_addr_lo16 = rte_cpu_to_le_16(low_val & 0xffff);
+}
+
+static int
+hns3_get_mac_vlan_cmd_status(struct hns3_hw *hw, uint16_t cmdq_resp,
+			     uint8_t resp_code,
+			     enum hns3_mac_vlan_tbl_opcode op)
+{
+	if (cmdq_resp) {
+		hns3_err(hw, "cmdq execute failed for get_mac_vlan_cmd_status,status=%u",
+			 cmdq_resp);
+		return -EIO;
+	}
+
+	if (op == HNS3_MAC_VLAN_ADD) {
+		if (resp_code == 0 || resp_code == 1) {
+			return 0;
+		} else if (resp_code == HNS3_ADD_UC_OVERFLOW) {
+			hns3_err(hw, "add mac addr failed for uc_overflow");
+			return -ENOSPC;
+		} else if (resp_code == HNS3_ADD_MC_OVERFLOW) {
+			hns3_err(hw, "add mac addr failed for mc_overflow");
+			return -ENOSPC;
+		}
+
+		hns3_err(hw, "add mac addr failed for undefined, code=%u",
+			 resp_code);
+		return -EIO;
+	} else if (op == HNS3_MAC_VLAN_REMOVE) {
+		if (resp_code == 0) {
+			return 0;
+		} else if (resp_code == 1) {
+			hns3_dbg(hw, "remove mac addr failed for miss");
+			return -ENOENT;
+		}
+
+		hns3_err(hw, "remove mac addr failed for undefined, code=%u",
+			 resp_code);
+		return -EIO;
+	} else if (op == HNS3_MAC_VLAN_LKUP) {
+		if (resp_code == 0) {
+			return 0;
+		} else if (resp_code == 1) {
+			hns3_dbg(hw, "lookup mac addr failed for miss");
+			return -ENOENT;
+		}
+
+		hns3_err(hw, "lookup mac addr failed for undefined, code=%u",
+			 resp_code);
+		return -EIO;
+	}
+
+	hns3_err(hw, "unknown opcode for get_mac_vlan_cmd_status, opcode=%u",
+		 op);
+
+	return -EINVAL;
+}
+
+static int
+hns3_lookup_mac_vlan_tbl(struct hns3_hw *hw,
+			 struct hns3_mac_vlan_tbl_entry_cmd *req,
+			 struct hns3_cmd_desc *desc, bool is_mc)
+{
+	uint8_t resp_code;
+	uint16_t retval;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc[0], HNS3_OPC_MAC_VLAN_ADD, true);
+	if (is_mc) {
+		desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+		memcpy(desc[0].data, req,
+			   sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
+		hns3_cmd_setup_basic_desc(&desc[1], HNS3_OPC_MAC_VLAN_ADD,
+					  true);
+		desc[1].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+		hns3_cmd_setup_basic_desc(&desc[2], HNS3_OPC_MAC_VLAN_ADD,
+					  true);
+		ret = hns3_cmd_send(hw, desc, HNS3_MC_MAC_VLAN_ADD_DESC_NUM);
+	} else {
+		memcpy(desc[0].data, req,
+		       sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
+		ret = hns3_cmd_send(hw, desc, 1);
+	}
+	if (ret) {
+		hns3_err(hw, "lookup mac addr failed for cmd_send, ret =%d.",
+			 ret);
+		return ret;
+	}
+	resp_code = (rte_le_to_cpu_32(desc[0].data[0]) >> 8) & 0xff;
+	retval = rte_le_to_cpu_16(desc[0].retval);
+
+	return hns3_get_mac_vlan_cmd_status(hw, retval, resp_code,
+					    HNS3_MAC_VLAN_LKUP);
+}
+
+static int
+hns3_add_mac_vlan_tbl(struct hns3_hw *hw,
+		      struct hns3_mac_vlan_tbl_entry_cmd *req,
+		      struct hns3_cmd_desc *mc_desc)
+{
+	uint8_t resp_code;
+	uint16_t retval;
+	int cfg_status;
+	int ret;
+
+	if (mc_desc == NULL) {
+		struct hns3_cmd_desc desc;
+
+		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MAC_VLAN_ADD, false);
+		memcpy(desc.data, req,
+		       sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
+		ret = hns3_cmd_send(hw, &desc, 1);
+		resp_code = (rte_le_to_cpu_32(desc.data[0]) >> 8) & 0xff;
+		retval = rte_le_to_cpu_16(desc.retval);
+
+		cfg_status = hns3_get_mac_vlan_cmd_status(hw, retval, resp_code,
+							  HNS3_MAC_VLAN_ADD);
+	} else {
+		hns3_cmd_reuse_desc(&mc_desc[0], false);
+		mc_desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+		hns3_cmd_reuse_desc(&mc_desc[1], false);
+		mc_desc[1].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+		hns3_cmd_reuse_desc(&mc_desc[2], false);
+		mc_desc[2].flag &= rte_cpu_to_le_16(~HNS3_CMD_FLAG_NEXT);
+		memcpy(mc_desc[0].data, req,
+		       sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
+		mc_desc[0].retval = 0;
+		ret = hns3_cmd_send(hw, mc_desc, HNS3_MC_MAC_VLAN_ADD_DESC_NUM);
+		resp_code = (rte_le_to_cpu_32(mc_desc[0].data[0]) >> 8) & 0xff;
+		retval = rte_le_to_cpu_16(mc_desc[0].retval);
+
+		cfg_status = hns3_get_mac_vlan_cmd_status(hw, retval, resp_code,
+							  HNS3_MAC_VLAN_ADD);
+	}
+
+	if (ret) {
+		hns3_err(hw, "add mac addr failed for cmd_send, ret =%d", ret);
+		return ret;
+	}
+
+	return cfg_status;
+}
+
+static int
+hns3_remove_mac_vlan_tbl(struct hns3_hw *hw,
+			 struct hns3_mac_vlan_tbl_entry_cmd *req)
+{
+	struct hns3_cmd_desc desc;
+	uint8_t resp_code;
+	uint16_t retval;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MAC_VLAN_REMOVE, false);
+
+	memcpy(desc.data, req, sizeof(struct hns3_mac_vlan_tbl_entry_cmd));
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "del mac addr failed for cmd_send, ret =%d", ret);
+		return ret;
+	}
+	resp_code = (rte_le_to_cpu_32(desc.data[0]) >> 8) & 0xff;
+	retval = rte_le_to_cpu_16(desc.retval);
+
+	return hns3_get_mac_vlan_cmd_status(hw, retval, resp_code,
+					    HNS3_MAC_VLAN_REMOVE);
+}
+
+static int
+hns3_add_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct hns3_mac_vlan_tbl_entry_cmd req;
+	struct hns3_pf *pf = &hns->pf;
+	struct hns3_cmd_desc desc;
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	uint16_t egress_port = 0;
+	uint8_t vf_id;
+	int ret;
+
+	/* check if mac addr is valid */
+	if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Add unicast mac addr err! addr(%s) invalid",
+			 mac_str);
+		return -EINVAL;
+	}
+
+	memset(&req, 0, sizeof(req));
+
+	/*
+	 * In current version VF is not supported when PF is driven by DPDK
+	 * driver, the PF-related vf_id is 0, just need to configure parameters
+	 * for vf_id 0.
+	 */
+	vf_id = 0;
+	hns3_set_field(egress_port, HNS3_MAC_EPORT_VFID_M,
+		       HNS3_MAC_EPORT_VFID_S, vf_id);
+
+	req.egress_port = rte_cpu_to_le_16(egress_port);
+
+	hns3_prepare_mac_addr(&req, mac_addr->addr_bytes, false);
+
+	/*
+	 * Lookup the mac address in the mac_vlan table, and add
+	 * it if the entry is inexistent. Repeated unicast entry
+	 * is not allowed in the mac vlan table.
+	 */
+	ret = hns3_lookup_mac_vlan_tbl(hw, &req, &desc, false);
+	if (ret == -ENOENT) {
+		if (!hns3_is_umv_space_full(hw)) {
+			ret = hns3_add_mac_vlan_tbl(hw, &req, NULL);
+			if (!ret)
+				hns3_update_umv_space(hw, false);
+			return ret;
+		}
+
+		hns3_err(hw, "UC MAC table full(%u)", pf->used_umv_size);
+
+		return -ENOSPC;
+	}
+
+	rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE, mac_addr);
+
+	/* check if we just hit the duplicate */
+	if (ret == 0) {
+		hns3_dbg(hw, "mac addr(%s) has been in the MAC table", mac_str);
+		return 0;
+	}
+
+	hns3_err(hw, "PF failed to add unicast entry(%s) in the MAC table",
+		 mac_str);
+
+	return ret;
+}
+
+static int
+hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
+		  uint32_t idx, __attribute__ ((unused)) uint32_t pool)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_add_uc_addr_common(hw, mac_addr);
+	if (ret) {
+		rte_spinlock_unlock(&hw->lock);
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Failed to add mac addr(%s): %d", mac_str, ret);
+		return ret;
+	}
+
+	if (idx == 0)
+		hw->mac.default_addr_setted = true;
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_remove_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+{
+	struct hns3_mac_vlan_tbl_entry_cmd req;
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	int ret;
+
+	/* check if mac addr is valid */
+	if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Remove unicast mac addr err! addr(%s) invalid",
+			 mac_str);
+		return -EINVAL;
+	}
+
+	memset(&req, 0, sizeof(req));
+	hns3_set_bit(req.entry_type, HNS3_MAC_VLAN_BIT0_EN_B, 0);
+	hns3_prepare_mac_addr(&req, mac_addr->addr_bytes, false);
+	ret = hns3_remove_mac_vlan_tbl(hw, &req);
+	if (ret == -ENOENT) /* mac addr isn't existent in the mac vlan table. */
+		return 0;
+	else if (ret == 0)
+		hns3_update_umv_space(hw, true);
+
+	return ret;
+}
+
+static void
+hns3_remove_mac_addr(struct rte_eth_dev *dev, uint32_t idx)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	/* index will be checked by upper level rte interface */
+	struct rte_ether_addr *mac_addr = &dev->data->mac_addrs[idx];
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_remove_uc_addr_common(hw, mac_addr);
+	if (ret) {
+		rte_spinlock_unlock(&hw->lock);
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Failed to remove mac addr(%s): %d", mac_str, ret);
+		return;
+	}
+
+	if (idx == 0)
+		hw->mac.default_addr_setted = false;
+	rte_spinlock_unlock(&hw->lock);
+}
+
+static int
+hns3_set_default_mac_addr(struct rte_eth_dev *dev,
+			  struct rte_ether_addr *mac_addr)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_ether_addr *oaddr;
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	bool default_addr_setted;
+	bool rm_succes = false;
+	int ret, ret_val;
+
+	/* check if mac addr is valid */
+	if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Failed to set mac addr, addr(%s) invalid",
+			 mac_str);
+		return -EINVAL;
+	}
+
+	oaddr = (struct rte_ether_addr *)hw->mac.mac_addr;
+	default_addr_setted = hw->mac.default_addr_setted;
+	if (default_addr_setted && !!rte_is_same_ether_addr(mac_addr, oaddr))
+		return 0;
+
+	rte_spinlock_lock(&hw->lock);
+	if (default_addr_setted) {
+		ret = hns3_remove_uc_addr_common(hw, oaddr);
+		if (ret) {
+			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+					      oaddr);
+			hns3_warn(hw, "Remove old uc mac address(%s) fail: %d",
+				  mac_str, ret);
+			rm_succes = false;
+		} else
+			rm_succes = true;
+	}
+
+	ret = hns3_add_uc_addr_common(hw, mac_addr);
+	if (ret) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Failed to set mac addr(%s): %d", mac_str, ret);
+		goto err_add_uc_addr;
+	}
+
+	rte_ether_addr_copy(mac_addr,
+			    (struct rte_ether_addr *)hw->mac.mac_addr);
+	hw->mac.default_addr_setted = true;
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+
+err_add_uc_addr:
+	if (rm_succes) {
+		ret_val = hns3_add_uc_addr_common(hw, oaddr);
+		if (ret_val) {
+			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+					      oaddr);
+			hns3_warn(hw,
+				  "Failed to restore old uc mac addr(%s): %d",
+				  mac_str, ret_val);
+			hw->mac.default_addr_setted = false;
+		}
+	}
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static void
+hns3_update_desc_vfid(struct hns3_cmd_desc *desc, uint8_t vfid, bool clr)
+{
+#define HNS3_VF_NUM_IN_FIRST_DESC 192
+	uint8_t word_num;
+	uint8_t bit_num;
+
+	if (vfid < HNS3_VF_NUM_IN_FIRST_DESC) {
+		word_num = vfid / 32;
+		bit_num = vfid % 32;
+		if (clr)
+			desc[1].data[word_num] &=
+			    rte_cpu_to_le_32(~(1UL << bit_num));
+		else
+			desc[1].data[word_num] |=
+			    rte_cpu_to_le_32(1UL << bit_num);
+	} else {
+		word_num = (vfid - HNS3_VF_NUM_IN_FIRST_DESC) / 32;
+		bit_num = vfid % 32;
+		if (clr)
+			desc[2].data[word_num] &=
+			    rte_cpu_to_le_32(~(1UL << bit_num));
+		else
+			desc[2].data[word_num] |=
+			    rte_cpu_to_le_32(1UL << bit_num);
+	}
+}
+
+static int
+hns3_add_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+{
+	struct hns3_mac_vlan_tbl_entry_cmd req;
+	struct hns3_cmd_desc desc[3];
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	uint8_t vf_id;
+	int ret;
+
+	/* Check if mac addr is valid */
+	if (!rte_is_multicast_ether_addr(mac_addr)) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Failed to add mc mac addr, addr(%s) invalid",
+			 mac_str);
+		return -EINVAL;
+	}
+
+	memset(&req, 0, sizeof(req));
+	hns3_set_bit(req.entry_type, HNS3_MAC_VLAN_BIT0_EN_B, 0);
+	hns3_prepare_mac_addr(&req, mac_addr->addr_bytes, true);
+	ret = hns3_lookup_mac_vlan_tbl(hw, &req, desc, true);
+	if (ret) {
+		/* This mac addr do not exist, add new entry for it */
+		memset(desc[0].data, 0, sizeof(desc[0].data));
+		memset(desc[1].data, 0, sizeof(desc[0].data));
+		memset(desc[2].data, 0, sizeof(desc[0].data));
+	}
+
+	/*
+	 * In current version VF is not supported when PF is driven by DPDK
+	 * driver, the PF-related vf_id is 0, just need to configure parameters
+	 * for vf_id 0.
+	 */
+	vf_id = 0;
+	hns3_update_desc_vfid(desc, vf_id, false);
+	ret = hns3_add_mac_vlan_tbl(hw, &req, desc);
+	if (ret) {
+		if (ret == -ENOSPC)
+			hns3_err(hw, "mc mac vlan table is full");
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Failed to add mc mac addr(%s): %d", mac_str, ret);
+	}
+
+	return ret;
+}
+
+static int
+hns3_remove_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+{
+	struct hns3_mac_vlan_tbl_entry_cmd req;
+	struct hns3_cmd_desc desc[3];
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	uint8_t vf_id;
+	int ret;
+
+	/* Check if mac addr is valid */
+	if (!rte_is_multicast_ether_addr(mac_addr)) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Failed to rm mc mac addr, addr(%s) invalid",
+			 mac_str);
+		return -EINVAL;
+	}
+
+	memset(&req, 0, sizeof(req));
+	hns3_set_bit(req.entry_type, HNS3_MAC_VLAN_BIT0_EN_B, 0);
+	hns3_prepare_mac_addr(&req, mac_addr->addr_bytes, true);
+	ret = hns3_lookup_mac_vlan_tbl(hw, &req, desc, true);
+	if (ret == 0) {
+		/*
+		 * This mac addr exist, remove this handle's VFID for it.
+		 * In current version VF is not supported when PF is driven by
+		 * DPDK driver, the PF-related vf_id is 0, just need to
+		 * configure parameters for vf_id 0.
+		 */
+		vf_id = 0;
+		hns3_update_desc_vfid(desc, vf_id, true);
+
+		/* All the vfid is zero, so need to delete this entry */
+		ret = hns3_remove_mac_vlan_tbl(hw, &req);
+	} else if (ret == -ENOENT) {
+		/* This mac addr doesn't exist. */
+		return 0;
+	}
+
+	if (ret) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "Failed to rm mc mac addr(%s): %d", mac_str, ret);
+	}
+
+	return ret;
+}
+
+static int
+hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
+			   struct rte_ether_addr *mc_addr_set,
+			   uint32_t nb_mc_addr)
+{
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct rte_ether_addr *addr;
+	uint32_t i;
+	uint32_t j;
+
+	if (nb_mc_addr > HNS3_MC_MACADDR_NUM) {
+		hns3_err(hw, "Failed to set mc mac addr, nb_mc_addr(%d) "
+			 "invalid. valid range: 0~%d",
+			 nb_mc_addr, HNS3_MC_MACADDR_NUM);
+		return -EINVAL;
+	}
+
+	/* Check if input mac addresses are valid */
+	for (i = 0; i < nb_mc_addr; i++) {
+		addr = &mc_addr_set[i];
+		if (!rte_is_multicast_ether_addr(addr)) {
+			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+					      addr);
+			hns3_err(hw,
+				 "Failed to set mc mac addr, addr(%s) invalid.",
+				 mac_str);
+			return -EINVAL;
+		}
+
+		/* Check if there are duplicate addresses */
+		for (j = i + 1; j < nb_mc_addr; j++) {
+			if (rte_is_same_ether_addr(addr, &mc_addr_set[j])) {
+				rte_ether_format_addr(mac_str,
+						      RTE_ETHER_ADDR_FMT_SIZE,
+						      addr);
+				hns3_err(hw, "Failed to set mc mac addr, "
+					 "addrs invalid. two same addrs(%s).",
+					 mac_str);
+				return -EINVAL;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static void
+hns3_set_mc_addr_calc_addr(struct hns3_hw *hw,
+			   struct rte_ether_addr *mc_addr_set,
+			   int mc_addr_num,
+			   struct rte_ether_addr *reserved_addr_list,
+			   int *reserved_addr_num,
+			   struct rte_ether_addr *add_addr_list,
+			   int *add_addr_num,
+			   struct rte_ether_addr *rm_addr_list,
+			   int *rm_addr_num)
+{
+	struct rte_ether_addr *addr;
+	int current_addr_num;
+	int reserved_num = 0;
+	int add_num = 0;
+	int rm_num = 0;
+	int num;
+	int i;
+	int j;
+	bool same_addr;
+
+	/* Calculate the mc mac address list that should be removed */
+	current_addr_num = hw->mc_addrs_num;
+	for (i = 0; i < current_addr_num; i++) {
+		addr = &hw->mc_addrs[i];
+		same_addr = false;
+		for (j = 0; j < mc_addr_num; j++) {
+			if (rte_is_same_ether_addr(addr, &mc_addr_set[j])) {
+				same_addr = true;
+				break;
+			}
+		}
+
+		if (!same_addr) {
+			rte_ether_addr_copy(addr, &rm_addr_list[rm_num]);
+			rm_num++;
+		} else {
+			rte_ether_addr_copy(addr,
+					    &reserved_addr_list[reserved_num]);
+			reserved_num++;
+		}
+	}
+
+	/* Calculate the mc mac address list that should be added */
+	for (i = 0; i < mc_addr_num; i++) {
+		addr = &mc_addr_set[i];
+		same_addr = false;
+		for (j = 0; j < current_addr_num; j++) {
+			if (rte_is_same_ether_addr(addr, &hw->mc_addrs[j])) {
+				same_addr = true;
+				break;
+			}
+		}
+
+		if (!same_addr) {
+			rte_ether_addr_copy(addr, &add_addr_list[add_num]);
+			add_num++;
+		}
+	}
+
+	/* Reorder the mc mac address list maintained by driver */
+	for (i = 0; i < reserved_num; i++)
+		rte_ether_addr_copy(&reserved_addr_list[i], &hw->mc_addrs[i]);
+
+	for (i = 0; i < rm_num; i++) {
+		num = reserved_num + i;
+		rte_ether_addr_copy(&rm_addr_list[i], &hw->mc_addrs[num]);
+	}
+
+	*reserved_addr_num = reserved_num;
+	*add_addr_num = add_num;
+	*rm_addr_num = rm_num;
+}
+
+static int
+hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
+			  struct rte_ether_addr *mc_addr_set,
+			  uint32_t nb_mc_addr)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_ether_addr reserved_addr_list[HNS3_MC_MACADDR_NUM];
+	struct rte_ether_addr add_addr_list[HNS3_MC_MACADDR_NUM];
+	struct rte_ether_addr rm_addr_list[HNS3_MC_MACADDR_NUM];
+	struct rte_ether_addr *addr;
+	int reserved_addr_num;
+	int add_addr_num;
+	int rm_addr_num;
+	int mc_addr_num;
+	int num;
+	int ret;
+	int i;
+
+	/* Check if input parameters are valid */
+	ret = hns3_set_mc_addr_chk_param(hw, mc_addr_set, nb_mc_addr);
+	if (ret)
+		return ret;
+
+	rte_spinlock_lock(&hw->lock);
+
+	/*
+	 * Calculate the mc mac address lists those should be removed and be
+	 * added, Reorder the mc mac address list maintained by driver.
+	 */
+	mc_addr_num = (int)nb_mc_addr;
+	hns3_set_mc_addr_calc_addr(hw, mc_addr_set, mc_addr_num,
+				   reserved_addr_list, &reserved_addr_num,
+				   add_addr_list, &add_addr_num,
+				   rm_addr_list, &rm_addr_num);
+
+	/* Remove mc mac addresses */
+	for (i = 0; i < rm_addr_num; i++) {
+		num = rm_addr_num - i - 1;
+		addr = &rm_addr_list[num];
+		ret = hns3_remove_mc_addr(hw, addr);
+		if (ret) {
+			rte_spinlock_unlock(&hw->lock);
+			return ret;
+		}
+		hw->mc_addrs_num--;
+	}
+
+	/* Add mc mac addresses */
+	for (i = 0; i < add_addr_num; i++) {
+		addr = &add_addr_list[i];
+		ret = hns3_add_mc_addr(hw, addr);
+		if (ret) {
+			rte_spinlock_unlock(&hw->lock);
+			return ret;
+		}
+
+		num = reserved_addr_num + i;
+		rte_ether_addr_copy(addr, &hw->mc_addrs[num]);
+		hw->mc_addrs_num++;
+	}
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+}
+
+static int
+hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
+{
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct hns3_hw *hw = &hns->hw;
+	struct rte_ether_addr *addr;
+	int err = 0;
+	int ret;
+	int i;
+
+	for (i = 0; i < hw->mc_addrs_num; i++) {
+		addr = &hw->mc_addrs[i];
+		if (!rte_is_multicast_ether_addr(addr))
+			continue;
+		if (del)
+			ret = hns3_remove_mc_addr(hw, addr);
+		else
+			ret = hns3_add_mc_addr(hw, addr);
+		if (ret) {
+			err = ret;
+			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+					      addr);
+			hns3_dbg(hw, "%s mc mac addr: %s failed",
+				 del ? "Remove" : "Restore", mac_str);
+		}
+	}
+	return err;
+}
+
 static int
 hns3_set_mac_mtu(struct hns3_hw *hw, uint16_t new_mps)
 {
@@ -1564,12 +2330,18 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	struct hns3_hw *hw = &hns->hw;
 
 	hw->adapter_state = HNS3_NIC_CLOSING;
+
+	hns3_configure_all_mc_mac_addr(hns, true);
 	hns3_uninit_pf(eth_dev);
 	hw->adapter_state = HNS3_NIC_CLOSED;
 }
 
 static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.dev_close          = hns3_dev_close,
+	.mac_addr_add           = hns3_add_mac_addr,
+	.mac_addr_remove        = hns3_remove_mac_addr,
+	.mac_addr_set           = hns3_set_default_mac_addr,
+	.set_mc_addr_list       = hns3_set_mc_mac_addr_list,
 };
 
 static int
