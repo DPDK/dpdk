@@ -152,6 +152,12 @@ struct hns3_fdir_rule_ele {
 	struct hns3_fdir_rule fdir_conf;
 };
 
+/* rss filter list structure */
+struct hns3_rss_conf_ele {
+	TAILQ_ENTRY(hns3_rss_conf_ele) entries;
+	struct hns3_rss_conf filter_info;
+};
+
 /* hns3_flow memory list structure */
 struct hns3_flow_mem {
 	TAILQ_ENTRY(hns3_flow_mem) entries;
@@ -159,10 +165,12 @@ struct hns3_flow_mem {
 };
 
 TAILQ_HEAD(hns3_fdir_rule_list, hns3_fdir_rule_ele);
+TAILQ_HEAD(hns3_rss_filter_list, hns3_rss_conf_ele);
 TAILQ_HEAD(hns3_flow_mem_list, hns3_flow_mem);
 
 struct hns3_process_private {
 	struct hns3_fdir_rule_list fdir_list;
+	struct hns3_rss_filter_list filter_rss_list;
 	struct hns3_flow_mem_list flow_list;
 };
 

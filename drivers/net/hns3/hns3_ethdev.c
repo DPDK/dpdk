@@ -1027,6 +1027,10 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 
 	info->vmdq_queue_num = 0;
 
+	info->reta_size = HNS3_RSS_IND_TBL_SIZE;
+	info->hash_key_size = HNS3_RSS_KEY_SIZE;
+	info->flow_type_rss_offloads = HNS3_ETH_RSS_SUPPORT;
+
 	info->default_rxportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
 	info->default_txportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
 	info->default_rxportconf.nb_queues = HNS3_DEFAULT_PORT_CONF_QUEUES_NUM;
@@ -2572,6 +2576,8 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_hw_init;
 	}
 
+	hns3_set_default_rss_args(hw);
+
 	return 0;
 
 err_hw_init:
@@ -2597,6 +2603,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	hns3_rss_uninit(hns);
 	hns3_fdir_filter_uninit(hns);
 	hns3_uninit_umv_space(hw);
 	hns3_cmd_uninit(hw);
@@ -2630,6 +2637,10 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.mac_addr_set           = hns3_set_default_mac_addr,
 	.set_mc_addr_list       = hns3_set_mc_mac_addr_list,
 	.link_update            = hns3_dev_link_update,
+	.rss_hash_update        = hns3_dev_rss_hash_update,
+	.rss_hash_conf_get      = hns3_dev_rss_hash_conf_get,
+	.reta_update            = hns3_dev_rss_reta_update,
+	.reta_query             = hns3_dev_rss_reta_query,
 	.filter_ctrl            = hns3_dev_filter_ctrl,
 };
 
