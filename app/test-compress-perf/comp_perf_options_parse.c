@@ -82,11 +82,11 @@ parse_cperf_test_type(struct comp_test_data *test_data, const char *arg)
 {
 	struct name_id_map cperftest_namemap[] = {
 		{
-			cperf_test_type_strs[CPERF_TEST_TYPE_BENCHMARK],
+			comp_perf_test_type_strs[CPERF_TEST_TYPE_BENCHMARK],
 			CPERF_TEST_TYPE_BENCHMARK
 		},
 		{
-			cperf_test_type_strs[CPERF_TEST_TYPE_VERIFY],
+			comp_perf_test_type_strs[CPERF_TEST_TYPE_VERIFY],
 			CPERF_TEST_TYPE_VERIFY
 		}
 	};

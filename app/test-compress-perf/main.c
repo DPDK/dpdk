@@ -21,7 +21,7 @@
 #define NUM_MAX_INFLIGHT_OPS 512
 
 __extension__
-const char *cperf_test_type_strs[] = {
+const char *comp_perf_test_type_strs[] = {
 	[CPERF_TEST_TYPE_BENCHMARK] = "benchmark",
 	[CPERF_TEST_TYPE_VERIFY] = "verify"
 };

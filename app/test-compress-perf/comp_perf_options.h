@@ -11,7 +11,7 @@
 #define MAX_MBUF_DATA_SIZE (UINT16_MAX - RTE_PKTMBUF_HEADROOM)
 #define MAX_SEG_SIZE ((int)(MAX_MBUF_DATA_SIZE / EXPANSE_RATIO))
 
-extern const char *cperf_test_type_strs[];
+extern const char *comp_perf_test_type_strs[];
 
 /* Cleanup state machine */
 enum cleanup_st {
