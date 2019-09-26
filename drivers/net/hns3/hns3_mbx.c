@@ -22,6 +22,7 @@
 #include "hns3_ethdev.h"
 #include "hns3_regs.h"
 #include "hns3_logs.h"
+#include "hns3_intr.h"
 
 #define HNS3_REG_MSG_DATA_OFFSET	4
 #define HNS3_CMD_CODE_OFFSET		2

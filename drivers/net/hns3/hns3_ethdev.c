@@ -17,6 +17,7 @@
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
 #include <rte_ethdev_pci.h>
+#include <rte_interrupts.h>
 #include <rte_io.h>
 #include <rte_log.h>
 #include <rte_pci.h>
@@ -24,6 +25,7 @@
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"
 #include "hns3_rxtx.h"
+#include "hns3_intr.h"
 #include "hns3_regs.h"
 #include "hns3_dcb.h"
 
@@ -50,9 +52,135 @@
 int hns3_logtype_init;
 int hns3_logtype_driver;
 
+enum hns3_evt_cause {
+	HNS3_VECTOR0_EVENT_RST,
+	HNS3_VECTOR0_EVENT_MBX,
+	HNS3_VECTOR0_EVENT_ERR,
+	HNS3_VECTOR0_EVENT_OTHER,
+};
+
 static int hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid,
 				    int on);
+
+static void
+hns3_pf_disable_irq0(struct hns3_hw *hw)
+{
+	hns3_write_dev(hw, HNS3_MISC_VECTOR_REG_BASE, 0);
+}
+
+static void
+hns3_pf_enable_irq0(struct hns3_hw *hw)
+{
+	hns3_write_dev(hw, HNS3_MISC_VECTOR_REG_BASE, 1);
+}
+
+static enum hns3_evt_cause
+hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
+{
+	struct hns3_hw *hw = &hns->hw;
+	uint32_t vector0_int_stats;
+	uint32_t cmdq_src_val;
+	uint32_t val;
+	enum hns3_evt_cause ret;
+
+	/* fetch the events from their corresponding regs */
+	vector0_int_stats = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
+	cmdq_src_val = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG);
+
+	/*
+	 * Assumption: If by any chance reset and mailbox events are reported
+	 * together then we will only process reset event and defer the
+	 * processing of the mailbox events. Since, we would have not cleared
+	 * RX CMDQ event this time we would receive again another interrupt
+	 * from H/W just for the mailbox.
+	 */
+	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_int_stats) { /* IMP */
+		val = BIT(HNS3_VECTOR0_IMPRESET_INT_B);
+		ret = HNS3_VECTOR0_EVENT_RST;
+		goto out;
+	}
+
+	/* Global reset */
+	if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_int_stats) {
+		val = BIT(HNS3_VECTOR0_GLOBALRESET_INT_B);
+		ret = HNS3_VECTOR0_EVENT_RST;
+		goto out;
+	}
+
+	/* check for vector0 msix event source */
+	if (vector0_int_stats & HNS3_VECTOR0_REG_MSIX_MASK) {
+		val = vector0_int_stats;
+		ret = HNS3_VECTOR0_EVENT_ERR;
+		goto out;
+	}
+
+	/* check for vector0 mailbox(=CMDQ RX) event source */
+	if (BIT(HNS3_VECTOR0_RX_CMDQ_INT_B) & cmdq_src_val) {
+		cmdq_src_val &= ~BIT(HNS3_VECTOR0_RX_CMDQ_INT_B);
+		val = cmdq_src_val;
+		ret = HNS3_VECTOR0_EVENT_MBX;
+		goto out;
+	}
+
+	if (clearval && (vector0_int_stats || cmdq_src_val))
+		hns3_warn(hw, "surprise irq ector0_int_stats:0x%x cmdq_src_val:0x%x",
+			  vector0_int_stats, cmdq_src_val);
+	val = vector0_int_stats;
+	ret = HNS3_VECTOR0_EVENT_OTHER;
+out:
+
+	if (clearval)
+		*clearval = val;
+	return ret;
+}
+
+static void
+hns3_clear_event_cause(struct hns3_hw *hw, uint32_t event_type, uint32_t regclr)
+{
+	if (event_type == HNS3_VECTOR0_EVENT_RST)
+		hns3_write_dev(hw, HNS3_MISC_RESET_STS_REG, regclr);
+	else if (event_type == HNS3_VECTOR0_EVENT_MBX)
+		hns3_write_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG, regclr);
+}
+
+static void
+hns3_clear_all_event_cause(struct hns3_hw *hw)
+{
+	uint32_t vector0_int_stats;
+	vector0_int_stats = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
+
+	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_int_stats)
+		hns3_warn(hw, "Probe during IMP reset interrupt");
+
+	if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_int_stats)
+		hns3_warn(hw, "Probe during Global reset interrupt");
+
+	hns3_clear_event_cause(hw, HNS3_VECTOR0_EVENT_RST,
+			       BIT(HNS3_VECTOR0_IMPRESET_INT_B) |
+			       BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) |
+			       BIT(HNS3_VECTOR0_CORERESET_INT_B));
+	hns3_clear_event_cause(hw, HNS3_VECTOR0_EVENT_MBX, 0);
+}
+
+static void
+hns3_interrupt_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	enum hns3_evt_cause event_cause;
+	uint32_t clearval = 0;
+
+	/* Disable interrupt */
+	hns3_pf_disable_irq0(hw);
+
+	event_cause = hns3_check_event_cause(hns, &clearval);
+
+	hns3_clear_event_cause(hw, event_cause, clearval);
+	/* Enable interrupt if it is not cause by reset */
+	hns3_pf_enable_irq0(hw);
+}
 
 static int
 hns3_set_port_vlan_filter(struct hns3_adapter *hns, uint16_t vlan_id, int on)
@@ -3652,12 +3780,26 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_cmd_init_queue;
 	}
 
+	hns3_clear_all_event_cause(hw);
+
 	/* Firmware command initialize */
 	ret = hns3_cmd_init(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init cmd: %d", ret);
 		goto err_cmd_init;
 	}
+
+	ret = rte_intr_callback_register(&pci_dev->intr_handle,
+					 hns3_interrupt_handler,
+					 eth_dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to register intr: %d", ret);
+		goto err_intr_callback_register;
+	}
+
+	/* Enable interrupt */
+	rte_intr_enable(&pci_dev->intr_handle);
+	hns3_pf_enable_irq0(hw);
 
 	/* Get configuration */
 	ret = hns3_get_configuration(hw);
@@ -3681,12 +3823,27 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 
 	hns3_set_default_rss_args(hw);
 
+	ret = hns3_enable_hw_error_intr(hns, true);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "fail to enable hw error interrupts: %d",
+			     ret);
+		goto err_fdir;
+	}
+
 	return 0;
 
+err_fdir:
+	hns3_fdir_filter_uninit(hns);
 err_hw_init:
 	hns3_uninit_umv_space(hw);
 
 err_get_config:
+	hns3_pf_disable_irq0(hw);
+	rte_intr_disable(&pci_dev->intr_handle);
+	hns3_intr_unregister(&pci_dev->intr_handle, hns3_interrupt_handler,
+			     eth_dev);
+
+err_intr_callback_register:
 	hns3_cmd_uninit(hw);
 
 err_cmd_init:
@@ -3702,13 +3859,20 @@ static void
 hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct rte_device *dev = eth_dev->device;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
 	struct hns3_hw *hw = &hns->hw;
 
 	PMD_INIT_FUNC_TRACE();
 
+	hns3_enable_hw_error_intr(hns, false);
 	hns3_rss_uninit(hns);
 	hns3_fdir_filter_uninit(hns);
 	hns3_uninit_umv_space(hw);
+	hns3_pf_disable_irq0(hw);
+	rte_intr_disable(&pci_dev->intr_handle);
+	hns3_intr_unregister(&pci_dev->intr_handle, hns3_interrupt_handler,
+			     eth_dev);
 	hns3_cmd_uninit(hw);
 	hns3_cmd_destroy_queue(hw);
 	hw->io_base = NULL;

@@ -29,6 +29,7 @@
 #include "hns3_logs.h"
 #include "hns3_rxtx.h"
 #include "hns3_regs.h"
+#include "hns3_intr.h"
 #include "hns3_dcb.h"
 
 #define HNS3VF_KEEP_ALIVE_INTERVAL	2000000 /* us */
@@ -556,6 +557,9 @@ hns3vf_interrupt_handler(void *param)
 	enum hns3vf_evt_cause event_cause;
 	uint32_t clearval;
 
+	if (hw->irq_thread_id == 0)
+		hw->irq_thread_id = pthread_self();
+
 	/* Disable interrupt */
 	hns3vf_disable_irq0(hw);
 
@@ -953,7 +957,8 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 err_get_config:
 	hns3vf_disable_irq0(hw);
 	rte_intr_disable(&pci_dev->intr_handle);
-
+	hns3_intr_unregister(&pci_dev->intr_handle, hns3vf_interrupt_handler,
+			     eth_dev);
 err_intr_callback_register:
 	hns3_cmd_uninit(hw);
 
@@ -980,6 +985,8 @@ hns3vf_uninit_vf(struct rte_eth_dev *eth_dev)
 	(void)hns3vf_set_promisc_mode(hw, false);
 	hns3vf_disable_irq0(hw);
 	rte_intr_disable(&pci_dev->intr_handle);
+	hns3_intr_unregister(&pci_dev->intr_handle, hns3vf_interrupt_handler,
+			     eth_dev);
 	hns3_cmd_uninit(hw);
 	hns3_cmd_destroy_queue(hw);
 	hw->io_base = NULL;
