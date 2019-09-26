@@ -952,6 +952,7 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 
 	hns3_set_default_rss_args(hw);
 
+	(void)hns3_stats_reset(eth_dev);
 	return 0;
 
 err_get_config:
@@ -1123,6 +1124,13 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.dev_stop           = hns3vf_dev_stop,
 	.dev_close          = hns3vf_dev_close,
 	.mtu_set            = hns3vf_dev_mtu_set,
+	.stats_get          = hns3_stats_get,
+	.stats_reset        = hns3_stats_reset,
+	.xstats_get         = hns3_dev_xstats_get,
+	.xstats_get_names   = hns3_dev_xstats_get_names,
+	.xstats_reset       = hns3_dev_xstats_reset,
+	.xstats_get_by_id   = hns3_dev_xstats_get_by_id,
+	.xstats_get_names_by_id = hns3_dev_xstats_get_names_by_id,
 	.dev_infos_get      = hns3vf_dev_infos_get,
 	.rx_queue_setup     = hns3_rx_queue_setup,
 	.tx_queue_setup     = hns3_tx_queue_setup,
