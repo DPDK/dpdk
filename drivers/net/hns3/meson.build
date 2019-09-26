@@ -13,7 +13,7 @@ if arch_subdir != 'x86' and arch_subdir != 'arm' or not dpdk_conf.get('RTE_ARCH_
 	subdir_done()
 endif
 
-sources = files(
+sources = files('hns3_cmd.c',
 	'hns3_ethdev.c',
 	)
 deps += ['hash']

@@ -8,6 +8,8 @@
 #include <sys/time.h>
 #include <rte_alarm.h>
 
+#include "hns3_cmd.h"
+
 /* Vendor ID */
 #define PCI_VENDOR_ID_HUAWEI			0x19e5
 
@@ -40,7 +42,6 @@
 
 #define HNS3_4_TCS			4
 #define HNS3_8_TCS			8
-#define HNS3_MAX_TC_NUM			8
 
 #define HNS3_MAX_PF_NUM			8
 #define HNS3_UMV_TBL_SIZE		3072
@@ -268,7 +269,6 @@ struct hns3_reset_stats {
 	uint64_t merge_cnt;   /* Total merged in high reset times */
 };
 
-struct hns3_hw;
 struct hns3_adapter;
 
 typedef bool (*check_completion_func)(struct hns3_hw *hw);
@@ -331,6 +331,7 @@ struct hns3_reset_data {
 struct hns3_hw {
 	struct rte_eth_dev_data *data;
 	void *io_base;
+	struct hns3_cmq cmq;
 	struct hns3_mac mac;
 	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
 	uint32_t fw_version;

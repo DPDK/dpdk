@@ -23,5 +23,6 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_cmd.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
