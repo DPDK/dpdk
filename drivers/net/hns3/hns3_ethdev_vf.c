@@ -31,6 +31,7 @@
 #include "hns3_regs.h"
 #include "hns3_intr.h"
 #include "hns3_dcb.h"
+#include "hns3_mp.h"
 
 #define HNS3VF_KEEP_ALIVE_INTERVAL	2000000 /* us */
 #define HNS3VF_SERVICE_INTERVAL		1000000 /* us */
@@ -1141,6 +1142,11 @@ hns3vf_dev_stop(struct rte_eth_dev *eth_dev)
 
 	hw->adapter_state = HNS3_NIC_STOPPING;
 	hns3_set_rxtx_function(eth_dev);
+	rte_wmb();
+	/* Disable datapath on secondary process. */
+	hns3_mp_req_stop_rxtx(eth_dev);
+	/* Prevent crashes when queues are still in use. */
+	rte_delay_ms(hw->tqps_num);
 
 	rte_spinlock_lock(&hw->lock);
 	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
@@ -1157,6 +1163,9 @@ hns3vf_dev_close(struct rte_eth_dev *eth_dev)
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+
 	if (hw->adapter_state == HNS3_NIC_STARTED)
 		hns3vf_dev_stop(eth_dev);
 
@@ -1172,6 +1181,7 @@ hns3vf_dev_close(struct rte_eth_dev *eth_dev)
 	rte_free(hw->reset.wait_data);
 	rte_free(eth_dev->process_private);
 	eth_dev->process_private = NULL;
+	hns3_mp_uninit_primary();
 	hns3_warn(hw, "Close port %d finished", hw->data->port_id);
 }
 
@@ -1249,6 +1259,7 @@ hns3vf_dev_start(struct rte_eth_dev *eth_dev)
 	hw->adapter_state = HNS3_NIC_STARTED;
 	rte_spinlock_unlock(&hw->lock);
 	hns3_set_rxtx_function(eth_dev);
+	hns3_mp_req_start_rxtx(eth_dev);
 	return 0;
 }
 
@@ -1344,6 +1355,10 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 	hw->mac.link_status = ETH_LINK_DOWN;
 
 	hns3_set_rxtx_function(eth_dev);
+	rte_wmb();
+	/* Disable datapath on secondary process. */
+	hns3_mp_req_stop_rxtx(eth_dev);
+	rte_delay_ms(hw->tqps_num);
 
 	rte_spinlock_lock(&hw->lock);
 	if (hw->adapter_state == HNS3_NIC_STARTED ||
@@ -1373,6 +1388,7 @@ hns3vf_start_service(struct hns3_adapter *hns)
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
 	hns3_set_rxtx_function(eth_dev);
+	hns3_mp_req_start_rxtx(eth_dev);
 
 	hns3vf_service_handler(eth_dev);
 	return 0;
@@ -1578,8 +1594,13 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 
 	hns3_set_rxtx_function(eth_dev);
 	eth_dev->dev_ops = &hns3vf_eth_dev_ops;
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		hns3_mp_init_secondary();
+		hw->secondary_cnt++;
 		return 0;
+	}
+
+	hns3_mp_init_primary();
 
 	hw->adapter_state = HNS3_NIC_UNINITIALIZED;
 	hns->is_vf = true;

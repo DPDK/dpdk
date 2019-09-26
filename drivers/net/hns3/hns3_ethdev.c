@@ -29,6 +29,7 @@
 #include "hns3_intr.h"
 #include "hns3_regs.h"
 #include "hns3_dcb.h"
+#include "hns3_mp.h"
 
 #define HNS3_DEFAULT_PORT_CONF_BURST_SIZE	32
 #define HNS3_DEFAULT_PORT_CONF_QUEUES_NUM	1
@@ -4036,6 +4037,7 @@ hns3_dev_start(struct rte_eth_dev *eth_dev)
 	hw->adapter_state = HNS3_NIC_STARTED;
 	rte_spinlock_unlock(&hw->lock);
 	hns3_set_rxtx_function(eth_dev);
+	hns3_mp_req_start_rxtx(eth_dev);
 
 	hns3_info(hw, "hns3 dev start successful!");
 	return 0;
@@ -4072,6 +4074,11 @@ hns3_dev_stop(struct rte_eth_dev *eth_dev)
 
 	hw->adapter_state = HNS3_NIC_STOPPING;
 	hns3_set_rxtx_function(eth_dev);
+	rte_wmb();
+	/* Disable datapath on secondary process. */
+	hns3_mp_req_stop_rxtx(eth_dev);
+	/* Prevent crashes when queues are still in use. */
+	rte_delay_ms(hw->tqps_num);
 
 	rte_spinlock_lock(&hw->lock);
 	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
@@ -4087,6 +4094,12 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		rte_free(eth_dev->process_private);
+		eth_dev->process_private = NULL;
+		return;
+	}
 
 	if (hw->adapter_state == HNS3_NIC_STARTED)
 		hns3_dev_stop(eth_dev);
@@ -4104,6 +4117,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	rte_free(hw->reset.wait_data);
 	rte_free(eth_dev->process_private);
 	eth_dev->process_private = NULL;
+	hns3_mp_uninit_primary();
 	hns3_warn(hw, "Close port %d finished", hw->data->port_id);
 }
 
@@ -4558,6 +4572,10 @@ hns3_stop_service(struct hns3_adapter *hns)
 	hw->mac.link_status = ETH_LINK_DOWN;
 
 	hns3_set_rxtx_function(eth_dev);
+	rte_wmb();
+	/* Disable datapath on secondary process. */
+	hns3_mp_req_stop_rxtx(eth_dev);
+	rte_delay_ms(hw->tqps_num);
 
 	rte_spinlock_lock(&hw->lock);
 	if (hns->hw.adapter_state == HNS3_NIC_STARTED ||
@@ -4590,6 +4608,7 @@ hns3_start_service(struct hns3_adapter *hns)
 		hns3_set_rst_done(hw);
 	eth_dev = &rte_eth_devices[hw->data->port_id];
 	hns3_set_rxtx_function(eth_dev);
+	hns3_mp_req_start_rxtx(eth_dev);
 	hns3_service_handler(eth_dev);
 	return 0;
 }
@@ -4776,9 +4795,13 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 
 	hns3_set_rxtx_function(eth_dev);
 	eth_dev->dev_ops = &hns3_eth_dev_ops;
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		hns3_mp_init_secondary();
+		hw->secondary_cnt++;
 		return 0;
+	}
 
+	hns3_mp_init_primary();
 	hw->adapter_state = HNS3_NIC_UNINITIALIZED;
 
 	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
