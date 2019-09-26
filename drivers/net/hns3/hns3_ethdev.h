@@ -609,4 +609,7 @@ hns3_test_and_clear_bit(unsigned int nr, volatile uint64_t *addr)
 	return __atomic_fetch_and(addr, ~mask, __ATOMIC_RELAXED) & mask;
 }
 
+int hns3_buffer_alloc(struct hns3_hw *hw);
+int hns3_config_gro(struct hns3_hw *hw, bool en);
+
 #endif /* _HNS3_ETHDEV_H_ */
