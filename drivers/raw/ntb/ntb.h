@@ -87,6 +87,7 @@ enum ntb_spad_idx {
  * @ntb_dev_init: Init ntb dev.
  * @get_peer_mw_addr: To get the addr of peer mw[mw_idx].
  * @mw_set_trans: Set translation of internal memory that remote can access.
+ * @ioremap: Translate the remote host address to bar address.
  * @get_link_status: get link status, link speed and link width.
  * @set_link: Set local side up/down.
  * @spad_read: Read local/peer spad register val.
@@ -103,6 +104,7 @@ struct ntb_dev_ops {
 	void *(*get_peer_mw_addr)(const struct rte_rawdev *dev, int mw_idx);
 	int (*mw_set_trans)(const struct rte_rawdev *dev, int mw_idx,
 			    uint64_t addr, uint64_t size);
+	void *(*ioremap)(const struct rte_rawdev *dev, uint64_t addr);
 	int (*get_link_status)(const struct rte_rawdev *dev);
 	int (*set_link)(const struct rte_rawdev *dev, bool up);
 	uint32_t (*spad_read)(const struct rte_rawdev *dev, int spad,

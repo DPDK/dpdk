@@ -162,6 +162,27 @@ intel_ntb_mw_set_trans(const struct rte_rawdev *dev, int mw_idx,
 	return 0;
 }
 
+static void *
+intel_ntb_ioremap(const struct rte_rawdev *dev, uint64_t addr)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	void *mapped = NULL;
+	void *base;
+	int i;
+
+	for (i = 0; i < hw->peer_used_mws; i++) {
+		if (addr >= hw->peer_mw_base[i] &&
+		    addr <= hw->peer_mw_base[i] + hw->mw_size[i]) {
+			base = intel_ntb_get_peer_mw_addr(dev, i);
+			mapped = (void *)(size_t)(addr - hw->peer_mw_base[i] +
+				 (size_t)base);
+			break;
+		}
+	}
+
+	return mapped;
+}
+
 static int
 intel_ntb_get_link_status(const struct rte_rawdev *dev)
 {
@@ -357,6 +378,7 @@ const struct ntb_dev_ops intel_ntb_ops = {
 	.ntb_dev_init       = intel_ntb_dev_init,
 	.get_peer_mw_addr   = intel_ntb_get_peer_mw_addr,
 	.mw_set_trans       = intel_ntb_mw_set_trans,
+	.ioremap            = intel_ntb_ioremap,
 	.get_link_status    = intel_ntb_get_link_status,
 	.set_link           = intel_ntb_set_link,
 	.spad_read          = intel_ntb_spad_read,

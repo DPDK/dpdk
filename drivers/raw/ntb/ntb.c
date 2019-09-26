@@ -558,26 +558,140 @@ ntb_queue_init(struct rte_rawdev *dev, uint16_t qp_id)
 	return 0;
 }
 
+static inline void
+ntb_enqueue_cleanup(struct ntb_tx_queue *txq)
+{
+	struct ntb_tx_entry *sw_ring = txq->sw_ring;
+	uint16_t tx_free = txq->last_avail;
+	uint16_t nb_to_clean, i;
+
+	/* avail_cnt + 1 represents where to rx next in the peer. */
+	nb_to_clean = (*txq->avail_cnt - txq->last_avail + 1 +
+			txq->nb_tx_desc) & (txq->nb_tx_desc - 1);
+	nb_to_clean = RTE_MIN(nb_to_clean, txq->tx_free_thresh);
+	for (i = 0; i < nb_to_clean; i++) {
+		if (sw_ring[tx_free].mbuf)
+			rte_pktmbuf_free_seg(sw_ring[tx_free].mbuf);
+		tx_free = (tx_free + 1) & (txq->nb_tx_desc - 1);
+	}
+
+	txq->nb_tx_free += nb_to_clean;
+	txq->last_avail = tx_free;
+}
+
 static int
 ntb_enqueue_bufs(struct rte_rawdev *dev,
 		 struct rte_rawdev_buf **buffers,
 		 unsigned int count,
 		 rte_rawdev_obj_t context)
 {
-	/* Not FIFO right now. Just for testing memory write. */
 	struct ntb_hw *hw = dev->dev_private;
-	unsigned int i;
-	void *bar_addr;
-	size_t size;
+	struct ntb_tx_queue *txq = hw->tx_queues[(size_t)context];
+	struct ntb_tx_entry *sw_ring = txq->sw_ring;
+	struct rte_mbuf *txm;
+	struct ntb_used tx_used[NTB_MAX_DESC_SIZE];
+	volatile struct ntb_desc *tx_item;
+	uint16_t tx_last, nb_segs, off, last_used, avail_cnt;
+	uint16_t nb_mbufs = 0;
+	uint16_t nb_tx = 0;
+	uint64_t bytes = 0;
+	void *buf_addr;
+	int i;
 
-	if (hw->ntb_ops->get_peer_mw_addr == NULL)
-		return -ENOTSUP;
-	bar_addr = (*hw->ntb_ops->get_peer_mw_addr)(dev, 0);
-	size = (size_t)context;
+	if (unlikely(hw->ntb_ops->ioremap == NULL)) {
+		NTB_LOG(ERR, "Ioremap not supported.");
+		return nb_tx;
+	}
 
-	for (i = 0; i < count; i++)
-		rte_memcpy(bar_addr, buffers[i]->buf_addr, size);
-	return 0;
+	if (unlikely(dev->started == 0 || hw->peer_dev_up == 0)) {
+		NTB_LOG(DEBUG, "Link is not up.");
+		return nb_tx;
+	}
+
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ntb_enqueue_cleanup(txq);
+
+	off = NTB_XSTATS_NUM * ((size_t)context + 1);
+	last_used = txq->last_used;
+	avail_cnt = *txq->avail_cnt;/* Where to alloc next. */
+	for (nb_tx = 0; nb_tx < count; nb_tx++) {
+		txm = (struct rte_mbuf *)(buffers[nb_tx]->buf_addr);
+		if (txm == NULL || txq->nb_tx_free < txm->nb_segs)
+			break;
+
+		tx_last = (txq->last_used + txm->nb_segs - 1) &
+			  (txq->nb_tx_desc - 1);
+		nb_segs = txm->nb_segs;
+		for (i = 0; i < nb_segs; i++) {
+			/* Not enough ring space for tx. */
+			if (txq->last_used == avail_cnt)
+				goto end_of_tx;
+			sw_ring[txq->last_used].mbuf = txm;
+			tx_item = txq->tx_desc_ring + txq->last_used;
+
+			if (!tx_item->len) {
+				(hw->ntb_xstats[NTB_TX_ERRS_ID + off])++;
+				goto end_of_tx;
+			}
+			if (txm->data_len > tx_item->len) {
+				NTB_LOG(ERR, "Data length exceeds buf length."
+					" Only %u data would be transmitted.",
+					tx_item->len);
+				txm->data_len = tx_item->len;
+			}
+
+			/* translate remote virtual addr to bar virtual addr */
+			buf_addr = (*hw->ntb_ops->ioremap)(dev, tx_item->addr);
+			if (buf_addr == NULL) {
+				(hw->ntb_xstats[NTB_TX_ERRS_ID + off])++;
+				NTB_LOG(ERR, "Null remap addr.");
+				goto end_of_tx;
+			}
+			rte_memcpy(buf_addr, rte_pktmbuf_mtod(txm, void *),
+				   txm->data_len);
+
+			tx_used[nb_mbufs].len = txm->data_len;
+			tx_used[nb_mbufs++].flags = (txq->last_used ==
+						    tx_last) ?
+						    NTB_FLAG_EOP : 0;
+
+			/* update stats */
+			bytes += txm->data_len;
+
+			txm = txm->next;
+
+			sw_ring[txq->last_used].next_id = (txq->last_used + 1) &
+						  (txq->nb_tx_desc - 1);
+			sw_ring[txq->last_used].last_id = tx_last;
+			txq->last_used = (txq->last_used + 1) &
+					 (txq->nb_tx_desc - 1);
+		}
+		txq->nb_tx_free -= nb_segs;
+	}
+
+end_of_tx:
+	if (nb_tx) {
+		uint16_t nb1, nb2;
+		if (nb_mbufs > txq->nb_tx_desc - last_used) {
+			nb1 = txq->nb_tx_desc - last_used;
+			nb2 = nb_mbufs - txq->nb_tx_desc + last_used;
+		} else {
+			nb1 = nb_mbufs;
+			nb2 = 0;
+		}
+		rte_memcpy(txq->tx_used_ring + last_used, tx_used,
+			   sizeof(struct ntb_used) * nb1);
+		rte_memcpy(txq->tx_used_ring, tx_used + nb1,
+			   sizeof(struct ntb_used) * nb2);
+		*txq->used_cnt = txq->last_used;
+		rte_wmb();
+
+		/* update queue stats */
+		hw->ntb_xstats[NTB_TX_BYTES_ID + off] += bytes;
+		hw->ntb_xstats[NTB_TX_PKTS_ID + off] += nb_tx;
+	}
+
+	return nb_tx;
 }
 
 static int
@@ -586,16 +700,106 @@ ntb_dequeue_bufs(struct rte_rawdev *dev,
 		 unsigned int count,
 		 rte_rawdev_obj_t context)
 {
-	/* Not FIFO. Just for testing memory read. */
 	struct ntb_hw *hw = dev->dev_private;
-	unsigned int i;
-	size_t size;
+	struct ntb_rx_queue *rxq = hw->rx_queues[(size_t)context];
+	struct ntb_rx_entry *sw_ring = rxq->sw_ring;
+	struct ntb_desc rx_desc[NTB_MAX_DESC_SIZE];
+	struct rte_mbuf *first, *rxm_t;
+	struct rte_mbuf *prev = NULL;
+	volatile struct ntb_used *rx_item;
+	uint16_t nb_mbufs = 0;
+	uint16_t nb_rx = 0;
+	uint64_t bytes = 0;
+	uint16_t off, last_avail, used_cnt, used_nb;
+	int i;
 
-	size = (size_t)context;
+	if (unlikely(dev->started == 0 || hw->peer_dev_up == 0)) {
+		NTB_LOG(DEBUG, "Link is not up");
+		return nb_rx;
+	}
 
-	for (i = 0; i < count; i++)
-		rte_memcpy(buffers[i]->buf_addr, hw->mz[i]->addr, size);
-	return 0;
+	used_cnt = *rxq->used_cnt;
+
+	if (rxq->last_used == used_cnt)
+		return nb_rx;
+
+	last_avail = rxq->last_avail;
+	used_nb = (used_cnt - rxq->last_used) & (rxq->nb_rx_desc - 1);
+	count = RTE_MIN(count, used_nb);
+	for (nb_rx = 0; nb_rx < count; nb_rx++) {
+		i = 0;
+		while (true) {
+			rx_item = rxq->rx_used_ring + rxq->last_used;
+			rxm_t = sw_ring[rxq->last_used].mbuf;
+			rxm_t->data_len = rx_item->len;
+			rxm_t->data_off = RTE_PKTMBUF_HEADROOM;
+			rxm_t->port = rxq->port_id;
+
+			if (!i) {
+				rxm_t->nb_segs = 1;
+				first = rxm_t;
+				first->pkt_len = 0;
+				buffers[nb_rx]->buf_addr = rxm_t;
+			} else {
+				prev->next = rxm_t;
+				first->nb_segs++;
+			}
+
+			prev = rxm_t;
+			first->pkt_len += prev->data_len;
+			rxq->last_used = (rxq->last_used + 1) &
+					 (rxq->nb_rx_desc - 1);
+
+			/* alloc new mbuf */
+			rxm_t = rte_mbuf_raw_alloc(rxq->mpool);
+			if (unlikely(rxm_t == NULL)) {
+				NTB_LOG(ERR, "recv alloc mbuf failed.");
+				goto end_of_rx;
+			}
+			rxm_t->port = rxq->port_id;
+			sw_ring[rxq->last_avail].mbuf = rxm_t;
+			i++;
+
+			/* fill new desc */
+			rx_desc[nb_mbufs].addr =
+					rte_pktmbuf_mtod(rxm_t, size_t);
+			rx_desc[nb_mbufs++].len = rxm_t->buf_len -
+						  RTE_PKTMBUF_HEADROOM;
+			rxq->last_avail = (rxq->last_avail + 1) &
+					  (rxq->nb_rx_desc - 1);
+
+			if (rx_item->flags & NTB_FLAG_EOP)
+				break;
+		}
+		/* update stats */
+		bytes += first->pkt_len;
+	}
+
+end_of_rx:
+	if (nb_rx) {
+		uint16_t nb1, nb2;
+		if (nb_mbufs > rxq->nb_rx_desc - last_avail) {
+			nb1 = rxq->nb_rx_desc - last_avail;
+			nb2 = nb_mbufs - rxq->nb_rx_desc + last_avail;
+		} else {
+			nb1 = nb_mbufs;
+			nb2 = 0;
+		}
+		rte_memcpy(rxq->rx_desc_ring + last_avail, rx_desc,
+			   sizeof(struct ntb_desc) * nb1);
+		rte_memcpy(rxq->rx_desc_ring, rx_desc + nb1,
+			   sizeof(struct ntb_desc) * nb2);
+		*rxq->avail_cnt = rxq->last_avail;
+		rte_wmb();
+
+		/* update queue stats */
+		off = NTB_XSTATS_NUM * ((size_t)context + 1);
+		hw->ntb_xstats[NTB_RX_BYTES_ID + off] += bytes;
+		hw->ntb_xstats[NTB_RX_PKTS_ID + off] += nb_rx;
+		hw->ntb_xstats[NTB_RX_MISS_ID + off] += (count - nb_rx);
+	}
+
+	return nb_rx;
 }
 
 static void
@@ -1292,7 +1496,7 @@ ntb_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_ntb_pmd = {
 	.id_table = pci_id_ntb_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_WC_ACTIVATE,
 	.probe = ntb_probe,
 	.remove = ntb_remove,
 };
