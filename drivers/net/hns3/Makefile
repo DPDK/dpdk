@@ -11,6 +11,10 @@ LIB = librte_pmd_hns3.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+LDLIBS += -lrte_eal
+LDLIBS += -lrte_ethdev -lrte_net
+LDLIBS += -lrte_bus_pci
+
 EXPORT_MAP := rte_pmd_hns3_version.map
 
 LIBABIVER := 1
