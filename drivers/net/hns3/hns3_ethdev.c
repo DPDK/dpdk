@@ -28,6 +28,8 @@
 #define HNS3_DEFAULT_PORT_CONF_BURST_SIZE	32
 #define HNS3_DEFAULT_PORT_CONF_QUEUES_NUM	1
 
+#define HNS3_SERVICE_INTERVAL		1000000 /* us */
+
 int hns3_logtype_init;
 int hns3_logtype_driver;
 
@@ -1047,6 +1049,40 @@ hns3_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
 		return ret;
 	else
 		return 0;
+}
+
+static int
+hns3_dev_link_update(struct rte_eth_dev *eth_dev,
+		     __rte_unused int wait_to_complete)
+{
+	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_mac *mac = &hw->mac;
+	struct rte_eth_link new_link;
+
+	memset(&new_link, 0, sizeof(new_link));
+	switch (mac->link_speed) {
+	case ETH_SPEED_NUM_10M:
+	case ETH_SPEED_NUM_100M:
+	case ETH_SPEED_NUM_1G:
+	case ETH_SPEED_NUM_10G:
+	case ETH_SPEED_NUM_25G:
+	case ETH_SPEED_NUM_40G:
+	case ETH_SPEED_NUM_50G:
+	case ETH_SPEED_NUM_100G:
+		new_link.link_speed = mac->link_speed;
+		break;
+	default:
+		new_link.link_speed = ETH_SPEED_NUM_100M;
+		break;
+	}
+
+	new_link.link_duplex = mac->link_duplex;
+	new_link.link_status = mac->link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
+	new_link.link_autoneg =
+	    !(eth_dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED);
+
+	return rte_eth_linkstatus_set(eth_dev, &new_link);
 }
 
 static int
@@ -2306,6 +2342,129 @@ hns3_set_promisc_mode(struct hns3_hw *hw, bool en_uc_pmc, bool en_mc_pmc)
 }
 
 static int
+hns3_get_sfp_speed(struct hns3_hw *hw, uint32_t *speed)
+{
+	struct hns3_sfp_speed_cmd *resp;
+	struct hns3_cmd_desc desc;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_SFP_GET_SPEED, true);
+	resp = (struct hns3_sfp_speed_cmd *)desc.data;
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret == -EOPNOTSUPP) {
+		hns3_err(hw, "IMP do not support get SFP speed %d", ret);
+		return ret;
+	} else if (ret) {
+		hns3_err(hw, "get sfp speed failed %d", ret);
+		return ret;
+	}
+
+	*speed = resp->sfp_speed;
+
+	return 0;
+}
+
+static uint8_t
+hns3_check_speed_dup(uint8_t duplex, uint32_t speed)
+{
+	if (!(speed == ETH_SPEED_NUM_10M || speed == ETH_SPEED_NUM_100M))
+		duplex = ETH_LINK_FULL_DUPLEX;
+
+	return duplex;
+}
+
+static int
+hns3_cfg_mac_speed_dup(struct hns3_hw *hw, uint32_t speed, uint8_t duplex)
+{
+	struct hns3_mac *mac = &hw->mac;
+	int ret;
+
+	duplex = hns3_check_speed_dup(duplex, speed);
+	if (mac->link_speed == speed && mac->link_duplex == duplex)
+		return 0;
+
+	ret = hns3_cfg_mac_speed_dup_hw(hw, speed, duplex);
+	if (ret)
+		return ret;
+
+	mac->link_speed = speed;
+	mac->link_duplex = duplex;
+
+	return 0;
+}
+
+static int
+hns3_update_speed_duplex(struct rte_eth_dev *eth_dev)
+{
+	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_pf *pf = &hns->pf;
+	uint32_t speed;
+	int ret;
+
+	/* If IMP do not support get SFP/qSFP speed, return directly */
+	if (!pf->support_sfp_query)
+		return 0;
+
+	ret = hns3_get_sfp_speed(hw, &speed);
+	if (ret == -EOPNOTSUPP) {
+		pf->support_sfp_query = false;
+		return ret;
+	} else if (ret)
+		return ret;
+
+	if (speed == ETH_SPEED_NUM_NONE)
+		return 0; /* do nothing if no SFP */
+
+	/* Config full duplex for SFP */
+	return hns3_cfg_mac_speed_dup(hw, speed, ETH_LINK_FULL_DUPLEX);
+}
+
+static int
+hns3_get_mac_link_status(struct hns3_hw *hw)
+{
+	struct hns3_link_status_cmd *req;
+	struct hns3_cmd_desc desc;
+	int link_status;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_QUERY_LINK_STATUS, true);
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "get link status cmd failed %d", ret);
+		return ret;
+	}
+
+	req = (struct hns3_link_status_cmd *)desc.data;
+	link_status = req->status & HNS3_LINK_STATUS_UP_M;
+
+	return !!link_status;
+}
+
+static void
+hns3_update_link_status(struct hns3_hw *hw)
+{
+	int state;
+
+	state = hns3_get_mac_link_status(hw);
+	if (state != hw->mac.link_status)
+		hw->mac.link_status = state;
+}
+
+static void
+hns3_service_handler(void *param)
+{
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
+	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+
+	hns3_update_speed_duplex(eth_dev);
+	hns3_update_link_status(hw);
+
+	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, eth_dev);
+}
+
+static int
 hns3_init_hardware(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
@@ -2435,6 +2594,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	struct hns3_hw *hw = &hns->hw;
 
 	hw->adapter_state = HNS3_NIC_CLOSING;
+	rte_eal_alarm_cancel(hns3_service_handler, eth_dev);
 
 	hns3_configure_all_mc_mac_addr(hns, true);
 	hns3_uninit_pf(eth_dev);
@@ -2450,6 +2610,7 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.mac_addr_remove        = hns3_remove_mac_addr,
 	.mac_addr_set           = hns3_set_default_mac_addr,
 	.set_mc_addr_list       = hns3_set_mc_mac_addr_list,
+	.link_update            = hns3_dev_link_update,
 };
 
 static int
@@ -2504,6 +2665,7 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	 */
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
+	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, eth_dev);
 	hns3_info(hw, "hns3 dev initialization successful!");
 	return 0;
 
