@@ -27,6 +27,15 @@ extern int ntb_logtype;
 
 #define NTB_DFLT_TX_FREE_THRESH     256
 
+enum ntb_xstats_idx {
+	NTB_TX_PKTS_ID = 0,
+	NTB_TX_BYTES_ID,
+	NTB_TX_ERRS_ID,
+	NTB_RX_PKTS_ID,
+	NTB_RX_BYTES_ID,
+	NTB_RX_MISS_ID,
+};
+
 enum ntb_topo {
 	NTB_TOPO_NONE = 0,
 	NTB_TOPO_B2B_USD,
@@ -215,6 +224,9 @@ struct ntb_hw {
 	uint8_t used_mw_num;
 
 	uint8_t peer_used_mws;
+
+	uint64_t *ntb_xstats;
+	uint64_t *ntb_xstats_off;
 
 	/* Reserve several spad for app to use. */
 	int spad_user_list[NTB_SPAD_USER_MAX_NUM];

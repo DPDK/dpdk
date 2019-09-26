@@ -30,6 +30,17 @@ static const struct rte_pci_id pci_id_ntb_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+/* Align with enum ntb_xstats_idx */
+static struct rte_rawdev_xstats_name ntb_xstats_names[] = {
+	{"Tx-packets"},
+	{"Tx-bytes"},
+	{"Tx-errors"},
+	{"Rx-packets"},
+	{"Rx-bytes"},
+	{"Rx-missed"},
+};
+#define NTB_XSTATS_NUM RTE_DIM(ntb_xstats_names)
+
 static inline void
 ntb_link_cleanup(struct rte_rawdev *dev)
 {
@@ -538,6 +549,12 @@ ntb_queue_init(struct rte_rawdev *dev, uint16_t qp_id)
 	txq->last_avail = 0;
 	txq->nb_tx_free = txq->nb_tx_desc - 1;
 
+	/* Set per queue stats. */
+	for (i = 0; i < NTB_XSTATS_NUM; i++) {
+		hw->ntb_xstats[i + NTB_XSTATS_NUM * (qp_id + 1)] = 0;
+		hw->ntb_xstats_off[i + NTB_XSTATS_NUM * (qp_id + 1)] = 0;
+	}
+
 	return 0;
 }
 
@@ -614,6 +631,7 @@ ntb_dev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 {
 	struct ntb_dev_config *conf = config;
 	struct ntb_hw *hw = dev->dev_private;
+	uint32_t xstats_num;
 	int ret;
 
 	hw->queue_pairs	= conf->num_queues;
@@ -624,6 +642,12 @@ ntb_dev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 			sizeof(struct ntb_rx_queue *) * hw->queue_pairs, 0);
 	hw->tx_queues = rte_zmalloc("ntb_tx_queues",
 			sizeof(struct ntb_tx_queue *) * hw->queue_pairs, 0);
+	/* First total stats, then per queue stats. */
+	xstats_num = (hw->queue_pairs + 1) * NTB_XSTATS_NUM;
+	hw->ntb_xstats = rte_zmalloc("ntb_xstats", xstats_num *
+				     sizeof(uint64_t), 0);
+	hw->ntb_xstats_off = rte_zmalloc("ntb_xstats_off", xstats_num *
+					 sizeof(uint64_t), 0);
 
 	/* Start handshake with the peer. */
 	ret = ntb_handshake_work(dev);
@@ -649,6 +673,12 @@ ntb_dev_start(struct rte_rawdev *dev)
 
 	if (!hw->link_status || !hw->peer_dev_up)
 		return -EINVAL;
+
+	/* Set total stats. */
+	for (i = 0; i < NTB_XSTATS_NUM; i++) {
+		hw->ntb_xstats[i] = 0;
+		hw->ntb_xstats_off[i] = 0;
+	}
 
 	for (i = 0; i < hw->queue_pairs; i++) {
 		ret = ntb_queue_init(dev, i);
@@ -923,39 +953,143 @@ ntb_attr_get(struct rte_rawdev *dev, const char *attr_name,
 	return -EINVAL;
 }
 
-static int
-ntb_xstats_get(const struct rte_rawdev *dev __rte_unused,
-	       const unsigned int ids[] __rte_unused,
-	       uint64_t values[] __rte_unused,
-	       unsigned int n __rte_unused)
+static inline uint64_t
+ntb_stats_update(uint64_t offset, uint64_t stat)
 {
-	return 0;
+	if (stat >= offset)
+		return (stat - offset);
+	else
+		return (uint64_t)(((uint64_t)-1) - offset + stat + 1);
 }
 
 static int
-ntb_xstats_get_names(const struct rte_rawdev *dev __rte_unused,
-		     struct rte_rawdev_xstats_name *xstats_names __rte_unused,
-		     unsigned int size __rte_unused)
+ntb_xstats_get(const struct rte_rawdev *dev,
+	       const unsigned int ids[],
+	       uint64_t values[],
+	       unsigned int n)
 {
-	return 0;
+	struct ntb_hw *hw = dev->dev_private;
+	uint32_t i, j, off, xstats_num;
+
+	/* Calculate total stats of all queues. */
+	for (i = 0; i < NTB_XSTATS_NUM; i++) {
+		hw->ntb_xstats[i] = 0;
+		for (j = 0; j < hw->queue_pairs; j++) {
+			off = NTB_XSTATS_NUM * (j + 1) + i;
+			hw->ntb_xstats[i] +=
+			ntb_stats_update(hw->ntb_xstats_off[off],
+					 hw->ntb_xstats[off]);
+		}
+	}
+
+	xstats_num = NTB_XSTATS_NUM * (hw->queue_pairs + 1);
+	for (i = 0; i < n && ids[i] < xstats_num; i++) {
+		if (ids[i] < NTB_XSTATS_NUM)
+			values[i] = hw->ntb_xstats[ids[i]];
+		else
+			values[i] =
+			ntb_stats_update(hw->ntb_xstats_off[ids[i]],
+					 hw->ntb_xstats[ids[i]]);
+	}
+
+	return i;
+}
+
+static int
+ntb_xstats_get_names(const struct rte_rawdev *dev,
+		     struct rte_rawdev_xstats_name *xstats_names,
+		     unsigned int size)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	uint32_t xstats_num, i, j, off;
+
+	xstats_num = NTB_XSTATS_NUM * (hw->queue_pairs + 1);
+	if (xstats_names == NULL || size < xstats_num)
+		return xstats_num;
+
+	/* Total stats names */
+	memcpy(xstats_names, ntb_xstats_names, sizeof(ntb_xstats_names));
+
+	/* Queue stats names */
+	for (i = 0; i < hw->queue_pairs; i++) {
+		for (j = 0; j < NTB_XSTATS_NUM; j++) {
+			off = j + (i + 1) * NTB_XSTATS_NUM;
+			snprintf(xstats_names[off].name,
+				sizeof(xstats_names[0].name),
+				"%s_q%u", ntb_xstats_names[j].name, i);
+		}
+	}
+
+	return xstats_num;
 }
 
 static uint64_t
-ntb_xstats_get_by_name(const struct rte_rawdev *dev __rte_unused,
-		       const char *name __rte_unused,
-		       unsigned int *id __rte_unused)
+ntb_xstats_get_by_name(const struct rte_rawdev *dev,
+		       const char *name, unsigned int *id)
 {
-	return 0;
+	struct rte_rawdev_xstats_name *xstats_names;
+	struct ntb_hw *hw = dev->dev_private;
+	uint32_t xstats_num, i, j, off;
+
+	if (name == NULL)
+		return -EINVAL;
+
+	xstats_num = NTB_XSTATS_NUM * (hw->queue_pairs + 1);
+	xstats_names = rte_zmalloc("ntb_stats_name",
+				   sizeof(struct rte_rawdev_xstats_name) *
+				   xstats_num, 0);
+	ntb_xstats_get_names(dev, xstats_names, xstats_num);
+
+	/* Calculate total stats of all queues. */
+	for (i = 0; i < NTB_XSTATS_NUM; i++) {
+		for (j = 0; j < hw->queue_pairs; j++) {
+			off = NTB_XSTATS_NUM * (j + 1) + i;
+			hw->ntb_xstats[i] +=
+			ntb_stats_update(hw->ntb_xstats_off[off],
+					 hw->ntb_xstats[off]);
+		}
+	}
+
+	for (i = 0; i < xstats_num; i++) {
+		if (!strncmp(name, xstats_names[i].name,
+		    RTE_RAW_DEV_XSTATS_NAME_SIZE)) {
+			*id = i;
+			rte_free(xstats_names);
+			if (i < NTB_XSTATS_NUM)
+				return hw->ntb_xstats[i];
+			else
+				return ntb_stats_update(hw->ntb_xstats_off[i],
+							hw->ntb_xstats[i]);
+		}
+	}
+
+	NTB_LOG(ERR, "Cannot find the xstats name.");
+
+	return -EINVAL;
 }
 
 static int
-ntb_xstats_reset(struct rte_rawdev *dev __rte_unused,
-		 const uint32_t ids[] __rte_unused,
-		 uint32_t nb_ids __rte_unused)
+ntb_xstats_reset(struct rte_rawdev *dev,
+		 const uint32_t ids[],
+		 uint32_t nb_ids)
 {
-	return 0;
-}
+	struct ntb_hw *hw = dev->dev_private;
+	uint32_t i, j, off, xstats_num;
 
+	xstats_num = NTB_XSTATS_NUM * (hw->queue_pairs + 1);
+	for (i = 0; i < nb_ids && ids[i] < xstats_num; i++) {
+		if (ids[i] < NTB_XSTATS_NUM) {
+			for (j = 0; j < hw->queue_pairs; j++) {
+				off = NTB_XSTATS_NUM * (j + 1) + ids[i];
+				hw->ntb_xstats_off[off] = hw->ntb_xstats[off];
+			}
+		} else {
+			hw->ntb_xstats_off[ids[i]] = hw->ntb_xstats[ids[i]];
+		}
+	}
+
+	return i;
+}
 
 static const struct rte_rawdev_ops ntb_ops = {
 	.dev_info_get         = ntb_dev_info_get,
