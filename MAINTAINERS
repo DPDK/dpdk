@@ -535,6 +535,7 @@ M: Marcin Wojtas <mw@semihalf.com>
 M: Michal Krawczyk <mk@semihalf.com>
 M: Guy Tzalik <gtzalik@amazon.com>
 M: Evgeny Schemeilin <evgenys@amazon.com>
+M: Igor Chauskin <igorch@amazon.com>
 F: drivers/net/ena/
 F: doc/guides/nics/ena.rst
 F: doc/guides/nics/features/ena.ini
