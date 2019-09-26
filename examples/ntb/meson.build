@@ -14,3 +14,6 @@ cflags += ['-D_FILE_OFFSET_BITS=64']
 sources = files(
 	'ntb_fwd.c'
 )
+if dpdk_conf.has('RTE_LIBRTE_PMD_NTB_RAWDEV')
+	deps += 'rawdev_ntb'
+endif
