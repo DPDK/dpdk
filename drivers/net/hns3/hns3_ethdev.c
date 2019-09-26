@@ -2500,6 +2500,12 @@ hns3_init_hardware(struct hns3_adapter *hns)
 		goto err_mac_init;
 	}
 
+	ret = hns3_init_fd_config(hns);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to init flow director: %d", ret);
+		goto err_mac_init;
+	}
+
 	ret = hns3_config_tso(hw, HNS3_TSO_MSS_MIN, HNS3_TSO_MSS_MAX);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to config tso: %d", ret);
@@ -2559,7 +2565,17 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_get_config;
 	}
 
+	/* Initialize flow director filter list & hash */
+	ret = hns3_fdir_filter_init(hns);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to alloc hashmap for fdir: %d", ret);
+		goto err_hw_init;
+	}
+
 	return 0;
+
+err_hw_init:
+	hns3_uninit_umv_space(hw);
 
 err_get_config:
 	hns3_cmd_uninit(hw);
@@ -2581,6 +2597,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	hns3_fdir_filter_uninit(hns);
 	hns3_uninit_umv_space(hw);
 	hns3_cmd_uninit(hw);
 	hns3_cmd_destroy_queue(hw);
@@ -2598,6 +2615,8 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 
 	hns3_configure_all_mc_mac_addr(hns, true);
 	hns3_uninit_pf(eth_dev);
+	rte_free(eth_dev->process_private);
+	eth_dev->process_private = NULL;
 	hw->adapter_state = HNS3_NIC_CLOSED;
 }
 
@@ -2611,6 +2630,7 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.mac_addr_set           = hns3_set_default_mac_addr,
 	.set_mc_addr_list       = hns3_set_mc_mac_addr_list,
 	.link_update            = hns3_dev_link_update,
+	.filter_ctrl            = hns3_dev_filter_ctrl,
 };
 
 static int
@@ -2621,6 +2641,16 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+	eth_dev->process_private = (struct hns3_process_private *)
+	    rte_zmalloc_socket("hns3_filter_list",
+			       sizeof(struct hns3_process_private),
+			       RTE_CACHE_LINE_SIZE, eth_dev->device->numa_node);
+	if (eth_dev->process_private == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to alloc memory for process private");
+		return -ENOMEM;
+	}
+	/* initialize flow filter lists */
+	hns3_filterlist_init(eth_dev);
 
 	eth_dev->dev_ops = &hns3_eth_dev_ops;
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -2677,6 +2707,8 @@ err_init_pf:
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->tx_pkt_prepare = NULL;
+	rte_free(eth_dev->process_private);
+	eth_dev->process_private = NULL;
 	return ret;
 }
 

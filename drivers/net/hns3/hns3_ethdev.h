@@ -9,6 +9,7 @@
 #include <rte_alarm.h>
 
 #include "hns3_cmd.h"
+#include "hns3_fdir.h"
 
 /* Vendor ID */
 #define PCI_VENDOR_ID_HUAWEI			0x19e5
@@ -269,8 +270,6 @@ struct hns3_reset_stats {
 	uint64_t merge_cnt;   /* Total merged in high reset times */
 };
 
-struct hns3_adapter;
-
 typedef bool (*check_completion_func)(struct hns3_hw *hw);
 
 struct hns3_wait_data {
@@ -468,6 +467,9 @@ struct hns3_pf {
 	struct hns3_vtag_cfg vtag_config;
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;
 	LIST_HEAD(vlan_tbl, hns3_user_vlan_table) vlan_list;
+
+	struct hns3_fdir_info fdir; /* flow director info */
+	LIST_HEAD(counters, hns3_flow_counter) flow_counters;
 };
 
 struct hns3_vf {
@@ -611,5 +613,8 @@ hns3_test_and_clear_bit(unsigned int nr, volatile uint64_t *addr)
 
 int hns3_buffer_alloc(struct hns3_hw *hw);
 int hns3_config_gro(struct hns3_hw *hw, bool en);
+int hns3_dev_filter_ctrl(struct rte_eth_dev *dev,
+			 enum rte_filter_type filter_type,
+			 enum rte_filter_op filter_op, void *arg);
 
 #endif /* _HNS3_ETHDEV_H_ */

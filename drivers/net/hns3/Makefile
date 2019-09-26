@@ -12,7 +12,7 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
 LDLIBS += -lrte_eal
-LDLIBS += -lrte_ethdev -lrte_net
+LDLIBS += -lrte_ethdev -lrte_net -lrte_hash
 LDLIBS += -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_hns3_version.map
@@ -24,5 +24,7 @@ LIBABIVER := 1
 #
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_cmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_flow.c
+SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_fdir.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
