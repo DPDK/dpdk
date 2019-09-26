@@ -11,7 +11,7 @@ LIB = librte_pmd_hns3.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
-LDLIBS += -lrte_eal
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_hash
 LDLIBS += -lrte_bus_pci
 
@@ -26,6 +26,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_ethdev_vf.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_cmd.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_mbx.c
+SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_rss.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_HNS3_PMD) += hns3_fdir.c

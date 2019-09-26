@@ -23,6 +23,7 @@
 
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"
+#include "hns3_rxtx.h"
 #include "hns3_regs.h"
 #include "hns3_dcb.h"
 
@@ -1717,6 +1718,18 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_TX_OFFLOAD_MULTI_SEGS |
 				 info->tx_queue_offload_capa);
 
+	info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = HNS3_MAX_RING_DESC,
+		.nb_min = HNS3_MIN_RING_DESC,
+		.nb_align = HNS3_ALIGN_RING_DESC,
+	};
+
+	info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = HNS3_MAX_RING_DESC,
+		.nb_min = HNS3_MIN_RING_DESC,
+		.nb_align = HNS3_ALIGN_RING_DESC,
+	};
+
 	info->vmdq_queue_num = 0;
 
 	info->reta_size = HNS3_RSS_IND_TBL_SIZE;
@@ -1727,6 +1740,8 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	info->default_txportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
 	info->default_rxportconf.nb_queues = HNS3_DEFAULT_PORT_CONF_QUEUES_NUM;
 	info->default_txportconf.nb_queues = HNS3_DEFAULT_PORT_CONF_QUEUES_NUM;
+	info->default_rxportconf.ring_size = HNS3_DEFAULT_RING_DESC;
+	info->default_txportconf.ring_size = HNS3_DEFAULT_RING_DESC;
 
 	return 0;
 }
@@ -3326,6 +3341,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 
 	hns3_configure_all_mc_mac_addr(hns, true);
 	hns3_uninit_pf(eth_dev);
+	hns3_free_all_queues(eth_dev);
 	rte_free(eth_dev->process_private);
 	eth_dev->process_private = NULL;
 	hw->adapter_state = HNS3_NIC_CLOSED;
@@ -3522,6 +3538,10 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.mtu_set            = hns3_dev_mtu_set,
 	.dev_infos_get          = hns3_dev_infos_get,
 	.fw_version_get         = hns3_fw_version_get,
+	.rx_queue_setup         = hns3_rx_queue_setup,
+	.tx_queue_setup         = hns3_tx_queue_setup,
+	.rx_queue_release       = hns3_dev_rx_queue_release,
+	.tx_queue_release       = hns3_dev_tx_queue_release,
 	.flow_ctrl_get          = hns3_flow_ctrl_get,
 	.flow_ctrl_set          = hns3_flow_ctrl_set,
 	.priority_flow_ctrl_set = hns3_priority_flow_ctrl_set,
@@ -3540,6 +3560,7 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.vlan_offload_set       = hns3_vlan_offload_set,
 	.vlan_pvid_set          = hns3_vlan_pvid_set,
 	.get_dcb_info           = hns3_get_dcb_info,
+	.dev_supported_ptypes_get = hns3_dev_supported_ptypes_get,
 };
 
 static int
@@ -3564,6 +3585,7 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	/* initialize flow filter lists */
 	hns3_filterlist_init(eth_dev);
 
+	hns3_set_rxtx_function(eth_dev);
 	eth_dev->dev_ops = &hns3_eth_dev_ops;
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;

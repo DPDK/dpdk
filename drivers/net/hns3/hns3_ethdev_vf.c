@@ -27,6 +27,7 @@
 
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"
+#include "hns3_rxtx.h"
 #include "hns3_regs.h"
 #include "hns3_dcb.h"
 
@@ -479,11 +480,25 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_TX_OFFLOAD_MULTI_SEGS |
 				 info->tx_queue_offload_capa);
 
+	info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = HNS3_MAX_RING_DESC,
+		.nb_min = HNS3_MIN_RING_DESC,
+		.nb_align = HNS3_ALIGN_RING_DESC,
+	};
+
+	info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = HNS3_MAX_RING_DESC,
+		.nb_min = HNS3_MIN_RING_DESC,
+		.nb_align = HNS3_ALIGN_RING_DESC,
+	};
+
 	info->vmdq_queue_num = 0;
 
 	info->reta_size = HNS3_RSS_IND_TBL_SIZE;
 	info->hash_key_size = HNS3_RSS_KEY_SIZE;
 	info->flow_type_rss_offloads = HNS3_ETH_RSS_SUPPORT;
+	info->default_rxportconf.ring_size = HNS3_DEFAULT_RING_DESC;
+	info->default_txportconf.ring_size = HNS3_DEFAULT_RING_DESC;
 
 	return 0;
 }
@@ -991,9 +1006,11 @@ hns3vf_dev_stop(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	hw->adapter_state = HNS3_NIC_STOPPING;
+	hns3_set_rxtx_function(eth_dev);
 
 	rte_spinlock_lock(&hw->lock);
 	hns3vf_do_stop(hns);
+	hns3_dev_release_mbufs(hns);
 	hw->adapter_state = HNS3_NIC_CONFIGURED;
 	rte_spinlock_unlock(&hw->lock);
 }
@@ -1012,6 +1029,7 @@ hns3vf_dev_close(struct rte_eth_dev *eth_dev)
 	rte_eal_alarm_cancel(hns3vf_service_handler, eth_dev);
 	hns3vf_configure_all_mc_mac_addr(hns, true);
 	hns3vf_uninit_vf(eth_dev);
+	hns3_free_all_queues(eth_dev);
 	rte_free(eth_dev->process_private);
 	eth_dev->process_private = NULL;
 	hw->adapter_state = HNS3_NIC_CLOSED;
@@ -1055,9 +1073,18 @@ hns3vf_dev_link_update(struct rte_eth_dev *eth_dev,
 }
 
 static int
-hns3vf_do_start(struct hns3_adapter *hns, __rte_unused bool reset_queue)
+hns3vf_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
 	hns3vf_set_tc_info(hns);
+
+	ret = hns3_start_queues(hns, reset_queue);
+	if (ret) {
+		hns3_err(hw, "Failed to start queues: %d", ret);
+		return ret;
+	}
 
 	return 0;
 }
@@ -1080,6 +1107,7 @@ hns3vf_dev_start(struct rte_eth_dev *eth_dev)
 	}
 	hw->adapter_state = HNS3_NIC_STARTED;
 	rte_spinlock_unlock(&hw->lock);
+	hns3_set_rxtx_function(eth_dev);
 	return 0;
 }
 
@@ -1089,6 +1117,10 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.dev_close          = hns3vf_dev_close,
 	.mtu_set            = hns3vf_dev_mtu_set,
 	.dev_infos_get      = hns3vf_dev_infos_get,
+	.rx_queue_setup     = hns3_rx_queue_setup,
+	.tx_queue_setup     = hns3_tx_queue_setup,
+	.rx_queue_release   = hns3_dev_rx_queue_release,
+	.tx_queue_release   = hns3_dev_tx_queue_release,
 	.dev_configure      = hns3vf_dev_configure,
 	.mac_addr_add       = hns3vf_add_mac_addr,
 	.mac_addr_remove    = hns3vf_remove_mac_addr,
@@ -1102,6 +1134,7 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.filter_ctrl        = hns3_dev_filter_ctrl,
 	.vlan_filter_set    = hns3vf_vlan_filter_set,
 	.vlan_offload_set   = hns3vf_vlan_offload_set,
+	.dev_supported_ptypes_get = hns3_dev_supported_ptypes_get,
 };
 
 static int
@@ -1125,6 +1158,7 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 	/* initialize flow filter lists */
 	hns3_filterlist_init(eth_dev);
 
+	hns3_set_rxtx_function(eth_dev);
 	eth_dev->dev_ops = &hns3vf_eth_dev_ops;
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
