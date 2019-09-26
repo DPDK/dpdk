@@ -56,6 +56,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added Hisilicon hns3 PMD.**
+
+  Added the new ``hns3`` net driver for the inbuilt Hisilicon Network
+  Subsystem 3(HNS3) network engine found in the Hisilicon Kunpeng 920 SoC.
+  See the :doc:`../nics/hns3` guide for more details on this new driver.
+
 * **Updated the Intel ice driver.**
 
   Updated the Intel ice driver with new features and improvements, including:

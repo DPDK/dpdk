@@ -28,6 +28,7 @@ Network Interface Controller Drivers
     enic
     fm10k
     hinic
+    hns3
     i40e
     ice
     ifc

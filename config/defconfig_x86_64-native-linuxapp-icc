@@ -22,3 +22,8 @@ CONFIG_RTE_LIBRTE_SFC_EFX_PMD=n
 # HINIC PMD build is not supported using icc toolchain
 #
 CONFIG_RTE_LIBRTE_HINIC_PMD=n
+
+#
+# HNS3 PMD build is not supported using icc toolchain
+#
+CONFIG_RTE_LIBRTE_HNS3_PMD=n

@@ -605,6 +605,14 @@ F: drivers/net/enic/
 F: doc/guides/nics/enic.rst
 F: doc/guides/nics/features/enic.ini
 
+Hisilicon hns3
+M: Wei Hu (Xavier) <xavier.huwei@huawei.com>
+M: Min Hu (Connor) <humin29@huawei.com>
+M: Yisen Zhuang <yisen.zhuang@huawei.com>
+F: drivers/net/hns3/
+F: doc/guides/nics/hns3.rst
+F: doc/guides/nics/features/hns3.ini
+
 Huawei hinic
 M: Ziyang Xuan <xuanziyang2@huawei.com>
 M: Xiaoyun Wang <cloud.wangxiaoyun@huawei.com>

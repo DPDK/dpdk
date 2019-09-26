@@ -39,3 +39,8 @@ CONFIG_RTE_MAX_MEM_MB=2048
 # HINIC PMD is not supported on 32-bit
 #
 CONFIG_RTE_LIBRTE_HINIC_PMD=n
+
+#
+# HNS3 PMD is not supported on 32-bit
+#
+CONFIG_RTE_LIBRTE_HNS3_PMD=n
