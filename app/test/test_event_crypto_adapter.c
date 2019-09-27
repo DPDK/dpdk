@@ -541,7 +541,7 @@ configure_cryptodev(void)
 			"session mempool allocation failed\n");
 
 	params.session_priv_mpool = rte_mempool_create(
-				"CRYPTO_ADAPTER_SESSION_MP_PRIV",
+				"CRYPTO_AD_SESS_MP_PRIV",
 				MAX_NB_SESSIONS,
 				session_size,
 				0, 0, NULL, NULL, NULL,
