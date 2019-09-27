@@ -272,6 +272,7 @@ struct adapter_params {
 	bool ulptx_memwrite_dsgl;          /* use of T5 DSGL allowed */
 	u8 fw_caps_support;		  /* 32-bit Port Capabilities */
 	u8 filter2_wr_support;            /* FW support for FILTER2_WR */
+	u32 max_tx_coalesce_num; /* Max # of Tx packets that can be coalesced */
 };
 
 /* Firmware Port Capabilities types.

@@ -11,6 +11,7 @@
 #include "base/t4_regs.h"
 #include "base/t4_msg.h"
 #include "cxgbe.h"
+#include "cxgbe_pfvf.h"
 #include "mps_tcam.h"
 
 /*
@@ -122,10 +123,17 @@ static int adap_init0vf(struct adapter *adapter)
 	 * firmware won't understand this and we'll just get
 	 * unencapsulated messages ...
 	 */
-	param = V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_PFVF) |
-		V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_PFVF_CPLFW4MSG_ENCAP);
+	param = CXGBE_FW_PARAM_PFVF(CPLFW4MSG_ENCAP);
 	val = 1;
 	t4vf_set_params(adapter, 1, &param, &val);
+
+	/* Query for max number of packets that can be coalesced for Tx */
+	param = CXGBE_FW_PARAM_PFVF(MAX_PKTS_PER_ETH_TX_PKTS_WR);
+	err = t4vf_query_params(adapter, 1, &param, &val);
+	if (!err && val > 0)
+		adapter->params.max_tx_coalesce_num = val;
+	else
+		adapter->params.max_tx_coalesce_num = ETH_COALESCE_VF_PKT_NUM;
 
 	/*
 	 * Grab our Virtual Interface resource allocation, extract the

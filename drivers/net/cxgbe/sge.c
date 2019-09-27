@@ -1004,8 +1004,6 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 	struct cpl_tx_pkt_core *cpl;
 	struct tx_sw_desc *sd;
 	unsigned int idx = q->coalesce.idx, len = mbuf->pkt_len;
-	unsigned int max_coal_pkt_num = is_pf4(adap) ? ETH_COALESCE_PKT_NUM :
-						       ETH_COALESCE_VF_PKT_NUM;
 
 	if (q->coalesce.type == 0) {
 		mc = (struct ulp_txpkt *)q->coalesce.ptr;
@@ -1083,7 +1081,7 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 	 * for coalescing the next Tx burst and send the packets now.
 	 */
 	q->coalesce.idx++;
-	if (q->coalesce.idx == max_coal_pkt_num ||
+	if (q->coalesce.idx == adap->params.max_tx_coalesce_num ||
 	    (adap->devargs.tx_mode_latency && q->coalesce.idx >= nb_pkts))
 		ship_tx_pkt_coalesce_wr(adap, txq);
 

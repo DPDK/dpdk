@@ -70,7 +70,7 @@ in :ref:`t5-nics` and :ref:`t6-nics`.
 Prerequisites
 -------------
 
-- Requires firmware version **1.17.14.0** and higher. Visit
+- Requires firmware version **1.23.4.0** and higher. Visit
   `Chelsio Download Center <http://service.chelsio.com>`_ to get latest firmware
   bundled with the latest Chelsio Unified Wire package.
 
@@ -215,7 +215,7 @@ Unified Wire package for Linux operating system are as follows:
 
    .. code-block:: console
 
-      firmware-version: 1.17.14.0, TP 0.1.4.9
+      firmware-version: 1.23.4.0, TP 0.1.23.2
 
 Running testpmd
 ~~~~~~~~~~~~~~~
@@ -273,7 +273,7 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
       EAL:   PCI memory mapped at 0x7fd7c0200000
       EAL:   PCI memory mapped at 0x7fd77cdfd000
       EAL:   PCI memory mapped at 0x7fd7c10b7000
-      PMD: rte_cxgbe_pmd: fw: 1.17.14.0, TP: 0.1.4.9
+      PMD: rte_cxgbe_pmd: fw: 1.23.4.0, TP: 0.1.23.2
       PMD: rte_cxgbe_pmd: Coming up as MASTER: Initializing adapter
       Interactive-mode selected
       Configuring Port 0 (socket 0)
@@ -379,16 +379,16 @@ virtual functions.
       [...]
       EAL: PCI device 0000:02:01.0 on NUMA socket 0
       EAL:   probe driver: 1425:5803 net_cxgbevf
-      PMD: rte_cxgbe_pmd: Firmware version: 1.17.14.0
-      PMD: rte_cxgbe_pmd: TP Microcode version: 0.1.4.9
+      PMD: rte_cxgbe_pmd: Firmware version: 1.23.4.0
+      PMD: rte_cxgbe_pmd: TP Microcode version: 0.1.23.2
       PMD: rte_cxgbe_pmd: Chelsio rev 0
       PMD: rte_cxgbe_pmd: No bootstrap loaded
       PMD: rte_cxgbe_pmd: No Expansion ROM loaded
       PMD: rte_cxgbe_pmd:  0000:02:01.0 Chelsio rev 0 1G/10GBASE-SFP
       EAL: PCI device 0000:02:01.1 on NUMA socket 0
       EAL:   probe driver: 1425:5803 net_cxgbevf
-      PMD: rte_cxgbe_pmd: Firmware version: 1.17.14.0
-      PMD: rte_cxgbe_pmd: TP Microcode version: 0.1.4.9
+      PMD: rte_cxgbe_pmd: Firmware version: 1.23.4.0
+      PMD: rte_cxgbe_pmd: TP Microcode version: 0.1.23.2
       PMD: rte_cxgbe_pmd: Chelsio rev 0
       PMD: rte_cxgbe_pmd: No bootstrap loaded
       PMD: rte_cxgbe_pmd: No Expansion ROM loaded
@@ -465,7 +465,7 @@ Unified Wire package for FreeBSD operating system are as follows:
 
    .. code-block:: console
 
-      dev.t5nex.0.firmware_version: 1.17.14.0
+      dev.t5nex.0.firmware_version: 1.23.4.0
 
 Running testpmd
 ~~~~~~~~~~~~~~~
@@ -583,7 +583,7 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
       EAL:   PCI memory mapped at 0x8007ec000
       EAL:   PCI memory mapped at 0x842800000
       EAL:   PCI memory mapped at 0x80086c000
-      PMD: rte_cxgbe_pmd: fw: 1.17.14.0, TP: 0.1.4.9
+      PMD: rte_cxgbe_pmd: fw: 1.23.4.0, TP: 0.1.23.2
       PMD: rte_cxgbe_pmd: Coming up as MASTER: Initializing adapter
       Interactive-mode selected
       Configuring Port 0 (socket 0)

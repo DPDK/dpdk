@@ -6,6 +6,16 @@
 #ifndef _CXGBE_PFVF_H_
 #define _CXGBE_PFVF_H_
 
+#define CXGBE_FW_PARAM_DEV(param) \
+	(V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DEV) | \
+	 V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_DEV_##param))
+
+#define CXGBE_FW_PARAM_PFVF(param) \
+	(V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_PFVF) | \
+	 V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_PFVF_##param) |  \
+	 V_FW_PARAMS_PARAM_Y(0) | \
+	 V_FW_PARAMS_PARAM_Z(0))
+
 void cxgbe_dev_rx_queue_release(void *q);
 void cxgbe_dev_tx_queue_release(void *q);
 void cxgbe_dev_stop(struct rte_eth_dev *eth_dev);

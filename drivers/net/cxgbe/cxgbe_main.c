@@ -37,6 +37,7 @@
 #include "base/t4_regs.h"
 #include "base/t4_msg.h"
 #include "cxgbe.h"
+#include "cxgbe_pfvf.h"
 #include "clip_tbl.h"
 #include "l2t.h"
 #include "mps_tcam.h"
@@ -1162,20 +1163,10 @@ static int adap_init0(struct adapter *adap)
 	/*
 	 * Grab some of our basic fundamental operating parameters.
 	 */
-#define FW_PARAM_DEV(param) \
-	(V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DEV) | \
-	 V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_DEV_##param))
-
-#define FW_PARAM_PFVF(param) \
-	(V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_PFVF) | \
-	 V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_PFVF_##param) |  \
-	 V_FW_PARAMS_PARAM_Y(0) | \
-	 V_FW_PARAMS_PARAM_Z(0))
-
-	params[0] = FW_PARAM_PFVF(L2T_START);
-	params[1] = FW_PARAM_PFVF(L2T_END);
-	params[2] = FW_PARAM_PFVF(FILTER_START);
-	params[3] = FW_PARAM_PFVF(FILTER_END);
+	params[0] = CXGBE_FW_PARAM_PFVF(L2T_START);
+	params[1] = CXGBE_FW_PARAM_PFVF(L2T_END);
+	params[2] = CXGBE_FW_PARAM_PFVF(FILTER_START);
+	params[3] = CXGBE_FW_PARAM_PFVF(FILTER_END);
 	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 4, params, val);
 	if (ret < 0)
 		goto bye;
@@ -1184,8 +1175,8 @@ static int adap_init0(struct adapter *adap)
 	adap->tids.ftid_base = val[2];
 	adap->tids.nftids = val[3] - val[2] + 1;
 
-	params[0] = FW_PARAM_PFVF(CLIP_START);
-	params[1] = FW_PARAM_PFVF(CLIP_END);
+	params[0] = CXGBE_FW_PARAM_PFVF(CLIP_START);
+	params[1] = CXGBE_FW_PARAM_PFVF(CLIP_END);
 	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 2, params, val);
 	if (ret < 0)
 		goto bye;
@@ -1215,14 +1206,14 @@ static int adap_init0(struct adapter *adap)
 	if (is_t4(adap->params.chip)) {
 		adap->params.filter2_wr_support = 0;
 	} else {
-		params[0] = FW_PARAM_DEV(FILTER2_WR);
+		params[0] = CXGBE_FW_PARAM_DEV(FILTER2_WR);
 		ret = t4_query_params(adap, adap->mbox, adap->pf, 0,
 				      1, params, val);
 		adap->params.filter2_wr_support = (ret == 0 && val[0] != 0);
 	}
 
 	/* query tid-related parameters */
-	params[0] = FW_PARAM_DEV(NTID);
+	params[0] = CXGBE_FW_PARAM_DEV(NTID);
 	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1,
 			      params, val);
 	if (ret < 0)
@@ -1235,7 +1226,7 @@ static int adap_init0(struct adapter *adap)
 	 * firmware won't understand this and we'll just get
 	 * unencapsulated messages ...
 	 */
-	params[0] = FW_PARAM_PFVF(CPLFW4MSG_ENCAP);
+	params[0] = CXGBE_FW_PARAM_PFVF(CPLFW4MSG_ENCAP);
 	val[0] = 1;
 	(void)t4_set_params(adap, adap->mbox, adap->pf, 0, 1, params, val);
 
@@ -1248,11 +1239,19 @@ static int adap_init0(struct adapter *adap)
 	if (is_t4(adap->params.chip)) {
 		adap->params.ulptx_memwrite_dsgl = false;
 	} else {
-		params[0] = FW_PARAM_DEV(ULPTX_MEMWRITE_DSGL);
+		params[0] = CXGBE_FW_PARAM_DEV(ULPTX_MEMWRITE_DSGL);
 		ret = t4_query_params(adap, adap->mbox, adap->pf, 0,
 				      1, params, val);
 		adap->params.ulptx_memwrite_dsgl = (ret == 0 && val[0] != 0);
 	}
+
+	/* Query for max number of packets that can be coalesced for Tx */
+	params[0] = CXGBE_FW_PARAM_PFVF(MAX_PKTS_PER_ETH_TX_PKTS_WR);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1, params, val);
+	if (!ret && val[0] > 0)
+		adap->params.max_tx_coalesce_num = val[0];
+	else
+		adap->params.max_tx_coalesce_num = ETH_COALESCE_PKT_NUM;
 
 	/*
 	 * The MTU/MSS Table is initialized by now, so load their values.  If
