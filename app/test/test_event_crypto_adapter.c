@@ -183,7 +183,7 @@ test_op_forward_mode(uint8_t session_less)
 	cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cipher_xform.next = NULL;
 
-	cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
+	cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
 	cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 
 	op = rte_crypto_op_alloc(params.op_mpool,
@@ -376,7 +376,7 @@ test_op_new_mode(uint8_t session_less)
 	cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cipher_xform.next = NULL;
 
-	cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
+	cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
 	cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 
 	op = rte_crypto_op_alloc(params.op_mpool,
