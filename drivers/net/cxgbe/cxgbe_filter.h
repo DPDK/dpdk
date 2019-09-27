@@ -248,7 +248,8 @@ cxgbe_bitmap_find_free_region(struct rte_bitmap *bmap, unsigned int size,
 	return idx;
 }
 
-bool cxgbe_is_filter_set(struct tid_info *, int fidx, int family);
+u8 cxgbe_filter_slots(struct adapter *adap, u8 family);
+bool cxgbe_is_filter_set(struct tid_info *t, u32 fidx, u8 nentries);
 void cxgbe_filter_rpl(struct adapter *adap, const struct cpl_set_tcb_rpl *rpl);
 int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 		     struct ch_filter_specification *fs,
@@ -256,7 +257,7 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 int cxgbe_del_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 		     struct ch_filter_specification *fs,
 		     struct filter_ctx *ctx);
-int cxgbe_alloc_ftid(struct adapter *adap, unsigned int family);
+int cxgbe_alloc_ftid(struct adapter *adap, u8 nentries);
 int cxgbe_init_hash_filter(struct adapter *adap);
 void cxgbe_hash_filter_rpl(struct adapter *adap,
 			   const struct cpl_act_open_rpl *rpl);

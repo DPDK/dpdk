@@ -304,12 +304,15 @@ static int cxgbe_validate_fidxondel(struct filter_entry *f, unsigned int fidx)
 {
 	struct adapter *adap = ethdev2adap(f->dev);
 	struct ch_filter_specification fs = f->fs;
+	u8 nentries;
 
 	if (fidx >= adap->tids.nftids) {
 		dev_err(adap, "invalid flow index %d.\n", fidx);
 		return -EINVAL;
 	}
-	if (!cxgbe_is_filter_set(&adap->tids, fidx, fs.type)) {
+
+	nentries = cxgbe_filter_slots(adap, fs.type);
+	if (!cxgbe_is_filter_set(&adap->tids, fidx, nentries)) {
 		dev_err(adap, "Already free fidx:%d f:%p\n", fidx, f);
 		return -EINVAL;
 	}
@@ -321,10 +324,14 @@ static int
 cxgbe_validate_fidxonadd(struct ch_filter_specification *fs,
 			 struct adapter *adap, unsigned int fidx)
 {
-	if (cxgbe_is_filter_set(&adap->tids, fidx, fs->type)) {
+	u8 nentries;
+
+	nentries = cxgbe_filter_slots(adap, fs->type);
+	if (cxgbe_is_filter_set(&adap->tids, fidx, nentries)) {
 		dev_err(adap, "filter index: %d is busy.\n", fidx);
 		return -EBUSY;
 	}
+
 	if (fidx >= adap->tids.nftids) {
 		dev_err(adap, "filter index (%u) >= max(%u)\n",
 			fidx, adap->tids.nftids);
@@ -351,9 +358,11 @@ static int cxgbe_get_fidx(struct rte_flow *flow, unsigned int *fidx)
 
 	/* For tcam get the next available slot, if default value specified */
 	if (flow->fidx == FILTER_ID_MAX) {
+		u8 nentries;
 		int idx;
 
-		idx = cxgbe_alloc_ftid(adap, fs->type);
+		nentries = cxgbe_filter_slots(adap, fs->type);
+		idx = cxgbe_alloc_ftid(adap, nentries);
 		if (idx < 0) {
 			dev_err(adap, "unable to get a filter index in tcam\n");
 			return -ENOMEM;
