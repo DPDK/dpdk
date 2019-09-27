@@ -104,10 +104,6 @@ enabling debugging options may affect system performance.
 
      This controls compilation of both CXGBE and CXGBEVF PMD.
 
-- ``CONFIG_RTE_LIBRTE_CXGBE_TPUT`` (default **y**)
-
-  Toggle behavior to prefer Throughput or Latency.
-
 Runtime Options
 ~~~~~~~~~~~~~~~
 
@@ -126,6 +122,15 @@ Common Runtime Options
   Toggle behavior to keep/strip outer VLAN in Q-in-Q packets. If
   enabled, the outer VLAN tag is preserved in Q-in-Q packets. Otherwise,
   the outer VLAN tag is stripped in Q-in-Q packets.
+
+- ``tx_mode_latency`` (default **0**)
+
+  When set to 1, Tx doesn't wait for max number of packets to get
+  coalesced and sends the packets immediately at the end of the
+  current Tx burst. When set to 0, Tx waits across multiple Tx bursts
+  until the max number of packets have been coalesced. In this case,
+  Tx only sends the coalesced packets to hardware once the max
+  coalesce limit has been reached.
 
 CXGBE VF Only Runtime Options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

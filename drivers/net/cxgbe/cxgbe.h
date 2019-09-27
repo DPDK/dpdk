@@ -52,6 +52,7 @@
 
 /* Common PF and VF devargs */
 #define CXGBE_DEVARG_CMN_KEEP_OVLAN "keep_ovlan"
+#define CXGBE_DEVARG_CMN_TX_MODE_LATENCY "tx_mode_latency"
 
 /* VF only devargs */
 #define CXGBE_DEVARG_VF_FORCE_LINK_UP "force_link_up"

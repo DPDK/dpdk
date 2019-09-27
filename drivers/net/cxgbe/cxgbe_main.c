@@ -672,6 +672,7 @@ void cxgbe_print_port_info(struct adapter *adap)
 static int check_devargs_handler(const char *key, const char *value, void *p)
 {
 	if (!strncmp(key, CXGBE_DEVARG_CMN_KEEP_OVLAN, strlen(key)) ||
+	    !strncmp(key, CXGBE_DEVARG_CMN_TX_MODE_LATENCY, strlen(key)) ||
 	    !strncmp(key, CXGBE_DEVARG_VF_FORCE_LINK_UP, strlen(key))) {
 		if (!strncmp(value, "1", 1)) {
 			bool *dst_val = (bool *)p;
@@ -728,6 +729,8 @@ void cxgbe_process_devargs(struct adapter *adap)
 {
 	cxgbe_get_devargs_int(adap, &adap->devargs.keep_ovlan,
 			      CXGBE_DEVARG_CMN_KEEP_OVLAN, 0);
+	cxgbe_get_devargs_int(adap, &adap->devargs.tx_mode_latency,
+			      CXGBE_DEVARG_CMN_TX_MODE_LATENCY, 0);
 	cxgbe_get_devargs_int(adap, &adap->devargs.force_link_up,
 			      CXGBE_DEVARG_VF_FORCE_LINK_UP, 0);
 }

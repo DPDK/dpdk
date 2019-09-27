@@ -302,6 +302,7 @@ TAILQ_HEAD(mbox_list, mbox_entry);
 struct adapter_devargs {
 	bool keep_ovlan;
 	bool force_link_up;
+	bool tx_mode_latency;
 };
 
 struct adapter {

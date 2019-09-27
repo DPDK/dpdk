@@ -213,4 +213,5 @@ RTE_PMD_REGISTER_PCI_TABLE(net_cxgbevf, cxgb4vf_pci_tbl);
 RTE_PMD_REGISTER_KMOD_DEP(net_cxgbevf, "* igb_uio | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_cxgbevf,
 			      CXGBE_DEVARG_CMN_KEEP_OVLAN "=<0|1> "
+			      CXGBE_DEVARG_CMN_TX_MODE_LATENCY "=<0|1> "
 			      CXGBE_DEVARG_VF_FORCE_LINK_UP "=<0|1> ");
