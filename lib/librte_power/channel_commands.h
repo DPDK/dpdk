@@ -12,6 +12,8 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+/* --- Incoming messages --- */
+
 /* Valid Commands */
 #define CPU_POWER               1
 #define CPU_POWER_CONNECT       2
@@ -26,9 +28,18 @@ extern "C" {
 #define CPU_POWER_ENABLE_TURBO  5
 #define CPU_POWER_DISABLE_TURBO 6
 
+/* CPU Power Queries */
+#define CPU_POWER_QUERY_FREQ_LIST  7
+#define CPU_POWER_QUERY_FREQ       8
+
+/* --- Outgoing messages --- */
+
 /* Generic Power Command Response */
 #define CPU_POWER_CMD_ACK       1
 #define CPU_POWER_CMD_NACK      2
+
+/* CPU Power Query Responses */
+#define CPU_POWER_FREQ_LIST     3
 
 #define HOURS 24
 
@@ -80,6 +91,16 @@ struct channel_packet {
 	enum workload workload;
 	enum policy_to_use policy_to_use;
 	struct t_boost_status t_boost_status;
+};
+
+struct channel_packet_freq_list {
+	uint64_t resource_id; /**< core_num, device */
+	uint32_t unit;        /**< scale down/up/min/max */
+	uint32_t command;     /**< Power, IO, etc */
+	char vm_name[VM_MAX_NAME_SZ];
+
+	uint32_t freq_list[MAX_VCPU_PER_VM];
+	uint8_t num_vcpu;
 };
 
 

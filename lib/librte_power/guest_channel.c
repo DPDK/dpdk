@@ -129,13 +129,15 @@ int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
 	return guest_channel_send_msg(pkt, lcore_id);
 }
 
-int power_guest_channel_read_msg(struct channel_packet *pkt,
-			unsigned int lcore_id)
+int power_guest_channel_read_msg(void *pkt,
+		size_t pkt_len,
+		unsigned int lcore_id)
 {
 	int ret;
 	struct pollfd fds;
-	void *buffer = pkt;
-	int buffer_len = sizeof(*pkt);
+
+	if (pkt_len == 0 || pkt == NULL)
+		return -1;
 
 	fds.fd = global_fds[lcore_id];
 	fds.events = POLLIN;
@@ -161,29 +163,32 @@ int power_guest_channel_read_msg(struct channel_packet *pkt,
 		return -1;
 	}
 
-	while (buffer_len > 0) {
+	while (pkt_len > 0) {
 		ret = read(global_fds[lcore_id],
-				buffer, buffer_len);
+				pkt, pkt_len);
+
 		if (ret < 0) {
 			if (errno == EINTR)
 				continue;
 			return -1;
 		}
+
 		if (ret == 0) {
 			RTE_LOG(ERR, GUEST_CHANNEL, "Expected more data, but connection has been closed.\n");
 			return -1;
 		}
-		buffer = (char *)buffer + ret;
-		buffer_len -= ret;
+		pkt = (char *)pkt + ret;
+		pkt_len -= ret;
 	}
 
 	return 0;
 }
 
-int rte_power_guest_channel_receive_msg(struct channel_packet *pkt,
-			unsigned int lcore_id)
+int rte_power_guest_channel_receive_msg(void *pkt,
+		size_t pkt_len,
+		unsigned int lcore_id)
 {
-	return power_guest_channel_read_msg(pkt, lcore_id);
+	return power_guest_channel_read_msg(pkt, pkt_len, lcore_id);
 }
 
 void

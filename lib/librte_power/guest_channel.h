@@ -17,6 +17,7 @@ extern "C" {
  *
  * @param path
  *  The path to the serial device on the filesystem
+ *
  * @param lcore_id
  *  lcore_id.
  *
@@ -73,7 +74,11 @@ int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
  * from the host endpoint.
  *
  * @param pkt
- *  Pointer to a populated struct channel_packet
+ *  Pointer to channel_packet or
+ *  channel_packet_freq_list struct.
+ *
+ * @param pkt_len
+ *  Size of expected data packet.
  *
  * @param lcore_id
  *  lcore_id.
@@ -82,7 +87,8 @@ int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
  *  - 0 on success.
  *  - Negative on error.
  */
-int power_guest_channel_read_msg(struct channel_packet *pkt,
+int power_guest_channel_read_msg(void *pkt,
+		size_t pkt_len,
 		unsigned int lcore_id);
 
 /**
@@ -90,7 +96,11 @@ int power_guest_channel_read_msg(struct channel_packet *pkt,
  * from the host endpoint.
  *
  * @param pkt
- *  Pointer to a populated struct channel_packet
+ *  Pointer to channel_packet or
+ *  channel_packet_freq_list struct.
+ *
+ * @param pkt_len
+ *  Size of expected data packet.
  *
  * @param lcore_id
  *  lcore_id.
@@ -101,8 +111,10 @@ int power_guest_channel_read_msg(struct channel_packet *pkt,
  */
 __rte_experimental
 int
-rte_power_guest_channel_receive_msg(struct channel_packet *pkt,
-			unsigned int lcore_id);
+rte_power_guest_channel_receive_msg(void *pkt,
+		size_t pkt_len,
+		unsigned int lcore_id);
+
 
 #ifdef __cplusplus
 }

@@ -151,7 +151,7 @@ check_response_cmd(unsigned int lcore_id, int *result)
 	struct channel_packet pkt;
 	int ret;
 
-	ret = rte_power_guest_channel_receive_msg(&pkt, lcore_id);
+	ret = rte_power_guest_channel_receive_msg(&pkt, sizeof pkt, lcore_id);
 	if (ret < 0)
 		return -1;
 
