@@ -819,7 +819,8 @@ test_crypto_adapter_conf_op_forward_mode(void)
 	enum rte_event_crypto_adapter_mode mode;
 
 	mode = RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD;
-	test_crypto_adapter_conf(mode);
+	TEST_ASSERT_SUCCESS(test_crypto_adapter_conf(mode),
+				"Failed to config crypto adapter");
 
 	return TEST_SUCCESS;
 }
@@ -830,7 +831,9 @@ test_crypto_adapter_conf_op_new_mode(void)
 	enum rte_event_crypto_adapter_mode mode;
 
 	mode = RTE_EVENT_CRYPTO_ADAPTER_OP_NEW;
-	test_crypto_adapter_conf(mode);
+	TEST_ASSERT_SUCCESS(test_crypto_adapter_conf(mode),
+				"Failed to config crypto adapter");
+
 	return TEST_SUCCESS;
 }
 
