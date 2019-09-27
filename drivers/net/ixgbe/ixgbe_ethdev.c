@@ -1245,6 +1245,11 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return -ENOMEM;
 	}
 
+	/* Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	/* initialize the vfta */
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
 
@@ -1311,73 +1316,12 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 static int
 eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
-	struct ixgbe_hw *hw;
-	int retries = 0;
-	int ret;
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	hw = IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-
-	if (hw->adapter_stopped == 0)
-		ixgbe_dev_close(eth_dev);
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
-	/* Unlock any pending hardware semaphore */
-	ixgbe_swfw_lock_reset(hw);
-
-	/* disable uio intr before callback unregister */
-	rte_intr_disable(intr_handle);
-
-	do {
-		ret = rte_intr_callback_unregister(intr_handle,
-				ixgbe_dev_interrupt_handler, eth_dev);
-		if (ret >= 0) {
-			break;
-		} else if (ret != -EAGAIN) {
-			PMD_INIT_LOG(ERR,
-				"intr callback unregister failed: %d",
-				ret);
-			return ret;
-		}
-		rte_delay_ms(100);
-	} while (retries++ < (10 + IXGBE_LINK_UP_TIME));
-
-	/* cancel the delay handler before remove dev */
-	rte_eal_alarm_cancel(ixgbe_dev_interrupt_delayed_handler, eth_dev);
-
-	/* cancel the link handler before remove dev */
-	rte_eal_alarm_cancel(ixgbe_dev_setup_link_alarm_handler, eth_dev);
-
-	/* uninitialize PF if max_vfs not zero */
-	ixgbe_pf_host_uninit(eth_dev);
-
-	/* remove all the fdir filters & hash */
-	ixgbe_fdir_filter_uninit(eth_dev);
-
-	/* remove all the L2 tunnel filters & hash */
-	ixgbe_l2_tn_filter_uninit(eth_dev);
-
-	/* Remove all ntuple filters of the device */
-	ixgbe_ntuple_filter_uninit(eth_dev);
-
-	/* clear all the filters list */
-	ixgbe_filterlist_flush();
-
-	/* Remove all Traffic Manager configuration */
-	ixgbe_tm_conf_uninit(eth_dev);
-
-#ifdef RTE_LIBRTE_SECURITY
-	rte_free(eth_dev->security_ctx);
-#endif
+	ixgbe_dev_close(eth_dev);
 
 	return 0;
 }
@@ -1711,6 +1655,11 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
+	/* Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	/* Generate a random MAC address, if none was assigned by PF. */
 	if (rte_is_zero_ether_addr(perm_addr)) {
 		generate_random_mac_addr(perm_addr);
@@ -1762,30 +1711,12 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 static int
 eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
-	struct ixgbe_hw *hw;
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	hw = IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-
-	if (hw->adapter_stopped == 0)
-		ixgbevf_dev_close(eth_dev);
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
-	/* Disable the interrupts for VF */
-	ixgbevf_intr_disable(eth_dev);
-
-	rte_intr_disable(intr_handle);
-	rte_intr_callback_unregister(intr_handle,
-				     ixgbevf_dev_interrupt_handler, eth_dev);
+	ixgbevf_dev_close(eth_dev);
 
 	return 0;
 }
@@ -2879,6 +2810,9 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	struct ixgbe_tm_conf *tm_conf =
 		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
 
+	if (hw->adapter_stopped)
+		return;
+
 	PMD_INIT_FUNC_TRACE();
 
 	rte_eal_alarm_cancel(ixgbe_dev_setup_link_alarm_handler, dev);
@@ -2931,6 +2865,8 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	tm_conf->committed = false;
 
 	adapter->rss_reta_updated = 0;
+
+	hw->adapter_stopped = true;
 }
 
 /*
@@ -3001,13 +2937,16 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int retries = 0;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
 	ixgbe_pf_reset_hw(hw);
 
 	ixgbe_dev_stop(dev);
-	hw->adapter_stopped = 1;
 
 	ixgbe_dev_free_queues(dev);
 
@@ -3015,6 +2954,55 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
+
+	/* Unlock any pending hardware semaphore */
+	ixgbe_swfw_lock_reset(hw);
+
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(intr_handle);
+
+	do {
+		ret = rte_intr_callback_unregister(intr_handle,
+				ixgbe_dev_interrupt_handler, dev);
+		if (ret >= 0) {
+			break;
+		} else if (ret != -EAGAIN) {
+			PMD_INIT_LOG(ERR,
+				"intr callback unregister failed: %d",
+				ret);
+		}
+		rte_delay_ms(100);
+	} while (retries++ < (10 + IXGBE_LINK_UP_TIME));
+
+	/* cancel the delay handler before remove dev */
+	rte_eal_alarm_cancel(ixgbe_dev_interrupt_delayed_handler, dev);
+
+	/* uninitialize PF if max_vfs not zero */
+	ixgbe_pf_host_uninit(dev);
+
+	/* remove all the fdir filters & hash */
+	ixgbe_fdir_filter_uninit(dev);
+
+	/* remove all the L2 tunnel filters & hash */
+	ixgbe_l2_tn_filter_uninit(dev);
+
+	/* Remove all ntuple filters of the device */
+	ixgbe_ntuple_filter_uninit(dev);
+
+	/* clear all the filters list */
+	ixgbe_filterlist_flush();
+
+	/* Remove all Traffic Manager configuration */
+	ixgbe_tm_conf_uninit(dev);
+
+#ifdef RTE_LIBRTE_SECURITY
+	rte_free(dev->security_ctx);
+#endif
+
 }
 
 /*
@@ -5257,6 +5245,8 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	 */
 	ixgbevf_dev_link_update(dev, 0);
 
+	hw->adapter_stopped = false;
+
 	return 0;
 }
 
@@ -5267,6 +5257,9 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	if (hw->adapter_stopped)
+		return;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -5302,6 +5295,8 @@ static void
 ixgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -5317,6 +5312,14 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 	 * after stop, close and detach of the VF
 	 **/
 	ixgbevf_remove_mac_addr(dev, 0);
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
+
+	rte_intr_disable(intr_handle);
+	rte_intr_callback_unregister(intr_handle,
+				     ixgbevf_dev_interrupt_handler, dev);
 }
 
 /*
