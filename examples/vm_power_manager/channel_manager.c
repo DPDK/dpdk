@@ -58,6 +58,7 @@ struct virtual_machine_info {
 	virDomainPtr domainPtr;
 	virDomainInfo info;
 	rte_spinlock_t config_spinlock;
+	int allow_query;
 	LIST_ENTRY(virtual_machine_info) vms_info;
 };
 
@@ -791,6 +792,7 @@ get_info_vm(const char *vm_name, struct vm_info *info)
 		channel_num++;
 	}
 
+	info->allow_query = vm_info->allow_query;
 	info->num_channels = channel_num;
 	info->num_vcpus = vm_info->info.nrVirtCpu;
 	rte_spinlock_unlock(&(vm_info->config_spinlock));
@@ -867,6 +869,7 @@ add_vm(const char *vm_name)
 	else
 		new_domain->status = CHANNEL_MGR_VM_ACTIVE;
 
+	new_domain->allow_query = 0;
 	rte_spinlock_init(&(new_domain->config_spinlock));
 	LIST_INSERT_HEAD(&vm_list_head, new_domain, vms_info);
 	return 0;
@@ -893,6 +896,23 @@ remove_vm(const char *vm_name)
 	LIST_REMOVE(vm_info, vms_info);
 	rte_spinlock_unlock(&vm_info->config_spinlock);
 	rte_free(vm_info);
+	return 0;
+}
+
+int
+set_query_status(char *vm_name,
+		bool allow_query)
+{
+	struct virtual_machine_info *vm_info;
+
+	vm_info = find_domain_by_name(vm_name);
+	if (vm_info == NULL) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "VM '%s' not found\n", vm_name);
+		return -1;
+	}
+	rte_spinlock_lock(&(vm_info->config_spinlock));
+	vm_info->allow_query = allow_query ? 1 : 0;
+	rte_spinlock_unlock(&(vm_info->config_spinlock));
 	return 0;
 }
 

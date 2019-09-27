@@ -728,6 +728,9 @@ send_freq(struct channel_packet *pkt,
 	if (!freq_list && vcore_id >= MAX_VCPU_PER_VM)
 		return -1;
 
+	if (!info.allow_query)
+		return -1;
+
 	channel_pkt_freq_list.command = CPU_POWER_FREQ_LIST;
 	channel_pkt_freq_list.num_vcpu = info.num_vcpus;
 

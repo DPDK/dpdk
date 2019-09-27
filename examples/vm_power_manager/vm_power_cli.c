@@ -293,6 +293,53 @@ cmdline_parse_inst_t cmd_channels_op_set = {
 	},
 };
 
+struct cmd_set_query_result {
+	cmdline_fixed_string_t set_query;
+	cmdline_fixed_string_t vm_name;
+	cmdline_fixed_string_t query_status;
+};
+
+static void
+cmd_set_query_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_set_query_result *res = parsed_result;
+
+	if (!strcmp(res->query_status, "enable")) {
+		if (set_query_status(res->vm_name, true) < 0)
+			cmdline_printf(cl, "Unable to allow query for VM '%s'\n",
+					res->vm_name);
+	} else if (!strcmp(res->query_status, "disable")) {
+		if (set_query_status(res->vm_name, false) < 0)
+			cmdline_printf(cl, "Unable to disallow query for VM '%s'\n",
+					res->vm_name);
+	}
+}
+
+cmdline_parse_token_string_t cmd_set_query =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_query_result,
+			set_query, "set_query");
+cmdline_parse_token_string_t cmd_set_query_vm_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_query_result,
+			vm_name, NULL);
+cmdline_parse_token_string_t cmd_set_query_status =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_query_result,
+			query_status, "enable#disable");
+
+cmdline_parse_inst_t cmd_set_query_set = {
+	.f = cmd_set_query_parsed,
+	.data = NULL,
+	.help_str = "set_query <vm_name> <enable|disable>, allow or disallow queries"
+			" for the specified VM",
+	.tokens = {
+		(void *)&cmd_set_query,
+		(void *)&cmd_set_query_vm_name,
+		(void *)&cmd_set_query_status,
+		NULL,
+	},
+};
+
 struct cmd_channels_status_op_result {
 	cmdline_fixed_string_t op;
 	cmdline_fixed_string_t vm_name;
@@ -484,6 +531,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 		(cmdline_parse_inst_t *)&cmd_show_cpu_freq_set,
 		(cmdline_parse_inst_t *)&cmd_set_cpu_freq_set,
 		(cmdline_parse_inst_t *)&cmd_set_pcpu_set,
+		(cmdline_parse_inst_t *)&cmd_set_query_set,
 		NULL,
 };
 
