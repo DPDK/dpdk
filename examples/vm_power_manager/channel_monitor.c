@@ -672,6 +672,41 @@ apply_policy(struct policy *pol)
 }
 
 static int
+write_binary_packet(struct channel_packet *pkt, struct channel_info *chan_info)
+{
+	int ret, buffer_len = sizeof(*pkt);
+	void *buffer = pkt;
+
+	if (chan_info->fd < 0) {
+		RTE_LOG(ERR, CHANNEL_MONITOR, "Channel is not connected\n");
+		return -1;
+	}
+
+	while (buffer_len > 0) {
+		ret = write(chan_info->fd, buffer, buffer_len);
+		if (ret == -1) {
+			if (errno == EINTR)
+				continue;
+			RTE_LOG(ERR, CHANNEL_MONITOR, "Write function failed due to %s.\n",
+					strerror(errno));
+			return -1;
+		}
+		buffer = (char *)buffer + ret;
+		buffer_len -= ret;
+	}
+	return 0;
+}
+
+static int
+send_ack_for_received_cmd(struct channel_packet *pkt,
+		struct channel_info *chan_info,
+		uint32_t command)
+{
+	pkt->command = command;
+	return write_binary_packet(pkt, chan_info);
+}
+
+static int
 process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 {
 	int ret;
@@ -694,33 +729,54 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 		RTE_LOG(DEBUG, CHANNEL_MONITOR, "Processing requested cmd for cpu:%d\n",
 			core_num);
 
+		bool valid_unit = true;
+		int scale_res;
+
 		switch (pkt->unit) {
 		case(CPU_POWER_SCALE_MIN):
-			power_manager_scale_core_min(core_num);
+			scale_res = power_manager_scale_core_min(core_num);
 			break;
 		case(CPU_POWER_SCALE_MAX):
-			power_manager_scale_core_max(core_num);
+			scale_res = power_manager_scale_core_max(core_num);
 			break;
 		case(CPU_POWER_SCALE_DOWN):
-			power_manager_scale_core_down(core_num);
+			scale_res = power_manager_scale_core_down(core_num);
 			break;
 		case(CPU_POWER_SCALE_UP):
-			power_manager_scale_core_up(core_num);
+			scale_res = power_manager_scale_core_up(core_num);
 			break;
 		case(CPU_POWER_ENABLE_TURBO):
-			power_manager_enable_turbo_core(core_num);
+			scale_res = power_manager_enable_turbo_core(core_num);
 			break;
 		case(CPU_POWER_DISABLE_TURBO):
-			power_manager_disable_turbo_core(core_num);
+			scale_res = power_manager_disable_turbo_core(core_num);
 			break;
 		default:
+			valid_unit = false;
 			break;
 		}
+
+		if (valid_unit) {
+			ret = send_ack_for_received_cmd(pkt,
+					chan_info,
+					scale_res > 0 ?
+						CPU_POWER_CMD_ACK :
+						CPU_POWER_CMD_NACK);
+			if (ret < 0)
+				RTE_LOG(DEBUG, CHANNEL_MONITOR, "Error during sending ack command.\n");
+		} else
+			RTE_LOG(DEBUG, CHANNEL_MONITOR, "Unexpected unit type.\n");
+
 	}
 
 	if (pkt->command == PKT_POLICY) {
 		RTE_LOG(INFO, CHANNEL_MONITOR, "Processing policy request %s\n",
 				pkt->vm_name);
+		int ret = send_ack_for_received_cmd(pkt,
+				chan_info,
+				CPU_POWER_CMD_ACK);
+		if (ret < 0)
+			RTE_LOG(DEBUG, CHANNEL_MONITOR, "Error during sending ack command.\n");
 		update_policy(pkt);
 		policy_is_set = 1;
 	}
