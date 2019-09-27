@@ -206,6 +206,9 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 	u8 old_link = pi->link_cfg.link_ok;
 
 	for (i = 0; i < CXGBE_LINK_STATUS_POLL_CNT; i++) {
+		if (!s->fw_evtq.desc)
+			break;
+
 		cxgbe_poll(&s->fw_evtq, NULL, budget, &work_done);
 
 		/* Exit if link status changed or always forced up */
@@ -239,6 +242,9 @@ int cxgbe_dev_set_link_up(struct rte_eth_dev *dev)
 	struct sge *s = &adapter->sge;
 	int ret;
 
+	if (!s->fw_evtq.desc)
+		return -ENOMEM;
+
 	/* Flush all link events */
 	cxgbe_poll(&s->fw_evtq, NULL, budget, &work_done);
 
@@ -264,6 +270,9 @@ int cxgbe_dev_set_link_down(struct rte_eth_dev *dev)
 	unsigned int work_done, budget = 32;
 	struct sge *s = &adapter->sge;
 	int ret;
+
+	if (!s->fw_evtq.desc)
+		return -ENOMEM;
 
 	/* Flush all link events */
 	cxgbe_poll(&s->fw_evtq, NULL, budget, &work_done);
