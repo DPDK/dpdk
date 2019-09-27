@@ -568,6 +568,7 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 			  struct rte_flow_error *e)
 {
 	const struct rte_flow_action_of_set_vlan_vid *vlanid;
+	const struct rte_flow_action_of_set_vlan_pcp *vlanpcp;
 	const struct rte_flow_action_of_push_vlan *pushvlan;
 	const struct rte_flow_action_set_ipv4 *ipv4;
 	const struct rte_flow_action_set_ipv6 *ipv6;
@@ -590,6 +591,20 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 			fs->newvlan = VLAN_REWRITE;
 		tmp_vlan = fs->vlan & 0xe000;
 		fs->vlan = (be16_to_cpu(vlanid->vlan_vid) & 0xfff) | tmp_vlan;
+		break;
+	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+		vlanpcp = (const struct rte_flow_action_of_set_vlan_pcp *)
+			  a->conf;
+		/* If explicitly asked to push a new VLAN header,
+		 * then don't set rewrite mode. Otherwise, the
+		 * incoming VLAN packets will get their VLAN fields
+		 * rewritten, instead of adding an additional outer
+		 * VLAN header.
+		 */
+		if (fs->newvlan != VLAN_INSERT)
+			fs->newvlan = VLAN_REWRITE;
+		tmp_vlan = fs->vlan & 0xfff;
+		fs->vlan = (vlanpcp->vlan_pcp << 13) | tmp_vlan;
 		break;
 	case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		pushvlan = (const struct rte_flow_action_of_push_vlan *)
@@ -724,6 +739,7 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 {
 	struct ch_filter_specification *fs = &flow->fs;
 	uint8_t nmode = 0, nat_ipv4 = 0, nat_ipv6 = 0;
+	uint8_t vlan_set_vid = 0, vlan_set_pcp = 0;
 	const struct rte_flow_action_queue *q;
 	const struct rte_flow_action *a;
 	char abit = 0;
@@ -762,6 +778,11 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 			fs->hitcnts = 1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			vlan_set_vid++;
+			goto action_switch;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+			vlan_set_pcp++;
+			goto action_switch;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
@@ -803,6 +824,12 @@ action_switch:
 						  a, "Action not supported");
 		}
 	}
+
+	if (fs->newvlan == VLAN_REWRITE && (!vlan_set_vid || !vlan_set_pcp))
+		return rte_flow_error_set(e, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, a,
+					  "Both OF_SET_VLAN_VID and "
+					  "OF_SET_VLAN_PCP must be specified");
 
 	if (ch_rte_parse_nat(nmode, fs))
 		return rte_flow_error_set(e, EINVAL,
