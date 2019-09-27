@@ -42,6 +42,7 @@ EXPERIMENTAL {
 	rte_power_empty_poll_stat_free;
 	rte_power_empty_poll_stat_init;
 	rte_power_empty_poll_stat_update;
+	rte_power_guest_channel_receive_msg;
 	rte_power_poll_stat_fetch;
 	rte_power_poll_stat_update;
 };

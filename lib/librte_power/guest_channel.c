@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+#include <poll.h>
 
 
 #include <rte_log.h>
@@ -18,6 +19,9 @@
 #include "channel_commands.h"
 
 #define RTE_LOGTYPE_GUEST_CHANNEL RTE_LOGTYPE_USER1
+
+/* Timeout for incoming message in milliseconds. */
+#define TIMEOUT 10
 
 static int global_fds[RTE_MAX_LCORE] = { [0 ... RTE_MAX_LCORE-1] = -1 };
 
@@ -125,6 +129,62 @@ int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
 	return guest_channel_send_msg(pkt, lcore_id);
 }
 
+int power_guest_channel_read_msg(struct channel_packet *pkt,
+			unsigned int lcore_id)
+{
+	int ret;
+	struct pollfd fds;
+	void *buffer = pkt;
+	int buffer_len = sizeof(*pkt);
+
+	fds.fd = global_fds[lcore_id];
+	fds.events = POLLIN;
+
+	ret = poll(&fds, 1, TIMEOUT);
+	if (ret == 0) {
+		RTE_LOG(DEBUG, GUEST_CHANNEL, "Timeout occurred during poll function.\n");
+		return -1;
+	} else if (ret < 0) {
+		RTE_LOG(ERR, GUEST_CHANNEL, "Error occurred during poll function: %s\n",
+				strerror(ret));
+		return -1;
+	}
+
+	if (lcore_id >= RTE_MAX_LCORE) {
+		RTE_LOG(ERR, GUEST_CHANNEL, "Channel(%u) is out of range 0...%d\n",
+				lcore_id, RTE_MAX_LCORE-1);
+		return -1;
+	}
+
+	if (global_fds[lcore_id] < 0) {
+		RTE_LOG(ERR, GUEST_CHANNEL, "Channel is not connected\n");
+		return -1;
+	}
+
+	while (buffer_len > 0) {
+		ret = read(global_fds[lcore_id],
+				buffer, buffer_len);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return -1;
+		}
+		if (ret == 0) {
+			RTE_LOG(ERR, GUEST_CHANNEL, "Expected more data, but connection has been closed.\n");
+			return -1;
+		}
+		buffer = (char *)buffer + ret;
+		buffer_len -= ret;
+	}
+
+	return 0;
+}
+
+int rte_power_guest_channel_receive_msg(struct channel_packet *pkt,
+			unsigned int lcore_id)
+{
+	return power_guest_channel_read_msg(pkt, lcore_id);
+}
 
 void
 guest_channel_host_disconnect(unsigned int lcore_id)

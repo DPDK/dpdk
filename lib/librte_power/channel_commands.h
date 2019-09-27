@@ -25,6 +25,11 @@ extern "C" {
 #define CPU_POWER_SCALE_MIN     4
 #define CPU_POWER_ENABLE_TURBO  5
 #define CPU_POWER_DISABLE_TURBO 6
+
+/* Generic Power Command Response */
+#define CPU_POWER_CMD_ACK       1
+#define CPU_POWER_CMD_NACK      2
+
 #define HOURS 24
 
 #define MAX_VFS 10
