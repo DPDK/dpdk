@@ -66,6 +66,10 @@ New Features
 
   Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
 
+* **Updated the Intel i40e driver.**
+
+  Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
+
 * **Updated the Intel fm10k driver.**
 
   Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.

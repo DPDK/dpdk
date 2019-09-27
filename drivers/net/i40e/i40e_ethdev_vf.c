@@ -1312,17 +1312,12 @@ err:
 static int
 i40evf_uninit_vf(struct rte_eth_dev *dev)
 {
-	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (hw->adapter_closed == 0)
 		i40evf_dev_close(dev);
-	rte_free(vf->vf_res);
-	vf->vf_res = NULL;
-	rte_free(vf->aq_resp);
-	vf->aq_resp = NULL;
 
 	return 0;
 }
@@ -1500,6 +1495,11 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->adapter_stopped = 0;
 	hw->adapter_closed = 0;
 
+	/* Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	if(i40evf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
 		return -1;
@@ -1535,10 +1535,6 @@ i40evf_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
 
 	if (i40evf_uninit_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "i40evf_uninit_vf failed");
@@ -2344,6 +2340,7 @@ static void
 i40evf_dev_close(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	i40evf_dev_stop(dev);
 	i40e_dev_free_queues(dev);
@@ -2359,6 +2356,16 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	i40evf_reset_vf(dev);
 	i40e_shutdown_adminq(hw);
 	i40evf_disable_irq0(hw);
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
+
+	rte_free(vf->vf_res);
+	vf->vf_res = NULL;
+	rte_free(vf->aq_resp);
+	vf->aq_resp = NULL;
+
 	hw->adapter_closed = 1;
 }
 
