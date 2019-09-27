@@ -843,6 +843,11 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
+	/* Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	/* initialize the vfta */
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
 
@@ -912,61 +917,12 @@ err_late:
 static int
 eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev;
-	struct rte_intr_handle *intr_handle;
-	struct e1000_hw *hw;
-	struct e1000_adapter *adapter =
-		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
-	struct e1000_filter_info *filter_info =
-		E1000_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
 
-	hw = E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	intr_handle = &pci_dev->intr_handle;
-
-	if (adapter->stopped == 0)
-		eth_igb_close(eth_dev);
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
-	/* Reset any pending lock */
-	igb_reset_swfw_lock(hw);
-
-	/* uninitialize PF if max_vfs not zero */
-	igb_pf_host_uninit(eth_dev);
-
-	/* disable uio intr before callback unregister */
-	rte_intr_disable(intr_handle);
-	rte_intr_callback_unregister(intr_handle,
-				     eth_igb_interrupt_handler, eth_dev);
-
-	/* clear the SYN filter info */
-	filter_info->syn_info = 0;
-
-	/* clear the ethertype filters info */
-	filter_info->ethertype_mask = 0;
-	memset(filter_info->ethertype_filters, 0,
-		E1000_MAX_ETQF_FILTERS * sizeof(struct igb_ethertype_filter));
-
-	/* clear the rss filter info */
-	memset(&filter_info->rss_info, 0,
-		sizeof(struct igb_rte_flow_rss_conf));
-
-	/* remove all ntuple filters of the device */
-	igb_ntuple_filter_uninit(eth_dev);
-
-	/* remove all flex filters of the device */
-	igb_flex_filter_uninit(eth_dev);
-
-	/* clear all the filters list */
-	igb_filterlist_flush(eth_dev);
+	eth_igb_close(eth_dev);
 
 	return 0;
 }
@@ -1038,6 +994,11 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
+	/* Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	/* Generate a random MAC address, if none was assigned by PF. */
 	if (rte_is_zero_ether_addr(perm_addr)) {
 		rte_eth_random_addr(perm_addr->addr_bytes);
@@ -1077,27 +1038,12 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 static int
 eth_igbvf_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct e1000_adapter *adapter =
-		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
 
-	if (adapter->stopped == 0)
-		igbvf_dev_close(eth_dev);
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
-	/* disable uio intr before callback unregister */
-	rte_intr_disable(&pci_dev->intr_handle);
-	rte_intr_callback_unregister(&pci_dev->intr_handle,
-				     eth_igbvf_interrupt_handler,
-				     (void *)eth_dev);
+	igbvf_dev_close(eth_dev);
 
 	return 0;
 }
@@ -1506,6 +1452,11 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_eth_link link;
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct e1000_adapter *adapter =
+		E1000_DEV_PRIVATE(dev->data->dev_private);
+
+	if (adapter->stopped)
+		return;
 
 	eth_igb_rxtx_control(dev, false);
 
@@ -1547,6 +1498,8 @@ eth_igb_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
+
+	adapter->stopped = true;
 }
 
 static int
@@ -1579,14 +1532,13 @@ static void
 eth_igb_close(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_adapter *adapter =
-		E1000_DEV_PRIVATE(dev->data->dev_private);
 	struct rte_eth_link link;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 
 	eth_igb_stop(dev);
-	adapter->stopped = 1;
 
 	e1000_phy_hw_reset(hw);
 	igb_release_manageability(hw);
@@ -1610,6 +1562,40 @@ eth_igb_close(struct rte_eth_dev *dev)
 
 	memset(&link, 0, sizeof(link));
 	rte_eth_linkstatus_set(dev, &link);
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
+
+	/* Reset any pending lock */
+	igb_reset_swfw_lock(hw);
+
+	/* uninitialize PF if max_vfs not zero */
+	igb_pf_host_uninit(dev);
+
+	rte_intr_callback_unregister(intr_handle,
+				     eth_igb_interrupt_handler, dev);
+
+	/* clear the SYN filter info */
+	filter_info->syn_info = 0;
+
+	/* clear the ethertype filters info */
+	filter_info->ethertype_mask = 0;
+	memset(filter_info->ethertype_filters, 0,
+		E1000_MAX_ETQF_FILTERS * sizeof(struct igb_ethertype_filter));
+
+	/* clear the rss filter info */
+	memset(&filter_info->rss_info, 0,
+		sizeof(struct igb_rte_flow_rss_conf));
+
+	/* remove all ntuple filters of the device */
+	igb_ntuple_filter_uninit(dev);
+
+	/* remove all flex filters of the device */
+	igb_flex_filter_uninit(dev);
+
+	/* clear all the filters list */
+	igb_filterlist_flush(dev);
 }
 
 /*
@@ -3354,6 +3340,11 @@ igbvf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct e1000_adapter *adapter =
+		E1000_DEV_PRIVATE(dev->data->dev_private);
+
+	if (adapter->stopped)
+		return;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -3376,22 +3367,23 @@ igbvf_dev_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
+
+	adapter->stopped = true;
 }
 
 static void
 igbvf_dev_close(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_adapter *adapter =
-		E1000_DEV_PRIVATE(dev->data->dev_private);
 	struct rte_ether_addr addr;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	PMD_INIT_FUNC_TRACE();
 
 	e1000_reset_hw(hw);
 
 	igbvf_dev_stop(dev);
-	adapter->stopped = 1;
+
 	igb_dev_free_queues(dev);
 
 	/**
@@ -3402,6 +3394,14 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 
 	memset(&addr, 0, sizeof(addr));
 	igbvf_default_mac_addr_set(dev, &addr);
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
+
+	rte_intr_callback_unregister(&pci_dev->intr_handle,
+				     eth_igbvf_interrupt_handler,
+				     (void *)dev);
 }
 
 static int

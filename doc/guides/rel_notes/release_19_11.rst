@@ -62,6 +62,10 @@ New Features
   Subsystem 3(HNS3) network engine found in the Hisilicon Kunpeng 920 SoC.
   See the :doc:`../nics/hns3` guide for more details on this new driver.
 
+* **Updated the Intel e1000 driver.**
+
+  Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
+
 * **Updated the Intel ice driver.**
 
   Updated the Intel ice driver with new features and improvements, including:
