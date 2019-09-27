@@ -109,7 +109,7 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	uint32_t clen, hlen, l2len, pdlen, pdofs, plen, tlen;
 	struct rte_mbuf *ml;
 	struct rte_esp_hdr *esph;
-	struct esp_tail *espt;
+	struct rte_esp_tail *espt;
 	char *ph, *pt;
 	uint64_t *iv;
 
@@ -173,7 +173,7 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	rte_memcpy(pt, esp_pad_bytes, pdlen);
 
 	/* update esp trailer */
-	espt = (struct esp_tail *)(pt + pdlen);
+	espt = (struct rte_esp_tail *)(pt + pdlen);
 	espt->pad_len = pdlen;
 	espt->next_proto = sa->proto;
 
@@ -277,7 +277,7 @@ outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	uint32_t clen, hlen, pdlen, pdofs, plen, tlen, uhlen;
 	struct rte_mbuf *ml;
 	struct rte_esp_hdr *esph;
-	struct esp_tail *espt;
+	struct rte_esp_tail *espt;
 	char *ph, *pt;
 	uint64_t *iv;
 
@@ -336,7 +336,7 @@ outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	rte_memcpy(pt, esp_pad_bytes, pdlen);
 
 	/* update esp trailer */
-	espt = (struct esp_tail *)(pt + pdlen);
+	espt = (struct rte_esp_tail *)(pt + pdlen);
 	espt->pad_len = pdlen;
 	espt->next_proto = np;
 

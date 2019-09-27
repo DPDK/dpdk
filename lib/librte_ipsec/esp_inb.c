@@ -296,15 +296,15 @@ esp_inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
  */
 static inline void
 process_step1(struct rte_mbuf *mb, uint32_t tlen, struct rte_mbuf **ml,
-	struct esp_tail *espt, uint32_t *hlen, uint32_t *tofs)
+	struct rte_esp_tail *espt, uint32_t *hlen, uint32_t *tofs)
 {
-	const struct esp_tail *pt;
+	const struct rte_esp_tail *pt;
 	uint32_t ofs;
 
 	ofs = mb->pkt_len - tlen;
 	hlen[0] = mb->l2_len + mb->l3_len;
 	ml[0] = mbuf_get_seg_ofs(mb, &ofs);
-	pt = rte_pktmbuf_mtod_offset(ml[0], const struct esp_tail *, ofs);
+	pt = rte_pktmbuf_mtod_offset(ml[0], const struct rte_esp_tail *, ofs);
 	tofs[0] = ofs;
 	espt[0] = pt[0];
 }
@@ -341,7 +341,7 @@ check_pad_bytes(struct rte_mbuf *mb, uint32_t ofs, uint32_t len)
  */
 static inline int32_t
 trs_process_check(struct rte_mbuf *mb, struct rte_mbuf **ml,
-	uint32_t *tofs, struct esp_tail espt, uint32_t hlen, uint32_t tlen)
+	uint32_t *tofs, struct rte_esp_tail espt, uint32_t hlen, uint32_t tlen)
 {
 	if ((mb->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED) != 0 ||
 			tlen + hlen > mb->pkt_len)
@@ -364,7 +364,7 @@ trs_process_check(struct rte_mbuf *mb, struct rte_mbuf **ml,
  */
 static inline int32_t
 tun_process_check(struct rte_mbuf *mb, struct rte_mbuf **ml,
-	uint32_t *tofs, struct esp_tail espt, uint32_t hlen, uint32_t tlen,
+	uint32_t *tofs, struct rte_esp_tail espt, uint32_t hlen, uint32_t tlen,
 	uint8_t proto)
 {
 	return (trs_process_check(mb, ml, tofs, espt, hlen, tlen) ||
@@ -462,7 +462,7 @@ tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 {
 	uint32_t adj, i, k, tl;
 	uint32_t hl[num], to[num];
-	struct esp_tail espt[num];
+	struct rte_esp_tail espt[num];
 	struct rte_mbuf *ml[num];
 	const void *outh;
 	void *inh;
@@ -523,7 +523,7 @@ trs_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 	char *np;
 	uint32_t i, k, l2, tl;
 	uint32_t hl[num], to[num];
-	struct esp_tail espt[num];
+	struct rte_esp_tail espt[num];
 	struct rte_mbuf *ml[num];
 
 	/*
