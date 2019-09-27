@@ -46,8 +46,6 @@ static inline int qede_alloc_rx_bulk_mbufs(struct qede_rx_queue *rxq, int count)
 	int i, ret = 0;
 	uint16_t idx;
 
-	idx = rxq->sw_rx_prod & NUM_RX_BDS(rxq);
-
 	if (count > QEDE_MAX_BULK_ALLOC_COUNT)
 		count = QEDE_MAX_BULK_ALLOC_COUNT;
 
@@ -56,7 +54,9 @@ static inline int qede_alloc_rx_bulk_mbufs(struct qede_rx_queue *rxq, int count)
 		PMD_RX_LOG(ERR, rxq,
 			   "Failed to allocate %d rx buffers "
 			    "sw_rx_prod %u sw_rx_cons %u mp entries %u free %u",
-			    count, idx, rxq->sw_rx_cons & NUM_RX_BDS(rxq),
+			    count,
+			    rxq->sw_rx_prod & NUM_RX_BDS(rxq),
+			    rxq->sw_rx_cons & NUM_RX_BDS(rxq),
 			    rte_mempool_avail_count(rxq->mb_pool),
 			    rte_mempool_in_use_count(rxq->mb_pool));
 		return -ENOMEM;
