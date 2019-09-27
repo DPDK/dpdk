@@ -450,11 +450,7 @@ static inline uint64_t cxgbe_write_addr64(volatile void *addr, uint64_t val)
  */
 static inline u32 t4_read_reg(struct adapter *adapter, u32 reg_addr)
 {
-	u32 val = CXGBE_READ_REG(adapter, reg_addr);
-
-	CXGBE_DEBUG_REG(adapter, "read register 0x%x value 0x%x\n", reg_addr,
-			val);
-	return val;
+	return CXGBE_READ_REG(adapter, reg_addr);
 }
 
 /**
@@ -467,8 +463,6 @@ static inline u32 t4_read_reg(struct adapter *adapter, u32 reg_addr)
  */
 static inline void t4_write_reg(struct adapter *adapter, u32 reg_addr, u32 val)
 {
-	CXGBE_DEBUG_REG(adapter, "setting register 0x%x to 0x%x\n", reg_addr,
-			val);
 	CXGBE_WRITE_REG(adapter, reg_addr, val);
 }
 
@@ -483,8 +477,6 @@ static inline void t4_write_reg(struct adapter *adapter, u32 reg_addr, u32 val)
 static inline void t4_write_reg_relaxed(struct adapter *adapter, u32 reg_addr,
 					u32 val)
 {
-	CXGBE_DEBUG_REG(adapter, "setting register 0x%x to 0x%x\n", reg_addr,
-			val);
 	CXGBE_WRITE_REG_RELAXED(adapter, reg_addr, val);
 }
 
@@ -497,11 +489,7 @@ static inline void t4_write_reg_relaxed(struct adapter *adapter, u32 reg_addr,
  */
 static inline u64 t4_read_reg64(struct adapter *adapter, u32 reg_addr)
 {
-	u64 val = CXGBE_READ_REG64(adapter, reg_addr);
-
-	CXGBE_DEBUG_REG(adapter, "64-bit read register %#x value %#llx\n",
-			reg_addr, (unsigned long long)val);
-	return val;
+	return CXGBE_READ_REG64(adapter, reg_addr);
 }
 
 /**
@@ -515,9 +503,6 @@ static inline u64 t4_read_reg64(struct adapter *adapter, u32 reg_addr)
 static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 				  u64 val)
 {
-	CXGBE_DEBUG_REG(adapter, "setting register %#x to %#llx\n", reg_addr,
-			(unsigned long long)val);
-
 	CXGBE_WRITE_REG64(adapter, reg_addr, val);
 }
 

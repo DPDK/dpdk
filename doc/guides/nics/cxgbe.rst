@@ -104,26 +104,6 @@ enabling debugging options may affect system performance.
 
      This controls compilation of both CXGBE and CXGBEVF PMD.
 
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG`` (default **n**)
-
-  Toggle display of generic debugging messages.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_REG`` (default **n**)
-
-  Toggle display of registers related run-time check messages.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_MBOX`` (default **n**)
-
-  Toggle display of firmware mailbox related run-time check messages.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_TX`` (default **n**)
-
-  Toggle display of transmission data path run-time check messages.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_DEBUG_RX`` (default **n**)
-
-  Toggle display of receiving data path run-time check messages.
-
 - ``CONFIG_RTE_LIBRTE_CXGBE_TPUT`` (default **y**)
 
   Toggle behavior to prefer Throughput or Latency.

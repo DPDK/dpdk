@@ -21,55 +21,26 @@
 #include <rte_net.h>
 
 extern int cxgbe_logtype;
+extern int cxgbe_mbox_logtype;
 
-#define dev_printf(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, cxgbe_logtype, \
+#define dev_printf(level, logtype, fmt, ...) \
+	rte_log(RTE_LOG_ ## level, logtype, \
 		"rte_cxgbe_pmd: " fmt, ##__VA_ARGS__)
 
-#define dev_err(x, fmt, ...) dev_printf(ERR, fmt, ##__VA_ARGS__)
-#define dev_info(x, fmt, ...) dev_printf(INFO, fmt, ##__VA_ARGS__)
-#define dev_warn(x, fmt, ...) dev_printf(WARNING, fmt, ##__VA_ARGS__)
+#define dev_err(x, fmt, ...) \
+	dev_printf(ERR, cxgbe_logtype, fmt, ##__VA_ARGS__)
+#define dev_info(x, fmt, ...) \
+	dev_printf(INFO, cxgbe_logtype, fmt, ##__VA_ARGS__)
+#define dev_warn(x, fmt, ...) \
+	dev_printf(WARNING, cxgbe_logtype, fmt, ##__VA_ARGS__)
+#define dev_debug(x, fmt, ...) \
+	dev_printf(DEBUG, cxgbe_logtype, fmt, ##__VA_ARGS__)
 
-#ifdef RTE_LIBRTE_CXGBE_DEBUG
-#define dev_debug(x, fmt, ...) dev_printf(INFO, fmt, ##__VA_ARGS__)
-#else
-#define dev_debug(x, fmt, ...) do { } while (0)
-#endif
-
-#ifdef RTE_LIBRTE_CXGBE_DEBUG_REG
-#define CXGBE_DEBUG_REG(x, fmt, ...) \
-	dev_printf(INFO, "REG:" fmt, ##__VA_ARGS__)
-#else
-#define CXGBE_DEBUG_REG(x, fmt, ...) do { } while (0)
-#endif
-
-#ifdef RTE_LIBRTE_CXGBE_DEBUG_MBOX
 #define CXGBE_DEBUG_MBOX(x, fmt, ...) \
-	dev_printf(INFO, "MBOX:" fmt, ##__VA_ARGS__)
-#else
-#define CXGBE_DEBUG_MBOX(x, fmt, ...) do { } while (0)
-#endif
+	dev_printf(DEBUG, cxgbe_mbox_logtype, "MBOX:" fmt, ##__VA_ARGS__)
 
-#ifdef RTE_LIBRTE_CXGBE_DEBUG_TX
-#define CXGBE_DEBUG_TX(x, fmt, ...) \
-	dev_printf(INFO, "TX:" fmt, ##__VA_ARGS__)
-#else
-#define CXGBE_DEBUG_TX(x, fmt, ...) do { } while (0)
-#endif
-
-#ifdef RTE_LIBRTE_CXGBE_DEBUG_RX
-#define CXGBE_DEBUG_RX(x, fmt, ...) \
-	dev_printf(INFO, "RX:" fmt, ##__VA_ARGS__)
-#else
-#define CXGBE_DEBUG_RX(x, fmt, ...) do { } while (0)
-#endif
-
-#ifdef RTE_LIBRTE_CXGBE_DEBUG
 #define CXGBE_FUNC_TRACE() \
-	dev_printf(DEBUG, "CXGBE trace: %s\n", __func__)
-#else
-#define CXGBE_FUNC_TRACE() do { } while (0)
-#endif
+	dev_printf(DEBUG, cxgbe_logtype, "CXGBE trace: %s\n", __func__)
 
 #define pr_err(fmt, ...) dev_err(0, fmt, ##__VA_ARGS__)
 #define pr_warn(fmt, ...) dev_warn(0, fmt, ##__VA_ARGS__)

@@ -39,6 +39,7 @@
 #include "cxgbe_flow.h"
 
 int cxgbe_logtype;
+int cxgbe_mbox_logtype;
 
 /*
  * Macros needed to support the PCI Device ID Table ...
@@ -69,9 +70,6 @@ uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t total_sent = 0;
 	uint16_t idx = 0;
 	int ret = 0;
-
-	CXGBE_DEBUG_TX(adapter, "%s: txq = %p; tx_pkts = %p; nb_pkts = %d\n",
-		       __func__, txq, tx_pkts, nb_pkts);
 
 	t4_os_lock(&txq->txq_lock);
 	/* free up desc from already completed tx */
@@ -106,13 +104,9 @@ uint16_t cxgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct sge_eth_rxq *rxq = (struct sge_eth_rxq *)rx_queue;
 	unsigned int work_done;
 
-	CXGBE_DEBUG_RX(adapter, "%s: rxq->rspq.cntxt_id = %u; nb_pkts = %d\n",
-		       __func__, rxq->rspq.cntxt_id, nb_pkts);
-
 	if (cxgbe_poll(&rxq->rspq, rx_pkts, (unsigned int)nb_pkts, &work_done))
 		dev_err(adapter, "error in cxgbe poll\n");
 
-	CXGBE_DEBUG_RX(adapter, "%s: work_done = %u\n", __func__, work_done);
 	return work_done;
 }
 
@@ -1251,4 +1245,7 @@ RTE_INIT(cxgbe_init_log)
 	cxgbe_logtype = rte_log_register("pmd.net.cxgbe");
 	if (cxgbe_logtype >= 0)
 		rte_log_set_level(cxgbe_logtype, RTE_LOG_NOTICE);
+	cxgbe_mbox_logtype = rte_log_register("pmd.net.cxgbe.mbox");
+	if (cxgbe_mbox_logtype >= 0)
+		rte_log_set_level(cxgbe_mbox_logtype, RTE_LOG_NOTICE);
 }
