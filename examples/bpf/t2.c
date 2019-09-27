@@ -16,7 +16,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <rte_config.h>
-#include "mbuf.h"
+#include <rte_mbuf_core.h>
 
 uint64_t
 entry(void *pkt)
@@ -25,7 +25,7 @@ entry(void *pkt)
 
 	mb = pkt;
 	mb->vlan_tci = 0;
-	mb->ol_flags &= ~(PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED);
+	mb->ol_flags &= ~(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
 
 	return 1;
 }

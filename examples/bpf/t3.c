@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <net/ethernet.h>
 #include <rte_config.h>
-#include "mbuf.h"
+#include <rte_mbuf_core.h>
 #include <arpa/inet.h>
 
 extern void rte_pktmbuf_dump(FILE *, const struct rte_mbuf *, unsigned int);
