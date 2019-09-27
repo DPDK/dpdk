@@ -81,6 +81,7 @@ New Features
   * Added support for device-specific DDP package loading.
   * Added support for handling Receive Flex Descriptor.
   * Added support for protocol extraction on per Rx queue.
+  * Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
 
 * **Added Marvell NITROX symmetric crypto PMD.**
 
