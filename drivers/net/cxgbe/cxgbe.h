@@ -50,8 +50,11 @@
 			   DEV_RX_OFFLOAD_SCATTER)
 
 
-#define CXGBE_DEVARG_KEEP_OVLAN "keep_ovlan"
-#define CXGBE_DEVARG_FORCE_LINK_UP "force_link_up"
+/* Common PF and VF devargs */
+#define CXGBE_DEVARG_CMN_KEEP_OVLAN "keep_ovlan"
+
+/* VF only devargs */
+#define CXGBE_DEVARG_VF_FORCE_LINK_UP "force_link_up"
 
 bool cxgbe_force_linkup(struct adapter *adap);
 int cxgbe_probe(struct adapter *adapter);
@@ -76,7 +79,7 @@ int cxgbe_setup_rss(struct port_info *pi);
 void cxgbe_enable_rx_queues(struct port_info *pi);
 void cxgbe_print_port_info(struct adapter *adap);
 void cxgbe_print_adapter_info(struct adapter *adap);
-int cxgbe_get_devargs(struct rte_devargs *devargs, const char *key);
+void cxgbe_process_devargs(struct adapter *adap);
 void cxgbe_configure_max_ethqsets(struct adapter *adapter);
 
 #endif /* _CXGBE_H_ */

@@ -118,11 +118,17 @@ be passed as part of EAL arguments. For example,
 
    testpmd -w 02:00.4,keep_ovlan=1 -- -i
 
+Common Runtime Options
+^^^^^^^^^^^^^^^^^^^^^^
+
 - ``keep_ovlan`` (default **0**)
 
   Toggle behavior to keep/strip outer VLAN in Q-in-Q packets. If
   enabled, the outer VLAN tag is preserved in Q-in-Q packets. Otherwise,
   the outer VLAN tag is stripped in Q-in-Q packets.
+
+CXGBE VF Only Runtime Options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - ``force_link_up`` (default **0**)
 

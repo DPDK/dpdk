@@ -669,19 +669,25 @@ void cxgbe_print_port_info(struct adapter *adap)
 	}
 }
 
-static int
-check_devargs_handler(__rte_unused const char *key, const char *value,
-		      __rte_unused void *opaque)
+static int check_devargs_handler(const char *key, const char *value, void *p)
 {
-	if (strcmp(value, "1"))
-		return -1;
+	if (!strncmp(key, CXGBE_DEVARG_CMN_KEEP_OVLAN, strlen(key)) ||
+	    !strncmp(key, CXGBE_DEVARG_VF_FORCE_LINK_UP, strlen(key))) {
+		if (!strncmp(value, "1", 1)) {
+			bool *dst_val = (bool *)p;
+
+			*dst_val = true;
+		}
+	}
 
 	return 0;
 }
 
-int cxgbe_get_devargs(struct rte_devargs *devargs, const char *key)
+static int cxgbe_get_devargs(struct rte_devargs *devargs, const char *key,
+			     void *p)
 {
 	struct rte_kvargs *kvlist;
+	int ret = 0;
 
 	if (!devargs)
 		return 0;
@@ -690,24 +696,44 @@ int cxgbe_get_devargs(struct rte_devargs *devargs, const char *key)
 	if (!kvlist)
 		return 0;
 
-	if (!rte_kvargs_count(kvlist, key)) {
-		rte_kvargs_free(kvlist);
-		return 0;
-	}
+	if (!rte_kvargs_count(kvlist, key))
+		goto out;
 
-	if (rte_kvargs_process(kvlist, key,
-			       check_devargs_handler, NULL) < 0) {
-		rte_kvargs_free(kvlist);
-		return 0;
-	}
+	ret = rte_kvargs_process(kvlist, key, check_devargs_handler, p);
+
+out:
 	rte_kvargs_free(kvlist);
 
-	return 1;
+	return ret;
+}
+
+static void cxgbe_get_devargs_int(struct adapter *adap, int *dst,
+				  const char *key, int default_value)
+{
+	struct rte_pci_device *pdev = adap->pdev;
+	int ret, devarg_value = default_value;
+
+	*dst = default_value;
+	if (!pdev)
+		return;
+
+	ret = cxgbe_get_devargs(pdev->device.devargs, key, &devarg_value);
+	if (ret)
+		return;
+
+	*dst = devarg_value;
+}
+
+void cxgbe_process_devargs(struct adapter *adap)
+{
+	cxgbe_get_devargs_int(adap, &adap->devargs.keep_ovlan,
+			      CXGBE_DEVARG_CMN_KEEP_OVLAN, 0);
+	cxgbe_get_devargs_int(adap, &adap->devargs.force_link_up,
+			      CXGBE_DEVARG_VF_FORCE_LINK_UP, 0);
 }
 
 static void configure_vlan_types(struct adapter *adapter)
 {
-	struct rte_pci_device *pdev = adapter->pdev;
 	int i;
 
 	for_each_port(adapter, i) {
@@ -742,9 +768,8 @@ static void configure_vlan_types(struct adapter *adapter)
 				 F_OVLAN_EN2 | F_IVLAN_EN);
 	}
 
-	if (cxgbe_get_devargs(pdev->device.devargs, CXGBE_DEVARG_KEEP_OVLAN))
-		t4_tp_wr_bits_indirect(adapter, A_TP_INGRESS_CONFIG,
-				       V_RM_OVLAN(1), V_RM_OVLAN(0));
+	t4_tp_wr_bits_indirect(adapter, A_TP_INGRESS_CONFIG, V_RM_OVLAN(1),
+			       V_RM_OVLAN(!adapter->devargs.keep_ovlan));
 }
 
 static void configure_pcie_ext_tag(struct adapter *adapter)
@@ -1323,14 +1348,10 @@ void t4_os_portmod_changed(const struct adapter *adap, int port_id)
 
 bool cxgbe_force_linkup(struct adapter *adap)
 {
-	struct rte_pci_device *pdev = adap->pdev;
-
 	if (is_pf4(adap))
-		return false;	/* force_linkup not required for pf driver*/
-	if (!cxgbe_get_devargs(pdev->device.devargs,
-			       CXGBE_DEVARG_FORCE_LINK_UP))
-		return false;
-	return true;
+		return false;	/* force_linkup not required for pf driver */
+
+	return adap->devargs.force_link_up;
 }
 
 /**

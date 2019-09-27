@@ -299,6 +299,11 @@ struct mbox_entry {
 
 TAILQ_HEAD(mbox_list, mbox_entry);
 
+struct adapter_devargs {
+	bool keep_ovlan;
+	bool force_link_up;
+};
+
 struct adapter {
 	struct rte_pci_device *pdev;       /* associated rte pci device */
 	struct rte_eth_dev *eth_dev;       /* first port's rte eth device */
@@ -331,6 +336,8 @@ struct adapter {
 	struct mpstcam_table *mpstcam;
 
 	struct tid_info tids;     /* Info used to access TID related tables */
+
+	struct adapter_devargs devargs;
 };
 
 /**

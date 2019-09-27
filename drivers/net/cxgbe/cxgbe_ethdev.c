@@ -1190,6 +1190,8 @@ static int eth_cxgbe_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->eth_dev = eth_dev;
 	pi->adapter = adapter;
 
+	cxgbe_process_devargs(adapter);
+
 	err = cxgbe_probe(adapter);
 	if (err) {
 		dev_err(adapter, "%s: cxgbe probe failed with err %d\n",
@@ -1237,8 +1239,7 @@ RTE_PMD_REGISTER_PCI(net_cxgbe, rte_cxgbe_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_cxgbe, cxgb4_pci_tbl);
 RTE_PMD_REGISTER_KMOD_DEP(net_cxgbe, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_cxgbe,
-			      CXGBE_DEVARG_KEEP_OVLAN "=<0|1> "
-			      CXGBE_DEVARG_FORCE_LINK_UP "=<0|1> ");
+			      CXGBE_DEVARG_CMN_KEEP_OVLAN "=<0|1> ");
 
 RTE_INIT(cxgbe_init_log)
 {
