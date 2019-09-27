@@ -19,7 +19,7 @@
 
 #define RTE_LOGTYPE_GUEST_CHANNEL RTE_LOGTYPE_USER1
 
-static int global_fds[RTE_MAX_LCORE];
+static int global_fds[RTE_MAX_LCORE] = { [0 ... RTE_MAX_LCORE-1] = -1 };
 
 int
 guest_channel_host_connect(const char *path, unsigned int lcore_id)
@@ -35,7 +35,7 @@ guest_channel_host_connect(const char *path, unsigned int lcore_id)
 		return -1;
 	}
 	/* check if path is already open */
-	if (global_fds[lcore_id] != 0) {
+	if (global_fds[lcore_id] != -1) {
 		RTE_LOG(ERR, GUEST_CHANNEL, "Channel(%u) is already open with fd %d\n",
 				lcore_id, global_fds[lcore_id]);
 		return -1;
@@ -84,7 +84,7 @@ guest_channel_host_connect(const char *path, unsigned int lcore_id)
 	return 0;
 error:
 	close(fd);
-	global_fds[lcore_id] = 0;
+	global_fds[lcore_id] = -1;
 	return -1;
 }
 
@@ -100,7 +100,7 @@ guest_channel_send_msg(struct channel_packet *pkt, unsigned int lcore_id)
 		return -1;
 	}
 
-	if (global_fds[lcore_id] == 0) {
+	if (global_fds[lcore_id] < 0) {
 		RTE_LOG(ERR, GUEST_CHANNEL, "Channel is not connected\n");
 		return -1;
 	}
@@ -134,8 +134,8 @@ guest_channel_host_disconnect(unsigned int lcore_id)
 				lcore_id, RTE_MAX_LCORE-1);
 		return;
 	}
-	if (global_fds[lcore_id] == 0)
+	if (global_fds[lcore_id] < 0)
 		return;
 	close(global_fds[lcore_id]);
-	global_fds[lcore_id] = 0;
+	global_fds[lcore_id] = -1;
 }
