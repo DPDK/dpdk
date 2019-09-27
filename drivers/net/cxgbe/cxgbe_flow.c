@@ -446,18 +446,27 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 	const struct rte_flow_action_set_tp *tp_port;
 	const struct rte_flow_action_phy_port *port;
 	int item_index;
+	u16 tmp_vlan;
 
 	switch (a->type) {
 	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 		vlanid = (const struct rte_flow_action_of_set_vlan_vid *)
 			  a->conf;
-		fs->newvlan = VLAN_REWRITE;
-		fs->vlan = vlanid->vlan_vid;
+		/* If explicitly asked to push a new VLAN header,
+		 * then don't set rewrite mode. Otherwise, the
+		 * incoming VLAN packets will get their VLAN fields
+		 * rewritten, instead of adding an additional outer
+		 * VLAN header.
+		 */
+		if (fs->newvlan != VLAN_INSERT)
+			fs->newvlan = VLAN_REWRITE;
+		tmp_vlan = fs->vlan & 0xe000;
+		fs->vlan = (be16_to_cpu(vlanid->vlan_vid) & 0xfff) | tmp_vlan;
 		break;
 	case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		pushvlan = (const struct rte_flow_action_of_push_vlan *)
 			    a->conf;
-		if (pushvlan->ethertype != RTE_ETHER_TYPE_VLAN)
+		if (be16_to_cpu(pushvlan->ethertype) != RTE_ETHER_TYPE_VLAN)
 			return rte_flow_error_set(e, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ACTION, a,
 						  "only ethertype 0x8100 "
