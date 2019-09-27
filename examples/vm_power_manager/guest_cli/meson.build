@@ -17,6 +17,8 @@ sources = files(
 	'main.c', 'parse.c', 'vm_power_cli_guest.c'
 )
 
+allow_experimental_apis = true
+
 opt_dep = cc.find_library('virt', required : false)
 build = opt_dep.found()
 ext_deps += opt_dep

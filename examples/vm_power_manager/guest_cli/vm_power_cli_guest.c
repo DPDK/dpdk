@@ -27,7 +27,7 @@
 #define CHANNEL_PATH "/dev/virtio-ports/virtio.serial.port.poweragent"
 
 
-#define RTE_LOGTYPE_GUEST_CHANNEL RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_GUEST_CLI RTE_LOGTYPE_USER1
 
 struct cmd_quit_result {
 	cmdline_fixed_string_t quit;
@@ -145,6 +145,32 @@ struct cmd_set_cpu_freq_result {
 	cmdline_fixed_string_t cmd;
 };
 
+static int
+check_response_cmd(unsigned int lcore_id, int *result)
+{
+	struct channel_packet pkt;
+	int ret;
+
+	ret = rte_power_guest_channel_receive_msg(&pkt, lcore_id);
+	if (ret < 0)
+		return -1;
+
+	switch (pkt.command) {
+	case(CPU_POWER_CMD_ACK):
+		*result = 1;
+		break;
+	case(CPU_POWER_CMD_NACK):
+		*result = 0;
+		break;
+	default:
+		RTE_LOG(ERR, GUEST_CLI,
+				"Received invalid response from host, expecting ACK/NACK.\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 static void
 cmd_set_cpu_freq_parsed(void *parsed_result, struct cmdline *cl,
 		       __attribute__((unused)) void *data)
@@ -152,20 +178,31 @@ cmd_set_cpu_freq_parsed(void *parsed_result, struct cmdline *cl,
 	int ret = -1;
 	struct cmd_set_cpu_freq_result *res = parsed_result;
 
-	if (!strcmp(res->cmd , "up"))
+	if (!strcmp(res->cmd, "up"))
 		ret = rte_power_freq_up(res->lcore_id);
-	else if (!strcmp(res->cmd , "down"))
+	else if (!strcmp(res->cmd, "down"))
 		ret = rte_power_freq_down(res->lcore_id);
-	else if (!strcmp(res->cmd , "min"))
+	else if (!strcmp(res->cmd, "min"))
 		ret = rte_power_freq_min(res->lcore_id);
-	else if (!strcmp(res->cmd , "max"))
+	else if (!strcmp(res->cmd, "max"))
 		ret = rte_power_freq_max(res->lcore_id);
 	else if (!strcmp(res->cmd, "enable_turbo"))
 		ret = rte_power_freq_enable_turbo(res->lcore_id);
 	else if (!strcmp(res->cmd, "disable_turbo"))
 		ret = rte_power_freq_disable_turbo(res->lcore_id);
-	if (ret != 1)
+
+	if (ret != 1) {
 		cmdline_printf(cl, "Error sending message: %s\n", strerror(ret));
+		return;
+	}
+	int result;
+	ret = check_response_cmd(res->lcore_id, &result);
+	if (ret < 0) {
+		RTE_LOG(ERR, GUEST_CLI, "No confirmation for sent message received\n");
+	} else {
+		cmdline_printf(cl, "%s received for message sent to host.\n",
+				result == 1 ? "ACK" : "NACK");
+	}
 }
 
 cmdline_parse_token_string_t cmd_set_cpu_freq =
@@ -198,16 +235,26 @@ struct cmd_send_policy_result {
 };
 
 static inline int
-send_policy(struct channel_packet *pkt)
+send_policy(struct channel_packet *pkt, struct cmdline *cl)
 {
 	int ret;
 
 	ret = rte_power_guest_channel_send_msg(pkt, 1);
-	if (ret == 0)
-		return 1;
-	RTE_LOG(DEBUG, POWER, "Error sending message: %s\n",
-			ret > 0 ? strerror(ret) : "channel not connected");
-	return -1;
+	if (ret < 0) {
+		RTE_LOG(ERR, GUEST_CLI, "Error sending message: %s\n",
+				ret > 0 ? strerror(ret) : "channel not connected");
+		return -1;
+	}
+
+	int result;
+	ret = check_response_cmd(1, &result);
+	if (ret < 0) {
+		RTE_LOG(ERR, GUEST_CLI, "No confirmation for sent policy received\n");
+	} else {
+		cmdline_printf(cl, "%s for sent policy received.\n",
+				result == 1 ? "ACK" : "NACK");
+	}
+	return 1;
 }
 
 static void
@@ -219,7 +266,7 @@ cmd_send_policy_parsed(void *parsed_result, struct cmdline *cl,
 
 	if (!strcmp(res->cmd, "now")) {
 		printf("Sending Policy down now!\n");
-		ret = send_policy(&policy);
+		ret = send_policy(&policy, cl);
 	}
 	if (ret != 1)
 		cmdline_printf(cl, "Error sending message: %s\n",
