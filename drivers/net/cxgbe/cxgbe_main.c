@@ -92,19 +92,19 @@ static int fwevtq_handler(struct sge_rspq *q, const __be64 *rsp,
 	} else if (opcode == CPL_ABORT_RPL_RSS) {
 		const struct cpl_abort_rpl_rss *p = (const void *)rsp;
 
-		hash_del_filter_rpl(q->adapter, p);
+		cxgbe_hash_del_filter_rpl(q->adapter, p);
 	} else if (opcode == CPL_SET_TCB_RPL) {
 		const struct cpl_set_tcb_rpl *p = (const void *)rsp;
 
-		filter_rpl(q->adapter, p);
+		cxgbe_filter_rpl(q->adapter, p);
 	} else if (opcode == CPL_ACT_OPEN_RPL) {
 		const struct cpl_act_open_rpl *p = (const void *)rsp;
 
-		hash_filter_rpl(q->adapter, p);
+		cxgbe_hash_filter_rpl(q->adapter, p);
 	} else if (opcode == CPL_L2T_WRITE_RPL) {
 		const struct cpl_l2t_write_rpl *p = (const void *)rsp;
 
-		do_l2t_write_rpl(q->adapter, p);
+		cxgbe_do_l2t_write_rpl(q->adapter, p);
 	} else {
 		dev_err(adapter, "unexpected CPL %#x on FW event queue\n",
 			opcode);
@@ -1179,7 +1179,7 @@ static int adap_init0(struct adapter *adap)
 
 	if ((caps_cmd.niccaps & cpu_to_be16(FW_CAPS_CONFIG_NIC_HASHFILTER)) &&
 	    is_t6(adap->params.chip)) {
-		if (init_hash_filter(adap) < 0)
+		if (cxgbe_init_hash_filter(adap) < 0)
 			goto bye;
 	}
 

@@ -53,5 +53,6 @@ void t4_cleanup_l2t(struct adapter *adap);
 struct l2t_entry *cxgbe_l2t_alloc_switching(struct rte_eth_dev *dev, u16 vlan,
 					    u8 port, u8 *dmac);
 void cxgbe_l2t_release(struct l2t_entry *e);
-void do_l2t_write_rpl(struct adapter *p, const struct cpl_l2t_write_rpl *rpl);
+void cxgbe_do_l2t_write_rpl(struct adapter *p,
+			    const struct cpl_l2t_write_rpl *rpl);
 #endif /* _CXGBE_L2T_H_ */

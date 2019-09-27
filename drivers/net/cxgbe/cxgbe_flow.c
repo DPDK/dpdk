@@ -309,7 +309,7 @@ static int cxgbe_validate_fidxondel(struct filter_entry *f, unsigned int fidx)
 		dev_err(adap, "invalid flow index %d.\n", fidx);
 		return -EINVAL;
 	}
-	if (!is_filter_set(&adap->tids, fidx, fs.type)) {
+	if (!cxgbe_is_filter_set(&adap->tids, fidx, fs.type)) {
 		dev_err(adap, "Already free fidx:%d f:%p\n", fidx, f);
 		return -EINVAL;
 	}
@@ -321,7 +321,7 @@ static int
 cxgbe_validate_fidxonadd(struct ch_filter_specification *fs,
 			 struct adapter *adap, unsigned int fidx)
 {
-	if (is_filter_set(&adap->tids, fidx, fs->type)) {
+	if (cxgbe_is_filter_set(&adap->tids, fidx, fs->type)) {
 		dev_err(adap, "filter index: %d is busy.\n", fidx);
 		return -EBUSY;
 	}
@@ -1019,7 +1019,7 @@ cxgbe_flow_validate(struct rte_eth_dev *dev,
 		return ret;
 	}
 
-	if (validate_filter(adap, &flow->fs)) {
+	if (cxgbe_validate_filter(adap, &flow->fs)) {
 		t4_os_free(flow);
 		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL,

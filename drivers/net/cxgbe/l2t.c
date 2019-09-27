@@ -22,7 +22,8 @@ void cxgbe_l2t_release(struct l2t_entry *e)
  * Process a CPL_L2T_WRITE_RPL. Note that the TID in the reply is really
  * the L2T index it refers to.
  */
-void do_l2t_write_rpl(struct adapter *adap, const struct cpl_l2t_write_rpl *rpl)
+void cxgbe_do_l2t_write_rpl(struct adapter *adap,
+			    const struct cpl_l2t_write_rpl *rpl)
 {
 	struct l2t_data *d = adap->l2t;
 	unsigned int tid = GET_TID(rpl);
