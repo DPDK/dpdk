@@ -1052,7 +1052,7 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	 */
 	if (chip_ver > CHELSIO_T5 && fs->type &&
 	    memcmp(fs->val.lip, bitoff, sizeof(bitoff))) {
-		f->clipt = cxgbe_clip_alloc(f->dev, (u32 *)&f->fs.val.lip);
+		f->clipt = cxgbe_clip_alloc(dev, (u32 *)&fs->val.lip);
 		if (!f->clipt)
 			goto free_tid;
 	}
