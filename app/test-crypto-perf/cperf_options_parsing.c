@@ -964,6 +964,13 @@ cperf_options_check(struct cperf_options *options)
 	if (options->op_type == CPERF_CIPHER_ONLY)
 		options->digest_sz = 0;
 
+	if (options->out_of_place &&
+			options->segment_sz <= options->max_buffer_size) {
+		RTE_LOG(ERR, USER1, "Out of place mode can only work "
+					"with non segmented buffers\n");
+		return -EINVAL;
+	}
+
 	/*
 	 * If segment size is not set, assume only one segment,
 	 * big enough to contain the largest buffer and the digest
