@@ -684,10 +684,14 @@ apply_policy(struct policy *pol)
 }
 
 static int
-write_binary_packet(struct channel_packet *pkt, struct channel_info *chan_info)
+write_binary_packet(void *buffer,
+		size_t buffer_len,
+		struct channel_info *chan_info)
 {
-	int ret, buffer_len = sizeof(*pkt);
-	void *buffer = pkt;
+	int ret;
+
+	if (buffer_len == 0 || buffer == NULL)
+		return -1;
 
 	if (chan_info->fd < 0) {
 		RTE_LOG(ERR, CHANNEL_MONITOR, "Channel is not connected\n");
@@ -710,12 +714,47 @@ write_binary_packet(struct channel_packet *pkt, struct channel_info *chan_info)
 }
 
 static int
+send_freq(struct channel_packet *pkt,
+		struct channel_info *chan_info,
+		bool freq_list)
+{
+	unsigned int vcore_id = pkt->resource_id;
+	struct channel_packet_freq_list channel_pkt_freq_list;
+	struct vm_info info;
+
+	if (get_info_vm(pkt->vm_name, &info) != 0)
+		return -1;
+
+	if (!freq_list && vcore_id >= MAX_VCPU_PER_VM)
+		return -1;
+
+	channel_pkt_freq_list.command = CPU_POWER_FREQ_LIST;
+	channel_pkt_freq_list.num_vcpu = info.num_vcpus;
+
+	if (freq_list) {
+		unsigned int i;
+		for (i = 0; i < info.num_vcpus; i++)
+			channel_pkt_freq_list.freq_list[i] =
+			  power_manager_get_current_frequency(info.pcpu_map[i]);
+	} else {
+		channel_pkt_freq_list.freq_list[vcore_id] =
+		  power_manager_get_current_frequency(info.pcpu_map[vcore_id]);
+	}
+
+	return write_binary_packet(&channel_pkt_freq_list,
+			sizeof(channel_pkt_freq_list),
+			chan_info);
+}
+
+static int
 send_ack_for_received_cmd(struct channel_packet *pkt,
 		struct channel_info *chan_info,
 		uint32_t command)
 {
 	pkt->command = command;
-	return write_binary_packet(pkt, chan_info);
+	return write_binary_packet(pkt,
+			sizeof(struct channel_packet),
+			chan_info);
 }
 
 static int
@@ -741,8 +780,8 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 		RTE_LOG(DEBUG, CHANNEL_MONITOR, "Processing requested cmd for cpu:%d\n",
 			core_num);
 
-		bool valid_unit = true;
 		int scale_res;
+		bool valid_unit = true;
 
 		switch (pkt->unit) {
 		case(CPU_POWER_SCALE_MIN):
@@ -775,9 +814,9 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 						CPU_POWER_CMD_ACK :
 						CPU_POWER_CMD_NACK);
 			if (ret < 0)
-				RTE_LOG(DEBUG, CHANNEL_MONITOR, "Error during sending ack command.\n");
+				RTE_LOG(ERR, CHANNEL_MONITOR, "Error during sending ack command.\n");
 		} else
-			RTE_LOG(DEBUG, CHANNEL_MONITOR, "Unexpected unit type.\n");
+			RTE_LOG(ERR, CHANNEL_MONITOR, "Unexpected unit type.\n");
 
 	}
 
@@ -788,7 +827,7 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 				chan_info,
 				CPU_POWER_CMD_ACK);
 		if (ret < 0)
-			RTE_LOG(DEBUG, CHANNEL_MONITOR, "Error during sending ack command.\n");
+			RTE_LOG(ERR, CHANNEL_MONITOR, "Error during sending ack command.\n");
 		update_policy(pkt);
 		policy_is_set = 1;
 	}
@@ -801,6 +840,18 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 		else
 			RTE_LOG(INFO, CHANNEL_MONITOR,
 				 "Policy %s does not exist\n", pkt->vm_name);
+	}
+
+	if (pkt->command == CPU_POWER_QUERY_FREQ_LIST ||
+		pkt->command == CPU_POWER_QUERY_FREQ) {
+
+		RTE_LOG(INFO, CHANNEL_MONITOR,
+			"Frequency for %s requested.\n", pkt->vm_name);
+		int ret = send_freq(pkt,
+				chan_info,
+				pkt->command == CPU_POWER_QUERY_FREQ_LIST);
+		if (ret < 0)
+			RTE_LOG(ERR, CHANNEL_MONITOR, "Error during frequency sending.\n");
 	}
 
 	/*
