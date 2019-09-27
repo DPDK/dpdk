@@ -753,12 +753,6 @@ static void configure_vlan_types(struct adapter *adapter)
 				 V_OVLAN_ETYPE(M_OVLAN_ETYPE),
 				 V_OVLAN_MASK(M_OVLAN_MASK) |
 				 V_OVLAN_ETYPE(0x9100));
-		/* OVLAN Type 0x8100 */
-		t4_set_reg_field(adapter, MPS_PORT_RX_OVLAN_REG(i, A_RX_OVLAN2),
-				 V_OVLAN_MASK(M_OVLAN_MASK) |
-				 V_OVLAN_ETYPE(M_OVLAN_ETYPE),
-				 V_OVLAN_MASK(M_OVLAN_MASK) |
-				 V_OVLAN_ETYPE(0x8100));
 
 		/* IVLAN 0X8100 */
 		t4_set_reg_field(adapter, MPS_PORT_RX_IVLAN(i),
@@ -767,9 +761,9 @@ static void configure_vlan_types(struct adapter *adapter)
 
 		t4_set_reg_field(adapter, MPS_PORT_RX_CTL(i),
 				 F_OVLAN_EN0 | F_OVLAN_EN1 |
-				 F_OVLAN_EN2 | F_IVLAN_EN,
+				 F_IVLAN_EN,
 				 F_OVLAN_EN0 | F_OVLAN_EN1 |
-				 F_OVLAN_EN2 | F_IVLAN_EN);
+				 F_IVLAN_EN);
 	}
 
 	t4_tp_wr_bits_indirect(adapter, A_TP_INGRESS_CONFIG, V_RM_OVLAN(1),

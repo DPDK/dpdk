@@ -69,7 +69,8 @@ int cxgbe_validate_filter(struct adapter *adapter,
 	(!(fconf & (_mask)) && S(_field))
 
 	if (U(F_PORT, iport) || U(F_ETHERTYPE, ethtype) ||
-	    U(F_PROTOCOL, proto) || U(F_MACMATCH, macidx))
+	    U(F_PROTOCOL, proto) || U(F_MACMATCH, macidx) ||
+	    U(F_VLAN, ivlan_vld))
 		return -EOPNOTSUPP;
 
 #undef S
@@ -292,6 +293,9 @@ static u64 hash_filter_ntuple(const struct filter_entry *f)
 		ntuple |= (u64)(f->fs.val.ethtype) << tp->ethertype_shift;
 	if (tp->macmatch_shift >= 0 && f->fs.mask.macidx)
 		ntuple |= (u64)(f->fs.val.macidx) << tp->macmatch_shift;
+	if (tp->vlan_shift >= 0 && f->fs.mask.ivlan)
+		ntuple |= (u64)(F_FT_VLAN_VLD | f->fs.val.ivlan) <<
+			  tp->vlan_shift;
 
 	return ntuple;
 }
@@ -769,6 +773,9 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 			    V_FW_FILTER_WR_L2TIX(f->l2t ? f->l2t->idx : 0));
 	fwr->ethtype = cpu_to_be16(f->fs.val.ethtype);
 	fwr->ethtypem = cpu_to_be16(f->fs.mask.ethtype);
+	fwr->frag_to_ovlan_vldm =
+		(V_FW_FILTER_WR_IVLAN_VLD(f->fs.val.ivlan_vld) |
+		 V_FW_FILTER_WR_IVLAN_VLDM(f->fs.mask.ivlan_vld));
 	fwr->smac_sel = 0;
 	fwr->rx_chan_rx_rpl_iq =
 		cpu_to_be16(V_FW_FILTER_WR_RX_CHAN(0) |
@@ -781,6 +788,8 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 			    V_FW_FILTER_WR_PORTM(f->fs.mask.iport));
 	fwr->ptcl = f->fs.val.proto;
 	fwr->ptclm = f->fs.mask.proto;
+	fwr->ivlan = cpu_to_be16(f->fs.val.ivlan);
+	fwr->ivlanm = cpu_to_be16(f->fs.mask.ivlan);
 	rte_memcpy(fwr->lip, f->fs.val.lip, sizeof(fwr->lip));
 	rte_memcpy(fwr->lipm, f->fs.mask.lip, sizeof(fwr->lipm));
 	rte_memcpy(fwr->fip, f->fs.val.fip, sizeof(fwr->fip));
