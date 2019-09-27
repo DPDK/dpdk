@@ -19,6 +19,9 @@ LIBABIVER := 5
 SRCS-$(CONFIG_RTE_LIBRTE_MBUF) := rte_mbuf.c rte_mbuf_ptype.c rte_mbuf_pool_ops.c
 
 # install includes
-SYMLINK-$(CONFIG_RTE_LIBRTE_MBUF)-include := rte_mbuf.h rte_mbuf_ptype.h rte_mbuf_pool_ops.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_MBUF)-include := rte_mbuf.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_MBUF)-include += rte_mbuf_core.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_MBUF)-include += rte_mbuf_ptype.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_MBUF)-include += rte_mbuf_pool_ops.h
 
 include $(RTE_SDK)/mk/rte.lib.mk
