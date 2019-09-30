@@ -349,34 +349,25 @@ cnstr_shdsc_hmac(uint32_t *descbuf, bool ps, bool swap,
  */
 static inline int
 cnstr_shdsc_kasumi_f8(uint32_t *descbuf, bool ps, bool swap,
-		      struct alginfo *cipherdata, uint8_t dir,
-		      uint32_t count, uint8_t bearer, uint8_t direction)
+		      struct alginfo *cipherdata, uint8_t dir)
 {
 	struct program prg;
 	struct program *p = &prg;
-	uint64_t ct = count;
-	uint64_t br = bearer;
-	uint64_t dr = direction;
-	uint32_t context[2] = { ct, (br << 27) | (dr << 26) };
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
-	if (swap) {
+	if (swap)
 		PROGRAM_SET_BSWAP(p);
-
-		context[0] = swab32(context[0]);
-		context[1] = swab32(context[1]);
-	}
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
 	SHR_HDR(p, SHR_ALWAYS, 1, 0);
 
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
+	SEQLOAD(p, CONTEXT1, 0, 8, 0);
 	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
 	MATHB(p, SEQINSZ, SUB, MATH2, VSEQOUTSZ, 4, 0);
 	ALG_OPERATION(p, OP_ALG_ALGSEL_KASUMI, OP_ALG_AAI_F8,
 		      OP_ALG_AS_INITFINAL, 0, dir);
-	LOAD(p, (uintptr_t)context, CONTEXT1, 0, 8, IMMED | COPY);
 	SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1);
 	SEQFIFOSTORE(p, MSG, 0, 0, VLF);
 
@@ -390,46 +381,49 @@ cnstr_shdsc_kasumi_f8(uint32_t *descbuf, bool ps, bool swap,
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
  * @authdata: pointer to authentication transform definitions
- * @dir: cipher direction (DIR_ENC/DIR_DEC)
- * @count: count value (32 bits)
- * @fresh: fresh value ID (32 bits)
- * @direction: direction (1 bit)
- * @datalen: size of data
+ * @chk_icv: check or generate ICV value
+ * @authlen: size of digest
  *
  * Return: size of descriptor written in words or negative number on error
  */
 static inline int
 cnstr_shdsc_kasumi_f9(uint32_t *descbuf, bool ps, bool swap,
-		      struct alginfo *authdata, uint8_t dir,
-		      uint32_t count, uint32_t fresh, uint8_t direction,
-		      uint32_t datalen)
+		    struct alginfo *authdata, uint8_t chk_icv,
+		    uint32_t authlen)
 {
 	struct program prg;
 	struct program *p = &prg;
-	uint16_t ctx_offset = 16;
-	uint32_t context[6] = {count, direction << 26, fresh, 0, 0, 0};
+	int dir = chk_icv ? DIR_DEC : DIR_ENC;
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
-	if (swap) {
+	if (swap)
 		PROGRAM_SET_BSWAP(p);
 
-		context[0] = swab32(context[0]);
-		context[1] = swab32(context[1]);
-		context[2] = swab32(context[2]);
-	}
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
+
 	SHR_HDR(p, SHR_ALWAYS, 1, 0);
 
-	KEY(p, KEY1, authdata->key_enc_flags, authdata->key, authdata->keylen,
-	    INLINE_KEY(authdata));
-	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
+	KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
+	    authdata->keylen, INLINE_KEY(authdata));
+
+	SEQLOAD(p, CONTEXT2, 0, 12, 0);
+
+	if (chk_icv == ICV_CHECK_ENABLE)
+		MATHB(p, SEQINSZ, SUB, authlen, VSEQINSZ, 4, IMMED2);
+	else
+		MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
+
 	ALG_OPERATION(p, OP_ALG_ALGSEL_KASUMI, OP_ALG_AAI_F9,
-		      OP_ALG_AS_INITFINAL, 0, dir);
-	LOAD(p, (uintptr_t)context, CONTEXT1, 0, 24, IMMED | COPY);
-	SEQFIFOLOAD(p, BIT_DATA, datalen, CLASS1 | LAST1);
-	/* Save output MAC of DWORD 2 into a 32-bit sequence */
-	SEQSTORE(p, CONTEXT1, ctx_offset, 4, 0);
+		      OP_ALG_AS_INITFINAL, chk_icv, dir);
+
+	SEQFIFOLOAD(p, MSG2, 0, VLF | CLASS2 | LAST2);
+
+	if (chk_icv == ICV_CHECK_ENABLE)
+		SEQFIFOLOAD(p, ICV2, authlen, LAST2);
+	else
+		/* Save lower half of MAC out into a 32-bit sequence */
+		SEQSTORE(p, CONTEXT2, 0, authlen, 0);
 
 	return PROGRAM_FINALIZE(p);
 }
