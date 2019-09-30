@@ -49,6 +49,7 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct vring_used_elem *rused;
 	struct rte_mbuf **sw_ring;
 	struct rte_mbuf **sw_ring_end;
+	struct rte_mbuf **ref_rx_pkts;
 	uint16_t nb_pkts_received = 0;
 	const vector unsigned char zero = {0};
 
@@ -108,6 +109,7 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			virtqueue_notify(vq);
 	}
 
+	ref_rx_pkts = rx_pkts;
 	for (nb_pkts_received = 0;
 		nb_pkts_received < nb_used;) {
 		vector unsigned char desc[RTE_VIRTIO_DESC_PER_LOOP / 2];
@@ -199,5 +201,8 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	vq->vq_used_cons_idx += nb_pkts_received;
 	vq->vq_free_cnt += nb_pkts_received;
 	rxvq->stats.packets += nb_pkts_received;
+	for (nb_used = 0; nb_used < nb_pkts_received; nb_used++)
+		virtio_update_packet_stats(&rxvq->stats, ref_rx_pkts[nb_used]);
+
 	return nb_pkts_received;
 }
