@@ -66,6 +66,121 @@ static uint8_t cryptodev_driver_id;
 int dpaa2_logtype_sec;
 
 static inline int
+build_proto_compound_sg_fd(dpaa2_sec_session *sess,
+			   struct rte_crypto_op *op,
+			   struct qbman_fd *fd, uint16_t bpid)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	struct ctxt_priv *priv = sess->ctxt;
+	struct qbman_fle *fle, *sge, *ip_fle, *op_fle;
+	struct sec_flow_context *flc;
+	struct rte_mbuf *mbuf;
+	uint32_t in_len = 0, out_len = 0;
+
+	if (sym_op->m_dst)
+		mbuf = sym_op->m_dst;
+	else
+		mbuf = sym_op->m_src;
+
+	/* first FLE entry used to store mbuf and session ctxt */
+	fle = (struct qbman_fle *)rte_malloc(NULL, FLE_SG_MEM_SIZE,
+			RTE_CACHE_LINE_SIZE);
+	if (unlikely(!fle)) {
+		DPAA2_SEC_DP_ERR("Proto:SG: Memory alloc failed for SGE");
+		return -1;
+	}
+	memset(fle, 0, FLE_SG_MEM_SIZE);
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
+	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
+
+	/* Save the shared descriptor */
+	flc = &priv->flc_desc[0].flc;
+
+	op_fle = fle + 1;
+	ip_fle = fle + 2;
+	sge = fle + 3;
+
+	if (likely(bpid < MAX_BPID)) {
+		DPAA2_SET_FD_BPID(fd, bpid);
+		DPAA2_SET_FLE_BPID(op_fle, bpid);
+		DPAA2_SET_FLE_BPID(ip_fle, bpid);
+	} else {
+		DPAA2_SET_FD_IVP(fd);
+		DPAA2_SET_FLE_IVP(op_fle);
+		DPAA2_SET_FLE_IVP(ip_fle);
+	}
+
+	/* Configure FD as a FRAME LIST */
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
+
+	/* Configure Output FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_SG_EXT(op_fle);
+	DPAA2_SET_FLE_ADDR(op_fle, DPAA2_VADDR_TO_IOVA(sge));
+
+	/* Configure Output SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+	DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+	/* o/p segs */
+	while (mbuf->next) {
+		sge->length = mbuf->data_len;
+		out_len += sge->length;
+		sge++;
+		mbuf = mbuf->next;
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+		DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+	}
+	/* using buf_len for last buf - so that extra data can be added */
+	sge->length = mbuf->buf_len - mbuf->data_off;
+	out_len += sge->length;
+
+	DPAA2_SET_FLE_FIN(sge);
+	op_fle->length = out_len;
+
+	sge++;
+	mbuf = sym_op->m_src;
+
+	/* Configure Input FLE with Scatter/Gather Entry */
+	DPAA2_SET_FLE_ADDR(ip_fle, DPAA2_VADDR_TO_IOVA(sge));
+	DPAA2_SET_FLE_SG_EXT(ip_fle);
+	DPAA2_SET_FLE_FIN(ip_fle);
+
+	/* Configure input SGE for Encap/Decap */
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+	DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+	sge->length = mbuf->data_len;
+	in_len += sge->length;
+
+	mbuf = mbuf->next;
+	/* i/p segs */
+	while (mbuf) {
+		sge++;
+		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
+		DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off);
+		sge->length = mbuf->data_len;
+		in_len += sge->length;
+		mbuf = mbuf->next;
+	}
+	ip_fle->length = in_len;
+	DPAA2_SET_FLE_FIN(sge);
+
+	/* In case of PDCP, per packet HFN is stored in
+	 * mbuf priv after sym_op.
+	 */
+	if (sess->ctxt_type == DPAA2_SEC_PDCP && sess->pdcp.hfn_ovd) {
+		uint32_t hfn_ovd = *((uint8_t *)op + sess->pdcp.hfn_ovd_offset);
+		/*enable HFN override override */
+		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, hfn_ovd);
+		DPAA2_SET_FLE_INTERNAL_JD(op_fle, hfn_ovd);
+		DPAA2_SET_FD_INTERNAL_JD(fd, hfn_ovd);
+	}
+	DPAA2_SET_FD_LEN(fd, ip_fle->length);
+
+	return 0;
+}
+
+static inline int
 build_proto_compound_fd(dpaa2_sec_session *sess,
 	       struct rte_crypto_op *op,
 	       struct qbman_fd *fd, uint16_t bpid)
@@ -87,7 +202,7 @@ build_proto_compound_fd(dpaa2_sec_session *sess,
 	/* we are using the first FLE entry to store Mbuf */
 	retval = rte_mempool_get(priv->fle_pool, (void **)(&fle));
 	if (retval) {
-		DPAA2_SEC_ERR("Memory alloc failed");
+		DPAA2_SEC_DP_ERR("Memory alloc failed");
 		return -1;
 	}
 	memset(fle, 0, FLE_POOL_BUF_SIZE);
@@ -1170,8 +1285,10 @@ build_sec_fd(struct rte_crypto_op *op,
 	else
 		return -1;
 
-	/* Segmented buffer */
-	if (unlikely(!rte_pktmbuf_is_contiguous(op->sym->m_src))) {
+	/* Any of the buffer is segmented*/
+	if (!rte_pktmbuf_is_contiguous(op->sym->m_src) ||
+		  ((op->sym->m_dst != NULL) &&
+		   !rte_pktmbuf_is_contiguous(op->sym->m_dst))) {
 		switch (sess->ctxt_type) {
 		case DPAA2_SEC_CIPHER:
 			ret = build_cipher_sg_fd(sess, op, fd, bpid);
@@ -1184,6 +1301,10 @@ build_sec_fd(struct rte_crypto_op *op,
 			break;
 		case DPAA2_SEC_CIPHER_HASH:
 			ret = build_authenc_sg_fd(sess, op, fd, bpid);
+			break;
+		case DPAA2_SEC_IPSEC:
+		case DPAA2_SEC_PDCP:
+			ret = build_proto_compound_sg_fd(sess, op, fd, bpid);
 			break;
 		case DPAA2_SEC_HASH_CIPHER:
 		default:
@@ -1372,9 +1493,14 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 	if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 		dpaa2_sec_session *sess = (dpaa2_sec_session *)
 			get_sec_session_private_data(op->sym->sec_session);
-		if (sess->ctxt_type == DPAA2_SEC_IPSEC) {
+		if (sess->ctxt_type == DPAA2_SEC_IPSEC ||
+				sess->ctxt_type == DPAA2_SEC_PDCP) {
 			uint16_t len = DPAA2_GET_FD_LEN(fd);
 			dst->pkt_len = len;
+			while (dst->next != NULL) {
+				len -= dst->data_len;
+				dst = dst->next;
+			}
 			dst->data_len = len;
 		}
 	}
