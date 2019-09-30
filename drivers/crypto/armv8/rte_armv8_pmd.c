@@ -777,7 +777,6 @@ cryptodev_armv8_crypto_create(const char *name,
 			RTE_CRYPTODEV_FF_CPU_NEON |
 			RTE_CRYPTODEV_FF_CPU_ARM_CE;
 
-	/* Set vector instructions mode supported */
 	internals = dev->data->dev_private;
 
 	internals->max_nb_qpairs = init_params->max_nb_queue_pairs;
