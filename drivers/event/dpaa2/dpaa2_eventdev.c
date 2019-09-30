@@ -1060,6 +1060,39 @@ fail:
 }
 
 static int
+dpaa2_eventdev_destroy(const char *name)
+{
+	struct rte_eventdev *eventdev;
+	struct dpaa2_eventdev *priv;
+	int i;
+
+	eventdev = rte_event_pmd_get_named_dev(name);
+	if (eventdev == NULL) {
+		RTE_EDEV_LOG_ERR("eventdev with name %s not allocated", name);
+		return -1;
+	}
+
+	/* For secondary processes, the primary has done all the work */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	priv = eventdev->data->dev_private;
+	for (i = 0; i < priv->max_event_queues; i++) {
+		if (priv->evq_info[i].dpcon)
+			rte_dpaa2_free_dpcon_dev(priv->evq_info[i].dpcon);
+
+		if (priv->evq_info[i].dpci)
+			rte_dpaa2_free_dpci_dev(priv->evq_info[i].dpci);
+
+	}
+	priv->max_event_queues = 0;
+
+	RTE_LOG(INFO, PMD, "%s eventdev cleaned\n", name);
+	return 0;
+}
+
+
+static int
 dpaa2_eventdev_probe(struct rte_vdev_device *vdev)
 {
 	const char *name;
@@ -1076,6 +1109,8 @@ dpaa2_eventdev_remove(struct rte_vdev_device *vdev)
 
 	name = rte_vdev_device_name(vdev);
 	DPAA2_EVENTDEV_INFO("Closing %s", name);
+
+	dpaa2_eventdev_destroy(name);
 
 	return rte_event_pmd_vdev_uninit(name);
 }
