@@ -58,6 +58,36 @@ cnstr_shdsc_snow_f8(uint32_t *descbuf, bool ps, bool swap,
 }
 
 /**
+ * conv_to_snow_f9_iv - SNOW/f9 (UIA2) IV 16bit to 12 bit convert
+ * function for 3G.
+ * @iv: 16 bit original IV data
+ *
+ * Return: 12 bit IV data as understood by SEC HW
+ */
+
+static inline uint8_t *conv_to_snow_f9_iv(uint8_t *iv)
+{
+	uint8_t temp = (iv[8] == iv[0]) ? 0 : 4;
+
+	iv[12] = iv[4];
+	iv[13] = iv[5];
+	iv[14] = iv[6];
+	iv[15] = iv[7];
+
+	iv[8] = temp;
+	iv[9] = 0x00;
+	iv[10] = 0x00;
+	iv[11] = 0x00;
+
+	iv[4] = iv[0];
+	iv[5] = iv[1];
+	iv[6] = iv[2];
+	iv[7] = iv[3];
+
+	return (iv + 4);
+}
+
+/**
  * cnstr_shdsc_snow_f9 - SNOW/f9 (UIA2) as a shared descriptor
  * @descbuf: pointer to descriptor-under-construction buffer
  * @ps: if 36/40bit addressing is desired, this parameter must be true
