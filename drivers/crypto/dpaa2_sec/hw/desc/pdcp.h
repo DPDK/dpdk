@@ -44,6 +44,14 @@
 #define PDCP_C_PLANE_SN_MASK_BE		0x0000001F
 
 /**
+ * PDCP_12BIT_SN_MASK - This mask is used in the PDCP descriptors for
+ *                              extracting the sequence number (SN) from the
+ *                              PDCP User Plane header.
+ */
+#define PDCP_12BIT_SN_MASK		0xFF0F0000
+#define PDCP_12BIT_SN_MASK_BE		0x00000FFF
+
+/**
  * PDCP_U_PLANE_15BIT_SN_MASK - This mask is used in the PDCP descriptors for
  *                              extracting the sequence number (SN) from the
  *                              PDCP User Plane header. For PDCP Control Plane,
@@ -776,8 +784,10 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 
-	if ((rta_sec_era >= RTA_SEC_ERA_8 && sn_size != PDCP_SN_SIZE_18) ||
-		(rta_sec_era == RTA_SEC_ERA_10)) {
+	if ((rta_sec_era >= RTA_SEC_ERA_8 && sn_size != PDCP_SN_SIZE_18 &&
+			!(rta_sec_era == RTA_SEC_ERA_8 &&
+				authdata->algtype == 0))
+			|| (rta_sec_era == RTA_SEC_ERA_10)) {
 		if (sn_size == PDCP_SN_SIZE_5)
 			PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
 				 (uint16_t)cipherdata->algtype << 8);
@@ -800,12 +810,16 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
 					PDCP_U_PLANE_18BIT_SN_MASK_BE;
 		break;
-	case PDCP_SN_SIZE_7:
 	case PDCP_SN_SIZE_12:
+		offset = 6;
+		length = 2;
+		sn_mask = (swap == false) ? PDCP_12BIT_SN_MASK :
+					PDCP_12BIT_SN_MASK_BE;
+		break;
+	case PDCP_SN_SIZE_7:
 	case PDCP_SN_SIZE_15:
 		pr_err("Invalid sn_size for %s\n", __func__);
 		return -ENOTSUP;
-
 	}
 
 	SEQLOAD(p, MATH0, offset, length, 0);
@@ -2796,6 +2810,16 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 		case PDCP_CIPHER_TYPE_AES:
 		case PDCP_CIPHER_TYPE_SNOW:
 		case PDCP_CIPHER_TYPE_NULL:
+			if (rta_sec_era == RTA_SEC_ERA_8 &&
+					authdata && authdata->algtype == 0){
+				err = pdcp_insert_uplane_with_int_op(p, swap,
+						cipherdata, authdata,
+						sn_size, era_2_sw_hfn_ovrd,
+						OP_TYPE_ENCAP_PROTOCOL);
+				if (err)
+					return err;
+				break;
+			}
 			/* Insert auth key if requested */
 			if (authdata && authdata->algtype) {
 				KEY(p, KEY2, authdata->key_enc_flags,
