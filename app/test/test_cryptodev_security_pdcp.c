@@ -48,6 +48,31 @@ static int cplane_encap(uint32_t sn_size, uint8_t dir,
 	return test_pdcp_proto_cplane_encap(i);
 }
 
+static int
+cplane_decap(uint32_t sn_size, uint8_t dir,
+	     enum enc_alg_off enc_alg_off,
+	     enum auth_alg_off auth_alg_off)
+{
+	int i = 0;
+
+	switch (sn_size) {
+	case 5:
+		i = PDCP_CPLANE_OFFSET + enc_alg_off +
+			auth_alg_off + ((dir == 0) ?
+				UPLINK : DOWNLINK);
+		break;
+	case 12:
+		i = PDCP_CPLANE_LONG_SN_OFFSET + enc_alg_off +
+			auth_alg_off + ((dir == 0) ?
+				UPLINK : DOWNLINK);
+		break;
+	default:
+		printf("\nInvalid SN: %u for %s\n", sn_size, __func__);
+	}
+
+	return test_pdcp_proto_cplane_decap(i);
+}
+
 #define TEST_PDCP_COUNT(func) do {			\
 	if (func == TEST_SUCCESS)  {			\
 		printf("\t%d)", n++);			\
@@ -132,6 +157,86 @@ test_PDCP_PROTO_cplane_encap_all(void)
 	TEST_PDCP_COUNT(cplane_encap(12, DOWNLINK, ZUC_ENC, AES_AUTH));
 	TEST_PDCP_COUNT(cplane_encap(12, UPLINK, ZUC_ENC, ZUC_AUTH));
 	TEST_PDCP_COUNT(cplane_encap(12, DOWNLINK, ZUC_ENC, ZUC_AUTH));
+
+	if (n - i)
+		printf("## %s: %d passed out of %d\n", __func__, i, n);
+
+	return n - i;
+};
+
+int
+test_PDCP_PROTO_cplane_decap_all(void)
+{
+	int i = 0, n = 0;
+
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, NULL_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, NULL_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, NULL_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, NULL_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, NULL_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, NULL_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, NULL_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, NULL_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, SNOW_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, SNOW_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, SNOW_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, SNOW_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, SNOW_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, SNOW_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, SNOW_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, SNOW_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, AES_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, AES_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, AES_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, AES_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, AES_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, AES_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, AES_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, AES_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, ZUC_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, ZUC_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, ZUC_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, ZUC_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, ZUC_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, ZUC_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, UPLINK, ZUC_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(5, DOWNLINK, ZUC_ENC, ZUC_AUTH));
+
+	/* C-plane 12-bit */
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, NULL_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, NULL_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, NULL_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, NULL_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, NULL_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, NULL_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, NULL_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, NULL_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, SNOW_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, SNOW_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, SNOW_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, SNOW_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, SNOW_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, SNOW_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, SNOW_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, SNOW_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, AES_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, AES_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, AES_ENC, SNOW_AUTH));
+
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, AES_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, AES_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, AES_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, AES_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, AES_ENC, ZUC_AUTH));
+
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, ZUC_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, ZUC_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, ZUC_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, ZUC_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, ZUC_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, ZUC_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, UPLINK, ZUC_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(cplane_decap(12, DOWNLINK, ZUC_ENC, ZUC_AUTH));
 
 	if (n - i)
 		printf("## %s: %d passed out of %d\n", __func__, i, n);
