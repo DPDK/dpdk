@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
- *
+ * Copyright 2016,2019 NXP
  */
 
 #ifndef __RTA_JUMP_CMD_H__

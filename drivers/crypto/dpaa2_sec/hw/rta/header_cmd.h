@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
- *
+ * Copyright 2016,2019 NXP
  */
 
 #ifndef __RTA_HEADER_CMD_H__
@@ -19,6 +18,8 @@ static const uint32_t job_header_flags[] = {
 	DNR | TD | MTD | SHR | REO | RSMS | EXT,
 	DNR | TD | MTD | SHR | REO | RSMS | EXT,
 	DNR | TD | MTD | SHR | REO | RSMS | EXT,
+	DNR | TD | MTD | SHR | REO | EXT,
+	DNR | TD | MTD | SHR | REO | EXT,
 	DNR | TD | MTD | SHR | REO | EXT
 };
 
@@ -27,6 +28,8 @@ static const uint32_t shr_header_flags[] = {
 	DNR | SC | PD,
 	DNR | SC | PD | CIF,
 	DNR | SC | PD | CIF,
+	DNR | SC | PD | CIF | RIF,
+	DNR | SC | PD | CIF | RIF,
 	DNR | SC | PD | CIF | RIF,
 	DNR | SC | PD | CIF | RIF,
 	DNR | SC | PD | CIF | RIF,
@@ -72,7 +75,12 @@ rta_shr_header(struct program *program,
 	}
 
 	opcode |= HDR_ONE;
-	opcode |= (start_idx << HDR_START_IDX_SHIFT) & HDR_START_IDX_MASK;
+	if (rta_sec_era >= RTA_SEC_ERA_10)
+		opcode |= (start_idx << HDR_START_IDX_SHIFT) &
+				HDR_START_IDX_MASK_ERA10;
+	else
+		opcode |= (start_idx << HDR_START_IDX_SHIFT) &
+				HDR_START_IDX_MASK;
 
 	if (flags & DNR)
 		opcode |= HDR_DNR;
@@ -160,7 +168,12 @@ rta_job_header(struct program *program,
 	}
 
 	opcode |= HDR_ONE;
-	opcode |= ((start_idx << HDR_START_IDX_SHIFT) & HDR_START_IDX_MASK);
+	if (rta_sec_era >= RTA_SEC_ERA_10)
+		opcode |= (start_idx << HDR_START_IDX_SHIFT) &
+				HDR_START_IDX_MASK_ERA10;
+	else
+		opcode |= (start_idx << HDR_START_IDX_SHIFT) &
+				HDR_START_IDX_MASK;
 
 	if (flags & EXT) {
 		opcode |= HDR_EXT;

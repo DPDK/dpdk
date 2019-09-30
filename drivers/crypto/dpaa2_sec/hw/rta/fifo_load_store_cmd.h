@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
- *
+ * Copyright 2016,2019 NXP
  */
 
 #ifndef __RTA_FIFO_LOAD_STORE_CMD_H__
@@ -42,7 +41,8 @@ static const uint32_t fifo_load_table[][2] = {
  * supported.
  */
 static const unsigned int fifo_load_table_sz[] = {22, 22, 23, 23,
-						  23, 23, 23, 23};
+						  23, 23, 23, 23,
+						  23, 23};
 
 static inline int
 rta_fifo_load(struct program *program, uint32_t src,
@@ -201,7 +201,8 @@ static const uint32_t fifo_store_table[][2] = {
  * supported.
  */
 static const unsigned int fifo_store_table_sz[] = {21, 21, 21, 21,
-						   22, 22, 22, 23};
+						   22, 22, 22, 23,
+						   23, 23};
 
 static inline int
 rta_fifo_store(struct program *program, uint32_t src,

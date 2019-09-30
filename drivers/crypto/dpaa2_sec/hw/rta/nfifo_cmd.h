@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
- *
+ * Copyright 2016,2019 NXP
  */
 
 #ifndef __RTA_NFIFO_CMD_H__
@@ -24,7 +23,7 @@ static const uint32_t nfifo_src[][2] = {
  * Allowed NFIFO LOAD sources for each SEC Era.
  * Values represent the number of entries from nfifo_src[] that are supported.
  */
-static const unsigned int nfifo_src_sz[] = {4, 5, 5, 5, 5, 5, 5, 7};
+static const unsigned int nfifo_src_sz[] = {4, 5, 5, 5, 5, 5, 5, 7, 7, 7};
 
 static const uint32_t nfifo_data[][2] = {
 	{ MSG,   NFIFOENTRY_DTYPE_MSG },
@@ -77,7 +76,8 @@ static const uint32_t nfifo_flags[][2] = {
  * Allowed NFIFO LOAD flags for each SEC Era.
  * Values represent the number of entries from nfifo_flags[] that are supported.
  */
-static const unsigned int nfifo_flags_sz[] = {12, 14, 14, 14, 14, 14, 14, 14};
+static const unsigned int nfifo_flags_sz[] = {12, 14, 14, 14, 14, 14,
+					      14, 14, 14, 14};
 
 static const uint32_t nfifo_pad_flags[][2] = {
 	{ BM, NFIFOENTRY_BM },
@@ -90,7 +90,7 @@ static const uint32_t nfifo_pad_flags[][2] = {
  * Values represent the number of entries from nfifo_pad_flags[] that are
  * supported.
  */
-static const unsigned int nfifo_pad_flags_sz[] = {2, 2, 2, 2, 3, 3, 3, 3};
+static const unsigned int nfifo_pad_flags_sz[] = {2, 2, 2, 2, 3, 3, 3, 3, 3, 3};
 
 static inline int
 rta_nfifo_load(struct program *program, uint32_t src,

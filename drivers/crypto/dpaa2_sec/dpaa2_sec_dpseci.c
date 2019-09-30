@@ -3450,6 +3450,11 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 	/* init user callbacks */
 	TAILQ_INIT(&(cryptodev->link_intr_cbs));
 
+	if (dpaa2_svr_family == SVR_LX2160A)
+		rta_set_sec_era(RTA_SEC_ERA_10);
+
+	DPAA2_SEC_INFO("2-SEC ERA is %d", rta_get_sec_era());
+
 	/* Invoke PMD device initialization function */
 	retval = dpaa2_sec_dev_init(cryptodev);
 	if (retval == 0)

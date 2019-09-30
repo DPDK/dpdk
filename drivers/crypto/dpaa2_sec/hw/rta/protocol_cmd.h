@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016, 2019 NXP
+ * Copyright 2016,2019 NXP
  *
  */
 
@@ -327,6 +327,10 @@ static const uint32_t proto_blob_flags[] = {
 	OP_PCL_BLOB_FORMAT_MASK | OP_PCL_BLOB_BLACK | OP_PCL_BLOB_TKEK |
 		OP_PCL_BLOB_EKT | OP_PCL_BLOB_REG_MASK | OP_PCL_BLOB_SEC_MEM,
 	OP_PCL_BLOB_FORMAT_MASK | OP_PCL_BLOB_BLACK | OP_PCL_BLOB_TKEK |
+		OP_PCL_BLOB_EKT | OP_PCL_BLOB_REG_MASK | OP_PCL_BLOB_SEC_MEM,
+	OP_PCL_BLOB_FORMAT_MASK | OP_PCL_BLOB_BLACK | OP_PCL_BLOB_TKEK |
+		OP_PCL_BLOB_EKT | OP_PCL_BLOB_REG_MASK | OP_PCL_BLOB_SEC_MEM,
+	OP_PCL_BLOB_FORMAT_MASK | OP_PCL_BLOB_BLACK | OP_PCL_BLOB_TKEK |
 		OP_PCL_BLOB_EKT | OP_PCL_BLOB_REG_MASK | OP_PCL_BLOB_SEC_MEM
 };
 
@@ -604,7 +608,8 @@ static const struct proto_map proto_table[] = {
  * Allowed OPERATION protocols for each SEC Era.
  * Values represent the number of entries from proto_table[] that are supported.
  */
-static const unsigned int proto_table_sz[] = {21, 29, 29, 29, 29, 35, 37, 40};
+static const unsigned int proto_table_sz[] = {21, 29, 29, 29, 29, 35, 37,
+						40, 40, 40};
 
 static inline int
 rta_proto_operation(struct program *program, uint32_t optype,

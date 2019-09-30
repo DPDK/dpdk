@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
- *
+ * Copyright 2016,2019 NXP
  */
 
 #ifndef __RTA_SEC_RUN_TIME_ASM_H__
@@ -36,7 +35,9 @@ enum rta_sec_era {
 	RTA_SEC_ERA_6,
 	RTA_SEC_ERA_7,
 	RTA_SEC_ERA_8,
-	MAX_SEC_ERA = RTA_SEC_ERA_8
+	RTA_SEC_ERA_9,
+	RTA_SEC_ERA_10,
+	MAX_SEC_ERA = RTA_SEC_ERA_10
 };
 
 /**
@@ -605,10 +606,14 @@ __rta_inline_data(struct program *program, uint64_t data,
 static inline unsigned int
 rta_desc_len(uint32_t *buffer)
 {
-	if ((*buffer & CMD_MASK) == CMD_DESC_HDR)
+	if ((*buffer & CMD_MASK) == CMD_DESC_HDR) {
 		return *buffer & HDR_DESCLEN_MASK;
-	else
-		return *buffer & HDR_DESCLEN_SHR_MASK;
+	} else {
+		if (rta_sec_era >= RTA_SEC_ERA_10)
+			return *buffer & HDR_DESCLEN_SHR_MASK_ERA10;
+		else
+			return *buffer & HDR_DESCLEN_SHR_MASK;
+	}
 }
 
 static inline unsigned int
@@ -701,9 +706,15 @@ rta_patch_header(struct program *program, int line, unsigned int new_ref)
 		return -EINVAL;
 
 	opcode = bswap ? swab32(program->buffer[line]) : program->buffer[line];
+	if (rta_sec_era >= RTA_SEC_ERA_10) {
+		opcode &= (uint32_t)~HDR_START_IDX_MASK_ERA10;
+		opcode |= (new_ref << HDR_START_IDX_SHIFT) &
+				HDR_START_IDX_MASK_ERA10;
+	} else {
+		opcode &= (uint32_t)~HDR_START_IDX_MASK;
+		opcode |= (new_ref << HDR_START_IDX_SHIFT) & HDR_START_IDX_MASK;
+	}
 
-	opcode &= (uint32_t)~HDR_START_IDX_MASK;
-	opcode |= (new_ref << HDR_START_IDX_SHIFT) & HDR_START_IDX_MASK;
 	program->buffer[line] = bswap ? swab32(opcode) : opcode;
 
 	return 0;

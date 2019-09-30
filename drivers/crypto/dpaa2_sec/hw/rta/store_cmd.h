@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
- *
+ * Copyright 2016,2019 NXP
  */
 
 #ifndef __RTA_STORE_CMD_H__
@@ -56,7 +55,8 @@ static const uint32_t store_src_table[][2] = {
  * supported.
  */
 static const unsigned int store_src_table_sz[] = {29, 31, 33, 33,
-						  33, 33, 35, 35};
+						  33, 33, 35, 35,
+						  35, 35};
 
 static inline int
 rta_store(struct program *program, uint64_t src,

@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
- *
+ * Copyright 2016,2019 NXP
  */
 
 #ifndef __RTA_OPERATION_CMD_H__
@@ -229,7 +228,8 @@ static const struct alg_aai_map alg_table[] = {
  * Allowed OPERATION algorithms for each SEC Era.
  * Values represent the number of entries from alg_table[] that are supported.
  */
-static const unsigned int alg_table_sz[] = {14, 15, 15, 15, 17, 17, 11, 17};
+static const unsigned int alg_table_sz[] = {14, 15, 15, 15, 17, 17,
+						11, 17, 17, 17};
 
 static inline int
 rta_operation(struct program *program, uint32_t cipher_algo,

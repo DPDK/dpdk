@@ -18,6 +18,8 @@
 #include "hw/compat.h"
 #endif
 
+extern enum rta_sec_era rta_sec_era;
+
 /* Max size of any SEC descriptor in 32-bit words, inclusive of header */
 #define MAX_CAAM_DESCSIZE	64
 
@@ -113,9 +115,12 @@
 /* Start Index or SharedDesc Length */
 #define HDR_START_IDX_SHIFT	16
 #define HDR_START_IDX_MASK	(0x3f << HDR_START_IDX_SHIFT)
+#define HDR_START_IDX_MASK_ERA10	(0x7f << HDR_START_IDX_SHIFT)
 
 /* If shared descriptor header, 6-bit length */
 #define HDR_DESCLEN_SHR_MASK	0x3f
+/* If shared descriptor header, 7-bit length era10 onwards*/
+#define HDR_DESCLEN_SHR_MASK_ERA10	0x7f
 
 /* If non-shared header, 7-bit length */
 #define HDR_DESCLEN_MASK	0x7f

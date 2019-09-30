@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
- *
+ * Copyright 2016,2019 NXP
  */
 
 #ifndef __RTA_MATH_CMD_H__
@@ -29,7 +28,8 @@ static const uint32_t math_op1[][2] = {
  * Allowed MATH op1 sources for each SEC Era.
  * Values represent the number of entries from math_op1[] that are supported.
  */
-static const unsigned int math_op1_sz[] = {10, 10, 12, 12, 12, 12, 12, 12};
+static const unsigned int math_op1_sz[] = {10, 10, 12, 12, 12, 12,
+					   12, 12, 12, 12};
 
 static const uint32_t math_op2[][2] = {
 /*1*/	{ MATH0,     MATH_SRC1_REG0 },
@@ -51,7 +51,8 @@ static const uint32_t math_op2[][2] = {
  * Allowed MATH op2 sources for each SEC Era.
  * Values represent the number of entries from math_op2[] that are supported.
  */
-static const unsigned int math_op2_sz[] = {8, 9, 13, 13, 13, 13, 13, 13};
+static const unsigned int math_op2_sz[] = {8, 9, 13, 13, 13, 13, 13, 13,
+					   13, 13};
 
 static const uint32_t math_result[][2] = {
 /*1*/	{ MATH0,     MATH_DEST_REG0 },
@@ -71,7 +72,8 @@ static const uint32_t math_result[][2] = {
  * Values represent the number of entries from math_result[] that are
  * supported.
  */
-static const unsigned int math_result_sz[] = {9, 9, 10, 10, 10, 10, 10, 10};
+static const unsigned int math_result_sz[] = {9, 9, 10, 10, 10, 10, 10, 10,
+					      10, 10};
 
 static inline int
 rta_math(struct program *program, uint64_t operand1,
