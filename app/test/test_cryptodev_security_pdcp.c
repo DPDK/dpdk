@@ -100,6 +100,33 @@ static int uplane_encap_no_integrity(uint32_t sn_size, uint8_t dir,
 }
 
 static int
+uplane_decap_no_integrity(uint32_t sn_size, uint8_t dir,
+		enum enc_alg_off enc_alg_off)
+{
+	int i = PDCP_UPLANE_OFFSET + ((dir == 0) ? UPLINK : DOWNLINK) +
+			enc_alg_off;
+
+	switch (sn_size) {
+	case 7:
+		i += SHORT_SEQ_NUM_OFFSET;
+		break;
+	case 15:
+		i += FIFTEEN_BIT_SEQ_NUM_OFFSET;
+		break;
+	case 12:
+		i += LONG_SEQ_NUM_OFFSET;
+		break;
+	case 18:
+		i += EIGHTEEN_BIT_SEQ_NUM_OFFSET;
+		break;
+	default:
+		printf("\nInvalid SN: %u\n", sn_size);
+	}
+
+	return test_pdcp_proto_uplane_decap(i);
+}
+
+static int
 uplane_encap_with_integrity(uint32_t sn_size, uint8_t dir,
 		enum enc_alg_off enc_alg_off,
 		enum auth_alg_off auth_alg_off)
@@ -122,6 +149,31 @@ uplane_encap_with_integrity(uint32_t sn_size, uint8_t dir,
 	}
 
 	return test_pdcp_proto_uplane_encap_with_int(i);
+}
+
+static int
+uplane_decap_with_integrity(uint32_t sn_size, uint8_t dir,
+		enum enc_alg_off enc_alg_off,
+		enum auth_alg_off auth_alg_off)
+{
+	int i = 0;
+
+	switch (sn_size) {
+	case 12:
+		i = PDCP_UPLANE_12BIT_OFFSET + enc_alg_off +
+			auth_alg_off + ((dir == 0) ?
+				UPLINK : DOWNLINK);
+		break;
+	case 18:
+		i = PDCP_UPLANE_18BIT_OFFSET + enc_alg_off +
+			auth_alg_off + ((dir == 0) ?
+				UPLINK : DOWNLINK);
+		break;
+	default:
+		printf("\nInvalid SN: %u\n", sn_size);
+	}
+
+	return test_pdcp_proto_uplane_decap_with_int(i);
 }
 
 #define TEST_PDCP_COUNT(func) do {			\
@@ -409,6 +461,127 @@ test_PDCP_PROTO_uplane_encap_all(void)
 	TEST_PDCP_COUNT(uplane_encap_with_integrity(18, DOWNLINK, ZUC_ENC, AES_AUTH));
 	TEST_PDCP_COUNT(uplane_encap_with_integrity(18, UPLINK, ZUC_ENC, ZUC_AUTH));
 	TEST_PDCP_COUNT(uplane_encap_with_integrity(18, DOWNLINK, ZUC_ENC, ZUC_AUTH));
+
+	if (n - i)
+		printf("## %s: %d passed out of %d\n", __func__, i, n);
+
+	return n - i;
+};
+
+int
+test_PDCP_PROTO_uplane_decap_all(void)
+{
+	int i = 0, n = 0;
+
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(12, UPLINK, NULL_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(12, DOWNLINK, NULL_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(7, UPLINK, NULL_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(7, DOWNLINK, NULL_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(15, UPLINK, NULL_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(15, DOWNLINK, NULL_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(18, UPLINK, NULL_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(18, DOWNLINK, NULL_ENC));
+
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(12, UPLINK, SNOW_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(12, DOWNLINK, SNOW_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(7, UPLINK, SNOW_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(7, DOWNLINK, SNOW_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(15, UPLINK, SNOW_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(15, DOWNLINK, SNOW_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(18, UPLINK, SNOW_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(18, DOWNLINK, SNOW_ENC));
+
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(12, UPLINK, AES_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(12, DOWNLINK, AES_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(7, UPLINK, AES_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(7, DOWNLINK, AES_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(15, UPLINK, AES_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(15, DOWNLINK, AES_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(18, UPLINK, AES_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(18, DOWNLINK, AES_ENC));
+
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(12, UPLINK, ZUC_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(12, DOWNLINK, ZUC_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(7, UPLINK, ZUC_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(7, DOWNLINK, ZUC_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(15, UPLINK, ZUC_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(15, DOWNLINK, ZUC_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(18, UPLINK, ZUC_ENC));
+	TEST_PDCP_COUNT(uplane_decap_no_integrity(18, DOWNLINK, ZUC_ENC));
+
+	/* u-plane 12-bit with integrity */
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, NULL_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, NULL_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, NULL_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, NULL_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, NULL_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, NULL_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, NULL_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, NULL_ENC, ZUC_AUTH));
+
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, SNOW_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, SNOW_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, SNOW_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, SNOW_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, SNOW_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, SNOW_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, SNOW_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, SNOW_ENC, ZUC_AUTH));
+
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, AES_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, AES_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, AES_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, AES_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, AES_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, AES_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, AES_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, AES_ENC, ZUC_AUTH));
+
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, ZUC_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, ZUC_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, ZUC_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, ZUC_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, ZUC_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, ZUC_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, UPLINK, ZUC_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(12, DOWNLINK, ZUC_ENC, ZUC_AUTH));
+
+	/* u-plane 18-bit with integrity */
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, NULL_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, NULL_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, NULL_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, NULL_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, NULL_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, NULL_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, NULL_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, NULL_ENC, ZUC_AUTH));
+
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, SNOW_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, SNOW_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, SNOW_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, SNOW_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, SNOW_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, SNOW_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, SNOW_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, SNOW_ENC, ZUC_AUTH));
+
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, AES_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, AES_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, AES_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, AES_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, AES_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, AES_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, AES_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, AES_ENC, ZUC_AUTH));
+
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, ZUC_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, ZUC_ENC, NULL_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, ZUC_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, ZUC_ENC, SNOW_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, ZUC_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, ZUC_ENC, AES_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, UPLINK, ZUC_ENC, ZUC_AUTH));
+	TEST_PDCP_COUNT(uplane_decap_with_integrity(18, DOWNLINK, ZUC_ENC, ZUC_AUTH));
 
 	if (n - i)
 		printf("## %s: %d passed out of %d\n", __func__, i, n);

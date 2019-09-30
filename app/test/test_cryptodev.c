@@ -7252,6 +7252,30 @@ test_pdcp_proto_cplane_decap(int i)
 		pdcp_test_data_in_len[i]);
 }
 
+int
+test_pdcp_proto_uplane_decap(int i)
+{
+	return test_pdcp_proto(i, 0,
+		RTE_CRYPTO_CIPHER_OP_DECRYPT,
+		RTE_CRYPTO_AUTH_OP_VERIFY,
+		pdcp_test_data_out[i],
+		pdcp_test_data_in_len[i],
+		pdcp_test_data_in[i],
+		pdcp_test_data_in_len[i]);
+}
+
+int
+test_pdcp_proto_uplane_decap_with_int(int i)
+{
+	return test_pdcp_proto(i, 0,
+		RTE_CRYPTO_CIPHER_OP_DECRYPT,
+		RTE_CRYPTO_AUTH_OP_VERIFY,
+		pdcp_test_data_out[i],
+		pdcp_test_data_in_len[i] + 4,
+		pdcp_test_data_in[i],
+		pdcp_test_data_in_len[i]);
+}
+
 #endif
 
 static int
@@ -11675,6 +11699,9 @@ static struct unit_test_suite cryptodev_dpaa_sec_testsuite  = {
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_PDCP_PROTO_uplane_encap_all),
+
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_uplane_decap_all),
 #endif
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -11790,6 +11817,9 @@ static struct unit_test_suite cryptodev_dpaa2_sec_testsuite  = {
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_PDCP_PROTO_uplane_encap_all),
+
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_uplane_decap_all),
 #endif
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
