@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
+ * Copyright 2016, 2019 NXP
  *
  */
 
@@ -621,6 +621,7 @@
 #define OP_PCLID_LTE_PDCP_USER	(0x42 << OP_PCLID_SHIFT)
 #define OP_PCLID_LTE_PDCP_CTRL	(0x43 << OP_PCLID_SHIFT)
 #define OP_PCLID_LTE_PDCP_CTRL_MIXED	(0x44 << OP_PCLID_SHIFT)
+#define OP_PCLID_LTE_PDCP_USER_RN	(0x45 << OP_PCLID_SHIFT)
 
 /*
  * ProtocolInfo selectors

@@ -473,6 +473,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 			shared_desc_len = cnstr_shdsc_pdcp_c_plane_encap(
 					cdb->sh_desc, 1, swap,
 					ses->pdcp.hfn,
+					ses->pdcp.sn_size,
 					ses->pdcp.bearer,
 					ses->pdcp.pkt_dir,
 					ses->pdcp.hfn_threshold,
@@ -482,6 +483,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 			shared_desc_len = cnstr_shdsc_pdcp_c_plane_decap(
 					cdb->sh_desc, 1, swap,
 					ses->pdcp.hfn,
+					ses->pdcp.sn_size,
 					ses->pdcp.bearer,
 					ses->pdcp.pkt_dir,
 					ses->pdcp.hfn_threshold,
@@ -2389,9 +2391,10 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 
 	/* Auth is only applicable for control mode operation. */
 	if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
-		if (pdcp_xform->sn_size != RTE_SECURITY_PDCP_SN_SIZE_5) {
+		if (pdcp_xform->sn_size != RTE_SECURITY_PDCP_SN_SIZE_5 &&
+		    pdcp_xform->sn_size != RTE_SECURITY_PDCP_SN_SIZE_12) {
 			DPAA_SEC_ERR(
-				"PDCP Seq Num size should be 5 bits for cmode");
+				"PDCP Seq Num size should be 5/12 bits for cmode");
 			goto out;
 		}
 		if (auth_xform) {

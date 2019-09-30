@@ -253,6 +253,7 @@ pdcp_insert_cplane_null_op(struct program *p,
 			   struct alginfo *cipherdata __maybe_unused,
 			   struct alginfo *authdata __maybe_unused,
 			   unsigned int dir,
+			   enum pdcp_sn_size sn_size __maybe_unused,
 			   unsigned char era_2_sw_hfn_ovrd __maybe_unused)
 {
 	LABEL(local_offset);
@@ -413,8 +414,18 @@ pdcp_insert_cplane_int_only_op(struct program *p,
 			       bool swap __maybe_unused,
 			       struct alginfo *cipherdata __maybe_unused,
 			       struct alginfo *authdata, unsigned int dir,
+			       enum pdcp_sn_size sn_size,
 			       unsigned char era_2_sw_hfn_ovrd)
 {
+	if (rta_sec_era >= RTA_SEC_ERA_8 && sn_size == PDCP_SN_SIZE_12) {
+		KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
+		    authdata->keylen, INLINE_KEY(authdata));
+
+		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_USER_RN,
+			 (uint16_t)authdata->algtype);
+		return 0;
+	}
+
 	LABEL(local_offset);
 	REFERENCE(move_cmd_read_descbuf);
 	REFERENCE(move_cmd_write_descbuf);
@@ -720,6 +731,7 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 			       struct alginfo *cipherdata,
 			       struct alginfo *authdata __maybe_unused,
 			       unsigned int dir,
+			       enum pdcp_sn_size sn_size,
 			       unsigned char era_2_sw_hfn_ovrd __maybe_unused)
 {
 	/* Insert Cipher Key */
@@ -727,8 +739,12 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 
 	if (rta_sec_era >= RTA_SEC_ERA_8) {
-		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
-				(uint16_t)cipherdata->algtype << 8);
+		if (sn_size == PDCP_SN_SIZE_5)
+			PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
+				 (uint16_t)cipherdata->algtype << 8);
+		else
+			PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_USER_RN,
+				 (uint16_t)cipherdata->algtype << 8);
 		return 0;
 	}
 
@@ -742,12 +758,12 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 			IFB | IMMED2);
 	SEQSTORE(p, MATH0, 7, 1, 0);
 	MATHB(p, MATH1, SHLD, MATH1, MATH1, 8, 0);
-	MOVE(p, DESCBUF, 8, MATH2, 0, 8, WAITCOMP | IMMED);
+	MOVEB(p, DESCBUF, 8, MATH2, 0, 8, WAITCOMP | IMMED);
 	MATHB(p, MATH1, OR, MATH2, MATH2, 8, 0);
 
 	switch (cipherdata->algtype) {
 	case PDCP_CIPHER_TYPE_SNOW:
-		MOVE(p, MATH2, 0, CONTEXT1, 0, 8, WAITCOMP | IMMED);
+		MOVEB(p, MATH2, 0, CONTEXT1, 0, 8, WAITCOMP | IMMED);
 
 		if (rta_sec_era > RTA_SEC_ERA_2) {
 			MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
@@ -771,7 +787,7 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 		break;
 
 	case PDCP_CIPHER_TYPE_AES:
-		MOVE(p, MATH2, 0, CONTEXT1, 0x10, 0x10, WAITCOMP | IMMED);
+		MOVEB(p, MATH2, 0, CONTEXT1, 0x10, 0x10, WAITCOMP | IMMED);
 
 		if (rta_sec_era > RTA_SEC_ERA_2) {
 			MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
@@ -802,8 +818,8 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 			return -ENOTSUP;
 		}
 
-		MOVE(p, MATH2, 0, CONTEXT1, 0, 0x08, IMMED);
-		MOVE(p, MATH2, 0, CONTEXT1, 0x08, 0x08, WAITCOMP | IMMED);
+		MOVEB(p, MATH2, 0, CONTEXT1, 0, 0x08, IMMED);
+		MOVEB(p, MATH2, 0, CONTEXT1, 0x08, 0x08, WAITCOMP | IMMED);
 		MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
 		if (dir == OP_TYPE_ENCAP_PROTOCOL)
 			MATHB(p, SEQINSZ, ADD, PDCP_MAC_I_LEN, VSEQOUTSZ, 4,
@@ -848,6 +864,7 @@ pdcp_insert_cplane_acc_op(struct program *p,
 			  struct alginfo *cipherdata,
 			  struct alginfo *authdata,
 			  unsigned int dir,
+			  enum pdcp_sn_size sn_size,
 			  unsigned char era_2_hfn_ovrd __maybe_unused)
 {
 	/* Insert Auth Key */
@@ -857,7 +874,14 @@ pdcp_insert_cplane_acc_op(struct program *p,
 	/* Insert Cipher Key */
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
-	PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL, (uint16_t)cipherdata->algtype);
+
+	if (sn_size == PDCP_SN_SIZE_5)
+		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL,
+			 (uint16_t)cipherdata->algtype);
+	else
+		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_USER_RN,
+			 ((uint16_t)cipherdata->algtype << 8) |
+			  (uint16_t)authdata->algtype);
 
 	return 0;
 }
@@ -868,6 +892,7 @@ pdcp_insert_cplane_snow_aes_op(struct program *p,
 			       struct alginfo *cipherdata,
 			       struct alginfo *authdata,
 			       unsigned int dir,
+			       enum pdcp_sn_size sn_size,
 			       unsigned char era_2_sw_hfn_ovrd)
 {
 	LABEL(back_to_sd_offset);
@@ -887,9 +912,14 @@ pdcp_insert_cplane_snow_aes_op(struct program *p,
 		KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
 				authdata->keylen, INLINE_KEY(authdata));
 
-		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
-			 ((uint16_t)cipherdata->algtype << 8) |
-			 (uint16_t)authdata->algtype);
+		if (sn_size == PDCP_SN_SIZE_5)
+			PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
+				 ((uint16_t)cipherdata->algtype << 8) |
+				 (uint16_t)authdata->algtype);
+		else
+			PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_USER_RN,
+				 ((uint16_t)cipherdata->algtype << 8) |
+				 (uint16_t)authdata->algtype);
 
 		return 0;
 	}
@@ -1174,6 +1204,7 @@ pdcp_insert_cplane_aes_snow_op(struct program *p,
 			       struct alginfo *cipherdata,
 			       struct alginfo *authdata,
 			       unsigned int dir,
+			       enum pdcp_sn_size sn_size,
 			       unsigned char era_2_sw_hfn_ovrd __maybe_unused)
 {
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
@@ -1182,7 +1213,14 @@ pdcp_insert_cplane_aes_snow_op(struct program *p,
 	    INLINE_KEY(authdata));
 
 	if (rta_sec_era >= RTA_SEC_ERA_8) {
-		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
+		int pclid;
+
+		if (sn_size == PDCP_SN_SIZE_5)
+			pclid = OP_PCLID_LTE_PDCP_CTRL_MIXED;
+		else
+			pclid = OP_PCLID_LTE_PDCP_USER_RN;
+
+		PROTOCOL(p, dir, pclid,
 			 ((uint16_t)cipherdata->algtype << 8) |
 			 (uint16_t)authdata->algtype);
 
@@ -1281,6 +1319,7 @@ pdcp_insert_cplane_snow_zuc_op(struct program *p,
 			       struct alginfo *cipherdata,
 			       struct alginfo *authdata,
 			       unsigned int dir,
+			       enum pdcp_sn_size sn_size,
 			       unsigned char era_2_sw_hfn_ovrd __maybe_unused)
 {
 	LABEL(keyjump);
@@ -1300,7 +1339,14 @@ pdcp_insert_cplane_snow_zuc_op(struct program *p,
 	SET_LABEL(p, keyjump);
 
 	if (rta_sec_era >= RTA_SEC_ERA_8) {
-		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
+		int pclid;
+
+		if (sn_size == PDCP_SN_SIZE_5)
+			pclid = OP_PCLID_LTE_PDCP_CTRL_MIXED;
+		else
+			pclid = OP_PCLID_LTE_PDCP_USER_RN;
+
+		PROTOCOL(p, dir, pclid,
 			 ((uint16_t)cipherdata->algtype << 8) |
 			 (uint16_t)authdata->algtype);
 		return 0;
@@ -1376,6 +1422,7 @@ pdcp_insert_cplane_aes_zuc_op(struct program *p,
 			      struct alginfo *cipherdata,
 			      struct alginfo *authdata,
 			      unsigned int dir,
+			      enum pdcp_sn_size sn_size,
 			      unsigned char era_2_sw_hfn_ovrd __maybe_unused)
 {
 	LABEL(keyjump);
@@ -1393,7 +1440,14 @@ pdcp_insert_cplane_aes_zuc_op(struct program *p,
 	    INLINE_KEY(authdata));
 
 	if (rta_sec_era >= RTA_SEC_ERA_8) {
-		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
+		int pclid;
+
+		if (sn_size == PDCP_SN_SIZE_5)
+			pclid = OP_PCLID_LTE_PDCP_CTRL_MIXED;
+		else
+			pclid = OP_PCLID_LTE_PDCP_USER_RN;
+
+		PROTOCOL(p, dir, pclid,
 			 ((uint16_t)cipherdata->algtype << 8) |
 			 (uint16_t)authdata->algtype);
 
@@ -1474,6 +1528,7 @@ pdcp_insert_cplane_zuc_snow_op(struct program *p,
 			       struct alginfo *cipherdata,
 			       struct alginfo *authdata,
 			       unsigned int dir,
+			       enum pdcp_sn_size sn_size,
 			       unsigned char era_2_sw_hfn_ovrd __maybe_unused)
 {
 	LABEL(keyjump);
@@ -1491,7 +1546,14 @@ pdcp_insert_cplane_zuc_snow_op(struct program *p,
 	    INLINE_KEY(authdata));
 
 	if (rta_sec_era >= RTA_SEC_ERA_8) {
-		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
+		int pclid;
+
+		if (sn_size == PDCP_SN_SIZE_5)
+			pclid = OP_PCLID_LTE_PDCP_CTRL_MIXED;
+		else
+			pclid = OP_PCLID_LTE_PDCP_USER_RN;
+
+		PROTOCOL(p, dir, pclid,
 			 ((uint16_t)cipherdata->algtype << 8) |
 			 (uint16_t)authdata->algtype);
 
@@ -1594,6 +1656,7 @@ pdcp_insert_cplane_zuc_aes_op(struct program *p,
 			      struct alginfo *cipherdata,
 			      struct alginfo *authdata,
 			      unsigned int dir,
+			      enum pdcp_sn_size sn_size,
 			      unsigned char era_2_sw_hfn_ovrd __maybe_unused)
 {
 	if (rta_sec_era < RTA_SEC_ERA_5) {
@@ -1602,12 +1665,19 @@ pdcp_insert_cplane_zuc_aes_op(struct program *p,
 	}
 
 	if (rta_sec_era >= RTA_SEC_ERA_8) {
+		int pclid;
+
 		KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 				cipherdata->keylen, INLINE_KEY(cipherdata));
 		KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
 				authdata->keylen, INLINE_KEY(authdata));
 
-		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_CTRL_MIXED,
+		if (sn_size == PDCP_SN_SIZE_5)
+			pclid = OP_PCLID_LTE_PDCP_CTRL_MIXED;
+		else
+			pclid = OP_PCLID_LTE_PDCP_USER_RN;
+
+		PROTOCOL(p, dir, pclid,
 			 ((uint16_t)cipherdata->algtype << 8) |
 			 (uint16_t)authdata->algtype);
 		return 0;
@@ -1754,7 +1824,7 @@ pdcp_insert_uplane_15bit_op(struct program *p,
 		      IFB | IMMED2);
 	SEQSTORE(p, MATH0, 6, 2, 0);
 	MATHB(p, MATH1, SHLD, MATH1, MATH1, 8, 0);
-	MOVE(p, DESCBUF, 8, MATH2, 0, 8, WAITCOMP | IMMED);
+	MOVEB(p, DESCBUF, 8, MATH2, 0, 8, WAITCOMP | IMMED);
 	MATHB(p, MATH1, OR, MATH2, MATH2, 8, 0);
 
 	MATHB(p, SEQINSZ, SUB, MATH3, VSEQINSZ, 4, 0);
@@ -1765,7 +1835,7 @@ pdcp_insert_uplane_15bit_op(struct program *p,
 	op = dir == OP_TYPE_ENCAP_PROTOCOL ? DIR_ENC : DIR_DEC;
 	switch (cipherdata->algtype) {
 	case PDCP_CIPHER_TYPE_SNOW:
-		MOVE(p, MATH2, 0, CONTEXT1, 0, 8, WAITCOMP | IMMED);
+		MOVEB(p, MATH2, 0, CONTEXT1, 0, 8, WAITCOMP | IMMED);
 		ALG_OPERATION(p, OP_ALG_ALGSEL_SNOW_F8,
 			      OP_ALG_AAI_F8,
 			      OP_ALG_AS_INITFINAL,
@@ -1774,7 +1844,7 @@ pdcp_insert_uplane_15bit_op(struct program *p,
 		break;
 
 	case PDCP_CIPHER_TYPE_AES:
-		MOVE(p, MATH2, 0, CONTEXT1, 0x10, 0x10, WAITCOMP | IMMED);
+		MOVEB(p, MATH2, 0, CONTEXT1, 0x10, 0x10, WAITCOMP | IMMED);
 		ALG_OPERATION(p, OP_ALG_ALGSEL_AES,
 			      OP_ALG_AAI_CTR,
 			      OP_ALG_AS_INITFINAL,
@@ -1787,8 +1857,8 @@ pdcp_insert_uplane_15bit_op(struct program *p,
 			pr_err("Invalid era for selected algorithm\n");
 			return -ENOTSUP;
 		}
-		MOVE(p, MATH2, 0, CONTEXT1, 0, 0x08, IMMED);
-		MOVE(p, MATH2, 0, CONTEXT1, 0x08, 0x08, WAITCOMP | IMMED);
+		MOVEB(p, MATH2, 0, CONTEXT1, 0, 0x08, IMMED);
+		MOVEB(p, MATH2, 0, CONTEXT1, 0x08, 0x08, WAITCOMP | IMMED);
 
 		ALG_OPERATION(p, OP_ALG_ALGSEL_ZUCE,
 			      OP_ALG_AAI_F8,
@@ -1885,6 +1955,7 @@ insert_hfn_ov_op(struct program *p,
 static inline enum pdb_type_e
 cnstr_pdcp_c_plane_pdb(struct program *p,
 		       uint32_t hfn,
+		       enum pdcp_sn_size sn_size,
 		       unsigned char bearer,
 		       unsigned char direction,
 		       uint32_t hfn_threshold,
@@ -1923,18 +1994,36 @@ cnstr_pdcp_c_plane_pdb(struct program *p,
 	if (rta_sec_era >= RTA_SEC_ERA_8) {
 		memset(&pdb, 0x00, sizeof(struct pdcp_pdb));
 
-		/* This is a HW issue. Bit 2 should be set to zero,
-		 * but it does not work this way. Override here.
+		/* To support 12-bit seq numbers, we use u-plane opt in pdb.
+		 * SEC supports 5-bit only with c-plane opt in pdb.
 		 */
-		pdb.opt_res.rsvd = 0x00000002;
+		if (sn_size == PDCP_SN_SIZE_12) {
+			pdb.hfn_res = hfn << PDCP_U_PLANE_PDB_LONG_SN_HFN_SHIFT;
+			pdb.bearer_dir_res = (uint32_t)
+				((bearer << PDCP_U_PLANE_PDB_BEARER_SHIFT) |
+				 (direction << PDCP_U_PLANE_PDB_DIR_SHIFT));
 
-		/* Copy relevant information from user to PDB */
-		pdb.hfn_res = hfn << PDCP_C_PLANE_PDB_HFN_SHIFT;
-		pdb.bearer_dir_res = (uint32_t)
+			pdb.hfn_thr_res =
+			hfn_threshold << PDCP_U_PLANE_PDB_LONG_SN_HFN_THR_SHIFT;
+
+		} else {
+			/* This means 5-bit c-plane.
+			 * Here we use c-plane opt in pdb
+			 */
+
+			/* This is a HW issue. Bit 2 should be set to zero,
+			 * but it does not work this way. Override here.
+			 */
+			pdb.opt_res.rsvd = 0x00000002;
+
+			/* Copy relevant information from user to PDB */
+			pdb.hfn_res = hfn << PDCP_C_PLANE_PDB_HFN_SHIFT;
+			pdb.bearer_dir_res = (uint32_t)
 				((bearer << PDCP_C_PLANE_PDB_BEARER_SHIFT) |
-				 (direction << PDCP_C_PLANE_PDB_DIR_SHIFT));
-		pdb.hfn_thr_res =
-				hfn_threshold << PDCP_C_PLANE_PDB_HFN_THR_SHIFT;
+				(direction << PDCP_C_PLANE_PDB_DIR_SHIFT));
+			pdb.hfn_thr_res =
+			hfn_threshold << PDCP_C_PLANE_PDB_HFN_THR_SHIFT;
+		}
 
 		/* copy PDB in descriptor*/
 		__rta_out32(p, pdb.opt_res.opt);
@@ -2053,6 +2142,7 @@ cnstr_pdcp_u_plane_pdb(struct program *p,
  * @swap: must be true when core endianness doesn't match SEC endianness
  * @hfn: starting Hyper Frame Number to be used together with the SN from the
  *       PDCP frames.
+ * @sn_size: size of sequence numbers, only 5/12 bit sequence numbers are valid
  * @bearer: radio bearer ID
  * @direction: the direction of the PDCP frame (UL/DL)
  * @hfn_threshold: HFN value that once reached triggers a warning from SEC that
@@ -2077,6 +2167,7 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 			       bool ps,
 			       bool swap,
 			       uint32_t hfn,
+			       enum pdcp_sn_size sn_size,
 			       unsigned char bearer,
 			       unsigned char direction,
 			       uint32_t hfn_threshold,
@@ -2087,7 +2178,7 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 	static int
 		(*pdcp_cp_fp[PDCP_CIPHER_TYPE_INVALID][PDCP_AUTH_TYPE_INVALID])
 			(struct program*, bool swap, struct alginfo *,
-			 struct alginfo *, unsigned int,
+			 struct alginfo *, unsigned int, enum pdcp_sn_size,
 			unsigned char __maybe_unused) = {
 		{	/* NULL */
 			pdcp_insert_cplane_null_op,	/* NULL */
@@ -2152,6 +2243,11 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 		return -EINVAL;
 	}
 
+	if (sn_size != PDCP_SN_SIZE_12 && sn_size != PDCP_SN_SIZE_5) {
+		pr_err("C-plane supports only 5-bit and 12-bit sequence numbers\n");
+		return -EINVAL;
+	}
+
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
 	if (swap)
 		PROGRAM_SET_BSWAP(p);
@@ -2162,6 +2258,7 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 
 	pdb_type = cnstr_pdcp_c_plane_pdb(p,
 			hfn,
+			sn_size,
 			bearer,
 			direction,
 			hfn_threshold,
@@ -2170,7 +2267,7 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 
 	SET_LABEL(p, pdb_end);
 
-	err = insert_hfn_ov_op(p, PDCP_SN_SIZE_5, pdb_type,
+	err = insert_hfn_ov_op(p, sn_size, pdb_type,
 			       era_2_sw_hfn_ovrd);
 	if (err)
 		return err;
@@ -2180,6 +2277,7 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 		cipherdata,
 		authdata,
 		OP_TYPE_ENCAP_PROTOCOL,
+		sn_size,
 		era_2_sw_hfn_ovrd);
 	if (err)
 		return err;
@@ -2197,6 +2295,7 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
  * @swap: must be true when core endianness doesn't match SEC endianness
  * @hfn: starting Hyper Frame Number to be used together with the SN from the
  *       PDCP frames.
+ * @sn_size: size of sequence numbers, only 5/12 bit sequence numbers are valid
  * @bearer: radio bearer ID
  * @direction: the direction of the PDCP frame (UL/DL)
  * @hfn_threshold: HFN value that once reached triggers a warning from SEC that
@@ -2222,6 +2321,7 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 			       bool ps,
 			       bool swap,
 			       uint32_t hfn,
+			       enum pdcp_sn_size sn_size,
 			       unsigned char bearer,
 			       unsigned char direction,
 			       uint32_t hfn_threshold,
@@ -2232,7 +2332,8 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 	static int
 		(*pdcp_cp_fp[PDCP_CIPHER_TYPE_INVALID][PDCP_AUTH_TYPE_INVALID])
 			(struct program*, bool swap, struct alginfo *,
-			 struct alginfo *, unsigned int, unsigned char) = {
+			 struct alginfo *, unsigned int, enum pdcp_sn_size,
+			 unsigned char) = {
 		{	/* NULL */
 			pdcp_insert_cplane_null_op,	/* NULL */
 			pdcp_insert_cplane_int_only_op,	/* SNOW f9 */
@@ -2296,6 +2397,11 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 		return -EINVAL;
 	}
 
+	if (sn_size != PDCP_SN_SIZE_12 && sn_size != PDCP_SN_SIZE_5) {
+		pr_err("C-plane supports only 5-bit and 12-bit sequence numbers\n");
+		return -EINVAL;
+	}
+
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
 	if (swap)
 		PROGRAM_SET_BSWAP(p);
@@ -2306,6 +2412,7 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 
 	pdb_type = cnstr_pdcp_c_plane_pdb(p,
 			hfn,
+			sn_size,
 			bearer,
 			direction,
 			hfn_threshold,
@@ -2314,7 +2421,7 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 
 	SET_LABEL(p, pdb_end);
 
-	err = insert_hfn_ov_op(p, PDCP_SN_SIZE_5, pdb_type,
+	err = insert_hfn_ov_op(p, sn_size, pdb_type,
 			       era_2_sw_hfn_ovrd);
 	if (err)
 		return err;
@@ -2324,6 +2431,7 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 		cipherdata,
 		authdata,
 		OP_TYPE_DECAP_PROTOCOL,
+		sn_size,
 		era_2_sw_hfn_ovrd);
 	if (err)
 		return err;

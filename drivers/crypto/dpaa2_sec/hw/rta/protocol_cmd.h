@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
+ * Copyright 2016, 2019 NXP
  *
  */
 
@@ -596,13 +596,15 @@ static const struct proto_map proto_table[] = {
 /*38*/	{OP_TYPE_DECAP_PROTOCOL, OP_PCLID_LTE_PDCP_CTRL_MIXED,
 	 __rta_lte_pdcp_mixed_proto},
 	{OP_TYPE_DECAP_PROTOCOL, OP_PCLID_IPSEC_NEW,     __rta_ipsec_proto},
+/*40*/	{OP_TYPE_DECAP_PROTOCOL, OP_PCLID_LTE_PDCP_USER_RN,
+	__rta_lte_pdcp_mixed_proto},
 };
 
 /*
  * Allowed OPERATION protocols for each SEC Era.
  * Values represent the number of entries from proto_table[] that are supported.
  */
-static const unsigned int proto_table_sz[] = {21, 29, 29, 29, 29, 35, 37, 39};
+static const unsigned int proto_table_sz[] = {21, 29, 29, 29, 29, 35, 37, 40};
 
 static inline int
 rta_proto_operation(struct program *program, uint32_t optype,
