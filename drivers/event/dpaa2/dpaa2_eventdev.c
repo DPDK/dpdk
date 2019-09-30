@@ -33,9 +33,7 @@
 #include <dpaa2_hw_mempool.h>
 #include <dpaa2_hw_dpio.h>
 #include <dpaa2_ethdev.h>
-#ifdef RTE_LIBRTE_SECURITY
 #include <dpaa2_sec_event.h>
-#endif
 #include "dpaa2_eventdev.h"
 #include "dpaa2_eventdev_logs.h"
 #include <portal/dpaa2_hw_pvt.h>
@@ -794,7 +792,6 @@ dpaa2_eventdev_eth_stop(const struct rte_eventdev *dev,
 	return 0;
 }
 
-#ifdef RTE_LIBRTE_SECURITY
 static int
 dpaa2_eventdev_crypto_caps_get(const struct rte_eventdev *dev,
 			    const struct rte_cryptodev *cdev,
@@ -937,7 +934,6 @@ dpaa2_eventdev_crypto_stop(const struct rte_eventdev *dev,
 
 	return 0;
 }
-#endif
 
 static struct rte_eventdev_ops dpaa2_eventdev_ops = {
 	.dev_infos_get    = dpaa2_eventdev_info_get,
@@ -960,13 +956,11 @@ static struct rte_eventdev_ops dpaa2_eventdev_ops = {
 	.eth_rx_adapter_queue_del = dpaa2_eventdev_eth_queue_del,
 	.eth_rx_adapter_start = dpaa2_eventdev_eth_start,
 	.eth_rx_adapter_stop = dpaa2_eventdev_eth_stop,
-#ifdef RTE_LIBRTE_SECURITY
 	.crypto_adapter_caps_get	= dpaa2_eventdev_crypto_caps_get,
 	.crypto_adapter_queue_pair_add	= dpaa2_eventdev_crypto_queue_add,
 	.crypto_adapter_queue_pair_del	= dpaa2_eventdev_crypto_queue_del,
 	.crypto_adapter_start		= dpaa2_eventdev_crypto_start,
 	.crypto_adapter_stop		= dpaa2_eventdev_crypto_stop,
-#endif
 };
 
 static int
