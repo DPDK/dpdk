@@ -1801,9 +1801,16 @@ static inline int
 pdcp_insert_uplane_15bit_op(struct program *p,
 			    bool swap __maybe_unused,
 			    struct alginfo *cipherdata,
+			    struct alginfo *authdata,
 			    unsigned int dir)
 {
 	int op;
+
+	/* Insert auth key if requested */
+	if (authdata && authdata->algtype)
+		KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
+		    authdata->keylen, INLINE_KEY(authdata));
+
 	/* Insert Cipher Key */
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
@@ -2478,6 +2485,7 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 			       unsigned short direction,
 			       uint32_t hfn_threshold,
 			       struct alginfo *cipherdata,
+			       struct alginfo *authdata,
 			       unsigned char era_2_sw_hfn_ovrd)
 {
 	struct program prg;
@@ -2487,6 +2495,11 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 
 	if (rta_sec_era != RTA_SEC_ERA_2 && era_2_sw_hfn_ovrd) {
 		pr_err("Cannot select SW HFN ovrd for other era than 2");
+		return -EINVAL;
+	}
+
+	if (authdata && !authdata->algtype && rta_sec_era < RTA_SEC_ERA_8) {
+		pr_err("Cannot use u-plane auth with era < 8");
 		return -EINVAL;
 	}
 
@@ -2509,6 +2522,13 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 	if (err)
 		return err;
 
+	/* Insert auth key if requested */
+	if (authdata && authdata->algtype) {
+		KEY(p, KEY2, authdata->key_enc_flags,
+		    (uint64_t)authdata->key, authdata->keylen,
+		    INLINE_KEY(authdata));
+	}
+
 	switch (sn_size) {
 	case PDCP_SN_SIZE_7:
 	case PDCP_SN_SIZE_12:
@@ -2518,20 +2538,24 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 				pr_err("Invalid era for selected algorithm\n");
 				return -ENOTSUP;
 			}
+			/* fallthrough */
 		case PDCP_CIPHER_TYPE_AES:
 		case PDCP_CIPHER_TYPE_SNOW:
+		case PDCP_CIPHER_TYPE_NULL:
 			/* Insert Cipher Key */
 			KEY(p, KEY1, cipherdata->key_enc_flags,
 			    (uint64_t)cipherdata->key, cipherdata->keylen,
 			    INLINE_KEY(cipherdata));
-			PROTOCOL(p, OP_TYPE_ENCAP_PROTOCOL,
-				 OP_PCLID_LTE_PDCP_USER,
-				 (uint16_t)cipherdata->algtype);
-			break;
-		case PDCP_CIPHER_TYPE_NULL:
-			insert_copy_frame_op(p,
-					     cipherdata,
-					     OP_TYPE_ENCAP_PROTOCOL);
+
+			if (authdata)
+				PROTOCOL(p, OP_TYPE_ENCAP_PROTOCOL,
+					 OP_PCLID_LTE_PDCP_USER_RN,
+					 ((uint16_t)cipherdata->algtype << 8) |
+					 (uint16_t)authdata->algtype);
+			else
+				PROTOCOL(p, OP_TYPE_ENCAP_PROTOCOL,
+					 OP_PCLID_LTE_PDCP_USER,
+					 (uint16_t)cipherdata->algtype);
 			break;
 		default:
 			pr_err("%s: Invalid encrypt algorithm selected: %d\n",
@@ -2551,7 +2575,7 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 
 		default:
 			err = pdcp_insert_uplane_15bit_op(p, swap, cipherdata,
-				OP_TYPE_ENCAP_PROTOCOL);
+					authdata, OP_TYPE_ENCAP_PROTOCOL);
 			if (err)
 				return err;
 			break;
@@ -2605,6 +2629,7 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 			       unsigned short direction,
 			       uint32_t hfn_threshold,
 			       struct alginfo *cipherdata,
+			       struct alginfo *authdata,
 			       unsigned char era_2_sw_hfn_ovrd)
 {
 	struct program prg;
@@ -2614,6 +2639,11 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 
 	if (rta_sec_era != RTA_SEC_ERA_2 && era_2_sw_hfn_ovrd) {
 		pr_err("Cannot select SW HFN override for other era than 2");
+		return -EINVAL;
+	}
+
+	if (authdata && !authdata->algtype && rta_sec_era < RTA_SEC_ERA_8) {
+		pr_err("Cannot use u-plane auth with era < 8");
 		return -EINVAL;
 	}
 
@@ -2636,6 +2666,12 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 	if (err)
 		return err;
 
+	/* Insert auth key if requested */
+	if (authdata && authdata->algtype)
+		KEY(p, KEY2, authdata->key_enc_flags,
+		    (uint64_t)authdata->key, authdata->keylen,
+		    INLINE_KEY(authdata));
+
 	switch (sn_size) {
 	case PDCP_SN_SIZE_7:
 	case PDCP_SN_SIZE_12:
@@ -2645,20 +2681,23 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 				pr_err("Invalid era for selected algorithm\n");
 				return -ENOTSUP;
 			}
+			/* fallthrough */
 		case PDCP_CIPHER_TYPE_AES:
 		case PDCP_CIPHER_TYPE_SNOW:
+		case PDCP_CIPHER_TYPE_NULL:
 			/* Insert Cipher Key */
 			KEY(p, KEY1, cipherdata->key_enc_flags,
 			    cipherdata->key, cipherdata->keylen,
 			    INLINE_KEY(cipherdata));
-			PROTOCOL(p, OP_TYPE_DECAP_PROTOCOL,
-				 OP_PCLID_LTE_PDCP_USER,
-				 (uint16_t)cipherdata->algtype);
-			break;
-		case PDCP_CIPHER_TYPE_NULL:
-			insert_copy_frame_op(p,
-					     cipherdata,
-					     OP_TYPE_DECAP_PROTOCOL);
+			if (authdata)
+				PROTOCOL(p, OP_TYPE_DECAP_PROTOCOL,
+					 OP_PCLID_LTE_PDCP_USER_RN,
+					 ((uint16_t)cipherdata->algtype << 8) |
+					 (uint16_t)authdata->algtype);
+			else
+				PROTOCOL(p, OP_TYPE_DECAP_PROTOCOL,
+					 OP_PCLID_LTE_PDCP_USER,
+					 (uint16_t)cipherdata->algtype);
 			break;
 		default:
 			pr_err("%s: Invalid encrypt algorithm selected: %d\n",
@@ -2678,7 +2717,7 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 
 		default:
 			err = pdcp_insert_uplane_15bit_op(p, swap, cipherdata,
-				OP_TYPE_DECAP_PROTOCOL);
+				authdata, OP_TYPE_DECAP_PROTOCOL);
 			if (err)
 				return err;
 			break;

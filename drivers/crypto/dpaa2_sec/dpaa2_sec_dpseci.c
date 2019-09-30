@@ -2591,6 +2591,7 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	struct ctxt_priv *priv;
 	struct dpaa2_sec_dev_private *dev_priv = dev->data->dev_private;
 	struct alginfo authdata, cipherdata;
+	struct alginfo *p_authdata = NULL;
 	int bufsize = -1;
 	struct sec_flow_context *flc;
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -2693,39 +2694,32 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 		goto out;
 	}
 
-	/* Auth is only applicable for control mode operation. */
-	if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
-		if (pdcp_xform->sn_size != RTE_SECURITY_PDCP_SN_SIZE_5 &&
-		    pdcp_xform->sn_size != RTE_SECURITY_PDCP_SN_SIZE_12) {
-			DPAA2_SEC_ERR(
-				"PDCP Seq Num size should be 5/12 bits for cmode");
-			goto out;
+	if (auth_xform) {
+		session->auth_key.data = rte_zmalloc(NULL,
+						     auth_xform->key.length,
+						     RTE_CACHE_LINE_SIZE);
+		if (!session->auth_key.data &&
+		    auth_xform->key.length > 0) {
+			DPAA2_SEC_ERR("No Memory for auth key");
+			rte_free(session->cipher_key.data);
+			rte_free(priv);
+			return -ENOMEM;
 		}
-		if (auth_xform) {
-			session->auth_key.data = rte_zmalloc(NULL,
-							auth_xform->key.length,
-							RTE_CACHE_LINE_SIZE);
-			if (session->auth_key.data == NULL &&
-					auth_xform->key.length > 0) {
-				DPAA2_SEC_ERR("No Memory for auth key");
-				rte_free(session->cipher_key.data);
-				rte_free(priv);
-				return -ENOMEM;
-			}
-			session->auth_key.length = auth_xform->key.length;
-			memcpy(session->auth_key.data, auth_xform->key.data,
-					auth_xform->key.length);
-			session->auth_alg = auth_xform->algo;
-		} else {
-			session->auth_key.data = NULL;
-			session->auth_key.length = 0;
-			session->auth_alg = RTE_CRYPTO_AUTH_NULL;
-		}
-		authdata.key = (size_t)session->auth_key.data;
-		authdata.keylen = session->auth_key.length;
-		authdata.key_enc_flags = 0;
-		authdata.key_type = RTA_DATA_IMM;
+		session->auth_key.length = auth_xform->key.length;
+		memcpy(session->auth_key.data, auth_xform->key.data,
+		       auth_xform->key.length);
+		session->auth_alg = auth_xform->algo;
+	} else {
+		session->auth_key.data = NULL;
+		session->auth_key.length = 0;
+		session->auth_alg = 0;
+	}
+	authdata.key = (size_t)session->auth_key.data;
+	authdata.keylen = session->auth_key.length;
+	authdata.key_enc_flags = 0;
+	authdata.key_type = RTA_DATA_IMM;
 
+	if (session->auth_alg) {
 		switch (session->auth_alg) {
 		case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 			authdata.algtype = PDCP_AUTH_TYPE_SNOW;
@@ -2745,6 +2739,13 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 			goto out;
 		}
 
+		p_authdata = &authdata;
+	} else if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
+		DPAA2_SEC_ERR("Crypto: Integrity must for c-plane");
+		goto out;
+	}
+
+	if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
 		if (session->dir == DIR_ENC)
 			bufsize = cnstr_shdsc_pdcp_c_plane_encap(
 					priv->flc_desc[0].desc, 1, swap,
@@ -2774,7 +2775,7 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 					pdcp_xform->bearer,
 					pdcp_xform->pkt_dir,
 					pdcp_xform->hfn_threshold,
-					&cipherdata, 0);
+					&cipherdata, p_authdata, 0);
 		else if (session->dir == DIR_DEC)
 			bufsize = cnstr_shdsc_pdcp_u_plane_decap(
 					priv->flc_desc[0].desc, 1, swap,
@@ -2783,7 +2784,7 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 					pdcp_xform->bearer,
 					pdcp_xform->pkt_dir,
 					pdcp_xform->hfn_threshold,
-					&cipherdata, 0);
+					&cipherdata, p_authdata, 0);
 	}
 
 	if (bufsize < 0) {

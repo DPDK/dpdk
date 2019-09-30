@@ -386,6 +386,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 {
 	struct alginfo authdata = {0}, cipherdata = {0};
 	struct sec_cdb *cdb = &ses->cdb;
+	struct alginfo *p_authdata = NULL;
 	int32_t shared_desc_len = 0;
 	int err;
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -418,7 +419,11 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 	cipherdata.key_enc_flags = 0;
 	cipherdata.key_type = RTA_DATA_IMM;
 
-	if (ses->pdcp.domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
+	cdb->sh_desc[0] = cipherdata.keylen;
+	cdb->sh_desc[1] = 0;
+	cdb->sh_desc[2] = 0;
+
+	if (ses->auth_alg) {
 		switch (ses->auth_alg) {
 		case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 			authdata.algtype = PDCP_AUTH_TYPE_SNOW;
@@ -443,32 +448,36 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 		authdata.key_enc_flags = 0;
 		authdata.key_type = RTA_DATA_IMM;
 
-		cdb->sh_desc[0] = cipherdata.keylen;
+		p_authdata = &authdata;
+
 		cdb->sh_desc[1] = authdata.keylen;
-		err = rta_inline_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
-				       MIN_JOB_DESC_SIZE,
-				       (unsigned int *)cdb->sh_desc,
-				       &cdb->sh_desc[2], 2);
+	}
 
-		if (err < 0) {
-			DPAA_SEC_ERR("Crypto: Incorrect key lengths");
-			return err;
-		}
-		if (!(cdb->sh_desc[2] & 1) && cipherdata.keylen) {
-			cipherdata.key = (size_t)dpaa_mem_vtop(
-						(void *)(size_t)cipherdata.key);
-			cipherdata.key_type = RTA_DATA_PTR;
-		}
-		if (!(cdb->sh_desc[2] & (1<<1)) &&  authdata.keylen) {
-			authdata.key = (size_t)dpaa_mem_vtop(
-						(void *)(size_t)authdata.key);
-			authdata.key_type = RTA_DATA_PTR;
-		}
+	err = rta_inline_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
+			       MIN_JOB_DESC_SIZE,
+			       (unsigned int *)cdb->sh_desc,
+			       &cdb->sh_desc[2], 2);
+	if (err < 0) {
+		DPAA_SEC_ERR("Crypto: Incorrect key lengths");
+		return err;
+	}
 
-		cdb->sh_desc[0] = 0;
-		cdb->sh_desc[1] = 0;
-		cdb->sh_desc[2] = 0;
+	if (!(cdb->sh_desc[2] & 1) && cipherdata.keylen) {
+		cipherdata.key =
+			(size_t)dpaa_mem_vtop((void *)(size_t)cipherdata.key);
+		cipherdata.key_type = RTA_DATA_PTR;
+	}
+	if (!(cdb->sh_desc[2] & (1 << 1)) &&  authdata.keylen) {
+		authdata.key =
+			(size_t)dpaa_mem_vtop((void *)(size_t)authdata.key);
+		authdata.key_type = RTA_DATA_PTR;
+	}
 
+	cdb->sh_desc[0] = 0;
+	cdb->sh_desc[1] = 0;
+	cdb->sh_desc[2] = 0;
+
+	if (ses->pdcp.domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
 		if (ses->dir == DIR_ENC)
 			shared_desc_len = cnstr_shdsc_pdcp_c_plane_encap(
 					cdb->sh_desc, 1, swap,
@@ -490,25 +499,6 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 					&cipherdata, &authdata,
 					0);
 	} else {
-		cdb->sh_desc[0] = cipherdata.keylen;
-		err = rta_inline_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
-				       MIN_JOB_DESC_SIZE,
-				       (unsigned int *)cdb->sh_desc,
-				       &cdb->sh_desc[2], 1);
-
-		if (err < 0) {
-			DPAA_SEC_ERR("Crypto: Incorrect key lengths");
-			return err;
-		}
-		if (!(cdb->sh_desc[2] & 1) && cipherdata.keylen) {
-			cipherdata.key = (size_t)dpaa_mem_vtop(
-						(void *)(size_t)cipherdata.key);
-			cipherdata.key_type = RTA_DATA_PTR;
-		}
-		cdb->sh_desc[0] = 0;
-		cdb->sh_desc[1] = 0;
-		cdb->sh_desc[2] = 0;
-
 		if (ses->dir == DIR_ENC)
 			shared_desc_len = cnstr_shdsc_pdcp_u_plane_encap(
 					cdb->sh_desc, 1, swap,
@@ -517,7 +507,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 					ses->pdcp.bearer,
 					ses->pdcp.pkt_dir,
 					ses->pdcp.hfn_threshold,
-					&cipherdata, 0);
+					&cipherdata, p_authdata, 0);
 		else if (ses->dir == DIR_DEC)
 			shared_desc_len = cnstr_shdsc_pdcp_u_plane_decap(
 					cdb->sh_desc, 1, swap,
@@ -526,7 +516,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 					ses->pdcp.bearer,
 					ses->pdcp.pkt_dir,
 					ses->pdcp.hfn_threshold,
-					&cipherdata, 0);
+					&cipherdata, p_authdata, 0);
 	}
 
 	return shared_desc_len;
@@ -2389,7 +2379,6 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 		session->dir = DIR_ENC;
 	}
 
-	/* Auth is only applicable for control mode operation. */
 	if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
 		if (pdcp_xform->sn_size != RTE_SECURITY_PDCP_SN_SIZE_5 &&
 		    pdcp_xform->sn_size != RTE_SECURITY_PDCP_SN_SIZE_12) {
@@ -2397,25 +2386,26 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 				"PDCP Seq Num size should be 5/12 bits for cmode");
 			goto out;
 		}
-		if (auth_xform) {
-			session->auth_key.data = rte_zmalloc(NULL,
-							auth_xform->key.length,
-							RTE_CACHE_LINE_SIZE);
-			if (session->auth_key.data == NULL &&
-					auth_xform->key.length > 0) {
-				DPAA_SEC_ERR("No Memory for auth key");
-				rte_free(session->cipher_key.data);
-				return -ENOMEM;
-			}
-			session->auth_key.length = auth_xform->key.length;
-			memcpy(session->auth_key.data, auth_xform->key.data,
-					auth_xform->key.length);
-			session->auth_alg = auth_xform->algo;
-		} else {
-			session->auth_key.data = NULL;
-			session->auth_key.length = 0;
-			session->auth_alg = RTE_CRYPTO_AUTH_NULL;
+	}
+
+	if (auth_xform) {
+		session->auth_key.data = rte_zmalloc(NULL,
+						     auth_xform->key.length,
+						     RTE_CACHE_LINE_SIZE);
+		if (!session->auth_key.data &&
+		    auth_xform->key.length > 0) {
+			DPAA_SEC_ERR("No Memory for auth key");
+			rte_free(session->cipher_key.data);
+			return -ENOMEM;
 		}
+		session->auth_key.length = auth_xform->key.length;
+		memcpy(session->auth_key.data, auth_xform->key.data,
+		       auth_xform->key.length);
+		session->auth_alg = auth_xform->algo;
+	} else {
+		session->auth_key.data = NULL;
+		session->auth_key.length = 0;
+		session->auth_alg = 0;
 	}
 	session->pdcp.domain = pdcp_xform->domain;
 	session->pdcp.bearer = pdcp_xform->bearer;
