@@ -154,11 +154,11 @@ typedef struct dpaa_sec_session_entry {
 	struct dpaa_sec_qp *qp[MAX_DPAA_CORES];
 	struct qman_fq *inq[MAX_DPAA_CORES];
 	struct sec_cdb cdb;	/**< cmd block associated with qp */
-	struct rte_mempool *ctx_pool; /* session mempool for dpaa_sec_op_ctx */
 } dpaa_sec_session;
 
 struct dpaa_sec_qp {
 	struct dpaa_sec_dev_private *internals;
+	struct rte_mempool *ctx_pool; /* mempool for dpaa_sec_op_ctx */
 	struct qman_fq outq;
 	int rx_pkts;
 	int rx_errs;
@@ -173,7 +173,6 @@ struct dpaa_sec_qp {
 /* internal sec queue interface */
 struct dpaa_sec_dev_private {
 	void *sec_hw;
-	struct rte_mempool *ctx_pool; /* per dev mempool for dpaa_sec_op_ctx */
 	struct dpaa_sec_qp qps[RTE_DPAA_MAX_NB_SEC_QPS]; /* i/o queue for sec */
 	struct qman_fq inq[RTE_DPAA_MAX_RX_QUEUE];
 	unsigned char inq_attach[RTE_DPAA_MAX_RX_QUEUE];

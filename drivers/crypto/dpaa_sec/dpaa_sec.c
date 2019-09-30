@@ -72,7 +72,9 @@ dpaa_sec_alloc_ctx(dpaa_sec_session *ses, int sg_count)
 	struct dpaa_sec_op_ctx *ctx;
 	int i, retval;
 
-	retval = rte_mempool_get(ses->ctx_pool, (void **)(&ctx));
+	retval = rte_mempool_get(
+			ses->qp[rte_lcore_id() % MAX_DPAA_CORES]->ctx_pool,
+			(void **)(&ctx));
 	if (!ctx || retval) {
 		DPAA_SEC_DP_WARN("Alloc sec descriptor failed!");
 		return NULL;
@@ -86,7 +88,7 @@ dpaa_sec_alloc_ctx(dpaa_sec_session *ses, int sg_count)
 	for (i = 0; i < sg_count && i < MAX_JOB_SG_ENTRIES; i += 4)
 		dcbz_64(&ctx->job.sg[i]);
 
-	ctx->ctx_pool = ses->ctx_pool;
+	ctx->ctx_pool = ses->qp[rte_lcore_id() % MAX_DPAA_CORES]->ctx_pool;
 	ctx->vtop_offset = (size_t) ctx - rte_mempool_virt2iova(ctx);
 
 	return ctx;
@@ -1929,6 +1931,7 @@ dpaa_sec_queue_pair_release(struct rte_cryptodev *dev,
 	}
 
 	qp = &internals->qps[qp_id];
+	rte_mempool_free(qp->ctx_pool);
 	qp->internals = NULL;
 	dev->data->queue_pairs[qp_id] = NULL;
 
@@ -1943,6 +1946,7 @@ dpaa_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 {
 	struct dpaa_sec_dev_private *internals;
 	struct dpaa_sec_qp *qp = NULL;
+	char str[20];
 
 	DPAA_SEC_DEBUG("dev =%p, queue =%d, conf =%p", dev, qp_id, qp_conf);
 
@@ -1955,6 +1959,22 @@ dpaa_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qp = &internals->qps[qp_id];
 	qp->internals = internals;
+	snprintf(str, sizeof(str), "ctx_pool_d%d_qp%d",
+			dev->data->dev_id, qp_id);
+	if (!qp->ctx_pool) {
+		qp->ctx_pool = rte_mempool_create((const char *)str,
+							CTX_POOL_NUM_BUFS,
+							CTX_POOL_BUF_SIZE,
+							CTX_POOL_CACHE_SIZE, 0,
+							NULL, NULL, NULL, NULL,
+							SOCKET_ID_ANY, 0);
+		if (!qp->ctx_pool) {
+			DPAA_SEC_ERR("%s create failed\n", str);
+			return -ENOMEM;
+		}
+	} else
+		DPAA_SEC_INFO("mempool already created for dev_id : %d, qp: %d",
+				dev->data->dev_id, qp_id);
 	dev->data->queue_pairs[qp_id] = qp;
 
 	return 0;
@@ -2171,7 +2191,6 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 		DPAA_SEC_ERR("Invalid crypto type");
 		return -EINVAL;
 	}
-	session->ctx_pool = internals->ctx_pool;
 	rte_spinlock_lock(&internals->lock);
 	for (i = 0; i < MAX_DPAA_CORES; i++) {
 		session->inq[i] = dpaa_sec_attach_rxq(internals);
@@ -2426,7 +2445,6 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 		session->dir = DIR_DEC;
 	} else
 		goto out;
-	session->ctx_pool = internals->ctx_pool;
 	rte_spinlock_lock(&internals->lock);
 	for (i = 0; i < MAX_DPAA_CORES; i++) {
 		session->inq[i] = dpaa_sec_attach_rxq(internals);
@@ -2537,7 +2555,6 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	session->pdcp.hfn_ovd = pdcp_xform->hfn_ovrd;
 	session->pdcp.hfn_ovd_offset = cipher_xform->iv.offset;
 
-	session->ctx_pool = dev_priv->ctx_pool;
 	rte_spinlock_lock(&dev_priv->lock);
 	for (i = 0; i < MAX_DPAA_CORES; i++) {
 		session->inq[i] = dpaa_sec_attach_rxq(dev_priv);
@@ -2614,31 +2631,10 @@ dpaa_sec_security_session_destroy(void *dev __rte_unused,
 }
 
 static int
-dpaa_sec_dev_configure(struct rte_cryptodev *dev,
+dpaa_sec_dev_configure(struct rte_cryptodev *dev __rte_unused,
 		       struct rte_cryptodev_config *config __rte_unused)
 {
-
-	char str[20];
-	struct dpaa_sec_dev_private *internals;
-
 	PMD_INIT_FUNC_TRACE();
-
-	internals = dev->data->dev_private;
-	snprintf(str, sizeof(str), "ctx_pool_%d", dev->data->dev_id);
-	if (!internals->ctx_pool) {
-		internals->ctx_pool = rte_mempool_create((const char *)str,
-							CTX_POOL_NUM_BUFS,
-							CTX_POOL_BUF_SIZE,
-							CTX_POOL_CACHE_SIZE, 0,
-							NULL, NULL, NULL, NULL,
-							SOCKET_ID_ANY, 0);
-		if (!internals->ctx_pool) {
-			DPAA_SEC_ERR("%s create failed\n", str);
-			return -ENOMEM;
-		}
-	} else
-		DPAA_SEC_INFO("mempool already created for dev_id : %d",
-				dev->data->dev_id);
 
 	return 0;
 }
@@ -2659,16 +2655,10 @@ dpaa_sec_dev_stop(struct rte_cryptodev *dev __rte_unused)
 static int
 dpaa_sec_dev_close(struct rte_cryptodev *dev)
 {
-	struct dpaa_sec_dev_private *internals;
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (dev == NULL)
 		return -ENOMEM;
-
-	internals = dev->data->dev_private;
-	rte_mempool_free(internals->ctx_pool);
-	internals->ctx_pool = NULL;
 
 	return 0;
 }
@@ -2729,8 +2719,6 @@ dpaa_sec_uninit(struct rte_cryptodev *dev)
 	internals = dev->data->dev_private;
 	rte_free(dev->security_ctx);
 
-	/* In case close has been called, internals->ctx_pool would be NULL */
-	rte_mempool_free(internals->ctx_pool);
 	rte_free(internals);
 
 	DPAA_SEC_INFO("Closing DPAA_SEC device %s on numa socket %u",
