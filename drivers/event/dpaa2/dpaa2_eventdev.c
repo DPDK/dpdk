@@ -964,6 +964,7 @@ static struct rte_eventdev_ops dpaa2_eventdev_ops = {
 	.port_unlink      = dpaa2_eventdev_port_unlink,
 	.timeout_ticks    = dpaa2_eventdev_timeout_ticks,
 	.dump             = dpaa2_eventdev_dump,
+	.dev_selftest     = test_eventdev_dpaa2,
 	.eth_rx_adapter_caps_get = dpaa2_eventdev_eth_caps_get,
 	.eth_rx_adapter_queue_add = dpaa2_eventdev_eth_queue_add,
 	.eth_rx_adapter_queue_del = dpaa2_eventdev_eth_queue_del,
