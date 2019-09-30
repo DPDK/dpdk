@@ -35,6 +35,7 @@ enum auth_alg_off {
 
 int test_pdcp_proto_cplane_encap(int i);
 int test_pdcp_proto_uplane_encap(int i);
+int test_pdcp_proto_uplane_encap_with_int(int i);
 int test_pdcp_proto_cplane_decap(int i);
 
 int test_PDCP_PROTO_cplane_encap_all(void);

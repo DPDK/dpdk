@@ -7229,6 +7229,18 @@ test_pdcp_proto_uplane_encap(int i)
 }
 
 int
+test_pdcp_proto_uplane_encap_with_int(int i)
+{
+	return test_pdcp_proto(i, 0,
+		RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+		RTE_CRYPTO_AUTH_OP_GENERATE,
+		pdcp_test_data_in[i],
+		pdcp_test_data_in_len[i],
+		pdcp_test_data_out[i],
+		pdcp_test_data_in_len[i] + 4);
+}
+
+int
 test_pdcp_proto_cplane_decap(int i)
 {
 	return test_pdcp_proto(i, 0,
