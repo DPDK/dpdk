@@ -2931,8 +2931,12 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 
 	flc->word1_sdl = (uint8_t)bufsize;
 
-	/* Set EWS bit i.e. enable write-safe */
-	DPAA2_SET_FLC_EWS(flc);
+	/* TODO - check the perf impact or
+	 * align as per descriptor type
+	 * Set EWS bit i.e. enable write-safe
+	 * DPAA2_SET_FLC_EWS(flc);
+	 */
+
 	/* Set BS = 1 i.e reuse input buffers as output buffers */
 	DPAA2_SET_FLC_REUSE_BS(flc);
 	/* Set FF = 10; reuse input buffers if they provide sufficient space */
