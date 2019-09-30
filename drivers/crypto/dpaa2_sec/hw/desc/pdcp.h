@@ -928,6 +928,155 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 }
 
 static inline int
+pdcp_insert_uplane_aes_aes_op(struct program *p,
+			      bool swap __maybe_unused,
+			      struct alginfo *cipherdata,
+			      struct alginfo *authdata,
+			      unsigned int dir,
+			      enum pdcp_sn_size sn_size,
+			      unsigned char era_2_sw_hfn_ovrd __maybe_unused)
+{
+	uint32_t offset = 0, length = 0, sn_mask = 0;
+
+	if ((rta_sec_era >= RTA_SEC_ERA_8 && sn_size != PDCP_SN_SIZE_18)) {
+		/* Insert Auth Key */
+		KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
+		    authdata->keylen, INLINE_KEY(authdata));
+
+		/* Insert Cipher Key */
+		KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
+		    cipherdata->keylen, INLINE_KEY(cipherdata));
+
+		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_USER_RN,
+			 ((uint16_t)cipherdata->algtype << 8) |
+			  (uint16_t)authdata->algtype);
+		return 0;
+	}
+
+	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
+	switch (sn_size) {
+	case PDCP_SN_SIZE_18:
+		offset = 5;
+		length = 3;
+		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+					PDCP_U_PLANE_18BIT_SN_MASK_BE;
+		break;
+
+	default:
+		pr_err("Invalid sn_size for %s\n", __func__);
+		return -ENOTSUP;
+	}
+
+	SEQLOAD(p, MATH0, offset, length, 0);
+	JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
+	MATHB(p, MATH0, AND, sn_mask, MATH1, 8, IFB | IMMED2);
+
+	MATHB(p, MATH1, SHLD, MATH1, MATH1, 8, 0);
+	MOVEB(p, DESCBUF, 8, MATH2, 0, 0x08, WAITCOMP | IMMED);
+	MATHB(p, MATH1, OR, MATH2, MATH2, 8, 0);
+	SEQSTORE(p, MATH0, offset, length, 0);
+
+	if (dir == OP_TYPE_ENCAP_PROTOCOL) {
+		KEY(p, KEY1, authdata->key_enc_flags, authdata->key,
+		    authdata->keylen, INLINE_KEY(authdata));
+		MOVEB(p, MATH2, 0, IFIFOAB1, 0, 0x08, IMMED);
+		MOVEB(p, MATH0, offset, IFIFOAB1, 0, length, IMMED);
+
+		MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
+		MATHB(p, VSEQINSZ, ADD, PDCP_MAC_I_LEN, VSEQOUTSZ, 4, IMMED2);
+
+		ALG_OPERATION(p, OP_ALG_ALGSEL_AES,
+			      OP_ALG_AAI_CMAC,
+			      OP_ALG_AS_INITFINAL,
+			      ICV_CHECK_DISABLE,
+			      DIR_DEC);
+		SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1 | FLUSH1);
+		MOVEB(p, CONTEXT1, 0, MATH3, 0, 4, WAITCOMP | IMMED);
+
+		LOAD(p, CLRW_RESET_CLS1_CHA |
+		     CLRW_CLR_C1KEY |
+		     CLRW_CLR_C1CTX |
+		     CLRW_CLR_C1ICV |
+		     CLRW_CLR_C1DATAS |
+		     CLRW_CLR_C1MODE,
+		     CLRW, 0, 4, IMMED);
+
+		KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
+		    cipherdata->keylen, INLINE_KEY(cipherdata));
+
+		MOVEB(p, MATH2, 0, CONTEXT1, 16, 8, IMMED);
+		SEQINPTR(p, 0, PDCP_NULL_MAX_FRAME_LEN, RTO);
+
+		ALG_OPERATION(p, OP_ALG_ALGSEL_AES,
+			      OP_ALG_AAI_CTR,
+			      OP_ALG_AS_INITFINAL,
+			      ICV_CHECK_DISABLE,
+			      DIR_ENC);
+
+		SEQFIFOSTORE(p, MSG, 0, 0, VLF);
+
+		SEQFIFOLOAD(p, SKIP, length, 0);
+
+		SEQFIFOLOAD(p, MSG1, 0, VLF);
+		MOVEB(p, MATH3, 0, IFIFOAB1, 0, 4, LAST1 | FLUSH1 | IMMED);
+	} else {
+		MOVEB(p, MATH2, 0, CONTEXT1, 16, 8, IMMED);
+		MOVEB(p, MATH2, 0, CONTEXT2, 0, 8, IMMED);
+
+		MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
+		MATHB(p, SEQINSZ, SUB, PDCP_MAC_I_LEN, VSEQOUTSZ, 4, IMMED2);
+
+		KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
+		    cipherdata->keylen, INLINE_KEY(cipherdata));
+
+		ALG_OPERATION(p, OP_ALG_ALGSEL_AES,
+			      OP_ALG_AAI_CTR,
+			      OP_ALG_AS_INITFINAL,
+			      ICV_CHECK_DISABLE,
+			      DIR_DEC);
+
+		SEQFIFOSTORE(p, MSG, 0, 0, VLF | CONT);
+		SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1 | FLUSH1);
+
+		MOVEB(p, OFIFO, 0, MATH3, 0, 4, IMMED);
+
+		LOAD(p, CLRW_RESET_CLS1_CHA |
+		     CLRW_CLR_C1KEY |
+		     CLRW_CLR_C1CTX |
+		     CLRW_CLR_C1ICV |
+		     CLRW_CLR_C1DATAS |
+		     CLRW_CLR_C1MODE,
+		     CLRW, 0, 4, IMMED);
+
+		KEY(p, KEY1, authdata->key_enc_flags, authdata->key,
+		    authdata->keylen, INLINE_KEY(authdata));
+
+		SEQINPTR(p, 0, 0, SOP);
+
+		ALG_OPERATION(p, OP_ALG_ALGSEL_AES,
+			      OP_ALG_AAI_CMAC,
+			      OP_ALG_AS_INITFINAL,
+			      ICV_CHECK_ENABLE,
+			      DIR_DEC);
+
+		MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
+
+		MOVE(p, CONTEXT2, 0, IFIFOAB1, 0, 8, IMMED);
+
+		SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1 | FLUSH1);
+
+		LOAD(p, NFIFOENTRY_STYPE_ALTSOURCE |
+		     NFIFOENTRY_DEST_CLASS1 |
+		     NFIFOENTRY_DTYPE_ICV |
+		     NFIFOENTRY_LC1 |
+		     NFIFOENTRY_FC1 | 4, NFIFO_SZL, 0, 4, IMMED);
+		MOVEB(p, MATH3, 0, ALTSOURCE, 0, 4, IMMED);
+	}
+
+	return 0;
+}
+
+static inline int
 pdcp_insert_cplane_acc_op(struct program *p,
 			  bool swap __maybe_unused,
 			  struct alginfo *cipherdata,
@@ -2721,7 +2870,7 @@ pdcp_insert_uplane_with_int_op(struct program *p,
 		{	/* AES CTR */
 			pdcp_insert_cplane_enc_only_op,	/* NULL */
 			pdcp_insert_cplane_aes_snow_op,	/* SNOW f9 */
-			pdcp_insert_cplane_acc_op,	/* AES CMAC */
+			pdcp_insert_uplane_aes_aes_op,	/* AES CMAC */
 			pdcp_insert_cplane_aes_zuc_op	/* ZUC-I */
 		},
 		{	/* ZUC-E */
