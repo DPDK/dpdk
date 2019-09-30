@@ -40,6 +40,8 @@
 #define EVT_TIMER_TICK_NSEC      ("timer_tick_nsec")
 #define EVT_MAX_TMO_NSEC         ("max_tmo_nsec")
 #define EVT_EXPIRY_NSEC          ("expiry_nsec")
+#define EVT_MBUF_SZ              ("mbuf_sz")
+#define EVT_MAX_PKT_SZ           ("max_pkt_sz")
 #define EVT_HELP                 ("help")
 
 void evt_options_default(struct evt_options *opt);

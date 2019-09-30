@@ -161,6 +161,16 @@ The following are the application command-line options:
        timeout is out of the supported range of event device it will be
        adjusted to the highest/lowest supported dequeue timeout supported.
 
+* ``--mbuf_sz``
+
+       Set packet mbuf size. Can be used to configure Jumbo Frames. Only
+       applicable for `pipeline_atq` and `pipeline_queue` tests.
+
+* ``--max_pkt_sz``
+
+       Set max packet mbuf size. Can be used configure Rx/Tx scatter gather.
+       Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+
 
 Eventdev Tests
 --------------

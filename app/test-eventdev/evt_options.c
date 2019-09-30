@@ -233,6 +233,26 @@ evt_parse_work_lcores(struct evt_options *opt, const char *corelist)
 	return ret;
 }
 
+static int
+evt_parse_mbuf_sz(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint16(&(opt->mbuf_sz), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_max_pkt_sz(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint32(&(opt->max_pkt_sz), arg);
+
+	return ret;
+}
+
 static void
 usage(char *program)
 {
@@ -262,7 +282,9 @@ usage(char *program)
 		"\t--nb_timer_adptrs  : number of timer adapters to use.\n"
 		"\t--timer_tick_nsec  : timer tick interval in ns.\n"
 		"\t--max_tmo_nsec     : max timeout interval in ns.\n"
-		"\t--expiry_nsec        : event timer expiry ns.\n"
+		"\t--expiry_nsec      : event timer expiry ns.\n"
+		"\t--mbuf_sz          : packet mbuf size.\n"
+		"\t--max_pkt_sz       : max packet size.\n"
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
@@ -332,6 +354,8 @@ static struct option lgopts[] = {
 	{ EVT_TIMER_TICK_NSEC,     1, 0, 0 },
 	{ EVT_MAX_TMO_NSEC,        1, 0, 0 },
 	{ EVT_EXPIRY_NSEC,         1, 0, 0 },
+	{ EVT_MBUF_SZ,             1, 0, 0 },
+	{ EVT_MAX_PKT_SZ,          1, 0, 0 },
 	{ EVT_HELP,                0, 0, 0 },
 	{ NULL,                    0, 0, 0 }
 };
@@ -364,6 +388,8 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_TIMER_TICK_NSEC, evt_parse_timer_tick_nsec},
 		{ EVT_MAX_TMO_NSEC, evt_parse_max_tmo_nsec},
 		{ EVT_EXPIRY_NSEC, evt_parse_expiry_nsec},
+		{ EVT_MBUF_SZ, evt_parse_mbuf_sz},
+		{ EVT_MAX_PKT_SZ, evt_parse_max_pkt_sz},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {

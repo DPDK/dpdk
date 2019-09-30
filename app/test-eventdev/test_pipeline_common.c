@@ -166,7 +166,6 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
 			.mq_mode = ETH_MQ_RX_RSS,
-			.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		},
 		.rx_adv_conf = {
 			.rss_conf = {
@@ -176,11 +175,20 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		},
 	};
 
-	RTE_SET_USED(opt);
 	if (!rte_eth_dev_count_avail()) {
 		evt_err("No ethernet ports found.");
 		return -ENODEV;
 	}
+
+	if (opt->max_pkt_sz < RTE_ETHER_MIN_LEN) {
+		evt_err("max_pkt_sz can not be less than %d",
+			RTE_ETHER_MIN_LEN);
+		return -EINVAL;
+	}
+
+	port_conf.rxmode.max_rx_pkt_len = opt->max_pkt_sz;
+	if (opt->max_pkt_sz > RTE_ETHER_MAX_LEN)
+		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	t->internal_port = 1;
 	RTE_ETH_FOREACH_DEV(i) {
@@ -416,12 +424,36 @@ int
 pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt)
 {
 	struct test_pipeline *t = evt_test_priv(test);
+	int i;
+
+	if (!opt->mbuf_sz)
+		opt->mbuf_sz = RTE_MBUF_DEFAULT_BUF_SIZE;
+
+	if (!opt->max_pkt_sz)
+		opt->max_pkt_sz = RTE_ETHER_MAX_LEN;
+
+	RTE_ETH_FOREACH_DEV(i) {
+		struct rte_eth_dev_info dev_info;
+		uint16_t data_size = 0;
+
+		memset(&dev_info, 0, sizeof(dev_info));
+		rte_eth_dev_info_get(i, &dev_info);
+		if (dev_info.rx_desc_lim.nb_mtu_seg_max != UINT16_MAX &&
+				dev_info.rx_desc_lim.nb_mtu_seg_max != 0) {
+			data_size = opt->max_pkt_sz /
+				dev_info.rx_desc_lim.nb_mtu_seg_max;
+			data_size += RTE_PKTMBUF_HEADROOM;
+
+			if (data_size  > opt->mbuf_sz)
+				opt->mbuf_sz = data_size;
+		}
+	}
 
 	t->pool = rte_pktmbuf_pool_create(test->name, /* mempool name */
 			opt->pool_sz, /* number of elements*/
 			512, /* cache size*/
 			0,
-			RTE_MBUF_DEFAULT_BUF_SIZE,
+			opt->mbuf_sz,
 			opt->socket_id); /* flags */
 
 	if (t->pool == NULL) {
