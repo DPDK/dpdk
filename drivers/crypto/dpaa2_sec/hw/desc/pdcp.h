@@ -928,6 +928,137 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 }
 
 static inline int
+pdcp_insert_uplane_snow_snow_op(struct program *p,
+			      bool swap __maybe_unused,
+			      struct alginfo *cipherdata,
+			      struct alginfo *authdata,
+			      unsigned int dir,
+			      enum pdcp_sn_size sn_size,
+			      unsigned char era_2_sw_hfn_ovrd __maybe_unused)
+{
+	uint32_t offset = 0, length = 0, sn_mask = 0;
+
+	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
+	    cipherdata->keylen, INLINE_KEY(cipherdata));
+	KEY(p, KEY2, authdata->key_enc_flags, authdata->key, authdata->keylen,
+	    INLINE_KEY(authdata));
+
+	if (rta_sec_era >= RTA_SEC_ERA_8 && sn_size != PDCP_SN_SIZE_18) {
+		int pclid;
+
+		if (sn_size == PDCP_SN_SIZE_5)
+			pclid = OP_PCLID_LTE_PDCP_CTRL_MIXED;
+		else
+			pclid = OP_PCLID_LTE_PDCP_USER_RN;
+
+		PROTOCOL(p, dir, pclid,
+			 ((uint16_t)cipherdata->algtype << 8) |
+			 (uint16_t)authdata->algtype);
+
+		return 0;
+	}
+	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
+	switch (sn_size) {
+	case PDCP_SN_SIZE_5:
+		offset = 7;
+		length = 1;
+		sn_mask = (swap == false) ? PDCP_C_PLANE_SN_MASK :
+					PDCP_C_PLANE_SN_MASK_BE;
+		break;
+	case PDCP_SN_SIZE_18:
+		offset = 5;
+		length = 3;
+		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+					PDCP_U_PLANE_18BIT_SN_MASK_BE;
+		break;
+	case PDCP_SN_SIZE_7:
+	case PDCP_SN_SIZE_12:
+	case PDCP_SN_SIZE_15:
+		pr_err("Invalid sn_size for %s\n", __func__);
+		return -ENOTSUP;
+	}
+
+	if (dir == OP_TYPE_ENCAP_PROTOCOL)
+		MATHB(p, SEQINSZ, SUB, length, VSEQINSZ, 4, IMMED2);
+
+	SEQLOAD(p, MATH0, offset, length, 0);
+	JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
+	MOVEB(p, MATH0, offset, IFIFOAB2, 0, length, IMMED);
+	MATHB(p, MATH0, AND, sn_mask, MATH1, 8, IFB | IMMED2);
+
+	SEQSTORE(p, MATH0, offset, length, 0);
+	MATHB(p, MATH1, SHLD, MATH1, MATH1, 8, 0);
+	MOVEB(p, DESCBUF, 8, MATH2, 0, 8, WAITCOMP | IMMED);
+	MATHB(p, MATH1, OR, MATH2, MATH1, 8, 0);
+	MOVEB(p, MATH1, 0, CONTEXT1, 0, 8, IMMED);
+	MOVEB(p, MATH1, 0, CONTEXT2, 0, 4, WAITCOMP | IMMED);
+	if (swap == false) {
+		MATHB(p, MATH1, AND, upper_32_bits(PDCP_BEARER_MASK),
+		      MATH2, 4, IMMED2);
+		MATHB(p, MATH1, AND, lower_32_bits(PDCP_DIR_MASK),
+		      MATH3, 4, IMMED2);
+	} else {
+		MATHB(p, MATH1, AND, lower_32_bits(PDCP_BEARER_MASK_BE),
+		      MATH2, 4, IMMED2);
+		MATHB(p, MATH1, AND, upper_32_bits(PDCP_DIR_MASK_BE),
+		      MATH3, 4, IMMED2);
+	}
+	MATHB(p, MATH3, SHLD, MATH3, MATH3, 8, 0);
+
+	MOVEB(p, MATH2, 4, OFIFO, 0, 12, IMMED);
+	MOVE(p, OFIFO, 0, CONTEXT2, 4, 12, IMMED);
+	if (dir == OP_TYPE_ENCAP_PROTOCOL) {
+		MATHB(p, SEQINSZ, ADD, PDCP_MAC_I_LEN, VSEQOUTSZ, 4, IMMED2);
+	} else {
+		MATHI(p, SEQINSZ, SUB, PDCP_MAC_I_LEN, VSEQOUTSZ, 4, IMMED2);
+		MATHI(p, SEQINSZ, SUB, PDCP_MAC_I_LEN, VSEQINSZ, 4, IMMED2);
+	}
+
+	if (dir == OP_TYPE_ENCAP_PROTOCOL)
+		SEQFIFOSTORE(p, MSG, 0, 0, VLF);
+	else
+		SEQFIFOSTORE(p, MSG, 0, 0, VLF | CONT);
+
+	ALG_OPERATION(p, OP_ALG_ALGSEL_SNOW_F9,
+		      OP_ALG_AAI_F9,
+		      OP_ALG_AS_INITFINAL,
+		      dir == OP_TYPE_ENCAP_PROTOCOL ?
+			     ICV_CHECK_DISABLE : ICV_CHECK_ENABLE,
+		      DIR_DEC);
+	ALG_OPERATION(p, OP_ALG_ALGSEL_SNOW_F8,
+		      OP_ALG_AAI_F8,
+		      OP_ALG_AS_INITFINAL,
+		      ICV_CHECK_DISABLE,
+		      dir == OP_TYPE_ENCAP_PROTOCOL ? DIR_ENC : DIR_DEC);
+
+	if (dir == OP_TYPE_ENCAP_PROTOCOL) {
+		SEQFIFOLOAD(p, MSGINSNOOP, 0, VLF | LAST2);
+		MOVE(p, CONTEXT2, 0, IFIFOAB1, 0, 4, LAST1 | FLUSH1 | IMMED);
+	} else {
+		SEQFIFOLOAD(p, MSGOUTSNOOP, 0, VLF | LAST2);
+		SEQFIFOLOAD(p, MSG1, 4, LAST1 | FLUSH1);
+		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CLASS1 | NOP | NIFP);
+
+		if (rta_sec_era >= RTA_SEC_ERA_6)
+			LOAD(p, 0, DCTRL, 0, LDLEN_RST_CHA_OFIFO_PTR, IMMED);
+
+		MOVE(p, OFIFO, 0, MATH0, 0, 4, WAITCOMP | IMMED);
+
+		NFIFOADD(p, IFIFO, ICV2, 4, LAST2);
+
+		if (rta_sec_era <= RTA_SEC_ERA_2) {
+			/* Shut off automatic Info FIFO entries */
+			LOAD(p, 0, DCTRL, LDOFF_DISABLE_AUTO_NFIFO, 0, IMMED);
+			MOVE(p, MATH0, 0, IFIFOAB2, 0, 4, WAITCOMP | IMMED);
+		} else {
+			MOVE(p, MATH0, 0, IFIFO, 0, 4, WAITCOMP | IMMED);
+		}
+	}
+
+	return 0;
+}
+
+static inline int
 pdcp_insert_uplane_zuc_zuc_op(struct program *p,
 			      bool swap __maybe_unused,
 			      struct alginfo *cipherdata,
@@ -2987,7 +3118,7 @@ pdcp_insert_uplane_with_int_op(struct program *p,
 		},
 		{	/* SNOW f8 */
 			pdcp_insert_cplane_enc_only_op,	/* NULL */
-			pdcp_insert_cplane_acc_op,	/* SNOW f9 */
+			pdcp_insert_uplane_snow_snow_op, /* SNOW f9 */
 			pdcp_insert_cplane_snow_aes_op,	/* AES CMAC */
 			pdcp_insert_cplane_snow_zuc_op	/* ZUC-I */
 		},
