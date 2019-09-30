@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017 NXP.
+ * Copyright 2017,2019 NXP
  * Copyright(c) 2017 Intel Corporation.
  */
 
@@ -278,6 +278,15 @@ struct rte_security_pdcp_xform {
 	uint32_t hfn;
 	/** HFN Threshold for key renegotiation */
 	uint32_t hfn_threshold;
+	/** HFN can be given as a per packet value also.
+	 * As we do not have IV in case of PDCP, and HFN is
+	 * used to generate IV. IV field can be used to get the
+	 * per packet HFN while enq/deq.
+	 * If hfn_ovrd field is set, user is expected to set the
+	 * per packet HFN in place of IV. PMDs will extract the HFN
+	 * and perform operations accordingly.
+	 */
+	uint32_t hfn_ovrd;
 };
 
 /**
