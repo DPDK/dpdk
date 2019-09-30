@@ -18,6 +18,103 @@
  */
 
 /**
+ * cnstr_shdsc_zuce - ZUC Enc (EEA2) as a shared descriptor
+ * @descbuf: pointer to descriptor-under-construction buffer
+ * @ps: if 36/40bit addressing is desired, this parameter must be true
+ * @swap: must be true when core endianness doesn't match SEC endianness
+ * @cipherdata: pointer to block cipher transform definitions
+ * @dir: Cipher direction (DIR_ENC/DIR_DEC)
+ *
+ * Return: size of descriptor written in words or negative number on error
+ */
+static inline int
+cnstr_shdsc_zuce(uint32_t *descbuf, bool ps, bool swap,
+		    struct alginfo *cipherdata, uint8_t dir)
+{
+	struct program prg;
+	struct program *p = &prg;
+
+	PROGRAM_CNTXT_INIT(p, descbuf, 0);
+	if (swap)
+		PROGRAM_SET_BSWAP(p);
+
+	if (ps)
+		PROGRAM_SET_36BIT_ADDR(p);
+	SHR_HDR(p, SHR_ALWAYS, 1, 0);
+
+	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
+	    cipherdata->keylen, INLINE_KEY(cipherdata));
+
+	SEQLOAD(p, CONTEXT1, 0, 16, 0);
+
+	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
+	MATHB(p, SEQINSZ, SUB, MATH2, VSEQOUTSZ, 4, 0);
+	ALG_OPERATION(p, OP_ALG_ALGSEL_ZUCE, OP_ALG_AAI_F8,
+		      OP_ALG_AS_INITFINAL, 0, dir);
+	SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1);
+	SEQFIFOSTORE(p, MSG, 0, 0, VLF);
+
+	return PROGRAM_FINALIZE(p);
+}
+
+/**
+ * cnstr_shdsc_zuca - ZUC Auth (EIA2) as a shared descriptor
+ * @descbuf: pointer to descriptor-under-construction buffer
+ * @ps: if 36/40bit addressing is desired, this parameter must be true
+ * @swap: must be true when core endianness doesn't match SEC endianness
+ * @authdata: pointer to authentication transform definitions
+ * @chk_icv: Whether to compare and verify ICV (true/false)
+ * @authlen: size of digest
+ *
+ * The IV prepended before hmac payload must be 8 bytes consisting
+ * of COUNT||BEAERER||DIR. The COUNT is of 32-bits, bearer is of 5 bits and
+ * direction is of 1 bit - totalling to 38 bits.
+ *
+ * Return: size of descriptor written in words or negative number on error
+ */
+static inline int
+cnstr_shdsc_zuca(uint32_t *descbuf, bool ps, bool swap,
+		 struct alginfo *authdata, uint8_t chk_icv,
+		 uint32_t authlen)
+{
+	struct program prg;
+	struct program *p = &prg;
+	int dir = chk_icv ? DIR_DEC : DIR_ENC;
+
+	PROGRAM_CNTXT_INIT(p, descbuf, 0);
+	if (swap)
+		PROGRAM_SET_BSWAP(p);
+
+	if (ps)
+		PROGRAM_SET_36BIT_ADDR(p);
+	SHR_HDR(p, SHR_ALWAYS, 1, 0);
+
+	KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
+	    authdata->keylen, INLINE_KEY(authdata));
+
+	SEQLOAD(p, CONTEXT2, 0, 8, 0);
+
+	if (chk_icv == ICV_CHECK_ENABLE)
+		MATHB(p, SEQINSZ, SUB, authlen, VSEQINSZ, 4, IMMED2);
+	else
+		MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
+
+	ALG_OPERATION(p, OP_ALG_ALGSEL_ZUCA, OP_ALG_AAI_F9,
+		      OP_ALG_AS_INITFINAL, chk_icv, dir);
+
+	SEQFIFOLOAD(p, MSG2, 0, VLF | CLASS2 | LAST2);
+
+	if (chk_icv == ICV_CHECK_ENABLE)
+		SEQFIFOLOAD(p, ICV2, authlen, LAST2);
+	else
+		/* Save lower half of MAC out into a 32-bit sequence */
+		SEQSTORE(p, CONTEXT2, 0, authlen, 0);
+
+	return PROGRAM_FINALIZE(p);
+}
+
+
+/**
  * cnstr_shdsc_snow_f8 - SNOW/f8 (UEA2) as a shared descriptor
  * @descbuf: pointer to descriptor-under-construction buffer
  * @ps: if 36/40bit addressing is desired, this parameter must be true
@@ -58,11 +155,43 @@ cnstr_shdsc_snow_f8(uint32_t *descbuf, bool ps, bool swap,
 }
 
 /**
- * conv_to_snow_f9_iv - SNOW/f9 (UIA2) IV 16bit to 12 bit convert
+ * conv_to_zuc_eia_iv - ZUCA IV 16-byte to 8-byte convert
  * function for 3G.
- * @iv: 16 bit original IV data
+ * @iv: 16 bytes of original IV data.
  *
- * Return: 12 bit IV data as understood by SEC HW
+ * From the original IV, we extract 32-bits of COUNT,
+ * 5-bits of bearer and 1-bit of direction.
+ * Refer to CAAM refman for ZUCA IV format. Then these values are
+ * appended as COUNT||BEARER||DIR continuously to make a 38-bit block.
+ * This 38-bit block is copied left justified into 8-byte array used as
+ * converted IV.
+ *
+ * Return: 8-bytes of IV data as understood by SEC HW
+ */
+
+static inline uint8_t *conv_to_zuc_eia_iv(uint8_t *iv)
+{
+	uint8_t dir = (iv[14] & 0x80) ? 4 : 0;
+
+	iv[12] = iv[4] | dir;
+	iv[13] = 0;
+	iv[14] = 0;
+	iv[15] = 0;
+
+	iv[8] = iv[0];
+	iv[9] = iv[1];
+	iv[10] = iv[2];
+	iv[11] = iv[3];
+
+	return (iv + 8);
+}
+
+/**
+ * conv_to_snow_f9_iv - SNOW/f9 (UIA2) IV 16 byte to 12 byte convert
+ * function for 3G.
+ * @iv: 16 byte original IV data
+ *
+ * Return: 12 byte IV data as understood by SEC HW
  */
 
 static inline uint8_t *conv_to_snow_f9_iv(uint8_t *iv)
@@ -93,7 +222,6 @@ static inline uint8_t *conv_to_snow_f9_iv(uint8_t *iv)
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
  * @authdata: pointer to authentication transform definitions
- * @dir: cipher direction (DIR_ENC/DIR_DEC)
  * @chk_icv: check or generate ICV value
  * @authlen: size of digest
  *
