@@ -67,10 +67,10 @@ dpaa_sec_op_ending(struct dpaa_sec_op_ctx *ctx)
 }
 
 static inline struct dpaa_sec_op_ctx *
-dpaa_sec_alloc_ctx(dpaa_sec_session *ses)
+dpaa_sec_alloc_ctx(dpaa_sec_session *ses, int sg_count)
 {
 	struct dpaa_sec_op_ctx *ctx;
-	int retval;
+	int i, retval;
 
 	retval = rte_mempool_get(ses->ctx_pool, (void **)(&ctx));
 	if (!ctx || retval) {
@@ -83,14 +83,11 @@ dpaa_sec_alloc_ctx(dpaa_sec_session *ses)
 	 * to clear all the SG entries. dpaa_sec_alloc_ctx() is called for
 	 * each packet, memset is costlier than dcbz_64().
 	 */
-	dcbz_64(&ctx->job.sg[SG_CACHELINE_0]);
-	dcbz_64(&ctx->job.sg[SG_CACHELINE_1]);
-	dcbz_64(&ctx->job.sg[SG_CACHELINE_2]);
-	dcbz_64(&ctx->job.sg[SG_CACHELINE_3]);
+	for (i = 0; i < sg_count && i < MAX_JOB_SG_ENTRIES; i += 4)
+		dcbz_64(&ctx->job.sg[i]);
 
 	ctx->ctx_pool = ses->ctx_pool;
-	ctx->vtop_offset = (size_t) ctx
-				- rte_mempool_virt2iova(ctx);
+	ctx->vtop_offset = (size_t) ctx - rte_mempool_virt2iova(ctx);
 
 	return ctx;
 }
@@ -857,12 +854,12 @@ build_auth_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	else
 		extra_segs = 2;
 
-	if ((mbuf->nb_segs + extra_segs) > MAX_SG_ENTRIES) {
+	if (mbuf->nb_segs > MAX_SG_ENTRIES) {
 		DPAA_SEC_DP_ERR("Auth: Max sec segs supported is %d",
 				MAX_SG_ENTRIES);
 		return NULL;
 	}
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, mbuf->nb_segs + extra_segs);
 	if (!ctx)
 		return NULL;
 
@@ -940,7 +937,7 @@ build_auth_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	rte_iova_t start_addr;
 	uint8_t *old_digest;
 
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, 4);
 	if (!ctx)
 		return NULL;
 
@@ -1010,13 +1007,13 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		req_segs = mbuf->nb_segs * 2 + 3;
 	}
 
-	if (req_segs > MAX_SG_ENTRIES) {
+	if (mbuf->nb_segs > MAX_SG_ENTRIES) {
 		DPAA_SEC_DP_ERR("Cipher: Max sec segs supported is %d",
 				MAX_SG_ENTRIES);
 		return NULL;
 	}
 
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, req_segs);
 	if (!ctx)
 		return NULL;
 
@@ -1096,7 +1093,7 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
 
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, 4);
 	if (!ctx)
 		return NULL;
 
@@ -1163,13 +1160,13 @@ build_cipher_auth_gcm_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	if (ses->auth_only_len)
 		req_segs++;
 
-	if (req_segs > MAX_SG_ENTRIES) {
+	if (mbuf->nb_segs > MAX_SG_ENTRIES) {
 		DPAA_SEC_DP_ERR("AEAD: Max sec segs supported is %d",
 				MAX_SG_ENTRIES);
 		return NULL;
 	}
 
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, req_segs);
 	if (!ctx)
 		return NULL;
 
@@ -1298,7 +1295,7 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	else
 		dst_start_addr = src_start_addr;
 
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, 7);
 	if (!ctx)
 		return NULL;
 
@@ -1411,13 +1408,13 @@ build_cipher_auth_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		req_segs = mbuf->nb_segs * 2 + 4;
 	}
 
-	if (req_segs > MAX_SG_ENTRIES) {
+	if (mbuf->nb_segs > MAX_SG_ENTRIES) {
 		DPAA_SEC_DP_ERR("Cipher-Auth: Max sec segs supported is %d",
 				MAX_SG_ENTRIES);
 		return NULL;
 	}
 
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, req_segs);
 	if (!ctx)
 		return NULL;
 
@@ -1535,7 +1532,7 @@ build_cipher_auth(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	else
 		dst_start_addr = src_start_addr;
 
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, 7);
 	if (!ctx)
 		return NULL;
 
@@ -1621,7 +1618,7 @@ build_proto(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	struct qm_sg_entry *sg;
 	phys_addr_t src_start_addr, dst_start_addr;
 
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, 2);
 	if (!ctx)
 		return NULL;
 	cf = &ctx->job;
@@ -1668,13 +1665,13 @@ build_proto_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		mbuf = sym->m_src;
 
 	req_segs = mbuf->nb_segs + sym->m_src->nb_segs + 2;
-	if (req_segs > MAX_SG_ENTRIES) {
+	if (mbuf->nb_segs > MAX_SG_ENTRIES) {
 		DPAA_SEC_DP_ERR("Proto: Max sec segs supported is %d",
 				MAX_SG_ENTRIES);
 		return NULL;
 	}
 
-	ctx = dpaa_sec_alloc_ctx(ses);
+	ctx = dpaa_sec_alloc_ctx(ses, req_segs);
 	if (!ctx)
 		return NULL;
 	cf = &ctx->job;

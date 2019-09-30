@@ -183,13 +183,11 @@ struct dpaa_sec_dev_private {
 };
 
 #define MAX_SG_ENTRIES		16
-#define SG_CACHELINE_0		0
-#define SG_CACHELINE_1		4
-#define SG_CACHELINE_2		8
-#define SG_CACHELINE_3		12
+#define MAX_JOB_SG_ENTRIES	36
+
 struct dpaa_sec_job {
 	/* sg[0] output, sg[1] input, others are possible sub frames */
-	struct qm_sg_entry sg[MAX_SG_ENTRIES];
+	struct qm_sg_entry sg[MAX_JOB_SG_ENTRIES];
 };
 
 #define DPAA_MAX_NB_MAX_DIGEST	32
