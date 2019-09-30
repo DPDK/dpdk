@@ -928,6 +928,130 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 }
 
 static inline int
+pdcp_insert_uplane_zuc_zuc_op(struct program *p,
+			      bool swap __maybe_unused,
+			      struct alginfo *cipherdata,
+			      struct alginfo *authdata,
+			      unsigned int dir,
+			      enum pdcp_sn_size sn_size,
+			      unsigned char era_2_sw_hfn_ovrd __maybe_unused)
+{
+	uint32_t offset = 0, length = 0, sn_mask = 0;
+
+	LABEL(keyjump);
+	REFERENCE(pkeyjump);
+
+	if (rta_sec_era < RTA_SEC_ERA_5) {
+		pr_err("Invalid era for selected algorithm\n");
+		return -ENOTSUP;
+	}
+
+	pkeyjump = JUMP(p, keyjump, LOCAL_JUMP, ALL_TRUE, SHRD | SELF | BOTH);
+	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
+	    cipherdata->keylen, INLINE_KEY(cipherdata));
+	KEY(p, KEY2, authdata->key_enc_flags, authdata->key, authdata->keylen,
+	    INLINE_KEY(authdata));
+
+	SET_LABEL(p, keyjump);
+	PATCH_JUMP(p, pkeyjump, keyjump);
+
+	if (rta_sec_era >= RTA_SEC_ERA_8 && sn_size != PDCP_SN_SIZE_18) {
+		int pclid;
+
+		if (sn_size == PDCP_SN_SIZE_5)
+			pclid = OP_PCLID_LTE_PDCP_CTRL_MIXED;
+		else
+			pclid = OP_PCLID_LTE_PDCP_USER_RN;
+
+		PROTOCOL(p, dir, pclid,
+			 ((uint16_t)cipherdata->algtype << 8) |
+			 (uint16_t)authdata->algtype);
+
+		return 0;
+	}
+	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
+	switch (sn_size) {
+	case PDCP_SN_SIZE_5:
+		offset = 7;
+		length = 1;
+		sn_mask = (swap == false) ? PDCP_C_PLANE_SN_MASK :
+					PDCP_C_PLANE_SN_MASK_BE;
+		break;
+	case PDCP_SN_SIZE_18:
+		offset = 5;
+		length = 3;
+		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+					PDCP_U_PLANE_18BIT_SN_MASK_BE;
+		break;
+	case PDCP_SN_SIZE_7:
+	case PDCP_SN_SIZE_12:
+	case PDCP_SN_SIZE_15:
+		pr_err("Invalid sn_size for %s\n", __func__);
+		return -ENOTSUP;
+	}
+
+	SEQLOAD(p, MATH0, offset, length, 0);
+	JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
+	MOVEB(p, MATH0, offset, IFIFOAB2, 0, length, IMMED);
+	MATHB(p, MATH0, AND, sn_mask, MATH1, 8, IFB | IMMED2);
+	MATHB(p, MATH1, SHLD, MATH1, MATH1, 8, 0);
+
+	MOVEB(p, DESCBUF, 8, MATH2, 0, 8, WAITCOMP | IMMED);
+	MATHB(p, MATH1, OR, MATH2, MATH2, 8, 0);
+	MOVEB(p, MATH2, 0, CONTEXT1, 0, 8, IMMED);
+
+	MOVEB(p, MATH2, 0, CONTEXT2, 0, 8, WAITCOMP | IMMED);
+
+	if (dir == OP_TYPE_ENCAP_PROTOCOL)
+		MATHB(p, SEQINSZ, ADD, PDCP_MAC_I_LEN, VSEQOUTSZ, 4, IMMED2);
+	else
+		MATHB(p, SEQINSZ, SUB, PDCP_MAC_I_LEN, VSEQOUTSZ, 4, IMMED2);
+
+	MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
+	SEQSTORE(p, MATH0, offset, length, 0);
+
+	if (dir == OP_TYPE_ENCAP_PROTOCOL) {
+		SEQFIFOSTORE(p, MSG, 0, 0, VLF);
+		SEQFIFOLOAD(p, MSGINSNOOP, 0, VLF | LAST2);
+	} else {
+		SEQFIFOSTORE(p, MSG, 0, 0, VLF | CONT);
+		SEQFIFOLOAD(p, MSGOUTSNOOP, 0, VLF | LAST1 | FLUSH1);
+	}
+
+	ALG_OPERATION(p, OP_ALG_ALGSEL_ZUCA,
+		      OP_ALG_AAI_F9,
+		      OP_ALG_AS_INITFINAL,
+		      dir == OP_TYPE_ENCAP_PROTOCOL ?
+			     ICV_CHECK_DISABLE : ICV_CHECK_ENABLE,
+		      DIR_ENC);
+
+	ALG_OPERATION(p, OP_ALG_ALGSEL_ZUCE,
+		      OP_ALG_AAI_F8,
+		      OP_ALG_AS_INITFINAL,
+		      ICV_CHECK_DISABLE,
+		      dir == OP_TYPE_ENCAP_PROTOCOL ? DIR_ENC : DIR_DEC);
+
+	if (dir == OP_TYPE_ENCAP_PROTOCOL) {
+		MOVE(p, CONTEXT2, 0, IFIFOAB1, 0, 4, LAST1 | FLUSH1 | IMMED);
+	} else {
+		/* Save ICV */
+		MOVEB(p, OFIFO, 0, MATH0, 0, 4, IMMED);
+
+		LOAD(p, NFIFOENTRY_STYPE_ALTSOURCE |
+		     NFIFOENTRY_DEST_CLASS2 |
+		     NFIFOENTRY_DTYPE_ICV |
+		     NFIFOENTRY_LC2 | 4, NFIFO_SZL, 0, 4, IMMED);
+		MOVEB(p, MATH0, 0, ALTSOURCE, 0, 4, WAITCOMP | IMMED);
+	}
+
+	/* Reset ZUCA mode and done interrupt */
+	LOAD(p, CLRW_CLR_C2MODE, CLRW, 0, 4, IMMED);
+	LOAD(p, CIRQ_ZADI, ICTRL, 0, 4, IMMED);
+
+	return 0;
+}
+
+static inline int
 pdcp_insert_uplane_aes_aes_op(struct program *p,
 			      bool swap __maybe_unused,
 			      struct alginfo *cipherdata,
@@ -2877,7 +3001,7 @@ pdcp_insert_uplane_with_int_op(struct program *p,
 			pdcp_insert_cplane_enc_only_op,	/* NULL */
 			pdcp_insert_cplane_zuc_snow_op,	/* SNOW f9 */
 			pdcp_insert_cplane_zuc_aes_op,	/* AES CMAC */
-			pdcp_insert_cplane_acc_op	/* ZUC-I */
+			pdcp_insert_uplane_zuc_zuc_op	/* ZUC-I */
 		},
 	};
 	int err;
