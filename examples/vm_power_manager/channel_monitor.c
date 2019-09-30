@@ -31,6 +31,7 @@
 #ifdef RTE_LIBRTE_I40E_PMD
 #include <rte_pmd_i40e.h>
 #endif
+#include <rte_power.h>
 
 #include <libvirt/libvirt.h>
 #include "channel_monitor.h"
@@ -750,6 +751,60 @@ send_freq(struct channel_packet *pkt,
 }
 
 static int
+send_capabilities(struct channel_packet *pkt,
+		struct channel_info *chan_info,
+		bool list_requested)
+{
+	unsigned int vcore_id = pkt->resource_id;
+	struct channel_packet_caps_list channel_pkt_caps_list;
+	struct vm_info info;
+	struct rte_power_core_capabilities caps;
+	int ret;
+
+	if (get_info_vm(pkt->vm_name, &info) != 0)
+		return -1;
+
+	if (!list_requested && vcore_id >= MAX_VCPU_PER_VM)
+		return -1;
+
+	if (!info.allow_query)
+		return -1;
+
+	channel_pkt_caps_list.command = CPU_POWER_CAPS_LIST;
+	channel_pkt_caps_list.num_vcpu = info.num_vcpus;
+
+	if (list_requested) {
+		unsigned int i;
+		for (i = 0; i < info.num_vcpus; i++) {
+			ret = rte_power_get_capabilities(info.pcpu_map[i],
+					&caps);
+			if (ret == 0) {
+				channel_pkt_caps_list.turbo[i] =
+						caps.turbo;
+				channel_pkt_caps_list.priority[i] =
+						caps.priority;
+			} else
+				return -1;
+
+		}
+	} else {
+		ret = rte_power_get_capabilities(info.pcpu_map[vcore_id],
+				&caps);
+		if (ret == 0) {
+			channel_pkt_caps_list.turbo[vcore_id] =
+					caps.turbo;
+			channel_pkt_caps_list.priority[vcore_id] =
+					caps.priority;
+		} else
+			return -1;
+	}
+
+	return write_binary_packet(&channel_pkt_caps_list,
+			sizeof(channel_pkt_caps_list),
+			chan_info);
+}
+
+static int
 send_ack_for_received_cmd(struct channel_packet *pkt,
 		struct channel_info *chan_info,
 		uint32_t command)
@@ -855,6 +910,18 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 				pkt->command == CPU_POWER_QUERY_FREQ_LIST);
 		if (ret < 0)
 			RTE_LOG(ERR, CHANNEL_MONITOR, "Error during frequency sending.\n");
+	}
+
+	if (pkt->command == CPU_POWER_QUERY_CAPS_LIST ||
+		pkt->command == CPU_POWER_QUERY_CAPS) {
+
+		RTE_LOG(INFO, CHANNEL_MONITOR,
+			"Capabilities for %s requested.\n", pkt->vm_name);
+		int ret = send_capabilities(pkt,
+				chan_info,
+				pkt->command == CPU_POWER_QUERY_CAPS_LIST);
+		if (ret < 0)
+			RTE_LOG(ERR, CHANNEL_MONITOR, "Error during sending capabilities.\n");
 	}
 
 	/*
