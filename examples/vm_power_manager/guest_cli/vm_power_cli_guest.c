@@ -145,7 +145,7 @@ struct cmd_freq_list_result {
 };
 
 static int
-query_freq_list(struct channel_packet *pkt, unsigned int lcore_id)
+query_data(struct channel_packet *pkt, unsigned int lcore_id)
 {
 	int ret;
 	ret = rte_power_guest_channel_send_msg(pkt, lcore_id);
@@ -219,7 +219,7 @@ cmd_query_freq_list_parsed(void *parsed_result,
 		pkt.resource_id = lcore_id;
 	}
 
-	ret = query_freq_list(&pkt, lcore_id);
+	ret = query_data(&pkt, lcore_id);
 	if (ret < 0) {
 		cmdline_printf(cl, "Error during sending frequency list query.\n");
 		return;
@@ -257,6 +257,120 @@ cmdline_parse_inst_t cmd_query_freq_list = {
 	.tokens = {        /* token list, NULL terminated */
 		(void *)&cmd_query_freq_token,
 		(void *)&cmd_query_freq_cpu_num_token,
+		NULL,
+	},
+};
+
+struct cmd_query_caps_result {
+	cmdline_fixed_string_t query_caps;
+	cmdline_fixed_string_t cpu_num;
+};
+
+static int
+receive_capabilities(struct channel_packet_caps_list *pkt_caps_list,
+		unsigned int lcore_id)
+{
+	int ret;
+
+	ret = rte_power_guest_channel_receive_msg(pkt_caps_list,
+		sizeof(struct channel_packet_caps_list),
+		lcore_id);
+	if (ret < 0) {
+		RTE_LOG(ERR, GUEST_CLI, "Error receiving message.\n");
+		return -1;
+	}
+	if (pkt_caps_list->command != CPU_POWER_CAPS_LIST) {
+		RTE_LOG(ERR, GUEST_CLI, "Unexpected message received.\n");
+		return -1;
+	}
+	return 0;
+}
+
+static void
+cmd_query_caps_list_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_query_caps_result *res = parsed_result;
+	unsigned int lcore_id;
+	struct channel_packet_caps_list pkt_caps_list;
+	struct channel_packet pkt;
+	bool query_list = false;
+	int ret;
+	char *ep;
+
+	memset(&pkt, 0, sizeof(struct channel_packet));
+	memset(&pkt_caps_list, 0, sizeof(struct channel_packet_caps_list));
+
+	if (!strcmp(res->cpu_num, "all")) {
+
+		/* Get first enabled lcore. */
+		lcore_id = rte_get_next_lcore(-1,
+				0,
+				0);
+		if (lcore_id == RTE_MAX_LCORE) {
+			cmdline_printf(cl, "Enabled core not found.\n");
+			return;
+		}
+
+		pkt.command = CPU_POWER_QUERY_CAPS_LIST;
+		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
+		query_list = true;
+	} else {
+		errno = 0;
+		lcore_id = (unsigned int)strtol(res->cpu_num, &ep, 10);
+		if (errno != 0 || lcore_id >= MAX_VCPU_PER_VM ||
+			ep == res->cpu_num) {
+			cmdline_printf(cl, "Invalid parameter provided.\n");
+			return;
+		}
+		pkt.command = CPU_POWER_QUERY_CAPS;
+		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
+		pkt.resource_id = lcore_id;
+	}
+
+	ret = query_data(&pkt, lcore_id);
+	if (ret < 0) {
+		cmdline_printf(cl, "Error during sending capabilities query.\n");
+		return;
+	}
+
+	ret = receive_capabilities(&pkt_caps_list, lcore_id);
+	if (ret < 0) {
+		cmdline_printf(cl, "Error during capabilities reception.\n");
+		return;
+	}
+	if (query_list) {
+		unsigned int i;
+		for (i = 0; i < pkt_caps_list.num_vcpu; ++i)
+			cmdline_printf(cl, "Capabilities of [%d] vcore are:"
+					" turbo possibility: %ld, is priority core: %ld.\n",
+					i,
+					pkt_caps_list.turbo[i],
+					pkt_caps_list.priority[i]);
+	} else {
+		cmdline_printf(cl, "Capabilities of [%d] vcore are:"
+				" turbo possibility: %ld, is priority core: %ld.\n",
+				lcore_id,
+				pkt_caps_list.turbo[lcore_id],
+				pkt_caps_list.priority[lcore_id]);
+	}
+}
+
+cmdline_parse_token_string_t cmd_query_caps_token =
+	TOKEN_STRING_INITIALIZER(struct cmd_query_caps_result, query_caps, "query_cpu_caps");
+cmdline_parse_token_string_t cmd_query_caps_cpu_num_token =
+	TOKEN_STRING_INITIALIZER(struct cmd_query_caps_result, cpu_num, NULL);
+
+cmdline_parse_inst_t cmd_query_caps_list = {
+	.f = cmd_query_caps_list_parsed,  /* function to call */
+	.data = NULL,      /* 2nd arg of func */
+	.help_str = "query_cpu_caps <core_num>|all, request"
+				" information regarding virtual core capabilities."
+				" The keyword 'all' will query list of all vcores for the VM",
+	.tokens = {        /* token list, NULL terminated */
+		(void *)&cmd_query_caps_token,
+		(void *)&cmd_query_caps_cpu_num_token,
 		NULL,
 	},
 };
@@ -418,6 +532,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 		(cmdline_parse_inst_t *)&cmd_send_policy_set,
 		(cmdline_parse_inst_t *)&cmd_set_cpu_freq_set,
 		(cmdline_parse_inst_t *)&cmd_query_freq_list,
+		(cmdline_parse_inst_t *)&cmd_query_caps_list,
 		NULL,
 };
 
