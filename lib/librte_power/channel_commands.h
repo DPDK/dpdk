@@ -31,6 +31,8 @@ extern "C" {
 /* CPU Power Queries */
 #define CPU_POWER_QUERY_FREQ_LIST  7
 #define CPU_POWER_QUERY_FREQ       8
+#define CPU_POWER_QUERY_CAPS_LIST  9
+#define CPU_POWER_QUERY_CAPS       10
 
 /* --- Outgoing messages --- */
 
@@ -40,6 +42,7 @@ extern "C" {
 
 /* CPU Power Query Responses */
 #define CPU_POWER_FREQ_LIST     3
+#define CPU_POWER_CAPS_LIST     4
 
 #define HOURS 24
 
@@ -100,6 +103,17 @@ struct channel_packet_freq_list {
 	char vm_name[VM_MAX_NAME_SZ];
 
 	uint32_t freq_list[MAX_VCPU_PER_VM];
+	uint8_t num_vcpu;
+};
+
+struct channel_packet_caps_list {
+	uint64_t resource_id; /**< core_num, device */
+	uint32_t unit;        /**< scale down/up/min/max */
+	uint32_t command;     /**< Power, IO, etc */
+	char vm_name[VM_MAX_NAME_SZ];
+
+	uint64_t turbo[MAX_VCPU_PER_VM];
+	uint64_t priority[MAX_VCPU_PER_VM];
 	uint8_t num_vcpu;
 };
 
