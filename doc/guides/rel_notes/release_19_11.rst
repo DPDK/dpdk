@@ -149,6 +149,13 @@ New Features
   * Added support for VLAN set VID offload command.
   * Added support for matching on packets withe Geneve tunnel header.
 
+* **Updated the AF_XDP PMD.**
+
+  Updated the AF_XDP PMD. The new features include:
+
+  * Enabled zero copy between application mempools and UMEM by enabling the
+    XDP_UMEM_UNALIGNED_CHUNKS UMEM flag.
+
 * **Added Marvell NITROX symmetric crypto PMD.**
 
   Added a symmetric crypto PMD for Marvell NITROX V security processor.
@@ -240,6 +247,8 @@ Removed Items
     port config <port_id> rx_offload crc_strip|scatter|
                                      ipv4_cksum|udp_cksum|tcp_cksum|timestamp|
                                      vlan_strip|vlan_filter|vlan_extend on|off
+
+* Removed AF_XDP pmd_zero copy vdev argument. Support is now auto-detected.
 
 
 API Changes
