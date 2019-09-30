@@ -7203,6 +7203,277 @@ on_err:
 	return ret;
 }
 
+static int
+test_pdcp_proto_SGL(int i, int oop,
+	enum rte_crypto_cipher_operation opc,
+	enum rte_crypto_auth_operation opa,
+	uint8_t *input_vec,
+	unsigned int input_vec_len,
+	uint8_t *output_vec,
+	unsigned int output_vec_len,
+	uint32_t fragsz,
+	uint32_t fragsz_oop)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	uint8_t *plaintext;
+	struct rte_mbuf *buf, *buf_oop = NULL;
+	int ret = TEST_SUCCESS;
+	int to_trn = 0;
+	int to_trn_tbl[16];
+	int segs = 1;
+	unsigned int trn_data = 0;
+
+	if (fragsz > input_vec_len)
+		fragsz = input_vec_len;
+
+	uint16_t plaintext_len = fragsz;
+	uint16_t frag_size_oop = fragsz_oop ? fragsz_oop : fragsz;
+
+	if (fragsz_oop > output_vec_len)
+		frag_size_oop = output_vec_len;
+
+	int ecx = 0;
+	if (input_vec_len % fragsz != 0) {
+		if (input_vec_len / fragsz + 1 > 16)
+			return 1;
+	} else if (input_vec_len / fragsz > 16)
+		return 1;
+
+	/* Out of place support */
+	if (oop) {
+		/*
+		 * For out-op-place we need to alloc another mbuf
+		 */
+		ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+		rte_pktmbuf_append(ut_params->obuf, frag_size_oop);
+		buf_oop = ut_params->obuf;
+	}
+
+	/* Generate test mbuf data */
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	/* clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+						  plaintext_len);
+	memcpy(plaintext, input_vec, plaintext_len);
+	trn_data += plaintext_len;
+
+	buf = ut_params->ibuf;
+
+	/*
+	 * Loop until no more fragments
+	 */
+
+	while (trn_data < input_vec_len) {
+		++segs;
+		to_trn = (input_vec_len - trn_data < fragsz) ?
+				(input_vec_len - trn_data) : fragsz;
+
+		to_trn_tbl[ecx++] = to_trn;
+
+		buf->next = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+		buf = buf->next;
+
+		memset(rte_pktmbuf_mtod(buf, uint8_t *), 0,
+				rte_pktmbuf_tailroom(buf));
+
+		/* OOP */
+		if (oop && !fragsz_oop) {
+			buf_oop->next =
+					rte_pktmbuf_alloc(ts_params->mbuf_pool);
+			buf_oop = buf_oop->next;
+			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
+					0, rte_pktmbuf_tailroom(buf_oop));
+			rte_pktmbuf_append(buf_oop, to_trn);
+		}
+
+		plaintext = (uint8_t *)rte_pktmbuf_append(buf,
+				to_trn);
+
+		memcpy(plaintext, input_vec + trn_data, to_trn);
+		trn_data += to_trn;
+	}
+
+	ut_params->ibuf->nb_segs = segs;
+
+	segs = 1;
+	if (fragsz_oop && oop) {
+		to_trn = 0;
+		ecx = 0;
+
+		trn_data = frag_size_oop;
+		while (trn_data < output_vec_len) {
+			++segs;
+			to_trn =
+				(output_vec_len - trn_data <
+						frag_size_oop) ?
+				(output_vec_len - trn_data) :
+						frag_size_oop;
+
+			to_trn_tbl[ecx++] = to_trn;
+
+			buf_oop->next =
+				rte_pktmbuf_alloc(ts_params->mbuf_pool);
+			buf_oop = buf_oop->next;
+			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
+					0, rte_pktmbuf_tailroom(buf_oop));
+			rte_pktmbuf_append(buf_oop, to_trn);
+
+			trn_data += to_trn;
+		}
+		ut_params->obuf->nb_segs = segs;
+	}
+
+	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.cipher.algo = pdcp_test_params[i].cipher_alg;
+	ut_params->cipher_xform.cipher.op = opc;
+	ut_params->cipher_xform.cipher.key.data = pdcp_test_crypto_key[i];
+	ut_params->cipher_xform.cipher.key.length =
+					pdcp_test_params[i].cipher_key_len;
+	ut_params->cipher_xform.cipher.iv.length = 0;
+
+	/* Setup HMAC Parameters if ICV header is required */
+	if (pdcp_test_params[i].auth_alg != 0) {
+		ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+		ut_params->auth_xform.next = NULL;
+		ut_params->auth_xform.auth.algo = pdcp_test_params[i].auth_alg;
+		ut_params->auth_xform.auth.op = opa;
+		ut_params->auth_xform.auth.key.data = pdcp_test_auth_key[i];
+		ut_params->auth_xform.auth.key.length =
+					pdcp_test_params[i].auth_key_len;
+
+		ut_params->cipher_xform.next = &ut_params->auth_xform;
+	} else {
+		ut_params->cipher_xform.next = NULL;
+	}
+
+	struct rte_security_session_conf sess_conf = {
+		.action_type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_PDCP,
+		{.pdcp = {
+			.bearer = pdcp_test_bearer[i],
+			.domain = pdcp_test_params[i].domain,
+			.pkt_dir = pdcp_test_packet_direction[i],
+			.sn_size = pdcp_test_data_sn_size[i],
+			.hfn = pdcp_test_hfn[i],
+			.hfn_threshold = pdcp_test_hfn_threshold[i],
+		} },
+		.crypto_xform = &ut_params->cipher_xform
+	};
+
+	struct rte_security_ctx *ctx = (struct rte_security_ctx *)
+				rte_cryptodev_get_sec_ctx(
+				ts_params->valid_devs[0]);
+
+	/* Create security session */
+	ut_params->sec_session = rte_security_session_create(ctx,
+				&sess_conf, ts_params->session_mpool);
+
+	if (!ut_params->sec_session) {
+		printf("TestCase %s()-%d line %d failed %s: ",
+			__func__, i, __LINE__, "Failed to allocate session");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	/* Generate crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	if (!ut_params->op) {
+		printf("TestCase %s()-%d line %d failed %s: ",
+			__func__, i, __LINE__,
+			"Failed to allocate symmetric crypto operation struct");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	rte_security_attach_session(ut_params->op, ut_params->sec_session);
+
+	/* set crypto operation source mbuf */
+	ut_params->op->sym->m_src = ut_params->ibuf;
+	if (oop)
+		ut_params->op->sym->m_dst = ut_params->obuf;
+
+	/* Process crypto operation */
+	if (process_crypto_request(ts_params->valid_devs[0], ut_params->op)
+		== NULL) {
+		printf("TestCase %s()-%d line %d failed %s: ",
+			__func__, i, __LINE__,
+			"failed to process sym crypto op");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	if (ut_params->op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		printf("TestCase %s()-%d line %d failed %s: ",
+			__func__, i, __LINE__, "crypto op processing failed");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	/* Validate obuf */
+	uint8_t *ciphertext = rte_pktmbuf_mtod(ut_params->op->sym->m_src,
+			uint8_t *);
+	if (oop) {
+		ciphertext = rte_pktmbuf_mtod(ut_params->op->sym->m_dst,
+				uint8_t *);
+	}
+	if (fragsz_oop)
+		fragsz = frag_size_oop;
+	if (memcmp(ciphertext, output_vec, fragsz)) {
+		printf("\n=======PDCP TestCase #%d failed: Data Mismatch ", i);
+		rte_hexdump(stdout, "encrypted", ciphertext, fragsz);
+		rte_hexdump(stdout, "reference", output_vec, fragsz);
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	buf = ut_params->op->sym->m_src->next;
+	if (oop)
+		buf = ut_params->op->sym->m_dst->next;
+
+	unsigned int off = fragsz;
+
+	ecx = 0;
+	while (buf) {
+		ciphertext = rte_pktmbuf_mtod(buf,
+				uint8_t *);
+		if (memcmp(ciphertext, output_vec + off, to_trn_tbl[ecx])) {
+			printf("\n=======PDCP TestCase #%d failed: Data Mismatch ", i);
+			rte_hexdump(stdout, "encrypted", ciphertext, to_trn_tbl[ecx]);
+			rte_hexdump(stdout, "reference", output_vec + off,
+					to_trn_tbl[ecx]);
+			ret = TEST_FAILED;
+			goto on_err;
+		}
+		off += to_trn_tbl[ecx++];
+		buf = buf->next;
+	}
+on_err:
+	rte_crypto_op_free(ut_params->op);
+	ut_params->op = NULL;
+
+	if (ut_params->sec_session)
+		rte_security_session_destroy(ctx, ut_params->sec_session);
+	ut_params->sec_session = NULL;
+
+	rte_pktmbuf_free(ut_params->ibuf);
+	ut_params->ibuf = NULL;
+	if (oop) {
+		rte_pktmbuf_free(ut_params->obuf);
+		ut_params->obuf = NULL;
+	}
+
+	return ret;
+}
+
 int
 test_pdcp_proto_cplane_encap(int i)
 {
@@ -7276,6 +7547,71 @@ test_pdcp_proto_uplane_decap_with_int(int i)
 		pdcp_test_data_in_len[i]);
 }
 
+static int
+test_PDCP_PROTO_SGL_in_place_32B(void)
+{
+	/* i can be used for running any PDCP case
+	 * In this case it is uplane 12-bit AES-SNOW DL encap
+	 */
+	int i = PDCP_UPLANE_12BIT_OFFSET + AES_ENC + SNOW_AUTH + DOWNLINK;
+	return test_pdcp_proto_SGL(i, IN_PLACE,
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			RTE_CRYPTO_AUTH_OP_GENERATE,
+			pdcp_test_data_in[i],
+			pdcp_test_data_in_len[i],
+			pdcp_test_data_out[i],
+			pdcp_test_data_in_len[i]+4,
+			32, 0);
+}
+static int
+test_PDCP_PROTO_SGL_oop_32B_128B(void)
+{
+	/* i can be used for running any PDCP case
+	 * In this case it is uplane 18-bit NULL-NULL DL encap
+	 */
+	int i = PDCP_UPLANE_18BIT_OFFSET + NULL_ENC + NULL_AUTH + DOWNLINK;
+	return test_pdcp_proto_SGL(i, OUT_OF_PLACE,
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			RTE_CRYPTO_AUTH_OP_GENERATE,
+			pdcp_test_data_in[i],
+			pdcp_test_data_in_len[i],
+			pdcp_test_data_out[i],
+			pdcp_test_data_in_len[i]+4,
+			32, 128);
+}
+static int
+test_PDCP_PROTO_SGL_oop_32B_40B(void)
+{
+	/* i can be used for running any PDCP case
+	 * In this case it is uplane 18-bit AES DL encap
+	 */
+	int i = PDCP_UPLANE_OFFSET + AES_ENC + EIGHTEEN_BIT_SEQ_NUM_OFFSET
+			+ DOWNLINK;
+	return test_pdcp_proto_SGL(i, OUT_OF_PLACE,
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			RTE_CRYPTO_AUTH_OP_GENERATE,
+			pdcp_test_data_in[i],
+			pdcp_test_data_in_len[i],
+			pdcp_test_data_out[i],
+			pdcp_test_data_in_len[i],
+			32, 40);
+}
+static int
+test_PDCP_PROTO_SGL_oop_128B_32B(void)
+{
+	/* i can be used for running any PDCP case
+	 * In this case it is cplane 12-bit AES-ZUC DL encap
+	 */
+	int i = PDCP_CPLANE_LONG_SN_OFFSET + AES_ENC + ZUC_AUTH + DOWNLINK;
+	return test_pdcp_proto_SGL(i, OUT_OF_PLACE,
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			RTE_CRYPTO_AUTH_OP_GENERATE,
+			pdcp_test_data_in[i],
+			pdcp_test_data_in_len[i],
+			pdcp_test_data_out[i],
+			pdcp_test_data_in_len[i]+4,
+			128, 32);
+}
 #endif
 
 static int
@@ -11702,6 +12038,15 @@ static struct unit_test_suite cryptodev_dpaa_sec_testsuite  = {
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_PDCP_PROTO_uplane_decap_all),
+
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_SGL_in_place_32B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_SGL_oop_32B_128B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_SGL_oop_32B_40B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_SGL_oop_128B_32B),
 #endif
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -11820,6 +12165,15 @@ static struct unit_test_suite cryptodev_dpaa2_sec_testsuite  = {
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_PDCP_PROTO_uplane_decap_all),
+
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_SGL_in_place_32B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_SGL_oop_32B_128B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_SGL_oop_32B_40B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_SGL_oop_128B_32B),
 #endif
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,

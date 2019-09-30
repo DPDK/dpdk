@@ -56,6 +56,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Updated NXP crypto PMDs for PDCP support.**
+
+  PDCP support is added to DPAA_SEC and DPAA2_SEC PMDs using rte_security APIs.
+  Support is added for all sequence number sizes for control and user plane.
+  Test application is updated for unit testing.
+
 * **Updated the Intel QuickAssist Technology (QAT) compression PMD.**
 
   Added stateful decompression support in the Intel QuickAssist Technology PMD.
