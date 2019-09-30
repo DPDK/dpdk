@@ -64,48 +64,49 @@ cnstr_shdsc_snow_f8(uint32_t *descbuf, bool ps, bool swap,
  * @swap: must be true when core endianness doesn't match SEC endianness
  * @authdata: pointer to authentication transform definitions
  * @dir: cipher direction (DIR_ENC/DIR_DEC)
- * @count: UEA2 count value (32 bits)
- * @fresh: UEA2 fresh value ID (32 bits)
- * @direction: UEA2 direction (1 bit)
- * @datalen: size of data
+ * @chk_icv: check or generate ICV value
+ * @authlen: size of digest
  *
  * Return: size of descriptor written in words or negative number on error
  */
 static inline int
 cnstr_shdsc_snow_f9(uint32_t *descbuf, bool ps, bool swap,
-		    struct alginfo *authdata, uint8_t dir, uint32_t count,
-		    uint32_t fresh, uint8_t direction, uint32_t datalen)
+		    struct alginfo *authdata, uint8_t chk_icv,
+		    uint32_t authlen)
 {
 	struct program prg;
 	struct program *p = &prg;
-	uint64_t ct = count;
-	uint64_t fr = fresh;
-	uint64_t dr = direction;
-	uint64_t context[2];
-
-	context[0] = (ct << 32) | (dr << 26);
-	context[1] = fr << 32;
+	int dir = chk_icv ? DIR_DEC : DIR_ENC;
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
-	if (swap) {
+	if (swap)
 		PROGRAM_SET_BSWAP(p);
 
-		context[0] = swab64(context[0]);
-		context[1] = swab64(context[1]);
-	}
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
+
 	SHR_HDR(p, SHR_ALWAYS, 1, 0);
 
-	KEY(p, KEY2, authdata->key_enc_flags, authdata->key, authdata->keylen,
-	    INLINE_KEY(authdata));
-	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
+	KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
+	    authdata->keylen, INLINE_KEY(authdata));
+
+	SEQLOAD(p, CONTEXT2, 0, 12, 0);
+
+	if (chk_icv == ICV_CHECK_ENABLE)
+		MATHB(p, SEQINSZ, SUB, authlen, VSEQINSZ, 4, IMMED2);
+	else
+		MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
+
 	ALG_OPERATION(p, OP_ALG_ALGSEL_SNOW_F9, OP_ALG_AAI_F9,
-		      OP_ALG_AS_INITFINAL, 0, dir);
-	LOAD(p, (uintptr_t)context, CONTEXT2, 0, 16, IMMED | COPY);
-	SEQFIFOLOAD(p, BIT_DATA, datalen, CLASS2 | LAST2);
-	/* Save lower half of MAC out into a 32-bit sequence */
-	SEQSTORE(p, CONTEXT2, 0, 4, 0);
+		      OP_ALG_AS_INITFINAL, chk_icv, dir);
+
+	SEQFIFOLOAD(p, MSG2, 0, VLF | CLASS2 | LAST2);
+
+	if (chk_icv == ICV_CHECK_ENABLE)
+		SEQFIFOLOAD(p, ICV2, authlen, LAST2);
+	else
+		/* Save lower half of MAC out into a 32-bit sequence */
+		SEQSTORE(p, CONTEXT2, 0, authlen, 0);
 
 	return PROGRAM_FINALIZE(p);
 }
