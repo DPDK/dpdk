@@ -125,14 +125,16 @@ build_proto_compound_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FD_LEN(fd, ip_fle->length);
 	DPAA2_SET_FLE_FIN(ip_fle);
 
-#ifdef ENABLE_HFN_OVERRIDE
+	/* In case of PDCP, per packet HFN is stored in
+	 * mbuf priv after sym_op.
+	 */
 	if (sess->ctxt_type == DPAA2_SEC_PDCP && sess->pdcp.hfn_ovd) {
+		uint32_t hfn_ovd = *((uint8_t *)op + sess->pdcp.hfn_ovd_offset);
 		/*enable HFN override override */
-		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, sess->pdcp.hfn_ovd);
-		DPAA2_SET_FLE_INTERNAL_JD(op_fle, sess->pdcp.hfn_ovd);
-		DPAA2_SET_FD_INTERNAL_JD(fd, sess->pdcp.hfn_ovd);
+		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, hfn_ovd);
+		DPAA2_SET_FLE_INTERNAL_JD(op_fle, hfn_ovd);
+		DPAA2_SET_FD_INTERNAL_JD(fd, hfn_ovd);
 	}
-#endif
 
 	return 0;
 
@@ -2664,11 +2666,11 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	session->pdcp.bearer = pdcp_xform->bearer;
 	session->pdcp.pkt_dir = pdcp_xform->pkt_dir;
 	session->pdcp.sn_size = pdcp_xform->sn_size;
-#ifdef ENABLE_HFN_OVERRIDE
-	session->pdcp.hfn_ovd = pdcp_xform->hfn_ovd;
-#endif
 	session->pdcp.hfn = pdcp_xform->hfn;
 	session->pdcp.hfn_threshold = pdcp_xform->hfn_threshold;
+	session->pdcp.hfn_ovd = pdcp_xform->hfn_ovrd;
+	/* hfv ovd offset location is stored in iv.offset value*/
+	session->pdcp.hfn_ovd_offset = cipher_xform->iv.offset;
 
 	cipherdata.key = (size_t)session->cipher_key.data;
 	cipherdata.keylen = session->cipher_key.length;
