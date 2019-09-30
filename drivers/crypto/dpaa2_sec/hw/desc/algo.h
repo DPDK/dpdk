@@ -24,31 +24,19 @@
  * @swap: must be true when core endianness doesn't match SEC endianness
  * @cipherdata: pointer to block cipher transform definitions
  * @dir: Cipher direction (DIR_ENC/DIR_DEC)
- * @count: UEA2 count value (32 bits)
- * @bearer: UEA2 bearer ID (5 bits)
- * @direction: UEA2 direction (1 bit)
  *
  * Return: size of descriptor written in words or negative number on error
  */
 static inline int
 cnstr_shdsc_snow_f8(uint32_t *descbuf, bool ps, bool swap,
-		    struct alginfo *cipherdata, uint8_t dir,
-		    uint32_t count, uint8_t bearer, uint8_t direction)
+		    struct alginfo *cipherdata, uint8_t dir)
 {
 	struct program prg;
 	struct program *p = &prg;
-	uint32_t ct = count;
-	uint8_t br = bearer;
-	uint8_t dr = direction;
-	uint32_t context[2] = {ct, (br << 27) | (dr << 26)};
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
-	if (swap) {
+	if (swap)
 		PROGRAM_SET_BSWAP(p);
-
-		context[0] = swab32(context[0]);
-		context[1] = swab32(context[1]);
-	}
 
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
@@ -56,11 +44,13 @@ cnstr_shdsc_snow_f8(uint32_t *descbuf, bool ps, bool swap,
 
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
+
+	SEQLOAD(p, CONTEXT1, 0, 16, 0);
+
 	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
 	MATHB(p, SEQINSZ, SUB, MATH2, VSEQOUTSZ, 4, 0);
 	ALG_OPERATION(p, OP_ALG_ALGSEL_SNOW_F8, OP_ALG_AAI_F8,
 		      OP_ALG_AS_INITFINAL, 0, dir);
-	LOAD(p, (uintptr_t)context, CONTEXT1, 0, 8, IMMED | COPY);
 	SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1);
 	SEQFIFOSTORE(p, MSG, 0, 0, VLF);
 
