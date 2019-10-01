@@ -10,6 +10,27 @@ information about the NITROX V security processor can be obtained here:
 
 * https://www.marvell.com/security-solutions/nitrox-security-processors/nitrox-v/
 
+Features
+--------
+
+Nitrox crypto PMD has support for:
+
+Cipher algorithms:
+
+* ``RTE_CRYPTO_CIPHER_AES_CBC``
+
+Hash algorithms:
+
+* ``RTE_CRYPTO_AUTH_SHA1_HMAC``
+* ``RTE_CRYPTO_AUTH_SHA224_HMAC``
+* ``RTE_CRYPTO_AUTH_SHA256_HMAC``
+
+Limitations
+-----------
+
+* AES_CBC Cipher Only combination is not supported.
+* Session-less APIs are not supported.
+
 Installation
 ------------
 

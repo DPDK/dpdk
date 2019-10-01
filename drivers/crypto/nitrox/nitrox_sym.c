@@ -701,7 +701,12 @@ nitrox_sym_pmd_create(struct nitrox_device *ndev)
 	cdev->dequeue_burst = nitrox_sym_dev_deq_burst;
 	cdev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 		RTE_CRYPTODEV_FF_HW_ACCELERATED |
-		RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+		RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+		RTE_CRYPTODEV_FF_IN_PLACE_SGL |
+		RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
+		RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
+		RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
+		RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
 
 	ndev->sym_dev = cdev->data->dev_private;
 	ndev->sym_dev->cdev = cdev;
