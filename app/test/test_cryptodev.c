@@ -10003,8 +10003,8 @@ test_authentication_verify_fail_when_data_corruption(
 	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op);
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed crypto process");
-	TEST_ASSERT_EQUAL(ut_params->op->status,
-			RTE_CRYPTO_OP_STATUS_AUTH_FAILED,
+	TEST_ASSERT_NOT_EQUAL(ut_params->op->status,
+			RTE_CRYPTO_OP_STATUS_SUCCESS,
 			"authentication not failed");
 
 	ut_params->obuf = ut_params->op->sym->m_src;
@@ -10064,8 +10064,8 @@ test_authentication_verify_GMAC_fail_when_corruption(
 	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op);
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed crypto process");
-	TEST_ASSERT_EQUAL(ut_params->op->status,
-			RTE_CRYPTO_OP_STATUS_AUTH_FAILED,
+	TEST_ASSERT_NOT_EQUAL(ut_params->op->status,
+			RTE_CRYPTO_OP_STATUS_SUCCESS,
 			"authentication not failed");
 
 	ut_params->obuf = ut_params->op->sym->m_src;
@@ -10125,8 +10125,8 @@ test_authenticated_decryption_fail_when_corruption(
 			ut_params->op);
 
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed crypto process");
-	TEST_ASSERT_EQUAL(ut_params->op->status,
-			RTE_CRYPTO_OP_STATUS_AUTH_FAILED,
+	TEST_ASSERT_NOT_EQUAL(ut_params->op->status,
+			RTE_CRYPTO_OP_STATUS_SUCCESS,
 			"authentication not failed");
 
 	ut_params->obuf = ut_params->op->sym->m_src;
