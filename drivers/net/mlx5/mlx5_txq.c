@@ -702,6 +702,38 @@ txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl)
 }
 
 /**
+ * Calculate the maximal inline data size for Tx queue.
+ *
+ * @param txq_ctrl
+ *   Pointer to Tx queue control structure.
+ *
+ * @return
+ *   The maximal inline data size.
+ */
+static unsigned int
+txq_calc_inline_max(struct mlx5_txq_ctrl *txq_ctrl)
+{
+	const unsigned int desc = 1 << txq_ctrl->txq.elts_n;
+	struct mlx5_priv *priv = txq_ctrl->priv;
+	unsigned int wqe_size;
+
+	wqe_size = priv->sh->device_attr.orig_attr.max_qp_wr / desc;
+	if (!wqe_size)
+		return 0;
+	/*
+	 * This calculation is derived from tthe source of
+	 * mlx5_calc_send_wqe() in rdma_core library.
+	 */
+	wqe_size = wqe_size * MLX5_WQE_SIZE -
+		   MLX5_WQE_CSEG_SIZE -
+		   MLX5_WQE_ESEG_SIZE -
+		   MLX5_WSEG_SIZE -
+		   MLX5_WSEG_SIZE +
+		   MLX5_DSEG_MIN_INLINE_SIZE;
+	return wqe_size;
+}
+
+/**
  * Set Tx queue parameters from device configuration.
  *
  * @param txq_ctrl
@@ -794,8 +826,11 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 		 * may be inlined in Ethernet Segment, align the
 		 * length accordingly to fit entire WQEBBs.
 		 */
-		temp = (inlen_send / MLX5_WQE_SIZE) * MLX5_WQE_SIZE +
-			MLX5_ESEG_MIN_INLINE_SIZE + MLX5_WQE_DSEG_SIZE;
+		temp = RTE_MAX(inlen_send,
+			       MLX5_ESEG_MIN_INLINE_SIZE + MLX5_WQE_DSEG_SIZE);
+		temp -= MLX5_ESEG_MIN_INLINE_SIZE + MLX5_WQE_DSEG_SIZE;
+		temp = RTE_ALIGN(temp, MLX5_WQE_SIZE);
+		temp += MLX5_ESEG_MIN_INLINE_SIZE + MLX5_WQE_DSEG_SIZE;
 		temp = RTE_MIN(temp, MLX5_WQE_SIZE_MAX +
 				     MLX5_ESEG_MIN_INLINE_SIZE -
 				     MLX5_WQE_CSEG_SIZE -
@@ -854,9 +889,11 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 		 * may be inlined in Data Segment, align the
 		 * length accordingly to fit entire WQEBBs.
 		 */
-		temp = (inlen_empw + MLX5_WQE_SIZE - 1) / MLX5_WQE_SIZE;
-		temp = temp * MLX5_WQE_SIZE +
-		       MLX5_DSEG_MIN_INLINE_SIZE - MLX5_WQE_DSEG_SIZE;
+		temp = RTE_MAX(inlen_empw,
+			       MLX5_WQE_SIZE + MLX5_DSEG_MIN_INLINE_SIZE);
+		temp -= MLX5_DSEG_MIN_INLINE_SIZE;
+		temp = RTE_ALIGN(temp, MLX5_WQE_SIZE);
+		temp += MLX5_DSEG_MIN_INLINE_SIZE;
 		temp = RTE_MIN(temp, MLX5_WQE_SIZE_MAX +
 				     MLX5_DSEG_MIN_INLINE_SIZE -
 				     MLX5_WQE_CSEG_SIZE -
@@ -890,6 +927,114 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 				 DEV_TX_OFFLOAD_UDP_TNL_TSO |
 				 DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) &
 				txq_ctrl->txq.offloads) && config->swp;
+}
+
+/**
+ * Adjust Tx queue data inline parameters for large queue sizes.
+ * The data inline feature requires multiple WQEs to fit the packets,
+ * and if the large amount of Tx descriptors is requested by application
+ * the total WQE amount may exceed the hardware capabilities. If the
+ * default inline setting are used we can try to adjust these ones and
+ * meet the hardware requirements and not exceed the queue size.
+ *
+ * @param txq_ctrl
+ *   Pointer to Tx queue control structure.
+ *
+ * @return
+ *   Zero on success, otherwise the parameters can not be adjusted.
+ */
+static int
+txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
+{
+	struct mlx5_priv *priv = txq_ctrl->priv;
+	struct mlx5_dev_config *config = &priv->config;
+	unsigned int max_inline;
+
+	max_inline = txq_calc_inline_max(txq_ctrl);
+	if (!txq_ctrl->txq.inlen_send) {
+		/*
+		 * Inline data feature is not engaged at all.
+		 * There is nothing to adjust.
+		 */
+		return 0;
+	}
+	if (txq_ctrl->max_inline_data <= max_inline) {
+		/*
+		 * The requested inline data length does not
+		 * exceed queue capabilities.
+		 */
+		return 0;
+	}
+	if (txq_ctrl->txq.inlen_mode > max_inline) {
+		DRV_LOG(ERR,
+			"minimal data inline requirements (%u) are not"
+			" satisfied (%u) on port %u, try the smaller"
+			" Tx queue size (%d)",
+			txq_ctrl->txq.inlen_mode, max_inline,
+			priv->dev_data->port_id,
+			priv->sh->device_attr.orig_attr.max_qp_wr);
+		goto error;
+	}
+	if (txq_ctrl->txq.inlen_send > max_inline &&
+	    config->txq_inline_max != MLX5_ARG_UNSET &&
+	    config->txq_inline_max > (int)max_inline) {
+		DRV_LOG(ERR,
+			"txq_inline_max requirements (%u) are not"
+			" satisfied (%u) on port %u, try the smaller"
+			" Tx queue size (%d)",
+			txq_ctrl->txq.inlen_send, max_inline,
+			priv->dev_data->port_id,
+			priv->sh->device_attr.orig_attr.max_qp_wr);
+		goto error;
+	}
+	if (txq_ctrl->txq.inlen_empw > max_inline &&
+	    config->txq_inline_mpw != MLX5_ARG_UNSET &&
+	    config->txq_inline_mpw > (int)max_inline) {
+		DRV_LOG(ERR,
+			"txq_inline_mpw requirements (%u) are not"
+			" satisfied (%u) on port %u, try the smaller"
+			" Tx queue size (%d)",
+			txq_ctrl->txq.inlen_empw, max_inline,
+			priv->dev_data->port_id,
+			priv->sh->device_attr.orig_attr.max_qp_wr);
+		goto error;
+	}
+	if (txq_ctrl->txq.tso_en && max_inline < MLX5_MAX_TSO_HEADER) {
+		DRV_LOG(ERR,
+			"tso header inline requirements (%u) are not"
+			" satisfied (%u) on port %u, try the smaller"
+			" Tx queue size (%d)",
+			MLX5_MAX_TSO_HEADER, max_inline,
+			priv->dev_data->port_id,
+			priv->sh->device_attr.orig_attr.max_qp_wr);
+		goto error;
+	}
+	if (txq_ctrl->txq.inlen_send > max_inline) {
+		DRV_LOG(WARNING,
+			"adjust txq_inline_max (%u->%u)"
+			" due to large Tx queue on port %u",
+			txq_ctrl->txq.inlen_send, max_inline,
+			priv->dev_data->port_id);
+		txq_ctrl->txq.inlen_send = max_inline;
+	}
+	if (txq_ctrl->txq.inlen_empw > max_inline) {
+		DRV_LOG(WARNING,
+			"adjust txq_inline_mpw (%u->%u)"
+			"due to large Tx queue on port %u",
+			txq_ctrl->txq.inlen_empw, max_inline,
+			priv->dev_data->port_id);
+		txq_ctrl->txq.inlen_empw = max_inline;
+	}
+	txq_ctrl->max_inline_data = RTE_MAX(txq_ctrl->txq.inlen_send,
+					    txq_ctrl->txq.inlen_empw);
+	assert(txq_ctrl->max_inline_data <= max_inline);
+	assert(txq_ctrl->txq.inlen_mode <= max_inline);
+	assert(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_send);
+	assert(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_empw);
+	return 0;
+error:
+	rte_errno = ENOMEM;
+	return -ENOMEM;
 }
 
 /**
@@ -942,6 +1087,8 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.port_id = dev->data->port_id;
 	tmpl->txq.idx = idx;
 	txq_set_params(tmpl);
+	if (txq_adjust_params(tmpl))
+		goto error;
 	if (txq_calc_wqebb_cnt(tmpl) >
 	    priv->sh->device_attr.orig_attr.max_qp_wr) {
 		DRV_LOG(ERR,

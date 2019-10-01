@@ -473,6 +473,11 @@ Run-time configuration
   The default ``txq_inline_max`` value is 290. The specified value may be adjusted
   by the driver in order not to exceed the limit (930 bytes) and to provide better
   WQE space filling without gaps, the adjustment is reflected in the debug log.
+  Also, the default value (290) may be decreased in run-time if the large transmit
+  queue size is requested and hardware does not support enough descriptor
+  amount, in this case warning is emitted. If ``txq_inline_max`` key is
+  specified and requested inline settings can not be satisfied then error
+  will be raised.
 
 - ``txq_inline_mpw`` parameter [int]
 
@@ -494,7 +499,11 @@ Run-time configuration
   WQE space filling without gaps, the adjustment is reflected in the debug log.
   Due to multiple packets may be included to the same WQE with Enhanced Multi
   Packet Write Method and overall WQE size is limited it is not recommended to
-  specify large values for the ``txq_inline_mpw``.
+  specify large values for the ``txq_inline_mpw``. Also, the default value (268)
+  may be decreased in run-time if the large transmit queue size is requested
+  and hardware does not support enough descriptor amount, in this case warning
+  is emitted. If ``txq_inline_mpw`` key is  specified and requested inline
+  settings can not be satisfied then error will be raised.
 
 - ``txqs_max_vec`` parameter [int]
 
