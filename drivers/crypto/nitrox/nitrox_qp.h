@@ -11,11 +11,19 @@
 
 struct nitrox_softreq;
 
+struct command_queue {
+	const struct rte_memzone *mz;
+	uint8_t *dbell_csr_addr;
+	uint8_t *ring;
+	uint8_t instr_size;
+};
+
 struct rid {
 	struct nitrox_softreq *sr;
 };
 
 struct nitrox_qp {
+	struct command_queue cmdq;
 	struct rid *ridq;
 	uint32_t count;
 	uint32_t head;
