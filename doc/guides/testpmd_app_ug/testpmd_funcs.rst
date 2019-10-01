@@ -3403,7 +3403,7 @@ set_hash_global_config
 
 Set the global configurations of hash filters::
 
-   set_hash_global_config (port_id) (toeplitz|simple_xor|default) \
+   set_hash_global_config (port_id) (toeplitz|simple_xor|symmetric_toeplitz|default) \
    (ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|ipv6-frag| \
    ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload|<flow_id>) \
    (enable|disable)

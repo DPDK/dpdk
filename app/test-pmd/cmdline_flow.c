@@ -227,6 +227,7 @@ enum index {
 	ACTION_RSS_FUNC_DEFAULT,
 	ACTION_RSS_FUNC_TOEPLITZ,
 	ACTION_RSS_FUNC_SIMPLE_XOR,
+	ACTION_RSS_FUNC_SYMMETRIC_TOEPLITZ,
 	ACTION_RSS_TYPES,
 	ACTION_RSS_TYPE,
 	ACTION_RSS_KEY,
@@ -2543,7 +2544,8 @@ static const struct token token_list[] = {
 		.next = NEXT(action_rss,
 			     NEXT_ENTRY(ACTION_RSS_FUNC_DEFAULT,
 					ACTION_RSS_FUNC_TOEPLITZ,
-					ACTION_RSS_FUNC_SIMPLE_XOR)),
+					ACTION_RSS_FUNC_SIMPLE_XOR,
+					ACTION_RSS_FUNC_SYMMETRIC_TOEPLITZ)),
 	},
 	[ACTION_RSS_FUNC_DEFAULT] = {
 		.name = "default",
@@ -2558,6 +2560,11 @@ static const struct token token_list[] = {
 	[ACTION_RSS_FUNC_SIMPLE_XOR] = {
 		.name = "simple_xor",
 		.help = "simple XOR hash function",
+		.call = parse_vc_action_rss_func,
+	},
+	[ACTION_RSS_FUNC_SYMMETRIC_TOEPLITZ] = {
+		.name = "symmetric_toeplitz",
+		.help = "Symmetric Toeplitz hash function",
 		.call = parse_vc_action_rss_func,
 	},
 	[ACTION_RSS_LEVEL] = {
@@ -3677,6 +3684,9 @@ parse_vc_action_rss_func(struct context *ctx, const struct token *token,
 		break;
 	case ACTION_RSS_FUNC_SIMPLE_XOR:
 		func = RTE_ETH_HASH_FUNCTION_SIMPLE_XOR;
+		break;
+	case ACTION_RSS_FUNC_SYMMETRIC_TOEPLITZ:
+		func = RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ;
 		break;
 	default:
 		return -1;

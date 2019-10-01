@@ -1056,7 +1056,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"get_hash_global_config (port_id)\n"
 			"    Get the global configurations of hash filters.\n\n"
 
-			"set_hash_global_config (port_id) (toeplitz|simple_xor|default)"
+			"set_hash_global_config (port_id) (toeplitz|simple_xor|symmetric_toeplitz|default)"
 			" (ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|"
 			"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload)"
 			" (enable|disable)\n"
@@ -12196,6 +12196,9 @@ cmd_get_hash_global_config_parsed(void *parsed_result,
 	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
 		printf("Hash function is Simple XOR\n");
 		break;
+	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
+		printf("Hash function is Symmetric Toeplitz\n");
+		break;
 	default:
 		printf("Unknown hash function\n");
 		break;
@@ -12269,6 +12272,9 @@ cmd_set_hash_global_config_parsed(void *parsed_result,
 	else if (!strcmp(res->hash_func, "simple_xor"))
 		info.info.global_conf.hash_func =
 			RTE_ETH_HASH_FUNCTION_SIMPLE_XOR;
+	else if (!strcmp(res->hash_func, "symmetric_toeplitz"))
+		info.info.global_conf.hash_func =
+			RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ;
 	else if (!strcmp(res->hash_func, "default"))
 		info.info.global_conf.hash_func =
 			RTE_ETH_HASH_FUNCTION_DEFAULT;
@@ -12298,7 +12304,7 @@ cmdline_parse_token_num_t cmd_set_hash_global_config_port_id =
 		port_id, UINT16);
 cmdline_parse_token_string_t cmd_set_hash_global_config_hash_func =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_global_config_result,
-		hash_func, "toeplitz#simple_xor#default");
+		hash_func, "toeplitz#simple_xor#symmetric_toeplitz#default");
 cmdline_parse_token_string_t cmd_set_hash_global_config_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_global_config_result,
 		flow_type,
@@ -12312,7 +12318,7 @@ cmdline_parse_inst_t cmd_set_hash_global_config = {
 	.f = cmd_set_hash_global_config_parsed,
 	.data = NULL,
 	.help_str = "set_hash_global_config <port_id> "
-		"toeplitz|simple_xor|default "
+		"toeplitz|simple_xor|symmetric_toeplitz|default "
 		"ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
 		"ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|"
 		"l2_payload enable|disable",
