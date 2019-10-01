@@ -12,6 +12,7 @@
 
 #define NEW_LINE_STR	"#"
 #define TEST_TYPE_KEY	" for CBC"
+#define TEST_TYPE_ECB_KEY	" for ECB"
 #define TEST_CBCI_KEY	" for CBCI"
 
 #define ENC_STR		"[ENCRYPT]"
@@ -252,6 +253,12 @@ parse_test_tdes_init(void)
 			if (strstr(line, test_types[j].desc)) {
 				info.interim_info.tdes_data.test_type =
 						test_types[j].type;
+				if (strstr(line, TEST_TYPE_ECB_KEY))
+					info.interim_info.tdes_data.test_mode =
+						TDES_MODE_ECB;
+				else
+					info.interim_info.tdes_data.test_mode =
+						TDES_MODE_CBC;
 				break;
 			}
 	}

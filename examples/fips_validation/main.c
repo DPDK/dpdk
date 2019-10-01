@@ -689,16 +689,24 @@ prepare_tdes_xform(struct rte_crypto_sym_xform *xform)
 
 	xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 
-	cipher_xform->algo = RTE_CRYPTO_CIPHER_3DES_CBC;
+	if (info.interim_info.tdes_data.test_mode == TDES_MODE_CBC)
+		cipher_xform->algo = RTE_CRYPTO_CIPHER_3DES_CBC;
+	else
+		cipher_xform->algo = RTE_CRYPTO_CIPHER_3DES_ECB;
 	cipher_xform->op = (info.op == FIPS_TEST_ENC_AUTH_GEN) ?
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT :
 			RTE_CRYPTO_CIPHER_OP_DECRYPT;
 	cipher_xform->key.data = vec.cipher_auth.key.val;
 	cipher_xform->key.length = vec.cipher_auth.key.len;
-	cipher_xform->iv.length = vec.iv.len;
-	cipher_xform->iv.offset = IV_OFF;
 
-	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_3DES_CBC;
+	if (cipher_xform->algo == RTE_CRYPTO_CIPHER_3DES_CBC) {
+		cipher_xform->iv.length = vec.iv.len;
+		cipher_xform->iv.offset = IV_OFF;
+	} else {
+		cipher_xform->iv.length = 0;
+		cipher_xform->iv.offset = 0;
+	}
+	cap_idx.algo.cipher = cipher_xform->algo;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 
 	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
@@ -1387,6 +1395,17 @@ init_test_ops(void)
 			test_ops.test = fips_generic_test;
 		break;
 	default:
+		if (strstr(info.file_name, "TECB") ||
+				strstr(info.file_name, "TCBC")) {
+			info.algo = FIPS_TEST_ALGO_TDES;
+			test_ops.prepare_op = prepare_cipher_op;
+			test_ops.prepare_xform	= prepare_tdes_xform;
+			if (info.interim_info.tdes_data.test_type == TDES_MCT)
+				test_ops.test = fips_mct_tdes_test;
+			else
+				test_ops.test = fips_generic_test;
+			break;
+		}
 		return -1;
 	}
 

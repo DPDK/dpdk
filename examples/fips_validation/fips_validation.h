@@ -105,6 +105,11 @@ enum fips_tdes_test_types {
 	TDES_MMT /* Multi block Message Test */
 };
 
+enum fips_tdes_test_mode {
+	TDES_MODE_CBC = 0,
+	TDES_MODE_ECB
+};
+
 enum fips_ccm_test_types {
 	CCM_VADT	= 1, /* Variable Associated Data Test */
 	CCM_VPT,		 /* Variable Payload Test */
@@ -130,6 +135,7 @@ struct hmac_interim_data {
 
 struct tdes_interim_data {
 	enum fips_tdes_test_types test_type;
+	enum fips_tdes_test_mode test_mode;
 	uint32_t nb_keys;
 };
 
@@ -156,6 +162,7 @@ struct fips_test_interim_info {
 	char *vec[MAX_LINE_PER_VECTOR];
 	uint32_t nb_vec_lines;
 	char device_name[MAX_STRING_SIZE];
+	char file_name[MAX_STRING_SIZE];
 
 	union {
 		struct aesavs_interim_data aes_data;

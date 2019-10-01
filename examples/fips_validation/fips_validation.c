@@ -257,6 +257,7 @@ fips_test_init(const char *req_file_path, const char *rsp_file_path,
 
 	fips_test_clear();
 
+	strcpy(info.file_name, req_file_path);
 	info.algo = FIPS_TEST_ALGO_MAX;
 	if (parse_file_type(req_file_path) < 0) {
 		RTE_LOG(ERR, USER1, "File %s type not supported\n",
