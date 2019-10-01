@@ -649,16 +649,24 @@ prepare_aes_xform(struct rte_crypto_sym_xform *xform)
 
 	xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 
-	cipher_xform->algo = RTE_CRYPTO_CIPHER_AES_CBC;
+	if (info.interim_info.aes_data.cipher_algo == RTE_CRYPTO_CIPHER_AES_CBC)
+		cipher_xform->algo = RTE_CRYPTO_CIPHER_AES_CBC;
+	else
+		cipher_xform->algo = RTE_CRYPTO_CIPHER_AES_ECB;
+
 	cipher_xform->op = (info.op == FIPS_TEST_ENC_AUTH_GEN) ?
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT :
 			RTE_CRYPTO_CIPHER_OP_DECRYPT;
 	cipher_xform->key.data = vec.cipher_auth.key.val;
 	cipher_xform->key.length = vec.cipher_auth.key.len;
-	cipher_xform->iv.length = vec.iv.len;
-	cipher_xform->iv.offset = IV_OFF;
-
-	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_AES_CBC;
+	if (cipher_xform->algo == RTE_CRYPTO_CIPHER_AES_CBC) {
+		cipher_xform->iv.length = vec.iv.len;
+		cipher_xform->iv.offset = IV_OFF;
+	} else {
+		cipher_xform->iv.length = 0;
+		cipher_xform->iv.offset = 0;
+	}
+	cap_idx.algo.cipher = cipher_xform->algo;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 
 	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
@@ -1059,7 +1067,6 @@ fips_mct_tdes_test(void)
 					fprintf(info.fp_wr, "Bypass\n");
 					return 0;
 				}
-
 				return ret;
 			}
 
@@ -1161,6 +1168,80 @@ fips_mct_tdes_test(void)
 }
 
 static int
+fips_mct_aes_ecb_test(void)
+{
+#define AES_BLOCK_SIZE	16
+#define AES_EXTERN_ITER	100
+#define AES_INTERN_ITER	1000
+	struct fips_val val, val_key;
+	uint8_t prev_out[AES_BLOCK_SIZE] = {0};
+	uint32_t i, j, k;
+	int ret;
+
+	for (i = 0; i < AES_EXTERN_ITER; i++) {
+		if (i != 0)
+			update_info_vec(i);
+
+		fips_test_write_one_case();
+
+		for (j = 0; j < AES_INTERN_ITER; j++) {
+			ret = fips_run_test();
+			if (ret < 0) {
+				if (ret == -EPERM) {
+					fprintf(info.fp_wr, "Bypass\n");
+					return 0;
+				}
+
+				return ret;
+			}
+
+			get_writeback_data(&val);
+
+			if (info.op == FIPS_TEST_ENC_AUTH_GEN)
+				memcpy(vec.pt.val, val.val, AES_BLOCK_SIZE);
+			else
+				memcpy(vec.ct.val, val.val, AES_BLOCK_SIZE);
+
+			if (j == AES_INTERN_ITER - 1)
+				continue;
+
+			memcpy(prev_out, val.val, AES_BLOCK_SIZE);
+		}
+
+		info.parse_writeback(&val);
+		fprintf(info.fp_wr, "\n");
+
+		if (i == AES_EXTERN_ITER - 1)
+			continue;
+
+		/** update key */
+		memcpy(&val_key, &vec.cipher_auth.key, sizeof(val_key));
+		for (k = 0; k < vec.cipher_auth.key.len; k++) {
+			switch (vec.cipher_auth.key.len) {
+			case 16:
+				val_key.val[k] ^= val.val[k];
+				break;
+			case 24:
+				if (k < 8)
+					val_key.val[k] ^= prev_out[k + 8];
+				else
+					val_key.val[k] ^= val.val[k - 8];
+				break;
+			case 32:
+				if (k < 16)
+					val_key.val[k] ^= prev_out[k];
+				else
+					val_key.val[k] ^= val.val[k - 16];
+				break;
+			default:
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+static int
 fips_mct_aes_test(void)
 {
 #define AES_BLOCK_SIZE	16
@@ -1171,6 +1252,9 @@ fips_mct_aes_test(void)
 	uint8_t prev_in[AES_BLOCK_SIZE] = {0};
 	uint32_t i, j, k;
 	int ret;
+
+	if (info.interim_info.aes_data.cipher_algo == RTE_CRYPTO_CIPHER_AES_ECB)
+		return fips_mct_aes_ecb_test();
 
 	for (i = 0; i < AES_EXTERN_ITER; i++) {
 		if (i != 0)

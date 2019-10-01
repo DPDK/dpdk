@@ -44,6 +44,7 @@ struct aes_test_algo {
 	enum rte_crypto_cipher_algorithm algo;
 } const algo_con[] = {
 		{"CBC", RTE_CRYPTO_CIPHER_AES_CBC},
+		{"ECB", RTE_CRYPTO_CIPHER_AES_ECB},
 };
 
 static int
