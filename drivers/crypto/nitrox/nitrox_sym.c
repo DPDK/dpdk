@@ -539,6 +539,123 @@ nitrox_sym_dev_sess_clear(struct rte_cryptodev *cdev,
 	rte_mempool_put(sess_mp, ctx);
 }
 
+static struct nitrox_crypto_ctx *
+get_crypto_ctx(struct rte_crypto_op *op)
+{
+	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+		if (likely(op->sym->session))
+			return get_sym_session_private_data(op->sym->session,
+							   nitrox_sym_drv_id);
+	}
+
+	return NULL;
+}
+
+static int
+nitrox_enq_single_op(struct nitrox_qp *qp, struct rte_crypto_op *op)
+{
+	struct nitrox_crypto_ctx *ctx;
+	struct nitrox_softreq *sr;
+	int err;
+
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	ctx = get_crypto_ctx(op);
+	if (unlikely(!ctx)) {
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+		return -EINVAL;
+	}
+
+	if (unlikely(rte_mempool_get(qp->sr_mp, (void **)&sr)))
+		return -ENOMEM;
+
+	err = nitrox_process_se_req(qp->qno, op, ctx, sr);
+	if (unlikely(err)) {
+		rte_mempool_put(qp->sr_mp, sr);
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return err;
+	}
+
+	nitrox_qp_enqueue(qp, nitrox_sym_instr_addr(sr), sr);
+	return 0;
+}
+
+static uint16_t
+nitrox_sym_dev_enq_burst(void *queue_pair, struct rte_crypto_op **ops,
+			 uint16_t nb_ops)
+{
+	struct nitrox_qp *qp = queue_pair;
+	uint16_t free_slots = 0;
+	uint16_t cnt = 0;
+	bool err = false;
+
+	free_slots = nitrox_qp_free_count(qp);
+	if (nb_ops > free_slots)
+		nb_ops = free_slots;
+
+	for (cnt = 0; cnt < nb_ops; cnt++) {
+		if (unlikely(nitrox_enq_single_op(qp, ops[cnt]))) {
+			err = true;
+			break;
+		}
+	}
+
+	nitrox_ring_dbell(qp, cnt);
+	qp->stats.enqueued_count += cnt;
+	if (unlikely(err))
+		qp->stats.enqueue_err_count++;
+
+	return cnt;
+}
+
+static int
+nitrox_deq_single_op(struct nitrox_qp *qp, struct rte_crypto_op **op_ptr)
+{
+	struct nitrox_softreq *sr;
+	int ret;
+	struct rte_crypto_op *op;
+
+	sr = nitrox_qp_get_softreq(qp);
+	ret = nitrox_check_se_req(sr, op_ptr);
+	if (ret < 0)
+		return -EAGAIN;
+
+	op = *op_ptr;
+	nitrox_qp_dequeue(qp);
+	rte_mempool_put(qp->sr_mp, sr);
+	if (!ret) {
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+		qp->stats.dequeued_count++;
+
+		return 0;
+	}
+
+	if (ret == MC_MAC_MISMATCH_ERR_CODE)
+		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	else
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+
+	qp->stats.dequeue_err_count++;
+	return 0;
+}
+
+static uint16_t
+nitrox_sym_dev_deq_burst(void *queue_pair, struct rte_crypto_op **ops,
+			 uint16_t nb_ops)
+{
+	struct nitrox_qp *qp = queue_pair;
+	uint16_t filled_slots = nitrox_qp_used_count(qp);
+	int cnt = 0;
+
+	if (nb_ops > filled_slots)
+		nb_ops = filled_slots;
+
+	for (cnt = 0; cnt < nb_ops; cnt++)
+		if (nitrox_deq_single_op(qp, &ops[cnt]))
+			break;
+
+	return cnt;
+}
+
 static struct rte_cryptodev_ops nitrox_cryptodev_ops = {
 	.dev_configure		= nitrox_sym_dev_config,
 	.dev_start		= nitrox_sym_dev_start,
@@ -580,8 +697,8 @@ nitrox_sym_pmd_create(struct nitrox_device *ndev)
 	ndev->rte_sym_dev.name = cdev->data->name;
 	cdev->driver_id = nitrox_sym_drv_id;
 	cdev->dev_ops = &nitrox_cryptodev_ops;
-	cdev->enqueue_burst = NULL;
-	cdev->dequeue_burst = NULL;
+	cdev->enqueue_burst = nitrox_sym_dev_enq_burst;
+	cdev->dequeue_burst = nitrox_sym_dev_deq_burst;
 	cdev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 		RTE_CRYPTODEV_FF_HW_ACCELERATED |
 		RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
