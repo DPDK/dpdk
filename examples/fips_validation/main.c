@@ -1053,6 +1053,7 @@ fips_mct_tdes_test(void)
 	uint8_t prev_in[TDES_BLOCK_SIZE] = {0};
 	uint32_t i, j, k;
 	int ret;
+	int test_mode = info.interim_info.tdes_data.test_mode;
 
 	for (i = 0; i < TDES_EXTERN_ITER; i++) {
 		if (i != 0)
@@ -1079,25 +1080,50 @@ fips_mct_tdes_test(void)
 				memcpy(prev_out, val.val, TDES_BLOCK_SIZE);
 
 				if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
-					memcpy(vec.pt.val, vec.iv.val,
-							TDES_BLOCK_SIZE);
-					memcpy(vec.iv.val, val.val,
-							TDES_BLOCK_SIZE);
+					if (test_mode == TDES_MODE_ECB) {
+						memcpy(vec.pt.val, val.val,
+							   TDES_BLOCK_SIZE);
+					} else {
+						memcpy(vec.pt.val, vec.iv.val,
+							   TDES_BLOCK_SIZE);
+						memcpy(vec.iv.val, val.val,
+							   TDES_BLOCK_SIZE);
+					}
+
 				} else {
-					memcpy(vec.iv.val, vec.ct.val,
-							TDES_BLOCK_SIZE);
-					memcpy(vec.ct.val, val.val,
-							TDES_BLOCK_SIZE);
+					if (test_mode == TDES_MODE_ECB) {
+						memcpy(vec.ct.val, val.val,
+							   TDES_BLOCK_SIZE);
+					} else {
+						memcpy(vec.iv.val, vec.ct.val,
+							   TDES_BLOCK_SIZE);
+						memcpy(vec.ct.val, val.val,
+							   TDES_BLOCK_SIZE);
+					}
 				}
 				continue;
 			}
 
 			if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
-				memcpy(vec.iv.val, val.val, TDES_BLOCK_SIZE);
-				memcpy(vec.pt.val, prev_out, TDES_BLOCK_SIZE);
+				if (test_mode == TDES_MODE_ECB) {
+					memcpy(vec.pt.val, val.val,
+						   TDES_BLOCK_SIZE);
+				} else {
+					memcpy(vec.iv.val, val.val,
+						   TDES_BLOCK_SIZE);
+					memcpy(vec.pt.val, prev_out,
+						   TDES_BLOCK_SIZE);
+				}
 			} else {
-				memcpy(vec.iv.val, vec.ct.val, TDES_BLOCK_SIZE);
-				memcpy(vec.ct.val, val.val, TDES_BLOCK_SIZE);
+				if (test_mode == TDES_MODE_ECB) {
+					memcpy(vec.ct.val, val.val,
+						   TDES_BLOCK_SIZE);
+				} else {
+					memcpy(vec.iv.val, vec.ct.val,
+						   TDES_BLOCK_SIZE);
+					memcpy(vec.ct.val, val.val,
+						   TDES_BLOCK_SIZE);
+				}
 			}
 
 			if (j == TDES_INTERN_ITER - 1)
@@ -1156,11 +1182,19 @@ fips_mct_tdes_test(void)
 					val_key.val[k] : (val_key.val[k] ^ 0x1);
 
 		if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
-			memcpy(vec.iv.val, val.val, TDES_BLOCK_SIZE);
-			memcpy(vec.pt.val, prev_out, TDES_BLOCK_SIZE);
+			if (test_mode == TDES_MODE_ECB) {
+				memcpy(vec.pt.val, val.val, TDES_BLOCK_SIZE);
+			} else {
+				memcpy(vec.iv.val, val.val, TDES_BLOCK_SIZE);
+				memcpy(vec.pt.val, prev_out, TDES_BLOCK_SIZE);
+			}
 		} else {
-			memcpy(vec.iv.val, prev_out, TDES_BLOCK_SIZE);
-			memcpy(vec.ct.val, val.val, TDES_BLOCK_SIZE);
+			if (test_mode == TDES_MODE_ECB) {
+				memcpy(vec.ct.val, val.val, TDES_BLOCK_SIZE);
+			} else {
+				memcpy(vec.iv.val, prev_out, TDES_BLOCK_SIZE);
+				memcpy(vec.ct.val, val.val, TDES_BLOCK_SIZE);
+			}
 		}
 	}
 
