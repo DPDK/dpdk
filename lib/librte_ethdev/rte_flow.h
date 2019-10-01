@@ -1907,6 +1907,12 @@ enum rte_eth_hash_function {
 	RTE_ETH_HASH_FUNCTION_DEFAULT = 0,
 	RTE_ETH_HASH_FUNCTION_TOEPLITZ, /**< Toeplitz */
 	RTE_ETH_HASH_FUNCTION_SIMPLE_XOR, /**< Simple XOR */
+	/**
+	 * Symmetric Toeplitz: src, dst will be replaced by
+	 * xor(src, dst). For the case with src/dst only,
+	 * src or dst address will xor with zero pair.
+	 */
+	RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ,
 	RTE_ETH_HASH_FUNCTION_MAX,
 };
 
