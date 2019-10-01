@@ -60,3 +60,12 @@ DPDK_18.11 {
 	rte_port_sym_crypto_writer_nodrop_ops;
 
 } DPDK_16.11;
+
+EXPERIMENTAL {
+	global:
+
+	rte_port_eventdev_reader_ops;
+	rte_port_eventdev_writer_ops;
+	rte_port_eventdev_writer_nodrop_ops;
+
+};
