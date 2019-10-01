@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(C) 2019 Marvell International Ltd.
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
+# library name
+LIB = librte_pmd_nitrox.a
+
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
+# library version
+LIBABIVER := 1
+
+# versioning export map
+EXPORT_MAP := rte_pmd_nitrox_version.map
+
+# external library dependencies
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool
+LDLIBS += -lrte_pci -lrte_bus_pci
+LDLIBS += -lrte_cryptodev
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_NITROX) += nitrox_device.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_NITROX) += nitrox_hal.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_NITROX) += nitrox_logs.c
+
+include $(RTE_SDK)/mk/rte.lib.mk

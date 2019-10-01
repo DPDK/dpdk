@@ -664,6 +664,11 @@ CONFIG_RTE_LIBRTE_PMD_CCP=n
 CONFIG_RTE_LIBRTE_PMD_MVSAM_CRYPTO=n
 
 #
+# Compile PMD for NITROX crypto device
+#
+CONFIG_RTE_LIBRTE_PMD_NITROX=y
+
+#
 # Compile generic security library
 #
 CONFIG_RTE_LIBRTE_SECURITY=y

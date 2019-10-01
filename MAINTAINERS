@@ -963,6 +963,13 @@ F: drivers/crypto/mvsam/
 F: doc/guides/cryptodevs/mvsam.rst
 F: doc/guides/cryptodevs/features/mvsam.ini
 
+Marvell Nitrox
+M: Nagadheeraj Rottela <rnagadheeraj@marvell.com>
+M: Srikanth Jampala <jsrikanth@marvell.com>
+F: drivers/crypto/nitrox/
+F: doc/guides/cryptodevs/nitrox.rst
+F: doc/guides/cryptodevs/features/nitrox.ini
+
 Null Crypto
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/null/

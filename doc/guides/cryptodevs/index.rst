@@ -21,6 +21,7 @@ Crypto Device Drivers
     octeontx
     openssl
     mvsam
+    nitrox
     null
     scheduler
     snow3g
