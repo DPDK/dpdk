@@ -79,6 +79,8 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
 	int null_pmd = rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_NULL_PMD));
+	int nitrox_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_NITROX_PMD));
 
 	int nb_segs = 1;
 	uint32_t nb_iterates = 0;
@@ -125,7 +127,8 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			driver_id == ccp_pmd ||
 			driver_id == virtio_pmd ||
 			driver_id == octeontx_pmd ||
-			driver_id == null_pmd) { /* Fall through */
+			driver_id == null_pmd ||
+			driver_id == nitrox_pmd) { /* Fall through */
 		digest_len = tdata->digest.len;
 	} else if (driver_id == aesni_mb_pmd ||
 			driver_id == scheduler_pmd) {
@@ -717,6 +720,8 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
 	int null_pmd = rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_NULL_PMD));
+	int nitrox_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_NITROX_PMD));
 
 	switch (test_type) {
 	case BLKCIPHER_AES_CHAIN_TYPE:
@@ -789,6 +794,8 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX;
 	else if (driver_id == null_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL;
+	else if (driver_id == nitrox_pmd)
+		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NITROX;
 	else
 		TEST_ASSERT(0, "Unrecognized cryptodev type");
 
