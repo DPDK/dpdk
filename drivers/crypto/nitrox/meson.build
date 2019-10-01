@@ -12,4 +12,5 @@ sources = files(
 		'nitrox_device.c',
 		'nitrox_hal.c',
 		'nitrox_logs.c',
+		'nitrox_sym.c',
 		)

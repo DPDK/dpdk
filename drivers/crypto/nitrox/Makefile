@@ -26,5 +26,6 @@ LDLIBS += -lrte_cryptodev
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_NITROX) += nitrox_device.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_NITROX) += nitrox_hal.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_NITROX) += nitrox_logs.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_NITROX) += nitrox_sym.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
