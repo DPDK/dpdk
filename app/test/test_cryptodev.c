@@ -12128,6 +12128,16 @@ static struct unit_test_suite cryptodev_dpaa_sec_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_encrypt_SGL_out_of_place_1500B_2000B),
 
+		/** Negative tests */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			authentication_verify_HMAC_SHA1_fail_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			authentication_verify_HMAC_SHA1_fail_tag_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			auth_decryption_AES128CBC_HMAC_SHA1_fail_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			auth_decryption_AES128CBC_HMAC_SHA1_fail_tag_corrupt),
+
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -12350,6 +12360,16 @@ static struct unit_test_suite cryptodev_dpaa2_sec_testsuite  = {
 			test_zuc_hash_generate_test_case_7),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_hash_generate_test_case_8),
+
+		/** Negative tests */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			authentication_verify_HMAC_SHA1_fail_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			authentication_verify_HMAC_SHA1_fail_tag_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			auth_decryption_AES128CBC_HMAC_SHA1_fail_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			auth_decryption_AES128CBC_HMAC_SHA1_fail_tag_corrupt),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
