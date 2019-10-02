@@ -4382,7 +4382,10 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 	struct hwrm_func_backing_store_qcaps_input req = {0};
 	struct hwrm_func_backing_store_qcaps_output *resp =
 		bp->hwrm_cmd_resp_addr;
-	int rc;
+	struct bnxt_ctx_pg_info *ctx_pg;
+	struct bnxt_ctx_mem_info *ctx;
+	int total_alloc_len;
+	int rc, i;
 
 	if (!BNXT_CHIP_THOR(bp) ||
 	    bp->hwrm_spec_code < HWRM_VERSION_1_9_2 ||
@@ -4394,70 +4397,60 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT_SILENT();
 
-	if (!rc) {
-		struct bnxt_ctx_pg_info *ctx_pg;
-		struct bnxt_ctx_mem_info *ctx;
-		int total_alloc_len;
-		int i;
-
-		total_alloc_len = sizeof(*ctx);
-		ctx = rte_malloc("bnxt_ctx_mem", total_alloc_len,
-				 RTE_CACHE_LINE_SIZE);
-		if (!ctx) {
-			rc = -ENOMEM;
-			goto ctx_err;
-		}
-		memset(ctx, 0, total_alloc_len);
-
-		ctx_pg = rte_malloc("bnxt_ctx_pg_mem",
-				    sizeof(*ctx_pg) * BNXT_MAX_Q,
-				    RTE_CACHE_LINE_SIZE);
-		if (!ctx_pg) {
-			rc = -ENOMEM;
-			goto ctx_err;
-		}
-		for (i = 0; i < BNXT_MAX_Q; i++, ctx_pg++)
-			ctx->tqm_mem[i] = ctx_pg;
-
-		bp->ctx = ctx;
-		ctx->qp_max_entries = rte_le_to_cpu_32(resp->qp_max_entries);
-		ctx->qp_min_qp1_entries =
-			rte_le_to_cpu_16(resp->qp_min_qp1_entries);
-		ctx->qp_max_l2_entries =
-			rte_le_to_cpu_16(resp->qp_max_l2_entries);
-		ctx->qp_entry_size = rte_le_to_cpu_16(resp->qp_entry_size);
-		ctx->srq_max_l2_entries =
-			rte_le_to_cpu_16(resp->srq_max_l2_entries);
-		ctx->srq_max_entries = rte_le_to_cpu_32(resp->srq_max_entries);
-		ctx->srq_entry_size = rte_le_to_cpu_16(resp->srq_entry_size);
-		ctx->cq_max_l2_entries =
-			rte_le_to_cpu_16(resp->cq_max_l2_entries);
-		ctx->cq_max_entries = rte_le_to_cpu_32(resp->cq_max_entries);
-		ctx->cq_entry_size = rte_le_to_cpu_16(resp->cq_entry_size);
-		ctx->vnic_max_vnic_entries =
-			rte_le_to_cpu_16(resp->vnic_max_vnic_entries);
-		ctx->vnic_max_ring_table_entries =
-			rte_le_to_cpu_16(resp->vnic_max_ring_table_entries);
-		ctx->vnic_entry_size = rte_le_to_cpu_16(resp->vnic_entry_size);
-		ctx->stat_max_entries =
-			rte_le_to_cpu_32(resp->stat_max_entries);
-		ctx->stat_entry_size = rte_le_to_cpu_16(resp->stat_entry_size);
-		ctx->tqm_entry_size = rte_le_to_cpu_16(resp->tqm_entry_size);
-		ctx->tqm_min_entries_per_ring =
-			rte_le_to_cpu_32(resp->tqm_min_entries_per_ring);
-		ctx->tqm_max_entries_per_ring =
-			rte_le_to_cpu_32(resp->tqm_max_entries_per_ring);
-		ctx->tqm_entries_multiple = resp->tqm_entries_multiple;
-		if (!ctx->tqm_entries_multiple)
-			ctx->tqm_entries_multiple = 1;
-		ctx->mrav_max_entries =
-			rte_le_to_cpu_32(resp->mrav_max_entries);
-		ctx->mrav_entry_size = rte_le_to_cpu_16(resp->mrav_entry_size);
-		ctx->tim_entry_size = rte_le_to_cpu_16(resp->tim_entry_size);
-		ctx->tim_max_entries = rte_le_to_cpu_32(resp->tim_max_entries);
-	} else {
-		rc = 0;
+	total_alloc_len = sizeof(*ctx);
+	ctx = rte_zmalloc("bnxt_ctx_mem", total_alloc_len,
+			  RTE_CACHE_LINE_SIZE);
+	if (!ctx) {
+		rc = -ENOMEM;
+		goto ctx_err;
 	}
+
+	ctx_pg = rte_malloc("bnxt_ctx_pg_mem",
+			    sizeof(*ctx_pg) * BNXT_MAX_Q,
+			    RTE_CACHE_LINE_SIZE);
+	if (!ctx_pg) {
+		rc = -ENOMEM;
+		goto ctx_err;
+	}
+	for (i = 0; i < BNXT_MAX_Q; i++, ctx_pg++)
+		ctx->tqm_mem[i] = ctx_pg;
+
+	bp->ctx = ctx;
+	ctx->qp_max_entries = rte_le_to_cpu_32(resp->qp_max_entries);
+	ctx->qp_min_qp1_entries =
+		rte_le_to_cpu_16(resp->qp_min_qp1_entries);
+	ctx->qp_max_l2_entries =
+		rte_le_to_cpu_16(resp->qp_max_l2_entries);
+	ctx->qp_entry_size = rte_le_to_cpu_16(resp->qp_entry_size);
+	ctx->srq_max_l2_entries =
+		rte_le_to_cpu_16(resp->srq_max_l2_entries);
+	ctx->srq_max_entries = rte_le_to_cpu_32(resp->srq_max_entries);
+	ctx->srq_entry_size = rte_le_to_cpu_16(resp->srq_entry_size);
+	ctx->cq_max_l2_entries =
+		rte_le_to_cpu_16(resp->cq_max_l2_entries);
+	ctx->cq_max_entries = rte_le_to_cpu_32(resp->cq_max_entries);
+	ctx->cq_entry_size = rte_le_to_cpu_16(resp->cq_entry_size);
+	ctx->vnic_max_vnic_entries =
+		rte_le_to_cpu_16(resp->vnic_max_vnic_entries);
+	ctx->vnic_max_ring_table_entries =
+		rte_le_to_cpu_16(resp->vnic_max_ring_table_entries);
+	ctx->vnic_entry_size = rte_le_to_cpu_16(resp->vnic_entry_size);
+	ctx->stat_max_entries =
+		rte_le_to_cpu_32(resp->stat_max_entries);
+	ctx->stat_entry_size = rte_le_to_cpu_16(resp->stat_entry_size);
+	ctx->tqm_entry_size = rte_le_to_cpu_16(resp->tqm_entry_size);
+	ctx->tqm_min_entries_per_ring =
+		rte_le_to_cpu_32(resp->tqm_min_entries_per_ring);
+	ctx->tqm_max_entries_per_ring =
+		rte_le_to_cpu_32(resp->tqm_max_entries_per_ring);
+	ctx->tqm_entries_multiple = resp->tqm_entries_multiple;
+	if (!ctx->tqm_entries_multiple)
+		ctx->tqm_entries_multiple = 1;
+	ctx->mrav_max_entries =
+		rte_le_to_cpu_32(resp->mrav_max_entries);
+	ctx->mrav_entry_size = rte_le_to_cpu_16(resp->mrav_entry_size);
+	ctx->tim_entry_size = rte_le_to_cpu_16(resp->tim_entry_size);
+	ctx->tim_max_entries = rte_le_to_cpu_32(resp->tim_max_entries);
 ctx_err:
 	HWRM_UNLOCK();
 	return rc;
