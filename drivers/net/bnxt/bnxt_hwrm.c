@@ -295,20 +295,17 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp,
 	HWRM_PREP(req, CFA_L2_SET_RX_MASK, BNXT_USE_CHIMP_MB);
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 
-	/* FIXME add multicast flag, when multicast adding options is supported
-	 * by ethtool.
-	 */
 	if (vnic->flags & BNXT_VNIC_INFO_BCAST)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
 	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
+
 	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
-	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
+
+	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI) {
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
-	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
-		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
-	if (vnic->mc_addr_cnt) {
+	} else if (vnic->flags & BNXT_VNIC_INFO_MCAST) {
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
 		req.num_mc_entries = rte_cpu_to_le_32(vnic->mc_addr_cnt);
 		req.mc_tbl_addr = rte_cpu_to_le_64(vnic->mc_list_dma_addr);

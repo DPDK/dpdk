@@ -2053,6 +2053,10 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 	}
 
 	vnic->mc_addr_cnt = i;
+	if (vnic->mc_addr_cnt)
+		vnic->flags |= BNXT_VNIC_INFO_MCAST;
+	else
+		vnic->flags &= ~BNXT_VNIC_INFO_MCAST;
 
 allmulti:
 	return bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
