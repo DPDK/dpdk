@@ -1118,7 +1118,7 @@ static int bnxt_promiscuous_enable_op(struct rte_eth_dev *eth_dev)
 	if (bp->vnic_info == NULL)
 		return 0;
 
-	vnic = &bp->vnic_info[0];
+	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 
 	old_flags = vnic->flags;
 	vnic->flags |= BNXT_VNIC_INFO_PROMISC;
@@ -1143,7 +1143,7 @@ static int bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	if (bp->vnic_info == NULL)
 		return 0;
 
-	vnic = &bp->vnic_info[0];
+	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 
 	old_flags = vnic->flags;
 	vnic->flags &= ~BNXT_VNIC_INFO_PROMISC;
@@ -1168,7 +1168,7 @@ static int bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
 	if (bp->vnic_info == NULL)
 		return 0;
 
-	vnic = &bp->vnic_info[0];
+	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 
 	old_flags = vnic->flags;
 	vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
@@ -1193,7 +1193,7 @@ static int bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 	if (bp->vnic_info == NULL)
 		return 0;
 
-	vnic = &bp->vnic_info[0];
+	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 
 	old_flags = vnic->flags;
 	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
@@ -1960,7 +1960,7 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	vnic = &bp->vnic_info[0];
+	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 
 	if (nb_mc_addr > BNXT_MAX_MC_ADDRS) {
 		vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
