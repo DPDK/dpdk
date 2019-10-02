@@ -4,6 +4,7 @@
  */
 
 #include <rte_malloc.h>
+#include <rte_alarm.h>
 
 #include "bnxt.h"
 #include "bnxt_cpr.h"
@@ -39,6 +40,21 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED:
 		PMD_DRV_LOG(INFO, "Port conn async event\n");
+		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_RESET_NOTIFY:
+		/* timestamp_lo/hi values are in units of 100ms */
+		bp->fw_reset_max_msecs = async_cmp->timestamp_hi ?
+			rte_le_to_cpu_16(async_cmp->timestamp_hi) * 100 :
+			BNXT_MAX_FW_RESET_TIMEOUT;
+		bp->fw_reset_min_msecs = async_cmp->timestamp_lo ?
+			async_cmp->timestamp_lo * 100 :
+			BNXT_MIN_FW_READY_TIMEOUT;
+		PMD_DRV_LOG(INFO,
+			    "Firmware non-fatal reset event received\n");
+
+		bp->flags |= BNXT_FLAG_FW_RESET;
+		rte_eal_alarm_set(US_PER_MS, bnxt_dev_reset_and_resume,
+				  (void *)bp);
 		break;
 	default:
 		PMD_DRV_LOG(INFO, "handle_async_event id = 0x%x\n", event_id);

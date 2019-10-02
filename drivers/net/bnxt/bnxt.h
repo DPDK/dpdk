@@ -333,6 +333,16 @@ struct bnxt_ctx_mem_info {
 	struct bnxt_ctx_pg_info *tqm_mem[BNXT_MAX_TC_Q];
 };
 
+/* Maximum Firmware Reset bail out value in milliseconds */
+#define BNXT_MAX_FW_RESET_TIMEOUT	6000
+/* Minimum time required for the firmware readiness in milliseconds */
+#define BNXT_MIN_FW_READY_TIMEOUT	2000
+/* Frequency for the firmware readiness check in milliseconds */
+#define BNXT_FW_READY_WAIT_INTERVAL	100
+
+#define US_PER_MS			1000
+#define NS_PER_US			1000
+
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
 	void				*bar0;
@@ -463,6 +473,9 @@ struct bnxt {
 	struct bnxt_ptp_cfg     *ptp_cfg;
 	uint16_t		vf_resv_strategy;
 	struct bnxt_ctx_mem_info        *ctx;
+
+	uint16_t		fw_reset_min_msecs;
+	uint16_t		fw_reset_max_msecs;
 };
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);

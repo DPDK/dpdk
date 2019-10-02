@@ -106,5 +106,6 @@ struct bnxt;
 void bnxt_handle_async_event(struct bnxt *bp, struct cmpl_base *cmp);
 void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmp);
 int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp);
+void bnxt_dev_reset_and_resume(void *arg);
 
 #endif

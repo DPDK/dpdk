@@ -27,6 +27,7 @@
 #include <rte_io.h>
 
 #define HWRM_CMD_TIMEOUT		6000000
+#define HWRM_SHORT_CMD_TIMEOUT		50000
 #define HWRM_SPEC_CODE_1_8_3		0x10803
 #define HWRM_VERSION_1_9_1		0x10901
 #define HWRM_VERSION_1_9_2		0x10903
@@ -97,6 +98,17 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		GRCPF_REG_KONG_CHANNEL_OFFSET : GRCPF_REG_CHIMP_CHANNEL_OFFSET;
 	uint16_t mb_trigger_offset = use_kong_mb ?
 		GRCPF_REG_KONG_COMM_TRIGGER : GRCPF_REG_CHIMP_COMM_TRIGGER;
+	uint32_t timeout;
+
+	/* Do not send HWRM commands to firmware in error state */
+	if (bp->flags & BNXT_FLAG_FATAL_ERROR)
+		return 0;
+
+	/* For VER_GET command, set timeout as 50ms */
+	if (rte_cpu_to_le_16(req->req_type) == HWRM_VER_GET)
+		timeout = HWRM_SHORT_CMD_TIMEOUT;
+	else
+		timeout = HWRM_CMD_TIMEOUT;
 
 	if (bp->flags & BNXT_FLAG_SHORT_CMD ||
 	    msg_len > bp->max_req_len) {
@@ -139,7 +151,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	rte_write32(1, bar);
 
 	/* Poll for the valid bit */
-	for (i = 0; i < HWRM_CMD_TIMEOUT; i++) {
+	for (i = 0; i < timeout; i++) {
 		/* Sanity check on the resp->resp_len */
 		rte_rmb();
 		if (resp->resp_len && resp->resp_len <= bp->max_resp_len) {
@@ -151,7 +163,12 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		rte_delay_us(1);
 	}
 
-	if (i >= HWRM_CMD_TIMEOUT) {
+	if (i >= timeout) {
+		/* Suppress VER_GET timeout messages during reset recovery */
+		if (bp->flags & BNXT_FLAG_FW_RESET &&
+		    rte_cpu_to_le_16(req->req_type) == HWRM_VER_GET)
+			return -ETIMEDOUT;
+
 		PMD_DRV_LOG(ERR, "Error(timeout) sending msg 0x%04x\n",
 			    req->req_type);
 		return -ETIMEDOUT;
@@ -657,11 +674,20 @@ int bnxt_hwrm_func_reset(struct bnxt *bp)
 int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 {
 	int rc;
+	uint32_t flags = 0;
 	struct hwrm_func_drv_rgtr_input req = {.req_type = 0 };
 	struct hwrm_func_drv_rgtr_output *resp = bp->hwrm_cmd_resp_addr;
 
 	if (bp->flags & BNXT_FLAG_REGISTERED)
 		return 0;
+
+	flags = HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_HOT_RESET_SUPPORT;
+
+	/* PFs and trusted VFs should indicate the support of the
+	 * Master capability on non Stingray platform
+	 */
+	if ((BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp)) && !BNXT_STINGRAY(bp))
+		flags |= HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_MASTER_SUPPORT;
 
 	HWRM_PREP(req, FUNC_DRV_RGTR, BNXT_USE_CHIMP_MB);
 	req.enables = rte_cpu_to_le_32(HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_VER |
@@ -683,14 +709,16 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 		 * this HWRM sniffer list in FW because DPDK PF driver does
 		 * not support this.
 		 */
-		req.flags =
-		rte_cpu_to_le_32(HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_FWD_NONE_MODE);
+		flags |= HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_FWD_NONE_MODE;
 	}
+
+	req.flags = rte_cpu_to_le_32(flags);
 
 	req.async_event_fwd[0] |=
 		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_LINK_STATUS_CHANGE |
 				 ASYNC_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED |
-				 ASYNC_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE);
+				 ASYNC_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE |
+				 ASYNC_CMPL_EVENT_ID_RESET_NOTIFY);
 	req.async_event_fwd[1] |=
 		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_PF_DRVR_UNLOAD |
 				 ASYNC_CMPL_EVENT_ID_VF_CFG_CHANGE);
@@ -837,7 +865,10 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
-	HWRM_CHECK_RESULT();
+	if (bp->flags & BNXT_FLAG_FW_RESET)
+		HWRM_CHECK_RESULT_SILENT();
+	else
+		HWRM_CHECK_RESULT();
 
 	PMD_DRV_LOG(INFO, "%d.%d.%d:%d.%d.%d\n",
 		resp->hwrm_intf_maj_8b, resp->hwrm_intf_min_8b,
@@ -2685,6 +2716,10 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 	if (BNXT_VF(bp) && (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_TRUSTED_VF)) {
 		bp->flags |= BNXT_FLAG_TRUSTED_VF_EN;
 		PMD_DRV_LOG(INFO, "Trusted VF cap enabled\n");
+	} else if (BNXT_VF(bp) &&
+		   !(flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_TRUSTED_VF)) {
+		bp->flags &= ~BNXT_FLAG_TRUSTED_VF_EN;
+		PMD_DRV_LOG(INFO, "Trusted VF cap disabled\n");
 	}
 
 	if (mtu)

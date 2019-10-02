@@ -8918,6 +8918,17 @@ struct hwrm_func_drv_rgtr_input {
 	 */
 	#define HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_ERROR_RECOVERY_SUPPORT \
 		UINT32_C(0x20)
+	/*
+	 * When this bit is 1, the function is indicating the support of the
+	 * Master capability. The Firmware will use this capability to select
+	 * the Master function. The master function will be used to initiate
+	 * designated functionality like error recovery etc. If none of the
+	 * registered PFs or trusted VFs indicate this support, then
+	 * firmware will select the 1st registered PF as Master capable
+	 * instance.
+	 */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_MASTER_SUPPORT \
+		UINT32_C(0x40)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the os_type field to be

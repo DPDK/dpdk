@@ -11,6 +11,7 @@
 #include <rte_ethdev_pci.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>
+#include <rte_alarm.h>
 
 #include "bnxt.h"
 #include "bnxt_cpr.h"
@@ -166,6 +167,8 @@ static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
 static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
 static int bnxt_dev_uninit(struct rte_eth_dev *eth_dev);
+static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev);
+static int bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev);
 
 int is_bnxt_in_error(struct bnxt *bp)
 {
@@ -201,19 +204,25 @@ static uint16_t  bnxt_rss_hash_tbl_size(const struct bnxt *bp)
 	return bnxt_rss_ctxts(bp) * BNXT_RSS_ENTRIES_PER_CTX_THOR;
 }
 
-static void bnxt_free_mem(struct bnxt *bp)
+static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 {
 	bnxt_free_filter_mem(bp);
 	bnxt_free_vnic_attributes(bp);
 	bnxt_free_vnic_mem(bp);
 
-	bnxt_free_stats(bp);
-	bnxt_free_tx_rings(bp);
-	bnxt_free_rx_rings(bp);
+	/* tx/rx rings are configured as part of *_queue_setup callbacks.
+	 * If the number of rings change across fw update,
+	 * we don't have much choice except to warn the user.
+	 */
+	if (!reconfig) {
+		bnxt_free_stats(bp);
+		bnxt_free_tx_rings(bp);
+		bnxt_free_rx_rings(bp);
+	}
 	bnxt_free_async_cp_ring(bp);
 }
 
-static int bnxt_alloc_mem(struct bnxt *bp)
+static int bnxt_alloc_mem(struct bnxt *bp, bool reconfig)
 {
 	int rc;
 
@@ -244,7 +253,7 @@ static int bnxt_alloc_mem(struct bnxt *bp)
 	return 0;
 
 alloc_mem_err:
-	bnxt_free_mem(bp);
+	bnxt_free_mem(bp, reconfig);
 	return rc;
 }
 
@@ -3523,6 +3532,89 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.timesync_read_tx_timestamp = bnxt_timesync_read_tx_timestamp,
 };
 
+static void bnxt_dev_cleanup(struct bnxt *bp)
+{
+	bnxt_set_hwrm_link_config(bp, false);
+	bp->link_info.link_up = 0;
+	if (bp->dev_stopped == 0)
+		bnxt_dev_stop_op(bp->eth_dev);
+
+	bnxt_uninit_resources(bp, true);
+}
+
+static int bnxt_restore_filters(struct bnxt *bp)
+{
+	struct rte_eth_dev *dev = bp->eth_dev;
+	int ret = 0;
+
+	if (dev->data->all_multicast)
+		ret = bnxt_allmulticast_enable_op(dev);
+	if (dev->data->promiscuous)
+		ret = bnxt_promiscuous_enable_op(dev);
+
+	/* TODO restore other filters as well */
+	return ret;
+}
+
+static void bnxt_dev_recover(void *arg)
+{
+	struct bnxt *bp = arg;
+	int timeout = bp->fw_reset_max_msecs;
+	int rc = 0;
+
+	do {
+		rc = bnxt_hwrm_ver_get(bp);
+		if (rc == 0)
+			break;
+		rte_delay_ms(BNXT_FW_READY_WAIT_INTERVAL);
+		timeout -= BNXT_FW_READY_WAIT_INTERVAL;
+	} while (rc && timeout);
+
+	if (rc) {
+		PMD_DRV_LOG(ERR, "FW is not Ready after reset\n");
+		goto err;
+	}
+
+	rc = bnxt_init_resources(bp, true);
+	if (rc) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to initialize resources after reset\n");
+		goto err;
+	}
+	/* clear reset flag as the device is initialized now */
+	bp->flags &= ~BNXT_FLAG_FW_RESET;
+
+	rc = bnxt_dev_start_op(bp->eth_dev);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Failed to start port after reset\n");
+		goto err;
+	}
+
+	rc = bnxt_restore_filters(bp);
+	if (rc)
+		goto err;
+
+	PMD_DRV_LOG(INFO, "Recovered from FW reset\n");
+	return;
+err:
+	bp->flags |= BNXT_FLAG_FATAL_ERROR;
+	bnxt_uninit_resources(bp, false);
+	PMD_DRV_LOG(ERR, "Failed to recover from FW reset\n");
+}
+
+void bnxt_dev_reset_and_resume(void *arg)
+{
+	struct bnxt *bp = arg;
+	int rc;
+
+	bnxt_dev_cleanup(bp);
+
+	rc = rte_eal_alarm_set(US_PER_MS * bp->fw_reset_min_msecs,
+			       bnxt_dev_recover, (void *)bp);
+	if (rc)
+		PMD_DRV_LOG(ERR, "Error setting recovery alarm");
+}
+
 static bool bnxt_vf_pciid(uint16_t id)
 {
 	if (id == BROADCOM_DEV_ID_57304_VF ||
@@ -3965,6 +4057,22 @@ static int bnxt_setup_mac_addr(struct rte_eth_dev *eth_dev)
 	return rc;
 }
 
+static int bnxt_restore_dflt_mac(struct bnxt *bp)
+{
+	int rc = 0;
+
+	/* MAC is already configured in FW */
+	if (!bnxt_check_zero_bytes(bp->dflt_mac_addr, RTE_ETHER_ADDR_LEN))
+		return 0;
+
+	/* Restore the old MAC configured */
+	rc = bnxt_hwrm_set_mac(bp);
+	if (rc)
+		PMD_DRV_LOG(ERR, "Failed to restore MAC address\n");
+
+	return rc;
+}
+
 static void bnxt_config_vf_req_fwd(struct bnxt *bp)
 {
 	if (!BNXT_PF(bp))
@@ -4038,7 +4146,7 @@ static int bnxt_init_fw(struct bnxt *bp)
 	return 0;
 }
 
-static int bnxt_init_resources(struct bnxt *bp)
+static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 {
 	int rc;
 
@@ -4046,9 +4154,15 @@ static int bnxt_init_resources(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	rc = bnxt_setup_mac_addr(bp->eth_dev);
-	if (rc)
-		return rc;
+	if (!reconfig_dev) {
+		rc = bnxt_setup_mac_addr(bp->eth_dev);
+		if (rc)
+			return rc;
+	} else {
+		rc = bnxt_restore_dflt_mac(bp);
+		if (rc)
+			return rc;
+	}
 
 	bnxt_config_vf_req_fwd(bp);
 
@@ -4075,7 +4189,7 @@ static int bnxt_init_resources(struct bnxt *bp)
 		}
 	}
 
-	rc = bnxt_alloc_mem(bp);
+	rc = bnxt_alloc_mem(bp, reconfig_dev);
 	if (rc)
 		return rc;
 
@@ -4149,7 +4263,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 			    "Failed to allocate hwrm resource rc: %x\n", rc);
 		goto error_free;
 	}
-	rc = bnxt_init_resources(bp);
+	rc = bnxt_init_resources(bp, false);
 	if (rc)
 		goto error_free;
 
@@ -4170,18 +4284,19 @@ error_free:
 }
 
 static int
-bnxt_uninit_resources(struct bnxt *bp)
+bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 {
 	int rc;
 
 	bnxt_disable_int(bp);
 	bnxt_free_int(bp);
-	bnxt_free_mem(bp);
+	bnxt_free_mem(bp, reconfig_dev);
 	bnxt_hwrm_func_buf_unrgtr(bp);
 	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
 	bp->flags &= ~BNXT_FLAG_REGISTERED;
 	bnxt_free_ctx_mem(bp);
-	bnxt_free_hwrm_resources(bp);
+	if (!reconfig_dev)
+		bnxt_free_hwrm_resources(bp);
 
 	return rc;
 }
@@ -4197,7 +4312,7 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	PMD_DRV_LOG(DEBUG, "Calling Device uninit\n");
 
-	rc = bnxt_uninit_resources(bp);
+	rc = bnxt_uninit_resources(bp, false);
 
 	if (bp->grp_info != NULL) {
 		rte_free(bp->grp_info);
