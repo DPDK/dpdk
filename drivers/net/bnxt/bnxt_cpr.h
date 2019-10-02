@@ -113,4 +113,16 @@ void bnxt_dev_reset_and_resume(void *arg);
 #define EVENT_DATA1_REASON_CODE_MASK                   \
 	HWRM_ASYNC_EVENT_CMPL_RESET_NOTIFY_EVENT_DATA1_REASON_CODE_MASK
 
+#define EVENT_DATA1_FLAGS_MASK                         \
+	HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_MASK
+
+#define EVENT_DATA1_FLAGS_MASTER_FUNC                  \
+	HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_MASTER_FUNC
+
+#define EVENT_DATA1_FLAGS_RECOVERY_ENABLED             \
+	HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_RECOVERY_ENABLED
+
+bool bnxt_is_recovery_enabled(struct bnxt *bp);
+bool bnxt_is_master_func(struct bnxt *bp);
+
 #endif

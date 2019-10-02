@@ -365,6 +365,8 @@ struct bnxt_error_recovery_info {
 	uint8_t		delay_after_reset[BNXT_NUM_RESET_REG];
 #define BNXT_FLAG_ERROR_RECOVERY_HOST	(1 << 0)
 #define BNXT_FLAG_ERROR_RECOVERY_CO_CPU	(1 << 1)
+#define BNXT_FLAG_MASTER_FUNC		(1 << 2)
+#define BNXT_FLAG_RECOVERY_ENABLED	(1 << 3)
 	uint32_t	flags;
 };
 

@@ -21,6 +21,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	struct hwrm_async_event_cmpl *async_cmp =
 				(struct hwrm_async_event_cmpl *)cmp;
 	uint16_t event_id = rte_le_to_cpu_16(async_cmp->event_id);
+	struct bnxt_error_recovery_info *info;
 	uint32_t event_data;
 
 	/* TODO: HWRM async events are not defined yet */
@@ -64,6 +65,31 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		bp->flags |= BNXT_FLAG_FW_RESET;
 		rte_eal_alarm_set(US_PER_MS, bnxt_dev_reset_and_resume,
 				  (void *)bp);
+		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ERROR_RECOVERY:
+		info = bp->recovery_info;
+
+		if (!info)
+			return;
+
+		PMD_DRV_LOG(INFO, "Error recovery async event received\n");
+
+		event_data = rte_le_to_cpu_32(async_cmp->event_data1) &
+				EVENT_DATA1_FLAGS_MASK;
+
+		if (event_data & EVENT_DATA1_FLAGS_MASTER_FUNC)
+			info->flags |= BNXT_FLAG_MASTER_FUNC;
+		else
+			info->flags &= ~BNXT_FLAG_MASTER_FUNC;
+
+		if (event_data & EVENT_DATA1_FLAGS_RECOVERY_ENABLED)
+			info->flags |= BNXT_FLAG_RECOVERY_ENABLED;
+		else
+			info->flags &= ~BNXT_FLAG_RECOVERY_ENABLED;
+
+		PMD_DRV_LOG(INFO, "recovery enabled(%d), master function(%d)\n",
+			    bnxt_is_recovery_enabled(bp),
+			    bnxt_is_master_func(bp));
 		break;
 	default:
 		PMD_DRV_LOG(INFO, "handle_async_event id = 0x%x\n", event_id);
@@ -188,4 +214,23 @@ int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp)
 	}
 
 	return evt;
+}
+
+bool bnxt_is_master_func(struct bnxt *bp)
+{
+	if (bp->recovery_info->flags & BNXT_FLAG_MASTER_FUNC)
+		return true;
+
+	return false;
+}
+
+bool bnxt_is_recovery_enabled(struct bnxt *bp)
+{
+	struct bnxt_error_recovery_info *info;
+
+	info = bp->recovery_info;
+	if (info && (info->flags & BNXT_FLAG_RECOVERY_ENABLED))
+		return true;
+
+	return false;
 }
