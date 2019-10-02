@@ -358,6 +358,8 @@ struct bnxt {
 #define BNXT_FLAG_DFLT_VNIC_SET	(1 << 12)
 #define BNXT_FLAG_THOR_CHIP	(1 << 13)
 #define BNXT_FLAG_STINGRAY	(1 << 14)
+#define BNXT_FLAG_FW_RESET	(1 << 15)
+#define BNXT_FLAG_FATAL_ERROR	(1 << 16)
 #define BNXT_FLAG_EXT_STATS_SUPPORTED	(1 << 29)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1U << 31)
@@ -465,6 +467,7 @@ struct bnxt {
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
+int is_bnxt_in_error(struct bnxt *bp);
 
 bool is_bnxt_supported(struct rte_eth_dev *dev);
 bool bnxt_stratus_device(struct bnxt *bp);

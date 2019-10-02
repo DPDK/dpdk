@@ -67,6 +67,7 @@ struct bnxt_rx_ring_info;
 struct bnxt_cp_ring_info;
 void bnxt_free_ring(struct bnxt_ring *ring);
 int bnxt_init_ring_grps(struct bnxt *bp);
+int bnxt_alloc_ring_grps(struct bnxt *bp);
 int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			    struct bnxt_tx_queue *txq,
 			    struct bnxt_rx_queue *rxq,

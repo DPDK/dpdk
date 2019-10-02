@@ -148,6 +148,9 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		TX_BD_LONG_FLAGS_LHINT_LT2K
 	};
 
+	if (unlikely(is_bnxt_in_error(txq->bp)))
+		return -EIO;
+
 	if (tx_pkt->ol_flags & (PKT_TX_TCP_SEG | PKT_TX_TCP_CKSUM |
 				PKT_TX_UDP_CKSUM | PKT_TX_IP_CKSUM |
 				PKT_TX_VLAN_PKT | PKT_TX_OUTER_IP_CKSUM |
@@ -485,10 +488,29 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx_pkts;
 }
 
+/*
+ * Dummy DPDK callback for TX.
+ *
+ * This function is used to temporarily replace the real callback during
+ * unsafe control operations on the queue, or in case of error.
+ */
+uint16_t
+bnxt_dummy_xmit_pkts(void *tx_queue __rte_unused,
+		     struct rte_mbuf **tx_pkts __rte_unused,
+		     uint16_t nb_pkts __rte_unused)
+{
+	return 0;
+}
+
 int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_tx_queue *txq = bp->tx_queues[tx_queue_id];
+	int rc = 0;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
 
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	txq->tx_deferred_start = false;
@@ -501,6 +523,11 @@ int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_tx_queue *txq = bp->tx_queues[tx_queue_id];
+	int rc = 0;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
 
 	/* Handle TX completions */
 	bnxt_handle_tx_cp(txq);

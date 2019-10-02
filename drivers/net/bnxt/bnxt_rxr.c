@@ -539,6 +539,9 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	int rc = 0;
 	bool evt = false;
 
+	if (unlikely(is_bnxt_in_error(rxq->bp)))
+		return 0;
+
 	/* If Rx Q was stopped return. RxQ0 cannot be stopped. */
 	if (unlikely(((rxq->rx_deferred_start ||
 		       !rte_spinlock_trylock(&rxq->lock)) &&
@@ -623,6 +626,20 @@ done:
 	rte_spinlock_unlock(&rxq->lock);
 
 	return nb_rx_pkts;
+}
+
+/*
+ * Dummy DPDK callback for RX.
+ *
+ * This function is used to temporarily replace the real callback during
+ * unsafe control operations on the queue, or in case of error.
+ */
+uint16_t
+bnxt_dummy_recv_pkts(void *rx_queue __rte_unused,
+		     struct rte_mbuf **rx_pkts __rte_unused,
+		     uint16_t nb_pkts __rte_unused)
+{
+	return 0;
 }
 
 void bnxt_free_rx_rings(struct bnxt *bp)

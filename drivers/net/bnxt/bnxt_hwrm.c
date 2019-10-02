@@ -964,8 +964,6 @@ int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags)
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 
-	bp->flags &= ~BNXT_FLAG_REGISTERED;
-
 	return rc;
 }
 

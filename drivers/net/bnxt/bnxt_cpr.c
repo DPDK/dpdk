@@ -142,6 +142,9 @@ int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp)
 		return evt;
 	}
 
+	if (unlikely(is_bnxt_in_error(bp)))
+		return 0;
+
 	switch (CMP_TYPE(cmp)) {
 	case CMPL_BASE_TYPE_HWRM_ASYNC_EVENT:
 		/* Handle any async event */

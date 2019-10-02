@@ -50,6 +50,38 @@ int bnxt_init_ring_grps(struct bnxt *bp)
 	return 0;
 }
 
+int bnxt_alloc_ring_grps(struct bnxt *bp)
+{
+	if (bp->max_tx_rings == 0) {
+		PMD_DRV_LOG(ERR, "No TX rings available!\n");
+		return -EBUSY;
+	}
+
+	/* THOR does not support ring groups.
+	 * But we will use the array to save RSS context IDs.
+	 */
+	if (BNXT_CHIP_THOR(bp)) {
+		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_THOR;
+	} else if (bp->max_ring_grps < bp->rx_cp_nr_rings) {
+		/* 1 ring is for default completion ring */
+		PMD_DRV_LOG(ERR, "Insufficient resource: Ring Group\n");
+		return -ENOSPC;
+	}
+
+	if (BNXT_HAS_RING_GRPS(bp)) {
+		bp->grp_info = rte_zmalloc("bnxt_grp_info",
+					   sizeof(*bp->grp_info) *
+					   bp->max_ring_grps, 0);
+		if (!bp->grp_info) {
+			PMD_DRV_LOG(ERR,
+				    "Failed to alloc grp info tbl.\n");
+			return -ENOMEM;
+		}
+	}
+
+	return 0;
+}
+
 /*
  * Allocates a completion ring with vmem and stats optionally also allocating
  * a TX and/or RX ring.  Passing NULL as tx_ring_info and/or rx_ring_info

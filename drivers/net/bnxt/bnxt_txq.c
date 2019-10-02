@@ -58,6 +58,9 @@ void bnxt_tx_queue_release_op(void *tx_queue)
 	struct bnxt_tx_queue *txq = (struct bnxt_tx_queue *)tx_queue;
 
 	if (txq) {
+		if (is_bnxt_in_error(txq->bp))
+			return;
+
 		/* Free TX ring hardware descriptors */
 		bnxt_tx_queue_release_mbufs(txq);
 		bnxt_free_ring(txq->tx_ring->tx_ring_struct);
@@ -83,6 +86,10 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct bnxt_tx_queue *txq;
 	int rc = 0;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
 
 	if (queue_idx >= bp->max_tx_rings) {
 		PMD_DRV_LOG(ERR,

@@ -263,6 +263,9 @@ void bnxt_rx_queue_release_op(void *rx_queue)
 	struct bnxt_rx_queue *rxq = (struct bnxt_rx_queue *)rx_queue;
 
 	if (rxq) {
+		if (is_bnxt_in_error(rxq->bp))
+			return;
+
 		bnxt_rx_queue_release_mbufs(rxq);
 
 		/* Free RX ring hardware descriptors */
@@ -293,6 +296,10 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_rx_queue *rxq;
 	int rc = 0;
 	uint8_t queue_state;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
 
 	if (queue_idx >= bp->max_rx_rings) {
 		PMD_DRV_LOG(ERR,
@@ -363,9 +370,14 @@ out:
 int
 bnxt_rx_queue_intr_enable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 {
+	struct bnxt *bp = eth_dev->data->dev_private;
 	struct bnxt_rx_queue *rxq;
 	struct bnxt_cp_ring_info *cpr;
 	int rc = 0;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
 
 	if (eth_dev->data->rx_queues) {
 		rxq = eth_dev->data->rx_queues[queue_id];
@@ -382,9 +394,14 @@ bnxt_rx_queue_intr_enable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 int
 bnxt_rx_queue_intr_disable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 {
+	struct bnxt *bp = eth_dev->data->dev_private;
 	struct bnxt_rx_queue *rxq;
 	struct bnxt_cp_ring_info *cpr;
 	int rc = 0;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
 
 	if (eth_dev->data->rx_queues) {
 		rxq = eth_dev->data->rx_queues[queue_id];
@@ -405,6 +422,10 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct bnxt_rx_queue *rxq = bp->rx_queues[rx_queue_id];
 	struct bnxt_vnic_info *vnic = NULL;
 	int rc = 0;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
 
 	if (rxq == NULL) {
 		PMD_DRV_LOG(ERR, "Invalid Rx queue %d\n", rx_queue_id);
@@ -457,6 +478,10 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct bnxt_vnic_info *vnic = NULL;
 	struct bnxt_rx_queue *rxq = NULL;
 	int rc = 0;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
 
 	/* For the stingray platform and other platforms needing tighter
 	 * control of resource utilization, Rx CQ 0 also works as
