@@ -189,7 +189,7 @@ int is_bnxt_in_error(struct bnxt *bp)
  * High level utility functions
  */
 
-static uint16_t bnxt_rss_ctxts(const struct bnxt *bp)
+uint16_t bnxt_rss_ctxts(const struct bnxt *bp)
 {
 	if (!BNXT_CHIP_THOR(bp))
 		return 1;

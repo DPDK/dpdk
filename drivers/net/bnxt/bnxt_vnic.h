@@ -9,6 +9,8 @@
 #include <sys/queue.h>
 #include <stdbool.h>
 
+#define INVALID_VNIC_ID		((uint16_t)-1)
+
 struct bnxt_vnic_info {
 	STAILQ_ENTRY(bnxt_vnic_info)	next;
 	uint8_t		ff_pool_idx;

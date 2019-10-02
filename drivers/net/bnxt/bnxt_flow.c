@@ -14,6 +14,8 @@
 #include "bnxt.h"
 #include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
+#include "bnxt_ring.h"
+#include "bnxt_rxq.h"
 #include "bnxt_vnic.h"
 #include "bnxt_util.h"
 #include "hsi_struct_def_dpdk.h"
@@ -151,22 +153,12 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	int use_ntuple;
 	uint32_t en = 0;
 	uint32_t en_ethertype;
-	int dflt_vnic, rc = 0;
+	int dflt_vnic;
 
 	use_ntuple = bnxt_filter_type_check(pattern, error);
 	PMD_DRV_LOG(DEBUG, "Use NTUPLE %d\n", use_ntuple);
 	if (use_ntuple < 0)
 		return use_ntuple;
-
-	if (use_ntuple && (bp->eth_dev->data->dev_conf.rxmode.mq_mode &
-	    ETH_MQ_RX_RSS)) {
-		PMD_DRV_LOG(ERR, "Cannot create ntuple flow on RSS queues\n");
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Cannot create flow on RSS queues");
-		rc = -rte_errno;
-		return rc;
-	}
 
 	filter->filter_type = use_ntuple ?
 		HWRM_CFA_NTUPLE_FILTER : HWRM_CFA_EM_FILTER;
@@ -715,17 +707,6 @@ bnxt_flow_parse_attr(const struct rte_flow_attr *attr,
 				   "No support for priority.");
 		return -rte_errno;
 	}
-
-	/* Not supported */
-	if (attr->group) {
-		rte_flow_error_set(error,
-				   EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
-				   attr,
-				   "No support for group.");
-		return -rte_errno;
-	}
-
 	return 0;
 }
 
@@ -764,6 +745,50 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	return filter1;
 }
 
+static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	uint64_t rx_offloads = dev_conf->rxmode.offloads;
+	int rc;
+
+	rc = bnxt_vnic_grp_alloc(bp, vnic);
+	if (rc)
+		goto ret;
+
+	rc = bnxt_hwrm_vnic_alloc(bp, vnic);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "HWRM vnic alloc failure rc: %x\n", rc);
+		goto ret;
+	}
+	bp->nr_vnics++;
+
+	/* RSS context is required only when there is more than one RSS ring */
+	if (vnic->rx_queue_cnt > 1) {
+		rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic, 0 /* ctx_idx 0 */);
+		if (rc) {
+			PMD_DRV_LOG(ERR,
+				    "HWRM vnic ctx alloc failure: %x\n", rc);
+			goto ret;
+		}
+	} else {
+		PMD_DRV_LOG(DEBUG, "No RSS context required\n");
+	}
+
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+		vnic->vlan_strip = true;
+	else
+		vnic->vlan_strip = false;
+
+	rc = bnxt_hwrm_vnic_cfg(bp, vnic);
+	if (rc)
+		goto ret;
+
+	bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
+
+ret:
+	return rc;
+}
+
 static int
 bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			     const struct rte_flow_item pattern[],
@@ -775,12 +800,14 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	const struct rte_flow_action *act =
 		bnxt_flow_non_void_action(actions);
 	struct bnxt *bp = dev->data->dev_private;
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_vf *act_vf;
 	struct bnxt_vnic_info *vnic, *vnic0;
 	struct bnxt_filter_info *filter1;
+	struct bnxt_rx_queue *rxq = NULL;
+	int dflt_vnic, vnic_id;
 	uint32_t vf = 0;
-	int dflt_vnic;
 	int rc;
 
 	rc =
@@ -800,7 +827,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
 		/* Allow this flow. Redirect to a VNIC. */
 		act_q = (const struct rte_flow_action_queue *)act->conf;
-		if (act_q->index >= bp->rx_nr_rings) {
+		if (!act_q->index || act_q->index >= bp->rx_nr_rings) {
 			rte_flow_error_set(error,
 					   EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -811,18 +838,77 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		}
 		PMD_DRV_LOG(DEBUG, "Queue index %d\n", act_q->index);
 
-		vnic0 = &bp->vnic_info[0];
-		vnic =  &bp->vnic_info[act_q->index];
+		vnic_id = attr->group;
+		if (!vnic_id) {
+			PMD_DRV_LOG(DEBUG, "Group id is 0\n");
+			vnic_id = act_q->index;
+		}
+
+		vnic = &bp->vnic_info[vnic_id];
 		if (vnic == NULL) {
 			rte_flow_error_set(error,
 					   EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   act,
-					   "No matching VNIC for queue ID.");
+					   "No matching VNIC found.");
+			rc = -rte_errno;
+			goto ret;
+		}
+		if (vnic->rx_queue_cnt) {
+			if (vnic->start_grp_id != act_q->index) {
+				PMD_DRV_LOG(ERR,
+					    "VNIC already in use\n");
+				rte_flow_error_set(error,
+						   EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   act,
+						   "VNIC already in use");
+				rc = -rte_errno;
+				goto ret;
+			}
+			goto use_vnic;
+		}
+
+		rxq = bp->rx_queues[act_q->index];
+
+		if (!(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) && rxq)
+			goto use_vnic;
+
+		if (!rxq ||
+		    bp->vnic_info[0].fw_grp_ids[act_q->index] !=
+		    INVALID_HW_RING_ID ||
+		    !rxq->rx_deferred_start) {
+			PMD_DRV_LOG(ERR,
+				    "Queue invalid or used with other VNIC\n");
+			rte_flow_error_set(error,
+					   EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "Queue invalid queue or in use");
 			rc = -rte_errno;
 			goto ret;
 		}
 
+use_vnic:
+		rxq->vnic = vnic;
+		vnic->rx_queue_cnt++;
+		vnic->start_grp_id = act_q->index;
+		vnic->end_grp_id = act_q->index;
+		vnic->func_default = 0;	//This is not a default VNIC.
+
+		PMD_DRV_LOG(DEBUG, "VNIC found\n");
+
+		rc = bnxt_vnic_prep(bp, vnic);
+		if (rc)
+			goto ret;
+
+		PMD_DRV_LOG(DEBUG,
+			    "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
+			    act_q->index, vnic, vnic->fw_grp_ids);
+
+		vnic->ff_pool_idx = vnic_id;
+		PMD_DRV_LOG(DEBUG,
+			    "Setting vnic ff_idx %d\n", vnic->ff_pool_idx);
 		filter->dst_id = vnic->fw_vnic_id;
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic);
 		if (filter1 == NULL) {
@@ -989,8 +1075,11 @@ bnxt_match_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 	struct rte_flow *flow;
 	int i;
 
-	for (i = bp->nr_vnics - 1; i >= 0; i--) {
+	for (i = bp->max_vnics; i >= 0; i--) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+
+		if (vnic->fw_vnic_id == INVALID_VNIC_ID)
+			continue;
 
 		STAILQ_FOREACH(flow, &vnic->flow_list, next) {
 			mf = flow->filter;
@@ -1063,8 +1152,8 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		 struct rte_flow_error *error)
 {
 	struct bnxt *bp = dev->data->dev_private;
-	struct bnxt_filter_info *filter;
 	struct bnxt_vnic_info *vnic = NULL;
+	struct bnxt_filter_info *filter;
 	bool update_flow = false;
 	struct rte_flow *flow;
 	unsigned int i;
@@ -1168,12 +1257,35 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		ret = bnxt_hwrm_set_ntuple_filter(bp, filter->dst_id, filter);
 	}
 
-	for (i = 0; i < bp->nr_vnics; i++) {
+	for (i = 0; i < bp->max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
-		if (filter->dst_id == vnic->fw_vnic_id)
+		if (vnic->fw_vnic_id != INVALID_VNIC_ID &&
+		    filter->dst_id == vnic->fw_vnic_id) {
+			PMD_DRV_LOG(ERR, "Found matching VNIC Id %d\n",
+				    vnic->ff_pool_idx);
 			break;
+		}
 	}
 done:
+	if (!ret) {
+		flow->filter = filter;
+		flow->vnic = vnic;
+		/* VNIC is set only in case of queue or RSS action */
+		if (vnic) {
+			/*
+			 * RxQ0 is not used for flow filters.
+			 */
+
+			if (update_flow) {
+				ret = -EXDEV;
+				goto free_flow;
+			}
+			STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+		}
+		PMD_DRV_LOG(ERR, "Successfully created flow.\n");
+		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
+		return flow;
+	}
 	if (!ret) {
 		flow->filter = filter;
 		flow->vnic = vnic;
@@ -1196,7 +1308,7 @@ free_flow:
 		rte_flow_error_set(error, ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Flow with pattern exists, updating destination queue");
-	else
+	else if (!rte_errno)
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Failed to create flow.");
