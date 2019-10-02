@@ -83,14 +83,17 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 	const struct rte_flow_item *item =
 		bnxt_flow_non_void_item(pattern);
 	int use_ntuple = 1;
+	bool has_vlan = 0;
 
 	while (item->type != RTE_FLOW_ITEM_TYPE_END) {
 		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_ANY:
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			use_ntuple = 1;
+			use_ntuple = 0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			use_ntuple = 0;
+			has_vlan = 1;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 		case RTE_FLOW_ITEM_TYPE_IPV6:
@@ -98,21 +101,7 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			/* FALLTHROUGH */
 			/* need ntuple match, reset exact match */
-			if (!use_ntuple) {
-				PMD_DRV_LOG(ERR,
-					"VLAN flow cannot use NTUPLE filter\n");
-				rte_flow_error_set
-					(error,
-					 EINVAL,
-					 RTE_FLOW_ERROR_TYPE_ITEM,
-					 item,
-					 "Cannot use VLAN with NTUPLE");
-				return -rte_errno;
-			}
 			use_ntuple |= 1;
-			break;
-		case RTE_FLOW_ITEM_TYPE_ANY:
-			use_ntuple = 0;
 			break;
 		default:
 			PMD_DRV_LOG(DEBUG, "Unknown Flow type\n");
@@ -120,6 +109,17 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 		}
 		item++;
 	}
+
+	if (has_vlan && use_ntuple) {
+		PMD_DRV_LOG(ERR,
+			    "VLAN flow cannot use NTUPLE filter\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "Cannot use VLAN with NTUPLE");
+		return -rte_errno;
+	}
+
 	return use_ntuple;
 }
 
@@ -146,13 +146,14 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	uint8_t vni_mask[] = {0xFF, 0xFF, 0xFF};
 	uint8_t tni_mask[] = {0xFF, 0xFF, 0xFF};
 	const struct rte_flow_item_vf *vf_spec;
-	uint32_t tenant_id_be = 0;
+	uint32_t tenant_id_be = 0, valid_flags = 0;
 	bool vni_masked = 0;
 	bool tni_masked = 0;
-	uint32_t vf = 0;
-	int use_ntuple;
-	uint32_t en = 0;
 	uint32_t en_ethertype;
+	uint8_t inner = 0;
+	uint32_t vf = 0;
+	uint32_t en = 0;
+	int use_ntuple;
 	int dflt_vnic;
 
 	use_ntuple = bnxt_filter_type_check(pattern, error);
@@ -177,6 +178,12 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 		}
 
 		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_ANY:
+			inner =
+			((const struct rte_flow_item_any *)item->spec)->num > 3;
+			if (inner)
+				PMD_DRV_LOG(DEBUG, "Parse inner header\n");
+			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			if (!item->spec || !item->mask)
 				break;
@@ -213,18 +220,24 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 
 			if (rte_is_broadcast_ether_addr(&eth_mask->dst)) {
 				rte_memcpy(filter->dst_macaddr,
-					   &eth_spec->dst, 6);
+					   &eth_spec->dst, RTE_ETHER_ADDR_LEN);
 				en |= use_ntuple ?
 					NTUPLE_FLTR_ALLOC_INPUT_EN_DST_MACADDR :
 					EM_FLOW_ALLOC_INPUT_EN_DST_MACADDR;
+				valid_flags |= inner ?
+					BNXT_FLOW_L2_INNER_DST_VALID_FLAG :
+					BNXT_FLOW_L2_DST_VALID_FLAG;
 			}
 
 			if (rte_is_broadcast_ether_addr(&eth_mask->src)) {
 				rte_memcpy(filter->src_macaddr,
-					   &eth_spec->src, 6);
+					   &eth_spec->src, RTE_ETHER_ADDR_LEN);
 				en |= use_ntuple ?
 					NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_MACADDR :
 					EM_FLOW_ALLOC_INPUT_EN_SRC_MACADDR;
+				valid_flags |= inner ?
+					BNXT_FLOW_L2_INNER_SRC_VALID_FLAG :
+					BNXT_FLOW_L2_SRC_VALID_FLAG;
 			} /*
 			   * else {
 			   *  PMD_DRV_LOG(ERR, "Handle this condition\n");
@@ -669,6 +682,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 		item++;
 	}
 	filter->enables = en;
+	filter->valid_flags = valid_flags;
 
 	return 0;
 }
@@ -725,16 +739,45 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	if (memcmp(f0->l2_addr, nf->dst_macaddr, RTE_ETHER_ADDR_LEN) == 0)
 		return f0;
 
-	/* This flow needs DST MAC which is not same as port/l2 */
-	PMD_DRV_LOG(DEBUG, "Create L2 filter for DST MAC\n");
+	/* Alloc new L2 filter.
+	 * This flow needs MAC filter which does not match port/l2 MAC.
+	 */
 	filter1 = bnxt_get_unused_filter(bp);
 	if (filter1 == NULL)
 		return NULL;
 
-	filter1->flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
+	filter1->flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_XDP_DISABLE;
+	filter1->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
+	if (nf->valid_flags & BNXT_FLOW_L2_SRC_VALID_FLAG ||
+	    nf->valid_flags & BNXT_FLOW_L2_DST_VALID_FLAG) {
+		filter1->flags |=
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
+		PMD_DRV_LOG(DEBUG, "Create Outer filter\n");
+	}
+
+	if (nf->filter_type == HWRM_CFA_L2_FILTER &&
+	    (nf->valid_flags & BNXT_FLOW_L2_SRC_VALID_FLAG ||
+	     nf->valid_flags & BNXT_FLOW_L2_INNER_SRC_VALID_FLAG)) {
+		PMD_DRV_LOG(DEBUG, "Create L2 filter for SRC MAC\n");
+		filter1->flags |=
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_SOURCE_VALID;
+		memcpy(filter1->l2_addr, nf->src_macaddr, RTE_ETHER_ADDR_LEN);
+	} else {
+		PMD_DRV_LOG(DEBUG, "Create L2 filter for DST MAC\n");
+		memcpy(filter1->l2_addr, nf->dst_macaddr, RTE_ETHER_ADDR_LEN);
+	}
+
+	if (nf->valid_flags & BNXT_FLOW_L2_DST_VALID_FLAG ||
+	    nf->valid_flags & BNXT_FLOW_L2_INNER_DST_VALID_FLAG) {
+		/* Tell the FW where to place the filter in the table. */
+		filter1->pri_hint =
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_PRI_HINT_BELOW_FILTER;
+		/* This will place the filter in TCAM */
+		filter1->l2_filter_id_hint = (uint64_t)-1;
+	}
+
 	filter1->enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 			L2_FILTER_ALLOC_INPUT_EN_L2_ADDR_MASK;
-	memcpy(filter1->l2_addr, nf->dst_macaddr, RTE_ETHER_ADDR_LEN);
 	memset(filter1->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
 	rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id,
 				     filter1);
@@ -843,6 +886,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			PMD_DRV_LOG(DEBUG, "Group id is 0\n");
 			vnic_id = act_q->index;
 		}
+		PMD_DRV_LOG(DEBUG, "VNIC found\n");
 
 		vnic = &bp->vnic_info[vnic_id];
 		if (vnic == NULL) {
@@ -871,7 +915,8 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 
 		rxq = bp->rx_queues[act_q->index];
 
-		if (!(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) && rxq)
+		if (!(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) && rxq &&
+		    vnic->fw_vnic_id != INVALID_HW_RING_ID)
 			goto use_vnic;
 
 		if (!rxq ||
@@ -916,8 +961,20 @@ use_vnic:
 			goto ret;
 		}
 
+		if (!(filter->valid_flags &
+		      ~(BNXT_FLOW_L2_DST_VALID_FLAG |
+			BNXT_FLOW_L2_SRC_VALID_FLAG |
+			BNXT_FLOW_L2_INNER_SRC_VALID_FLAG |
+			BNXT_FLOW_L2_INNER_DST_VALID_FLAG))) {
+			PMD_DRV_LOG(DEBUG, "L2 filter created\n");
+			filter->flags = filter1->flags;
+			filter->enables = filter1->enables;
+			filter->filter_type = HWRM_CFA_L2_FILTER;
+			memset(filter->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
+			filter->pri_hint = filter1->pri_hint;
+			filter->l2_filter_id_hint = filter1->l2_filter_id_hint;
+		}
 		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
-		PMD_DRV_LOG(DEBUG, "VNIC found\n");
 		break;
 	case RTE_FLOW_ACTION_TYPE_DROP:
 		vnic0 = &bp->vnic_info[0];
@@ -1008,6 +1065,15 @@ use_vnic:
 
 		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
 		break;
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		rte_flow_error_set(error,
+				   ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "This action is not supported right now.");
+		rc = -rte_errno;
+		goto ret;
+		//break;
 
 	default:
 		rte_flow_error_set(error,

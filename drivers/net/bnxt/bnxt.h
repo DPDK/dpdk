@@ -439,6 +439,7 @@ struct bnxt {
 #define BNXT_FLAG_NEW_RM			BIT(23)
 #define BNXT_FLAG_INIT_DONE			BIT(24)
 #define BNXT_FLAG_FW_CAP_ONE_STEP_TX_TS		BIT(25)
+#define BNXT_FLAG_ADV_FLOW_MGMT			BIT(26)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR(bp)		((bp)->port_partition_type)
@@ -451,6 +452,9 @@ struct bnxt {
 #define BNXT_STINGRAY(bp)	((bp)->flags & BNXT_FLAG_STINGRAY)
 #define BNXT_HAS_NQ(bp)		BNXT_CHIP_THOR(bp)
 #define BNXT_HAS_RING_GRPS(bp)	(!BNXT_CHIP_THOR(bp))
+
+	uint32_t		flow_flags;
+#define BNXT_FLOW_FLAG_L2_HDR_SRC_FILTER_EN	BIT(0)
 
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;

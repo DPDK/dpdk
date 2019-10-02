@@ -425,8 +425,6 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	HWRM_PREP(req, CFA_L2_FILTER_ALLOC, BNXT_USE_CHIMP_MB);
 
 	req.flags = rte_cpu_to_le_32(filter->flags);
-	req.flags |=
-	rte_cpu_to_le_32(HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST);
 
 	enables = filter->enables |
 	      HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_DST_ID;
@@ -456,6 +454,11 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 		req.src_id = rte_cpu_to_le_32(filter->src_id);
 	if (enables & HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_TYPE)
 		req.src_type = filter->src_type;
+	if (filter->pri_hint) {
+		req.pri_hint = filter->pri_hint;
+		req.l2_filter_id_hint =
+			rte_cpu_to_le_64(filter->l2_filter_id_hint);
+	}
 
 	req.enables = rte_cpu_to_le_32(enables);
 
@@ -1017,6 +1020,11 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	if (dev_caps_cfg &
 	    HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_TRUSTED_VF_SUPPORTED)
 		PMD_DRV_LOG(DEBUG, "FW supports Trusted VFs\n");
+	if (dev_caps_cfg &
+	    HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_CFA_ADV_FLOW_MGNT_SUPPORTED) {
+		bp->flags |= BNXT_FLAG_ADV_FLOW_MGMT;
+		PMD_DRV_LOG(DEBUG, "FW supports advanced flow management\n");
+	}
 
 error:
 	HWRM_UNLOCK();
@@ -4909,6 +4917,38 @@ int bnxt_hwrm_port_ts_query(struct bnxt *bp, uint8_t path, uint64_t *timestamp)
 			(uint64_t)(rte_le_to_cpu_32(resp->ptp_msg_ts[1])) << 32;
 	}
 	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(struct bnxt *bp)
+{
+	struct hwrm_cfa_adv_flow_mgnt_qcaps_output *resp =
+					bp->hwrm_cmd_resp_addr;
+	struct hwrm_cfa_adv_flow_mgnt_qcaps_input req = {0};
+	uint32_t flags = 0;
+	int rc = 0;
+
+	if (!(bp->flags & BNXT_FLAG_ADV_FLOW_MGMT))
+		return rc;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(req, CFA_ADV_FLOW_MGNT_QCAPS, BNXT_USE_KONG(bp));
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+
+	HWRM_CHECK_RESULT();
+	flags = rte_le_to_cpu_32(resp->flags);
+	HWRM_UNLOCK();
+
+	if (flags & HWRM_CFA_ADV_FLOW_MGNT_QCAPS_L2_HDR_SRC_FILTER_EN) {
+		bp->flow_flags |= BNXT_FLOW_FLAG_L2_HDR_SRC_FILTER_EN;
+		PMD_DRV_LOG(INFO, "Source L2 header filtering enabled\n");
+	}
 
 	return rc;
 }

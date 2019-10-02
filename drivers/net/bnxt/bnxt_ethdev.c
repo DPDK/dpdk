@@ -1039,6 +1039,7 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 
 	filter->mac_index = index;
 	memcpy(filter->l2_addr, mac_addr, RTE_ETHER_ADDR_LEN);
+	filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
 
 	rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
 	if (!rc) {
@@ -1739,6 +1740,7 @@ static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 	filter->l2_ivlan = vlan_id;
 	filter->l2_ivlan_mask = 0x0FFF;
 	filter->enables |= en;
+	filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
 	rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
 	if (rc) {
 		/* Free the newly allocated filter as we were
@@ -1904,7 +1906,8 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
 
 		memcpy(filter->l2_addr, bp->mac_addr, RTE_ETHER_ADDR_LEN);
 		memset(filter->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
-		filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
+		filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX |
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
 		filter->enables |=
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
@@ -4432,6 +4435,10 @@ static int bnxt_init_fw(struct bnxt *bp)
 	rc = bnxt_hwrm_func_reset(bp);
 	if (rc)
 		return -EIO;
+
+	rc = bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(bp);
+	if (rc)
+		return rc;
 
 	rc = bnxt_hwrm_queue_qportcfg(bp);
 	if (rc)

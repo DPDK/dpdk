@@ -9,6 +9,13 @@
 #include <rte_ether.h>
 
 struct bnxt;
+
+#define BNXT_FLOW_L2_VALID_FLAG			BIT(0)
+#define BNXT_FLOW_L2_SRC_VALID_FLAG		BIT(1)
+#define BNXT_FLOW_L2_INNER_SRC_VALID_FLAG	BIT(2)
+#define BNXT_FLOW_L2_DST_VALID_FLAG		BIT(3)
+#define BNXT_FLOW_L2_INNER_DST_VALID_FLAG	BIT(4)
+
 struct bnxt_filter_info {
 	STAILQ_ENTRY(bnxt_filter_info)	next;
 	uint64_t		fw_l2_filter_id;
@@ -28,6 +35,7 @@ struct bnxt_filter_info {
 	uint32_t		enables;
 	uint8_t			l2_addr[RTE_ETHER_ADDR_LEN];
 	uint8_t			l2_addr_mask[RTE_ETHER_ADDR_LEN];
+	uint32_t		valid_flags;
 	uint16_t		l2_ovlan;
 	uint16_t		l2_ovlan_mask;
 	uint16_t		l2_ivlan;
