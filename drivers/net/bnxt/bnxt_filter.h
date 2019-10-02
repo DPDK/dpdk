@@ -71,6 +71,7 @@ struct bnxt_filter_info {
 	uint16_t                ip_addr_type;
 	uint16_t                ethertype;
 	uint32_t		priority;
+	uint8_t			dflt;
 };
 
 struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp);

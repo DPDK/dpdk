@@ -2415,15 +2415,18 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	int rc = 0;
 
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
-		if (filter->filter_type == HWRM_CFA_EM_FILTER)
+		if (filter->filter_type == HWRM_CFA_EM_FILTER) {
 			rc = bnxt_hwrm_set_em_filter(bp, filter->dst_id,
 						     filter);
-		else if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
+		} else if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER) {
 			rc = bnxt_hwrm_set_ntuple_filter(bp, filter->dst_id,
 							 filter);
-		else
+		} else {
 			rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id,
 						     filter);
+			if (!rc)
+				filter->dflt = 1;
+		}
 		if (rc)
 			break;
 	}
