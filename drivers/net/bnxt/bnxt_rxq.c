@@ -100,6 +100,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		}
 	}
 	nb_q_per_grp = bp->rx_cp_nr_rings / pools;
+	bp->rx_num_qs_per_vnic = nb_q_per_grp;
 	PMD_DRV_LOG(DEBUG, "pools = %u nb_q_per_grp = %u\n",
 		    pools, nb_q_per_grp);
 	start_grp_id = 0;
@@ -158,29 +159,16 @@ skip_filter_allocation:
 out:
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		struct rte_eth_rss_conf *rss = &dev_conf->rx_adv_conf.rss_conf;
-		uint16_t hash_type = 0;
 
 		if (bp->flags & BNXT_FLAG_UPDATE_HASH) {
 			rss = &bp->rss_conf;
 			bp->flags &= ~BNXT_FLAG_UPDATE_HASH;
 		}
 
-		if (rss->rss_hf & ETH_RSS_IPV4)
-			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
-		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
-			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
-		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
-			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
-		if (rss->rss_hf & ETH_RSS_IPV6)
-			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
-		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
-			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
-		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
-			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
-
 		for (i = 0; i < bp->nr_vnics; i++) {
 			vnic = &bp->vnic_info[i];
-			vnic->hash_type = hash_type;
+			vnic->hash_type =
+				bnxt_rte_to_hwrm_hash_types(rss->rss_hf);
 
 			/*
 			 * Use the supplied key if the key length is
@@ -469,7 +457,9 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 				    vnic, bp->grp_info[rx_queue_id].fw_grp_id);
 		}
 
-		rc = bnxt_vnic_rss_configure(bp, vnic);
+		PMD_DRV_LOG(DEBUG, "Rx Queue Count %d\n", vnic->rx_queue_cnt);
+		if (vnic->rx_queue_cnt > 1)
+			rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
 	if (rc == 0)
@@ -522,7 +512,10 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		vnic = rxq->vnic;
 		if (BNXT_HAS_RING_GRPS(bp))
 			vnic->fw_grp_ids[rx_queue_id] = INVALID_HW_RING_ID;
-		rc = bnxt_vnic_rss_configure(bp, vnic);
+
+		PMD_DRV_LOG(DEBUG, "Rx Queue Count %d\n", vnic->rx_queue_cnt);
+		if (vnic->rx_queue_cnt > 1)
+			rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
 	if (rc == 0)

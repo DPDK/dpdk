@@ -454,6 +454,7 @@ struct bnxt {
 
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
+	unsigned int		rx_num_qs_per_vnic;
 	struct bnxt_rx_queue **rx_queues;
 	const void		*rx_mem_zone;
 	struct rx_port_stats    *hw_rx_port_stats;

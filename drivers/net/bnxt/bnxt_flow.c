@@ -1071,6 +1071,13 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	int ret = 0;
 	uint32_t tun_type;
 
+	if (BNXT_VF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to create flow, Not a Trusted VF!");
+		return NULL;
+	}
+
 	flow = rte_zmalloc("bnxt_flow", sizeof(struct rte_flow), 0);
 	if (!flow) {
 		rte_flow_error_set(error, ENOMEM,
@@ -1248,6 +1255,11 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	struct bnxt_filter_info *filter = flow->filter;
 	struct bnxt_vnic_info *vnic = flow->vnic;
 	int ret = 0;
+
+	if (!filter) {
+		ret = -EINVAL;
+		goto done;
+	}
 
 	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
 	    filter->enables == filter->tunnel_type) {

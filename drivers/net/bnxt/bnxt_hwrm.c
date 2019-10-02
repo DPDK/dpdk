@@ -2327,6 +2327,7 @@ int bnxt_clear_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		else
 			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
 		STAILQ_REMOVE(&vnic->filter, filter, bnxt_filter_info, next);
+		bnxt_free_filter(bp, filter);
 		//if (rc)
 			//break;
 	}

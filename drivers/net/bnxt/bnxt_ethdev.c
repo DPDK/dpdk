@@ -318,17 +318,10 @@ static int bnxt_init_chip(struct bnxt *bp)
 	for (i = 0; i < bp->nr_vnics; i++) {
 		struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
-		uint32_t size = sizeof(*vnic->fw_grp_ids) * bp->max_ring_grps;
 
-		vnic->fw_grp_ids = rte_zmalloc("vnic_fw_grp_ids", size, 0);
-		if (!vnic->fw_grp_ids) {
-			PMD_DRV_LOG(ERR,
-				    "Failed to alloc %d bytes for group ids\n",
-				    size);
-			rc = -ENOMEM;
+		rc = bnxt_vnic_grp_alloc(bp, vnic);
+		if (rc)
 			goto err_out;
-		}
-		memset(vnic->fw_grp_ids, -1, size);
 
 		PMD_DRV_LOG(DEBUG, "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
 			    i, vnic, vnic->fw_grp_ids);
@@ -384,7 +377,7 @@ static int bnxt_init_chip(struct bnxt *bp)
 			goto err_out;
 		}
 
-		for (j = 0; j < bp->rx_nr_rings; j++) {
+		for (j = 0; j < bp->rx_num_qs_per_vnic; j++) {
 			rxq = bp->eth_dev->data->rx_queues[j];
 
 			PMD_DRV_LOG(DEBUG,
@@ -1353,8 +1346,6 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	struct bnxt_vnic_info *vnic;
-	uint16_t hash_type = 0;
-	unsigned int i;
 	int rc;
 
 	rc = is_bnxt_in_error(bp);
@@ -1376,35 +1367,20 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	bp->flags |= BNXT_FLAG_UPDATE_HASH;
 	memcpy(&bp->rss_conf, rss_conf, sizeof(*rss_conf));
 
-	if (rss_conf->rss_hf & ETH_RSS_IPV4)
-		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
-	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
-		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
-	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
-		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
-	if (rss_conf->rss_hf & ETH_RSS_IPV6)
-		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
-	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
-		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
-	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
-		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
+	/* Update the default RSS VNIC(s) */
+	vnic = &bp->vnic_info[0];
+	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_conf->rss_hf);
 
-	/* Update the RSS VNIC(s) */
-	for (i = 0; i < bp->nr_vnics; i++) {
-		vnic = &bp->vnic_info[i];
-		vnic->hash_type = hash_type;
+	/*
+	 * Use the supplied key if the key length is
+	 * acceptable and the rss_key is not NULL
+	 */
+	if (rss_conf->rss_key && rss_conf->rss_key_len <= HW_HASH_KEY_SIZE)
+		memcpy(vnic->rss_hash_key,
+		       rss_conf->rss_key,
+		       rss_conf->rss_key_len);
 
-		/*
-		 * Use the supplied key if the key length is
-		 * acceptable and the rss_key is not NULL
-		 */
-		if (rss_conf->rss_key &&
-		    rss_conf->rss_key_len <= HW_HASH_KEY_SIZE)
-			memcpy(vnic->rss_hash_key, rss_conf->rss_key,
-			       rss_conf->rss_key_len);
-
-		bnxt_hwrm_vnic_rss_cfg(bp, vnic);
-	}
+	bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 	return 0;
 }
 

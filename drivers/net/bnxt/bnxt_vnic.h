@@ -42,6 +42,7 @@ struct bnxt_vnic_info {
 
 	uint16_t	cos_rule;
 	uint16_t	lb_rule;
+	uint16_t	rx_queue_cnt;
 	bool		vlan_strip;
 	bool		func_default;
 	bool		bd_stall;
@@ -63,4 +64,6 @@ void bnxt_free_vnic_attributes(struct bnxt *bp);
 int bnxt_alloc_vnic_attributes(struct bnxt *bp);
 void bnxt_free_vnic_mem(struct bnxt *bp);
 int bnxt_alloc_vnic_mem(struct bnxt *bp);
+int bnxt_vnic_grp_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic);
+uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type);
 #endif

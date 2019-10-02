@@ -222,3 +222,39 @@ int bnxt_alloc_vnic_mem(struct bnxt *bp)
 	bp->vnic_info = vnic_mem;
 	return 0;
 }
+
+int bnxt_vnic_grp_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	uint32_t size = sizeof(*vnic->fw_grp_ids) * bp->max_ring_grps;
+
+	vnic->fw_grp_ids = rte_zmalloc("vnic_fw_grp_ids", size, 0);
+	if (!vnic->fw_grp_ids) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to alloc %d bytes for group ids\n",
+			    size);
+		return -ENOMEM;
+	}
+	memset(vnic->fw_grp_ids, -1, size);
+
+	return 0;
+}
+
+uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
+{
+	uint16_t hwrm_type = 0;
+
+	if (rte_type & ETH_RSS_IPV4)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
+	if (rte_type & ETH_RSS_NONFRAG_IPV4_TCP)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
+	if (rte_type & ETH_RSS_NONFRAG_IPV4_UDP)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
+	if (rte_type & ETH_RSS_IPV6)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
+	if (rte_type & ETH_RSS_NONFRAG_IPV6_TCP)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
+	if (rte_type & ETH_RSS_NONFRAG_IPV6_UDP)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
+
+	return hwrm_type;
+}
