@@ -713,9 +713,7 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	struct bnxt_rx_ring_info *rxr;
 	struct bnxt_ring *ring;
 
-	rxq->rx_buf_use_size = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
-		RTE_ETHER_CRC_LEN + (2 * VLAN_TAG_SIZE);
-	rxq->rx_buf_size = rxq->rx_buf_use_size + sizeof(struct rte_mbuf);
+	rxq->rx_buf_size = BNXT_MAX_PKT_LEN + sizeof(struct rte_mbuf);
 
 	rxr = rte_zmalloc_socket("bnxt_rx_ring",
 				 sizeof(struct bnxt_rx_ring_info),
@@ -826,8 +824,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	uint16_t size;
 
 	size = rte_pktmbuf_data_room_size(rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
-	if (rxq->rx_buf_use_size <= size)
-		size = rxq->rx_buf_use_size;
+	size = RTE_MIN(BNXT_MAX_PKT_LEN, size);
 
 	type = RX_PROD_PKT_BD_TYPE_RX_PROD_PKT | RX_PROD_PKT_BD_FLAGS_EOP_PAD;
 

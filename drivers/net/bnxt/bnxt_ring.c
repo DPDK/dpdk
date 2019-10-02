@@ -561,9 +561,6 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	if (rc)
 		goto err_out;
 
-	rxq->rx_buf_use_size = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
-		RTE_ETHER_CRC_LEN + (2 * VLAN_TAG_SIZE);
-
 	if (bp->eth_dev->data->rx_queue_state[queue_index] ==
 	    RTE_ETH_QUEUE_STATE_STARTED) {
 		if (bnxt_init_one_rx_ring(rxq)) {
@@ -640,8 +637,6 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		if (bnxt_alloc_rx_agg_ring(bp, i))
 			goto err_out;
 
-		rxq->rx_buf_use_size = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
-					RTE_ETHER_CRC_LEN + (2 * VLAN_TAG_SIZE);
 		if (bnxt_init_one_rx_ring(rxq)) {
 			PMD_DRV_LOG(ERR, "bnxt_init_one_rx_ring failed!\n");
 			bnxt_rx_queue_release_op(rxq);

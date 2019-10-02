@@ -1236,6 +1236,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 			mb_pool = bp->rx_queues[0]->mb_pool;
 			rx_buf_size = rte_pktmbuf_data_room_size(mb_pool) -
 				      RTE_PKTMBUF_HEADROOM;
+			rx_buf_size = RTE_MIN(BNXT_MAX_PKT_LEN, rx_buf_size);
 			req.rx_buf_size = rte_cpu_to_le_16(rx_buf_size);
 			enables |=
 				HWRM_RING_ALLOC_INPUT_ENABLES_RX_BUF_SIZE_VALID;
@@ -1266,6 +1267,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		mb_pool = bp->rx_queues[0]->mb_pool;
 		rx_buf_size = rte_pktmbuf_data_room_size(mb_pool) -
 			      RTE_PKTMBUF_HEADROOM;
+		rx_buf_size = RTE_MIN(BNXT_MAX_PKT_LEN, rx_buf_size);
 		req.rx_buf_size = rte_cpu_to_le_16(rx_buf_size);
 
 		req.stat_ctx_id = rte_cpu_to_le_32(stats_ctx_id);
@@ -1882,6 +1884,7 @@ int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 
 	size = rte_pktmbuf_data_room_size(bp->rx_queues[0]->mb_pool);
 	size -= RTE_PKTMBUF_HEADROOM;
+	size = RTE_MIN(BNXT_MAX_PKT_LEN, size);
 
 	req.jumbo_thresh = rte_cpu_to_le_16(size);
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);

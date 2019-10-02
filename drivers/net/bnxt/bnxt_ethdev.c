@@ -545,10 +545,13 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->hash_key_size = 40;
 	max_vnics = bp->max_vnics;
 
+	/* MTU specifics */
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
+	dev_info->max_mtu = BNXT_MAX_MTU;
+
 	/* Fast path specifics */
 	dev_info->min_rx_bufsize = 1;
-	dev_info->max_rx_pktlen = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
-		RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
+	dev_info->max_rx_pktlen = BNXT_MAX_PKT_LEN;
 
 	dev_info->rx_offload_capa = BNXT_DEV_RX_OFFLOAD_SUPPORT;
 	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
@@ -1967,7 +1970,6 @@ bnxt_txq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct rte_eth_dev_info dev_info;
 	uint32_t new_pkt_size;
 	uint32_t rc = 0;
 	uint32_t i;
@@ -1978,18 +1980,6 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 
 	new_pkt_size = new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
 		       VLAN_TAG_SIZE * BNXT_NUM_VLANS;
-
-	rc = bnxt_dev_info_get_op(eth_dev, &dev_info);
-	if (rc != 0) {
-		PMD_DRV_LOG(ERR, "Error during getting ethernet device info\n");
-		return rc;
-	}
-
-	if (new_mtu < RTE_ETHER_MIN_MTU || new_mtu > BNXT_MAX_MTU) {
-		PMD_DRV_LOG(ERR, "MTU requested must be within (%d, %d)\n",
-			RTE_ETHER_MIN_MTU, BNXT_MAX_MTU);
-		return -EINVAL;
-	}
 
 #ifdef RTE_ARCH_X86
 	/*
@@ -2020,15 +2010,12 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 
 	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = new_pkt_size;
 
-	eth_dev->data->mtu = new_mtu;
-	PMD_DRV_LOG(INFO, "New MTU is %d\n", eth_dev->data->mtu);
-
 	for (i = 0; i < bp->nr_vnics; i++) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
 		uint16_t size = 0;
 
-		vnic->mru = bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
-					RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
+		vnic->mru = new_mtu + RTE_ETHER_HDR_LEN +
+				RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
 		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
 		if (rc)
 			break;
@@ -2042,6 +2029,8 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 				return rc;
 		}
 	}
+
+	PMD_DRV_LOG(INFO, "New MTU is %d\n", new_mtu);
 
 	return rc;
 }

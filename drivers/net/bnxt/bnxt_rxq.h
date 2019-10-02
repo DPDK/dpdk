@@ -36,7 +36,6 @@ struct bnxt_rx_queue {
 	struct bnxt_vnic_info	*vnic;
 
 	uint32_t			rx_buf_size;
-	uint32_t			rx_buf_use_size;  /* useable size */
 	struct bnxt_rx_ring_info	*rx_ring;
 	struct bnxt_cp_ring_info	*cp_ring;
 	struct bnxt_cp_ring_info	*nq_ring;
