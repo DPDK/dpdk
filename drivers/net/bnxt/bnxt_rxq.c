@@ -207,39 +207,40 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 	struct bnxt_tpa_info *tpa_info;
 	uint16_t i;
 
+	if (!rxq)
+		return;
+
 	rte_spinlock_lock(&rxq->lock);
 
-	if (rxq) {
-		sw_ring = rxq->rx_ring->rx_buf_ring;
-		if (sw_ring) {
-			for (i = 0;
-			     i < rxq->rx_ring->rx_ring_struct->ring_size; i++) {
-				if (sw_ring[i].mbuf) {
-					rte_pktmbuf_free_seg(sw_ring[i].mbuf);
-					sw_ring[i].mbuf = NULL;
-				}
+	sw_ring = rxq->rx_ring->rx_buf_ring;
+	if (sw_ring) {
+		for (i = 0;
+		     i < rxq->rx_ring->rx_ring_struct->ring_size; i++) {
+			if (sw_ring[i].mbuf) {
+				rte_pktmbuf_free_seg(sw_ring[i].mbuf);
+				sw_ring[i].mbuf = NULL;
 			}
 		}
-		/* Free up mbufs in Agg ring */
-		sw_ring = rxq->rx_ring->ag_buf_ring;
-		if (sw_ring) {
-			for (i = 0;
-			     i < rxq->rx_ring->ag_ring_struct->ring_size; i++) {
-				if (sw_ring[i].mbuf) {
-					rte_pktmbuf_free_seg(sw_ring[i].mbuf);
-					sw_ring[i].mbuf = NULL;
-				}
+	}
+	/* Free up mbufs in Agg ring */
+	sw_ring = rxq->rx_ring->ag_buf_ring;
+	if (sw_ring) {
+		for (i = 0;
+		     i < rxq->rx_ring->ag_ring_struct->ring_size; i++) {
+			if (sw_ring[i].mbuf) {
+				rte_pktmbuf_free_seg(sw_ring[i].mbuf);
+				sw_ring[i].mbuf = NULL;
 			}
 		}
+	}
 
-		/* Free up mbufs in TPA */
-		tpa_info = rxq->rx_ring->tpa_info;
-		if (tpa_info) {
-			for (i = 0; i < BNXT_TPA_MAX; i++) {
-				if (tpa_info[i].mbuf) {
-					rte_pktmbuf_free_seg(tpa_info[i].mbuf);
-					tpa_info[i].mbuf = NULL;
-				}
+	/* Free up mbufs in TPA */
+	tpa_info = rxq->rx_ring->tpa_info;
+	if (tpa_info) {
+		for (i = 0; i < BNXT_TPA_MAX; i++) {
+			if (tpa_info[i].mbuf) {
+				rte_pktmbuf_free_seg(tpa_info[i].mbuf);
+				tpa_info[i].mbuf = NULL;
 			}
 		}
 	}
