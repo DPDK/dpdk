@@ -201,4 +201,5 @@ int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint32_t *type);
 int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
 				   uint16_t *dst_fid);
 int bnxt_hwrm_set_mac(struct bnxt *bp);
+int bnxt_hwrm_if_change(struct bnxt *bp, bool state);
 #endif

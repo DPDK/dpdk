@@ -726,6 +726,11 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
+
+	flags = rte_le_to_cpu_32(resp->flags);
+	if (flags & HWRM_FUNC_DRV_RGTR_OUTPUT_FLAGS_IF_CHANGE_SUPPORTED)
+		bp->flags |= BNXT_FLAG_FW_CAP_IF_CHANGE;
+
 	HWRM_UNLOCK();
 
 	bp->flags |= BNXT_FLAG_REGISTERED;
@@ -4658,4 +4663,41 @@ int bnxt_hwrm_set_mac(struct bnxt *bp)
 	HWRM_UNLOCK();
 
 	return rc;
+}
+
+int bnxt_hwrm_if_change(struct bnxt *bp, bool up)
+{
+	struct hwrm_func_drv_if_change_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_drv_if_change_input req = {0};
+	uint32_t flags;
+	int rc;
+
+	if (!(bp->flags & BNXT_FLAG_FW_CAP_IF_CHANGE))
+		return 0;
+
+	/* Do not issue FUNC_DRV_IF_CHANGE during reset recovery.
+	 * If we issue FUNC_DRV_IF_CHANGE with flags down before
+	 * FUNC_DRV_UNRGTR, FW resets before FUNC_DRV_UNRGTR
+	 */
+	if (!up && (bp->flags & BNXT_FLAG_FW_RESET))
+		return 0;
+
+	HWRM_PREP(req, FUNC_DRV_IF_CHANGE, BNXT_USE_CHIMP_MB);
+
+	if (up)
+		req.flags =
+		rte_cpu_to_le_32(HWRM_FUNC_DRV_IF_CHANGE_INPUT_FLAGS_UP);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+	flags = rte_le_to_cpu_32(resp->flags);
+	HWRM_UNLOCK();
+
+	if (flags & HWRM_FUNC_DRV_IF_CHANGE_OUTPUT_FLAGS_HOT_FW_RESET_DONE) {
+		PMD_DRV_LOG(INFO, "FW reset happened while port was down\n");
+		bp->flags |= BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE;
+	}
+
+	return 0;
 }

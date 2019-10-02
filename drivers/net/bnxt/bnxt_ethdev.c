@@ -794,6 +794,25 @@ bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 	return bnxt_xmit_pkts;
 }
 
+static int bnxt_handle_if_change_status(struct bnxt *bp)
+{
+	int rc;
+
+	/* Since fw has undergone a reset and lost all contexts,
+	 * set fatal flag to not issue hwrm during cleanup
+	 */
+	bp->flags |= BNXT_FLAG_FATAL_ERROR;
+	bnxt_uninit_resources(bp, true);
+
+	/* clear fatal flag so that re-init happens */
+	bp->flags &= ~BNXT_FLAG_FATAL_ERROR;
+	rc = bnxt_init_resources(bp, true);
+
+	bp->flags &= ~BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE;
+
+	return rc;
+}
+
 static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -805,6 +824,15 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG(ERR,
 			"RxQ cnt %d > CONFIG_RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
 			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	}
+
+	rc = bnxt_hwrm_if_change(bp, 1);
+	if (!rc) {
+		if (bp->flags & BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE) {
+			rc = bnxt_handle_if_change_status(bp);
+			if (rc)
+				return rc;
+		}
 	}
 
 	rc = bnxt_init_chip(bp);
@@ -833,6 +861,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	return 0;
 
 error:
+	bnxt_hwrm_if_change(bp, 0);
 	bnxt_shutdown_nic(bp);
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
@@ -899,6 +928,7 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
 	bnxt_shutdown_nic(bp);
+	bnxt_hwrm_if_change(bp, 0);
 	bp->dev_stopped = 1;
 }
 

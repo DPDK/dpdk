@@ -370,6 +370,8 @@ struct bnxt {
 #define BNXT_FLAG_STINGRAY	(1 << 14)
 #define BNXT_FLAG_FW_RESET	(1 << 15)
 #define BNXT_FLAG_FATAL_ERROR	(1 << 16)
+#define BNXT_FLAG_FW_CAP_IF_CHANGE	(1 << 17)
+#define BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE	(1 << 18)
 #define BNXT_FLAG_EXT_STATS_SUPPORTED	(1 << 29)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1U << 31)
