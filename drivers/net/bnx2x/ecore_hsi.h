@@ -5508,7 +5508,7 @@ struct afex_vif_list_ramrod_data {
  *
  */
 struct c2s_pri_trans_table_entry {
-	uint8_t val[8];
+	uint8_t val[MAX_VLAN_PRIORITIES];
 };
 
 

@@ -26,10 +26,6 @@ enum {
 	OP_WB_ZR,	/* Clear a string using DMAE or indirect-wr */
 	OP_IF_MODE_OR,  /* Skip the following ops if all init modes don't match */
 	OP_IF_MODE_AND, /* Skip the following ops if any init modes don't match */
-	OP_IF_PHASE,
-	OP_RT,
-	OP_DELAY,
-	OP_VERIFY,
 	OP_MAX
 };
 
@@ -86,17 +82,6 @@ struct op_if_mode {
 	uint32_t mode_bit_map;
 };
 
-struct op_if_phase {
-	uint32_t op:8;
-	uint32_t cmd_offset:24;
-	uint32_t phase_bit_map;
-};
-
-struct op_delay {
-	uint32_t op:8;
-	uint32_t reserved:24;
-	uint32_t delay;
-};
 
 union init_op {
 	struct op_read		read;
@@ -105,8 +90,6 @@ union init_op {
 	struct op_zero		zero;
 	struct raw_op		raw;
 	struct op_if_mode	if_mode;
-	struct op_if_phase	if_phase;
-	struct op_delay		delay;
 };
 
 
@@ -187,12 +170,7 @@ enum {
 	NUM_OF_INIT_BLOCKS
 };
 
-
-
-
-
-
-
+#include "bnx2x.h"
 
 /* Vnics per mode */
 #define ECORE_PORT2_MODE_NUM_VNICS 4
@@ -239,7 +217,7 @@ static inline void ecore_map_q_cos(struct bnx2x_softc *sc, uint32_t q_num, uint3
 		/* update parameters for 4port mode */
 		if (INIT_MODE_FLAGS(sc) & MODE_PORT4) {
 			num_vnics = ECORE_PORT4_MODE_NUM_VNICS;
-			if (PORT_ID(sc)) {
+			if (SC_PORT(sc)) {
 				curr_cos += ECORE_E3B0_PORT1_COS_OFFSET;
 				new_cos += ECORE_E3B0_PORT1_COS_OFFSET;
 			}
@@ -248,7 +226,7 @@ static inline void ecore_map_q_cos(struct bnx2x_softc *sc, uint32_t q_num, uint3
 		/* change queue mapping for each VNIC */
 		for (vnic = 0; vnic < num_vnics; vnic++) {
 			uint32_t pf_q_num =
-				ECORE_PF_Q_NUM(q_num, PORT_ID(sc), vnic);
+				ECORE_PF_Q_NUM(q_num, SC_PORT(sc), vnic);
 			uint32_t q_bit_map = 1 << (pf_q_num & 0x1f);
 
 			/* overwrite queue->VOQ mapping */
@@ -427,7 +405,11 @@ static inline void ecore_init_min(const struct cmng_init_input *input_data,
 	tFair = T_FAIR_COEF / input_data->port_rate;
 
 	/* this is the threshold below which we won't arm the timer anymore */
-	pdata->fair_vars.fair_threshold = QM_ARB_BYTES;
+	pdata->fair_vars.fair_threshold = QM_ARB_BYTES +
+					  input_data->fairness_thr;
+
+	/*New limitation - minimal packet size to cause timeout to be armed */
+	pdata->fair_vars.size_thr = input_data->size_thr;
 
 	/*
 	 *  we multiply by 1e3/8 to get bytes/msec. We don't want the credits
@@ -469,6 +451,7 @@ static inline void ecore_init_min(const struct cmng_init_input *input_data,
 }
 
 static inline void ecore_init_fw_wrr(const struct cmng_init_input *input_data,
+				     uint32_t r_param __rte_unused,
 				     struct cmng_init *ram_data)
 {
 	uint32_t vnic, cos;
@@ -507,7 +490,9 @@ static inline void ecore_init_fw_wrr(const struct cmng_init_input *input_data,
 	}
 }
 
-static inline void ecore_init_safc(struct cmng_init *ram_data)
+static inline void
+ecore_init_safc(const struct cmng_init_input *input_data __rte_unused,
+		struct cmng_init *ram_data)
 {
 	/* in microSeconds */
 	ram_data->port.safc_vars.safc_timeout_usec = SAFC_TIMEOUT_USEC;
@@ -518,7 +503,7 @@ static inline void ecore_init_cmng(const struct cmng_init_input *input_data,
 				   struct cmng_init *ram_data)
 {
 	uint32_t r_param;
-	ECORE_MEMSET(ram_data, 0,sizeof(struct cmng_init));
+	ECORE_MEMSET(ram_data, 0, sizeof(struct cmng_init));
 
 	ram_data->port.flags = input_data->flags;
 
@@ -529,8 +514,8 @@ static inline void ecore_init_cmng(const struct cmng_init_input *input_data,
 	r_param = BITS_TO_BYTES(input_data->port_rate);
 	ecore_init_max(input_data, r_param, ram_data);
 	ecore_init_min(input_data, r_param, ram_data);
-	ecore_init_fw_wrr(input_data, ram_data);
-	ecore_init_safc(ram_data);
+	ecore_init_fw_wrr(input_data, r_param, ram_data);
+	ecore_init_safc(input_data, ram_data);
 }
 
 
@@ -585,25 +570,25 @@ struct src_ent {
 /****************************************************************************
 * Parity configuration
 ****************************************************************************/
-#define BLOCK_PRTY_INFO(block, en_mask, m1h, m2, m3) \
+#define BLOCK_PRTY_INFO(block, en_mask, m1, m1h, m2, m3) \
 { \
 	block##_REG_##block##_PRTY_MASK, \
 	block##_REG_##block##_PRTY_STS_CLR, \
-	en_mask, {m1h, m2, m3}, #block \
+	en_mask, {m1, m1h, m2, m3}, #block \
 }
 
-#define BLOCK_PRTY_INFO_0(block, en_mask, m1h, m2, m3) \
+#define BLOCK_PRTY_INFO_0(block, en_mask, m1, m1h, m2, m3) \
 { \
 	block##_REG_##block##_PRTY_MASK_0, \
 	block##_REG_##block##_PRTY_STS_CLR_0, \
-	en_mask, {m1h, m2, m3}, #block"_0" \
+	en_mask, {m1, m1h, m2, m3}, #block "_0" \
 }
 
-#define BLOCK_PRTY_INFO_1(block, en_mask, m1h, m2, m3) \
+#define BLOCK_PRTY_INFO_1(block, en_mask, m1, m1h, m2, m3) \
 { \
 	block##_REG_##block##_PRTY_MASK_1, \
 	block##_REG_##block##_PRTY_STS_CLR_1, \
-	en_mask, {m1h, m2, m3}, #block"_1" \
+	en_mask, {m1, m1h, m2, m3}, #block "_1" \
 }
 
 static const struct {
@@ -611,6 +596,7 @@ static const struct {
 	uint32_t sts_clr_addr;
 	uint32_t en_mask;		/* Mask to enable parity attentions */
 	struct {
+		uint32_t e1;		/* 57710 */
 		uint32_t e1h;	/* 57711 */
 		uint32_t e2;		/* 57712 */
 		uint32_t e3;		/* 578xx */
@@ -620,63 +606,67 @@ static const struct {
 				 */
 } ecore_blocks_parity_data[] = {
 	/* bit 19 masked */
-	/* REG_WR(bp, PXP_REG_PXP_PRTY_MASK, 0x80000); */
+	/* REG_WR(sc, PXP_REG_PXP_PRTY_MASK, 0x80000); */
 	/* bit 5,18,20-31 */
-	/* REG_WR(bp, PXP2_REG_PXP2_PRTY_MASK_0, 0xfff40020); */
+	/* REG_WR(sc, PXP2_REG_PXP2_PRTY_MASK_0, 0xfff40020); */
 	/* bit 5 */
-	/* REG_WR(bp, PXP2_REG_PXP2_PRTY_MASK_1, 0x20);	*/
-	/* REG_WR(bp, HC_REG_HC_PRTY_MASK, 0x0); */
-	/* REG_WR(bp, MISC_REG_MISC_PRTY_MASK, 0x0); */
+	/* REG_WR(sc, PXP2_REG_PXP2_PRTY_MASK_1, 0x20);	*/
+	/* REG_WR(sc, HC_REG_HC_PRTY_MASK, 0x0); */
+	/* REG_WR(sc, MISC_REG_MISC_PRTY_MASK, 0x0); */
 
 	/* Block IGU, MISC, PXP and PXP2 parity errors as long as we don't
 	 * want to handle "system kill" flow at the moment.
 	 */
-	BLOCK_PRTY_INFO(PXP, 0x7ffffff, 0x3ffffff, 0x7ffffff,
+	BLOCK_PRTY_INFO(PXP, 0x7ffffff, 0x3ffffff, 0x3ffffff, 0x7ffffff,
 			0x7ffffff),
-	BLOCK_PRTY_INFO_0(PXP2,	0xffffffff, 0xffffffff, 0xffffffff,
+	BLOCK_PRTY_INFO_0(PXP2,	0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
 			  0xffffffff),
-	BLOCK_PRTY_INFO_1(PXP2,	0x1ffffff, 0x7f, 0x7ff, 0x1ffffff),
-	BLOCK_PRTY_INFO(HC, 0x7, 0x7, 0, 0),
-	BLOCK_PRTY_INFO(NIG, 0xffffffff, 0xffffffff, 0, 0),
-	BLOCK_PRTY_INFO_0(NIG,	0xffffffff, 0, 0xffffffff, 0xffffffff),
-	BLOCK_PRTY_INFO_1(NIG,	0xffff, 0, 0xff, 0xffff),
-	BLOCK_PRTY_INFO(IGU, 0x7ff, 0, 0x7ff, 0x7ff),
-	BLOCK_PRTY_INFO(MISC, 0x1, 0x1, 0x1, 0x1),
-	BLOCK_PRTY_INFO(QM, 0, 0xfff, 0xfff, 0xfff),
-	BLOCK_PRTY_INFO(ATC, 0x1f, 0, 0x1f, 0x1f),
-	BLOCK_PRTY_INFO(PGLUE_B, 0x3, 0, 0x3, 0x3),
-	BLOCK_PRTY_INFO(DORQ, 0, 0x3, 0x3, 0x3),
+	BLOCK_PRTY_INFO_1(PXP2,	0x1ffffff, 0x7f, 0x7f, 0x7ff, 0x1ffffff),
+	BLOCK_PRTY_INFO(HC, 0x7, 0x7, 0x7, 0, 0),
+	BLOCK_PRTY_INFO(NIG, 0xffffffff, 0x3fffffff, 0xffffffff, 0, 0),
+	BLOCK_PRTY_INFO_0(NIG,	0xffffffff, 0, 0, 0xffffffff, 0xffffffff),
+	BLOCK_PRTY_INFO_1(NIG,	0xffff, 0, 0, 0xff, 0xffff),
+	BLOCK_PRTY_INFO(IGU, 0x7ff, 0, 0, 0x7ff, 0x7ff),
+	BLOCK_PRTY_INFO(MISC, 0x1, 0x1, 0x1, 0x1, 0x1),
+	BLOCK_PRTY_INFO(QM, 0, 0x1ff, 0xfff, 0xfff, 0xfff),
+	BLOCK_PRTY_INFO(ATC, 0x1f, 0, 0, 0x1f, 0x1f),
+	BLOCK_PRTY_INFO(PGLUE_B, 0x3, 0, 0, 0x3, 0x3),
+	BLOCK_PRTY_INFO(DORQ, 0, 0x3, 0x3, 0x3, 0x3),
 	{GRCBASE_UPB + PB_REG_PB_PRTY_MASK,
 		GRCBASE_UPB + PB_REG_PB_PRTY_STS_CLR, 0xf,
-		{0xf, 0xf, 0xf}, "UPB"},
+		{0xf, 0xf, 0xf, 0xf}, "UPB"},
 	{GRCBASE_XPB + PB_REG_PB_PRTY_MASK,
 		GRCBASE_XPB + PB_REG_PB_PRTY_STS_CLR, 0,
-		{0xf, 0xf, 0xf}, "XPB"},
-	BLOCK_PRTY_INFO(SRC, 0x4, 0x7, 0x7, 0x7),
-	BLOCK_PRTY_INFO(CDU, 0, 0x1f, 0x1f, 0x1f),
-	BLOCK_PRTY_INFO(CFC, 0, 0xf, 0xf, 0x3f),
-	BLOCK_PRTY_INFO(DBG, 0, 0x1, 0x1, 0x1),
-	BLOCK_PRTY_INFO(DMAE, 0, 0xf, 0xf, 0xf),
-	BLOCK_PRTY_INFO(BRB1, 0, 0xf, 0xf, 0xf),
-	BLOCK_PRTY_INFO(PRS, (1<<6), 0xff, 0xff, 0xff),
-	BLOCK_PRTY_INFO(PBF, 0, 0x3ffff, 0xfffff, 0xfffffff),
-	BLOCK_PRTY_INFO(TM, 0, 0x7f, 0x7f, 0x7f),
-	BLOCK_PRTY_INFO(TSDM, 0x18, 0x7ff, 0x7ff, 0x7ff),
-	BLOCK_PRTY_INFO(CSDM, 0x8, 0x7ff, 0x7ff, 0x7ff),
-	BLOCK_PRTY_INFO(USDM, 0x38, 0x7ff, 0x7ff, 0x7ff),
-	BLOCK_PRTY_INFO(XSDM, 0x8, 0x7ff, 0x7ff, 0x7ff),
-	BLOCK_PRTY_INFO(TCM, 0, 0x7ffffff, 0x7ffffff, 0x7ffffff),
-	BLOCK_PRTY_INFO(CCM, 0, 0x7ffffff, 0x7ffffff, 0x7ffffff),
-	BLOCK_PRTY_INFO(UCM, 0, 0x7ffffff, 0x7ffffff, 0x7ffffff),
-	BLOCK_PRTY_INFO(XCM, 0, 0x3fffffff, 0x3fffffff, 0x3fffffff),
-	BLOCK_PRTY_INFO_0(TSEM, 0, 0xffffffff, 0xffffffff, 0xffffffff),
-	BLOCK_PRTY_INFO_1(TSEM, 0, 0x1f, 0x3f, 0x3f),
-	BLOCK_PRTY_INFO_0(USEM, 0, 0xffffffff, 0xffffffff, 0xffffffff),
-	BLOCK_PRTY_INFO_1(USEM, 0, 0x1f, 0x1f, 0x1f),
-	BLOCK_PRTY_INFO_0(CSEM, 0, 0xffffffff, 0xffffffff, 0xffffffff),
-	BLOCK_PRTY_INFO_1(CSEM, 0, 0x1f, 0x1f, 0x1f),
-	BLOCK_PRTY_INFO_0(XSEM, 0, 0xffffffff, 0xffffffff, 0xffffffff),
-	BLOCK_PRTY_INFO_1(XSEM, 0, 0x1f, 0x3f, 0x3f),
+		{0xf, 0xf, 0xf, 0xf}, "XPB"},
+	BLOCK_PRTY_INFO(SRC, 0x4, 0x7, 0x7, 0x7, 0x7),
+	BLOCK_PRTY_INFO(CDU, 0, 0x1f, 0x1f, 0x1f, 0x1f),
+	BLOCK_PRTY_INFO(CFC, 0, 0xf, 0xf, 0xf, 0x3f),
+	BLOCK_PRTY_INFO(DBG, 0, 0x1, 0x1, 0x1, 0x1),
+	BLOCK_PRTY_INFO(DMAE, 0, 0xf, 0xf, 0xf, 0xf),
+	BLOCK_PRTY_INFO(BRB1, 0, 0xf, 0xf, 0xf, 0xf),
+	BLOCK_PRTY_INFO(PRS, (1 << 6), 0xff, 0xff, 0xff, 0xff),
+	BLOCK_PRTY_INFO(PBF, 0, 0, 0x3ffff, 0xfffff, 0xfffffff),
+	BLOCK_PRTY_INFO(TM, 0, 0, 0x7f, 0x7f, 0x7f),
+	BLOCK_PRTY_INFO(TSDM, 0x18, 0x7ff, 0x7ff, 0x7ff, 0x7ff),
+	BLOCK_PRTY_INFO(CSDM, 0x8, 0x7ff, 0x7ff, 0x7ff, 0x7ff),
+	BLOCK_PRTY_INFO(USDM, 0x38, 0x7ff, 0x7ff, 0x7ff, 0x7ff),
+	BLOCK_PRTY_INFO(XSDM, 0x8, 0x7ff, 0x7ff, 0x7ff, 0x7ff),
+	BLOCK_PRTY_INFO(TCM, 0, 0, 0x7ffffff, 0x7ffffff, 0x7ffffff),
+	BLOCK_PRTY_INFO(CCM, 0, 0, 0x7ffffff, 0x7ffffff, 0x7ffffff),
+	BLOCK_PRTY_INFO(UCM, 0, 0, 0x7ffffff, 0x7ffffff, 0x7ffffff),
+	BLOCK_PRTY_INFO(XCM, 0, 0, 0x3fffffff, 0x3fffffff, 0x3fffffff),
+	BLOCK_PRTY_INFO_0(TSEM, 0, 0xffffffff, 0xffffffff, 0xffffffff,
+			  0xffffffff),
+	BLOCK_PRTY_INFO_1(TSEM, 0, 0x3, 0x1f, 0x3f, 0x3f),
+	BLOCK_PRTY_INFO_0(USEM, 0, 0xffffffff, 0xffffffff, 0xffffffff,
+			  0xffffffff),
+	BLOCK_PRTY_INFO_1(USEM, 0, 0x3, 0x1f, 0x1f, 0x1f),
+	BLOCK_PRTY_INFO_0(CSEM, 0, 0xffffffff, 0xffffffff, 0xffffffff,
+			  0xffffffff),
+	BLOCK_PRTY_INFO_1(CSEM, 0, 0x3, 0x1f, 0x1f, 0x1f),
+	BLOCK_PRTY_INFO_0(XSEM, 0, 0xffffffff, 0xffffffff, 0xffffffff,
+			  0xffffffff),
+	BLOCK_PRTY_INFO_1(XSEM, 0, 0x3, 0x1f, 0x3f, 0x3f),
 };
 
 
@@ -685,45 +675,59 @@ static const struct {
  * [30] MCP Latched ump_tx_parity
  * [31] MCP Latched scpad_parity
  */
-#define MISC_AEU_ENABLE_MCP_PRTY_BITS	\
+#define MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS	\
 	(AEU_INPUTS_ATTN_BITS_MCP_LATCHED_ROM_PARITY | \
 	 AEU_INPUTS_ATTN_BITS_MCP_LATCHED_UMP_RX_PARITY | \
-	 AEU_INPUTS_ATTN_BITS_MCP_LATCHED_UMP_TX_PARITY | \
+	 AEU_INPUTS_ATTN_BITS_MCP_LATCHED_UMP_TX_PARITY)
+
+#define MISC_AEU_ENABLE_MCP_PRTY_BITS	\
+	(MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS | \
 	 AEU_INPUTS_ATTN_BITS_MCP_LATCHED_SCPAD_PARITY)
 
 /* Below registers control the MCP parity attention output. When
  * MISC_AEU_ENABLE_MCP_PRTY_BITS are set - attentions are
  * enabled, when cleared - disabled.
  */
-static const uint32_t mcp_attn_ctl_regs[] = {
-	MISC_REG_AEU_ENABLE4_FUNC_0_OUT_0,
-	MISC_REG_AEU_ENABLE4_NIG_0,
-	MISC_REG_AEU_ENABLE4_PXP_0,
-	MISC_REG_AEU_ENABLE4_FUNC_1_OUT_0,
-	MISC_REG_AEU_ENABLE4_NIG_1,
-	MISC_REG_AEU_ENABLE4_PXP_1
+static const struct {
+	uint32_t addr;
+	uint32_t bits;
+} mcp_attn_ctl_regs[] = {
+	{ MISC_REG_AEU_ENABLE4_FUNC_0_OUT_0,
+		MISC_AEU_ENABLE_MCP_PRTY_BITS },
+	{ MISC_REG_AEU_ENABLE4_NIG_0,
+		MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS },
+	{ MISC_REG_AEU_ENABLE4_PXP_0,
+		MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS },
+	{ MISC_REG_AEU_ENABLE4_FUNC_1_OUT_0,
+		MISC_AEU_ENABLE_MCP_PRTY_BITS },
+	{ MISC_REG_AEU_ENABLE4_NIG_1,
+		MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS },
+	{ MISC_REG_AEU_ENABLE4_PXP_1,
+		MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS }
 };
 
 static inline void ecore_set_mcp_parity(struct bnx2x_softc *sc, uint8_t enable)
 {
-	uint32_t i;
+	unsigned int i;
 	uint32_t reg_val;
 
-	for (i = 0; i < ARRSIZE(mcp_attn_ctl_regs); i++) {
-		reg_val = REG_RD(sc, mcp_attn_ctl_regs[i]);
+	for (i = 0; i < ARRAY_SIZE(mcp_attn_ctl_regs); i++) {
+		reg_val = REG_RD(sc, mcp_attn_ctl_regs[i].addr);
 
 		if (enable)
-			reg_val |= MISC_AEU_ENABLE_MCP_PRTY_BITS;
+			reg_val |= mcp_attn_ctl_regs[i].bits;
 		else
-			reg_val &= ~MISC_AEU_ENABLE_MCP_PRTY_BITS;
+			reg_val &= ~mcp_attn_ctl_regs[i].bits;
 
-		REG_WR(sc, mcp_attn_ctl_regs[i], reg_val);
+		REG_WR(sc, mcp_attn_ctl_regs[i].addr, reg_val);
 	}
 }
 
 static inline uint32_t ecore_parity_reg_mask(struct bnx2x_softc *sc, int idx)
 {
-	if (CHIP_IS_E1H(sc))
+	if (CHIP_IS_E1(sc))
+		return ecore_blocks_parity_data[idx].reg_mask.e1;
+	else if (CHIP_IS_E1H(sc))
 		return ecore_blocks_parity_data[idx].reg_mask.e1h;
 	else if (CHIP_IS_E2(sc))
 		return ecore_blocks_parity_data[idx].reg_mask.e2;
@@ -733,9 +737,9 @@ static inline uint32_t ecore_parity_reg_mask(struct bnx2x_softc *sc, int idx)
 
 static inline void ecore_disable_blocks_parity(struct bnx2x_softc *sc)
 {
-	uint32_t i;
+	unsigned int i;
 
-	for (i = 0; i < ARRSIZE(ecore_blocks_parity_data); i++) {
+	for (i = 0; i < ARRAY_SIZE(ecore_blocks_parity_data); i++) {
 		uint32_t dis_mask = ecore_parity_reg_mask(sc, i);
 
 		if (dis_mask) {
@@ -748,7 +752,7 @@ static inline void ecore_disable_blocks_parity(struct bnx2x_softc *sc)
 	}
 
 	/* Disable MCP parity attentions */
-	ecore_set_mcp_parity(sc, FALSE);
+	ecore_set_mcp_parity(sc, false);
 }
 
 /**
@@ -756,7 +760,7 @@ static inline void ecore_disable_blocks_parity(struct bnx2x_softc *sc)
  */
 static inline void ecore_clear_blocks_parity(struct bnx2x_softc *sc)
 {
-	uint32_t i;
+	unsigned int i;
 	uint32_t reg_val, mcp_aeu_bits =
 		AEU_INPUTS_ATTN_BITS_MCP_LATCHED_ROM_PARITY |
 		AEU_INPUTS_ATTN_BITS_MCP_LATCHED_SCPAD_PARITY |
@@ -769,7 +773,7 @@ static inline void ecore_clear_blocks_parity(struct bnx2x_softc *sc)
 	REG_WR(sc, USEM_REG_FAST_MEMORY + SEM_FAST_REG_PARITY_RST, 0x1);
 	REG_WR(sc, CSEM_REG_FAST_MEMORY + SEM_FAST_REG_PARITY_RST, 0x1);
 
-	for (i = 0; i < ARRSIZE(ecore_blocks_parity_data); i++) {
+	for (i = 0; i < ARRAY_SIZE(ecore_blocks_parity_data); i++) {
 		uint32_t reg_mask = ecore_parity_reg_mask(sc, i);
 
 		if (reg_mask) {
@@ -799,9 +803,9 @@ static inline void ecore_clear_blocks_parity(struct bnx2x_softc *sc)
 
 static inline void ecore_enable_blocks_parity(struct bnx2x_softc *sc)
 {
-	uint32_t i;
+	unsigned int i;
 
-	for (i = 0; i < ARRSIZE(ecore_blocks_parity_data); i++) {
+	for (i = 0; i < ARRAY_SIZE(ecore_blocks_parity_data); i++) {
 		uint32_t reg_mask = ecore_parity_reg_mask(sc, i);
 
 		if (reg_mask)
@@ -810,7 +814,7 @@ static inline void ecore_enable_blocks_parity(struct bnx2x_softc *sc)
 	}
 
 	/* Enable MCP parity attentions */
-	ecore_set_mcp_parity(sc, TRUE);
+	ecore_set_mcp_parity(sc, true);
 }
 
 

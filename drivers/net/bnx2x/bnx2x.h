@@ -83,9 +83,6 @@
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
-#ifndef ARRSIZE
-#define ARRSIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-#endif
 #ifndef DIV_ROUND_UP
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 #endif
@@ -1019,6 +1016,8 @@ struct bnx2x_pci_cap {
 	uint16_t type;
 	uint16_t addr;
 };
+
+struct ecore_ilt;
 
 struct bnx2x_vfdb;
 

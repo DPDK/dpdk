@@ -28,16 +28,19 @@ static void ecore_init_str_wr(struct bnx2x_softc *sc, uint32_t addr,
 		REG_WR(sc, addr + i*4, data[i]);
 }
 
-static void ecore_write_big_buf(struct bnx2x_softc *sc, uint32_t addr, uint32_t len)
+static void ecore_write_big_buf(struct bnx2x_softc *sc, uint32_t addr,
+				uint32_t len, uint8_t wb __rte_unused)
 {
 	if (DMAE_READY(sc))
 		ecore_write_dmae_phys_len(sc, GUNZIP_PHYS(sc), addr, len);
 
-	else ecore_init_str_wr(sc, addr, GUNZIP_BUF(sc), len);
+	/* in later chips PXP root complex handles BIOS ZLR w/o interrupting */
+	else
+		ecore_init_str_wr(sc, addr, GUNZIP_BUF(sc), len);
 }
 
 static void ecore_init_fill(struct bnx2x_softc *sc, uint32_t addr, int fill,
-			    uint32_t len)
+			    uint32_t len, uint8_t wb)
 {
 	uint32_t buf_len = (((len*4) > FW_BUF_SIZE) ? FW_BUF_SIZE : (len*4));
 	uint32_t buf_len32 = buf_len/4;
@@ -48,7 +51,7 @@ static void ecore_init_fill(struct bnx2x_softc *sc, uint32_t addr, int fill,
 	for (i = 0; i < len; i += buf_len32) {
 		uint32_t cur_len = min(buf_len32, len - i);
 
-		ecore_write_big_buf(sc, addr + i*4, cur_len);
+		ecore_write_big_buf(sc, addr + i * 4, cur_len, wb);
 	}
 }
 
@@ -57,7 +60,9 @@ static void ecore_write_big_buf_wb(struct bnx2x_softc *sc, uint32_t addr, uint32
 	if (DMAE_READY(sc))
 		ecore_write_dmae_phys_len(sc, GUNZIP_PHYS(sc), addr, len);
 
-	else ecore_init_str_wr(sc, addr, GUNZIP_BUF(sc), len);
+	/* in later chips PXP root complex handles BIOS ZLR w/o interrupting */
+	else
+		ecore_init_str_wr(sc, addr, GUNZIP_BUF(sc), len);
 }
 
 static void ecore_init_wr_64(struct bnx2x_softc *sc, uint32_t addr,
@@ -135,8 +140,11 @@ static void ecore_init_wr_wb(struct bnx2x_softc *sc, uint32_t addr,
 	if (DMAE_READY(sc))
 		VIRT_WR_DMAE_LEN(sc, data, addr, len, 0);
 
-	else ecore_init_str_wr(sc, addr, data, len);
+	/* in later chips PXP root complex handles BIOS ZLR w/o interrupting */
+	else
+		ecore_init_str_wr(sc, addr, data, len);
 }
+
 
 static void ecore_wr_64(struct bnx2x_softc *sc, uint32_t reg, uint32_t val_lo,
 			uint32_t val_hi)
@@ -215,11 +223,14 @@ static void ecore_init_block(struct bnx2x_softc *sc, uint32_t block, uint32_t st
 			ecore_init_wr_wb(sc, addr, data, len);
 			break;
 		case OP_ZR:
+			ecore_init_fill(sc, addr, 0, op->zero.len, 0);
+			break;
 		case OP_WB_ZR:
-			ecore_init_fill(sc, addr, 0, op->zero.len);
+			ecore_init_fill(sc, addr, 0, op->zero.len, 1);
 			break;
 		case OP_ZP:
-			ecore_init_wr_zp(sc, addr, len, op->arr_wr.data_off);
+			ecore_init_wr_zp(sc, addr, len,
+					 op->arr_wr.data_off);
 			break;
 		case OP_WR_64:
 			ecore_init_wr_64(sc, addr, data, len);
@@ -241,11 +252,6 @@ static void ecore_init_block(struct bnx2x_softc *sc, uint32_t block, uint32_t st
 				op->if_mode.mode_bit_map) == 0)
 				op_idx += op->if_mode.cmd_offset;
 			break;
-		    /* the following opcodes are unused at the moment. */
-		case OP_IF_PHASE:
-		case OP_RT:
-		case OP_DELAY:
-		case OP_VERIFY:
 		default:
 			/* Should never get here! */
 
@@ -490,7 +496,7 @@ static void ecore_init_pxp_arb(struct bnx2x_softc *sc, int r_order,
 	REG_WR(sc, PXP2_REG_RQ_RD_MBS0, r_order);
 	REG_WR(sc, PXP2_REG_RQ_RD_MBS1, r_order);
 
-	if (CHIP_IS_E1H(sc) && (r_order == MAX_RD_ORD))
+	if ((CHIP_IS_E1(sc) || CHIP_IS_E1H(sc)) && (r_order == MAX_RD_ORD))
 		REG_WR(sc, PXP2_REG_RQ_PDR_LIMIT, 0xe00);
 
 	if (CHIP_IS_E3(sc))
@@ -500,31 +506,33 @@ static void ecore_init_pxp_arb(struct bnx2x_softc *sc, int r_order,
 	else
 		REG_WR(sc, PXP2_REG_WR_USDMDP_TH, (0x18 << w_order));
 
-	/*    MPS      w_order     optimal TH      presently TH
-	 *    128         0             0               2
-	 *    256         1             1               3
-	 *    >=512       2             2               3
-	 */
-	/* DMAE is special */
-	if (!CHIP_IS_E1H(sc)) {
-		/* E2 can use optimal TH */
-		val = w_order;
-		REG_WR(sc, PXP2_REG_WR_DMAE_MPS, val);
-	} else {
-		val = ((w_order == 0) ? 2 : 3);
-		REG_WR(sc, PXP2_REG_WR_DMAE_MPS, 2);
-	}
+	if (!CHIP_IS_E1(sc)) {
+		/*    MPS      w_order     optimal TH      presently TH
+		 *    128         0             0               2
+		 *    256         1             1               3
+		 *    >=512       2             2               3
+		 */
+		/* DMAE is special */
+		if (!CHIP_IS_E1H(sc)) {
+			/* E2 can use optimal TH */
+			val = w_order;
+			REG_WR(sc, PXP2_REG_WR_DMAE_MPS, val);
+		} else {
+			val = ((w_order == 0) ? 2 : 3);
+			REG_WR(sc, PXP2_REG_WR_DMAE_MPS, 2);
+		}
 
-	REG_WR(sc, PXP2_REG_WR_HC_MPS, val);
-	REG_WR(sc, PXP2_REG_WR_USDM_MPS, val);
-	REG_WR(sc, PXP2_REG_WR_CSDM_MPS, val);
-	REG_WR(sc, PXP2_REG_WR_TSDM_MPS, val);
-	REG_WR(sc, PXP2_REG_WR_XSDM_MPS, val);
-	REG_WR(sc, PXP2_REG_WR_QM_MPS, val);
-	REG_WR(sc, PXP2_REG_WR_TM_MPS, val);
-	REG_WR(sc, PXP2_REG_WR_SRC_MPS, val);
-	REG_WR(sc, PXP2_REG_WR_DBG_MPS, val);
-	REG_WR(sc, PXP2_REG_WR_CDU_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_HC_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_USDM_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_CSDM_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_TSDM_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_XSDM_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_QM_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_TM_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_SRC_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_DBG_MPS, val);
+		REG_WR(sc, PXP2_REG_WR_CDU_MPS, val);
+	}
 
 	/* Validate number of tags suppoted by device */
 #define PCIE_REG_PCIER_TL_HDR_FC_ST		0x2980
@@ -559,18 +567,15 @@ static void ecore_init_pxp_arb(struct bnx2x_softc *sc, int r_order,
 #define ILT_ADDR2(x)		((uint32_t)((1 << 20) | ((uint64_t)x >> 44)))
 #define ILT_RANGE(f, l)		(((l) << 10) | f)
 
-static int ecore_ilt_line_mem_op(struct bnx2x_softc *sc,
-				 struct ilt_line *line, uint32_t size, uint8_t memop, int cli_num, int i)
+static int ecore_ilt_line_mem_op(struct bnx2x_softc *sc __rte_unused,
+				 struct ilt_line *line, uint32_t size,
+				 uint8_t memop)
 {
-#define ECORE_ILT_NAMESIZE 10
-	char str[ECORE_ILT_NAMESIZE];
-
 	if (memop == ILT_MEMOP_FREE) {
 		ECORE_ILT_FREE(line->page, line->page_mapping, line->size);
 		return 0;
 	}
-	snprintf(str, ECORE_ILT_NAMESIZE, "ILT_%d_%d", cli_num, i);
-	ECORE_ILT_ZALLOC(line->page, &line->page_mapping, size, str);
+	ECORE_ILT_ZALLOC(line->page, &line->page_mapping, size);
 	if (!line->page)
 		return -1;
 	line->size = size;
@@ -581,7 +586,7 @@ static int ecore_ilt_line_mem_op(struct bnx2x_softc *sc,
 static int ecore_ilt_client_mem_op(struct bnx2x_softc *sc, int cli_num,
 				   uint8_t memop)
 {
-	int i, rc = 0;
+	int i, rc;
 	struct ecore_ilt *ilt = SC_ILT(sc);
 	struct ilt_client_info *ilt_cli = &ilt->clients[cli_num];
 
@@ -591,22 +596,10 @@ static int ecore_ilt_client_mem_op(struct bnx2x_softc *sc, int cli_num,
 	if (ilt_cli->flags & (ILT_CLIENT_SKIP_INIT | ILT_CLIENT_SKIP_MEM))
 		return 0;
 
-	for (i = ilt_cli->start; i <= ilt_cli->end && !rc; i++) {
+	for (rc = 0, i = ilt_cli->start; i <= ilt_cli->end && !rc; i++) {
 		rc = ecore_ilt_line_mem_op(sc, &ilt->lines[i],
-					   ilt_cli->page_size, memop, cli_num, i);
+					   ilt_cli->page_size, memop);
 	}
-	return rc;
-}
-
-static inline int ecore_ilt_mem_op_cnic(struct bnx2x_softc *sc, uint8_t memop)
-{
-	int rc = 0;
-
-	if (CONFIGURE_NIC_MODE(sc))
-		rc = ecore_ilt_client_mem_op(sc, ILT_CLIENT_SRC, memop);
-	if (!rc)
-		rc = ecore_ilt_client_mem_op(sc, ILT_CLIENT_TM, memop);
-
 	return rc;
 }
 
@@ -626,7 +619,10 @@ static void ecore_ilt_line_wr(struct bnx2x_softc *sc, int abs_idx,
 {
 	uint32_t reg;
 
-	reg = PXP2_REG_RQ_ONCHIP_AT_B0 + abs_idx*8;
+	if (CHIP_IS_E1(sc))
+		reg = PXP2_REG_RQ_ONCHIP_AT + abs_idx * 8;
+	else
+		reg = PXP2_REG_RQ_ONCHIP_AT_B0 + abs_idx * 8;
 
 	ecore_wr_64(sc, reg, ILT_ADDR1(page_mapping), ILT_ADDR2(page_mapping));
 }
@@ -636,6 +632,7 @@ static void ecore_ilt_line_init_op(struct bnx2x_softc *sc,
 {
 	ecore_dma_addr_t	null_mapping;
 	int abs_idx = ilt->start_line + idx;
+
 
 	switch (initop) {
 	case INITOP_INIT:
@@ -650,9 +647,10 @@ static void ecore_ilt_line_init_op(struct bnx2x_softc *sc,
 	}
 }
 
-static void ecore_ilt_boundry_init_op(struct bnx2x_softc *sc,
-				      struct ilt_client_info *ilt_cli,
-				      uint32_t ilt_start)
+static void ecore_ilt_boundary_init_op(struct bnx2x_softc *sc,
+				       struct ilt_client_info *ilt_cli,
+				       uint32_t ilt_start,
+				       uint8_t initop __rte_unused)
 {
 	uint32_t start_reg = 0;
 	uint32_t end_reg = 0;
@@ -661,7 +659,26 @@ static void ecore_ilt_boundry_init_op(struct bnx2x_softc *sc,
 	   CLEAR => SET and for now SET ~~ INIT */
 
 	/* find the appropriate regs */
-	switch (ilt_cli->client_num) {
+	if (CHIP_IS_E1(sc)) {
+		switch (ilt_cli->client_num) {
+		case ILT_CLIENT_CDU:
+			start_reg = PXP2_REG_PSWRQ_CDU0_L2P;
+			break;
+		case ILT_CLIENT_QM:
+			start_reg = PXP2_REG_PSWRQ_QM0_L2P;
+			break;
+		case ILT_CLIENT_SRC:
+			start_reg = PXP2_REG_PSWRQ_SRC0_L2P;
+			break;
+		case ILT_CLIENT_TM:
+			start_reg = PXP2_REG_PSWRQ_TM0_L2P;
+			break;
+		}
+		REG_WR(sc, start_reg + SC_FUNC(sc) * 4,
+		       ILT_RANGE((ilt_start + ilt_cli->start),
+				 (ilt_start + ilt_cli->end)));
+	} else {
+		switch (ilt_cli->client_num) {
 		case ILT_CLIENT_CDU:
 			start_reg = PXP2_REG_RQ_CDU_FIRST_ILT;
 			end_reg = PXP2_REG_RQ_CDU_LAST_ILT;
@@ -678,9 +695,10 @@ static void ecore_ilt_boundry_init_op(struct bnx2x_softc *sc,
 			start_reg = PXP2_REG_RQ_TM_FIRST_ILT;
 			end_reg = PXP2_REG_RQ_TM_LAST_ILT;
 			break;
+		}
+		REG_WR(sc, start_reg, (ilt_start + ilt_cli->start));
+		REG_WR(sc, end_reg, (ilt_start + ilt_cli->end));
 	}
-	REG_WR(sc, start_reg, (ilt_start + ilt_cli->start));
-	REG_WR(sc, end_reg, (ilt_start + ilt_cli->end));
 }
 
 static void ecore_ilt_client_init_op_ilt(struct bnx2x_softc *sc,
@@ -697,7 +715,7 @@ static void ecore_ilt_client_init_op_ilt(struct bnx2x_softc *sc,
 		ecore_ilt_line_init_op(sc, ilt, i, initop);
 
 	/* init/clear the ILT boundries */
-	ecore_ilt_boundry_init_op(sc, ilt_cli, ilt->start_line);
+	ecore_ilt_boundary_init_op(sc, ilt_cli, ilt->start_line, initop);
 }
 
 static void ecore_ilt_client_init_op(struct bnx2x_softc *sc,
@@ -715,13 +733,6 @@ static void ecore_ilt_client_id_init_op(struct bnx2x_softc *sc,
 	struct ilt_client_info *ilt_cli = &ilt->clients[cli_num];
 
 	ecore_ilt_client_init_op(sc, ilt_cli, initop);
-}
-
-static inline void ecore_ilt_init_op_cnic(struct bnx2x_softc *sc, uint8_t initop)
-{
-	if (CONFIGURE_NIC_MODE(sc))
-		ecore_ilt_client_id_init_op(sc, ILT_CLIENT_SRC, initop);
-	ecore_ilt_client_id_init_op(sc, ILT_CLIENT_TM, initop);
 }
 
 static void ecore_ilt_init_op(struct bnx2x_softc *sc, uint8_t initop)
@@ -771,7 +782,7 @@ static void ecore_ilt_init_page_size(struct bnx2x_softc *sc, uint8_t initop)
 /****************************************************************************
 * QM initializations
 ****************************************************************************/
-#define QM_QUEUES_PER_FUNC	16
+#define QM_QUEUES_PER_FUNC	16 /* E1 has 32, but only 16 are used */
 #define QM_INIT_MIN_CID_COUNT	31
 #define QM_INIT(cid_cnt)	(cid_cnt > QM_INIT_MIN_CID_COUNT)
 
@@ -831,33 +842,4 @@ static void ecore_qm_init_ptr_table(struct bnx2x_softc *sc, int qm_cid_count,
 	}
 }
 
-/****************************************************************************
-* SRC initializations
-****************************************************************************/
-#ifdef ECORE_L5
-/* called during init func stage */
-static void ecore_src_init_t2(struct bnx2x_softc *sc, struct src_ent *t2,
-			      ecore_dma_addr_t t2_mapping, int src_cid_count)
-{
-	int i;
-	int port = SC_PORT(sc);
-
-	/* Initialize T2 */
-	for (i = 0; i < src_cid_count-1; i++)
-		t2[i].next = (uint64_t)(t2_mapping +
-			     (i+1)*sizeof(struct src_ent));
-
-	/* tell the searcher where the T2 table is */
-	REG_WR(sc, SRC_REG_COUNTFREE0 + port*4, src_cid_count);
-
-	ecore_wr_64(sc, SRC_REG_FIRSTFREE0 + port*16,
-		    U64_LO(t2_mapping), U64_HI(t2_mapping));
-
-	ecore_wr_64(sc, SRC_REG_LASTFREE0 + port*16,
-		    U64_LO((uint64_t)t2_mapping +
-			   (src_cid_count-1) * sizeof(struct src_ent)),
-		    U64_HI((uint64_t)t2_mapping +
-			   (src_cid_count-1) * sizeof(struct src_ent)));
-}
-#endif
 #endif /* ECORE_INIT_OPS_H */

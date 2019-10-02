@@ -67,9 +67,9 @@ Supported QLogic NICs
 Prerequisites
 -------------
 
-- Requires firmware version **7.2.51.0**. It is included in most of the
+- Requires firmware version **7.13.11.0**. It is included in most of the
   standard Linux distros. If it is not available visit
-  `linux-firmware git repository <https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/bnx2x/bnx2x-e2-7.2.51.0.fw>`_
+  `linux-firmware git repository <https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/bnx2x/bnx2x-e2-7.13.11.0.fw>`_
   to get the required firmware.
 
 Pre-Installation Configuration

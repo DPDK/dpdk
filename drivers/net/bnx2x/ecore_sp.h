@@ -135,16 +135,16 @@ typedef rte_spinlock_t ECORE_MUTEX_SPIN;
 #define SC_ILT(sc)  ((sc)->ilt)
 #define ILOG2(x)    bnx2x_ilog2(x)
 
-#define ECORE_ILT_ZALLOC(x, y, size, str)				\
+#define ECORE_ILT_ZALLOC(x, y, size)				\
 	do {								\
 		x = rte_malloc("", sizeof(struct bnx2x_dma), RTE_CACHE_LINE_SIZE); \
 		if (x) {						\
 			if (bnx2x_dma_alloc((struct bnx2x_softc *)sc,	\
 					  size, (struct bnx2x_dma *)x,	\
-					  str, RTE_CACHE_LINE_SIZE) != 0) { \
+					  "ILT", RTE_CACHE_LINE_SIZE) != 0) { \
 				rte_free(x);				\
 				x = NULL;				\
-				*y = 0;					\
+				*(y) = 0;				\
 			} else {					\
 				*y = ((struct bnx2x_dma *)x)->paddr;	\
 			}						\
@@ -161,7 +161,7 @@ typedef rte_spinlock_t ECORE_MUTEX_SPIN;
 		}							\
 	} while (0)
 
-#define ECORE_IS_VALID_ETHER_ADDR(_mac) TRUE
+#define ECORE_IS_VALID_ETHER_ADDR(_mac) true
 
 #define ECORE_IS_MF_SD_MODE   IS_MF_SD_MODE
 #define ECORE_IS_MF_SI_MODE   IS_MF_SI_MODE
@@ -238,11 +238,11 @@ typedef struct ecore_list_t
 	(_list)->cnt  = 0;     \
     } while (0)
 
-/* return TRUE if the element is the last on the list */
+/* return true if the element is the last on the list */
 #define ECORE_LIST_IS_LAST(_elem, _list) \
     (_elem == (_list)->tail)
 
-/* return TRUE if the list is empty */
+/* return true if the list is empty */
 #define ECORE_LIST_IS_EMPTY(_list) \
     ((_list)->cnt == 0)
 
@@ -413,9 +413,6 @@ enum {
     AFEX_UPDATE,
 };
 
-
-
-
 struct bnx2x_softc;
 struct eth_context;
 
@@ -461,11 +458,18 @@ enum {
 	ECORE_FILTER_ISCSI_ETH_STOP_SCHED,
 	ECORE_FILTER_FCOE_ETH_START_SCHED,
 	ECORE_FILTER_FCOE_ETH_STOP_SCHED,
+#ifdef ECORE_CHAR_DEV
+	ECORE_FILTER_BYPASS_RX_MODE_PENDING,
+	ECORE_FILTER_BYPASS_MAC_PENDING,
+	ECORE_FILTER_BYPASS_RSS_CONF_PENDING,
+#endif
 	ECORE_FILTER_MCAST_PENDING,
 	ECORE_FILTER_MCAST_SCHED,
 	ECORE_FILTER_RSS_CONF_PENDING,
 	ECORE_AFEX_FCOE_Q_UPDATE_PENDING,
-	ECORE_AFEX_PENDING_VIFSET_MCP_ACK
+	ECORE_AFEX_PENDING_VIFSET_MCP_ACK,
+	ECORE_FILTER_VXLAN_PENDING,
+	ECORE_FILTER_PVLAN_PENDING
 };
 
 struct ecore_raw_obj {
@@ -488,7 +492,7 @@ struct ecore_raw_obj {
 	int (*wait_comp)(struct bnx2x_softc *sc,
 			 struct ecore_raw_obj *o);
 
-	int (*check_pending)(struct ecore_raw_obj *o);
+	bool (*check_pending)(struct ecore_raw_obj *o);
 	void (*clear_pending)(struct ecore_raw_obj *o);
 	void (*set_pending)(struct ecore_raw_obj *o);
 };
@@ -509,10 +513,16 @@ struct ecore_vlan_mac_ramrod_data {
 	uint16_t vlan;
 };
 
+struct ecore_vxlan_fltr_ramrod_data {
+	uint8_t innermac[ETH_ALEN];
+	uint32_t vni;
+};
+
 union ecore_classification_ramrod_data {
 	struct ecore_mac_ramrod_data mac;
 	struct ecore_vlan_ramrod_data vlan;
 	struct ecore_vlan_mac_ramrod_data vlan_mac;
+	struct ecore_vxlan_fltr_ramrod_data vxlan_fltr;
 };
 
 /* VLAN_MAC commands */
@@ -541,6 +551,7 @@ union ecore_exe_queue_cmd_data {
 	struct ecore_vlan_mac_data vlan_mac;
 
 	struct {
+		/* TODO */
 	} mcast;
 };
 
@@ -642,7 +653,7 @@ struct ecore_vlan_mac_registry_elem {
 	ecore_list_entry_t	link;
 
 	/* Used to store the cam offset used for the mac/vlan/vlan-mac.
-	 * Relevant for 57711 only. VLANs and MACs share the
+	 * Relevant for 57710 and 57711 only. VLANs and MACs share the
 	 * same CAM for these chips.
 	 */
 	int			cam_offset;
@@ -659,9 +670,18 @@ enum {
 	ECORE_ETH_MAC,
 	ECORE_ISCSI_ETH_MAC,
 	ECORE_NETQ_ETH_MAC,
+	ECORE_VLAN,
 	ECORE_DONT_CONSUME_CAM_CREDIT,
 	ECORE_DONT_CONSUME_CAM_CREDIT_DEST,
 };
+/* When looking for matching filters, some flags are not interesting */
+#define ECORE_VLAN_MAC_CMP_MASK	(1 << ECORE_UC_LIST_MAC | \
+				 1 << ECORE_ETH_MAC | \
+				 1 << ECORE_ISCSI_ETH_MAC | \
+				 1 << ECORE_NETQ_ETH_MAC | \
+				 1 << ECORE_VLAN)
+#define ECORE_VLAN_MAC_CMP_FLAGS(flags) \
+	((flags) & ECORE_VLAN_MAC_CMP_MASK)
 
 struct ecore_vlan_mac_ramrod_params {
 	/* Object to run the command from */
@@ -685,7 +705,7 @@ struct ecore_vlan_mac_obj {
 	 * all these fields should only be accessed under the exe_queue lock
 	 */
 	uint8_t		head_reader; /* Num. of readers accessing head list */
-	int		head_exe_request; /* Pending execution request. */
+	bool		head_exe_request; /* Pending execution request. */
 	unsigned long	saved_ramrod_flags; /* Ramrods of pending execution */
 
 	/* Execution queue interface instance */
@@ -728,7 +748,7 @@ struct ecore_vlan_mac_obj {
 	/**
 	 * Checks if DEL-ramrod with the given params may be performed.
 	 *
-	 * @return TRUE if the element may be deleted
+	 * @return true if the element may be deleted
 	 */
 	struct ecore_vlan_mac_registry_elem *
 		(*check_del)(struct bnx2x_softc *sc,
@@ -738,9 +758,9 @@ struct ecore_vlan_mac_obj {
 	/**
 	 * Checks if DEL-ramrod with the given params may be performed.
 	 *
-	 * @return TRUE if the element may be deleted
+	 * @return true if the element may be deleted
 	 */
-	int (*check_move)(struct bnx2x_softc *sc,
+	bool (*check_move)(struct bnx2x_softc *sc,
 			   struct ecore_vlan_mac_obj *src_o,
 			   struct ecore_vlan_mac_obj *dst_o,
 			   union ecore_classification_ramrod_data *data);
@@ -749,10 +769,10 @@ struct ecore_vlan_mac_obj {
 	 *  Update the relevant credit object(s) (consume/return
 	 *  correspondingly).
 	 */
-	int (*get_credit)(struct ecore_vlan_mac_obj *o);
-	int (*put_credit)(struct ecore_vlan_mac_obj *o);
-	int (*get_cam_offset)(struct ecore_vlan_mac_obj *o, int *offset);
-	int (*put_cam_offset)(struct ecore_vlan_mac_obj *o, int offset);
+	bool (*get_credit)(struct ecore_vlan_mac_obj *o);
+	bool (*put_credit)(struct ecore_vlan_mac_obj *o);
+	bool (*get_cam_offset)(struct ecore_vlan_mac_obj *o, int *offset);
+	bool (*put_cam_offset)(struct ecore_vlan_mac_obj *o, int offset);
 
 	/**
 	 * Configures one rule in the ramrod data buffer.
@@ -838,6 +858,9 @@ enum {
 	ECORE_LLH_CAM_MAX_PF_LINE = NIG_REG_LLH1_FUNC_MEM_SIZE / 2
 };
 
+void ecore_set_mac_in_nig(struct bnx2x_softc *sc,
+			  bool add, unsigned char *dev_addr, int index);
+
 /** RX_MODE verbs:DROP_ALL/ACCEPT_ALL/ACCEPT_ALL_MULTI/ACCEPT_ALL_VLAN/NORMAL */
 
 /* RX_MODE ramrod special flags: set in rx_mode_flags field in
@@ -898,7 +921,7 @@ struct ecore_mcast_list_elem {
 
 union ecore_mcast_config_data {
 	uint8_t *mac;
-	uint8_t bin; /* used in a RESTORE flow */
+	uint8_t bin; /* used in a RESTORE/SET flows */
 };
 
 struct ecore_mcast_ramrod_params {
@@ -908,6 +931,14 @@ struct ecore_mcast_ramrod_params {
 	unsigned long ramrod_flags;
 
 	ecore_list_t mcast_list; /* list of struct ecore_mcast_list_elem */
+	/** TODO:
+	 *      - rename it to macs_num.
+	 *      - Add a new command type for handling pending commands
+	 *        (remove "zero semantics").
+	 *
+	 *  Length of mcast_list. If zero and ADD_CONT command - post
+	 *  pending commands.
+	 */
 	int mcast_list_len;
 };
 
@@ -916,6 +947,15 @@ enum ecore_mcast_cmd {
 	ECORE_MCAST_CMD_CONT,
 	ECORE_MCAST_CMD_DEL,
 	ECORE_MCAST_CMD_RESTORE,
+
+	/* Following this, multicast configuration should equal to approx
+	 * the set of MACs provided [i.e., remove all else].
+	 * The two sub-commands are used internally to decide whether a given
+	 * bin is to be added or removed
+	 */
+	ECORE_MCAST_CMD_SET,
+	ECORE_MCAST_CMD_SET_ADD,
+	ECORE_MCAST_CMD_SET_DEL,
 };
 
 struct ecore_mcast_obj {
@@ -989,14 +1029,14 @@ struct ecore_mcast_obj {
 	/** Checks if there are more mcast MACs to be set or a previous
 	 *  command is still pending.
 	 */
-	int (*check_pending)(struct ecore_mcast_obj *o);
+	bool (*check_pending)(struct ecore_mcast_obj *o);
 
 	/**
 	 * Set/Clear/Check SCHEDULED state of the object
 	 */
 	void (*set_sched)(struct ecore_mcast_obj *o);
 	void (*clear_sched)(struct ecore_mcast_obj *o);
-	int (*check_sched)(struct ecore_mcast_obj *o);
+	bool (*check_sched)(struct ecore_mcast_obj *o);
 
 	/* Wait until all pending commands complete */
 	int (*wait_comp)(struct bnx2x_softc *sc, struct ecore_mcast_obj *o);
@@ -1015,7 +1055,8 @@ struct ecore_mcast_obj {
 	 */
 	void (*revert)(struct bnx2x_softc *sc,
 		       struct ecore_mcast_ramrod_params *p,
-		       int old_num_bins);
+		       int old_num_bins,
+		       enum ecore_mcast_cmd cmd);
 
 	int (*get_registry_size)(struct ecore_mcast_obj *o);
 	void (*set_registry_size)(struct ecore_mcast_obj *o, int n);
@@ -1045,33 +1086,33 @@ struct ecore_credit_pool_obj {
 	/**
 	 * Get the next free pool entry.
 	 *
-	 * @return TRUE if there was a free entry in the pool
+	 * @return true if there was a free entry in the pool
 	 */
-	int (*get_entry)(struct ecore_credit_pool_obj *o, int *entry);
+	bool (*get_entry)(struct ecore_credit_pool_obj *o, int *entry);
 
 	/**
 	 * Return the entry back to the pool.
 	 *
-	 * @return TRUE if entry is legal and has been successfully
+	 * @return true if entry is legal and has been successfully
 	 *         returned to the pool.
 	 */
-	int (*put_entry)(struct ecore_credit_pool_obj *o, int entry);
+	bool (*put_entry)(struct ecore_credit_pool_obj *o, int entry);
 
 	/**
 	 * Get the requested amount of credit from the pool.
 	 *
 	 * @param cnt Amount of requested credit
-	 * @return TRUE if the operation is successful
+	 * @return true if the operation is successful
 	 */
-	int (*get)(struct ecore_credit_pool_obj *o, int cnt);
+	bool (*get)(struct ecore_credit_pool_obj *o, int cnt);
 
 	/**
 	 * Returns the credit to the pool.
 	 *
 	 * @param cnt Amount of credit to return
-	 * @return TRUE if the operation is successful
+	 * @return true if the operation is successful
 	 */
-	int (*put)(struct ecore_credit_pool_obj *o, int cnt);
+	bool (*put)(struct ecore_credit_pool_obj *o, int cnt);
 
 	/**
 	 * Reads the current amount of credit.
@@ -1094,7 +1135,9 @@ enum {
 	ECORE_RSS_IPV6_TCP,
 	ECORE_RSS_IPV6_UDP,
 
-	ECORE_RSS_TUNNELING,
+	ECORE_RSS_IPV4_VXLAN,
+	ECORE_RSS_IPV6_VXLAN,
+	ECORE_RSS_TUNN_INNER_HDRS,
 };
 
 struct ecore_config_rss_params {
@@ -1117,10 +1160,6 @@ struct ecore_config_rss_params {
 
 	/* valid only if ECORE_RSS_UPDATE_TOE is set */
 	uint16_t		toe_rss_bitmap;
-
-	/* valid if ECORE_RSS_TUNNELING is set */
-	uint16_t		tunnel_value;
-	uint16_t		tunnel_mask;
 };
 
 struct ecore_rss_config_obj {
@@ -1158,6 +1197,8 @@ enum {
 	ECORE_Q_UPDATE_SILENT_VLAN_REM,
 	ECORE_Q_UPDATE_TX_SWITCHING_CHNG,
 	ECORE_Q_UPDATE_TX_SWITCHING,
+	ECORE_Q_UPDATE_PTP_PKTS_CHNG,
+	ECORE_Q_UPDATE_PTP_PKTS,
 };
 
 /* Allowed Queue states */
@@ -1222,12 +1263,16 @@ enum {
 	ECORE_Q_FLG_FORCE_DEFAULT_PRI,
 	ECORE_Q_FLG_REFUSE_OUTBAND_VLAN,
 	ECORE_Q_FLG_PCSUM_ON_PKT,
-	ECORE_Q_FLG_TUN_INC_INNER_IP_ID
+	ECORE_Q_FLG_TUN_INC_INNER_IP_ID,
+	ECORE_Q_FLG_TPA_VLAN_DIS,
 };
 
 /* Queue type options: queue type may be a combination of below. */
 enum ecore_q_type {
 	ECORE_Q_TYPE_FWD,
+	/** TODO: Consider moving both these flags into the init()
+	 *        ramrod params.
+	 */
 	ECORE_Q_TYPE_HAS_RX,
 	ECORE_Q_TYPE_HAS_TX,
 };
@@ -1238,6 +1283,10 @@ enum ecore_q_type {
 #define ECORE_MULTI_TX_COS_E3B0			3
 #define ECORE_MULTI_TX_COS			3 /* Maximum possible */
 #define MAC_PAD (ECORE_ALIGN(ETH_ALEN, sizeof(uint32_t)) - ETH_ALEN)
+/* DMAE channel to be used by FW for timesync workaroun. A driver that sends
+ * timesync-related ramrods must not use this DMAE command ID.
+ */
+#define FW_DMAE_CMD_ID 6
 
 struct ecore_queue_init_params {
 	struct {
@@ -1280,6 +1329,26 @@ struct ecore_queue_update_params {
 	uint8_t		cid_index;
 };
 
+struct ecore_queue_update_tpa_params {
+	ecore_dma_addr_t sge_map;
+	uint8_t update_ipv4;
+	uint8_t update_ipv6;
+	uint8_t max_tpa_queues;
+	uint8_t max_sges_pkt;
+	uint8_t complete_on_both_clients;
+	uint8_t dont_verify_thr;
+	uint8_t tpa_mode;
+	uint8_t _pad;
+
+	uint16_t sge_buff_sz;
+	uint16_t max_agg_sz;
+
+	uint16_t sge_pause_thr_low;
+	uint16_t sge_pause_thr_high;
+
+	uint8_t disable_tpa_over_vlan;
+};
+
 struct rxq_pause_params {
 	uint16_t		bd_th_lo;
 	uint16_t		bd_th_hi;
@@ -1298,11 +1367,14 @@ struct ecore_general_setup_params {
 	uint8_t		spcl_id;
 	uint16_t		mtu;
 	uint8_t		cos;
+
+	uint8_t		fp_hsi;
 };
 
 struct ecore_rxq_setup_params {
 	/* dma */
 	ecore_dma_addr_t	dscr_map;
+	ecore_dma_addr_t	sge_map;
 	ecore_dma_addr_t	rcq_map;
 	ecore_dma_addr_t	rcq_np_map;
 
@@ -1313,6 +1385,8 @@ struct ecore_rxq_setup_params {
 
 	/* valid if ECORE_Q_FLG_TPA */
 	uint16_t		tpa_agg_sz;
+	uint16_t		sge_buf_sz;
+	uint8_t		max_sges_pkt;
 	uint8_t		max_tpa_queues;
 	uint8_t		rss_engine_id;
 
@@ -1323,7 +1397,7 @@ struct ecore_rxq_setup_params {
 
 	uint8_t		sb_cq_index;
 
-	/* valid if BXN2X_Q_FLG_SILENT_VLAN_REM */
+	/* valid if ECORE_Q_FLG_SILENT_VLAN_REM */
 	uint16_t silent_removal_value;
 	uint16_t silent_removal_mask;
 };
@@ -1371,6 +1445,7 @@ struct ecore_queue_state_params {
 	/* Params according to the current command */
 	union {
 		struct ecore_queue_update_params	update;
+		struct ecore_queue_update_tpa_params    update_tpa;
 		struct ecore_queue_setup_params		setup;
 		struct ecore_queue_init_params		init;
 		struct ecore_queue_setup_tx_only_params	tx_only;
@@ -1450,6 +1525,24 @@ struct ecore_queue_sp_obj {
 };
 
 /********************** Function state update *********************************/
+
+/* UPDATE command options */
+enum {
+	ECORE_F_UPDATE_TX_SWITCH_SUSPEND_CHNG,
+	ECORE_F_UPDATE_TX_SWITCH_SUSPEND,
+	ECORE_F_UPDATE_SD_VLAN_TAG_CHNG,
+	ECORE_F_UPDATE_SD_VLAN_ETH_TYPE_CHNG,
+	ECORE_F_UPDATE_VLAN_FORCE_PRIO_CHNG,
+	ECORE_F_UPDATE_VLAN_FORCE_PRIO_FLAG,
+	ECORE_F_UPDATE_TUNNEL_CFG_CHNG,
+	ECORE_F_UPDATE_TUNNEL_INNER_CLSS_L2GRE,
+	ECORE_F_UPDATE_TUNNEL_INNER_CLSS_VXLAN,
+	ECORE_F_UPDATE_TUNNEL_INNER_CLSS_L2GENEVE,
+	ECORE_F_UPDATE_TUNNEL_INNER_RSS,
+	ECORE_F_UPDATE_TUNNEL_INNER_CLSS_VXLAN_INNER_VNI,
+	ECORE_F_UPDATE_VLAN_FILTERING_PVID_CHNG,
+};
+
 /* Allowed Function states */
 enum ecore_func_state {
 	ECORE_F_STATE_RESET,
@@ -1470,6 +1563,7 @@ enum ecore_func_cmd {
 	ECORE_F_CMD_TX_STOP,
 	ECORE_F_CMD_TX_START,
 	ECORE_F_CMD_SWITCH_UPDATE,
+	ECORE_F_CMD_SET_TIMESYNC,
 	ECORE_F_CMD_MAX,
 };
 
@@ -1511,19 +1605,60 @@ struct ecore_func_start_params {
 	/* Function cos mode */
 	uint8_t network_cos_mode;
 
-	/* NVGRE classification enablement */
-	uint8_t nvgre_clss_en;
+	/* DMAE command id to be used for FW DMAE transactions */
+	uint8_t dmae_cmd_id;
 
-	/* NO_GRE_TUNNEL/NVGRE_TUNNEL/L2GRE_TUNNEL/IPGRE_TUNNEL */
-	uint8_t gre_tunnel_mode;
+	/* UDP dest port for VXLAN */
+	uint16_t vxlan_dst_port;
 
-	/* GRE_OUTER_HEADERS_RSS/GRE_INNER_HEADERS_RSS/NVGRE_KEY_ENTROPY_RSS */
-	uint8_t gre_tunnel_rss;
+	/* UDP dest port for Geneve */
+	uint16_t geneve_dst_port;
 
+	/* Enable inner Rx classifications for L2GRE packets */
+	uint8_t inner_clss_l2gre;
+
+	/* Enable inner Rx classifications for L2-Geneve packets */
+	uint8_t inner_clss_l2geneve;
+
+	/* Enable inner Rx classification for vxlan packets */
+	uint8_t inner_clss_vxlan;
+
+	/* Enable RSS according to inner header */
+	uint8_t inner_rss;
+
+	/** Allows accepting of packets failing MF classification, possibly
+	 * only matching a given ethertype
+	 */
+	uint8_t class_fail;
+	uint16_t class_fail_ethtype;
+
+	/* Override priority of output packets */
+	uint8_t sd_vlan_force_pri;
+	uint8_t sd_vlan_force_pri_val;
+
+	/* Replace vlan's ethertype */
+	uint16_t sd_vlan_eth_type;
+
+	/* Prevent inner vlans from being added by FW */
+	uint8_t no_added_tags;
+
+	/* Inner-to-Outer vlan priority mapping */
+	uint8_t c2s_pri[MAX_VLAN_PRIORITIES];
+	uint8_t c2s_pri_default;
+	uint8_t c2s_pri_valid;
+
+	/* TX Vlan filtering configuration */
+	uint8_t tx_vlan_filtering_enable;
+	uint8_t tx_vlan_filtering_use_pvid;
 };
 
 struct ecore_func_switch_update_params {
-	uint8_t suspend;
+	unsigned long changes; /* ECORE_F_UPDATE_XX bits */
+	uint16_t vlan;
+	uint16_t vlan_eth_type;
+	uint8_t vlan_force_prio;
+	uint16_t vxlan_dst_port;
+	uint16_t geneve_dst_port;
 };
 
 struct ecore_func_afex_update_params {
@@ -1538,11 +1673,28 @@ struct ecore_func_afex_viflists_params {
 	uint8_t afex_vif_list_command;
 	uint8_t func_to_clear;
 };
+
 struct ecore_func_tx_start_params {
 	struct priority_cos traffic_type_to_priority_cos[MAX_TRAFFIC_TYPES];
 	uint8_t dcb_enabled;
 	uint8_t dcb_version;
-	uint8_t dont_add_pri_0;
+	uint8_t dont_add_pri_0_en;
+	uint8_t dcb_outer_pri[MAX_TRAFFIC_TYPES];
+};
+
+struct ecore_func_set_timesync_params {
+	/* Reset, set or keep the current drift value */
+	uint8_t drift_adjust_cmd;
+	/* Dec, inc or keep the current offset */
+	uint8_t offset_cmd;
+	/* Drift value direction */
+	uint8_t add_sub_drift_adjust_value;
+	/* Drift, period and offset values to be used according to the commands
+	 * above.
+	 */
+	uint8_t drift_adjust_value;
+	uint32_t drift_adjust_period;
+	uint64_t offset_delta;
 };
 
 struct ecore_func_state_params {
@@ -1563,6 +1715,7 @@ struct ecore_func_state_params {
 		struct ecore_func_afex_update_params afex_update;
 		struct ecore_func_afex_viflists_params afex_viflists;
 		struct ecore_func_tx_start_params tx_start;
+		struct ecore_func_set_timesync_params set_timesync;
 	} params;
 };
 
@@ -1582,6 +1735,10 @@ struct ecore_func_sp_drv_ops {
 	void (*reset_hw_cmn)(struct bnx2x_softc *sc);
 	void (*reset_hw_port)(struct bnx2x_softc *sc);
 	void (*reset_hw_func)(struct bnx2x_softc *sc);
+
+	/* Init/Free GUNZIP resources */
+	int (*gunzip_init)(struct bnx2x_softc *sc);
+	void (*gunzip_end)(struct bnx2x_softc *sc);
 
 	/* Prepare/Release FW resources */
 	int (*init_fw)(struct bnx2x_softc *sc);
@@ -1669,6 +1826,9 @@ void ecore_init_queue_obj(struct bnx2x_softc *sc,
 int ecore_queue_state_change(struct bnx2x_softc *sc,
 			     struct ecore_queue_state_params *params);
 
+int ecore_get_q_logical_state(struct bnx2x_softc *sc,
+			       struct ecore_queue_sp_obj *obj);
+
 /********************* VLAN-MAC ****************/
 void ecore_init_mac_obj(struct bnx2x_softc *sc,
 			struct ecore_vlan_mac_obj *mac_obj,
@@ -1677,6 +1837,34 @@ void ecore_init_mac_obj(struct bnx2x_softc *sc,
 			unsigned long *pstate, ecore_obj_type type,
 			struct ecore_credit_pool_obj *macs_pool);
 
+void ecore_init_vlan_obj(struct bnx2x_softc *sc,
+			 struct ecore_vlan_mac_obj *vlan_obj,
+			 uint8_t cl_id, uint32_t cid, uint8_t func_id,
+			 void *rdata,
+			 ecore_dma_addr_t rdata_mapping, int state,
+			 unsigned long *pstate, ecore_obj_type type,
+			 struct ecore_credit_pool_obj *vlans_pool);
+
+void ecore_init_vlan_mac_obj(struct bnx2x_softc *sc,
+			     struct ecore_vlan_mac_obj *vlan_mac_obj,
+			     uint8_t cl_id, uint32_t cid, uint8_t func_id,
+			     void *rdata,
+			     ecore_dma_addr_t rdata_mapping, int state,
+			     unsigned long *pstate, ecore_obj_type type,
+			     struct ecore_credit_pool_obj *macs_pool,
+			     struct ecore_credit_pool_obj *vlans_pool);
+
+void ecore_init_vxlan_fltr_obj(struct bnx2x_softc *sc,
+			       struct ecore_vlan_mac_obj *vlan_mac_obj,
+			       uint8_t cl_id, uint32_t cid, uint8_t func_id,
+			       void *rdata,
+			       ecore_dma_addr_t rdata_mapping, int state,
+			       unsigned long *pstate, ecore_obj_type type,
+			       struct ecore_credit_pool_obj *macs_pool,
+			       struct ecore_credit_pool_obj *vlans_pool);
+
+int ecore_vlan_mac_h_read_lock(struct bnx2x_softc *sc,
+					struct ecore_vlan_mac_obj *o);
 void ecore_vlan_mac_h_read_unlock(struct bnx2x_softc *sc,
 				  struct ecore_vlan_mac_obj *o);
 int ecore_vlan_mac_h_write_lock(struct bnx2x_softc *sc,
@@ -1719,7 +1907,7 @@ void ecore_init_mcast_obj(struct bnx2x_softc *sc,
 /**
  * ecore_config_mcast - Configure multicast MACs list.
  *
- * @cmd: command to execute: BNX2X_MCAST_CMD_X
+ * @cmd: command to execute: ECORE_MCAST_CMD_X
  *
  * May configure a new list
  * provided in p->mcast_list (ECORE_MCAST_CMD_ADD), clean up
@@ -1747,9 +1935,12 @@ void ecore_init_mac_credit_pool(struct bnx2x_softc *sc,
 void ecore_init_vlan_credit_pool(struct bnx2x_softc *sc,
 				 struct ecore_credit_pool_obj *p, uint8_t func_id,
 				 uint8_t func_num);
+void ecore_init_credit_pool(struct ecore_credit_pool_obj *p,
+			    int base, int credit);
 
 /****************** RSS CONFIGURATION ****************/
-void ecore_init_rss_config_obj(struct ecore_rss_config_obj *rss_obj,
+void ecore_init_rss_config_obj(struct bnx2x_softc *sc,
+			       struct ecore_rss_config_obj *rss_obj,
 			       uint8_t cl_id, uint32_t cid, uint8_t func_id, uint8_t engine_id,
 			       void *rdata, ecore_dma_addr_t rdata_mapping,
 			       int state, unsigned long *pstate,
@@ -1763,5 +1954,24 @@ void ecore_init_rss_config_obj(struct ecore_rss_config_obj *rss_obj,
 int ecore_config_rss(struct bnx2x_softc *sc,
 		     struct ecore_config_rss_params *p);
 
+/**
+ * ecore_get_rss_ind_table - Return the current ind_table configuration.
+ *
+ * @ind_table: buffer to fill with the current indirection
+ *                  table content. Should be at least
+ *                  T_ETH_INDIRECTION_TABLE_SIZE bytes long.
+ */
+void ecore_get_rss_ind_table(struct ecore_rss_config_obj *rss_obj,
+			     uint8_t *ind_table);
+
+#define PF_MAC_CREDIT_E2(sc, func_num)					\
+	((MAX_MAC_CREDIT_E2 - GET_NUM_VFS_PER_PATH(sc) * VF_MAC_CREDIT_CNT) / \
+	 (func_num) + GET_NUM_VFS_PER_PF(sc) * VF_MAC_CREDIT_CNT)
+
+#define PF_VLAN_CREDIT_E2(sc, func_num)					 \
+	((MAX_MAC_CREDIT_E2 - GET_NUM_VFS_PER_PATH(sc) * VF_VLAN_CREDIT_CNT) / \
+	 (func_num) + GET_NUM_VFS_PER_PF(sc) * VF_VLAN_CREDIT_CNT)
+
+#define ECORE_PF_VLAN_CREDIT_VLAN_FILTERING				256
 
 #endif /* ECORE_SP_H */

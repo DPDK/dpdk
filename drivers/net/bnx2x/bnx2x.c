@@ -29,8 +29,8 @@
 
 #define BNX2X_PMD_VER_PREFIX "BNX2X PMD"
 #define BNX2X_PMD_VERSION_MAJOR 1
-#define BNX2X_PMD_VERSION_MINOR 0
-#define BNX2X_PMD_VERSION_REVISION 7
+#define BNX2X_PMD_VERSION_MINOR 1
+#define BNX2X_PMD_VERSION_REVISION 0
 #define BNX2X_PMD_VERSION_PATCH 1
 
 static inline const char *
@@ -5231,20 +5231,6 @@ static void bnx2x_init_internal_common(struct bnx2x_softc *sc)
 {
 	int i;
 
-	if (IS_MF_SI(sc)) {
-/*
- * In switch independent mode, the TSTORM needs to accept
- * packets that failed classification, since approximate match
- * mac addresses aren't written to NIG LLH.
- */
-		REG_WR8(sc,
-			(BAR_TSTRORM_INTMEM +
-			 TSTORM_ACCEPT_CLASSIFY_FAILED_OFFSET), 2);
-	} else
-		REG_WR8(sc,
-			(BAR_TSTRORM_INTMEM +
-			 TSTORM_ACCEPT_CLASSIFY_FAILED_OFFSET), 0);
-
 	/*
 	 * Zero this manually as its initialization is currently missing
 	 * in the initTool.
@@ -5798,15 +5784,12 @@ static void bnx2x_init_objs(struct bnx2x_softc *sc)
 				    VNICS_PER_PATH(sc));
 
 	/* RSS configuration object */
-	ecore_init_rss_config_obj(&sc->rss_conf_obj,
-				  sc->fp[0].cl_id,
-				  sc->fp[0].index,
-				  SC_FUNC(sc),
-				  SC_FUNC(sc),
+	ecore_init_rss_config_obj(sc, &sc->rss_conf_obj, sc->fp->cl_id,
+				  sc->fp->index, SC_FUNC(sc), SC_FUNC(sc),
 				  BNX2X_SP(sc, rss_rdata),
 				  (rte_iova_t)BNX2X_SP_MAPPING(sc, rss_rdata),
-				  ECORE_FILTER_RSS_CONF_PENDING,
-				  &sc->sp_state, ECORE_OBJ_TYPE_RX);
+				  ECORE_FILTER_RSS_CONF_PENDING, &sc->sp_state,
+				  ECORE_OBJ_TYPE_RX);
 }
 
 /*
@@ -5834,9 +5817,6 @@ static int bnx2x_func_start(struct bnx2x_softc *sc)
 	} else {		/* CHIP_IS_E1X */
 		start_params->network_cos_mode = FW_WRR;
 	}
-
-	start_params->gre_tunnel_mode = 0;
-	start_params->gre_tunnel_rss = 0;
 
 	return ecore_func_state_change(sc, &func_params);
 }
@@ -9651,8 +9631,8 @@ static void bnx2x_init_rte(struct bnx2x_softc *sc)
 }
 
 #define FW_HEADER_LEN 104
-#define FW_NAME_57711 "/lib/firmware/bnx2x/bnx2x-e1h-7.2.51.0.fw"
-#define FW_NAME_57810 "/lib/firmware/bnx2x/bnx2x-e2-7.2.51.0.fw"
+#define FW_NAME_57711 "/lib/firmware/bnx2x/bnx2x-e1h-7.13.11.0.fw"
+#define FW_NAME_57810 "/lib/firmware/bnx2x/bnx2x-e2-7.13.11.0.fw"
 
 void bnx2x_load_firmware(struct bnx2x_softc *sc)
 {
@@ -10368,7 +10348,7 @@ static int bnx2x_init_hw_common(struct bnx2x_softc *sc)
 
 	/* clean the DMAE memory */
 	sc->dmae_ready = 1;
-	ecore_init_fill(sc, TSEM_REG_PRAM, 0, 8);
+	ecore_init_fill(sc, TSEM_REG_PRAM, 0, 8, 1);
 
 	ecore_init_block(sc, BLOCK_TCM, PHASE_COMMON);
 
@@ -11580,7 +11560,7 @@ static void bnx2x_reset_func(struct bnx2x_softc *sc)
 		ilt_cli.end = ILT_NUM_PAGE_ENTRIES - 1;
 		ilt_cli.client_num = ILT_CLIENT_TM;
 
-		ecore_ilt_boundry_init_op(sc, &ilt_cli, 0);
+		ecore_ilt_boundary_init_op(sc, &ilt_cli, 0, INITOP_CLEAR);
 	}
 
 	/* this assumes that reset_port() called before reset_func() */
