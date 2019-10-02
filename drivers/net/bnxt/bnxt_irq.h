@@ -22,5 +22,6 @@ void bnxt_disable_int(struct bnxt *bp);
 void bnxt_enable_int(struct bnxt *bp);
 int bnxt_setup_int(struct bnxt *bp);
 int bnxt_request_int(struct bnxt *bp);
+void bnxt_int_handler(void *param);
 
 #endif

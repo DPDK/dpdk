@@ -834,6 +834,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	}
 
+	bnxt_enable_int(bp);
 	rc = bnxt_hwrm_if_change(bp, 1);
 	if (!rc) {
 		if (bp->flags & BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE) {
@@ -862,7 +863,6 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
 	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
 
-	bnxt_enable_int(bp);
 	bp->flags |= BNXT_FLAG_INIT_DONE;
 	eth_dev->data->dev_started = 1;
 	bp->dev_stopped = 0;
@@ -926,7 +926,9 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 		/* TBD: STOP HW queues DMA */
 		eth_dev->data->dev_link.link_status = 0;
 	}
-	bnxt_set_hwrm_link_config(bp, false);
+	bnxt_dev_set_link_down_op(eth_dev);
+	/* Wait for link to be reset and the async notification to process. */
+	rte_delay_ms(BNXT_LINK_WAIT_INTERVAL * 2);
 
 	/* Clean queue intr-vector mapping */
 	rte_intr_efd_disable(intr_handle);
@@ -938,6 +940,8 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_hwrm_port_clr_stats(bp);
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
+	/* Process any remaining notifications in default completion queue */
+	bnxt_int_handler(eth_dev);
 	bnxt_shutdown_nic(bp);
 	bnxt_hwrm_if_change(bp, 0);
 	bp->dev_stopped = 1;
@@ -1084,8 +1088,7 @@ out:
 	/* Timed out or success */
 	if (new.link_status != eth_dev->data->dev_link.link_status ||
 	new.link_speed != eth_dev->data->dev_link.link_speed) {
-		memcpy(&eth_dev->data->dev_link, &new,
-			sizeof(struct rte_eth_link));
+		rte_eth_linkstatus_set(eth_dev, &new);
 
 		_rte_eth_dev_callback_process(eth_dev,
 					      RTE_ETH_EVENT_INTR_LSC,
