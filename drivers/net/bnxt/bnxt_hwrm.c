@@ -1965,6 +1965,11 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 	if (BNXT_CHIP_THOR(bp))
 		return 0;
 
+	if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
+		PMD_DRV_LOG(DEBUG, "Invalid vNIC ID\n");
+		return 0;
+	}
+
 	HWRM_PREP(req, VNIC_TPA_CFG, BNXT_USE_CHIMP_MB);
 
 	if (enable) {
