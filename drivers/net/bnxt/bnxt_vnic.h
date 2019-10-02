@@ -67,5 +67,6 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp);
 void bnxt_free_vnic_mem(struct bnxt *bp);
 int bnxt_alloc_vnic_mem(struct bnxt *bp);
 int bnxt_vnic_grp_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic);
+void prandom_bytes(void *dest_ptr, size_t len);
 uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type);
 #endif

@@ -19,6 +19,7 @@ struct bnxt;
 struct bnxt_filter_info {
 	STAILQ_ENTRY(bnxt_filter_info)	next;
 	uint64_t		fw_l2_filter_id;
+	struct bnxt_filter_info *matching_l2_fltr_ptr;
 	uint64_t		fw_em_filter_id;
 	uint64_t		fw_ntuple_filter_id;
 #define INVALID_MAC_INDEX	((uint16_t)-1)
@@ -33,6 +34,7 @@ struct bnxt_filter_info {
 	/* Filter Characteristics */
 	uint32_t		flags;
 	uint32_t		enables;
+	uint32_t		l2_ref_cnt;
 	uint8_t			l2_addr[RTE_ETHER_ADDR_LEN];
 	uint8_t			l2_addr_mask[RTE_ETHER_ADDR_LEN];
 	uint32_t		valid_flags;

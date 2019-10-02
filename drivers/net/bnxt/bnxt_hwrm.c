@@ -373,10 +373,23 @@ int bnxt_hwrm_clear_l2_filter(struct bnxt *bp,
 			   struct bnxt_filter_info *filter)
 {
 	int rc = 0;
+	struct bnxt_filter_info *l2_filter = filter;
 	struct hwrm_cfa_l2_filter_free_input req = {.req_type = 0 };
 	struct hwrm_cfa_l2_filter_free_output *resp = bp->hwrm_cmd_resp_addr;
 
 	if (filter->fw_l2_filter_id == UINT64_MAX)
+		return 0;
+
+	if (filter->matching_l2_fltr_ptr)
+		l2_filter = filter->matching_l2_fltr_ptr;
+
+	PMD_DRV_LOG(DEBUG, "filter: %p l2_filter: %p ref_cnt: %d\n",
+		    filter, l2_filter, l2_filter->l2_ref_cnt);
+
+	if (l2_filter->l2_ref_cnt > 0)
+		l2_filter->l2_ref_cnt--;
+
+	if (l2_filter->l2_ref_cnt > 0)
 		return 0;
 
 	HWRM_PREP(req, CFA_L2_FILTER_FREE, BNXT_USE_CHIMP_MB);

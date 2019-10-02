@@ -16,7 +16,7 @@
  * VNIC Functions
  */
 
-static void prandom_bytes(void *dest_ptr, size_t len)
+void prandom_bytes(void *dest_ptr, size_t len)
 {
 	char *dest = (char *)dest_ptr;
 	uint64_t rb;

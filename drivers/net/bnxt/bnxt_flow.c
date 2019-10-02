@@ -157,9 +157,9 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	int dflt_vnic;
 
 	use_ntuple = bnxt_filter_type_check(pattern, error);
-	PMD_DRV_LOG(DEBUG, "Use NTUPLE %d\n", use_ntuple);
 	if (use_ntuple < 0)
 		return use_ntuple;
+	PMD_DRV_LOG(DEBUG, "Use NTUPLE %d\n", use_ntuple);
 
 	filter->filter_type = use_ntuple ?
 		HWRM_CFA_NTUPLE_FILTER : HWRM_CFA_EM_FILTER;
@@ -724,13 +724,13 @@ bnxt_flow_parse_attr(const struct rte_flow_attr *attr,
 	return 0;
 }
 
-struct bnxt_filter_info *
-bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
-		   struct bnxt_vnic_info *vnic)
+static struct bnxt_filter_info *
+bnxt_find_matching_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 {
-	struct bnxt_filter_info *filter1, *f0;
+	struct bnxt_filter_info *mf, *f0;
 	struct bnxt_vnic_info *vnic0;
-	int rc;
+	struct rte_flow *flow;
+	int i;
 
 	vnic0 = &bp->vnic_info[0];
 	f0 = STAILQ_FIRST(&vnic0->filter);
@@ -739,8 +739,43 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	if (memcmp(f0->l2_addr, nf->dst_macaddr, RTE_ETHER_ADDR_LEN) == 0)
 		return f0;
 
+	for (i = bp->max_vnics - 1; i >= 0; i--) {
+		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+
+		if (vnic->fw_vnic_id == INVALID_VNIC_ID)
+			continue;
+
+		STAILQ_FOREACH(flow, &vnic->flow_list, next) {
+			mf = flow->filter;
+
+			if (mf->matching_l2_fltr_ptr)
+				continue;
+
+			if (mf->ethertype == nf->ethertype &&
+			    mf->l2_ovlan == nf->l2_ovlan &&
+			    mf->l2_ovlan_mask == nf->l2_ovlan_mask &&
+			    mf->l2_ivlan == nf->l2_ivlan &&
+			    mf->l2_ivlan_mask == nf->l2_ivlan_mask &&
+			    !memcmp(mf->src_macaddr, nf->src_macaddr,
+				    RTE_ETHER_ADDR_LEN) &&
+			    !memcmp(mf->dst_macaddr, nf->dst_macaddr,
+				    RTE_ETHER_ADDR_LEN))
+				return mf;
+		}
+	}
+	return NULL;
+}
+
+static struct bnxt_filter_info *
+bnxt_create_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
+		      struct bnxt_vnic_info *vnic)
+{
+	struct bnxt_filter_info *filter1;
+	int rc;
+
 	/* Alloc new L2 filter.
-	 * This flow needs MAC filter which does not match port/l2 MAC.
+	 * This flow needs MAC filter which does not match any existing
+	 * L2 filters.
 	 */
 	filter1 = bnxt_get_unused_filter(bp);
 	if (filter1 == NULL)
@@ -785,7 +820,26 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 		bnxt_free_filter(bp, filter1);
 		return NULL;
 	}
+	filter1->l2_ref_cnt++;
 	return filter1;
+}
+
+struct bnxt_filter_info *
+bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
+		   struct bnxt_vnic_info *vnic)
+{
+	struct bnxt_filter_info *l2_filter = NULL;
+
+	l2_filter = bnxt_find_matching_l2_filter(bp, nf);
+	if (l2_filter) {
+		l2_filter->l2_ref_cnt++;
+		nf->matching_l2_fltr_ptr = l2_filter;
+	} else {
+		l2_filter = bnxt_create_l2_filter(bp, nf, vnic);
+		nf->matching_l2_fltr_ptr = NULL;
+	}
+
+	return l2_filter;
 }
 
 static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic)
@@ -832,6 +886,67 @@ ret:
 	return rc;
 }
 
+static int match_vnic_rss_cfg(struct bnxt *bp,
+			      struct bnxt_vnic_info *vnic,
+			      const struct rte_flow_action_rss *rss)
+{
+	unsigned int match = 0, i;
+
+	if (vnic->rx_queue_cnt != rss->queue_num)
+		return -EINVAL;
+
+	for (i = 0; i < rss->queue_num; i++) {
+		if (!bp->rx_queues[rss->queue[i]]->vnic->rx_queue_cnt &&
+		    !bp->rx_queues[rss->queue[i]]->rx_started)
+			return -EINVAL;
+	}
+
+	for (i = 0; i < vnic->rx_queue_cnt; i++) {
+		int j;
+
+		for (j = 0; j < vnic->rx_queue_cnt; j++) {
+			if (bp->grp_info[rss->queue[i]].fw_grp_id ==
+			    vnic->fw_grp_ids[j])
+				match++;
+		}
+	}
+
+	if (match != vnic->rx_queue_cnt) {
+		PMD_DRV_LOG(ERR,
+			    "VNIC queue count %d vs queues matched %d\n",
+			    match, vnic->rx_queue_cnt);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void
+bnxt_update_filter_flags_en(struct bnxt_filter_info *filter,
+			    struct bnxt_filter_info *filter1,
+			    int use_ntuple)
+{
+	if (!use_ntuple &&
+	    !(filter->valid_flags &
+	      ~(BNXT_FLOW_L2_DST_VALID_FLAG |
+		BNXT_FLOW_L2_SRC_VALID_FLAG |
+		BNXT_FLOW_L2_INNER_SRC_VALID_FLAG |
+		BNXT_FLOW_L2_INNER_DST_VALID_FLAG))) {
+		filter->flags = filter1->flags;
+		filter->enables = filter1->enables;
+		filter->filter_type = HWRM_CFA_L2_FILTER;
+		memcpy(filter->l2_addr, filter1->l2_addr, RTE_ETHER_ADDR_LEN);
+		memset(filter->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
+		filter->pri_hint = filter1->pri_hint;
+		filter->l2_filter_id_hint = filter1->l2_filter_id_hint;
+	}
+	filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
+	filter->l2_ref_cnt = filter1->l2_ref_cnt;
+	PMD_DRV_LOG(DEBUG,
+		"l2_filter: %p fw_l2_filter_id %" PRIx64 " l2_ref_cnt %u\n",
+		filter1, filter->fw_l2_filter_id, filter->l2_ref_cnt);
+}
+
 static int
 bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			     const struct rte_flow_item pattern[],
@@ -846,12 +961,14 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_vf *act_vf;
+	struct bnxt_filter_info *filter1 = NULL;
+	const struct rte_flow_action_rss *rss;
 	struct bnxt_vnic_info *vnic, *vnic0;
-	struct bnxt_filter_info *filter1;
 	struct bnxt_rx_queue *rxq = NULL;
 	int dflt_vnic, vnic_id;
-	uint32_t vf = 0;
-	int rc;
+	unsigned int rss_idx;
+	uint32_t vf = 0, i;
+	int rc, use_ntuple;
 
 	rc =
 	bnxt_validate_and_parse_flow_type(bp, attr, pattern, error, filter);
@@ -866,6 +983,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	if (filter->filter_type == HWRM_CFA_EM_FILTER)
 		filter->flags = HWRM_CFA_EM_FLOW_ALLOC_INPUT_FLAGS_PATH_RX;
 
+	use_ntuple = bnxt_filter_type_check(pattern, error);
 	switch (act->type) {
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
 		/* Allow this flow. Redirect to a VNIC. */
@@ -886,7 +1004,6 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			PMD_DRV_LOG(DEBUG, "Group id is 0\n");
 			vnic_id = act_q->index;
 		}
-		PMD_DRV_LOG(DEBUG, "VNIC found\n");
 
 		vnic = &bp->vnic_info[vnic_id];
 		if (vnic == NULL) {
@@ -919,10 +1036,13 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		    vnic->fw_vnic_id != INVALID_HW_RING_ID)
 			goto use_vnic;
 
+		//if (!rxq ||
+		    //bp->vnic_info[0].fw_grp_ids[act_q->index] !=
+		    //INVALID_HW_RING_ID ||
+		    //!rxq->rx_deferred_start) {
 		if (!rxq ||
 		    bp->vnic_info[0].fw_grp_ids[act_q->index] !=
-		    INVALID_HW_RING_ID ||
-		    !rxq->rx_deferred_start) {
+		    INVALID_HW_RING_ID) {
 			PMD_DRV_LOG(ERR,
 				    "Queue invalid or used with other VNIC\n");
 			rte_flow_error_set(error,
@@ -934,8 +1054,8 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			goto ret;
 		}
 
-use_vnic:
 		rxq->vnic = vnic;
+		rxq->rx_started = 1;
 		vnic->rx_queue_cnt++;
 		vnic->start_grp_id = act_q->index;
 		vnic->end_grp_id = act_q->index;
@@ -951,6 +1071,7 @@ use_vnic:
 			    "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
 			    act_q->index, vnic, vnic->fw_grp_ids);
 
+use_vnic:
 		vnic->ff_pool_idx = vnic_id;
 		PMD_DRV_LOG(DEBUG,
 			    "Setting vnic ff_idx %d\n", vnic->ff_pool_idx);
@@ -961,20 +1082,9 @@ use_vnic:
 			goto ret;
 		}
 
-		if (!(filter->valid_flags &
-		      ~(BNXT_FLOW_L2_DST_VALID_FLAG |
-			BNXT_FLOW_L2_SRC_VALID_FLAG |
-			BNXT_FLOW_L2_INNER_SRC_VALID_FLAG |
-			BNXT_FLOW_L2_INNER_DST_VALID_FLAG))) {
-			PMD_DRV_LOG(DEBUG, "L2 filter created\n");
-			filter->flags = filter1->flags;
-			filter->enables = filter1->enables;
-			filter->filter_type = HWRM_CFA_L2_FILTER;
-			memset(filter->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
-			filter->pri_hint = filter1->pri_hint;
-			filter->l2_filter_id_hint = filter1->l2_filter_id_hint;
-		}
-		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
+		PMD_DRV_LOG(DEBUG, "new fltr: %p l2fltr: %p l2_ref_cnt: %d\n",
+			    filter, filter1, filter1->l2_ref_cnt);
+		bnxt_update_filter_flags_en(filter, filter1, use_ntuple);
 		break;
 	case RTE_FLOW_ACTION_TYPE_DROP:
 		vnic0 = &bp->vnic_info[0];
@@ -1066,15 +1176,158 @@ use_vnic:
 		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
 		break;
 	case RTE_FLOW_ACTION_TYPE_RSS:
-		rte_flow_error_set(error,
-				   ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ACTION,
-				   act,
-				   "This action is not supported right now.");
-		rc = -rte_errno;
-		goto ret;
-		//break;
+		rss = (const struct rte_flow_action_rss *)act->conf;
 
+		vnic_id = attr->group;
+		if (!vnic_id) {
+			PMD_DRV_LOG(ERR, "Group id cannot be 0\n");
+			rte_flow_error_set(error,
+					   EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ATTR,
+					   NULL,
+					   "Group id cannot be 0");
+			rc = -rte_errno;
+			goto ret;
+		}
+
+		vnic = &bp->vnic_info[vnic_id];
+		if (vnic == NULL) {
+			rte_flow_error_set(error,
+					   EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "No matching VNIC for RSS group.");
+			rc = -rte_errno;
+			goto ret;
+		}
+		PMD_DRV_LOG(DEBUG, "VNIC found\n");
+
+		/* Check if requested RSS config matches RSS config of VNIC
+		 * only if it is not a fresh VNIC configuration.
+		 * Otherwise the existing VNIC configuration can be used.
+		 */
+		if (vnic->rx_queue_cnt) {
+			rc = match_vnic_rss_cfg(bp, vnic, rss);
+			if (rc) {
+				PMD_DRV_LOG(ERR,
+					    "VNIC and RSS config mismatch\n");
+				rte_flow_error_set(error,
+						   EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   act,
+						   "VNIC and RSS cfg mismatch");
+				rc = -rte_errno;
+				goto ret;
+			}
+			goto vnic_found;
+		}
+
+		for (i = 0; i < rss->queue_num; i++) {
+			PMD_DRV_LOG(DEBUG, "RSS action Queue %d\n",
+				    rss->queue[i]);
+
+			if (!rss->queue[i] ||
+			    rss->queue[i] >= bp->rx_nr_rings ||
+			    !bp->rx_queues[rss->queue[i]]) {
+				rte_flow_error_set(error,
+						   EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   act,
+						   "Invalid queue ID for RSS");
+				rc = -rte_errno;
+				goto ret;
+			}
+			rxq = bp->rx_queues[rss->queue[i]];
+
+			//if (bp->vnic_info[0].fw_grp_ids[rss->queue[i]] !=
+			    //INVALID_HW_RING_ID ||
+			    //!rxq->rx_deferred_start) {
+			if (bp->vnic_info[0].fw_grp_ids[rss->queue[i]] !=
+			    INVALID_HW_RING_ID) {
+				PMD_DRV_LOG(ERR,
+					    "queue active with other VNIC\n");
+				rte_flow_error_set(error,
+						   EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   act,
+						   "Invalid queue ID for RSS");
+				rc = -rte_errno;
+				goto ret;
+			}
+
+			rxq->vnic = vnic;
+			rxq->rx_started = 1;
+			vnic->rx_queue_cnt++;
+		}
+
+		vnic->start_grp_id = rss->queue[0];
+		vnic->end_grp_id = rss->queue[rss->queue_num - 1];
+		vnic->func_default = 0;	//This is not a default VNIC.
+
+		rc = bnxt_vnic_prep(bp, vnic);
+		if (rc)
+			goto ret;
+
+		PMD_DRV_LOG(DEBUG,
+			    "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
+			    vnic_id, vnic, vnic->fw_grp_ids);
+
+		vnic->ff_pool_idx = vnic_id;
+		PMD_DRV_LOG(DEBUG,
+			    "Setting vnic ff_pool_idx %d\n", vnic->ff_pool_idx);
+
+		/* This can be done only after vnic_grp_alloc is done. */
+		for (i = 0; i < vnic->rx_queue_cnt; i++) {
+			vnic->fw_grp_ids[i] =
+				bp->grp_info[rss->queue[i]].fw_grp_id;
+			/* Make sure vnic0 does not use these rings. */
+			bp->vnic_info[0].fw_grp_ids[rss->queue[i]] =
+				INVALID_HW_RING_ID;
+		}
+
+		for (rss_idx = 0; rss_idx < HW_HASH_INDEX_SIZE; ) {
+			for (i = 0; i < vnic->rx_queue_cnt; i++)
+				vnic->rss_table[rss_idx++] =
+					vnic->fw_grp_ids[i];
+		}
+
+		/* Configure RSS only if the queue count is > 1 */
+		if (vnic->rx_queue_cnt > 1) {
+			vnic->hash_type =
+				bnxt_rte_to_hwrm_hash_types(rss->types);
+
+			if (!rss->key_len) {
+				/* If hash key has not been specified,
+				 * use random hash key.
+				 */
+				prandom_bytes(vnic->rss_hash_key,
+					      HW_HASH_KEY_SIZE);
+			} else {
+				if (rss->key_len > HW_HASH_KEY_SIZE)
+					memcpy(vnic->rss_hash_key,
+					       rss->key,
+					       HW_HASH_KEY_SIZE);
+				else
+					memcpy(vnic->rss_hash_key,
+					       rss->key,
+					       rss->key_len);
+			}
+			bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+		} else {
+			PMD_DRV_LOG(DEBUG, "No RSS config required\n");
+		}
+
+vnic_found:
+		filter->dst_id = vnic->fw_vnic_id;
+		filter1 = bnxt_get_l2_filter(bp, filter, vnic);
+		if (filter1 == NULL) {
+			rc = -ENOSPC;
+			goto ret;
+		}
+
+		PMD_DRV_LOG(DEBUG, "L2 filter created\n");
+		bnxt_update_filter_flags_en(filter, filter1, use_ntuple);
+		break;
 	default:
 		rte_flow_error_set(error,
 				   EINVAL,
@@ -1085,10 +1338,11 @@ use_vnic:
 		goto ret;
 	}
 
-	if (filter1) {
+	if (filter1 && !filter->matching_l2_fltr_ptr) {
 		bnxt_free_filter(bp, filter1);
 		filter1->fw_l2_filter_id = -1;
 	}
+
 done:
 	act = bnxt_flow_non_void_action(++act);
 	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
@@ -1132,6 +1386,28 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 	bnxt_free_filter(bp, filter);
 
 	return ret;
+}
+
+static void
+bnxt_update_filter(struct bnxt *bp, struct bnxt_filter_info *old_filter,
+		   struct bnxt_filter_info *new_filter)
+{
+	/* Clear the new L2 filter that was created in the previous step in
+	 * bnxt_validate_and_parse_flow. For L2 filters, we will use the new
+	 * filter which points to the new destination queue and so we clear
+	 * the previous L2 filter. For ntuple filters, we are going to reuse
+	 * the old L2 filter and create new NTUPLE filter with this new
+	 * destination queue subsequently during bnxt_flow_create.
+	 */
+	if (new_filter->filter_type == HWRM_CFA_L2_FILTER) {
+		bnxt_hwrm_clear_l2_filter(bp, old_filter);
+		bnxt_hwrm_set_l2_filter(bp, new_filter->dst_id, new_filter);
+	} else {
+		if (new_filter->filter_type == HWRM_CFA_EM_FILTER)
+			bnxt_hwrm_clear_em_filter(bp, old_filter);
+		if (new_filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
+			bnxt_hwrm_clear_ntuple_filter(bp, old_filter);
+	}
 }
 
 static int
@@ -1183,24 +1459,13 @@ bnxt_match_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 				    sizeof(nf->dst_ipaddr_mask))) {
 				if (mf->dst_id == nf->dst_id)
 					return -EEXIST;
-				/* Clear the new L2 filter that was created
-				 * earlier in bnxt_validate_and_parse_flow.
-				 */
-				bnxt_hwrm_clear_l2_filter(bp, nf);
-				/*
-				 * Same Flow, Different queue
-				 * Clear the old ntuple filter
-				 * Reuse the matching L2 filter
-				 * ID for the new filter
-				 */
-				nf->fw_l2_filter_id = mf->fw_l2_filter_id;
-				if (nf->filter_type == HWRM_CFA_EM_FILTER)
-					bnxt_hwrm_clear_em_filter(bp, mf);
-				if (nf->filter_type == HWRM_CFA_NTUPLE_FILTER)
-					bnxt_hwrm_clear_ntuple_filter(bp, mf);
 				/* Free the old filter, update flow
 				 * with new filter
 				 */
+				bnxt_update_filter(bp, mf, nf);
+				STAILQ_REMOVE(&vnic->filter, mf,
+					      bnxt_filter_info, next);
+				STAILQ_INSERT_TAIL(&vnic->filter, nf, next);
 				bnxt_free_filter(bp, mf);
 				flow->filter = nf;
 				return -EXDEV;
@@ -1333,7 +1598,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		}
 	}
 done:
-	if (!ret) {
+	if (!ret || update_flow) {
 		flow->filter = filter;
 		flow->vnic = vnic;
 		/* VNIC is set only in case of queue or RSS action */
@@ -1371,8 +1636,8 @@ free_flow:
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Matching Flow exists.");
 	else if (ret == -EXDEV)
-		rte_flow_error_set(error, ret,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+		rte_flow_error_set(error, 0,
+				   RTE_FLOW_ERROR_TYPE_NONE, NULL,
 				   "Flow with pattern exists, updating destination queue");
 	else if (!rte_errno)
 		rte_flow_error_set(error, -ret,
@@ -1457,8 +1722,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 		ret = bnxt_hwrm_clear_em_filter(bp, filter);
 	if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
 		ret = bnxt_hwrm_clear_ntuple_filter(bp, filter);
-	else
-		ret = bnxt_hwrm_clear_l2_filter(bp, filter);
+	ret = bnxt_hwrm_clear_l2_filter(bp, filter);
 
 done:
 	if (!ret) {
