@@ -1776,8 +1776,9 @@ int bnxt_hwrm_vnic_ctx_alloc(struct bnxt *bp,
 	return rc;
 }
 
-int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp,
-			    struct bnxt_vnic_info *vnic, uint16_t ctx_idx)
+static
+int _bnxt_hwrm_vnic_ctx_free(struct bnxt *bp,
+			     struct bnxt_vnic_info *vnic, uint16_t ctx_idx)
 {
 	int rc = 0;
 	struct hwrm_vnic_rss_cos_lb_ctx_free_input req = {.req_type = 0 };
@@ -1796,6 +1797,28 @@ int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp,
 
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	int rc = 0;
+
+	if (BNXT_CHIP_THOR(bp)) {
+		int j;
+
+		for (j = 0; j < vnic->num_lb_ctxts; j++) {
+			rc = _bnxt_hwrm_vnic_ctx_free(bp,
+						      vnic,
+						      vnic->fw_grp_ids[j]);
+			vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
+		}
+		vnic->num_lb_ctxts = 0;
+	} else {
+		rc = _bnxt_hwrm_vnic_ctx_free(bp, vnic, vnic->rss_rule);
+		vnic->rss_rule = INVALID_HW_RING_ID;
+	}
 
 	return rc;
 }
@@ -2416,7 +2439,7 @@ void bnxt_free_tunnel_ports(struct bnxt *bp)
 
 void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 {
-	int i, j;
+	int i;
 
 	if (bp->vnic_info == NULL)
 		return;
@@ -2436,17 +2459,7 @@ void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 
 		bnxt_clear_hwrm_vnic_filters(bp, vnic);
 
-		if (BNXT_CHIP_THOR(bp)) {
-			for (j = 0; j < vnic->num_lb_ctxts; j++) {
-				bnxt_hwrm_vnic_ctx_free(bp, vnic,
-							vnic->fw_grp_ids[j]);
-				vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
-			}
-			vnic->num_lb_ctxts = 0;
-		} else {
-			bnxt_hwrm_vnic_ctx_free(bp, vnic, vnic->rss_rule);
-			vnic->rss_rule = INVALID_HW_RING_ID;
-		}
+		bnxt_hwrm_vnic_ctx_free(bp, vnic);
 
 		bnxt_hwrm_vnic_tpa_cfg(bp, vnic, false);
 

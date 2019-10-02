@@ -1355,6 +1355,25 @@ ret:
 	return rc;
 }
 
+static
+struct bnxt_vnic_info *find_matching_vnic(struct bnxt *bp,
+					  struct bnxt_filter_info *filter)
+{
+	struct bnxt_vnic_info *vnic = NULL;
+	unsigned int i;
+
+	for (i = 0; i < bp->max_vnics; i++) {
+		vnic = &bp->vnic_info[i];
+		if (vnic->fw_vnic_id != INVALID_VNIC_ID &&
+		    filter->dst_id == vnic->fw_vnic_id) {
+			PMD_DRV_LOG(DEBUG, "Found matching VNIC Id %d\n",
+				    vnic->ff_pool_idx);
+			return vnic;
+		}
+	}
+	return NULL;
+}
+
 static int
 bnxt_flow_validate(struct rte_eth_dev *dev,
 		   const struct rte_flow_attr *attr,
@@ -1363,6 +1382,7 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 		   struct rte_flow_error *error)
 {
 	struct bnxt *bp = dev->data->dev_private;
+	struct bnxt_vnic_info *vnic = NULL;
 	struct bnxt_filter_info *filter;
 	int ret = 0;
 
@@ -1378,6 +1398,26 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 
 	ret = bnxt_validate_and_parse_flow(dev, pattern, actions, attr,
 					   error, filter);
+
+	vnic = find_matching_vnic(bp, filter);
+	if (vnic) {
+		if (STAILQ_EMPTY(&vnic->filter)) {
+			rte_free(vnic->fw_grp_ids);
+			bnxt_hwrm_vnic_ctx_free(bp, vnic);
+			bnxt_hwrm_vnic_free(bp, vnic);
+			vnic->rx_queue_cnt = 0;
+			bp->nr_vnics--;
+			PMD_DRV_LOG(DEBUG, "Free VNIC\n");
+		}
+	}
+
+	if (filter->filter_type == HWRM_CFA_EM_FILTER)
+		bnxt_hwrm_clear_em_filter(bp, filter);
+	else if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
+		bnxt_hwrm_clear_ntuple_filter(bp, filter);
+	else
+		bnxt_hwrm_clear_l2_filter(bp, filter);
+
 	/* No need to hold on to this filter if we are just validating flow */
 	filter->fw_l2_filter_id = UINT64_MAX;
 	bnxt_free_filter(bp, filter);
@@ -1414,7 +1454,7 @@ bnxt_match_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 	struct rte_flow *flow;
 	int i;
 
-	for (i = bp->max_vnics; i >= 0; i--) {
+	for (i = bp->max_vnics - 1; i >= 0; i--) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
 
 		if (vnic->fw_vnic_id == INVALID_VNIC_ID)
@@ -1484,7 +1524,6 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	struct bnxt_filter_info *filter;
 	bool update_flow = false;
 	struct rte_flow *flow;
-	unsigned int i;
 	int ret = 0;
 	uint32_t tun_type;
 
@@ -1585,15 +1624,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		ret = bnxt_hwrm_set_ntuple_filter(bp, filter->dst_id, filter);
 	}
 
-	for (i = 0; i < bp->max_vnics; i++) {
-		vnic = &bp->vnic_info[i];
-		if (vnic->fw_vnic_id != INVALID_VNIC_ID &&
-		    filter->dst_id == vnic->fw_vnic_id) {
-			PMD_DRV_LOG(ERR, "Found matching VNIC Id %d\n",
-				    vnic->ff_pool_idx);
-			break;
-		}
-	}
+	vnic = find_matching_vnic(bp, filter);
 done:
 	if (!ret || update_flow) {
 		flow->filter = filter;
@@ -1734,26 +1765,9 @@ done:
 		 */
 		if (vnic && STAILQ_EMPTY(&vnic->flow_list)) {
 			rte_free(vnic->fw_grp_ids);
-			if (vnic->rx_queue_cnt > 1) {
-				if (BNXT_CHIP_THOR(bp)) {
-					int j;
+			if (vnic->rx_queue_cnt > 1)
+				bnxt_hwrm_vnic_ctx_free(bp, vnic);
 
-					for (j = 0; j < vnic->num_lb_ctxts;
-					     j++) {
-						bnxt_hwrm_vnic_ctx_free(bp,
-                                                                        vnic,
-                                                                        vnic->fw_grp_ids[j]);
-						vnic->fw_grp_ids[j] =
-							INVALID_HW_RING_ID;
-					}
-					vnic->num_lb_ctxts = 0;
-				} else {
-					bnxt_hwrm_vnic_ctx_free(bp,
-								vnic,
-								vnic->rss_rule);
-					vnic->rss_rule = INVALID_HW_RING_ID;
-				}
-			}
 			bnxt_hwrm_vnic_free(bp, vnic);
 			vnic->rx_queue_cnt = 0;
 			bp->nr_vnics--;
