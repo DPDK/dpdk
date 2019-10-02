@@ -630,6 +630,13 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_STATS_SUPPORTED)
 		bp->flags |= BNXT_FLAG_EXT_STATS_SUPPORTED;
 
+	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ERROR_RECOVERY_CAPABLE) {
+		bp->flags |= BNXT_FLAG_FW_CAP_ERROR_RECOVERY;
+		PMD_DRV_LOG(DEBUG, "Adapter Error recovery SUPPORTED\n");
+	} else {
+		bp->flags &= ~BNXT_FLAG_FW_CAP_ERROR_RECOVERY;
+	}
+
 	HWRM_UNLOCK();
 
 	return rc;
@@ -4700,4 +4707,90 @@ int bnxt_hwrm_if_change(struct bnxt *bp, bool up)
 	}
 
 	return 0;
+}
+
+int bnxt_hwrm_error_recovery_qcfg(struct bnxt *bp)
+{
+	struct hwrm_error_recovery_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_error_recovery_info *info = bp->recovery_info;
+	struct hwrm_error_recovery_qcfg_input req = {0};
+	uint32_t flags = 0;
+	unsigned int i;
+	int rc;
+
+	/* Older FW does not have error recovery support */
+	if (!(bp->flags & BNXT_FLAG_FW_CAP_ERROR_RECOVERY))
+		return 0;
+
+	if (!info) {
+		info = rte_zmalloc("bnxt_hwrm_error_recovery_qcfg",
+				   sizeof(*info), 0);
+		bp->recovery_info = info;
+		if (info == NULL)
+			return -ENOMEM;
+	} else {
+		memset(info, 0, sizeof(*info));
+	}
+
+	HWRM_PREP(req, ERROR_RECOVERY_QCFG, BNXT_USE_CHIMP_MB);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	flags = rte_le_to_cpu_32(resp->flags);
+	if (flags & HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FLAGS_HOST)
+		info->flags |= BNXT_FLAG_ERROR_RECOVERY_HOST;
+	else if (flags & HWRM_ERROR_RECOVERY_QCFG_OUTPUT_FLAGS_CO_CPU)
+		info->flags |= BNXT_FLAG_ERROR_RECOVERY_CO_CPU;
+
+	if ((info->flags & BNXT_FLAG_ERROR_RECOVERY_CO_CPU) &&
+	    !(bp->flags & BNXT_FLAG_KONG_MB_EN)) {
+		rc = -EINVAL;
+		goto err;
+	}
+
+	/* FW returned values are in units of 100msec */
+	info->driver_polling_freq =
+		rte_le_to_cpu_32(resp->driver_polling_freq) * 100;
+	info->master_func_wait_period =
+		rte_le_to_cpu_32(resp->master_func_wait_period) * 100;
+	info->normal_func_wait_period =
+		rte_le_to_cpu_32(resp->normal_func_wait_period) * 100;
+	info->master_func_wait_period_after_reset =
+		rte_le_to_cpu_32(resp->master_func_wait_period_after_reset) * 100;
+	info->max_bailout_time_after_reset =
+		rte_le_to_cpu_32(resp->max_bailout_time_after_reset) * 100;
+	info->status_regs[BNXT_FW_STATUS_REG] =
+		rte_le_to_cpu_32(resp->fw_health_status_reg);
+	info->status_regs[BNXT_FW_HEARTBEAT_CNT_REG] =
+		rte_le_to_cpu_32(resp->fw_heartbeat_reg);
+	info->status_regs[BNXT_FW_RECOVERY_CNT_REG] =
+		rte_le_to_cpu_32(resp->fw_reset_cnt_reg);
+	info->status_regs[BNXT_FW_RESET_INPROG_REG] =
+		rte_le_to_cpu_32(resp->reset_inprogress_reg);
+	info->reg_array_cnt =
+		rte_le_to_cpu_32(resp->reg_array_cnt);
+
+	if (info->reg_array_cnt >= BNXT_NUM_RESET_REG) {
+		rc = -EINVAL;
+		goto err;
+	}
+
+	for (i = 0; i < info->reg_array_cnt; i++) {
+		info->reset_reg[i] =
+			rte_le_to_cpu_32(resp->reset_reg[i]);
+		info->reset_reg_val[i] =
+			rte_le_to_cpu_32(resp->reset_reg_val[i]);
+		info->delay_after_reset[i] =
+			resp->delay_after_reset[i];
+	}
+err:
+	HWRM_UNLOCK();
+
+	if (rc) {
+		rte_free(bp->recovery_info);
+		bp->recovery_info = NULL;
+	}
+	return rc;
 }

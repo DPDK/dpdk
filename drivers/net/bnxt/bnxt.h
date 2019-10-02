@@ -343,6 +343,29 @@ struct bnxt_ctx_mem_info {
 #define US_PER_MS			1000
 #define NS_PER_US			1000
 
+struct bnxt_error_recovery_info {
+	/* All units in milliseconds */
+	uint32_t	driver_polling_freq;
+	uint32_t	master_func_wait_period;
+	uint32_t	normal_func_wait_period;
+	uint32_t	master_func_wait_period_after_reset;
+	uint32_t	max_bailout_time_after_reset;
+#define BNXT_FW_STATUS_REG		0
+#define BNXT_FW_HEARTBEAT_CNT_REG	1
+#define BNXT_FW_RECOVERY_CNT_REG	2
+#define BNXT_FW_RESET_INPROG_REG	3
+	uint32_t	status_regs[4];
+	uint32_t	reset_inprogress_reg_mask;
+#define BNXT_NUM_RESET_REG	16
+	uint8_t		reg_array_cnt;
+	uint32_t	reset_reg[BNXT_NUM_RESET_REG];
+	uint32_t	reset_reg_val[BNXT_NUM_RESET_REG];
+	uint8_t		delay_after_reset[BNXT_NUM_RESET_REG];
+#define BNXT_FLAG_ERROR_RECOVERY_HOST	(1 << 0)
+#define BNXT_FLAG_ERROR_RECOVERY_CO_CPU	(1 << 1)
+	uint32_t	flags;
+};
+
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
 	void				*bar0;
@@ -372,6 +395,7 @@ struct bnxt {
 #define BNXT_FLAG_FATAL_ERROR	(1 << 16)
 #define BNXT_FLAG_FW_CAP_IF_CHANGE	(1 << 17)
 #define BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE	(1 << 18)
+#define BNXT_FLAG_FW_CAP_ERROR_RECOVERY		(1 << 19)
 #define BNXT_FLAG_EXT_STATS_SUPPORTED	(1 << 29)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1U << 31)
@@ -478,6 +502,9 @@ struct bnxt {
 
 	uint16_t		fw_reset_min_msecs;
 	uint16_t		fw_reset_max_msecs;
+
+	/* Struct to hold adapter error recovery related info */
+	struct bnxt_error_recovery_info *recovery_info;
 };
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);

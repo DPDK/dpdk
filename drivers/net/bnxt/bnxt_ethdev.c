@@ -4170,6 +4170,11 @@ static int bnxt_init_fw(struct bnxt *bp)
 	if (rc)
 		return rc;
 
+	/* Get the adapter error recovery support info */
+	rc = bnxt_hwrm_error_recovery_qcfg(bp);
+	if (rc)
+		bp->flags &= ~BNXT_FLAG_FW_CAP_ERROR_RECOVERY;
+
 	if (mtu >= RTE_ETHER_MIN_MTU && mtu <= BNXT_MAX_MTU &&
 	    mtu != bp->eth_dev->data->mtu)
 		bp->eth_dev->data->mtu = mtu;
@@ -4328,8 +4333,14 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
 	bp->flags &= ~BNXT_FLAG_REGISTERED;
 	bnxt_free_ctx_mem(bp);
-	if (!reconfig_dev)
+	if (!reconfig_dev) {
 		bnxt_free_hwrm_resources(bp);
+
+		if (bp->recovery_info != NULL) {
+			rte_free(bp->recovery_info);
+			bp->recovery_info = NULL;
+		}
+	}
 
 	return rc;
 }
