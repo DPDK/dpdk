@@ -741,6 +741,7 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_LINK_STATUS_CHANGE |
 				 ASYNC_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED |
 				 ASYNC_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE |
+				 ASYNC_CMPL_EVENT_ID_LINK_SPEED_CHANGE |
 				 ASYNC_CMPL_EVENT_ID_RESET_NOTIFY);
 	if (bp->flags & BNXT_FLAG_FW_CAP_ERROR_RECOVERY)
 		req.async_event_fwd[0] |=
