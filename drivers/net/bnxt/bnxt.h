@@ -488,7 +488,6 @@ struct bnxt {
 
 	struct bnxt_irq         *irq_tbl;
 
-#define MAX_NUM_MAC_ADDR	32
 	uint8_t			mac_addr[RTE_ETHER_ADDR_LEN];
 
 	uint16_t			hwrm_cmd_seq;
