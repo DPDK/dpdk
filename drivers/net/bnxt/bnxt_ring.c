@@ -583,6 +583,42 @@ err_out:
 	return rc;
 }
 
+/* Initialise all rings to -1, its used to free rings later if allocation
+ * of few rings fails.
+ */
+static void bnxt_init_all_rings(struct bnxt *bp)
+{
+	unsigned int i = 0;
+	struct bnxt_rx_queue *rxq;
+	struct bnxt_ring *cp_ring;
+	struct bnxt_ring *ring;
+	struct bnxt_rx_ring_info *rxr;
+	struct bnxt_tx_queue *txq;
+
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+		rxq = bp->rx_queues[i];
+		/* Rx-compl */
+		cp_ring = rxq->cp_ring->cp_ring_struct;
+		cp_ring->fw_ring_id = INVALID_HW_RING_ID;
+		/* Rx-Reg */
+		rxr = rxq->rx_ring;
+		ring = rxr->rx_ring_struct;
+		ring->fw_ring_id = INVALID_HW_RING_ID;
+		/* Rx-AGG */
+		ring = rxr->ag_ring_struct;
+		ring->fw_ring_id = INVALID_HW_RING_ID;
+	}
+	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
+		txq = bp->tx_queues[i];
+		/* Tx cmpl */
+		cp_ring = txq->cp_ring->cp_ring_struct;
+		cp_ring->fw_ring_id = INVALID_HW_RING_ID;
+		/*Tx Ring */
+		ring = txq->tx_ring->tx_ring_struct;
+		ring->fw_ring_id = INVALID_HW_RING_ID;
+	}
+}
+
 /* ring_grp usage:
  * [0] = default completion ring
  * [1 -> +rx_cp_nr_rings] = rx_cp, rx rings
@@ -596,6 +632,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 	int rc = 0;
 
 	bnxt_init_dflt_coal(&coal);
+	bnxt_init_all_rings(bp);
 
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
