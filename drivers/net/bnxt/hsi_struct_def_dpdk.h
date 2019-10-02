@@ -33621,4 +33621,141 @@ struct hwrm_nvm_validate_option_cmd_err {
 	uint8_t	unused_0[7];
 } __attribute__((packed));
 
+/*****************
+ * hwrm_fw_reset *
+ ******************/
+
+
+/* hwrm_fw_reset_input (size:192b/24B) */
+struct hwrm_fw_reset_input {
+	/* The HWRM command request type. */
+	uint16_t        req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t        cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t        seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t        target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t        resp_addr;
+	/* Type of embedded processor. */
+	uint8_t embedded_proc_type;
+	/* Boot Processor */
+	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_BOOT \
+		UINT32_C(0x0)
+	/* Management Processor */
+	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_MGMT \
+		UINT32_C(0x1)
+	/* Network control processor */
+	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_NETCTRL \
+		UINT32_C(0x2)
+	/* RoCE control processor */
+	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_ROCE \
+		UINT32_C(0x3)
+	/*
+	 * Host (in multi-host environment): This is only valid if requester is IPC.
+	 * Reinit host hardware resources and PCIe.
+	 */
+	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_HOST \
+		UINT32_C(0x4)
+	/* AP processor complex (in multi-host environment). Use host_idx to control which core is reset */
+	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_AP \
+		UINT32_C(0x5)
+	/* Reset all blocks of the chip (including all processors) */
+	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_CHIP \
+		UINT32_C(0x6)
+	/*
+	 * Host (in multi-host environment): This is only valid if requester is IPC.
+	 * Reinit host hardware resources.
+	 */
+	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_HOST_RESOURCE_REINIT \
+		UINT32_C(0x7)
+	#define HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_LAST \
+		HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_HOST_RESOURCE_REINIT
+	/* Type of self reset. */
+	uint8_t selfrst_status;
+	/* No Self Reset */
+	#define HWRM_FW_RESET_INPUT_SELFRST_STATUS_SELFRSTNONE \
+		UINT32_C(0x0)
+	/* Self Reset as soon as possible to do so safely */
+	#define HWRM_FW_RESET_INPUT_SELFRST_STATUS_SELFRSTASAP \
+		UINT32_C(0x1)
+	/* Self Reset on PCIe Reset */
+	#define HWRM_FW_RESET_INPUT_SELFRST_STATUS_SELFRSTPCIERST \
+		UINT32_C(0x2)
+	/* Self Reset immediately after notification to all clients. */
+	#define HWRM_FW_RESET_INPUT_SELFRST_STATUS_SELFRSTIMMEDIATE \
+		UINT32_C(0x3)
+	#define HWRM_FW_RESET_INPUT_SELFRST_STATUS_LAST \
+		HWRM_FW_RESET_INPUT_SELFRST_STATUS_SELFRSTIMMEDIATE
+	/*
+	 * Indicate which host is being reset. 0 means first host.
+	 * Only valid when embedded_proc_type is host in multihost
+	 * environment
+	 */
+	uint8_t host_idx;
+	uint8_t flags;
+	/*
+	 * When this bit is '1', then the core firmware initiates
+	 * the reset only after graceful shut down of all registered instances.
+	 * If not, the device will continue with the existing firmware.
+	 */
+	#define HWRM_FW_RESET_INPUT_FLAGS_RESET_GRACEFUL     UINT32_C(0x1)
+	uint8_t unused_0[4];
+} __attribute__((packed));
+
+/* hwrm_fw_reset_output (size:128b/16B) */
+struct hwrm_fw_reset_output {
+	/* The specific error status for the command. */
+	uint16_t        error_code;
+	/* The HWRM command request type. */
+	uint16_t        req_type;
+	/* The sequence ID from the original command. */
+	uint16_t        seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t        resp_len;
+	/* Type of self reset. */
+	uint8_t selfrst_status;
+	/* No Self Reset */
+	#define HWRM_FW_RESET_OUTPUT_SELFRST_STATUS_SELFRSTNONE \
+		UINT32_C(0x0)
+	/* Self Reset as soon as possible to do so safely */
+	#define HWRM_FW_RESET_OUTPUT_SELFRST_STATUS_SELFRSTASAP \
+		UINT32_C(0x1)
+	/* Self Reset on PCIe Reset */
+	#define HWRM_FW_RESET_OUTPUT_SELFRST_STATUS_SELFRSTPCIERST \
+		UINT32_C(0x2)
+	/* Self Reset immediately after notification to all clients. */
+	#define HWRM_FW_RESET_OUTPUT_SELFRST_STATUS_SELFRSTIMMEDIATE \
+		UINT32_C(0x3)
+	#define HWRM_FW_RESET_OUTPUT_SELFRST_STATUS_LAST \
+		HWRM_FW_RESET_OUTPUT_SELFRST_STATUS_SELFRSTIMMEDIATE
+	uint8_t unused_0[6];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */
