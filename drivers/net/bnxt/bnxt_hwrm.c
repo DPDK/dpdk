@@ -2362,7 +2362,8 @@ bnxt_clear_hwrm_vnic_flows(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct rte_flow *flow;
 	int rc = 0;
 
-	STAILQ_FOREACH(flow, &vnic->flow_list, next) {
+	while (!STAILQ_EMPTY(&vnic->flow_list)) {
+		flow = STAILQ_FIRST(&vnic->flow_list);
 		filter = flow->filter;
 		PMD_DRV_LOG(DEBUG, "filter type %d\n", filter->filter_type);
 		if (filter->filter_type == HWRM_CFA_EM_FILTER)
@@ -2424,13 +2425,12 @@ void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 	 * Cleanup VNICs in reverse order, to make sure the L2 filter
 	 * from vnic0 is last to be cleaned up.
 	 */
-	for (i = bp->nr_vnics - 1; i >= 0; i--) {
+	for (i = bp->max_vnics - 1; i >= 0; i--) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
 
-		if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
-			PMD_DRV_LOG(DEBUG, "Invalid vNIC ID\n");
-			return;
-		}
+		// If the VNIC ID is invalid we are not currently using the VNIC
+		if (vnic->fw_vnic_id == INVALID_HW_RING_ID)
+			continue;
 
 		bnxt_clear_hwrm_vnic_flows(bp, vnic);
 
@@ -4307,23 +4307,31 @@ int bnxt_vnic_rss_configure(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	if (BNXT_CHIP_THOR(bp))
 		return bnxt_vnic_rss_configure_thor(bp, vnic);
 
-	/*
-	 * Fill the RSS hash & redirection table with
-	 * ring group ids for all VNICs
-	 */
-	for (rss_idx = 0, fw_idx = 0; rss_idx < HW_HASH_INDEX_SIZE;
-		rss_idx++, fw_idx++) {
-		for (i = 0; i < bp->rx_cp_nr_rings; i++) {
-			fw_idx %= bp->rx_cp_nr_rings;
-			if (vnic->fw_grp_ids[fw_idx] != INVALID_HW_RING_ID)
-				break;
-			fw_idx++;
+	if (vnic->fw_vnic_id == INVALID_HW_RING_ID)
+		return 0;
+
+	if (vnic->rss_table && vnic->hash_type) {
+		/*
+		 * Fill the RSS hash & redirection table with
+		 * ring group ids for all VNICs
+		 */
+		for (rss_idx = 0, fw_idx = 0; rss_idx < HW_HASH_INDEX_SIZE;
+			rss_idx++, fw_idx++) {
+			for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+				fw_idx %= bp->rx_cp_nr_rings;
+				if (vnic->fw_grp_ids[fw_idx] !=
+				    INVALID_HW_RING_ID)
+					break;
+				fw_idx++;
+			}
+			if (i == bp->rx_cp_nr_rings)
+				return 0;
+			vnic->rss_table[rss_idx] = vnic->fw_grp_ids[fw_idx];
 		}
-		if (i == bp->rx_cp_nr_rings)
-			return 0;
-		vnic->rss_table[rss_idx] = vnic->fw_grp_ids[fw_idx];
+		return bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 	}
-	return bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+
+	return 0;
 }
 
 static void bnxt_hwrm_set_coal_params(struct bnxt_coal *hw_coal,

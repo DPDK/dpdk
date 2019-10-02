@@ -117,6 +117,13 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 	max_filters = bp->max_l2_ctx;
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
+		if (filter->fw_ntuple_filter_id != ((uint64_t)-1) &&
+		    filter->filter_type == HWRM_CFA_NTUPLE_FILTER) {
+			/* Call HWRM to try to free filter again */
+			rc = bnxt_hwrm_clear_ntuple_filter(bp, filter);
+		}
+		filter->fw_ntuple_filter_id = UINT64_MAX;
+
 		if (filter->fw_l2_filter_id != ((uint64_t)-1) &&
 		    filter->filter_type == HWRM_CFA_L2_FILTER) {
 			PMD_DRV_LOG(DEBUG, "L2 filter is not free\n");
@@ -129,17 +136,6 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 		}
 		filter->fw_l2_filter_id = UINT64_MAX;
 
-		if (filter->fw_ntuple_filter_id != ((uint64_t)-1) &&
-		    filter->filter_type == HWRM_CFA_NTUPLE_FILTER) {
-			PMD_DRV_LOG(ERR, "NTUPLE filter is not free\n");
-			/* Call HWRM to try to free filter again */
-			rc = bnxt_hwrm_clear_ntuple_filter(bp, filter);
-			if (rc)
-				PMD_DRV_LOG(ERR,
-					    "Cannot free NTUPLE filter: %d\n",
-					    rc);
-		}
-		filter->fw_ntuple_filter_id = UINT64_MAX;
 	}
 	STAILQ_INIT(&bp->free_filter_list);
 

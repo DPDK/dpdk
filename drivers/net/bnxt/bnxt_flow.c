@@ -1636,7 +1636,7 @@ free_flow:
 		rte_flow_error_set(error, 0,
 				   RTE_FLOW_ERROR_TYPE_NONE, NULL,
 				   "Flow with pattern exists, updating destination queue");
-	else if (!rte_errno)
+	else
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Failed to create flow.");
@@ -1715,6 +1715,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	ret = bnxt_match_filter(bp, filter);
 	if (ret == 0)
 		PMD_DRV_LOG(ERR, "Could not find matching flow\n");
+
 	if (filter->filter_type == HWRM_CFA_EM_FILTER)
 		ret = bnxt_hwrm_clear_em_filter(bp, filter);
 	if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
@@ -1723,9 +1724,40 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 
 done:
 	if (!ret) {
+		STAILQ_REMOVE(&vnic->filter, filter, bnxt_filter_info, next);
 		bnxt_free_filter(bp, filter);
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
 		rte_free(flow);
+
+		/* If this was the last flow associated with this vnic,
+		 * switch the queue back to RSS pool.
+		 */
+		if (vnic && STAILQ_EMPTY(&vnic->flow_list)) {
+			rte_free(vnic->fw_grp_ids);
+			if (vnic->rx_queue_cnt > 1) {
+				if (BNXT_CHIP_THOR(bp)) {
+					int j;
+
+					for (j = 0; j < vnic->num_lb_ctxts;
+					     j++) {
+						bnxt_hwrm_vnic_ctx_free(bp,
+                                                                        vnic,
+                                                                        vnic->fw_grp_ids[j]);
+						vnic->fw_grp_ids[j] =
+							INVALID_HW_RING_ID;
+					}
+					vnic->num_lb_ctxts = 0;
+				} else {
+					bnxt_hwrm_vnic_ctx_free(bp,
+								vnic,
+								vnic->rss_rule);
+					vnic->rss_rule = INVALID_HW_RING_ID;
+				}
+			}
+			bnxt_hwrm_vnic_free(bp, vnic);
+			vnic->rx_queue_cnt = 0;
+			bp->nr_vnics--;
+		}
 	} else {
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -1744,8 +1776,11 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 	unsigned int i;
 	int ret = 0;
 
-	for (i = 0; i < bp->nr_vnics; i++) {
+	for (i = 0; i < bp->max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
+		if (vnic->fw_vnic_id == INVALID_VNIC_ID)
+			continue;
+
 		STAILQ_FOREACH(flow, &vnic->flow_list, next) {
 			struct bnxt_filter_info *filter = flow->filter;
 
@@ -1766,6 +1801,8 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 				ret = bnxt_hwrm_clear_em_filter(bp, filter);
 			if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
 				ret = bnxt_hwrm_clear_ntuple_filter(bp, filter);
+			else if (!i)
+				ret = bnxt_hwrm_clear_l2_filter(bp, filter);
 
 			if (ret) {
 				rte_flow_error_set
