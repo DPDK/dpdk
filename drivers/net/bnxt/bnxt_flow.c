@@ -227,6 +227,9 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				valid_flags |= inner ?
 					BNXT_FLOW_L2_INNER_DST_VALID_FLAG :
 					BNXT_FLOW_L2_DST_VALID_FLAG;
+				filter->priority = attr->priority;
+				PMD_DRV_LOG(DEBUG,
+					    "Creating a priority flow\n");
 			}
 
 			if (rte_is_broadcast_ether_addr(&eth_mask->src)) {
@@ -712,15 +715,6 @@ bnxt_flow_parse_attr(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	/* Not supported */
-	if (attr->priority) {
-		rte_flow_error_set(error,
-				   EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-				   attr,
-				   "No support for priority.");
-		return -rte_errno;
-	}
 	return 0;
 }
 
@@ -802,13 +796,16 @@ bnxt_create_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 		memcpy(filter1->l2_addr, nf->dst_macaddr, RTE_ETHER_ADDR_LEN);
 	}
 
-	if (nf->valid_flags & BNXT_FLOW_L2_DST_VALID_FLAG ||
-	    nf->valid_flags & BNXT_FLOW_L2_INNER_DST_VALID_FLAG) {
+	if (nf->priority &&
+	    (nf->valid_flags & BNXT_FLOW_L2_DST_VALID_FLAG ||
+	     nf->valid_flags & BNXT_FLOW_L2_INNER_DST_VALID_FLAG)) {
 		/* Tell the FW where to place the filter in the table. */
-		filter1->pri_hint =
+		if (nf->priority > 65535) {
+			filter1->pri_hint =
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_PRI_HINT_BELOW_FILTER;
-		/* This will place the filter in TCAM */
-		filter1->l2_filter_id_hint = (uint64_t)-1;
+			/* This will place the filter in TCAM */
+			filter1->l2_filter_id_hint = (uint64_t)-1;
+		}
 	}
 
 	filter1->enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
