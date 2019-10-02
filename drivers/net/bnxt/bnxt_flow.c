@@ -1455,13 +1455,17 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 	struct bnxt_filter_info *filter;
 	int ret = 0;
 
+	bnxt_acquire_flow_lock(bp);
 	ret = bnxt_flow_args_validate(attr, pattern, actions, error);
-	if (ret != 0)
+	if (ret != 0) {
+		bnxt_release_flow_lock(bp);
 		return ret;
+	}
 
 	filter = bnxt_get_unused_filter(bp);
 	if (filter == NULL) {
 		PMD_DRV_LOG(ERR, "Not enough resources for a new flow.\n");
+		bnxt_release_flow_lock(bp);
 		return -ENOMEM;
 	}
 
@@ -1493,6 +1497,7 @@ exit:
 	/* No need to hold on to this filter if we are just validating flow */
 	filter->fw_l2_filter_id = UINT64_MAX;
 	bnxt_free_filter(bp, filter);
+	bnxt_release_flow_lock(bp);
 
 	return ret;
 }
@@ -1623,6 +1628,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		return flow;
 	}
 
+	bnxt_acquire_flow_lock(bp);
 	ret = bnxt_flow_args_validate(attr, pattern, actions, error);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Not a validate flow.\n");
@@ -1724,6 +1730,7 @@ done:
 		}
 		PMD_DRV_LOG(ERR, "Successfully created flow.\n");
 		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
+		bnxt_release_flow_lock(bp);
 		return flow;
 	}
 	if (!ret) {
@@ -1754,6 +1761,7 @@ free_flow:
 				   "Failed to create flow.");
 	rte_free(flow);
 	flow = NULL;
+	bnxt_release_flow_lock(bp);
 	return flow;
 }
 
@@ -1804,13 +1812,28 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow_error *error)
 {
 	struct bnxt *bp = dev->data->dev_private;
-	struct bnxt_filter_info *filter = flow->filter;
-	struct bnxt_vnic_info *vnic = flow->vnic;
+	struct bnxt_filter_info *filter;
+	struct bnxt_vnic_info *vnic;
 	int ret = 0;
 
+	bnxt_acquire_flow_lock(bp);
+	if (!flow) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Invalid flow: failed to destroy flow.");
+		bnxt_release_flow_lock(bp);
+		return -EINVAL;
+	}
+
+	filter = flow->filter;
+	vnic = flow->vnic;
+
 	if (!filter) {
-		ret = -EINVAL;
-		goto done;
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Invalid flow: failed to destroy flow.");
+		bnxt_release_flow_lock(bp);
+		return -EINVAL;
 	}
 
 	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
@@ -1818,10 +1841,12 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 		ret = bnxt_handle_tunnel_redirect_destroy(bp,
 							  filter,
 							  error);
-		if (!ret)
+		if (!ret) {
 			goto done;
-		else
+		} else {
+			bnxt_release_flow_lock(bp);
 			return ret;
+		}
 	}
 
 	ret = bnxt_match_filter(bp, filter);
@@ -1859,6 +1884,7 @@ done:
 				   "Failed to destroy flow.");
 	}
 
+	bnxt_release_flow_lock(bp);
 	return ret;
 }
 
@@ -1871,6 +1897,7 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 	unsigned int i;
 	int ret = 0;
 
+	bnxt_acquire_flow_lock(bp);
 	for (i = 0; i < bp->max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		if (vnic->fw_vnic_id == INVALID_VNIC_ID)
@@ -1886,10 +1913,12 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 				bnxt_handle_tunnel_redirect_destroy(bp,
 								    filter,
 								    error);
-				if (!ret)
+				if (!ret) {
 					goto done;
-				else
+				} else {
+					bnxt_release_flow_lock(bp);
 					return ret;
+				}
 			}
 
 			if (filter->filter_type == HWRM_CFA_EM_FILTER)
@@ -1906,6 +1935,7 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 					 RTE_FLOW_ERROR_TYPE_HANDLE,
 					 NULL,
 					 "Failed to flush flow in HW.");
+				bnxt_release_flow_lock(bp);
 				return -rte_errno;
 			}
 done:
@@ -1916,6 +1946,7 @@ done:
 		}
 	}
 
+	bnxt_release_flow_lock(bp);
 	return ret;
 }
 

@@ -4476,6 +4476,17 @@ static int bnxt_init_fw(struct bnxt *bp)
 	return 0;
 }
 
+static int
+bnxt_init_locks(struct bnxt *bp)
+{
+	int err;
+
+	err = pthread_mutex_init(&bp->flow_lock, NULL);
+	if (err)
+		PMD_DRV_LOG(ERR, "Unable to initialize flow_lock\n");
+	return err;
+}
+
 static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 {
 	int rc;
@@ -4530,6 +4541,10 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 	bnxt_init_nic(bp);
 
 	rc = bnxt_request_int(bp);
+	if (rc)
+		return rc;
+
+	rc = bnxt_init_locks(bp);
 	if (rc)
 		return rc;
 
@@ -4613,6 +4628,12 @@ error_free:
 	return rc;
 }
 
+static void
+bnxt_uninit_locks(struct bnxt *bp)
+{
+	pthread_mutex_destroy(&bp->flow_lock);
+}
+
 static int
 bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 {
@@ -4673,6 +4694,8 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
+
+	bnxt_uninit_locks(bp);
 
 	return rc;
 }

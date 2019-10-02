@@ -456,6 +456,7 @@ struct bnxt {
 	uint32_t		flow_flags;
 #define BNXT_FLOW_FLAG_L2_HDR_SRC_FILTER_EN	BIT(0)
 
+	pthread_mutex_t         flow_lock;
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
 	unsigned int		rx_num_qs_per_vnic;
@@ -567,6 +568,11 @@ void bnxt_schedule_fw_health_check(struct bnxt *bp);
 bool is_bnxt_supported(struct rte_eth_dev *dev);
 bool bnxt_stratus_device(struct bnxt *bp);
 extern const struct rte_flow_ops bnxt_flow_ops;
+#define bnxt_acquire_flow_lock(bp) \
+	pthread_mutex_lock(&(bp)->flow_lock)
+
+#define bnxt_release_flow_lock(bp) \
+	pthread_mutex_unlock(&(bp)->flow_lock)
 
 extern int bnxt_logtype_driver;
 #define PMD_DRV_LOG_RAW(level, fmt, args...) \
