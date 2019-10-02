@@ -1028,6 +1028,10 @@ bnxt_match_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 				    sizeof(nf->dst_ipaddr_mask))) {
 				if (mf->dst_id == nf->dst_id)
 					return -EEXIST;
+				/* Clear the new L2 filter that was created
+				 * earlier in bnxt_validate_and_parse_flow.
+				 */
+				bnxt_hwrm_clear_l2_filter(bp, nf);
 				/*
 				 * Same Flow, Different queue
 				 * Clear the old ntuple filter
