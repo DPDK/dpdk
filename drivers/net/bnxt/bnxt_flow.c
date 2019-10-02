@@ -219,6 +219,14 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 
 			if (rte_is_broadcast_ether_addr(&eth_mask->dst)) {
+				if (!rte_is_unicast_ether_addr(&eth_spec->dst)) {
+					rte_flow_error_set(error,
+							   EINVAL,
+							   RTE_FLOW_ERROR_TYPE_ITEM,
+							   item,
+							   "DMAC is invalid");
+					return -rte_errno;
+				}
 				rte_memcpy(filter->dst_macaddr,
 					   &eth_spec->dst, RTE_ETHER_ADDR_LEN);
 				en |= use_ntuple ?
@@ -233,6 +241,14 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 
 			if (rte_is_broadcast_ether_addr(&eth_mask->src)) {
+				if (!rte_is_unicast_ether_addr(&eth_spec->src)) {
+					rte_flow_error_set(error,
+							   EINVAL,
+							   RTE_FLOW_ERROR_TYPE_ITEM,
+							   item,
+							   "SMAC is invalid");
+					return -rte_errno;
+				}
 				rte_memcpy(filter->src_macaddr,
 					   &eth_spec->src, RTE_ETHER_ADDR_LEN);
 				en |= use_ntuple ?
