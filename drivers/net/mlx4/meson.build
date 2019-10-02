@@ -21,7 +21,7 @@ if pmd_dlopen
 	]
 endif
 
-libnames = [ 'mnl', 'mlx4', 'ibverbs' ]
+libnames = [ 'mlx4', 'ibverbs' ]
 libs = []
 foreach libname:libnames
 	lib = dependency('lib' + libname, required:false)
