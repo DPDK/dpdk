@@ -169,6 +169,7 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
 static int bnxt_dev_uninit(struct rte_eth_dev *eth_dev);
 static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev);
 static int bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev);
+static void bnxt_cancel_fw_health_check(struct bnxt *bp);
 
 int is_bnxt_in_error(struct bnxt *bp)
 {
@@ -858,6 +859,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	bp->flags |= BNXT_FLAG_INIT_DONE;
 	eth_dev->data->dev_started = 1;
 	bp->dev_stopped = 0;
+	bnxt_schedule_fw_health_check(bp);
 	return 0;
 
 error:
@@ -909,6 +911,8 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 
 	/* disable uio/vfio intr/eventfd mapping */
 	rte_intr_disable(intr_handle);
+
+	bnxt_cancel_fw_health_check(bp);
 
 	bp->flags &= ~BNXT_FLAG_INIT_DONE;
 	if (bp->eth_dev->data->dev_started) {
@@ -3680,6 +3684,99 @@ void bnxt_dev_reset_and_resume(void *arg)
 			       bnxt_dev_recover, (void *)bp);
 	if (rc)
 		PMD_DRV_LOG(ERR, "Error setting recovery alarm");
+}
+
+uint32_t bnxt_read_fw_status_reg(struct bnxt *bp, uint32_t index)
+{
+	struct bnxt_error_recovery_info *info = bp->recovery_info;
+	uint32_t reg = info->status_regs[index];
+	uint32_t type, offset, val = 0;
+
+	type = BNXT_FW_STATUS_REG_TYPE(reg);
+	offset = BNXT_FW_STATUS_REG_OFF(reg);
+
+	switch (type) {
+	case BNXT_FW_STATUS_REG_TYPE_CFG:
+		rte_pci_read_config(bp->pdev, &val, sizeof(val), offset);
+		break;
+	case BNXT_FW_STATUS_REG_TYPE_GRC:
+		offset = info->mapped_status_regs[index];
+		/* FALLTHROUGH */
+	case BNXT_FW_STATUS_REG_TYPE_BAR0:
+		val = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				       offset));
+		break;
+	}
+
+	return val;
+}
+
+/* Driver should poll FW heartbeat, reset_counter with the frequency
+ * advertised by FW in HWRM_ERROR_RECOVERY_QCFG.
+ * When the driver detects heartbeat stop or change in reset_counter,
+ * it has to trigger a reset to recover from the error condition.
+ * A “master PF” is the function who will have the privilege to
+ * initiate the chimp reset. The master PF will be elected by the
+ * firmware and will be notified through async message.
+ */
+static void bnxt_check_fw_health(void *arg)
+{
+	struct bnxt *bp = arg;
+	struct bnxt_error_recovery_info *info = bp->recovery_info;
+	uint32_t val = 0;
+
+	if (!info || !bnxt_is_recovery_enabled(bp) ||
+	    is_bnxt_in_error(bp))
+		return;
+
+	val = bnxt_read_fw_status_reg(bp, BNXT_FW_HEARTBEAT_CNT_REG);
+	if (val == info->last_heart_beat)
+		goto reset;
+
+	info->last_heart_beat = val;
+
+	val = bnxt_read_fw_status_reg(bp, BNXT_FW_RECOVERY_CNT_REG);
+	if (val != info->last_reset_counter)
+		goto reset;
+
+	info->last_reset_counter = val;
+
+	rte_eal_alarm_set(US_PER_MS * info->driver_polling_freq,
+			  bnxt_check_fw_health, (void *)bp);
+
+	return;
+reset:
+	/* Stop DMA to/from device */
+	bp->flags |= BNXT_FLAG_FATAL_ERROR;
+	bp->flags |= BNXT_FLAG_FW_RESET;
+
+	PMD_DRV_LOG(ERR, "Detected FW dead condition\n");
+}
+
+void bnxt_schedule_fw_health_check(struct bnxt *bp)
+{
+	uint32_t polling_freq;
+
+	if (!bnxt_is_recovery_enabled(bp))
+		return;
+
+	if (bp->flags & BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED)
+		return;
+
+	polling_freq = bp->recovery_info->driver_polling_freq;
+
+	rte_eal_alarm_set(US_PER_MS * polling_freq,
+			  bnxt_check_fw_health, (void *)bp);
+	bp->flags |= BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED;
+}
+
+static void bnxt_cancel_fw_health_check(struct bnxt *bp)
+{
+	if (!bnxt_is_recovery_enabled(bp))
+		return;
+
+	rte_eal_alarm_cancel(bnxt_check_fw_health, (void *)bp);
+	bp->flags &= ~BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED;
 }
 
 static bool bnxt_vf_pciid(uint16_t id)

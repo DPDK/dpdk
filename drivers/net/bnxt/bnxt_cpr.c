@@ -90,6 +90,16 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		PMD_DRV_LOG(INFO, "recovery enabled(%d), master function(%d)\n",
 			    bnxt_is_recovery_enabled(bp),
 			    bnxt_is_master_func(bp));
+
+		if (bp->flags & BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED)
+			return;
+
+		info->last_heart_beat =
+			bnxt_read_fw_status_reg(bp, BNXT_FW_HEARTBEAT_CNT_REG);
+		info->last_reset_counter =
+			bnxt_read_fw_status_reg(bp, BNXT_FW_RECOVERY_CNT_REG);
+
+		bnxt_schedule_fw_health_check(bp);
 		break;
 	default:
 		PMD_DRV_LOG(INFO, "handle_async_event id = 0x%x\n", event_id);

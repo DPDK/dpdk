@@ -368,6 +368,9 @@ struct bnxt_error_recovery_info {
 #define BNXT_FLAG_MASTER_FUNC		(1 << 2)
 #define BNXT_FLAG_RECOVERY_ENABLED	(1 << 3)
 	uint32_t	flags;
+
+	uint32_t        last_heart_beat;
+	uint32_t        last_reset_counter;
 };
 
 /* address space location of register */
@@ -416,6 +419,7 @@ struct bnxt {
 #define BNXT_FLAG_FW_CAP_IF_CHANGE	(1 << 17)
 #define BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE	(1 << 18)
 #define BNXT_FLAG_FW_CAP_ERROR_RECOVERY		(1 << 19)
+#define BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED	(1 << 20)
 #define BNXT_FLAG_EXT_STATS_SUPPORTED	(1 << 29)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1U << 31)
@@ -532,6 +536,8 @@ int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 int is_bnxt_in_error(struct bnxt *bp);
 
 int bnxt_map_fw_health_status_regs(struct bnxt *bp);
+uint32_t bnxt_read_fw_status_reg(struct bnxt *bp, uint32_t index);
+void bnxt_schedule_fw_health_check(struct bnxt *bp);
 
 bool is_bnxt_supported(struct rte_eth_dev *dev);
 bool bnxt_stratus_device(struct bnxt *bp);
