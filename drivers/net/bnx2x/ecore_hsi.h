@@ -13,29 +13,32 @@
 #ifndef ECORE_HSI_H
 #define ECORE_HSI_H
 
-#define FW_ENCODE_32BIT_PATTERN 0x1e1e1e1e
+#include "ecore_fw_defs.h"
+#include "ecore_mfw_req.h"
+#include "bnx2x_osal.h"
+
+#define FW_ENCODE_32BIT_PATTERN         0x1e1e1e1e
 
 struct license_key {
-    uint32_t reserved[6];
+	uint32_t reserved[6];
 
-    uint32_t max_iscsi_conn;
-#define LICENSE_MAX_ISCSI_TRGT_CONN_MASK  0xFFFF
-#define LICENSE_MAX_ISCSI_TRGT_CONN_SHIFT 0
-#define LICENSE_MAX_ISCSI_INIT_CONN_MASK  0xFFFF0000
-#define LICENSE_MAX_ISCSI_INIT_CONN_SHIFT 16
+	uint32_t max_iscsi_conn;
+#define ECORE_MAX_ISCSI_TRGT_CONN_MASK	0xFFFF
+#define ECORE_MAX_ISCSI_TRGT_CONN_SHIFT	0
+#define ECORE_MAX_ISCSI_INIT_CONN_MASK	0xFFFF0000
+#define ECORE_MAX_ISCSI_INIT_CONN_SHIFT	16
 
-    uint32_t reserved_a;
+	uint32_t reserved_a;
 
-    uint32_t max_fcoe_conn;
-#define LICENSE_MAX_FCOE_TRGT_CONN_MASK  0xFFFF
-#define LICENSE_MAX_FCOE_TRGT_CONN_SHIFT 0
-#define LICENSE_MAX_FCOE_INIT_CONN_MASK  0xFFFF0000
-#define LICENSE_MAX_FCOE_INIT_CONN_SHIFT 16
+	uint32_t max_fcoe_conn;
+#define ECORE_MAX_FCOE_TRGT_CONN_MASK	0xFFFF
+#define ECORE_MAX_FCOE_TRGT_CONN_SHIFT	0
+#define ECORE_MAX_FCOE_INIT_CONN_MASK	0xFFFF0000
+#define ECORE_MAX_FCOE_INIT_CONN_SHIFT	16
 
-    uint32_t reserved_b[4];
+	uint32_t reserved_b[4];
 };
 
-typedef struct license_key license_key_t;
 
 
 /****************************************************************************
@@ -270,6 +273,14 @@ struct shared_hw_cfg {			 /* NVRAM Offset */
 	#define SHARED_HW_CFG_PF_MSIX_MAX_NUM_MASK                    0x0000007F
 	#define SHARED_HW_CFG_PF_MSIX_MAX_NUM_SHIFT                   0
 
+	/* This field extends the mf mode chosen in nvm cfg #73 (as we ran
+	 * out of bits)
+	 */
+	#define SHARED_HW_CFG_EXTENDED_MF_MODE_MASK         0x00000F00
+		#define SHARED_HW_CFG_EXTENDED_MF_MODE_SHIFT          8
+		#define SHARED_HW_CFG_EXTENDED_MF_MODE_NPAR1_DOT_5    0x00000000
+		#define SHARED_HW_CFG_EXTENDED_MF_MODE_NPAR2_DOT_0    0x00000100
+
 	uint32_t ump_nc_si_config;			/* 0x120 */
 	#define SHARED_HW_CFG_UMP_NC_SI_MII_MODE_MASK       0x00000003
 		#define SHARED_HW_CFG_UMP_NC_SI_MII_MODE_SHIFT       0
@@ -332,6 +343,7 @@ struct shared_hw_cfg {			 /* NVRAM Offset */
 		#define SHARED_HW_CFG_E3_PORT_LAYOUT_4P_1032         0x03000000
 		#define SHARED_HW_CFG_E3_PORT_LAYOUT_4P_2301         0x04000000
 		#define SHARED_HW_CFG_E3_PORT_LAYOUT_4P_3210         0x05000000
+		#define SHARED_HW_CFG_E3_PORT_LAYOUT_2P_01_SIG       0x06000000
 };
 
 
@@ -499,7 +511,6 @@ struct port_hw_cfg {		    /* port 0: 0x12c  port 1: 0x2bc */
 	 */
 	#define PORT_HW_CFG_TX_DRV_BROADCAST_MASK                     0x000F0000
 	#define PORT_HW_CFG_TX_DRV_BROADCAST_SHIFT                    16
-
 	/*  Set non-default values for TXFIR in SFP mode. */
 	#define PORT_HW_CFG_TX_DRV_IFIR_MASK                          0x00F00000
 	#define PORT_HW_CFG_TX_DRV_IFIR_SHIFT                         20
@@ -672,7 +683,7 @@ struct port_hw_cfg {		    /* port 0: 0x12c  port 1: 0x2bc */
 		#define PORT_HW_CFG_SPEED_CAPABILITY2_D3_SHIFT       0
 		#define PORT_HW_CFG_SPEED_CAPABILITY2_D3_10M_FULL    0x00000001
 		#define PORT_HW_CFG_SPEED_CAPABILITY2_D3_10M_HALF    0x00000002
-	    #define PORT_HW_CFG_SPEED_CAPABILITY2_D3_100M_HALF   0x00000004
+		#define PORT_HW_CFG_SPEED_CAPABILITY2_D3_100M_HALF   0x00000004
 		#define PORT_HW_CFG_SPEED_CAPABILITY2_D3_100M_FULL   0x00000008
 		#define PORT_HW_CFG_SPEED_CAPABILITY2_D3_1G          0x00000010
 		#define PORT_HW_CFG_SPEED_CAPABILITY2_D3_2_5G        0x00000020
@@ -738,6 +749,7 @@ struct port_hw_cfg {		    /* port 0: 0x12c  port 1: 0x2bc */
 		#define PORT_HW_CFG_XGXS_EXT_PHY2_TYPE_BNX2X8722       0x00000f00
 		#define PORT_HW_CFG_XGXS_EXT_PHY2_TYPE_BNX2X54616      0x00001000
 		#define PORT_HW_CFG_XGXS_EXT_PHY2_TYPE_BNX2X84834      0x00001100
+		#define PORT_HW_CFG_XGXS_EXT_PHY2_TYPE_BNX2X84858    0x00001200
 		#define PORT_HW_CFG_XGXS_EXT_PHY2_TYPE_FAILURE       0x0000fd00
 		#define PORT_HW_CFG_XGXS_EXT_PHY2_TYPE_NOT_CONN      0x0000ff00
 
@@ -874,6 +886,9 @@ struct shared_feat_cfg {		 /* NVRAM Offset */
 		#define SHARED_FEAT_CFG_FORCE_SF_MODE_SPIO4          0x00000200
 		#define SHARED_FEAT_CFG_FORCE_SF_MODE_SWITCH_INDEPT  0x00000300
 		#define SHARED_FEAT_CFG_FORCE_SF_MODE_AFEX_MODE      0x00000400
+		#define SHARED_FEAT_CFG_FORCE_SF_MODE_BD_MODE        0x00000500
+		#define SHARED_FEAT_CFG_FORCE_SF_MODE_UFP_MODE       0x00000600
+		#define SHARED_FEAT_CFG_FORCE_SF_MODE_EXTENDED_MODE  0x00000700
 
 	/*  Act as if the FCoE license is invalid */
 	#define SHARED_FEAT_CFG_PREVENT_FCOE                0x00001000
@@ -958,6 +973,12 @@ struct port_feat_cfg {		    /* port 0: 0x454  port 1: 0x4c8 */
 	#define PORT_FEAT_CFG_STORAGE_PERSONALITY_ISCSI               0x00000800
 	#define PORT_FEAT_CFG_STORAGE_PERSONALITY_BOTH                0x00000c00
 
+	#define PORT_FEAT_CFG_DCBX_SEL_MASK                           0x00003000
+	#define PORT_FEAT_CFG_DCBX_SEL_SHIFT                          12
+	#define PORT_FEAT_CFG_DCBX_SEL_CEE                            0x00000000
+	#define PORT_FEAT_CFG_DCBX_SEL_IEEE                           0x00001000
+	#define PORT_FEAT_CFG_DCBX_SEL_AUTO                           0x00002000
+
 	#define PORT_FEATURE_EN_SIZE_MASK                   0x0f000000
 	#define PORT_FEATURE_EN_SIZE_SHIFT                       24
 	#define PORT_FEATURE_WOL_ENABLED                         0x01000000
@@ -1040,14 +1061,24 @@ struct port_feat_cfg {		    /* port 0: 0x454  port 1: 0x4c8 */
 		#define PORT_FEATURE_MBA_LINK_SPEED_10G              0x1c000000
 		#define PORT_FEATURE_MBA_LINK_SPEED_20G              0x20000000
 
-	uint32_t Reserved0;                                      /* 0x460 */
+	/* Secondary MBA configuration,
+	 * see mba_config for the fileds defination.
+	 */
+	uint32_t mba_config2;
 
 	uint32_t mba_vlan_cfg;
 	#define PORT_FEATURE_MBA_VLAN_TAG_MASK              0x0000FFFF
 	#define PORT_FEATURE_MBA_VLAN_TAG_SHIFT                      0
 	#define PORT_FEATURE_MBA_VLAN_EN                    0x00010000
+	#define PORT_FEATUTE_BOFM_CFGD_EN                   0x00020000
+	#define PORT_FEATURE_BOFM_CFGD_FTGT                 0x00040000
+	#define PORT_FEATURE_BOFM_CFGD_VEN                  0x00080000
 
-	uint32_t Reserved1;
+	/* Secondary MBA configuration,
+	 * see mba_vlan_cfg for the fileds defination.
+	 */
+	uint32_t mba_vlan_cfg2;
+
 	uint32_t smbus_config;
 	#define PORT_FEATURE_SMBUS_ADDR_MASK                0x000000fe
 	#define PORT_FEATURE_SMBUS_ADDR_SHIFT                        1
@@ -1088,8 +1119,8 @@ struct port_feat_cfg {		    /* port 0: 0x454  port 1: 0x4c8 */
     #define PORT_FEATURE_LINK_SPEED_MASK                0x000F0000
 		#define PORT_FEATURE_LINK_SPEED_SHIFT                16
 		#define PORT_FEATURE_LINK_SPEED_AUTO                 0x00000000
-		#define PORT_FEATURE_LINK_SPEED_10M_FULL             0x00010000
-		#define PORT_FEATURE_LINK_SPEED_10M_HALF             0x00020000
+		#define PORT_FEATURE_LINK_SPEED_10M_HALF             0x00010000
+		#define PORT_FEATURE_LINK_SPEED_10M_FULL             0x00020000
 		#define PORT_FEATURE_LINK_SPEED_100M_HALF            0x00030000
 		#define PORT_FEATURE_LINK_SPEED_100M_FULL            0x00040000
 		#define PORT_FEATURE_LINK_SPEED_1G                   0x00050000
@@ -1130,7 +1161,7 @@ struct port_feat_cfg {		    /* port 0: 0x454  port 1: 0x4c8 */
 	#define PORT_FEAT_CFG_EEE_POWER_MODE_LOW_LATENCY              0x00000003
 
 
-	uint32_t Reserved2[16];                                  /* 0x488 */
+	uint32_t Reserved2[16];                                  /* 0x48C */
 };
 
 /****************************************************************************
@@ -1241,6 +1272,16 @@ struct extended_dev_info_shared_cfg {             /* NVRAM OFFSET */
 	#define EXTENDED_DEV_INFO_SHARED_CFG_TEMP_PERIOD_MASK         0x0000FFFF
 	#define EXTENDED_DEV_INFO_SHARED_CFG_TEMP_PERIOD_SHIFT        0
 
+	/*  Sensor interface - Disabled / BSC / In the future - SMBUS */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_SENSOR_INTERFACE_MASK    0x00030000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_SENSOR_INTERFACE_SHIFT   16
+	#define EXTENDED_DEV_INFO_SHARED_CFG_SENSOR_INTERFACE_DISABLED \
+								      0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_SENSOR_INTERFACE_BSC     0x00010000
+
+	/*  On Board Sensor Address */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_SENSOR_ADDR_MASK         0x03FC0000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_SENSOR_ADDR_SHIFT        18
 
 	/*  MFW flavor to be used */
 	uint32_t mfw_cfg;                                        /* 0x4008 */
@@ -1254,6 +1295,32 @@ struct extended_dev_info_shared_cfg {             /* NVRAM OFFSET */
 	#define EXTENDED_DEV_INFO_SHARED_CFG_OCBB_EN_LAST_DRV_SHIFT    8
 	#define EXTENDED_DEV_INFO_SHARED_CFG_OCBB_EN_LAST_DRV_DISABLED 0x00000000
 	#define EXTENDED_DEV_INFO_SHARED_CFG_OCBB_EN_LAST_DRV_ENABLED  0x00000100
+
+	/*  Prevent OCBB feature */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OCBB_PREVENT_MASK        0x00000200
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OCBB_PREVENT_SHIFT       9
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OCBB_PREVENT_DISABLED    0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OCBB_PREVENT_ENABLED     0x00000200
+
+	/*  Enable DCi support */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_DCI_SUPPORT_MASK         0x00000400
+	#define EXTENDED_DEV_INFO_SHARED_CFG_DCI_SUPPORT_SHIFT        10
+	#define EXTENDED_DEV_INFO_SHARED_CFG_DCI_SUPPORT_DISABLED     0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_DCI_SUPPORT_ENABLED      0x00000400
+
+	/*  Reserved bits: 75 */
+
+	/*  PLDM support over MCTP */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_PLDM_ENABLE_MASK         0x00001000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_PLDM_ENABLE_SHIFT        12
+	#define EXTENDED_DEV_INFO_SHARED_CFG_PLDM_ENABLE_DISABLED     0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_PLDM_ENABLE_ENABLED      0x00001000
+
+	/*  Option to Disable embedded LLDP, 0 - Off, 1 - On */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_LLDP_DISABLE_MASK        0x00002000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_LLDP_DISABLE_SHIFT       13
+	#define EXTENDED_DEV_INFO_SHARED_CFG_LLDP_DISABLE_OFF         0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_LLDP_DISABLE_ON          0x00002000
 
 	/*  Hide DCBX feature in CCM/BACS menus */
 	#define EXTENDED_DEV_INFO_SHARED_CFG_HIDE_DCBX_FEAT_MASK      0x00010000
@@ -1291,6 +1358,26 @@ struct extended_dev_info_shared_cfg {             /* NVRAM OFFSET */
 	#define EXTENDED_DEV_INFO_SHARED_CFG_SRIOV_SHOW_MENU          0x00000000
 	#define EXTENDED_DEV_INFO_SHARED_CFG_SRIOV_HIDE_MENU          0x00000200
 
+	/*  Override PCIE revision ID when enabled the,
+	 *  revision ID will set to B1=='0x11'
+	 */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OVR_REV_ID_MASK          0x00000400
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OVR_REV_ID_SHIFT         10
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OVR_REV_ID_DISABLED      0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OVR_REV_ID_ENABLED       0x00000400
+
+	/*  Bypass slicer offset tuning */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_BYPASS_SLICER_MASK       0x00000800
+	#define EXTENDED_DEV_INFO_SHARED_CFG_BYPASS_SLICER_SHIFT      11
+	#define EXTENDED_DEV_INFO_SHARED_CFG_BYPASS_SLICER_DISABLED   0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_BYPASS_SLICER_ENABLED    0x00000800
+	/*  Control Revision ID */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_REV_ID_CTRL_MASK         0x00003000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_REV_ID_CTRL_SHIFT        12
+	#define EXTENDED_DEV_INFO_SHARED_CFG_REV_ID_CTRL_PRESERVE     0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_REV_ID_CTRL_ACTUAL       0x00001000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_REV_ID_CTRL_FORCE_B0     0x00002000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_REV_ID_CTRL_FORCE_B1     0x00003000
 	/*  Threshold in celcius for max continuous operation */
 	uint32_t temperature_report;                             /* 0x4014 */
 	#define EXTENDED_DEV_INFO_SHARED_CFG_TEMP_MCOT_MASK           0x0000007F
@@ -1340,6 +1427,14 @@ struct extended_dev_info_shared_cfg {             /* NVRAM OFFSET */
 	#define EXTENDED_DEV_INFO_SHARED_CFG_DBG_DIS_MAC_G3_FRM_ERR   0x00020000
 	#define EXTENDED_DEV_INFO_SHARED_CFG_DBG_INFERRED_EI          0x00040000
 	#define EXTENDED_DEV_INFO_SHARED_CFG_DBG_GEN3_COMPLI_ENA      0x00080000
+
+	/*  Override Rx signal detect threshold when enabled the threshold
+	 * will be set staticaly
+	 */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OVERRIDE_RX_SIG_MASK     0x00100000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OVERRIDE_RX_SIG_SHIFT    20
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OVERRIDE_RX_SIG_DISABLED 0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_OVERRIDE_RX_SIG_ENABLED  0x00100000
 
 	/*  Debug signet rx threshold */
 	uint32_t dbg_rx_sigdet_threshold;                        /* 0x4020 */
@@ -1434,6 +1529,31 @@ struct extended_dev_info_shared_cfg {             /* NVRAM OFFSET */
 	#define EXTENDED_DEV_INFO_SHARED_CFG_MEZZ_VPD_UPDATE_SHIFT    16
 	#define EXTENDED_DEV_INFO_SHARED_CFG_VPD_CACHE_COMP_MASK      0xFF000000
 	#define EXTENDED_DEV_INFO_SHARED_CFG_VPD_CACHE_COMP_SHIFT     24
+
+	/*  Manufacture kit version */
+	uint32_t manufacture_ver;                                /* 0x403C */
+
+	/*  Manufacture timestamp */
+	uint32_t manufacture_data;                               /* 0x4040 */
+
+	/*  Number of ISCSI/FCOE cfg images */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_NUM_ISCSI_FCOE_CFGS_MASK 0x00040000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_NUM_ISCSI_FCOE_CFGS_SHIFT18
+	#define EXTENDED_DEV_INFO_SHARED_CFG_NUM_ISCSI_FCOE_CFGS_2    0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_NUM_ISCSI_FCOE_CFGS_4    0x00040000
+
+	/*  MCP crash dump trigger */
+	uint32_t mcp_crash_dump;                                 /* 0x4044 */
+	#define EXTENDED_DEV_INFO_SHARED_CFG_CRASH_DUMP_MASK          0x7FFFFFFF
+	#define EXTENDED_DEV_INFO_SHARED_CFG_CRASH_DUMP_SHIFT         0
+	#define EXTENDED_DEV_INFO_SHARED_CFG_CRASH_DUMP_DISABLED      0x00000000
+	#define EXTENDED_DEV_INFO_SHARED_CFG_CRASH_DUMP_ENABLED       0x00000001
+
+	/*  MBI version */
+	uint32_t mbi_version;                                    /* 0x4048 */
+
+	/*  MBI date */
+	uint32_t mbi_date;                                       /* 0x404C */
 };
 
 
@@ -1449,6 +1569,7 @@ struct extended_dev_info_shared_cfg {             /* NVRAM OFFSET */
 #define FUNC_5              5
 #define FUNC_6              6
 #define FUNC_7              7
+#define E1_FUNC_MAX         2
 #define E1H_FUNC_MAX            8
 #define E2_FUNC_MAX         4   /* per path */
 
@@ -1575,6 +1696,10 @@ struct drv_func_mb {
 	#define DRV_MSG_CODE_GET_UPGRADE_KEY            0x81000000
 	#define DRV_MSG_CODE_GET_MANUF_KEY              0x82000000
 	#define DRV_MSG_CODE_LOAD_L2B_PRAM              0x90000000
+	#define DRV_MSG_CODE_OEM_OK			0x00010000
+	#define DRV_MSG_CODE_OEM_FAILURE		0x00020000
+	#define DRV_MSG_CODE_OEM_UPDATE_SVID_OK		0x00030000
+	#define DRV_MSG_CODE_OEM_UPDATE_SVID_FAILURE	0x00040000
 
 	/*
 	 * The optic module verification command requires bootcode
@@ -1629,7 +1754,14 @@ struct drv_func_mb {
 	#define DRV_MSG_CODE_IMG_OFFSET_REQ             0xe2000000
 	#define DRV_MSG_CODE_IMG_SIZE_REQ               0xe3000000
 
+	#define DRV_MSG_CODE_UFP_CONFIG_ACK             0xe4000000
+
 	#define DRV_MSG_SEQ_NUMBER_MASK                 0x0000ffff
+
+	#define DRV_MSG_CODE_CONFIG_CHANGE              0xC1000000
+
+	#define DRV_MSG_CODE_UPDATE_DRIVER_STATE        0xC2000000
+	#define REQ_BC_VER_4_UPDATE_DRIVER_STATE        0x00070f35
 
 	uint32_t drv_mb_param;
 	#define DRV_MSG_CODE_SET_MF_BW_MIN_MASK         0x00ff0000
@@ -1642,6 +1774,22 @@ struct drv_func_mb {
 	#define DRV_MSG_CODE_LOAD_REQ_FORCE_LFA         0x00002000
 
 	#define DRV_MSG_CODE_USR_BLK_IMAGE_REQ          0x00000001
+	#define DRV_MSG_CODE_ISCSI_PERS_IMAGE_REQ       0x00000002
+	#define DRV_MSG_CODE_VPD_IMAGE_REQ              0x00000003
+	#define DRV_MSG_CODE_VLAN_TABLE_IMAGE_REQ       0x00000004
+
+	#define DRV_MSG_CODE_CONFIG_CHANGE_MTU_SIZE     0x00000001
+	#define DRV_MSG_CODE_CONFIG_CHANGE_MAC_ADD      0x00000002
+	#define DRV_MSG_CODE_CONFIG_CHANGE_WOL_ENA      0x00000003
+	#define DRV_MSG_CODE_CONFIG_CHANGE_ISCI_BOOT    0x00000004
+	#define DRV_MSG_CODE_CONFIG_CHANGE_FCOE_BOOT    0x00000005
+	#define DRV_MSG_CODE_CONFIG_CHANGE_RST2DFT      0x00000006
+
+	#define DRV_MSG_CODE_DRIVER_STATE_UNKNOWN       0x00000001
+	#define DRV_MSG_CODE_DRIVER_STATE_NOT_LOADED    0x00000002
+	#define DRV_MSG_CODE_DRIVER_STATE_LOADING       0x00000003
+	#define DRV_MSG_CODE_DRIVER_STATE_DISABLED      0x00000004
+	#define DRV_MSG_CODE_DRIVER_STATE_ACTIVE        0x00000005
 
 	uint32_t fw_mb_header;
 	#define FW_MSG_CODE_MASK                        0xffff0000
@@ -1708,6 +1856,13 @@ struct drv_func_mb {
 	#define FW_MSG_CODE_IMG_OFFSET_RESPONSE         0xe2100000
 	#define FW_MSG_CODE_IMG_SIZE_RESPONSE           0xe3100000
 
+	#define FW_MSG_CODE_OEM_ACK			0x00010000
+	#define DRV_MSG_CODE_OEM_UPDATE_SVID_ACK	0x00020000
+
+	#define FW_MSG_CODE_CONFIG_CHANGE_DONE          0xC2000000
+
+	#define FW_MSG_CODE_UPDATE_DRIVER_STATE_DONE    0xC3000000
+
 	#define FW_MSG_SEQ_NUMBER_MASK                  0x0000ffff
 
 	uint32_t fw_mb_param;
@@ -1744,6 +1899,13 @@ struct drv_func_mb {
 	#define DRV_STATUS_VF_DISABLED                  0x00000002
 	#define DRV_STATUS_SET_MF_BW                    0x00000004
 	#define DRV_STATUS_LINK_EVENT                   0x00000008
+
+	#define DRV_STATUS_OEM_EVENT_MASK               0x00000070
+	#define DRV_STATUS_OEM_DISABLE_ENABLE_PF        0x00000010
+	#define DRV_STATUS_OEM_BANDWIDTH_ALLOCATION     0x00000020
+	#define DRV_STATUS_OEM_FC_NPIV_UPDATE           0x00000040
+
+	#define DRV_STATUS_OEM_UPDATE_SVID              0x00000080
 
 	#define DRV_STATUS_DCC_EVENT_MASK               0x0000ff00
 	#define DRV_STATUS_DCC_DISABLE_ENABLE_PF        0x00000100
@@ -1958,7 +2120,7 @@ struct shmem_region {		       /*   SharedMem Offset (size) */
 
 	struct shm_dev_info dev_info;	     /* 0x8     (0x438) */
 
-	license_key_t       drv_lic_key[PORT_MAX]; /* 0x440 (52*2=0x68) */
+	struct license_key    drv_lic_key[PORT_MAX]; /* 0x440 (52 * 2 = 0x68) */
 
 	/* FW information (for internal FW use) */
 	uint32_t         fw_info_fio_offset;		/* 0x4a8       (0x4) */
@@ -1976,7 +2138,7 @@ struct shmem_region {		       /*   SharedMem Offset (size) */
 	struct drv_func_mb  func_mb[];	/* 0x684 (44*2/4/8=0x58/0xb0/0x160) */
 #endif /* BMAPI */
 
-}; /* 57711 = 0x7E4 | 57712 = 0x734 */
+}; /* 57710 = 0x6dc | 57711 = 0x7E4 | 57712 = 0x734 */
 
 /****************************************************************************
  * Shared Memory 2 Region                                                   *
@@ -1995,7 +2157,7 @@ struct shmem_region {		       /*   SharedMem Offset (size) */
 /****************************************************************************/
 struct fw_flr_ack {
 	uint32_t         pf_ack;
-	uint32_t         vf_ack[1];
+	uint32_t         vf_ack;
 	uint32_t         iov_dis_ack;
 };
 
@@ -2134,17 +2296,30 @@ struct dcbx_app_priority_entry {
 	uint8_t  pri_bitmap;
 	uint8_t  appBitfield;
 	#define DCBX_APP_ENTRY_VALID         0x01
-	#define DCBX_APP_ENTRY_SF_MASK       0x30
+	#define DCBX_APP_ENTRY_SF_MASK       0xF0
 	#define DCBX_APP_ENTRY_SF_SHIFT      4
 	#define DCBX_APP_SF_ETH_TYPE         0x10
-	#define DCBX_APP_SF_PORT             0x20
+	#define DCBX_APP_SF_PORT             0x20 /* TCP */
+	#define DCBX_APP_SF_UDP              0x40 /* UDP */
+	#define DCBX_APP_SF_DEFAULT          0x80
+	#define DCBX_APP_PRI_0               0x01
+	#define DCBX_APP_PRI_1               0x02
+	#define DCBX_APP_PRI_2               0x04
+	#define DCBX_APP_PRI_3               0x08
+	#define DCBX_APP_PRI_4               0x10
+	#define DCBX_APP_PRI_5               0x20
+	#define DCBX_APP_PRI_6               0x40
+	#define DCBX_APP_PRI_7               0x80
 #elif defined(__LITTLE_ENDIAN)
 	uint8_t appBitfield;
 	#define DCBX_APP_ENTRY_VALID         0x01
-	#define DCBX_APP_ENTRY_SF_MASK       0x30
+	#define DCBX_APP_ENTRY_SF_MASK       0xF0
 	#define DCBX_APP_ENTRY_SF_SHIFT      4
+	#define DCBX_APP_ENTRY_VALID         0x01
 	#define DCBX_APP_SF_ETH_TYPE         0x10
-	#define DCBX_APP_SF_PORT             0x20
+	#define DCBX_APP_SF_PORT             0x20 /* TCP */
+	#define DCBX_APP_SF_UDP              0x40 /* UDP */
+	#define DCBX_APP_SF_DEFAULT          0x80
 	uint8_t  pri_bitmap;
 	uint16_t  app_id;
 #endif
@@ -2343,6 +2518,85 @@ struct shmem_lfa {
 
 };
 
+/*
+ * Used to suppoert NSCI get OS driver version
+ * On driver load the version value will be set
+ * On driver unload driver value of 0x0 will be set
+ */
+struct os_drv_ver {
+	#define DRV_VER_NOT_LOADED                      0
+	/*personalites orrder is importent */
+	#define DRV_PERS_ETHERNET                       0
+	#define DRV_PERS_ISCSI                          1
+	#define DRV_PERS_FCOE                           2
+	/*shmem2 struct is constatnt can't add more personalites here*/
+	#define MAX_DRV_PERS                            3
+	uint32_t  versions[MAX_DRV_PERS];
+};
+
+#define OEM_I2C_UUID_STR_ADDR 0x9f
+#define OEM_I2C_CARD_SKU_STR_ADDR 0x3c
+#define OEM_I2C_CARD_FN_STR_ADDR 0x48
+#define OEM_I2C_CARD_NAME_STR_ADDR 0x10e
+
+#define OEM_I2C_UUID_STR_LEN 16
+#define OEM_I2C_CARD_SKU_STR_LEN 12
+#define OEM_I2C_CARD_FN_STR_LEN 12
+#define OEM_I2C_CARD_NAME_STR_LEN 128
+#define OEM_I2C_CARD_VERSION_STR_LEN 36
+
+struct oem_i2c_data_t {
+	uint32_t size;
+	uint8_t uuid[OEM_I2C_UUID_STR_LEN];
+	uint8_t card_sku[OEM_I2C_CARD_SKU_STR_LEN];
+	uint8_t card_name[OEM_I2C_CARD_NAME_STR_LEN];
+	uint8_t card_ver[OEM_I2C_CARD_VERSION_STR_LEN];
+	uint8_t card_fn[OEM_I2C_CARD_FN_STR_LEN];
+};
+
+enum curr_cfg_method_e {
+	CURR_CFG_MET_NONE = 0,  /* default config */
+	CURR_CFG_MET_OS = 1,
+	CURR_CFG_MET_VENDOR_SPEC = 2,/* e.g. Option ROM, NPAR, O/S Cfg Utils */
+	CURR_CFG_MET_HP_OTHER = 3,
+	CURR_CFG_MET_VC_CLP = 4,  /* C-Class SM-CLP */
+	CURR_CFG_MET_HP_CNU = 5,  /*  Converged Network Utility */
+	CURR_CFG_MET_HP_DCI = 6,  /* DCi (BD) changes */
+};
+
+#define FC_NPIV_WWPN_SIZE 8
+#define FC_NPIV_WWNN_SIZE 8
+struct bdn_npiv_settings {
+	uint8_t npiv_wwpn[FC_NPIV_WWPN_SIZE];
+	uint8_t npiv_wwnn[FC_NPIV_WWNN_SIZE];
+};
+
+struct bdn_fc_npiv_cfg {
+	/* hdr used internally by the MFW */
+	uint32_t hdr;
+	uint32_t num_of_npiv;
+};
+
+#define MAX_NUMBER_NPIV 64
+struct bdn_fc_npiv_tbl {
+	struct bdn_fc_npiv_cfg fc_npiv_cfg;
+	struct bdn_npiv_settings settings[MAX_NUMBER_NPIV];
+};
+
+struct mdump_driver_info {
+	uint32_t epoc;
+	uint32_t drv_ver;
+	uint32_t fw_ver;
+
+	uint32_t valid_dump;
+	#define FIRST_DUMP_VALID        (1 << 0)
+	#define SECOND_DUMP_VALID       (1 << 1)
+
+	uint32_t flags;
+	#define ENABLE_ALL_TRIGGERS     (0x7fffffff)
+	#define TRIGGER_MDUMP_ONCE      (1 << 31)
+};
+
 struct shmem2_region {
 
 	uint32_t size;					/* 0x0000 */
@@ -2426,18 +2680,18 @@ struct shmem2_region {
 	uint32_t afex_param1_to_driver[E2_FUNC_MAX];		/* 0x0088 */
 	uint32_t afex_param2_to_driver[E2_FUNC_MAX];		/* 0x0098 */
 
-	uint32_t swim_base_addr;				/* 0x0108 */
-	uint32_t swim_funcs;
-	uint32_t swim_main_cb;
+	uint32_t swim_base_addr;				/* 0x00a8 */
+	uint32_t swim_funcs;					/* 0x00ac */
+	uint32_t swim_main_cb;				/* 0x00b0 */
 
 	/*
 	 * bitmap notifying which VIF profiles stored in nvram are enabled by
 	 * switch
 	 */
-	uint32_t afex_profiles_enabled[2];
+	uint32_t afex_profiles_enabled[2];			/* 0x00b4 */
 
 	/* generic flags controlled by the driver */
-	uint32_t drv_flags;
+	uint32_t drv_flags;					/* 0x00bc */
 	#define DRV_FLAGS_DCB_CONFIGURED		0x0
 	#define DRV_FLAGS_DCB_CONFIGURATION_ABORTED	0x1
 	#define DRV_FLAGS_DCB_MFW_CONFIGURED	0x2
@@ -2459,45 +2713,47 @@ struct shmem2_region {
 	(_field_bit) + DRV_FLAGS_GET_PORT_OFFSET(_port)))
 
 	/* pointer to extended dev_info shared data copied from nvm image */
-	uint32_t extended_dev_info_shared_addr;
-	uint32_t ncsi_oem_data_addr;
+	uint32_t extended_dev_info_shared_addr;		/* 0x00c0 */
+	uint32_t ncsi_oem_data_addr;				/* 0x00c4 */
 
-	uint32_t sensor_data_addr;
-	uint32_t buffer_block_addr;
-	uint32_t sensor_data_req_update_interval;
-	uint32_t temperature_in_half_celsius;
-	uint32_t glob_struct_in_host;
+	uint32_t sensor_data_addr;				/* 0x00c8 */
+	uint32_t buffer_block_addr;				/* 0x00cc */
+	uint32_t sensor_data_req_update_interval;		/* 0x00d0 */
+	uint32_t temperature_in_half_celsius;		/* 0x00d4 */
+	uint32_t glob_struct_in_host;			/* 0x00d8 */
 
-	uint32_t dcbx_neg_res_ext_offset;
+	uint32_t dcbx_neg_res_ext_offset;			/* 0x00dc */
 	#define SHMEM_DCBX_NEG_RES_EXT_NONE			0x00000000
 
-	uint32_t drv_capabilities_flag[E2_FUNC_MAX];
+	uint32_t drv_capabilities_flag[E2_FUNC_MAX];		/* 0x00e0 */
 	#define DRV_FLAGS_CAPABILITIES_LOADED_SUPPORTED 0x00000001
 	#define DRV_FLAGS_CAPABILITIES_LOADED_L2        0x00000002
 	#define DRV_FLAGS_CAPABILITIES_LOADED_FCOE      0x00000004
 	#define DRV_FLAGS_CAPABILITIES_LOADED_ISCSI     0x00000008
+	#define DRV_FLAGS_MTU_MASK			0xffff0000
+	#define DRV_FLAGS_MTU_SHIFT				16
 
-	uint32_t extended_dev_info_shared_cfg_size;
+	uint32_t extended_dev_info_shared_cfg_size;		/* 0x00f0 */
 
-	uint32_t dcbx_en[PORT_MAX];
+	uint32_t dcbx_en[PORT_MAX];				/* 0x00f4 */
 
 	/* The offset points to the multi threaded meta structure */
-	uint32_t multi_thread_data_offset;
+	uint32_t multi_thread_data_offset;			/* 0x00fc */
 
 	/* address of DMAable host address holding values from the drivers */
-	uint32_t drv_info_host_addr_lo;
-	uint32_t drv_info_host_addr_hi;
+	uint32_t drv_info_host_addr_lo;			/* 0x0100 */
+	uint32_t drv_info_host_addr_hi;			/* 0x0104 */
 
 	/* general values written by the MFW (such as current version) */
-	uint32_t drv_info_control;
+	uint32_t drv_info_control;				/* 0x0108 */
 	#define DRV_INFO_CONTROL_VER_MASK          0x000000ff
 	#define DRV_INFO_CONTROL_VER_SHIFT         0
 	#define DRV_INFO_CONTROL_OP_CODE_MASK      0x0000ff00
 	#define DRV_INFO_CONTROL_OP_CODE_SHIFT     8
-	uint32_t ibft_host_addr; /* initialized by option ROM */
+	uint32_t ibft_host_addr; /* initialized by option ROM */    /* 0x010c */
 
-	struct eee_remote_vals eee_remote_vals[PORT_MAX];
-	uint32_t pf_allocation[E2_FUNC_MAX];
+	struct eee_remote_vals eee_remote_vals[PORT_MAX];	/* 0x0110 */
+	uint32_t pf_allocation[E2_FUNC_MAX];			/* 0x0120 */
 	#define PF_ALLOACTION_MSIX_VECTORS_MASK    0x000000ff /* real value, as PCI config space can show only maximum of 64 vectors */
 	#define PF_ALLOACTION_MSIX_VECTORS_SHIFT   0
 
@@ -2515,13 +2771,13 @@ struct shmem2_region {
 	 * bit 31 when 1'b0 bits 15:0 contain a PORT_FEAT_CFG_EEE_ define as
 	 * value. When 1'b1 those bits contains a value times 16 microseconds.
 	 */
-	uint32_t eee_status[PORT_MAX];
+	uint32_t eee_status[PORT_MAX];				/* 0x0130 */
 	#define SHMEM_EEE_TIMER_MASK		   0x0000ffff
 	#define SHMEM_EEE_SUPPORTED_MASK	   0x000f0000
 	#define SHMEM_EEE_SUPPORTED_SHIFT	   16
 	#define SHMEM_EEE_ADV_STATUS_MASK	   0x00f00000
 		#define SHMEM_EEE_100M_ADV	   (1<<0)
-		#define SHMEM_EEE_1G_ADV	   (1U<<1)
+		#define SHMEM_EEE_1G_ADV	   (1 << 1)
 		#define SHMEM_EEE_10G_ADV	   (1<<2)
 	#define SHMEM_EEE_ADV_STATUS_SHIFT	   20
 	#define	SHMEM_EEE_LP_ADV_STATUS_MASK	   0x0f000000
@@ -2531,26 +2787,143 @@ struct shmem2_region {
 	#define SHMEM_EEE_ACTIVE_BIT		   0x40000000
 	#define SHMEM_EEE_TIME_OUTPUT_BIT	   0x80000000
 
-	uint32_t sizeof_port_stats;
+	uint32_t sizeof_port_stats;				/* 0x0138 */
 
 	/* Link Flap Avoidance */
-	uint32_t lfa_host_addr[PORT_MAX];
+	uint32_t lfa_host_addr[PORT_MAX];			/* 0x013c */
 
     /* External PHY temperature in deg C. */
-	uint32_t extphy_temps_in_celsius;
+	uint32_t extphy_temps_in_celsius;			/* 0x0144 */
 	#define EXTPHY1_TEMP_MASK                  0x0000ffff
 	#define EXTPHY1_TEMP_SHIFT                 0
+	#define ON_BOARD_TEMP_MASK                 0xffff0000
+	#define ON_BOARD_TEMP_SHIFT                16
 
 	uint32_t ocdata_info_addr;			/* Offset 0x148 */
 	uint32_t drv_func_info_addr;			/* Offset 0x14C */
 	uint32_t drv_func_info_size;			/* Offset 0x150 */
 	uint32_t link_attr_sync[PORT_MAX];		/* Offset 0x154 */
-	#define LINK_ATTR_SYNC_KR2_ENABLE       0x00000001
-	#define LINK_ATTR_84858                 0x00000002
-	#define LINK_SFP_EEPROM_COMP_CODE_MASK  0x0000ff00
-	#define LINK_SFP_EEPROM_COMP_CODE_SHIFT          8
+	#define LINK_ATTR_SYNC_KR2_ENABLE	0x00000001
+	#define LINK_ATTR_84858			0x00000002
+	#define LINK_SFP_EEPROM_COMP_CODE_MASK	0x0000ff00
+	#define LINK_SFP_EEPROM_COMP_CODE_SHIFT		 8
+	#define LINK_SFP_EEPROM_COMP_CODE_SR	0x00001000
+	#define LINK_SFP_EEPROM_COMP_CODE_LR	0x00002000
+	#define LINK_SFP_EEPROM_COMP_CODE_LRM	0x00004000
 
-	uint32_t link_change_count[PORT_MAX];		/* Offset 0x160-0x164 */
+	uint32_t ibft_host_addr_hi;  /* Initialize by uEFI ROM Offset 0x158 */
+	uint32_t fcode_ver;                          /* Offset 0x15c */
+	uint32_t link_change_count[PORT_MAX];        /* Offset 0x160-0x164 */
+	#define LINK_CHANGE_COUNT_MASK 0xff     /* Offset 0x168 */
+	/* driver version for each personality*/
+	struct os_drv_ver func_os_drv_ver[E2_FUNC_MAX]; /* Offset 0x16c */
+
+	/* Flag to the driver that PF's drv_info_host_addr buffer was read */
+	uint32_t mfw_drv_indication;			/* Offset 0x19c */
+
+	/* We use inidcation for each PF (0..3) */
+	#define MFW_DRV_IND_READ_DONE_OFFSET(_pf_)  (1 << (_pf_))
+
+	union { /* For various OEMs */			/* Offset 0x1a0 */
+		uint8_t storage_boot_prog[E2_FUNC_MAX];
+	#define STORAGE_BOOT_PROG_MASK				0x000000FF
+	#define STORAGE_BOOT_PROG_NONE				0x00000000
+	#define STORAGE_BOOT_PROG_ISCSI_IP_ACQUIRED		0x00000002
+	#define STORAGE_BOOT_PROG_FCOE_FABRIC_LOGIN_SUCCESS	0x00000002
+	#define STORAGE_BOOT_PROG_TARGET_FOUND			0x00000004
+	#define STORAGE_BOOT_PROG_ISCSI_CHAP_SUCCESS		0x00000008
+	#define STORAGE_BOOT_PROG_FCOE_LUN_FOUND		0x00000008
+	#define STORAGE_BOOT_PROG_LOGGED_INTO_TGT		0x00000010
+	#define STORAGE_BOOT_PROG_IMG_DOWNLOADED		0x00000020
+	#define STORAGE_BOOT_PROG_OS_HANDOFF			0x00000040
+	#define STORAGE_BOOT_PROG_COMPLETED			0x00000080
+
+		uint32_t oem_i2c_data_addr;
+	};
+
+	/* 9 entries for the C2S PCP map for each inner VLAN PCP + 1 default */
+	/* For PCP values 0-3 use the map lower */
+	/* 0xFF000000 - PCP 0, 0x00FF0000 - PCP 1,
+	 * 0x0000FF00 - PCP 2, 0x000000FF PCP 3
+	 */
+	uint32_t c2s_pcp_map_lower[E2_FUNC_MAX];		/* 0x1a4 */
+
+	/* For PCP values 4-7 use the map upper */
+	/* 0xFF000000 - PCP 4, 0x00FF0000 - PCP 5,
+	 * 0x0000FF00 - PCP 6, 0x000000FF PCP 7
+	 */
+	uint32_t c2s_pcp_map_upper[E2_FUNC_MAX];		/* 0x1b4 */
+
+	/* For PCP default value get the MSB byte of the map default */
+	uint32_t c2s_pcp_map_default[E2_FUNC_MAX];		/* 0x1c4 */
+
+	/* FC_NPIV table offset in NVRAM */
+	uint32_t fc_npiv_nvram_tbl_addr[PORT_MAX];		/* 0x1d4 */
+
+	/* Shows last method that changed configuration of this device */
+	enum curr_cfg_method_e curr_cfg;			/* 0x1dc */
+
+	/* Storm FW version, shold be kept in the format 0xMMmmbbdd:
+	 * MM - Major, mm - Minor, bb - Build ,dd - Drop
+	 */
+	uint32_t netproc_fw_ver;				/* 0x1e0 */
+
+	/* Option ROM SMASH CLP version */
+	uint32_t clp_ver;					/* 0x1e4 */
+
+	uint32_t pcie_bus_num;					/* 0x1e8 */
+
+	uint32_t sriov_switch_mode;				/* 0x1ec */
+	#define SRIOV_SWITCH_MODE_NONE		0x0
+	#define SRIOV_SWITCH_MODE_VEB		0x1
+	#define SRIOV_SWITCH_MODE_VEPA		0x2
+
+	uint8_t  rsrv2[E2_FUNC_MAX];				/* 0x1f0 */
+
+	uint32_t img_inv_table_addr;	/* Address to INV_TABLE_P */ /* 0x1f4 */
+
+	uint32_t mtu_size[E2_FUNC_MAX];				/* 0x1f8 */
+
+	uint32_t os_driver_state[E2_FUNC_MAX];			/* 0x208 */
+	#define OS_DRIVER_STATE_NOT_LOADED	0 /* not installed */
+	#define OS_DRIVER_STATE_LOADING		1 /* transition state */
+	#define OS_DRIVER_STATE_DISABLED	2 /* installed but disabled */
+	#define OS_DRIVER_STATE_ACTIVE		3 /* installed and active */
+
+	/* mini dump driver info */
+	struct mdump_driver_info drv_info;			/* 0x218 */
+
+	/* written by mfw, read by driver, eg. feature capability support */
+	uint32_t mfw_flags;					/* 0x22c */
+	#define DISABLE_EMBEDDED_LLDP_SUPPORT	0x00000001
+};
+
+#define VLAN_BITMAP_SIZE                        512
+#define VLAN_PF_NUM_MAX                         8
+
+struct pf_vlan_table {
+	uint16_t pvid;
+	uint8_t pcp;
+	uint8_t rsvd;
+	uint8_t trunk_vlan_bitmap[VLAN_BITMAP_SIZE];
+	uint32_t rsvd1[4];
+};
+
+struct vlan_table_s {
+	uint32_t version;
+	#define VLAN_TABLE_IMAGE_VERSION_1      1
+	uint8_t vlan_mode[NVM_PATH_MAX][PORT_MAX];
+	#define VLAN_MODE_NORMAL                0
+	#define VLAN_MODE_FILTER                1
+	#define VLAN_MODE_QINQ                  2
+	struct pf_vlan_table pf_vlans[VLAN_PF_NUM_MAX];
+	uint32_t rsvd2[8];
+};
+
+/* The VLAN table Image is stored in Big Endian format */
+struct nvm_vlan_table_image {
+	struct vlan_table_s vlan_table;
+	uint32_t crc;
 };
 
 
@@ -3228,31 +3601,29 @@ struct port_info {
 
 
 #define BNX2X_5710_FW_MAJOR_VERSION			7
-#define BNX2X_5710_FW_MINOR_VERSION			2
-#define BNX2X_5710_FW_REVISION_VERSION		51
+#define BNX2X_5710_FW_MINOR_VERSION			13
+#define BNX2X_5710_FW_REVISION_VERSION		11
 #define BNX2X_5710_FW_ENGINEERING_VERSION		0
 #define BNX2X_5710_FW_COMPILE_FLAGS			1
 
 
 /*
- * attention bits $$KEEP_ENDIANNESS$$
+ * attention bits
  */
-struct atten_sp_status_block
-{
-	uint32_t attn_bits /* 16 bit of attention signal lines */;
-	uint32_t attn_bits_ack /* 16 bit of attention signal ack */;
-	uint8_t status_block_id /* status block id */;
-	uint8_t reserved0 /* resreved for padding */;
-	uint16_t attn_bits_index /* attention bits running index */;
-	uint32_t reserved1 /* resreved for padding */;
+struct atten_sp_status_block {
+	__le32 attn_bits;
+	__le32 attn_bits_ack;
+	uint8_t status_block_id;
+	uint8_t reserved0;
+	__le16 attn_bits_index;
+	__le32 reserved1;
 };
 
 
 /*
  * The eth aggregative context of Cstorm
  */
-struct cstorm_eth_ag_context
-{
+struct cstorm_eth_ag_context {
 	uint32_t __reserved0[10];
 };
 
@@ -3260,101 +3631,100 @@ struct cstorm_eth_ag_context
 /*
  * dmae command structure
  */
-struct dmae_command
-{
+struct dmae_command {
 	uint32_t opcode;
-#define DMAE_COMMAND_SRC (0x1<<0) /* BitField opcode	Whether the source is the PCIe or the GRC. 0- The source is the PCIe 1- The source is the GRC. */
+#define DMAE_COMMAND_SRC (0x1 << 0)
 #define DMAE_COMMAND_SRC_SHIFT 0
-#define DMAE_COMMAND_DST (0x3<<1) /* BitField opcode	The destination of the DMA can be: 0-None 1-PCIe 2-GRC 3-None  */
+#define DMAE_COMMAND_DST (0x3 << 1)
 #define DMAE_COMMAND_DST_SHIFT 1
-#define DMAE_COMMAND_C_DST (0x1<<3) /* BitField opcode	The destination of the completion: 0-PCIe 1-GRC */
+#define DMAE_COMMAND_C_DST (0x1 << 3)
 #define DMAE_COMMAND_C_DST_SHIFT 3
-#define DMAE_COMMAND_C_TYPE_ENABLE (0x1<<4) /* BitField opcode	Whether to write a completion word to the completion destination: 0-Do not write a completion word 1-Write the completion word  */
+#define DMAE_COMMAND_C_TYPE_ENABLE (0x1 << 4)
 #define DMAE_COMMAND_C_TYPE_ENABLE_SHIFT 4
-#define DMAE_COMMAND_C_TYPE_CRC_ENABLE (0x1<<5) /* BitField opcode	Whether to write a CRC word to the completion destination 0-Do not write a CRC word 1-Write a CRC word  */
+#define DMAE_COMMAND_C_TYPE_CRC_ENABLE (0x1 << 5)
 #define DMAE_COMMAND_C_TYPE_CRC_ENABLE_SHIFT 5
-#define DMAE_COMMAND_C_TYPE_CRC_OFFSET (0x7<<6) /* BitField opcode	The CRC word should be taken from the DMAE GRC space from address 9+X, where X is the value in these bits. */
+#define DMAE_COMMAND_C_TYPE_CRC_OFFSET (0x7 << 6)
 #define DMAE_COMMAND_C_TYPE_CRC_OFFSET_SHIFT 6
-#define DMAE_COMMAND_ENDIANITY (0x3<<9) /* BitField opcode	swapping mode. */
+#define DMAE_COMMAND_ENDIANITY (0x3 << 9)
 #define DMAE_COMMAND_ENDIANITY_SHIFT 9
-#define DMAE_COMMAND_PORT (0x1<<11) /* BitField opcode	Which network port ID to present to the PCI request interface */
+#define DMAE_COMMAND_PORT (0x1 << 11)
 #define DMAE_COMMAND_PORT_SHIFT 11
-#define DMAE_COMMAND_CRC_RESET (0x1<<12) /* BitField opcode	reset crc result */
+#define DMAE_COMMAND_CRC_RESET (0x1 << 12)
 #define DMAE_COMMAND_CRC_RESET_SHIFT 12
-#define DMAE_COMMAND_SRC_RESET (0x1<<13) /* BitField opcode	reset source address in next go */
+#define DMAE_COMMAND_SRC_RESET (0x1 << 13)
 #define DMAE_COMMAND_SRC_RESET_SHIFT 13
-#define DMAE_COMMAND_DST_RESET (0x1<<14) /* BitField opcode	reset dest address in next go */
+#define DMAE_COMMAND_DST_RESET (0x1 << 14)
 #define DMAE_COMMAND_DST_RESET_SHIFT 14
-#define DMAE_COMMAND_E1HVN (0x3<<15) /* BitField opcode	vnic number E2 and onwards source vnic */
+#define DMAE_COMMAND_E1HVN (0x3 << 15)
 #define DMAE_COMMAND_E1HVN_SHIFT 15
-#define DMAE_COMMAND_DST_VN (0x3<<17) /* BitField opcode	E2 and onwards dest vnic */
+#define DMAE_COMMAND_DST_VN (0x3 << 17)
 #define DMAE_COMMAND_DST_VN_SHIFT 17
-#define DMAE_COMMAND_C_FUNC (0x1<<19) /* BitField opcode	E2 and onwards which function gets the completion src_vn(e1hvn)-0 dst_vn-1 */
+#define DMAE_COMMAND_C_FUNC (0x1 << 19)
 #define DMAE_COMMAND_C_FUNC_SHIFT 19
-#define DMAE_COMMAND_ERR_POLICY (0x3<<20) /* BitField opcode	E2 and onwards what to do when theres a completion and a PCI error regular-0 error indication-1 no completion-2 */
+#define DMAE_COMMAND_ERR_POLICY (0x3 << 20)
 #define DMAE_COMMAND_ERR_POLICY_SHIFT 20
-#define DMAE_COMMAND_RESERVED0 (0x3FF<<22) /* BitField opcode	 */
+#define DMAE_COMMAND_RESERVED0 (0x3FF << 22)
 #define DMAE_COMMAND_RESERVED0_SHIFT 22
-	uint32_t src_addr_lo /* source address low/grc address */;
-	uint32_t src_addr_hi /* source address hi */;
-	uint32_t dst_addr_lo /* dest address low/grc address */;
-	uint32_t dst_addr_hi /* dest address hi */;
+	uint32_t src_addr_lo;
+	uint32_t src_addr_hi;
+	uint32_t dst_addr_lo;
+	uint32_t dst_addr_hi;
 #if defined(__BIG_ENDIAN)
 	uint16_t opcode_iov;
-#define DMAE_COMMAND_SRC_VFID (0x3F<<0) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	source VF id */
+#define DMAE_COMMAND_SRC_VFID (0x3F << 0)
 #define DMAE_COMMAND_SRC_VFID_SHIFT 0
-#define DMAE_COMMAND_SRC_VFPF (0x1<<6) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	selects the source function PF-0, VF-1 */
+#define DMAE_COMMAND_SRC_VFPF (0x1 << 6)
 #define DMAE_COMMAND_SRC_VFPF_SHIFT 6
-#define DMAE_COMMAND_RESERVED1 (0x1<<7) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	 */
+#define DMAE_COMMAND_RESERVED1 (0x1 << 7)
 #define DMAE_COMMAND_RESERVED1_SHIFT 7
-#define DMAE_COMMAND_DST_VFID (0x3F<<8) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	destination VF id */
+#define DMAE_COMMAND_DST_VFID (0x3F << 8)
 #define DMAE_COMMAND_DST_VFID_SHIFT 8
-#define DMAE_COMMAND_DST_VFPF (0x1<<14) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	selects the destination function PF-0, VF-1 */
+#define DMAE_COMMAND_DST_VFPF (0x1 << 14)
 #define DMAE_COMMAND_DST_VFPF_SHIFT 14
-#define DMAE_COMMAND_RESERVED2 (0x1<<15) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	 */
+#define DMAE_COMMAND_RESERVED2 (0x1 << 15)
 #define DMAE_COMMAND_RESERVED2_SHIFT 15
-	uint16_t len /* copy length */;
+	uint16_t len;
 #elif defined(__LITTLE_ENDIAN)
-	uint16_t len /* copy length */;
+	uint16_t len;
 	uint16_t opcode_iov;
-#define DMAE_COMMAND_SRC_VFID (0x3F<<0) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	source VF id */
+#define DMAE_COMMAND_SRC_VFID (0x3F << 0)
 #define DMAE_COMMAND_SRC_VFID_SHIFT 0
-#define DMAE_COMMAND_SRC_VFPF (0x1<<6) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	selects the source function PF-0, VF-1 */
+#define DMAE_COMMAND_SRC_VFPF (0x1 << 6)
 #define DMAE_COMMAND_SRC_VFPF_SHIFT 6
-#define DMAE_COMMAND_RESERVED1 (0x1<<7) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	 */
+#define DMAE_COMMAND_RESERVED1 (0x1 << 7)
 #define DMAE_COMMAND_RESERVED1_SHIFT 7
-#define DMAE_COMMAND_DST_VFID (0x3F<<8) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	destination VF id */
+#define DMAE_COMMAND_DST_VFID (0x3F << 8)
 #define DMAE_COMMAND_DST_VFID_SHIFT 8
-#define DMAE_COMMAND_DST_VFPF (0x1<<14) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	selects the destination function PF-0, VF-1 */
+#define DMAE_COMMAND_DST_VFPF (0x1 << 14)
 #define DMAE_COMMAND_DST_VFPF_SHIFT 14
-#define DMAE_COMMAND_RESERVED2 (0x1<<15) /* BitField opcode_iovE2 and onward, set to 0 for backward compatibility	 */
+#define DMAE_COMMAND_RESERVED2 (0x1 << 15)
 #define DMAE_COMMAND_RESERVED2_SHIFT 15
 #endif
-	uint32_t comp_addr_lo /* completion address low/grc address */;
-	uint32_t comp_addr_hi /* completion address hi */;
-	uint32_t comp_val /* value to write to completion address */;
-	uint32_t crc32 /* crc32 result */;
-	uint32_t crc32_c /* crc32_c result */;
+	uint32_t comp_addr_lo;
+	uint32_t comp_addr_hi;
+	uint32_t comp_val;
+	uint32_t crc32;
+	uint32_t crc32_c;
 #if defined(__BIG_ENDIAN)
-	uint16_t crc16_c /* crc16_c result */;
-	uint16_t crc16 /* crc16 result */;
+	uint16_t crc16_c;
+	uint16_t crc16;
 #elif defined(__LITTLE_ENDIAN)
-	uint16_t crc16 /* crc16 result */;
-	uint16_t crc16_c /* crc16_c result */;
+	uint16_t crc16;
+	uint16_t crc16_c;
 #endif
 #if defined(__BIG_ENDIAN)
 	uint16_t reserved3;
-	uint16_t crc_t10 /* crc_t10 result */;
+	uint16_t crc_t10;
 #elif defined(__LITTLE_ENDIAN)
-	uint16_t crc_t10 /* crc_t10 result */;
+	uint16_t crc_t10;
 	uint16_t reserved3;
 #endif
 #if defined(__BIG_ENDIAN)
-	uint16_t xsum8 /* checksum8 result */;
-	uint16_t xsum16 /* checksum16 result */;
+	uint16_t xsum8;
+	uint16_t xsum16;
 #elif defined(__LITTLE_ENDIAN)
-	uint16_t xsum16 /* checksum16 result */;
-	uint16_t xsum8 /* checksum8 result */;
+	uint16_t xsum16;
+	uint16_t xsum8;
 #endif
 };
 
@@ -3362,162 +3732,149 @@ struct dmae_command
 /*
  * common data for all protocols
  */
-struct doorbell_hdr
-{
+struct doorbell_hdr {
 	uint8_t header;
-#define DOORBELL_HDR_RX (0x1<<0) /* BitField header	1 for rx doorbell, 0 for tx doorbell */
+#define DOORBELL_HDR_RX (0x1 << 0)
 #define DOORBELL_HDR_RX_SHIFT 0
-#define DOORBELL_HDR_DB_TYPE (0x1<<1) /* BitField header	0 for normal doorbell, 1 for advertise wnd doorbell */
+#define DOORBELL_HDR_DB_TYPE (0x1 << 1)
 #define DOORBELL_HDR_DB_TYPE_SHIFT 1
-#define DOORBELL_HDR_DPM_SIZE (0x3<<2) /* BitField header	rdma tx only: DPM transaction size specifier (64/128/256/512 bytes) */
+#define DOORBELL_HDR_DPM_SIZE (0x3 << 2)
 #define DOORBELL_HDR_DPM_SIZE_SHIFT 2
-#define DOORBELL_HDR_CONN_TYPE (0xF<<4) /* BitField header	connection type */
+#define DOORBELL_HDR_CONN_TYPE (0xF << 4)
 #define DOORBELL_HDR_CONN_TYPE_SHIFT 4
 };
 
 /*
  * Ethernet doorbell
  */
-struct eth_tx_doorbell
-{
+struct eth_tx_doorbell {
 #if defined(__BIG_ENDIAN)
-	uint16_t npackets /* number of data bytes that were added in the doorbell */;
+	uint16_t npackets;
 	uint8_t params;
-#define ETH_TX_DOORBELL_NUM_BDS (0x3F<<0) /* BitField params	number of buffer descriptors that were added in the doorbell */
+#define ETH_TX_DOORBELL_NUM_BDS (0x3F << 0)
 #define ETH_TX_DOORBELL_NUM_BDS_SHIFT 0
-#define ETH_TX_DOORBELL_RESERVED_TX_FIN_FLAG (0x1<<6) /* BitField params	tx fin command flag */
+#define ETH_TX_DOORBELL_RESERVED_TX_FIN_FLAG (0x1 << 6)
 #define ETH_TX_DOORBELL_RESERVED_TX_FIN_FLAG_SHIFT 6
-#define ETH_TX_DOORBELL_SPARE (0x1<<7) /* BitField params	doorbell queue spare flag */
+#define ETH_TX_DOORBELL_SPARE (0x1 << 7)
 #define ETH_TX_DOORBELL_SPARE_SHIFT 7
 	struct doorbell_hdr hdr;
 #elif defined(__LITTLE_ENDIAN)
 	struct doorbell_hdr hdr;
 	uint8_t params;
-#define ETH_TX_DOORBELL_NUM_BDS (0x3F<<0) /* BitField params	number of buffer descriptors that were added in the doorbell */
+#define ETH_TX_DOORBELL_NUM_BDS (0x3F << 0)
 #define ETH_TX_DOORBELL_NUM_BDS_SHIFT 0
-#define ETH_TX_DOORBELL_RESERVED_TX_FIN_FLAG (0x1<<6) /* BitField params	tx fin command flag */
+#define ETH_TX_DOORBELL_RESERVED_TX_FIN_FLAG (0x1 << 6)
 #define ETH_TX_DOORBELL_RESERVED_TX_FIN_FLAG_SHIFT 6
-#define ETH_TX_DOORBELL_SPARE (0x1<<7) /* BitField params	doorbell queue spare flag */
+#define ETH_TX_DOORBELL_SPARE (0x1 << 7)
 #define ETH_TX_DOORBELL_SPARE_SHIFT 7
-	uint16_t npackets /* number of data bytes that were added in the doorbell */;
+	uint16_t npackets;
 #endif
 };
 
 
 /*
- * 3 lines. status block $$KEEP_ENDIANNESS$$
+ * 3 lines. status block
  */
-struct hc_status_block_e1x
-{
-	uint16_t index_values[HC_SB_MAX_INDICES_E1X] /* indices reported by cstorm */;
-	uint16_t running_index[HC_SB_MAX_SM] /* Status Block running indices */;
-	uint32_t rsrv[11];
+struct hc_status_block_e1x {
+	__le16 index_values[HC_SB_MAX_INDICES_E1X];
+	__le16 running_index[HC_SB_MAX_SM];
+	__le32 rsrv[11];
 };
 
 /*
  * host status block
  */
-struct host_hc_status_block_e1x
-{
-	struct hc_status_block_e1x sb /* fast path indices */;
+struct host_hc_status_block_e1x {
+	struct hc_status_block_e1x sb;
 };
 
 
 /*
- * 3 lines. status block $$KEEP_ENDIANNESS$$
+ * 3 lines. status block
  */
-struct hc_status_block_e2
-{
-	uint16_t index_values[HC_SB_MAX_INDICES_E2] /* indices reported by cstorm */;
-	uint16_t running_index[HC_SB_MAX_SM] /* Status Block running indices */;
-	uint32_t reserved[11];
+struct hc_status_block_e2 {
+	__le16 index_values[HC_SB_MAX_INDICES_E2];
+	__le16 running_index[HC_SB_MAX_SM];
+	__le32 reserved[11];
 };
 
 /*
  * host status block
  */
-struct host_hc_status_block_e2
-{
-	struct hc_status_block_e2 sb /* fast path indices */;
+struct host_hc_status_block_e2 {
+	struct hc_status_block_e2 sb;
 };
 
 
 /*
- * 5 lines. slow-path status block $$KEEP_ENDIANNESS$$
+ * 5 lines. slow-path status block
  */
-struct hc_sp_status_block
-{
-	uint16_t index_values[HC_SP_SB_MAX_INDICES] /* indices reported by cstorm */;
-	uint16_t running_index /* Status Block running index */;
-	uint16_t rsrv;
+struct hc_sp_status_block {
+	__le16 index_values[HC_SP_SB_MAX_INDICES];
+	__le16 running_index;
+	__le16 rsrv;
 	uint32_t rsrv1;
 };
 
 /*
  * host status block
  */
-struct host_sp_status_block
-{
-	struct atten_sp_status_block atten_status_block /* attention bits section */;
-	struct hc_sp_status_block sp_sb /* slow path indices */;
+struct host_sp_status_block {
+	struct atten_sp_status_block atten_status_block;
+	struct hc_sp_status_block sp_sb;
 };
 
 
 /*
  * IGU driver acknowledgment register
  */
-union igu_ack_register
-{
-	struct {
+struct igu_ack_register {
 #if defined(__BIG_ENDIAN)
-		uint16_t sb_id_and_flags;
-#define IGU_ACK_REGISTER_STATUS_BLOCK_ID (0x1F<<0) /* BitField sb_id_and_flags	0-15: non default status blocks, 16: default status block */
+	uint16_t sb_id_and_flags;
+#define IGU_ACK_REGISTER_STATUS_BLOCK_ID (0x1F << 0)
 #define IGU_ACK_REGISTER_STATUS_BLOCK_ID_SHIFT 0
-#define IGU_ACK_REGISTER_STORM_ID (0x7<<5) /* BitField sb_id_and_flags	0-3:storm id, 4: attn status block (valid in default sb only) */
+#define IGU_ACK_REGISTER_STORM_ID (0x7 << 5)
 #define IGU_ACK_REGISTER_STORM_ID_SHIFT 5
-#define IGU_ACK_REGISTER_UPDATE_INDEX (0x1<<8) /* BitField sb_id_and_flags	if set, acknowledges status block index */
+#define IGU_ACK_REGISTER_UPDATE_INDEX (0x1 << 8)
 #define IGU_ACK_REGISTER_UPDATE_INDEX_SHIFT 8
-#define IGU_ACK_REGISTER_INTERRUPT_MODE (0x3<<9) /* BitField sb_id_and_flags	interrupt enable/disable/nop: use IGU_INT_xxx constants */
+#define IGU_ACK_REGISTER_INTERRUPT_MODE (0x3 << 9)
 #define IGU_ACK_REGISTER_INTERRUPT_MODE_SHIFT 9
-#define IGU_ACK_REGISTER_RESERVED (0x1F<<11) /* BitField sb_id_and_flags	 */
+#define IGU_ACK_REGISTER_RESERVED (0x1F << 11)
 #define IGU_ACK_REGISTER_RESERVED_SHIFT 11
-		uint16_t status_block_index /* status block index acknowledgement */;
+	uint16_t status_block_index;
 #elif defined(__LITTLE_ENDIAN)
-		uint16_t status_block_index /* status block index acknowledgement */;
-		uint16_t sb_id_and_flags;
-#define IGU_ACK_REGISTER_STATUS_BLOCK_ID (0x1F<<0) /* BitField sb_id_and_flags	0-15: non default status blocks, 16: default status block */
+	uint16_t status_block_index;
+	uint16_t sb_id_and_flags;
+#define IGU_ACK_REGISTER_STATUS_BLOCK_ID (0x1F << 0)
 #define IGU_ACK_REGISTER_STATUS_BLOCK_ID_SHIFT 0
-#define IGU_ACK_REGISTER_STORM_ID (0x7<<5) /* BitField sb_id_and_flags	0-3:storm id, 4: attn status block (valid in default sb only) */
+#define IGU_ACK_REGISTER_STORM_ID (0x7 << 5)
 #define IGU_ACK_REGISTER_STORM_ID_SHIFT 5
-#define IGU_ACK_REGISTER_UPDATE_INDEX (0x1<<8) /* BitField sb_id_and_flags	if set, acknowledges status block index */
+#define IGU_ACK_REGISTER_UPDATE_INDEX (0x1 << 8)
 #define IGU_ACK_REGISTER_UPDATE_INDEX_SHIFT 8
-#define IGU_ACK_REGISTER_INTERRUPT_MODE (0x3<<9) /* BitField sb_id_and_flags	interrupt enable/disable/nop: use IGU_INT_xxx constants */
+#define IGU_ACK_REGISTER_INTERRUPT_MODE (0x3 << 9)
 #define IGU_ACK_REGISTER_INTERRUPT_MODE_SHIFT 9
-#define IGU_ACK_REGISTER_RESERVED (0x1F<<11) /* BitField sb_id_and_flags	 */
+#define IGU_ACK_REGISTER_RESERVED (0x1F << 11)
 #define IGU_ACK_REGISTER_RESERVED_SHIFT 11
 #endif
-	} sb;
-	uint32_t raw_data;
 };
 
 
 /*
  * IGU driver acknowledgement register
  */
-struct igu_backward_compatible
-{
+struct igu_backward_compatible {
 	uint32_t sb_id_and_flags;
-#define IGU_BACKWARD_COMPATIBLE_SB_INDEX (0xFFFF<<0) /* BitField sb_id_and_flags	 */
+#define IGU_BACKWARD_COMPATIBLE_SB_INDEX (0xFFFF << 0)
 #define IGU_BACKWARD_COMPATIBLE_SB_INDEX_SHIFT 0
-#define IGU_BACKWARD_COMPATIBLE_SB_SELECT (0x1F<<16) /* BitField sb_id_and_flags	 */
+#define IGU_BACKWARD_COMPATIBLE_SB_SELECT (0x1F << 16)
 #define IGU_BACKWARD_COMPATIBLE_SB_SELECT_SHIFT 16
-#define IGU_BACKWARD_COMPATIBLE_SEGMENT_ACCESS (0x7<<21) /* BitField sb_id_and_flags	0-3:storm id, 4: attn status block (valid in default sb only) */
+#define IGU_BACKWARD_COMPATIBLE_SEGMENT_ACCESS (0x7 << 21)
 #define IGU_BACKWARD_COMPATIBLE_SEGMENT_ACCESS_SHIFT 21
-#define IGU_BACKWARD_COMPATIBLE_BUPDATE (0x1<<24) /* BitField sb_id_and_flags	if set, acknowledges status block index */
+#define IGU_BACKWARD_COMPATIBLE_BUPDATE (0x1 << 24)
 #define IGU_BACKWARD_COMPATIBLE_BUPDATE_SHIFT 24
-#define IGU_BACKWARD_COMPATIBLE_ENABLE_INT (0x3<<25) /* BitField sb_id_and_flags	interrupt enable/disable/nop: use IGU_INT_xxx constants */
+#define IGU_BACKWARD_COMPATIBLE_ENABLE_INT (0x3 << 25)
 #define IGU_BACKWARD_COMPATIBLE_ENABLE_INT_SHIFT 25
-#define IGU_BACKWARD_COMPATIBLE_RESERVED_0 (0x1F<<27) /* BitField sb_id_and_flags	 */
+#define IGU_BACKWARD_COMPATIBLE_RESERVED_0 (0x1F << 27)
 #define IGU_BACKWARD_COMPATIBLE_RESERVED_0_SHIFT 27
 	uint32_t reserved_2;
 };
@@ -3526,26 +3883,25 @@ struct igu_backward_compatible
 /*
  * IGU driver acknowledgement register
  */
-struct igu_regular
-{
+struct igu_regular {
 	uint32_t sb_id_and_flags;
-#define IGU_REGULAR_SB_INDEX (0xFFFFF<<0) /* BitField sb_id_and_flags	 */
+#define IGU_REGULAR_SB_INDEX (0xFFFFF << 0)
 #define IGU_REGULAR_SB_INDEX_SHIFT 0
-#define IGU_REGULAR_RESERVED0 (0x1<<20) /* BitField sb_id_and_flags	 */
+#define IGU_REGULAR_RESERVED0 (0x1 << 20)
 #define IGU_REGULAR_RESERVED0_SHIFT 20
-#define IGU_REGULAR_SEGMENT_ACCESS (0x7<<21) /* BitField sb_id_and_flags	21-23 (use enum igu_seg_access) */
+#define IGU_REGULAR_SEGMENT_ACCESS (0x7 << 21)
 #define IGU_REGULAR_SEGMENT_ACCESS_SHIFT 21
-#define IGU_REGULAR_BUPDATE (0x1<<24) /* BitField sb_id_and_flags	 */
+#define IGU_REGULAR_BUPDATE (0x1 << 24)
 #define IGU_REGULAR_BUPDATE_SHIFT 24
-#define IGU_REGULAR_ENABLE_INT (0x3<<25) /* BitField sb_id_and_flags	interrupt enable/disable/nop (use enum igu_int_cmd) */
+#define IGU_REGULAR_ENABLE_INT (0x3 << 25)
 #define IGU_REGULAR_ENABLE_INT_SHIFT 25
-#define IGU_REGULAR_RESERVED_1 (0x1<<27) /* BitField sb_id_and_flags	 */
+#define IGU_REGULAR_RESERVED_1 (0x1 << 27)
 #define IGU_REGULAR_RESERVED_1_SHIFT 27
-#define IGU_REGULAR_CLEANUP_TYPE (0x3<<28) /* BitField sb_id_and_flags	 */
+#define IGU_REGULAR_CLEANUP_TYPE (0x3 << 28)
 #define IGU_REGULAR_CLEANUP_TYPE_SHIFT 28
-#define IGU_REGULAR_CLEANUP_SET (0x1<<30) /* BitField sb_id_and_flags	 */
+#define IGU_REGULAR_CLEANUP_SET (0x1 << 30)
 #define IGU_REGULAR_CLEANUP_SET_SHIFT 30
-#define IGU_REGULAR_BCLEANUP (0x1U<<31) /* BitField sb_id_and_flags	 */
+#define IGU_REGULAR_BCLEANUP (0x1 << 31)
 #define IGU_REGULAR_BCLEANUP_SHIFT 31
 	uint32_t reserved_2;
 };
@@ -3553,8 +3909,7 @@ struct igu_regular
 /*
  * IGU driver acknowledgement register
  */
-union igu_consprod_reg
-{
+union igu_consprod_reg {
 	struct igu_regular regular;
 	struct igu_backward_compatible backward_compatible;
 };
@@ -3563,8 +3918,7 @@ union igu_consprod_reg
 /*
  * Igu control commands
  */
-enum igu_ctrl_cmd
-{
+enum igu_ctrl_cmd {
 	IGU_CTRL_CMD_TYPE_RD,
 	IGU_CTRL_CMD_TYPE_WR,
 	MAX_IGU_CTRL_CMD};
@@ -3573,18 +3927,17 @@ enum igu_ctrl_cmd
 /*
  * Control register for the IGU command register
  */
-struct igu_ctrl_reg
-{
+struct igu_ctrl_reg {
 	uint32_t ctrl_data;
-#define IGU_CTRL_REG_ADDRESS (0xFFF<<0) /* BitField ctrl_data	 */
+#define IGU_CTRL_REG_ADDRESS (0xFFF << 0)
 #define IGU_CTRL_REG_ADDRESS_SHIFT 0
-#define IGU_CTRL_REG_FID (0x7F<<12) /* BitField ctrl_data	 */
+#define IGU_CTRL_REG_FID (0x7F << 12)
 #define IGU_CTRL_REG_FID_SHIFT 12
-#define IGU_CTRL_REG_RESERVED (0x1<<19) /* BitField ctrl_data	 */
+#define IGU_CTRL_REG_RESERVED (0x1 << 19)
 #define IGU_CTRL_REG_RESERVED_SHIFT 19
-#define IGU_CTRL_REG_TYPE (0x1<<20) /* BitField ctrl_data	 (use enum igu_ctrl_cmd) */
+#define IGU_CTRL_REG_TYPE (0x1 << 20)
 #define IGU_CTRL_REG_TYPE_SHIFT 20
-#define IGU_CTRL_REG_UNUSED (0x7FF<<21) /* BitField ctrl_data	 */
+#define IGU_CTRL_REG_UNUSED (0x7FF << 21)
 #define IGU_CTRL_REG_UNUSED_SHIFT 21
 };
 
@@ -3592,8 +3945,7 @@ struct igu_ctrl_reg
 /*
  * Igu interrupt command
  */
-enum igu_int_cmd
-{
+enum igu_int_cmd {
 	IGU_INT_ENABLE,
 	IGU_INT_DISABLE,
 	IGU_INT_NOP,
@@ -3604,8 +3956,7 @@ enum igu_int_cmd
 /*
  * Igu segments
  */
-enum igu_seg_access
-{
+enum igu_seg_access {
 	IGU_SEG_ACCESS_NORM,
 	IGU_SEG_ACCESS_DEF,
 	IGU_SEG_ACCESS_ATTN,
@@ -3615,34 +3966,33 @@ enum igu_seg_access
 /*
  * Parser parsing flags field
  */
-struct parsing_flags
-{
-	uint16_t flags;
-#define PARSING_FLAGS_ETHERNET_ADDRESS_TYPE (0x1<<0) /* BitField flagscontext flags	0=non-unicast, 1=unicast (use enum prs_flags_eth_addr_type) */
+struct parsing_flags {
+	__le16 flags;
+#define PARSING_FLAGS_ETHERNET_ADDRESS_TYPE (0x1 << 0)
 #define PARSING_FLAGS_ETHERNET_ADDRESS_TYPE_SHIFT 0
-#define PARSING_FLAGS_VLAN (0x1<<1) /* BitField flagscontext flags	0 or 1 */
+#define PARSING_FLAGS_VLAN (0x1 << 1)
 #define PARSING_FLAGS_VLAN_SHIFT 1
-#define PARSING_FLAGS_EXTRA_VLAN (0x1<<2) /* BitField flagscontext flags	0 or 1 */
+#define PARSING_FLAGS_EXTRA_VLAN (0x1 << 2)
 #define PARSING_FLAGS_EXTRA_VLAN_SHIFT 2
-#define PARSING_FLAGS_OVER_ETHERNET_PROTOCOL (0x3<<3) /* BitField flagscontext flags	0=un-known, 1=Ipv4, 2=Ipv6,3=LLC SNAP un-known. LLC SNAP here refers only to LLC/SNAP packets that do not have Ipv4 or Ipv6 above them. Ipv4 and Ipv6 indications are even if they are over LLC/SNAP and not directly over Ethernet (use enum prs_flags_over_eth) */
+#define PARSING_FLAGS_OVER_ETHERNET_PROTOCOL (0x3 << 3)
 #define PARSING_FLAGS_OVER_ETHERNET_PROTOCOL_SHIFT 3
-#define PARSING_FLAGS_IP_OPTIONS (0x1<<5) /* BitField flagscontext flags	0=no IP options / extension headers. 1=IP options / extension header exist */
+#define PARSING_FLAGS_IP_OPTIONS (0x1 << 5)
 #define PARSING_FLAGS_IP_OPTIONS_SHIFT 5
-#define PARSING_FLAGS_FRAGMENTATION_STATUS (0x1<<6) /* BitField flagscontext flags	0=non-fragmented, 1=fragmented */
+#define PARSING_FLAGS_FRAGMENTATION_STATUS (0x1 << 6)
 #define PARSING_FLAGS_FRAGMENTATION_STATUS_SHIFT 6
-#define PARSING_FLAGS_OVER_IP_PROTOCOL (0x3<<7) /* BitField flagscontext flags	0=un-known, 1=TCP, 2=UDP (use enum prs_flags_over_ip) */
+#define PARSING_FLAGS_OVER_IP_PROTOCOL (0x3 << 7)
 #define PARSING_FLAGS_OVER_IP_PROTOCOL_SHIFT 7
-#define PARSING_FLAGS_PURE_ACK_INDICATION (0x1<<9) /* BitField flagscontext flags	0=packet with data, 1=pure-ACK (use enum prs_flags_ack_type) */
+#define PARSING_FLAGS_PURE_ACK_INDICATION (0x1 << 9)
 #define PARSING_FLAGS_PURE_ACK_INDICATION_SHIFT 9
-#define PARSING_FLAGS_TCP_OPTIONS_EXIST (0x1<<10) /* BitField flagscontext flags	0=no TCP options. 1=TCP options */
+#define PARSING_FLAGS_TCP_OPTIONS_EXIST (0x1 << 10)
 #define PARSING_FLAGS_TCP_OPTIONS_EXIST_SHIFT 10
-#define PARSING_FLAGS_TIME_STAMP_EXIST_FLAG (0x1<<11) /* BitField flagscontext flags	According to the TCP header options parsing */
+#define PARSING_FLAGS_TIME_STAMP_EXIST_FLAG (0x1 << 11)
 #define PARSING_FLAGS_TIME_STAMP_EXIST_FLAG_SHIFT 11
-#define PARSING_FLAGS_CONNECTION_MATCH (0x1<<12) /* BitField flagscontext flags	connection match in searcher indication */
+#define PARSING_FLAGS_CONNECTION_MATCH (0x1 << 12)
 #define PARSING_FLAGS_CONNECTION_MATCH_SHIFT 12
-#define PARSING_FLAGS_LLC_SNAP (0x1<<13) /* BitField flagscontext flags	LLC SNAP indication */
+#define PARSING_FLAGS_LLC_SNAP (0x1 << 13)
 #define PARSING_FLAGS_LLC_SNAP_SHIFT 13
-#define PARSING_FLAGS_RESERVED0 (0x3<<14) /* BitField flagscontext flags	 */
+#define PARSING_FLAGS_RESERVED0 (0x3 << 14)
 #define PARSING_FLAGS_RESERVED0_SHIFT 14
 };
 
@@ -3650,8 +4000,7 @@ struct parsing_flags
 /*
  * Parsing flags for TCP ACK type
  */
-enum prs_flags_ack_type
-{
+enum prs_flags_ack_type {
 	PRS_FLAG_PUREACK_PIGGY,
 	PRS_FLAG_PUREACK_PURE,
 	MAX_PRS_FLAGS_ACK_TYPE};
@@ -3660,8 +4009,7 @@ enum prs_flags_ack_type
 /*
  * Parsing flags for Ethernet address type
  */
-enum prs_flags_eth_addr_type
-{
+enum prs_flags_eth_addr_type {
 	PRS_FLAG_ETHTYPE_NON_UNICAST,
 	PRS_FLAG_ETHTYPE_UNICAST,
 	MAX_PRS_FLAGS_ETH_ADDR_TYPE};
@@ -3670,8 +4018,7 @@ enum prs_flags_eth_addr_type
 /*
  * Parsing flags for over-ethernet protocol
  */
-enum prs_flags_over_eth
-{
+enum prs_flags_over_eth {
 	PRS_FLAG_OVERETH_UNKNOWN,
 	PRS_FLAG_OVERETH_IPV4,
 	PRS_FLAG_OVERETH_IPV6,
@@ -3682,8 +4029,7 @@ enum prs_flags_over_eth
 /*
  * Parsing flags for over-IP protocol
  */
-enum prs_flags_over_ip
-{
+enum prs_flags_over_ip {
 	PRS_FLAG_OVERIP_UNKNOWN,
 	PRS_FLAG_OVERIP_TCP,
 	PRS_FLAG_OVERIP_UDP,
@@ -3693,18 +4039,17 @@ enum prs_flags_over_ip
 /*
  * SDM operation gen command (generate aggregative interrupt)
  */
-struct sdm_op_gen
-{
-	uint32_t command;
-#define SDM_OP_GEN_COMP_PARAM (0x1F<<0) /* BitField commandcomp_param and comp_type	thread ID/aggr interrupt number/counter depending on the completion type */
+struct sdm_op_gen {
+	__le32 command;
+#define SDM_OP_GEN_COMP_PARAM (0x1F << 0)
 #define SDM_OP_GEN_COMP_PARAM_SHIFT 0
-#define SDM_OP_GEN_COMP_TYPE (0x7<<5) /* BitField commandcomp_param and comp_type	Direct messages to CM / PCI switch are not supported in operation_gen completion */
+#define SDM_OP_GEN_COMP_TYPE (0x7 << 5)
 #define SDM_OP_GEN_COMP_TYPE_SHIFT 5
-#define SDM_OP_GEN_AGG_VECT_IDX (0xFF<<8) /* BitField commandcomp_param and comp_type	bit index in aggregated interrupt vector */
+#define SDM_OP_GEN_AGG_VECT_IDX (0xFF << 8)
 #define SDM_OP_GEN_AGG_VECT_IDX_SHIFT 8
-#define SDM_OP_GEN_AGG_VECT_IDX_VALID (0x1<<16) /* BitField commandcomp_param and comp_type	 */
+#define SDM_OP_GEN_AGG_VECT_IDX_VALID (0x1 << 16)
 #define SDM_OP_GEN_AGG_VECT_IDX_VALID_SHIFT 16
-#define SDM_OP_GEN_RESERVED (0x7FFF<<17) /* BitField commandcomp_param and comp_type	 */
+#define SDM_OP_GEN_RESERVED (0x7FFF << 17)
 #define SDM_OP_GEN_RESERVED_SHIFT 17
 };
 
@@ -3712,17 +4057,16 @@ struct sdm_op_gen
 /*
  * Timers connection context
  */
-struct timers_block_context
-{
-	uint32_t __reserved_0 /* data of client 0 of the timers block*/;
-	uint32_t __reserved_1 /* data of client 1 of the timers block*/;
-	uint32_t __reserved_2 /* data of client 2 of the timers block*/;
+struct timers_block_context {
+	uint32_t __reserved_0;
+	uint32_t __reserved_1;
+	uint32_t __reserved_2;
 	uint32_t flags;
-#define __TIMERS_BLOCK_CONTEXT_NUM_OF_ACTIVE_TIMERS (0x3<<0) /* BitField flagscontext flags	number of active timers running */
+#define __TIMERS_BLOCK_CONTEXT_NUM_OF_ACTIVE_TIMERS (0x3 << 0)
 #define __TIMERS_BLOCK_CONTEXT_NUM_OF_ACTIVE_TIMERS_SHIFT 0
-#define TIMERS_BLOCK_CONTEXT_CONN_VALID_FLG (0x1<<2) /* BitField flagscontext flags	flag: is connection valid (should be set by driver to 1 in toe/iscsi connections) */
+#define TIMERS_BLOCK_CONTEXT_CONN_VALID_FLG (0x1 << 2)
 #define TIMERS_BLOCK_CONTEXT_CONN_VALID_FLG_SHIFT 2
-#define __TIMERS_BLOCK_CONTEXT_RESERVED0 (0x1FFFFFFF<<3) /* BitField flagscontext flags	 */
+#define __TIMERS_BLOCK_CONTEXT_RESERVED0 (0x1FFFFFFF << 3)
 #define __TIMERS_BLOCK_CONTEXT_RESERVED0_SHIFT 3
 };
 
@@ -3730,8 +4074,7 @@ struct timers_block_context
 /*
  * The eth aggregative context of Tstorm
  */
-struct tstorm_eth_ag_context
-{
+struct tstorm_eth_ag_context {
 	uint32_t __reserved0[14];
 };
 
@@ -3739,17 +4082,16 @@ struct tstorm_eth_ag_context
 /*
  * The eth aggregative context of Ustorm
  */
-struct ustorm_eth_ag_context
-{
+struct ustorm_eth_ag_context {
 	uint32_t __reserved0;
 #if defined(__BIG_ENDIAN)
-	uint8_t cdu_usage /* Will be used by the CDU for validation of the CID/connection type on doorbells. */;
+	uint8_t cdu_usage;
 	uint8_t __reserved2;
 	uint16_t __reserved1;
 #elif defined(__LITTLE_ENDIAN)
 	uint16_t __reserved1;
 	uint8_t __reserved2;
-	uint8_t cdu_usage /* Will be used by the CDU for validation of the CID/connection type on doorbells. */;
+	uint8_t cdu_usage;
 #endif
 	uint32_t __reserved3[6];
 };
@@ -3758,17 +4100,16 @@ struct ustorm_eth_ag_context
 /*
  * The eth aggregative context of Xstorm
  */
-struct xstorm_eth_ag_context
-{
+struct xstorm_eth_ag_context {
 	uint32_t reserved0;
 #if defined(__BIG_ENDIAN)
-	uint8_t cdu_reserved /* Used by the CDU for validation and debugging */;
+	uint8_t cdu_reserved;
 	uint8_t reserved2;
 	uint16_t reserved1;
 #elif defined(__LITTLE_ENDIAN)
 	uint16_t reserved1;
 	uint8_t reserved2;
-	uint8_t cdu_reserved /* Used by the CDU for validation and debugging */;
+	uint8_t cdu_reserved;
 #endif
 	uint32_t reserved3[30];
 };
@@ -3777,16 +4118,15 @@ struct xstorm_eth_ag_context
 /*
  * doorbell message sent to the chip
  */
-struct doorbell
-{
+struct doorbell {
 #if defined(__BIG_ENDIAN)
-	uint16_t zero_fill2 /* driver must zero this field! */;
-	uint8_t zero_fill1 /* driver must zero this field! */;
+	uint16_t zero_fill2;
+	uint8_t zero_fill1;
 	struct doorbell_hdr header;
 #elif defined(__LITTLE_ENDIAN)
 	struct doorbell_hdr header;
-	uint8_t zero_fill1 /* driver must zero this field! */;
-	uint16_t zero_fill2 /* driver must zero this field! */;
+	uint8_t zero_fill1;
+	uint16_t zero_fill2;
 #endif
 };
 
@@ -3794,527 +4134,563 @@ struct doorbell
 /*
  * doorbell message sent to the chip
  */
-struct doorbell_set_prod
-{
+struct doorbell_set_prod {
 #if defined(__BIG_ENDIAN)
-	uint16_t prod /* Producer index to be set */;
-	uint8_t zero_fill1 /* driver must zero this field! */;
+	uint16_t prod;
+	uint8_t zero_fill1;
 	struct doorbell_hdr header;
 #elif defined(__LITTLE_ENDIAN)
 	struct doorbell_hdr header;
-	uint8_t zero_fill1 /* driver must zero this field! */;
-	uint16_t prod /* Producer index to be set */;
+	uint8_t zero_fill1;
+	uint16_t prod;
 #endif
 };
 
 
-struct regpair
-{
-	uint32_t lo /* low word for reg-pair */;
-	uint32_t hi /* high word for reg-pair */;
+struct regpair {
+	__le32 lo;
+	__le32 hi;
 };
 
 
-struct regpair_native
-{
-	uint32_t lo /* low word for reg-pair */;
-	uint32_t hi /* high word for reg-pair */;
+struct regpair_native {
+	uint32_t lo;
+	uint32_t hi;
 };
 
 
 /*
  * Classify rule opcodes in E2/E3
  */
-enum classify_rule
-{
-	CLASSIFY_RULE_OPCODE_MAC /* Add/remove a MAC address */,
-	CLASSIFY_RULE_OPCODE_VLAN /* Add/remove a VLAN */,
-	CLASSIFY_RULE_OPCODE_PAIR /* Add/remove a MAC-VLAN pair */,
+enum classify_rule {
+	CLASSIFY_RULE_OPCODE_MAC,
+	CLASSIFY_RULE_OPCODE_VLAN,
+	CLASSIFY_RULE_OPCODE_PAIR,
+	CLASSIFY_RULE_OPCODE_IMAC_VNI,
 	MAX_CLASSIFY_RULE};
 
 
 /*
  * Classify rule types in E2/E3
  */
-enum classify_rule_action_type
-{
+enum classify_rule_action_type {
 	CLASSIFY_RULE_REMOVE,
 	CLASSIFY_RULE_ADD,
 	MAX_CLASSIFY_RULE_ACTION_TYPE};
 
 
 /*
- * client init ramrod data $$KEEP_ENDIANNESS$$
+ * client init ramrod data
  */
-struct client_init_general_data
-{
-	uint8_t client_id /* client_id */;
-	uint8_t statistics_counter_id /* statistics counter id */;
-	uint8_t statistics_en_flg /* statistics en flg */;
-	uint8_t is_fcoe_flg /* is this an fcoe connection. (1 bit is used) */;
-	uint8_t activate_flg /* if 0 - the client is deactivate else the client is activate client (1 bit is used) */;
-	uint8_t sp_client_id /* the slow path rings client Id. */;
-	uint16_t mtu /* Host MTU from client config */;
-	uint8_t statistics_zero_flg /* if set FW will reset the statistic counter of this client */;
-	uint8_t func_id /* PCI function ID (0-71) */;
-	uint8_t cos /* The connection cos, if applicable */;
+struct client_init_general_data {
+	uint8_t client_id;
+	uint8_t statistics_counter_id;
+	uint8_t statistics_en_flg;
+	uint8_t is_fcoe_flg;
+	uint8_t activate_flg;
+	uint8_t sp_client_id;
+	__le16 mtu;
+	uint8_t statistics_zero_flg;
+	uint8_t func_id;
+	uint8_t cos;
 	uint8_t traffic_type;
-	uint32_t reserved0;
+	uint8_t fp_hsi_ver;
+	uint8_t reserved0[3];
 };
 
 
 /*
- * client init rx data $$KEEP_ENDIANNESS$$
+ * client init rx data
  */
-struct client_init_rx_data
-{
+struct client_init_rx_data {
 	uint8_t tpa_en;
-#define CLIENT_INIT_RX_DATA_TPA_EN_IPV4 (0x1<<0) /* BitField tpa_entpa_enable	tpa enable flg ipv4 */
+#define CLIENT_INIT_RX_DATA_TPA_EN_IPV4 (0x1 << 0)
 #define CLIENT_INIT_RX_DATA_TPA_EN_IPV4_SHIFT 0
-#define CLIENT_INIT_RX_DATA_TPA_EN_IPV6 (0x1<<1) /* BitField tpa_entpa_enable	tpa enable flg ipv6 */
+#define CLIENT_INIT_RX_DATA_TPA_EN_IPV6 (0x1 << 1)
 #define CLIENT_INIT_RX_DATA_TPA_EN_IPV6_SHIFT 1
-#define CLIENT_INIT_RX_DATA_TPA_MODE (0x1<<2) /* BitField tpa_entpa_enable	tpa mode (LRO or GRO) (use enum tpa_mode) */
+#define CLIENT_INIT_RX_DATA_TPA_MODE (0x1 << 2)
 #define CLIENT_INIT_RX_DATA_TPA_MODE_SHIFT 2
-#define CLIENT_INIT_RX_DATA_RESERVED5 (0x1F<<3) /* BitField tpa_entpa_enable	 */
-#define CLIENT_INIT_RX_DATA_RESERVED5_SHIFT 3
-	uint8_t vmqueue_mode_en_flg /* If set, working in VMQueue mode (always consume one sge) */;
-	uint8_t extra_data_over_sgl_en_flg /* if set, put over sgl data from end of input message */;
-	uint8_t cache_line_alignment_log_size /* The log size of cache line alignment in bytes. Must be a power of 2. */;
-	uint8_t enable_dynamic_hc /* If set, dynamic HC is enabled */;
-	uint8_t max_sges_for_packet /* The maximal number of SGEs that can be used for one packet. depends on MTU and SGE size. must be 0 if SGEs are disabled */;
-	uint8_t client_qzone_id /* used in E2 only, to specify the HW queue zone ID used for this client rx producers */;
-	uint8_t drop_ip_cs_err_flg /* If set, this client drops packets with IP checksum error */;
-	uint8_t drop_tcp_cs_err_flg /* If set, this client drops packets with TCP checksum error */;
-	uint8_t drop_ttl0_flg /* If set, this client drops packets with TTL=0 */;
-	uint8_t drop_udp_cs_err_flg /* If set, this client drops packets with UDP checksum error */;
-	uint8_t inner_vlan_removal_enable_flg /* If set, inner VLAN removal is enabled for this client */;
-	uint8_t outer_vlan_removal_enable_flg /* If set, outer VLAN removal is enabled for this client */;
-	uint8_t status_block_id /* rx status block id */;
-	uint8_t rx_sb_index_number /* status block indices */;
-	uint8_t dont_verify_rings_pause_thr_flg /* If set, the rings pause thresholds will not be verified by firmware. */;
-	uint8_t max_tpa_queues /* maximal TPA queues allowed for this client */;
-	uint8_t silent_vlan_removal_flg /* if set, and the vlan is equal to requested vlan according to mask, the vlan will be remove without notifying the driver */;
-	uint16_t max_bytes_on_bd /* Maximum bytes that can be placed on a BD. The BD allocated size should include 2 more bytes (ip alignment) and alignment size (in case the address is not aligned) */;
-	uint16_t sge_buff_size /* Size of the buffers pointed by SGEs */;
-	uint8_t approx_mcast_engine_id /* In Everest2, if is_approx_mcast is set, this field specified which approximate multicast engine is associate with this client */;
-	uint8_t rss_engine_id /* In Everest2, if rss_mode is set, this field specified which RSS engine is associate with this client */;
-	struct regpair bd_page_base /* BD page base address at the host */;
-	struct regpair sge_page_base /* SGE page base address at the host */;
-	struct regpair cqe_page_base /* Completion queue base address */;
+#define CLIENT_INIT_RX_DATA_TPA_OVER_VLAN_DISABLE (0x1 << 3)
+#define CLIENT_INIT_RX_DATA_TPA_OVER_VLAN_DISABLE_SHIFT 3
+#define CLIENT_INIT_RX_DATA_RESERVED5 (0xF << 4)
+#define CLIENT_INIT_RX_DATA_RESERVED5_SHIFT 4
+	uint8_t vmqueue_mode_en_flg;
+	uint8_t extra_data_over_sgl_en_flg;
+	uint8_t cache_line_alignment_log_size;
+	uint8_t enable_dynamic_hc;
+	uint8_t max_sges_for_packet;
+	uint8_t client_qzone_id;
+	uint8_t drop_ip_cs_err_flg;
+	uint8_t drop_tcp_cs_err_flg;
+	uint8_t drop_ttl0_flg;
+	uint8_t drop_udp_cs_err_flg;
+	uint8_t inner_vlan_removal_enable_flg;
+	uint8_t outer_vlan_removal_enable_flg;
+	uint8_t status_block_id;
+	uint8_t rx_sb_index_number;
+	uint8_t dont_verify_rings_pause_thr_flg;
+	uint8_t max_tpa_queues;
+	uint8_t silent_vlan_removal_flg;
+	__le16 max_bytes_on_bd;
+	__le16 sge_buff_size;
+	uint8_t approx_mcast_engine_id;
+	uint8_t rss_engine_id;
+	struct regpair bd_page_base;
+	struct regpair sge_page_base;
+	struct regpair cqe_page_base;
 	uint8_t is_leading_rss;
 	uint8_t is_approx_mcast;
-	uint16_t max_agg_size /* maximal size for the aggregated TPA packets, reprted by the host */;
-	uint16_t state;
-#define CLIENT_INIT_RX_DATA_UCAST_DROP_ALL (0x1<<0) /* BitField staterx filters state	drop all unicast packets */
+	__le16 max_agg_size;
+	__le16 state;
+#define CLIENT_INIT_RX_DATA_UCAST_DROP_ALL (0x1 << 0)
 #define CLIENT_INIT_RX_DATA_UCAST_DROP_ALL_SHIFT 0
-#define CLIENT_INIT_RX_DATA_UCAST_ACCEPT_ALL (0x1<<1) /* BitField staterx filters state	accept all unicast packets (subject to vlan) */
+#define CLIENT_INIT_RX_DATA_UCAST_ACCEPT_ALL (0x1 << 1)
 #define CLIENT_INIT_RX_DATA_UCAST_ACCEPT_ALL_SHIFT 1
-#define CLIENT_INIT_RX_DATA_UCAST_ACCEPT_UNMATCHED (0x1<<2) /* BitField staterx filters state	accept all unmatched unicast packets (subject to vlan) */
+#define CLIENT_INIT_RX_DATA_UCAST_ACCEPT_UNMATCHED (0x1 << 2)
 #define CLIENT_INIT_RX_DATA_UCAST_ACCEPT_UNMATCHED_SHIFT 2
-#define CLIENT_INIT_RX_DATA_MCAST_DROP_ALL (0x1<<3) /* BitField staterx filters state	drop all multicast packets */
+#define CLIENT_INIT_RX_DATA_MCAST_DROP_ALL (0x1 << 3)
 #define CLIENT_INIT_RX_DATA_MCAST_DROP_ALL_SHIFT 3
-#define CLIENT_INIT_RX_DATA_MCAST_ACCEPT_ALL (0x1<<4) /* BitField staterx filters state	accept all multicast packets (subject to vlan) */
+#define CLIENT_INIT_RX_DATA_MCAST_ACCEPT_ALL (0x1 << 4)
 #define CLIENT_INIT_RX_DATA_MCAST_ACCEPT_ALL_SHIFT 4
-#define CLIENT_INIT_RX_DATA_BCAST_ACCEPT_ALL (0x1<<5) /* BitField staterx filters state	accept all broadcast packets (subject to vlan) */
+#define CLIENT_INIT_RX_DATA_BCAST_ACCEPT_ALL (0x1 << 5)
 #define CLIENT_INIT_RX_DATA_BCAST_ACCEPT_ALL_SHIFT 5
-#define CLIENT_INIT_RX_DATA_ACCEPT_ANY_VLAN (0x1<<6) /* BitField staterx filters state	accept packets matched only by MAC (without checking vlan) */
+#define CLIENT_INIT_RX_DATA_ACCEPT_ANY_VLAN (0x1 << 6)
 #define CLIENT_INIT_RX_DATA_ACCEPT_ANY_VLAN_SHIFT 6
-#define CLIENT_INIT_RX_DATA_RESERVED2 (0x1FF<<7) /* BitField staterx filters state	 */
+#define CLIENT_INIT_RX_DATA_RESERVED2 (0x1FF << 7)
 #define CLIENT_INIT_RX_DATA_RESERVED2_SHIFT 7
-	uint16_t cqe_pause_thr_low /* number of remaining cqes under which, we send pause message */;
-	uint16_t cqe_pause_thr_high /* number of remaining cqes above which, we send un-pause message */;
-	uint16_t bd_pause_thr_low /* number of remaining bds under which, we send pause message */;
-	uint16_t bd_pause_thr_high /* number of remaining bds above which, we send un-pause message */;
-	uint16_t sge_pause_thr_low /* number of remaining sges under which, we send pause message */;
-	uint16_t sge_pause_thr_high /* number of remaining sges above which, we send un-pause message */;
-	uint16_t rx_cos_mask /* the bits that will be set on pfc/ safc paket with will be genratet when this ring is full. for regular flow control set this to 1 */;
-	uint16_t silent_vlan_value /* The vlan to compare, in case, silent vlan is set */;
-	uint16_t silent_vlan_mask /* The vlan mask, in case, silent vlan is set */;
-	uint32_t reserved6[2];
+	__le16 cqe_pause_thr_low;
+	__le16 cqe_pause_thr_high;
+	__le16 bd_pause_thr_low;
+	__le16 bd_pause_thr_high;
+	__le16 sge_pause_thr_low;
+	__le16 sge_pause_thr_high;
+	__le16 rx_cos_mask;
+	__le16 silent_vlan_value;
+	__le16 silent_vlan_mask;
+	uint8_t handle_ptp_pkts_flg;
+	uint8_t reserved6[3];
+	__le32 reserved7;
 };
 
 /*
- * client init tx data $$KEEP_ENDIANNESS$$
+ * client init tx data
  */
-struct client_init_tx_data
-{
-	uint8_t enforce_security_flg /* if set, security checks will be made for this connection */;
-	uint8_t tx_status_block_id /* the number of status block to update */;
-	uint8_t tx_sb_index_number /* the index to use inside the status block */;
-	uint8_t tss_leading_client_id /* client ID of the leading TSS client, for TX classification source knock out */;
-	uint8_t tx_switching_flg /* if set, tx switching will be done to packets on this connection */;
-	uint8_t anti_spoofing_flg /* if set, anti spoofing check will be done to packets on this connection */;
-	uint16_t default_vlan /* default vlan tag (id+pri). (valid if default_vlan_flg is set) */;
-	struct regpair tx_bd_page_base /* BD page base address at the host for TxBdCons */;
-	uint16_t state;
-#define CLIENT_INIT_TX_DATA_UCAST_ACCEPT_ALL (0x1<<0) /* BitField statetx filters state	accept all unicast packets (subject to vlan) */
+struct client_init_tx_data {
+	uint8_t enforce_security_flg;
+	uint8_t tx_status_block_id;
+	uint8_t tx_sb_index_number;
+	uint8_t tss_leading_client_id;
+	uint8_t tx_switching_flg;
+	uint8_t anti_spoofing_flg;
+	__le16 default_vlan;
+	struct regpair tx_bd_page_base;
+	__le16 state;
+#define CLIENT_INIT_TX_DATA_UCAST_ACCEPT_ALL (0x1 << 0)
 #define CLIENT_INIT_TX_DATA_UCAST_ACCEPT_ALL_SHIFT 0
-#define CLIENT_INIT_TX_DATA_MCAST_ACCEPT_ALL (0x1<<1) /* BitField statetx filters state	accept all multicast packets (subject to vlan) */
+#define CLIENT_INIT_TX_DATA_MCAST_ACCEPT_ALL (0x1 << 1)
 #define CLIENT_INIT_TX_DATA_MCAST_ACCEPT_ALL_SHIFT 1
-#define CLIENT_INIT_TX_DATA_BCAST_ACCEPT_ALL (0x1<<2) /* BitField statetx filters state	accept all broadcast packets (subject to vlan) */
+#define CLIENT_INIT_TX_DATA_BCAST_ACCEPT_ALL (0x1 << 2)
 #define CLIENT_INIT_TX_DATA_BCAST_ACCEPT_ALL_SHIFT 2
-#define CLIENT_INIT_TX_DATA_ACCEPT_ANY_VLAN (0x1<<3) /* BitField statetx filters state	accept packets matched only by MAC (without checking vlan) */
+#define CLIENT_INIT_TX_DATA_ACCEPT_ANY_VLAN (0x1 << 3)
 #define CLIENT_INIT_TX_DATA_ACCEPT_ANY_VLAN_SHIFT 3
-#define CLIENT_INIT_TX_DATA_RESERVED0 (0xFFF<<4) /* BitField statetx filters state	 */
+#define CLIENT_INIT_TX_DATA_RESERVED0 (0xFFF << 4)
 #define CLIENT_INIT_TX_DATA_RESERVED0_SHIFT 4
-	uint8_t default_vlan_flg /* is default vlan valid for this client. */;
-	uint8_t force_default_pri_flg /* if set, force default priority */;
-	uint8_t tunnel_lso_inc_ip_id /* In case of LSO over IPv4 tunnel, whether to increment IP ID on external IP header or internal IP header */;
-	uint8_t refuse_outband_vlan_flg /* if set, the FW will not add outband vlan on packet (even if will exist on BD). */;
-	uint8_t tunnel_non_lso_pcsum_location /* In case of non-Lso encapsulated packets with L4 checksum offload, the pseudo checksum location - on packet or on BD. */;
-	uint8_t tunnel_non_lso_outer_ip_csum_location /* In case of non-Lso encapsulated packets with outer L3 ip checksum offload, the pseudo checksum location - on packet or on BD. */;
+	uint8_t default_vlan_flg;
+	uint8_t force_default_pri_flg;
+	uint8_t tunnel_lso_inc_ip_id;
+	uint8_t refuse_outband_vlan_flg;
+	uint8_t tunnel_non_lso_pcsum_location;
+	uint8_t tunnel_non_lso_outer_ip_csum_location;
 };
 
 /*
- * client init ramrod data $$KEEP_ENDIANNESS$$
+ * client init ramrod data
  */
-struct client_init_ramrod_data
-{
-	struct client_init_general_data general /* client init general data */;
-	struct client_init_rx_data rx /* client init rx data */;
-	struct client_init_tx_data tx /* client init tx data */;
+struct client_init_ramrod_data {
+	struct client_init_general_data general;
+	struct client_init_rx_data rx;
+	struct client_init_tx_data tx;
 };
 
 
 /*
- * client update ramrod data $$KEEP_ENDIANNESS$$
+ * client update ramrod data
  */
-struct client_update_ramrod_data
-{
-	uint8_t client_id /* the client to update */;
-	uint8_t func_id /* PCI function ID this client belongs to (0-71) */;
-	uint8_t inner_vlan_removal_enable_flg /* If set, inner VLAN removal is enabled for this client, will be change according to change flag */;
-	uint8_t inner_vlan_removal_change_flg /* If set, inner VLAN removal flag will be set according to the enable flag */;
-	uint8_t outer_vlan_removal_enable_flg /* If set, outer VLAN removal is enabled for this client, will be change according to change flag */;
-	uint8_t outer_vlan_removal_change_flg /* If set, outer VLAN removal flag will be set according to the enable flag */;
-	uint8_t anti_spoofing_enable_flg /* If set, anti spoofing is enabled for this client, will be change according to change flag */;
-	uint8_t anti_spoofing_change_flg /* If set, anti spoofing flag will be set according to anti spoofing flag */;
-	uint8_t activate_flg /* if 0 - the client is deactivate else the client is activate client (1 bit is used) */;
-	uint8_t activate_change_flg /* If set, activate_flg will be checked */;
-	uint16_t default_vlan /* default vlan tag (id+pri). (valid if default_vlan_flg is set) */;
+struct client_update_ramrod_data {
+	uint8_t client_id;
+	uint8_t func_id;
+	uint8_t inner_vlan_removal_enable_flg;
+	uint8_t inner_vlan_removal_change_flg;
+	uint8_t outer_vlan_removal_enable_flg;
+	uint8_t outer_vlan_removal_change_flg;
+	uint8_t anti_spoofing_enable_flg;
+	uint8_t anti_spoofing_change_flg;
+	uint8_t activate_flg;
+	uint8_t activate_change_flg;
+	__le16 default_vlan;
 	uint8_t default_vlan_enable_flg;
 	uint8_t default_vlan_change_flg;
-	uint16_t silent_vlan_value /* The vlan to compare, in case, silent vlan is set */;
-	uint16_t silent_vlan_mask /* The vlan mask, in case, silent vlan is set */;
-	uint8_t silent_vlan_removal_flg /* if set, and the vlan is equal to requested vlan according to mask, the vlan will be remove without notifying the driver */;
+	__le16 silent_vlan_value;
+	__le16 silent_vlan_mask;
+	uint8_t silent_vlan_removal_flg;
 	uint8_t silent_vlan_change_flg;
-	uint8_t refuse_outband_vlan_flg /* If set, the FW will not add outband vlan on packet (even if will exist on BD). */;
-	uint8_t refuse_outband_vlan_change_flg /* If set, refuse_outband_vlan_flg will be updated. */;
-	uint8_t tx_switching_flg /* If set, tx switching will be done to packets on this connection. */;
-	uint8_t tx_switching_change_flg /* If set, tx_switching_flg will be updated. */;
-	uint32_t reserved1;
-	uint32_t echo /* echo value to be sent to driver on event ring */;
+	uint8_t refuse_outband_vlan_flg;
+	uint8_t refuse_outband_vlan_change_flg;
+	uint8_t tx_switching_flg;
+	uint8_t tx_switching_change_flg;
+	uint8_t handle_ptp_pkts_flg;
+	uint8_t handle_ptp_pkts_change_flg;
+	__le16 reserved1;
+	__le32 echo;
 };
 
 
 /*
  * The eth storm context of Cstorm
  */
-struct cstorm_eth_st_context
-{
+struct cstorm_eth_st_context {
 	uint32_t __reserved0[4];
 };
 
 
-struct double_regpair
-{
-	uint32_t regpair0_lo /* low word for reg-pair0 */;
-	uint32_t regpair0_hi /* high word for reg-pair0 */;
-	uint32_t regpair1_lo /* low word for reg-pair1 */;
-	uint32_t regpair1_hi /* high word for reg-pair1 */;
+struct double_regpair {
+	uint32_t regpair0_lo;
+	uint32_t regpair0_hi;
+	uint32_t regpair1_lo;
+	uint32_t regpair1_hi;
 };
 
 
 /*
- * Ethernet address types used in ethernet tx BDs
+ * 2nd parse bd type used in ethernet tx BDs
  */
-enum eth_addr_type
-{
+enum eth_2nd_parse_bd_type {
+	ETH_2ND_PARSE_BD_TYPE_LSO_TUNNEL,
+	MAX_ETH_2ND_PARSE_BD_TYPE};
+
+
+/*
+ * Ethernet address typesm used in ethernet tx BDs
+ */
+enum eth_addr_type {
 	UNKNOWN_ADDRESS,
 	UNICAST_ADDRESS,
 	MULTICAST_ADDRESS,
 	BROADCAST_ADDRESS,
-	MAX_ETH_ADDR_TYPE
-};
+	MAX_ETH_ADDR_TYPE};
 
 
 /*
- *  $$KEEP_ENDIANNESS$$
+ *
  */
-struct eth_classify_cmd_header
-{
+struct eth_classify_cmd_header {
 	uint8_t cmd_general_data;
-#define ETH_CLASSIFY_CMD_HEADER_RX_CMD (0x1<<0) /* BitField cmd_general_data	should this cmd be applied for Rx */
+#define ETH_CLASSIFY_CMD_HEADER_RX_CMD (0x1 << 0)
 #define ETH_CLASSIFY_CMD_HEADER_RX_CMD_SHIFT 0
-#define ETH_CLASSIFY_CMD_HEADER_TX_CMD (0x1<<1) /* BitField cmd_general_data	should this cmd be applied for Tx */
+#define ETH_CLASSIFY_CMD_HEADER_TX_CMD (0x1 << 1)
 #define ETH_CLASSIFY_CMD_HEADER_TX_CMD_SHIFT 1
-#define ETH_CLASSIFY_CMD_HEADER_OPCODE (0x3<<2) /* BitField cmd_general_data	command opcode for MAC/VLAN/PAIR (use enum classify_rule) */
+#define ETH_CLASSIFY_CMD_HEADER_OPCODE (0x3 << 2)
 #define ETH_CLASSIFY_CMD_HEADER_OPCODE_SHIFT 2
-#define ETH_CLASSIFY_CMD_HEADER_IS_ADD (0x1<<4) /* BitField cmd_general_data	 (use enum classify_rule_action_type) */
+#define ETH_CLASSIFY_CMD_HEADER_IS_ADD (0x1 << 4)
 #define ETH_CLASSIFY_CMD_HEADER_IS_ADD_SHIFT 4
-#define ETH_CLASSIFY_CMD_HEADER_RESERVED0 (0x7<<5) /* BitField cmd_general_data	 */
+#define ETH_CLASSIFY_CMD_HEADER_RESERVED0 (0x7 << 5)
 #define ETH_CLASSIFY_CMD_HEADER_RESERVED0_SHIFT 5
-	uint8_t func_id /* the function id */;
+	uint8_t func_id;
 	uint8_t client_id;
 	uint8_t reserved1;
 };
 
 
 /*
- * header for eth classification config ramrod $$KEEP_ENDIANNESS$$
+ * header for eth classification config ramrod
  */
-struct eth_classify_header
-{
-	uint8_t rule_cnt /* number of rules in classification config ramrod */;
-	uint8_t reserved0;
-	uint16_t reserved1;
-	uint32_t echo /* echo value to be sent to driver on event ring */;
+struct eth_classify_header {
+	uint8_t rule_cnt;
+	uint8_t warning_on_error;
+	__le16 reserved1;
+	__le32 echo;
 };
 
 
 /*
- * Command for adding/removing a MAC classification rule $$KEEP_ENDIANNESS$$
+ * Command for adding/removing a Inner-MAC/VNI classification rule
  */
-struct eth_classify_mac_cmd
-{
+struct eth_classify_imac_vni_cmd {
 	struct eth_classify_cmd_header header;
-	uint16_t reserved0;
-	uint16_t inner_mac;
-	uint16_t mac_lsb;
-	uint16_t mac_mid;
-	uint16_t mac_msb;
-	uint16_t reserved1;
+	__le32 vni;
+	__le16 imac_lsb;
+	__le16 imac_mid;
+	__le16 imac_msb;
+	__le16 reserved1;
 };
 
 
 /*
- * Command for adding/removing a MAC-VLAN pair classification rule $$KEEP_ENDIANNESS$$
+ * Command for adding/removing a MAC classification rule
  */
-struct eth_classify_pair_cmd
-{
+struct eth_classify_mac_cmd {
 	struct eth_classify_cmd_header header;
-	uint16_t reserved0;
-	uint16_t inner_mac;
-	uint16_t mac_lsb;
-	uint16_t mac_mid;
-	uint16_t mac_msb;
-	uint16_t vlan;
+	__le16 reserved0;
+	__le16 inner_mac;
+	__le16 mac_lsb;
+	__le16 mac_mid;
+	__le16 mac_msb;
+	__le16 reserved1;
 };
 
 
 /*
- * Command for adding/removing a VLAN classification rule $$KEEP_ENDIANNESS$$
+ * Command for adding/removing a MAC-VLAN pair classification rule
  */
-struct eth_classify_vlan_cmd
-{
+struct eth_classify_pair_cmd {
 	struct eth_classify_cmd_header header;
-	uint32_t reserved0;
-	uint32_t reserved1;
-	uint16_t reserved2;
-	uint16_t vlan;
+	__le16 reserved0;
+	__le16 inner_mac;
+	__le16 mac_lsb;
+	__le16 mac_mid;
+	__le16 mac_msb;
+	__le16 vlan;
+};
+
+
+/*
+ * Command for adding/removing a VLAN classification rule
+ */
+struct eth_classify_vlan_cmd {
+	struct eth_classify_cmd_header header;
+	__le32 reserved0;
+	__le32 reserved1;
+	__le16 reserved2;
+	__le16 vlan;
 };
 
 /*
- * union for eth classification rule $$KEEP_ENDIANNESS$$
+ * union for eth classification rule
  */
-union eth_classify_rule_cmd
-{
+union eth_classify_rule_cmd {
 	struct eth_classify_mac_cmd mac;
 	struct eth_classify_vlan_cmd vlan;
 	struct eth_classify_pair_cmd pair;
+	struct eth_classify_imac_vni_cmd imac_vni;
 };
 
 /*
- * parameters for eth classification configuration ramrod $$KEEP_ENDIANNESS$$
+ * parameters for eth classification configuration ramrod
  */
-struct eth_classify_rules_ramrod_data
-{
+struct eth_classify_rules_ramrod_data {
 	struct eth_classify_header header;
 	union eth_classify_rule_cmd rules[CLASSIFY_RULES_COUNT];
 };
 
 
 /*
- * The data contain client ID need to the ramrod $$KEEP_ENDIANNESS$$
+ * The data contain client ID need to the ramrod
  */
-struct eth_common_ramrod_data
-{
-	uint32_t client_id /* id of this client. (5 bits are used) */;
-	uint32_t reserved1;
+struct eth_common_ramrod_data {
+	__le32 client_id;
+	__le32 reserved1;
 };
 
 
 /*
  * The eth storm context of Ustorm
  */
-struct ustorm_eth_st_context
-{
+struct ustorm_eth_st_context {
 	uint32_t reserved0[52];
 };
 
 /*
  * The eth storm context of Tstorm
  */
-struct tstorm_eth_st_context
-{
+struct tstorm_eth_st_context {
 	uint32_t __reserved0[28];
 };
 
 /*
  * The eth storm context of Xstorm
  */
-struct xstorm_eth_st_context
-{
+struct xstorm_eth_st_context {
 	uint32_t reserved0[60];
 };
 
 /*
  * Ethernet connection context
  */
-struct eth_context
-{
-	struct ustorm_eth_st_context ustorm_st_context /* Ustorm storm context */;
-	struct tstorm_eth_st_context tstorm_st_context /* Tstorm storm context */;
-	struct xstorm_eth_ag_context xstorm_ag_context /* Xstorm aggregative context */;
-	struct tstorm_eth_ag_context tstorm_ag_context /* Tstorm aggregative context */;
-	struct cstorm_eth_ag_context cstorm_ag_context /* Cstorm aggregative context */;
-	struct ustorm_eth_ag_context ustorm_ag_context /* Ustorm aggregative context */;
-	struct timers_block_context timers_context /* Timers block context */;
-	struct xstorm_eth_st_context xstorm_st_context /* Xstorm storm context */;
-	struct cstorm_eth_st_context cstorm_st_context /* Cstorm storm context */;
+struct eth_context {
+	struct ustorm_eth_st_context ustorm_st_context;
+	struct tstorm_eth_st_context tstorm_st_context;
+	struct xstorm_eth_ag_context xstorm_ag_context;
+	struct tstorm_eth_ag_context tstorm_ag_context;
+	struct cstorm_eth_ag_context cstorm_ag_context;
+	struct ustorm_eth_ag_context ustorm_ag_context;
+	struct timers_block_context timers_context;
+	struct xstorm_eth_st_context xstorm_st_context;
+	struct cstorm_eth_st_context cstorm_st_context;
 };
 
 
 /*
  * union for sgl and raw data.
  */
-union eth_sgl_or_raw_data
-{
-	uint16_t sgl[8] /* Scatter-gather list of SGEs used by this packet. This list includes the indices of the SGEs. */;
-	uint32_t raw_data[4] /* raw data from Tstorm to the driver. */;
+union eth_sgl_or_raw_data {
+	__le16 sgl[8];
+	uint32_t raw_data[4];
 };
 
 /*
- * eth FP end aggregation CQE parameters struct $$KEEP_ENDIANNESS$$
+ * eth FP end aggregation CQE parameters struct
  */
-struct eth_end_agg_rx_cqe
-{
+struct eth_end_agg_rx_cqe {
 	uint8_t type_error_flags;
-#define ETH_END_AGG_RX_CQE_TYPE (0x3<<0) /* BitField type_error_flags	 (use enum eth_rx_cqe_type) */
+#define ETH_END_AGG_RX_CQE_TYPE (0x3 << 0)
 #define ETH_END_AGG_RX_CQE_TYPE_SHIFT 0
-#define ETH_END_AGG_RX_CQE_SGL_RAW_SEL (0x1<<2) /* BitField type_error_flags	 (use enum eth_rx_fp_sel) */
+#define ETH_END_AGG_RX_CQE_SGL_RAW_SEL (0x1 << 2)
 #define ETH_END_AGG_RX_CQE_SGL_RAW_SEL_SHIFT 2
-#define ETH_END_AGG_RX_CQE_RESERVED0 (0x1F<<3) /* BitField type_error_flags	 */
+#define ETH_END_AGG_RX_CQE_RESERVED0 (0x1F << 3)
 #define ETH_END_AGG_RX_CQE_RESERVED0_SHIFT 3
 	uint8_t reserved1;
-	uint8_t queue_index /* The aggregation queue index of this packet */;
+	uint8_t queue_index;
 	uint8_t reserved2;
-	uint32_t timestamp_delta /* timestamp delta between first packet to last packet in aggregation */;
-	uint16_t num_of_coalesced_segs /* Num of coalesced segments. */;
-	uint16_t pkt_len /* Packet length */;
-	uint8_t pure_ack_count /* Number of pure acks coalesced. */;
+	__le32 timestamp_delta;
+	__le16 num_of_coalesced_segs;
+	__le16 pkt_len;
+	uint8_t pure_ack_count;
 	uint8_t reserved3;
-	uint16_t reserved4;
-	union eth_sgl_or_raw_data sgl_or_raw_data /* union for sgl and raw data. */;
-	uint32_t reserved5[8];
+	__le16 reserved4;
+	union eth_sgl_or_raw_data sgl_or_raw_data;
+	__le32 padding[8];
 };
 
+/*
+ * Ethernet error code
+ */
+enum eth_error_code {
+	ETH_OK = 0x00,
+	ETH_RAMROD_DATA_READ_ERROR = 0x01,
+	ETH_FILTERS_FUNC_NOT_ENABLED,
+	ETH_FILTERS_MAC_ADD_FAIL_CAM_FULL,
+	ETH_FILTERS_MAC_DEL_FAIL_NOF,
+	ETH_FILTERS_PAIR_ADD_FAIL_CAM_FULL,
+	ETH_FILTERS_PAIR_DEL_FAIL_NOF,
+	ETH_FILTERS_VLAN_ADD_FAIL_CAM_FULL,
+	ETH_FILTERS_VLAN_ADD_FAIL_DUP_TT,
+	ETH_FILTERS_VLAN_DEL_FAIL_NOF,
+	ETH_FILTERS_VLAN_DEL_FAIL_NOF_TT,
+	ETH_FILTERS_VLAN_DEL_FAIL_NO_VLAN,
+	ETH_FILTERS_IMAC_VNI_ADD_UNALLOWED_IN_TX,
+	ETH_FILTERS_IMAC_VNI_DEL_UNALLOWED_IN_TX,
+	ETH_FILTERS_IMAC_VNI_ADD_FAIL_CAM_FULL,
+	ETH_FILTERS_IMAC_VNI_DEL_FAIL_NOF,
+	MAX_ETH_ERROR_CODE};
 
 /*
- * regular eth FP CQE parameters struct $$KEEP_ENDIANNESS$$
+ * regular eth FP CQE parameters struct
  */
-struct eth_fast_path_rx_cqe
-{
+struct eth_fast_path_rx_cqe {
 	uint8_t type_error_flags;
-#define ETH_FAST_PATH_RX_CQE_TYPE (0x3<<0) /* BitField type_error_flags	 (use enum eth_rx_cqe_type) */
+#define ETH_FAST_PATH_RX_CQE_TYPE (0x3 << 0)
 #define ETH_FAST_PATH_RX_CQE_TYPE_SHIFT 0
-#define ETH_FAST_PATH_RX_CQE_SGL_RAW_SEL (0x1<<2) /* BitField type_error_flags	 (use enum eth_rx_fp_sel) */
+#define ETH_FAST_PATH_RX_CQE_SGL_RAW_SEL (0x1 << 2)
 #define ETH_FAST_PATH_RX_CQE_SGL_RAW_SEL_SHIFT 2
-#define ETH_FAST_PATH_RX_CQE_PHY_DECODE_ERR_FLG (0x1<<3) /* BitField type_error_flags	Physical layer errors */
+#define ETH_FAST_PATH_RX_CQE_PHY_DECODE_ERR_FLG (0x1 << 3)
 #define ETH_FAST_PATH_RX_CQE_PHY_DECODE_ERR_FLG_SHIFT 3
-#define ETH_FAST_PATH_RX_CQE_IP_BAD_XSUM_FLG (0x1<<4) /* BitField type_error_flags	IP checksum error */
+#define ETH_FAST_PATH_RX_CQE_IP_BAD_XSUM_FLG (0x1 << 4)
 #define ETH_FAST_PATH_RX_CQE_IP_BAD_XSUM_FLG_SHIFT 4
-#define ETH_FAST_PATH_RX_CQE_L4_BAD_XSUM_FLG (0x1<<5) /* BitField type_error_flags	TCP/UDP checksum error */
+#define ETH_FAST_PATH_RX_CQE_L4_BAD_XSUM_FLG (0x1 << 5)
 #define ETH_FAST_PATH_RX_CQE_L4_BAD_XSUM_FLG_SHIFT 5
-#define ETH_FAST_PATH_RX_CQE_RESERVED0 (0x3<<6) /* BitField type_error_flags	 */
-#define ETH_FAST_PATH_RX_CQE_RESERVED0_SHIFT 6
+#define ETH_FAST_PATH_RX_CQE_PTP_PKT (0x1 << 6)
+#define ETH_FAST_PATH_RX_CQE_PTP_PKT_SHIFT 6
+#define ETH_FAST_PATH_RX_CQE_RESERVED0 (0x1 << 7)
+#define ETH_FAST_PATH_RX_CQE_RESERVED0_SHIFT 7
 	uint8_t status_flags;
-#define ETH_FAST_PATH_RX_CQE_RSS_HASH_TYPE (0x7<<0) /* BitField status_flags	 (use enum eth_rss_hash_type) */
+#define ETH_FAST_PATH_RX_CQE_RSS_HASH_TYPE (0x7 << 0)
 #define ETH_FAST_PATH_RX_CQE_RSS_HASH_TYPE_SHIFT 0
-#define ETH_FAST_PATH_RX_CQE_RSS_HASH_FLG (0x1<<3) /* BitField status_flags	RSS hashing on/off */
+#define ETH_FAST_PATH_RX_CQE_RSS_HASH_FLG (0x1 << 3)
 #define ETH_FAST_PATH_RX_CQE_RSS_HASH_FLG_SHIFT 3
-#define ETH_FAST_PATH_RX_CQE_BROADCAST_FLG (0x1<<4) /* BitField status_flags	if set to 1, this is a broadcast packet */
+#define ETH_FAST_PATH_RX_CQE_BROADCAST_FLG (0x1 << 4)
 #define ETH_FAST_PATH_RX_CQE_BROADCAST_FLG_SHIFT 4
-#define ETH_FAST_PATH_RX_CQE_MAC_MATCH_FLG (0x1<<5) /* BitField status_flags	if set to 1, the MAC address was matched in the tstorm CAM search */
+#define ETH_FAST_PATH_RX_CQE_MAC_MATCH_FLG (0x1 << 5)
 #define ETH_FAST_PATH_RX_CQE_MAC_MATCH_FLG_SHIFT 5
-#define ETH_FAST_PATH_RX_CQE_IP_XSUM_NO_VALIDATION_FLG (0x1<<6) /* BitField status_flags	IP checksum validation was not performed (if packet is not IPv4) */
+#define ETH_FAST_PATH_RX_CQE_IP_XSUM_NO_VALIDATION_FLG (0x1 << 6)
 #define ETH_FAST_PATH_RX_CQE_IP_XSUM_NO_VALIDATION_FLG_SHIFT 6
-#define ETH_FAST_PATH_RX_CQE_L4_XSUM_NO_VALIDATION_FLG (0x1<<7) /* BitField status_flags	TCP/UDP checksum validation was not performed (if packet is not TCP/UDP or IPv6 extheaders exist) */
+#define ETH_FAST_PATH_RX_CQE_L4_XSUM_NO_VALIDATION_FLG (0x1 << 7)
 #define ETH_FAST_PATH_RX_CQE_L4_XSUM_NO_VALIDATION_FLG_SHIFT 7
-	uint8_t queue_index /* The aggregation queue index of this packet */;
-	uint8_t placement_offset /* Placement offset from the start of the BD, in bytes */;
-	uint32_t rss_hash_result /* RSS toeplitz hash result */;
-	uint16_t vlan_tag /* Ethernet VLAN tag field */;
-	uint16_t pkt_len_or_gro_seg_len /* Packet length (for non-TPA CQE) or GRO Segment Length (for TPA in GRO Mode) otherwise 0 */;
-	uint16_t len_on_bd /* Number of bytes placed on the BD */;
+	uint8_t queue_index;
+	uint8_t placement_offset;
+	__le32 rss_hash_result;
+	__le16 vlan_tag;
+	__le16 pkt_len_or_gro_seg_len;
+	__le16 len_on_bd;
 	struct parsing_flags pars_flags;
-	union eth_sgl_or_raw_data sgl_or_raw_data /* union for sgl and raw data. */;
-	uint32_t reserved1[8];
+	union eth_sgl_or_raw_data sgl_or_raw_data;
+	uint8_t tunn_type;
+	uint8_t tunn_inner_hdrs_offset;
+	__le16 reserved1;
+	__le32 tunn_tenant_id;
+	__le32 padding[5];
+	__le32 marker;
 };
 
 
 /*
- * Command for setting classification flags for a client $$KEEP_ENDIANNESS$$
+ * Command for setting classification flags for a client
  */
-struct eth_filter_rules_cmd
-{
+struct eth_filter_rules_cmd {
 	uint8_t cmd_general_data;
-#define ETH_FILTER_RULES_CMD_RX_CMD (0x1<<0) /* BitField cmd_general_data	should this cmd be applied for Rx */
+#define ETH_FILTER_RULES_CMD_RX_CMD (0x1 << 0)
 #define ETH_FILTER_RULES_CMD_RX_CMD_SHIFT 0
-#define ETH_FILTER_RULES_CMD_TX_CMD (0x1<<1) /* BitField cmd_general_data	should this cmd be applied for Tx */
+#define ETH_FILTER_RULES_CMD_TX_CMD (0x1 << 1)
 #define ETH_FILTER_RULES_CMD_TX_CMD_SHIFT 1
-#define ETH_FILTER_RULES_CMD_RESERVED0 (0x3F<<2) /* BitField cmd_general_data	 */
+#define ETH_FILTER_RULES_CMD_RESERVED0 (0x3F << 2)
 #define ETH_FILTER_RULES_CMD_RESERVED0_SHIFT 2
-	uint8_t func_id /* the function id */;
-	uint8_t client_id /* the client id */;
+	uint8_t func_id;
+	uint8_t client_id;
 	uint8_t reserved1;
-	uint16_t state;
-#define ETH_FILTER_RULES_CMD_UCAST_DROP_ALL (0x1<<0) /* BitField state	drop all unicast packets */
+	__le16 state;
+#define ETH_FILTER_RULES_CMD_UCAST_DROP_ALL (0x1 << 0)
 #define ETH_FILTER_RULES_CMD_UCAST_DROP_ALL_SHIFT 0
-#define ETH_FILTER_RULES_CMD_UCAST_ACCEPT_ALL (0x1<<1) /* BitField state	accept all unicast packets (subject to vlan) */
+#define ETH_FILTER_RULES_CMD_UCAST_ACCEPT_ALL (0x1 << 1)
 #define ETH_FILTER_RULES_CMD_UCAST_ACCEPT_ALL_SHIFT 1
-#define ETH_FILTER_RULES_CMD_UCAST_ACCEPT_UNMATCHED (0x1<<2) /* BitField state	accept all unmatched unicast packets */
+#define ETH_FILTER_RULES_CMD_UCAST_ACCEPT_UNMATCHED (0x1 << 2)
 #define ETH_FILTER_RULES_CMD_UCAST_ACCEPT_UNMATCHED_SHIFT 2
-#define ETH_FILTER_RULES_CMD_MCAST_DROP_ALL (0x1<<3) /* BitField state	drop all multicast packets */
+#define ETH_FILTER_RULES_CMD_MCAST_DROP_ALL (0x1 << 3)
 #define ETH_FILTER_RULES_CMD_MCAST_DROP_ALL_SHIFT 3
-#define ETH_FILTER_RULES_CMD_MCAST_ACCEPT_ALL (0x1<<4) /* BitField state	accept all multicast packets (subject to vlan) */
+#define ETH_FILTER_RULES_CMD_MCAST_ACCEPT_ALL (0x1 << 4)
 #define ETH_FILTER_RULES_CMD_MCAST_ACCEPT_ALL_SHIFT 4
-#define ETH_FILTER_RULES_CMD_BCAST_ACCEPT_ALL (0x1<<5) /* BitField state	accept all broadcast packets (subject to vlan) */
+#define ETH_FILTER_RULES_CMD_BCAST_ACCEPT_ALL (0x1 << 5)
 #define ETH_FILTER_RULES_CMD_BCAST_ACCEPT_ALL_SHIFT 5
-#define ETH_FILTER_RULES_CMD_ACCEPT_ANY_VLAN (0x1<<6) /* BitField state	accept packets matched only by MAC (without checking vlan) */
+#define ETH_FILTER_RULES_CMD_ACCEPT_ANY_VLAN (0x1 << 6)
 #define ETH_FILTER_RULES_CMD_ACCEPT_ANY_VLAN_SHIFT 6
-#define ETH_FILTER_RULES_CMD_RESERVED2 (0x1FF<<7) /* BitField state	 */
+#define ETH_FILTER_RULES_CMD_RESERVED2 (0x1FF << 7)
 #define ETH_FILTER_RULES_CMD_RESERVED2_SHIFT 7
-	uint16_t reserved3;
+	__le16 reserved3;
 	struct regpair reserved4;
 };
 
 
 /*
- * parameters for eth classification filters ramrod $$KEEP_ENDIANNESS$$
+ * parameters for eth classification filters ramrod
  */
-struct eth_filter_rules_ramrod_data
-{
+struct eth_filter_rules_ramrod_data {
 	struct eth_classify_header header;
 	struct eth_filter_rules_cmd rules[FILTER_RULES_COUNT];
 };
 
 
 /*
- * parameters for eth classification configuration ramrod $$KEEP_ENDIANNESS$$
+ * Hsi version
  */
-struct eth_general_rules_ramrod_data
-{
+enum eth_fp_hsi_ver {
+	ETH_FP_HSI_VER_0,
+	ETH_FP_HSI_VER_1,
+	ETH_FP_HSI_VER_2,
+	MAX_ETH_FP_HSI_VER};
+
+
+/*
+ * parameters for eth classification configuration ramrod
+ */
+struct eth_general_rules_ramrod_data {
 	struct eth_classify_header header;
 	union eth_classify_rule_cmd rules[CLASSIFY_RULES_COUNT];
 };
@@ -4323,38 +4699,36 @@ struct eth_general_rules_ramrod_data
 /*
  * The data for Halt ramrod
  */
-struct eth_halt_ramrod_data
-{
-	uint32_t client_id /* id of this client. (5 bits are used) */;
-	uint32_t reserved0;
+struct eth_halt_ramrod_data {
+	__le32 client_id;
+	__le32 reserved0;
 };
 
 
 /*
  * destination and source mac address.
  */
-struct eth_mac_addresses
-{
+struct eth_mac_addresses {
 #if defined(__BIG_ENDIAN)
-	uint16_t dst_mid /* destination mac address 16 middle bits */;
-	uint16_t dst_lo /* destination mac address 16 low bits */;
+	__le16 dst_mid;
+	__le16 dst_lo;
 #elif defined(__LITTLE_ENDIAN)
-	uint16_t dst_lo /* destination mac address 16 low bits */;
-	uint16_t dst_mid /* destination mac address 16 middle bits */;
+	__le16 dst_lo;
+	__le16 dst_mid;
 #endif
 #if defined(__BIG_ENDIAN)
-	uint16_t src_lo /* source mac address 16 low bits */;
-	uint16_t dst_hi /* destination mac address 16 high bits */;
+	__le16 src_lo;
+	__le16 dst_hi;
 #elif defined(__LITTLE_ENDIAN)
-	uint16_t dst_hi /* destination mac address 16 high bits */;
-	uint16_t src_lo /* source mac address 16 low bits */;
+	__le16 dst_hi;
+	__le16 src_lo;
 #endif
 #if defined(__BIG_ENDIAN)
-	uint16_t src_hi /* source mac address 16 high bits */;
-	uint16_t src_mid /* source mac address 16 middle bits */;
+	__le16 src_hi;
+	__le16 src_mid;
 #elif defined(__LITTLE_ENDIAN)
-	uint16_t src_mid /* source mac address 16 middle bits */;
-	uint16_t src_hi /* source mac address 16 high bits */;
+	__le16 src_mid;
+	__le16 src_hi;
 #endif
 };
 
@@ -4362,78 +4736,54 @@ struct eth_mac_addresses
 /*
  * tunneling related data.
  */
-struct eth_tunnel_data
-{
-#if defined(__BIG_ENDIAN)
-	uint16_t dst_mid /* destination mac address 16 middle bits */;
-	uint16_t dst_lo /* destination mac address 16 low bits */;
-#elif defined(__LITTLE_ENDIAN)
-	uint16_t dst_lo /* destination mac address 16 low bits */;
-	uint16_t dst_mid /* destination mac address 16 middle bits */;
-#endif
-#if defined(__BIG_ENDIAN)
-	uint16_t fw_ip_hdr_csum /* Fw Ip header checksum (with ALL ip header fields) for the outer IP header */;
-	uint16_t dst_hi /* destination mac address 16 high bits */;
-#elif defined(__LITTLE_ENDIAN)
-	uint16_t dst_hi /* destination mac address 16 high bits */;
-	uint16_t fw_ip_hdr_csum /* Fw Ip header checksum (with ALL ip header fields) for the outer IP header */;
-#endif
-#if defined(__BIG_ENDIAN)
+struct eth_tunnel_data {
+	__le16 dst_lo;
+	__le16 dst_mid;
+	__le16 dst_hi;
+	__le16 fw_ip_hdr_csum;
+	__le16 pseudo_csum;
+	uint8_t ip_hdr_start_inner_w;
 	uint8_t flags;
-#define ETH_TUNNEL_DATA_IP_HDR_TYPE_OUTER (0x1<<0) /* BitField flags	Set in case outer IP header is ipV6 */
-#define ETH_TUNNEL_DATA_IP_HDR_TYPE_OUTER_SHIFT 0
-#define ETH_TUNNEL_DATA_RESERVED (0x7F<<1) /* BitField flags	Should be set with 0 */
+#define ETH_TUNNEL_DATA_IPV6_OUTER (0x1 << 0)
+#define ETH_TUNNEL_DATA_IPV6_OUTER_SHIFT 0
+#define ETH_TUNNEL_DATA_RESERVED (0x7F << 1)
 #define ETH_TUNNEL_DATA_RESERVED_SHIFT 1
-	uint8_t ip_hdr_start_inner_w /* Inner IP header offset in WORDs (16-bit) from start of packet */;
-	uint16_t pseudo_csum /* Pseudo checksum with  length  field=0 */;
-#elif defined(__LITTLE_ENDIAN)
-	uint16_t pseudo_csum /* Pseudo checksum with  length  field=0 */;
-	uint8_t ip_hdr_start_inner_w /* Inner IP header offset in WORDs (16-bit) from start of packet */;
-	uint8_t flags;
-#define ETH_TUNNEL_DATA_IP_HDR_TYPE_OUTER (0x1<<0) /* BitField flags	Set in case outer IP header is ipV6 */
-#define ETH_TUNNEL_DATA_IP_HDR_TYPE_OUTER_SHIFT 0
-#define ETH_TUNNEL_DATA_RESERVED (0x7F<<1) /* BitField flags	Should be set with 0 */
-#define ETH_TUNNEL_DATA_RESERVED_SHIFT 1
-#endif
 };
 
 /*
  * union for mac addresses and for tunneling data. considered as tunneling data only if (tunnel_exist == 1).
  */
-union eth_mac_addr_or_tunnel_data
-{
-	struct eth_mac_addresses mac_addr /* destination and source mac addresses. */;
-	struct eth_tunnel_data tunnel_data /* tunneling related data. */;
+union eth_mac_addr_or_tunnel_data {
+	struct eth_mac_addresses mac_addr;
+	struct eth_tunnel_data tunnel_data;
 };
 
 
 /*
- * Command for setting multicast classification for a client $$KEEP_ENDIANNESS$$
+ * Command for setting multicast classification for a client
  */
-struct eth_multicast_rules_cmd
-{
+struct eth_multicast_rules_cmd {
 	uint8_t cmd_general_data;
-#define ETH_MULTICAST_RULES_CMD_RX_CMD (0x1<<0) /* BitField cmd_general_data	should this cmd be applied for Rx */
+#define ETH_MULTICAST_RULES_CMD_RX_CMD (0x1 << 0)
 #define ETH_MULTICAST_RULES_CMD_RX_CMD_SHIFT 0
-#define ETH_MULTICAST_RULES_CMD_TX_CMD (0x1<<1) /* BitField cmd_general_data	should this cmd be applied for Tx */
+#define ETH_MULTICAST_RULES_CMD_TX_CMD (0x1 << 1)
 #define ETH_MULTICAST_RULES_CMD_TX_CMD_SHIFT 1
-#define ETH_MULTICAST_RULES_CMD_IS_ADD (0x1<<2) /* BitField cmd_general_data	1 for add rule, 0 for remove rule */
+#define ETH_MULTICAST_RULES_CMD_IS_ADD (0x1 << 2)
 #define ETH_MULTICAST_RULES_CMD_IS_ADD_SHIFT 2
-#define ETH_MULTICAST_RULES_CMD_RESERVED0 (0x1F<<3) /* BitField cmd_general_data	 */
+#define ETH_MULTICAST_RULES_CMD_RESERVED0 (0x1F << 3)
 #define ETH_MULTICAST_RULES_CMD_RESERVED0_SHIFT 3
-	uint8_t func_id /* the function id */;
-	uint8_t bin_id /* the bin to add this function to (0-255) */;
-	uint8_t engine_id /* the approximate multicast engine id */;
-	uint32_t reserved2;
+	uint8_t func_id;
+	uint8_t bin_id;
+	uint8_t engine_id;
+	__le32 reserved2;
 	struct regpair reserved3;
 };
 
 
 /*
- * parameters for multicast classification ramrod $$KEEP_ENDIANNESS$$
+ * parameters for multicast classification ramrod
  */
-struct eth_multicast_rules_ramrod_data
-{
+struct eth_multicast_rules_ramrod_data {
 	struct eth_classify_header header;
 	struct eth_multicast_rules_cmd rules[MULTICAST_RULES_COUNT];
 };
@@ -4442,17 +4792,15 @@ struct eth_multicast_rules_ramrod_data
 /*
  * Place holder for ramrods protocol specific data
  */
-struct ramrod_data
-{
-	uint32_t data_lo;
-	uint32_t data_hi;
+struct ramrod_data {
+	__le32 data_lo;
+	__le32 data_hi;
 };
 
 /*
  * union for ramrod data for Ethernet protocol (CQE) (force size of 16 bits)
  */
-union eth_ramrod_data
-{
+union eth_ramrod_data {
 	struct ramrod_data general;
 };
 
@@ -4460,8 +4808,7 @@ union eth_ramrod_data
 /*
  * RSS toeplitz hash type, as reported in CQE
  */
-enum eth_rss_hash_type
-{
+enum eth_rss_hash_type {
 	DEFAULT_HASH_TYPE,
 	IPV4_HASH_TYPE,
 	TCP_IPV4_HASH_TYPE,
@@ -4476,100 +4823,100 @@ enum eth_rss_hash_type
 /*
  * Ethernet RSS mode
  */
-enum eth_rss_mode
-{
+enum eth_rss_mode {
 	ETH_RSS_MODE_DISABLED,
-	ETH_RSS_MODE_ESX51 /* RSS mode for Vmware ESX 5.1 (Only do RSS if packet is UDP with dst port that matches the UDP 4-tuble Destination Port mask and value) */,
-	ETH_RSS_MODE_REGULAR /* Regular (ndis-like) RSS */,
-	ETH_RSS_MODE_VLAN_PRI /* RSS based on inner-vlan priority field */,
-	ETH_RSS_MODE_E1HOV_PRI /* RSS based on outer-vlan priority field */,
-	ETH_RSS_MODE_IP_DSCP /* RSS based on IPv4 DSCP field */,
+	ETH_RSS_MODE_REGULAR,
+	ETH_RSS_MODE_ESX51,
+	ETH_RSS_MODE_VLAN_PRI,
+	ETH_RSS_MODE_E1HOV_PRI,
+	ETH_RSS_MODE_IP_DSCP,
 	MAX_ETH_RSS_MODE};
 
 
 /*
- * parameters for RSS update ramrod (E2) $$KEEP_ENDIANNESS$$
+ * parameters for RSS update ramrod (E2)
  */
-struct eth_rss_update_ramrod_data
-{
+struct eth_rss_update_ramrod_data {
 	uint8_t rss_engine_id;
-	uint8_t capabilities;
-#define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_CAPABILITY (0x1<<0) /* BitField capabilitiesFunction RSS capabilities	configuration of the IpV4 2-tupple capability */
+	uint8_t rss_mode;
+	__le16 capabilities;
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_CAPABILITY (0x1 << 0)
 #define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_CAPABILITY_SHIFT 0
-#define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_TCP_CAPABILITY (0x1<<1) /* BitField capabilitiesFunction RSS capabilities	configuration of the IpV4 4-tupple capability for TCP */
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_TCP_CAPABILITY (0x1 << 1)
 #define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_TCP_CAPABILITY_SHIFT 1
-#define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_UDP_CAPABILITY (0x1<<2) /* BitField capabilitiesFunction RSS capabilities	configuration of the IpV4 4-tupple capability for UDP */
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_UDP_CAPABILITY (0x1 << 2)
 #define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_UDP_CAPABILITY_SHIFT 2
-#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_CAPABILITY (0x1<<3) /* BitField capabilitiesFunction RSS capabilities	configuration of the IpV6 2-tupple capability */
-#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_CAPABILITY_SHIFT 3
-#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_TCP_CAPABILITY (0x1<<4) /* BitField capabilitiesFunction RSS capabilities	configuration of the IpV6 4-tupple capability for TCP */
-#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_TCP_CAPABILITY_SHIFT 4
-#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_UDP_CAPABILITY (0x1<<5) /* BitField capabilitiesFunction RSS capabilities	configuration of the IpV6 4-tupple capability for UDP */
-#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_UDP_CAPABILITY_SHIFT 5
-#define ETH_RSS_UPDATE_RAMROD_DATA_EN_5_TUPLE_CAPABILITY (0x1<<6) /* BitField capabilitiesFunction RSS capabilities	configuration of the 5-tupple capability */
-#define ETH_RSS_UPDATE_RAMROD_DATA_EN_5_TUPLE_CAPABILITY_SHIFT 6
-#define ETH_RSS_UPDATE_RAMROD_DATA_UPDATE_RSS_KEY (0x1<<7) /* BitField capabilitiesFunction RSS capabilities	if set update the rss keys */
-#define ETH_RSS_UPDATE_RAMROD_DATA_UPDATE_RSS_KEY_SHIFT 7
-	uint8_t rss_result_mask /* The mask for the lower byte of RSS result - defines which section of the indirection table will be used. To enable all table put here 0x7F */;
-	uint8_t rss_mode /* The RSS mode for this function */;
-	uint16_t udp_4tuple_dst_port_mask /* If UDP 4-tuple enabled, packets that match the mask and value are 4-tupled, the rest are 2-tupled. (Set to 0 to match all) */;
-	uint16_t udp_4tuple_dst_port_value /* If UDP 4-tuple enabled, packets that match the mask and value are 4-tupled, the rest are 2-tupled. (Set to 0 to match all) */;
-	uint8_t indirection_table[T_ETH_INDIRECTION_TABLE_SIZE] /* RSS indirection table */;
-	uint32_t rss_key[T_ETH_RSS_KEY] /* RSS key supplied as by OS */;
-	uint32_t echo;
-	uint32_t reserved3;
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_VXLAN_CAPABILITY (0x1 << 3)
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV4_VXLAN_CAPABILITY_SHIFT 3
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_CAPABILITY (0x1 << 4)
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_CAPABILITY_SHIFT 4
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_TCP_CAPABILITY (0x1 << 5)
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_TCP_CAPABILITY_SHIFT 5
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_UDP_CAPABILITY (0x1 << 6)
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_UDP_CAPABILITY_SHIFT 6
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_VXLAN_CAPABILITY (0x1 << 7)
+#define ETH_RSS_UPDATE_RAMROD_DATA_IPV6_VXLAN_CAPABILITY_SHIFT 7
+#define ETH_RSS_UPDATE_RAMROD_DATA_TUNN_INNER_HDRS_CAPABILITY (0x1 << 8)
+#define ETH_RSS_UPDATE_RAMROD_DATA_TUNN_INNER_HDRS_CAPABILITY_SHIFT 8
+#define ETH_RSS_UPDATE_RAMROD_DATA_UPDATE_RSS_KEY (0x1 << 9)
+#define ETH_RSS_UPDATE_RAMROD_DATA_UPDATE_RSS_KEY_SHIFT 9
+#define ETH_RSS_UPDATE_RAMROD_DATA_RESERVED (0x3F << 10)
+#define ETH_RSS_UPDATE_RAMROD_DATA_RESERVED_SHIFT 10
+	uint8_t rss_result_mask;
+	uint8_t reserved3;
+	__le16 reserved4;
+	uint8_t indirection_table[T_ETH_INDIRECTION_TABLE_SIZE];
+	__le32 rss_key[T_ETH_RSS_KEY];
+	__le32 echo;
+	__le32 reserved5;
 };
 
 
 /*
  * The eth Rx Buffer Descriptor
  */
-struct eth_rx_bd
-{
-	uint32_t addr_lo /* Single continuous buffer low pointer */;
-	uint32_t addr_hi /* Single continuous buffer high pointer */;
+struct eth_rx_bd {
+	__le32 addr_lo;
+	__le32 addr_hi;
 };
 
 
 /*
- * Eth Rx Cqe structure- general structure for ramrods $$KEEP_ENDIANNESS$$
+ * Eth Rx Cqe structure- general structure for ramrods
  */
-struct common_ramrod_eth_rx_cqe
-{
+struct common_ramrod_eth_rx_cqe {
 	uint8_t ramrod_type;
-#define COMMON_RAMROD_ETH_RX_CQE_TYPE (0x3<<0) /* BitField ramrod_type	 (use enum eth_rx_cqe_type) */
+#define COMMON_RAMROD_ETH_RX_CQE_TYPE (0x3 << 0)
 #define COMMON_RAMROD_ETH_RX_CQE_TYPE_SHIFT 0
-#define COMMON_RAMROD_ETH_RX_CQE_ERROR (0x1<<2) /* BitField ramrod_type	 */
+#define COMMON_RAMROD_ETH_RX_CQE_ERROR (0x1 << 2)
 #define COMMON_RAMROD_ETH_RX_CQE_ERROR_SHIFT 2
-#define COMMON_RAMROD_ETH_RX_CQE_RESERVED0 (0x1F<<3) /* BitField ramrod_type	 */
+#define COMMON_RAMROD_ETH_RX_CQE_RESERVED0 (0x1F << 3)
 #define COMMON_RAMROD_ETH_RX_CQE_RESERVED0_SHIFT 3
-	uint8_t conn_type /* only 3 bits are used */;
-	uint16_t reserved1 /* protocol specific data */;
-	uint32_t conn_and_cmd_data;
-#define COMMON_RAMROD_ETH_RX_CQE_CID (0xFFFFFF<<0) /* BitField conn_and_cmd_data	 */
+	uint8_t conn_type;
+	__le16 reserved1;
+	__le32 conn_and_cmd_data;
+#define COMMON_RAMROD_ETH_RX_CQE_CID (0xFFFFFF << 0)
 #define COMMON_RAMROD_ETH_RX_CQE_CID_SHIFT 0
-#define COMMON_RAMROD_ETH_RX_CQE_CMD_ID (0xFF<<24) /* BitField conn_and_cmd_data	command id of the ramrod- use RamrodCommandIdEnum */
+#define COMMON_RAMROD_ETH_RX_CQE_CMD_ID (0xFF << 24)
 #define COMMON_RAMROD_ETH_RX_CQE_CMD_ID_SHIFT 24
-	struct ramrod_data protocol_data /* protocol specific data */;
-	uint32_t echo;
-	uint32_t reserved2[11];
+	struct ramrod_data protocol_data;
+	__le32 echo;
+	__le32 reserved2[11];
 };
 
 /*
  * Rx Last CQE in page (in ETH)
  */
-struct eth_rx_cqe_next_page
-{
-	uint32_t addr_lo /* Next page low pointer */;
-	uint32_t addr_hi /* Next page high pointer */;
-	uint32_t reserved[14];
+struct eth_rx_cqe_next_page {
+	__le32 addr_lo;
+	__le32 addr_hi;
+	__le32 reserved[14];
 };
 
 /*
  * union for all eth rx cqe types (fix their sizes)
  */
-union eth_rx_cqe
-{
+union eth_rx_cqe {
 	struct eth_fast_path_rx_cqe fast_path_cqe;
 	struct common_ramrod_eth_rx_cqe ramrod_cqe;
 	struct eth_rx_cqe_next_page next_page_cqe;
@@ -4580,324 +4927,328 @@ union eth_rx_cqe
 /*
  * Values for RX ETH CQE type field
  */
-enum eth_rx_cqe_type
-{
-	RX_ETH_CQE_TYPE_ETH_FASTPATH /* Fast path CQE */,
-	RX_ETH_CQE_TYPE_ETH_RAMROD /* Slow path CQE */,
-	RX_ETH_CQE_TYPE_ETH_START_AGG /* Fast path CQE */,
-	RX_ETH_CQE_TYPE_ETH_STOP_AGG /* Slow path CQE */,
+enum eth_rx_cqe_type {
+	RX_ETH_CQE_TYPE_ETH_FASTPATH,
+	RX_ETH_CQE_TYPE_ETH_RAMROD,
+	RX_ETH_CQE_TYPE_ETH_START_AGG,
+	RX_ETH_CQE_TYPE_ETH_STOP_AGG,
 	MAX_ETH_RX_CQE_TYPE};
 
 
 /*
  * Type of SGL/Raw field in ETH RX fast path CQE
  */
-enum eth_rx_fp_sel
-{
-	ETH_FP_CQE_REGULAR /* Regular CQE- no extra data */,
-	ETH_FP_CQE_RAW /* Extra data is raw data- iscsi OOO */,
+enum eth_rx_fp_sel {
+	ETH_FP_CQE_REGULAR,
+	ETH_FP_CQE_RAW,
 	MAX_ETH_RX_FP_SEL};
 
 
 /*
  * The eth Rx SGE Descriptor
  */
-struct eth_rx_sge
-{
-	uint32_t addr_lo /* Single continuous buffer low pointer */;
-	uint32_t addr_hi /* Single continuous buffer high pointer */;
+struct eth_rx_sge {
+	__le32 addr_lo;
+	__le32 addr_hi;
 };
 
 
 /*
- * common data for all protocols $$KEEP_ENDIANNESS$$
+ * common data for all protocols
  */
-struct spe_hdr
-{
-	uint32_t conn_and_cmd_data;
-#define SPE_HDR_CID (0xFFFFFF<<0) /* BitField conn_and_cmd_data	 */
+struct spe_hdr {
+	__le32 conn_and_cmd_data;
+#define SPE_HDR_CID (0xFFFFFF << 0)
 #define SPE_HDR_CID_SHIFT 0
-#define SPE_HDR_CMD_ID (0xFF<<24) /* BitField conn_and_cmd_data	command id of the ramrod- use enum common_spqe_cmd_id/eth_spqe_cmd_id/toe_spqe_cmd_id  */
+#define SPE_HDR_CMD_ID (0xFF << 24)
 #define SPE_HDR_CMD_ID_SHIFT 24
-	uint16_t type;
-#define SPE_HDR_CONN_TYPE (0xFF<<0) /* BitField type	connection type. (3 bits are used) (use enum connection_type) */
+	__le16 type;
+#define SPE_HDR_CONN_TYPE (0xFF << 0)
 #define SPE_HDR_CONN_TYPE_SHIFT 0
-#define SPE_HDR_FUNCTION_ID (0xFF<<8) /* BitField type	 */
+#define SPE_HDR_FUNCTION_ID (0xFF << 8)
 #define SPE_HDR_FUNCTION_ID_SHIFT 8
-	uint16_t reserved1;
+	__le16 reserved1;
 };
 
 /*
  * specific data for ethernet slow path element
  */
-union eth_specific_data
-{
-	uint8_t protocol_data[8] /* to fix this structure size to 8 bytes */;
-	struct regpair client_update_ramrod_data /* The address of the data for client update ramrod */;
-	struct regpair client_init_ramrod_init_data /* The data for client setup ramrod */;
-	struct eth_halt_ramrod_data halt_ramrod_data /* Includes the client id to be deleted */;
-	struct regpair update_data_addr /* physical address of the eth_rss_update_ramrod_data struct, as allocated by the driver */;
-	struct eth_common_ramrod_data common_ramrod_data /* The data contain client ID need to the ramrod */;
-	struct regpair classify_cfg_addr /* physical address of the eth_classify_rules_ramrod_data struct, as allocated by the driver */;
-	struct regpair filter_cfg_addr /* physical address of the eth_filter_cfg_ramrod_data struct, as allocated by the driver */;
-	struct regpair mcast_cfg_addr /* physical address of the eth_mcast_cfg_ramrod_data struct, as allocated by the driver */;
+union eth_specific_data {
+	uint8_t protocol_data[8];
+	struct regpair client_update_ramrod_data;
+	struct regpair client_init_ramrod_init_data;
+	struct eth_halt_ramrod_data halt_ramrod_data;
+	struct regpair update_data_addr;
+	struct eth_common_ramrod_data common_ramrod_data;
+	struct regpair classify_cfg_addr;
+	struct regpair filter_cfg_addr;
+	struct regpair mcast_cfg_addr;
 };
 
 /*
  * Ethernet slow path element
  */
-struct eth_spe
-{
-	struct spe_hdr hdr /* common data for all protocols */;
-	union eth_specific_data data /* data specific to ethernet protocol */;
+struct eth_spe {
+	struct spe_hdr hdr;
+	union eth_specific_data data;
 };
 
 
 /*
  * Ethernet command ID for slow path elements
  */
-enum eth_spqe_cmd_id
-{
+enum eth_spqe_cmd_id {
 	RAMROD_CMD_ID_ETH_UNUSED,
-	RAMROD_CMD_ID_ETH_CLIENT_SETUP /* Setup a new L2 client */,
-	RAMROD_CMD_ID_ETH_HALT /* Halt an L2 client */,
-	RAMROD_CMD_ID_ETH_FORWARD_SETUP /* Setup a new FW channel */,
-	RAMROD_CMD_ID_ETH_TX_QUEUE_SETUP /* Setup a new Tx only queue */,
-	RAMROD_CMD_ID_ETH_CLIENT_UPDATE /* Update an L2 client configuration */,
-	RAMROD_CMD_ID_ETH_EMPTY /* Empty ramrod - used to synchronize iSCSI OOO */,
-	RAMROD_CMD_ID_ETH_TERMINATE /* Terminate an L2 client */,
-	RAMROD_CMD_ID_ETH_TPA_UPDATE /* update the tpa roles in L2 client */,
-	RAMROD_CMD_ID_ETH_CLASSIFICATION_RULES /* Add/remove classification filters for L2 client (in E2/E3 only) */,
-	RAMROD_CMD_ID_ETH_FILTER_RULES /* Add/remove classification filters for L2 client (in E2/E3 only) */,
-	RAMROD_CMD_ID_ETH_MULTICAST_RULES /* Add/remove multicast classification bin (in E2/E3 only) */,
-	RAMROD_CMD_ID_ETH_RSS_UPDATE /* Update RSS configuration */,
-	RAMROD_CMD_ID_ETH_SET_MAC /* Update RSS configuration */,
+	RAMROD_CMD_ID_ETH_CLIENT_SETUP,
+	RAMROD_CMD_ID_ETH_HALT,
+	RAMROD_CMD_ID_ETH_FORWARD_SETUP,
+	RAMROD_CMD_ID_ETH_TX_QUEUE_SETUP,
+	RAMROD_CMD_ID_ETH_CLIENT_UPDATE,
+	RAMROD_CMD_ID_ETH_EMPTY,
+	RAMROD_CMD_ID_ETH_TERMINATE,
+	RAMROD_CMD_ID_ETH_TPA_UPDATE,
+	RAMROD_CMD_ID_ETH_CLASSIFICATION_RULES,
+	RAMROD_CMD_ID_ETH_FILTER_RULES,
+	RAMROD_CMD_ID_ETH_MULTICAST_RULES,
+	RAMROD_CMD_ID_ETH_RSS_UPDATE,
+	RAMROD_CMD_ID_ETH_SET_MAC,
 	MAX_ETH_SPQE_CMD_ID};
 
 
 /*
  * eth tpa update command
  */
-enum eth_tpa_update_command
-{
-	TPA_UPDATE_NONE_COMMAND /* nop command */,
-	TPA_UPDATE_ENABLE_COMMAND /* enable command */,
-	TPA_UPDATE_DISABLE_COMMAND /* disable command */,
+enum eth_tpa_update_command {
+	TPA_UPDATE_NONE_COMMAND,
+	TPA_UPDATE_ENABLE_COMMAND,
+	TPA_UPDATE_DISABLE_COMMAND,
 	MAX_ETH_TPA_UPDATE_COMMAND};
 
 
 /*
  * In case of LSO over IPv4 tunnel, whether to increment IP ID on external IP header or internal IP header
  */
-enum eth_tunnel_lso_inc_ip_id
-{
-	EXT_HEADER /* Increment IP ID of external header (HW works on external, FW works on internal */,
-	INT_HEADER /* Increment IP ID of internal header (HW works on internal, FW works on external */,
+enum eth_tunnel_lso_inc_ip_id {
+	EXT_HEADER,
+	INT_HEADER,
 	MAX_ETH_TUNNEL_LSO_INC_IP_ID};
 
 
 /*
  * In case tunnel exist and L4 checksum offload (or outer ip header checksum), the pseudo checksum location, on packet or on BD.
  */
-enum eth_tunnel_non_lso_csum_location
-{
-	CSUM_ON_PKT /* checksum is on the packet. */,
-	CSUM_ON_BD /* checksum is on the BD. */,
+enum eth_tunnel_non_lso_csum_location {
+	CSUM_ON_PKT,
+	CSUM_ON_BD,
 	MAX_ETH_TUNNEL_NON_LSO_CSUM_LOCATION};
 
 
 /*
- * Tx regular BD structure $$KEEP_ENDIANNESS$$
+ * Packet Tunneling Type
  */
-struct eth_tx_bd
-{
-	uint32_t addr_lo /* Single continuous buffer low pointer */;
-	uint32_t addr_hi /* Single continuous buffer high pointer */;
-	uint16_t total_pkt_bytes /* Size of the entire packet, valid for non-LSO packets */;
-	uint16_t nbytes /* Size of the data represented by the BD */;
-	uint8_t reserved[4] /* keeps same size as other eth tx bd types */;
+enum eth_tunn_type {
+	TUNN_TYPE_NONE,
+	TUNN_TYPE_VXLAN,
+	TUNN_TYPE_L2_GRE,
+	TUNN_TYPE_IPV4_GRE,
+	TUNN_TYPE_IPV6_GRE,
+	TUNN_TYPE_L2_GENEVE,
+	TUNN_TYPE_IPV4_GENEVE,
+	TUNN_TYPE_IPV6_GENEVE,
+	MAX_ETH_TUNN_TYPE};
+
+
+/*
+ * Tx regular BD structure
+ */
+struct eth_tx_bd {
+	__le32 addr_lo;
+	__le32 addr_hi;
+	__le16 total_pkt_bytes;
+	__le16 nbytes;
+	uint8_t reserved[4];
 };
 
 
 /*
  * structure for easy accessibility to assembler
  */
-struct eth_tx_bd_flags
-{
+struct eth_tx_bd_flags {
 	uint8_t as_bitfield;
-#define ETH_TX_BD_FLAGS_IP_CSUM (0x1<<0) /* BitField as_bitfield	IP CKSUM flag,Relevant in START */
+#define ETH_TX_BD_FLAGS_IP_CSUM (0x1 << 0)
 #define ETH_TX_BD_FLAGS_IP_CSUM_SHIFT 0
-#define ETH_TX_BD_FLAGS_L4_CSUM (0x1<<1) /* BitField as_bitfield	L4 CKSUM flag,Relevant in START */
+#define ETH_TX_BD_FLAGS_L4_CSUM (0x1 << 1)
 #define ETH_TX_BD_FLAGS_L4_CSUM_SHIFT 1
-#define ETH_TX_BD_FLAGS_VLAN_MODE (0x3<<2) /* BitField as_bitfield	00 - no vlan; 01 - inband Vlan; 10 outband Vlan (use enum eth_tx_vlan_type) */
+#define ETH_TX_BD_FLAGS_VLAN_MODE (0x3 << 2)
 #define ETH_TX_BD_FLAGS_VLAN_MODE_SHIFT 2
-#define ETH_TX_BD_FLAGS_START_BD (0x1<<4) /* BitField as_bitfield	Start of packet BD */
+#define ETH_TX_BD_FLAGS_START_BD (0x1 << 4)
 #define ETH_TX_BD_FLAGS_START_BD_SHIFT 4
-#define ETH_TX_BD_FLAGS_IS_UDP (0x1<<5) /* BitField as_bitfield	flag that indicates that the current packet is a udp packet */
+#define ETH_TX_BD_FLAGS_IS_UDP (0x1 << 5)
 #define ETH_TX_BD_FLAGS_IS_UDP_SHIFT 5
-#define ETH_TX_BD_FLAGS_SW_LSO (0x1<<6) /* BitField as_bitfield	LSO flag, Relevant in START */
+#define ETH_TX_BD_FLAGS_SW_LSO (0x1 << 6)
 #define ETH_TX_BD_FLAGS_SW_LSO_SHIFT 6
-#define ETH_TX_BD_FLAGS_IPV6 (0x1<<7) /* BitField as_bitfield	set in case ipV6 packet, Relevant in START */
+#define ETH_TX_BD_FLAGS_IPV6 (0x1 << 7)
 #define ETH_TX_BD_FLAGS_IPV6_SHIFT 7
 };
 
 /*
- * The eth Tx Buffer Descriptor $$KEEP_ENDIANNESS$$
+ * The eth Tx Buffer Descriptor
  */
-struct eth_tx_start_bd
-{
-	uint64_t addr;
-	uint16_t nbd /* Num of BDs in packet: include parsInfoBD, Relevant in START(only in Everest) */;
-	uint16_t nbytes /* Size of the data represented by the BD */;
-	uint16_t vlan_or_ethertype /* Vlan structure: vlan_id is in lsb, then cfi and then priority vlan_id 12 bits (lsb), cfi 1 bit, priority 3 bits. In E2, this field should be set with etherType for VFs with no vlan */;
+struct eth_tx_start_bd {
+	__le32 addr_lo;
+	__le32 addr_hi;
+	__le16 nbd;
+	__le16 nbytes;
+	__le16 vlan_or_ethertype;
 	struct eth_tx_bd_flags bd_flags;
 	uint8_t general_data;
-#define ETH_TX_START_BD_HDR_NBDS (0xF<<0) /* BitField general_data	contains the number of BDs that contain Ethernet/IP/TCP headers, for full/partial LSO modes */
+#define ETH_TX_START_BD_HDR_NBDS (0x7 << 0)
 #define ETH_TX_START_BD_HDR_NBDS_SHIFT 0
-#define ETH_TX_START_BD_FORCE_VLAN_MODE (0x1<<4) /* BitField general_data	force vlan mode according to bds (vlan mode can change accroding to global configuration) */
+#define ETH_TX_START_BD_NO_ADDED_TAGS (0x1 << 3)
+#define ETH_TX_START_BD_NO_ADDED_TAGS_SHIFT 3
+#define ETH_TX_START_BD_FORCE_VLAN_MODE (0x1 << 4)
 #define ETH_TX_START_BD_FORCE_VLAN_MODE_SHIFT 4
-#define ETH_TX_START_BD_PARSE_NBDS (0x3<<5) /* BitField general_data	Determines the number of parsing BDs in packet. Number of parsing BDs in packet is (parse_nbds+1). */
+#define ETH_TX_START_BD_PARSE_NBDS (0x3 << 5)
 #define ETH_TX_START_BD_PARSE_NBDS_SHIFT 5
-#define ETH_TX_START_BD_TUNNEL_EXIST (0x1<<7) /* BitField general_data	set in case of tunneling encapsulated packet */
+#define ETH_TX_START_BD_TUNNEL_EXIST (0x1 << 7)
 #define ETH_TX_START_BD_TUNNEL_EXIST_SHIFT 7
 };
 
 /*
- * Tx parsing BD structure for ETH E1h $$KEEP_ENDIANNESS$$
+ * Tx parsing BD structure for ETH E1/E1h
  */
-struct eth_tx_parse_bd_e1x
-{
-	uint16_t global_data;
-#define ETH_TX_PARSE_BD_E1X_IP_HDR_START_OFFSET_W (0xF<<0) /* BitField global_data	IP header Offset in WORDs from start of packet */
+struct eth_tx_parse_bd_e1x {
+	__le16 global_data;
+#define ETH_TX_PARSE_BD_E1X_IP_HDR_START_OFFSET_W (0xF << 0)
 #define ETH_TX_PARSE_BD_E1X_IP_HDR_START_OFFSET_W_SHIFT 0
-#define ETH_TX_PARSE_BD_E1X_ETH_ADDR_TYPE (0x3<<4) /* BitField global_data	marks ethernet address type (use enum eth_addr_type) */
+#define ETH_TX_PARSE_BD_E1X_ETH_ADDR_TYPE (0x3 << 4)
 #define ETH_TX_PARSE_BD_E1X_ETH_ADDR_TYPE_SHIFT 4
-#define ETH_TX_PARSE_BD_E1X_PSEUDO_CS_WITHOUT_LEN (0x1<<6) /* BitField global_data	 */
+#define ETH_TX_PARSE_BD_E1X_PSEUDO_CS_WITHOUT_LEN (0x1 << 6)
 #define ETH_TX_PARSE_BD_E1X_PSEUDO_CS_WITHOUT_LEN_SHIFT 6
-#define ETH_TX_PARSE_BD_E1X_LLC_SNAP_EN (0x1<<7) /* BitField global_data	 */
+#define ETH_TX_PARSE_BD_E1X_LLC_SNAP_EN (0x1 << 7)
 #define ETH_TX_PARSE_BD_E1X_LLC_SNAP_EN_SHIFT 7
-#define ETH_TX_PARSE_BD_E1X_NS_FLG (0x1<<8) /* BitField global_data	an optional addition to ECN that protects against accidental or malicious concealment of marked packets from the TCP sender. */
+#define ETH_TX_PARSE_BD_E1X_NS_FLG (0x1 << 8)
 #define ETH_TX_PARSE_BD_E1X_NS_FLG_SHIFT 8
-#define ETH_TX_PARSE_BD_E1X_RESERVED0 (0x7F<<9) /* BitField global_data	reserved bit, should be set with 0 */
+#define ETH_TX_PARSE_BD_E1X_RESERVED0 (0x7F << 9)
 #define ETH_TX_PARSE_BD_E1X_RESERVED0_SHIFT 9
 	uint8_t tcp_flags;
-#define ETH_TX_PARSE_BD_E1X_FIN_FLG (0x1<<0) /* BitField tcp_flagsState flags	End of data flag */
+#define ETH_TX_PARSE_BD_E1X_FIN_FLG (0x1 << 0)
 #define ETH_TX_PARSE_BD_E1X_FIN_FLG_SHIFT 0
-#define ETH_TX_PARSE_BD_E1X_SYN_FLG (0x1<<1) /* BitField tcp_flagsState flags	Synchronize sequence numbers flag */
+#define ETH_TX_PARSE_BD_E1X_SYN_FLG (0x1 << 1)
 #define ETH_TX_PARSE_BD_E1X_SYN_FLG_SHIFT 1
-#define ETH_TX_PARSE_BD_E1X_RST_FLG (0x1<<2) /* BitField tcp_flagsState flags	Reset connection flag */
+#define ETH_TX_PARSE_BD_E1X_RST_FLG (0x1 << 2)
 #define ETH_TX_PARSE_BD_E1X_RST_FLG_SHIFT 2
-#define ETH_TX_PARSE_BD_E1X_PSH_FLG (0x1<<3) /* BitField tcp_flagsState flags	Push flag */
+#define ETH_TX_PARSE_BD_E1X_PSH_FLG (0x1 << 3)
 #define ETH_TX_PARSE_BD_E1X_PSH_FLG_SHIFT 3
-#define ETH_TX_PARSE_BD_E1X_ACK_FLG (0x1<<4) /* BitField tcp_flagsState flags	Acknowledgment number valid flag */
+#define ETH_TX_PARSE_BD_E1X_ACK_FLG (0x1 << 4)
 #define ETH_TX_PARSE_BD_E1X_ACK_FLG_SHIFT 4
-#define ETH_TX_PARSE_BD_E1X_URG_FLG (0x1<<5) /* BitField tcp_flagsState flags	Urgent pointer valid flag */
+#define ETH_TX_PARSE_BD_E1X_URG_FLG (0x1 << 5)
 #define ETH_TX_PARSE_BD_E1X_URG_FLG_SHIFT 5
-#define ETH_TX_PARSE_BD_E1X_ECE_FLG (0x1<<6) /* BitField tcp_flagsState flags	ECN-Echo */
+#define ETH_TX_PARSE_BD_E1X_ECE_FLG (0x1 << 6)
 #define ETH_TX_PARSE_BD_E1X_ECE_FLG_SHIFT 6
-#define ETH_TX_PARSE_BD_E1X_CWR_FLG (0x1<<7) /* BitField tcp_flagsState flags	Congestion Window Reduced */
+#define ETH_TX_PARSE_BD_E1X_CWR_FLG (0x1 << 7)
 #define ETH_TX_PARSE_BD_E1X_CWR_FLG_SHIFT 7
-	uint8_t ip_hlen_w /* IP header length in WORDs */;
-	uint16_t total_hlen_w /* IP+TCP+ETH */;
-	uint16_t tcp_pseudo_csum /* Checksum of pseudo header with  length  field=0 */;
-	uint16_t lso_mss /* for LSO mode */;
-	uint16_t ip_id /* for LSO mode */;
-	uint32_t tcp_send_seq /* for LSO mode */;
+	uint8_t ip_hlen_w;
+	__le16 total_hlen_w;
+	__le16 tcp_pseudo_csum;
+	__le16 lso_mss;
+	__le16 ip_id;
+	__le32 tcp_send_seq;
 };
 
 /*
- * Tx parsing BD structure for ETH E2 $$KEEP_ENDIANNESS$$
+ * Tx parsing BD structure for ETH E2
  */
-struct eth_tx_parse_bd_e2
-{
-	union eth_mac_addr_or_tunnel_data data /* union for mac addresses and for tunneling data. considered as tunneling data only if (tunnel_exist == 1). */;
-	uint32_t parsing_data;
-#define ETH_TX_PARSE_BD_E2_L4_HDR_START_OFFSET_W (0x7FF<<0) /* BitField parsing_data	TCP/UDP header Offset in WORDs from start of packet */
+struct eth_tx_parse_bd_e2 {
+	union eth_mac_addr_or_tunnel_data data;
+	__le32 parsing_data;
+#define ETH_TX_PARSE_BD_E2_L4_HDR_START_OFFSET_W (0x7FF << 0)
 #define ETH_TX_PARSE_BD_E2_L4_HDR_START_OFFSET_W_SHIFT 0
-#define ETH_TX_PARSE_BD_E2_TCP_HDR_LENGTH_DW (0xF<<11) /* BitField parsing_data	TCP header size in DOUBLE WORDS */
+#define ETH_TX_PARSE_BD_E2_TCP_HDR_LENGTH_DW (0xF << 11)
 #define ETH_TX_PARSE_BD_E2_TCP_HDR_LENGTH_DW_SHIFT 11
-#define ETH_TX_PARSE_BD_E2_IPV6_WITH_EXT_HDR (0x1<<15) /* BitField parsing_data	a flag to indicate an ipv6 packet with extension headers. If set on LSO packet, pseudo CS should be placed in TCP CS field without length field */
+#define ETH_TX_PARSE_BD_E2_IPV6_WITH_EXT_HDR (0x1 << 15)
 #define ETH_TX_PARSE_BD_E2_IPV6_WITH_EXT_HDR_SHIFT 15
-#define ETH_TX_PARSE_BD_E2_LSO_MSS (0x3FFF<<16) /* BitField parsing_data	for LSO mode */
+#define ETH_TX_PARSE_BD_E2_LSO_MSS (0x3FFF << 16)
 #define ETH_TX_PARSE_BD_E2_LSO_MSS_SHIFT 16
-#define ETH_TX_PARSE_BD_E2_ETH_ADDR_TYPE (0x3<<30) /* BitField parsing_data	marks ethernet address type (use enum eth_addr_type) */
+#define ETH_TX_PARSE_BD_E2_ETH_ADDR_TYPE (0x3 << 30)
 #define ETH_TX_PARSE_BD_E2_ETH_ADDR_TYPE_SHIFT 30
 };
 
 /*
- * Tx 2nd parsing BD structure for ETH packet $$KEEP_ENDIANNESS$$
+ * Tx 2nd parsing BD structure for ETH packet
  */
-struct eth_tx_parse_2nd_bd
-{
-	uint16_t global_data;
-#define ETH_TX_PARSE_2ND_BD_IP_HDR_START_OUTER_W (0xF<<0) /* BitField global_data	Outer IP header offset in WORDs (16-bit) from start of packet */
+struct eth_tx_parse_2nd_bd {
+	__le16 global_data;
+#define ETH_TX_PARSE_2ND_BD_IP_HDR_START_OUTER_W (0xF << 0)
 #define ETH_TX_PARSE_2ND_BD_IP_HDR_START_OUTER_W_SHIFT 0
-#define ETH_TX_PARSE_2ND_BD_RESERVED0 (0x1<<4) /* BitField global_data	should be set with 0 */
+#define ETH_TX_PARSE_2ND_BD_RESERVED0 (0x1 << 4)
 #define ETH_TX_PARSE_2ND_BD_RESERVED0_SHIFT 4
-#define ETH_TX_PARSE_2ND_BD_LLC_SNAP_EN (0x1<<5) /* BitField global_data	 */
+#define ETH_TX_PARSE_2ND_BD_LLC_SNAP_EN (0x1 << 5)
 #define ETH_TX_PARSE_2ND_BD_LLC_SNAP_EN_SHIFT 5
-#define ETH_TX_PARSE_2ND_BD_NS_FLG (0x1<<6) /* BitField global_data	an optional addition to ECN that protects against accidental or malicious concealment of marked packets from the TCP sender. */
+#define ETH_TX_PARSE_2ND_BD_NS_FLG (0x1 << 6)
 #define ETH_TX_PARSE_2ND_BD_NS_FLG_SHIFT 6
-#define ETH_TX_PARSE_2ND_BD_TUNNEL_UDP_EXIST (0x1<<7) /* BitField global_data	Set in case UDP header exists in tunnel outer hedears. */
+#define ETH_TX_PARSE_2ND_BD_TUNNEL_UDP_EXIST (0x1 << 7)
 #define ETH_TX_PARSE_2ND_BD_TUNNEL_UDP_EXIST_SHIFT 7
-#define ETH_TX_PARSE_2ND_BD_IP_HDR_LEN_OUTER_W (0x1F<<8) /* BitField global_data	Outer IP header length in WORDs (16-bit). Valid only for IpV4. */
+#define ETH_TX_PARSE_2ND_BD_IP_HDR_LEN_OUTER_W (0x1F << 8)
 #define ETH_TX_PARSE_2ND_BD_IP_HDR_LEN_OUTER_W_SHIFT 8
-#define ETH_TX_PARSE_2ND_BD_RESERVED1 (0x7<<13) /* BitField global_data	should be set with 0 */
+#define ETH_TX_PARSE_2ND_BD_RESERVED1 (0x7 << 13)
 #define ETH_TX_PARSE_2ND_BD_RESERVED1_SHIFT 13
-	uint16_t reserved2;
-	uint8_t tcp_flags;
-#define ETH_TX_PARSE_2ND_BD_FIN_FLG (0x1<<0) /* BitField tcp_flagsState flags	End of data flag */
-#define ETH_TX_PARSE_2ND_BD_FIN_FLG_SHIFT 0
-#define ETH_TX_PARSE_2ND_BD_SYN_FLG (0x1<<1) /* BitField tcp_flagsState flags	Synchronize sequence numbers flag */
-#define ETH_TX_PARSE_2ND_BD_SYN_FLG_SHIFT 1
-#define ETH_TX_PARSE_2ND_BD_RST_FLG (0x1<<2) /* BitField tcp_flagsState flags	Reset connection flag */
-#define ETH_TX_PARSE_2ND_BD_RST_FLG_SHIFT 2
-#define ETH_TX_PARSE_2ND_BD_PSH_FLG (0x1<<3) /* BitField tcp_flagsState flags	Push flag */
-#define ETH_TX_PARSE_2ND_BD_PSH_FLG_SHIFT 3
-#define ETH_TX_PARSE_2ND_BD_ACK_FLG (0x1<<4) /* BitField tcp_flagsState flags	Acknowledgment number valid flag */
-#define ETH_TX_PARSE_2ND_BD_ACK_FLG_SHIFT 4
-#define ETH_TX_PARSE_2ND_BD_URG_FLG (0x1<<5) /* BitField tcp_flagsState flags	Urgent pointer valid flag */
-#define ETH_TX_PARSE_2ND_BD_URG_FLG_SHIFT 5
-#define ETH_TX_PARSE_2ND_BD_ECE_FLG (0x1<<6) /* BitField tcp_flagsState flags	ECN-Echo */
-#define ETH_TX_PARSE_2ND_BD_ECE_FLG_SHIFT 6
-#define ETH_TX_PARSE_2ND_BD_CWR_FLG (0x1<<7) /* BitField tcp_flagsState flags	Congestion Window Reduced */
-#define ETH_TX_PARSE_2ND_BD_CWR_FLG_SHIFT 7
+	uint8_t bd_type;
+#define ETH_TX_PARSE_2ND_BD_TYPE (0xF << 0)
+#define ETH_TX_PARSE_2ND_BD_TYPE_SHIFT 0
+#define ETH_TX_PARSE_2ND_BD_RESERVED2 (0xF << 4)
+#define ETH_TX_PARSE_2ND_BD_RESERVED2_SHIFT 4
 	uint8_t reserved3;
-	uint8_t tunnel_udp_hdr_start_w /* Offset (in WORDs) from start of packet to tunnel UDP header. (if exist) */;
-	uint8_t fw_ip_hdr_to_payload_w /* In IpV4, the length (in WORDs) from the FW IpV4 header start to the payload start. In IpV6, the length (in WORDs) from the FW IpV6 header end to the payload start. However, if extension headers are included, their length is counted here as well. */;
-	uint16_t fw_ip_csum_wo_len_flags_frag /* For the IP header which is set by the FW, the IP checksum without length, flags and fragment offset. */;
-	uint16_t hw_ip_id /* The IP ID to be set by HW for LSO packets in tunnel mode. */;
-	uint32_t tcp_send_seq /* The TCP sequence number for LSO packets. */;
+	uint8_t tcp_flags;
+#define ETH_TX_PARSE_2ND_BD_FIN_FLG (0x1 << 0)
+#define ETH_TX_PARSE_2ND_BD_FIN_FLG_SHIFT 0
+#define ETH_TX_PARSE_2ND_BD_SYN_FLG (0x1 << 1)
+#define ETH_TX_PARSE_2ND_BD_SYN_FLG_SHIFT 1
+#define ETH_TX_PARSE_2ND_BD_RST_FLG (0x1 << 2)
+#define ETH_TX_PARSE_2ND_BD_RST_FLG_SHIFT 2
+#define ETH_TX_PARSE_2ND_BD_PSH_FLG (0x1 << 3)
+#define ETH_TX_PARSE_2ND_BD_PSH_FLG_SHIFT 3
+#define ETH_TX_PARSE_2ND_BD_ACK_FLG (0x1 << 4)
+#define ETH_TX_PARSE_2ND_BD_ACK_FLG_SHIFT 4
+#define ETH_TX_PARSE_2ND_BD_URG_FLG (0x1 << 5)
+#define ETH_TX_PARSE_2ND_BD_URG_FLG_SHIFT 5
+#define ETH_TX_PARSE_2ND_BD_ECE_FLG (0x1 << 6)
+#define ETH_TX_PARSE_2ND_BD_ECE_FLG_SHIFT 6
+#define ETH_TX_PARSE_2ND_BD_CWR_FLG (0x1 << 7)
+#define ETH_TX_PARSE_2ND_BD_CWR_FLG_SHIFT 7
+	uint8_t reserved4;
+	uint8_t tunnel_udp_hdr_start_w;
+	uint8_t fw_ip_hdr_to_payload_w;
+	__le16 fw_ip_csum_wo_len_flags_frag;
+	__le16 hw_ip_id;
+	__le32 tcp_send_seq;
 };
 
 /*
  * The last BD in the BD memory will hold a pointer to the next BD memory
  */
-struct eth_tx_next_bd
-{
-	uint32_t addr_lo /* Single continuous buffer low pointer */;
-	uint32_t addr_hi /* Single continuous buffer high pointer */;
-	uint8_t reserved[8] /* keeps same size as other eth tx bd types */;
+struct eth_tx_next_bd {
+	__le32 addr_lo;
+	__le32 addr_hi;
+	uint8_t reserved[8];
 };
 
 /*
  * union for 4 Bd types
  */
-union eth_tx_bd_types
-{
-	struct eth_tx_start_bd start_bd /* the first bd in a packets */;
-	struct eth_tx_bd reg_bd /* the common bd */;
-	struct eth_tx_parse_bd_e1x parse_bd_e1x /* parsing info BD for e1/e1h */;
-	struct eth_tx_parse_bd_e2 parse_bd_e2 /* parsing info BD for e2 */;
-	struct eth_tx_parse_2nd_bd parse_2nd_bd /* 2nd parsing info BD */;
-	struct eth_tx_next_bd next_bd /* Bd that contains the address of the next page */;
+union eth_tx_bd_types {
+	struct eth_tx_start_bd start_bd;
+	struct eth_tx_bd reg_bd;
+	struct eth_tx_parse_bd_e1x parse_bd_e1x;
+	struct eth_tx_parse_bd_e2 parse_bd_e2;
+	struct eth_tx_parse_2nd_bd parse_2nd_bd;
+	struct eth_tx_next_bd next_bd;
 };
 
 /*
  * array of 13 bds as appears in the eth xstorm context
  */
-struct eth_tx_bds_array
-{
+struct eth_tx_bds_array {
 	union eth_tx_bd_types bds[13];
 };
 
@@ -4905,79 +5256,73 @@ struct eth_tx_bds_array
 /*
  * VLAN mode on TX BDs
  */
-enum eth_tx_vlan_type
-{
+enum eth_tx_vlan_type {
 	X_ETH_NO_VLAN,
 	X_ETH_OUTBAND_VLAN,
 	X_ETH_INBAND_VLAN,
-	X_ETH_FW_ADDED_VLAN /* Driver should not use this! */,
+	X_ETH_FW_ADDED_VLAN,
 	MAX_ETH_TX_VLAN_TYPE};
 
 
 /*
  * Ethernet VLAN filtering mode in E1x
  */
-enum eth_vlan_filter_mode
-{
-	ETH_VLAN_FILTER_ANY_VLAN /* Don't filter by vlan */,
-	ETH_VLAN_FILTER_SPECIFIC_VLAN /* Only the vlan_id is allowed */,
-	ETH_VLAN_FILTER_CLASSIFY /* Vlan will be added to CAM for classification */,
+enum eth_vlan_filter_mode {
+	ETH_VLAN_FILTER_ANY_VLAN,
+	ETH_VLAN_FILTER_SPECIFIC_VLAN,
+	ETH_VLAN_FILTER_CLASSIFY,
 	MAX_ETH_VLAN_FILTER_MODE};
 
 
 /*
- * MAC filtering configuration command header $$KEEP_ENDIANNESS$$
+ * MAC filtering configuration command header
  */
-struct mac_configuration_hdr
-{
-	uint8_t length /* number of entries valid in this command (6 bits) */;
-	uint8_t offset /* offset of the first entry in the list */;
-	uint16_t client_id /* the client id which this ramrod is sent on. 5b is used. */;
-	uint32_t echo /* echo value to be sent to driver on event ring */;
+struct mac_configuration_hdr {
+	uint8_t length;
+	uint8_t offset;
+	__le16 client_id;
+	__le32 echo;
 };
 
 /*
- * MAC address in list for ramrod $$KEEP_ENDIANNESS$$
+ * MAC address in list for ramrod
  */
-struct mac_configuration_entry
-{
-	uint16_t lsb_mac_addr /* 2 LSB of MAC address (should be given in big endien - driver should do hton to this number!!!) */;
-	uint16_t middle_mac_addr /* 2 middle bytes of MAC address (should be given in big endien - driver should do hton to this number!!!) */;
-	uint16_t msb_mac_addr /* 2 MSB of MAC address (should be given in big endien - driver should do hton to this number!!!) */;
-	uint16_t vlan_id /* The inner vlan id (12b). Used either in vlan_in_cam for mac_valn pair or for vlan filtering */;
-	uint8_t pf_id /* The pf id, for multi function mode */;
+struct mac_configuration_entry {
+	__le16 lsb_mac_addr;
+	__le16 middle_mac_addr;
+	__le16 msb_mac_addr;
+	__le16 vlan_id;
+	uint8_t pf_id;
 	uint8_t flags;
-#define MAC_CONFIGURATION_ENTRY_ACTION_TYPE (0x1<<0) /* BitField flags	configures the action to be done in cam (used only is slow path handlers) (use enum set_mac_action_type) */
+#define MAC_CONFIGURATION_ENTRY_ACTION_TYPE (0x1 << 0)
 #define MAC_CONFIGURATION_ENTRY_ACTION_TYPE_SHIFT 0
-#define MAC_CONFIGURATION_ENTRY_RDMA_MAC (0x1<<1) /* BitField flags	If set, this MAC also belongs to RDMA client */
+#define MAC_CONFIGURATION_ENTRY_RDMA_MAC (0x1 << 1)
 #define MAC_CONFIGURATION_ENTRY_RDMA_MAC_SHIFT 1
-#define MAC_CONFIGURATION_ENTRY_VLAN_FILTERING_MODE (0x3<<2) /* BitField flags	 (use enum eth_vlan_filter_mode) */
+#define MAC_CONFIGURATION_ENTRY_VLAN_FILTERING_MODE (0x3 << 2)
 #define MAC_CONFIGURATION_ENTRY_VLAN_FILTERING_MODE_SHIFT 2
-#define MAC_CONFIGURATION_ENTRY_OVERRIDE_VLAN_REMOVAL (0x1<<4) /* BitField flags	BitField flags  0 - can't remove vlan 1 - can remove vlan. relevant only to everest1 */
+#define MAC_CONFIGURATION_ENTRY_OVERRIDE_VLAN_REMOVAL (0x1 << 4)
 #define MAC_CONFIGURATION_ENTRY_OVERRIDE_VLAN_REMOVAL_SHIFT 4
-#define MAC_CONFIGURATION_ENTRY_BROADCAST (0x1<<5) /* BitField flags	BitField flags   0 - not broadcast 1 - broadcast. relevant only to everest1 */
+#define MAC_CONFIGURATION_ENTRY_BROADCAST (0x1 << 5)
 #define MAC_CONFIGURATION_ENTRY_BROADCAST_SHIFT 5
-#define MAC_CONFIGURATION_ENTRY_RESERVED1 (0x3<<6) /* BitField flags	 */
+#define MAC_CONFIGURATION_ENTRY_RESERVED1 (0x3 << 6)
 #define MAC_CONFIGURATION_ENTRY_RESERVED1_SHIFT 6
-	uint16_t reserved0;
-	uint32_t clients_bit_vector /* Bit vector for the clients which should receive this MAC. */;
+	__le16 reserved0;
+	__le32 clients_bit_vector;
 };
 
 /*
  * MAC filtering configuration command
  */
-struct mac_configuration_cmd
-{
-	struct mac_configuration_hdr hdr /* header */;
-	struct mac_configuration_entry config_table[64] /* table of 64 MAC configuration entries: addresses and target table entries */;
+struct mac_configuration_cmd {
+	struct mac_configuration_hdr hdr;
+	struct mac_configuration_entry config_table[64];
 };
 
 
 /*
  * Set-MAC command type (in E1x)
  */
-enum set_mac_action_type
-{
+enum set_mac_action_type {
 	T_ETH_MAC_COMMAND_INVALIDATE,
 	T_ETH_MAC_COMMAND_SET,
 	MAX_SET_MAC_ACTION_TYPE};
@@ -4986,160 +5331,211 @@ enum set_mac_action_type
 /*
  * Ethernet TPA Modes
  */
-enum tpa_mode
-{
-	TPA_LRO /* LRO mode TPA */,
-	TPA_GRO /* GRO mode TPA */,
+enum tpa_mode {
+	TPA_LRO,
+	TPA_GRO,
 	MAX_TPA_MODE};
 
 
 /*
- * tpa update ramrod data $$KEEP_ENDIANNESS$$
+ * tpa update ramrod data
  */
-struct tpa_update_ramrod_data
-{
-	uint8_t update_ipv4 /* none, enable or disable */;
-	uint8_t update_ipv6 /* none, enable or disable */;
-	uint8_t client_id /* client init flow control data */;
-	uint8_t max_tpa_queues /* maximal TPA queues allowed for this client */;
-	uint8_t max_sges_for_packet /* The maximal number of SGEs that can be used for one packet. depends on MTU and SGE size. must be 0 if SGEs are disabled */;
-	uint8_t complete_on_both_clients /* If set and the client has different sp_client, completion will be sent to both rings */;
-	uint8_t dont_verify_rings_pause_thr_flg /* If set, the rings pause thresholds will not be verified by firmware. */;
-	uint8_t tpa_mode /* TPA mode to use (LRO or GRO) */;
-	uint16_t sge_buff_size /* Size of the buffers pointed by SGEs */;
-	uint16_t max_agg_size /* maximal size for the aggregated TPA packets, reprted by the host */;
-	uint32_t sge_page_base_lo /* The address to fetch the next sges from (low) */;
-	uint32_t sge_page_base_hi /* The address to fetch the next sges from (high) */;
-	uint16_t sge_pause_thr_low /* number of remaining sges under which, we send pause message */;
-	uint16_t sge_pause_thr_high /* number of remaining sges above which, we send un-pause message */;
+struct tpa_update_ramrod_data {
+	uint8_t update_ipv4;
+	uint8_t update_ipv6;
+	uint8_t client_id;
+	uint8_t max_tpa_queues;
+	uint8_t max_sges_for_packet;
+	uint8_t complete_on_both_clients;
+	uint8_t dont_verify_rings_pause_thr_flg;
+	uint8_t tpa_mode;
+	__le16 sge_buff_size;
+	__le16 max_agg_size;
+	__le32 sge_page_base_lo;
+	__le32 sge_page_base_hi;
+	__le16 sge_pause_thr_low;
+	__le16 sge_pause_thr_high;
+	uint8_t tpa_over_vlan_disable;
+	uint8_t reserved[7];
 };
 
 
 /*
  * approximate-match multicast filtering for E1H per function in Tstorm
  */
-struct tstorm_eth_approximate_match_multicast_filtering
-{
-	uint32_t mcast_add_hash_bit_array[8] /* Bit array for multicast hash filtering.Each bit supports a hash function result if to accept this multicast dst address. */;
+struct tstorm_eth_approximate_match_multicast_filtering {
+	uint32_t mcast_add_hash_bit_array[8];
 };
 
 
 /*
- * Common configuration parameters per function in Tstorm $$KEEP_ENDIANNESS$$
+ * Common configuration parameters per function in Tstorm
  */
-struct tstorm_eth_function_common_config
-{
-	uint16_t config_flags;
-#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV4_CAPABILITY (0x1<<0) /* BitField config_flagsGeneral configuration flags	configuration of the port RSS IpV4 2-tupple capability */
+struct tstorm_eth_function_common_config {
+	__le16 config_flags;
+#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV4_CAPABILITY (0x1 << 0)
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV4_CAPABILITY_SHIFT 0
-#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV4_TCP_CAPABILITY (0x1<<1) /* BitField config_flagsGeneral configuration flags	configuration of the port RSS IpV4 4-tupple capability */
+#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV4_TCP_CAPABILITY (0x1 << 1)
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV4_TCP_CAPABILITY_SHIFT 1
-#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV6_CAPABILITY (0x1<<2) /* BitField config_flagsGeneral configuration flags	configuration of the port RSS IpV4 2-tupple capability */
+#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV6_CAPABILITY (0x1 << 2)
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV6_CAPABILITY_SHIFT 2
-#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV6_TCP_CAPABILITY (0x1<<3) /* BitField config_flagsGeneral configuration flags	configuration of the port RSS IpV6 4-tupple capability */
+#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV6_TCP_CAPABILITY (0x1 << 3)
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV6_TCP_CAPABILITY_SHIFT 3
-#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_MODE (0x7<<4) /* BitField config_flagsGeneral configuration flags	RSS mode of operation (use enum eth_rss_mode) */
+#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_MODE (0x7 << 4)
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_MODE_SHIFT 4
-#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_VLAN_FILTERING_ENABLE (0x1<<7) /* BitField config_flagsGeneral configuration flags	0 - Don't filter by vlan, 1 - Filter according to the vlans specificied in mac_filter_config */
+#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_VLAN_FILTERING_ENABLE (0x1 << 7)
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_VLAN_FILTERING_ENABLE_SHIFT 7
-#define __TSTORM_ETH_FUNCTION_COMMON_CONFIG_RESERVED0 (0xFF<<8) /* BitField config_flagsGeneral configuration flags	 */
+#define __TSTORM_ETH_FUNCTION_COMMON_CONFIG_RESERVED0 (0xFF << 8)
 #define __TSTORM_ETH_FUNCTION_COMMON_CONFIG_RESERVED0_SHIFT 8
-	uint8_t rss_result_mask /* The mask for the lower byte of RSS result - defines which section of the indirection table will be used. To enable all table put here 0x7F */;
+	uint8_t rss_result_mask;
 	uint8_t reserved1;
-	uint16_t vlan_id[2] /* VLANs of this function. VLAN filtering is determine according to vlan_filtering_enable. */;
+	__le16 vlan_id[2];
 };
 
 
 /*
- * MAC filtering configuration parameters per port in Tstorm $$KEEP_ENDIANNESS$$
+ * MAC filtering configuration parameters per port in Tstorm
  */
-struct tstorm_eth_mac_filter_config
-{
-	uint32_t ucast_drop_all /* bit vector in which the clients which drop all unicast packets are set */;
-	uint32_t ucast_accept_all /* bit vector in which clients that accept all unicast packets are set */;
-	uint32_t mcast_drop_all /* bit vector in which the clients which drop all multicast packets are set */;
-	uint32_t mcast_accept_all /* bit vector in which clients that accept all multicast packets are set */;
-	uint32_t bcast_accept_all /* bit vector in which clients that accept all broadcast packets are set */;
-	uint32_t vlan_filter[2] /* bit vector for VLAN filtering. Clients which enforce filtering of vlan[x] should be marked in vlan_filter[x]. The primary vlan is taken from the CAM target table. */;
-	uint32_t unmatched_unicast /* bit vector in which clients that accept unmatched unicast packets are set */;
+struct tstorm_eth_mac_filter_config {
+	uint32_t ucast_drop_all;
+	uint32_t ucast_accept_all;
+	uint32_t mcast_drop_all;
+	uint32_t mcast_accept_all;
+	uint32_t bcast_accept_all;
+	uint32_t vlan_filter[2];
+	uint32_t unmatched_unicast;
 };
 
 
 /*
- * tx only queue init ramrod data $$KEEP_ENDIANNESS$$
+ * tx only queue init ramrod data
  */
-struct tx_queue_init_ramrod_data
-{
-	struct client_init_general_data general /* client init general data */;
-	struct client_init_tx_data tx /* client init tx data */;
+struct tx_queue_init_ramrod_data {
+	struct client_init_general_data general;
+	struct client_init_tx_data tx;
 };
 
 
 /*
  * Three RX producers for ETH
  */
-union ustorm_eth_rx_producers
-{
-	struct {
+struct ustorm_eth_rx_producers {
 #if defined(__BIG_ENDIAN)
-		uint16_t bd_prod /* Producer of the RX BD ring */;
-		uint16_t cqe_prod /* Producer of the RX CQE ring */;
+	uint16_t bd_prod;
+	uint16_t cqe_prod;
 #elif defined(__LITTLE_ENDIAN)
-		uint16_t cqe_prod /* Producer of the RX CQE ring */;
-		uint16_t bd_prod /* Producer of the RX BD ring */;
+	uint16_t cqe_prod;
+	uint16_t bd_prod;
 #endif
 #if defined(__BIG_ENDIAN)
-		uint16_t reserved;
-		uint16_t sge_prod /* Producer of the RX SGE ring */;
+	uint16_t reserved;
+	uint16_t sge_prod;
 #elif defined(__LITTLE_ENDIAN)
-		uint16_t sge_prod /* Producer of the RX SGE ring */;
-		uint16_t reserved;
+	uint16_t sge_prod;
+	uint16_t reserved;
 #endif
-	} prod;
-	uint32_t raw_data[2];
 };
 
 
 /*
- * The data afex vif list ramrod need $$KEEP_ENDIANNESS$$
+ * FCoE RX statistics parameters section#0
  */
-struct afex_vif_list_ramrod_data
-{
-	uint8_t afex_vif_list_command /* set get, clear all a VIF list id defined by enum vif_list_rule_kind */;
-	uint8_t func_bit_map /* the function bit map to set */;
-	uint16_t vif_list_index /* the VIF list, in a per pf vector  to add this function to */;
-	uint8_t func_to_clear /* the func id to clear in case of clear func mode */;
+struct fcoe_rx_stat_params_section0 {
+	__le32 fcoe_rx_pkt_cnt;
+	__le32 fcoe_rx_byte_cnt;
+};
+
+
+/*
+ * FCoE RX statistics parameters section#1
+ */
+struct fcoe_rx_stat_params_section1 {
+	__le32 fcoe_ver_cnt;
+	__le32 fcoe_rx_drop_pkt_cnt;
+};
+
+
+/*
+ * FCoE RX statistics parameters section#2
+ */
+struct fcoe_rx_stat_params_section2 {
+	__le32 fc_crc_cnt;
+	__le32 eofa_del_cnt;
+	__le32 miss_frame_cnt;
+	__le32 seq_timeout_cnt;
+	__le32 drop_seq_cnt;
+	__le32 fcoe_rx_drop_pkt_cnt;
+	__le32 fcp_rx_pkt_cnt;
+	__le32 reserved0;
+};
+
+
+/*
+ * FCoE TX statistics parameters
+ */
+struct fcoe_tx_stat_params {
+	__le32 fcoe_tx_pkt_cnt;
+	__le32 fcoe_tx_byte_cnt;
+	__le32 fcp_tx_pkt_cnt;
+	__le32 reserved0;
+};
+
+/*
+ * FCoE statistics parameters
+ */
+struct fcoe_statistics_params {
+	struct fcoe_tx_stat_params tx_stat;
+	struct fcoe_rx_stat_params_section0 rx_stat0;
+	struct fcoe_rx_stat_params_section1 rx_stat1;
+	struct fcoe_rx_stat_params_section2 rx_stat2;
+};
+
+
+/*
+ * The data afex vif list ramrod need
+ */
+struct afex_vif_list_ramrod_data {
+	uint8_t afex_vif_list_command;
+	uint8_t func_bit_map;
+	__le16 vif_list_index;
+	uint8_t func_to_clear;
 	uint8_t echo;
-	uint16_t reserved1;
+	__le16 reserved1;
 };
 
 
 /*
- * cfc delete event data  $$KEEP_ENDIANNESS$$
+ *
  */
-struct cfc_del_event_data
-{
-	uint32_t cid /* cid of deleted connection */;
-	uint32_t reserved0;
-	uint32_t reserved1;
+struct c2s_pri_trans_table_entry {
+	uint8_t val[8];
+};
+
+
+/*
+ * cfc delete event data
+ */
+struct cfc_del_event_data {
+	__le32 cid;
+	__le32 reserved0;
+	__le32 reserved1;
 };
 
 
 /*
  * per-port SAFC demo variables
  */
-struct cmng_flags_per_port
-{
+struct cmng_flags_per_port {
 	uint32_t cmng_enables;
-#define CMNG_FLAGS_PER_PORT_FAIRNESS_VN (0x1<<0) /* BitField cmng_enablesenables flag for fairness and rate shaping between protocols, vnics and COSes	if set, enable fairness between vnics */
+#define CMNG_FLAGS_PER_PORT_FAIRNESS_VN (0x1 << 0)
 #define CMNG_FLAGS_PER_PORT_FAIRNESS_VN_SHIFT 0
-#define CMNG_FLAGS_PER_PORT_RATE_SHAPING_VN (0x1<<1) /* BitField cmng_enablesenables flag for fairness and rate shaping between protocols, vnics and COSes	if set, enable rate shaping between vnics */
+#define CMNG_FLAGS_PER_PORT_RATE_SHAPING_VN (0x1 << 1)
 #define CMNG_FLAGS_PER_PORT_RATE_SHAPING_VN_SHIFT 1
-#define CMNG_FLAGS_PER_PORT_FAIRNESS_COS (0x1<<2) /* BitField cmng_enablesenables flag for fairness and rate shaping between protocols, vnics and COSes	if set, enable fairness between COSes */
+#define CMNG_FLAGS_PER_PORT_FAIRNESS_COS (0x1 << 2)
 #define CMNG_FLAGS_PER_PORT_FAIRNESS_COS_SHIFT 2
-#define CMNG_FLAGS_PER_PORT_FAIRNESS_COS_MODE (0x1<<3) /* BitField cmng_enablesenables flag for fairness and rate shaping between protocols, vnics and COSes	 (use enum fairness_mode) */
+#define CMNG_FLAGS_PER_PORT_FAIRNESS_COS_MODE (0x1 << 3)
 #define CMNG_FLAGS_PER_PORT_FAIRNESS_COS_MODE_SHIFT 3
-#define __CMNG_FLAGS_PER_PORT_RESERVED0 (0xFFFFFFF<<4) /* BitField cmng_enablesenables flag for fairness and rate shaping between protocols, vnics and COSes	reserved */
+#define __CMNG_FLAGS_PER_PORT_RESERVED0 (0xFFFFFFF << 4)
 #define __CMNG_FLAGS_PER_PORT_RESERVED0_SHIFT 4
 	uint32_t __reserved1;
 };
@@ -5148,46 +5544,42 @@ struct cmng_flags_per_port
 /*
  * per-port rate shaping variables
  */
-struct rate_shaping_vars_per_port
-{
-	uint32_t rs_periodic_timeout /* timeout of periodic timer */;
-	uint32_t rs_threshold /* threshold, below which we start to stop queues */;
+struct rate_shaping_vars_per_port {
+	uint32_t rs_periodic_timeout;
+	uint32_t rs_threshold;
 };
 
 /*
  * per-port fairness variables
  */
-struct fairness_vars_per_port
-{
-	uint32_t upper_bound /* Quota for a protocol/vnic */;
-	uint32_t fair_threshold /* almost-empty threshold */;
-	uint32_t fairness_timeout /* timeout of fairness timer */;
-	uint32_t reserved0;
+struct fairness_vars_per_port {
+	uint32_t upper_bound;
+	uint32_t fair_threshold;
+	uint32_t fairness_timeout;
+	uint32_t size_thr;
 };
 
 /*
  * per-port SAFC variables
  */
-struct safc_struct_per_port
-{
+struct safc_struct_per_port {
 #if defined(__BIG_ENDIAN)
 	uint16_t __reserved1;
 	uint8_t __reserved0;
-	uint8_t safc_timeout_usec /* timeout to stop queues on SAFC pause command */;
+	uint8_t safc_timeout_usec;
 #elif defined(__LITTLE_ENDIAN)
-	uint8_t safc_timeout_usec /* timeout to stop queues on SAFC pause command */;
+	uint8_t safc_timeout_usec;
 	uint8_t __reserved0;
 	uint16_t __reserved1;
 #endif
-	uint8_t cos_to_traffic_types[MAX_COS_NUMBER] /* translate cos to service traffics types */;
-	uint16_t cos_to_pause_mask[NUM_OF_SAFC_BITS] /* QM pause mask for each class of service in the SAFC frame */;
+	uint8_t cos_to_traffic_types[MAX_COS_NUMBER];
+	uint16_t cos_to_pause_mask[NUM_OF_SAFC_BITS];
 };
 
 /*
  * Per-port congestion management variables
  */
-struct cmng_struct_per_port
-{
+struct cmng_struct_per_port {
 	struct rate_shaping_vars_per_port rs_vars;
 	struct fairness_vars_per_port fair_vars;
 	struct safc_struct_per_port safc_vars;
@@ -5197,14 +5589,13 @@ struct cmng_struct_per_port
 /*
  * a single rate shaping counter. can be used as protocol or vnic counter
  */
-struct rate_shaping_counter
-{
-	uint32_t quota /* Quota for a protocol/vnic */;
+struct rate_shaping_counter {
+	uint32_t quota;
 #if defined(__BIG_ENDIAN)
 	uint16_t __reserved0;
-	uint16_t rate /* Vnic/Protocol rate in units of Mega-bits/sec */;
+	uint16_t rate;
 #elif defined(__LITTLE_ENDIAN)
-	uint16_t rate /* Vnic/Protocol rate in units of Mega-bits/sec */;
+	uint16_t rate;
 	uint16_t __reserved0;
 #endif
 };
@@ -5212,26 +5603,23 @@ struct rate_shaping_counter
 /*
  * per-vnic rate shaping variables
  */
-struct rate_shaping_vars_per_vn
-{
-	struct rate_shaping_counter vn_counter /* per-vnic counter */;
+struct rate_shaping_vars_per_vn {
+	struct rate_shaping_counter vn_counter;
 };
 
 /*
  * per-vnic fairness variables
  */
-struct fairness_vars_per_vn
-{
-	uint32_t cos_credit_delta[MAX_COS_NUMBER] /* used for incrementing the credit */;
-	uint32_t vn_credit_delta /* used for incrementing the credit */;
+struct fairness_vars_per_vn {
+	uint32_t cos_credit_delta[MAX_COS_NUMBER];
+	uint32_t vn_credit_delta;
 	uint32_t __reserved0;
 };
 
 /*
  * cmng port init state
  */
-struct cmng_vnic
-{
+struct cmng_vnic {
 	struct rate_shaping_vars_per_vn vnic_max_rate[4];
 	struct fairness_vars_per_vn vnic_min_rate[4];
 };
@@ -5239,8 +5627,7 @@ struct cmng_vnic
 /*
  * cmng port init state
  */
-struct cmng_init
-{
+struct cmng_init {
 	struct cmng_struct_per_port port;
 	struct cmng_vnic vnic;
 };
@@ -5249,12 +5636,13 @@ struct cmng_init
 /*
  * driver parameters for congestion management init, all rates are in Mbps
  */
-struct cmng_init_input
-{
+struct cmng_init_input {
 	uint32_t port_rate;
-	uint16_t vnic_min_rate[4] /* rates are in Mbps */;
-	uint16_t vnic_max_rate[4] /* rates are in Mbps */;
-	uint16_t cos_min_rate[MAX_COS_NUMBER] /* rates are in Mbps */;
+	uint32_t size_thr;
+	uint32_t fairness_thr;
+	uint16_t vnic_min_rate[4];
+	uint16_t vnic_max_rate[4];
+	uint16_t cos_min_rate[MAX_COS_NUMBER];
 	uint16_t cos_to_pause_mask[MAX_COS_NUMBER];
 	struct cmng_flags_per_port flags;
 };
@@ -5263,64 +5651,59 @@ struct cmng_init_input
 /*
  * Protocol-common command ID for slow path elements
  */
-enum common_spqe_cmd_id
-{
+enum common_spqe_cmd_id {
 	RAMROD_CMD_ID_COMMON_UNUSED,
-	RAMROD_CMD_ID_COMMON_FUNCTION_START /* Start a function (for PFs only) */,
-	RAMROD_CMD_ID_COMMON_FUNCTION_STOP /* Stop a function (for PFs only) */,
-	RAMROD_CMD_ID_COMMON_FUNCTION_UPDATE /* niv update function */,
-	RAMROD_CMD_ID_COMMON_CFC_DEL /* Delete a connection from CFC */,
-	RAMROD_CMD_ID_COMMON_CFC_DEL_WB /* Delete a connection from CFC (with write back) */,
-	RAMROD_CMD_ID_COMMON_STAT_QUERY /* Collect statistics counters */,
-	RAMROD_CMD_ID_COMMON_STOP_TRAFFIC /* Stop Tx traffic (before DCB updates) */,
-	RAMROD_CMD_ID_COMMON_START_TRAFFIC /* Start Tx traffic (after DCB updates) */,
-	RAMROD_CMD_ID_COMMON_AFEX_VIF_LISTS /* niv vif lists */,
-	RAMROD_CMD_ID_COMMON_SET_TIMESYNC /* Set Timesync Parameters (E3 Only) */,
+	RAMROD_CMD_ID_COMMON_FUNCTION_START,
+	RAMROD_CMD_ID_COMMON_FUNCTION_STOP,
+	RAMROD_CMD_ID_COMMON_FUNCTION_UPDATE,
+	RAMROD_CMD_ID_COMMON_CFC_DEL,
+	RAMROD_CMD_ID_COMMON_CFC_DEL_WB,
+	RAMROD_CMD_ID_COMMON_STAT_QUERY,
+	RAMROD_CMD_ID_COMMON_STOP_TRAFFIC,
+	RAMROD_CMD_ID_COMMON_START_TRAFFIC,
+	RAMROD_CMD_ID_COMMON_AFEX_VIF_LISTS,
+	RAMROD_CMD_ID_COMMON_SET_TIMESYNC,
 	MAX_COMMON_SPQE_CMD_ID};
 
 
 /*
  * Per-protocol connection types
  */
-enum connection_type
-{
-	ETH_CONNECTION_TYPE /* Ethernet */,
-	TOE_CONNECTION_TYPE /* TOE */,
-	RDMA_CONNECTION_TYPE /* RDMA */,
-	ISCSI_CONNECTION_TYPE /* iSCSI */,
-	FCOE_CONNECTION_TYPE /* FCoE */,
+enum connection_type {
+	ETH_CONNECTION_TYPE,
+	TOE_CONNECTION_TYPE,
+	RDMA_CONNECTION_TYPE,
+	ISCSI_CONNECTION_TYPE,
+	FCOE_CONNECTION_TYPE,
 	RESERVED_CONNECTION_TYPE_0,
 	RESERVED_CONNECTION_TYPE_1,
 	RESERVED_CONNECTION_TYPE_2,
-	NONE_CONNECTION_TYPE /* General- used for common slow path */,
+	NONE_CONNECTION_TYPE,
 	MAX_CONNECTION_TYPE};
 
 
 /*
  * Cos modes
  */
-enum cos_mode
-{
-	OVERRIDE_COS /* Firmware deduce cos according to DCB */,
-	STATIC_COS /* Firmware has constant queues per CoS */,
-	FW_WRR /* Firmware keep fairness between different CoSes */,
+enum cos_mode {
+	OVERRIDE_COS,
+	STATIC_COS,
+	FW_WRR,
 	MAX_COS_MODE};
 
 
 /*
  * Dynamic HC counters set by the driver
  */
-struct hc_dynamic_drv_counter
-{
-	uint32_t val[HC_SB_MAX_DYNAMIC_INDICES] /* 4 bytes * 4 indices = 2 lines */;
+struct hc_dynamic_drv_counter {
+	uint32_t val[HC_SB_MAX_DYNAMIC_INDICES];
 };
 
 /*
  * zone A per-queue data
  */
-struct cstorm_queue_zone_data
-{
-	struct hc_dynamic_drv_counter hc_dyn_drv_cnt /* 4 bytes * 4 indices = 2 lines */;
+struct cstorm_queue_zone_data {
+	struct hc_dynamic_drv_counter hc_dyn_drv_cnt;
 	struct regpair reserved[2];
 };
 
@@ -5328,120 +5711,106 @@ struct cstorm_queue_zone_data
 /*
  * Vf-PF channel data in cstorm ram (non-triggered zone)
  */
-struct vf_pf_channel_zone_data
-{
-	uint32_t msg_addr_lo /* the message address on VF memory */;
-	uint32_t msg_addr_hi /* the message address on VF memory */;
+struct vf_pf_channel_zone_data {
+	uint32_t msg_addr_lo;
+	uint32_t msg_addr_hi;
 };
 
 /*
  * zone for VF non-triggered data
  */
-struct non_trigger_vf_zone
-{
-	struct vf_pf_channel_zone_data vf_pf_channel /* vf-pf channel zone data */;
+struct non_trigger_vf_zone {
+	struct vf_pf_channel_zone_data vf_pf_channel;
 };
 
 /*
  * Vf-PF channel trigger zone in cstorm ram
  */
-struct vf_pf_channel_zone_trigger
-{
-	uint8_t addr_valid /* indicates that a vf-pf message is pending. MUST be set AFTER the message address.  */;
+struct vf_pf_channel_zone_trigger {
+	uint8_t addr_valid;
 };
 
 /*
  * zone that triggers the in-bound interrupt
  */
-struct trigger_vf_zone
-{
-#if defined(__BIG_ENDIAN)
-	uint16_t reserved1;
-	uint8_t reserved0;
-	struct vf_pf_channel_zone_trigger vf_pf_channel;
-#elif defined(__LITTLE_ENDIAN)
+struct trigger_vf_zone {
 	struct vf_pf_channel_zone_trigger vf_pf_channel;
 	uint8_t reserved0;
 	uint16_t reserved1;
-#endif
 	uint32_t reserved2;
 };
 
 /*
  * zone B per-VF data
  */
-struct cstorm_vf_zone_data
-{
-	struct non_trigger_vf_zone non_trigger /* zone for VF non-triggered data */;
-	struct trigger_vf_zone trigger /* zone that triggers the in-bound interrupt */;
+struct cstorm_vf_zone_data {
+	struct non_trigger_vf_zone non_trigger;
+	struct trigger_vf_zone trigger;
 };
 
 
 /*
  * Dynamic host coalescing init parameters, per state machine
  */
-struct dynamic_hc_sm_config
-{
-	uint32_t threshold[3] /* thresholds of number of outstanding bytes */;
-	uint8_t shift_per_protocol[HC_SB_MAX_DYNAMIC_INDICES] /* bytes difference of each protocol is shifted right by this value */;
-	uint8_t hc_timeout0[HC_SB_MAX_DYNAMIC_INDICES] /* timeout for level 0 for each protocol, in units of usec */;
-	uint8_t hc_timeout1[HC_SB_MAX_DYNAMIC_INDICES] /* timeout for level 1 for each protocol, in units of usec */;
-	uint8_t hc_timeout2[HC_SB_MAX_DYNAMIC_INDICES] /* timeout for level 2 for each protocol, in units of usec */;
-	uint8_t hc_timeout3[HC_SB_MAX_DYNAMIC_INDICES] /* timeout for level 3 for each protocol, in units of usec */;
+struct dynamic_hc_sm_config {
+	uint32_t threshold[3];
+	uint8_t shift_per_protocol[HC_SB_MAX_DYNAMIC_INDICES];
+	uint8_t hc_timeout0[HC_SB_MAX_DYNAMIC_INDICES];
+	uint8_t hc_timeout1[HC_SB_MAX_DYNAMIC_INDICES];
+	uint8_t hc_timeout2[HC_SB_MAX_DYNAMIC_INDICES];
+	uint8_t hc_timeout3[HC_SB_MAX_DYNAMIC_INDICES];
 };
 
 /*
  * Dynamic host coalescing init parameters
  */
-struct dynamic_hc_config
-{
-	struct dynamic_hc_sm_config sm_config[HC_SB_MAX_SM] /* Configuration per state machine */;
+struct dynamic_hc_config {
+	struct dynamic_hc_sm_config sm_config[HC_SB_MAX_SM];
 };
 
 
-struct e2_integ_data
-{
+struct e2_integ_data {
 #if defined(__BIG_ENDIAN)
 	uint8_t flags;
-#define E2_INTEG_DATA_TESTING_EN (0x1<<0) /* BitField flags	integration testing enabled */
+#define E2_INTEG_DATA_TESTING_EN (0x1 << 0)
 #define E2_INTEG_DATA_TESTING_EN_SHIFT 0
-#define E2_INTEG_DATA_LB_TX (0x1<<1) /* BitField flags	flag indicating this connection will transmit on loopback */
+#define E2_INTEG_DATA_LB_TX (0x1 << 1)
 #define E2_INTEG_DATA_LB_TX_SHIFT 1
-#define E2_INTEG_DATA_COS_TX (0x1<<2) /* BitField flags	flag indicating this connection will transmit according to cos field */
+#define E2_INTEG_DATA_COS_TX (0x1 << 2)
 #define E2_INTEG_DATA_COS_TX_SHIFT 2
-#define E2_INTEG_DATA_OPPORTUNISTICQM (0x1<<3) /* BitField flags	flag indicating this connection will activate the opportunistic QM credit flow */
+#define E2_INTEG_DATA_OPPORTUNISTICQM (0x1 << 3)
 #define E2_INTEG_DATA_OPPORTUNISTICQM_SHIFT 3
-#define E2_INTEG_DATA_DPMTESTRELEASEDQ (0x1<<4) /* BitField flags	flag indicating this connection will release the door bell queue (DQ) */
+#define E2_INTEG_DATA_DPMTESTRELEASEDQ (0x1 << 4)
 #define E2_INTEG_DATA_DPMTESTRELEASEDQ_SHIFT 4
-#define E2_INTEG_DATA_RESERVED (0x7<<5) /* BitField flags	 */
+#define E2_INTEG_DATA_RESERVED (0x7 << 5)
 #define E2_INTEG_DATA_RESERVED_SHIFT 5
-	uint8_t cos /* cos of the connection (relevant only in cos transmitting connections, when cosTx is set */;
-	uint8_t voq /* voq to return credit on. Normally equal to port (i.e. always 0 in E2 operational connections). in cos tests equal to cos. in loopback tests equal to LB_PORT (=4) */;
-	uint8_t pbf_queue /* pbf queue to transmit on. Normally equal to port (i.e. always 0 in E2 operational connections). in cos tests equal to cos. in loopback tests equal to LB_PORT (=4) */;
+	uint8_t cos;
+	uint8_t voq;
+	uint8_t pbf_queue;
 #elif defined(__LITTLE_ENDIAN)
-	uint8_t pbf_queue /* pbf queue to transmit on. Normally equal to port (i.e. always 0 in E2 operational connections). in cos tests equal to cos. in loopback tests equal to LB_PORT (=4) */;
-	uint8_t voq /* voq to return credit on. Normally equal to port (i.e. always 0 in E2 operational connections). in cos tests equal to cos. in loopback tests equal to LB_PORT (=4) */;
-	uint8_t cos /* cos of the connection (relevant only in cos transmitting connections, when cosTx is set */;
+	uint8_t pbf_queue;
+	uint8_t voq;
+	uint8_t cos;
 	uint8_t flags;
-#define E2_INTEG_DATA_TESTING_EN (0x1<<0) /* BitField flags	integration testing enabled */
+#define E2_INTEG_DATA_TESTING_EN (0x1 << 0)
 #define E2_INTEG_DATA_TESTING_EN_SHIFT 0
-#define E2_INTEG_DATA_LB_TX (0x1<<1) /* BitField flags	flag indicating this connection will transmit on loopback */
+#define E2_INTEG_DATA_LB_TX (0x1 << 1)
 #define E2_INTEG_DATA_LB_TX_SHIFT 1
-#define E2_INTEG_DATA_COS_TX (0x1<<2) /* BitField flags	flag indicating this connection will transmit according to cos field */
+#define E2_INTEG_DATA_COS_TX (0x1 << 2)
 #define E2_INTEG_DATA_COS_TX_SHIFT 2
-#define E2_INTEG_DATA_OPPORTUNISTICQM (0x1<<3) /* BitField flags	flag indicating this connection will activate the opportunistic QM credit flow */
+#define E2_INTEG_DATA_OPPORTUNISTICQM (0x1 << 3)
 #define E2_INTEG_DATA_OPPORTUNISTICQM_SHIFT 3
-#define E2_INTEG_DATA_DPMTESTRELEASEDQ (0x1<<4) /* BitField flags	flag indicating this connection will release the door bell queue (DQ) */
+#define E2_INTEG_DATA_DPMTESTRELEASEDQ (0x1 << 4)
 #define E2_INTEG_DATA_DPMTESTRELEASEDQ_SHIFT 4
-#define E2_INTEG_DATA_RESERVED (0x7<<5) /* BitField flags	 */
+#define E2_INTEG_DATA_RESERVED (0x7 << 5)
 #define E2_INTEG_DATA_RESERVED_SHIFT 5
 #endif
 #if defined(__BIG_ENDIAN)
 	uint16_t reserved3;
 	uint8_t reserved2;
-	uint8_t ramEn /* context area reserved for reading enable bit from ram */;
+	uint8_t ramEn;
 #elif defined(__LITTLE_ENDIAN)
-	uint8_t ramEn /* context area reserved for reading enable bit from ram */;
+	uint8_t ramEn;
 	uint8_t reserved2;
 	uint16_t reserved3;
 #endif
@@ -5449,333 +5818,320 @@ struct e2_integ_data
 
 
 /*
- * set mac event data  $$KEEP_ENDIANNESS$$
+ * set mac event data
  */
-struct eth_event_data
-{
-	uint32_t echo /* set mac echo data to return to driver */;
-	uint32_t reserved0;
-	uint32_t reserved1;
+struct eth_event_data {
+	__le32 echo;
+	__le32 reserved0;
+	__le32 reserved1;
 };
 
 
 /*
- * pf-vf event data  $$KEEP_ENDIANNESS$$
+ * pf-vf event data
  */
-struct vf_pf_event_data
-{
-	uint8_t vf_id /* VF ID (0-63) */;
+struct vf_pf_event_data {
+	uint8_t vf_id;
 	uint8_t reserved0;
-	uint16_t reserved1;
-	uint32_t msg_addr_lo /* message address on Vf (low 32 bits) */;
-	uint32_t msg_addr_hi /* message address on Vf (high 32 bits) */;
+	__le16 reserved1;
+	__le32 msg_addr_lo;
+	__le32 msg_addr_hi;
 };
 
 /*
- * VF FLR event data  $$KEEP_ENDIANNESS$$
+ * VF FLR event data
  */
-struct vf_flr_event_data
-{
-	uint8_t vf_id /* VF ID (0-63) */;
+struct vf_flr_event_data {
+	uint8_t vf_id;
 	uint8_t reserved0;
-	uint16_t reserved1;
-	uint32_t reserved2;
-	uint32_t reserved3;
+	__le16 reserved1;
+	__le32 reserved2;
+	__le32 reserved3;
 };
 
 /*
- * malicious VF event data  $$KEEP_ENDIANNESS$$
+ * malicious VF event data
  */
-struct malicious_vf_event_data
-{
-	uint8_t vf_id /* VF ID (0-63) */;
-	uint8_t err_id /* reason for malicious notification */;
-	uint16_t reserved1;
-	uint32_t reserved2;
-	uint32_t reserved3;
+struct malicious_vf_event_data {
+	uint8_t vf_id;
+	uint8_t err_id;
+	__le16 reserved1;
+	__le32 reserved2;
+	__le32 reserved3;
 };
 
 /*
- * vif list event data  $$KEEP_ENDIANNESS$$
+ * vif list event data
  */
-struct vif_list_event_data
-{
-	uint8_t func_bit_map /* bit map of pf indice */;
+struct vif_list_event_data {
+	uint8_t func_bit_map;
 	uint8_t echo;
-	uint16_t reserved0;
-	uint32_t reserved1;
-	uint32_t reserved2;
+	__le16 reserved0;
+	__le32 reserved1;
+	__le32 reserved2;
 };
 
 /*
- * function update event data  $$KEEP_ENDIANNESS$$
+ * function update event data
  */
-struct function_update_event_data
-{
+struct function_update_event_data {
 	uint8_t echo;
 	uint8_t reserved;
-	uint16_t reserved0;
-	uint32_t reserved1;
-	uint32_t reserved2;
+	__le16 reserved0;
+	__le32 reserved1;
+	__le32 reserved2;
 };
 
 /*
  * union for all event ring message types
  */
-union event_data
-{
-	struct vf_pf_event_data vf_pf_event /* vf-pf event data */;
-	struct eth_event_data eth_event /* set mac event data */;
-	struct cfc_del_event_data cfc_del_event /* cfc delete event data */;
-	struct vf_flr_event_data vf_flr_event /* vf flr event data */;
-	struct malicious_vf_event_data malicious_vf_event /* malicious vf event data */;
-	struct vif_list_event_data vif_list_event /* vif list event data */;
-	struct function_update_event_data function_update_event /* function update event data */;
+union event_data {
+	struct vf_pf_event_data vf_pf_event;
+	struct eth_event_data eth_event;
+	struct cfc_del_event_data cfc_del_event;
+	struct vf_flr_event_data vf_flr_event;
+	struct malicious_vf_event_data malicious_vf_event;
+	struct vif_list_event_data vif_list_event;
+	struct function_update_event_data function_update_event;
 };
 
 
 /*
  * per PF event ring data
  */
-struct event_ring_data
-{
-	struct regpair_native base_addr /* ring base address */;
+struct event_ring_data {
+	struct regpair_native base_addr;
 #if defined(__BIG_ENDIAN)
-	uint8_t index_id /* index ID within the status block */;
-	uint8_t sb_id /* status block ID */;
-	uint16_t producer /* event ring producer */;
+	uint8_t index_id;
+	uint8_t sb_id;
+	uint16_t producer;
 #elif defined(__LITTLE_ENDIAN)
-	uint16_t producer /* event ring producer */;
-	uint8_t sb_id /* status block ID */;
-	uint8_t index_id /* index ID within the status block */;
+	uint16_t producer;
+	uint8_t sb_id;
+	uint8_t index_id;
 #endif
 	uint32_t reserved0;
 };
 
 
 /*
- * event ring message element (each element is 128 bits) $$KEEP_ENDIANNESS$$
+ * event ring message element (each element is 128 bits)
  */
-struct event_ring_msg
-{
+struct event_ring_msg {
 	uint8_t opcode;
-	uint8_t error /* error on the mesasage */;
+	uint8_t error;
 	uint16_t reserved1;
-	union event_data data /* message data (96 bits data) */;
+	union event_data data;
 };
 
 /*
  * event ring next page element (128 bits)
  */
-struct event_ring_next
-{
-	struct regpair addr /* Address of the next page of the ring */;
+struct event_ring_next {
+	struct regpair addr;
 	uint32_t reserved[2];
 };
 
 /*
  * union for event ring element types (each element is 128 bits)
  */
-union event_ring_elem
-{
-	struct event_ring_msg message /* event ring message */;
-	struct event_ring_next next_page /* event ring next page */;
+union event_ring_elem {
+	struct event_ring_msg message;
+	struct event_ring_next next_page;
 };
 
 
 /*
  * Common event ring opcodes
  */
-enum event_ring_opcode
-{
+enum event_ring_opcode {
 	EVENT_RING_OPCODE_VF_PF_CHANNEL,
-	EVENT_RING_OPCODE_FUNCTION_START /* Start a function (for PFs only) */,
-	EVENT_RING_OPCODE_FUNCTION_STOP /* Stop a function (for PFs only) */,
-	EVENT_RING_OPCODE_CFC_DEL /* Delete a connection from CFC */,
-	EVENT_RING_OPCODE_CFC_DEL_WB /* Delete a connection from CFC (with write back) */,
-	EVENT_RING_OPCODE_STAT_QUERY /* Collect statistics counters */,
-	EVENT_RING_OPCODE_STOP_TRAFFIC /* Stop Tx traffic (before DCB updates) */,
-	EVENT_RING_OPCODE_START_TRAFFIC /* Start Tx traffic (after DCB updates) */,
-	EVENT_RING_OPCODE_VF_FLR /* VF FLR indication for PF */,
-	EVENT_RING_OPCODE_MALICIOUS_VF /* Malicious VF operation detected */,
-	EVENT_RING_OPCODE_FORWARD_SETUP /* Initialize forward channel */,
-	EVENT_RING_OPCODE_RSS_UPDATE_RULES /* Update RSS configuration */,
-	EVENT_RING_OPCODE_FUNCTION_UPDATE /* function update */,
-	EVENT_RING_OPCODE_AFEX_VIF_LISTS /* event ring opcode niv vif lists */,
-	EVENT_RING_OPCODE_SET_MAC /* Add/remove MAC (in E1x only) */,
-	EVENT_RING_OPCODE_CLASSIFICATION_RULES /* Add/remove MAC or VLAN (in E2/E3 only) */,
-	EVENT_RING_OPCODE_FILTERS_RULES /* Add/remove classification filters for L2 client (in E2/E3 only) */,
-	EVENT_RING_OPCODE_MULTICAST_RULES /* Add/remove multicast classification bin (in E2/E3 only) */,
-	EVENT_RING_OPCODE_SET_TIMESYNC /* Set Timesync Parameters (E3 Only) */,
+	EVENT_RING_OPCODE_FUNCTION_START,
+	EVENT_RING_OPCODE_FUNCTION_STOP,
+	EVENT_RING_OPCODE_CFC_DEL,
+	EVENT_RING_OPCODE_CFC_DEL_WB,
+	EVENT_RING_OPCODE_STAT_QUERY,
+	EVENT_RING_OPCODE_STOP_TRAFFIC,
+	EVENT_RING_OPCODE_START_TRAFFIC,
+	EVENT_RING_OPCODE_VF_FLR,
+	EVENT_RING_OPCODE_MALICIOUS_VF,
+	EVENT_RING_OPCODE_FORWARD_SETUP,
+	EVENT_RING_OPCODE_RSS_UPDATE_RULES,
+	EVENT_RING_OPCODE_FUNCTION_UPDATE,
+	EVENT_RING_OPCODE_AFEX_VIF_LISTS,
+	EVENT_RING_OPCODE_SET_MAC,
+	EVENT_RING_OPCODE_CLASSIFICATION_RULES,
+	EVENT_RING_OPCODE_FILTERS_RULES,
+	EVENT_RING_OPCODE_MULTICAST_RULES,
+	EVENT_RING_OPCODE_SET_TIMESYNC,
 	MAX_EVENT_RING_OPCODE};
 
 
 /*
  * Modes for fairness algorithm
  */
-enum fairness_mode
-{
-	FAIRNESS_COS_WRR_MODE /* Weighted round robin mode (used in Google) */,
-	FAIRNESS_COS_ETS_MODE /* ETS mode (used in FCoE) */,
+enum fairness_mode {
+	FAIRNESS_COS_WRR_MODE,
+	FAIRNESS_COS_ETS_MODE,
 	MAX_FAIRNESS_MODE};
 
 
 /*
- * Priority and cos $$KEEP_ENDIANNESS$$
+ * Priority and cos
  */
-struct priority_cos
-{
-	uint8_t priority /* Priority */;
-	uint8_t cos /* Cos */;
-	uint16_t reserved1;
+struct priority_cos {
+	uint8_t priority;
+	uint8_t cos;
+	__le16 reserved1;
 };
 
 /*
- * The data for flow control configuration $$KEEP_ENDIANNESS$$
+ * The data for flow control configuration
  */
-struct flow_control_configuration
-{
-	struct priority_cos traffic_type_to_priority_cos[MAX_TRAFFIC_TYPES] /* traffic_type to priority cos */;
-	uint8_t dcb_enabled /* If DCB mode is enabled then traffic class to priority array is fully initialized and there must be inner VLAN */;
-	uint8_t dcb_version /* DCB version Increase by one on each DCB update */;
-	uint8_t dont_add_pri_0 /* In case, the priority is 0, and the packet has no vlan, the firmware wont add vlan */;
+struct flow_control_configuration {
+	struct priority_cos traffic_type_to_priority_cos[MAX_TRAFFIC_TYPES];
+	uint8_t dcb_enabled;
+	uint8_t dcb_version;
+	uint8_t dont_add_pri_0_en;
 	uint8_t reserved1;
-	uint32_t reserved2;
+	__le32 reserved2;
+	uint8_t dcb_outer_pri[MAX_TRAFFIC_TYPES];
 };
 
 
 /*
- *  $$KEEP_ENDIANNESS$$
+ *
  */
-struct function_start_data
-{
-	uint8_t function_mode /* the function mode */;
-	uint8_t allow_npar_tx_switching /* If set, inter-pf tx switching is allowed in Switch Independent function mode. (E2/E3 Only) */;
-	uint16_t sd_vlan_tag /* value of Vlan in case of switch depended multi-function mode */;
-	uint16_t vif_id /* value of VIF id in case of NIV multi-function mode */;
+struct function_start_data {
+	uint8_t function_mode;
+	uint8_t allow_npar_tx_switching;
+	__le16 sd_vlan_tag;
+	__le16 vif_id;
 	uint8_t path_id;
-	uint8_t network_cos_mode /* The cos mode for network traffic. */;
-	uint8_t dmae_cmd_id /* The DMAE command id to use for FW DMAE transactions */;
-	uint8_t gre_tunnel_mode /* GRE Tunnel Mode to enable on the Function (E2/E3 Only) */;
-	uint8_t gre_tunnel_rss /* Type of RSS to perform on GRE Tunneled packets */;
-	uint8_t nvgre_clss_en /* If set, NVGRE tunneled packets are classified according to their inner MAC (gre_mode must be NVGRE_TUNNEL) */;
-	uint16_t reserved1[2];
+	uint8_t network_cos_mode;
+	uint8_t dmae_cmd_id;
+	uint8_t no_added_tags;
+	__le16 reserved0;
+	__le32 reserved1;
+	uint8_t inner_clss_vxlan;
+	uint8_t inner_clss_l2gre;
+	uint8_t inner_clss_l2geneve;
+	uint8_t inner_rss;
+	__le16 vxlan_dst_port;
+	__le16 geneve_dst_port;
+	uint8_t sd_accept_mf_clss_fail;
+	uint8_t sd_accept_mf_clss_fail_match_ethtype;
+	__le16 sd_accept_mf_clss_fail_ethtype;
+	__le16 sd_vlan_eth_type;
+	uint8_t sd_vlan_force_pri_flg;
+	uint8_t sd_vlan_force_pri_val;
+	uint8_t c2s_pri_tt_valid;
+	uint8_t c2s_pri_default;
+	uint8_t tx_vlan_filtering_enable;
+	uint8_t tx_vlan_filtering_use_pvid;
+	uint8_t reserved2[4];
+	struct c2s_pri_trans_table_entry c2s_pri_trans_table;
 };
 
 
 /*
- *  $$KEEP_ENDIANNESS$$
+ *
  */
-struct function_update_data
-{
-	uint8_t vif_id_change_flg /* If set, vif_id will be checked */;
-	uint8_t afex_default_vlan_change_flg /* If set, afex_default_vlan will be checked */;
-	uint8_t allowed_priorities_change_flg /* If set, allowed_priorities will be checked */;
-	uint8_t network_cos_mode_change_flg /* If set, network_cos_mode will be checked */;
-	uint16_t vif_id /* value of VIF id in case of NIV multi-function mode */;
-	uint16_t afex_default_vlan /* value of default Vlan in case of NIV mf */;
-	uint8_t allowed_priorities /* bit vector of allowed Vlan priorities for this VIF */;
-	uint8_t network_cos_mode /* The cos mode for network traffic. */;
-	uint8_t lb_mode_en_change_flg /* If set, lb_mode_en will be checked */;
-	uint8_t lb_mode_en /* If set, niv loopback mode will be enabled */;
-	uint8_t tx_switch_suspend_change_flg /* If set, tx_switch_suspend will be checked */;
-	uint8_t tx_switch_suspend /* If set, TX switching TO this function will be disabled and packets will be dropped */;
+struct function_update_data {
+	uint8_t vif_id_change_flg;
+	uint8_t afex_default_vlan_change_flg;
+	uint8_t allowed_priorities_change_flg;
+	uint8_t network_cos_mode_change_flg;
+	__le16 vif_id;
+	__le16 afex_default_vlan;
+	uint8_t allowed_priorities;
+	uint8_t network_cos_mode;
+	uint8_t lb_mode_en_change_flg;
+	uint8_t lb_mode_en;
+	uint8_t tx_switch_suspend_change_flg;
+	uint8_t tx_switch_suspend;
 	uint8_t echo;
+	uint8_t update_tunn_cfg_flg;
+	uint8_t inner_clss_vxlan;
+	uint8_t inner_clss_l2gre;
+	uint8_t inner_clss_l2geneve;
+	uint8_t inner_rss;
+	__le16 vxlan_dst_port;
+	__le16 geneve_dst_port;
+	uint8_t sd_vlan_force_pri_change_flg;
+	uint8_t sd_vlan_force_pri_flg;
+	uint8_t sd_vlan_force_pri_val;
+	uint8_t sd_vlan_tag_change_flg;
+	uint8_t sd_vlan_eth_type_change_flg;
 	uint8_t reserved1;
-	uint8_t update_gre_cfg_flg /* If set, GRE config for the function will be updated according to the gre_tunnel_rss and nvgre_clss_en fields */;
-	uint8_t gre_tunnel_mode /* GRE Tunnel Mode to enable on the Function (E2/E3 Only) */;
-	uint8_t gre_tunnel_rss /* Type of RSS to perform on GRE Tunneled packets */;
-	uint8_t nvgre_clss_en /* If set, NVGRE tunneled packets are classified according to their inner MAC (gre_mode must be NVGRE_TUNNEL) */;
-	uint32_t reserved3;
+	__le16 sd_vlan_tag;
+	__le16 sd_vlan_eth_type;
+	uint8_t tx_vlan_filtering_pvid_change_flg;
+	uint8_t reserved0;
+	__le32 reserved2;
 };
 
 
 /*
  * FW version stored in the Xstorm RAM
  */
-struct fw_version
-{
+struct fw_version {
 #if defined(__BIG_ENDIAN)
-	uint8_t engineering /* firmware current engineering version */;
-	uint8_t revision /* firmware current revision version */;
-	uint8_t minor /* firmware current minor version */;
-	uint8_t major /* firmware current major version */;
+	uint8_t engineering;
+	uint8_t revision;
+	uint8_t minor;
+	uint8_t major;
 #elif defined(__LITTLE_ENDIAN)
-	uint8_t major /* firmware current major version */;
-	uint8_t minor /* firmware current minor version */;
-	uint8_t revision /* firmware current revision version */;
-	uint8_t engineering /* firmware current engineering version */;
+	uint8_t major;
+	uint8_t minor;
+	uint8_t revision;
+	uint8_t engineering;
 #endif
 	uint32_t flags;
-#define FW_VERSION_OPTIMIZED (0x1<<0) /* BitField flags	if set, this is optimized ASM */
+#define FW_VERSION_OPTIMIZED (0x1 << 0)
 #define FW_VERSION_OPTIMIZED_SHIFT 0
-#define FW_VERSION_BIG_ENDIEN (0x1<<1) /* BitField flags	if set, this is big-endien ASM */
+#define FW_VERSION_BIG_ENDIEN (0x1 << 1)
 #define FW_VERSION_BIG_ENDIEN_SHIFT 1
-#define FW_VERSION_CHIP_VERSION (0x3<<2) /* BitField flags	1 - E1H */
+#define FW_VERSION_CHIP_VERSION (0x3 << 2)
 #define FW_VERSION_CHIP_VERSION_SHIFT 2
-#define __FW_VERSION_RESERVED (0xFFFFFFF<<4) /* BitField flags	 */
+#define __FW_VERSION_RESERVED (0xFFFFFFF << 4)
 #define __FW_VERSION_RESERVED_SHIFT 4
 };
 
 
 /*
- * GRE RSS Mode
- */
-enum gre_rss_mode
-{
-	GRE_OUTER_HEADERS_RSS /* RSS for GRE Packets is performed on the outer headers */,
-	GRE_INNER_HEADERS_RSS /* RSS for GRE Packets is performed on the inner headers */,
-	NVGRE_KEY_ENTROPY_RSS /* RSS for NVGRE Packets is done based on a hash containing the entropy bits from the GRE Key Field (gre_tunnel must be NVGRE_TUNNEL) */,
-	MAX_GRE_RSS_MODE};
-
-
-/*
- * GRE Tunnel Mode
- */
-enum gre_tunnel_type
-{
-	NO_GRE_TUNNEL,
-	NVGRE_TUNNEL /* NV-GRE Tunneling Microsoft L2 over GRE. GRE header contains mandatory Key Field. */,
-	L2GRE_TUNNEL /* L2-GRE Tunneling General L2 over GRE. GRE can contain Key field with Tenant ID and Sequence Field */,
-	IPGRE_TUNNEL /* IP-GRE Tunneling IP over GRE. GRE may contain Key field with Tenant ID, Sequence Field and/or Checksum Field */,
-	MAX_GRE_TUNNEL_TYPE};
-
-
-/*
  * Dynamic Host-Coalescing - Driver(host) counters
  */
-struct hc_dynamic_sb_drv_counters
-{
-	uint32_t dynamic_hc_drv_counter[HC_SB_MAX_DYNAMIC_INDICES] /* Dynamic HC counters written by drivers */;
+struct hc_dynamic_sb_drv_counters {
+	uint32_t dynamic_hc_drv_counter[HC_SB_MAX_DYNAMIC_INDICES];
 };
 
 
 /*
  * 2 bytes. configuration/state parameters for a single protocol index
  */
-struct hc_index_data
-{
+struct hc_index_data {
 #if defined(__BIG_ENDIAN)
 	uint8_t flags;
-#define HC_INDEX_DATA_SM_ID (0x1<<0) /* BitField flags	Index to a state machine. Can be 0 or 1 */
+#define HC_INDEX_DATA_SM_ID (0x1 << 0)
 #define HC_INDEX_DATA_SM_ID_SHIFT 0
-#define HC_INDEX_DATA_HC_ENABLED (0x1<<1) /* BitField flags	if set, host coalescing would be done for this index */
+#define HC_INDEX_DATA_HC_ENABLED (0x1 << 1)
 #define HC_INDEX_DATA_HC_ENABLED_SHIFT 1
-#define HC_INDEX_DATA_DYNAMIC_HC_ENABLED (0x1<<2) /* BitField flags	if set, dynamic HC will be done for this index */
+#define HC_INDEX_DATA_DYNAMIC_HC_ENABLED (0x1 << 2)
 #define HC_INDEX_DATA_DYNAMIC_HC_ENABLED_SHIFT 2
-#define HC_INDEX_DATA_RESERVE (0x1F<<3) /* BitField flags	 */
+#define HC_INDEX_DATA_RESERVE (0x1F << 3)
 #define HC_INDEX_DATA_RESERVE_SHIFT 3
-	uint8_t timeout /* the timeout values for this index. Units are 4 usec */;
+	uint8_t timeout;
 #elif defined(__LITTLE_ENDIAN)
-	uint8_t timeout /* the timeout values for this index. Units are 4 usec */;
+	uint8_t timeout;
 	uint8_t flags;
-#define HC_INDEX_DATA_SM_ID (0x1<<0) /* BitField flags	Index to a state machine. Can be 0 or 1 */
+#define HC_INDEX_DATA_SM_ID (0x1 << 0)
 #define HC_INDEX_DATA_SM_ID_SHIFT 0
-#define HC_INDEX_DATA_HC_ENABLED (0x1<<1) /* BitField flags	if set, host coalescing would be done for this index */
+#define HC_INDEX_DATA_HC_ENABLED (0x1 << 1)
 #define HC_INDEX_DATA_HC_ENABLED_SHIFT 1
-#define HC_INDEX_DATA_DYNAMIC_HC_ENABLED (0x1<<2) /* BitField flags	if set, dynamic HC will be done for this index */
+#define HC_INDEX_DATA_DYNAMIC_HC_ENABLED (0x1 << 2)
 #define HC_INDEX_DATA_DYNAMIC_HC_ENABLED_SHIFT 2
-#define HC_INDEX_DATA_RESERVE (0x1F<<3) /* BitField flags	 */
+#define HC_INDEX_DATA_RESERVE (0x1F << 3)
 #define HC_INDEX_DATA_RESERVE_SHIFT 3
 #endif
 };
@@ -5784,56 +6140,53 @@ struct hc_index_data
 /*
  * HC state-machine
  */
-struct hc_status_block_sm
-{
+struct hc_status_block_sm {
 #if defined(__BIG_ENDIAN)
 	uint8_t igu_seg_id;
-	uint8_t igu_sb_id /* sb_id within the IGU */;
-	uint8_t timer_value /* Determines the time_to_expire */;
+	uint8_t igu_sb_id;
+	uint8_t timer_value;
 	uint8_t __flags;
 #elif defined(__LITTLE_ENDIAN)
 	uint8_t __flags;
-	uint8_t timer_value /* Determines the time_to_expire */;
-	uint8_t igu_sb_id /* sb_id within the IGU */;
+	uint8_t timer_value;
+	uint8_t igu_sb_id;
 	uint8_t igu_seg_id;
 #endif
-	uint32_t time_to_expire /* The time in which it expects to wake up */;
+	uint32_t time_to_expire;
 };
 
 /*
  * hold PCI identification variables- used in various places in firmware
  */
-struct pci_entity
-{
+struct pci_entity {
 #if defined(__BIG_ENDIAN)
-	uint8_t vf_valid /* If set, this is a VF, otherwise it is PF */;
-	uint8_t vf_id /* VF ID (0-63). Value of 0xFF means VF not valid */;
-	uint8_t vnic_id /* Virtual NIC ID (0-3) */;
-	uint8_t pf_id /* PCI physical function number (0-7). The LSB of this field is the port ID */;
+	uint8_t vf_valid;
+	uint8_t vf_id;
+	uint8_t vnic_id;
+	uint8_t pf_id;
 #elif defined(__LITTLE_ENDIAN)
-	uint8_t pf_id /* PCI physical function number (0-7). The LSB of this field is the port ID */;
-	uint8_t vnic_id /* Virtual NIC ID (0-3) */;
-	uint8_t vf_id /* VF ID (0-63). Value of 0xFF means VF not valid */;
-	uint8_t vf_valid /* If set, this is a VF, otherwise it is PF */;
+	uint8_t pf_id;
+	uint8_t vnic_id;
+	uint8_t vf_id;
+	uint8_t vf_valid;
 #endif
 };
 
 /*
  * The fast-path status block meta-data, common to all chips
  */
-struct hc_sb_data
-{
-	struct regpair_native host_sb_addr /* Host status block address */;
-	struct hc_status_block_sm state_machine[HC_SB_MAX_SM] /* Holds the state machines of the status block */;
-	struct pci_entity p_func /* vnic / port of the status block to be set by the driver */;
+struct hc_sb_data {
+	struct regpair_native host_sb_addr;
+	struct hc_status_block_sm state_machine[HC_SB_MAX_SM];
+	struct pci_entity p_func;
 #if defined(__BIG_ENDIAN)
 	uint8_t rsrv0;
 	uint8_t state;
-	uint8_t dhc_qzone_id /* used in E2 only, to specify the HW queue zone ID used for this status block dynamic HC counters */;
-	uint8_t same_igu_sb_1b /* Indicate that both state-machines acts like single sm */;
+	uint8_t dhc_qzone_id;
+	uint8_t same_igu_sb_1b;
 #elif defined(__LITTLE_ENDIAN)
-	uint8_t same_igu_sb_1b /* Indicate that both state-machines acts like single sm */;
-	uint8_t dhc_qzone_id /* used in E2 only, to specify the HW queue zone ID used for this status block dynamic HC counters */;
+	uint8_t same_igu_sb_1b;
+	uint8_t dhc_qzone_id;
 	uint8_t state;
 	uint8_t rsrv0;
 #endif
@@ -5844,8 +6197,7 @@ struct hc_sb_data
 /*
  * Segment types for host coaslescing
  */
-enum hc_segment
-{
+enum hc_segment {
 	HC_REGULAR_SEGMENT,
 	HC_DEFAULT_SEGMENT,
 	MAX_HC_SEGMENT};
@@ -5854,59 +6206,64 @@ enum hc_segment
 /*
  * The fast-path status block meta-data
  */
-struct hc_sp_status_block_data
-{
-	struct regpair_native host_sb_addr /* Host status block address */;
+struct hc_sp_status_block_data {
+	struct regpair_native host_sb_addr;
 #if defined(__BIG_ENDIAN)
 	uint8_t rsrv1;
 	uint8_t state;
-	uint8_t igu_seg_id /* segment id of the IGU */;
-	uint8_t igu_sb_id /* sb_id within the IGU */;
+	uint8_t igu_seg_id;
+	uint8_t igu_sb_id;
 #elif defined(__LITTLE_ENDIAN)
-	uint8_t igu_sb_id /* sb_id within the IGU */;
-	uint8_t igu_seg_id /* segment id of the IGU */;
+	uint8_t igu_sb_id;
+	uint8_t igu_seg_id;
 	uint8_t state;
 	uint8_t rsrv1;
 #endif
-	struct pci_entity p_func /* vnic / port of the status block to be set by the driver */;
+	struct pci_entity p_func;
 };
 
 
 /*
  * The fast-path status block meta-data
  */
-struct hc_status_block_data_e1x
-{
-	struct hc_index_data index_data[HC_SB_MAX_INDICES_E1X] /* configuration/state parameters for a single protocol index */;
-	struct hc_sb_data common /* The fast-path status block meta-data, common to all chips */;
+struct hc_status_block_data_e1x {
+	struct hc_index_data index_data[HC_SB_MAX_INDICES_E1X];
+	struct hc_sb_data common;
 };
 
 
 /*
  * The fast-path status block meta-data
  */
-struct hc_status_block_data_e2
-{
-	struct hc_index_data index_data[HC_SB_MAX_INDICES_E2] /* configuration/state parameters for a single protocol index */;
-	struct hc_sb_data common /* The fast-path status block meta-data, common to all chips */;
+struct hc_status_block_data_e2 {
+	struct hc_index_data index_data[HC_SB_MAX_INDICES_E2];
+	struct hc_sb_data common;
 };
 
 
 /*
  * IGU block operartion modes (in Everest2)
  */
-enum igu_mode
-{
-	HC_IGU_BC_MODE /* Backward compatible mode */,
-	HC_IGU_NBC_MODE /* Non-backward compatible mode */,
+enum igu_mode {
+	HC_IGU_BC_MODE,
+	HC_IGU_NBC_MODE,
 	MAX_IGU_MODE};
+
+
+/*
+ * Inner Headers Classification Type
+ */
+enum inner_clss_type {
+	INNER_CLSS_DISABLED,
+	INNER_CLSS_USE_VLAN,
+	INNER_CLSS_USE_VNI,
+	MAX_INNER_CLSS_TYPE};
 
 
 /*
  * IP versions
  */
-enum ip_ver
-{
+enum ip_ver {
 	IP_V4,
 	IP_V6,
 	MAX_IP_VER};
@@ -5915,131 +6272,122 @@ enum ip_ver
 /*
  * Malicious VF error ID
  */
-enum malicious_vf_error_id
-{
-	VF_PF_CHANNEL_NOT_READY /* Writing to VF/PF channel when it is not ready */,
-	ETH_ILLEGAL_BD_LENGTHS /* TX BD lengths error was detected */,
-	ETH_PACKET_TOO_SHORT /* TX packet is shorter then reported on BDs */,
-	ETH_PAYLOAD_TOO_BIG /* TX packet is greater then MTU */,
-	ETH_ILLEGAL_ETH_TYPE /* TX packet reported without VLAN but eth type is 0x8100 */,
-	ETH_ILLEGAL_LSO_HDR_LEN /* LSO header length on BDs and on hdr_nbd do not match */,
-	ETH_TOO_MANY_BDS /* Tx packet has too many BDs */,
-	ETH_ZERO_HDR_NBDS /* hdr_nbds field is zero */,
-	ETH_START_BD_NOT_SET /* start_bd should be set on first TX BD in packet */,
-	ETH_ILLEGAL_PARSE_NBDS /* Tx packet with parse_nbds field which is not legal */,
-	ETH_IPV6_AND_CHECKSUM /* Tx packet with IP checksum on IPv6 */,
-	ETH_VLAN_FLG_INCORRECT /* Tx packet with incorrect VLAN flag */,
-	ETH_ILLEGAL_LSO_MSS /* Tx LSO packet with illegal MSS value */,
-	ETH_TUNNEL_NOT_SUPPORTED /* Tunneling packets are not supported in current connection */,
+enum malicious_vf_error_id {
+	MALICIOUS_VF_NO_ERROR,
+	VF_PF_CHANNEL_NOT_READY,
+	ETH_ILLEGAL_BD_LENGTHS,
+	ETH_PACKET_TOO_SHORT,
+	ETH_PAYLOAD_TOO_BIG,
+	ETH_ILLEGAL_ETH_TYPE,
+	ETH_ILLEGAL_LSO_HDR_LEN,
+	ETH_TOO_MANY_BDS,
+	ETH_ZERO_HDR_NBDS,
+	ETH_START_BD_NOT_SET,
+	ETH_ILLEGAL_PARSE_NBDS,
+	ETH_IPV6_AND_CHECKSUM,
+	ETH_VLAN_FLG_INCORRECT,
+	ETH_ILLEGAL_LSO_MSS,
+	ETH_TUNNEL_NOT_SUPPORTED,
 	MAX_MALICIOUS_VF_ERROR_ID};
 
 
 /*
  * Multi-function modes
  */
-enum mf_mode
-{
+enum mf_mode {
 	SINGLE_FUNCTION,
-	MULTI_FUNCTION_SD /* Switch dependent (vlan based) */,
-	MULTI_FUNCTION_SI /* Switch independent (mac based) */,
-	MULTI_FUNCTION_AFEX /* Switch dependent (niv based) */,
+	MULTI_FUNCTION_SD,
+	MULTI_FUNCTION_SI,
+	MULTI_FUNCTION_AFEX,
 	MAX_MF_MODE};
 
 
 /*
- * Protocol-common statistics collected by the Tstorm (per pf) $$KEEP_ENDIANNESS$$
+ * Protocol-common statistics collected by the Tstorm (per pf)
  */
-struct tstorm_per_pf_stats
-{
-	struct regpair rcv_error_bytes /* number of bytes received with errors */;
+struct tstorm_per_pf_stats {
+	struct regpair rcv_error_bytes;
 };
 
 /*
- *  $$KEEP_ENDIANNESS$$
+ *
  */
-struct per_pf_stats
-{
+struct per_pf_stats {
 	struct tstorm_per_pf_stats tstorm_pf_statistics;
 };
 
 
 /*
- * Protocol-common statistics collected by the Tstorm (per port) $$KEEP_ENDIANNESS$$
+ * Protocol-common statistics collected by the Tstorm (per port)
  */
-struct tstorm_per_port_stats
-{
-	uint32_t mac_discard /* number of packets with mac errors */;
-	uint32_t mac_filter_discard /* the number of good frames dropped because of no perfect match to MAC/VLAN address */;
-	uint32_t brb_truncate_discard /* the number of packtes that were dropped because they were truncated in BRB */;
-	uint32_t mf_tag_discard /* the number of good frames dropped because of no match to the outer vlan/VNtag */;
-	uint32_t packet_drop /* general packet drop conter- incremented for every packet drop */;
-	uint32_t reserved;
+struct tstorm_per_port_stats {
+	__le32 mac_discard;
+	__le32 mac_filter_discard;
+	__le32 brb_truncate_discard;
+	__le32 mf_tag_discard;
+	__le32 packet_drop;
+	__le32 reserved;
 };
 
 /*
- *  $$KEEP_ENDIANNESS$$
+ *
  */
-struct per_port_stats
-{
+struct per_port_stats {
 	struct tstorm_per_port_stats tstorm_port_statistics;
 };
 
 
 /*
- * Protocol-common statistics collected by the Tstorm (per client) $$KEEP_ENDIANNESS$$
+ * Protocol-common statistics collected by the Tstorm (per client)
  */
-struct tstorm_per_queue_stats
-{
-	struct regpair rcv_ucast_bytes /* number of bytes in unicast packets received without errors and pass the filter */;
-	uint32_t rcv_ucast_pkts /* number of unicast packets received without errors and pass the filter */;
-	uint32_t checksum_discard /* number of total packets received with checksum error */;
-	struct regpair rcv_bcast_bytes /* number of bytes in broadcast packets received without errors and pass the filter */;
-	uint32_t rcv_bcast_pkts /* number of packets in broadcast packets received without errors and pass the filter */;
-	uint32_t pkts_too_big_discard /* number of too long packets received */;
-	struct regpair rcv_mcast_bytes /* number of bytes in multicast packets received without errors and pass the filter */;
-	uint32_t rcv_mcast_pkts /* number of packets in multicast packets received without errors and pass the filter */;
-	uint32_t ttl0_discard /* the number of good frames dropped because of TTL=0 */;
-	uint16_t no_buff_discard;
-	uint16_t reserved0;
-	uint32_t reserved1;
+struct tstorm_per_queue_stats {
+	struct regpair rcv_ucast_bytes;
+	__le32 rcv_ucast_pkts;
+	__le32 checksum_discard;
+	struct regpair rcv_bcast_bytes;
+	__le32 rcv_bcast_pkts;
+	__le32 pkts_too_big_discard;
+	struct regpair rcv_mcast_bytes;
+	__le32 rcv_mcast_pkts;
+	__le32 ttl0_discard;
+	__le16 no_buff_discard;
+	__le16 reserved0;
+	__le32 reserved1;
 };
 
 /*
- * Protocol-common statistics collected by the Ustorm (per client) $$KEEP_ENDIANNESS$$
+ * Protocol-common statistics collected by the Ustorm (per client)
  */
-struct ustorm_per_queue_stats
-{
-	struct regpair ucast_no_buff_bytes /* the number of unicast bytes received from network dropped because of no buffer at host */;
-	struct regpair mcast_no_buff_bytes /* the number of multicast bytes received from network dropped because of no buffer at host */;
-	struct regpair bcast_no_buff_bytes /* the number of broadcast bytes received from network dropped because of no buffer at host */;
-	uint32_t ucast_no_buff_pkts /* the number of unicast frames received from network dropped because of no buffer at host */;
-	uint32_t mcast_no_buff_pkts /* the number of unicast frames received from network dropped because of no buffer at host */;
-	uint32_t bcast_no_buff_pkts /* the number of unicast frames received from network dropped because of no buffer at host */;
-	uint32_t coalesced_pkts /* the number of packets coalesced in all aggregations */;
-	struct regpair coalesced_bytes /* the number of bytes coalesced in all aggregations */;
-	uint32_t coalesced_events /* the number of aggregations */;
-	uint32_t coalesced_aborts /* the number of exception which avoid aggregation */;
+struct ustorm_per_queue_stats {
+	struct regpair ucast_no_buff_bytes;
+	struct regpair mcast_no_buff_bytes;
+	struct regpair bcast_no_buff_bytes;
+	__le32 ucast_no_buff_pkts;
+	__le32 mcast_no_buff_pkts;
+	__le32 bcast_no_buff_pkts;
+	__le32 coalesced_pkts;
+	struct regpair coalesced_bytes;
+	__le32 coalesced_events;
+	__le32 coalesced_aborts;
 };
 
 /*
- * Protocol-common statistics collected by the Xstorm (per client)  $$KEEP_ENDIANNESS$$
+ * Protocol-common statistics collected by the Xstorm (per client)
  */
-struct xstorm_per_queue_stats
-{
-	struct regpair ucast_bytes_sent /* number of total bytes sent without errors */;
-	struct regpair mcast_bytes_sent /* number of total bytes sent without errors */;
-	struct regpair bcast_bytes_sent /* number of total bytes sent without errors */;
-	uint32_t ucast_pkts_sent /* number of total packets sent without errors */;
-	uint32_t mcast_pkts_sent /* number of total packets sent without errors */;
-	uint32_t bcast_pkts_sent /* number of total packets sent without errors */;
-	uint32_t error_drop_pkts /* number of total packets drooped due to errors */;
+struct xstorm_per_queue_stats {
+	struct regpair ucast_bytes_sent;
+	struct regpair mcast_bytes_sent;
+	struct regpair bcast_bytes_sent;
+	__le32 ucast_pkts_sent;
+	__le32 mcast_pkts_sent;
+	__le32 bcast_pkts_sent;
+	__le32 error_drop_pkts;
 };
 
 /*
- *  $$KEEP_ENDIANNESS$$
+ *
  */
-struct per_queue_stats
-{
+struct per_queue_stats {
 	struct tstorm_per_queue_stats tstorm_queue_statistics;
 	struct ustorm_per_queue_stats ustorm_queue_statistics;
 	struct xstorm_per_queue_stats xstorm_queue_statistics;
@@ -6047,24 +6395,23 @@ struct per_queue_stats
 
 
 /*
- * FW version stored in first line of pram $$KEEP_ENDIANNESS$$
+ * FW version stored in first line of pram
  */
-struct pram_fw_version
-{
-	uint8_t major /* firmware current major version */;
-	uint8_t minor /* firmware current minor version */;
-	uint8_t revision /* firmware current revision version */;
-	uint8_t engineering /* firmware current engineering version */;
+struct pram_fw_version {
+	uint8_t major;
+	uint8_t minor;
+	uint8_t revision;
+	uint8_t engineering;
 	uint8_t flags;
-#define PRAM_FW_VERSION_OPTIMIZED (0x1<<0) /* BitField flags	if set, this is optimized ASM */
+#define PRAM_FW_VERSION_OPTIMIZED (0x1 << 0)
 #define PRAM_FW_VERSION_OPTIMIZED_SHIFT 0
-#define PRAM_FW_VERSION_STORM_ID (0x3<<1) /* BitField flags	storm_id identification */
+#define PRAM_FW_VERSION_STORM_ID (0x3 << 1)
 #define PRAM_FW_VERSION_STORM_ID_SHIFT 1
-#define PRAM_FW_VERSION_BIG_ENDIEN (0x1<<3) /* BitField flags	if set, this is big-endien ASM */
+#define PRAM_FW_VERSION_BIG_ENDIEN (0x1 << 3)
 #define PRAM_FW_VERSION_BIG_ENDIEN_SHIFT 3
-#define PRAM_FW_VERSION_CHIP_VERSION (0x3<<4) /* BitField flags 1 - E1H */
+#define PRAM_FW_VERSION_CHIP_VERSION (0x3 << 4)
 #define PRAM_FW_VERSION_CHIP_VERSION_SHIFT 4
-#define __PRAM_FW_VERSION_RESERVED0 (0x3<<6) /* BitField flags	 */
+#define __PRAM_FW_VERSION_RESERVED0 (0x3 << 6)
 #define __PRAM_FW_VERSION_RESERVED0_SHIFT 6
 };
 
@@ -6072,107 +6419,98 @@ struct pram_fw_version
 /*
  * Ethernet slow path element
  */
-union protocol_common_specific_data
-{
-	uint8_t protocol_data[8] /* to fix this structure size to 8 bytes */;
-	struct regpair phy_address /* SPE physical address */;
-	struct regpair mac_config_addr /* physical address of the MAC configuration command, as allocated by the driver */;
-	struct afex_vif_list_ramrod_data afex_vif_list_data /* The data afex vif list ramrod need */;
+union protocol_common_specific_data {
+	uint8_t protocol_data[8];
+	struct regpair phy_address;
+	struct regpair mac_config_addr;
+	struct afex_vif_list_ramrod_data afex_vif_list_data;
 };
 
 /*
  * The send queue element
  */
-struct protocol_common_spe
-{
-	struct spe_hdr hdr /* SPE header */;
-	union protocol_common_specific_data data /* data specific to common protocol */;
+struct protocol_common_spe {
+	struct spe_hdr hdr;
+	union protocol_common_specific_data data;
 };
 
 
 /*
- * The data for the Set Timesync Ramrod $$KEEP_ENDIANNESS$$
+ * The data for the Set Timesync Ramrod
  */
-struct set_timesync_ramrod_data
-{
-	uint8_t drift_adjust_cmd /* Timesync Drift Adjust Command */;
-	uint8_t offset_cmd /* Timesync Offset Command */;
-	uint8_t add_sub_drift_adjust_value /* Whether to add(1)/subtract(0) Drift Adjust Value from the Offset */;
-	uint8_t drift_adjust_value /* Drift Adjust Value (in ns) */;
-	uint32_t drift_adjust_period /* Drift Adjust Period (in us) */;
-	struct regpair offset_delta /* Timesync Offset Delta (in ns) */;
+struct set_timesync_ramrod_data {
+	uint8_t drift_adjust_cmd;
+	uint8_t offset_cmd;
+	uint8_t add_sub_drift_adjust_value;
+	uint8_t drift_adjust_value;
+	uint32_t drift_adjust_period;
+	struct regpair offset_delta;
 };
 
 
 /*
  * The send queue element
  */
-struct slow_path_element
-{
-	struct spe_hdr hdr /* common data for all protocols */;
-	struct regpair protocol_data /* additional data specific to the protocol */;
+struct slow_path_element {
+	struct spe_hdr hdr;
+	struct regpair protocol_data;
 };
 
 
 /*
- * Protocol-common statistics counter $$KEEP_ENDIANNESS$$
+ * Protocol-common statistics counter
  */
-struct stats_counter
-{
-	uint16_t xstats_counter /* xstorm statistics counter */;
-	uint16_t reserved0;
-	uint32_t reserved1;
-	uint16_t tstats_counter /* tstorm statistics counter */;
-	uint16_t reserved2;
-	uint32_t reserved3;
-	uint16_t ustats_counter /* ustorm statistics counter */;
-	uint16_t reserved4;
-	uint32_t reserved5;
-	uint16_t cstats_counter /* ustorm statistics counter */;
-	uint16_t reserved6;
-	uint32_t reserved7;
+struct stats_counter {
+	__le16 xstats_counter;
+	__le16 reserved0;
+	__le32 reserved1;
+	__le16 tstats_counter;
+	__le16 reserved2;
+	__le32 reserved3;
+	__le16 ustats_counter;
+	__le16 reserved4;
+	__le32 reserved5;
+	__le16 cstats_counter;
+	__le16 reserved6;
+	__le32 reserved7;
 };
 
 
 /*
- *  $$KEEP_ENDIANNESS$$
+ *
  */
-struct stats_query_entry
-{
+struct stats_query_entry {
 	uint8_t kind;
-	uint8_t index /* queue index */;
-	uint16_t funcID /* the func the statistic will send to */;
-	uint32_t reserved;
-	struct regpair address /* pxp address */;
+	uint8_t index;
+	__le16 funcID;
+	__le32 reserved;
+	struct regpair address;
 };
 
 /*
- * statistic command $$KEEP_ENDIANNESS$$
+ * statistic command
  */
-struct stats_query_cmd_group
-{
+struct stats_query_cmd_group {
 	struct stats_query_entry query[STATS_QUERY_CMD_COUNT];
 };
 
 
 /*
- * statistic command header $$KEEP_ENDIANNESS$$
+ * statistic command header
  */
-struct stats_query_header
-{
-	uint8_t cmd_num /* command number */;
+struct stats_query_header {
+	uint8_t cmd_num;
 	uint8_t reserved0;
-	uint16_t drv_stats_counter;
-	uint32_t reserved1;
-	struct regpair stats_counters_addrs /* stats counter */;
+	__le16 drv_stats_counter;
+	__le32 reserved1;
+	struct regpair stats_counters_addrs;
 };
 
 
 /*
  * Types of statistcis query entry
  */
-enum stats_query_type
-{
+enum stats_query_type {
 	STATS_TYPE_QUEUE,
 	STATS_TYPE_PORT,
 	STATS_TYPE_PF,
@@ -6184,8 +6522,7 @@ enum stats_query_type
 /*
  * Indicate of the function status block state
  */
-enum status_block_state
-{
+enum status_block_state {
 	SB_DISABLED,
 	SB_ENABLED,
 	SB_CLEANED,
@@ -6195,8 +6532,7 @@ enum status_block_state
 /*
  * Storm IDs (including attentions for IGU related enums)
  */
-enum storm_id
-{
+enum storm_id {
 	USTORM_ID,
 	CSTORM_ID,
 	XSTORM_ID,
@@ -6208,19 +6544,17 @@ enum storm_id
 /*
  * Taffic types used in ETS and flow control algorithms
  */
-enum traffic_type
-{
-	LLFC_TRAFFIC_TYPE_NW /* Networking */,
-	LLFC_TRAFFIC_TYPE_FCOE /* FCoE */,
-	LLFC_TRAFFIC_TYPE_ISCSI /* iSCSI */,
+enum traffic_type {
+	LLFC_TRAFFIC_TYPE_NW,
+	LLFC_TRAFFIC_TYPE_FCOE,
+	LLFC_TRAFFIC_TYPE_ISCSI,
 	MAX_TRAFFIC_TYPE};
 
 
 /*
  * zone A per-queue data
  */
-struct tstorm_queue_zone_data
-{
+struct tstorm_queue_zone_data {
 	struct regpair reserved[4];
 };
 
@@ -6228,8 +6562,7 @@ struct tstorm_queue_zone_data
 /*
  * zone B per-VF data
  */
-struct tstorm_vf_zone_data
-{
+struct tstorm_vf_zone_data {
 	struct regpair reserved;
 };
 
@@ -6237,41 +6570,87 @@ struct tstorm_vf_zone_data
 /*
  * Add or Subtract Value for Set Timesync Ramrod
  */
-enum ts_add_sub_value
-{
-	TS_SUB_VALUE /* Subtract Value */,
-	TS_ADD_VALUE /* Add Value */,
+enum ts_add_sub_value {
+	TS_SUB_VALUE,
+	TS_ADD_VALUE,
 	MAX_TS_ADD_SUB_VALUE};
 
 
 /*
  * Drift-Adjust Commands for Set Timesync Ramrod
  */
-enum ts_drift_adjust_cmd
-{
-	TS_DRIFT_ADJUST_KEEP /* Keep Drift-Adjust at current values */,
-	TS_DRIFT_ADJUST_SET /* Set Drift-Adjust */,
-	TS_DRIFT_ADJUST_RESET /* Reset Drift-Adjust */,
+enum ts_drift_adjust_cmd {
+	TS_DRIFT_ADJUST_KEEP,
+	TS_DRIFT_ADJUST_SET,
+	TS_DRIFT_ADJUST_RESET,
 	MAX_TS_DRIFT_ADJUST_CMD};
 
 
 /*
  * Offset Commands for Set Timesync Ramrod
  */
-enum ts_offset_cmd
-{
-	TS_OFFSET_KEEP /* Keep Offset at current values */,
-	TS_OFFSET_INC /* Increase Offset by Offset Delta */,
-	TS_OFFSET_DEC /* Decrease Offset by Offset Delta */,
+enum ts_offset_cmd {
+	TS_OFFSET_KEEP,
+	TS_OFFSET_INC,
+	TS_OFFSET_DEC,
 	MAX_TS_OFFSET_CMD};
+
+
+/*
+ * Input for measuring Pci Latency
+ */
+struct t_measure_pci_latency_ctrl {
+	struct regpair read_addr;
+#if defined(__BIG_ENDIAN)
+	uint8_t sleep;
+	uint8_t enable;
+	uint8_t func_id;
+	uint8_t read_size;
+#elif defined(__LITTLE_ENDIAN)
+	uint8_t read_size;
+	uint8_t func_id;
+	uint8_t enable;
+	uint8_t sleep;
+#endif
+#if defined(__BIG_ENDIAN)
+	uint16_t num_meas;
+	uint8_t reserved;
+	uint8_t period_10us;
+#elif defined(__LITTLE_ENDIAN)
+	uint8_t period_10us;
+	uint8_t reserved;
+	uint16_t num_meas;
+#endif
+};
+
+
+/*
+ * Input for measuring Pci Latency
+ */
+struct t_measure_pci_latency_data {
+#if defined(__BIG_ENDIAN)
+	uint16_t max_time_ns;
+	uint16_t min_time_ns;
+#elif defined(__LITTLE_ENDIAN)
+	uint16_t min_time_ns;
+	uint16_t max_time_ns;
+#endif
+#if defined(__BIG_ENDIAN)
+	uint16_t reserved;
+	uint16_t num_reads;
+#elif defined(__LITTLE_ENDIAN)
+	uint16_t num_reads;
+	uint16_t reserved;
+#endif
+	struct regpair sum_time_ns;
+};
 
 
 /*
  * zone A per-queue data
  */
-struct ustorm_queue_zone_data
-{
-	union ustorm_eth_rx_producers eth_rx_producers /* ETH RX rings producers */;
+struct ustorm_queue_zone_data {
+	struct ustorm_eth_rx_producers eth_rx_producers;
 	struct regpair reserved[3];
 };
 
@@ -6279,8 +6658,7 @@ struct ustorm_queue_zone_data
 /*
  * zone B per-VF data
  */
-struct ustorm_vf_zone_data
-{
+struct ustorm_vf_zone_data {
 	struct regpair reserved;
 };
 
@@ -6288,15 +6666,14 @@ struct ustorm_vf_zone_data
 /*
  * data per VF-PF channel
  */
-struct vf_pf_channel_data
-{
+struct vf_pf_channel_data {
 #if defined(__BIG_ENDIAN)
 	uint16_t reserved0;
-	uint8_t valid /* flag for channel validity. (cleared when identify a VF as malicious) */;
-	uint8_t state /* channel state (ready / waiting for ack) */;
+	uint8_t valid;
+	uint8_t state;
 #elif defined(__LITTLE_ENDIAN)
-	uint8_t state /* channel state (ready / waiting for ack) */;
-	uint8_t valid /* flag for channel validity. (cleared when identify a VF as malicious) */;
+	uint8_t state;
+	uint8_t valid;
 	uint16_t reserved0;
 #endif
 	uint32_t reserved1;
@@ -6306,18 +6683,16 @@ struct vf_pf_channel_data
 /*
  * State of VF-PF channel
  */
-enum vf_pf_channel_state
-{
-	VF_PF_CHANNEL_STATE_READY /* Channel is ready to accept a message from VF */,
-	VF_PF_CHANNEL_STATE_WAITING_FOR_ACK /* Channel waits for an ACK from PF */,
+enum vf_pf_channel_state {
+	VF_PF_CHANNEL_STATE_READY,
+	VF_PF_CHANNEL_STATE_WAITING_FOR_ACK,
 	MAX_VF_PF_CHANNEL_STATE};
 
 
 /*
  * vif_list_rule_kind
  */
-enum vif_list_rule_kind
-{
+enum vif_list_rule_kind {
 	VIF_LIST_RULE_SET,
 	VIF_LIST_RULE_GET,
 	VIF_LIST_RULE_CLEAR_ALL,
@@ -6328,8 +6703,7 @@ enum vif_list_rule_kind
 /*
  * zone A per-queue data
  */
-struct xstorm_queue_zone_data
-{
+struct xstorm_queue_zone_data {
 	struct regpair reserved[4];
 };
 
@@ -6337,10 +6711,8 @@ struct xstorm_queue_zone_data
 /*
  * zone B per-VF data
  */
-struct xstorm_vf_zone_data
-{
+struct xstorm_vf_zone_data {
 	struct regpair reserved;
 };
-
 
 #endif /* ECORE_HSI_H */

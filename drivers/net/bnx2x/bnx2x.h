@@ -19,18 +19,7 @@
 #include <rte_bus_pci.h>
 #include <rte_io.h>
 
-#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
-#ifndef __LITTLE_ENDIAN
-#define __LITTLE_ENDIAN RTE_LITTLE_ENDIAN
-#endif
-#undef __BIG_ENDIAN
-#elif RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-#ifndef __BIG_ENDIAN
-#define __BIG_ENDIAN    RTE_BIG_ENDIAN
-#endif
-#undef __LITTLE_ENDIAN
-#endif
-
+#include "bnx2x_osal.h"
 #include "bnx2x_ethdev.h"
 #include "ecore_mfw_req.h"
 #include "ecore_fw_defs.h"
@@ -1911,16 +1900,18 @@ bnx2x_hc_ack_sb(struct bnx2x_softc *sc, uint8_t sb_id, uint8_t storm,
 {
 	uint32_t hc_addr = (HC_REG_COMMAND_REG + SC_PORT(sc) * 32 +
 			COMMAND_REG_INT_ACK);
-	union igu_ack_register igu_ack;
+	struct igu_ack_register igu_ack;
+	uint32_t *val = NULL;
 
-	igu_ack.sb.status_block_index = index;
-	igu_ack.sb.sb_id_and_flags =
+	igu_ack.status_block_index = index;
+	igu_ack.sb_id_and_flags =
 		((sb_id << IGU_ACK_REGISTER_STATUS_BLOCK_ID_SHIFT) |
 		 (storm << IGU_ACK_REGISTER_STORM_ID_SHIFT) |
 		 (update << IGU_ACK_REGISTER_UPDATE_INDEX_SHIFT) |
 		 (op << IGU_ACK_REGISTER_INTERRUPT_MODE_SHIFT));
 
-	REG_WR(sc, hc_addr, igu_ack.raw_data);
+	val = (uint32_t *)&igu_ack;
+	REG_WR(sc, hc_addr, *val);
 
 	/* Make sure that ACK is written */
 	mb();

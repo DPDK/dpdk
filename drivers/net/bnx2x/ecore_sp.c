@@ -3524,13 +3524,6 @@ static int ecore_setup_rss(struct bnx2x_softc *sc,
 		data->capabilities |=
 		    ETH_RSS_UPDATE_RAMROD_DATA_IPV6_UDP_CAPABILITY;
 
-	if (ECORE_TEST_BIT(ECORE_RSS_TUNNELING, &p->rss_flags)) {
-		data->udp_4tuple_dst_port_mask =
-		    ECORE_CPU_TO_LE16(p->tunnel_mask);
-		data->udp_4tuple_dst_port_value =
-		    ECORE_CPU_TO_LE16(p->tunnel_value);
-	}
-
 	/* Hashing mask */
 	data->rss_result_mask = p->rss_result_mask;
 
@@ -5088,8 +5081,6 @@ static int ecore_func_send_start(struct bnx2x_softc *sc,
 	rdata->sd_vlan_tag = ECORE_CPU_TO_LE16(start_params->sd_vlan_tag);
 	rdata->path_id = ECORE_PATH_ID(sc);
 	rdata->network_cos_mode = start_params->network_cos_mode;
-	rdata->gre_tunnel_mode = start_params->gre_tunnel_mode;
-	rdata->gre_tunnel_rss = start_params->gre_tunnel_rss;
 
 	/*
 	 *  No need for an explicit memory barrier here as long we would
@@ -5229,7 +5220,7 @@ static int ecore_func_send_tx_start(struct bnx2x_softc *sc, struct ecore_func_st
 
 	rdata->dcb_enabled = tx_start_params->dcb_enabled;
 	rdata->dcb_version = tx_start_params->dcb_version;
-	rdata->dont_add_pri_0 = tx_start_params->dont_add_pri_0;
+	rdata->dont_add_pri_0_en = tx_start_params->dont_add_pri_0;
 
 	for (i = 0; i < ARRAY_SIZE(rdata->traffic_type_to_priority_cos); i++)
 		rdata->traffic_type_to_priority_cos[i] =

@@ -2182,8 +2182,10 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 
 	tx_start_bd = &txq->tx_ring[TX_BD(bd_prod, txq)].start_bd;
 
-	tx_start_bd->addr =
-	    rte_cpu_to_le_64(rte_mbuf_data_iova(m0));
+	tx_start_bd->addr_lo =
+	    rte_cpu_to_le_32(U64_LO(rte_mbuf_data_iova(m0)));
+	tx_start_bd->addr_hi =
+	    rte_cpu_to_le_32(U64_HI(rte_mbuf_data_iova(m0)));
 	tx_start_bd->nbytes = rte_cpu_to_le_16(m0->data_len);
 	tx_start_bd->bd_flags.as_bitfield = ETH_TX_BD_FLAGS_START_BD;
 	tx_start_bd->general_data =
@@ -5015,13 +5017,14 @@ static void
 bnx2x_update_rx_prod(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 		   uint16_t rx_bd_prod, uint16_t rx_cq_prod)
 {
-	union ustorm_eth_rx_producers rx_prods;
+	struct ustorm_eth_rx_producers rx_prods;
 	uint32_t i;
 
+	memset(&rx_prods, 0, sizeof(rx_prods));
+
 	/* update producers */
-	rx_prods.prod.bd_prod = rx_bd_prod;
-	rx_prods.prod.cqe_prod = rx_cq_prod;
-	rx_prods.prod.reserved = 0;
+	rx_prods.bd_prod = rx_bd_prod;
+	rx_prods.cqe_prod = rx_cq_prod;
 
 	/*
 	 * Make sure that the BD and SGE data is updated before updating the
@@ -5034,9 +5037,8 @@ bnx2x_update_rx_prod(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 	wmb();
 
 	for (i = 0; i < (sizeof(rx_prods) / 4); i++) {
-		REG_WR(sc,
-		       (fp->ustorm_rx_prods_offset + (i * 4)),
-		       rx_prods.raw_data[i]);
+		REG_WR(sc, (fp->ustorm_rx_prods_offset + (i * 4)),
+		       ((uint32_t *)&rx_prods)[i]);
 	}
 
 	wmb();			/* keep prod updates ordered */
