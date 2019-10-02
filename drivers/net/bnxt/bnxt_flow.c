@@ -1550,6 +1550,15 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		return NULL;
 	}
 
+	if (!dev->data->dev_started) {
+		rte_flow_error_set(error,
+				   EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Device must be started");
+		return NULL;
+	}
+
 	flow = rte_zmalloc("bnxt_flow", sizeof(struct rte_flow), 0);
 	if (!flow) {
 		rte_flow_error_set(error, ENOMEM,
