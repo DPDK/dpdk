@@ -694,12 +694,14 @@ err_out:
 int bnxt_alloc_async_cp_ring(struct bnxt *bp)
 {
 	struct bnxt_cp_ring_info *cpr = bp->async_cp_ring;
-	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
+	struct bnxt_ring *cp_ring;
 	uint8_t ring_type;
 	int rc;
 
-	if (BNXT_NUM_ASYNC_CPR(bp) == 0)
+	if (BNXT_NUM_ASYNC_CPR(bp) == 0 || cpr == NULL)
 		return 0;
+
+	cp_ring = cpr->cp_ring_struct;
 
 	if (BNXT_HAS_NQ(bp))
 		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_NQ;
