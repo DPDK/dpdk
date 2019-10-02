@@ -21,7 +21,7 @@ except ImportError:
 
 
 PKTTEST_REQ = [
-    "scapy==2.4.3rc1",
+    "scapy>=2.4.3",
 ]
 
 
