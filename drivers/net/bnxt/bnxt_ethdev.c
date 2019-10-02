@@ -1373,14 +1373,20 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_conf->rss_hf);
 
 	/*
-	 * Use the supplied key if the key length is
-	 * acceptable and the rss_key is not NULL
+	 * If hashkey is not specified, use the previously configured
+	 * hashkey
 	 */
-	if (rss_conf->rss_key && rss_conf->rss_key_len <= HW_HASH_KEY_SIZE)
-		memcpy(vnic->rss_hash_key,
-		       rss_conf->rss_key,
-		       rss_conf->rss_key_len);
+	if (!rss_conf->rss_key)
+		goto rss_config;
 
+	if (rss_conf->rss_key_len != HW_HASH_KEY_SIZE) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid hashkey length, should be 16 bytes\n");
+		return -EINVAL;
+	}
+	memcpy(vnic->rss_hash_key, rss_conf->rss_key, rss_conf->rss_key_len);
+
+rss_config:
 	bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 	return 0;
 }
