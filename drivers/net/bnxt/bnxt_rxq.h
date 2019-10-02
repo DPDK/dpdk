@@ -30,6 +30,7 @@ struct bnxt_rx_queue {
 	uint16_t		port_id; /* Device port identifier */
 	uint8_t			crc_len; /* 0 if CRC stripped, 4 otherwise */
 	uint8_t			rx_deferred_start; /* not in global dev start */
+	uint8_t			rx_started; /* RX queue is started */
 
 	struct bnxt		*bp;
 	int			index;

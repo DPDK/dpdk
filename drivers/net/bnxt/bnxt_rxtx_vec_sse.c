@@ -224,7 +224,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			     0xFF, 0xFF, 0xFF, 0xFF); /* pkt_type (zeroes) */
 
 	/* If Rx Q was stopped return */
-	if (rxq->rx_deferred_start)
+	if (unlikely(!rxq->rx_started))
 		return 0;
 
 	if (rxq->rxrearm_nb >= RTE_BNXT_RXQ_REARM_THRESH)

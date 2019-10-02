@@ -561,8 +561,7 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	if (rc)
 		goto err_out;
 
-	if (bp->eth_dev->data->rx_queue_state[queue_index] ==
-	    RTE_ETH_QUEUE_STATE_STARTED) {
+	if (rxq->rx_started) {
 		if (bnxt_init_one_rx_ring(rxq)) {
 			RTE_LOG(ERR, PMD,
 				"bnxt_init_one_rx_ring failed!\n");
