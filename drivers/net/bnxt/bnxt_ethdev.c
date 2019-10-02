@@ -3562,6 +3562,40 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.timesync_read_tx_timestamp = bnxt_timesync_read_tx_timestamp,
 };
 
+int bnxt_map_fw_health_status_regs(struct bnxt *bp)
+{
+	struct bnxt_error_recovery_info *info = bp->recovery_info;
+	uint32_t reg_base = 0xffffffff;
+	int i;
+
+	/* Only pre-map the monitoring GRC registers using window 2 */
+	for (i = 0; i < BNXT_FW_STATUS_REG_CNT; i++) {
+		uint32_t reg = info->status_regs[i];
+
+		if (BNXT_FW_STATUS_REG_TYPE(reg) != BNXT_FW_STATUS_REG_TYPE_GRC)
+			continue;
+
+		if (reg_base == 0xffffffff)
+			reg_base = reg & 0xfffff000;
+		if ((reg & 0xfffff000) != reg_base)
+			return -ERANGE;
+
+		/* Use mask 0xffc as the Lower 2 bits indicates
+		 * address space location
+		 */
+		info->mapped_status_regs[i] = BNXT_GRCP_WINDOW_2_BASE +
+						(reg & 0xffc);
+	}
+
+	if (reg_base == 0xffffffff)
+		return 0;
+
+	rte_write32(reg_base, (uint8_t *)bp->bar0 +
+		    BNXT_GRCPF_REG_WINDOW_BASE_OUT + 4);
+
+	return 0;
+}
+
 static void bnxt_dev_cleanup(struct bnxt *bp)
 {
 	bnxt_set_hwrm_link_config(bp, false);

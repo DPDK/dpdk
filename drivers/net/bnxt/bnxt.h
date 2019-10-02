@@ -354,7 +354,9 @@ struct bnxt_error_recovery_info {
 #define BNXT_FW_HEARTBEAT_CNT_REG	1
 #define BNXT_FW_RECOVERY_CNT_REG	2
 #define BNXT_FW_RESET_INPROG_REG	3
-	uint32_t	status_regs[4];
+#define BNXT_FW_STATUS_REG_CNT		4
+	uint32_t	status_regs[BNXT_FW_STATUS_REG_CNT];
+	uint32_t	mapped_status_regs[BNXT_FW_STATUS_REG_CNT];
 	uint32_t	reset_inprogress_reg_mask;
 #define BNXT_NUM_RESET_REG	16
 	uint8_t		reg_array_cnt;
@@ -365,6 +367,22 @@ struct bnxt_error_recovery_info {
 #define BNXT_FLAG_ERROR_RECOVERY_CO_CPU	(1 << 1)
 	uint32_t	flags;
 };
+
+/* address space location of register */
+#define BNXT_FW_STATUS_REG_TYPE_MASK	3
+/* register is located in PCIe config space */
+#define BNXT_FW_STATUS_REG_TYPE_CFG	0
+/* register is located in GRC address space */
+#define BNXT_FW_STATUS_REG_TYPE_GRC	1
+/* register is located in BAR0  */
+#define BNXT_FW_STATUS_REG_TYPE_BAR0	2
+/* register is located in BAR1  */
+#define BNXT_FW_STATUS_REG_TYPE_BAR1	3
+
+#define BNXT_FW_STATUS_REG_TYPE(reg)	((reg) & BNXT_FW_STATUS_REG_TYPE_MASK)
+#define BNXT_FW_STATUS_REG_OFF(reg)	((reg) & ~BNXT_FW_STATUS_REG_TYPE_MASK)
+
+#define BNXT_GRCP_WINDOW_2_BASE		0x2000
 
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
@@ -510,6 +528,8 @@ struct bnxt {
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 int is_bnxt_in_error(struct bnxt *bp);
+
+int bnxt_map_fw_health_status_regs(struct bnxt *bp);
 
 bool is_bnxt_supported(struct rte_eth_dev *dev);
 bool bnxt_stratus_device(struct bnxt *bp);

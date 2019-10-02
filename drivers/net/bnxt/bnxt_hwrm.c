@@ -4788,6 +4788,10 @@ int bnxt_hwrm_error_recovery_qcfg(struct bnxt *bp)
 err:
 	HWRM_UNLOCK();
 
+	/* Map the FW status registers */
+	if (!rc)
+		rc = bnxt_map_fw_health_status_regs(bp);
+
 	if (rc) {
 		rte_free(bp->recovery_info);
 		bp->recovery_info = NULL;
