@@ -219,8 +219,14 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		rte_spinlock_unlock(&bp->hwrm_lock); \
 		if (rc == HWRM_ERR_CODE_RESOURCE_ACCESS_DENIED) \
 			rc = -EACCES; \
-		else if (rc > 0) \
+		else if (rc == HWRM_ERR_CODE_RESOURCE_ALLOC_ERROR) \
+			rc = -ENOSPC; \
+		else if (rc == HWRM_ERR_CODE_INVALID_PARAMS) \
 			rc = -EINVAL; \
+		else if (rc == HWRM_ERR_CODE_CMD_NOT_SUPPORTED) \
+			rc = -ENOTSUP; \
+		else if (rc > 0) \
+			rc = -EIO; \
 		return rc; \
 	} \
 	if (resp->error_code) { \
@@ -241,8 +247,14 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		rte_spinlock_unlock(&bp->hwrm_lock); \
 		if (rc == HWRM_ERR_CODE_RESOURCE_ACCESS_DENIED) \
 			rc = -EACCES; \
-		else if (rc > 0) \
+		else if (rc == HWRM_ERR_CODE_RESOURCE_ALLOC_ERROR) \
+			rc = -ENOSPC; \
+		else if (rc == HWRM_ERR_CODE_INVALID_PARAMS) \
 			rc = -EINVAL; \
+		else if (rc == HWRM_ERR_CODE_CMD_NOT_SUPPORTED) \
+			rc = -ENOTSUP; \
+		else if (rc > 0) \
+			rc = -EIO; \
 		return rc; \
 	} \
 } while (0)
