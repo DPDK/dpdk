@@ -177,6 +177,14 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			return -rte_errno;
 		}
 
+		if (!item->spec || !item->mask) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "spec/mask is NULL");
+			return -rte_errno;
+		}
+
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_ANY:
 			inner =
@@ -972,11 +980,11 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		bnxt_flow_non_void_action(actions);
 	struct bnxt *bp = dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct bnxt_vnic_info *vnic = NULL, *vnic0 = NULL;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_vf *act_vf;
 	struct bnxt_filter_info *filter1 = NULL;
 	const struct rte_flow_action_rss *rss;
-	struct bnxt_vnic_info *vnic, *vnic0;
 	struct bnxt_rx_queue *rxq = NULL;
 	int dflt_vnic, vnic_id;
 	unsigned int rss_idx;
@@ -1077,8 +1085,15 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(DEBUG, "VNIC found\n");
 
 		rc = bnxt_vnic_prep(bp, vnic);
-		if (rc)
+		if (rc)  {
+			rte_flow_error_set(error,
+					   EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "VNIC prep fail");
+			rc = -rte_errno;
 			goto ret;
+		}
 
 		PMD_DRV_LOG(DEBUG,
 			    "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
@@ -1091,7 +1106,12 @@ use_vnic:
 		filter->dst_id = vnic->fw_vnic_id;
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic);
 		if (filter1 == NULL) {
-			rc = -ENOSPC;
+			rte_flow_error_set(error,
+					   ENOSPC,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "Filter not available");
+			rc = -rte_errno;
 			goto ret;
 		}
 
@@ -1119,7 +1139,12 @@ use_vnic:
 		vnic0 = &bp->vnic_info[0];
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
 		if (filter1 == NULL) {
-			rc = -ENOSPC;
+			rte_flow_error_set(error,
+					   ENOSPC,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "New filter not available");
+			rc = -rte_errno;
 			goto ret;
 		}
 
@@ -1182,6 +1207,11 @@ use_vnic:
 		vnic0 = &bp->vnic_info[0];
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
 		if (filter1 == NULL) {
+			rte_flow_error_set(error,
+					   ENOSPC,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "New filter not available");
 			rc = -ENOSPC;
 			goto ret;
 		}
@@ -1278,8 +1308,15 @@ use_vnic:
 		vnic->func_default = 0;	//This is not a default VNIC.
 
 		rc = bnxt_vnic_prep(bp, vnic);
-		if (rc)
+		if (rc) {
+			rte_flow_error_set(error,
+					   EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "VNIC prep fail");
+			rc = -rte_errno;
 			goto ret;
+		}
 
 		PMD_DRV_LOG(DEBUG,
 			    "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
@@ -1334,6 +1371,11 @@ vnic_found:
 		filter->dst_id = vnic->fw_vnic_id;
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic);
 		if (filter1 == NULL) {
+			rte_flow_error_set(error,
+					   ENOSPC,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "New filter not available");
 			rc = -ENOSPC;
 			goto ret;
 		}
@@ -1367,7 +1409,18 @@ done:
 		rc = -rte_errno;
 		goto ret;
 	}
+
+	return rc;
 ret:
+
+	//TODO: Cleanup according to ACTION TYPE.
+	if (rte_errno)  {
+		if (vnic && STAILQ_EMPTY(&vnic->filter))
+			vnic->rx_queue_cnt = 0;
+
+		if (rxq && !vnic->rx_queue_cnt)
+			rxq->vnic = &bp->vnic_info[0];
+	}
 	return rc;
 }
 
@@ -1414,6 +1467,8 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 
 	ret = bnxt_validate_and_parse_flow(dev, pattern, actions, attr,
 					   error, filter);
+	if (ret)
+		goto exit;
 
 	vnic = find_matching_vnic(bp, filter);
 	if (vnic) {
@@ -1434,6 +1489,7 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 	else
 		bnxt_hwrm_clear_l2_filter(bp, filter);
 
+exit:
 	/* No need to hold on to this filter if we are just validating flow */
 	filter->fw_l2_filter_id = UINT64_MAX;
 	bnxt_free_filter(bp, filter);
