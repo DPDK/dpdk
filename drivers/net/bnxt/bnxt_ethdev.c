@@ -3721,6 +3721,8 @@ void bnxt_dev_reset_and_resume(void *arg)
 
 	bnxt_dev_cleanup(bp);
 
+	bnxt_wait_for_device_shutdown(bp);
+
 	rc = rte_eal_alarm_set(US_PER_MS * bp->fw_reset_min_msecs,
 			       bnxt_dev_recover, (void *)bp);
 	if (rc)

@@ -637,6 +637,11 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		bp->flags &= ~BNXT_FLAG_FW_CAP_ERROR_RECOVERY;
 	}
 
+	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ERR_RECOVER_RELOAD)
+		bp->flags |= BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD;
+	else
+		bp->flags &= ~BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD;
+
 	HWRM_UNLOCK();
 
 	return rc;

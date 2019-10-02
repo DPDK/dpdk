@@ -5,12 +5,47 @@
 
 #include <rte_malloc.h>
 #include <rte_alarm.h>
+#include <rte_cycles.h>
 
 #include "bnxt.h"
 #include "bnxt_cpr.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_ring.h"
 #include "hsi_struct_def_dpdk.h"
+
+void bnxt_wait_for_device_shutdown(struct bnxt *bp)
+{
+	uint32_t val, timeout;
+
+	/* if HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ERR_RECOVER_RELOAD is set
+	 * in HWRM_FUNC_QCAPS command, wait for FW_STATUS to set
+	 * the SHUTDOWN bit in health register
+	 */
+	if (!(bp->recovery_info &&
+	      (bp->flags & BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD)))
+		return;
+
+	/* Driver has to wait for fw_reset_max_msecs or shutdown bit which comes
+	 * first for FW to collect crash dump.
+	 */
+	timeout = bp->fw_reset_max_msecs;
+
+	/* Driver has to poll for shutdown bit in fw_status register
+	 *
+	 * 1. in case of hot fw upgrade, this bit will be set after all
+	 *    function drivers unregistered with fw.
+	 * 2. in case of fw initiated error recovery, this bit will be
+	 *    set after fw has collected the core dump
+	 */
+	do {
+		val = bnxt_read_fw_status_reg(bp, BNXT_FW_STATUS_REG);
+		if (val & BNXT_FW_STATUS_SHUTDOWN)
+			return;
+
+		rte_delay_ms(100);
+		timeout -= 100;
+	} while (timeout);
+}
 
 /*
  * Async event handling

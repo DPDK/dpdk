@@ -7328,6 +7328,14 @@ struct hwrm_func_qcaps_output {
 	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_STATS_SUPPORTED \
 		UINT32_C(0x1000000)
 	/*
+	 * If the query is for a VF, then this flag shall be ignored.
+	 * If this query is for a PF and this flag is set to 1, then host
+	 * must initiate reset or reload (or fastboot) the firmware image
+	 * upon detection of device shutdown state.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ERR_RECOVER_RELOAD \
+		UINT32_C(0x2000000)
+	/*
 	 * This value is current MAC address configured for this
 	 * function. A value of 00-00-00-00-00-00 indicates no
 	 * MAC address is currently configured.

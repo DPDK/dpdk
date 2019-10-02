@@ -107,6 +107,7 @@ void bnxt_handle_async_event(struct bnxt *bp, struct cmpl_base *cmp);
 void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmp);
 int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp);
 void bnxt_dev_reset_and_resume(void *arg);
+void bnxt_wait_for_device_shutdown(struct bnxt *bp);
 
 #define EVENT_DATA1_REASON_CODE_FW_EXCEPTION_FATAL     \
 	HWRM_ASYNC_EVENT_CMPL_RESET_NOTIFY_EVENT_DATA1_REASON_CODE_FW_EXCEPTION_FATAL

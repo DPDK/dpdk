@@ -390,6 +390,8 @@ struct bnxt_error_recovery_info {
 #define BNXT_GRCP_WINDOW_2_BASE		0x2000
 #define BNXT_GRCP_WINDOW_3_BASE		0x3000
 
+#define BNXT_FW_STATUS_SHUTDOWN		0x100000
+
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
 	void				*bar0;
@@ -421,6 +423,7 @@ struct bnxt {
 #define BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE	(1 << 18)
 #define BNXT_FLAG_FW_CAP_ERROR_RECOVERY		(1 << 19)
 #define BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED	(1 << 20)
+#define BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD	(1 << 21)
 #define BNXT_FLAG_EXT_STATS_SUPPORTED	(1 << 29)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1U << 31)
