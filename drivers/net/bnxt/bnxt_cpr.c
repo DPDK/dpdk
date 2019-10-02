@@ -137,7 +137,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		bnxt_schedule_fw_health_check(bp);
 		break;
 	default:
-		PMD_DRV_LOG(INFO, "handle_async_event id = 0x%x\n", event_id);
+		PMD_DRV_LOG(DEBUG, "handle_async_event id = 0x%x\n", event_id);
 		break;
 	}
 }
@@ -254,7 +254,7 @@ int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp)
 		break;
 	default:
 		/* Ignore any other events */
-		PMD_DRV_LOG(INFO, "Ignoring %02x completion\n", CMP_TYPE(cmp));
+		PMD_DRV_LOG(DEBUG, "Ignoring %02x completion\n", CMP_TYPE(cmp));
 		break;
 	}
 

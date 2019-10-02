@@ -3976,10 +3976,9 @@ static int bnxt_alloc_ctx_mem_blk(__rte_unused struct bnxt *bp,
 		memset(mz->addr, 0, mz->len);
 		mz_phys_addr = mz->iova;
 		if ((unsigned long)mz->addr == mz_phys_addr) {
-			PMD_DRV_LOG(WARNING,
-				"Memzone physical address same as virtual.\n");
-			PMD_DRV_LOG(WARNING,
-				    "Using rte_mem_virt2iova()\n");
+			PMD_DRV_LOG(DEBUG,
+				    "physical address same as virtual\n");
+			PMD_DRV_LOG(DEBUG, "Using rte_mem_virt2iova()\n");
 			mz_phys_addr = rte_mem_virt2iova(mz->addr);
 			if (mz_phys_addr == RTE_BAD_IOVA) {
 				PMD_DRV_LOG(ERR,
@@ -4012,10 +4011,9 @@ static int bnxt_alloc_ctx_mem_blk(__rte_unused struct bnxt *bp,
 	memset(mz->addr, 0, mz->len);
 	mz_phys_addr = mz->iova;
 	if ((unsigned long)mz->addr == mz_phys_addr) {
-		PMD_DRV_LOG(WARNING,
+		PMD_DRV_LOG(DEBUG,
 			    "Memzone physical address same as virtual.\n");
-		PMD_DRV_LOG(WARNING,
-			    "Using rte_mem_virt2iova()\n");
+		PMD_DRV_LOG(DEBUG, "Using rte_mem_virt2iova()\n");
 		for (sz = 0; sz < mem_size; sz += BNXT_PAGE_SIZE)
 			rte_mem_lock_page(((char *)mz->addr) + sz);
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
@@ -4203,9 +4201,9 @@ static int bnxt_alloc_stats_mem(struct bnxt *bp)
 	memset(mz->addr, 0, mz->len);
 	mz_phys_addr = mz->iova;
 	if ((unsigned long)mz->addr == mz_phys_addr) {
-		PMD_DRV_LOG(WARNING,
+		PMD_DRV_LOG(DEBUG,
 			    "Memzone physical address same as virtual.\n");
-		PMD_DRV_LOG(WARNING,
+		PMD_DRV_LOG(DEBUG,
 			    "Using rte_mem_virt2iova()\n");
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
 		if (mz_phys_addr == RTE_BAD_IOVA) {
@@ -4241,10 +4239,9 @@ static int bnxt_alloc_stats_mem(struct bnxt *bp)
 	memset(mz->addr, 0, mz->len);
 	mz_phys_addr = mz->iova;
 	if ((unsigned long)mz->addr == mz_phys_addr) {
-		PMD_DRV_LOG(WARNING,
+		PMD_DRV_LOG(DEBUG,
 			    "Memzone physical address same as virtual\n");
-		PMD_DRV_LOG(WARNING,
-			    "Using rte_mem_virt2iova()\n");
+		PMD_DRV_LOG(DEBUG, "Using rte_mem_virt2iova()\n");
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
 		if (mz_phys_addr == RTE_BAD_IOVA) {
 			PMD_DRV_LOG(ERR,

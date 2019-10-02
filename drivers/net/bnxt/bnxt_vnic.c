@@ -150,10 +150,9 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	}
 	mz_phys_addr = mz->iova;
 	if ((unsigned long)mz->addr == mz_phys_addr) {
-		PMD_DRV_LOG(WARNING,
-			"Memzone physical address same as virtual.\n");
-		PMD_DRV_LOG(WARNING,
-			"Using rte_mem_virt2iova()\n");
+		PMD_DRV_LOG(DEBUG,
+			    "Memzone physical address same as virtual.\n");
+		PMD_DRV_LOG(DEBUG, "Using rte_mem_virt2iova()\n");
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
 		if (mz_phys_addr == RTE_BAD_IOVA) {
 			PMD_DRV_LOG(ERR,
