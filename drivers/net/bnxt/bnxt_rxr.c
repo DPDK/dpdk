@@ -17,6 +17,9 @@
 #include "bnxt_rxr.h"
 #include "bnxt_rxq.h"
 #include "hsi_struct_def_dpdk.h"
+#ifdef RTE_LIBRTE_IEEE1588
+#include "bnxt_hwrm.h"
+#endif
 
 /*
  * RX Ring handling
@@ -348,6 +351,30 @@ bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 	return pkt_type;
 }
 
+#ifdef RTE_LIBRTE_IEEE1588
+static void
+bnxt_get_rx_ts_thor(struct bnxt *bp, uint32_t rx_ts_cmpl)
+{
+	uint64_t systime_cycles = 0;
+
+	if (!BNXT_CHIP_THOR(bp))
+		return;
+
+	/* On Thor, Rx timestamps are provided directly in the
+	 * Rx completion records to the driver. Only 32 bits of
+	 * the timestamp is present in the completion. Driver needs
+	 * to read the current 48 bit free running timer using the
+	 * HWRM_PORT_TS_QUERY command and combine the upper 16 bits
+	 * from the HWRM response with the lower 32 bits in the
+	 * Rx completion to produce the 48 bit timestamp for the Rx packet
+	 */
+	bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
+				&systime_cycles);
+	bp->ptp_cfg->rx_timestamp = (systime_cycles & 0xFFFF00000000);
+	bp->ptp_cfg->rx_timestamp |= rx_ts_cmpl;
+}
+#endif
+
 static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 			    struct bnxt_rx_queue *rxq, uint32_t *raw_cons)
 {
@@ -363,6 +390,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	uint8_t agg_buf = 0;
 	uint16_t cmp_type;
 	uint32_t flags2_f = 0;
+	uint16_t flags_type;
 
 	rxcmp = (struct rx_pkt_cmpl *)
 	    &cpr->cp_desc_ring[cp_cons];
@@ -418,18 +446,22 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
 	mbuf->ol_flags = 0;
-	if (rxcmp->flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID) {
+
+	flags_type = rte_le_to_cpu_16(rxcmp->flags_type);
+	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID) {
 		mbuf->hash.rss = rxcmp->rss_hash;
 		mbuf->ol_flags |= PKT_RX_RSS_HASH;
 	} else {
 		mbuf->hash.fdir.id = rxcmp1->cfa_code;
 		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 	}
-
-	if ((rxcmp->flags_type & rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_MASK)) ==
-	     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP)
+#ifdef RTE_LIBRTE_IEEE1588
+	if (unlikely((flags_type & RX_PKT_CMPL_FLAGS_MASK) ==
+		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP)) {
 		mbuf->ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST;
-
+		bnxt_get_rx_ts_thor(rxq->bp, rxcmp1->reorder);
+	}
+#endif
 	if (agg_buf)
 		bnxt_rx_pages(rxq, mbuf, &tmp_raw_cons, agg_buf);
 

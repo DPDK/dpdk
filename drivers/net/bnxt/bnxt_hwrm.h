@@ -206,4 +206,6 @@ int bnxt_hwrm_set_mac(struct bnxt *bp);
 int bnxt_hwrm_if_change(struct bnxt *bp, bool state);
 int bnxt_hwrm_error_recovery_qcfg(struct bnxt *bp);
 int bnxt_hwrm_fw_reset(struct bnxt *bp);
+int bnxt_hwrm_port_ts_query(struct bnxt *bp, uint8_t path,
+			    uint64_t *timestamp);
 #endif

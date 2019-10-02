@@ -155,7 +155,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				PKT_TX_UDP_CKSUM | PKT_TX_IP_CKSUM |
 				PKT_TX_VLAN_PKT | PKT_TX_OUTER_IP_CKSUM |
 				PKT_TX_TUNNEL_GRE | PKT_TX_TUNNEL_VXLAN |
-				PKT_TX_TUNNEL_GENEVE))
+				PKT_TX_TUNNEL_GENEVE | PKT_TX_IEEE1588_TMST))
 		long_bd = true;
 
 	nr_bds = long_bd + tx_pkt->nb_segs;
@@ -323,6 +323,11 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			   PKT_TX_OUTER_IP_CKSUM) {
 			/* IP CSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_T_IP_CHKSUM;
+			txbd1->mss = 0;
+		} else if ((tx_pkt->ol_flags & PKT_TX_IEEE1588_TMST) ==
+			   PKT_TX_IEEE1588_TMST) {
+			/* PTP */
+			txbd1->lflags |= TX_BD_LONG_LFLAGS_STAMP;
 			txbd1->mss = 0;
 		}
 	} else {

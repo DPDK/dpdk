@@ -740,6 +740,7 @@ static eth_rx_burst_t
 bnxt_receive_function(__rte_unused struct rte_eth_dev *eth_dev)
 {
 #ifdef RTE_ARCH_X86
+#ifndef RTE_LIBRTE_IEEE1588
 	/*
 	 * Vector mode receive can be enabled only if scatter rx is not
 	 * in use and rx offloads are limited to VLAN stripping and
@@ -767,6 +768,7 @@ bnxt_receive_function(__rte_unused struct rte_eth_dev *eth_dev)
 		    eth_dev->data->scattered_rx,
 		    eth_dev->data->dev_conf.rxmode.offloads);
 #endif
+#endif
 	return bnxt_recv_pkts;
 }
 
@@ -774,6 +776,7 @@ static eth_tx_burst_t
 bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 {
 #ifdef RTE_ARCH_X86
+#ifndef RTE_LIBRTE_IEEE1588
 	/*
 	 * Vector mode transmit can be enabled only if not using scatter rx
 	 * or tx offloads.
@@ -791,6 +794,7 @@ bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 		    eth_dev->data->port_id,
 		    eth_dev->data->scattered_rx,
 		    eth_dev->data->dev_conf.txmode.offloads);
+#endif
 #endif
 	return bnxt_xmit_pkts;
 }
@@ -3223,18 +3227,24 @@ bnxt_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 static int
 bnxt_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 {
-	uint64_t ns, systime_cycles;
 	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	uint64_t ns, systime_cycles = 0;
+	int rc = 0;
 
 	if (!ptp)
 		return 0;
 
-	systime_cycles = bnxt_cc_read(bp);
+	if (BNXT_CHIP_THOR(bp))
+		rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
+					     &systime_cycles);
+	else
+		systime_cycles = bnxt_cc_read(bp);
+
 	ns = rte_timecounter_update(&ptp->tc, systime_cycles);
 	*ts = rte_ns_to_timespec(ns);
 
-	return 0;
+	return rc;
 }
 static int
 bnxt_timesync_enable(struct rte_eth_dev *dev)
@@ -3242,6 +3252,7 @@ bnxt_timesync_enable(struct rte_eth_dev *dev)
 	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
 	uint32_t shift = 0;
+	int rc;
 
 	if (!ptp)
 		return 0;
@@ -3250,8 +3261,9 @@ bnxt_timesync_enable(struct rte_eth_dev *dev)
 	ptp->tx_tstamp_en = 1;
 	ptp->rxctl = BNXT_PTP_MSG_EVENTS;
 
-	if (!bnxt_hwrm_ptp_cfg(bp))
-		bnxt_map_ptp_regs(bp);
+	rc = bnxt_hwrm_ptp_cfg(bp);
+	if (rc)
+		return rc;
 
 	memset(&ptp->tc, 0, sizeof(struct rte_timecounter));
 	memset(&ptp->rx_tstamp_tc, 0, sizeof(struct rte_timecounter));
@@ -3268,6 +3280,9 @@ bnxt_timesync_enable(struct rte_eth_dev *dev)
 	ptp->tx_tstamp_tc.cc_mask = BNXT_CYCLECOUNTER_MASK;
 	ptp->tx_tstamp_tc.cc_shift = shift;
 	ptp->tx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
+
+	if (!BNXT_CHIP_THOR(bp))
+		bnxt_map_ptp_regs(bp);
 
 	return 0;
 }
@@ -3287,7 +3302,8 @@ bnxt_timesync_disable(struct rte_eth_dev *dev)
 
 	bnxt_hwrm_ptp_cfg(bp);
 
-	bnxt_unmap_ptp_regs(bp);
+	if (!BNXT_CHIP_THOR(bp))
+		bnxt_unmap_ptp_regs(bp);
 
 	return 0;
 }
@@ -3305,7 +3321,11 @@ bnxt_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 	if (!ptp)
 		return 0;
 
-	bnxt_get_rx_ts(bp, &rx_tstamp_cycles);
+	if (BNXT_CHIP_THOR(bp))
+		rx_tstamp_cycles = ptp->rx_timestamp;
+	else
+		bnxt_get_rx_ts(bp, &rx_tstamp_cycles);
+
 	ns = rte_timecounter_update(&ptp->rx_tstamp_tc, rx_tstamp_cycles);
 	*timestamp = rte_ns_to_timespec(ns);
 	return  0;
@@ -3319,15 +3339,21 @@ bnxt_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
 	uint64_t tx_tstamp_cycles = 0;
 	uint64_t ns;
+	int rc = 0;
 
 	if (!ptp)
 		return 0;
 
-	bnxt_get_tx_ts(bp, &tx_tstamp_cycles);
+	if (BNXT_CHIP_THOR(bp))
+		rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_PATH_TX,
+					     &tx_tstamp_cycles);
+	else
+		rc = bnxt_get_tx_ts(bp, &tx_tstamp_cycles);
+
 	ns = rte_timecounter_update(&ptp->tx_tstamp_tc, tx_tstamp_cycles);
 	*timestamp = rte_ns_to_timespec(ns);
 
-	return 0;
+	return rc;
 }
 
 static int
@@ -4574,6 +4600,8 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 		}
 	}
 
+	rte_free(bp->ptp_cfg);
+	bp->ptp_cfg = NULL;
 	return rc;
 }
 

@@ -506,31 +506,37 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT();
 
-	if (!(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_DIRECT_ACCESS))
+	if (!BNXT_CHIP_THOR(bp) &&
+	    !(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_DIRECT_ACCESS))
 		return 0;
+
+	if (resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_ONE_STEP_TX_TS)
+		bp->flags |= BNXT_FLAG_FW_CAP_ONE_STEP_TX_TS;
 
 	ptp = rte_zmalloc("ptp_cfg", sizeof(*ptp), 0);
 	if (!ptp)
 		return -ENOMEM;
 
-	ptp->rx_regs[BNXT_PTP_RX_TS_L] =
-		rte_le_to_cpu_32(resp->rx_ts_reg_off_lower);
-	ptp->rx_regs[BNXT_PTP_RX_TS_H] =
-		rte_le_to_cpu_32(resp->rx_ts_reg_off_upper);
-	ptp->rx_regs[BNXT_PTP_RX_SEQ] =
-		rte_le_to_cpu_32(resp->rx_ts_reg_off_seq_id);
-	ptp->rx_regs[BNXT_PTP_RX_FIFO] =
-		rte_le_to_cpu_32(resp->rx_ts_reg_off_fifo);
-	ptp->rx_regs[BNXT_PTP_RX_FIFO_ADV] =
-		rte_le_to_cpu_32(resp->rx_ts_reg_off_fifo_adv);
-	ptp->tx_regs[BNXT_PTP_TX_TS_L] =
-		rte_le_to_cpu_32(resp->tx_ts_reg_off_lower);
-	ptp->tx_regs[BNXT_PTP_TX_TS_H] =
-		rte_le_to_cpu_32(resp->tx_ts_reg_off_upper);
-	ptp->tx_regs[BNXT_PTP_TX_SEQ] =
-		rte_le_to_cpu_32(resp->tx_ts_reg_off_seq_id);
-	ptp->tx_regs[BNXT_PTP_TX_FIFO] =
-		rte_le_to_cpu_32(resp->tx_ts_reg_off_fifo);
+	if (!BNXT_CHIP_THOR(bp)) {
+		ptp->rx_regs[BNXT_PTP_RX_TS_L] =
+			rte_le_to_cpu_32(resp->rx_ts_reg_off_lower);
+		ptp->rx_regs[BNXT_PTP_RX_TS_H] =
+			rte_le_to_cpu_32(resp->rx_ts_reg_off_upper);
+		ptp->rx_regs[BNXT_PTP_RX_SEQ] =
+			rte_le_to_cpu_32(resp->rx_ts_reg_off_seq_id);
+		ptp->rx_regs[BNXT_PTP_RX_FIFO] =
+			rte_le_to_cpu_32(resp->rx_ts_reg_off_fifo);
+		ptp->rx_regs[BNXT_PTP_RX_FIFO_ADV] =
+			rte_le_to_cpu_32(resp->rx_ts_reg_off_fifo_adv);
+		ptp->tx_regs[BNXT_PTP_TX_TS_L] =
+			rte_le_to_cpu_32(resp->tx_ts_reg_off_lower);
+		ptp->tx_regs[BNXT_PTP_TX_TS_H] =
+			rte_le_to_cpu_32(resp->tx_ts_reg_off_upper);
+		ptp->tx_regs[BNXT_PTP_TX_SEQ] =
+			rte_le_to_cpu_32(resp->tx_ts_reg_off_seq_id);
+		ptp->tx_regs[BNXT_PTP_TX_FIFO] =
+			rte_le_to_cpu_32(resp->tx_ts_reg_off_fifo);
+	}
 
 	ptp->bp = bp;
 	bp->ptp_cfg = ptp;
@@ -4830,6 +4836,48 @@ int bnxt_hwrm_fw_reset(struct bnxt *bp)
 				    BNXT_USE_KONG(bp));
 
 	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_port_ts_query(struct bnxt *bp, uint8_t path, uint64_t *timestamp)
+{
+	struct hwrm_port_ts_query_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_port_ts_query_input req = {0};
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	uint32_t flags = 0;
+	int rc;
+
+	if (!ptp)
+		return 0;
+
+	HWRM_PREP(req, PORT_TS_QUERY, BNXT_USE_CHIMP_MB);
+
+	switch (path) {
+	case BNXT_PTP_FLAGS_PATH_TX:
+		flags |= HWRM_PORT_TS_QUERY_INPUT_FLAGS_PATH_TX;
+		break;
+	case BNXT_PTP_FLAGS_PATH_RX:
+		flags |= HWRM_PORT_TS_QUERY_INPUT_FLAGS_PATH_RX;
+		break;
+	case BNXT_PTP_FLAGS_CURRENT_TIME:
+		flags |= HWRM_PORT_TS_QUERY_INPUT_FLAGS_CURRENT_TIME;
+		break;
+	}
+
+	req.flags = rte_cpu_to_le_32(flags);
+	req.port_id = rte_cpu_to_le_16(bp->pf.port_id);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	if (timestamp) {
+		*timestamp = rte_le_to_cpu_32(resp->ptp_msg_ts[0]);
+		*timestamp |=
+			(uint64_t)(rte_le_to_cpu_32(resp->ptp_msg_ts[1])) << 32;
+	}
 	HWRM_UNLOCK();
 
 	return rc;

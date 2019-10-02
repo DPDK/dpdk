@@ -33777,4 +33777,90 @@ struct hwrm_fw_reset_output {
 	uint8_t valid;
 } __attribute__((packed));
 
+/**********************
+ * hwrm_port_ts_query *
+ ***********************/
+
+
+/* hwrm_port_ts_query_input (size:192b/24B) */
+struct hwrm_port_ts_query_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	flags;
+	/*
+	 * Enumeration denoting the RX, TX type of the resource.
+	 * This enumeration is used for resources that are similar for both
+	 * TX and RX paths of the chip.
+	 */
+	#define HWRM_PORT_TS_QUERY_INPUT_FLAGS_PATH		0x1UL
+	/* tx path */
+	#define HWRM_PORT_TS_QUERY_INPUT_FLAGS_PATH_TX		0x0UL
+	/* rx path */
+	#define HWRM_PORT_TS_QUERY_INPUT_FLAGS_PATH_RX		0x1UL
+	#define HWRM_PORT_TS_QUERY_INPUT_FLAGS_PATH_LAST	\
+		HWRM_PORT_TS_QUERY_INPUT_FLAGS_PATH_RX
+	/*
+	 * If set, the response includes the current value of the free
+	 * running timer.
+	 */
+	#define HWRM_PORT_TS_QUERY_INPUT_FLAGS_CURRENT_TIME	0x2UL
+	/* Port ID of port that is being queried. */
+	uint16_t	port_id;
+	uint8_t		unused_0[2];
+} __attribute__((packed));
+
+/* hwrm_port_ts_query_output (size:192b/24B) */
+struct hwrm_port_ts_query_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/*
+	 * Timestamp value of PTP message captured, or current value of
+	 * free running timer.
+	 */
+	uint32_t	ptp_msg_ts[2];
+	/* Sequence ID of the PTP message captured. */
+	uint16_t	ptp_msg_seqid;
+	uint8_t		unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t		valid;
+} __attribute__((packed));
+
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */

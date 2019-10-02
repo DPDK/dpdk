@@ -189,6 +189,10 @@ struct rte_flow {
 	struct bnxt_vnic_info	*vnic;
 };
 
+#define BNXT_PTP_FLAGS_PATH_TX		0x0
+#define BNXT_PTP_FLAGS_PATH_RX		0x1
+#define BNXT_PTP_FLAGS_CURRENT_TIME	0x2
+
 struct bnxt_ptp_cfg {
 #define BNXT_GRCPF_REG_WINDOW_BASE_OUT  0x400
 #define BNXT_GRCPF_REG_SYNC_TIME        0x480
@@ -234,6 +238,9 @@ struct bnxt_ptp_cfg {
 	uint32_t			rx_mapped_regs[BNXT_PTP_RX_REGS];
 	uint32_t			tx_regs[BNXT_PTP_TX_REGS];
 	uint32_t			tx_mapped_regs[BNXT_PTP_TX_REGS];
+
+	/* On Thor, the Rx timestamp is present in the Rx completion record */
+	uint64_t			rx_timestamp;
 };
 
 struct bnxt_coal {
@@ -428,6 +435,7 @@ struct bnxt {
 #define BNXT_FLAG_EXT_STATS_SUPPORTED		BIT(22)
 #define BNXT_FLAG_NEW_RM			BIT(23)
 #define BNXT_FLAG_INIT_DONE			BIT(24)
+#define BNXT_FLAG_FW_CAP_ONE_STEP_TX_TS		BIT(25)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR(bp)		((bp)->port_partition_type)
