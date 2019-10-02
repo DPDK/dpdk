@@ -1161,7 +1161,7 @@ use_vnic:
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   act,
 					   "Filter not available");
-			rc = -ENOSPC;
+			rc = -rte_errno;
 			goto ret;
 		}
 
@@ -1251,7 +1251,7 @@ use_vnic:
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   act,
 					   "New filter not available");
-			rc = -ENOSPC;
+			rc = -rte_errno;
 			goto ret;
 		}
 
@@ -1415,7 +1415,7 @@ vnic_found:
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   act,
 					   "New filter not available");
-			rc = -ENOSPC;
+			rc = -rte_errno;
 			goto ret;
 		}
 
@@ -1520,7 +1520,6 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 			bnxt_hwrm_vnic_ctx_free(bp, vnic);
 			bnxt_hwrm_vnic_free(bp, vnic);
 			vnic->rx_queue_cnt = 0;
-			bp->nr_vnics--;
 			PMD_DRV_LOG(DEBUG, "Free VNIC\n");
 		}
 	}
@@ -1755,34 +1754,18 @@ done:
 	if (!ret || update_flow) {
 		flow->filter = filter;
 		flow->vnic = vnic;
-		/* VNIC is set only in case of queue or RSS action */
-		if (vnic) {
-			/*
-			 * RxQ0 is not used for flow filters.
-			 */
-
-			if (update_flow) {
-				ret = -EXDEV;
-				goto free_flow;
-			}
-			STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+		if (update_flow) {
+			ret = -EXDEV;
+			goto free_flow;
 		}
+
+		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 		PMD_DRV_LOG(ERR, "Successfully created flow.\n");
 		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
 		bnxt_release_flow_lock(bp);
 		return flow;
 	}
-	if (!ret) {
-		flow->filter = filter;
-		flow->vnic = vnic;
-		if (update_flow) {
-			ret = -EXDEV;
-			goto free_flow;
-		}
-		PMD_DRV_LOG(ERR, "Successfully created flow.\n");
-		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
-		return flow;
-	}
+
 free_filter:
 	bnxt_free_filter(bp, filter);
 free_flow:
@@ -1925,7 +1908,6 @@ done:
 
 			bnxt_hwrm_vnic_free(bp, vnic);
 			vnic->rx_queue_cnt = 0;
-			bp->nr_vnics--;
 		}
 	} else {
 		rte_flow_error_set(error, -ret,
@@ -1941,6 +1923,7 @@ static int
 bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	struct bnxt *bp = dev->data->dev_private;
+	struct bnxt_filter_info *filter = NULL;
 	struct bnxt_vnic_info *vnic;
 	struct rte_flow *flow;
 	unsigned int i;
@@ -1949,11 +1932,12 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 	bnxt_acquire_flow_lock(bp);
 	for (i = 0; i < bp->max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
-		if (vnic->fw_vnic_id == INVALID_VNIC_ID)
+		if (vnic && vnic->fw_vnic_id == INVALID_VNIC_ID)
 			continue;
 
-		STAILQ_FOREACH(flow, &vnic->flow_list, next) {
-			struct bnxt_filter_info *filter = flow->filter;
+		while (!STAILQ_EMPTY(&vnic->flow_list)) {
+			flow = STAILQ_FIRST(&vnic->flow_list);
+			filter = flow->filter;
 
 			if (filter->filter_type ==
 			    HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
@@ -1974,7 +1958,7 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 				ret = bnxt_hwrm_clear_em_filter(bp, filter);
 			if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
 				ret = bnxt_hwrm_clear_ntuple_filter(bp, filter);
-			else if (!i)
+			else if (i)
 				ret = bnxt_hwrm_clear_l2_filter(bp, filter);
 
 			if (ret) {
@@ -1988,10 +1972,27 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 				return -rte_errno;
 			}
 done:
-			bnxt_free_filter(bp, filter);
 			STAILQ_REMOVE(&vnic->flow_list, flow,
 				      rte_flow, next);
+
+			STAILQ_REMOVE(&vnic->filter,
+				      filter,
+				      bnxt_filter_info,
+				      next);
+			bnxt_free_filter(bp, filter);
+
 			rte_free(flow);
+
+			/* If this was the last flow associated with this vnic,
+			 * switch the queue back to RSS pool.
+			 */
+			if (STAILQ_EMPTY(&vnic->flow_list)) {
+				rte_free(vnic->fw_grp_ids);
+				if (vnic->rx_queue_cnt > 1)
+					bnxt_hwrm_vnic_ctx_free(bp, vnic);
+				bnxt_hwrm_vnic_free(bp, vnic);
+				vnic->rx_queue_cnt = 0;
+			}
 		}
 	}
 
