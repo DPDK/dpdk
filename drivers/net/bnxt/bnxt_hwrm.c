@@ -2682,11 +2682,27 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		goto port_phy_cfg;
 
 	autoneg = bnxt_check_eth_link_autoneg(dev_conf->link_speeds);
+	if (BNXT_CHIP_THOR(bp) &&
+	    dev_conf->link_speeds == ETH_LINK_SPEED_40G) {
+		/* 40G is not supported as part of media auto detect.
+		 * The speed should be forced and autoneg disabled
+		 * to configure 40G speed.
+		 */
+		PMD_DRV_LOG(INFO, "Disabling autoneg for 40G\n");
+		autoneg = 0;
+	}
+
 	speed = bnxt_parse_eth_link_speed(dev_conf->link_speeds);
 	link_req.phy_flags = HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESET_PHY;
-	/* Autoneg can be done only when the FW allows */
-	if (autoneg == 1 && !(bp->link_info.auto_link_speed ||
-				bp->link_info.force_link_speed)) {
+	/* Autoneg can be done only when the FW allows.
+	 * When user configures fixed speed of 40G and later changes to
+	 * any other speed, auto_link_speed/force_link_speed is still set
+	 * to 40G until link comes up at new speed.
+	 */
+	if (autoneg == 1 &&
+	    !(!BNXT_CHIP_THOR(bp) &&
+	      (bp->link_info.auto_link_speed ||
+	       bp->link_info.force_link_speed))) {
 		link_req.phy_flags |=
 				HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESTART_AUTONEG;
 		link_req.auto_link_speed_mask =
