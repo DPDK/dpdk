@@ -21,6 +21,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	struct hwrm_async_event_cmpl *async_cmp =
 				(struct hwrm_async_event_cmpl *)cmp;
 	uint16_t event_id = rte_le_to_cpu_16(async_cmp->event_id);
+	uint32_t event_data;
 
 	/* TODO: HWRM async events are not defined yet */
 	/* Needs to handle: link events, error events, etc. */
@@ -42,6 +43,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		PMD_DRV_LOG(INFO, "Port conn async event\n");
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_RESET_NOTIFY:
+		event_data = rte_le_to_cpu_32(async_cmp->event_data1);
 		/* timestamp_lo/hi values are in units of 100ms */
 		bp->fw_reset_max_msecs = async_cmp->timestamp_hi ?
 			rte_le_to_cpu_16(async_cmp->timestamp_hi) * 100 :
@@ -49,8 +51,15 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		bp->fw_reset_min_msecs = async_cmp->timestamp_lo ?
 			async_cmp->timestamp_lo * 100 :
 			BNXT_MIN_FW_READY_TIMEOUT;
-		PMD_DRV_LOG(INFO,
-			    "Firmware non-fatal reset event received\n");
+		if ((event_data & EVENT_DATA1_REASON_CODE_MASK) ==
+		    EVENT_DATA1_REASON_CODE_FW_EXCEPTION_FATAL) {
+			PMD_DRV_LOG(INFO,
+				    "Firmware fatal reset event received\n");
+			bp->flags |= BNXT_FLAG_FATAL_ERROR;
+		} else {
+			PMD_DRV_LOG(INFO,
+				    "Firmware non-fatal reset event received\n");
+		}
 
 		bp->flags |= BNXT_FLAG_FW_RESET;
 		rte_eal_alarm_set(US_PER_MS, bnxt_dev_reset_and_resume,

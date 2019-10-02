@@ -3592,6 +3592,9 @@ static void bnxt_dev_recover(void *arg)
 	int timeout = bp->fw_reset_max_msecs;
 	int rc = 0;
 
+	/* Clear Error flag so that device re-init should happen */
+	bp->flags &= ~BNXT_FLAG_FATAL_ERROR;
+
 	do {
 		rc = bnxt_hwrm_ver_get(bp);
 		if (rc == 0)
