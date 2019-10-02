@@ -275,6 +275,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 					rte_be_to_cpu_16(eth_spec->type);
 				en |= en_ethertype;
 			}
+			if (inner)
+				valid_flags |= BNXT_FLOW_PARSE_INNER_FLAG;
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
@@ -832,9 +834,36 @@ bnxt_create_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 		}
 	}
 
-	filter1->enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
+	if (nf->valid_flags & (BNXT_FLOW_L2_DST_VALID_FLAG |
+			       BNXT_FLOW_L2_SRC_VALID_FLAG |
+			       BNXT_FLOW_L2_INNER_SRC_VALID_FLAG |
+			       BNXT_FLOW_L2_INNER_DST_VALID_FLAG)) {
+		filter1->enables =
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 			L2_FILTER_ALLOC_INPUT_EN_L2_ADDR_MASK;
-	memset(filter1->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
+		memset(filter1->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
+	}
+
+	if (nf->valid_flags & BNXT_FLOW_L2_DROP_FLAG) {
+		filter1->flags |=
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_DROP;
+		if (nf->ethertype == RTE_ETHER_TYPE_IPV4) {
+			/* Num VLANs for drop filter will/should be 0.
+			 * If the req is memset to 0, then the count will
+			 * be automatically set to 0.
+			 */
+			if (nf->valid_flags & BNXT_FLOW_PARSE_INNER_FLAG) {
+				filter1->enables |=
+					L2_FILTER_ALLOC_INPUT_EN_T_NUM_VLANS;
+			} else {
+				filter1->enables |=
+					L2_FILTER_ALLOC_INPUT_EN_NUM_VLANS;
+				filter1->flags |=
+				HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
+			}
+		}
+	}
+
 	rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id,
 				     filter1);
 	if (rc) {
@@ -952,7 +981,9 @@ bnxt_update_filter_flags_en(struct bnxt_filter_info *filter,
 	      ~(BNXT_FLOW_L2_DST_VALID_FLAG |
 		BNXT_FLOW_L2_SRC_VALID_FLAG |
 		BNXT_FLOW_L2_INNER_SRC_VALID_FLAG |
-		BNXT_FLOW_L2_INNER_DST_VALID_FLAG))) {
+		BNXT_FLOW_L2_INNER_DST_VALID_FLAG |
+		BNXT_FLOW_L2_DROP_FLAG |
+		BNXT_FLOW_PARSE_INNER_FLAG))) {
 		filter->flags = filter1->flags;
 		filter->enables = filter1->enables;
 		filter->filter_type = HWRM_CFA_L2_FILTER;
@@ -1121,19 +1152,27 @@ use_vnic:
 		break;
 	case RTE_FLOW_ACTION_TYPE_DROP:
 		vnic0 = &bp->vnic_info[0];
+		filter->dst_id = vnic0->fw_vnic_id;
+		filter->valid_flags |= BNXT_FLOW_L2_DROP_FLAG;
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
 		if (filter1 == NULL) {
+			rte_flow_error_set(error,
+					   ENOSPC,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "Filter not available");
 			rc = -ENOSPC;
 			goto ret;
 		}
 
-		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
 		if (filter->filter_type == HWRM_CFA_EM_FILTER)
 			filter->flags =
 				HWRM_CFA_EM_FLOW_ALLOC_INPUT_FLAGS_DROP;
-		else
+		else if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
 			filter->flags =
 				HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DROP;
+
+		bnxt_update_filter_flags_en(filter, filter1, use_ntuple);
 		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		vnic0 = &bp->vnic_info[0];
@@ -1861,6 +1900,15 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 
 done:
 	if (!ret) {
+		/* If it is a L2 drop filter, when the filter is created,
+		 * the FW updates the BC/MC records.
+		 * Once this filter is removed, issue the set_rx_mask command
+		 * to reset the BC/MC records in the HW to the settings
+		 * before the drop counter is created.
+		 */
+		if (filter->valid_flags & BNXT_FLOW_L2_DROP_FLAG)
+			bnxt_set_rx_mask_no_vlan(bp, &bp->vnic_info[0]);
+
 		STAILQ_REMOVE(&vnic->filter, filter, bnxt_filter_info, next);
 		bnxt_free_filter(bp, filter);
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
@@ -1869,7 +1917,8 @@ done:
 		/* If this was the last flow associated with this vnic,
 		 * switch the queue back to RSS pool.
 		 */
-		if (vnic && STAILQ_EMPTY(&vnic->flow_list)) {
+		if (vnic && !vnic->func_default &&
+		    STAILQ_EMPTY(&vnic->flow_list)) {
 			rte_free(vnic->fw_grp_ids);
 			if (vnic->rx_queue_cnt > 1)
 				bnxt_hwrm_vnic_ctx_free(bp, vnic);
