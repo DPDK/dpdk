@@ -482,7 +482,7 @@ bnxt_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct bnxt_tx_queue *txq = tx_queue;
 
 	/* Tx queue was stopped; wait for it to be restarted */
-	if (unlikely(txq->tx_deferred_start)) {
+	if (unlikely(!txq->tx_started)) {
 		PMD_DRV_LOG(DEBUG, "Tx q stopped;return\n");
 		return 0;
 	}
