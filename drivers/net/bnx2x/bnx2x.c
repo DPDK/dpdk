@@ -4095,7 +4095,7 @@ static void bnx2x_attn_int_deasserted0(struct bnx2x_softc *sc, uint32_t attn)
 		REG_WR(sc, reg_offset, val);
 
 		rte_panic("FATAL HW block attention set0 0x%lx",
-			  (attn & HW_INTERRUT_ASSERT_SET_0));
+			  (attn & (unsigned long)HW_INTERRUT_ASSERT_SET_0));
 	}
 }
 
@@ -10394,7 +10394,6 @@ static int bnx2x_init_hw_common(struct bnx2x_softc *sc)
 		ecore_init_block(sc, BLOCK_TM, PHASE_COMMON);
 
 	ecore_init_block(sc, BLOCK_DORQ, PHASE_COMMON);
-	REG_WR(sc, DORQ_REG_DPM_CID_OFST, BNX2X_DB_SHIFT);
 
 	if (!CHIP_REV_IS_SLOW(sc)) {
 /* enable hw interrupt from doorbell Q */
