@@ -205,4 +205,5 @@ int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
 int bnxt_hwrm_set_mac(struct bnxt *bp);
 int bnxt_hwrm_if_change(struct bnxt *bp, bool state);
 int bnxt_hwrm_error_recovery_qcfg(struct bnxt *bp);
+int bnxt_hwrm_fw_reset(struct bnxt *bp);
 #endif

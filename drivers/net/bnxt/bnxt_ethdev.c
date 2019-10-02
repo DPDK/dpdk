@@ -3566,6 +3566,19 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.timesync_read_tx_timestamp = bnxt_timesync_read_tx_timestamp,
 };
 
+static uint32_t bnxt_map_reset_regs(struct bnxt *bp, uint32_t reg)
+{
+	uint32_t offset;
+
+	/* Only pre-map the reset GRC registers using window 3 */
+	rte_write32(reg & 0xfffff000, (uint8_t *)bp->bar0 +
+		    BNXT_GRCPF_REG_WINDOW_BASE_OUT + 8);
+
+	offset = BNXT_GRCP_WINDOW_3_BASE + (reg & 0xffc);
+
+	return offset;
+}
+
 int bnxt_map_fw_health_status_regs(struct bnxt *bp)
 {
 	struct bnxt_error_recovery_info *info = bp->recovery_info;
@@ -3598,6 +3611,34 @@ int bnxt_map_fw_health_status_regs(struct bnxt *bp)
 		    BNXT_GRCPF_REG_WINDOW_BASE_OUT + 4);
 
 	return 0;
+}
+
+static void bnxt_write_fw_reset_reg(struct bnxt *bp, uint32_t index)
+{
+	struct bnxt_error_recovery_info *info = bp->recovery_info;
+	uint32_t delay = info->delay_after_reset[index];
+	uint32_t val = info->reset_reg_val[index];
+	uint32_t reg = info->reset_reg[index];
+	uint32_t type, offset;
+
+	type = BNXT_FW_STATUS_REG_TYPE(reg);
+	offset = BNXT_FW_STATUS_REG_OFF(reg);
+
+	switch (type) {
+	case BNXT_FW_STATUS_REG_TYPE_CFG:
+		rte_pci_write_config(bp->pdev, &val, sizeof(val), offset);
+		break;
+	case BNXT_FW_STATUS_REG_TYPE_GRC:
+		offset = bnxt_map_reset_regs(bp, offset);
+		rte_write32(val, (uint8_t *)bp->bar0 + offset);
+		break;
+	case BNXT_FW_STATUS_REG_TYPE_BAR0:
+		rte_write32(val, (uint8_t *)bp->bar0 + offset);
+		break;
+	}
+	/* wait on a specific interval of time until core reset is complete */
+	if (delay)
+		rte_delay_ms(delay);
 }
 
 static void bnxt_dev_cleanup(struct bnxt *bp)
@@ -3711,6 +3752,59 @@ uint32_t bnxt_read_fw_status_reg(struct bnxt *bp, uint32_t index)
 	return val;
 }
 
+static int bnxt_fw_reset_all(struct bnxt *bp)
+{
+	struct bnxt_error_recovery_info *info = bp->recovery_info;
+	uint32_t i;
+	int rc = 0;
+
+	if (info->flags & BNXT_FLAG_ERROR_RECOVERY_HOST) {
+		/* Reset through master function driver */
+		for (i = 0; i < info->reg_array_cnt; i++)
+			bnxt_write_fw_reset_reg(bp, i);
+		/* Wait for time specified by FW after triggering reset */
+		rte_delay_ms(info->master_func_wait_period_after_reset);
+	} else if (info->flags & BNXT_FLAG_ERROR_RECOVERY_CO_CPU) {
+		/* Reset with the help of Kong processor */
+		rc = bnxt_hwrm_fw_reset(bp);
+		if (rc)
+			PMD_DRV_LOG(ERR, "Failed to reset FW\n");
+	}
+
+	return rc;
+}
+
+static void bnxt_fw_reset_cb(void *arg)
+{
+	struct bnxt *bp = arg;
+	struct bnxt_error_recovery_info *info = bp->recovery_info;
+	int rc = 0;
+
+	/* Only Master function can do FW reset */
+	if (bnxt_is_master_func(bp) &&
+	    bnxt_is_recovery_enabled(bp)) {
+		rc = bnxt_fw_reset_all(bp);
+		if (rc) {
+			PMD_DRV_LOG(ERR, "Adapter recovery failed\n");
+			return;
+		}
+	}
+
+	/* if recovery method is ERROR_RECOVERY_CO_CPU, KONG will send
+	 * EXCEPTION_FATAL_ASYNC event to all the functions
+	 * (including MASTER FUNC). After receiving this Async, all the active
+	 * drivers should treat this case as FW initiated recovery
+	 */
+	if (info->flags & BNXT_FLAG_ERROR_RECOVERY_HOST) {
+		bp->fw_reset_min_msecs = BNXT_MIN_FW_READY_TIMEOUT;
+		bp->fw_reset_max_msecs = BNXT_MAX_FW_RESET_TIMEOUT;
+
+		/* To recover from error */
+		rte_eal_alarm_set(US_PER_MS, bnxt_dev_reset_and_resume,
+				  (void *)bp);
+	}
+}
+
 /* Driver should poll FW heartbeat, reset_counter with the frequency
  * advertised by FW in HWRM_ERROR_RECOVERY_QCFG.
  * When the driver detects heartbeat stop or change in reset_counter,
@@ -3723,7 +3817,7 @@ static void bnxt_check_fw_health(void *arg)
 {
 	struct bnxt *bp = arg;
 	struct bnxt_error_recovery_info *info = bp->recovery_info;
-	uint32_t val = 0;
+	uint32_t val = 0, wait_msec;
 
 	if (!info || !bnxt_is_recovery_enabled(bp) ||
 	    is_bnxt_in_error(bp))
@@ -3751,6 +3845,14 @@ reset:
 	bp->flags |= BNXT_FLAG_FW_RESET;
 
 	PMD_DRV_LOG(ERR, "Detected FW dead condition\n");
+
+	if (bnxt_is_master_func(bp))
+		wait_msec = info->master_func_wait_period;
+	else
+		wait_msec = info->normal_func_wait_period;
+
+	rte_eal_alarm_set(US_PER_MS * wait_msec,
+			  bnxt_fw_reset_cb, (void *)bp);
 }
 
 void bnxt_schedule_fw_health_check(struct bnxt *bp)

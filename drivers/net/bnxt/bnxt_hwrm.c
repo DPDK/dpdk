@@ -4803,3 +4803,29 @@ err:
 	}
 	return rc;
 }
+
+int bnxt_hwrm_fw_reset(struct bnxt *bp)
+{
+	struct hwrm_fw_reset_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_fw_reset_input req = {0};
+	int rc;
+
+	if (!BNXT_PF(bp))
+		return -EOPNOTSUPP;
+
+	HWRM_PREP(req, FW_RESET, BNXT_USE_KONG(bp));
+
+	req.embedded_proc_type =
+		HWRM_FW_RESET_INPUT_EMBEDDED_PROC_TYPE_CHIP;
+	req.selfrst_status =
+		HWRM_FW_RESET_INPUT_SELFRST_STATUS_SELFRSTASAP;
+	req.flags = HWRM_FW_RESET_INPUT_FLAGS_RESET_GRACEFUL;
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req),
+				    BNXT_USE_KONG(bp));
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return rc;
+}

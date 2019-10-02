@@ -388,6 +388,7 @@ struct bnxt_error_recovery_info {
 #define BNXT_FW_STATUS_REG_OFF(reg)	((reg) & ~BNXT_FW_STATUS_REG_TYPE_MASK)
 
 #define BNXT_GRCP_WINDOW_2_BASE		0x2000
+#define BNXT_GRCP_WINDOW_3_BASE		0x3000
 
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
