@@ -151,6 +151,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 				     DEV_TX_OFFLOAD_GRE_TNL_TSO | \
 				     DEV_TX_OFFLOAD_IPIP_TNL_TSO | \
 				     DEV_TX_OFFLOAD_GENEVE_TNL_TSO | \
+				     DEV_TX_OFFLOAD_QINQ_INSERT | \
 				     DEV_TX_OFFLOAD_MULTI_SEGS)
 
 #define BNXT_DEV_RX_OFFLOAD_SUPPORT (DEV_RX_OFFLOAD_VLAN_FILTER | \
@@ -161,6 +162,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM | \
 				     DEV_RX_OFFLOAD_JUMBO_FRAME | \
 				     DEV_RX_OFFLOAD_KEEP_CRC | \
+				     DEV_RX_OFFLOAD_VLAN_EXTEND | \
 				     DEV_RX_OFFLOAD_TCP_LRO)
 
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
@@ -1831,15 +1833,77 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 			!!(rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP));
 	}
 
-	if (mask & ETH_VLAN_EXTEND_MASK)
-		PMD_DRV_LOG(ERR, "Extend VLAN Not supported\n");
+	if (mask & ETH_VLAN_EXTEND_MASK) {
+		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
+			PMD_DRV_LOG(DEBUG, "Extend VLAN supported\n");
+		else
+			PMD_DRV_LOG(INFO, "Extend VLAN unsupported\n");
+	}
+
+	return 0;
+}
+
+static int
+bnxt_vlan_tpid_set_op(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type,
+		      uint16_t tpid)
+{
+	struct bnxt *bp = dev->data->dev_private;
+	int qinq = dev->data->dev_conf.rxmode.offloads &
+		   DEV_RX_OFFLOAD_VLAN_EXTEND;
+
+	if (vlan_type != ETH_VLAN_TYPE_INNER &&
+	    vlan_type != ETH_VLAN_TYPE_OUTER) {
+		PMD_DRV_LOG(ERR,
+			    "Unsupported vlan type.");
+		return -EINVAL;
+	}
+	if (!qinq) {
+		PMD_DRV_LOG(ERR,
+			    "QinQ not enabled. Needs to be ON as we can "
+			    "accelerate only outer vlan\n");
+		return -EINVAL;
+	}
+
+	if (vlan_type == ETH_VLAN_TYPE_OUTER) {
+		switch (tpid) {
+		case RTE_ETHER_TYPE_QINQ:
+			bp->outer_tpid_bd =
+				TX_BD_LONG_CFA_META_VLAN_TPID_TPID88A8;
+				break;
+		case RTE_ETHER_TYPE_VLAN:
+			bp->outer_tpid_bd =
+				TX_BD_LONG_CFA_META_VLAN_TPID_TPID8100;
+				break;
+		case 0x9100:
+			bp->outer_tpid_bd =
+				TX_BD_LONG_CFA_META_VLAN_TPID_TPID9100;
+				break;
+		case 0x9200:
+			bp->outer_tpid_bd =
+				TX_BD_LONG_CFA_META_VLAN_TPID_TPID9200;
+				break;
+		case 0x9300:
+			bp->outer_tpid_bd =
+				 TX_BD_LONG_CFA_META_VLAN_TPID_TPID9300;
+				break;
+		default:
+			PMD_DRV_LOG(ERR, "Invalid TPID: %x\n", tpid);
+			return -EINVAL;
+		}
+		bp->outer_tpid_bd |= tpid;
+		PMD_DRV_LOG(INFO, "outer_tpid_bd = %x\n", bp->outer_tpid_bd);
+	} else if (vlan_type == ETH_VLAN_TYPE_INNER) {
+		PMD_DRV_LOG(ERR,
+			    "Can accelerate only outer vlan in QinQ\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }
 
 static int
 bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
-			struct rte_ether_addr *addr)
+			     struct rte_ether_addr *addr)
 {
 	struct bnxt *bp = dev->data->dev_private;
 	/* Default Filter is tied to VNIC 0 */
@@ -3534,6 +3598,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.udp_tunnel_port_del  = bnxt_udp_tunnel_port_del_op,
 	.vlan_filter_set = bnxt_vlan_filter_set_op,
 	.vlan_offload_set = bnxt_vlan_offload_set_op,
+	.vlan_tpid_set = bnxt_vlan_tpid_set_op,
 	.vlan_pvid_set = bnxt_vlan_pvid_set_op,
 	.mtu_set = bnxt_mtu_set_op,
 	.mac_addr_set = bnxt_set_default_mac_addr_op,

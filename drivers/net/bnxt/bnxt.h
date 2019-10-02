@@ -521,6 +521,10 @@ struct bnxt {
 	uint16_t		max_stat_ctx;
 	uint16_t		first_vf_id;
 	uint16_t		vlan;
+#define BNXT_OUTER_TPID_MASK	0x0000ffff
+#define BNXT_OUTER_TPID_BD_MASK	0xffff0000
+#define BNXT_OUTER_TPID_BD_SHFT	16
+	uint32_t		outer_tpid_bd;
 	struct bnxt_pf_info	pf;
 	uint8_t			port_partition_type;
 	uint8_t			dev_stopped;
