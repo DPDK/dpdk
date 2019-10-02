@@ -521,6 +521,7 @@ static int bnxt_init_nic(struct bnxt *bp)
 static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 				struct rte_eth_dev_info *dev_info)
 {
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(eth_dev->device);
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint16_t max_vnics, i, j, vpool, vrxq;
 	unsigned int max_rx_rings;
@@ -536,7 +537,8 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 
 	/* PF/VF specifics */
 	if (BNXT_PF(bp))
-		dev_info->max_vfs = bp->pdev->max_vfs;
+		dev_info->max_vfs = pdev->max_vfs;
+
 	max_rx_rings = RTE_MIN(bp->max_rx_rings, bp->max_stat_ctx);
 	/* For the sake of symmetry, max_rx_queues = max_tx_queues */
 	dev_info->max_rx_queues = max_rx_rings;
@@ -4488,12 +4490,6 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	if (version_printed++ == 0)
 		PMD_DRV_LOG(INFO, "%s\n", bnxt_version);
 
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
-
-	bp = eth_dev->data->dev_private;
-
-	bp->dev_stopped = 1;
-
 	eth_dev->dev_ops = &bnxt_dev_ops;
 	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
 	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
@@ -4504,6 +4500,12 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
+	bp = eth_dev->data->dev_private;
+
+	bp->dev_stopped = 1;
 
 	if (bnxt_vf_pciid(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;
