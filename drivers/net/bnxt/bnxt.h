@@ -19,6 +19,7 @@
 #include <rte_time.h>
 
 #include "bnxt_cpr.h"
+#include "bnxt_util.h"
 
 #define BNXT_MAX_MTU		9574
 #define VLAN_TAG_SIZE		4
@@ -198,16 +199,16 @@ struct bnxt_ptp_cfg {
 	struct bnxt		*bp;
 #define BNXT_MAX_TX_TS	1
 	uint16_t			rxctl;
-#define BNXT_PTP_MSG_SYNC			(1 << 0)
-#define BNXT_PTP_MSG_DELAY_REQ			(1 << 1)
-#define BNXT_PTP_MSG_PDELAY_REQ			(1 << 2)
-#define BNXT_PTP_MSG_PDELAY_RESP		(1 << 3)
-#define BNXT_PTP_MSG_FOLLOW_UP			(1 << 8)
-#define BNXT_PTP_MSG_DELAY_RESP			(1 << 9)
-#define BNXT_PTP_MSG_PDELAY_RESP_FOLLOW_UP	(1 << 10)
-#define BNXT_PTP_MSG_ANNOUNCE			(1 << 11)
-#define BNXT_PTP_MSG_SIGNALING			(1 << 12)
-#define BNXT_PTP_MSG_MANAGEMENT			(1 << 13)
+#define BNXT_PTP_MSG_SYNC			BIT(0)
+#define BNXT_PTP_MSG_DELAY_REQ			BIT(1)
+#define BNXT_PTP_MSG_PDELAY_REQ			BIT(2)
+#define BNXT_PTP_MSG_PDELAY_RESP		BIT(3)
+#define BNXT_PTP_MSG_FOLLOW_UP			BIT(8)
+#define BNXT_PTP_MSG_DELAY_RESP			BIT(9)
+#define BNXT_PTP_MSG_PDELAY_RESP_FOLLOW_UP	BIT(10)
+#define BNXT_PTP_MSG_ANNOUNCE			BIT(11)
+#define BNXT_PTP_MSG_SIGNALING			BIT(12)
+#define BNXT_PTP_MSG_MANAGEMENT			BIT(13)
 #define BNXT_PTP_MSG_EVENTS		(BNXT_PTP_MSG_SYNC |		\
 					 BNXT_PTP_MSG_DELAY_REQ |	\
 					 BNXT_PTP_MSG_PDELAY_REQ |	\
@@ -363,10 +364,10 @@ struct bnxt_error_recovery_info {
 	uint32_t	reset_reg[BNXT_NUM_RESET_REG];
 	uint32_t	reset_reg_val[BNXT_NUM_RESET_REG];
 	uint8_t		delay_after_reset[BNXT_NUM_RESET_REG];
-#define BNXT_FLAG_ERROR_RECOVERY_HOST	(1 << 0)
-#define BNXT_FLAG_ERROR_RECOVERY_CO_CPU	(1 << 1)
-#define BNXT_FLAG_MASTER_FUNC		(1 << 2)
-#define BNXT_FLAG_RECOVERY_ENABLED	(1 << 3)
+#define BNXT_FLAG_ERROR_RECOVERY_HOST	BIT(0)
+#define BNXT_FLAG_ERROR_RECOVERY_CO_CPU	BIT(1)
+#define BNXT_FLAG_MASTER_FUNC		BIT(2)
+#define BNXT_FLAG_RECOVERY_ENABLED	BIT(3)
 	uint32_t	flags;
 
 	uint32_t        last_heart_beat;
@@ -402,31 +403,31 @@ struct bnxt {
 	void				*doorbell_base;
 
 	uint32_t		flags;
-#define BNXT_FLAG_REGISTERED	(1 << 0)
-#define BNXT_FLAG_VF		(1 << 1)
-#define BNXT_FLAG_PORT_STATS	(1 << 2)
-#define BNXT_FLAG_JUMBO		(1 << 3)
-#define BNXT_FLAG_SHORT_CMD	(1 << 4)
-#define BNXT_FLAG_UPDATE_HASH	(1 << 5)
-#define BNXT_FLAG_PTP_SUPPORTED	(1 << 6)
-#define BNXT_FLAG_MULTI_HOST    (1 << 7)
-#define BNXT_FLAG_EXT_RX_PORT_STATS	(1 << 8)
-#define BNXT_FLAG_EXT_TX_PORT_STATS	(1 << 9)
-#define BNXT_FLAG_KONG_MB_EN	(1 << 10)
-#define BNXT_FLAG_TRUSTED_VF_EN	(1 << 11)
-#define BNXT_FLAG_DFLT_VNIC_SET	(1 << 12)
-#define BNXT_FLAG_THOR_CHIP	(1 << 13)
-#define BNXT_FLAG_STINGRAY	(1 << 14)
-#define BNXT_FLAG_FW_RESET	(1 << 15)
-#define BNXT_FLAG_FATAL_ERROR	(1 << 16)
-#define BNXT_FLAG_FW_CAP_IF_CHANGE	(1 << 17)
-#define BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE	(1 << 18)
-#define BNXT_FLAG_FW_CAP_ERROR_RECOVERY		(1 << 19)
-#define BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED	(1 << 20)
-#define BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD	(1 << 21)
-#define BNXT_FLAG_EXT_STATS_SUPPORTED	(1 << 29)
-#define BNXT_FLAG_NEW_RM	(1 << 30)
-#define BNXT_FLAG_INIT_DONE	(1U << 31)
+#define BNXT_FLAG_REGISTERED		BIT(0)
+#define BNXT_FLAG_VF			BIT(1)
+#define BNXT_FLAG_PORT_STATS		BIT(2)
+#define BNXT_FLAG_JUMBO			BIT(3)
+#define BNXT_FLAG_SHORT_CMD		BIT(4)
+#define BNXT_FLAG_UPDATE_HASH		BIT(5)
+#define BNXT_FLAG_PTP_SUPPORTED		BIT(6)
+#define BNXT_FLAG_MULTI_HOST    	BIT(7)
+#define BNXT_FLAG_EXT_RX_PORT_STATS	BIT(8)
+#define BNXT_FLAG_EXT_TX_PORT_STATS	BIT(9)
+#define BNXT_FLAG_KONG_MB_EN		BIT(10)
+#define BNXT_FLAG_TRUSTED_VF_EN		BIT(11)
+#define BNXT_FLAG_DFLT_VNIC_SET		BIT(12)
+#define BNXT_FLAG_THOR_CHIP		BIT(13)
+#define BNXT_FLAG_STINGRAY		BIT(14)
+#define BNXT_FLAG_FW_RESET		BIT(15)
+#define BNXT_FLAG_FATAL_ERROR		BIT(16)
+#define BNXT_FLAG_FW_CAP_IF_CHANGE		BIT(17)
+#define BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE	BIT(18)
+#define BNXT_FLAG_FW_CAP_ERROR_RECOVERY		BIT(19)
+#define BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED	BIT(20)
+#define BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD	BIT(21)
+#define BNXT_FLAG_EXT_STATS_SUPPORTED		BIT(22)
+#define BNXT_FLAG_NEW_RM			BIT(23)
+#define BNXT_FLAG_INIT_DONE			BIT(24)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR(bp)		((bp)->port_partition_type)
