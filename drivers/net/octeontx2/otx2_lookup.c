@@ -277,13 +277,13 @@ nix_create_rx_ol_flags_array(void *mem)
 				val |= PKT_RX_IP_CKSUM_GOOD;
 			break;
 		case NPC_ERRLEV_NIX:
+			val |= PKT_RX_IP_CKSUM_GOOD;
 			if (errcode == NIX_RX_PERRCODE_OL4_CHK) {
 				val |= PKT_RX_OUTER_L4_CKSUM_BAD;
 				val |= PKT_RX_L4_CKSUM_BAD;
 			} else if (errcode == NIX_RX_PERRCODE_IL4_CHK) {
 				val |= PKT_RX_L4_CKSUM_BAD;
 			} else {
-				val |= PKT_RX_IP_CKSUM_GOOD;
 				val |= PKT_RX_L4_CKSUM_GOOD;
 			}
 			break;
