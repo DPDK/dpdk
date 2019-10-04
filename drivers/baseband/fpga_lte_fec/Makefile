@@ -4,7 +4,7 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 # library name
-LIB = librte_pmd_fpga_lte_fec.a
+LIB = librte_pmd_bbdev_fpga_lte_fec.a
 
 # build flags
 CFLAGS += -DALLOW_EXPERIMENTAL_API
@@ -21,9 +21,9 @@ EXPORT_MAP := rte_pmd_bbdev_fpga_lte_fec_version.map
 LIBABIVER := 1
 
 # library source files
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_FPGA_LTE_FEC) += fpga_lte_fec.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC) += fpga_lte_fec.c
 
 # export include files
-SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_FPGA_LTE_FEC)-include += fpga_lte_fec.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC)-include += fpga_lte_fec.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

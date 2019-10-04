@@ -18,7 +18,7 @@
 #include <rte_hexdump.h>
 #include <rte_interrupts.h>
 
-#ifdef RTE_LIBRTE_PMD_FPGA_LTE_FEC
+#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
 #include <fpga_lte_fec.h>
 #endif
 
@@ -30,7 +30,7 @@
 #define MAX_QUEUES RTE_MAX_LCORE
 #define TEST_REPETITIONS 1000
 
-#ifdef RTE_LIBRTE_PMD_FPGA_LTE_FEC
+#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
 #define FPGA_PF_DRIVER_NAME ("intel_fpga_lte_fec_pf")
 #define FPGA_VF_DRIVER_NAME ("intel_fpga_lte_fec_vf")
 #define VF_UL_QUEUE_VALUE 4
@@ -520,7 +520,7 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
  * if '-i' flag is set and using fpga device
  */
 #ifndef RTE_BUILD_SHARED_LIB
-#ifdef RTE_LIBRTE_PMD_FPGA_LTE_FEC
+#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
 	if ((get_init_device() == true) &&
 		(!strcmp(info->drv.driver_name, FPGA_PF_DRIVER_NAME))) {
 		struct fpga_lte_fec_conf conf;

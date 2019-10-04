@@ -556,7 +556,7 @@ CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW=y
 #
 # Compile PMD for Intel FPGA LTE FEC bbdev device
 #
-CONFIG_RTE_LIBRTE_PMD_FPGA_LTE_FEC=y
+CONFIG_RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC=y
 
 #
 # Compile generic crypto device library

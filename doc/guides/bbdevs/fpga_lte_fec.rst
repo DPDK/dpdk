@@ -52,7 +52,7 @@ Installation
 
 Section 3 of the DPDK manual provides instuctions on installing and compiling DPDK. The
 default set of bbdev compile flags may be found in config/common_base, where for example
-the flag to build the FPGA LTE FEC device, ``CONFIG_RTE_LIBRTE_PMD_FPGA_LTE_FEC``, is already
+the flag to build the FPGA LTE FEC device, ``CONFIG_RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC``, is already
 set. It is assumed DPDK has been compiled using for instance:
 
 .. code-block:: console
