@@ -162,18 +162,21 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	int nq_ring_len = BNXT_CHIP_THOR(bp) ? cp_ring_len : 0;
 
 	int tx_ring_start = nq_ring_start + nq_ring_len;
+	tx_ring_start = RTE_ALIGN(tx_ring_start, 4096);
 	int tx_ring_len = tx_ring_info ?
 	    RTE_CACHE_LINE_ROUNDUP(tx_ring_info->tx_ring_struct->ring_size *
 				   sizeof(struct tx_bd_long)) : 0;
 	tx_ring_len = RTE_ALIGN(tx_ring_len, 4096);
 
 	int rx_ring_start = tx_ring_start + tx_ring_len;
+	rx_ring_start = RTE_ALIGN(rx_ring_start, 4096);
 	int rx_ring_len =  rx_ring_info ?
 		RTE_CACHE_LINE_ROUNDUP(rx_ring_info->rx_ring_struct->ring_size *
 		sizeof(struct rx_prod_pkt_bd)) : 0;
 	rx_ring_len = RTE_ALIGN(rx_ring_len, 4096);
 
 	int ag_ring_start = rx_ring_start + rx_ring_len;
+	ag_ring_start = RTE_ALIGN(ag_ring_start, 4096);
 	int ag_ring_len = rx_ring_len * AGG_RING_SIZE_FACTOR;
 	ag_ring_len = RTE_ALIGN(ag_ring_len, 4096);
 
