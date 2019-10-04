@@ -52,6 +52,16 @@ HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_L2_HEADER_SOURCE_FIELDS_SUPPORTED
 	HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_VNIC |       \
 	HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_STAT)
 
+#define GET_TX_QUEUE_INFO(x) \
+	bp->tx_cos_queue[x].id = resp->queue_id##x; \
+	bp->tx_cos_queue[x].profile =	\
+		resp->queue_id##x##_service_profile
+
+#define GET_RX_QUEUE_INFO(x) \
+	bp->rx_cos_queue[x].id = resp->queue_id##x; \
+	bp->rx_cos_queue[x].profile =	\
+		resp->queue_id##x##_service_profile
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,
@@ -90,7 +100,8 @@ int bnxt_hwrm_set_async_event_cr(struct bnxt *bp);
 int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 			 struct bnxt_ring *ring,
 			 uint32_t ring_type, uint32_t map_index,
-			 uint32_t stats_ctx_id, uint32_t cmpl_ring_id);
+			 uint32_t stats_ctx_id, uint32_t cmpl_ring_id,
+			 uint16_t tx_cosq_id);
 int bnxt_hwrm_ring_free(struct bnxt *bp,
 			struct bnxt_ring *ring, uint32_t ring_type);
 int bnxt_hwrm_ring_grp_alloc(struct bnxt *bp, unsigned int idx);

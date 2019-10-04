@@ -470,8 +470,10 @@ struct bnxt {
 
 	uint32_t		flow_flags;
 #define BNXT_FLOW_FLAG_L2_HDR_SRC_FILTER_EN	BIT(0)
-
 	pthread_mutex_t         flow_lock;
+
+	uint32_t		vnic_cap_flags;
+#define BNXT_VNIC_CAP_COS_CLASSIFY	BIT(0)
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
 	unsigned int		rx_num_qs_per_vnic;
@@ -523,8 +525,10 @@ struct bnxt {
 	uint16_t                        hwrm_max_ext_req_len;
 
 	struct bnxt_link_info	link_info;
-	struct bnxt_cos_queue_info	cos_queue[BNXT_COS_QUEUE_COUNT];
-	uint8_t			tx_cosq_id;
+	struct bnxt_cos_queue_info	rx_cos_queue[BNXT_COS_QUEUE_COUNT];
+	struct bnxt_cos_queue_info	tx_cos_queue[BNXT_COS_QUEUE_COUNT];
+	uint8_t			tx_cosq_id[BNXT_COS_QUEUE_COUNT];
+	uint8_t			rx_cosq_cnt;
 	uint8_t                 max_tc;
 	uint8_t                 max_lltc;
 	uint8_t                 max_q;

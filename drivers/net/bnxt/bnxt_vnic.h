@@ -45,6 +45,7 @@ struct bnxt_vnic_info {
 	uint16_t	cos_rule;
 	uint16_t	lb_rule;
 	uint16_t	rx_queue_cnt;
+	uint16_t	cos_queue_id;
 	bool		vlan_strip;
 	bool		func_default;
 	bool		bd_stall;

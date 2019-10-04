@@ -700,6 +700,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	return rc;
 }
 
+/* VNIC cap covers capability of all VNICs. So no need to pass vnic_id */
 int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 {
 	int rc = 0;
@@ -713,6 +714,12 @@ int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
+
+	if (rte_le_to_cpu_32(resp->flags) &
+	    HWRM_VNIC_QCAPS_OUTPUT_FLAGS_COS_ASSIGNMENT_CAP) {
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_COS_CLASSIFY;
+		PMD_DRV_LOG(INFO, "CoS assignment capability enabled\n");
+	}
 
 	bp->max_tpa_v2 = rte_le_to_cpu_16(resp->max_aggs_supported);
 
@@ -1199,11 +1206,13 @@ int bnxt_hwrm_queue_qportcfg(struct bnxt *bp)
 	int rc = 0;
 	struct hwrm_queue_qportcfg_input req = {.req_type = 0 };
 	struct hwrm_queue_qportcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	uint32_t dir = HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_TX;
 	int i;
 
+get_rx_info:
 	HWRM_PREP(req, QUEUE_QPORTCFG, BNXT_USE_CHIMP_MB);
 
-	req.flags = HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_TX;
+	req.flags = rte_cpu_to_le_32(dir);
 	/* HWRM Version >= 1.9.1 */
 	if (bp->hwrm_spec_code >= HWRM_VERSION_1_9_1)
 		req.drv_qmap_cap =
@@ -1212,30 +1221,51 @@ int bnxt_hwrm_queue_qportcfg(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT();
 
-#define GET_QUEUE_INFO(x) \
-	bp->cos_queue[x].id = resp->queue_id##x; \
-	bp->cos_queue[x].profile = resp->queue_id##x##_service_profile
-
-	GET_QUEUE_INFO(0);
-	GET_QUEUE_INFO(1);
-	GET_QUEUE_INFO(2);
-	GET_QUEUE_INFO(3);
-	GET_QUEUE_INFO(4);
-	GET_QUEUE_INFO(5);
-	GET_QUEUE_INFO(6);
-	GET_QUEUE_INFO(7);
+	if (dir == HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_TX) {
+		GET_TX_QUEUE_INFO(0);
+		GET_TX_QUEUE_INFO(1);
+		GET_TX_QUEUE_INFO(2);
+		GET_TX_QUEUE_INFO(3);
+		GET_TX_QUEUE_INFO(4);
+		GET_TX_QUEUE_INFO(5);
+		GET_TX_QUEUE_INFO(6);
+		GET_TX_QUEUE_INFO(7);
+	} else  {
+		GET_RX_QUEUE_INFO(0);
+		GET_RX_QUEUE_INFO(1);
+		GET_RX_QUEUE_INFO(2);
+		GET_RX_QUEUE_INFO(3);
+		GET_RX_QUEUE_INFO(4);
+		GET_RX_QUEUE_INFO(5);
+		GET_RX_QUEUE_INFO(6);
+		GET_RX_QUEUE_INFO(7);
+	}
 
 	HWRM_UNLOCK();
 
+	if (dir == HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_RX)
+		goto done;
+
 	if (bp->hwrm_spec_code < HWRM_VERSION_1_9_1) {
-		bp->tx_cosq_id = bp->cos_queue[0].id;
+		bp->tx_cosq_id[0] = bp->tx_cos_queue[0].id;
 	} else {
+		int j;
+
 		/* iterate and find the COSq profile to use for Tx */
-		for (i = 0; i < BNXT_COS_QUEUE_COUNT; i++) {
-			if (bp->cos_queue[i].profile ==
-				HWRM_QUEUE_SERVICE_PROFILE_LOSSY) {
-				bp->tx_cosq_id = bp->cos_queue[i].id;
-				break;
+		if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY) {
+			for (j = 0, i = 0; i < BNXT_COS_QUEUE_COUNT; i++) {
+				if (bp->tx_cos_queue[i].id != 0xff)
+					bp->tx_cosq_id[j++] =
+						bp->tx_cos_queue[i].id;
+			}
+		} else {
+			for (i = BNXT_COS_QUEUE_COUNT - 1; i >= 0; i--) {
+				if (bp->tx_cos_queue[i].profile ==
+					HWRM_QUEUE_SERVICE_PROFILE_LOSSY) {
+					bp->tx_cosq_id[0] =
+						bp->tx_cos_queue[i].id;
+					break;
+				}
 			}
 		}
 	}
@@ -1246,15 +1276,20 @@ int bnxt_hwrm_queue_qportcfg(struct bnxt *bp)
 		bp->max_tc = BNXT_MAX_QUEUE;
 	bp->max_q = bp->max_tc;
 
-	PMD_DRV_LOG(DEBUG, "Tx Cos Queue to use: %d\n", bp->tx_cosq_id);
+	if (dir == HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_TX) {
+		dir = HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_RX;
+		goto get_rx_info;
+	}
 
+done:
 	return rc;
 }
 
 int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 			 struct bnxt_ring *ring,
 			 uint32_t ring_type, uint32_t map_index,
-			 uint32_t stats_ctx_id, uint32_t cmpl_ring_id)
+			 uint32_t stats_ctx_id, uint32_t cmpl_ring_id,
+			 uint16_t tx_cosq_id)
 {
 	int rc = 0;
 	uint32_t enables = 0;
@@ -1276,7 +1311,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		req.ring_type = ring_type;
 		req.cmpl_ring_id = rte_cpu_to_le_16(cmpl_ring_id);
 		req.stat_ctx_id = rte_cpu_to_le_32(stats_ctx_id);
-		req.queue_id = rte_cpu_to_le_16(bp->tx_cosq_id);
+		req.queue_id = rte_cpu_to_le_16(tx_cosq_id);
 		if (stats_ctx_id != INVALID_STATS_CTX_ID)
 			enables |=
 			HWRM_RING_ALLOC_INPUT_ENABLES_STAT_CTX_ID_VALID;
@@ -1682,6 +1717,11 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		ctx_enable_flag |= HWRM_VNIC_CFG_INPUT_ENABLES_MRU;
 		ctx_enable_flag |= HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE;
 	}
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY) {
+		ctx_enable_flag |= HWRM_VNIC_CFG_INPUT_ENABLES_QUEUE_ID;
+		req.queue_id = rte_cpu_to_le_16(vnic->cos_queue_id);
+	}
+
 	enables |= ctx_enable_flag;
 	req.dflt_ring_grp = rte_cpu_to_le_16(vnic->dflt_ring_grp);
 	req.rss_rule = rte_cpu_to_le_16(vnic->rss_rule);

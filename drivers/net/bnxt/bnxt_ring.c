@@ -424,7 +424,7 @@ static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 	}
 
 	rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, cp_ring_index,
-				  HWRM_NA_SIGNATURE, nq_ring_id);
+				  HWRM_NA_SIGNATURE, nq_ring_id, 0);
 	if (rc)
 		return rc;
 
@@ -450,7 +450,7 @@ static int bnxt_alloc_nq_ring(struct bnxt *bp, int queue_index,
 	ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_NQ;
 
 	rc = bnxt_hwrm_ring_alloc(bp, nq_ring, ring_type, nq_ring_index,
-				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE);
+				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0);
 	if (rc)
 		return rc;
 
@@ -475,7 +475,7 @@ static int bnxt_alloc_rx_ring(struct bnxt *bp, int queue_index)
 
 	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type,
 				  queue_index, cpr->hw_stats_ctx_id,
-				  cp_ring->fw_ring_id);
+				  cp_ring->fw_ring_id, 0);
 	if (rc)
 		return rc;
 
@@ -510,7 +510,7 @@ static int bnxt_alloc_rx_agg_ring(struct bnxt *bp, int queue_index)
 	}
 
 	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, map_idx,
-				  hw_stats_ctx_id, cp_ring->fw_ring_id);
+				  hw_stats_ctx_id, cp_ring->fw_ring_id, 0);
 
 	if (rc)
 		return rc;
@@ -701,6 +701,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		struct bnxt_tx_ring_info *txr = txq->tx_ring;
 		struct bnxt_ring *ring = txr->tx_ring_struct;
 		unsigned int idx = i + bp->rx_cp_nr_rings;
+		uint16_t tx_cosq_id = 0;
 
 		if (BNXT_HAS_NQ(bp)) {
 			if (bnxt_alloc_nq_ring(bp, idx, nqr))
@@ -710,12 +711,17 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		if (bnxt_alloc_cmpl_ring(bp, idx, cpr, nqr))
 			goto err_out;
 
+		if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
+			tx_cosq_id = bp->tx_cosq_id[i < bp->max_lltc ? i : 0];
+		else
+			tx_cosq_id = bp->tx_cosq_id[0];
 		/* Tx ring */
 		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_TX;
 		rc = bnxt_hwrm_ring_alloc(bp, ring,
 					  ring_type,
 					  i, cpr->hw_stats_ctx_id,
-					  cp_ring->fw_ring_id);
+					  cp_ring->fw_ring_id,
+					  tx_cosq_id);
 		if (rc)
 			goto err_out;
 
@@ -747,7 +753,7 @@ int bnxt_alloc_async_cp_ring(struct bnxt *bp)
 		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL;
 
 	rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, 0,
-				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE);
+				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0);
 
 	if (rc)
 		return rc;

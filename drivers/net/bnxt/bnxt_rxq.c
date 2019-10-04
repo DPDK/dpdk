@@ -76,6 +76,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		switch (dev_conf->rxmode.mq_mode) {
 		case ETH_MQ_RX_VMDQ_RSS:
 		case ETH_MQ_RX_VMDQ_ONLY:
+		case ETH_MQ_RX_VMDQ_DCB_RSS:
 			/* FALLTHROUGH */
 			/* ETH_8/64_POOLs */
 			pools = conf->nb_queue_pools;
@@ -91,7 +92,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 				pools = max_pools;
 			break;
 		case ETH_MQ_RX_RSS:
-			pools = 1;
+			pools = bp->rx_cosq_cnt ? bp->rx_cosq_cnt : 1;
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported mq_mod %d\n",

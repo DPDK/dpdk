@@ -308,6 +308,25 @@ static int bnxt_init_chip(struct bnxt *bp)
 		goto err_out;
 	}
 
+	if (!(bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY))
+		goto skip_cosq_cfg;
+
+	for (j = 0, i = 0; i < BNXT_COS_QUEUE_COUNT; i++) {
+		if (bp->rx_cos_queue[i].id != 0xff) {
+			struct bnxt_vnic_info *vnic = &bp->vnic_info[j++];
+
+			if (!vnic) {
+				PMD_DRV_LOG(ERR,
+					    "Num pools more than FW profile\n");
+				rc = -EINVAL;
+				goto err_out;
+			}
+			vnic->cos_queue_id = bp->rx_cos_queue[i].id;
+			bp->rx_cosq_cnt++;
+		}
+	}
+
+skip_cosq_cfg:
 	rc = bnxt_mq_rx_configure(bp);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "MQ mode configure failure rc: %x\n", rc);
@@ -4540,7 +4559,7 @@ static int bnxt_init_fw(struct bnxt *bp)
 	if (rc)
 		return -EIO;
 
-	rc = bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(bp);
+	rc = bnxt_hwrm_vnic_qcaps(bp);
 	if (rc)
 		return rc;
 
@@ -4548,16 +4567,19 @@ static int bnxt_init_fw(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	/* Get the MAX capabilities for this function */
+	/* Get the MAX capabilities for this function.
+	 * This function also allocates context memory for TQM rings and
+	 * informs the firmware about this allocated backing store memory.
+	 */
 	rc = bnxt_hwrm_func_qcaps(bp);
 	if (rc)
 		return rc;
 
-	rc = bnxt_hwrm_vnic_qcaps(bp);
+	rc = bnxt_hwrm_func_qcfg(bp, &mtu);
 	if (rc)
 		return rc;
 
-	rc = bnxt_hwrm_func_qcfg(bp, &mtu);
+	rc = bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(bp);
 	if (rc)
 		return rc;
 

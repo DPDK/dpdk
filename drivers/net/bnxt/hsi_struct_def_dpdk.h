@@ -21157,7 +21157,7 @@ struct hwrm_vnic_free_output {
  *****************/
 
 
-/* hwrm_vnic_cfg_input (size:320b/40B) */
+/* hwrm_vnic_cfg_input (size:384b/48B) */
 struct hwrm_vnic_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -21300,6 +21300,9 @@ struct hwrm_vnic_cfg_input {
 	 */
 	#define HWRM_VNIC_CFG_INPUT_ENABLES_DEFAULT_CMPL_RING_ID \
 		UINT32_C(0x40)
+	/* This bit must be '1' for the queue_id field to be configured. */
+	#define HWRM_VNIC_CFG_INPUT_ENABLES_QUEUE_ID \
+		UINT32_C(0x80)
 	/* Logical vnic ID */
 	uint16_t	vnic_id;
 	/*
@@ -21345,6 +21348,19 @@ struct hwrm_vnic_cfg_input {
 	 * be chosen if packet does not match any RSS rules.
 	 */
 	uint16_t	default_cmpl_ring_id;
+	/*
+	 * When specified, only incoming packets classified to the specified CoS
+	 * queue ID will be arriving on this VNIC.  Packet priority to CoS mapping
+	 * rules can be specified using HWRM_QUEUE_PRI2COS_CFG.  In this mode,
+	 * ntuple filters with VNIC destination specified are invalid since they
+	 * conflict with the the CoS to VNIC steering rules in this mode.
+	 *
+	 * If this field is not specified, packet to VNIC steering will be
+	 * subject to the standard L2 filter rules and any additional ntuple
+	 * filter rules with destination VNIC specified.
+	 */
+	uint16_t	queue_id;
+	uint8_t	unused0[6];
 } __attribute__((packed));
 
 /* hwrm_vnic_cfg_output (size:128b/16B) */
@@ -21640,6 +21656,16 @@ struct hwrm_vnic_qcaps_output {
 	 */
 	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_OUTERMOST_RSS_CAP \
 		UINT32_C(0x80)
+	/*
+	 * When this bit is '1', it indicates that firmware supports the
+	 * ability to steer incoming packets from one CoS queue to one
+	 * VNIC.  This optional feature can then be enabled
+	 * using HWRM_VNIC_CFG on any VNIC.  This feature is only
+	 * available when NVM option “enable_cos_classfication” is set
+	 * to 1.  If set to '0', firmware does not support this feature.
+	 */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_COS_ASSIGNMENT_CAP \
+		UINT32_C(0x100)
 	/*
 	 * This field advertises the maximum concurrent TPA aggregations
 	 * supported by the VNIC on new devices that support TPA v2.
