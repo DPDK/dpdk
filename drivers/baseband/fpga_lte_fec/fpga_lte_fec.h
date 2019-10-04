@@ -62,6 +62,7 @@ struct fpga_lte_fec_conf {
  * @return
  *   Zero on success, negative value on failure.
  */
+__rte_experimental
 int
 fpga_lte_fec_configure(const char *dev_name,
 		const struct fpga_lte_fec_conf *conf);

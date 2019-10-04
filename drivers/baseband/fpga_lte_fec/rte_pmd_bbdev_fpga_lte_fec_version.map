@@ -1,3 +1,10 @@
 DPDK_19.08 {
     local: *;
 };
+
+EXPERIMENTAL {
+    global:
+
+    fpga_lte_fec_configure;
+
+};
