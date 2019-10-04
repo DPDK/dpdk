@@ -163,7 +163,8 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 				     DEV_RX_OFFLOAD_JUMBO_FRAME | \
 				     DEV_RX_OFFLOAD_KEEP_CRC | \
 				     DEV_RX_OFFLOAD_VLAN_EXTEND | \
-				     DEV_RX_OFFLOAD_TCP_LRO)
+				     DEV_RX_OFFLOAD_TCP_LRO | \
+				     DEV_RX_OFFLOAD_SCATTER)
 
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
@@ -748,6 +749,9 @@ static int bnxt_scattered_rx(struct rte_eth_dev *eth_dev)
 {
 	uint16_t buf_size;
 	int i;
+
+	if (eth_dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER)
+		return 1;
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		struct bnxt_rx_queue *rxq = eth_dev->data->rx_queues[i];
