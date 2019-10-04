@@ -1906,6 +1906,8 @@ allocate_mac:
 			 "filter support disabled. Continuing\n");
 	}
 
+	t4_os_lock_init(&adapter->flow_lock);
+
 	adapter->mpstcam = t4_init_mpstcam(adapter);
 	if (!adapter->mpstcam)
 		dev_warn(adapter, "could not allocate mps tcam table."
