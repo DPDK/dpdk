@@ -497,6 +497,7 @@ struct bnxt {
 
 	/* Default completion ring */
 	struct bnxt_cp_ring_info	*async_cp_ring;
+	struct bnxt_cp_ring_info	*rxtx_nq_ring;
 	uint32_t		max_ring_grps;
 	struct bnxt_ring_grp_info	*grp_info;
 

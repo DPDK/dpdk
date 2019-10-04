@@ -78,6 +78,8 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp);
 int bnxt_alloc_async_cp_ring(struct bnxt *bp);
 void bnxt_free_async_cp_ring(struct bnxt *bp);
 int bnxt_alloc_async_ring_struct(struct bnxt *bp);
+int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp);
+void bnxt_free_rxtx_nq_ring(struct bnxt *bp);
 
 static inline void bnxt_db_write(struct bnxt_db_info *db, uint32_t idx)
 {

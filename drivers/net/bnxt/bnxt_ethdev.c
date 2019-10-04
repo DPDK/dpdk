@@ -223,6 +223,7 @@ static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 		bnxt_free_rx_rings(bp);
 	}
 	bnxt_free_async_cp_ring(bp);
+	bnxt_free_rxtx_nq_ring(bp);
 }
 
 static int bnxt_alloc_mem(struct bnxt *bp, bool reconfig)
@@ -250,6 +251,10 @@ static int bnxt_alloc_mem(struct bnxt *bp, bool reconfig)
 		goto alloc_mem_err;
 
 	rc = bnxt_alloc_async_cp_ring(bp);
+	if (rc)
+		goto alloc_mem_err;
+
+	rc = bnxt_alloc_rxtx_nq_ring(bp);
 	if (rc)
 		goto alloc_mem_err;
 

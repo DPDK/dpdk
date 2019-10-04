@@ -57,7 +57,6 @@ int bnxt_init_one_tx_ring(struct bnxt_tx_queue *txq)
 int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id)
 {
 	struct bnxt_cp_ring_info *cpr;
-	struct bnxt_cp_ring_info *nqr;
 	struct bnxt_tx_ring_info *txr;
 	struct bnxt_ring *ring;
 
@@ -100,30 +99,6 @@ int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id)
 	ring->bd_dma = cpr->cp_desc_mapping;
 	ring->vmem_size = 0;
 	ring->vmem = NULL;
-
-	if (BNXT_HAS_NQ(txq->bp)) {
-		nqr = rte_zmalloc_socket("bnxt_tx_ring_nq",
-					 sizeof(struct bnxt_cp_ring_info),
-					 RTE_CACHE_LINE_SIZE, socket_id);
-		if (nqr == NULL)
-			return -ENOMEM;
-
-		txq->nq_ring = nqr;
-
-		ring = rte_zmalloc_socket("bnxt_tx_ring_struct",
-					  sizeof(struct bnxt_ring),
-					  RTE_CACHE_LINE_SIZE, socket_id);
-		if (ring == NULL)
-			return -ENOMEM;
-
-		nqr->cp_ring_struct = ring;
-		ring->ring_size = txr->tx_ring_struct->ring_size;
-		ring->ring_mask = ring->ring_size - 1;
-		ring->bd = (void *)nqr->cp_desc_ring;
-		ring->bd_dma = nqr->cp_desc_mapping;
-		ring->vmem_size = 0;
-		ring->vmem = NULL;
-	}
 
 	return 0;
 }

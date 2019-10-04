@@ -2325,11 +2325,8 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 			bp->grp_info[queue_index].ag_fw_ring_id =
 							INVALID_HW_RING_ID;
 	}
-	if (cpr->cp_ring_struct->fw_ring_id != INVALID_HW_RING_ID) {
+	if (cpr->cp_ring_struct->fw_ring_id != INVALID_HW_RING_ID)
 		bnxt_free_cp_ring(bp, cpr);
-		if (rxq->nq_ring)
-			bnxt_free_nq_ring(bp, rxq->nq_ring);
-	}
 
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].cp_fw_ring_id = INVALID_HW_RING_ID;
@@ -2361,8 +2358,6 @@ int bnxt_free_all_hwrm_rings(struct bnxt *bp)
 		if (cpr->cp_ring_struct->fw_ring_id != INVALID_HW_RING_ID) {
 			bnxt_free_cp_ring(bp, cpr);
 			cpr->cp_ring_struct->fw_ring_id = INVALID_HW_RING_ID;
-			if (txq->nq_ring)
-				bnxt_free_nq_ring(bp, txq->nq_ring);
 		}
 	}
 

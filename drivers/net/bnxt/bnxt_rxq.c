@@ -341,8 +341,8 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	eth_dev->data->rx_queues[queue_idx] = rxq;
 	/* Allocate RX ring hardware descriptors */
-	if (bnxt_alloc_rings(bp, queue_idx, NULL, rxq, rxq->cp_ring,
-			rxq->nq_ring, "rxr")) {
+	if (bnxt_alloc_rings(bp, queue_idx, NULL, rxq, rxq->cp_ring, NULL,
+			     "rxr")) {
 		PMD_DRV_LOG(ERR,
 			"ring_dma_zone_reserve for rx_ring failed!\n");
 		bnxt_rx_queue_release_op(rxq);

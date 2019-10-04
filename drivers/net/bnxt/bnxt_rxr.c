@@ -742,7 +742,6 @@ void bnxt_free_rx_rings(struct bnxt *bp)
 int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 {
 	struct bnxt_cp_ring_info *cpr;
-	struct bnxt_cp_ring_info *nqr;
 	struct bnxt_rx_ring_info *rxr;
 	struct bnxt_ring *ring;
 
@@ -788,32 +787,6 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	ring->bd_dma = cpr->cp_desc_mapping;
 	ring->vmem_size = 0;
 	ring->vmem = NULL;
-
-	if (BNXT_HAS_NQ(rxq->bp)) {
-		nqr = rte_zmalloc_socket("bnxt_rx_ring_cq",
-					 sizeof(struct bnxt_cp_ring_info),
-					 RTE_CACHE_LINE_SIZE, socket_id);
-		if (nqr == NULL)
-			return -ENOMEM;
-
-		rxq->nq_ring = nqr;
-
-		ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
-					  sizeof(struct bnxt_ring),
-					  RTE_CACHE_LINE_SIZE, socket_id);
-		if (ring == NULL)
-			return -ENOMEM;
-
-		nqr->cp_ring_struct = ring;
-		ring->ring_size =
-			rte_align32pow2(rxr->rx_ring_struct->ring_size *
-					(2 + AGG_RING_SIZE_FACTOR));
-		ring->ring_mask = ring->ring_size - 1;
-		ring->bd = (void *)nqr->cp_desc_ring;
-		ring->bd_dma = nqr->cp_desc_mapping;
-		ring->vmem_size = 0;
-		ring->vmem = NULL;
-	}
 
 	/* Allocate Aggregator rings */
 	ring = rte_zmalloc_socket("bnxt_rx_ring_struct",

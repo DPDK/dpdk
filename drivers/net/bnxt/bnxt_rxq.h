@@ -39,7 +39,6 @@ struct bnxt_rx_queue {
 	uint32_t			rx_buf_size;
 	struct bnxt_rx_ring_info	*rx_ring;
 	struct bnxt_cp_ring_info	*cp_ring;
-	struct bnxt_cp_ring_info	*nq_ring;
 	rte_atomic64_t		rx_mbuf_alloc_fail;
 	const struct rte_memzone *mz;
 };

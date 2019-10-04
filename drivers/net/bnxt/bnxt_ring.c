@@ -125,7 +125,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	int cp_vmem_len = RTE_CACHE_LINE_ROUNDUP(cp_ring->vmem_size);
 	cp_vmem_len = RTE_ALIGN(cp_vmem_len, 128);
 
-	int nq_vmem_len = BNXT_CHIP_THOR(bp) ?
+	int nq_vmem_len = nq_ring_info ?
 		RTE_CACHE_LINE_ROUNDUP(cp_ring->vmem_size) : 0;
 	nq_vmem_len = RTE_ALIGN(nq_vmem_len, 128);
 
@@ -159,7 +159,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	nq_ring_start = cp_ring_start + cp_ring_len;
 	nq_ring_start = RTE_ALIGN(nq_ring_start, 4096);
 
-	int nq_ring_len = BNXT_CHIP_THOR(bp) ? cp_ring_len : 0;
+	int nq_ring_len = nq_ring_info ? cp_ring_len : 0;
 
 	int tx_ring_start = nq_ring_start + nq_ring_len;
 	tx_ring_start = RTE_ALIGN(tx_ring_start, 4096);
@@ -403,12 +403,12 @@ static void bnxt_set_db(struct bnxt *bp,
 }
 
 static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
-				struct bnxt_cp_ring_info *cpr,
-				struct bnxt_cp_ring_info *nqr)
+				struct bnxt_cp_ring_info *cpr)
 {
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 	uint32_t nq_ring_id = HWRM_NA_SIGNATURE;
 	int cp_ring_index = queue_index + BNXT_NUM_ASYNC_CPR(bp);
+	struct bnxt_cp_ring_info *nqr = bp->rxtx_nq_ring;
 	uint8_t ring_type;
 	int rc = 0;
 
@@ -436,29 +436,83 @@ static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 	return 0;
 }
 
-static int bnxt_alloc_nq_ring(struct bnxt *bp, int queue_index,
-			      struct bnxt_cp_ring_info *nqr)
+int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp)
 {
-	struct bnxt_ring *nq_ring = nqr->cp_ring_struct;
-	int nq_ring_index = queue_index + BNXT_NUM_ASYNC_CPR(bp);
+	struct bnxt_cp_ring_info *nqr;
+	struct bnxt_ring *ring;
+	int ring_index = BNXT_NUM_ASYNC_CPR(bp);
+	unsigned int socket_id;
 	uint8_t ring_type;
 	int rc = 0;
 
-	if (!BNXT_HAS_NQ(bp))
-		return -EINVAL;
+	if (!BNXT_HAS_NQ(bp) || bp->rxtx_nq_ring)
+		return 0;
+
+	socket_id = rte_lcore_to_socket_id(rte_get_master_lcore());
+
+	nqr = rte_zmalloc_socket("nqr",
+				 sizeof(struct bnxt_cp_ring_info),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (nqr == NULL)
+		return -ENOMEM;
+
+	ring = rte_zmalloc_socket("bnxt_cp_ring_struct",
+				  sizeof(struct bnxt_ring),
+				  RTE_CACHE_LINE_SIZE, socket_id);
+	if (ring == NULL) {
+		rte_free(nqr);
+		return -ENOMEM;
+	}
+
+	ring->bd = (void *)nqr->cp_desc_ring;
+	ring->bd_dma = nqr->cp_desc_mapping;
+	ring->ring_size = rte_align32pow2(DEFAULT_CP_RING_SIZE);
+	ring->ring_mask = ring->ring_size - 1;
+	ring->vmem_size = 0;
+	ring->vmem = NULL;
+
+	nqr->cp_ring_struct = ring;
+	rc = bnxt_alloc_rings(bp, 0, NULL, NULL, nqr, NULL, "l2_nqr");
+	if (rc) {
+		rte_free(ring);
+		rte_free(nqr);
+		return -ENOMEM;
+	}
 
 	ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_NQ;
 
-	rc = bnxt_hwrm_ring_alloc(bp, nq_ring, ring_type, nq_ring_index,
+	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, ring_index,
 				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0);
-	if (rc)
+	if (rc) {
+		rte_free(ring);
+		rte_free(nqr);
 		return rc;
+	}
 
-	bnxt_set_db(bp, &nqr->cp_db, ring_type, nq_ring_index,
-		    nq_ring->fw_ring_id);
+	bnxt_set_db(bp, &nqr->cp_db, ring_type, ring_index,
+		    ring->fw_ring_id);
 	bnxt_db_nq(nqr);
 
+	bp->rxtx_nq_ring = nqr;
+
 	return 0;
+}
+
+/* Free RX/TX NQ ring.  */
+void bnxt_free_rxtx_nq_ring(struct bnxt *bp)
+{
+	struct bnxt_cp_ring_info *nqr = bp->rxtx_nq_ring;
+
+	if (!nqr)
+		return;
+
+	bnxt_free_nq_ring(bp, nqr);
+
+	bnxt_free_ring(nqr->cp_ring_struct);
+	rte_free(nqr->cp_ring_struct);
+	nqr->cp_ring_struct = NULL;
+	rte_free(nqr);
+	bp->rxtx_nq_ring = NULL;
 }
 
 static int bnxt_alloc_rx_ring(struct bnxt *bp, int queue_index)
@@ -529,17 +583,10 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	struct bnxt_rx_queue *rxq = bp->rx_queues[queue_index];
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
-	struct bnxt_cp_ring_info *nqr = rxq->nq_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 	int rc;
 
-	if (BNXT_HAS_NQ(bp)) {
-		rc = bnxt_alloc_nq_ring(bp, queue_index, nqr);
-		if (rc)
-			goto err_out;
-	}
-
-	rc = bnxt_alloc_cmpl_ring(bp, queue_index, cpr, nqr);
+	rc = bnxt_alloc_cmpl_ring(bp, queue_index, cpr);
 	if (rc)
 		goto err_out;
 
@@ -644,16 +691,10 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
-		struct bnxt_cp_ring_info *nqr = rxq->nq_ring;
 		struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 		struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 
-		if (BNXT_HAS_NQ(bp)) {
-			if (bnxt_alloc_nq_ring(bp, i, nqr))
-				goto err_out;
-		}
-
-		if (bnxt_alloc_cmpl_ring(bp, i, cpr, nqr))
+		if (bnxt_alloc_cmpl_ring(bp, i, cpr))
 			goto err_out;
 
 		if (BNXT_HAS_RING_GRPS(bp)) {
@@ -697,18 +738,12 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 		struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
-		struct bnxt_cp_ring_info *nqr = txq->nq_ring;
 		struct bnxt_tx_ring_info *txr = txq->tx_ring;
 		struct bnxt_ring *ring = txr->tx_ring_struct;
 		unsigned int idx = i + bp->rx_cp_nr_rings;
 		uint16_t tx_cosq_id = 0;
 
-		if (BNXT_HAS_NQ(bp)) {
-			if (bnxt_alloc_nq_ring(bp, idx, nqr))
-				goto err_out;
-		}
-
-		if (bnxt_alloc_cmpl_ring(bp, idx, cpr, nqr))
+		if (bnxt_alloc_cmpl_ring(bp, idx, cpr))
 			goto err_out;
 
 		if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
