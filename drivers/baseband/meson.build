@@ -3,5 +3,5 @@
 
 drivers = ['null', 'turbo_sw', 'fpga_lte_fec']
 
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
+config_flag_fmt = 'RTE_LIBRTE_PMD_@0@'
 driver_name_fmt = 'rte_pmd_@0@'
