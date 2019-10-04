@@ -851,9 +851,7 @@ int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp, bool test)
 	req.num_tx_rings = rte_cpu_to_le_16(bp->tx_nr_rings);
 	req.num_rx_rings = rte_cpu_to_le_16(bp->rx_nr_rings *
 					    AGG_RING_MULTIPLIER);
-	req.num_stat_ctxs = rte_cpu_to_le_16(bp->rx_nr_rings +
-					     bp->tx_nr_rings +
-					     BNXT_NUM_ASYNC_CPR(bp));
+	req.num_stat_ctxs = rte_cpu_to_le_16(bp->rx_nr_rings + bp->tx_nr_rings);
 	req.num_cmpl_rings = rte_cpu_to_le_16(bp->rx_nr_rings +
 					      bp->tx_nr_rings +
 					      BNXT_NUM_ASYNC_CPR(bp));
