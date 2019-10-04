@@ -13,6 +13,8 @@
 #include <rte_memory.h>
 #include <rte_prefetch.h>
 
+#include "otx_cryptodev.h"
+
 #include "cpt_common.h"
 #include "cpt_hw_types.h"
 #include "cpt_mcode_defines.h"

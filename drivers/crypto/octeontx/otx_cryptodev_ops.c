@@ -10,13 +10,13 @@
 #include <rte_malloc.h>
 #include <rte_mempool.h>
 
-#include "cpt_pmd_logs.h"
-#include "cpt_ucode.h"
-
 #include "otx_cryptodev.h"
 #include "otx_cryptodev_capabilities.h"
 #include "otx_cryptodev_hw_access.h"
 #include "otx_cryptodev_ops.h"
+
+#include "cpt_pmd_logs.h"
+#include "cpt_ucode.h"
 
 /* Forward declarations */
 

@@ -12,9 +12,13 @@
 #define PCI_VENDOR_ID_CAVIUM		0x177d
 #define CPT_81XX_PCI_VF_DEVICE_ID	0xa041
 
+#define CPT_LOGTYPE otx_cpt_logtype
+
+extern int otx_cpt_logtype;
+
 /*
  * Crypto device driver ID
  */
-uint8_t otx_cryptodev_driver_id;
+extern uint8_t otx_cryptodev_driver_id;
 
 #endif /* _OTX_CRYPTODEV_H_ */

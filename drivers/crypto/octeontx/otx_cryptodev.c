@@ -9,13 +9,13 @@
 #include <rte_log.h>
 #include <rte_pci.h>
 
-/* CPT common headers */
-#include "cpt_pmd_logs.h"
-
 #include "otx_cryptodev.h"
 #include "otx_cryptodev_ops.h"
 
-static int otx_cryptodev_logtype;
+#include "cpt_pmd_logs.h"
+
+uint8_t otx_cryptodev_driver_id;
+int otx_cpt_logtype;
 
 static struct rte_pci_id pci_id_cpt_table[] = {
 	{
@@ -26,12 +26,6 @@ static struct rte_pci_id pci_id_cpt_table[] = {
 		.device_id = 0
 	},
 };
-
-static void
-otx_cpt_logtype_init(void)
-{
-	cpt_logtype = otx_cryptodev_logtype;
-}
 
 static int
 otx_cpt_pci_probe(struct rte_pci_driver *pci_drv,
@@ -56,9 +50,6 @@ otx_cpt_pci_probe(struct rte_pci_driver *pci_drv,
 
 	/* init user callbacks */
 	TAILQ_INIT(&(cryptodev->link_intr_cbs));
-
-	/* init logtype used in common */
-	otx_cpt_logtype_init();
 
 	/* Invoke PMD device initialization function */
 	retval = otx_cpt_dev_create(cryptodev);
@@ -125,7 +116,7 @@ RTE_PMD_REGISTER_CRYPTO_DRIVER(otx_cryptodev_drv, otx_cryptodev_pmd.driver,
 RTE_INIT(otx_cpt_init_log)
 {
 	/* Bus level logs */
-	otx_cryptodev_logtype = rte_log_register("pmd.crypto.octeontx");
-	if (otx_cryptodev_logtype >= 0)
-		rte_log_set_level(otx_cryptodev_logtype, RTE_LOG_NOTICE);
+	otx_cpt_logtype = rte_log_register("pmd.crypto.octeontx");
+	if (otx_cpt_logtype >= 0)
+		rte_log_set_level(otx_cpt_logtype, RTE_LOG_NOTICE);
 }
