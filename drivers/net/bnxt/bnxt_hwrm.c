@@ -1692,7 +1692,8 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	HWRM_PREP(req, VNIC_CFG, BNXT_USE_CHIMP_MB);
 
 	if (BNXT_CHIP_THOR(bp)) {
-		struct bnxt_rx_queue *rxq = bp->eth_dev->data->rx_queues[0];
+		struct bnxt_rx_queue *rxq =
+			bp->eth_dev->data->rx_queues[vnic->start_grp_id];
 		struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 
