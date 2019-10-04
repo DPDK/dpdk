@@ -4292,7 +4292,9 @@ int bnxt_alloc_ctx_mem(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	entries = ctx->qp_max_l2_entries;
+	entries = ctx->qp_max_l2_entries +
+		  ctx->vnic_max_vnic_entries +
+		  ctx->tqm_min_entries_per_ring;
 	entries = bnxt_roundup(entries, ctx->tqm_entries_multiple);
 	entries = clamp_t(uint32_t, entries, ctx->tqm_min_entries_per_ring,
 			  ctx->tqm_max_entries_per_ring);
