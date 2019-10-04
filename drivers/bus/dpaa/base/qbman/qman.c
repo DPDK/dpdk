@@ -2286,7 +2286,7 @@ int qman_enqueue_multi(struct qman_fq *fq,
 
 int
 qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
-		      int frames_to_send)
+		      u32 *flags, int frames_to_send)
 {
 	struct qman_portal *p = get_affine_portal();
 	struct qm_portal *portal = &p->p;
@@ -2294,7 +2294,7 @@ qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
 	register struct qm_eqcr *eqcr = &portal->eqcr;
 	struct qm_eqcr_entry *eq = eqcr->cursor, *prev_eq;
 
-	u8 i, diff, old_ci, sent = 0;
+	u8 i = 0, diff, old_ci, sent = 0;
 
 	/* Update the available entries if no entry is free */
 	if (!eqcr->available) {
@@ -2313,6 +2313,11 @@ qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
 		eq->fd.addr = cpu_to_be40(fd->addr);
 		eq->fd.status = cpu_to_be32(fd->status);
 		eq->fd.opaque = cpu_to_be32(fd->opaque);
+		if (flags && (flags[i] & QMAN_ENQUEUE_FLAG_DCA)) {
+			eq->dca = QM_EQCR_DCA_ENABLE |
+				((flags[i] >> 8) & QM_EQCR_DCA_IDXMASK);
+		}
+		i++;
 
 		eq = (void *)((unsigned long)(eq + 1) &
 			(~(unsigned long)(QM_EQCR_SIZE << 6)));

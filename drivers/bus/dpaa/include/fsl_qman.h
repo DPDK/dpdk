@@ -1773,7 +1773,7 @@ int qman_enqueue_multi(struct qman_fq *fq, const struct qm_fd *fd, u32 *flags,
  */
 int
 qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
-		      int frames_to_send);
+		      u32 *flags, int frames_to_send);
 
 typedef int (*qman_cb_precommit) (void *arg);
 
