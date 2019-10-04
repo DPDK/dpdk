@@ -519,7 +519,6 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 /* Configure fpga lte fec with PF & VF values
  * if '-i' flag is set and using fpga device
  */
-#ifndef RTE_BUILD_SHARED_LIB
 #ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
 	if ((get_init_device() == true) &&
 		(!strcmp(info->drv.driver_name, FPGA_PF_DRIVER_NAME))) {
@@ -563,7 +562,6 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 				"Failed to configure 4G FPGA PF for bbdev %s",
 				info->dev_name);
 	}
-#endif
 #endif
 	nb_queues = RTE_MIN(rte_lcore_count(), info->drv.max_num_queues);
 	nb_queues = RTE_MIN(nb_queues, (unsigned int) MAX_QUEUES);
