@@ -227,7 +227,9 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 	/* Free up mbufs in TPA */
 	tpa_info = rxq->rx_ring->tpa_info;
 	if (tpa_info) {
-		for (i = 0; i < BNXT_TPA_MAX; i++) {
+		int max_aggs = BNXT_TPA_MAX_AGGS(rxq->bp);
+
+		for (i = 0; i < max_aggs; i++) {
 			if (tpa_info[i].mbuf) {
 				rte_pktmbuf_free_seg(tpa_info[i].mbuf);
 				tpa_info[i].mbuf = NULL;

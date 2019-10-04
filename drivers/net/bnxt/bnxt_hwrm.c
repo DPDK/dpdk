@@ -700,6 +700,27 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
+{
+	int rc = 0;
+	struct hwrm_vnic_qcaps_input req = {.req_type = 0 };
+	struct hwrm_vnic_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_QCAPS, BNXT_USE_CHIMP_MB);
+
+	req.target_id = rte_cpu_to_le_16(0xffff);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	bp->max_tpa_v2 = rte_le_to_cpu_16(resp->max_aggs_supported);
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
 int bnxt_hwrm_func_reset(struct bnxt *bp)
 {
 	int rc = 0;
@@ -1959,8 +1980,11 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 	struct hwrm_vnic_tpa_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_tpa_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 
-	if (BNXT_CHIP_THOR(bp))
-		return 0;
+	if (BNXT_CHIP_THOR(bp) && !bp->max_tpa_v2) {
+		if (enable)
+			PMD_DRV_LOG(ERR, "No HW support for LRO\n");
+		return -ENOTSUP;
+	}
 
 	if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
 		PMD_DRV_LOG(DEBUG, "Invalid vNIC ID\n");
@@ -1981,9 +2005,8 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 				HWRM_VNIC_TPA_CFG_INPUT_FLAGS_GRO |
 				HWRM_VNIC_TPA_CFG_INPUT_FLAGS_AGG_WITH_ECN |
 			HWRM_VNIC_TPA_CFG_INPUT_FLAGS_AGG_WITH_SAME_GRE_SEQ);
-		req.max_agg_segs = rte_cpu_to_le_16(5);
-		req.max_aggs =
-			rte_cpu_to_le_16(HWRM_VNIC_TPA_CFG_INPUT_MAX_AGGS_MAX);
+		req.max_agg_segs = rte_cpu_to_le_16(BNXT_TPA_MAX_AGGS(bp));
+		req.max_aggs = rte_cpu_to_le_16(BNXT_TPA_MAX_SEGS(bp));
 		req.min_agg_len = rte_cpu_to_le_32(512);
 	}
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);

@@ -187,13 +187,17 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			AGG_RING_SIZE_FACTOR)) : 0;
 
 	int tpa_info_start = ag_bitmap_start + ag_bitmap_len;
-	int tpa_info_len = rx_ring_info ?
-		RTE_CACHE_LINE_ROUNDUP(BNXT_TPA_MAX *
-				       sizeof(struct bnxt_tpa_info)) : 0;
+	int tpa_info_len = 0;
+
+	if (rx_ring_info && (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)) {
+		int tpa_max = BNXT_TPA_MAX_AGGS(bp);
+
+		tpa_info_len = tpa_max * sizeof(struct bnxt_tpa_info);
+		tpa_info_len = RTE_CACHE_LINE_ROUNDUP(tpa_info_len);
+	}
 
 	int total_alloc_len = tpa_info_start;
-	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
-		total_alloc_len += tpa_info_len;
+	total_alloc_len += tpa_info_len;
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
 		 "bnxt_%04x:%02x:%02x:%02x-%04x_%s", pdev->addr.domain,

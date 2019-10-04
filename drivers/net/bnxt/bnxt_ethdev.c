@@ -4553,6 +4553,10 @@ static int bnxt_init_fw(struct bnxt *bp)
 	if (rc)
 		return rc;
 
+	rc = bnxt_hwrm_vnic_qcaps(bp);
+	if (rc)
+		return rc;
+
 	rc = bnxt_hwrm_func_qcfg(bp, &mtu);
 	if (rc)
 		return rc;

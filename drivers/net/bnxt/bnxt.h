@@ -37,6 +37,21 @@
 #define BNXT_MAX_RX_RING_DESC	8192
 #define BNXT_DB_SIZE		0x80
 
+#define TPA_MAX_AGGS		64
+#define TPA_MAX_AGGS_TH		1024
+
+#define TPA_MAX_NUM_SEGS	32
+#define TPA_MAX_SEGS_TH		8 /* 32 segments in 4-segment units */
+#define TPA_MAX_SEGS		5 /* 32 segments in log2 units */
+
+#define BNXT_TPA_MAX_AGGS(bp) \
+	(BNXT_CHIP_THOR(bp) ? TPA_MAX_AGGS_TH : \
+			     TPA_MAX_AGGS)
+
+#define BNXT_TPA_MAX_SEGS(bp) \
+	(BNXT_CHIP_THOR(bp) ? TPA_MAX_SEGS_TH : \
+			      TPA_MAX_SEGS)
+
 #ifdef RTE_ARCH_ARM64
 #define BNXT_NUM_ASYNC_CPR(bp) (BNXT_STINGRAY(bp) ? 0 : 1)
 #else
@@ -525,6 +540,7 @@ struct bnxt {
 	uint16_t		max_rx_em_flows;
 	uint16_t		max_vnics;
 	uint16_t		max_stat_ctx;
+	uint16_t		max_tpa_v2;
 	uint16_t		first_vf_id;
 	uint16_t		vlan;
 #define BNXT_OUTER_TPID_MASK	0x0000ffff
