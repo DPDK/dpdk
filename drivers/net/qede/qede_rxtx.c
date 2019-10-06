@@ -1602,17 +1602,17 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			/* Mark it as LRO packet */
 			ol_flags |= PKT_RX_LRO;
 			/* In split mode,  seg_len is same as len_on_first_bd
-			 * and ext_bd_len_list will be empty since there are
+			 * and bw_ext_bd_len_list will be empty since there are
 			 * no additional buffers
 			 */
 			PMD_RX_LOG(INFO, rxq,
-			    "TPA start[%d] - len_on_first_bd %d header %d"
-			    " [bd_list[0] %d], [seg_len %d]\n",
-			    cqe_start_tpa->tpa_agg_index,
-			    rte_le_to_cpu_16(cqe_start_tpa->len_on_first_bd),
-			    cqe_start_tpa->header_len,
-			    rte_le_to_cpu_16(cqe_start_tpa->ext_bd_len_list[0]),
-			    rte_le_to_cpu_16(cqe_start_tpa->seg_len));
+			 "TPA start[%d] - len_on_first_bd %d header %d"
+			 " [bd_list[0] %d], [seg_len %d]\n",
+			 cqe_start_tpa->tpa_agg_index,
+			 rte_le_to_cpu_16(cqe_start_tpa->len_on_first_bd),
+			 cqe_start_tpa->header_len,
+			 rte_le_to_cpu_16(cqe_start_tpa->bw_ext_bd_len_list[0]),
+			 rte_le_to_cpu_16(cqe_start_tpa->seg_len));
 
 		break;
 		case ETH_RX_CQE_TYPE_TPA_CONT:

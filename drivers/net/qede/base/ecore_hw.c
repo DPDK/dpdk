@@ -12,6 +12,8 @@
 #include "reg_addr.h"
 #include "ecore_utils.h"
 #include "ecore_iov_api.h"
+#include "ecore_gtt_values.h"
+#include "ecore_dev_api.h"
 
 #ifndef ASIC_ONLY
 #define ECORE_EMUL_FACTOR 2000
@@ -76,6 +78,20 @@ enum _ecore_status_t ecore_ptt_pool_alloc(struct ecore_hwfn *p_hwfn)
 #endif
 	OSAL_SPIN_LOCK_INIT(&p_pool->lock);
 	return ECORE_SUCCESS;
+}
+
+void ecore_gtt_init(struct ecore_hwfn *p_hwfn)
+{
+	u32 gtt_base;
+	u32 i;
+
+	/* Set the global windows */
+	gtt_base = PXP_PF_WINDOW_ADMIN_START + PXP_PF_WINDOW_ADMIN_GLOBAL_START;
+
+	for (i = 0; i < OSAL_ARRAY_SIZE(pxp_global_win); i++)
+		if (pxp_global_win[i])
+			REG_WR(p_hwfn, gtt_base + i * PXP_GLOBAL_ENTRY_SIZE,
+			       pxp_global_win[i]);
 }
 
 void ecore_ptt_invalidate(struct ecore_hwfn *p_hwfn)

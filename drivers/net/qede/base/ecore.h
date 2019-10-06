@@ -834,8 +834,8 @@ struct ecore_dev {
 	u8				cache_shift;
 
 	/* Init */
-	const struct iro		*iro_arr;
-	#define IRO (p_hwfn->p_dev->iro_arr)
+	const u32			*iro_arr;
+#define IRO	((const struct iro *)p_hwfn->p_dev->iro_arr)
 
 	/* HW functions */
 	u8				num_hwfns;

@@ -534,53 +534,6 @@ enum _ecore_status_t ecore_init_run(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-void ecore_gtt_init(struct ecore_hwfn *p_hwfn,
-		    struct ecore_ptt *p_ptt)
-{
-	u32 gtt_base;
-	u32 i;
-
-#ifndef ASIC_ONLY
-	if (CHIP_REV_IS_SLOW(p_hwfn->p_dev)) {
-		/* This is done by MFW on ASIC; regardless, this should only
-		 * be done once per chip [i.e., common]. Implementation is
-		 * not too bright, but it should work on the simple FPGA/EMUL
-		 * scenarios.
-		 */
-		static bool initialized;
-		int poll_cnt = 500;
-		u32 val;
-
-		/* initialize PTT/GTT (poll for completion) */
-		if (!initialized) {
-			ecore_wr(p_hwfn, p_ptt,
-				 PGLUE_B_REG_START_INIT_PTT_GTT, 1);
-			initialized = true;
-		}
-
-		do {
-			/* ptt might be overrided by HW until this is done */
-			OSAL_UDELAY(10);
-			ecore_ptt_invalidate(p_hwfn);
-			val = ecore_rd(p_hwfn, p_ptt,
-				       PGLUE_B_REG_INIT_DONE_PTT_GTT);
-		} while ((val != 1) && --poll_cnt);
-
-		if (!poll_cnt)
-			DP_ERR(p_hwfn,
-			       "PGLUE_B_REG_INIT_DONE didn't complete\n");
-	}
-#endif
-
-	/* Set the global windows */
-	gtt_base = PXP_PF_WINDOW_ADMIN_START + PXP_PF_WINDOW_ADMIN_GLOBAL_START;
-
-	for (i = 0; i < OSAL_ARRAY_SIZE(pxp_global_win); i++)
-		if (pxp_global_win[i])
-			REG_WR(p_hwfn, gtt_base + i * PXP_GLOBAL_ENTRY_SIZE,
-			       pxp_global_win[i]);
-}
-
 enum _ecore_status_t ecore_init_fw_data(struct ecore_dev *p_dev,
 #ifdef CONFIG_ECORE_BINARY_FW
 					const u8 *fw_data)

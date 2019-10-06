@@ -190,9 +190,7 @@ struct ecore_cxt_mngr {
 
 	/* Acquired CIDs */
 	struct ecore_cid_acquired_map acquired[MAX_CONN_TYPES];
-	/* TBD - do we want this allocated to reserve space? */
-	struct ecore_cid_acquired_map
-		acquired_vf[MAX_CONN_TYPES][COMMON_MAX_NUM_VFS];
+	struct ecore_cid_acquired_map *acquired_vf[MAX_CONN_TYPES];
 
 	/* ILT  shadow table */
 	struct ecore_dma_mem *ilt_shadow;
@@ -1040,8 +1038,8 @@ ilt_shadow_fail:
 
 static void ecore_cid_map_free(struct ecore_hwfn *p_hwfn)
 {
+	u32 type, vf, max_num_vfs = NUM_OF_VFS(p_hwfn->p_dev);
 	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
-	u32 type, vf;
 
 	for (type = 0; type < MAX_CONN_TYPES; type++) {
 		OSAL_FREE(p_hwfn->p_dev, p_mngr->acquired[type].cid_map);
@@ -1049,7 +1047,7 @@ static void ecore_cid_map_free(struct ecore_hwfn *p_hwfn)
 		p_mngr->acquired[type].max_count = 0;
 		p_mngr->acquired[type].start_cid = 0;
 
-		for (vf = 0; vf < COMMON_MAX_NUM_VFS; vf++) {
+		for (vf = 0; vf < max_num_vfs; vf++) {
 			OSAL_FREE(p_hwfn->p_dev,
 				  p_mngr->acquired_vf[type][vf].cid_map);
 			p_mngr->acquired_vf[type][vf].cid_map = OSAL_NULL;
@@ -1087,6 +1085,7 @@ ecore_cid_map_alloc_single(struct ecore_hwfn *p_hwfn, u32 type,
 static enum _ecore_status_t ecore_cid_map_alloc(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
+	u32 max_num_vfs = NUM_OF_VFS(p_hwfn->p_dev);
 	u32 start_cid = 0, vf_start_cid = 0;
 	u32 type, vf;
 
@@ -1101,7 +1100,7 @@ static enum _ecore_status_t ecore_cid_map_alloc(struct ecore_hwfn *p_hwfn)
 			goto cid_map_fail;
 
 		/* Handle VF maps */
-		for (vf = 0; vf < COMMON_MAX_NUM_VFS; vf++) {
+		for (vf = 0; vf < max_num_vfs; vf++) {
 			p_map = &p_mngr->acquired_vf[type][vf];
 			if (ecore_cid_map_alloc_single(p_hwfn, type,
 						       vf_start_cid,
@@ -1236,10 +1235,10 @@ void ecore_cxt_mngr_free(struct ecore_hwfn *p_hwfn)
 void ecore_cxt_mngr_setup(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
+	u32 len, max_num_vfs = NUM_OF_VFS(p_hwfn->p_dev);
 	struct ecore_cid_acquired_map *p_map;
 	struct ecore_conn_type_cfg *p_cfg;
 	int type;
-	u32 len;
 
 	/* Reset acquired cids */
 	for (type = 0; type < MAX_CONN_TYPES; type++) {
@@ -1257,7 +1256,7 @@ void ecore_cxt_mngr_setup(struct ecore_hwfn *p_hwfn)
 		if (!p_cfg->cids_per_vf)
 			continue;
 
-		for (vf = 0; vf < COMMON_MAX_NUM_VFS; vf++) {
+		for (vf = 0; vf < max_num_vfs; vf++) {
 			p_map = &p_mngr->acquired_vf[type][vf];
 			len = DIV_ROUND_UP(p_map->max_count,
 					   BITS_PER_MAP_WORD) *
@@ -1818,16 +1817,16 @@ enum _ecore_status_t _ecore_cxt_acquire_cid(struct ecore_hwfn *p_hwfn,
 					    enum protocol_type type,
 					    u32 *p_cid, u8 vfid)
 {
+	u32 rel_cid, max_num_vfs = NUM_OF_VFS(p_hwfn->p_dev);
 	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
 	struct ecore_cid_acquired_map *p_map;
-	u32 rel_cid;
 
 	if (type >= MAX_CONN_TYPES) {
 		DP_NOTICE(p_hwfn, true, "Invalid protocol type %d", type);
 		return ECORE_INVAL;
 	}
 
-	if (vfid >= COMMON_MAX_NUM_VFS && vfid != ECORE_CXT_PF_CID) {
+	if (vfid >= max_num_vfs && vfid != ECORE_CXT_PF_CID) {
 		DP_NOTICE(p_hwfn, true, "VF [%02x] is out of range\n", vfid);
 		return ECORE_INVAL;
 	}
@@ -1913,12 +1912,12 @@ fail:
 
 void _ecore_cxt_release_cid(struct ecore_hwfn *p_hwfn, u32 cid, u8 vfid)
 {
+	u32 rel_cid, max_num_vfs = NUM_OF_VFS(p_hwfn->p_dev);
 	struct ecore_cid_acquired_map *p_map = OSAL_NULL;
 	enum protocol_type type;
 	bool b_acquired;
-	u32 rel_cid;
 
-	if (vfid != ECORE_CXT_PF_CID && vfid > COMMON_MAX_NUM_VFS) {
+	if (vfid != ECORE_CXT_PF_CID && vfid > max_num_vfs) {
 		DP_NOTICE(p_hwfn, true,
 			  "Trying to return incorrect CID belonging to VF %02x\n",
 			  vfid);

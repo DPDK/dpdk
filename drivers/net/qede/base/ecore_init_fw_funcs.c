@@ -664,10 +664,10 @@ static int ecore_vp_wfq_rt_init(struct ecore_hwfn *p_hwfn,
 
 	/* Go over all PF VPORTs */
 	for (i = 0; i < num_vports; i++) {
-		if (!vport_params[i].vport_wfq)
+		if (!vport_params[i].wfq)
 			continue;
 
-		inc_val = QM_WFQ_INC_VAL(vport_params[i].vport_wfq);
+		inc_val = QM_WFQ_INC_VAL(vport_params[i].wfq);
 		if (inc_val > QM_WFQ_MAX_INC_VAL) {
 			DP_NOTICE(p_hwfn, true,
 				  "Invalid VPORT WFQ weight configuration\n");
@@ -710,8 +710,7 @@ static int ecore_vport_rl_rt_init(struct ecore_hwfn *p_hwfn,
 
 	/* Go over all PF VPORTs */
 	for (i = 0, vport_id = start_vport; i < num_vports; i++, vport_id++) {
-		inc_val = QM_RL_INC_VAL(vport_params[i].vport_rl ?
-			  vport_params[i].vport_rl : link_speed);
+		inc_val = QM_RL_INC_VAL(link_speed);
 		if (inc_val > QM_VP_RL_MAX_INC_VAL(link_speed)) {
 			DP_NOTICE(p_hwfn, true,
 				  "Invalid VPORT rate-limit configuration\n");

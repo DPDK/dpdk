@@ -24,6 +24,7 @@
 
 #define CHIP_MCP_RESP_ITER_US 10
 #define EMUL_MCP_RESP_ITER_US (1000 * 1000)
+#define GRCBASE_MCP	0xe00000
 
 #define ECORE_DRV_MB_MAX_RETRIES (500 * 1000)	/* Account for 5 sec */
 #define ECORE_MCP_RESET_RETRIES (50 * 1000)	/* Account for 500 msec */

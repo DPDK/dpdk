@@ -34,7 +34,7 @@ struct xstorm_eth_conn_st_ctx {
 
 struct xstorm_eth_conn_ag_ctx {
 	u8 reserved0 /* cdu_validation */;
-	u8 eth_state /* state */;
+	u8 state /* state */;
 	u8 flags0;
 /* exist_in_qm0 */
 #define XSTORM_ETH_CONN_AG_CTX_EXIST_IN_QM0_MASK            0x1
@@ -303,57 +303,6 @@ struct xstorm_eth_conn_ag_ctx {
 	__le16 word15 /* word15 */;
 };
 
-/*
- * The eth storm context for the Ystorm
- */
-struct ystorm_eth_conn_st_ctx {
-	__le32 reserved[8];
-};
-
-struct ystorm_eth_conn_ag_ctx {
-	u8 byte0 /* cdu_validation */;
-	u8 state /* state */;
-	u8 flags0;
-#define YSTORM_ETH_CONN_AG_CTX_BIT0_MASK                  0x1 /* exist_in_qm0 */
-#define YSTORM_ETH_CONN_AG_CTX_BIT0_SHIFT                 0
-#define YSTORM_ETH_CONN_AG_CTX_BIT1_MASK                  0x1 /* exist_in_qm1 */
-#define YSTORM_ETH_CONN_AG_CTX_BIT1_SHIFT                 1
-#define YSTORM_ETH_CONN_AG_CTX_TX_BD_CONS_UPD_CF_MASK     0x3 /* cf0 */
-#define YSTORM_ETH_CONN_AG_CTX_TX_BD_CONS_UPD_CF_SHIFT    2
-#define YSTORM_ETH_CONN_AG_CTX_PMD_TERMINATE_CF_MASK      0x3 /* cf1 */
-#define YSTORM_ETH_CONN_AG_CTX_PMD_TERMINATE_CF_SHIFT     4
-#define YSTORM_ETH_CONN_AG_CTX_CF2_MASK                   0x3 /* cf2 */
-#define YSTORM_ETH_CONN_AG_CTX_CF2_SHIFT                  6
-	u8 flags1;
-#define YSTORM_ETH_CONN_AG_CTX_TX_BD_CONS_UPD_CF_EN_MASK  0x1 /* cf0en */
-#define YSTORM_ETH_CONN_AG_CTX_TX_BD_CONS_UPD_CF_EN_SHIFT 0
-#define YSTORM_ETH_CONN_AG_CTX_PMD_TERMINATE_CF_EN_MASK   0x1 /* cf1en */
-#define YSTORM_ETH_CONN_AG_CTX_PMD_TERMINATE_CF_EN_SHIFT  1
-#define YSTORM_ETH_CONN_AG_CTX_CF2EN_MASK                 0x1 /* cf2en */
-#define YSTORM_ETH_CONN_AG_CTX_CF2EN_SHIFT                2
-#define YSTORM_ETH_CONN_AG_CTX_RULE0EN_MASK               0x1 /* rule0en */
-#define YSTORM_ETH_CONN_AG_CTX_RULE0EN_SHIFT              3
-#define YSTORM_ETH_CONN_AG_CTX_RULE1EN_MASK               0x1 /* rule1en */
-#define YSTORM_ETH_CONN_AG_CTX_RULE1EN_SHIFT              4
-#define YSTORM_ETH_CONN_AG_CTX_RULE2EN_MASK               0x1 /* rule2en */
-#define YSTORM_ETH_CONN_AG_CTX_RULE2EN_SHIFT              5
-#define YSTORM_ETH_CONN_AG_CTX_RULE3EN_MASK               0x1 /* rule3en */
-#define YSTORM_ETH_CONN_AG_CTX_RULE3EN_SHIFT              6
-#define YSTORM_ETH_CONN_AG_CTX_RULE4EN_MASK               0x1 /* rule4en */
-#define YSTORM_ETH_CONN_AG_CTX_RULE4EN_SHIFT              7
-	u8 tx_q0_int_coallecing_timeset /* byte2 */;
-	u8 byte3 /* byte3 */;
-	__le16 word0 /* word0 */;
-	__le32 terminate_spqe /* reg0 */;
-	__le32 reg1 /* reg1 */;
-	__le16 tx_bd_cons_upd /* word1 */;
-	__le16 word2 /* word2 */;
-	__le16 word3 /* word3 */;
-	__le16 word4 /* word4 */;
-	__le32 reg2 /* reg2 */;
-	__le32 reg3 /* reg3 */;
-};
-
 struct tstorm_eth_conn_ag_ctx {
 	u8 byte0 /* cdu_validation */;
 	u8 byte1 /* state */;
@@ -458,6 +407,57 @@ struct tstorm_eth_conn_ag_ctx {
 	__le32 reg10 /* reg10 */;
 };
 
+/*
+ * The eth storm context for the Ystorm
+ */
+struct ystorm_eth_conn_st_ctx {
+	__le32 reserved[8];
+};
+
+struct ystorm_eth_conn_ag_ctx {
+	u8 byte0 /* cdu_validation */;
+	u8 state /* state */;
+	u8 flags0;
+#define YSTORM_ETH_CONN_AG_CTX_BIT0_MASK                  0x1 /* exist_in_qm0 */
+#define YSTORM_ETH_CONN_AG_CTX_BIT0_SHIFT                 0
+#define YSTORM_ETH_CONN_AG_CTX_BIT1_MASK                  0x1 /* exist_in_qm1 */
+#define YSTORM_ETH_CONN_AG_CTX_BIT1_SHIFT                 1
+#define YSTORM_ETH_CONN_AG_CTX_TX_BD_CONS_UPD_CF_MASK     0x3 /* cf0 */
+#define YSTORM_ETH_CONN_AG_CTX_TX_BD_CONS_UPD_CF_SHIFT    2
+#define YSTORM_ETH_CONN_AG_CTX_PMD_TERMINATE_CF_MASK      0x3 /* cf1 */
+#define YSTORM_ETH_CONN_AG_CTX_PMD_TERMINATE_CF_SHIFT     4
+#define YSTORM_ETH_CONN_AG_CTX_CF2_MASK                   0x3 /* cf2 */
+#define YSTORM_ETH_CONN_AG_CTX_CF2_SHIFT                  6
+	u8 flags1;
+#define YSTORM_ETH_CONN_AG_CTX_TX_BD_CONS_UPD_CF_EN_MASK  0x1 /* cf0en */
+#define YSTORM_ETH_CONN_AG_CTX_TX_BD_CONS_UPD_CF_EN_SHIFT 0
+#define YSTORM_ETH_CONN_AG_CTX_PMD_TERMINATE_CF_EN_MASK   0x1 /* cf1en */
+#define YSTORM_ETH_CONN_AG_CTX_PMD_TERMINATE_CF_EN_SHIFT  1
+#define YSTORM_ETH_CONN_AG_CTX_CF2EN_MASK                 0x1 /* cf2en */
+#define YSTORM_ETH_CONN_AG_CTX_CF2EN_SHIFT                2
+#define YSTORM_ETH_CONN_AG_CTX_RULE0EN_MASK               0x1 /* rule0en */
+#define YSTORM_ETH_CONN_AG_CTX_RULE0EN_SHIFT              3
+#define YSTORM_ETH_CONN_AG_CTX_RULE1EN_MASK               0x1 /* rule1en */
+#define YSTORM_ETH_CONN_AG_CTX_RULE1EN_SHIFT              4
+#define YSTORM_ETH_CONN_AG_CTX_RULE2EN_MASK               0x1 /* rule2en */
+#define YSTORM_ETH_CONN_AG_CTX_RULE2EN_SHIFT              5
+#define YSTORM_ETH_CONN_AG_CTX_RULE3EN_MASK               0x1 /* rule3en */
+#define YSTORM_ETH_CONN_AG_CTX_RULE3EN_SHIFT              6
+#define YSTORM_ETH_CONN_AG_CTX_RULE4EN_MASK               0x1 /* rule4en */
+#define YSTORM_ETH_CONN_AG_CTX_RULE4EN_SHIFT              7
+	u8 tx_q0_int_coallecing_timeset /* byte2 */;
+	u8 byte3 /* byte3 */;
+	__le16 word0 /* word0 */;
+	__le32 terminate_spqe /* reg0 */;
+	__le32 reg1 /* reg1 */;
+	__le16 tx_bd_cons_upd /* word1 */;
+	__le16 word2 /* word2 */;
+	__le16 word3 /* word3 */;
+	__le16 word4 /* word4 */;
+	__le32 reg2 /* reg2 */;
+	__le32 reg3 /* reg3 */;
+};
+
 struct ustorm_eth_conn_ag_ctx {
 	u8 byte0 /* cdu_validation */;
 	u8 byte1 /* state */;
@@ -557,12 +557,12 @@ struct eth_conn_context {
 	struct xstorm_eth_conn_st_ctx xstorm_st_context;
 /* xstorm aggregative context */
 	struct xstorm_eth_conn_ag_ctx xstorm_ag_context;
+/* tstorm aggregative context */
+	struct tstorm_eth_conn_ag_ctx tstorm_ag_context;
 /* ystorm storm context */
 	struct ystorm_eth_conn_st_ctx ystorm_st_context;
 /* ystorm aggregative context */
 	struct ystorm_eth_conn_ag_ctx ystorm_ag_context;
-/* tstorm aggregative context */
-	struct tstorm_eth_conn_ag_ctx tstorm_ag_context;
 /* ustorm aggregative context */
 	struct ustorm_eth_conn_ag_ctx ustorm_ag_context;
 /* ustorm storm context */
@@ -792,13 +792,31 @@ enum eth_ramrod_cmd_id {
 struct eth_return_code {
 	u8 value;
 /* error code (use enum eth_error_code) */
-#define ETH_RETURN_CODE_ERR_CODE_MASK  0x1F
+#define ETH_RETURN_CODE_ERR_CODE_MASK  0x3F
 #define ETH_RETURN_CODE_ERR_CODE_SHIFT 0
-#define ETH_RETURN_CODE_RESERVED_MASK  0x3
-#define ETH_RETURN_CODE_RESERVED_SHIFT 5
+#define ETH_RETURN_CODE_RESERVED_MASK  0x1
+#define ETH_RETURN_CODE_RESERVED_SHIFT 6
 /* rx path - 0, tx path - 1 */
 #define ETH_RETURN_CODE_RX_TX_MASK     0x1
 #define ETH_RETURN_CODE_RX_TX_SHIFT    7
+};
+
+
+/*
+ * tx destination enum
+ */
+enum eth_tx_dst_mode_config_enum {
+/* tx destination configuration override is disabled */
+	ETH_TX_DST_MODE_CONFIG_DISABLE,
+/* tx destination configuration override is enabled, vport and tx dst will be
+ * taken from from 4th bd
+ */
+	ETH_TX_DST_MODE_CONFIG_FORWARD_DATA_IN_BD,
+/* tx destination configuration override is enabled, vport and tx dst will be
+ * taken from from vport data
+ */
+	ETH_TX_DST_MODE_CONFIG_FORWARD_DATA_IN_VPORT,
+	MAX_ETH_TX_DST_MODE_CONFIG_ENUM
 };
 
 
@@ -1431,7 +1449,7 @@ struct vport_update_ramrod_data {
 
 struct E4XstormEthConnAgCtxDqExtLdPart {
 	u8 reserved0 /* cdu_validation */;
-	u8 eth_state /* state */;
+	u8 state /* state */;
 	u8 flags0;
 /* exist_in_qm0 */
 #define E4XSTORMETHCONNAGCTXDQEXTLDPART_EXIST_IN_QM0_MASK            0x1

@@ -10,6 +10,7 @@
 #include "bcm_osal.h"
 #include "ecore.h"
 #include "ecore_hw.h"
+#include "ecore_dev_api.h"
 #include "ecore_iov_api.h"
 #include "ecore_mcp_api.h"
 #include "ecore_l2_api.h"

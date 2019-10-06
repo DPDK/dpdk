@@ -57,7 +57,7 @@ struct ystorm_core_conn_st_ctx {
  * The core storm context for the Pstorm
  */
 struct pstorm_core_conn_st_ctx {
-	__le32 reserved[4];
+	__le32 reserved[20];
 };
 
 /*
@@ -75,7 +75,7 @@ struct xstorm_core_conn_st_ctx {
 
 struct xstorm_core_conn_ag_ctx {
 	u8 reserved0 /* cdu_validation */;
-	u8 core_state /* state */;
+	u8 state /* state */;
 	u8 flags0;
 #define XSTORM_CORE_CONN_AG_CTX_EXIST_IN_QM0_MASK         0x1 /* exist_in_qm0 */
 #define XSTORM_CORE_CONN_AG_CTX_EXIST_IN_QM0_SHIFT        0
@@ -516,13 +516,20 @@ struct ustorm_core_conn_ag_ctx {
  * The core storm context for the Mstorm
  */
 struct mstorm_core_conn_st_ctx {
-	__le32 reserved[24];
+	__le32 reserved[40];
 };
 
 /*
  * The core storm context for the Ustorm
  */
 struct ustorm_core_conn_st_ctx {
+	__le32 reserved[20];
+};
+
+/*
+ * The core storm context for the Tstorm
+ */
+struct tstorm_core_conn_st_ctx {
 	__le32 reserved[4];
 };
 
@@ -549,6 +556,9 @@ struct core_conn_context {
 /* ustorm storm context */
 	struct ustorm_core_conn_st_ctx ustorm_st_context;
 	struct regpair ustorm_st_padding[2] /* padding */;
+/* tstorm storm context */
+	struct tstorm_core_conn_st_ctx tstorm_st_context;
+	struct regpair tstorm_st_padding[2] /* padding */;
 };
 
 
@@ -573,6 +583,7 @@ enum core_event_opcode {
 	CORE_EVENT_RX_QUEUE_STOP,
 	CORE_EVENT_RX_QUEUE_FLUSH,
 	CORE_EVENT_TX_QUEUE_UPDATE,
+	CORE_EVENT_QUEUE_STATS_QUERY,
 	MAX_CORE_EVENT_OPCODE
 };
 
@@ -601,7 +612,7 @@ struct core_ll2_port_stats {
 
 
 /*
- * Ethernet TX Per Queue Stats
+ * LL2 TX Per Queue Stats
  */
 struct core_ll2_pstorm_per_queue_stat {
 /* number of total bytes sent without errors */
@@ -616,16 +627,8 @@ struct core_ll2_pstorm_per_queue_stat {
 	struct regpair sent_mcast_pkts;
 /* number of total packets sent without errors */
 	struct regpair sent_bcast_pkts;
-};
-
-
-/*
- * Light-L2 RX Producers in Tstorm RAM
- */
-struct core_ll2_rx_prod {
-	__le16 bd_prod /* BD Producer */;
-	__le16 cqe_prod /* CQE Producer */;
-	__le32 reserved;
+/* number of total packets dropped due to errors */
+	struct regpair error_drop_pkts;
 };
 
 
@@ -636,7 +639,6 @@ struct core_ll2_tstorm_per_queue_stat {
 	struct regpair no_buff_discard;
 };
 
-
 struct core_ll2_ustorm_per_queue_stat {
 	struct regpair rcv_ucast_bytes;
 	struct regpair rcv_mcast_bytes;
@@ -644,6 +646,59 @@ struct core_ll2_ustorm_per_queue_stat {
 	struct regpair rcv_ucast_pkts;
 	struct regpair rcv_mcast_pkts;
 	struct regpair rcv_bcast_pkts;
+};
+
+
+/*
+ * Light-L2 RX Producers
+ */
+struct core_ll2_rx_prod {
+	__le16 bd_prod /* BD Producer */;
+	__le16 cqe_prod /* CQE Producer */;
+};
+
+
+
+struct core_ll2_tx_per_queue_stat {
+/* PSTORM per queue statistics */
+	struct core_ll2_pstorm_per_queue_stat pstorm_stat;
+};
+
+
+
+/*
+ * Structure for doorbell data, in PWM mode, for RX producers update.
+ */
+struct core_pwm_prod_update_data {
+	__le16 icid /* internal CID */;
+	u8 reserved0;
+	u8 params;
+/* aggregative command. Set DB_AGG_CMD_SET for producer update
+ * (use enum db_agg_cmd_sel)
+ */
+#define CORE_PWM_PROD_UPDATE_DATA_AGG_CMD_MASK    0x3
+#define CORE_PWM_PROD_UPDATE_DATA_AGG_CMD_SHIFT   0
+#define CORE_PWM_PROD_UPDATE_DATA_RESERVED1_MASK  0x3F /* Set 0. */
+#define CORE_PWM_PROD_UPDATE_DATA_RESERVED1_SHIFT 2
+	struct core_ll2_rx_prod prod /* Producers. */;
+};
+
+
+/*
+ * Ramrod data for rx/tx queue statistics query ramrod
+ */
+struct core_queue_stats_query_ramrod_data {
+	u8 rx_stat /* If set, collect RX queue statistics. */;
+	u8 tx_stat /* If set, collect TX queue statistics. */;
+	__le16 reserved[3];
+/* Address of RX statistic buffer. core_ll2_rx_per_queue_stat struct will be
+ * write to this address.
+ */
+	struct regpair rx_stat_addr;
+/* Address of TX statistic buffer. core_ll2_tx_per_queue_stat struct will be
+ * write to this address.
+ */
+	struct regpair tx_stat_addr;
 };
 
 
@@ -658,6 +713,7 @@ enum core_ramrod_cmd_id {
 	CORE_RAMROD_TX_QUEUE_STOP /* TX Queue Stop Ramrod */,
 	CORE_RAMROD_RX_QUEUE_FLUSH /* RX Flush queue Ramrod */,
 	CORE_RAMROD_TX_QUEUE_UPDATE /* TX Queue Update Ramrod */,
+	CORE_RAMROD_QUEUE_STATS_QUERY /* Queue Statist Query Ramrod */,
 	MAX_CORE_RAMROD_CMD_ID
 };
 
@@ -772,7 +828,8 @@ struct core_rx_gsi_offload_cqe {
 /* These are the lower 16 bit of QP id in RoCE BTH header */
 	__le16 qp_id;
 	__le32 src_qp /* Source QP from DETH header */;
-	__le32 reserved[3];
+	struct core_rx_cqe_opaque_data opaque_data /* Opaque Data */;
+	__le32 reserved;
 };
 
 /*
@@ -803,24 +860,21 @@ union core_rx_cqe_union {
  * Ramrod data for rx queue start ramrod
  */
 struct core_rx_start_ramrod_data {
-	struct regpair bd_base /* bd address of the first bd page */;
+	struct regpair bd_base /* Address of the first BD page */;
 	struct regpair cqe_pbl_addr /* Base address on host of CQE PBL */;
-	__le16 mtu /* Maximum transmission unit */;
+	__le16 mtu /* MTU */;
 	__le16 sb_id /* Status block ID */;
-	u8 sb_index /* index of the protocol index */;
-	u8 complete_cqe_flg /* post completion to the CQE ring if set */;
-	u8 complete_event_flg /* post completion to the event ring if set */;
-	u8 drop_ttl0_flg /* drop packet with ttl0 if set */;
-	__le16 num_of_pbl_pages /* Num of pages in CQE PBL */;
-/* if set, 802.1q tags will be removed and copied to CQE */
-/* if set, 802.1q tags will be removed and copied to CQE */
+	u8 sb_index /* Status block index */;
+	u8 complete_cqe_flg /* if set - post completion to the CQE ring */;
+	u8 complete_event_flg /* if set - post completion to the event ring */;
+	u8 drop_ttl0_flg /* if set - drop packet with ttl=0 */;
+	__le16 num_of_pbl_pages /* Number of pages in CQE PBL */;
+/* if set - 802.1q tag will be removed and copied to CQE */
 	u8 inner_vlan_stripping_en;
-/* if set and inner vlan does not exist, the outer vlan will copied to CQE as
- * inner vlan. should be used in MF_OVLAN mode only.
- */
-	u8 report_outer_vlan;
+/* if set - outer tag wont be stripped, valid only in MF OVLAN mode. */
+	u8 outer_vlan_stripping_dis;
 	u8 queue_id /* Light L2 RX Queue ID */;
-	u8 main_func_queue /* Is this the main queue for the PF */;
+	u8 main_func_queue /* Set if this is the main PFs LL2 queue */;
 /* Duplicate broadcast packets to LL2 main queue in mf_si mode. Valid if
  * main_func_queue is set.
  */
@@ -829,17 +883,21 @@ struct core_rx_start_ramrod_data {
  * main_func_queue is set.
  */
 	u8 mf_si_mcast_accept_all;
-/* Specifies how ll2 should deal with packets errors: packet_too_big and
- * no_buff
+/* If set, the inner vlan (802.1q tag) priority that is written to cqe will be
+ * zero out, used for TenantDcb
  */
+/* Specifies how ll2 should deal with RX packets errors */
 	struct core_rx_action_on_error action_on_error;
-/* set when in GSI offload mode on ROCE connection */
-	u8 gsi_offload_flag;
+	u8 gsi_offload_flag /* set for GSI offload mode */;
+/* If set, queue is subject for RX VFC classification. */
+	u8 vport_id_valid;
+	u8 vport_id /* Queue VPORT for RX VFC classification. */;
+	u8 zero_prod_flg /* If set, zero RX producers. */;
 /* If set, the inner vlan (802.1q tag) priority that is written to cqe will be
  * zero out, used for TenantDcb
  */
 	u8 wipe_inner_vlan_pri_en;
-	u8 reserved[5];
+	u8 reserved[2];
 };
 
 
@@ -959,13 +1017,14 @@ struct core_tx_start_ramrod_data {
 	u8 conn_type /* connection type that loaded ll2 */;
 	__le16 pbl_size /* Number of BD pages pointed by PBL */;
 	__le16 qm_pq_id /* QM PQ ID */;
-/* set when in GSI offload mode on ROCE connection */
-	u8 gsi_offload_flag;
+	u8 gsi_offload_flag /* set for GSI offload mode */;
+	u8 ctx_stats_en /* Context statistics enable */;
+/* If set, queue is part of VPORT and subject for TX switching. */
+	u8 vport_id_valid;
 /* vport id of the current connection, used to access non_rdma_in_to_in_pri_map
  * which is per vport
  */
 	u8 vport_id;
-	u8 resrved[2];
 };
 
 
@@ -1048,12 +1107,23 @@ struct eth_pstorm_per_pf_stat {
 	struct regpair sent_gre_bytes /* Sent GRE bytes */;
 	struct regpair sent_vxlan_bytes /* Sent VXLAN bytes */;
 	struct regpair sent_geneve_bytes /* Sent GENEVE bytes */;
-	struct regpair sent_gre_pkts /* Sent GRE packets */;
+	struct regpair sent_mpls_bytes /* Sent MPLS bytes */;
+	struct regpair sent_gre_mpls_bytes /* Sent GRE MPLS bytes (E5 Only) */;
+	struct regpair sent_udp_mpls_bytes /* Sent GRE MPLS bytes (E5 Only) */;
+	struct regpair sent_gre_pkts /* Sent GRE packets (E5 Only) */;
 	struct regpair sent_vxlan_pkts /* Sent VXLAN packets */;
 	struct regpair sent_geneve_pkts /* Sent GENEVE packets */;
+	struct regpair sent_mpls_pkts /* Sent MPLS packets (E5 Only) */;
+	struct regpair sent_gre_mpls_pkts /* Sent GRE MPLS packets (E5 Only) */;
+	struct regpair sent_udp_mpls_pkts /* Sent UDP MPLS packets (E5 Only) */;
 	struct regpair gre_drop_pkts /* Dropped GRE TX packets */;
 	struct regpair vxlan_drop_pkts /* Dropped VXLAN TX packets */;
 	struct regpair geneve_drop_pkts /* Dropped GENEVE TX packets */;
+	struct regpair mpls_drop_pkts /* Dropped MPLS TX packets (E5 Only) */;
+/* Dropped GRE MPLS TX packets (E5 Only) */
+	struct regpair gre_mpls_drop_pkts;
+/* Dropped UDP MPLS TX packets (E5 Only) */
+	struct regpair udp_mpls_drop_pkts;
 };
 
 
@@ -1176,6 +1246,8 @@ union event_ring_data {
 	struct iscsi_eqe_data iscsi_info /* Dedicated fields to iscsi data */;
 /* Dedicated fields to iscsi connect done results */
 	struct iscsi_connect_done_results iscsi_conn_done_info;
+	union rdma_eqe_data rdma_data /* Dedicated field for RDMA data */;
+	struct nvmf_eqe_data nvmf_data /* Dedicated field for NVMf data */;
 	struct malicious_vf_eqe_data malicious_vf /* Malicious VF data */;
 /* VF Initial Cleanup data */
 	struct initial_cleanup_eqe_data vf_init_cleanup;
@@ -1187,10 +1259,14 @@ union event_ring_data {
  */
 struct event_ring_entry {
 	u8 protocol_id /* Event Protocol ID (use enum protocol_type) */;
-	u8 opcode /* Event Opcode */;
-	__le16 reserved0 /* Reserved */;
+	u8 opcode /* Event Opcode (Per Protocol Type) */;
+	u8 reserved0 /* Reserved */;
+	u8 vfId /* vfId for this event, 0xFF if this is a PF event */;
 	__le16 echo /* Echo value from ramrod data on the host */;
-	u8 fw_return_code /* FW return code for SP ramrods */;
+/* FW return code for SP ramrods. Use (according to protocol) eth_return_code,
+ * or rdma_fw_return_code, or fcoe_completion_status
+ */
+	u8 fw_return_code;
 	u8 flags;
 /* 0: synchronous EQE - a completion of SP message. 1: asynchronous EQE */
 #define EVENT_RING_ENTRY_ASYNC_MASK      0x1
@@ -1320,6 +1396,22 @@ enum malicious_vf_error_id {
 	ETH_TUNN_IPV6_EXT_NBD_ERR,
 	ETH_CONTROL_PACKET_VIOLATION /* VF sent control frame such as PFC */,
 	ETH_ANTI_SPOOFING_ERR /* Anti-Spoofing verification failure */,
+/* packet scanned is too large (can be 9700 at most) */
+	ETH_PACKET_SIZE_TOO_LARGE,
+/* Tx packet with marked as insert VLAN when its illegal */
+	CORE_ILLEGAL_VLAN_MODE,
+/* indicated number of BDs for the packet is illegal */
+	CORE_ILLEGAL_NBDS,
+	CORE_FIRST_BD_WO_SOP /* 1st BD must have start_bd flag set */,
+/* There are not enough BDs for transmission of even one packet */
+	CORE_INSUFFICIENT_BDS,
+/* TX packet is shorter then reported on BDs or from minimal size */
+	CORE_PACKET_TOO_SMALL,
+	CORE_ILLEGAL_INBAND_TAGS /* TX packet has illegal inband tags marked */,
+	CORE_VLAN_INSERT_AND_INBAND_VLAN /* Vlan cant be added to inband tag */,
+	CORE_MTU_VIOLATION /* TX packet is greater then MTU */,
+	CORE_CONTROL_PACKET_VIOLATION /* VF sent control frame such as PFC */,
+	CORE_ANTI_SPOOFING_ERR /* Anti-Spoofing verification failure */,
 	MAX_MALICIOUS_VF_ERROR_ID
 };
 
@@ -1837,6 +1929,23 @@ enum vf_zone_size_mode {
 
 
 
+/*
+ * Xstorm non-triggering VF zone
+ */
+struct xstorm_non_trigger_vf_zone {
+	struct regpair non_edpm_ack_pkts /* RoCE received statistics */;
+};
+
+
+/*
+ * Tstorm VF zone
+ */
+struct xstorm_vf_zone {
+/* non-interrupt-triggering zone */
+	struct xstorm_non_trigger_vf_zone non_trigger;
+};
+
+
 
 /*
  * Attentions status block
@@ -2202,6 +2311,44 @@ struct igu_msix_vector {
 #define IGU_MSIX_VECTOR_STEERING_TAG_SHIFT 16
 #define IGU_MSIX_VECTOR_RESERVED1_MASK     0xFF
 #define IGU_MSIX_VECTOR_RESERVED1_SHIFT    24
+};
+
+
+struct mstorm_core_conn_ag_ctx {
+	u8 byte0 /* cdu_validation */;
+	u8 byte1 /* state */;
+	u8 flags0;
+#define MSTORM_CORE_CONN_AG_CTX_BIT0_MASK     0x1 /* exist_in_qm0 */
+#define MSTORM_CORE_CONN_AG_CTX_BIT0_SHIFT    0
+#define MSTORM_CORE_CONN_AG_CTX_BIT1_MASK     0x1 /* exist_in_qm1 */
+#define MSTORM_CORE_CONN_AG_CTX_BIT1_SHIFT    1
+#define MSTORM_CORE_CONN_AG_CTX_CF0_MASK      0x3 /* cf0 */
+#define MSTORM_CORE_CONN_AG_CTX_CF0_SHIFT     2
+#define MSTORM_CORE_CONN_AG_CTX_CF1_MASK      0x3 /* cf1 */
+#define MSTORM_CORE_CONN_AG_CTX_CF1_SHIFT     4
+#define MSTORM_CORE_CONN_AG_CTX_CF2_MASK      0x3 /* cf2 */
+#define MSTORM_CORE_CONN_AG_CTX_CF2_SHIFT     6
+	u8 flags1;
+#define MSTORM_CORE_CONN_AG_CTX_CF0EN_MASK    0x1 /* cf0en */
+#define MSTORM_CORE_CONN_AG_CTX_CF0EN_SHIFT   0
+#define MSTORM_CORE_CONN_AG_CTX_CF1EN_MASK    0x1 /* cf1en */
+#define MSTORM_CORE_CONN_AG_CTX_CF1EN_SHIFT   1
+#define MSTORM_CORE_CONN_AG_CTX_CF2EN_MASK    0x1 /* cf2en */
+#define MSTORM_CORE_CONN_AG_CTX_CF2EN_SHIFT   2
+#define MSTORM_CORE_CONN_AG_CTX_RULE0EN_MASK  0x1 /* rule0en */
+#define MSTORM_CORE_CONN_AG_CTX_RULE0EN_SHIFT 3
+#define MSTORM_CORE_CONN_AG_CTX_RULE1EN_MASK  0x1 /* rule1en */
+#define MSTORM_CORE_CONN_AG_CTX_RULE1EN_SHIFT 4
+#define MSTORM_CORE_CONN_AG_CTX_RULE2EN_MASK  0x1 /* rule2en */
+#define MSTORM_CORE_CONN_AG_CTX_RULE2EN_SHIFT 5
+#define MSTORM_CORE_CONN_AG_CTX_RULE3EN_MASK  0x1 /* rule3en */
+#define MSTORM_CORE_CONN_AG_CTX_RULE3EN_SHIFT 6
+#define MSTORM_CORE_CONN_AG_CTX_RULE4EN_MASK  0x1 /* rule4en */
+#define MSTORM_CORE_CONN_AG_CTX_RULE4EN_SHIFT 7
+	__le16 word0 /* word0 */;
+	__le16 word1 /* word1 */;
+	__le32 reg0 /* reg0 */;
+	__le32 reg1 /* reg1 */;
 };
 
 

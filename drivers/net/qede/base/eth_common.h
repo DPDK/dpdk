@@ -16,13 +16,16 @@
 /* ETH FP HSI Major version */
 #define ETH_HSI_VER_MAJOR                   3
 /* ETH FP HSI Minor version */
-#define ETH_HSI_VER_MINOR                   10
+#define ETH_HSI_VER_MINOR                   11   /* ETH FP HSI Minor version */
 
 /* Alias for 8.7.x.x/8.8.x.x ETH FP HSI MINOR version. In this version driver
  * is not required to set pkt_len field in eth_tx_1st_bd struct, and tunneling
  * offload is not supported.
  */
 #define ETH_HSI_VER_NO_PKT_LEN_TUNN         5
+
+/* Maximum number of pinned L2 connections (CIDs)*/
+#define ETH_PINNED_CONN_MAX_NUM             32
 
 #define ETH_CACHE_LINE_SIZE                 64
 #define ETH_RX_CQE_GAP                      32
@@ -48,6 +51,7 @@
 #define ETH_TX_MIN_BDS_PER_TUNN_IPV6_WITH_EXT_PKT   3
 #define ETH_TX_MIN_BDS_PER_IPV6_WITH_EXT_PKT        2
 #define ETH_TX_MIN_BDS_PER_PKT_W_LOOPBACK_MODE      2
+#define ETH_TX_MIN_BDS_PER_PKT_W_VPORT_FORWARDING   4
 /* (QM_REG_TASKBYTECRDCOST_0, QM_VOQ_BYTE_CRD_TASK_COST) -
  * (VLAN-TAG + CRC + IPG + PREAMBLE)
  */
@@ -80,7 +84,7 @@
 /* Minimum number of free BDs in RX ring, that guarantee receiving of at least
  * one RX packet.
  */
-#define ETH_RX_BD_THRESHOLD                12
+#define ETH_RX_BD_THRESHOLD                16
 
 /* num of MAC/VLAN filters */
 #define ETH_NUM_MAC_FILTERS                 512
@@ -98,20 +102,20 @@
 #define ETH_RSS_IND_TABLE_ENTRIES_NUM       128
 /* Length of RSS key (in regs) */
 #define ETH_RSS_KEY_SIZE_REGS               10
-/* number of available RSS engines in K2 */
+/* number of available RSS engines in AH */
 #define ETH_RSS_ENGINE_NUM_K2               207
 /* number of available RSS engines in BB */
 #define ETH_RSS_ENGINE_NUM_BB               127
 
 /* TPA constants */
 /* Maximum number of open TPA aggregations */
-#define ETH_TPA_MAX_AGGS_NUM              64
-/* Maximum number of additional buffers, reported by TPA-start CQE */
-#define ETH_TPA_CQE_START_LEN_LIST_SIZE   ETH_RX_MAX_BUFF_PER_PKT
+#define ETH_TPA_MAX_AGGS_NUM                64
+/* TPA-start CQE additional BD list length. Used for backward compatible  */
+#define ETH_TPA_CQE_START_BW_LEN_LIST_SIZE  2
 /* Maximum number of buffers, reported by TPA-continue CQE */
-#define ETH_TPA_CQE_CONT_LEN_LIST_SIZE    6
+#define ETH_TPA_CQE_CONT_LEN_LIST_SIZE      6
 /* Maximum number of buffers, reported by TPA-end CQE */
-#define ETH_TPA_CQE_END_LEN_LIST_SIZE     4
+#define ETH_TPA_CQE_END_LEN_LIST_SIZE       4
 
 /* Control frame check constants */
 /* Number of etherType values configured by driver for control frame check */
@@ -125,12 +129,12 @@
 /*
  * Destination port mode
  */
-enum dest_port_mode {
-	DEST_PORT_PHY /* Send to physical port. */,
-	DEST_PORT_LOOPBACK /* Send to loopback port. */,
-	DEST_PORT_PHY_LOOPBACK /* Send to physical and loopback port. */,
-	DEST_PORT_DROP /* Drop the packet in PBF. */,
-	MAX_DEST_PORT_MODE
+enum dst_port_mode {
+	DST_PORT_PHY /* Send to physical port. */,
+	DST_PORT_LOOPBACK /* Send to loopback port. */,
+	DST_PORT_PHY_LOOPBACK /* Send to physical and loopback port. */,
+	DST_PORT_DROP /* Drop the packet in PBF. */,
+	MAX_DST_PORT_MODE
 };
 
 
@@ -353,9 +357,13 @@ struct eth_fast_path_rx_reg_cqe {
 /* Tunnel Parsing Flags */
 	struct eth_tunnel_parsing_flags tunnel_pars_flags;
 	u8 bd_num /* Number of BDs, used for packet */;
-	u8 reserved[9];
-	struct eth_fast_path_cqe_fw_debug fw_debug /* FW reserved. */;
-	u8 reserved1[3];
+	u8 reserved;
+	__le16 reserved2;
+/* aRFS flow ID or Resource ID - Indicates a Vport ID from which packet was
+ * sent, used when sending from VF to VF Representor.
+ */
+	__le32 flow_id_or_resource_id;
+	u8 reserved1[7];
 	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
 
@@ -422,10 +430,14 @@ struct eth_fast_path_rx_tpa_start_cqe {
 	struct eth_tunnel_parsing_flags tunnel_pars_flags;
 	u8 tpa_agg_index /* TPA aggregation index */;
 	u8 header_len /* Packet L2+L3+L4 header length */;
-/* Additional BDs length list. */
-	__le16 ext_bd_len_list[ETH_TPA_CQE_START_LEN_LIST_SIZE];
-	struct eth_fast_path_cqe_fw_debug fw_debug /* FW reserved. */;
-	u8 reserved;
+/* Additional BDs length list. Used for backward compatible. */
+	__le16 bw_ext_bd_len_list[ETH_TPA_CQE_START_BW_LEN_LIST_SIZE];
+	__le16 reserved2;
+/* aRFS or GFS flow ID or Resource ID - Indicates a Vport ID from which packet
+ * was sent, used when sending from VF to VF Representor
+ */
+	__le32 flow_id_or_resource_id;
+	u8 reserved[3];
 	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
 
@@ -603,6 +615,41 @@ struct eth_tx_3rd_bd {
 
 
 /*
+ * The parsing information data for the forth tx bd of a given packet.
+ */
+struct eth_tx_data_4th_bd {
+/* Destination Vport ID to forward the packet, applicable only when
+ * tx_dst_port_mode_config == ETH_TX_DST_MODE_CONFIG_FORWARD_DATA_IN_BD and
+ * dst_port_mode == DST_PORT_LOOPBACK, used to route the packet from VF
+ * Representor to VF
+ */
+	u8 dst_vport_id;
+	u8 reserved4;
+	__le16 bitfields;
+/* if set, dst_vport_id has a valid value and will be used in FW */
+#define ETH_TX_DATA_4TH_BD_DST_VPORT_ID_VALID_MASK  0x1
+#define ETH_TX_DATA_4TH_BD_DST_VPORT_ID_VALID_SHIFT 0
+#define ETH_TX_DATA_4TH_BD_RESERVED1_MASK           0x7F
+#define ETH_TX_DATA_4TH_BD_RESERVED1_SHIFT          1
+/* Should be 0 in all the BDs, except the first one. (for debug) */
+#define ETH_TX_DATA_4TH_BD_START_BD_MASK            0x1
+#define ETH_TX_DATA_4TH_BD_START_BD_SHIFT           8
+#define ETH_TX_DATA_4TH_BD_RESERVED2_MASK           0x7F
+#define ETH_TX_DATA_4TH_BD_RESERVED2_SHIFT          9
+	__le16 reserved3;
+};
+
+/*
+ * The forth tx bd of a given packet
+ */
+struct eth_tx_4th_bd {
+	struct regpair addr /* Single continuous buffer */;
+	__le16 nbytes /* Number of bytes in this BD. */;
+	struct eth_tx_data_4th_bd data /* Parsing information data. */;
+};
+
+
+/*
  * Complementary information for the regular tx bd of a given packet.
  */
 struct eth_tx_data_bd {
@@ -633,7 +680,8 @@ union eth_tx_bd_types {
 /* The second tx bd of a given packet */
 	struct eth_tx_2nd_bd second_bd;
 	struct eth_tx_3rd_bd third_bd /* The third tx bd of a given packet */;
-	struct eth_tx_bd reg_bd /* The common non-special bd */;
+	struct eth_tx_4th_bd fourth_bd /* The fourth tx bd of a given packet */;
+	struct eth_tx_bd reg_bd /* The common regular bd */;
 };
 
 
@@ -650,6 +698,15 @@ enum eth_tx_tunn_type {
 	ETH_TX_TUNN_GRE /* GRE Tunnel. */,
 	ETH_TX_TUNN_VXLAN /* VXLAN Tunnel. */,
 	MAX_ETH_TX_TUNN_TYPE
+};
+
+
+/*
+ * Mstorm Queue Zone
+ */
+struct mstorm_eth_queue_zone {
+	struct eth_rx_prod_data rx_producers /* ETH Rx producers data */;
+	__le32 reserved[3];
 };
 
 

@@ -8,9 +8,8 @@
 #define __ECORE_HW_H__
 
 #include "ecore.h"
-#include "ecore_dev_api.h"
 
-/* Forward decleration */
+/* Forward declaration */
 struct ecore_ptt;
 
 enum reserved_ptts {
@@ -53,10 +52,8 @@ enum reserved_ptts {
 * @brief ecore_gtt_init - Initialize GTT windows
 *
 * @param p_hwfn
-* @param p_ptt
 */
-void ecore_gtt_init(struct ecore_hwfn *p_hwfn,
-		    struct ecore_ptt *p_ptt);
+void ecore_gtt_init(struct ecore_hwfn *p_hwfn);
 
 /**
  * @brief ecore_ptt_invalidate - Forces all ptt entries to be re-configured
@@ -84,7 +81,6 @@ void ecore_ptt_pool_free(struct ecore_hwfn *p_hwfn);
 /**
  * @brief ecore_ptt_get_bar_addr - Get PPT's external BAR address
  *
- * @param p_hwfn
  * @param p_ptt
  *
  * @return u32
@@ -95,8 +91,8 @@ u32 ecore_ptt_get_bar_addr(struct ecore_ptt	*p_ptt);
  * @brief ecore_ptt_set_win - Set PTT Window's GRC BAR address
  *
  * @param p_hwfn
- * @param new_hw_addr
  * @param p_ptt
+ * @param new_hw_addr
  */
 void ecore_ptt_set_win(struct ecore_hwfn	*p_hwfn,
 		       struct ecore_ptt		*p_ptt,
