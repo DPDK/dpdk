@@ -15,7 +15,6 @@
 
 #include "ecore_iro_values.h"
 #include "ecore_sriov.h"
-#include "ecore_gtt_values.h"
 #include "reg_addr.h"
 #include "ecore_init_ops.h"
 
@@ -24,7 +23,7 @@
 
 void ecore_init_iro_array(struct ecore_dev *p_dev)
 {
-	p_dev->iro_arr = iro_arr;
+	p_dev->iro_arr = iro_arr + E4_IRO_ARR_OFFSET;
 }
 
 /* Runtime configuration helpers */
@@ -473,9 +472,9 @@ enum _ecore_status_t ecore_init_run(struct ecore_hwfn *p_hwfn,
 				    int phase, int phase_id, int modes)
 {
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
+	bool b_dmae = (phase != PHASE_ENGINE);
 	u32 cmd_num, num_init_ops;
 	union init_op *init;
-	bool b_dmae = false;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	num_init_ops = p_dev->fw_data->init_ops_size;
@@ -511,7 +510,6 @@ enum _ecore_status_t ecore_init_run(struct ecore_hwfn *p_hwfn,
 		case INIT_OP_IF_PHASE:
 			cmd_num += ecore_init_cmd_phase(&cmd->if_phase, phase,
 							phase_id);
-			b_dmae = GET_FIELD(data, INIT_IF_PHASE_OP_DMAE_ENABLE);
 			break;
 		case INIT_OP_DELAY:
 			/* ecore_init_run is always invoked from
@@ -522,6 +520,9 @@ enum _ecore_status_t ecore_init_run(struct ecore_hwfn *p_hwfn,
 
 		case INIT_OP_CALLBACK:
 			rc = ecore_init_cmd_cb(p_hwfn, p_ptt, &cmd->callback);
+			if (phase == PHASE_ENGINE &&
+			    cmd->callback.callback_id == DMAE_READY_CB)
+				b_dmae = true;
 			break;
 		}
 
@@ -567,11 +568,17 @@ enum _ecore_status_t ecore_init_fw_data(struct ecore_dev *p_dev,
 	fw->modes_tree_buf = (u8 *)((uintptr_t)(fw_data + offset));
 	len = buf_hdr[BIN_BUF_INIT_CMD].length;
 	fw->init_ops_size = len / sizeof(struct init_raw_op);
+	offset = buf_hdr[BIN_BUF_INIT_OVERLAYS].offset;
+	fw->fw_overlays = (u32 *)(fw_data + offset);
+	len = buf_hdr[BIN_BUF_INIT_OVERLAYS].length;
+	fw->fw_overlays_len = len;
 #else
 	fw->init_ops = (union init_op *)init_ops;
 	fw->arr_data = (u32 *)init_val;
 	fw->modes_tree_buf = (u8 *)modes_tree_buf;
 	fw->init_ops_size = init_ops_size;
+	fw->fw_overlays = fw_overlays;
+	fw->fw_overlays_len = sizeof(fw_overlays);
 #endif
 
 	return ECORE_SUCCESS;

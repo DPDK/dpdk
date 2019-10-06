@@ -75,11 +75,16 @@ struct ecore_mcp_mb_params {
 	u32 cmd;
 	u32 param;
 	void *p_data_src;
-	u8 data_src_size;
 	void *p_data_dst;
-	u8 data_dst_size;
 	u32 mcp_resp;
 	u32 mcp_param;
+	u8 data_src_size;
+	u8 data_dst_size;
+	u32 flags;
+#define ECORE_MB_FLAG_CAN_SLEEP         (0x1 << 0)
+#define ECORE_MB_FLAG_AVOID_BLOCK       (0x1 << 1)
+#define ECORE_MB_FLAGS_IS_SET(params, flag) \
+	((params) != OSAL_NULL && ((params)->flags & ECORE_MB_FLAG_##flag))
 };
 
 struct ecore_drv_tlv_hdr {

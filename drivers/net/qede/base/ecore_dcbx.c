@@ -310,8 +310,9 @@ ecore_dcbx_process_tlv(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			continue;
 
 		/* if no app tlv was present, don't override in FW */
-		ecore_dcbx_update_app_info(p_data, p_hwfn, p_ptt, false,
-					   priority, tc, type);
+		ecore_dcbx_update_app_info(p_data, p_hwfn, p_ptt,
+					  p_data->arr[DCBX_PROTOCOL_ETH].enable,
+					  priority, tc, type);
 	}
 
 	return ECORE_SUCCESS;

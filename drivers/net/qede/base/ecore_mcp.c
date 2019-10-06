@@ -22,12 +22,22 @@
 #include "ecore_sp_commands.h"
 #include "ecore_cxt.h"
 
-#define CHIP_MCP_RESP_ITER_US 10
-#define EMUL_MCP_RESP_ITER_US (1000 * 1000)
 #define GRCBASE_MCP	0xe00000
 
+#define ECORE_MCP_RESP_ITER_US		10
 #define ECORE_DRV_MB_MAX_RETRIES (500 * 1000)	/* Account for 5 sec */
 #define ECORE_MCP_RESET_RETRIES (50 * 1000)	/* Account for 500 msec */
+
+#ifndef ASIC_ONLY
+/* Non-ASIC:
+ * The waiting interval is multiplied by 100 to reduce the impact of the
+ * built-in delay of 100usec in each ecore_rd().
+ * In addition, a factor of 4 comparing to ASIC is applied.
+ */
+#define ECORE_EMUL_MCP_RESP_ITER_US	(ECORE_MCP_RESP_ITER_US * 100)
+#define ECORE_EMUL_DRV_MB_MAX_RETRIES	((ECORE_DRV_MB_MAX_RETRIES / 100) * 4)
+#define ECORE_EMUL_MCP_RESET_RETRIES	((ECORE_MCP_RESET_RETRIES / 100) * 4)
+#endif
 
 #define DRV_INNER_WR(_p_hwfn, _p_ptt, _ptr, _offset, _val) \
 	ecore_wr(_p_hwfn, _p_ptt, (_p_hwfn->mcp_info->_ptr + _offset), \
@@ -186,22 +196,23 @@ static enum _ecore_status_t ecore_load_mcp_offsets(struct ecore_hwfn *p_hwfn,
 						   struct ecore_ptt *p_ptt)
 {
 	struct ecore_mcp_info *p_info = p_hwfn->mcp_info;
+	u32 drv_mb_offsize, mfw_mb_offsize, val;
 	u8 cnt = ECORE_MCP_SHMEM_RDY_MAX_RETRIES;
 	u8 msec = ECORE_MCP_SHMEM_RDY_ITER_MS;
-	u32 drv_mb_offsize, mfw_mb_offsize;
 	u32 mcp_pf_id = MCP_PF_ID(p_hwfn);
 
+	val = ecore_rd(p_hwfn, p_ptt, MCP_REG_CACHE_PAGING_ENABLE);
+	p_info->public_base = ecore_rd(p_hwfn, p_ptt, MISC_REG_SHARED_MEM_ADDR);
+	if (!p_info->public_base) {
+		DP_NOTICE(p_hwfn, false,
+			  "The address of the MCP scratch-pad is not configured\n");
 #ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
-		DP_NOTICE(p_hwfn, false, "Emulation - assume no MFW\n");
-		p_info->public_base = 0;
+		/* Zeroed "public_base" implies no MFW */
+		if (CHIP_REV_IS_EMUL(p_hwfn->p_dev))
+			DP_INFO(p_hwfn, "Emulation: Assume no MFW\n");
+#endif
 		return ECORE_INVAL;
 	}
-#endif
-
-	p_info->public_base = ecore_rd(p_hwfn, p_ptt, MISC_REG_SHARED_MEM_ADDR);
-	if (!p_info->public_base)
-		return ECORE_INVAL;
 
 	p_info->public_base |= GRCBASE_MCP;
 
@@ -293,7 +304,7 @@ enum _ecore_status_t ecore_mcp_cmd_init(struct ecore_hwfn *p_hwfn,
 
 	if (ecore_load_mcp_offsets(p_hwfn, p_ptt) != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, false, "MCP is not initialized\n");
-		/* Do not free mcp_info here, since public_base indicate that
+		/* Do not free mcp_info here, since "public_base" indicates that
 		 * the MCP is not initialized
 		 */
 		return ECORE_SUCCESS;
@@ -334,14 +345,16 @@ static void ecore_mcp_reread_offsets(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt)
 {
-	u32 org_mcp_reset_seq, seq, delay = CHIP_MCP_RESP_ITER_US, cnt = 0;
+	u32 prev_generic_por_0, seq, delay = ECORE_MCP_RESP_ITER_US, cnt = 0;
+	u32 retries = ECORE_MCP_RESET_RETRIES;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 #ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev))
-		delay = EMUL_MCP_RESP_ITER_US;
+	if (CHIP_REV_IS_SLOW(p_hwfn->p_dev)) {
+		delay = ECORE_EMUL_MCP_RESP_ITER_US;
+		retries = ECORE_EMUL_MCP_RESET_RETRIES;
+	}
 #endif
-
 	if (p_hwfn->mcp_info->b_block_cmd) {
 		DP_NOTICE(p_hwfn, false,
 			  "The MFW is not responsive. Avoid sending MCP_RESET mailbox command.\n");
@@ -351,23 +364,24 @@ enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 	/* Ensure that only a single thread is accessing the mailbox */
 	OSAL_SPIN_LOCK(&p_hwfn->mcp_info->cmd_lock);
 
-	org_mcp_reset_seq = ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0);
+	prev_generic_por_0 = ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0);
 
 	/* Set drv command along with the updated sequence */
 	ecore_mcp_reread_offsets(p_hwfn, p_ptt);
 	seq = ++p_hwfn->mcp_info->drv_mb_seq;
 	DRV_MB_WR(p_hwfn, p_ptt, drv_mb_header, (DRV_MSG_CODE_MCP_RESET | seq));
 
+	/* Give the MFW up to 500 second (50*1000*10usec) to resume */
 	do {
-		/* Wait for MFW response */
 		OSAL_UDELAY(delay);
-		/* Give the FW up to 500 second (50*1000*10usec) */
-	} while ((org_mcp_reset_seq == ecore_rd(p_hwfn, p_ptt,
-						MISCS_REG_GENERIC_POR_0)) &&
-		 (cnt++ < ECORE_MCP_RESET_RETRIES));
 
-	if (org_mcp_reset_seq !=
-	    ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0)) {
+		if (ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0) !=
+		    prev_generic_por_0)
+			break;
+	} while (cnt++ < retries);
+
+	if (ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0) !=
+	    prev_generic_por_0) {
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "MCP was reset after %d usec\n", cnt * delay);
 	} else {
@@ -379,6 +393,71 @@ enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 
 	return rc;
 }
+
+#ifndef ASIC_ONLY
+static void ecore_emul_mcp_load_req(struct ecore_hwfn *p_hwfn,
+				    struct ecore_mcp_mb_params *p_mb_params)
+{
+	if (GET_MFW_FIELD(p_mb_params->param, DRV_ID_MCP_HSI_VER) !=
+	    1 /* ECORE_LOAD_REQ_HSI_VER_1 */) {
+		p_mb_params->mcp_resp = FW_MSG_CODE_DRV_LOAD_REFUSED_HSI_1;
+		return;
+	}
+
+	if (!loaded)
+		p_mb_params->mcp_resp = FW_MSG_CODE_DRV_LOAD_ENGINE;
+	else if (!loaded_port[p_hwfn->port_id])
+		p_mb_params->mcp_resp = FW_MSG_CODE_DRV_LOAD_PORT;
+	else
+		p_mb_params->mcp_resp = FW_MSG_CODE_DRV_LOAD_FUNCTION;
+
+	/* On CMT, always tell that it's engine */
+	if (ECORE_IS_CMT(p_hwfn->p_dev))
+		p_mb_params->mcp_resp = FW_MSG_CODE_DRV_LOAD_ENGINE;
+
+	loaded++;
+	loaded_port[p_hwfn->port_id]++;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "Load phase: 0x%08x load cnt: 0x%x port id=%d port_load=%d\n",
+		   p_mb_params->mcp_resp, loaded, p_hwfn->port_id,
+		   loaded_port[p_hwfn->port_id]);
+}
+
+static void ecore_emul_mcp_unload_req(struct ecore_hwfn *p_hwfn)
+{
+	loaded--;
+	loaded_port[p_hwfn->port_id]--;
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP, "Unload cnt: 0x%x\n", loaded);
+}
+
+static enum _ecore_status_t
+ecore_emul_mcp_cmd(struct ecore_hwfn *p_hwfn,
+		   struct ecore_mcp_mb_params *p_mb_params)
+{
+	if (!CHIP_REV_IS_EMUL(p_hwfn->p_dev))
+		return ECORE_INVAL;
+
+	switch (p_mb_params->cmd) {
+	case DRV_MSG_CODE_LOAD_REQ:
+		ecore_emul_mcp_load_req(p_hwfn, p_mb_params);
+		break;
+	case DRV_MSG_CODE_UNLOAD_REQ:
+		ecore_emul_mcp_unload_req(p_hwfn);
+		break;
+	case DRV_MSG_CODE_GET_MFW_FEATURE_SUPPORT:
+	case DRV_MSG_CODE_RESOURCE_CMD:
+	case DRV_MSG_CODE_MDUMP_CMD:
+	case DRV_MSG_CODE_GET_ENGINE_CONFIG:
+	case DRV_MSG_CODE_GET_PPFID_BITMAP:
+		return ECORE_NOTIMPL;
+	default:
+		break;
+	}
+
+	return ECORE_SUCCESS;
+}
+#endif
 
 /* Must be called while cmd_lock is acquired */
 static bool ecore_mcp_has_pending_cmd(struct ecore_hwfn *p_hwfn)
@@ -488,13 +567,18 @@ void ecore_mcp_print_cpu_info(struct ecore_hwfn *p_hwfn,
 			      struct ecore_ptt *p_ptt)
 {
 	u32 cpu_mode, cpu_state, cpu_pc_0, cpu_pc_1, cpu_pc_2;
+	u32 delay = ECORE_MCP_RESP_ITER_US;
 
+#ifndef ASIC_ONLY
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev))
+		delay = ECORE_EMUL_MCP_RESP_ITER_US;
+#endif
 	cpu_mode = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_MODE);
 	cpu_state = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_STATE);
 	cpu_pc_0 = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_PROGRAM_COUNTER);
-	OSAL_UDELAY(CHIP_MCP_RESP_ITER_US);
+	OSAL_UDELAY(delay);
 	cpu_pc_1 = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_PROGRAM_COUNTER);
-	OSAL_UDELAY(CHIP_MCP_RESP_ITER_US);
+	OSAL_UDELAY(delay);
 	cpu_pc_2 = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_PROGRAM_COUNTER);
 
 	DP_NOTICE(p_hwfn, false,
@@ -617,15 +701,21 @@ ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 {
 	osal_size_t union_data_size = sizeof(union drv_union_data);
 	u32 max_retries = ECORE_DRV_MB_MAX_RETRIES;
-	u32 delay = CHIP_MCP_RESP_ITER_US;
+	u32 usecs = ECORE_MCP_RESP_ITER_US;
 
 #ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev))
-		delay = EMUL_MCP_RESP_ITER_US;
-	/* There is a built-in delay of 100usec in each MFW response read */
-	if (CHIP_REV_IS_FPGA(p_hwfn->p_dev))
-		max_retries /= 10;
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && !ecore_mcp_is_init(p_hwfn))
+		return ecore_emul_mcp_cmd(p_hwfn, p_mb_params);
+
+	if (CHIP_REV_IS_SLOW(p_hwfn->p_dev)) {
+		max_retries = ECORE_EMUL_DRV_MB_MAX_RETRIES;
+		usecs = ECORE_EMUL_MCP_RESP_ITER_US;
+	}
 #endif
+	if (ECORE_MB_FLAGS_IS_SET(p_mb_params, CAN_SLEEP)) {
+		max_retries = DIV_ROUND_UP(max_retries, 1000);
+		usecs *= 1000;
+	}
 
 	/* MCP not initialized */
 	if (!ecore_mcp_is_init(p_hwfn)) {
@@ -650,7 +740,7 @@ ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 	}
 
 	return _ecore_mcp_cmd_and_union(p_hwfn, p_ptt, p_mb_params, max_retries,
-					delay);
+					usecs);
 }
 
 enum _ecore_status_t ecore_mcp_cmd(struct ecore_hwfn *p_hwfn,
@@ -659,18 +749,6 @@ enum _ecore_status_t ecore_mcp_cmd(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_mcp_mb_params mb_params;
 	enum _ecore_status_t rc;
-
-#ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
-		if (cmd == DRV_MSG_CODE_UNLOAD_REQ) {
-			loaded--;
-			loaded_port[p_hwfn->port_id]--;
-			DP_VERBOSE(p_hwfn, ECORE_MSG_SP, "Unload cnt: 0x%x\n",
-				   loaded);
-		}
-		return ECORE_SUCCESS;
-	}
-#endif
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = cmd;
@@ -744,34 +822,6 @@ enum _ecore_status_t ecore_mcp_nvm_rd_cmd(struct ecore_hwfn *p_hwfn,
 
 	return ECORE_SUCCESS;
 }
-
-#ifndef ASIC_ONLY
-static void ecore_mcp_mf_workaround(struct ecore_hwfn *p_hwfn,
-				    u32 *p_load_code)
-{
-	static int load_phase = FW_MSG_CODE_DRV_LOAD_ENGINE;
-
-	if (!loaded)
-		load_phase = FW_MSG_CODE_DRV_LOAD_ENGINE;
-	else if (!loaded_port[p_hwfn->port_id])
-		load_phase = FW_MSG_CODE_DRV_LOAD_PORT;
-	else
-		load_phase = FW_MSG_CODE_DRV_LOAD_FUNCTION;
-
-	/* On CMT, always tell that it's engine */
-	if (ECORE_IS_CMT(p_hwfn->p_dev))
-		load_phase = FW_MSG_CODE_DRV_LOAD_ENGINE;
-
-	*p_load_code = load_phase;
-	loaded++;
-	loaded_port[p_hwfn->port_id]++;
-
-	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-		   "Load phase: %x load cnt: 0x%x port id=%d port_load=%d\n",
-		   *p_load_code, loaded, p_hwfn->port_id,
-		   loaded_port[p_hwfn->port_id]);
-}
-#endif
 
 static bool
 ecore_mcp_can_force_load(u8 drv_role, u8 exist_drv_role,
@@ -1004,13 +1054,6 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 	u8 mfw_drv_role = 0, mfw_force_cmd;
 	enum _ecore_status_t rc;
 
-#ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
-		ecore_mcp_mf_workaround(p_hwfn, &p_params->load_code);
-		return ECORE_SUCCESS;
-	}
-#endif
-
 	OSAL_MEM_ZERO(&in_params, sizeof(in_params));
 	in_params.hsi_ver = ECORE_LOAD_REQ_HSI_VER_DEFAULT;
 	in_params.drv_ver_0 = ECORE_VERSION;
@@ -1166,15 +1209,17 @@ static void ecore_mcp_handle_vf_flr(struct ecore_hwfn *p_hwfn,
 	u32 mfw_path_offsize = ecore_rd(p_hwfn, p_ptt, addr);
 	u32 path_addr = SECTION_ADDR(mfw_path_offsize,
 				     ECORE_PATH_ID(p_hwfn));
-	u32 disabled_vfs[VF_MAX_STATIC / 32];
+	u32 disabled_vfs[EXT_VF_BITMAP_SIZE_IN_DWORDS];
 	int i;
+
+	OSAL_MEM_ZERO(disabled_vfs, EXT_VF_BITMAP_SIZE_IN_BYTES);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Reading Disabled VF information from [offset %08x],"
 		   " path_addr %08x\n",
 		   mfw_path_offsize, path_addr);
 
-	for (i = 0; i < (VF_MAX_STATIC / 32); i++) {
+	for (i = 0; i < VF_BITMAP_SIZE_IN_DWORDS; i++) {
 		disabled_vfs[i] = ecore_rd(p_hwfn, p_ptt,
 					   path_addr +
 					   OFFSETOF(struct public_path,
@@ -1193,16 +1238,11 @@ enum _ecore_status_t ecore_mcp_ack_vf_flr(struct ecore_hwfn *p_hwfn,
 					  struct ecore_ptt *p_ptt,
 					  u32 *vfs_to_ack)
 {
-	u32 addr = SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->public_base,
-					PUBLIC_FUNC);
-	u32 mfw_func_offsize = ecore_rd(p_hwfn, p_ptt, addr);
-	u32 func_addr = SECTION_ADDR(mfw_func_offsize,
-				     MCP_PF_ID(p_hwfn));
 	struct ecore_mcp_mb_params mb_params;
 	enum _ecore_status_t rc;
-	int i;
+	u16 i;
 
-	for (i = 0; i < (VF_MAX_STATIC / 32); i++)
+	for (i = 0; i < VF_BITMAP_SIZE_IN_DWORDS; i++)
 		DP_VERBOSE(p_hwfn, (ECORE_MSG_SP | ECORE_MSG_IOV),
 			   "Acking VFs [%08x,...,%08x] - %08x\n",
 			   i * 32, (i + 1) * 32 - 1, vfs_to_ack[i]);
@@ -1210,7 +1250,7 @@ enum _ecore_status_t ecore_mcp_ack_vf_flr(struct ecore_hwfn *p_hwfn,
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_CODE_VF_DISABLED_DONE;
 	mb_params.p_data_src = vfs_to_ack;
-	mb_params.data_src_size = VF_MAX_STATIC / 8;
+	mb_params.data_src_size = (u8)VF_BITMAP_SIZE_IN_BYTES;
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt,
 				     &mb_params);
 	if (rc != ECORE_SUCCESS) {
@@ -1218,13 +1258,6 @@ enum _ecore_status_t ecore_mcp_ack_vf_flr(struct ecore_hwfn *p_hwfn,
 			  "Failed to pass ACK for VF flr to MFW\n");
 		return ECORE_TIMEOUT;
 	}
-
-	/* TMP - clear the ACK bits; should be done by MFW */
-	for (i = 0; i < (VF_MAX_STATIC / 32); i++)
-		ecore_wr(p_hwfn, p_ptt,
-			 func_addr +
-			 OFFSETOF(struct public_func, drv_ack_vf_disabled) +
-			 i * sizeof(u32), 0);
 
 	return rc;
 }
@@ -1471,8 +1504,11 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 	u32 cmd;
 
 #ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev))
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
+		if (b_up)
+			OSAL_LINK_UPDATE(p_hwfn);
 		return ECORE_SUCCESS;
+	}
 #endif
 
 	/* Set the shmem configuration according to params */
@@ -1853,6 +1889,13 @@ ecore_mcp_mdump_get_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	struct mdump_config_stc mdump_config;
 	enum _ecore_status_t rc;
 
+#ifndef ASIC_ONLY
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && !ecore_mcp_is_init(p_hwfn)) {
+		DP_INFO(p_hwfn, "Emulation: Can't get mdump info\n");
+		return ECORE_NOTIMPL;
+	}
+#endif
+
 	OSAL_MEMSET(p_mdump_info, 0, sizeof(*p_mdump_info));
 
 	addr = SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->public_base,
@@ -2042,6 +2085,9 @@ ecore_mcp_handle_ufp_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 	/* update storm FW with negotiation results */
 	ecore_sp_pf_update_ufp(p_hwfn);
 
+	/* update stag pcp value */
+	ecore_sp_pf_update_stag(p_hwfn);
+
 	return ECORE_SUCCESS;
 }
 
@@ -2159,9 +2205,9 @@ enum _ecore_status_t ecore_mcp_get_mfw_ver(struct ecore_hwfn *p_hwfn,
 	u32 global_offsize;
 
 #ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
-		DP_NOTICE(p_hwfn, false, "Emulation - can't get MFW version\n");
-		return ECORE_SUCCESS;
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && !ecore_mcp_is_init(p_hwfn)) {
+		DP_INFO(p_hwfn, "Emulation: Can't get MFW version\n");
+		return ECORE_NOTIMPL;
 	}
 #endif
 
@@ -2203,26 +2249,29 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt,
 					      u32 *p_media_type)
 {
-	enum _ecore_status_t rc = ECORE_SUCCESS;
+	*p_media_type = MEDIA_UNSPECIFIED;
 
 	/* TODO - Add support for VFs */
 	if (IS_VF(p_hwfn->p_dev))
 		return ECORE_INVAL;
 
 	if (!ecore_mcp_is_init(p_hwfn)) {
+#ifndef ASIC_ONLY
+		if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
+			DP_INFO(p_hwfn, "Emulation: Can't get media type\n");
+			return ECORE_NOTIMPL;
+		}
+#endif
 		DP_NOTICE(p_hwfn, false, "MFW is not initialized!\n");
 		return ECORE_BUSY;
 	}
 
-	if (!p_ptt) {
-		*p_media_type = MEDIA_UNSPECIFIED;
-		rc = ECORE_INVAL;
-	} else {
-		*p_media_type = ecore_rd(p_hwfn, p_ptt,
-					 p_hwfn->mcp_info->port_addr +
-					 OFFSETOF(struct public_port,
-						  media_type));
-	}
+	if (!p_ptt)
+		return ECORE_INVAL;
+
+	*p_media_type = ecore_rd(p_hwfn, p_ptt,
+				 p_hwfn->mcp_info->port_addr +
+				 OFFSETOF(struct public_port, media_type));
 
 	return ECORE_SUCCESS;
 }
@@ -2626,9 +2675,9 @@ enum _ecore_status_t ecore_mcp_get_flash_size(struct ecore_hwfn *p_hwfn,
 	u32 flash_size;
 
 #ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
-		DP_NOTICE(p_hwfn, false, "Emulation - can't get flash size\n");
-		return ECORE_INVAL;
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && !ecore_mcp_is_init(p_hwfn)) {
+		DP_INFO(p_hwfn, "Emulation: Can't get flash size\n");
+		return ECORE_NOTIMPL;
 	}
 #endif
 
@@ -2725,6 +2774,16 @@ enum _ecore_status_t ecore_mcp_config_vf_msix(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt,
 					      u8 vf_id, u8 num)
 {
+#ifndef ASIC_ONLY
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && !ecore_mcp_is_init(p_hwfn)) {
+		DP_INFO(p_hwfn,
+			"Emulation: Avoid sending the %s mailbox command\n",
+			ECORE_IS_BB(p_hwfn->p_dev) ? "CFG_VF_MSIX" :
+						     "CFG_PF_VFS_MSIX");
+		return ECORE_SUCCESS;
+	}
+#endif
+
 	if (ECORE_IS_BB(p_hwfn->p_dev))
 		return ecore_mcp_config_vf_msix_bb(p_hwfn, p_ptt, vf_id, num);
 	else

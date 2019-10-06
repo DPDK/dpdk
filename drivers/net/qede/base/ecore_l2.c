@@ -2323,18 +2323,17 @@ ecore_eth_tx_queue_maxrate(struct ecore_hwfn *p_hwfn,
 			   struct ecore_ptt *p_ptt,
 			   struct ecore_queue_cid *p_cid, u32 rate)
 {
-	struct ecore_mcp_link_state *p_link;
+	u16 rl_id;
 	u8 vport;
 
 	vport = (u8)ecore_get_qm_vport_idx_rl(p_hwfn, p_cid->rel.queue_id);
-	p_link = &ECORE_LEADING_HWFN(p_hwfn->p_dev)->mcp_info->link_output;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
 		   "About to rate limit qm vport %d for queue %d with rate %d\n",
 		   vport, p_cid->rel.queue_id, rate);
 
-	return ecore_init_vport_rl(p_hwfn, p_ptt, vport, rate,
-				   p_link->speed);
+	rl_id = vport; /* The "rl_id" is set as the "vport_id" */
+	return ecore_init_global_rl(p_hwfn, p_ptt, rl_id, rate);
 }
 
 #define RSS_TSTORM_UPDATE_STATUS_MAX_POLL_COUNT    100
@@ -2358,8 +2357,7 @@ ecore_update_eth_rss_ind_table_entry(struct ecore_hwfn *p_hwfn,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	addr = (u8 OSAL_IOMEM *)p_hwfn->regview +
-	       GTT_BAR0_MAP_REG_TSDM_RAM +
+	addr = (u8 *)p_hwfn->regview + GTT_BAR0_MAP_REG_TSDM_RAM +
 	       TSTORM_ETH_RSS_UPDATE_OFFSET(p_hwfn->rel_pf_id);
 
 	*(u64 *)(&update_data) = DIRECT_REG_RD64(p_hwfn, addr);

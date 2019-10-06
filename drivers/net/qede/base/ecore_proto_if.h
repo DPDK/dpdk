@@ -62,6 +62,7 @@ struct ecore_iscsi_pf_params {
 	u8		num_uhq_pages_in_ring;
 	u8		num_queues;
 	u8		log_page_size;
+	u8		log_page_size_conn;
 	u8		rqe_log_size;
 	u8		max_fin_rt;
 	u8		gl_rq_pi;

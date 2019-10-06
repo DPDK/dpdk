@@ -22,6 +22,18 @@ enum ecore_cxt_elem_type {
 	ECORE_ELEM_TASK
 };
 
+enum ilt_clients {
+	ILT_CLI_CDUC,
+	ILT_CLI_CDUT,
+	ILT_CLI_QM,
+	ILT_CLI_TM,
+	ILT_CLI_SRC,
+	ILT_CLI_TSDM,
+	ILT_CLI_RGFS,
+	ILT_CLI_TGFS,
+	ILT_CLI_MAX
+};
+
 u32 ecore_cxt_get_proto_cid_count(struct ecore_hwfn *p_hwfn,
 				  enum protocol_type type,
 				  u32 *vf_cid);

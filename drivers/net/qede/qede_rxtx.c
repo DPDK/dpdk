@@ -805,7 +805,7 @@ qede_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 		fp->rxq->hw_rxq_prod_addr = ret_params.p_prod;
 		fp->rxq->handle = ret_params.p_handle;
 
-		fp->rxq->hw_cons_ptr = &fp->sb_info->sb_virt->pi_array[RX_PI];
+		fp->rxq->hw_cons_ptr = &fp->sb_info->sb_pi_array[RX_PI];
 		qede_update_rx_prod(qdev, fp->rxq);
 		eth_dev->data->rx_queue_state[rx_queue_id] =
 			RTE_ETH_QUEUE_STATE_STARTED;
@@ -863,7 +863,7 @@ qede_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 		txq->doorbell_addr = ret_params.p_doorbell;
 		txq->handle = ret_params.p_handle;
 
-		txq->hw_cons_ptr = &fp->sb_info->sb_virt->pi_array[TX_PI(0)];
+		txq->hw_cons_ptr = &fp->sb_info->sb_pi_array[TX_PI(0)];
 		SET_FIELD(txq->tx_db.data.params, ETH_DB_DATA_DEST,
 				DB_DEST_XCM);
 		SET_FIELD(txq->tx_db.data.params, ETH_DB_DATA_AGG_CMD,

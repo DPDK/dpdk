@@ -355,14 +355,16 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 		p_ramrod->outer_tag_config.inner_to_outer_pri_map[i] = i;
 
 	/* enable_stag_pri_change should be set if port is in BD mode or,
-	 * UFP with Host Control mode or, UFP with DCB over base interface.
+	 * UFP with Host Control mode.
 	 */
 	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits)) {
-		if ((p_hwfn->ufp_info.pri_type == ECORE_UFP_PRI_OS) ||
-		    (p_hwfn->p_dcbx_info->results.dcbx_enabled))
+		if (p_hwfn->ufp_info.pri_type == ECORE_UFP_PRI_OS)
 			p_ramrod->outer_tag_config.enable_stag_pri_change = 1;
 		else
 			p_ramrod->outer_tag_config.enable_stag_pri_change = 0;
+
+		p_ramrod->outer_tag_config.outer_tag.tci |=
+			OSAL_CPU_TO_LE16(((u16)p_hwfn->ufp_info.tc << 13));
 	}
 
 	/* Place EQ address in RAMROD */
@@ -459,8 +461,7 @@ enum _ecore_status_t ecore_sp_pf_update_ufp(struct ecore_hwfn *p_hwfn)
 		return rc;
 
 	p_ent->ramrod.pf_update.update_enable_stag_pri_change = true;
-	if ((p_hwfn->ufp_info.pri_type == ECORE_UFP_PRI_OS) ||
-	    (p_hwfn->p_dcbx_info->results.dcbx_enabled))
+	if (p_hwfn->ufp_info.pri_type == ECORE_UFP_PRI_OS)
 		p_ent->ramrod.pf_update.enable_stag_pri_change = 1;
 	else
 		p_ent->ramrod.pf_update.enable_stag_pri_change = 0;
@@ -636,6 +637,10 @@ enum _ecore_status_t ecore_sp_heartbeat_ramrod(struct ecore_hwfn *p_hwfn)
 				   &init_data);
 	if (rc != ECORE_SUCCESS)
 		return rc;
+
+	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits))
+		p_ent->ramrod.pf_update.mf_vlan |=
+			OSAL_CPU_TO_LE16(((u16)p_hwfn->ufp_info.tc << 13));
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }

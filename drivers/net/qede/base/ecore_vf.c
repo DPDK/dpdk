@@ -257,6 +257,7 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	struct pfvf_acquire_resp_tlv *resp = &p_iov->pf2vf_reply->acquire_resp;
 	struct pf_vf_pfdev_info *pfdev_info = &resp->pfdev_info;
 	struct ecore_vf_acquire_sw_info vf_sw_info;
+	struct ecore_dev *p_dev = p_hwfn->p_dev;
 	struct vf_pf_resc_request *p_resc;
 	bool resources_acquired = false;
 	struct vfpf_acquire_tlv *req;
@@ -427,20 +428,20 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	p_iov->bulletin.size = resp->bulletin_size;
 
 	/* get HW info */
-	p_hwfn->p_dev->type = resp->pfdev_info.dev_type;
-	p_hwfn->p_dev->chip_rev = (u8)resp->pfdev_info.chip_rev;
+	p_dev->type = resp->pfdev_info.dev_type;
+	p_dev->chip_rev = (u8)resp->pfdev_info.chip_rev;
 
 	DP_INFO(p_hwfn, "Chip details - %s%d\n",
-		ECORE_IS_BB(p_hwfn->p_dev) ? "BB" : "AH",
+		ECORE_IS_BB(p_dev) ? "BB" : "AH",
 		CHIP_REV_IS_A0(p_hwfn->p_dev) ? 0 : 1);
 
-	p_hwfn->p_dev->chip_num = pfdev_info->chip_num & 0xffff;
+	p_dev->chip_num = pfdev_info->chip_num & 0xffff;
 
 	/* Learn of the possibility of CMT */
 	if (IS_LEAD_HWFN(p_hwfn)) {
 		if (resp->pfdev_info.capabilities & PFVF_ACQUIRE_CAP_100G) {
 			DP_INFO(p_hwfn, "100g VF\n");
-			p_hwfn->p_dev->num_hwfns = 2;
+			p_dev->num_hwfns = 2;
 		}
 	}
 
@@ -636,10 +637,6 @@ free_p_iov:
 	return ECORE_NOMEM;
 }
 
-#define TSTORM_QZONE_START   PXP_VF_BAR0_START_SDM_ZONE_A
-#define MSTORM_QZONE_START(dev)   (TSTORM_QZONE_START + \
-				   (TSTORM_QZONE_SIZE * NUM_OF_L2_QUEUES(dev)))
-
 /* @DPDK - changed enum ecore_tunn_clss to enum ecore_tunn_mode */
 static void
 __ecore_vf_prep_tunn_req_tlv(struct vfpf_update_tunn_param_tlv *p_req,
@@ -828,8 +825,7 @@ ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 		u8 hw_qid = p_iov->acquire_resp.resc.hw_qid[rx_qid];
 		u32 init_prod_val = 0;
 
-		*pp_prod = (u8 OSAL_IOMEM *)
-			   p_hwfn->regview +
+		*pp_prod = (u8 OSAL_IOMEM *)p_hwfn->regview +
 			   MSTORM_QZONE_START(p_hwfn->p_dev) +
 			   (hw_qid) * MSTORM_QZONE_SIZE;
 

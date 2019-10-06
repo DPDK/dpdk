@@ -302,6 +302,8 @@ struct ecore_sp_vport_start_params {
 	bool b_err_big_pkt;
 	bool b_err_anti_spoof;
 	bool b_err_ctrl_frame;
+	bool b_en_rgfs;
+	bool b_en_tgfs;
 };
 
 /**

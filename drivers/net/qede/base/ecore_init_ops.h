@@ -95,6 +95,6 @@ void ecore_init_store_rt_agg(struct ecore_hwfn *p_hwfn,
 			     osal_size_t       size);
 
 #define STORE_RT_REG_AGG(hwfn, offset, val)			\
-	ecore_init_store_rt_agg(hwfn, offset, (u32 *)&val, sizeof(val))
+	ecore_init_store_rt_agg(hwfn, offset, (u32 *)&(val), sizeof(val))
 
 #endif /* __ECORE_INIT_OPS__ */

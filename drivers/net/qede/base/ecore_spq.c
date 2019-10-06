@@ -185,11 +185,26 @@ ecore_spq_fill_entry(struct ecore_hwfn *p_hwfn, struct ecore_spq_entry *p_ent)
 /***************************************************************************
  * HSI access
  ***************************************************************************/
+
+#define XSTORM_CORE_CONN_AG_CTX_DQ_CF_EN_MASK			0x1
+#define XSTORM_CORE_CONN_AG_CTX_DQ_CF_EN_SHIFT			0
+#define XSTORM_CORE_CONN_AG_CTX_DQ_CF_ACTIVE_MASK		0x1
+#define XSTORM_CORE_CONN_AG_CTX_DQ_CF_ACTIVE_SHIFT		7
+#define XSTORM_CORE_CONN_AG_CTX_SLOW_PATH_EN_MASK		0x1
+#define XSTORM_CORE_CONN_AG_CTX_SLOW_PATH_EN_SHIFT		4
+#define XSTORM_CORE_CONN_AG_CTX_CONSOLID_PROD_CF_EN_MASK	0x1
+#define XSTORM_CORE_CONN_AG_CTX_CONSOLID_PROD_CF_EN_SHIFT	6
+
 static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 				    struct ecore_spq *p_spq)
 {
+	__le32 *p_spq_base_lo, *p_spq_base_hi;
+	struct regpair *p_consolid_base_addr;
+	u8 *p_flags1, *p_flags9, *p_flags10;
 	struct core_conn_context *p_cxt;
 	struct ecore_cxt_info cxt_info;
+	u32 core_conn_context_size;
+	__le16 *p_physical_q0;
 	u16 physical_q;
 	enum _ecore_status_t rc;
 
@@ -197,41 +212,39 @@ static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_cxt_get_cid_info(p_hwfn, &cxt_info);
 
-	if (rc < 0) {
+	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, true, "Cannot find context info for cid=%d\n",
 			  p_spq->cid);
 		return;
 	}
 
 	p_cxt = cxt_info.p_cxt;
+	core_conn_context_size = sizeof(*p_cxt);
+	p_flags1 = &p_cxt->xstorm_ag_context.flags1;
+	p_flags9 = &p_cxt->xstorm_ag_context.flags9;
+	p_flags10 = &p_cxt->xstorm_ag_context.flags10;
+	p_physical_q0 = &p_cxt->xstorm_ag_context.physical_q0;
+	p_spq_base_lo = &p_cxt->xstorm_st_context.spq_base_lo;
+	p_spq_base_hi = &p_cxt->xstorm_st_context.spq_base_hi;
+	p_consolid_base_addr = &p_cxt->xstorm_st_context.consolid_base_addr;
 
 	/* @@@TBD we zero the context until we have ilt_reset implemented. */
-	OSAL_MEM_ZERO(p_cxt, sizeof(*p_cxt));
+	OSAL_MEM_ZERO(p_cxt, core_conn_context_size);
 
-	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev)) {
-		SET_FIELD(p_cxt->xstorm_ag_context.flags10,
-			  XSTORM_CORE_CONN_AG_CTX_DQ_CF_EN, 1);
-		SET_FIELD(p_cxt->xstorm_ag_context.flags1,
-			  XSTORM_CORE_CONN_AG_CTX_DQ_CF_ACTIVE, 1);
-		/* SET_FIELD(p_cxt->xstorm_ag_context.flags10,
-		 *	  E4_XSTORM_CORE_CONN_AG_CTX_SLOW_PATH_EN, 1);
-		 */
-		SET_FIELD(p_cxt->xstorm_ag_context.flags9,
-			  XSTORM_CORE_CONN_AG_CTX_CONSOLID_PROD_CF_EN, 1);
-	}
+	SET_FIELD(*p_flags10, XSTORM_CORE_CONN_AG_CTX_DQ_CF_EN, 1);
+	SET_FIELD(*p_flags1, XSTORM_CORE_CONN_AG_CTX_DQ_CF_ACTIVE, 1);
+	SET_FIELD(*p_flags9, XSTORM_CORE_CONN_AG_CTX_CONSOLID_PROD_CF_EN, 1);
 
 	/* CDU validation - FIXME currently disabled */
 
 	/* QM physical queue */
 	physical_q = ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_LB);
-	p_cxt->xstorm_ag_context.physical_q0 = OSAL_CPU_TO_LE16(physical_q);
+	*p_physical_q0 = OSAL_CPU_TO_LE16(physical_q);
 
-	p_cxt->xstorm_st_context.spq_base_lo =
-	    DMA_LO_LE(p_spq->chain.p_phys_addr);
-	p_cxt->xstorm_st_context.spq_base_hi =
-	    DMA_HI_LE(p_spq->chain.p_phys_addr);
+	*p_spq_base_lo = DMA_LO_LE(p_spq->chain.p_phys_addr);
+	*p_spq_base_hi = DMA_HI_LE(p_spq->chain.p_phys_addr);
 
-	DMA_REGPAIR_LE(p_cxt->xstorm_st_context.consolid_base_addr,
+	DMA_REGPAIR_LE(*p_consolid_base_addr,
 		       p_hwfn->p_consq->chain.p_phys_addr);
 }
 
