@@ -86,8 +86,8 @@ struct ecore_chain {
 		void		**pp_virt_addr_tbl;
 
 		union {
-			struct ecore_chain_pbl_u16	u16;
-			struct ecore_chain_pbl_u32	u32;
+			struct ecore_chain_pbl_u16	pbl_u16;
+			struct ecore_chain_pbl_u32	pbl_u32;
 		} c;
 	} pbl;
 
@@ -405,7 +405,7 @@ static OSAL_INLINE void *ecore_chain_produce(struct ecore_chain *p_chain)
 		if ((p_chain->u.chain16.prod_idx &
 		     p_chain->elem_per_page_mask) == p_chain->next_page_mask) {
 			p_prod_idx = &p_chain->u.chain16.prod_idx;
-			p_prod_page_idx = &p_chain->pbl.c.u16.prod_page_idx;
+			p_prod_page_idx = &p_chain->pbl.c.pbl_u16.prod_page_idx;
 			ecore_chain_advance_page(p_chain, &p_chain->p_prod_elem,
 						 p_prod_idx, p_prod_page_idx);
 		}
@@ -414,7 +414,7 @@ static OSAL_INLINE void *ecore_chain_produce(struct ecore_chain *p_chain)
 		if ((p_chain->u.chain32.prod_idx &
 		     p_chain->elem_per_page_mask) == p_chain->next_page_mask) {
 			p_prod_idx = &p_chain->u.chain32.prod_idx;
-			p_prod_page_idx = &p_chain->pbl.c.u32.prod_page_idx;
+			p_prod_page_idx = &p_chain->pbl.c.pbl_u32.prod_page_idx;
 			ecore_chain_advance_page(p_chain, &p_chain->p_prod_elem,
 						 p_prod_idx, p_prod_page_idx);
 		}
@@ -479,7 +479,7 @@ static OSAL_INLINE void *ecore_chain_consume(struct ecore_chain *p_chain)
 		if ((p_chain->u.chain16.cons_idx &
 		     p_chain->elem_per_page_mask) == p_chain->next_page_mask) {
 			p_cons_idx = &p_chain->u.chain16.cons_idx;
-			p_cons_page_idx = &p_chain->pbl.c.u16.cons_page_idx;
+			p_cons_page_idx = &p_chain->pbl.c.pbl_u16.cons_page_idx;
 			ecore_chain_advance_page(p_chain, &p_chain->p_cons_elem,
 						 p_cons_idx, p_cons_page_idx);
 		}
@@ -488,7 +488,7 @@ static OSAL_INLINE void *ecore_chain_consume(struct ecore_chain *p_chain)
 		if ((p_chain->u.chain32.cons_idx &
 		     p_chain->elem_per_page_mask) == p_chain->next_page_mask) {
 			p_cons_idx = &p_chain->u.chain32.cons_idx;
-			p_cons_page_idx = &p_chain->pbl.c.u32.cons_page_idx;
+			p_cons_page_idx = &p_chain->pbl.c.pbl_u32.cons_page_idx;
 			ecore_chain_advance_page(p_chain, &p_chain->p_cons_elem,
 						 p_cons_idx, p_cons_page_idx);
 		}
@@ -532,11 +532,11 @@ static OSAL_INLINE void ecore_chain_reset(struct ecore_chain *p_chain)
 		u32 reset_val = p_chain->page_cnt - 1;
 
 		if (is_chain_u16(p_chain)) {
-			p_chain->pbl.c.u16.prod_page_idx = (u16)reset_val;
-			p_chain->pbl.c.u16.cons_page_idx = (u16)reset_val;
+			p_chain->pbl.c.pbl_u16.prod_page_idx = (u16)reset_val;
+			p_chain->pbl.c.pbl_u16.cons_page_idx = (u16)reset_val;
 		} else {
-			p_chain->pbl.c.u32.prod_page_idx = reset_val;
-			p_chain->pbl.c.u32.cons_page_idx = reset_val;
+			p_chain->pbl.c.pbl_u32.prod_page_idx = reset_val;
+			p_chain->pbl.c.pbl_u32.cons_page_idx = reset_val;
 		}
 	}
 
@@ -725,18 +725,34 @@ static OSAL_INLINE void ecore_chain_set_prod(struct ecore_chain *p_chain,
 					     u32 prod_idx, void *p_prod_elem)
 {
 	if (p_chain->mode == ECORE_CHAIN_MODE_PBL) {
-		/* Use "prod_idx-1" since ecore_chain_produce() advances the
-		 * page index before the producer index when getting to
-		 * "next_page_mask".
-		 */
-		u32 elem_idx =
-			(prod_idx - 1 + p_chain->capacity) % p_chain->capacity;
-		u32 page_idx = elem_idx / p_chain->elem_per_page;
+		u32 cur_prod, page_mask, page_cnt, page_diff;
 
+		cur_prod = is_chain_u16(p_chain) ? p_chain->u.chain16.prod_idx
+						 : p_chain->u.chain32.prod_idx;
+
+		/* Assume that number of elements in a page is power of 2 */
+		page_mask = ~p_chain->elem_per_page_mask;
+
+		/* Use "cur_prod - 1" and "prod_idx - 1" since producer index
+		 * reaches the first element of next page before the page index
+		 * is incremented. See ecore_chain_produce().
+		 * Index wrap around is not a problem because the difference
+		 * between current and given producer indexes is always
+		 * positive and lower than the chain's capacity.
+		 */
+		page_diff = (((cur_prod - 1) & page_mask) -
+			     ((prod_idx - 1) & page_mask)) /
+			    p_chain->elem_per_page;
+
+		page_cnt = ecore_chain_get_page_cnt(p_chain);
 		if (is_chain_u16(p_chain))
-			p_chain->pbl.c.u16.prod_page_idx = (u16)page_idx;
+			p_chain->pbl.c.pbl_u16.prod_page_idx =
+				(p_chain->pbl.c.pbl_u16.prod_page_idx -
+				 page_diff + page_cnt) % page_cnt;
 		else
-			p_chain->pbl.c.u32.prod_page_idx = page_idx;
+			p_chain->pbl.c.pbl_u32.prod_page_idx =
+				(p_chain->pbl.c.pbl_u32.prod_page_idx -
+				 page_diff + page_cnt) % page_cnt;
 	}
 
 	if (is_chain_u16(p_chain))
@@ -756,18 +772,34 @@ static OSAL_INLINE void ecore_chain_set_cons(struct ecore_chain *p_chain,
 					     u32 cons_idx, void *p_cons_elem)
 {
 	if (p_chain->mode == ECORE_CHAIN_MODE_PBL) {
-		/* Use "cons_idx-1" since ecore_chain_consume() advances the
-		 * page index before the consumer index when getting to
-		 * "next_page_mask".
-		 */
-		u32 elem_idx =
-			(cons_idx - 1 + p_chain->capacity) % p_chain->capacity;
-		u32 page_idx = elem_idx / p_chain->elem_per_page;
+		u32 cur_cons, page_mask, page_cnt, page_diff;
 
+		cur_cons = is_chain_u16(p_chain) ? p_chain->u.chain16.cons_idx
+						 : p_chain->u.chain32.cons_idx;
+
+		/* Assume that number of elements in a page is power of 2 */
+		page_mask = ~p_chain->elem_per_page_mask;
+
+		/* Use "cur_cons - 1" and "cons_idx - 1" since consumer index
+		 * reaches the first element of next page before the page index
+		 * is incremented. See ecore_chain_consume().
+		 * Index wrap around is not a problem because the difference
+		 * between current and given consumer indexes is always
+		 * positive and lower than the chain's capacity.
+		 */
+		page_diff = (((cur_cons - 1) & page_mask) -
+			     ((cons_idx - 1) & page_mask)) /
+			    p_chain->elem_per_page;
+
+		page_cnt = ecore_chain_get_page_cnt(p_chain);
 		if (is_chain_u16(p_chain))
-			p_chain->pbl.c.u16.cons_page_idx = (u16)page_idx;
+			p_chain->pbl.c.pbl_u16.cons_page_idx =
+				(p_chain->pbl.c.pbl_u16.cons_page_idx -
+				 page_diff + page_cnt) % page_cnt;
 		else
-			p_chain->pbl.c.u32.cons_page_idx = page_idx;
+			p_chain->pbl.c.pbl_u32.cons_page_idx =
+				(p_chain->pbl.c.pbl_u32.cons_page_idx -
+				 page_diff + page_cnt) % page_cnt;
 	}
 
 	if (is_chain_u16(p_chain))
