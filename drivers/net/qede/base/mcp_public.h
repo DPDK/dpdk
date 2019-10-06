@@ -18,6 +18,15 @@
 #define MCP_PUBLIC_H
 
 #define VF_MAX_STATIC 192	/* In case of AH */
+#define VF_BITMAP_SIZE_IN_DWORDS        (VF_MAX_STATIC / 32)
+#define VF_BITMAP_SIZE_IN_BYTES         (VF_BITMAP_SIZE_IN_DWORDS * sizeof(u32))
+
+/* Extended array size to support for 240 VFs 8 dwords */
+#define EXT_VF_MAX_STATIC               240
+#define EXT_VF_BITMAP_SIZE_IN_DWORDS    (((EXT_VF_MAX_STATIC - 1) / 32) + 1)
+#define EXT_VF_BITMAP_SIZE_IN_BYTES     (EXT_VF_BITMAP_SIZE_IN_DWORDS * \
+					 sizeof(u32))
+#define ADDED_VF_BITMAP_SIZE 2
 
 #define MCP_GLOB_PATH_MAX	2
 #define MCP_PORT_MAX		2	/* Global */
@@ -591,6 +600,8 @@ struct public_path {
 #define PROCESS_KILL_GLOB_AEU_BIT_MASK		0xffff0000
 #define PROCESS_KILL_GLOB_AEU_BIT_OFFSET	16
 #define GLOBAL_AEU_BIT(aeu_reg_id, aeu_bit) (aeu_reg_id * 32 + aeu_bit)
+	/*Added to support E5 240 VFs*/
+	u32 mcp_vf_disabled2[ADDED_VF_BITMAP_SIZE];
 };
 
 /**************************************/
@@ -1270,6 +1281,12 @@ struct public_drv_mb {
 /* params [31:8] - reserved, [7:0] - bitmap */
 #define DRV_MSG_CODE_GET_PPFID_BITMAP		0x43000000
 
+/* Param: [0:15] Option ID, [16] - All, [17] - Init, [18] - Commit,
+ * [19] - Free
+ */
+#define DRV_MSG_CODE_GET_NVM_CFG_OPTION		0x003e0000
+/* Param: [0:15] Option ID,             [17] - Init, [18]       , [19] - Free */
+#define DRV_MSG_CODE_SET_NVM_CFG_OPTION		0x003f0000
 /*deprecated don't use*/
 #define DRV_MSG_CODE_INITIATE_FLR_DEPRECATED    0x02000000
 #define DRV_MSG_CODE_INITIATE_PF_FLR            0x02010000
@@ -1317,6 +1334,7 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_PHY_CORE_WRITE		0x000e0000
 /* Param: [0:3] - version, [4:15] - name (null terminated) */
 #define DRV_MSG_CODE_SET_VERSION		0x000f0000
+#define DRV_MSG_CODE_MCP_RESET_FORCE		0x000f04ce
 /* Halts the MCP. To resume MCP, user will need to use
  * MCP_REG_CPU_STATE/MCP_REG_CPU_MODE registers.
  */
@@ -1607,6 +1625,9 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_SET_LED_MODE_OPER		0x0
 #define DRV_MB_PARAM_SET_LED_MODE_ON		0x1
 #define DRV_MB_PARAM_SET_LED_MODE_OFF		0x2
+#define DRV_MB_PARAM_SET_LED1_MODE_ON		0x3
+#define DRV_MB_PARAM_SET_LED2_MODE_ON		0x4
+#define DRV_MB_PARAM_SET_ACT_LED_MODE_ON	0x6
 
 #define DRV_MB_PARAM_TRANSCEIVER_PORT_OFFSET		0
 #define DRV_MB_PARAM_TRANSCEIVER_PORT_MASK		0x00000003
@@ -1664,8 +1685,32 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_ATTRIBUTE_CMD_OFFSET		24
 #define DRV_MB_PARAM_ATTRIBUTE_CMD_MASK		0xFF000000
 
+#define DRV_MB_PARAM_NVM_CFG_OPTION_ID_OFFSET		0
+/* Option# */
+#define DRV_MB_PARAM_NVM_CFG_OPTION_ID_MASK		0x0000FFFF
+#define DRV_MB_PARAM_NVM_CFG_OPTION_ALL_OFFSET		16
+/* (Only for Set) Applies option<92>s value to all entities (port/func)
+ * depending on the option type
+ */
+#define DRV_MB_PARAM_NVM_CFG_OPTION_ALL_MASK		0x00010000
+#define DRV_MB_PARAM_NVM_CFG_OPTION_INIT_OFFSET		17
+/* When set, and state is IDLE, MFW will allocate resources and load
+ * configuration from NVM
+ */
+#define DRV_MB_PARAM_NVM_CFG_OPTION_INIT_MASK		0x00020000
+#define DRV_MB_PARAM_NVM_CFG_OPTION_COMMIT_OFFSET	18
+/* (Only for Set) - When set submit changed nvm_cfg1 to flash */
+#define DRV_MB_PARAM_NVM_CFG_OPTION_COMMIT_MASK		0x00040000
+#define DRV_MB_PARAM_NVM_CFG_OPTION_FREE_OFFSET		19
+/* Free - When set, free allocated resources, and return to IDLE state. */
+#define DRV_MB_PARAM_NVM_CFG_OPTION_FREE_MASK		0x00080000
+#define SINGLE_NVM_WR_OP(optionId) \
+	((((optionId) & DRV_MB_PARAM_NVM_CFG_OPTION_ID_MASK) << \
+	  DRV_MB_PARAM_NVM_CFG_OPTION_ID_OFFSET) | \
+	 (DRV_MB_PARAM_NVM_CFG_OPTION_INIT_MASK | \
+	  DRV_MB_PARAM_NVM_CFG_OPTION_COMMIT_MASK | \
+	  DRV_MB_PARAM_NVM_CFG_OPTION_FREE_MASK))
 	u32 fw_mb_header;
-#define FW_MSG_CODE_MASK                        0xffff0000
 #define FW_MSG_CODE_UNSUPPORTED			0x00000000
 #define FW_MSG_CODE_DRV_LOAD_ENGINE		0x10100000
 #define FW_MSG_CODE_DRV_LOAD_PORT               0x10110000
@@ -1704,6 +1749,12 @@ struct public_drv_mb {
 #define FW_MSG_CODE_NIG_DRAIN_DONE              0x30000000
 #define FW_MSG_CODE_VF_DISABLED_DONE            0xb0000000
 #define FW_MSG_CODE_DRV_CFG_VF_MSIX_DONE        0xb0010000
+#define FW_MSG_CODE_ERR_RESOURCE_TEMPORARY_UNAVAILABLE	0x008b0000
+#define FW_MSG_CODE_ERR_RESOURCE_ALREADY_ALLOCATED	0x008c0000
+#define FW_MSG_CODE_ERR_RESOURCE_NOT_ALLOCATED		0x008d0000
+#define FW_MSG_CODE_ERR_NON_USER_OPTION			0x008e0000
+#define FW_MSG_CODE_ERR_UNKNOWN_OPTION			0x008f0000
+#define FW_MSG_CODE_WAIT				0x00900000
 #define FW_MSG_CODE_FLR_ACK                     0x02000000
 #define FW_MSG_CODE_FLR_NACK                    0x02100000
 #define FW_MSG_CODE_SET_DRIVER_DONE		0x02200000
@@ -1783,11 +1834,13 @@ struct public_drv_mb {
 #define FW_MSG_CODE_WOL_READ_BUFFER_OK		0x00850000
 #define FW_MSG_CODE_WOL_READ_BUFFER_INVALID_VAL	0x00860000
 
-#define FW_MSG_SEQ_NUMBER_MASK                  0x0000ffff
-
 #define FW_MSG_CODE_ATTRIBUTE_INVALID_KEY	0x00020000
 #define FW_MSG_CODE_ATTRIBUTE_INVALID_CMD	0x00030000
 
+#define FW_MSG_SEQ_NUMBER_MASK			0x0000ffff
+#define FW_MSG_SEQ_NUMBER_OFFSET		0
+#define FW_MSG_CODE_MASK			0xffff0000
+#define FW_MSG_CODE_OFFSET			16
 	u32 fw_mb_param;
 /* Resource Allocation params - MFW  version support */
 #define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_MASK	0xFFFF0000

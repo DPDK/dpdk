@@ -148,8 +148,8 @@ void osal_dma_free_mem(struct ecore_dev *edev, dma_addr_t phys);
 			      ((u8 *)(uintptr_t)(_p_hwfn->doorbells) +	\
 			      (_db_addr)), (u32)_val)
 
-#define DIRECT_REG_WR64(hwfn, addr, value) nothing
-#define DIRECT_REG_RD64(hwfn, addr) 0
+#define DIRECT_REG_RD64(hwfn, addr) rte_read64(addr)
+#define DIRECT_REG_WR64(hwfn, addr, value) rte_write64((value), (addr))
 
 /* Mutexes */
 
@@ -455,6 +455,7 @@ u32 qede_crc32(u32 crc, u8 *ptr, u32 length);
 
 #define OSAL_DIV_S64(a, b)	((a) / (b))
 #define OSAL_LLDP_RX_TLVS(p_hwfn, tlv_buf, tlv_size) nothing
+#define OSAL_GET_EPOCH(p_hwfn)	0
 #define OSAL_DBG_ALLOC_USER_DATA(p_hwfn, user_data_ptr) (0)
 #define OSAL_DB_REC_OCCURRED(p_hwfn) nothing
 
