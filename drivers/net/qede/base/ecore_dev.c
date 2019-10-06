@@ -950,7 +950,7 @@ ecore_llh_access_filter(struct ecore_hwfn *p_hwfn,
 			bool b_write_access)
 {
 	u8 pfid = ECORE_PFID_BY_PPFID(p_hwfn, abs_ppfid);
-	struct ecore_dmae_params params;
+	struct dmae_params params;
 	enum _ecore_status_t rc;
 	u32 addr;
 
@@ -973,15 +973,15 @@ ecore_llh_access_filter(struct ecore_hwfn *p_hwfn,
 	OSAL_MEMSET(&params, 0, sizeof(params));
 
 	if (b_write_access) {
-		params.flags = ECORE_DMAE_FLAG_PF_DST;
-		params.dst_pfid = pfid;
+		SET_FIELD(params.flags, DMAE_PARAMS_DST_PF_VALID, 0x1);
+		params.dst_pf_id = pfid;
 		rc = ecore_dmae_host2grc(p_hwfn, p_ptt,
 					 (u64)(osal_uintptr_t)&p_details->value,
 					 addr, 2 /* size_in_dwords */, &params);
 	} else {
-		params.flags = ECORE_DMAE_FLAG_PF_SRC |
-			       ECORE_DMAE_FLAG_COMPLETION_DST;
-		params.src_pfid = pfid;
+		SET_FIELD(params.flags, DMAE_PARAMS_SRC_PF_VALID, 0x1);
+		SET_FIELD(params.flags, DMAE_PARAMS_COMPLETION_DST, 0x1);
+		params.src_pf_id = pfid;
 		rc = ecore_dmae_grc2host(p_hwfn, p_ptt, addr,
 					 (u64)(osal_uintptr_t)&p_details->value,
 					 2 /* size_in_dwords */, &params);

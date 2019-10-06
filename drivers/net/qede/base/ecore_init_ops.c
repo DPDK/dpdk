@@ -179,12 +179,12 @@ static enum _ecore_status_t ecore_init_fill_dmae(struct ecore_hwfn *p_hwfn,
 						 u32 addr, u32 fill_count)
 {
 	static u32 zero_buffer[DMAE_MAX_RW_SIZE];
-	struct ecore_dmae_params params;
+	struct dmae_params params;
 
 	OSAL_MEMSET(zero_buffer, 0, sizeof(u32) * DMAE_MAX_RW_SIZE);
 
 	OSAL_MEMSET(&params, 0, sizeof(params));
-	params.flags = ECORE_DMAE_FLAG_RW_REPL_SRC;
+	SET_FIELD(params.flags, DMAE_PARAMS_RW_REPL_SRC, 0x1);
 	return ecore_dmae_host2grc(p_hwfn, p_ptt,
 				   (osal_uintptr_t)&zero_buffer[0],
 				   addr, fill_count, &params);

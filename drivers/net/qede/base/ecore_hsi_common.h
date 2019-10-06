@@ -1953,7 +1953,11 @@ struct dmae_cmd {
 	__le16 crc16 /* crc16 result */;
 	__le16 crc16_c /* crc16_c result */;
 	__le16 crc10 /* crc_t10 result */;
-	__le16 reserved;
+	__le16 error_bit_reserved;
+#define DMAE_CMD_ERROR_BIT_MASK        0x1 /* Error bit */
+#define DMAE_CMD_ERROR_BIT_SHIFT       0
+#define DMAE_CMD_RESERVED_MASK         0x7FFF
+#define DMAE_CMD_RESERVED_SHIFT        1
 	__le16 xsum16 /* checksum16 result  */;
 	__le16 xsum8 /* checksum8 result  */;
 };
@@ -2017,6 +2021,58 @@ enum dmae_cmd_src_enum {
 };
 
 
+/*
+ * DMAE parameters
+ */
+struct dmae_params {
+	__le32 flags;
+/* If set and the source is a block of length DMAE_MAX_RW_SIZE and the
+ * destination is larger, the source block will be duplicated as many
+ * times as required to fill the destination block. This is used mostly
+ * to write a zeroed buffer to destination address using DMA
+ */
+#define DMAE_PARAMS_RW_REPL_SRC_MASK     0x1
+#define DMAE_PARAMS_RW_REPL_SRC_SHIFT    0
+/* If set, the source is a VF, and the source VF ID is taken from the
+ * src_vf_id parameter.
+ */
+#define DMAE_PARAMS_SRC_VF_VALID_MASK    0x1
+#define DMAE_PARAMS_SRC_VF_VALID_SHIFT   1
+/* If set, the destination is a VF, and the destination VF ID is taken
+ * from the dst_vf_id parameter.
+ */
+#define DMAE_PARAMS_DST_VF_VALID_MASK    0x1
+#define DMAE_PARAMS_DST_VF_VALID_SHIFT   2
+/* If set, a completion is sent to the destination function.
+ * Otherwise its sent to the source function.
+ */
+#define DMAE_PARAMS_COMPLETION_DST_MASK  0x1
+#define DMAE_PARAMS_COMPLETION_DST_SHIFT 3
+/* If set, the port ID is taken from the port_id parameter.
+ * Otherwise, the current port ID is used.
+ */
+#define DMAE_PARAMS_PORT_VALID_MASK      0x1
+#define DMAE_PARAMS_PORT_VALID_SHIFT     4
+/* If set, the source PF ID is taken from the src_pf_id parameter.
+ * Otherwise, the current PF ID is used.
+ */
+#define DMAE_PARAMS_SRC_PF_VALID_MASK    0x1
+#define DMAE_PARAMS_SRC_PF_VALID_SHIFT   5
+/* If set, the destination PF ID is taken from the dst_pf_id parameter.
+ * Otherwise, the current PF ID is used
+ */
+#define DMAE_PARAMS_DST_PF_VALID_MASK    0x1
+#define DMAE_PARAMS_DST_PF_VALID_SHIFT   6
+#define DMAE_PARAMS_RESERVED_MASK        0x1FFFFFF
+#define DMAE_PARAMS_RESERVED_SHIFT       7
+	u8 src_vf_id /* Source VF ID, valid only if src_vf_valid is set */;
+	u8 dst_vf_id /* Destination VF ID, valid only if dst_vf_valid is set */;
+	u8 port_id /* Port ID, valid only if port_valid is set */;
+	u8 src_pf_id /* Source PF ID, valid only if src_pf_valid is set */;
+	u8 dst_pf_id /* Destination PF ID, valid only if dst_pf_valid is set */;
+	u8 reserved1;
+	__le16 reserved2;
+};
 
 
 struct fw_asserts_ram_section {

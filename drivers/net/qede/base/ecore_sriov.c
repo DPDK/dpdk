@@ -347,7 +347,7 @@ enum _ecore_status_t ecore_iov_post_vf_bulletin(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_bulletin_content *p_bulletin;
 	int crc_size = sizeof(p_bulletin->crc);
-	struct ecore_dmae_params params;
+	struct dmae_params params;
 	struct ecore_vf_info *p_vf;
 
 	p_vf = ecore_iov_get_vf_info(p_hwfn, (u16)vfid, true);
@@ -371,8 +371,8 @@ enum _ecore_status_t ecore_iov_post_vf_bulletin(struct ecore_hwfn *p_hwfn,
 
 	/* propagate bulletin board via dmae to vm memory */
 	OSAL_MEMSET(&params, 0, sizeof(params));
-	params.flags = ECORE_DMAE_FLAG_VF_DST;
-	params.dst_vfid = p_vf->abs_vf_id;
+	SET_FIELD(params.flags, DMAE_PARAMS_DST_VF_VALID, 0x1);
+	params.dst_vf_id = p_vf->abs_vf_id;
 	return ecore_dmae_host2host(p_hwfn, p_ptt, p_vf->bulletin.phys,
 				    p_vf->vf_bulletin, p_vf->bulletin.size / 4,
 				    &params);
@@ -1374,7 +1374,7 @@ static void ecore_iov_send_response(struct ecore_hwfn *p_hwfn,
 				    u8 status)
 {
 	struct ecore_iov_vf_mbx *mbx = &p_vf->vf_mbx;
-	struct ecore_dmae_params params;
+	struct dmae_params params;
 	u8 eng_vf_id;
 
 	mbx->reply_virt->default_resp.hdr.status = status;
@@ -1391,9 +1391,9 @@ static void ecore_iov_send_response(struct ecore_hwfn *p_hwfn,
 
 	eng_vf_id = p_vf->abs_vf_id;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_dmae_params));
-	params.flags = ECORE_DMAE_FLAG_VF_DST;
-	params.dst_vfid = eng_vf_id;
+	OSAL_MEMSET(&params, 0, sizeof(struct dmae_params));
+	SET_FIELD(params.flags, DMAE_PARAMS_DST_VF_VALID, 0x1);
+	params.dst_vf_id = eng_vf_id;
 
 	ecore_dmae_host2host(p_hwfn, p_ptt, mbx->reply_phys + sizeof(u64),
 			     mbx->req_virt->first_tlv.reply_address +
@@ -4389,16 +4389,17 @@ out:
 enum _ecore_status_t ecore_iov_copy_vf_msg(struct ecore_hwfn *p_hwfn,
 					   struct ecore_ptt *ptt, int vfid)
 {
-	struct ecore_dmae_params params;
+	struct dmae_params params;
 	struct ecore_vf_info *vf_info;
 
 	vf_info = ecore_iov_get_vf_info(p_hwfn, (u16)vfid, true);
 	if (!vf_info)
 		return ECORE_INVAL;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_dmae_params));
-	params.flags = ECORE_DMAE_FLAG_VF_SRC | ECORE_DMAE_FLAG_COMPLETION_DST;
-	params.src_vfid = vf_info->abs_vf_id;
+	OSAL_MEMSET(&params, 0, sizeof(struct dmae_params));
+	SET_FIELD(params.flags, DMAE_PARAMS_SRC_VF_VALID, 0x1);
+	SET_FIELD(params.flags, DMAE_PARAMS_COMPLETION_DST, 0x1);
+	params.src_vf_id = vf_info->abs_vf_id;
 
 	if (ecore_dmae_host2host(p_hwfn, ptt,
 				 vf_info->vf_mbx.pending_req,

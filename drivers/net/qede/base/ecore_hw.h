@@ -31,23 +31,7 @@ enum reserved_ptts {
 #define MISC_REG_DRIVER_CONTROL_0_SIZE	MISC_REG_DRIVER_CONTROL_1_SIZE
 #endif
 
-enum _dmae_cmd_dst_mask {
-	DMAE_CMD_DST_MASK_NONE = 0,
-	DMAE_CMD_DST_MASK_PCIE = 1,
-	DMAE_CMD_DST_MASK_GRC = 2
-};
-
-enum _dmae_cmd_src_mask {
-	DMAE_CMD_SRC_MASK_PCIE = 0,
-	DMAE_CMD_SRC_MASK_GRC = 1
-};
-
-enum _dmae_cmd_crc_mask {
-	DMAE_CMD_COMP_CRC_EN_MASK_NONE = 0,
-	DMAE_CMD_COMP_CRC_EN_MASK_SET = 1
-};
-
-/* definitions for DMA constants */
+/* Definitions for DMA constants */
 #define DMAE_GO_VALUE	0x1
 
 #ifdef __BIG_ENDIAN
@@ -258,15 +242,77 @@ enum _ecore_status_t ecore_dmae_info_alloc(struct ecore_hwfn	*p_hwfn);
 */
 void ecore_dmae_info_free(struct ecore_hwfn	*p_hwfn);
 
+/**
+ * @brief ecore_dmae_host2grc - copy data from source address to
+ * dmae registers using the given ptt
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param source_addr
+ * @param grc_addr (dmae_data_offset)
+ * @param size_in_dwords
+ * @param p_params (default parameters will be used in case of OSAL_NULL)
+ *
+ * @return enum _ecore_status_t
+ */
+enum _ecore_status_t
+ecore_dmae_host2grc(struct ecore_hwfn *p_hwfn,
+		    struct ecore_ptt *p_ptt,
+		    u64 source_addr,
+		    u32 grc_addr,
+		    u32 size_in_dwords,
+		    struct dmae_params *p_params);
+
+/**
+ * @brief ecore_dmae_grc2host - Read data from dmae data offset
+ * to source address using the given ptt
+ *
+ * @param p_ptt
+ * @param grc_addr (dmae_data_offset)
+ * @param dest_addr
+ * @param size_in_dwords
+ * @param p_params (default parameters will be used in case of OSAL_NULL)
+ *
+ * @return enum _ecore_status_t
+ */
+enum _ecore_status_t
+ecore_dmae_grc2host(struct ecore_hwfn *p_hwfn,
+		    struct ecore_ptt *p_ptt,
+		    u32 grc_addr,
+		    dma_addr_t dest_addr,
+		    u32 size_in_dwords,
+		    struct dmae_params *p_params);
+
+/**
+ * @brief ecore_dmae_host2host - copy data from to source address
+ * to a destination address (for SRIOV) using the given ptt
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param source_addr
+ * @param dest_addr
+ * @param size_in_dwords
+ * @param p_params (default parameters will be used in case of OSAL_NULL)
+ *
+ * @return enum _ecore_status_t
+ */
+enum _ecore_status_t
+ecore_dmae_host2host(struct ecore_hwfn *p_hwfn,
+		     struct ecore_ptt *p_ptt,
+		     dma_addr_t source_addr,
+		     dma_addr_t dest_addr,
+		     u32 size_in_dwords,
+		     struct dmae_params *p_params);
+
+enum _ecore_status_t ecore_dmae_sanity(struct ecore_hwfn *p_hwfn,
+				       struct ecore_ptt *p_ptt,
+				       const char *phase);
+
 enum _ecore_status_t ecore_init_fw_data(struct ecore_dev *p_dev,
 					const u8 *fw_data);
 
 void ecore_hw_err_notify(struct ecore_hwfn *p_hwfn,
 			 enum ecore_hw_err_type err_type);
-
-enum _ecore_status_t ecore_dmae_sanity(struct ecore_hwfn *p_hwfn,
-				       struct ecore_ptt *p_ptt,
-				       const char *phase);
 
 /**
  * @brief ecore_ppfid_wr - Write value to BAR using the given ptt while

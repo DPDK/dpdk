@@ -453,14 +453,15 @@ u32 ecore_vfid_to_concrete(struct ecore_hwfn *p_hwfn, u8 vfid)
 /* DMAE */
 
 #define ECORE_DMAE_FLAGS_IS_SET(params, flag)	\
-	((params) != OSAL_NULL && ((params)->flags & ECORE_DMAE_FLAG_##flag))
+	((params) != OSAL_NULL && \
+	 GET_FIELD((params)->flags, DMAE_PARAMS_##flag))
 
 static void ecore_dmae_opcode(struct ecore_hwfn *p_hwfn,
 			      const u8 is_src_type_grc,
 			      const u8 is_dst_type_grc,
-			      struct ecore_dmae_params *p_params)
+			      struct dmae_params *p_params)
 {
-	u8 src_pfid, dst_pfid, port_id;
+	u8 src_pf_id, dst_pf_id, port_id;
 	u16 opcode_b = 0;
 	u32 opcode = 0;
 
@@ -468,19 +469,19 @@ static void ecore_dmae_opcode(struct ecore_hwfn *p_hwfn,
 	 * 0- The source is the PCIe
 	 * 1- The source is the GRC.
 	 */
-	opcode |= (is_src_type_grc ? DMAE_CMD_SRC_MASK_GRC
-		   : DMAE_CMD_SRC_MASK_PCIE) << DMAE_CMD_SRC_SHIFT;
-	src_pfid = ECORE_DMAE_FLAGS_IS_SET(p_params, PF_SRC) ?
-		   p_params->src_pfid : p_hwfn->rel_pf_id;
-	opcode |= (src_pfid & DMAE_CMD_SRC_PF_ID_MASK) <<
+	opcode |= (is_src_type_grc ? dmae_cmd_src_grc : dmae_cmd_src_pcie) <<
+		  DMAE_CMD_SRC_SHIFT;
+	src_pf_id = ECORE_DMAE_FLAGS_IS_SET(p_params, SRC_PF_VALID) ?
+		    p_params->src_pf_id : p_hwfn->rel_pf_id;
+	opcode |= (src_pf_id & DMAE_CMD_SRC_PF_ID_MASK) <<
 		  DMAE_CMD_SRC_PF_ID_SHIFT;
 
 	/* The destination of the DMA can be: 0-None 1-PCIe 2-GRC 3-None */
-	opcode |= (is_dst_type_grc ? DMAE_CMD_DST_MASK_GRC
-		   : DMAE_CMD_DST_MASK_PCIE) << DMAE_CMD_DST_SHIFT;
-	dst_pfid = ECORE_DMAE_FLAGS_IS_SET(p_params, PF_DST) ?
-		   p_params->dst_pfid : p_hwfn->rel_pf_id;
-	opcode |= (dst_pfid & DMAE_CMD_DST_PF_ID_MASK) <<
+	opcode |= (is_dst_type_grc ? dmae_cmd_dst_grc : dmae_cmd_dst_pcie) <<
+		  DMAE_CMD_DST_SHIFT;
+	dst_pf_id = ECORE_DMAE_FLAGS_IS_SET(p_params, DST_PF_VALID) ?
+		    p_params->dst_pf_id : p_hwfn->rel_pf_id;
+	opcode |= (dst_pf_id & DMAE_CMD_DST_PF_ID_MASK) <<
 		  DMAE_CMD_DST_PF_ID_SHIFT;
 
 	/* DMAE_E4_TODO need to check which value to specify here. */
@@ -501,7 +502,7 @@ static void ecore_dmae_opcode(struct ecore_hwfn *p_hwfn,
 	 */
 	opcode |= DMAE_CMD_ENDIANITY << DMAE_CMD_ENDIANITY_MODE_SHIFT;
 
-	port_id = (ECORE_DMAE_FLAGS_IS_SET(p_params, PORT)) ?
+	port_id = (ECORE_DMAE_FLAGS_IS_SET(p_params, PORT_VALID)) ?
 		  p_params->port_id : p_hwfn->port_id;
 	opcode |= port_id << DMAE_CMD_PORT_ID_SHIFT;
 
@@ -512,16 +513,16 @@ static void ecore_dmae_opcode(struct ecore_hwfn *p_hwfn,
 	opcode |= DMAE_CMD_DST_ADDR_RESET_MASK << DMAE_CMD_DST_ADDR_RESET_SHIFT;
 
 	/* SRC/DST VFID: all 1's - pf, otherwise VF id */
-	if (ECORE_DMAE_FLAGS_IS_SET(p_params, VF_SRC)) {
+	if (ECORE_DMAE_FLAGS_IS_SET(p_params, SRC_VF_VALID)) {
 		opcode |= (1 << DMAE_CMD_SRC_VF_ID_VALID_SHIFT);
-		opcode_b |= (p_params->src_vfid << DMAE_CMD_SRC_VF_ID_SHIFT);
+		opcode_b |= (p_params->src_vf_id <<  DMAE_CMD_SRC_VF_ID_SHIFT);
 	} else {
 		opcode_b |= (DMAE_CMD_SRC_VF_ID_MASK <<
 			     DMAE_CMD_SRC_VF_ID_SHIFT);
 	}
-	if (ECORE_DMAE_FLAGS_IS_SET(p_params, VF_DST)) {
+	if (ECORE_DMAE_FLAGS_IS_SET(p_params, DST_VF_VALID)) {
 		opcode |= 1 << DMAE_CMD_DST_VF_ID_VALID_SHIFT;
-		opcode_b |= p_params->dst_vfid << DMAE_CMD_DST_VF_ID_SHIFT;
+		opcode_b |= p_params->dst_vf_id << DMAE_CMD_DST_VF_ID_SHIFT;
 	} else {
 		opcode_b |= DMAE_CMD_DST_VF_ID_MASK << DMAE_CMD_DST_VF_ID_SHIFT;
 	}
@@ -716,6 +717,12 @@ static enum _ecore_status_t ecore_dmae_operation_wait(struct ecore_hwfn *p_hwfn)
 	return ecore_status;
 }
 
+enum ecore_dmae_address_type {
+	ECORE_DMAE_ADDRESS_HOST_VIRT,
+	ECORE_DMAE_ADDRESS_HOST_PHYS,
+	ECORE_DMAE_ADDRESS_GRC
+};
+
 static enum _ecore_status_t
 ecore_dmae_execute_sub_operation(struct ecore_hwfn *p_hwfn,
 				 struct ecore_ptt *p_ptt,
@@ -806,7 +813,7 @@ ecore_dmae_execute_command(struct ecore_hwfn *p_hwfn,
 			   u8 src_type,
 			   u8 dst_type,
 			   u32 size_in_dwords,
-			   struct ecore_dmae_params *p_params)
+			   struct dmae_params *p_params)
 {
 	dma_addr_t phys = p_hwfn->dmae_info.completion_word_phys_addr;
 	u16 length_cur = 0, i = 0, cnt_split = 0, length_mod = 0;
@@ -910,7 +917,7 @@ enum _ecore_status_t ecore_dmae_host2grc(struct ecore_hwfn *p_hwfn,
 					 u64 source_addr,
 					 u32 grc_addr,
 					 u32 size_in_dwords,
-					 struct ecore_dmae_params *p_params)
+					 struct dmae_params *p_params)
 {
 	u32 grc_addr_in_dw = grc_addr / sizeof(u32);
 	enum _ecore_status_t rc;
@@ -933,7 +940,7 @@ enum _ecore_status_t ecore_dmae_grc2host(struct ecore_hwfn *p_hwfn,
 					 u32 grc_addr,
 					 dma_addr_t dest_addr,
 					 u32 size_in_dwords,
-					 struct ecore_dmae_params *p_params)
+					 struct dmae_params *p_params)
 {
 	u32 grc_addr_in_dw = grc_addr / sizeof(u32);
 	enum _ecore_status_t rc;
@@ -955,7 +962,8 @@ ecore_dmae_host2host(struct ecore_hwfn *p_hwfn,
 		     struct ecore_ptt *p_ptt,
 		     dma_addr_t source_addr,
 		     dma_addr_t dest_addr,
-		     u32 size_in_dwords, struct ecore_dmae_params *p_params)
+		     u32 size_in_dwords,
+					  struct dmae_params *p_params)
 {
 	enum _ecore_status_t rc;
 
