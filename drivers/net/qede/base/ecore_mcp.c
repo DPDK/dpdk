@@ -469,7 +469,7 @@ static void __ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 	/* Set the drv command along with the sequence number */
 	DRV_MB_WR(p_hwfn, p_ptt, drv_mb_header, (p_mb_params->cmd | seq_num));
 
-	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+	DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
 		   "MFW mailbox: command 0x%08x param 0x%08x\n",
 		   (p_mb_params->cmd | seq_num), p_mb_params->param);
 }
@@ -594,7 +594,7 @@ _ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	ecore_mcp_cmd_del_elem(p_hwfn, p_cmd_elem);
 	OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
 
-	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+	DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
 		   "MFW mailbox: response 0x%08x param 0x%08x [after %d.%03d ms]\n",
 		   p_mb_params->mcp_resp, p_mb_params->mcp_param,
 		   (cnt * delay) / 1000, (cnt * delay) % 1000);
