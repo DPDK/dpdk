@@ -24,7 +24,7 @@ enum ecore_int_mode {
 #endif
 
 struct ecore_sb_info {
-	struct status_block_e4 *sb_virt;
+	struct status_block *sb_virt;
 	dma_addr_t sb_phys;
 	u32 sb_ack;		/* Last given ack */
 	u16 igu_sb_id;
@@ -42,7 +42,7 @@ struct ecore_sb_info {
 struct ecore_sb_info_dbg {
 	u32 igu_prod;
 	u32 igu_cons;
-	u16 pi[PIS_PER_SB_E4];
+	u16 pi[MAX_PIS_PER_SB];
 };
 
 struct ecore_sb_cnt_info {
@@ -65,7 +65,7 @@ static OSAL_INLINE u16 ecore_sb_update_sb_idx(struct ecore_sb_info *sb_info)
 	/* barrier(); status block is written to by the chip */
 	/* FIXME: need some sort of barrier. */
 	prod = OSAL_LE32_TO_CPU(sb_info->sb_virt->prod_index) &
-	    STATUS_BLOCK_E4_PROD_INDEX_MASK;
+	       STATUS_BLOCK_PROD_INDEX_MASK;
 	if (sb_info->sb_ack != prod) {
 		sb_info->sb_ack = prod;
 		rc |= ECORE_SB_IDX;

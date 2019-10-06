@@ -569,12 +569,12 @@ qede_alloc_mem_sb(struct qede_dev *qdev, struct ecore_sb_info *sb_info,
 		  uint16_t sb_id)
 {
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct status_block_e4 *sb_virt;
+	struct status_block *sb_virt;
 	dma_addr_t sb_phys;
 	int rc;
 
 	sb_virt = OSAL_DMA_ALLOC_COHERENT(edev, &sb_phys,
-					  sizeof(struct status_block_e4));
+					  sizeof(struct status_block));
 	if (!sb_virt) {
 		DP_ERR(edev, "Status block allocation failed\n");
 		return -ENOMEM;
@@ -584,7 +584,7 @@ qede_alloc_mem_sb(struct qede_dev *qdev, struct ecore_sb_info *sb_info,
 	if (rc) {
 		DP_ERR(edev, "Status block initialization failed\n");
 		OSAL_DMA_FREE_COHERENT(edev, sb_virt, sb_phys,
-				       sizeof(struct status_block_e4));
+				       sizeof(struct status_block));
 		return rc;
 	}
 
@@ -683,7 +683,7 @@ void qede_dealloc_fp_resc(struct rte_eth_dev *eth_dev)
 		if (fp->sb_info) {
 			OSAL_DMA_FREE_COHERENT(edev, fp->sb_info->sb_virt,
 				fp->sb_info->sb_phys,
-				sizeof(struct status_block_e4));
+				sizeof(struct status_block));
 			rte_free(fp->sb_info);
 			fp->sb_info = NULL;
 		}

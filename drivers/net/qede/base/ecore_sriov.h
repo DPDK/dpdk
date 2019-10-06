@@ -14,7 +14,7 @@
 #include "ecore_l2.h"
 
 #define ECORE_ETH_MAX_VF_NUM_VLAN_FILTERS \
-	(MAX_NUM_VFS_E4 * ECORE_ETH_VF_NUM_VLAN_FILTERS)
+	(MAX_NUM_VFS_K2 * ECORE_ETH_VF_NUM_VLAN_FILTERS)
 
 /* Represents a full message. Both the request filled by VF
  * and the response filled by the PF. The VF needs one copy
@@ -173,7 +173,7 @@ struct ecore_vf_info {
  * capability enabled.
  */
 struct ecore_pf_iov {
-	struct ecore_vf_info	vfs_array[MAX_NUM_VFS_E4];
+	struct ecore_vf_info	vfs_array[MAX_NUM_VFS_K2];
 	u64			pending_flr[ECORE_VF_ARRAY_LENGTH];
 
 #ifndef REMOVE_DBG

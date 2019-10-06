@@ -188,7 +188,7 @@ ecore_spq_fill_entry(struct ecore_hwfn *p_hwfn, struct ecore_spq_entry *p_ent)
 static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 				    struct ecore_spq *p_spq)
 {
-	struct e4_core_conn_context *p_cxt;
+	struct core_conn_context *p_cxt;
 	struct ecore_cxt_info cxt_info;
 	u16 physical_q;
 	enum _ecore_status_t rc;
@@ -210,14 +210,14 @@ static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 
 	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev)) {
 		SET_FIELD(p_cxt->xstorm_ag_context.flags10,
-			  E4_XSTORM_CORE_CONN_AG_CTX_DQ_CF_EN, 1);
+			  XSTORM_CORE_CONN_AG_CTX_DQ_CF_EN, 1);
 		SET_FIELD(p_cxt->xstorm_ag_context.flags1,
-			  E4_XSTORM_CORE_CONN_AG_CTX_DQ_CF_ACTIVE, 1);
+			  XSTORM_CORE_CONN_AG_CTX_DQ_CF_ACTIVE, 1);
 		/* SET_FIELD(p_cxt->xstorm_ag_context.flags10,
 		 *	  E4_XSTORM_CORE_CONN_AG_CTX_SLOW_PATH_EN, 1);
 		 */
 		SET_FIELD(p_cxt->xstorm_ag_context.flags9,
-			  E4_XSTORM_CORE_CONN_AG_CTX_CONSOLID_PROD_CF_EN, 1);
+			  XSTORM_CORE_CONN_AG_CTX_CONSOLID_PROD_CF_EN, 1);
 	}
 
 	/* CDU validation - FIXME currently disabled */

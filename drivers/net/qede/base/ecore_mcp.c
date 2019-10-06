@@ -1703,7 +1703,7 @@ static void ecore_mcp_update_stag(struct ecore_hwfn *p_hwfn,
 
 			/* Configure DB to add external vlan to EDPM packets */
 			ecore_wr(p_hwfn, p_ptt, DORQ_REG_TAG1_OVRD_MODE, 1);
-			ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_EXT_VID_BB_K2,
+			ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_EXT_VID,
 				 p_hwfn->hw_info.ovlan);
 		} else {
 			ecore_wr(p_hwfn, p_ptt, NIG_REG_LLH_FUNC_TAG_EN, 0);
@@ -1711,7 +1711,7 @@ static void ecore_mcp_update_stag(struct ecore_hwfn *p_hwfn,
 
 			/* Configure DB to add external vlan to EDPM packets */
 			ecore_wr(p_hwfn, p_ptt, DORQ_REG_TAG1_OVRD_MODE, 0);
-			ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_EXT_VID_BB_K2, 0);
+			ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_EXT_VID, 0);
 		}
 
 		ecore_sp_pf_update_stag(p_hwfn);

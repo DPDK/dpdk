@@ -106,59 +106,43 @@
 /* PCI functions */
 #define MAX_NUM_PORTS_BB        (2)
 #define MAX_NUM_PORTS_K2        (4)
-#define MAX_NUM_PORTS_E5        (4)
-#define MAX_NUM_PORTS           (MAX_NUM_PORTS_E5)
+#define MAX_NUM_PORTS           (MAX_NUM_PORTS_K2)
 
 #define MAX_NUM_PFS_BB          (8)
 #define MAX_NUM_PFS_K2          (16)
-#define MAX_NUM_PFS_E5          (16)
-#define MAX_NUM_PFS             (MAX_NUM_PFS_E5)
+#define MAX_NUM_PFS             (MAX_NUM_PFS_K2)
 #define MAX_NUM_OF_PFS_IN_CHIP  (16) /* On both engines */
 
 #define MAX_NUM_VFS_BB          (120)
 #define MAX_NUM_VFS_K2          (192)
-#define MAX_NUM_VFS_E4          (MAX_NUM_VFS_K2)
-#define MAX_NUM_VFS_E5          (240)
-#define COMMON_MAX_NUM_VFS      (MAX_NUM_VFS_E5)
+#define COMMON_MAX_NUM_VFS      (MAX_NUM_VFS_K2)
 
 #define MAX_NUM_FUNCTIONS_BB    (MAX_NUM_PFS_BB + MAX_NUM_VFS_BB)
 #define MAX_NUM_FUNCTIONS_K2    (MAX_NUM_PFS_K2 + MAX_NUM_VFS_K2)
-#define MAX_NUM_FUNCTIONS       (MAX_NUM_PFS + MAX_NUM_VFS_E4)
 
 /* in both BB and K2, the VF number starts from 16. so for arrays containing all
  * possible PFs and VFs - we need a constant for this size
  */
 #define MAX_FUNCTION_NUMBER_BB      (MAX_NUM_PFS + MAX_NUM_VFS_BB)
 #define MAX_FUNCTION_NUMBER_K2      (MAX_NUM_PFS + MAX_NUM_VFS_K2)
-#define MAX_FUNCTION_NUMBER_E4      (MAX_NUM_PFS + MAX_NUM_VFS_E4)
-#define MAX_FUNCTION_NUMBER_E5      (MAX_NUM_PFS + MAX_NUM_VFS_E5)
-#define COMMON_MAX_FUNCTION_NUMBER  (MAX_NUM_PFS + MAX_NUM_VFS_E5)
+#define COMMON_MAX_FUNCTION_NUMBER  (MAX_NUM_PFS + MAX_NUM_VFS_K2)
 
 #define MAX_NUM_VPORTS_K2       (208)
 #define MAX_NUM_VPORTS_BB       (160)
-#define MAX_NUM_VPORTS_E4       (MAX_NUM_VPORTS_K2)
-#define MAX_NUM_VPORTS_E5       (256)
-#define COMMON_MAX_NUM_VPORTS   (MAX_NUM_VPORTS_E5)
+#define COMMON_MAX_NUM_VPORTS   (MAX_NUM_VPORTS_K2)
 
 #define MAX_NUM_L2_QUEUES_BB	(256)
 #define MAX_NUM_L2_QUEUES_K2    (320)
-#define MAX_NUM_L2_QUEUES_E5    (320) /* TODO_E5_VITALY - fix to 512 */
-#define MAX_NUM_L2_QUEUES		(MAX_NUM_L2_QUEUES_E5)
 
 /* Traffic classes in network-facing blocks (PBF, BTB, NIG, BRB, PRS and QM) */
 #define NUM_PHYS_TCS_4PORT_K2     4
-#define NUM_PHYS_TCS_4PORT_TX_E5  6
-#define NUM_PHYS_TCS_4PORT_RX_E5  4
 #define NUM_OF_PHYS_TCS           8
 #define PURE_LB_TC                NUM_OF_PHYS_TCS
 #define NUM_TCS_4PORT_K2          (NUM_PHYS_TCS_4PORT_K2 + 1)
-#define NUM_TCS_4PORT_TX_E5       (NUM_PHYS_TCS_4PORT_TX_E5 + 1)
-#define NUM_TCS_4PORT_RX_E5       (NUM_PHYS_TCS_4PORT_RX_E5 + 1)
 #define NUM_OF_TCS                (NUM_OF_PHYS_TCS + 1)
 
 /* CIDs */
-#define NUM_OF_CONNECTION_TYPES_E4 (8)
-#define NUM_OF_CONNECTION_TYPES_E5 (16)
+#define NUM_OF_CONNECTION_TYPES (8)
 #define NUM_OF_TASK_TYPES       (8)
 #define NUM_OF_LCIDS            (320)
 #define NUM_OF_LTIDS            (320)
@@ -412,9 +396,8 @@
 #define CAU_FSM_ETH_TX  1
 
 /* Number of Protocol Indices per Status Block */
-#define PIS_PER_SB_E4    12
-#define PIS_PER_SB_E5    8
-#define MAX_PIS_PER_SB_E4	 OSAL_MAX_T(PIS_PER_SB_E4, PIS_PER_SB_E5)
+#define PIS_PER_SB    12
+#define MAX_PIS_PER_SB	 PIS_PER_SB
 
 /* fsm is stopped or not valid for this sb */
 #define CAU_HC_STOPPED_STATE		3
@@ -430,8 +413,7 @@
 
 #define MAX_SB_PER_PATH_K2			(368)
 #define MAX_SB_PER_PATH_BB			(288)
-#define MAX_SB_PER_PATH_E5			(512)
-#define MAX_TOT_SB_PER_PATH			MAX_SB_PER_PATH_E5
+#define MAX_TOT_SB_PER_PATH			MAX_SB_PER_PATH_K2
 
 #define MAX_SB_PER_PF_MIMD			129
 #define MAX_SB_PER_PF_SIMD			64
@@ -639,12 +621,8 @@
 #define MAX_NUM_ILT_RECORDS \
 	OSAL_MAX_T(PXP_NUM_ILT_RECORDS_BB, PXP_NUM_ILT_RECORDS_K2)
 
-#define PXP_NUM_ILT_RECORDS_E5 13664
-
-
 // Host Interface
-#define PXP_QUEUES_ZONE_MAX_NUM_E4	320
-#define PXP_QUEUES_ZONE_MAX_NUM_E5	512
+#define PXP_QUEUES_ZONE_MAX_NUM	320
 
 
 /*****************/
@@ -691,11 +669,12 @@
 /* PBF CONSTANTS  */
 /******************/
 
-/* Number of PBF command queue lines. Each line is 32B. */
-#define PBF_MAX_CMD_LINES_E4 3328
-#define PBF_MAX_CMD_LINES_E5 5280
+/* Number of PBF command queue lines. */
+#define PBF_MAX_CMD_LINES 3328 /* Each line is 256b */
 
 /* Number of BTB blocks. Each block is 256B. */
+#define BTB_MAX_BLOCKS_BB 1440 /* 2880 blocks of 128B */
+#define BTB_MAX_BLOCKS_K2 1840 /* 3680 blocks of 128B */
 #define BTB_MAX_BLOCKS 1440
 
 /*****************/
@@ -1435,40 +1414,20 @@ enum rss_hash_type {
 /*
  * status block structure
  */
-struct status_block_e4 {
-	__le16 pi_array[PIS_PER_SB_E4];
+struct status_block {
+	__le16 pi_array[PIS_PER_SB];
 	__le32 sb_num;
-#define STATUS_BLOCK_E4_SB_NUM_MASK      0x1FF
-#define STATUS_BLOCK_E4_SB_NUM_SHIFT     0
-#define STATUS_BLOCK_E4_ZERO_PAD_MASK    0x7F
-#define STATUS_BLOCK_E4_ZERO_PAD_SHIFT   9
-#define STATUS_BLOCK_E4_ZERO_PAD2_MASK   0xFFFF
-#define STATUS_BLOCK_E4_ZERO_PAD2_SHIFT  16
+#define STATUS_BLOCK_SB_NUM_MASK      0x1FF
+#define STATUS_BLOCK_SB_NUM_SHIFT     0
+#define STATUS_BLOCK_ZERO_PAD_MASK    0x7F
+#define STATUS_BLOCK_ZERO_PAD_SHIFT   9
+#define STATUS_BLOCK_ZERO_PAD2_MASK   0xFFFF
+#define STATUS_BLOCK_ZERO_PAD2_SHIFT  16
 	__le32 prod_index;
-#define STATUS_BLOCK_E4_PROD_INDEX_MASK  0xFFFFFF
-#define STATUS_BLOCK_E4_PROD_INDEX_SHIFT 0
-#define STATUS_BLOCK_E4_ZERO_PAD3_MASK   0xFF
-#define STATUS_BLOCK_E4_ZERO_PAD3_SHIFT  24
-};
-
-
-/*
- * status block structure
- */
-struct status_block_e5 {
-	__le16 pi_array[PIS_PER_SB_E5];
-	__le32 sb_num;
-#define STATUS_BLOCK_E5_SB_NUM_MASK      0x1FF
-#define STATUS_BLOCK_E5_SB_NUM_SHIFT     0
-#define STATUS_BLOCK_E5_ZERO_PAD_MASK    0x7F
-#define STATUS_BLOCK_E5_ZERO_PAD_SHIFT   9
-#define STATUS_BLOCK_E5_ZERO_PAD2_MASK   0xFFFF
-#define STATUS_BLOCK_E5_ZERO_PAD2_SHIFT  16
-	__le32 prod_index;
-#define STATUS_BLOCK_E5_PROD_INDEX_MASK  0xFFFFFF
-#define STATUS_BLOCK_E5_PROD_INDEX_SHIFT 0
-#define STATUS_BLOCK_E5_ZERO_PAD3_MASK   0xFF
-#define STATUS_BLOCK_E5_ZERO_PAD3_SHIFT  24
+#define STATUS_BLOCK_PROD_INDEX_MASK  0xFFFFFF
+#define STATUS_BLOCK_PROD_INDEX_SHIFT 0
+#define STATUS_BLOCK_ZERO_PAD3_MASK   0xFF
+#define STATUS_BLOCK_ZERO_PAD3_SHIFT  24
 };
 
 

@@ -1787,7 +1787,7 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn       *p_hwfn,
 	/* fill in pfdev info */
 	pfdev_info->chip_num = p_hwfn->p_dev->chip_num;
 	pfdev_info->db_size = 0;	/* @@@ TBD MichalK Vf Doorbells */
-	pfdev_info->indices_per_sb = PIS_PER_SB_E4;
+	pfdev_info->indices_per_sb = MAX_PIS_PER_SB;
 
 	pfdev_info->capabilities = PFVF_ACQUIRE_CAP_DEFAULT_UNTAGGED |
 				   PFVF_ACQUIRE_CAP_POST_FW_OVERRIDE;
@@ -4383,7 +4383,7 @@ u16 ecore_iov_get_next_active_vf(struct ecore_hwfn *p_hwfn, u16 rel_vf_id)
 			return i;
 
 out:
-	return MAX_NUM_VFS_E4;
+	return MAX_NUM_VFS_K2;
 }
 
 enum _ecore_status_t ecore_iov_copy_vf_msg(struct ecore_hwfn *p_hwfn,

@@ -23,7 +23,6 @@
 enum chip_ids {
 	CHIP_BB,
 	CHIP_K2,
-	CHIP_E5,
 	MAX_CHIP_IDS
 };
 
@@ -134,7 +133,8 @@ enum init_modes {
 	MODE_PORTS_PER_ENG_2,
 	MODE_PORTS_PER_ENG_4,
 	MODE_100G,
-	MODE_E5,
+	MODE_SKIP_PRAM_INIT,
+	MODE_EMUL_MAC,
 	MAX_INIT_MODES
 };
 

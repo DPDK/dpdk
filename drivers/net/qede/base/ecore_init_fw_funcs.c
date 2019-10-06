@@ -18,12 +18,12 @@
 
 #define CDU_VALIDATION_DEFAULT_CFG 61
 
-static u16 con_region_offsets[3][NUM_OF_CONNECTION_TYPES_E4] = {
+static u16 con_region_offsets[3][NUM_OF_CONNECTION_TYPES] = {
 	{ 400,  336,  352,  304,  304,  384,  416,  352}, /* region 3 offsets */
 	{ 528,  496,  416,  448,  448,  512,  544,  480}, /* region 4 offsets */
 	{ 608,  544,  496,  512,  576,  592,  624,  560}  /* region 5 offsets */
 };
-static u16 task_region_offsets[1][NUM_OF_CONNECTION_TYPES_E4] = {
+static u16 task_region_offsets[1][NUM_OF_CONNECTION_TYPES] = {
 	{ 240,  240,  112,    0,    0,    0,    0,   96}  /* region 1 offsets */
 };
 
@@ -160,19 +160,18 @@ static u16 task_region_offsets[1][NUM_OF_CONNECTION_TYPES_E4] = {
 #define QM_CMD_SET_FIELD(var, cmd, field, value) \
 	SET_FIELD(var[cmd##_##field##_OFFSET], cmd##_##field, value)
 
-#define QM_INIT_TX_PQ_MAP(p_hwfn, map, chip, pq_id, rl_valid, \
-			  vp_pq_id, rl_id, ext_voq, wrr) \
-	do {						\
-		OSAL_MEMSET(&map, 0, sizeof(map)); \
-		SET_FIELD(map.reg, QM_RF_PQ_MAP_##chip##_PQ_VALID, 1); \
-		SET_FIELD(map.reg, QM_RF_PQ_MAP_##chip##_RL_VALID, rl_valid); \
-		SET_FIELD(map.reg, QM_RF_PQ_MAP_##chip##_VP_PQ_ID, vp_pq_id); \
-		SET_FIELD(map.reg, QM_RF_PQ_MAP_##chip##_RL_ID, rl_id); \
-		SET_FIELD(map.reg, QM_RF_PQ_MAP_##chip##_VOQ, ext_voq); \
-		SET_FIELD(map.reg, \
-			  QM_RF_PQ_MAP_##chip##_WRR_WEIGHT_GROUP, wrr); \
-		STORE_RT_REG(p_hwfn, QM_REG_TXPQMAP_RT_OFFSET + pq_id, \
-			     *((u32 *)&map)); \
+#define QM_INIT_TX_PQ_MAP(p_hwfn, map, pq_id, vp_pq_id, \
+			   rl_valid, rl_id, voq, wrr) \
+	do { \
+		OSAL_MEMSET(&(map), 0, sizeof(map)); \
+		SET_FIELD(map.reg, QM_RF_PQ_MAP_PQ_VALID, 1); \
+		SET_FIELD(map.reg, QM_RF_PQ_MAP_RL_VALID, rl_valid ? 1 : 0); \
+		SET_FIELD(map.reg, QM_RF_PQ_MAP_RL_ID, rl_id); \
+		SET_FIELD(map.reg, QM_RF_PQ_MAP_VP_PQ_ID, vp_pq_id); \
+		SET_FIELD(map.reg, QM_RF_PQ_MAP_VOQ, voq); \
+		SET_FIELD(map.reg, QM_RF_PQ_MAP_WRR_WEIGHT_GROUP, wrr); \
+		STORE_RT_REG(p_hwfn, QM_REG_TXPQMAP_RT_OFFSET + (pq_id), \
+			     *((u32 *)&(map))); \
 	} while (0)
 
 #define WRITE_PQ_INFO_TO_RAM		1
@@ -497,12 +496,11 @@ static void ecore_tx_pq_map_rt_init(struct ecore_hwfn *p_hwfn,
 		}
 
 		/* Prepare PQ map entry */
-		struct qm_rf_pq_map_e4 tx_pq_map;
+		struct qm_rf_pq_map tx_pq_map;
 
-		QM_INIT_TX_PQ_MAP(p_hwfn, tx_pq_map, E4, pq_id, rl_valid ?
-				  1 : 0,
-				  first_tx_pq_id, rl_valid ?
-				  pq_params[i].vport_id : 0,
+		QM_INIT_TX_PQ_MAP(p_hwfn, tx_pq_map, pq_id, first_tx_pq_id,
+				  rl_valid ? 1 : 0,
+				  rl_valid ? pq_params[i].vport_id : 0,
 				  ext_voq, pq_params[i].wrr_group);
 
 		/* Set PQ base address */
@@ -1577,9 +1575,9 @@ void ecore_set_geneve_enable(struct ecore_hwfn *p_hwfn,
 		return;
 
 	/* Update DORQ registers */
-	ecore_wr(p_hwfn, p_ptt, DORQ_REG_L2_EDPM_TUNNEL_NGE_ETH_EN_K2_E5,
+	ecore_wr(p_hwfn, p_ptt, DORQ_REG_L2_EDPM_TUNNEL_NGE_ETH_EN_K2,
 		 eth_geneve_enable ? 1 : 0);
-	ecore_wr(p_hwfn, p_ptt, DORQ_REG_L2_EDPM_TUNNEL_NGE_IP_EN_K2_E5,
+	ecore_wr(p_hwfn, p_ptt, DORQ_REG_L2_EDPM_TUNNEL_NGE_IP_EN_K2,
 		 ip_geneve_enable ? 1 : 0);
 }
 

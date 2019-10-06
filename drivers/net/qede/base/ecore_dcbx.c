@@ -159,7 +159,7 @@ ecore_dcbx_set_params(struct ecore_dcbx_results *p_data,
 	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits) &&
 	    (type == DCBX_PROTOCOL_ROCE)) {
 		ecore_wr(p_hwfn, p_ptt, DORQ_REG_TAG1_OVRD_MODE, 1);
-		ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_PCP_BB_K2, prio << 1);
+		ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_PCP, prio << 1);
 	}
 }
 

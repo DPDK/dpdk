@@ -54,8 +54,8 @@
 
 /* connection context union */
 union conn_context {
-	struct e4_core_conn_context core_ctx;
-	struct e4_eth_conn_context eth_ctx;
+	struct core_conn_context core_ctx;
+	struct eth_conn_context eth_ctx;
 };
 
 /* TYPE-0 task context - iSCSI, FCOE */

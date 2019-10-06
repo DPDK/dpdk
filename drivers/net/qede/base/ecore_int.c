@@ -29,7 +29,7 @@ struct ecore_pi_info {
 struct ecore_sb_sp_info {
 	struct ecore_sb_info sb_info;
 	/* per protocol index data */
-	struct ecore_pi_info pi_info_arr[PIS_PER_SB_E4];
+	struct ecore_pi_info pi_info_arr[MAX_PIS_PER_SB];
 };
 
 enum ecore_attention_type {
@@ -1514,7 +1514,7 @@ static void _ecore_int_cau_conf_pi(struct ecore_hwfn *p_hwfn,
 	if (IS_VF(p_hwfn->p_dev))
 		return;/* @@@TBD MichalK- VF CAU... */
 
-	sb_offset = igu_sb_id * PIS_PER_SB_E4;
+	sb_offset = igu_sb_id * MAX_PIS_PER_SB;
 	OSAL_MEMSET(&pi_entry, 0, sizeof(struct cau_pi_entry));
 
 	SET_FIELD(pi_entry.prod, CAU_PI_ENTRY_PI_TIMESET, timeset);
@@ -2692,10 +2692,10 @@ enum _ecore_status_t ecore_int_get_sb_dbg(struct ecore_hwfn *p_hwfn,
 	p_info->igu_cons = ecore_rd(p_hwfn, p_ptt,
 				    IGU_REG_CONSUMER_MEM + sbid * 4);
 
-	for (i = 0; i < PIS_PER_SB_E4; i++)
+	for (i = 0; i < MAX_PIS_PER_SB; i++)
 		p_info->pi[i] = (u16)ecore_rd(p_hwfn, p_ptt,
 					      CAU_REG_PI_MEMORY +
-					      sbid * 4 * PIS_PER_SB_E4 +
+					      sbid * 4 * MAX_PIS_PER_SB +
 					      i * 4);
 
 	return ECORE_SUCCESS;
