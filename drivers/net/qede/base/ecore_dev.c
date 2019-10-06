@@ -2291,18 +2291,21 @@ enum _ecore_status_t ecore_qm_reconf(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_qm_info *qm_info = &p_hwfn->qm_info;
 	bool b_rc;
-	enum _ecore_status_t rc;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	/* multiple flows can issue qm reconf. Need to lock */
+	OSAL_SPIN_LOCK(&qm_lock);
 
 	/* initialize ecore's qm data structure */
 	ecore_init_qm_info(p_hwfn);
 
 	/* stop PF's qm queues */
-	OSAL_SPIN_LOCK(&qm_lock);
 	b_rc = ecore_send_qm_stop_cmd(p_hwfn, p_ptt, false, true,
 				      qm_info->start_pq, qm_info->num_pqs);
-	OSAL_SPIN_UNLOCK(&qm_lock);
-	if (!b_rc)
-		return ECORE_INVAL;
+	if (!b_rc) {
+		rc = ECORE_INVAL;
+		goto unlock;
+	}
 
 	/* clear the QM_PF runtime phase leftovers from previous init */
 	ecore_init_clear_rt_data(p_hwfn);
@@ -2313,18 +2316,17 @@ enum _ecore_status_t ecore_qm_reconf(struct ecore_hwfn *p_hwfn,
 	/* activate init tool on runtime array */
 	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_QM_PF, p_hwfn->rel_pf_id,
 			    p_hwfn->hw_info.hw_mode);
-	if (rc != ECORE_SUCCESS)
-		return rc;
 
 	/* start PF's qm queues */
-	OSAL_SPIN_LOCK(&qm_lock);
 	b_rc = ecore_send_qm_stop_cmd(p_hwfn, p_ptt, true, true,
 				      qm_info->start_pq, qm_info->num_pqs);
-	OSAL_SPIN_UNLOCK(&qm_lock);
 	if (!b_rc)
-		return ECORE_INVAL;
+		rc = ECORE_INVAL;
 
-	return ECORE_SUCCESS;
+unlock:
+	OSAL_SPIN_UNLOCK(&qm_lock);
+
+	return rc;
 }
 
 static enum _ecore_status_t ecore_alloc_qm_data(struct ecore_hwfn *p_hwfn)
