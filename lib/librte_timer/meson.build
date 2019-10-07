@@ -4,3 +4,4 @@
 sources = files('rte_timer.c')
 headers = files('rte_timer.h')
 allow_experimental_apis = true
+use_function_versioning = true

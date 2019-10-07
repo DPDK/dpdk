@@ -948,6 +948,13 @@ reason
 	built. For missing dependencies this should be of the form
 	``'missing dependency, "libname"'``.
 
+use_function_versioning
+	**Default Value = false**.
+	Specifies if the library in question has ABI versioned functions. If it
+	has, this value should be set to ensure that the C files are compiled
+	twice with suitable parameters for each of shared or static library
+	builds.
+
 version
 	**Default Value = 1**.
 	Specifies the ABI version of the library, and is used as the major

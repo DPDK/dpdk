@@ -9,6 +9,7 @@ else
 endif
 headers = files('rte_distributor.h')
 deps += ['mbuf']
+use_function_versioning = true
 
 # for clang 32-bit compiles we need libatomic for 64-bit atomic ops
 if cc.get_id() == 'clang' and dpdk_conf.get('RTE_ARCH_64') == false

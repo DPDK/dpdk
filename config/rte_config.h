@@ -31,9 +31,6 @@
 
 /****** library defines ********/
 
-/* compat defines */
-#define RTE_BUILD_SHARED_LIB
-
 /* EAL defines */
 #define RTE_MAX_HEAPS 32
 #define RTE_MAX_MEMSEG_LISTS 128

@@ -47,6 +47,7 @@ foreach l:libraries
 	name = l
 	version = 1
 	allow_experimental_apis = false
+	use_function_versioning = false
 	sources = []
 	headers = []
 	includes = []
@@ -99,6 +100,9 @@ foreach l:libraries
 			if allow_experimental_apis
 				cflags += '-DALLOW_EXPERIMENTAL_API'
 			endif
+			if use_function_versioning
+				cflags += '-DRTE_USE_FUNCTION_VERSIONING'
+			endif
 
 			if get_option('per_library_versions')
 				lib_version = '@0@.1'.format(version)
@@ -120,9 +124,15 @@ foreach l:libraries
 					include_directories: includes,
 					dependencies: static_deps)
 
-			# then use pre-build objects to build shared lib
-			sources = []
-			objs += static_lib.extract_all_objects(recursive: false)
+			if not use_function_versioning
+				# use pre-build objects to build shared lib
+				sources = []
+				objs += static_lib.extract_all_objects(recursive: false)
+			else
+				# for compat we need to rebuild with
+				# RTE_BUILD_SHARED_LIB defined
+				cflags += '-DRTE_BUILD_SHARED_LIB'
+			endif
 			version_map = '@0@/@1@/rte_@2@_version.map'.format(
 					meson.current_source_dir(), dir_name, name)
 			implib = dir_name + '.dll.a'
