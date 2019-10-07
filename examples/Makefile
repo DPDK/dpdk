@@ -22,6 +22,9 @@ DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += fips_validation
 DIRS-$(CONFIG_RTE_LIBRTE_FLOW_CLASSIFY) += flow_classify
 DIRS-y += flow_filtering
 DIRS-y += helloworld
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_IOAT_RAWDEV),y)
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_IOAT_RAWDEV) += ioat
+endif
 DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += ip_pipeline
 ifeq ($(CONFIG_RTE_LIBRTE_LPM),y)
 DIRS-$(CONFIG_RTE_IP_FRAG) += ip_reassembly
