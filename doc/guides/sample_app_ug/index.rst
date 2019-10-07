@@ -22,6 +22,7 @@ Sample Applications User Guides
     ip_reassembly
     kernel_nic_interface
     keep_alive
+    ioat
     l2_forward_crypto
     l2_forward_job_stats
     l2_forward_real_virtual

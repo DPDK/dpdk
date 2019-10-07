@@ -1144,6 +1144,7 @@ M: Bruce Richardson <bruce.richardson@intel.com>
 F: drivers/raw/ioat/
 F: doc/guides/rawdevs/ioat.rst
 F: examples/ioat/
+F: doc/guides/sample_app_ug/ioat.rst
 
 NXP DPAA2 QDMA
 M: Nipun Gupta <nipun.gupta@nxp.com>

@@ -49,6 +49,10 @@ examples are highlighted below.
   forwarding, or ``l3fwd`` application does forwarding based on Internet
   Protocol, IPv4 or IPv6 like a simple router.
 
+* :doc:`Hardware packet copying<ioat>`: The Hardware packet copying,
+  or ``ioatfwd`` application demonstrates how to use IOAT rawdev driver for
+  copying packets between two threads.
+
 * :doc:`Packet Distributor<dist_app>`: The Packet Distributor
   demonstrates how to distribute packets arriving on an Rx port to different
   cores for processing and transmission.
