@@ -12,7 +12,8 @@ sources = [
 
 error_cflags = ['-Wno-unused-parameter', '-Wno-unused-value',
 	'-Wno-strict-aliasing', '-Wno-format-extra-args',
-	'-Wno-unused-variable', '-Wno-missing-field-initializers'
+	'-Wno-unused-variable', '-Wno-missing-field-initializers',
+	'-Wno-implicit-fallthrough'
 ]
 c_args = cflags
 if allow_experimental_apis
