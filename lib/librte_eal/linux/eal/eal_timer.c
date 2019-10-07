@@ -192,41 +192,6 @@ rte_eal_hpet_init(int make_default)
 }
 #endif
 
-static void
-check_tsc_flags(void)
-{
-	char line[512];
-	FILE *stream;
-
-	stream = fopen("/proc/cpuinfo", "r");
-	if (!stream) {
-		RTE_LOG(WARNING, EAL, "WARNING: Unable to open /proc/cpuinfo\n");
-		return;
-	}
-
-	while (fgets(line, sizeof line, stream)) {
-		char *constant_tsc;
-		char *nonstop_tsc;
-
-		if (strncmp(line, "flags", 5) != 0)
-			continue;
-
-		constant_tsc = strstr(line, "constant_tsc");
-		nonstop_tsc = strstr(line, "nonstop_tsc");
-		if (!constant_tsc || !nonstop_tsc)
-			RTE_LOG(WARNING, EAL,
-				"WARNING: cpu flags "
-				"constant_tsc=%s "
-				"nonstop_tsc=%s "
-				"-> using unreliable clock cycles !\n",
-				constant_tsc ? "yes":"no",
-				nonstop_tsc ? "yes":"no");
-		break;
-	}
-
-	fclose(stream);
-}
-
 uint64_t
 get_tsc_freq(void)
 {
@@ -263,6 +228,5 @@ rte_eal_timer_init(void)
 	eal_timer_source = EAL_TIMER_TSC;
 
 	set_tsc_freq();
-	check_tsc_flags();
 	return 0;
 }
