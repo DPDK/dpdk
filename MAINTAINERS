@@ -136,6 +136,8 @@ F: .ci/
 
 ABI versioning
 M: Neil Horman <nhorman@tuxdriver.com>
+F: lib/librte_eal/common/include/rte_compat.h
+F: lib/librte_eal/common/include/rte_function_versioning.h
 F: doc/guides/rel_notes/deprecation.rst
 F: devtools/validate-abi.sh
 F: devtools/check-symbol-change.sh

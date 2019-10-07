@@ -4,6 +4,7 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 INC := rte_branch_prediction.h rte_common.h rte_compat.h
+INC += rte_function_versioning.h
 INC += rte_debug.h rte_eal.h rte_eal_interrupts.h
 INC += rte_errno.h rte_launch.h rte_lcore.h
 INC += rte_log.h rte_memory.h rte_memzone.h

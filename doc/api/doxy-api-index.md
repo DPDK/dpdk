@@ -178,5 +178,6 @@ The public API headers are grouped by topics:
 - **misc**:
   [EAL config]         (@ref rte_eal.h),
   [common]             (@ref rte_common.h),
-  [ABI compat]         (@ref rte_compat.h),
+  [experimental APIs]  (@ref rte_compat.h),
+  [ABI versioning]     (@ref rte_function_versioning.h),
   [version]            (@ref rte_version.h)

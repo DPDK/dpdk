@@ -206,7 +206,7 @@ functionality or behavior. When that occurs, it is desirable to allow for
 backward compatibility for a time with older binaries that are dynamically
 linked to the DPDK.
 
-To support backward compatibility the ``rte_compat.h``
+To support backward compatibility the ``rte_function_versioning.h``
 header file provides macros to use when updating exported functions. These
 macros are used in conjunction with the ``rte_<library>_version.map`` file for
 a given library to allow multiple versions of a symbol to exist in a shared
@@ -362,7 +362,7 @@ the function, we add this line of code
 
    VERSION_SYMBOL(rte_acl_create, _v20, 2.0);
 
-Remembering to also add the rte_compat.h header to the requisite c file where
+Remembering to also add the rte_function_versioning.h header to the requisite c file where
 these changes are being made.  The above macro instructs the linker to create a
 new symbol ``rte_acl_create@DPDK_2.0``, which matches the symbol created in older
 builds, but now points to the above newly named function.  We have now mapped

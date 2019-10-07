@@ -20,7 +20,6 @@
 #include <rte_memory.h>
 #include <rte_common.h>
 #include <rte_vect.h>
-#include <rte_compat.h>
 
 #ifdef __cplusplus
 extern "C" {

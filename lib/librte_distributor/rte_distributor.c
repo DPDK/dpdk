@@ -8,7 +8,7 @@
 #include <rte_mbuf.h>
 #include <rte_memory.h>
 #include <rte_cycles.h>
-#include <rte_compat.h>
+#include <rte_function_versioning.h>
 #include <rte_memzone.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
