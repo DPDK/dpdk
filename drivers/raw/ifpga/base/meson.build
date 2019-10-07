@@ -23,17 +23,6 @@ sources = [
 	'opae_eth_group.c',
 ]
 
-error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',
-		'-Wno-format', '-Wno-error=format-security',
-		'-Wno-strict-aliasing', '-Wno-unused-but-set-variable'
-]
-c_args = cflags
-foreach flag: error_cflags
-	if cc.has_argument(flag)
-		c_args += flag
-	endif
-endforeach
-
 base_lib = static_library('ifpga_rawdev_base', sources,
 	dependencies: static_rte_eal,
 	c_args: c_args)
