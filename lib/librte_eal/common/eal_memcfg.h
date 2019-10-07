@@ -69,6 +69,9 @@ struct rte_mem_config {
 	uint32_t single_file_segments;
 	/**< stored single file segments parameter. */
 
+	uint64_t tsc_hz;
+	/**< TSC rate */
+
 	uint8_t dma_maskbits; /**< Keeps the more restricted dma mask. */
 };
 
