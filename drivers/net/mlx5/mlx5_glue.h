@@ -76,6 +76,10 @@ enum  mlx5dv_dr_domain_type { unused, };
 struct mlx5dv_dr_domain;
 #endif
 
+#ifndef HAVE_MLX5DV_DR_DEVX_PORT
+struct mlx5dv_devx_port;
+#endif
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;
@@ -239,6 +243,9 @@ struct mlx5_glue {
 	int (*devx_qp_query)(struct ibv_qp *qp,
 			     const void *in, size_t inlen,
 			     void *out, size_t outlen);
+	int (*devx_port_query)(struct ibv_context *ctx,
+			       uint32_t port_num,
+			       struct mlx5dv_devx_port *mlx5_devx_port);
 };
 
 const struct mlx5_glue *mlx5_glue;

@@ -989,6 +989,22 @@ mlx5_glue_devx_qp_query(struct ibv_qp *qp,
 #endif
 }
 
+static int
+mlx5_glue_devx_port_query(struct ibv_context *ctx,
+			  uint32_t port_num,
+			  struct mlx5dv_devx_port *mlx5_devx_port)
+{
+#ifdef HAVE_MLX5DV_DR_DEVX_PORT
+	return mlx5dv_query_devx_port(ctx, port_num, mlx5_devx_port);
+#else
+	(void)ctx;
+	(void)port_num;
+	(void)mlx5_devx_port;
+	errno = ENOTSUP;
+	return errno;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -1083,4 +1099,5 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_umem_reg = mlx5_glue_devx_umem_reg,
 	.devx_umem_dereg = mlx5_glue_devx_umem_dereg,
 	.devx_qp_query = mlx5_glue_devx_qp_query,
+	.devx_port_query = mlx5_glue_devx_port_query,
 };

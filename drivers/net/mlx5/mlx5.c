@@ -1845,7 +1845,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 */
 	devx_port.comp_mask = MLX5DV_DEVX_PORT_VPORT |
 			      MLX5DV_DEVX_PORT_MATCH_REG_C_0;
-	err = mlx5dv_query_devx_port(sh->ctx, spawn->ibv_port, &devx_port);
+	err = mlx5_glue->devx_port_query(sh->ctx, spawn->ibv_port, &devx_port);
 	if (err) {
 		DRV_LOG(WARNING, "can't query devx port %d on device %s\n",
 			spawn->ibv_port, spawn->ibv_dev->name);
