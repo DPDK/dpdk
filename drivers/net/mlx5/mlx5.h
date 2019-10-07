@@ -682,13 +682,13 @@ int32_t mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id,
 			 uint64_t offset);
 int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			      struct rte_eth_udp_tunnel *udp_tunnel);
-uint16_t mlx5_eth_find_next(uint16_t port_id);
+uint16_t mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev);
 
 /* Macro to iterate over all valid ports for mlx5 driver. */
-#define MLX5_ETH_FOREACH_DEV(port_id) \
-	for (port_id = mlx5_eth_find_next(0); \
+#define MLX5_ETH_FOREACH_DEV(port_id, pci_dev) \
+	for (port_id = mlx5_eth_find_next(0, pci_dev); \
 	     port_id < RTE_MAX_ETHPORTS; \
-	     port_id = mlx5_eth_find_next(port_id + 1))
+	     port_id = mlx5_eth_find_next(port_id + 1, pci_dev))
 
 /* mlx5_ethdev.c */
 

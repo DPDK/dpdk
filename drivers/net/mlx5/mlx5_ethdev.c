@@ -601,7 +601,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 			info->switch_info.port_id |=
 				priv->pf_bond << MLX5_PORT_ID_BONDING_PF_SHIFT;
 		}
-		MLX5_ETH_FOREACH_DEV(port_id) {
+		MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
 			struct mlx5_priv *opriv =
 				rte_eth_devices[port_id].data->dev_private;
 
@@ -734,7 +734,7 @@ mlx5_find_master_dev(struct rte_eth_dev *dev)
 	priv = dev->data->dev_private;
 	domain_id = priv->domain_id;
 	assert(priv->representor);
-	MLX5_ETH_FOREACH_DEV(port_id) {
+	MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
 		struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 		if (opriv &&

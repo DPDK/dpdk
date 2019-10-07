@@ -926,7 +926,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		unsigned int c = 0;
 		uint16_t port_id;
 
-		MLX5_ETH_FOREACH_DEV(port_id) {
+		MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
 			struct mlx5_priv *opriv =
 				rte_eth_devices[port_id].data->dev_private;
 
@@ -1545,7 +1545,7 @@ mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 	if (sh->refcnt == 1)
 		return 0;
 	/* Find the device with shared context. */
-	MLX5_ETH_FOREACH_DEV(port_id) {
+	MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
 		struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 
@@ -1903,7 +1903,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Look for sibling devices in order to reuse their switch domain
 	 * if any, otherwise allocate one.
 	 */
-	MLX5_ETH_FOREACH_DEV(port_id) {
+	MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
 		const struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 
@@ -2781,17 +2781,33 @@ exit:
 	return ret;
 }
 
+/**
+ * Look for the ethernet device belonging to mlx5 driver.
+ *
+ * @param[in] port_id
+ *   port_id to start looking for device.
+ * @param[in] pci_dev
+ *   Pointer to the hint PCI device. When device is being probed
+ *   the its siblings (master and preceding representors might
+ *   not have assigned driver yet (because the mlx5_pci_probe()
+ *   is not completed yet, for this case match on hint PCI
+ *   device may be used to detect sibling device.
+ *
+ * @return
+ *   port_id of found device, RTE_MAX_ETHPORT if not found.
+ */
 uint16_t
-mlx5_eth_find_next(uint16_t port_id)
+mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev)
 {
 	while (port_id < RTE_MAX_ETHPORTS) {
 		struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 
 		if (dev->state != RTE_ETH_DEV_UNUSED &&
 		    dev->device &&
-		    dev->device->driver &&
-		    dev->device->driver->name &&
-		    !strcmp(dev->device->driver->name, MLX5_DRIVER_NAME))
+		    (dev->device == &pci_dev->device ||
+		     (dev->device->driver &&
+		     dev->device->driver->name &&
+		     !strcmp(dev->device->driver->name, MLX5_DRIVER_NAME))))
 			break;
 		port_id++;
 	}
