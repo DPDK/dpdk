@@ -10,8 +10,6 @@ sources = files('vdev_netvsc.c')
 allow_experimental_apis = true
 
 cflags_options = [
-        '-Wall',
-        '-Wextra',
         '-D_BSD_SOURCE',
         '-D_DEFAULT_SOURCE',
         '-D_XOPEN_SOURCE=600'

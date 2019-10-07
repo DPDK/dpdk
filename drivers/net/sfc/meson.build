@@ -20,14 +20,12 @@ extra_flags += '-Wno-strict-aliasing'
 
 # Enable more warnings
 extra_flags += [
-	'-Wextra',
 	'-Wdisabled-optimization'
 ]
 
 # Compiler and version dependent flags
 extra_flags += [
 	'-Waggregate-return',
-	'-Wnested-externs',
 	'-Wbad-function-cast'
 ]
 

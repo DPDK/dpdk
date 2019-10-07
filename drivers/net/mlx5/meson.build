@@ -66,7 +66,6 @@ if build
 		sources += files('mlx5_glue.c')
 	endif
 	cflags_options = [
-		'-Wextra',
 		'-std=c11',
 		'-Wno-strict-prototypes',
 		'-D_BSD_SOURCE',
