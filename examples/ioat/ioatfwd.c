@@ -263,6 +263,36 @@ ioat_tx_port(struct rxtx_port_config *tx_config)
 	}
 }
 
+/* Main rx processing loop for IOAT rawdev. */
+static void
+rx_main_loop(void)
+{
+	uint16_t i;
+	uint16_t nb_ports = cfg.nb_ports;
+
+	RTE_LOG(INFO, IOAT, "Entering main rx loop for copy on lcore %u\n",
+		rte_lcore_id());
+
+	while (!force_quit)
+		for (i = 0; i < nb_ports; i++)
+			ioat_rx_port(&cfg.ports[i]);
+}
+
+/* Main tx processing loop for hardware copy. */
+static void
+tx_main_loop(void)
+{
+	uint16_t i;
+	uint16_t nb_ports = cfg.nb_ports;
+
+	RTE_LOG(INFO, IOAT, "Entering main tx loop for copy on lcore %u\n",
+		rte_lcore_id());
+
+	while (!force_quit)
+		for (i = 0; i < nb_ports; i++)
+			ioat_tx_port(&cfg.ports[i]);
+}
+
 /* Main rx and tx loop if only one slave lcore available */
 static void
 rxtx_main_loop(void)
@@ -287,9 +317,19 @@ static void start_forwarding_cores(void)
 	RTE_LOG(INFO, IOAT, "Entering %s on lcore %u\n",
 		__func__, rte_lcore_id());
 
-	lcore_id = rte_get_next_lcore(lcore_id, true, true);
-	rte_eal_remote_launch((lcore_function_t *)rxtx_main_loop,
-		NULL, lcore_id);
+	if (cfg.nb_lcores == 1) {
+		lcore_id = rte_get_next_lcore(lcore_id, true, true);
+		rte_eal_remote_launch((lcore_function_t *)rxtx_main_loop,
+			NULL, lcore_id);
+	} else if (cfg.nb_lcores > 1) {
+		lcore_id = rte_get_next_lcore(lcore_id, true, true);
+		rte_eal_remote_launch((lcore_function_t *)rx_main_loop,
+			NULL, lcore_id);
+
+		lcore_id = rte_get_next_lcore(lcore_id, true, true);
+		rte_eal_remote_launch((lcore_function_t *)tx_main_loop, NULL,
+			lcore_id);
+	}
 }
 
 /* Display usage */
