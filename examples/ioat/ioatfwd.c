@@ -48,6 +48,23 @@ struct rxtx_transmission_config {
 	uint16_t nb_lcores;
 };
 
+/* per-port statistics struct */
+struct ioat_port_statistics {
+	uint64_t rx[RTE_MAX_ETHPORTS];
+	uint64_t tx[RTE_MAX_ETHPORTS];
+	uint64_t tx_dropped[RTE_MAX_ETHPORTS];
+	uint64_t copy_dropped[RTE_MAX_ETHPORTS];
+};
+struct ioat_port_statistics port_statistics;
+
+struct total_statistics {
+	uint64_t total_packets_dropped;
+	uint64_t total_packets_tx;
+	uint64_t total_packets_rx;
+	uint64_t total_successful_enqueues;
+	uint64_t total_failed_enqueues;
+};
+
 typedef enum copy_mode_t {
 #define COPY_MODE_SW "sw"
 	COPY_MODE_SW_NUM,
@@ -88,6 +105,204 @@ static struct rte_ether_addr ioat_ports_eth_addr[RTE_MAX_ETHPORTS];
 
 static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 struct rte_mempool *ioat_pktmbuf_pool;
+
+/* Print out statistics for one port. */
+static void
+print_port_stats(uint16_t port_id)
+{
+	printf("\nStatistics for port %u ------------------------------"
+		"\nPackets sent: %34"PRIu64
+		"\nPackets received: %30"PRIu64
+		"\nPackets dropped on tx: %25"PRIu64
+		"\nPackets dropped on copy: %23"PRIu64,
+		port_id,
+		port_statistics.tx[port_id],
+		port_statistics.rx[port_id],
+		port_statistics.tx_dropped[port_id],
+		port_statistics.copy_dropped[port_id]);
+}
+
+/* Print out statistics for one IOAT rawdev device. */
+static void
+print_rawdev_stats(uint32_t dev_id, uint64_t *xstats,
+	unsigned int *ids_xstats, uint16_t nb_xstats,
+	struct rte_rawdev_xstats_name *names_xstats)
+{
+	uint16_t i;
+
+	printf("\nIOAT channel %u", dev_id);
+	for (i = 0; i < nb_xstats; i++)
+		printf("\n\t %s: %*"PRIu64,
+			names_xstats[ids_xstats[i]].name,
+			(int)(37 - strlen(names_xstats[ids_xstats[i]].name)),
+			xstats[i]);
+}
+
+static void
+print_total_stats(struct total_statistics *ts)
+{
+	printf("\nAggregate statistics ==============================="
+		"\nTotal packets Tx: %24"PRIu64" [pps]"
+		"\nTotal packets Rx: %24"PRIu64" [pps]"
+		"\nTotal packets dropped: %19"PRIu64" [pps]",
+		ts->total_packets_tx,
+		ts->total_packets_rx,
+		ts->total_packets_dropped);
+
+	if (copy_mode == COPY_MODE_IOAT_NUM) {
+		printf("\nTotal IOAT successful enqueues: %8"PRIu64" [enq/s]"
+			"\nTotal IOAT failed enqueues: %12"PRIu64" [enq/s]",
+			ts->total_successful_enqueues,
+			ts->total_failed_enqueues);
+	}
+
+	printf("\n====================================================\n");
+}
+
+/* Print out statistics on packets dropped. */
+static void
+print_stats(char *prgname)
+{
+	struct total_statistics ts, delta_ts;
+	uint32_t i, port_id, dev_id;
+	struct rte_rawdev_xstats_name *names_xstats;
+	uint64_t *xstats;
+	unsigned int *ids_xstats, nb_xstats;
+	char status_string[120]; /* to print at the top of the output */
+	int status_strlen;
+
+
+	const char clr[] = { 27, '[', '2', 'J', '\0' };
+	const char topLeft[] = { 27, '[', '1', ';', '1', 'H', '\0' };
+
+	status_strlen = snprintf(status_string, sizeof(status_string),
+		"%s, ", prgname);
+	status_strlen += snprintf(status_string + status_strlen,
+		sizeof(status_string) - status_strlen,
+		"Worker Threads = %d, ",
+		rte_lcore_count() > 2 ? 2 : 1);
+	status_strlen += snprintf(status_string + status_strlen,
+		sizeof(status_string) - status_strlen,
+		"Copy Mode = %s,\n", copy_mode == COPY_MODE_SW_NUM ?
+		COPY_MODE_SW : COPY_MODE_IOAT);
+	status_strlen += snprintf(status_string + status_strlen,
+		sizeof(status_string) - status_strlen,
+		"Updating MAC = %s, ", mac_updating ?
+		"enabled" : "disabled");
+	status_strlen += snprintf(status_string + status_strlen,
+		sizeof(status_string) - status_strlen,
+		"Rx Queues = %d, ", nb_queues);
+	status_strlen += snprintf(status_string + status_strlen,
+		sizeof(status_string) - status_strlen,
+		"Ring Size = %d\n", ring_size);
+
+	/* Allocate memory for xstats names and values */
+	nb_xstats = rte_rawdev_xstats_names_get(
+		cfg.ports[0].ioat_ids[0], NULL, 0);
+
+	names_xstats = malloc(sizeof(*names_xstats) * nb_xstats);
+	if (names_xstats == NULL) {
+		rte_exit(EXIT_FAILURE,
+			"Error allocating xstat names memory\n");
+	}
+	rte_rawdev_xstats_names_get(cfg.ports[0].ioat_ids[0],
+		names_xstats, nb_xstats);
+
+	ids_xstats = malloc(sizeof(*ids_xstats) * 2);
+	if (ids_xstats == NULL) {
+		rte_exit(EXIT_FAILURE,
+			"Error allocating xstat ids_xstats memory\n");
+	}
+
+	xstats = malloc(sizeof(*xstats) * 2);
+	if (xstats == NULL) {
+		rte_exit(EXIT_FAILURE,
+			"Error allocating xstat memory\n");
+	}
+
+	/* Get failed/successful enqueues stats index */
+	ids_xstats[0] = ids_xstats[1] = nb_xstats;
+	for (i = 0; i < nb_xstats; i++) {
+		if (!strcmp(names_xstats[i].name, "failed_enqueues"))
+			ids_xstats[0] = i;
+		else if (!strcmp(names_xstats[i].name, "successful_enqueues"))
+			ids_xstats[1] = i;
+		if (ids_xstats[0] < nb_xstats && ids_xstats[1] < nb_xstats)
+			break;
+	}
+	if (ids_xstats[0] == nb_xstats || ids_xstats[1] == nb_xstats) {
+		rte_exit(EXIT_FAILURE,
+			"Error getting failed/successful enqueues stats index\n");
+	}
+
+	memset(&ts, 0, sizeof(struct total_statistics));
+
+	while (!force_quit) {
+		/* Sleep for 1 second each round - init sleep allows reading
+		 * messages from app startup.
+		 */
+		sleep(1);
+
+		/* Clear screen and move to top left */
+		printf("%s%s", clr, topLeft);
+
+		memset(&delta_ts, 0, sizeof(struct total_statistics));
+
+		printf("%s", status_string);
+
+		for (i = 0; i < cfg.nb_ports; i++) {
+			port_id = cfg.ports[i].rxtx_port;
+			print_port_stats(port_id);
+
+			delta_ts.total_packets_dropped +=
+				port_statistics.tx_dropped[port_id]
+				+ port_statistics.copy_dropped[port_id];
+			delta_ts.total_packets_tx +=
+				port_statistics.tx[port_id];
+			delta_ts.total_packets_rx +=
+				port_statistics.rx[port_id];
+
+			if (copy_mode == COPY_MODE_IOAT_NUM) {
+				uint32_t j;
+
+				for (j = 0; j < cfg.ports[i].nb_queues; j++) {
+					dev_id = cfg.ports[i].ioat_ids[j];
+					rte_rawdev_xstats_get(dev_id,
+						ids_xstats, xstats, 2);
+
+					print_rawdev_stats(dev_id, xstats,
+						ids_xstats, 2, names_xstats);
+
+					delta_ts.total_failed_enqueues +=
+						xstats[ids_xstats[0]];
+					delta_ts.total_successful_enqueues +=
+						xstats[ids_xstats[1]];
+				}
+			}
+		}
+
+		delta_ts.total_packets_tx -= ts.total_packets_tx;
+		delta_ts.total_packets_rx -= ts.total_packets_rx;
+		delta_ts.total_packets_dropped -= ts.total_packets_dropped;
+		delta_ts.total_failed_enqueues -= ts.total_failed_enqueues;
+		delta_ts.total_successful_enqueues -=
+			ts.total_successful_enqueues;
+
+		printf("\n");
+		print_total_stats(&delta_ts);
+
+		ts.total_packets_tx += delta_ts.total_packets_tx;
+		ts.total_packets_rx += delta_ts.total_packets_rx;
+		ts.total_packets_dropped += delta_ts.total_packets_dropped;
+		ts.total_failed_enqueues += delta_ts.total_failed_enqueues;
+		ts.total_successful_enqueues +=
+			delta_ts.total_successful_enqueues;
+	}
+
+	free(names_xstats);
+	free(xstats);
+	free(ids_xstats);
+}
 
 static void
 update_mac_addrs(struct rte_mbuf *m, uint32_t dest_portid)
@@ -179,6 +394,8 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 		if (nb_rx == 0)
 			continue;
 
+		port_statistics.rx[rx_config->rxtx_port] += nb_rx;
+
 		if (copy_mode == COPY_MODE_IOAT_NUM) {
 			/* Perform packet hardware copy */
 			nb_enq = ioat_enqueue_packets(pkts_burst,
@@ -213,6 +430,9 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 				(void *)&pkts_burst_copy[nb_enq],
 				nb_rx - nb_enq);
 		}
+
+		port_statistics.copy_dropped[rx_config->rxtx_port] +=
+			(nb_rx - nb_enq);
 	}
 }
 
@@ -254,6 +474,8 @@ ioat_tx_port(struct rxtx_port_config *tx_config)
 		const uint16_t nb_tx = rte_eth_tx_burst(
 			tx_config->rxtx_port, 0,
 			(void *)mbufs_dst, nb_dq);
+
+		port_statistics.tx[tx_config->rxtx_port] += nb_tx;
 
 		/* Free any unsent packets. */
 		if (unlikely(nb_tx < nb_dq))
@@ -653,6 +875,14 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 
 	rte_eth_tx_buffer_init(tx_buffer[portid], MAX_PKT_BURST);
 
+	ret = rte_eth_tx_buffer_set_err_callback(tx_buffer[portid],
+		rte_eth_tx_buffer_count_callback,
+		&port_statistics.tx_dropped[portid]);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE,
+			"Cannot set error callback for tx buffer on port %u\n",
+			portid);
+
 	/* Start device */
 	ret = rte_eth_dev_start(portid);
 	if (ret < 0)
@@ -729,6 +959,9 @@ main(int argc, char **argv)
 	RTE_ETH_FOREACH_DEV(portid)
 		port_init(portid, ioat_pktmbuf_pool, nb_queues);
 
+	/* Initialize port xstats */
+	memset(&port_statistics, 0, sizeof(port_statistics));
+
 	while (!check_link_status(ioat_enabled_port_mask) && !force_quit)
 		sleep(1);
 
@@ -744,6 +977,8 @@ main(int argc, char **argv)
 		assign_rings();
 
 	start_forwarding_cores();
+	/* master core prints stats while other cores forward */
+	print_stats(argv[0]);
 
 	/* force_quit is true when we get here */
 	rte_eal_mp_wait_lcore();
