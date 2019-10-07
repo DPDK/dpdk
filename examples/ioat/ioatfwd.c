@@ -121,6 +121,49 @@ pktmbuf_sw_copy(struct rte_mbuf *src, struct rte_mbuf *dst)
 		rte_pktmbuf_mtod(src, char *), src->data_len);
 }
 
+static uint32_t
+ioat_enqueue_packets(struct rte_mbuf **pkts,
+	uint32_t nb_rx, uint16_t dev_id)
+{
+	int ret;
+	uint32_t i;
+	struct rte_mbuf *pkts_copy[MAX_PKT_BURST];
+
+	const uint64_t addr_offset = RTE_PTR_DIFF(pkts[0]->buf_addr,
+		&pkts[0]->rearm_data);
+
+	ret = rte_mempool_get_bulk(ioat_pktmbuf_pool,
+		(void *)pkts_copy, nb_rx);
+
+	if (unlikely(ret < 0))
+		rte_exit(EXIT_FAILURE, "Unable to allocate memory.\n");
+
+	for (i = 0; i < nb_rx; i++) {
+		/* Perform data copy */
+		ret = rte_ioat_enqueue_copy(dev_id,
+			pkts[i]->buf_iova
+			- addr_offset,
+			pkts_copy[i]->buf_iova
+			- addr_offset,
+			rte_pktmbuf_data_len(pkts[i])
+			+ addr_offset,
+			(uintptr_t)pkts[i],
+			(uintptr_t)pkts_copy[i],
+			0 /* nofence */);
+
+		if (ret != 1)
+			break;
+	}
+
+	ret = i;
+	/* Free any not enqueued packets. */
+	rte_mempool_put_bulk(ioat_pktmbuf_pool, (void *)&pkts[i], nb_rx - i);
+	rte_mempool_put_bulk(ioat_pktmbuf_pool, (void *)&pkts_copy[i],
+		nb_rx - i);
+
+	return ret;
+}
+
 /* Receive packets on one port and enqueue to IOAT rawdev or rte_ring. */
 static void
 ioat_rx_port(struct rxtx_port_config *rx_config)
@@ -138,6 +181,10 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 
 		if (copy_mode == COPY_MODE_IOAT_NUM) {
 			/* Perform packet hardware copy */
+			nb_enq = ioat_enqueue_packets(pkts_burst,
+				nb_rx, rx_config->ioat_ids[i]);
+			if (nb_enq > 0)
+				rte_ioat_do_copies(rx_config->ioat_ids[i]);
 		} else {
 			/* Perform packet software copy, free source packets */
 			int ret;
@@ -174,11 +221,15 @@ static void
 ioat_tx_port(struct rxtx_port_config *tx_config)
 {
 	uint32_t i, j, nb_dq = 0;
+	struct rte_mbuf *mbufs_src[MAX_PKT_BURST];
 	struct rte_mbuf *mbufs_dst[MAX_PKT_BURST];
 
 	for (i = 0; i < tx_config->nb_queues; i++) {
 		if (copy_mode == COPY_MODE_IOAT_NUM) {
 			/* Deque the mbufs from IOAT device. */
+			nb_dq = rte_ioat_completed_copies(
+				tx_config->ioat_ids[i], MAX_PKT_BURST,
+				(void *)mbufs_src, (void *)mbufs_dst);
 		} else {
 			/* Deque the mbufs from rx_to_tx_ring. */
 			nb_dq = rte_ring_dequeue_burst(
@@ -188,6 +239,10 @@ ioat_tx_port(struct rxtx_port_config *tx_config)
 
 		if (nb_dq == 0)
 			return;
+
+		if (copy_mode == COPY_MODE_IOAT_NUM)
+			rte_mempool_put_bulk(ioat_pktmbuf_pool,
+				(void *)mbufs_src, nb_dq);
 
 		/* Update macs if enabled */
 		if (mac_updating) {
@@ -402,6 +457,52 @@ check_link_status(uint32_t port_mask)
 }
 
 static void
+configure_rawdev_queue(uint32_t dev_id)
+{
+	struct rte_ioat_rawdev_config dev_config = { .ring_size = ring_size };
+	struct rte_rawdev_info info = { .dev_private = &dev_config };
+
+	if (rte_rawdev_configure(dev_id, &info) != 0) {
+		rte_exit(EXIT_FAILURE,
+			"Error with rte_rawdev_configure()\n");
+	}
+	if (rte_rawdev_start(dev_id) != 0) {
+		rte_exit(EXIT_FAILURE,
+			"Error with rte_rawdev_start()\n");
+	}
+}
+
+static void
+assign_rawdevs(void)
+{
+	uint16_t nb_rawdev = 0, rdev_id = 0;
+	uint32_t i, j;
+
+	for (i = 0; i < cfg.nb_ports; i++) {
+		for (j = 0; j < cfg.ports[i].nb_queues; j++) {
+			struct rte_rawdev_info rdev_info = { 0 };
+
+			do {
+				if (rdev_id == rte_rawdev_count())
+					goto end;
+				rte_rawdev_info_get(rdev_id++, &rdev_info);
+			} while (strcmp(rdev_info.driver_name,
+				IOAT_PMD_RAWDEV_NAME_STR) != 0);
+
+			cfg.ports[i].ioat_ids[j] = rdev_id - 1;
+			configure_rawdev_queue(cfg.ports[i].ioat_ids[j]);
+			++nb_rawdev;
+		}
+	}
+end:
+	if (nb_rawdev < cfg.nb_ports * cfg.ports[0].nb_queues)
+		rte_exit(EXIT_FAILURE,
+			"Not enough IOAT rawdevs (%u) for all queues (%u).\n",
+			nb_rawdev, cfg.nb_ports * cfg.ports[0].nb_queues);
+	RTE_LOG(INFO, IOAT, "Number of used rawdevs: %u.\n", nb_rawdev);
+}
+
+static void
 assign_rings(void)
 {
 	uint32_t i;
@@ -597,18 +698,29 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE,
 			"There should be at least one slave lcore.\n");
 
-	assign_rings();
+	if (copy_mode == COPY_MODE_IOAT_NUM)
+		assign_rawdevs();
+	else /* copy_mode == COPY_MODE_SW_NUM */
+		assign_rings();
 
 	start_forwarding_cores();
 
 	/* force_quit is true when we get here */
 	rte_eal_mp_wait_lcore();
 
+	uint32_t j;
 	for (i = 0; i < cfg.nb_ports; i++) {
 		printf("Closing port %d\n", cfg.ports[i].rxtx_port);
 		rte_eth_dev_stop(cfg.ports[i].rxtx_port);
 		rte_eth_dev_close(cfg.ports[i].rxtx_port);
-		rte_ring_free(cfg.ports[i].rx_to_tx_ring);
+		if (copy_mode == COPY_MODE_IOAT_NUM) {
+			for (j = 0; j < cfg.ports[i].nb_queues; j++) {
+				printf("Stopping rawdev %d\n",
+					cfg.ports[i].ioat_ids[j]);
+				rte_rawdev_stop(cfg.ports[i].ioat_ids[j]);
+			}
+		} else /* copy_mode == COPY_MODE_SW_NUM */
+			rte_ring_free(cfg.ports[i].rx_to_tx_ring);
 	}
 
 	printf("Bye...\n");
