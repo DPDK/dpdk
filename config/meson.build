@@ -142,10 +142,28 @@ add_project_arguments('-include', 'rte_config.h', language: 'c')
 
 # enable extra warnings and disable any unwanted warnings
 warning_flags = [
-	'-Wunused-parameter',
-	'-Wsign-compare',
+	# -Wall is added by meson by default, so add -Wextra only
+	'-Wextra',
+
+	# additional warnings in alphabetical order
 	'-Wcast-qual',
-	'-Wno-address-of-packed-member'
+	'-Wdeprecated',
+	'-Wformat-nonliteral',
+	'-Wformat-security',
+	'-Wmissing-declarations',
+	'-Wmissing-prototypes',
+	'-Wnested-externs',
+	'-Wold-style-definition',
+	'-Wpointer-arith',
+	'-Wsign-compare',
+	'-Wstrict-prototypes',
+	'-Wundef',
+	'-Wwrite-strings',
+
+	# globally disabled warnings
+	'-Wno-address-of-packed-member',
+	'-Wno-packed-not-aligned',
+	'-Wno-missing-field-initializers'
 ]
 if not dpdk_conf.get('RTE_ARCH_64')
 # for 32-bit, don't warn about casting a 32-bit pointer to 64-bit int - it's fine!!

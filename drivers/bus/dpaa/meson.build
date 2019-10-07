@@ -27,5 +27,8 @@ allow_experimental_apis = true
 if cc.has_argument('-Wno-cast-qual')
 	cflags += '-Wno-cast-qual'
 endif
+if cc.has_argument('-Wno-pointer-arith')
+	cflags += '-Wno-pointer-arith'
+endif
 
 includes += include_directories('include', 'base/qbman')

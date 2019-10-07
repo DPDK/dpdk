@@ -12,7 +12,8 @@ sources = [
 ]
 
 error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',
-		'-Wno-format', '-Wno-error=format-security',
+		'-Wno-format', '-Wno-format-security',
+		'-Wno-format-nonliteral',
 		'-Wno-strict-aliasing', '-Wno-unused-but-set-variable',
 		'-Wno-unused-parameter',
 ]
