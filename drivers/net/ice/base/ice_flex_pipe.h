@@ -52,11 +52,9 @@ ice_tunnel_get_type(struct ice_hw *hw, u16 port, enum ice_tunnel_type *type);
 enum ice_status
 ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig);
 enum ice_status
-ice_add_prof_with_mask(struct ice_hw *hw, enum ice_block blk, u64 id,
-		       u8 ptypes[], struct ice_fv_word *es, u16 *masks);
-enum ice_status
 ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
-	     struct ice_fv_word *es);
+	     const struct ice_ptype_attributes *attr, u16 attr_cnt,
+	     struct ice_fv_word *es, u16 *masks);
 void ice_init_all_prof_masks(struct ice_hw *hw);
 void ice_shutdown_all_prof_masks(struct ice_hw *hw);
 struct ice_prof_map *
