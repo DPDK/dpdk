@@ -161,6 +161,24 @@ bad=$(echo "$tags" |
 	sed 's,^.,\t&,')
 [ -z "$bad" ] || printf "Wrong tag:\n$bad\n"
 
+# check missing Coverity issue: tag
+bad=$(for commit in $commits; do
+	body=$(git log --format='%b' -1 $commit)
+	echo "$body" | grep -qi coverity || continue
+	echo "$body" | grep -q '^Coverity issue:' && continue
+	git log --format='\t%s' -1 $commit
+done)
+[ -z "$bad" ] || printf "Missing 'Coverity issue:' tag:\n$bad\n"
+
+# check missing Bugzilla ID: tag
+bad=$(for commit in $commits; do
+	body=$(git log --format='%b' -1 $commit)
+	echo "$body" | grep -qi bugzilla || continue
+	echo "$body" | grep -q '^Bugzilla ID:' && continue
+	git log --format='\t%s' -1 $commit
+done)
+[ -z "$bad" ] || printf "Missing 'Bugzilla ID:' tag:\n$bad\n"
+
 # check missing Fixes: tag
 bad=$(for fix in $fixes ; do
 	git log --format='%b' -1 $fix | grep -q '^Fixes: ' ||
