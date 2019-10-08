@@ -118,7 +118,7 @@ enum ice_prot_id {
 #define ICE_MAC_OFOS_HW		1
 #define ICE_MAC_IL_HW		4
 #define ICE_ETYPE_OL_HW		9
-#define ICE_VLAN_OL_HW		16
+#define ICE_VLAN_OL_HW		17
 #define ICE_IPV4_OFOS_HW	32
 #define ICE_IPV4_IL_HW		33
 #define ICE_IPV6_OFOS_HW	40
