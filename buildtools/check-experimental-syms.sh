@@ -5,7 +5,7 @@
 MAPFILE=$1
 OBJFILE=$2
 
-LIST_SYMBOL=$RTE_SDK/buildtools/map-list-symbol.sh
+LIST_SYMBOL=$(dirname $(readlink -f $0))/map-list-symbol.sh
 
 # added check for "make -C test/" usage
 if [ ! -e $MAPFILE ] || [ ! -f $OBJFILE ]
