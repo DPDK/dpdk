@@ -245,6 +245,45 @@ int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
 	return 0;
 }
 
+/* Creates a shallow copy of mbuf */
+struct rte_mbuf *
+rte_pktmbuf_clone(struct rte_mbuf *md, struct rte_mempool *mp)
+{
+	struct rte_mbuf *mc, *mi, **prev;
+	uint32_t pktlen;
+	uint16_t nseg;
+
+	mc = rte_pktmbuf_alloc(mp);
+	if (unlikely(mc == NULL))
+		return NULL;
+
+	mi = mc;
+	prev = &mi->next;
+	pktlen = md->pkt_len;
+	nseg = 0;
+
+	do {
+		nseg++;
+		rte_pktmbuf_attach(mi, md);
+		*prev = mi;
+		prev = &mi->next;
+	} while ((md = md->next) != NULL &&
+	    (mi = rte_pktmbuf_alloc(mp)) != NULL);
+
+	*prev = NULL;
+	mc->nb_segs = nseg;
+	mc->pkt_len = pktlen;
+
+	/* Allocation of new indirect segment failed */
+	if (unlikely(mi == NULL)) {
+		rte_pktmbuf_free(mc);
+		return NULL;
+	}
+
+	__rte_mbuf_sanity_check(mc, 1);
+	return mc;
+}
+
 /* convert multi-segment mbuf to single mbuf */
 int
 __rte_pktmbuf_linearize(struct rte_mbuf *mbuf)

@@ -1924,42 +1924,8 @@ static inline void rte_pktmbuf_free(struct rte_mbuf *m)
  *   - The pointer to the new "clone" mbuf on success.
  *   - NULL if allocation fails.
  */
-static inline struct rte_mbuf *rte_pktmbuf_clone(struct rte_mbuf *md,
-		struct rte_mempool *mp)
-{
-	struct rte_mbuf *mc, *mi, **prev;
-	uint32_t pktlen;
-	uint16_t nseg;
-
-	if (unlikely ((mc = rte_pktmbuf_alloc(mp)) == NULL))
-		return NULL;
-
-	mi = mc;
-	prev = &mi->next;
-	pktlen = md->pkt_len;
-	nseg = 0;
-
-	do {
-		nseg++;
-		rte_pktmbuf_attach(mi, md);
-		*prev = mi;
-		prev = &mi->next;
-	} while ((md = md->next) != NULL &&
-	    (mi = rte_pktmbuf_alloc(mp)) != NULL);
-
-	*prev = NULL;
-	mc->nb_segs = nseg;
-	mc->pkt_len = pktlen;
-
-	/* Allocation of new indirect segment failed */
-	if (unlikely (mi == NULL)) {
-		rte_pktmbuf_free(mc);
-		return NULL;
-	}
-
-	__rte_mbuf_sanity_check(mc, 1);
-	return mc;
-}
+struct rte_mbuf *
+rte_pktmbuf_clone(struct rte_mbuf *md, struct rte_mempool *mp);
 
 /**
  * Adds given value to the refcnt of all packet mbuf segments.

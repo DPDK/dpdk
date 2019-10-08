@@ -50,6 +50,7 @@ DPDK_19.11 {
 	global:
 
 	__rte_pktmbuf_linearize;
+	rte_pktmbuf_clone;
 
 } DPDK_18.08;
 
