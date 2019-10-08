@@ -125,7 +125,7 @@ test_rcu_qsbr_writer_perf(void *arg)
 static int
 test_rcu_qsbr_perf(void)
 {
-	int sz;
+	size_t sz;
 	unsigned int i, tmp_num_cores;
 
 	writer_done = 0;
@@ -188,7 +188,7 @@ test_rcu_qsbr_perf(void)
 static int
 test_rcu_qsbr_rperf(void)
 {
-	int sz;
+	size_t sz;
 	unsigned int i, tmp_num_cores;
 
 	rte_atomic64_clear(&updates);
@@ -234,7 +234,7 @@ test_rcu_qsbr_rperf(void)
 static int
 test_rcu_qsbr_wperf(void)
 {
-	int sz;
+	size_t sz;
 	unsigned int i;
 
 	rte_atomic64_clear(&checks);
@@ -379,7 +379,7 @@ static int
 test_rcu_qsbr_sw_sv_1qs(void)
 {
 	uint64_t token, begin, cycles;
-	int sz;
+	size_t sz;
 	unsigned int i, j, tmp_num_cores;
 	int32_t pos;
 
@@ -498,7 +498,8 @@ static int
 test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 {
 	uint64_t token, begin, cycles;
-	int ret, sz;
+	int ret;
+	size_t sz;
 	unsigned int i, j, tmp_num_cores;
 	int32_t pos;
 

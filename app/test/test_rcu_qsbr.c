@@ -52,7 +52,7 @@ static int
 alloc_rcu(void)
 {
 	int i;
-	uint32_t sz;
+	size_t sz;
 
 	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
 
@@ -81,7 +81,7 @@ free_rcu(void)
 static int
 test_rcu_qsbr_get_memsize(void)
 {
-	uint32_t sz;
+	size_t sz;
 
 	printf("\nTest rte_rcu_qsbr_thread_register()\n");
 
