@@ -46,6 +46,13 @@ DPDK_18.08 {
 	rte_pktmbuf_pool_create_by_ops;
 } DPDK_16.11;
 
+DPDK_19.11 {
+	global:
+
+	__rte_pktmbuf_linearize;
+
+} DPDK_18.08;
+
 EXPERIMENTAL {
 	global:
 

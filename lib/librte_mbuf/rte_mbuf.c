@@ -245,6 +245,43 @@ int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
 	return 0;
 }
 
+/* convert multi-segment mbuf to single mbuf */
+int
+__rte_pktmbuf_linearize(struct rte_mbuf *mbuf)
+{
+	size_t seg_len, copy_len;
+	struct rte_mbuf *m;
+	struct rte_mbuf *m_next;
+	char *buffer;
+
+	/* Extend first segment to the total packet length */
+	copy_len = rte_pktmbuf_pkt_len(mbuf) - rte_pktmbuf_data_len(mbuf);
+
+	if (unlikely(copy_len > rte_pktmbuf_tailroom(mbuf)))
+		return -1;
+
+	buffer = rte_pktmbuf_mtod_offset(mbuf, char *, mbuf->data_len);
+	mbuf->data_len = (uint16_t)(mbuf->pkt_len);
+
+	/* Append data from next segments to the first one */
+	m = mbuf->next;
+	while (m != NULL) {
+		m_next = m->next;
+
+		seg_len = rte_pktmbuf_data_len(m);
+		rte_memcpy(buffer, rte_pktmbuf_mtod(m, char *), seg_len);
+		buffer += seg_len;
+
+		rte_pktmbuf_free_seg(m);
+		m = m_next;
+	}
+
+	mbuf->next = NULL;
+	mbuf->nb_segs = 1;
+
+	return 0;
+}
+
 /* dump a mbuf on console */
 void
 rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
