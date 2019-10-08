@@ -143,11 +143,21 @@ foreach l:libraries
 				command: [map_to_def_cmd, '@INPUT@', '@OUTPUT@'],
 				input: version_map,
 				output: 'rte_@0@_exports.def'.format(name))
+			lk_deps = [version_map, def_file]
 			if is_windows
 				lk_args = ['-Wl,/def:' + def_file.full_path(),
 					'-Wl,/implib:lib\\' + implib]
 			else
 				lk_args = ['-Wl,--version-script=' + version_map]
+				# on unix systems check the output of the
+				# experimental syms script, using it as a
+				# dependency of the .so build
+				lk_deps += custom_target(name + '.exp_chk',
+					command: [check_experimental_syms,
+						version_map, '@INPUT@'],
+					capture: true,
+					input: static_lib,
+					output: name + '.exp_chk')
 			endif
 
 			shared_lib = shared_library(libname,
@@ -157,7 +167,7 @@ foreach l:libraries
 					dependencies: shared_deps,
 					include_directories: includes,
 					link_args: lk_args,
-					link_depends: [version_map, def_file],
+					link_depends: lk_deps,
 					version: lib_version,
 					soversion: so_version,
 					install: true)
