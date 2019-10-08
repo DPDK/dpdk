@@ -120,8 +120,7 @@ The application must allocate memory and initialize a QS variable.
 
 Applications can call ``rte_rcu_qsbr_get_memsize()`` to calculate the size
 of memory to allocate. This API takes a maximum number of reader threads,
-using this variable, as a parameter. Currently, a maximum of 1024 threads
-are supported.
+using this variable, as a parameter.
 
 Further, the application can initialize a QS variable using the API
 ``rte_rcu_qsbr_init()``.
