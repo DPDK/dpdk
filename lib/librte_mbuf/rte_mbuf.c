@@ -321,6 +321,83 @@ __rte_pktmbuf_linearize(struct rte_mbuf *mbuf)
 	return 0;
 }
 
+/* Create a deep copy of mbuf */
+struct rte_mbuf *
+rte_pktmbuf_copy(const struct rte_mbuf *m, struct rte_mempool *mp,
+		 uint32_t off, uint32_t len)
+{
+	const struct rte_mbuf *seg = m;
+	struct rte_mbuf *mc, *m_last, **prev;
+
+	/* garbage in check */
+	__rte_mbuf_sanity_check(m, 1);
+
+	/* check for request to copy at offset past end of mbuf */
+	if (unlikely(off >= m->pkt_len))
+		return NULL;
+
+	mc = rte_pktmbuf_alloc(mp);
+	if (unlikely(mc == NULL))
+		return NULL;
+
+	/* truncate requested length to available data */
+	if (len > m->pkt_len - off)
+		len = m->pkt_len - off;
+
+	__rte_pktmbuf_copy_hdr(mc, m);
+
+	/* copied mbuf is not indirect or external */
+	mc->ol_flags = m->ol_flags & ~(IND_ATTACHED_MBUF|EXT_ATTACHED_MBUF);
+
+	prev = &mc->next;
+	m_last = mc;
+	while (len > 0) {
+		uint32_t copy_len;
+
+		/* skip leading mbuf segments */
+		while (off >= seg->data_len) {
+			off -= seg->data_len;
+			seg = seg->next;
+		}
+
+		/* current buffer is full, chain a new one */
+		if (rte_pktmbuf_tailroom(m_last) == 0) {
+			m_last = rte_pktmbuf_alloc(mp);
+			if (unlikely(m_last == NULL)) {
+				rte_pktmbuf_free(mc);
+				return NULL;
+			}
+			++mc->nb_segs;
+			*prev = m_last;
+			prev = &m_last->next;
+		}
+
+		/*
+		 * copy the min of data in input segment (seg)
+		 * vs space available in output (m_last)
+		 */
+		copy_len = RTE_MIN(seg->data_len - off, len);
+		if (copy_len > rte_pktmbuf_tailroom(m_last))
+			copy_len = rte_pktmbuf_tailroom(m_last);
+
+		/* append from seg to m_last */
+		rte_memcpy(rte_pktmbuf_mtod_offset(m_last, char *,
+						   m_last->data_len),
+			   rte_pktmbuf_mtod_offset(seg, char *, off),
+			   copy_len);
+
+		/* update offsets and lengths */
+		m_last->data_len += copy_len;
+		mc->pkt_len += copy_len;
+		off += copy_len;
+		len -= copy_len;
+	}
+
+	/* garbage out check */
+	__rte_mbuf_sanity_check(mc, 1);
+	return mc;
+}
+
 /* dump a mbuf on console */
 void
 rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)

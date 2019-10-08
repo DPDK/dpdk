@@ -400,6 +400,158 @@ fail:
 }
 
 static int
+test_pktmbuf_copy(struct rte_mempool *pktmbuf_pool)
+{
+	struct rte_mbuf *m = NULL;
+	struct rte_mbuf *copy = NULL;
+	struct rte_mbuf *copy2 = NULL;
+	struct rte_mbuf *clone = NULL;
+	unaligned_uint32_t *data;
+
+	/* alloc a mbuf */
+	m = rte_pktmbuf_alloc(pktmbuf_pool);
+	if (m == NULL)
+		GOTO_FAIL("ooops not allocating mbuf");
+
+	if (rte_pktmbuf_pkt_len(m) != 0)
+		GOTO_FAIL("Bad length");
+
+	rte_pktmbuf_append(m, sizeof(uint32_t));
+	data = rte_pktmbuf_mtod(m, unaligned_uint32_t *);
+	*data = MAGIC_DATA;
+
+	/* copy the allocated mbuf */
+	copy = rte_pktmbuf_copy(m, pktmbuf_pool, 0, UINT32_MAX);
+	if (copy == NULL)
+		GOTO_FAIL("cannot copy data\n");
+
+	if (rte_pktmbuf_pkt_len(copy) != sizeof(uint32_t))
+		GOTO_FAIL("copy length incorrect\n");
+
+	if (rte_pktmbuf_data_len(copy) != sizeof(uint32_t))
+		GOTO_FAIL("copy data length incorrect\n");
+
+	data = rte_pktmbuf_mtod(copy, unaligned_uint32_t *);
+	if (*data != MAGIC_DATA)
+		GOTO_FAIL("invalid data in copy\n");
+
+	/* free the copy */
+	rte_pktmbuf_free(copy);
+	copy = NULL;
+
+	/* same test with a cloned mbuf */
+	clone = rte_pktmbuf_clone(m, pktmbuf_pool);
+	if (clone == NULL)
+		GOTO_FAIL("cannot clone data\n");
+
+	if (!RTE_MBUF_CLONED(clone))
+		GOTO_FAIL("clone did not give a cloned mbuf\n");
+
+	copy = rte_pktmbuf_copy(clone, pktmbuf_pool, 0, UINT32_MAX);
+	if (copy == NULL)
+		GOTO_FAIL("cannot copy cloned mbuf\n");
+
+	if (RTE_MBUF_CLONED(copy))
+		GOTO_FAIL("copy of clone is cloned?\n");
+
+	if (rte_pktmbuf_pkt_len(copy) != sizeof(uint32_t))
+		GOTO_FAIL("copy clone length incorrect\n");
+
+	if (rte_pktmbuf_data_len(copy) != sizeof(uint32_t))
+		GOTO_FAIL("copy clone data length incorrect\n");
+
+	data = rte_pktmbuf_mtod(copy, unaligned_uint32_t *);
+	if (*data != MAGIC_DATA)
+		GOTO_FAIL("invalid data in clone copy\n");
+	rte_pktmbuf_free(clone);
+	rte_pktmbuf_free(copy);
+	copy = NULL;
+	clone = NULL;
+
+
+	/* same test with a chained mbuf */
+	m->next = rte_pktmbuf_alloc(pktmbuf_pool);
+	if (m->next == NULL)
+		GOTO_FAIL("Next Pkt Null\n");
+	m->nb_segs = 2;
+
+	rte_pktmbuf_append(m->next, sizeof(uint32_t));
+	m->pkt_len = 2 * sizeof(uint32_t);
+	data = rte_pktmbuf_mtod(m->next, unaligned_uint32_t *);
+	*data = MAGIC_DATA + 1;
+
+	copy = rte_pktmbuf_copy(m, pktmbuf_pool, 0, UINT32_MAX);
+	if (copy == NULL)
+		GOTO_FAIL("cannot copy data\n");
+
+	if (rte_pktmbuf_pkt_len(copy) != 2 * sizeof(uint32_t))
+		GOTO_FAIL("chain copy length incorrect\n");
+
+	if (rte_pktmbuf_data_len(copy) != 2 * sizeof(uint32_t))
+		GOTO_FAIL("chain copy data length incorrect\n");
+
+	data = rte_pktmbuf_mtod(copy, unaligned_uint32_t *);
+	if (data[0] != MAGIC_DATA || data[1] != MAGIC_DATA + 1)
+		GOTO_FAIL("invalid data in copy\n");
+
+	rte_pktmbuf_free(copy2);
+
+	/* test offset copy */
+	copy2 = rte_pktmbuf_copy(copy, pktmbuf_pool,
+				 sizeof(uint32_t), UINT32_MAX);
+	if (copy2 == NULL)
+		GOTO_FAIL("cannot copy the copy\n");
+
+	if (rte_pktmbuf_pkt_len(copy2) != sizeof(uint32_t))
+		GOTO_FAIL("copy with offset, length incorrect\n");
+
+	if (rte_pktmbuf_data_len(copy2) != sizeof(uint32_t))
+		GOTO_FAIL("copy with offset, data length incorrect\n");
+
+	data = rte_pktmbuf_mtod(copy2, unaligned_uint32_t *);
+	if (data[0] != MAGIC_DATA + 1)
+		GOTO_FAIL("copy with offset, invalid data\n");
+
+	rte_pktmbuf_free(copy2);
+
+	/* test truncation copy */
+	copy2 = rte_pktmbuf_copy(copy, pktmbuf_pool,
+				 0, sizeof(uint32_t));
+	if (copy2 == NULL)
+		GOTO_FAIL("cannot copy the copy\n");
+
+	if (rte_pktmbuf_pkt_len(copy2) != sizeof(uint32_t))
+		GOTO_FAIL("copy with truncate, length incorrect\n");
+
+	if (rte_pktmbuf_data_len(copy2) != sizeof(uint32_t))
+		GOTO_FAIL("copy with truncate, data length incorrect\n");
+
+	data = rte_pktmbuf_mtod(copy2, unaligned_uint32_t *);
+	if (data[0] != MAGIC_DATA)
+		GOTO_FAIL("copy with truncate, invalid data\n");
+
+	/* free mbuf */
+	rte_pktmbuf_free(m);
+	rte_pktmbuf_free(copy);
+	rte_pktmbuf_free(copy2);
+
+	m = NULL;
+	copy = NULL;
+	copy2 = NULL;
+	printf("%s ok\n", __func__);
+	return 0;
+
+fail:
+	if (m)
+		rte_pktmbuf_free(m);
+	if (copy)
+		rte_pktmbuf_free(copy);
+	if (copy2)
+		rte_pktmbuf_free(copy2);
+	return -1;
+}
+
+static int
 test_attach_from_different_pool(struct rte_mempool *pktmbuf_pool,
 				struct rte_mempool *pktmbuf_pool2)
 {
@@ -1200,6 +1352,11 @@ test_mbuf(void)
 
 	if (testclone_testupdate_testdetach(pktmbuf_pool) < 0) {
 		printf("testclone_and_testupdate() failed \n");
+		goto err;
+	}
+
+	if (test_pktmbuf_copy(pktmbuf_pool) < 0) {
+		printf("test_pktmbuf_copy() failed\n");
 		goto err;
 	}
 
