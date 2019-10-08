@@ -786,6 +786,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_TCP:
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_ICMP:
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER:
+		ice_pkt_insert_u32(loc, ICE_IPV4_GTPU_TEID_OFFSET,
+				   input->gtpu_data.teid);
 		ice_pkt_insert_u6_qfi(loc, ICE_IPV4_GTPU_QFI_OFFSET,
 				      input->gtpu_data.qfi);
 		break;
