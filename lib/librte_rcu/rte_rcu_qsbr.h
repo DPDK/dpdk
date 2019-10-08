@@ -456,12 +456,14 @@ rte_rcu_qsbr_quiescent(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	 */
 	t = __atomic_load_n(&v->token, __ATOMIC_ACQUIRE);
 
-	/* Inform the writer that updates are visible to this reader.
+	/* Check if there are updates available from the writer.
+	 * Inform the writer that updates are visible to this reader.
 	 * Prior loads of the shared data structure should not move
 	 * beyond this store. Hence use store-release.
 	 */
-	__atomic_store_n(&v->qsbr_cnt[thread_id].cnt,
-			 t, __ATOMIC_RELEASE);
+	if (t != __atomic_load_n(&v->qsbr_cnt[thread_id].cnt, __ATOMIC_RELAXED))
+		__atomic_store_n(&v->qsbr_cnt[thread_id].cnt,
+					 t, __ATOMIC_RELEASE);
 
 	__RTE_RCU_DP_LOG(DEBUG, "%s: update: token = %"PRIu64", Thread ID = %d",
 		__func__, t, thread_id);
