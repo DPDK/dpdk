@@ -37,8 +37,8 @@ What is Quiescent State
 -----------------------
 
 Quiescent State can be defined as "any point in the thread execution where the
-thread does not hold a reference to shared memory". It is up to the application
-to determine its quiescent state.
+thread does not hold a reference to shared memory". It is the responsibility of
+the application to determine its quiescent state.
 
 Let us consider the following diagram:
 
@@ -76,7 +76,7 @@ Factors affecting the RCU mechanism
 
 It is important to make sure that this library keeps the overhead of
 identifying the end of grace period and subsequent freeing of memory,
-to a minimum. The following explains how grace period and critical
+to a minimum. The following paras explain how grace period and critical
 section affect this overhead.
 
 The writer has to poll the readers to identify the end of grace period.
@@ -91,14 +91,14 @@ critical sections smaller requires additional CPU cycles (due to additional
 reporting) in the readers.
 
 Hence, we need the characteristics of a small grace period and large critical
-section. This library addresses this by allowing the writer to do
-other work without having to block until the readers report their quiescent
-state.
+section. This library addresses these characteristics by allowing the writer
+to do other work without having to block until the readers report their
+quiescent state.
 
 RCU in DPDK
 -----------
 
-For DPDK applications, the start and end of a ``while(1)`` loop (where no
+For DPDK applications, the beginning and end of a ``while(1)`` loop (where no
 references to shared data structures are kept) act as perfect quiescent
 states. This will combine all the shared data structure accesses into a
 single, large critical section which helps keep the overhead on the
@@ -106,11 +106,11 @@ reader side to a minimum.
 
 DPDK supports a pipeline model of packet processing and service cores.
 In these use cases, a given data structure may not be used by all the
-workers in the application. The writer does not have to wait for all
-the workers to report their quiescent state. To provide the required
-flexibility, this library has a concept of a QS variable. The application
-can create one QS variable per data structure to help it track the
-end of grace period for each data structure. This helps keep the grace
+workers in the application. The writer has to wait only for the workers that
+use the data structure to report their quiescent state. To provide the required
+flexibility, this library has a concept of a QS variable. If required, the
+application can create one QS variable per data structure to help it track the
+end of grace period for each data structure. This helps keep the length of grace
 period to a minimum.
 
 How to use this library
