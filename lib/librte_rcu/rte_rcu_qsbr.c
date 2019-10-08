@@ -72,6 +72,7 @@ rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 			__RTE_QSBR_THRID_ARRAY_ELM_SIZE) /
 			__RTE_QSBR_THRID_ARRAY_ELM_SIZE;
 	v->token = __RTE_QSBR_CNT_INIT;
+	v->acked_token = __RTE_QSBR_CNT_INIT - 1;
 
 	return 0;
 }
@@ -243,6 +244,9 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 
 	fprintf(f, "  Token = %"PRIu64"\n",
 			__atomic_load_n(&v->token, __ATOMIC_ACQUIRE));
+
+	fprintf(f, "  Least Acknowledged Token = %"PRIu64"\n",
+			__atomic_load_n(&v->acked_token, __ATOMIC_ACQUIRE));
 
 	fprintf(f, "Quiescent State Counts for readers:\n");
 	for (i = 0; i < v->num_elems; i++) {
