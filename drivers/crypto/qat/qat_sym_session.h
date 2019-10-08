@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2018 Intel Corporation
+ * Copyright(c) 2015-2019 Intel Corporation
  */
 #ifndef _QAT_SYM_SESSION_H_
 #define _QAT_SYM_SESSION_H_
@@ -24,6 +24,9 @@
 #define QAT_3DES_KEY_SZ_OPT1 24 /* Keys are independent */
 #define QAT_3DES_KEY_SZ_OPT2 16 /* K3=K1 */
 #define QAT_3DES_KEY_SZ_OPT3 8 /* K1=K2=K3 */
+
+/* 96-bit case of IV for CCP/GCM single pass algorithm */
+#define QAT_AES_GCM_SPC_IV_SIZE 12
 
 
 #define QAT_AES_HW_CONFIG_CBC_ENC(alg) \
@@ -78,6 +81,7 @@ struct qat_sym_session {
 	rte_spinlock_t lock;	/* protects this struct */
 	enum qat_device_gen min_qat_dev_gen;
 	uint8_t aes_cmac;
+	uint8_t is_single_pass;
 };
 
 int
@@ -91,7 +95,8 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private);
 
 int
-qat_sym_session_configure_aead(struct rte_crypto_sym_xform *xform,
+qat_sym_session_configure_aead(struct rte_cryptodev *dev,
+				struct rte_crypto_sym_xform *xform,
 				struct qat_sym_session *session);
 
 int

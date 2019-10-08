@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2018 Intel Corporation
+ * Copyright(c) 2015-2019 Intel Corporation
  */
 
 #include <openssl/evp.h>
@@ -11,6 +11,7 @@
 #include <rte_byteorder.h>
 
 #include "qat_sym.h"
+
 
 /** Decrypt a single partial block
  *  Depends on openssl libcrypto
@@ -195,7 +196,8 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	rte_mov128((uint8_t *)qat_req, (const uint8_t *)&(ctx->fw_req));
 	qat_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)op;
 	cipher_param = (void *)&qat_req->serv_specif_rqpars;
-	auth_param = (void *)((uint8_t *)cipher_param + sizeof(*cipher_param));
+	auth_param = (void *)((uint8_t *)cipher_param +
+			ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
 
 	if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER ||
 			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) {
@@ -591,6 +593,13 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	} else {
 		qat_req->comn_mid.src_data_addr = src_buf_start;
 		qat_req->comn_mid.dest_data_addr = dst_buf_start;
+	}
+
+	/* Handle Single-Pass GCM */
+	if (ctx->is_single_pass) {
+		cipher_param->spc_aad_addr = op->sym->aead.aad.phys_addr;
+		cipher_param->spc_auth_res_addr =
+				op->sym->aead.digest.phys_addr;
 	}
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG

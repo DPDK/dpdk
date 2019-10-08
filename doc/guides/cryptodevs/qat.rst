@@ -82,6 +82,17 @@ Limitations
 * ZUC EEA3/EIA3 is not supported by dh895xcc devices
 * Maximum additional authenticated data (AAD) for GCM is 240 bytes long and must be passed to the device in a buffer rounded up to the nearest block-size multiple (x16) and padded with zeros.
 * Queue pairs are not thread-safe (that is, within a single queue pair, RX and TX from different lcores is not supported).
+* A GCM limitation exists, but only in the case where there are multiple
+  generations of QAT devices on a single platform.
+  To optimise performance, the GCM crypto session should be initialised for the
+  device generation to which the ops will be enqueued. Specifically if a GCM
+  session is initialised on a GEN2 device, but then attached to an op enqueued
+  to a GEN3 device, it will work but cannot take advantage of hardware
+  optimisations in the GEN3 device. And if a GCM session is initialised on a
+  GEN3 device, then attached to an op sent to a GEN1/GEN2 device, it will not be
+  enqueued to the device and will be marked as failed. The simplest way to
+  mitigate this is to use the bdf whitelist to avoid mixing devices of different
+  generations in the same process if planning to use for GCM.
 
 Extra notes on KASUMI F9
 ~~~~~~~~~~~~~~~~~~~~~~~~
