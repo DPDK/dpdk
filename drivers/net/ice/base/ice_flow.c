@@ -806,6 +806,7 @@ static enum ice_status
 ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		     u8 seg)
 {
+	u16 fv_words;
 	u16 hdrs_sz;
 	u8 i;
 
@@ -820,6 +821,8 @@ ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	hdrs_sz = ice_flow_calc_seg_sz(params, seg);
 	if (!hdrs_sz)
 		return ICE_ERR_PARAM;
+
+	fv_words = hw->blk[params->blk].es.fvw;
 
 	for (i = 0; i < params->prof->segs[seg].raws_cnt; i++) {
 		struct ice_flow_seg_fld_raw *raw;
@@ -853,6 +856,8 @@ ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 					   BITS_PER_BYTE));
 		off = raw->info.xtrct.off;
 		for (j = 0; j < cnt; j++) {
+			u16 idx;
+
 			/* Make sure the number of extraction sequence required
 			 * does not exceed the block's capability
 			 */
@@ -860,8 +865,14 @@ ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 			    params->es_cnt >= ICE_MAX_FV_WORDS)
 				return ICE_ERR_MAX_LIMIT;
 
-			params->es[params->es_cnt].prot_id = ICE_PROT_PAY;
-			params->es[params->es_cnt].off = off;
+			/* some blocks require a reversed field vector layout */
+			if (hw->blk[params->blk].es.reverse)
+				idx = fv_words - params->es_cnt - 1;
+			else
+				idx = params->es_cnt;
+
+			params->es[idx].prot_id = ICE_PROT_PAY;
+			params->es[idx].off = off;
 			params->es_cnt++;
 			off += ICE_FLOW_FV_EXTRACT_SZ;
 		}
