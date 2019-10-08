@@ -7676,6 +7676,12 @@ test_AES_GCM_authenticated_encryption_test_case_7(void)
 }
 
 static int
+test_AES_GCM_authenticated_encryption_test_case_8(void)
+{
+	return test_authenticated_encryption(&gcm_test_case_8);
+}
+
+static int
 test_AES_GCM_auth_encryption_test_case_192_1(void)
 {
 	return test_authenticated_encryption(&gcm_test_case_192_1);
@@ -7772,6 +7778,93 @@ test_AES_GCM_auth_encryption_test_case_aad_2(void)
 }
 
 static int
+test_AES_GCM_auth_encryption_fail_iv_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.iv.data[0] += 1;
+	res = test_authenticated_encryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_encryption_fail_in_data_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.plaintext.data[0] += 1;
+	res = test_authenticated_encryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_encryption_fail_out_data_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.ciphertext.data[0] += 1;
+	res = test_authenticated_encryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_encryption_fail_aad_len_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.aad.len += 1;
+	res = test_authenticated_encryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_encryption_fail_aad_corrupt(void)
+{
+	struct aead_test_data tdata;
+	uint8_t aad[gcm_test_case_7.aad.len];
+	int res;
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	memcpy(aad, gcm_test_case_7.aad.data, gcm_test_case_7.aad.len);
+	aad[0] += 1;
+	tdata.aad.data = aad;
+	res = test_authenticated_encryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_encryption_fail_tag_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.auth_tag.data[0] += 1;
+	res = test_authenticated_encryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "encryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
 test_authenticated_decryption(const struct aead_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -7839,6 +7932,7 @@ test_authenticated_decryption(const struct aead_test_data *tdata)
 	TEST_ASSERT_EQUAL(ut_params->op->status,
 			RTE_CRYPTO_OP_STATUS_SUCCESS,
 			"Authentication failed");
+
 	return 0;
 }
 
@@ -7882,6 +7976,12 @@ static int
 test_AES_GCM_authenticated_decryption_test_case_7(void)
 {
 	return test_authenticated_decryption(&gcm_test_case_7);
+}
+
+static int
+test_AES_GCM_authenticated_decryption_test_case_8(void)
+{
+	return test_authenticated_decryption(&gcm_test_case_8);
 }
 
 static int
@@ -7978,6 +8078,88 @@ static int
 test_AES_GCM_auth_decryption_test_case_aad_2(void)
 {
 	return test_authenticated_decryption(&gcm_test_case_aad_2);
+}
+
+static int
+test_AES_GCM_auth_decryption_fail_iv_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.iv.data[0] += 1;
+	res = test_authenticated_decryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_decryption_fail_in_data_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.plaintext.data[0] += 1;
+	res = test_authenticated_decryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_decryption_fail_out_data_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.ciphertext.data[0] += 1;
+	res = test_authenticated_decryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_decryption_fail_aad_len_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.aad.len += 1;
+	res = test_authenticated_decryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_decryption_fail_aad_corrupt(void)
+{
+	struct aead_test_data tdata;
+	uint8_t aad[gcm_test_case_7.aad.len];
+	int res;
+
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	memcpy(aad, gcm_test_case_7.aad.data, gcm_test_case_7.aad.len);
+	aad[0] += 1;
+	tdata.aad.data = aad;
+	res = test_authenticated_decryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "decryption not failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_GCM_auth_decryption_fail_tag_corrupt(void)
+{
+	struct aead_test_data tdata;
+	int res;
+
+	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
+	tdata.auth_tag.data[0] += 1;
+	res = test_authenticated_decryption(&tdata);
+	TEST_ASSERT_EQUAL(res, TEST_FAILED, "authentication not failed");
+	return TEST_SUCCESS;
 }
 
 static int
@@ -10927,6 +11109,8 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			test_AES_GCM_authenticated_encryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_authenticated_encryption_test_case_7),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_authenticated_encryption_test_case_8),
 
 		/** AES GCM Authenticated Decryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -10943,6 +11127,8 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			test_AES_GCM_authenticated_decryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_authenticated_decryption_test_case_7),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_authenticated_decryption_test_case_8),
 
 		/** AES GCM Authenticated Encryption 192 bits key */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -10991,6 +11177,22 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			test_AES_GCM_auth_encryption_test_case_256_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_encryption_test_case_256_7),
+
+		/** AES GCM Authenticated Decryption 256 bits key */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_test_case_256_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_test_case_256_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_test_case_256_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_test_case_256_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_test_case_256_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_test_case_256_6),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_test_case_256_7),
 
 		/** AES GMAC Authentication */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -11214,6 +11416,30 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			authentication_verify_HMAC_SHA1_fail_data_corrupt),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			authentication_verify_HMAC_SHA1_fail_tag_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encryption_fail_iv_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encryption_fail_in_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encryption_fail_out_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encryption_fail_aad_len_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encryption_fail_aad_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encryption_fail_tag_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_fail_iv_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_fail_in_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_fail_out_data_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_fail_aad_len_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_fail_aad_corrupt),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_fail_tag_corrupt),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			authentication_verify_AES128_GMAC_fail_data_corrupt),
 		TEST_CASE_ST(ut_setup, ut_teardown,
