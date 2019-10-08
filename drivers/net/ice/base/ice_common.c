@@ -176,9 +176,6 @@ ice_aq_get_link_topo_handle(struct ice_port_info *pi, u8 node_type,
 
 	cmd = &desc.params.get_link_topo;
 
-	if (!cmd)
-		return ICE_ERR_PARAM;
-
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_link_topo);
 
 	cmd->addr.node_type_ctx = (ICE_AQC_LINK_TOPO_NODE_CTX_PORT <<
