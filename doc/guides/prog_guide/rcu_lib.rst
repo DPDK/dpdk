@@ -162,14 +162,19 @@ running as worker threads.
 The separation of triggering the reporting from querying the status provides
 the writer threads flexibility to do useful work instead of blocking for the
 reader threads to enter the quiescent state or go offline. This reduces the
-memory accesses due to continuous polling for the status.
+memory accesses due to continuous polling for the status. But, since the
+resource is freed at a later time, the token and the reference to the deleted
+resource need to be stored for later queries.
 
 The ``rte_rcu_qsbr_synchronize()`` API combines the functionality of
 ``rte_rcu_qsbr_start()`` and blocking ``rte_rcu_qsbr_check()`` into a single
 API. This API triggers the reader threads to report their quiescent state and
 polls till all the readers enter the quiescent state or go offline. This API
 does not allow the writer to do useful work while waiting and introduces
-additional memory accesses due to continuous polling.
+additional memory accesses due to continuous polling. However, the application
+does not have to store the token or the reference to the deleted resource. The
+resource can be freed immediately after ``rte_rcu_qsbr_synchronize()`` API
+returns.
 
 The reader thread must call ``rte_rcu_qsbr_thread_offline()`` and
 ``rte_rcu_qsbr_thread_unregister()`` APIs to remove itself from reporting its
