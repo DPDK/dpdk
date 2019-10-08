@@ -62,8 +62,7 @@ The following are the command-line options:
 
 ``-e EAL_PARAMS, --eal_params EAL_PARAMS``
  Specifies EAL arguments which are passed to the test app. For more details,
- refer to DPDK documentation at
- http://doc.dpdk.org/guides/linux_gsg/linux_eal_parameters.html.
+ refer to DPDK documentation at :doc:`../linux_gsg/linux_eal_parameters`.
 
 ``-t TIMEOUT, --timeout TIMEOUT``
  Specifies timeout in seconds. If not specified timeout is set to 300 seconds.
