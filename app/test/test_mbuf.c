@@ -332,8 +332,11 @@ testclone_testupdate_testdetach(struct rte_mempool *pktmbuf_pool)
 	m->next = rte_pktmbuf_alloc(pktmbuf_pool);
 	if (m->next == NULL)
 		GOTO_FAIL("Next Pkt Null\n");
+	m->nb_segs = 2;
 
 	rte_pktmbuf_append(m->next, sizeof(uint32_t));
+	m->pkt_len = 2 * sizeof(uint32_t);
+
 	data = rte_pktmbuf_mtod(m->next, unaligned_uint32_t *);
 	*data = MAGIC_DATA;
 
