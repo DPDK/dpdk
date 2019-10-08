@@ -470,6 +470,7 @@ static void ice_init_pkg_hints(struct ice_hw *hw, struct ice_seg *ice_seg)
 	int i;
 
 	ice_memset(&hw->tnl, 0, sizeof(hw->tnl), ICE_NONDMA_MEM);
+	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
 
 	if (!ice_seg)
 		return;
@@ -1517,6 +1518,8 @@ ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type type,
 	struct ice_seg *ice_seg;
 	struct ice_fv *fv;
 
+	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
+
 	if (type == ICE_PROF_ALL) {
 		u16 i;
 
@@ -1572,6 +1575,8 @@ ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u8 ids_cnt,
 	struct ice_seg *ice_seg;
 	struct ice_fv *fv;
 	u32 offset;
+
+	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
 
 	if (!ids_cnt || !hw->seg)
 		return ICE_ERR_PARAM;
@@ -1633,15 +1638,16 @@ err:
 }
 
 /**
- * ice_init_profile_to_result_bm - Initialize the profile result index bitmap
+ * ice_init_prof_result_bm - Initialize the profile result index bitmap
  * @hw: pointer to hardware structure
  */
-void
-ice_init_prof_result_bm(struct ice_hw *hw)
+void ice_init_prof_result_bm(struct ice_hw *hw)
 {
 	struct ice_pkg_enum state;
 	struct ice_seg *ice_seg;
 	struct ice_fv *fv;
+
+	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
 
 	if (!hw->seg)
 		return;
