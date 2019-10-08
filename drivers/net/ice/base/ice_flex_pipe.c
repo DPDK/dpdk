@@ -2131,8 +2131,7 @@ ice_ptg_find_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 *ptg)
  * This function allocates a given packet type group ID specified by the ptg
  * parameter.
  */
-static
-void ice_ptg_alloc_val(struct ice_hw *hw, enum ice_block blk, u8 ptg)
+static void ice_ptg_alloc_val(struct ice_hw *hw, enum ice_block blk, u8 ptg)
 {
 	hw->blk[blk].xlt1.ptg_tbl[ptg].in_use = true;
 }
@@ -3286,8 +3285,7 @@ static const u32 ice_blk_sids[ICE_BLK_COUNT][ICE_SID_OFF_COUNT] = {
  * @hw: pointer to the hardware structure
  * @blk: the HW block to initialize
  */
-static
-void ice_init_sw_xlt1_db(struct ice_hw *hw, enum ice_block blk)
+static void ice_init_sw_xlt1_db(struct ice_hw *hw, enum ice_block blk)
 {
 	u16 pt;
 

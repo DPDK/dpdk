@@ -260,8 +260,8 @@ enum ice_status ice_read_sr_word(struct ice_hw *hw, u16 offset, u16 *data)
  */
 enum ice_status ice_init_nvm(struct ice_hw *hw)
 {
-	struct ice_nvm_info *nvm = &hw->nvm;
 	u16 oem_hi, oem_lo, boot_cfg_tlv, boot_cfg_tlv_len;
+	struct ice_nvm_info *nvm = &hw->nvm;
 	u16 eetrack_lo, eetrack_hi;
 	enum ice_status status;
 	u32 fla, gens_stat;
