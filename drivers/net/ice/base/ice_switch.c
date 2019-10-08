@@ -5977,12 +5977,9 @@ ice_adv_add_update_vsi_list(struct ice_hw *hw,
 	u16 vsi_list_id = 0;
 
 	if (cur_fltr->sw_act.fltr_act == ICE_FWD_TO_Q ||
-	    cur_fltr->sw_act.fltr_act == ICE_FWD_TO_QGRP)
+	    cur_fltr->sw_act.fltr_act == ICE_FWD_TO_QGRP ||
+	    cur_fltr->sw_act.fltr_act == ICE_DROP_PACKET)
 		return ICE_ERR_NOT_IMPL;
-
-	if (cur_fltr->sw_act.fltr_act == ICE_DROP_PACKET &&
-	    new_fltr->sw_act.fltr_act == ICE_DROP_PACKET)
-		return ICE_ERR_ALREADY_EXISTS;
 
 	if ((new_fltr->sw_act.fltr_act == ICE_FWD_TO_Q ||
 	     new_fltr->sw_act.fltr_act == ICE_FWD_TO_QGRP) &&
