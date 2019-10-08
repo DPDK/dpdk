@@ -1248,25 +1248,6 @@ void ice_free_seg(struct ice_hw *hw)
 }
 
 /**
- * ice_init_fd_mask_regs - initialize Flow Director mask registers
- * @hw: pointer to the HW struct
- *
- * This function sets up the Flow Director mask registers to allow for complete
- * masking off of any of the 24 Field Vector words. After this call, mask 0 will
- * mask off all of FV index 0, mask 1 will mask off all of FV index 1, etc.
- */
-static void ice_init_fd_mask_regs(struct ice_hw *hw)
-{
-	u16 i;
-
-	for (i = 0; i < hw->blk[ICE_BLK_FD].es.fvw; i++) {
-		wr32(hw, GLQF_FDMASK(i), i);
-		ice_debug(hw, ICE_DBG_INIT, "init fd mask(%d): %x = %x\n", i,
-			  GLQF_FDMASK(i), i);
-	}
-}
-
-/**
  * ice_init_pkg_regs - initialize additional package registers
  * @hw: pointer to the hardware structure
  */
@@ -1279,8 +1260,6 @@ static void ice_init_pkg_regs(struct ice_hw *hw)
 	/* setup Switch block input mask, which is 48-bits in two parts */
 	wr32(hw, GL_PREEXT_L2_PMASK0(ICE_SW_BLK_IDX), ICE_SW_BLK_INP_MASK_L);
 	wr32(hw, GL_PREEXT_L2_PMASK1(ICE_SW_BLK_IDX), ICE_SW_BLK_INP_MASK_H);
-	/* setup default flow director masks */
-	ice_init_fd_mask_regs(hw);
 }
 
 /**
@@ -2643,7 +2622,8 @@ ice_prof_has_mask_idx(struct ice_hw *hw, enum ice_block blk, u8 prof, u16 idx,
 		expect_no_mask = true;
 
 	/* Scan the enabled masks on this profile, for the specified idx */
-	for (i = 0; i < ICE_PROFILE_MASK_COUNT; i++)
+	for (i = hw->blk[blk].masks.first; i < hw->blk[blk].masks.first +
+	     hw->blk[blk].masks.count; i++)
 		if (hw->blk[blk].es.mask_ena[prof] & BIT(i))
 			if (hw->blk[blk].masks.masks[i].in_use &&
 			    hw->blk[blk].masks.masks[i].idx == idx) {
@@ -2981,14 +2961,15 @@ ice_write_prof_mask_enable_res(struct ice_hw *hw, enum ice_block blk,
  */
 static void ice_init_prof_masks(struct ice_hw *hw, enum ice_block blk)
 {
-#define MAX_NUM_PORTS    8
-	u16 num_ports = MAX_NUM_PORTS;
+	u16 per_pf;
 	u16 i;
 
 	ice_init_lock(&hw->blk[blk].masks.lock);
 
-	hw->blk[blk].masks.count = ICE_PROFILE_MASK_COUNT / num_ports;
-	hw->blk[blk].masks.first = hw->pf_id * hw->blk[blk].masks.count;
+	per_pf = ICE_PROF_MASK_COUNT / hw->dev_caps.num_funcs;
+
+	hw->blk[blk].masks.count = per_pf;
+	hw->blk[blk].masks.first = hw->pf_id * per_pf;
 
 	ice_memset(hw->blk[blk].masks.masks, 0,
 		   sizeof(hw->blk[blk].masks.masks), ICE_NONDMA_MEM);
@@ -4241,8 +4222,6 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 
 	ice_zero_bitmap(pair_list, ICE_FD_SRC_DST_PAIR_COUNT);
 
-	ice_init_fd_mask_regs(hw);
-
 	/* This code assumes that the Flow Director field vectors are assigned
 	 * from the end of the FV indexes working towards the zero index, that
 	 * only complete fields will be included and will be consecutive, and
@@ -4298,7 +4277,7 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 					return ICE_ERR_OUT_OF_RANGE;
 
 				/* keep track of non-relevant fields */
-				mask_sel |= 1 << (first_free - k);
+				mask_sel |= BIT(first_free - k);
 			}
 
 			pair_start[index] = first_free;
@@ -4342,29 +4321,39 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 		si -= indexes_used;
 	}
 
-	/* for each set of 4 swap indexes, write the appropriate register */
+	/* for each set of 4 swap and 4 inset indexes, write the appropriate
+	 * register
+	 */
 	for (j = 0; j < hw->blk[ICE_BLK_FD].es.fvw / 4; j++) {
-		u32 raw_entry = 0;
+		u32 raw_swap = 0;
+		u32 raw_in = 0;
 
 		for (k = 0; k < 4; k++) {
 			u8 idx;
 
 			idx = (j * 4) + k;
-			if (used[idx])
-				raw_entry |= used[idx] << (k * BITS_PER_BYTE);
+			if (used[idx] && !(mask_sel & BIT(idx))) {
+				raw_swap |= used[idx] << (k * BITS_PER_BYTE);
+#define ICE_INSET_DFLT 0x9f
+				raw_in |= ICE_INSET_DFLT << (k * BITS_PER_BYTE);
+			}
 		}
 
-		/* write the appropriate register set, based on HW block */
-		wr32(hw, GLQF_FDSWAP(prof_id, j), raw_entry);
+		/* write the appropriate swap register set */
+		wr32(hw, GLQF_FDSWAP(prof_id, j), raw_swap);
 
-		ice_debug(hw, ICE_DBG_INIT, "swap wr(%d, %d): %x = %x\n",
-			  prof_id, j, GLQF_FDSWAP(prof_id, j), raw_entry);
+		ice_debug(hw, ICE_DBG_INIT, "swap wr(%d, %d): %x = %08x\n",
+			  prof_id, j, GLQF_FDSWAP(prof_id, j), raw_swap);
+
+		/* write the appropriate inset register set */
+		wr32(hw, GLQF_FDINSET(prof_id, j), raw_in);
+
+		ice_debug(hw, ICE_DBG_INIT, "inset wr(%d, %d): %x = %08x\n",
+			  prof_id, j, GLQF_FDINSET(prof_id, j), raw_in);
 	}
 
-	/* update the masks for this profile to be sure we ignore fields that
-	 * are not relevant to our match criteria
-	 */
-	ice_update_fd_mask(hw, prof_id, mask_sel);
+	/* initially clear the mask select for this profile */
+	ice_update_fd_mask(hw, prof_id, 0);
 
 	return ICE_SUCCESS;
 }

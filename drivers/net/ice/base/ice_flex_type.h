@@ -668,8 +668,8 @@ struct ice_masks {
 	struct ice_lock lock;  /* lock to protect this structure */
 	u16 first;	/* first mask owned by the PF */
 	u16 count;	/* number of masks owned by the PF */
-#define ICE_PROFILE_MASK_COUNT 32
-	struct ice_mask masks[ICE_PROFILE_MASK_COUNT];
+#define ICE_PROF_MASK_COUNT 32
+	struct ice_mask masks[ICE_PROF_MASK_COUNT];
 };
 
 /* Tables per block */

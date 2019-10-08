@@ -22,15 +22,6 @@
 #define ICE_FLOW_FLD_SZ_GTP_TEID	4
 #define ICE_FLOW_FLD_SZ_PPPOE_SESS_ID   2
 
-/* Protocol header fields are extracted at the word boundaries as word-sized
- * values. Specify the displacement value of some non-word-aligned fields needed
- * to compute the offset of words containing the fields in the corresponding
- * protocol headers. Displacement values are expressed in number of bits.
- */
-#define ICE_FLOW_FLD_IPV6_TTL_DSCP_DISP	(-4)
-#define ICE_FLOW_FLD_IPV6_TTL_PROT_DISP	((-2) * BITS_PER_BYTE)
-#define ICE_FLOW_FLD_IPV6_TTL_TTL_DISP	((-1) * BITS_PER_BYTE)
-
 /* Describe properties of a protocol header field */
 struct ice_flow_field_info {
 	enum ice_flow_seg_hdr hdr;
@@ -67,18 +58,29 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_VLAN, 14, ICE_FLOW_FLD_SZ_VLAN),
 	/* ICE_FLOW_FIELD_IDX_ETH_TYPE */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ETH, 12, ICE_FLOW_FLD_SZ_ETH_TYPE),
-	/* IPv4 */
-	/* ICE_FLOW_FIELD_IDX_IP_DSCP */
-	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_IPV4, 1, 1),
-	/* ICE_FLOW_FIELD_IDX_IP_TTL */
-	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_NONE, 8, 1),
-	/* ICE_FLOW_FIELD_IDX_IP_PROT */
-	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_NONE, 9, ICE_FLOW_FLD_SZ_IP_PROT),
+	/* IPv4 / IPv6 */
+	/* ICE_FLOW_FIELD_IDX_IPV4_DSCP */
+	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_IPV4, 0, ICE_FLOW_FLD_SZ_IP_DSCP,
+			      0x00fc),
+	/* ICE_FLOW_FIELD_IDX_IPV6_DSCP */
+	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_IPV6, 0, ICE_FLOW_FLD_SZ_IP_DSCP,
+			      0x0ff0),
+	/* ICE_FLOW_FIELD_IDX_IPV4_TTL */
+	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_NONE, 8,
+			      ICE_FLOW_FLD_SZ_IP_TTL, 0xff00),
+	/* ICE_FLOW_FIELD_IDX_IPV4_PROT */
+	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_NONE, 8,
+			      ICE_FLOW_FLD_SZ_IP_PROT, 0x00ff),
+	/* ICE_FLOW_FIELD_IDX_IPV6_TTL */
+	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_NONE, 6,
+			      ICE_FLOW_FLD_SZ_IP_TTL, 0x00ff),
+	/* ICE_FLOW_FIELD_IDX_IPV6_PROT */
+	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_NONE, 6,
+			      ICE_FLOW_FLD_SZ_IP_PROT, 0xff00),
 	/* ICE_FLOW_FIELD_IDX_IPV4_SA */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_IPV4, 12, ICE_FLOW_FLD_SZ_IPV4_ADDR),
 	/* ICE_FLOW_FIELD_IDX_IPV4_DA */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_IPV4, 16, ICE_FLOW_FLD_SZ_IPV4_ADDR),
-	/* IPv6 */
 	/* ICE_FLOW_FIELD_IDX_IPV6_SA */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_IPV6, 8, ICE_FLOW_FLD_SZ_IPV6_ADDR),
 	/* ICE_FLOW_FIELD_IDX_IPV6_DA */
@@ -608,6 +610,7 @@ ice_flow_xtract_pkt_flags(struct ice_hw *hw,
  * @params: information about the flow to be processed
  * @seg: packet segment index of the field to be extracted
  * @fld: ID of field to be extracted
+ * @match: bitfield of all fields
  *
  * This function determines the protocol ID, offset, and size of the given
  * field. It then allocates one or more extraction sequence entries for the
@@ -615,13 +618,14 @@ ice_flow_xtract_pkt_flags(struct ice_hw *hw,
  */
 static enum ice_status
 ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
-		    u8 seg, enum ice_flow_field fld)
+		    u8 seg, enum ice_flow_field fld, u64 match)
 {
 	enum ice_flow_field sib = ICE_FLOW_FIELD_IDX_MAX;
 	enum ice_prot_id prot_id = ICE_PROT_ID_INVAL;
 	u8 fv_words = hw->blk[params->blk].es.fvw;
 	struct ice_flow_fld_info *flds;
 	u16 cnt, ese_bits, i;
+	u16 sib_mask = 0;
 	s16 adj = 0;
 	u16 mask;
 	u16 off;
@@ -638,35 +642,49 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	case ICE_FLOW_FIELD_IDX_ETH_TYPE:
 		prot_id = seg == 0 ? ICE_PROT_ETYPE_OL : ICE_PROT_ETYPE_IL;
 		break;
-	case ICE_FLOW_FIELD_IDX_IP_DSCP:
-		if (params->prof->segs[seg].hdrs & ICE_FLOW_SEG_HDR_IPV6)
-			adj = ICE_FLOW_FLD_IPV6_TTL_DSCP_DISP;
-		/* Fall through */
-	case ICE_FLOW_FIELD_IDX_IP_TTL:
-	case ICE_FLOW_FIELD_IDX_IP_PROT:
-		/* Some fields are located at different offsets in IPv4 and
-		 * IPv6
+	case ICE_FLOW_FIELD_IDX_IPV4_DSCP:
+		prot_id = seg == 0 ? ICE_PROT_IPV4_OF_OR_S : ICE_PROT_IPV4_IL;
+		break;
+	case ICE_FLOW_FIELD_IDX_IPV6_DSCP:
+		prot_id = seg == 0 ? ICE_PROT_IPV6_OF_OR_S : ICE_PROT_IPV6_IL;
+		break;
+	case ICE_FLOW_FIELD_IDX_IPV4_TTL:
+	case ICE_FLOW_FIELD_IDX_IPV4_PROT:
+		prot_id = seg == 0 ? ICE_PROT_IPV4_OF_OR_S : ICE_PROT_IPV4_IL;
+
+		/* TTL and PROT share the same extraction seq. entry.
+		 * Each is considered a sibling to the other in terms of sharing
+		 * the same extraction sequence entry.
 		 */
-		if (params->prof->segs[seg].hdrs & ICE_FLOW_SEG_HDR_IPV4) {
-			prot_id = seg == 0 ? ICE_PROT_IPV4_OF_OR_S :
-				ICE_PROT_IPV4_IL;
-			/* TTL and PROT share the same extraction seq. entry.
-			 * Each is considered a sibling to the other in term
-			 * sharing the same extraction sequence entry.
-			 */
-			if (fld == ICE_FLOW_FIELD_IDX_IP_TTL)
-				sib = ICE_FLOW_FIELD_IDX_IP_PROT;
-			else if (fld == ICE_FLOW_FIELD_IDX_IP_PROT)
-				sib = ICE_FLOW_FIELD_IDX_IP_TTL;
-		} else if (params->prof->segs[seg].hdrs &
-			   ICE_FLOW_SEG_HDR_IPV6) {
-			prot_id = seg == 0 ? ICE_PROT_IPV6_OF_OR_S :
-				ICE_PROT_IPV6_IL;
-			if (fld == ICE_FLOW_FIELD_IDX_IP_TTL)
-				adj = ICE_FLOW_FLD_IPV6_TTL_TTL_DISP;
-			else if (fld == ICE_FLOW_FIELD_IDX_IP_PROT)
-				adj = ICE_FLOW_FLD_IPV6_TTL_PROT_DISP;
-		}
+		if (fld == ICE_FLOW_FIELD_IDX_IPV4_TTL)
+			sib = ICE_FLOW_FIELD_IDX_IPV4_PROT;
+		else if (fld == ICE_FLOW_FIELD_IDX_IPV4_PROT)
+			sib = ICE_FLOW_FIELD_IDX_IPV4_TTL;
+
+		/* If the sibling field is also included, that field's
+		 * mask needs to be included.
+		 */
+		if (match & BIT(sib))
+			sib_mask = ice_flds_info[sib].mask;
+		break;
+	case ICE_FLOW_FIELD_IDX_IPV6_TTL:
+	case ICE_FLOW_FIELD_IDX_IPV6_PROT:
+		prot_id = seg == 0 ? ICE_PROT_IPV6_OF_OR_S : ICE_PROT_IPV6_IL;
+
+		/* TTL and PROT share the same extraction seq. entry.
+		 * Each is considered a sibling to the other in terms of sharing
+		 * the same extraction sequence entry.
+		 */
+		if (fld == ICE_FLOW_FIELD_IDX_IPV6_TTL)
+			sib = ICE_FLOW_FIELD_IDX_IPV6_PROT;
+		else if (fld == ICE_FLOW_FIELD_IDX_IPV6_PROT)
+			sib = ICE_FLOW_FIELD_IDX_IPV6_TTL;
+
+		/* If the sibling field is also included, that field's
+		 * mask needs to be included.
+		 */
+		if (match & BIT(sib))
+			sib_mask = ice_flds_info[sib].mask;
 		break;
 	case ICE_FLOW_FIELD_IDX_IPV4_SA:
 	case ICE_FLOW_FIELD_IDX_IPV4_DA:
@@ -733,6 +751,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		ICE_FLOW_FV_EXTRACT_SZ;
 	flds[fld].xtrct.disp = (u8)((ice_flds_info[fld].off + adj) % ese_bits);
 	flds[fld].xtrct.idx = params->es_cnt;
+	flds[fld].xtrct.mask = ice_flds_info[fld].mask;
 
 	/* Adjust the next field-entry index after accommodating the number of
 	 * entries this field consumes
@@ -742,7 +761,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 
 	/* Fill in the extraction sequence entries needed for this field */
 	off = flds[fld].xtrct.off;
-	mask = ice_flds_info[fld].mask;
+	mask = flds[fld].xtrct.mask;
 	for (i = 0; i < cnt; i++) {
 		/* Only consume an extraction sequence entry if there is no
 		 * sibling field associated with this field or the sibling entry
@@ -767,7 +786,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 
 			params->es[idx].prot_id = prot_id;
 			params->es[idx].off = off;
-			params->mask[idx] = mask;
+			params->mask[idx] = mask | sib_mask;
 			params->es_cnt++;
 		}
 
@@ -885,7 +904,8 @@ ice_flow_create_xtrct_seq(struct ice_hw *hw,
 
 			if (match & bit) {
 				status = ice_flow_xtract_fld
-					(hw, params, i, (enum ice_flow_field)j);
+					(hw, params, i, (enum ice_flow_field)j,
+					 match);
 				if (status)
 					return status;
 				match &= ~bit;
