@@ -2073,6 +2073,13 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	if (txmode->mq_mode != ETH_MQ_TX_NONE) {
+		PMD_DRV_LOG(ERR,
+			"Unsupported Tx multi queue mode %d",
+			txmode->mq_mode);
+		return -EINVAL;
+	}
+
 	if (dev->data->dev_conf.intr_conf.rxq) {
 		ret = virtio_init_device(dev, hw->req_guest_features);
 		if (ret < 0)
