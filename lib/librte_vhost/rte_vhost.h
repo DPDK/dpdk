@@ -103,6 +103,49 @@ struct rte_vhost_memory {
 	struct rte_vhost_mem_region regions[];
 };
 
+struct rte_vhost_inflight_desc_split {
+	uint8_t inflight;
+	uint8_t padding[5];
+	uint16_t next;
+	uint64_t counter;
+};
+
+struct rte_vhost_inflight_info_split {
+	uint64_t features;
+	uint16_t version;
+	uint16_t desc_num;
+	uint16_t last_inflight_io;
+	uint16_t used_idx;
+	struct rte_vhost_inflight_desc_split desc[0];
+};
+
+struct rte_vhost_inflight_desc_packed {
+	uint8_t inflight;
+	uint8_t padding;
+	uint16_t next;
+	uint16_t last;
+	uint16_t num;
+	uint64_t counter;
+	uint16_t id;
+	uint16_t flags;
+	uint32_t len;
+	uint64_t addr;
+};
+
+struct rte_vhost_inflight_info_packed {
+	uint64_t features;
+	uint16_t version;
+	uint16_t desc_num;
+	uint16_t free_head;
+	uint16_t old_free_head;
+	uint16_t used_idx;
+	uint16_t old_used_idx;
+	uint8_t used_wrap_counter;
+	uint8_t old_used_wrap_counter;
+	uint8_t padding[7];
+	struct rte_vhost_inflight_desc_packed desc[0];
+};
+
 struct rte_vhost_vring {
 	union {
 		struct vring_desc *desc;
