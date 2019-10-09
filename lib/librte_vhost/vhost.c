@@ -116,6 +116,26 @@ __vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len)
 }
 
 void
+__vhost_log_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			     uint64_t iova, uint64_t len)
+{
+	uint64_t hva, gpa, map_len;
+	map_len = len;
+
+	hva = __vhost_iova_to_vva(dev, vq, iova, &map_len, VHOST_ACCESS_RW);
+	if (map_len != len) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Failed to write log for IOVA 0x%" PRIx64 ". No IOTLB entry found\n",
+			iova);
+		return;
+	}
+
+	gpa = hva_to_gpa(dev, hva, len);
+	if (gpa)
+		__vhost_log_write(dev, gpa, len);
+}
+
+void
 __vhost_log_cache_sync(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	unsigned long *log_base;
@@ -198,6 +218,26 @@ __vhost_log_cache_write(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		vhost_log_cache_page(dev, vq, page);
 		page += 1;
 	}
+}
+
+void
+__vhost_log_cache_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			     uint64_t iova, uint64_t len)
+{
+	uint64_t hva, gpa, map_len;
+	map_len = len;
+
+	hva = __vhost_iova_to_vva(dev, vq, iova, &map_len, VHOST_ACCESS_RW);
+	if (map_len != len) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Failed to write log for IOVA 0x%" PRIx64 ". No IOTLB entry found\n",
+			iova);
+		return;
+	}
+
+	gpa = hva_to_gpa(dev, hva, len);
+	if (gpa)
+		__vhost_log_cache_write(dev, vq, gpa, len);
 }
 
 void *

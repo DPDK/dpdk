@@ -177,7 +177,8 @@ do_data_copy_enqueue(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 	for (i = 0; i < count; i++) {
 		rte_memcpy(elem[i].dst, elem[i].src, elem[i].len);
-		vhost_log_cache_write(dev, vq, elem[i].log_addr, elem[i].len);
+		vhost_log_cache_write_iova(dev, vq, elem[i].log_addr,
+					   elem[i].len);
 		PRINT_PACKET(dev, (uintptr_t)elem[i].dst, elem[i].len, 0);
 	}
 
@@ -631,7 +632,7 @@ copy_vnet_hdr_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 		PRINT_PACKET(dev, (uintptr_t)dst,
 				(uint32_t)len, 0);
-		vhost_log_cache_write(dev, vq,
+		vhost_log_cache_write_iova(dev, vq,
 				iova, len);
 
 		remain -= len;
@@ -731,7 +732,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			} else {
 				PRINT_PACKET(dev, (uintptr_t)hdr_addr,
 						dev->vhost_hlen, 0);
-				vhost_log_cache_write(dev, vq,
+				vhost_log_cache_write_iova(dev, vq,
 						buf_vec[0].buf_iova,
 						dev->vhost_hlen);
 			}
@@ -746,8 +747,9 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			rte_memcpy((void *)((uintptr_t)(buf_addr + buf_offset)),
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset),
 				cpy_len);
-			vhost_log_cache_write(dev, vq, buf_iova + buf_offset,
-					cpy_len);
+			vhost_log_cache_write_iova(dev, vq,
+						   buf_iova + buf_offset,
+						   cpy_len);
 			PRINT_PACKET(dev, (uintptr_t)(buf_addr + buf_offset),
 				cpy_len, 0);
 		} else {

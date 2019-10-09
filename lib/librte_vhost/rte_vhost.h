@@ -274,7 +274,7 @@ rte_vhost_va_from_guest_pa(struct rte_vhost_memory *mem,
  * @param vid
  *  vhost device ID
  * @param addr
- *  the starting address for write
+ *  the starting address for write (in guest physical address space)
  * @param len
  *  the length to write
  */

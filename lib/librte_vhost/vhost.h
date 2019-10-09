@@ -353,9 +353,14 @@ desc_is_avail(struct vring_packed_desc *desc, bool wrap_counter)
 void __vhost_log_cache_write(struct virtio_net *dev,
 		struct vhost_virtqueue *vq,
 		uint64_t addr, uint64_t len);
+void __vhost_log_cache_write_iova(struct virtio_net *dev,
+		struct vhost_virtqueue *vq,
+		uint64_t iova, uint64_t len);
 void __vhost_log_cache_sync(struct virtio_net *dev,
 		struct vhost_virtqueue *vq);
 void __vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len);
+void __vhost_log_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			    uint64_t iova, uint64_t len);
 
 static __rte_always_inline void
 vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len)
@@ -391,6 +396,32 @@ vhost_log_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		     uint64_t offset, uint64_t len)
 {
 	vhost_log_write(dev, vq->log_guest_addr + offset, len);
+}
+
+static __rte_always_inline void
+vhost_log_cache_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			   uint64_t iova, uint64_t len)
+{
+	if (likely(!(dev->features & (1ULL << VHOST_F_LOG_ALL))))
+		return;
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		__vhost_log_cache_write_iova(dev, vq, iova, len);
+	else
+		__vhost_log_cache_write(dev, vq, iova, len);
+}
+
+static __rte_always_inline void
+vhost_log_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			   uint64_t iova, uint64_t len)
+{
+	if (likely(!(dev->features & (1ULL << VHOST_F_LOG_ALL))))
+		return;
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		__vhost_log_write_iova(dev, vq, iova, len);
+	else
+		__vhost_log_write(dev, iova, len);
 }
 
 /* Macros for printing using RTE_LOG */
