@@ -137,14 +137,17 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-   * Removed duplicated set of commands for RX offloading configuration from app/testpmd:
-     “port config all crc-strip|scatter|rx-cksum|rx-timestamp|hw-vlan|hw-vlan-filter|
-     hw-vlan-strip|hw-vlan-extend on|off”.
+* Removed duplicated set of commands for Rx offload configuration from testpmd::
 
-     The testpmd commands set that can be used instead in order to enable or disable Rx
-     offloading on all Rx queues of a port is:
-     "port config <port_id> rx_offload crc_strip|scatter|ipv4_cksum|udp_cksum|tcp_cksum|
-     timestamp|vlan_strip|vlan_filter|vlan_extend on|off"
+    port config all crc-strip|scatter|rx-cksum|rx-timestamp|
+                    hw-vlan|hw-vlan-filter|hw-vlan-strip|hw-vlan-extend on|off
+
+  The testpmd commands set that can be used instead
+  in order to enable or disable Rx offloading on all Rx queues of a port is::
+
+    port config <port_id> rx_offload crc_strip|scatter|
+                                     ipv4_cksum|udp_cksum|tcp_cksum|timestamp|
+                                     vlan_strip|vlan_filter|vlan_extend on|off
 
 
 API Changes
