@@ -1067,6 +1067,11 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (tx_conf->tx_deferred_start) {
+		PMD_INIT_LOG(ERR, "Tx deferred start is not supported");
+		return -EINVAL;
+	}
+
 	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
 		nb_desc = vq->vq_nentries;
 	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
