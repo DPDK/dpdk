@@ -824,6 +824,279 @@ rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
 }
 
 int
+rte_vhost_set_inflight_desc_split(int vid, uint16_t vring_idx,
+				  uint16_t idx)
+{
+	struct vhost_virtqueue *vq;
+	struct virtio_net *dev;
+
+	dev = get_device(vid);
+	if (unlikely(!dev))
+		return -1;
+
+	if (unlikely(!(dev->protocol_features &
+	    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD))))
+		return 0;
+
+	if (unlikely(vq_is_packed(dev)))
+		return -1;
+
+	if (unlikely(vring_idx >= VHOST_MAX_VRING))
+		return -1;
+
+	vq = dev->virtqueue[vring_idx];
+	if (unlikely(!vq))
+		return -1;
+
+	if (unlikely(!vq->inflight_split))
+		return -1;
+
+	if (unlikely(idx >= vq->size))
+		return -1;
+
+	vq->inflight_split->desc[idx].counter = vq->global_counter++;
+	vq->inflight_split->desc[idx].inflight = 1;
+	return 0;
+}
+
+int
+rte_vhost_set_inflight_desc_packed(int vid, uint16_t vring_idx,
+				   uint16_t head, uint16_t last,
+				   uint16_t *inflight_entry)
+{
+	struct rte_vhost_inflight_info_packed *inflight_info;
+	struct virtio_net *dev;
+	struct vhost_virtqueue *vq;
+	struct vring_packed_desc *desc;
+	uint16_t old_free_head, free_head;
+
+	dev = get_device(vid);
+	if (unlikely(!dev))
+		return -1;
+
+	if (unlikely(!(dev->protocol_features &
+	    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD))))
+		return 0;
+
+	if (unlikely(!vq_is_packed(dev)))
+		return -1;
+
+	if (unlikely(vring_idx >= VHOST_MAX_VRING))
+		return -1;
+
+	vq = dev->virtqueue[vring_idx];
+	if (unlikely(!vq))
+		return -1;
+
+	inflight_info = vq->inflight_packed;
+	if (unlikely(!inflight_info))
+		return -1;
+
+	if (unlikely(head >= vq->size))
+		return -1;
+
+	desc = vq->desc_packed;
+	old_free_head = inflight_info->old_free_head;
+	if (unlikely(old_free_head >= vq->size))
+		return -1;
+
+	free_head = old_free_head;
+
+	/* init header descriptor */
+	inflight_info->desc[old_free_head].num = 0;
+	inflight_info->desc[old_free_head].counter = vq->global_counter++;
+	inflight_info->desc[old_free_head].inflight = 1;
+
+	/* save desc entry in flight entry */
+	while (head != ((last + 1) % vq->size)) {
+		inflight_info->desc[old_free_head].num++;
+		inflight_info->desc[free_head].addr = desc[head].addr;
+		inflight_info->desc[free_head].len = desc[head].len;
+		inflight_info->desc[free_head].flags = desc[head].flags;
+		inflight_info->desc[free_head].id = desc[head].id;
+
+		inflight_info->desc[old_free_head].last = free_head;
+		free_head = inflight_info->desc[free_head].next;
+		inflight_info->free_head = free_head;
+		head = (head + 1) % vq->size;
+	}
+
+	inflight_info->old_free_head = free_head;
+	*inflight_entry = old_free_head;
+
+	return 0;
+}
+
+int
+rte_vhost_clr_inflight_desc_split(int vid, uint16_t vring_idx,
+				  uint16_t last_used_idx, uint16_t idx)
+{
+	struct virtio_net *dev;
+	struct vhost_virtqueue *vq;
+
+	dev = get_device(vid);
+	if (unlikely(!dev))
+		return -1;
+
+	if (unlikely(!(dev->protocol_features &
+	    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD))))
+		return 0;
+
+	if (unlikely(vq_is_packed(dev)))
+		return -1;
+
+	if (unlikely(vring_idx >= VHOST_MAX_VRING))
+		return -1;
+
+	vq = dev->virtqueue[vring_idx];
+	if (unlikely(!vq))
+		return -1;
+
+	if (unlikely(!vq->inflight_split))
+		return -1;
+
+	if (unlikely(idx >= vq->size))
+		return -1;
+
+	rte_smp_mb();
+
+	vq->inflight_split->desc[idx].inflight = 0;
+
+	rte_smp_mb();
+
+	vq->inflight_split->used_idx = last_used_idx;
+	return 0;
+}
+
+int
+rte_vhost_clr_inflight_desc_packed(int vid, uint16_t vring_idx,
+				   uint16_t head)
+{
+	struct rte_vhost_inflight_info_packed *inflight_info;
+	struct virtio_net *dev;
+	struct vhost_virtqueue *vq;
+
+	dev = get_device(vid);
+	if (unlikely(!dev))
+		return -1;
+
+	if (unlikely(!(dev->protocol_features &
+	    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD))))
+		return 0;
+
+	if (unlikely(!vq_is_packed(dev)))
+		return -1;
+
+	if (unlikely(vring_idx >= VHOST_MAX_VRING))
+		return -1;
+
+	vq = dev->virtqueue[vring_idx];
+	if (unlikely(!vq))
+		return -1;
+
+	inflight_info = vq->inflight_packed;
+	if (unlikely(!inflight_info))
+		return -1;
+
+	if (unlikely(head >= vq->size))
+		return -1;
+
+	rte_smp_mb();
+
+	inflight_info->desc[head].inflight = 0;
+
+	rte_smp_mb();
+
+	inflight_info->old_free_head = inflight_info->free_head;
+	inflight_info->old_used_idx = inflight_info->used_idx;
+	inflight_info->old_used_wrap_counter = inflight_info->used_wrap_counter;
+
+	return 0;
+}
+
+int
+rte_vhost_set_last_inflight_io_split(int vid, uint16_t vring_idx,
+				     uint16_t idx)
+{
+	struct virtio_net *dev;
+	struct vhost_virtqueue *vq;
+
+	dev = get_device(vid);
+	if (unlikely(!dev))
+		return -1;
+
+	if (unlikely(!(dev->protocol_features &
+	    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD))))
+		return 0;
+
+	if (unlikely(vq_is_packed(dev)))
+		return -1;
+
+	if (unlikely(vring_idx >= VHOST_MAX_VRING))
+		return -1;
+
+	vq = dev->virtqueue[vring_idx];
+	if (unlikely(!vq))
+		return -1;
+
+	if (unlikely(!vq->inflight_split))
+		return -1;
+
+	vq->inflight_split->last_inflight_io = idx;
+	return 0;
+}
+
+int
+rte_vhost_set_last_inflight_io_packed(int vid, uint16_t vring_idx,
+				      uint16_t head)
+{
+	struct rte_vhost_inflight_info_packed *inflight_info;
+	struct virtio_net *dev;
+	struct vhost_virtqueue *vq;
+	uint16_t last;
+
+	dev = get_device(vid);
+	if (unlikely(!dev))
+		return -1;
+
+	if (unlikely(!(dev->protocol_features &
+	    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD))))
+		return 0;
+
+	if (unlikely(!vq_is_packed(dev)))
+		return -1;
+
+	if (unlikely(vring_idx >= VHOST_MAX_VRING))
+		return -1;
+
+	vq = dev->virtqueue[vring_idx];
+	if (unlikely(!vq))
+		return -1;
+
+	inflight_info = vq->inflight_packed;
+	if (unlikely(!inflight_info))
+		return -1;
+
+	if (unlikely(head >= vq->size))
+		return -1;
+
+	last = inflight_info->desc[head].last;
+	if (unlikely(last >= vq->size))
+		return -1;
+
+	inflight_info->desc[last].next = inflight_info->free_head;
+	inflight_info->free_head = head;
+	inflight_info->used_idx += inflight_info->desc[head].num;
+	if (inflight_info->used_idx >= inflight_info->desc_num) {
+		inflight_info->used_idx -= inflight_info->desc_num;
+		inflight_info->used_wrap_counter =
+			!inflight_info->used_wrap_counter;
+	}
+
+	return 0;
+}
+
+int
 rte_vhost_vring_call(int vid, uint16_t vring_idx)
 {
 	struct virtio_net *dev;

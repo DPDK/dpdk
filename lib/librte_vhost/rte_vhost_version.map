@@ -87,4 +87,10 @@ EXPERIMENTAL {
 	rte_vdpa_relay_vring_used;
 	rte_vhost_extern_callback_register;
 	rte_vhost_driver_set_protocol_features;
+	rte_vhost_set_inflight_desc_split;
+	rte_vhost_set_inflight_desc_packed;
+	rte_vhost_set_last_inflight_io_split;
+	rte_vhost_set_last_inflight_io_packed;
+	rte_vhost_clr_inflight_desc_split;
+	rte_vhost_clr_inflight_desc_packed;
 };

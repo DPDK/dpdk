@@ -710,6 +710,122 @@ int rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
 			      struct rte_vhost_vring *vring);
 
 /**
+ * Set split inflight descriptor.
+ *
+ * This function save descriptors that has been comsumed in available
+ * ring
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @param idx
+ *  inflight entry index
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_set_inflight_desc_split(int vid, uint16_t vring_idx,
+	uint16_t idx);
+
+/**
+ * Set packed inflight descriptor and get corresponding inflight entry
+ *
+ * This function save descriptors that has been comsumed
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @param head
+ *  head of descriptors
+ * @param last
+ *  last of descriptors
+ * @param inflight_entry
+ *  corresponding inflight entry
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_set_inflight_desc_packed(int vid, uint16_t vring_idx,
+	uint16_t head, uint16_t last, uint16_t *inflight_entry);
+
+/**
+ * Save the head of list that the last batch of used descriptors.
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @param idx
+ *  descriptor entry index
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_set_last_inflight_io_split(int vid,
+	uint16_t vring_idx, uint16_t idx);
+
+/**
+ * Update the inflight free_head, used_idx and used_wrap_counter.
+ *
+ * This function will update status first before updating descriptors
+ * to used
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @param head
+ *  head of descriptors
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_set_last_inflight_io_packed(int vid,
+	uint16_t vring_idx, uint16_t head);
+
+/**
+ * Clear the split inflight status.
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @param last_used_idx
+ *  last used idx of used ring
+ * @param idx
+ *  inflight entry index
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_clr_inflight_desc_split(int vid, uint16_t vring_idx,
+	uint16_t last_used_idx, uint16_t idx);
+
+/**
+ * Clear the packed inflight status.
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @param head
+ *  inflight entry index
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_clr_inflight_desc_packed(int vid, uint16_t vring_idx,
+	uint16_t head);
+
+/**
  * Notify the guest that used descriptors have been added to the vring.  This
  * function acts as a memory barrier.
  *
