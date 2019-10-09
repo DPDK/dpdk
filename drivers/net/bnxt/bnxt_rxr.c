@@ -63,17 +63,21 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 	struct bnxt_sw_rx_bd *rx_buf = &rxr->ag_buf_ring[prod];
 	struct rte_mbuf *mbuf;
 
+	if (rxbd == NULL) {
+		PMD_DRV_LOG(ERR, "Jumbo Frame. rxbd is NULL\n");
+		return -EINVAL;
+	}
+
+	if (rx_buf == NULL) {
+		PMD_DRV_LOG(ERR, "Jumbo Frame. rx_buf is NULL\n");
+		return -EINVAL;
+	}
+
 	mbuf = __bnxt_alloc_rx_data(rxq->mb_pool);
 	if (!mbuf) {
 		rte_atomic64_inc(&rxq->rx_mbuf_alloc_fail);
 		return -ENOMEM;
 	}
-
-	if (rxbd == NULL)
-		PMD_DRV_LOG(ERR, "Jumbo Frame. rxbd is NULL\n");
-	if (rx_buf == NULL)
-		PMD_DRV_LOG(ERR, "Jumbo Frame. rx_buf is NULL\n");
-
 
 	rx_buf->mbuf = mbuf;
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
