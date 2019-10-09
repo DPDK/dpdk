@@ -32,6 +32,13 @@
 
 #define I40E_TX_MIN_PKT_LEN 17
 
+/* Shared FDIR masks between scalar / vector drivers */
+#define I40E_RX_DESC_EXT_STATUS_FLEXBH_MASK   0x03
+#define I40E_RX_DESC_EXT_STATUS_FLEXBH_FD_ID  0x01
+#define I40E_RX_DESC_EXT_STATUS_FLEXBH_FLEX   0x02
+#define I40E_RX_DESC_EXT_STATUS_FLEXBL_MASK   0x03
+#define I40E_RX_DESC_EXT_STATUS_FLEXBL_FLEX   0x01
+
 #undef container_of
 #define container_of(ptr, type, member) ({ \
 		typeof(((type *)0)->member)(*__mptr) = (ptr); \

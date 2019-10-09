@@ -172,12 +172,6 @@ i40e_get_iee15888_flags(struct rte_mbuf *mb, uint64_t qword)
 }
 #endif
 
-#define I40E_RX_DESC_EXT_STATUS_FLEXBH_MASK   0x03
-#define I40E_RX_DESC_EXT_STATUS_FLEXBH_FD_ID  0x01
-#define I40E_RX_DESC_EXT_STATUS_FLEXBH_FLEX   0x02
-#define I40E_RX_DESC_EXT_STATUS_FLEXBL_MASK   0x03
-#define I40E_RX_DESC_EXT_STATUS_FLEXBL_FLEX   0x01
-
 static inline uint64_t
 i40e_rxd_build_fdir(volatile union i40e_rx_desc *rxdp, struct rte_mbuf *mb)
 {
