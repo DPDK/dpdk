@@ -104,9 +104,18 @@ struct rte_vhost_memory {
 };
 
 struct rte_vhost_vring {
-	struct vring_desc	*desc;
-	struct vring_avail	*avail;
-	struct vring_used	*used;
+	union {
+		struct vring_desc *desc;
+		struct vring_packed_desc *desc_packed;
+	};
+	union {
+		struct vring_avail *avail;
+		struct vring_packed_desc_event *driver_event;
+	};
+	union {
+		struct vring_used *used;
+		struct vring_packed_desc_event *device_event;
+	};
 	uint64_t		log_guest_addr;
 
 	/** Deprecated, use rte_vhost_vring_call() instead. */
