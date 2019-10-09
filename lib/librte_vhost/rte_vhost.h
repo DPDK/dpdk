@@ -146,6 +146,25 @@ struct rte_vhost_inflight_info_packed {
 	struct rte_vhost_inflight_desc_packed desc[0];
 };
 
+struct rte_vhost_resubmit_desc {
+	uint16_t index;
+	uint64_t counter;
+};
+
+struct rte_vhost_resubmit_info {
+	struct rte_vhost_resubmit_desc *resubmit_list;
+	uint16_t resubmit_num;
+};
+
+struct rte_vhost_ring_inflight {
+	union {
+		struct rte_vhost_inflight_info_split *inflight_split;
+		struct rte_vhost_inflight_info_packed *inflight_packed;
+	};
+
+	struct rte_vhost_resubmit_info *resubmit_inflight;
+};
+
 struct rte_vhost_vring {
 	union {
 		struct vring_desc *desc;

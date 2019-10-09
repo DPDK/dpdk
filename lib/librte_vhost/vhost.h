@@ -128,6 +128,14 @@ struct vhost_virtqueue {
 	/* Physical address of used ring, for logging */
 	uint64_t		log_guest_addr;
 
+	/* inflight share memory info */
+	union {
+		struct rte_vhost_inflight_info_split *inflight_split;
+		struct rte_vhost_inflight_info_packed *inflight_packed;
+	};
+	struct rte_vhost_resubmit_info *resubmit_inflight;
+	uint64_t		global_counter;
+
 	uint16_t		nr_zmbuf;
 	uint16_t		zmbuf_size;
 	uint16_t		last_zmbuf_idx;
@@ -525,6 +533,7 @@ void vhost_destroy_device(int);
 void vhost_destroy_device_notify(struct virtio_net *dev);
 
 void cleanup_vq(struct vhost_virtqueue *vq, int destroy);
+void cleanup_vq_inflight(struct virtio_net *dev, struct vhost_virtqueue *vq);
 void free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq);
 
 int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);

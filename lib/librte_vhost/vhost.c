@@ -282,6 +282,31 @@ cleanup_vq(struct vhost_virtqueue *vq, int destroy)
 		close(vq->kickfd);
 }
 
+void
+cleanup_vq_inflight(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	if (!(dev->protocol_features &
+	    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD)))
+		return;
+
+	if (vq_is_packed(dev)) {
+		if (vq->inflight_packed)
+			vq->inflight_packed = NULL;
+	} else {
+		if (vq->inflight_split)
+			vq->inflight_split = NULL;
+	}
+
+	if (vq->resubmit_inflight) {
+		if (vq->resubmit_inflight->resubmit_list) {
+			free(vq->resubmit_inflight->resubmit_list);
+			vq->resubmit_inflight->resubmit_list = NULL;
+		}
+		free(vq->resubmit_inflight);
+		vq->resubmit_inflight = NULL;
+	}
+}
+
 /*
  * Unmap any memory, close any file descriptors and
  * free any memory owned by a device.
@@ -293,8 +318,10 @@ cleanup_device(struct virtio_net *dev, int destroy)
 
 	vhost_backend_cleanup(dev);
 
-	for (i = 0; i < dev->nr_vring; i++)
+	for (i = 0; i < dev->nr_vring; i++) {
 		cleanup_vq(dev->virtqueue[i], destroy);
+		cleanup_vq_inflight(dev, dev->virtqueue[i]);
+	}
 }
 
 void
