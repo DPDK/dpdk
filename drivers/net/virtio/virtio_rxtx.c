@@ -929,7 +929,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
 			unsigned int socket_id __rte_unused,
-			const struct rte_eth_rxconf *rx_conf __rte_unused,
+			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp)
 {
 	uint16_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
@@ -938,6 +938,11 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct virtnet_rx *rxvq;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (rx_conf->rx_deferred_start) {
+		PMD_INIT_LOG(ERR, "Rx deferred start is not supported");
+		return -EINVAL;
+	}
 
 	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
 		nb_desc = vq->vq_nentries;
