@@ -72,6 +72,10 @@ extern "C" {
 #define VHOST_USER_PROTOCOL_F_HOST_NOTIFIER 11
 #endif
 
+#ifndef VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD
+#define VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD 12
+#endif
+
 /** Indicate whether protocol features negotiation is supported. */
 #ifndef VHOST_USER_F_PROTOCOL_FEATURES
 #define VHOST_USER_F_PROTOCOL_FEATURES	30

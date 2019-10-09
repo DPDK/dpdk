@@ -112,6 +112,13 @@ typedef struct VhostUserVringArea {
 	uint64_t offset;
 } VhostUserVringArea;
 
+typedef struct VhostUserInflight {
+	uint64_t mmap_size;
+	uint64_t mmap_offset;
+	uint16_t num_queues;
+	uint16_t queue_size;
+} VhostUserInflight;
+
 typedef struct VhostUserMsg {
 	union {
 		uint32_t master; /* a VhostUserRequest value */
@@ -134,6 +141,7 @@ typedef struct VhostUserMsg {
 		struct vhost_iotlb_msg iotlb;
 		VhostUserCryptoSessionParam crypto_session;
 		VhostUserVringArea area;
+		VhostUserInflight inflight;
 	} payload;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num;
