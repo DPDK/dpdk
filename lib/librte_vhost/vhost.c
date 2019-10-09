@@ -824,6 +824,41 @@ rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
 }
 
 int
+rte_vhost_get_vhost_ring_inflight(int vid, uint16_t vring_idx,
+				  struct rte_vhost_ring_inflight *vring)
+{
+	struct virtio_net *dev;
+	struct vhost_virtqueue *vq;
+
+	dev = get_device(vid);
+	if (unlikely(!dev))
+		return -1;
+
+	if (vring_idx >= VHOST_MAX_VRING)
+		return -1;
+
+	vq = dev->virtqueue[vring_idx];
+	if (unlikely(!vq))
+		return -1;
+
+	if (vq_is_packed(dev)) {
+		if (unlikely(!vq->inflight_packed))
+			return -1;
+
+		vring->inflight_packed = vq->inflight_packed;
+	} else {
+		if (unlikely(!vq->inflight_split))
+			return -1;
+
+		vring->inflight_split = vq->inflight_split;
+	}
+
+	vring->resubmit_inflight = vq->resubmit_inflight;
+
+	return 0;
+}
+
+int
 rte_vhost_set_inflight_desc_split(int vid, uint16_t vring_idx,
 				  uint16_t idx)
 {
@@ -1314,6 +1349,32 @@ int rte_vhost_get_vring_base(int vid, uint16_t queue_id,
 
 	*last_avail_idx = dev->virtqueue[queue_id]->last_avail_idx;
 	*last_used_idx = dev->virtqueue[queue_id]->last_used_idx;
+
+	return 0;
+}
+
+int
+rte_vhost_get_vring_base_from_inflight(int vid,
+				       uint16_t queue_id,
+				       uint16_t *last_avail_idx,
+				       uint16_t *last_used_idx)
+{
+	struct rte_vhost_inflight_info_packed *inflight_info;
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL || last_avail_idx == NULL || last_used_idx == NULL)
+		return -1;
+
+	if (!vq_is_packed(dev))
+		return -1;
+
+	inflight_info = dev->virtqueue[queue_id]->inflight_packed;
+	if (!inflight_info)
+		return -1;
+
+	*last_avail_idx = (inflight_info->old_used_wrap_counter << 15) |
+			  inflight_info->old_used_idx;
+	*last_used_idx = *last_avail_idx;
 
 	return 0;
 }

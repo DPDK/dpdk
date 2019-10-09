@@ -710,6 +710,23 @@ int rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
 			      struct rte_vhost_vring *vring);
 
 /**
+ * Get guest inflight vring info, including inflight ring and resubmit list.
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @param vring
+ *  the structure to hold the requested inflight vring info
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_get_vhost_ring_inflight(int vid, uint16_t vring_idx,
+	struct rte_vhost_ring_inflight *vring);
+
+/**
  * Set split inflight descriptor.
  *
  * This function save descriptors that has been comsumed in available
@@ -884,6 +901,29 @@ __rte_experimental
 int
 rte_vhost_get_vring_base(int vid, uint16_t queue_id,
 		uint16_t *last_avail_idx, uint16_t *last_used_idx);
+
+/**
+ * Get last_avail/last_used of the vhost virtqueue
+ *
+ * This function is designed for the reconnection and it's specific for
+ * the packed ring as we can get the two parameters from the inflight
+ * queueregion
+ *
+ * @param vid
+ *  vhost device ID
+ * @param queue_id
+ *  vhost queue index
+ * @param last_avail_idx
+ *  vhost last_avail_idx to get
+ * @param last_used_idx
+ *  vhost last_used_idx to get
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_get_vring_base_from_inflight(int vid,
+	uint16_t queue_id, uint16_t *last_avail_idx, uint16_t *last_used_idx);
 
 /**
  * Set last_avail/used_idx of the vhost virtqueue
