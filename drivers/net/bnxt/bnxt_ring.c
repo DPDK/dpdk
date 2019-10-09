@@ -626,6 +626,9 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 		bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
 	}
 	rxq->index = queue_index;
+#ifdef RTE_ARCH_X86
+	bnxt_rxq_vec_setup(rxq);
+#endif
 
 	return 0;
 
