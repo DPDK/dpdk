@@ -260,7 +260,8 @@ dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, void *hw_annot_addr)
 }
 
 static inline struct rte_mbuf *__attribute__((hot))
-eth_sg_fd_to_mbuf(const struct qbman_fd *fd)
+eth_sg_fd_to_mbuf(const struct qbman_fd *fd,
+		  int port_id)
 {
 	struct qbman_sge *sgt, *sge;
 	size_t sg_addr, fd_addr;
@@ -286,6 +287,7 @@ eth_sg_fd_to_mbuf(const struct qbman_fd *fd)
 	first_seg->pkt_len = DPAA2_GET_FD_LEN(fd);
 	first_seg->nb_segs = 1;
 	first_seg->next = NULL;
+	first_seg->port = port_id;
 	if (dpaa2_svr_family == SVR_LX2160A)
 		dpaa2_dev_rx_parse_new(first_seg, fd);
 	else
@@ -319,7 +321,8 @@ eth_sg_fd_to_mbuf(const struct qbman_fd *fd)
 }
 
 static inline struct rte_mbuf *__attribute__((hot))
-eth_fd_to_mbuf(const struct qbman_fd *fd)
+eth_fd_to_mbuf(const struct qbman_fd *fd,
+	       int port_id)
 {
 	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(
 		DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)),
@@ -333,6 +336,7 @@ eth_fd_to_mbuf(const struct qbman_fd *fd)
 	mbuf->data_off = DPAA2_GET_FD_OFFSET(fd);
 	mbuf->data_len = DPAA2_GET_FD_LEN(fd);
 	mbuf->pkt_len = mbuf->data_len;
+	mbuf->port = port_id;
 	mbuf->next = NULL;
 	rte_mbuf_refcnt_set(mbuf, 1);
 
@@ -621,10 +625,9 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 
 		if (unlikely(DPAA2_FD_GET_FORMAT(fd) == qbman_fd_sg))
-			bufs[num_rx] = eth_sg_fd_to_mbuf(fd);
+			bufs[num_rx] = eth_sg_fd_to_mbuf(fd, eth_data->port_id);
 		else
-			bufs[num_rx] = eth_fd_to_mbuf(fd);
-		bufs[num_rx]->port = eth_data->port_id;
+			bufs[num_rx] = eth_fd_to_mbuf(fd, eth_data->port_id);
 #if defined(RTE_LIBRTE_IEEE1588)
 		priv->rx_timestamp = bufs[num_rx]->timestamp;
 #endif
@@ -679,7 +682,7 @@ dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
 
-	ev->mbuf = eth_fd_to_mbuf(fd);
+	ev->mbuf = eth_fd_to_mbuf(fd, rxq->eth_data->port_id);
 
 	qbman_swp_dqrr_consume(swp, dq);
 }
@@ -704,7 +707,7 @@ dpaa2_dev_process_atomic_event(struct qbman_swp *swp __attribute__((unused)),
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
 
-	ev->mbuf = eth_fd_to_mbuf(fd);
+	ev->mbuf = eth_fd_to_mbuf(fd, rxq->eth_data->port_id);
 
 	dqrr_index = qbman_get_dqrr_idx(dq);
 	ev->mbuf->seqn = dqrr_index + 1;
@@ -731,7 +734,7 @@ dpaa2_dev_process_ordered_event(struct qbman_swp *swp,
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
 
-	ev->mbuf = eth_fd_to_mbuf(fd);
+	ev->mbuf = eth_fd_to_mbuf(fd, rxq->eth_data->port_id);
 
 	ev->mbuf->seqn = DPAA2_ENQUEUE_FLAG_ORP;
 	ev->mbuf->seqn |= qbman_result_DQ_odpid(dq) << DPAA2_EQCR_OPRID_SHIFT;
@@ -823,10 +826,11 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 					+ DPAA2_FD_PTA_SIZE + 16));
 
 			if (unlikely(DPAA2_FD_GET_FORMAT(fd) == qbman_fd_sg))
-				bufs[num_rx] = eth_sg_fd_to_mbuf(fd);
+				bufs[num_rx] = eth_sg_fd_to_mbuf(fd,
+							eth_data->port_id);
 			else
-				bufs[num_rx] = eth_fd_to_mbuf(fd);
-			bufs[num_rx]->port = eth_data->port_id;
+				bufs[num_rx] = eth_fd_to_mbuf(fd,
+							eth_data->port_id);
 
 		if (eth_data->dev_conf.rxmode.offloads &
 				DEV_RX_OFFLOAD_VLAN_STRIP) {
@@ -1170,7 +1174,9 @@ dpaa2_dev_free_eqresp_buf(uint16_t eqresp_ci)
 	struct rte_mbuf *m;
 
 	fd = qbman_result_eqresp_fd(&dpio_dev->eqresp[eqresp_ci]);
-	m = eth_fd_to_mbuf(fd);
+
+	/* Setting port id does not matter as we are to free the mbuf */
+	m = eth_fd_to_mbuf(fd, 0);
 	rte_pktmbuf_free(m);
 }
 
