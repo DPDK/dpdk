@@ -96,6 +96,7 @@ struct i40e_rx_queue {
 
 	uint16_t port_id; /**< device port ID */
 	uint8_t crc_len; /**< 0 if CRC stripped, 4 otherwise */
+	uint8_t fdir_enabled; /**< 0 if FDIR disabled, 1 when enabled */
 	uint16_t queue_id; /**< RX queue index */
 	uint16_t reg_idx; /**< RX queue register index */
 	uint8_t drop_en; /**< if not 0, set register bit */

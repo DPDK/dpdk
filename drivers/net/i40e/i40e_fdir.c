@@ -609,6 +609,23 @@ i40e_set_flex_mask_on_pctype(struct i40e_pf *pf,
 }
 
 /*
+ * Enable/disable flow director RX processing in vector routines.
+ */
+void
+i40e_fdir_rx_proc_enable(struct rte_eth_dev *dev, bool on)
+{
+	int32_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct i40e_rx_queue *rxq = dev->data->rx_queues[i];
+		if (!rxq)
+			continue;
+		rxq->fdir_enabled = on;
+	}
+	PMD_DRV_LOG(DEBUG, "Flow Director processing on RX set to %d", on);
+}
+
+/*
  * Configure flow director related setting
  */
 int
@@ -674,6 +691,9 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 	} else {
 		PMD_DRV_LOG(ERR, "Not support flexible payload.");
 	}
+
+	/* Enable FDIR processing in RX routines */
+	i40e_fdir_rx_proc_enable(dev, 1);
 
 	return ret;
 }

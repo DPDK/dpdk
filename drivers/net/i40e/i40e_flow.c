@@ -4775,6 +4775,7 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 			i40e_fdir_teardown(pf);
 			dev->data->dev_conf.fdir_conf.mode =
 				   RTE_FDIR_MODE_NONE;
+			i40e_fdir_rx_proc_enable(dev, 0);
 		}
 		break;
 	case RTE_ETH_FILTER_HASH:
@@ -4930,6 +4931,9 @@ i40e_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 				   "Failed to flush rss flows.");
 		return -rte_errno;
 	}
+
+	/* Disable FDIR processing as all FDIR rules are now flushed */
+	i40e_fdir_rx_proc_enable(dev, 0);
 
 	return ret;
 }
