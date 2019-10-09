@@ -447,6 +447,26 @@ gpa_to_hpa(struct virtio_net *dev, uint64_t gpa, uint64_t size)
 	return 0;
 }
 
+static __rte_always_inline uint64_t
+hva_to_gpa(struct virtio_net *dev, uint64_t vva, uint64_t len)
+{
+	struct rte_vhost_mem_region *r;
+	uint32_t i;
+
+	if (unlikely(!dev || !dev->mem))
+		return 0;
+
+	for (i = 0; i < dev->mem->nregions; i++) {
+		r = &dev->mem->regions[i];
+
+		if (vva >= r->host_user_addr &&
+		    vva + len <  r->host_user_addr + r->size) {
+			return r->guest_phys_addr + vva - r->host_user_addr;
+		}
+	}
+	return 0;
+}
+
 static __rte_always_inline struct virtio_net *
 get_device(int vid)
 {

@@ -575,6 +575,39 @@ ring_addr_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return qva_to_vva(dev, ra, size);
 }
 
+/*
+ * Converts vring log address to GPA
+ * If IOMMU is enabled, the log address is IOVA
+ * If IOMMU not enabled, the log address is already GPA
+ */
+static uint64_t
+translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		uint64_t log_addr)
+{
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)) {
+		const uint64_t exp_size = sizeof(struct vring_used) +
+			sizeof(struct vring_used_elem) * vq->size;
+		uint64_t hva, gpa;
+		uint64_t size = exp_size;
+
+		hva = vhost_iova_to_vva(dev, vq, log_addr,
+					&size, VHOST_ACCESS_RW);
+		if (size != exp_size)
+			return 0;
+
+		gpa = hva_to_gpa(dev, hva, exp_size);
+		if (!gpa) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"VQ: Failed to find GPA for log_addr: 0x%" PRIx64 " hva: 0x%" PRIx64 "\n",
+				log_addr, hva);
+			return 0;
+		}
+		return gpa;
+
+	} else
+		return log_addr;
+}
+
 static struct virtio_net *
 translate_ring_addresses(struct virtio_net *dev, int vq_index)
 {
@@ -682,7 +715,14 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 		vq->last_avail_idx = vq->used->idx;
 	}
 
-	vq->log_guest_addr = addr->log_guest_addr;
+	vq->log_guest_addr =
+		translate_log_addr(dev, vq, addr->log_guest_addr);
+	if (vq->log_guest_addr == 0) {
+		RTE_LOG(DEBUG, VHOST_CONFIG,
+			"(%d) failed to map log_guest_addr .\n",
+			dev->vid);
+		return dev;
+	}
 	vq->access_ok = 1;
 
 	VHOST_LOG_DEBUG(VHOST_CONFIG, "(%d) mapped address desc: %p\n",

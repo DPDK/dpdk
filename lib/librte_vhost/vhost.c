@@ -382,6 +382,7 @@ vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	vq->desc = NULL;
 	vq->avail = NULL;
 	vq->used = NULL;
+	vq->log_guest_addr = 0;
 
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_wr_unlock(vq);
