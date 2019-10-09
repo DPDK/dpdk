@@ -811,9 +811,15 @@ rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
 	if (!vq)
 		return -1;
 
-	vring->desc  = vq->desc;
-	vring->avail = vq->avail;
-	vring->used  = vq->used;
+	if (vq_is_packed(dev)) {
+		vring->desc_packed = vq->desc_packed;
+		vring->driver_event = vq->driver_event;
+		vring->device_event = vq->device_event;
+	} else {
+		vring->desc = vq->desc;
+		vring->avail = vq->avail;
+		vring->used = vq->used;
+	}
 	vring->log_guest_addr  = vq->log_guest_addr;
 
 	vring->callfd  = vq->callfd;
@@ -1342,13 +1348,51 @@ int rte_vhost_get_log_base(int vid, uint64_t *log_base,
 int rte_vhost_get_vring_base(int vid, uint16_t queue_id,
 		uint16_t *last_avail_idx, uint16_t *last_used_idx)
 {
+	struct vhost_virtqueue *vq;
 	struct virtio_net *dev = get_device(vid);
 
 	if (dev == NULL || last_avail_idx == NULL || last_used_idx == NULL)
 		return -1;
 
-	*last_avail_idx = dev->virtqueue[queue_id]->last_avail_idx;
-	*last_used_idx = dev->virtqueue[queue_id]->last_used_idx;
+	vq = dev->virtqueue[queue_id];
+	if (!vq)
+		return -1;
+
+	if (vq_is_packed(dev)) {
+		*last_avail_idx = (vq->avail_wrap_counter << 15) |
+				  vq->last_avail_idx;
+		*last_used_idx = (vq->used_wrap_counter << 15) |
+				 vq->last_used_idx;
+	} else {
+		*last_avail_idx = vq->last_avail_idx;
+		*last_used_idx = vq->last_used_idx;
+	}
+
+	return 0;
+}
+
+int rte_vhost_set_vring_base(int vid, uint16_t queue_id,
+		uint16_t last_avail_idx, uint16_t last_used_idx)
+{
+	struct vhost_virtqueue *vq;
+	struct virtio_net *dev = get_device(vid);
+
+	if (!dev)
+		return -1;
+
+	vq = dev->virtqueue[queue_id];
+	if (!vq)
+		return -1;
+
+	if (vq_is_packed(dev)) {
+		vq->last_avail_idx = last_avail_idx & 0x7fff;
+		vq->avail_wrap_counter = !!(last_avail_idx & (1 << 15));
+		vq->last_used_idx = last_used_idx & 0x7fff;
+		vq->used_wrap_counter = !!(last_used_idx & (1 << 15));
+	} else {
+		vq->last_avail_idx = last_avail_idx;
+		vq->last_used_idx = last_used_idx;
+	}
 
 	return 0;
 }
@@ -1375,20 +1419,6 @@ rte_vhost_get_vring_base_from_inflight(int vid,
 	*last_avail_idx = (inflight_info->old_used_wrap_counter << 15) |
 			  inflight_info->old_used_idx;
 	*last_used_idx = *last_avail_idx;
-
-	return 0;
-}
-
-int rte_vhost_set_vring_base(int vid, uint16_t queue_id,
-		uint16_t last_avail_idx, uint16_t last_used_idx)
-{
-	struct virtio_net *dev = get_device(vid);
-
-	if (!dev)
-		return -1;
-
-	dev->virtqueue[queue_id]->last_avail_idx = last_avail_idx;
-	dev->virtqueue[queue_id]->last_used_idx = last_used_idx;
 
 	return 0;
 }
