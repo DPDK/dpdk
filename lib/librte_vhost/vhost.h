@@ -286,6 +286,12 @@ struct guest_page {
 	uint64_t size;
 };
 
+struct inflight_mem_info {
+	int		fd;
+	void		*addr;
+	uint64_t	size;
+};
+
 /**
  * Device structure contains all configuration information relating
  * to the device.
@@ -303,6 +309,7 @@ struct virtio_net {
 	uint32_t		nr_vring;
 	int			dequeue_zero_copy;
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
+	struct inflight_mem_info *inflight_info;
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)
 	char			ifname[IF_NAME_SZ];
 	uint64_t		log_size;

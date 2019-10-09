@@ -37,6 +37,10 @@
 #ifdef RTE_LIBRTE_VHOST_POSTCOPY
 #include <linux/userfaultfd.h>
 #endif
+#ifdef F_ADD_SEALS /* if file sealing is supported, so is memfd */
+#include <linux/memfd.h>
+#define MEMFD_SUPPORTED
+#endif
 
 #include <rte_common.h>
 #include <rte_malloc.h>
@@ -48,6 +52,9 @@
 
 #define VIRTIO_MIN_MTU 68
 #define VIRTIO_MAX_MTU 65535
+
+#define INFLIGHT_ALIGNMENT	64
+#define INFLIGHT_VERSION	0x1
 
 static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_NONE] = "VHOST_USER_NONE",
@@ -78,6 +85,8 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_POSTCOPY_ADVISE]  = "VHOST_USER_POSTCOPY_ADVISE",
 	[VHOST_USER_POSTCOPY_LISTEN]  = "VHOST_USER_POSTCOPY_LISTEN",
 	[VHOST_USER_POSTCOPY_END]  = "VHOST_USER_POSTCOPY_END",
+	[VHOST_USER_GET_INFLIGHT_FD] = "VHOST_USER_GET_INFLIGHT_FD",
+	[VHOST_USER_SET_INFLIGHT_FD] = "VHOST_USER_SET_INFLIGHT_FD",
 };
 
 static int send_vhost_reply(int sockfd, struct VhostUserMsg *msg);
@@ -158,6 +167,22 @@ vhost_backend_cleanup(struct virtio_net *dev)
 	if (dev->log_addr) {
 		munmap((void *)(uintptr_t)dev->log_addr, dev->log_size);
 		dev->log_addr = 0;
+	}
+
+	if (dev->inflight_info) {
+		if (dev->inflight_info->addr) {
+			munmap(dev->inflight_info->addr,
+			       dev->inflight_info->size);
+			dev->inflight_info->addr = NULL;
+		}
+
+		if (dev->inflight_info->fd > 0) {
+			close(dev->inflight_info->fd);
+			dev->inflight_info->fd = -1;
+		}
+
+		free(dev->inflight_info);
+		dev->inflight_info = NULL;
 	}
 
 	if (dev->slave_req_fd >= 0) {
@@ -1218,6 +1243,221 @@ virtio_is_ready(struct virtio_net *dev)
 	return 1;
 }
 
+static void *
+inflight_mem_alloc(const char *name, size_t size, int *fd)
+{
+	void *ptr;
+	int mfd = -1;
+	char fname[20] = "/tmp/memfd-XXXXXX";
+
+	*fd = -1;
+#ifdef MEMFD_SUPPORTED
+	mfd = memfd_create(name, MFD_CLOEXEC);
+#else
+	RTE_SET_USED(name);
+#endif
+	if (mfd == -1) {
+		mfd = mkstemp(fname);
+		if (mfd == -1) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"failed to get inflight buffer fd\n");
+			return NULL;
+		}
+
+		unlink(fname);
+	}
+
+	if (ftruncate(mfd, size) == -1) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to alloc inflight buffer\n");
+		close(mfd);
+		return NULL;
+	}
+
+	ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, mfd, 0);
+	if (ptr == MAP_FAILED) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to mmap inflight buffer\n");
+		close(mfd);
+		return NULL;
+	}
+
+	*fd = mfd;
+	return ptr;
+}
+
+static uint32_t
+get_pervq_shm_size_split(uint16_t queue_size)
+{
+	return RTE_ALIGN_MUL_CEIL(sizeof(struct rte_vhost_inflight_desc_split) *
+				  queue_size + sizeof(uint64_t) +
+				  sizeof(uint16_t) * 4, INFLIGHT_ALIGNMENT);
+}
+
+static uint32_t
+get_pervq_shm_size_packed(uint16_t queue_size)
+{
+	return RTE_ALIGN_MUL_CEIL(sizeof(struct rte_vhost_inflight_desc_packed)
+				  * queue_size + sizeof(uint64_t) +
+				  sizeof(uint16_t) * 6 + sizeof(uint8_t) * 9,
+				  INFLIGHT_ALIGNMENT);
+}
+
+static int
+vhost_user_get_inflight_fd(struct virtio_net **pdev,
+			   VhostUserMsg *msg,
+			   int main_fd __rte_unused)
+{
+	struct rte_vhost_inflight_info_packed *inflight_packed;
+	uint64_t pervq_inflight_size, mmap_size;
+	uint16_t num_queues, queue_size;
+	struct virtio_net *dev = *pdev;
+	int fd, i, j;
+	void *addr;
+
+	if (msg->size != sizeof(msg->payload.inflight)) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"invalid get_inflight_fd message size is %d\n",
+			msg->size);
+		return RTE_VHOST_MSG_RESULT_ERR;
+	}
+
+	if (dev->inflight_info == NULL) {
+		dev->inflight_info = calloc(1,
+					    sizeof(struct inflight_mem_info));
+		if (!dev->inflight_info) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"failed to alloc dev inflight area\n");
+			return RTE_VHOST_MSG_RESULT_ERR;
+		}
+	}
+
+	num_queues = msg->payload.inflight.num_queues;
+	queue_size = msg->payload.inflight.queue_size;
+
+	RTE_LOG(INFO, VHOST_CONFIG, "get_inflight_fd num_queues: %u\n",
+		msg->payload.inflight.num_queues);
+	RTE_LOG(INFO, VHOST_CONFIG, "get_inflight_fd queue_size: %u\n",
+		msg->payload.inflight.queue_size);
+
+	if (vq_is_packed(dev))
+		pervq_inflight_size = get_pervq_shm_size_packed(queue_size);
+	else
+		pervq_inflight_size = get_pervq_shm_size_split(queue_size);
+
+	mmap_size = num_queues * pervq_inflight_size;
+	addr = inflight_mem_alloc("vhost-inflight", mmap_size, &fd);
+	if (!addr) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to alloc vhost inflight area\n");
+			msg->payload.inflight.mmap_size = 0;
+		return RTE_VHOST_MSG_RESULT_ERR;
+	}
+	memset(addr, 0, mmap_size);
+
+	dev->inflight_info->addr = addr;
+	dev->inflight_info->size = msg->payload.inflight.mmap_size = mmap_size;
+	dev->inflight_info->fd = msg->fds[0] = fd;
+	msg->payload.inflight.mmap_offset = 0;
+	msg->fd_num = 1;
+
+	if (vq_is_packed(dev)) {
+		for (i = 0; i < num_queues; i++) {
+			inflight_packed =
+				(struct rte_vhost_inflight_info_packed *)addr;
+			inflight_packed->used_wrap_counter = 1;
+			inflight_packed->old_used_wrap_counter = 1;
+			for (j = 0; j < queue_size; j++)
+				inflight_packed->desc[j].next = j + 1;
+			addr = (void *)((char *)addr + pervq_inflight_size);
+		}
+	}
+
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"send inflight mmap_size: %"PRIu64"\n",
+		msg->payload.inflight.mmap_size);
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"send inflight mmap_offset: %"PRIu64"\n",
+		msg->payload.inflight.mmap_offset);
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"send inflight fd: %d\n", msg->fds[0]);
+
+	return RTE_VHOST_MSG_RESULT_REPLY;
+}
+
+static int
+vhost_user_set_inflight_fd(struct virtio_net **pdev, VhostUserMsg *msg,
+			   int main_fd __rte_unused)
+{
+	uint64_t mmap_size, mmap_offset;
+	uint16_t num_queues, queue_size;
+	uint32_t pervq_inflight_size;
+	struct virtio_net *dev = *pdev;
+	void *addr;
+	int fd;
+
+	fd = msg->fds[0];
+	if (msg->size != sizeof(msg->payload.inflight) || fd < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"invalid set_inflight_fd message size is %d,fd is %d\n",
+			msg->size, fd);
+		return RTE_VHOST_MSG_RESULT_ERR;
+	}
+
+	mmap_size = msg->payload.inflight.mmap_size;
+	mmap_offset = msg->payload.inflight.mmap_offset;
+	num_queues = msg->payload.inflight.num_queues;
+	queue_size = msg->payload.inflight.queue_size;
+
+	if (vq_is_packed(dev))
+		pervq_inflight_size = get_pervq_shm_size_packed(queue_size);
+	else
+		pervq_inflight_size = get_pervq_shm_size_split(queue_size);
+
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"set_inflight_fd mmap_size: %"PRIu64"\n", mmap_size);
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"set_inflight_fd mmap_offset: %"PRIu64"\n", mmap_offset);
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"set_inflight_fd num_queues: %u\n", num_queues);
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"set_inflight_fd queue_size: %u\n", queue_size);
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"set_inflight_fd fd: %d\n", fd);
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"set_inflight_fd pervq_inflight_size: %d\n",
+		pervq_inflight_size);
+
+	if (!dev->inflight_info) {
+		dev->inflight_info = calloc(1,
+					    sizeof(struct inflight_mem_info));
+		if (dev->inflight_info == NULL) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"failed to alloc dev inflight area\n");
+			return RTE_VHOST_MSG_RESULT_ERR;
+		}
+	}
+
+	if (dev->inflight_info->addr)
+		munmap(dev->inflight_info->addr, dev->inflight_info->size);
+
+	addr = mmap(0, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED,
+		    fd, mmap_offset);
+	if (addr == MAP_FAILED) {
+		RTE_LOG(ERR, VHOST_CONFIG, "failed to mmap share memory.\n");
+		return RTE_VHOST_MSG_RESULT_ERR;
+	}
+
+	if (dev->inflight_info->fd)
+		close(dev->inflight_info->fd);
+
+	dev->inflight_info->fd = fd;
+	dev->inflight_info->addr = addr;
+	dev->inflight_info->size = mmap_size;
+
+	return RTE_VHOST_MSG_RESULT_OK;
+}
+
 static int
 vhost_user_set_vring_call(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			int main_fd __rte_unused)
@@ -1835,8 +2075,9 @@ static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
 	[VHOST_USER_POSTCOPY_ADVISE] = vhost_user_set_postcopy_advise,
 	[VHOST_USER_POSTCOPY_LISTEN] = vhost_user_set_postcopy_listen,
 	[VHOST_USER_POSTCOPY_END] = vhost_user_postcopy_end,
+	[VHOST_USER_GET_INFLIGHT_FD] = vhost_user_get_inflight_fd,
+	[VHOST_USER_SET_INFLIGHT_FD] = vhost_user_set_inflight_fd,
 };
-
 
 /* return bytes# of read on success or negative val on failure. */
 static int
