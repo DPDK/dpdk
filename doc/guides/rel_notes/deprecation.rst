@@ -48,16 +48,6 @@ Deprecation Notices
   structure would be made internal (or removed if all dependencies are cleared)
   in future releases.
 
-* net: The Ethernet address and header definitions will change
-  attributes. The Ethernet address struct will no longer be marked as
-  packed since the packed attribute is meaningless on a byte
-  array. The Ethernet header will be marked as aligned on a 2-byte
-  boundary and will no longer have the packed attribute. This allows
-  for efficient access on CPU architectures where unaligned access is
-  expensive. These changes should not impact normal usage because drivers
-  naturally align the Ethernet header on receive and all known
-  encapsulations preserve the alignment of the header.
-
 * ethdev: The function ``rte_eth_dev_count`` will be removed in DPDK 20.02.
   It is replaced by the function ``rte_eth_dev_count_avail``.
   If the intent is to iterate over ports, ``RTE_ETH_FOREACH_*`` macros

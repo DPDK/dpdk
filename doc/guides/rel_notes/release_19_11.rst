@@ -359,6 +359,12 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* net: The Ethernet address and other header definitions have changed
+  attributes. They have been modified to be aligned on 2-byte boundaries.
+  These changes should not impact normal usage because drivers naturally
+  align the Ethernet header on receive and all known encapsulations
+  preserve the alignment of the header.
+
 
 Shared Library Versions
 -----------------------
