@@ -448,6 +448,8 @@ rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
 /**< Support RSA Private Key OP with CRT (quintuple) Keys */
 #define RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED		(1ULL << 19)
 /**< Support encrypted-digest operations where digest is appended to data */
+#define RTE_CRYPTODEV_FF_ASYM_SESSIONLESS		(1ULL << 20)
+/**< Support asymmetric session-less operations */
 
 
 /**

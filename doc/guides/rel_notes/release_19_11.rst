@@ -91,6 +91,11 @@ New Features
   * Added support for protocol extraction on per Rx queue.
   * Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
 
+* **Added cryptodev asymmetric session-less operation.**
+
+  Added session-less option to cryptodev asymmetric structure. It works the same
+  way as symmetric crypto, corresponding xform is used directly by the crypto op.
+
 * **Added Marvell NITROX symmetric crypto PMD.**
 
   Added a symmetric crypto PMD for Marvell NITROX V security processor.
