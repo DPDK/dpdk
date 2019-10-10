@@ -117,6 +117,18 @@ struct hinic_ntuple_filter_ele {
 	struct rte_eth_ntuple_filter filter_info;
 };
 
+/* ethertype filter list structure */
+struct hinic_ethertype_filter_ele {
+	TAILQ_ENTRY(hinic_ethertype_filter_ele) entries;
+	struct rte_eth_ethertype_filter filter_info;
+};
+
+/* fdir filter list structure */
+struct hinic_fdir_rule_ele {
+	TAILQ_ENTRY(hinic_fdir_rule_ele) entries;
+	struct hinic_fdir_rule filter_info;
+};
+
 struct rte_flow {
 	enum rte_filter_type filter_type;
 	void *rule;
@@ -129,6 +141,8 @@ struct hinic_flow_mem {
 };
 
 TAILQ_HEAD(hinic_ntuple_filter_list, hinic_ntuple_filter_ele);
+TAILQ_HEAD(hinic_ethertype_filter_list, hinic_ethertype_filter_ele);
+TAILQ_HEAD(hinic_fdir_rule_filter_list, hinic_fdir_rule_ele);
 TAILQ_HEAD(hinic_flow_mem_list, hinic_flow_mem);
 
 extern const struct rte_flow_ops hinic_flow_ops;
@@ -168,6 +182,8 @@ struct hinic_nic_dev {
 
 	struct hinic_filter_info    filter;
 	struct hinic_ntuple_filter_list filter_ntuple_list;
+	struct hinic_ethertype_filter_list filter_ethertype_list;
+	struct hinic_fdir_rule_filter_list filter_fdir_rule_list;
 	struct hinic_flow_mem_list hinic_flow_list;
 };
 

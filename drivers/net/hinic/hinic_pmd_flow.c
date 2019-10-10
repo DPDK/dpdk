@@ -82,6 +82,19 @@
 #define HINIC_DEV_PRIVATE_TO_FILTER_INFO(nic_dev) \
 	(&((struct hinic_nic_dev *)nic_dev)->filter)
 
+enum hinic_atr_flow_type {
+	HINIC_ATR_FLOW_TYPE_IPV4_DIP    = 0x1,
+	HINIC_ATR_FLOW_TYPE_IPV4_SIP    = 0x2,
+	HINIC_ATR_FLOW_TYPE_DPORT       = 0x3,
+	HINIC_ATR_FLOW_TYPE_SPORT       = 0x4,
+};
+
+/* Structure to store fdir's info. */
+struct hinic_fdir_info {
+	uint8_t fdir_flag;
+	uint8_t qid;
+	uint32_t fdir_key;
+};
 
 /**
  * Endless loop will never happen with below assumption
@@ -1340,6 +1353,29 @@ hinic_5tuple_filter_lookup(struct hinic_5tuple_filter_list *filter_list,
 	return NULL;
 }
 
+static int hinic_set_lacp_tcam(struct hinic_nic_dev *nic_dev)
+{
+	struct tag_pa_rule lacp_rule;
+	struct tag_pa_action lacp_action;
+
+	memset(&lacp_rule, 0, sizeof(lacp_rule));
+	memset(&lacp_action, 0, sizeof(lacp_action));
+	/* LACP TCAM rule */
+	lacp_rule.eth_type = PA_ETH_TYPE_OTHER;
+	lacp_rule.l2_header.eth_type.val16 = 0x8809;
+	lacp_rule.l2_header.eth_type.mask16 = 0xffff;
+
+	/* LACP TCAM action */
+	lacp_action.err_type = 0x3f; /* err from ipsu, not convert */
+	lacp_action.fwd_action = 0x7; /* 0x3:drop; 0x7: not convert */
+	lacp_action.pkt_type = PKT_LACP_TYPE;
+	lacp_action.pri = 0x0;
+	lacp_action.push_len = 0xf; /* push_len:0xf, not convert */
+
+	return hinic_set_fdir_tcam(nic_dev->hwdev, TCAM_PKT_LACP,
+					&lacp_rule, &lacp_action);
+}
+
 static int hinic_set_bgp_dport_tcam(struct hinic_nic_dev *nic_dev)
 {
 	struct tag_pa_rule bgp_rule;
@@ -1722,6 +1758,276 @@ static int hinic_add_del_ntuple_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static inline int
+hinic_check_ethertype_filter(struct rte_eth_ethertype_filter *filter)
+{
+	if (filter->queue >= HINIC_MAX_RX_QUEUE_NUM)
+		return -EINVAL;
+
+	if (filter->ether_type == RTE_ETHER_TYPE_IPV4 ||
+		filter->ether_type == RTE_ETHER_TYPE_IPV6) {
+		PMD_DRV_LOG(ERR, "Unsupported ether_type(0x%04x) in"
+			" ethertype filter", filter->ether_type);
+		return -EINVAL;
+	}
+
+	if (filter->flags & RTE_ETHTYPE_FLAGS_MAC) {
+		PMD_DRV_LOG(ERR, "Mac compare is not supported");
+		return -EINVAL;
+	}
+	if (filter->flags & RTE_ETHTYPE_FLAGS_DROP) {
+		PMD_DRV_LOG(ERR, "Drop option is not supported");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static inline int
+hinic_ethertype_filter_lookup(struct hinic_filter_info *filter_info,
+			      struct hinic_pkt_filter *ethertype_filter)
+{
+	switch (ethertype_filter->pkt_proto) {
+	case RTE_ETHER_TYPE_SLOW:
+		filter_info->pkt_type = PKT_LACP_TYPE;
+		break;
+
+	case RTE_ETHER_TYPE_ARP:
+		filter_info->pkt_type = PKT_ARP_TYPE;
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "Just support LACP/ARP for ethertype filters");
+		return -EIO;
+	}
+
+	return HINIC_PKT_TYPE_FIND_ID(filter_info->pkt_type);
+}
+
+static inline int
+hinic_ethertype_filter_insert(struct hinic_filter_info *filter_info,
+			      struct hinic_pkt_filter *ethertype_filter)
+{
+	int id;
+
+	/* Find LACP or VRRP type id */
+	id = hinic_ethertype_filter_lookup(filter_info, ethertype_filter);
+	if (id < 0)
+		return -EINVAL;
+
+	if (!(filter_info->type_mask & (1 << id))) {
+		filter_info->type_mask |= 1 << id;
+		filter_info->pkt_filters[id].pkt_proto =
+			ethertype_filter->pkt_proto;
+		filter_info->pkt_filters[id].enable = ethertype_filter->enable;
+		filter_info->qid = ethertype_filter->qid;
+		return id;
+	}
+
+	PMD_DRV_LOG(ERR, "Filter type: %d exists", id);
+	return -EINVAL;
+}
+
+static inline void
+hinic_ethertype_filter_remove(struct hinic_filter_info *filter_info,
+			      uint8_t idx)
+{
+	if (idx >= HINIC_MAX_Q_FILTERS)
+		return;
+
+	filter_info->pkt_type = 0;
+	filter_info->type_mask &= ~(1 << idx);
+	filter_info->pkt_filters[idx].pkt_proto = (uint16_t)0;
+	filter_info->pkt_filters[idx].enable = FALSE;
+	filter_info->pkt_filters[idx].qid = 0;
+}
+
+static inline int
+hinic_add_del_ethertype_filter(struct rte_eth_dev *dev,
+			       struct rte_eth_ethertype_filter *filter,
+			       bool add)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct hinic_filter_info *filter_info =
+		HINIC_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct hinic_pkt_filter ethertype_filter;
+	int i;
+	int ret_fw;
+
+	if (hinic_check_ethertype_filter(filter))
+		return -EINVAL;
+
+	if (add) {
+		ethertype_filter.pkt_proto = filter->ether_type;
+		ethertype_filter.enable = TRUE;
+		ethertype_filter.qid = (u8)filter->queue;
+		i = hinic_ethertype_filter_insert(filter_info,
+						    &ethertype_filter);
+		if (i < 0)
+			return -ENOSPC;
+
+		ret_fw = hinic_set_fdir_filter(nic_dev->hwdev,
+				filter_info->pkt_type, filter_info->qid,
+				filter_info->pkt_filters[i].enable, true);
+		if (ret_fw) {
+			PMD_DRV_LOG(ERR, "add ethertype failed, type: 0x%x, qid: 0x%x, enable: 0x%x",
+				filter_info->pkt_type, filter->queue,
+				filter_info->pkt_filters[i].enable);
+
+			hinic_ethertype_filter_remove(filter_info, i);
+			return -ENOENT;
+		}
+		PMD_DRV_LOG(INFO, "Add ethertype succeed, type: 0x%x, qid: 0x%x, enable: 0x%x",
+				filter_info->pkt_type, filter->queue,
+				filter_info->pkt_filters[i].enable);
+
+		switch (ethertype_filter.pkt_proto) {
+		case RTE_ETHER_TYPE_SLOW:
+			ret_fw = hinic_set_lacp_tcam(nic_dev);
+			if (ret_fw) {
+				PMD_DRV_LOG(ERR, "Add lacp tcam failed");
+				hinic_ethertype_filter_remove(filter_info, i);
+				return -ENOENT;
+			}
+
+			PMD_DRV_LOG(INFO, "Add lacp tcam succeed");
+			break;
+		default:
+			break;
+		}
+
+	} else {
+		ethertype_filter.pkt_proto = filter->ether_type;
+		i = hinic_ethertype_filter_lookup(filter_info,
+						&ethertype_filter);
+
+		if ((filter_info->type_mask & (1 << i))) {
+			filter_info->pkt_filters[i].enable = FALSE;
+			(void)hinic_set_fdir_filter(nic_dev->hwdev,
+					filter_info->pkt_type,
+					filter_info->pkt_filters[i].qid,
+					filter_info->pkt_filters[i].enable,
+					true);
+
+			PMD_DRV_LOG(INFO, "Del ethertype succeed, type: 0x%x, qid: 0x%x, enable: 0x%x",
+					filter_info->pkt_type,
+					filter_info->pkt_filters[i].qid,
+					filter_info->pkt_filters[i].enable);
+
+			switch (ethertype_filter.pkt_proto) {
+			case RTE_ETHER_TYPE_SLOW:
+				(void)hinic_clear_fdir_tcam(nic_dev->hwdev,
+								TCAM_PKT_LACP);
+				PMD_DRV_LOG(INFO,
+					"Del lacp tcam succeed");
+				break;
+			default:
+				break;
+			}
+
+			hinic_ethertype_filter_remove(filter_info, i);
+
+		} else {
+			PMD_DRV_LOG(ERR, "Ethertype doesn't exist, type: 0x%x, qid: 0x%x, enable: 0x%x",
+					filter_info->pkt_type, filter->queue,
+					filter_info->pkt_filters[i].enable);
+			return -ENOENT;
+		}
+	}
+
+	return 0;
+}
+
+static int
+hinic_fdir_info_init(struct hinic_fdir_rule *rule,
+		     struct hinic_fdir_info *fdir_info)
+{
+	switch (rule->mask.src_ipv4_mask) {
+	case UINT32_MAX:
+		fdir_info->fdir_flag = HINIC_ATR_FLOW_TYPE_IPV4_SIP;
+		fdir_info->qid = rule->queue;
+		fdir_info->fdir_key = rule->hinic_fdir.src_ip;
+		return 0;
+
+	case 0:
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "Invalid src_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (rule->mask.dst_ipv4_mask) {
+	case UINT32_MAX:
+		fdir_info->fdir_flag = HINIC_ATR_FLOW_TYPE_IPV4_DIP;
+		fdir_info->qid = rule->queue;
+		fdir_info->fdir_key = rule->hinic_fdir.dst_ip;
+		return 0;
+
+	case 0:
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "Invalid dst_ip mask.");
+		return -EINVAL;
+	}
+
+	if (fdir_info->fdir_flag == 0) {
+		PMD_DRV_LOG(ERR, "All support mask is NULL.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static inline int
+hinic_add_del_fdir_filter(struct rte_eth_dev *dev,
+			  struct hinic_fdir_rule *rule,
+			  bool add)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct hinic_fdir_info fdir_info;
+	int ret;
+
+	memset(&fdir_info, 0, sizeof(struct hinic_fdir_info));
+
+	ret = hinic_fdir_info_init(rule, &fdir_info);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Init hinic fdir info failed!");
+		return ret;
+	}
+
+	if (add) {
+		ret = hinic_set_normal_filter(nic_dev->hwdev, fdir_info.qid,
+						true, fdir_info.fdir_key,
+						true, fdir_info.fdir_flag);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Add fdir filter failed, flag: 0x%x, qid: 0x%x, key: 0x%x",
+					fdir_info.fdir_flag, fdir_info.qid,
+					fdir_info.fdir_key);
+			return -ENOENT;
+		}
+		PMD_DRV_LOG(INFO, "Add fdir filter succeed, flag: 0x%x, qid: 0x%x, key: 0x%x",
+				fdir_info.fdir_flag, fdir_info.qid,
+				fdir_info.fdir_key);
+	} else {
+		ret = hinic_set_normal_filter(nic_dev->hwdev, fdir_info.qid,
+						false, fdir_info.fdir_key, true,
+						fdir_info.fdir_flag);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Del fdir filter ailed, flag: 0x%x, qid: 0x%x, key: 0x%x",
+				fdir_info.fdir_flag, fdir_info.qid,
+				fdir_info.fdir_key);
+			return -ENOENT;
+		}
+		PMD_DRV_LOG(INFO, "Del fdir filter succeed, flag: 0x%x, qid: 0x%x, key: 0x%x",
+				fdir_info.fdir_flag, fdir_info.qid,
+				fdir_info.fdir_key);
+	}
+
+	return 0;
+}
+
 /**
  * Create or destroy a flow rule.
  * Theorically one rule can match more than one filters.
@@ -1736,8 +2042,12 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 {
 	int ret;
 	struct rte_eth_ntuple_filter ntuple_filter;
+	struct rte_eth_ethertype_filter ethertype_filter;
+	struct hinic_fdir_rule fdir_rule;
 	struct rte_flow *flow = NULL;
+	struct hinic_ethertype_filter_ele *ethertype_filter_ptr;
 	struct hinic_ntuple_filter_ele *ntuple_filter_ptr;
+	struct hinic_fdir_rule_ele *fdir_rule_ptr;
 	struct hinic_flow_mem *hinic_flow_mem_ptr;
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 
@@ -1759,29 +2069,78 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 	TAILQ_INSERT_TAIL(&nic_dev->hinic_flow_list, hinic_flow_mem_ptr,
 				entries);
 
-	/* add ntuple filter */
+	/* Add ntuple filter */
 	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
 	ret = hinic_parse_ntuple_filter(dev, attr, pattern,
 			actions, &ntuple_filter, error);
-	if (ret)
-		goto out;
+	if (!ret) {
+		ret = hinic_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
+		if (!ret) {
+			ntuple_filter_ptr = rte_zmalloc("hinic_ntuple_filter",
+				sizeof(struct hinic_ntuple_filter_ele), 0);
+			rte_memcpy(&ntuple_filter_ptr->filter_info,
+				   &ntuple_filter,
+				   sizeof(struct rte_eth_ntuple_filter));
+			TAILQ_INSERT_TAIL(&nic_dev->filter_ntuple_list,
+			ntuple_filter_ptr, entries);
+			flow->rule = ntuple_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_NTUPLE;
 
-	ret = hinic_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
-	if (ret)
+			PMD_DRV_LOG(INFO, "Create flow ntuple succeed, func_id: 0x%x",
+			hinic_global_func_id(nic_dev->hwdev));
+			return flow;
+		}
 		goto out;
-	ntuple_filter_ptr = rte_zmalloc("hinic_ntuple_filter",
-			sizeof(struct hinic_ntuple_filter_ele), 0);
-	rte_memcpy(&ntuple_filter_ptr->filter_info,
-		   &ntuple_filter,
-		   sizeof(struct rte_eth_ntuple_filter));
-	TAILQ_INSERT_TAIL(&nic_dev->filter_ntuple_list,
-	ntuple_filter_ptr, entries);
-	flow->rule = ntuple_filter_ptr;
-	flow->filter_type = RTE_ETH_FILTER_NTUPLE;
+	}
 
-	PMD_DRV_LOG(INFO, "Create flow ntuple succeed, func_id: 0x%x",
-	hinic_global_func_id(nic_dev->hwdev));
-	return flow;
+	/* Add ethertype filter */
+	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
+	ret = hinic_parse_ethertype_filter(dev, attr, pattern, actions,
+					&ethertype_filter, error);
+	if (!ret) {
+		ret = hinic_add_del_ethertype_filter(dev, &ethertype_filter,
+						     TRUE);
+		if (!ret) {
+			ethertype_filter_ptr =
+				rte_zmalloc("hinic_ethertype_filter",
+				sizeof(struct hinic_ethertype_filter_ele), 0);
+			rte_memcpy(&ethertype_filter_ptr->filter_info,
+				&ethertype_filter,
+				sizeof(struct rte_eth_ethertype_filter));
+			TAILQ_INSERT_TAIL(&nic_dev->filter_ethertype_list,
+				ethertype_filter_ptr, entries);
+			flow->rule = ethertype_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_ETHERTYPE;
+
+			PMD_DRV_LOG(INFO, "Create flow ethertype succeed, func_id: 0x%x",
+					hinic_global_func_id(nic_dev->hwdev));
+			return flow;
+		}
+		goto out;
+	}
+
+	/* Add fdir filter */
+	memset(&fdir_rule, 0, sizeof(struct hinic_fdir_rule));
+	ret = hinic_parse_fdir_filter(dev, attr, pattern,
+				      actions, &fdir_rule, error);
+	if (!ret) {
+		ret = hinic_add_del_fdir_filter(dev, &fdir_rule, TRUE);
+		if (!ret) {
+			fdir_rule_ptr = rte_zmalloc("hinic_fdir_rule",
+				sizeof(struct hinic_fdir_rule_ele), 0);
+			rte_memcpy(&fdir_rule_ptr->filter_info, &fdir_rule,
+				sizeof(struct hinic_fdir_rule));
+			TAILQ_INSERT_TAIL(&nic_dev->filter_fdir_rule_list,
+				fdir_rule_ptr, entries);
+			flow->rule = fdir_rule_ptr;
+			flow->filter_type = RTE_ETH_FILTER_FDIR;
+
+			PMD_DRV_LOG(INFO, "Create flow fdir rule succeed, func_id : 0x%x",
+					hinic_global_func_id(nic_dev->hwdev));
+			return flow;
+		}
+		goto out;
+	}
 
 out:
 	TAILQ_REMOVE(&nic_dev->hinic_flow_list, hinic_flow_mem_ptr, entries);
@@ -1802,7 +2161,11 @@ static int hinic_flow_destroy(struct rte_eth_dev *dev,
 	struct rte_flow *pmd_flow = flow;
 	enum rte_filter_type filter_type = pmd_flow->filter_type;
 	struct rte_eth_ntuple_filter ntuple_filter;
+	struct rte_eth_ethertype_filter ethertype_filter;
+	struct hinic_fdir_rule fdir_rule;
 	struct hinic_ntuple_filter_ele *ntuple_filter_ptr;
+	struct hinic_ethertype_filter_ele *ethertype_filter_ptr;
+	struct hinic_fdir_rule_ele *fdir_rule_ptr;
 	struct hinic_flow_mem *hinic_flow_mem_ptr;
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 
@@ -1817,6 +2180,32 @@ static int hinic_flow_destroy(struct rte_eth_dev *dev,
 			TAILQ_REMOVE(&nic_dev->filter_ntuple_list,
 				ntuple_filter_ptr, entries);
 			rte_free(ntuple_filter_ptr);
+		}
+		break;
+	case RTE_ETH_FILTER_ETHERTYPE:
+		ethertype_filter_ptr = (struct hinic_ethertype_filter_ele *)
+					pmd_flow->rule;
+		rte_memcpy(&ethertype_filter,
+			&ethertype_filter_ptr->filter_info,
+			sizeof(struct rte_eth_ethertype_filter));
+		ret = hinic_add_del_ethertype_filter(dev,
+				&ethertype_filter, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&nic_dev->filter_ethertype_list,
+				ethertype_filter_ptr, entries);
+			rte_free(ethertype_filter_ptr);
+		}
+		break;
+	case RTE_ETH_FILTER_FDIR:
+		fdir_rule_ptr = (struct hinic_fdir_rule_ele *)pmd_flow->rule;
+		rte_memcpy(&fdir_rule,
+			&fdir_rule_ptr->filter_info,
+			sizeof(struct hinic_fdir_rule));
+		ret = hinic_add_del_fdir_filter(dev, &fdir_rule, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&nic_dev->filter_fdir_rule_list,
+				fdir_rule_ptr, entries);
+			rte_free(fdir_rule_ptr);
 		}
 		break;
 	default:
