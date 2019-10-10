@@ -341,6 +341,9 @@ static int hinic_dev_configure(struct rte_eth_dev *dev)
 		return err;
 	}
 
+	/*clear fdir filter flag in function table*/
+	hinic_free_fdir_filter(nic_dev);
+
 	return HINIC_OK;
 }
 
@@ -1114,6 +1117,8 @@ static void hinic_dev_stop(struct rte_eth_dev *dev)
 
 	/* clean root context */
 	hinic_free_qp_ctxts(nic_dev->hwdev);
+
+	hinic_free_fdir_filter(nic_dev);
 
 	/* free mbuf */
 	hinic_free_all_rx_mbuf(dev);
@@ -2816,6 +2821,7 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev;
 	struct rte_ether_addr *eth_addr;
 	struct hinic_nic_dev *nic_dev;
+	struct hinic_filter_info *filter_info;
 	u32 mac_size;
 	int rc;
 
@@ -2906,6 +2912,16 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 		goto enable_intr_fail;
 	}
 	hinic_set_bit(HINIC_DEV_INTR_EN, &nic_dev->dev_status);
+
+	/* initialize filter info */
+	filter_info = &nic_dev->filter;
+	memset(filter_info, 0, sizeof(struct hinic_filter_info));
+	/* initialize 5tuple filter list */
+	TAILQ_INIT(&filter_info->fivetuple_list);
+	TAILQ_INIT(&nic_dev->filter_ntuple_list);
+	TAILQ_INIT(&nic_dev->filter_ethertype_list);
+	TAILQ_INIT(&nic_dev->filter_fdir_rule_list);
+	TAILQ_INIT(&nic_dev->hinic_flow_list);
 
 	hinic_set_bit(HINIC_DEV_INIT, &nic_dev->dev_status);
 	PMD_DRV_LOG(INFO, "Initialize %s in primary successfully",

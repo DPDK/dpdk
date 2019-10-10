@@ -173,7 +173,6 @@ struct hinic_nic_dev {
 	u32 rx_mode_status;	/* promisc or allmulticast */
 	unsigned long dev_status;
 
-	/* dpdk only */
 	char proc_dev_name[HINIC_DEV_NAME_LEN];
 	/* PF0->COS4, PF1->COS5, PF2->COS6, PF3->COS7,
 	 * vf: the same with associate pf
@@ -186,5 +185,7 @@ struct hinic_nic_dev {
 	struct hinic_fdir_rule_filter_list filter_fdir_rule_list;
 	struct hinic_flow_mem_list hinic_flow_list;
 };
+
+void hinic_free_fdir_filter(struct hinic_nic_dev *nic_dev);
 
 #endif /* _HINIC_PMD_ETHDEV_H_ */

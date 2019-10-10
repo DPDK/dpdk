@@ -1456,6 +1456,40 @@ static int hinic_set_vrrp_tcam(struct hinic_nic_dev *nic_dev)
 					&vrrp_rule, &vrrp_action);
 }
 
+/**
+ *  Clear all fdir configuration.
+ *
+ * @param nic_dev
+ *   The hardware interface of a Ethernet device.
+ *
+ * @return
+ *   0 on success,
+ *   negative error value otherwise.
+ */
+void hinic_free_fdir_filter(struct hinic_nic_dev *nic_dev)
+{
+	struct hinic_filter_info *filter_info =
+		HINIC_DEV_PRIVATE_TO_FILTER_INFO(nic_dev);
+
+	if (filter_info->type_mask &
+	    (1 << HINIC_PKT_TYPE_FIND_ID(PKT_BGPD_DPORT_TYPE)))
+		hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_BGP_DPORT);
+
+	if (filter_info->type_mask &
+	    (1 << HINIC_PKT_TYPE_FIND_ID(PKT_BGPD_SPORT_TYPE)))
+		hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_BGP_SPORT);
+
+	if (filter_info->type_mask &
+	    (1 << HINIC_PKT_TYPE_FIND_ID(PKT_VRRP_TYPE)))
+		hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_VRRP);
+
+	if (filter_info->type_mask &
+	    (1 << HINIC_PKT_TYPE_FIND_ID(PKT_LACP_TYPE)))
+		hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_LACP);
+
+	hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0, false);
+}
+
 static int
 hinic_filter_info_init(struct hinic_5tuple_filter *filter,
 		       struct hinic_filter_info *filter_info)
@@ -2238,8 +2272,114 @@ static int hinic_flow_destroy(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/* Remove all the n-tuple filters */
+static void hinic_clear_all_ntuple_filter(struct rte_eth_dev *dev)
+{
+	struct hinic_filter_info *filter_info =
+		HINIC_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct hinic_5tuple_filter *p_5tuple;
+
+	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list)))
+		hinic_remove_5tuple_filter(dev, p_5tuple);
+}
+
+/* Remove all the ether type filters */
+static void hinic_clear_all_ethertype_filter(struct rte_eth_dev *dev)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct hinic_filter_info *filter_info =
+		HINIC_DEV_PRIVATE_TO_FILTER_INFO(nic_dev);
+	int ret = 0;
+
+	if (filter_info->type_mask &
+		(1 << HINIC_PKT_TYPE_FIND_ID(PKT_LACP_TYPE))) {
+		hinic_ethertype_filter_remove(filter_info,
+			HINIC_PKT_TYPE_FIND_ID(PKT_LACP_TYPE));
+		ret = hinic_set_fdir_filter(nic_dev->hwdev, PKT_LACP_TYPE,
+					filter_info->qid, false, true);
+
+		(void)hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_LACP);
+	}
+
+	if (filter_info->type_mask &
+		(1 << HINIC_PKT_TYPE_FIND_ID(PKT_ARP_TYPE))) {
+		hinic_ethertype_filter_remove(filter_info,
+			HINIC_PKT_TYPE_FIND_ID(PKT_ARP_TYPE));
+		ret = hinic_set_fdir_filter(nic_dev->hwdev, PKT_ARP_TYPE,
+			filter_info->qid, false, true);
+	}
+
+	if (ret)
+		PMD_DRV_LOG(ERR, "Clear ethertype failed, filter type: 0x%x",
+				filter_info->pkt_type);
+}
+
+/* Remove all the ether type filters */
+static void hinic_clear_all_fdir_filter(struct rte_eth_dev *dev)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	(void)hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0, false);
+}
+
+static void hinic_filterlist_flush(struct rte_eth_dev *dev)
+{
+	struct hinic_ntuple_filter_ele *ntuple_filter_ptr;
+	struct hinic_ethertype_filter_ele *ethertype_filter_ptr;
+	struct hinic_fdir_rule_ele *fdir_rule_ptr;
+	struct hinic_flow_mem *hinic_flow_mem_ptr;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	while ((ntuple_filter_ptr =
+			TAILQ_FIRST(&nic_dev->filter_ntuple_list))) {
+		TAILQ_REMOVE(&nic_dev->filter_ntuple_list, ntuple_filter_ptr,
+				 entries);
+		rte_free(ntuple_filter_ptr);
+	}
+
+	while ((ethertype_filter_ptr =
+			TAILQ_FIRST(&nic_dev->filter_ethertype_list))) {
+		TAILQ_REMOVE(&nic_dev->filter_ethertype_list,
+				ethertype_filter_ptr,
+				entries);
+		rte_free(ethertype_filter_ptr);
+	}
+
+	while ((fdir_rule_ptr =
+			TAILQ_FIRST(&nic_dev->filter_fdir_rule_list))) {
+		TAILQ_REMOVE(&nic_dev->filter_fdir_rule_list, fdir_rule_ptr,
+				 entries);
+		rte_free(fdir_rule_ptr);
+	}
+
+	while ((hinic_flow_mem_ptr =
+			TAILQ_FIRST(&nic_dev->hinic_flow_list))) {
+		TAILQ_REMOVE(&nic_dev->hinic_flow_list, hinic_flow_mem_ptr,
+				 entries);
+		rte_free(hinic_flow_mem_ptr->flow);
+		rte_free(hinic_flow_mem_ptr);
+	}
+}
+
+/* Destroy all flow rules associated with a port on hinic. */
+static int hinic_flow_flush(struct rte_eth_dev *dev,
+				__rte_unused struct rte_flow_error *error)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	hinic_clear_all_ntuple_filter(dev);
+	hinic_clear_all_ethertype_filter(dev);
+	hinic_clear_all_fdir_filter(dev);
+	hinic_filterlist_flush(dev);
+
+	PMD_DRV_LOG(INFO, "Flush flow succeed, func_id: 0x%x",
+			hinic_global_func_id(nic_dev->hwdev));
+	return 0;
+}
+
 const struct rte_flow_ops hinic_flow_ops = {
 	.validate = hinic_flow_validate,
 	.create = hinic_flow_create,
 	.destroy = hinic_flow_destroy,
+	.flush = hinic_flow_flush,
 };
