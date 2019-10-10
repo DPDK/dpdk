@@ -874,7 +874,6 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	}
 
-	bnxt_enable_int(bp);
 	rc = bnxt_hwrm_if_change(bp, 1);
 	if (!rc) {
 		if (bp->flags & BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE) {
@@ -883,6 +882,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 				return rc;
 		}
 	}
+	bnxt_enable_int(bp);
 
 	rc = bnxt_init_chip(bp);
 	if (rc)
