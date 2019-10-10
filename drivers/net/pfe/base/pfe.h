@@ -311,6 +311,70 @@ void bmu_set_config(void *base, struct BMU_CFG *cfg);
 enum mac_loop {LB_NONE, LB_EXT, LB_LOCAL};
 #endif
 
+void gemac_init(void *base, void *config);
+void gemac_disable_rx_checksum_offload(void *base);
+void gemac_enable_rx_checksum_offload(void *base);
+void gemac_set_mdc_div(void *base, int mdc_div);
+void gemac_set_speed(void *base, enum mac_speed gem_speed);
+void gemac_set_duplex(void *base, int duplex);
+void gemac_set_mode(void *base, int mode);
+void gemac_enable(void *base);
+void gemac_tx_disable(void *base);
+void gemac_tx_enable(void *base);
+void gemac_disable(void *base);
+void gemac_reset(void *base);
+void gemac_set_address(void *base, struct spec_addr *addr);
+struct spec_addr gemac_get_address(void *base);
+void gemac_set_loop(void *base, enum mac_loop gem_loop);
+void gemac_set_laddr1(void *base, struct pfe_mac_addr *address);
+void gemac_set_laddr2(void *base, struct pfe_mac_addr *address);
+void gemac_set_laddr3(void *base, struct pfe_mac_addr *address);
+void gemac_set_laddr4(void *base, struct pfe_mac_addr *address);
+void gemac_set_laddrN(void *base, struct pfe_mac_addr *address,
+		      unsigned int entry_index);
+void gemac_clear_laddr1(void *base);
+void gemac_clear_laddr2(void *base);
+void gemac_clear_laddr3(void *base);
+void gemac_clear_laddr4(void *base);
+void gemac_clear_laddrN(void *base, unsigned int entry_index);
+struct pfe_mac_addr gemac_get_hash(void *base);
+void gemac_set_hash(void *base, struct pfe_mac_addr *hash);
+struct pfe_mac_addr gem_get_laddr1(void *base);
+struct pfe_mac_addr gem_get_laddr2(void *base);
+struct pfe_mac_addr gem_get_laddr3(void *base);
+struct pfe_mac_addr gem_get_laddr4(void *base);
+struct pfe_mac_addr gem_get_laddrN(void *base, unsigned int entry_index);
+void gemac_set_config(void *base, struct gemac_cfg *cfg);
+void gemac_allow_broadcast(void *base);
+void gemac_no_broadcast(void *base);
+void gemac_enable_1536_rx(void *base);
+void gemac_disable_1536_rx(void *base);
+int gemac_set_rx(void *base, int mtu);
+void gemac_enable_rx_jmb(void *base);
+void gemac_disable_rx_jmb(void *base);
+void gemac_enable_stacked_vlan(void *base);
+void gemac_disable_stacked_vlan(void *base);
+void gemac_enable_pause_rx(void *base);
+void gemac_disable_pause_rx(void *base);
+void gemac_enable_pause_tx(void *base);
+void gemac_disable_pause_tx(void *base);
+void gemac_enable_copy_all(void *base);
+void gemac_disable_copy_all(void *base);
+void gemac_set_bus_width(void *base, int width);
+void gemac_set_wol(void *base, u32 wol_conf);
+
+void gpi_init(void *base, struct gpi_cfg *cfg);
+void gpi_reset(void *base);
+void gpi_enable(void *base);
+void gpi_disable(void *base);
+void gpi_set_config(void *base, struct gpi_cfg *cfg);
+
+void hif_init(void);
+void hif_tx_enable(void);
+void hif_tx_disable(void);
+void hif_rx_enable(void);
+void hif_rx_disable(void);
+
 /* Get Chip Revision level
  *
  */
@@ -334,6 +398,25 @@ static inline void hif_rx_dma_start(void)
 static inline void hif_tx_dma_start(void)
 {
 	writel(HIF_CTRL_DMA_EN | HIF_CTRL_BDP_CH_START_WSTB, HIF_TX_CTRL);
+}
+
+
+static inline void *pfe_mem_ptov(phys_addr_t paddr)
+{
+	return rte_mem_iova2virt(paddr);
+}
+
+static phys_addr_t pfe_mem_vtop(uint64_t vaddr) __attribute__((unused));
+
+static inline phys_addr_t pfe_mem_vtop(uint64_t vaddr)
+{
+	const struct rte_memseg *memseg;
+
+	memseg = rte_mem_virt2memseg((void *)(uintptr_t)vaddr, NULL);
+	if (memseg)
+		return memseg->phys_addr + RTE_PTR_DIFF(vaddr, memseg->addr);
+
+	return (size_t)NULL;
 }
 
 #endif /* _PFE_H_ */

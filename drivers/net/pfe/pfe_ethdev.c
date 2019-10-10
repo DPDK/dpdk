@@ -23,8 +23,31 @@ static struct pfe *g_pfe;
  * information from HW.
  */
 unsigned int pfe_svr = SVR_LS1012A_REV1;
+static void *cbus_emac_base[3];
+static void *cbus_gpi_base[3];
 
 int pfe_logtype_pmd;
+
+/* pfe_gemac_init
+ */
+static int
+pfe_gemac_init(struct pfe_eth_priv_s *priv)
+{
+	struct gemac_cfg cfg;
+
+	cfg.speed = SPEED_1000M;
+	cfg.duplex = DUPLEX_FULL;
+
+	gemac_set_config(priv->EMAC_baseaddr, &cfg);
+	gemac_allow_broadcast(priv->EMAC_baseaddr);
+	gemac_enable_1536_rx(priv->EMAC_baseaddr);
+	gemac_enable_stacked_vlan(priv->EMAC_baseaddr);
+	gemac_enable_pause_rx(priv->EMAC_baseaddr);
+	gemac_set_bus_width(priv->EMAC_baseaddr, 64);
+	gemac_enable_rx_checksum_offload(priv->EMAC_baseaddr);
+
+	return 0;
+}
 
 static void
 pfe_soc_version_get(void)
@@ -100,17 +123,43 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 	struct pfe_eth_priv_s *priv = NULL;
+	struct ls1012a_eth_platform_data *einfo;
+	struct ls1012a_pfe_platform_data *pfe_info;
 	int err;
 
 	eth_dev = rte_eth_vdev_allocate(vdev, sizeof(*priv));
 	if (eth_dev == NULL)
 		return -ENOMEM;
 
+	/* Extract pltform data */
+	pfe_info = (struct ls1012a_pfe_platform_data *)&pfe->platform_data;
+	if (!pfe_info) {
+		PFE_PMD_ERR("pfe missing additional platform data");
+		err = -ENODEV;
+		goto err0;
+	}
+
+	einfo = (struct ls1012a_eth_platform_data *)pfe_info->ls1012a_eth_pdata;
+
+	/* einfo never be NULL, but no harm in having this check */
+	if (!einfo) {
+		PFE_PMD_ERR("pfe missing additional gemacs platform data");
+		err = -ENODEV;
+		goto err0;
+	}
+
 	priv = eth_dev->data->dev_private;
 	priv->ndev = eth_dev;
+	priv->id = einfo[id].gem_id;
 	priv->pfe = pfe;
 
 	pfe->eth.eth_priv[id] = priv;
+
+	/* Set the info in the priv to the current info */
+	priv->einfo = &einfo[id];
+	priv->EMAC_baseaddr = cbus_emac_base[id];
+	priv->PHY_baseaddr = cbus_emac_base[id];
+	priv->GPI_baseaddr = cbus_gpi_base[id];
 
 #define HIF_GEMAC_TMUQ_BASE	6
 	priv->low_tmu_q = HIF_GEMAC_TMUQ_BASE + (id * 2);
@@ -129,6 +178,7 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 	}
 
 	eth_dev->data->mtu = 1500;
+	pfe_gemac_init(priv);
 
 	eth_dev->data->nb_rx_queues = 1;
 	eth_dev->data->nb_tx_queues = 1;
@@ -144,6 +194,58 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 err0:
 	rte_eth_dev_release_port(eth_dev);
 	return err;
+}
+
+static int
+pfe_get_gemac_if_proprties(struct pfe *pfe,
+		__rte_unused const struct device_node *parent,
+		unsigned int port, unsigned int if_cnt,
+		struct ls1012a_pfe_platform_data *pdata)
+{
+	const struct device_node *gem = NULL;
+	size_t size;
+	unsigned int ii = 0, phy_id = 0;
+	const u32 *addr;
+	const void *mac_addr;
+
+	for (ii = 0; ii < if_cnt; ii++) {
+		gem = of_get_next_child(parent, gem);
+		if (!gem)
+			goto err;
+		addr = of_get_property(gem, "reg", &size);
+		if (addr && (rte_be_to_cpu_32((unsigned int)*addr) == port))
+			break;
+	}
+
+	if (ii >= if_cnt) {
+		PFE_PMD_ERR("Failed to find interface = %d", if_cnt);
+		goto err;
+	}
+
+	pdata->ls1012a_eth_pdata[port].gem_id = port;
+
+	mac_addr = of_get_mac_address(gem);
+
+	if (mac_addr) {
+		memcpy(pdata->ls1012a_eth_pdata[port].mac_addr, mac_addr,
+		       ETH_ALEN);
+	}
+
+	addr = of_get_property(gem, "fsl,mdio-mux-val", &size);
+	if (!addr) {
+		PFE_PMD_ERR("Invalid mdio-mux-val....");
+	} else {
+		phy_id = rte_be_to_cpu_32((unsigned int)*addr);
+		pdata->ls1012a_eth_pdata[port].mdio_muxval = phy_id;
+	}
+	if (pdata->ls1012a_eth_pdata[port].phy_id < 32)
+		pfe->mdio_muxval[pdata->ls1012a_eth_pdata[port].phy_id] =
+			 pdata->ls1012a_eth_pdata[port].mdio_muxval;
+
+	return 0;
+
+err:
+	return -1;
 }
 
 /* Parse integer from integer argument */
@@ -204,7 +306,7 @@ pmd_pfe_probe(struct rte_vdev_device *vdev)
 	const uint32_t *addr;
 	uint64_t cbus_addr, ddr_size, cbus_size;
 	int rc = -1, fd = -1, gem_id;
-	unsigned int interface_count = 0;
+	unsigned int ii, interface_count = 0;
 	size_t size = 0;
 	struct pfe_vdev_init_params init_params = {
 		.gem_id = -1
@@ -268,6 +370,7 @@ pmd_pfe_probe(struct rte_vdev_device *vdev)
 		goto err;
 	}
 
+	g_pfe->ddr_baseaddr = pfe_mem_ptov(g_pfe->ddr_phys_baseaddr);
 	g_pfe->ddr_size = ddr_size;
 	g_pfe->cbus_size = cbus_size;
 
@@ -299,6 +402,42 @@ pmd_pfe_probe(struct rte_vdev_device *vdev)
 	PFE_PMD_INFO("num interfaces = %d ", interface_count);
 
 	g_pfe->max_intf  = interface_count;
+	g_pfe->platform_data.ls1012a_mdio_pdata[0].phy_mask = 0xffffffff;
+
+	for (ii = 0; ii < interface_count; ii++) {
+		pfe_get_gemac_if_proprties(g_pfe, np, ii, interface_count,
+					   &g_pfe->platform_data);
+	}
+
+	pfe_lib_init(g_pfe->cbus_baseaddr, g_pfe->ddr_baseaddr,
+		     g_pfe->ddr_phys_baseaddr, g_pfe->ddr_size);
+
+	PFE_PMD_INFO("CLASS version: %x", readl(CLASS_VERSION));
+	PFE_PMD_INFO("TMU version: %x", readl(TMU_VERSION));
+
+	PFE_PMD_INFO("BMU1 version: %x", readl(BMU1_BASE_ADDR + BMU_VERSION));
+	PFE_PMD_INFO("BMU2 version: %x", readl(BMU2_BASE_ADDR + BMU_VERSION));
+
+	PFE_PMD_INFO("EGPI1 version: %x", readl(EGPI1_BASE_ADDR + GPI_VERSION));
+	PFE_PMD_INFO("EGPI2 version: %x", readl(EGPI2_BASE_ADDR + GPI_VERSION));
+	PFE_PMD_INFO("HGPI version: %x", readl(HGPI_BASE_ADDR + GPI_VERSION));
+
+	PFE_PMD_INFO("HIF version: %x", readl(HIF_VERSION));
+	PFE_PMD_INFO("HIF NOPCY version: %x", readl(HIF_NOCPY_VERSION));
+
+	cbus_emac_base[0] = EMAC1_BASE_ADDR;
+	cbus_emac_base[1] = EMAC2_BASE_ADDR;
+
+	cbus_gpi_base[0] = EGPI1_BASE_ADDR;
+	cbus_gpi_base[1] = EGPI2_BASE_ADDR;
+
+	rc = pfe_hif_lib_init(g_pfe);
+	if (rc < 0)
+		goto err_hif_lib;
+
+	rc = pfe_hif_init(g_pfe);
+	if (rc < 0)
+		goto err_hif;
 	pfe_soc_version_get();
 eth_init:
 	if (init_params.gem_id < 0)
@@ -318,6 +457,12 @@ eth_init:
 	return 0;
 
 err_eth:
+	pfe_hif_exit(g_pfe);
+
+err_hif:
+	pfe_hif_lib_exit(g_pfe);
+
+err_hif_lib:
 err_prop:
 	munmap(g_pfe->cbus_baseaddr, cbus_size);
 err:
@@ -347,6 +492,12 @@ pmd_pfe_remove(struct rte_vdev_device *vdev)
 	pfe_eth_exit(eth_dev, g_pfe);
 	munmap(g_pfe->cbus_baseaddr, g_pfe->cbus_size);
 
+	if (g_pfe->nb_devs == 0) {
+		pfe_hif_exit(g_pfe);
+		pfe_hif_lib_exit(g_pfe);
+		rte_free(g_pfe);
+		g_pfe = NULL;
+	}
 	return 0;
 }
 

@@ -17,6 +17,8 @@ extern unsigned int pfe_svr;
 #define SVR_LS1012A_REV2	0x87040020
 #define SVR_LS1012A_REV1	0x87040010
 
+#define PFE_ETH_OVERHEAD        (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
+#define MAX_MTU_ON_REV1         1878
 struct ls1012a_eth_platform_data {
 	/* device specific information */
 	u32 device_flags;

@@ -10,13 +10,23 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_pfe.a
 
 CFLAGS += -O3 $(WERROR_FLAGS)
+CFLAGS += -Wno-pointer-arith
+CFLAGS += -I$(RTE_SDK)/drivers/net/pfe/base/
 CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 
 EXPORT_MAP := rte_pmd_pfe_version.map
 LIBABIVER := 1
 
+# Driver uses below experimental APIs
+# rte_mem_iova2virt
+# rte_mem_virt2memseg
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 # Interfaces with DPDK
 SRCS-$(CONFIG_RTE_LIBRTE_PFE_PMD) += pfe_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PFE_PMD) += pfe_hal.c
+SRCS-$(CONFIG_RTE_LIBRTE_PFE_PMD) += pfe_hif_lib.c
+SRCS-$(CONFIG_RTE_LIBRTE_PFE_PMD) += pfe_hif.c
 
 LDLIBS += -lrte_bus_vdev
 LDLIBS += -lrte_bus_dpaa
