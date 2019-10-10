@@ -31,7 +31,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PFE_PMD) += pfe_hif.c
 LDLIBS += -lrte_bus_vdev
 LDLIBS += -lrte_bus_dpaa
 LDLIBS += -lrte_common_dpaax
-LDLIBS += -lrte_eal
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool
 LDLIBS += -lrte_ethdev -lrte_kvargs
 
 include $(RTE_SDK)/mk/rte.lib.mk

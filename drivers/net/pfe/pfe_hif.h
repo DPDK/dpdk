@@ -14,6 +14,12 @@
 #define HIF_RX_DESC_NT		64
 #define HIF_TX_DESC_NT		2048
 
+#define HIF_FIRST_BUFFER	BIT(0)
+#define HIF_LAST_BUFFER		BIT(1)
+#define HIF_DONT_DMA_MAP	BIT(2)
+#define HIF_DATA_VALID		BIT(3)
+#define HIF_TSO			BIT(4)
+
 enum {
 	PFE_CL_GEM0 = 0,
 	PFE_CL_GEM1,
@@ -63,6 +69,39 @@ struct hif_desc_sw {
 	u16 flags;
 };
 
+struct hif_hdr {
+	u8 client_id;
+	u8 q_num;
+	u16 client_ctrl;
+	u16 client_ctrl1;
+};
+
+struct __hif_hdr {
+	union {
+		struct hif_hdr hdr;
+		u32 word[2];
+	};
+};
+
+struct hif_ipsec_hdr {
+	u16	sa_handle[2];
+} __packed;
+
+struct pfe_parse {
+	unsigned int packet_type;
+	uint16_t hash;
+	uint16_t parse_incomplete;
+	unsigned long long ol_flags;
+};
+
+/*  HIF_CTRL_TX... defines */
+#define HIF_CTRL_TX_CHECKSUM		BIT(2)
+
+/*  HIF_CTRL_RX... defines */
+#define HIF_CTRL_RX_OFFSET_OFST         (24)
+#define HIF_CTRL_RX_CHECKSUMMED		BIT(2)
+#define HIF_CTRL_RX_CONTINUED		BIT(1)
+
 struct pfe_hif {
 	/* To store registered clients in hif layer */
 	struct hif_client client[HIF_CLIENTS_MAX];
@@ -99,6 +138,8 @@ struct pfe_hif {
 	struct rte_device *dev;
 };
 
+void hif_process_client_req(struct pfe_hif *hif, int req, int data1, int
+				data2);
 int pfe_hif_init(struct pfe *pfe);
 void pfe_hif_exit(struct pfe *pfe);
 void pfe_hif_rx_idle(struct pfe_hif *hif);

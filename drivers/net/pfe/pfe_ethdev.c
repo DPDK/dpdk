@@ -71,6 +71,126 @@ pfe_soc_version_get(void)
 	fclose(svr_file);
 }
 
+static int pfe_eth_start(struct pfe_eth_priv_s *priv)
+{
+	gpi_enable(priv->GPI_baseaddr);
+	gemac_enable(priv->EMAC_baseaddr);
+
+	return 0;
+}
+
+static void
+pfe_eth_flush_txQ(struct pfe_eth_priv_s *priv, int tx_q_num, int
+		  __rte_unused from_tx, __rte_unused int n_desc)
+{
+	struct rte_mbuf *mbuf;
+	unsigned int flags;
+
+	/* Clean HIF and client queue */
+	while ((mbuf = hif_lib_tx_get_next_complete(&priv->client,
+						   tx_q_num, &flags,
+						   HIF_TX_DESC_NT))) {
+		if (mbuf) {
+			mbuf->next = NULL;
+			mbuf->nb_segs = 1;
+			rte_pktmbuf_free(mbuf);
+		}
+	}
+}
+
+
+static void
+pfe_eth_flush_tx(struct pfe_eth_priv_s *priv)
+{
+	unsigned int ii;
+
+	for (ii = 0; ii < emac_txq_cnt; ii++)
+		pfe_eth_flush_txQ(priv, ii, 0, 0);
+}
+
+static int
+pfe_eth_event_handler(void *data, int event, __rte_unused int qno)
+{
+	struct pfe_eth_priv_s *priv = data;
+
+	switch (event) {
+	case EVENT_TXDONE_IND:
+		pfe_eth_flush_tx(priv);
+		hif_lib_event_handler_start(&priv->client, EVENT_TXDONE_IND, 0);
+		break;
+	case EVENT_HIGH_RX_WM:
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int
+pfe_eth_open(struct rte_eth_dev *dev)
+{
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+	struct hif_client_s *client;
+	struct hif_shm *hif_shm;
+	int rc;
+
+	/* Register client driver with HIF */
+	client = &priv->client;
+
+	if (client->pfe) {
+		hif_shm = client->pfe->hif.shm;
+		/* TODO please remove the below code of if block, once we add
+		 * the proper cleanup in eth_close
+		 */
+		if (!test_bit(PFE_CL_GEM0 + priv->id,
+			      &hif_shm->g_client_status[0])) {
+			/* Register client driver with HIF */
+			memset(client, 0, sizeof(*client));
+			client->id = PFE_CL_GEM0 + priv->id;
+			client->tx_qn = emac_txq_cnt;
+			client->rx_qn = EMAC_RXQ_CNT;
+			client->priv = priv;
+			client->pfe = priv->pfe;
+			client->port_id = dev->data->port_id;
+			client->event_handler = pfe_eth_event_handler;
+
+			client->tx_qsize = EMAC_TXQ_DEPTH;
+			client->rx_qsize = EMAC_RXQ_DEPTH;
+
+			rc = hif_lib_client_register(client);
+			if (rc) {
+				PFE_PMD_ERR("hif_lib_client_register(%d)"
+					    " failed", client->id);
+				goto err0;
+			}
+		}
+	} else {
+		/* Register client driver with HIF */
+		memset(client, 0, sizeof(*client));
+		client->id = PFE_CL_GEM0 + priv->id;
+		client->tx_qn = emac_txq_cnt;
+		client->rx_qn = EMAC_RXQ_CNT;
+		client->priv = priv;
+		client->pfe = priv->pfe;
+		client->port_id = dev->data->port_id;
+		client->event_handler = pfe_eth_event_handler;
+
+		client->tx_qsize = EMAC_TXQ_DEPTH;
+		client->rx_qsize = EMAC_RXQ_DEPTH;
+
+		rc = hif_lib_client_register(client);
+		if (rc) {
+			PFE_PMD_ERR("hif_lib_client_register(%d) failed",
+				    client->id);
+			goto err0;
+		}
+	}
+	rc = pfe_eth_start(priv);
+
+err0:
+	return rc;
+}
+
 static int
 pfe_eth_open_cdev(struct pfe_eth_priv_s *priv)
 {
@@ -106,10 +226,20 @@ pfe_eth_close_cdev(struct pfe_eth_priv_s *priv)
 }
 
 static void
+pfe_eth_stop(struct rte_eth_dev *dev/*, int wake*/)
+{
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+
+	gemac_disable(priv->EMAC_baseaddr);
+	gpi_disable(priv->GPI_baseaddr);
+}
+
+static void
 pfe_eth_exit(struct rte_eth_dev *dev, struct pfe *pfe)
 {
 	PMD_INIT_FUNC_TRACE();
 
+	pfe_eth_stop(dev);
 	/* Close the device file for link status */
 	pfe_eth_close_cdev(dev->data->dev_private);
 
@@ -117,6 +247,58 @@ pfe_eth_exit(struct rte_eth_dev *dev, struct pfe *pfe)
 	rte_eth_dev_release_port(dev);
 	pfe->nb_devs--;
 }
+
+static void
+pfe_eth_close(struct rte_eth_dev *dev)
+{
+	if (!dev)
+		return;
+
+	if (!g_pfe)
+		return;
+
+	pfe_eth_exit(dev, g_pfe);
+
+	if (g_pfe->nb_devs == 0) {
+		pfe_hif_exit(g_pfe);
+		pfe_hif_lib_exit(g_pfe);
+		rte_free(g_pfe);
+		g_pfe = NULL;
+	}
+}
+
+static int
+pfe_eth_configure(struct rte_eth_dev *dev __rte_unused)
+{
+	return 0;
+}
+
+static int
+pfe_eth_info(struct rte_eth_dev *dev,
+		struct rte_eth_dev_info *dev_info)
+{
+	struct pfe_eth_priv_s *internals = dev->data->dev_private;
+
+	dev_info->if_index = internals->id;
+	dev_info->max_mac_addrs = PFE_MAX_MACS;
+	dev_info->max_rx_queues = dev->data->nb_rx_queues;
+	dev_info->max_tx_queues = dev->data->nb_tx_queues;
+	dev_info->min_rx_bufsize = HIF_RX_PKT_MIN_SIZE;
+	if (pfe_svr == SVR_LS1012A_REV1)
+		dev_info->max_rx_pktlen = MAX_MTU_ON_REV1 + PFE_ETH_OVERHEAD;
+	else
+		dev_info->max_rx_pktlen = JUMBO_FRAME_SIZE;
+
+	return 0;
+}
+
+static const struct eth_dev_ops ops = {
+	.dev_start = pfe_eth_open,
+	.dev_stop = pfe_eth_stop,
+	.dev_close = pfe_eth_close,
+	.dev_configure = pfe_eth_configure,
+	.dev_infos_get = pfe_eth_info,
+};
 
 static int
 pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
@@ -178,6 +360,8 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 	}
 
 	eth_dev->data->mtu = 1500;
+	eth_dev->dev_ops = &ops;
+	pfe_eth_stop(eth_dev);
 	pfe_gemac_init(priv);
 
 	eth_dev->data->nb_rx_queues = 1;

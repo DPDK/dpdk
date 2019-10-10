@@ -55,6 +55,7 @@ struct ls1012a_pfe_platform_data {
 
 struct  pfe_eth_priv_s {
 	struct pfe		*pfe;
+	struct hif_client_s	client;
 	int			low_tmu_q;
 	int			high_tmu_q;
 	struct rte_eth_dev	*ndev;

@@ -43,6 +43,145 @@ pfe_hif_free_descr(struct pfe_hif *hif)
 	rte_free(hif->descr_baseaddr_v);
 }
 
+/*
+ * pfe_hif_client_register
+ *
+ * This function used to register a client driver with the HIF driver.
+ *
+ * Return value:
+ * 0 - on Successful registration
+ */
+static int
+pfe_hif_client_register(struct pfe_hif *hif, u32 client_id,
+			struct hif_client_shm *client_shm)
+{
+	struct hif_client *client = &hif->client[client_id];
+	u32 i, cnt;
+	struct rx_queue_desc *rx_qbase;
+	struct tx_queue_desc *tx_qbase;
+	struct hif_rx_queue *rx_queue;
+	struct hif_tx_queue *tx_queue;
+	int err = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rte_spinlock_lock(&hif->tx_lock);
+
+	if (test_bit(client_id, &hif->shm->g_client_status[0])) {
+		PFE_PMD_ERR("client %d already registered", client_id);
+		err = -1;
+		goto unlock;
+	}
+
+	memset(client, 0, sizeof(struct hif_client));
+
+	/* Initialize client Rx queues baseaddr, size */
+
+	cnt = CLIENT_CTRL_RX_Q_CNT(client_shm->ctrl);
+	/* Check if client is requesting for more queues than supported */
+	if (cnt > HIF_CLIENT_QUEUES_MAX)
+		cnt = HIF_CLIENT_QUEUES_MAX;
+
+	client->rx_qn = cnt;
+	rx_qbase = (struct rx_queue_desc *)client_shm->rx_qbase;
+	for (i = 0; i < cnt; i++) {
+		rx_queue = &client->rx_q[i];
+		rx_queue->base = rx_qbase + i * client_shm->rx_qsize;
+		rx_queue->size = client_shm->rx_qsize;
+		rx_queue->write_idx = 0;
+	}
+
+	/* Initialize client Tx queues baseaddr, size */
+	cnt = CLIENT_CTRL_TX_Q_CNT(client_shm->ctrl);
+
+	/* Check if client is requesting for more queues than supported */
+	if (cnt > HIF_CLIENT_QUEUES_MAX)
+		cnt = HIF_CLIENT_QUEUES_MAX;
+
+	client->tx_qn = cnt;
+	tx_qbase = (struct tx_queue_desc *)client_shm->tx_qbase;
+	for (i = 0; i < cnt; i++) {
+		tx_queue = &client->tx_q[i];
+		tx_queue->base = tx_qbase + i * client_shm->tx_qsize;
+		tx_queue->size = client_shm->tx_qsize;
+		tx_queue->ack_idx = 0;
+	}
+
+	set_bit(client_id, &hif->shm->g_client_status[0]);
+
+unlock:
+	rte_spinlock_unlock(&hif->tx_lock);
+
+	return err;
+}
+
+/*
+ * pfe_hif_client_unregister
+ *
+ * This function used to unregister a client  from the HIF driver.
+ *
+ */
+static void
+pfe_hif_client_unregister(struct pfe_hif *hif, u32 client_id)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	/*
+	 * Mark client as no longer available (which prevents further packet
+	 * receive for this client)
+	 */
+	rte_spinlock_lock(&hif->tx_lock);
+
+	if (!test_bit(client_id, &hif->shm->g_client_status[0])) {
+		PFE_PMD_ERR("client %d not registered", client_id);
+
+		rte_spinlock_unlock(&hif->tx_lock);
+		return;
+	}
+
+	clear_bit(client_id, &hif->shm->g_client_status[0]);
+
+	rte_spinlock_unlock(&hif->tx_lock);
+}
+
+void
+hif_process_client_req(struct pfe_hif *hif, int req,
+		       int data1, __rte_unused int data2)
+{
+	unsigned int client_id = data1;
+
+	if (client_id >= HIF_CLIENTS_MAX) {
+		PFE_PMD_ERR("client id %d out of bounds", client_id);
+		return;
+	}
+
+	switch (req) {
+	case REQUEST_CL_REGISTER:
+			/* Request for register a client */
+			PFE_PMD_INFO("register client_id %d", client_id);
+			pfe_hif_client_register(hif, client_id, (struct
+				hif_client_shm *)&hif->shm->client[client_id]);
+			break;
+
+	case REQUEST_CL_UNREGISTER:
+			PFE_PMD_INFO("unregister client_id %d", client_id);
+
+			/* Request for unregister a client */
+			pfe_hif_client_unregister(hif, client_id);
+
+			break;
+
+	default:
+			PFE_PMD_ERR("unsupported request %d", req);
+			break;
+	}
+
+	/*
+	 * Process client Tx queues
+	 * Currently we don't have checking for tx pending
+	 */
+}
+
 #if defined(LS1012A_PFE_RESET_WA)
 static void
 pfe_hif_disable_rx_desc(struct pfe_hif *hif)

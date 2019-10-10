@@ -48,6 +48,7 @@ struct pfe {
 	struct ls1012a_pfe_platform_data platform_data;
 	struct pfe_hif hif;
 	struct pfe_eth eth;
+	struct hif_client_s *hif_client[HIF_CLIENTS_MAX];
 	int mdio_muxval[PHYID_MAX_VAL];
 	uint8_t nb_devs;
 	uint8_t max_intf;
