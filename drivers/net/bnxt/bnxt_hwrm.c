@@ -4858,6 +4858,9 @@ int bnxt_hwrm_if_change(struct bnxt *bp, bool up)
 	flags = rte_le_to_cpu_32(resp->flags);
 	HWRM_UNLOCK();
 
+	if (!up)
+		return 0;
+
 	if (flags & HWRM_FUNC_DRV_IF_CHANGE_OUTPUT_FLAGS_HOT_FW_RESET_DONE) {
 		PMD_DRV_LOG(INFO, "FW reset happened while port was down\n");
 		bp->flags |= BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE;
