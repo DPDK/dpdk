@@ -11,6 +11,7 @@
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_version.h>
+#include <rte_io.h>
 
 #include "bnxt.h"
 #include "bnxt_filter.h"
@@ -22,8 +23,6 @@
 #include "bnxt_txr.h"
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
-
-#include <rte_io.h>
 
 #define HWRM_SPEC_CODE_1_8_3		0x10803
 #define HWRM_VERSION_1_9_1		0x10901
@@ -1483,8 +1482,7 @@ int bnxt_hwrm_ring_grp_alloc(struct bnxt *bp, unsigned int idx)
 
 	HWRM_CHECK_RESULT();
 
-	bp->grp_info[idx].fw_grp_id =
-	    rte_le_to_cpu_16(resp->ring_group_id);
+	bp->grp_info[idx].fw_grp_id = rte_le_to_cpu_16(resp->ring_group_id);
 
 	HWRM_UNLOCK();
 
@@ -1542,8 +1540,7 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 
 	req.update_period_ms = rte_cpu_to_le_32(0);
 
-	req.stats_dma_addr =
-	    rte_cpu_to_le_64(cpr->hw_stats_map);
+	req.stats_dma_addr = rte_cpu_to_le_64(cpr->hw_stats_map);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
@@ -3633,7 +3630,6 @@ int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx,
 		stats->q_obytes[idx] += rte_le_to_cpu_64(resp->tx_bcast_bytes);
 	}
 
-
 	HWRM_UNLOCK();
 
 	return rc;
@@ -4217,7 +4213,6 @@ int bnxt_hwrm_set_ntuple_filter(struct bnxt *bp,
 	enables = filter->enables |
 	      HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_DST_ID;
 	req.dst_id = rte_cpu_to_le_16(dst_id);
-
 
 	if (filter->ip_addr_type) {
 		req.ip_addr_type = filter->ip_addr_type;

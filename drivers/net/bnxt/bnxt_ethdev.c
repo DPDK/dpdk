@@ -3002,7 +3002,6 @@ bnxt_parse_fdir_filter(struct bnxt *bp,
 		return -EINVAL;
 	}
 
-
 	if (fdir_mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
 		rte_memcpy(filter->dst_macaddr,
 			fdir->input.flow.mac_vlan_flow.mac_addr.addr_bytes, 6);
