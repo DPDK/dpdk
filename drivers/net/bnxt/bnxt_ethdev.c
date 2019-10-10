@@ -967,8 +967,12 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 		eth_dev->data->dev_link.link_status = 0;
 	}
 	bnxt_dev_set_link_down_op(eth_dev);
-	/* Wait for link to be reset and the async notification to process. */
-	rte_delay_ms(BNXT_LINK_WAIT_INTERVAL * 2);
+
+	/* Wait for link to be reset and the async notification to process.
+	 * During reset recovery, there is no need to wait
+	 */
+	if (!is_bnxt_in_error(bp))
+		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL * 2);
 
 	/* Clean queue intr-vector mapping */
 	rte_intr_efd_disable(intr_handle);
