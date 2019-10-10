@@ -35,6 +35,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/librte_gso \
                           @TOPDIR@/lib/librte_hash \
                           @TOPDIR@/lib/librte_ip_frag \
+                          @TOPDIR@/lib/librte_ipsec \
                           @TOPDIR@/lib/librte_jobstats \
                           @TOPDIR@/lib/librte_kni \
                           @TOPDIR@/lib/librte_kvargs \
