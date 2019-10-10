@@ -7,12 +7,14 @@
 
 #include "hinic_pmd_cmd.h"
 
-#define HINIC_PAGE_SIZE_MAX	20
+#define HINIC_PAGE_SIZE_MAX		20
 
 #define HINIC_MGMT_CMD_UNSUPPORTED	0xFF
 #define HINIC_PF_SET_VF_ALREADY		0x4
 
 #define MAX_PCIE_DFX_BUF_SIZE		1024
+
+#define HINIC_DEV_BUSY_ACTIVE_FW	0xFE
 
 /* dma pool */
 struct dma_pool {
@@ -436,6 +438,7 @@ struct hinic_hwdev {
 	struct hinic_hwif *hwif;
 	struct cfg_mgmt_info *cfg_mgmt;
 	struct hinic_aeqs *aeqs;
+	struct hinic_mbox_func_to_func *func_to_func;
 	struct hinic_msg_pf_to_mgmt *pf_to_mgmt;
 	struct hinic_cmdqs *cmdqs;
 	struct hinic_nic_io *nic_io;

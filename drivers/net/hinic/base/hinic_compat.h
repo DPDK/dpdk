@@ -121,9 +121,7 @@ static inline int hinic_test_bit(int nr, volatile unsigned long *addr)
 {
 	int res;
 
-	rte_mb();
 	res = ((*addr) & (1UL << nr)) != 0;
-	rte_mb();
 	return res;
 }
 
@@ -227,7 +225,7 @@ static inline u16 ilog2(u32 n)
  * hinic_cpu_to_be32 - convert data to big endian 32 bit format
  * @data: the data to convert
  * @len: length of data to convert, must be Multiple of 4B
- **/
+ */
 static inline void hinic_cpu_to_be32(void *data, u32 len)
 {
 	u32 i;
@@ -243,7 +241,7 @@ static inline void hinic_cpu_to_be32(void *data, u32 len)
  * hinic_be32_to_cpu - convert data from big endian 32 bit format
  * @data: the data to convert
  * @len: length of data to convert, must be Multiple of 4B
- **/
+ */
 static inline void hinic_be32_to_cpu(void *data, u32 len)
 {
 	u32 i;
@@ -276,6 +274,36 @@ static inline int hinic_mutex_destroy(pthread_mutex_t *pthreadmutex)
 		PMD_DRV_LOG(ERR, "Fail to destroy mutex, error: %d", err);
 
 	return err;
+}
+
+static inline int hinic_mutex_lock(pthread_mutex_t *pthreadmutex)
+{
+	int err;
+
+	err = pthread_mutex_lock(pthreadmutex);
+	if (!err) {
+		return err;
+	} else if (err == EOWNERDEAD) {
+		PMD_DRV_LOG(ERR, "Mutex lock failed. (ErrorNo=%d)", errno);
+#if defined(__GLIBC__)
+#if __GLIBC_PREREQ(2, 12)
+		(void)pthread_mutex_consistent(pthreadmutex);
+#else
+		(void)pthread_mutex_consistent_np(pthreadmutex);
+#endif
+#else
+		(void)pthread_mutex_consistent(pthreadmutex);
+#endif
+	} else {
+		PMD_DRV_LOG(ERR, "Mutex lock failed. (ErrorNo=%d)", errno);
+	}
+
+	return err;
+}
+
+static inline int hinic_mutex_unlock(pthread_mutex_t *pthreadmutex)
+{
+	return pthread_mutex_unlock(pthreadmutex);
 }
 
 #endif /* _HINIC_COMPAT_H_ */

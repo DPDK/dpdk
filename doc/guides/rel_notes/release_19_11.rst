@@ -111,6 +111,12 @@ New Features
   Added session-less option to cryptodev asymmetric structure. It works the same
   way as symmetric crypto, corresponding xform is used directly by the crypto op.
 
+* **Updated the Huawei hinic driver.**
+
+  Updated the Huawei hinic driver with new features and improvements, including:
+
+  * Enabled SR-IOV - Partially supported at this point, VFIO only.
+
 * **Added Marvell NITROX symmetric crypto PMD.**
 
   Added a symmetric crypto PMD for Marvell NITROX V security processor.

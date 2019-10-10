@@ -12,6 +12,7 @@ sources = [
 	'hinic_pmd_niccfg.c',
 	'hinic_pmd_nicio.c',
 	'hinic_pmd_wq.c',
+ 	'hinic_pmd_mbox.c',
 ]
 
 extra_flags = []
