@@ -220,6 +220,7 @@ ioat_rawdev_test(uint16_t dev_id)
 	}
 	printf("\n");
 
+	rte_rawdev_stop(dev_id);
 	rte_mempool_free(pool);
 	free(snames);
 	free(stats);
@@ -227,6 +228,7 @@ ioat_rawdev_test(uint16_t dev_id)
 	return 0;
 
 err:
+	rte_rawdev_stop(dev_id);
 	rte_mempool_free(pool);
 	free(snames);
 	free(stats);
