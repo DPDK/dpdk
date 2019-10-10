@@ -23,6 +23,8 @@
 #include "base/hinic_pmd_niccfg.h"
 #include "hinic_pmd_ethdev.h"
 
+#define HINIC_MAX_RX_QUEUE_NUM		64
+
 #ifndef UINT8_MAX
 #define UINT8_MAX          (u8)(~((u8)0))	/* 0xFF               */
 #define UINT16_MAX         (u16)(~((u16)0))	/* 0xFFFF             */
@@ -31,8 +33,55 @@
 #define ASCII_MAX          (0x7F)
 #endif
 
+/* IPSURX MACRO */
+#define PA_ETH_TYPE_ROCE		0
+#define PA_ETH_TYPE_IPV4		1
+#define PA_ETH_TYPE_IPV6		2
+#define PA_ETH_TYPE_OTHER		3
+
+#define PA_IP_PROTOCOL_TYPE_TCP		1
+#define PA_IP_PROTOCOL_TYPE_UDP		2
+#define PA_IP_PROTOCOL_TYPE_ICMP	3
+#define PA_IP_PROTOCOL_TYPE_IPV4_IGMP	4
+#define PA_IP_PROTOCOL_TYPE_SCTP	5
+#define PA_IP_PROTOCOL_TYPE_VRRP	112
+
+#define IP_HEADER_PROTOCOL_TYPE_TCP	6
+
 #define HINIC_MIN_N_TUPLE_PRIO		1
 #define HINIC_MAX_N_TUPLE_PRIO		7
+
+/* TCAM type mask in hardware */
+#define TCAM_PKT_BGP_SPORT	1
+#define TCAM_PKT_VRRP		2
+#define TCAM_PKT_BGP_DPORT	3
+#define TCAM_PKT_LACP		4
+
+#define BGP_DPORT_ID		179
+#define IPPROTO_VRRP		112
+
+/* Packet type defined in hardware to perform filter */
+#define PKT_IGMP_IPV4_TYPE     64
+#define PKT_ICMP_IPV4_TYPE     65
+#define PKT_ICMP_IPV6_TYPE     66
+#define PKT_ICMP_IPV6RS_TYPE   67
+#define PKT_ICMP_IPV6RA_TYPE   68
+#define PKT_ICMP_IPV6NS_TYPE   69
+#define PKT_ICMP_IPV6NA_TYPE   70
+#define PKT_ICMP_IPV6RE_TYPE   71
+#define PKT_DHCP_IPV4_TYPE     72
+#define PKT_DHCP_IPV6_TYPE     73
+#define PKT_LACP_TYPE          74
+#define PKT_ARP_REQ_TYPE       79
+#define PKT_ARP_REP_TYPE       80
+#define PKT_ARP_TYPE           81
+#define PKT_BGPD_DPORT_TYPE    83
+#define PKT_BGPD_SPORT_TYPE    84
+#define PKT_VRRP_TYPE          85
+
+#define HINIC_DEV_PRIVATE_TO_FILTER_INFO(nic_dev) \
+	(&((struct hinic_nic_dev *)nic_dev)->filter)
+
 
 /**
  * Endless loop will never happen with below assumption
@@ -1167,6 +1216,641 @@ static int hinic_flow_validate(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static inline int
+ntuple_ip_filter(struct rte_eth_ntuple_filter *filter,
+		 struct hinic_5tuple_filter_info *filter_info)
+{
+	switch (filter->dst_ip_mask) {
+	case UINT32_MAX:
+		filter_info->dst_ip_mask = 0;
+		filter_info->dst_ip = filter->dst_ip;
+		break;
+	case 0:
+		filter_info->dst_ip_mask = 1;
+		filter_info->dst_ip = 0;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid dst_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->src_ip_mask) {
+	case UINT32_MAX:
+		filter_info->src_ip_mask = 0;
+		filter_info->src_ip = filter->src_ip;
+		break;
+	case 0:
+		filter_info->src_ip_mask = 1;
+		filter_info->src_ip = 0;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid src_ip mask.");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static inline int
+ntuple_port_filter(struct rte_eth_ntuple_filter *filter,
+		   struct hinic_5tuple_filter_info *filter_info)
+{
+	switch (filter->dst_port_mask) {
+	case UINT16_MAX:
+		filter_info->dst_port_mask = 0;
+		filter_info->dst_port = filter->dst_port;
+		break;
+	case 0:
+		filter_info->dst_port_mask = 1;
+		filter_info->dst_port = 0;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid dst_port mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->src_port_mask) {
+	case UINT16_MAX:
+		filter_info->src_port_mask = 0;
+		filter_info->src_port = filter->src_port;
+		break;
+	case 0:
+		filter_info->src_port_mask = 1;
+		filter_info->src_port = 0;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid src_port mask.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static inline int
+ntuple_proto_filter(struct rte_eth_ntuple_filter *filter,
+		    struct hinic_5tuple_filter_info *filter_info)
+{
+	switch (filter->proto_mask) {
+	case UINT8_MAX:
+		filter_info->proto_mask = 0;
+		filter_info->proto = filter->proto;
+		break;
+	case 0:
+		filter_info->proto_mask = 1;
+		filter_info->proto = 0;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid protocol mask.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static inline int
+ntuple_filter_to_5tuple(struct rte_eth_ntuple_filter *filter,
+			struct hinic_5tuple_filter_info *filter_info)
+{
+	if (filter->queue >= HINIC_MAX_RX_QUEUE_NUM ||
+		filter->priority > HINIC_MAX_N_TUPLE_PRIO ||
+		filter->priority < HINIC_MIN_N_TUPLE_PRIO)
+		return -EINVAL;
+
+	if (ntuple_ip_filter(filter, filter_info) ||
+		ntuple_port_filter(filter, filter_info) ||
+		ntuple_proto_filter(filter, filter_info))
+		return -EINVAL;
+
+	filter_info->priority = (uint8_t)filter->priority;
+	return 0;
+}
+
+static inline struct hinic_5tuple_filter *
+hinic_5tuple_filter_lookup(struct hinic_5tuple_filter_list *filter_list,
+			   struct hinic_5tuple_filter_info *key)
+{
+	struct hinic_5tuple_filter *it;
+
+	TAILQ_FOREACH(it, filter_list, entries) {
+		if (memcmp(key, &it->filter_info,
+			sizeof(struct hinic_5tuple_filter_info)) == 0) {
+			return it;
+		}
+	}
+
+	return NULL;
+}
+
+static int hinic_set_bgp_dport_tcam(struct hinic_nic_dev *nic_dev)
+{
+	struct tag_pa_rule bgp_rule;
+	struct tag_pa_action bgp_action;
+
+	memset(&bgp_rule, 0, sizeof(bgp_rule));
+	memset(&bgp_action, 0, sizeof(bgp_action));
+	/* BGP TCAM rule */
+	bgp_rule.eth_type = PA_ETH_TYPE_IPV4; /* Eth type is IPV4 */
+	bgp_rule.ip_header.protocol.val8 = IP_HEADER_PROTOCOL_TYPE_TCP;
+	bgp_rule.ip_header.protocol.mask8 = UINT8_MAX;
+	bgp_rule.ip_protocol_type = PA_IP_PROTOCOL_TYPE_TCP;
+	bgp_rule.eth_ip_tcp.dport.val16 = BGP_DPORT_ID; /* Dport is 179 */
+	bgp_rule.eth_ip_tcp.dport.mask16 = UINT16_MAX;
+
+	/* BGP TCAM action */
+	bgp_action.err_type = 0x3f; /* err from ipsu, not convert */
+	bgp_action.fwd_action = 0x7; /* 0x3:drop; 0x7: not convert */
+	bgp_action.pkt_type = PKT_BGPD_DPORT_TYPE; /* bgp_dport: 83 */
+	bgp_action.pri = 0xf; /* pri of BGP is 0xf, result from ipsu parse
+			       * results, not need to convert
+			       */
+	bgp_action.push_len = 0xf; /* push_len:0xf, not convert */
+
+	return hinic_set_fdir_tcam(nic_dev->hwdev,
+			TCAM_PKT_BGP_DPORT, &bgp_rule, &bgp_action);
+}
+
+static int hinic_set_bgp_sport_tcam(struct hinic_nic_dev *nic_dev)
+{
+	struct tag_pa_rule bgp_rule;
+	struct tag_pa_action bgp_action;
+
+	memset(&bgp_rule, 0, sizeof(bgp_rule));
+	memset(&bgp_action, 0, sizeof(bgp_action));
+	/* BGP TCAM rule */
+	bgp_rule.eth_type = PA_ETH_TYPE_IPV4;
+	bgp_rule.ip_header.protocol.val8 = IP_HEADER_PROTOCOL_TYPE_TCP;
+	bgp_rule.ip_header.protocol.mask8 = UINT8_MAX;
+	bgp_rule.ip_protocol_type = PA_IP_PROTOCOL_TYPE_TCP;
+	bgp_rule.eth_ip_tcp.sport.val16 = BGP_DPORT_ID;
+	bgp_rule.eth_ip_tcp.sport.mask16 = UINT16_MAX;
+
+	/* BGP TCAM action */
+	bgp_action.err_type = 0x3f; /* err from ipsu, not convert */
+	bgp_action.fwd_action = 0x7; /* 0x3:drop; 0x7: not convert */
+	bgp_action.pkt_type = PKT_BGPD_SPORT_TYPE; /* bgp:sport: 84 */
+	bgp_action.pri = 0xf; /* pri of BGP is 0xf, result from ipsu parse
+			       * results, not need to convert
+			       */
+	bgp_action.push_len = 0xf; /* push_len:0xf, not convert */
+
+	return hinic_set_fdir_tcam(nic_dev->hwdev, TCAM_PKT_BGP_SPORT,
+					&bgp_rule, &bgp_action);
+}
+
+static int hinic_set_vrrp_tcam(struct hinic_nic_dev *nic_dev)
+{
+	struct tag_pa_rule vrrp_rule;
+	struct tag_pa_action vrrp_action;
+
+	memset(&vrrp_rule, 0, sizeof(vrrp_rule));
+	memset(&vrrp_action, 0, sizeof(vrrp_action));
+	/* VRRP TCAM rule */
+	vrrp_rule.eth_type = PA_ETH_TYPE_IPV4;
+	vrrp_rule.ip_protocol_type = PA_IP_PROTOCOL_TYPE_TCP;
+	vrrp_rule.ip_header.protocol.mask8 = 0xff;
+	vrrp_rule.ip_header.protocol.val8 = PA_IP_PROTOCOL_TYPE_VRRP;
+
+	/* VRRP TCAM action */
+	vrrp_action.err_type = 0x3f;
+	vrrp_action.fwd_action = 0x7;
+	vrrp_action.pkt_type = PKT_VRRP_TYPE; /* VRRP: 85 */
+	vrrp_action.pri = 0xf;
+	vrrp_action.push_len = 0xf;
+
+	return hinic_set_fdir_tcam(nic_dev->hwdev, TCAM_PKT_VRRP,
+					&vrrp_rule, &vrrp_action);
+}
+
+static int
+hinic_filter_info_init(struct hinic_5tuple_filter *filter,
+		       struct hinic_filter_info *filter_info)
+{
+	switch (filter->filter_info.proto) {
+	case IPPROTO_TCP:
+		/* Filter type is bgp type if dst_port or src_port is 179 */
+		if (filter->filter_info.dst_port == RTE_BE16(BGP_DPORT_ID) &&
+			!(filter->filter_info.dst_port_mask)) {
+			filter_info->pkt_type = PKT_BGPD_DPORT_TYPE;
+		} else if (filter->filter_info.src_port ==
+			RTE_BE16(BGP_DPORT_ID) &&
+			!(filter->filter_info.src_port_mask)) {
+			filter_info->pkt_type = PKT_BGPD_SPORT_TYPE;
+		} else {
+			PMD_DRV_LOG(INFO, "TCP PROTOCOL:5tuple filters"
+			" just support BGP now, proto:0x%x, "
+			"dst_port:0x%x, dst_port_mask:0x%x."
+			"src_port:0x%x, src_port_mask:0x%x.",
+			filter->filter_info.proto,
+			filter->filter_info.dst_port,
+			filter->filter_info.dst_port_mask,
+			filter->filter_info.src_port,
+			filter->filter_info.src_port_mask);
+			return -EINVAL;
+		}
+		break;
+
+	case IPPROTO_VRRP:
+		filter_info->pkt_type = PKT_VRRP_TYPE;
+		break;
+
+	case IPPROTO_ICMP:
+		filter_info->pkt_type = PKT_ICMP_IPV4_TYPE;
+		break;
+
+	case IPPROTO_ICMPV6:
+		filter_info->pkt_type = PKT_ICMP_IPV6_TYPE;
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "5tuple filters just support BGP/VRRP/ICMP now, "
+		"proto: 0x%x, dst_port: 0x%x, dst_port_mask: 0x%x."
+		"src_port: 0x%x, src_port_mask: 0x%x.",
+		filter->filter_info.proto, filter->filter_info.dst_port,
+		filter->filter_info.dst_port_mask,
+		filter->filter_info.src_port,
+		filter->filter_info.src_port_mask);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+hinic_lookup_new_filter(struct hinic_5tuple_filter *filter,
+			struct hinic_filter_info *filter_info,
+			int *index)
+{
+	int type_id;
+
+	type_id = HINIC_PKT_TYPE_FIND_ID(filter_info->pkt_type);
+
+	if (type_id > HINIC_MAX_Q_FILTERS - 1) {
+		PMD_DRV_LOG(ERR, "Pkt filters only support 64 filter type.");
+		return -EINVAL;
+	}
+
+	if (!(filter_info->type_mask & (1 << type_id))) {
+		filter_info->type_mask |= 1 << type_id;
+		filter->index = type_id;
+		filter_info->pkt_filters[type_id].enable = true;
+		filter_info->pkt_filters[type_id].pkt_proto =
+						filter->filter_info.proto;
+		TAILQ_INSERT_TAIL(&filter_info->fivetuple_list,
+				  filter, entries);
+	} else {
+		PMD_DRV_LOG(ERR, "Filter type: %d exists.", type_id);
+		return -EIO;
+	}
+
+	*index = type_id;
+	return 0;
+}
+
+/*
+ * Add a 5tuple filter
+ *
+ * @param dev:
+ *  Pointer to struct rte_eth_dev.
+ * @param filter:
+ *  Pointer to the filter that will be added.
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+hinic_add_5tuple_filter(struct rte_eth_dev *dev,
+			struct hinic_5tuple_filter *filter)
+{
+	struct hinic_filter_info *filter_info =
+		HINIC_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	int i, ret_fw;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	if (hinic_filter_info_init(filter, filter_info) ||
+		hinic_lookup_new_filter(filter, filter_info, &i))
+		return -EFAULT;
+
+	ret_fw = hinic_set_fdir_filter(nic_dev->hwdev, filter_info->pkt_type,
+					filter_info->qid,
+					filter_info->pkt_filters[i].enable,
+					true);
+	if (ret_fw) {
+		PMD_DRV_LOG(ERR, "Set fdir filter failed, type: 0x%x, qid: 0x%x, enable: 0x%x",
+			filter_info->pkt_type, filter->queue,
+			filter_info->pkt_filters[i].enable);
+		return -EFAULT;
+	}
+
+	PMD_DRV_LOG(INFO, "Add 5tuple succeed, type: 0x%x, qid: 0x%x, enable: 0x%x",
+			filter_info->pkt_type, filter_info->qid,
+			filter_info->pkt_filters[filter->index].enable);
+
+	switch (filter->filter_info.proto) {
+	case IPPROTO_TCP:
+		if (filter->filter_info.dst_port == RTE_BE16(BGP_DPORT_ID)) {
+			ret_fw = hinic_set_bgp_dport_tcam(nic_dev);
+			if (ret_fw) {
+				PMD_DRV_LOG(ERR, "Set dport bgp failed, "
+					"type: 0x%x, qid: 0x%x, enable: 0x%x",
+					filter_info->pkt_type, filter->queue,
+					filter_info->pkt_filters[i].enable);
+				return -EFAULT;
+			}
+
+			PMD_DRV_LOG(INFO, "Set dport bgp succeed, qid: 0x%x, enable: 0x%x",
+				filter->queue,
+				filter_info->pkt_filters[i].enable);
+		} else if (filter->filter_info.src_port ==
+			RTE_BE16(BGP_DPORT_ID)) {
+			ret_fw = hinic_set_bgp_sport_tcam(nic_dev);
+			if (ret_fw) {
+				PMD_DRV_LOG(ERR, "Set sport bgp failed, "
+					"type: 0x%x, qid: 0x%x, enable: 0x%x",
+					filter_info->pkt_type, filter->queue,
+					filter_info->pkt_filters[i].enable);
+				return -EFAULT;
+			}
+
+			PMD_DRV_LOG(INFO, "Set sport bgp succeed, qid: 0x%x, enable: 0x%x",
+					filter->queue,
+					filter_info->pkt_filters[i].enable);
+		}
+
+		break;
+
+	case IPPROTO_VRRP:
+		ret_fw = hinic_set_vrrp_tcam(nic_dev);
+		if (ret_fw) {
+			PMD_DRV_LOG(ERR, "Set VRRP failed, "
+				"type: 0x%x, qid: 0x%x, enable: 0x%x",
+				filter_info->pkt_type, filter->queue,
+				filter_info->pkt_filters[i].enable);
+			return -EFAULT;
+		}
+		PMD_DRV_LOG(INFO, "Set VRRP succeed, qid: 0x%x, enable: 0x%x",
+				filter->queue,
+				filter_info->pkt_filters[i].enable);
+		break;
+
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+/*
+ * Remove a 5tuple filter
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ * @param filter
+ *  The pointer of the filter will be removed.
+ */
+static void
+hinic_remove_5tuple_filter(struct rte_eth_dev *dev,
+			   struct hinic_5tuple_filter *filter)
+{
+	struct hinic_filter_info *filter_info =
+		HINIC_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	switch (filter->filter_info.proto) {
+	case IPPROTO_VRRP:
+		(void)hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_VRRP);
+		break;
+
+	case IPPROTO_TCP:
+		if (filter->filter_info.dst_port == RTE_BE16(BGP_DPORT_ID))
+			(void)hinic_clear_fdir_tcam(nic_dev->hwdev,
+							TCAM_PKT_BGP_DPORT);
+		else if (filter->filter_info.src_port == RTE_BE16(BGP_DPORT_ID))
+			(void)hinic_clear_fdir_tcam(nic_dev->hwdev,
+							TCAM_PKT_BGP_SPORT);
+		break;
+
+	default:
+		break;
+	}
+
+	hinic_filter_info_init(filter, filter_info);
+
+	filter_info->pkt_filters[filter->index].enable = false;
+	filter_info->pkt_filters[filter->index].pkt_proto = 0;
+
+	PMD_DRV_LOG(INFO, "Del 5tuple succeed, type: 0x%x, qid: 0x%x, enable: 0x%x",
+		filter_info->pkt_type,
+		filter_info->pkt_filters[filter->index].qid,
+		filter_info->pkt_filters[filter->index].enable);
+	(void)hinic_set_fdir_filter(nic_dev->hwdev, filter_info->pkt_type,
+				filter_info->pkt_filters[filter->index].qid,
+				filter_info->pkt_filters[filter->index].enable,
+				true);
+
+	filter_info->pkt_type = 0;
+	filter_info->qid = 0;
+	filter_info->pkt_filters[filter->index].qid = 0;
+	filter_info->type_mask &= ~(1 <<  (filter->index));
+	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
+
+	rte_free(filter);
+}
+
+/*
+ * Add or delete a ntuple filter
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ * @param ntuple_filter
+ *  Pointer to struct rte_eth_ntuple_filter
+ * @param add
+ *  If true, add filter; if false, remove filter
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int hinic_add_del_ntuple_filter(struct rte_eth_dev *dev,
+				struct rte_eth_ntuple_filter *ntuple_filter,
+				bool add)
+{
+	struct hinic_filter_info *filter_info =
+		HINIC_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct hinic_5tuple_filter_info filter_5tuple;
+	struct hinic_5tuple_filter *filter;
+	int ret;
+
+	if (ntuple_filter->flags != RTE_5TUPLE_FLAGS) {
+		PMD_DRV_LOG(ERR, "Only 5tuple is supported.");
+		return -EINVAL;
+	}
+
+	memset(&filter_5tuple, 0, sizeof(struct hinic_5tuple_filter_info));
+	ret = ntuple_filter_to_5tuple(ntuple_filter, &filter_5tuple);
+	if (ret < 0)
+		return ret;
+
+	filter = hinic_5tuple_filter_lookup(&filter_info->fivetuple_list,
+					 &filter_5tuple);
+	if (filter != NULL && add) {
+		PMD_DRV_LOG(ERR, "Filter exists.");
+		return -EEXIST;
+	}
+	if (filter == NULL && !add) {
+		PMD_DRV_LOG(ERR, "Filter doesn't exist.");
+		return -ENOENT;
+	}
+
+	if (add) {
+		filter = rte_zmalloc("hinic_5tuple_filter",
+				sizeof(struct hinic_5tuple_filter), 0);
+		if (filter == NULL)
+			return -ENOMEM;
+		rte_memcpy(&filter->filter_info, &filter_5tuple,
+				sizeof(struct hinic_5tuple_filter_info));
+		filter->queue = ntuple_filter->queue;
+
+		filter_info->qid = ntuple_filter->queue;
+
+		ret = hinic_add_5tuple_filter(dev, filter);
+		if (ret)
+			rte_free(filter);
+
+		return ret;
+	}
+
+	hinic_remove_5tuple_filter(dev, filter);
+
+	return 0;
+}
+
+/**
+ * Create or destroy a flow rule.
+ * Theorically one rule can match more than one filters.
+ * We will let it use the filter which it hitt first.
+ * So, the sequence matters.
+ */
+static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
+					const struct rte_flow_attr *attr,
+					const struct rte_flow_item pattern[],
+					const struct rte_flow_action actions[],
+					struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_ntuple_filter ntuple_filter;
+	struct rte_flow *flow = NULL;
+	struct hinic_ntuple_filter_ele *ntuple_filter_ptr;
+	struct hinic_flow_mem *hinic_flow_mem_ptr;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	flow = rte_zmalloc("hinic_rte_flow", sizeof(struct rte_flow), 0);
+	if (!flow) {
+		PMD_DRV_LOG(ERR, "Failed to allocate flow memory");
+		return NULL;
+	}
+
+	hinic_flow_mem_ptr = rte_zmalloc("hinic_flow_mem",
+			sizeof(struct hinic_flow_mem), 0);
+	if (!hinic_flow_mem_ptr) {
+		PMD_DRV_LOG(ERR, "Failed to allocate hinic_flow_mem_ptr");
+		rte_free(flow);
+		return NULL;
+	}
+
+	hinic_flow_mem_ptr->flow = flow;
+	TAILQ_INSERT_TAIL(&nic_dev->hinic_flow_list, hinic_flow_mem_ptr,
+				entries);
+
+	/* add ntuple filter */
+	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
+	ret = hinic_parse_ntuple_filter(dev, attr, pattern,
+			actions, &ntuple_filter, error);
+	if (ret)
+		goto out;
+
+	ret = hinic_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
+	if (ret)
+		goto out;
+	ntuple_filter_ptr = rte_zmalloc("hinic_ntuple_filter",
+			sizeof(struct hinic_ntuple_filter_ele), 0);
+	rte_memcpy(&ntuple_filter_ptr->filter_info,
+		   &ntuple_filter,
+		   sizeof(struct rte_eth_ntuple_filter));
+	TAILQ_INSERT_TAIL(&nic_dev->filter_ntuple_list,
+	ntuple_filter_ptr, entries);
+	flow->rule = ntuple_filter_ptr;
+	flow->filter_type = RTE_ETH_FILTER_NTUPLE;
+
+	PMD_DRV_LOG(INFO, "Create flow ntuple succeed, func_id: 0x%x",
+	hinic_global_func_id(nic_dev->hwdev));
+	return flow;
+
+out:
+	TAILQ_REMOVE(&nic_dev->hinic_flow_list, hinic_flow_mem_ptr, entries);
+	rte_flow_error_set(error, -ret,
+			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			   "Failed to create flow.");
+	rte_free(hinic_flow_mem_ptr);
+	rte_free(flow);
+	return NULL;
+}
+
+/* Destroy a flow rule on hinic. */
+static int hinic_flow_destroy(struct rte_eth_dev *dev,
+			      struct rte_flow *flow,
+			      struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_flow *pmd_flow = flow;
+	enum rte_filter_type filter_type = pmd_flow->filter_type;
+	struct rte_eth_ntuple_filter ntuple_filter;
+	struct hinic_ntuple_filter_ele *ntuple_filter_ptr;
+	struct hinic_flow_mem *hinic_flow_mem_ptr;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_NTUPLE:
+		ntuple_filter_ptr = (struct hinic_ntuple_filter_ele *)
+					pmd_flow->rule;
+		rte_memcpy(&ntuple_filter, &ntuple_filter_ptr->filter_info,
+			sizeof(struct rte_eth_ntuple_filter));
+		ret = hinic_add_del_ntuple_filter(dev, &ntuple_filter, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&nic_dev->filter_ntuple_list,
+				ntuple_filter_ptr, entries);
+			rte_free(ntuple_filter_ptr);
+		}
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+			filter_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	if (ret) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Failed to destroy flow");
+		return ret;
+	}
+
+	TAILQ_FOREACH(hinic_flow_mem_ptr, &nic_dev->hinic_flow_list, entries) {
+		if (hinic_flow_mem_ptr->flow == pmd_flow) {
+			TAILQ_REMOVE(&nic_dev->hinic_flow_list,
+				hinic_flow_mem_ptr, entries);
+			rte_free(hinic_flow_mem_ptr);
+			break;
+		}
+	}
+	rte_free(flow);
+
+	PMD_DRV_LOG(INFO, "Destroy flow succeed, func_id: 0x%x",
+			hinic_global_func_id(nic_dev->hwdev));
+
+	return ret;
+}
+
 const struct rte_flow_ops hinic_flow_ops = {
 	.validate = hinic_flow_validate,
+	.create = hinic_flow_create,
+	.destroy = hinic_flow_destroy,
 };

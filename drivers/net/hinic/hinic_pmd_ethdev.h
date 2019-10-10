@@ -38,6 +38,57 @@ enum hinic_dev_status {
 	HINIC_DEV_INTR_EN,
 };
 
+#define HINIC_MAX_Q_FILTERS	64 /* hinic just support 64 filter types */
+#define HINIC_PKT_TYPE_FIND_ID(pkt_type) ((pkt_type) - HINIC_MAX_Q_FILTERS)
+
+/* 5tuple filter info */
+struct hinic_5tuple_filter_info {
+	uint32_t dst_ip;
+	uint32_t src_ip;
+	uint16_t dst_port;
+	uint16_t src_port;
+	uint8_t proto; /* l4 protocol. */
+	/*
+	 * seven levels (001b-111b), 111b is highest,
+	 * used when more than one filter matches.
+	 */
+	uint8_t priority;
+	uint8_t dst_ip_mask:1, /* if mask is 1b, do not compare dst ip. */
+		src_ip_mask:1, /* if mask is 1b, do not compare src ip. */
+		dst_port_mask:1, /* if mask is 1b, do not compare dst port. */
+		src_port_mask:1, /* if mask is 1b, do not compare src port. */
+		proto_mask:1; /* if mask is 1b, do not compare protocol. */
+};
+
+/* 5tuple filter structure */
+struct hinic_5tuple_filter {
+	TAILQ_ENTRY(hinic_5tuple_filter) entries;
+	uint16_t index;       /* the index of 5tuple filter */
+	struct hinic_5tuple_filter_info filter_info;
+	uint16_t queue;       /* rx queue assigned to */
+};
+
+TAILQ_HEAD(hinic_5tuple_filter_list, hinic_5tuple_filter);
+
+/*
+ * If this filter is added by configuration,
+ * it should not be removed.
+ */
+struct hinic_pkt_filter {
+	uint16_t pkt_proto;
+	uint8_t qid;
+	bool	enable;
+};
+
+/* Structure to store filters' info. */
+struct hinic_filter_info {
+	uint8_t pkt_type;
+	uint8_t qid;
+	uint64_t type_mask;  /* Bit mask for every used filter */
+	struct hinic_5tuple_filter_list fivetuple_list;
+	struct hinic_pkt_filter pkt_filters[HINIC_MAX_Q_FILTERS];
+};
+
 /* Information about the fdir mode. */
 struct hinic_hw_fdir_mask {
 	uint32_t src_ipv4_mask;
@@ -59,6 +110,26 @@ struct hinic_fdir_rule {
 	struct hinic_atr_input hinic_fdir; /* key of fdir filter */
 	uint8_t queue; /* queue assigned when matched */
 };
+
+/* ntuple filter list structure */
+struct hinic_ntuple_filter_ele {
+	TAILQ_ENTRY(hinic_ntuple_filter_ele) entries;
+	struct rte_eth_ntuple_filter filter_info;
+};
+
+struct rte_flow {
+	enum rte_filter_type filter_type;
+	void *rule;
+};
+
+/* hinic_flow memory list structure */
+struct hinic_flow_mem {
+	TAILQ_ENTRY(hinic_flow_mem) entries;
+	struct rte_flow *flow;
+};
+
+TAILQ_HEAD(hinic_ntuple_filter_list, hinic_ntuple_filter_ele);
+TAILQ_HEAD(hinic_flow_mem_list, hinic_flow_mem);
 
 extern const struct rte_flow_ops hinic_flow_ops;
 
@@ -94,6 +165,10 @@ struct hinic_nic_dev {
 	 * vf: the same with associate pf
 	 */
 	u32 default_cos;
+
+	struct hinic_filter_info    filter;
+	struct hinic_ntuple_filter_list filter_ntuple_list;
+	struct hinic_flow_mem_list hinic_flow_list;
 };
 
 #endif /* _HINIC_PMD_ETHDEV_H_ */
