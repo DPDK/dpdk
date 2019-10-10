@@ -471,6 +471,17 @@ struct hinic_rx_mode_config {
 	u32	rx_mode;
 };
 
+#define HINIC_MGMT_VERSION_MAX_LEN	32
+#define HINIC_COMPILE_TIME_LEN		20
+#define HINIC_FW_VERSION_NAME		16
+
+struct hinic_version_info {
+	struct hinic_mgmt_msg_head mgmt_msg_head;
+
+	u8 ver[HINIC_FW_VERSION_NAME];
+	u8 time[HINIC_COMPILE_TIME_LEN];
+};
+
 /* rss */
 struct nic_rss_indirect_tbl {
 	u32 group_index;
@@ -806,6 +817,8 @@ int hinic_rss_template_alloc(void *hwdev, u8 *tmpl_idx);
 int hinic_rss_template_free(void *hwdev, u8 tmpl_idx);
 
 int hinic_set_rx_mode(void *hwdev, u32 enable);
+
+int hinic_get_mgmt_version(void *hwdev, char *fw);
 
 int hinic_set_rx_csum_offload(void *hwdev, u32 en);
 

@@ -1293,6 +1293,46 @@ int hinic_set_rx_mode(void *hwdev, u32 enable)
 	return 0;
 }
 
+/**
+ * hinic_get_mgmt_version - Get mgmt module version from chip.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param fw
+ *   Firmware version.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
+int hinic_get_mgmt_version(void *hwdev, char *fw)
+{
+	struct hinic_version_info fw_ver;
+	u16 out_size = sizeof(fw_ver);
+	int err;
+
+	if (!hwdev || !fw) {
+		PMD_DRV_LOG(ERR, "Hwdev or fw is NULL");
+		return -EINVAL;
+	}
+
+	memset(&fw_ver, 0, sizeof(fw_ver));
+	fw_ver.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+
+	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_GET_MGMT_VERSION,
+				     &fw_ver, sizeof(fw_ver), &fw_ver,
+				     &out_size);
+	if (err || !out_size || fw_ver.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR, "Failed to get mgmt version, err: %d, status: 0x%x, out size: 0x%x\n",
+			err, fw_ver.mgmt_msg_head.status, out_size);
+		return -EINVAL;
+	}
+
+	snprintf(fw, HINIC_MGMT_VERSION_MAX_LEN, "%s", fw_ver.ver);
+
+	return 0;
+}
+
 int hinic_set_rx_csum_offload(void *hwdev, u32 en)
 {
 	struct hinic_checksum_offload rx_csum_cfg;

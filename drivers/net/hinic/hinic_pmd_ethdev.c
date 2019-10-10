@@ -752,6 +752,27 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	return 0;
 }
 
+static int hinic_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
+				size_t fw_size)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	char fw_ver[HINIC_MGMT_VERSION_MAX_LEN] = {0};
+	int err;
+
+	err = hinic_get_mgmt_version(nic_dev->hwdev, fw_ver);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to get fw version\n");
+		return -EINVAL;
+	}
+
+	if (fw_size < strlen(fw_ver) + 1)
+		return (strlen(fw_ver) + 1);
+
+	snprintf(fw_version, fw_size, "%s", fw_ver);
+
+	return 0;
+}
+
 static int hinic_config_rx_mode(struct hinic_nic_dev *nic_dev, u32 rx_mode_ctrl)
 {
 	int err;
@@ -2813,6 +2834,7 @@ static void hinic_dev_close(struct rte_eth_dev *dev)
 static const struct eth_dev_ops hinic_pmd_ops = {
 	.dev_configure                 = hinic_dev_configure,
 	.dev_infos_get                 = hinic_dev_infos_get,
+	.fw_version_get                = hinic_fw_version_get,
 	.rx_queue_setup                = hinic_rx_queue_setup,
 	.tx_queue_setup                = hinic_tx_queue_setup,
 	.dev_start                     = hinic_dev_start,
@@ -2849,6 +2871,7 @@ static const struct eth_dev_ops hinic_pmd_ops = {
 static const struct eth_dev_ops hinic_pmd_vf_ops = {
 	.dev_configure                 = hinic_dev_configure,
 	.dev_infos_get                 = hinic_dev_infos_get,
+	.fw_version_get                = hinic_fw_version_get,
 	.rx_queue_setup                = hinic_rx_queue_setup,
 	.tx_queue_setup                = hinic_tx_queue_setup,
 	.dev_start                     = hinic_dev_start,

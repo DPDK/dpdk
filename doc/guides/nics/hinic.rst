@@ -32,6 +32,7 @@ Features
 - Multicast MAC filter
 - Flow director
 - Set Link down or up
+- FW version
 
 Prerequisites
 -------------

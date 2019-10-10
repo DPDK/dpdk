@@ -119,6 +119,7 @@ New Features
   * Supported VLAN filter and VLAN offload.
   * Supported Unicast MAC filter and Multicast MAC filter.
   * Supported Flow director for LACP, VRRP, BGP and so on.
+  * Supported FW version get.
 
 * **Added Marvell NITROX symmetric crypto PMD.**
 
