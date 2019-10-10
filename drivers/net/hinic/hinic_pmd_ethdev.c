@@ -2285,6 +2285,46 @@ allmulti:
 	return 0;
 }
 
+/**
+ * DPDK callback to manage filter operations
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param filter_type
+ *   Filter type.
+ * @param filter_op
+ *   Operation to perform.
+ * @param arg
+ *   Pointer to operation-specific structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int hinic_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	int func_id = hinic_global_func_id(nic_dev->hwdev);
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &hinic_flow_ops;
+		break;
+	default:
+		PMD_DRV_LOG(INFO, "Filter type (%d) not supported",
+			filter_type);
+		return -EINVAL;
+	}
+
+	PMD_DRV_LOG(INFO, "Set filter_ctrl succeed, func_id: 0x%x, filter_type: 0x%x,"
+			"filter_op: 0x%x.", func_id, filter_type, filter_op);
+	return 0;
+}
+
 static int hinic_set_default_pause_feature(struct hinic_nic_dev *nic_dev)
 {
 	struct nic_pause_config pause_config = {0};
@@ -2736,6 +2776,7 @@ static const struct eth_dev_ops hinic_pmd_ops = {
 	.mac_addr_remove               = hinic_mac_addr_remove,
 	.mac_addr_add                  = hinic_mac_addr_add,
 	.set_mc_addr_list              = hinic_set_mc_addr_list,
+	.filter_ctrl                   = hinic_dev_filter_ctrl,
 };
 
 static const struct eth_dev_ops hinic_pmd_vf_ops = {
@@ -2767,6 +2808,7 @@ static const struct eth_dev_ops hinic_pmd_vf_ops = {
 	.mac_addr_remove               = hinic_mac_addr_remove,
 	.mac_addr_add                  = hinic_mac_addr_add,
 	.set_mc_addr_list              = hinic_set_mc_addr_list,
+	.filter_ctrl                   = hinic_dev_filter_ctrl,
 };
 
 static int hinic_func_init(struct rte_eth_dev *eth_dev)

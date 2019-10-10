@@ -38,6 +38,30 @@ enum hinic_dev_status {
 	HINIC_DEV_INTR_EN,
 };
 
+/* Information about the fdir mode. */
+struct hinic_hw_fdir_mask {
+	uint32_t src_ipv4_mask;
+	uint32_t dst_ipv4_mask;
+	uint16_t src_port_mask;
+	uint16_t dst_port_mask;
+};
+
+/* Flow Director attribute */
+struct hinic_atr_input {
+	u32 dst_ip;
+	u32 src_ip;
+	u16 src_port;
+	u16 dst_port;
+};
+
+struct hinic_fdir_rule {
+	struct hinic_hw_fdir_mask mask;
+	struct hinic_atr_input hinic_fdir; /* key of fdir filter */
+	uint8_t queue; /* queue assigned when matched */
+};
+
+extern const struct rte_flow_ops hinic_flow_ops;
+
 /* hinic nic_device */
 struct hinic_nic_dev {
 	/* hardware device */
