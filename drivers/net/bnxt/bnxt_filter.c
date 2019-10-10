@@ -82,7 +82,6 @@ void bnxt_free_all_filters(struct bnxt *bp)
 	struct bnxt_filter_info *filter, *temp_filter;
 	unsigned int i;
 
-//	for (i = 0; i < MAX_FF_POOLS; i++) {
 	for (i = 0; i < bp->nr_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		filter = STAILQ_FIRST(&vnic->filter);

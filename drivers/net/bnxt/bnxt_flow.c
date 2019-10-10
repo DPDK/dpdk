@@ -1087,10 +1087,6 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		    vnic->fw_vnic_id != INVALID_HW_RING_ID)
 			goto use_vnic;
 
-		//if (!rxq ||
-		    //bp->vnic_info[0].fw_grp_ids[act_q->index] !=
-		    //INVALID_HW_RING_ID ||
-		    //!rxq->rx_deferred_start) {
 		if (!rxq ||
 		    bp->vnic_info[0].fw_grp_ids[act_q->index] !=
 		    INVALID_HW_RING_ID) {
@@ -1320,9 +1316,6 @@ use_vnic:
 			}
 			rxq = bp->rx_queues[rss->queue[i]];
 
-			//if (bp->vnic_info[0].fw_grp_ids[rss->queue[i]] !=
-			    //INVALID_HW_RING_ID ||
-			    //!rxq->rx_deferred_start) {
 			if (bp->vnic_info[0].fw_grp_ids[rss->queue[i]] !=
 			    INVALID_HW_RING_ID) {
 				PMD_DRV_LOG(ERR,
