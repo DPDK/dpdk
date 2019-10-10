@@ -1436,3 +1436,38 @@ int hinic_flush_qp_res(void *hwdev)
 
 	return 0;
 }
+
+/**
+ * hinic_vf_get_default_cos - Get default cos of VF.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param cos_id
+ *   Cos value.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
+int hinic_vf_get_default_cos(struct hinic_hwdev *hwdev, u8 *cos_id)
+{
+	struct hinic_vf_default_cos vf_cos;
+	u16 out_size = sizeof(vf_cos);
+	int err;
+
+	memset(&vf_cos, 0, sizeof(vf_cos));
+	vf_cos.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+
+	err = hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_L2NIC,
+				     HINIC_PORT_CMD_GET_VF_COS, &vf_cos,
+				     sizeof(vf_cos), &vf_cos,
+				     &out_size, 0);
+	if (err || !out_size || vf_cos.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR, "Get VF default cos failed, err: %d, status: 0x%x, out size: 0x%x",
+			err, vf_cos.mgmt_msg_head.status, out_size);
+		return -EFAULT;
+	}
+	*cos_id = vf_cos.state.default_cos;
+
+	return 0;
+}

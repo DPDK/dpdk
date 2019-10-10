@@ -562,6 +562,18 @@ struct hinic_clear_qp_resource {
 	u16	rsvd1;
 };
 
+struct hinic_dcb_state {
+	u8 dcb_on;
+	u8 default_cos;
+	u8 up_cos[8];
+};
+
+struct hinic_vf_default_cos {
+	struct hinic_mgmt_msg_head mgmt_msg_head;
+
+	struct hinic_dcb_state state;
+};
+
 /* set physical port Anti-Attack rate */
 struct hinic_port_anti_attack_rate {
 	struct hinic_mgmt_msg_head mgmt_msg_head;
@@ -658,5 +670,7 @@ int hinic_clear_phy_port_stats(struct hinic_hwdev *hwdev);
 int hinic_vf_func_init(struct hinic_hwdev *hwdev);
 
 void hinic_vf_func_free(struct hinic_hwdev *hwdev);
+
+int hinic_vf_get_default_cos(struct hinic_hwdev *hwdev, u8 *cos_id);
 
 #endif /* _HINIC_PMD_NICCFG_H_ */

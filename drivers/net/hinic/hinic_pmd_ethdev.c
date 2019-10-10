@@ -20,6 +20,7 @@
 #include "base/hinic_pmd_cmdq.h"
 #include "base/hinic_pmd_niccfg.h"
 #include "base/hinic_pmd_nicio.h"
+#include "base/hinic_pmd_mbox.h"
 #include "hinic_pmd_ethdev.h"
 #include "hinic_pmd_tx.h"
 #include "hinic_pmd_rx.h"
@@ -29,13 +30,21 @@
 
 /* Hinic devices */
 #define HINIC_DEV_ID_PRD		0x1822
+#define HINIC_DEV_ID_VF			0x375E
+#define HINIC_DEV_ID_VF_HV		0x379E
+
+/* Mezz card for Blade Server */
 #define HINIC_DEV_ID_MEZZ_25GE		0x0210
 #define HINIC_DEV_ID_MEZZ_40GE		0x020D
 #define HINIC_DEV_ID_MEZZ_100GE		0x0205
 
+/* 2*25G and 2*100G card */
+#define HINIC_DEV_ID_1822_DUAL_25GE	0x0206
+#define HINIC_DEV_ID_1822_100GE		0x0200
+
 #define HINIC_SERVICE_MODE_NIC		2
 
-#define HINIC_INTR_CB_UNREG_MAX_RETRIES		10
+#define HINIC_INTR_CB_UNREG_MAX_RETRIES	10
 
 #define DEFAULT_BASE_COS		4
 #define NR_MAX_COS			8
@@ -43,7 +52,7 @@
 #define HINIC_MIN_RX_BUF_SIZE		1024
 #define HINIC_MAX_MAC_ADDRS		1
 
-/** Driver-specific log messages type. */
+/* Driver-specific log messages type */
 int hinic_logtype;
 
 struct hinic_xstats_name_off {
@@ -197,10 +206,16 @@ static const struct hinic_xstats_name_off hinic_txq_stats_strings[] = {
 
 static int hinic_xstats_calc_num(struct hinic_nic_dev *nic_dev)
 {
-	return (HINIC_VPORT_XSTATS_NUM +
-		HINIC_PHYPORT_XSTATS_NUM +
-		HINIC_RXQ_XSTATS_NUM * nic_dev->num_rq +
-		HINIC_TXQ_XSTATS_NUM * nic_dev->num_sq);
+	if (HINIC_IS_VF(nic_dev->hwdev)) {
+		return (HINIC_VPORT_XSTATS_NUM +
+			HINIC_RXQ_XSTATS_NUM * nic_dev->num_rq +
+			HINIC_TXQ_XSTATS_NUM * nic_dev->num_sq);
+	} else {
+		return (HINIC_VPORT_XSTATS_NUM +
+			HINIC_PHYPORT_XSTATS_NUM +
+			HINIC_RXQ_XSTATS_NUM * nic_dev->num_rq +
+			HINIC_TXQ_XSTATS_NUM * nic_dev->num_sq);
+	}
 }
 
 static const struct rte_eth_desc_lim hinic_rx_desc_lim = {
@@ -599,7 +614,7 @@ static void hinic_reset_tx_queue(struct rte_eth_dev *dev)
 		txq->wq->delta = txq->q_depth;
 		txq->wq->mask  = txq->q_depth - 1;
 
-		/*clear hardware ci*/
+		/* clear hardware ci */
 		ci_addr = (volatile u32 *)HINIC_CI_VADDR(nic_io->ci_vaddr_base,
 							q_id);
 		*ci_addr = 0;
@@ -888,6 +903,9 @@ static int hinic_dev_start(struct rte_eth_dev *dev)
 		goto cfg_rxtx_fail;
 	}
 
+	/* reactive pf status, so that uP report asyn event */
+	hinic_set_pf_status(nic_dev->hwdev->hwif, HINIC_PF_STATUS_ACTIVE_FLAG);
+
 	/* open virtual port and ready to start packet receiving */
 	rc = hinic_set_vport_enable(nic_dev->hwdev, true);
 	if (rc) {
@@ -915,6 +933,8 @@ en_port_fail:
 	(void)hinic_set_vport_enable(nic_dev->hwdev, false);
 
 en_vport_fail:
+	hinic_set_pf_status(nic_dev->hwdev->hwif, HINIC_PF_STATUS_INIT);
+
 	/* Flush tx && rx chip resources in case of set vport fake fail */
 	(void)hinic_flush_qp_res(nic_dev->hwdev);
 	rte_delay_ms(100);
@@ -1233,7 +1253,7 @@ static int hinic_dev_stats_reset(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
- **/
+ */
 static int hinic_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
@@ -1697,6 +1717,9 @@ static int hinic_dev_xstats_get(struct rte_eth_dev *dev,
 		count++;
 	}
 
+	if (HINIC_IS_VF(nic_dev->hwdev))
+		return count;
+
 	/* Get stats from hinic_phy_port_stats */
 	err = hinic_get_phy_port_stats(nic_dev->hwdev, &port_stats);
 	if (err)
@@ -1765,6 +1788,9 @@ static int hinic_dev_xstats_get_names(struct rte_eth_dev *dev,
 		count++;
 	}
 
+	if (HINIC_IS_VF(nic_dev->hwdev))
+		return count;
+
 	/* get phy port stats */
 	for (i = 0; i < HINIC_PHYPORT_XSTATS_NUM; i++) {
 		snprintf(xstats_names[count].name,
@@ -1805,18 +1831,39 @@ static int hinic_set_default_dcb_feature(struct hinic_nic_dev *nic_dev)
 					up_pgid, up_bw, up_strict);
 }
 
-static void hinic_init_default_cos(struct hinic_nic_dev *nic_dev)
+static int hinic_init_default_cos(struct hinic_nic_dev *nic_dev)
 {
-	nic_dev->default_cos =
-			(hinic_global_func_id(nic_dev->hwdev) +
-			 DEFAULT_BASE_COS) % NR_MAX_COS;
+	u8 cos_id = 0;
+	int err;
+
+	if (!HINIC_IS_VF(nic_dev->hwdev)) {
+		nic_dev->default_cos =
+				(hinic_global_func_id(nic_dev->hwdev) +
+						DEFAULT_BASE_COS) % NR_MAX_COS;
+	} else {
+		err = hinic_vf_get_default_cos(nic_dev->hwdev, &cos_id);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Get VF default cos failed, err: %d",
+					err);
+			return HINIC_ERROR;
+		}
+
+		nic_dev->default_cos = cos_id;
+	}
+
+	return 0;
 }
 
 static int hinic_set_default_hw_feature(struct hinic_nic_dev *nic_dev)
 {
 	int err;
 
-	hinic_init_default_cos(nic_dev);
+	err = hinic_init_default_cos(nic_dev);
+	if (err)
+		return err;
+
+	if (hinic_func_type(nic_dev->hwdev) == TYPE_VF)
+		return 0;
 
 	/* Restore DCB configure to default status */
 	err = hinic_set_default_dcb_feature(nic_dev);
@@ -1852,6 +1899,9 @@ static int32_t hinic_card_workmode_check(struct hinic_nic_dev *nic_dev)
 	struct hinic_board_info info = { 0 };
 	int rc;
 
+	if (hinic_func_type(nic_dev->hwdev) == TYPE_VF)
+		return 0;
+
 	rc = hinic_get_board_info(nic_dev->hwdev, &info);
 	if (rc)
 		return rc;
@@ -1867,7 +1917,7 @@ static int hinic_copy_mempool_init(struct hinic_nic_dev *nic_dev)
 		nic_dev->cpy_mpool =
 		rte_pktmbuf_pool_create(nic_dev->proc_dev_name,
 					HINIC_COPY_MEMPOOL_DEPTH,
-					RTE_CACHE_LINE_SIZE, 0,
+					0, 0,
 					HINIC_COPY_MBUF_SIZE,
 					rte_socket_id());
 		if (!nic_dev->cpy_mpool) {
@@ -1978,6 +2028,14 @@ static int hinic_nic_dev_create(struct rte_eth_dev *eth_dev)
 		goto init_pf_to_mgmt_fail;
 	}
 
+	/* init mailbox */
+	rc = hinic_comm_func_to_func_init(nic_dev->hwdev);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Initialize func_to_func failed, dev_name: %s",
+			    eth_dev->data->name);
+		goto init_func_to_func_fail;
+	}
+
 	rc = hinic_card_workmode_check(nic_dev);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "Check card workmode failed, dev_name: %s",
@@ -2077,6 +2135,9 @@ init_resources_state_fail:
 init_cmdq_fail:
 l2nic_reset_fail:
 workmode_check_fail:
+	hinic_comm_func_to_func_free(nic_dev->hwdev);
+
+init_func_to_func_fail:
 	hinic_comm_pf_to_mgmt_free(nic_dev->hwdev);
 
 init_pf_to_mgmt_fail:
@@ -2110,6 +2171,7 @@ static void hinic_nic_dev_destroy(struct rte_eth_dev *eth_dev)
 	hinic_deinit_nicio(nic_dev->hwdev);
 	hinic_deactivate_hwdev_state(nic_dev->hwdev);
 	hinic_comm_cmdqs_free(nic_dev->hwdev);
+	hinic_comm_func_to_func_free(nic_dev->hwdev);
 	hinic_comm_pf_to_mgmt_free(nic_dev->hwdev);
 	hinic_comm_aeqs_free(nic_dev->hwdev);
 	free_cfg_mgmt(nic_dev->hwdev);
@@ -2117,113 +2179,6 @@ static void hinic_nic_dev_destroy(struct rte_eth_dev *eth_dev)
 	hinic_osdep_deinit(nic_dev->hwdev);
 	rte_free(nic_dev->hwdev);
 	nic_dev->hwdev = NULL;
-}
-
-static int hinic_func_init(struct rte_eth_dev *eth_dev)
-{
-	struct rte_pci_device *pci_dev;
-	struct rte_ether_addr *eth_addr;
-	struct hinic_nic_dev *nic_dev;
-	int rc;
-
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-
-	/* EAL is SECONDARY and eth_dev is already created */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		rc = rte_intr_callback_register(&pci_dev->intr_handle,
-						hinic_dev_interrupt_handler,
-						(void *)eth_dev);
-		if (rc)
-			PMD_DRV_LOG(ERR, "Initialize %s failed in secondary process",
-				    eth_dev->data->name);
-
-		return rc;
-	}
-
-	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(eth_dev);
-	memset(nic_dev, 0, sizeof(*nic_dev));
-
-	snprintf(nic_dev->proc_dev_name,
-		 sizeof(nic_dev->proc_dev_name),
-		 "hinic-%.4x:%.2x:%.2x.%x",
-		 pci_dev->addr.domain, pci_dev->addr.bus,
-		 pci_dev->addr.devid, pci_dev->addr.function);
-
-	/* alloc mac_addrs */
-	eth_addr = rte_zmalloc("hinic_mac", sizeof(*eth_addr), 0);
-	if (!eth_addr) {
-		PMD_DRV_LOG(ERR, "Allocate ethernet addresses' memory failed, dev_name: %s",
-			    eth_dev->data->name);
-		rc = -ENOMEM;
-		goto eth_addr_fail;
-	}
-	eth_dev->data->mac_addrs = eth_addr;
-
-	/*
-	 * Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
-	/* create hardware nic_device */
-	rc = hinic_nic_dev_create(eth_dev);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "Create nic device failed, dev_name: %s",
-			    eth_dev->data->name);
-		goto create_nic_dev_fail;
-	}
-
-	rc = hinic_init_mac_addr(eth_dev);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "Initialize mac table failed, dev_name: %s",
-			    eth_dev->data->name);
-		goto init_mac_fail;
-	}
-
-	/* register callback func to eal lib */
-	rc = rte_intr_callback_register(&pci_dev->intr_handle,
-					hinic_dev_interrupt_handler,
-					(void *)eth_dev);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "Register rte interrupt callback failed, dev_name: %s",
-			    eth_dev->data->name);
-		goto reg_intr_cb_fail;
-	}
-
-	/* enable uio/vfio intr/eventfd mapping */
-	rc = rte_intr_enable(&pci_dev->intr_handle);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "Enable rte interrupt failed, dev_name: %s",
-			    eth_dev->data->name);
-		goto enable_intr_fail;
-	}
-	hinic_set_bit(HINIC_DEV_INTR_EN, &nic_dev->dev_status);
-
-	hinic_set_bit(HINIC_DEV_INIT, &nic_dev->dev_status);
-	PMD_DRV_LOG(INFO, "Initialize %s in primary successfully",
-		    eth_dev->data->name);
-
-	return 0;
-
-enable_intr_fail:
-	(void)rte_intr_callback_unregister(&pci_dev->intr_handle,
-					   hinic_dev_interrupt_handler,
-					   (void *)eth_dev);
-
-reg_intr_cb_fail:
-	hinic_deinit_mac_addr(eth_dev);
-
-init_mac_fail:
-	hinic_nic_dev_destroy(eth_dev);
-
-create_nic_dev_fail:
-	rte_free(eth_addr);
-	eth_dev->data->mac_addrs = NULL;
-
-eth_addr_fail:
-	PMD_DRV_LOG(ERR, "Initialize %s in primary failed",
-		    eth_dev->data->name);
-	return rc;
 }
 
 /**
@@ -2291,6 +2246,141 @@ static const struct eth_dev_ops hinic_pmd_ops = {
 	.xstats_get_names              = hinic_dev_xstats_get_names,
 };
 
+static const struct eth_dev_ops hinic_pmd_vf_ops = {
+	.dev_configure                 = hinic_dev_configure,
+	.dev_infos_get                 = hinic_dev_infos_get,
+	.rx_queue_setup                = hinic_rx_queue_setup,
+	.tx_queue_setup                = hinic_tx_queue_setup,
+	.dev_start                     = hinic_dev_start,
+	.link_update                   = hinic_link_update,
+	.rx_queue_release              = hinic_rx_queue_release,
+	.tx_queue_release              = hinic_tx_queue_release,
+	.dev_stop                      = hinic_dev_stop,
+	.dev_close                     = hinic_dev_close,
+	.rss_hash_update               = hinic_rss_hash_update,
+	.rss_hash_conf_get             = hinic_rss_conf_get,
+	.reta_update                   = hinic_rss_indirtbl_update,
+	.reta_query                    = hinic_rss_indirtbl_query,
+	.stats_get                     = hinic_dev_stats_get,
+	.stats_reset                   = hinic_dev_stats_reset,
+	.xstats_get                    = hinic_dev_xstats_get,
+	.xstats_reset                  = hinic_dev_xstats_reset,
+	.xstats_get_names              = hinic_dev_xstats_get_names,
+};
+
+static int hinic_func_init(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev;
+	struct rte_ether_addr *eth_addr;
+	struct hinic_nic_dev *nic_dev;
+	int rc;
+
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	/* EAL is SECONDARY and eth_dev is already created */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		rc = rte_intr_callback_register(&pci_dev->intr_handle,
+						hinic_dev_interrupt_handler,
+						(void *)eth_dev);
+		if (rc)
+			PMD_DRV_LOG(ERR, "Initialize %s failed in secondary process",
+				    eth_dev->data->name);
+
+		return rc;
+	}
+
+	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(eth_dev);
+	memset(nic_dev, 0, sizeof(*nic_dev));
+
+	snprintf(nic_dev->proc_dev_name,
+		 sizeof(nic_dev->proc_dev_name),
+		 "hinic-%.4x:%.2x:%.2x.%x",
+		 pci_dev->addr.domain, pci_dev->addr.bus,
+		 pci_dev->addr.devid, pci_dev->addr.function);
+
+	/* alloc mac_addrs */
+	eth_addr = rte_zmalloc("hinic_mac", sizeof(*eth_addr), 0);
+	if (!eth_addr) {
+		PMD_DRV_LOG(ERR, "Allocate ethernet addresses' memory failed, dev_name: %s",
+			    eth_dev->data->name);
+		rc = -ENOMEM;
+		goto eth_addr_fail;
+	}
+	eth_dev->data->mac_addrs = eth_addr;
+
+	/*
+	 * Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
+	/* create hardware nic_device */
+	rc = hinic_nic_dev_create(eth_dev);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Create nic device failed, dev_name: %s",
+			    eth_dev->data->name);
+		goto create_nic_dev_fail;
+	}
+
+	if (HINIC_IS_VF(nic_dev->hwdev))
+		eth_dev->dev_ops = &hinic_pmd_vf_ops;
+	else
+		eth_dev->dev_ops = &hinic_pmd_ops;
+
+	rc = hinic_init_mac_addr(eth_dev);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Initialize mac table failed, dev_name: %s",
+			    eth_dev->data->name);
+		goto init_mac_fail;
+	}
+
+	/* register callback func to eal lib */
+	rc = rte_intr_callback_register(&pci_dev->intr_handle,
+					hinic_dev_interrupt_handler,
+					(void *)eth_dev);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Register rte interrupt callback failed, dev_name: %s",
+			    eth_dev->data->name);
+		goto reg_intr_cb_fail;
+	}
+
+	/* enable uio/vfio intr/eventfd mapping */
+	rc = rte_intr_enable(&pci_dev->intr_handle);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Enable rte interrupt failed, dev_name: %s",
+			    eth_dev->data->name);
+		goto enable_intr_fail;
+	}
+	hinic_set_bit(HINIC_DEV_INTR_EN, &nic_dev->dev_status);
+
+	hinic_set_bit(HINIC_DEV_INIT, &nic_dev->dev_status);
+	PMD_DRV_LOG(INFO, "Initialize %s in primary successfully",
+		    eth_dev->data->name);
+
+	return 0;
+
+enable_intr_fail:
+	(void)rte_intr_callback_unregister(&pci_dev->intr_handle,
+					   hinic_dev_interrupt_handler,
+					   (void *)eth_dev);
+
+reg_intr_cb_fail:
+	hinic_deinit_mac_addr(eth_dev);
+
+init_mac_fail:
+	eth_dev->dev_ops = NULL;
+	hinic_nic_dev_destroy(eth_dev);
+
+create_nic_dev_fail:
+	rte_free(eth_addr);
+	eth_dev->data->mac_addrs = NULL;
+
+eth_addr_fail:
+	PMD_DRV_LOG(ERR, "Initialize %s in primary failed",
+		    eth_dev->data->name);
+	return rc;
+}
+
 static int hinic_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
@@ -2303,8 +2393,7 @@ static int hinic_dev_init(struct rte_eth_dev *eth_dev)
 		    (rte_eal_process_type() == RTE_PROC_PRIMARY) ?
 		    "primary" : "secondary");
 
-	/* rte_eth_dev ops, rx_burst and tx_burst */
-	eth_dev->dev_ops = &hinic_pmd_ops;
+	/* rte_eth_dev rx_burst and tx_burst */
 	eth_dev->rx_pkt_burst = hinic_recv_pkts;
 	eth_dev->tx_pkt_burst = hinic_xmit_pkts;
 
@@ -2338,6 +2427,10 @@ static struct rte_pci_id pci_id_hinic_map[] = {
 	{ RTE_PCI_DEVICE(HINIC_HUAWEI_VENDOR_ID, HINIC_DEV_ID_MEZZ_25GE) },
 	{ RTE_PCI_DEVICE(HINIC_HUAWEI_VENDOR_ID, HINIC_DEV_ID_MEZZ_40GE) },
 	{ RTE_PCI_DEVICE(HINIC_HUAWEI_VENDOR_ID, HINIC_DEV_ID_MEZZ_100GE) },
+	{ RTE_PCI_DEVICE(HINIC_HUAWEI_VENDOR_ID, HINIC_DEV_ID_VF) },
+	{ RTE_PCI_DEVICE(HINIC_HUAWEI_VENDOR_ID, HINIC_DEV_ID_VF_HV) },
+	{ RTE_PCI_DEVICE(HINIC_HUAWEI_VENDOR_ID, HINIC_DEV_ID_1822_DUAL_25GE) },
+	{ RTE_PCI_DEVICE(HINIC_HUAWEI_VENDOR_ID, HINIC_DEV_ID_1822_100GE) },
 	{.vendor_id = 0},
 };
 
