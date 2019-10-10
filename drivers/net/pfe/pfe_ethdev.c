@@ -7,6 +7,7 @@
 #include <rte_bus_vdev.h>
 #include <dpaa_of.h>
 
+#include "pfe_logs.h"
 #include "pfe_mod.h"
 
 #define PFE_MAX_MACS 1 /*we can support upto 4 MACs per IF*/
@@ -23,20 +24,26 @@ static struct pfe *g_pfe;
  */
 unsigned int pfe_svr = SVR_LS1012A_REV1;
 
+int pfe_logtype_pmd;
+
 static void
 pfe_soc_version_get(void)
 {
 	FILE *svr_file = NULL;
 	unsigned int svr_ver = 0;
 
+	PMD_INIT_FUNC_TRACE();
+
 	svr_file = fopen(PFE_SOC_ID_FILE, "r");
-	if (!svr_file)
+	if (!svr_file) {
+		PFE_PMD_ERR("Unable to open SoC device");
 		return; /* Not supported on this infra */
+	}
 
 	if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
 		pfe_svr = svr_ver;
 	else
-		printf("Unable to read SoC device");
+		PFE_PMD_ERR("Unable to read SoC device");
 
 	fclose(svr_file);
 }
@@ -51,6 +58,9 @@ pfe_eth_open_cdev(struct pfe_eth_priv_s *priv)
 
 	pfe_cdev_fd = open(PFE_CDEV_PATH, O_RDONLY);
 	if (pfe_cdev_fd < 0) {
+		PFE_PMD_WARN("Unable to open PFE device file (%s).\n",
+			     PFE_CDEV_PATH);
+		PFE_PMD_WARN("Link status update will not be available.\n");
 		priv->link_fd = PFE_CDEV_INVALID_FD;
 		return -1;
 	}
@@ -75,6 +85,8 @@ pfe_eth_close_cdev(struct pfe_eth_priv_s *priv)
 static void
 pfe_eth_exit(struct rte_eth_dev *dev, struct pfe *pfe)
 {
+	PMD_INIT_FUNC_TRACE();
+
 	/* Close the device file for link status */
 	pfe_eth_close_cdev(dev->data->dev_private);
 
@@ -110,6 +122,8 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr",
 			ETHER_ADDR_LEN * PFE_MAX_MACS, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
+		PFE_PMD_ERR("Failed to allocate mem %d to store MAC addresses",
+			ETHER_ADDR_LEN * PFE_MAX_MACS);
 		err = -ENOMEM;
 		goto err0;
 	}
@@ -142,8 +156,10 @@ parse_integer_arg(const char *key __rte_unused,
 	errno = 0;
 
 	i = strtol(value, &end, 10);
-	if (*end != 0 || errno != 0 || i < 0 || i > 1)
+	if (*end != 0 || errno != 0 || i < 0 || i > 1) {
+		PFE_PMD_ERR("Supported Port IDS are 0 and 1");
 		return -EINVAL;
+	}
 
 	*((uint32_t *)extra_args) = i;
 
@@ -199,10 +215,15 @@ pmd_pfe_probe(struct rte_vdev_device *vdev)
 	if (rc < 0)
 		return -EINVAL;
 
-	if (g_pfe) {
-		if (g_pfe->nb_devs >= g_pfe->max_intf)
-			return -EINVAL;
+	RTE_LOG(INFO, PMD, "Initializing pmd_pfe for %s Given gem-id %d\n",
+		name, init_params.gem_id);
 
+	if (g_pfe) {
+		if (g_pfe->nb_devs >= g_pfe->max_intf) {
+			PFE_PMD_ERR("PFE %d dev already created Max is %d",
+				g_pfe->nb_devs, g_pfe->max_intf);
+			return -EINVAL;
+		}
 		goto eth_init;
 	}
 
@@ -212,31 +233,40 @@ pmd_pfe_probe(struct rte_vdev_device *vdev)
 
 	/* Load the device-tree driver */
 	rc = of_init();
-	if (rc)
+	if (rc) {
+		PFE_PMD_ERR("of_init failed with ret: %d", rc);
 		goto err;
+	}
 
 	np = of_find_compatible_node(NULL, NULL, "fsl,pfe");
 	if (!np) {
+		PFE_PMD_ERR("Invalid device node");
 		rc = -EINVAL;
 		goto err;
 	}
 
 	addr = of_get_address(np, 0, &cbus_size, NULL);
-	if (!addr)
+	if (!addr) {
+		PFE_PMD_ERR("of_get_address cannot return qman address\n");
 		goto err;
-
+	}
 	cbus_addr = of_translate_address(np, addr);
-	if (!cbus_addr)
+	if (!cbus_addr) {
+		PFE_PMD_ERR("of_translate_address failed\n");
 		goto err;
-
+	}
 
 	addr = of_get_address(np, 1, &ddr_size, NULL);
-	if (!addr)
+	if (!addr) {
+		PFE_PMD_ERR("of_get_address cannot return qman address\n");
 		goto err;
+	}
 
 	g_pfe->ddr_phys_baseaddr = of_translate_address(np, addr);
-	if (!g_pfe->ddr_phys_baseaddr)
+	if (!g_pfe->ddr_phys_baseaddr) {
+		PFE_PMD_ERR("of_translate_address failed\n");
 		goto err;
+	}
 
 	g_pfe->ddr_size = ddr_size;
 	g_pfe->cbus_size = cbus_size;
@@ -246,6 +276,7 @@ pmd_pfe_probe(struct rte_vdev_device *vdev)
 					MAP_SHARED, fd, cbus_addr);
 	close(fd);
 	if (g_pfe->cbus_baseaddr == MAP_FAILED) {
+		PFE_PMD_ERR("Can not map cbus base");
 		rc = -EINVAL;
 		goto err;
 	}
@@ -253,15 +284,20 @@ pmd_pfe_probe(struct rte_vdev_device *vdev)
 	/* Read interface count */
 	prop = of_get_property(np, "fsl,pfe-num-interfaces", &size);
 	if (!prop) {
+		PFE_PMD_ERR("Failed to read number of interfaces");
 		rc = -ENXIO;
 		goto err_prop;
 	}
 
 	interface_count = rte_be_to_cpu_32((unsigned int)*prop);
 	if (interface_count <= 0) {
+		PFE_PMD_ERR("No ethernet interface count : %d",
+				interface_count);
 		rc = -ENXIO;
 		goto err_prop;
 	}
+	PFE_PMD_INFO("num interfaces = %d ", interface_count);
+
 	g_pfe->max_intf  = interface_count;
 	pfe_soc_version_get();
 eth_init:
@@ -299,6 +335,8 @@ pmd_pfe_remove(struct rte_vdev_device *vdev)
 	if (name == NULL)
 		return -EINVAL;
 
+	PFE_PMD_INFO("Closing eventdev sw device %s", name);
+
 	if (!g_pfe)
 		return 0;
 
@@ -320,3 +358,10 @@ struct rte_vdev_driver pmd_pfe_drv = {
 
 RTE_PMD_REGISTER_VDEV(PFE_NAME_PMD, pmd_pfe_drv);
 RTE_PMD_REGISTER_PARAM_STRING(PFE_NAME_PMD, PFE_VDEV_GEM_ID_ARG "=<int> ");
+
+RTE_INIT(pfe_pmd_init_log)
+{
+	pfe_logtype_pmd = rte_log_register("pmd.net.pfe");
+	if (pfe_logtype_pmd >= 0)
+		rte_log_set_level(pfe_logtype_pmd, RTE_LOG_NOTICE);
+}
