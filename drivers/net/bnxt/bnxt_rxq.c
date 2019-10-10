@@ -384,10 +384,9 @@ bnxt_rx_queue_intr_enable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 
 	if (eth_dev->data->rx_queues) {
 		rxq = eth_dev->data->rx_queues[queue_id];
-		if (!rxq) {
-			rc = -EINVAL;
-			return rc;
-		}
+		if (!rxq)
+			return -EINVAL;
+
 		cpr = rxq->cp_ring;
 		B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
 	}
@@ -408,10 +407,9 @@ bnxt_rx_queue_intr_disable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 
 	if (eth_dev->data->rx_queues) {
 		rxq = eth_dev->data->rx_queues[queue_id];
-		if (!rxq) {
-			rc = -EINVAL;
-			return rc;
-		}
+		if (!rxq)
+			return -EINVAL;
+
 		cpr = rxq->cp_ring;
 		B_CP_DB_DISARM(cpr);
 	}
