@@ -669,10 +669,27 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 			return -ENOSPC;
 		}
 
+		/* If a resource has already been allocated - in this case
+		 * it is the async completion ring, free it. Reallocate it after
+		 * resource reservation. This will ensure the resource counts
+		 * are calculated correctly.
+		 */
+		if (!BNXT_HAS_NQ(bp) && bp->async_cp_ring) {
+			bnxt_disable_int(bp);
+			bnxt_free_cp_ring(bp, bp->async_cp_ring);
+		}
+
 		rc = bnxt_hwrm_func_reserve_vf_resc(bp, false);
 		if (rc) {
 			PMD_DRV_LOG(ERR, "HWRM resource alloc fail:%x\n", rc);
 			return -ENOSPC;
+		}
+
+		if (!BNXT_HAS_NQ(bp) && bp->async_cp_ring) {
+			rc = bnxt_alloc_async_cp_ring(bp);
+			if (rc)
+				return rc;
+			bnxt_enable_int(bp);
 		}
 	} else {
 		/* legacy driver needs to get updated values */
