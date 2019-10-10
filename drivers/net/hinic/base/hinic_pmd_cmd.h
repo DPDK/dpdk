@@ -5,10 +5,7 @@
 #ifndef _HINIC_PORT_CMD_H_
 #define _HINIC_PORT_CMD_H_
 
-enum hinic_eq_type {
-	HINIC_AEQ,
-	HINIC_CEQ
-};
+#define HINIC_AEQ	0
 
 enum hinic_resp_aeq_num {
 	HINIC_AEQ0 = 0,

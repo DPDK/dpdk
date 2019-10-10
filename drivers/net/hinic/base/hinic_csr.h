@@ -48,15 +48,11 @@
 
 /* EQ registers */
 #define HINIC_AEQ_MTT_OFF_BASE_ADDR			0x200
-#define HINIC_CEQ_MTT_OFF_BASE_ADDR			0x400
 
 #define HINIC_EQ_MTT_OFF_STRIDE				0x40
 
 #define HINIC_CSR_AEQ_MTT_OFF(id)			\
 	(HINIC_AEQ_MTT_OFF_BASE_ADDR + (id) * HINIC_EQ_MTT_OFF_STRIDE)
-
-#define HINIC_CSR_CEQ_MTT_OFF(id)			\
-	(HINIC_CEQ_MTT_OFF_BASE_ADDR + (id) * HINIC_EQ_MTT_OFF_STRIDE)
 
 #define HINIC_CSR_EQ_PAGE_OFF_STRIDE			8
 
@@ -68,23 +64,11 @@
 		(HINIC_CSR_AEQ_MTT_OFF(q_id) + \
 		(pg_num) * HINIC_CSR_EQ_PAGE_OFF_STRIDE + 4)
 
-#define HINIC_CEQ_HI_PHYS_ADDR_REG(q_id, pg_num)	\
-		(HINIC_CSR_CEQ_MTT_OFF(q_id) + \
-		(pg_num) * HINIC_CSR_EQ_PAGE_OFF_STRIDE)
-
-#define HINIC_CEQ_LO_PHYS_ADDR_REG(q_id, pg_num)	\
-		(HINIC_CSR_CEQ_MTT_OFF(q_id) + \
-		(pg_num) * HINIC_CSR_EQ_PAGE_OFF_STRIDE + 4)
-
 #define HINIC_EQ_HI_PHYS_ADDR_REG(type, q_id, pg_num)	\
-		((u32)((type == HINIC_AEQ) ? \
-		HINIC_AEQ_HI_PHYS_ADDR_REG(q_id, pg_num) : \
-		HINIC_CEQ_HI_PHYS_ADDR_REG(q_id, pg_num)))
+		((u32)(HINIC_AEQ_HI_PHYS_ADDR_REG(q_id, pg_num)))
 
 #define HINIC_EQ_LO_PHYS_ADDR_REG(type, q_id, pg_num)	\
-		((u32)((type == HINIC_AEQ) ? \
-		HINIC_AEQ_LO_PHYS_ADDR_REG(q_id, pg_num) : \
-		HINIC_CEQ_LO_PHYS_ADDR_REG(q_id, pg_num)))
+		((u32)(HINIC_AEQ_LO_PHYS_ADDR_REG(q_id, pg_num)))
 
 #define HINIC_AEQ_CTRL_0_ADDR_BASE			0xE00
 #define HINIC_AEQ_CTRL_1_ADDR_BASE			0xE04
@@ -104,15 +88,6 @@
 
 #define HINIC_CSR_AEQ_PROD_IDX_ADDR(idx) \
 	(HINIC_AEQ_CONS_IDX_1_ADDR_BASE + (idx) * HINIC_EQ_OFF_STRIDE)
-
-#define HINIC_CEQ_CONS_IDX_0_ADDR_BASE			0x1008
-#define HINIC_CEQ_CONS_IDX_1_ADDR_BASE			0x100C
-
-#define HINIC_CSR_CEQ_CONS_IDX_ADDR(idx) \
-	(HINIC_CEQ_CONS_IDX_0_ADDR_BASE + (idx) * HINIC_EQ_OFF_STRIDE)
-
-#define HINIC_CSR_CEQ_PROD_IDX_ADDR(idx) \
-	(HINIC_CEQ_CONS_IDX_1_ADDR_BASE + (idx) * HINIC_EQ_OFF_STRIDE)
 
 /* API CMD registers */
 #define HINIC_CSR_API_CMD_BASE				0xF000
