@@ -53,6 +53,11 @@
 #define HINIC_MIN_RX_BUF_SIZE		1024
 #define HINIC_MAX_UC_MAC_ADDRS		128
 #define HINIC_MAX_MC_MAC_ADDRS		2048
+
+#define HINIC_DEFAULT_BURST_SIZE	32
+#define HINIC_DEFAULT_NB_QUEUES		1
+#define HINIC_DEFAULT_RING_SIZE		1024
+
 /*
  * vlan_id is a 12 bit number.
  * The VFTA array is actually a 4096 bit array, 128 of 32bit elements.
@@ -752,6 +757,14 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->flow_type_rss_offloads = HINIC_RSS_OFFLOAD_ALL;
 	info->rx_desc_lim = hinic_rx_desc_lim;
 	info->tx_desc_lim = hinic_tx_desc_lim;
+
+	/* Driver-preferred Rx/Tx parameters */
+	info->default_rxportconf.burst_size = HINIC_DEFAULT_BURST_SIZE;
+	info->default_txportconf.burst_size = HINIC_DEFAULT_BURST_SIZE;
+	info->default_rxportconf.nb_queues = HINIC_DEFAULT_NB_QUEUES;
+	info->default_txportconf.nb_queues = HINIC_DEFAULT_NB_QUEUES;
+	info->default_rxportconf.ring_size = HINIC_DEFAULT_RING_SIZE;
+	info->default_txportconf.ring_size = HINIC_DEFAULT_RING_SIZE;
 
 	return 0;
 }
@@ -2157,6 +2170,23 @@ static int hinic_dev_xstats_get(struct rte_eth_dev *dev,
 	return count;
 }
 
+static void hinic_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+				struct rte_eth_rxq_info *qinfo)
+{
+	struct hinic_rxq  *rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->nb_desc = rxq->q_depth;
+}
+
+static void hinic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+				struct rte_eth_txq_info *qinfo)
+{
+	struct hinic_txq  *txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->q_depth;
+}
+
 /**
  * DPDK callback to retrieve names of extended device statistics
  *
@@ -2873,6 +2903,8 @@ static const struct eth_dev_ops hinic_pmd_ops = {
 	.xstats_get                    = hinic_dev_xstats_get,
 	.xstats_reset                  = hinic_dev_xstats_reset,
 	.xstats_get_names              = hinic_dev_xstats_get_names,
+	.rxq_info_get                  = hinic_rxq_info_get,
+	.txq_info_get                  = hinic_txq_info_get,
 	.mac_addr_set                  = hinic_set_mac_addr,
 	.mac_addr_remove               = hinic_mac_addr_remove,
 	.mac_addr_add                  = hinic_mac_addr_add,
@@ -2906,6 +2938,8 @@ static const struct eth_dev_ops hinic_pmd_vf_ops = {
 	.xstats_get                    = hinic_dev_xstats_get,
 	.xstats_reset                  = hinic_dev_xstats_reset,
 	.xstats_get_names              = hinic_dev_xstats_get_names,
+	.rxq_info_get                  = hinic_rxq_info_get,
+	.txq_info_get                  = hinic_txq_info_get,
 	.mac_addr_set                  = hinic_set_mac_addr,
 	.mac_addr_remove               = hinic_mac_addr_remove,
 	.mac_addr_add                  = hinic_mac_addr_add,
