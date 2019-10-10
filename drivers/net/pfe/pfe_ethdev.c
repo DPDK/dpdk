@@ -6,6 +6,7 @@
 #include <rte_kvargs.h>
 #include <rte_ethdev_vdev.h>
 #include <rte_bus_vdev.h>
+#include <rte_ether.h>
 #include <dpaa_of.h>
 
 #include "pfe_logs.h"
@@ -435,12 +436,16 @@ pfe_eth_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = dev->data->nb_rx_queues;
 	dev_info->max_tx_queues = dev->data->nb_tx_queues;
 	dev_info->min_rx_bufsize = HIF_RX_PKT_MIN_SIZE;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->rx_offload_capa = dev_rx_offloads_sup;
 	dev_info->tx_offload_capa = dev_tx_offloads_sup;
-	if (pfe_svr == SVR_LS1012A_REV1)
+	if (pfe_svr == SVR_LS1012A_REV1) {
 		dev_info->max_rx_pktlen = MAX_MTU_ON_REV1 + PFE_ETH_OVERHEAD;
-	else
+		dev_info->max_mtu = MAX_MTU_ON_REV1;
+	} else {
 		dev_info->max_rx_pktlen = JUMBO_FRAME_SIZE;
+		dev_info->max_mtu = JUMBO_FRAME_SIZE - PFE_ETH_OVERHEAD;
+	}
 
 	return 0;
 }
@@ -543,6 +548,59 @@ pfe_supported_ptypes_get(struct rte_eth_dev *dev)
 }
 
 static int
+pfe_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	int ret;
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+	uint16_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+
+	/*TODO Support VLAN*/
+	ret = gemac_set_rx(priv->EMAC_baseaddr, frame_size);
+	if (!ret)
+		dev->data->mtu = mtu;
+
+	return ret;
+}
+
+/* pfe_eth_enet_addr_byte_mac
+ */
+static int
+pfe_eth_enet_addr_byte_mac(u8 *enet_byte_addr,
+			   struct pfe_mac_addr *enet_addr)
+{
+	if (!enet_byte_addr || !enet_addr) {
+		return -1;
+
+	} else {
+		enet_addr->bottom = enet_byte_addr[0] |
+			(enet_byte_addr[1] << 8) |
+			(enet_byte_addr[2] << 16) |
+			(enet_byte_addr[3] << 24);
+		enet_addr->top = enet_byte_addr[4] |
+			(enet_byte_addr[5] << 8);
+		return 0;
+	}
+}
+
+static int
+pfe_dev_set_mac_addr(struct rte_eth_dev *dev,
+		       struct rte_ether_addr *addr)
+{
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+	struct pfe_mac_addr spec_addr;
+	int ret;
+
+	ret = pfe_eth_enet_addr_byte_mac(addr->addr_bytes, &spec_addr);
+	if (ret)
+		return ret;
+
+	gemac_set_laddrN(priv->EMAC_baseaddr,
+			 (struct pfe_mac_addr *)&spec_addr, 1);
+	rte_ether_addr_copy(addr, &dev->data->mac_addrs[0]);
+	return 0;
+}
+
+static int
 pfe_stats_get(struct rte_eth_dev *dev,
 	      struct rte_eth_stats *stats)
 {
@@ -573,6 +631,8 @@ static const struct eth_dev_ops ops = {
 	.tx_queue_setup = pfe_tx_queue_setup,
 	.tx_queue_release  = pfe_tx_queue_release,
 	.dev_supported_ptypes_get = pfe_supported_ptypes_get,
+	.mtu_set              = pfe_mtu_set,
+	.mac_addr_set	      = pfe_dev_set_mac_addr,
 	.stats_get            = pfe_stats_get,
 };
 
@@ -583,6 +643,7 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 	struct pfe_eth_priv_s *priv = NULL;
 	struct ls1012a_eth_platform_data *einfo;
 	struct ls1012a_pfe_platform_data *pfe_info;
+	struct rte_ether_addr addr;
 	int err;
 
 	eth_dev = rte_eth_vdev_allocate(vdev, sizeof(*priv));
@@ -634,6 +695,12 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 		err = -ENOMEM;
 		goto err0;
 	}
+
+	memcpy(addr.addr_bytes, priv->einfo->mac_addr,
+		       ETH_ALEN);
+
+	pfe_dev_set_mac_addr(eth_dev, &addr);
+	rte_ether_addr_copy(&addr, &eth_dev->data->mac_addrs[0]);
 
 	eth_dev->data->mtu = 1500;
 	eth_dev->dev_ops = &ops;
