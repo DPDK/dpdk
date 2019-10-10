@@ -11,6 +11,7 @@
 int ioat_rawdev_test(uint16_t dev_id); /* pre-define to keep compiler happy */
 
 static struct rte_mempool *pool;
+static unsigned short expected_ring_size;
 
 static int
 test_enqueue_copies(int dev_id)
@@ -148,9 +149,9 @@ ioat_rawdev_test(uint16_t dev_id)
 	unsigned int i;
 
 	rte_rawdev_info_get(dev_id, &info);
-	if (p.ring_size != 0) {
-		printf("Error, initial ring size is non-zero (%d)\n",
-				(int)p.ring_size);
+	if (p.ring_size != expected_ring_size) {
+		printf("Error, initial ring size is not as expected (Actual: %d, Expected: %d)\n",
+				(int)p.ring_size, expected_ring_size);
 		return -1;
 	}
 
@@ -165,6 +166,7 @@ ioat_rawdev_test(uint16_t dev_id)
 				IOAT_TEST_RINGSIZE, (int)p.ring_size);
 		return -1;
 	}
+	expected_ring_size = p.ring_size;
 
 	if (rte_rawdev_start(dev_id) != 0) {
 		printf("Error with rte_rawdev_start()\n");
