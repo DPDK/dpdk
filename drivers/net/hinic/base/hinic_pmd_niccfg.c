@@ -10,6 +10,7 @@
 #include "hinic_pmd_mgmt.h"
 #include "hinic_pmd_cmdq.h"
 #include "hinic_pmd_niccfg.h"
+#include "hinic_pmd_mbox.h"
 
 #define l2nic_msg_to_mgmt_sync(hwdev, cmd, buf_in,		\
 			       in_size, buf_out, out_size)	\
@@ -17,6 +18,18 @@
 			buf_in, in_size,			\
 			buf_out, out_size, 0)
 
+/**
+ * hinic_init_function_table - Initialize function table.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param rx_buf_sz
+ *   Receive buffer size.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
 int hinic_init_function_table(void *hwdev, u16 rx_buf_sz)
 {
 	struct hinic_function_table function_table;
@@ -40,8 +53,8 @@ int hinic_init_function_table(void *hwdev, u16 rx_buf_sz)
 				     &function_table, &out_size, 0);
 	if (err || function_table.mgmt_msg_head.status || !out_size) {
 		PMD_DRV_LOG(ERR,
-			"Failed to init func table, ret = %d",
-			function_table.mgmt_msg_head.status);
+			"Failed to init func table, err: %d, status: 0x%x, out size: 0x%x",
+			err, function_table.mgmt_msg_head.status, out_size);
 		return -EFAULT;
 	}
 
@@ -49,13 +62,17 @@ int hinic_init_function_table(void *hwdev, u16 rx_buf_sz)
 }
 
 /**
- * hinic_get_base_qpn - get global number of queue
- * @hwdev: the hardware interface of a nic device
- * @global_qpn: vat page size
+ * hinic_get_base_qpn - Get global queue number.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param global_qpn
+ *   Global queue number.
+ *
  * @return
- *   0 on success,
+ *   0 on success.
  *   negative error value otherwise.
- **/
+ */
 int hinic_get_base_qpn(void *hwdev, u16 *global_qpn)
 {
 	struct hinic_cmd_qpn cmd_qpn;
@@ -77,8 +94,8 @@ int hinic_get_base_qpn(void *hwdev, u16 *global_qpn)
 				     &out_size, 0);
 	if (err || !out_size || cmd_qpn.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR,
-			"Failed to get base qpn, status(%d)",
-			cmd_qpn.mgmt_msg_head.status);
+			"Failed to get base qpn, err: %d, status: 0x%x, out size: 0x%x",
+			err, cmd_qpn.mgmt_msg_head.status, out_size);
 		return -EINVAL;
 	}
 
@@ -89,12 +106,18 @@ int hinic_get_base_qpn(void *hwdev, u16 *global_qpn)
 
 /**
  * hinic_set_mac - Init mac_vlan table in NIC.
- * @hwdev: the hardware interface of a nic device
- * @mac_addr: mac address
- * @vlan_id: set 0 for mac_vlan table initialization
- * @func_id: global function id of NIC
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param mac_addr
+ *   MAC address.
+ * @param vlan_id
+ *   Set 0 for mac_vlan table initialization.
+ * @param func_id
+ *   Global function id of NIC.
+ *
  * @return
- *   0 on success and stats is filled,
+ *   0 on success.
  *   negative error value otherwise.
  */
 int hinic_set_mac(void *hwdev, u8 *mac_addr, u16 vlan_id, u16 func_id)
@@ -122,6 +145,7 @@ int hinic_set_mac(void *hwdev, u8 *mac_addr, u16 vlan_id, u16 func_id)
 			err, mac_info.mgmt_msg_head.status, out_size);
 		return -EINVAL;
 	}
+
 	if (mac_info.mgmt_msg_head.status == HINIC_PF_SET_VF_ALREADY) {
 		PMD_DRV_LOG(WARNING, "PF has already set vf mac, Ignore set operation.");
 		return HINIC_PF_SET_VF_ALREADY;
@@ -132,16 +156,21 @@ int hinic_set_mac(void *hwdev, u8 *mac_addr, u16 vlan_id, u16 func_id)
 
 /**
  * hinic_del_mac - Uninit mac_vlan table in NIC.
- * @hwdev: the hardware interface of a nic device
- * @mac_addr: mac address
- * @vlan_id: set 0 for mac_vlan table initialization
- * @func_id: global function id of NIC
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param mac_addr
+ *   MAC address.
+ * @param vlan_id
+ *   Set 0 for mac_vlan table initialization.
+ * @param func_id
+ *   Global function id of NIC.
+ *
  * @return
- *   0 on success and stats is filled,
+ *   0 on success.
  *   negative error value otherwise.
  */
-int hinic_del_mac(void *hwdev, u8 *mac_addr, u16 vlan_id,
-		  u16 func_id)
+int hinic_del_mac(void *hwdev, u8 *mac_addr, u16 vlan_id, u16 func_id)
 {
 	struct hinic_port_mac_set mac_info;
 	u16 out_size = sizeof(mac_info);
@@ -179,6 +208,18 @@ int hinic_del_mac(void *hwdev, u8 *mac_addr, u16 vlan_id,
 	return 0;
 }
 
+/**
+ * hinic_get_default_mac - Get default mac address from hardware.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param mac_addr
+ *   MAC address.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
 int hinic_get_default_mac(void *hwdev, u8 *mac_addr)
 {
 	struct hinic_port_mac_set mac_info;
@@ -208,6 +249,18 @@ int hinic_get_default_mac(void *hwdev, u8 *mac_addr)
 	return 0;
 }
 
+/**
+ * hinic_set_port_mtu -  Set MTU to port.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param new_mtu
+ *   MTU size.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
 int hinic_set_port_mtu(void *hwdev, u32 new_mtu)
 {
 	struct hinic_mtu mtu_info;
@@ -236,6 +289,18 @@ int hinic_set_port_mtu(void *hwdev, u32 new_mtu)
 	return 0;
 }
 
+/**
+ * hinic_get_link_status - Get link status from hardware.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param link_state
+ *   Link status.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
 int hinic_get_link_status(void *hwdev, u8 *link_state)
 {
 	struct hinic_get_link get_link;
@@ -267,10 +332,16 @@ int hinic_get_link_status(void *hwdev, u8 *link_state)
 
 /**
  * hinic_set_vport_enable - Notify firmware that driver is ready or not.
- * @hwdev: the hardware interface of a nic device
- * @enable: 1: driver is ready; 0: driver is not ok.
- * Return: 0 on success and state is filled, negative error value otherwise.
- **/
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param enable
+ *   1: driver is ready; 0: driver is not ok.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
 int hinic_set_vport_enable(void *hwdev, bool enable)
 {
 	struct hinic_vport_state en_state;
@@ -300,11 +371,15 @@ int hinic_set_vport_enable(void *hwdev, bool enable)
 }
 
 /**
- * hinic_set_port_enable - open MAG to receive packets.
- * @hwdev: the hardware interface of a nic device
- * @enable: 1: open MAG; 0: close MAG.
+ * hinic_set_port_enable - Open MAG to receive packets.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param enable
+ *   1: open MAG; 0: close MAG.
+ *
  * @return
- *   0 on success and stats is filled,
+ *   0 on success.
  *   negative error value otherwise.
  */
 int hinic_set_port_enable(void *hwdev, bool enable)
@@ -317,6 +392,9 @@ int hinic_set_port_enable(void *hwdev, bool enable)
 		PMD_DRV_LOG(ERR, "Hwdev is NULL");
 		return -EINVAL;
 	}
+
+	if (HINIC_IS_VF((struct hinic_hwdev *)hwdev))
+		return 0;
 
 	memset(&en_state, 0, sizeof(en_state));
 	en_state.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
@@ -432,7 +510,7 @@ int hinic_dcb_set_ets(void *hwdev, u8 *up_tc, u8 *pg_bw,
 
 	memset(&ets, 0, sizeof(ets));
 	ets.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
-	ets.port_id = 0;    /* reserved */
+	ets.port_id = 0;	/* reserved */
 	memcpy(ets.up_tc, up_tc, HINIC_DCB_TC_MAX);
 	memcpy(ets.pg_bw, pg_bw, HINIC_DCB_UP_MAX);
 	memcpy(ets.pgid, pgid, HINIC_DCB_UP_MAX);
@@ -672,12 +750,17 @@ int hinic_rss_get_template_tbl(void *hwdev, u32 tmpl_idx, u8 *temp)
 }
 
 /**
- * hinic_rss_set_hash_engine - Init rss hash function .
- * @hwdev: the hardware interface of a nic device
- * @tmpl_idx: index of rss template from NIC.
- * @type: hash function, such as Toeplitz or XOR.
+ * hinic_rss_set_hash_engine - Init rss hash function.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param tmpl_idx
+ *   Index of rss template from NIC.
+ * @param type
+ *   Hash function, such as Toeplitz or XOR.
+ *
  * @return
- *   0 on success and stats is filled,
+ *   0 on success.
  *   negative error value otherwise.
  */
 int hinic_rss_set_hash_engine(void *hwdev, u8 tmpl_idx, u8 type)
@@ -845,12 +928,18 @@ int hinic_rss_cfg(void *hwdev, u8 rss_en, u8 tmpl_idx, u8 tc_num, u8 *prio_tc)
 }
 
 /**
- * hinic_rss_template_alloc - get rss template id from the chip,
- *			      all functions share 96 templates.
- * @hwdev: the pointer to the private hardware device object
- * @tmpl_idx: index of rss template from chip.
- * Return: 0 on success and stats is filled, negative error value otherwise.
- **/
+ * hinic_rss_template_alloc - Get rss template id from the chip,
+ * all functions share 96 templates.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param tmpl_idx
+ *   Index of rss template from chip.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
 int hinic_rss_template_alloc(void *hwdev, u8 *tmpl_idx)
 {
 	struct hinic_rss_template_mgmt template_mgmt;
@@ -882,11 +971,17 @@ int hinic_rss_template_alloc(void *hwdev, u8 *tmpl_idx)
 }
 
 /**
- * hinic_rss_template_alloc - free rss template id to the chip
- * @hwdev: the hardware interface of a nic device
- * @tmpl_idx: index of rss template from NIC.
- * Return: 0 on success and stats is filled, negative error value otherwise.
- **/
+ * hinic_rss_template_free - Free rss template id to the chip.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param tmpl_idx
+ *   Index of rss template from chip.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
 int hinic_rss_template_free(void *hwdev, u8 tmpl_idx)
 {
 	struct hinic_rss_template_mgmt template_mgmt;
@@ -917,12 +1012,17 @@ int hinic_rss_template_free(void *hwdev, u8 tmpl_idx)
 }
 
 /**
- * hinic_set_rx_vhd_mode - change rx buffer size after initialization,
- * @hwdev: the hardware interface of a nic device
- * @mode: not needed.
- * @rx_buf_sz: receive buffer size.
+ * hinic_set_rx_vhd_mode - Change rx buffer size after initialization.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param vhd_mode
+ *   Not needed.
+ * @param rx_buf_sz
+ *   receive buffer size.
+ *
  * @return
- *   0 on success and stats is filled,
+ *   0 on success.
  *   negative error value otherwise.
  */
 int hinic_set_rx_vhd_mode(void *hwdev, u16 vhd_mode, u16 rx_buf_sz)
@@ -1100,6 +1200,54 @@ int hinic_reset_port_link_cfg(void *hwdev)
 	return 0;
 }
 
+/**
+ * hinic_vf_func_init - Register VF to PF.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
+int hinic_vf_func_init(struct hinic_hwdev *hwdev)
+{
+	int err, state = 0;
+
+	if (!HINIC_IS_VF(hwdev))
+		return 0;
+
+	err = hinic_mbox_to_pf(hwdev, HINIC_MOD_L2NIC,
+			HINIC_PORT_CMD_VF_REGISTER, &state, sizeof(state),
+			NULL, NULL, 0);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Fail to register vf");
+		return err;
+	}
+
+	return 0;
+}
+
+/**
+ * hinic_vf_func_free - Unregister VF from PF.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ */
+void hinic_vf_func_free(struct hinic_hwdev *hwdev)
+{
+	int err;
+
+	if (hinic_func_type(hwdev) != TYPE_VF)
+		return;
+
+	err = hinic_mbox_to_pf(hwdev, HINIC_MOD_L2NIC,
+				HINIC_PORT_CMD_VF_UNREGISTER, &err, sizeof(err),
+				NULL, NULL, 0);
+	if (err)
+		PMD_DRV_LOG(ERR, "Fail to unregister VF, err: %d", err);
+}
+
 int hinic_set_fast_recycle_mode(void *hwdev, u8 mode)
 {
 	struct hinic_fast_recycled_mode fast_recycled_mode;
@@ -1199,6 +1347,9 @@ int hinic_set_link_status_follow(void *hwdev,
 	if (!hwdev)
 		return -EINVAL;
 
+	if (HINIC_IS_VF((struct hinic_hwdev *)hwdev))
+		return 0;
+
 	if (status >= HINIC_LINK_FOLLOW_STATUS_MAX) {
 		PMD_DRV_LOG(ERR,
 			"Invalid link follow status: %d", status);
@@ -1254,11 +1405,16 @@ int hinic_get_link_mode(void *hwdev, u32 *supported, u32 *advertised)
 }
 
 /**
- * hinic_flush_qp_res - Flush tx && rx chip resources in case of set vport fake
- * failed when device start.
- * @hwdev: the hardware interface of a nic device
- * Return: 0 on success, negative error value otherwise.
- **/
+ * hinic_flush_qp_res - Flush tx && rx chip resources in case of set vport
+ * fake failed when device start.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
 int hinic_flush_qp_res(void *hwdev)
 {
 	struct hinic_clear_qp_resource qp_res;

@@ -15,6 +15,7 @@
 #include "hinic_pmd_cmdq.h"
 #include "hinic_pmd_mgmt.h"
 #include "hinic_pmd_niccfg.h"
+#include "hinic_pmd_mbox.h"
 
 #define HINIC_DEAULT_EQ_MSIX_PENDING_LIMIT		0
 #define HINIC_DEAULT_EQ_MSIX_COALESC_TIMER_CFG		0xFF
@@ -64,6 +65,52 @@ static const char *__hw_to_char_port_type[LINK_PORT_MAX_TYPE] = {
 static const char *hinic_module_link_err[LINK_ERR_NUM] = {
 	"Unrecognized module",
 };
+
+struct hinic_vf_dma_attr_table {
+	struct hinic_mgmt_msg_head mgmt_msg_head;
+
+	u16	func_idx;
+	u8	func_dma_entry_num;
+	u8	entry_idx;
+	u8	st;
+	u8	at;
+	u8	ph;
+	u8	no_snooping;
+	u8	tph_en;
+	u8	resv1[3];
+};
+
+/**
+ * hinic_cpu_to_be32 - convert data to big endian 32 bit format
+ * @data: the data to convert
+ * @len: length of data to convert, must be Multiple of 4B
+ */
+void hinic_cpu_to_be32(void *data, u32 len)
+{
+	u32 i;
+	u32 *mem = (u32 *)data;
+
+	for (i = 0; i < (len >> 2); i++) {
+		*mem = cpu_to_be32(*mem);
+		mem++;
+	}
+}
+
+/**
+ * hinic_be32_to_cpu - convert data from big endian 32 bit format
+ * @data: the data to convert
+ * @len: length of data to convert, must be Multiple of 4B
+ */
+void hinic_be32_to_cpu(void *data, u32 len)
+{
+	u32 i;
+	u32 *mem = (u32 *)data;
+
+	for (i = 0; i < (len >> 2); i++) {
+		*mem = be32_to_cpu(*mem);
+		mem++;
+	}
+}
 
 static void *
 hinic_dma_mem_zalloc(struct hinic_hwdev *hwdev, size_t size,
@@ -230,11 +277,11 @@ struct dma_pool *dma_pool_create(const char *name, void *dev,
 {
 	struct pci_pool *pool;
 
-	pool = rte_zmalloc(NULL, sizeof(*pool), HINIC_MEM_ALLOC_ALIGNE_MIN);
+	pool = rte_zmalloc(NULL, sizeof(*pool), HINIC_MEM_ALLOC_ALIGN_MIN);
 	if (!pool)
 		return NULL;
 
-	pool->inuse = 0;
+	rte_atomic32_set(&pool->inuse, 0);
 	pool->elem_size = size;
 	pool->align = align;
 	pool->boundary = boundary;
@@ -249,9 +296,9 @@ void dma_pool_destroy(struct dma_pool *pool)
 	if (!pool)
 		return;
 
-	if (pool->inuse != 0) {
-		PMD_DRV_LOG(ERR, "Leak memory, dma_pool:%s, inuse_count:%u",
-			    pool->name, pool->inuse);
+	if (rte_atomic32_read(&pool->inuse) != 0) {
+		PMD_DRV_LOG(ERR, "Leak memory, dma_pool:%s, inuse_count:%d",
+			    pool->name, rte_atomic32_read(&pool->inuse));
 	}
 
 	rte_free(pool);
@@ -264,18 +311,16 @@ void *dma_pool_alloc(struct pci_pool *pool, int flags, dma_addr_t *dma_addr)
 	buf = hinic_dma_mem_zalloc(pool->hwdev, pool->elem_size,
 				   dma_addr, flags, (u32)pool->align);
 	if (buf)
-		pool->inuse++;
+		rte_atomic32_inc(&pool->inuse);
 
 	return buf;
 }
 
 void dma_pool_free(struct pci_pool *pool, void *vaddr, dma_addr_t dma)
 {
-	pool->inuse--;
+	rte_atomic32_dec(&pool->inuse);
 	hinic_dma_mem_free(pool->hwdev, pool->elem_size, vaddr, dma);
 }
-
-
 
 #define HINIC_MAX_DMA_ENTRIES		8192
 int hinic_osdep_init(struct hinic_hwdev *hwdev)
@@ -332,18 +377,6 @@ void hinic_osdep_deinit(struct hinic_hwdev *hwdev)
 	}
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * hinic_set_ci_table - set ci attribute table
  * @hwdev: the hardware interface of a nic device
@@ -352,7 +385,7 @@ void hinic_osdep_deinit(struct hinic_hwdev *hwdev)
  * @return
  *   0 on success and ci attribute table is filled,
  *   negative error value otherwise.
- **/
+ */
 int hinic_set_ci_table(void *hwdev, u16 q_id, struct hinic_sq_attr *attr)
 {
 	struct hinic_cons_idx_attr cons_idx_attr;
@@ -385,7 +418,7 @@ int hinic_set_ci_table(void *hwdev, u16 q_id, struct hinic_sq_attr *attr)
  * @return
  *   0 on success,
  *   negative error value otherwise.
- **/
+ */
 int hinic_set_pagesize(void *hwdev, u8 page_size)
 {
 	struct hinic_page_size cmd;
@@ -417,7 +450,6 @@ static int wait_for_flr_finish(struct hinic_hwif *hwif)
 	do {
 		status = hinic_get_pf_status(hwif);
 		if (status == HINIC_PF_STATUS_FLR_FINISH_FLAG) {
-			hinic_set_pf_status(hwif, HINIC_PF_STATUS_ACTIVE_FLAG);
 			return 0;
 		}
 
@@ -463,13 +495,51 @@ static int wait_cmdq_stop(struct hinic_hwdev *hwdev)
 	return err;
 }
 
+static int hinic_vf_rx_tx_flush(struct hinic_hwdev *hwdev)
+{
+	struct hinic_clear_resource clr_res;
+	int err;
+
+	err = wait_cmdq_stop(hwdev);
+	if (err) {
+		PMD_DRV_LOG(WARNING, "Cmdq is still working");
+		return err;
+	}
+
+	memset(&clr_res, 0, sizeof(clr_res));
+	clr_res.func_idx = HINIC_HWIF_GLOBAL_IDX(hwdev->hwif);
+	clr_res.ppf_idx  = HINIC_HWIF_PPF_IDX(hwdev->hwif);
+	err = hinic_mbox_to_pf_no_ack(hwdev, HINIC_MOD_COMM,
+		HINIC_MGMT_CMD_START_FLR, &clr_res, sizeof(clr_res));
+	if (err)
+		PMD_DRV_LOG(WARNING, "Notice flush message failed");
+
+	/*
+	 * PF firstly set VF doorbell flush csr to be disabled. After PF finish
+	 * VF resources flush, PF will set VF doorbell flush csr to be enabled.
+	 */
+	err = wait_until_doorbell_flush_states(hwdev->hwif, DISABLE_DOORBELL);
+	if (err)
+		PMD_DRV_LOG(WARNING, "Wait doorbell flush disable timeout");
+
+	err = wait_until_doorbell_flush_states(hwdev->hwif, ENABLE_DOORBELL);
+	if (err)
+		PMD_DRV_LOG(WARNING, "Wait doorbell flush enable timeout");
+
+	err = hinic_reinit_cmdq_ctxts(hwdev);
+	if (err)
+		PMD_DRV_LOG(WARNING, "Reinit cmdq failed");
+
+	return err;
+}
+
 /**
  * hinic_pf_rx_tx_flush - clean up hardware resource
  * @hwdev: the hardware interface of a nic device
  * @return
  *   0 on success,
  *   negative error value otherwise.
- **/
+ */
 static int hinic_pf_rx_tx_flush(struct hinic_hwdev *hwdev)
 {
 	struct hinic_hwif *hwif = hwdev->hwif;
@@ -523,7 +593,10 @@ static int hinic_pf_rx_tx_flush(struct hinic_hwdev *hwdev)
 
 int hinic_func_rx_tx_flush(struct hinic_hwdev *hwdev)
 {
-	return hinic_pf_rx_tx_flush(hwdev);
+	if (HINIC_FUNC_TYPE(hwdev) == TYPE_VF)
+		return hinic_vf_rx_tx_flush(hwdev);
+	else
+		return hinic_pf_rx_tx_flush(hwdev);
 }
 
 /**
@@ -531,7 +604,7 @@ int hinic_func_rx_tx_flush(struct hinic_hwdev *hwdev)
  * @hwdev: the hardware interface of a nic device
  * @interrupt_info: Information of Interrupt aggregation
  * Return: 0 on success, negative error value otherwise.
- **/
+ */
 static int hinic_get_interrupt_cfg(struct hinic_hwdev *hwdev,
 				struct nic_interrupt_info *interrupt_info)
 {
@@ -567,7 +640,7 @@ static int hinic_get_interrupt_cfg(struct hinic_hwdev *hwdev,
  * @hwdev: the hardware interface of a nic device
  * @interrupt_info: Information of Interrupt aggregation
  * Return: 0 on success, negative error value otherwise.
- **/
+ */
 int hinic_set_interrupt_cfg(struct hinic_hwdev *hwdev,
 			    struct nic_interrupt_info interrupt_info)
 {
@@ -623,7 +696,7 @@ int hinic_set_interrupt_cfg(struct hinic_hwdev *hwdev,
  * @return
  *   0 on success,
  *   negative error value otherwise.
- **/
+ */
 int init_aeqs_msix_attr(void *hwdev)
 {
 	struct hinic_hwdev *nic_hwdev = hwdev;
@@ -662,7 +735,7 @@ int init_aeqs_msix_attr(void *hwdev)
  * @ph: PCIE TLP Processing Hint field
  * @no_snooping: PCIE TLP No snooping
  * @tph_en: PCIE TLP Processing Hint Enable
- **/
+ */
 static void set_pf_dma_attr_entry(struct hinic_hwdev *hwdev, u32 entry_idx,
 				  u8 st, u8 at, u8 ph,
 				  enum hinic_pcie_nosnoop no_snooping,
@@ -690,28 +763,74 @@ static void set_pf_dma_attr_entry(struct hinic_hwdev *hwdev, u32 entry_idx,
 	hinic_hwif_write_reg(hwdev->hwif, addr, val);
 }
 
+static int set_vf_dma_attr_entry(struct hinic_hwdev *hwdev, u8 entry_idx,
+				u8 st, u8 at, u8 ph,
+				enum hinic_pcie_nosnoop no_snooping,
+				enum hinic_pcie_tph tph_en)
+{
+	struct hinic_vf_dma_attr_table attr;
+
+	memset(&attr, 0, sizeof(attr));
+	attr.func_idx = hinic_global_func_id(hwdev);
+	attr.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	attr.func_dma_entry_num = hinic_dma_attr_entry_num(hwdev);
+	attr.entry_idx = entry_idx;
+	attr.st = st;
+	attr.at = at;
+	attr.ph = ph;
+	attr.no_snooping = no_snooping;
+	attr.tph_en = tph_en;
+
+	return hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_COMM,
+					HINIC_MGMT_CMD_DMA_ATTR_SET,
+					&attr, sizeof(attr), NULL, NULL, 0);
+}
+
 /**
  * dma_attr_table_init - initialize the the default dma attributes
  * @hwdev: the pointer to the private hardware device object
- **/
-static void dma_attr_table_init(struct hinic_hwdev *hwdev)
+ */
+static int dma_attr_table_init(struct hinic_hwdev *hwdev)
 {
-	if (HINIC_IS_VF(hwdev))
-		return;
+	int err = 0;
 
-	set_pf_dma_attr_entry(hwdev, PCIE_MSIX_ATTR_ENTRY,
-			      HINIC_PCIE_ST_DISABLE,
-			      HINIC_PCIE_AT_DISABLE,
-			      HINIC_PCIE_PH_DISABLE,
-			      HINIC_PCIE_SNOOP,
-			      HINIC_PCIE_TPH_DISABLE);
+	if (HINIC_IS_VF(hwdev))
+		err = set_vf_dma_attr_entry(hwdev, PCIE_MSIX_ATTR_ENTRY,
+				HINIC_PCIE_ST_DISABLE, HINIC_PCIE_AT_DISABLE,
+				HINIC_PCIE_PH_DISABLE, HINIC_PCIE_SNOOP,
+				HINIC_PCIE_TPH_DISABLE);
+	else
+		set_pf_dma_attr_entry(hwdev, PCIE_MSIX_ATTR_ENTRY,
+				HINIC_PCIE_ST_DISABLE, HINIC_PCIE_AT_DISABLE,
+				HINIC_PCIE_PH_DISABLE, HINIC_PCIE_SNOOP,
+				HINIC_PCIE_TPH_DISABLE);
+
+	return err;
 }
 
+/**
+ * hinic_init_attr_table - init dma and aeq msix attribute table
+ * @hwdev: the pointer to the private hardware device object
+ */
 int hinic_init_attr_table(struct hinic_hwdev *hwdev)
 {
-	dma_attr_table_init(hwdev);
+	int err;
 
-	return init_aeqs_msix_attr(hwdev);
+	err = dma_attr_table_init(hwdev);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Initialize dma attribute table failed, err: %d",
+				err);
+		return err;
+	}
+
+	err = init_aeqs_msix_attr(hwdev);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Initialize aeqs msix attribute failed, err: %d",
+				err);
+		return err;
+	}
+
+	return 0;
 }
 
 #define FAULT_SHOW_STR_LEN 16
@@ -826,7 +945,7 @@ static int resources_state_set(struct hinic_hwdev *hwdev,
  * @return
  *   0 on success,
  *   negative error value otherwise.
- **/
+ */
 int hinic_activate_hwdev_state(struct hinic_hwdev *hwdev)
 {
 	int rc = HINIC_OK;
@@ -834,9 +953,7 @@ int hinic_activate_hwdev_state(struct hinic_hwdev *hwdev)
 	if (!hwdev)
 		return -EINVAL;
 
-	if (!HINIC_IS_VF(hwdev))
-		hinic_set_pf_status(hwdev->hwif,
-				    HINIC_PF_STATUS_ACTIVE_FLAG);
+	hinic_set_pf_status(hwdev->hwif, HINIC_PF_STATUS_ACTIVE_FLAG);
 
 	rc = resources_state_set(hwdev, HINIC_RES_ACTIVE);
 	if (rc) {
@@ -851,7 +968,7 @@ int hinic_activate_hwdev_state(struct hinic_hwdev *hwdev)
  * hinic_deactivate_hwdev_state - Deactivate host nic state and notify mgmt
  * channel that host nic is not ready.
  * @hwdev: the pointer to the private hardware device object
- **/
+ */
 void hinic_deactivate_hwdev_state(struct hinic_hwdev *hwdev)
 {
 	int rc = HINIC_OK;
@@ -863,8 +980,7 @@ void hinic_deactivate_hwdev_state(struct hinic_hwdev *hwdev)
 	if (rc)
 		PMD_DRV_LOG(ERR, "Deinit resources state failed");
 
-	if (!HINIC_IS_VF(hwdev))
-		hinic_set_pf_status(hwdev->hwif, HINIC_PF_STATUS_INIT);
+	hinic_set_pf_status(hwdev->hwif, HINIC_PF_STATUS_INIT);
 }
 
 int hinic_get_board_info(void *hwdev, struct hinic_board_info *info)
@@ -898,7 +1014,7 @@ int hinic_get_board_info(void *hwdev, struct hinic_board_info *info)
  * @return
  *   0 on success,
  *   negative error value otherwise.
- **/
+ */
 int hinic_l2nic_reset(struct hinic_hwdev *hwdev)
 {
 	struct hinic_hwif *hwif = hwdev->hwif;

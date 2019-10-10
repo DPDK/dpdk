@@ -31,7 +31,7 @@ enum hinic_msix_state {
 	HINIC_MSIX_DISABLE,
 };
 
-/* Defines the IRQ information structure*/
+/* Defines the IRQ information structure */
 struct irq_info {
 	u16 msix_entry_idx; /* IRQ corresponding index number */
 	u32 irq_id;         /* the IRQ number from OS */
@@ -59,11 +59,11 @@ struct hinic_func_attr {
 
 	u8			ppf_idx;
 
-	u16			num_irqs;		/* max: 2 ^ 15 */
-	u8			num_aeqs;		/* max: 2 ^ 3 */
-	u8			num_ceqs;		/* max: 2 ^ 7 */
+	u16			num_irqs;	/* max: 2 ^ 15 */
+	u8			num_aeqs;	/* max: 2 ^ 3 */
+	u8			num_ceqs;	/* max: 2 ^ 7 */
 
-	u8			num_dma_attr;		/* max: 2 ^ 6 */
+	u8			num_dma_attr;	/* max: 2 ^ 6 */
 
 	u16			global_vf_id_of_pf;
 };
@@ -104,6 +104,9 @@ int hinic_alloc_db_addr(void *hwdev, void __iomem **db_base);
 
 void hinic_free_db_addr(void *hwdev, void __iomem *db_base);
 
+int wait_until_doorbell_flush_states(struct hinic_hwif *hwif,
+					enum hinic_doorbell_ctrl states);
+
 void hinic_set_msix_state(void *hwdev, u16 msix_idx,
 			  enum hinic_msix_state flag);
 
@@ -115,5 +118,7 @@ u8 hinic_ppf_idx(void *hwdev);
 int hinic_hwif_res_init(struct hinic_hwdev *hwdev);
 
 void hinic_hwif_res_free(struct hinic_hwdev *hwdev);
+
+u8 hinic_dma_attr_entry_num(void *hwdev);
 
 #endif /* _HINIC_PMD_HWIF_H_ */

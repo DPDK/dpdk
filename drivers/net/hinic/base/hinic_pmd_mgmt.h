@@ -82,7 +82,7 @@ struct hinic_msg_pf_to_mgmt {
 	struct hinic_hwdev		*hwdev;
 
 	/* mutex for sync message */
-	pthread_mutex_t			sync_msg_lock;
+	pthread_mutex_t			sync_msg_mutex;
 
 	void				*async_msg_buf;
 	void				*sync_msg_buf;

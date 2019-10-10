@@ -18,7 +18,7 @@
 
 /* dma pool */
 struct dma_pool {
-	u32 inuse;
+	rte_atomic32_t inuse;
 	size_t elem_size;
 	size_t align;
 	size_t boundary;
@@ -484,5 +484,9 @@ void hinic_deactivate_hwdev_state(struct hinic_hwdev *hwdev);
 int hinic_l2nic_reset(struct hinic_hwdev *hwdev);
 
 int hinic_set_pagesize(void *hwdev, u8 page_size);
+
+void hinic_cpu_to_be32(void *data, u32 len);
+
+void hinic_be32_to_cpu(void *data, u32 len);
 
 #endif /* _HINIC_PMD_HWDEV_H_ */

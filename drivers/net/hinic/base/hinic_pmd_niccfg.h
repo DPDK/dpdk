@@ -655,4 +655,8 @@ int hinic_clear_vport_stats(struct hinic_hwdev *hwdev);
 
 int hinic_clear_phy_port_stats(struct hinic_hwdev *hwdev);
 
+int hinic_vf_func_init(struct hinic_hwdev *hwdev);
+
+void hinic_vf_func_free(struct hinic_hwdev *hwdev);
+
 #endif /* _HINIC_PMD_NICCFG_H_ */

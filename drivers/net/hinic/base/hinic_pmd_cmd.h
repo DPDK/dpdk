@@ -25,6 +25,12 @@ enum hinic_mod_type {
 	HINIC_MOD_MAX	= 15
 };
 
+/* only used by VFD communicating with PFD to register or unregister,
+ * command mode type is HINIC_MOD_L2NIC
+ */
+#define HINIC_PORT_CMD_VF_REGISTER	0x0
+#define HINIC_PORT_CMD_VF_UNREGISTER	0x1
+
 /* cmd of mgmt CPU message for NIC module */
 enum hinic_port_cmd {
 	HINIC_PORT_CMD_MGMT_RESET		= 0x0,
@@ -416,12 +422,12 @@ enum hinic_pf_status {
 };
 
 /* total doorbell or direct wqe size is 512kB, db num: 128, dwqe: 128 */
-#define HINIC_DB_DWQE_SIZE       0x00080000
+#define HINIC_DB_DWQE_SIZE	0x00080000
 
-/* db/dwqe page size: 4K */
-#define HINIC_DB_PAGE_SIZE		0x00001000ULL
+/* db page size: 4K */
+#define HINIC_DB_PAGE_SIZE	0x00001000ULL
 
-#define HINIC_DB_MAX_AREAS         (HINIC_DB_DWQE_SIZE / HINIC_DB_PAGE_SIZE)
+#define HINIC_DB_MAX_AREAS	(HINIC_DB_DWQE_SIZE / HINIC_DB_PAGE_SIZE)
 
 #define HINIC_PCI_MSIX_ENTRY_SIZE			16
 #define HINIC_PCI_MSIX_ENTRY_VECTOR_CTRL		12

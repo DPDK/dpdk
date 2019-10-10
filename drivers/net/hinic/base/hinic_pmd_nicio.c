@@ -442,7 +442,7 @@ static int clean_qp_offload_ctxt(struct hinic_nic_io *nic_io)
  * @rx_buf_sz: receive buffer size
  * @return
  *   hw rx buffer size
- **/
+ */
 static u16 get_hw_rx_buf_size(u32 rx_buf_sz)
 {
 	u16 num_hw_types = sizeof(hinic_hw_rx_buf_size)
@@ -466,7 +466,7 @@ static u16 get_hw_rx_buf_size(u32 rx_buf_sz)
  * @sq_depth: the depth of transmit queue
  * @rx_buf_sz: receive buffer size from app
  * Return: 0 on success, negative error value otherwise.
- **/
+ */
 static int
 hinic_set_root_ctxt(void *hwdev, u16 rq_depth, u16 sq_depth, int rx_buf_sz)
 {
@@ -495,7 +495,7 @@ hinic_set_root_ctxt(void *hwdev, u16 rq_depth, u16 sq_depth, int rx_buf_sz)
  * @return
  *   0 on success,
  *   negative error value otherwise.
- **/
+ */
 static int hinic_clean_root_ctxt(void *hwdev)
 {
 	struct hinic_root_ctxt root_ctxt;
@@ -618,6 +618,12 @@ static int hinic_init_nic_hwdev(struct hinic_hwdev *hwdev)
 		goto err_init_nic_hwdev;
 	}
 
+	err = hinic_vf_func_init(hwdev);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to init nic mbox");
+		goto err_init_nic_hwdev;
+	}
+
 	err = hinic_set_fast_recycle_mode(hwdev, RECYCLE_MODE_DPDK);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to set fast recycle mode");
@@ -632,6 +638,7 @@ err_init_nic_hwdev:
 
 static void hinic_free_nic_hwdev(struct hinic_hwdev *hwdev)
 {
+	hinic_vf_func_free(hwdev);
 	hwdev->nic_io = NULL;
 }
 
@@ -861,7 +868,7 @@ void hinic_deinit_nicio(struct hinic_hwdev *hwdev)
  * @return
  *   0 on success,
  *   negative error value otherwise.
- **/
+ */
 int hinic_convert_rx_buf_size(u32 rx_buf_sz, u32 *match_sz)
 {
 	u32 i, num_hw_types, best_match_sz;

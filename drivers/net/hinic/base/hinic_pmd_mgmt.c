@@ -7,6 +7,7 @@
 #include "hinic_pmd_hwdev.h"
 #include "hinic_pmd_hwif.h"
 #include "hinic_pmd_mgmt.h"
+#include "hinic_pmd_mbox.h"
 
 #define BUF_OUT_DEFAULT_SIZE		1
 
@@ -72,7 +73,7 @@
  * mgmt_msg_len - calculate the total message length
  * @msg_data_len: the length of the message data
  * Return: the total message length
- **/
+ */
 static u16 mgmt_msg_len(u16 msg_data_len)
 {
 	/* u64 - the size of the header */
@@ -99,7 +100,7 @@ static u16 mgmt_msg_len(u16 msg_data_len)
  * @direction: the direction of the original message
  * @cmd: the command to do
  * @msg_id: message id
- **/
+ */
 static void prepare_header(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 			   u64 *header, int msg_len, enum hinic_mod_type mod,
 			   enum hinic_msg_ack_type ack_type,
@@ -128,7 +129,7 @@ static void prepare_header(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
  * @header: pointer of the header to prepare
  * @msg: the data of the message
  * @msg_len: the length of the message
- **/
+ */
 static void prepare_mgmt_cmd(u8 *mgmt_cmd, u64 *header, void *msg,
 			     int msg_len)
 {
@@ -149,7 +150,7 @@ static void prepare_mgmt_cmd(u8 *mgmt_cmd, u64 *header, void *msg,
  * alloc_recv_msg - allocate received message memory
  * @recv_msg: pointer that will hold the allocated data
  * Return: 0 - success, negative - failure
- **/
+ */
 static int alloc_recv_msg(struct hinic_recv_msg *recv_msg)
 {
 	int err;
@@ -177,7 +178,7 @@ alloc_buf_out_err:
 /**
  * free_recv_msg - free received message memory
  * @recv_msg: pointer that holds the allocated data
- **/
+ */
 static void free_recv_msg(struct hinic_recv_msg *recv_msg)
 {
 	kfree(recv_msg->buf_out);
@@ -188,7 +189,7 @@ static void free_recv_msg(struct hinic_recv_msg *recv_msg)
  * alloc_msg_buf - allocate all the message buffers of PF to MGMT channel
  * @pf_to_mgmt: PF to MGMT channel
  * Return: 0 - success, negative - failure
- **/
+ */
 static int alloc_msg_buf(struct hinic_msg_pf_to_mgmt *pf_to_mgmt)
 {
 	int err;
@@ -237,7 +238,7 @@ alloc_msg_for_resp_err:
  * free_msg_buf - free all the message buffers of PF to MGMT channel
  * @pf_to_mgmt: PF to MGMT channel
  * Return: 0 - success, negative - failure
- **/
+ */
 static void free_msg_buf(struct hinic_msg_pf_to_mgmt *pf_to_mgmt)
 {
 	kfree(pf_to_mgmt->sync_msg_buf);
@@ -257,7 +258,7 @@ static void free_msg_buf(struct hinic_msg_pf_to_mgmt *pf_to_mgmt)
  * @direction: the direction of the original message
  * @resp_msg_id: message id of response
  * Return: 0 - success, negative - failure
- **/
+ */
 static int send_msg_to_mgmt_async(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 				  enum hinic_mod_type mod, u8 cmd,
 				  void *msg, u16 msg_len,
@@ -295,7 +296,7 @@ static int send_msg_to_mgmt_async(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
  * @direction: the direction of the original message
  * @resp_msg_id: msg id to response for
  * Return: 0 - success, negative - failure
- **/
+ */
 static int send_msg_to_mgmt_sync(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 				 enum hinic_mod_type mod, u8 cmd,
 				 void *msg, u16 msg_len,
@@ -327,7 +328,7 @@ static int send_msg_to_mgmt_sync(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
  * hinic_pf_to_mgmt_init - initialize PF to MGMT channel
  * @hwdev: the pointer to the private hardware device object
  * Return: 0 - success, negative - failure
- **/
+ */
 static int hinic_pf_to_mgmt_init(struct hinic_hwdev *hwdev)
 {
 	struct hinic_msg_pf_to_mgmt *pf_to_mgmt;
@@ -342,7 +343,7 @@ static int hinic_pf_to_mgmt_init(struct hinic_hwdev *hwdev)
 	hwdev->pf_to_mgmt = pf_to_mgmt;
 	pf_to_mgmt->hwdev = hwdev;
 
-	err = hinic_mutex_init(&pf_to_mgmt->sync_msg_lock, NULL);
+	err = hinic_mutex_init(&pf_to_mgmt->sync_msg_mutex, NULL);
 	if (err)
 		goto mutex_init_err;
 
@@ -364,7 +365,7 @@ api_cmd_init_err:
 	free_msg_buf(pf_to_mgmt);
 
 alloc_msg_buf_err:
-	hinic_mutex_destroy(&pf_to_mgmt->sync_msg_lock);
+	hinic_mutex_destroy(&pf_to_mgmt->sync_msg_mutex);
 
 mutex_init_err:
 	kfree(pf_to_mgmt);
@@ -375,14 +376,14 @@ mutex_init_err:
 /**
  * hinic_pf_to_mgmt_free - free PF to MGMT channel
  * @hwdev: the pointer to the private hardware device object
- **/
+ */
 static void hinic_pf_to_mgmt_free(struct hinic_hwdev *hwdev)
 {
 	struct hinic_msg_pf_to_mgmt *pf_to_mgmt = hwdev->pf_to_mgmt;
 
 	hinic_api_cmd_free(pf_to_mgmt->cmd_chain);
 	free_msg_buf(pf_to_mgmt);
-	hinic_mutex_destroy(&pf_to_mgmt->sync_msg_lock);
+	hinic_mutex_destroy(&pf_to_mgmt->sync_msg_mutex);
 	kfree(pf_to_mgmt);
 }
 
@@ -396,7 +397,9 @@ hinic_pf_to_mgmt_sync(struct hinic_hwdev *hwdev,
 	u32 timeo;
 	int err, i;
 
-	pthread_mutex_lock(&pf_to_mgmt->sync_msg_lock);
+	err = hinic_mutex_lock(&pf_to_mgmt->sync_msg_mutex);
+	if (err)
+		return err;
 
 	SYNC_MSG_ID_INC(pf_to_mgmt);
 	recv_msg = &pf_to_mgmt->recv_resp_msg_from_mgmt;
@@ -455,7 +458,7 @@ hinic_pf_to_mgmt_sync(struct hinic_hwdev *hwdev,
 unlock_sync_msg:
 	if (err && out_size)
 		*out_size = 0;
-	pthread_mutex_unlock(&pf_to_mgmt->sync_msg_lock);
+	(void)hinic_mutex_unlock(&pf_to_mgmt->sync_msg_mutex);
 	return err;
 }
 
@@ -463,6 +466,9 @@ static int hinic_get_mgmt_channel_status(void *hwdev)
 {
 	struct hinic_hwif *hwif = ((struct hinic_hwdev *)hwdev)->hwif;
 	u32 val;
+
+	if (hinic_func_type((struct hinic_hwdev *)hwdev) == TYPE_VF)
+		return false;
 
 	val = hinic_hwif_read_reg(hwif, HINIC_ICPL_RESERVD_ADDR);
 
@@ -482,9 +488,13 @@ int hinic_msg_to_mgmt_sync(void *hwdev, enum hinic_mod_type mod, u8 cmd,
 	if (hinic_get_mgmt_channel_status(hwdev))
 		return -EPERM;
 
-	rc = hinic_pf_to_mgmt_sync(hwdev, mod, cmd, buf_in,
-				   in_size, buf_out, out_size,
-				   timeout);
+	if (hinic_func_type(hwdev) == TYPE_VF) {
+		rc = hinic_mbox_to_pf(hwdev, mod, cmd, buf_in, in_size,
+					buf_out, out_size, timeout);
+	} else {
+		rc = hinic_pf_to_mgmt_sync(hwdev, mod, cmd, buf_in, in_size,
+						buf_out, out_size, timeout);
+	}
 
 	return rc;
 }
@@ -502,13 +512,15 @@ int hinic_msg_to_mgmt_no_ack(void *hwdev, enum hinic_mod_type mod, u8 cmd,
 		return err;
 	}
 
-	pthread_mutex_lock(&pf_to_mgmt->sync_msg_lock);
+	err = hinic_mutex_lock(&pf_to_mgmt->sync_msg_mutex);
+	if (err)
+		return err;
 
 	err = send_msg_to_mgmt_sync(pf_to_mgmt, mod, cmd, buf_in, in_size,
 				    HINIC_MSG_NO_ACK, HINIC_MSG_DIRECT_SEND,
 				    MSG_NO_RESP);
 
-	pthread_mutex_unlock(&pf_to_mgmt->sync_msg_lock);
+	(void)hinic_mutex_unlock(&pf_to_mgmt->sync_msg_mutex);
 
 	return err;
 }
@@ -537,7 +549,7 @@ static bool check_mgmt_seq_id_and_seg_len(struct hinic_recv_msg *recv_msg,
  * @pf_to_mgmt: PF to MGMT channel
  * @recv_msg: received message details
  * @param: customized parameter
- **/
+ */
 static void hinic_mgmt_recv_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 					struct hinic_recv_msg *recv_msg,
 					void *param)
@@ -589,7 +601,7 @@ static void hinic_mgmt_recv_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
  * @param: customized parameter
  * Return: 0 when aeq is response message, -1 default result,
  * and when wrong message or not last message
- **/
+ */
 static int recv_mgmt_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 				 u8 *header, struct hinic_recv_msg *recv_msg,
 				 void *param)
@@ -609,7 +621,7 @@ static int recv_mgmt_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 			"func id: 0x%x, front id: 0x%x, current id: 0x%x, seg len: 0x%x",
 			hinic_global_func_id(pf_to_mgmt->hwdev),
 			recv_msg->sed_id, seq_id, seq_len);
-		return HINIC_RECV_NEXT_AEQE;
+		return HINIC_ERROR;
 	}
 
 	dest_msg = (u8 *)recv_msg->msg + seq_id * HINIC_MSG_SEG_LEN;
@@ -617,7 +629,7 @@ static int recv_mgmt_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 	memcpy(dest_msg, msg_body, seq_len);
 
 	if (!HINIC_MSG_HEADER_GET(msg_header, LAST))
-		return HINIC_RECV_NEXT_AEQE;
+		return HINIC_ERROR;
 
 	recv_msg->cmd = HINIC_MSG_HEADER_GET(msg_header, CMD);
 	recv_msg->mod = HINIC_MSG_HEADER_GET(msg_header, MODULE);
@@ -627,11 +639,11 @@ static int recv_mgmt_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 	recv_msg->msg_id = HINIC_MSG_HEADER_GET(msg_header, MSG_ID);
 
 	if (HINIC_MSG_HEADER_GET(msg_header, DIRECTION) == HINIC_MSG_RESPONSE)
-		return HINIC_RECV_DONE;
+		return HINIC_OK;
 
 	hinic_mgmt_recv_msg_handler(pf_to_mgmt, recv_msg, param);
 
-	return HINIC_RECV_NEXT_AEQE;
+	return HINIC_ERROR;
 }
 
 /**
@@ -642,7 +654,7 @@ static int recv_mgmt_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
  * @param: customized parameter
  * Return: 0 when aeq is response message,
  *	   -1 default result, and when wrong message or not last message
- **/
+ */
 static int hinic_mgmt_msg_aeqe_handler(void *hwdev, u8 *header,
 			__rte_unused u8 size, void *param)
 {
@@ -667,10 +679,13 @@ static int hinic_handle_aeqe(void *handle, enum hinic_aeq_type event,
 	case HINIC_MSG_FROM_MGMT_CPU:
 		rc = hinic_mgmt_msg_aeqe_handler(handle, data, size, param);
 		break;
+	case HINIC_MBX_FROM_FUNC:
+		rc = hinic_mbox_func_aeqe_handler(handle, data, size, param);
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "Unknown event type: 0x%x, size: %d",
 			    event, size);
-		rc = HINIC_RECV_NEXT_AEQE;
+		rc = HINIC_ERROR;
 		break;
 	}
 
@@ -685,7 +700,7 @@ static int hinic_handle_aeqe(void *handle, enum hinic_aeq_type event,
  *           used in polling mode.
  * @param: customized parameter
  * Return: 0 - Success, EIO - poll timeout, ENODEV - swe not support
- **/
+ */
 int hinic_aeq_poll_msg(struct hinic_eq *eq, u32 timeout, void *param)
 {
 	struct hinic_aeq_elem *aeqe_pos;
@@ -753,6 +768,10 @@ int hinic_comm_pf_to_mgmt_init(struct hinic_hwdev *hwdev)
 {
 	int rc;
 
+	/* VF do not support send msg to mgmt directly */
+	if (hinic_func_type(hwdev) == TYPE_VF)
+		return 0;
+
 	rc = hinic_pf_to_mgmt_init(hwdev);
 	if (rc)
 		return rc;
@@ -764,6 +783,10 @@ int hinic_comm_pf_to_mgmt_init(struct hinic_hwdev *hwdev)
 
 void hinic_comm_pf_to_mgmt_free(struct hinic_hwdev *hwdev)
 {
+	/* VF do not support send msg to mgmt directly */
+	if (hinic_func_type(hwdev) == TYPE_VF)
+		return;
+
 	hinic_pf_to_mgmt_free(hwdev);
 }
 

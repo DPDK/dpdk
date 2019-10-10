@@ -120,7 +120,7 @@ static void dump_api_chain_reg(struct hinic_api_cmd_chain *chain)
 /**
  * chain_busy - check if the chain is still processing last requests
  * @chain: chain to check
- **/
+ */
 static int chain_busy(struct hinic_api_cmd_chain *chain)
 {
 	switch (chain->chain_type) {
@@ -146,7 +146,7 @@ static int chain_busy(struct hinic_api_cmd_chain *chain)
 /**
  * get_cell_data_size - get the data size of specific cell type
  * @type: chain type
- **/
+ */
 static u16 get_cell_data_size(enum hinic_api_cmd_chain_type type,
 				__rte_unused u16 cmd_size)
 {
@@ -170,7 +170,7 @@ static u16 get_cell_data_size(enum hinic_api_cmd_chain_type type,
  * prepare_cell_ctrl - prepare the ctrl of the cell for the command
  * @cell_ctrl: the control of the cell to set the control into it
  * @cell_len: the size of the cell
- **/
+ */
 static void prepare_cell_ctrl(u64 *cell_ctrl, u16 cell_len)
 {
 	u64 ctrl;
@@ -202,7 +202,7 @@ static void prepare_cell_ctrl(u64 *cell_ctrl, u16 cell_len)
  * @dest: destination node on the card that will receive the command
  * @cmd: command data
  * @cmd_size: the command size
- **/
+ */
 static void prepare_api_cmd(struct hinic_api_cmd_chain *chain,
 				struct hinic_api_cmd_cell *cell,
 				enum hinic_node_id dest,
@@ -254,7 +254,7 @@ static void prepare_api_cmd(struct hinic_api_cmd_chain *chain,
  * @dest: destination node on the card that will receive the command
  * @cmd: command data
  * @cmd_size: the command size
- **/
+ */
 static void prepare_cell(struct hinic_api_cmd_chain *chain,
 			 enum  hinic_node_id dest,
 			 void *cmd, u16 cmd_size)
@@ -283,7 +283,7 @@ static void issue_api_cmd(struct hinic_api_cmd_chain *chain)
 /**
  * api_cmd_status_update - update the status of the chain
  * @chain: chain to update
- **/
+ */
 static void api_cmd_status_update(struct hinic_api_cmd_chain *chain)
 {
 	struct hinic_api_cmd_status *wb_status;
@@ -314,7 +314,7 @@ static void api_cmd_status_update(struct hinic_api_cmd_chain *chain)
  * wait_for_status_poll - wait for write to mgmt command to complete
  * @chain: the chain of the command
  * Return: 0 - success, negative - failure
- **/
+ */
 static int wait_for_status_poll(struct hinic_api_cmd_chain *chain)
 {
 	unsigned long end;
@@ -340,7 +340,7 @@ static int wait_for_status_poll(struct hinic_api_cmd_chain *chain)
  * wait_for_api_cmd_completion - wait for command to complete
  * @chain: chain for the command
  * Return: 0 - success, negative - failure
- **/
+ */
 static int wait_for_api_cmd_completion(struct hinic_api_cmd_chain *chain,
 		       __rte_unused struct hinic_api_cmd_cell_ctxt *ctxt,
 		       __rte_unused void *ack, __rte_unused u16 ack_size)
@@ -384,7 +384,7 @@ static inline void update_api_cmd_ctxt(struct hinic_api_cmd_chain *chain,
  * @ack: pointer to messages to response
  * @ack_size: the size of ack message
  * Return: 0 - success, negative - failure
- **/
+ */
 static int api_cmd(struct hinic_api_cmd_chain *chain,
 		   enum hinic_node_id dest,
 		   void *cmd, u16 cmd_size, void *ack, u16 ack_size)
@@ -423,7 +423,7 @@ static int api_cmd(struct hinic_api_cmd_chain *chain,
  * @cmd: command data
  * @size: the command size
  * Return: 0 - success, negative - failure
- **/
+ */
 int hinic_api_cmd_write(struct hinic_api_cmd_chain *chain,
 			enum hinic_node_id dest, void *cmd, u16 size)
 {
@@ -434,7 +434,7 @@ int hinic_api_cmd_write(struct hinic_api_cmd_chain *chain,
 /**
  * api_cmd_hw_restart - restart the chain in the HW
  * @chain: the API CMD specific chain to restart
- **/
+ */
 static int api_cmd_hw_restart(struct hinic_api_cmd_chain *chain)
 {
 	struct hinic_hwif *hwif = chain->hwdev->hwif;
@@ -470,7 +470,7 @@ static int api_cmd_hw_restart(struct hinic_api_cmd_chain *chain)
 /**
  * api_cmd_ctrl_init - set the control register of a chain
  * @chain: the API CMD specific chain to set control register for
- **/
+ */
 static void api_cmd_ctrl_init(struct hinic_api_cmd_chain *chain)
 {
 	struct hinic_hwif *hwif = chain->hwdev->hwif;
@@ -497,7 +497,7 @@ static void api_cmd_ctrl_init(struct hinic_api_cmd_chain *chain)
 /**
  * api_cmd_set_status_addr - set the status address of a chain in the HW
  * @chain: the API CMD specific chain to set status address for
- **/
+ */
 static void api_cmd_set_status_addr(struct hinic_api_cmd_chain *chain)
 {
 	struct hinic_hwif *hwif = chain->hwdev->hwif;
@@ -515,7 +515,7 @@ static void api_cmd_set_status_addr(struct hinic_api_cmd_chain *chain)
 /**
  * api_cmd_set_num_cells - set the number cells of a chain in the HW
  * @chain: the API CMD specific chain to set the number of cells for
- **/
+ */
 static void api_cmd_set_num_cells(struct hinic_api_cmd_chain *chain)
 {
 	struct hinic_hwif *hwif = chain->hwdev->hwif;
@@ -529,7 +529,7 @@ static void api_cmd_set_num_cells(struct hinic_api_cmd_chain *chain)
 /**
  * api_cmd_head_init - set the head cell of a chain in the HW
  * @chain: the API CMD specific chain to set the head for
- **/
+ */
 static void api_cmd_head_init(struct hinic_api_cmd_chain *chain)
 {
 	struct hinic_hwif *hwif = chain->hwdev->hwif;
@@ -548,7 +548,7 @@ static void api_cmd_head_init(struct hinic_api_cmd_chain *chain)
  * wait_for_ready_chain - wait for the chain to be ready
  * @chain: the API CMD specific chain to wait for
  * Return: 0 - success, negative - failure
- **/
+ */
 static int wait_for_ready_chain(struct hinic_api_cmd_chain *chain)
 {
 	struct hinic_hwif *hwif = chain->hwdev->hwif;
@@ -580,7 +580,7 @@ static int wait_for_ready_chain(struct hinic_api_cmd_chain *chain)
 /**
  * api_cmd_chain_hw_clean - clean the HW
  * @chain: the API CMD specific chain
- **/
+ */
 static void api_cmd_chain_hw_clean(struct hinic_api_cmd_chain *chain)
 {
 	struct hinic_hwif *hwif = chain->hwdev->hwif;
@@ -603,7 +603,7 @@ static void api_cmd_chain_hw_clean(struct hinic_api_cmd_chain *chain)
  *(initialize API command csr)
  * @chain: the API CMD specific chain to initialize in HW
  * Return: 0 - success, negative - failure
- **/
+ */
 static int api_cmd_chain_hw_init(struct hinic_api_cmd_chain *chain)
 {
 	api_cmd_chain_hw_clean(chain);
@@ -626,7 +626,7 @@ static int api_cmd_chain_hw_init(struct hinic_api_cmd_chain *chain)
  * free_cmd_buf - free the dma buffer of API CMD command
  * @chain: the API CMD specific chain of the cmd
  * @cell_idx: the cell index of the cmd
- **/
+ */
 static void free_cmd_buf(struct hinic_api_cmd_chain *chain, u32 cell_idx)
 {
 	struct hinic_api_cmd_cell_ctxt *cell_ctxt;
@@ -645,7 +645,7 @@ static void free_cmd_buf(struct hinic_api_cmd_chain *chain, u32 cell_idx)
  * @cell: the cell in the HW for the cmd
  * @cell_idx: the index of the cell
  * Return: 0 - success, negative - failure
- **/
+ */
 static int alloc_cmd_buf(struct hinic_api_cmd_chain *chain,
 			 struct hinic_api_cmd_cell *cell, u32 cell_idx)
 {
@@ -697,7 +697,7 @@ static int alloc_cmd_buf(struct hinic_api_cmd_chain *chain,
  * @pre_node: previous cell
  * @node_vaddr: the virt addr of the cell
  * Return: 0 - success, negative - failure
- **/
+ */
 static int api_cmd_create_cell(struct hinic_api_cmd_chain *chain,
 			       u32 cell_idx,
 			       struct hinic_api_cmd_cell *pre_node,
@@ -774,7 +774,7 @@ alloc_cmd_buf_err:
  * api_cmd_destroy_cell - destroy API CMD cell of specific chain
  * @chain: the API CMD specific chain to destroy its cell
  * @cell_idx: the cell to destroy
- **/
+ */
 static void api_cmd_destroy_cell(struct hinic_api_cmd_chain *chain,
 				 u32 cell_idx)
 {
@@ -808,7 +808,7 @@ static void api_cmd_destroy_cell(struct hinic_api_cmd_chain *chain,
  * api_cmd_destroy_cells - destroy API CMD cells of specific chain
  * @chain: the API CMD specific chain to destroy its cells
  * @num_cells: number of cells to destroy
- **/
+ */
 static void api_cmd_destroy_cells(struct hinic_api_cmd_chain *chain,
 					 u32 num_cells)
 {
@@ -822,7 +822,7 @@ static void api_cmd_destroy_cells(struct hinic_api_cmd_chain *chain,
  * api_cmd_create_cells - create API CMD cells for specific chain
  * @chain: the API CMD specific chain
  * Return: 0 - success, negative - failure
- **/
+ */
 static int api_cmd_create_cells(struct hinic_api_cmd_chain *chain)
 {
 	struct hinic_api_cmd_cell *node = NULL, *pre_node = NULL;
@@ -861,7 +861,7 @@ create_cell_err:
  * @chain: the API CMD specific chain to initialize
  * @attr: attributes to set in the chain
  * Return: 0 - success, negative - failure
- **/
+ */
 static int api_chain_init(struct hinic_api_cmd_chain *chain,
 			  struct hinic_api_cmd_chain_attr *attr)
 {
@@ -910,7 +910,7 @@ alloc_cell_ctxt_err:
 /**
  * api_chain_free - free API CMD specific chain
  * @chain: the API CMD specific chain to free
- **/
+ */
 static void api_chain_free(struct hinic_api_cmd_chain *chain)
 {
 	void *dev = chain->hwdev;
@@ -925,7 +925,7 @@ static void api_chain_free(struct hinic_api_cmd_chain *chain)
  * @cmd_chain: the API CMD specific chain to create
  * @attr: attributes to set in the chain
  * Return: 0 - success, negative - failure
- **/
+ */
 static int api_cmd_create_chain(struct hinic_api_cmd_chain **cmd_chain,
 				struct hinic_api_cmd_chain_attr *attr)
 {
@@ -981,7 +981,7 @@ chain_init_err:
 /**
  * api_cmd_destroy_chain - destroy API CMD specific chain
  * @chain: the API CMD specific chain to destroy
- **/
+ */
 static void api_cmd_destroy_chain(struct hinic_api_cmd_chain *chain)
 {
 	api_cmd_destroy_cells(chain, chain->num_cells);
@@ -994,7 +994,7 @@ static void api_cmd_destroy_chain(struct hinic_api_cmd_chain *chain)
  * @hwdev: the hardware interface of a pci function device
  * @chain: the API CMD chains that will be initialized
  * Return: 0 - success, negative - failure
- **/
+ */
 int hinic_api_cmd_init(struct hinic_hwdev *hwdev,
 		       struct hinic_api_cmd_chain **chain)
 {
@@ -1031,7 +1031,7 @@ create_chain_err:
 /**
  * hinic_api_cmd_free - free the API CMD chains
  * @chain: the API CMD chains that will be freed
- **/
+ */
 void hinic_api_cmd_free(struct hinic_api_cmd_chain **chain)
 {
 	enum hinic_api_cmd_chain_type chain_type;
