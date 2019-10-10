@@ -971,12 +971,9 @@ u16 hinic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
 	while (pkts < nb_pkts) {
 		 /* 2. current ci is done */
 		rx_cqe = &rxq->rx_cqe[sw_ci];
-		status = rx_cqe->status;
+		status = __atomic_load_n(&rx_cqe->status, __ATOMIC_ACQUIRE);
 		if (!HINIC_GET_RX_DONE_BE(status))
 			break;
-
-		/* read other cqe member after status */
-		rte_rmb();
 
 		/* convert cqe and get packet length */
 		hinic_rq_cqe_be_to_cpu32(&cqe, (volatile void *)rx_cqe);
