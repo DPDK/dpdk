@@ -14,7 +14,6 @@
 #include <rte_alarm.h>
 
 #include "bnxt.h"
-#include "bnxt_cpr.h"
 #include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_irq.h"
@@ -27,7 +26,6 @@
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 #include "bnxt_nvm_defs.h"
-#include "bnxt_util.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =

@@ -9,7 +9,6 @@
 #include <rte_malloc.h>
 
 #include "bnxt.h"
-#include "bnxt_cpr.h"
 #include "bnxt_irq.h"
 #include "bnxt_ring.h"
 #include "hsi_struct_def_dpdk.h"

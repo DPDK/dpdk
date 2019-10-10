@@ -17,7 +17,6 @@
 #include "bnxt_ring.h"
 #include "bnxt_rxq.h"
 #include "bnxt_vnic.h"
-#include "bnxt_util.h"
 #include "hsi_struct_def_dpdk.h"
 
 static int
