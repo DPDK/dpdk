@@ -58,6 +58,9 @@
 #define BNXT_NUM_ASYNC_CPR(bp) 1
 #endif
 
+#define BNXT_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
+#define BNXT_RX_VEC_START              RTE_INTR_VEC_RXTX_OFFSET
+
 /* Chimp Communication Channel */
 #define GRCPF_REG_CHIMP_CHANNEL_OFFSET		0x0
 #define GRCPF_REG_CHIMP_COMM_TRIGGER		0x100

@@ -406,7 +406,7 @@ static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 {
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 	uint32_t nq_ring_id = HWRM_NA_SIGNATURE;
-	int cp_ring_index = queue_index + BNXT_NUM_ASYNC_CPR(bp);
+	int cp_ring_index = queue_index + BNXT_RX_VEC_START;
 	struct bnxt_cp_ring_info *nqr = bp->rxtx_nq_ring;
 	uint8_t ring_type;
 	int rc = 0;
