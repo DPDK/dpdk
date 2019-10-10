@@ -68,7 +68,8 @@ usage(char* progname)
 	       "--rss-ip | --rss-udp | "
 	       "--rxpt= | --rxht= | --rxwt= | --rxfreet= | "
 	       "--txpt= | --txht= | --txwt= | --txfreet= | "
-	       "--txrst= | --tx-offloads= | --vxlan-gpe-port= ]\n",
+	       "--txrst= | --tx-offloads= | | --rx-offloads= | "
+	       "--vxlan-gpe-port= ]\n",
 	       progname);
 #ifdef RTE_LIBRTE_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
@@ -187,6 +188,7 @@ usage(char* progname)
 	printf("  --flow-isolate-all: "
 	       "requests flow API isolated mode on all ports at initialization time.\n");
 	printf("  --tx-offloads=0xXXXXXXXX: hexadecimal bitmask of TX queue offloads\n");
+	printf("  --rx-offloads=0xXXXXXXXX: hexadecimal bitmask of RX queue offloads\n");
 	printf("  --hot-plug: enable hot plug for device.\n");
 	printf("  --vxlan-gpe-port=N: UPD port of tunnel VXLAN-GPE\n");
 	printf("  --mlockall: lock all memory\n");
@@ -644,6 +646,7 @@ launch_args_parse(int argc, char** argv)
 		{ "print-event",		1, 0, 0 },
 		{ "mask-event",			1, 0, 0 },
 		{ "tx-offloads",		1, 0, 0 },
+		{ "rx-offloads",		1, 0, 0 },
 		{ "hot-plug",			0, 0, 0 },
 		{ "vxlan-gpe-port",		1, 0, 0 },
 		{ "mlockall",			0, 0, 0 },
@@ -1227,6 +1230,17 @@ launch_args_parse(int argc, char** argv)
 					rte_exit(EXIT_FAILURE,
 						 "tx-offloads must be >= 0\n");
 			}
+
+			if (!strcmp(lgopts[opt_idx].name, "rx-offloads")) {
+				char *end = NULL;
+				n = strtoull(optarg, &end, 16);
+				if (n >= 0)
+					rx_offloads = (uint64_t)n;
+				else
+					rte_exit(EXIT_FAILURE,
+						 "rx-offloads must be >= 0\n");
+			}
+
 			if (!strcmp(lgopts[opt_idx].name, "vxlan-gpe-port")) {
 				n = atoi(optarg);
 				if (n >= 0)
