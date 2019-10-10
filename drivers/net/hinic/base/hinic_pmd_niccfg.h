@@ -609,6 +609,129 @@ struct hinic_port_anti_attack_rate {
 	u32	xbs;	/* eXtended Burst Size */
 };
 
+struct pa_u8_s {
+	u8   val8;
+	u8   mask8;
+};
+
+struct pa_u16_s {
+	u16  val16;
+	u16  mask16;
+};
+
+struct pa_u32_s {
+	u32  val32;
+	u32  mask32;
+};
+
+struct pa_u48_s {
+	u8   val8[6];
+	u8   mask8[6];
+};
+
+struct pa_u64_s {
+	u8   val8[8];
+	u8   mask8[8];
+};
+
+struct tag_pa_eth_ip_header {
+	struct pa_u8_s		ip_ver; /* 3bit */
+	struct pa_u8_s		ipv4_option_flag; /* 1bit */
+	/* 8bit ipv4 option or ipv6 next header */
+	struct pa_u8_s		protocol;
+	struct pa_u8_s		dscp;	/* 6bit DSCP */
+};
+
+struct tag_pa_common_l2_header {
+	struct pa_u48_s		dmac; /* dmac 48bit */
+	struct pa_u16_s		eth_type; /* ethernet type/length 16bit */
+	struct pa_u8_s		tag_flag; /* tag flag: 4bit */
+	struct pa_u8_s		np2np_hdr_qindex; /* NP2NP Header Qindex 4bit */
+	struct pa_u8_s		e_tag_pcp; /* 3bit */
+	struct pa_u8_s		vlan_layer; /* 2bit */
+	struct pa_u8_s		s_tag; /* 3bit */
+	struct pa_u8_s		c_tag; /* 3bit */
+	struct pa_u16_s		vlan_id; /* 12bit */
+};
+
+struct tag_pa_tcp {
+	struct pa_u16_s		sport; /* 16bit */
+	struct pa_u16_s		dport; /* 16bit */
+	struct pa_u16_s		tcp_flag; /* 6bit */
+};
+
+struct tag_pa_udp {
+	struct pa_u16_s		sport; /* 16bit */
+	struct pa_u16_s		dport; /* 16bit */
+	/* 8bit :
+	 * 1.udp dport=67/68 && ipv4 protocol=0x11
+	 * 2.udp dport=546/547 && ipv6 next header=0x11
+	 * 3. do not care
+	 */
+	struct pa_u8_s		dhcp_op_or_msg_type;
+};
+
+/* ICMP:
+ * ipv4 protocol = 0x1
+ * ipv6 next header = 0x3A
+ */
+struct tag_pa_icmp {
+	struct pa_u8_s		type; /* 8bit */
+	struct pa_u8_s		code; /* 8bit */
+};
+
+/* IGMP:
+ * ipv4 protocol = 0x2
+ */
+struct tag_pa_ipv4_igmp {
+	struct pa_u32_s		dip; /* 32bit */
+	struct pa_u8_s		type; /* 8bit */
+};
+
+struct tag_pa_rule {
+	struct pa_u8_s ncsi_flag; /* 1bit valid */
+	struct tag_pa_common_l2_header l2_header;
+
+	u8 eth_type;
+
+	struct pa_u64_s	eth_other; /* eth_type=other 64bit */
+	struct pa_u8_s	eth_roce_opcode; /* eth_type=roce 8bit opcode */
+
+	struct tag_pa_eth_ip_header ip_header; /* eth_type=ip */
+
+	u8 ip_protocol_type;
+
+	struct tag_pa_tcp eth_ip_tcp; /* eth_type=ip && ip_protocol = tcp */
+	struct tag_pa_udp eth_ip_udp; /* eth_type=ip && ip_protocol = udp */
+	struct tag_pa_icmp eth_ip_icmp; /* eth_type=ip && ip_protocol = icmp */
+
+	/* eth_type=ip && ip_protocol = ipv4_igmp */
+	struct tag_pa_ipv4_igmp eth_ipv4_igmp;
+
+	/* eth_type=ip && ip_protocol = sctp;
+	 * 16bit ipv4 protocol=0x84 or ipv6 nhr=0x84
+	 */
+	struct pa_u16_s eth_ip_sctp;
+};
+
+struct tag_pa_action {
+	u16	pkt_type;
+	u8	err_type;
+	u8	pri;
+	u8	fwd_action;
+	u8	push_len;
+};
+
+struct hinic_fdir_tcam_info {
+	struct hinic_mgmt_msg_head mgmt_msg_head;
+
+	u16	tcam_index;
+	u8	flag; /* clear or set tcam table flag */
+	u8	rsvd1;
+	struct tag_pa_rule filter_rule;
+	struct tag_pa_action filter_action;
+};
+
 int hinic_set_mac(void *hwdev, u8 *mac_addr, u16 vlan_id, u16 func_id);
 
 int hinic_del_mac(void *hwdev, u8 *mac_addr, u16 vlan_id, u16 func_id);
@@ -701,5 +824,16 @@ int hinic_vf_func_init(struct hinic_hwdev *hwdev);
 void hinic_vf_func_free(struct hinic_hwdev *hwdev);
 
 int hinic_vf_get_default_cos(struct hinic_hwdev *hwdev, u8 *cos_id);
+
+int hinic_set_fdir_filter(void *hwdev, u8 filter_type, u8 qid,
+		u8 type_enable, bool enable);
+
+int hinic_set_normal_filter(void *hwdev, u8 qid, u8 normal_type_enable,
+		u32 key, bool enable, u8 flag);
+
+int hinic_set_fdir_tcam(void *hwdev, u16 type_mask,
+	struct tag_pa_rule *filter_rule, struct tag_pa_action *filter_action);
+
+int hinic_clear_fdir_tcam(void *hwdev, u16 type_mask);
 
 #endif /* _HINIC_PMD_NICCFG_H_ */

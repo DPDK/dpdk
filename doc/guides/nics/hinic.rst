@@ -30,6 +30,7 @@ Features
 - MTU update
 - Unicast MAC filter
 - Multicast MAC filter
+- Flow director
 
 Prerequisites
 -------------
