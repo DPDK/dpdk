@@ -521,6 +521,47 @@ pfe_tx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static const uint32_t *
+pfe_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		/*todo -= add more types */
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV4_EXT,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L3_IPV6_EXT,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_SCTP
+	};
+
+	if (dev->rx_pkt_burst == pfe_recv_pkts ||
+			dev->rx_pkt_burst == pfe_recv_pkts_on_intr)
+		return ptypes;
+	return NULL;
+}
+
+static int
+pfe_stats_get(struct rte_eth_dev *dev,
+	      struct rte_eth_stats *stats)
+{
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+	struct rte_eth_stats *eth_stats = &priv->stats;
+
+	if (stats == NULL)
+		return -1;
+
+	memset(stats, 0, sizeof(struct rte_eth_stats));
+
+	stats->ipackets = eth_stats->ipackets;
+	stats->ibytes = eth_stats->ibytes;
+	stats->opackets = eth_stats->opackets;
+	stats->obytes = eth_stats->obytes;
+
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start = pfe_eth_open,
 	.dev_stop = pfe_eth_stop,
@@ -531,6 +572,8 @@ static const struct eth_dev_ops ops = {
 	.rx_queue_release  = pfe_rx_queue_release,
 	.tx_queue_setup = pfe_tx_queue_setup,
 	.tx_queue_release  = pfe_tx_queue_release,
+	.dev_supported_ptypes_get = pfe_supported_ptypes_get,
+	.stats_get            = pfe_stats_get,
 };
 
 static int
