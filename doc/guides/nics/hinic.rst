@@ -25,6 +25,7 @@ Features
 - Link flow control
 - Scattered and gather for TX and RX
 - SR-IOV - Partially supported at this point, VFIO only
+- VLAN filter and VLAN offload
 
 Prerequisites
 -------------

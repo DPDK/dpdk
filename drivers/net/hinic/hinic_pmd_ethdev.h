@@ -11,12 +11,12 @@
 #include "base/hinic_compat.h"
 #include "base/hinic_pmd_cfg.h"
 
-#define HINIC_DEV_NAME_LEN	(32)
-#define HINIC_MAX_RX_QUEUES	(64)
+#define HINIC_DEV_NAME_LEN	32
+#define HINIC_MAX_RX_QUEUES	64
 
 /* mbuf pool for copy invalid mbuf segs */
-#define HINIC_COPY_MEMPOOL_DEPTH (128)
-#define HINIC_COPY_MBUF_SIZE     (4096)
+#define HINIC_COPY_MEMPOOL_DEPTH	128
+#define HINIC_COPY_MBUF_SIZE		4096
 
 #define SIZE_8BYTES(size)	(ALIGN((u32)(size), 8) >> 3)
 
@@ -30,6 +30,9 @@
 #define HINIC_MIN_QUEUE_DEPTH		128
 #define HINIC_TXD_ALIGN                 1
 #define HINIC_RXD_ALIGN                 1
+
+#define HINIC_UINT32_BIT_SIZE      (CHAR_BIT * sizeof(uint32_t))
+#define HINIC_VFTA_SIZE            (4096 / HINIC_UINT32_BIT_SIZE)
 
 enum hinic_dev_status {
 	HINIC_DEV_INIT,
@@ -54,10 +57,12 @@ struct hinic_nic_dev {
 	u8 num_rss;
 	u8 rx_queue_list[HINIC_MAX_RX_QUEUES];
 
+	u32 vfta[HINIC_VFTA_SIZE];	/* VLAN bitmap */
+
 	/* info */
 	unsigned int flags;
 	struct nic_service_cap nic_cap;
-	u32 rx_mode_status;	/* promisc allmulticast */
+	u32 rx_mode_status;	/* promisc or allmulticast */
 	unsigned long dev_status;
 
 	/* dpdk only */

@@ -290,6 +290,142 @@ int hinic_set_port_mtu(void *hwdev, u32 new_mtu)
 }
 
 /**
+ * hinic_add_remove_vlan - Add or remove vlan id to vlan elb table.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param vlan_id
+ *   Vlan id.
+ * @param func_id
+ *   Global function id of NIC.
+ * @param add
+ *   Add or remove operation.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
+int hinic_add_remove_vlan(void *hwdev, u16 vlan_id, u16 func_id, bool add)
+{
+	struct hinic_vlan_config vlan_info;
+	u16 out_size = sizeof(vlan_info);
+	u8 cmd;
+	int err;
+
+	if (!hwdev) {
+		PMD_DRV_LOG(ERR, "Hwdev is NULL");
+		return -EINVAL;
+	}
+
+	cmd = add ? HINIC_PORT_CMD_ADD_VLAN : HINIC_PORT_CMD_DEL_VLAN;
+
+	memset(&vlan_info, 0, sizeof(vlan_info));
+	vlan_info.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	vlan_info.func_id = func_id;
+	vlan_info.vlan_id = vlan_id;
+
+	err = l2nic_msg_to_mgmt_sync(hwdev, cmd, &vlan_info,
+				     sizeof(vlan_info), &vlan_info,
+				     &out_size);
+	if (err || !out_size || vlan_info.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR,
+			"Failed to %s vlan, err: %d, status: 0x%x, out size: 0x%x\n",
+			add ? "add" : "remove", err,
+			vlan_info.mgmt_msg_head.status, out_size);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
+ * hinic_config_vlan_filter - Enable or Disable vlan filter.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param vlan_filter_ctrl
+ *   Enable or Disable.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
+int hinic_config_vlan_filter(void *hwdev, u32 vlan_filter_ctrl)
+{
+	struct hinic_hwdev *nic_hwdev = (struct hinic_hwdev *)hwdev;
+	struct hinic_vlan_filter vlan_filter;
+	u16 out_size = sizeof(vlan_filter);
+	int err;
+
+	if (!hwdev)
+		return -EINVAL;
+
+	memset(&vlan_filter, 0, sizeof(vlan_filter));
+	vlan_filter.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	vlan_filter.func_id = hinic_global_func_id(nic_hwdev);
+	vlan_filter.vlan_filter_ctrl = vlan_filter_ctrl;
+
+	err = l2nic_msg_to_mgmt_sync(nic_hwdev, HINIC_PORT_CMD_SET_VLAN_FILTER,
+				     &vlan_filter, sizeof(vlan_filter),
+				     &vlan_filter, &out_size);
+	if (vlan_filter.mgmt_msg_head.status == HINIC_MGMT_CMD_UNSUPPORTED) {
+		err = HINIC_MGMT_CMD_UNSUPPORTED;
+	} else if ((err == HINIC_MBOX_VF_CMD_ERROR) &&
+		(HINIC_IS_VF(nic_hwdev))) {
+		err = HINIC_MGMT_CMD_UNSUPPORTED;
+	} else if (err || !out_size || vlan_filter.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR,
+			"Failed to config vlan filter, vlan_filter_ctrl: 0x%x, err: %d, status: 0x%x, out size: 0x%x\n",
+			vlan_filter_ctrl, err,
+			vlan_filter.mgmt_msg_head.status, out_size);
+		err = -EINVAL;
+	}
+
+	return err;
+}
+
+/**
+ * hinic_set_rx_vlan_offload - Enable or Disable vlan offload.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param en
+ *   Enable or Disable.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
+int hinic_set_rx_vlan_offload(void *hwdev, u8 en)
+{
+	struct hinic_vlan_offload vlan_cfg;
+	u16 out_size = sizeof(vlan_cfg);
+	int err;
+
+	if (!hwdev) {
+		PMD_DRV_LOG(ERR, "Hwdev is NULL");
+		return -EINVAL;
+	}
+
+	memset(&vlan_cfg, 0, sizeof(vlan_cfg));
+	vlan_cfg.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	vlan_cfg.func_id = hinic_global_func_id(hwdev);
+	vlan_cfg.vlan_rx_offload = en;
+
+	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_SET_RX_VLAN_OFFLOAD,
+					&vlan_cfg, sizeof(vlan_cfg),
+					&vlan_cfg, &out_size);
+	if (err || !out_size || vlan_cfg.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR,
+			"Failed to set rx vlan offload, err: %d, status: 0x%x, out size: 0x%x\n",
+			err, vlan_cfg.mgmt_msg_head.status, out_size);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
  * hinic_get_link_status - Get link status from hardware.
  *
  * @param hwdev

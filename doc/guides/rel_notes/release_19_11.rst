@@ -116,6 +116,7 @@ New Features
   Updated the Huawei hinic driver with new features and improvements, including:
 
   * Enabled SR-IOV - Partially supported at this point, VFIO only.
+  * Supported VLAN filter and VLAN offload.
 
 * **Added Marvell NITROX symmetric crypto PMD.**
 

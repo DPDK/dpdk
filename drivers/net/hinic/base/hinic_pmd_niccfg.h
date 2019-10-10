@@ -380,6 +380,29 @@ struct hinic_mtu {
 	u32	mtu;
 };
 
+struct hinic_vlan_config {
+	struct hinic_mgmt_msg_head mgmt_msg_head;
+
+	u16	func_id;
+	u16	vlan_id;
+};
+
+struct hinic_vlan_filter {
+	struct hinic_mgmt_msg_head mgmt_msg_head;
+
+	u16	func_id;
+	u8	rsvd1[2];
+	u32	vlan_filter_ctrl;
+};
+
+struct hinic_vlan_offload {
+	struct hinic_mgmt_msg_head mgmt_msg_head;
+
+	u16	func_id;
+	u8	vlan_rx_offload;
+	u8	rsvd1[5];
+};
+
 struct hinic_get_link {
 	struct hinic_mgmt_msg_head mgmt_msg_head;
 
@@ -596,6 +619,12 @@ int hinic_update_mac(void *hwdev, u8 *old_mac, u8 *new_mac, u16 vlan_id,
 int hinic_get_default_mac(void *hwdev, u8 *mac_addr);
 
 int hinic_set_port_mtu(void *hwdev, u32 new_mtu);
+
+int hinic_add_remove_vlan(void *hwdev, u16 vlan_id, u16 func_id, bool add);
+
+int hinic_config_vlan_filter(void *hwdev, u32 vlan_filter_ctrl);
+
+int hinic_set_rx_vlan_offload(void *hwdev, u8 en);
 
 int hinic_set_vport_enable(void *hwdev, bool enable);
 

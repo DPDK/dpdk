@@ -140,6 +140,7 @@ enum hinic_port_cmd {
 
 	HINIC_PORT_CMD_SET_VHD_CFG		= 0xF7,
 	HINIC_PORT_CMD_SET_LINK_FOLLOW		= 0xF8,
+	HINIC_PORT_CMD_SET_VLAN_FILTER		= 0xFF
 };
 
 /* cmd of mgmt CPU message for HW module */
