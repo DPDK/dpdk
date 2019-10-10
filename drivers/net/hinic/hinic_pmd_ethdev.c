@@ -64,6 +64,12 @@
 
 #define HINIC_VLAN_FILTER_EN		(1U << 0)
 
+#define HINIC_MTU_TO_PKTLEN(mtu)	\
+	((mtu) + ETH_HLEN + ETH_CRC_LEN)
+
+#define HINIC_PKTLEN_TO_MTU(pktlen)	\
+	((pktlen) - (ETH_HLEN + ETH_CRC_LEN))
+
 /* Driver-specific log messages type */
 int hinic_logtype;
 
@@ -711,6 +717,8 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->min_rx_bufsize = HINIC_MIN_RX_BUF_SIZE;
 	info->max_rx_pktlen  = HINIC_MAX_JUMBO_FRAME_SIZE;
 	info->max_mac_addrs  = HINIC_MAX_MAC_ADDRS;
+	info->min_mtu = HINIC_MIN_MTU_SIZE;
+	info->max_mtu = HINIC_MAX_MTU_SIZE;
 
 	hinic_get_speed_capa(dev, &info->speed_capa);
 	info->rx_queue_offload_capa = 0;
@@ -718,7 +726,9 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 				DEV_RX_OFFLOAD_IPV4_CKSUM |
 				DEV_RX_OFFLOAD_UDP_CKSUM |
 				DEV_RX_OFFLOAD_TCP_CKSUM |
-				DEV_RX_OFFLOAD_VLAN_FILTER;
+				DEV_RX_OFFLOAD_VLAN_FILTER |
+				DEV_RX_OFFLOAD_SCATTER |
+				DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	info->tx_queue_offload_capa = 0;
 	info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
@@ -1376,6 +1386,33 @@ static void hinic_deinit_mac_addr(struct rte_eth_dev *eth_dev)
 			    eth_dev->data->name);
 }
 
+static int hinic_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	int ret = 0;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	PMD_DRV_LOG(INFO, "Set port mtu, port_id: %d, mtu: %d, max_pkt_len: %d",
+			dev->data->port_id, mtu, HINIC_MTU_TO_PKTLEN(mtu));
+
+	if (mtu < HINIC_MIN_MTU_SIZE || mtu > HINIC_MAX_MTU_SIZE) {
+		PMD_DRV_LOG(ERR, "Invalid mtu: %d, must between %d and %d",
+				mtu, HINIC_MIN_MTU_SIZE, HINIC_MAX_MTU_SIZE);
+		return -EINVAL;
+	}
+
+	ret = hinic_set_port_mtu(nic_dev->hwdev, mtu);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Set port mtu failed, ret: %d", ret);
+		return ret;
+	}
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = HINIC_MTU_TO_PKTLEN(mtu);
+	nic_dev->mtu_size = mtu;
+
+	return ret;
+}
+
 static void hinic_store_vlan_filter(struct hinic_nic_dev *nic_dev,
 					u16 vlan_id, bool on)
 {
@@ -1538,6 +1575,71 @@ static void hinic_remove_all_vlanid(struct rte_eth_dev *eth_dev)
 		(void)hinic_add_remove_vlan(nic_dev->hwdev, i, func_id, FALSE);
 		hinic_store_vlan_filter(nic_dev, i, false);
 	}
+}
+
+static int hinic_set_dev_allmulticast(struct hinic_nic_dev *nic_dev,
+				bool enable)
+{
+	u32 rx_mode_ctrl = nic_dev->rx_mode_status;
+
+	if (enable)
+		rx_mode_ctrl |= HINIC_RX_MODE_MC_ALL;
+	else
+		rx_mode_ctrl &= (~HINIC_RX_MODE_MC_ALL);
+
+	return hinic_config_rx_mode(nic_dev, rx_mode_ctrl);
+}
+
+/**
+ * DPDK callback to enable allmulticast mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success,
+ *   negative error value otherwise.
+ */
+static int hinic_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	int ret = HINIC_OK;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	ret = hinic_set_dev_allmulticast(nic_dev, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Enable allmulticast failed, error: %d", ret);
+		return ret;
+	}
+
+	PMD_DRV_LOG(INFO, "Enable allmulticast succeed, nic_dev: %s, port_id: %d",
+		nic_dev->proc_dev_name, dev->data->port_id);
+	return 0;
+}
+
+/**
+ * DPDK callback to disable allmulticast mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success,
+ *   negative error value otherwise.
+ */
+static int hinic_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	int ret = HINIC_OK;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	ret = hinic_set_dev_allmulticast(nic_dev, false);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Disable allmulticast failed, error: %d", ret);
+		return ret;
+	}
+
+	PMD_DRV_LOG(INFO, "Disable allmulticast succeed, nic_dev: %s, port_id: %d",
+		nic_dev->proc_dev_name, dev->data->port_id);
+	return 0;
 }
 
 /**
@@ -2421,8 +2523,11 @@ static const struct eth_dev_ops hinic_pmd_ops = {
 	.tx_queue_release              = hinic_tx_queue_release,
 	.dev_stop                      = hinic_dev_stop,
 	.dev_close                     = hinic_dev_close,
+	.mtu_set                       = hinic_dev_set_mtu,
 	.vlan_filter_set               = hinic_vlan_filter_set,
 	.vlan_offload_set              = hinic_vlan_offload_set,
+	.allmulticast_enable           = hinic_dev_allmulticast_enable,
+	.allmulticast_disable          = hinic_dev_allmulticast_disable,
 	.promiscuous_enable            = hinic_dev_promiscuous_enable,
 	.promiscuous_disable           = hinic_dev_promiscuous_disable,
 	.rss_hash_update               = hinic_rss_hash_update,
@@ -2447,8 +2552,11 @@ static const struct eth_dev_ops hinic_pmd_vf_ops = {
 	.tx_queue_release              = hinic_tx_queue_release,
 	.dev_stop                      = hinic_dev_stop,
 	.dev_close                     = hinic_dev_close,
+	.mtu_set                       = hinic_dev_set_mtu,
 	.vlan_filter_set               = hinic_vlan_filter_set,
 	.vlan_offload_set              = hinic_vlan_offload_set,
+	.allmulticast_enable           = hinic_dev_allmulticast_enable,
+	.allmulticast_disable          = hinic_dev_allmulticast_disable,
 	.rss_hash_update               = hinic_rss_hash_update,
 	.rss_hash_conf_get             = hinic_rss_conf_get,
 	.reta_update                   = hinic_rss_indirtbl_update,

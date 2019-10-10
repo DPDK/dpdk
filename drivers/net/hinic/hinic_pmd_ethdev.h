@@ -20,9 +20,6 @@
 
 #define SIZE_8BYTES(size)	(ALIGN((u32)(size), 8) >> 3)
 
-#define HINIC_PKTLEN_TO_MTU(pktlen)	\
-	((pktlen) - (ETH_HLEN + ETH_CRC_LEN))
-
 #define HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev) \
 	((struct hinic_nic_dev *)(dev)->data->dev_private)
 
