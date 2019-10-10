@@ -525,6 +525,11 @@ struct bnxt {
 	uint16_t			max_resp_len;
 	uint16_t                        hwrm_max_ext_req_len;
 
+	 /* default command timeout value of 50ms */
+#define HWRM_CMD_TIMEOUT		50000
+	/* default HWRM request timeout value */
+	uint32_t			hwrm_cmd_timeout;
+
 	struct bnxt_link_info	link_info;
 	struct bnxt_cos_queue_info	rx_cos_queue[BNXT_COS_QUEUE_COUNT];
 	struct bnxt_cos_queue_info	tx_cos_queue[BNXT_COS_QUEUE_COUNT];

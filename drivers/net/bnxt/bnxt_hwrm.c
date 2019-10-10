@@ -25,8 +25,6 @@
 
 #include <rte_io.h>
 
-#define HWRM_CMD_TIMEOUT		6000000
-#define HWRM_SHORT_CMD_TIMEOUT		50000
 #define HWRM_SPEC_CODE_1_8_3		0x10803
 #define HWRM_VERSION_1_9_1		0x10901
 #define HWRM_VERSION_1_9_2		0x10903
@@ -105,9 +103,9 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 
 	/* For VER_GET command, set timeout as 50ms */
 	if (rte_cpu_to_le_16(req->req_type) == HWRM_VER_GET)
-		timeout = HWRM_SHORT_CMD_TIMEOUT;
-	else
 		timeout = HWRM_CMD_TIMEOUT;
+	else
+		timeout = bp->hwrm_cmd_timeout;
 
 	if (bp->flags & BNXT_FLAG_SHORT_CMD ||
 	    msg_len > bp->max_req_len) {
@@ -968,6 +966,13 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	fw_version |= resp->hwrm_intf_min_8b << 8;
 	fw_version |= resp->hwrm_intf_upd_8b;
 	bp->hwrm_spec_code = fw_version;
+
+	/* def_req_timeout value is in milliseconds */
+	bp->hwrm_cmd_timeout = rte_le_to_cpu_16(resp->def_req_timeout);
+	/* convert timeout to usec */
+	bp->hwrm_cmd_timeout *= 1000;
+	if (!bp->hwrm_cmd_timeout)
+		bp->hwrm_cmd_timeout = HWRM_CMD_TIMEOUT;
 
 	if (resp->hwrm_intf_maj_8b != HWRM_VERSION_MAJOR) {
 		PMD_DRV_LOG(ERR, "Unsupported firmware API version\n");
