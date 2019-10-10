@@ -369,6 +369,152 @@ hif_lib_event_handler_start(struct hif_client_s *client, int event,
 	return 0;
 }
 
+#ifdef RTE_LIBRTE_PFE_SW_PARSE
+static inline void
+pfe_sw_parse_pkt(struct rte_mbuf *mbuf)
+{
+	struct rte_net_hdr_lens hdr_lens;
+
+	mbuf->packet_type = rte_net_get_ptype(mbuf, &hdr_lens,
+			RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK
+			| RTE_PTYPE_L4_MASK);
+	mbuf->l2_len = hdr_lens.l2_len;
+	mbuf->l3_len = hdr_lens.l3_len;
+}
+#endif
+
+/*
+ * This function gets one packet from the specified client queue
+ * It also refill the rx buffer
+ */
+int
+hif_lib_receive_pkt(struct hif_client_rx_queue *queue,
+		struct rte_mempool *pool, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	struct rx_queue_desc *desc;
+	struct pfe_eth_priv_s *priv = queue->priv;
+	struct rte_pktmbuf_pool_private *mb_priv;
+	struct rte_mbuf *mbuf, *p_mbuf = NULL, *first_mbuf = NULL;
+	struct rte_eth_stats *stats = &priv->stats;
+	int i, wait_for_last = 0;
+#ifndef RTE_LIBRTE_PFE_SW_PARSE
+	struct pfe_parse *parse_res;
+#endif
+
+	for (i = 0; i < nb_pkts;) {
+		do {
+			desc = queue->base + queue->read_idx;
+			if ((desc->ctrl & CL_DESC_OWN)) {
+				stats->ipackets += i;
+				return i;
+			}
+
+			mb_priv = rte_mempool_get_priv(pool);
+
+			mbuf = desc->data + PFE_PKT_HEADER_SZ
+				- sizeof(struct rte_mbuf)
+				- RTE_PKTMBUF_HEADROOM
+				- mb_priv->mbuf_priv_size;
+			mbuf->next = NULL;
+			if (desc->ctrl & CL_DESC_FIRST) {
+				/* TODO size of priv data if present in
+				 * descriptor
+				 */
+				u16 size = 0;
+				mbuf->pkt_len = CL_DESC_BUF_LEN(desc->ctrl)
+						- PFE_PKT_HEADER_SZ - size;
+				mbuf->data_len = mbuf->pkt_len;
+				mbuf->port = queue->port_id;
+#ifdef RTE_LIBRTE_PFE_SW_PARSE
+				pfe_sw_parse_pkt(mbuf);
+#else
+				parse_res = (struct pfe_parse *)(desc->data +
+					    PFE_HIF_SIZE);
+				mbuf->packet_type = parse_res->packet_type;
+#endif
+				mbuf->nb_segs = 1;
+				first_mbuf = mbuf;
+				rx_pkts[i++] = first_mbuf;
+			} else {
+				mbuf->data_len = CL_DESC_BUF_LEN(desc->ctrl);
+				mbuf->data_off = mbuf->data_off -
+						 PFE_PKT_HEADER_SZ;
+				first_mbuf->pkt_len += mbuf->data_len;
+				first_mbuf->nb_segs++;
+				p_mbuf->next = mbuf;
+			}
+			stats->ibytes += mbuf->data_len;
+			p_mbuf = mbuf;
+
+			if (desc->ctrl & CL_DESC_LAST)
+				wait_for_last = 0;
+			else
+				wait_for_last = 1;
+			/*
+			 * Needed so we don't free a buffer/page
+			 * twice on module_exit
+			 */
+			desc->data = NULL;
+
+			/*
+			 * Ensure everything else is written to DDR before
+			 * writing bd->ctrl
+			 */
+			rte_wmb();
+
+			desc->ctrl = CL_DESC_OWN;
+			queue->read_idx = (queue->read_idx + 1) &
+					  (queue->size - 1);
+		} while (wait_for_last);
+	}
+	stats->ipackets += i;
+	return i;
+}
+
+static inline void
+hif_hdr_write(struct hif_hdr *pkt_hdr, unsigned int
+	      client_id, unsigned int qno,
+	      u32 client_ctrl)
+{
+	/* Optimize the write since the destinaton may be non-cacheable */
+	if (!((unsigned long)pkt_hdr & 0x3)) {
+		((u32 *)pkt_hdr)[0] = (client_ctrl << 16) | (qno << 8) |
+					client_id;
+	} else {
+		((u16 *)pkt_hdr)[0] = (qno << 8) | (client_id & 0xFF);
+		((u16 *)pkt_hdr)[1] = (client_ctrl & 0xFFFF);
+	}
+}
+
+/*This function puts the given packet in the specific client queue */
+void
+hif_lib_xmit_pkt(struct hif_client_s *client, unsigned int qno,
+		 void *data, void *data1, unsigned int len,
+		 u32 client_ctrl, unsigned int flags, void *client_data)
+{
+	struct hif_client_tx_queue *queue = &client->tx_q[qno];
+	struct tx_queue_desc *desc = queue->base + queue->write_idx;
+
+	/* First buffer */
+	if (flags & HIF_FIRST_BUFFER) {
+		data1 -= PFE_HIF_SIZE;
+		data -= PFE_HIF_SIZE;
+		len += PFE_HIF_SIZE;
+
+		hif_hdr_write(data1, client->id, qno, client_ctrl);
+	}
+
+	desc->data = client_data;
+	desc->ctrl = CL_DESC_OWN | CL_DESC_FLAGS(flags);
+
+	hif_xmit_pkt(&client->pfe->hif, client->id, qno, data, len, flags);
+
+	queue->write_idx = (queue->write_idx + 1) & (queue->size - 1);
+
+	queue->tx_pending++;
+}
+
 void *
 hif_lib_tx_get_next_complete(struct hif_client_s *client, int qno,
 				   unsigned int *flags, __rte_unused  int count)

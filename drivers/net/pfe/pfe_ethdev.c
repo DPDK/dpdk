@@ -2,6 +2,7 @@
  * Copyright 2019 NXP
  */
 
+#include <sys/epoll.h>
 #include <rte_kvargs.h>
 #include <rte_ethdev_vdev.h>
 #include <rte_bus_vdev.h>
@@ -137,6 +138,119 @@ pfe_eth_event_handler(void *data, int event, __rte_unused int qno)
 	return 0;
 }
 
+static uint16_t
+pfe_recv_pkts_on_intr(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct hif_client_rx_queue *queue = rxq;
+	struct pfe_eth_priv_s *priv = queue->priv;
+	struct epoll_event epoll_ev;
+	uint64_t ticks = 1;  /* 1 msec */
+	int ret;
+	int have_something, work_done;
+
+#define RESET_STATUS (HIF_INT | HIF_RXPKT_INT)
+
+	/*TODO can we remove this cleanup from here?*/
+	pfe_tx_do_cleanup(priv->pfe);
+	have_something = pfe_hif_rx_process(priv->pfe, nb_pkts);
+	work_done = hif_lib_receive_pkt(rxq, priv->pfe->hif.shm->pool,
+			rx_pkts, nb_pkts);
+
+	if (!have_something || !work_done) {
+		writel(RESET_STATUS, HIF_INT_SRC);
+		writel(readl(HIF_INT_ENABLE) | HIF_RXPKT_INT, HIF_INT_ENABLE);
+		ret = epoll_wait(priv->pfe->hif.epoll_fd, &epoll_ev, 1, ticks);
+		if (ret < 0 && errno != EINTR)
+			PFE_PMD_ERR("epoll_wait fails with %d\n", errno);
+	}
+
+	return work_done;
+}
+
+static uint16_t
+pfe_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct hif_client_rx_queue *queue = rxq;
+	struct pfe_eth_priv_s *priv = queue->priv;
+	struct rte_mempool *pool;
+
+	/*TODO can we remove this cleanup from here?*/
+	pfe_tx_do_cleanup(priv->pfe);
+	pfe_hif_rx_process(priv->pfe, nb_pkts);
+	pool = priv->pfe->hif.shm->pool;
+
+	return hif_lib_receive_pkt(rxq, pool, rx_pkts, nb_pkts);
+}
+
+static uint16_t
+pfe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct hif_client_tx_queue *queue = tx_queue;
+	struct pfe_eth_priv_s *priv = queue->priv;
+	struct rte_eth_stats *stats = &priv->stats;
+	int i;
+
+	for (i = 0; i < nb_pkts; i++) {
+		if (tx_pkts[i]->nb_segs > 1) {
+			struct rte_mbuf *mbuf;
+			int j;
+
+			hif_lib_xmit_pkt(&priv->client, queue->queue_id,
+				(void *)(size_t)rte_pktmbuf_iova(tx_pkts[i]),
+				tx_pkts[i]->buf_addr + tx_pkts[i]->data_off,
+				tx_pkts[i]->data_len, 0x0, HIF_FIRST_BUFFER,
+				tx_pkts[i]);
+
+			mbuf = tx_pkts[i]->next;
+			for (j = 0; j < (tx_pkts[i]->nb_segs - 2); j++) {
+				hif_lib_xmit_pkt(&priv->client, queue->queue_id,
+					(void *)(size_t)rte_pktmbuf_iova(mbuf),
+					mbuf->buf_addr + mbuf->data_off,
+					mbuf->data_len,
+					0x0, 0x0, mbuf);
+				mbuf = mbuf->next;
+			}
+
+			hif_lib_xmit_pkt(&priv->client, queue->queue_id,
+					(void *)(size_t)rte_pktmbuf_iova(mbuf),
+					mbuf->buf_addr + mbuf->data_off,
+					mbuf->data_len,
+					0x0, HIF_LAST_BUFFER | HIF_DATA_VALID,
+					mbuf);
+		} else {
+			hif_lib_xmit_pkt(&priv->client, queue->queue_id,
+				(void *)(size_t)rte_pktmbuf_iova(tx_pkts[i]),
+				tx_pkts[i]->buf_addr + tx_pkts[i]->data_off,
+				tx_pkts[i]->pkt_len, 0 /*ctrl*/,
+				HIF_FIRST_BUFFER | HIF_LAST_BUFFER |
+				HIF_DATA_VALID,
+				tx_pkts[i]);
+		}
+		stats->obytes += tx_pkts[i]->pkt_len;
+		hif_tx_dma_start();
+	}
+	stats->opackets += nb_pkts;
+	pfe_tx_do_cleanup(priv->pfe);
+
+	return nb_pkts;
+}
+
+static uint16_t
+pfe_dummy_xmit_pkts(__rte_unused void *tx_queue,
+		__rte_unused struct rte_mbuf **tx_pkts,
+		__rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+static uint16_t
+pfe_dummy_recv_pkts(__rte_unused void *rxq,
+		__rte_unused struct rte_mbuf **rx_pkts,
+		__rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
 static int
 pfe_eth_open(struct rte_eth_dev *dev)
 {
@@ -174,6 +288,21 @@ pfe_eth_open(struct rte_eth_dev *dev)
 					    " failed", client->id);
 				goto err0;
 			}
+		} else {
+			/* Freeing the packets if already exists */
+			int ret = 0;
+			struct rte_mbuf *rx_pkts[32];
+			/* TODO multiqueue support */
+			ret = hif_lib_receive_pkt(&client->rx_q[0],
+						  hif_shm->pool, rx_pkts, 32);
+			while (ret) {
+				int i;
+				for (i = 0; i < ret; i++)
+					rte_pktmbuf_free(rx_pkts[i]);
+				ret = hif_lib_receive_pkt(&client->rx_q[0],
+							  hif_shm->pool,
+							  rx_pkts, 32);
+			}
 		}
 	} else {
 		/* Register client driver with HIF */
@@ -197,6 +326,14 @@ pfe_eth_open(struct rte_eth_dev *dev)
 		}
 	}
 	rc = pfe_eth_start(priv);
+	dev->rx_pkt_burst = &pfe_recv_pkts;
+	dev->tx_pkt_burst = &pfe_xmit_pkts;
+	/* If no prefetch is configured. */
+	if (getenv("PFE_INTR_SUPPORT")) {
+		dev->rx_pkt_burst = &pfe_recv_pkts_on_intr;
+		PFE_PMD_INFO("PFE INTERRUPT Mode enabled");
+	}
+
 
 err0:
 	return rc;
@@ -243,6 +380,9 @@ pfe_eth_stop(struct rte_eth_dev *dev/*, int wake*/)
 
 	gemac_disable(priv->EMAC_baseaddr);
 	gpi_disable(priv->GPI_baseaddr);
+
+	dev->rx_pkt_burst = &pfe_dummy_recv_pkts;
+	dev->tx_pkt_burst = &pfe_dummy_xmit_pkts;
 }
 
 static void

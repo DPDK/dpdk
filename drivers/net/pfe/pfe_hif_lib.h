@@ -162,6 +162,9 @@ int pfe_hif_lib_init(struct pfe *pfe);
 void pfe_hif_lib_exit(struct pfe *pfe);
 int hif_lib_client_register(struct hif_client_s *client);
 int hif_lib_client_unregister(struct  hif_client_s *client);
+void hif_lib_xmit_pkt(struct hif_client_s *client, unsigned int qno,
+			void *data, void *data1, unsigned int len,
+			u32 client_ctrl, unsigned int flags, void *client_data);
 void hif_lib_indicate_client(struct hif_client_s *client, int event, int data);
 int hif_lib_event_handler_start(struct hif_client_s *client, int event, int
 					data);
@@ -169,5 +172,10 @@ void *hif_lib_tx_get_next_complete(struct hif_client_s *client, int qno,
 				   unsigned int *flags, int count);
 int pfe_hif_shm_init(struct hif_shm *hif_shm, struct rte_mempool *mb_pool);
 void pfe_hif_shm_clean(struct hif_shm *hif_shm);
+
+int hif_lib_receive_pkt(struct hif_client_rx_queue *queue,
+			     struct rte_mempool *pool,
+			     struct rte_mbuf **rx_pkts,
+			     uint16_t nb_pkts);
 
 #endif /* _PFE_HIF_LIB_H_ */

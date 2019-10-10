@@ -43,6 +43,38 @@ pfe_hif_free_descr(struct pfe_hif *hif)
 	rte_free(hif->descr_baseaddr_v);
 }
 
+/* pfe_hif_release_buffers */
+static void
+pfe_hif_release_buffers(struct pfe_hif *hif)
+{
+	struct hif_desc	*desc;
+	uint32_t i = 0;
+	struct rte_mbuf *mbuf;
+	struct rte_pktmbuf_pool_private *mb_priv;
+
+	hif->rx_base = hif->descr_baseaddr_v;
+
+	/*Free Rx buffers */
+	desc = hif->rx_base;
+	mb_priv = rte_mempool_get_priv(hif->shm->pool);
+	for (i = 0; i < hif->rx_ring_size; i++) {
+		if (readl(&desc->data)) {
+			if (i < hif->shm->rx_buf_pool_cnt &&
+			    !hif->shm->rx_buf_pool[i]) {
+				mbuf = hif->rx_buf_vaddr[i] + PFE_PKT_HEADER_SZ
+					- sizeof(struct rte_mbuf)
+					- RTE_PKTMBUF_HEADROOM
+					- mb_priv->mbuf_priv_size;
+				hif->shm->rx_buf_pool[i] = mbuf;
+			}
+		}
+		writel(0, &desc->data);
+		writel(0, &desc->status);
+		writel(0, &desc->ctrl);
+		desc++;
+	}
+}
+
 /*
  * pfe_hif_init_buffers
  * This function initializes the HIF Rx/Tx ring descriptors and
@@ -259,9 +291,332 @@ pfe_hif_client_unregister(struct pfe_hif *hif, u32 client_id)
 	rte_spinlock_unlock(&hif->tx_lock);
 }
 
+/*
+ * client_put_rxpacket-
+ */
+static struct rte_mbuf *
+client_put_rxpacket(struct hif_rx_queue *queue,
+		void *pkt, u32 len,
+		u32 flags, u32 client_ctrl,
+		struct rte_mempool *pool,
+		u32 *rem_len)
+{
+	struct rx_queue_desc *desc = queue->base + queue->write_idx;
+	struct rte_mbuf *mbuf = NULL;
+
+
+	if (readl(&desc->ctrl) & CL_DESC_OWN) {
+		mbuf = rte_cpu_to_le_64(rte_pktmbuf_alloc(pool));
+		if (unlikely(!mbuf)) {
+			PFE_PMD_WARN("Buffer allocation failure\n");
+			return NULL;
+		}
+
+		desc->data = pkt;
+		desc->client_ctrl = client_ctrl;
+		/*
+		 * Ensure everything else is written to DDR before
+		 * writing bd->ctrl
+		 */
+		rte_wmb();
+		writel(CL_DESC_BUF_LEN(len) | flags, &desc->ctrl);
+		queue->write_idx = (queue->write_idx + 1)
+				    & (queue->size - 1);
+
+		*rem_len = mbuf->buf_len;
+	}
+
+	return mbuf;
+}
+
+/*
+ * pfe_hif_rx_process-
+ * This function does pfe hif rx queue processing.
+ * Dequeue packet from Rx queue and send it to corresponding client queue
+ */
+int
+pfe_hif_rx_process(struct pfe *pfe, int budget)
+{
+	struct hif_desc	*desc;
+	struct hif_hdr *pkt_hdr;
+	struct __hif_hdr hif_hdr;
+	void *free_buf;
+	int rtc, len, rx_processed = 0;
+	struct __hif_desc local_desc;
+	int flags = 0, wait_for_last = 0, retry = 0;
+	unsigned int buf_size = 0;
+	struct rte_mbuf *mbuf = NULL;
+	struct pfe_hif *hif = &pfe->hif;
+
+	rte_spinlock_lock(&hif->lock);
+
+	rtc = hif->rxtoclean_index;
+
+	while (rx_processed < budget) {
+		desc = hif->rx_base + rtc;
+
+		__memcpy12(&local_desc, desc);
+
+		/* ACK pending Rx interrupt */
+		if (local_desc.ctrl & BD_CTRL_DESC_EN) {
+			if (unlikely(wait_for_last))
+				continue;
+			else
+				break;
+		}
+
+		len = BD_BUF_LEN(local_desc.ctrl);
+		pkt_hdr = (struct hif_hdr *)hif->rx_buf_vaddr[rtc];
+
+		/* Track last HIF header received */
+		if (!hif->started) {
+			hif->started = 1;
+
+			__memcpy8(&hif_hdr, pkt_hdr);
+
+			hif->qno = hif_hdr.hdr.q_num;
+			hif->client_id = hif_hdr.hdr.client_id;
+			hif->client_ctrl = (hif_hdr.hdr.client_ctrl1 << 16) |
+						hif_hdr.hdr.client_ctrl;
+			flags = CL_DESC_FIRST;
+
+		} else {
+			flags = 0;
+		}
+
+		if (local_desc.ctrl & BD_CTRL_LIFM) {
+			flags |= CL_DESC_LAST;
+			wait_for_last = 0;
+		} else {
+			wait_for_last = 1;
+		}
+
+		/* Check for valid client id and still registered */
+		if (hif->client_id >= HIF_CLIENTS_MAX ||
+		    !(test_bit(hif->client_id,
+			&hif->shm->g_client_status[0]))) {
+			PFE_PMD_INFO("packet with invalid client id %d qnum %d",
+				hif->client_id, hif->qno);
+
+			free_buf = hif->rx_buf_addr[rtc];
+
+			goto pkt_drop;
+		}
+
+		/* Check to valid queue number */
+		if (hif->client[hif->client_id].rx_qn <= hif->qno) {
+			PFE_DP_LOG(DEBUG, "packet with invalid queue: %d",
+					hif->qno);
+			hif->qno = 0;
+		}
+
+retry:
+		mbuf =
+		client_put_rxpacket(&hif->client[hif->client_id].rx_q[hif->qno],
+				    (void *)pkt_hdr, len, flags,
+				    hif->client_ctrl, hif->shm->pool,
+				    &buf_size);
+
+		if (unlikely(!mbuf)) {
+			if (!retry) {
+				pfe_tx_do_cleanup(pfe);
+				retry = 1;
+				goto retry;
+			}
+			rx_processed = budget;
+
+			if (flags & CL_DESC_FIRST)
+				hif->started = 0;
+
+			PFE_DP_LOG(DEBUG, "No buffers");
+			break;
+		}
+
+		retry = 0;
+
+		free_buf = (void *)(size_t)rte_pktmbuf_iova(mbuf);
+		free_buf = free_buf - PFE_PKT_HEADER_SZ;
+
+		/*Fill free buffer in the descriptor */
+		hif->rx_buf_addr[rtc] = free_buf;
+		hif->rx_buf_vaddr[rtc] = (void *)((size_t)mbuf->buf_addr +
+				mbuf->data_off - PFE_PKT_HEADER_SZ);
+		hif->rx_buf_len[rtc] = buf_size - RTE_PKTMBUF_HEADROOM;
+
+pkt_drop:
+		writel(DDR_PHYS_TO_PFE(free_buf), &desc->data);
+		/*
+		 * Ensure everything else is written to DDR before
+		 * writing bd->ctrl
+		 */
+		rte_wmb();
+		writel((BD_CTRL_PKT_INT_EN | BD_CTRL_LIFM | BD_CTRL_DIR |
+			BD_CTRL_DESC_EN | BD_BUF_LEN(hif->rx_buf_len[rtc])),
+			&desc->ctrl);
+
+		rtc = (rtc + 1) & (hif->rx_ring_size - 1);
+
+		if (local_desc.ctrl & BD_CTRL_LIFM) {
+			if (!(hif->client_ctrl & HIF_CTRL_RX_CONTINUED))
+				rx_processed++;
+
+			hif->started = 0;
+		}
+	}
+
+
+	hif->rxtoclean_index = rtc;
+	rte_spinlock_unlock(&hif->lock);
+
+	/* we made some progress, re-start rx dma in case it stopped */
+	hif_rx_dma_start();
+
+	return rx_processed;
+}
+
+/*
+ * client_ack_txpacket-
+ * This function ack the Tx packet in the give client Tx queue by resetting
+ * ownership bit in the descriptor.
+ */
+static int
+client_ack_txpacket(struct pfe_hif *hif, unsigned int client_id,
+		    unsigned int q_no)
+{
+	struct hif_tx_queue *queue = &hif->client[client_id].tx_q[q_no];
+	struct tx_queue_desc *desc = queue->base + queue->ack_idx;
+
+	if (readl(&desc->ctrl) & CL_DESC_OWN) {
+		writel((readl(&desc->ctrl) & ~CL_DESC_OWN), &desc->ctrl);
+		queue->ack_idx = (queue->ack_idx + 1) & (queue->size - 1);
+
+		return 0;
+
+	} else {
+		/*This should not happen */
+		PFE_PMD_ERR("%d %d %d %d %d %p %d",
+		       hif->txtosend, hif->txtoclean, hif->txavail,
+			client_id, q_no, queue, queue->ack_idx);
+		return 1;
+	}
+}
+
+static void
+__hif_tx_done_process(struct pfe *pfe, int count)
+{
+	struct hif_desc *desc;
+	struct hif_desc_sw *desc_sw;
+	unsigned int ttc, tx_avl;
+	int pkts_done[HIF_CLIENTS_MAX] = {0, 0};
+	struct pfe_hif *hif = &pfe->hif;
+
+	ttc = hif->txtoclean;
+	tx_avl = hif->txavail;
+
+	while ((tx_avl < hif->tx_ring_size) && count--) {
+		desc = hif->tx_base + ttc;
+
+		if (readl(&desc->ctrl) & BD_CTRL_DESC_EN)
+			break;
+
+		desc_sw = &hif->tx_sw_queue[ttc];
+
+		if (desc_sw->client_id > HIF_CLIENTS_MAX)
+			PFE_PMD_ERR("Invalid cl id %d", desc_sw->client_id);
+
+		pkts_done[desc_sw->client_id]++;
+
+		client_ack_txpacket(hif, desc_sw->client_id, desc_sw->q_no);
+
+		ttc = (ttc + 1) & (hif->tx_ring_size - 1);
+		tx_avl++;
+	}
+
+	if (pkts_done[0])
+		hif_lib_indicate_client(pfe->hif_client[0], EVENT_TXDONE_IND,
+				0);
+	if (pkts_done[1])
+		hif_lib_indicate_client(pfe->hif_client[1], EVENT_TXDONE_IND,
+				0);
+	hif->txtoclean = ttc;
+	hif->txavail = tx_avl;
+}
+
+static inline void
+hif_tx_done_process(struct pfe *pfe, int count)
+{
+	struct pfe_hif *hif = &pfe->hif;
+	rte_spinlock_lock(&hif->tx_lock);
+	__hif_tx_done_process(pfe, count);
+	rte_spinlock_unlock(&hif->tx_lock);
+}
+
+void
+pfe_tx_do_cleanup(struct pfe *pfe)
+{
+	hif_tx_done_process(pfe, HIF_TX_DESC_NT);
+}
+
+/*
+ * __hif_xmit_pkt -
+ * This function puts one packet in the HIF Tx queue
+ */
+void
+hif_xmit_pkt(struct pfe_hif *hif, unsigned int client_id, unsigned int
+	     q_no, void *data, u32 len, unsigned int flags)
+{
+	struct hif_desc	*desc;
+	struct hif_desc_sw *desc_sw;
+
+	desc = hif->tx_base + hif->txtosend;
+	desc_sw = &hif->tx_sw_queue[hif->txtosend];
+
+	desc_sw->len = len;
+	desc_sw->client_id = client_id;
+	desc_sw->q_no = q_no;
+	desc_sw->flags = flags;
+
+	writel((u32)DDR_PHYS_TO_PFE(data), &desc->data);
+
+	hif->txtosend = (hif->txtosend + 1) & (hif->tx_ring_size - 1);
+	hif->txavail--;
+
+	if ((!((flags & HIF_DATA_VALID) && (flags &
+				HIF_LAST_BUFFER))))
+		goto skip_tx;
+
+	/*
+	 * Ensure everything else is written to DDR before
+	 * writing bd->ctrl
+	 */
+	rte_wmb();
+
+	do {
+		desc_sw = &hif->tx_sw_queue[hif->txtoflush];
+		desc = hif->tx_base + hif->txtoflush;
+
+		if (desc_sw->flags & HIF_LAST_BUFFER) {
+			writel((BD_CTRL_LIFM |
+			       BD_CTRL_BRFETCH_DISABLE | BD_CTRL_RTFETCH_DISABLE
+			       | BD_CTRL_PARSE_DISABLE | BD_CTRL_DESC_EN |
+				 BD_BUF_LEN(desc_sw->len)),
+				&desc->ctrl);
+		} else {
+			writel((BD_CTRL_DESC_EN |
+				BD_BUF_LEN(desc_sw->len)), &desc->ctrl);
+		}
+		hif->txtoflush = (hif->txtoflush + 1) & (hif->tx_ring_size - 1);
+	}
+	while (hif->txtoflush != hif->txtosend)
+		;
+
+skip_tx:
+	return;
+}
+
 void
 hif_process_client_req(struct pfe_hif *hif, int req,
-		       int data1, __rte_unused int data2)
+			    int data1, __rte_unused int data2)
 {
 	unsigned int client_id = data1;
 
@@ -502,6 +857,9 @@ pfe_hif_exit(struct pfe *pfe)
 		/*Disable Rx/Tx */
 		hif_rx_disable();
 		hif_tx_disable();
+
+		pfe_hif_release_buffers(hif);
+		pfe_hif_shm_clean(hif->shm);
 
 		pfe_hif_free_descr(hif);
 		pfe->hif.setuped = 0;

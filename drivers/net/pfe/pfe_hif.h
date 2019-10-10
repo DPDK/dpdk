@@ -138,11 +138,19 @@ struct pfe_hif {
 	struct rte_device *dev;
 };
 
+void hif_xmit_pkt(struct pfe_hif *hif, unsigned int client_id, unsigned int
+			q_no, void *data, u32 len, unsigned int flags);
 void hif_process_client_req(struct pfe_hif *hif, int req, int data1, int
 				data2);
 int pfe_hif_init(struct pfe *pfe);
 void pfe_hif_exit(struct pfe *pfe);
 void pfe_hif_rx_idle(struct pfe_hif *hif);
+int pfe_hif_rx_process(struct pfe *pfe, int budget);
 int pfe_hif_init_buffers(struct pfe_hif *hif);
+void pfe_tx_do_cleanup(struct pfe *pfe);
+
+#define __memcpy8(dst, src)		memcpy(dst, src, 8)
+#define __memcpy12(dst, src)		memcpy(dst, src, 12)
+#define __memcpy(dst, src, len)		memcpy(dst, src, len)
 
 #endif /* _PFE_HIF_H_ */

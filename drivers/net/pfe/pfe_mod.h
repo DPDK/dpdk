@@ -7,6 +7,8 @@
 
 struct pfe;
 
+#include <rte_ethdev.h>
+
 #include "pfe.h"
 #include "pfe_hif.h"
 #include "pfe_hif_lib.h"
