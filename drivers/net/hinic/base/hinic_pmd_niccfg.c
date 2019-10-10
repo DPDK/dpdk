@@ -1613,6 +1613,44 @@ int hinic_get_link_mode(void *hwdev, u32 *supported, u32 *advertised)
 }
 
 /**
+ * hinic_set_xsfp_tx_status - Enable or disable the fiber in
+ * tx direction when set link up or down.
+ *
+ * @param hwdev
+ *   The hardware interface of a nic device.
+ * @param enable
+ *   Enable or Disable.
+ *
+ * @return
+ *   0 on success.
+ *   negative error value otherwise.
+ */
+int hinic_set_xsfp_tx_status(void *hwdev, bool enable)
+{
+	struct hinic_set_xsfp_status xsfp_status;
+	u16 out_size = sizeof(struct hinic_set_xsfp_status);
+	int err;
+
+	memset(&xsfp_status, 0, sizeof(xsfp_status));
+	xsfp_status.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	xsfp_status.port_id = hinic_global_func_id(hwdev);
+	xsfp_status.xsfp_tx_dis = ((enable == 0) ? 1 : 0);
+
+	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_SET_XSFP_STATUS,
+		&xsfp_status, sizeof(struct hinic_set_xsfp_status),
+		&xsfp_status, &out_size);
+	if (err || !out_size || xsfp_status.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR,
+			"Failed to %s port xsfp status, err: %d, status: 0x%x, out size: 0x%x\n",
+			enable ? "Disable" : "Enable", err,
+			xsfp_status.mgmt_msg_head.status, out_size);
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+/**
  * hinic_flush_qp_res - Flush tx && rx chip resources in case of set vport
  * fake failed when device start.
  *

@@ -578,6 +578,13 @@ struct hinic_link_mode_cmd {
 	u16	advertised;
 };
 
+struct hinic_set_xsfp_status {
+	struct hinic_mgmt_msg_head mgmt_msg_head;
+
+	u32 port_id;
+	u32 xsfp_tx_dis;	/* 0: tx enable; 1: tx disable */
+};
+
 struct hinic_clear_qp_resource {
 	struct hinic_mgmt_msg_head mgmt_msg_head;
 
@@ -806,6 +813,8 @@ int hinic_set_link_status_follow(void *hwdev,
 				 enum hinic_link_follow_status status);
 
 int hinic_get_link_mode(void *hwdev, u32 *supported, u32 *advertised);
+
+int hinic_set_xsfp_tx_status(void *hwdev, bool enable);
 
 int hinic_flush_qp_res(void *hwdev);
 

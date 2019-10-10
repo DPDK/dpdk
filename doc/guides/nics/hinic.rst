@@ -31,6 +31,7 @@ Features
 - Unicast MAC filter
 - Multicast MAC filter
 - Flow director
+- Set Link down or up
 
 Prerequisites
 -------------

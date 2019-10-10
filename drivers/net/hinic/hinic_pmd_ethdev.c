@@ -883,6 +883,66 @@ out:
 }
 
 /**
+ * DPDK callback to bring the link UP.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int hinic_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	int ret;
+
+	ret = hinic_set_xsfp_tx_status(nic_dev->hwdev, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Enable port tx xsfp failed, dev_name: %s, port_id: %d",
+			    nic_dev->proc_dev_name, dev->data->port_id);
+		return ret;
+	}
+
+	/* link status follow phy port status, up will open pma */
+	ret = hinic_set_port_enable(nic_dev->hwdev, true);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Set mac link up failed, dev_name: %s, port_id: %d",
+			    nic_dev->proc_dev_name, dev->data->port_id);
+
+	return ret;
+}
+
+/**
+ * DPDK callback to bring the link DOWN.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int hinic_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	int ret;
+
+	ret = hinic_set_xsfp_tx_status(nic_dev->hwdev, false);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Disable port tx xsfp failed, dev_name: %s, port_id: %d",
+			    nic_dev->proc_dev_name, dev->data->port_id);
+		return ret;
+	}
+
+	/* link status follow phy port status, up will close pma */
+	ret = hinic_set_port_enable(nic_dev->hwdev, false);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Set mac link down failed, dev_name: %s, port_id: %d",
+			    nic_dev->proc_dev_name, dev->data->port_id);
+
+	return ret;
+}
+
+/**
  * DPDK callback to start the device.
  *
  * @param dev
@@ -2756,6 +2816,8 @@ static const struct eth_dev_ops hinic_pmd_ops = {
 	.rx_queue_setup                = hinic_rx_queue_setup,
 	.tx_queue_setup                = hinic_tx_queue_setup,
 	.dev_start                     = hinic_dev_start,
+	.dev_set_link_up               = hinic_dev_set_link_up,
+	.dev_set_link_down             = hinic_dev_set_link_down,
 	.link_update                   = hinic_link_update,
 	.rx_queue_release              = hinic_rx_queue_release,
 	.tx_queue_release              = hinic_tx_queue_release,
