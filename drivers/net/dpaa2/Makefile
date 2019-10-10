@@ -12,6 +12,7 @@ LIB = librte_pmd_dpaa2.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2
 CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2/mc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc

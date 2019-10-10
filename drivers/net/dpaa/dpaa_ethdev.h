@@ -15,7 +15,7 @@
 #include <fsl_usd.h>
 #include <fsl_qman.h>
 #include <fsl_bman.h>
-#include <of.h>
+#include <dpaa_of.h>
 #include <netcfg.h>
 
 #define MAX_DPAA_CORES			4

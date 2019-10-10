@@ -10,10 +10,10 @@
 #include <rte_mempool.h>
 #include <dpaax_iova_table.h>
 
+#include <dpaa_of.h>
 #include <fsl_usd.h>
 #include <fsl_qman.h>
 #include <fsl_bman.h>
-#include <of.h>
 #include <netcfg.h>
 
 #define DPAA_MEMPOOL_OPS_NAME	"dpaa"

@@ -40,8 +40,6 @@ DPDK_17.11 {
 	fman_ip_rev;
 	netcfg_acquire;
 	netcfg_release;
-	of_find_compatible_node;
-	of_get_property;
 	qm_channel_caam;
 	qman_create_fq;
 	qman_dequeue;
@@ -97,7 +95,6 @@ DPDK_18.08 {
 
 	fman_if_get_sg_enable;
 	fman_if_set_sg;
-	of_get_mac_address;
 
 } DPDK_18.02;
 

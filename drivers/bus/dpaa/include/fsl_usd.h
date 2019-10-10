@@ -10,6 +10,7 @@
 #define __FSL_USD_H
 
 #include <compat.h>
+#include <dpaa_list.h>
 #include <fsl_qman.h>
 
 #ifdef __cplusplus

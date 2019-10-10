@@ -17,6 +17,7 @@ CFLAGS += -Wno-cast-qual
 CFLAGS += -I$(RTE_BUS_DPAA)/
 CFLAGS += -I$(RTE_BUS_DPAA)/include
 CFLAGS += -I$(RTE_BUS_DPAA)/base/qbman
+CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
 
 # versioning export map
@@ -32,7 +33,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_DPAA_BUS) += \
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA_BUS) += \
 	base/fman/fman.c \
 	base/fman/fman_hw.c \
-	base/fman/of.c \
 	base/fman/netcfg_layer.c \
 	base/qbman/process.c \
 	base/qbman/bman.c \

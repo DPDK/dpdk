@@ -8,7 +8,8 @@
 #ifndef __DPAA_SYS_H
 #define __DPAA_SYS_H
 
-#include <of.h>
+#include <compat.h>
+#include <dpaa_of.h>
 
 /* For 2-element tables related to cache-inhibited and cache-enabled mappings */
 #define DPAA_PORTAL_CE 0

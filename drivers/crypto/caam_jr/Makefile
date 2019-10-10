@@ -17,6 +17,7 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
 CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa/include
+CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax/caamflib/
 CFLAGS += -I$(RTE_SDK)/drivers/crypto/caam_jr
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include

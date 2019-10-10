@@ -5,9 +5,10 @@
  *
  */
 
-#include <of.h>
+#include <dpaa_of.h>
+#include <assert.h>
 #include <rte_string_fns.h>
-#include <rte_dpaa_logs.h>
+#include <dpaax_logs.h>
 
 static int alive;
 static struct dt_dir root_dir;
@@ -23,7 +24,7 @@ of_open_dir(const char *relative_path, struct dirent ***d)
 	snprintf(full_path, PATH_MAX, "%s/%s", base_dir, relative_path);
 	ret = scandir(full_path, d, 0, versionsort);
 	if (ret < 0)
-		DPAA_BUS_LOG(ERR, "Failed to open directory %s",
+		DPAAX_LOG(ERR, "Failed to open directory %s",
 			     full_path);
 	return ret;
 }
@@ -45,7 +46,7 @@ of_open_file(const char *relative_path)
 	snprintf(full_path, PATH_MAX, "%s/%s", base_dir, relative_path);
 	ret = open(full_path, O_RDONLY);
 	if (ret < 0)
-		DPAA_BUS_LOG(ERR, "Failed to open directory %s",
+		DPAAX_LOG(ERR, "Failed to open directory %s",
 			     full_path);
 	return ret;
 }
@@ -57,7 +58,7 @@ process_file(struct dirent *dent, struct dt_dir *parent)
 	struct dt_file *f = malloc(sizeof(*f));
 
 	if (!f) {
-		DPAA_BUS_LOG(DEBUG, "Unable to allocate memory for file node");
+		DPAAX_LOG(DEBUG, "Unable to allocate memory for file node");
 		return;
 	}
 	f->node.is_file = 1;
@@ -67,14 +68,14 @@ process_file(struct dirent *dent, struct dt_dir *parent)
 	f->parent = parent;
 	fd = of_open_file(f->node.node.full_name);
 	if (fd < 0) {
-		DPAA_BUS_LOG(DEBUG, "Unable to open file node");
+		DPAAX_LOG(DEBUG, "Unable to open file node");
 		free(f);
 		return;
 	}
 	f->len = read(fd, f->buf, OF_FILE_BUF_MAX);
 	close(fd);
 	if (f->len < 0) {
-		DPAA_BUS_LOG(DEBUG, "Unable to read file node");
+		DPAAX_LOG(DEBUG, "Unable to read file node");
 		free(f);
 		return;
 	}
@@ -130,7 +131,7 @@ iterate_dir(struct dirent **d, int num, struct dt_dir *dt)
 			list_add_tail(&subdir->node.list, &dt->subdirs);
 			break;
 		default:
-			DPAA_BUS_LOG(DEBUG, "Ignoring invalid dt entry %s/%s",
+			DPAAX_LOG(DEBUG, "Ignoring invalid dt entry %s/%s",
 				     dt->node.node.full_name, d[loop]->d_name);
 		}
 	}
@@ -170,37 +171,37 @@ linear_dir(struct dt_dir *d)
 	list_for_each_entry(f, &d->files, node.list) {
 		if (!strcmp(f->node.node.name, "compatible")) {
 			if (d->compatible)
-				DPAA_BUS_LOG(DEBUG, "Duplicate compatible in"
+				DPAAX_LOG(DEBUG, "Duplicate compatible in"
 					     " %s", d->node.node.full_name);
 			d->compatible = f;
 		} else if (!strcmp(f->node.node.name, "status")) {
 			if (d->status)
-				DPAA_BUS_LOG(DEBUG, "Duplicate status in %s",
+				DPAAX_LOG(DEBUG, "Duplicate status in %s",
 					     d->node.node.full_name);
 			d->status = f;
 		} else if (!strcmp(f->node.node.name, "linux,phandle")) {
 			if (d->lphandle)
-				DPAA_BUS_LOG(DEBUG, "Duplicate lphandle in %s",
+				DPAAX_LOG(DEBUG, "Duplicate lphandle in %s",
 					     d->node.node.full_name);
 			d->lphandle = f;
 		} else if (!strcmp(f->node.node.name, "phandle")) {
 			if (d->lphandle)
-				DPAA_BUS_LOG(DEBUG, "Duplicate lphandle in %s",
+				DPAAX_LOG(DEBUG, "Duplicate lphandle in %s",
 					     d->node.node.full_name);
 			d->lphandle = f;
 		} else if (!strcmp(f->node.node.name, "#address-cells")) {
 			if (d->a_cells)
-				DPAA_BUS_LOG(DEBUG, "Duplicate a_cells in %s",
+				DPAAX_LOG(DEBUG, "Duplicate a_cells in %s",
 					     d->node.node.full_name);
 			d->a_cells = f;
 		} else if (!strcmp(f->node.node.name, "#size-cells")) {
 			if (d->s_cells)
-				DPAA_BUS_LOG(DEBUG, "Duplicate s_cells in %s",
+				DPAAX_LOG(DEBUG, "Duplicate s_cells in %s",
 					     d->node.node.full_name);
 			d->s_cells = f;
 		} else if (!strcmp(f->node.node.name, "reg")) {
 			if (d->reg)
-				DPAA_BUS_LOG(DEBUG, "Duplicate reg in %s",
+				DPAAX_LOG(DEBUG, "Duplicate reg in %s",
 					     d->node.node.full_name);
 			d->reg = f;
 		}
@@ -220,7 +221,7 @@ of_init_path(const char *dt_path)
 	base_dir = dt_path;
 
 	/* This needs to be singleton initialization */
-	DPAA_BUS_HWWARN(alive, "Double-init of device-tree driver!");
+	DPAAX_HWWARN(alive, "Double-init of device-tree driver!");
 
 	/* Prepare root node (the remaining fields are set in process_dir()) */
 	root_dir.node.node.name[0] = '\0';
@@ -231,7 +232,7 @@ of_init_path(const char *dt_path)
 	/* Kick things off... */
 	ret = process_dir("", &root_dir);
 	if (ret) {
-		DPAA_BUS_LOG(ERR, "Unable to parse device tree");
+		DPAAX_LOG(ERR, "Unable to parse device tree");
 		return ret;
 	}
 
@@ -261,7 +262,7 @@ destroy_dir(struct dt_dir *d)
 void
 of_finish(void)
 {
-	DPAA_BUS_HWWARN(!alive, "Double-finish of device-tree driver!");
+	DPAAX_HWWARN(!alive, "Double-finish of device-tree driver!");
 
 	destroy_dir(&root_dir);
 	INIT_LIST_HEAD(&linear);
@@ -298,12 +299,12 @@ check_compatible(const struct dt_file *f, const char *compatible)
 
 const struct device_node *
 of_find_compatible_node(const struct device_node *from,
-			const char *type __always_unused,
+			const char *type __rte_unused,
 			const char *compatible)
 {
 	const struct dt_dir *d;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised!");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised!");
 
 	if (list_empty(&linear))
 		return NULL;
@@ -328,7 +329,7 @@ of_get_property(const struct device_node *from, const char *name,
 	const struct dt_dir *d;
 	const struct dt_file *f;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised!");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised!");
 
 	d = node2dir(from);
 	list_for_each_entry(f, &d->files, node.list)
@@ -345,7 +346,7 @@ of_device_is_available(const struct device_node *dev_node)
 {
 	const struct dt_dir *d;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised!");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised!");
 	d = node2dir(dev_node);
 	if (!d->status)
 		return true;
@@ -357,11 +358,11 @@ of_device_is_available(const struct device_node *dev_node)
 }
 
 const struct device_node *
-of_find_node_by_phandle(phandle ph)
+of_find_node_by_phandle(uint64_t ph)
 {
 	const struct dt_dir *d;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised!");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised!");
 	list_for_each_entry(d, &linear, linear)
 		if (d->lphandle && (d->lphandle->len == 4) &&
 		    !memcmp(d->lphandle->buf, &ph, 4))
@@ -374,7 +375,7 @@ of_get_parent(const struct device_node *dev_node)
 {
 	const struct dt_dir *d;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised!");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised!");
 
 	if (!dev_node)
 		return NULL;
@@ -390,14 +391,14 @@ of_get_next_child(const struct device_node *dev_node,
 {
 	const struct dt_dir *p, *c;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised!");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised!");
 
 	if (!dev_node)
 		return NULL;
 	p = node2dir(dev_node);
 	if (prev) {
 		c = node2dir(prev);
-		DPAA_BUS_HWWARN((c->parent != p), "Parent/child mismatch");
+		DPAAX_HWWARN((c->parent != p), "Parent/child mismatch");
 		if (c->parent != p)
 			return NULL;
 		if (c->node.list.next == &p->subdirs)
@@ -418,7 +419,7 @@ of_n_addr_cells(const struct device_node *dev_node)
 {
 	const struct dt_dir *d;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised");
 	if (!dev_node)
 		return OF_DEFAULT_NA;
 	d = node2dir(dev_node);
@@ -440,7 +441,7 @@ of_n_size_cells(const struct device_node *dev_node)
 {
 	const struct dt_dir *d;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised!");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised!");
 	if (!dev_node)
 		return OF_DEFAULT_NA;
 	d = node2dir(dev_node);
@@ -496,7 +497,7 @@ of_translate_address(const struct device_node *dev_node,
 	size_t rlen;
 	uint32_t na, pna;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised!");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised!");
 	assert(dev_node != NULL);
 
 	na = of_n_addr_cells(dev_node);
@@ -538,7 +539,7 @@ of_device_is_compatible(const struct device_node *dev_node,
 {
 	const struct dt_dir *d;
 
-	DPAA_BUS_HWWARN(!alive, "Device-tree driver not initialised!");
+	DPAAX_HWWARN(!alive, "Device-tree driver not initialised!");
 	if (!dev_node)
 		d = &root_dir;
 	else

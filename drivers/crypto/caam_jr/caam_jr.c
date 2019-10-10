@@ -27,9 +27,9 @@
 /* RTA header files */
 #include <desc/common.h>
 #include <desc/algo.h>
-#include <of.h>
+#include <dpaa_of.h>
 #ifdef RTE_LIBRTE_PMD_CAAM_JR_DEBUG
-#define CAAM_JR_DBG	1
+#define CAAM_JR_DBG    1
 #else
 #define CAAM_JR_DBG	0
 #endif

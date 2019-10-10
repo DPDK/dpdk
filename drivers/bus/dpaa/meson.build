@@ -12,7 +12,6 @@ deps += ['common_dpaax', 'eventdev']
 sources = files('base/fman/fman.c',
 		'base/fman/fman_hw.c',
 		'base/fman/netcfg_layer.c',
-		'base/fman/of.c',
 		'base/qbman/bman.c',
 		'base/qbman/bman_driver.c',
 		'base/qbman/dpaa_alloc.c',

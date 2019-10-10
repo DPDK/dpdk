@@ -14,6 +14,7 @@ CFLAGS += $(WERROR_FLAGS)
 
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
+CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 
 LDLIBS += -lrte_bus_fslmc
 LDLIBS += -lrte_bus_vdev

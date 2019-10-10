@@ -11,6 +11,8 @@
 #include <rte_eventdev.h>
 #include <rte_byteorder.h>
 
+#include <dpaa_bits.h>
+
 /* Compilation constants */
 #define DQRR_MAXFILL	15
 #define EQCR_ITHRESH	4	/* if EQCR congests, interrupt threshold */

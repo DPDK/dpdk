@@ -15,4 +15,5 @@ sources = files('caam_jr_capabilities.c',
 allow_experimental_apis = true
 
 includes += include_directories('../../bus/dpaa/include/')
+includes += include_directories('../../common/dpaax/')
 includes += include_directories('../../common/dpaax/caamflib/')

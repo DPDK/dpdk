@@ -15,6 +15,7 @@
 #include <rte_ether.h>
 
 #include <compat.h>
+#include <dpaa_list.h>
 
 #ifndef FMAN_DEVICE_PATH
 #define FMAN_DEVICE_PATH "/dev/mem"

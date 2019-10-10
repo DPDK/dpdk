@@ -32,6 +32,7 @@
 #include <rte_bus.h>
 #include <rte_mbuf_pool_ops.h>
 
+#include <dpaa_of.h>
 #include <rte_dpaa_bus.h>
 #include <rte_dpaa_logs.h>
 #include <dpaax_iova_table.h>
@@ -39,7 +40,6 @@
 #include <fsl_usd.h>
 #include <fsl_qman.h>
 #include <fsl_bman.h>
-#include <of.h>
 #include <netcfg.h>
 
 int dpaa_logtype_bus;

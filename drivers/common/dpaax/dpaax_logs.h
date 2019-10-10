@@ -9,6 +9,16 @@
 
 extern int dpaax_logger;
 
+#ifdef RTE_LIBRTE_DPAAX_DEBUG
+#define DPAAX_HWWARN(cond, fmt, args...) \
+	do {\
+		if (cond) \
+			DPAAX_LOG(DEBUG, "WARN: " fmt, ##args); \
+	} while (0)
+#else
+#define DPAAX_HWWARN(cond, fmt, args...) do { } while (0)
+#endif
+
 #define DPAAX_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, dpaax_logger, "dpaax: " fmt "\n", \
 		##args)

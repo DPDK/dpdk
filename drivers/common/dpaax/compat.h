@@ -390,7 +390,4 @@ static inline unsigned long get_zeroed_page(gfp_t __foo __rte_unused)
 #define atomic_dec_return(v)    rte_atomic32_sub_return(v, 1)
 #define atomic_sub_and_test(i, v) (rte_atomic32_sub_return(v, i) == 0)
 
-#include <dpaa_list.h>
-#include <dpaa_bits.h>
-
 #endif /* __COMPAT_H */

@@ -12,6 +12,7 @@ LIB = librte_mempool_dpaa2.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc
+CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
 
 # versioning export map

@@ -8,7 +8,22 @@
 #ifndef __OF_H
 #define	__OF_H
 
-#include <compat.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <inttypes.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <glob.h>
+#include <errno.h>
+#include <ctype.h>
+#include <limits.h>
+#include <rte_common.h>
+#include <dpaa_list.h>
 
 #ifndef OF_INIT_DEFAULT_PATH
 #define OF_INIT_DEFAULT_PATH "/proc/device-tree"
@@ -89,7 +104,7 @@ struct dt_file {
 
 const struct device_node *of_find_compatible_node(
 					const struct device_node *from,
-					const char *type __always_unused,
+					const char *type __rte_unused,
 					const char *compatible)
 	__attribute__((nonnull(3)));
 
@@ -102,7 +117,7 @@ const void *of_get_property(const struct device_node *from, const char *name,
 			    size_t *lenp) __attribute__((nonnull(2)));
 bool of_device_is_available(const struct device_node *dev_node);
 
-const struct device_node *of_find_node_by_phandle(phandle ph);
+const struct device_node *of_find_node_by_phandle(uint64_t ph);
 
 const struct device_node *of_get_parent(const struct device_node *dev_node);
 
@@ -122,7 +137,7 @@ const uint32_t *of_get_address(const struct device_node *dev_node, size_t idx,
 			       uint64_t *size, uint32_t *flags);
 
 uint64_t of_translate_address(const struct device_node *dev_node,
-			      const u32 *addr) __attribute__((nonnull));
+			      const uint32_t *addr) __attribute__((nonnull));
 
 bool of_device_is_compatible(const struct device_node *dev_node,
 			     const char *compatible);
@@ -147,7 +162,7 @@ static inline int of_init(void)
 /* Read a numeric property according to its size and return it as a 64-bit
  * value.
  */
-static inline uint64_t of_read_number(const __be32 *cell, int size)
+static inline uint64_t of_read_number(const uint32_t *cell, int size)
 {
 	uint64_t r = 0;
 

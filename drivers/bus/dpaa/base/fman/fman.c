@@ -11,7 +11,7 @@
 
 /* This header declares the driver interface we implement */
 #include <fman.h>
-#include <of.h>
+#include <dpaa_of.h>
 #include <rte_malloc.h>
 #include <rte_dpaa_logs.h>
 #include <rte_string_fns.h>

@@ -5,7 +5,7 @@
  *
  */
 #include <inttypes.h>
-#include <of.h>
+#include <dpaa_of.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <error.h>
