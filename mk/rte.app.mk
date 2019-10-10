@@ -204,6 +204,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_NFP_PMD)        += -lrte_pmd_nfp
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_NULL)       += -lrte_pmd_null
 _LDLIBS-$(CONFIG_RTE_LIBRTE_OCTEONTX2_PMD)  += -lrte_pmd_octeontx2 -lm
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lrte_pmd_pcap -lpcap
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PFE_PMD)        += -lrte_pmd_pfe
 _LDLIBS-$(CONFIG_RTE_LIBRTE_QEDE_PMD)       += -lrte_pmd_qede
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_RING)       += -lrte_pmd_ring
 ifeq ($(CONFIG_RTE_LIBRTE_SCHED),y)

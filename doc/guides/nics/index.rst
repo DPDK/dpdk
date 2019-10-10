@@ -48,6 +48,7 @@ Network Interface Controller Drivers
     nfp
     octeontx
     octeontx2
+    pfe
     qede
     sfc_efx
     softnic

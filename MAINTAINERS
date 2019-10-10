@@ -788,6 +788,13 @@ F: drivers/net/enetc/
 F: doc/guides/nics/enetc.rst
 F: doc/guides/nics/features/enetc.ini
 
+NXP pfe
+M: Gagandeep Singh <g.singh@nxp.com>
+M: Akhil Goyal <akhil.goyal@nxp.com>
+F: doc/guides/nics/pfe.rst
+F: drivers/net/pfe/
+F: doc/guides/nics/features/pfe.ini
+
 QLogic bnx2x
 M: Rasesh Mody <rmody@marvell.com>
 M: Shahed Shaikh <shshaikh@marvell.com>

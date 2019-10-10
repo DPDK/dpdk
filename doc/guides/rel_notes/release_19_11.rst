@@ -76,6 +76,11 @@ New Features
   Subsystem 3(HNS3) network engine found in the Hisilicon Kunpeng 920 SoC.
   See the :doc:`../nics/hns3` guide for more details on this new driver.
 
+* **Added NXP PFE PMD.**
+
+  Added the new PFE driver for the NXP LS1012A platform. See the
+  :doc:`../nics/pfe` NIC driver guide for more details on this new driver.
+
 * **Updated the Intel e1000 driver.**
 
   Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
