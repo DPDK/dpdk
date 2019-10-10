@@ -2,6 +2,7 @@
  * Copyright 2019 NXP
  */
 
+#include <sys/ioctl.h>
 #include <sys/epoll.h>
 #include <rte_kvargs.h>
 #include <rte_ethdev_vdev.h>
@@ -547,6 +548,90 @@ pfe_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+static inline int
+pfe_eth_atomic_read_link_status(struct rte_eth_dev *dev,
+				struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = link;
+	struct rte_eth_link *src = &dev->data->dev_link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+				*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
+static inline int
+pfe_eth_atomic_write_link_status(struct rte_eth_dev *dev,
+				 struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = &dev->data->dev_link;
+	struct rte_eth_link *src = link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+				*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
+static int
+pfe_eth_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
+{
+	int ret, ioctl_cmd = 0;
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+	struct rte_eth_link link, old;
+	unsigned int lstatus = 1;
+
+	if (dev == NULL) {
+		PFE_PMD_ERR("Invalid device in link_update.\n");
+		return 0;
+	}
+
+	memset(&old, 0, sizeof(old));
+	memset(&link, 0, sizeof(struct rte_eth_link));
+
+	pfe_eth_atomic_read_link_status(dev, &old);
+
+	/* Read from PFE CDEV, status of link, if file was successfully
+	 * opened.
+	 */
+	if (priv->link_fd != PFE_CDEV_INVALID_FD) {
+		if (priv->id == 0)
+			ioctl_cmd = PFE_CDEV_ETH0_STATE_GET;
+		if (priv->id == 1)
+			ioctl_cmd = PFE_CDEV_ETH1_STATE_GET;
+
+		ret = ioctl(priv->link_fd, ioctl_cmd, &lstatus);
+		if (ret != 0) {
+			PFE_PMD_ERR("Unable to fetch link status (ioctl)\n");
+			/* use dummy link value */
+			link.link_status = 1;
+		}
+		PFE_PMD_DEBUG("Fetched link state (%d) for dev %d.\n",
+			      lstatus, priv->id);
+	}
+
+	if (old.link_status == lstatus) {
+		/* no change in status */
+		PFE_PMD_DEBUG("No change in link status; Not updating.\n");
+		return -1;
+	}
+
+	link.link_status = lstatus;
+	link.link_speed = ETH_LINK_SPEED_1G;
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_autoneg = ETH_LINK_AUTONEG;
+
+	pfe_eth_atomic_write_link_status(dev, &link);
+
+	PFE_PMD_INFO("Port (%d) link is %s\n", dev->data->port_id,
+		     link.link_status ? "up" : "down");
+
+	return 0;
+}
+
 static int
 pfe_promiscuous_enable(struct rte_eth_dev *dev)
 {
@@ -583,6 +668,22 @@ pfe_allmulticast_enable(struct rte_eth_dev *dev)
 	gemac_set_hash(priv->EMAC_baseaddr, &hash_addr);
 	dev->data->all_multicast = 1;
 
+	return 0;
+}
+
+static int
+pfe_link_down(struct rte_eth_dev *dev)
+{
+	pfe_eth_stop(dev);
+	return 0;
+}
+
+static int
+pfe_link_up(struct rte_eth_dev *dev)
+{
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+
+	pfe_eth_start(priv);
 	return 0;
 }
 
@@ -670,9 +771,12 @@ static const struct eth_dev_ops ops = {
 	.tx_queue_setup = pfe_tx_queue_setup,
 	.tx_queue_release  = pfe_tx_queue_release,
 	.dev_supported_ptypes_get = pfe_supported_ptypes_get,
+	.link_update  = pfe_eth_link_update,
 	.promiscuous_enable   = pfe_promiscuous_enable,
 	.promiscuous_disable  = pfe_promiscuous_disable,
 	.allmulticast_enable  = pfe_allmulticast_enable,
+	.dev_set_link_down    = pfe_link_down,
+	.dev_set_link_up      = pfe_link_up,
 	.mtu_set              = pfe_mtu_set,
 	.mac_addr_set	      = pfe_dev_set_mac_addr,
 	.stats_get            = pfe_stats_get,
