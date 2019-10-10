@@ -930,7 +930,7 @@ static int bnxt_dev_set_link_up_op(struct rte_eth_dev *eth_dev)
 		eth_dev->data->dev_link.link_status = 1;
 
 	bnxt_print_link_info(eth_dev);
-	return 0;
+	return rc;
 }
 
 static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
