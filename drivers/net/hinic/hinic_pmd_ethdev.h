@@ -178,6 +178,7 @@ struct hinic_nic_dev {
 	 * vf: the same with associate pf
 	 */
 	u32 default_cos;
+	u32 rx_csum_en;
 
 	struct hinic_filter_info    filter;
 	struct hinic_ntuple_filter_list filter_ntuple_list;

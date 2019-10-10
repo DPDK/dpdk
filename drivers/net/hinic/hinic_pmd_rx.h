@@ -105,7 +105,7 @@ void hinic_free_rx_resources(struct hinic_rxq *rxq);
 
 u16 hinic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts);
 
-void hinic_free_all_rx_skbs(struct hinic_rxq *rxq);
+void hinic_free_all_rx_mbufs(struct hinic_rxq *rxq);
 
 void hinic_rx_alloc_pkts(struct hinic_rxq *rxq);
 

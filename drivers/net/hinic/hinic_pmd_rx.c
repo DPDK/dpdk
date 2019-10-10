@@ -309,7 +309,6 @@ static int hinic_rx_alloc_cqe(struct hinic_rxq *rxq)
 {
 	size_t cqe_mem_size;
 
-	/* allocate continuous cqe memory for saving number of memory zone */
 	cqe_mem_size = sizeof(struct hinic_rq_cqe) * rxq->q_depth;
 	rxq->cqe_start_vaddr =
 		dma_zalloc_coherent(rxq->nic_dev->hwdev,
@@ -421,7 +420,7 @@ void hinic_free_all_rx_resources(struct rte_eth_dev *eth_dev)
 		if (nic_dev->rxqs[q_id] == NULL)
 			continue;
 
-		hinic_free_all_rx_skbs(nic_dev->rxqs[q_id]);
+		hinic_free_all_rx_mbufs(nic_dev->rxqs[q_id]);
 		hinic_free_rx_resources(nic_dev->rxqs[q_id]);
 		kfree(nic_dev->rxqs[q_id]);
 		nic_dev->rxqs[q_id] = NULL;
@@ -435,11 +434,11 @@ void hinic_free_all_rx_mbuf(struct rte_eth_dev *eth_dev)
 	u16 q_id;
 
 	for (q_id = 0; q_id < nic_dev->num_rq; q_id++)
-		hinic_free_all_rx_skbs(nic_dev->rxqs[q_id]);
+		hinic_free_all_rx_mbufs(nic_dev->rxqs[q_id]);
 }
 
 static void hinic_recv_jumbo_pkt(struct hinic_rxq *rxq,
-				 struct rte_mbuf *head_skb,
+				 struct rte_mbuf *head_mbuf,
 				 u32 remain_pkt_len)
 {
 	struct hinic_nic_dev *nic_dev = rxq->nic_dev;
@@ -462,11 +461,11 @@ static void hinic_recv_jumbo_pkt(struct hinic_rxq *rxq,
 		cur_mbuf->data_len = (u16)pkt_len;
 		cur_mbuf->next = NULL;
 
-		head_skb->pkt_len += cur_mbuf->data_len;
-		head_skb->nb_segs++;
+		head_mbuf->pkt_len += cur_mbuf->data_len;
+		head_mbuf->nb_segs++;
 
 		if (!rxm)
-			head_skb->next = cur_mbuf;
+			head_mbuf->next = cur_mbuf;
 		else
 			rxm->next = cur_mbuf;
 
@@ -658,7 +657,6 @@ int hinic_rx_configure(struct rte_eth_dev *dev)
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	struct rte_eth_rss_conf rss_conf =
 		dev->data->dev_conf.rx_adv_conf.rss_conf;
-	u32 csum_en = 0;
 	int err;
 
 	if (nic_dev->flags & ETH_MQ_RX_RSS_FLAG) {
@@ -678,9 +676,10 @@ int hinic_rx_configure(struct rte_eth_dev *dev)
 
 	/* Enable both L3/L4 rx checksum offload */
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_CHECKSUM)
-		csum_en = HINIC_RX_CSUM_OFFLOAD_EN;
+		nic_dev->rx_csum_en = HINIC_RX_CSUM_OFFLOAD_EN;
 
-	err = hinic_set_rx_csum_offload(nic_dev->hwdev, csum_en);
+	err = hinic_set_rx_csum_offload(nic_dev->hwdev,
+					HINIC_RX_CSUM_OFFLOAD_EN);
 	if (err)
 		goto rx_csum_ofl_err;
 
@@ -703,7 +702,7 @@ void hinic_rx_remove_configure(struct rte_eth_dev *dev)
 	}
 }
 
-void hinic_free_all_rx_skbs(struct hinic_rxq *rxq)
+void hinic_free_all_rx_mbufs(struct hinic_rxq *rxq)
 {
 	struct hinic_nic_dev *nic_dev = rxq->nic_dev;
 	struct hinic_rx_info *rx_info;
@@ -781,6 +780,10 @@ static inline uint64_t hinic_rx_csum(uint32_t status, struct hinic_rxq *rxq)
 {
 	uint32_t checksum_err;
 	uint64_t flags;
+	struct hinic_nic_dev *nic_dev = rxq->nic_dev;
+
+	if (unlikely(!(nic_dev->rx_csum_en & HINIC_RX_CSUM_OFFLOAD_EN)))
+		return PKT_RX_IP_CKSUM_UNKNOWN;
 
 	/* most case checksum is ok */
 	checksum_err = HINIC_GET_RX_CSUM_ERR(status);
@@ -999,8 +1002,8 @@ u16 hinic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
 			rxm->data_len = rx_buf_len;
 			rxm->pkt_len = rx_buf_len;
 
-			/* if jumbo use multi-wqebb update ci,
-			 * recv_jumbo_pkt will also update ci
+			/* if receive jumbo, updating ci will be done by
+			 * hinic_recv_jumbo_pkt function.
 			 */
 			HINIC_UPDATE_RQ_LOCAL_CI(rxq, wqebb_cnt + 1);
 			wqebb_cnt = 0;

@@ -255,7 +255,7 @@ static int hinic_vlan_offload_set(struct rte_eth_dev *dev, int mask);
  * specific event.
  *
  * @param: The address of parameter (struct rte_eth_dev *) regsitered before.
- **/
+ */
 static void hinic_dev_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = param;
@@ -1088,7 +1088,7 @@ static void hinic_rx_queue_release(void *queue)
 	nic_dev = rxq->nic_dev;
 
 	/* free rxq_pkt mbuf */
-	hinic_free_all_rx_skbs(rxq);
+	hinic_free_all_rx_mbufs(rxq);
 
 	/* free rxq_cqe, rxq_info */
 	hinic_free_rx_resources(rxq);
@@ -1120,7 +1120,7 @@ static void hinic_tx_queue_release(void *queue)
 	nic_dev = txq->nic_dev;
 
 	/* free txq_pkt mbuf */
-	hinic_free_all_tx_skbs(txq);
+	hinic_free_all_tx_mbufs(txq);
 
 	/* free txq_info */
 	hinic_free_tx_resources(txq);

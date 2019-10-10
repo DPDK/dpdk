@@ -131,7 +131,7 @@ void hinic_free_tx_resources(struct hinic_txq *txq);
 
 u16 hinic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, u16 nb_pkts);
 
-void hinic_free_all_tx_skbs(struct hinic_txq *txq);
+void hinic_free_all_tx_mbufs(struct hinic_txq *txq);
 
 void hinic_txq_get_stats(struct hinic_txq *txq, struct hinic_txq_stats *stats);
 
