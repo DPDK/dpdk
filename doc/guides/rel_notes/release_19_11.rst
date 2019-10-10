@@ -117,6 +117,7 @@ New Features
 
   * Enabled SR-IOV - Partially supported at this point, VFIO only.
   * Supported VLAN filter and VLAN offload.
+  * Supported Unicast MAC filter and Multicast MAC filter.
 
 * **Added Marvell NITROX symmetric crypto PMD.**
 

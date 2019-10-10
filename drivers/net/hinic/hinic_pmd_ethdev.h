@@ -56,6 +56,8 @@ struct hinic_nic_dev {
 
 	u32 vfta[HINIC_VFTA_SIZE];	/* VLAN bitmap */
 
+	struct rte_ether_addr default_addr;
+	struct rte_ether_addr *mc_list;
 	/* info */
 	unsigned int flags;
 	struct nic_service_cap nic_cap;

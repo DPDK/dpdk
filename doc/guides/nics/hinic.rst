@@ -28,6 +28,8 @@ Features
 - VLAN filter and VLAN offload
 - Allmulticast mode
 - MTU update
+- Unicast MAC filter
+- Multicast MAC filter
 
 Prerequisites
 -------------
