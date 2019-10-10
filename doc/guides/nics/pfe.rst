@@ -93,6 +93,7 @@ the kernel layer for link status.
 PFE Features
 ~~~~~~~~~~~~
 
+- L3/L4 checksum offload
 - ARMv8
 
 Supported PFE SoCs

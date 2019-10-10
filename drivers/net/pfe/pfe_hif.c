@@ -44,6 +44,121 @@ pfe_hif_free_descr(struct pfe_hif *hif)
 }
 
 /*
+ * pfe_hif_init_buffers
+ * This function initializes the HIF Rx/Tx ring descriptors and
+ * initialize Rx queue with buffers.
+ */
+int
+pfe_hif_init_buffers(struct pfe_hif *hif)
+{
+	struct hif_desc	*desc, *first_desc_p;
+	uint32_t i = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Check enough Rx buffers available in the shared memory */
+	if (hif->shm->rx_buf_pool_cnt < hif->rx_ring_size)
+		return -ENOMEM;
+
+	hif->rx_base = hif->descr_baseaddr_v;
+	memset(hif->rx_base, 0, hif->rx_ring_size * sizeof(struct hif_desc));
+
+	/*Initialize Rx descriptors */
+	desc = hif->rx_base;
+	first_desc_p = (struct hif_desc *)hif->descr_baseaddr_p;
+
+	for (i = 0; i < hif->rx_ring_size; i++) {
+		/* Initialize Rx buffers from the shared memory */
+		struct rte_mbuf *mbuf =
+			(struct rte_mbuf *)hif->shm->rx_buf_pool[i];
+
+		/* PFE mbuf structure is as follow:
+		 * ----------------------------------------------------------+
+		 * | mbuf  | priv | headroom (annotation + PFE data) | data  |
+		 * ----------------------------------------------------------+
+		 *
+		 * As we are expecting additional information like parse
+		 * results, eth id, queue id from PFE block along with data.
+		 * so we have to provide additional memory for each packet to
+		 * HIF rx rings so that PFE block can write its headers.
+		 * so, we are giving the data pointor to HIF rings whose
+		 * calculation is as below:
+		 * mbuf->data_pointor - Required_header_size
+		 *
+		 * We are utilizing the HEADROOM area to receive the PFE
+		 * block headers. On packet reception, HIF driver will use
+		 * PFE headers information based on which it will decide
+		 * the clients and fill the parse results.
+		 * after that application can use/overwrite the HEADROOM area.
+		 */
+		hif->rx_buf_vaddr[i] =
+			(void *)((size_t)mbuf->buf_addr + mbuf->data_off -
+					PFE_PKT_HEADER_SZ);
+		hif->rx_buf_addr[i] =
+			(void *)(size_t)(rte_pktmbuf_iova(mbuf) -
+					PFE_PKT_HEADER_SZ);
+		hif->rx_buf_len[i] =  mbuf->buf_len - RTE_PKTMBUF_HEADROOM;
+
+		hif->shm->rx_buf_pool[i] = NULL;
+
+		writel(DDR_PHYS_TO_PFE(hif->rx_buf_addr[i]),
+					&desc->data);
+		writel(0, &desc->status);
+
+		/*
+		 * Ensure everything else is written to DDR before
+		 * writing bd->ctrl
+		 */
+		rte_wmb();
+
+		writel((BD_CTRL_PKT_INT_EN | BD_CTRL_LIFM
+			| BD_CTRL_DIR | BD_CTRL_DESC_EN
+			| BD_BUF_LEN(hif->rx_buf_len[i])), &desc->ctrl);
+
+		/* Chain descriptors */
+		writel((u32)DDR_PHYS_TO_PFE(first_desc_p + i + 1), &desc->next);
+		desc++;
+	}
+
+	/* Overwrite last descriptor to chain it to first one*/
+	desc--;
+	writel((u32)DDR_PHYS_TO_PFE(first_desc_p), &desc->next);
+
+	hif->rxtoclean_index = 0;
+
+	/*Initialize Rx buffer descriptor ring base address */
+	writel(DDR_PHYS_TO_PFE(hif->descr_baseaddr_p), HIF_RX_BDP_ADDR);
+
+	hif->tx_base = hif->rx_base + hif->rx_ring_size;
+	first_desc_p = (struct hif_desc *)hif->descr_baseaddr_p +
+				hif->rx_ring_size;
+	memset(hif->tx_base, 0, hif->tx_ring_size * sizeof(struct hif_desc));
+
+	/*Initialize tx descriptors */
+	desc = hif->tx_base;
+
+	for (i = 0; i < hif->tx_ring_size; i++) {
+		/* Chain descriptors */
+		writel((u32)DDR_PHYS_TO_PFE(first_desc_p + i + 1), &desc->next);
+		writel(0, &desc->ctrl);
+		desc++;
+	}
+
+	/* Overwrite last descriptor to chain it to first one */
+	desc--;
+	writel((u32)DDR_PHYS_TO_PFE(first_desc_p), &desc->next);
+	hif->txavail = hif->tx_ring_size;
+	hif->txtosend = 0;
+	hif->txtoclean = 0;
+	hif->txtoflush = 0;
+
+	/*Initialize Tx buffer descriptor ring base address */
+	writel((u32)DDR_PHYS_TO_PFE(first_desc_p), HIF_TX_BDP_ADDR);
+
+	return 0;
+}
+
+/*
  * pfe_hif_client_register
  *
  * This function used to register a client driver with the HIF driver.

@@ -17,6 +17,17 @@ struct pfe_vdev_init_params {
 	int8_t	gem_id;
 };
 static struct pfe *g_pfe;
+/* Supported Rx offloads */
+static uint64_t dev_rx_offloads_sup =
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM;
+
+/* Supported Tx offloads */
+static uint64_t dev_tx_offloads_sup =
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM;
 
 /* TODO: make pfe_svr a runtime option.
  * Driver should be able to get the SVR
@@ -284,11 +295,89 @@ pfe_eth_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = dev->data->nb_rx_queues;
 	dev_info->max_tx_queues = dev->data->nb_tx_queues;
 	dev_info->min_rx_bufsize = HIF_RX_PKT_MIN_SIZE;
+	dev_info->rx_offload_capa = dev_rx_offloads_sup;
+	dev_info->tx_offload_capa = dev_tx_offloads_sup;
 	if (pfe_svr == SVR_LS1012A_REV1)
 		dev_info->max_rx_pktlen = MAX_MTU_ON_REV1 + PFE_ETH_OVERHEAD;
 	else
 		dev_info->max_rx_pktlen = JUMBO_FRAME_SIZE;
 
+	return 0;
+}
+
+/* Only first mb_pool given on first call of this API will be used
+ * in whole system, also nb_rx_desc and rx_conf are unused params
+ */
+static int
+pfe_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+		__rte_unused uint16_t nb_rx_desc,
+		__rte_unused unsigned int socket_id,
+		__rte_unused const struct rte_eth_rxconf *rx_conf,
+		struct rte_mempool *mb_pool)
+{
+	int rc = 0;
+	struct pfe *pfe;
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+
+	pfe = priv->pfe;
+
+	if (queue_idx >= EMAC_RXQ_CNT) {
+		PFE_PMD_ERR("Invalid queue idx = %d, Max queues = %d",
+				queue_idx, EMAC_RXQ_CNT);
+		return -1;
+	}
+
+	if (!pfe->hif.setuped) {
+		rc = pfe_hif_shm_init(pfe->hif.shm, mb_pool);
+		if (rc) {
+			PFE_PMD_ERR("Could not allocate buffer descriptors");
+			return -1;
+		}
+
+		pfe->hif.shm->pool = mb_pool;
+		if (pfe_hif_init_buffers(&pfe->hif)) {
+			PFE_PMD_ERR("Could not initialize buffer descriptors");
+			return -1;
+		}
+		hif_init();
+		hif_rx_enable();
+		hif_tx_enable();
+		pfe->hif.setuped = 1;
+	}
+	dev->data->rx_queues[queue_idx] = &priv->client.rx_q[queue_idx];
+	priv->client.rx_q[queue_idx].queue_id = queue_idx;
+
+	return 0;
+}
+
+static void
+pfe_rx_queue_release(void *q __rte_unused)
+{
+	PMD_INIT_FUNC_TRACE();
+}
+
+static void
+pfe_tx_queue_release(void *q __rte_unused)
+{
+	PMD_INIT_FUNC_TRACE();
+}
+
+static int
+pfe_tx_queue_setup(struct rte_eth_dev *dev,
+		   uint16_t queue_idx,
+		   __rte_unused uint16_t nb_desc,
+		   __rte_unused unsigned int socket_id,
+		   __rte_unused const struct rte_eth_txconf *tx_conf)
+{
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+
+	if (queue_idx >= emac_txq_cnt) {
+		PFE_PMD_ERR("Invalid queue idx = %d, Max queues = %d",
+				queue_idx, emac_txq_cnt);
+		return -1;
+	}
+	dev->data->tx_queues[queue_idx] = &priv->client.tx_q[queue_idx];
+	priv->client.tx_q[queue_idx].queue_id = queue_idx;
 	return 0;
 }
 
@@ -298,6 +387,10 @@ static const struct eth_dev_ops ops = {
 	.dev_close = pfe_eth_close,
 	.dev_configure = pfe_eth_configure,
 	.dev_infos_get = pfe_eth_info,
+	.rx_queue_setup = pfe_rx_queue_setup,
+	.rx_queue_release  = pfe_rx_queue_release,
+	.tx_queue_setup = pfe_tx_queue_setup,
+	.tx_queue_release  = pfe_tx_queue_release,
 };
 
 static int

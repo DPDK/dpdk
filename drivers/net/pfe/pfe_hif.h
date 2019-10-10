@@ -143,5 +143,6 @@ void hif_process_client_req(struct pfe_hif *hif, int req, int data1, int
 int pfe_hif_init(struct pfe *pfe);
 void pfe_hif_exit(struct pfe *pfe);
 void pfe_hif_rx_idle(struct pfe_hif *hif);
+int pfe_hif_init_buffers(struct pfe_hif *hif);
 
 #endif /* _PFE_HIF_H_ */
