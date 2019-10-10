@@ -548,6 +548,45 @@ pfe_supported_ptypes_get(struct rte_eth_dev *dev)
 }
 
 static int
+pfe_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+
+	priv->promisc = 1;
+	dev->data->promiscuous = 1;
+	gemac_enable_copy_all(priv->EMAC_baseaddr);
+
+	return 0;
+}
+
+static int
+pfe_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+
+	priv->promisc = 0;
+	dev->data->promiscuous = 0;
+	gemac_disable_copy_all(priv->EMAC_baseaddr);
+
+	return 0;
+}
+
+static int
+pfe_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+	struct pfe_mac_addr    hash_addr; /* hash register structure */
+
+	/* Set the hash to rx all multicast frames */
+	hash_addr.bottom = 0xFFFFFFFF;
+	hash_addr.top = 0xFFFFFFFF;
+	gemac_set_hash(priv->EMAC_baseaddr, &hash_addr);
+	dev->data->all_multicast = 1;
+
+	return 0;
+}
+
+static int
 pfe_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	int ret;
@@ -631,6 +670,9 @@ static const struct eth_dev_ops ops = {
 	.tx_queue_setup = pfe_tx_queue_setup,
 	.tx_queue_release  = pfe_tx_queue_release,
 	.dev_supported_ptypes_get = pfe_supported_ptypes_get,
+	.promiscuous_enable   = pfe_promiscuous_enable,
+	.promiscuous_disable  = pfe_promiscuous_disable,
+	.allmulticast_enable  = pfe_allmulticast_enable,
 	.mtu_set              = pfe_mtu_set,
 	.mac_addr_set	      = pfe_dev_set_mac_addr,
 	.stats_get            = pfe_stats_get,
