@@ -412,24 +412,41 @@ otx_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 			       int nb_elements)
 {
 	char mempool_name[RTE_MEMPOOL_NAMESIZE];
-	int sg_mlen, lb_mlen, max_mlen, ret;
 	struct cpt_qp_meta_info *meta_info;
 	struct rte_mempool *pool;
+	int max_mlen = 0;
+	int sg_mlen = 0;
+	int lb_mlen = 0;
+	int ret;
 
-	/* Get meta len for scatter gather mode */
-	sg_mlen = cpt_pmd_ops_helper_get_mlen_sg_mode();
+	/*
+	 * Calculate metabuf length required. The 'crypto_octeontx' device
+	 * would be either SYMMETRIC or ASYMMETRIC.
+	 */
 
-	/* Extra 32B saved for future considerations */
-	sg_mlen += 4 * sizeof(uint64_t);
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) {
 
-	/* Get meta len for linear buffer (direct) mode */
-	lb_mlen = cpt_pmd_ops_helper_get_mlen_direct_mode();
+		/* Get meta len for scatter gather mode */
+		sg_mlen = cpt_pmd_ops_helper_get_mlen_sg_mode();
 
-	/* Extra 32B saved for future considerations */
-	lb_mlen += 4 * sizeof(uint64_t);
+		/* Extra 32B saved for future considerations */
+		sg_mlen += 4 * sizeof(uint64_t);
 
-	/* Check max requirement for meta buffer */
-	max_mlen = RTE_MAX(lb_mlen, sg_mlen);
+		/* Get meta len for linear buffer (direct) mode */
+		lb_mlen = cpt_pmd_ops_helper_get_mlen_direct_mode();
+
+		/* Extra 32B saved for future considerations */
+		lb_mlen += 4 * sizeof(uint64_t);
+
+		/* Check max requirement for meta buffer */
+		max_mlen = RTE_MAX(lb_mlen, sg_mlen);
+	} else {
+
+		/* Asymmetric device */
+
+		/* Get meta len for asymmetric operations */
+		max_mlen = cpt_pmd_ops_helper_asym_get_mlen();
+	}
 
 	/* Allocate mempool */
 

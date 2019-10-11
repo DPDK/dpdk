@@ -31,4 +31,13 @@ cpt_pmd_ops_helper_get_mlen_direct_mode(void);
  */
 int
 cpt_pmd_ops_helper_get_mlen_sg_mode(void);
+
+/*
+ * Get size of meta buffer to be allocated for asymmetric crypto operations
+ *
+ * @return
+ *  - length
+ */
+int
+cpt_pmd_ops_helper_asym_get_mlen(void);
 #endif /* _CPT_PMD_OPS_HELPER_H_ */
