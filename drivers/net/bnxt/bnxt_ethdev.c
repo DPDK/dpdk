@@ -627,6 +627,9 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		 * resource reservation. This will ensure the resource counts
 		 * are calculated correctly.
 		 */
+
+		pthread_mutex_lock(&bp->def_cp_lock);
+
 		if (!BNXT_HAS_NQ(bp) && bp->async_cp_ring) {
 			bnxt_disable_int(bp);
 			bnxt_free_cp_ring(bp, bp->async_cp_ring);
@@ -635,15 +638,20 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		rc = bnxt_hwrm_func_reserve_vf_resc(bp, false);
 		if (rc) {
 			PMD_DRV_LOG(ERR, "HWRM resource alloc fail:%x\n", rc);
+			pthread_mutex_unlock(&bp->def_cp_lock);
 			return -ENOSPC;
 		}
 
 		if (!BNXT_HAS_NQ(bp) && bp->async_cp_ring) {
 			rc = bnxt_alloc_async_cp_ring(bp);
-			if (rc)
+			if (rc) {
+				pthread_mutex_unlock(&bp->def_cp_lock);
 				return rc;
+			}
 			bnxt_enable_int(bp);
 		}
+
+		pthread_mutex_unlock(&bp->def_cp_lock);
 	} else {
 		/* legacy driver needs to get updated values */
 		rc = bnxt_hwrm_func_qcaps(bp);
@@ -4585,8 +4593,14 @@ bnxt_init_locks(struct bnxt *bp)
 	int err;
 
 	err = pthread_mutex_init(&bp->flow_lock, NULL);
-	if (err)
+	if (err) {
 		PMD_DRV_LOG(ERR, "Unable to initialize flow_lock\n");
+		return err;
+	}
+
+	err = pthread_mutex_init(&bp->def_cp_lock, NULL);
+	if (err)
+		PMD_DRV_LOG(ERR, "Unable to initialize def_cp_lock\n");
 	return err;
 }
 
@@ -4735,6 +4749,7 @@ static void
 bnxt_uninit_locks(struct bnxt *bp)
 {
 	pthread_mutex_destroy(&bp->flow_lock);
+	pthread_mutex_destroy(&bp->def_cp_lock);
 }
 
 static int

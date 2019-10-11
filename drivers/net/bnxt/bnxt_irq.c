@@ -30,9 +30,12 @@ void bnxt_int_handler(void *param)
 		return;
 
 	raw_cons = cpr->cp_raw_cons;
+	pthread_mutex_lock(&bp->def_cp_lock);
 	while (1) {
-		if (!cpr || !cpr->cp_ring_struct || !cpr->cp_db.doorbell)
+		if (!cpr || !cpr->cp_ring_struct || !cpr->cp_db.doorbell) {
+			pthread_mutex_unlock(&bp->def_cp_lock);
 			return;
+		}
 
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 		cmp = &cpr->cp_desc_ring[cons];
@@ -49,6 +52,8 @@ void bnxt_int_handler(void *param)
 		bnxt_db_nq_arm(cpr);
 	else
 		B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
+
+	pthread_mutex_unlock(&bp->def_cp_lock);
 }
 
 int bnxt_free_int(struct bnxt *bp)

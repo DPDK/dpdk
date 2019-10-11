@@ -574,6 +574,7 @@ struct bnxt {
 	void				*hwrm_short_cmd_req_addr;
 	rte_iova_t			hwrm_short_cmd_req_dma_addr;
 	rte_spinlock_t			hwrm_lock;
+	pthread_mutex_t			def_cp_lock;
 	uint16_t			max_req_len;
 	uint16_t			max_resp_len;
 	uint16_t                        hwrm_max_ext_req_len;
