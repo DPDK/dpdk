@@ -325,9 +325,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set vf broadcast (port_id) (vf_id) (on|off)\n"
 			"    Set VF broadcast for a VF from the PF.\n\n"
 
-			"vlan set strip (on|off) (port_id)\n"
-			"    Set the VLAN strip on a port.\n\n"
-
 			"vlan set stripq (on|off) (port_id,queue_id)\n"
 			"    Set the VLAN strip for a queue on a port.\n\n"
 
@@ -358,12 +355,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set tc tx min-bandwidth (port_id) (bw1, bw2, ...)\n"
 			"    Set all TCs' min bandwidth(%%) for all PF and VFs.\n\n"
 
-			"vlan set filter (on|off) (port_id)\n"
-			"    Set the VLAN filter on a port.\n\n"
-
-			"vlan set qinq (on|off) (port_id)\n"
-			"    Set the VLAN QinQ (extended queue in queue)"
-			" on a port.\n\n"
+			"vlan set (strip|filter|qinq_strip|extend) (on|off) (port_id)\n"
+			"    Set the VLAN strip or filter or qinq strip or extend\n\n"
 
 			"vlan set (inner|outer) tpid (value) (port_id)\n"
 			"    Set the VLAN TPID for Packet Filtering on"
@@ -3921,6 +3914,8 @@ cmd_vlan_offload_parsed(void *parsed_result,
 	}
 	else if (!strcmp(res->what, "filter"))
 		rx_vlan_filter_set(port_id, on);
+	else if (!strcmp(res->what, "qinq_strip"))
+		rx_vlan_qinq_strip_set(port_id, on);
 	else
 		vlan_extend_set(port_id, on);
 
@@ -3935,7 +3930,7 @@ cmdline_parse_token_string_t cmd_vlan_offload_set =
 				 set, "set");
 cmdline_parse_token_string_t cmd_vlan_offload_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_vlan_offload_result,
-				 what, "strip#filter#qinq#stripq");
+				what, "strip#filter#qinq_strip#extend#stripq");
 cmdline_parse_token_string_t cmd_vlan_offload_on =
 	TOKEN_STRING_INITIALIZER(struct cmd_vlan_offload_result,
 			      on, "on#off");
@@ -3946,9 +3941,9 @@ cmdline_parse_token_string_t cmd_vlan_offload_portid =
 cmdline_parse_inst_t cmd_vlan_offload = {
 	.f = cmd_vlan_offload_parsed,
 	.data = NULL,
-	.help_str = "vlan set strip|filter|qinq|stripq on|off "
+	.help_str = "vlan set strip|filter|qinq_strip|extend|stripq on|off "
 		"<port_id[,queue_id]>: "
-		"Filter/Strip for rx side qinq(extended) for both rx/tx sides",
+		"Strip/Filter/QinQ for rx side Extend for both rx/tx sides",
 	.tokens = {
 		(void *)&cmd_vlan_offload_vlan,
 		(void *)&cmd_vlan_offload_set,

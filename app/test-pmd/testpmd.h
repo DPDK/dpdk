@@ -752,6 +752,7 @@ void rx_vlan_strip_set_on_queue(portid_t port_id, uint16_t queue_id, int on);
 
 void rx_vlan_filter_set(portid_t port_id, int on);
 void rx_vlan_all_filter_set(portid_t port_id, int on);
+void rx_vlan_qinq_strip_set(portid_t port_id, int on);
 int rx_vft_set(portid_t port_id, uint16_t vlan_id, int on);
 void vlan_extend_set(portid_t port_id, int on);
 void vlan_tpid_set(portid_t port_id, enum rte_vlan_type vlan_type,
