@@ -126,3 +126,22 @@ OCTEON TX crypto PMD.
 
         ./build/ipsec-secgw --log-level=8 -c 0xff -- -P -p 0x3 -u 0x2 --config
         "(1,0,0),(0,0,0)" -f ep1.cfg
+
+Testing
+-------
+
+The symmetric crypto operations on OCTEON TX crypto PMD may be verified by running the test
+application:
+
+.. code-block:: console
+
+        ./test
+        RTE>>cryptodev_octeontx_autotest
+
+The asymmetric crypto operations on OCTEON TX crypto PMD may be verified by running the test
+application:
+
+.. code-block:: console
+
+        ./test
+        RTE>>cryptodev_octeontx_asym_autotest

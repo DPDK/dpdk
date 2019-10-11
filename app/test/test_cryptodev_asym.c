@@ -1791,6 +1791,19 @@ static struct unit_test_suite cryptodev_qat_asym_testsuite  = {
 	}
 };
 
+static struct unit_test_suite cryptodev_octeontx_asym_testsuite  = {
+	.suite_name = "Crypto Device OCTEONTX ASYM Unit Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown, test_capability),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_rsa_enc_dec_crt),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_rsa_sign_verify_crt),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_mod_exp),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 static int
 test_cryptodev_openssl_asym(void)
 {
@@ -1823,7 +1836,25 @@ test_cryptodev_qat_asym(void)
 	return unit_test_suite_runner(&cryptodev_qat_asym_testsuite);
 }
 
+static int
+test_cryptodev_octeontx_asym(void)
+{
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "OCTEONTX PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO is "
+				"enabled in config file to run this "
+				"testsuite.\n");
+		return TEST_FAILED;
+	}
+	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
+}
+
 REGISTER_TEST_COMMAND(cryptodev_openssl_asym_autotest,
 					  test_cryptodev_openssl_asym);
 
 REGISTER_TEST_COMMAND(cryptodev_qat_asym_autotest, test_cryptodev_qat_asym);
+
+REGISTER_TEST_COMMAND(cryptodev_octeontx_asym_autotest,
+					  test_cryptodev_octeontx_asym);
