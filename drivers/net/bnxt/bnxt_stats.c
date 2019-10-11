@@ -575,7 +575,7 @@ int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 	if (BNXT_VF(bp) || !BNXT_SINGLE_PF(bp) ||
 	    !(bp->flags & BNXT_FLAG_PORT_STATS)) {
 		PMD_DRV_LOG(ERR, "Operation not supported\n");
-		ret = -ENOTSUP;
+		return -ENOTSUP;
 	}
 
 	ret = bnxt_hwrm_port_clr_stats(bp);
