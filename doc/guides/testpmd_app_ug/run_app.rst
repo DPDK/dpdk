@@ -198,6 +198,10 @@ The command line options are:
 
     Enable hardware VLAN extend.
 
+*   ``--enable-hw-qinq-strip``
+
+    Enable hardware QINQ strip.
+
 *   ``--enable-drop-en``
 
     Enable per-queue packet drop for packets with no descriptors.
