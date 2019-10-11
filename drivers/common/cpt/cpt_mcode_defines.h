@@ -21,6 +21,18 @@
 #define CPT_MAJOR_OP_KASUMI	0x38
 #define CPT_MAJOR_OP_MISC	0x01
 
+/* AE opcodes */
+#define CPT_MAJOR_OP_MODEX	0x03
+#define CPT_MINOR_OP_MODEX	0x01
+#define CPT_MINOR_OP_PKCS_ENC	0x02
+#define CPT_MINOR_OP_PKCS_ENC_CRT	0x03
+#define CPT_MINOR_OP_PKCS_DEC	0x04
+#define CPT_MINOR_OP_PKCS_DEC_CRT	0x05
+#define CPT_MINOR_OP_MODEX_CRT	0x06
+
+#define CPT_BLOCK_TYPE1 0
+#define CPT_BLOCK_TYPE2 1
+
 #define CPT_BYTE_16		16
 #define CPT_BYTE_24		24
 #define CPT_BYTE_32		32
@@ -365,6 +377,14 @@ typedef struct fc_params {
 	buf_ptr_t mac_buf;
 
 } fc_params_t;
+
+/*
+ * Parameters for asymmetric operations
+ */
+struct asym_op_params {
+	struct cpt_request_info *req;
+	phys_addr_t meta_buf;
+};
 
 /*
  * Parameters for digest

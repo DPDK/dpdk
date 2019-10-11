@@ -101,6 +101,11 @@ New Features
   Added a symmetric crypto PMD for Marvell NITROX V security processor.
   See the :doc:`../cryptodevs/nitrox` guide for more details on this new
 
+* **Added asymmetric support to Marvell OCTEON TX crypto PMD.**
+
+  Added support for asymmetric operations in Marvell OCTEON TX cypto PMD.
+  Supports RSA and modexp operations.
+
 * **Updated NXP crypto PMDs for PDCP support.**
 
   PDCP support is added to DPAA_SEC and DPAA2_SEC PMDs using rte_security APIs.

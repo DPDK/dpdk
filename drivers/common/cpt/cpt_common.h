@@ -75,6 +75,7 @@ struct cpt_request_info {
 		uint64_t ei2;
 		uint64_t ei3;
 	} ist;
+	uint8_t *rptr;
 
 	/** Control path fields */
 	uint64_t time_out;
