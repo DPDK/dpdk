@@ -471,6 +471,7 @@ dpaa_event_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
 	RTE_SET_USED(queue_id);
 
 	memset(queue_conf, 0, sizeof(struct rte_event_queue_conf));
+	queue_conf->nb_atomic_flows = DPAA_EVENT_QUEUE_ATOMIC_FLOWS;
 	queue_conf->schedule_type = RTE_SCHED_TYPE_PARALLEL;
 	queue_conf->priority = RTE_EVENT_DEV_PRIORITY_HIGHEST;
 }
