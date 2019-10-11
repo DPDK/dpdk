@@ -6,6 +6,7 @@
 #define _CPT_MCODE_DEFINES_H_
 
 #include <rte_byteorder.h>
+#include <rte_crypto_asym.h>
 #include <rte_memory.h>
 
 /*
@@ -312,6 +313,14 @@ struct cpt_ctx {
 		mc_kasumi_ctx_t k_ctx;
 	};
 	uint8_t  auth_key[64];
+};
+
+struct cpt_asym_sess_misc {
+	enum rte_crypto_asym_xform_type xfrm_type;
+	union {
+		struct rte_crypto_rsa_xform rsa_ctx;
+		struct rte_crypto_modex_xform mod_ctx;
+	};
 };
 
 /* Buffer pointer */

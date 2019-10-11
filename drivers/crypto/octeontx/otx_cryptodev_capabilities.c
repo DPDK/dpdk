@@ -6,7 +6,7 @@
 
 #include "otx_cryptodev_capabilities.h"
 
-static const struct rte_cryptodev_capabilities otx_capabilities[] = {
+static const struct rte_cryptodev_capabilities otx_sym_capabilities[] = {
 	/* Symmetric capabilities */
 	{	/* NULL (AUTH) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -597,8 +597,49 @@ static const struct rte_cryptodev_capabilities otx_capabilities[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
+static const struct rte_cryptodev_capabilities otx_asym_capabilities[] = {
+	/* Asymmetric capabilities */
+	{	/* RSA */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
+				.op_types = ((1 << RTE_CRYPTO_ASYM_OP_SIGN) |
+					(1 << RTE_CRYPTO_ASYM_OP_VERIFY) |
+					(1 << RTE_CRYPTO_ASYM_OP_ENCRYPT) |
+					(1 << RTE_CRYPTO_ASYM_OP_DECRYPT)),
+				{.modlen = {
+					.min = 17,
+					.max = 1024,
+					.increment = 1
+				}, }
+			}
+		}, }
+	},
+	{	/* MOD_EXP */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_MODEX,
+				.op_types = 0,
+				{.modlen = {
+					.min = 17,
+					.max = 1024,
+					.increment = 1
+				}, }
+			}
+		}, }
+	},
+	/* End of asymmetric capabilities */
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
 const struct rte_cryptodev_capabilities *
-otx_get_capabilities(void)
+otx_get_capabilities(uint64_t flags)
 {
-	return otx_capabilities;
+	if (flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO)
+		return otx_asym_capabilities;
+	else
+		return otx_sym_capabilities;
+
 }

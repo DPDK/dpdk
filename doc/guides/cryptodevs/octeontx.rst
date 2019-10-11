@@ -10,8 +10,8 @@ cryptographic operations to cryptographic accelerator units on
 poll mode driver enqueues the crypto request to this accelerator and dequeues
 the response once the operation is completed.
 
-Supported Algorithms
---------------------
+Supported Symmetric Crypto Algorithms
+-------------------------------------
 
 Cipher Algorithms
 ~~~~~~~~~~~~~~~~~
@@ -52,6 +52,12 @@ AEAD Algorithms
 ~~~~~~~~~~~~~~~
 
 * ``RTE_CRYPTO_AEAD_AES_GCM``
+
+Supported Asymmetric Crypto Algorithms
+--------------------------------------
+
+* ``RTE_CRYPTO_ASYM_XFORM_RSA``
+* ``RTE_CRYPTO_ASYM_XFORM_MODEX``
 
 Config flags
 ------------
