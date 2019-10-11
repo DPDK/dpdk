@@ -42,10 +42,18 @@ otx_cpt_handle_mbox_intr(struct cpt_vf *cptvf)
 	case OTX_CPT_MSG_QBIND_GRP:
 		cptvf->pf_acked = true;
 		cptvf->vftype = mbx.data;
-		CPT_LOG_DP_DEBUG("%s: VF %d type %s group %d",
+		CPT_LOG_DP_DEBUG("%s: VF %d group %d",
 				 cptvf->dev_name, cptvf->vfid,
-				 ((mbx.data == SE_TYPE) ? "SE" : "AE"),
 				 cptvf->vfgrp);
+		break;
+	case OTX_CPT_MSG_PF_TYPE:
+		cptvf->pf_acked = true;
+		if (mbx.data == OTX_CPT_PF_TYPE_AE)
+			cptvf->vftype = OTX_CPT_VF_TYPE_AE;
+		else if (mbx.data == OTX_CPT_PF_TYPE_SE)
+			cptvf->vftype = OTX_CPT_VF_TYPE_SE;
+		else
+			cptvf->vftype = OTX_CPT_VF_TYPE_INVALID;
 		break;
 	case OTX_CPT_MBOX_MSG_TYPE_ACK:
 		cptvf->pf_acked = true;
@@ -113,6 +121,20 @@ otx_cpt_check_pf_ready(struct cpt_vf *cptvf)
 	mbx.msg = OTX_CPT_MSG_READY;
 	if (otx_cpt_send_msg_to_pf_timeout(cptvf, &mbx)) {
 		CPT_LOG_ERR("%s: PF didn't respond to READY msg",
+			    cptvf->dev_name);
+		return 1;
+	}
+	return 0;
+}
+
+int
+otx_cpt_get_dev_type(struct cpt_vf *cptvf)
+{
+	struct cpt_mbox mbx = {0, 0};
+
+	mbx.msg = OTX_CPT_MSG_PF_TYPE;
+	if (otx_cpt_send_msg_to_pf_timeout(cptvf, &mbx)) {
+		CPT_LOG_ERR("%s: PF didn't respond to query msg",
 			    cptvf->dev_name);
 		return 1;
 	}

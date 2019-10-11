@@ -5,6 +5,8 @@
 #ifndef _OTX_CRYPTODEV_OPS_H_
 #define _OTX_CRYPTODEV_OPS_H_
 
+#include <rte_cryptodev.h>
+
 #define OTX_CPT_MIN_HEADROOM_REQ	(24)
 #define OTX_CPT_MIN_TAILROOM_REQ	(8)
 #define CPT_NUM_QS_PER_VF		(1)

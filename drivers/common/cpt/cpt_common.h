@@ -19,9 +19,6 @@
 #define CPT_COUNT_THOLD		32
 #define CPT_TIMER_THOLD		0x3F
 
-#define AE_TYPE 1
-#define SE_TYPE 2
-
 #ifndef ROUNDUP4
 #define ROUNDUP4(val)	(((val) + 3) & 0xfffffffc)
 #endif

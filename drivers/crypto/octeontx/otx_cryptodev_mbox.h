@@ -23,6 +23,20 @@ struct cpt_mbox {
 	uint64_t data;
 };
 
+/* CPT PF types */
+enum otx_cpt_pf_type {
+	OTX_CPT_PF_TYPE_INVALID = 0,
+	OTX_CPT_PF_TYPE_AE = 2,
+	OTX_CPT_PF_TYPE_SE,
+};
+
+/* CPT VF types */
+enum otx_cpt_vf_type {
+	OTX_CPT_VF_TYPE_AE = 1,
+	OTX_CPT_VF_TYPE_SE,
+	OTX_CPT_VF_TYPE_INVALID,
+};
+
 /* PF-VF message opcodes */
 enum otx_cpt_mbox_opcode {
 	OTX_CPT_MSG_VF_UP = 1,
@@ -61,6 +75,12 @@ otx_cpt_handle_mbox_intr(struct cpt_vf *cptvf);
  */
 int
 otx_cpt_check_pf_ready(struct cpt_vf *cptvf);
+
+/*
+ * Communicate to PF to get VF type
+ */
+int
+otx_cpt_get_dev_type(struct cpt_vf *cptvf);
 
 /*
  * Communicate VQs size to PF to program CPT(0)_PF_Q(0-15)_CTL of the VF.

@@ -386,6 +386,12 @@ otx_cpt_hw_init(struct cpt_vf *cptvf, void *pdev, void *reg_base, char *name)
 		return -1;
 	}
 
+	/* Gets device type */
+	if (otx_cpt_get_dev_type(cptvf)) {
+		CPT_LOG_ERR("Failed to get device type");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -651,12 +657,6 @@ otx_cpt_start_device(void *dev)
 		CPT_LOG_ERR("Failed to mark CPT VF device %s UP, rc = %d",
 			    cptvf->dev_name, rc);
 		return -EFAULT;
-	}
-
-	if ((cptvf->vftype != SE_TYPE) && (cptvf->vftype != AE_TYPE)) {
-		CPT_LOG_ERR("Fatal error, unexpected vf type %u, for CPT VF "
-			    "device %s", cptvf->vftype, cptvf->dev_name);
-		return -ENOENT;
 	}
 
 	return 0;

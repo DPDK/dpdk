@@ -13,6 +13,7 @@
 #include "otx_cryptodev.h"
 #include "otx_cryptodev_capabilities.h"
 #include "otx_cryptodev_hw_access.h"
+#include "otx_cryptodev_mbox.h"
 #include "otx_cryptodev_ops.h"
 
 #include "cpt_pmd_logs.h"
@@ -630,6 +631,28 @@ otx_cpt_dev_create(struct rte_cryptodev *c_dev)
 		goto fail;
 	}
 
+	switch (cptvf->vftype) {
+	case OTX_CPT_VF_TYPE_AE:
+		/* Set asymmetric cpt feature flags */
+		c_dev->feature_flags = RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO |
+				RTE_CRYPTODEV_FF_HW_ACCELERATED;
+		break;
+	case OTX_CPT_VF_TYPE_SE:
+		/* Set symmetric cpt feature flags */
+		c_dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
+				RTE_CRYPTODEV_FF_HW_ACCELERATED |
+				RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+				RTE_CRYPTODEV_FF_IN_PLACE_SGL |
+				RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
+				RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT;
+		break;
+	default:
+		/* Feature not supported. Abort */
+		CPT_LOG_ERR("VF type not supported by %s", dev_name);
+		ret = -EIO;
+		goto deinit_dev;
+	}
+
 	/* Start off timer for mailbox interrupts */
 	otx_cpt_periodic_alarm_start(cptvf);
 
@@ -638,17 +661,13 @@ otx_cpt_dev_create(struct rte_cryptodev *c_dev)
 	c_dev->enqueue_burst = otx_cpt_pkt_enqueue;
 	c_dev->dequeue_burst = otx_cpt_pkt_dequeue;
 
-	c_dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_HW_ACCELERATED |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
-			RTE_CRYPTODEV_FF_IN_PLACE_SGL |
-			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT;
-
 	/* Save dev private data */
 	c_dev->data->dev_private = cptvf;
 
 	return 0;
+
+deinit_dev:
+	otx_cpt_deinit_device(cptvf);
 
 fail:
 	if (cptvf) {
