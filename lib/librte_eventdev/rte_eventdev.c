@@ -1351,6 +1351,7 @@ rte_event_pmd_allocate(const char *name, int socket_id)
 	eventdev = &rte_eventdevs[dev_id];
 
 	eventdev->txa_enqueue = rte_event_tx_adapter_enqueue;
+	eventdev->txa_enqueue_same_dest = rte_event_tx_adapter_enqueue;
 
 	if (eventdev->data == NULL) {
 		struct rte_eventdev_data *eventdev_data = NULL;

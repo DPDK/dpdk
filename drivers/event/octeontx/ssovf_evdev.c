@@ -147,6 +147,7 @@ ssovf_fastpath_fns_set(struct rte_eventdev *dev)
 	dev->dequeue       = ssows_deq;
 	dev->dequeue_burst = ssows_deq_burst;
 	dev->txa_enqueue = sso_event_tx_adapter_enqueue;
+	dev->txa_enqueue_same_dest = dev->txa_enqueue;
 
 	if (edev->is_timeout_deq) {
 		dev->dequeue       = ssows_deq_timeout;

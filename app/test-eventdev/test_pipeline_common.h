@@ -106,7 +106,7 @@ pipeline_event_tx(const uint8_t dev, const uint8_t port,
 		struct rte_event * const ev)
 {
 	rte_event_eth_tx_adapter_txq_set(ev->mbuf, 0);
-	while (!rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1))
+	while (!rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1, 0))
 		rte_pause();
 }
 
@@ -116,10 +116,10 @@ pipeline_event_tx_burst(const uint8_t dev, const uint8_t port,
 {
 	uint16_t enq;
 
-	enq = rte_event_eth_tx_adapter_enqueue(dev, port, ev, nb_rx);
+	enq = rte_event_eth_tx_adapter_enqueue(dev, port, ev, nb_rx, 0);
 	while (enq < nb_rx) {
 		enq += rte_event_eth_tx_adapter_enqueue(dev, port,
-				ev + enq, nb_rx - enq);
+				ev + enq, nb_rx - enq, 0);
 	}
 }
 

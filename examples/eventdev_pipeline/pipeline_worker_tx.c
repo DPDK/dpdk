@@ -40,7 +40,7 @@ worker_tx_pkt(const uint8_t dev, const uint8_t port, struct rte_event *ev)
 {
 	exchange_mac(ev->mbuf);
 	rte_event_eth_tx_adapter_txq_set(ev->mbuf, 0);
-	while (!rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1))
+	while (!rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1, 0))
 		rte_pause();
 }
 

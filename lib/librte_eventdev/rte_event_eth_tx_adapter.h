@@ -300,6 +300,11 @@ rte_event_eth_tx_adapter_txq_get(struct rte_mbuf *pkt)
 int
 rte_event_eth_tx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
 
+#define RTE_EVENT_ETH_TX_ADAPTER_ENQUEUE_SAME_DEST	0x1
+/**< This flag is used when all the packets enqueued in the tx adapter are
+ * destined for the same Ethernet port & Tx queue.
+ */
+
 /**
  * Enqueue a burst of events objects or an event object supplied in *rte_event*
  * structure on an  event device designated by its *dev_id* through the event
@@ -324,6 +329,10 @@ rte_event_eth_tx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
  *  The number of event objects to enqueue, typically number of
  *  rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
  *  available for this port.
+ * @param flags
+ *  RTE_EVENT_ETH_TX_ADAPTER_ENQUEUE_ flags.
+ *  #RTE_EVENT_ETH_TX_ADAPTER_ENQUEUE_SAME_DEST signifies that all the packets
+ *  which are enqueued are destined for the same Ethernet port & Tx queue.
  *
  * @return
  *   The number of event objects actually enqueued on the event device. The
@@ -343,7 +352,8 @@ static inline uint16_t
 rte_event_eth_tx_adapter_enqueue(uint8_t dev_id,
 				uint8_t port_id,
 				struct rte_event ev[],
-				uint16_t nb_events)
+				uint16_t nb_events,
+				const uint8_t flags)
 {
 	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
 
@@ -359,7 +369,12 @@ rte_event_eth_tx_adapter_enqueue(uint8_t dev_id,
 		return 0;
 	}
 #endif
-	return dev->txa_enqueue(dev->data->ports[port_id], ev, nb_events);
+	if (flags)
+		return dev->txa_enqueue_same_dest(dev->data->ports[port_id],
+						  ev, nb_events);
+	else
+		return dev->txa_enqueue(dev->data->ports[port_id], ev,
+					nb_events);
 }
 
 /**

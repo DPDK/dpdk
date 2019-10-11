@@ -434,6 +434,8 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 						NIX_TX_OFFLOAD_L3_L4_CSUM_F)];
 		}
 	}
+
+	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;
 	rte_mb();
 }
 

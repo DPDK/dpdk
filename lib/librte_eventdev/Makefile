@@ -8,7 +8,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_eventdev.a
 
 # library version
-LIBABIVER := 7
+LIBABIVER := 8
 
 # build flags
 CFLAGS += -DALLOW_EXPERIMENTAL_API

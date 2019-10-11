@@ -1230,6 +1230,12 @@ typedef uint16_t (*event_tx_adapter_enqueue)(void *port,
 				struct rte_event ev[], uint16_t nb_events);
 /**< @internal Enqueue burst of events on port of a device */
 
+typedef uint16_t (*event_tx_adapter_enqueue_same_dest)(void *port,
+		struct rte_event ev[], uint16_t nb_events);
+/**< @internal Enqueue burst of events on port of a device supporting
+ * burst having same destination Ethernet port & Tx queue.
+ */
+
 #define RTE_EVENTDEV_NAME_MAX_LEN	(64)
 /**< @internal Max length of name of event PMD */
 
@@ -1292,6 +1298,10 @@ struct rte_eventdev {
 	/**< Pointer to PMD dequeue function. */
 	event_dequeue_burst_t dequeue_burst;
 	/**< Pointer to PMD dequeue burst function. */
+	event_tx_adapter_enqueue_same_dest txa_enqueue_same_dest;
+	/**< Pointer to PMD eth Tx adapter burst enqueue function with
+	 * events destined to same Eth port & Tx queue.
+	 */
 	event_tx_adapter_enqueue txa_enqueue;
 	/**< Pointer to PMD eth Tx adapter enqueue function. */
 	struct rte_eventdev_data *data;
