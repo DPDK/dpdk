@@ -55,10 +55,10 @@ set_policy_mac(int port, int idx)
 
 	/* Use port MAC address as the vfid */
 	ret = rte_eth_macaddr_get(port, &pfid.addr);
-	if (retval != 0) {
+	if (ret != 0) {
 		printf("Failed to get device (port %u) MAC address: %s\n",
-				port, rte_strerror(-retval));
-		return retval;
+				port, rte_strerror(-ret));
+		return ret;
 	}
 
 	printf("Port %u MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8 ":"
@@ -108,6 +108,8 @@ set_policy_defaults(struct channel_packet *pkt)
 	pkt->policy_to_use = TIME;
 	pkt->command = PKT_POLICY;
 	strcpy(pkt->vm_name, "ubuntu2");
+
+	return 0;
 }
 
 static void cmd_quit_parsed(__attribute__((unused)) void *parsed_result,
