@@ -288,6 +288,7 @@ struct ice_pf {
  */
 struct ice_devargs {
 	int safe_mode_support;
+	uint8_t proto_xtr_dflt;
 	uint8_t proto_xtr[ICE_MAX_QUEUE_NUM];
 };
 

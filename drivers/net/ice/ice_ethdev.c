@@ -430,8 +430,7 @@ parse_queue_proto_xtr(const char *queues, struct ice_devargs *devargs)
 		if (xtr_type < 0)
 			return -1;
 
-		memset(devargs->proto_xtr, xtr_type,
-		       sizeof(devargs->proto_xtr));
+		devargs->proto_xtr_dflt = xtr_type;
 
 		return 0;
 	}
@@ -1371,12 +1370,36 @@ done:
 	rte_intr_ack(dev->intr_handle);
 }
 
+static void
+ice_init_proto_xtr(struct rte_eth_dev *dev)
+{
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	uint16_t i;
+
+	if (!ice_proto_xtr_support(hw)) {
+		PMD_DRV_LOG(NOTICE, "Protocol extraction is not supported");
+		return;
+	}
+
+	pf->proto_xtr = rte_zmalloc(NULL, pf->lan_nb_qps, 0);
+	if (unlikely(pf->proto_xtr == NULL)) {
+		PMD_DRV_LOG(ERR, "No memory for setting up protocol extraction table");
+		return;
+	}
+
+	for (i = 0; i < pf->lan_nb_qps; i++)
+		pf->proto_xtr[i] = ad->devargs.proto_xtr[i] != PROTO_XTR_NONE ?
+				   ad->devargs.proto_xtr[i] :
+				   ad->devargs.proto_xtr_dflt;
+}
+
 /*  Initialize SW parameters of PF */
 static int
 ice_pf_sw_init(struct rte_eth_dev *dev)
 {
-	struct ice_adapter *ad =
-			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 
@@ -1386,15 +1409,7 @@ ice_pf_sw_init(struct rte_eth_dev *dev)
 
 	pf->lan_nb_qps = pf->lan_nb_qp_max;
 
-	if (ice_proto_xtr_support(hw))
-		pf->proto_xtr = rte_zmalloc(NULL, pf->lan_nb_qps, 0);
-
-	if (pf->proto_xtr != NULL)
-		rte_memcpy(pf->proto_xtr, ad->devargs.proto_xtr,
-			   RTE_MIN((size_t)pf->lan_nb_qps,
-				   sizeof(ad->devargs.proto_xtr)));
-	else
-		PMD_DRV_LOG(NOTICE, "Protocol extraction is disabled");
+	ice_init_proto_xtr(dev);
 
 	return 0;
 }
@@ -1807,6 +1822,7 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	ad->devargs.proto_xtr_dflt = PROTO_XTR_NONE;
 	memset(ad->devargs.proto_xtr, PROTO_XTR_NONE,
 	       sizeof(ad->devargs.proto_xtr));
 
