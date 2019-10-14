@@ -753,6 +753,11 @@ Also the user can optionally setup:
 *   ``CRYPTO_DEV``: crypto device to be used ('-w <pci-id>'). If none specified
     appropriate vdevs will be created by the script
 
+*   ``MULTI_SEG_TEST``: ipsec-secgw option to enable reassembly support and
+    specify size of reassembly table (e.g.
+    ``MULTI_SEG_TEST='--reassemble 128'``). This option must be set for
+    fallback session tests.
+
 Note that most of the tests require the appropriate crypto PMD/device to be
 available.
 

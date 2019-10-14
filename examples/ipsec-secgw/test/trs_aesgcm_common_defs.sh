@@ -29,11 +29,11 @@ sp ipv6 out esp bypass pri 1 sport 0:65535 dport 0:65535
 #SA in rules
 sa in 7 aead_algo aes-128-gcm \
 aead_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
-mode transport ${SGW_CFG_XPRM}
+mode transport ${SGW_CFG_XPRM} ${SGW_CFG_XPRM_IN}
 
 sa in 9 aead_algo aes-128-gcm \
 aead_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
-mode transport ${SGW_CFG_XPRM}
+mode transport ${SGW_CFG_XPRM} ${SGW_CFG_XPRM_IN}
 
 #SA out rules
 sa out 7 aead_algo aes-128-gcm \
