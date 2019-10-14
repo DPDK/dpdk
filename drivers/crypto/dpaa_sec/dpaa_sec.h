@@ -38,13 +38,18 @@ enum dpaa_sec_op_type {
 	DPAA_SEC_NONE,  /*!< No Cipher operations*/
 	DPAA_SEC_CIPHER,/*!< CIPHER operations */
 	DPAA_SEC_AUTH,  /*!< Authentication Operations */
-	DPAA_SEC_AEAD,  /*!< Authenticated Encryption with associated data */
+	DPAA_SEC_AEAD,  /*!< AEAD (AES-GCM/CCM) type operations */
+	DPAA_SEC_CIPHER_HASH,  /*!< Authenticated Encryption with
+				* associated data
+				*/
+	DPAA_SEC_HASH_CIPHER,  /*!< Encryption with Authenticated
+				* associated data
+				*/
 	DPAA_SEC_IPSEC, /*!< IPSEC protocol operations*/
 	DPAA_SEC_PDCP,  /*!< PDCP protocol operations*/
 	DPAA_SEC_PKC,   /*!< Public Key Cryptographic Operations */
 	DPAA_SEC_MAX
 };
-
 
 #define DPAA_SEC_MAX_DESC_SIZE  64
 /* code or cmd block to caam */
@@ -113,6 +118,7 @@ struct sec_pdcp_ctxt {
 
 typedef struct dpaa_sec_session_entry {
 	uint8_t dir;         /*!< Operation Direction */
+	uint8_t ctxt;	/*!< Session Context Type */
 	enum rte_crypto_cipher_algorithm cipher_alg; /*!< Cipher Algorithm*/
 	enum rte_crypto_auth_algorithm auth_alg; /*!< Authentication Algorithm*/
 	enum rte_crypto_aead_algorithm aead_alg; /*!< AEAD Algorithm*/
@@ -121,15 +127,21 @@ typedef struct dpaa_sec_session_entry {
 		struct {
 			uint8_t *data;	/**< pointer to key data */
 			size_t length;	/**< key length in bytes */
+			uint32_t alg;
+			uint32_t algmode;
 		} aead_key;
 		struct {
 			struct {
 				uint8_t *data;	/**< pointer to key data */
 				size_t length;	/**< key length in bytes */
+				uint32_t alg;
+				uint32_t algmode;
 			} cipher_key;
 			struct {
 				uint8_t *data;	/**< pointer to key data */
 				size_t length;	/**< key length in bytes */
+				uint32_t alg;
+				uint32_t algmode;
 			} auth_key;
 		};
 	};
@@ -148,6 +160,8 @@ typedef struct dpaa_sec_session_entry {
 				struct ip ip4_hdr;
 				struct rte_ipv6_hdr ip6_hdr;
 			};
+			uint8_t auth_cipher_text;
+				/**< Authenticate/cipher ordering */
 		};
 		struct sec_pdcp_ctxt pdcp;
 	};
