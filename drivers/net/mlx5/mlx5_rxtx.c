@@ -4568,7 +4568,7 @@ send_loop:
 	loc.wqe_free = txq->wqe_s -
 				(uint16_t)(txq->wqe_ci - txq->wqe_pi);
 	if (unlikely(!loc.elts_free || !loc.wqe_free))
-		return loc.pkts_sent;
+		goto burst_exit;
 	for (;;) {
 		/*
 		 * Fetch the packet from array. Usually this is
@@ -4735,7 +4735,7 @@ enter_send_single:
 	assert(MLX5_TXOFF_CONFIG(INLINE) || loc.pkts_sent >= loc.pkts_copy);
 	/* Take a shortcut if nothing is sent. */
 	if (unlikely(loc.pkts_sent == loc.pkts_loop))
-		return loc.pkts_sent;
+		goto burst_exit;
 	/*
 	 * Ring QP doorbell immediately after WQE building completion
 	 * to improve latencies. The pure software related data treatment
@@ -4758,10 +4758,6 @@ enter_send_single:
 		mlx5_tx_copy_elts(txq, pkts + loc.pkts_copy, part, olx);
 		loc.pkts_copy = loc.pkts_sent;
 	}
-#ifdef MLX5_PMD_SOFT_COUNTERS
-	/* Increment sent packets counter. */
-	txq->stats.opackets += loc.pkts_sent;
-#endif
 	assert(txq->elts_s >= (uint16_t)(txq->elts_head - txq->elts_tail));
 	assert(txq->wqe_s >= (uint16_t)(txq->wqe_ci - txq->wqe_pi));
 	if (pkts_n > loc.pkts_sent) {
@@ -4772,6 +4768,11 @@ enter_send_single:
 		 */
 		goto send_loop;
 	}
+burst_exit:
+#ifdef MLX5_PMD_SOFT_COUNTERS
+	/* Increment sent packets counter. */
+	txq->stats.opackets += loc.pkts_sent;
+#endif
 	return loc.pkts_sent;
 }
 
