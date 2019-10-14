@@ -2819,13 +2819,12 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 			RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
 		flc->dhr = SEC_FLC_DHR_INBOUND;
 		memset(&decap_pdb, 0, sizeof(struct ipsec_decap_pdb));
-		decap_pdb.options = sizeof(struct ip) << 16;
-		if (ipsec_xform->options.esn)
-			decap_pdb.options |= PDBOPTS_ESP_ESN;
 		decap_pdb.options = (ipsec_xform->tunnel.type ==
 				RTE_SECURITY_IPSEC_TUNNEL_IPV4) ?
 				sizeof(struct ip) << 16 :
 				sizeof(struct rte_ipv6_hdr) << 16;
+		if (ipsec_xform->options.esn)
+			decap_pdb.options |= PDBOPTS_ESP_ESN;
 		session->dir = DIR_DEC;
 		bufsize = cnstr_shdsc_ipsec_new_decap(priv->flc_desc[0].desc,
 				1, 0, SHR_SERIAL,
