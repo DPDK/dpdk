@@ -112,7 +112,7 @@ static uint16_t nb_txd = IPSEC_SECGW_TX_DESC_DEFAULT;
 		0, 0)
 
 #define	FRAG_TBL_BUCKET_ENTRIES	4
-#define	FRAG_TTL_MS		(10 * MS_PER_S)
+#define	MAX_FRAG_TTL_NS		(10LL * NS_PER_S)
 
 #define MTU_TO_FRAMELEN(x)	((x) + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
@@ -135,6 +135,7 @@ struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS] = {
 #define CMD_LINE_OPT_TX_OFFLOAD		"txoffload"
 #define CMD_LINE_OPT_REASSEMBLE		"reassemble"
 #define CMD_LINE_OPT_MTU		"mtu"
+#define CMD_LINE_OPT_FRAG_TTL		"frag-ttl"
 
 enum {
 	/* long options mapped to a short option */
@@ -150,6 +151,7 @@ enum {
 	CMD_LINE_OPT_TX_OFFLOAD_NUM,
 	CMD_LINE_OPT_REASSEMBLE_NUM,
 	CMD_LINE_OPT_MTU_NUM,
+	CMD_LINE_OPT_FRAG_TTL_NUM,
 };
 
 static const struct option lgopts[] = {
@@ -160,6 +162,7 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_TX_OFFLOAD, 1, 0, CMD_LINE_OPT_TX_OFFLOAD_NUM},
 	{CMD_LINE_OPT_REASSEMBLE, 1, 0, CMD_LINE_OPT_REASSEMBLE_NUM},
 	{CMD_LINE_OPT_MTU, 1, 0, CMD_LINE_OPT_MTU_NUM},
+	{CMD_LINE_OPT_FRAG_TTL, 1, 0, CMD_LINE_OPT_FRAG_TTL_NUM},
 	{NULL, 0, 0, 0}
 };
 
@@ -186,6 +189,7 @@ static uint64_t dev_tx_offload = UINT64_MAX;
 static uint32_t frag_tbl_sz;
 static uint32_t frame_buf_size = RTE_MBUF_DEFAULT_BUF_SIZE;
 static uint32_t mtu_size = RTE_ETHER_MTU;
+static uint64_t frag_ttl_ns = MAX_FRAG_TTL_NS;
 
 /* application wide librte_ipsec/SA parameters */
 struct app_sa_prm app_sa_prm = {.enable = 0};
@@ -1305,6 +1309,9 @@ print_usage(const char *prgname)
 		": MTU value on all ports (default value: 1500)\n"
 		"    outgoing packets with bigger size will be fragmented\n"
 		"    incoming packets with bigger size will be discarded\n"
+		"  --" CMD_LINE_OPT_FRAG_TTL " FRAG_TTL_NS"
+		": fragments lifetime in nanoseconds, default\n"
+		"    and maximum value is 10.000.000.000 ns (10 s)\n"
 		"\n",
 		prgname);
 }
@@ -1341,14 +1348,15 @@ parse_portmask(const char *portmask)
 	return pm;
 }
 
-static int32_t
+static int64_t
 parse_decimal(const char *str)
 {
 	char *end = NULL;
-	unsigned long num;
+	uint64_t num;
 
-	num = strtoul(str, &end, 10);
-	if ((str[0] == '\0') || (end == NULL) || (*end != '\0'))
+	num = strtoull(str, &end, 10);
+	if ((str[0] == '\0') || (end == NULL) || (*end != '\0')
+		|| num > INT64_MAX)
 		return -1;
 
 	return num;
@@ -1422,12 +1430,14 @@ print_app_sa_prm(const struct app_sa_prm *prm)
 	printf("replay window size: %u\n", prm->window_size);
 	printf("ESN: %s\n", (prm->enable_esn == 0) ? "disabled" : "enabled");
 	printf("SA flags: %#" PRIx64 "\n", prm->flags);
+	printf("Frag TTL: %" PRIu64 " ns\n", frag_ttl_ns);
 }
 
 static int32_t
 parse_args(int32_t argc, char **argv)
 {
-	int32_t opt, ret;
+	int opt;
+	int64_t ret;
 	char **argvopt;
 	int32_t option_index;
 	char *prgname = argv[0];
@@ -1506,7 +1516,7 @@ parse_args(int32_t argc, char **argv)
 			break;
 		case CMD_LINE_OPT_SINGLE_SA_NUM:
 			ret = parse_decimal(optarg);
-			if (ret == -1) {
+			if (ret == -1 || ret > UINT32_MAX) {
 				printf("Invalid argument[sa_idx]\n");
 				print_usage(prgname);
 				return -1;
@@ -1549,7 +1559,7 @@ parse_args(int32_t argc, char **argv)
 			break;
 		case CMD_LINE_OPT_REASSEMBLE_NUM:
 			ret = parse_decimal(optarg);
-			if (ret < 0) {
+			if (ret < 0 || ret > UINT32_MAX) {
 				printf("Invalid argument for \'%s\': %s\n",
 					CMD_LINE_OPT_REASSEMBLE, optarg);
 				print_usage(prgname);
@@ -1566,6 +1576,16 @@ parse_args(int32_t argc, char **argv)
 				return -1;
 			}
 			mtu_size = ret;
+			break;
+		case CMD_LINE_OPT_FRAG_TTL_NUM:
+			ret = parse_decimal(optarg);
+			if (ret < 0 || ret > MAX_FRAG_TTL_NS) {
+				printf("Invalid argument for \'%s\': %s\n",
+					CMD_LINE_OPT_MTU, optarg);
+				print_usage(prgname);
+				return -1;
+			}
+			frag_ttl_ns = ret;
 			break;
 		default:
 			print_usage(prgname);
@@ -2344,8 +2364,8 @@ reassemble_lcore_init(struct lcore_conf *lc, uint32_t cid)
 
 	/* create fragment table */
 	sid = rte_lcore_to_socket_id(cid);
-	frag_cycles = (rte_get_tsc_hz() + MS_PER_S - 1) /
-		MS_PER_S * FRAG_TTL_MS;
+	frag_cycles = (rte_get_tsc_hz() + NS_PER_S - 1) /
+		NS_PER_S * frag_ttl_ns;
 
 	lc->frag.tbl = rte_ip_frag_table_create(frag_tbl_sz,
 		FRAG_TBL_BUCKET_ENTRIES, frag_tbl_sz, frag_cycles, sid);
