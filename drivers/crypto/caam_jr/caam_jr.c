@@ -450,13 +450,11 @@ caam_jr_prep_cdb(struct caam_jr_session *ses)
 						&alginfo_c, &alginfo_a);
 			}
 		} else {
-			/* Auth_only_len is set as 0 here and it will be
-			 * overwritten in fd for each packet.
-			 */
+			/* Auth_only_len is overwritten in fd for each job */
 			shared_desc_len = cnstr_shdsc_authenc(cdb->sh_desc,
 					true, swap, SHR_SERIAL,
 					&alginfo_c, &alginfo_a,
-					ses->iv.length, 0,
+					ses->iv.length,
 					ses->digest_length, ses->dir);
 		}
 	}
@@ -1066,10 +1064,11 @@ build_cipher_auth_sg(struct rte_crypto_op *op, struct caam_jr_session *ses)
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
 	struct sec_job_descriptor_t *jobdescr;
-	uint32_t auth_only_len;
-
-	auth_only_len = op->sym->auth.data.length -
-				op->sym->cipher.data.length;
+	uint16_t auth_hdr_len = sym->cipher.data.offset -
+			sym->auth.data.offset;
+	uint16_t auth_tail_len = sym->auth.data.length -
+			sym->cipher.data.length - auth_hdr_len;
+	uint32_t auth_only_len = (auth_tail_len << 16) | auth_hdr_len;
 
 	if (sym->m_dst) {
 		mbuf = sym->m_dst;
@@ -1208,10 +1207,11 @@ build_cipher_auth(struct rte_crypto_op *op, struct caam_jr_session *ses)
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
 	struct sec_job_descriptor_t *jobdescr;
-	uint32_t auth_only_len;
-
-	auth_only_len = op->sym->auth.data.length -
-				op->sym->cipher.data.length;
+	uint16_t auth_hdr_len = sym->cipher.data.offset -
+			sym->auth.data.offset;
+	uint16_t auth_tail_len = sym->auth.data.length -
+			sym->cipher.data.length - auth_hdr_len;
+	uint32_t auth_only_len = (auth_tail_len << 16) | auth_hdr_len;
 
 	src_start_addr = rte_pktmbuf_iova(sym->m_src);
 	if (sym->m_dst)

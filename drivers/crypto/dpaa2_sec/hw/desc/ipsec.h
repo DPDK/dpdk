@@ -1412,9 +1412,6 @@ cnstr_shdsc_ipsec_new_decap(uint32_t *descbuf, bool ps,
  *
  * @ivlen: length of the IV to be read from the input frame, before any data
  *         to be processed
- * @auth_only_len: length of the data to be authenticated-only (commonly IP
- *                 header, IV, Sequence number and SPI)
- * Note: Extended Sequence Number processing is NOT supported
  *
  * @trunc_len: the length of the ICV to be written to the output frame. If 0,
  *             then the corresponding length of the digest, according to the
@@ -1425,30 +1422,30 @@ cnstr_shdsc_ipsec_new_decap(uint32_t *descbuf, bool ps,
  *       will be done correctly:
  * For encapsulation:
  *     Input:
- * +----+----------------+---------------------------------------------+
- * | IV | Auth-only data | Padded data to be authenticated & Encrypted |
- * +----+----------------+---------------------------------------------+
+ * +----+----------------+-----------------------------------------------+
+ * | IV | Auth-only head | Padded data to be auth & Enc | Auth-only tail |
+ * +----+----------------+-----------------------------------------------+
  *     Output:
  * +--------------------------------------+
  * | Authenticated & Encrypted data | ICV |
  * +--------------------------------+-----+
-
+ *
  * For decapsulation:
  *     Input:
- * +----+----------------+--------------------------------+-----+
- * | IV | Auth-only data | Authenticated & Encrypted data | ICV |
- * +----+----------------+--------------------------------+-----+
+ * +----+----------------+-----------------+----------------------+
+ * | IV | Auth-only head | Auth & Enc data | Auth-only tail | ICV |
+ * +----+----------------+-----------------+----------------------+
  *     Output:
- * +----+--------------------------+
+ * +----+---------------------------+
  * | Decrypted & authenticated data |
- * +----+--------------------------+
+ * +----+---------------------------+
  *
  * Note: This descriptor can use per-packet commands, encoded as below in the
  *       DPOVRD register:
- * 32    24    16               0
- * +------+---------------------+
- * | 0x80 | 0x00| auth_only_len |
- * +------+---------------------+
+ * 32    28               16	         1
+ * +------+------------------------------+
+ * | 0x8  | auth_tail_len | auth_hdr_len |
+ * +------+------------------------------+
  *
  * This mechanism is available only for SoCs having SEC ERA >= 3. In other
  * words, this will not work for P4080TO2
@@ -1465,7 +1462,7 @@ cnstr_shdsc_authenc(uint32_t *descbuf, bool ps, bool swap,
 		    enum rta_share_type share,
 		    struct alginfo *cipherdata,
 		    struct alginfo *authdata,
-		    uint16_t ivlen, uint16_t auth_only_len,
+		    uint16_t ivlen,
 		    uint8_t trunc_len, uint8_t dir)
 {
 	struct program prg;
@@ -1473,16 +1470,16 @@ cnstr_shdsc_authenc(uint32_t *descbuf, bool ps, bool swap,
 	const bool need_dk = (dir == DIR_DEC) &&
 			     (cipherdata->algtype == OP_ALG_ALGSEL_AES) &&
 			     (cipherdata->algmode == OP_ALG_AAI_CBC);
+	int data_type;
 
-	LABEL(skip_patch_len);
 	LABEL(keyjmp);
 	LABEL(skipkeys);
-	LABEL(aonly_len_offset);
-	REFERENCE(pskip_patch_len);
+	LABEL(proc_icv);
+	LABEL(no_auth_tail);
 	REFERENCE(pkeyjmp);
 	REFERENCE(pskipkeys);
-	REFERENCE(read_len);
-	REFERENCE(write_len);
+	REFERENCE(p_proc_icv);
+	REFERENCE(p_no_auth_tail);
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
 
@@ -1500,48 +1497,15 @@ cnstr_shdsc_authenc(uint32_t *descbuf, bool ps, bool swap,
 
 	SHR_HDR(p, share, 1, SC);
 
-	/*
-	 * M0 will contain the value provided by the user when creating
-	 * the shared descriptor. If the user provided an override in
-	 * DPOVRD, then M0 will contain that value
-	 */
-	MATHB(p, MATH0, ADD, auth_only_len, MATH0, 4, IMMED2);
+	/* Collect the (auth_tail || auth_hdr) len from DPOVRD */
+	MATHB(p, DPOVRD, ADD, 0x80000000, MATH2, 4, IMMED2);
 
-	if (rta_sec_era >= RTA_SEC_ERA_3) {
-		/*
-		 * Check if the user wants to override the auth-only len
-		 */
-		MATHB(p, DPOVRD, ADD, 0x80000000, MATH2, 4, IMMED2);
+	/* Get auth_hdr len in MATH0 */
+	MATHB(p, MATH2, AND, 0xFFFF, MATH0, 4, IMMED2);
 
-		/*
-		 * No need to patch the length of the auth-only data read if
-		 * the user did not override it
-		 */
-		pskip_patch_len = JUMP(p, skip_patch_len, LOCAL_JUMP, ALL_TRUE,
-				  MATH_N);
-
-		/* Get auth-only len in M0 */
-		MATHB(p, MATH2, AND, 0xFFFF, MATH0, 4, IMMED2);
-
-		/*
-		 * Since M0 is used in calculations, don't mangle it, copy
-		 * its content to M1 and use this for patching.
-		 */
-		MATHB(p, MATH0, ADD, MATH1, MATH1, 4, 0);
-
-		read_len = MOVE(p, DESCBUF, 0, MATH1, 0, 6, WAITCOMP | IMMED);
-		write_len = MOVE(p, MATH1, 0, DESCBUF, 0, 8, WAITCOMP | IMMED);
-
-		SET_LABEL(p, skip_patch_len);
-	}
-	/*
-	 * MATH0 contains the value in DPOVRD w/o the MSB, or the initial
-	 * value, as provided by the user at descriptor creation time
-	 */
-	if (dir == DIR_ENC)
-		MATHB(p, MATH0, ADD, ivlen, MATH0, 4, IMMED2);
-	else
-		MATHB(p, MATH0, ADD, ivlen + trunc_len, MATH0, 4, IMMED2);
+	/* Get auth_tail len in MATH2 */
+	MATHB(p, MATH2, AND, 0xFFF0000, MATH2, 4, IMMED2);
+	MATHI(p, MATH2, RSHIFT, 16, MATH2, 4, IMMED2);
 
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, SHRD);
 
@@ -1581,19 +1545,6 @@ cnstr_shdsc_authenc(uint32_t *descbuf, bool ps, bool swap,
 			      OP_ALG_AS_INITFINAL, ICV_CHECK_DISABLE, dir);
 	}
 
-	/*
-	 * Prepare the length of the data to be both encrypted/decrypted
-	 * and authenticated/checked
-	 */
-	MATHB(p, SEQINSZ, SUB, MATH0, VSEQINSZ, 4, 0);
-
-	MATHB(p, VSEQINSZ, SUB, MATH3, VSEQOUTSZ, 4, 0);
-
-	/* Prepare for writing the output frame */
-	SEQFIFOSTORE(p, MSG, 0, 0, VLF);
-
-	SET_LABEL(p, aonly_len_offset);
-
 	/* Read IV */
 	if (cipherdata->algmode == OP_ALG_AAI_CTR)
 		SEQLOAD(p, CONTEXT1, 16, ivlen, 0);
@@ -1601,41 +1552,63 @@ cnstr_shdsc_authenc(uint32_t *descbuf, bool ps, bool swap,
 		SEQLOAD(p, CONTEXT1, 0, ivlen, 0);
 
 	/*
-	 * Read data needed only for authentication. This is overwritten above
-	 * if the user requested it.
+	 * authenticate auth_hdr data
 	 */
-	SEQFIFOLOAD(p, MSG2, auth_only_len, 0);
+	MATHB(p, MATH0, ADD, ZERO, VSEQINSZ, 4, 0);
+	SEQFIFOLOAD(p, MSG2, 0, VLF);
 
-	if (dir == DIR_ENC) {
-		/*
-		 * Read input plaintext, encrypt and authenticate & write to
-		 * output
-		 */
-		SEQFIFOLOAD(p, MSGOUTSNOOP, 0, VLF | LAST1 | LAST2 | FLUSH1);
+	/*
+	 * Prepare the length of the data to be both encrypted/decrypted
+	 * and authenticated/checked
+	 */
+	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
+	if (dir == DIR_DEC) {
+		MATHB(p, VSEQINSZ, SUB, trunc_len, VSEQINSZ, 4, IMMED2);
+		data_type = MSGINSNOOP;
+	} else {
+		data_type = MSGOUTSNOOP;
+	}
 
+	MATHB(p, VSEQINSZ, ADD, ZERO, VSEQOUTSZ, 4, 0);
+
+	/* Prepare for writing the output frame */
+	SEQFIFOSTORE(p, MSG, 0, 0, VLF);
+
+
+	/* Check if there is no auth-tail */
+	MATHB(p, MATH2, ADD, ZERO, MATH2, 4, 0);
+	p_no_auth_tail = JUMP(p, no_auth_tail, LOCAL_JUMP, ALL_TRUE, MATH_Z);
+
+	/*
+	 * Read input plain/cipher text, encrypt/decrypt & auth & write
+	 * to output
+	 */
+	SEQFIFOLOAD(p, data_type, 0, VLF | LAST1 | FLUSH1);
+
+	/* Authenticate auth tail */
+	MATHB(p, MATH2, ADD, ZERO, VSEQINSZ, 4, 0);
+	SEQFIFOLOAD(p, MSG2, 0, VLF | LAST2);
+
+	/* Jump to process icv */
+	p_proc_icv = JUMP(p, proc_icv, LOCAL_JUMP, ALL_FALSE, MATH_Z);
+
+	SET_LABEL(p, no_auth_tail);
+
+	SEQFIFOLOAD(p, data_type, 0, VLF | LAST1 | LAST2 | FLUSH1);
+
+	SET_LABEL(p, proc_icv);
+
+	if (dir == DIR_ENC)
 		/* Finally, write the ICV */
 		SEQSTORE(p, CONTEXT2, 0, trunc_len, 0);
-	} else {
-		/*
-		 * Read input ciphertext, decrypt and authenticate & write to
-		 * output
-		 */
-		SEQFIFOLOAD(p, MSGINSNOOP, 0, VLF | LAST1 | LAST2 | FLUSH1);
-
+	else
 		/* Read the ICV to check */
 		SEQFIFOLOAD(p, ICV2, trunc_len, LAST2);
-	}
 
 	PATCH_JUMP(p, pkeyjmp, keyjmp);
 	PATCH_JUMP(p, pskipkeys, skipkeys);
-	PATCH_JUMP(p, pskipkeys, skipkeys);
-
-	if (rta_sec_era >= RTA_SEC_ERA_3) {
-		PATCH_JUMP(p, pskip_patch_len, skip_patch_len);
-		PATCH_MOVE(p, read_len, aonly_len_offset);
-		PATCH_MOVE(p, write_len, aonly_len_offset);
-	}
-
+	PATCH_JUMP(p, p_no_auth_tail, no_auth_tail);
+	PATCH_JUMP(p, p_proc_icv, proc_icv);
 	return PROGRAM_FINALIZE(p);
 }
 

@@ -742,7 +742,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 		 */
 		shared_desc_len = cnstr_shdsc_authenc(cdb->sh_desc,
 				true, swap, SHR_SERIAL, &alginfo_c, &alginfo_a,
-				ses->iv.length, 0,
+				ses->iv.length,
 				ses->digest_length, ses->dir);
 	}
 
@@ -1753,7 +1753,8 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 	struct rte_crypto_op *op;
 	struct dpaa_sec_job *cf;
 	dpaa_sec_session *ses;
-	uint32_t auth_only_len, index, flags[DPAA_SEC_BURST] = {0};
+	uint16_t auth_hdr_len, auth_tail_len;
+	uint32_t index, flags[DPAA_SEC_BURST] = {0};
 	struct qman_fq *inq[DPAA_SEC_BURST];
 
 	while (nb_ops) {
@@ -1809,8 +1810,10 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				goto send_pkts;
 			}
 
-			auth_only_len = op->sym->auth.data.length -
+			auth_hdr_len = op->sym->auth.data.length -
 						op->sym->cipher.data.length;
+			auth_tail_len = 0;
+
 			if (rte_pktmbuf_is_contiguous(op->sym->m_src) &&
 				  ((op->sym->m_dst == NULL) ||
 				   rte_pktmbuf_is_contiguous(op->sym->m_dst))) {
@@ -1824,8 +1827,15 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 					cf = build_cipher_only(op, ses);
 				} else if (is_aead(ses)) {
 					cf = build_cipher_auth_gcm(op, ses);
-					auth_only_len = ses->auth_only_len;
+					auth_hdr_len = ses->auth_only_len;
 				} else if (is_auth_cipher(ses)) {
+					auth_hdr_len =
+						op->sym->cipher.data.offset
+						- op->sym->auth.data.offset;
+					auth_tail_len =
+						op->sym->auth.data.length
+						- op->sym->cipher.data.length
+						- auth_hdr_len;
 					cf = build_cipher_auth(op, ses);
 				} else {
 					DPAA_SEC_DP_ERR("not supported ops");
@@ -1842,8 +1852,15 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 					cf = build_cipher_only_sg(op, ses);
 				} else if (is_aead(ses)) {
 					cf = build_cipher_auth_gcm_sg(op, ses);
-					auth_only_len = ses->auth_only_len;
+					auth_hdr_len = ses->auth_only_len;
 				} else if (is_auth_cipher(ses)) {
+					auth_hdr_len =
+						op->sym->cipher.data.offset
+						- op->sym->auth.data.offset;
+					auth_tail_len =
+						op->sym->auth.data.length
+						- op->sym->cipher.data.length
+						- auth_hdr_len;
 					cf = build_cipher_auth_sg(op, ses);
 				} else {
 					DPAA_SEC_DP_ERR("not supported ops");
@@ -1865,12 +1882,16 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 			qm_fd_addr_set64(fd, dpaa_mem_vtop(cf->sg));
 			fd->_format1 = qm_fd_compound;
 			fd->length29 = 2 * sizeof(struct qm_sg_entry);
+
 			/* Auth_only_len is set as 0 in descriptor and it is
 			 * overwritten here in the fd.cmd which will update
 			 * the DPOVRD reg.
 			 */
-			if (auth_only_len)
-				fd->cmd = 0x80000000 | auth_only_len;
+			if (auth_hdr_len || auth_tail_len) {
+				fd->cmd = 0x80000000;
+				fd->cmd |=
+					((auth_tail_len << 16) | auth_hdr_len);
+			}
 
 			/* In case of PDCP, per packet HFN is stored in
 			 * mbuf priv after sym_op.

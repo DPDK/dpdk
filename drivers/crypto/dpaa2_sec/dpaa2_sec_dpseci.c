@@ -583,8 +583,11 @@ build_authenc_sg_fd(dpaa2_sec_session *sess,
 	struct ctxt_priv *priv = sess->ctxt;
 	struct qbman_fle *fle, *sge, *ip_fle, *op_fle;
 	struct sec_flow_context *flc;
-	uint32_t auth_only_len = sym_op->auth.data.length -
-				sym_op->cipher.data.length;
+	uint16_t auth_hdr_len = sym_op->cipher.data.offset -
+				sym_op->auth.data.offset;
+	uint16_t auth_tail_len = sym_op->auth.data.length -
+				sym_op->cipher.data.length - auth_hdr_len;
+	uint32_t auth_only_len = (auth_tail_len << 16) | auth_hdr_len;
 	int icv_len = sess->digest_length;
 	uint8_t *old_icv;
 	struct rte_mbuf *mbuf;
@@ -727,8 +730,12 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	struct ctxt_priv *priv = sess->ctxt;
 	struct qbman_fle *fle, *sge;
 	struct sec_flow_context *flc;
-	uint32_t auth_only_len = sym_op->auth.data.length -
-				sym_op->cipher.data.length;
+	uint16_t auth_hdr_len = sym_op->cipher.data.offset -
+				sym_op->auth.data.offset;
+	uint16_t auth_tail_len = sym_op->auth.data.length -
+				sym_op->cipher.data.length - auth_hdr_len;
+	uint32_t auth_only_len = (auth_tail_len << 16) | auth_hdr_len;
+
 	int icv_len = sess->digest_length, retval;
 	uint8_t *old_icv;
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
@@ -2217,7 +2224,6 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 		    struct rte_crypto_sym_xform *xform,
 		    dpaa2_sec_session *session)
 {
-	struct dpaa2_sec_aead_ctxt *ctxt = &session->ext_params.aead_ctxt;
 	struct dpaa2_sec_dev_private *dev_priv = dev->data->dev_private;
 	struct alginfo authdata, cipherdata;
 	int bufsize;
@@ -2411,7 +2417,6 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 					      0, SHR_SERIAL,
 					      &cipherdata, &authdata,
 					      session->iv.length,
-					      ctxt->auth_only_len,
 					      session->digest_length,
 					      session->dir);
 		if (bufsize < 0) {
