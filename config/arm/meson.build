@@ -50,6 +50,11 @@ flags_dpaa = [
 	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_MAX_LCORE', 16],
 	['RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', false]]
+flags_emag = [
+	['RTE_MACHINE', '"emag"'],
+	['RTE_CACHE_LINE_SIZE', 64],
+	['RTE_MAX_NUMA_NODES', 1],
+	['RTE_MAX_LCORE', 32]]
 flags_armada = [
 	['RTE_MACHINE', '"armv8a"'],
 	['RTE_CACHE_LINE_SIZE', 64],
@@ -102,6 +107,10 @@ machine_args_cavium = [
 	['0xaf', ['-march=armv8.1-a+crc+crypto','-mcpu=thunderx2t99'], flags_thunderx2_extra],
 	['0xb2', ['-march=armv8.2-a+crc+crypto+lse','-mcpu=octeontx2'], flags_octeontx2_extra]]
 
+machine_args_emag = [
+	['default', ['-march=armv8-a+crc+crypto', '-mtune=emag']],
+	['native', ['-march=native']]]
+
 ## Arm implementer ID (ARM DDI 0487C.a, Section G7.2.106, Page G7-5321)
 impl_generic = ['Generic armv8', flags_generic, machine_args_generic]
 impl_0x41 = ['Arm', flags_arm, machine_args_generic]
@@ -111,7 +120,7 @@ impl_0x44 = ['DEC', flags_generic, machine_args_generic]
 impl_0x49 = ['Infineon', flags_generic, machine_args_generic]
 impl_0x4d = ['Motorola', flags_generic, machine_args_generic]
 impl_0x4e = ['NVIDIA', flags_generic, machine_args_generic]
-impl_0x50 = ['AppliedMicro', flags_generic, machine_args_generic]
+impl_0x50 = ['Ampere Computing', flags_emag, machine_args_emag]
 impl_0x51 = ['Qualcomm', flags_generic, machine_args_generic]
 impl_0x53 = ['Samsung', flags_generic, machine_args_generic]
 impl_0x56 = ['Marvell ARMADA', flags_armada, machine_args_generic]
