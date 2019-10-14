@@ -266,7 +266,8 @@ static inline int is_auth_cipher(dpaa_sec_session *ses)
 	return ((ses->cipher_alg != RTE_CRYPTO_CIPHER_NULL) &&
 		(ses->auth_alg != RTE_CRYPTO_AUTH_NULL) &&
 		(ses->proto_alg != RTE_SECURITY_PROTOCOL_PDCP) &&
-		(ses->proto_alg != RTE_SECURITY_PROTOCOL_IPSEC));
+		(ses->proto_alg != RTE_SECURITY_PROTOCOL_IPSEC) &&
+		(ses->aead_alg == 0));
 }
 
 static inline int is_proto_ipsec(dpaa_sec_session *ses)
