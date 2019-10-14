@@ -401,7 +401,7 @@ The SA rule syntax is shown as follows:
 .. code-block:: console
 
     sa <dir> <spi> <cipher_algo> <cipher_key> <auth_algo> <auth_key>
-    <mode> <src_ip> <dst_ip> <action_type> <port_id>
+    <mode> <src_ip> <dst_ip> <action_type> <port_id> <fallback>
 
 where each options means:
 
@@ -573,6 +573,26 @@ where each options means:
 
    * *port_id X* X is a valid device number in decimal
 
+ ``<fallback>``
+
+ * Action type for ingress IPsec packets that inline processor failed to
+   process. Only a combination of *inline-crypto-offload* as a primary
+   session and *lookaside-none* as a fall-back session is supported at the
+   moment.
+
+   If used in conjunction with IPsec window, its width needs be increased
+   due to different processing times of inline and lookaside modes which
+   results in packet reordering.
+
+ * Optional: Yes.
+
+ * Available options:
+
+   * *lookaside-none*: use automatically chosen cryptodev to process packets
+
+ * Syntax:
+
+   * *fallback lookaside-none*
 
 Example SA rules:
 

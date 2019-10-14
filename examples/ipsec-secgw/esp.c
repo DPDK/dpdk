@@ -155,7 +155,7 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 	RTE_ASSERT(sa != NULL);
 	RTE_ASSERT(cop != NULL);
 
-	ips = ipsec_get_session(sa);
+	ips = ipsec_get_primary_session(sa);
 
 	if ((ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) ||
 			(ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)) {
@@ -234,7 +234,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	RTE_ASSERT(m != NULL);
 	RTE_ASSERT(sa != NULL);
 
-	ips = ipsec_get_session(sa);
+	ips = ipsec_get_primary_session(sa);
 	ip_hdr_len = 0;
 
 	ip4 = rte_pktmbuf_mtod(m, struct ip *);

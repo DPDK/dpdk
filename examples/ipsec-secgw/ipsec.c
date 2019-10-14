@@ -430,7 +430,7 @@ enqueue_cop(struct cdev_qp *cqp, struct rte_crypto_op *cop)
 
 static inline void
 ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
-		struct rte_mbuf *pkts[], struct ipsec_sa *sas[],
+		struct rte_mbuf *pkts[], void *sas[],
 		uint16_t nb_pkts)
 {
 	int32_t ret = 0, i;
@@ -449,9 +449,9 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 		rte_prefetch0(pkts[i]);
 
 		priv = get_priv(pkts[i]);
-		sa = sas[i];
+		sa = ipsec_mask_saptr(sas[i]);
 		priv->sa = sa;
-		ips = ipsec_get_session(sa);
+		ips = ipsec_get_primary_session(sa);
 
 		switch (ips->type) {
 		case RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL:
@@ -618,7 +618,7 @@ uint16_t
 ipsec_inbound(struct ipsec_ctx *ctx, struct rte_mbuf *pkts[],
 		uint16_t nb_pkts, uint16_t len)
 {
-	struct ipsec_sa *sas[nb_pkts];
+	void *sas[nb_pkts];
 
 	inbound_sa_lookup(ctx->sa_ctx, pkts, sas, nb_pkts);
 
@@ -638,7 +638,7 @@ uint16_t
 ipsec_outbound(struct ipsec_ctx *ctx, struct rte_mbuf *pkts[],
 		uint32_t sa_idx[], uint16_t nb_pkts, uint16_t len)
 {
-	struct ipsec_sa *sas[nb_pkts];
+	void *sas[nb_pkts];
 
 	outbound_sa_lookup(ctx->sa_ctx, sa_idx, sas, nb_pkts);
 

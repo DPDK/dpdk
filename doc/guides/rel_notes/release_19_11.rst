@@ -217,9 +217,13 @@ New Features
 
 * **Updated the IPSec library.**
 
-  Added SA Database API to ``librte_ipsec``. A new test-sad application is also
-  introduced to evaluate and perform custom functional and performance tests
-  for IPsec SAD implementation.
+  * Added SA Database API to ``librte_ipsec``. A new test-sad application is also
+    introduced to evaluate and perform custom functional and performance tests
+    for IPsec SAD implementation.
+
+  * Support fragmented packets in inline crypto processing mode with fallback
+    ``lookaside-none`` session. Corresponding changes are also added in IPsec
+    Security Gateway application.
 
 * **Introduced FIFO for NTB PMD.**
 

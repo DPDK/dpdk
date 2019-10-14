@@ -81,12 +81,32 @@ struct app_sa_prm {
 
 extern struct app_sa_prm app_sa_prm;
 
+enum {
+	IPSEC_SESSION_PRIMARY = 0,
+	IPSEC_SESSION_FALLBACK = 1,
+	IPSEC_SESSION_MAX
+};
+
+#define IPSEC_SA_OFFLOAD_FALLBACK_FLAG (1)
+
+static inline struct ipsec_sa *
+ipsec_mask_saptr(void *ptr)
+{
+	uintptr_t i = (uintptr_t)ptr;
+	static const uintptr_t mask = IPSEC_SA_OFFLOAD_FALLBACK_FLAG;
+
+	i &= ~mask;
+
+	return (struct ipsec_sa *)i;
+}
+
 struct ipsec_sa {
-	struct rte_ipsec_session ips; /* one session per sa for now */
+	struct rte_ipsec_session sessions[IPSEC_SESSION_MAX];
 	uint32_t spi;
 	uint32_t cdev_id_qp;
 	uint64_t seq;
 	uint32_t salt;
+	uint32_t fallback_sessions;
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_auth_algorithm auth_algo;
 	enum rte_crypto_aead_algorithm aead_algo;
@@ -210,7 +230,7 @@ struct cnt_blk {
 struct traffic_type {
 	const uint8_t *data[MAX_PKT_BURST * 2];
 	struct rte_mbuf *pkts[MAX_PKT_BURST * 2];
-	struct ipsec_sa *saptr[MAX_PKT_BURST * 2];
+	void *saptr[MAX_PKT_BURST * 2];
 	uint32_t res[MAX_PKT_BURST * 2];
 	uint32_t num;
 };
@@ -278,16 +298,22 @@ get_sym_cop(struct rte_crypto_op *cop)
 }
 
 static inline struct rte_ipsec_session *
-ipsec_get_session(struct ipsec_sa *sa)
+ipsec_get_primary_session(struct ipsec_sa *sa)
 {
-	return &sa->ips;
+	return &sa->sessions[IPSEC_SESSION_PRIMARY];
+}
+
+static inline struct rte_ipsec_session *
+ipsec_get_fallback_session(struct ipsec_sa *sa)
+{
+	return &sa->sessions[IPSEC_SESSION_FALLBACK];
 }
 
 static inline enum rte_security_session_action_type
 ipsec_get_action_type(struct ipsec_sa *sa)
 {
 	struct rte_ipsec_session *ips;
-	ips = ipsec_get_session(sa);
+	ips = ipsec_get_primary_session(sa);
 	return ips->type;
 }
 
@@ -296,11 +322,11 @@ inbound_sa_check(struct sa_ctx *sa_ctx, struct rte_mbuf *m, uint32_t sa_idx);
 
 void
 inbound_sa_lookup(struct sa_ctx *sa_ctx, struct rte_mbuf *pkts[],
-		struct ipsec_sa *sa[], uint16_t nb_pkts);
+		void *sa[], uint16_t nb_pkts);
 
 void
 outbound_sa_lookup(struct sa_ctx *sa_ctx, uint32_t sa_idx[],
-		struct ipsec_sa *sa[], uint16_t nb_pkts);
+		void *sa[], uint16_t nb_pkts);
 
 void
 sp4_init(struct socket_ctx *ctx, int32_t socket_id);

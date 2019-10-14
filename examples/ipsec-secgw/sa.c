@@ -31,6 +31,8 @@
 
 #define IP6_FULL_MASK (sizeof(((struct ip_addr *)NULL)->ip.ip6.ip6) * CHAR_BIT)
 
+#define MBUF_NO_SEC_OFFLOAD(m) ((m->ol_flags & PKT_RX_SEC_OFFLOAD) == 0)
+
 struct supported_cipher_algo {
 	const char *keyword;
 	enum rte_crypto_cipher_algorithm algo;
@@ -235,6 +237,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	uint32_t mode_p = 0;
 	uint32_t type_p = 0;
 	uint32_t portid_p = 0;
+	uint32_t fallback_p = 0;
 
 	if (strcmp(tokens[0], "in") == 0) {
 		ri = &nb_sa_in;
@@ -245,6 +248,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			return;
 
 		rule = &sa_in[*ri];
+		rule->direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
 	} else {
 		ri = &nb_sa_out;
 
@@ -254,6 +258,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			return;
 
 		rule = &sa_out[*ri];
+		rule->direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 	}
 
 	/* spi number */
@@ -263,7 +268,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	if (atoi(tokens[1]) == INVALID_SPI)
 		return;
 	rule->spi = atoi(tokens[1]);
-	ips = ipsec_get_session(rule);
+	ips = ipsec_get_primary_session(rule);
 
 	for (ti = 2; ti < n_tokens; ti++) {
 		if (strcmp(tokens[ti], "mode") == 0) {
@@ -596,6 +601,45 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			continue;
 		}
 
+		if (strcmp(tokens[ti], "fallback") == 0) {
+			struct rte_ipsec_session *fb;
+
+			APP_CHECK(app_sa_prm.enable, status, "Fallback session "
+				"not allowed for legacy mode.");
+			if (status->status < 0)
+				return;
+			APP_CHECK(ips->type ==
+				RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO, status,
+				"Fallback session allowed if primary session "
+				"is of type inline-crypto-offload only.");
+			if (status->status < 0)
+				return;
+			APP_CHECK(rule->direction ==
+				RTE_SECURITY_IPSEC_SA_DIR_INGRESS, status,
+				"Fallback session not allowed for egress "
+				"rule");
+			if (status->status < 0)
+				return;
+			APP_CHECK_PRESENCE(fallback_p, tokens[ti], status);
+			if (status->status < 0)
+				return;
+			INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
+			if (status->status < 0)
+				return;
+			fb = ipsec_get_fallback_session(rule);
+			if (strcmp(tokens[ti], "lookaside-none") == 0) {
+				fb->type = RTE_SECURITY_ACTION_TYPE_NONE;
+			} else {
+				APP_CHECK(0, status, "unrecognized fallback "
+					"type %s.", tokens[ti]);
+				return;
+			}
+
+			rule->fallback_sessions = 1;
+			fallback_p = 1;
+			continue;
+		}
+
 		/* unrecognizeable input */
 		APP_CHECK(0, status, "unrecognized input \"%s\"",
 			tokens[ti]);
@@ -643,6 +687,7 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 	uint32_t i;
 	uint8_t a, b, c, d;
 	const struct rte_ipsec_session *ips;
+	const struct rte_ipsec_session *fallback_ips;
 
 	printf("\tspi_%s(%3u):", inbound?"in":"out", sa->spi);
 
@@ -699,7 +744,7 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 		break;
 	}
 
-	ips = &sa->ips;
+	ips = &sa->sessions[IPSEC_SESSION_PRIMARY];
 	printf(" type:");
 	switch (ips->type) {
 	case RTE_SECURITY_ACTION_TYPE_NONE:
@@ -714,6 +759,15 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 	case RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL:
 		printf("lookaside-protocol-offload ");
 		break;
+	}
+
+	fallback_ips = &sa->sessions[IPSEC_SESSION_FALLBACK];
+	if (fallback_ips != NULL && sa->fallback_sessions > 0) {
+		printf("inline fallback: ");
+		if (fallback_ips->type == RTE_SECURITY_ACTION_TYPE_NONE)
+			printf("lookaside-none");
+		else
+			printf("invalid");
 	}
 	printf("\n");
 }
@@ -904,7 +958,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 		}
 		*sa = entries[i];
 		sa->seq = 0;
-		ips = ipsec_get_session(sa);
+		ips = ipsec_get_primary_session(sa);
 
 		if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL ||
 			ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
@@ -912,9 +966,6 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 				return -EINVAL;
 		}
 
-		sa->direction = (inbound == 1) ?
-				RTE_SECURITY_IPSEC_SA_DIR_INGRESS :
-				RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 
 		switch (WITHOUT_TRANSPORT_VERSION(sa->flags)) {
 		case IP4_TUNNEL:
@@ -954,7 +1005,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 
 			sa->xforms = &sa_ctx->xf[idx].a;
 
-			ips = ipsec_get_session(sa);
+			ips = ipsec_get_primary_session(sa);
 			if (ips->type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL ||
 				ips->type ==
@@ -1168,9 +1219,15 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 	if (rc < 0)
 		return rc;
 
-	/* init processing session */
-	ips = ipsec_get_session(lsa);
+	/* init primary processing session */
+	ips = ipsec_get_primary_session(lsa);
 	rc = fill_ipsec_session(ips, sa);
+	if (rc != 0)
+		return rc;
+
+	/* init inline fallback processing session */
+	if (lsa->fallback_sessions == 1)
+		rc = fill_ipsec_session(ipsec_get_fallback_session(lsa), sa);
 
 	return rc;
 }
@@ -1326,13 +1383,14 @@ inbound_sa_check(struct sa_ctx *sa_ctx, struct rte_mbuf *m, uint32_t sa_idx)
 
 static inline void
 single_inbound_lookup(struct ipsec_sa *sadb, struct rte_mbuf *pkt,
-		struct ipsec_sa **sa_ret)
+		void **sa_ret)
 {
 	struct rte_esp_hdr *esp;
 	struct ip *ip;
 	uint32_t *src4_addr;
 	uint8_t *src6_addr;
 	struct ipsec_sa *sa;
+	void *result_sa;
 
 	*sa_ret = NULL;
 
@@ -1342,9 +1400,24 @@ single_inbound_lookup(struct ipsec_sa *sadb, struct rte_mbuf *pkt,
 	if (esp->spi == INVALID_SPI)
 		return;
 
-	sa = &sadb[SPI2IDX(rte_be_to_cpu_32(esp->spi))];
+	result_sa = sa = &sadb[SPI2IDX(rte_be_to_cpu_32(esp->spi))];
 	if (rte_be_to_cpu_32(esp->spi) != sa->spi)
 		return;
+
+	/*
+	 * Mark need for inline offload fallback on the LSB of SA pointer.
+	 * Thanks to packet grouping mechanism which ipsec_process is using
+	 * packets marked for fallback processing will form separate group.
+	 *
+	 * Because it is not safe to use SA pointer it is casted to generic
+	 * pointer to prevent from unintentional use. Use ipsec_mask_saptr
+	 * to get valid struct pointer.
+	 */
+	if (MBUF_NO_SEC_OFFLOAD(pkt) && sa->fallback_sessions > 0) {
+		uintptr_t intsa = (uintptr_t)sa;
+		intsa |= IPSEC_SA_OFFLOAD_FALLBACK_FLAG;
+		result_sa = (void *)intsa;
+	}
 
 	switch (WITHOUT_TRANSPORT_VERSION(sa->flags)) {
 	case IP4_TUNNEL:
@@ -1352,23 +1425,23 @@ single_inbound_lookup(struct ipsec_sa *sadb, struct rte_mbuf *pkt,
 		if ((ip->ip_v == IPVERSION) &&
 				(sa->src.ip.ip4 == *src4_addr) &&
 				(sa->dst.ip.ip4 == *(src4_addr + 1)))
-			*sa_ret = sa;
+			*sa_ret = result_sa;
 		break;
 	case IP6_TUNNEL:
 		src6_addr = RTE_PTR_ADD(ip, offsetof(struct ip6_hdr, ip6_src));
 		if ((ip->ip_v == IP6_VERSION) &&
 				!memcmp(&sa->src.ip.ip6.ip6, src6_addr, 16) &&
 				!memcmp(&sa->dst.ip.ip6.ip6, src6_addr + 16, 16))
-			*sa_ret = sa;
+			*sa_ret = result_sa;
 		break;
 	case TRANSPORT:
-		*sa_ret = sa;
+		*sa_ret = result_sa;
 	}
 }
 
 void
 inbound_sa_lookup(struct sa_ctx *sa_ctx, struct rte_mbuf *pkts[],
-		struct ipsec_sa *sa[], uint16_t nb_pkts)
+		void *sa[], uint16_t nb_pkts)
 {
 	uint32_t i;
 
@@ -1378,7 +1451,7 @@ inbound_sa_lookup(struct sa_ctx *sa_ctx, struct rte_mbuf *pkts[],
 
 void
 outbound_sa_lookup(struct sa_ctx *sa_ctx, uint32_t sa_idx[],
-		struct ipsec_sa *sa[], uint16_t nb_pkts)
+		void *sa[], uint16_t nb_pkts)
 {
 	uint32_t i;
 
