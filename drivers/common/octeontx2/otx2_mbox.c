@@ -364,6 +364,12 @@ otx2_send_ready_msg(struct otx2_mbox *mbox, uint16_t *pcifunc)
 	if (rc)
 		return rc;
 
+	if (rsp->hdr.ver != OTX2_MBOX_VERSION) {
+		otx2_err("Incompatible MBox versions(AF: 0x%04x DPDK: 0x%04x)",
+			  rsp->hdr.ver, OTX2_MBOX_VERSION);
+		return -EPIPE;
+	}
+
 	if (pcifunc)
 		*pcifunc = rsp->hdr.pcifunc;
 

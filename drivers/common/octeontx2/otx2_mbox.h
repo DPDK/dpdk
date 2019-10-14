@@ -89,7 +89,7 @@ struct mbox_msghdr {
 #define OTX2_MBOX_RSP_SIG (0xbeef)
 	/* Signature, for validating corrupted msgs */
 	uint16_t __otx2_io sig;
-#define OTX2_MBOX_VERSION (0x0001)
+#define OTX2_MBOX_VERSION (0x0002)
 	/* Version of msg's structure for this ID */
 	uint16_t __otx2_io ver;
 	/* Offset of next msg within mailbox region */
@@ -133,6 +133,7 @@ M(CGX_PTP_RX_DISABLE,	0x20D, cgx_ptp_rx_disable, msg_req, msg_rsp)	\
 M(CGX_CFG_PAUSE_FRM,	0x20E, cgx_cfg_pause_frm, cgx_pause_frm_cfg,	\
 				cgx_pause_frm_cfg)			\
 M(CGX_FW_DATA_GET,	0x20F, cgx_get_aux_link_info, msg_req, cgx_fw_data) \
+M(CGX_FEC_SET,		0x210, cgx_set_fec_param, fec_mode, fec_mode) \
 M(CGX_MAC_ADDR_ADD,     0x211, cgx_mac_addr_add, cgx_mac_addr_add_req,	\
 				cgx_mac_addr_add_rsp)			\
 M(CGX_MAC_ADDR_DEL,     0x212, cgx_mac_addr_del, cgx_mac_addr_del_req,	\
@@ -141,6 +142,13 @@ M(CGX_MAC_MAX_ENTRIES_GET, 0x213, cgx_mac_max_entries_get, msg_req,	\
 				 cgx_max_dmac_entries_get_rsp)		\
 M(CGX_SET_LINK_STATE,	0x214, cgx_set_link_state,		\
 			cgx_set_link_state_msg, msg_rsp)		\
+M(CGX_GET_PHY_MOD_TYPE, 0x215, cgx_get_phy_mod_type, msg_req,		\
+				cgx_phy_mod_type)			\
+M(CGX_SET_PHY_MOD_TYPE, 0x216, cgx_set_phy_mod_type, cgx_phy_mod_type,	\
+				msg_rsp)				\
+M(CGX_FEC_STATS,	0x217, cgx_fec_stats, msg_req, cgx_fec_stats_rsp) \
+M(CGX_SET_LINK_MODE,	0x218, cgx_set_link_mode, cgx_set_link_mode_req,\
+			       cgx_set_link_mode_rsp)			\
 /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 M(NPA_LF_ALLOC,		0x400, npa_lf_alloc, npa_lf_alloc_req,		\
 				npa_lf_alloc_rsp)			\
@@ -175,8 +183,14 @@ M(TIM_ENABLE_RING,	0x803, tim_enable_ring, tim_ring_req,		\
 				tim_enable_rsp)				\
 M(TIM_DISABLE_RING,	0x804, tim_disable_ring, tim_ring_req, msg_rsp)	\
 /* CPT mbox IDs (range 0xA00 - 0xBFF) */				\
+M(CPT_LF_ALLOC,		0xA00, cpt_lf_alloc, cpt_lf_alloc_req_msg,	\
+			       cpt_lf_alloc_rsp_msg)			\
+M(CPT_LF_FREE,		0xA01, cpt_lf_free, msg_req, msg_rsp)		\
 M(CPT_RD_WR_REGISTER,	0xA02, cpt_rd_wr_register, cpt_rd_wr_reg_msg,	\
 			       cpt_rd_wr_reg_msg)			\
+M(CPT_SET_CRYPTO_GRP,	0xA03, cpt_set_crypto_grp,			\
+			       cpt_set_crypto_grp_req_msg,		\
+			       msg_rsp)					\
 M(CPT_INLINE_IPSEC_CFG, 0xA04, cpt_inline_ipsec_cfg,			\
 			       cpt_inline_ipsec_cfg_msg, msg_rsp)	\
 /* NPC mbox IDs (range 0x6000 - 0x7FFF) */				\
@@ -250,6 +264,7 @@ M(NIX_LF_STOP_RX,	0x800e, nix_lf_stop_rx,	msg_req, msg_rsp)	\
 M(NIX_MARK_FORMAT_CFG,	0x800f, nix_mark_format_cfg,			\
 				nix_mark_format_cfg,			\
 				nix_mark_format_cfg_rsp)		\
+M(NIX_SET_RX_CFG,	0x8010, nix_set_rx_cfg, nix_rx_cfg, msg_rsp)	\
 M(NIX_LSO_FORMAT_CFG,	0x8011, nix_lso_format_cfg, nix_lso_format_cfg,	\
 				nix_lso_format_cfg_rsp)			\
 M(NIX_LF_PTP_TX_ENABLE,	0x8013, nix_lf_ptp_tx_enable, msg_req,		\
@@ -389,6 +404,7 @@ struct msix_offset_rsp {
 };
 
 /* CGX mbox message formats */
+
 struct cgx_stats_rsp {
 	struct mbox_msghdr hdr;
 #define CGX_RX_STATS_COUNT	13
@@ -397,6 +413,11 @@ struct cgx_stats_rsp {
 	uint64_t __otx2_io tx_stats[CGX_TX_STATS_COUNT];
 };
 
+struct cgx_fec_stats_rsp {
+	struct mbox_msghdr hdr;
+	uint64_t __otx2_io fec_corr_blks;
+	uint64_t __otx2_io fec_uncorr_blks;
+};
 /* Structure for requesting the operation for
  * setting/getting mac address in the CGX interface
  */
@@ -442,6 +463,9 @@ struct cgx_link_user_info {
 	uint64_t __otx2_io full_duplex:1;
 	uint64_t __otx2_io lmac_type_id:4;
 	uint64_t __otx2_io speed:20; /* speed in Mbps */
+	uint64_t __otx2_io an:1; /* AN supported or not */
+	uint64_t __otx2_io fec:2; /* FEC type if enabled else 0 */
+	uint64_t __otx2_io port:8;
 #define LMACTYPE_STR_LEN 16
 	char lmac_type[LMACTYPE_STR_LEN];
 };
@@ -449,6 +473,11 @@ struct cgx_link_user_info {
 struct cgx_link_info_msg {
 	struct mbox_msghdr hdr;
 	struct cgx_link_user_info link_info;
+};
+
+struct cgx_ptp_rx_info_msg {
+	struct mbox_msghdr hdr;
+	uint8_t __otx2_io ptp_en;
 };
 
 struct cgx_pause_frm_cfg {
@@ -460,16 +489,22 @@ struct cgx_pause_frm_cfg {
 	uint8_t __otx2_io tx_pause;
 };
 
-struct cgx_ptp_rx_info_msg {
-	struct mbox_msghdr hdr;
-	uint8_t __otx2_io ptp_en;
-	uint8_t __otx2_io ptp_offset;
-};
-
 struct sfp_eeprom_s {
 #define SFP_EEPROM_SIZE 256
 	uint16_t __otx2_io sff_id;
 	uint8_t __otx2_io buf[SFP_EEPROM_SIZE];
+	uint64_t __otx2_io reserved;
+};
+
+enum fec_type {
+	OTX2_FEC_NONE,
+	OTX2_FEC_BASER,
+	OTX2_FEC_RS,
+};
+
+struct phy_s {
+	uint64_t __otx2_io can_change_mod_type : 1;
+	uint64_t __otx2_io mod_type            : 1;
 };
 
 struct cgx_lmac_fwdata_s {
@@ -482,6 +517,9 @@ struct cgx_lmac_fwdata_s {
 	uint64_t __otx2_io advertised_link_modes;
 	/* Only applicable if SFP/QSFP slot is present */
 	struct sfp_eeprom_s sfp_eeprom;
+	struct phy_s phy;
+#define LMAC_FWDATA_RESERVED_MEM 1023
+	uint64_t __otx2_io reserved[LMAC_FWDATA_RESERVED_MEM];
 };
 
 struct cgx_fw_data {
@@ -489,11 +527,38 @@ struct cgx_fw_data {
 	struct cgx_lmac_fwdata_s fwdata;
 };
 
+struct fec_mode {
+	struct mbox_msghdr hdr;
+	int __otx2_io fec;
+};
+
 struct cgx_set_link_state_msg {
 	struct mbox_msghdr hdr;
 	uint8_t __otx2_io enable;
 };
 
+struct cgx_phy_mod_type {
+	struct mbox_msghdr hdr;
+	int __otx2_io mod;
+};
+
+struct cgx_set_link_mode_args {
+	uint32_t __otx2_io speed;
+	uint8_t __otx2_io duplex;
+	uint8_t __otx2_io an;
+	uint8_t __otx2_io ports;
+	uint64_t __otx2_io mode;
+};
+
+struct cgx_set_link_mode_req {
+	struct mbox_msghdr hdr;
+	struct cgx_set_link_mode_args args;
+};
+
+struct cgx_set_link_mode_rsp {
+	struct mbox_msghdr hdr;
+	int __otx2_io status;
+};
 /* NPA mbox message formats */
 
 /* NPA mailbox error codes
@@ -505,8 +570,7 @@ enum npa_af_status {
 	NPA_AF_ERR_AQ_ENQUEUE       = -303,
 	NPA_AF_ERR_AF_LF_INVALID    = -304,
 	NPA_AF_ERR_AF_LF_ALLOC      = -305,
-	NIX_AF_ERR_X2P_CALIBRATE    = -398,
-	NIX_AF_ERR_RAN_OUT_BPID     = -399,
+	NPA_AF_ERR_LF_RESET         = -306,
 };
 
 #define NPA_AURA_SZ_0		0
@@ -583,6 +647,7 @@ struct hwctx_disable_req {
 };
 
 /* NIX mbox message formats */
+
 /* NIX mailbox error codes
  * Range 401 - 500.
  */
@@ -600,12 +665,14 @@ enum nix_af_status {
 	NIX_AF_ERR_RX_LINK_INVALID  = -411,
 	NIX_AF_INVAL_TXSCHQ_CFG     = -412,
 	NIX_AF_SMQ_FLUSH_FAILED     = -413,
-	NIX_AF_MACADDR_SET_FAILED   = -414,
-	NIX_AF_RX_MODE_SET_FAILED   = -415,
+	NIX_AF_ERR_LF_RESET         = -414,
+	NIX_AF_ERR_RSS_NOSPC_FIELD  = -415,
 	NIX_AF_ERR_RSS_NOSPC_ALGO   = -416,
-	NIX_AF_ERR_RSS_NOSPC_FIELD  = -417,
-	NIX_AF_ERR_MARK_ALLOC_FAIL  = -418,
-	NIX_AF_ERR_LSOFMT_CFG_FAIL  = -419,
+	NIX_AF_ERR_MARK_CFG_FAIL    = -417,
+	NIX_AF_ERR_LSO_CFG_FAIL     = -418,
+	NIX_AF_INVAL_NPA_PF_FUNC    = -419,
+	NIX_AF_INVAL_SSO_PF_FUNC    = -420,
+	NIX_AF_ERR_TX_VTAG_NOSPC    = -421,
 };
 
 /* For NIX LF context alloc and init */
@@ -639,7 +706,6 @@ struct nix_lf_alloc_rsp {
 	uint8_t __otx2_io lf_tx_stats; /* NIX_AF_CONST1::LF_TX_STATS */
 	uint16_t __otx2_io cints; /* NIX_AF_CONST2::CINTS */
 	uint16_t __otx2_io qints; /* NIX_AF_CONST2::QINTS */
-	uint8_t __otx2_io ptp; /* boolean; true iff PTP block is supported */
 };
 
 struct nix_lf_free_req {
@@ -885,6 +951,15 @@ struct nix_rx_mode {
 	uint16_t __otx2_io mode;
 };
 
+struct nix_rx_cfg {
+	struct mbox_msghdr hdr;
+#define NIX_RX_OL3_VERIFY   BIT(0)
+#define NIX_RX_OL4_VERIFY   BIT(1)
+	uint8_t __otx2_io len_verify; /* Outer L3/L4 len check */
+#define NIX_RX_CSUM_OL4_VERIFY  BIT(0)
+	uint8_t __otx2_io csum_verify; /* Outer L4 checksum verification */
+};
+
 struct nix_frs_cfg {
 	struct mbox_msghdr hdr;
 	uint8_t __otx2_io update_smq;    /* Update SMQ's min/max lens */
@@ -909,6 +984,18 @@ struct nix_bp_cfg_req {
 	uint8_t __otx2_io bpid_per_chan;
 	/* bpid_per_chan = 0  assigns single bp id for range of channels */
 	/* bpid_per_chan = 1 assigns separate bp id for each channel */
+};
+
+/* PF can be mapped to either CGX or LBK interface,
+ * so maximum 64 channels are possible.
+ */
+#define NIX_MAX_CHAN	64
+struct nix_bp_cfg_rsp {
+	struct mbox_msghdr hdr;
+	/* Channel and bpid mapping */
+	uint16_t __otx2_io chan_bpid[NIX_MAX_CHAN];
+	/* Number of channel for which bpids are assigned */
+	uint8_t __otx2_io chan_cnt;
 };
 
 /* Global NIX inline IPSec configuration */
@@ -943,18 +1030,6 @@ struct nix_inline_ipsec_lf_cfg {
 	uint8_t __otx2_io enable;
 };
 
-/* PF can be mapped to either CGX or LBK interface,
- * so maximum 64 channels are possible.
- */
-#define NIX_MAX_CHAN	64
-struct nix_bp_cfg_rsp {
-	struct mbox_msghdr hdr;
-	/* Channel and bpid mapping */
-	uint16_t __otx2_io chan_bpid[NIX_MAX_CHAN];
-	/* Number of channel for which bpids are assigned */
-	uint8_t __otx2_io chan_cnt;
-};
-
 /* SSO mailbox error codes
  * Range 501 - 600.
  */
@@ -963,7 +1038,7 @@ enum sso_af_status {
 	SSO_AF_ERR_LF_INVALID	= -502,
 	SSO_AF_ERR_AF_LF_ALLOC	= -503,
 	SSO_AF_ERR_GRP_EBUSY	= -504,
-	SSO_AF_ERR_AF_LF_INVALID = -599,
+	SSO_AF_INVAL_NPA_PF_FUNC = -505,
 };
 
 struct sso_lf_alloc_req {
@@ -1057,6 +1132,20 @@ struct sso_hws_stats {
 	uint64_t __otx2_io arbitration;
 };
 
+/* CPT mailbox error codes
+ * Range 901 - 1000.
+ */
+enum cpt_af_status {
+	CPT_AF_ERR_PARAM		= -901,
+	CPT_AF_ERR_GRP_INVALID		= -902,
+	CPT_AF_ERR_LF_INVALID		= -903,
+	CPT_AF_ERR_ACCESS_DENIED	= -904,
+	CPT_AF_ERR_SSO_PF_FUNC_INVALID	= -905,
+	CPT_AF_ERR_NIX_PF_FUNC_INVALID	= -906,
+	CPT_AF_ERR_INLINE_IPSEC_INB_ENA	= -907,
+	CPT_AF_ERR_INLINE_IPSEC_OUT_ENA	= -908
+};
+
 /* CPT mbox message formats */
 
 struct cpt_rd_wr_reg_msg {
@@ -1065,6 +1154,22 @@ struct cpt_rd_wr_reg_msg {
 	uint64_t __otx2_io *ret_val;
 	uint64_t __otx2_io val;
 	uint8_t __otx2_io is_write;
+};
+
+struct cpt_set_crypto_grp_req_msg {
+	struct mbox_msghdr hdr;
+	uint8_t __otx2_io crypto_eng_grp;
+};
+
+struct cpt_lf_alloc_req_msg {
+	struct mbox_msghdr hdr;
+	uint16_t __otx2_io nix_pf_func;
+	uint16_t __otx2_io sso_pf_func;
+};
+
+struct cpt_lf_alloc_rsp_msg {
+	struct mbox_msghdr hdr;
+	uint8_t __otx2_io crypto_eng_grp;
 };
 
 #define CPT_INLINE_INBOUND	0
@@ -1233,6 +1338,23 @@ struct npc_get_kex_cfg_rsp {
 	uint8_t __otx2_io mkex_pfl_name[MKEX_NAME_LEN];
 };
 
+enum header_fields {
+	NPC_DMAC,
+	NPC_SMAC,
+	NPC_ETYPE,
+	NPC_OUTER_VID,
+	NPC_TOS,
+	NPC_SIP_IPV4,
+	NPC_DIP_IPV4,
+	NPC_SIP_IPV6,
+	NPC_DIP_IPV6,
+	NPC_SPORT_TCP,
+	NPC_DPORT_TCP,
+	NPC_SPORT_UDP,
+	NPC_DPORT_UDP,
+	NPC_HEADER_FIELDS_MAX,
+};
+
 struct flow_msg {
 	unsigned char __otx2_io dmac[6];
 	unsigned char __otx2_io smac[6];
@@ -1278,6 +1400,12 @@ struct npc_install_flow_req {
 	uint8_t __otx2_io vtag0_valid;
 	uint8_t __otx2_io vtag1_type;
 	uint8_t __otx2_io vtag1_valid;
+
+	/* vtag tx action */
+	uint16_t __otx2_io vtag0_def;
+	uint8_t  __otx2_io vtag0_op;
+	uint16_t __otx2_io vtag1_def;
+	uint8_t  __otx2_io vtag1_op;
 };
 
 struct npc_install_flow_rsp {
@@ -1289,8 +1417,9 @@ struct npc_install_flow_rsp {
 struct npc_delete_flow_req {
 	struct mbox_msghdr hdr;
 	uint16_t __otx2_io entry;
-	/* PF + VFs */
-	uint8_t __otx2_io all;
+	uint16_t __otx2_io start;/*Disable range of entries */
+	uint16_t __otx2_io end;
+	uint8_t __otx2_io all; /* PF + VFs */
 };
 
 struct npc_mcam_read_entry_req {
@@ -1367,7 +1496,6 @@ struct get_hw_cap_rsp {
 	struct mbox_msghdr hdr;
 	/* Schq mapping fixed or flexible */
 	uint8_t __otx2_io nix_fixed_txschq_mapping;
-	uint8_t __otx2_io nix_express_traffic; /* Are express links supported */
 	uint8_t __otx2_io nix_shaping; /* Is shaping and coloring supported */
 };
 
