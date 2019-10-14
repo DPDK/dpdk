@@ -630,39 +630,171 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 	} else if (is_proto_pdcp(ses)) {
 		shared_desc_len = dpaa_sec_prep_pdcp_cdb(ses);
 	} else if (is_cipher_only(ses)) {
-		caam_cipher_alg(ses, &alginfo_c);
-		if (alginfo_c.algtype == (unsigned int)DPAA_SEC_ALG_UNSUPPORT) {
-			DPAA_SEC_ERR("not supported cipher alg");
-			return -ENOTSUP;
-		}
-
 		alginfo_c.key = (size_t)ses->cipher_key.data;
 		alginfo_c.keylen = ses->cipher_key.length;
 		alginfo_c.key_enc_flags = 0;
 		alginfo_c.key_type = RTA_DATA_IMM;
-
-		shared_desc_len = cnstr_shdsc_blkcipher(
-						cdb->sh_desc, true,
-						swap, SHR_NEVER, &alginfo_c,
-						NULL,
-						ses->iv.length,
-						ses->dir);
-	} else if (is_auth_only(ses)) {
-		caam_auth_alg(ses, &alginfo_a);
-		if (alginfo_a.algtype == (unsigned int)DPAA_SEC_ALG_UNSUPPORT) {
-			DPAA_SEC_ERR("not supported auth alg");
+		switch (ses->cipher_alg) {
+		case RTE_CRYPTO_CIPHER_NULL:
+			alginfo_c.algtype = 0;
+			shared_desc_len = cnstr_shdsc_blkcipher(
+					cdb->sh_desc, true,
+					swap, SHR_NEVER, &alginfo_c,
+					NULL,
+					ses->iv.length,
+					ses->dir);
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CBC:
+			alginfo_c.algtype = OP_ALG_ALGSEL_AES;
+			alginfo_c.algmode = OP_ALG_AAI_CBC;
+			shared_desc_len = cnstr_shdsc_blkcipher(
+					cdb->sh_desc, true,
+					swap, SHR_NEVER, &alginfo_c,
+					NULL,
+					ses->iv.length,
+					ses->dir);
+			break;
+		case RTE_CRYPTO_CIPHER_3DES_CBC:
+			alginfo_c.algtype = OP_ALG_ALGSEL_3DES;
+			alginfo_c.algmode = OP_ALG_AAI_CBC;
+			shared_desc_len = cnstr_shdsc_blkcipher(
+					cdb->sh_desc, true,
+					swap, SHR_NEVER, &alginfo_c,
+					NULL,
+					ses->iv.length,
+					ses->dir);
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CTR:
+			alginfo_c.algtype = OP_ALG_ALGSEL_AES;
+			alginfo_c.algmode = OP_ALG_AAI_CTR;
+			shared_desc_len = cnstr_shdsc_blkcipher(
+					cdb->sh_desc, true,
+					swap, SHR_NEVER, &alginfo_c,
+					NULL,
+					ses->iv.length,
+					ses->dir);
+			break;
+		case RTE_CRYPTO_CIPHER_3DES_CTR:
+			alginfo_c.algtype = OP_ALG_ALGSEL_3DES;
+			alginfo_c.algmode = OP_ALG_AAI_CTR;
+			shared_desc_len = cnstr_shdsc_blkcipher(
+					cdb->sh_desc, true,
+					swap, SHR_NEVER, &alginfo_c,
+					NULL,
+					ses->iv.length,
+					ses->dir);
+			break;
+		case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
+			alginfo_c.algtype = OP_ALG_ALGSEL_SNOW_F8;
+			shared_desc_len = cnstr_shdsc_snow_f8(
+					cdb->sh_desc, true, swap,
+					&alginfo_c,
+					ses->dir);
+			break;
+		case RTE_CRYPTO_CIPHER_ZUC_EEA3:
+			alginfo_c.algtype = OP_ALG_ALGSEL_ZUCE;
+			shared_desc_len = cnstr_shdsc_zuce(
+					cdb->sh_desc, true, swap,
+					&alginfo_c,
+					ses->dir);
+			break;
+		default:
+			DPAA_SEC_ERR("unsupported cipher alg %d",
+				     ses->cipher_alg);
 			return -ENOTSUP;
 		}
-
+	} else if (is_auth_only(ses)) {
 		alginfo_a.key = (size_t)ses->auth_key.data;
 		alginfo_a.keylen = ses->auth_key.length;
 		alginfo_a.key_enc_flags = 0;
 		alginfo_a.key_type = RTA_DATA_IMM;
-
-		shared_desc_len = cnstr_shdsc_hmac(cdb->sh_desc, true,
-						   swap, SHR_NEVER, &alginfo_a,
-						   !ses->dir,
-						   ses->digest_length);
+		switch (ses->auth_alg) {
+		case RTE_CRYPTO_AUTH_NULL:
+			alginfo_a.algtype = 0;
+			ses->digest_length = 0;
+			shared_desc_len = cnstr_shdsc_hmac(
+						cdb->sh_desc, true,
+						swap, SHR_NEVER, &alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
+		case RTE_CRYPTO_AUTH_MD5_HMAC:
+			alginfo_a.algtype = OP_ALG_ALGSEL_MD5;
+			alginfo_a.algmode = OP_ALG_AAI_HMAC;
+			shared_desc_len = cnstr_shdsc_hmac(
+						cdb->sh_desc, true,
+						swap, SHR_NEVER, &alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
+		case RTE_CRYPTO_AUTH_SHA1_HMAC:
+			alginfo_a.algtype = OP_ALG_ALGSEL_SHA1;
+			alginfo_a.algmode = OP_ALG_AAI_HMAC;
+			shared_desc_len = cnstr_shdsc_hmac(
+						cdb->sh_desc, true,
+						swap, SHR_NEVER, &alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
+		case RTE_CRYPTO_AUTH_SHA224_HMAC:
+			alginfo_a.algtype = OP_ALG_ALGSEL_SHA224;
+			alginfo_a.algmode = OP_ALG_AAI_HMAC;
+			shared_desc_len = cnstr_shdsc_hmac(
+						cdb->sh_desc, true,
+						swap, SHR_NEVER, &alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
+		case RTE_CRYPTO_AUTH_SHA256_HMAC:
+			alginfo_a.algtype = OP_ALG_ALGSEL_SHA256;
+			alginfo_a.algmode = OP_ALG_AAI_HMAC;
+			shared_desc_len = cnstr_shdsc_hmac(
+						cdb->sh_desc, true,
+						swap, SHR_NEVER, &alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
+		case RTE_CRYPTO_AUTH_SHA384_HMAC:
+			alginfo_a.algtype = OP_ALG_ALGSEL_SHA384;
+			alginfo_a.algmode = OP_ALG_AAI_HMAC;
+			shared_desc_len = cnstr_shdsc_hmac(
+						cdb->sh_desc, true,
+						swap, SHR_NEVER, &alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
+		case RTE_CRYPTO_AUTH_SHA512_HMAC:
+			alginfo_a.algtype = OP_ALG_ALGSEL_SHA512;
+			alginfo_a.algmode = OP_ALG_AAI_HMAC;
+			shared_desc_len = cnstr_shdsc_hmac(
+						cdb->sh_desc, true,
+						swap, SHR_NEVER, &alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
+		case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
+			alginfo_a.algtype = OP_ALG_ALGSEL_SNOW_F9;
+			alginfo_a.algmode = OP_ALG_AAI_F9;
+			ses->auth_alg = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
+			shared_desc_len = cnstr_shdsc_snow_f9(
+						cdb->sh_desc, true, swap,
+						&alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
+		case RTE_CRYPTO_AUTH_ZUC_EIA3:
+			alginfo_a.algtype = OP_ALG_ALGSEL_ZUCA;
+			alginfo_a.algmode = OP_ALG_AAI_F9;
+			ses->auth_alg = RTE_CRYPTO_AUTH_ZUC_EIA3;
+			shared_desc_len = cnstr_shdsc_zuca(
+						cdb->sh_desc, true, swap,
+						&alginfo_a,
+						!ses->dir,
+						ses->digest_length);
+			break;
+		default:
+			DPAA_SEC_ERR("unsupported auth alg %u", ses->auth_alg);
+		}
 	} else if (is_aead(ses)) {
 		caam_aead_alg(ses, &alginfo);
 		if (alginfo.algtype == (unsigned int)DPAA_SEC_ALG_UNSUPPORT) {
@@ -849,6 +981,21 @@ build_auth_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	struct qm_sg_entry *sg, *out_sg, *in_sg;
 	phys_addr_t start_addr;
 	uint8_t *old_digest, extra_segs;
+	int data_len, data_offset;
+
+	data_len = sym->auth.data.length;
+	data_offset = sym->auth.data.offset;
+
+	if (ses->auth_alg == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
+	    ses->auth_alg == RTE_CRYPTO_AUTH_ZUC_EIA3) {
+		if ((data_len & 7) || (data_offset & 7)) {
+			DPAA_SEC_ERR("AUTH: len/offset must be full bytes");
+			return NULL;
+		}
+
+		data_len = data_len >> 3;
+		data_offset = data_offset >> 3;
+	}
 
 	if (is_decode(ses))
 		extra_segs = 3;
@@ -879,23 +1026,52 @@ build_auth_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	/* need to extend the input to a compound frame */
 	in_sg->extension = 1;
 	in_sg->final = 1;
-	in_sg->length = sym->auth.data.length;
+	in_sg->length = data_len;
 	qm_sg_entry_set64(in_sg, dpaa_mem_vtop(&cf->sg[2]));
 
 	/* 1st seg */
 	sg = in_sg + 1;
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
-	sg->length = mbuf->data_len - sym->auth.data.offset;
-	sg->offset = sym->auth.data.offset;
 
-	/* Successive segs */
-	mbuf = mbuf->next;
-	while (mbuf) {
+	if (ses->iv.length) {
+		uint8_t *iv_ptr;
+
+		iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+						   ses->iv.offset);
+
+		if (ses->auth_alg == RTE_CRYPTO_AUTH_SNOW3G_UIA2) {
+			iv_ptr = conv_to_snow_f9_iv(iv_ptr);
+			sg->length = 12;
+		} else if (ses->auth_alg == RTE_CRYPTO_AUTH_ZUC_EIA3) {
+			iv_ptr = conv_to_zuc_eia_iv(iv_ptr);
+			sg->length = 8;
+		} else {
+			sg->length = ses->iv.length;
+		}
+		qm_sg_entry_set64(sg, dpaa_mem_vtop(iv_ptr));
+		in_sg->length += sg->length;
 		cpu_to_hw_sg(sg);
 		sg++;
-		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
-		sg->length = mbuf->data_len;
-		mbuf = mbuf->next;
+	}
+
+	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	sg->offset = data_offset;
+
+	if (data_len <= (mbuf->data_len - data_offset)) {
+		sg->length = data_len;
+	} else {
+		sg->length = mbuf->data_len - data_offset;
+
+		/* remaining i/p segs */
+		while ((data_len = data_len - sg->length) &&
+		       (mbuf = mbuf->next)) {
+			cpu_to_hw_sg(sg);
+			sg++;
+			qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+			if (data_len > mbuf->data_len)
+				sg->length = mbuf->data_len;
+			else
+				sg->length = data_len;
+		}
 	}
 
 	if (is_decode(ses)) {
@@ -908,9 +1084,6 @@ build_auth_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		qm_sg_entry_set64(sg, start_addr);
 		sg->length = ses->digest_length;
 		in_sg->length += ses->digest_length;
-	} else {
-		/* Digest calculation case */
-		sg->length -= ses->digest_length;
 	}
 	sg->final = 1;
 	cpu_to_hw_sg(sg);
@@ -934,9 +1107,24 @@ build_auth_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	struct rte_mbuf *mbuf = sym->m_src;
 	struct dpaa_sec_job *cf;
 	struct dpaa_sec_op_ctx *ctx;
-	struct qm_sg_entry *sg;
+	struct qm_sg_entry *sg, *in_sg;
 	rte_iova_t start_addr;
 	uint8_t *old_digest;
+	int data_len, data_offset;
+
+	data_len = sym->auth.data.length;
+	data_offset = sym->auth.data.offset;
+
+	if (ses->auth_alg == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
+	    ses->auth_alg == RTE_CRYPTO_AUTH_ZUC_EIA3) {
+		if ((data_len & 7) || (data_offset & 7)) {
+			DPAA_SEC_ERR("AUTH: len/offset must be full bytes");
+			return NULL;
+		}
+
+		data_len = data_len >> 3;
+		data_offset = data_offset >> 3;
+	}
 
 	ctx = dpaa_sec_alloc_ctx(ses, 4);
 	if (!ctx)
@@ -954,36 +1142,55 @@ build_auth_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	cpu_to_hw_sg(sg);
 
 	/* input */
-	sg = &cf->sg[1];
-	if (is_decode(ses)) {
-		/* need to extend the input to a compound frame */
-		sg->extension = 1;
-		qm_sg_entry_set64(sg, dpaa_mem_vtop(&cf->sg[2]));
-		sg->length = sym->auth.data.length + ses->digest_length;
-		sg->final = 1;
-		cpu_to_hw_sg(sg);
+	in_sg = &cf->sg[1];
+	/* need to extend the input to a compound frame */
+	in_sg->extension = 1;
+	in_sg->final = 1;
+	in_sg->length = data_len;
+	qm_sg_entry_set64(in_sg, dpaa_mem_vtop(&cf->sg[2]));
+	sg = &cf->sg[2];
 
-		sg = &cf->sg[2];
+	if (ses->iv.length) {
+		uint8_t *iv_ptr;
+
+		iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+						   ses->iv.offset);
+
+		if (ses->auth_alg == RTE_CRYPTO_AUTH_SNOW3G_UIA2) {
+			iv_ptr = conv_to_snow_f9_iv(iv_ptr);
+			sg->length = 12;
+		} else if (ses->auth_alg == RTE_CRYPTO_AUTH_ZUC_EIA3) {
+			iv_ptr = conv_to_zuc_eia_iv(iv_ptr);
+			sg->length = 8;
+		} else {
+			sg->length = ses->iv.length;
+		}
+		qm_sg_entry_set64(sg, dpaa_mem_vtop(iv_ptr));
+		in_sg->length += sg->length;
+		cpu_to_hw_sg(sg);
+		sg++;
+	}
+
+	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	sg->offset = data_offset;
+	sg->length = data_len;
+
+	if (is_decode(ses)) {
+		/* Digest verification case */
+		cpu_to_hw_sg(sg);
 		/* hash result or digest, save digest first */
 		rte_memcpy(old_digest, sym->auth.digest.data,
-			   ses->digest_length);
-		qm_sg_entry_set64(sg, start_addr + sym->auth.data.offset);
-		sg->length = sym->auth.data.length;
-		cpu_to_hw_sg(sg);
-
+				ses->digest_length);
 		/* let's check digest by hw */
 		start_addr = dpaa_mem_vtop(old_digest);
 		sg++;
 		qm_sg_entry_set64(sg, start_addr);
 		sg->length = ses->digest_length;
-		sg->final = 1;
-		cpu_to_hw_sg(sg);
-	} else {
-		qm_sg_entry_set64(sg, start_addr + sym->auth.data.offset);
-		sg->length = sym->auth.data.length;
-		sg->final = 1;
-		cpu_to_hw_sg(sg);
+		in_sg->length += ses->digest_length;
 	}
+	sg->final = 1;
+	cpu_to_hw_sg(sg);
+	cpu_to_hw_sg(in_sg);
 
 	return cf;
 }
@@ -999,6 +1206,21 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	uint8_t req_segs;
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
+	int data_len, data_offset;
+
+	data_len = sym->cipher.data.length;
+	data_offset = sym->cipher.data.offset;
+
+	if (ses->cipher_alg == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
+		ses->cipher_alg == RTE_CRYPTO_CIPHER_ZUC_EEA3) {
+		if ((data_len & 7) || (data_offset & 7)) {
+			DPAA_SEC_ERR("CIPHER: len/offset must be full bytes");
+			return NULL;
+		}
+
+		data_len = data_len >> 3;
+		data_offset = data_offset >> 3;
+	}
 
 	if (sym->m_dst) {
 		mbuf = sym->m_dst;
@@ -1007,7 +1229,6 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		mbuf = sym->m_src;
 		req_segs = mbuf->nb_segs * 2 + 3;
 	}
-
 	if (mbuf->nb_segs > MAX_SG_ENTRIES) {
 		DPAA_SEC_DP_ERR("Cipher: Max sec segs supported is %d",
 				MAX_SG_ENTRIES);
@@ -1024,15 +1245,15 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	/* output */
 	out_sg = &cf->sg[0];
 	out_sg->extension = 1;
-	out_sg->length = sym->cipher.data.length;
+	out_sg->length = data_len;
 	qm_sg_entry_set64(out_sg, dpaa_mem_vtop(&cf->sg[2]));
 	cpu_to_hw_sg(out_sg);
 
 	/* 1st seg */
 	sg = &cf->sg[2];
 	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
-	sg->length = mbuf->data_len - sym->cipher.data.offset;
-	sg->offset = sym->cipher.data.offset;
+	sg->length = mbuf->data_len - data_offset;
+	sg->offset = data_offset;
 
 	/* Successive segs */
 	mbuf = mbuf->next;
@@ -1051,7 +1272,7 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	in_sg = &cf->sg[1];
 	in_sg->extension = 1;
 	in_sg->final = 1;
-	in_sg->length = sym->cipher.data.length + ses->iv.length;
+	in_sg->length = data_len + ses->iv.length;
 
 	sg++;
 	qm_sg_entry_set64(in_sg, dpaa_mem_vtop(sg));
@@ -1065,8 +1286,8 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	/* 1st seg */
 	sg++;
 	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
-	sg->length = mbuf->data_len - sym->cipher.data.offset;
-	sg->offset = sym->cipher.data.offset;
+	sg->length = mbuf->data_len - data_offset;
+	sg->offset = data_offset;
 
 	/* Successive segs */
 	mbuf = mbuf->next;
@@ -1093,6 +1314,21 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	rte_iova_t src_start_addr, dst_start_addr;
 	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			ses->iv.offset);
+	int data_len, data_offset;
+
+	data_len = sym->cipher.data.length;
+	data_offset = sym->cipher.data.offset;
+
+	if (ses->cipher_alg == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
+		ses->cipher_alg == RTE_CRYPTO_CIPHER_ZUC_EEA3) {
+		if ((data_len & 7) || (data_offset & 7)) {
+			DPAA_SEC_ERR("CIPHER: len/offset must be full bytes");
+			return NULL;
+		}
+
+		data_len = data_len >> 3;
+		data_offset = data_offset >> 3;
+	}
 
 	ctx = dpaa_sec_alloc_ctx(ses, 4);
 	if (!ctx)
@@ -1110,8 +1346,8 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	/* output */
 	sg = &cf->sg[0];
-	qm_sg_entry_set64(sg, dst_start_addr + sym->cipher.data.offset);
-	sg->length = sym->cipher.data.length + ses->iv.length;
+	qm_sg_entry_set64(sg, dst_start_addr + data_offset);
+	sg->length = data_len + ses->iv.length;
 	cpu_to_hw_sg(sg);
 
 	/* input */
@@ -1120,7 +1356,7 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	/* need to extend the input to a compound frame */
 	sg->extension = 1;
 	sg->final = 1;
-	sg->length = sym->cipher.data.length + ses->iv.length;
+	sg->length = data_len + ses->iv.length;
 	qm_sg_entry_set64(sg, dpaa_mem_vtop(&cf->sg[2]));
 	cpu_to_hw_sg(sg);
 
@@ -1130,8 +1366,8 @@ build_cipher_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	cpu_to_hw_sg(sg);
 
 	sg++;
-	qm_sg_entry_set64(sg, src_start_addr + sym->cipher.data.offset);
-	sg->length = sym->cipher.data.length;
+	qm_sg_entry_set64(sg, src_start_addr + data_offset);
+	sg->length = data_len;
 	sg->final = 1;
 	cpu_to_hw_sg(sg);
 
@@ -2066,6 +2302,10 @@ dpaa_sec_auth_init(struct rte_cryptodev *dev __rte_unused,
 	}
 	session->auth_key.length = xform->auth.key.length;
 	session->digest_length = xform->auth.digest_length;
+	if (session->cipher_alg == RTE_CRYPTO_CIPHER_NULL) {
+		session->iv.offset = xform->auth.iv.offset;
+		session->iv.length = xform->auth.iv.length;
+	}
 
 	memcpy(session->auth_key.data, xform->auth.key.data,
 	       xform->auth.key.length);
