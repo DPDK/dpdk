@@ -649,11 +649,6 @@ cnstr_shdsc_gcm_encap(uint32_t *descbuf, bool ps, bool swap,
 	MATHB(p, ZERO, ADD, MATH3, VSEQINSZ, 4, 0);
 	pzeroassocjump1 = JUMP(p, zeroassocjump1, LOCAL_JUMP, ALL_TRUE, MATH_Z);
 
-	MATHB(p, ZERO, ADD, MATH3, VSEQOUTSZ, 4, 0);
-
-	/* skip assoc data */
-	SEQFIFOSTORE(p, SKIP, 0, 0, VLF);
-
 	/* cryptlen = seqinlen - assoclen */
 	MATHB(p, SEQINSZ, SUB, MATH3, VSEQOUTSZ, 4, 0);
 
@@ -755,11 +750,6 @@ cnstr_shdsc_gcm_decap(uint32_t *descbuf, bool ps, bool swap,
 	/* if assoclen is ZERO, skip reading the assoc data */
 	MATHB(p, ZERO, ADD, MATH3, VSEQINSZ, 4, 0);
 	pzeroassocjump1 = JUMP(p, zeroassocjump1, LOCAL_JUMP, ALL_TRUE, MATH_Z);
-
-	MATHB(p, ZERO, ADD, MATH3, VSEQOUTSZ, 4, 0);
-
-	/* skip assoc data */
-	SEQFIFOSTORE(p, SKIP, 0, 0, VLF);
 
 	/* read assoc data */
 	SEQFIFOLOAD(p, AAD1, 0, CLASS1 | VLF | FLUSH1);

@@ -1180,10 +1180,9 @@ build_cipher_auth_gcm_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	out_sg = &cf->sg[0];
 	out_sg->extension = 1;
 	if (is_encode(ses))
-		out_sg->length = sym->aead.data.length + ses->auth_only_len
-						+ ses->digest_length;
+		out_sg->length = sym->aead.data.length + ses->digest_length;
 	else
-		out_sg->length = sym->aead.data.length + ses->auth_only_len;
+		out_sg->length = sym->aead.data.length;
 
 	/* output sg entries */
 	sg = &cf->sg[2];
@@ -1192,9 +1191,8 @@ build_cipher_auth_gcm_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	/* 1st seg */
 	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
-	sg->length = mbuf->data_len - sym->aead.data.offset +
-					ses->auth_only_len;
-	sg->offset = sym->aead.data.offset - ses->auth_only_len;
+	sg->length = mbuf->data_len - sym->aead.data.offset;
+	sg->offset = sym->aead.data.offset;
 
 	/* Successive segs */
 	mbuf = mbuf->next;
@@ -1367,8 +1365,8 @@ build_cipher_auth_gcm(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	sg++;
 	qm_sg_entry_set64(&cf->sg[0], dpaa_mem_vtop(sg));
 	qm_sg_entry_set64(sg,
-		dst_start_addr + sym->aead.data.offset - ses->auth_only_len);
-	sg->length = sym->aead.data.length + ses->auth_only_len;
+		dst_start_addr + sym->aead.data.offset);
+	sg->length = sym->aead.data.length;
 	length = sg->length;
 	if (is_encode(ses)) {
 		cpu_to_hw_sg(sg);

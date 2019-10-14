@@ -350,14 +350,13 @@ build_authenc_gcm_sg_fd(dpaa2_sec_session *sess,
 		DPAA2_SET_FLE_INTERNAL_JD(op_fle, auth_only_len);
 
 	op_fle->length = (sess->dir == DIR_ENC) ?
-			(sym_op->aead.data.length + icv_len + auth_only_len) :
-			sym_op->aead.data.length + auth_only_len;
+			(sym_op->aead.data.length + icv_len) :
+			sym_op->aead.data.length;
 
 	/* Configure Output SGE for Encap/Decap */
 	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
-	DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off +
-			RTE_ALIGN_CEIL(auth_only_len, 16) - auth_only_len);
-	sge->length = mbuf->data_len - sym_op->aead.data.offset + auth_only_len;
+	DPAA2_SET_FLE_OFFSET(sge, mbuf->data_off + sym_op->aead.data.offset);
+	sge->length = mbuf->data_len - sym_op->aead.data.offset;
 
 	mbuf = mbuf->next;
 	/* o/p segs */
@@ -510,24 +509,21 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 	if (auth_only_len)
 		DPAA2_SET_FLE_INTERNAL_JD(fle, auth_only_len);
 	fle->length = (sess->dir == DIR_ENC) ?
-			(sym_op->aead.data.length + icv_len + auth_only_len) :
-			sym_op->aead.data.length + auth_only_len;
+			(sym_op->aead.data.length + icv_len) :
+			sym_op->aead.data.length;
 
 	DPAA2_SET_FLE_SG_EXT(fle);
 
 	/* Configure Output SGE for Encap/Decap */
 	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(dst));
-	DPAA2_SET_FLE_OFFSET(sge, dst->data_off +
-			RTE_ALIGN_CEIL(auth_only_len, 16) - auth_only_len);
-	sge->length = sym_op->aead.data.length + auth_only_len;
+	DPAA2_SET_FLE_OFFSET(sge, dst->data_off + sym_op->aead.data.offset);
+	sge->length = sym_op->aead.data.length;
 
 	if (sess->dir == DIR_ENC) {
 		sge++;
 		DPAA2_SET_FLE_ADDR(sge,
 				DPAA2_VADDR_TO_IOVA(sym_op->aead.digest.data));
 		sge->length = sess->digest_length;
-		DPAA2_SET_FD_LEN(fd, (sym_op->aead.data.length +
-					sess->iv.length + auth_only_len));
 	}
 	DPAA2_SET_FLE_FIN(sge);
 
@@ -566,10 +562,6 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 		       sess->digest_length);
 		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_icv));
 		sge->length = sess->digest_length;
-		DPAA2_SET_FD_LEN(fd, (sym_op->aead.data.length +
-				 sess->digest_length +
-				 sess->iv.length +
-				 auth_only_len));
 	}
 	DPAA2_SET_FLE_FIN(sge);
 
@@ -578,6 +570,7 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 		DPAA2_SET_FD_INTERNAL_JD(fd, auth_only_len);
 	}
 
+	DPAA2_SET_FD_LEN(fd, fle->length);
 	return 0;
 }
 
