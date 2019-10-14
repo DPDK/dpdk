@@ -30,7 +30,8 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	int32_t payload_len, ip_hdr_len;
 
 	RTE_ASSERT(sa != NULL);
-	if (sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)
+	if (ipsec_get_action_type(sa) ==
+			RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)
 		return 0;
 
 	RTE_ASSERT(m != NULL);
@@ -148,13 +149,16 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 	uint8_t *nexthdr, *pad_len;
 	uint8_t *padding;
 	uint16_t i;
+	struct rte_ipsec_session *ips;
 
 	RTE_ASSERT(m != NULL);
 	RTE_ASSERT(sa != NULL);
 	RTE_ASSERT(cop != NULL);
 
-	if ((sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) ||
-			(sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)) {
+	ips = ipsec_get_session(sa);
+
+	if ((ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) ||
+			(ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)) {
 		if (m->ol_flags & PKT_RX_SEC_OFFLOAD) {
 			if (m->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED)
 				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
@@ -169,8 +173,8 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 		return -1;
 	}
 
-	if (sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO &&
-	    sa->ol_flags & RTE_SECURITY_RX_HW_TRAILER_OFFLOAD) {
+	if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO &&
+		ips->security.ol_flags & RTE_SECURITY_RX_HW_TRAILER_OFFLOAD) {
 		nexthdr = &m->inner_esp_next_proto;
 	} else {
 		nexthdr = rte_pktmbuf_mtod_offset(m, uint8_t*,
@@ -225,10 +229,12 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	struct rte_crypto_sym_op *sym_cop;
 	int32_t i;
 	uint16_t pad_payload_len, pad_len, ip_hdr_len;
+	struct rte_ipsec_session *ips;
 
 	RTE_ASSERT(m != NULL);
 	RTE_ASSERT(sa != NULL);
 
+	ips = ipsec_get_session(sa);
 	ip_hdr_len = 0;
 
 	ip4 = rte_pktmbuf_mtod(m, struct ip *);
@@ -277,9 +283,10 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	}
 
 	/* Add trailer padding if it is not constructed by HW */
-	if (sa->type != RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
-	    (sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO &&
-	     !(sa->ol_flags & RTE_SECURITY_TX_HW_TRAILER_OFFLOAD))) {
+	if (ips->type != RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
+		(ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO &&
+		 !(ips->security.ol_flags &
+			 RTE_SECURITY_TX_HW_TRAILER_OFFLOAD))) {
 		padding = (uint8_t *)rte_pktmbuf_append(m, pad_len +
 							sa->digest_len);
 		if (unlikely(padding == NULL)) {
@@ -344,8 +351,9 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		}
 	}
 
-	if (sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
-		if (sa->ol_flags & RTE_SECURITY_TX_HW_TRAILER_OFFLOAD) {
+	if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
+		if (ips->security.ol_flags &
+				RTE_SECURITY_TX_HW_TRAILER_OFFLOAD) {
 			/* Set the inner esp next protocol for HW trailer */
 			m->inner_esp_next_proto = nlp;
 			m->packet_type |= RTE_PTYPE_TUNNEL_ESP;
@@ -448,11 +456,14 @@ esp_outbound_post(struct rte_mbuf *m,
 		  struct ipsec_sa *sa,
 		  struct rte_crypto_op *cop)
 {
+	enum rte_security_session_action_type type;
 	RTE_ASSERT(m != NULL);
 	RTE_ASSERT(sa != NULL);
 
-	if ((sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) ||
-			(sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)) {
+	type = ipsec_get_action_type(sa);
+
+	if ((type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) ||
+			(type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)) {
 		m->ol_flags |= PKT_TX_SEC_OFFLOAD;
 	} else {
 		RTE_ASSERT(cop != NULL);

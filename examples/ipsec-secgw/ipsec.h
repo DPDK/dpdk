@@ -87,10 +87,6 @@ struct ipsec_sa {
 	uint32_t cdev_id_qp;
 	uint64_t seq;
 	uint32_t salt;
-	union {
-		struct rte_cryptodev_sym_session *crypto_session;
-		struct rte_security_session *sec_session;
-	};
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_auth_algorithm auth_algo;
 	enum rte_crypto_aead_algorithm aead_algo;
@@ -114,11 +110,8 @@ struct ipsec_sa {
 		struct rte_crypto_sym_xform *xforms;
 		struct rte_security_ipsec_xform *sec_xform;
 	};
-	enum rte_security_session_action_type type;
 	enum rte_security_ipsec_sa_direction direction;
 	uint16_t portid;
-	struct rte_security_ctx *security_ctx;
-	uint32_t ol_flags;
 
 #define MAX_RTE_FLOW_PATTERN (4)
 #define MAX_RTE_FLOW_ACTIONS (3)
@@ -284,6 +277,20 @@ get_sym_cop(struct rte_crypto_op *cop)
 	return (cop + 1);
 }
 
+static inline struct rte_ipsec_session *
+ipsec_get_session(struct ipsec_sa *sa)
+{
+	return &sa->ips;
+}
+
+static inline enum rte_security_session_action_type
+ipsec_get_action_type(struct ipsec_sa *sa)
+{
+	struct rte_ipsec_session *ips;
+	ips = ipsec_get_session(sa);
+	return ips->type;
+}
+
 int
 inbound_sa_check(struct sa_ctx *sa_ctx, struct rte_mbuf *m, uint32_t sa_idx);
 
@@ -338,9 +345,11 @@ void
 enqueue_cop_burst(struct cdev_qp *cqp);
 
 int
-create_lookaside_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa);
+create_lookaside_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa,
+		struct rte_ipsec_session *ips);
 
 int
-create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa);
+create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
+		struct rte_ipsec_session *ips);
 
 #endif /* __IPSEC_H__ */

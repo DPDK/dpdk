@@ -94,22 +94,16 @@ fill_ipsec_session(struct rte_ipsec_session *ss, struct ipsec_ctx *ctx,
 
 	/* setup crypto section */
 	if (ss->type == RTE_SECURITY_ACTION_TYPE_NONE) {
-		if (sa->crypto_session == NULL) {
-			rc = create_lookaside_session(ctx, sa);
-			if (rc != 0)
-				return rc;
-		}
-		ss->crypto.ses = sa->crypto_session;
+		RTE_ASSERT(ss->crypto.ses == NULL);
+		rc = create_lookaside_session(ctx, sa, ss);
+		if (rc != 0)
+			return rc;
 	/* setup session action type */
-	} else if (sa->type == RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL) {
-		if (sa->sec_session == NULL) {
-			rc = create_lookaside_session(ctx, sa);
-			if (rc != 0)
-				return rc;
-		}
-		ss->security.ses = sa->sec_session;
-		ss->security.ctx = sa->security_ctx;
-		ss->security.ol_flags = sa->ol_flags;
+	} else if (ss->type == RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL) {
+		RTE_ASSERT(ss->security.ses == NULL);
+		rc = create_lookaside_session(ctx, sa, ss);
+		if (rc != 0)
+			return rc;
 	} else
 		RTE_ASSERT(0);
 
@@ -218,7 +212,7 @@ ipsec_process(struct ipsec_ctx *ctx, struct ipsec_traffic *trf)
 		pg = grp + i;
 		sa = pg->id.ptr;
 
-		ips = &sa->ips;
+		ips = ipsec_get_session(sa);
 
 		/* no valid HW session for that SA, try to create one */
 		if (sa == NULL || (ips->crypto.ses == NULL &&
@@ -226,8 +220,8 @@ ipsec_process(struct ipsec_ctx *ctx, struct ipsec_traffic *trf)
 			k = 0;
 
 		/* process packets inline */
-		else if (sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
-				sa->type ==
+		else if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
+				ips->type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) {
 
 			satp = rte_ipsec_sa_type(ips->sa);

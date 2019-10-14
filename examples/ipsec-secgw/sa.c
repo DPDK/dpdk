@@ -224,6 +224,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	struct parse_status *status)
 {
 	struct ipsec_sa *rule = NULL;
+	struct rte_ipsec_session *ips;
 	uint32_t ti; /*token index*/
 	uint32_t *ri /*rule index*/;
 	uint32_t cipher_algo_p = 0;
@@ -262,6 +263,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	if (atoi(tokens[1]) == INVALID_SPI)
 		return;
 	rule->spi = atoi(tokens[1]);
+	ips = ipsec_get_session(rule);
 
 	for (ti = 2; ti < n_tokens; ti++) {
 		if (strcmp(tokens[ti], "mode") == 0) {
@@ -558,18 +560,18 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 				return;
 
 			if (strcmp(tokens[ti], "inline-crypto-offload") == 0)
-				rule->type =
+				ips->type =
 					RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO;
 			else if (strcmp(tokens[ti],
 					"inline-protocol-offload") == 0)
-				rule->type =
+				ips->type =
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL;
 			else if (strcmp(tokens[ti],
 					"lookaside-protocol-offload") == 0)
-				rule->type =
+				ips->type =
 				RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
 			else if (strcmp(tokens[ti], "no-offload") == 0)
-				rule->type = RTE_SECURITY_ACTION_TYPE_NONE;
+				ips->type = RTE_SECURITY_ACTION_TYPE_NONE;
 			else {
 				APP_CHECK(0, status, "Invalid input \"%s\"",
 						tokens[ti]);
@@ -624,11 +626,11 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	if (status->status < 0)
 		return;
 
-	if ((rule->type != RTE_SECURITY_ACTION_TYPE_NONE) && (portid_p == 0))
+	if ((ips->type != RTE_SECURITY_ACTION_TYPE_NONE) && (portid_p == 0))
 		printf("Missing portid option, falling back to non-offload\n");
 
 	if (!type_p || !portid_p) {
-		rule->type = RTE_SECURITY_ACTION_TYPE_NONE;
+		ips->type = RTE_SECURITY_ACTION_TYPE_NONE;
 		rule->portid = -1;
 	}
 
@@ -640,6 +642,7 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 {
 	uint32_t i;
 	uint8_t a, b, c, d;
+	const struct rte_ipsec_session *ips;
 
 	printf("\tspi_%s(%3u):", inbound?"in":"out", sa->spi);
 
@@ -695,8 +698,10 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 		printf("Transport ");
 		break;
 	}
+
+	ips = &sa->ips;
 	printf(" type:");
-	switch (sa->type) {
+	switch (ips->type) {
 	case RTE_SECURITY_ACTION_TYPE_NONE:
 		printf("no-offload ");
 		break;
@@ -884,6 +889,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 	uint16_t iv_length, aad_length;
 	int inline_status;
 	int32_t rc;
+	struct rte_ipsec_session *ips;
 
 	/* for ESN upper 32 bits of SQN also need to be part of AAD */
 	aad_length = (app_sa_prm.enable_esn != 0) ? sizeof(uint32_t) : 0;
@@ -898,9 +904,10 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 		}
 		*sa = entries[i];
 		sa->seq = 0;
+		ips = ipsec_get_session(sa);
 
-		if (sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL ||
-			sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
+		if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL ||
+			ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
 			if (check_eth_dev_caps(sa->portid, inbound))
 				return -EINVAL;
 		}
@@ -915,7 +922,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 			sa->dst.ip.ip4 = rte_cpu_to_be_32(sa->dst.ip.ip4);
 			break;
 		case TRANSPORT:
-			if (sa->type ==
+			if (ips->type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
 				inline_status =
 					sa_add_address_inline_crypto(sa);
@@ -926,6 +933,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 		}
 
 		if (sa->aead_algo == RTE_CRYPTO_AEAD_AES_GCM) {
+			struct rte_ipsec_session *ips;
 			iv_length = 16;
 
 			sa_ctx->xf[idx].a.type = RTE_CRYPTO_SYM_XFORM_AEAD;
@@ -946,11 +954,12 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 
 			sa->xforms = &sa_ctx->xf[idx].a;
 
-			if (sa->type ==
+			ips = ipsec_get_session(sa);
+			if (ips->type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL ||
-				sa->type ==
+				ips->type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
-				rc = create_inline_session(skt_ctx, sa);
+				rc = create_inline_session(skt_ctx, sa, ips);
 				if (rc != 0) {
 					RTE_LOG(ERR, IPSEC_ESP,
 						"create_inline_session() failed\n");
@@ -1108,23 +1117,11 @@ fill_ipsec_sa_prm(struct rte_ipsec_sa_prm *prm, const struct ipsec_sa *ss,
 }
 
 static int
-fill_ipsec_session(struct rte_ipsec_session *ss, struct rte_ipsec_sa *sa,
-	const struct ipsec_sa *lsa)
+fill_ipsec_session(struct rte_ipsec_session *ss, struct rte_ipsec_sa *sa)
 {
 	int32_t rc = 0;
 
 	ss->sa = sa;
-	ss->type = lsa->type;
-
-	/* setup crypto section */
-	if (ss->type == RTE_SECURITY_ACTION_TYPE_NONE) {
-		ss->crypto.ses = lsa->crypto_session;
-	/* setup session action type */
-	} else {
-		ss->security.ses = lsa->sec_session;
-		ss->security.ctx = lsa->security_ctx;
-		ss->security.ol_flags = lsa->ol_flags;
-	}
 
 	if (ss->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
 		ss->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) {
@@ -1146,6 +1143,7 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 {
 	int rc;
 	struct rte_ipsec_sa_prm prm;
+	struct rte_ipsec_session *ips;
 	struct rte_ipv4_hdr v4  = {
 		.version_ihl = IPVERSION << 4 |
 			sizeof(v4) / RTE_IPV4_IHL_MULTIPLIER,
@@ -1170,7 +1168,10 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 	if (rc < 0)
 		return rc;
 
-	rc = fill_ipsec_session(&lsa->ips, sa, lsa);
+	/* init processing session */
+	ips = ipsec_get_session(lsa);
+	rc = fill_ipsec_session(ips, sa);
+
 	return rc;
 }
 
@@ -1394,6 +1395,7 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 {
 	struct ipsec_sa *rule;
 	uint32_t idx_sa;
+	enum rte_security_session_action_type rule_type;
 
 	*rx_offloads = 0;
 	*tx_offloads = 0;
@@ -1401,8 +1403,9 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 	/* Check for inbound rules that use offloads and use this port */
 	for (idx_sa = 0; idx_sa < nb_sa_in; idx_sa++) {
 		rule = &sa_in[idx_sa];
-		if ((rule->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
-				rule->type ==
+		rule_type = ipsec_get_action_type(rule);
+		if ((rule_type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
+				rule_type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
 				&& rule->portid == port_id)
 			*rx_offloads |= DEV_RX_OFFLOAD_SECURITY;
@@ -1411,8 +1414,9 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 	/* Check for outbound rules that use offloads and use this port */
 	for (idx_sa = 0; idx_sa < nb_sa_out; idx_sa++) {
 		rule = &sa_out[idx_sa];
-		if ((rule->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
-				rule->type ==
+		rule_type = ipsec_get_action_type(rule);
+		if ((rule_type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
+				rule_type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
 				&& rule->portid == port_id)
 			*tx_offloads |= DEV_TX_OFFLOAD_SECURITY;
