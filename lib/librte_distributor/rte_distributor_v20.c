@@ -34,9 +34,12 @@ rte_distributor_request_pkt_v20(struct rte_distributor_v20 *d,
 	union rte_distributor_buffer_v20 *buf = &d->bufs[worker_id];
 	int64_t req = (((int64_t)(uintptr_t)oldpkt) << RTE_DISTRIB_FLAG_BITS)
 			| RTE_DISTRIB_GET_BUF;
-	while (unlikely(buf->bufptr64 & RTE_DISTRIB_FLAGS_MASK))
+	while (unlikely(__atomic_load_n(&buf->bufptr64, __ATOMIC_RELAXED)
+			& RTE_DISTRIB_FLAGS_MASK))
 		rte_pause();
-	buf->bufptr64 = req;
+
+	/* Sync with distributor on GET_BUF flag. */
+	__atomic_store_n(&(buf->bufptr64), req, __ATOMIC_RELEASE);
 }
 VERSION_SYMBOL(rte_distributor_request_pkt, _v20, 2.0);
 
@@ -45,7 +48,9 @@ rte_distributor_poll_pkt_v20(struct rte_distributor_v20 *d,
 		unsigned worker_id)
 {
 	union rte_distributor_buffer_v20 *buf = &d->bufs[worker_id];
-	if (buf->bufptr64 & RTE_DISTRIB_GET_BUF)
+	/* Sync with distributor. Acquire bufptr64. */
+	if (__atomic_load_n(&buf->bufptr64, __ATOMIC_ACQUIRE)
+		& RTE_DISTRIB_GET_BUF)
 		return NULL;
 
 	/* since bufptr64 is signed, this should be an arithmetic shift */
@@ -73,7 +78,8 @@ rte_distributor_return_pkt_v20(struct rte_distributor_v20 *d,
 	union rte_distributor_buffer_v20 *buf = &d->bufs[worker_id];
 	uint64_t req = (((int64_t)(uintptr_t)oldpkt) << RTE_DISTRIB_FLAG_BITS)
 			| RTE_DISTRIB_RETURN_BUF;
-	buf->bufptr64 = req;
+	/* Sync with distributor on RETURN_BUF flag. */
+	__atomic_store_n(&(buf->bufptr64), req, __ATOMIC_RELEASE);
 	return 0;
 }
 VERSION_SYMBOL(rte_distributor_return_pkt, _v20, 2.0);
@@ -117,7 +123,8 @@ handle_worker_shutdown(struct rte_distributor_v20 *d, unsigned int wkr)
 {
 	d->in_flight_tags[wkr] = 0;
 	d->in_flight_bitmask &= ~(1UL << wkr);
-	d->bufs[wkr].bufptr64 = 0;
+	/* Sync with worker. Release bufptr64. */
+	__atomic_store_n(&(d->bufs[wkr].bufptr64), 0, __ATOMIC_RELEASE);
 	if (unlikely(d->backlog[wkr].count != 0)) {
 		/* On return of a packet, we need to move the
 		 * queued packets for this core elsewhere.
@@ -161,17 +168,23 @@ process_returns(struct rte_distributor_v20 *d)
 			ret_count = d->returns.count;
 
 	for (wkr = 0; wkr < d->num_workers; wkr++) {
-
-		const int64_t data = d->bufs[wkr].bufptr64;
 		uintptr_t oldbuf = 0;
+		/* Sync with worker. Acquire bufptr64. */
+		const int64_t data = __atomic_load_n(&(d->bufs[wkr].bufptr64),
+							__ATOMIC_ACQUIRE);
 
 		if (data & RTE_DISTRIB_GET_BUF) {
 			flushed++;
 			if (d->backlog[wkr].count)
-				d->bufs[wkr].bufptr64 =
-						backlog_pop(&d->backlog[wkr]);
+				/* Sync with worker. Release bufptr64. */
+				__atomic_store_n(&(d->bufs[wkr].bufptr64),
+					backlog_pop(&d->backlog[wkr]),
+					__ATOMIC_RELEASE);
 			else {
-				d->bufs[wkr].bufptr64 = RTE_DISTRIB_GET_BUF;
+				/* Sync with worker on GET_BUF flag. */
+				__atomic_store_n(&(d->bufs[wkr].bufptr64),
+					RTE_DISTRIB_GET_BUF,
+					__ATOMIC_RELEASE);
 				d->in_flight_tags[wkr] = 0;
 				d->in_flight_bitmask &= ~(1UL << wkr);
 			}
@@ -207,9 +220,10 @@ rte_distributor_process_v20(struct rte_distributor_v20 *d,
 		return process_returns(d);
 
 	while (next_idx < num_mbufs || next_mb != NULL) {
-
-		int64_t data = d->bufs[wkr].bufptr64;
 		uintptr_t oldbuf = 0;
+		/* Sync with worker. Acquire bufptr64. */
+		int64_t data = __atomic_load_n(&(d->bufs[wkr].bufptr64),
+						__ATOMIC_ACQUIRE);
 
 		if (!next_mb) {
 			next_mb = mbufs[next_idx++];
@@ -255,11 +269,16 @@ rte_distributor_process_v20(struct rte_distributor_v20 *d,
 				(d->backlog[wkr].count || next_mb)) {
 
 			if (d->backlog[wkr].count)
-				d->bufs[wkr].bufptr64 =
-						backlog_pop(&d->backlog[wkr]);
+				/* Sync with worker. Release bufptr64. */
+				__atomic_store_n(&(d->bufs[wkr].bufptr64),
+						backlog_pop(&d->backlog[wkr]),
+						__ATOMIC_RELEASE);
 
 			else {
-				d->bufs[wkr].bufptr64 = next_value;
+				/* Sync with worker. Release bufptr64.  */
+				__atomic_store_n(&(d->bufs[wkr].bufptr64),
+						next_value,
+						__ATOMIC_RELEASE);
 				d->in_flight_tags[wkr] = new_tag;
 				d->in_flight_bitmask |= (1UL << wkr);
 				next_mb = NULL;
@@ -280,13 +299,19 @@ rte_distributor_process_v20(struct rte_distributor_v20 *d,
 	 * if they are ready */
 	for (wkr = 0; wkr < d->num_workers; wkr++)
 		if (d->backlog[wkr].count &&
-				(d->bufs[wkr].bufptr64 & RTE_DISTRIB_GET_BUF)) {
+				/* Sync with worker. Acquire bufptr64. */
+				(__atomic_load_n(&(d->bufs[wkr].bufptr64),
+				__ATOMIC_ACQUIRE) & RTE_DISTRIB_GET_BUF)) {
 
 			int64_t oldbuf = d->bufs[wkr].bufptr64 >>
 					RTE_DISTRIB_FLAG_BITS;
+
 			store_return(oldbuf, d, &ret_start, &ret_count);
 
-			d->bufs[wkr].bufptr64 = backlog_pop(&d->backlog[wkr]);
+			/* Sync with worker. Release bufptr64. */
+			__atomic_store_n(&(d->bufs[wkr].bufptr64),
+				backlog_pop(&d->backlog[wkr]),
+				__ATOMIC_RELEASE);
 		}
 
 	d->returns.start = ret_start;

@@ -49,8 +49,11 @@ rte_distributor_request_pkt_v1705(struct rte_distributor *d,
 	}
 
 	retptr64 = &(buf->retptr64[0]);
-	/* Spin while handshake bits are set (scheduler clears it) */
-	while (unlikely(*retptr64 & RTE_DISTRIB_GET_BUF)) {
+	/* Spin while handshake bits are set (scheduler clears it).
+	 * Sync with worker on GET_BUF flag.
+	 */
+	while (unlikely(__atomic_load_n(retptr64, __ATOMIC_ACQUIRE)
+			& RTE_DISTRIB_GET_BUF)) {
 		rte_pause();
 		uint64_t t = rte_rdtsc()+100;
 
@@ -75,8 +78,10 @@ rte_distributor_request_pkt_v1705(struct rte_distributor *d,
 	/*
 	 * Finally, set the GET_BUF  to signal to distributor that cache
 	 * line is ready for processing
+	 * Sync with distributor to release retptrs
 	 */
-	*retptr64 |= RTE_DISTRIB_GET_BUF;
+	__atomic_store_n(retptr64, *retptr64 | RTE_DISTRIB_GET_BUF,
+			__ATOMIC_RELEASE);
 }
 BIND_DEFAULT_SYMBOL(rte_distributor_request_pkt, _v1705, 17.05);
 MAP_STATIC_SYMBOL(void rte_distributor_request_pkt(struct rte_distributor *d,
@@ -98,8 +103,11 @@ rte_distributor_poll_pkt_v1705(struct rte_distributor *d,
 		return (pkts[0]) ? 1 : 0;
 	}
 
-	/* If bit is set, return */
-	if (buf->bufptr64[0] & RTE_DISTRIB_GET_BUF)
+	/* If bit is set, return
+	 * Sync with distributor to acquire bufptrs
+	 */
+	if (__atomic_load_n(&(buf->bufptr64[0]), __ATOMIC_ACQUIRE)
+		& RTE_DISTRIB_GET_BUF)
 		return -1;
 
 	/* since bufptr64 is signed, this should be an arithmetic shift */
@@ -114,8 +122,10 @@ rte_distributor_poll_pkt_v1705(struct rte_distributor *d,
 	 * so now we've got the contents of the cacheline into an  array of
 	 * mbuf pointers, so toggle the bit so scheduler can start working
 	 * on the next cacheline while we're working.
+	 * Sync with distributor on GET_BUF flag. Release bufptrs.
 	 */
-	buf->bufptr64[0] |= RTE_DISTRIB_GET_BUF;
+	__atomic_store_n(&(buf->bufptr64[0]),
+		buf->bufptr64[0] | RTE_DISTRIB_GET_BUF, __ATOMIC_RELEASE);
 
 	return count;
 }
@@ -174,6 +184,8 @@ rte_distributor_return_pkt_v1705(struct rte_distributor *d,
 			return -EINVAL;
 	}
 
+	/* Sync with distributor to acquire retptrs */
+	__atomic_thread_fence(__ATOMIC_ACQUIRE);
 	for (i = 0; i < RTE_DIST_BURST_SIZE; i++)
 		/* Switch off the return bit first */
 		buf->retptr64[i] &= ~RTE_DISTRIB_RETURN_BUF;
@@ -182,8 +194,11 @@ rte_distributor_return_pkt_v1705(struct rte_distributor *d,
 		buf->retptr64[i] = (((int64_t)(uintptr_t)oldpkt[i]) <<
 			RTE_DISTRIB_FLAG_BITS) | RTE_DISTRIB_RETURN_BUF;
 
-	/* set the GET_BUF but even if we got no returns */
-	buf->retptr64[0] |= RTE_DISTRIB_GET_BUF;
+	/* set the GET_BUF but even if we got no returns.
+	 * Sync with distributor on GET_BUF flag. Release retptrs.
+	 */
+	__atomic_store_n(&(buf->retptr64[0]),
+		buf->retptr64[0] | RTE_DISTRIB_GET_BUF, __ATOMIC_RELEASE);
 
 	return 0;
 }
@@ -273,7 +288,9 @@ handle_returns(struct rte_distributor *d, unsigned int wkr)
 	unsigned int count = 0;
 	unsigned int i;
 
-	if (buf->retptr64[0] & RTE_DISTRIB_GET_BUF) {
+	/* Sync on GET_BUF flag. Acquire retptrs. */
+	if (__atomic_load_n(&(buf->retptr64[0]), __ATOMIC_ACQUIRE)
+		& RTE_DISTRIB_GET_BUF) {
 		for (i = 0; i < RTE_DIST_BURST_SIZE; i++) {
 			if (buf->retptr64[i] & RTE_DISTRIB_RETURN_BUF) {
 				oldbuf = ((uintptr_t)(buf->retptr64[i] >>
@@ -286,8 +303,10 @@ handle_returns(struct rte_distributor *d, unsigned int wkr)
 		}
 		d->returns.start = ret_start;
 		d->returns.count = ret_count;
-		/* Clear for the worker to populate with more returns */
-		buf->retptr64[0] = 0;
+		/* Clear for the worker to populate with more returns.
+		 * Sync with distributor on GET_BUF flag. Release retptrs.
+		 */
+		__atomic_store_n(&(buf->retptr64[0]), 0, __ATOMIC_RELEASE);
 	}
 	return count;
 }
@@ -307,7 +326,9 @@ release(struct rte_distributor *d, unsigned int wkr)
 	struct rte_distributor_buffer *buf = &(d->bufs[wkr]);
 	unsigned int i;
 
-	while (!(d->bufs[wkr].bufptr64[0] & RTE_DISTRIB_GET_BUF))
+	/* Sync with worker on GET_BUF flag */
+	while (!(__atomic_load_n(&(d->bufs[wkr].bufptr64[0]), __ATOMIC_ACQUIRE)
+		& RTE_DISTRIB_GET_BUF))
 		rte_pause();
 
 	handle_returns(d, wkr);
@@ -327,8 +348,11 @@ release(struct rte_distributor *d, unsigned int wkr)
 
 	d->backlog[wkr].count = 0;
 
-	/* Clear the GET bit */
-	buf->bufptr64[0] &= ~RTE_DISTRIB_GET_BUF;
+	/* Clear the GET bit.
+	 * Sync with worker on GET_BUF flag. Release bufptrs.
+	 */
+	__atomic_store_n(&(buf->bufptr64[0]),
+		buf->bufptr64[0] & ~RTE_DISTRIB_GET_BUF, __ATOMIC_RELEASE);
 	return  buf->count;
 
 }
@@ -355,7 +379,9 @@ rte_distributor_process_v1705(struct rte_distributor *d,
 	if (unlikely(num_mbufs == 0)) {
 		/* Flush out all non-full cache-lines to workers. */
 		for (wid = 0 ; wid < d->num_workers; wid++) {
-			if (d->bufs[wid].bufptr64[0] & RTE_DISTRIB_GET_BUF) {
+			/* Sync with worker on GET_BUF flag. */
+			if (__atomic_load_n(&(d->bufs[wid].bufptr64[0]),
+				__ATOMIC_ACQUIRE) & RTE_DISTRIB_GET_BUF) {
 				release(d, wid);
 				handle_returns(d, wid);
 			}
@@ -367,7 +393,9 @@ rte_distributor_process_v1705(struct rte_distributor *d,
 		uint16_t matches[RTE_DIST_BURST_SIZE];
 		unsigned int pkts;
 
-		if (d->bufs[wkr].bufptr64[0] & RTE_DISTRIB_GET_BUF)
+		/* Sync with worker on GET_BUF flag. */
+		if (__atomic_load_n(&(d->bufs[wkr].bufptr64[0]),
+			__ATOMIC_ACQUIRE) & RTE_DISTRIB_GET_BUF)
 			d->bufs[wkr].count = 0;
 
 		if ((num_mbufs - next_idx) < RTE_DIST_BURST_SIZE)
@@ -465,7 +493,9 @@ rte_distributor_process_v1705(struct rte_distributor *d,
 
 	/* Flush out all non-full cache-lines to workers. */
 	for (wid = 0 ; wid < d->num_workers; wid++)
-		if ((d->bufs[wid].bufptr64[0] & RTE_DISTRIB_GET_BUF))
+		/* Sync with worker on GET_BUF flag. */
+		if ((__atomic_load_n(&(d->bufs[wid].bufptr64[0]),
+			__ATOMIC_ACQUIRE) & RTE_DISTRIB_GET_BUF))
 			release(d, wid);
 
 	return num_mbufs;
@@ -574,7 +604,9 @@ rte_distributor_clear_returns_v1705(struct rte_distributor *d)
 
 	/* throw away returns, so workers can exit */
 	for (wkr = 0; wkr < d->num_workers; wkr++)
-		d->bufs[wkr].retptr64[0] = 0;
+		/* Sync with worker. Release retptrs. */
+		__atomic_store_n(&(d->bufs[wkr].retptr64[0]), 0,
+				__ATOMIC_RELEASE);
 }
 BIND_DEFAULT_SYMBOL(rte_distributor_clear_returns, _v1705, 17.05);
 MAP_STATIC_SYMBOL(void rte_distributor_clear_returns(struct rte_distributor *d),
