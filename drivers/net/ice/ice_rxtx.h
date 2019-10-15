@@ -168,6 +168,10 @@ void ice_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		      struct rte_eth_rxq_info *qinfo);
 void ice_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		      struct rte_eth_txq_info *qinfo);
+int ice_rx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
+			  struct rte_eth_burst_mode *mode);
+int ice_tx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
+			  struct rte_eth_burst_mode *mode);
 int ice_rx_descriptor_status(void *rx_queue, uint16_t offset);
 int ice_tx_descriptor_status(void *tx_queue, uint16_t offset);
 void ice_set_default_ptype_table(struct rte_eth_dev *dev);
