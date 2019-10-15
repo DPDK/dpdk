@@ -849,7 +849,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config <port_id> rx_offload vlan_strip|"
 			"ipv4_cksum|udp_cksum|tcp_cksum|tcp_lro|qinq_strip|"
 			"outer_ipv4_cksum|macsec_strip|header_split|"
-			"vlan_filter|vlan_extend|jumbo_frame|crc_strip|"
+			"vlan_filter|vlan_extend|jumbo_frame|"
 			"scatter|timestamp|security|keep_crc on|off\n"
 			"     Enable or disable a per port Rx offloading"
 			" on all Rx queues of a port\n\n"
@@ -857,7 +857,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port (port_id) rxq (queue_id) rx_offload vlan_strip|"
 			"ipv4_cksum|udp_cksum|tcp_cksum|tcp_lro|qinq_strip|"
 			"outer_ipv4_cksum|macsec_strip|header_split|"
-			"vlan_filter|vlan_extend|jumbo_frame|crc_strip|"
+			"vlan_filter|vlan_extend|jumbo_frame|"
 			"scatter|timestamp|security|keep_crc on|off\n"
 			"    Enable or disable a per queue Rx offloading"
 			" only on a specific Rx queue\n\n"
@@ -18071,7 +18071,7 @@ cmdline_parse_token_string_t cmd_config_per_port_rx_offload_result_offload =
 		 offload, "vlan_strip#ipv4_cksum#udp_cksum#tcp_cksum#tcp_lro#"
 			   "qinq_strip#outer_ipv4_cksum#macsec_strip#"
 			   "header_split#vlan_filter#vlan_extend#jumbo_frame#"
-			   "crc_strip#scatter#timestamp#security#keep_crc");
+			   "scatter#timestamp#security#keep_crc");
 cmdline_parse_token_string_t cmd_config_per_port_rx_offload_result_on_off =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_config_per_port_rx_offload_result,
@@ -18151,7 +18151,7 @@ cmdline_parse_inst_t cmd_config_per_port_rx_offload = {
 	.help_str = "port config <port_id> rx_offload vlan_strip|ipv4_cksum|"
 		    "udp_cksum|tcp_cksum|tcp_lro|qinq_strip|outer_ipv4_cksum|"
 		    "macsec_strip|header_split|vlan_filter|vlan_extend|"
-		    "jumbo_frame|crc_strip|scatter|timestamp|security|keep_crc "
+		    "jumbo_frame|scatter|timestamp|security|keep_crc "
 		    "on|off",
 	.tokens = {
 		(void *)&cmd_config_per_port_rx_offload_result_port,
@@ -18201,7 +18201,7 @@ cmdline_parse_token_string_t cmd_config_per_queue_rx_offload_result_offload =
 		 offload, "vlan_strip#ipv4_cksum#udp_cksum#tcp_cksum#tcp_lro#"
 			   "qinq_strip#outer_ipv4_cksum#macsec_strip#"
 			   "header_split#vlan_filter#vlan_extend#jumbo_frame#"
-			   "crc_strip#scatter#timestamp#security#keep_crc");
+			   "scatter#timestamp#security#keep_crc");
 cmdline_parse_token_string_t cmd_config_per_queue_rx_offload_result_on_off =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_config_per_queue_rx_offload_result,
@@ -18257,7 +18257,7 @@ cmdline_parse_inst_t cmd_config_per_queue_rx_offload = {
 		    "vlan_strip|ipv4_cksum|"
 		    "udp_cksum|tcp_cksum|tcp_lro|qinq_strip|outer_ipv4_cksum|"
 		    "macsec_strip|header_split|vlan_filter|vlan_extend|"
-		    "jumbo_frame|crc_strip|scatter|timestamp|security|keep_crc "
+		    "jumbo_frame|scatter|timestamp|security|keep_crc "
 		    "on|off",
 	.tokens = {
 		(void *)&cmd_config_per_queue_rx_offload_result_port,
