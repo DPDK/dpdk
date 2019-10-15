@@ -230,7 +230,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	const __m128i zero = _mm_setzero_si128();
 	/* mask to shuffle from desc. to mbuf */
 	const __m128i shuf_msk = _mm_set_epi8
-			(0xFF, 0xFF, 0xFF, 0xFF,  /* rss not supported */
+			(15, 14, 13, 12,  /* octet 12~15, 32 bits rss */
 			 11, 10,      /* octet 10~11, 16 bits vlan_macip */
 			 5, 4,        /* octet 4~5, 16 bits data_len */
 			 0xFF, 0xFF,  /* skip high 16 bits pkt_len, zero out */
