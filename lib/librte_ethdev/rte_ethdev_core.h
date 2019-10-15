@@ -294,6 +294,9 @@ typedef void (*eth_rxq_info_get_t)(struct rte_eth_dev *dev,
 typedef void (*eth_txq_info_get_t)(struct rte_eth_dev *dev,
 	uint16_t tx_queue_id, struct rte_eth_txq_info *qinfo);
 
+typedef int (*eth_burst_mode_get_t)(struct rte_eth_dev *dev,
+	uint16_t queue_id, struct rte_eth_burst_mode *mode);
+
 typedef int (*mtu_set_t)(struct rte_eth_dev *dev, uint16_t mtu);
 /**< @internal Set MTU. */
 
@@ -542,6 +545,8 @@ struct eth_dev_ops {
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
 	eth_rxq_info_get_t         rxq_info_get; /**< retrieve RX queue information. */
 	eth_txq_info_get_t         txq_info_get; /**< retrieve TX queue information. */
+	eth_burst_mode_get_t       rx_burst_mode_get; /**< Get RX burst mode */
+	eth_burst_mode_get_t       tx_burst_mode_get; /**< Get TX burst mode */
 	eth_fw_version_get_t       fw_version_get; /**< Get firmware version. */
 	eth_dev_supported_ptypes_get_t dev_supported_ptypes_get;
 	/**< Get packet types supported and identified by device. */

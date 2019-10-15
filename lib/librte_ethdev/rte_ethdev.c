@@ -166,6 +166,25 @@ static const struct {
 
 #undef RTE_TX_OFFLOAD_BIT2STR
 
+static const struct {
+	uint64_t option;
+	const char *name;
+} rte_burst_option_names[] = {
+	{ RTE_ETH_BURST_SCALAR, "Scalar" },
+	{ RTE_ETH_BURST_VECTOR, "Vector" },
+
+	{ RTE_ETH_BURST_ALTIVEC, "AltiVec" },
+	{ RTE_ETH_BURST_NEON, "Neon" },
+	{ RTE_ETH_BURST_SSE, "SSE" },
+	{ RTE_ETH_BURST_AVX2, "AVX2" },
+	{ RTE_ETH_BURST_AVX512, "AVX512" },
+
+	{ RTE_ETH_BURST_SCATTERED, "Scattered" },
+	{ RTE_ETH_BURST_BULK_ALLOC, "Bulk Alloc" },
+	{ RTE_ETH_BURST_SIMPLE, "Simple" },
+	{ RTE_ETH_BURST_PER_QUEUE, "Per Queue" },
+};
+
 /**
  * The user application callback description.
  *
@@ -4208,6 +4227,70 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	dev->dev_ops->txq_info_get(dev, queue_id, qinfo);
 
 	return 0;
+}
+
+int
+rte_eth_rx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
+			  struct rte_eth_burst_mode *mode)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	if (mode == NULL)
+		return -EINVAL;
+
+	dev = &rte_eth_devices[port_id];
+
+	if (queue_id >= dev->data->nb_rx_queues) {
+		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", queue_id);
+		return -EINVAL;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_burst_mode_get, -ENOTSUP);
+	memset(mode, 0, sizeof(*mode));
+	return eth_err(port_id,
+		       dev->dev_ops->rx_burst_mode_get(dev, queue_id, mode));
+}
+
+int
+rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
+			  struct rte_eth_burst_mode *mode)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	if (mode == NULL)
+		return -EINVAL;
+
+	dev = &rte_eth_devices[port_id];
+
+	if (queue_id >= dev->data->nb_tx_queues) {
+		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", queue_id);
+		return -EINVAL;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_burst_mode_get, -ENOTSUP);
+	memset(mode, 0, sizeof(*mode));
+	return eth_err(port_id,
+		       dev->dev_ops->tx_burst_mode_get(dev, queue_id, mode));
+}
+
+const char *
+rte_eth_burst_mode_option_name(uint64_t option)
+{
+	const char *name = "";
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(rte_burst_option_names); ++i) {
+		if (option == rte_burst_option_names[i].option) {
+			name = rte_burst_option_names[i].name;
+			break;
+		}
+	}
+
+	return name;
 }
 
 int

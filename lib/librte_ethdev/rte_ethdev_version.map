@@ -283,4 +283,9 @@ EXPERIMENTAL {
 
 	# added in 19.08
 	rte_eth_read_clock;
+
+	# added in 19.11
+	rte_eth_rx_burst_mode_get;
+	rte_eth_tx_burst_mode_get;
+	rte_eth_burst_mode_option_name;
 };

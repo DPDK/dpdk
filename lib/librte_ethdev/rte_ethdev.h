@@ -1214,6 +1214,35 @@ struct rte_eth_txq_info {
 	uint16_t nb_desc;           /**< configured number of TXDs. */
 } __rte_cache_min_aligned;
 
+/**
+ * Burst mode types, values can be ORed to define the burst mode of a driver.
+ */
+enum rte_eth_burst_mode_option {
+	RTE_ETH_BURST_SCALAR = (1 << 0),
+	RTE_ETH_BURST_VECTOR = (1 << 1),
+
+	/**< bits[15:2] are reserved for each vector type */
+	RTE_ETH_BURST_ALTIVEC = (1 << 2),
+	RTE_ETH_BURST_NEON = (1 << 3),
+	RTE_ETH_BURST_SSE = (1 << 4),
+	RTE_ETH_BURST_AVX2 = (1 << 5),
+	RTE_ETH_BURST_AVX512 = (1 << 6),
+
+	RTE_ETH_BURST_SCATTERED = (1 << 16), /**< Support scattered packets */
+	RTE_ETH_BURST_BULK_ALLOC = (1 << 17), /**< Support mbuf bulk alloc */
+	RTE_ETH_BURST_SIMPLE = (1 << 18),
+
+	RTE_ETH_BURST_PER_QUEUE = (1 << 19), /**< Support per queue burst */
+};
+
+/**
+ * Ethernet device RX/TX queue packet burst mode information structure.
+ * Used to retrieve information about packet burst mode setting.
+ */
+struct rte_eth_burst_mode {
+	uint64_t options;
+};
+
 /** Maximum name length for extended statistics counters */
 #define RTE_ETH_XSTATS_NAME_SIZE 64
 
@@ -3601,6 +3630,62 @@ int rte_eth_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
  */
 int rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
+
+/**
+ * Retrieve information about the Rx packet burst mode.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The Rx queue on the Ethernet device for which information
+ *   will be retrieved.
+ * @param mode
+ *   A pointer to a structure of type *rte_eth_burst_mode* to be filled
+ *   with the information of the packet burst mode.
+ *
+ * @return
+ *   - 0: Success
+ *   - -ENOTSUP: routine is not supported by the device PMD.
+ *   - -EINVAL:  The port_id or the queue_id is out of range.
+ */
+__rte_experimental
+int rte_eth_rx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
+	struct rte_eth_burst_mode *mode);
+
+/**
+ * Retrieve information about the Tx packet burst mode.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The Tx queue on the Ethernet device for which information
+ *   will be retrieved.
+ * @param mode
+ *   A pointer to a structure of type *rte_eth_burst_mode* to be filled
+ *   with the information of the packet burst mode.
+ *
+ * @return
+ *   - 0: Success
+ *   - -ENOTSUP: routine is not supported by the device PMD.
+ *   - -EINVAL:  The port_id or the queue_id is out of range.
+ */
+__rte_experimental
+int rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
+	struct rte_eth_burst_mode *mode);
+
+/**
+ * Retrieve name about burst mode option.
+ *
+ * @param option
+ *   The burst mode option of type *rte_eth_burst_mode_option*.
+ *
+ * @return
+ *   - "": Not found
+ *   - "xxx": name of the mode option.
+ */
+__rte_experimental
+const char *
+rte_eth_burst_mode_option_name(uint64_t option);
 
 /**
  * Retrieve device registers and register attributes (number of registers and

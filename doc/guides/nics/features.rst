@@ -871,6 +871,17 @@ Supports Tx queue setup after device started.
 * **[provides] rte_eth_dev_info**: ``dev_capa:RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP``.
 * **[related]  API**: ``rte_eth_dev_info_get()``.
 
+.. _nic_features_burst_mode_info:
+
+Burst mode info
+---------------
+
+Supports to get Rx/Tx packet burst mode information.
+
+* **[implements] eth_dev_ops**: ``rx_burst_mode_get``, ``tx_burst_mode_get``.
+* **[related] API**: ``rte_eth_rx_burst_mode_get()``, ``rte_eth_tx_burst_mode_get()``,
+  ``rte_eth_burst_mode_option_name()``.
+
 .. _nic_features_other:
 
 Other dev ops not represented by a Feature
