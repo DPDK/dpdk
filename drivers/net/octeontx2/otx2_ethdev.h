@@ -207,6 +207,14 @@ struct vlan_mkex_info {
 	uint64_t lb_lt_offset;
 };
 
+struct mcast_entry {
+	struct rte_ether_addr mcast_mac;
+	uint16_t mcam_index;
+	TAILQ_ENTRY(mcast_entry) next;
+};
+
+TAILQ_HEAD(otx2_nix_mc_filter_tbl, mcast_entry);
+
 struct vlan_entry {
 	uint32_t mcam_idx;
 	uint16_t vlan_id;
@@ -311,6 +319,8 @@ struct otx2_eth_dev {
 	struct rte_timecounter  tx_tstamp_tc;
 	double clk_freq_mult;
 	uint64_t clk_delta;
+	bool mc_tbl_set;
+	struct otx2_nix_mc_filter_tbl mc_fltr_tbl;
 } __rte_cache_aligned;
 
 struct otx2_eth_txq {
@@ -392,6 +402,15 @@ int otx2_nix_allmulticast_disable(struct rte_eth_dev *eth_dev);
 int otx2_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx);
 int otx2_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx);
 uint64_t otx2_nix_rxq_mbuf_setup(struct otx2_eth_dev *dev, uint16_t port_id);
+
+/* Multicast filter APIs */
+void otx2_nix_mc_filter_init(struct otx2_eth_dev *dev);
+void otx2_nix_mc_filter_fini(struct otx2_eth_dev *dev);
+int otx2_nix_mc_addr_list_install(struct rte_eth_dev *eth_dev);
+int otx2_nix_mc_addr_list_uninstall(struct rte_eth_dev *eth_dev);
+int otx2_nix_set_mc_addr_list(struct rte_eth_dev *eth_dev,
+			      struct rte_ether_addr *mc_addr_set,
+			      uint32_t nb_mc_addr);
 
 /* MTU */
 int otx2_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);

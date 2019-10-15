@@ -44,6 +44,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX2_PMD) += \
 	otx2_link.c	\
 	otx2_vlan.c	\
 	otx2_stats.c	\
+	otx2_mcast.c	\
 	otx2_lookup.c	\
 	otx2_ethdev.c	\
 	otx2_flow_ctrl.c \

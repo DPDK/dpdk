@@ -1583,6 +1583,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	if (dev->configured == 1) {
 		otx2_nix_rxchan_bpid_cfg(eth_dev, false);
 		otx2_nix_vlan_fini(eth_dev);
+		otx2_nix_mc_addr_list_uninstall(eth_dev);
 		otx2_flow_free_all_resources(dev);
 		oxt2_nix_unregister_queue_irqs(eth_dev);
 		if (eth_dev->data->dev_conf.intr_conf.rxq)
@@ -1678,6 +1679,12 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto q_irq_fini;
 	}
 
+	rc = otx2_nix_mc_addr_list_install(eth_dev);
+	if (rc < 0) {
+		otx2_err("Failed to install mc address list rc=%d", rc);
+		goto cq_fini;
+	}
+
 	/*
 	 * Restore queue config when reconfigure followed by
 	 * reconfigure and no queue configure invoked from application case.
@@ -1685,7 +1692,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	if (dev->configured == 1) {
 		rc = nix_restore_queue_cfg(eth_dev);
 		if (rc)
-			goto cq_fini;
+			goto uninstall_mc_list;
 	}
 
 	/* Update the mac address */
@@ -1709,6 +1716,8 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	dev->configured_nb_tx_qs = data->nb_tx_queues;
 	return 0;
 
+uninstall_mc_list:
+	otx2_nix_mc_addr_list_uninstall(eth_dev);
 cq_fini:
 	oxt2_nix_unregister_cq_irqs(eth_dev);
 q_irq_fini:
@@ -1952,6 +1961,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.mac_addr_add             = otx2_nix_mac_addr_add,
 	.mac_addr_remove          = otx2_nix_mac_addr_del,
 	.mac_addr_set             = otx2_nix_mac_addr_set,
+	.set_mc_addr_list         = otx2_nix_set_mc_addr_list,
 	.promiscuous_enable       = otx2_nix_promisc_enable,
 	.promiscuous_disable      = otx2_nix_promisc_disable,
 	.allmulticast_enable      = otx2_nix_allmulticast_enable,
@@ -2169,6 +2179,8 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto free_mac_addrs;
 
+	otx2_nix_mc_filter_init(dev);
+
 	otx2_nix_dbg("Port=%d pf=%d vf=%d ver=%s msix_off=%d hwcap=0x%" PRIx64
 		     " rxoffload_capa=0x%" PRIx64 " txoffload_capa=0x%" PRIx64,
 		     eth_dev->data->port_id, dev->pf, dev->vf,
@@ -2215,6 +2227,9 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 
 	/* Disable other rte_flow entries */
 	otx2_flow_fini(dev);
+
+	/* Free multicast filter list */
+	otx2_nix_mc_filter_fini(dev);
 
 	/* Disable PTP if already enabled */
 	if (otx2_ethdev_is_ptp_en(dev))
