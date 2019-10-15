@@ -3022,6 +3022,51 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 	}
 }
 
+int
+i40e_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
+		       struct rte_eth_burst_mode *mode)
+{
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	uint64_t options;
+
+	if (pkt_burst == i40e_recv_scattered_pkts)
+		options = RTE_ETH_BURST_SCALAR | RTE_ETH_BURST_SCATTERED;
+	else if (pkt_burst == i40e_recv_pkts_bulk_alloc)
+		options = RTE_ETH_BURST_SCALAR | RTE_ETH_BURST_BULK_ALLOC;
+	else if (pkt_burst == i40e_recv_pkts)
+		options = RTE_ETH_BURST_SCALAR;
+#ifdef RTE_ARCH_X86
+	else if (pkt_burst == i40e_recv_scattered_pkts_vec_avx2)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_AVX2 |
+			  RTE_ETH_BURST_SCATTERED;
+	else if (pkt_burst == i40e_recv_pkts_vec_avx2)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_AVX2;
+	else if (pkt_burst == i40e_recv_scattered_pkts_vec)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_SSE |
+			  RTE_ETH_BURST_SCATTERED;
+	else if (pkt_burst == i40e_recv_pkts_vec)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_SSE;
+#elif defined(RTE_ARCH_ARM64)
+	else if (pkt_burst == i40e_recv_scattered_pkts_vec)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_NEON |
+			  RTE_ETH_BURST_SCATTERED;
+	else if (pkt_burst == i40e_recv_pkts_vec)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_NEON;
+#elif defined(RTE_ARCH_PPC_64)
+	else if (pkt_burst == i40e_recv_scattered_pkts_vec)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_ALTIVEC |
+			  RTE_ETH_BURST_SCATTERED;
+	else if (pkt_burst == i40e_recv_pkts_vec)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_ALTIVEC;
+#endif
+	else
+		options = 0;
+
+	mode->options = options;
+
+	return options != 0 ? 0 : -EINVAL;
+}
+
 void __attribute__((cold))
 i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct i40e_tx_queue *txq)
 {
@@ -3113,6 +3158,37 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 		dev->tx_pkt_burst = i40e_xmit_pkts;
 		dev->tx_pkt_prepare = i40e_prep_pkts;
 	}
+}
+
+int
+i40e_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
+		       struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	uint64_t options;
+
+	if (pkt_burst == i40e_xmit_pkts_simple)
+		options = RTE_ETH_BURST_SCALAR | RTE_ETH_BURST_SIMPLE;
+	else if (pkt_burst == i40e_xmit_pkts)
+		options = RTE_ETH_BURST_SCALAR;
+#ifdef RTE_ARCH_X86
+	else if (pkt_burst == i40e_xmit_pkts_vec_avx2)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_AVX2;
+	else if (pkt_burst == i40e_xmit_pkts_vec)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_SSE;
+#elif defined(RTE_ARCH_ARM64)
+	else if (pkt_burst == i40e_xmit_pkts_vec)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_NEON;
+#elif defined(RTE_ARCH_PPC_64)
+	else if (pkt_burst == i40e_xmit_pkts_vec)
+		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_ALTIVEC;
+#endif
+	else
+		options = 0;
+
+	mode->options = options;
+
+	return options != 0 ? 0 : -EINVAL;
 }
 
 void __attribute__((cold))
