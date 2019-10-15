@@ -2596,7 +2596,7 @@ i40e_rx_queue_config(struct i40e_rx_queue *rxq)
 	struct i40e_pf *pf = I40E_VSI_TO_PF(rxq->vsi);
 	struct i40e_hw *hw = I40E_VSI_TO_HW(rxq->vsi);
 	struct rte_eth_dev_data *data = pf->dev_data;
-	uint16_t buf_size, len;
+	uint16_t buf_size;
 
 	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
 		RTE_PKTMBUF_HEADROOM);
@@ -2619,8 +2619,9 @@ i40e_rx_queue_config(struct i40e_rx_queue *rxq)
 		break;
 	}
 
-	len = hw->func_caps.rx_buf_chain_len * rxq->rx_buf_len;
-	rxq->max_pkt_len = RTE_MIN(len, data->dev_conf.rxmode.max_rx_pkt_len);
+	rxq->max_pkt_len =
+		RTE_MIN((uint32_t)(hw->func_caps.rx_buf_chain_len *
+			rxq->rx_buf_len), data->dev_conf.rxmode.max_rx_pkt_len);
 	if (data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		if (rxq->max_pkt_len <= RTE_ETHER_MAX_LEN ||
 			rxq->max_pkt_len > I40E_FRAME_SIZE_MAX) {
