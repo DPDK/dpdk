@@ -346,9 +346,25 @@ nic_stats_mapping_display(portid_t port_id)
 	       nic_stats_mapping_border, nic_stats_mapping_border);
 }
 
+static void
+burst_mode_options_display(uint64_t options)
+{
+	int offset;
+
+	while (options != 0) {
+		offset = rte_bsf64(options);
+
+		printf(" %s",
+		       rte_eth_burst_mode_option_name(1ULL << offset));
+
+		options &= ~(1ULL << offset);
+	}
+}
+
 void
 rx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 {
+	struct rte_eth_burst_mode mode;
 	struct rte_eth_rxq_info qinfo;
 	int32_t rc;
 	static const char *info_border = "*********************";
@@ -376,12 +392,19 @@ rx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 	printf("\nRX scattered packets: %s",
 		(qinfo.scattered_rx != 0) ? "on" : "off");
 	printf("\nNumber of RXDs: %hu", qinfo.nb_desc);
+
+	if (rte_eth_rx_burst_mode_get(port_id, queue_id, &mode) == 0) {
+		printf("\nBurst mode:");
+		burst_mode_options_display(mode.options);
+	}
+
 	printf("\n");
 }
 
 void
 tx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 {
+	struct rte_eth_burst_mode mode;
 	struct rte_eth_txq_info qinfo;
 	int32_t rc;
 	static const char *info_border = "*********************";
@@ -405,6 +428,12 @@ tx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 	printf("\nTX deferred start: %s",
 		(qinfo.conf.tx_deferred_start != 0) ? "on" : "off");
 	printf("\nNumber of TXDs: %hu", qinfo.nb_desc);
+
+	if (rte_eth_tx_burst_mode_get(port_id, queue_id, &mode) == 0) {
+		printf("\nBurst mode:");
+		burst_mode_options_display(mode.options);
+	}
+
 	printf("\n");
 }
 
