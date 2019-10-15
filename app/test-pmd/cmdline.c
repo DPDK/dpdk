@@ -2201,6 +2201,14 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_GENEVE;
 	else if (!strcmp(res->value, "nvgre"))
 		rss_conf.rss_hf = ETH_RSS_NVGRE;
+	else if (!strcmp(res->value, "l3-src-only"))
+		rss_conf.rss_hf = ETH_RSS_L3_SRC_ONLY;
+	else if (!strcmp(res->value, "l3-dst-only"))
+		rss_conf.rss_hf = ETH_RSS_L3_DST_ONLY;
+	else if (!strcmp(res->value, "l4-src-only"))
+		rss_conf.rss_hf = ETH_RSS_L4_SRC_ONLY;
+	else if (!strcmp(res->value, "l4-dst-only"))
+		rss_conf.rss_hf = ETH_RSS_L4_DST_ONLY;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
 	else if (!strcmp(res->value, "default"))
@@ -2368,7 +2376,8 @@ cmdline_parse_token_string_t cmd_config_rss_hash_key_rss_type =
 				 "ipv4#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
 				 "ipv4-other#ipv6#ipv6-frag#ipv6-tcp#ipv6-udp#"
 				 "ipv6-sctp#ipv6-other#l2-payload#ipv6-ex#"
-				 "ipv6-tcp-ex#ipv6-udp-ex");
+				 "ipv6-tcp-ex#ipv6-udp-ex#"
+				 "l3-src-only#l3-dst-only#l4-src-only#l4-dst-only");
 cmdline_parse_token_string_t cmd_config_rss_hash_key_value =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, key, NULL);
 
@@ -2378,7 +2387,8 @@ cmdline_parse_inst_t cmd_config_rss_hash_key = {
 	.help_str = "port config <port_id> rss-hash-key "
 		"ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
 		"ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|"
-		"l2-payload|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex "
+		"l2-payload|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex|"
+		"l3-src-only|l3-dst-only|l4-src-only|l4-dst-only "
 		"<string of hex digits (variable length, NIC dependent)>",
 	.tokens = {
 		(void *)&cmd_config_rss_hash_key_port,
