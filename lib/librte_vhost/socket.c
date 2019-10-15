@@ -40,6 +40,8 @@ struct vhost_user_socket {
 	bool dequeue_zero_copy;
 	bool iommu_support;
 	bool use_builtin_virtio_net;
+	bool extbuf;
+	bool linearbuf;
 
 	/*
 	 * The "supported_features" indicates the feature bits the
@@ -231,6 +233,12 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	if (vsocket->dequeue_zero_copy)
 		vhost_enable_dequeue_zero_copy(vid);
+
+	if (vsocket->extbuf)
+		vhost_enable_extbuf(vid);
+
+	if (vsocket->linearbuf)
+		vhost_enable_linearbuf(vid);
 
 	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", vid);
 
@@ -870,6 +878,8 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		goto out_free;
 	}
 	vsocket->dequeue_zero_copy = flags & RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
+	vsocket->extbuf = flags & RTE_VHOST_USER_EXTBUF_SUPPORT;
+	vsocket->linearbuf = flags & RTE_VHOST_USER_LINEARBUF_SUPPORT;
 
 	if (vsocket->dequeue_zero_copy &&
 	    (flags & RTE_VHOST_USER_IOMMU_SUPPORT)) {
@@ -902,6 +912,18 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	 * not compatible with postcopy.
 	 */
 	if (vsocket->dequeue_zero_copy) {
+		if (vsocket->extbuf) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+			"error: zero copy is incompatible with external buffers\n");
+			ret = -1;
+			goto out_mutex;
+		}
+		if (vsocket->linearbuf) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+			"error: zero copy is incompatible with linear buffers\n");
+			ret = -1;
+			goto out_mutex;
+		}
 		vsocket->supported_features &= ~(1ULL << VIRTIO_F_IN_ORDER);
 		vsocket->features &= ~(1ULL << VIRTIO_F_IN_ORDER);
 

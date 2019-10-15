@@ -316,6 +316,8 @@ struct virtio_net {
 	rte_atomic16_t		broadcast_rarp;
 	uint32_t		nr_vring;
 	int			dequeue_zero_copy;
+	int			extbuf;
+	int			linearbuf;
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
 	struct inflight_mem_info *inflight_info;
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)
@@ -543,6 +545,8 @@ void vhost_attach_vdpa_device(int vid, int did);
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
 void vhost_enable_dequeue_zero_copy(int vid);
 void vhost_set_builtin_virtio_net(int vid, bool enable);
+void vhost_enable_extbuf(int vid);
+void vhost_enable_linearbuf(int vid);
 
 struct vhost_device_ops const *vhost_driver_callback_get(const char *path);
 

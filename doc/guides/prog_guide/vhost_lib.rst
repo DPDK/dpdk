@@ -117,6 +117,41 @@ The following is an overview of some key Vhost API functions:
     Enabling this flag should only be done when the calling application does
     not pre-fault the guest shared memory, otherwise migration would fail.
 
+  - ``RTE_VHOST_USER_LINEARBUF_SUPPORT``
+
+    Enabling this flag forces vhost dequeue function to only provide linear
+    pktmbuf (no multi-segmented pktmbuf).
+
+    The vhost library by default provides a single pktmbuf for given a
+    packet, but if for some reason the data doesn't fit into a single
+    pktmbuf (e.g., TSO is enabled), the library will allocate additional
+    pktmbufs from the same mempool and chain them together to create a
+    multi-segmented pktmbuf.
+
+    However, the vhost application needs to support multi-segmented format.
+    If the vhost application does not support that format and requires large
+    buffers to be dequeue, this flag should be enabled to force only linear
+    buffers (see RTE_VHOST_USER_EXTBUF_SUPPORT) or drop the packet.
+
+    It is disabled by default.
+
+  - ``RTE_VHOST_USER_EXTBUF_SUPPORT``
+
+    Enabling this flag allows vhost dequeue function to allocate and attach
+    an external buffer to a pktmbuf if the pkmbuf doesn't provide enough
+    space to store all data.
+
+    This is useful when the vhost application wants to support large packets
+    but doesn't want to increase the default mempool object size nor to
+    support multi-segmented mbufs (non-linear). In this case, a fresh buffer
+    is allocated using rte_malloc() which gets attached to a pktmbuf using
+    rte_pktmbuf_attach_extbuf().
+
+    See RTE_VHOST_USER_LINEARBUF_SUPPORT as well to disable multi-segmented
+    mbufs for application that doesn't support chained mbufs.
+
+    It is disabled by default.
+
 * ``rte_vhost_driver_set_features(path, features)``
 
   This function sets the feature bits the vhost-user driver supports. The

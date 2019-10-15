@@ -30,6 +30,10 @@ extern "C" {
 #define RTE_VHOST_USER_DEQUEUE_ZERO_COPY	(1ULL << 2)
 #define RTE_VHOST_USER_IOMMU_SUPPORT	(1ULL << 3)
 #define RTE_VHOST_USER_POSTCOPY_SUPPORT		(1ULL << 4)
+/* support mbuf with external buffer attached */
+#define RTE_VHOST_USER_EXTBUF_SUPPORT	(1ULL << 5)
+/* support only linear buffers (no chained mbufs) */
+#define RTE_VHOST_USER_LINEARBUF_SUPPORT	(1ULL << 6)
 
 /** Protocol features. */
 #ifndef VHOST_USER_PROTOCOL_F_MQ

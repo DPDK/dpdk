@@ -673,6 +673,28 @@ vhost_set_builtin_virtio_net(int vid, bool enable)
 		dev->flags &= ~VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 }
 
+void
+vhost_enable_extbuf(int vid)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return;
+
+	dev->extbuf = 1;
+}
+
+void
+vhost_enable_linearbuf(int vid)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return;
+
+	dev->linearbuf = 1;
+}
+
 int
 rte_vhost_get_mtu(int vid, uint16_t *mtu)
 {
