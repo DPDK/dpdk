@@ -32,6 +32,10 @@ M: Ferruh Yigit <ferruh.yigit@intel.com>
 M: Andrew Rybchenko <arybchenko@solarflare.com>
 T: git://dpdk.org/next/dpdk-next-net
 
+Next-net-brcm Tree
+M: Ajit Khaparde <ajit.khaparde@broadcom.com>
+T: git://dpdk.org/next/dpdk-next-net-brcm
+
 Next-net-intel Tree
 M: Qi Zhang <qi.z.zhang@intel.com>
 M: Xiaolong Ye <xiaolong.ye@intel.com>
@@ -565,6 +569,7 @@ F: doc/guides/nics/features/ark.ini
 Broadcom bnxt
 M: Ajit Khaparde <ajit.khaparde@broadcom.com>
 M: Somnath Kotur <somnath.kotur@broadcom.com>
+T: git://dpdk.org/next/dpdk-next-net-brcm
 F: drivers/net/bnxt/
 F: doc/guides/nics/bnxt.rst
 F: doc/guides/nics/features/bnxt.ini
