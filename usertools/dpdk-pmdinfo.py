@@ -8,13 +8,15 @@
 #
 # -------------------------------------------------------------------------
 from __future__ import print_function
+from __future__ import unicode_literals
 import json
+import io
 import os
 import platform
 import string
 import sys
 from elftools.common.exceptions import ELFError
-from elftools.common.py3compat import (byte2int, bytes2str, str2bytes)
+from elftools.common.py3compat import byte2int
 from elftools.elf.elffile import ELFFile
 from optparse import OptionParser
 
@@ -213,7 +215,8 @@ class PCIIds:
         """
         Reads the local file
         """
-        self.contents = open(filename).readlines()
+        with io.open(filename, 'r', encoding='utf-8') as f:
+            self.contents = f.readlines()
         self.date = self.findDate(self.contents)
 
     def loadLocal(self):
@@ -267,7 +270,13 @@ class ReadElf(object):
                 return None
         except ValueError:
             # Not a number. Must be a name then
-            return self.elffile.get_section_by_name(str2bytes(spec))
+            section = self.elffile.get_section_by_name(force_unicode(spec))
+            if section is None:
+                # No match with a unicode name.
+                # Some versions of pyelftools (<= 0.23) store internal strings
+                # as bytes. Try again with the name encoded as bytes.
+                section = self.elffile.get_section_by_name(force_bytes(spec))
+            return section
 
     def pretty_print_pmdinfo(self, pmdinfo):
         global pcidb
@@ -339,7 +348,8 @@ class ReadElf(object):
             while endptr < len(data) and byte2int(data[endptr]) != 0:
                 endptr += 1
 
-            mystring = bytes2str(data[dataptr:endptr])
+            # pyelftools may return byte-strings, force decode them
+            mystring = force_unicode(data[dataptr:endptr])
             rc = mystring.find("PMD_INFO_STRING")
             if (rc != -1):
                 self.parse_pmd_info_string(mystring)
@@ -348,9 +358,10 @@ class ReadElf(object):
 
     def find_librte_eal(self, section):
         for tag in section.iter_tags():
-            if tag.entry.d_tag == 'DT_NEEDED':
-                if "librte_eal" in tag.needed:
-                    return tag.needed
+            # pyelftools may return byte-strings, force decode them
+            if force_unicode(tag.entry.d_tag) == 'DT_NEEDED':
+                if "librte_eal" in force_unicode(tag.needed):
+                    return force_unicode(tag.needed)
         return None
 
     def search_for_autoload_path(self):
@@ -373,7 +384,7 @@ class ReadElf(object):
                     return (None, None)
                 if raw_output is False:
                     print("Scanning for autoload path in %s" % library)
-                scanfile = open(library, 'rb')
+                scanfile = io.open(library, 'rb')
                 scanelf = ReadElf(scanfile, sys.stdout)
         except AttributeError:
             # Not a dynamic binary
@@ -403,7 +414,8 @@ class ReadElf(object):
             while endptr < len(data) and byte2int(data[endptr]) != 0:
                 endptr += 1
 
-            mystring = bytes2str(data[dataptr:endptr])
+            # pyelftools may return byte-strings, force decode them
+            mystring = force_unicode(data[dataptr:endptr])
             rc = mystring.find("DPDK_PLUGIN_PATH")
             if (rc != -1):
                 rc = mystring.find("=")
@@ -416,8 +428,9 @@ class ReadElf(object):
 
     def get_dt_runpath(self, dynsec):
         for tag in dynsec.iter_tags():
-            if tag.entry.d_tag == 'DT_RUNPATH':
-                return tag.runpath
+            # pyelftools may return byte-strings, force decode them
+            if force_unicode(tag.entry.d_tag) == 'DT_RUNPATH':
+                return force_unicode(tag.runpath)
         return ""
 
     def process_dt_needed_entries(self):
@@ -438,16 +451,16 @@ class ReadElf(object):
             return
 
         for tag in dynsec.iter_tags():
-            if tag.entry.d_tag == 'DT_NEEDED':
-                rc = tag.needed.find(b"librte_pmd")
-                if (rc != -1):
-                    library = search_file(tag.needed,
+            # pyelftools may return byte-strings, force decode them
+            if force_unicode(tag.entry.d_tag) == 'DT_NEEDED':
+                if 'librte_pmd' in force_unicode(tag.needed):
+                    library = search_file(force_unicode(tag.needed),
                                           runpath + ":" + ldlibpath +
                                           ":/usr/lib64:/lib64:/usr/lib:/lib")
                     if library is not None:
                         if raw_output is False:
                             print("Scanning %s for pmd information" % library)
-                        with open(library, 'rb') as file:
+                        with io.open(library, 'rb') as file:
                             try:
                                 libelf = ReadElf(file, sys.stdout)
                             except ELFError:
@@ -456,6 +469,20 @@ class ReadElf(object):
                             libelf.process_dt_needed_entries()
                             libelf.display_pmd_info_strings(".rodata")
                             file.close()
+
+
+# compat: remove force_unicode & force_bytes when pyelftools<=0.23 support is
+# dropped.
+def force_unicode(s):
+    if hasattr(s, 'decode') and callable(s.decode):
+        s = s.decode('latin-1')  # same encoding used in pyelftools py3compat
+    return s
+
+
+def force_bytes(s):
+    if hasattr(s, 'encode') and callable(s.encode):
+        s = s.encode('latin-1')  # same encoding used in pyelftools py3compat
+    return s
 
 
 def scan_autoload_path(autoload_path):
@@ -476,7 +503,7 @@ def scan_autoload_path(autoload_path):
             scan_autoload_path(dpath)
         if os.path.isfile(dpath):
             try:
-                file = open(dpath, 'rb')
+                file = io.open(dpath, 'rb')
                 readelf = ReadElf(file, sys.stdout)
             except ELFError:
                 # this is likely not an elf file, skip it
@@ -503,7 +530,7 @@ def scan_for_autoload_pmds(dpdk_path):
             print("Must specify a file name")
         return
 
-    file = open(dpdk_path, 'rb')
+    file = io.open(dpdk_path, 'rb')
     try:
         readelf = ReadElf(file, sys.stdout)
     except ElfError:
@@ -595,7 +622,7 @@ def main(stream=None):
         print("File not found")
         sys.exit(1)
 
-    with open(myelffile, 'rb') as file:
+    with io.open(myelffile, 'rb') as file:
         try:
             readelf = ReadElf(file, sys.stdout)
             readelf.process_dt_needed_entries()
