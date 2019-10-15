@@ -1288,6 +1288,9 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		goto rollback;
 	}
 
+	dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf =
+		rte_eth_rss_hf_refine(dev_conf->rx_adv_conf.rss_conf.rss_hf);
+
 	/* Check that device supports requested rss hash functions. */
 	if ((dev_info.flow_type_rss_offloads |
 	     dev_conf->rx_adv_conf.rss_conf.rss_hf) !=
@@ -3130,6 +3133,8 @@ rte_eth_dev_rss_hash_update(uint16_t port_id,
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0)
 		return ret;
+
+	rss_conf->rss_hf = rte_eth_rss_hf_refine(rss_conf->rss_hf);
 
 	dev = &rte_eth_devices[port_id];
 	if ((dev_info.flow_type_rss_offloads | rss_conf->rss_hf) !=
