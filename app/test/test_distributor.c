@@ -70,12 +70,14 @@ handle_work(void *arg)
 		buf[i] = NULL;
 	num = rte_distributor_get_pkt(db, id, buf, buf, num);
 	while (!quit) {
-		worker_stats[id].handled_packets += num;
+		__atomic_fetch_add(&worker_stats[id].handled_packets, num,
+				__ATOMIC_RELAXED);
 		count += num;
 		num = rte_distributor_get_pkt(db, id,
 				buf, buf, num);
 	}
-	worker_stats[id].handled_packets += num;
+	__atomic_fetch_add(&worker_stats[id].handled_packets, num,
+			__ATOMIC_RELAXED);
 	count += num;
 	rte_distributor_return_pkt(db, id, buf, num);
 	return 0;
