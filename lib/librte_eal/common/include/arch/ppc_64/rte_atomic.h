@@ -401,7 +401,7 @@ static inline void rte_atomic64_clear(rte_atomic64_t *v)
 static inline uint64_t
 rte_atomic64_exchange(volatile uint64_t *dst, uint64_t val)
 {
-	return __atomic_exchange_4(dst, val, __ATOMIC_SEQ_CST);
+	return __atomic_exchange_8(dst, val, __ATOMIC_SEQ_CST);
 }
 
 #endif
