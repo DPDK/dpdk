@@ -999,6 +999,7 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	int ret;
 	struct rte_eth_link dev_link;
 	time_t start_time = time(NULL);
+	int retry = MLX5_GET_LINK_STATUS_RETRY_COUNT;
 
 	do {
 		ret = mlx5_link_update_unlocked_gs(dev, &dev_link);
@@ -1007,7 +1008,7 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		if (ret == 0)
 			break;
 		/* Handle wait to complete situation. */
-		if (wait_to_complete && ret == -EAGAIN) {
+		if ((wait_to_complete || retry) && ret == -EAGAIN) {
 			if (abs((int)difftime(time(NULL), start_time)) <
 			    MLX5_LINK_STATUS_TIMEOUT) {
 				usleep(0);
@@ -1019,7 +1020,7 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		} else if (ret < 0) {
 			return ret;
 		}
-	} while (wait_to_complete);
+	} while (wait_to_complete || retry-- > 0);
 	ret = !!memcmp(&dev->data->dev_link, &dev_link,
 		       sizeof(struct rte_eth_link));
 	dev->data->dev_link = dev_link;

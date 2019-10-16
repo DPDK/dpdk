@@ -105,6 +105,9 @@
 /* Timeout in seconds to get a valid link status. */
 #define MLX5_LINK_STATUS_TIMEOUT 10
 
+/* Number of times to retry retrieving the physical link information. */
+#define MLX5_GET_LINK_STATUS_RETRY_COUNT 3
+
 /* Maximum number of UAR pages used by a port,
  * These are the size and mask for an array of mutexes used to synchronize
  * the access to port's UARs on platforms that do not support 64 bit writes.
