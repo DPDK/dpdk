@@ -18,6 +18,7 @@
 #include "cpt_pmd_logs.h"
 #include "cpt_pmd_ops_helper.h"
 #include "cpt_ucode.h"
+#include "cpt_ucode_asym.h"
 
 #define METABUF_POOL_CACHE_SIZE	512
 
@@ -38,24 +39,39 @@ otx2_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 				int nb_elements)
 {
 	char mempool_name[RTE_MEMPOOL_NAMESIZE];
-	int sg_mlen, lb_mlen, max_mlen, ret;
 	struct cpt_qp_meta_info *meta_info;
 	struct rte_mempool *pool;
+	int ret, max_mlen;
+	int asym_mlen = 0;
+	int lb_mlen = 0;
+	int sg_mlen = 0;
 
-	/* Get meta len for scatter gather mode */
-	sg_mlen = cpt_pmd_ops_helper_get_mlen_sg_mode();
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) {
 
-	/* Extra 32B saved for future considerations */
-	sg_mlen += 4 * sizeof(uint64_t);
+		/* Get meta len for scatter gather mode */
+		sg_mlen = cpt_pmd_ops_helper_get_mlen_sg_mode();
 
-	/* Get meta len for linear buffer (direct) mode */
-	lb_mlen = cpt_pmd_ops_helper_get_mlen_direct_mode();
+		/* Extra 32B saved for future considerations */
+		sg_mlen += 4 * sizeof(uint64_t);
 
-	/* Extra 32B saved for future considerations */
-	lb_mlen += 4 * sizeof(uint64_t);
+		/* Get meta len for linear buffer (direct) mode */
+		lb_mlen = cpt_pmd_ops_helper_get_mlen_direct_mode();
 
-	/* Check max requirement for meta buffer */
-	max_mlen = RTE_MAX(lb_mlen, sg_mlen);
+		/* Extra 32B saved for future considerations */
+		lb_mlen += 4 * sizeof(uint64_t);
+	}
+
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
+
+		/* Get meta len required for asymmetric operations */
+		asym_mlen = cpt_pmd_ops_helper_asym_get_mlen();
+	}
+
+	/*
+	 * Check max requirement for meta buffer to
+	 * support crypto op of any type (sym/asym).
+	 */
+	max_mlen = RTE_MAX(RTE_MAX(lb_mlen, sg_mlen), asym_mlen);
 
 	/* Allocate mempool */
 
@@ -826,6 +842,66 @@ otx2_cpt_sym_session_clear(struct rte_cryptodev *dev,
 	return sym_session_clear(dev->driver_id, sess);
 }
 
+static unsigned int
+otx2_cpt_asym_session_size_get(struct rte_cryptodev *dev __rte_unused)
+{
+	return sizeof(struct cpt_asym_sess_misc);
+}
+
+static int
+otx2_cpt_asym_session_cfg(struct rte_cryptodev *dev,
+			  struct rte_crypto_asym_xform *xform,
+			  struct rte_cryptodev_asym_session *sess,
+			  struct rte_mempool *pool)
+{
+	struct cpt_asym_sess_misc *priv;
+	int ret;
+
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	if (rte_mempool_get(pool, (void **)&priv)) {
+		CPT_LOG_ERR("Could not allocate session_private_data");
+		return -ENOMEM;
+	}
+
+	memset(priv, 0, sizeof(struct cpt_asym_sess_misc));
+
+	ret = cpt_fill_asym_session_parameters(priv, xform);
+	if (ret) {
+		CPT_LOG_ERR("Could not configure session parameters");
+
+		/* Return session to mempool */
+		rte_mempool_put(pool, priv);
+		return ret;
+	}
+
+	set_asym_session_private_data(sess, dev->driver_id, priv);
+	return 0;
+}
+
+static void
+otx2_cpt_asym_session_clear(struct rte_cryptodev *dev,
+			    struct rte_cryptodev_asym_session *sess)
+{
+	struct cpt_asym_sess_misc *priv;
+	struct rte_mempool *sess_mp;
+
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	priv = get_asym_session_private_data(sess, dev->driver_id);
+	if (priv == NULL)
+		return;
+
+	/* Free resources allocated in session_cfg */
+	cpt_free_asym_session_parameters(priv);
+
+	/* Reset and free object back to pool */
+	memset(priv, 0, otx2_cpt_asym_session_size_get(dev));
+	sess_mp = rte_mempool_from_obj(priv);
+	set_asym_session_private_data(sess, dev->driver_id, NULL);
+	rte_mempool_put(sess_mp, priv);
+}
+
 struct rte_cryptodev_ops otx2_cpt_ops = {
 	/* Device control ops */
 	.dev_configure = otx2_cpt_dev_config,
@@ -844,4 +920,10 @@ struct rte_cryptodev_ops otx2_cpt_ops = {
 	.sym_session_get_size = otx2_cpt_sym_session_get_size,
 	.sym_session_configure = otx2_cpt_sym_session_configure,
 	.sym_session_clear = otx2_cpt_sym_session_clear,
+
+	/* Asymmetric crypto ops */
+	.asym_session_get_size = otx2_cpt_asym_session_size_get,
+	.asym_session_configure = otx2_cpt_asym_session_cfg,
+	.asym_session_clear = otx2_cpt_asym_session_clear,
+
 };
