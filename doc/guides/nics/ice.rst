@@ -61,6 +61,25 @@ Runtime Config Options
   NOTE: In Safe mode, only very limited features are available, features like RSS,
   checksum, fdir, tunneling ... are all disabled.
 
+- ``Generic Flow Pipeline Mode Support`` (default ``0``)
+
+  In pipeline mode, a flow can be set at one specific stage by setting parameter
+  ``priority``. Currently, we support two stages: priority = 0 or !0. Flows with
+  priority 0 located at the first pipeline stage which typically be used as a firewall
+  to drop the packet on a blacklist(we called it permission stage). At this stage,
+  flow rules are created for the device's exact match engine: switch. Flows with priority
+  !0 located at the second stage, typically packets are classified here and be steered to
+  specific queue or queue group (we called it distribution stage), At this stage, flow
+  rules are created for device's flow director engine.
+  For none-pipeline mode, ``priority`` is ignored, a flow rule can be created as a flow director
+  rule or a switch rule depends on its pattern/action and the resource allocation situation,
+  all flows are virtually at the same pipeline stage.
+  By default, generic flow API is enabled in none-pipeline mode, user can choose to
+  use pipeline mode by setting ``devargs`` parameter ``pipeline-mode-support``,
+  for example::
+
+    -w 80:00.0,pipeline-mode-support=1
+
 - ``Protocol extraction for per queue``
 
   Configure the RX queues to do protocol extraction into ``rte_mbuf::udata64``
