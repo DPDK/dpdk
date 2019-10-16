@@ -35,6 +35,7 @@ endif
 
 # PMD code
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_CRYPTO) += otx2_cryptodev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_CRYPTO) += otx2_cryptodev_hw_access.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_CRYPTO) += otx2_cryptodev_mbox.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_CRYPTO) += otx2_cryptodev_ops.c
 

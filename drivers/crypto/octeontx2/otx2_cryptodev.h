@@ -23,6 +23,12 @@ struct otx2_cpt_vf {
 	/**< Base class */
 	uint16_t max_queues;
 	/**< Max queues supported */
+	uint8_t nb_queues;
+	/**< Number of crypto queues attached */
+	uint16_t lf_msixoff[OTX2_CPT_MAX_LFS];
+	/**< MSI-X offsets */
+	uint8_t err_intr_registered:1;
+	/**< Are error interrupts registered? */
 };
 
 #define CPT_LOGTYPE otx2_cpt_logtype
