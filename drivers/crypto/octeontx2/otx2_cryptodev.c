@@ -14,7 +14,9 @@
 
 #include "otx2_common.h"
 #include "otx2_cryptodev.h"
+#include "otx2_cryptodev_mbox.h"
 #include "otx2_cryptodev_ops.h"
+#include "otx2_dev.h"
 
 /* CPT common headers */
 #include "cpt_common.h"
@@ -44,6 +46,9 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	};
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *dev;
+	struct otx2_dev *otx2_dev;
+	struct otx2_cpt_vf *vf;
+	uint16_t nb_queues;
 	int ret;
 
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
@@ -58,11 +63,46 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	dev->driver_id = otx2_cryptodev_driver_id;
 
+	/* Get private data space allocated */
+	vf = dev->data->dev_private;
+
+	otx2_dev = &vf->otx2_dev;
+
+	/* Initialize the base otx2_dev object */
+	ret = otx2_dev_init(pci_dev, otx2_dev);
+	if (ret) {
+		CPT_LOG_ERR("Could not initialize otx2_dev");
+		goto pmd_destroy;
+	}
+
+	/* Get number of queues available on the device */
+	ret = otx2_cpt_available_queues_get(dev, &nb_queues);
+	if (ret) {
+		CPT_LOG_ERR("Could not determine the number of queues available");
+		goto otx2_dev_fini;
+	}
+
+	/* Don't exceed the limits set per VF */
+	nb_queues = RTE_MIN(nb_queues, OTX2_CPT_MAX_QUEUES_PER_VF);
+
+	if (nb_queues == 0) {
+		CPT_LOG_ERR("No free queues available on the device");
+		goto otx2_dev_fini;
+	}
+
+	vf->max_queues = nb_queues;
+
+	CPT_LOG_INFO("Max queues supported by device: %d", vf->max_queues);
+
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			     RTE_CRYPTODEV_FF_HW_ACCELERATED;
 
 	return 0;
 
+otx2_dev_fini:
+	otx2_dev_fini(pci_dev, otx2_dev);
+pmd_destroy:
+	rte_cryptodev_pmd_destroy(dev);
 exit:
 	CPT_LOG_ERR("Could not create device (vendor_id: 0x%x device_id: 0x%x)",
 		    pci_dev->id.vendor_id, pci_dev->id.device_id);

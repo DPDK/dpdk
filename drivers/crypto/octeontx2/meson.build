@@ -11,6 +11,7 @@ deps += ['common_octeontx2']
 name = 'octeontx2_crypto'
 
 sources = files('otx2_cryptodev.c',
+		'otx2_cryptodev_mbox.c',
 		'otx2_cryptodev_ops.c')
 
 extra_flags = []
@@ -27,3 +28,4 @@ endforeach
 
 includes += include_directories('../../common/cpt')
 includes += include_directories('../../common/octeontx2')
+includes += include_directories('../../mempool/octeontx2')
