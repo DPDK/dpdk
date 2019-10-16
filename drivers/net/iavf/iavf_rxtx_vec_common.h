@@ -207,4 +207,69 @@ iavf_rxq_vec_setup_default(struct iavf_rx_queue *rxq)
 	rxq->mbuf_initializer = *(uint64_t *)p;
 	return 0;
 }
+
+static inline int
+iavf_rx_vec_queue_default(struct iavf_rx_queue *rxq)
+{
+	if (!rxq)
+		return -1;
+
+	if (!rte_is_power_of_2(rxq->nb_rx_desc))
+		return -1;
+
+	if (rxq->rx_free_thresh < IAVF_VPMD_RX_MAX_BURST)
+		return -1;
+
+	if (rxq->nb_rx_desc % rxq->rx_free_thresh)
+		return -1;
+
+	return 0;
+}
+
+static inline int
+iavf_tx_vec_queue_default(struct iavf_tx_queue *txq)
+{
+	if (!txq)
+		return -1;
+
+	if (txq->offloads & IAVF_NO_VECTOR_FLAGS)
+		return -1;
+
+	if (txq->rs_thresh < IAVF_VPMD_TX_MAX_BURST ||
+	    txq->rs_thresh > IAVF_VPMD_TX_MAX_FREE_BUF)
+		return -1;
+
+	return 0;
+}
+
+static inline int
+iavf_rx_vec_dev_check_default(struct rte_eth_dev *dev)
+{
+	int i;
+	struct iavf_rx_queue *rxq;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (iavf_rx_vec_queue_default(rxq))
+			return -1;
+	}
+
+	return 0;
+}
+
+static inline int
+iavf_tx_vec_dev_check_default(struct rte_eth_dev *dev)
+{
+	int i;
+	struct iavf_tx_queue *txq;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (iavf_tx_vec_queue_default(txq))
+			return -1;
+	}
+
+	return 0;
+}
+
 #endif

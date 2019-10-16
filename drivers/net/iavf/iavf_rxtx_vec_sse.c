@@ -622,6 +622,27 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
+uint16_t
+iavf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		   uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->rs_thresh);
+		ret = iavf_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx], num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}
+
 static void __attribute__((cold))
 iavf_rx_queue_release_mbufs_sse(struct iavf_rx_queue *rxq)
 {
@@ -654,4 +675,16 @@ iavf_rxq_vec_setup(struct iavf_rx_queue *rxq)
 {
 	rxq->ops = &sse_vec_rxq_ops;
 	return iavf_rxq_vec_setup_default(rxq);
+}
+
+int __attribute__((cold))
+iavf_rx_vec_dev_check(struct rte_eth_dev *dev)
+{
+	return iavf_rx_vec_dev_check_default(dev);
+}
+
+int __attribute__((cold))
+iavf_tx_vec_dev_check(struct rte_eth_dev *dev)
+{
+	return iavf_tx_vec_dev_check_default(dev);
 }

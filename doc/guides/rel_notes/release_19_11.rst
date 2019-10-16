@@ -81,6 +81,10 @@ New Features
   Added the new PFE driver for the NXP LS1012A platform. See the
   :doc:`../nics/pfe` NIC driver guide for more details on this new driver.
 
+* **Updated iavf PMD.**
+
+  Enable AVX2 data path for iavf PMD.
+
 * **Updated the Intel e1000 driver.**
 
   Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.

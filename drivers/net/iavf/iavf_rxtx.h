@@ -19,6 +19,7 @@
 /* used for Vector PMD */
 #define IAVF_VPMD_RX_MAX_BURST    32
 #define IAVF_VPMD_TX_MAX_BURST    32
+#define IAVF_RXQ_REARM_THRESH     32
 #define IAVF_VPMD_DESCS_PER_LOOP  4
 #define IAVF_VPMD_TX_MAX_FREE_BUF 64
 
@@ -200,6 +201,17 @@ uint16_t iavf_recv_scattered_pkts_vec(void *rx_queue,
 				     uint16_t nb_pkts);
 uint16_t iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
+uint16_t iavf_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
+				 uint16_t nb_pkts);
+uint16_t iavf_recv_scattered_pkts_vec_avx2(void *rx_queue,
+					   struct rte_mbuf **rx_pkts,
+					   uint16_t nb_pkts);
+uint16_t iavf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+			    uint16_t nb_pkts);
+uint16_t iavf_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
+				 uint16_t nb_pkts);
+int iavf_rx_vec_dev_check(struct rte_eth_dev *dev);
+int iavf_tx_vec_dev_check(struct rte_eth_dev *dev);
 int iavf_rxq_vec_setup(struct iavf_rx_queue *rxq);
 int iavf_txq_vec_setup(struct iavf_tx_queue *txq);
 
