@@ -17,6 +17,7 @@
 #include "cpt_hw_types.h"
 #include "cpt_pmd_logs.h"
 #include "cpt_pmd_ops_helper.h"
+#include "cpt_ucode.h"
 
 #define METABUF_POOL_CACHE_SIZE	512
 
@@ -244,6 +245,90 @@ otx2_cpt_qp_destroy(const struct rte_cryptodev *dev, struct otx2_cpt_qp *qp)
 	return 0;
 }
 
+static int
+sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
+		      struct rte_cryptodev_sym_session *sess,
+		      struct rte_mempool *pool)
+{
+	struct cpt_sess_misc *misc;
+	void *priv;
+	int ret;
+
+	if (unlikely(cpt_is_algo_supported(xform))) {
+		CPT_LOG_ERR("Crypto xform not supported");
+		return -ENOTSUP;
+	}
+
+	if (unlikely(rte_mempool_get(pool, &priv))) {
+		CPT_LOG_ERR("Could not allocate session private data");
+		return -ENOMEM;
+	}
+
+	misc = priv;
+
+	for ( ; xform != NULL; xform = xform->next) {
+		switch (xform->type) {
+		case RTE_CRYPTO_SYM_XFORM_AEAD:
+			ret = fill_sess_aead(xform, misc);
+			break;
+		case RTE_CRYPTO_SYM_XFORM_CIPHER:
+			ret = fill_sess_cipher(xform, misc);
+			break;
+		case RTE_CRYPTO_SYM_XFORM_AUTH:
+			if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC)
+				ret = fill_sess_gmac(xform, misc);
+			else
+				ret = fill_sess_auth(xform, misc);
+			break;
+		default:
+			ret = -1;
+		}
+
+		if (ret)
+			goto priv_put;
+	}
+
+	set_sym_session_private_data(sess, driver_id, misc);
+
+	misc->ctx_dma_addr = rte_mempool_virt2iova(misc) +
+			     sizeof(struct cpt_sess_misc);
+
+	/*
+	 * IE engines support IPsec operations
+	 * SE engines support IPsec operations and Air-Crypto operations
+	 */
+	if (misc->zsk_flag)
+		misc->egrp = OTX2_CPT_EGRP_SE;
+	else
+		misc->egrp = OTX2_CPT_EGRP_SE_IE;
+
+	return 0;
+
+priv_put:
+	rte_mempool_put(pool, priv);
+
+	CPT_LOG_ERR("Crypto xform not supported");
+	return -ENOTSUP;
+}
+
+static void
+sym_session_clear(int driver_id, struct rte_cryptodev_sym_session *sess)
+{
+	void *priv = get_sym_session_private_data(sess, driver_id);
+	struct rte_mempool *pool;
+
+	if (priv == NULL)
+		return;
+
+	memset(priv, 0, cpt_get_session_size());
+
+	pool = rte_mempool_from_obj(priv);
+
+	set_sym_session_private_data(sess, driver_id, NULL);
+
+	rte_mempool_put(pool, priv);
+}
+
 /* PMD ops */
 
 static int
@@ -426,6 +511,32 @@ otx2_cpt_queue_pair_release(struct rte_cryptodev *dev, uint16_t qp_id)
 	return 0;
 }
 
+static unsigned int
+otx2_cpt_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
+{
+	return cpt_get_session_size();
+}
+
+static int
+otx2_cpt_sym_session_configure(struct rte_cryptodev *dev,
+			       struct rte_crypto_sym_xform *xform,
+			       struct rte_cryptodev_sym_session *sess,
+			       struct rte_mempool *pool)
+{
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	return sym_session_configure(dev->driver_id, xform, sess, pool);
+}
+
+static void
+otx2_cpt_sym_session_clear(struct rte_cryptodev *dev,
+			   struct rte_cryptodev_sym_session *sess)
+{
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	return sym_session_clear(dev->driver_id, sess);
+}
+
 struct rte_cryptodev_ops otx2_cpt_ops = {
 	/* Device control ops */
 	.dev_configure = otx2_cpt_dev_config,
@@ -441,7 +552,7 @@ struct rte_cryptodev_ops otx2_cpt_ops = {
 	.queue_pair_count = NULL,
 
 	/* Symmetric crypto ops */
-	.sym_session_get_size = NULL,
-	.sym_session_configure = NULL,
-	.sym_session_clear = NULL,
+	.sym_session_get_size = otx2_cpt_sym_session_get_size,
+	.sym_session_configure = otx2_cpt_sym_session_configure,
+	.sym_session_clear = otx2_cpt_sym_session_clear,
 };

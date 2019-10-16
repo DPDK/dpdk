@@ -226,6 +226,8 @@ struct cpt_sess_misc {
 	uint16_t is_null:1;
 	/** Flag for GMAC */
 	uint16_t is_gmac:1;
+	/** Engine group */
+	uint16_t egrp:3;
 	/** AAD length */
 	uint16_t aad_length;
 	/** MAC len in bytes */
