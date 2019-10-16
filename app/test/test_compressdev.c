@@ -30,6 +30,7 @@
  * due to the compress block headers
  */
 #define COMPRESS_BUF_SIZE_RATIO 1.3
+#define COMPRESS_BUF_SIZE_RATIO_OVERFLOW 0.2
 #define NUM_LARGE_MBUFS 16
 #define SMALL_SEG_SIZE 256
 #define MAX_SEGS 16
@@ -72,6 +73,11 @@ enum varied_buff {
 	LB_TO_SGL	/* output buffer is chained */
 };
 
+enum overflow_test {
+	OVERFLOW_DISABLED,
+	OVERFLOW_ENABLED
+};
+
 struct priv_op_data {
 	uint16_t orig_idx;
 };
@@ -110,6 +116,8 @@ struct test_data_params {
 	const struct rte_memzone *inbuf_memzone;
 	const struct rte_memzone *compbuf_memzone;
 	const struct rte_memzone *uncompbuf_memzone;
+	/* overflow test activation */
+	enum overflow_test overflow;
 };
 
 static struct comp_testsuite_params testsuite_params = { 0 };
@@ -725,6 +733,49 @@ extbuf_free_callback(void *addr __rte_unused, void *opaque __rte_unused)
 {
 }
 
+static int
+test_run_enqueue_dequeue(struct rte_comp_op **ops, unsigned int num_bufs,
+		  struct rte_comp_op **ops_processed)
+{
+	uint16_t num_enqd, num_deqd, num_total_deqd;
+	unsigned int deqd_retries = 0;
+
+	/* Enqueue and dequeue all operations */
+	num_enqd = rte_compressdev_enqueue_burst(0, 0, ops, num_bufs);
+	if (num_enqd < num_bufs) {
+		RTE_LOG(ERR, USER1,
+			"Some operations could not be enqueued\n");
+		return -1;
+	}
+
+	num_total_deqd = 0;
+	do {
+		/*
+		 * If retrying a dequeue call, wait for 10 ms to allow
+		 * enough time to the driver to process the operations
+		 */
+		if (deqd_retries != 0) {
+			/*
+			 * Avoid infinite loop if not all the
+			 * operations get out of the device
+			 */
+			if (deqd_retries == MAX_DEQD_RETRIES) {
+				RTE_LOG(ERR, USER1,
+					"Not all operations could be dequeued\n");
+				return -1;
+			}
+			usleep(DEQUEUE_WAIT_TIME);
+		}
+		num_deqd = rte_compressdev_dequeue_burst(0, 0,
+				&ops_processed[num_total_deqd], num_bufs);
+		num_total_deqd += num_deqd;
+		deqd_retries++;
+
+	} while (num_total_deqd < num_enqd);
+
+	return 0;
+}
+
 /*
  * Compresses and decompresses buffer with compressdev API and Zlib API
  */
@@ -745,6 +796,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	unsigned int out_of_space = test_data->out_of_space;
 	unsigned int big_data = test_data->big_data;
 	enum zlib_direction zlib_dir = test_data->zlib_dir;
+	enum overflow_test overflow_tst = test_data->overflow;
 	int ret_status = TEST_FAILED;
 	struct rte_mbuf_ext_shared_info inbuf_info;
 	struct rte_mbuf_ext_shared_info compbuf_info;
@@ -773,6 +825,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
 	char *contig_buf = NULL;
 	uint64_t compress_checksum[num_bufs];
+	uint32_t compressed_data_size[num_bufs];
 	void *stream = NULL;
 	char *all_decomp_data = NULL;
 	unsigned int decomp_produced_data_size = 0;
@@ -793,6 +846,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	memset(ops, 0, sizeof(struct rte_comp_op *) * num_bufs);
 	memset(ops_processed, 0, sizeof(struct rte_comp_op *) * num_bufs);
 	memset(priv_xforms, 0, sizeof(void *) * num_bufs);
+	memset(compressed_data_size, 0, sizeof(uint32_t) * num_bufs);
 
 	if (decompress_state == RTE_COMP_OP_STATEFUL) {
 		data_size = strlen(test_bufs[0]) + 1;
@@ -845,6 +899,11 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		for (i = 0; i < num_bufs; i++) {
 			data_size = strlen(test_bufs[i]) + 1;
 			buf_ptr = rte_pktmbuf_append(uncomp_bufs[i], data_size);
+			if (buf_ptr == NULL) {
+				RTE_LOG(ERR, USER1,
+					"Append extra bytes to the source mbuf failed\n");
+				goto exit;
+			}
 			strlcpy(buf_ptr, test_bufs[i], data_size);
 		}
 	}
@@ -893,11 +952,22 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		for (i = 0; i < num_bufs; i++) {
 			if (out_of_space == 1 && oos_zlib_decompress)
 				data_size = OUT_OF_SPACE_BUF;
-			else
-				(data_size = strlen(test_bufs[i]) *
-					COMPRESS_BUF_SIZE_RATIO);
+			else {
+				float ratio =
+				((test_data->zlib_dir == ZLIB_DECOMPRESS ||
+				   test_data->zlib_dir == ZLIB_NONE) &&
+				  overflow_tst == OVERFLOW_ENABLED) ?
+					 COMPRESS_BUF_SIZE_RATIO_OVERFLOW :
+					 COMPRESS_BUF_SIZE_RATIO;
 
-			rte_pktmbuf_append(comp_bufs[i], data_size);
+				data_size = strlen(test_bufs[i]) * ratio;
+			}
+			buf_ptr = rte_pktmbuf_append(comp_bufs[i], data_size);
+			if (buf_ptr == NULL) {
+				RTE_LOG(ERR, USER1,
+					"Append extra bytes to the destination mbuf failed\n");
+				goto exit;
+			}
 		}
 	}
 
@@ -963,7 +1033,8 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 			num_priv_xforms++;
 		}
 
-		if (capa->comp_feature_flags & RTE_COMP_FF_SHAREABLE_PRIV_XFORM) {
+		if (capa->comp_feature_flags &
+				RTE_COMP_FF_SHAREABLE_PRIV_XFORM) {
 			/* Attach shareable private xform data to ops */
 			for (i = 0; i < num_bufs; i++)
 				ops[i]->private_xform = priv_xforms[i % num_xforms];
@@ -987,40 +1058,41 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 				ops[i]->private_xform = priv_xforms[i];
 		}
 
-		/* Enqueue and dequeue all operations */
-		num_enqd = rte_compressdev_enqueue_burst(0, 0, ops, num_bufs);
-		if (num_enqd < num_bufs) {
+recovery_lb:
+		ret = test_run_enqueue_dequeue(ops, num_bufs, ops_processed);
+		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
-				"The operations could not be enqueued\n");
+				"Enqueue/dequeue operation failed\n");
 			goto exit;
 		}
 
-		num_total_deqd = 0;
-		do {
-			/*
-			 * If retrying a dequeue call, wait for 10 ms to allow
-			 * enough time to the driver to process the operations
-			 */
-			if (deqd_retries != 0) {
-				/*
-				 * Avoid infinite loop if not all the
-				 * operations get out of the device
-				 */
-				if (deqd_retries == MAX_DEQD_RETRIES) {
+		for (i = 0; i < num_bufs; i++) {
+			compressed_data_size[i] += ops_processed[i]->produced;
+
+			if (ops_processed[i]->status ==
+				RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE) {
+
+				ops[i]->status =
+					RTE_COMP_OP_STATUS_NOT_PROCESSED;
+				ops[i]->src.offset +=
+					ops_processed[i]->consumed;
+				ops[i]->src.length -=
+					ops_processed[i]->consumed;
+				ops[i]->dst.offset +=
+					ops_processed[i]->produced;
+
+				buf_ptr = rte_pktmbuf_append(
+					ops[i]->m_dst,
+					ops_processed[i]->produced);
+
+				if (buf_ptr == NULL) {
 					RTE_LOG(ERR, USER1,
-						"Not all operations could be "
-						"dequeued\n");
+						"Data recovery: append extra bytes to the current mbuf failed\n");
 					goto exit;
 				}
-				usleep(DEQUEUE_WAIT_TIME);
+				goto recovery_lb;
 			}
-			num_deqd = rte_compressdev_dequeue_burst(0, 0,
-					&ops_processed[num_total_deqd], num_bufs);
-			num_total_deqd += num_deqd;
-			deqd_retries++;
-
-		} while (num_total_deqd < num_enqd);
-
+		}
 		deqd_retries = 0;
 
 		/* Free compress private xforms */
@@ -1064,7 +1136,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	for (i = 0; i < num_bufs; i++) {
 		if (out_of_space && oos_zlib_decompress) {
 			if (ops_processed[i]->status !=
-					RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED) {
+				RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED) {
 				ret_status = TEST_FAILED;
 				RTE_LOG(ERR, USER1,
 					"Operation without expected out of "
@@ -1075,6 +1147,16 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		}
 
 		if (ops_processed[i]->status != RTE_COMP_OP_STATUS_SUCCESS) {
+			if (overflow_tst == OVERFLOW_ENABLED) {
+				if (ops_processed[i]->status ==
+				RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED) {
+					ret_status = 1;
+					RTE_LOG(INFO, USER1,
+					"Out-of-space-recoverable functionality"
+					" is not supported on this device\n");
+					goto exit;
+				}
+			}
 			RTE_LOG(ERR, USER1,
 				"Some operations were not successful\n");
 			goto exit;
@@ -1147,7 +1229,12 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 				data_size =
 				strlen(test_bufs[priv_data->orig_idx]) + 1;
 
-			rte_pktmbuf_append(uncomp_bufs[i], data_size);
+			buf_ptr = rte_pktmbuf_append(uncomp_bufs[i], data_size);
+			if (buf_ptr == NULL) {
+				RTE_LOG(ERR, USER1,
+					"Append extra bytes to the decompressed mbuf failed\n");
+				goto exit;
+			}
 		}
 	}
 
@@ -1169,7 +1256,10 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		 * Set the length of the compressed data to the
 		 * number of bytes that were produced in the previous stage
 		 */
-		ops[i]->src.length = ops_processed[i]->produced;
+		if (compressed_data_size[i])
+			ops[i]->src.length = compressed_data_size[i];
+		else
+			ops[i]->src.length = ops_processed[i]->produced;
 
 		ops[i]->dst.offset = 0;
 		if (decompress_state == RTE_COMP_OP_STATELESS) {
@@ -1541,7 +1631,8 @@ test_compressdev_deflate_stateless_fixed(void)
 		.buff_type = LB_BOTH,
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
-		.big_data = 0
+		.big_data = 0,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -1611,7 +1702,8 @@ test_compressdev_deflate_stateless_dynamic(void)
 		.buff_type = LB_BOTH,
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
-		.big_data = 0
+		.big_data = 0,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -1665,7 +1757,8 @@ test_compressdev_deflate_stateless_multi_op(void)
 		.buff_type = LB_BOTH,
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
-		.big_data = 0
+		.big_data = 0,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	/* Compress with compressdev, decompress with Zlib */
@@ -1718,7 +1811,8 @@ test_compressdev_deflate_stateless_multi_level(void)
 		.buff_type = LB_BOTH,
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
-		.big_data = 0
+		.big_data = 0,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -1807,7 +1901,8 @@ test_compressdev_deflate_stateless_multi_xform(void)
 		.buff_type = LB_BOTH,
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
-		.big_data = 0
+		.big_data = 0,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	/* Compress with compressdev, decompress with Zlib */
@@ -1855,7 +1950,8 @@ test_compressdev_deflate_stateless_sgl(void)
 		.buff_type = SGL_BOTH,
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
-		.big_data = 0
+		.big_data = 0,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -1965,7 +2061,8 @@ test_compressdev_deflate_stateless_checksum(void)
 		.buff_type = LB_BOTH,
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
-		.big_data = 0
+		.big_data = 0,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	/* Check if driver supports crc32 checksum and test */
@@ -2082,7 +2179,8 @@ test_compressdev_out_of_space_buffer(void)
 		.buff_type = LB_BOTH,
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 1,  /* run out-of-space test */
-		.big_data = 0
+		.big_data = 0,
+		.overflow = OVERFLOW_DISABLED
 	};
 	/* Compress with compressdev, decompress with Zlib */
 	test_data.zlib_dir = ZLIB_DECOMPRESS;
@@ -2159,7 +2257,8 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 		.buff_type = SGL_BOTH,
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
-		.big_data = 1
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	ts_params->def_comp_xform->compress.deflate.huffman =
@@ -2223,7 +2322,8 @@ test_compressdev_deflate_stateful_decomp(void)
 		.out_of_space = 0,
 		.big_data = 0,
 		.decompress_output_block_size = 2000,
-		.decompress_steps_max = 4
+		.decompress_steps_max = 4,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	/* Compress with Zlib, decompress with compressdev */
@@ -2305,7 +2405,8 @@ test_compressdev_deflate_stateful_decomp_checksum(void)
 		.out_of_space = 0,
 		.big_data = 0,
 		.decompress_output_block_size = 2000,
-		.decompress_steps_max = 4
+		.decompress_steps_max = 4,
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	/* Check if driver supports crc32 checksum and test */
@@ -2441,7 +2542,8 @@ test_compressdev_external_mbufs(void)
 		.inbuf_memzone = make_memzone("inbuf", data_len),
 		.compbuf_memzone = make_memzone("compbuf", data_len *
 						COMPRESS_BUF_SIZE_RATIO),
-		.uncompbuf_memzone = make_memzone("decompbuf", data_len)
+		.uncompbuf_memzone = make_memzone("decompbuf", data_len),
+		.overflow = OVERFLOW_DISABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -2469,6 +2571,88 @@ exit:
 	rte_memzone_free(test_data.inbuf_memzone);
 	rte_memzone_free(test_data.compbuf_memzone);
 	rte_memzone_free(test_data.uncompbuf_memzone);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_stateless_fixed_oos_recoverable(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i;
+	int ret;
+	int comp_result;
+	const struct rte_compressdev_capabilities *capab;
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_FIXED) == 0)
+		return -ENOTSUP;
+
+	struct rte_comp_xform *compress_xform =
+			rte_malloc(NULL, sizeof(struct rte_comp_xform), 0);
+
+	if (compress_xform == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Compress xform could not be created\n");
+		ret = TEST_FAILED;
+		goto exit;
+	}
+
+	memcpy(compress_xform, ts_params->def_comp_xform,
+			sizeof(struct rte_comp_xform));
+	compress_xform->compress.deflate.huffman = RTE_COMP_HUFFMAN_FIXED;
+
+	struct interim_data_params int_data = {
+		NULL,
+		1,
+		NULL,
+		&compress_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_DECOMPRESS,
+		.out_of_space = 0,
+		.big_data = 0,
+		.overflow = OVERFLOW_ENABLED
+	};
+
+	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
+		int_data.test_bufs = &compress_test_bufs[i];
+		int_data.buf_idx = &i;
+
+		/* Compress with compressdev, decompress with Zlib */
+		test_data.zlib_dir = ZLIB_DECOMPRESS;
+		comp_result = test_deflate_comp_decomp(&int_data, &test_data);
+		if (comp_result < 0) {
+			ret = TEST_FAILED;
+			goto exit;
+		} else if (comp_result > 0) {
+			ret = -ENOTSUP;
+			goto exit;
+		}
+
+		/* Compress with Zlib, decompress with compressdev */
+		test_data.zlib_dir = ZLIB_COMPRESS;
+		comp_result = test_deflate_comp_decomp(&int_data, &test_data);
+		if (comp_result < 0) {
+			ret = TEST_FAILED;
+			goto exit;
+		} else if (comp_result > 0) {
+			ret = -ENOTSUP;
+			goto exit;
+		}
+	}
+
+	ret = TEST_SUCCESS;
+
+exit:
+	rte_free(compress_xform);
 	return ret;
 }
 
@@ -2503,6 +2687,8 @@ static struct unit_test_suite compressdev_testsuite  = {
 			test_compressdev_deflate_stateful_decomp_checksum),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
 			test_compressdev_external_mbufs),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+		test_compressdev_deflate_stateless_fixed_oos_recoverable),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
