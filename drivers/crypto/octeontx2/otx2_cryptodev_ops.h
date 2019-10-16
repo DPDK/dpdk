@@ -13,6 +13,7 @@
 enum otx2_cpt_egrp {
 	OTX2_CPT_EGRP_SE = 0,
 	OTX2_CPT_EGRP_SE_IE = 1,
+	OTX2_CPT_EGRP_AE = 2
 };
 
 struct rte_cryptodev_ops otx2_cpt_ops;

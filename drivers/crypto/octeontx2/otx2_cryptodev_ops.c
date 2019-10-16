@@ -393,6 +393,78 @@ otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 	return 0;
 }
 
+static __rte_always_inline int32_t __hot
+otx2_cpt_enqueue_asym(struct otx2_cpt_qp *qp,
+		      struct rte_crypto_op *op,
+		      struct pending_queue *pend_q)
+{
+	struct cpt_qp_meta_info *minfo = &qp->meta_info;
+	struct rte_crypto_asym_op *asym_op = op->asym;
+	struct asym_op_params params = {0};
+	struct cpt_asym_sess_misc *sess;
+	vq_cmd_word3_t *w3;
+	uintptr_t *cop;
+	void *mdata;
+	int ret;
+
+	if (unlikely(rte_mempool_get(minfo->pool, &mdata) < 0)) {
+		CPT_LOG_ERR("Could not allocate meta buffer for request");
+		return -ENOMEM;
+	}
+
+	sess = get_asym_session_private_data(asym_op->session,
+					     otx2_cryptodev_driver_id);
+
+	/* Store IO address of the mdata to meta_buf */
+	params.meta_buf = rte_mempool_virt2iova(mdata);
+
+	cop = mdata;
+	cop[0] = (uintptr_t)mdata;
+	cop[1] = (uintptr_t)op;
+	cop[2] = cop[3] = 0ULL;
+
+	params.req = RTE_PTR_ADD(cop, 4 * sizeof(uintptr_t));
+	params.req->op = cop;
+
+	/* Adjust meta_buf to point to end of cpt_request_info structure */
+	params.meta_buf += (4 * sizeof(uintptr_t)) +
+			    sizeof(struct cpt_request_info);
+	switch (sess->xfrm_type) {
+	case RTE_CRYPTO_ASYM_XFORM_MODEX:
+		ret = cpt_modex_prep(&params, &sess->mod_ctx);
+		if (unlikely(ret))
+			goto req_fail;
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_RSA:
+		ret = cpt_enqueue_rsa_op(op, &params, sess);
+		if (unlikely(ret))
+			goto req_fail;
+		break;
+	default:
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		ret = -EINVAL;
+		goto req_fail;
+	}
+
+	/* Set engine group of AE */
+	w3 = (vq_cmd_word3_t *)&params.req->ist.ei3;
+	w3->s.grp = OTX2_CPT_EGRP_AE;
+
+	ret = otx2_cpt_enqueue_req(qp, pend_q, params.req);
+
+	if (unlikely(ret)) {
+		CPT_LOG_DP_ERR("Could not enqueue crypto req");
+		goto req_fail;
+	}
+
+	return 0;
+
+req_fail:
+	free_op_meta(mdata, minfo->pool);
+
+	return ret;
+}
+
 static __rte_always_inline int __hot
 otx2_cpt_enqueue_sym(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 		     struct pending_queue *pend_q)
@@ -494,6 +566,11 @@ otx2_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 			else
 				ret = otx2_cpt_enqueue_sym_sessless(qp, op,
 								    pend_q);
+		} else if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+			if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
+				ret = otx2_cpt_enqueue_asym(qp, op, pend_q);
+			else
+				break;
 		} else
 			break;
 
@@ -502,6 +579,92 @@ otx2_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	}
 
 	return count;
+}
+
+static __rte_always_inline void
+otx2_cpt_asym_rsa_op(struct rte_crypto_op *cop, struct cpt_request_info *req,
+		     struct rte_crypto_rsa_xform *rsa_ctx)
+{
+	struct rte_crypto_rsa_op_param *rsa = &cop->asym->rsa;
+
+	switch (rsa->op_type) {
+	case RTE_CRYPTO_ASYM_OP_ENCRYPT:
+		rsa->cipher.length = rsa_ctx->n.length;
+		memcpy(rsa->cipher.data, req->rptr, rsa->cipher.length);
+		break;
+	case RTE_CRYPTO_ASYM_OP_DECRYPT:
+		if (rsa->pad == RTE_CRYPTO_RSA_PADDING_NONE) {
+			rsa->message.length = rsa_ctx->n.length;
+			memcpy(rsa->message.data, req->rptr,
+			       rsa->message.length);
+		} else {
+			/* Get length of decrypted output */
+			rsa->message.length = rte_cpu_to_be_16
+					     (*((uint16_t *)req->rptr));
+			/*
+			 * Offset output data pointer by length field
+			 * (2 bytes) and copy decrypted data.
+			 */
+			memcpy(rsa->message.data, req->rptr + 2,
+			       rsa->message.length);
+		}
+		break;
+	case RTE_CRYPTO_ASYM_OP_SIGN:
+		rsa->sign.length = rsa_ctx->n.length;
+		memcpy(rsa->sign.data, req->rptr, rsa->sign.length);
+		break;
+	case RTE_CRYPTO_ASYM_OP_VERIFY:
+		if (rsa->pad == RTE_CRYPTO_RSA_PADDING_NONE) {
+			rsa->sign.length = rsa_ctx->n.length;
+			memcpy(rsa->sign.data, req->rptr, rsa->sign.length);
+		} else {
+			/* Get length of signed output */
+			rsa->sign.length = rte_cpu_to_be_16
+					  (*((uint16_t *)req->rptr));
+			/*
+			 * Offset output data pointer by length field
+			 * (2 bytes) and copy signed data.
+			 */
+			memcpy(rsa->sign.data, req->rptr + 2,
+			       rsa->sign.length);
+		}
+		if (memcmp(rsa->sign.data, rsa->message.data,
+			   rsa->message.length)) {
+			CPT_LOG_DP_ERR("RSA verification failed");
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		}
+		break;
+	default:
+		CPT_LOG_DP_DEBUG("Invalid RSA operation type");
+		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		break;
+	}
+}
+
+static void
+otx2_cpt_asym_post_process(struct rte_crypto_op *cop,
+			   struct cpt_request_info *req)
+{
+	struct rte_crypto_asym_op *op = cop->asym;
+	struct cpt_asym_sess_misc *sess;
+
+	sess = get_asym_session_private_data(op->session,
+					     otx2_cryptodev_driver_id);
+
+	switch (sess->xfrm_type) {
+	case RTE_CRYPTO_ASYM_XFORM_RSA:
+		otx2_cpt_asym_rsa_op(cop, req, &sess->rsa_ctx);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_MODEX:
+		op->modex.result.length = sess->mod_ctx.modulus.length;
+		memcpy(op->modex.result.data, req->rptr,
+		       op->modex.result.length);
+		break;
+	default:
+		CPT_LOG_DP_DEBUG("Invalid crypto xform type");
+		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		break;
+	}
 }
 
 static inline void
@@ -529,6 +692,20 @@ otx2_cpt_dequeue_post_process(struct otx2_cpt_qp *qp, struct rte_crypto_op *cop,
 			rte_mempool_put(qp->sess_mp, cop->sym->session);
 			cop->sym->session = NULL;
 		}
+	}
+
+	if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+		if (likely(cc == NO_ERR)) {
+			cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+			/*
+			 * Pass cpt_req_info stored in metabuf during
+			 * enqueue.
+			 */
+			rsp = RTE_PTR_ADD(rsp, 4 * sizeof(uintptr_t));
+			otx2_cpt_asym_post_process(cop,
+					(struct cpt_request_info *)rsp);
+		} else
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 	}
 }
 
