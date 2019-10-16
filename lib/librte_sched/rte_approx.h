@@ -39,6 +39,24 @@ extern "C" {
  */
 int rte_approx(double alpha, double d, uint32_t *p, uint32_t *q);
 
+/**
+ * Find best rational approximation (64 bit version)
+ *
+ * @param alpha
+ *   Rational number to approximate
+ * @param d
+ *   Precision for the rational approximation
+ * @param p
+ *   Pointer to pre-allocated space where the numerator of the rational
+ *   approximation will be stored when operation is successful
+ * @param q
+ *   Pointer to pre-allocated space where the denominator of the rational
+ *   approximation will be stored when operation is successful
+ * @return
+ *   0 upon success, error code otherwise
+ */
+int rte_approx_64(double alpha, double d, uint64_t *p, uint64_t *q);
+
 #ifdef __cplusplus
 }
 #endif

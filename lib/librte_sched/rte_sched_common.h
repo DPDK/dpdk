@@ -14,12 +14,6 @@ extern "C" {
 
 #define __rte_aligned_16 __attribute__((__aligned__(16)))
 
-static inline uint32_t
-rte_sched_min_val_2_u32(uint32_t x, uint32_t y)
-{
-	return (x < y)? x : y;
-}
-
 #if 0
 static inline uint32_t
 rte_min_pos_4_u16(uint16_t *x)
