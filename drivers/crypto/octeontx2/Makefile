@@ -24,6 +24,7 @@ CFLAGS += -O3
 CFLAGS += -I$(RTE_SDK)/drivers/common/cpt
 CFLAGS += -I$(RTE_SDK)/drivers/common/octeontx2
 CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx2
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 ifneq ($(CONFIG_RTE_ARCH_64),y)
 CFLAGS += -Wno-int-to-pointer-cast

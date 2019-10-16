@@ -10,6 +10,7 @@ deps += ['common_cpt']
 deps += ['common_octeontx2']
 name = 'octeontx2_crypto'
 
+allow_experimental_apis = true
 sources = files('otx2_cryptodev.c',
 		'otx2_cryptodev_capabilities.c',
 		'otx2_cryptodev_hw_access.c',

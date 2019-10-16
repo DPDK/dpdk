@@ -12,6 +12,7 @@
 
 #include "cpt_common.h"
 #include "cpt_hw_types.h"
+#include "cpt_mcode_defines.h"
 
 #include "otx2_dev.h"
 
@@ -117,6 +118,21 @@ union otx2_cpt_lf_q_grp_ptr {
 		uint64_t reserved_47_62              : 16;
 		uint64_t xq_xor                      : 1;
 	} s;
+};
+
+/*
+ * Enumeration cpt_9x_comp_e
+ *
+ * CPT 9X Completion Enumeration
+ * Enumerates the values of CPT_RES_S[COMPCODE].
+ */
+enum cpt_9x_comp_e {
+	CPT_9X_COMP_E_NOTDONE = 0x00,
+	CPT_9X_COMP_E_GOOD = 0x01,
+	CPT_9X_COMP_E_FAULT = 0x02,
+	CPT_9X_COMP_E_HWERR = 0x04,
+	CPT_9X_COMP_E_INSTERR = 0x05,
+	CPT_9X_COMP_E_LAST_ENTRY = 0x06
 };
 
 struct otx2_cpt_qp {
