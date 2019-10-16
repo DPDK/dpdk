@@ -95,7 +95,11 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	CPT_LOG_INFO("Max queues supported by device: %d", vf->max_queues);
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			     RTE_CRYPTODEV_FF_HW_ACCELERATED;
+			     RTE_CRYPTODEV_FF_HW_ACCELERATED |
+			     RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			     RTE_CRYPTODEV_FF_IN_PLACE_SGL |
+			     RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
+			     RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT;
 
 	return 0;
 
