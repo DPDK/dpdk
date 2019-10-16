@@ -204,7 +204,7 @@ Crypto operation specification
 All the packets received in all the ports get transformed by the crypto device/s
 (ciphering and/or authentication).
 The crypto operation to be performed on the packet is parsed from the command line
-(go to "Running the Application section for all the options).
+(go to "Running the Application" section for all the options).
 
 If no parameter is passed, the default crypto operation is:
 
