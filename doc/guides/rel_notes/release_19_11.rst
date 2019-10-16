@@ -134,6 +134,16 @@ New Features
   * Supported Flow director for LACP, VRRP, BGP and so on.
   * Supported FW version get.
 
+* **Updated Mellanox mlx5 driver.**
+
+  Updated Mellanox mlx5 driver with new features and improvements, including:
+
+  * Added support for VLAN pop flow offload command.
+  * Added support for VLAN push flow offload command.
+  * Added support for VLAN set PCP offload command.
+  * Added support for VLAN set VID offload command.
+  * Added support for matching on packets withe Geneve tunnel header.
+
 * **Added Marvell NITROX symmetric crypto PMD.**
 
   Added a symmetric crypto PMD for Marvell NITROX V security processor.
@@ -399,13 +409,4 @@ Tested Platforms
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
-
-* **Updated Mellanox mlx5 driver.**
-
-  Updated Mellanox mlx5 driver with new features and improvements, including:
-
-  * Added support for VLAN pop flow offload command.
-  * Added support for VLAN push flow offload command.
-  * Added support for VLAN set PCP offload command.
-  * Added support for VLAN set VID offload command.
 

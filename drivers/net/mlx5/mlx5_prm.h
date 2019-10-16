@@ -553,12 +553,17 @@ struct mlx5_ifc_fte_match_set_misc_bits {
 	u8 gre_key_l[0x8];
 	u8 vxlan_vni[0x18];
 	u8 reserved_at_b8[0x8];
-	u8 reserved_at_c0[0x20];
+	u8 geneve_vni[0x18];
+	u8 reserved_at_e4[0x7];
+	u8 geneve_oam[0x1];
 	u8 reserved_at_e0[0xc];
 	u8 outer_ipv6_flow_label[0x14];
 	u8 reserved_at_100[0xc];
 	u8 inner_ipv6_flow_label[0x14];
-	u8 reserved_at_120[0xe0];
+	u8 reserved_at_120[0xa];
+	u8 geneve_opt_len[0x6];
+	u8 geneve_protocol_type[0x10];
+	u8 reserved_at_140[0xc0];
 };
 
 struct mlx5_ifc_ipv4_layout_bits {

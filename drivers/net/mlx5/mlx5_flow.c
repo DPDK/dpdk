@@ -1913,6 +1913,95 @@ mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
 }
 
 /**
+ * Validate Geneve item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] itemFlags
+ *   Bit-fields that holds the items detected until now.
+ * @param[in] enPriv
+ *   Pointer to the private data structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+
+int
+mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
+			       uint64_t item_flags,
+			       struct rte_eth_dev *dev,
+			       struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_geneve *spec = item->spec;
+	const struct rte_flow_item_geneve *mask = item->mask;
+	int ret;
+	uint16_t gbhdr;
+	uint8_t opt_len = priv->config.hca_attr.geneve_max_opt_len ?
+			  MLX5_GENEVE_OPT_LEN_1 : MLX5_GENEVE_OPT_LEN_0;
+	const struct rte_flow_item_geneve nic_mask = {
+		.ver_opt_len_o_c_rsvd0 = RTE_BE16(0x3f80),
+		.vni = "\xff\xff\xff",
+		.protocol = RTE_BE16(UINT16_MAX),
+	};
+
+	if (!(priv->config.hca_attr.flex_parser_protocols &
+	      MLX5_HCA_FLEX_GENEVE_ENABLED) ||
+	    !priv->config.hca_attr.tunnel_stateless_geneve_rx)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "L3 Geneve is not enabled by device"
+					  " parameter and/or not configured in"
+					  " firmware");
+	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple tunnel layers not"
+					  " supported");
+	/*
+	 * Verify only UDPv4 is present as defined in
+	 * https://tools.ietf.org/html/rfc7348
+	 */
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "no outer UDP layer found");
+	if (!mask)
+		mask = &rte_flow_item_geneve_mask;
+	ret = mlx5_flow_item_acceptable
+				  (item, (const uint8_t *)mask,
+				   (const uint8_t *)&nic_mask,
+				   sizeof(struct rte_flow_item_geneve), error);
+	if (ret)
+		return ret;
+	if (spec) {
+		gbhdr = rte_be_to_cpu_16(spec->ver_opt_len_o_c_rsvd0);
+		if (MLX5_GENEVE_VER_VAL(gbhdr) ||
+		     MLX5_GENEVE_CRITO_VAL(gbhdr) ||
+		     MLX5_GENEVE_RSVD_VAL(gbhdr) || spec->rsvd1)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "Geneve protocol unsupported"
+						  " fields are being used");
+		if (MLX5_GENEVE_OPTLEN_VAL(gbhdr) > opt_len)
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM,
+					 item,
+					 "Unsupported Geneve options length");
+	}
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER))
+		return rte_flow_error_set
+				    (error, ENOTSUP,
+				     RTE_FLOW_ERROR_TYPE_ITEM, item,
+				     "Geneve tunnel must be fully defined");
+	return 0;
+}
+
+/**
  * Validate MPLS item.
  *
  * @param[in] dev

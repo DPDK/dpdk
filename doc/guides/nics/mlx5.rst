@@ -87,7 +87,7 @@ Features
 - RX interrupts.
 - Statistics query including Basic, Extended and per queue.
 - Rx HW timestamp.
-- Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE, MPLSoGRE, MPLSoUDP, IP-in-IP.
+- Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE, MPLSoGRE, MPLSoUDP, IP-in-IP, Geneve.
 - Tunnel HW offloads: packet type, inner/outer RSS, IP and UDP checksum verification.
 - NIC HW offloads: encapsulation (vxlan, gre, mplsoudp, mplsogre), NAT, routing, TTL
   increment/decrement, count, drop, mark. For details please see :ref:`mlx5_offloads_support`.
@@ -145,6 +145,14 @@ Limitations
 - VXLAN TSO and checksum offloads are not supported on VM.
 
 - L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
+
+- Match on Geneve header supports the following fields only:
+
+     - VNI
+     - OAM
+     - protocol type
+     - options length
+       Currently, the only supported options length value is 0.
 
 - VF: flow rules created on VF devices can only match traffic targeted at the
   configured MAC addresses (see ``rte_eth_dev_mac_addr_add()``).
@@ -681,6 +689,10 @@ Below are some firmware configurations listed.
 - enable ICMP/ICMP6 code/type fields matching::
 
     FLEX_PARSER_PROFILE_ENABLE=2
+
+- enable Geneve flow matching::
+
+   FLEX_PARSER_PROFILE_ENABLE=0
 
 Prerequisites
 -------------

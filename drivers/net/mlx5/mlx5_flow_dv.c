@@ -3434,6 +3434,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
+			ret = mlx5_flow_validate_item_geneve(items,
+							     item_flags, dev,
+							     error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
+			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			ret = mlx5_flow_validate_item_mpls(dev, items,
 							   item_flags,
@@ -4489,6 +4497,77 @@ flow_dv_translate_item_vxlan(void *matcher, void *key,
 	memcpy(vni_m, vxlan_m->vni, size);
 	for (i = 0; i < size; ++i)
 		vni_v[i] = vni_m[i] & vxlan_v->vni[i];
+}
+
+/**
+ * Add Geneve item to matcher and to the value.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ */
+
+static void
+flow_dv_translate_item_geneve(void *matcher, void *key,
+			      const struct rte_flow_item *item, int inner)
+{
+	const struct rte_flow_item_geneve *geneve_m = item->mask;
+	const struct rte_flow_item_geneve *geneve_v = item->spec;
+	void *headers_m;
+	void *headers_v;
+	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	uint16_t dport;
+	uint16_t gbhdr_m;
+	uint16_t gbhdr_v;
+	char *vni_m;
+	char *vni_v;
+	size_t size, i;
+
+	if (inner) {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 inner_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+	} else {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 outer_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	}
+	dport = MLX5_UDP_PORT_GENEVE;
+	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, dport);
+	}
+	if (!geneve_v)
+		return;
+	if (!geneve_m)
+		geneve_m = &rte_flow_item_geneve_mask;
+	size = sizeof(geneve_m->vni);
+	vni_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, geneve_vni);
+	vni_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, geneve_vni);
+	memcpy(vni_m, geneve_m->vni, size);
+	for (i = 0; i < size; ++i)
+		vni_v[i] = vni_m[i] & geneve_v->vni[i];
+	MLX5_SET(fte_match_set_misc, misc_m, geneve_protocol_type,
+		 rte_be_to_cpu_16(geneve_m->protocol));
+	MLX5_SET(fte_match_set_misc, misc_v, geneve_protocol_type,
+		 rte_be_to_cpu_16(geneve_v->protocol & geneve_m->protocol));
+	gbhdr_m = rte_be_to_cpu_16(geneve_m->ver_opt_len_o_c_rsvd0);
+	gbhdr_v = rte_be_to_cpu_16(geneve_v->ver_opt_len_o_c_rsvd0);
+	MLX5_SET(fte_match_set_misc, misc_m, geneve_oam,
+		 MLX5_GENEVE_OAMF_VAL(gbhdr_m));
+	MLX5_SET(fte_match_set_misc, misc_v, geneve_oam,
+		 MLX5_GENEVE_OAMF_VAL(gbhdr_v) & MLX5_GENEVE_OAMF_VAL(gbhdr_m));
+	MLX5_SET(fte_match_set_misc, misc_m, geneve_opt_len,
+		 MLX5_GENEVE_OPTLEN_VAL(gbhdr_m));
+	MLX5_SET(fte_match_set_misc, misc_v, geneve_opt_len,
+		 MLX5_GENEVE_OPTLEN_VAL(gbhdr_v) &
+		 MLX5_GENEVE_OPTLEN_VAL(gbhdr_m));
 }
 
 /**
@@ -5691,6 +5770,11 @@ cnt_err:
 			flow_dv_translate_item_vxlan(match_mask, match_value,
 						     items, tunnel);
 			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
+			flow_dv_translate_item_geneve(match_mask, match_value,
+						      items, tunnel);
+			last_item = MLX5_FLOW_LAYER_GENEVE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			flow_dv_translate_item_mpls(match_mask, match_value,

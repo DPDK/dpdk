@@ -63,6 +63,7 @@
 #define MLX5_FLOW_LAYER_IPIP (1u << 21)
 #define MLX5_FLOW_LAYER_IPV6_ENCAP (1u << 22)
 #define MLX5_FLOW_LAYER_NVGRE (1u << 23)
+#define MLX5_FLOW_LAYER_GENEVE (1u << 24)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
@@ -83,7 +84,8 @@
 #define MLX5_FLOW_LAYER_TUNNEL \
 	(MLX5_FLOW_LAYER_VXLAN | MLX5_FLOW_LAYER_VXLAN_GPE | \
 	 MLX5_FLOW_LAYER_GRE | MLX5_FLOW_LAYER_NVGRE | MLX5_FLOW_LAYER_MPLS | \
-	 MLX5_FLOW_LAYER_IPIP | MLX5_FLOW_LAYER_IPV6_ENCAP)
+	 MLX5_FLOW_LAYER_IPIP | MLX5_FLOW_LAYER_IPV6_ENCAP | \
+	 MLX5_FLOW_LAYER_GENEVE)
 
 /* Inner Masks. */
 #define MLX5_FLOW_LAYER_INNER_L3 \
@@ -188,6 +190,9 @@
 #define MLX5_UDP_PORT_VXLAN 4789
 #define MLX5_UDP_PORT_VXLAN_GPE 4790
 
+/* UDP port numbers for GENEVE. */
+#define MLX5_UDP_PORT_GENEVE 6081
+
 /* Priority reserved for default flows. */
 #define MLX5_FLOW_PRIO_RSVD ((uint32_t)-1)
 
@@ -219,6 +224,33 @@
 
 /* IBV hash source bits  for IPV6. */
 #define MLX5_IPV6_IBV_RX_HASH (IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6)
+
+
+/* Geneve header first 16Bit */
+#define MLX5_GENEVE_VER_MASK 0x3
+#define MLX5_GENEVE_VER_SHIFT 14
+#define MLX5_GENEVE_VER_VAL(a) \
+		(((a) >> (MLX5_GENEVE_VER_SHIFT)) & (MLX5_GENEVE_VER_MASK))
+#define MLX5_GENEVE_OPTLEN_MASK 0x3F
+#define MLX5_GENEVE_OPTLEN_SHIFT 7
+#define MLX5_GENEVE_OPTLEN_VAL(a) \
+	    (((a) >> (MLX5_GENEVE_OPTLEN_SHIFT)) & (MLX5_GENEVE_OPTLEN_MASK))
+#define MLX5_GENEVE_OAMF_MASK 0x1
+#define MLX5_GENEVE_OAMF_SHIFT 7
+#define MLX5_GENEVE_OAMF_VAL(a) \
+		(((a) >> (MLX5_GENEVE_OAMF_SHIFT)) & (MLX5_GENEVE_OAMF_MASK))
+#define MLX5_GENEVE_CRITO_MASK 0x1
+#define MLX5_GENEVE_CRITO_SHIFT 6
+#define MLX5_GENEVE_CRITO_VAL(a) \
+		(((a) >> (MLX5_GENEVE_CRITO_SHIFT)) & (MLX5_GENEVE_CRITO_MASK))
+#define MLX5_GENEVE_RSVD_MASK 0x3F
+#define MLX5_GENEVE_RSVD_VAL(a) ((a) & (MLX5_GENEVE_RSVD_MASK))
+/*
+ * The length of the Geneve options fields, expressed in four byte multiples,
+ * not including the eight byte fixed tunnel.
+ */
+#define MLX5_GENEVE_OPT_LEN_0 14
+#define MLX5_GENEVE_OPT_LEN_1 63
 
 enum mlx5_flow_drv_type {
 	MLX5_FLOW_TYPE_MIN,
@@ -556,4 +588,8 @@ int mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
 				  uint64_t item_flags,
 				  uint8_t target_protocol,
 				  struct rte_flow_error *error);
+int mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
+				   uint64_t item_flags,
+				   struct rte_eth_dev *dev,
+				   struct rte_flow_error *error);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
