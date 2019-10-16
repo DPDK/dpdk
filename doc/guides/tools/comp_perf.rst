@@ -82,6 +82,8 @@ Application Options
 
  ``--window-sz N``: base two log value of compression window size (default: max supported by PMD)
 
+ ``--external-mbufs``: allocate and use memzones as external buffers instead of keeping the data directly in mbuf areas
+
  ``-h``: prints this help
 
 

@@ -124,6 +124,12 @@ New Features
   Added stateful decompression support in the Intel QuickAssist Technology PMD.
   Please note that stateful compression is not supported.
 
+* **Added external buffers support for dpdk-test-compress-perf tool.**
+
+  Added a command line option to dpdk-test-compress-perf tool to allocate
+  and use memory zones as external buffers instead of keeping the data directly
+  in mbuf areas.
+
 * **Introduced FIFO for NTB PMD.**
 
   Introduced FIFO for NTB (Non-transparent Bridge) PMD to support
