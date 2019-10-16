@@ -77,6 +77,8 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
 	int octeontx_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
+	int octeontx2_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD));
 	int null_pmd = rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_NULL_PMD));
 	int nitrox_pmd = rte_cryptodev_driver_id_get(
@@ -127,6 +129,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			driver_id == ccp_pmd ||
 			driver_id == virtio_pmd ||
 			driver_id == octeontx_pmd ||
+			driver_id == octeontx2_pmd ||
 			driver_id == null_pmd ||
 			driver_id == nitrox_pmd) { /* Fall through */
 		digest_len = tdata->digest.len;
@@ -718,6 +721,8 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
 	int octeontx_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
+	int octeontx2_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD));
 	int null_pmd = rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_NULL_PMD));
 	int nitrox_pmd = rte_cryptodev_driver_id_get(
@@ -792,6 +797,8 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO;
 	else if (driver_id == octeontx_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX;
+	else if (driver_id == octeontx2_pmd)
+		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2;
 	else if (driver_id == null_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL;
 	else if (driver_id == nitrox_pmd)

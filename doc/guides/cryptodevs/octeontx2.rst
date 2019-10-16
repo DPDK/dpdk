@@ -132,3 +132,14 @@ Debugging Options
     +===+============+=======================================================+
     | 1 | CPT        | --log-level='pmd\.crypto\.octeontx2,8'                |
     +---+------------+-------------------------------------------------------+
+
+Testing
+-------
+
+The symmetric crypto operations on OCTEON TX2 crypto PMD may be verified by running the test
+application:
+
+.. code-block:: console
+
+    ./test
+    RTE>>cryptodev_octeontx2_autotest
