@@ -44,21 +44,21 @@ const struct rte_flow_ops ice_flow_ops = {
 
 static int
 ice_flow_valid_attr(const struct rte_flow_attr *attr,
-		     struct rte_flow_error *error)
+		struct rte_flow_error *error)
 {
 	/* Must be input direction */
 	if (!attr->ingress) {
 		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-				   attr, "Only support ingress.");
+				RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+				attr, "Only support ingress.");
 		return -rte_errno;
 	}
 
 	/* Not supported */
 	if (attr->egress) {
 		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
-				   attr, "Not support egress.");
+				RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+				attr, "Not support egress.");
 		return -rte_errno;
 	}
 
@@ -73,8 +73,8 @@ ice_flow_valid_attr(const struct rte_flow_attr *attr,
 	/* Not supported */
 	if (attr->group) {
 		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
-				   attr, "Not support group.");
+				RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+				attr, "Not support group.");
 		return -rte_errno;
 	}
 
@@ -102,7 +102,7 @@ ice_find_first_item(const struct rte_flow_item *item, bool is_void)
 /* Skip all VOID items of the pattern */
 static void
 ice_pattern_skip_void_item(struct rte_flow_item *items,
-			    const struct rte_flow_item *pattern)
+			const struct rte_flow_item *pattern)
 {
 	uint32_t cpy_count = 0;
 	const struct rte_flow_item *pb = pattern, *pe = pattern;
@@ -124,7 +124,6 @@ ice_pattern_skip_void_item(struct rte_flow_item *items,
 		items += cpy_count;
 
 		if (pe->type == RTE_FLOW_ITEM_TYPE_END) {
-			pb = pe;
 			break;
 		}
 
@@ -560,10 +559,10 @@ static int ice_flow_valid_action(struct rte_eth_dev *dev,
 
 static int
 ice_flow_validate(struct rte_eth_dev *dev,
-		   const struct rte_flow_attr *attr,
-		   const struct rte_flow_item pattern[],
-		   const struct rte_flow_action actions[],
-		   struct rte_flow_error *error)
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error)
 {
 	uint64_t inset = 0;
 	int ret = ICE_ERR_NOT_SUPPORTED;
@@ -609,10 +608,10 @@ ice_flow_validate(struct rte_eth_dev *dev,
 
 static struct rte_flow *
 ice_flow_create(struct rte_eth_dev *dev,
-		 const struct rte_flow_attr *attr,
-		 const struct rte_flow_item pattern[],
-		 const struct rte_flow_action actions[],
-		 struct rte_flow_error *error)
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_flow *flow = NULL;
@@ -647,8 +646,8 @@ free_flow:
 
 static int
 ice_flow_destroy(struct rte_eth_dev *dev,
-		 struct rte_flow *flow,
-		 struct rte_flow_error *error)
+		struct rte_flow *flow,
+		struct rte_flow_error *error)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	int ret = 0;
@@ -669,7 +668,7 @@ ice_flow_destroy(struct rte_eth_dev *dev,
 
 static int
 ice_flow_flush(struct rte_eth_dev *dev,
-	       struct rte_flow_error *error)
+		struct rte_flow_error *error)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_flow *p_flow;
