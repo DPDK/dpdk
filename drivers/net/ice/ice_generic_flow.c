@@ -17,7 +17,19 @@
 
 #include "ice_ethdev.h"
 #include "ice_generic_flow.h"
-#include "ice_switch_filter.h"
+
+/**
+ * Non-pipeline mode, fdir and switch both used as distributor,
+ * fdir used first, switch used as fdir's backup.
+ */
+#define ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR_ONLY 0
+/*Pipeline mode, switch used at permission stage*/
+#define ICE_FLOW_CLASSIFY_STAGE_PERMISSION 1
+/*Pipeline mode, fdir used at distributor stage*/
+#define ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR 2
+
+static struct ice_engine_list engine_list =
+		TAILQ_HEAD_INITIALIZER(engine_list);
 
 static int ice_flow_validate(struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
@@ -34,16 +46,175 @@ static int ice_flow_destroy(struct rte_eth_dev *dev,
 		struct rte_flow_error *error);
 static int ice_flow_flush(struct rte_eth_dev *dev,
 		struct rte_flow_error *error);
+static int ice_flow_query(struct rte_eth_dev *dev,
+		struct rte_flow *flow,
+		const struct rte_flow_action *actions,
+		void *data,
+		struct rte_flow_error *error);
 
 const struct rte_flow_ops ice_flow_ops = {
 	.validate = ice_flow_validate,
 	.create = ice_flow_create,
 	.destroy = ice_flow_destroy,
 	.flush = ice_flow_flush,
+	.query = ice_flow_query,
 };
 
+void
+ice_register_flow_engine(struct ice_flow_engine *engine)
+{
+	TAILQ_INSERT_TAIL(&engine_list, engine, node);
+}
+
+int
+ice_flow_init(struct ice_adapter *ad)
+{
+	int ret;
+	struct ice_pf *pf = &ad->pf;
+	void *temp;
+	struct ice_flow_engine *engine;
+
+	TAILQ_INIT(&pf->flow_list);
+	TAILQ_INIT(&pf->rss_parser_list);
+	TAILQ_INIT(&pf->perm_parser_list);
+	TAILQ_INIT(&pf->dist_parser_list);
+
+	TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
+		if (engine->init == NULL) {
+			PMD_INIT_LOG(ERR, "Invalid engine type (%d)",
+					engine->type);
+			return -ENOTSUP;
+		}
+
+		ret = engine->init(ad);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to initialize engine %d",
+					engine->type);
+			return ret;
+		}
+	}
+	return 0;
+}
+
+void
+ice_flow_uninit(struct ice_adapter *ad)
+{
+	struct ice_pf *pf = &ad->pf;
+	struct ice_flow_engine *engine;
+	struct rte_flow *p_flow;
+	struct ice_flow_parser_node *p_parser;
+	void *temp;
+
+	TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
+		if (engine->uninit)
+			engine->uninit(ad);
+	}
+
+	/* Remove all flows */
+	while ((p_flow = TAILQ_FIRST(&pf->flow_list))) {
+		TAILQ_REMOVE(&pf->flow_list, p_flow, node);
+		if (p_flow->engine->free)
+			p_flow->engine->free(p_flow);
+		rte_free(p_flow);
+	}
+
+	/* Cleanup parser list */
+	while ((p_parser = TAILQ_FIRST(&pf->rss_parser_list))) {
+		TAILQ_REMOVE(&pf->rss_parser_list, p_parser, node);
+		rte_free(p_parser);
+	}
+
+	while ((p_parser = TAILQ_FIRST(&pf->perm_parser_list))) {
+		TAILQ_REMOVE(&pf->perm_parser_list, p_parser, node);
+		rte_free(p_parser);
+	}
+
+	while ((p_parser = TAILQ_FIRST(&pf->dist_parser_list))) {
+		TAILQ_REMOVE(&pf->dist_parser_list, p_parser, node);
+		rte_free(p_parser);
+	}
+}
+
+static struct ice_parser_list *
+ice_get_parser_list(struct ice_flow_parser *parser,
+		struct ice_adapter *ad)
+{
+	struct ice_parser_list *list;
+	struct ice_pf *pf = &ad->pf;
+
+	switch (parser->stage) {
+	case ICE_FLOW_STAGE_RSS:
+		list = &pf->rss_parser_list;
+		break;
+	case ICE_FLOW_STAGE_PERMISSION:
+		list = &pf->perm_parser_list;
+		break;
+	case ICE_FLOW_STAGE_DISTRIBUTOR:
+		list = &pf->dist_parser_list;
+		break;
+	default:
+		return NULL;
+	}
+
+	return list;
+}
+
+int
+ice_register_parser(struct ice_flow_parser *parser,
+		struct ice_adapter *ad)
+{
+	struct ice_parser_list *list;
+	struct ice_flow_parser_node *parser_node;
+
+	parser_node = rte_zmalloc("ice_parser", sizeof(*parser_node), 0);
+	if (parser_node == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory.");
+		return -ENOMEM;
+	}
+	parser_node->parser = parser;
+
+	list = ice_get_parser_list(parser, ad);
+	if (list == NULL)
+		return -EINVAL;
+
+	if (ad->devargs.pipe_mode_support) {
+		TAILQ_INSERT_TAIL(list, parser_node, node);
+	} else {
+		if (parser->engine->type == ICE_FLOW_ENGINE_SWITCH ||
+				parser->engine->type == ICE_FLOW_ENGINE_HASH)
+			TAILQ_INSERT_TAIL(list, parser_node, node);
+		else if (parser->engine->type == ICE_FLOW_ENGINE_FDIR)
+			TAILQ_INSERT_HEAD(list, parser_node, node);
+		else
+			return -EINVAL;
+	}
+	return 0;
+}
+
+void
+ice_unregister_parser(struct ice_flow_parser *parser,
+		struct ice_adapter *ad)
+{
+	struct ice_parser_list *list;
+	struct ice_flow_parser_node *p_parser;
+	void *temp;
+
+	list = ice_get_parser_list(parser, ad);
+	if (list == NULL)
+		return;
+
+	TAILQ_FOREACH_SAFE(p_parser, list, node, temp) {
+		if (p_parser->parser->engine->type == parser->engine->type) {
+			TAILQ_REMOVE(list, p_parser, node);
+			rte_free(p_parser);
+		}
+	}
+}
+
 static int
-ice_flow_valid_attr(const struct rte_flow_attr *attr,
+ice_flow_valid_attr(struct ice_adapter *ad,
+		const struct rte_flow_attr *attr,
+		int *ice_pipeline_stage,
 		struct rte_flow_error *error)
 {
 	/* Must be input direction */
@@ -62,12 +233,24 @@ ice_flow_valid_attr(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	/* Not supported */
-	if (attr->priority) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-				   attr, "Not support priority.");
-		return -rte_errno;
+	/* Check pipeline mode support to set classification stage */
+	if (ad->devargs.pipe_mode_support) {
+		if (attr->priority == 0)
+			*ice_pipeline_stage =
+				ICE_FLOW_CLASSIFY_STAGE_PERMISSION;
+		else
+			*ice_pipeline_stage =
+				ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR;
+	} else {
+		*ice_pipeline_stage =
+			ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR_ONLY;
+		/* Not supported */
+		if (attr->priority) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					attr, "Not support priority.");
+			return -rte_errno;
+		}
 	}
 
 	/* Not supported */
@@ -150,11 +333,15 @@ ice_match_pattern(enum rte_flow_item_type *item_array,
 		item->type == RTE_FLOW_ITEM_TYPE_END);
 }
 
-static uint64_t ice_flow_valid_pattern(const struct rte_flow_item pattern[],
+struct ice_pattern_match_item *
+ice_search_pattern_match_item(const struct rte_flow_item pattern[],
+		struct ice_pattern_match_item *array,
+		uint32_t array_len,
 		struct rte_flow_error *error)
 {
 	uint16_t i = 0;
-	uint64_t inset;
+	struct ice_pattern_match_item *pattern_match_item;
+	/* need free by each filter */
 	struct rte_flow_item *items; /* used for pattern without VOID items */
 	uint32_t item_num = 0; /* non-void item number */
 
@@ -171,401 +358,76 @@ static uint64_t ice_flow_valid_pattern(const struct rte_flow_item pattern[],
 	if (!items) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
 				   NULL, "No memory for PMD internal items.");
-		return -ENOMEM;
+		return NULL;
+	}
+	pattern_match_item = rte_zmalloc("ice_pattern_match_item",
+			sizeof(struct ice_pattern_match_item), 0);
+	if (!pattern_match_item) {
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Failed to allocate memory.");
+		return NULL;
 	}
 
 	ice_pattern_skip_void_item(items, pattern);
 
-	for (i = 0; i < RTE_DIM(ice_supported_patterns); i++)
-		if (ice_match_pattern(ice_supported_patterns[i].items,
-				      items)) {
-			inset = ice_supported_patterns[i].sw_fields;
+	for (i = 0; i < array_len; i++)
+		if (ice_match_pattern(array[i].pattern_list,
+					items)) {
+			pattern_match_item->input_set_mask =
+				array[i].input_set_mask;
+			pattern_match_item->pattern_list =
+				array[i].pattern_list;
+			pattern_match_item->meta = array[i].meta;
 			rte_free(items);
-			return inset;
+			return pattern_match_item;
 		}
 	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 			   pattern, "Unsupported pattern");
 
 	rte_free(items);
-	return 0;
+	rte_free(pattern_match_item);
+	return NULL;
 }
 
-static uint64_t ice_get_flow_field(const struct rte_flow_item pattern[],
-			struct rte_flow_error *error)
+static struct ice_flow_engine *
+ice_parse_engine(struct ice_adapter *ad,
+		struct ice_parser_list *parser_list,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		void **meta,
+		struct rte_flow_error *error)
 {
-	const struct rte_flow_item *item = pattern;
-	const struct rte_flow_item_eth *eth_spec, *eth_mask;
-	const struct rte_flow_item_ipv4 *ipv4_spec, *ipv4_mask;
-	const struct rte_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
-	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
-	const struct rte_flow_item_udp *udp_spec, *udp_mask;
-	const struct rte_flow_item_sctp *sctp_spec, *sctp_mask;
-	const struct rte_flow_item_icmp *icmp_mask;
-	const struct rte_flow_item_icmp6 *icmp6_mask;
-	const struct rte_flow_item_vxlan *vxlan_spec, *vxlan_mask;
-	const struct rte_flow_item_nvgre *nvgre_spec, *nvgre_mask;
-	enum rte_flow_item_type item_type;
-	uint8_t  ipv6_addr_mask[16] = {
-		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-	uint64_t input_set = ICE_INSET_NONE;
-	bool is_tunnel = false;
+	struct ice_flow_engine *engine = NULL;
+	struct ice_flow_parser_node *parser_node;
+	void *temp;
 
-	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
-		if (item->last) {
-			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Not support range");
-			return 0;
-		}
-		item_type = item->type;
-		switch (item_type) {
-		case RTE_FLOW_ITEM_TYPE_ETH:
-			eth_spec = item->spec;
-			eth_mask = item->mask;
+	TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
+		if (parser_node->parser->parse_pattern_action(ad,
+				parser_node->parser->array,
+				parser_node->parser->array_len,
+				pattern, actions, meta, error) < 0)
+			continue;
 
-			if (eth_spec && eth_mask) {
-				if (rte_is_broadcast_ether_addr(&eth_mask->src))
-					input_set |= ICE_INSET_SMAC;
-				if (rte_is_broadcast_ether_addr(&eth_mask->dst))
-					input_set |= ICE_INSET_DMAC;
-				if (eth_mask->type == RTE_BE16(0xffff))
-					input_set |= ICE_INSET_ETHERTYPE;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV4:
-			ipv4_spec = item->spec;
-			ipv4_mask = item->mask;
-
-			if (!(ipv4_spec && ipv4_mask))
-				break;
-
-			/* Check IPv4 mask and update input set */
-			if (ipv4_mask->hdr.version_ihl ||
-			    ipv4_mask->hdr.total_length ||
-			    ipv4_mask->hdr.packet_id ||
-			    ipv4_mask->hdr.hdr_checksum) {
-				rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Invalid IPv4 mask.");
-				return 0;
-			}
-
-			if (is_tunnel) {
-				if (ipv4_mask->hdr.src_addr == UINT32_MAX)
-					input_set |= ICE_INSET_TUN_IPV4_SRC;
-				if (ipv4_mask->hdr.dst_addr == UINT32_MAX)
-					input_set |= ICE_INSET_TUN_IPV4_DST;
-				if (ipv4_mask->hdr.time_to_live == UINT8_MAX)
-					input_set |= ICE_INSET_TUN_IPV4_TTL;
-				if (ipv4_mask->hdr.next_proto_id == UINT8_MAX)
-					input_set |= ICE_INSET_TUN_IPV4_PROTO;
-			} else {
-				if (ipv4_mask->hdr.src_addr == UINT32_MAX)
-					input_set |= ICE_INSET_IPV4_SRC;
-				if (ipv4_mask->hdr.dst_addr == UINT32_MAX)
-					input_set |= ICE_INSET_IPV4_DST;
-				if (ipv4_mask->hdr.time_to_live == UINT8_MAX)
-					input_set |= ICE_INSET_IPV4_TTL;
-				if (ipv4_mask->hdr.next_proto_id == UINT8_MAX)
-					input_set |= ICE_INSET_IPV4_PROTO;
-				if (ipv4_mask->hdr.type_of_service == UINT8_MAX)
-					input_set |= ICE_INSET_IPV4_TOS;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6:
-			ipv6_spec = item->spec;
-			ipv6_mask = item->mask;
-
-			if (!(ipv6_spec && ipv6_mask))
-				break;
-
-			if (ipv6_mask->hdr.payload_len) {
-				rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Invalid IPv6 mask");
-				return 0;
-			}
-
-			if (is_tunnel) {
-				if (!memcmp(ipv6_mask->hdr.src_addr,
-					    ipv6_addr_mask,
-					    RTE_DIM(ipv6_mask->hdr.src_addr)))
-					input_set |= ICE_INSET_TUN_IPV6_SRC;
-				if (!memcmp(ipv6_mask->hdr.dst_addr,
-					    ipv6_addr_mask,
-					    RTE_DIM(ipv6_mask->hdr.dst_addr)))
-					input_set |= ICE_INSET_TUN_IPV6_DST;
-				if (ipv6_mask->hdr.proto == UINT8_MAX)
-					input_set |= ICE_INSET_TUN_IPV6_PROTO;
-				if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
-					input_set |= ICE_INSET_TUN_IPV6_TTL;
-			} else {
-				if (!memcmp(ipv6_mask->hdr.src_addr,
-					    ipv6_addr_mask,
-					    RTE_DIM(ipv6_mask->hdr.src_addr)))
-					input_set |= ICE_INSET_IPV6_SRC;
-				if (!memcmp(ipv6_mask->hdr.dst_addr,
-					    ipv6_addr_mask,
-					    RTE_DIM(ipv6_mask->hdr.dst_addr)))
-					input_set |= ICE_INSET_IPV6_DST;
-				if (ipv6_mask->hdr.proto == UINT8_MAX)
-					input_set |= ICE_INSET_IPV6_PROTO;
-				if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
-					input_set |= ICE_INSET_IPV6_HOP_LIMIT;
-				if ((ipv6_mask->hdr.vtc_flow &
-					rte_cpu_to_be_32(RTE_IPV6_HDR_TC_MASK))
-						== rte_cpu_to_be_32
-						(RTE_IPV6_HDR_TC_MASK))
-					input_set |= ICE_INSET_IPV6_TOS;
-			}
-
-			break;
-		case RTE_FLOW_ITEM_TYPE_UDP:
-			udp_spec = item->spec;
-			udp_mask = item->mask;
-
-			if (!(udp_spec && udp_mask))
-				break;
-
-			/* Check UDP mask and update input set*/
-			if (udp_mask->hdr.dgram_len ||
-			    udp_mask->hdr.dgram_cksum) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid UDP mask");
-				return 0;
-			}
-
-			if (is_tunnel) {
-				if (udp_mask->hdr.src_port == UINT16_MAX)
-					input_set |= ICE_INSET_TUN_SRC_PORT;
-				if (udp_mask->hdr.dst_port == UINT16_MAX)
-					input_set |= ICE_INSET_TUN_DST_PORT;
-			} else {
-				if (udp_mask->hdr.src_port == UINT16_MAX)
-					input_set |= ICE_INSET_SRC_PORT;
-				if (udp_mask->hdr.dst_port == UINT16_MAX)
-					input_set |= ICE_INSET_DST_PORT;
-			}
-
-			break;
-		case RTE_FLOW_ITEM_TYPE_TCP:
-			tcp_spec = item->spec;
-			tcp_mask = item->mask;
-
-			if (!(tcp_spec && tcp_mask))
-				break;
-
-			/* Check TCP mask and update input set */
-			if (tcp_mask->hdr.sent_seq ||
-			    tcp_mask->hdr.recv_ack ||
-			    tcp_mask->hdr.data_off ||
-			    tcp_mask->hdr.tcp_flags ||
-			    tcp_mask->hdr.rx_win ||
-			    tcp_mask->hdr.cksum ||
-			    tcp_mask->hdr.tcp_urp) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid TCP mask");
-				return 0;
-			}
-
-			if (is_tunnel) {
-				if (tcp_mask->hdr.src_port == UINT16_MAX)
-					input_set |= ICE_INSET_TUN_SRC_PORT;
-				if (tcp_mask->hdr.dst_port == UINT16_MAX)
-					input_set |= ICE_INSET_TUN_DST_PORT;
-			} else {
-				if (tcp_mask->hdr.src_port == UINT16_MAX)
-					input_set |= ICE_INSET_SRC_PORT;
-				if (tcp_mask->hdr.dst_port == UINT16_MAX)
-					input_set |= ICE_INSET_DST_PORT;
-			}
-
-			break;
-		case RTE_FLOW_ITEM_TYPE_SCTP:
-			sctp_spec = item->spec;
-			sctp_mask = item->mask;
-
-			if (!(sctp_spec && sctp_mask))
-				break;
-
-			/* Check SCTP mask and update input set */
-			if (sctp_mask->hdr.cksum) {
-				rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Invalid SCTP mask");
-				return 0;
-			}
-
-			if (is_tunnel) {
-				if (sctp_mask->hdr.src_port == UINT16_MAX)
-					input_set |= ICE_INSET_TUN_SRC_PORT;
-				if (sctp_mask->hdr.dst_port == UINT16_MAX)
-					input_set |= ICE_INSET_TUN_DST_PORT;
-			} else {
-				if (sctp_mask->hdr.src_port == UINT16_MAX)
-					input_set |= ICE_INSET_SRC_PORT;
-				if (sctp_mask->hdr.dst_port == UINT16_MAX)
-					input_set |= ICE_INSET_DST_PORT;
-			}
-
-			break;
-		case RTE_FLOW_ITEM_TYPE_ICMP:
-			icmp_mask = item->mask;
-			if (icmp_mask->hdr.icmp_code ||
-			    icmp_mask->hdr.icmp_cksum ||
-			    icmp_mask->hdr.icmp_ident ||
-			    icmp_mask->hdr.icmp_seq_nb) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid ICMP mask");
-				return 0;
-			}
-
-			if (icmp_mask->hdr.icmp_type == UINT8_MAX)
-				input_set |= ICE_INSET_ICMP;
-			break;
-		case RTE_FLOW_ITEM_TYPE_ICMP6:
-			icmp6_mask = item->mask;
-			if (icmp6_mask->code ||
-			    icmp6_mask->checksum) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid ICMP6 mask");
-				return 0;
-			}
-
-			if (icmp6_mask->type == UINT8_MAX)
-				input_set |= ICE_INSET_ICMP6;
-			break;
-		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			vxlan_spec = item->spec;
-			vxlan_mask = item->mask;
-			/* Check if VXLAN item is used to describe protocol.
-			 * If yes, both spec and mask should be NULL.
-			 * If no, both spec and mask shouldn't be NULL.
-			 */
-			if ((!vxlan_spec && vxlan_mask) ||
-			    (vxlan_spec && !vxlan_mask)) {
-				rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Invalid VXLAN item");
-				return 0;
-			}
-			if (vxlan_mask && vxlan_mask->vni[0] == UINT8_MAX &&
-					vxlan_mask->vni[1] == UINT8_MAX &&
-					vxlan_mask->vni[2] == UINT8_MAX)
-				input_set |= ICE_INSET_TUN_ID;
-			is_tunnel = 1;
-
-			break;
-		case RTE_FLOW_ITEM_TYPE_NVGRE:
-			nvgre_spec = item->spec;
-			nvgre_mask = item->mask;
-			/* Check if NVGRE item is used to describe protocol.
-			 * If yes, both spec and mask should be NULL.
-			 * If no, both spec and mask shouldn't be NULL.
-			 */
-			if ((!nvgre_spec && nvgre_mask) ||
-			    (nvgre_spec && !nvgre_mask)) {
-				rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Invalid NVGRE item");
-				return 0;
-			}
-			if (nvgre_mask && nvgre_mask->tni[0] == UINT8_MAX &&
-					nvgre_mask->tni[1] == UINT8_MAX &&
-					nvgre_mask->tni[2] == UINT8_MAX)
-				input_set |= ICE_INSET_TUN_ID;
-			is_tunnel = 1;
-
-			break;
-		case RTE_FLOW_ITEM_TYPE_VOID:
-			break;
-		default:
-			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Invalid pattern");
-			break;
-		}
+		engine = parser_node->parser->engine;
+		break;
 	}
-	return input_set;
-}
-
-static int ice_flow_valid_inset(const struct rte_flow_item pattern[],
-			uint64_t inset, struct rte_flow_error *error)
-{
-	uint64_t fields;
-
-	/* get valid field */
-	fields = ice_get_flow_field(pattern, error);
-	if (!fields || fields & (~inset)) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
-				   pattern,
-				   "Invalid input set");
-		return -rte_errno;
-	}
-
-	return 0;
-}
-
-static int ice_flow_valid_action(struct rte_eth_dev *dev,
-				const struct rte_flow_action *actions,
-				struct rte_flow_error *error)
-{
-	const struct rte_flow_action_queue *act_q;
-	uint16_t queue;
-	const struct rte_flow_action *action;
-	for (action = actions; action->type !=
-			RTE_FLOW_ACTION_TYPE_END; action++) {
-		switch (action->type) {
-		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			act_q = action->conf;
-			queue = act_q->index;
-			if (queue >= dev->data->nb_rx_queues) {
-				rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						actions, "Invalid queue ID for"
-						" switch filter.");
-				return -rte_errno;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_DROP:
-		case RTE_FLOW_ACTION_TYPE_VOID:
-			break;
-		default:
-			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ACTION, actions,
-					   "Invalid action.");
-			return -rte_errno;
-		}
-	}
-	return 0;
+	return engine;
 }
 
 static int
-ice_flow_validate(struct rte_eth_dev *dev,
+ice_flow_validate_filter(struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
+		struct ice_flow_engine **engine,
+		void **meta,
 		struct rte_flow_error *error)
 {
-	uint64_t inset = 0;
 	int ret = ICE_ERR_NOT_SUPPORTED;
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	int ice_pipeline_stage = 0;
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
@@ -587,23 +449,47 @@ ice_flow_validate(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	ret = ice_flow_valid_attr(attr, error);
+	ret = ice_flow_valid_attr(ad, attr, &ice_pipeline_stage, error);
 	if (ret)
 		return ret;
 
-	inset = ice_flow_valid_pattern(pattern, error);
-	if (!inset)
-		return -rte_errno;
+	*engine = ice_parse_engine(ad, &pf->rss_parser_list, pattern, actions,
+			meta, error);
+	if (*engine != NULL)
+		return 0;
 
-	ret = ice_flow_valid_inset(pattern, inset, error);
-	if (ret)
-		return ret;
+	switch (ice_pipeline_stage) {
+	case ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR_ONLY:
+	case ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR:
+		*engine = ice_parse_engine(ad, &pf->dist_parser_list, pattern,
+				actions, meta, error);
+		break;
+	case ICE_FLOW_CLASSIFY_STAGE_PERMISSION:
+		*engine = ice_parse_engine(ad, &pf->perm_parser_list, pattern,
+				actions, meta, error);
+		break;
+	default:
+		return -EINVAL;
+	}
 
-	ret = ice_flow_valid_action(dev, actions, error);
-	if (ret)
-		return ret;
+	if (*engine == NULL)
+		return -EINVAL;
 
 	return 0;
+}
+
+static int
+ice_flow_validate(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error)
+{
+	void *meta;
+	struct ice_flow_engine *engine;
+
+	return ice_flow_validate_filter(dev, attr, pattern, actions,
+			&engine, &meta, error);
 }
 
 static struct rte_flow *
@@ -616,6 +502,10 @@ ice_flow_create(struct rte_eth_dev *dev,
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_flow *flow = NULL;
 	int ret;
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct ice_flow_engine *engine = NULL;
+	void *meta;
 
 	flow = rte_zmalloc("ice_flow", sizeof(struct rte_flow), 0);
 	if (!flow) {
@@ -625,21 +515,28 @@ ice_flow_create(struct rte_eth_dev *dev,
 		return flow;
 	}
 
-	ret = ice_flow_validate(dev, attr, pattern, actions, error);
+	ret = ice_flow_validate_filter(dev, attr, pattern, actions,
+			&engine, &meta, error);
 	if (ret < 0)
 		goto free_flow;
 
-	ret = ice_create_switch_filter(pf, pattern, actions, flow, error);
+	if (engine->create == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Invalid engine");
+		goto free_flow;
+	}
+
+	ret = engine->create(ad, flow, meta, error);
 	if (ret)
 		goto free_flow;
 
+	flow->engine = engine;
 	TAILQ_INSERT_TAIL(&pf->flow_list, flow, node);
 	return flow;
 
 free_flow:
-	rte_flow_error_set(error, -ret,
-			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-			   "Failed to create flow.");
+	PMD_DRV_LOG(ERR, "Failed to create flow");
 	rte_free(flow);
 	return NULL;
 }
@@ -650,17 +547,24 @@ ice_flow_destroy(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	int ret = 0;
 
-	ret = ice_destroy_switch_filter(pf, flow, error);
+	if (!flow || !flow->engine || !flow->engine->destroy) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Invalid flow");
+		return -rte_errno;
+	}
+
+	ret = flow->engine->destroy(ad, flow, error);
 
 	if (!ret) {
 		TAILQ_REMOVE(&pf->flow_list, flow, node);
 		rte_free(flow);
 	} else {
-		rte_flow_error_set(error, -ret,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to destroy flow.");
+		PMD_DRV_LOG(ERR, "Failed to destroy flow");
 	}
 
 	return ret;
@@ -678,12 +582,46 @@ ice_flow_flush(struct rte_eth_dev *dev,
 	TAILQ_FOREACH_SAFE(p_flow, &pf->flow_list, node, temp) {
 		ret = ice_flow_destroy(dev, p_flow, error);
 		if (ret) {
-			rte_flow_error_set(error, -ret,
-					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-					   "Failed to flush SW flows.");
-			return -rte_errno;
+			PMD_DRV_LOG(ERR, "Failed to flush flows");
+			return -EINVAL;
 		}
 	}
 
+	return ret;
+}
+
+static int
+ice_flow_query(struct rte_eth_dev *dev,
+		struct rte_flow *flow,
+		const struct rte_flow_action *actions,
+		void *data,
+		struct rte_flow_error *error)
+{
+	int ret = -EINVAL;
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct rte_flow_query_count *count = data;
+
+	if (!flow || !flow->engine || !flow->engine->query_count) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Invalid flow");
+		return -rte_errno;
+	}
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			ret = flow->engine->query_count(ad, flow, count, error);
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					actions,
+					"action not supported");
+		}
+	}
 	return ret;
 }

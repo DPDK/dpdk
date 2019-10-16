@@ -241,15 +241,11 @@ struct ice_vsi {
 	bool offset_loaded;
 };
 
-extern const struct rte_flow_ops ice_flow_ops;
-
-/* Struct to store flow created. */
-struct rte_flow {
-	TAILQ_ENTRY(rte_flow) node;
-	void *rule;
-};
-
+struct rte_flow;
 TAILQ_HEAD(ice_flow_list, rte_flow);
+
+struct ice_flow_parser_node;
+TAILQ_HEAD(ice_parser_list, ice_flow_parser_node);
 
 struct ice_pf {
 	struct ice_adapter *adapter; /* The adapter this PF associate to */
@@ -279,6 +275,9 @@ struct ice_pf {
 	bool offset_loaded;
 	bool adapter_stopped;
 	struct ice_flow_list flow_list;
+	struct ice_parser_list rss_parser_list;
+	struct ice_parser_list perm_parser_list;
+	struct ice_parser_list dist_parser_list;
 };
 
 #define ICE_MAX_QUEUE_NUM  2048

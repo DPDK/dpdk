@@ -15,7 +15,7 @@
 #include "base/ice_dcb.h"
 #include "ice_ethdev.h"
 #include "ice_rxtx.h"
-#include "ice_switch_filter.h"
+#include "ice_generic_flow.h"
 
 /* devargs */
 #define ICE_SAFE_MODE_SUPPORT_ARG "safe-mode-support"
@@ -2009,7 +2009,11 @@ ice_dev_init(struct rte_eth_dev *dev)
 	/* get base queue pairs index  in the device */
 	ice_base_queue_get(pf);
 
-	TAILQ_INIT(&pf->flow_list);
+	ret = ice_flow_init(ad);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to initialize flow");
+		return ret;
+	}
 
 	return 0;
 
@@ -2131,7 +2135,8 @@ ice_dev_close(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
-	struct rte_flow *p_flow;
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	/* Since stop will make link down, then the link event will be
 	 * triggered, disable the irq firstly to avoid the port_infoe etc
@@ -2141,6 +2146,8 @@ ice_dev_close(struct rte_eth_dev *dev)
 	ice_pf_disable_irq0(hw);
 
 	ice_dev_stop(dev);
+
+	ice_flow_uninit(ad);
 
 	/* release all queue resource */
 	ice_free_queues(dev);
@@ -2167,13 +2174,6 @@ ice_dev_close(struct rte_eth_dev *dev)
 	/* unregister callback func from eal lib */
 	rte_intr_callback_unregister(intr_handle,
 				     ice_interrupt_handler, dev);
-
-	/* Remove all flows */
-	while ((p_flow = TAILQ_FIRST(&pf->flow_list))) {
-		TAILQ_REMOVE(&pf->flow_list, p_flow, node);
-		ice_free_switch_filter_rule(p_flow->rule);
-		rte_free(p_flow);
-	}
 }
 
 static int

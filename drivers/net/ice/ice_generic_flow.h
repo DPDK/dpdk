@@ -7,615 +7,278 @@
 
 #include <rte_flow_driver.h>
 
-struct ice_flow_pattern {
-	enum rte_flow_item_type *items;
-	uint64_t sw_fields;
+/* protocol */
+
+#define ICE_PROT_MAC_INNER         (1ULL << 1)
+#define ICE_PROT_MAC_OUTER         (1ULL << 2)
+#define ICE_PROT_VLAN_INNER        (1ULL << 3)
+#define ICE_PROT_VLAN_OUTER        (1ULL << 4)
+#define ICE_PROT_IPV4_INNER        (1ULL << 5)
+#define ICE_PROT_IPV4_OUTER        (1ULL << 6)
+#define ICE_PROT_IPV6_INNER        (1ULL << 7)
+#define ICE_PROT_IPV6_OUTER        (1ULL << 8)
+#define ICE_PROT_TCP_INNER         (1ULL << 9)
+#define ICE_PROT_TCP_OUTER         (1ULL << 10)
+#define ICE_PROT_UDP_INNER         (1ULL << 11)
+#define ICE_PROT_UDP_OUTER         (1ULL << 12)
+#define ICE_PROT_SCTP_INNER        (1ULL << 13)
+#define ICE_PROT_SCTP_OUTER        (1ULL << 14)
+#define ICE_PROT_ICMP4_INNER       (1ULL << 15)
+#define ICE_PROT_ICMP4_OUTER       (1ULL << 16)
+#define ICE_PROT_ICMP6_INNER       (1ULL << 17)
+#define ICE_PROT_ICMP6_OUTER       (1ULL << 18)
+#define ICE_PROT_VXLAN             (1ULL << 19)
+#define ICE_PROT_NVGRE             (1ULL << 20)
+#define ICE_PROT_GTPU              (1ULL << 21)
+
+/* field */
+
+#define ICE_SMAC                   (1ULL << 63)
+#define ICE_DMAC                   (1ULL << 62)
+#define ICE_ETHERTYPE              (1ULL << 61)
+#define ICE_IP_SRC                 (1ULL << 60)
+#define ICE_IP_DST                 (1ULL << 59)
+#define ICE_IP_PROTO               (1ULL << 58)
+#define ICE_IP_TTL                 (1ULL << 57)
+#define ICE_IP_TOS                 (1ULL << 56)
+#define ICE_SPORT                  (1ULL << 55)
+#define ICE_DPORT                  (1ULL << 54)
+#define ICE_ICMP_TYPE              (1ULL << 53)
+#define ICE_ICMP_CODE              (1ULL << 52)
+#define ICE_VXLAN_VNI              (1ULL << 51)
+#define ICE_NVGRE_TNI              (1ULL << 50)
+#define ICE_GTPU_TEID              (1ULL << 49)
+#define ICE_GTPU_QFI               (1ULL << 48)
+
+/* input set */
+
+#define ICE_INSET_NONE             0ULL
+
+/* non-tunnel */
+
+#define ICE_INSET_SMAC         (ICE_PROT_MAC_OUTER | ICE_SMAC)
+#define ICE_INSET_DMAC         (ICE_PROT_MAC_OUTER | ICE_DMAC)
+#define ICE_INSET_VLAN_INNER   (ICE_PROT_VLAN_INNER)
+#define ICE_INSET_VLAN_OUTER   (ICE_PROT_VLAN_OUTER)
+#define ICE_INSET_ETHERTYPE    (ICE_ETHERTYPE)
+
+#define ICE_INSET_IPV4_SRC \
+	(ICE_PROT_IPV4_OUTER | ICE_IP_SRC)
+#define ICE_INSET_IPV4_DST \
+	(ICE_PROT_IPV4_OUTER | ICE_IP_DST)
+#define ICE_INSET_IPV4_TOS \
+	(ICE_PROT_IPV4_OUTER | ICE_IP_TOS)
+#define ICE_INSET_IPV4_PROTO \
+	(ICE_PROT_IPV4_OUTER | ICE_IP_PROTO)
+#define ICE_INSET_IPV4_TTL \
+	(ICE_PROT_IPV4_OUTER | ICE_IP_TTL)
+#define ICE_INSET_IPV6_SRC \
+	(ICE_PROT_IPV6_OUTER | ICE_IP_SRC)
+#define ICE_INSET_IPV6_DST \
+	(ICE_PROT_IPV6_OUTER | ICE_IP_DST)
+#define ICE_INSET_IPV6_NEXT_HDR \
+	(ICE_PROT_IPV6_OUTER | ICE_IP_PROTO)
+#define ICE_INSET_IPV6_HOP_LIMIT \
+	(ICE_PROT_IPV6_OUTER | ICE_IP_TTL)
+#define ICE_INSET_IPV6_TC \
+	(ICE_PROT_IPV6_OUTER | ICE_IP_TOS)
+
+#define ICE_INSET_TCP_SRC_PORT \
+	(ICE_PROT_TCP_OUTER | ICE_SPORT)
+#define ICE_INSET_TCP_DST_PORT \
+	(ICE_PROT_TCP_OUTER | ICE_DPORT)
+#define ICE_INSET_UDP_SRC_PORT \
+	(ICE_PROT_UDP_OUTER | ICE_SPORT)
+#define ICE_INSET_UDP_DST_PORT \
+	(ICE_PROT_UDP_OUTER | ICE_DPORT)
+#define ICE_INSET_SCTP_SRC_PORT \
+	(ICE_PROT_SCTP_OUTER | ICE_SPORT)
+#define ICE_INSET_SCTP_DST_PORT \
+	(ICE_PROT_SCTP_OUTER | ICE_DPORT)
+#define ICE_INSET_ICMP4_SRC_PORT \
+	(ICE_PROT_ICMP4_OUTER | ICE_SPORT)
+#define ICE_INSET_ICMP4_DST_PORT \
+	(ICE_PROT_ICMP4_OUTER | ICE_DPORT)
+#define ICE_INSET_ICMP6_SRC_PORT \
+	(ICE_PROT_ICMP6_OUTER | ICE_SPORT)
+#define ICE_INSET_ICMP6_DST_PORT \
+	(ICE_PROT_ICMP6_OUTER | ICE_DPORT)
+#define ICE_INSET_ICMP4_TYPE \
+	(ICE_PROT_ICMP4_OUTER | ICE_ICMP_TYPE)
+#define ICE_INSET_ICMP4_CODE \
+	(ICE_PROT_ICMP4_OUTER | ICE_ICMP_CODE)
+#define ICE_INSET_ICMP6_TYPE \
+	(ICE_PROT_ICMP6_OUTER | ICE_ICMP_TYPE)
+#define ICE_INSET_ICMP6_CODE \
+	(ICE_PROT_ICMP6_OUTER | ICE_ICMP_CODE)
+
+/* tunnel */
+
+#define ICE_INSET_TUN_SMAC \
+	(ICE_PROT_MAC_INNER | ICE_SMAC)
+#define ICE_INSET_TUN_DMAC \
+	(ICE_PROT_MAC_INNER | ICE_DMAC)
+
+#define ICE_INSET_TUN_IPV4_SRC \
+	(ICE_PROT_IPV4_INNER | ICE_IP_SRC)
+#define ICE_INSET_TUN_IPV4_DST \
+	(ICE_PROT_IPV4_INNER | ICE_IP_DST)
+#define ICE_INSET_TUN_IPV4_TTL \
+	(ICE_PROT_IPV4_INNER | ICE_IP_TTL)
+#define ICE_INSET_TUN_IPV4_PROTO \
+	(ICE_PROT_IPV4_INNER | ICE_IP_PROTO)
+#define ICE_INSET_TUN_IPV4_TOS \
+	(ICE_PROT_IPV4_INNER | ICE_IP_TOS)
+#define ICE_INSET_TUN_IPV6_SRC \
+	(ICE_PROT_IPV6_INNER | ICE_IP_SRC)
+#define ICE_INSET_TUN_IPV6_DST \
+	(ICE_PROT_IPV6_INNER | ICE_IP_DST)
+#define ICE_INSET_TUN_IPV6_HOP_LIMIT \
+	(ICE_PROT_IPV6_INNER | ICE_IP_TTL)
+#define ICE_INSET_TUN_IPV6_NEXT_HDR \
+	(ICE_PROT_IPV6_INNER | ICE_IP_PROTO)
+#define ICE_INSET_TUN_IPV6_TC \
+	(ICE_PROT_IPV6_INNER | ICE_IP_TOS)
+
+#define ICE_INSET_TUN_TCP_SRC_PORT \
+	(ICE_PROT_TCP_INNER | ICE_SPORT)
+#define ICE_INSET_TUN_TCP_DST_PORT \
+	(ICE_PROT_TCP_INNER | ICE_DPORT)
+#define ICE_INSET_TUN_UDP_SRC_PORT \
+	(ICE_PROT_UDP_INNER | ICE_SPORT)
+#define ICE_INSET_TUN_UDP_DST_PORT \
+	(ICE_PROT_UDP_INNER | ICE_DPORT)
+#define ICE_INSET_TUN_SCTP_SRC_PORT \
+	(ICE_PROT_SCTP_INNER | ICE_SPORT)
+#define ICE_INSET_TUN_SCTP_DST_PORT \
+	(ICE_PROT_SCTP_INNER | ICE_DPORT)
+#define ICE_INSET_TUN_ICMP4_SRC_PORT \
+	(ICE_PROT_ICMP4_INNER | ICE_SPORT)
+#define ICE_INSET_TUN_ICMP4_DST_PORT \
+	(ICE_PROT_ICMP4_INNER | ICE_DPORT)
+#define ICE_INSET_TUN_ICMP6_SRC_PORT \
+	(ICE_PROT_ICMP6_INNER | ICE_SPORT)
+#define ICE_INSET_TUN_ICMP6_DST_PORT \
+	(ICE_PROT_ICMP6_INNER | ICE_DPORT)
+#define ICE_INSET_TUN_ICMP4_TYPE \
+	(ICE_PROT_ICMP4_INNER | ICE_ICMP_TYPE)
+#define ICE_INSET_TUN_ICMP4_CODE \
+	(ICE_PROT_ICMP4_INNER | ICE_ICMP_CODE)
+#define ICE_INSET_TUN_ICMP6_TYPE \
+	(ICE_PROT_ICMP6_INNER | ICE_ICMP_TYPE)
+#define ICE_INSET_TUN_ICMP6_CODE \
+	(ICE_PROT_ICMP6_INNER | ICE_ICMP_CODE)
+
+#define ICE_INSET_TUN_VXLAN_VNI \
+	(ICE_PROT_VXLAN | ICE_VXLAN_VNI)
+#define ICE_INSET_TUN_NVGRE_TNI \
+	(ICE_PROT_NVGRE | ICE_NVGRE_TNI)
+#define ICE_INSET_GTPU_TEID \
+	(ICE_PROT_GTPU | ICE_GTPU_TEID)
+#define ICE_INSET_GTPU_QFI \
+	(ICE_PROT_GTPU | ICE_GTPU_QFI)
+
+struct ice_adapter;
+
+extern const struct rte_flow_ops ice_flow_ops;
+
+/* engine types. */
+enum ice_flow_engine_type {
+	ICE_FLOW_ENGINE_NONE = 0,
+	ICE_FLOW_ENGINE_FDIR,
+	ICE_FLOW_ENGINE_SWITCH,
+	ICE_FLOW_ENGINE_HASH,
+	ICE_FLOW_ENGINE_ACL,
+	ICE_FLOW_ENGINE_MAX,
 };
 
-#define ICE_INSET_NONE            0x00000000000000000ULL
-
-/* bit0 ~ bit 7 */
-#define ICE_INSET_SMAC            0x0000000000000001ULL
-#define ICE_INSET_DMAC            0x0000000000000002ULL
-#define ICE_INSET_ETHERTYPE       0x0000000000000020ULL
-
-/* bit 8 ~ bit 15 */
-#define ICE_INSET_IPV4_SRC        0x0000000000000100ULL
-#define ICE_INSET_IPV4_DST        0x0000000000000200ULL
-#define ICE_INSET_IPV6_SRC        0x0000000000000400ULL
-#define ICE_INSET_IPV6_DST        0x0000000000000800ULL
-#define ICE_INSET_SRC_PORT        0x0000000000001000ULL
-#define ICE_INSET_DST_PORT        0x0000000000002000ULL
-#define ICE_INSET_ARP             0x0000000000004000ULL
-
-/* bit 16 ~ bit 31 */
-#define ICE_INSET_IPV4_TOS        0x0000000000010000ULL
-#define ICE_INSET_IPV4_PROTO      0x0000000000020000ULL
-#define ICE_INSET_IPV4_TTL        0x0000000000040000ULL
-#define ICE_INSET_IPV6_TOS        0x0000000000100000ULL
-#define ICE_INSET_IPV6_PROTO      0x0000000000200000ULL
-#define ICE_INSET_IPV6_HOP_LIMIT  0x0000000000400000ULL
-#define ICE_INSET_ICMP            0x0000000001000000ULL
-#define ICE_INSET_ICMP6           0x0000000002000000ULL
-
-/* bit 32 ~ bit 47, tunnel fields */
-#define ICE_INSET_TUN_SMAC           0x0000000100000000ULL
-#define ICE_INSET_TUN_DMAC           0x0000000200000000ULL
-#define ICE_INSET_TUN_IPV4_SRC       0x0000000400000000ULL
-#define ICE_INSET_TUN_IPV4_DST       0x0000000800000000ULL
-#define ICE_INSET_TUN_IPV4_TTL       0x0000001000000000ULL
-#define ICE_INSET_TUN_IPV4_PROTO     0x0000002000000000ULL
-#define ICE_INSET_TUN_IPV6_SRC       0x0000004000000000ULL
-#define ICE_INSET_TUN_IPV6_DST       0x0000008000000000ULL
-#define ICE_INSET_TUN_IPV6_TTL       0x0000010000000000ULL
-#define ICE_INSET_TUN_IPV6_PROTO     0x0000020000000000ULL
-#define ICE_INSET_TUN_SRC_PORT       0x0000040000000000ULL
-#define ICE_INSET_TUN_DST_PORT       0x0000080000000000ULL
-#define ICE_INSET_TUN_ID             0x0000100000000000ULL
-
-/* bit 48 ~ bit 55 */
-#define ICE_INSET_LAST_ETHER_TYPE 0x0001000000000000ULL
-
-#define ICE_FLAG_VLAN_INNER  0x00000001ULL
-#define ICE_FLAG_VLAN_OUTER  0x00000002ULL
-
-#define INSET_ETHER ( \
-	ICE_INSET_DMAC | ICE_INSET_SMAC | ICE_INSET_ETHERTYPE)
-#define INSET_MAC_IPV4 ( \
-	ICE_INSET_DMAC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_SRC | \
-	ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_TOS)
-#define INSET_MAC_IPV4_L4 ( \
-	ICE_INSET_DMAC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_SRC | \
-	ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_TOS | ICE_INSET_DST_PORT | \
-	ICE_INSET_SRC_PORT)
-#define INSET_MAC_IPV4_ICMP ( \
-	ICE_INSET_DMAC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_SRC | \
-	ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_TOS | ICE_INSET_ICMP)
-#define INSET_MAC_IPV6 ( \
-	ICE_INSET_DMAC | ICE_INSET_IPV6_DST | ICE_INSET_IPV6_SRC | \
-	ICE_INSET_IPV6_TOS | ICE_INSET_IPV6_HOP_LIMIT)
-#define INSET_MAC_IPV6_L4 ( \
-	ICE_INSET_DMAC | ICE_INSET_IPV6_DST | ICE_INSET_IPV6_SRC | \
-	ICE_INSET_IPV6_HOP_LIMIT | ICE_INSET_IPV6_TOS | \
-	ICE_INSET_DST_PORT | ICE_INSET_SRC_PORT)
-#define INSET_MAC_IPV6_ICMP ( \
-	ICE_INSET_DMAC | ICE_INSET_IPV6_DST | ICE_INSET_IPV6_SRC | \
-	ICE_INSET_IPV6_HOP_LIMIT | ICE_INSET_IPV6_TOS | ICE_INSET_ICMP6)
-#define INSET_TUNNEL_IPV4_TYPE1 ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_IPV4_TTL | ICE_INSET_TUN_IPV4_PROTO | \
-	ICE_INSET_TUN_ID)
-#define INSET_TUNNEL_IPV4_TYPE2 ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_IPV4_TTL | ICE_INSET_TUN_IPV4_PROTO | \
-	ICE_INSET_TUN_SRC_PORT | ICE_INSET_TUN_DST_PORT | \
-	ICE_INSET_TUN_ID)
-#define INSET_TUNNEL_IPV4_TYPE3 ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_IPV4_TTL | ICE_INSET_ICMP | \
-	ICE_INSET_TUN_ID)
-#define INSET_TUNNEL_IPV6_TYPE1 ( \
-	ICE_INSET_TUN_IPV6_SRC | ICE_INSET_TUN_IPV6_DST | \
-	ICE_INSET_TUN_IPV6_TTL | ICE_INSET_TUN_IPV6_PROTO | \
-	ICE_INSET_TUN_ID)
-#define INSET_TUNNEL_IPV6_TYPE2 ( \
-	ICE_INSET_TUN_IPV6_SRC | ICE_INSET_TUN_IPV6_DST | \
-	ICE_INSET_TUN_IPV6_TTL | ICE_INSET_TUN_IPV6_PROTO | \
-	ICE_INSET_TUN_SRC_PORT | ICE_INSET_TUN_DST_PORT | \
-	ICE_INSET_TUN_ID)
-#define INSET_TUNNEL_IPV6_TYPE3 ( \
-	ICE_INSET_TUN_IPV6_SRC | ICE_INSET_TUN_IPV6_DST | \
-	ICE_INSET_TUN_IPV6_TTL | ICE_INSET_ICMP6 | \
-	ICE_INSET_TUN_ID)
-
-/* L2 */
-static enum rte_flow_item_type pattern_ethertype[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_END,
+/**
+ * classification stages.
+ * for non-pipeline mode, we have two classification stages: Distributor/RSS
+ * for pipeline-mode we have three classification stages:
+ * Permission/Distributor/RSS
+ */
+enum ice_flow_classification_stage {
+	ICE_FLOW_STAGE_NONE = 0,
+	ICE_FLOW_STAGE_RSS,
+	ICE_FLOW_STAGE_PERMISSION,
+	ICE_FLOW_STAGE_DISTRIBUTOR,
+	ICE_FLOW_STAGE_MAX,
+};
+/* pattern structure */
+struct ice_pattern_match_item {
+	enum rte_flow_item_type *pattern_list;
+	/* pattern_list must end with RTE_FLOW_ITEM_TYPE_END */
+	uint64_t input_set_mask;
+	void *meta;
 };
 
-/* non-tunnel IPv4 */
-static enum rte_flow_item_type pattern_ipv4[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END,
+typedef int (*engine_init_t)(struct ice_adapter *ad);
+typedef void (*engine_uninit_t)(struct ice_adapter *ad);
+typedef int (*engine_create_t)(struct ice_adapter *ad,
+		struct rte_flow *flow,
+		void *meta,
+		struct rte_flow_error *error);
+typedef int (*engine_destroy_t)(struct ice_adapter *ad,
+		struct rte_flow *flow,
+		struct rte_flow_error *error);
+typedef int (*engine_query_t)(struct ice_adapter *ad,
+		struct rte_flow *flow,
+		struct rte_flow_query_count *count,
+		struct rte_flow_error *error);
+typedef void (*engine_free_t) (struct rte_flow *flow);
+typedef int (*parse_pattern_action_t)(struct ice_adapter *ad,
+		struct ice_pattern_match_item *array,
+		uint32_t array_len,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		void **meta,
+		struct rte_flow_error *error);
+
+/* Struct to store engine created. */
+struct ice_flow_engine {
+	TAILQ_ENTRY(ice_flow_engine) node;
+	engine_init_t init;
+	engine_uninit_t uninit;
+	engine_create_t create;
+	engine_destroy_t destroy;
+	engine_query_t query_count;
+	engine_free_t free;
+	enum ice_flow_engine_type type;
+};
+TAILQ_HEAD(ice_engine_list, ice_flow_engine);
+
+/* Struct to store flow created. */
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) node;
+	struct ice_flow_engine *engine;
+	void *rule;
 };
 
-static enum rte_flow_item_type pattern_ipv4_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
+struct ice_flow_parser {
+	struct ice_flow_engine *engine;
+	struct ice_pattern_match_item *array;
+	uint32_t array_len;
+	parse_pattern_action_t parse_pattern_action;
+	enum ice_flow_classification_stage stage;
 };
 
-static enum rte_flow_item_type pattern_ipv4_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
+/* Struct to store parser created. */
+struct ice_flow_parser_node {
+	TAILQ_ENTRY(ice_flow_parser_node) node;
+	struct ice_flow_parser *parser;
 };
 
-static enum rte_flow_item_type pattern_ipv4_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_icmp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_ICMP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-/* non-tunnel IPv6 */
-static enum rte_flow_item_type pattern_ipv6[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv6_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv6_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv6_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv6_icmp6[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_ICMP6,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-/* IPv4 VXLAN IPv4 */
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv4[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv4_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv4_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv4_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv4_icmp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_ICMP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-/* IPv4 VXLAN MAC IPv4 */
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv4[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv4_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv4_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv4_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv4_icmp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_ICMP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-/* IPv4 VXLAN IPv6 */
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv6[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv6_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv6_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv6_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_ipv6_icmp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_ICMP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-/* IPv4 VXLAN MAC IPv6 */
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv6[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv6_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv6_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv6_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_vxlan_eth_ipv6_icmp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_VXLAN,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_ICMP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-/* IPv4 NVGRE IPv4 */
-static enum rte_flow_item_type pattern_ipv4_nvgre_ipv4[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_ipv4_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_ipv4_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_ipv4_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_ipv4_icmp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_ICMP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-/* IPv4 NVGRE MAC IPv4 */
-static enum rte_flow_item_type pattern_ipv4_nvgre_eth_ipv4[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_eth_ipv4_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_eth_ipv4_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_eth_ipv4_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_eth_ipv4_icmp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_ICMP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-/* IPv4 NVGRE IPv6 */
-static enum rte_flow_item_type pattern_ipv4_nvgre_ipv6[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_ipv6_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_ipv6_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_ipv6_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-
-/* IPv4 NVGRE MAC IPv6 */
-static enum rte_flow_item_type pattern_ipv4_nvgre_eth_ipv6[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_eth_ipv6_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_eth_ipv6_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_ipv4_nvgre_eth_ipv6_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static struct ice_flow_pattern ice_supported_patterns[] = {
-	{pattern_ethertype, INSET_ETHER},
-	{pattern_ipv4, INSET_MAC_IPV4},
-	{pattern_ipv4_udp, INSET_MAC_IPV4_L4},
-	{pattern_ipv4_sctp, INSET_MAC_IPV4_L4},
-	{pattern_ipv4_tcp, INSET_MAC_IPV4_L4},
-	{pattern_ipv4_icmp, INSET_MAC_IPV4_ICMP},
-	{pattern_ipv6, INSET_MAC_IPV6},
-	{pattern_ipv6_udp, INSET_MAC_IPV6_L4},
-	{pattern_ipv6_sctp, INSET_MAC_IPV6_L4},
-	{pattern_ipv6_tcp, INSET_MAC_IPV6_L4},
-	{pattern_ipv6_icmp6, INSET_MAC_IPV6_ICMP},
-	{pattern_ipv4_vxlan_ipv4, INSET_TUNNEL_IPV4_TYPE1},
-	{pattern_ipv4_vxlan_ipv4_udp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_vxlan_ipv4_tcp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_vxlan_ipv4_sctp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_vxlan_ipv4_icmp, INSET_TUNNEL_IPV4_TYPE3},
-	{pattern_ipv4_vxlan_eth_ipv4, INSET_TUNNEL_IPV4_TYPE1},
-	{pattern_ipv4_vxlan_eth_ipv4_udp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_vxlan_eth_ipv4_tcp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_vxlan_eth_ipv4_sctp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_vxlan_eth_ipv4_icmp, INSET_TUNNEL_IPV4_TYPE3},
-	{pattern_ipv4_vxlan_ipv6, INSET_TUNNEL_IPV6_TYPE1},
-	{pattern_ipv4_vxlan_ipv6_udp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_vxlan_ipv6_tcp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_vxlan_ipv6_sctp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_vxlan_ipv6_icmp, INSET_TUNNEL_IPV6_TYPE3},
-	{pattern_ipv4_vxlan_eth_ipv6, INSET_TUNNEL_IPV6_TYPE1},
-	{pattern_ipv4_vxlan_eth_ipv6_udp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_vxlan_eth_ipv6_tcp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_vxlan_eth_ipv6_sctp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_vxlan_eth_ipv6_icmp, INSET_TUNNEL_IPV6_TYPE3},
-	{pattern_ipv4_nvgre_ipv4, INSET_TUNNEL_IPV4_TYPE1},
-	{pattern_ipv4_nvgre_ipv4_udp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_nvgre_ipv4_tcp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_nvgre_ipv4_sctp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_nvgre_ipv4_icmp, INSET_TUNNEL_IPV4_TYPE3},
-	{pattern_ipv4_nvgre_eth_ipv4, INSET_TUNNEL_IPV4_TYPE1},
-	{pattern_ipv4_nvgre_eth_ipv4_udp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_nvgre_eth_ipv4_tcp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_nvgre_eth_ipv4_sctp, INSET_TUNNEL_IPV4_TYPE2},
-	{pattern_ipv4_nvgre_eth_ipv4_icmp, INSET_TUNNEL_IPV4_TYPE3},
-	{pattern_ipv4_nvgre_ipv6, INSET_TUNNEL_IPV6_TYPE1},
-	{pattern_ipv4_nvgre_ipv6_udp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_nvgre_ipv6_tcp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_nvgre_ipv6_sctp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_nvgre_eth_ipv6, INSET_TUNNEL_IPV6_TYPE1},
-	{pattern_ipv4_nvgre_eth_ipv6_udp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_nvgre_eth_ipv6_tcp, INSET_TUNNEL_IPV6_TYPE2},
-	{pattern_ipv4_nvgre_eth_ipv6_sctp, INSET_TUNNEL_IPV6_TYPE2},
-};
-
+void ice_register_flow_engine(struct ice_flow_engine *engine);
+int ice_flow_init(struct ice_adapter *ad);
+void ice_flow_uninit(struct ice_adapter *ad);
+int ice_register_parser(struct ice_flow_parser *parser,
+		struct ice_adapter *ad);
+void ice_unregister_parser(struct ice_flow_parser *parser,
+		struct ice_adapter *ad);
+struct ice_pattern_match_item *
+ice_search_pattern_match_item(const struct rte_flow_item pattern[],
+		struct ice_pattern_match_item *array,
+		uint32_t array_len,
+		struct rte_flow_error *error);
 #endif
