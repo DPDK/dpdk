@@ -106,6 +106,12 @@ New Features
   Added support for asymmetric operations in Marvell OCTEON TX cypto PMD.
   Supports RSA and modexp operations.
 
+* **Added Marvell OCTEON TX2 crypto PMD**
+
+  Added a new PMD driver for h/w crypto offload block on ``OCTEON TX2`` SoC.
+
+  See :doc:`../cryptodevs/octeontx2` for more details
+
 * **Updated NXP crypto PMDs for PDCP support.**
 
   PDCP support is added to DPAA_SEC and DPAA2_SEC PMDs using rte_security APIs.

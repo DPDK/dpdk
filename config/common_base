@@ -594,6 +594,11 @@ CONFIG_RTE_LIBRTE_DPAA_MAX_CRYPTODEV=4
 CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO=y
 
 #
+# Compile PMD for Marvell OCTEON TX2 crypto device
+#
+CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_CRYPTO=y
+
+#
 # Compile PMD for QuickAssist based devices - see docs for details
 #
 CONFIG_RTE_LIBRTE_PMD_QAT=y

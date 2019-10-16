@@ -1,0 +1,93 @@
+..  SPDX-License-Identifier: BSD-3-Clause
+    Copyright(c) 2019 Marvell International Ltd.
+
+
+Marvell OCTEON TX2 Crypto Poll Mode Driver
+==========================================
+
+The OCTEON TX2 crypto poll mode driver provides support for offloading
+cryptographic operations to cryptographic accelerator units on the
+**OCTEON TX2** :sup:`®` family of processors (CN9XXX).
+
+More information about OCTEON TX2 SoCs may be obtained from `<https://www.marvell.com>`_
+
+Features
+--------
+
+The OCTEON TX2 crypto PMD has support for:
+
+Installation
+------------
+
+The OCTEON TX2 crypto PMD may be compiled natively on an OCTEON TX2 platform or
+cross-compiled on an x86 platform.
+
+Enable OCTEON TX2 crypto PMD in your config file:
+
+* ``CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_CRYPTO=y``
+
+Refer to :doc:`../platform/octeontx2` for instructions to build your DPDK
+application.
+
+.. note::
+
+   The OCTEON TX2 crypto PMD uses services from the kernel mode OCTEON TX2
+   crypto PF driver in linux. This driver is included in the OCTEON TX SDK.
+
+Initialization
+--------------
+
+List the CPT PF devices available on your OCTEON TX2 platform:
+
+.. code-block:: console
+
+    lspci -d:a0fd
+
+``a0fd`` is the CPT PF device id. You should see output similar to:
+
+.. code-block:: console
+
+    0002:10:00.0 Class 1080: Device 177d:a0fd
+
+Set ``sriov_numvfs`` on the CPT PF device, to create a VF:
+
+.. code-block:: console
+
+    echo 1 > /sys/bus/pci/drivers/octeontx2-cpt/0002:10:00.0/sriov_numvfs
+
+Bind the CPT VF device to the vfio_pci driver:
+
+.. code-block:: console
+
+    echo '177d a0fe' > /sys/bus/pci/drivers/vfio-pci/new_id
+    echo 0002:10:00.1 > /sys/bus/pci/devices/0002:10:00.1/driver/unbind
+    echo 0002:10:00.1 > /sys/bus/pci/drivers/vfio-pci/bind
+
+Another way to bind the VF would be to use the ``dpdk-devbind.py`` script:
+
+.. code-block:: console
+
+    cd <dpdk directory>
+    ./usertools/dpdk-devbind.py -u 0002:10:00.1
+    ./usertools/dpdk-devbind.py -b vfio-pci 0002:10.00.1
+
+.. note::
+
+    Ensure that sufficient huge pages are available for your application::
+
+        echo 8 > /sys/kernel/mm/hugepages/hugepages-524288kB/nr_hugepages
+
+    Refer to :ref:`linux_gsg_hugepages` for more details.
+
+Debugging Options
+-----------------
+
+.. _table_octeontx2_crypto_debug_options:
+
+.. table:: OCTEON TX2 crypto PMD debug options
+
+    +---+------------+-------------------------------------------------------+
+    | # | Component  | EAL log command                                       |
+    +===+============+=======================================================+
+    | 1 | CPT        | --log-level='pmd\.crypto\.octeontx2,8'                |
+    +---+------------+-------------------------------------------------------+

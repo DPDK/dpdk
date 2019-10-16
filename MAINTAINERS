@@ -980,6 +980,13 @@ F: drivers/crypto/nitrox/
 F: doc/guides/cryptodevs/nitrox.rst
 F: doc/guides/cryptodevs/features/nitrox.ini
 
+Marvell OCTEON TX2 crypto
+M: Ankur Dwivedi <adwivedi@marvell.com>
+M: Anoob Joseph <anoobj@marvell.com>
+F: drivers/crypto/octeontx2/
+F: doc/guides/cryptodevs/octeontx2.rst
+F: doc/guides/cryptodevs/features/octeontx2.ini
+
 Null Crypto
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/null/
