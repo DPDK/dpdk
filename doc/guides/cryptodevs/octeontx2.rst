@@ -149,3 +149,11 @@ application:
 
     ./test
     RTE>>cryptodev_octeontx2_autotest
+
+The asymmetric crypto operations on OCTEON TX2 crypto PMD may be verified by running the test
+application:
+
+.. code-block:: console
+
+    ./test
+    RTE>>cryptodev_octeontx2_asym_autotest
