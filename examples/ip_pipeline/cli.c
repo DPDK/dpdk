@@ -414,23 +414,23 @@ cmd_tmgr_subport_profile(char **tokens,
 		return;
 	}
 
-	if (parser_read_uint32(&p.tb_rate, tokens[3]) != 0) {
+	if (parser_read_uint64(&p.tb_rate, tokens[3]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tb_rate");
 		return;
 	}
 
-	if (parser_read_uint32(&p.tb_size, tokens[4]) != 0) {
+	if (parser_read_uint64(&p.tb_size, tokens[4]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tb_size");
 		return;
 	}
 
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-		if (parser_read_uint32(&p.tc_rate[i], tokens[5 + i]) != 0) {
+		if (parser_read_uint64(&p.tc_rate[i], tokens[5 + i]) != 0) {
 			snprintf(out, out_size, MSG_ARG_INVALID, "tc_rate");
 			return;
 		}
 
-	if (parser_read_uint32(&p.tc_period, tokens[18]) != 0) {
+	if (parser_read_uint64(&p.tc_period, tokens[18]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tc_period");
 		return;
 	}
@@ -487,23 +487,23 @@ cmd_tmgr_pipe_profile(char **tokens,
 		return;
 	}
 
-	if (parser_read_uint32(&p.tb_rate, tokens[3]) != 0) {
+	if (parser_read_uint64(&p.tb_rate, tokens[3]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tb_rate");
 		return;
 	}
 
-	if (parser_read_uint32(&p.tb_size, tokens[4]) != 0) {
+	if (parser_read_uint64(&p.tb_size, tokens[4]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tb_size");
 		return;
 	}
 
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-		if (parser_read_uint32(&p.tc_rate[i], tokens[5 + i]) != 0) {
+		if (parser_read_uint64(&p.tc_rate[i], tokens[5 + i]) != 0) {
 			snprintf(out, out_size, MSG_ARG_INVALID, "tc_rate");
 			return;
 		}
 
-	if (parser_read_uint32(&p.tc_period, tokens[18]) != 0) {
+	if (parser_read_uint64(&p.tc_period, tokens[18]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tc_period");
 		return;
 	}
@@ -556,7 +556,7 @@ cmd_tmgr(char **tokens,
 		return;
 	}
 
-	if (parser_read_uint32(&p.rate, tokens[3]) != 0) {
+	if (parser_read_uint64(&p.rate, tokens[3]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "rate");
 		return;
 	}

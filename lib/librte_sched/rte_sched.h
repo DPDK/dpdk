@@ -121,16 +121,16 @@ extern "C" {
  */
 struct rte_sched_pipe_params {
 	/** Token bucket rate (measured in bytes per second) */
-	uint32_t tb_rate;
+	uint64_t tb_rate;
 
 	/** Token bucket size (measured in credits) */
-	uint32_t tb_size;
+	uint64_t tb_size;
 
 	/** Traffic class rates (measured in bytes per second) */
-	uint32_t tc_rate[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint64_t tc_rate[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 
 	/** Enforcement period (measured in milliseconds) */
-	uint32_t tc_period;
+	uint64_t tc_period;
 
 	/** Best-effort traffic class oversubscription weight */
 	uint8_t tc_ov_weight;
@@ -150,16 +150,16 @@ struct rte_sched_pipe_params {
  */
 struct rte_sched_subport_params {
 	/** Token bucket rate (measured in bytes per second) */
-	uint32_t tb_rate;
+	uint64_t tb_rate;
 
 	/** Token bucket size (measured in credits) */
-	uint32_t tb_size;
+	uint64_t tb_size;
 
 	/** Traffic class rates (measured in bytes per second) */
-	uint32_t tc_rate[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint64_t tc_rate[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 
 	/** Enforcement period for rates (measured in milliseconds) */
-	uint32_t tc_period;
+	uint64_t tc_period;
 
 	/** Number of subport pipes.
 	 * The subport can enable/allocate fewer pipes than the maximum
@@ -195,41 +195,41 @@ struct rte_sched_subport_params {
 /** Subport statistics */
 struct rte_sched_subport_stats {
 	/** Number of packets successfully written */
-	uint32_t n_pkts_tc[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint64_t n_pkts_tc[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 
 	/** Number of packets dropped */
-	uint32_t n_pkts_tc_dropped[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint64_t n_pkts_tc_dropped[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 
 	/** Number of bytes successfully written for each traffic class */
-	uint32_t n_bytes_tc[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint64_t n_bytes_tc[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 
 	/** Number of bytes dropped for each traffic class */
-	uint32_t n_bytes_tc_dropped[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint64_t n_bytes_tc_dropped[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 
 #ifdef RTE_SCHED_RED
 	/** Number of packets dropped by red */
-	uint32_t n_pkts_red_dropped[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint64_t n_pkts_red_dropped[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 #endif
 };
 
 /** Queue statistics */
 struct rte_sched_queue_stats {
 	/** Packets successfully written */
-	uint32_t n_pkts;
+	uint64_t n_pkts;
 
 	/** Packets dropped */
-	uint32_t n_pkts_dropped;
+	uint64_t n_pkts_dropped;
 
 #ifdef RTE_SCHED_RED
 	/** Packets dropped by RED */
-	uint32_t n_pkts_red_dropped;
+	uint64_t n_pkts_red_dropped;
 #endif
 
 	/** Bytes successfully written */
-	uint32_t n_bytes;
+	uint64_t n_bytes;
 
 	/** Bytes dropped */
-	uint32_t n_bytes_dropped;
+	uint64_t n_bytes_dropped;
 };
 
 /** Port configuration parameters. */
@@ -241,7 +241,7 @@ struct rte_sched_port_params {
 	int socket;
 
 	/** Output port rate (measured in bytes per second) */
-	uint32_t rate;
+	uint64_t rate;
 
 	/** Maximum Ethernet frame size (measured in bytes).
 	 * Should not include the framing overhead.

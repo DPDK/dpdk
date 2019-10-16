@@ -40,7 +40,7 @@ struct tmgr_port *
 tmgr_port_find(const char *name);
 
 struct tmgr_port_params {
-	uint32_t rate;
+	uint64_t rate;
 	uint32_t n_subports_per_port;
 	uint32_t frame_overhead;
 	uint32_t mtu;

@@ -307,7 +307,7 @@ subport_stat(uint16_t port_id, uint32_t subport_id)
 	printf("+----+-------------+-------------+-------------+-------------+-------------+\n");
 
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
-		printf("|  %d | %11" PRIu32 " | %11" PRIu32 " | %11" PRIu32 " | %11" PRIu32 " | %11" PRIu32 " |\n",
+		printf("|  %d | %11" PRIu64 " | %11" PRIu64 " | %11" PRIu64 " | %11" PRIu64 " | %11" PRIu32 " |\n",
 			i, stats.n_pkts_tc[i], stats.n_pkts_tc_dropped[i],
 		stats.n_bytes_tc[i], stats.n_bytes_tc_dropped[i], tc_ov[i]);
 		printf("+----+-------------+-------------+-------------+-------------+-------------+\n");
@@ -351,7 +351,7 @@ pipe_stat(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id)
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
 		if (i < RTE_SCHED_TRAFFIC_CLASS_BE) {
 			rte_sched_queue_read_stats(port, queue_id + i, &stats, &qlen);
-			printf("|  %d |   %d   | %11" PRIu32 " | %11" PRIu32 " | %11" PRIu32 " | %11" PRIu32 " | %11i |\n",
+			printf("|  %d |   %d   | %11" PRIu64 " | %11" PRIu64 " | %11" PRIu64 " | %11" PRIu64 " | %11i |\n",
 				i, 0, stats.n_pkts, stats.n_pkts_dropped, stats.n_bytes,
 				stats.n_bytes_dropped, qlen);
 			printf("+----+-------+-------------+-------------+-------------+-------------+-------------+\n");
@@ -359,7 +359,7 @@ pipe_stat(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id)
 			for (j = 0; j < RTE_SCHED_BE_QUEUES_PER_PIPE; j++) {
 				rte_sched_queue_read_stats(port, queue_id + i + j,
 					&stats, &qlen);
-				printf("|  %d |   %d   | %11" PRIu32 " | %11" PRIu32 " | %11" PRIu32 " | %11" PRIu32 " | %11i |\n",
+				printf("|  %d |   %d   | %11" PRIu64 " | %11" PRIu64 " | %11" PRIu64 " | %11" PRIu64 " | %11i |\n",
 					i, j, stats.n_pkts, stats.n_pkts_dropped, stats.n_bytes,
 					stats.n_bytes_dropped, qlen);
 				printf("+----+-------+-------------+-------------+-------------+-------------+-------------+\n");
