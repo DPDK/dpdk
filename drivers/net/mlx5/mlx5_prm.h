@@ -856,6 +856,18 @@ enum {
 	MLX5_INLINE_MODE_INNER_TCP_UDP,
 };
 
+/* HCA bit masks indicating which Flex parser protocols are already enabled. */
+#define MLX5_HCA_FLEX_IPV4_OVER_VXLAN_ENABLED (1UL << 0)
+#define MLX5_HCA_FLEX_IPV6_OVER_VXLAN_ENABLED (1UL << 1)
+#define MLX5_HCA_FLEX_IPV6_OVER_IP_ENABLED (1UL << 2)
+#define MLX5_HCA_FLEX_GENEVE_ENABLED (1UL << 3)
+#define MLX5_HCA_FLEX_CW_MPLS_OVER_GRE_ENABLED (1UL << 4)
+#define MLX5_HCA_FLEX_CW_MPLS_OVER_UDP_ENABLED (1UL << 5)
+#define MLX5_HCA_FLEX_P_BIT_VXLAN_GPE_ENABLED (1UL << 6)
+#define MLX5_HCA_FLEX_VXLAN_GPE_ENABLED (1UL << 7)
+#define MLX5_HCA_FLEX_ICMP_ENABLED (1UL << 8)
+#define MLX5_HCA_FLEX_ICMPV6_ENABLED (1UL << 9)
+
 struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_0[0x30];
 	u8 vhca_id[0x10];

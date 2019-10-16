@@ -330,6 +330,8 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 	attr->eth_net_offloads = MLX5_GET(cmd_hca_cap, hcattr,
 					  eth_net_offloads);
 	attr->eth_virt = MLX5_GET(cmd_hca_cap, hcattr, eth_virt);
+	attr->flex_parser_protocols = MLX5_GET(cmd_hca_cap, hcattr,
+					       flex_parser_protocols);
 	if (!attr->eth_net_offloads)
 		return 0;
 
