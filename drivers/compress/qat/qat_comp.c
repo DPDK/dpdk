@@ -324,10 +324,32 @@ qat_comp_process_response(void **op, uint8_t *resp, void *op_cookie,
 		    (!cmp_err_code && xlat_err_code == ERR_CODE_OVERFLOW_ERROR)
 				||
 		    (cmp_err_code == ERR_CODE_OVERFLOW_ERROR &&
-		     xlat_err_code == ERR_CODE_OVERFLOW_ERROR))
-			rx_op->status =
+		     xlat_err_code == ERR_CODE_OVERFLOW_ERROR)){
+
+			struct icp_qat_fw_resp_comp_pars *comp_resp =
+	  (struct icp_qat_fw_resp_comp_pars *)&resp_msg->comp_resp_pars;
+
+			/* handle recoverable out-of-buffer condition */
+			/* in stateless compression scenario */
+			if (comp_resp->input_byte_counter) {
+				if ((qat_xform->qat_comp_request_type
+				== QAT_COMP_REQUEST_FIXED_COMP_STATELESS) ||
+				    (qat_xform->qat_comp_request_type
+				== QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS)) {
+
+					rx_op->status =
+				RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE;
+					rx_op->consumed =
+						comp_resp->input_byte_counter;
+					rx_op->produced =
+						comp_resp->output_byte_counter;
+				} else
+					rx_op->status =
 				RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
-		else
+			} else
+				rx_op->status =
+				RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+		} else
 			rx_op->status = RTE_COMP_OP_STATUS_ERROR;
 
 		++(*dequeue_err_count);
