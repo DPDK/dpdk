@@ -178,6 +178,207 @@
 #define ICE_INSET_GTPU_QFI \
 	(ICE_PROT_GTPU | ICE_GTPU_QFI)
 
+/* empty pattern */
+extern enum rte_flow_item_type pattern_empty[];
+
+/* L2 */
+extern enum rte_flow_item_type pattern_ethertype[];
+extern enum rte_flow_item_type pattern_ethertype_vlan[];
+extern enum rte_flow_item_type pattern_ethertype_qinq[];
+
+/* ARP */
+extern enum rte_flow_item_type pattern_eth_arp[];
+
+/* non-tunnel IPv4 */
+extern enum rte_flow_item_type pattern_eth_ipv4[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv4[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_icmp[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv4_icmp[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv4_icmp[];
+
+/* non-tunnel IPv6 */
+extern enum rte_flow_item_type pattern_eth_ipv6[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv6[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_icmp6[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv6_icmp6[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv6_icmp6[];
+
+/* IPv4 VXLAN IPv4 */
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv4_icmp[];
+
+/* IPv4 VXLAN MAC IPv4 */
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv4_icmp[];
+
+/* IPv6 VXLAN IPv4 */
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv4_icmp[];
+
+/* IPv6 VXLAN MAC IPv4 */
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv4_icmp[];
+
+/* IPv4 VXLAN IPv6 */
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_ipv6_icmp6[];
+
+/* IPv4 VXLAN MAC IPv6 */
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_vxlan_eth_ipv6_icmp6[];
+
+/* IPv6 VXLAN IPv6 */
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_ipv6_icmp6[];
+
+/* IPv6 VXLAN MAC IPv6 */
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_vxlan_eth_ipv6_icmp6[];
+
+/* IPv4 NVGRE IPv4 */
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv4_icmp[];
+
+/* IPv4 NVGRE MAC IPv4 */
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv4_icmp[];
+
+/* IPv6 NVGRE IPv4 */
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv4_icmp[];
+
+/* IPv6 NVGRE MAC IPv4 */
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv4_icmp[];
+
+/* IPv4 NVGRE IPv6 */
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_ipv6_icmp6[];
+
+/* IPv4 NVGRE MAC IPv6 */
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_nvgre_eth_ipv6_icmp6[];
+
+/* IPv6 NVGRE IPv6 */
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_ipv6_icmp6[];
+
+/* IPv6 NVGRE MAC IPv6 */
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv6_icmp6[];
+
+/* GTPU */
+extern enum rte_flow_item_type pattern_eth_ipv4_gtpu_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv4_gtpu_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_gtpu_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_gtpu_ipv4_icmp[];
+
+/* PPPoE */
+extern enum rte_flow_item_type pattern_eth_pppoed[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoed[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoed[];
+extern enum rte_flow_item_type pattern_eth_pppoes[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv4[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv4[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv4[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv4_sctp[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv4_icmp[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv4_icmp[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv4_icmp[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv6[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv6[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv6[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv6_sctp[];
+extern enum rte_flow_item_type pattern_eth_pppoes_ipv6_icmp6[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv6_icmp6[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv6_icmp6[];
+
 struct ice_adapter;
 
 extern const struct rte_flow_ops ice_flow_ops;
