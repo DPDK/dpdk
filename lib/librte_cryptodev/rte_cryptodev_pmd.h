@@ -61,7 +61,6 @@ struct rte_cryptodev_global {
 	struct rte_cryptodev_data *data[RTE_CRYPTO_MAX_DEVS];
 	/**< Device private data */
 	uint8_t nb_devs;		/**< Number of devices found */
-	uint8_t max_devs;		/**< Max number of devices */
 };
 
 /* Cryptodev driver, containing the driver ID */
