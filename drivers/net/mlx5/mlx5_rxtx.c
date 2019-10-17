@@ -2747,27 +2747,33 @@ mlx5_tx_dseg_iptr(struct mlx5_txq_data *restrict txq,
 	/* Unrolled implementation of generic rte_memcpy. */
 	dst = (uintptr_t)&dseg->inline_data[0];
 	src = (uintptr_t)buf;
-#ifdef RTE_ARCH_STRICT_ALIGN
-	memcpy(dst, src, len);
-#else
 	if (len & 0x08) {
-		*(uint64_t *)dst = *(uint64_t *)src;
+#ifdef RTE_ARCH_STRICT_ALIGN
+		assert(dst == RTE_PTR_ALIGN(dst, sizeof(uint32_t)));
+		*(uint32_t *)dst = *(unaligned_uint32_t *)src;
+		dst += sizeof(uint32_t);
+		src += sizeof(uint32_t);
+		*(uint32_t *)dst = *(unaligned_uint32_t *)src;
+		dst += sizeof(uint32_t);
+		src += sizeof(uint32_t);
+#else
+		*(uint64_t *)dst = *(unaligned_uint64_t *)src;
 		dst += sizeof(uint64_t);
 		src += sizeof(uint64_t);
+#endif
 	}
 	if (len & 0x04) {
-		*(uint32_t *)dst = *(uint32_t *)src;
+		*(uint32_t *)dst = *(unaligned_uint32_t *)src;
 		dst += sizeof(uint32_t);
 		src += sizeof(uint32_t);
 	}
 	if (len & 0x02) {
-		*(uint16_t *)dst = *(uint16_t *)src;
+		*(uint16_t *)dst = *(unaligned_uint16_t *)src;
 		dst += sizeof(uint16_t);
 		src += sizeof(uint16_t);
 	}
 	if (len & 0x01)
 		*(uint8_t *)dst = *(uint8_t *)src;
-#endif
 }
 
 /**
