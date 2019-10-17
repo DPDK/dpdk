@@ -933,6 +933,24 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 			~(1ULL << VHOST_USER_PROTOCOL_F_PAGEFAULT);
 	}
 
+	/*
+	 * We'll not be able to receive a buffer from guest in linear mode
+	 * without external buffer if it will not fit in a single mbuf, which is
+	 * likely if segmentation offloading enabled.
+	 */
+	if (vsocket->linearbuf && !vsocket->extbuf) {
+		uint64_t seg_offload_features =
+				(1ULL << VIRTIO_NET_F_HOST_TSO4) |
+				(1ULL << VIRTIO_NET_F_HOST_TSO6) |
+				(1ULL << VIRTIO_NET_F_HOST_UFO);
+
+		RTE_LOG(INFO, VHOST_CONFIG,
+			"Linear buffers requested without external buffers, "
+			"disabling host segmentation offloading support\n");
+		vsocket->supported_features &= ~seg_offload_features;
+		vsocket->features &= ~seg_offload_features;
+	}
+
 	if (!(flags & RTE_VHOST_USER_IOMMU_SUPPORT)) {
 		vsocket->supported_features &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
 		vsocket->features &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
