@@ -27,6 +27,7 @@
 #include <rte_ethdev_driver.h>
 #include <rte_cryptodev.h>
 #include <rte_event_eth_rx_adapter.h>
+#include <rte_event_eth_tx_adapter.h>
 
 #include <fslmc_vfio.h>
 #include <dpaa2_hw_pvt.h>
@@ -947,6 +948,66 @@ dpaa2_eventdev_crypto_stop(const struct rte_eventdev *dev,
 	return 0;
 }
 
+static int
+dpaa2_eventdev_tx_adapter_create(uint8_t id,
+				 const struct rte_eventdev *dev)
+{
+	RTE_SET_USED(id);
+	RTE_SET_USED(dev);
+
+	/* Nothing to do. Simply return. */
+	return 0;
+}
+
+static int
+dpaa2_eventdev_tx_adapter_caps(const struct rte_eventdev *dev,
+			       const struct rte_eth_dev *eth_dev,
+			       uint32_t *caps)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
+
+	*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT;
+	return 0;
+}
+
+static uint16_t
+dpaa2_eventdev_txa_enqueue_same_dest(void *port,
+				     struct rte_event ev[],
+				     uint16_t nb_events)
+{
+	struct rte_mbuf *m[DPAA2_EVENT_MAX_PORT_ENQUEUE_DEPTH], *m0;
+	uint8_t qid, i;
+
+	RTE_SET_USED(port);
+
+	m0 = (struct rte_mbuf *)ev[0].mbuf;
+	qid = rte_event_eth_tx_adapter_txq_get(m0);
+
+	for (i = 0; i < nb_events; i++)
+		m[i] = (struct rte_mbuf *)ev[i].mbuf;
+
+	return rte_eth_tx_burst(m0->port, qid, m, nb_events);
+}
+
+static uint16_t
+dpaa2_eventdev_txa_enqueue(void *port,
+			   struct rte_event ev[],
+			   uint16_t nb_events)
+{
+	struct rte_mbuf *m = (struct rte_mbuf *)ev[0].mbuf;
+	uint8_t qid, i;
+
+	RTE_SET_USED(port);
+
+	for (i = 0; i < nb_events; i++) {
+		qid = rte_event_eth_tx_adapter_txq_get(m);
+		rte_eth_tx_burst(m->port, qid, &m, 1);
+	}
+
+	return nb_events;
+}
+
 static struct rte_eventdev_ops dpaa2_eventdev_ops = {
 	.dev_infos_get    = dpaa2_eventdev_info_get,
 	.dev_configure    = dpaa2_eventdev_configure,
@@ -964,11 +1025,13 @@ static struct rte_eventdev_ops dpaa2_eventdev_ops = {
 	.timeout_ticks    = dpaa2_eventdev_timeout_ticks,
 	.dump             = dpaa2_eventdev_dump,
 	.dev_selftest     = test_eventdev_dpaa2,
-	.eth_rx_adapter_caps_get = dpaa2_eventdev_eth_caps_get,
-	.eth_rx_adapter_queue_add = dpaa2_eventdev_eth_queue_add,
-	.eth_rx_adapter_queue_del = dpaa2_eventdev_eth_queue_del,
-	.eth_rx_adapter_start = dpaa2_eventdev_eth_start,
-	.eth_rx_adapter_stop = dpaa2_eventdev_eth_stop,
+	.eth_rx_adapter_caps_get	= dpaa2_eventdev_eth_caps_get,
+	.eth_rx_adapter_queue_add	= dpaa2_eventdev_eth_queue_add,
+	.eth_rx_adapter_queue_del	= dpaa2_eventdev_eth_queue_del,
+	.eth_rx_adapter_start		= dpaa2_eventdev_eth_start,
+	.eth_rx_adapter_stop		= dpaa2_eventdev_eth_stop,
+	.eth_tx_adapter_caps_get	= dpaa2_eventdev_tx_adapter_caps,
+	.eth_tx_adapter_create		= dpaa2_eventdev_tx_adapter_create,
 	.crypto_adapter_caps_get	= dpaa2_eventdev_crypto_caps_get,
 	.crypto_adapter_queue_pair_add	= dpaa2_eventdev_crypto_queue_add,
 	.crypto_adapter_queue_pair_del	= dpaa2_eventdev_crypto_queue_del,
@@ -1035,6 +1098,8 @@ dpaa2_eventdev_create(const char *name)
 	eventdev->enqueue_forward_burst = dpaa2_eventdev_enqueue_burst;
 	eventdev->dequeue       = dpaa2_eventdev_dequeue;
 	eventdev->dequeue_burst = dpaa2_eventdev_dequeue_burst;
+	eventdev->txa_enqueue	= dpaa2_eventdev_txa_enqueue;
+	eventdev->txa_enqueue_same_dest	= dpaa2_eventdev_txa_enqueue_same_dest;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
