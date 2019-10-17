@@ -12,7 +12,6 @@
 
 #include "test.h"
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define	REG_METRIC_COUNT	6
 #define	METRIC_LESSER_COUNT	3
 #define	KEY	1
@@ -106,7 +105,7 @@ test_metrics_reg_names(void)
 		};
 
 	/* Success Test: valid array and count size */
-	err = rte_metrics_reg_names(&mnames[0], ARRAY_SIZE(mnames));
+	err = rte_metrics_reg_names(&mnames[0], RTE_DIM(mnames));
 	TEST_ASSERT(err >= 0, "%s, %d", __func__, __LINE__);
 
 	return TEST_SUCCESS;
@@ -167,20 +166,20 @@ test_metrics_update_values(void)
 
 	/* Failed Test: Invalid count size */
 	err = rte_metrics_update_values(RTE_METRICS_GLOBAL,
-			 KEY, &value[0], ARRAY_SIZE(value));
+			 KEY, &value[0], RTE_DIM(value));
 	TEST_ASSERT(err < 0, "%s, %d", __func__, __LINE__);
 
 	/* Failed Test: Invalid port_id(lower value) and valid data */
-	err = rte_metrics_update_values(-2, KEY, &value[0], ARRAY_SIZE(value));
+	err = rte_metrics_update_values(-2, KEY, &value[0], RTE_DIM(value));
 	TEST_ASSERT(err == -EINVAL, "%s, %d", __func__, __LINE__);
 
 	/* Failed Test: Invalid port_id(higher value) and valid data */
-	err = rte_metrics_update_values(39, 1, &value[0], ARRAY_SIZE(value));
+	err = rte_metrics_update_values(39, 1, &value[0], RTE_DIM(value));
 	TEST_ASSERT(err == -EINVAL, "%s, %d", __func__, __LINE__);
 
 	/* Failed Test: Invalid array */
 	err = rte_metrics_update_values(RTE_METRICS_GLOBAL,
-			 KEY, NULL, ARRAY_SIZE(value));
+			 KEY, NULL, RTE_DIM(value));
 	TEST_ASSERT(err == -EINVAL, "%s, %d", __func__, __LINE__);
 
 	return TEST_SUCCESS;

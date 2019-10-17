@@ -26,10 +26,6 @@
 #define TEST_NUM_BUFS 10
 #define TEST_NUM_SESSIONS 4
 
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
-#endif
-
 #ifndef TEST_DATA_SIZE
 	#define TEST_DATA_SIZE 4096
 #endif
@@ -580,7 +576,7 @@ load_test_vectors(void)
 {
 	uint32_t i = 0, v_size = 0;
 	/* Load MODEX vector*/
-	v_size = ARRAY_SIZE(modex_test_case);
+	v_size = RTE_DIM(modex_test_case);
 	for (i = 0; i < v_size; i++) {
 		if (test_vector.size >= (TEST_VECTOR_SIZE)) {
 			RTE_LOG(DEBUG, USER1,
@@ -591,7 +587,7 @@ load_test_vectors(void)
 		test_vector.size++;
 	}
 	/* Load MODINV vector*/
-	v_size = ARRAY_SIZE(modinv_test_case);
+	v_size = RTE_DIM(modinv_test_case);
 	for (i = 0; i < v_size; i++) {
 		if (test_vector.size >= (TEST_VECTOR_SIZE)) {
 			RTE_LOG(DEBUG, USER1,
@@ -602,7 +598,7 @@ load_test_vectors(void)
 		test_vector.size++;
 	}
 	/* Load RSA vector*/
-	v_size = ARRAY_SIZE(rsa_test_case_list);
+	v_size = RTE_DIM(rsa_test_case_list);
 	for (i = 0; i < v_size; i++) {
 		if (test_vector.size >= (TEST_VECTOR_SIZE)) {
 			RTE_LOG(DEBUG, USER1,
