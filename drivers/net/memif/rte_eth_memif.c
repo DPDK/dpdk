@@ -873,6 +873,7 @@ memif_tx_queue_setup(struct rte_eth_dev *dev,
 	mq->n_bytes = 0;
 	mq->intr_handle.fd = -1;
 	mq->intr_handle.type = RTE_INTR_HANDLE_EXT;
+	mq->in_port = dev->data->port_id;
 	dev->data->tx_queues[qid] = mq;
 
 	return 0;
