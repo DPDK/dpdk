@@ -2536,17 +2536,27 @@ struct mlx5_hrxq *
 mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_obj *ind_tbl;
-	struct ibv_qp *qp;
-	struct mlx5_hrxq *hrxq;
+	struct mlx5_ind_table_obj *ind_tbl = NULL;
+	struct ibv_qp *qp = NULL;
+	struct mlx5_hrxq *hrxq = NULL;
 
 	if (priv->drop_queue.hrxq) {
 		rte_atomic32_inc(&priv->drop_queue.hrxq->refcnt);
 		return priv->drop_queue.hrxq;
 	}
+	hrxq = rte_calloc(__func__, 1, sizeof(*hrxq), 0);
+	if (!hrxq) {
+		DRV_LOG(WARNING,
+			"port %u cannot allocate memory for drop queue",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	priv->drop_queue.hrxq = hrxq;
 	ind_tbl = mlx5_ind_table_obj_drop_new(dev);
 	if (!ind_tbl)
-		return NULL;
+		goto error;
+	hrxq->ind_table = ind_tbl;
 	qp = mlx5_glue->create_qp_ex(priv->sh->ctx,
 		 &(struct ibv_qp_init_attr_ex){
 			.qp_type = IBV_QPT_RAW_PACKET,
@@ -2570,15 +2580,6 @@ mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 		rte_errno = errno;
 		goto error;
 	}
-	hrxq = rte_calloc(__func__, 1, sizeof(*hrxq), 0);
-	if (!hrxq) {
-		DRV_LOG(WARNING,
-			"port %u cannot allocate memory for drop queue",
-			dev->data->port_id);
-		rte_errno = ENOMEM;
-		goto error;
-	}
-	hrxq->ind_table = ind_tbl;
 	hrxq->qp = qp;
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	hrxq->action = mlx5_glue->dv_create_flow_action_dest_ibv_qp(hrxq->qp);
@@ -2587,12 +2588,21 @@ mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 		goto error;
 	}
 #endif
-	priv->drop_queue.hrxq = hrxq;
 	rte_atomic32_set(&hrxq->refcnt, 1);
 	return hrxq;
 error:
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	if (hrxq && hrxq->action)
+		mlx5_glue->destroy_flow_action(hrxq->action);
+#endif
+	if (qp)
+		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
 	if (ind_tbl)
 		mlx5_ind_table_obj_drop_release(dev);
+	if (hrxq) {
+		priv->drop_queue.hrxq = NULL;
+		rte_free(hrxq);
+	}
 	return NULL;
 }
 
