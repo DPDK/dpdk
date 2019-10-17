@@ -6022,6 +6022,9 @@ cmd_set_raw_parsed(const struct buffer *in)
 			size = sizeof(struct rte_flow_item_nvgre);
 			proto = 0x2F;
 			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
+			size = sizeof(struct rte_flow_item_geneve);
+			break;
 		default:
 			printf("Error - Not supported item\n");
 			*total_size = 0;
