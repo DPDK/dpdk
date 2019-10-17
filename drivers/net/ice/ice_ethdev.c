@@ -13,6 +13,7 @@
 #include "base/ice_sched.h"
 #include "base/ice_flow.h"
 #include "base/ice_dcb.h"
+#include "base/ice_common.h"
 #include "ice_ethdev.h"
 #include "ice_rxtx.h"
 #include "ice_generic_flow.h"
@@ -40,6 +41,7 @@ static const char * const ice_valid_args[] = {
 #define ICE_OS_DEFAULT_PKG_NAME		"ICE OS Default Package"
 #define ICE_COMMS_PKG_NAME			"ICE COMMS Package"
 #define ICE_MAX_PKG_FILENAME_SIZE   256
+#define ICE_MAX_RES_DESC_NUM        1024
 
 int ice_logtype_init;
 int ice_logtype_driver;
@@ -1942,6 +1944,92 @@ ice_vsi_config_sw_lldp(struct ice_vsi *vsi,  bool on)
 	return ret;
 }
 
+static enum ice_status
+ice_get_hw_res(struct ice_hw *hw, uint16_t res_type,
+		uint16_t num, uint16_t desc_id,
+		uint16_t *prof_buf, uint16_t *num_prof)
+{
+	struct ice_aqc_get_allocd_res_desc_resp *resp_buf;
+	int ret;
+	uint16_t buf_len;
+	bool res_shared = 1;
+	struct ice_aq_desc aq_desc;
+	struct ice_sq_cd *cd = NULL;
+	struct ice_aqc_get_allocd_res_desc *cmd =
+			&aq_desc.params.get_res_desc;
+
+	buf_len = sizeof(resp_buf->elem) * num;
+	resp_buf = ice_malloc(hw, buf_len);
+	if (!resp_buf)
+		return -ENOMEM;
+
+	ice_fill_dflt_direct_cmd_desc(&aq_desc,
+			ice_aqc_opc_get_allocd_res_desc);
+
+	cmd->ops.cmd.res = CPU_TO_LE16(((res_type << ICE_AQC_RES_TYPE_S) &
+				ICE_AQC_RES_TYPE_M) | (res_shared ?
+				ICE_AQC_RES_TYPE_FLAG_SHARED : 0));
+	cmd->ops.cmd.first_desc = CPU_TO_LE16(desc_id);
+
+	ret = ice_aq_send_cmd(hw, &aq_desc, resp_buf, buf_len, cd);
+	if (!ret)
+		*num_prof = LE16_TO_CPU(cmd->ops.resp.num_desc);
+	else
+		goto exit;
+
+	ice_memcpy(prof_buf, resp_buf->elem, sizeof(resp_buf->elem) *
+			(*num_prof), ICE_NONDMA_TO_NONDMA);
+
+exit:
+	rte_free(resp_buf);
+	return ret;
+}
+static int
+ice_cleanup_resource(struct ice_hw *hw, uint16_t res_type)
+{
+	int ret;
+	uint16_t prof_id;
+	uint16_t prof_buf[ICE_MAX_RES_DESC_NUM];
+	uint16_t first_desc = 1;
+	uint16_t num_prof = 0;
+
+	ret = ice_get_hw_res(hw, res_type, ICE_MAX_RES_DESC_NUM,
+			first_desc, prof_buf, &num_prof);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to get fxp resource");
+		return ret;
+	}
+
+	for (prof_id = 0; prof_id < num_prof; prof_id++) {
+		ret = ice_free_hw_res(hw, res_type, 1, &prof_buf[prof_id]);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to free fxp resource");
+			return ret;
+		}
+	}
+	return 0;
+}
+
+static int
+ice_reset_fxp_resource(struct ice_hw *hw)
+{
+	int ret;
+
+	ret = ice_cleanup_resource(hw, ICE_AQC_RES_TYPE_FD_PROF_BLDR_PROFID);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to clearup fdir resource");
+		return ret;
+	}
+
+	ret = ice_cleanup_resource(hw, ICE_AQC_RES_TYPE_HASH_PROF_BLDR_PROFID);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to clearup rss resource");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int
 ice_dev_init(struct rte_eth_dev *dev)
 {
@@ -2076,6 +2164,12 @@ ice_dev_init(struct rte_eth_dev *dev)
 	ret = ice_flow_init(ad);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to initialize flow");
+		return ret;
+	}
+
+	ret = ice_reset_fxp_resource(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to reset fxp resource");
 		return ret;
 	}
 
