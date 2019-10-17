@@ -2006,7 +2006,7 @@ dpaa2_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 		int eth_rx_queue_id,
-		uint16_t dpcon_id,
+		struct dpaa2_dpcon_dev *dpcon,
 		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
 {
 	struct dpaa2_dev_priv *eth_priv = dev->data->dev_private;
@@ -2014,7 +2014,7 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 	struct dpaa2_queue *dpaa2_ethq = eth_priv->rx_vq[eth_rx_queue_id];
 	uint8_t flow_id = dpaa2_ethq->flow_id;
 	struct dpni_queue cfg;
-	uint8_t options;
+	uint8_t options, priority;
 	int ret;
 
 	if (queue_conf->ev.sched_type == RTE_SCHED_TYPE_PARALLEL)
@@ -2026,11 +2026,14 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 	else
 		return -EINVAL;
 
+	priority = (RTE_EVENT_DEV_PRIORITY_LOWEST / queue_conf->ev.priority) *
+		   (dpcon->num_priorities - 1);
+
 	memset(&cfg, 0, sizeof(struct dpni_queue));
 	options = DPNI_QUEUE_OPT_DEST;
 	cfg.destination.type = DPNI_DEST_DPCON;
-	cfg.destination.id = dpcon_id;
-	cfg.destination.priority = queue_conf->ev.priority;
+	cfg.destination.id = dpcon->dpcon_id;
+	cfg.destination.priority = priority;
 
 	if (queue_conf->ev.sched_type == RTE_SCHED_TYPE_ATOMIC) {
 		options |= DPNI_QUEUE_OPT_HOLD_ACTIVE;

@@ -164,7 +164,7 @@ int dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv, void *blist);
 
 int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 		int eth_rx_queue_id,
-		uint16_t dpcon_id,
+		struct dpaa2_dpcon_dev *dpcon,
 		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
 
 int dpaa2_eth_eventq_detach(const struct rte_eth_dev *dev,

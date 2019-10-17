@@ -9,7 +9,7 @@
 int
 dpaa2_sec_eventq_attach(const struct rte_cryptodev *dev,
 		int qp_id,
-		uint16_t dpcon_id,
+		struct dpaa2_dpcon_dev *dpcon,
 		const struct rte_event *event);
 
 int dpaa2_sec_eventq_detach(const struct rte_cryptodev *dev,

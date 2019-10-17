@@ -185,6 +185,17 @@ struct dpaa2_dpci_dev {
 	struct dpaa2_queue tx_queue[DPAA2_DPCI_MAX_QUEUES];
 };
 
+struct dpaa2_dpcon_dev {
+	TAILQ_ENTRY(dpaa2_dpcon_dev) next;
+	struct fsl_mc_io dpcon;
+	uint16_t token;
+	rte_atomic16_t in_use;
+	uint32_t dpcon_id;
+	uint16_t qbman_ch_id;
+	uint8_t num_priorities;
+	uint8_t channel_index;
+};
+
 /*! Global MCP list */
 extern void *(*rte_mcp_ptr_list);
 

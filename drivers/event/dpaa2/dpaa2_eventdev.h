@@ -52,17 +52,6 @@ enum {
  * the ethdev to eventdev with DPAA2 devices.
  */
 
-struct dpaa2_dpcon_dev {
-	TAILQ_ENTRY(dpaa2_dpcon_dev) next;
-	struct fsl_mc_io dpcon;
-	uint16_t token;
-	rte_atomic16_t in_use;
-	uint32_t dpcon_id;
-	uint16_t qbman_ch_id;
-	uint8_t num_priorities;
-	uint8_t channel_index;
-};
-
 struct dpaa2_eventq {
 	/* DPcon device */
 	struct dpaa2_dpcon_dev *dpcon;

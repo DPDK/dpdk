@@ -3487,13 +3487,14 @@ dpaa2_sec_process_atomic_event(struct qbman_swp *swp __attribute__((unused)),
 int
 dpaa2_sec_eventq_attach(const struct rte_cryptodev *dev,
 		int qp_id,
-		uint16_t dpcon_id,
+		struct dpaa2_dpcon_dev *dpcon,
 		const struct rte_event *event)
 {
 	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
 	struct dpaa2_sec_qp *qp = dev->data->queue_pairs[qp_id];
 	struct dpseci_rx_queue_cfg cfg;
+	uint8_t priority;
 	int ret;
 
 	if (event->sched_type == RTE_SCHED_TYPE_PARALLEL)
@@ -3503,11 +3504,14 @@ dpaa2_sec_eventq_attach(const struct rte_cryptodev *dev,
 	else
 		return -EINVAL;
 
+	priority = (RTE_EVENT_DEV_PRIORITY_LOWEST / event->priority) *
+		   (dpcon->num_priorities - 1);
+
 	memset(&cfg, 0, sizeof(struct dpseci_rx_queue_cfg));
 	cfg.options = DPSECI_QUEUE_OPT_DEST;
 	cfg.dest_cfg.dest_type = DPSECI_DEST_DPCON;
-	cfg.dest_cfg.dest_id = dpcon_id;
-	cfg.dest_cfg.priority = event->priority;
+	cfg.dest_cfg.dest_id = dpcon->dpcon_id;
+	cfg.dest_cfg.priority = priority;
 
 	cfg.options |= DPSECI_QUEUE_OPT_USER_CTX;
 	cfg.user_ctx = (size_t)(qp);

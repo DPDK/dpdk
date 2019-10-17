@@ -688,14 +688,14 @@ dpaa2_eventdev_eth_queue_add_all(const struct rte_eventdev *dev,
 {
 	struct dpaa2_eventdev *priv = dev->data->dev_private;
 	uint8_t ev_qid = queue_conf->ev.queue_id;
-	uint16_t dpcon_id = priv->evq_info[ev_qid].dpcon->dpcon_id;
+	struct dpaa2_dpcon_dev *dpcon = priv->evq_info[ev_qid].dpcon;
 	int i, ret;
 
 	EVENTDEV_INIT_FUNC_TRACE();
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		ret = dpaa2_eth_eventq_attach(eth_dev, i,
-				dpcon_id, queue_conf);
+					      dpcon, queue_conf);
 		if (ret) {
 			DPAA2_EVENTDEV_ERR(
 				"Event queue attach failed: err(%d)", ret);
@@ -718,7 +718,7 @@ dpaa2_eventdev_eth_queue_add(const struct rte_eventdev *dev,
 {
 	struct dpaa2_eventdev *priv = dev->data->dev_private;
 	uint8_t ev_qid = queue_conf->ev.queue_id;
-	uint16_t dpcon_id = priv->evq_info[ev_qid].dpcon->dpcon_id;
+	struct dpaa2_dpcon_dev *dpcon = priv->evq_info[ev_qid].dpcon;
 	int ret;
 
 	EVENTDEV_INIT_FUNC_TRACE();
@@ -728,7 +728,7 @@ dpaa2_eventdev_eth_queue_add(const struct rte_eventdev *dev,
 				eth_dev, queue_conf);
 
 	ret = dpaa2_eth_eventq_attach(eth_dev, rx_queue_id,
-			dpcon_id, queue_conf);
+				      dpcon, queue_conf);
 	if (ret) {
 		DPAA2_EVENTDEV_ERR(
 			"Event queue attach failed: err(%d)", ret);
@@ -831,14 +831,13 @@ dpaa2_eventdev_crypto_queue_add_all(const struct rte_eventdev *dev,
 {
 	struct dpaa2_eventdev *priv = dev->data->dev_private;
 	uint8_t ev_qid = ev->queue_id;
-	uint16_t dpcon_id = priv->evq_info[ev_qid].dpcon->dpcon_id;
+	struct dpaa2_dpcon_dev *dpcon = priv->evq_info[ev_qid].dpcon;
 	int i, ret;
 
 	EVENTDEV_INIT_FUNC_TRACE();
 
 	for (i = 0; i < cryptodev->data->nb_queue_pairs; i++) {
-		ret = dpaa2_sec_eventq_attach(cryptodev, i,
-				dpcon_id, ev);
+		ret = dpaa2_sec_eventq_attach(cryptodev, i, dpcon, ev);
 		if (ret) {
 			DPAA2_EVENTDEV_ERR("dpaa2_sec_eventq_attach failed: ret %d\n",
 				    ret);
@@ -861,7 +860,7 @@ dpaa2_eventdev_crypto_queue_add(const struct rte_eventdev *dev,
 {
 	struct dpaa2_eventdev *priv = dev->data->dev_private;
 	uint8_t ev_qid = ev->queue_id;
-	uint16_t dpcon_id = priv->evq_info[ev_qid].dpcon->dpcon_id;
+	struct dpaa2_dpcon_dev *dpcon = priv->evq_info[ev_qid].dpcon;
 	int ret;
 
 	EVENTDEV_INIT_FUNC_TRACE();
@@ -871,7 +870,7 @@ dpaa2_eventdev_crypto_queue_add(const struct rte_eventdev *dev,
 				cryptodev, ev);
 
 	ret = dpaa2_sec_eventq_attach(cryptodev, rx_queue_id,
-			dpcon_id, ev);
+				      dpcon, ev);
 	if (ret) {
 		DPAA2_EVENTDEV_ERR(
 			"dpaa2_sec_eventq_attach failed: ret: %d\n", ret);
