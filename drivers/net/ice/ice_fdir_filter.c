@@ -10,6 +10,8 @@
 #define ICE_FDIR_IPV6_TC_OFFSET		20
 #define ICE_IPV6_TC_MASK		(0xFF << ICE_FDIR_IPV6_TC_OFFSET)
 
+#define ICE_FDIR_MAX_QREGION_SIZE	128
+
 #define ICE_FDIR_INSET_ETH_IPV4 (\
 	ICE_INSET_DMAC | \
 	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_TOS | \
@@ -651,6 +653,63 @@ static struct ice_flow_engine ice_fdir_engine = {
 };
 
 static int
+ice_fdir_parse_action_qregion(struct ice_pf *pf,
+			      struct rte_flow_error *error,
+			      const struct rte_flow_action *act,
+			      struct ice_fdir_filter_conf *filter)
+{
+	const struct rte_flow_action_rss *rss = act->conf;
+	uint32_t i;
+
+	if (act->type != RTE_FLOW_ACTION_TYPE_RSS) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, act,
+				   "Invalid action.");
+		return -rte_errno;
+	}
+
+	if (rss->queue_num <= 1) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, act,
+				   "Queue region size can't be 0 or 1.");
+		return -rte_errno;
+	}
+
+	/* check if queue index for queue region is continuous */
+	for (i = 0; i < rss->queue_num - 1; i++) {
+		if (rss->queue[i + 1] != rss->queue[i] + 1) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION, act,
+					   "Discontinuous queue region");
+			return -rte_errno;
+		}
+	}
+
+	if (rss->queue[rss->queue_num - 1] >= pf->dev_data->nb_rx_queues) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, act,
+				   "Invalid queue region indexes.");
+		return -rte_errno;
+	}
+
+	if (!(rte_is_power_of_2(rss->queue_num) &&
+	     (rss->queue_num <= ICE_FDIR_MAX_QREGION_SIZE))) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, act,
+				   "The region size should be any of the following values:"
+				   "1, 2, 4, 8, 16, 32, 64, 128 as long as the total number "
+				   "of queues do not exceed the VSI allocation.");
+		return -rte_errno;
+	}
+
+	filter->input.q_index = rss->queue[0];
+	filter->input.q_region = rte_fls_u32(rss->queue_num) - 1;
+	filter->input.dest_ctl = ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_QGROUP;
+
+	return 0;
+}
+
+static int
 ice_fdir_parse_action(struct ice_adapter *ad,
 		      const struct rte_flow_action actions[],
 		      struct rte_flow_error *error,
@@ -661,6 +720,7 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 	const struct rte_flow_action_mark *mark_spec = NULL;
 	uint32_t dest_num = 0;
 	uint32_t mark_num = 0;
+	int ret;
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
@@ -694,6 +754,14 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 			filter->input.dest_ctl =
 				ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_QINDEX;
 			filter->input.q_index = 0;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			dest_num++;
+
+			ret = ice_fdir_parse_action_qregion(pf,
+						error, actions, filter);
+			if (ret)
+				return ret;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			mark_num++;
