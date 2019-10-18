@@ -139,8 +139,8 @@ usage(char* progname)
 	printf("  --enable-hw-qinq-strip: enable hardware qinq strip.\n");
 	printf("  --enable-drop-en: enable per queue packet drop.\n");
 	printf("  --disable-rss: disable rss.\n");
-	printf("  --port-topology=N: set port topology (N: paired (default) or "
-	       "chained).\n");
+	printf("  --port-topology=<paired|chained|loop>: set port topology (paired "
+	       "is default).\n");
 	printf("  --forward-mode=N: set forwarding mode (N: %s).\n",
 	       list_pkt_forwarding_modes());
 	printf("  --rss-ip: set RSS functions to IPv4/IPv6 only .\n");
