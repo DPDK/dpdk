@@ -252,6 +252,37 @@ struct ice_fdir_filter_conf {
 	uint64_t input_set;
 };
 
+#define ICE_FDIR_COUNTER_DEFAULT_POOL_SIZE	1
+#define ICE_FDIR_COUNTER_MAX_POOL_SIZE		32
+#define ICE_FDIR_COUNTERS_PER_BLOCK		256
+#define ICE_FDIR_COUNTER_INDEX(base_idx) \
+				((base_idx) * ICE_FDIR_COUNTERS_PER_BLOCK)
+struct ice_fdir_counter {
+	TAILQ_ENTRY(ice_fdir_counter) next;
+	uint8_t shared;
+	uint32_t ref_cnt;
+	uint32_t id;
+	uint64_t hits;
+	uint64_t bytes;
+	uint32_t hw_index;
+};
+
+TAILQ_HEAD(ice_fdir_counter_list, ice_fdir_counter);
+
+struct ice_fdir_counter_pool {
+	TAILQ_ENTRY(ice_fdir_counter_pool) next;
+	struct ice_fdir_counter_list counter_list;
+	struct ice_fdir_counter counters[0];
+};
+
+TAILQ_HEAD(ice_fdir_counter_pool_list, ice_fdir_counter_pool);
+
+struct ice_fdir_counter_pool_container {
+	struct ice_fdir_counter_pool_list pool_list;
+	struct ice_fdir_counter_pool *pools[ICE_FDIR_COUNTER_MAX_POOL_SIZE];
+	uint8_t index_free;
+};
+
 /**
  *  A structure used to define fields of a FDIR related info.
  */
@@ -262,6 +293,8 @@ struct ice_fdir_info {
 	void *prg_pkt;                 /* memory for fdir program packet */
 	uint64_t dma_addr;             /* physic address of packet memory*/
 	struct ice_fdir_filter_conf conf;
+
+	struct ice_fdir_counter_pool_container counter;
 };
 
 struct ice_pf {

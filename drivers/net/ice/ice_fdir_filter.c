@@ -101,6 +101,88 @@ fail_mem:
 	return -ENOMEM;
 }
 
+static int
+ice_fdir_counter_pool_add(__rte_unused struct ice_pf *pf,
+			  struct ice_fdir_counter_pool_container *container,
+			  uint32_t index_start,
+			  uint32_t len)
+{
+	struct ice_fdir_counter_pool *pool;
+	uint32_t i;
+	int ret = 0;
+
+	pool = rte_zmalloc("ice_fdir_counter_pool",
+			   sizeof(*pool) +
+			   sizeof(struct ice_fdir_counter) * len,
+			   0);
+	if (!pool) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate memory for fdir counter pool");
+		return -ENOMEM;
+	}
+
+	TAILQ_INIT(&pool->counter_list);
+	TAILQ_INSERT_TAIL(&container->pool_list, pool, next);
+
+	for (i = 0; i < len; i++) {
+		struct ice_fdir_counter *counter = &pool->counters[i];
+
+		counter->hw_index = index_start + i;
+		TAILQ_INSERT_TAIL(&pool->counter_list, counter, next);
+	}
+
+	if (container->index_free == ICE_FDIR_COUNTER_MAX_POOL_SIZE) {
+		PMD_INIT_LOG(ERR, "FDIR counter pool is full");
+		ret = -EINVAL;
+		goto free_pool;
+	}
+
+	container->pools[container->index_free++] = pool;
+	return 0;
+
+free_pool:
+	rte_free(pool);
+	return ret;
+}
+
+static int
+ice_fdir_counter_init(struct ice_pf *pf)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_fdir_info *fdir_info = &pf->fdir;
+	struct ice_fdir_counter_pool_container *container =
+				&fdir_info->counter;
+	uint32_t cnt_index, len;
+	int ret;
+
+	TAILQ_INIT(&container->pool_list);
+
+	cnt_index = ICE_FDIR_COUNTER_INDEX(hw->fd_ctr_base);
+	len = ICE_FDIR_COUNTERS_PER_BLOCK;
+
+	ret = ice_fdir_counter_pool_add(pf, container, cnt_index, len);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to add fdir pool to container");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+ice_fdir_counter_release(struct ice_pf *pf)
+{
+	struct ice_fdir_info *fdir_info = &pf->fdir;
+	struct ice_fdir_counter_pool_container *container =
+				&fdir_info->counter;
+	uint8_t i;
+
+	for (i = 0; i < container->index_free; i++)
+		rte_free(container->pools[i]);
+
+	return 0;
+}
+
 /*
  * ice_fdir_setup - reserve and initialize the Flow Director resources
  * @pf: board private structure
@@ -137,6 +219,12 @@ ice_fdir_setup(struct ice_pf *pf)
 		return -EINVAL;
 	}
 	pf->fdir.fdir_vsi = vsi;
+
+	err = ice_fdir_counter_init(pf);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to init FDIR counter.");
+		return -EINVAL;
+	}
 
 	/*Fdir tx queue setup*/
 	err = ice_fdir_setup_tx_resources(pf);
@@ -288,6 +376,10 @@ ice_fdir_teardown(struct ice_pf *pf)
 	err = ice_fdir_rx_queue_stop(eth_dev, pf->fdir.rxq->queue_id);
 	if (err)
 		PMD_DRV_LOG(ERR, "Failed to stop RX queue.");
+
+	err = ice_fdir_counter_release(pf);
+	if (err)
+		PMD_DRV_LOG(ERR, "Failed to release FDIR counter resource.");
 
 	ice_tx_queue_release(pf->fdir.txq);
 	pf->fdir.txq = NULL;
