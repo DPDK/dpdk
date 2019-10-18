@@ -72,9 +72,13 @@ struct crypto_unittest_params {
 
 	union {
 		struct rte_cryptodev_sym_session *sess;
+#ifdef RTE_LIBRTE_SECURITY
 		struct rte_security_session *sec_session;
+#endif
 	};
+#ifdef RTE_LIBRTE_SECURITY
 	enum rte_security_session_action_type type;
+#endif
 	struct rte_crypto_op *op;
 
 	struct rte_mbuf *obuf, *ibuf;
@@ -574,6 +578,7 @@ ut_teardown(void)
 	struct rte_cryptodev_stats stats;
 
 	/* free crypto session structure */
+#ifdef RTE_LIBRTE_SECURITY
 	if (ut_params->type == RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL) {
 		if (ut_params->sec_session) {
 			rte_security_session_destroy(rte_cryptodev_get_sec_ctx
@@ -581,7 +586,9 @@ ut_teardown(void)
 						ut_params->sec_session);
 			ut_params->sec_session = NULL;
 		}
-	} else {
+	} else
+#endif
+	{
 		if (ut_params->sess) {
 			rte_cryptodev_sym_session_clear(
 					ts_params->valid_devs[0],
