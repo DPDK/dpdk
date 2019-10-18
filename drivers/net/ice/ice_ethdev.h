@@ -241,6 +241,11 @@ struct ice_vsi {
 	bool offset_loaded;
 };
 
+enum ice_fdir_tunnel_type {
+	ICE_FDIR_TUNNEL_TYPE_NONE = 0,
+	ICE_FDIR_TUNNEL_TYPE_VXLAN,
+};
+
 struct rte_flow;
 TAILQ_HEAD(ice_flow_list, rte_flow);
 
@@ -249,6 +254,7 @@ TAILQ_HEAD(ice_parser_list, ice_flow_parser_node);
 
 struct ice_fdir_filter_conf {
 	struct ice_fdir_fltr input;
+	enum ice_fdir_tunnel_type tunnel_type;
 
 	struct ice_fdir_counter *counter; /* flow specific counter context */
 	struct rte_flow_action_count act_count;
@@ -268,6 +274,8 @@ struct ice_fdir_fltr_pattern {
 
 	struct ice_fdir_extra ext_data;
 	struct ice_fdir_extra ext_mask;
+
+	enum ice_fdir_tunnel_type tunnel_type;
 };
 
 #define ICE_FDIR_COUNTER_DEFAULT_POOL_SIZE	1
