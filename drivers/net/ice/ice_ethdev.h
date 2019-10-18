@@ -244,6 +244,7 @@ struct ice_vsi {
 enum ice_fdir_tunnel_type {
 	ICE_FDIR_TUNNEL_TYPE_NONE = 0,
 	ICE_FDIR_TUNNEL_TYPE_VXLAN,
+	ICE_FDIR_TUNNEL_TYPE_GTPU,
 };
 
 struct rte_flow;
@@ -271,6 +272,9 @@ struct ice_fdir_fltr_pattern {
 		struct ice_fdir_v4 v4;
 		struct ice_fdir_v6 v6;
 	} ip, mask;
+
+	struct ice_fdir_udp_gtp gtpu_data;
+	struct ice_fdir_udp_gtp gtpu_mask;
 
 	struct ice_fdir_extra ext_data;
 	struct ice_fdir_extra ext_mask;
