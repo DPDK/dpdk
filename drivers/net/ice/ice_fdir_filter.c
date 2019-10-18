@@ -164,6 +164,56 @@ ice_fdir_prof_free(struct ice_hw *hw)
 	rte_free(hw->fdir_prof);
 }
 
+/* Remove a profile for some filter type */
+static void
+ice_fdir_prof_rm(struct ice_pf *pf, enum ice_fltr_ptype ptype, bool is_tunnel)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_fd_hw_prof *hw_prof;
+	uint64_t prof_id;
+	uint16_t vsi_num;
+	int i;
+
+	if (!hw->fdir_prof || !hw->fdir_prof[ptype])
+		return;
+
+	hw_prof = hw->fdir_prof[ptype];
+
+	prof_id = ptype + is_tunnel * ICE_FLTR_PTYPE_MAX;
+	for (i = 0; i < pf->hw_prof_cnt[ptype][is_tunnel]; i++) {
+		if (hw_prof->entry_h[i][is_tunnel]) {
+			vsi_num = ice_get_hw_vsi_num(hw,
+						     hw_prof->vsi_h[i]);
+			ice_rem_prof_id_flow(hw, ICE_BLK_FD,
+					     vsi_num, ptype);
+			ice_flow_rem_entry(hw,
+					   hw_prof->entry_h[i][is_tunnel]);
+			hw_prof->entry_h[i][is_tunnel] = 0;
+		}
+	}
+	ice_flow_rem_prof(hw, ICE_BLK_FD, prof_id);
+	rte_free(hw_prof->fdir_seg[is_tunnel]);
+	hw_prof->fdir_seg[is_tunnel] = NULL;
+
+	for (i = 0; i < hw_prof->cnt; i++)
+		hw_prof->vsi_h[i] = 0;
+	pf->hw_prof_cnt[ptype][is_tunnel] = 0;
+}
+
+/* Remove all created profiles */
+static void
+ice_fdir_prof_rm_all(struct ice_pf *pf)
+{
+	enum ice_fltr_ptype ptype;
+
+	for (ptype = ICE_FLTR_PTYPE_NONF_NONE;
+	     ptype < ICE_FLTR_PTYPE_MAX;
+	     ptype++) {
+		ice_fdir_prof_rm(pf, ptype, false);
+		ice_fdir_prof_rm(pf, ptype, true);
+	}
+}
+
 /*
  * ice_fdir_teardown - release the Flow Director resources
  * @pf: board private structure
@@ -192,9 +242,234 @@ ice_fdir_teardown(struct ice_pf *pf)
 	pf->fdir.txq = NULL;
 	ice_rx_queue_release(pf->fdir.rxq);
 	pf->fdir.rxq = NULL;
+	ice_fdir_prof_rm_all(pf);
+	ice_fdir_prof_free(hw);
 	ice_release_vsi(vsi);
 	pf->fdir.fdir_vsi = NULL;
-	ice_fdir_prof_free(hw);
+}
+
+static int
+ice_fdir_hw_tbl_conf(struct ice_pf *pf, struct ice_vsi *vsi,
+		     struct ice_vsi *ctrl_vsi,
+		     struct ice_flow_seg_info *seg,
+		     enum ice_fltr_ptype ptype,
+		     bool is_tunnel)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	enum ice_flow_dir dir = ICE_FLOW_RX;
+	struct ice_flow_seg_info *ori_seg;
+	struct ice_fd_hw_prof *hw_prof;
+	struct ice_flow_prof *prof;
+	uint64_t entry_1 = 0;
+	uint64_t entry_2 = 0;
+	uint16_t vsi_num;
+	int ret;
+	uint64_t prof_id;
+
+	hw_prof = hw->fdir_prof[ptype];
+	ori_seg = hw_prof->fdir_seg[is_tunnel];
+	if (ori_seg) {
+		if (!is_tunnel) {
+			if (!memcmp(ori_seg, seg, sizeof(*seg)))
+				return -EAGAIN;
+		} else {
+			if (!memcmp(ori_seg, &seg[1], sizeof(*seg)))
+				return -EAGAIN;
+		}
+
+		if (pf->fdir_fltr_cnt[ptype][is_tunnel])
+			return -EINVAL;
+
+		ice_fdir_prof_rm(pf, ptype, is_tunnel);
+	}
+
+	prof_id = ptype + is_tunnel * ICE_FLTR_PTYPE_MAX;
+	ret = ice_flow_add_prof(hw, ICE_BLK_FD, dir, prof_id, seg,
+				(is_tunnel) ? 2 : 1, NULL, 0, &prof);
+	if (ret)
+		return ret;
+	ret = ice_flow_add_entry(hw, ICE_BLK_FD, prof_id, vsi->idx,
+				 vsi->idx, ICE_FLOW_PRIO_NORMAL,
+				 seg, NULL, 0, &entry_1);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to add main VSI flow entry for %d.",
+			    ptype);
+		goto err_add_prof;
+	}
+	ret = ice_flow_add_entry(hw, ICE_BLK_FD, prof_id, vsi->idx,
+				 ctrl_vsi->idx, ICE_FLOW_PRIO_NORMAL,
+				 seg, NULL, 0, &entry_2);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to add control VSI flow entry for %d.",
+			    ptype);
+		goto err_add_entry;
+	}
+
+	pf->hw_prof_cnt[ptype][is_tunnel] = 0;
+	hw_prof->cnt = 0;
+	hw_prof->fdir_seg[is_tunnel] = seg;
+	hw_prof->vsi_h[hw_prof->cnt] = vsi->idx;
+	hw_prof->entry_h[hw_prof->cnt++][is_tunnel] = entry_1;
+	pf->hw_prof_cnt[ptype][is_tunnel]++;
+	hw_prof->vsi_h[hw_prof->cnt] = ctrl_vsi->idx;
+	hw_prof->entry_h[hw_prof->cnt++][is_tunnel] = entry_2;
+	pf->hw_prof_cnt[ptype][is_tunnel]++;
+
+	return ret;
+
+err_add_entry:
+	vsi_num = ice_get_hw_vsi_num(hw, vsi->idx);
+	ice_rem_prof_id_flow(hw, ICE_BLK_FD, vsi_num, prof_id);
+	ice_flow_rem_entry(hw, entry_1);
+err_add_prof:
+	ice_flow_rem_prof(hw, ICE_BLK_FD, prof_id);
+
+	return ret;
+}
+
+static void
+ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
+{
+	uint32_t i, j;
+
+	struct ice_inset_map {
+		uint64_t inset;
+		enum ice_flow_field fld;
+	};
+	static const struct ice_inset_map ice_inset_map[] = {
+		{ICE_INSET_DMAC, ICE_FLOW_FIELD_IDX_ETH_DA},
+		{ICE_INSET_IPV4_SRC, ICE_FLOW_FIELD_IDX_IPV4_SA},
+		{ICE_INSET_IPV4_DST, ICE_FLOW_FIELD_IDX_IPV4_DA},
+		{ICE_INSET_IPV4_TOS, ICE_FLOW_FIELD_IDX_IPV4_DSCP},
+		{ICE_INSET_IPV4_TTL, ICE_FLOW_FIELD_IDX_IPV4_TTL},
+		{ICE_INSET_IPV4_PROTO, ICE_FLOW_FIELD_IDX_IPV4_PROT},
+		{ICE_INSET_IPV6_SRC, ICE_FLOW_FIELD_IDX_IPV6_SA},
+		{ICE_INSET_IPV6_DST, ICE_FLOW_FIELD_IDX_IPV6_DA},
+		{ICE_INSET_IPV6_TC, ICE_FLOW_FIELD_IDX_IPV6_DSCP},
+		{ICE_INSET_IPV6_NEXT_HDR, ICE_FLOW_FIELD_IDX_IPV6_PROT},
+		{ICE_INSET_IPV6_HOP_LIMIT, ICE_FLOW_FIELD_IDX_IPV6_TTL},
+		{ICE_INSET_TCP_SRC_PORT, ICE_FLOW_FIELD_IDX_TCP_SRC_PORT},
+		{ICE_INSET_TCP_DST_PORT, ICE_FLOW_FIELD_IDX_TCP_DST_PORT},
+		{ICE_INSET_UDP_SRC_PORT, ICE_FLOW_FIELD_IDX_UDP_SRC_PORT},
+		{ICE_INSET_UDP_DST_PORT, ICE_FLOW_FIELD_IDX_UDP_DST_PORT},
+		{ICE_INSET_SCTP_SRC_PORT, ICE_FLOW_FIELD_IDX_SCTP_SRC_PORT},
+		{ICE_INSET_SCTP_DST_PORT, ICE_FLOW_FIELD_IDX_SCTP_DST_PORT},
+	};
+
+	for (i = 0, j = 0; i < RTE_DIM(ice_inset_map); i++) {
+		if ((inset & ice_inset_map[i].inset) ==
+		    ice_inset_map[i].inset)
+			field[j++] = ice_inset_map[i].fld;
+	}
+}
+
+static int __rte_unused
+ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
+			uint64_t input_set, bool is_tunnel)
+{
+	struct ice_flow_seg_info *seg;
+	struct ice_flow_seg_info *seg_tun = NULL;
+	enum ice_flow_field field[ICE_FLOW_FIELD_IDX_MAX];
+	int i, ret;
+
+	if (!input_set)
+		return -EINVAL;
+
+	seg = (struct ice_flow_seg_info *)
+		ice_malloc(hw, sizeof(*seg));
+	if (!seg) {
+		PMD_DRV_LOG(ERR, "No memory can be allocated");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < ICE_FLOW_FIELD_IDX_MAX; i++)
+		field[i] = ICE_FLOW_FIELD_IDX_MAX;
+	ice_fdir_input_set_parse(input_set, field);
+
+	switch (flow) {
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
+				  ICE_FLOW_SEG_HDR_IPV4);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_TCP:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_TCP |
+				  ICE_FLOW_SEG_HDR_IPV4);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_SCTP:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_SCTP |
+				  ICE_FLOW_SEG_HDR_IPV4);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_OTHER:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV4);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV6_UDP:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
+				  ICE_FLOW_SEG_HDR_IPV6);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV6_TCP:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_TCP |
+				  ICE_FLOW_SEG_HDR_IPV6);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV6_SCTP:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_SCTP |
+				  ICE_FLOW_SEG_HDR_IPV6);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV6_OTHER:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV6);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "not supported filter type.");
+		break;
+	}
+
+	for (i = 0; field[i] != ICE_FLOW_FIELD_IDX_MAX; i++) {
+		ice_flow_set_fld(seg, field[i],
+				 ICE_FLOW_FLD_OFF_INVAL,
+				 ICE_FLOW_FLD_OFF_INVAL,
+				 ICE_FLOW_FLD_OFF_INVAL, false);
+	}
+
+	if (!is_tunnel) {
+		ret = ice_fdir_hw_tbl_conf(pf, pf->main_vsi, pf->fdir.fdir_vsi,
+					   seg, flow, false);
+	} else {
+		seg_tun = (struct ice_flow_seg_info *)
+			ice_malloc(hw, sizeof(*seg) * ICE_FD_HW_SEG_MAX);
+		if (!seg_tun) {
+			PMD_DRV_LOG(ERR, "No memory can be allocated");
+			rte_free(seg);
+			return -ENOMEM;
+		}
+		rte_memcpy(&seg_tun[1], seg, sizeof(*seg));
+		ret = ice_fdir_hw_tbl_conf(pf, pf->main_vsi, pf->fdir.fdir_vsi,
+					   seg_tun, flow, true);
+	}
+
+	if (!ret) {
+		return ret;
+	} else if (ret < 0) {
+		rte_free(seg);
+		if (is_tunnel)
+			rte_free(seg_tun);
+		return (ret == -EAGAIN) ? 0 : ret;
+	} else {
+		return ret;
+	}
+}
+
+static void __rte_unused
+ice_fdir_cnt_update(struct ice_pf *pf, enum ice_fltr_ptype ptype,
+		    bool is_tunnel, bool add)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	int cnt;
+
+	cnt = (add) ? 1 : -1;
+	hw->fdir_active_fltr += cnt;
+	if (ptype == ICE_FLTR_PTYPE_NONF_NONE || ptype >= ICE_FLTR_PTYPE_MAX)
+		PMD_DRV_LOG(ERR, "Unknown filter type %d", ptype);
+	else
+		pf->fdir_fltr_cnt[ptype][is_tunnel] += cnt;
 }
 
 static int

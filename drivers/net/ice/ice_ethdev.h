@@ -281,6 +281,8 @@ struct ice_pf {
 	uint16_t fdir_nb_qps; /* The number of queue pairs of Flow Director */
 	uint16_t fdir_qp_offset;
 	struct ice_fdir_info fdir; /* flow director info */
+	uint16_t hw_prof_cnt[ICE_FLTR_PTYPE_MAX][ICE_FD_HW_SEG_MAX];
+	uint16_t fdir_fltr_cnt[ICE_FLTR_PTYPE_MAX][ICE_FD_HW_SEG_MAX];
 	struct ice_hw_port_stats stats_offset;
 	struct ice_hw_port_stats stats;
 	/* internal packet statistics, it should be excluded from the total */
