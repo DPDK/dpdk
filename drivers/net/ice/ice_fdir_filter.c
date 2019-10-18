@@ -183,6 +183,95 @@ ice_fdir_counter_release(struct ice_pf *pf)
 	return 0;
 }
 
+static struct ice_fdir_counter *
+ice_fdir_counter_shared_search(struct ice_fdir_counter_pool_container
+					*container,
+			       uint32_t id)
+{
+	struct ice_fdir_counter_pool *pool;
+	struct ice_fdir_counter *counter;
+	int i;
+
+	TAILQ_FOREACH(pool, &container->pool_list, next) {
+		for (i = 0; i < ICE_FDIR_COUNTERS_PER_BLOCK; i++) {
+			counter = &pool->counters[i];
+
+			if (counter->shared &&
+			    counter->ref_cnt &&
+			    counter->id == id)
+				return counter;
+		}
+	}
+
+	return NULL;
+}
+
+static struct ice_fdir_counter *
+ice_fdir_counter_alloc(struct ice_pf *pf, uint32_t shared, uint32_t id)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_fdir_info *fdir_info = &pf->fdir;
+	struct ice_fdir_counter_pool_container *container =
+				&fdir_info->counter;
+	struct ice_fdir_counter_pool *pool = NULL;
+	struct ice_fdir_counter *counter_free = NULL;
+
+	if (shared) {
+		counter_free = ice_fdir_counter_shared_search(container, id);
+		if (counter_free) {
+			if (counter_free->ref_cnt + 1 == 0) {
+				rte_errno = E2BIG;
+				return NULL;
+			}
+			counter_free->ref_cnt++;
+			return counter_free;
+		}
+	}
+
+	TAILQ_FOREACH(pool, &container->pool_list, next) {
+		counter_free = TAILQ_FIRST(&pool->counter_list);
+		if (counter_free)
+			break;
+		counter_free = NULL;
+	}
+
+	if (!counter_free) {
+		PMD_DRV_LOG(ERR, "No free counter found\n");
+		return NULL;
+	}
+
+	counter_free->shared = shared;
+	counter_free->id = id;
+	counter_free->ref_cnt = 1;
+	counter_free->pool = pool;
+
+	/* reset statistic counter value */
+	ICE_WRITE_REG(hw, GLSTAT_FD_CNT0H(counter_free->hw_index), 0);
+	ICE_WRITE_REG(hw, GLSTAT_FD_CNT0L(counter_free->hw_index), 0);
+
+	TAILQ_REMOVE(&pool->counter_list, counter_free, next);
+	if (TAILQ_EMPTY(&pool->counter_list)) {
+		TAILQ_REMOVE(&container->pool_list, pool, next);
+		TAILQ_INSERT_TAIL(&container->pool_list, pool, next);
+	}
+
+	return counter_free;
+}
+
+static void
+ice_fdir_counter_free(__rte_unused struct ice_pf *pf,
+		      struct ice_fdir_counter *counter)
+{
+	if (!counter)
+		return;
+
+	if (--counter->ref_cnt == 0) {
+		struct ice_fdir_counter_pool *pool = counter->pool;
+
+		TAILQ_INSERT_TAIL(&pool->counter_list, counter, next);
+	}
+}
+
 /*
  * ice_fdir_setup - reserve and initialize the Flow Director resources
  * @pf: board private structure
@@ -691,18 +780,40 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 		goto free_entry;
 	}
 
+	/* alloc counter for FDIR */
+	if (filter->input.cnt_ena) {
+		struct rte_flow_action_count *act_count = &filter->act_count;
+
+		filter->counter = ice_fdir_counter_alloc(pf,
+							 act_count->shared,
+							 act_count->id);
+		if (!filter->counter) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"Failed to alloc FDIR counter.");
+			goto free_entry;
+		}
+		filter->input.cnt_index = filter->counter->hw_index;
+	}
+
 	ret = ice_fdir_add_del_filter(pf, filter, true);
 	if (ret) {
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Add filter rule failed.");
-		goto free_entry;
+		goto free_counter;
 	}
 
 	rte_memcpy(rule, filter, sizeof(*rule));
 	flow->rule = rule;
 	ice_fdir_cnt_update(pf, filter->input.flow_type, false, true);
 	return 0;
+
+free_counter:
+	if (filter->counter) {
+		ice_fdir_counter_free(pf, filter->counter);
+		filter->counter = NULL;
+	}
 
 free_entry:
 	rte_free(rule);
@@ -720,6 +831,11 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 
 	filter = (struct ice_fdir_filter_conf *)flow->rule;
 
+	if (filter->counter) {
+		ice_fdir_counter_free(pf, filter->counter);
+		filter->counter = NULL;
+	}
+
 	ret = ice_fdir_add_del_filter(pf, filter, false);
 	if (ret) {
 		rte_flow_error_set(error, -ret,
@@ -736,11 +852,54 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 	return 0;
 }
 
+static int
+ice_fdir_query_count(struct ice_adapter *ad,
+		      struct rte_flow *flow,
+		      struct rte_flow_query_count *flow_stats,
+		      struct rte_flow_error *error)
+{
+	struct ice_pf *pf = &ad->pf;
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_fdir_filter_conf *filter = flow->rule;
+	struct ice_fdir_counter *counter = filter->counter;
+	uint64_t hits_lo, hits_hi;
+
+	if (!counter) {
+		rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_ACTION,
+				  NULL,
+				  "FDIR counters not available");
+		return -rte_errno;
+	}
+
+	/*
+	 * Reading the low 32-bits latches the high 32-bits into a shadow
+	 * register. Reading the high 32-bit returns the value in the
+	 * shadow register.
+	 */
+	hits_lo = ICE_READ_REG(hw, GLSTAT_FD_CNT0L(counter->hw_index));
+	hits_hi = ICE_READ_REG(hw, GLSTAT_FD_CNT0H(counter->hw_index));
+
+	flow_stats->hits_set = 1;
+	flow_stats->hits = hits_lo | (hits_hi << 32);
+	flow_stats->bytes_set = 0;
+	flow_stats->bytes = 0;
+
+	if (flow_stats->reset) {
+		/* reset statistic counter value */
+		ICE_WRITE_REG(hw, GLSTAT_FD_CNT0H(counter->hw_index), 0);
+		ICE_WRITE_REG(hw, GLSTAT_FD_CNT0L(counter->hw_index), 0);
+	}
+
+	return 0;
+}
+
 static struct ice_flow_engine ice_fdir_engine = {
 	.init = ice_fdir_init,
 	.uninit = ice_fdir_uninit,
 	.create = ice_fdir_create_filter,
 	.destroy = ice_fdir_destroy_filter,
+	.query_count = ice_fdir_query_count,
 	.type = ICE_FLOW_ENGINE_FDIR,
 };
 
@@ -810,8 +969,10 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 	struct ice_pf *pf = &ad->pf;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_mark *mark_spec = NULL;
+	const struct rte_flow_action_count *act_count;
 	uint32_t dest_num = 0;
 	uint32_t mark_num = 0;
+	uint32_t counter_num = 0;
 	int ret;
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
@@ -861,6 +1022,15 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 			mark_spec = actions->conf;
 			filter->input.fltr_id = mark_spec->id;
 			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			counter_num++;
+
+			act_count = actions->conf;
+			filter->input.cnt_ena = ICE_FXD_FLTR_QW0_STAT_ENA_PKTS;
+			rte_memcpy(&filter->act_count, act_count,
+						sizeof(filter->act_count));
+
+			break;
 		default:
 			rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION, actions,
@@ -880,6 +1050,13 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 		rte_flow_error_set(error, EINVAL,
 			   RTE_FLOW_ERROR_TYPE_ACTION, actions,
 			   "Too many mark actions");
+		return -rte_errno;
+	}
+
+	if (counter_num >= 2) {
+		rte_flow_error_set(error, EINVAL,
+			   RTE_FLOW_ERROR_TYPE_ACTION, actions,
+			   "Too many count actions");
 		return -rte_errno;
 	}
 

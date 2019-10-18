@@ -249,6 +249,10 @@ TAILQ_HEAD(ice_parser_list, ice_flow_parser_node);
 
 struct ice_fdir_filter_conf {
 	struct ice_fdir_fltr input;
+
+	struct ice_fdir_counter *counter; /* flow specific counter context */
+	struct rte_flow_action_count act_count;
+
 	uint64_t input_set;
 };
 
@@ -257,8 +261,11 @@ struct ice_fdir_filter_conf {
 #define ICE_FDIR_COUNTERS_PER_BLOCK		256
 #define ICE_FDIR_COUNTER_INDEX(base_idx) \
 				((base_idx) * ICE_FDIR_COUNTERS_PER_BLOCK)
+struct ice_fdir_counter_pool;
+
 struct ice_fdir_counter {
 	TAILQ_ENTRY(ice_fdir_counter) next;
+	struct ice_fdir_counter_pool *pool;
 	uint8_t shared;
 	uint32_t ref_cnt;
 	uint32_t id;
