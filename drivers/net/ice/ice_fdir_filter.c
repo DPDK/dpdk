@@ -7,6 +7,55 @@
 #include "ice_rxtx.h"
 #include "ice_generic_flow.h"
 
+#define ICE_FDIR_IPV6_TC_OFFSET		20
+#define ICE_IPV6_TC_MASK		(0xFF << ICE_FDIR_IPV6_TC_OFFSET)
+
+#define ICE_FDIR_INSET_ETH_IPV4 (\
+	ICE_INSET_DMAC | \
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_TOS | \
+	ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_PROTO)
+
+#define ICE_FDIR_INSET_ETH_IPV4_UDP (\
+	ICE_FDIR_INSET_ETH_IPV4 | \
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
+
+#define ICE_FDIR_INSET_ETH_IPV4_TCP (\
+	ICE_FDIR_INSET_ETH_IPV4 | \
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
+
+#define ICE_FDIR_INSET_ETH_IPV4_SCTP (\
+	ICE_FDIR_INSET_ETH_IPV4 | \
+	ICE_INSET_SCTP_SRC_PORT | ICE_INSET_SCTP_DST_PORT)
+
+#define ICE_FDIR_INSET_ETH_IPV6 (\
+	ICE_INSET_IPV6_SRC | ICE_INSET_IPV6_DST | ICE_INSET_IPV6_TC | \
+	ICE_INSET_IPV6_HOP_LIMIT | ICE_INSET_IPV6_NEXT_HDR)
+
+#define ICE_FDIR_INSET_ETH_IPV6_UDP (\
+	ICE_FDIR_INSET_ETH_IPV6 | \
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
+
+#define ICE_FDIR_INSET_ETH_IPV6_TCP (\
+	ICE_FDIR_INSET_ETH_IPV6 | \
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
+
+#define ICE_FDIR_INSET_ETH_IPV6_SCTP (\
+	ICE_FDIR_INSET_ETH_IPV6 | \
+	ICE_INSET_SCTP_SRC_PORT | ICE_INSET_SCTP_DST_PORT)
+
+static struct ice_pattern_match_item ice_fdir_pattern[] = {
+	{pattern_eth_ipv4,             ICE_FDIR_INSET_ETH_IPV4,              ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp,         ICE_FDIR_INSET_ETH_IPV4_UDP,          ICE_INSET_NONE},
+	{pattern_eth_ipv4_tcp,         ICE_FDIR_INSET_ETH_IPV4_TCP,          ICE_INSET_NONE},
+	{pattern_eth_ipv4_sctp,        ICE_FDIR_INSET_ETH_IPV4_SCTP,         ICE_INSET_NONE},
+	{pattern_eth_ipv6,             ICE_FDIR_INSET_ETH_IPV6,              ICE_INSET_NONE},
+	{pattern_eth_ipv6_udp,         ICE_FDIR_INSET_ETH_IPV6_UDP,          ICE_INSET_NONE},
+	{pattern_eth_ipv6_tcp,         ICE_FDIR_INSET_ETH_IPV6_TCP,          ICE_INSET_NONE},
+	{pattern_eth_ipv6_sctp,        ICE_FDIR_INSET_ETH_IPV6_SCTP,         ICE_INSET_NONE},
+};
+
+static struct ice_flow_parser ice_fdir_parser;
+
 static const struct rte_memzone *
 ice_memzone_reserve(const char *name, uint32_t len, int socket_id)
 {
@@ -363,7 +412,7 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 	}
 }
 
-static int __rte_unused
+static int
 ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 			uint64_t input_set, bool is_tunnel)
 {
@@ -457,7 +506,7 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 	}
 }
 
-static void __rte_unused
+static void
 ice_fdir_cnt_update(struct ice_pf *pf, enum ice_fltr_ptype ptype,
 		    bool is_tunnel, bool add)
 {
@@ -476,8 +525,13 @@ static int
 ice_fdir_init(struct ice_adapter *ad)
 {
 	struct ice_pf *pf = &ad->pf;
+	int ret;
 
-	return ice_fdir_setup(pf);
+	ret = ice_fdir_setup(pf);
+	if (ret)
+		return ret;
+
+	return ice_register_parser(&ice_fdir_parser, ad);
 }
 
 static void
@@ -485,13 +539,532 @@ ice_fdir_uninit(struct ice_adapter *ad)
 {
 	struct ice_pf *pf = &ad->pf;
 
+	ice_unregister_parser(&ice_fdir_parser, ad);
+
 	ice_fdir_teardown(pf);
+}
+
+static int
+ice_fdir_add_del_filter(struct ice_pf *pf,
+			struct ice_fdir_filter_conf *filter,
+			bool add)
+{
+	struct ice_fltr_desc desc;
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	unsigned char *pkt = (unsigned char *)pf->fdir.prg_pkt;
+	int ret;
+
+	filter->input.dest_vsi = pf->main_vsi->idx;
+
+	memset(&desc, 0, sizeof(desc));
+	ice_fdir_get_prgm_desc(hw, &filter->input, &desc, add);
+
+	memset(pkt, 0, ICE_FDIR_PKT_LEN);
+	ret = ice_fdir_get_prgm_pkt(&filter->input, pkt, false);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Generate dummy packet failed");
+		return -EINVAL;
+	}
+
+	return ice_fdir_programming(pf, &desc);
+}
+
+static int
+ice_fdir_create_filter(struct ice_adapter *ad,
+		       struct rte_flow *flow,
+		       void *meta,
+		       struct rte_flow_error *error)
+{
+	struct ice_pf *pf = &ad->pf;
+	struct ice_fdir_filter_conf *filter = meta;
+	struct ice_fdir_filter_conf *rule;
+	int ret;
+
+	rule = rte_zmalloc("fdir_entry", sizeof(*rule), 0);
+	if (!rule) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to allocate memory");
+		return -rte_errno;
+	}
+
+	ret = ice_fdir_input_set_conf(pf, filter->input.flow_type,
+			filter->input_set, false);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Profile configure failed.");
+		goto free_entry;
+	}
+
+	ret = ice_fdir_add_del_filter(pf, filter, true);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Add filter rule failed.");
+		goto free_entry;
+	}
+
+	rte_memcpy(rule, filter, sizeof(*rule));
+	flow->rule = rule;
+	ice_fdir_cnt_update(pf, filter->input.flow_type, false, true);
+	return 0;
+
+free_entry:
+	rte_free(rule);
+	return -rte_errno;
+}
+
+static int
+ice_fdir_destroy_filter(struct ice_adapter *ad,
+			struct rte_flow *flow,
+			struct rte_flow_error *error)
+{
+	struct ice_pf *pf = &ad->pf;
+	struct ice_fdir_filter_conf *filter;
+	int ret;
+
+	filter = (struct ice_fdir_filter_conf *)flow->rule;
+
+	ret = ice_fdir_add_del_filter(pf, filter, false);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Del filter rule failed.");
+		return -rte_errno;
+	}
+
+	ice_fdir_cnt_update(pf, filter->input.flow_type, false, false);
+	flow->rule = NULL;
+
+	rte_free(filter);
+
+	return 0;
 }
 
 static struct ice_flow_engine ice_fdir_engine = {
 	.init = ice_fdir_init,
 	.uninit = ice_fdir_uninit,
+	.create = ice_fdir_create_filter,
+	.destroy = ice_fdir_destroy_filter,
 	.type = ICE_FLOW_ENGINE_FDIR,
+};
+
+static int
+ice_fdir_parse_action(struct ice_adapter *ad,
+		      const struct rte_flow_action actions[],
+		      struct rte_flow_error *error,
+		      struct ice_fdir_filter_conf *filter)
+{
+	struct ice_pf *pf = &ad->pf;
+	const struct rte_flow_action_queue *act_q;
+	const struct rte_flow_action_mark *mark_spec = NULL;
+	uint32_t dest_num = 0;
+	uint32_t mark_num = 0;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			dest_num++;
+
+			act_q = actions->conf;
+			filter->input.q_index = act_q->index;
+			if (filter->input.q_index >=
+					pf->dev_data->nb_rx_queues) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "Invalid queue for FDIR.");
+				return -rte_errno;
+			}
+			filter->input.dest_ctl =
+				ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_QINDEX;
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			dest_num++;
+
+			filter->input.dest_ctl =
+				ICE_FLTR_PRGM_DESC_DEST_DROP_PKT;
+			break;
+		case RTE_FLOW_ACTION_TYPE_PASSTHRU:
+			dest_num++;
+
+			filter->input.dest_ctl =
+				ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_QINDEX;
+			filter->input.q_index = 0;
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			mark_num++;
+
+			mark_spec = actions->conf;
+			filter->input.fltr_id = mark_spec->id;
+			break;
+		default:
+			rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, actions,
+				   "Invalid action.");
+			return -rte_errno;
+		}
+	}
+
+	if (dest_num == 0 || dest_num >= 2) {
+		rte_flow_error_set(error, EINVAL,
+			   RTE_FLOW_ERROR_TYPE_ACTION, actions,
+			   "Unsupported action combination");
+		return -rte_errno;
+	}
+
+	if (mark_num >= 2) {
+		rte_flow_error_set(error, EINVAL,
+			   RTE_FLOW_ERROR_TYPE_ACTION, actions,
+			   "Too many mark actions");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
+		       const struct rte_flow_item pattern[],
+		       struct rte_flow_error *error,
+		       struct ice_fdir_filter_conf *filter)
+{
+	const struct rte_flow_item *item = pattern;
+	enum rte_flow_item_type item_type;
+	enum rte_flow_item_type l3 = RTE_FLOW_ITEM_TYPE_END;
+	const struct rte_flow_item_eth *eth_spec, *eth_mask;
+	const struct rte_flow_item_ipv4 *ipv4_spec, *ipv4_mask;
+	const struct rte_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
+	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
+	const struct rte_flow_item_udp *udp_spec, *udp_mask;
+	const struct rte_flow_item_sctp *sctp_spec, *sctp_mask;
+	uint64_t input_set = ICE_INSET_NONE;
+	uint8_t flow_type = ICE_FLTR_PTYPE_NONF_NONE;
+	uint8_t  ipv6_addr_mask[16] = {
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+	};
+	uint32_t vtc_flow_cpu;
+
+
+	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"Not support range");
+			return -rte_errno;
+		}
+		item_type = item->type;
+
+		switch (item_type) {
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			eth_spec = item->spec;
+			eth_mask = item->mask;
+
+			if (eth_spec && eth_mask) {
+				if (!rte_is_zero_ether_addr(&eth_spec->src) ||
+				    !rte_is_zero_ether_addr(&eth_mask->src)) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Src mac not support");
+					return -rte_errno;
+				}
+
+				if (!rte_is_broadcast_ether_addr(&eth_mask->dst)) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid mac addr mask");
+					return -rte_errno;
+				}
+
+				input_set |= ICE_INSET_DMAC;
+				rte_memcpy(&filter->input.ext_data.dst_mac,
+					   &eth_spec->dst,
+					   RTE_ETHER_ADDR_LEN);
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			l3 = RTE_FLOW_ITEM_TYPE_IPV4;
+			ipv4_spec = item->spec;
+			ipv4_mask = item->mask;
+
+			if (ipv4_spec && ipv4_mask) {
+				/* Check IPv4 mask and update input set */
+				if (ipv4_mask->hdr.version_ihl ||
+				    ipv4_mask->hdr.total_length ||
+				    ipv4_mask->hdr.packet_id ||
+				    ipv4_mask->hdr.fragment_offset ||
+				    ipv4_mask->hdr.hdr_checksum) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid IPv4 mask.");
+					return -rte_errno;
+				}
+				if (ipv4_mask->hdr.src_addr == UINT32_MAX)
+					input_set |= ICE_INSET_IPV4_SRC;
+				if (ipv4_mask->hdr.dst_addr == UINT32_MAX)
+					input_set |= ICE_INSET_IPV4_DST;
+				if (ipv4_mask->hdr.type_of_service == UINT8_MAX)
+					input_set |= ICE_INSET_IPV4_TOS;
+				if (ipv4_mask->hdr.time_to_live == UINT8_MAX)
+					input_set |= ICE_INSET_IPV4_TTL;
+				if (ipv4_mask->hdr.next_proto_id == UINT8_MAX)
+					input_set |= ICE_INSET_IPV4_PROTO;
+
+				filter->input.ip.v4.dst_ip =
+					ipv4_spec->hdr.src_addr;
+				filter->input.ip.v4.src_ip =
+					ipv4_spec->hdr.dst_addr;
+				filter->input.ip.v4.tos =
+					ipv4_spec->hdr.type_of_service;
+				filter->input.ip.v4.ttl =
+					ipv4_spec->hdr.time_to_live;
+				filter->input.ip.v4.proto =
+					ipv4_spec->hdr.next_proto_id;
+			}
+
+			flow_type = ICE_FLTR_PTYPE_NONF_IPV4_OTHER;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			l3 = RTE_FLOW_ITEM_TYPE_IPV6;
+			ipv6_spec = item->spec;
+			ipv6_mask = item->mask;
+
+			if (ipv6_spec && ipv6_mask) {
+				/* Check IPv6 mask and update input set */
+				if (ipv6_mask->hdr.payload_len) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid IPv6 mask");
+					return -rte_errno;
+				}
+
+				if (!memcmp(ipv6_mask->hdr.src_addr,
+					    ipv6_addr_mask,
+					    RTE_DIM(ipv6_mask->hdr.src_addr)))
+					input_set |= ICE_INSET_IPV6_SRC;
+				if (!memcmp(ipv6_mask->hdr.dst_addr,
+					    ipv6_addr_mask,
+					    RTE_DIM(ipv6_mask->hdr.dst_addr)))
+					input_set |= ICE_INSET_IPV6_DST;
+
+				if ((ipv6_mask->hdr.vtc_flow &
+				     rte_cpu_to_be_32(ICE_IPV6_TC_MASK))
+				    == rte_cpu_to_be_32(ICE_IPV6_TC_MASK))
+					input_set |= ICE_INSET_IPV6_TC;
+				if (ipv6_mask->hdr.proto == UINT8_MAX)
+					input_set |= ICE_INSET_IPV6_NEXT_HDR;
+				if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
+					input_set |= ICE_INSET_IPV6_HOP_LIMIT;
+
+				rte_memcpy(filter->input.ip.v6.dst_ip,
+					   ipv6_spec->hdr.src_addr, 16);
+				rte_memcpy(filter->input.ip.v6.src_ip,
+					   ipv6_spec->hdr.dst_addr, 16);
+
+				vtc_flow_cpu =
+				      rte_be_to_cpu_32(ipv6_spec->hdr.vtc_flow);
+				filter->input.ip.v6.tc =
+					(uint8_t)(vtc_flow_cpu >>
+						  ICE_FDIR_IPV6_TC_OFFSET);
+				filter->input.ip.v6.proto =
+					ipv6_spec->hdr.proto;
+				filter->input.ip.v6.hlim =
+					ipv6_spec->hdr.hop_limits;
+			}
+
+			flow_type = ICE_FLTR_PTYPE_NONF_IPV6_OTHER;
+			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			tcp_spec = item->spec;
+			tcp_mask = item->mask;
+
+			if (tcp_spec && tcp_mask) {
+				/* Check TCP mask and update input set */
+				if (tcp_mask->hdr.sent_seq ||
+				    tcp_mask->hdr.recv_ack ||
+				    tcp_mask->hdr.data_off ||
+				    tcp_mask->hdr.tcp_flags ||
+				    tcp_mask->hdr.rx_win ||
+				    tcp_mask->hdr.cksum ||
+				    tcp_mask->hdr.tcp_urp) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid TCP mask");
+					return -rte_errno;
+				}
+
+				if (tcp_mask->hdr.src_port == UINT16_MAX)
+					input_set |= ICE_INSET_TCP_SRC_PORT;
+				if (tcp_mask->hdr.dst_port == UINT16_MAX)
+					input_set |= ICE_INSET_TCP_DST_PORT;
+
+				/* Get filter info */
+				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+					filter->input.ip.v4.dst_port =
+						tcp_spec->hdr.src_port;
+					filter->input.ip.v4.src_port =
+						tcp_spec->hdr.dst_port;
+					flow_type =
+						ICE_FLTR_PTYPE_NONF_IPV4_TCP;
+				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+					filter->input.ip.v6.dst_port =
+						tcp_spec->hdr.src_port;
+					filter->input.ip.v6.src_port =
+						tcp_spec->hdr.dst_port;
+					flow_type =
+						ICE_FLTR_PTYPE_NONF_IPV6_TCP;
+				}
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			udp_spec = item->spec;
+			udp_mask = item->mask;
+
+			if (udp_spec && udp_mask) {
+				/* Check UDP mask and update input set*/
+				if (udp_mask->hdr.dgram_len ||
+				    udp_mask->hdr.dgram_cksum) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid UDP mask");
+					return -rte_errno;
+				}
+
+				if (udp_mask->hdr.src_port == UINT16_MAX)
+					input_set |= ICE_INSET_UDP_SRC_PORT;
+				if (udp_mask->hdr.dst_port == UINT16_MAX)
+					input_set |= ICE_INSET_UDP_DST_PORT;
+
+				/* Get filter info */
+				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+					filter->input.ip.v4.dst_port =
+						udp_spec->hdr.src_port;
+					filter->input.ip.v4.src_port =
+						udp_spec->hdr.dst_port;
+					flow_type =
+						ICE_FLTR_PTYPE_NONF_IPV4_UDP;
+				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+					filter->input.ip.v6.src_port =
+						udp_spec->hdr.src_port;
+					filter->input.ip.v6.dst_port =
+						udp_spec->hdr.dst_port;
+					flow_type =
+						ICE_FLTR_PTYPE_NONF_IPV6_UDP;
+				}
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_SCTP:
+			sctp_spec = item->spec;
+			sctp_mask = item->mask;
+
+			if (sctp_spec && sctp_mask) {
+				/* Check SCTP mask and update input set */
+				if (sctp_mask->hdr.cksum) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid UDP mask");
+					return -rte_errno;
+				}
+
+				if (sctp_mask->hdr.src_port == UINT16_MAX)
+					input_set |= ICE_INSET_SCTP_SRC_PORT;
+				if (sctp_mask->hdr.dst_port == UINT16_MAX)
+					input_set |= ICE_INSET_SCTP_DST_PORT;
+
+				/* Get filter info */
+				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+					filter->input.ip.v4.dst_port =
+						sctp_spec->hdr.src_port;
+					filter->input.ip.v4.src_port =
+						sctp_spec->hdr.dst_port;
+					flow_type =
+						ICE_FLTR_PTYPE_NONF_IPV4_SCTP;
+				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+					filter->input.ip.v6.dst_port =
+						sctp_spec->hdr.src_port;
+					filter->input.ip.v6.src_port =
+						sctp_spec->hdr.dst_port;
+					flow_type =
+						ICE_FLTR_PTYPE_NONF_IPV6_SCTP;
+				}
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+		default:
+			rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "Invalid pattern item.");
+			return -rte_errno;
+		}
+	}
+
+	filter->input.flow_type = flow_type;
+	filter->input_set = input_set;
+
+	return 0;
+}
+
+static int
+ice_fdir_parse(struct ice_adapter *ad,
+	       struct ice_pattern_match_item *array,
+	       uint32_t array_len,
+	       const struct rte_flow_item pattern[],
+	       const struct rte_flow_action actions[],
+	       void **meta,
+	       struct rte_flow_error *error)
+{
+	struct ice_pf *pf = &ad->pf;
+	struct ice_fdir_filter_conf *filter = &pf->fdir.conf;
+	struct ice_pattern_match_item *item = NULL;
+	uint64_t input_set;
+	int ret;
+
+	memset(filter, 0, sizeof(*filter));
+	item = ice_search_pattern_match_item(pattern, array, array_len, error);
+	if (!item)
+		return -rte_errno;
+
+	ret = ice_fdir_parse_pattern(ad, pattern, error, filter);
+	if (ret)
+		return ret;
+	input_set = filter->input_set;
+	if (!input_set || input_set & ~item->input_set_mask) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				   pattern,
+				   "Invalid input set");
+		return -rte_errno;
+	}
+
+	ret = ice_fdir_parse_action(ad, actions, error, filter);
+	if (ret)
+		return ret;
+
+	*meta = filter;
+
+	return 0;
+}
+
+static struct ice_flow_parser ice_fdir_parser = {
+	.engine = &ice_fdir_engine,
+	.array = ice_fdir_pattern,
+	.array_len = RTE_DIM(ice_fdir_pattern),
+	.parse_pattern_action = ice_fdir_parse,
+	.stage = ICE_FLOW_STAGE_DISTRIBUTOR,
 };
 
 RTE_INIT(ice_fdir_engine_register)

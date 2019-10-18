@@ -247,6 +247,11 @@ TAILQ_HEAD(ice_flow_list, rte_flow);
 struct ice_flow_parser_node;
 TAILQ_HEAD(ice_parser_list, ice_flow_parser_node);
 
+struct ice_fdir_filter_conf {
+	struct ice_fdir_fltr input;
+	uint64_t input_set;
+};
+
 /**
  *  A structure used to define fields of a FDIR related info.
  */
@@ -256,6 +261,7 @@ struct ice_fdir_info {
 	struct ice_rx_queue *rxq;
 	void *prg_pkt;                 /* memory for fdir program packet */
 	uint64_t dma_addr;             /* physic address of packet memory*/
+	struct ice_fdir_filter_conf conf;
 };
 
 struct ice_pf {
