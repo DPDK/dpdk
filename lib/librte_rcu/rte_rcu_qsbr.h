@@ -217,7 +217,7 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id);
  * call this API before calling rte_rcu_qsbr_quiescent. This can be called
  * during initialization or as part of the packet processing loop.
  *
- * The reader thread must call rte_rcu_thread_offline API, before
+ * The reader thread must call rte_rcu_qsbr_thread_offline API, before
  * calling any functions that block, to ensure that rte_rcu_qsbr_check
  * API does not wait indefinitely for the reader thread to update its QS.
  *
@@ -283,7 +283,7 @@ rte_rcu_qsbr_thread_online(struct rte_rcu_qsbr *v, unsigned int thread_id)
  * This can be called during initialization or as part of the packet
  * processing loop.
  *
- * The reader thread must call rte_rcu_thread_offline API, before
+ * The reader thread must call rte_rcu_qsbr_thread_offline API, before
  * calling any functions that block, to ensure that rte_rcu_qsbr_check
  * API does not wait indefinitely for the reader thread to update its QS.
  *
