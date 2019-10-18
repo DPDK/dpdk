@@ -1417,10 +1417,20 @@ ice_pf_sw_init(struct rte_eth_dev *dev)
 
 	ice_init_proto_xtr(dev);
 
+	if (hw->func_caps.fd_fltr_guar > 0 ||
+	    hw->func_caps.fd_fltr_best_effort > 0) {
+		pf->flags |= ICE_FLAG_FDIR;
+		pf->fdir_nb_qps = ICE_DEFAULT_QP_NUM_FDIR;
+		pf->lan_nb_qps = pf->lan_nb_qp_max - pf->fdir_nb_qps;
+	} else {
+		pf->fdir_nb_qps = 0;
+	}
+	pf->fdir_qp_offset = 0;
+
 	return 0;
 }
 
-static struct ice_vsi *
+struct ice_vsi *
 ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 {
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
@@ -1432,6 +1442,7 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	struct rte_ether_addr mac_addr;
 	uint16_t max_txqs[ICE_MAX_TRAFFIC_CLASS] = { 0 };
 	uint8_t tc_bitmap = 0x1;
+	uint16_t cfg;
 
 	/* hw->num_lports = 1 in NIC mode */
 	vsi = rte_zmalloc(NULL, sizeof(struct ice_vsi), 0);
@@ -1455,14 +1466,10 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	pf->flags |= ICE_FLAG_RSS_AQ_CAPABLE;
 
 	memset(&vsi_ctx, 0, sizeof(vsi_ctx));
-	/* base_queue in used in queue mapping of VSI add/update command.
-	 * Suppose vsi->base_queue is 0 now, don't consider SRIOV, VMDQ
-	 * cases in the first stage. Only Main VSI.
-	 */
-	vsi->base_queue = 0;
 	switch (type) {
 	case ICE_VSI_PF:
 		vsi->nb_qps = pf->lan_nb_qps;
+		vsi->base_queue = 1;
 		ice_vsi_config_default_rss(&vsi_ctx.info);
 		vsi_ctx.alloc_from_pool = true;
 		vsi_ctx.flags = ICE_AQ_VSI_TYPE_PF;
@@ -1476,6 +1483,18 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 		vsi_ctx.info.vlan_flags |= ICE_AQ_VSI_VLAN_EMOD_NOTHING;
 		vsi_ctx.info.q_opt_rss = ICE_AQ_VSI_Q_OPT_RSS_LUT_PF |
 					 ICE_AQ_VSI_Q_OPT_RSS_TPLZ;
+
+		/* FDIR */
+		cfg = ICE_AQ_VSI_PROP_SECURITY_VALID |
+			ICE_AQ_VSI_PROP_FLOW_DIR_VALID;
+		vsi_ctx.info.valid_sections |= rte_cpu_to_le_16(cfg);
+		cfg = ICE_AQ_VSI_FD_ENABLE | ICE_AQ_VSI_FD_PROG_ENABLE;
+		vsi_ctx.info.fd_options = rte_cpu_to_le_16(cfg);
+		vsi_ctx.info.max_fd_fltr_dedicated =
+			rte_cpu_to_le_16(hw->func_caps.fd_fltr_guar);
+		vsi_ctx.info.max_fd_fltr_shared =
+			rte_cpu_to_le_16(hw->func_caps.fd_fltr_best_effort);
+
 		/* Enable VLAN/UP trip */
 		ret = ice_vsi_config_tc_queue_mapping(vsi,
 						      &vsi_ctx.info,
@@ -1488,6 +1507,28 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 			goto fail_mem;
 		}
 
+		break;
+	case ICE_VSI_CTRL:
+		vsi->nb_qps = pf->fdir_nb_qps;
+		vsi->base_queue = ICE_FDIR_QUEUE_ID;
+		vsi_ctx.alloc_from_pool = true;
+		vsi_ctx.flags = ICE_AQ_VSI_TYPE_PF;
+
+		cfg = ICE_AQ_VSI_PROP_FLOW_DIR_VALID;
+		vsi_ctx.info.valid_sections |= rte_cpu_to_le_16(cfg);
+		cfg = ICE_AQ_VSI_FD_ENABLE | ICE_AQ_VSI_FD_PROG_ENABLE;
+		vsi_ctx.info.fd_options = rte_cpu_to_le_16(cfg);
+		vsi_ctx.info.sw_id = hw->port_info->sw_id;
+		ret = ice_vsi_config_tc_queue_mapping(vsi,
+						      &vsi_ctx.info,
+						      ICE_DEFAULT_TCMAP);
+		if (ret) {
+			PMD_INIT_LOG(ERR,
+				     "tc queue mapping with vsi failed, "
+				     "err = %d",
+				     ret);
+			goto fail_mem;
+		}
 		break;
 	default:
 		/* for other types of VSI */
@@ -1506,6 +1547,14 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 		}
 		vsi->msix_intr = ret;
 		vsi->nb_msix = RTE_MIN(vsi->nb_qps, RTE_MAX_RXTX_INTR_VEC_ID);
+	} else if (type == ICE_VSI_CTRL) {
+		ret = ice_res_pool_alloc(&pf->msix_pool, 1);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "VSI %d get heap failed %d",
+				    vsi->vsi_id, ret);
+		}
+		vsi->msix_intr = ret;
+		vsi->nb_msix = 1;
 	} else {
 		vsi->msix_intr = 0;
 		vsi->nb_msix = 0;
@@ -1521,20 +1570,22 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	pf->vsis_allocated = vsi_ctx.vsis_allocd;
 	pf->vsis_unallocated = vsi_ctx.vsis_unallocated;
 
-	/* MAC configuration */
-	rte_memcpy(pf->dev_addr.addr_bytes,
-		   hw->port_info->mac.perm_addr,
-		   ETH_ADDR_LEN);
+	if (type == ICE_VSI_PF) {
+		/* MAC configuration */
+		rte_memcpy(pf->dev_addr.addr_bytes,
+			   hw->port_info->mac.perm_addr,
+			   ETH_ADDR_LEN);
 
-	rte_memcpy(&mac_addr, &pf->dev_addr, RTE_ETHER_ADDR_LEN);
-	ret = ice_add_mac_filter(vsi, &mac_addr);
-	if (ret != ICE_SUCCESS)
-		PMD_INIT_LOG(ERR, "Failed to add dflt MAC filter");
+		rte_memcpy(&mac_addr, &pf->dev_addr, RTE_ETHER_ADDR_LEN);
+		ret = ice_add_mac_filter(vsi, &mac_addr);
+		if (ret != ICE_SUCCESS)
+			PMD_INIT_LOG(ERR, "Failed to add dflt MAC filter");
 
-	rte_memcpy(&mac_addr, &broadcast, RTE_ETHER_ADDR_LEN);
-	ret = ice_add_mac_filter(vsi, &mac_addr);
-	if (ret != ICE_SUCCESS)
-		PMD_INIT_LOG(ERR, "Failed to add MAC filter");
+		rte_memcpy(&mac_addr, &broadcast, RTE_ETHER_ADDR_LEN);
+		ret = ice_add_mac_filter(vsi, &mac_addr);
+		if (ret != ICE_SUCCESS)
+			PMD_INIT_LOG(ERR, "Failed to add MAC filter");
+	}
 
 	/* At the beginning, only TC0. */
 	/* What we need here is the maximam number of the TX queues.
@@ -1572,7 +1623,9 @@ ice_send_driver_ver(struct ice_hw *hw)
 static int
 ice_pf_setup(struct ice_pf *pf)
 {
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_vsi *vsi;
+	uint16_t unused;
 
 	/* Clear all stats counters */
 	pf->offset_loaded = FALSE;
@@ -1580,6 +1633,13 @@ ice_pf_setup(struct ice_pf *pf)
 	memset(&pf->stats_offset, 0, sizeof(struct ice_hw_port_stats));
 	memset(&pf->internal_stats, 0, sizeof(struct ice_eth_stats));
 	memset(&pf->internal_stats_offset, 0, sizeof(struct ice_eth_stats));
+
+	/* force guaranteed filter pool for PF */
+	ice_alloc_fd_guar_item(hw, &unused,
+			       hw->func_caps.fd_fltr_guar);
+	/* force shared filter pool for PF */
+	ice_alloc_fd_shrd_item(hw, &unused,
+			       hw->func_caps.fd_fltr_best_effort);
 
 	vsi = ice_setup_vsi(pf, ICE_VSI_PF);
 	if (!vsi) {
@@ -2035,7 +2095,7 @@ err_init_mac:
 	return ret;
 }
 
-static int
+int
 ice_release_vsi(struct ice_vsi *vsi)
 {
 	struct ice_hw *hw;
@@ -2116,6 +2176,9 @@ ice_dev_stop(struct rte_eth_dev *dev)
 
 	/* disable all queue interrupts */
 	ice_vsi_disable_queues_intr(main_vsi);
+
+	if (pf->fdir.fdir_vsi)
+		ice_vsi_disable_queues_intr(pf->fdir.fdir_vsi);
 
 	/* Clear all queues and release mbufs */
 	ice_clear_queues(dev);
@@ -2455,6 +2518,12 @@ ice_rxq_intr_setup(struct rte_eth_dev *dev)
 
 	/* Enable interrupts for all the queues */
 	ice_vsi_enable_queues_intr(vsi);
+
+	/* Enable FDIR MSIX interrupt */
+	if (pf->fdir.fdir_vsi) {
+		ice_vsi_queues_bind_intr(pf->fdir.fdir_vsi);
+		ice_vsi_enable_queues_intr(pf->fdir.fdir_vsi);
+	}
 
 	rte_intr_enable(intr_handle);
 

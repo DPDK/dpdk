@@ -247,6 +247,17 @@ TAILQ_HEAD(ice_flow_list, rte_flow);
 struct ice_flow_parser_node;
 TAILQ_HEAD(ice_parser_list, ice_flow_parser_node);
 
+/**
+ *  A structure used to define fields of a FDIR related info.
+ */
+struct ice_fdir_info {
+	struct ice_vsi *fdir_vsi;     /* pointer to fdir VSI structure */
+	struct ice_tx_queue *txq;
+	struct ice_rx_queue *rxq;
+	void *prg_pkt;                 /* memory for fdir program packet */
+	uint64_t dma_addr;             /* physic address of packet memory*/
+};
+
 struct ice_pf {
 	struct ice_adapter *adapter; /* The adapter this PF associate to */
 	struct ice_vsi *main_vsi; /* pointer to main VSI structure */
@@ -267,6 +278,9 @@ struct ice_pf {
 	uint16_t lan_nb_qps; /* The number of queue pairs of LAN */
 	uint16_t base_queue; /* The base queue pairs index  in the device */
 	uint8_t *proto_xtr; /* Protocol extraction type for all queues */
+	uint16_t fdir_nb_qps; /* The number of queue pairs of Flow Director */
+	uint16_t fdir_qp_offset;
+	struct ice_fdir_info fdir; /* flow director info */
 	struct ice_hw_port_stats stats_offset;
 	struct ice_hw_port_stats stats;
 	/* internal packet statistics, it should be excluded from the total */
@@ -352,6 +366,11 @@ struct ice_vsi_vlan_pvid_info {
 	((struct ice_adapter *)(pf)->adapter)
 #define ICE_PF_TO_ETH_DEV(pf) \
 	(((struct ice_pf *)pf)->adapter->eth_dev)
+
+struct ice_vsi *
+ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type);
+int
+ice_release_vsi(struct ice_vsi *vsi);
 
 static inline int
 ice_align_floor(int n)

@@ -62,6 +62,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_rxtx_vec_sse.c
 endif
 
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_switch_filter.c
+SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_fdir_filter.c
 ifeq ($(findstring RTE_MACHINE_CPUFLAG_AVX2,$(CFLAGS)),RTE_MACHINE_CPUFLAG_AVX2)
 	CC_AVX2_SUPPORT=1
 else
