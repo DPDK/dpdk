@@ -331,8 +331,8 @@ Example:
 Limitations
 -----------
 
-CRC striping
-~~~~~~~~~~~~
+CRC stripping
+~~~~~~~~~~~~~
 
 The ThunderX SoC family NICs strip the CRC for every packets coming into the
 host interface irrespective of the offload configuration.

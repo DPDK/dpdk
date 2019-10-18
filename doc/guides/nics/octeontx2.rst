@@ -188,8 +188,8 @@ The OCTEON TX2 SoC family NIC has inbuilt HW assisted external mempool manager.
 as it is performance wise most effective way for packet allocation and Tx buffer
 recycling on OCTEON TX2 SoC platform.
 
-CRC striping
-~~~~~~~~~~~~
+CRC stripping
+~~~~~~~~~~~~~
 
 The OCTEON TX2 SoC family NICs strip the CRC for every packet being received by
 the host interface irrespective of the offload configuration.

@@ -161,8 +161,8 @@ This driver will only work with ``octeontx_fpavf`` external mempool handler
 as it is the most performance effective way for packet allocation and Tx buffer
 recycling on OCTEON TX SoC platform.
 
-CRC striping
-~~~~~~~~~~~~
+CRC stripping
+~~~~~~~~~~~~~
 
 The OCTEON TX SoC family NICs strip the CRC for every packets coming into the
 host interface irrespective of the offload configuration.

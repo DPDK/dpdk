@@ -190,7 +190,7 @@ Ring size
 
 Number of descriptors for Rx/Tx ring should be in the range 128 to 512.
 
-CRC striping
-~~~~~~~~~~~~
+CRC stripping
+~~~~~~~~~~~~~
 
 LiquidIO adapters strip ethernet FCS of every packet coming to the host interface.
