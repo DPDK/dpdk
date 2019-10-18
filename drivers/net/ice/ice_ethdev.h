@@ -256,6 +256,20 @@ struct ice_fdir_filter_conf {
 	uint64_t input_set;
 };
 
+#define ICE_MAX_FDIR_FILTER_NUM		(1024 * 16)
+
+struct ice_fdir_fltr_pattern {
+	enum ice_fltr_ptype flow_type;
+
+	union {
+		struct ice_fdir_v4 v4;
+		struct ice_fdir_v6 v6;
+	} ip, mask;
+
+	struct ice_fdir_extra ext_data;
+	struct ice_fdir_extra ext_mask;
+};
+
 #define ICE_FDIR_COUNTER_DEFAULT_POOL_SIZE	1
 #define ICE_FDIR_COUNTER_MAX_POOL_SIZE		32
 #define ICE_FDIR_COUNTERS_PER_BLOCK		256
@@ -300,6 +314,9 @@ struct ice_fdir_info {
 	void *prg_pkt;                 /* memory for fdir program packet */
 	uint64_t dma_addr;             /* physic address of packet memory*/
 	struct ice_fdir_filter_conf conf;
+
+	struct ice_fdir_filter_conf **hash_map;
+	struct rte_hash *hash_table;
 
 	struct ice_fdir_counter_pool_container counter;
 };

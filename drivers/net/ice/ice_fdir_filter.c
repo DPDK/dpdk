@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <rte_flow.h>
+#include <rte_hash.h>
+#include <rte_hash_crc.h>
 #include "base/ice_fdir.h"
 #include "base/ice_flow.h"
 #include "base/ice_type.h"
@@ -272,6 +274,60 @@ ice_fdir_counter_free(__rte_unused struct ice_pf *pf,
 	}
 }
 
+static int
+ice_fdir_init_filter_list(struct ice_pf *pf)
+{
+	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+	struct ice_fdir_info *fdir_info = &pf->fdir;
+	char fdir_hash_name[RTE_HASH_NAMESIZE];
+	int ret;
+
+	struct rte_hash_parameters fdir_hash_params = {
+		.name = fdir_hash_name,
+		.entries = ICE_MAX_FDIR_FILTER_NUM,
+		.key_len = sizeof(struct ice_fdir_fltr_pattern),
+		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+
+	/* Initialize hash */
+	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE,
+		 "fdir_%s", dev->device->name);
+	fdir_info->hash_table = rte_hash_create(&fdir_hash_params);
+	if (!fdir_info->hash_table) {
+		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
+		return -EINVAL;
+	}
+	fdir_info->hash_map = rte_zmalloc("ice_fdir_hash_map",
+					  sizeof(*fdir_info->hash_map) *
+					  ICE_MAX_FDIR_FILTER_NUM,
+					  0);
+	if (!fdir_info->hash_map) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate memory for fdir hash map!");
+		ret = -ENOMEM;
+		goto err_fdir_hash_map_alloc;
+	}
+	return 0;
+
+err_fdir_hash_map_alloc:
+	rte_hash_free(fdir_info->hash_table);
+
+	return ret;
+}
+
+static void
+ice_fdir_release_filter_list(struct ice_pf *pf)
+{
+	struct ice_fdir_info *fdir_info = &pf->fdir;
+
+	if (fdir_info->hash_map)
+		rte_free(fdir_info->hash_map);
+	if (fdir_info->hash_table)
+		rte_hash_free(fdir_info->hash_table);
+}
+
 /*
  * ice_fdir_setup - reserve and initialize the Flow Director resources
  * @pf: board private structure
@@ -308,6 +364,12 @@ ice_fdir_setup(struct ice_pf *pf)
 		return -EINVAL;
 	}
 	pf->fdir.fdir_vsi = vsi;
+
+	err = ice_fdir_init_filter_list(pf);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to init FDIR filter list.");
+		return -EINVAL;
+	}
 
 	err = ice_fdir_counter_init(pf);
 	if (err) {
@@ -469,6 +531,8 @@ ice_fdir_teardown(struct ice_pf *pf)
 	err = ice_fdir_counter_release(pf);
 	if (err)
 		PMD_DRV_LOG(ERR, "Failed to release FDIR counter resource.");
+
+	ice_fdir_release_filter_list(pf);
 
 	ice_tx_queue_release(pf->fdir.txq);
 	pf->fdir.txq = NULL;
@@ -752,6 +816,74 @@ ice_fdir_add_del_filter(struct ice_pf *pf,
 	return ice_fdir_programming(pf, &desc);
 }
 
+static void
+ice_fdir_extract_fltr_key(struct ice_fdir_fltr_pattern *key,
+			  struct ice_fdir_filter_conf *filter)
+{
+	struct ice_fdir_fltr *input = &filter->input;
+	memset(key, 0, sizeof(*key));
+
+	key->flow_type = input->flow_type;
+	rte_memcpy(&key->ip, &input->ip, sizeof(key->ip));
+	rte_memcpy(&key->mask, &input->mask, sizeof(key->mask));
+	rte_memcpy(&key->ext_data, &input->ext_data, sizeof(key->ext_data));
+	rte_memcpy(&key->ext_mask, &input->ext_mask, sizeof(key->ext_mask));
+}
+
+/* Check if there exists the flow director filter */
+static struct ice_fdir_filter_conf *
+ice_fdir_entry_lookup(struct ice_fdir_info *fdir_info,
+			const struct ice_fdir_fltr_pattern *key)
+{
+	int ret;
+
+	ret = rte_hash_lookup(fdir_info->hash_table, key);
+	if (ret < 0)
+		return NULL;
+
+	return fdir_info->hash_map[ret];
+}
+
+/* Add a flow director entry into the SW list */
+static int
+ice_fdir_entry_insert(struct ice_pf *pf,
+		      struct ice_fdir_filter_conf *entry,
+		      struct ice_fdir_fltr_pattern *key)
+{
+	struct ice_fdir_info *fdir_info = &pf->fdir;
+	int ret;
+
+	ret = rte_hash_add_key(fdir_info->hash_table, key);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to insert fdir entry to hash table %d!",
+			    ret);
+		return ret;
+	}
+	fdir_info->hash_map[ret] = entry;
+
+	return 0;
+}
+
+/* Delete a flow director entry from the SW list */
+static int
+ice_fdir_entry_del(struct ice_pf *pf, struct ice_fdir_fltr_pattern *key)
+{
+	struct ice_fdir_info *fdir_info = &pf->fdir;
+	int ret;
+
+	ret = rte_hash_del_key(fdir_info->hash_table, key);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to delete fdir filter to hash table %d!",
+			    ret);
+		return ret;
+	}
+	fdir_info->hash_map[ret] = NULL;
+
+	return 0;
+}
+
 static int
 ice_fdir_create_filter(struct ice_adapter *ad,
 		       struct rte_flow *flow,
@@ -760,11 +892,22 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 {
 	struct ice_pf *pf = &ad->pf;
 	struct ice_fdir_filter_conf *filter = meta;
-	struct ice_fdir_filter_conf *rule;
+	struct ice_fdir_info *fdir_info = &pf->fdir;
+	struct ice_fdir_filter_conf *entry, *node;
+	struct ice_fdir_fltr_pattern key;
 	int ret;
 
-	rule = rte_zmalloc("fdir_entry", sizeof(*rule), 0);
-	if (!rule) {
+	ice_fdir_extract_fltr_key(&key, filter);
+	node = ice_fdir_entry_lookup(fdir_info, &key);
+	if (node) {
+		rte_flow_error_set(error, EEXIST,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Rule already exists!");
+		return -rte_errno;
+	}
+
+	entry = rte_zmalloc("fdir_entry", sizeof(*entry), 0);
+	if (!entry) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Failed to allocate memory");
@@ -804,9 +947,18 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 		goto free_counter;
 	}
 
-	rte_memcpy(rule, filter, sizeof(*rule));
-	flow->rule = rule;
+	rte_memcpy(entry, filter, sizeof(*entry));
+	ret = ice_fdir_entry_insert(pf, entry, &key);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Insert entry to table failed.");
+		goto free_entry;
+	}
+
+	flow->rule = entry;
 	ice_fdir_cnt_update(pf, filter->input.flow_type, false, true);
+
 	return 0;
 
 free_counter:
@@ -816,7 +968,7 @@ free_counter:
 	}
 
 free_entry:
-	rte_free(rule);
+	rte_free(entry);
 	return -rte_errno;
 }
 
@@ -826,7 +978,9 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 			struct rte_flow_error *error)
 {
 	struct ice_pf *pf = &ad->pf;
-	struct ice_fdir_filter_conf *filter;
+	struct ice_fdir_info *fdir_info = &pf->fdir;
+	struct ice_fdir_filter_conf *filter, *entry;
+	struct ice_fdir_fltr_pattern key;
 	int ret;
 
 	filter = (struct ice_fdir_filter_conf *)flow->rule;
@@ -836,11 +990,28 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 		filter->counter = NULL;
 	}
 
+	ice_fdir_extract_fltr_key(&key, filter);
+	entry = ice_fdir_entry_lookup(fdir_info, &key);
+	if (!entry) {
+		rte_flow_error_set(error, ENOENT,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Can't find entry.");
+		return -rte_errno;
+	}
+
 	ret = ice_fdir_add_del_filter(pf, filter, false);
 	if (ret) {
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Del filter rule failed.");
+		return -rte_errno;
+	}
+
+	ret = ice_fdir_entry_del(pf, &key);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Remove entry from table failed.");
 		return -rte_errno;
 	}
 
