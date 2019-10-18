@@ -160,7 +160,7 @@ the application calls ``rte_ioat_completed_copies()``.
 
 The ``rte_ioat_enqueue_copy()`` function enqueues a single copy to the
 device ring for copying at a later point. The parameters to that function
-include the physical addresses of both the source and destination buffers,
+include the IOVA addresses of both the source and destination buffers,
 as well as two "handles" to be returned to the user when the copy is
 completed. These handles can be arbitrary values, but two are provided so
 that the library can track handles for both source and destination on
