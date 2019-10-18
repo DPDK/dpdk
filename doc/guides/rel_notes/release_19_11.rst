@@ -56,6 +56,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added Lock-free Stack for aarch64.**
+
+  The lock-free stack implementation is enabled for aarch64 platforms.
+
 * **Added Hisilicon hns3 PMD.**
 
   Added the new ``hns3`` net driver for the inbuilt Hisilicon Network

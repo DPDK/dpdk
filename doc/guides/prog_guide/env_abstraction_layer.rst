@@ -648,8 +648,8 @@ Known Issues
   Alternatively, applications can use the lock-free stack mempool handler. When
   considering this handler, note that:
 
-  - It is currently limited to the x86_64 platform, because it uses an
-    instruction (16-byte compare-and-swap) that is not yet available on other
+  - It is currently limited to the aarch64 and x86_64 platforms, because it uses
+    an instruction (16-byte compare-and-swap) that is not yet available on other
     platforms.
   - It has worse average-case performance than the non-preemptive rte_ring, but
     software caching (e.g. the mempool cache) can mitigate this by reducing the
