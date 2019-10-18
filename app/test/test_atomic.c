@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2019 Arm Limited
  */
 
 #include <stdio.h>
@@ -20,7 +21,7 @@
  * Atomic Variables
  * ================
  *
- * - The main test function performs three subtests. The first test
+ * - The main test function performs four subtests. The first test
  *   checks that the usual inc/dec/add/sub functions are working
  *   correctly:
  *
@@ -61,11 +62,27 @@
  *       atomic_sub(&count, tmp+1);
  *
  *   - At the end of the test, the *count* value must be 0.
+ *
+ * - Test "128-bit compare and swap" (aarch64 and x86_64 only)
+ *
+ *   - Initialize 128-bit atomic variables to zero.
+ *
+ *   - Invoke ``test_atomic128_cmp_exchange()`` on each lcore. Before doing
+ *     anything else, the cores are waiting a synchro. Each lcore does
+ *     these compare and swap (CAS) operations several times::
+ *
+ *       Acquired CAS update counter.val[0] + 2; counter.val[1] + 1;
+ *       Released CAS update counter.val[0] + 2; counter.val[1] + 1;
+ *       Acquired_Released CAS update counter.val[0] + 2; counter.val[1] + 1;
+ *       Relaxed CAS update counter.val[0] + 2; counter.val[1] + 1;
+ *
+ *   - At the end of the test, the *count128* first 64-bit value and
+ *     second 64-bit value differ by the total iterations.
  */
 
 #define NUM_ATOMIC_TYPES 3
 
-#define N 10000
+#define N 1000000
 
 static rte_atomic16_t a16;
 static rte_atomic32_t a32;
@@ -216,6 +233,78 @@ test_atomic_dec_and_test(__attribute__((unused)) void *arg)
 	return 0;
 }
 
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_ARM64)
+static rte_int128_t count128;
+
+/*
+ * rte_atomic128_cmp_exchange() should update a 128 bits counter's first 64
+ * bits by 2 and the second 64 bits by 1 in this test. It should return true
+ * if the compare exchange operation is successful.
+ * This test repeats 128 bits compare and swap operations N rounds. In each
+ * iteration it runs compare and swap operation with different memory models.
+ */
+static int
+test_atomic128_cmp_exchange(__attribute__((unused)) void *arg)
+{
+	rte_int128_t expected;
+	int success;
+	unsigned int i;
+
+	while (rte_atomic32_read(&synchro) == 0)
+		;
+
+	expected = count128;
+
+	for (i = 0; i < N; i++) {
+		do {
+			rte_int128_t desired;
+
+			desired.val[0] = expected.val[0] + 2;
+			desired.val[1] = expected.val[1] + 1;
+
+			success = rte_atomic128_cmp_exchange(&count128,
+				&expected, &desired, 1,
+				__ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
+		} while (success == 0);
+
+		do {
+			rte_int128_t desired;
+
+			desired.val[0] = expected.val[0] + 2;
+			desired.val[1] = expected.val[1] + 1;
+
+			success = rte_atomic128_cmp_exchange(&count128,
+					&expected, &desired, 1,
+					__ATOMIC_RELEASE, __ATOMIC_RELAXED);
+		} while (success == 0);
+
+		do {
+			rte_int128_t desired;
+
+			desired.val[0] = expected.val[0] + 2;
+			desired.val[1] = expected.val[1] + 1;
+
+			success = rte_atomic128_cmp_exchange(&count128,
+					&expected, &desired, 1,
+					__ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
+		} while (success == 0);
+
+		do {
+			rte_int128_t desired;
+
+			desired.val[0] = expected.val[0] + 2;
+			desired.val[1] = expected.val[1] + 1;
+
+			success = rte_atomic128_cmp_exchange(&count128,
+					&expected, &desired, 1,
+					__ATOMIC_RELAXED, __ATOMIC_RELAXED);
+		} while (success == 0);
+	}
+
+	return 0;
+}
+#endif
+
 static int
 test_atomic(void)
 {
@@ -339,6 +428,38 @@ test_atomic(void)
 		printf("Atomic dec and test failed\n");
 		return -1;
 	}
+
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_ARM64)
+	/*
+	 * This case tests the functionality of rte_atomic128_cmp_exchange
+	 * API. It calls rte_atomic128_cmp_exchange with four kinds of memory
+	 * models successively on each slave core. Once each 128-bit atomic
+	 * compare and swap operation is successful, it updates the global
+	 * 128-bit counter by 2 for the first 64-bit and 1 for the second
+	 * 64-bit. Each slave core iterates this test N times.
+	 * At the end of test, verify whether the first 64-bits of the 128-bit
+	 * counter and the second 64bits is differ by the total iterations. If
+	 * it is, the test passes.
+	 */
+	printf("128-bit compare and swap test\n");
+	uint64_t iterations = 0;
+
+	rte_atomic32_clear(&synchro);
+	count128.val[0] = 0;
+	count128.val[1] = 0;
+
+	rte_eal_mp_remote_launch(test_atomic128_cmp_exchange, NULL,
+				 SKIP_MASTER);
+	rte_atomic32_set(&synchro, 1);
+	rte_eal_mp_wait_lcore();
+	rte_atomic32_clear(&synchro);
+
+	iterations = count128.val[0] - count128.val[1];
+	if (iterations != 4*N*(rte_lcore_count()-1)) {
+		printf("128-bit compare and swap failed\n");
+		return -1;
+	}
+#endif
 
 	return 0;
 }
