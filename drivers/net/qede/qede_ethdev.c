@@ -833,6 +833,8 @@ static int qede_vlan_stripping(struct rte_eth_dev *eth_dev, bool flg)
 		}
 	}
 
+	qdev->vlan_strip_flg = flg;
+
 	DP_INFO(edev, "VLAN stripping %s\n", flg ? "enabled" : "disabled");
 	return 0;
 }
