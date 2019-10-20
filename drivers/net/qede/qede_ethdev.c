@@ -1038,9 +1038,11 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE(edev);
 
 	/* Update MTU only if it has changed */
-	if (eth_dev->data->mtu != qdev->mtu) {
-		if (qede_update_mtu(eth_dev, qdev->mtu))
+	if (qdev->new_mtu && qdev->new_mtu != qdev->mtu) {
+		if (qede_update_mtu(eth_dev, qdev->new_mtu))
 			goto err;
+		qdev->mtu = qdev->new_mtu;
+		qdev->new_mtu = 0;
 	}
 
 	/* Configure TPA parameters */
@@ -2248,7 +2250,7 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		restart = true;
 	}
 	rte_delay_ms(1000);
-	qdev->mtu = mtu;
+	qdev->new_mtu = mtu;
 
 	/* Fix up RX buf size for all queues of the port */
 	for (i = 0; i < qdev->num_rx_queues; i++) {
