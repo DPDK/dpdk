@@ -16,7 +16,7 @@
 ; 0   Mbuf             0                128
 ; 1   Headroom         128              128
 ; 2   Ethernet header  256              14
-; 3   IPv4 header      280              20
+; 3   IPv4 header      270              20
 ; 4   Packet           256              1536
 ; 5   Crypto Operation 1792             160
 
