@@ -18,7 +18,7 @@
 char qede_fw_file[PATH_MAX];
 
 static const char * const QEDE_DEFAULT_FIRMWARE =
-	"/lib/firmware/qed/qed_init_values-8.40.25.0.bin";
+	"/lib/firmware/qed/qed_init_values-8.40.33.0.bin";
 
 static void
 qed_update_pf_params(struct ecore_dev *edev, struct ecore_pf_params *params)

@@ -712,7 +712,7 @@ static enum _ecore_status_t ecore_dmae_operation_wait(struct ecore_hwfn *p_hwfn)
 	while (*p_hwfn->dmae_info.p_completion_word != DMAE_COMPLETION_VAL) {
 		OSAL_UDELAY(DMAE_MIN_WAIT_TIME);
 		if (++wait_cnt > wait_cnt_limit) {
-			DP_NOTICE(p_hwfn->p_dev, ECORE_MSG_HW,
+			DP_NOTICE(p_hwfn->p_dev, false,
 				  "Timed-out waiting for operation to"
 				  " complete. Completion word is 0x%08x"
 				  " expected 0x%08x.\n",
@@ -805,7 +805,7 @@ ecore_dmae_execute_sub_operation(struct ecore_hwfn *p_hwfn,
 			      length_dw * sizeof(u32), true);
 
 	if (ecore_status != ECORE_SUCCESS) {
-		DP_NOTICE(p_hwfn, ECORE_MSG_HW,
+		DP_NOTICE(p_hwfn, false,
 			  "Wait Failed. source_addr 0x%lx, grc_addr 0x%lx, size_in_dwords 0x%x, intermediate buffer 0x%lx.\n",
 			  (unsigned long)src_addr, (unsigned long)dst_addr,
 			  length_dw,

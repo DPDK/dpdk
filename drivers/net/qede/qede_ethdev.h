@@ -46,7 +46,7 @@
 #define QEDE_PMD_VER_PREFIX		"QEDE PMD"
 #define QEDE_PMD_VERSION_MAJOR		2
 #define QEDE_PMD_VERSION_MINOR	        11
-#define QEDE_PMD_VERSION_REVISION       0
+#define QEDE_PMD_VERSION_REVISION       3
 #define QEDE_PMD_VERSION_PATCH	        1
 
 #define QEDE_PMD_DRV_VERSION qede_stringify(QEDE_PMD_VERSION_MAJOR) "."     \

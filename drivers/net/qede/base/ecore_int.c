@@ -192,7 +192,10 @@ static enum _ecore_status_t ecore_pswhst_attn_cb(struct ecore_hwfn *p_hwfn)
 	return ECORE_SUCCESS;
 }
 
-#define ECORE_GRC_ATTENTION_VALID_BIT		(1 << 0)
+/* Register GRC_REG_TIMEOUT_ATTN_ACCESS_VALID */
+#define ECORE_GRC_ATTENTION_VALID_BIT_MASK      (0x1)
+#define ECORE_GRC_ATTENTION_VALID_BIT_SHIFT     (0)
+
 #define ECORE_GRC_ATTENTION_ADDRESS_MASK	(0x7fffff << 0)
 #define ECORE_GRC_ATTENTION_RDWR_BIT		(1 << 23)
 #define ECORE_GRC_ATTENTION_MASTER_MASK		(0xf << 24)
@@ -237,15 +240,14 @@ static enum _ecore_status_t ecore_grc_attn_cb(struct ecore_hwfn *p_hwfn)
 	u32 tmp, tmp2;
 
 	/* We've already cleared the timeout interrupt register, so we learn
-	 * of interrupts via the validity register.
-	 * Any attention which is not for a timeout event is treated as fatal.
+	 * of interrupts via the validity register. If it is not a timeout do
+	 * nothing. It is too late at this stage to differentiate spurious
+	 * interrupt from fatal grc attention.
 	 */
 	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
 		       GRC_REG_TIMEOUT_ATTN_ACCESS_VALID);
-	if (!(tmp & ECORE_GRC_ATTENTION_VALID_BIT)) {
-		rc = ECORE_INVAL;
+	if (!(GET_FIELD(tmp, ECORE_GRC_ATTENTION_VALID_BIT)))
 		goto out;
-	}
 
 	/* Read the GRC timeout information */
 	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,

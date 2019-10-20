@@ -553,5 +553,40 @@ void ecore_set_rdma_error_level(struct ecore_hwfn *p_hwfn,
 				struct ecore_ptt *p_ptt,
 				u8 assert_level[NUM_STORMS]);
 
+/**
+ * @brief ecore_fw_overlay_mem_alloc - Allocates and fills the FW overlay memory
+ *
+ * @param p_hwfn -                     HW device data
+ * @param fw_overlay_in_buf -  the input FW overlay buffer.
+ * @param buf_size -           the size of the input FW overlay buffer in bytes.
+ *                             must be aligned to dwords.
+ * @param fw_overlay_out_mem - OUT: a pointer to the allocated overlays memory.
+ *
+ * @return a pointer to the allocated overlays memory, or OSAL_NULL in case of
+ *  failures.
+ */
+struct phys_mem_desc *ecore_fw_overlay_mem_alloc(struct ecore_hwfn *p_hwfn,
+					 const u32 *const fw_overlay_in_buf,
+					 u32 buf_size_in_bytes);
+
+/**
+ * @brief ecore_fw_overlay_init_ram - Initializes the FW overlay RAM.
+ *
+ * @param p_hwfn -                    HW device data.
+ * @param p_ptt -                     ptt window used for writing the registers.
+ * @param fw_overlay_mem -       the allocated FW overlay memory.
+ */
+void ecore_fw_overlay_init_ram(struct ecore_hwfn *p_hwfn,
+			       struct ecore_ptt *p_ptt,
+			       struct phys_mem_desc *fw_overlay_mem);
+
+/**
+ * @brief ecore_fw_overlay_mem_free - Frees the FW overlay memory.
+ *
+ * @param p_hwfn -                    HW device data.
+ * @param fw_overlay_mem -       the allocated FW overlay memory to free.
+ */
+void ecore_fw_overlay_mem_free(struct ecore_hwfn *p_hwfn,
+			       struct phys_mem_desc *fw_overlay_mem);
 
 #endif

@@ -92,10 +92,10 @@
 /****************************************************************************/
 
 
-#define FW_MAJOR_VERSION        8
+#define FW_MAJOR_VERSION		8
 #define FW_MINOR_VERSION		40
-#define FW_REVISION_VERSION		25
-#define FW_ENGINEERING_VERSION  0
+#define FW_REVISION_VERSION		33
+#define FW_ENGINEERING_VERSION	0
 
 /***********************/
 /* COMMON HW CONSTANTS */

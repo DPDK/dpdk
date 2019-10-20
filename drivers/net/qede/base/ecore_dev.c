@@ -1653,6 +1653,7 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		ecore_dmae_info_free(p_hwfn);
 		ecore_dcbx_info_free(p_hwfn);
 		ecore_dbg_user_data_free(p_hwfn);
+		ecore_fw_overlay_mem_free(p_hwfn, p_hwfn->fw_overlay_mem);
 		/* @@@TBD Flush work-queue ? */
 
 		/* destroy doorbell recovery mechanism */
@@ -3467,6 +3468,8 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	if (rc)
 		return rc;
 
+	ecore_fw_overlay_init_ram(p_hwfn, p_ptt, p_hwfn->fw_overlay_mem);
+
 	/* Pure runtime initializations - directly to the HW  */
 	ecore_int_igu_init_pure_rt(p_hwfn, p_ptt, true, true);
 
@@ -3494,7 +3497,7 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	if (IS_LEAD_HWFN(p_hwfn)) {
 		rc = ecore_llh_hw_init_pf(p_hwfn, p_ptt,
 					p_params->avoid_eng_affin);
-		if (rc)
+		if (rc != ECORE_SUCCESS)
 			return rc;
 	}
 
@@ -3510,7 +3513,6 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		if (rc) {
 			DP_NOTICE(p_hwfn, true,
 				  "Function start ramrod failed\n");
-		} else {
 			return rc;
 		}
 		prs_reg = ecore_rd(p_hwfn, p_ptt, PRS_REG_SEARCH_TAG1);
@@ -3677,6 +3679,8 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 	u32 load_code, resp, param, drv_mb_param;
 	bool b_default_mtu = true;
 	struct ecore_hwfn *p_hwfn;
+	const u32 *fw_overlays;
+	u32 fw_overlays_len;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u16 ether_type;
 	int i;
@@ -3814,6 +3818,17 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		 * again.
 		 */
 		ecore_pglueb_clear_err(p_hwfn, p_hwfn->p_main_ptt);
+
+		fw_overlays = p_dev->fw_data->fw_overlays;
+		fw_overlays_len = p_dev->fw_data->fw_overlays_len;
+		p_hwfn->fw_overlay_mem =
+			ecore_fw_overlay_mem_alloc(p_hwfn, fw_overlays,
+						   fw_overlays_len);
+		if (!p_hwfn->fw_overlay_mem) {
+			DP_NOTICE(p_hwfn, false,
+				  "Failed to allocate fw overlay memory\n");
+			goto load_err;
+		}
 
 		switch (load_code) {
 		case FW_MSG_CODE_DRV_LOAD_ENGINE:

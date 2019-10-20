@@ -29,7 +29,7 @@
 
 #define ECORE_MAJOR_VERSION		8
 #define ECORE_MINOR_VERSION		40
-#define ECORE_REVISION_VERSION		18
+#define ECORE_REVISION_VERSION		26
 #define ECORE_ENGINEERING_VERSION	0
 
 #define ECORE_VERSION							\
@@ -698,6 +698,8 @@ struct ecore_hwfn {
 	 * struct ecore_hw_prepare_params by ecore client.
 	 */
 	bool b_en_pacing;
+
+	struct phys_mem_desc            *fw_overlay_mem;
 
 	/* @DPDK */
 	struct ecore_ptt		*p_arfs_ptt;

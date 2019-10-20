@@ -78,9 +78,9 @@ Supported QLogic Adapters
 Prerequisites
 -------------
 
-- Requires storm firmware version **8.37.7.0**. Firmware may be available
+- Requires storm firmware version **8.40.33.0**. Firmware may be available
   inbox in certain newer Linux distros under the standard directory
-  ``E.g. /lib/firmware/qed/qed_init_values-8.37.7.0.bin``.
+  ``E.g. /lib/firmware/qed/qed_init_values-8.40.33.0.bin``.
   If the required firmware files are not available then download it from
   `linux-firmware git repository <http://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/qed>`_
   or `QLogic Driver Download Center <http://driverdownloads.qlogic.com/QLogicDriverDownloads_UI/DefaultNewSearch.aspx>`_.

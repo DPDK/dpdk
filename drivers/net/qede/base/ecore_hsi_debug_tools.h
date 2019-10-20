@@ -917,6 +917,9 @@ enum dbg_grc_params {
 	DBG_GRC_PARAM_NO_FW_VER /* dont read FW/MFW version (0/1) */,
 	DBG_GRC_PARAM_RESERVED3 /* reserved */,
 	DBG_GRC_PARAM_DUMP_MCP_HW_DUMP /* dump MCP HW Dump (0/1) */,
+	DBG_GRC_PARAM_DUMP_ILT_CDUC /* dump ILT CDUC client (0/1) */,
+	DBG_GRC_PARAM_DUMP_ILT_CDUT /* dump ILT CDUT client (0/1) */,
+	DBG_GRC_PARAM_DUMP_CAU_EXT /* dump CAU extended memories (0/1) */,
 	MAX_DBG_GRC_PARAMS
 };
 
