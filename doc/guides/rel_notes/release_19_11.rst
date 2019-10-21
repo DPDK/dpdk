@@ -123,6 +123,7 @@ New Features
     - Supported pipeline mode.
     - Supported new packet type like PPPoE for switch filter.
   * Supported input set change and symmetric hash by rte_flow RSS action.
+  * Added support for GTP Tx checksum offload.
 
 * **Added cryptodev asymmetric session-less operation.**
 
