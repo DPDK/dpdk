@@ -10,7 +10,7 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf -lrte_net
-LDLIBS += -lrte_cryptodev -lrte_security
+LDLIBS += -lrte_cryptodev -lrte_security -lrte_hash
 
 EXPORT_MAP := rte_ipsec_version.map
 

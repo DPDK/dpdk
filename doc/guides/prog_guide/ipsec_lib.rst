@@ -159,6 +159,33 @@ which is either:
 
 In case of multiple matches, longest matching key will be returned.
 
+Create/destroy
+~~~~~~~~~~~~~~
+
+librte_ipsec SAD implementation provides ability to create/destroy SAD tables.
+
+To create SAD table user has to specify how many entries of each key type is
+required and IP protocol type (IPv4/IPv6).
+As an example:
+
+
+.. code-block:: c
+
+    struct rte_ipsec_sad *sad;
+    struct rte_ipsec_sad_conf conf;
+
+    conf.socket_id = -1;
+    conf.max_sa[RTE_IPSEC_SAD_SPI_ONLY] = some_nb_rules_spi_only;
+    conf.max_sa[RTE_IPSEC_SAD_SPI_DIP] = some_nb_rules_spi_dip;
+    conf.max_sa[RTE_IPSEC_SAD_SPI_DIP_SIP] = some_nb_rules_spi_dip_sip;
+    conf.flags = RTE_IPSEC_SAD_FLAG_RW_CONCURRENCY;
+
+    sad = rte_ipsec_sad_create("test", &conf);
+
+.. note::
+
+    for more information please refer to ipsec library API reference
+
 Supported features
 ------------------
 
