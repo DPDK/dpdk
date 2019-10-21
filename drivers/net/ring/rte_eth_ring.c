@@ -318,6 +318,8 @@ do_eth_dev_ring_create(const char *name,
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &internals->address;
+	data->promiscuous = 1;
+	data->all_multicast = 1;
 
 	eth_dev->dev_ops = &ops;
 	data->kdrv = RTE_KDRV_NONE;

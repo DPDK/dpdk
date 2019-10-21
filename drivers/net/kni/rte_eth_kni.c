@@ -377,6 +377,8 @@ eth_kni_create(struct rte_vdev_device *vdev,
 	data->nb_tx_queues = 1;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &internals->eth_addr;
+	data->promiscuous = 1;
+	data->all_multicast = 1;
 
 	data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 

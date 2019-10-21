@@ -1129,6 +1129,8 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &(*internals)->eth_addr;
+	data->promiscuous = 1;
+	data->all_multicast = 1;
 
 	/*
 	 * NOTE: we'll replace the data element, of originally allocated
