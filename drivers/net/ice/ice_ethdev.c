@@ -2463,6 +2463,23 @@ static int ice_init_rss(struct ice_pf *pf)
 		PMD_DRV_LOG(ERR, "%s SCTP_IPV4 rss flow fail %d",
 				__func__, ret);
 
+	/* configure RSS for gtpu with input set TEID */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_GTP_U_IPV4_TEID,
+				ICE_FLOW_SEG_HDR_GTPU_IP, 0);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s GTPU_TEID rss flow fail %d",
+				__func__, ret);
+
+	/**
+	 * configure RSS for pppoe/pppod with input set
+	 * Source MAC and Session ID
+	 */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_PPPOE_SESS_ID_ETH,
+				ICE_FLOW_SEG_HDR_PPPOE, 0);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s PPPoE/PPPoD_SessionID rss flow fail %d",
+				__func__, ret);
+
 	return 0;
 }
 
