@@ -251,6 +251,8 @@ extern "C" {
 /** TX packet with MPLS-in-UDP RFC 7510 header. */
 #define PKT_TX_TUNNEL_MPLSINUDP (0x5ULL << 45)
 #define PKT_TX_TUNNEL_VXLAN_GPE (0x6ULL << 45)
+#define PKT_TX_TUNNEL_GTP       (0x7ULL << 45)
+
 /**
  * Generic IP encapsulated tunnel type, used for TSO and checksum offload.
  * It can be used for tunnels which are not standards or listed above.
