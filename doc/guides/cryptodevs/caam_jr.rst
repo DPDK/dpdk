@@ -127,8 +127,8 @@ Please note that enabling debugging options may affect system performance.
 * ``CONFIG_RTE_LIBRTE_PMD_CAAM_JR_BE`` (default ``n``)
   By default it is disabled.
   It can be used when the underlying hardware supports the CAAM in BE mode.
-  e.g. LS1043A, LS1046A supports CAAM in BE mode.
-  BE mode is enabled by default in defconfig-arm64-dpaa-linux-gcc.
+  LS1043A, LS1046A and LS1012A support CAAM in BE mode.
+  LS1028A supports CAAM in LE mode.
 
 Installations
 -------------
