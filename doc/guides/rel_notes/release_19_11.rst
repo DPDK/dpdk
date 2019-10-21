@@ -138,7 +138,9 @@ New Features
 
 * **Updated the IPSec library.**
 
-  Added SA Database API to ``librte_ipsec``.
+  Added SA Database API to ``librte_ipsec``. A new test-sad application is also
+  introduced to evaluate and perform custom functional and performance tests
+  for IPsec SAD implementation.
 
 * **Introduced FIFO for NTB PMD.**
 
