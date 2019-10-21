@@ -11,7 +11,8 @@ sources = files(
 	'ice_rxtx.c',
 	'ice_switch_filter.c',
 	'ice_generic_flow.c',
-	'ice_fdir_filter.c'
+	'ice_fdir_filter.c',
+	'ice_hash.c'
 	)
 
 deps += ['hash']

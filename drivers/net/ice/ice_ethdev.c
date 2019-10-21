@@ -2370,6 +2370,7 @@ static int ice_init_rss(struct ice_pf *pf)
 	uint16_t i, nb_q;
 	int ret = 0;
 	bool is_safe_mode = pf->adapter->is_safe_mode;
+	uint32_t reg;
 
 	rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
 	nb_q = dev->data->nb_rx_queues;
@@ -2412,6 +2413,12 @@ static int ice_init_rss(struct ice_pf *pf)
 				 vsi->rss_lut, vsi->rss_lut_size);
 	if (ret)
 		return -EINVAL;
+
+	/* Enable registers for symmetric_toeplitz function. */
+	reg = ICE_READ_REG(hw, VSIQF_HASH_CTL(vsi->vsi_id));
+	reg = (reg & (~VSIQF_HASH_CTL_HASH_SCHEME_M)) |
+		(1 << VSIQF_HASH_CTL_HASH_SCHEME_S);
+	ICE_WRITE_REG(hw, VSIQF_HASH_CTL(vsi->vsi_id), reg);
 
 	/* configure RSS for IPv4 with input set IPv4 src/dst */
 	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV4,
