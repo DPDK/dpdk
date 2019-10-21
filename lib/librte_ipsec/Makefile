@@ -21,10 +21,12 @@ SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += esp_inb.c
 SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += esp_outb.c
 SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += sa.c
 SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += ses.c
+SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += ipsec_sad.c
 
 # install header files
 SYMLINK-$(CONFIG_RTE_LIBRTE_IPSEC)-include += rte_ipsec.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_IPSEC)-include += rte_ipsec_group.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_IPSEC)-include += rte_ipsec_sa.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_IPSEC)-include += rte_ipsec_sad.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

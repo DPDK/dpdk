@@ -143,6 +143,21 @@ In that mode the library functions perform
 To accommodate future custom implementations function pointers
 model is used for both *crypto_prepare* and *process* implementations.
 
+SA database API
+----------------
+
+SA database(SAD) is a table with <key, value> pairs.
+
+Value is an opaque user provided pointer to the user defined SA data structure.
+
+According to RFC4301 each SA can be uniquely identified by a key
+which is either:
+
+  - security parameter index(SPI)
+  - or SPI and destination IP(DIP)
+  - or SPI, DIP and source IP(SIP)
+
+In case of multiple matches, longest matching key will be returned.
 
 Supported features
 ------------------

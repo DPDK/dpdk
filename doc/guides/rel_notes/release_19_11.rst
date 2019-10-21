@@ -136,6 +136,10 @@ New Features
   and use memory zones as external buffers instead of keeping the data directly
   in mbuf areas.
 
+* **Updated the IPSec library.**
+
+  Added SA Database API to ``librte_ipsec``.
+
 * **Introduced FIFO for NTB PMD.**
 
   Introduced FIFO for NTB (Non-transparent Bridge) PMD to support
