@@ -186,6 +186,116 @@ As an example:
 
     for more information please refer to ipsec library API reference
 
+Add/delete rules
+~~~~~~~~~~~~~~~~
+
+Library also provides methods to add or delete key/value pairs from the SAD.
+To add user has to specify key, key type and a value which is an opaque pointer to SA.
+The key type reflects a set of tuple fields that will be used for lookup of the SA.
+As mentioned above there are 3 types of a key and the representation of a key type is:
+
+.. code-block:: c
+
+        RTE_IPSEC_SAD_SPI_ONLY,
+        RTE_IPSEC_SAD_SPI_DIP,
+        RTE_IPSEC_SAD_SPI_DIP_SIP,
+
+As an example, to add new entry into the SAD for IPv4 addresses:
+
+.. code-block:: c
+
+    struct rte_ipsec_sa *sa;
+    union rte_ipsec_sad_key key;
+
+    key.v4.spi = rte_cpu_to_be_32(spi_val);
+    if (key_type >= RTE_IPSEC_SAD_SPI_DIP) /* DIP is optional*/
+        key.v4.dip = rte_cpu_to_be_32(dip_val);
+    if (key_type == RTE_IPSEC_SAD_SPI_DIP_SIP) /* SIP is optional*/
+        key.v4.sip = rte_cpu_to_be_32(sip_val);
+
+    rte_ipsec_sad_add(sad, &key, key_type, sa);
+
+.. note::
+
+    By performance reason it is better to keep spi/dip/sip in net byte order
+    to eliminate byteswap on lookup
+
+To delete user has to specify key and key type.
+
+Delete code would look like:
+
+.. code-block:: c
+
+    union rte_ipsec_sad_key key;
+
+    key.v4.spi = rte_cpu_to_be_32(necessary_spi);
+    if (key_type >= RTE_IPSEC_SAD_SPI_DIP) /* DIP is optional*/
+        key.v4.dip = rte_cpu_to_be_32(necessary_dip);
+    if (key_type == RTE_IPSEC_SAD_SPI_DIP_SIP) /* SIP is optional*/
+        key.v4.sip = rte_cpu_to_be_32(necessary_sip);
+
+    rte_ipsec_sad_del(sad, &key, key_type);
+
+
+Lookup
+~~~~~~
+Library provides lookup by the given {SPI,DIP,SIP} tuple of
+inbound ipsec packet as a key.
+
+The search key is represented by:
+
+.. code-block:: c
+
+    union rte_ipsec_sad_key {
+        struct rte_ipsec_sadv4_key  v4;
+        struct rte_ipsec_sadv6_key  v6;
+    };
+
+where v4 is a tuple for IPv4:
+
+.. code-block:: c
+
+    struct rte_ipsec_sadv4_key {
+        uint32_t spi;
+        uint32_t dip;
+        uint32_t sip;
+    };
+
+and v6 is a tuple for IPv6:
+
+.. code-block:: c
+
+    struct rte_ipsec_sadv6_key {
+        uint32_t spi;
+        uint8_t dip[16];
+        uint8_t sip[16];
+    };
+
+As an example, lookup related code could look like that:
+
+.. code-block:: c
+
+    int i;
+    union rte_ipsec_sad_key keys[BURST_SZ];
+    const union rte_ipsec_sad_key *keys_p[BURST_SZ];
+    void *vals[BURST_SZ];
+
+    for (i = 0; i < BURST_SZ_MAX; i++) {
+        keys[i].v4.spi = esp_hdr[i]->spi;
+        keys[i].v4.dip = ipv4_hdr[i]->dst_addr;
+        keys[i].v4.sip = ipv4_hdr[i]->src_addr;
+        keys_p[i] = &keys[i];
+    }
+    rte_ipsec_sad_lookup(sad, keys_p, vals, BURST_SZ);
+
+    for (i = 0; i < BURST_SZ_MAX; i++) {
+        if (vals[i] == NULL)
+            printf("SA not found for key index %d\n", i);
+        else
+            printf("SA pointer is %p\n", vals[i]);
+    }
+
+
 Supported features
 ------------------
 
