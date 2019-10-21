@@ -224,6 +224,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_BPF) += test_bpf.c
 SRCS-$(CONFIG_RTE_LIBRTE_RCU) += test_rcu_qsbr.c test_rcu_qsbr_perf.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += test_ipsec.c
+SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += test_ipsec_sad.c
 ifeq ($(CONFIG_RTE_LIBRTE_IPSEC),y)
 LDLIBS += -lrte_ipsec
 endif
