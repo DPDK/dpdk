@@ -9,6 +9,11 @@
  * Include this file if you are writing a component that requires CPU cycles to
  * operate, and you wish to run the component using service cores
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <rte_compat.h>
 #include <rte_service.h>
 
@@ -125,5 +130,9 @@ int32_t rte_service_init(void);
  * @retval None
  */
 void rte_service_finalize(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_SERVICE_PRIVATE_H_ */
