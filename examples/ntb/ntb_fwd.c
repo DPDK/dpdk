@@ -158,7 +158,7 @@ cmd_quit_parsed(__attribute__((unused)) void *parsed_result,
 		__attribute__((unused)) void *data)
 {
 	struct ntb_fwd_lcore_conf *conf;
-	uint8_t lcore_id;
+	uint32_t lcore_id;
 
 	/* Stop transmission first. */
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
@@ -612,7 +612,8 @@ assign_stream_to_lcores(void)
 	struct ntb_fwd_lcore_conf *conf;
 	struct ntb_fwd_stream *fs;
 	uint16_t nb_streams, sm_per_lcore, sm_id, i;
-	uint8_t lcore_id, lcore_num, nb_extra;
+	uint32_t lcore_id;
+	uint8_t lcore_num, nb_extra;
 
 	lcore_num = rte_lcore_count();
 	/* Exclude master core */
@@ -674,7 +675,7 @@ start_pkt_fwd(void)
 {
 	struct ntb_fwd_lcore_conf *conf;
 	struct rte_eth_link eth_link;
-	uint8_t lcore_id;
+	uint32_t lcore_id;
 	int ret, i;
 
 	ret = ntb_fwd_config_setup();
@@ -767,7 +768,7 @@ cmd_stop_parsed(__attribute__((unused)) void *parsed_result,
 		__attribute__((unused)) void *data)
 {
 	struct ntb_fwd_lcore_conf *conf;
-	uint8_t lcore_id;
+	uint32_t lcore_id;
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		conf = &fwd_lcore_conf[lcore_id];
