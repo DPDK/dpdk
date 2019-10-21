@@ -1952,12 +1952,13 @@ rte_eth_promiscuous_enable(uint16_t port_id)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
+	if (dev->data->promiscuous == 1)
+		return 0;
+
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->promiscuous_enable, -ENOTSUP);
 
-	if (dev->data->promiscuous == 0) {
-		diag = (*dev->dev_ops->promiscuous_enable)(dev);
-		dev->data->promiscuous = (diag == 0) ? 1 : 0;
-	}
+	diag = (*dev->dev_ops->promiscuous_enable)(dev);
+	dev->data->promiscuous = (diag == 0) ? 1 : 0;
 
 	return eth_err(port_id, diag);
 }
@@ -1971,14 +1972,15 @@ rte_eth_promiscuous_disable(uint16_t port_id)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
+	if (dev->data->promiscuous == 0)
+		return 0;
+
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->promiscuous_disable, -ENOTSUP);
 
-	if (dev->data->promiscuous == 1) {
-		dev->data->promiscuous = 0;
-		diag = (*dev->dev_ops->promiscuous_disable)(dev);
-		if (diag != 0)
-			dev->data->promiscuous = 1;
-	}
+	dev->data->promiscuous = 0;
+	diag = (*dev->dev_ops->promiscuous_disable)(dev);
+	if (diag != 0)
+		dev->data->promiscuous = 1;
 
 	return eth_err(port_id, diag);
 }
