@@ -925,7 +925,7 @@ ice_switch_parse_action(struct ice_pf *pf,
 	uint16_t valid_qgrop_number[MAX_QGRP_NUM_TYPE] = {
 		 2, 4, 8, 16, 32, 64, 128};
 
-	base_queue = pf->base_queue;
+	base_queue = pf->base_queue + vsi->base_queue;
 	for (action = actions; action->type !=
 			RTE_FLOW_ACTION_TYPE_END; action++) {
 		action_type = action->type;
