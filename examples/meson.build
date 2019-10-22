@@ -11,7 +11,7 @@ execinfo = cc.find_library('execinfo', required: false)
 # list of all example apps. Keep 1-3 per line, in alphabetical order.
 all_examples = [
 	'bbdev_app', 'bond',
-	'bpf', 'cmdline',
+	'cmdline',
 	'distributor', 'ethtool',
 	'eventdev_pipeline',
 	'fips_validation', 'flow_classify',
