@@ -352,10 +352,66 @@ qat_asym_fill_arrays(struct rte_crypto_asym_op *asym_op,
 					return -(EINVAL);
 				}
 			}
-
 			if (xform->rsa.key_type == RTE_RSA_KET_TYPE_QT) {
-				QAT_LOG(ERR, "RSA CRT not implemented");
-				return -(EINVAL);
+
+				qat_req->input_param_count =
+						QAT_ASYM_RSA_QT_NUM_IN_PARAMS;
+				if (qat_asym_get_sz_and_func_id(RSA_DEC_CRT_IDS,
+						sizeof(RSA_DEC_CRT_IDS)/
+						sizeof(*RSA_DEC_CRT_IDS),
+						&alg_size, &func_id)) {
+					return -(EINVAL);
+				}
+				alg_size_in_bytes = alg_size >> 3;
+
+				rte_memcpy(cookie->input_array[1] +
+						(alg_size_in_bytes >> 1) -
+						xform->rsa.qt.p.length
+						, xform->rsa.qt.p.data,
+						xform->rsa.qt.p.length);
+				rte_memcpy(cookie->input_array[2] +
+						(alg_size_in_bytes >> 1) -
+						xform->rsa.qt.q.length
+						, xform->rsa.qt.q.data,
+						xform->rsa.qt.q.length);
+				rte_memcpy(cookie->input_array[3] +
+						(alg_size_in_bytes >> 1) -
+						xform->rsa.qt.dP.length
+						, xform->rsa.qt.dP.data,
+						xform->rsa.qt.dP.length);
+				rte_memcpy(cookie->input_array[4] +
+						(alg_size_in_bytes >> 1) -
+						xform->rsa.qt.dQ.length
+						, xform->rsa.qt.dQ.data,
+						xform->rsa.qt.dQ.length);
+				rte_memcpy(cookie->input_array[5] +
+						(alg_size_in_bytes >> 1) -
+						xform->rsa.qt.qInv.length
+						, xform->rsa.qt.qInv.data,
+						xform->rsa.qt.qInv.length);
+				cookie->alg_size = alg_size;
+				qat_req->pke_hdr.cd_pars.func_id = func_id;
+
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+				QAT_DP_HEXDUMP_LOG(DEBUG, "C",
+						cookie->input_array[0],
+						alg_size_in_bytes);
+				QAT_DP_HEXDUMP_LOG(DEBUG, "p",
+						cookie->input_array[1],
+						alg_size_in_bytes);
+				QAT_DP_HEXDUMP_LOG(DEBUG, "q",
+						cookie->input_array[2],
+						alg_size_in_bytes);
+				QAT_DP_HEXDUMP_LOG(DEBUG,
+						"dP", cookie->input_array[3],
+						alg_size_in_bytes);
+				QAT_DP_HEXDUMP_LOG(DEBUG,
+						"dQ", cookie->input_array[4],
+						alg_size_in_bytes);
+				QAT_DP_HEXDUMP_LOG(DEBUG,
+						"qInv", cookie->input_array[5],
+						alg_size_in_bytes);
+#endif
 			} else if (xform->rsa.key_type ==
 					RTE_RSA_KEY_TYPE_EXP) {
 				if (qat_asym_get_sz_and_func_id(

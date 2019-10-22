@@ -129,6 +129,7 @@ New Features
 
   * Added support for asymmetric session-less operations.
   * Added support for RSA algorithm with pair (n, d) private key representation.
+  * Added support for RSA algorithm with quintuple private key representation.
 
 * **Updated the Intel QuickAssist Technology (QAT) compression PMD.**
 

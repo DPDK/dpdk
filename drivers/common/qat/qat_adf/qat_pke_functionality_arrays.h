@@ -67,4 +67,13 @@ static const uint32_t RSA_DEC_IDS[][2] = {
 		{ 4096,	PKE_RSA_DP1_4096 },
 };
 
+static const uint32_t RSA_DEC_CRT_IDS[][2] = {
+		{ 512,	PKE_RSA_DP2_512 },
+		{ 1024,	PKE_RSA_DP2_1024 },
+		{ 1536,	PKE_RSA_DP2_1536 },
+		{ 2048,	PKE_RSA_DP2_2048 },
+		{ 3072,	PKE_RSA_DP2_3072 },
+		{ 4096,	PKE_RSA_DP2_4096 },
+};
+
 #endif
