@@ -6,5 +6,15 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-# Example app currently unsupported by meson build
-build = false
+build = is_linux
+sources = files('lib/rte_ethtool.c',
+	'ethtool-app/ethapp.c',
+	'ethtool-app/main.c')
+includes = include_directories('lib', 'ethtool-app')
+
+deps += 'bus_pci'
+if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
+	deps += 'pmd_ixgbe'
+endif
+
+allow_experimental_apis = true
