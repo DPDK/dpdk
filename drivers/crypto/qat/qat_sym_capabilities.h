@@ -167,7 +167,7 @@
 					.increment = 0			\
 				},					\
 				.digest_size = {			\
-					.min = 12,			\
+					.min = 4,			\
 					.max = 16,			\
 					.increment = 4			\
 				}					\
