@@ -180,7 +180,6 @@ dpdk_conf.set('RTE_MAX_LCORE', get_option('max_lcores'))
 dpdk_conf.set('RTE_MAX_NUMA_NODES', get_option('max_numa_nodes'))
 dpdk_conf.set('RTE_MAX_ETHPORTS', get_option('max_ethports'))
 dpdk_conf.set('RTE_LIBEAL_USE_HPET', get_option('use_hpet'))
-dpdk_conf.set('RTE_EAL_ALLOW_INV_SOCKET_ID', get_option('allow_invalid_socket_id'))
 # values which have defaults which may be overridden
 dpdk_conf.set('RTE_MAX_VFIO_GROUPS', 64)
 dpdk_conf.set('RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB', 64)

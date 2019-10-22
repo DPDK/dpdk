@@ -89,15 +89,6 @@ rte_eal_cpu_init(void)
 
 		/* find socket first */
 		socket_id = eal_cpu_socket_id(lcore_id);
-		if (socket_id >= RTE_MAX_NUMA_NODES) {
-#ifdef RTE_EAL_ALLOW_INV_SOCKET_ID
-			socket_id = 0;
-#else
-			RTE_LOG(ERR, EAL, "Socket ID (%u) is greater than RTE_MAX_NUMA_NODES (%d)\n",
-					socket_id, RTE_MAX_NUMA_NODES);
-			return -1;
-#endif
-		}
 		lcore_to_socket_id[lcore_id] = socket_id;
 
 		/* in 1:1 mapping, record related cpu detected state */
