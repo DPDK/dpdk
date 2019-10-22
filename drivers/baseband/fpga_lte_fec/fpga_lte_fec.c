@@ -889,7 +889,7 @@ fpga_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
 	 * completed. If completion flag is not updated within 1ms it is
 	 * considered as a failure.
 	 */
-	while (!(*((uint8_t *)d->flush_queue_status + q->q_idx) & payload)) {
+	while (!(*((volatile uint8_t *)d->flush_queue_status + q->q_idx) & payload)) {
 		if (counter > timeout) {
 			rte_bbdev_log(ERR, "FPGA Queue Flush failed for queue %d",
 					queue_id);
