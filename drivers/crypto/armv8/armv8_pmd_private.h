@@ -2,8 +2,8 @@
  * Copyright(c) 2017 Cavium, Inc
  */
 
-#ifndef _RTE_ARMV8_PMD_PRIVATE_H_
-#define _RTE_ARMV8_PMD_PRIVATE_H_
+#ifndef _ARMV8_PMD_PRIVATE_H_
+#define _ARMV8_PMD_PRIVATE_H_
 
 #define CRYPTODEV_NAME_ARMV8_PMD	crypto_armv8
 /**< ARMv8 Crypto PMD device name */
@@ -196,4 +196,4 @@ extern int armv8_crypto_set_session_parameters(
 /** device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *rte_armv8_crypto_pmd_ops;
 
-#endif /* _RTE_ARMV8_PMD_PRIVATE_H_ */
+#endif /* _ARMV8_PMD_PRIVATE_H_ */

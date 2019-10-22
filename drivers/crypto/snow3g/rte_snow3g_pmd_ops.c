@@ -8,7 +8,7 @@
 #include <rte_malloc.h>
 #include <rte_cryptodev_pmd.h>
 
-#include "rte_snow3g_pmd_private.h"
+#include "snow3g_pmd_private.h"
 
 static const struct rte_cryptodev_capabilities snow3g_pmd_capabilities[] = {
 	{	/* SNOW 3G (UIA2) */

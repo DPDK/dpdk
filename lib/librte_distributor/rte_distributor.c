@@ -16,10 +16,10 @@
 #include <rte_pause.h>
 #include <rte_tailq.h>
 
-#include "rte_distributor_private.h"
 #include "rte_distributor.h"
 #include "rte_distributor_v20.h"
 #include "rte_distributor_v1705.h"
+#include "distributor_private.h"
 
 TAILQ_HEAD(rte_dist_burst_list, rte_distributor);
 

@@ -2,8 +2,8 @@
  * Copyright(c) 2016-2018 Intel Corporation
  */
 
-#ifndef _RTE_SNOW3G_PMD_PRIVATE_H_
-#define _RTE_SNOW3G_PMD_PRIVATE_H_
+#ifndef _SNOW3G_PMD_PRIVATE_H_
+#define _SNOW3G_PMD_PRIVATE_H_
 
 #include <sso_snow3g.h>
 
@@ -77,4 +77,4 @@ extern struct rte_cryptodev_ops *rte_snow3g_pmd_ops;
 
 
 
-#endif /* _RTE_SNOW3G_PMD_PRIVATE_H_ */
+#endif /* _SNOW3G_PMD_PRIVATE_H_ */

@@ -11,7 +11,7 @@
 #include <rte_tailq.h>
 #include <rte_flow.h>
 
-#include "rte_eth_bond_private.h"
+#include "eth_bond_private.h"
 
 static struct rte_flow *
 bond_flow_alloc(int numa_node, const struct rte_flow_attr *attr,

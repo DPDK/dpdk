@@ -2,8 +2,8 @@
  * Copyright(c) 2015-2016 Intel Corporation
  */
 
-#ifndef _RTE_AESNI_MB_PMD_PRIVATE_H_
-#define _RTE_AESNI_MB_PMD_PRIVATE_H_
+#ifndef _AESNI_MB_PMD_PRIVATE_H_
+#define _AESNI_MB_PMD_PRIVATE_H_
 
 #include <intel-ipsec-mb.h>
 
@@ -277,4 +277,4 @@ extern struct rte_cryptodev_ops *rte_aesni_mb_pmd_ops;
 
 
 
-#endif /* _RTE_AESNI_MB_PMD_PRIVATE_H_ */
+#endif /* _AESNI_MB_PMD_PRIVATE_H_ */

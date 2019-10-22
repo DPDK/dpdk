@@ -4,8 +4,8 @@
  * All rights reserved.
  */
 
-#ifndef _RTE_MRVL_PMD_PRIVATE_H_
-#define _RTE_MRVL_PMD_PRIVATE_H_
+#ifndef _MRVL_PMD_PRIVATE_H_
+#define _MRVL_PMD_PRIVATE_H_
 
 #include "rte_mrvl_compat.h"
 
@@ -89,4 +89,4 @@ mrvl_crypto_set_session_parameters(struct mrvl_crypto_session *sess,
 /** device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *rte_mrvl_crypto_pmd_ops;
 
-#endif /* _RTE_MRVL_PMD_PRIVATE_H_ */
+#endif /* _MRVL_PMD_PRIVATE_H_ */

@@ -2,8 +2,8 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
-#ifndef _RTE_ETH_BOND_PRIVATE_H_
-#define _RTE_ETH_BOND_PRIVATE_H_
+#ifndef _ETH_BOND_PRIVATE_H_
+#define _ETH_BOND_PRIVATE_H_
 
 #include <stdint.h>
 #include <sys/queue.h>
@@ -15,7 +15,7 @@
 #include <rte_flow_driver.h>
 
 #include "rte_eth_bond.h"
-#include "rte_eth_bond_8023ad_private.h"
+#include "eth_bond_8023ad_private.h"
 #include "rte_eth_bond_alb.h"
 
 #define PMD_BOND_SLAVE_PORT_KVARG			("slave")

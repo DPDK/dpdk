@@ -12,7 +12,7 @@
 #include <rte_cycles.h>
 #include <rte_compat.h>
 
-#include "rte_eth_bond_private.h"
+#include "eth_bond_private.h"
 
 static void bond_mode_8023ad_ext_periodic_cb(void *arg);
 #ifdef RTE_LIBRTE_BOND_DEBUG_8023AD

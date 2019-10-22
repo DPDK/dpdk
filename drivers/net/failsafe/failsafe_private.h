@@ -3,8 +3,8 @@
  * Copyright 2017 Mellanox Technologies, Ltd
  */
 
-#ifndef _RTE_ETH_FAILSAFE_PRIVATE_H_
-#define _RTE_ETH_FAILSAFE_PRIVATE_H_
+#ifndef _ETH_FAILSAFE_PRIVATE_H_
+#define _ETH_FAILSAFE_PRIVATE_H_
 
 #include <stdint.h>
 #include <sys/queue.h>
@@ -493,4 +493,4 @@ fs_err(struct sub_device *sdev, int err)
 		return rte_errno = 0;
 	return err;
 }
-#endif /* _RTE_ETH_FAILSAFE_PRIVATE_H_ */
+#endif /* _ETH_FAILSAFE_PRIVATE_H_ */

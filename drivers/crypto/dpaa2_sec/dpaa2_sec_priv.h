@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef _RTE_DPAA2_SEC_PMD_PRIVATE_H_
-#define _RTE_DPAA2_SEC_PMD_PRIVATE_H_
+#ifndef _DPAA2_SEC_PMD_PRIVATE_H_
+#define _DPAA2_SEC_PMD_PRIVATE_H_
 
 #ifdef RTE_LIBRTE_SECURITY
 #include <rte_security_driver.h>
@@ -741,4 +741,4 @@ calc_chksum(void *buffer, int len)
 	return  result;
 }
 
-#endif /* _RTE_DPAA2_SEC_PMD_PRIVATE_H_ */
+#endif /* _DPAA2_SEC_PMD_PRIVATE_H_ */

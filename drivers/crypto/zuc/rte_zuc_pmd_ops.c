@@ -8,7 +8,7 @@
 #include <rte_malloc.h>
 #include <rte_cryptodev_pmd.h>
 
-#include "rte_zuc_pmd_private.h"
+#include "zuc_pmd_private.h"
 
 static const struct rte_cryptodev_capabilities zuc_pmd_capabilities[] = {
 	{	/* ZUC (EIA3) */

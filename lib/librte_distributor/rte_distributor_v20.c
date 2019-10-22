@@ -16,7 +16,7 @@
 #include <rte_tailq.h>
 
 #include "rte_distributor_v20.h"
-#include "rte_distributor_private.h"
+#include "distributor_private.h"
 
 TAILQ_HEAD(rte_distributor_list, rte_distributor_v20);
 

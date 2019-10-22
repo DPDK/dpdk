@@ -2,8 +2,8 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-#ifndef _RTE_SERVICE_PRIVATE_H_
-#define _RTE_SERVICE_PRIVATE_H_
+#ifndef _SERVICE_PRIVATE_H_
+#define _SERVICE_PRIVATE_H_
 
 /* This file specifies the internal service specification.
  * Include this file if you are writing a component that requires CPU cycles to
@@ -126,4 +126,4 @@ int32_t rte_service_init(void);
  */
 void rte_service_finalize(void);
 
-#endif /* _RTE_SERVICE_PRIVATE_H_ */
+#endif /* _SERVICE_PRIVATE_H_ */

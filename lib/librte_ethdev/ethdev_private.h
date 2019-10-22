@@ -2,8 +2,8 @@
  * Copyright(c) 2018 Gaëtan Rivet
  */
 
-#ifndef _RTE_ETH_PRIVATE_H_
-#define _RTE_ETH_PRIVATE_H_
+#ifndef _ETH_PRIVATE_H_
+#define _ETH_PRIVATE_H_
 
 #include "rte_ethdev.h"
 
@@ -35,4 +35,4 @@ int rte_eth_devargs_parse_representor_ports(char *str, void *data);
 }
 #endif
 
-#endif /* _RTE_ETH_PRIVATE_H_ */
+#endif /* _ETH_PRIVATE_H_ */

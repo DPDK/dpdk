@@ -10,7 +10,7 @@
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 
-#include "rte_snow3g_pmd_private.h"
+#include "snow3g_pmd_private.h"
 
 #define SNOW3G_IV_LENGTH 16
 #define SNOW3G_MAX_BURST 8

@@ -10,7 +10,7 @@
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 
-#include "rte_kasumi_pmd_private.h"
+#include "kasumi_pmd_private.h"
 
 #define KASUMI_KEY_LENGTH 16
 #define KASUMI_IV_LENGTH 8

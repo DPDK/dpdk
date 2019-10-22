@@ -2,8 +2,8 @@
  * Copyright(c) 2016-2017 Intel Corporation
  */
 
-#ifndef _RTE_AESNI_GCM_PMD_PRIVATE_H_
-#define _RTE_AESNI_GCM_PMD_PRIVATE_H_
+#ifndef _AESNI_GCM_PMD_PRIVATE_H_
+#define _AESNI_GCM_PMD_PRIVATE_H_
 
 #include "aesni_gcm_ops.h"
 
@@ -115,4 +115,4 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *ops,
 extern struct rte_cryptodev_ops *rte_aesni_gcm_pmd_ops;
 
 
-#endif /* _RTE_AESNI_GCM_PMD_PRIVATE_H_ */
+#endif /* _AESNI_GCM_PMD_PRIVATE_H_ */

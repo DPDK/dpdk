@@ -2,8 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#ifndef RTE_ETH_BOND_8023AD_PRIVATE_H_
-#define RTE_ETH_BOND_8023AD_PRIVATE_H_
+#ifndef _ETH_BOND_8023AD_PRIVATE_H_
+#define _ETH_BOND_8023AD_PRIVATE_H_
 
 #include <stdint.h>
 
@@ -305,4 +305,4 @@ bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint16_t slave_port);
 int
 bond_8023ad_slow_pkt_hw_filter_supported(uint16_t port_id);
 
-#endif /* RTE_ETH_BOND_8023AD_H_ */
+#endif /* _ETH_BOND_8023AD_H_ */

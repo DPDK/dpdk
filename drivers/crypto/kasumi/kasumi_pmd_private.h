@@ -2,8 +2,8 @@
  * Copyright(c) 2016-2018 Intel Corporation
  */
 
-#ifndef _RTE_KASUMI_PMD_PRIVATE_H_
-#define _RTE_KASUMI_PMD_PRIVATE_H_
+#ifndef _KASUMI_PMD_PRIVATE_H_
+#define _KASUMI_PMD_PRIVATE_H_
 
 #include <sso_kasumi.h>
 
@@ -74,4 +74,4 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 /** device specific operations function pointer structure */
 struct rte_cryptodev_ops *rte_kasumi_pmd_ops;
 
-#endif /* _RTE_KASUMI_PMD_PRIVATE_H_ */
+#endif /* _KASUMI_PMD_PRIVATE_H_ */

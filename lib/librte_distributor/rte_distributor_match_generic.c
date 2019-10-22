@@ -3,8 +3,8 @@
  */
 
 #include <rte_mbuf.h>
-#include "rte_distributor_private.h"
 #include "rte_distributor.h"
+#include "distributor_private.h"
 
 void
 find_match_vec(struct rte_distributor *d,

@@ -2,8 +2,8 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-#ifndef _RTE_DIST_PRIV_H_
-#define _RTE_DIST_PRIV_H_
+#ifndef _DIST_PRIV_H_
+#define _DIST_PRIV_H_
 
 /**
  * @file
@@ -171,4 +171,4 @@ find_match_vec(struct rte_distributor *d,
 }
 #endif
 
-#endif
+#endif /* _DIST_PRIV_H_ */

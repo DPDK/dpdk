@@ -14,7 +14,7 @@
 #include <rte_kvargs.h>
 #include <rte_mvep_common.h>
 
-#include "rte_mrvl_pmd_private.h"
+#include "mrvl_pmd_private.h"
 
 #define MRVL_PMD_MAX_NB_SESS_ARG		("max_nb_sessions")
 #define MRVL_PMD_DEFAULT_MAX_NB_SESSIONS	2048

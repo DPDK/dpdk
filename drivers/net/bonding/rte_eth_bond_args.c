@@ -8,7 +8,7 @@
 #include <rte_kvargs.h>
 
 #include "rte_eth_bond.h"
-#include "rte_eth_bond_private.h"
+#include "eth_bond_private.h"
 
 const char *pmd_bond_init_valid_arguments[] = {
 	PMD_BOND_SLAVE_PORT_KVARG,

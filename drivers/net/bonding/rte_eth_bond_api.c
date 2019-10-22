@@ -12,8 +12,8 @@
 #include <rte_kvargs.h>
 
 #include "rte_eth_bond.h"
-#include "rte_eth_bond_private.h"
-#include "rte_eth_bond_8023ad_private.h"
+#include "eth_bond_private.h"
+#include "eth_bond_8023ad_private.h"
 
 int
 check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev)

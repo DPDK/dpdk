@@ -2,7 +2,7 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 
-#include "rte_eth_bond_private.h"
+#include "eth_bond_private.h"
 #include "rte_eth_bond_alb.h"
 
 static inline uint8_t

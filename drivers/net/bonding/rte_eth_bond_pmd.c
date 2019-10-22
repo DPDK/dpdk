@@ -21,8 +21,8 @@
 #include <rte_string_fns.h>
 
 #include "rte_eth_bond.h"
-#include "rte_eth_bond_private.h"
-#include "rte_eth_bond_8023ad_private.h"
+#include "eth_bond_private.h"
+#include "eth_bond_8023ad_private.h"
 
 #define REORDER_PERIOD_MS 10
 #define DEFAULT_POLLING_INTERVAL_10_MS (10)

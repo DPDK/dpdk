@@ -2,8 +2,8 @@
  * Copyright(c) 2016-2018 Intel Corporation
  */
 
-#ifndef _RTE_ZUC_PMD_PRIVATE_H_
-#define _RTE_ZUC_PMD_PRIVATE_H_
+#ifndef _ZUC_PMD_PRIVATE_H_
+#define _ZUC_PMD_PRIVATE_H_
 
 #include <sso_zuc.h>
 
@@ -76,4 +76,4 @@ extern struct rte_cryptodev_ops *rte_zuc_pmd_ops;
 
 
 
-#endif /* _RTE_ZUC_PMD_PRIVATE_H_ */
+#endif /* _ZUC_PMD_PRIVATE_H_ */

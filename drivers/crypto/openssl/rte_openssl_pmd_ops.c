@@ -8,7 +8,7 @@
 #include <rte_malloc.h>
 #include <rte_cryptodev_pmd.h>
 
-#include "rte_openssl_pmd_private.h"
+#include "openssl_pmd_private.h"
 #include "compat.h"
 
 

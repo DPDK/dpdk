@@ -12,7 +12,7 @@
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 
-#include "rte_aesni_mb_pmd_private.h"
+#include "aesni_mb_pmd_private.h"
 
 #define AES_CCM_DIGEST_MIN_LEN 4
 #define AES_CCM_DIGEST_MAX_LEN 16

@@ -9,7 +9,7 @@
 #include <rte_malloc.h>
 #include <rte_cryptodev_pmd.h>
 
-#include "rte_aesni_mb_pmd_private.h"
+#include "aesni_mb_pmd_private.h"
 
 
 static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {

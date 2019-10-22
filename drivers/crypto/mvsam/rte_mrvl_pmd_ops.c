@@ -10,7 +10,7 @@
 #include <rte_malloc.h>
 #include <rte_cryptodev_pmd.h>
 
-#include "rte_mrvl_pmd_private.h"
+#include "mrvl_pmd_private.h"
 
 /**
  * Capabilities list to be used in reporting to DPDK.

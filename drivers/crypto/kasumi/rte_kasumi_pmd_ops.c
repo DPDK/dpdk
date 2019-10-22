@@ -8,7 +8,7 @@
 #include <rte_malloc.h>
 #include <rte_cryptodev_pmd.h>
 
-#include "rte_kasumi_pmd_private.h"
+#include "kasumi_pmd_private.h"
 
 static const struct rte_cryptodev_capabilities kasumi_pmd_capabilities[] = {
 	{	/* KASUMI (F9) */

@@ -10,7 +10,7 @@
 
 #include "armv8_crypto_defs.h"
 
-#include "rte_armv8_pmd_private.h"
+#include "armv8_pmd_private.h"
 
 static const struct rte_cryptodev_capabilities
 	armv8_crypto_pmd_capabilities[] = {

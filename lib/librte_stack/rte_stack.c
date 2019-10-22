@@ -15,7 +15,7 @@
 #include <rte_tailq.h>
 
 #include "rte_stack.h"
-#include "rte_stack_pvt.h"
+#include "stack_pvt.h"
 
 int stack_logtype;
 

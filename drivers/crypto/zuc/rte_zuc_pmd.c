@@ -10,7 +10,7 @@
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 
-#include "rte_zuc_pmd_private.h"
+#include "zuc_pmd_private.h"
 #define ZUC_MAX_BURST 4
 #define BYTE_LEN 8
 

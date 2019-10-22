@@ -2,8 +2,8 @@
  * Copyright(c) 2018 Cavium Networks
  */
 
-#ifndef _RTE_ZLIB_PMD_PRIVATE_H_
-#define _RTE_ZLIB_PMD_PRIVATE_H_
+#ifndef _ZLIB_PMD_PRIVATE_H_
+#define _ZLIB_PMD_PRIVATE_H_
 
 #include <zlib.h>
 #include <rte_compressdev.h>
@@ -68,4 +68,4 @@ zlib_set_stream_parameters(const struct rte_comp_xform *xform,
 /** Device specific operations function pointer structure */
 extern struct rte_compressdev_ops *rte_zlib_pmd_ops;
 
-#endif /* _RTE_ZLIB_PMD_PRIVATE_H_ */
+#endif /* _ZLIB_PMD_PRIVATE_H_ */

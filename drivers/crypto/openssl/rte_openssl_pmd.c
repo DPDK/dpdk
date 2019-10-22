@@ -13,7 +13,7 @@
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 
-#include "rte_openssl_pmd_private.h"
+#include "openssl_pmd_private.h"
 #include "compat.h"
 
 #define DES_BLOCK_SIZE 8

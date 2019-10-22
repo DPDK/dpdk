@@ -2,8 +2,8 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
-#ifndef _RTE_STACK_PVT_H_
-#define _RTE_STACK_PVT_H_
+#ifndef _STACK_PVT_H_
+#define _STACK_PVT_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,4 +31,4 @@ extern int stack_logtype;
 }
 #endif
 
-#endif /* _RTE_STACK_PVT_H_ */
+#endif /* _STACK_PVT_H_ */
