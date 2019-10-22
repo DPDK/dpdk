@@ -247,16 +247,16 @@ main(int argc, char **argv)
 		return status;
 	}
 
-	rte_eal_mp_remote_launch(
-		thread_main,
-		NULL,
-		SKIP_MASTER);
-
 	/* Script */
 	if (app.script_name)
 		cli_script_process(app.script_name,
 			app.conn.msg_in_len_max,
 			app.conn.msg_out_len_max);
+
+	rte_eal_mp_remote_launch(
+		thread_main,
+		NULL,
+		SKIP_MASTER);
 
 	/* Dispatch loop */
 	for ( ; ; ) {
