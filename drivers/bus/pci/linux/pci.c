@@ -657,6 +657,12 @@ pci_ioport_map(struct rte_pci_device *dev, int bar __rte_unused,
 	int found = 0;
 	size_t linesz;
 
+	if (rte_eal_iopl_init() != 0) {
+		RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
+			__func__, dev->name);
+		return -1;
+	}
+
 	snprintf(pci_id, sizeof(pci_id), PCI_PRI_FMT,
 		 dev->addr.domain, dev->addr.bus,
 		 dev->addr.devid, dev->addr.function);

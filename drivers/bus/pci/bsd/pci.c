@@ -539,6 +539,11 @@ rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 	switch (dev->kdrv) {
 #if defined(RTE_ARCH_X86)
 	case RTE_KDRV_NIC_UIO:
+		if (rte_eal_iopl_init() != 0) {
+			RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
+				__func__, dev->name);
+			return -1;
+		}
 		if ((uintptr_t) dev->mem_resource[bar].addr <= UINT16_MAX) {
 			p->base = (uintptr_t)dev->mem_resource[bar].addr;
 			ret = 0;
