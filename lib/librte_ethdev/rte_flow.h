@@ -27,6 +27,7 @@
 #include <rte_udp.h>
 #include <rte_byteorder.h>
 #include <rte_esp.h>
+#include <rte_higig.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -491,7 +492,35 @@ enum rte_flow_item_type {
 	 *
 	 */
 	RTE_FLOW_ITEM_TYPE_AH,
+
+	/**
+	 * Matches a HIGIG header.
+	 * see struct rte_flow_item_higig2_hdr.
+	 */
+	RTE_FLOW_ITEM_TYPE_HIGIG2,
 };
+
+/**
+ *
+ * RTE_FLOW_ITEM_TYPE_HIGIG2
+ * Matches higig2 header
+ */
+RTE_STD_C11
+struct rte_flow_item_higig2_hdr {
+	struct rte_higig2_hdr hdr;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_HIGIG2. */
+#ifndef __cplusplus
+static const struct rte_flow_item_higig2_hdr rte_flow_item_higig2_hdr_mask = {
+	.hdr = {
+		.ppt1 = {
+			.classification = 0xffff,
+			.vid = 0xfff,
+		},
+	},
+};
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_ANY

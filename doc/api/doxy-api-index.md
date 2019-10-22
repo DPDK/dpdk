@@ -91,6 +91,7 @@ The public API headers are grouped by topics:
 - **layers**:
   [ethernet]           (@ref rte_ether.h),
   [ARP]                (@ref rte_arp.h),
+  [HIGIG]              (@ref rte_higig.h),
   [ICMP]               (@ref rte_icmp.h),
   [ESP]                (@ref rte_esp.h),
   [IPsec]              (@ref rte_ipsec.h),

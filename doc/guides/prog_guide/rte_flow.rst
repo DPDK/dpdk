@@ -1289,6 +1289,14 @@ Matches a IP Authentication Header (RFC 4302).
 - ``seq_num``: counter value increased by 1 on each packet sent.
 - Default ``mask`` matches spi.
 
+Item: ``HIGIG2``
+^^^^^^^^^^^^^^^^^
+
+Matches a HIGIG2 header field. It is layer 2.5 protocol and used in
+Broadcom switches.
+
+- Default ``mask`` matches classification and vlan.
+
 
 Actions
 ~~~~~~~

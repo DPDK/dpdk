@@ -203,6 +203,9 @@ enum index {
 	ITEM_PPPOED,
 	ITEM_PPPOE_SEID,
 	ITEM_PPPOE_PROTO_ID,
+	ITEM_HIGIG2,
+	ITEM_HIGIG2_CLASSIFICATION,
+	ITEM_HIGIG2_VID,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -675,6 +678,7 @@ static const enum index next_item[] = {
 	ITEM_PPPOES,
 	ITEM_PPPOED,
 	ITEM_PPPOE_PROTO_ID,
+	ITEM_HIGIG2,
 	END_SET,
 	ZERO,
 };
@@ -935,6 +939,13 @@ static const enum index item_pppoes[] = {
 
 static const enum index item_pppoe_proto_id[] = {
 	ITEM_PPPOE_PROTO_ID,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_higig2[] = {
+	ITEM_HIGIG2_CLASSIFICATION,
+	ITEM_HIGIG2_VID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2418,6 +2429,28 @@ static const struct token token_list[] = {
 				sizeof(struct rte_flow_item_pppoe_proto_id)),
 		.next = NEXT(item_pppoe_proto_id),
 		.call = parse_vc,
+	},
+	[ITEM_HIGIG2] = {
+		.name = "higig2",
+		.help = "matches higig2 header",
+		.priv = PRIV_ITEM(HIGIG2,
+				sizeof(struct rte_flow_item_higig2_hdr)),
+		.next = NEXT(item_higig2),
+		.call = parse_vc,
+	},
+	[ITEM_HIGIG2_CLASSIFICATION] = {
+		.name = "classification",
+		.help = "matches classification of higig2 header",
+		.next = NEXT(item_higig2, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_higig2_hdr,
+					hdr.ppt1.classification)),
+	},
+	[ITEM_HIGIG2_VID] = {
+		.name = "vid",
+		.help = "matches vid of higig2 header",
+		.next = NEXT(item_higig2, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_higig2_hdr,
+					hdr.ppt1.vid)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
