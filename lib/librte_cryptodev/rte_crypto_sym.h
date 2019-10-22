@@ -590,7 +590,9 @@ struct rte_crypto_sym_op {
 					  * For SNOW 3G @ RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					  * KASUMI @ RTE_CRYPTO_CIPHER_KASUMI_F8
 					  * and ZUC @ RTE_CRYPTO_CIPHER_ZUC_EEA3,
-					  * this field should be in bits.
+					  * this field should be in bits. For
+					  * digest-encrypted cases this must be
+					  * an 8-bit multiple.
 					  */
 					uint32_t length;
 					 /**< The message length, in bytes, of the
@@ -604,7 +606,9 @@ struct rte_crypto_sym_op {
 					  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UEA2,
 					  * KASUMI @ RTE_CRYPTO_CIPHER_KASUMI_F8
 					  * and ZUC @ RTE_CRYPTO_CIPHER_ZUC_EEA3,
-					  * this field should be in bits.
+					  * this field should be in bits. For
+					  * digest-encrypted cases this must be
+					  * an 8-bit multiple.
 					  */
 				} data; /**< Data offsets and length for ciphering */
 			} cipher;
@@ -620,7 +624,9 @@ struct rte_crypto_sym_op {
 					  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 					  * KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9
 					  * and ZUC @ RTE_CRYPTO_AUTH_ZUC_EIA3,
-					  * this field should be in bits.
+					  * this field should be in bits. For
+					  * digest-encrypted cases this must be
+					  * an 8-bit multiple.
 					  *
 					  * @note
 					  * For KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9,
@@ -635,7 +641,9 @@ struct rte_crypto_sym_op {
 					  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 					  * KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9
 					  * and ZUC @ RTE_CRYPTO_AUTH_ZUC_EIA3,
-					  * this field should be in bits.
+					  * this field should be in bits. For
+					  * digest-encrypted cases this must be
+					  * an 8-bit multiple.
 					  *
 					  * @note
 					  * For KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9,
@@ -703,6 +711,13 @@ struct rte_crypto_sym_op {
 					 * auth.data.length and is typically
 					 * equal to auth.data.offset +
 					 * auth.data.length + digest_length.
+					 * - for wireless algorithms, i.e.
+					 * SNOW 3G, KASUMI and ZUC, as the
+					 * cipher.data.length,
+					 * cipher.data.offset,
+					 * auth.data.length and
+					 * auth.data.offset are in bits, they
+					 * must be 8-bit multiples.
 					 *
 					 * Note, that for security reasons, it
 					 * is PMDs' responsibility to not
