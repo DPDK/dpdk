@@ -270,7 +270,8 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev)
 	cryptodev->dequeue_burst = qat_asym_pmd_dequeue_op_burst;
 
 	cryptodev->feature_flags = RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_HW_ACCELERATED;
+			RTE_CRYPTODEV_FF_HW_ACCELERATED |
+			RTE_CRYPTODEV_FF_ASYM_SESSIONLESS;
 	internals = cryptodev->data->dev_private;
 	internals->qat_dev = qat_pci_dev;
 	qat_pci_dev->asym_dev = internals;

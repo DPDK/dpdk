@@ -17,7 +17,11 @@ typedef uint64_t large_int_ptr;
 #define QAT_PKE_MAX_LN_SIZE 512
 #define _PKE_ALIGN_ __attribute__((__aligned__(8)))
 
-#define QAT_ASYM_ERROR_INVALID_PARAM	0x01
+#define QAT_ASYM_MAX_PARAMS			8
+#define QAT_ASYM_MODINV_NUM_IN_PARAMS		2
+#define QAT_ASYM_MODINV_NUM_OUT_PARAMS		1
+#define QAT_ASYM_MODEXP_NUM_IN_PARAMS		3
+#define QAT_ASYM_MODEXP_NUM_OUT_PARAMS		1
 
 struct qat_asym_op_cookie {
 	size_t alg_size;
@@ -33,27 +37,9 @@ struct qat_asym_op_cookie {
 	uint8_t output_array[MAX_PKE_PARAMS][QAT_PKE_MAX_LN_SIZE] _PKE_ALIGN_;
 } _PKE_ALIGN_;
 
-enum qat_asym_alg {
-	QAT_PKE_RSA,
-	QAT_PKE_DH,
-	QAT_PKE_DSA,
-	QAT_PKE_MODEXP,
-	QAT_PKE_MODINV,
-};
-
 struct qat_asym_session {
-	enum qat_asym_alg alg;
 	struct icp_qat_fw_pke_request req_tmpl;
-	uint64_t flags;
-	union {
-		struct {
-			rte_crypto_param n;
-			rte_crypto_param e;
-		} mod_exp;
-		struct {
-			rte_crypto_param n;
-		} mod_inv;
-	} sess_alg_params;
+	struct rte_crypto_asym_xform *xform;
 };
 
 int

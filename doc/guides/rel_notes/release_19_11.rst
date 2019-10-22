@@ -125,6 +125,10 @@ New Features
   classic 2-pass mode when running on QAT GEN3, significantly improving
   the performance of AES GCM operations.
 
+* **Updated the Intel QuickAssist Technology (QAT) asymmetric crypto PMD.**
+
+  * Added support for asymmetric session-less operations.
+
 * **Updated the Intel QuickAssist Technology (QAT) compression PMD.**
 
   Added stateful decompression support in the Intel QuickAssist Technology PMD.
