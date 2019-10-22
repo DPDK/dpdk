@@ -1995,11 +1995,6 @@ exit:
 static int eth_virtio_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
-	if (rte_eal_iopl_init() != 0) {
-		PMD_INIT_LOG(ERR, "IOPL call failed - cannot use virtio PMD");
-		return 1;
-	}
-
 	/* virtio pmd skips probe if device needs to work in vdpa mode */
 	if (vdpa_mode_selected(pci_dev->device.devargs))
 		return 1;
