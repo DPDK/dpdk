@@ -2307,7 +2307,7 @@ fpga_dequeue_dec(struct rte_bbdev_queue_data *q_data,
 
 /* Initialization Function */
 static void
-fpga_lte_fec_init(struct rte_bbdev *dev)
+fpga_lte_fec_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
 
@@ -2318,7 +2318,7 @@ fpga_lte_fec_init(struct rte_bbdev *dev)
 	dev->dequeue_dec_ops = fpga_dequeue_dec;
 
 	((struct fpga_lte_fec_device *) dev->data->dev_private)->pf_device =
-			!strcmp(dev->device->driver->name,
+			!strcmp(drv->driver.name,
 					RTE_STR(FPGA_LTE_FEC_PF_DRIVER_NAME));
 	((struct fpga_lte_fec_device *) dev->data->dev_private)->mmio_base =
 			pci_dev->mem_resource[0].addr;
@@ -2331,7 +2331,7 @@ fpga_lte_fec_init(struct rte_bbdev *dev)
 }
 
 static int
-fpga_lte_fec_probe(struct rte_pci_driver *pci_drv __rte_unused,
+fpga_lte_fec_probe(struct rte_pci_driver *pci_drv,
 	struct rte_pci_device *pci_dev)
 {
 	struct rte_bbdev *bbdev = NULL;
@@ -2368,7 +2368,7 @@ fpga_lte_fec_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	bbdev->data->socket_id = pci_dev->device.numa_node;
 
 	/* Invoke FEC FPGA device initialization function */
-	fpga_lte_fec_init(bbdev);
+	fpga_lte_fec_init(bbdev, pci_drv);
 
 	rte_bbdev_log_debug("bbdev id = %u [%s]",
 			bbdev->data->dev_id, dev_name);
