@@ -283,7 +283,7 @@ test_cryptodev_asym_ver(union test_case_structure *data_tc,
 static int
 test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
 	union test_case_structure *data_tc,
-	char *test_msg)
+	char *test_msg, int sessionless)
 {
 	struct rte_crypto_asym_op *asym_op = NULL;
 	struct rte_crypto_op *op = NULL;
@@ -382,27 +382,31 @@ test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
 		goto error_exit;
 	}
 
-	sess = rte_cryptodev_asym_session_create(ts_params->session_mpool);
-	if (!sess) {
-		snprintf(test_msg, ASYM_TEST_MSG_LEN,
-				"line %u "
-				"FAILED: %s", __LINE__,
-				"Session creation failed");
-		status = TEST_FAILED;
-		goto error_exit;
+	if (!sessionless) {
+		sess = rte_cryptodev_asym_session_create(ts_params->session_mpool);
+		if (!sess) {
+			snprintf(test_msg, ASYM_TEST_MSG_LEN,
+					"line %u "
+					"FAILED: %s", __LINE__,
+					"Session creation failed");
+			status = TEST_FAILED;
+			goto error_exit;
+		}
+
+		if (rte_cryptodev_asym_session_init(dev_id, sess, &xform_tc,
+				ts_params->session_mpool) < 0) {
+			snprintf(test_msg, ASYM_TEST_MSG_LEN,
+					"line %u FAILED: %s",
+					__LINE__, "unabled to config sym session");
+			status = TEST_FAILED;
+			goto error_exit;
+		}
+
+		rte_crypto_op_attach_asym_session(op, sess);
+	} else {
+		asym_op->xform = &xform_tc;
+		op->sess_type = RTE_CRYPTO_OP_SESSIONLESS;
 	}
-
-	if (rte_cryptodev_asym_session_init(dev_id, sess, &xform_tc,
-			ts_params->session_mpool) < 0) {
-		snprintf(test_msg, ASYM_TEST_MSG_LEN,
-				"line %u FAILED: %s",
-				__LINE__, "unabled to config sym session");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
-
-	rte_crypto_op_attach_asym_session(op, sess);
-
 	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
 
 	/* Process crypto operation */
@@ -433,7 +437,10 @@ test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
 		goto error_exit;
 	}
 
-	snprintf(test_msg, ASYM_TEST_MSG_LEN, "PASS");
+	if (!sessionless)
+		snprintf(test_msg, ASYM_TEST_MSG_LEN, "PASS");
+	else
+		snprintf(test_msg, ASYM_TEST_MSG_LEN, "SESSIONLESS PASS");
 
 error_exit:
 		if (sess != NULL) {
@@ -451,7 +458,7 @@ error_exit:
 }
 
 static int
-test_one_case(const void *test_case)
+test_one_case(const void *test_case, int sessionless)
 {
 	int status = TEST_SUCCESS;
 	char test_msg[ASYM_TEST_MSG_LEN + 1];
@@ -460,7 +467,8 @@ test_one_case(const void *test_case)
 	union test_case_structure tc;
 	memcpy(&tc, test_case, sizeof(tc));
 
-	status = test_cryptodev_asym_op(&testsuite_params, &tc, test_msg);
+	status = test_cryptodev_asym_op(&testsuite_params, &tc, test_msg,
+			sessionless);
 
 	printf("  %u) TestCase %s %s\n", test_index++,
 		tc.modex.description, test_msg);
@@ -501,13 +509,30 @@ static int
 test_one_by_one(void)
 {
 	int status = TEST_SUCCESS;
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	uint32_t i = 0;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	int sessionless = 0;
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	if ((dev_info.feature_flags &
+			RTE_CRYPTODEV_FF_ASYM_SESSIONLESS)) {
+		sessionless = 1;
+	}
 
 	/* Go through all test cases */
 	test_index = 0;
 	for (i = 0; i < test_vector.size; i++) {
-		if (test_one_case(test_vector.address[i]) != TEST_SUCCESS)
+		if (test_one_case(test_vector.address[i], 0) != TEST_SUCCESS)
 			status = TEST_FAILED;
+	}
+	if (sessionless) {
+		for (i = 0; i < test_vector.size; i++) {
+			if (test_one_case(test_vector.address[i], 1)
+					!= TEST_SUCCESS)
+				status = TEST_FAILED;
+		}
 	}
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
