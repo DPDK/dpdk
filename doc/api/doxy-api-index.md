@@ -102,6 +102,7 @@ The public API headers are grouped by topics:
   [SCTP]               (@ref rte_sctp.h),
   [TCP]                (@ref rte_tcp.h),
   [UDP]                (@ref rte_udp.h),
+  [GTP]                (@ref rte_gtp.h),
   [GRO]                (@ref rte_gro.h),
   [GSO]                (@ref rte_gso.h),
   [frag/reass]         (@ref rte_ip_frag.h),

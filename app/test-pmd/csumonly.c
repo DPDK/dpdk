@@ -36,6 +36,7 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_sctp.h>
+#include <rte_gtp.h>
 #include <rte_prefetch.h>
 #include <rte_string_fns.h>
 #include <rte_flow.h>
@@ -177,6 +178,67 @@ parse_ethernet(struct rte_ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 		info->l4_proto = 0;
 		break;
 	}
+}
+
+/*
+ * Parse a GTP protocol header.
+ * No optional fields and next extension header type.
+ */
+static void
+parse_gtp(struct rte_udp_hdr *udp_hdr,
+	  struct testpmd_offload_info *info)
+{
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
+	struct rte_gtp_hdr *gtp_hdr;
+	uint8_t gtp_len = sizeof(*gtp_hdr);
+	uint8_t ip_ver;
+
+	/* Check udp destination port. */
+	if (udp_hdr->dst_port != _htons(RTE_GTPC_UDP_PORT) &&
+	    udp_hdr->src_port != _htons(RTE_GTPC_UDP_PORT) &&
+	    udp_hdr->dst_port != _htons(RTE_GTPU_UDP_PORT))
+		return;
+
+	info->is_tunnel = 1;
+	info->outer_ethertype = info->ethertype;
+	info->outer_l2_len = info->l2_len;
+	info->outer_l3_len = info->l3_len;
+	info->outer_l4_proto = info->l4_proto;
+	info->l2_len = 0;
+
+	gtp_hdr = (struct rte_gtp_hdr *)((char *)udp_hdr +
+		  sizeof(struct rte_udp_hdr));
+
+	/*
+	 * Check message type. If message type is 0xff, it is
+	 * a GTP data packet. If not, it is a GTP control packet
+	 */
+	if (gtp_hdr->msg_type == 0xff) {
+		ip_ver = *(uint8_t *)((char *)udp_hdr +
+			 sizeof(struct rte_udp_hdr) +
+			 sizeof(struct rte_gtp_hdr));
+		ip_ver = (ip_ver) & 0xf0;
+
+		if (ip_ver == RTE_GTP_TYPE_IPV4) {
+			ipv4_hdr = (struct rte_ipv4_hdr *)((char *)gtp_hdr +
+				   gtp_len);
+			info->ethertype = _htons(RTE_ETHER_TYPE_IPV4);
+			parse_ipv4(ipv4_hdr, info);
+		} else if (ip_ver == RTE_GTP_TYPE_IPV6) {
+			ipv6_hdr = (struct rte_ipv6_hdr *)((char *)gtp_hdr +
+				   gtp_len);
+			info->ethertype = _htons(RTE_ETHER_TYPE_IPV6);
+			parse_ipv6(ipv6_hdr, info);
+		}
+	} else {
+		info->ethertype = 0;
+		info->l4_len = 0;
+		info->l3_len = 0;
+		info->l4_proto = 0;
+	}
+
+	info->l2_len += RTE_ETHER_GTP_HLEN;
 }
 
 /* Parse a vxlan header */
@@ -478,14 +540,21 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	if (info->outer_l4_proto != IPPROTO_UDP)
 		return ol_flags;
 
+	udp_hdr = (struct rte_udp_hdr *)
+		((char *)outer_l3_hdr + info->outer_l3_len);
+
 	/* Skip SW outer UDP checksum generation if HW supports it */
 	if (tx_offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) {
+		if (info->outer_ethertype == _htons(RTE_ETHER_TYPE_IPV4))
+			udp_hdr->dgram_cksum
+				= rte_ipv4_phdr_cksum(ipv4_hdr, ol_flags);
+		else
+			udp_hdr->dgram_cksum
+				= rte_ipv6_phdr_cksum(ipv6_hdr, ol_flags);
+
 		ol_flags |= PKT_TX_OUTER_UDP_CKSUM;
 		return ol_flags;
 	}
-
-	udp_hdr = (struct rte_udp_hdr *)
-		((char *)outer_l3_hdr + info->outer_l3_len);
 
 	/* outer UDP checksum is done in software. In the other side, for
 	 * UDP tunneling, like VXLAN or Geneve, outer UDP checksum can be
@@ -679,6 +748,7 @@ pkt_copy_split(const struct rte_mbuf *pkt)
  *           UDP|TCP|SCTP
  *   Ether / (vlan) / outer IP|IP6 / outer UDP / VXLAN-GPE / IP|IP6 /
  *           UDP|TCP|SCTP
+ *   Ether / (vlan) / outer IP / outer UDP / GTP / IP|IP6 / UDP|TCP|SCTP
  *   Ether / (vlan) / outer IP|IP6 / GRE / Ether / IP|IP6 / UDP|TCP|SCTP
  *   Ether / (vlan) / outer IP|IP6 / GRE / IP|IP6 / UDP|TCP|SCTP
  *   Ether / (vlan) / outer IP|IP6 / IP|IP6 / UDP|TCP|SCTP
@@ -787,16 +857,22 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 				udp_hdr = (struct rte_udp_hdr *)
 					((char *)l3_hdr + info.l3_len);
+				parse_gtp(udp_hdr, &info);
+				if (info.is_tunnel) {
+					tx_ol_flags |= PKT_TX_TUNNEL_GTP;
+					goto tunnel_update;
+				}
 				parse_vxlan_gpe(udp_hdr, &info);
 				if (info.is_tunnel) {
-					tx_ol_flags |= PKT_TX_TUNNEL_VXLAN_GPE;
-				} else {
-					parse_vxlan(udp_hdr, &info,
-						    m->packet_type);
-					if (info.is_tunnel)
-						tx_ol_flags |=
-							PKT_TX_TUNNEL_VXLAN;
+					tx_ol_flags |=
+						PKT_TX_TUNNEL_VXLAN_GPE;
+					goto tunnel_update;
 				}
+				parse_vxlan(udp_hdr, &info,
+					    m->packet_type);
+				if (info.is_tunnel)
+					tx_ol_flags |=
+						PKT_TX_TUNNEL_VXLAN;
 			} else if (info.l4_proto == IPPROTO_GRE) {
 				struct simple_gre_hdr *gre_hdr;
 
@@ -815,6 +891,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			}
 		}
 
+tunnel_update:
 		/* update l3_hdr and outer_l3_hdr if a tunnel was parsed */
 		if (info.is_tunnel) {
 			outer_l3_hdr = l3_hdr;
