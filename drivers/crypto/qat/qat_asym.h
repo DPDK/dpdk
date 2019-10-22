@@ -22,6 +22,8 @@ typedef uint64_t large_int_ptr;
 #define QAT_ASYM_MODINV_NUM_OUT_PARAMS		1
 #define QAT_ASYM_MODEXP_NUM_IN_PARAMS		3
 #define QAT_ASYM_MODEXP_NUM_OUT_PARAMS		1
+#define QAT_ASYM_RSA_NUM_IN_PARAMS		3
+#define QAT_ASYM_RSA_NUM_OUT_PARAMS		1
 
 struct qat_asym_op_cookie {
 	size_t alg_size;

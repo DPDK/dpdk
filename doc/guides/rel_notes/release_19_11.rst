@@ -128,6 +128,7 @@ New Features
 * **Updated the Intel QuickAssist Technology (QAT) asymmetric crypto PMD.**
 
   * Added support for asymmetric session-less operations.
+  * Added support for RSA algorithm with pair (n, d) private key representation.
 
 * **Updated the Intel QuickAssist Technology (QAT) compression PMD.**
 

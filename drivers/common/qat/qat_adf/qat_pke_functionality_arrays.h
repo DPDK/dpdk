@@ -49,4 +49,22 @@ static const uint32_t MOD_INV_IDS_EVEN[][2] = {
 		{ 4096, MATHS_MODINV_EVEN_L4096 },
 };
 
+static const uint32_t RSA_ENC_IDS[][2] = {
+		{ 512,	PKE_RSA_EP_512 },
+		{ 1024,	PKE_RSA_EP_1024 },
+		{ 1536,	PKE_RSA_EP_1536 },
+		{ 2048,	PKE_RSA_EP_2048 },
+		{ 3072,	PKE_RSA_EP_3072 },
+		{ 4096,	PKE_RSA_EP_4096 },
+};
+
+static const uint32_t RSA_DEC_IDS[][2] = {
+		{ 512,	PKE_RSA_DP1_512 },
+		{ 1024,	PKE_RSA_DP1_1024 },
+		{ 1536,	PKE_RSA_DP1_1536 },
+		{ 2048,	PKE_RSA_DP1_2048 },
+		{ 3072,	PKE_RSA_DP1_3072 },
+		{ 4096,	PKE_RSA_DP1_4096 },
+};
+
 #endif

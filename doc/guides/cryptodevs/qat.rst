@@ -134,6 +134,7 @@ Limitations
 
 * Big integers longer than 4096 bits are not supported.
 * Queue pairs are not thread-safe (that is, within a single queue pair, RX and TX from different lcores is not supported).
+* RSA-2560, RSA-3584 are not supported
 
 .. _building_qat:
 
