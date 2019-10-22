@@ -379,8 +379,10 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 	 * there is no interrupt subhandler installed for
 	 * the given port index i.
 	 */
-	for (i = 0; i < sh->max_port; i++)
+	for (i = 0; i < sh->max_port; i++) {
 		sh->port[i].ih_port_id = RTE_MAX_ETHPORTS;
+		sh->port[i].devx_ih_port_id = RTE_MAX_ETHPORTS;
+	}
 	sh->pd = mlx5_glue->alloc_pd(sh->ctx);
 	if (sh->pd == NULL) {
 		DRV_LOG(ERR, "PD allocation failure");
@@ -481,6 +483,15 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 	if (sh->intr_cnt)
 		mlx5_intr_callback_unregister
 			(&sh->intr_handle, mlx5_dev_interrupt_handler, sh);
+#ifdef HAVE_MLX5_DEVX_ASYNC_SUPPORT
+	if (sh->devx_intr_cnt) {
+		if (sh->intr_handle_devx.fd)
+			rte_intr_callback_unregister(&sh->intr_handle_devx,
+					  mlx5_dev_interrupt_handler_devx, sh);
+		if (sh->devx_comp)
+			mlx5dv_devx_destroy_cmd_comp(sh->devx_comp);
+	}
+#endif
 	pthread_mutex_destroy(&sh->intr_mutex);
 	if (sh->pd)
 		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
@@ -845,6 +856,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		((priv->sh->ctx != NULL) ? priv->sh->ctx->device->name : ""));
 	/* In case mlx5_dev_stop() has not been called. */
 	mlx5_dev_interrupt_handler_uninstall(dev);
+	mlx5_dev_interrupt_handler_devx_uninstall(dev);
 	mlx5_traffic_disable(dev);
 	mlx5_flow_flush(dev, NULL);
 	/* Prevent crashes when queues are still in use. */
@@ -2739,6 +2751,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_eth_copy_pci_info(list[i].eth_dev, pci_dev);
 		/* Restore non-PCI flags cleared by the above call. */
 		list[i].eth_dev->data->dev_flags |= restore;
+		mlx5_dev_interrupt_handler_devx_install(list[i].eth_dev);
 		rte_eth_dev_probing_finish(list[i].eth_dev);
 	}
 	if (i != ns) {

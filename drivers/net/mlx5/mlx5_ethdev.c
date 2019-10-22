@@ -1448,6 +1448,37 @@ mlx5_dev_shared_handler_uninstall(struct rte_eth_dev *dev)
 				     mlx5_dev_interrupt_handler, sh);
 	sh->intr_handle.fd = 0;
 	sh->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+exit:
+	pthread_mutex_unlock(&sh->intr_mutex);
+}
+
+/**
+ * Uninstall devx shared asynchronous device events handler.
+ * This function is implemeted to support event sharing
+ * between multiple ports of single IB device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+static void
+mlx5_dev_shared_handler_devx_uninstall(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+	pthread_mutex_lock(&sh->intr_mutex);
+	assert(priv->ibv_port);
+	assert(priv->ibv_port <= sh->max_port);
+	assert(dev->data->port_id < RTE_MAX_ETHPORTS);
+	if (sh->port[priv->ibv_port - 1].devx_ih_port_id >= RTE_MAX_ETHPORTS)
+		goto exit;
+	assert(sh->port[priv->ibv_port - 1].devx_ih_port_id ==
+					(uint32_t)dev->data->port_id);
+	sh->port[priv->ibv_port - 1].devx_ih_port_id = RTE_MAX_ETHPORTS;
+	if (!sh->devx_intr_cnt || --sh->devx_intr_cnt)
+		goto exit;
 	if (sh->intr_handle_devx.fd) {
 		rte_intr_callback_unregister(&sh->intr_handle_devx,
 					     mlx5_dev_interrupt_handler_devx,
@@ -1490,8 +1521,9 @@ mlx5_dev_shared_handler_install(struct rte_eth_dev *dev)
 		assert(sh->intr_cnt);
 		goto exit;
 	}
-	sh->port[priv->ibv_port - 1].ih_port_id = (uint32_t)dev->data->port_id;
 	if (sh->intr_cnt) {
+		sh->port[priv->ibv_port - 1].ih_port_id =
+						(uint32_t)dev->data->port_id;
 		sh->intr_cnt++;
 		goto exit;
 	}
@@ -1500,52 +1532,81 @@ mlx5_dev_shared_handler_install(struct rte_eth_dev *dev)
 	flags = fcntl(sh->ctx->async_fd, F_GETFL);
 	ret = fcntl(sh->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
-		DRV_LOG(INFO, "failed to change file descriptor"
-			      " async event queue");
-		goto error;
+		DRV_LOG(INFO, "failed to change file descriptor async event"
+			" queue");
+		/* Indicate there will be no interrupts. */
+		dev->data->dev_conf.intr_conf.lsc = 0;
+		dev->data->dev_conf.intr_conf.rmv = 0;
+	} else {
+		sh->intr_handle.fd = sh->ctx->async_fd;
+		sh->intr_handle.type = RTE_INTR_HANDLE_EXT;
+		rte_intr_callback_register(&sh->intr_handle,
+					   mlx5_dev_interrupt_handler, sh);
+		sh->intr_cnt++;
+		sh->port[priv->ibv_port - 1].ih_port_id =
+						(uint32_t)dev->data->port_id;
 	}
-	sh->intr_handle.fd = sh->ctx->async_fd;
-	sh->intr_handle.type = RTE_INTR_HANDLE_EXT;
-	rte_intr_callback_register(&sh->intr_handle,
-				   mlx5_dev_interrupt_handler, sh);
+exit:
+	pthread_mutex_unlock(&sh->intr_mutex);
+}
+
+/**
+ * Install devx shared asyncronous device events handler.
+ * This function is implemeted to support event sharing
+ * between multiple ports of single IB device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+static void
+mlx5_dev_shared_handler_devx_install(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+	pthread_mutex_lock(&sh->intr_mutex);
+	assert(priv->ibv_port);
+	assert(priv->ibv_port <= sh->max_port);
+	assert(dev->data->port_id < RTE_MAX_ETHPORTS);
+	if (sh->port[priv->ibv_port - 1].devx_ih_port_id < RTE_MAX_ETHPORTS) {
+		/* The handler is already installed for this port. */
+		assert(sh->devx_intr_cnt);
+		goto exit;
+	}
+	if (sh->devx_intr_cnt) {
+		sh->devx_intr_cnt++;
+		sh->port[priv->ibv_port - 1].devx_ih_port_id =
+					(uint32_t)dev->data->port_id;
+		goto exit;
+	}
 	if (priv->config.devx) {
 #ifndef HAVE_IBV_DEVX_ASYNC
-		goto error_unregister;
+		goto exit;
 #else
 		sh->devx_comp = mlx5_glue->devx_create_cmd_comp(sh->ctx);
 		if (sh->devx_comp) {
-			flags = fcntl(sh->devx_comp->fd, F_GETFL);
-			ret = fcntl(sh->devx_comp->fd, F_SETFL,
+			int flags = fcntl(sh->devx_comp->fd, F_GETFL);
+			int ret = fcntl(sh->devx_comp->fd, F_SETFL,
 				    flags | O_NONBLOCK);
+
 			if (ret) {
 				DRV_LOG(INFO, "failed to change file descriptor"
-					      " devx async event queue");
-				goto error_unregister;
+					" devx async event queue");
+			} else {
+				sh->intr_handle_devx.fd = sh->devx_comp->fd;
+				sh->intr_handle_devx.type = RTE_INTR_HANDLE_EXT;
+				rte_intr_callback_register
+					(&sh->intr_handle_devx,
+					 mlx5_dev_interrupt_handler_devx, sh);
+				sh->devx_intr_cnt++;
+				sh->port[priv->ibv_port - 1].devx_ih_port_id =
+						(uint32_t)dev->data->port_id;
 			}
-			sh->intr_handle_devx.fd = sh->devx_comp->fd;
-			sh->intr_handle_devx.type = RTE_INTR_HANDLE_EXT;
-			rte_intr_callback_register
-				(&sh->intr_handle_devx,
-				 mlx5_dev_interrupt_handler_devx, sh);
-		} else {
-			DRV_LOG(INFO, "failed to create devx async command "
-				"completion");
-			goto error_unregister;
 		}
 #endif /* HAVE_IBV_DEVX_ASYNC */
 	}
-	sh->intr_cnt++;
-	goto exit;
-error_unregister:
-	rte_intr_callback_unregister(&sh->intr_handle,
-				     mlx5_dev_interrupt_handler, sh);
-error:
-	/* Indicate there will be no interrupts. */
-	dev->data->dev_conf.intr_conf.lsc = 0;
-	dev->data->dev_conf.intr_conf.rmv = 0;
-	sh->intr_handle.fd = 0;
-	sh->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
-	sh->port[priv->ibv_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
 exit:
 	pthread_mutex_unlock(&sh->intr_mutex);
 }
@@ -1572,6 +1633,30 @@ void
 mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 {
 	mlx5_dev_shared_handler_install(dev);
+}
+
+/**
+ * Devx uninstall interrupt handler.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_dev_interrupt_handler_devx_uninstall(struct rte_eth_dev *dev)
+{
+	mlx5_dev_shared_handler_devx_uninstall(dev);
+}
+
+/**
+ * Devx install interrupt handler.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_dev_interrupt_handler_devx_install(struct rte_eth_dev *dev)
+{
+	mlx5_dev_shared_handler_devx_install(dev);
 }
 
 /**
