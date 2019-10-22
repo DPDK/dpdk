@@ -54,6 +54,7 @@ struct crypto_unittest_params {
 union test_case_structure {
 	struct modex_test_data modex;
 	struct modinv_test_data modinv;
+	struct rsa_test_data_2 rsa_data;
 };
 
 struct test_cases_array {
@@ -246,10 +247,12 @@ error_exit:
 	return status;
 }
 static int
-test_cryptodev_asym_ver(union test_case_structure *data_tc,
-						struct rte_crypto_op *result_op)
+test_cryptodev_asym_ver(struct rte_crypto_op *op,
+				struct rte_crypto_asym_xform *xform_tc,
+				union test_case_structure *data_tc,
+				struct rte_crypto_op *result_op)
 {
-	int status = TEST_SUCCESS;
+	int status = TEST_FAILED;
 	int ret = 0;
 	uint8_t *data_expected = NULL, *data_received = NULL;
 	size_t data_size = 0;
@@ -265,17 +268,35 @@ test_cryptodev_asym_ver(union test_case_structure *data_tc,
 		data_received = result_op->asym->modinv.result.data;
 		data_size = result_op->asym->modinv.result.length;
 		break;
+	case RTE_CRYPTO_ASYM_XFORM_RSA:
+		if (op->asym->rsa.op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+			data_size = xform_tc->rsa.n.length;
+			data_received = result_op->asym->rsa.cipher.data;
+			data_expected = data_tc->rsa_data.ct.data;
+		} else if (op->asym->rsa.op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
+			data_size = xform_tc->rsa.n.length;
+			data_expected = data_tc->rsa_data.pt.data;
+			data_received = result_op->asym->rsa.message.data;
+		} else if (op->asym->rsa.op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
+			data_size = xform_tc->rsa.n.length;
+			data_expected = data_tc->rsa_data.sign.data;
+			data_received = result_op->asym->rsa.sign.data;
+		} else if (op->asym->rsa.op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+			data_size = xform_tc->rsa.n.length;
+			data_expected = data_tc->rsa_data.pt.data;
+			data_received = result_op->asym->rsa.cipher.data;
+		}
+		break;
 	case RTE_CRYPTO_ASYM_XFORM_DH:
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
-	case RTE_CRYPTO_ASYM_XFORM_RSA:
 	case RTE_CRYPTO_ASYM_XFORM_NONE:
 	case RTE_CRYPTO_ASYM_XFORM_UNSPECIFIED:
 	default:
 		break;
 	}
 	ret = memcmp(data_expected, data_received, data_size);
-	if (ret)
-		status = TEST_FAILED;
+	if (!ret && data_size)
+		status = TEST_SUCCESS;
 
 	return status;
 }
@@ -283,7 +304,8 @@ test_cryptodev_asym_ver(union test_case_structure *data_tc,
 static int
 test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
 	union test_case_structure *data_tc,
-	char *test_msg, int sessionless)
+	char *test_msg, int sessionless, enum rte_crypto_asym_op_type type,
+	enum rte_crypto_rsa_priv_key_type key_type)
 {
 	struct rte_crypto_asym_op *asym_op = NULL;
 	struct rte_crypto_op *op = NULL;
@@ -368,9 +390,57 @@ test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
 			goto error_exit;
 		}
 		break;
+	case RTE_CRYPTO_ASYM_XFORM_RSA:
+		result = rte_zmalloc(NULL, data_tc->rsa_data.n.len, 0);
+		op->asym->rsa.op_type = type;
+		xform_tc.rsa.e.data = data_tc->rsa_data.e.data;
+		xform_tc.rsa.e.length = data_tc->rsa_data.e.len;
+		xform_tc.rsa.n.data = data_tc->rsa_data.n.data;
+		xform_tc.rsa.n.length = data_tc->rsa_data.n.len;
+
+		if (key_type == RTE_RSA_KEY_TYPE_EXP) {
+			xform_tc.rsa.d.data = data_tc->rsa_data.d.data;
+			xform_tc.rsa.d.length = data_tc->rsa_data.d.len;
+		} else {
+			xform_tc.rsa.qt.p.data = data_tc->rsa_data.p.data;
+			xform_tc.rsa.qt.p.length = data_tc->rsa_data.p.len;
+			xform_tc.rsa.qt.q.data = data_tc->rsa_data.q.data;
+			xform_tc.rsa.qt.q.length = data_tc->rsa_data.q.len;
+			xform_tc.rsa.qt.dP.data = data_tc->rsa_data.dP.data;
+			xform_tc.rsa.qt.dP.length = data_tc->rsa_data.dP.len;
+			xform_tc.rsa.qt.dQ.data = data_tc->rsa_data.dQ.data;
+			xform_tc.rsa.qt.dQ.length = data_tc->rsa_data.dQ.len;
+			xform_tc.rsa.qt.qInv.data = data_tc->rsa_data.qInv.data;
+			xform_tc.rsa.qt.qInv.length = data_tc->rsa_data.qInv.len;
+		}
+
+		xform_tc.rsa.key_type = key_type;
+		op->asym->rsa.pad = data_tc->rsa_data.padding;
+
+		if (op->asym->rsa.op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+			asym_op->rsa.message.data = data_tc->rsa_data.pt.data;
+			asym_op->rsa.message.length = data_tc->rsa_data.pt.len;
+			asym_op->rsa.cipher.data = result;
+			asym_op->rsa.cipher.length = data_tc->rsa_data.n.len;
+		} else if (op->asym->rsa.op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
+			asym_op->rsa.message.data = result;
+			asym_op->rsa.message.length = data_tc->rsa_data.n.len;
+			asym_op->rsa.cipher.data = data_tc->rsa_data.ct.data;
+			asym_op->rsa.cipher.length = data_tc->rsa_data.ct.len;
+		} else if (op->asym->rsa.op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
+			asym_op->rsa.sign.data = result;
+			asym_op->rsa.sign.length = data_tc->rsa_data.n.len;
+			asym_op->rsa.message.data = data_tc->rsa_data.pt.data;
+			asym_op->rsa.message.length = data_tc->rsa_data.pt.len;
+		} else if (op->asym->rsa.op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+			asym_op->rsa.cipher.data = result;
+			asym_op->rsa.cipher.length = data_tc->rsa_data.n.len;
+			asym_op->rsa.sign.data = data_tc->rsa_data.sign.data;
+			asym_op->rsa.sign.length = data_tc->rsa_data.sign.len;
+		}
+		break;
 	case RTE_CRYPTO_ASYM_XFORM_DH:
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
-	case RTE_CRYPTO_ASYM_XFORM_RSA:
 	case RTE_CRYPTO_ASYM_XFORM_NONE:
 	case RTE_CRYPTO_ASYM_XFORM_UNSPECIFIED:
 	default:
@@ -429,7 +499,7 @@ test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
 		goto error_exit;
 	}
 
-	if (test_cryptodev_asym_ver(data_tc, result_op) != TEST_SUCCESS) {
+	if (test_cryptodev_asym_ver(op, &xform_tc, data_tc, result_op) != TEST_SUCCESS) {
 		snprintf(test_msg, ASYM_TEST_MSG_LEN,
 			"line %u FAILED: %s",
 			__LINE__, "Verification failed ");
@@ -460,18 +530,47 @@ error_exit:
 static int
 test_one_case(const void *test_case, int sessionless)
 {
-	int status = TEST_SUCCESS;
+	int status = TEST_SUCCESS, i = 0;
 	char test_msg[ASYM_TEST_MSG_LEN + 1];
 
 	/* Map the case to union */
 	union test_case_structure tc;
 	memcpy(&tc, test_case, sizeof(tc));
 
-	status = test_cryptodev_asym_op(&testsuite_params, &tc, test_msg,
-			sessionless);
-
-	printf("  %u) TestCase %s %s\n", test_index++,
-		tc.modex.description, test_msg);
+	if (tc.modex.xform_type == RTE_CRYPTO_ASYM_XFORM_MODEX
+			|| tc.modex.xform_type == RTE_CRYPTO_ASYM_XFORM_MODINV) {
+		status = test_cryptodev_asym_op(&testsuite_params, &tc, test_msg,
+				sessionless, 0, 0);
+		printf("  %u) TestCase %s %s\n", test_index++,
+			tc.modex.description, test_msg);
+	} else {
+		for (i = 0; i < RTE_CRYPTO_ASYM_OP_LIST_END; i++) {
+			if (tc.modex.xform_type == RTE_CRYPTO_ASYM_XFORM_RSA) {
+				if (tc.rsa_data.op_type_flags & (1 << i)) {
+					if (tc.rsa_data.key_exp) {
+						status = test_cryptodev_asym_op(
+							&testsuite_params, &tc,
+							test_msg, sessionless, i,
+							RTE_RSA_KEY_TYPE_EXP);
+					}
+					if (status)
+						break;
+					if (tc.rsa_data.key_qt && (i ==
+							RTE_CRYPTO_ASYM_OP_DECRYPT ||
+							i == RTE_CRYPTO_ASYM_OP_SIGN)) {
+						status = test_cryptodev_asym_op(
+							&testsuite_params,
+							&tc, test_msg, sessionless, i,
+							RTE_RSA_KET_TYPE_QT);
+					}
+					if (status)
+						break;
+				}
+			}
+		}
+		printf("  %u) TestCase %s %s\n", test_index++,
+			tc.modex.description, test_msg);
+	}
 
 	return status;
 }
@@ -500,6 +599,17 @@ load_test_vectors(void)
 			return -1;
 		}
 		test_vector.address[test_vector.size] = &modinv_test_case[i];
+		test_vector.size++;
+	}
+	/* Load RSA vector*/
+	v_size = ARRAY_SIZE(rsa_test_case_list);
+	for (i = 0; i < v_size; i++) {
+		if (test_vector.size >= (TEST_VECTOR_SIZE)) {
+			RTE_LOG(DEBUG, USER1,
+				"TEST_VECTOR_SIZE too small\n");
+			return -1;
+		}
+		test_vector.address[test_vector.size] = &rsa_test_case_list[i];
 		test_vector.size++;
 	}
 	return 0;
