@@ -171,7 +171,7 @@ cmd_set_cpu_freq_parsed(void *parsed_result, struct cmdline *cl,
 cmdline_parse_token_string_t cmd_set_cpu_freq =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_cpu_freq_result,
 			set_cpu_freq, "set_cpu_freq");
-cmdline_parse_token_string_t cmd_set_cpu_freq_core_num =
+cmdline_parse_token_num_t cmd_set_cpu_freq_core_num =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_cpu_freq_result,
 			lcore_id, UINT8);
 cmdline_parse_token_string_t cmd_set_cpu_freq_cmd_cmd =
