@@ -42,6 +42,7 @@ all_examples = [
 	'timer', 'vdpa',
 	'vhost', 'vhost_crypto',
 	'vm_power_manager',
+	'vm_power_manager/guest_cli',
 	'vmdq', 'vmdq_dcb',
 ]
 # install all example code on install - irrespective of whether the example in

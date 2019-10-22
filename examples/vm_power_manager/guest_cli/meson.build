@@ -6,10 +6,6 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-# Setting the name here because the default name will conflict with the
-# vm_power_manager app because of the way the directories are parsed.
-name = 'guest_cli'
-
 if not dpdk_conf.has('RTE_LIBRTE_POWER')
         build = false
         subdir_done()
