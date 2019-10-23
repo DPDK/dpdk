@@ -6,6 +6,7 @@
 #define _MEMIF_SOCKET_H_
 
 #include <sys/queue.h>
+#include <sys/un.h>
 
 /**
  * Remove device from socket device list. If no device is left on the socket,
@@ -79,11 +80,12 @@ struct memif_socket_dev_list_elt {
 };
 
 #define MEMIF_SOCKET_HASH_NAME			"memif-sh"
-#define MEMIF_SOCKET_KEY_LEN		256
+#define MEMIF_SOCKET_UN_SIZE	\
+	(sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path))
 
 struct memif_socket {
 	struct rte_intr_handle intr_handle;	/**< interrupt handle */
-	char filename[MEMIF_SOCKET_KEY_LEN];	/**< socket filename */
+	char filename[MEMIF_SOCKET_UN_SIZE];	/**< socket filename */
 
 	TAILQ_HEAD(, memif_socket_dev_list_elt) dev_queue;
 	/**< Queue of devices using this socket */

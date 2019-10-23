@@ -1197,6 +1197,11 @@ memif_check_socket_filename(const char *filename)
 	uint32_t idx;
 	int ret = 0;
 
+	if (strlen(filename) >= MEMIF_SOCKET_UN_SIZE) {
+		MIF_LOG(ERR, "Unix socket address too long (max 108).");
+		return -1;
+	}
+
 	tmp = strrchr(filename, '/');
 	if (tmp != NULL) {
 		idx = tmp - filename;

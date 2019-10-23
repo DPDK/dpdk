@@ -42,7 +42,7 @@ client.
    "role=master", "Set memif role", "slave", "master|slave"
    "bsize=1024", "Size of single packet buffer", "2048", "uint16_t"
    "rsize=11", "Log2 of ring size. If rsize is 10, actual ring size is 1024", "10", "1-14"
-   "socket=/tmp/memif.sock", "Socket filename", "/tmp/memif.sock", "string len 256"
+   "socket=/tmp/memif.sock", "Socket filename", "/tmp/memif.sock", "string len 108"
    "mac=01:23:45:ab:cd:ef", "Mac address", "01:ab:23:cd:45:ef", ""
    "secret=abc123", "Secret is an optional security option, which if specified, must be matched by peer", "", "string len 24"
    "zero-copy=yes", "Enable/disable zero-copy slave mode", "no", "yes|no"
