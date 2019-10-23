@@ -101,3 +101,5 @@ GENERATE_HTML           = YES
 HTML_OUTPUT             = @HTML_OUTPUT@
 GENERATE_LATEX          = NO
 GENERATE_MAN            = NO
+
+HAVE_DOT                = NO
