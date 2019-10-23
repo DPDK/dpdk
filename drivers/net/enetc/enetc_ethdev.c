@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 #include <rte_ethdev_pci.h>
+#include <rte_random.h>
 
 #include "enetc_logs.h"
 #include "enetc.h"
@@ -123,11 +124,22 @@ enetc_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	return rte_eth_linkstatus_set(dev, &link);
 }
 
+static void
+print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
+{
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
+	ENETC_PMD_INFO("%s%s\n", name, buf);
+}
+
 static int
 enetc_hardware_init(struct enetc_eth_hw *hw)
 {
 	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t *mac = (uint32_t *)hw->mac.addr;
+	uint32_t high_mac = 0;
+	uint16_t low_mac = 0;
 
 	PMD_INIT_FUNC_TRACE();
 	/* Calculating and storing the base HW addresses */
@@ -138,8 +150,27 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 	enetc_wr(enetc_hw, ENETC_SIMR, ENETC_SIMR_EN);
 
 	*mac = (uint32_t)enetc_port_rd(enetc_hw, ENETC_PSIPMAR0(0));
+	high_mac = (uint32_t)*mac;
 	mac++;
 	*mac = (uint16_t)enetc_port_rd(enetc_hw, ENETC_PSIPMAR1(0));
+	low_mac = (uint16_t)*mac;
+
+	if ((high_mac | low_mac) == 0) {
+		char *first_byte;
+
+		mac = (uint32_t *)hw->mac.addr;
+		*mac = (uint32_t)rte_rand();
+		first_byte = (char *)mac;
+		*first_byte &= 0xfe;	/* clear multicast bit */
+		*first_byte |= 0x02;	/* set local assignment bit (IEEE802) */
+
+		enetc_port_wr(enetc_hw, ENETC_PSIPMAR0(0), *mac);
+		mac++;
+		*mac = (uint16_t)rte_rand();
+		enetc_port_wr(enetc_hw, ENETC_PSIPMAR1(0), *mac);
+		print_ethaddr("New address: ",
+			      (const struct rte_ether_addr *)hw->mac.addr);
+	}
 
 	return 0;
 }
