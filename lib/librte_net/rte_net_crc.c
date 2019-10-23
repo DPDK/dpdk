@@ -22,6 +22,12 @@
 #include <net_crc_neon.h>
 #endif
 
+/** CRC polynomials */
+#define CRC32_ETH_POLYNOMIAL 0x04c11db7UL
+#define CRC16_CCITT_POLYNOMIAL 0x1021U
+
+#define CRC_LUT_SIZE 256
+
 /* crc tables */
 static uint32_t crc32_eth_lut[CRC_LUT_SIZE];
 static uint32_t crc16_ccitt_lut[CRC_LUT_SIZE];

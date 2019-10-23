@@ -11,12 +11,6 @@
 extern "C" {
 #endif
 
-/** CRC polynomials */
-#define CRC32_ETH_POLYNOMIAL 0x04c11db7UL
-#define CRC16_CCITT_POLYNOMIAL 0x1021U
-
-#define CRC_LUT_SIZE 256
-
 /** CRC types */
 enum rte_net_crc_type {
 	RTE_NET_CRC16_CCITT = 0,
