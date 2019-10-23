@@ -274,6 +274,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* The network structure ``esp_tail`` has been prefixed by ``rte_``.
+
 * ethdev: changed ``rte_eth_dev_infos_get`` return value from ``void`` to
   ``int`` to provide a way to report various error conditions.
 
