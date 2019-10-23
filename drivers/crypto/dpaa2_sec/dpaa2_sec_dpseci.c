@@ -65,6 +65,7 @@ static uint8_t cryptodev_driver_id;
 
 int dpaa2_logtype_sec;
 
+#ifdef RTE_LIBRTE_SECURITY
 static inline int
 build_proto_compound_sg_fd(dpaa2_sec_session *sess,
 			   struct rte_crypto_op *op,
@@ -288,6 +289,7 @@ build_proto_fd(dpaa2_sec_session *sess,
 
 	return 0;
 }
+#endif
 
 static inline int
 build_authenc_gcm_sg_fd(dpaa2_sec_session *sess,
@@ -1358,9 +1360,11 @@ build_sec_fd(struct rte_crypto_op *op,
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
 		sess = (dpaa2_sec_session *)get_sym_session_private_data(
 				op->sym->session, cryptodev_driver_id);
+#ifdef RTE_LIBRTE_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
 		sess = (dpaa2_sec_session *)get_sec_session_private_data(
 				op->sym->sec_session);
+#endif
 	else
 		return -1;
 
@@ -1381,10 +1385,12 @@ build_sec_fd(struct rte_crypto_op *op,
 		case DPAA2_SEC_CIPHER_HASH:
 			ret = build_authenc_sg_fd(sess, op, fd, bpid);
 			break;
+#ifdef RTE_LIBRTE_SECURITY
 		case DPAA2_SEC_IPSEC:
 		case DPAA2_SEC_PDCP:
 			ret = build_proto_compound_sg_fd(sess, op, fd, bpid);
 			break;
+#endif
 		case DPAA2_SEC_HASH_CIPHER:
 		default:
 			DPAA2_SEC_ERR("error: Unsupported session");
@@ -1403,12 +1409,14 @@ build_sec_fd(struct rte_crypto_op *op,
 		case DPAA2_SEC_CIPHER_HASH:
 			ret = build_authenc_fd(sess, op, fd, bpid);
 			break;
+#ifdef RTE_LIBRTE_SECURITY
 		case DPAA2_SEC_IPSEC:
 			ret = build_proto_fd(sess, op, fd, bpid);
 			break;
 		case DPAA2_SEC_PDCP:
 			ret = build_proto_compound_fd(sess, op, fd, bpid);
 			break;
+#endif
 		case DPAA2_SEC_HASH_CIPHER:
 		default:
 			DPAA2_SEC_ERR("error: Unsupported session");
@@ -1500,13 +1508,14 @@ skip_tx:
 	return num_tx;
 }
 
+#ifdef RTE_LIBRTE_SECURITY
 static inline struct rte_crypto_op *
 sec_simple_fd_to_mbuf(const struct qbman_fd *fd)
 {
 	struct rte_crypto_op *op;
 	uint16_t len = DPAA2_GET_FD_LEN(fd);
 	uint16_t diff = 0;
-	dpaa2_sec_session *sess_priv;
+	dpaa2_sec_session *sess_priv __rte_unused;
 
 	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(
 		DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)),
@@ -1528,6 +1537,7 @@ sec_simple_fd_to_mbuf(const struct qbman_fd *fd)
 
 	return op;
 }
+#endif
 
 static inline struct rte_crypto_op *
 sec_fd_to_mbuf(const struct qbman_fd *fd)
@@ -1537,9 +1547,10 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 	struct ctxt_priv *priv;
 	struct rte_mbuf *dst, *src;
 
+#ifdef RTE_LIBRTE_SECURITY
 	if (DPAA2_FD_GET_FORMAT(fd) == qbman_fd_single)
 		return sec_simple_fd_to_mbuf(fd);
-
+#endif
 	fle = (struct qbman_fle *)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
 
 	DPAA2_SEC_DP_DEBUG("FLE addr = %x - %x, offset = %x\n",
@@ -1569,6 +1580,7 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 	} else
 		dst = src;
 
+#ifdef RTE_LIBRTE_SECURITY
 	if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 		dpaa2_sec_session *sess = (dpaa2_sec_session *)
 			get_sec_session_private_data(op->sym->sec_session);
@@ -1583,7 +1595,7 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 			dst->data_len = len;
 		}
 	}
-
+#endif
 	DPAA2_SEC_DP_DEBUG("mbuf %p BMAN buf addr %p,"
 		" fdaddr =%" PRIx64 " bpid =%d meta =%d off =%d, len =%d\n",
 		(void *)dst,
@@ -2500,6 +2512,7 @@ dpaa2_sec_set_session_parameters(struct rte_cryptodev *dev,
 	return ret;
 }
 
+#ifdef RTE_LIBRTE_SECURITY
 static int
 dpaa2_sec_ipsec_aead_init(struct rte_crypto_aead_xform *aead_xform,
 			dpaa2_sec_session *session,
@@ -3172,7 +3185,7 @@ dpaa2_sec_security_session_destroy(void *dev __rte_unused,
 	}
 	return 0;
 }
-
+#endif
 static int
 dpaa2_sec_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
@@ -3565,6 +3578,7 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.sym_session_clear        = dpaa2_sec_sym_session_clear,
 };
 
+#ifdef RTE_LIBRTE_SECURITY
 static const struct rte_security_capability *
 dpaa2_sec_capabilities_get(void *device __rte_unused)
 {
@@ -3579,6 +3593,7 @@ static const struct rte_security_ops dpaa2_sec_security_ops = {
 	.set_pkt_metadata = NULL,
 	.capabilities_get = dpaa2_sec_capabilities_get
 };
+#endif
 
 static int
 dpaa2_sec_uninit(const struct rte_cryptodev *dev)
@@ -3601,7 +3616,9 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 	struct dpaa2_sec_dev_private *internals;
 	struct rte_device *dev = cryptodev->device;
 	struct rte_dpaa2_device *dpaa2_dev;
+#ifdef RTE_LIBRTE_SECURITY
 	struct rte_security_ctx *security_instance;
+#endif
 	struct fsl_mc_io *dpseci;
 	uint16_t token;
 	struct dpseci_attr attr;
@@ -3642,7 +3659,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 		DPAA2_SEC_DEBUG("Device already init by primary process");
 		return 0;
 	}
-
+#ifdef RTE_LIBRTE_SECURITY
 	/* Initialize security_ctx only for primary process*/
 	security_instance = rte_malloc("rte_security_instances_ops",
 				sizeof(struct rte_security_ctx), 0);
@@ -3652,7 +3669,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 	security_instance->ops = &dpaa2_sec_security_ops;
 	security_instance->sess_cnt = 0;
 	cryptodev->security_ctx = security_instance;
-
+#endif
 	/*Open the rte device via MC and save the handle for further use*/
 	dpseci = (struct fsl_mc_io *)rte_calloc(NULL, 1,
 				sizeof(struct fsl_mc_io), 0);
