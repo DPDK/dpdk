@@ -148,6 +148,7 @@ otx2_ssogws_dual_deq_ ##name(void *port, struct rte_event *ev,		\
 	struct otx2_ssogws_dual *ws = port;				\
 	uint8_t gw;							\
 									\
+	rte_prefetch_non_temporal(ws);					\
 	RTE_SET_USED(timeout_ticks);					\
 	if (ws->swtag_req) {						\
 		otx2_ssogws_swtag_wait((struct otx2_ssogws *)		\
