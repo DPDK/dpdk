@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <rte_ethdev_pci.h>
 #include <rte_random.h>
+#include <dpaax_iova_table.h>
 
 #include "enetc_logs.h"
 #include "enetc.h"
@@ -896,6 +897,9 @@ enetc_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mtu = RTE_ETHER_MAX_LEN - RTE_ETHER_HDR_LEN -
 		RTE_ETHER_CRC_LEN;
 
+	if (rte_eal_iova_mode() == RTE_IOVA_PA)
+		dpaax_iova_table_populate();
+
 	ENETC_PMD_DEBUG("port_id %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
@@ -906,6 +910,10 @@ static int
 enetc_dev_uninit(struct rte_eth_dev *eth_dev __rte_unused)
 {
 	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_iova_mode() == RTE_IOVA_PA)
+		dpaax_iova_table_depopulate();
+
 	return 0;
 }
 
