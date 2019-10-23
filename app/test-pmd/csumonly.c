@@ -35,6 +35,7 @@
 #include <rte_ip.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
+#include <rte_vxlan.h>
 #include <rte_sctp.h>
 #include <rte_gtp.h>
 #include <rte_prefetch.h>

@@ -6,6 +6,8 @@
 #ifndef _ENIC_H_
 #define _ENIC_H_
 
+#include <rte_vxlan.h>
+
 #include "vnic_enet.h"
 #include "vnic_dev.h"
 #include "vnic_flowman.h"
@@ -50,9 +52,6 @@
 #define ENIC_MAGIC_FILTER_ID 0xffff
 
 #define ENICPMD_FDIR_MAX           64
-
-/* HW default VXLAN port */
-#define ENIC_DEFAULT_VXLAN_PORT	   4789
 
 /*
  * Interrupt 0: LSC and errors

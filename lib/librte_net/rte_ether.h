@@ -285,15 +285,7 @@ struct rte_vlan_hdr {
 	uint16_t eth_proto;/**< Ethernet type of encapsulated frame. */
 } __attribute__((__packed__));
 
-/**
- * VXLAN protocol header.
- * Contains the 8-bit flag, 24-bit VXLAN Network Identifier and
- * Reserved fields (24 bits and 8 bits)
- */
-struct rte_vxlan_hdr {
-	uint32_t vx_flags; /**< flag (8) + Reserved (24). */
-	uint32_t vx_vni;   /**< VNI (24) + Reserved (8). */
-} __attribute__((__packed__));
+
 
 /* Ethernet frame types */
 #define RTE_ETHER_TYPE_IPV4 0x0800 /**< IPv4 Protocol. */
@@ -312,35 +304,6 @@ struct rte_vxlan_hdr {
 #define RTE_ETHER_TYPE_LLDP 0x88CC /**< LLDP Protocol. */
 #define RTE_ETHER_TYPE_MPLS 0x8847 /**< MPLS ethertype. */
 #define RTE_ETHER_TYPE_MPLSM 0x8848 /**< MPLS multicast ethertype. */
-
-#define RTE_ETHER_VXLAN_HLEN \
-	(sizeof(struct rte_udp_hdr) + sizeof(struct rte_vxlan_hdr))
-	/**< VXLAN tunnel header length. */
-
-/**
- * VXLAN-GPE protocol header (draft-ietf-nvo3-vxlan-gpe-05).
- * Contains the 8-bit flag, 8-bit next-protocol, 24-bit VXLAN Network
- * Identifier and Reserved fields (16 bits and 8 bits).
- */
-struct rte_vxlan_gpe_hdr {
-	uint8_t vx_flags;    /**< flag (8). */
-	uint8_t reserved[2]; /**< Reserved (16). */
-	uint8_t proto;       /**< next-protocol (8). */
-	uint32_t vx_vni;     /**< VNI (24) + Reserved (8). */
-} __attribute__((__packed__));
-
-/* VXLAN-GPE next protocol types */
-#define RTE_VXLAN_GPE_TYPE_IPV4 1 /**< IPv4 Protocol. */
-#define RTE_VXLAN_GPE_TYPE_IPV6 2 /**< IPv6 Protocol. */
-#define RTE_VXLAN_GPE_TYPE_ETH  3 /**< Ethernet Protocol. */
-#define RTE_VXLAN_GPE_TYPE_NSH  4 /**< NSH Protocol. */
-#define RTE_VXLAN_GPE_TYPE_MPLS 5 /**< MPLS Protocol. */
-#define RTE_VXLAN_GPE_TYPE_GBP  6 /**< GBP Protocol. */
-#define RTE_VXLAN_GPE_TYPE_VBNG 7 /**< vBNG Protocol. */
-
-#define RTE_ETHER_VXLAN_GPE_HLEN (sizeof(struct rte_udp_hdr) + \
-			      sizeof(struct rte_vxlan_gpe_hdr))
-/**< VXLAN-GPE tunnel header length. */
 
 /**
  * Extract VLAN tag information into mbuf

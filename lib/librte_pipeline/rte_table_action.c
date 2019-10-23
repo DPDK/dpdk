@@ -14,6 +14,7 @@
 #include <rte_esp.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
+#include <rte_vxlan.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
 

@@ -1056,7 +1056,7 @@ static int enicpmd_dev_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 			     tnl->udp_port);
 		return -EINVAL;
 	}
-	return update_vxlan_port(enic, ENIC_DEFAULT_VXLAN_PORT);
+	return update_vxlan_port(enic, RTE_VXLAN_DEFAULT_PORT);
 }
 
 static int enicpmd_dev_fw_version_get(struct rte_eth_dev *eth_dev,

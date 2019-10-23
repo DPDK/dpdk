@@ -1767,14 +1767,14 @@ static int enic_dev_init(struct enic *enic)
 	 * enable/disable.
 	 */
 	if (enic->vxlan) {
-		enic->vxlan_port = ENIC_DEFAULT_VXLAN_PORT;
+		enic->vxlan_port = RTE_VXLAN_DEFAULT_PORT;
 		/*
 		 * Reset the vxlan port to the default, as the NIC firmware
 		 * does not reset it automatically and keeps the old setting.
 		 */
 		if (vnic_dev_overlay_offload_cfg(enic->vdev,
 						 OVERLAY_CFG_VXLAN_PORT_UPDATE,
-						 ENIC_DEFAULT_VXLAN_PORT)) {
+						 RTE_VXLAN_DEFAULT_PORT)) {
 			dev_err(enic, "failed to update vxlan port\n");
 			return -EINVAL;
 		}

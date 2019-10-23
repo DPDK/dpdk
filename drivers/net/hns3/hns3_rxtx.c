@@ -15,6 +15,7 @@
 #include <rte_dev.h>
 #include <rte_eal.h>
 #include <rte_ether.h>
+#include <rte_vxlan.h>
 #include <rte_ethdev_driver.h>
 #include <rte_io.h>
 #include <rte_ip.h>

@@ -12,7 +12,7 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_pci.h>
-#include <rte_ether.h>
+#include <rte_vxlan.h>
 #include <rte_ethdev_driver.h>
 #include <rte_malloc.h>
 
@@ -77,7 +77,6 @@
 	rte_memcpy((ipaddr), ipv6_addr, sizeof(ipv6_addr));\
 } while (0)
 
-#define DEFAULT_VXLAN_PORT 4789
 #define IXGBE_FDIRIP6M_INNER_MAC_SHIFT 4
 
 static int fdir_erase_filter_82599(struct ixgbe_hw *hw, uint32_t fdirhash);
@@ -366,7 +365,7 @@ fdir_set_input_mask_x550(struct rte_eth_dev *dev)
 
 	/* set the default UDP port for VxLAN */
 	if (mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
-		IXGBE_WRITE_REG(hw, IXGBE_VXLANCTRL, DEFAULT_VXLAN_PORT);
+		IXGBE_WRITE_REG(hw, IXGBE_VXLANCTRL, RTE_VXLAN_DEFAULT_PORT);
 
 	/* some bits must be set for mac vlan or tunnel mode */
 	fdirm |= IXGBE_FDIRM_L4P | IXGBE_FDIRM_L3P;

@@ -26,6 +26,7 @@
 #include <rte_malloc.h>
 #include <rte_ip.h>
 #include <rte_gre.h>
+#include <rte_vxlan.h>
 
 #include "mlx5.h"
 #include "mlx5_defs.h"

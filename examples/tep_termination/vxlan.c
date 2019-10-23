@@ -159,7 +159,7 @@ decapsulation(struct rte_mbuf *pkt)
 	/** check udp destination port, 4789 is the default vxlan port
 	 * (rfc7348) or that the rx offload flag is set (i40e only
 	 * currently)*/
-	if (udp_hdr->dst_port != rte_cpu_to_be_16(DEFAULT_VXLAN_PORT) &&
+	if (udp_hdr->dst_port != rte_cpu_to_be_16(RTE_VXLAN_DEFAULT_PORT) &&
 		(pkt->packet_type & RTE_PTYPE_TUNNEL_MASK) == 0)
 		return -1;
 	outer_header_len = info.outer_l2_len + info.outer_l3_len

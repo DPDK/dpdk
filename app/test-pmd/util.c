@@ -8,6 +8,7 @@
 #include <rte_net.h>
 #include <rte_mbuf.h>
 #include <rte_ether.h>
+#include <rte_vxlan.h>
 #include <rte_ethdev.h>
 #include <rte_flow.h>
 
