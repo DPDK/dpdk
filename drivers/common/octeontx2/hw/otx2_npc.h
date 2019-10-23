@@ -182,6 +182,8 @@ enum npc_kpu_la_ltype {
 	NPC_LT_LA_IH_8_ETHER,
 	NPC_LT_LA_IH_4_ETHER,
 	NPC_LT_LA_IH_2_ETHER,
+	NPC_LT_LA_HIGIG2_ETHER,
+	NPC_LT_LA_IH_NIX_HIGIG2_ETHER,
 };
 
 enum npc_kpu_lb_ltype {

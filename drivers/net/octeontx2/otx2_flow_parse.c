@@ -675,12 +675,59 @@ otx2_flow_parse_la(struct otx2_parse_state *pst)
 	if (pst->flow->nix_intf == NIX_INTF_TX) {
 		lt = NPC_LT_LA_IH_NIX_ETHER;
 		info.hw_hdr_len = NPC_IH_LENGTH;
+		if (pst->npc->switch_header_type == OTX2_PRIV_FLAGS_HIGIG) {
+			lt = NPC_LT_LA_IH_NIX_HIGIG2_ETHER;
+			info.hw_hdr_len += NPC_HIGIG2_LENGTH;
+		}
+	} else {
+		if (pst->npc->switch_header_type == OTX2_PRIV_FLAGS_HIGIG) {
+			lt = NPC_LT_LA_HIGIG2_ETHER;
+			info.hw_hdr_len = NPC_HIGIG2_LENGTH;
+		}
 	}
 
 	/* Prepare for parsing the item */
 	info.def_mask = &rte_flow_item_eth_mask;
 	info.hw_mask = &hw_mask;
 	info.len = sizeof(struct rte_flow_item_eth);
+	otx2_flow_get_hw_supp_mask(pst, &info, lid, lt);
+	info.spec = NULL;
+	info.mask = NULL;
+
+	/* Basic validation of item parameters */
+	rc = otx2_flow_parse_item_basic(pst->pattern, &info, pst->error);
+	if (rc)
+		return rc;
+
+	/* Update pst if not validate only? clash check? */
+	return otx2_flow_update_parse_state(pst, &info, lid, lt, 0);
+}
+
+int
+otx2_flow_parse_higig2_hdr(struct otx2_parse_state *pst)
+{
+	struct rte_flow_item_higig2_hdr hw_mask;
+	struct otx2_flow_item_info info;
+	int lid, lt;
+	int rc;
+
+	/* Identify the pattern type into lid, lt */
+	if (pst->pattern->type != RTE_FLOW_ITEM_TYPE_HIGIG2)
+		return 0;
+
+	lid = NPC_LID_LA;
+	lt = NPC_LT_LA_HIGIG2_ETHER;
+	info.hw_hdr_len = 0;
+
+	if (pst->flow->nix_intf == NIX_INTF_TX) {
+		lt = NPC_LT_LA_IH_NIX_HIGIG2_ETHER;
+		info.hw_hdr_len = NPC_IH_LENGTH;
+	}
+
+	/* Prepare for parsing the item */
+	info.def_mask = &rte_flow_item_higig2_hdr_mask;
+	info.hw_mask = &hw_mask;
+	info.len = sizeof(struct rte_flow_item_higig2_hdr);
 	otx2_flow_get_hw_supp_mask(pst, &info, lid, lt);
 	info.spec = NULL;
 	info.mask = NULL;

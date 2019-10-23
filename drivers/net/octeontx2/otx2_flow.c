@@ -325,6 +325,7 @@ flow_parse_pattern(struct rte_eth_dev *dev,
 {
 	flow_parse_stage_func_t parse_stage_funcs[] = {
 		flow_parse_meta_items,
+		otx2_flow_parse_higig2_hdr,
 		otx2_flow_parse_la,
 		otx2_flow_parse_lb,
 		otx2_flow_parse_lc,
