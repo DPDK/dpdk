@@ -12,6 +12,7 @@
 #include <sys/queue.h>
 
 #include <rte_common.h>
+#include <rte_errno.h>
 #include <rte_debug.h>
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -38,6 +39,9 @@
 #define MBUF_TEST_HDR1_LEN      20
 #define MBUF_TEST_HDR2_LEN      30
 #define MBUF_TEST_ALL_HDRS_LEN  (MBUF_TEST_HDR1_LEN+MBUF_TEST_HDR2_LEN)
+
+/* chain length in bulk test */
+#define CHAIN_LEN 16
 
 /* size of private data for mbuf in pktmbuf_pool2 */
 #define MBUF2_PRIV_SIZE         128
@@ -701,6 +705,175 @@ test_pktmbuf_pool(struct rte_mempool *pktmbuf_pool)
 }
 
 /*
+ * test bulk allocation and bulk free of mbufs
+ */
+static int
+test_pktmbuf_pool_bulk(void)
+{
+	struct rte_mempool *pool = NULL;
+	struct rte_mempool *pool2 = NULL;
+	unsigned int i;
+	struct rte_mbuf *m;
+	struct rte_mbuf *mbufs[NB_MBUF];
+	int ret = 0;
+
+	/* We cannot use the preallocated mbuf pools because their caches
+	 * prevent us from bulk allocating all objects in them.
+	 * So we create our own mbuf pools without caches.
+	 */
+	printf("Create mbuf pools for bulk allocation.\n");
+	pool = rte_pktmbuf_pool_create("test_pktmbuf_bulk",
+			NB_MBUF, 0, 0, MBUF_DATA_SIZE, SOCKET_ID_ANY);
+	if (pool == NULL) {
+		printf("rte_pktmbuf_pool_create() failed. rte_errno %d\n",
+		       rte_errno);
+		goto err;
+	}
+	pool2 = rte_pktmbuf_pool_create("test_pktmbuf_bulk2",
+			NB_MBUF, 0, 0, MBUF_DATA_SIZE, SOCKET_ID_ANY);
+	if (pool2 == NULL) {
+		printf("rte_pktmbuf_pool_create() failed. rte_errno %d\n",
+		       rte_errno);
+		goto err;
+	}
+
+	/* Preconditions: Mempools must be full. */
+	if (!(rte_mempool_full(pool) && rte_mempool_full(pool2))) {
+		printf("Test precondition failed: mempools not full\n");
+		goto err;
+	}
+	if (!(rte_mempool_avail_count(pool) == NB_MBUF &&
+			rte_mempool_avail_count(pool2) == NB_MBUF)) {
+		printf("Test precondition failed: mempools: %u+%u != %u+%u",
+		       rte_mempool_avail_count(pool),
+		       rte_mempool_avail_count(pool2),
+		       NB_MBUF, NB_MBUF);
+		goto err;
+	}
+
+	printf("Test single bulk alloc, followed by multiple bulk free.\n");
+
+	/* Bulk allocate all mbufs in the pool, in one go. */
+	ret = rte_pktmbuf_alloc_bulk(pool, mbufs, NB_MBUF);
+	if (ret != 0) {
+		printf("rte_pktmbuf_alloc_bulk() failed: %d\n", ret);
+		goto err;
+	}
+	/* Test that they have been removed from the pool. */
+	if (!rte_mempool_empty(pool)) {
+		printf("mempool not empty\n");
+		goto err;
+	}
+	/* Bulk free all mbufs, in four steps. */
+	RTE_BUILD_BUG_ON(NB_MBUF % 4 != 0);
+	for (i = 0; i < NB_MBUF; i += NB_MBUF / 4) {
+		rte_pktmbuf_free_bulk(&mbufs[i], NB_MBUF / 4);
+		/* Test that they have been returned to the pool. */
+		if (rte_mempool_avail_count(pool) != i + NB_MBUF / 4) {
+			printf("mempool avail count incorrect\n");
+			goto err;
+		}
+	}
+
+	printf("Test multiple bulk alloc, followed by single bulk free.\n");
+
+	/* Bulk allocate all mbufs in the pool, in four steps. */
+	for (i = 0; i < NB_MBUF; i += NB_MBUF / 4) {
+		ret = rte_pktmbuf_alloc_bulk(pool, &mbufs[i], NB_MBUF / 4);
+		if (ret != 0) {
+			printf("rte_pktmbuf_alloc_bulk() failed: %d\n", ret);
+			goto err;
+		}
+	}
+	/* Test that they have been removed from the pool. */
+	if (!rte_mempool_empty(pool)) {
+		printf("mempool not empty\n");
+		goto err;
+	}
+	/* Bulk free all mbufs, in one go. */
+	rte_pktmbuf_free_bulk(mbufs, NB_MBUF);
+	/* Test that they have been returned to the pool. */
+	if (!rte_mempool_full(pool)) {
+		printf("mempool not full\n");
+		goto err;
+	}
+
+	printf("Test bulk free of single long chain.\n");
+
+	/* Bulk allocate all mbufs in the pool, in one go. */
+	ret = rte_pktmbuf_alloc_bulk(pool, mbufs, NB_MBUF);
+	if (ret != 0) {
+		printf("rte_pktmbuf_alloc_bulk() failed: %d\n", ret);
+		goto err;
+	}
+	/* Create a long mbuf chain. */
+	for (i = 1; i < NB_MBUF; i++) {
+		ret = rte_pktmbuf_chain(mbufs[0], mbufs[i]);
+		if (ret != 0) {
+			printf("rte_pktmbuf_chain() failed: %d\n", ret);
+			goto err;
+		}
+		mbufs[i] = NULL;
+	}
+	/* Free the mbuf chain containing all the mbufs. */
+	rte_pktmbuf_free_bulk(mbufs, 1);
+	/* Test that they have been returned to the pool. */
+	if (!rte_mempool_full(pool)) {
+		printf("mempool not full\n");
+		goto err;
+	}
+
+	printf("Test bulk free of multiple chains using multiple pools.\n");
+
+	/* Create mbuf chains containing mbufs from different pools. */
+	RTE_BUILD_BUG_ON(CHAIN_LEN % 2 != 0);
+	RTE_BUILD_BUG_ON(NB_MBUF % (CHAIN_LEN / 2) != 0);
+	for (i = 0; i < NB_MBUF * 2; i++) {
+		m = rte_pktmbuf_alloc((i & 4) ? pool2 : pool);
+		if (m == NULL) {
+			printf("rte_pktmbuf_alloc() failed (%u)\n", i);
+			goto err;
+		}
+		if ((i % CHAIN_LEN) == 0)
+			mbufs[i / CHAIN_LEN] = m;
+		else
+			rte_pktmbuf_chain(mbufs[i / CHAIN_LEN], m);
+	}
+	/* Test that both pools have been emptied. */
+	if (!(rte_mempool_empty(pool) && rte_mempool_empty(pool2))) {
+		printf("mempools not empty\n");
+		goto err;
+	}
+	/* Free one mbuf chain. */
+	rte_pktmbuf_free_bulk(mbufs, 1);
+	/* Test that the segments have been returned to the pools. */
+	if (!(rte_mempool_avail_count(pool) == CHAIN_LEN / 2 &&
+			rte_mempool_avail_count(pool2) == CHAIN_LEN / 2)) {
+		printf("all segments of first mbuf have not been returned\n");
+		goto err;
+	}
+	/* Free the remaining mbuf chains. */
+	rte_pktmbuf_free_bulk(&mbufs[1], NB_MBUF * 2 / CHAIN_LEN - 1);
+	/* Test that they have been returned to the pools. */
+	if (!(rte_mempool_full(pool) && rte_mempool_full(pool2))) {
+		printf("mempools not full\n");
+		goto err;
+	}
+
+	ret = 0;
+	goto done;
+
+err:
+	ret = -1;
+
+done:
+	printf("Free mbuf pools for bulk allocation.\n");
+	rte_mempool_free(pool);
+	rte_mempool_free(pool2);
+	return ret;
+}
+
+/*
  * test that the pointer to the data on a packet mbuf is set properly
  */
 static int
@@ -1314,6 +1487,12 @@ test_mbuf(void)
 	/* do it another time to check that all mbufs were freed */
 	if (test_pktmbuf_pool(pktmbuf_pool) < 0) {
 		printf("test_mbuf_pool() failed (2)\n");
+		goto err;
+	}
+
+	/* test bulk mbuf alloc and free */
+	if (test_pktmbuf_pool_bulk() < 0) {
+		printf("test_pktmbuf_pool_bulk() failed\n");
 		goto err;
 	}
 
