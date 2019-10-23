@@ -178,12 +178,12 @@ enetc_alloc_txbdr(struct enetc_bdr *txr, uint16_t nb_desc)
 	int size;
 
 	size = nb_desc * sizeof(struct enetc_swbd);
-	txr->q_swbd = rte_malloc(NULL, size, RTE_CACHE_LINE_SIZE);
+	txr->q_swbd = rte_malloc(NULL, size, ENETC_BD_RING_ALIGN);
 	if (txr->q_swbd == NULL)
 		return -ENOMEM;
 
 	size = nb_desc * sizeof(struct enetc_tx_bd);
-	txr->bd_base = rte_malloc(NULL, size, RTE_CACHE_LINE_SIZE);
+	txr->bd_base = rte_malloc(NULL, size, ENETC_BD_RING_ALIGN);
 	if (txr->bd_base == NULL) {
 		rte_free(txr->q_swbd);
 		txr->q_swbd = NULL;
@@ -325,12 +325,12 @@ enetc_alloc_rxbdr(struct enetc_bdr *rxr,
 	int size;
 
 	size = nb_rx_desc * sizeof(struct enetc_swbd);
-	rxr->q_swbd = rte_malloc(NULL, size, RTE_CACHE_LINE_SIZE);
+	rxr->q_swbd = rte_malloc(NULL, size, ENETC_BD_RING_ALIGN);
 	if (rxr->q_swbd == NULL)
 		return -ENOMEM;
 
 	size = nb_rx_desc * sizeof(union enetc_rx_bd);
-	rxr->bd_base = rte_malloc(NULL, size, RTE_CACHE_LINE_SIZE);
+	rxr->bd_base = rte_malloc(NULL, size, ENETC_BD_RING_ALIGN);
 	if (rxr->bd_base == NULL) {
 		rte_free(rxr->q_swbd);
 		rxr->q_swbd = NULL;

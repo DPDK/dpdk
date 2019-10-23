@@ -12,6 +12,9 @@
 #define ENETC_DEV_ID_VF		0xef00
 #define ENETC_DEV_ID		0xe100
 
+/* BD RING ALIGNMENT */
+#define ENETC_BD_RING_ALIGN	128
+
 /* ENETC register block BAR */
 #define ENETC_BAR_REGS			0x0
 
