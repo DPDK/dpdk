@@ -156,8 +156,8 @@ extern "C" {
 #include <rte_errno.h>
 #include <rte_common.h>
 #include <rte_config.h>
+#include <rte_ether.h>
 
-#include "rte_ether.h"
 #include "rte_dev_info.h"
 
 extern int rte_eth_dev_logtype;

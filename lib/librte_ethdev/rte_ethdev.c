@@ -37,8 +37,8 @@
 #include <rte_string_fns.h>
 #include <rte_kvargs.h>
 #include <rte_class.h>
+#include <rte_ether.h>
 
-#include "rte_ether.h"
 #include "rte_ethdev.h"
 #include "rte_ethdev_driver.h"
 #include "ethdev_profile.h"
