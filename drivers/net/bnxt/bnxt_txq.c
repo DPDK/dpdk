@@ -34,7 +34,7 @@ static void bnxt_tx_queue_release_mbufs(struct bnxt_tx_queue *txq)
 	if (sw_ring) {
 		for (i = 0; i < txq->tx_ring->tx_ring_struct->ring_size; i++) {
 			if (sw_ring[i].mbuf) {
-				rte_pktmbuf_free(sw_ring[i].mbuf);
+				rte_pktmbuf_free_seg(sw_ring[i].mbuf);
 				sw_ring[i].mbuf = NULL;
 			}
 		}
