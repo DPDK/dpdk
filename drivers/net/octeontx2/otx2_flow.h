@@ -190,6 +190,7 @@ struct otx2_npc_flow_info {
 	uint16_t channel; /*rx channel */
 	uint16_t flow_prealloc_size;
 	uint16_t flow_max_priority;
+	uint16_t switch_header_type;
 };
 
 struct otx2_parse_state {

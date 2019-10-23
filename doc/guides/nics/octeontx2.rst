@@ -170,6 +170,18 @@ Runtime Config Options
    With the above configuration, each send queue's decscriptor buffer count is
    limited to a maximum of 64 buffers.
 
+- ``switch header enable`` (default ``none``)
+
+   A port can be configured to a specific switch header type by using
+   ``switch_header`` ``devargs`` parameter.
+
+   For example::
+
+      -w 0002:02:00.0,switch_header="higig2"
+
+   With the above configuration, higig2 will be enabled on that port and the
+   traffic on this port should be higig2 traffic only. Supported switch header
+   types are "higig2" and "dsa".
 
 .. note::
 

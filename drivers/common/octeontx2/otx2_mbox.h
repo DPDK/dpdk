@@ -89,7 +89,7 @@ struct mbox_msghdr {
 #define OTX2_MBOX_RSP_SIG (0xbeef)
 	/* Signature, for validating corrupted msgs */
 	uint16_t __otx2_io sig;
-#define OTX2_MBOX_VERSION (0x0002)
+#define OTX2_MBOX_VERSION (0x0003)
 	/* Version of msg's structure for this ID */
 	uint16_t __otx2_io ver;
 	/* Offset of next msg within mailbox region */
@@ -236,6 +236,9 @@ M(NPC_DELETE_FLOW,	  0x600e, npc_delete_flow,			\
 M(NPC_MCAM_READ_ENTRY,	  0x600f, npc_mcam_read_entry,			\
 				  npc_mcam_read_entry_req,		\
 				  npc_mcam_read_entry_rsp)		\
+M(NPC_SET_PKIND,          0x6010, npc_set_pkind,                        \
+				  npc_set_pkind,                        \
+				  msg_rsp)                              \
 /* NIX mbox IDs (range 0x8000 - 0xFFFF) */				\
 M(NIX_LF_ALLOC,		0x8000, nix_lf_alloc, nix_lf_alloc_req,		\
 				nix_lf_alloc_rsp)			\
@@ -327,6 +330,20 @@ struct ready_msg_rsp {
 	struct mbox_msghdr hdr;
 	uint16_t __otx2_io sclk_feq; /* SCLK frequency */
 	uint16_t __otx2_io rclk_freq; /* RCLK frequency */
+};
+
+/* Struct to set pkind */
+struct npc_set_pkind {
+	struct mbox_msghdr hdr;
+#define OTX2_PRIV_FLAGS_DEFAULT  BIT_ULL(0)
+#define OTX2_PRIV_FLAGS_EDSA     BIT_ULL(1)
+#define OTX2_PRIV_FLAGS_HIGIG    BIT_ULL(2)
+#define OTX2_PRIV_FLAGS_CUSTOM   BIT_ULL(63)
+	uint64_t __otx2_io mode;
+#define PKIND_TX		BIT_ULL(0)
+#define PKIND_RX		BIT_ULL(1)
+	uint8_t __otx2_io dir;
+	uint8_t __otx2_io pkind; /* valid only in case custom flag */
 };
 
 /* Structure for requesting resource provisioning.
