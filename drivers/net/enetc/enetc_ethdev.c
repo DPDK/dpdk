@@ -130,7 +130,7 @@ print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 
 	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
-	ENETC_PMD_INFO("%s%s\n", name, buf);
+	ENETC_PMD_NOTICE("%s%s\n", name, buf);
 }
 
 static int
@@ -158,6 +158,8 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 	if ((high_mac | low_mac) == 0) {
 		char *first_byte;
 
+		ENETC_PMD_NOTICE("MAC is not available for this SI, "
+				"set random MAC\n");
 		mac = (uint32_t *)hw->mac.addr;
 		*mac = (uint32_t)rte_rand();
 		first_byte = (char *)mac;

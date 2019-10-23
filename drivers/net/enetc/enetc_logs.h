@@ -21,6 +21,8 @@ extern int enetc_logtype_pmd;
 	ENETC_PMD_LOG(CRIT, fmt, ## args)
 #define ENETC_PMD_INFO(fmt, args...) \
 	ENETC_PMD_LOG(INFO, fmt, ## args)
+#define ENETC_PMD_NOTICE(fmt, args...) \
+	ENETC_PMD_LOG(NOTICE, fmt, ## args)
 #define ENETC_PMD_ERR(fmt, args...) \
 	ENETC_PMD_LOG(ERR, fmt, ## args)
 #define ENETC_PMD_WARN(fmt, args...) \
