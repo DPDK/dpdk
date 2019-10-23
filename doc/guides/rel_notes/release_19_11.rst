@@ -278,6 +278,8 @@ API Changes
 
 * The network definitions of PPPoE ethertypes have been prefixed by ``RTE_``.
 
+* The network structure for MPLS has been prefixed by ``rte_``.
+
 * ethdev: changed ``rte_eth_dev_infos_get`` return value from ``void`` to
   ``int`` to provide a way to report various error conditions.
 

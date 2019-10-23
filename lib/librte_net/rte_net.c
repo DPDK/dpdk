@@ -278,8 +278,8 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	} else if ((proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_MPLS)) ||
 		(proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_MPLSM))) {
 		unsigned int i;
-		const struct mpls_hdr *mh;
-		struct mpls_hdr mh_copy;
+		const struct rte_mpls_hdr *mh;
+		struct rte_mpls_hdr mh_copy;
 
 #define MAX_MPLS_HDR 5
 		for (i = 0; i < MAX_MPLS_HDR; i++) {
