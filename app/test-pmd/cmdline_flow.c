@@ -318,7 +318,7 @@ enum index {
 	(sizeof(struct rte_flow_item_raw) + ITEM_RAW_PATTERN_SIZE)
 
 /** Maximum number of queue indices in struct rte_flow_action_rss. */
-#define ACTION_RSS_QUEUE_NUM 32
+#define ACTION_RSS_QUEUE_NUM 128
 
 /** Storage for struct rte_flow_action_rss including external data. */
 struct action_rss_data {
