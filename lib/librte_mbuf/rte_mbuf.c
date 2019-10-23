@@ -245,6 +245,72 @@ int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
 	return 0;
 }
 
+/**
+ * @internal helper function for freeing a bulk of packet mbuf segments
+ * via an array holding the packet mbuf segments from the same mempool
+ * pending to be freed.
+ *
+ * @param m
+ *  The packet mbuf segment to be freed.
+ * @param pending
+ *  Pointer to the array of packet mbuf segments pending to be freed.
+ * @param nb_pending
+ *  Pointer to the number of elements held in the array.
+ * @param pending_sz
+ *  Number of elements the array can hold.
+ *  Note: The compiler should optimize this parameter away when using a
+ *  constant value, such as RTE_PKTMBUF_FREE_PENDING_SZ.
+ */
+static void
+__rte_pktmbuf_free_seg_via_array(struct rte_mbuf *m,
+	struct rte_mbuf ** const pending, unsigned int * const nb_pending,
+	const unsigned int pending_sz)
+{
+	m = rte_pktmbuf_prefree_seg(m);
+	if (likely(m != NULL)) {
+		if (*nb_pending == pending_sz ||
+		    (*nb_pending > 0 && m->pool != pending[0]->pool)) {
+			rte_mempool_put_bulk(pending[0]->pool,
+					(void **)pending, *nb_pending);
+			*nb_pending = 0;
+		}
+
+		pending[(*nb_pending)++] = m;
+	}
+}
+
+/**
+ * Size of the array holding mbufs from the same mempool pending to be freed
+ * in bulk.
+ */
+#define RTE_PKTMBUF_FREE_PENDING_SZ 64
+
+/* Free a bulk of packet mbufs back into their original mempools. */
+void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
+{
+	struct rte_mbuf *m, *m_next, *pending[RTE_PKTMBUF_FREE_PENDING_SZ];
+	unsigned int idx, nb_pending = 0;
+
+	for (idx = 0; idx < count; idx++) {
+		m = mbufs[idx];
+		if (unlikely(m == NULL))
+			continue;
+
+		__rte_mbuf_sanity_check(m, 1);
+
+		do {
+			m_next = m->next;
+			__rte_pktmbuf_free_seg_via_array(m,
+					pending, &nb_pending,
+					RTE_PKTMBUF_FREE_PENDING_SZ);
+			m = m_next;
+		} while (m != NULL);
+	}
+
+	if (nb_pending > 0)
+		rte_mempool_put_bulk(pending[0]->pool, (void **)pending, nb_pending);
+}
+
 /* Creates a shallow copy of mbuf */
 struct rte_mbuf *
 rte_pktmbuf_clone(struct rte_mbuf *md, struct rte_mempool *mp)

@@ -1915,6 +1915,21 @@ static inline void rte_pktmbuf_free(struct rte_mbuf *m)
 }
 
 /**
+ * Free a bulk of packet mbufs back into their original mempools.
+ *
+ * Free a bulk of mbufs, and all their segments in case of chained buffers.
+ * Each segment is added back into its original mempool.
+ *
+ *  @param mbufs
+ *    Array of pointers to packet mbufs.
+ *    The array may contain NULL pointers.
+ *  @param count
+ *    Array size.
+ */
+__rte_experimental
+void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count);
+
+/**
  * Create a "clone" of the given packet mbuf.
  *
  * Walks through all segments of the given packet mbuf, and for each of them:

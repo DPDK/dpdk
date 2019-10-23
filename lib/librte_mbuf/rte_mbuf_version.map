@@ -59,5 +59,6 @@ EXPERIMENTAL {
 
 	rte_mbuf_check;
 	rte_pktmbuf_copy;
+	rte_pktmbuf_free_bulk;
 
 } DPDK_18.08;
