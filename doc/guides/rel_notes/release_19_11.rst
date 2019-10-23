@@ -276,6 +276,8 @@ API Changes
 
 * The network structure ``esp_tail`` has been prefixed by ``rte_``.
 
+* The network definitions of PPPoE ethertypes have been prefixed by ``RTE_``.
+
 * ethdev: changed ``rte_eth_dev_infos_get`` return value from ``void`` to
   ``int`` to provide a way to report various error conditions.
 

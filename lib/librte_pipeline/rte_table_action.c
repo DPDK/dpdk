@@ -696,7 +696,7 @@ encap_qinq_pppoe_apply(void *data,
 	d->cvlan.vlan_tci = rte_htons(VLAN(p->qinq.cvlan.pcp,
 		p->qinq.cvlan.dei,
 		p->qinq.cvlan.vid));
-	d->cvlan.eth_proto = rte_htons(ETHER_TYPE_PPPOE_SESSION);
+	d->cvlan.eth_proto = rte_htons(RTE_ETHER_TYPE_PPPOE_SESSION);
 
 	/* PPPoE and PPP*/
 	d->pppoe_ppp.ver_type_code = rte_htons(0x1100);
@@ -747,7 +747,7 @@ encap_pppoe_apply(void *data,
 	/* Ethernet */
 	rte_ether_addr_copy(&p->pppoe.ether.da, &d->ether.d_addr);
 	rte_ether_addr_copy(&p->pppoe.ether.sa, &d->ether.s_addr);
-	d->ether.ether_type = rte_htons(ETHER_TYPE_PPPOE_SESSION);
+	d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_PPPOE_SESSION);
 
 	/* PPPoE and PPP*/
 	d->pppoe_ppp.ver_type_code = rte_htons(0x1100);
