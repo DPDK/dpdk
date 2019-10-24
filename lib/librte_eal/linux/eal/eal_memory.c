@@ -832,7 +832,8 @@ alloc_va_space(struct rte_memseg_list *msl)
 	addr = eal_get_virtual_area(msl->base_va, &mem_sz, page_sz, 0, flags);
 	if (addr == NULL) {
 		if (rte_errno == EADDRNOTAVAIL)
-			RTE_LOG(ERR, EAL, "Could not mmap %llu bytes at [%p] - please use '--base-virtaddr' option\n",
+			RTE_LOG(ERR, EAL, "Could not mmap %llu bytes at [%p] - "
+				"please use '--" OPT_BASE_VIRTADDR "' option\n",
 				(unsigned long long)mem_sz, msl->base_va);
 		else
 			RTE_LOG(ERR, EAL, "Cannot reserve memory\n");
