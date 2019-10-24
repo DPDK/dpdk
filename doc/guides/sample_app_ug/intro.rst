@@ -15,9 +15,9 @@ Running Sample Applications
 
 Some sample applications may have their own command-line parameters described in
 their respective guides, however all of them also share the same EAL parameters.
-Please refer to  :doc:`../linux_gsg/linux_eal_parameters` or
-:doc:`../freebsd_gsg/freebsd_eal_parameters` for a list of available EAL
-command-line options.
+Please refer to :doc:`EAL parameters (Linux) <../linux_gsg/linux_eal_parameters>`
+or :doc:`EAL parameters (FreeBSD) <../freebsd_gsg/freebsd_eal_parameters>` for
+a list of available EAL command-line options.
 
 
 The DPDK Sample Applications
