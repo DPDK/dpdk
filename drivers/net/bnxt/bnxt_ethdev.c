@@ -4074,6 +4074,24 @@ static bool bnxt_vf_pciid(uint16_t id)
 	return false;
 }
 
+static bool bnxt_thor_device(uint16_t id)
+{
+	if (id == BROADCOM_DEV_ID_57508 ||
+	    id == BROADCOM_DEV_ID_57504 ||
+	    id == BROADCOM_DEV_ID_57502 ||
+	    id == BROADCOM_DEV_ID_57508_MF1 ||
+	    id == BROADCOM_DEV_ID_57504_MF1 ||
+	    id == BROADCOM_DEV_ID_57502_MF1 ||
+	    id == BROADCOM_DEV_ID_57508_MF2 ||
+	    id == BROADCOM_DEV_ID_57504_MF2 ||
+	    id == BROADCOM_DEV_ID_57502_MF2 ||
+	    id == BROADCOM_DEV_ID_57500_VF1 ||
+	    id == BROADCOM_DEV_ID_57500_VF2)
+		return true;
+
+	return false;
+}
+
 bool bnxt_stratus_device(struct bnxt *bp)
 {
 	uint16_t id = bp->pdev->id.device_id;
@@ -4716,11 +4734,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	if (bnxt_vf_pciid(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;
 
-	if (pci_dev->id.device_id == BROADCOM_DEV_ID_57508 ||
-	    pci_dev->id.device_id == BROADCOM_DEV_ID_57504 ||
-	    pci_dev->id.device_id == BROADCOM_DEV_ID_57502 ||
-	    pci_dev->id.device_id == BROADCOM_DEV_ID_57500_VF1 ||
-	    pci_dev->id.device_id == BROADCOM_DEV_ID_57500_VF2)
+	if (bnxt_thor_device(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_THOR_CHIP;
 
 	if (pci_dev->id.device_id == BROADCOM_DEV_ID_58802 ||
