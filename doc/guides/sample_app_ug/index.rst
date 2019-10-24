@@ -43,7 +43,6 @@ Sample Applications User Guides
     packet_ordering
     vmdq_dcb_forwarding
     vhost
-    vhost_scsi
     vhost_crypto
     vdpa
     netmap_compatibility

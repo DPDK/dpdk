@@ -258,6 +258,8 @@ Removed Items
 
 * Removed AF_XDP pmd_zero copy vdev argument. Support is now auto-detected.
 
+* Removed vhost-scsi example.
+
 
 API Changes
 -----------
