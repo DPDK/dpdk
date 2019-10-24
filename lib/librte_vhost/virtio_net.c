@@ -770,6 +770,60 @@ out:
 	return error;
 }
 
+static __rte_always_inline int
+vhost_enqueue_single_packed(struct virtio_net *dev,
+			    struct vhost_virtqueue *vq,
+			    struct rte_mbuf *pkt,
+			    struct buf_vector *buf_vec,
+			    uint16_t *nr_descs)
+{
+	uint16_t nr_vec = 0;
+	uint16_t avail_idx = vq->last_avail_idx;
+	uint16_t max_tries, tries = 0;
+	uint16_t buf_id = 0;
+	uint32_t len = 0;
+	uint16_t desc_count;
+	uint32_t size = pkt->pkt_len + dev->vhost_hlen;
+	uint16_t num_buffers = 0;
+
+	if (rxvq_is_mergeable(dev))
+		max_tries = vq->size - 1;
+	else
+		max_tries = 1;
+
+	while (size > 0) {
+		/*
+		 * if we tried all available ring items, and still
+		 * can't get enough buf, it means something abnormal
+		 * happened.
+		 */
+		if (unlikely(++tries > max_tries))
+			return -1;
+
+		if (unlikely(fill_vec_buf_packed(dev, vq,
+						avail_idx, &desc_count,
+						buf_vec, &nr_vec,
+						&buf_id, &len,
+						VHOST_ACCESS_RW) < 0))
+			return -1;
+
+		len = RTE_MIN(len, size);
+		size -= len;
+
+		num_buffers += 1;
+
+		*nr_descs += desc_count;
+		avail_idx += desc_count;
+		if (avail_idx >= vq->size)
+			avail_idx -= vq->size;
+	}
+
+	if (copy_mbuf_to_desc(dev, vq, pkt, buf_vec, nr_vec, num_buffers) < 0)
+		return -1;
+
+	return 0;
+}
+
 static __rte_noinline uint32_t
 virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mbuf **pkts, uint32_t count)
@@ -825,6 +879,32 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	}
 
 	return pkt_idx;
+}
+
+static __rte_unused int16_t
+virtio_dev_rx_single_packed(struct virtio_net *dev,
+			    struct vhost_virtqueue *vq,
+			    struct rte_mbuf *pkt)
+{
+	struct buf_vector buf_vec[BUF_VECTOR_MAX];
+	uint16_t nr_descs = 0;
+
+	rte_smp_rmb();
+	if (unlikely(vhost_enqueue_single_packed(dev, vq, pkt, buf_vec,
+						 &nr_descs) < 0)) {
+		VHOST_LOG_DEBUG(VHOST_DATA,
+				"(%d) failed to get enough desc from vring\n",
+				dev->vid);
+		return -1;
+	}
+
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) current index %d | end index %d\n",
+			dev->vid, vq->last_avail_idx,
+			vq->last_avail_idx + nr_descs);
+
+	vq_inc_last_avail_packed(vq, nr_descs);
+
+	return 0;
 }
 
 static __rte_noinline uint32_t
