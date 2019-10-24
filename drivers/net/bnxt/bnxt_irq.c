@@ -37,6 +37,11 @@ void bnxt_int_handler(void *param)
 			return;
 		}
 
+		if (is_bnxt_in_error(bp)) {
+			pthread_mutex_unlock(&bp->def_cp_lock);
+			return;
+		}
+
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 		cmp = &cpr->cp_desc_ring[cons];
 
@@ -102,6 +107,9 @@ void bnxt_disable_int(struct bnxt *bp)
 	struct bnxt_cp_ring_info *cpr = bp->async_cp_ring;
 
 	if (BNXT_NUM_ASYNC_CPR(bp) == 0)
+		return;
+
+	if (is_bnxt_in_error(bp))
 		return;
 
 	if (!cpr || !cpr->cp_db.doorbell)

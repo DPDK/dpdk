@@ -639,6 +639,9 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			evt =
 			bnxt_event_hwrm_resp_handler(rxq->bp,
 						     (struct cmpl_base *)rxcmp);
+			/* If the async event is Fatal error, return */
+			if (unlikely(is_bnxt_in_error(rxq->bp)))
+				goto done;
 		}
 
 		raw_cons = NEXT_RAW_CMP(raw_cons);
