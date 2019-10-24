@@ -138,11 +138,7 @@ flush_shadow_used_ring_packed(struct virtio_net *dev,
 			head_flags = flags;
 		}
 
-		vq->last_used_idx += vq->shadow_used_packed[i].count;
-		if (vq->last_used_idx >= vq->size) {
-			vq->used_wrap_counter ^= 1;
-			vq->last_used_idx -= vq->size;
-		}
+		vq_inc_last_used_packed(vq, vq->shadow_used_packed[i].count);
 	}
 
 	__atomic_store_n(&vq->desc_packed[head_idx].flags, head_flags,
@@ -865,11 +861,7 @@ virtio_dev_rx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			break;
 		}
 
-		vq->last_avail_idx += nr_descs;
-		if (vq->last_avail_idx >= vq->size) {
-			vq->last_avail_idx -= vq->size;
-			vq->avail_wrap_counter ^= 1;
-		}
+		vq_inc_last_avail_packed(vq, nr_descs);
 	}
 
 	do_data_copy_enqueue(dev, vq);
@@ -1585,11 +1577,7 @@ virtio_dev_tx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			TAILQ_INSERT_TAIL(&vq->zmbuf_list, zmbuf, next);
 		}
 
-		vq->last_avail_idx += desc_count;
-		if (vq->last_avail_idx >= vq->size) {
-			vq->last_avail_idx -= vq->size;
-			vq->avail_wrap_counter ^= 1;
-		}
+		vq_inc_last_avail_packed(vq, desc_count);
 	}
 
 	if (likely(dev->dequeue_zero_copy == 0)) {

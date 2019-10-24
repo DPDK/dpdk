@@ -367,6 +367,26 @@ desc_is_avail(struct vring_packed_desc *desc, bool wrap_counter)
 		wrap_counter != !!(flags & VRING_DESC_F_USED);
 }
 
+static inline void
+vq_inc_last_used_packed(struct vhost_virtqueue *vq, uint16_t num)
+{
+	vq->last_used_idx += num;
+	if (vq->last_used_idx >= vq->size) {
+		vq->used_wrap_counter ^= 1;
+		vq->last_used_idx -= vq->size;
+	}
+}
+
+static inline void
+vq_inc_last_avail_packed(struct vhost_virtqueue *vq, uint16_t num)
+{
+	vq->last_avail_idx += num;
+	if (vq->last_avail_idx >= vq->size) {
+		vq->avail_wrap_counter ^= 1;
+		vq->last_avail_idx -= vq->size;
+	}
+}
+
 void __vhost_log_cache_write(struct virtio_net *dev,
 		struct vhost_virtqueue *vq,
 		uint64_t addr, uint64_t len);
