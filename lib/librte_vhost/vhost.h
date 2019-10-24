@@ -39,6 +39,9 @@
 
 #define VHOST_LOG_CACHE_NR 32
 
+#define PACKED_DESC_SINGLE_DEQUEUE_FLAG (VRING_DESC_F_NEXT | \
+					 VRING_DESC_F_INDIRECT)
+
 #define PACKED_BATCH_SIZE (RTE_CACHE_LINE_SIZE / \
 			    sizeof(struct vring_packed_desc))
 #define PACKED_BATCH_MASK (PACKED_BATCH_SIZE - 1)
