@@ -635,7 +635,7 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 	struct vring_desc *start_dp;
 	struct virtio_net_hdr *hdr;
 	uint16_t idx;
-	uint16_t head_size = vq->hw->vtnet_hdr_size;
+	int16_t head_size = vq->hw->vtnet_hdr_size;
 	uint16_t i = 0;
 
 	idx = vq->vq_desc_head_idx;
@@ -648,8 +648,8 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 		dxp->ndescs = 1;
 		virtio_update_packet_stats(&txvq->stats, cookies[i]);
 
-		hdr = (struct virtio_net_hdr *)(char *)cookies[i]->buf_addr +
-			cookies[i]->data_off - head_size;
+		hdr = rte_pktmbuf_mtod_offset(cookies[i],
+				struct virtio_net_hdr *, -head_size);
 
 		/* if offload disabled, hdr is not zeroed yet, do it now */
 		if (!vq->hw->has_tx_offload)
@@ -682,7 +682,7 @@ virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
 	struct vring_packed_desc *dp;
 	struct vq_desc_extra *dxp;
 	uint16_t idx, id, flags;
-	uint16_t head_size = vq->hw->vtnet_hdr_size;
+	int16_t head_size = vq->hw->vtnet_hdr_size;
 	struct virtio_net_hdr *hdr;
 
 	id = in_order ? vq->vq_avail_idx : vq->vq_desc_head_idx;
@@ -696,8 +696,8 @@ virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
 	flags = vq->vq_packed.cached_flags;
 
 	/* prepend cannot fail, checked by caller */
-	hdr = (struct virtio_net_hdr *)(char *)cookie->buf_addr +
-		cookie->data_off - head_size;
+	hdr = rte_pktmbuf_mtod_offset(cookie, struct virtio_net_hdr *,
+				      -head_size);
 
 	/* if offload disabled, hdr is not zeroed yet, do it now */
 	if (!vq->hw->has_tx_offload)
@@ -734,7 +734,7 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	struct virtqueue *vq = txvq->vq;
 	struct vring_packed_desc *start_dp, *head_dp;
 	uint16_t idx, id, head_idx, head_flags;
-	uint16_t head_size = vq->hw->vtnet_hdr_size;
+	int16_t head_size = vq->hw->vtnet_hdr_size;
 	struct virtio_net_hdr *hdr;
 	uint16_t prev;
 	bool prepend_header = false;
@@ -756,8 +756,8 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 
 	if (can_push) {
 		/* prepend cannot fail, checked by caller */
-		hdr = (struct virtio_net_hdr *)(char *)cookie->buf_addr +
-			cookie->data_off - head_size;
+		hdr = rte_pktmbuf_mtod_offset(cookie, struct virtio_net_hdr *,
+					      -head_size);
 		prepend_header = true;
 
 		/* if offload disabled, it is not zeroed below, do it now */
@@ -832,7 +832,7 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	struct vring_desc *start_dp;
 	uint16_t seg_num = cookie->nb_segs;
 	uint16_t head_idx, idx;
-	uint16_t head_size = vq->hw->vtnet_hdr_size;
+	int16_t head_size = vq->hw->vtnet_hdr_size;
 	bool prepend_header = false;
 	struct virtio_net_hdr *hdr;
 
@@ -849,8 +849,8 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 
 	if (can_push) {
 		/* prepend cannot fail, checked by caller */
-		hdr = (struct virtio_net_hdr *)(char *)cookie->buf_addr +
-			cookie->data_off - head_size;
+		hdr = rte_pktmbuf_mtod_offset(cookie, struct virtio_net_hdr *,
+					      -head_size);
 		prepend_header = true;
 
 		/* if offload disabled, it is not zeroed below, do it now */
