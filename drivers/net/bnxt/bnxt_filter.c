@@ -120,6 +120,10 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 		    filter->filter_type == HWRM_CFA_NTUPLE_FILTER) {
 			/* Call HWRM to try to free filter again */
 			rc = bnxt_hwrm_clear_ntuple_filter(bp, filter);
+			if (rc)
+				PMD_DRV_LOG(ERR,
+					    "Cannot free ntuple filter: %d\n",
+					    rc);
 		}
 		filter->fw_ntuple_filter_id = UINT64_MAX;
 
