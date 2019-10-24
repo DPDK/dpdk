@@ -366,6 +366,10 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	eth_dev->data->rx_queue_state[queue_idx] = queue_state;
 	rte_spinlock_init(&rxq->lock);
 
+	/* Configure mtu if it is different from what was configured before */
+	if (!queue_idx)
+		bnxt_mtu_set_op(eth_dev, eth_dev->data->mtu);
+
 out:
 	return rc;
 }

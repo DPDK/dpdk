@@ -639,6 +639,7 @@ struct bnxt {
 	struct bnxt_error_recovery_info *recovery_info;
 };
 
+int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 int is_bnxt_in_error(struct bnxt *bp);
