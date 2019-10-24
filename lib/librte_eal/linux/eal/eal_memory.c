@@ -69,6 +69,26 @@ static int phys_addrs_available = -1;
 
 #define RANDOMIZE_VA_SPACE_FILE "/proc/sys/kernel/randomize_va_space"
 
+uint64_t eal_get_baseaddr(void)
+{
+	/*
+	 * Linux kernel uses a really high address as starting address for
+	 * serving mmaps calls. If there exists addressing limitations and IOVA
+	 * mode is VA, this starting address is likely too high for those
+	 * devices. However, it is possible to use a lower address in the
+	 * process virtual address space as with 64 bits there is a lot of
+	 * available space.
+	 *
+	 * Current known limitations are 39 or 40 bits. Setting the starting
+	 * address at 4GB implies there are 508GB or 1020GB for mapping the
+	 * available hugepages. This is likely enough for most systems, although
+	 * a device with addressing limitations should call
+	 * rte_mem_check_dma_mask for ensuring all memory is within supported
+	 * range.
+	 */
+	return 0x100000000ULL;
+}
+
 /*
  * Get physical address of any mapped virtual address in the current process.
  */

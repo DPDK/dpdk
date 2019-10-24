@@ -381,4 +381,10 @@ rte_option_init(void);
 void
 rte_option_usage(void);
 
+/**
+ * Get OS-specific EAL mapping base address.
+ */
+uint64_t
+eal_get_baseaddr(void);
+
 #endif /* _EAL_PRIVATE_H_ */

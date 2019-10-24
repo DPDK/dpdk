@@ -23,6 +23,16 @@
 
 #define EAL_PAGE_SIZE (sysconf(_SC_PAGESIZE))
 
+uint64_t eal_get_baseaddr(void)
+{
+	/*
+	 * FreeBSD may allocate something in the space we will be mapping things
+	 * before we get a chance to do that, so use a base address that's far
+	 * away from where malloc() et al usually map things.
+	 */
+	return 0x1000000000ULL;
+}
+
 /*
  * Get physical address of any mapped virtual address in the current process.
  */
