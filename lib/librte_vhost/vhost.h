@@ -174,6 +174,8 @@ struct vhost_virtqueue {
 		struct vring_used_elem_packed *shadow_used_packed;
 	};
 	uint16_t                shadow_used_idx;
+	/* Record packed ring enqueue latest desc cache aligned index */
+	uint16_t		shadow_aligned_idx;
 	struct vhost_vring_addr ring_addrs;
 
 	struct batch_copy_elem	*batch_copy_elems;
