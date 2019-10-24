@@ -161,7 +161,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	PMD_DRV_LOG(DEBUG, "Use NTUPLE %d\n", use_ntuple);
 
 	filter->filter_type = use_ntuple ?
-		HWRM_CFA_NTUPLE_FILTER : HWRM_CFA_EM_FILTER;
+		HWRM_CFA_NTUPLE_FILTER : HWRM_CFA_L2_FILTER;
 	en_ethertype = use_ntuple ?
 		NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE :
 		EM_FLOW_ALLOC_INPUT_EN_ETHERTYPE;
