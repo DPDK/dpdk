@@ -136,6 +136,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
 	const struct rte_flow_item_udp *udp_spec, *udp_mask;
 	const struct rte_flow_item_eth *eth_spec, *eth_mask;
+	const struct rte_ether_addr *dst, *src;
 	const struct rte_flow_item_nvgre *nvgre_spec;
 	const struct rte_flow_item_nvgre *nvgre_mask;
 	const struct rte_flow_item_gre *gre_spec;
@@ -226,12 +227,15 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 
 			if (rte_is_broadcast_ether_addr(&eth_mask->dst)) {
-				if (!rte_is_unicast_ether_addr(&eth_spec->dst)) {
+				dst = &eth_spec->dst;
+				if (!rte_is_valid_assigned_ether_addr(dst)) {
 					rte_flow_error_set(error,
 							   EINVAL,
 							   RTE_FLOW_ERROR_TYPE_ITEM,
 							   item,
 							   "DMAC is invalid");
+					PMD_DRV_LOG(ERR,
+						    "DMAC is invalid!\n");
 					return -rte_errno;
 				}
 				rte_memcpy(filter->dst_macaddr,
@@ -246,14 +250,16 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				PMD_DRV_LOG(DEBUG,
 					    "Creating a priority flow\n");
 			}
-
 			if (rte_is_broadcast_ether_addr(&eth_mask->src)) {
-				if (!rte_is_unicast_ether_addr(&eth_spec->src)) {
+				src = &eth_spec->src;
+				if (!rte_is_valid_assigned_ether_addr(src)) {
 					rte_flow_error_set(error,
 							   EINVAL,
 							   RTE_FLOW_ERROR_TYPE_ITEM,
 							   item,
 							   "SMAC is invalid");
+					PMD_DRV_LOG(ERR,
+						    "SMAC is invalid!\n");
 					return -rte_errno;
 				}
 				rte_memcpy(filter->src_macaddr,
