@@ -4806,6 +4806,7 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 		}
 	}
 
+	bnxt_uninit_locks(bp);
 	rte_free(bp->ptp_cfg);
 	bp->ptp_cfg = NULL;
 	return rc;
@@ -4841,8 +4842,6 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
-
-	bnxt_uninit_locks(bp);
 
 	return rc;
 }
