@@ -42,6 +42,8 @@
 #define PACKED_DESC_ENQUEUE_USED_FLAG(w)	\
 	((w) ? (VRING_DESC_F_AVAIL | VRING_DESC_F_USED | VRING_DESC_F_WRITE) : \
 		VRING_DESC_F_WRITE)
+#define PACKED_DESC_DEQUEUE_USED_FLAG(w)	\
+	((w) ? (VRING_DESC_F_AVAIL | VRING_DESC_F_USED) : 0x0)
 #define PACKED_DESC_SINGLE_DEQUEUE_FLAG (VRING_DESC_F_NEXT | \
 					 VRING_DESC_F_INDIRECT)
 
@@ -114,6 +116,7 @@ struct log_cache_entry {
 
 struct vring_used_elem_packed {
 	uint16_t id;
+	uint16_t flags;
 	uint32_t len;
 	uint32_t count;
 };
@@ -179,6 +182,8 @@ struct vhost_virtqueue {
 	uint16_t                shadow_used_idx;
 	/* Record packed ring enqueue latest desc cache aligned index */
 	uint16_t		shadow_aligned_idx;
+	/* Record packed ring first dequeue desc index */
+	uint16_t		shadow_last_used_idx;
 	struct vhost_vring_addr ring_addrs;
 
 	struct batch_copy_elem	*batch_copy_elems;

@@ -155,6 +155,23 @@ vhost_flush_enqueue_shadow_packed(struct virtio_net *dev,
 }
 
 static __rte_always_inline void
+vhost_flush_dequeue_shadow_packed(struct virtio_net *dev,
+				  struct vhost_virtqueue *vq)
+{
+	struct vring_used_elem_packed *used_elem = &vq->shadow_used_packed[0];
+
+	vq->desc_packed[vq->shadow_last_used_idx].id = used_elem->id;
+	rte_smp_wmb();
+	vq->desc_packed[vq->shadow_last_used_idx].flags = used_elem->flags;
+
+	vhost_log_cache_used_vring(dev, vq, vq->shadow_last_used_idx *
+				   sizeof(struct vring_packed_desc),
+				   sizeof(struct vring_packed_desc));
+	vq->shadow_used_idx = 0;
+	vhost_log_cache_sync(dev, vq);
+}
+
+static __rte_always_inline void
 vhost_flush_enqueue_batch_packed(struct virtio_net *dev,
 				 struct vhost_virtqueue *vq,
 				 uint64_t *lens,
@@ -247,6 +264,78 @@ flush_shadow_used_ring_packed(struct virtio_net *dev,
 }
 
 static __rte_always_inline void
+vhost_shadow_dequeue_batch_packed(struct virtio_net *dev,
+				  struct vhost_virtqueue *vq,
+				  uint16_t *ids)
+{
+	uint16_t flags;
+	uint16_t i;
+	uint16_t begin;
+
+	flags = PACKED_DESC_DEQUEUE_USED_FLAG(vq->used_wrap_counter);
+
+	if (!vq->shadow_used_idx) {
+		vq->shadow_last_used_idx = vq->last_used_idx;
+		vq->shadow_used_packed[0].id  = ids[0];
+		vq->shadow_used_packed[0].len = 0;
+		vq->shadow_used_packed[0].count = 1;
+		vq->shadow_used_packed[0].flags = flags;
+		vq->shadow_used_idx++;
+		begin = 1;
+	} else
+		begin = 0;
+
+	vhost_for_each_try_unroll(i, begin, PACKED_BATCH_SIZE) {
+		vq->desc_packed[vq->last_used_idx + i].id = ids[i];
+		vq->desc_packed[vq->last_used_idx + i].len = 0;
+	}
+
+	rte_smp_wmb();
+	vhost_for_each_try_unroll(i, begin, PACKED_BATCH_SIZE)
+		vq->desc_packed[vq->last_used_idx + i].flags = flags;
+
+	vhost_log_cache_used_vring(dev, vq, vq->last_used_idx *
+				   sizeof(struct vring_packed_desc),
+				   sizeof(struct vring_packed_desc) *
+				   PACKED_BATCH_SIZE);
+	vhost_log_cache_sync(dev, vq);
+
+	vq_inc_last_used_packed(vq, PACKED_BATCH_SIZE);
+}
+
+static __rte_always_inline void
+vhost_shadow_dequeue_single_packed(struct vhost_virtqueue *vq,
+				   uint16_t buf_id,
+				   uint16_t count)
+{
+	uint16_t flags;
+
+	flags = vq->desc_packed[vq->last_used_idx].flags;
+	if (vq->used_wrap_counter) {
+		flags |= VRING_DESC_F_USED;
+		flags |= VRING_DESC_F_AVAIL;
+	} else {
+		flags &= ~VRING_DESC_F_USED;
+		flags &= ~VRING_DESC_F_AVAIL;
+	}
+
+	if (!vq->shadow_used_idx) {
+		vq->shadow_last_used_idx = vq->last_used_idx;
+
+		vq->shadow_used_packed[0].id  = buf_id;
+		vq->shadow_used_packed[0].len = 0;
+		vq->shadow_used_packed[0].flags = flags;
+		vq->shadow_used_idx++;
+	} else {
+		vq->desc_packed[vq->last_used_idx].id = buf_id;
+		vq->desc_packed[vq->last_used_idx].len = 0;
+		vq->desc_packed[vq->last_used_idx].flags = flags;
+	}
+
+	vq_inc_last_used_packed(vq, count);
+}
+
+static __rte_always_inline void
 update_shadow_used_ring_packed(struct vhost_virtqueue *vq,
 			 uint16_t desc_idx, uint32_t len, uint16_t count)
 {
@@ -311,6 +400,25 @@ vhost_shadow_enqueue_single_packed(struct virtio_net *dev,
 	if (vq->shadow_aligned_idx >= PACKED_BATCH_SIZE) {
 		do_data_copy_enqueue(dev, vq);
 		vhost_flush_enqueue_shadow_packed(dev, vq);
+	}
+}
+
+static __rte_unused void
+vhost_flush_dequeue_packed(struct virtio_net *dev,
+			   struct vhost_virtqueue *vq)
+{
+	int shadow_count;
+	if (!vq->shadow_used_idx)
+		return;
+
+	shadow_count = vq->last_used_idx - vq->shadow_last_used_idx;
+	if (shadow_count <= 0)
+		shadow_count += vq->size;
+
+	if ((uint32_t)shadow_count >= (vq->size - MAX_PKT_BURST)) {
+		do_data_copy_dequeue(vq);
+		vhost_flush_dequeue_shadow_packed(dev, vq);
+		vhost_vring_call_packed(dev, vq);
 	}
 }
 
@@ -1876,6 +1984,8 @@ virtio_dev_tx_batch_packed(struct virtio_net *dev,
 			   (void *)(uintptr_t)(desc_addrs[i] + buf_offset),
 			   pkts[i]->pkt_len);
 
+	vhost_shadow_dequeue_batch_packed(dev, vq, ids);
+
 	vq_inc_last_avail_packed(vq, PACKED_BATCH_SIZE);
 
 	return 0;
@@ -1930,6 +2040,8 @@ virtio_dev_tx_single_packed(struct virtio_net *dev,
 	if (vhost_dequeue_single_packed(dev, vq, mbuf_pool, pkts, &buf_id,
 					&desc_count))
 		return -1;
+
+	vhost_shadow_dequeue_single_packed(vq, buf_id, desc_count);
 
 	vq_inc_last_avail_packed(vq, desc_count);
 
