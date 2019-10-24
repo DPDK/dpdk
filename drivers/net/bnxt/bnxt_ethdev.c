@@ -1322,9 +1322,6 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 			vnic->rss_table[i] =
 			    vnic->fw_grp_ids[reta_conf[idx].reta[sft]];
 		}
-
-		vnic->rss_table[i] =
-		    vnic->fw_grp_ids[reta_conf[idx].reta[sft]];
 	}
 
 	bnxt_hwrm_vnic_rss_cfg(bp, vnic);
