@@ -3262,6 +3262,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			.min_rxqs_num = MLX5_MPRQ_MIN_RXQS,
 		},
 		.dv_esw_en = 1,
+		.dv_flow_en = 1,
 	};
 	/* Device specific configuration. */
 	switch (pci_dev->id.device_id) {

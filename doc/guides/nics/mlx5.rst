@@ -661,7 +661,7 @@ Run-time configuration
   A nonzero value enables the DV flow steering assuming it is supported
   by the driver.
 
-  Disabled by default.
+  Enabled by default if supported.
 
 - ``dv_esw_en`` parameter [int]
 
