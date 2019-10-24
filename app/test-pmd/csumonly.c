@@ -544,6 +544,9 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	udp_hdr = (struct rte_udp_hdr *)
 		((char *)outer_l3_hdr + info->outer_l3_len);
 
+	if (tso_enabled)
+		ol_flags |= PKT_TX_TCP_SEG;
+
 	/* Skip SW outer UDP checksum generation if HW supports it */
 	if (tx_offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) {
 		if (info->outer_ethertype == _htons(RTE_ETHER_TYPE_IPV4))
