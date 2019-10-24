@@ -1023,7 +1023,7 @@ static int bnxt_add_mac_filter(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 	 * hw-vlan-filter is turned OFF from ON, default
 	 * MAC filter should be restored
 	 */
-	if (filter->dflt)
+	if (index == 0 && filter->dflt)
 		return 0;
 
 	filter = bnxt_alloc_filter(bp);
