@@ -2033,7 +2033,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		if (priv->counter_fallback)
 			DRV_LOG(INFO, "Use fall-back DV counter management\n");
 		/* Check for LRO support. */
-		if (config.dest_tir && config.hca_attr.lro_cap) {
+		if (config.dest_tir && config.hca_attr.lro_cap &&
+		    config.dv_flow_en) {
 			/* TBD check tunnel lro caps. */
 			config.lro.supported = config.hca_attr.lro_cap;
 			DRV_LOG(DEBUG, "Device supports LRO");
