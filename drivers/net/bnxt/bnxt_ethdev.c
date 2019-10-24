@@ -183,6 +183,9 @@ static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 	}
 	bnxt_free_async_cp_ring(bp);
 	bnxt_free_rxtx_nq_ring(bp);
+
+	rte_free(bp->grp_info);
+	bp->grp_info = NULL;
 }
 
 static int bnxt_alloc_mem(struct bnxt *bp, bool reconfig)
@@ -4820,11 +4823,6 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev)
 	PMD_DRV_LOG(DEBUG, "Calling Device uninit\n");
 
 	rc = bnxt_uninit_resources(bp, false);
-
-	if (bp->grp_info != NULL) {
-		rte_free(bp->grp_info);
-		bp->grp_info = NULL;
-	}
 
 	if (bp->tx_mem_zone) {
 		rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
