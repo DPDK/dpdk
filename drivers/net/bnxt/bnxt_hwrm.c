@@ -859,6 +859,10 @@ int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp, bool test)
 		req.num_rsscos_ctxs = rte_cpu_to_le_16(BNXT_VF_RSV_NUM_RSS_CTX);
 		req.num_l2_ctxs = rte_cpu_to_le_16(BNXT_VF_RSV_NUM_L2_CTX);
 		req.num_vnics = rte_cpu_to_le_16(BNXT_VF_RSV_NUM_VNIC);
+	} else if (bp->vf_resv_strategy ==
+		   HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESV_STRATEGY_MAXIMAL) {
+		enables |= HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_RSSCOS_CTXS;
+		req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx);
 	}
 
 	if (test)
