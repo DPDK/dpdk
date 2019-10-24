@@ -146,6 +146,68 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 #define IXGBE_VPMD_DESC_EOP_MASK	0x02020202
 #define IXGBE_UINT8_BIT			(CHAR_BIT * sizeof(uint8_t))
 
+static inline uint32_t
+get_packet_type(uint32_t pkt_info,
+		uint32_t etqf_check,
+		uint32_t tunnel_check)
+{
+	if (etqf_check)
+		return RTE_PTYPE_UNKNOWN;
+
+	if (tunnel_check) {
+		pkt_info &= IXGBE_PACKET_TYPE_MASK_TUNNEL;
+		return ptype_table_tn[pkt_info];
+	}
+
+	pkt_info &= IXGBE_PACKET_TYPE_MASK_82599;
+	return ptype_table[pkt_info];
+}
+
+static inline void
+desc_to_ptype_v(uint64x2_t descs[4], uint16_t pkt_type_mask,
+		struct rte_mbuf **rx_pkts)
+{
+	uint32x4_t etqf_check, tunnel_check;
+	uint32x4_t etqf_mask = vdupq_n_u32(0x8000);
+	uint32x4_t tunnel_mask = vdupq_n_u32(0x10000);
+	uint32x4_t ptype_mask = vdupq_n_u32((uint32_t)pkt_type_mask);
+	uint32x4_t ptype0 = vzipq_u32(vreinterpretq_u32_u64(descs[0]),
+				vreinterpretq_u32_u64(descs[2])).val[0];
+	uint32x4_t ptype1 = vzipq_u32(vreinterpretq_u32_u64(descs[1]),
+				vreinterpretq_u32_u64(descs[3])).val[0];
+
+	/* interleave low 32 bits,
+	 * now we have 4 ptypes in a NEON register
+	 */
+	ptype0 = vzipq_u32(ptype0, ptype1).val[0];
+
+	/* mask etqf bits */
+	etqf_check = vandq_u32(ptype0, etqf_mask);
+	/* mask tunnel bits */
+	tunnel_check = vandq_u32(ptype0, tunnel_mask);
+
+	/* shift right by IXGBE_PACKET_TYPE_SHIFT, and apply ptype mask */
+	ptype0 = vandq_u32(vshrq_n_u32(ptype0, IXGBE_PACKET_TYPE_SHIFT),
+			ptype_mask);
+
+	rx_pkts[0]->packet_type =
+		get_packet_type(vgetq_lane_u32(ptype0, 0),
+				vgetq_lane_u32(etqf_check, 0),
+				vgetq_lane_u32(tunnel_check, 0));
+	rx_pkts[1]->packet_type =
+		get_packet_type(vgetq_lane_u32(ptype0, 1),
+				vgetq_lane_u32(etqf_check, 1),
+				vgetq_lane_u32(tunnel_check, 1));
+	rx_pkts[2]->packet_type =
+		get_packet_type(vgetq_lane_u32(ptype0, 2),
+				vgetq_lane_u32(etqf_check, 2),
+				vgetq_lane_u32(tunnel_check, 2));
+	rx_pkts[3]->packet_type =
+		get_packet_type(vgetq_lane_u32(ptype0, 3),
+				vgetq_lane_u32(etqf_check, 3),
+				vgetq_lane_u32(tunnel_check, 3));
+}
+
 static inline uint16_t
 _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		   uint16_t nb_pkts, uint8_t *split_packet)
@@ -302,6 +364,8 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			 pkt_mb2);
 		vst1q_u8((uint8_t *)&rx_pkts[pos]->rx_descriptor_fields1,
 			 pkt_mb1);
+
+		desc_to_ptype_v(descs, rxq->pkt_type_mask, &rx_pkts[pos]);
 
 		/* C.5 calc available number of desc */
 		if (unlikely(stat == 0)) {

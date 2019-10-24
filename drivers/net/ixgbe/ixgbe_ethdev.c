@@ -3908,7 +3908,7 @@ ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	    dev->rx_pkt_burst == ixgbe_recv_pkts_bulk_alloc)
 		return ptypes;
 
-#if defined(RTE_ARCH_X86)
+#if defined(RTE_ARCH_X86) || defined(RTE_MACHINE_CPUFLAG_NEON)
 	if (dev->rx_pkt_burst == ixgbe_recv_pkts_vec ||
 	    dev->rx_pkt_burst == ixgbe_recv_scattered_pkts_vec)
 		return ptypes;
