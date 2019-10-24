@@ -2174,8 +2174,7 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
 		uint16_t size = 0;
 
-		vnic->mru = new_mtu + RTE_ETHER_HDR_LEN +
-				RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
+		vnic->mru = BNXT_VNIC_MRU(new_mtu);
 		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
 		if (rc)
 			break;

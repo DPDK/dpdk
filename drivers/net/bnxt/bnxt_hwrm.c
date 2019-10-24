@@ -1592,8 +1592,7 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	vnic->lb_rule = (uint16_t)HWRM_NA_SIGNATURE;
 
 skip_ring_grps:
-	vnic->mru = bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
-				RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE;
+	vnic->mru = BNXT_VNIC_MRU(bp->eth_dev->data->mtu);
 	HWRM_PREP(req, VNIC_ALLOC, BNXT_USE_CHIMP_MB);
 
 	if (vnic->func_default)
@@ -2954,9 +2953,7 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings)
 
 	req.flags = rte_cpu_to_le_32(bp->pf.func_cfg_flags);
 	req.mtu = rte_cpu_to_le_16(BNXT_MAX_MTU);
-	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
-				   RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE *
-				   BNXT_NUM_VLANS);
+	req.mru = rte_cpu_to_le_16(BNXT_VNIC_MRU(bp->eth_dev->data->mtu));
 	req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx);
 	req.num_stat_ctxs = rte_cpu_to_le_16(bp->max_stat_ctx);
 	req.num_cmpl_rings = rte_cpu_to_le_16(bp->max_cp_rings);
@@ -2995,9 +2992,7 @@ static void populate_vf_func_cfg_req(struct bnxt *bp,
 	req->mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
 				    RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE *
 				    BNXT_NUM_VLANS);
-	req->mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
-				    RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE *
-				    BNXT_NUM_VLANS);
+	req->mru = rte_cpu_to_le_16(BNXT_VNIC_MRU(bp->eth_dev->data->mtu));
 	req->num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx /
 						(num_vfs + 1));
 	req->num_stat_ctxs = rte_cpu_to_le_16(bp->max_stat_ctx / (num_vfs + 1));
