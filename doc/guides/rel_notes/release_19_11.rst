@@ -56,6 +56,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **FreeBSD now supports `--base-virtaddr` EAL option.**
+
+  FreeBSD version now also supports setting base virtual address for mapping
+  pages and resources into its address space.
+
 * **Added Lock-free Stack for aarch64.**
 
   The lock-free stack implementation is enabled for aarch64 platforms.

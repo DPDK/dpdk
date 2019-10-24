@@ -539,7 +539,6 @@ eal_usage(const char *prgname)
 	       "  --"OPT_SOCKET_LIMIT"      Limit memory allocation on sockets (comma separated values)\n"
 	       "  --"OPT_HUGE_DIR"          Directory where hugetlbfs is mounted\n"
 	       "  --"OPT_FILE_PREFIX"       Prefix for hugepage filenames\n"
-	       "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
 	       "  --"OPT_CREATE_UIO_DEV"    Create /dev/uioX (usually done by hotplug)\n"
 	       "  --"OPT_VFIO_INTR"         Interrupt mode for VFIO (legacy|msi|msix)\n"
 	       "  --"OPT_LEGACY_MEM"        Legacy memory mode (no dynamic allocation, contiguous segments)\n"
@@ -607,35 +606,6 @@ eal_parse_socket_arg(char *strval, volatile uint64_t *socket_arg)
 		total_mem += val;
 		socket_arg[i] = val;
 	}
-
-	return 0;
-}
-
-static int
-eal_parse_base_virtaddr(const char *arg)
-{
-	char *end;
-	uint64_t addr;
-
-	errno = 0;
-	addr = strtoull(arg, &end, 16);
-
-	/* check for errors */
-	if ((errno != 0) || (arg[0] == '\0') || end == NULL || (*end != '\0'))
-		return -1;
-
-	/* make sure we don't exceed 32-bit boundary on 32-bit target */
-#ifndef RTE_ARCH_64
-	if (addr >= UINTPTR_MAX)
-		return -1;
-#endif
-
-	/* align the addr on 16M boundary, 16MB is the minimum huge page
-	 * size on IBM Power architecture. If the addr is aligned to 16MB,
-	 * it can align to 2MB for x86. So this alignment can also be used
-	 * on x86 */
-	internal_config.base_virtaddr =
-		RTE_PTR_ALIGN_CEIL((uintptr_t)addr, (size_t)RTE_PGSIZE_16M);
 
 	return 0;
 }
@@ -796,16 +766,6 @@ eal_parse_args(int argc, char **argv)
 				goto out;
 			}
 			internal_config.force_socket_limits = 1;
-			break;
-
-		case OPT_BASE_VIRTADDR_NUM:
-			if (eal_parse_base_virtaddr(optarg) < 0) {
-				RTE_LOG(ERR, EAL, "invalid parameter for --"
-						OPT_BASE_VIRTADDR "\n");
-				eal_usage(prgname);
-				ret = -1;
-				goto out;
-			}
 			break;
 
 		case OPT_VFIO_INTR_NUM:
