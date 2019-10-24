@@ -1609,9 +1609,9 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 						ICE_FLTR_PTYPE_NONF_IPV4_UDP;
 				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
 					filter->input.ip.v6.src_port =
-						udp_spec->hdr.src_port;
-					filter->input.ip.v6.dst_port =
 						udp_spec->hdr.dst_port;
+					filter->input.ip.v6.dst_port =
+						udp_spec->hdr.src_port;
 					flow_type =
 						ICE_FLTR_PTYPE_NONF_IPV6_UDP;
 				}
