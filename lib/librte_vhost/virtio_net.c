@@ -155,6 +155,36 @@ vhost_flush_enqueue_shadow_packed(struct virtio_net *dev,
 }
 
 static __rte_always_inline void
+vhost_flush_enqueue_batch_packed(struct virtio_net *dev,
+				 struct vhost_virtqueue *vq,
+				 uint64_t *lens,
+				 uint16_t *ids)
+{
+	uint16_t i;
+	uint16_t flags;
+
+	flags = PACKED_DESC_ENQUEUE_USED_FLAG(vq->used_wrap_counter);
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		vq->desc_packed[vq->last_used_idx + i].id = ids[i];
+		vq->desc_packed[vq->last_used_idx + i].len = lens[i];
+	}
+
+	rte_smp_wmb();
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
+		vq->desc_packed[vq->last_used_idx + i].flags = flags;
+
+	vhost_log_cache_used_vring(dev, vq, vq->last_used_idx *
+				   sizeof(struct vring_packed_desc),
+				   sizeof(struct vring_packed_desc) *
+				   PACKED_BATCH_SIZE);
+	vhost_log_cache_sync(dev, vq);
+
+	vq_inc_last_used_packed(vq, PACKED_BATCH_SIZE);
+}
+
+static __rte_always_inline void
 flush_shadow_used_ring_packed(struct virtio_net *dev,
 			struct vhost_virtqueue *vq)
 {
@@ -992,6 +1022,7 @@ virtio_dev_rx_batch_packed(struct virtio_net *dev,
 	struct virtio_net_hdr_mrg_rxbuf *hdrs[PACKED_BATCH_SIZE];
 	uint32_t buf_offset = dev->vhost_hlen;
 	uint64_t lens[PACKED_BATCH_SIZE];
+	uint16_t ids[PACKED_BATCH_SIZE];
 	uint16_t i;
 
 	if (unlikely(avail_idx & PACKED_BATCH_MASK))
@@ -1046,6 +1077,11 @@ virtio_dev_rx_batch_packed(struct virtio_net *dev,
 			   rte_pktmbuf_mtod_offset(pkts[i], void *, 0),
 			   pkts[i]->pkt_len);
 	}
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
+		ids[i] = descs[avail_idx + i].id;
+
+	vhost_flush_enqueue_batch_packed(dev, vq, lens, ids);
 
 	return 0;
 }
