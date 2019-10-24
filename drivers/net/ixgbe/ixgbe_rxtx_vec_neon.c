@@ -142,7 +142,6 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
  * - don't support ol_flags for rss and csum err
  */
 
-#define IXGBE_VPMD_DESC_DD_MASK		0x01010101
 #define IXGBE_VPMD_DESC_EOP_MASK	0x02020202
 #define IXGBE_UINT8_BIT			(CHAR_BIT * sizeof(uint8_t))
 
