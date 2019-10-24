@@ -1833,28 +1833,6 @@ out:
 }
 
 int
-rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len)
-{
-	if (len == 0) {
-		rte_errno = EINVAL;
-		return -1;
-	}
-
-	return container_dma_map(default_vfio_cfg, vaddr, iova, len);
-}
-
-int
-rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len)
-{
-	if (len == 0) {
-		rte_errno = EINVAL;
-		return -1;
-	}
-
-	return container_dma_unmap(default_vfio_cfg, vaddr, iova, len);
-}
-
-int
 rte_vfio_noiommu_is_enabled(void)
 {
 	int fd;
@@ -2030,20 +2008,6 @@ rte_vfio_container_dma_unmap(int container_fd, uint64_t vaddr, uint64_t iova,
 }
 
 #else
-
-int
-rte_vfio_dma_map(uint64_t __rte_unused vaddr, __rte_unused uint64_t iova,
-		  __rte_unused uint64_t len)
-{
-	return -1;
-}
-
-int
-rte_vfio_dma_unmap(uint64_t __rte_unused vaddr, uint64_t __rte_unused iova,
-		    __rte_unused uint64_t len)
-{
-	return -1;
-}
 
 int
 rte_vfio_setup_device(__rte_unused const char *sysfs_base,

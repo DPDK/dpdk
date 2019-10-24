@@ -245,8 +245,6 @@ DPDK_18.08 {
 	rte_vfio_container_dma_unmap;
 	rte_vfio_container_group_bind;
 	rte_vfio_container_group_unbind;
-	rte_vfio_dma_map;
-	rte_vfio_dma_unmap;
 	rte_vfio_get_container_fd;
 	rte_vfio_get_group_fd;
 	rte_vfio_get_group_num;

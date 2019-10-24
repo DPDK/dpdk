@@ -190,50 +190,6 @@ int
 rte_vfio_clear_group(int vfio_group_fd);
 
 /**
- * Map memory region for use with VFIO.
- *
- * @note Require at least one device to be attached at the time of
- *       mapping. DMA maps done via this API will only apply to default
- *       container and will not apply to any of the containers created
- *       via rte_vfio_container_create().
- *
- * @param vaddr
- *   Starting virtual address of memory to be mapped.
- *
- * @param iova
- *   Starting IOVA address of memory to be mapped.
- *
- * @param len
- *   Length of memory segment being mapped.
- *
- * @return
- *   0 if success.
- *   -1 on error.
- */
-int
-rte_vfio_dma_map(uint64_t vaddr, uint64_t iova, uint64_t len);
-
-
-/**
- * Unmap memory region from VFIO.
- *
- * @param vaddr
- *   Starting virtual address of memory to be unmapped.
- *
- * @param iova
- *   Starting IOVA address of memory to be unmapped.
- *
- * @param len
- *   Length of memory segment being unmapped.
- *
- * @return
- *   0 if success.
- *   -1 on error.
- */
-
-int
-rte_vfio_dma_unmap(uint64_t vaddr, uint64_t iova, uint64_t len);
-/**
  * Parse IOMMU group number for a device
  *
  * This function is only relevant to linux and will return

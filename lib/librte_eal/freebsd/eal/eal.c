@@ -1028,20 +1028,6 @@ int rte_vfio_clear_group(__rte_unused int vfio_group_fd)
 }
 
 int
-rte_vfio_dma_map(uint64_t __rte_unused vaddr, __rte_unused uint64_t iova,
-		  __rte_unused uint64_t len)
-{
-	return -1;
-}
-
-int
-rte_vfio_dma_unmap(uint64_t __rte_unused vaddr, uint64_t __rte_unused iova,
-		    __rte_unused uint64_t len)
-{
-	return -1;
-}
-
-int
 rte_vfio_get_group_num(__rte_unused const char *sysfs_base,
 		       __rte_unused const char *dev_addr,
 		       __rte_unused int *iommu_group_num)

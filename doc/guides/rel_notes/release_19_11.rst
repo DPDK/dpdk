@@ -317,6 +317,11 @@ API Changes
 * mem: hid the internal ``malloc_heap`` structure and the
   ``rte_malloc_heap.h`` header.
 
+* vfio: removed ``rte_vfio_dma_map`` and ``rte_vfio_dma_unmap`` that have
+  been marked as deprecated in release 19.05.
+  ``rte_vfio_container_dma_map`` and ``rte_vfio_container_dma_unmap`` can
+  be used as substitutes.
+
 * pci: removed the following functions deprecated since dpdk v17.11:
 
   - ``eal_parse_pci_BDF`` replaced by ``rte_pci_addr_parse``
