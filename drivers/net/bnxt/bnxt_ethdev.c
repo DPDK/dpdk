@@ -869,7 +869,9 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	bp->flags |= BNXT_FLAG_INIT_DONE;
 	eth_dev->data->dev_started = 1;
 	bp->dev_stopped = 0;
+	pthread_mutex_lock(&bp->def_cp_lock);
 	bnxt_schedule_fw_health_check(bp);
+	pthread_mutex_unlock(&bp->def_cp_lock);
 	return 0;
 
 error:
