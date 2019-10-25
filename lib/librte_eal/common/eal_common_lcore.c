@@ -16,6 +16,16 @@
 #include "eal_private.h"
 #include "eal_thread.h"
 
+unsigned int rte_get_master_lcore(void)
+{
+	return rte_eal_get_configuration()->master_lcore;
+}
+
+unsigned int rte_lcore_count(void)
+{
+	return rte_eal_get_configuration()->lcore_count;
+}
+
 int rte_lcore_index(int lcore_id)
 {
 	if (unlikely(lcore_id >= RTE_MAX_LCORE))
@@ -41,6 +51,34 @@ int rte_lcore_to_cpu_id(int lcore_id)
 rte_cpuset_t rte_lcore_cpuset(unsigned int lcore_id)
 {
 	return lcore_config[lcore_id].cpuset;
+}
+
+int rte_lcore_is_enabled(unsigned int lcore_id)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+
+	if (lcore_id >= RTE_MAX_LCORE)
+		return 0;
+	return cfg->lcore_role[lcore_id] == ROLE_RTE;
+}
+
+unsigned int rte_get_next_lcore(unsigned int i, int skip_master, int wrap)
+{
+	i++;
+	if (wrap)
+		i %= RTE_MAX_LCORE;
+
+	while (i < RTE_MAX_LCORE) {
+		if (!rte_lcore_is_enabled(i) ||
+		    (skip_master && (i == rte_get_master_lcore()))) {
+			i++;
+			if (wrap)
+				i %= RTE_MAX_LCORE;
+			continue;
+		}
+		break;
+	}
+	return i;
 }
 
 unsigned int

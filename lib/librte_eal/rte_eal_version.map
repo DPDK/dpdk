@@ -310,6 +310,16 @@ DPDK_19.08 {
 
 } DPDK_19.05;
 
+DPDK_19.11 {
+	global:
+
+	rte_get_master_lcore;
+	rte_get_next_lcore;
+	rte_lcore_count;
+	rte_lcore_is_enabled;
+
+} DPDK_19.08;
+
 EXPERIMENTAL {
 	global:
 

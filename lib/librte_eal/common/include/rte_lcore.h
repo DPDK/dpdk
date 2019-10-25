@@ -49,11 +49,7 @@ rte_lcore_id(void)
  * @return
  *   the id of the master lcore
  */
-static inline unsigned
-rte_get_master_lcore(void)
-{
-	return rte_eal_get_configuration()->master_lcore;
-}
+unsigned int rte_get_master_lcore(void);
 
 /**
  * Return the number of execution units (lcores) on the system.
@@ -61,12 +57,7 @@ rte_get_master_lcore(void)
  * @return
  *   the number of execution units (lcores) on the system.
  */
-static inline unsigned
-rte_lcore_count(void)
-{
-	const struct rte_config *cfg = rte_eal_get_configuration();
-	return cfg->lcore_count;
-}
+unsigned int rte_lcore_count(void);
 
 /**
  * Return the index of the lcore starting from zero.
@@ -171,14 +162,7 @@ rte_lcore_cpuset(unsigned int lcore_id);
  * @return
  *   True if the given lcore is enabled; false otherwise.
  */
-static inline int
-rte_lcore_is_enabled(unsigned int lcore_id)
-{
-	struct rte_config *cfg = rte_eal_get_configuration();
-	if (lcore_id >= RTE_MAX_LCORE)
-		return 0;
-	return cfg->lcore_role[lcore_id] == ROLE_RTE;
-}
+int rte_lcore_is_enabled(unsigned int lcore_id);
 
 /**
  * Get the next enabled lcore ID.
@@ -193,25 +177,8 @@ rte_lcore_is_enabled(unsigned int lcore_id)
  * @return
  *   The next lcore_id or RTE_MAX_LCORE if not found.
  */
-static inline unsigned int
-rte_get_next_lcore(unsigned int i, int skip_master, int wrap)
-{
-	i++;
-	if (wrap)
-		i %= RTE_MAX_LCORE;
+unsigned int rte_get_next_lcore(unsigned int i, int skip_master, int wrap);
 
-	while (i < RTE_MAX_LCORE) {
-		if (!rte_lcore_is_enabled(i) ||
-		    (skip_master && (i == rte_get_master_lcore()))) {
-			i++;
-			if (wrap)
-				i %= RTE_MAX_LCORE;
-			continue;
-		}
-		break;
-	}
-	return i;
-}
 /**
  * Macro to browse all running lcores.
  */
