@@ -977,6 +977,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		first_seg->pkt_len = pkt_len;
 		first_seg->port = rxq->port_id;
 		first_seg->hash.rss = rte_le_to_cpu_32(rxdp->rx.rss_hash);
+		first_seg->ol_flags |= PKT_RX_RSS_HASH;
 		if (unlikely(hns3_get_bit(bd_base_info, HNS3_RXD_LUM_B))) {
 			first_seg->hash.fdir.hi =
 				rte_le_to_cpu_32(rxdp->rx.fd_id);
