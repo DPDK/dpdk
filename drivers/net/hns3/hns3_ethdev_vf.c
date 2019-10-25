@@ -9,6 +9,8 @@
 #include <inttypes.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <linux/pci_regs.h>
+
 #include <rte_alarm.h>
 #include <rte_atomic.h>
 #include <rte_bus_pci.h>
@@ -24,6 +26,7 @@
 #include <rte_io.h>
 #include <rte_log.h>
 #include <rte_pci.h>
+#include <rte_vfio.h>
 
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"
@@ -55,6 +58,81 @@ static enum hns3_reset_level hns3vf_get_reset_level(struct hns3_hw *hw,
 						    uint64_t *levels);
 static int hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int hns3vf_dev_configure_vlan(struct rte_eth_dev *dev);
+
+/* set PCI bus mastering */
+static void
+hns3vf_set_bus_master(const struct rte_pci_device *device, bool op)
+{
+	uint16_t reg;
+
+	rte_pci_read_config(device, &reg, sizeof(reg), PCI_COMMAND);
+
+	if (op)
+		/* set the master bit */
+		reg |= PCI_COMMAND_MASTER;
+	else
+		reg &= ~(PCI_COMMAND_MASTER);
+
+	rte_pci_write_config(device, &reg, sizeof(reg), PCI_COMMAND);
+}
+
+/**
+ * hns3vf_find_pci_capability - lookup a capability in the PCI capability list
+ * @cap: the capability
+ *
+ * Return the address of the given capability within the PCI capability list.
+ */
+static int
+hns3vf_find_pci_capability(const struct rte_pci_device *device, int cap)
+{
+#define MAX_PCIE_CAPABILITY 48
+	uint16_t status;
+	uint8_t pos;
+	uint8_t id;
+	int ttl;
+
+	rte_pci_read_config(device, &status, sizeof(status), PCI_STATUS);
+	if (!(status & PCI_STATUS_CAP_LIST))
+		return 0;
+
+	ttl = MAX_PCIE_CAPABILITY;
+	rte_pci_read_config(device, &pos, sizeof(pos), PCI_CAPABILITY_LIST);
+	while (ttl-- && pos >= PCI_STD_HEADER_SIZEOF) {
+		rte_pci_read_config(device, &id, sizeof(id),
+				    (pos + PCI_CAP_LIST_ID));
+
+		if (id == 0xFF)
+			break;
+
+		if (id == cap)
+			return (int)pos;
+
+		rte_pci_read_config(device, &pos, sizeof(pos),
+				    (pos + PCI_CAP_LIST_NEXT));
+	}
+	return 0;
+}
+
+static int
+hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
+{
+	uint16_t control;
+	int pos;
+
+	pos = hns3vf_find_pci_capability(device, PCI_CAP_ID_MSIX);
+	if (pos) {
+		rte_pci_read_config(device, &control, sizeof(control),
+				    (pos + PCI_MSIX_FLAGS));
+		if (op)
+			control |= PCI_MSIX_FLAGS_ENABLE;
+		else
+			control &= ~PCI_MSIX_FLAGS_ENABLE;
+		rte_pci_write_config(device, &control, sizeof(control),
+				     (pos + PCI_MSIX_FLAGS));
+		return 0;
+	}
+	return -1;
+}
 
 static int
 hns3vf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
@@ -1308,9 +1386,30 @@ hns3vf_wait_hardware_ready(struct hns3_adapter *hns)
 	struct hns3_wait_data *wait_data = hw->reset.wait_data;
 	struct timeval tv;
 
-	if (wait_data->result == HNS3_WAIT_SUCCESS)
-		return 0;
-	else if (wait_data->result == HNS3_WAIT_TIMEOUT) {
+	if (wait_data->result == HNS3_WAIT_SUCCESS) {
+		/*
+		 * After vf reset is ready, the PF may not have completed
+		 * the reset processing. The vf sending mbox to PF may fail
+		 * during the pf reset, so it is better to add extra delay.
+		 */
+		if (hw->reset.level == HNS3_VF_FUNC_RESET ||
+		    hw->reset.level == HNS3_FLR_RESET)
+			return 0;
+		/* Reset retry process, no need to add extra delay. */
+		if (hw->reset.attempts)
+			return 0;
+		if (wait_data->check_completion == NULL)
+			return 0;
+
+		wait_data->check_completion = NULL;
+		wait_data->interval = 1 * MSEC_PER_SEC * USEC_PER_MSEC;
+		wait_data->count = 1;
+		wait_data->result = HNS3_WAIT_REQUEST;
+		rte_eal_alarm_set(wait_data->interval, hns3_wait_callback,
+				  wait_data);
+		hns3_warn(hw, "hardware is ready, delay 1 sec for PF reset complete");
+		return -EAGAIN;
+	} else if (wait_data->result == HNS3_WAIT_TIMEOUT) {
 		gettimeofday(&tv, NULL);
 		hns3_warn(hw, "Reset step4 hardware not ready after reset time=%ld.%.6ld",
 			  tv.tv_sec, tv.tv_usec);
@@ -1473,6 +1572,11 @@ hns3vf_reset_service(void *param)
 		rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_REQUESTED);
 		hns3_err(hw, "Handling interrupts in delayed tasks");
 		hns3vf_interrupt_handler(&rte_eth_devices[hw->data->port_id]);
+		reset_level = hns3vf_get_reset_level(hw, &hw->reset.pending);
+		if (reset_level == HNS3_NONE_RESET) {
+			hns3_err(hw, "No reset level is set, try global reset");
+			hns3_atomic_set_bit(HNS3_VF_RESET, &hw->reset.pending);
+		}
 	}
 	rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_NONE);
 
@@ -1498,14 +1602,35 @@ hns3vf_reset_service(void *param)
 static int
 hns3vf_reinit_dev(struct hns3_adapter *hns)
 {
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[hns->hw.data->port_id];
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
+
+	if (hw->reset.level == HNS3_VF_FULL_RESET) {
+		rte_intr_disable(&pci_dev->intr_handle);
+		hns3vf_set_bus_master(pci_dev, true);
+	}
 
 	/* Firmware command initialize */
 	ret = hns3_cmd_init(hw);
 	if (ret) {
 		hns3_err(hw, "Failed to init cmd: %d", ret);
-		return ret;
+		goto err_cmd_init;
+	}
+
+	if (hw->reset.level == HNS3_VF_FULL_RESET) {
+		/*
+		 * UIO enables msix by writing the pcie configuration space
+		 * vfio_pci enables msix in rte_intr_enable.
+		 */
+		if (pci_dev->kdrv == RTE_KDRV_IGB_UIO ||
+		    pci_dev->kdrv == RTE_KDRV_UIO_GENERIC) {
+			if (hns3vf_enable_msix(pci_dev, true))
+				hns3_err(hw, "Failed to enable msix");
+		}
+
+		rte_intr_enable(&pci_dev->intr_handle);
 	}
 
 	ret = hns3_reset_all_queues(hns);
@@ -1522,6 +1647,8 @@ hns3vf_reinit_dev(struct hns3_adapter *hns)
 
 	return 0;
 
+err_cmd_init:
+	hns3vf_set_bus_master(pci_dev, false);
 err_init:
 	hns3_cmd_uninit(hw);
 	return ret;

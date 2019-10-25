@@ -216,24 +216,9 @@ hns3_cmd_csq_clean(struct hns3_hw *hw)
 
 	if (!is_valid_csq_clean_head(csq, head)) {
 		struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-		uint32_t global;
-		uint32_t fun_rst;
 		hns3_err(hw, "wrong cmd head (%u, %u-%u)", head,
 			    csq->next_to_use, csq->next_to_clean);
 		rte_atomic16_set(&hw->reset.disable_cmd, 1);
-		if (hns->is_vf) {
-			global = hns3_read_dev(hw, HNS3_VF_RST_ING);
-			fun_rst = hns3_read_dev(hw, HNS3_FUN_RST_ING);
-			hns3_err(hw, "Delayed VF reset global: %x fun_rst: %x",
-				 global, fun_rst);
-			hns3_atomic_set_bit(HNS3_VF_RESET, &hw->reset.pending);
-		} else {
-			global = hns3_read_dev(hw, HNS3_GLOBAL_RESET_REG);
-			fun_rst = hns3_read_dev(hw, HNS3_FUN_RST_ING);
-			hns3_err(hw, "Delayed IMP reset global: %x fun_rst: %x",
-				 global, fun_rst);
-			hns3_atomic_set_bit(HNS3_IMP_RESET, &hw->reset.pending);
-		}
 
 		hns3_schedule_delayed_reset(hns);
 

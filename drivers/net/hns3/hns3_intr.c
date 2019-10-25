@@ -890,11 +890,12 @@ reset_fail:
 	hns3_warn(hw, "%s reset fail fail_cnt:%" PRIx64 " success_cnt:%" PRIx64
 		  " global_cnt:%" PRIx64 " imp_cnt:%" PRIx64
 		  " request_cnt:%" PRIx64 " exec_cnt:%" PRIx64
-		  " merge_cnt:%" PRIx64,
+		  " merge_cnt:%" PRIx64 "adapter_state:%d",
 		  reset_string[hw->reset.level], hw->reset.stats.fail_cnt,
 		  hw->reset.stats.success_cnt, hw->reset.stats.global_cnt,
 		  hw->reset.stats.imp_cnt, hw->reset.stats.request_cnt,
-		  hw->reset.stats.exec_cnt, hw->reset.stats.merge_cnt);
+		  hw->reset.stats.exec_cnt, hw->reset.stats.merge_cnt,
+		  hw->adapter_state);
 
 	/* IMP no longer waiting the ready flag */
 	hns3_notify_reset_ready(hw, true);

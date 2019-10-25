@@ -4680,6 +4680,11 @@ hns3_reset_service(void *param)
 		rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_REQUESTED);
 		hns3_err(hw, "Handling interrupts in delayed tasks");
 		hns3_interrupt_handler(&rte_eth_devices[hw->data->port_id]);
+		reset_level = hns3_get_reset_level(hns, &hw->reset.pending);
+		if (reset_level == HNS3_NONE_RESET) {
+			hns3_err(hw, "No reset level is set, try IMP reset");
+			hns3_atomic_set_bit(HNS3_IMP_RESET, &hw->reset.pending);
+		}
 	}
 	rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_NONE);
 
