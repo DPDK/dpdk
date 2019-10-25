@@ -59,7 +59,6 @@ endif
 DIRS-$(CONFIG_RTE_LIBRTE_IEEE1588) += ptpclient
 DIRS-$(CONFIG_RTE_LIBRTE_METER) += qos_meter
 DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += qos_sched
-DIRS-y += quota_watermark
 DIRS-$(CONFIG_RTE_ETHDEV_RXTX_CALLBACKS) += rxtx_callbacks
 DIRS-y += service_cores
 DIRS-y += skeleton

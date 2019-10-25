@@ -1511,9 +1511,6 @@ F: doc/guides/sample_app_ug/performance_thread.rst
 
 F: examples/ptpclient/
 
-F: examples/quota_watermark/
-F: doc/guides/sample_app_ug/quota_watermark.rst
-
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: John McNamara <john.mcnamara@intel.com>
 F: examples/rxtx_callbacks/

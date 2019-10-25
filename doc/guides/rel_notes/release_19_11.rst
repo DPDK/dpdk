@@ -262,6 +262,7 @@ Removed Items
 
   * Exception Path
   * L3 Forwarding in a Virtualization Environment
+  * Quota and Watermark
   * vhost-scsi
 
 

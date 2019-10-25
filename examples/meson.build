@@ -33,7 +33,7 @@ all_examples = [
 	'netmap_compat', 'ntb', 'packet_ordering',
 	'performance-thread', 'ptpclient',
 	'qos_meter', 'qos_sched',
-	'quota_watermark', 'rxtx_callbacks',
+	'rxtx_callbacks',
 	'server_node_efd', 'service_cores',
 	'skeleton', 'tep_termination',
 	'timer', 'vdpa',

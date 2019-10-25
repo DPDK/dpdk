@@ -36,7 +36,6 @@ Sample Applications User Guides
     multi_process
     qos_metering
     qos_scheduler
-    quota_watermark
     timer
     packet_ordering
     vmdq_dcb_forwarding
