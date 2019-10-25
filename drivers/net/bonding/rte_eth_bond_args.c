@@ -60,11 +60,10 @@ find_port_id_by_dev_name(const char *name)
 static inline int
 bond_pci_addr_cmp(const struct rte_device *dev, const void *_pci_addr)
 {
-	struct rte_pci_device *pdev;
+	const struct rte_pci_device *pdev = RTE_DEV_TO_PCI_CONST(dev);
 	const struct rte_pci_addr *paddr = _pci_addr;
 
-	pdev = RTE_DEV_TO_PCI(*(struct rte_device **)(void *)&dev);
-	return rte_eal_compare_pci_addr(&pdev->addr, paddr);
+	return rte_pci_addr_cmp(&pdev->addr, paddr);
 }
 
 /**
