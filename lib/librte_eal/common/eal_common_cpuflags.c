@@ -7,17 +7,6 @@
 #include <rte_common.h>
 #include <rte_cpuflags.h>
 
-/**
- * Checks if the machine is adequate for running the binary. If it is not, the
- * program exits with status 1.
- */
-void
-rte_cpu_check_supported(void)
-{
-	if (!rte_cpu_is_supported())
-		exit(1);
-}
-
 int
 rte_cpu_is_supported(void)
 {

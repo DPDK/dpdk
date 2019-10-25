@@ -8,7 +8,6 @@ DPDK_2.0 {
 	per_lcore__rte_errno;
 	rte_calloc;
 	rte_calloc_socket;
-	rte_cpu_check_supported;
 	rte_cpu_get_flag_enabled;
 	rte_cycles_vmware_tsc_map;
 	rte_delay_us;

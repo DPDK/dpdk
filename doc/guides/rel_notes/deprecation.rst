@@ -34,9 +34,6 @@ Deprecation Notices
 
     + ``rte_eal_devargs_type_count``
 
-* eal: The ``rte_cpu_check_supported`` function has been deprecated since
-  v17.08 and will be removed.
-
 * eal: The ``rte_malloc_virt2phy`` function has been deprecated and replaced
   by ``rte_malloc_virt2iova`` since v17.11 and will be removed.
 
