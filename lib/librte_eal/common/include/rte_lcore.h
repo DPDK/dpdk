@@ -26,6 +26,16 @@ RTE_DECLARE_PER_LCORE(unsigned, _lcore_id);  /**< Per thread "lcore id". */
 RTE_DECLARE_PER_LCORE(rte_cpuset_t, _cpuset); /**< Per thread "cpuset". */
 
 /**
+ * Get a lcore's role.
+ *
+ * @param lcore_id
+ *   The identifier of the lcore, which MUST be between 0 and RTE_MAX_LCORE-1.
+ * @return
+ *   The role of the lcore.
+ */
+enum rte_lcore_role_t rte_eal_lcore_role(unsigned int lcore_id);
+
+/**
  * Return the Application thread ID of the execution unit.
  *
  * Note: in most cases the lcore id returned here will also correspond

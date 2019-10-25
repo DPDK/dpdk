@@ -84,17 +84,6 @@ struct rte_config {
 struct rte_config *rte_eal_get_configuration(void);
 
 /**
- * Get a lcore's role.
- *
- * @param lcore_id
- *   The identifier of the lcore.
- * @return
- *   The role of the lcore.
- */
-enum rte_lcore_role_t rte_eal_lcore_role(unsigned lcore_id);
-
-
-/**
  * Get the process type in a multi-process setup
  *
  * @return

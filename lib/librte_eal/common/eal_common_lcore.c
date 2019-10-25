@@ -53,6 +53,16 @@ rte_cpuset_t rte_lcore_cpuset(unsigned int lcore_id)
 	return lcore_config[lcore_id].cpuset;
 }
 
+enum rte_lcore_role_t
+rte_eal_lcore_role(unsigned int lcore_id)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+
+	if (lcore_id >= RTE_MAX_LCORE)
+		return ROLE_OFF;
+	return cfg->lcore_role[lcore_id];
+}
+
 int rte_lcore_is_enabled(unsigned int lcore_id)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();

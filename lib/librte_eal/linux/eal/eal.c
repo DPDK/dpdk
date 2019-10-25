@@ -1323,13 +1323,6 @@ rte_eal_cleanup(void)
 	return 0;
 }
 
-/* get core role */
-enum rte_lcore_role_t
-rte_eal_lcore_role(unsigned lcore_id)
-{
-	return rte_config.lcore_role[lcore_id];
-}
-
 enum rte_proc_type_t
 rte_eal_process_type(void)
 {
