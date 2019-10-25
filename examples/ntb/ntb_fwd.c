@@ -214,13 +214,14 @@ cmd_sendfile_parsed(void *parsed_result,
 	struct cmd_sendfile_result *res = parsed_result;
 	struct rte_rawdev_buf *pkts_send[NTB_MAX_PKT_BURST];
 	struct rte_mbuf *mbuf_send[NTB_MAX_PKT_BURST];
-	uint64_t size, count, i, nb_burst;
+	uint64_t size, count, i, j, nb_burst;
 	uint16_t nb_tx, buf_size;
 	unsigned int nb_pkt;
 	size_t queue_id = 0;
 	uint16_t retry = 0;
 	uint32_t val;
 	FILE *file;
+	int ret;
 
 	if (num_queues != 1) {
 		printf("File transmission only supports 1 queue.\n");
@@ -289,21 +290,37 @@ cmd_sendfile_parsed(void *parsed_result,
 			}
 		}
 
-		nb_tx = rte_rawdev_enqueue_buffers(dev_id, pkts_send, nb_pkt,
-						   (void *)queue_id);
+		ret = rte_rawdev_enqueue_buffers(dev_id, pkts_send, nb_pkt,
+						(void *)queue_id);
+		if (ret < 0) {
+			printf("Enqueue failed with err %d\n", ret);
+			for (j = 0; j < nb_pkt; j++)
+				rte_pktmbuf_free(mbuf_send[j]);
+			goto clean;
+		}
+		nb_tx = ret;
 		while (nb_tx != nb_pkt && retry < BURST_TX_RETRIES) {
 			rte_delay_us(1);
-			nb_tx += rte_rawdev_enqueue_buffers(dev_id,
-				&pkts_send[nb_tx], nb_pkt - nb_tx,
-				(void *)queue_id);
+			ret = rte_rawdev_enqueue_buffers(dev_id,
+					&pkts_send[nb_tx], nb_pkt - nb_tx,
+					(void *)queue_id);
+			if (ret < 0) {
+				printf("Enqueue failed with err %d\n", ret);
+				for (j = nb_tx; j < nb_pkt; j++)
+					rte_pktmbuf_free(mbuf_send[j]);
+				goto clean;
+			}
+			nb_tx += ret;
 		}
 		count -= nb_pkt;
 	}
+
 	/* Clear register after file sending done. */
 	rte_rawdev_set_attr(dev_id, "spad_user_0", 0);
 	rte_rawdev_set_attr(dev_id, "spad_user_1", 0);
 	printf("Done sending file.\n");
 
+clean:
 	for (i = 0; i < NTB_MAX_PKT_BURST; i++)
 		free(pkts_send[i]);
 	fclose(file);
@@ -339,6 +356,7 @@ start_polling_recv_file(void *param)
 	uint16_t nb_rx, i, file_no;
 	size_t queue_id = 0;
 	FILE *file;
+	int ret;
 
 	for (i = 0; i < NTB_MAX_PKT_BURST; i++)
 		pkts_recv[i] = (struct rte_rawdev_buf *)
@@ -366,8 +384,14 @@ start_polling_recv_file(void *param)
 		file_len = 0;
 		nb_rx = NTB_MAX_PKT_BURST;
 		while (file_len < size && !conf->stopped) {
-			nb_rx = rte_rawdev_dequeue_buffers(dev_id, pkts_recv,
-						pkt_burst, (void *)queue_id);
+			ret = rte_rawdev_dequeue_buffers(dev_id, pkts_recv,
+					pkt_burst, (void *)queue_id);
+			if (ret < 0) {
+				printf("Dequeue failed with err %d\n", ret);
+				fclose(file);
+				goto clean;
+			}
+			nb_rx = ret;
 			ntb_port_stats[0].rx += nb_rx;
 			for (i = 0; i < nb_rx; i++) {
 				mbuf = pkts_recv[i]->buf_addr;
@@ -385,6 +409,7 @@ start_polling_recv_file(void *param)
 		file_no++;
 	}
 
+clean:
 	for (i = 0; i < NTB_MAX_PKT_BURST; i++)
 		free(pkts_recv[i]);
 	return 0;
@@ -398,7 +423,7 @@ start_iofwd_per_lcore(void *param)
 	struct ntb_fwd_lcore_conf *conf = param;
 	struct ntb_fwd_stream fs;
 	uint16_t nb_rx, nb_tx;
-	int i, j;
+	int i, j, ret;
 
 	for (i = 0; i < NTB_MAX_PKT_BURST; i++)
 		ntb_buf[i] = (struct rte_rawdev_buf *)
@@ -415,17 +440,29 @@ start_iofwd_per_lcore(void *param)
 					continue;
 				for (j = 0; j < nb_rx; j++)
 					ntb_buf[j]->buf_addr = pkts_burst[j];
-				nb_tx =
-				rte_rawdev_enqueue_buffers(fs.tx_port,
+				ret = rte_rawdev_enqueue_buffers(fs.tx_port,
 						ntb_buf, nb_rx,
 						(void *)(size_t)fs.qp_id);
+				if (ret < 0) {
+					printf("Enqueue failed with err %d\n",
+						ret);
+					for (j = 0; j < nb_rx; j++)
+						rte_pktmbuf_free(pkts_burst[j]);
+					goto clean;
+				}
+				nb_tx = ret;
 				ntb_port_stats[0].tx += nb_tx;
 				ntb_port_stats[1].rx += nb_rx;
 			} else {
-				nb_rx =
-				rte_rawdev_dequeue_buffers(fs.rx_port,
+				ret = rte_rawdev_dequeue_buffers(fs.rx_port,
 						ntb_buf, pkt_burst,
 						(void *)(size_t)fs.qp_id);
+				if (ret < 0) {
+					printf("Dequeue failed with err %d\n",
+						ret);
+					goto clean;
+				}
+				nb_rx = ret;
 				if (unlikely(nb_rx == 0))
 					continue;
 				for (j = 0; j < nb_rx; j++)
@@ -443,6 +480,7 @@ start_iofwd_per_lcore(void *param)
 		}
 	}
 
+clean:
 	for (i = 0; i < NTB_MAX_PKT_BURST; i++)
 		free(ntb_buf[i]);
 
@@ -456,7 +494,7 @@ start_rxonly_per_lcore(void *param)
 	struct ntb_fwd_lcore_conf *conf = param;
 	struct ntb_fwd_stream fs;
 	uint16_t nb_rx;
-	int i, j;
+	int i, j, ret;
 
 	for (i = 0; i < NTB_MAX_PKT_BURST; i++)
 		ntb_buf[i] = (struct rte_rawdev_buf *)
@@ -465,8 +503,13 @@ start_rxonly_per_lcore(void *param)
 	while (!conf->stopped) {
 		for (i = 0; i < conf->nb_stream; i++) {
 			fs = fwd_streams[conf->stream_id + i];
-			nb_rx = rte_rawdev_dequeue_buffers(fs.rx_port,
-				ntb_buf, pkt_burst, (void *)(size_t)fs.qp_id);
+			ret = rte_rawdev_dequeue_buffers(fs.rx_port,
+			      ntb_buf, pkt_burst, (void *)(size_t)fs.qp_id);
+			if (ret < 0) {
+				printf("Dequeue failed with err %d\n", ret);
+				goto clean;
+			}
+			nb_rx = ret;
 			if (unlikely(nb_rx == 0))
 				continue;
 			ntb_port_stats[0].rx += nb_rx;
@@ -476,6 +519,7 @@ start_rxonly_per_lcore(void *param)
 		}
 	}
 
+clean:
 	for (i = 0; i < NTB_MAX_PKT_BURST; i++)
 		free(ntb_buf[i]);
 
@@ -491,7 +535,7 @@ start_txonly_per_lcore(void *param)
 	struct ntb_fwd_lcore_conf *conf = param;
 	struct ntb_fwd_stream fs;
 	uint16_t nb_pkt, nb_tx;
-	int i;
+	int i, j, ret;
 
 	for (i = 0; i < NTB_MAX_PKT_BURST; i++)
 		ntb_buf[i] = (struct rte_rawdev_buf *)
@@ -528,18 +572,25 @@ start_txonly_per_lcore(void *param)
 						pkts_burst[nb_pkt];
 				}
 			}
-			nb_tx = rte_rawdev_enqueue_buffers(fs.tx_port,
-				ntb_buf, nb_pkt, (void *)(size_t)fs.qp_id);
+			ret = rte_rawdev_enqueue_buffers(fs.tx_port, ntb_buf,
+					nb_pkt, (void *)(size_t)fs.qp_id);
+			if (ret < 0) {
+				printf("Enqueue failed with err %d\n", ret);
+				for (j = 0; j < nb_pkt; j++)
+					rte_pktmbuf_free(pkts_burst[j]);
+				goto clean;
+			}
+			nb_tx = ret;
 			ntb_port_stats[0].tx += nb_tx;
 			if (unlikely(nb_tx < nb_pkt)) {
 				do {
-					rte_pktmbuf_free(
-						ntb_buf[nb_tx]->buf_addr);
+					rte_pktmbuf_free(pkts_burst[nb_tx]);
 				} while (++nb_tx < nb_pkt);
 			}
 		}
 	}
 
+clean:
 	for (i = 0; i < NTB_MAX_PKT_BURST; i++)
 		free(ntb_buf[i]);
 
@@ -689,7 +740,11 @@ start_pkt_fwd(void)
 		printf("Checking eth link status...\n");
 		/* Wait for eth link up at most 100 times. */
 		for (i = 0; i < 100; i++) {
-			rte_eth_link_get(eth_port_id, &eth_link);
+			ret = rte_eth_link_get(eth_port_id, &eth_link);
+			if (ret < 0) {
+				printf("Link get failed with err %d\n", ret);
+				return;
+			}
 			if (eth_link.link_status) {
 				printf("Eth%u Link Up. Speed %u Mbps - %s\n",
 					eth_port_id, eth_link.link_speed,
