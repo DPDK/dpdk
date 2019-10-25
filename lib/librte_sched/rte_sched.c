@@ -477,70 +477,6 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 }
 
 static uint32_t
-rte_sched_port_get_array_base(struct rte_sched_port_params *params, enum rte_sched_port_array array)
-{
-	uint32_t n_subports_per_port = params->n_subports_per_port;
-	uint32_t n_pipes_per_subport = params->n_pipes_per_subport;
-	uint32_t n_pipes_per_port = n_pipes_per_subport * n_subports_per_port;
-	uint32_t n_queues_per_port = RTE_SCHED_QUEUES_PER_PIPE * n_pipes_per_subport * n_subports_per_port;
-
-	uint32_t size_subport = n_subports_per_port * sizeof(struct rte_sched_subport);
-	uint32_t size_pipe = n_pipes_per_port * sizeof(struct rte_sched_pipe);
-	uint32_t size_queue = n_queues_per_port * sizeof(struct rte_sched_queue);
-	uint32_t size_queue_extra
-		= n_queues_per_port * sizeof(struct rte_sched_queue_extra);
-	uint32_t size_pipe_profiles
-		= params->n_max_pipe_profiles * sizeof(struct rte_sched_pipe_profile);
-	uint32_t size_bmp_array = rte_bitmap_get_memory_footprint(n_queues_per_port);
-	uint32_t size_per_pipe_queue_array, size_queue_array;
-
-	uint32_t base, i;
-
-	size_per_pipe_queue_array = 0;
-	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
-		if (i < RTE_SCHED_TRAFFIC_CLASS_BE)
-			size_per_pipe_queue_array +=
-				params->qsize[i] * sizeof(struct rte_mbuf *);
-		else
-			size_per_pipe_queue_array += RTE_SCHED_MAX_QUEUES_PER_TC *
-				params->qsize[i] * sizeof(struct rte_mbuf *);
-	}
-	size_queue_array = n_pipes_per_port * size_per_pipe_queue_array;
-
-	base = 0;
-
-	if (array == e_RTE_SCHED_PORT_ARRAY_SUBPORT)
-		return base;
-	base += RTE_CACHE_LINE_ROUNDUP(size_subport);
-
-	if (array == e_RTE_SCHED_PORT_ARRAY_PIPE)
-		return base;
-	base += RTE_CACHE_LINE_ROUNDUP(size_pipe);
-
-	if (array == e_RTE_SCHED_PORT_ARRAY_QUEUE)
-		return base;
-	base += RTE_CACHE_LINE_ROUNDUP(size_queue);
-
-	if (array == e_RTE_SCHED_PORT_ARRAY_QUEUE_EXTRA)
-		return base;
-	base += RTE_CACHE_LINE_ROUNDUP(size_queue_extra);
-
-	if (array == e_RTE_SCHED_PORT_ARRAY_PIPE_PROFILES)
-		return base;
-	base += RTE_CACHE_LINE_ROUNDUP(size_pipe_profiles);
-
-	if (array == e_RTE_SCHED_PORT_ARRAY_BMP_ARRAY)
-		return base;
-	base += RTE_CACHE_LINE_ROUNDUP(size_bmp_array);
-
-	if (array == e_RTE_SCHED_PORT_ARRAY_QUEUE_ARRAY)
-		return base;
-	base += RTE_CACHE_LINE_ROUNDUP(size_queue_array);
-
-	return base;
-}
-
-static uint32_t
 rte_sched_subport_get_array_base(struct rte_sched_subport_params *params,
 	enum rte_sched_subport_array array)
 {
@@ -860,22 +796,44 @@ rte_sched_subport_check_params(struct rte_sched_subport_params *params,
 }
 
 uint32_t
-rte_sched_port_get_memory_footprint(struct rte_sched_port_params *params)
+rte_sched_port_get_memory_footprint(struct rte_sched_port_params *port_params,
+	struct rte_sched_subport_params **subport_params)
 {
-	uint32_t size0, size1;
+	uint32_t size0 = 0, size1 = 0, i;
 	int status;
 
-	status = rte_sched_port_check_params(params);
+	status = rte_sched_port_check_params(port_params);
 	if (status != 0) {
-		RTE_LOG(NOTICE, SCHED,
-			"Port scheduler params check failed (%d)\n", status);
+		RTE_LOG(ERR, SCHED,
+			"%s: Port scheduler port params check failed (%d)\n",
+			__func__, status);
 
 		return 0;
 	}
 
+	for (i = 0; i < port_params->n_subports_per_port; i++) {
+		struct rte_sched_subport_params *sp = subport_params[i];
+
+		status = rte_sched_subport_check_params(sp,
+				port_params->n_pipes_per_subport,
+				port_params->rate);
+		if (status != 0) {
+			RTE_LOG(ERR, SCHED,
+				"%s: Port scheduler subport params check failed (%d)\n",
+				__func__, status);
+
+			return 0;
+		}
+	}
+
 	size0 = sizeof(struct rte_sched_port);
-	size1 = rte_sched_port_get_array_base(params,
-			e_RTE_SCHED_PORT_ARRAY_TOTAL);
+
+	for (i = 0; i < port_params->n_subports_per_port; i++) {
+		struct rte_sched_subport_params *sp = subport_params[i];
+
+		size1 += rte_sched_subport_get_array_base(sp,
+					e_RTE_SCHED_SUBPORT_ARRAY_TOTAL);
+	}
 
 	return size0 + size1;
 }

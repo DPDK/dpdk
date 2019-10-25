@@ -373,14 +373,16 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 /**
  * Hierarchical scheduler memory footprint size per port
  *
- * @param params
+ * @param port_params
  *   Port scheduler configuration parameter structure
+ * @param subport_params
+ *   Array of subport parameter structures
  * @return
  *   Memory footprint size in bytes upon success, 0 otherwise
  */
 uint32_t
-rte_sched_port_get_memory_footprint(struct rte_sched_port_params *params);
-
+rte_sched_port_get_memory_footprint(struct rte_sched_port_params *port_params,
+	struct rte_sched_subport_params **subport_params);
 /*
  * Statistics
  *
