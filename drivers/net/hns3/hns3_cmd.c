@@ -359,7 +359,7 @@ static int hns3_cmd_poll_reply(struct hns3_hw *hw)
 		timeout++;
 	} while (timeout < hw->cmq.tx_timeout);
 	hns3_err(hw, "Wait for reply timeout");
-	return -EBADE;
+	return -ETIME;
 }
 
 /*
