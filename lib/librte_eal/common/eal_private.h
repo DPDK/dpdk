@@ -10,6 +10,31 @@
 #include <stdio.h>
 
 #include <rte_dev.h>
+#include <rte_lcore.h>
+
+/**
+ * Structure storing internal configuration (per-lcore)
+ */
+struct lcore_config {
+	pthread_t thread_id;       /**< pthread identifier */
+	int pipe_master2slave[2];  /**< communication pipe with master */
+	int pipe_slave2master[2];  /**< communication pipe with master */
+
+	lcore_function_t * volatile f; /**< function to call */
+	void * volatile arg;       /**< argument of function */
+	volatile int ret;          /**< return value of function */
+
+	volatile enum rte_lcore_state_t state; /**< lcore state */
+	unsigned int socket_id;    /**< physical socket id for this lcore */
+	unsigned int core_id;      /**< core number on socket for this lcore */
+	int core_index;            /**< relative index, starting from 0 */
+	uint8_t core_role;         /**< role of core eg: OFF, RTE, SERVICE */
+	uint8_t detected;          /**< true if lcore was detected */
+
+	rte_cpuset_t cpuset;       /**< cpu set which the lcore affinity to */
+};
+
+extern struct lcore_config lcore_config[RTE_MAX_LCORE];
 
 /**
  * Initialize the memzone subsystem (private to eal).

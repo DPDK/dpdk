@@ -4,7 +4,6 @@ DPDK_2.0 {
 	__rte_panic;
 	eal_parse_sysfs_value;
 	eal_timer_source;
-	lcore_config;
 	per_lcore__lcore_id;
 	per_lcore__rte_errno;
 	rte_calloc;

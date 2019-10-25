@@ -12,7 +12,7 @@ subdir('common') # defines common_sources, common_objs, etc.
 dpdk_conf.set('RTE_EXEC_ENV_' + exec_env.to_upper(), 1)
 subdir(exec_env + '/eal')
 
-version = 11  # the version of the EAL API
+version = 12  # the version of the EAL API
 allow_experimental_apis = true
 deps += 'kvargs'
 if dpdk_conf.has('RTE_USE_LIBBSD')

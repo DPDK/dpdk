@@ -21,6 +21,8 @@
 #include <rte_memory.h>
 #include <rte_malloc.h>
 
+#include "eal_private.h"
+
 #define RTE_SERVICE_NUM_MAX 64
 
 #define SERVICE_F_REGISTERED    (1 << 0)

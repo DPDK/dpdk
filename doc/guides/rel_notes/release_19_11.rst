@@ -283,6 +283,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* eal: made the ``lcore_config`` struct and global symbol private.
+
 * The network structure ``esp_tail`` has been prefixed by ``rte_``.
 
 * The network definitions of PPPoE ethertypes have been prefixed by ``RTE_``.
@@ -372,7 +374,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_compressdev.so.1
      librte_cryptodev.so.8
      librte_distributor.so.1
-     librte_eal.so.11
+   + librte_eal.so.12
      librte_efd.so.1
    + librte_ethdev.so.13
    + librte_eventdev.so.8
