@@ -260,28 +260,6 @@ struct rte_sched_port_params {
 	 * the subports of the same port.
 	 */
 	uint32_t n_pipes_per_subport;
-
-	/** Packet queue size for each traffic class.
-	 * All the pipes within the same subport share the similar
-	 * configuration for the queues.
-	 */
-	uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
-
-	/** Pipe profile table.
-	 * Every pipe is configured using one of the profiles from this table.
-	 */
-	struct rte_sched_pipe_params *pipe_profiles;
-
-	/** Profiles in the pipe profile table */
-	uint32_t n_pipe_profiles;
-
-	/** Max profiles allowed in the pipe profile table */
-	uint32_t n_max_pipe_profiles;
-
-#ifdef RTE_SCHED_RED
-	/** RED parameters */
-	struct rte_red_params red_params[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][RTE_COLORS];
-#endif
 };
 
 /*
