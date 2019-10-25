@@ -1464,9 +1464,6 @@ Other Example Applications
 F: examples/ethtool/
 F: doc/guides/sample_app_ug/ethtool.rst
 
-F: examples/exception_path/
-F: doc/guides/sample_app_ug/exception_path.rst
-
 M: Marko Kovacevic <marko.kovacevic@intel.com>
 F: examples/fips_validation/
 F: doc/guides/sample_app_ug/fips_validation.rst

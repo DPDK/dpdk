@@ -17,7 +17,6 @@ ifeq ($(CONFIG_RTE_LIBRTE_POWER),y)
 DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += distributor
 endif
 DIRS-y += ethtool
-DIRS-y += exception_path
 DIRS-$(CONFIG_RTE_LIBRTE_EFD) += server_node_efd
 DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += fips_validation
 DIRS-$(CONFIG_RTE_LIBRTE_FLOW_CLASSIFY) += flow_classify

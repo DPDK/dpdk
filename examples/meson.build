@@ -13,7 +13,7 @@ all_examples = [
 	'bbdev_app', 'bond',
 	'bpf', 'cmdline',
 	'distributor', 'ethtool',
-	'eventdev_pipeline', 'exception_path',
+	'eventdev_pipeline',
 	'fips_validation', 'flow_classify',
 	'flow_filtering', 'helloworld',
 	'ip_fragmentation', 'ip_pipeline',

@@ -12,7 +12,6 @@ Sample Applications User Guides
     compiling
     cmd_line
     ethtool
-    exception_path
     hello_world
     skeleton
     rxtx_callbacks
