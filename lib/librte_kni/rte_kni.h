@@ -73,6 +73,8 @@ struct rte_kni_conf {
 	uint8_t force_bind : 1; /* Flag to bind kernel thread */
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN]; /* MAC address assigned to KNI */
 	uint16_t mtu;
+	uint16_t min_mtu;
+	uint16_t max_mtu;
 };
 
 /**

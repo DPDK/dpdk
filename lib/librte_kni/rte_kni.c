@@ -252,6 +252,8 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	dev_info.group_id = conf->group_id;
 	dev_info.mbuf_size = conf->mbuf_size;
 	dev_info.mtu = conf->mtu;
+	dev_info.min_mtu = conf->min_mtu;
+	dev_info.max_mtu = conf->max_mtu;
 
 	memcpy(dev_info.mac_addr, conf->mac_addr, RTE_ETHER_ADDR_LEN);
 

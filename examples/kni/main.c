@@ -949,6 +949,9 @@ kni_alloc(uint16_t port_id)
 
 			rte_eth_dev_get_mtu(port_id, &conf.mtu);
 
+			conf.min_mtu = dev_info.min_mtu;
+			conf.max_mtu = dev_info.max_mtu;
+
 			memset(&ops, 0, sizeof(ops));
 			ops.port_id = port_id;
 			ops.change_mtu = kni_change_mtu;
