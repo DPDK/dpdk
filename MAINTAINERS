@@ -104,6 +104,7 @@ F: devtools/load-devel-config
 F: devtools/test-build.sh
 F: devtools/test-meson-builds.sh
 F: license/
+F: .editorconfig
 
 
 Build System
