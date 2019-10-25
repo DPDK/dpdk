@@ -47,7 +47,8 @@ int
 tmgr_subport_profile_add(struct rte_sched_subport_params *p)
 {
 	/* Check input params */
-	if (p == NULL)
+	if (p == NULL ||
+		p->n_pipes_per_subport_enabled == 0)
 		return -1;
 
 	/* Save profile */
@@ -90,7 +91,6 @@ tmgr_port_create(const char *name, struct tmgr_port_params *params)
 		tmgr_port_find(name) ||
 		(params == NULL) ||
 		(params->n_subports_per_port == 0) ||
-		(params->n_pipes_per_subport == 0) ||
 		(params->cpu_id >= RTE_MAX_NUMA_NODES) ||
 		(n_subport_profiles == 0) ||
 		(n_pipe_profiles == 0))
@@ -103,17 +103,15 @@ tmgr_port_create(const char *name, struct tmgr_port_params *params)
 	p.mtu = params->mtu;
 	p.frame_overhead = params->frame_overhead;
 	p.n_subports_per_port = params->n_subports_per_port;
-	p.n_pipes_per_subport = params->n_pipes_per_subport;
-
-	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-		p.qsize[i] = params->qsize[i];
-
-	p.pipe_profiles = pipe_profile;
-	p.n_pipe_profiles = n_pipe_profiles;
+	p.n_pipes_per_subport = TMGR_PIPE_SUBPORT_MAX;
 
 	s = rte_sched_port_config(&p);
 	if (s == NULL)
 		return NULL;
+
+	subport_profile[0].pipe_profiles = pipe_profile;
+	subport_profile[0].n_pipe_profiles = n_pipe_profiles;
+	subport_profile[0].n_max_pipe_profiles = TMGR_PIPE_PROFILE_MAX;
 
 	for (i = 0; i < params->n_subports_per_port; i++) {
 		int status;
@@ -128,7 +126,7 @@ tmgr_port_create(const char *name, struct tmgr_port_params *params)
 			return NULL;
 		}
 
-		for (j = 0; j < params->n_pipes_per_subport; j++) {
+		for (j = 0; j < subport_profile[0].n_pipes_per_subport_enabled; j++) {
 			status = rte_sched_pipe_config(
 				s,
 				i,
@@ -153,7 +151,6 @@ tmgr_port_create(const char *name, struct tmgr_port_params *params)
 	strlcpy(tmgr_port->name, name, sizeof(tmgr_port->name));
 	tmgr_port->s = s;
 	tmgr_port->n_subports_per_port = params->n_subports_per_port;
-	tmgr_port->n_pipes_per_subport = params->n_pipes_per_subport;
 
 	/* Node add to list */
 	TAILQ_INSERT_TAIL(&tmgr_port_list, tmgr_port, node);
@@ -205,8 +202,10 @@ tmgr_pipe_config(const char *port_name,
 	port = tmgr_port_find(port_name);
 	if ((port == NULL) ||
 		(subport_id >= port->n_subports_per_port) ||
-		(pipe_id_first >= port->n_pipes_per_subport) ||
-		(pipe_id_last >= port->n_pipes_per_subport) ||
+		(pipe_id_first >=
+			subport_profile[subport_id].n_pipes_per_subport_enabled) ||
+		(pipe_id_last >=
+			subport_profile[subport_id].n_pipes_per_subport_enabled) ||
 		(pipe_id_first > pipe_id_last) ||
 		(pipe_profile_id >= n_pipe_profiles))
 		return -1;

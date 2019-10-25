@@ -12,6 +12,10 @@
 
 #include "common.h"
 
+#ifndef TMGR_PIPE_SUBPORT_MAX
+#define TMGR_PIPE_SUBPORT_MAX                              4096
+#endif
+
 #ifndef TMGR_SUBPORT_PROFILE_MAX
 #define TMGR_SUBPORT_PROFILE_MAX                           256
 #endif
@@ -25,7 +29,6 @@ struct tmgr_port {
 	char name[NAME_SIZE];
 	struct rte_sched_port *s;
 	uint32_t n_subports_per_port;
-	uint32_t n_pipes_per_subport;
 };
 
 TAILQ_HEAD(tmgr_port_list, tmgr_port);
@@ -42,8 +45,6 @@ struct tmgr_port_params {
 	uint32_t frame_overhead;
 	uint32_t mtu;
 	uint32_t cpu_id;
-	uint32_t n_pipes_per_subport;
-	uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 };
 
 int
