@@ -35,15 +35,25 @@ get_pkt_sched(struct rte_mbuf *m, uint32_t *subport, uint32_t *pipe,
 	uint16_t *pdata = rte_pktmbuf_mtod(m, uint16_t *);
 	uint16_t pipe_queue;
 
+	/* Outer VLAN ID*/
 	*subport = (rte_be_to_cpu_16(pdata[SUBPORT_OFFSET]) & 0x0FFF) &
-			(port_params.n_subports_per_port - 1); /* Outer VLAN ID*/
+		(port_params.n_subports_per_port - 1);
+
+	/* Inner VLAN ID */
 	*pipe = (rte_be_to_cpu_16(pdata[PIPE_OFFSET]) & 0x0FFF) &
-			(port_params.n_pipes_per_subport - 1); /* Inner VLAN ID */
+		(subport_params[*subport].n_pipes_per_subport_enabled - 1);
+
 	pipe_queue = active_queues[(pdata[QUEUE_OFFSET] >> 8) % n_active_queues];
+
+	/* Traffic class (Destination IP) */
 	*traffic_class = pipe_queue > RTE_SCHED_TRAFFIC_CLASS_BE ?
-			RTE_SCHED_TRAFFIC_CLASS_BE : pipe_queue; /* Destination IP */
-	*queue = pipe_queue - *traffic_class; /* Destination IP */
-	*color = pdata[COLOR_OFFSET] & 0x03; /* Destination IP */
+			RTE_SCHED_TRAFFIC_CLASS_BE : pipe_queue;
+
+	/* Traffic class queue (Destination IP) */
+	*queue = pipe_queue - *traffic_class;
+
+	/* Color (Destination IP) */
+	*color = pdata[COLOR_OFFSET] & 0x03;
 
 	return 0;
 }

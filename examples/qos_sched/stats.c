@@ -24,7 +24,7 @@ qavg_q(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id, uint8_t tc,
 
 	if (i == nb_pfc ||
 		subport_id >= port_params.n_subports_per_port ||
-		pipe_id >= port_params.n_pipes_per_subport  ||
+		pipe_id >= subport_params[subport_id].n_pipes_per_subport_enabled  ||
 		tc >= RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE ||
 		q >= RTE_SCHED_BE_QUEUES_PER_PIPE ||
 		(tc < RTE_SCHED_TRAFFIC_CLASS_BE && q > 0))
@@ -32,7 +32,7 @@ qavg_q(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id, uint8_t tc,
 
 	port = qos_conf[i].sched_port;
 	for (i = 0; i < subport_id; i++)
-		queue_id += port_params.n_pipes_per_subport *
+		queue_id += subport_params[i].n_pipes_per_subport_enabled *
 				RTE_SCHED_QUEUES_PER_PIPE;
 	if (tc < RTE_SCHED_TRAFFIC_CLASS_BE)
 		queue_id += pipe_id * RTE_SCHED_QUEUES_PER_PIPE + tc;
@@ -69,14 +69,16 @@ qavg_tcpipe(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id,
 	}
 
 	if (i == nb_pfc || subport_id >= port_params.n_subports_per_port ||
-		pipe_id >= port_params.n_pipes_per_subport ||
+		pipe_id >= subport_params[subport_id].n_pipes_per_subport_enabled ||
 		tc >= RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE)
 		return -1;
 
 	port = qos_conf[i].sched_port;
 
 	for (i = 0; i < subport_id; i++)
-		queue_id += port_params.n_pipes_per_subport * RTE_SCHED_QUEUES_PER_PIPE;
+		queue_id +=
+			subport_params[i].n_pipes_per_subport_enabled *
+			RTE_SCHED_QUEUES_PER_PIPE;
 
 	queue_id += pipe_id * RTE_SCHED_QUEUES_PER_PIPE + tc;
 
@@ -123,13 +125,13 @@ qavg_pipe(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id)
 
 	if (i == nb_pfc ||
 		subport_id >= port_params.n_subports_per_port ||
-		pipe_id >= port_params.n_pipes_per_subport)
+		pipe_id >= subport_params[subport_id].n_pipes_per_subport_enabled)
 		return -1;
 
 	port = qos_conf[i].sched_port;
 
 	for (i = 0; i < subport_id; i++)
-		queue_id += port_params.n_pipes_per_subport *
+		queue_id += subport_params[i].n_pipes_per_subport_enabled *
 				RTE_SCHED_QUEUES_PER_PIPE;
 
 	queue_id += pipe_id * RTE_SCHED_QUEUES_PER_PIPE;
@@ -177,13 +179,17 @@ qavg_tcsubport(uint16_t port_id, uint32_t subport_id, uint8_t tc)
 
 	for (i = 0; i < subport_id; i++)
 		subport_queue_id +=
-			port_params.n_pipes_per_subport * RTE_SCHED_QUEUES_PER_PIPE;
+			subport_params[i].n_pipes_per_subport_enabled *
+			RTE_SCHED_QUEUES_PER_PIPE;
 
 	average = 0;
 
 	for (count = 0; count < qavg_ntimes; count++) {
+		uint32_t n_pipes_per_subport =
+			subport_params[subport_id].n_pipes_per_subport_enabled;
+
 		part_average = 0;
-		for (i = 0; i < port_params.n_pipes_per_subport; i++) {
+		for (i = 0; i < n_pipes_per_subport; i++) {
 			if (tc < RTE_SCHED_TRAFFIC_CLASS_BE) {
 				queue_id = subport_queue_id +
 					i * RTE_SCHED_QUEUES_PER_PIPE + tc;
@@ -203,10 +209,11 @@ qavg_tcsubport(uint16_t port_id, uint32_t subport_id, uint8_t tc)
 		}
 
 		if (tc < RTE_SCHED_TRAFFIC_CLASS_BE)
-			average += part_average / (port_params.n_pipes_per_subport);
+			average += part_average /
+				(subport_params[subport_id].n_pipes_per_subport_enabled);
 		else
-			average +=
-				part_average / (port_params.n_pipes_per_subport) *
+			average += part_average /
+				(subport_params[subport_id].n_pipes_per_subport_enabled) *
 				RTE_SCHED_BE_QUEUES_PER_PIPE;
 
 		usleep(qavg_period);
@@ -240,14 +247,17 @@ qavg_subport(uint16_t port_id, uint32_t subport_id)
 	port = qos_conf[i].sched_port;
 
 	for (i = 0; i < subport_id; i++)
-		subport_queue_id += port_params.n_pipes_per_subport *
+		subport_queue_id += subport_params[i].n_pipes_per_subport_enabled *
 			RTE_SCHED_QUEUES_PER_PIPE;
 
 	average = 0;
 
 	for (count = 0; count < qavg_ntimes; count++) {
+		uint32_t n_pipes_per_subport =
+			subport_params[subport_id].n_pipes_per_subport_enabled;
+
 		part_average = 0;
-		for (i = 0; i < port_params.n_pipes_per_subport; i++) {
+		for (i = 0; i < n_pipes_per_subport; i++) {
 			queue_id = subport_queue_id + i * RTE_SCHED_QUEUES_PER_PIPE;
 
 			for (j = 0; j < RTE_SCHED_QUEUES_PER_PIPE; j++) {
@@ -258,7 +268,8 @@ qavg_subport(uint16_t port_id, uint32_t subport_id)
 		}
 
 		average += part_average /
-			(port_params.n_pipes_per_subport * RTE_SCHED_QUEUES_PER_PIPE);
+			(subport_params[subport_id].n_pipes_per_subport_enabled *
+			RTE_SCHED_QUEUES_PER_PIPE);
 		usleep(qavg_period);
 	}
 
@@ -322,12 +333,13 @@ pipe_stat(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id)
 
 	if (i == nb_pfc ||
 		subport_id >= port_params.n_subports_per_port ||
-		pipe_id >= port_params.n_pipes_per_subport)
+		pipe_id >= subport_params[subport_id].n_pipes_per_subport_enabled)
 		return -1;
 
 	port = qos_conf[i].sched_port;
 	for (i = 0; i < subport_id; i++)
-		queue_id += port_params.n_pipes_per_subport * RTE_SCHED_QUEUES_PER_PIPE;
+		queue_id += subport_params[i].n_pipes_per_subport_enabled *
+			RTE_SCHED_QUEUES_PER_PIPE;
 
 	queue_id += pipe_id * RTE_SCHED_QUEUES_PER_PIPE;
 
