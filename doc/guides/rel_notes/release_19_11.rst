@@ -288,6 +288,9 @@ API Changes
 * eal: removed the ``rte_cpu_check_supported`` function, replaced by
   ``rte_cpu_is_supported`` since dpdk v17.08.
 
+* eal: removed the ``rte_malloc_virt2phy`` function, replaced by
+  ``rte_malloc_virt2iova`` since v17.11.
+
 * The network structure ``esp_tail`` has been prefixed by ``rte_``.
 
 * The network definitions of PPPoE ethertypes have been prefixed by ``RTE_``.

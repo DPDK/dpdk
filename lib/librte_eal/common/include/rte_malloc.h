@@ -553,13 +553,6 @@ rte_malloc_set_limit(const char *type, size_t max);
 rte_iova_t
 rte_malloc_virt2iova(const void *addr);
 
-__rte_deprecated
-static inline phys_addr_t
-rte_malloc_virt2phy(const void *addr)
-{
-	return rte_malloc_virt2iova(addr);
-}
-
 #ifdef __cplusplus
 }
 #endif
