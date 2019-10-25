@@ -38,13 +38,6 @@ Deprecation Notices
   have been replaced with ``rte_dev_dma_map`` and ``rte_dev_dma_unmap``
   functions.  The due date for the removal targets DPDK 20.02.
 
-* pci: Several exposed functions are misnamed.
-  The following functions are deprecated starting from v17.11 and are replaced:
-
-  - ``eal_parse_pci_BDF`` replaced by ``rte_pci_addr_parse``
-  - ``eal_parse_pci_DomBDF`` replaced by ``rte_pci_addr_parse``
-  - ``rte_eal_compare_pci_addr`` replaced by ``rte_pci_addr_cmp``
-
 * dpaa2: removal of ``rte_dpaa2_memsegs`` structure which has been replaced
   by a pa-va search library. This structure was earlier being used for holding
   memory segments used by dpaa2 driver for faster pa->va translation. This

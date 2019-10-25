@@ -12,7 +12,7 @@ LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_pci_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 SRCS-$(CONFIG_RTE_LIBRTE_PCI) += rte_pci.c
 

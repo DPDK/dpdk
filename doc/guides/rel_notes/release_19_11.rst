@@ -294,6 +294,12 @@ API Changes
 * mem: hid the internal ``malloc_heap`` structure and the
   ``rte_malloc_heap.h`` header.
 
+* pci: removed the following functions deprecated since dpdk v17.11:
+
+  - ``eal_parse_pci_BDF`` replaced by ``rte_pci_addr_parse``
+  - ``eal_parse_pci_DomBDF`` replaced by ``rte_pci_addr_parse``
+  - ``rte_eal_compare_pci_addr`` replaced by ``rte_pci_addr_cmp``
+
 * The network structure ``esp_tail`` has been prefixed by ``rte_``.
 
 * The network definitions of PPPoE ethertypes have been prefixed by ``RTE_``.
@@ -404,7 +410,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_meter.so.3
      librte_metrics.so.1
      librte_net.so.1
-     librte_pci.so.1
+   + librte_pci.so.2
      librte_pdump.so.3
      librte_pipeline.so.3
      librte_pmd_bnxt.so.2
