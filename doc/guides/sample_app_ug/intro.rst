@@ -23,49 +23,7 @@ command-line options.
 The DPDK Sample Applications
 ----------------------------
 
-Table :numref:`table_sample_apps` shows a list of some of the main sample
-applications that are available in the examples directory of DPDK:
-
- .. _table_sample_apps:
-
- .. table:: **Some of the DPDK Sample applications**
-
-    +---------------------------------------+--------------------------------------+
-    | Bonding                               | Netmap Compatibility                 |
-    +---------------------------------------+--------------------------------------+
-    | Command Line                          | Packet Ordering                      |
-    +---------------------------------------+--------------------------------------+
-    | Distributor                           | Performance Thread                   |
-    +---------------------------------------+--------------------------------------+
-    | Ethtool                               | Precision Time Protocol (PTP) Client |
-    +---------------------------------------+--------------------------------------+
-    | Exception Path                        | Quality of Service (QoS) Metering    |
-    +---------------------------------------+--------------------------------------+
-    | Hello World                           | QoS Scheduler                        |
-    +---------------------------------------+--------------------------------------+
-    | Internet Protocol (IP) Fragmentation  | Quota and Watermark                  |
-    +---------------------------------------+--------------------------------------+
-    | IP Pipeline                           | RX/TX Callbacks                      |
-    +---------------------------------------+--------------------------------------+
-    | IP Reassembly                         | Server node EFD                      |
-    +---------------------------------------+--------------------------------------+
-    | IPsec Security Gateway                | Basic Forwarding/Skeleton App        |
-    +---------------------------------------+--------------------------------------+
-    | IPv4 multicast                        | Tunnel End Point (TEP) termination   |
-    +---------------------------------------+--------------------------------------+
-    | Kernel NIC Interface                  | Timer                                |
-    +---------------------------------------+--------------------------------------+
-    | Network Layer 2 Forwarding + variants | Vhost                                |
-    +---------------------------------------+--------------------------------------+
-    | Network Layer 3 Forwarding + variants | Vhost Xen                            |
-    +---------------------------------------+--------------------------------------+
-    | Link Status Interrupt                 | VMDQ Forwarding                      |
-    +---------------------------------------+--------------------------------------+
-    | Load Balancer                         | VMDQ and DCB Forwarding              |
-    +---------------------------------------+--------------------------------------+
-    | Multi-process                         | VM Power Management                  |
-    +---------------------------------------+--------------------------------------+
-
+There are many sample applications available in the examples directory of DPDK.
 These examples range from simple to reasonably complex but most are designed
 to demonstrate one particular feature of DPDK. Some of the more interesting
 examples are highlighted below.
