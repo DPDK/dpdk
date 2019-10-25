@@ -29,7 +29,6 @@ Sample Applications User Guides
     l3_forward
     l3_forward_power_man
     l3_forward_access_ctrl
-    l3_forward_virtual
     link_status_intr
     load_balancer
     server_node_efd

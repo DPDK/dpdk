@@ -261,6 +261,7 @@ Removed Items
 * The following sample applications have been removed in this release:
 
   * Exception Path
+  * L3 Forwarding in a Virtualization Environment
   * vhost-scsi
 
 

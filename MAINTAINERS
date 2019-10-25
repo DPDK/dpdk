@@ -1495,9 +1495,6 @@ F: examples/l2fwd-cat/
 F: examples/l3fwd/
 F: doc/guides/sample_app_ug/l3_forward.rst
 
-F: examples/l3fwd-vf/
-F: doc/guides/sample_app_ug/l3_forward_virtual.rst
-
 F: examples/link_status_interrupt/
 F: doc/guides/sample_app_ug/link_status_intr.rst
 

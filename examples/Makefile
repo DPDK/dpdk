@@ -46,7 +46,6 @@ endif
 DIRS-$(CONFIG_RTE_LIBRTE_ACL) += l3fwd-acl
 ifeq ($(CONFIG_RTE_LIBRTE_LPM)$(CONFIG_RTE_LIBRTE_HASH),yy)
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += l3fwd-power
-DIRS-y += l3fwd-vf
 endif
 DIRS-y += link_status_interrupt
 DIRS-$(CONFIG_RTE_LIBRTE_LPM) += load_balancer
