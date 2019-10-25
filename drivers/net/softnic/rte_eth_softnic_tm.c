@@ -85,7 +85,8 @@ softnic_tmgr_port_create(struct pmd_internals *p,
 	/* Subport */
 	n_subports = t->port_params.n_subports_per_port;
 	for (subport_id = 0; subport_id < n_subports; subport_id++) {
-		uint32_t n_pipes_per_subport = t->port_params.n_pipes_per_subport;
+		uint32_t n_pipes_per_subport =
+			t->subport_params[subport_id].n_pipes_per_subport_enabled;
 		uint32_t pipe_id;
 		int status;
 
@@ -2211,10 +2212,11 @@ tm_tc_wred_profile_get(struct rte_eth_dev *dev, uint32_t tc_id)
 #ifdef RTE_SCHED_RED
 
 static void
-wred_profiles_set(struct rte_eth_dev *dev)
+wred_profiles_set(struct rte_eth_dev *dev, uint32_t subport_id)
 {
 	struct pmd_internals *p = dev->data->dev_private;
-	struct rte_sched_port_params *pp = &p->soft.tm.params.port_params;
+	struct rte_sched_subport_params *pp =
+		&p->soft.tm.params.subport_params[subport_id];
 
 	uint32_t tc_id;
 	enum rte_color color;
@@ -2234,7 +2236,7 @@ wred_profiles_set(struct rte_eth_dev *dev)
 
 #else
 
-#define wred_profiles_set(dev)
+#define wred_profiles_set(dev, subport_id)
 
 #endif
 
@@ -2526,28 +2528,8 @@ hierarchy_blueprints_create(struct rte_eth_dev *dev)
 		.frame_overhead =
 			root->shaper_profile->params.pkt_length_adjust,
 		.n_subports_per_port = root->n_children,
-		.n_pipes_per_subport = h->n_tm_nodes[TM_NODE_LEVEL_PIPE] /
-			h->n_tm_nodes[TM_NODE_LEVEL_SUBPORT],
-		.qsize = {p->params.tm.qsize[0],
-			p->params.tm.qsize[1],
-			p->params.tm.qsize[2],
-			p->params.tm.qsize[3],
-			p->params.tm.qsize[4],
-			p->params.tm.qsize[5],
-			p->params.tm.qsize[6],
-			p->params.tm.qsize[7],
-			p->params.tm.qsize[8],
-			p->params.tm.qsize[9],
-			p->params.tm.qsize[10],
-			p->params.tm.qsize[11],
-			p->params.tm.qsize[12],
-		},
-		.pipe_profiles = t->pipe_profiles,
-		.n_pipe_profiles = t->n_pipe_profiles,
-		.n_max_pipe_profiles = TM_MAX_PIPE_PROFILE,
+		.n_pipes_per_subport = TM_MAX_PIPES_PER_SUBPORT,
 	};
-
-	wred_profiles_set(dev);
 
 	subport_id = 0;
 	TAILQ_FOREACH(n, nl, node) {
@@ -2588,8 +2570,28 @@ hierarchy_blueprints_create(struct rte_eth_dev *dev)
 					tc_rate[12],
 				},
 				.tc_period = SUBPORT_TC_PERIOD,
+				.n_pipes_per_subport_enabled =
+					h->n_tm_nodes[TM_NODE_LEVEL_PIPE] /
+					h->n_tm_nodes[TM_NODE_LEVEL_SUBPORT],
+				.qsize = {p->params.tm.qsize[0],
+					p->params.tm.qsize[1],
+					p->params.tm.qsize[2],
+					p->params.tm.qsize[3],
+					p->params.tm.qsize[4],
+					p->params.tm.qsize[5],
+					p->params.tm.qsize[6],
+					p->params.tm.qsize[7],
+					p->params.tm.qsize[8],
+					p->params.tm.qsize[9],
+					p->params.tm.qsize[10],
+					p->params.tm.qsize[11],
+					p->params.tm.qsize[12],
+				},
+				.pipe_profiles = t->pipe_profiles,
+				.n_pipe_profiles = t->n_pipe_profiles,
+				.n_max_pipe_profiles = TM_MAX_PIPE_PROFILE,
 		};
-
+		wred_profiles_set(dev, subport_id);
 		subport_id++;
 	}
 }
