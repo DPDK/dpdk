@@ -1501,9 +1501,6 @@ F: doc/guides/sample_app_ug/link_status_intr.rst
 F: examples/load_balancer/
 F: doc/guides/sample_app_ug/load_balancer.rst
 
-F: examples/netmap_compat/
-F: doc/guides/sample_app_ug/netmap_compatibility.rst
-
 L-threads - EXPERIMENTAL
 M: John McNamara <john.mcnamara@intel.com>
 F: examples/performance-thread/
