@@ -252,7 +252,6 @@ struct hns3_rx_queue {
 	uint64_t l4_csum_erros;
 	uint64_t ol3_csum_erros;
 	uint64_t ol4_csum_erros;
-	uint64_t errors;        /* num of error rx packets recorded by driver */
 };
 
 struct hns3_tx_queue {
@@ -272,8 +271,6 @@ struct hns3_tx_queue {
 
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool configured;        /* indicate if tx queue has been configured */
-
-	uint64_t pkt_len_errors;
 };
 
 #define HNS3_TX_CKSUM_OFFLOAD_MASK ( \

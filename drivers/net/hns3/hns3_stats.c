@@ -235,12 +235,6 @@ static const struct hns3_xstats_name_offset hns3_rx_bd_error_strings[] = {
 		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(ol4_csum_erros)}
 };
 
-/* The statistic of errors in Tx */
-static const struct hns3_xstats_name_offset hns3_tx_error_strings[] = {
-	{"TX_PKT_LEN_ERRORS",
-		HNS3_TX_ERROR_STATS_FIELD_OFFSET(pkt_len_errors)}
-};
-
 #define HNS3_NUM_MAC_STATS (sizeof(hns3_mac_strings) / \
 	sizeof(hns3_mac_strings[0]))
 
@@ -252,9 +246,6 @@ static const struct hns3_xstats_name_offset hns3_tx_error_strings[] = {
 
 #define HNS3_NUM_RX_BD_ERROR_XSTATS (sizeof(hns3_rx_bd_error_strings) / \
 	sizeof(hns3_rx_bd_error_strings[0]))
-
-#define HNS3_NUM_TX_ERROR_XSTATS (sizeof(hns3_tx_error_strings) / \
-	sizeof(hns3_tx_error_strings[0]))
 
 #define HNS3_FIX_NUM_STATS (HNS3_NUM_MAC_STATS + HNS3_NUM_ERROR_INT_XSTATS + \
 			    HNS3_NUM_RESET_XSTATS)
@@ -434,6 +425,7 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_tqp_stats *stats = &hw->tqp_stats;
 	struct hns3_rx_queue *rxq;
+	struct hns3_tx_queue *txq;
 	uint64_t cnt;
 	uint64_t num;
 	uint16_t i;
@@ -446,25 +438,32 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 		return ret;
 	}
 
-	rte_stats->ipackets  = stats->rcb_rx_ring_pktnum_rcd;
-	rte_stats->opackets  = stats->rcb_tx_ring_pktnum_rcd;
-	rte_stats->rx_nombuf = eth_dev->data->rx_mbuf_alloc_failed;
-
-	num = RTE_MIN(RTE_ETHDEV_QUEUE_STAT_CNTRS, hw->tqps_num);
-	for (i = 0; i < num; i++) {
-		rte_stats->q_ipackets[i] = stats->rcb_rx_ring_pktnum[i];
-		rte_stats->q_opackets[i] = stats->rcb_tx_ring_pktnum[i];
-	}
-
+	/* Get the error stats of received packets */
 	num = RTE_MIN(RTE_ETHDEV_QUEUE_STAT_CNTRS, eth_dev->data->nb_rx_queues);
 	for (i = 0; i != num; ++i) {
 		rxq = eth_dev->data->rx_queues[i];
 		if (rxq) {
-			cnt = rxq->errors;
+			cnt = rxq->l2_errors + rxq->pkt_len_errors;
 			rte_stats->q_errors[i] = cnt;
+			rte_stats->q_ipackets[i] =
+				stats->rcb_rx_ring_pktnum[i] - cnt;
 			rte_stats->ierrors += cnt;
 		}
 	}
+	/* Get the error stats of transmitted packets */
+	num = RTE_MIN(RTE_ETHDEV_QUEUE_STAT_CNTRS, eth_dev->data->nb_tx_queues);
+	for (i = 0; i < num; i++) {
+		txq = eth_dev->data->tx_queues[i];
+		if (txq)
+			rte_stats->q_opackets[i] = stats->rcb_tx_ring_pktnum[i];
+	}
+
+	rte_stats->oerrors = 0;
+	rte_stats->ipackets  = stats->rcb_rx_ring_pktnum_rcd -
+		rte_stats->ierrors;
+	rte_stats->opackets  = stats->rcb_tx_ring_pktnum_rcd -
+		rte_stats->oerrors;
+	rte_stats->rx_nombuf = eth_dev->data->rx_mbuf_alloc_failed;
 
 	return 0;
 }
@@ -477,7 +476,6 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 	struct hns3_tqp_stats *stats = &hw->tqp_stats;
 	struct hns3_cmd_desc desc_reset;
 	struct hns3_rx_queue *rxq;
-	struct hns3_tx_queue *txq;
 	uint16_t i;
 	int ret;
 
@@ -518,12 +516,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 			rxq->l4_csum_erros = 0;
 			rxq->ol3_csum_erros = 0;
 			rxq->ol4_csum_erros = 0;
-			rxq->errors = 0;
 		}
-
-		txq = eth_dev->data->tx_queues[i];
-		if (txq)
-			txq->pkt_len_errors = 0;
 	}
 
 	memset(stats, 0, sizeof(struct hns3_tqp_stats));
@@ -554,11 +547,9 @@ hns3_xstats_calc_num(struct rte_eth_dev *dev)
 
 	if (hns->is_vf)
 		return dev->data->nb_rx_queues * HNS3_NUM_RX_BD_ERROR_XSTATS +
-		       dev->data->nb_tx_queues * HNS3_NUM_TX_ERROR_XSTATS +
 		       HNS3_NUM_RESET_XSTATS;
 	else
 		return dev->data->nb_rx_queues * HNS3_NUM_RX_BD_ERROR_XSTATS +
-		       dev->data->nb_tx_queues * HNS3_NUM_TX_ERROR_XSTATS +
 		       HNS3_FIX_NUM_STATS;
 }
 
@@ -585,7 +576,6 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	struct hns3_mac_stats *mac_stats = &hw->mac_stats;
 	struct hns3_reset_stats *reset_stats = &hw->reset.stats;
 	struct hns3_rx_queue *rxq;
-	struct hns3_tx_queue *txq;
 	uint16_t i, j;
 	char *addr;
 	int count;
@@ -644,16 +634,6 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		}
 	}
 
-	/* Get the Tx errors stats */
-	for (j = 0; j != dev->data->nb_tx_queues; ++j) {
-		for (i = 0; i < HNS3_NUM_TX_ERROR_XSTATS; i++) {
-			txq = dev->data->tx_queues[j];
-			addr = (char *)txq + hns3_tx_error_strings[i].offset;
-			xstats[count].value = *(uint64_t *)addr;
-			xstats[count].id = count;
-			count++;
-		}
-	}
 	return count;
 }
 
@@ -727,14 +707,6 @@ hns3_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 			count++;
 		}
 	}
-	for (j = 0; j < dev->data->nb_tx_queues; j++) {
-		for (i = 0; i < HNS3_NUM_TX_ERROR_XSTATS; i++) {
-			snprintf(xstats_names[count].name,
-				 sizeof(xstats_names[count].name),
-				 "tx_q%u%s", j, hns3_tx_error_strings[i].name);
-			count++;
-		}
-	}
 
 	return count;
 }
@@ -772,7 +744,6 @@ hns3_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	struct hns3_mac_stats *mac_stats = &hw->mac_stats;
 	struct hns3_reset_stats *reset_stats = &hw->reset.stats;
 	struct hns3_rx_queue *rxq;
-	struct hns3_tx_queue *txq;
 	const uint32_t cnt_stats = hns3_xstats_calc_num(dev);
 	uint64_t *values_copy;
 	uint64_t len;
@@ -826,15 +797,6 @@ hns3_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		for (i = 0; i < HNS3_NUM_RX_BD_ERROR_XSTATS; i++) {
 			rxq = dev->data->rx_queues[j];
 			addr = (char *)rxq + hns3_rx_bd_error_strings[i].offset;
-			values_copy[count] = *(uint64_t *)addr;
-			count++;
-		}
-	}
-
-	for (j = 0; j != dev->data->nb_tx_queues; ++j) {
-		for (i = 0; i < HNS3_NUM_TX_ERROR_XSTATS; i++) {
-			txq = dev->data->tx_queues[j];
-			addr = (char *)txq + hns3_tx_error_strings[i].offset;
 			values_copy[count] = *(uint64_t *)addr;
 			count++;
 		}
@@ -925,14 +887,6 @@ hns3_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 				 sizeof(xstats_names_copy[count_name].name),
 				 "rx_q%u%s", j,
 				 hns3_rx_bd_error_strings[i].name);
-			count_name++;
-		}
-	}
-	for (j = 0; j != dev->data->nb_rx_queues; ++j) {
-		for (i = 0; i < HNS3_NUM_TX_ERROR_XSTATS; i++) {
-			snprintf(xstats_names_copy[count_name].name,
-				 sizeof(xstats_names_copy[count_name].name),
-				 "tx_q%u%s", j, hns3_tx_error_strings[i].name);
 			count_name++;
 		}
 	}

@@ -661,7 +661,6 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->l4_csum_erros = 0;
 	rxq->ol3_csum_erros = 0;
 	rxq->ol4_csum_erros = 0;
-	rxq->errors = 0;
 
 	rte_spinlock_lock(&hw->lock);
 	dev->data->rx_queues[idx] = rxq;
@@ -817,14 +816,12 @@ hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,
 
 	if (unlikely(l234_info & BIT(HNS3_RXD_L2E_B))) {
 		rxq->l2_errors++;
-		rxq->errors++;
 		return -EINVAL;
 	}
 
 	if (unlikely(rxm->pkt_len == 0 ||
 		(l234_info & BIT(HNS3_RXD_TRUNCAT_B)))) {
 		rxq->pkt_len_errors++;
-		rxq->errors++;
 		return -EINVAL;
 	}
 
@@ -1098,7 +1095,6 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->next_to_clean = 0;
 	txq->tx_bd_ready   = txq->nb_tx_desc;
 	txq->port_id = dev->data->port_id;
-	txq->pkt_len_errors = 0;
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
@@ -1605,10 +1601,8 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * will be ignored.
 		 */
 		if (unlikely(tx_pkt->pkt_len > HNS3_MAX_FRAME_LEN ||
-			     tx_pkt->pkt_len == 0)) {
-			txq->pkt_len_errors++;
-			continue;
-		}
+			     tx_pkt->pkt_len == 0))
+			break;
 
 		m_seg = tx_pkt;
 		if (unlikely(nb_buf > HNS3_MAX_TX_BD_PER_PKT)) {
