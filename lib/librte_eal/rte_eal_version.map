@@ -417,4 +417,7 @@ EXPERIMENTAL {
 	rte_mcfg_timer_lock;
 	rte_mcfg_timer_unlock;
 	rte_rand_max;
+
+	# added in 19.11
+	rte_log_get_stream;
 };

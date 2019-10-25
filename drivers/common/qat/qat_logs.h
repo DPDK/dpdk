@@ -24,8 +24,7 @@ extern int qat_dp_logtype;
  *
  * Dump out the message buffer in a special hex dump output format with
  * characters printed for each line of 16 hex values. The message will be sent
- * to the stream defined by rte_logs.file or to stderr in case of rte_logs.file
- * is undefined.
+ * to the stream used by the rte_log infrastructure.
  */
 int
 qat_hexdump_log(uint32_t level, uint32_t logtype, const char *title,

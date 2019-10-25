@@ -102,6 +102,19 @@ extern struct rte_logs rte_logs;
 int rte_openlog_stream(FILE *f);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Retrieve the stream used by the logging system (see rte_openlog_stream()
+ * to change it).
+ *
+ * @return
+ *   Pointer to the stream.
+ */
+__rte_experimental
+FILE *rte_log_get_stream(void);
+
+/**
  * Set the global log level.
  *
  * After this call, logs with a level lower or equal than the level
