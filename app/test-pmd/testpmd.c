@@ -27,7 +27,6 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_cycles.h>
-#include <rte_malloc_heap.h>
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_launch.h>

@@ -291,6 +291,9 @@ API Changes
 * eal: removed the ``rte_malloc_virt2phy`` function, replaced by
   ``rte_malloc_virt2iova`` since v17.11.
 
+* mem: hid the internal ``malloc_heap`` structure and the
+  ``rte_malloc_heap.h`` header.
+
 * The network structure ``esp_tail`` has been prefixed by ``rte_``.
 
 * The network definitions of PPPoE ethertypes have been prefixed by ``RTE_``.

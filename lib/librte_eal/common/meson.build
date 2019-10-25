@@ -72,7 +72,6 @@ common_headers = files(
 	'include/rte_lcore.h',
 	'include/rte_log.h',
 	'include/rte_malloc.h',
-	'include/rte_malloc_heap.h',
 	'include/rte_memory.h',
 	'include/rte_memzone.h',
 	'include/rte_option.h',

@@ -6,13 +6,14 @@
 #define EAL_MEMCFG_H
 
 #include <rte_config.h>
-#include <rte_malloc_heap.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_pause.h>
 #include <rte_spinlock.h>
 #include <rte_rwlock.h>
 #include <rte_tailq.h>
+
+#include "malloc_heap.h"
 
 /**
  * Memory configuration shared across multiple processes.
