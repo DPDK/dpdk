@@ -1498,9 +1498,6 @@ F: doc/guides/sample_app_ug/l3_forward.rst
 F: examples/link_status_interrupt/
 F: doc/guides/sample_app_ug/link_status_intr.rst
 
-F: examples/load_balancer/
-F: doc/guides/sample_app_ug/load_balancer.rst
-
 L-threads - EXPERIMENTAL
 M: John McNamara <john.mcnamara@intel.com>
 F: examples/performance-thread/

@@ -24,7 +24,6 @@ all_examples = [
 	'l2fwd-keepalive', 'l3fwd',
 	'l3fwd-acl', 'l3fwd-power',
 	'link_status_interrupt',
-	'load_balancer',
 	'multi_process/client_server_mp/mp_client',
 	'multi_process/client_server_mp/mp_server',
 	'multi_process/hotplug_mp',

@@ -30,7 +30,6 @@ Sample Applications User Guides
     l3_forward_power_man
     l3_forward_access_ctrl
     link_status_intr
-    load_balancer
     server_node_efd
     service_cores
     multi_process

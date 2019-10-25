@@ -48,7 +48,6 @@ ifeq ($(CONFIG_RTE_LIBRTE_LPM)$(CONFIG_RTE_LIBRTE_HASH),yy)
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += l3fwd-power
 endif
 DIRS-y += link_status_interrupt
-DIRS-$(CONFIG_RTE_LIBRTE_LPM) += load_balancer
 DIRS-y += multi_process
 DIRS-y += ntb
 DIRS-$(CONFIG_RTE_LIBRTE_REORDER) += packet_ordering
