@@ -27,6 +27,7 @@
 #include "eal_internal_cfg.h"
 #include "eal_memalloc.h"
 #include "eal_memcfg.h"
+#include "eal_private.h"
 #include "malloc_elem.h"
 #include "malloc_heap.h"
 #include "malloc_mp.h"

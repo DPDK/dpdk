@@ -291,6 +291,9 @@ API Changes
 * eal: removed the ``rte_malloc_virt2phy`` function, replaced by
   ``rte_malloc_virt2iova`` since v17.11.
 
+* eal: made the ``rte_config`` struct and ``rte_eal_get_configuration``
+  function private.
+
 * mem: hid the internal ``malloc_heap`` structure and the
   ``rte_malloc_heap.h`` header.
 

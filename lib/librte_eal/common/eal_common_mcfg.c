@@ -8,6 +8,7 @@
 
 #include "eal_internal_cfg.h"
 #include "eal_memcfg.h"
+#include "eal_private.h"
 
 void
 eal_mcfg_complete(void)

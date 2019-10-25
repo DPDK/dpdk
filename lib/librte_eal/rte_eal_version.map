@@ -17,7 +17,6 @@ DPDK_2.0 {
 	rte_dump_tailq;
 	rte_eal_alarm_cancel;
 	rte_eal_alarm_set;
-	rte_eal_get_configuration;
 	rte_eal_get_lcore_state;
 	rte_eal_get_physmem_size;
 	rte_eal_has_hugepages;
