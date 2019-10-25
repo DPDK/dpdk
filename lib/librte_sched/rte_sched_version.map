@@ -33,5 +33,5 @@ DPDK_2.1 {
 EXPERIMENTAL {
 	global:
 
-	rte_sched_port_pipe_profile_add;
+	rte_sched_subport_pipe_profile_add;
 };

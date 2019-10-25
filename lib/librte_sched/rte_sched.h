@@ -317,6 +317,8 @@ rte_sched_port_free(struct rte_sched_port *port);
  *
  * @param port
  *   Handle to port scheduler instance
+ * @param subport_id
+ *   Subport ID
  * @param params
  *   Pipe profile parameters
  * @param pipe_profile_id
@@ -326,7 +328,8 @@ rte_sched_port_free(struct rte_sched_port *port);
  */
 __rte_experimental
 int
-rte_sched_port_pipe_profile_add(struct rte_sched_port *port,
+rte_sched_subport_pipe_profile_add(struct rte_sched_port *port,
+	uint32_t subport_id,
 	struct rte_sched_pipe_params *params,
 	uint32_t *pipe_profile_id);
 
@@ -357,7 +360,7 @@ rte_sched_subport_config(struct rte_sched_port *port,
  * @param pipe_id
  *   Pipe ID within subport
  * @param pipe_profile
- *   ID of port-level pre-configured pipe profile
+ *   ID of subport-level pre-configured pipe profile
  * @return
  *   0 upon success, error code otherwise
  */
