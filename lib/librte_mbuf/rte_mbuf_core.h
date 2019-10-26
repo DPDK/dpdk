@@ -184,9 +184,12 @@ extern "C" {
 #define PKT_RX_OUTER_L4_CKSUM_GOOD	(1ULL << 22)
 #define PKT_RX_OUTER_L4_CKSUM_INVALID	((1ULL << 21) | (1ULL << 22))
 
-/* add new RX flags here */
+/* add new RX flags here, don't forget to update PKT_FIRST_FREE */
 
-/* add new TX flags here */
+#define PKT_FIRST_FREE (1ULL << 23)
+#define PKT_LAST_FREE (1ULL << 39)
+
+/* add new TX flags here, don't forget to update PKT_LAST_FREE  */
 
 /**
  * Indicate that the metadata field in the mbuf is in use.
@@ -689,6 +692,7 @@ struct rte_mbuf {
 	 */
 	struct rte_mbuf_ext_shared_info *shinfo;
 
+	uint64_t dynfield1[2]; /**< Reserved for dynamic fields. */
 } __rte_cache_aligned;
 
 /**

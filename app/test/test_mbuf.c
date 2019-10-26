@@ -32,6 +32,7 @@
 #include <rte_ether.h>
 #include <rte_ip.h>
 #include <rte_tcp.h>
+#include <rte_mbuf_dyn.h>
 
 #include "test.h"
 
@@ -2412,6 +2413,142 @@ fail:
 }
 
 static int
+test_mbuf_dyn(struct rte_mempool *pktmbuf_pool)
+{
+	const struct rte_mbuf_dynfield dynfield = {
+		.name = "test-dynfield",
+		.size = sizeof(uint8_t),
+		.align = __alignof__(uint8_t),
+		.flags = 0,
+	};
+	const struct rte_mbuf_dynfield dynfield2 = {
+		.name = "test-dynfield2",
+		.size = sizeof(uint16_t),
+		.align = __alignof__(uint16_t),
+		.flags = 0,
+	};
+	const struct rte_mbuf_dynfield dynfield3 = {
+		.name = "test-dynfield3",
+		.size = sizeof(uint8_t),
+		.align = __alignof__(uint8_t),
+		.flags = 0,
+	};
+	const struct rte_mbuf_dynfield dynfield_fail_big = {
+		.name = "test-dynfield-fail-big",
+		.size = 256,
+		.align = 1,
+		.flags = 0,
+	};
+	const struct rte_mbuf_dynfield dynfield_fail_align = {
+		.name = "test-dynfield-fail-align",
+		.size = 1,
+		.align = 3,
+		.flags = 0,
+	};
+	const struct rte_mbuf_dynflag dynflag = {
+		.name = "test-dynflag",
+		.flags = 0,
+	};
+	const struct rte_mbuf_dynflag dynflag2 = {
+		.name = "test-dynflag2",
+		.flags = 0,
+	};
+	const struct rte_mbuf_dynflag dynflag3 = {
+		.name = "test-dynflag3",
+		.flags = 0,
+	};
+	struct rte_mbuf *m = NULL;
+	int offset, offset2, offset3;
+	int flag, flag2, flag3;
+	int ret;
+
+	printf("Test mbuf dynamic fields and flags\n");
+	rte_mbuf_dyn_dump(stdout);
+
+	offset = rte_mbuf_dynfield_register(&dynfield);
+	if (offset == -1)
+		GOTO_FAIL("failed to register dynamic field, offset=%d: %s",
+			offset, strerror(errno));
+
+	ret = rte_mbuf_dynfield_register(&dynfield);
+	if (ret != offset)
+		GOTO_FAIL("failed to lookup dynamic field, ret=%d: %s",
+			ret, strerror(errno));
+
+	offset2 = rte_mbuf_dynfield_register(&dynfield2);
+	if (offset2 == -1 || offset2 == offset || (offset2 & 1))
+		GOTO_FAIL("failed to register dynamic field 2, offset2=%d: %s",
+			offset2, strerror(errno));
+
+	offset3 = rte_mbuf_dynfield_register_offset(&dynfield3,
+				offsetof(struct rte_mbuf, dynfield1[1]));
+	if (offset3 != offsetof(struct rte_mbuf, dynfield1[1]))
+		GOTO_FAIL("failed to register dynamic field 3, offset=%d: %s",
+			offset3, strerror(errno));
+
+	printf("dynfield: offset=%d, offset2=%d, offset3=%d\n",
+		offset, offset2, offset3);
+
+	ret = rte_mbuf_dynfield_register(&dynfield_fail_big);
+	if (ret != -1)
+		GOTO_FAIL("dynamic field creation should fail (too big)");
+
+	ret = rte_mbuf_dynfield_register(&dynfield_fail_align);
+	if (ret != -1)
+		GOTO_FAIL("dynamic field creation should fail (bad alignment)");
+
+	ret = rte_mbuf_dynfield_register_offset(&dynfield_fail_align,
+				offsetof(struct rte_mbuf, ol_flags));
+	if (ret != -1)
+		GOTO_FAIL("dynamic field creation should fail (not avail)");
+
+	flag = rte_mbuf_dynflag_register(&dynflag);
+	if (flag == -1)
+		GOTO_FAIL("failed to register dynamic flag, flag=%d: %s",
+			flag, strerror(errno));
+
+	ret = rte_mbuf_dynflag_register(&dynflag);
+	if (ret != flag)
+		GOTO_FAIL("failed to lookup dynamic flag, ret=%d: %s",
+			ret, strerror(errno));
+
+	flag2 = rte_mbuf_dynflag_register(&dynflag2);
+	if (flag2 == -1 || flag2 == flag)
+		GOTO_FAIL("failed to register dynamic flag 2, flag2=%d: %s",
+			flag2, strerror(errno));
+
+	flag3 = rte_mbuf_dynflag_register_bitnum(&dynflag3,
+						rte_bsf64(PKT_LAST_FREE));
+	if (flag3 != rte_bsf64(PKT_LAST_FREE))
+		GOTO_FAIL("failed to register dynamic flag 3, flag2=%d: %s",
+			flag3, strerror(errno));
+
+	printf("dynflag: flag=%d, flag2=%d, flag3=%d\n", flag, flag2, flag3);
+
+	/* set, get dynamic field */
+	m = rte_pktmbuf_alloc(pktmbuf_pool);
+	if (m == NULL)
+		GOTO_FAIL("Cannot allocate mbuf");
+
+	*RTE_MBUF_DYNFIELD(m, offset, uint8_t *) = 1;
+	if (*RTE_MBUF_DYNFIELD(m, offset, uint8_t *) != 1)
+		GOTO_FAIL("failed to read dynamic field");
+	*RTE_MBUF_DYNFIELD(m, offset2, uint16_t *) = 1000;
+	if (*RTE_MBUF_DYNFIELD(m, offset2, uint16_t *) != 1000)
+		GOTO_FAIL("failed to read dynamic field");
+
+	/* set a dynamic flag */
+	m->ol_flags |= (1ULL << flag);
+
+	rte_mbuf_dyn_dump(stdout);
+	rte_pktmbuf_free(m);
+	return 0;
+fail:
+	rte_pktmbuf_free(m);
+	return -1;
+}
+
+static int
 test_mbuf(void)
 {
 	int ret = -1;
@@ -2428,6 +2565,12 @@ test_mbuf(void)
 
 	if (pktmbuf_pool == NULL) {
 		printf("cannot allocate mbuf pool\n");
+		goto err;
+	}
+
+	/* test registration of dynamic fields and flags */
+	if (test_mbuf_dyn(pktmbuf_pool) < 0) {
+		printf("mbuf dynflag test failed\n");
 		goto err;
 	}
 

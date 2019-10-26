@@ -58,6 +58,13 @@ EXPERIMENTAL {
 	global:
 
 	rte_mbuf_check;
+	rte_mbuf_dynfield_lookup;
+	rte_mbuf_dynfield_register;
+	rte_mbuf_dynfield_register_offset;
+	rte_mbuf_dynflag_lookup;
+	rte_mbuf_dynflag_register;
+	rte_mbuf_dynflag_register_bitnum;
+	rte_mbuf_dyn_dump;
 	rte_pktmbuf_copy;
 	rte_pktmbuf_free_bulk;
 

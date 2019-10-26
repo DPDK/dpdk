@@ -1000,6 +1000,20 @@ rte_pktmbuf_attach_extbuf(struct rte_mbuf *m, void *buf_addr,
  */
 #define rte_pktmbuf_detach_extbuf(m) rte_pktmbuf_detach(m)
 
+/**
+ * Copy dynamic fields from msrc to mdst.
+ *
+ * @param mdst
+ *   The destination mbuf.
+ * @param msrc
+ *   The source mbuf.
+ */
+static inline void
+rte_mbuf_dynfield_copy(struct rte_mbuf *mdst, const struct rte_mbuf *msrc)
+{
+	memcpy(&mdst->dynfield1, msrc->dynfield1, sizeof(mdst->dynfield1));
+}
+
 /* internal */
 static inline void
 __rte_pktmbuf_copy_hdr(struct rte_mbuf *mdst, const struct rte_mbuf *msrc)
@@ -1011,6 +1025,7 @@ __rte_pktmbuf_copy_hdr(struct rte_mbuf *mdst, const struct rte_mbuf *msrc)
 	mdst->hash = msrc->hash;
 	mdst->packet_type = msrc->packet_type;
 	mdst->timestamp = msrc->timestamp;
+	rte_mbuf_dynfield_copy(mdst, msrc);
 }
 
 /**

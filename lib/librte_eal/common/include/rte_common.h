@@ -675,6 +675,18 @@ rte_log2_u64(uint64_t v)
 		})
 #endif
 
+/**
+ * Get the size of a field in a structure.
+ *
+ * @param type
+ *   The type of the structure.
+ * @param field
+ *   The field in the structure.
+ * @return
+ *   The size of the field in the structure, in bytes.
+ */
+#define RTE_SIZEOF_FIELD(type, field) (sizeof(((type *)0)->field))
+
 #define _RTE_STR(x) #x
 /** Take a macro value and get a string version of it */
 #define RTE_STR(x) _RTE_STR(x)

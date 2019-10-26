@@ -65,6 +65,13 @@ New Features
 
   The lock-free stack implementation is enabled for aarch64 platforms.
 
+* **Added support of dynamic fields and flags in mbuf.**
+
+  This new feature adds the ability to dynamically register some room
+  for a field or a flag in the mbuf structure. This is typically used
+  for specific offload features, where adding a static field or flag
+  in the mbuf is not justified.
+
 * **Updated the enic driver.**
 
   * Added support for Geneve with options offload.
