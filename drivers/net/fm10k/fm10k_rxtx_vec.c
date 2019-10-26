@@ -359,8 +359,15 @@ fm10k_rx_queue_release_mbufs_vec(struct fm10k_rx_queue *rxq)
 		return;
 
 	/* free all mbufs that are valid in the ring */
-	for (i = rxq->next_dd; i != rxq->rxrearm_start; i = (i + 1) & mask)
-		rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+	if (rxq->rxrearm_nb == 0) {
+		for (i = 0; i < rxq->nb_desc; i++)
+			if (rxq->sw_ring[i] != NULL)
+				rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+	} else {
+		for (i = rxq->next_dd; i != rxq->rxrearm_start;
+				i = (i + 1) & mask)
+			rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+	}
 	rxq->rxrearm_nb = rxq->nb_desc;
 
 	/* set all entries to NULL */
