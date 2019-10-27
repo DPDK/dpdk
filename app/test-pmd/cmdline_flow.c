@@ -210,6 +210,9 @@ enum index {
 	ITEM_HIGIG2,
 	ITEM_HIGIG2_CLASSIFICATION,
 	ITEM_HIGIG2_VID,
+	ITEM_TAG,
+	ITEM_TAG_DATA,
+	ITEM_TAG_INDEX,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -316,6 +319,10 @@ enum index {
 	ACTION_RAW_ENCAP_INDEX_VALUE,
 	ACTION_RAW_DECAP_INDEX,
 	ACTION_RAW_DECAP_INDEX_VALUE,
+	ACTION_SET_TAG,
+	ACTION_SET_TAG_DATA,
+	ACTION_SET_TAG_INDEX,
+	ACTION_SET_TAG_MASK,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -735,6 +742,7 @@ static const enum index next_item[] = {
 	ITEM_PPPOED,
 	ITEM_PPPOE_PROTO_ID,
 	ITEM_HIGIG2,
+	ITEM_TAG,
 	END_SET,
 	ZERO,
 };
@@ -1012,6 +1020,13 @@ static const enum index next_set_raw[] = {
 	ZERO,
 };
 
+static const enum index item_tag[] = {
+	ITEM_TAG_DATA,
+	ITEM_TAG_INDEX,
+	ITEM_NEXT,
+	ZERO,
+};
+
 static const enum index next_action[] = {
 	ACTION_END,
 	ACTION_VOID,
@@ -1067,6 +1082,7 @@ static const enum index next_action[] = {
 	ACTION_DEC_TCP_ACK,
 	ACTION_RAW_ENCAP,
 	ACTION_RAW_DECAP,
+	ACTION_SET_TAG,
 	ZERO,
 };
 
@@ -1261,6 +1277,14 @@ static const enum index action_raw_encap[] = {
 
 static const enum index action_raw_decap[] = {
 	ACTION_RAW_DECAP_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_set_tag[] = {
+	ACTION_SET_TAG_DATA,
+	ACTION_SET_TAG_INDEX,
+	ACTION_SET_TAG_MASK,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -2534,6 +2558,26 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_higig2_hdr,
 					hdr.ppt1.vid)),
 	},
+	[ITEM_TAG] = {
+		.name = "tag",
+		.help = "match tag value",
+		.priv = PRIV_ITEM(TAG, sizeof(struct rte_flow_item_tag)),
+		.next = NEXT(item_tag),
+		.call = parse_vc,
+	},
+	[ITEM_TAG_DATA] = {
+		.name = "data",
+		.help = "tag value to match",
+		.next = NEXT(item_tag, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_tag, data)),
+	},
+	[ITEM_TAG_INDEX] = {
+		.name = "index",
+		.help = "index of tag array to match",
+		.next = NEXT(item_tag, NEXT_ENTRY(UNSIGNED),
+			     NEXT_ENTRY(ITEM_PARAM_IS)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_tag, index)),
+	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
 		.name = "actions",
@@ -3378,7 +3422,38 @@ static const struct token token_list[] = {
 		.help = "index of raw_encap/raw_decap data",
 		.next = NEXT(next_item),
 		.call = parse_port,
-	}
+	},
+	[ACTION_SET_TAG] = {
+		.name = "set_tag",
+		.help = "set tag",
+		.priv = PRIV_ACTION(SET_TAG,
+			sizeof(struct rte_flow_action_set_tag)),
+		.next = NEXT(action_set_tag),
+		.call = parse_vc,
+	},
+	[ACTION_SET_TAG_INDEX] = {
+		.name = "index",
+		.help = "index of tag array",
+		.next = NEXT(action_set_tag, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_set_tag, index)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_SET_TAG_DATA] = {
+		.name = "data",
+		.help = "tag value",
+		.next = NEXT(action_set_tag, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_set_tag, data)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_SET_TAG_MASK] = {
+		.name = "mask",
+		.help = "mask for tag value",
+		.next = NEXT(action_set_tag, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_set_tag, mask)),
+		.call = parse_vc_conf,
+	},
 };
 
 /** Remove and return last entry from argument stack. */

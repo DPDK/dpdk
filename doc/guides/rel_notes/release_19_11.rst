@@ -82,6 +82,10 @@ New Features
   On supported NICs, we can now setup haipin queue which will offload packets
   from the wire, backto the wire.
 
+* **Added flow tag in rte_flow.**
+
+  SET_TAG action and TAG item have been added to support transient flow tag.
+
 * **Updated the enic driver.**
 
   * Added support for Geneve with options offload.

@@ -498,6 +498,15 @@ enum rte_flow_item_type {
 	 * see struct rte_flow_item_higig2_hdr.
 	 */
 	RTE_FLOW_ITEM_TYPE_HIGIG2,
+
+	/*
+	 * [META]
+	 *
+	 * Matches a tag value.
+	 *
+	 * See struct rte_flow_item_tag.
+	 */
+	RTE_FLOW_ITEM_TYPE_TAG,
 };
 
 /**
@@ -1339,6 +1348,27 @@ rte_flow_item_pppoe_proto_id_mask = {
  * @warning
  * @b EXPERIMENTAL: this structure may change without prior notice
  *
+ * RTE_FLOW_ITEM_TYPE_TAG
+ *
+ * Matches a specified tag value at the specified index.
+ */
+struct rte_flow_item_tag {
+	uint32_t data;
+	uint8_t index;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_TAG. */
+#ifndef __cplusplus
+static const struct rte_flow_item_tag rte_flow_item_tag_mask = {
+	.data = 0xffffffff,
+	.index = 0xff,
+};
+#endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
  * RTE_FLOW_ITEM_TYPE_MARK
  *
  * Matches an arbitrary integer value which was set using the ``MARK`` action
@@ -1356,6 +1386,13 @@ rte_flow_item_pppoe_proto_id_mask = {
 struct rte_flow_item_mark {
 	uint32_t id; /**< Integer value to match against. */
 };
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_MARK. */
+#ifndef __cplusplus
+static const struct rte_flow_item_mark rte_flow_item_mark_mask = {
+	.id = 0xffffffff,
+};
+#endif
 
 /**
  * @warning
@@ -1942,6 +1979,16 @@ enum rte_flow_action_type {
 	 * undefined behavior.
 	 */
 	RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK,
+
+	/**
+	 * Set Tag.
+	 *
+	 * Tag is for internal flow usage only and
+	 * is not delivered to the application.
+	 *
+	 * See struct rte_flow_action_set_tag.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_TAG,
 };
 
 /**
@@ -2427,6 +2474,21 @@ struct rte_flow_action_set_ttl {
  */
 struct rte_flow_action_set_mac {
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_SET_TAG
+ *
+ * Set a tag which is a transient data used during flow matching. This is not
+ * delivered to application. Multiple tags are supported by specifying index.
+ */
+struct rte_flow_action_set_tag {
+	uint32_t data;
+	uint32_t mask;
+	uint8_t index;
 };
 
 /*

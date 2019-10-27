@@ -74,6 +74,7 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 		     sizeof(struct rte_flow_item_icmp6_nd_opt_tla_eth)),
 	MK_FLOW_ITEM(MARK, sizeof(struct rte_flow_item_mark)),
 	MK_FLOW_ITEM(META, sizeof(struct rte_flow_item_meta)),
+	MK_FLOW_ITEM(TAG, sizeof(struct rte_flow_item_tag)),
 	MK_FLOW_ITEM(GRE_KEY, sizeof(rte_be32_t)),
 	MK_FLOW_ITEM(GTP_PSC, sizeof(struct rte_flow_item_gtp_psc)),
 	MK_FLOW_ITEM(PPPOES, sizeof(struct rte_flow_item_pppoe)),
@@ -157,6 +158,7 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(DEC_TCP_SEQ, sizeof(rte_be32_t)),
 	MK_FLOW_ACTION(INC_TCP_ACK, sizeof(rte_be32_t)),
 	MK_FLOW_ACTION(DEC_TCP_ACK, sizeof(rte_be32_t)),
+	MK_FLOW_ACTION(SET_TAG, sizeof(struct rte_flow_action_set_tag)),
 };
 
 static int
