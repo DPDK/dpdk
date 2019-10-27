@@ -976,7 +976,7 @@ mlx5_glue_devx_qp_query(struct ibv_qp *qp,
 			const void *in, size_t inlen,
 			void *out, size_t outlen)
 {
-#ifdef HAVE_IBV_DEVX_ASYNC
+#ifdef HAVE_IBV_DEVX_OBJ
 	return mlx5dv_devx_qp_query(qp, in, inlen, out, outlen);
 #else
 	(void)qp;
