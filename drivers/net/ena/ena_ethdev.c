@@ -27,7 +27,7 @@
 
 #define DRV_MODULE_VER_MAJOR	2
 #define DRV_MODULE_VER_MINOR	0
-#define DRV_MODULE_VER_SUBMINOR	1
+#define DRV_MODULE_VER_SUBMINOR	2
 
 #define ENA_IO_TXQ_IDX(q)	(2 * (q))
 #define ENA_IO_RXQ_IDX(q)	(2 * (q) + 1)
@@ -272,8 +272,14 @@ static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
 	else if (ena_rx_ctx->l3_proto == ENA_ETH_IO_L3_PROTO_IPV6)
 		packet_type |= RTE_PTYPE_L3_IPV6;
 
-	if (unlikely(ena_rx_ctx->l4_csum_err))
-		ol_flags |= PKT_RX_L4_CKSUM_BAD;
+	if (!ena_rx_ctx->l4_csum_checked)
+		ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+	else
+		if (unlikely(ena_rx_ctx->l4_csum_err) && !ena_rx_ctx->frag)
+			ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		else
+			ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+
 	if (unlikely(ena_rx_ctx->l3_csum_err))
 		ol_flags |= PKT_RX_IP_CKSUM_BAD;
 
