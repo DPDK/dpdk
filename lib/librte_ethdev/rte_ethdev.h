@@ -1688,21 +1688,6 @@ int rte_eth_dev_owner_get(const uint16_t port_id,
 		struct rte_eth_dev_owner *owner);
 
 /**
- * Get the total number of Ethernet devices that have been successfully
- * initialized by the matching Ethernet driver during the PCI probing phase
- * and that are available for applications to use. These devices must be
- * accessed by using the ``RTE_ETH_FOREACH_DEV()`` macro to deal with
- * non-contiguous ranges of devices.
- * These non-contiguous ranges can be created by calls to hotplug functions or
- * by some PMDs.
- *
- * @return
- *   - The total number of usable Ethernet devices.
- */
-__rte_deprecated
-uint16_t rte_eth_dev_count(void);
-
-/**
  * Get the number of ports which are usable for the application.
  *
  * These devices must be iterated by using the macro

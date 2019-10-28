@@ -44,11 +44,6 @@ Deprecation Notices
   structure would be made internal (or removed if all dependencies are cleared)
   in future releases.
 
-* ethdev: The function ``rte_eth_dev_count`` will be removed in DPDK 20.02.
-  It is replaced by the function ``rte_eth_dev_count_avail``.
-  If the intent is to iterate over ports, ``RTE_ETH_FOREACH_*`` macros
-  are better port iterators.
-
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
   as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,

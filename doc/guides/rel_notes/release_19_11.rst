@@ -377,6 +377,11 @@ API Changes
 * ethdev: changed ``rte_eth_dev_owner_delete`` return value from ``void`` to
   ``int`` to provide a way to report various error conditions.
 
+* ethdev: The deprecated function ``rte_eth_dev_count`` was removed.
+  The function ``rte_eth_dev_count_avail`` is a drop-in replacement.
+  If the intent is to iterate over ports, ``RTE_ETH_FOREACH_*`` macros
+  are better port iterators.
+
 * event: The function ``rte_event_eth_tx_adapter_enqueue`` takes an additional
   input as ``flags``. Flag ``RTE_EVENT_ETH_TX_ADAPTER_ENQUEUE_SAME_DEST`` which
   has been introduced in this release is used when used when all the packets

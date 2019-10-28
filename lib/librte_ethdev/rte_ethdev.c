@@ -773,12 +773,6 @@ rte_eth_dev_get_sec_ctx(uint16_t port_id)
 }
 
 uint16_t
-rte_eth_dev_count(void)
-{
-	return rte_eth_dev_count_avail();
-}
-
-uint16_t
 rte_eth_dev_count_avail(void)
 {
 	uint16_t p;
