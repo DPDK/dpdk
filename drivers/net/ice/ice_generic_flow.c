@@ -1347,6 +1347,14 @@ enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv6_icmp6[] = {
 	RTE_FLOW_ITEM_TYPE_END,
 };
 
+typedef struct ice_flow_engine * (*parse_engine_t)(struct ice_adapter *ad,
+		struct rte_flow *flow,
+		struct ice_parser_list *parser_list,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		void **meta,
+		struct rte_flow_error *error);
+
 void
 ice_register_flow_engine(struct ice_flow_engine *engine)
 {
@@ -1677,7 +1685,42 @@ ice_search_pattern_match_item(const struct rte_flow_item pattern[],
 }
 
 static struct ice_flow_engine *
-ice_parse_engine(struct ice_adapter *ad,
+ice_parse_engine_create(struct ice_adapter *ad,
+		struct rte_flow *flow,
+		struct ice_parser_list *parser_list,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		void **meta,
+		struct rte_flow_error *error)
+{
+	struct ice_flow_engine *engine = NULL;
+	struct ice_flow_parser_node *parser_node;
+	void *temp;
+
+	TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
+		if (parser_node->parser->parse_pattern_action(ad,
+				parser_node->parser->array,
+				parser_node->parser->array_len,
+				pattern, actions, meta, error) < 0)
+			continue;
+
+		engine = parser_node->parser->engine;
+		if (engine->create == NULL) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_HANDLE,
+					NULL, "Invalid engine");
+			continue;
+		}
+
+		if (!(engine->create(ad, flow, *meta, error)))
+			return engine;
+	}
+	return NULL;
+}
+
+static struct ice_flow_engine *
+ice_parse_engine_validate(struct ice_adapter *ad,
+		struct rte_flow *flow __rte_unused,
 		struct ice_parser_list *parser_list,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
@@ -1702,12 +1745,14 @@ ice_parse_engine(struct ice_adapter *ad,
 }
 
 static int
-ice_flow_validate_filter(struct rte_eth_dev *dev,
+ice_flow_process_filter(struct rte_eth_dev *dev,
+		struct rte_flow *flow,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct ice_flow_engine **engine,
 		void **meta,
+		parse_engine_t ice_parse_engine,
 		struct rte_flow_error *error)
 {
 	int ret = ICE_ERR_NOT_SUPPORTED;
@@ -1740,20 +1785,20 @@ ice_flow_validate_filter(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 
-	*engine = ice_parse_engine(ad, &pf->rss_parser_list, pattern, actions,
-			meta, error);
+	*engine = ice_parse_engine(ad, flow, &pf->rss_parser_list,
+			pattern, actions, meta, error);
 	if (*engine != NULL)
 		return 0;
 
 	switch (ice_pipeline_stage) {
 	case ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR_ONLY:
 	case ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR:
-		*engine = ice_parse_engine(ad, &pf->dist_parser_list, pattern,
-				actions, meta, error);
+		*engine = ice_parse_engine(ad, flow, &pf->dist_parser_list,
+				pattern, actions, meta, error);
 		break;
 	case ICE_FLOW_CLASSIFY_STAGE_PERMISSION:
-		*engine = ice_parse_engine(ad, &pf->perm_parser_list, pattern,
-				actions, meta, error);
+		*engine = ice_parse_engine(ad, flow, &pf->perm_parser_list,
+				pattern, actions, meta, error);
 		break;
 	default:
 		return -EINVAL;
@@ -1775,8 +1820,8 @@ ice_flow_validate(struct rte_eth_dev *dev,
 	void *meta;
 	struct ice_flow_engine *engine;
 
-	return ice_flow_validate_filter(dev, attr, pattern, actions,
-			&engine, &meta, error);
+	return ice_flow_process_filter(dev, NULL, attr, pattern, actions,
+			&engine, &meta, ice_parse_engine_validate, error);
 }
 
 static struct rte_flow *
@@ -1789,8 +1834,6 @@ ice_flow_create(struct rte_eth_dev *dev,
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_flow *flow = NULL;
 	int ret;
-	struct ice_adapter *ad =
-		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_flow_engine *engine = NULL;
 	void *meta;
 
@@ -1802,24 +1845,13 @@ ice_flow_create(struct rte_eth_dev *dev,
 		return flow;
 	}
 
-	ret = ice_flow_validate_filter(dev, attr, pattern, actions,
-			&engine, &meta, error);
+	ret = ice_flow_process_filter(dev, flow, attr, pattern, actions,
+			&engine, &meta, ice_parse_engine_create, error);
 	if (ret < 0)
 		goto free_flow;
-
-	if (engine->create == NULL) {
-		rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_HANDLE,
-				NULL, "Invalid engine");
-		goto free_flow;
-	}
-
-	ret = engine->create(ad, flow, meta, error);
-	if (ret)
-		goto free_flow;
-
 	flow->engine = engine;
 	TAILQ_INSERT_TAIL(&pf->flow_list, flow, node);
+	PMD_DRV_LOG(INFO, "Succeeded to create (%d) flow", engine->type);
 	return flow;
 
 free_flow:
