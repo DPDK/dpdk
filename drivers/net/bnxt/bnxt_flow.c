@@ -1758,7 +1758,7 @@ done:
 		}
 
 		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
-		PMD_DRV_LOG(ERR, "Successfully created flow.\n");
+		PMD_DRV_LOG(DEBUG, "Successfully created flow.\n");
 		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
 		bnxt_release_flow_lock(bp);
 		return flow;
