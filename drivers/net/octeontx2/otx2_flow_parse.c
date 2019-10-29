@@ -833,14 +833,14 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 				actions->conf;
 			req_act |= OTX2_FLOW_ACT_VF;
 			if (vf_act->original == 0) {
-				vf_id = (vf_act->id & RVU_PFVF_FUNC_MASK) + 1;
+				vf_id = vf_act->id & RVU_PFVF_FUNC_MASK;
 				if (vf_id  >= hw->maxvf) {
 					errmsg = "invalid vf specified";
 					errcode = EINVAL;
 					goto err_exit;
 				}
 				pf_func &= (0xfc00);
-				pf_func = (pf_func | vf_id);
+				pf_func = (pf_func | (vf_id + 1));
 			}
 			break;
 
