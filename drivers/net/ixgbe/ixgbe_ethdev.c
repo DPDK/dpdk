@@ -2912,6 +2912,7 @@ ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
 	} else {
 		/* Turn on the laser */
 		ixgbe_enable_tx_laser(hw);
+		ixgbe_dev_link_update(dev, 0);
 	}
 
 	return 0;
@@ -2942,6 +2943,7 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 	} else {
 		/* Turn off the laser */
 		ixgbe_disable_tx_laser(hw);
+		ixgbe_dev_link_update(dev, 0);
 	}
 
 	return 0;
@@ -4116,6 +4118,7 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	int link_up;
 	int diag;
 	int wait = 1;
+	u32 esdp_reg;
 
 	memset(&link, 0, sizeof(link));
 	link.link_status = ETH_LINK_DOWN;
@@ -4142,6 +4145,10 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		link.link_duplex = ETH_LINK_FULL_DUPLEX;
 		return rte_eth_linkstatus_set(dev, &link);
 	}
+
+	esdp_reg = IXGBE_READ_REG(hw, IXGBE_ESDP);
+	if ((esdp_reg & IXGBE_ESDP_SDP3))
+		link_up = 0;
 
 	if (link_up == 0) {
 		if (ixgbe_get_media_type(hw) == ixgbe_media_type_fiber) {
