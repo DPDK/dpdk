@@ -79,9 +79,9 @@ set_policy_defaults(struct channel_packet *pkt)
 
 	ret = set_policy_mac(0, 0);
 	if (ret != 0)
-		return ret;
-
-	pkt->nb_mac_to_monitor = 1;
+		pkt->nb_mac_to_monitor = 0;
+	else
+		pkt->nb_mac_to_monitor = 1;
 
 	pkt->t_boost_status.tbEnabled = false;
 
