@@ -366,6 +366,7 @@ ice_fdir_init_filter_list(struct ice_pf *pf)
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,
 		.socket_id = rte_socket_id(),
+		.extra_flag = RTE_HASH_EXTRA_FLAGS_EXT_TABLE,
 	};
 
 	/* Initialize hash */
