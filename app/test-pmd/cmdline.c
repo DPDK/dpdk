@@ -240,6 +240,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show device info (<identifier>|all)"
 			"       Show general information about devices probed.\n\n"
+
+			"show port (port_id) rxq|txq (queue_id) desc (desc_id) status"
+			"       Show status of rx|tx descriptor.\n\n"
 		);
 	}
 
@@ -18916,6 +18919,102 @@ cmdline_parse_inst_t cmd_show_port_supported_ptypes = {
 	},
 };
 
+/* *** display rx/tx descriptor status *** */
+struct cmd_show_rx_tx_desc_status_result {
+	cmdline_fixed_string_t cmd_show;
+	cmdline_fixed_string_t cmd_port;
+	cmdline_fixed_string_t cmd_keyword;
+	cmdline_fixed_string_t cmd_desc;
+	cmdline_fixed_string_t cmd_status;
+	portid_t cmd_pid;
+	portid_t cmd_qid;
+	portid_t cmd_did;
+};
+
+static void
+cmd_show_rx_tx_desc_status_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_show_rx_tx_desc_status_result *res = parsed_result;
+	int rc;
+
+	if (!rte_eth_dev_is_valid_port(res->cmd_pid)) {
+		printf("invalid port id %u\n", res->cmd_pid);
+		return;
+	}
+
+	if (!strcmp(res->cmd_keyword, "rxq")) {
+		rc = rte_eth_rx_descriptor_status(res->cmd_pid, res->cmd_qid,
+					     res->cmd_did);
+		if (rc < 0) {
+			printf("Invalid queueid = %d\n", res->cmd_qid);
+			return;
+		}
+		if (rc == RTE_ETH_RX_DESC_AVAIL)
+			printf("Desc status = AVAILABLE\n");
+		else if (rc == RTE_ETH_RX_DESC_DONE)
+			printf("Desc status = DONE\n");
+		else
+			printf("Desc status = UNAVAILABLE\n");
+	} else if (!strcmp(res->cmd_keyword, "txq")) {
+		rc = rte_eth_tx_descriptor_status(res->cmd_pid, res->cmd_qid,
+					     res->cmd_did);
+		if (rc < 0) {
+			printf("Invalid queueid = %d\n", res->cmd_qid);
+			return;
+		}
+		if (rc == RTE_ETH_TX_DESC_FULL)
+			printf("Desc status = FULL\n");
+		else if (rc == RTE_ETH_TX_DESC_DONE)
+			printf("Desc status = DONE\n");
+		else
+			printf("Desc status = UNAVAILABLE\n");
+	}
+}
+
+cmdline_parse_token_string_t cmd_show_rx_tx_desc_status_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_rx_tx_desc_status_result,
+			cmd_show, "show");
+cmdline_parse_token_string_t cmd_show_rx_tx_desc_status_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_rx_tx_desc_status_result,
+			cmd_port, "port");
+cmdline_parse_token_num_t cmd_show_rx_tx_desc_status_pid =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_rx_tx_desc_status_result,
+			cmd_pid, UINT16);
+cmdline_parse_token_string_t cmd_show_rx_tx_desc_status_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_rx_tx_desc_status_result,
+			cmd_keyword, "rxq#txq");
+cmdline_parse_token_num_t cmd_show_rx_tx_desc_status_qid =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_rx_tx_desc_status_result,
+			cmd_qid, UINT16);
+cmdline_parse_token_string_t cmd_show_rx_tx_desc_status_desc =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_rx_tx_desc_status_result,
+			cmd_desc, "desc");
+cmdline_parse_token_num_t cmd_show_rx_tx_desc_status_did =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_rx_tx_desc_status_result,
+			cmd_did, UINT16);
+cmdline_parse_token_string_t cmd_show_rx_tx_desc_status_status =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_rx_tx_desc_status_result,
+			cmd_status, "status");
+cmdline_parse_inst_t cmd_show_rx_tx_desc_status = {
+	.f = cmd_show_rx_tx_desc_status_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> rxq|txq <queue_id> desc <desc_id> "
+		"status",
+	.tokens = {
+		(void *)&cmd_show_rx_tx_desc_status_show,
+		(void *)&cmd_show_rx_tx_desc_status_port,
+		(void *)&cmd_show_rx_tx_desc_status_pid,
+		(void *)&cmd_show_rx_tx_desc_status_keyword,
+		(void *)&cmd_show_rx_tx_desc_status_qid,
+		(void *)&cmd_show_rx_tx_desc_status_desc,
+		(void *)&cmd_show_rx_tx_desc_status_did,
+		(void *)&cmd_show_rx_tx_desc_status_status,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -19205,6 +19304,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 #endif
 	(cmdline_parse_inst_t *)&cmd_config_tx_metadata_specific,
 	(cmdline_parse_inst_t *)&cmd_show_tx_metadata,
+	(cmdline_parse_inst_t *)&cmd_show_rx_tx_desc_status,
 	(cmdline_parse_inst_t *)&cmd_set_raw,
 	(cmdline_parse_inst_t *)&cmd_show_set_raw,
 	(cmdline_parse_inst_t *)&cmd_show_set_raw_all,
