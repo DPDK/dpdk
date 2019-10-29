@@ -223,6 +223,11 @@ ioat_rawdev_test(uint16_t dev_id)
 	printf("\n");
 
 	rte_rawdev_stop(dev_id);
+	if (rte_rawdev_xstats_reset(dev_id, NULL, 0) != 0) {
+		printf("Error resetting xstat values\n");
+		goto err;
+	}
+
 	rte_mempool_free(pool);
 	free(snames);
 	free(stats);
@@ -231,6 +236,7 @@ ioat_rawdev_test(uint16_t dev_id)
 
 err:
 	rte_rawdev_stop(dev_id);
+	rte_rawdev_xstats_reset(dev_id, NULL, 0);
 	rte_mempool_free(pool);
 	free(snames);
 	free(stats);

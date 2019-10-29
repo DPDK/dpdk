@@ -161,6 +161,43 @@ ioat_xstats_get_names(const struct rte_rawdev *dev,
 	return RTE_DIM(xstat_names);
 }
 
+static int
+ioat_xstats_reset(struct rte_rawdev *dev, const uint32_t *ids, uint32_t nb_ids)
+{
+	struct rte_ioat_rawdev *ioat = dev->dev_private;
+	unsigned int i;
+
+	if (!ids) {
+		ioat->enqueue_failed = 0;
+		ioat->enqueued = 0;
+		ioat->started = 0;
+		ioat->completed = 0;
+		return 0;
+	}
+
+	for (i = 0; i < nb_ids; i++) {
+		switch (ids[i]) {
+		case 0:
+			ioat->enqueue_failed = 0;
+			break;
+		case 1:
+			ioat->enqueued = 0;
+			break;
+		case 2:
+			ioat->started = 0;
+			break;
+		case 3:
+			ioat->completed = 0;
+			break;
+		default:
+			IOAT_PMD_WARN("Invalid xstat id - cannot reset value");
+			break;
+		}
+	}
+
+	return 0;
+}
+
 extern int ioat_rawdev_test(uint16_t dev_id);
 
 static int
@@ -173,6 +210,7 @@ ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 			.dev_info_get = ioat_dev_info_get,
 			.xstats_get = ioat_xstats_get,
 			.xstats_get_names = ioat_xstats_get_names,
+			.xstats_reset = ioat_xstats_reset,
 			.dev_selftest = ioat_rawdev_test,
 	};
 
