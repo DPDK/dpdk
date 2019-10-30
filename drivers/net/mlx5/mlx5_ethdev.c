@@ -2114,3 +2114,30 @@ int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 	rte_free(eeprom);
 	return ret;
 }
+
+/**
+ * DPDK callback to retrieve hairpin capabilities.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] cap
+ *   Storage for hairpin capability data.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
+			 struct rte_eth_hairpin_cap *cap)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->devx == 0) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	cap->max_nb_queues = UINT16_MAX;
+	cap->max_rx_2_tx = 1;
+	cap->max_tx_2_rx = 1;
+	cap->max_nb_desc = 8192;
+	return 0;
+}

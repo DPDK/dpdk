@@ -166,6 +166,7 @@ New Features
   * Added support for VLAN set PCP offload command.
   * Added support for VLAN set VID offload command.
   * Added support for matching on packets withe Geneve tunnel header.
+  * Added hairpin support.
 
 * **Updated the AF_XDP PMD.**
 
