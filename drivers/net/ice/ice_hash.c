@@ -25,8 +25,6 @@
 #include "ice_ethdev.h"
 #include "ice_generic_flow.h"
 
-#define ICE_ACTION_RSS_MAX_QUEUE_NUM 32
-
 struct rss_type_match_hdr {
 	uint32_t hdr_mask;
 	uint64_t eth_rss_hint;
@@ -333,15 +331,15 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"a nonzero RSS encapsulation level is not supported");
 
-			if (rss->key_len == 0)
+			if (rss->key_len)
 				return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"RSS hash key_len mustn't be 0");
+					"a nonzero RSS key_len is not supported");
 
-			if (rss->queue_num > ICE_ACTION_RSS_MAX_QUEUE_NUM)
+			if (rss->queue)
 				return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"too many queues for RSS context");
+					"a non-NULL RSS queue is not supported");
 
 			/* Check hash function and save it to rss_meta. */
 			if (rss->func ==
