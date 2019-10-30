@@ -191,10 +191,125 @@ l2fwd_event_queue_setup_generic(struct l2fwd_resources *rsrc,
 	evt_rsrc->evq.event_q_id[event_q_id] = event_q_id;
 }
 
+static void
+l2fwd_rx_tx_adapter_setup_generic(struct l2fwd_resources *rsrc)
+{
+	struct l2fwd_event_resources *evt_rsrc = rsrc->evt_rsrc;
+	struct rte_event_eth_rx_adapter_queue_conf eth_q_conf = {
+		.rx_queue_flags = 0,
+		.ev = {
+			.queue_id = 0,
+			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+		}
+	};
+	uint8_t event_d_id = evt_rsrc->event_d_id;
+	uint8_t rx_adptr_id = 0;
+	uint8_t tx_adptr_id = 0;
+	uint8_t tx_port_id = 0;
+	uint16_t port_id;
+	uint32_t service_id;
+	int32_t ret, i = 0;
+
+	/* Rx adapter setup */
+	evt_rsrc->rx_adptr.nb_rx_adptr = 1;
+	evt_rsrc->rx_adptr.rx_adptr = (uint8_t *)malloc(sizeof(uint8_t) *
+					evt_rsrc->rx_adptr.nb_rx_adptr);
+	if (!evt_rsrc->rx_adptr.rx_adptr) {
+		free(evt_rsrc->evp.event_p_id);
+		free(evt_rsrc->evq.event_q_id);
+		rte_panic("Failed to allocate memery for Rx adapter\n");
+	}
+
+	ret = rte_event_eth_rx_adapter_create(rx_adptr_id, event_d_id,
+					      &evt_rsrc->def_p_conf);
+	if (ret)
+		rte_panic("Failed to create rx adapter\n");
+
+	/* Configure user requested sched type */
+	eth_q_conf.ev.sched_type = rsrc->sched_type;
+	RTE_ETH_FOREACH_DEV(port_id) {
+		if ((rsrc->enabled_port_mask & (1 << port_id)) == 0)
+			continue;
+		eth_q_conf.ev.queue_id = evt_rsrc->evq.event_q_id[i];
+		ret = rte_event_eth_rx_adapter_queue_add(rx_adptr_id, port_id,
+							 -1, &eth_q_conf);
+		if (ret)
+			rte_panic("Failed to add queues to Rx adapter\n");
+		if (i < evt_rsrc->evq.nb_queues)
+			i++;
+	}
+
+	ret = rte_event_eth_rx_adapter_service_id_get(rx_adptr_id, &service_id);
+	if (ret != -ESRCH && ret != 0)
+		rte_panic("Error getting the service ID for rx adptr\n");
+
+	rte_service_runstate_set(service_id, 1);
+	rte_service_set_runstate_mapped_check(service_id, 0);
+	evt_rsrc->rx_adptr.service_id = service_id;
+
+	ret = rte_event_eth_rx_adapter_start(rx_adptr_id);
+	if (ret)
+		rte_panic("Rx adapter[%d] start Failed\n", rx_adptr_id);
+
+	evt_rsrc->rx_adptr.rx_adptr[0] = rx_adptr_id;
+
+	/* Tx adapter setup */
+	evt_rsrc->tx_adptr.nb_tx_adptr = 1;
+	evt_rsrc->tx_adptr.tx_adptr = (uint8_t *)malloc(sizeof(uint8_t) *
+					evt_rsrc->tx_adptr.nb_tx_adptr);
+	if (!evt_rsrc->tx_adptr.tx_adptr) {
+		free(evt_rsrc->rx_adptr.rx_adptr);
+		free(evt_rsrc->evp.event_p_id);
+		free(evt_rsrc->evq.event_q_id);
+		rte_panic("Failed to allocate memery for Rx adapter\n");
+	}
+
+	ret = rte_event_eth_tx_adapter_create(tx_adptr_id, event_d_id,
+					      &evt_rsrc->def_p_conf);
+	if (ret)
+		rte_panic("Failed to create tx adapter\n");
+
+	RTE_ETH_FOREACH_DEV(port_id) {
+		if ((rsrc->enabled_port_mask & (1 << port_id)) == 0)
+			continue;
+		ret = rte_event_eth_tx_adapter_queue_add(tx_adptr_id, port_id,
+							 -1);
+		if (ret)
+			rte_panic("Failed to add queues to Tx adapter\n");
+	}
+
+	ret = rte_event_eth_tx_adapter_service_id_get(tx_adptr_id, &service_id);
+	if (ret != -ESRCH && ret != 0)
+		rte_panic("Failed to get Tx adapter service ID\n");
+
+	rte_service_runstate_set(service_id, 1);
+	rte_service_set_runstate_mapped_check(service_id, 0);
+	evt_rsrc->tx_adptr.service_id = service_id;
+
+	ret = rte_event_eth_tx_adapter_event_port_get(tx_adptr_id, &tx_port_id);
+	if (ret)
+		rte_panic("Failed to get Tx adapter port id: %d\n", ret);
+
+	ret = rte_event_port_link(event_d_id, tx_port_id,
+				  &evt_rsrc->evq.event_q_id[
+					evt_rsrc->evq.nb_queues - 1],
+				  NULL, 1);
+	if (ret != 1)
+		rte_panic("Unable to link Tx adapter port to Tx queue:err=%d\n",
+			 ret);
+
+	ret = rte_event_eth_tx_adapter_start(tx_adptr_id);
+	if (ret)
+		rte_panic("Tx adapter[%d] start Failed\n", tx_adptr_id);
+
+	evt_rsrc->tx_adptr.tx_adptr[0] = tx_adptr_id;
+}
+
 void
 l2fwd_event_set_generic_ops(struct event_setup_ops *ops)
 {
 	ops->event_device_setup = l2fwd_event_device_setup_generic;
 	ops->event_queue_setup = l2fwd_event_queue_setup_generic;
 	ops->event_port_setup = l2fwd_event_port_setup_generic;
+	ops->adapter_setup = l2fwd_rx_tx_adapter_setup_generic;
 }

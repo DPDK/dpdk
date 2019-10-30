@@ -67,4 +67,7 @@ l2fwd_event_resource_setup(struct l2fwd_resources *rsrc)
 
 	/* Event port configuration */
 	evt_rsrc->ops.event_port_setup(rsrc);
+
+	/* Rx/Tx adapters configuration */
+	evt_rsrc->ops.adapter_setup(rsrc);
 }
