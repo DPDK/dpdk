@@ -20,7 +20,7 @@ all_examples = [
 	'ip_fragmentation', 'ip_pipeline',
 	'ip_reassembly', 'ipsec-secgw',
 	'ipv4_multicast', 'kni',
-	'l2fwd', 'l2fwd-cat',
+	'l2fwd', 'l2fwd-cat', 'l2fwd-event',
 	'l2fwd-crypto', 'l2fwd-jobstats',
 	'l2fwd-keepalive', 'l3fwd',
 	'l3fwd-acl', 'l3fwd-power',

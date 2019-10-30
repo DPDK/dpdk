@@ -1503,6 +1503,11 @@ M: Tomasz Kantecki <tomasz.kantecki@intel.com>
 F: doc/guides/sample_app_ug/l2_forward_cat.rst
 F: examples/l2fwd-cat/
 
+M: Sunil Kumar Kori <skori@marvell.com>
+M: Pavan Nikhilesh <pbhagavatula@marvell.com>
+T: git://dpdk.org/next/dpdk-next-eventdev
+F: examples/l2fwd-event/
+
 F: examples/l3fwd/
 F: doc/guides/sample_app_ug/l3_forward.rst
 
