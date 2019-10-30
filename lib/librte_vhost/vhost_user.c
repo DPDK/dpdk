@@ -363,8 +363,20 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 	 *
 	 *   Queue Size value is always a power of 2. The maximum Queue Size
 	 *   value is 32768.
+	 *
+	 * VIRTIO 1.1 2.7 Virtqueues says:
+	 *
+	 *   Packed virtqueues support up to 2^15 entries each.
 	 */
-	if ((vq->size & (vq->size - 1)) || vq->size > 32768) {
+	if (!vq_is_packed(dev)) {
+		if (vq->size & (vq->size - 1)) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"invalid virtqueue size %u\n", vq->size);
+			return RTE_VHOST_MSG_RESULT_ERR;
+		}
+	}
+
+	if (vq->size > 32768) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"invalid virtqueue size %u\n", vq->size);
 		return RTE_VHOST_MSG_RESULT_ERR;
