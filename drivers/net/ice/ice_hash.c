@@ -315,13 +315,13 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 
 			/* Check if rss types match pattern. */
 			if (rss->func != RTE_ETH_HASH_FUNCTION_SIMPLE_XOR) {
-				if (((rss_hf & ETH_RSS_IPV4) != m->eth_rss_hint) ||
-				((rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) != m->eth_rss_hint) ||
-				((rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) != m->eth_rss_hint) ||
-				((rss_hf & ETH_RSS_NONFRAG_IPV4_SCTP) != m->eth_rss_hint) ||
-				((rss_hf & ETH_RSS_IPV6) != m->eth_rss_hint) ||
-				((rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) != m->eth_rss_hint) ||
-				((rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) != m->eth_rss_hint) ||
+				if (((rss_hf & ETH_RSS_IPV4) != m->eth_rss_hint) &&
+				((rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) != m->eth_rss_hint) &&
+				((rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) != m->eth_rss_hint) &&
+				((rss_hf & ETH_RSS_NONFRAG_IPV4_SCTP) != m->eth_rss_hint) &&
+				((rss_hf & ETH_RSS_IPV6) != m->eth_rss_hint) &&
+				((rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) != m->eth_rss_hint) &&
+				((rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) != m->eth_rss_hint) &&
 				((rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) != m->eth_rss_hint))
 					return rte_flow_error_set(error,
 					ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
