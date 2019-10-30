@@ -214,8 +214,12 @@ l2fwd_launch_one_lcore(void *args)
 {
 	struct l2fwd_resources *rsrc = args;
 	struct l2fwd_poll_resources *poll_rsrc = rsrc->poll_rsrc;
+	struct l2fwd_event_resources *evt_rsrc = rsrc->evt_rsrc;
 
-	poll_rsrc->poll_main_loop(rsrc);
+	if (rsrc->event_mode)
+		evt_rsrc->ops.l2fwd_event_loop(rsrc);
+	else
+		poll_rsrc->poll_main_loop(rsrc);
 
 	return 0;
 }
@@ -304,9 +308,9 @@ print_stats(struct l2fwd_resources *rsrc)
 		if ((rsrc->enabled_port_mask & (1 << port_id)) == 0)
 			continue;
 		printf("\nStatistics for port %u ------------------------------"
-			   "\nPackets sent: %24"PRIu64
-			   "\nPackets received: %20"PRIu64
-			   "\nPackets dropped: %21"PRIu64,
+			   "\nPackets sent: %29"PRIu64
+			   "\nPackets received: %25"PRIu64
+			   "\nPackets dropped: %26"PRIu64,
 			   port_id,
 			   rsrc->port_stats[port_id].tx,
 			   rsrc->port_stats[port_id].rx,
@@ -317,10 +321,58 @@ print_stats(struct l2fwd_resources *rsrc)
 		total_packets_tx += rsrc->port_stats[port_id].tx;
 		total_packets_rx += rsrc->port_stats[port_id].rx;
 	}
-	printf("\nAggregate statistics ==============================="
-		   "\nTotal packets sent: %18"PRIu64
-		   "\nTotal packets received: %14"PRIu64
-		   "\nTotal packets dropped: %15"PRIu64,
+
+	if (rsrc->event_mode) {
+		struct l2fwd_event_resources *evt_rsrc = rsrc->evt_rsrc;
+		struct rte_event_eth_rx_adapter_stats rx_adptr_stats;
+		struct rte_event_eth_tx_adapter_stats tx_adptr_stats;
+		int ret, i;
+
+		for (i = 0; i < evt_rsrc->rx_adptr.nb_rx_adptr; i++) {
+			ret = rte_event_eth_rx_adapter_stats_get(
+					evt_rsrc->rx_adptr.rx_adptr[i],
+					&rx_adptr_stats);
+			if (ret < 0)
+				continue;
+			printf("\nRx adapter[%d] statistics===================="
+				   "\nReceive queue poll count: %17"PRIu64
+				   "\nReceived packet count: %20"PRIu64
+				   "\nEventdev enqueue count: %19"PRIu64
+				   "\nEventdev enqueue retry count: %13"PRIu64
+				   "\nReceived packet dropped count: %12"PRIu64
+				   "\nRx enqueue start timestamp: %15"PRIu64
+				   "\nRx enqueue block cycles: %18"PRIu64
+				   "\nRx enqueue unblock timestamp: %13"PRIu64,
+				   evt_rsrc->rx_adptr.rx_adptr[i],
+				   rx_adptr_stats.rx_poll_count,
+				   rx_adptr_stats.rx_packets,
+				   rx_adptr_stats.rx_enq_count,
+				   rx_adptr_stats.rx_enq_retry,
+				   rx_adptr_stats.rx_dropped,
+				   rx_adptr_stats.rx_enq_start_ts,
+				   rx_adptr_stats.rx_enq_block_cycles,
+				   rx_adptr_stats.rx_enq_end_ts);
+		}
+		for (i = 0; i <  evt_rsrc->tx_adptr.nb_tx_adptr; i++) {
+			ret = rte_event_eth_tx_adapter_stats_get(
+					evt_rsrc->tx_adptr.tx_adptr[i],
+					&tx_adptr_stats);
+			if (ret < 0)
+				continue;
+			printf("\nTx adapter[%d] statistics===================="
+				   "\nNumber of transmit retries: %15"PRIu64
+				   "\nNumber of packets transmitted: %12"PRIu64
+				   "\nNumber of packets dropped: %16"PRIu64,
+				   evt_rsrc->tx_adptr.tx_adptr[i],
+				   tx_adptr_stats.tx_retry,
+				   tx_adptr_stats.tx_packets,
+				   tx_adptr_stats.tx_dropped);
+		}
+	}
+	printf("\nAggregate lcore statistics ========================="
+		   "\nTotal packets sent: %23"PRIu64
+		   "\nTotal packets received: %19"PRIu64
+		   "\nTotal packets dropped: %20"PRIu64,
 		   total_packets_tx,
 		   total_packets_rx,
 		   total_packets_dropped);

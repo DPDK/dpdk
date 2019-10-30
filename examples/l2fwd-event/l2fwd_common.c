@@ -18,6 +18,12 @@ l2fwd_event_init_ports(struct l2fwd_resources *rsrc)
 	uint16_t port_id;
 	int ret;
 
+	if (rsrc->event_mode) {
+		port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+		port_conf.rx_adv_conf.rss_conf.rss_key = NULL;
+		port_conf.rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP;
+	}
+
 	/* Initialise each port */
 	RTE_ETH_FOREACH_DEV(port_id) {
 		struct rte_eth_conf local_port_conf = port_conf;

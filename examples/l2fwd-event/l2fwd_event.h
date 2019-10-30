@@ -18,6 +18,7 @@ typedef void (*event_port_setup_cb)(struct l2fwd_resources *rsrc);
 typedef void (*event_queue_setup_cb)(struct l2fwd_resources *rsrc,
 				     uint32_t event_queue_cfg);
 typedef void (*adapter_setup_cb)(struct l2fwd_resources *rsrc);
+typedef void (*event_loop_cb)(struct l2fwd_resources *rsrc);
 
 struct event_queues {
 	uint8_t *event_q_id;
@@ -47,6 +48,7 @@ struct event_setup_ops {
 	event_queue_setup_cb event_queue_setup;
 	event_port_setup_cb event_port_setup;
 	adapter_setup_cb adapter_setup;
+	event_loop_cb l2fwd_event_loop;
 };
 
 struct l2fwd_event_resources {
