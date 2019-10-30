@@ -26,6 +26,7 @@ Sample Applications User Guides
     l2_forward_crypto
     l2_forward_job_stats
     l2_forward_real_virtual
+    l2_forward_event
     l2_forward_cat
     l3_forward
     l3_forward_power_man

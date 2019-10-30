@@ -1507,6 +1507,7 @@ M: Sunil Kumar Kori <skori@marvell.com>
 M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: examples/l2fwd-event/
+F: doc/guides/sample_app_ug/l2_forward_event.rst
 
 F: examples/l3fwd/
 F: doc/guides/sample_app_ug/l3_forward.rst

@@ -45,6 +45,11 @@ examples are highlighted below.
   forwarding, or ``l2fwd`` application does forwarding based on Ethernet MAC
   addresses like a simple switch.
 
+* :doc:`Network Layer 2 forwarding<l2_forward_event>`: The Network Layer 2
+  forwarding, or ``l2fwd-event`` application does forwarding based on Ethernet MAC
+  addresses like a simple switch. It demonstrates usage of poll and event mode
+  IO mechanism under a single application.
+
 * :doc:`Network Layer 3 forwarding<l3_forward>`: The Network Layer3
   forwarding, or ``l3fwd`` application does forwarding based on Internet
   Protocol, IPv4 or IPv6 like a simple router.

@@ -242,6 +242,12 @@ New Features
   * Added a console command to testpmd app, ``show port (port_id) ptypes`` which
     gives ability to print port supported ptypes in different protocol layers.
 
+* **Added new example l2fwd-event application.**
+
+  Added an example application `l2fwd-event` that adds event device support to
+  traditional l2fwd example. It demonstrates usage of poll and event mode IO
+  mechanism under a single application.
+
 
 Removed Items
 -------------
