@@ -3847,6 +3847,11 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct i40e_vsi *vsi = pf->main_vsi;
 	struct rte_eth_rxmode *rxmode;
 
+	if (mask & ETH_QINQ_STRIP_MASK) {
+		PMD_DRV_LOG(ERR, "Strip qinq is not supported.");
+		return -ENOTSUP;
+	}
+
 	rxmode = &dev->data->dev_conf.rxmode;
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
