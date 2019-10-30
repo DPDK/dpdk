@@ -201,6 +201,11 @@ pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
 		if (flags & IORESOURCE_MEM) {
 			dev->mem_resource[i].phys_addr = phys_addr;
 			dev->mem_resource[i].len = end_addr - phys_addr + 1;
+			if (dev->mem_resource[i].len <
+				(unsigned int)getpagesize())
+
+				dev->mem_resource[i].len =
+					(unsigned int)getpagesize();
 			/* not mapped for now */
 			dev->mem_resource[i].addr = NULL;
 		}
