@@ -465,8 +465,8 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		return -EINVAL;
 	}
 
-	if (!rte_is_power_of_2(vq_size)) {
-		PMD_INIT_LOG(ERR, "virtqueue size is not powerof 2");
+	if (!vtpci_packed_queue(hw) && !rte_is_power_of_2(vq_size)) {
+		PMD_INIT_LOG(ERR, "split virtqueue size is not powerof 2");
 		return -EINVAL;
 	}
 
