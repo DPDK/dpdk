@@ -13,11 +13,27 @@
 
 #include "l2fwd_common.h"
 
+typedef uint32_t (*event_device_setup_cb)(struct l2fwd_resources *rsrc);
+
+struct event_queues {
+	uint8_t	nb_queues;
+};
+
+struct event_ports {
+	uint8_t	nb_ports;
+};
+
 struct event_setup_ops {
+	event_device_setup_cb event_device_setup;
 };
 
 struct l2fwd_event_resources {
 	uint8_t tx_mode_q;
+	uint8_t has_burst;
+	uint8_t event_d_id;
+	uint8_t disable_implicit_release;
+	struct event_ports evp;
+	struct event_queues evq;
 	struct event_setup_ops ops;
 };
 

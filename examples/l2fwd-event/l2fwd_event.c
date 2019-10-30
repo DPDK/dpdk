@@ -57,4 +57,7 @@ l2fwd_event_resource_setup(struct l2fwd_resources *rsrc)
 
 	/* Setup eventdev capability callbacks */
 	l2fwd_event_capability_setup(evt_rsrc);
+
+	/* Event device configuration */
+	evt_rsrc->ops.event_device_setup(rsrc);
 }
