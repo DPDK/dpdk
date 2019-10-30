@@ -10,6 +10,8 @@ SRCS-y := main.c
 SRCS-y += l2fwd_poll.c
 SRCS-y += l2fwd_event.c
 SRCS-y += l2fwd_common.c
+SRCS-y += l2fwd_event_generic.c
+SRCS-y += l2fwd_event_internal_port.c
 
 # Build using pkg-config variables if possible
 ifeq ($(shell pkg-config --exists libdpdk && echo 0),0)

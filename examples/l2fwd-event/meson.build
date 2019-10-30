@@ -13,4 +13,6 @@ sources = files(
 	'l2fwd_poll.c',
 	'l2fwd_common.c',
 	'l2fwd_event.c',
+	'l2fwd_event_internal_port.c',
+	'l2fwd_event_generic.c'
 )
