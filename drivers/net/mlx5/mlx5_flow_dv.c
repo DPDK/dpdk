@@ -3358,7 +3358,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		return ret;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
-		switch (items->type) {
+		int type = items->type;
+
+		switch (type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
@@ -3527,6 +3529,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = MLX5_FLOW_LAYER_ICMP6;
 			break;
+		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
+		case MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE:
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
@@ -3535,11 +3540,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		item_flags |= last_item;
 	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		int type = actions->type;
 		if (actions_n == MLX5_DV_MAX_NUMBER_OF_ACTIONS)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  actions, "too many actions");
-		switch (actions->type) {
+		switch (type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
@@ -3804,6 +3810,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ACTION_TYPE_INC_TCP_ACK ?
 						MLX5_FLOW_ACTION_INC_TCP_ACK :
 						MLX5_FLOW_ACTION_DEC_TCP_ACK;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_TAG:
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -5371,6 +5379,51 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 }
 
 /**
+ * Add Tx queue matcher
+ *
+ * @param[in] dev
+ *   Pointer to the dev struct.
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ */
+static void
+flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
+				void *matcher, void *key,
+				const struct rte_flow_item *item)
+{
+	const struct mlx5_rte_flow_item_tx_queue *queue_m;
+	const struct mlx5_rte_flow_item_tx_queue *queue_v;
+	void *misc_m =
+		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	void *misc_v =
+		MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	struct mlx5_txq_ctrl *txq;
+	uint32_t queue;
+
+
+	queue_m = (const void *)item->mask;
+	if (!queue_m)
+		return;
+	queue_v = (const void *)item->spec;
+	if (!queue_v)
+		return;
+	txq = mlx5_txq_get(dev, queue_v->queue);
+	if (!txq)
+		return;
+	queue = txq->obj->sq->id;
+	MLX5_SET(fte_match_set_misc, misc_m, source_sqn, queue_m->queue);
+	MLX5_SET(fte_match_set_misc, misc_v, source_sqn,
+		 queue & queue_m->queue);
+	mlx5_txq_release(dev, queue_v->queue);
+}
+
+/**
  * Fill the flow with DV spec.
  *
  * @param[in] dev
@@ -5950,6 +6003,12 @@ cnt_err:
 			flow_dv_translate_item_tag(match_mask, match_value,
 						   items);
 			last_item = MLX5_FLOW_ITEM_TAG;
+			break;
+		case MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE:
+			flow_dv_translate_item_tx_queue(dev, match_mask,
+							match_value,
+							items);
+			last_item = MLX5_FLOW_ITEM_TX_QUEUE;
 			break;
 		default:
 			break;

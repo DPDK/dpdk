@@ -44,6 +44,7 @@ enum modify_reg {
 enum mlx5_rte_flow_item_type {
 	MLX5_RTE_FLOW_ITEM_TYPE_END = INT_MIN,
 	MLX5_RTE_FLOW_ITEM_TYPE_TAG,
+	MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
 };
 
 /* Private rte flow actions. */
@@ -62,6 +63,11 @@ struct mlx5_rte_flow_item_tag {
 struct mlx5_rte_flow_action_set_tag {
 	uint16_t id;
 	rte_be32_t data;
+};
+
+/* Matches on source queue. */
+struct mlx5_rte_flow_item_tx_queue {
+	uint32_t queue;
 };
 
 /* Pattern outer Layer bits. */
@@ -102,6 +108,9 @@ struct mlx5_rte_flow_action_set_tag {
 #define MLX5_FLOW_LAYER_IPV6_ENCAP (1u << 22)
 #define MLX5_FLOW_LAYER_NVGRE (1u << 23)
 #define MLX5_FLOW_LAYER_GENEVE (1u << 24)
+
+/* Queue items. */
+#define MLX5_FLOW_ITEM_TX_QUEUE (1u << 25)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \

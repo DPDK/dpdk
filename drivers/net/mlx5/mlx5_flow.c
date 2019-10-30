@@ -2820,6 +2820,66 @@ mlx5_flow_verify(struct rte_eth_dev *dev)
 }
 
 /**
+ * Enable default hairpin egress flow.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queue
+ *   The queue index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_ctrl_flow_source_queue(struct rte_eth_dev *dev,
+			    uint32_t queue)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_attr attr = {
+		.egress = 1,
+		.priority = 0,
+	};
+	struct mlx5_rte_flow_item_tx_queue queue_spec = {
+		.queue = queue,
+	};
+	struct mlx5_rte_flow_item_tx_queue queue_mask = {
+		.queue = UINT32_MAX,
+	};
+	struct rte_flow_item items[] = {
+		{
+			.type = MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
+			.spec = &queue_spec,
+			.last = NULL,
+			.mask = &queue_mask,
+		},
+		{
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+	};
+	struct rte_flow_action_jump jump = {
+		.group = MLX5_HAIRPIN_TX_TABLE,
+	};
+	struct rte_flow_action actions[2];
+	struct rte_flow *flow;
+	struct rte_flow_error error;
+
+	actions[0].type = RTE_FLOW_ACTION_TYPE_JUMP;
+	actions[0].conf = &jump;
+	actions[1].type = RTE_FLOW_ACTION_TYPE_END;
+	flow = flow_list_create(dev, &priv->ctrl_flows,
+				&attr, items, actions, false, &error);
+	if (!flow) {
+		DRV_LOG(DEBUG,
+			"Failed to create ctrl flow: rte_errno(%d),"
+			" type(%d), message(%s)\n",
+			rte_errno, error.type,
+			error.message ? error.message : " (no stated reason)");
+		return -rte_errno;
+	}
+	return 0;
+}
+
+/**
  * Enable a control flow configured from the control plane.
  *
  * @param dev

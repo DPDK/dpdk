@@ -402,6 +402,24 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	unsigned int j;
 	int ret;
 
+	/*
+	 * Hairpin txq default flow should be created no matter if it is
+	 * isolation mode. Or else all the packets to be sent will be sent
+	 * out directly without the TX flow actions, e.g. encapsulation.
+	 */
+	for (i = 0; i != priv->txqs_n; ++i) {
+		struct mlx5_txq_ctrl *txq_ctrl = mlx5_txq_get(dev, i);
+		if (!txq_ctrl)
+			continue;
+		if (txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN) {
+			ret = mlx5_ctrl_flow_source_queue(dev, i);
+			if (ret) {
+				mlx5_txq_release(dev, i);
+				goto error;
+			}
+		}
+		mlx5_txq_release(dev, i);
+	}
 	if (priv->config.dv_esw_en && !priv->config.vf)
 		if (!mlx5_flow_create_esw_table_zero_flow(dev))
 			goto error;

@@ -560,6 +560,7 @@ struct mlx5_flow_tbl_resource {
 };
 
 #define MLX5_MAX_TABLES UINT16_MAX
+#define MLX5_HAIRPIN_TX_TABLE (UINT16_MAX - 1)
 #define MLX5_MAX_TABLES_FDB UINT16_MAX
 
 #define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
@@ -883,6 +884,7 @@ int mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 int mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list);
 void mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list);
 int mlx5_flow_verify(struct rte_eth_dev *dev);
+int mlx5_ctrl_flow_source_queue(struct rte_eth_dev *dev, uint32_t queue);
 int mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 			struct rte_flow_item_eth *eth_spec,
 			struct rte_flow_item_eth *eth_mask,
