@@ -579,29 +579,21 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 					       src, ICE_FLOW_PTYPE_MAX);
 			}
 		} else if (hdrs & ICE_FLOW_SEG_HDR_GTPC) {
-			if (!i) {
-				src = (const ice_bitmap_t *)ice_ptypes_gtpc;
-				ice_and_bitmap(params->ptypes, params->ptypes,
-					       src, ICE_FLOW_PTYPE_MAX);
-			}
+			src = (const ice_bitmap_t *)ice_ptypes_gtpc;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
 		} else if (hdrs & ICE_FLOW_SEG_HDR_GTPC_TEID) {
-			if (!i) {
-				src = (const ice_bitmap_t *)ice_ptypes_gtpc_tid;
-				ice_and_bitmap(params->ptypes, params->ptypes,
-					       src, ICE_FLOW_PTYPE_MAX);
-			}
+			src = (const ice_bitmap_t *)ice_ptypes_gtpc_tid;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
 		} else if (hdrs & ICE_FLOW_SEG_HDR_GTPU) {
-			if (!i) {
-				src = (const ice_bitmap_t *)ice_ptypes_gtpu;
-				ice_and_bitmap(params->ptypes, params->ptypes,
-					       src, ICE_FLOW_PTYPE_MAX);
-			}
+			src = (const ice_bitmap_t *)ice_ptypes_gtpu;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
 		} else if (hdrs & ICE_FLOW_SEG_HDR_GTPU_EH) {
-			if (!i) {
-				src = (const ice_bitmap_t *)ice_ptypes_gtpu;
-				ice_and_bitmap(params->ptypes, params->ptypes,
-					       src, ICE_FLOW_PTYPE_MAX);
-			}
+			src = (const ice_bitmap_t *)ice_ptypes_gtpu;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
 
 			/* Attributes for GTP packet with Extension Header */
 			params->attr = ice_attr_gtpu_eh;
