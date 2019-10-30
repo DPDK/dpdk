@@ -8,6 +8,7 @@ APP = l2fwd-event
 # all source are stored in SRCS-y
 SRCS-y := main.c
 SRCS-y += l2fwd_poll.c
+SRCS-y += l2fwd_event.c
 SRCS-y += l2fwd_common.c
 
 # Build using pkg-config variables if possible

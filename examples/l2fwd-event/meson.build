@@ -12,4 +12,5 @@ sources = files(
 	'main.c',
 	'l2fwd_poll.c',
 	'l2fwd_common.c',
+	'l2fwd_event.c',
 )

@@ -65,6 +65,8 @@ struct l2fwd_port_statistics {
 
 struct l2fwd_resources {
 	volatile uint8_t force_quit;
+	uint8_t event_mode;
+	uint8_t sched_type;
 	uint8_t mac_updating;
 	uint8_t rx_queue_per_lcore;
 	uint16_t nb_rxd;
@@ -75,6 +77,7 @@ struct l2fwd_resources {
 	uint32_t dst_ports[RTE_MAX_ETHPORTS];
 	struct rte_ether_addr eth_addr[RTE_MAX_ETHPORTS];
 	struct l2fwd_port_statistics port_stats[RTE_MAX_ETHPORTS];
+	void *evt_rsrc;
 	void *poll_rsrc;
 } __rte_cache_aligned;
 
@@ -112,6 +115,7 @@ l2fwd_get_rsrc(void)
 		memset(rsrc, 0, sizeof(struct l2fwd_resources));
 		rsrc->mac_updating = true;
 		rsrc->rx_queue_per_lcore = 1;
+		rsrc->sched_type = RTE_SCHED_TYPE_ATOMIC;
 		rsrc->timer_period = 10 * rte_get_timer_hz();
 
 		return mz->addr;
