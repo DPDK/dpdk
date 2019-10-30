@@ -360,6 +360,28 @@ rte_eal_config_create(void)
 		return -1;
 	}
 
+	if ((getpagesize() == RTE_PGSIZE_64K) &&
+		(internal_config.base_virtaddr == 0)) {
+
+		munmap(rte_mem_cfg_addr, sizeof(*rte_config.mem_config));
+		rte_mem_cfg_addr = (void *)RTE_PTR_ALIGN_CEIL(
+			(uintptr_t)rte_mem_cfg_addr, (size_t)RTE_PGSIZE_16M);
+		rte_mem_cfg_addr = (void *)RTE_ALIGN_FLOOR(
+			(uintptr_t)rte_mem_cfg_addr -
+			sizeof(*rte_config.mem_config), sysconf(_SC_PAGE_SIZE));
+
+		rte_mem_cfg_addr = mmap(rte_mem_cfg_addr,
+			sizeof(*rte_config.mem_config),
+			PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
+
+		if (rte_mem_cfg_addr == MAP_FAILED) {
+			close(mem_cfg_fd);
+			mem_cfg_fd = -1;
+			RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config\n");
+			return -1;
+		}
+	}
+
 	memcpy(rte_mem_cfg_addr, &early_mem_config, sizeof(early_mem_config));
 	rte_config.mem_config = rte_mem_cfg_addr;
 
