@@ -334,6 +334,7 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 						    log_max_hairpin_wq_data_sz);
 	attr->log_max_hairpin_num_packets = MLX5_GET
 		(cmd_hca_cap, hcattr, log_min_hairpin_wq_data_sz);
+	attr->vhca_id = MLX5_GET(cmd_hca_cap, hcattr, vhca_id);
 	attr->eth_net_offloads = MLX5_GET(cmd_hca_cap, hcattr,
 					  eth_net_offloads);
 	attr->eth_virt = MLX5_GET(cmd_hca_cap, hcattr, eth_virt);

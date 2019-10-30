@@ -1628,6 +1628,12 @@ struct mlx5_ifc_create_rqt_in_bits {
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+enum {
+	MLX5_SQC_STATE_RST  = 0x0,
+	MLX5_SQC_STATE_RDY  = 0x1,
+	MLX5_SQC_STATE_ERR  = 0x3,
+};
+
 struct mlx5_ifc_sqc_bits {
 	u8 rlky[0x1];
 	u8 cd_master[0x1];
