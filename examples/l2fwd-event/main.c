@@ -471,6 +471,9 @@ main(int argc, char **argv)
 				  port_id);
 	}
 
+	if (rsrc->event_mode)
+		l2fwd_event_service_setup(rsrc);
+
 	check_all_ports_link_status(rsrc, rsrc->enabled_port_mask);
 
 	/* launch per-lcore init on every lcore */

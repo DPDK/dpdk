@@ -66,5 +66,6 @@ struct l2fwd_event_resources {
 void l2fwd_event_resource_setup(struct l2fwd_resources *rsrc);
 void l2fwd_event_set_generic_ops(struct event_setup_ops *ops);
 void l2fwd_event_set_internal_port_ops(struct event_setup_ops *ops);
+void l2fwd_event_service_setup(struct l2fwd_resources *rsrc);
 
 #endif /* __L2FWD_EVENT_H__ */
