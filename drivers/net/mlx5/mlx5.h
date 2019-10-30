@@ -716,6 +716,7 @@ struct mlx5_priv {
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
+	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
@@ -792,6 +793,8 @@ int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 			   struct rte_dev_eeprom_info *info);
 int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
 			 struct rte_eth_hairpin_cap *cap);
+int mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev);
+
 /* mlx5_mac.c */
 
 int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);

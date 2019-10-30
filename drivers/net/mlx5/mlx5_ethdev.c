@@ -383,9 +383,6 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int rxqs_n = dev->data->nb_rx_queues;
 	unsigned int txqs_n = dev->data->nb_tx_queues;
-	unsigned int i;
-	unsigned int j;
-	unsigned int reta_idx_n;
 	const uint8_t use_app_rss_key =
 		!!dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
 	int ret = 0;
@@ -431,32 +428,89 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		DRV_LOG(INFO, "port %u Rx queues number update: %u -> %u",
 			dev->data->port_id, priv->rxqs_n, rxqs_n);
 		priv->rxqs_n = rxqs_n;
-		/*
-		 * If the requested number of RX queues is not a power of two,
-		 * use the maximum indirection table size for better balancing.
-		 * The result is always rounded to the next power of two.
-		 */
-		reta_idx_n = (1 << log2above((rxqs_n & (rxqs_n - 1)) ?
-					     priv->config.ind_table_max_size :
-					     rxqs_n));
-		ret = mlx5_rss_reta_index_resize(dev, reta_idx_n);
-		if (ret)
-			return ret;
-		/*
-		 * When the number of RX queues is not a power of two,
-		 * the remaining table entries are padded with reused WQs
-		 * and hashes are not spread uniformly.
-		 */
-		for (i = 0, j = 0; (i != reta_idx_n); ++i) {
-			(*priv->reta_idx)[i] = j;
-			if (++j == rxqs_n)
-				j = 0;
-		}
 	}
+	priv->skip_default_rss_reta = 0;
 	ret = mlx5_proc_priv_init(dev);
 	if (ret)
 		return ret;
 	return 0;
+}
+
+/**
+ * Configure default RSS reta.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int rxqs_n = dev->data->nb_rx_queues;
+	unsigned int i;
+	unsigned int j;
+	unsigned int reta_idx_n;
+	int ret = 0;
+	unsigned int *rss_queue_arr = NULL;
+	unsigned int rss_queue_n = 0;
+
+	if (priv->skip_default_rss_reta)
+		return ret;
+	rss_queue_arr = rte_malloc("", rxqs_n * sizeof(unsigned int), 0);
+	if (!rss_queue_arr) {
+		DRV_LOG(ERR, "port %u cannot allocate RSS queue list (%u)",
+			dev->data->port_id, rxqs_n);
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	for (i = 0, j = 0; i < rxqs_n; i++) {
+		struct mlx5_rxq_data *rxq_data;
+		struct mlx5_rxq_ctrl *rxq_ctrl;
+
+		rxq_data = (*priv->rxqs)[i];
+		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+		if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
+			rss_queue_arr[j++] = i;
+	}
+	rss_queue_n = j;
+	if (rss_queue_n > priv->config.ind_table_max_size) {
+		DRV_LOG(ERR, "port %u cannot handle this many Rx queues (%u)",
+			dev->data->port_id, rss_queue_n);
+		rte_errno = EINVAL;
+		rte_free(rss_queue_arr);
+		return -rte_errno;
+	}
+	DRV_LOG(INFO, "port %u Rx queues number update: %u -> %u",
+		dev->data->port_id, priv->rxqs_n, rxqs_n);
+	priv->rxqs_n = rxqs_n;
+	/*
+	 * If the requested number of RX queues is not a power of two,
+	 * use the maximum indirection table size for better balancing.
+	 * The result is always rounded to the next power of two.
+	 */
+	reta_idx_n = (1 << log2above((rss_queue_n & (rss_queue_n - 1)) ?
+				priv->config.ind_table_max_size :
+				rss_queue_n));
+	ret = mlx5_rss_reta_index_resize(dev, reta_idx_n);
+	if (ret) {
+		rte_free(rss_queue_arr);
+		return ret;
+	}
+	/*
+	 * When the number of RX queues is not a power of two,
+	 * the remaining table entries are padded with reused WQs
+	 * and hashes are not spread uniformly.
+	 */
+	for (i = 0, j = 0; (i != reta_idx_n); ++i) {
+		(*priv->reta_idx)[i] = rss_queue_arr[j];
+		if (++j == rss_queue_n)
+			j = 0;
+	}
+	rte_free(rss_queue_arr);
+	return ret;
 }
 
 /**

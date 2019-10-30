@@ -223,6 +223,7 @@ mlx5_dev_rss_reta_update(struct rte_eth_dev *dev,
 	}
 	if (dev->data->dev_started) {
 		mlx5_dev_stop(dev);
+		priv->skip_default_rss_reta = 1;
 		return mlx5_dev_start(dev);
 	}
 	return 0;

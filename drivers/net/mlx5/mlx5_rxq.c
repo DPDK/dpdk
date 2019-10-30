@@ -2156,9 +2156,13 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		}
 	} else { /* ind_tbl->type == MLX5_IND_TBL_TYPE_DEVX */
 		struct mlx5_devx_rqt_attr *rqt_attr = NULL;
+		const unsigned int rqt_n =
+			1 << (rte_is_power_of_2(queues_n) ?
+			      log2above(queues_n) :
+			      log2above(priv->config.ind_table_max_size));
 
 		rqt_attr = rte_calloc(__func__, 1, sizeof(*rqt_attr) +
-				      queues_n * sizeof(uint32_t), 0);
+				      rqt_n * sizeof(uint32_t), 0);
 		if (!rqt_attr) {
 			DRV_LOG(ERR, "port %u cannot allocate RQT resources",
 				dev->data->port_id);
@@ -2166,7 +2170,7 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 			goto error;
 		}
 		rqt_attr->rqt_max_size = priv->config.ind_table_max_size;
-		rqt_attr->rqt_actual_size = queues_n;
+		rqt_attr->rqt_actual_size = rqt_n;
 		for (i = 0; i != queues_n; ++i) {
 			struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev,
 								 queues[i]);
@@ -2175,6 +2179,9 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 			rqt_attr->rq_list[i] = rxq->obj->rq->id;
 			ind_tbl->queues[i] = queues[i];
 		}
+		k = i; /* Retain value of i for use in error case. */
+		for (j = 0; k != rqt_n; ++k, ++j)
+			rqt_attr->rq_list[k] = rqt_attr->rq_list[j];
 		ind_tbl->rqt = mlx5_devx_cmd_create_rqt(priv->sh->ctx,
 							rqt_attr);
 		rte_free(rqt_attr);
@@ -2328,13 +2335,13 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	struct mlx5_ind_table_obj *ind_tbl;
 	int err;
 	struct mlx5_devx_obj *tir = NULL;
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[queues[0]];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 
 	queues_n = hash_fields ? queues_n : 1;
 	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
 	if (!ind_tbl) {
-		struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[queues[0]];
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 		enum mlx5_ind_tbl_type type;
 
 		type = rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV ?
@@ -2430,7 +2437,10 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		tir_attr.rx_hash_fn = MLX5_RX_HASH_FN_TOEPLITZ;
 		memcpy(&tir_attr.rx_hash_field_selector_outer, &hash_fields,
 		       sizeof(uint64_t));
-		tir_attr.transport_domain = priv->sh->tdn;
+		if (rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN)
+			tir_attr.transport_domain = priv->sh->td->id;
+		else
+			tir_attr.transport_domain = priv->sh->tdn;
 		memcpy(tir_attr.rx_hash_toeplitz_key, rss_key, rss_key_len);
 		tir_attr.indirect_table = ind_tbl->rqt->id;
 		if (dev->data->dev_conf.lpbk_mode)
