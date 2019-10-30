@@ -353,6 +353,43 @@ struct mlx5_devx_rqt_attr {
 	uint32_t rq_list[];
 };
 
+/* TIS attributes structure. */
+struct mlx5_devx_tis_attr {
+	uint32_t strict_lag_tx_port_affinity:1;
+	uint32_t tls_en:1;
+	uint32_t lag_tx_port_affinity:4;
+	uint32_t prio:4;
+	uint32_t transport_domain:24;
+};
+
+/* SQ attributes structure, used by SQ create operation. */
+struct mlx5_devx_create_sq_attr {
+	uint32_t rlky:1;
+	uint32_t cd_master:1;
+	uint32_t fre:1;
+	uint32_t flush_in_error_en:1;
+	uint32_t allow_multi_pkt_send_wqe:1;
+	uint32_t min_wqe_inline_mode:3;
+	uint32_t state:4;
+	uint32_t reg_umr:1;
+	uint32_t allow_swp:1;
+	uint32_t hairpin:1;
+	uint32_t user_index:24;
+	uint32_t cqn:24;
+	uint32_t packet_pacing_rate_limit_index:16;
+	uint32_t tis_lst_sz:16;
+	uint32_t tis_num:24;
+	struct mlx5_devx_wq_attr wq_attr;
+};
+
+/* SQ attributes structure, used by SQ modify operation. */
+struct mlx5_devx_modify_sq_attr {
+	uint32_t sq_state:4;
+	uint32_t state:4;
+	uint32_t hairpin_peer_rq:24;
+	uint32_t hairpin_peer_vhca:16;
+};
+
 /**
  * Type of object being allocated.
  */
@@ -596,6 +633,8 @@ struct mlx5_ibv_shared {
 	uint32_t devx_intr_cnt; /* Devx interrupt handler reference counter. */
 	struct rte_intr_handle intr_handle_devx; /* DEVX interrupt handler. */
 	struct mlx5dv_devx_cmd_comp *devx_comp; /* DEVX async comp obj. */
+	struct mlx5_devx_obj *tis; /* TIS object. */
+	struct mlx5_devx_obj *td; /* Transport domain. */
 	struct mlx5_ibv_shared_port port[]; /* per device port data array. */
 };
 
@@ -918,5 +957,12 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_tir(struct ibv_context *ctx,
 					struct mlx5_devx_tir_attr *tir_attr);
 struct mlx5_devx_obj *mlx5_devx_cmd_create_rqt(struct ibv_context *ctx,
 					struct mlx5_devx_rqt_attr *rqt_attr);
+struct mlx5_devx_obj *mlx5_devx_cmd_create_sq
+	(struct ibv_context *ctx, struct mlx5_devx_create_sq_attr *sq_attr);
+int mlx5_devx_cmd_modify_sq
+	(struct mlx5_devx_obj *sq, struct mlx5_devx_modify_sq_attr *sq_attr);
+struct mlx5_devx_obj *mlx5_devx_cmd_create_tis
+	(struct ibv_context *ctx, struct mlx5_devx_tis_attr *tis_attr);
+struct mlx5_devx_obj *mlx5_devx_cmd_create_td(struct ibv_context *ctx);
 
 #endif /* RTE_PMD_MLX5_H_ */

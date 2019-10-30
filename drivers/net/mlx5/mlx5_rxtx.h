@@ -324,14 +324,18 @@ struct mlx5_txq_obj {
 	LIST_ENTRY(mlx5_txq_obj) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_txq_ctrl *txq_ctrl; /* Pointer to the control queue. */
-	enum mlx5_rxq_obj_type type; /* The txq object type. */
+	enum mlx5_txq_obj_type type; /* The txq object type. */
 	RTE_STD_C11
 	union {
 		struct {
 			struct ibv_cq *cq; /* Completion Queue. */
 			struct ibv_qp *qp; /* Queue Pair. */
 		};
-		struct mlx5_devx_obj *sq; /* DevX object for Sx queue. */
+		struct {
+			struct mlx5_devx_obj *sq;
+			/* DevX object for Sx queue. */
+			struct mlx5_devx_obj *tis; /* The TIS object. */
+		};
 	};
 };
 
@@ -348,6 +352,7 @@ struct mlx5_txq_ctrl {
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 	void *bf_reg; /* BlueFlame register from Verbs. */
 	uint16_t dump_file_n; /* Number of dump files. */
+	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 	struct mlx5_txq_data txq; /* Data path structure. */
 	/* Must be the last field in the structure, contains elts[]. */
 };
@@ -410,15 +415,22 @@ uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
 
 int mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			unsigned int socket, const struct rte_eth_txconf *conf);
+int mlx5_tx_hairpin_queue_setup
+	(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
+	 const struct rte_eth_hairpin_conf *hairpin_conf);
 void mlx5_tx_queue_release(void *dpdk_txq);
 int mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
-struct mlx5_txq_obj *mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx);
+struct mlx5_txq_obj *mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
+				      enum mlx5_txq_obj_type type);
 struct mlx5_txq_obj *mlx5_txq_obj_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_txq_obj_release(struct mlx5_txq_obj *txq_ibv);
 int mlx5_txq_obj_verify(struct rte_eth_dev *dev);
 struct mlx5_txq_ctrl *mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
 				   const struct rte_eth_txconf *conf);
+struct mlx5_txq_ctrl *mlx5_txq_hairpin_new
+	(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
+	 const struct rte_eth_hairpin_conf *hairpin_conf);
 struct mlx5_txq_ctrl *mlx5_txq_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_txq_releasable(struct rte_eth_dev *dev, uint16_t idx);

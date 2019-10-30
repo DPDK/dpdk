@@ -717,3 +717,189 @@ mlx5_devx_cmd_create_rqt(struct ibv_context *ctx,
 	rqt->id = MLX5_GET(create_rqt_out, out, rqtn);
 	return rqt;
 }
+
+/**
+ * Create SQ using DevX API.
+ *
+ * @param[in] ctx
+ *   ibv_context returned from mlx5dv_open_device.
+ * @param [in] sq_attr
+ *   Pointer to SQ attributes structure.
+ * @param [in] socket
+ *   CPU socket ID for allocations.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ **/
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_sq(struct ibv_context *ctx,
+			struct mlx5_devx_create_sq_attr *sq_attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_sq_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(create_sq_out)] = {0};
+	void *sq_ctx;
+	void *wq_ctx;
+	struct mlx5_devx_wq_attr *wq_attr;
+	struct mlx5_devx_obj *sq = NULL;
+
+	sq = rte_calloc(__func__, 1, sizeof(*sq), 0);
+	if (!sq) {
+		DRV_LOG(ERR, "Failed to allocate SQ data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(create_sq_in, in, opcode, MLX5_CMD_OP_CREATE_SQ);
+	sq_ctx = MLX5_ADDR_OF(create_sq_in, in, ctx);
+	MLX5_SET(sqc, sq_ctx, rlky, sq_attr->rlky);
+	MLX5_SET(sqc, sq_ctx, cd_master, sq_attr->cd_master);
+	MLX5_SET(sqc, sq_ctx, fre, sq_attr->fre);
+	MLX5_SET(sqc, sq_ctx, flush_in_error_en, sq_attr->flush_in_error_en);
+	MLX5_SET(sqc, sq_ctx, allow_multi_pkt_send_wqe,
+		 sq_attr->flush_in_error_en);
+	MLX5_SET(sqc, sq_ctx, min_wqe_inline_mode,
+		 sq_attr->min_wqe_inline_mode);
+	MLX5_SET(sqc, sq_ctx, state, sq_attr->state);
+	MLX5_SET(sqc, sq_ctx, reg_umr, sq_attr->reg_umr);
+	MLX5_SET(sqc, sq_ctx, allow_swp, sq_attr->allow_swp);
+	MLX5_SET(sqc, sq_ctx, hairpin, sq_attr->hairpin);
+	MLX5_SET(sqc, sq_ctx, user_index, sq_attr->user_index);
+	MLX5_SET(sqc, sq_ctx, cqn, sq_attr->cqn);
+	MLX5_SET(sqc, sq_ctx, packet_pacing_rate_limit_index,
+		 sq_attr->packet_pacing_rate_limit_index);
+	MLX5_SET(sqc, sq_ctx, tis_lst_sz, sq_attr->tis_lst_sz);
+	MLX5_SET(sqc, sq_ctx, tis_num_0, sq_attr->tis_num);
+	wq_ctx = MLX5_ADDR_OF(sqc, sq_ctx, wq);
+	wq_attr = &sq_attr->wq_attr;
+	devx_cmd_fill_wq_data(wq_ctx, wq_attr);
+	sq->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+					     out, sizeof(out));
+	if (!sq->obj) {
+		DRV_LOG(ERR, "Failed to create SQ using DevX");
+		rte_errno = errno;
+		rte_free(sq);
+		return NULL;
+	}
+	sq->id = MLX5_GET(create_sq_out, out, sqn);
+	return sq;
+}
+
+/**
+ * Modify SQ using DevX API.
+ *
+ * @param[in] sq
+ *   Pointer to SQ object structure.
+ * @param [in] sq_attr
+ *   Pointer to SQ attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
+			struct mlx5_devx_modify_sq_attr *sq_attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(modify_sq_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(modify_sq_out)] = {0};
+	void *sq_ctx;
+	int ret;
+
+	MLX5_SET(modify_sq_in, in, opcode, MLX5_CMD_OP_MODIFY_SQ);
+	MLX5_SET(modify_sq_in, in, sq_state, sq_attr->sq_state);
+	MLX5_SET(modify_sq_in, in, sqn, sq->id);
+	sq_ctx = MLX5_ADDR_OF(modify_sq_in, in, ctx);
+	MLX5_SET(sqc, sq_ctx, state, sq_attr->state);
+	MLX5_SET(sqc, sq_ctx, hairpin_peer_rq, sq_attr->hairpin_peer_rq);
+	MLX5_SET(sqc, sq_ctx, hairpin_peer_vhca, sq_attr->hairpin_peer_vhca);
+	ret = mlx5_glue->devx_obj_modify(sq->obj, in, sizeof(in),
+					 out, sizeof(out));
+	if (ret) {
+		DRV_LOG(ERR, "Failed to modify SQ using DevX");
+		rte_errno = errno;
+		return -errno;
+	}
+	return ret;
+}
+
+/**
+ * Create TIS using DevX API.
+ *
+ * @param[in] ctx
+ *   ibv_context returned from mlx5dv_open_device.
+ * @param [in] tis_attr
+ *   Pointer to TIS attributes structure.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_tis(struct ibv_context *ctx,
+			 struct mlx5_devx_tis_attr *tis_attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_tis_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(create_tis_out)] = {0};
+	struct mlx5_devx_obj *tis = NULL;
+	void *tis_ctx;
+
+	tis = rte_calloc(__func__, 1, sizeof(*tis), 0);
+	if (!tis) {
+		DRV_LOG(ERR, "Failed to allocate TIS object");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(create_tis_in, in, opcode, MLX5_CMD_OP_CREATE_TIS);
+	tis_ctx = MLX5_ADDR_OF(create_tis_in, in, ctx);
+	MLX5_SET(tisc, tis_ctx, strict_lag_tx_port_affinity,
+		 tis_attr->strict_lag_tx_port_affinity);
+	MLX5_SET(tisc, tis_ctx, strict_lag_tx_port_affinity,
+		 tis_attr->strict_lag_tx_port_affinity);
+	MLX5_SET(tisc, tis_ctx, prio, tis_attr->prio);
+	MLX5_SET(tisc, tis_ctx, transport_domain,
+		 tis_attr->transport_domain);
+	tis->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+					      out, sizeof(out));
+	if (!tis->obj) {
+		DRV_LOG(ERR, "Failed to create TIS using DevX");
+		rte_errno = errno;
+		rte_free(tis);
+		return NULL;
+	}
+	tis->id = MLX5_GET(create_tis_out, out, tisn);
+	return tis;
+}
+
+/**
+ * Create transport domain using DevX API.
+ *
+ * @param[in] ctx
+ *   ibv_context returned from mlx5dv_open_device.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_td(struct ibv_context *ctx)
+{
+	uint32_t in[MLX5_ST_SZ_DW(alloc_transport_domain_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(alloc_transport_domain_out)] = {0};
+	struct mlx5_devx_obj *td = NULL;
+
+	td = rte_calloc(__func__, 1, sizeof(*td), 0);
+	if (!td) {
+		DRV_LOG(ERR, "Failed to allocate TD object");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(alloc_transport_domain_in, in, opcode,
+		 MLX5_CMD_OP_ALLOC_TRANSPORT_DOMAIN);
+	td->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+					     out, sizeof(out));
+	if (!td->obj) {
+		DRV_LOG(ERR, "Failed to create TIS using DevX");
+		rte_errno = errno;
+		rte_free(td);
+		return NULL;
+	}
+	td->id = MLX5_GET(alloc_transport_domain_out, out,
+			   transport_domain);
+	return td;
+}

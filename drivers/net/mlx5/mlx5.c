@@ -324,6 +324,9 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 	struct mlx5_ibv_shared *sh;
 	int err = 0;
 	uint32_t i;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	struct mlx5_devx_tis_attr tis_attr = { 0 };
+#endif
 
 	assert(spawn);
 	/* Secondary process should not create the shared context. */
@@ -390,10 +393,25 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 		goto error;
 	}
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	err = mlx5_get_pdn(sh->pd, &sh->pdn);
-	if (err) {
-		DRV_LOG(ERR, "Fail to extract pdn from PD");
-		goto error;
+	if (sh->devx) {
+		err = mlx5_get_pdn(sh->pd, &sh->pdn);
+		if (err) {
+			DRV_LOG(ERR, "Fail to extract pdn from PD");
+			goto error;
+		}
+		sh->td = mlx5_devx_cmd_create_td(sh->ctx);
+		if (!sh->td) {
+			DRV_LOG(ERR, "TD allocation failure");
+			err = ENOMEM;
+			goto error;
+		}
+		tis_attr.transport_domain = sh->td->id;
+		sh->tis = mlx5_devx_cmd_create_tis(sh->ctx, &tis_attr);
+		if (!sh->tis) {
+			DRV_LOG(ERR, "TIS allocation failure");
+			err = ENOMEM;
+			goto error;
+		}
 	}
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 	/*
@@ -426,6 +444,10 @@ exit:
 error:
 	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
 	assert(sh);
+	if (sh->tis)
+		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
+	if (sh->td)
+		claim_zero(mlx5_devx_cmd_destroy(sh->td));
 	if (sh->pd)
 		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
 	if (sh->ctx)
@@ -495,6 +517,10 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 	pthread_mutex_destroy(&sh->intr_mutex);
 	if (sh->pd)
 		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
+	if (sh->tis)
+		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
+	if (sh->td)
+		claim_zero(mlx5_devx_cmd_destroy(sh->td));
 	if (sh->ctx)
 		claim_zero(mlx5_glue->close_device(sh->ctx));
 	rte_free(sh);
@@ -987,6 +1013,7 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.rx_queue_setup = mlx5_rx_queue_setup,
 	.rx_hairpin_queue_setup = mlx5_rx_hairpin_queue_setup,
 	.tx_queue_setup = mlx5_tx_queue_setup,
+	.tx_hairpin_queue_setup = mlx5_tx_hairpin_queue_setup,
 	.rx_queue_release = mlx5_rx_queue_release,
 	.tx_queue_release = mlx5_tx_queue_release,
 	.flow_ctrl_get = mlx5_dev_get_flow_ctrl,
@@ -1054,6 +1081,7 @@ const struct eth_dev_ops mlx5_dev_ops_isolate = {
 	.rx_queue_setup = mlx5_rx_queue_setup,
 	.rx_hairpin_queue_setup = mlx5_rx_hairpin_queue_setup,
 	.tx_queue_setup = mlx5_tx_queue_setup,
+	.tx_hairpin_queue_setup = mlx5_tx_hairpin_queue_setup,
 	.rx_queue_release = mlx5_rx_queue_release,
 	.tx_queue_release = mlx5_tx_queue_release,
 	.flow_ctrl_get = mlx5_dev_get_flow_ctrl,

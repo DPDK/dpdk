@@ -51,8 +51,14 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 
 		if (!txq_ctrl)
 			continue;
-		txq_alloc_elts(txq_ctrl);
-		txq_ctrl->obj = mlx5_txq_obj_new(dev, i);
+		if (txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN) {
+			txq_ctrl->obj = mlx5_txq_obj_new
+				(dev, i, MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN);
+		} else {
+			txq_alloc_elts(txq_ctrl);
+			txq_ctrl->obj = mlx5_txq_obj_new
+				(dev, i, MLX5_TXQ_OBJ_TYPE_IBV);
+		}
 		if (!txq_ctrl->obj) {
 			rte_errno = ENOMEM;
 			goto error;

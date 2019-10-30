@@ -671,9 +671,13 @@ enum {
 	MLX5_CMD_OP_QUERY_HCA_CAP = 0x100,
 	MLX5_CMD_OP_CREATE_MKEY = 0x200,
 	MLX5_CMD_OP_QUERY_NIC_VPORT_CONTEXT = 0x754,
+	MLX5_CMD_OP_ALLOC_TRANSPORT_DOMAIN = 0x816,
 	MLX5_CMD_OP_CREATE_TIR = 0x900,
+	MLX5_CMD_OP_CREATE_SQ = 0X904,
+	MLX5_CMD_OP_MODIFY_SQ = 0X905,
 	MLX5_CMD_OP_CREATE_RQ = 0x908,
 	MLX5_CMD_OP_MODIFY_RQ = 0x909,
+	MLX5_CMD_OP_CREATE_TIS = 0x912,
 	MLX5_CMD_OP_QUERY_TIS = 0x915,
 	MLX5_CMD_OP_CREATE_RQT = 0x916,
 	MLX5_CMD_OP_ALLOC_FLOW_COUNTER = 0x939,
@@ -1328,6 +1332,23 @@ struct mlx5_ifc_query_tis_in_bits {
 	u8 reserved_at_60[0x20];
 };
 
+struct mlx5_ifc_alloc_transport_domain_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x8];
+	u8 transport_domain[0x18];
+	u8 reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_alloc_transport_domain_in_bits {
+	u8 opcode[0x10];
+	u8 reserved_at_10[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x40];
+};
+
 enum {
 	MLX5_WQ_TYPE_LINKED_LIST                = 0x0,
 	MLX5_WQ_TYPE_CYCLIC                     = 0x1,
@@ -1442,6 +1463,24 @@ struct mlx5_ifc_modify_rq_out_bits {
 	u8 reserved_at_8[0x18];
 	u8 syndrome[0x20];
 	u8 reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_create_tis_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x8];
+	u8 tisn[0x18];
+	u8 reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_create_tis_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_tisc_bits ctx;
 };
 
 enum {
@@ -1588,6 +1627,85 @@ struct mlx5_ifc_create_rqt_in_bits {
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
+
+struct mlx5_ifc_sqc_bits {
+	u8 rlky[0x1];
+	u8 cd_master[0x1];
+	u8 fre[0x1];
+	u8 flush_in_error_en[0x1];
+	u8 allow_multi_pkt_send_wqe[0x1];
+	u8 min_wqe_inline_mode[0x3];
+	u8 state[0x4];
+	u8 reg_umr[0x1];
+	u8 allow_swp[0x1];
+	u8 hairpin[0x1];
+	u8 reserved_at_f[0x11];
+	u8 reserved_at_20[0x8];
+	u8 user_index[0x18];
+	u8 reserved_at_40[0x8];
+	u8 cqn[0x18];
+	u8 reserved_at_60[0x8];
+	u8 hairpin_peer_rq[0x18];
+	u8 reserved_at_80[0x10];
+	u8 hairpin_peer_vhca[0x10];
+	u8 reserved_at_a0[0x50];
+	u8 packet_pacing_rate_limit_index[0x10];
+	u8 tis_lst_sz[0x10];
+	u8 reserved_at_110[0x10];
+	u8 reserved_at_120[0x40];
+	u8 reserved_at_160[0x8];
+	u8 tis_num_0[0x18];
+	struct mlx5_ifc_wq_bits wq;
+};
+
+struct mlx5_ifc_query_sq_in_bits {
+	u8 opcode[0x10];
+	u8 reserved_at_10[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x8];
+	u8 sqn[0x18];
+	u8 reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_modify_sq_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_modify_sq_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 sq_state[0x4];
+	u8 reserved_at_44[0x4];
+	u8 sqn[0x18];
+	u8 reserved_at_60[0x20];
+	u8 modify_bitmask[0x40];
+	u8 reserved_at_c0[0x40];
+	struct mlx5_ifc_sqc_bits ctx;
+};
+
+struct mlx5_ifc_create_sq_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x8];
+	u8 sqn[0x18];
+	u8 reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_create_sq_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_sqc_bits ctx;
+};
 
 /* CQE format mask. */
 #define MLX5E_CQE_FORMAT_MASK 0xc
