@@ -509,6 +509,86 @@ typedef int (*eth_pool_ops_supported_t)(struct rte_eth_dev *dev,
 /**< @internal Test if a port supports specific mempool ops */
 
 /**
+ * @internal
+ * Get the hairpin capabilities.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param cap
+ *   returns the hairpin capabilities from the device.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, hairpin is supported.
+ * @retval -ENOTSUP
+ *   Hairpin is not supported.
+ */
+typedef int (*eth_hairpin_cap_get_t)(struct rte_eth_dev *dev,
+				     struct rte_eth_hairpin_cap *cap);
+
+/**
+ * @internal
+ * Setup RX hairpin queue.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param rx_queue_id
+ *   the selected RX queue index.
+ * @param nb_rx_desc
+ *   the requested number of descriptors for this queue. 0 - use PMD default.
+ * @param conf
+ *   the RX hairpin configuration structure.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, hairpin is supported.
+ * @retval -ENOTSUP
+ *   Hairpin is not supported.
+ * @retval -EINVAL
+ *   One of the parameters is invalid.
+ * @retval -ENOMEM
+ *   Unable to allocate resources.
+ */
+typedef int (*eth_rx_hairpin_queue_setup_t)
+	(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+	 uint16_t nb_rx_desc,
+	 const struct rte_eth_hairpin_conf *conf);
+
+/**
+ * @internal
+ * Setup TX hairpin queue.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param tx_queue_id
+ *   the selected TX queue index.
+ * @param nb_tx_desc
+ *   the requested number of descriptors for this queue. 0 - use PMD default.
+ * @param conf
+ *   the TX hairpin configuration structure.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, hairpin is supported.
+ * @retval -ENOTSUP
+ *   Hairpin is not supported.
+ * @retval -EINVAL
+ *   One of the parameters is invalid.
+ * @retval -ENOMEM
+ *   Unable to allocate resources.
+ */
+typedef int (*eth_tx_hairpin_queue_setup_t)
+	(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+	 uint16_t nb_tx_desc,
+	 const struct rte_eth_hairpin_conf *hairpin_conf);
+
+/**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
 struct eth_dev_ops {
@@ -644,6 +724,13 @@ struct eth_dev_ops {
 
 	eth_pool_ops_supported_t pool_ops_supported;
 	/**< Test if a port supports specific mempool ops */
+
+	eth_hairpin_cap_get_t hairpin_cap_get;
+	/**< Returns the hairpin capabilities. */
+	eth_rx_hairpin_queue_setup_t rx_hairpin_queue_setup;
+	/**< Set up device RX hairpin queue. */
+	eth_tx_hairpin_queue_setup_t tx_hairpin_queue_setup;
+	/**< Set up device TX hairpin queue. */
 };
 
 /**
@@ -751,9 +838,9 @@ struct rte_eth_dev_data {
 		dev_started : 1,   /**< Device state: STARTED(1) / STOPPED(0). */
 		lro         : 1;   /**< RX LRO is ON(1) / OFF(0) */
 	uint8_t rx_queue_state[RTE_MAX_QUEUES_PER_PORT];
-			/**< Queues state: STARTED(1) / STOPPED(0). */
+		/**< Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0). */
 	uint8_t tx_queue_state[RTE_MAX_QUEUES_PER_PORT];
-			/**< Queues state: STARTED(1) / STOPPED(0). */
+		/**< Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0). */
 	uint32_t dev_flags;             /**< Capabilities. */
 	enum rte_kernel_driver kdrv;    /**< Kernel driver passthrough. */
 	int numa_node;                  /**< NUMA node connection. */

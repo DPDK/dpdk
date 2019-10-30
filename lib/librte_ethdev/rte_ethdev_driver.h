@@ -26,6 +26,35 @@ extern "C" {
  */
 #define RTE_ETH_QUEUE_STATE_STOPPED 0
 #define RTE_ETH_QUEUE_STATE_STARTED 1
+#define RTE_ETH_QUEUE_STATE_HAIRPIN 2
+
+/**
+ * @internal
+ * Check if the selected Rx queue is hairpin queue.
+ *
+ * @param dev
+ *  Pointer to the selected device.
+ * @param queue_id
+ *  The selected queue.
+ *
+ * @return
+ *   - (1) if the queue is hairpin queue, 0 otherwise.
+ */
+int rte_eth_dev_is_rx_hairpin_queue(struct rte_eth_dev *dev, uint16_t queue_id);
+
+/**
+ * @internal
+ * Check if the selected Tx queue is hairpin queue.
+ *
+ * @param dev
+ *  Pointer to the selected device.
+ * @param queue_id
+ *  The selected queue.
+ *
+ * @return
+ *   - (1) if the queue is hairpin queue, 0 otherwise.
+ */
+int rte_eth_dev_is_tx_hairpin_queue(struct rte_eth_dev *dev, uint16_t queue_id);
 
 /**
  * @internal

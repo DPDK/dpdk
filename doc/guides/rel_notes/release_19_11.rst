@@ -77,6 +77,11 @@ New Features
   for specific offload features, where adding a static field or flag
   in the mbuf is not justified.
 
+* **Added hairpin queue.**
+
+  On supported NICs, we can now setup haipin queue which will offload packets
+  from the wire, backto the wire.
+
 * **Updated the enic driver.**
 
   * Added support for Geneve with options offload.

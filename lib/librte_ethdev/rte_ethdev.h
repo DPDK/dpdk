@@ -839,6 +839,46 @@ struct rte_eth_txconf {
 };
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * A structure used to return the hairpin capabilities that are supported.
+ */
+struct rte_eth_hairpin_cap {
+	/** The max number of hairpin queues (different bindings). */
+	uint16_t max_nb_queues;
+	/** Max number of Rx queues to be connected to one Tx queue. */
+	uint16_t max_rx_2_tx;
+	/** Max number of Tx queues to be connected to one Rx queue. */
+	uint16_t max_tx_2_rx;
+	uint16_t max_nb_desc; /**< The max num of descriptors. */
+};
+
+#define RTE_ETH_MAX_HAIRPIN_PEERS 32
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * A structure used to hold hairpin peer data.
+ */
+struct rte_eth_hairpin_peer {
+	uint16_t port; /**< Peer port. */
+	uint16_t queue; /**< Peer queue. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * A structure used to configure hairpin binding.
+ */
+struct rte_eth_hairpin_conf {
+	uint16_t peer_count; /**< The number of peers. */
+	struct rte_eth_hairpin_peer peers[RTE_ETH_MAX_HAIRPIN_PEERS];
+};
+
+/**
  * A structure contains information about HW descriptor ring limitations.
  */
 struct rte_eth_desc_lim {
@@ -1829,6 +1869,37 @@ int rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		struct rte_mempool *mb_pool);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Allocate and set up a hairpin receive queue for an Ethernet device.
+ *
+ * The function set up the selected queue to be used in hairpin.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param rx_queue_id
+ *   The index of the receive queue to set up.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param nb_rx_desc
+ *   The number of receive descriptors to allocate for the receive ring.
+ *   0 means the PMD will use default value.
+ * @param conf
+ *   The pointer to the hairpin configuration.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOMEM) if unable to allocate the resources.
+ */
+__rte_experimental
+int rte_eth_rx_hairpin_queue_setup
+	(uint16_t port_id, uint16_t rx_queue_id, uint16_t nb_rx_desc,
+	 const struct rte_eth_hairpin_conf *conf);
+
+/**
  * Allocate and set up a transmit queue for an Ethernet device.
  *
  * @param port_id
@@ -1881,6 +1952,35 @@ int rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 		const struct rte_eth_txconf *tx_conf);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Allocate and set up a transmit hairpin queue for an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param tx_queue_id
+ *   The index of the transmit queue to set up.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param nb_tx_desc
+ *   The number of transmit descriptors to allocate for the transmit ring.
+ *   0 to set default PMD value.
+ * @param conf
+ *   The hairpin configuration.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOMEM) if unable to allocate the resources.
+ */
+__rte_experimental
+int rte_eth_tx_hairpin_queue_setup
+	(uint16_t port_id, uint16_t tx_queue_id, uint16_t nb_tx_desc,
+	 const struct rte_eth_hairpin_conf *conf);
+
+/**
  * Return the NUMA socket to which an Ethernet device is connected
  *
  * @param port_id
@@ -1915,7 +2015,7 @@ int rte_eth_dev_is_valid_port(uint16_t port_id);
  *   to rte_eth_dev_configure().
  * @return
  *   - 0: Success, the receive queue is started.
- *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -EINVAL: The port_id or the queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -1932,7 +2032,7 @@ int rte_eth_dev_rx_queue_start(uint16_t port_id, uint16_t rx_queue_id);
  *   to rte_eth_dev_configure().
  * @return
  *   - 0: Success, the receive queue is stopped.
- *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -EINVAL: The port_id or the queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -1950,7 +2050,7 @@ int rte_eth_dev_rx_queue_stop(uint16_t port_id, uint16_t rx_queue_id);
  *   to rte_eth_dev_configure().
  * @return
  *   - 0: Success, the transmit queue is started.
- *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -EINVAL: The port_id or the queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -1967,7 +2067,7 @@ int rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id);
  *   to rte_eth_dev_configure().
  * @return
  *   - 0: Success, the transmit queue is stopped.
- *   - -EINVAL: The port_id or the queue_id out of range.
+ *   - -EINVAL: The port_id or the queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -3633,7 +3733,8 @@ int rte_eth_remove_tx_callback(uint16_t port_id, uint16_t queue_id,
  * @return
  *   - 0: Success
  *   - -ENOTSUP: routine is not supported by the device PMD.
- *   - -EINVAL:  The port_id or the queue_id is out of range.
+ *   - -EINVAL:  The port_id or the queue_id is out of range, or the queue
+ *               is hairpin queue.
  */
 int rte_eth_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);
@@ -3653,7 +3754,8 @@ int rte_eth_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
  * @return
  *   - 0: Success
  *   - -ENOTSUP: routine is not supported by the device PMD.
- *   - -EINVAL:  The port_id or the queue_id is out of range.
+ *   - -EINVAL:  The port_id or the queue_id is out of range, or the queue
+ *               is hairpin queue.
  */
 int rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
@@ -4151,6 +4253,23 @@ rte_eth_dev_pool_ops_supported(uint16_t port_id, const char *pool);
 void *
 rte_eth_dev_get_sec_ctx(uint16_t port_id);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Query the device hairpin capabilities.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param cap
+ *   Pointer to a structure that will hold the hairpin capabilities.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ */
+__rte_experimental
+int rte_eth_dev_hairpin_capability_get(uint16_t port_id,
+				       struct rte_eth_hairpin_cap *cap);
 
 #include <rte_ethdev_core.h>
 
