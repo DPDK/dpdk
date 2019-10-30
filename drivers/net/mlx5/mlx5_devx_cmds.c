@@ -40,7 +40,7 @@ mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx, uint32_t bulk_n_128)
 	dcs->obj = mlx5_glue->devx_obj_create(ctx, in,
 					      sizeof(in), out, sizeof(out));
 	if (!dcs->obj) {
-		DRV_LOG(ERR, "Can't allocate counters - error %d\n", errno);
+		DRV_LOG(ERR, "Can't allocate counters - error %d", errno);
 		rte_errno = errno;
 		rte_free(dcs);
 		return NULL;
@@ -111,7 +111,7 @@ mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs,
 						     out_len, async_id,
 						     cmd_comp);
 	if (rc) {
-		DRV_LOG(ERR, "Failed to query devx counters with rc %d\n ", rc);
+		DRV_LOG(ERR, "Failed to query devx counters with rc %d", rc);
 		rte_errno = rc;
 		return -rc;
 	}
@@ -171,7 +171,7 @@ mlx5_devx_cmd_mkey_create(struct ibv_context *ctx,
 	mkey->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 					       sizeof(out));
 	if (!mkey->obj) {
-		DRV_LOG(ERR, "Can't create mkey - error %d\n", errno);
+		DRV_LOG(ERR, "Can't create mkey - error %d", errno);
 		rte_errno = errno;
 		rte_free(mkey);
 		return NULL;
@@ -202,7 +202,7 @@ mlx5_devx_get_out_command_status(void *out)
 	if (status) {
 		int syndrome = MLX5_GET(query_flow_counter_out, out, syndrome);
 
-		DRV_LOG(ERR, "Bad devX status %x, syndrome = %x\n", status,
+		DRV_LOG(ERR, "Bad devX status %x, syndrome = %x", status,
 			syndrome);
 	}
 	return status;

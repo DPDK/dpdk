@@ -3136,7 +3136,7 @@ mlx5_ctrl_flow_source_queue(struct rte_eth_dev *dev,
 	if (!flow) {
 		DRV_LOG(DEBUG,
 			"Failed to create ctrl flow: rte_errno(%d),"
-			" type(%d), message(%s)\n",
+			" type(%d), message(%s)",
 			rte_errno, error.type,
 			error.message ? error.message : " (no stated reason)");
 		return -rte_errno;
@@ -3856,10 +3856,10 @@ mlx5_set_query_alarm(struct mlx5_ibv_shared *sh)
 	cont = MLX5_CNT_CONTAINER(sh, 1, 0);
 	pools_n += rte_atomic16_read(&cont->n_valid);
 	us = MLX5_POOL_QUERY_FREQ_US / pools_n;
-	DRV_LOG(DEBUG, "Set alarm for %u pools each %u us\n", pools_n, us);
+	DRV_LOG(DEBUG, "Set alarm for %u pools each %u us", pools_n, us);
 	if (rte_eal_alarm_set(us, mlx5_flow_query_alarm, sh)) {
 		sh->cmng.query_thread_on = 0;
-		DRV_LOG(ERR, "Cannot reinitialize query alarm\n");
+		DRV_LOG(ERR, "Cannot reinitialize query alarm");
 	} else {
 		sh->cmng.query_thread_on = 1;
 	}
@@ -3931,7 +3931,7 @@ next_container:
 					       (uint64_t)(uintptr_t)pool);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to trigger asynchronous query for dcs ID"
-			" %d\n", pool->min_dcs->id);
+			" %d", pool->min_dcs->id);
 		pool->raw_hw = NULL;
 		goto set_alarm;
 	}

@@ -819,7 +819,7 @@ mlx5_init_shared_data(void)
 						 SOCKET_ID_ANY, 0);
 			if (mz == NULL) {
 				DRV_LOG(ERR,
-					"Cannot allocate mlx5 shared data\n");
+					"Cannot allocate mlx5 shared data");
 				ret = -rte_errno;
 				goto error;
 			}
@@ -831,7 +831,7 @@ mlx5_init_shared_data(void)
 			mz = rte_memzone_lookup(MZ_MLX5_PMD_SHARED_DATA);
 			if (mz == NULL) {
 				DRV_LOG(ERR,
-					"Cannot attach mlx5 shared data\n");
+					"Cannot attach mlx5 shared data");
 				ret = -rte_errno;
 				goto error;
 			}
@@ -2019,7 +2019,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			      MLX5DV_DEVX_PORT_MATCH_REG_C_0;
 	err = mlx5_glue->devx_port_query(sh->ctx, spawn->ibv_port, &devx_port);
 	if (err) {
-		DRV_LOG(WARNING, "can't query devx port %d on device %s\n",
+		DRV_LOG(WARNING, "can't query devx port %d on device %s",
 			spawn->ibv_port, spawn->ibv_dev->name);
 		devx_port.comp_mask = 0;
 	}
@@ -2028,14 +2028,14 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		priv->vport_meta_mask = devx_port.reg_c_0.mask;
 		if (!priv->vport_meta_mask) {
 			DRV_LOG(ERR, "vport zero mask for port %d"
-				     " on bonding device %s\n",
+				     " on bonding device %s",
 				     spawn->ibv_port, spawn->ibv_dev->name);
 			err = ENOTSUP;
 			goto error;
 		}
 		if (priv->vport_meta_tag & ~priv->vport_meta_mask) {
 			DRV_LOG(ERR, "invalid vport tag for port %d"
-				     " on bonding device %s\n",
+				     " on bonding device %s",
 				     spawn->ibv_port, spawn->ibv_dev->name);
 			err = ENOTSUP;
 			goto error;
@@ -2044,7 +2044,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		priv->vport_id = devx_port.vport_num;
 	} else if (spawn->pf_bond >= 0) {
 		DRV_LOG(ERR, "can't deduce vport index for port %d"
-			     " on bonding device %s\n",
+			     " on bonding device %s",
 			     spawn->ibv_port, spawn->ibv_dev->name);
 		err = ENOTSUP;
 		goto error;
@@ -2191,7 +2191,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		priv->counter_fallback = 1;
 #endif
 		if (priv->counter_fallback)
-			DRV_LOG(INFO, "Use fall-back DV counter management\n");
+			DRV_LOG(INFO, "Use fall-back DV counter management");
 		/* Check for LRO support. */
 		if (config.dest_tir && config.hca_attr.lro_cap &&
 		    config.dv_flow_en) {

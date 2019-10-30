@@ -583,18 +583,16 @@ mlx5_dump_debug_information(const char *fname, const char *hex_title,
 	MKSTR(path, "%s/%s", MLX5_SYSTEM_LOG_DIR, fname);
 	fd = fopen(path, "a+");
 	if (!fd) {
-		DRV_LOG(WARNING, "cannot open %s for debug dump\n",
-			path);
+		DRV_LOG(WARNING, "cannot open %s for debug dump", path);
 		MKSTR(path2, "./%s", fname);
 		fd = fopen(path2, "a+");
 		if (!fd) {
-			DRV_LOG(ERR, "cannot open %s for debug dump\n",
-				path2);
+			DRV_LOG(ERR, "cannot open %s for debug dump", path2);
 			return;
 		}
-		DRV_LOG(INFO, "New debug dump in file %s\n", path2);
+		DRV_LOG(INFO, "New debug dump in file %s", path2);
 	} else {
-		DRV_LOG(INFO, "New debug dump in file %s\n", path);
+		DRV_LOG(INFO, "New debug dump in file %s", path);
 	}
 	if (hex_title)
 		rte_hexdump(fd, hex_title, buf, hex_len);
@@ -850,7 +848,7 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 						      &rq_attr);
 		}
 		if (ret) {
-			DRV_LOG(ERR, "Cannot change Rx WQ state to %u  - %s\n",
+			DRV_LOG(ERR, "Cannot change Rx WQ state to %u  - %s",
 					sm->state, strerror(errno));
 			rte_errno = errno;
 			return ret;
@@ -868,7 +866,7 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
 		if (ret) {
 			DRV_LOG(ERR, "Cannot change the Tx QP state to RESET "
-				"%s\n", strerror(errno));
+				"%s", strerror(errno));
 			rte_errno = errno;
 			return ret;
 		}
@@ -876,7 +874,7 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 		ret = mlx5_glue->modify_qp(qp, &mod,
 					   (IBV_QP_STATE | IBV_QP_PORT));
 		if (ret) {
-			DRV_LOG(ERR, "Cannot change Tx QP state to INIT %s\n",
+			DRV_LOG(ERR, "Cannot change Tx QP state to INIT %s",
 				strerror(errno));
 			rte_errno = errno;
 			return ret;
@@ -884,7 +882,7 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 		mod.qp_state = IBV_QPS_RTR;
 		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
 		if (ret) {
-			DRV_LOG(ERR, "Cannot change Tx QP state to RTR %s\n",
+			DRV_LOG(ERR, "Cannot change Tx QP state to RTR %s",
 				strerror(errno));
 			rte_errno = errno;
 			return ret;
@@ -892,7 +890,7 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 		mod.qp_state = IBV_QPS_RTS;
 		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
 		if (ret) {
-			DRV_LOG(ERR, "Cannot change Tx QP state to RTS %s\n",
+			DRV_LOG(ERR, "Cannot change Tx QP state to RTS %s",
 				strerror(errno));
 			rte_errno = errno;
 			return ret;
