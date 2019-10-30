@@ -22,6 +22,12 @@ extern "C" {
 #endif
 
 /**
+ * RX/TX queue states
+ */
+#define RTE_ETH_QUEUE_STATE_STOPPED 0
+#define RTE_ETH_QUEUE_STATE_STARTED 1
+
+/**
  * @internal
  * Returns a ethdev slot specified by the unique identifier name.
  *

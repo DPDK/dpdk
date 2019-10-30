@@ -10,6 +10,7 @@
 #include <nfb/nfb.h>
 #include <nfb/ndp.h>
 
+#include <rte_ethdev_driver.h>
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
 
