@@ -91,8 +91,108 @@ l2fwd_event_device_setup_internal_port(struct l2fwd_resources *rsrc)
 	return event_queue_cfg;
 }
 
+static void
+l2fwd_event_port_setup_internal_port(struct l2fwd_resources *rsrc)
+{
+	struct l2fwd_event_resources *evt_rsrc = rsrc->evt_rsrc;
+	uint8_t event_d_id = evt_rsrc->event_d_id;
+	struct rte_event_port_conf event_p_conf = {
+		.dequeue_depth = 32,
+		.enqueue_depth = 32,
+		.new_event_threshold = 4096
+	};
+	struct rte_event_port_conf def_p_conf;
+	uint8_t event_p_id;
+	int32_t ret;
+
+	evt_rsrc->evp.event_p_id = (uint8_t *)malloc(sizeof(uint8_t) *
+					evt_rsrc->evp.nb_ports);
+	if (!evt_rsrc->evp.event_p_id)
+		rte_panic("Failed to allocate memory for Event Ports\n");
+
+	rte_event_port_default_conf_get(event_d_id, 0, &def_p_conf);
+	if (def_p_conf.new_event_threshold < event_p_conf.new_event_threshold)
+		event_p_conf.new_event_threshold =
+						def_p_conf.new_event_threshold;
+
+	if (def_p_conf.dequeue_depth < event_p_conf.dequeue_depth)
+		event_p_conf.dequeue_depth = def_p_conf.dequeue_depth;
+
+	if (def_p_conf.enqueue_depth < event_p_conf.enqueue_depth)
+		event_p_conf.enqueue_depth = def_p_conf.enqueue_depth;
+
+	event_p_conf.disable_implicit_release =
+		evt_rsrc->disable_implicit_release;
+
+	for (event_p_id = 0; event_p_id < evt_rsrc->evp.nb_ports;
+								event_p_id++) {
+		ret = rte_event_port_setup(event_d_id, event_p_id,
+					   &event_p_conf);
+		if (ret < 0)
+			rte_panic("Error in configuring event port %d\n",
+				  event_p_id);
+
+		ret = rte_event_port_link(event_d_id, event_p_id, NULL,
+					  NULL, 0);
+		if (ret < 0)
+			rte_panic("Error in linking event port %d to queue\n",
+				  event_p_id);
+		evt_rsrc->evp.event_p_id[event_p_id] = event_p_id;
+
+		/* init spinlock */
+		rte_spinlock_init(&evt_rsrc->evp.lock);
+	}
+
+	evt_rsrc->def_p_conf = event_p_conf;
+}
+
+static void
+l2fwd_event_queue_setup_internal_port(struct l2fwd_resources *rsrc,
+				uint32_t event_queue_cfg)
+{
+	struct l2fwd_event_resources *evt_rsrc = rsrc->evt_rsrc;
+	uint8_t event_d_id = evt_rsrc->event_d_id;
+	struct rte_event_queue_conf event_q_conf = {
+		.nb_atomic_flows = 1024,
+		.nb_atomic_order_sequences = 1024,
+		.event_queue_cfg = event_queue_cfg,
+		.priority = RTE_EVENT_DEV_PRIORITY_NORMAL
+	};
+	struct rte_event_queue_conf def_q_conf;
+	uint8_t event_q_id = 0;
+	int32_t ret;
+
+	rte_event_queue_default_conf_get(event_d_id, event_q_id, &def_q_conf);
+
+	if (def_q_conf.nb_atomic_flows < event_q_conf.nb_atomic_flows)
+		event_q_conf.nb_atomic_flows = def_q_conf.nb_atomic_flows;
+
+	if (def_q_conf.nb_atomic_order_sequences <
+					event_q_conf.nb_atomic_order_sequences)
+		event_q_conf.nb_atomic_order_sequences =
+					def_q_conf.nb_atomic_order_sequences;
+
+	event_q_conf.event_queue_cfg = event_queue_cfg;
+	event_q_conf.schedule_type = rsrc->sched_type;
+	evt_rsrc->evq.event_q_id = (uint8_t *)malloc(sizeof(uint8_t) *
+					evt_rsrc->evq.nb_queues);
+	if (!evt_rsrc->evq.event_q_id)
+		rte_panic("Memory allocation failure\n");
+
+	for (event_q_id = 0; event_q_id < evt_rsrc->evq.nb_queues;
+								event_q_id++) {
+		ret = rte_event_queue_setup(event_d_id, event_q_id,
+					    &event_q_conf);
+		if (ret < 0)
+			rte_panic("Error in configuring event queue\n");
+		evt_rsrc->evq.event_q_id[event_q_id] = event_q_id;
+	}
+}
+
 void
 l2fwd_event_set_internal_port_ops(struct event_setup_ops *ops)
 {
 	ops->event_device_setup = l2fwd_event_device_setup_internal_port;
+	ops->event_queue_setup = l2fwd_event_queue_setup_internal_port;
+	ops->event_port_setup = l2fwd_event_port_setup_internal_port;
 }
