@@ -259,9 +259,9 @@ otx2_nix_timesync_read_rx_timestamp(struct rte_eth_dev *eth_dev,
 	*timestamp = rte_ns_to_timespec(ns);
 	tstamp->rx_ready = 0;
 
-	otx2_nix_dbg("rx timestamp: %llu sec: %lu nsec %lu",
-		     (unsigned long long)tstamp->rx_tstamp, timestamp->tv_sec,
-		     timestamp->tv_nsec);
+	otx2_nix_dbg("rx timestamp: %"PRIu64" sec: %"PRIu64" nsec %"PRIu64"",
+		     (uint64_t)tstamp->rx_tstamp, (uint64_t)timestamp->tv_sec,
+		     (uint64_t)timestamp->tv_nsec);
 
 	return 0;
 }
@@ -280,9 +280,9 @@ otx2_nix_timesync_read_tx_timestamp(struct rte_eth_dev *eth_dev,
 	ns = rte_timecounter_update(&dev->tx_tstamp_tc, *tstamp->tx_tstamp);
 	*timestamp = rte_ns_to_timespec(ns);
 
-	otx2_nix_dbg("tx timestamp: %llu sec: %lu nsec %lu",
-		     *(unsigned long long *)tstamp->tx_tstamp,
-		     timestamp->tv_sec, timestamp->tv_nsec);
+	otx2_nix_dbg("tx timestamp: %"PRIu64" sec: %"PRIu64" nsec %"PRIu64"",
+		     *tstamp->tx_tstamp, (uint64_t)timestamp->tv_sec,
+		     (uint64_t)timestamp->tv_nsec);
 
 	*tstamp->tx_tstamp = 0;
 	rte_wmb();
@@ -358,7 +358,8 @@ otx2_nix_timesync_read_time(struct rte_eth_dev *eth_dev, struct timespec *ts)
 	ns = rte_timecounter_update(&dev->systime_tc, rsp->clk);
 	*ts = rte_ns_to_timespec(ns);
 
-	otx2_nix_dbg("PTP time read: %ld.%09ld", ts->tv_sec, ts->tv_nsec);
+	otx2_nix_dbg("PTP time read: %"PRIu64" .%09"PRIu64"",
+		     (uint64_t)ts->tv_sec, (uint64_t)ts->tv_nsec);
 
 	return 0;
 }
