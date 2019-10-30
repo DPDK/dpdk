@@ -375,15 +375,15 @@ error:
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
  */
-struct mlx5_txq_ibv *
-mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
+struct mlx5_txq_obj *
+mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
 	struct mlx5_txq_ctrl *txq_ctrl =
 		container_of(txq_data, struct mlx5_txq_ctrl, txq);
-	struct mlx5_txq_ibv tmpl;
-	struct mlx5_txq_ibv *txq_ibv = NULL;
+	struct mlx5_txq_obj tmpl;
+	struct mlx5_txq_obj *txq_obj = NULL;
 	union {
 		struct ibv_qp_init_attr_ex init;
 		struct ibv_cq_init_attr_ex cq;
@@ -411,7 +411,7 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = EINVAL;
 		return NULL;
 	}
-	memset(&tmpl, 0, sizeof(struct mlx5_txq_ibv));
+	memset(&tmpl, 0, sizeof(struct mlx5_txq_obj));
 	attr.cq = (struct ibv_cq_init_attr_ex){
 		.comp_mask = 0,
 	};
@@ -502,9 +502,9 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = errno;
 		goto error;
 	}
-	txq_ibv = rte_calloc_socket(__func__, 1, sizeof(struct mlx5_txq_ibv), 0,
+	txq_obj = rte_calloc_socket(__func__, 1, sizeof(struct mlx5_txq_obj), 0,
 				    txq_ctrl->socket);
-	if (!txq_ibv) {
+	if (!txq_obj) {
 		DRV_LOG(ERR, "port %u Tx queue %u cannot allocate memory",
 			dev->data->port_id, idx);
 		rte_errno = ENOMEM;
@@ -568,9 +568,9 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		}
 	}
 #endif
-	txq_ibv->qp = tmpl.qp;
-	txq_ibv->cq = tmpl.cq;
-	rte_atomic32_inc(&txq_ibv->refcnt);
+	txq_obj->qp = tmpl.qp;
+	txq_obj->cq = tmpl.cq;
+	rte_atomic32_inc(&txq_obj->refcnt);
 	txq_ctrl->bf_reg = qp.bf.reg;
 	if (qp.comp_mask & MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
 		txq_ctrl->uar_mmap_offset = qp.uar_mmap_offset;
@@ -585,18 +585,18 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	txq_uar_init(txq_ctrl);
-	LIST_INSERT_HEAD(&priv->txqsibv, txq_ibv, next);
-	txq_ibv->txq_ctrl = txq_ctrl;
+	LIST_INSERT_HEAD(&priv->txqsobj, txq_obj, next);
+	txq_obj->txq_ctrl = txq_ctrl;
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
-	return txq_ibv;
+	return txq_obj;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
 	if (tmpl.cq)
 		claim_zero(mlx5_glue->destroy_cq(tmpl.cq));
 	if (tmpl.qp)
 		claim_zero(mlx5_glue->destroy_qp(tmpl.qp));
-	if (txq_ibv)
-		rte_free(txq_ibv);
+	if (txq_obj)
+		rte_free(txq_obj);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	rte_errno = ret; /* Restore rte_errno. */
 	return NULL;
@@ -613,8 +613,8 @@ error:
  * @return
  *   The Verbs object if it exists.
  */
-struct mlx5_txq_ibv *
-mlx5_txq_ibv_get(struct rte_eth_dev *dev, uint16_t idx)
+struct mlx5_txq_obj *
+mlx5_txq_obj_get(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_ctrl *txq_ctrl;
@@ -624,29 +624,29 @@ mlx5_txq_ibv_get(struct rte_eth_dev *dev, uint16_t idx)
 	if (!(*priv->txqs)[idx])
 		return NULL;
 	txq_ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
-	if (txq_ctrl->ibv)
-		rte_atomic32_inc(&txq_ctrl->ibv->refcnt);
-	return txq_ctrl->ibv;
+	if (txq_ctrl->obj)
+		rte_atomic32_inc(&txq_ctrl->obj->refcnt);
+	return txq_ctrl->obj;
 }
 
 /**
  * Release an Tx verbs queue object.
  *
- * @param txq_ibv
+ * @param txq_obj
  *   Verbs Tx queue object.
  *
  * @return
  *   1 while a reference on it exists, 0 when freed.
  */
 int
-mlx5_txq_ibv_release(struct mlx5_txq_ibv *txq_ibv)
+mlx5_txq_obj_release(struct mlx5_txq_obj *txq_obj)
 {
-	assert(txq_ibv);
-	if (rte_atomic32_dec_and_test(&txq_ibv->refcnt)) {
-		claim_zero(mlx5_glue->destroy_qp(txq_ibv->qp));
-		claim_zero(mlx5_glue->destroy_cq(txq_ibv->cq));
-		LIST_REMOVE(txq_ibv, next);
-		rte_free(txq_ibv);
+	assert(txq_obj);
+	if (rte_atomic32_dec_and_test(&txq_obj->refcnt)) {
+		claim_zero(mlx5_glue->destroy_qp(txq_obj->qp));
+		claim_zero(mlx5_glue->destroy_cq(txq_obj->cq));
+		LIST_REMOVE(txq_obj, next);
+		rte_free(txq_obj);
 		return 0;
 	}
 	return 1;
@@ -662,15 +662,15 @@ mlx5_txq_ibv_release(struct mlx5_txq_ibv *txq_ibv)
  *   The number of object not released.
  */
 int
-mlx5_txq_ibv_verify(struct rte_eth_dev *dev)
+mlx5_txq_obj_verify(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret = 0;
-	struct mlx5_txq_ibv *txq_ibv;
+	struct mlx5_txq_obj *txq_obj;
 
-	LIST_FOREACH(txq_ibv, &priv->txqsibv, next) {
+	LIST_FOREACH(txq_obj, &priv->txqsobj, next) {
 		DRV_LOG(DEBUG, "port %u Verbs Tx queue %u still referenced",
-			dev->data->port_id, txq_ibv->txq_ctrl->txq.idx);
+			dev->data->port_id, txq_obj->txq_ctrl->txq.idx);
 		++ret;
 	}
 	return ret;
@@ -1127,7 +1127,7 @@ mlx5_txq_get(struct rte_eth_dev *dev, uint16_t idx)
 	if ((*priv->txqs)[idx]) {
 		ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl,
 				    txq);
-		mlx5_txq_ibv_get(dev, idx);
+		mlx5_txq_obj_get(dev, idx);
 		rte_atomic32_inc(&ctrl->refcnt);
 	}
 	return ctrl;
@@ -1153,8 +1153,8 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (!(*priv->txqs)[idx])
 		return 0;
 	txq = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
-	if (txq->ibv && !mlx5_txq_ibv_release(txq->ibv))
-		txq->ibv = NULL;
+	if (txq->obj && !mlx5_txq_obj_release(txq->obj))
+		txq->obj = NULL;
 	if (rte_atomic32_dec_and_test(&txq->refcnt)) {
 		txq_free_elts(txq);
 		mlx5_mr_btree_free(&txq->txq.mr_ctrl.cache_bh);

@@ -308,13 +308,31 @@ struct mlx5_txq_data {
 	/* Storage for queued packets, must be the last field. */
 } __rte_cache_aligned;
 
-/* Verbs Rx queue elements. */
-struct mlx5_txq_ibv {
-	LIST_ENTRY(mlx5_txq_ibv) next; /* Pointer to the next element. */
+enum mlx5_txq_obj_type {
+	MLX5_TXQ_OBJ_TYPE_IBV,		/* mlx5_txq_obj with ibv_wq. */
+	MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN,
+	/* mlx5_txq_obj with mlx5_devx_tq and hairpin support. */
+};
+
+enum mlx5_txq_type {
+	MLX5_TXQ_TYPE_STANDARD, /* Standard Tx queue. */
+	MLX5_TXQ_TYPE_HAIRPIN, /* Hairpin Rx queue. */
+};
+
+/* Verbs/DevX Tx queue elements. */
+struct mlx5_txq_obj {
+	LIST_ENTRY(mlx5_txq_obj) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_txq_ctrl *txq_ctrl; /* Pointer to the control queue. */
-	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_qp *qp; /* Queue Pair. */
+	enum mlx5_rxq_obj_type type; /* The txq object type. */
+	RTE_STD_C11
+	union {
+		struct {
+			struct ibv_cq *cq; /* Completion Queue. */
+			struct ibv_qp *qp; /* Queue Pair. */
+		};
+		struct mlx5_devx_obj *sq; /* DevX object for Sx queue. */
+	};
 };
 
 /* TX queue control descriptor. */
@@ -322,9 +340,10 @@ struct mlx5_txq_ctrl {
 	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	unsigned int socket; /* CPU socket ID for allocations. */
+	enum mlx5_txq_type type; /* The txq ctrl type. */
 	unsigned int max_inline_data; /* Max inline data. */
 	unsigned int max_tso_header; /* Max TSO header size. */
-	struct mlx5_txq_ibv *ibv; /* Verbs queue object. */
+	struct mlx5_txq_obj *obj; /* Verbs/DevX queue object. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 	void *bf_reg; /* BlueFlame register from Verbs. */
@@ -393,10 +412,10 @@ int mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			unsigned int socket, const struct rte_eth_txconf *conf);
 void mlx5_tx_queue_release(void *dpdk_txq);
 int mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
-struct mlx5_txq_ibv *mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx);
-struct mlx5_txq_ibv *mlx5_txq_ibv_get(struct rte_eth_dev *dev, uint16_t idx);
-int mlx5_txq_ibv_release(struct mlx5_txq_ibv *txq_ibv);
-int mlx5_txq_ibv_verify(struct rte_eth_dev *dev);
+struct mlx5_txq_obj *mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx);
+struct mlx5_txq_obj *mlx5_txq_obj_get(struct rte_eth_dev *dev, uint16_t idx);
+int mlx5_txq_obj_release(struct mlx5_txq_obj *txq_ibv);
+int mlx5_txq_obj_verify(struct rte_eth_dev *dev);
 struct mlx5_txq_ctrl *mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
 				   const struct rte_eth_txconf *conf);

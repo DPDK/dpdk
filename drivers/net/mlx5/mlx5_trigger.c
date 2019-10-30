@@ -52,8 +52,8 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 		if (!txq_ctrl)
 			continue;
 		txq_alloc_elts(txq_ctrl);
-		txq_ctrl->ibv = mlx5_txq_ibv_new(dev, i);
-		if (!txq_ctrl->ibv) {
+		txq_ctrl->obj = mlx5_txq_obj_new(dev, i);
+		if (!txq_ctrl->obj) {
 			rte_errno = ENOMEM;
 			goto error;
 		}

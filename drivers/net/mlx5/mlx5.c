@@ -922,7 +922,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(WARNING, "port %u some Rx queues still remain",
 			dev->data->port_id);
-	ret = mlx5_txq_ibv_verify(dev);
+	ret = mlx5_txq_obj_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some Verbs Tx queue still remain",
 			dev->data->port_id);
