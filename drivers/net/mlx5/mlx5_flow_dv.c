@@ -724,6 +724,59 @@ flow_dv_convert_action_modify_tcp_ack
 					     MLX5_MODIFICATION_TYPE_ADD, error);
 }
 
+static enum mlx5_modification_field reg_to_field[] = {
+	[REG_A] = MLX5_MODI_META_DATA_REG_A,
+	[REG_B] = MLX5_MODI_META_DATA_REG_B,
+	[REG_C_0] = MLX5_MODI_META_REG_C_0,
+	[REG_C_1] = MLX5_MODI_META_REG_C_1,
+	[REG_C_2] = MLX5_MODI_META_REG_C_2,
+	[REG_C_3] = MLX5_MODI_META_REG_C_3,
+	[REG_C_4] = MLX5_MODI_META_REG_C_4,
+	[REG_C_5] = MLX5_MODI_META_REG_C_5,
+	[REG_C_6] = MLX5_MODI_META_REG_C_6,
+	[REG_C_7] = MLX5_MODI_META_REG_C_7,
+};
+
+/**
+ * Convert register set to DV specification.
+ *
+ * @param[in,out] resource
+ *   Pointer to the modify-header resource.
+ * @param[in] action
+ *   Pointer to action specification.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_set_reg
+			(struct mlx5_flow_dv_modify_hdr_resource *resource,
+			 const struct rte_flow_action *action,
+			 struct rte_flow_error *error)
+{
+	const struct mlx5_rte_flow_action_set_tag *conf = (action->conf);
+	struct mlx5_modification_cmd *actions = resource->actions;
+	uint32_t i = resource->actions_num;
+
+	if (i >= MLX5_MODIFY_NUM)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "too many items to modify");
+	actions[i].action_type = MLX5_MODIFICATION_TYPE_SET;
+	actions[i].field = reg_to_field[conf->id];
+	actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
+	actions[i].data1 = conf->data;
+	++i;
+	resource->actions_num = i;
+	if (!resource->actions_num)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "invalid modification flow item");
+	return 0;
+}
+
 /**
  * Validate META item.
  *
@@ -4720,6 +4773,94 @@ flow_dv_translate_item_meta_vport(void *matcher, void *key,
 }
 
 /**
+ * Add tag item to matcher
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ */
+static void
+flow_dv_translate_item_tag(void *matcher, void *key,
+			   const struct rte_flow_item *item)
+{
+	void *misc2_m =
+		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_2);
+	void *misc2_v =
+		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
+	const struct mlx5_rte_flow_item_tag *tag_v = item->spec;
+	const struct mlx5_rte_flow_item_tag *tag_m = item->mask;
+	enum modify_reg reg = tag_v->id;
+	rte_be32_t value = tag_v->data;
+	rte_be32_t mask = tag_m->data;
+
+	switch (reg) {
+	case REG_A:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_a,
+				rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_a,
+				rte_be_to_cpu_32(value));
+		break;
+	case REG_B:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_b,
+				 rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_b,
+				rte_be_to_cpu_32(value));
+		break;
+	case REG_C_0:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_0,
+				 rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_0,
+				rte_be_to_cpu_32(value));
+		break;
+	case REG_C_1:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_1,
+				 rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_1,
+				rte_be_to_cpu_32(value));
+		break;
+	case REG_C_2:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_2,
+				 rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_2,
+				rte_be_to_cpu_32(value));
+		break;
+	case REG_C_3:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_3,
+				 rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_3,
+				rte_be_to_cpu_32(value));
+		break;
+	case REG_C_4:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_4,
+				 rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_4,
+				rte_be_to_cpu_32(value));
+		break;
+	case REG_C_5:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_5,
+				 rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_5,
+				rte_be_to_cpu_32(value));
+		break;
+	case REG_C_6:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_6,
+				 rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_6,
+				rte_be_to_cpu_32(value));
+		break;
+	case REG_C_7:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_7,
+				 rte_be_to_cpu_32(mask));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_7,
+				rte_be_to_cpu_32(value));
+		break;
+	}
+}
+
+/**
  * Add source vport match to the specified matcher.
  *
  * @param[in, out] matcher
@@ -5305,8 +5446,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		struct mlx5_flow_tbl_resource *tbl;
 		uint32_t port_id = 0;
 		struct mlx5_flow_dv_port_id_action_resource port_id_resource;
+		int action_type = actions->type;
 
-		switch (actions->type) {
+		switch (action_type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
@@ -5621,6 +5763,12 @@ cnt_err:
 					MLX5_FLOW_ACTION_INC_TCP_ACK :
 					MLX5_FLOW_ACTION_DEC_TCP_ACK;
 			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_TAG:
+			if (flow_dv_convert_action_set_reg(&res, actions,
+							   error))
+				return -rte_errno;
+			action_flags |= MLX5_FLOW_ACTION_SET_TAG;
+			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			if (action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS) {
@@ -5645,8 +5793,9 @@ cnt_err:
 	flow->actions = action_flags;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+		int item_type = items->type;
 
-		switch (items->type) {
+		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
 			flow_dv_translate_item_port_id(dev, match_mask,
 						       match_value, items);
@@ -5796,6 +5945,11 @@ cnt_err:
 			flow_dv_translate_item_icmp6(match_mask, match_value,
 						      items, tunnel);
 			last_item = MLX5_FLOW_LAYER_ICMP6;
+			break;
+		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
+			flow_dv_translate_item_tag(match_mask, match_value,
+						   items);
+			last_item = MLX5_FLOW_ITEM_TAG;
 			break;
 		default:
 			break;

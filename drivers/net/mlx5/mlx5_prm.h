@@ -628,7 +628,8 @@ struct mlx5_ifc_fte_match_set_misc2_bits {
 	u8 metadata_reg_c_1[0x20];
 	u8 metadata_reg_c_0[0x20];
 	u8 metadata_reg_a[0x20];
-	u8 reserved_at_1a0[0x60];
+	u8 metadata_reg_b[0x20];
+	u8 reserved_at_1c0[0x40];
 };
 
 struct mlx5_ifc_fte_match_set_misc3_bits {

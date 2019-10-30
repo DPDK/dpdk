@@ -316,6 +316,58 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 	},
 };
 
+enum mlx5_feature_name {
+	MLX5_HAIRPIN_RX,
+	MLX5_HAIRPIN_TX,
+	MLX5_APPLICATION,
+};
+
+/**
+ * Translate tag ID to register.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] feature
+ *   The feature that request the register.
+ * @param[in] id
+ *   The request register ID.
+ * @param[out] error
+ *   Error description in case of any.
+ *
+ * @return
+ *   The request register on success, a negative errno
+ *   value otherwise and rte_errno is set.
+ */
+__rte_unused
+static enum modify_reg flow_get_reg_id(struct rte_eth_dev *dev,
+				       enum mlx5_feature_name feature,
+				       uint32_t id,
+				       struct rte_flow_error *error)
+{
+	static enum modify_reg id2reg[] = {
+		[0] = REG_A,
+		[1] = REG_C_2,
+		[2] = REG_C_3,
+		[3] = REG_C_4,
+		[4] = REG_B,};
+
+	dev = (void *)dev;
+	switch (feature) {
+	case MLX5_HAIRPIN_RX:
+		return REG_B;
+	case MLX5_HAIRPIN_TX:
+		return REG_A;
+	case MLX5_APPLICATION:
+		if (id > 4)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL, "invalid tag id");
+		return id2reg[id];
+	}
+	return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+				  NULL, "invalid feature name");
+}
+
 /**
  * Discover the maximum number of priority available.
  *

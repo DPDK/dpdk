@@ -27,6 +27,43 @@
 #include "mlx5.h"
 #include "mlx5_prm.h"
 
+enum modify_reg {
+	REG_A,
+	REG_B,
+	REG_C_0,
+	REG_C_1,
+	REG_C_2,
+	REG_C_3,
+	REG_C_4,
+	REG_C_5,
+	REG_C_6,
+	REG_C_7,
+};
+
+/* Private rte flow items. */
+enum mlx5_rte_flow_item_type {
+	MLX5_RTE_FLOW_ITEM_TYPE_END = INT_MIN,
+	MLX5_RTE_FLOW_ITEM_TYPE_TAG,
+};
+
+/* Private rte flow actions. */
+enum mlx5_rte_flow_action_type {
+	MLX5_RTE_FLOW_ACTION_TYPE_END = INT_MIN,
+	MLX5_RTE_FLOW_ACTION_TYPE_TAG,
+};
+
+/* Matches on selected register. */
+struct mlx5_rte_flow_item_tag {
+	uint16_t id;
+	rte_be32_t data;
+};
+
+/* Modify selected register. */
+struct mlx5_rte_flow_action_set_tag {
+	uint16_t id;
+	rte_be32_t data;
+};
+
 /* Pattern outer Layer bits. */
 #define MLX5_FLOW_LAYER_OUTER_L2 (1u << 0)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV4 (1u << 1)
@@ -53,11 +90,12 @@
 /* General pattern items bits. */
 #define MLX5_FLOW_ITEM_METADATA (1u << 16)
 #define MLX5_FLOW_ITEM_PORT_ID (1u << 17)
+#define MLX5_FLOW_ITEM_TAG (1u << 18)
 
 /* Pattern MISC bits. */
-#define MLX5_FLOW_LAYER_ICMP (1u << 18)
-#define MLX5_FLOW_LAYER_ICMP6 (1u << 19)
-#define MLX5_FLOW_LAYER_GRE_KEY (1u << 20)
+#define MLX5_FLOW_LAYER_ICMP (1u << 19)
+#define MLX5_FLOW_LAYER_ICMP6 (1u << 20)
+#define MLX5_FLOW_LAYER_GRE_KEY (1u << 21)
 
 /* Pattern tunnel Layer bits (continued). */
 #define MLX5_FLOW_LAYER_IPIP (1u << 21)
@@ -141,6 +179,7 @@
 #define MLX5_FLOW_ACTION_DEC_TCP_SEQ (1u << 29)
 #define MLX5_FLOW_ACTION_INC_TCP_ACK (1u << 30)
 #define MLX5_FLOW_ACTION_DEC_TCP_ACK (1u << 31)
+#define MLX5_FLOW_ACTION_SET_TAG (1ull << 32)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \
@@ -174,7 +213,8 @@
 				      MLX5_FLOW_ACTION_DEC_TCP_SEQ | \
 				      MLX5_FLOW_ACTION_INC_TCP_ACK | \
 				      MLX5_FLOW_ACTION_DEC_TCP_ACK | \
-				      MLX5_FLOW_ACTION_OF_SET_VLAN_VID)
+				      MLX5_FLOW_ACTION_OF_SET_VLAN_VID | \
+				      MLX5_FLOW_ACTION_SET_TAG)
 
 #define MLX5_FLOW_VLAN_ACTIONS (MLX5_FLOW_ACTION_OF_POP_VLAN | \
 				MLX5_FLOW_ACTION_OF_PUSH_VLAN)
