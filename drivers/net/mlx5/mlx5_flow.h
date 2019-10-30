@@ -527,8 +527,22 @@ struct mlx5_flow_driver_ops {
 #define MLX5_CNT_CONTAINER_UNUSED(sh, batch, thread) (&(sh)->cmng.ccont \
 	[(~((sh)->cmng.mhi[batch] >> (thread)) & 0x1) * 2 + (batch)])
 
+/* ID generation structure. */
+struct mlx5_flow_id_pool {
+	uint32_t *free_arr; /**< Pointer to the a array of free values. */
+	uint32_t base_index;
+	/**< The next index that can be used without any free elements. */
+	uint32_t *curr; /**< Pointer to the index to pop. */
+	uint32_t *last; /**< Pointer to the last element in the empty arrray. */
+};
+
 /* mlx5_flow.c */
 
+struct mlx5_flow_id_pool *mlx5_flow_id_pool_alloc(void);
+void mlx5_flow_id_pool_release(struct mlx5_flow_id_pool *pool);
+uint32_t mlx5_flow_id_get(struct mlx5_flow_id_pool *pool, uint32_t *id);
+uint32_t mlx5_flow_id_release(struct mlx5_flow_id_pool *pool,
+			      uint32_t id);
 int mlx5_flow_group_to_table(const struct rte_flow_attr *attributes,
 			     bool external, uint32_t group, uint32_t *table,
 			     struct rte_flow_error *error);

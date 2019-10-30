@@ -178,6 +178,124 @@ struct mlx5_dev_spawn_data {
 static LIST_HEAD(, mlx5_ibv_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
 static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#define MLX5_FLOW_MIN_ID_POOL_SIZE 512
+#define MLX5_ID_GENERATION_ARRAY_FACTOR 16
+
+/**
+ * Allocate ID pool structure.
+ *
+ * @return
+ *   Pointer to pool object, NULL value otherwise.
+ */
+struct mlx5_flow_id_pool *
+mlx5_flow_id_pool_alloc(void)
+{
+	struct mlx5_flow_id_pool *pool;
+	void *mem;
+
+	pool = rte_zmalloc("id pool allocation", sizeof(*pool),
+			   RTE_CACHE_LINE_SIZE);
+	if (!pool) {
+		DRV_LOG(ERR, "can't allocate id pool");
+		rte_errno  = ENOMEM;
+		return NULL;
+	}
+	mem = rte_zmalloc("", MLX5_FLOW_MIN_ID_POOL_SIZE * sizeof(uint32_t),
+			  RTE_CACHE_LINE_SIZE);
+	if (!mem) {
+		DRV_LOG(ERR, "can't allocate mem for id pool");
+		rte_errno  = ENOMEM;
+		goto error;
+	}
+	pool->free_arr = mem;
+	pool->curr = pool->free_arr;
+	pool->last = pool->free_arr + MLX5_FLOW_MIN_ID_POOL_SIZE;
+	pool->base_index = 0;
+	return pool;
+error:
+	rte_free(pool);
+	return NULL;
+}
+
+/**
+ * Release ID pool structure.
+ *
+ * @param[in] pool
+ *   Pointer to flow id pool object to free.
+ */
+void
+mlx5_flow_id_pool_release(struct mlx5_flow_id_pool *pool)
+{
+	rte_free(pool->free_arr);
+	rte_free(pool);
+}
+
+/**
+ * Generate ID.
+ *
+ * @param[in] pool
+ *   Pointer to flow id pool.
+ * @param[out] id
+ *   The generated ID.
+ *
+ * @return
+ *   0 on success, error value otherwise.
+ */
+uint32_t
+mlx5_flow_id_get(struct mlx5_flow_id_pool *pool, uint32_t *id)
+{
+	if (pool->curr == pool->free_arr) {
+		if (pool->base_index == UINT32_MAX) {
+			rte_errno  = ENOMEM;
+			DRV_LOG(ERR, "no free id");
+			return -rte_errno;
+		}
+		*id = ++pool->base_index;
+		return 0;
+	}
+	*id = *(--pool->curr);
+	return 0;
+}
+
+/**
+ * Release ID.
+ *
+ * @param[in] pool
+ *   Pointer to flow id pool.
+ * @param[out] id
+ *   The generated ID.
+ *
+ * @return
+ *   0 on success, error value otherwise.
+ */
+uint32_t
+mlx5_flow_id_release(struct mlx5_flow_id_pool *pool, uint32_t id)
+{
+	uint32_t size;
+	uint32_t size2;
+	void *mem;
+
+	if (pool->curr == pool->last) {
+		size = pool->curr - pool->free_arr;
+		size2 = size * MLX5_ID_GENERATION_ARRAY_FACTOR;
+		assert(size2 > size);
+		mem = rte_malloc("", size2 * sizeof(uint32_t), 0);
+		if (!mem) {
+			DRV_LOG(ERR, "can't allocate mem for id pool");
+			rte_errno  = ENOMEM;
+			return -rte_errno;
+		}
+		memcpy(mem, pool->free_arr, size * sizeof(uint32_t));
+		rte_free(pool->free_arr);
+		pool->free_arr = mem;
+		pool->curr = pool->free_arr + size;
+		pool->last = pool->free_arr + size2;
+	}
+	*pool->curr = id;
+	pool->curr++;
+	return 0;
+}
+
 /**
  * Initialize the counters management structure.
  *
@@ -328,7 +446,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 	struct mlx5_devx_tis_attr tis_attr = { 0 };
 #endif
 
-	assert(spawn);
+assert(spawn);
 	/* Secondary process should not create the shared context. */
 	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	pthread_mutex_lock(&mlx5_ibv_list_mutex);
