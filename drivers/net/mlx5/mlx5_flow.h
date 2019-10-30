@@ -466,6 +466,8 @@ struct mlx5_flow {
 	struct rte_flow *flow; /**< Pointer to the main flow. */
 	uint64_t layers;
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
+	uint64_t actions;
+	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	union {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		struct mlx5_flow_dv dv;
@@ -487,12 +489,11 @@ struct rte_flow {
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
 	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
 	/**< Device flows that are part of the flow. */
-	uint64_t actions;
-	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */
 	uint8_t ingress; /**< 1 if the flow is ingress. */
 	uint32_t group; /**< The group index. */
 	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
+	uint32_t hairpin_flow_id; /**< The flow id used for hairpin. */
 };
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
@@ -535,15 +536,6 @@ struct mlx5_flow_driver_ops {
 	[(((sh)->cmng.mhi[batch] >> (thread)) & 0x1) * 2 + (batch)])
 #define MLX5_CNT_CONTAINER_UNUSED(sh, batch, thread) (&(sh)->cmng.ccont \
 	[(~((sh)->cmng.mhi[batch] >> (thread)) & 0x1) * 2 + (batch)])
-
-/* ID generation structure. */
-struct mlx5_flow_id_pool {
-	uint32_t *free_arr; /**< Pointer to the a array of free values. */
-	uint32_t base_index;
-	/**< The next index that can be used without any free elements. */
-	uint32_t *curr; /**< Pointer to the index to pop. */
-	uint32_t *last; /**< Pointer to the last element in the empty arrray. */
-};
 
 /* mlx5_flow.c */
 

@@ -166,6 +166,7 @@ enum mlx5_rxq_obj_type {
 enum mlx5_rxq_type {
 	MLX5_RXQ_TYPE_STANDARD, /* Standard Rx queue. */
 	MLX5_RXQ_TYPE_HAIRPIN, /* Hairpin Rx queue. */
+	MLX5_RXQ_TYPE_UNDEFINED,
 };
 
 /* Verbs/DevX Rx queue elements. */
@@ -406,6 +407,7 @@ struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
 				const uint16_t *queues, uint32_t queues_n);
 int mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hxrq);
 int mlx5_hrxq_verify(struct rte_eth_dev *dev);
+enum mlx5_rxq_type mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_hrxq *mlx5_hrxq_drop_new(struct rte_eth_dev *dev);
 void mlx5_hrxq_drop_release(struct rte_eth_dev *dev);
 uint64_t mlx5_get_rx_port_offloads(void);

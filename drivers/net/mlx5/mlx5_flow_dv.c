@@ -5843,7 +5843,7 @@ cnt_err:
 			modify_action_position = actions_n++;
 	}
 	dev_flow->dv.actions_n = actions_n;
-	flow->actions = action_flags;
+	dev_flow->actions = action_flags;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int item_type = items->type;
@@ -6070,7 +6070,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	LIST_FOREACH(dev_flow, &flow->dev_flows, next) {
 		dv = &dev_flow->dv;
 		n = dv->actions_n;
-		if (flow->actions & MLX5_FLOW_ACTION_DROP) {
+		if (dev_flow->actions & MLX5_FLOW_ACTION_DROP) {
 			if (flow->transfer) {
 				dv->actions[n++] = priv->sh->esw_drop_action;
 			} else {
@@ -6085,7 +6085,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				}
 				dv->actions[n++] = dv->hrxq->action;
 			}
-		} else if (flow->actions &
+		} else if (dev_flow->actions &
 			   (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)) {
 			struct mlx5_hrxq *hrxq;
 
@@ -6141,7 +6141,7 @@ error:
 	LIST_FOREACH(dev_flow, &flow->dev_flows, next) {
 		struct mlx5_flow_dv *dv = &dev_flow->dv;
 		if (dv->hrxq) {
-			if (flow->actions & MLX5_FLOW_ACTION_DROP)
+			if (dev_flow->actions & MLX5_FLOW_ACTION_DROP)
 				mlx5_hrxq_drop_release(dev);
 			else
 				mlx5_hrxq_release(dev, dv->hrxq);
@@ -6375,7 +6375,7 @@ flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 			dv->flow = NULL;
 		}
 		if (dv->hrxq) {
-			if (flow->actions & MLX5_FLOW_ACTION_DROP)
+			if (dev_flow->actions & MLX5_FLOW_ACTION_DROP)
 				mlx5_hrxq_drop_release(dev);
 			else
 				mlx5_hrxq_release(dev, dv->hrxq);

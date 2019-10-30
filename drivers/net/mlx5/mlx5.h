@@ -578,6 +578,15 @@ struct mlx5_devx_dbr_page {
 	uint64_t dbr_bitmap[MLX5_DBR_BITMAP_SIZE];
 };
 
+/* ID generation structure. */
+struct mlx5_flow_id_pool {
+	uint32_t *free_arr; /**< Pointer to the a array of free values. */
+	uint32_t base_index;
+	/**< The next index that can be used without any free elements. */
+	uint32_t *curr; /**< Pointer to the index to pop. */
+	uint32_t *last; /**< Pointer to the last element in the empty arrray. */
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -637,6 +646,7 @@ struct mlx5_ibv_shared {
 	struct mlx5dv_devx_cmd_comp *devx_comp; /* DEVX async comp obj. */
 	struct mlx5_devx_obj *tis; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */
+	struct mlx5_flow_id_pool *flow_id_pool; /* Flow ID pool. */
 	struct mlx5_ibv_shared_port port[]; /* per device port data array. */
 };
 

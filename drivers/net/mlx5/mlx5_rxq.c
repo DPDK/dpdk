@@ -2097,6 +2097,32 @@ mlx5_rxq_verify(struct rte_eth_dev *dev)
 }
 
 /**
+ * Get a Rx queue type.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   Rx queue index.
+ *
+ * @return
+ *   The Rx queue type.
+ */
+enum mlx5_rxq_type
+mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_ctrl *rxq_ctrl = NULL;
+
+	if ((*priv->rxqs)[idx]) {
+		rxq_ctrl = container_of((*priv->rxqs)[idx],
+					struct mlx5_rxq_ctrl,
+					rxq);
+		return rxq_ctrl->type;
+	}
+	return MLX5_RXQ_TYPE_UNDEFINED;
+}
+
+/**
  * Create an indirection table.
  *
  * @param dev

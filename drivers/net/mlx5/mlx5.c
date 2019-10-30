@@ -531,6 +531,12 @@ assert(spawn);
 			goto error;
 		}
 	}
+	sh->flow_id_pool = mlx5_flow_id_pool_alloc();
+	if (!sh->flow_id_pool) {
+		DRV_LOG(ERR, "can't create flow id pool");
+		err = ENOMEM;
+		goto error;
+	}
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 	/*
 	 * Once the device is added to the list of memory event
@@ -570,6 +576,8 @@ error:
 		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
 	if (sh->ctx)
 		claim_zero(mlx5_glue->close_device(sh->ctx));
+	if (sh->flow_id_pool)
+		mlx5_flow_id_pool_release(sh->flow_id_pool);
 	rte_free(sh);
 	assert(err > 0);
 	rte_errno = err;
@@ -641,6 +649,8 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
 	if (sh->ctx)
 		claim_zero(mlx5_glue->close_device(sh->ctx));
+	if (sh->flow_id_pool)
+		mlx5_flow_id_pool_release(sh->flow_id_pool);
 	rte_free(sh);
 exit:
 	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
