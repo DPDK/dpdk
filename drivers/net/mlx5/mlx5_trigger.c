@@ -118,6 +118,13 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 
 		if (!rxq_ctrl)
 			continue;
+		if (rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN) {
+			rxq_ctrl->obj = mlx5_rxq_obj_new
+				(dev, i, MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN);
+			if (!rxq_ctrl->obj)
+				goto error;
+			continue;
+		}
 		/* Pre-register Rx mempool. */
 		mp = mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
 		     rxq_ctrl->rxq.mprq_mp : rxq_ctrl->rxq.mp;

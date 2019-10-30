@@ -159,6 +159,13 @@ struct mlx5_rxq_data {
 enum mlx5_rxq_obj_type {
 	MLX5_RXQ_OBJ_TYPE_IBV,		/* mlx5_rxq_obj with ibv_wq. */
 	MLX5_RXQ_OBJ_TYPE_DEVX_RQ,	/* mlx5_rxq_obj with mlx5_devx_rq. */
+	MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN,
+	/* mlx5_rxq_obj with mlx5_devx_rq and hairpin support. */
+};
+
+enum mlx5_rxq_type {
+	MLX5_RXQ_TYPE_STANDARD, /* Standard Rx queue. */
+	MLX5_RXQ_TYPE_HAIRPIN, /* Hairpin Rx queue. */
 };
 
 /* Verbs/DevX Rx queue elements. */
@@ -183,6 +190,7 @@ struct mlx5_rxq_ctrl {
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_rxq_obj *obj; /* Verbs/DevX elements. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
+	enum mlx5_rxq_type type; /* Rxq type. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 	unsigned int dbr_umem_id_valid:1; /* dbr_umem_id holds a valid value. */
@@ -193,6 +201,7 @@ struct mlx5_rxq_ctrl {
 	uint32_t dbr_umem_id; /* Storing door-bell information, */
 	uint64_t dbr_offset;  /* needed when freeing door-bell. */
 	struct mlx5dv_devx_umem *wq_umem; /* WQ buffer registration info. */
+	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 };
 
 enum mlx5_ind_tbl_type {
@@ -339,6 +348,9 @@ int mlx5_mprq_alloc_mp(struct rte_eth_dev *dev);
 int mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			unsigned int socket, const struct rte_eth_rxconf *conf,
 			struct rte_mempool *mp);
+int mlx5_rx_hairpin_queue_setup
+	(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
+	 const struct rte_eth_hairpin_conf *hairpin_conf);
 void mlx5_rx_queue_release(void *dpdk_rxq);
 int mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev);
 void mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev);
@@ -351,6 +363,9 @@ struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
 				   const struct rte_eth_rxconf *conf,
 				   struct rte_mempool *mp);
+struct mlx5_rxq_ctrl *mlx5_rxq_hairpin_new
+	(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
+	 const struct rte_eth_hairpin_conf *hairpin_conf);
 struct mlx5_rxq_ctrl *mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
