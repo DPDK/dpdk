@@ -60,8 +60,8 @@ extern int enic_pmd_logtype;
 
 #define ENICPMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, enic_pmd_logtype, \
-		"%s" fmt "\n", __func__, ##args)
-#define ENICPMD_FUNC_TRACE() ENICPMD_LOG(DEBUG, " >>")
+		"%s " fmt "\n", __func__, ##args)
+#define ENICPMD_FUNC_TRACE() ENICPMD_LOG(DEBUG, ">>")
 
 #define __le16 u16
 #define __le32 u32
