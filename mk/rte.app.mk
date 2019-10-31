@@ -128,11 +128,13 @@ ifneq (,$(findstring y,$(MVEP-y)))
 _LDLIBS-y += -lrte_common_mvep -L$(LIBMUSDK_PATH)/lib -lmusdk
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_DPAA_BUS),y)
-_LDLIBS-$(CONFIG_RTE_LIBRTE_COMMON_DPAAX)   += -lrte_common_dpaax
-endif
-ifeq ($(CONFIG_RTE_LIBRTE_FSLMC_BUS),y)
-_LDLIBS-$(CONFIG_RTE_LIBRTE_COMMON_DPAAX)   += -lrte_common_dpaax
+DPAAX-y := $(CONFIG_RTE_LIBRTE_DPAA_BUS)
+DPAAX-y += $(CONFIG_RTE_LIBRTE_FSLMC_BUS)
+DPAAX-y += $(CONFIG_RTE_LIBRTE_ENETC_PMD)
+DPAAX-y += $(CONFIG_RTE_LIBRTE_PMD_CAAM_JR)
+DPAAX-y += $(CONFIG_RTE_LIBRTE_PFE_PMD)
+ifeq ($(findstring y,$(DPAAX-y)),y)
+ _LDLIBS-y += -lrte_common_dpaax
 endif
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PCI_BUS)        += -lrte_bus_pci

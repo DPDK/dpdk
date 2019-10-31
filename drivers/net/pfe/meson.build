@@ -4,7 +4,7 @@
 if host_machine.system() != 'linux'
 	build = false
 endif
-deps += ['bus_dpaa']
+deps += ['common_dpaax']
 
 sources = files('pfe_ethdev.c',
 		'pfe_hal.c',
