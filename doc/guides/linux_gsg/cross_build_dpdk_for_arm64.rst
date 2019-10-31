@@ -122,6 +122,14 @@ To compile for non-NUMA targets, without compiling the kernel modules, use the f
 Meson Cross Compiling DPDK
 --------------------------
 
+Meson depends on pkgconfig to find the dependencies that are installed in
+nonstandard paths. The package `pkg-config-aarch64-linux-gnu` is required in
+this case. To install it in Ubuntu:
+
+.. code-block:: console
+
+   sudo apt-get install pkg-config-aarch64-linux-gnu
+
 To cross-compile DPDK on a desired target machine we can use the following
 command::
 
