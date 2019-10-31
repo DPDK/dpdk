@@ -365,6 +365,11 @@ struct rte_flow {
 	void *rule;
 };
 
+struct ixgbe_macsec_setting {
+	uint8_t encrypt_en;
+	uint8_t replayprotect_en;
+};
+
 /*
  * Statistics counters collected by the MACsec
  */
@@ -471,6 +476,7 @@ struct ixgbe_adapter {
 	struct ixgbe_hw             hw;
 	struct ixgbe_hw_stats       stats;
 	struct ixgbe_macsec_stats   macsec_stats;
+	struct ixgbe_macsec_setting	macsec_setting;
 	struct ixgbe_hw_fdir_info   fdir;
 	struct ixgbe_interrupt      intr;
 	struct ixgbe_stat_mapping_registers stat_mappings;
@@ -522,6 +528,9 @@ int ixgbe_vf_representor_uninit(struct rte_eth_dev *ethdev);
 
 #define IXGBE_DEV_PRIVATE_TO_MACSEC_STATS(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->macsec_stats)
+
+#define IXGBE_DEV_PRIVATE_TO_MACSEC_SETTING(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->macsec_setting)
 
 #define IXGBE_DEV_PRIVATE_TO_INTR(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->intr)
@@ -740,6 +749,16 @@ int ixgbe_action_rss_same(const struct rte_flow_action_rss *comp,
 			  const struct rte_flow_action_rss *with);
 int ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 		struct ixgbe_rte_flow_rss_conf *conf, bool add);
+
+void ixgbe_dev_macsec_register_enable(struct rte_eth_dev *dev,
+		struct ixgbe_macsec_setting *macsec_setting);
+
+void ixgbe_dev_macsec_register_disable(struct rte_eth_dev *dev);
+
+void ixgbe_dev_macsec_setting_save(struct rte_eth_dev *dev,
+		struct ixgbe_macsec_setting *macsec_setting);
+
+void ixgbe_dev_macsec_setting_reset(struct rte_eth_dev *dev);
 
 static inline int
 ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,
