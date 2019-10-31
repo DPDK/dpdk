@@ -69,9 +69,6 @@ static int ice_dev_set_link_down(struct rte_eth_dev *dev);
 
 static int ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int ice_vlan_offload_set(struct rte_eth_dev *dev, int mask);
-static int ice_vlan_tpid_set(struct rte_eth_dev *dev,
-			     enum rte_vlan_type vlan_type,
-			     uint16_t tpid);
 static int ice_rss_reta_update(struct rte_eth_dev *dev,
 			       struct rte_eth_rss_reta_entry64 *reta_conf,
 			       uint16_t reta_size);
@@ -159,7 +156,6 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.mac_addr_remove              = ice_macaddr_remove,
 	.vlan_filter_set              = ice_vlan_filter_set,
 	.vlan_offload_set             = ice_vlan_offload_set,
-	.vlan_tpid_set                = ice_vlan_tpid_set,
 	.reta_update                  = ice_rss_reta_update,
 	.reta_query                   = ice_rss_reta_query,
 	.rss_hash_update              = ice_rss_hash_update,
@@ -3350,56 +3346,6 @@ ice_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	return 0;
-}
-
-static int
-ice_vlan_tpid_set(struct rte_eth_dev *dev,
-		  enum rte_vlan_type vlan_type,
-		  uint16_t tpid)
-{
-	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint64_t reg_r = 0, reg_w = 0;
-	uint16_t reg_id = 0;
-	int ret = 0;
-	int qinq = dev->data->dev_conf.rxmode.offloads &
-		   DEV_RX_OFFLOAD_VLAN_EXTEND;
-
-	switch (vlan_type) {
-	case ETH_VLAN_TYPE_OUTER:
-		if (qinq)
-			reg_id = 3;
-		else
-			reg_id = 5;
-		break;
-	case ETH_VLAN_TYPE_INNER:
-		if (qinq) {
-			reg_id = 5;
-		} else {
-			PMD_DRV_LOG(ERR,
-				    "Unsupported vlan type in single vlan.");
-			return -EINVAL;
-		}
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "Unsupported vlan type %d", vlan_type);
-		return -EINVAL;
-	}
-	reg_r = ICE_READ_REG(hw, GL_SWT_L2TAGCTRL(reg_id));
-	PMD_DRV_LOG(DEBUG, "Debug read from ICE GL_SWT_L2TAGCTRL[%d]: "
-		    "0x%08"PRIx64"", reg_id, reg_r);
-
-	reg_w = reg_r & (~(GL_SWT_L2TAGCTRL_ETHERTYPE_M));
-	reg_w |= ((uint64_t)tpid << GL_SWT_L2TAGCTRL_ETHERTYPE_S);
-	if (reg_r == reg_w) {
-		PMD_DRV_LOG(DEBUG, "No need to write");
-		return 0;
-	}
-
-	ICE_WRITE_REG(hw, GL_SWT_L2TAGCTRL(reg_id), reg_w);
-	PMD_DRV_LOG(DEBUG, "Debug write 0x%08"PRIx64" to "
-		    "ICE GL_SWT_L2TAGCTRL[%d]", reg_w, reg_id);
-
-	return ret;
 }
 
 static int
