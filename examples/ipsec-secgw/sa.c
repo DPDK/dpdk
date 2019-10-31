@@ -985,7 +985,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 
 		if (sa->aead_algo == RTE_CRYPTO_AEAD_AES_GCM) {
 			struct rte_ipsec_session *ips;
-			iv_length = 16;
+			iv_length = 12;
 
 			sa_ctx->xf[idx].a.type = RTE_CRYPTO_SYM_XFORM_AEAD;
 			sa_ctx->xf[idx].a.aead.algo = sa->aead_algo;
