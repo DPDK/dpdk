@@ -328,7 +328,9 @@ static int _vnic_dev_cmd(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd,
 		if (!(status & STAT_BUSY)) {
 			if (status & STAT_ERROR) {
 				err = -(int)readq(&devcmd->args[0]);
-				if (cmd != CMD_CAPABILITY)
+				if (cmd != CMD_CAPABILITY &&
+				    cmd != CMD_OVERLAY_OFFLOAD_CTRL &&
+				    cmd != CMD_GET_SUPP_FEATURE_VER)
 					pr_err("Devcmd %d failed " \
 						"with error code %d\n",
 						_CMD_N(cmd), err);

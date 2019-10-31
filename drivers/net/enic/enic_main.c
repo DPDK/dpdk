@@ -1712,11 +1712,14 @@ static int enic_dev_init(struct enic *enic)
 	 * When Geneve with options offload is available, always disable it
 	 * first as it can interfere with user flow rules.
 	 */
-	if (enic->geneve_opt_avail &&
-	    vnic_dev_overlay_offload_ctrl(enic->vdev,
+	if (enic->geneve_opt_avail) {
+		/*
+		 * Disabling fails if the feature is provisioned but
+		 * not enabled. So ignore result and do not log error.
+		 */
+		vnic_dev_overlay_offload_ctrl(enic->vdev,
 			OVERLAY_FEATURE_GENEVE,
-			OVERLAY_OFFLOAD_DISABLE)) {
-		dev_err(enic, "failed to disable geneve+option\n");
+			OVERLAY_OFFLOAD_DISABLE);
 	}
 	enic->overlay_offload = false;
 	if (enic->disable_overlay && enic->vxlan) {
