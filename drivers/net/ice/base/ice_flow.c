@@ -2191,8 +2191,6 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	status = ice_add_rss_list(hw, vsi_handle, prof);
 
 	prof->cfg.symm = symm;
-	if (!symm)
-		goto exit;
 
 update_symm:
 	ice_rss_update_symm(hw, prof);
