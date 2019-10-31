@@ -33,9 +33,6 @@
 #include "dpaa2_sec_event.h"
 #include "dpaa2_sec_logs.h"
 
-/* Required types */
-typedef uint64_t	dma_addr_t;
-
 /* RTA header files */
 #include <desc/ipsec.h>
 #include <desc/pdcp.h>
