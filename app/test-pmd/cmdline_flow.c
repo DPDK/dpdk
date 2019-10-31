@@ -6126,11 +6126,13 @@ update_fields(uint8_t *buf, struct rte_flow_item *item, uint16_t next_proto)
 	case RTE_FLOW_ITEM_TYPE_IPV4:
 		ipv4 = (struct rte_flow_item_ipv4 *)buf;
 		ipv4->hdr.version_ihl = 0x45;
-		ipv4->hdr.next_proto_id = (uint8_t)next_proto;
+		if (next_proto && ipv4->hdr.next_proto_id == 0)
+			ipv4->hdr.next_proto_id = (uint8_t)next_proto;
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV6:
 		ipv6 = (struct rte_flow_item_ipv6 *)buf;
-		ipv6->hdr.proto = (uint8_t)next_proto;
+		if (next_proto && ipv6->hdr.proto == 0)
+			ipv6->hdr.proto = (uint8_t)next_proto;
 		ipv6_vtc_flow = rte_be_to_cpu_32(ipv6->hdr.vtc_flow);
 		ipv6_vtc_flow &= 0x0FFFFFFF; /*< reset version bits. */
 		ipv6_vtc_flow |= 0x60000000; /*< set ipv6 version. */
@@ -6312,9 +6314,11 @@ cmd_set_raw_parsed(const struct buffer *in)
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
 			size = sizeof(rte_be32_t);
+			proto = 0x0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			size = sizeof(struct rte_flow_item_mpls);
+			proto = 0x0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			size = sizeof(struct rte_flow_item_nvgre);
