@@ -25,7 +25,7 @@ AEAD algorithms:
 Limitations
 -----------
 
-* Chained mbufs are supported but only out-of-place (destination mbuf must be contiguous).
+* In out-of-place operations, chained destination mbufs are not supported.
 * Chained mbufs are only supported by RTE_CRYPTO_AEAD_AES_GCM algorithm,
   not RTE_CRYPTO_AUTH_AES_GMAC.
 * Cipher only is not supported.

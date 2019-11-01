@@ -196,6 +196,7 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 	uint32_t offset, data_offset, data_length;
 	uint32_t part_len, total_len, data_len;
 	uint8_t *tag;
+	unsigned int oop = 0;
 
 	if (session->op == AESNI_GCM_OP_AUTHENTICATED_ENCRYPTION ||
 			session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION) {
@@ -217,27 +218,28 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 		RTE_ASSERT(m_src != NULL);
 	}
 
+	src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, offset);
+
 	data_len = m_src->data_len - offset;
 	part_len = (data_len < data_length) ? data_len :
 			data_length;
 
-	/* Destination buffer is required when segmented source buffer */
-	RTE_ASSERT((part_len == data_length) ||
-			((part_len != data_length) &&
-					(sym_op->m_dst != NULL)));
-	/* Segmented destination buffer is not supported */
 	RTE_ASSERT((sym_op->m_dst == NULL) ||
 			((sym_op->m_dst != NULL) &&
 					rte_pktmbuf_is_contiguous(sym_op->m_dst)));
 
-
-	dst = sym_op->m_dst ?
-			rte_pktmbuf_mtod_offset(sym_op->m_dst, uint8_t *,
-					data_offset) :
-			rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
+	/* In-place */
+	if (sym_op->m_dst == NULL || (sym_op->m_dst == sym_op->m_src))
+		dst = src;
+	/* Out-of-place */
+	else {
+		oop = 1;
+		/* Segmented destination buffer is not supported if operation is
+		 * Out-of-place */
+		RTE_ASSERT(rte_pktmbuf_is_contiguous(sym_op->m_dst));
+		dst = rte_pktmbuf_mtod_offset(sym_op->m_dst, uint8_t *,
 					data_offset);
-
-	src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, offset);
+	}
 
 	iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 				session->iv.offset);
@@ -255,12 +257,15 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 		total_len = data_length - part_len;
 
 		while (total_len) {
-			dst += part_len;
 			m_src = m_src->next;
 
 			RTE_ASSERT(m_src != NULL);
 
 			src = rte_pktmbuf_mtod(m_src, uint8_t *);
+			if (oop)
+				dst += part_len;
+			else
+				dst = src;
 			part_len = (m_src->data_len < total_len) ?
 					m_src->data_len : total_len;
 
@@ -292,12 +297,15 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 		total_len = data_length - part_len;
 
 		while (total_len) {
-			dst += part_len;
 			m_src = m_src->next;
 
 			RTE_ASSERT(m_src != NULL);
 
 			src = rte_pktmbuf_mtod(m_src, uint8_t *);
+			if (oop)
+				dst += part_len;
+			else
+				dst = src;
 			part_len = (m_src->data_len < total_len) ?
 					m_src->data_len : total_len;
 
@@ -517,6 +525,7 @@ aesni_gcm_create(const char *name,
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_IN_PLACE_SGL |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
 

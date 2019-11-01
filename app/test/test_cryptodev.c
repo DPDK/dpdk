@@ -12827,6 +12827,8 @@ static struct unit_test_suite cryptodev_aesni_gcm_testsuite  = {
 
 		/** Scatter-Gather */
 		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encrypt_SGL_in_place_1500B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_encrypt_SGL_out_of_place_400B_1seg),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
