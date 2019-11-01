@@ -725,6 +725,12 @@ non_parallel_test_list = [
         "Report":  None,
     },
     {
+        "Name":    "FIB perf autotest",
+        "Command": "fib_perf_autotest",
+        "Func":    default_autotest,
+        "Report":  None,
+    },
+    {
          "Name":    "Efd perf autotest",
          "Command": "efd_perf_autotest",
          "Func":    default_autotest,
