@@ -811,7 +811,8 @@ hinic_tx_offload_pkt_prepare(struct rte_mbuf *m,
 
 	if (ol_flags & PKT_TX_TUNNEL_VXLAN) {
 		if ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
-		    (ol_flags & PKT_TX_OUTER_IPV6)) {
+		    (ol_flags & PKT_TX_OUTER_IPV6) ||
+		    (ol_flags & PKT_TX_TCP_SEG)) {
 			inner_l3_offset = m->l2_len + m->outer_l2_len +
 				m->outer_l3_len;
 			off_info->outer_l2_len = m->outer_l2_len;
