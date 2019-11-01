@@ -14,6 +14,7 @@
 #include <rte_flow.h>
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
+#include <rte_string_fns.h>
 
 #include "failsafe_private.h"
 
@@ -881,6 +882,154 @@ fs_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+__fs_xstats_count(struct rte_eth_dev *dev)
+{
+	struct sub_device *sdev;
+	int count = 0;
+	uint8_t i;
+	int ret;
+
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		ret = rte_eth_xstats_get_names(PORT_ID(sdev), NULL, 0);
+		if (ret < 0)
+			return ret;
+		count += ret;
+	}
+
+	return count;
+}
+
+static int
+__fs_xstats_get_names(struct rte_eth_dev *dev,
+		    struct rte_eth_xstat_name *xstats_names,
+		    unsigned int limit)
+{
+	struct sub_device *sdev;
+	unsigned int count = 0;
+	uint8_t i;
+
+	/* Caller only cares about count */
+	if (!xstats_names)
+		return  __fs_xstats_count(dev);
+
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		struct rte_eth_xstat_name *sub_names = xstats_names + count;
+		int j, r;
+
+		if (count >= limit)
+			break;
+
+		r = rte_eth_xstats_get_names(PORT_ID(sdev),
+					     sub_names, limit - count);
+		if (r < 0)
+			return r;
+
+		/* add subN_ prefix to names */
+		for (j = 0; j < r; j++) {
+			char *xname = sub_names[j].name;
+			char tmp[RTE_ETH_XSTATS_NAME_SIZE];
+
+			if ((xname[0] == 't' || xname[0] == 'r') &&
+			    xname[1] == 'x' && xname[2] == '_')
+				snprintf(tmp, sizeof(tmp), "%.3ssub%u_%s",
+					 xname, i, xname + 3);
+			else
+				snprintf(tmp, sizeof(tmp), "sub%u_%s",
+					 i, xname);
+
+			strlcpy(xname, tmp, RTE_ETH_XSTATS_NAME_SIZE);
+		}
+		count += r;
+	}
+	return count;
+}
+
+static int
+fs_xstats_get_names(struct rte_eth_dev *dev,
+		    struct rte_eth_xstat_name *xstats_names,
+		    unsigned int limit)
+{
+	int ret;
+
+	fs_lock(dev, 0);
+	ret = __fs_xstats_get_names(dev, xstats_names, limit);
+	fs_unlock(dev, 0);
+	return ret;
+}
+
+static int
+__fs_xstats_get(struct rte_eth_dev *dev,
+	      struct rte_eth_xstat *xstats,
+	      unsigned int n)
+{
+	unsigned int count = 0;
+	struct sub_device *sdev;
+	uint8_t i;
+	int j, ret;
+
+	ret = __fs_xstats_count(dev);
+	/*
+	 * if error
+	 * or caller did not give enough space
+	 * or just querying
+	 */
+	if (ret < 0 || ret > (int)n || xstats == NULL)
+		return ret;
+
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		ret = rte_eth_xstats_get(PORT_ID(sdev), xstats, n);
+		if (ret < 0)
+			return ret;
+
+		if (ret > (int)n)
+			return n + count;
+
+		/* add offset to id's from sub-device */
+		for (j = 0; j < ret; j++)
+			xstats[j].id += count;
+
+		xstats += ret;
+		n -= ret;
+		count += ret;
+	}
+
+	return count;
+}
+
+static int
+fs_xstats_get(struct rte_eth_dev *dev,
+	      struct rte_eth_xstat *xstats,
+	      unsigned int n)
+{
+	int ret;
+
+	fs_lock(dev, 0);
+	ret = __fs_xstats_get(dev, xstats, n);
+	fs_unlock(dev, 0);
+
+	return ret;
+}
+
+
+static int
+fs_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+	int r = 0;
+
+	fs_lock(dev, 0);
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		r = rte_eth_xstats_reset(PORT_ID(sdev));
+		if (r < 0)
+			break;
+	}
+	fs_unlock(dev, 0);
+
+	return r;
+}
+
 static void
 fs_dev_merge_desc_lim(struct rte_eth_desc_lim *to,
 		      const struct rte_eth_desc_lim *from)
@@ -1331,6 +1480,9 @@ const struct eth_dev_ops failsafe_ops = {
 	.link_update = fs_link_update,
 	.stats_get = fs_stats_get,
 	.stats_reset = fs_stats_reset,
+	.xstats_get = fs_xstats_get,
+	.xstats_get_names = fs_xstats_get_names,
+	.xstats_reset = fs_xstats_reset,
 	.dev_infos_get = fs_dev_infos_get,
 	.dev_supported_ptypes_get = fs_dev_supported_ptypes_get,
 	.mtu_set = fs_mtu_set,
