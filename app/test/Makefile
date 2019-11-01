@@ -127,6 +127,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_readwrite_lf.c
 SRCS-$(CONFIG_RTE_LIBRTE_RIB) += test_rib.c
 SRCS-$(CONFIG_RTE_LIBRTE_RIB) += test_rib6.c
 SRCS-$(CONFIG_RTE_LIBRTE_FIB) += test_fib.c
+SRCS-$(CONFIG_RTE_LIBRTE_FIB) += test_fib6.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm.c
 SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm_perf.c
