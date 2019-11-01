@@ -17,9 +17,9 @@ EXPORT_MAP := rte_rib_version.map
 LIBABIVER := 1
 
 # all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_RIB) := rte_rib.c
+SRCS-$(CONFIG_RTE_LIBRTE_RIB) := rte_rib.c rte_rib6.c
 
 # install this header file
-SYMLINK-$(CONFIG_RTE_LIBRTE_RIB)-include := rte_rib.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_RIB)-include := rte_rib.h rte_rib6.h
 
 include $(RTE_SDK)/mk/rte.lib.mk
