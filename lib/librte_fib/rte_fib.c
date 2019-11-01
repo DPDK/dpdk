@@ -17,6 +17,8 @@
 #include <rte_rib.h>
 #include <rte_fib.h>
 
+#include "dir24_8.h"
+
 TAILQ_HEAD(rte_fib_list, rte_tailq_entry);
 static struct rte_tailq_elem rte_fib_tailq = {
 	.name = "RTE_FIB",
@@ -92,11 +94,21 @@ static int
 init_dataplane(struct rte_fib *fib, __rte_unused int socket_id,
 	struct rte_fib_conf *conf)
 {
+	char dp_name[sizeof(void *)];
+
+	snprintf(dp_name, sizeof(dp_name), "%p", fib);
 	switch (conf->type) {
 	case RTE_FIB_DUMMY:
 		fib->dp = fib;
 		fib->lookup = dummy_lookup;
 		fib->modify = dummy_modify;
+		return 0;
+	case RTE_FIB_DIR24_8:
+		fib->dp = dir24_8_create(dp_name, socket_id, conf);
+		if (fib->dp == NULL)
+			return -rte_errno;
+		fib->lookup = dir24_8_get_lookup_fn(conf);
+		fib->modify = dir24_8_modify;
 		return 0;
 	default:
 		return -EINVAL;
@@ -258,6 +270,8 @@ free_dataplane(struct rte_fib *fib)
 	switch (fib->type) {
 	case RTE_FIB_DUMMY:
 		return;
+	case RTE_FIB_DIR24_8:
+		dir24_8_free(fib->dp);
 	default:
 		return;
 	}

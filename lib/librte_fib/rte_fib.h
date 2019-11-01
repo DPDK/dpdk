@@ -15,6 +15,7 @@
 #include <rte_compat.h>
 
 struct rte_fib;
+struct rte_rib;
 
 /** Maximum depth value possible for IPv4 FIB. */
 #define RTE_FIB_MAXDEPTH	32
@@ -22,6 +23,7 @@ struct rte_fib;
 /** Type of FIB struct */
 enum rte_fib_type {
 	RTE_FIB_DUMMY,		/**< RIB tree based FIB */
+	RTE_FIB_DIR24_8,	/**< DIR24_8 based FIB */
 	RTE_FIB_TYPE_MAX
 };
 
@@ -37,12 +39,26 @@ enum rte_fib_op {
 	RTE_FIB_DEL,
 };
 
+/** Size of nexthop (1 << nh_sz) bits for DIR24_8 based FIB */
+enum rte_fib_dir24_8_nh_sz {
+	RTE_FIB_DIR24_8_1B,
+	RTE_FIB_DIR24_8_2B,
+	RTE_FIB_DIR24_8_4B,
+	RTE_FIB_DIR24_8_8B
+};
+
 /** FIB configuration structure */
 struct rte_fib_conf {
 	enum rte_fib_type type; /**< Type of FIB struct */
 	/** Default value returned on lookup if there is no route */
 	uint64_t default_nh;
 	int	max_routes;
+	union {
+		struct {
+			enum rte_fib_dir24_8_nh_sz nh_sz;
+			uint32_t	num_tbl8;
+		} dir24_8;
+	};
 };
 
 /**
@@ -143,7 +159,6 @@ __rte_experimental
 int
 rte_fib_lookup_bulk(struct rte_fib *fib, uint32_t *ips,
 		uint64_t *next_hops, int n);
-
 /**
  * Get pointer to the dataplane specific struct
  *
