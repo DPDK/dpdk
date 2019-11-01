@@ -1,0 +1,20 @@
+EXPERIMENTAL {
+	global:
+
+	rte_rib_create;
+	rte_rib_find_existing;
+	rte_rib_free;
+	rte_rib_get_depth;
+	rte_rib_get_ext;
+	rte_rib_get_ip;
+	rte_rib_get_nh;
+	rte_rib_get_nxt;
+	rte_rib_insert;
+	rte_rib_lookup;
+	rte_rib_lookup_parent;
+	rte_rib_lookup_exact;
+	rte_rib_set_nh;
+	rte_rib_remove;
+
+	local: *;
+};

@@ -226,6 +226,8 @@ New Features
   Added eBPF JIT support for arm64 architecture to improve the eBPF program
   performance.
 
+* **Added RIB (Routing Information Base) library.**
+
 * **Updated testpmd.**
 
   * Added a console command to testpmd app, ``show port (port_id) ptypes`` which
@@ -433,6 +435,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_port.so.3
      librte_power.so.1
      librte_rawdev.so.1
+   + librte_rib.so.1
      librte_rcu.so.1
      librte_reorder.so.1
      librte_ring.so.2

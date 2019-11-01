@@ -909,6 +909,11 @@ CONFIG_RTE_LIBRTE_RCU=y
 CONFIG_RTE_LIBRTE_RCU_DEBUG=n
 
 #
+# Compile librte_rib
+#
+CONFIG_RTE_LIBRTE_RIB=y
+
+#
 # Compile librte_lpm
 #
 CONFIG_RTE_LIBRTE_LPM=y
