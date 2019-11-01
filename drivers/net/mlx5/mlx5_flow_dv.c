@@ -212,6 +212,33 @@ flow_d_shared_unlock(struct rte_eth_dev *dev)
 	}
 }
 
+/* Update VLAN's VID/PCP based on input rte_flow_action.
+ *
+ * @param[in] action
+ *   Pointer to struct rte_flow_action.
+ * @param[out] vlan
+ *   Pointer to struct rte_vlan_hdr.
+ */
+static void
+mlx5_update_vlan_vid_pcp(const struct rte_flow_action *action,
+			 struct rte_vlan_hdr *vlan)
+{
+	uint16_t vlan_tci;
+	if (action->type == RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP) {
+		vlan_tci =
+		    ((const struct rte_flow_action_of_set_vlan_pcp *)
+					       action->conf)->vlan_pcp;
+		vlan_tci = vlan_tci << MLX5DV_FLOW_VLAN_PCP_SHIFT;
+		vlan->vlan_tci &= ~MLX5DV_FLOW_VLAN_PCP_MASK;
+		vlan->vlan_tci |= vlan_tci;
+	} else if (action->type == RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID) {
+		vlan->vlan_tci &= ~MLX5DV_FLOW_VLAN_VID_MASK;
+		vlan->vlan_tci |= rte_be_to_cpu_16
+		    (((const struct rte_flow_action_of_set_vlan_vid *)
+					     action->conf)->vlan_vid);
+	}
+}
+
 /**
  * Convert modify-header action to DV specification.
  *
@@ -1050,6 +1077,7 @@ flow_dev_get_vlan_info_from_items(const struct rte_flow_item *items,
  */
 static int
 flow_dv_validate_action_push_vlan(uint64_t action_flags,
+				  uint64_t item_flags,
 				  const struct rte_flow_action *action,
 				  const struct rte_flow_attr *attr,
 				  struct rte_flow_error *error)
@@ -1067,6 +1095,14 @@ flow_dv_validate_action_push_vlan(uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "no support for multiple VLAN "
 					  "actions");
+	if (!mlx5_flow_find_action
+			(action + 1, RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID) &&
+	    !(item_flags & MLX5_FLOW_LAYER_OUTER_VLAN))
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"push VLAN needs to match on VLAN in order to "
+				"get VLAN VID information because there is "
+				"no followed set VLAN VID action");
 	(void)attr;
 	return 0;
 }
@@ -1098,17 +1134,16 @@ flow_dv_validate_action_set_vlan_pcp(uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "VLAN PCP value is too big");
-	if (mlx5_flow_find_action(actions,
-				  RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN) == NULL)
+	if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "set VLAN PCP can only be used "
-					  "with push VLAN action");
-	if (action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "set VLAN PCP action must precede "
+					  "set VLAN PCP action must follow "
 					  "the push VLAN action");
+	if (action_flags & MLX5_FLOW_ACTION_OF_SET_VLAN_PCP)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Multiple VLAN PCP modification are "
+					  "not supported");
 	return 0;
 }
 
@@ -1129,6 +1164,7 @@ flow_dv_validate_action_set_vlan_pcp(uint64_t action_flags,
  */
 static int
 flow_dv_validate_action_set_vlan_vid(uint64_t item_flags,
+				     uint64_t action_flags,
 				     const struct rte_flow_action actions[],
 				     struct rte_flow_error *error)
 {
@@ -1139,18 +1175,24 @@ flow_dv_validate_action_set_vlan_vid(uint64_t item_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "VLAN VID value is too big");
-	/* If a push VLAN action follows then it will handle this action */
-	if (mlx5_flow_find_action(actions,
-				  RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN))
-		return 0;
+	/* there is an of_push_vlan action before us */
+	if (action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN) {
+		if (mlx5_flow_find_action(actions + 1,
+					  RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID))
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"Multiple VLAN VID modifications are "
+					"not supported");
+		else
+			return 0;
+	}
 
 	/*
 	 * Action is on an existing VLAN header:
 	 *    Need to verify this is a single modify CID action.
 	 *   Rule mast include a match on outer VLAN.
 	 */
-	if (mlx5_flow_find_action(++action,
-				  RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID))
+	if (action_flags & MLX5_FLOW_ACTION_OF_SET_VLAN_VID)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "Multiple VLAN VID modifications are "
@@ -3622,6 +3664,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 			ret = flow_dv_validate_action_push_vlan(action_flags,
+								item_flags,
 								actions, attr,
 								error);
 			if (ret < 0)
@@ -3635,13 +3678,16 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			/* Count PCP with push_vlan command. */
+			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_PCP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 			ret = flow_dv_validate_action_set_vlan_vid
-						(item_flags, actions, error);
+						(item_flags, action_flags,
+						 actions, error);
 			if (ret < 0)
 				return ret;
 			/* Count VID with push_vlan command. */
+			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
@@ -5474,8 +5520,6 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	void *match_value = dev_flow->dv.value.buf;
 	uint8_t next_protocol = 0xff;
 	struct rte_vlan_hdr vlan = { 0 };
-	bool vlan_inherited = false;
-	uint16_t vlan_tci;
 	uint32_t table;
 	int ret = 0;
 
@@ -5500,6 +5544,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		uint32_t port_id = 0;
 		struct mlx5_flow_dv_port_id_action_resource port_id_resource;
 		int action_type = actions->type;
+		const struct rte_flow_action *found_action = NULL;
 
 		switch (action_type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -5598,49 +5643,36 @@ cnt_err:
 			action_flags |= MLX5_FLOW_ACTION_OF_POP_VLAN;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
-			if (!vlan_inherited) {
-				flow_dev_get_vlan_info_from_items(items, &vlan);
-				vlan_inherited = true;
-			}
+			flow_dev_get_vlan_info_from_items(items, &vlan);
 			vlan.eth_proto = rte_be_to_cpu_16
 			     ((((const struct rte_flow_action_of_push_vlan *)
 						   actions->conf)->ethertype));
+			found_action = mlx5_flow_find_action
+					(actions + 1,
+					 RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID);
+			if (found_action)
+				mlx5_update_vlan_vid_pcp(found_action, &vlan);
+			found_action = mlx5_flow_find_action
+					(actions + 1,
+					 RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP);
+			if (found_action)
+				mlx5_update_vlan_vid_pcp(found_action, &vlan);
 			if (flow_dv_create_action_push_vlan
 					    (dev, attr, &vlan, dev_flow, error))
 				return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
 					   dev_flow->dv.push_vlan_res->action;
 			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
-			/* Push VLAN command is also handling this VLAN_VID */
-			action_flags &= ~MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
-			if (!vlan_inherited) {
-				flow_dev_get_vlan_info_from_items(items, &vlan);
-				vlan_inherited = true;
-			}
-			vlan_tci =
-			    ((const struct rte_flow_action_of_set_vlan_pcp *)
-						       actions->conf)->vlan_pcp;
-			vlan_tci = vlan_tci << MLX5DV_FLOW_VLAN_PCP_SHIFT;
-			vlan.vlan_tci &= ~MLX5DV_FLOW_VLAN_PCP_MASK;
-			vlan.vlan_tci |= vlan_tci;
-			/* Push VLAN command will use this value */
+			/* of_vlan_push action handled this action */
+			assert(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN);
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
-			if (!vlan_inherited) {
-				flow_dev_get_vlan_info_from_items(items, &vlan);
-				vlan_inherited = true;
-			}
-			vlan.vlan_tci &= ~MLX5DV_FLOW_VLAN_VID_MASK;
-			vlan.vlan_tci |= rte_be_to_cpu_16
-			    (((const struct rte_flow_action_of_set_vlan_vid *)
-						     actions->conf)->vlan_vid);
-			/* Push VLAN command will use this value */
-			if (mlx5_flow_find_action
-				(actions,
-				 RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN))
+			if (action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN)
 				break;
+			flow_dev_get_vlan_info_from_items(items, &vlan);
+			mlx5_update_vlan_vid_pcp(actions, &vlan);
 			/* If no VLAN push - this is a modify header action */
 			if (flow_dv_convert_action_modify_vlan_vid
 							(&res, actions, error))
