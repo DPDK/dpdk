@@ -226,7 +226,11 @@ New Features
   Added eBPF JIT support for arm64 architecture to improve the eBPF program
   performance.
 
-* **Added RIB (Routing Information Base) library.**
+* **Added RIB and FIB (Routing/Forwarding Information Base) libraries.**
+
+  RIB and FIB can replace the LPM (Longest Prefix Match) library
+  with better control plane (RIB) performance.
+  The data plane (FIB) can be extended with new algorithms.
 
 * **Updated testpmd.**
 
@@ -404,6 +408,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_efd.so.1
    + librte_ethdev.so.13
    + librte_eventdev.so.8
+   + librte_fib.so.1
      librte_flow_classify.so.1
      librte_gro.so.1
      librte_gso.so.1

@@ -30,6 +30,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/librte_efd \
                           @TOPDIR@/lib/librte_ethdev \
                           @TOPDIR@/lib/librte_eventdev \
+                          @TOPDIR@/lib/librte_fib \
                           @TOPDIR@/lib/librte_flow_classify \
                           @TOPDIR@/lib/librte_gro \
                           @TOPDIR@/lib/librte_gso \

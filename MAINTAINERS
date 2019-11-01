@@ -1317,10 +1317,11 @@ F: lib/librte_member/
 F: doc/guides/prog_guide/member_lib.rst
 F: app/test/test_member*
 
-RIB - EXPERIMENTAL
+RIB/FIB - EXPERIMENTAL
 M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 F: lib/librte_rib/
 F: app/test/test_rib*
+F: lib/librte_fib/
 
 Traffic metering
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
