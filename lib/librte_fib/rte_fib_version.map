@@ -10,5 +10,14 @@ EXPERIMENTAL {
 	rte_fib_get_dp;
 	rte_fib_get_rib;
 
+	rte_fib6_add;
+	rte_fib6_create;
+	rte_fib6_delete;
+	rte_fib6_find_existing;
+	rte_fib6_free;
+	rte_fib6_lookup_bulk;
+	rte_fib6_get_dp;
+	rte_fib6_get_rib;
+
 	local: *;
 };
