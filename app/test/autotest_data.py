@@ -111,6 +111,12 @@ parallel_test_list = [
         "Report":  None,
     },
     {
+        "Name":    "RIB autotest",
+        "Command": "rib_autotest",
+        "Func":    default_autotest,
+        "Report":  None,
+    },
+    {
         "Name":    "Memcpy autotest",
         "Command": "memcpy_autotest",
         "Func":    default_autotest,

@@ -1320,6 +1320,7 @@ F: app/test/test_member*
 RIB - EXPERIMENTAL
 M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 F: lib/librte_rib/
+F: app/test/test_rib*
 
 Traffic metering
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
