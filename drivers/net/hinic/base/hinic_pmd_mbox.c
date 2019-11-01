@@ -131,11 +131,9 @@ enum hinic_mbox_tx_status {
 #define MBOX_RESPONSE_ERROR		0x1
 #define MBOX_MSG_ID_MASK		0xFF
 #define MBOX_MSG_ID(func_to_func)	((func_to_func)->send_msg_id)
-#define MBOX_MSG_ID_INC(func_to_func)	(MBOX_MSG_ID(func_to_func) =	\
-			(MBOX_MSG_ID(func_to_func) + 1) & MBOX_MSG_ID_MASK)
 
 enum hinic_hwif_direction_type {
-	/* driver send msg to up or up send msg to drier*/
+	/* driver send msg to up or up send msg to driver*/
 	HINIC_HWIF_DIRECT_SEND = 0,
 	/* after driver/up send msg to each other, then up/driver ack the msg */
 	HINIC_HWIF_RESPONSE,
@@ -690,7 +688,8 @@ static int hinic_mbox_to_func(struct hinic_mbox_func_to_func *func_to_func,
 	if (err)
 		return err;
 
-	msg_info.msg_id = MBOX_MSG_ID_INC(func_to_func);
+	msg_info.msg_id = (MBOX_MSG_ID(func_to_func) + 1) & MBOX_MSG_ID_MASK;
+	MBOX_MSG_ID(func_to_func) = msg_info.msg_id;
 
 	set_mbox_to_func_event(func_to_func, EVENT_START);
 
