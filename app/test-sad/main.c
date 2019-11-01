@@ -518,6 +518,9 @@ lookup(void *arg)
 	uint32_t burst_sz;
 	struct rte_ipsec_sad *sad = arg;
 
+	if (config.nb_tuples == 0)
+		return 0;
+
 	burst_sz = RTE_MIN(config.burst_sz, config.nb_tuples);
 	for (i = 0; i < config.nb_tuples; i += burst_sz) {
 		for (j = 0; j < burst_sz; j++)
@@ -533,6 +536,7 @@ lookup(void *arg)
 				print_result(keys[j], vals[j]);
 		}
 	}
+	acc = (acc == 0) ? UINT64_MAX : acc;
 	printf("Average lookup cycles %.2Lf, lookups/sec: %.2Lf\n",
 		(long double)acc / config.nb_tuples,
 		(long double)config.nb_tuples * rte_get_tsc_hz() / acc);
