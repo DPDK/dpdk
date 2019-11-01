@@ -853,10 +853,11 @@ static inline u32 hinic_rx_alloc_mbuf_bulk(struct hinic_rxq *rxq,
 static struct rte_mbuf *hinic_rx_alloc_mbuf(struct hinic_rxq *rxq,
 					dma_addr_t *dma_addr)
 {
-	struct rte_mbuf *mbuf;
+	struct rte_mbuf *mbuf = NULL;
+	int rc;
 
-	mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
-	if (unlikely(!mbuf))
+	rc = rte_pktmbuf_alloc_bulk(rxq->mb_pool, &mbuf, 1);
+	if (unlikely(rc != HINIC_OK))
 		return NULL;
 
 	*dma_addr = rte_mbuf_data_iova_default(mbuf);
