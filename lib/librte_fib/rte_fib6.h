@@ -19,10 +19,12 @@
 #define RTE_FIB6_MAXDEPTH       128
 
 struct rte_fib6;
+struct rte_rib6;
 
 /** Type of FIB struct */
 enum rte_fib6_type {
 	RTE_FIB6_DUMMY,		/**< RIB6 tree based FIB */
+	RTE_FIB6_TRIE,		/**< TRIE based fib  */
 	RTE_FIB6_TYPE_MAX
 };
 
@@ -40,12 +42,24 @@ enum rte_fib6_op {
 	RTE_FIB6_DEL,
 };
 
+enum rte_fib_trie_nh_sz {
+	RTE_FIB6_TRIE_2B = 1,
+	RTE_FIB6_TRIE_4B,
+	RTE_FIB6_TRIE_8B
+};
+
 /** FIB configuration structure */
 struct rte_fib6_conf {
 	enum rte_fib6_type type; /**< Type of FIB struct */
 	/** Default value returned on lookup if there is no route */
 	uint64_t default_nh;
 	int	max_routes;
+	union {
+		struct {
+			enum rte_fib_trie_nh_sz nh_sz;
+			uint32_t	num_tbl8;
+		} trie;
+	};
 };
 
 /**

@@ -17,6 +17,8 @@
 #include <rte_rib6.h>
 #include <rte_fib6.h>
 
+#include "trie.h"
+
 TAILQ_HEAD(rte_fib6_list, rte_tailq_entry);
 static struct rte_tailq_elem rte_fib6_tailq = {
 	.name = "RTE_FIB6",
@@ -92,11 +94,21 @@ static int
 init_dataplane(struct rte_fib6 *fib, __rte_unused int socket_id,
 	struct rte_fib6_conf *conf)
 {
+	char dp_name[sizeof(void *)];
+
+	snprintf(dp_name, sizeof(dp_name), "%p", fib);
 	switch (conf->type) {
 	case RTE_FIB6_DUMMY:
 		fib->dp = fib;
 		fib->lookup = dummy_lookup;
 		fib->modify = dummy_modify;
+		return 0;
+	case RTE_FIB6_TRIE:
+		fib->dp = trie_create(dp_name, socket_id, conf);
+		if (fib->dp == NULL)
+			return -rte_errno;
+		fib->lookup = rte_trie_get_lookup_fn(conf);
+		fib->modify = trie_modify;
 		return 0;
 	default:
 		return -EINVAL;
@@ -260,6 +272,8 @@ free_dataplane(struct rte_fib6 *fib)
 	switch (fib->type) {
 	case RTE_FIB6_DUMMY:
 		return;
+	case RTE_FIB6_TRIE:
+		trie_free(fib->dp);
 	default:
 		return;
 	}
