@@ -30,7 +30,7 @@ Features
 - MTU update
 - Unicast MAC filter
 - Multicast MAC filter
-- Flow director
+- Flow API
 - Set Link down or up
 - FW version
 - LRO
