@@ -153,6 +153,9 @@ def check_output(args, stderr=None):
 def module_is_loaded(module):
     global loaded_modules
 
+    if module == 'vfio_pci':
+        module = 'vfio-pci'
+
     if loaded_modules:
         return module in loaded_modules
 
@@ -520,7 +523,7 @@ def bind_all(dev_list, driver, force=False):
         pass
 
     # check if we're attempting to bind to a driver that isn't loaded
-    if not module_is_loaded(driver):
+    if not module_is_loaded(driver.replace('-','_')):
         sys.exit("Error: Driver '%s' is not loaded." % driver)
 
     try:
