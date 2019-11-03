@@ -2315,9 +2315,9 @@ sfc_flow_create(struct rte_eth_dev *dev,
 	if (rc != 0)
 		goto fail_bad_value;
 
-	TAILQ_INSERT_TAIL(&sa->filter.flow_list, flow, entries);
-
 	sfc_adapter_lock(sa);
+
+	TAILQ_INSERT_TAIL(&sa->filter.flow_list, flow, entries);
 
 	if (sa->state == SFC_ADAPTER_STARTED) {
 		rc = sfc_flow_filter_insert(sa, flow);
