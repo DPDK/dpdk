@@ -502,7 +502,7 @@ test_mempool(void)
 
 	if (mp_nocache == NULL) {
 		printf("cannot allocate mp_nocache mempool\n");
-		goto err;
+		GOTO_ERR(ret, err);
 	}
 
 	/* create a mempool (with cache) */
@@ -515,7 +515,7 @@ test_mempool(void)
 
 	if (mp_cache == NULL) {
 		printf("cannot allocate mp_cache mempool\n");
-		goto err;
+		GOTO_ERR(ret, err);
 	}
 
 	/* create an empty mempool  */
@@ -571,15 +571,15 @@ test_mempool(void)
 
 	if (mp_stack == NULL) {
 		printf("cannot allocate mp_stack mempool\n");
-		goto err;
+		GOTO_ERR(ret, err);
 	}
 	if (rte_mempool_set_ops_byname(mp_stack, "stack", NULL) < 0) {
 		printf("cannot set stack handler\n");
-		goto err;
+		GOTO_ERR(ret, err);
 	}
 	if (rte_mempool_populate_default(mp_stack) < 0) {
 		printf("cannot populate mp_stack mempool\n");
-		goto err;
+		GOTO_ERR(ret, err);
 	}
 	rte_mempool_obj_iter(mp_stack, my_obj_init, NULL);
 
@@ -593,23 +593,23 @@ test_mempool(void)
 
 	if (default_pool == NULL) {
 		printf("cannot allocate default mempool\n");
-		goto err;
+		GOTO_ERR(ret, err);
 	}
 	if (rte_mempool_set_ops_byname(default_pool,
 				default_pool_ops, NULL) < 0) {
 		printf("cannot set %s handler\n", default_pool_ops);
-		goto err;
+		GOTO_ERR(ret, err);
 	}
 	if (rte_mempool_populate_default(default_pool) < 0) {
 		printf("cannot populate %s mempool\n", default_pool_ops);
-		goto err;
+		GOTO_ERR(ret, err);
 	}
 	rte_mempool_obj_iter(default_pool, my_obj_init, NULL);
 
 	/* retrieve the mempool from its name */
 	if (rte_mempool_lookup("test_nocache") != mp_nocache) {
 		printf("Cannot lookup mempool from its name\n");
-		goto err;
+		GOTO_ERR(ret, err);
 	}
 
 	printf("Walk into mempools:\n");
@@ -619,36 +619,36 @@ test_mempool(void)
 
 	/* basic tests without cache */
 	if (test_mempool_basic(mp_nocache, 0) < 0)
-		goto err;
+		GOTO_ERR(ret, err);
 
 	/* basic tests with cache */
 	if (test_mempool_basic(mp_cache, 0) < 0)
-		goto err;
+		GOTO_ERR(ret, err);
 
 	/* basic tests with user-owned cache */
 	if (test_mempool_basic(mp_nocache, 1) < 0)
-		goto err;
+		GOTO_ERR(ret, err);
 
 	/* more basic tests without cache */
 	if (test_mempool_basic_ex(mp_nocache) < 0)
-		goto err;
+		GOTO_ERR(ret, err);
 
 	/* mempool operation test based on single producer and single comsumer */
 	if (test_mempool_sp_sc() < 0)
-		goto err;
+		GOTO_ERR(ret, err);
 
 	if (test_mempool_creation_with_exceeded_cache_size() < 0)
-		goto err;
+		GOTO_ERR(ret, err);
 
 	if (test_mempool_same_name_twice_creation() < 0)
-		goto err;
+		GOTO_ERR(ret, err);
 
 	/* test the stack handler */
 	if (test_mempool_basic(mp_stack, 1) < 0)
-		goto err;
+		GOTO_ERR(ret, err);
 
 	if (test_mempool_basic(default_pool, 1) < 0)
-		goto err;
+		GOTO_ERR(ret, err);
 
 	rte_mempool_list_dump(stdout);
 
