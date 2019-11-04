@@ -1109,6 +1109,10 @@ virtio_dev_rx_batch_packed(struct virtio_net *dev,
 	}
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
+		vhost_log_cache_write_iova(dev, vq, descs[avail_idx + i].addr,
+					   lens[i]);
+
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
 		ids[i] = descs[avail_idx + i].id;
 
 	vhost_flush_enqueue_batch_packed(dev, vq, lens, ids);
