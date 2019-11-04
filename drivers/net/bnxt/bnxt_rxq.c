@@ -444,6 +444,8 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	 * If queue is it started, we do not post buffers for Rx.
 	 */
 	rxq->rx_started = true;
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	bnxt_free_hwrm_rx_ring(bp, rx_queue_id);
 	rc = bnxt_alloc_hwrm_rx_ring(bp, rx_queue_id);
 	if (rc)
@@ -469,11 +471,11 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
-	if (rc == 0)
+	if (rc != 0) {
 		dev->data->rx_queue_state[rx_queue_id] =
-				RTE_ETH_QUEUE_STATE_STARTED;
-	else
+				RTE_ETH_QUEUE_STATE_STOPPED;
 		rxq->rx_started = false;
+	}
 
 	PMD_DRV_LOG(INFO,
 		    "queue %d, rx_deferred_start %d, state %d!\n",
