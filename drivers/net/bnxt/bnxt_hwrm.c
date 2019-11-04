@@ -1217,8 +1217,9 @@ get_rx_info:
 	HWRM_PREP(req, QUEUE_QPORTCFG, BNXT_USE_CHIMP_MB);
 
 	req.flags = rte_cpu_to_le_32(dir);
-	/* HWRM Version >= 1.9.1 */
-	if (bp->hwrm_spec_code >= HWRM_VERSION_1_9_1)
+	/* HWRM Version >= 1.9.1 only if COS Classification is not required. */
+	if (bp->hwrm_spec_code >= HWRM_VERSION_1_9_1 &&
+	    !(bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY))
 		req.drv_qmap_cap =
 			HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_ENABLED;
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
