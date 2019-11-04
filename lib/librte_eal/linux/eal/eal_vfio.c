@@ -412,6 +412,9 @@ get_vfio_cfg_by_container_fd(int container_fd)
 {
 	int i;
 
+	if (container_fd == RTE_VFIO_DEFAULT_CONTAINER_FD)
+		return default_vfio_cfg;
+
 	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
 		if (vfio_cfgs[i].vfio_container_fd == container_fd)
 			return &vfio_cfgs[i];
