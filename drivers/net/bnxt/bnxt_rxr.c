@@ -512,15 +512,19 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 
 	flags2_f = flags2_0xf(rxcmp1);
 	/* IP Checksum */
-	if (unlikely(((IS_IP_NONTUNNEL_PKT(flags2_f)) &&
-		      (RX_CMP_IP_CS_ERROR(rxcmp1))) ||
-		     (IS_IP_TUNNEL_PKT(flags2_f) &&
-		      (RX_CMP_IP_OUTER_CS_ERROR(rxcmp1))))) {
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+	if (likely(IS_IP_NONTUNNEL_PKT(flags2_f))) {
+		if (unlikely(RX_CMP_IP_CS_ERROR(rxcmp1)))
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		else
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+	} else if (IS_IP_TUNNEL_PKT(flags2_f)) {
+		if (unlikely(RX_CMP_IP_OUTER_CS_ERROR(rxcmp1) ||
+			     RX_CMP_IP_CS_ERROR(rxcmp1)))
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		else
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
 	} else if (unlikely(RX_CMP_IP_CS_UNKNOWN(rxcmp1))) {
 		mbuf->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
-	} else {
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
 	}
 
 	/* L4 Checksum */
