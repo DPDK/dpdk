@@ -2657,6 +2657,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 	struct ice_vsi *vsi = pf->main_vsi;
 	uint16_t nb_rxq = 0;
 	uint16_t nb_txq, i;
+	uint16_t max_frame_size;
 	int mask, ret;
 
 	/* program Tx queues' context in hardware */
@@ -2723,6 +2724,14 @@ ice_dev_start(struct rte_eth_dev *dev)
 	ice_link_update(dev, 0);
 
 	pf->adapter_stopped = false;
+
+	/* Set the max frame size to default value*/
+	max_frame_size = pf->dev_data->dev_conf.rxmode.max_rx_pkt_len ?
+		pf->dev_data->dev_conf.rxmode.max_rx_pkt_len :
+		ICE_FRAME_SIZE_MAX;
+
+	/* Set the max frame size to HW*/
+	ice_aq_set_mac_cfg(hw, max_frame_size, NULL);
 
 	return 0;
 
