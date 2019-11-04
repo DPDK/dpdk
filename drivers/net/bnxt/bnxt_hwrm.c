@@ -1696,10 +1696,29 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	HWRM_PREP(req, VNIC_CFG, BNXT_USE_CHIMP_MB);
 
 	if (BNXT_CHIP_THOR(bp)) {
-		struct bnxt_rx_queue *rxq =
-			bp->eth_dev->data->rx_queues[vnic->start_grp_id];
-		struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
+		int dflt_rxq = vnic->start_grp_id;
+		struct bnxt_rx_ring_info *rxr;
+		struct bnxt_cp_ring_info *cpr;
+		struct bnxt_rx_queue *rxq;
+		int i;
+
+		/*
+		 * The first active receive ring is used as the VNIC
+		 * default receive ring. If there are no active receive
+		 * rings (all corresponding receive queues are stopped),
+		 * the first receive ring is used.
+		 */
+		for (i = vnic->start_grp_id; i < vnic->end_grp_id; i++) {
+			rxq = bp->eth_dev->data->rx_queues[i];
+			if (rxq->rx_started) {
+				dflt_rxq = i;
+				break;
+			}
+		}
+
+		rxq = bp->eth_dev->data->rx_queues[dflt_rxq];
+		rxr = rxq->rx_ring;
+		cpr = rxq->cp_ring;
 
 		req.default_rx_ring_id =
 			rte_cpu_to_le_16(rxr->rx_ring_struct->fw_ring_id);

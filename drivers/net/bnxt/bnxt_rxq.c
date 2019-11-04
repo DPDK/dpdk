@@ -451,6 +451,10 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (rc)
 		return rc;
 
+	if (BNXT_CHIP_THOR(bp)) {
+		/* Reconfigure default receive ring and MRU. */
+		bnxt_hwrm_vnic_cfg(bp, rxq->vnic);
+	}
 	PMD_DRV_LOG(INFO, "Rx queue started %d\n", rx_queue_id);
 
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
@@ -491,7 +495,8 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	struct bnxt_vnic_info *vnic = NULL;
 	struct bnxt_rx_queue *rxq = NULL;
-	int rc = 0;
+	int active_queue_cnt = 0;
+	int i, rc = 0;
 
 	rc = is_bnxt_in_error(bp);
 	if (rc)
@@ -507,8 +512,9 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	rxq = bp->rx_queues[rx_queue_id];
+	vnic = rxq->vnic;
 
-	if (rxq == NULL) {
+	if (!rxq || !vnic) {
 		PMD_DRV_LOG(ERR, "Invalid Rx queue %d\n", rx_queue_id);
 		return -EINVAL;
 	}
@@ -518,12 +524,38 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	PMD_DRV_LOG(DEBUG, "Rx queue stopped\n");
 
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
-		vnic = rxq->vnic;
 		if (BNXT_HAS_RING_GRPS(bp))
 			vnic->fw_grp_ids[rx_queue_id] = INVALID_HW_RING_ID;
 
 		PMD_DRV_LOG(DEBUG, "Rx Queue Count %d\n", vnic->rx_queue_cnt);
 		rc = bnxt_vnic_rss_configure(bp, vnic);
+	}
+
+	if (BNXT_CHIP_THOR(bp)) {
+		/* Compute current number of active receive queues. */
+		for (i = vnic->start_grp_id; i < vnic->end_grp_id; i++)
+			if (bp->rx_queues[i]->rx_started)
+				active_queue_cnt++;
+
+		/*
+		 * For Thor, we need to ensure that the VNIC default receive
+		 * ring corresponds to an active receive queue. When no queue
+		 * is active, we need to temporarily set the MRU to zero so
+		 * that packets are dropped early in the receive pipeline in
+		 * order to prevent the VNIC default receive ring from being
+		 * accessed.
+		 */
+		if (active_queue_cnt == 0) {
+			uint16_t saved_mru = vnic->mru;
+
+			vnic->mru = 0;
+			/* Reconfigure default receive ring and MRU. */
+			bnxt_hwrm_vnic_cfg(bp, vnic);
+			vnic->mru = saved_mru;
+		} else {
+			/* Reconfigure default receive ring. */
+			bnxt_hwrm_vnic_cfg(bp, vnic);
+		}
 	}
 
 	if (rc == 0)
