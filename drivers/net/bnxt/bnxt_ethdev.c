@@ -967,6 +967,7 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_shutdown_nic(bp);
 	bnxt_hwrm_if_change(bp, 0);
 	bp->dev_stopped = 1;
+	bp->rx_cosq_cnt = 0;
 }
 
 static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
