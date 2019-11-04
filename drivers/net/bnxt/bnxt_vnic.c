@@ -35,7 +35,7 @@ void prandom_bytes(void *dest_ptr, size_t len)
 	}
 }
 
-void bnxt_init_vnics(struct bnxt *bp)
+static void bnxt_init_vnics(struct bnxt *bp)
 {
 	struct bnxt_vnic_info *vnic;
 	uint16_t max_vnics;
@@ -52,7 +52,6 @@ void bnxt_init_vnics(struct bnxt *bp)
 		vnic->hash_mode =
 			HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_DEFAULT;
 
-		prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
 		STAILQ_INIT(&vnic->filter);
 		STAILQ_INIT(&vnic->flow_list);
 		STAILQ_INSERT_TAIL(&bp->free_vnic_list, vnic, next);
@@ -179,6 +178,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 				HW_HASH_KEY_SIZE);
 		vnic->mc_list_dma_addr = vnic->rss_hash_key_dma_addr +
 				HW_HASH_KEY_SIZE;
+		prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
 	}
 
 	return 0;
@@ -220,6 +220,7 @@ int bnxt_alloc_vnic_mem(struct bnxt *bp)
 		return -ENOMEM;
 	}
 	bp->vnic_info = vnic_mem;
+	bnxt_init_vnics(bp);
 	return 0;
 }
 

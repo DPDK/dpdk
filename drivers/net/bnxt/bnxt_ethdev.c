@@ -479,22 +479,6 @@ static int bnxt_shutdown_nic(struct bnxt *bp)
 	return 0;
 }
 
-static int bnxt_init_nic(struct bnxt *bp)
-{
-	int rc;
-
-	if (BNXT_HAS_RING_GRPS(bp)) {
-		rc = bnxt_init_ring_grps(bp);
-		if (rc)
-			return rc;
-	}
-
-	bnxt_init_vnics(bp);
-	bnxt_init_filters(bp);
-
-	return 0;
-}
-
 /*
  * Device configuration and status function
  */
@@ -4661,8 +4645,6 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 	rc = bnxt_setup_int(bp);
 	if (rc)
 		return rc;
-
-	bnxt_init_nic(bp);
 
 	rc = bnxt_request_int(bp);
 	if (rc)

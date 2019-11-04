@@ -61,7 +61,7 @@ struct bnxt_filter_info *bnxt_alloc_vf_filter(struct bnxt *bp, uint16_t vf)
 	return filter;
 }
 
-void bnxt_init_filters(struct bnxt *bp)
+static void bnxt_init_filters(struct bnxt *bp)
 {
 	struct bnxt_filter_info *filter;
 	int i, max_filters;
@@ -171,6 +171,7 @@ int bnxt_alloc_filter_mem(struct bnxt *bp)
 		return -ENOMEM;
 	}
 	bp->filter_info = filter_mem;
+	bnxt_init_filters(bp);
 	return 0;
 }
 
