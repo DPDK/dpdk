@@ -653,11 +653,21 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	struct vhost_vring_addr *addr = &vq->ring_addrs;
 	uint64_t len, expected_len;
 
+	if (addr->flags & (1 << VHOST_VRING_F_LOG)) {
+		vq->log_guest_addr =
+			translate_log_addr(dev, vq, addr->log_guest_addr);
+		if (vq->log_guest_addr == 0) {
+			RTE_LOG(DEBUG, VHOST_CONFIG,
+				"(%d) failed to map log_guest_addr.\n",
+				dev->vid);
+			return dev;
+		}
+	}
+
 	if (vq_is_packed(dev)) {
 		len = sizeof(struct vring_packed_desc) * vq->size;
 		vq->desc_packed = (struct vring_packed_desc *)(uintptr_t)
 			ring_addr_to_vva(dev, vq, addr->desc_user_addr, &len);
-		vq->log_guest_addr = 0;
 		if (vq->desc_packed == NULL ||
 				len != sizeof(struct vring_packed_desc) *
 				vq->size) {
@@ -753,14 +763,6 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 		vq->last_avail_idx = vq->used->idx;
 	}
 
-	vq->log_guest_addr =
-		translate_log_addr(dev, vq, addr->log_guest_addr);
-	if (vq->log_guest_addr == 0) {
-		RTE_LOG(DEBUG, VHOST_CONFIG,
-			"(%d) failed to map log_guest_addr .\n",
-			dev->vid);
-		return dev;
-	}
 	vq->access_ok = 1;
 
 	VHOST_LOG_DEBUG(VHOST_CONFIG, "(%d) mapped address desc: %p\n",
