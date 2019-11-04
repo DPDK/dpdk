@@ -63,11 +63,14 @@ struct memif_queue {
 	uint16_t last_head;			/**< last ring head */
 	uint16_t last_tail;			/**< last ring tail */
 
+	struct rte_mbuf **buffers;
+	/**< Stored mbufs. Used in zero-copy tx. Slave stores transmitted
+	 * mbufs to free them once master has received them.
+	 */
+
 	/* rx/tx info */
 	uint64_t n_pkts;			/**< number of rx/tx packets */
 	uint64_t n_bytes;			/**< number of rx/tx bytes */
-
-	memif_ring_t *ring;			/**< pointer to ring */
 
 	struct rte_intr_handle intr_handle;	/**< interrupt handle */
 
@@ -115,8 +118,6 @@ struct pmd_internals {
 	/**< local disconnect reason */
 	char remote_disc_string[ETH_MEMIF_DISC_STRING_SIZE];
 	/**< remote disconnect reason */
-
-	struct rte_vdev_device *vdev;		/**< vdev handle */
 };
 
 struct pmd_process_private {
@@ -131,7 +132,7 @@ struct pmd_process_private {
  * @param proc_private
  *   device process private data
  */
-void memif_free_regions(struct pmd_process_private *proc_private);
+void memif_free_regions(struct rte_eth_dev *dev);
 
 /**
  * Finalize connection establishment process. Map shared memory file

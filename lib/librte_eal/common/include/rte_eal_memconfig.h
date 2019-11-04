@@ -5,6 +5,8 @@
 #ifndef _RTE_EAL_MEMCONFIG_H_
 #define _RTE_EAL_MEMCONFIG_H_
 
+#include <stdbool.h>
+
 #include <rte_compat.h>
 
 /**
@@ -108,6 +110,17 @@ rte_mcfg_timer_lock(void);
 __rte_experimental
 void
 rte_mcfg_timer_unlock(void);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * If true, pages are put in single files (per memseg list),
+ * as opposed to creating a file per page.
+ */
+__rte_experimental
+bool
+rte_mcfg_get_single_file_segments(void);
 
 #ifdef __cplusplus
 }
