@@ -1000,6 +1000,11 @@ flow_dv_validate_action_pop_vlan(struct rte_eth_dev *dev,
 					  NULL,
 					  "cannot pop vlan without a "
 					  "match on (outer) vlan in the flow");
+	if (action_flags & MLX5_FLOW_ACTION_PORT_ID)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "wrong action order, port_id should "
+					  "be after pop VLAN action");
 	return 0;
 }
 
@@ -1103,6 +1108,11 @@ flow_dv_validate_action_push_vlan(uint64_t action_flags,
 				"push VLAN needs to match on VLAN in order to "
 				"get VLAN VID information because there is "
 				"no followed set VLAN VID action");
+	if (action_flags & MLX5_FLOW_ACTION_PORT_ID)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "wrong action order, port_id should "
+					  "be after push VLAN");
 	(void)attr;
 	return 0;
 }
@@ -1144,6 +1154,11 @@ flow_dv_validate_action_set_vlan_pcp(uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "Multiple VLAN PCP modification are "
 					  "not supported");
+	if (action_flags & MLX5_FLOW_ACTION_PORT_ID)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "wrong action order, port_id should "
+					  "be after set VLAN PCP");
 	return 0;
 }
 
@@ -1202,6 +1217,11 @@ flow_dv_validate_action_set_vlan_vid(uint64_t item_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "match on VLAN is required in order "
 					  "to set VLAN VID");
+	if (action_flags & MLX5_FLOW_ACTION_PORT_ID)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "wrong action order, port_id should "
+					  "be after set VLAN VID");
 	return 0;
 }
 
