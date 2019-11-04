@@ -51,6 +51,7 @@ static void bnxt_init_vnics(struct bnxt *bp)
 		vnic->lb_rule = (uint16_t)HWRM_NA_SIGNATURE;
 		vnic->hash_mode =
 			HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_DEFAULT;
+		vnic->rx_queue_cnt = 0;
 
 		STAILQ_INIT(&vnic->filter);
 		STAILQ_INIT(&vnic->flow_list);

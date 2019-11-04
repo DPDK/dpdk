@@ -466,8 +466,7 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		}
 
 		PMD_DRV_LOG(DEBUG, "Rx Queue Count %d\n", vnic->rx_queue_cnt);
-		if (vnic->rx_queue_cnt > 1)
-			rc = bnxt_vnic_rss_configure(bp, vnic);
+		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
 	if (rc == 0)
@@ -522,8 +521,7 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 			vnic->fw_grp_ids[rx_queue_id] = INVALID_HW_RING_ID;
 
 		PMD_DRV_LOG(DEBUG, "Rx Queue Count %d\n", vnic->rx_queue_cnt);
-		if (vnic->rx_queue_cnt > 1)
-			rc = bnxt_vnic_rss_configure(bp, vnic);
+		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
 	if (rc == 0)
