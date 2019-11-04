@@ -839,6 +839,8 @@ F: lib/librte_vhost/
 F: doc/guides/prog_guide/vhost_lib.rst
 F: examples/vhost/
 F: doc/guides/sample_app_ug/vhost.rst
+F: examples/vhost_blk/
+F: doc/guides/sample_app_ug/vhost_blk.rst
 F: examples/vhost_crypto/
 F: examples/vdpa/
 F: doc/guides/sample_app_ug/vdpa.rst

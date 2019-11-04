@@ -42,7 +42,7 @@ all_examples = [
 	'skeleton', 'tep_termination',
 	'timer', 'vdpa',
 	'vhost', 'vhost_crypto',
-	'vm_power_manager',
+	'vhost_blk', 'vm_power_manager',
 	'vm_power_manager/guest_cli',
 	'vmdq', 'vmdq_dcb',
 ]

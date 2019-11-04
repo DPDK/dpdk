@@ -41,6 +41,7 @@ Sample Applications User Guides
     packet_ordering
     vmdq_dcb_forwarding
     vhost
+    vhost_blk
     vhost_crypto
     vdpa
     ip_pipeline

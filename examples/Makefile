@@ -68,7 +68,7 @@ ifeq ($(CONFIG_RTE_LIBRTE_HASH),y)
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += tep_termination
 endif
 DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += timer
-DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost vdpa
+DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost vdpa vhost_blk
 ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost_crypto
 endif
