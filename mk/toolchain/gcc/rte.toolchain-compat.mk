@@ -103,7 +103,7 @@ else
 	endif
 
 	# Disable octeontx event PMD for gcc < 4.8.6 & ARCH=arm64
-	ifeq ($(CONFIG_RTE_ARCH), arm64)
+	ifeq ($(RTE_ARCH), arm64)
 	ifeq ($(shell test $(GCC_VERSION)$(GCC_PATCHLEVEL) -lt 486 && echo 1), 1)
 		CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF=d
 		CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL=d
