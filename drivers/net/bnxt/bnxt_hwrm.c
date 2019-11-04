@@ -4337,8 +4337,10 @@ bnxt_vnic_rss_configure_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 			}
 
 			/* Return if no rings are active. */
-			if (cnt == max_rings)
+			if (cnt == max_rings) {
+				HWRM_UNLOCK();
 				return 0;
+			}
 
 			/* Add rx/cp ring pair to RSS table. */
 			rxr = rxqs[k]->rx_ring;
