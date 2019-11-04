@@ -34,6 +34,7 @@ struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp)
 	}
 	STAILQ_REMOVE_HEAD(&bp->free_filter_list, next);
 
+	filter->mac_index = INVALID_MAC_INDEX;
 	/* Default to L2 MAC Addr filter */
 	filter->flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
 	filter->enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |

@@ -63,6 +63,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto err_out;
 		}
+		filter->mac_index = 0;
 		filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
 		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 		goto out;
@@ -146,6 +147,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto err_out;
 		}
+		filter->mac_index = 0;
 		filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
 		/*
 		 * TODO: Configure & associate CFA rule for

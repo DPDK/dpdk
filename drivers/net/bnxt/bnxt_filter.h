@@ -8,6 +8,12 @@
 
 #include <rte_ether.h>
 
+#define bnxt_vlan_filter_exists(bp, filter, chk, vlan_id)	\
+		(((filter)->enables & (chk)) &&			\
+		 ((filter)->l2_ivlan == (vlan_id) &&		\
+		  (filter)->l2_ivlan_mask == 0x0FFF) &&		\
+		 !memcmp((filter)->l2_addr, (bp)->mac_addr,	\
+			 RTE_ETHER_ADDR_LEN))
 struct bnxt;
 
 #define BNXT_FLOW_L2_VALID_FLAG			BIT(0)
@@ -71,7 +77,6 @@ struct bnxt_filter_info {
 	uint16_t                ip_addr_type;
 	uint16_t                ethertype;
 	uint32_t		priority;
-	uint8_t			dflt;
 };
 
 struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp);
