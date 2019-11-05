@@ -831,6 +831,7 @@ alloc_memseg_list(struct rte_memseg_list *msl, uint64_t page_sz,
 	msl->page_sz = page_sz;
 	msl->socket_id = socket_id;
 	msl->base_va = NULL;
+	msl->heap = 1; /* mark it as a heap segment */
 
 	RTE_LOG(DEBUG, EAL, "Memseg list allocated: 0x%zxkB at socket %i\n",
 			(size_t)page_sz >> 10, socket_id);
@@ -1405,6 +1406,7 @@ eal_legacy_hugepage_init(void)
 		msl->page_sz = page_sz;
 		msl->socket_id = 0;
 		msl->len = internal_config.memory;
+		msl->heap = 1;
 
 		/* we're in single-file segments mode, so only the segment list
 		 * fd needs to be set up.
@@ -1677,6 +1679,7 @@ eal_legacy_hugepage_init(void)
 		mem_sz = msl->len;
 		munmap(msl->base_va, mem_sz);
 		msl->base_va = NULL;
+		msl->heap = 0;
 
 		/* destroy backing fbarray */
 		rte_fbarray_destroy(&msl->memseg_arr);

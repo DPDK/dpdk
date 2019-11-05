@@ -93,6 +93,7 @@ rte_eal_hugepage_init(void)
 		msl->page_sz = page_sz;
 		msl->len = internal_config.memory;
 		msl->socket_id = 0;
+		msl->heap = 1;
 
 		/* populate memsegs. each memseg is 1 page long */
 		for (cur_seg = 0; cur_seg < n_segs; cur_seg++) {

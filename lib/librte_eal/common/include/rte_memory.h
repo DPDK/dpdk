@@ -81,6 +81,7 @@ struct rte_memseg_list {
 	volatile uint32_t version; /**< version number for multiprocess sync. */
 	size_t len; /**< Length of memory area covered by this memseg list. */
 	unsigned int external; /**< 1 if this list points to external memory */
+	unsigned int heap; /**< 1 if this list points to a heap */
 	struct rte_fbarray memseg_arr;
 };
 

@@ -1253,7 +1253,16 @@ type1_map(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 {
 	int *vfio_container_fd = arg;
 
-	if (msl->external)
+	/* skip external memory that isn't a heap */
+	if (msl->external && !msl->heap)
+		return 0;
+
+	/* skip any segments with invalid IOVA addresses */
+	if (ms->iova == RTE_BAD_IOVA)
+		return 0;
+
+	/* if IOVA mode is VA, we've already mapped the internal segments */
+	if (!msl->external && rte_eal_iova_mode() == RTE_IOVA_VA)
 		return 0;
 
 	return vfio_type1_dma_mem_map(*vfio_container_fd, ms->addr_64, ms->iova,
@@ -1320,8 +1329,13 @@ vfio_type1_dma_map(int vfio_container_fd)
 		/* with IOVA as VA mode, we can get away with mapping contiguous
 		 * chunks rather than going page-by-page.
 		 */
-		return rte_memseg_contig_walk(type1_map_contig,
+		int ret = rte_memseg_contig_walk(type1_map_contig,
 				&vfio_container_fd);
+		if (ret)
+			return ret;
+		/* we have to continue the walk because we've skipped the
+		 * external segments during the config walk.
+		 */
 	}
 	return rte_memseg_walk(type1_map, &vfio_container_fd);
 }
@@ -1413,7 +1427,15 @@ vfio_spapr_map_walk(const struct rte_memseg_list *msl,
 {
 	struct spapr_remap_walk_param *param = arg;
 
-	if (msl->external || ms->addr_64 == param->addr_64)
+	/* skip external memory that isn't a heap */
+	if (msl->external && !msl->heap)
+		return 0;
+
+	/* skip any segments with invalid IOVA addresses */
+	if (ms->iova == RTE_BAD_IOVA)
+		return 0;
+
+	if (ms->addr_64 == param->addr_64)
 		return 0;
 
 	return vfio_spapr_dma_do_map(param->vfio_container_fd, ms->addr_64, ms->iova,
@@ -1426,7 +1448,15 @@ vfio_spapr_unmap_walk(const struct rte_memseg_list *msl,
 {
 	struct spapr_remap_walk_param *param = arg;
 
-	if (msl->external || ms->addr_64 == param->addr_64)
+	/* skip external memory that isn't a heap */
+	if (msl->external && !msl->heap)
+		return 0;
+
+	/* skip any segments with invalid IOVA addresses */
+	if (ms->iova == RTE_BAD_IOVA)
+		return 0;
+
+	if (ms->addr_64 == param->addr_64)
 		return 0;
 
 	return vfio_spapr_dma_do_map(param->vfio_container_fd, ms->addr_64, ms->iova,
@@ -1446,7 +1476,12 @@ vfio_spapr_window_size_walk(const struct rte_memseg_list *msl,
 	struct spapr_walk_param *param = arg;
 	uint64_t max = ms->iova + ms->len;
 
-	if (msl->external)
+	/* skip external memory that isn't a heap */
+	if (msl->external && !msl->heap)
+		return 0;
+
+	/* skip any segments with invalid IOVA addresses */
+	if (ms->iova == RTE_BAD_IOVA)
 		return 0;
 
 	/* do not iterate ms we haven't mapped yet  */
