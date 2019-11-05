@@ -62,6 +62,7 @@ dpaa2_cmdif_enqueue_bufs(struct rte_rawdev *dev,
 	struct qbman_fd fd;
 	struct qbman_eq_desc eqdesc;
 	struct qbman_swp *swp;
+	uint32_t retry_count = 0;
 	int ret;
 
 	RTE_SET_USED(count);
@@ -100,11 +101,15 @@ dpaa2_cmdif_enqueue_bufs(struct rte_rawdev *dev,
 		ret = qbman_swp_enqueue_multiple(swp, &eqdesc, &fd, NULL, 1);
 		if (ret < 0 && ret != -EBUSY)
 			DPAA2_CMDIF_ERR("Transmit failure with err: %d\n", ret);
-	} while (ret == -EBUSY);
+		retry_count++;
+	} while ((ret == -EBUSY) && (retry_count < DPAA2_MAX_TX_RETRY_COUNT));
+
+	if (ret < 0)
+		return ret;
 
 	DPAA2_CMDIF_DP_DEBUG("Successfully transmitted a packet\n");
 
-	return 0;
+	return 1;
 }
 
 static int
