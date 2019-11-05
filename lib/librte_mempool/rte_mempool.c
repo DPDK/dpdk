@@ -329,7 +329,7 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	if (mp->flags & MEMPOOL_F_NO_CACHE_ALIGN)
 		off = RTE_PTR_ALIGN_CEIL(vaddr, 8) - vaddr;
 	else
-		off = RTE_PTR_ALIGN_CEIL(vaddr, RTE_CACHE_LINE_SIZE) - vaddr;
+		off = RTE_PTR_ALIGN_CEIL(vaddr, RTE_MEMPOOL_ALIGN) - vaddr;
 
 	if (off > len) {
 		ret = -EINVAL;

@@ -116,6 +116,9 @@ struct rte_mempool_objsz {
 #define	MEMPOOL_PG_NUM_DEFAULT	1
 
 #ifndef RTE_MEMPOOL_ALIGN
+/**
+ * Alignment of elements inside mempool.
+ */
 #define RTE_MEMPOOL_ALIGN	RTE_CACHE_LINE_SIZE
 #endif
 
