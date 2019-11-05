@@ -3334,6 +3334,14 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 		}
 	}
 
+	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+		retval = rte_dpaa_portal_init((void *)1);
+		if (retval) {
+			DPAA_SEC_ERR("Unable to initialize portal");
+			return retval;
+		}
+	}
+
 	/* Invoke PMD device initialization function */
 	retval = dpaa_sec_dev_init(cryptodev);
 	if (retval == 0)

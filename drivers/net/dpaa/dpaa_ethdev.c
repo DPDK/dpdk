@@ -1576,20 +1576,6 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 	}
 
 	if (!is_global_init && (rte_eal_process_type() == RTE_PROC_PRIMARY)) {
-		/* One time load of Qman/Bman drivers */
-		ret = qman_global_init();
-		if (ret) {
-			DPAA_PMD_ERR("QMAN initialization failed: %d",
-				     ret);
-			return ret;
-		}
-		ret = bman_global_init();
-		if (ret) {
-			DPAA_PMD_ERR("BMAN initialization failed: %d",
-				     ret);
-			return ret;
-		}
-
 		if (access("/tmp/fmc.bin", F_OK) == -1) {
 			RTE_LOG(INFO, PMD,
 				"* FMC not configured.Enabling default mode\n");

@@ -4,7 +4,6 @@ DPDK_17.11 {
 	bman_acquire;
 	bman_free_pool;
 	bman_get_params;
-	bman_global_init;
 	bman_new_pool;
 	bman_query_free_buffers;
 	bman_release;
@@ -48,7 +47,6 @@ DPDK_17.11 {
 	qman_enqueue_multi;
 	qman_fq_fqid;
 	qman_fq_state;
-	qman_global_init;
 	qman_init_fq;
 	qman_poll_dqrr;
 	qman_query_fq_np;
