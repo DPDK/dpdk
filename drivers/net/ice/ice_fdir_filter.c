@@ -634,7 +634,7 @@ ice_fdir_hw_tbl_conf(struct ice_pf *pf, struct ice_vsi *vsi,
 			if (!memcmp(ori_seg, seg, sizeof(*seg)))
 				return -EAGAIN;
 		} else {
-			if (!memcmp(ori_seg, &seg[1], sizeof(*seg)))
+			if (!memcmp(&ori_seg[1], &seg[1], sizeof(*seg)))
 				return -EAGAIN;
 		}
 
