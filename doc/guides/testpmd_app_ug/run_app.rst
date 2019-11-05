@@ -129,9 +129,9 @@ The command line options are:
 *   ``--tx-ip=SRC,DST``
 
     Set the source and destination IP address used when doing transmit only test.
-    The defaults address values are source 192.18.0.1 and
-    destination 192.18.0.2. These are special purpose addresses
-    reserved for benchmarking (RFC 2544).
+    The defaults address values are source 198.18.0.1 and
+    destination 198.18.0.2. These are special purpose addresses
+    reserved for benchmarking (RFC 5735).
 
 *   ``--tx-udp=SRC[,DST]``
 
