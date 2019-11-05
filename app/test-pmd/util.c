@@ -82,6 +82,11 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 			       mb->vlan_tci, mb->vlan_tci_outer);
 		else if (ol_flags & PKT_RX_VLAN)
 			printf(" - VLAN tci=0x%x", mb->vlan_tci);
+		if (ol_flags & PKT_TX_METADATA)
+			printf(" - Tx metadata: 0x%x", mb->tx_metadata);
+		if (ol_flags & PKT_RX_DYNF_METADATA)
+			printf(" - Rx metadata: 0x%x",
+			       *RTE_FLOW_DYNF_METADATA(mb));
 		if (mb->packet_type) {
 			rte_get_ptype_name(mb->packet_type, buf, sizeof(buf));
 			printf(" - hw ptype: %s", buf);

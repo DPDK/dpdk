@@ -234,6 +234,20 @@ int rte_mbuf_dynflag_lookup(const char *name,
 __rte_experimental
 void rte_mbuf_dyn_dump(FILE *out);
 
-/* Placeholder for dynamic fields and flags declarations. */
+/*
+ * Placeholder for dynamic fields and flags declarations.
+ * This is centralizing point to gather all field names
+ * and parameters together.
+ */
+
+/*
+ * The metadata dynamic field provides some extra packet information
+ * to interact with RTE Flow engine. The metadata in sent mbufs can be
+ * used to match on some Flows. The metadata in received mbufs can
+ * provide some feedback from the Flows. The metadata flag tells
+ * whether the field contains actual value to send, or received one.
+ */
+#define RTE_MBUF_DYNFIELD_METADATA_NAME "rte_flow_dynfield_metadata"
+#define RTE_MBUF_DYNFLAG_METADATA_NAME "rte_flow_dynflag_metadata"
 
 #endif

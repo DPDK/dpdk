@@ -86,6 +86,14 @@ New Features
 
   SET_TAG action and TAG item have been added to support transient flow tag.
 
+* **Extended metadata support in rte_flow.**
+
+  Flow metadata is extended to both Rx and Tx.
+
+  * Tx metadata can also be set by SET_META action of rte_flow.
+  * Rx metadata is delivered to host via a dynamic field of ``rte_mbuf`` with
+    PKT_RX_DYNF_METADATA.
+
 * **Updated the enic driver.**
 
   * Added support for Geneve with options offload.
@@ -383,6 +391,11 @@ API Changes
   The function ``rte_eth_dev_count_avail`` is a drop-in replacement.
   If the intent is to iterate over ports, ``RTE_ETH_FOREACH_*`` macros
   are better port iterators.
+
+* ethdev: RTE_FLOW_ITEM_TYPE_META data endianness altered to host one.
+  Due to the new dynamic metadata field in mbuf is host-endian either, there
+  is the minor compatibility issue for applications in case of 32-bit values
+  supported.
 
 * event: The function ``rte_event_eth_tx_adapter_enqueue`` takes an additional
   input as ``flags``. Flag ``RTE_EVENT_ETH_TX_ADAPTER_ENQUEUE_SAME_DEST`` which

@@ -289,4 +289,7 @@ EXPERIMENTAL {
 	rte_eth_rx_hairpin_queue_setup;
 	rte_eth_tx_burst_mode_get;
 	rte_eth_tx_hairpin_queue_setup;
+	rte_flow_dynf_metadata_offs;
+	rte_flow_dynf_metadata_mask;
+	rte_flow_dynf_metadata_register;
 };

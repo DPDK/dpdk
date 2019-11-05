@@ -28,6 +28,8 @@
 #include <rte_byteorder.h>
 #include <rte_esp.h>
 #include <rte_higig.h>
+#include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -418,7 +420,8 @@ enum rte_flow_item_type {
 	/**
 	 * [META]
 	 *
-	 * Matches a metadata value specified in mbuf metadata field.
+	 * Matches a metadata value.
+	 *
 	 * See struct rte_flow_item_meta.
 	 */
 	RTE_FLOW_ITEM_TYPE_META,
@@ -1272,18 +1275,23 @@ rte_flow_item_icmp6_nd_opt_tla_eth_mask = {
 #endif
 
 /**
- * RTE_FLOW_ITEM_TYPE_META.
+ * RTE_FLOW_ITEM_TYPE_META
  *
- * Matches a specified metadata value.
+ * Matches a specified metadata value. On egress, metadata can be set either by
+ * mbuf tx_metadata field with PKT_TX_METADATA flag or
+ * RTE_FLOW_ACTION_TYPE_SET_META. On ingress, RTE_FLOW_ACTION_TYPE_SET_META sets
+ * metadata for a packet and the metadata will be reported via mbuf metadata
+ * dynamic field with PKT_RX_DYNF_METADATA flag. The dynamic mbuf field must be
+ * registered in advance by rte_flow_dynf_metadata_register().
  */
 struct rte_flow_item_meta {
-	rte_be32_t data;
+	uint32_t data;
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_META. */
 #ifndef __cplusplus
 static const struct rte_flow_item_meta rte_flow_item_meta_mask = {
-	.data = RTE_BE32(UINT32_MAX),
+	.data = UINT32_MAX,
 };
 #endif
 
@@ -1989,6 +1997,13 @@ enum rte_flow_action_type {
 	 * See struct rte_flow_action_set_tag.
 	 */
 	RTE_FLOW_ACTION_TYPE_SET_TAG,
+
+	/**
+	 * Set metadata on ingress or egress path.
+	 *
+	 * See struct rte_flow_action_set_meta.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_META,
 };
 
 /**
@@ -2491,6 +2506,57 @@ struct rte_flow_action_set_tag {
 	uint8_t index;
 };
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_SET_META
+ *
+ * Set metadata. Metadata set by mbuf tx_metadata field with
+ * PKT_TX_METADATA flag on egress will be overridden by this action. On
+ * ingress, the metadata will be carried by mbuf metadata dynamic field
+ * with PKT_RX_DYNF_METADATA flag if set.  The dynamic mbuf field must be
+ * registered in advance by rte_flow_dynf_metadata_register().
+ *
+ * Altering partial bits is supported with mask. For bits which have never
+ * been set, unpredictable value will be seen depending on driver
+ * implementation. For loopback/hairpin packet, metadata set on Rx/Tx may
+ * or may not be propagated to the other path depending on HW capability.
+ *
+ * RTE_FLOW_ITEM_TYPE_META matches metadata.
+ */
+struct rte_flow_action_set_meta {
+	uint32_t data;
+	uint32_t mask;
+};
+
+/* Mbuf dynamic field offset for metadata. */
+extern int rte_flow_dynf_metadata_offs;
+
+/* Mbuf dynamic field flag mask for metadata. */
+extern uint64_t rte_flow_dynf_metadata_mask;
+
+/* Mbuf dynamic field pointer for metadata. */
+#define RTE_FLOW_DYNF_METADATA(m) \
+	RTE_MBUF_DYNFIELD((m), rte_flow_dynf_metadata_offs, uint32_t *)
+
+/* Mbuf dynamic flag for metadata. */
+#define PKT_RX_DYNF_METADATA (rte_flow_dynf_metadata_mask)
+
+__rte_experimental
+static inline uint32_t
+rte_flow_dynf_metadata_get(struct rte_mbuf *m)
+{
+	return *RTE_FLOW_DYNF_METADATA(m);
+}
+
+__rte_experimental
+static inline void
+rte_flow_dynf_metadata_set(struct rte_mbuf *m, uint32_t v)
+{
+	*RTE_FLOW_DYNF_METADATA(m) = v;
+}
+
 /*
  * Definition of a single action.
  *
@@ -2722,6 +2788,33 @@ enum rte_flow_conv_op {
 	 */
 	RTE_FLOW_CONV_OP_ACTION_NAME_PTR,
 };
+
+/**
+ * Check if mbuf dynamic field for metadata is registered.
+ *
+ * @return
+ *   True if registered, false otherwise.
+ */
+__rte_experimental
+static inline int
+rte_flow_dynf_metadata_avail(void)
+{
+	return !!rte_flow_dynf_metadata_mask;
+}
+
+/**
+ * Register mbuf dynamic field and flag for metadata.
+ *
+ * This function must be called prior to use SET_META action in order to
+ * register the dynamic mbuf field. Otherwise, the data cannot be delivered to
+ * application.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_dynf_metadata_register(void);
 
 /**
  * Check whether a flow rule can be created on a given port.
