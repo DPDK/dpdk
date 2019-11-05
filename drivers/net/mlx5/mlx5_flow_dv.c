@@ -3396,6 +3396,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	uint64_t item_flags = 0;
 	uint64_t last_item = 0;
 	uint8_t next_protocol = 0xff;
+	uint16_t ether_type = 0;
 	int actions_n = 0;
 	const struct rte_flow_item *gre_item = NULL;
 	struct rte_flow_item_tcp nic_tcp_mask = {
@@ -3432,6 +3433,17 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
 					     MLX5_FLOW_LAYER_OUTER_L2;
+			if (items->mask != NULL && items->spec != NULL) {
+				ether_type =
+					((const struct rte_flow_item_eth *)
+					 items->spec)->type;
+				ether_type &=
+					((const struct rte_flow_item_eth *)
+					 items->mask)->type;
+				ether_type = rte_be_to_cpu_16(ether_type);
+			} else {
+				ether_type = 0;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			ret = mlx5_flow_validate_item_vlan(items, item_flags,
@@ -3440,12 +3452,25 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
 					     MLX5_FLOW_LAYER_OUTER_VLAN;
+			if (items->mask != NULL && items->spec != NULL) {
+				ether_type =
+					((const struct rte_flow_item_vlan *)
+					 items->spec)->inner_type;
+				ether_type &=
+					((const struct rte_flow_item_vlan *)
+					 items->mask)->inner_type;
+				ether_type = rte_be_to_cpu_16(ether_type);
+			} else {
+				ether_type = 0;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
 						  &item_flags, &tunnel);
 			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
-							   NULL, error);
+							   last_item,
+							   ether_type, NULL,
+							   error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
@@ -3468,7 +3493,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
 						  &item_flags, &tunnel);
 			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
-							   NULL, error);
+							   last_item,
+							   ether_type, NULL,
+							   error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
