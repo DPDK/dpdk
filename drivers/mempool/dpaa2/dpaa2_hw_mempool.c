@@ -192,7 +192,7 @@ rte_dpaa2_mbuf_release(struct rte_mempool *pool __rte_unused,
 	struct qbman_release_desc releasedesc;
 	struct qbman_swp *swp;
 	int ret;
-	int i, n;
+	int i, n, retry_count;
 	uint64_t bufs[DPAA2_MBUF_MAX_ACQ_REL];
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
@@ -225,9 +225,15 @@ rte_dpaa2_mbuf_release(struct rte_mempool *pool __rte_unused,
 	}
 
 	/* feed them to bman */
-	do {
-		ret = qbman_swp_release(swp, &releasedesc, bufs, n);
-	} while (ret == -EBUSY);
+	retry_count = 0;
+	while ((ret = qbman_swp_release(swp, &releasedesc, bufs, n)) ==
+			-EBUSY) {
+		retry_count++;
+		if (retry_count > DPAA2_MAX_TX_RETRY_COUNT) {
+			DPAA2_MEMPOOL_ERR("bman release retry exceeded, low fbpr?");
+			return;
+		}
+	}
 
 aligned:
 	/* if there are more buffers to free */
@@ -243,10 +249,15 @@ aligned:
 #endif
 		}
 
-		do {
-			ret = qbman_swp_release(swp, &releasedesc, bufs,
-						DPAA2_MBUF_MAX_ACQ_REL);
-		} while (ret == -EBUSY);
+		retry_count = 0;
+		while ((ret = qbman_swp_release(swp, &releasedesc, bufs,
+					DPAA2_MBUF_MAX_ACQ_REL)) == -EBUSY) {
+			retry_count++;
+			if (retry_count > DPAA2_MAX_TX_RETRY_COUNT) {
+				DPAA2_MEMPOOL_ERR("bman release retry exceeded, low fbpr?");
+				return;
+			}
+		}
 		n += DPAA2_MBUF_MAX_ACQ_REL;
 	}
 }
