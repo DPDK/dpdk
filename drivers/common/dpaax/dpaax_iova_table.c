@@ -68,9 +68,12 @@ read_memory_node(unsigned int *count)
 	*count = 0;
 
 	ret = glob(MEM_NODE_PATH_GLOB, 0, NULL, &result);
+	if (ret != 0)
+		ret = glob(MEM_NODE_PATH_GLOB_VM, 0, NULL, &result);
+
 	if (ret != 0) {
-		DPAAX_DEBUG("Unable to glob device-tree memory node: (%s)(%d)",
-			    MEM_NODE_PATH_GLOB, ret);
+		DPAAX_DEBUG("Unable to glob device-tree memory node (err: %d)",
+			ret);
 		goto out;
 	}
 

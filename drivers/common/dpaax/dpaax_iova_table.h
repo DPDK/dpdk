@@ -45,6 +45,8 @@ extern struct dpaax_iova_table *dpaax_iova_table_p;
  * is SoC dependent, or even Uboot fixup dependent.
  */
 #define MEM_NODE_PATH_GLOB "/proc/device-tree/memory[@0-9]*/reg"
+/* For Virtual Machines memory node is at different path (below) */
+#define MEM_NODE_PATH_GLOB_VM "/proc/device-tree/memory/reg"
 /* Device file should be multiple of 16 bytes, each containing 8 byte of addr
  * and its length. Assuming max of 5 entries.
  */
