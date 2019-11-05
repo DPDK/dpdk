@@ -458,7 +458,7 @@ typedef unsigned (*rte_mempool_get_count)(const struct rte_mempool *mp);
  * @param[out] align
  *   Location for required memory chunk alignment.
  * @return
- *   Required memory size aligned at page boundary.
+ *   Required memory size.
  */
 typedef ssize_t (*rte_mempool_calc_mem_size_t)(const struct rte_mempool *mp,
 		uint32_t obj_num,  uint32_t pg_shift,
@@ -477,11 +477,8 @@ typedef ssize_t (*rte_mempool_calc_mem_size_t)(const struct rte_mempool *mp,
  * that pages are grouped in subsets of physically continuous pages big
  * enough to store at least one object.
  *
- * Minimum size of memory chunk is a maximum of the page size and total
- * element size.
- *
- * Required memory chunk alignment is a maximum of page size and cache
- * line size.
+ * Minimum size of memory chunk is the total element size.
+ * Required memory chunk alignment is the cache line size.
  */
 ssize_t rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 		uint32_t obj_num, uint32_t pg_shift,

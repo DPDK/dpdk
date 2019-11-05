@@ -477,11 +477,8 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	 * wasting some space this way, but it's much nicer than looping around
 	 * trying to reserve each and every page size.
 	 *
-	 * However, since size calculation will produce page-aligned sizes, it
-	 * makes sense to first try and see if we can reserve the entire memzone
-	 * in one contiguous chunk as well (otherwise we might end up wasting a
-	 * 1G page on a 10MB memzone). If we fail to get enough contiguous
-	 * memory, then we'll go and reserve space page-by-page.
+	 * If we fail to get enough contiguous memory, then we'll go and
+	 * reserve space in smaller chunks.
 	 *
 	 * We also have to take into account the fact that memory that we're
 	 * going to allocate from can belong to an externally allocated memory

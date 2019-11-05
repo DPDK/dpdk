@@ -100,7 +100,9 @@ rte_mempool_ops_get_count(const struct rte_mempool *mp)
 	return ops->get_count(mp);
 }
 
-/* wrapper to notify new memory area to external mempool */
+/* wrapper to calculate the memory size required to store given number
+ * of objects
+ */
 ssize_t
 rte_mempool_ops_calc_mem_size(const struct rte_mempool *mp,
 				uint32_t obj_num, uint32_t pg_shift,

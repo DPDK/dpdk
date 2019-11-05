@@ -12,7 +12,7 @@ rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 				     size_t *min_chunk_size, size_t *align)
 {
 	size_t total_elt_sz;
-	size_t obj_per_page, pg_num, pg_sz;
+	size_t obj_per_page, pg_sz, objs_in_last_page;
 	size_t mem_size;
 
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
@@ -33,14 +33,30 @@ rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 			mem_size =
 				RTE_ALIGN_CEIL(total_elt_sz, pg_sz) * obj_num;
 		} else {
-			pg_num = (obj_num + obj_per_page - 1) / obj_per_page;
-			mem_size = pg_num << pg_shift;
+			/* In the best case, the allocator will return a
+			 * page-aligned address. For example, with 5 objs,
+			 * the required space is as below:
+			 *  |     page0     |     page1     |  page2 (last) |
+			 *  |obj0 |obj1 |xxx|obj2 |obj3 |xxx|obj4|
+			 *  <------------- mem_size ------------->
+			 */
+			objs_in_last_page = ((obj_num - 1) % obj_per_page) + 1;
+			/* room required for the last page */
+			mem_size = objs_in_last_page * total_elt_sz;
+			/* room required for other pages */
+			mem_size += ((obj_num - objs_in_last_page) /
+				obj_per_page) << pg_shift;
+
+			/* In the worst case, the allocator returns a
+			 * non-aligned pointer, wasting up to
+			 * total_elt_sz. Add a margin for that.
+			 */
+			 mem_size += total_elt_sz - 1;
 		}
 	}
 
-	*min_chunk_size = RTE_MAX((size_t)1 << pg_shift, total_elt_sz);
-
-	*align = RTE_MAX((size_t)RTE_CACHE_LINE_SIZE, (size_t)1 << pg_shift);
+	*min_chunk_size = total_elt_sz;
+	*align = RTE_CACHE_LINE_SIZE;
 
 	return mem_size;
 }
