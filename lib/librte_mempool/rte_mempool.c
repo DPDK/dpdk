@@ -414,6 +414,33 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 	return ret;
 }
 
+/* Get the minimal page size used in a mempool before populating it. */
+int
+rte_mempool_get_page_size(struct rte_mempool *mp, size_t *pg_sz)
+{
+	bool need_iova_contig_obj;
+	bool alloc_in_ext_mem;
+	int ret;
+
+	/* check if we can retrieve a valid socket ID */
+	ret = rte_malloc_heap_socket_is_external(mp->socket_id);
+	if (ret < 0)
+		return -EINVAL;
+	alloc_in_ext_mem = (ret == 1);
+	need_iova_contig_obj = !(mp->flags & MEMPOOL_F_NO_IOVA_CONTIG);
+
+	if (!need_iova_contig_obj)
+		*pg_sz = 0;
+	else if (!alloc_in_ext_mem && rte_eal_iova_mode() == RTE_IOVA_VA)
+		*pg_sz = 0;
+	else if (rte_eal_has_hugepages() || alloc_in_ext_mem)
+		*pg_sz = get_min_page_size(mp->socket_id);
+	else
+		*pg_sz = getpagesize();
+
+	return 0;
+}
+
 /* Default function to populate the mempool: allocate memory in memzones,
  * and populate them. Return the number of objects added, or a negative
  * value on error.
@@ -425,12 +452,11 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 	ssize_t mem_size;
-	size_t align, pg_sz, pg_shift;
+	size_t align, pg_sz, pg_shift = 0;
 	rte_iova_t iova;
 	unsigned mz_id, n;
 	int ret;
 	bool need_iova_contig_obj;
-	bool alloc_in_ext_mem;
 
 	ret = mempool_ops_alloc_once(mp);
 	if (ret != 0)
@@ -485,26 +511,13 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	 * synonymous with IOVA contiguousness will not hold.
 	 */
 
-	/* check if we can retrieve a valid socket ID */
-	ret = rte_malloc_heap_socket_is_external(mp->socket_id);
-	if (ret < 0)
-		return -EINVAL;
-	alloc_in_ext_mem = (ret == 1);
 	need_iova_contig_obj = !(mp->flags & MEMPOOL_F_NO_IOVA_CONTIG);
+	ret = rte_mempool_get_page_size(mp, &pg_sz);
+	if (ret < 0)
+		return ret;
 
-	if (!need_iova_contig_obj) {
-		pg_sz = 0;
-		pg_shift = 0;
-	} else if (!alloc_in_ext_mem && rte_eal_iova_mode() == RTE_IOVA_VA) {
-		pg_sz = 0;
-		pg_shift = 0;
-	} else if (rte_eal_has_hugepages() || alloc_in_ext_mem) {
-		pg_sz = get_min_page_size(mp->socket_id);
+	if (pg_sz != 0)
 		pg_shift = rte_bsf32(pg_sz);
-	} else {
-		pg_sz = getpagesize();
-		pg_shift = rte_bsf32(pg_sz);
-	}
 
 	for (mz_id = 0, n = mp->size; n > 0; mz_id++, n -= ret) {
 		size_t min_chunk_size;
