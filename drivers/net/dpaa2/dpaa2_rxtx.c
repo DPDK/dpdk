@@ -1135,15 +1135,28 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 #endif
 			bufs++;
 		}
+
 		loop = 0;
+		retry_count = 0;
 		while (loop < frames_to_send) {
-			loop += qbman_swp_enqueue_multiple(swp, &eqdesc,
+			ret = qbman_swp_enqueue_multiple(swp, &eqdesc,
 					&fd_arr[loop], &flags[loop],
 					frames_to_send - loop);
+			if (unlikely(ret < 0)) {
+				retry_count++;
+				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT) {
+					num_tx += loop;
+					nb_pkts -= loop;
+					goto send_n_return;
+				}
+			} else {
+				loop += ret;
+				retry_count = 0;
+			}
 		}
 
-		num_tx += frames_to_send;
-		nb_pkts -= frames_to_send;
+		num_tx += loop;
+		nb_pkts -= loop;
 	}
 	dpaa2_q->tx_pkts += num_tx;
 	return num_tx;
@@ -1153,13 +1166,22 @@ send_n_return:
 	if (loop) {
 		unsigned int i = 0;
 
+		retry_count = 0;
 		while (i < loop) {
-			i += qbman_swp_enqueue_multiple(swp, &eqdesc,
-							&fd_arr[i],
-							&flags[loop],
-							loop - i);
+			ret = qbman_swp_enqueue_multiple(swp, &eqdesc,
+							 &fd_arr[i],
+							 &flags[i],
+							 loop - i);
+			if (unlikely(ret < 0)) {
+				retry_count++;
+				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT)
+					break;
+			} else {
+				i += ret;
+				retry_count = 0;
+			}
 		}
-		num_tx += loop;
+		num_tx += i;
 	}
 skip_tx:
 	dpaa2_q->tx_pkts += num_tx;
@@ -1365,15 +1387,28 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			}
 			bufs++;
 		}
+
 		loop = 0;
+		retry_count = 0;
 		while (loop < frames_to_send) {
-			loop += qbman_swp_enqueue_multiple_desc(swp,
+			ret = qbman_swp_enqueue_multiple_desc(swp,
 					&eqdesc[loop], &fd_arr[loop],
 					frames_to_send - loop);
+			if (unlikely(ret < 0)) {
+				retry_count++;
+				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT) {
+					num_tx += loop;
+					nb_pkts -= loop;
+					goto send_n_return;
+				}
+			} else {
+				loop += ret;
+				retry_count = 0;
+			}
 		}
 
-		num_tx += frames_to_send;
-		nb_pkts -= frames_to_send;
+		num_tx += loop;
+		nb_pkts -= loop;
 	}
 	dpaa2_q->tx_pkts += num_tx;
 	return num_tx;
@@ -1383,11 +1418,20 @@ send_n_return:
 	if (loop) {
 		unsigned int i = 0;
 
+		retry_count = 0;
 		while (i < loop) {
-			i += qbman_swp_enqueue_multiple_desc(swp, &eqdesc[loop],
-							&fd_arr[i], loop - i);
+			ret = qbman_swp_enqueue_multiple_desc(swp,
+				       &eqdesc[loop], &fd_arr[i], loop - i);
+			if (unlikely(ret < 0)) {
+				retry_count++;
+				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT)
+					break;
+			} else {
+				i += ret;
+				retry_count = 0;
+			}
 		}
-		num_tx += loop;
+		num_tx += i;
 	}
 skip_tx:
 	dpaa2_q->tx_pkts += num_tx;
