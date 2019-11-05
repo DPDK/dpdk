@@ -820,7 +820,7 @@ flow_dv_convert_action_set_reg
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_validate_item_meta(struct rte_eth_dev *dev,
+flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 			   const struct rte_flow_item *item,
 			   const struct rte_flow_attr *attr,
 			   struct rte_flow_error *error)
@@ -828,17 +828,10 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev,
 	const struct rte_flow_item_meta *spec = item->spec;
 	const struct rte_flow_item_meta *mask = item->mask;
 	const struct rte_flow_item_meta nic_mask = {
-		.data = RTE_BE32(UINT32_MAX)
+		.data = UINT32_MAX
 	};
 	int ret;
-	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 
-	if (!(offloads & DEV_TX_OFFLOAD_MATCH_METADATA))
-		return rte_flow_error_set(error, EPERM,
-					  RTE_FLOW_ERROR_TYPE_ITEM,
-					  NULL,
-					  "match on metadata offload "
-					  "configuration is off for this port");
 	if (!spec)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
@@ -4816,10 +4809,10 @@ flow_dv_translate_item_meta(void *matcher, void *key,
 		meta_m = &rte_flow_item_meta_mask;
 	meta_v = (const void *)item->spec;
 	if (meta_v) {
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_a,
-			 rte_be_to_cpu_32(meta_m->data));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_a,
-			 rte_be_to_cpu_32(meta_v->data & meta_m->data));
+		MLX5_SET(fte_match_set_misc2, misc2_m,
+			 metadata_reg_a, meta_m->data);
+		MLX5_SET(fte_match_set_misc2, misc2_v,
+			 metadata_reg_a, meta_v->data & meta_m->data);
 	}
 }
 

@@ -18718,12 +18718,13 @@ cmd_config_tx_metadata_specific_parsed(void *parsed_result,
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
-	ports[res->port_id].tx_metadata = rte_cpu_to_be_32(res->value);
+	ports[res->port_id].tx_metadata = res->value;
 	/* Add/remove callback to insert valid metadata in every Tx packet. */
 	if (ports[res->port_id].tx_metadata)
 		add_tx_md_callback(res->port_id);
 	else
 		remove_tx_md_callback(res->port_id);
+	rte_flow_dynf_metadata_register();
 }
 
 cmdline_parse_token_string_t cmd_config_tx_metadata_specific_port =

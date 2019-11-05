@@ -397,6 +397,11 @@ API Changes
   is the minor compatibility issue for applications in case of 32-bit values
   supported.
 
+* ethdev: the tx_metadata mbuf field is moved to dymanic one.
+  PKT_TX_METADATA flag is replaced with PKT_TX_DYNF_METADATA.
+  DEV_TX_OFFLOAD_MATCH_METADATA offload flag is removed, now metadata
+  support in PMD is engaged on dynamic field registration.
+
 * event: The function ``rte_event_eth_tx_adapter_enqueue`` takes an additional
   input as ``flags``. Flag ``RTE_EVENT_ETH_TX_ADAPTER_ENQUEUE_SAME_DEST`` which
   has been introduced in this release is used when used when all the packets

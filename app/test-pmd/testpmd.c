@@ -1119,10 +1119,6 @@ init_config(void)
 		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
 			port->dev_conf.txmode.offloads &=
 				~DEV_TX_OFFLOAD_MBUF_FAST_FREE;
-		if (!(port->dev_info.tx_offload_capa &
-			DEV_TX_OFFLOAD_MATCH_METADATA))
-			port->dev_conf.txmode.offloads &=
-				~DEV_TX_OFFLOAD_MATCH_METADATA;
 		if (numa_support) {
 			if (port_numa[pid] != NUMA_NO_CONFIG)
 				port_per_socket[port_numa[pid]]++;

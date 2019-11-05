@@ -1277,12 +1277,12 @@ rte_flow_item_icmp6_nd_opt_tla_eth_mask = {
 /**
  * RTE_FLOW_ITEM_TYPE_META
  *
- * Matches a specified metadata value. On egress, metadata can be set either by
- * mbuf tx_metadata field with PKT_TX_METADATA flag or
- * RTE_FLOW_ACTION_TYPE_SET_META. On ingress, RTE_FLOW_ACTION_TYPE_SET_META sets
- * metadata for a packet and the metadata will be reported via mbuf metadata
- * dynamic field with PKT_RX_DYNF_METADATA flag. The dynamic mbuf field must be
- * registered in advance by rte_flow_dynf_metadata_register().
+ * Matches a specified metadata value. On egress, metadata can be set
+ * either by mbuf dynamic metadata field with PKT_TX_DYNF_METADATA flag or
+ * RTE_FLOW_ACTION_TYPE_SET_META. On ingress, RTE_FLOW_ACTION_TYPE_SET_META
+ * sets metadata for a packet and the metadata will be reported via mbuf
+ * metadata dynamic field with PKT_RX_DYNF_METADATA flag. The dynamic mbuf
+ * field must be registered in advance by rte_flow_dynf_metadata_register().
  */
 struct rte_flow_item_meta {
 	uint32_t data;
@@ -2512,8 +2512,8 @@ struct rte_flow_action_set_tag {
  *
  * RTE_FLOW_ACTION_TYPE_SET_META
  *
- * Set metadata. Metadata set by mbuf tx_metadata field with
- * PKT_TX_METADATA flag on egress will be overridden by this action. On
+ * Set metadata. Metadata set by mbuf metadata dynamic field with
+ * PKT_TX_DYNF_DATA flag on egress will be overridden by this action. On
  * ingress, the metadata will be carried by mbuf metadata dynamic field
  * with PKT_RX_DYNF_METADATA flag if set.  The dynamic mbuf field must be
  * registered in advance by rte_flow_dynf_metadata_register().
@@ -2540,8 +2540,9 @@ extern uint64_t rte_flow_dynf_metadata_mask;
 #define RTE_FLOW_DYNF_METADATA(m) \
 	RTE_MBUF_DYNFIELD((m), rte_flow_dynf_metadata_offs, uint32_t *)
 
-/* Mbuf dynamic flag for metadata. */
+/* Mbuf dynamic flags for metadata. */
 #define PKT_RX_DYNF_METADATA (rte_flow_dynf_metadata_mask)
+#define PKT_TX_DYNF_METADATA (rte_flow_dynf_metadata_mask)
 
 __rte_experimental
 static inline uint32_t

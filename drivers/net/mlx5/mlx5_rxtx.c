@@ -2279,8 +2279,8 @@ mlx5_tx_eseg_none(struct mlx5_txq_data *restrict txq __rte_unused,
 	es->swp_offs = txq_mbuf_to_swp(loc, &es->swp_flags, olx);
 	/* Fill metadata field if needed. */
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
-		       loc->mbuf->ol_flags & PKT_TX_METADATA ?
-		       loc->mbuf->tx_metadata : 0 : 0;
+		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
+		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
 	/* Engage VLAN tag insertion feature if requested. */
 	if (MLX5_TXOFF_CONFIG(VLAN) &&
 	    loc->mbuf->ol_flags & PKT_TX_VLAN_PKT) {
@@ -2339,8 +2339,8 @@ mlx5_tx_eseg_dmin(struct mlx5_txq_data *restrict txq __rte_unused,
 	es->swp_offs = txq_mbuf_to_swp(loc, &es->swp_flags, olx);
 	/* Fill metadata field if needed. */
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
-		       loc->mbuf->ol_flags & PKT_TX_METADATA ?
-		       loc->mbuf->tx_metadata : 0 : 0;
+		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
+		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
 	static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 				(sizeof(uint16_t) +
 				 sizeof(rte_v128u32_t)),
@@ -2432,8 +2432,8 @@ mlx5_tx_eseg_data(struct mlx5_txq_data *restrict txq,
 	es->swp_offs = txq_mbuf_to_swp(loc, &es->swp_flags, olx);
 	/* Fill metadata field if needed. */
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
-		       loc->mbuf->ol_flags & PKT_TX_METADATA ?
-		       loc->mbuf->tx_metadata : 0 : 0;
+		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
+		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
 	static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 				(sizeof(uint16_t) +
 				 sizeof(rte_v128u32_t)),
@@ -2626,8 +2626,8 @@ mlx5_tx_eseg_mdat(struct mlx5_txq_data *restrict txq,
 	es->swp_offs = txq_mbuf_to_swp(loc, &es->swp_flags, olx);
 	/* Fill metadata field if needed. */
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
-		       loc->mbuf->ol_flags & PKT_TX_METADATA ?
-		       loc->mbuf->tx_metadata : 0 : 0;
+		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
+		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
 	static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 				(sizeof(uint16_t) +
 				 sizeof(rte_v128u32_t)),
@@ -3698,8 +3698,8 @@ mlx5_tx_match_empw(struct mlx5_txq_data *restrict txq __rte_unused,
 		return false;
 	/* Fill metadata field if needed. */
 	if (MLX5_TXOFF_CONFIG(METADATA) &&
-		es->metadata != (loc->mbuf->ol_flags & PKT_TX_METADATA ?
-				 loc->mbuf->tx_metadata : 0))
+		es->metadata != (loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
+				 *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0))
 		return false;
 	/* There must be no VLAN packets in eMPW loop. */
 	if (MLX5_TXOFF_CONFIG(VLAN))
@@ -5147,7 +5147,7 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 		 */
 		olx |= MLX5_TXOFF_CONFIG_EMPW;
 	}
-	if (tx_offloads & DEV_TX_OFFLOAD_MATCH_METADATA) {
+	if (rte_flow_dynf_metadata_avail()) {
 		/* We should support Flow metadata. */
 		olx |= MLX5_TXOFF_CONFIG_METADATA;
 	}

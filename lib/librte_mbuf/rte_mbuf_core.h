@@ -187,14 +187,9 @@ extern "C" {
 /* add new RX flags here, don't forget to update PKT_FIRST_FREE */
 
 #define PKT_FIRST_FREE (1ULL << 23)
-#define PKT_LAST_FREE (1ULL << 39)
+#define PKT_LAST_FREE (1ULL << 40)
 
 /* add new TX flags here, don't forget to update PKT_LAST_FREE  */
-
-/**
- * Indicate that the metadata field in the mbuf is in use.
- */
-#define PKT_TX_METADATA	(1ULL << 40)
 
 /**
  * Outer UDP checksum offload flag. This flag is used for enabling
@@ -389,8 +384,7 @@ extern "C" {
 		PKT_TX_MACSEC |		 \
 		PKT_TX_SEC_OFFLOAD |	 \
 		PKT_TX_UDP_SEG |	 \
-		PKT_TX_OUTER_UDP_CKSUM | \
-		PKT_TX_METADATA)
+		PKT_TX_OUTER_UDP_CKSUM)
 
 /**
  * Mbuf having an external buffer attached. shinfo in mbuf must be filled.
@@ -601,17 +595,6 @@ struct rte_mbuf {
 			/**< User defined tags. See rte_distributor_process() */
 			uint32_t usr;
 		} hash;                   /**< hash information */
-		struct {
-			/**
-			 * Application specific metadata value
-			 * for egress flow rule match.
-			 * Valid if PKT_TX_METADATA is set.
-			 * Located here to allow conjunct use
-			 * with hash.sched.hi.
-			 */
-			uint32_t tx_metadata;
-			uint32_t reserved;
-		};
 	};
 
 	/** Outer VLAN TCI (CPU order), valid if PKT_RX_QINQ is set. */

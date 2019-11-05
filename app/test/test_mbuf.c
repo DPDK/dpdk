@@ -1669,7 +1669,6 @@ test_get_tx_ol_flag_name(void)
 		VAL_NAME(PKT_TX_SEC_OFFLOAD),
 		VAL_NAME(PKT_TX_UDP_SEG),
 		VAL_NAME(PKT_TX_OUTER_UDP_CKSUM),
-		VAL_NAME(PKT_TX_METADATA),
 	};
 
 	/* Test case to check with valid flag */

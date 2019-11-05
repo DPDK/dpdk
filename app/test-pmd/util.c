@@ -82,8 +82,9 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 			       mb->vlan_tci, mb->vlan_tci_outer);
 		else if (ol_flags & PKT_RX_VLAN)
 			printf(" - VLAN tci=0x%x", mb->vlan_tci);
-		if (ol_flags & PKT_TX_METADATA)
-			printf(" - Tx metadata: 0x%x", mb->tx_metadata);
+		if (ol_flags & PKT_TX_DYNF_METADATA)
+			printf(" - Tx metadata: 0x%x",
+			       *RTE_FLOW_DYNF_METADATA(mb));
 		if (ol_flags & PKT_RX_DYNF_METADATA)
 			printf(" - Rx metadata: 0x%x",
 			       *RTE_FLOW_DYNF_METADATA(mb));
@@ -188,10 +189,12 @@ tx_pkt_set_md(uint16_t port_id, __rte_unused uint16_t queue,
 	 * Add metadata value to every Tx packet,
 	 * and set ol_flags accordingly.
 	 */
-	for (i = 0; i < nb_pkts; i++) {
-		pkts[i]->tx_metadata = ports[port_id].tx_metadata;
-		pkts[i]->ol_flags |= PKT_TX_METADATA;
-	}
+	if (rte_flow_dynf_metadata_avail())
+		for (i = 0; i < nb_pkts; i++) {
+			*RTE_FLOW_DYNF_METADATA(pkts[i]) =
+						ports[port_id].tx_metadata;
+			pkts[i]->ol_flags |= PKT_TX_DYNF_METADATA;
+		}
 	return nb_pkts;
 }
 

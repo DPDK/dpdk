@@ -193,7 +193,7 @@ struct rte_port {
 	struct softnic_port     softport;  /**< softnic params */
 #endif
 	/**< metadata value to insert in Tx packets. */
-	rte_be32_t		tx_metadata;
+	uint32_t		tx_metadata;
 	const struct rte_eth_rxtx_callback *tx_set_md_cb[MAX_QUEUE_ID+1];
 };
 

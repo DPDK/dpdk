@@ -1145,11 +1145,6 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_IP_TNL_TSO       0x00080000
 /** Device supports outer UDP checksum */
 #define DEV_TX_OFFLOAD_OUTER_UDP_CKSUM  0x00100000
-/**
- * Device supports match on metadata Tx offload..
- * Application must set PKT_TX_METADATA and mbuf metadata field.
- */
-#define DEV_TX_OFFLOAD_MATCH_METADATA   0x00200000
 
 #define RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP 0x00000001
 /**< Device supports Rx queue setup after device started*/
