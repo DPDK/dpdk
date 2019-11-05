@@ -541,13 +541,21 @@ dpdmai_dev_enqueue_multi(struct dpaa2_dpdmai_dev *dpdmai_dev,
 		}
 
 		/* Enqueue the packet to the QBMAN */
-		uint32_t enqueue_loop = 0;
+		uint32_t enqueue_loop = 0, retry_count = 0;
 		while (enqueue_loop < loop) {
-			enqueue_loop += qbman_swp_enqueue_multiple(swp,
+			ret = qbman_swp_enqueue_multiple(swp,
 						&eqdesc,
 						&fd[enqueue_loop],
 						NULL,
 						loop - enqueue_loop);
+			if (unlikely(ret < 0)) {
+				retry_count++;
+				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT)
+					return num_tx - (loop - enqueue_loop);
+			} else {
+				enqueue_loop += ret;
+				retry_count = 0;
+			}
 		}
 		nb_jobs -= loop;
 	}
