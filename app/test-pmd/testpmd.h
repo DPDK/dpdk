@@ -385,6 +385,7 @@ extern struct rte_eth_txmode tx_mode;
 
 extern uint64_t rss_hf;
 
+extern queueid_t nb_hairpinq;
 extern queueid_t nb_rxq;
 extern queueid_t nb_txq;
 
@@ -859,6 +860,8 @@ queueid_t get_allowed_max_nb_rxq(portid_t *pid);
 int check_nb_rxq(queueid_t rxq);
 queueid_t get_allowed_max_nb_txq(portid_t *pid);
 int check_nb_txq(queueid_t txq);
+queueid_t get_allowed_max_nb_hairpinq(portid_t *pid);
+int check_nb_hairpinq(queueid_t hairpinq);
 
 uint16_t dump_rx_pkts(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		      uint16_t nb_pkts, __rte_unused uint16_t max_pkts,

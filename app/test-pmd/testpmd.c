@@ -234,6 +234,7 @@ uint8_t dcb_test = 0;
 /*
  * Configurable number of RX/TX queues.
  */
+queueid_t nb_hairpinq; /**< Number of hairpin queues per port. */
 queueid_t nb_rxq = 1; /**< Number of RX queues per port. */
 queueid_t nb_txq = 1; /**< Number of TX queues per port. */
 
@@ -1062,6 +1063,53 @@ check_nb_txq(queueid_t txq)
 		       txq,
 		       allowed_max_txq,
 		       pid);
+		return -1;
+	}
+	return 0;
+}
+
+/*
+ * Get the allowed maximum number of hairpin queues.
+ * *pid return the port id which has minimal value of
+ * max_hairpin_queues in all ports.
+ */
+queueid_t
+get_allowed_max_nb_hairpinq(portid_t *pid)
+{
+	queueid_t allowed_max_hairpinq = MAX_QUEUE_ID;
+	portid_t pi;
+	struct rte_eth_hairpin_cap cap;
+
+	RTE_ETH_FOREACH_DEV(pi) {
+		if (rte_eth_dev_hairpin_capability_get(pi, &cap) != 0) {
+			*pid = pi;
+			return 0;
+		}
+		if (cap.max_nb_queues < allowed_max_hairpinq) {
+			allowed_max_hairpinq = cap.max_nb_queues;
+			*pid = pi;
+		}
+	}
+	return allowed_max_hairpinq;
+}
+
+/*
+ * Check input hairpin is valid or not.
+ * If input hairpin is not greater than any of maximum number
+ * of hairpin queues of all ports, it is valid.
+ * if valid, return 0, else return -1
+ */
+int
+check_nb_hairpinq(queueid_t hairpinq)
+{
+	queueid_t allowed_max_hairpinq;
+	portid_t pid = 0;
+
+	allowed_max_hairpinq = get_allowed_max_nb_hairpinq(&pid);
+	if (hairpinq > allowed_max_hairpinq) {
+		printf("Fail: input hairpin (%u) can't be greater "
+		       "than max_hairpin_queues (%u) of port %u\n",
+		       hairpinq, allowed_max_hairpinq, pid);
 		return -1;
 	}
 	return 0;
@@ -2016,6 +2064,63 @@ port_is_started(portid_t port_id)
 	return 1;
 }
 
+/* Configure the Rx and Tx hairpin queues for the selected port. */
+static int
+setup_hairpin_queues(portid_t pi)
+{
+	queueid_t qi;
+	struct rte_eth_hairpin_conf hairpin_conf = {
+		.peer_count = 1,
+	};
+	int i;
+	int diag;
+	struct rte_port *port = &ports[pi];
+
+	for (qi = nb_txq, i = 0; qi < nb_hairpinq + nb_txq; qi++) {
+		hairpin_conf.peers[0].port = pi;
+		hairpin_conf.peers[0].queue = i + nb_rxq;
+		diag = rte_eth_tx_hairpin_queue_setup
+			(pi, qi, nb_txd, &hairpin_conf);
+		i++;
+		if (diag == 0)
+			continue;
+
+		/* Fail to setup rx queue, return */
+		if (rte_atomic16_cmpset(&(port->port_status),
+					RTE_PORT_HANDLING,
+					RTE_PORT_STOPPED) == 0)
+			printf("Port %d can not be set back "
+					"to stopped\n", pi);
+		printf("Fail to configure port %d hairpin "
+				"queues\n", pi);
+		/* try to reconfigure queues next time */
+		port->need_reconfig_queues = 1;
+		return -1;
+	}
+	for (qi = nb_rxq, i = 0; qi < nb_hairpinq + nb_rxq; qi++) {
+		hairpin_conf.peers[0].port = pi;
+		hairpin_conf.peers[0].queue = i + nb_txq;
+		diag = rte_eth_rx_hairpin_queue_setup
+			(pi, qi, nb_rxd, &hairpin_conf);
+		i++;
+		if (diag == 0)
+			continue;
+
+		/* Fail to setup rx queue, return */
+		if (rte_atomic16_cmpset(&(port->port_status),
+					RTE_PORT_HANDLING,
+					RTE_PORT_STOPPED) == 0)
+			printf("Port %d can not be set back "
+					"to stopped\n", pi);
+		printf("Fail to configure port %d hairpin "
+				"queues\n", pi);
+		/* try to reconfigure queues next time */
+		port->need_reconfig_queues = 1;
+		return -1;
+	}
+	return 0;
+}
+
 int
 start_port(portid_t pid)
 {
@@ -2024,6 +2129,7 @@ start_port(portid_t pid)
 	queueid_t qi;
 	struct rte_port *port;
 	struct rte_ether_addr mac_addr;
+	struct rte_eth_hairpin_cap cap;
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return 0;
@@ -2056,9 +2162,16 @@ start_port(portid_t pid)
 			configure_rxtx_dump_callbacks(0);
 			printf("Configuring Port %d (socket %u)\n", pi,
 					port->socket_id);
+			if (nb_hairpinq > 0 &&
+			    rte_eth_dev_hairpin_capability_get(pi, &cap)) {
+				printf("Port %d doesn't support hairpin "
+				       "queues\n", pi);
+				return -1;
+			}
 			/* configure port */
-			diag = rte_eth_dev_configure(pi, nb_rxq, nb_txq,
-						&(port->dev_conf));
+			diag = rte_eth_dev_configure(pi, nb_rxq + nb_hairpinq,
+						     nb_txq + nb_hairpinq,
+						     &(port->dev_conf));
 			if (diag != 0) {
 				if (rte_atomic16_cmpset(&(port->port_status),
 				RTE_PORT_HANDLING, RTE_PORT_STOPPED) == 0)
@@ -2151,6 +2264,9 @@ start_port(portid_t pid)
 				port->need_reconfig_queues = 1;
 				return -1;
 			}
+			/* setup hairpin queues */
+			if (setup_hairpin_queues(pi) != 0)
+				return -1;
 		}
 		configure_rxtx_dump_callbacks(verbose_level);
 		/* start port */

@@ -149,6 +149,8 @@ usage(char* progname)
 	printf("  --rxd=N: set the number of descriptors in RX rings to N.\n");
 	printf("  --txq=N: set the number of TX queues per port to N.\n");
 	printf("  --txd=N: set the number of descriptors in TX rings to N.\n");
+	printf("  --hairpinq=N: set the number of hairpin queues per port to "
+	       "N.\n");
 	printf("  --burst=N: set the number of packets per burst to N.\n");
 	printf("  --mbcache=N: set the cache of mbuf memory pool to N.\n");
 	printf("  --rxpt=N: set prefetch threshold register of RX rings to N.\n");
@@ -622,6 +624,7 @@ launch_args_parse(int argc, char** argv)
 		{ "txq",			1, 0, 0 },
 		{ "rxd",			1, 0, 0 },
 		{ "txd",			1, 0, 0 },
+		{ "hairpinq",			1, 0, 0 },
 		{ "burst",			1, 0, 0 },
 		{ "mbcache",			1, 0, 0 },
 		{ "txpt",			1, 0, 0 },
@@ -1044,6 +1047,31 @@ launch_args_parse(int argc, char** argv)
 					rte_exit(EXIT_FAILURE, "txq %d invalid - must be"
 						  " >= 0 && <= %u\n", n,
 						  get_allowed_max_nb_txq(&pid));
+			}
+			if (!strcmp(lgopts[opt_idx].name, "hairpinq")) {
+				n = atoi(optarg);
+				if (n >= 0 &&
+				    check_nb_hairpinq((queueid_t)n) == 0)
+					nb_hairpinq = (queueid_t) n;
+				else
+					rte_exit(EXIT_FAILURE, "txq %d invalid - must be"
+						  " >= 0 && <= %u\n", n,
+						  get_allowed_max_nb_hairpinq
+						  (&pid));
+				if ((n + nb_txq) < 0 ||
+				    check_nb_txq((queueid_t)(n + nb_txq)) != 0)
+					rte_exit(EXIT_FAILURE, "txq + hairpinq "
+						 "%d invalid - must be"
+						  " >= 0 && <= %u\n",
+						  n + nb_txq,
+						  get_allowed_max_nb_txq(&pid));
+				if ((n + nb_rxq) < 0 ||
+				    check_nb_rxq((queueid_t)(n + nb_rxq)) != 0)
+					rte_exit(EXIT_FAILURE, "rxq + hairpinq "
+						 "%d invalid - must be"
+						  " >= 0 && <= %u\n",
+						  n + nb_rxq,
+						  get_allowed_max_nb_rxq(&pid));
 			}
 			if (!nb_rxq && !nb_txq) {
 				rte_exit(EXIT_FAILURE, "Either rx or tx queues should "

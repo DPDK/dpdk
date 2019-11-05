@@ -266,6 +266,17 @@ The command line options are:
     Set the number of descriptors in the TX rings to N, where N > 0.
     The default value is 512.
 
+*   ``--hairpinq=N``
+
+    Set the number of hairpin queues per port to N, where 1 <= N <= 65535.
+    The default value is 0. The number of hairpin queues are added to the
+    number of TX queues and to the number of RX queues. then the first
+    RX hairpin is binded to the first TX hairpin, the second RX hairpin is
+    binded to the second TX hairpin and so on. The index of the first
+    RX hairpin queue is the number of RX queues as configured using --rxq.
+    The index of the first TX hairpin queue is the number of TX queues
+    as configured using --txq.
+
 *   ``--burst=N``
 
     Set the number of packets per burst to N, where 1 <= N <= 512.
