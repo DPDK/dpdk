@@ -132,14 +132,15 @@ octeontx_fpavf_calc_mem_size(const struct rte_mempool *mp,
 			     size_t *min_chunk_size, size_t *align)
 {
 	ssize_t mem_size;
+	size_t total_elt_sz;
 
-	/*
-	 * Simply need space for one more object to be able to
-	 * fulfil alignment requirements.
+	/* Need space for one more obj on each chunk to fulfill
+	 * alignment requirements.
 	 */
-	mem_size = rte_mempool_op_calc_mem_size_helper(mp, obj_num + 1,
-							pg_shift,
-							min_chunk_size, align);
+	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
+	mem_size = rte_mempool_op_calc_mem_size_helper(mp, obj_num, pg_shift,
+						total_elt_sz, min_chunk_size,
+						align);
 	if (mem_size >= 0) {
 		/*
 		 * Memory area which contains objects must be physically
@@ -168,7 +169,7 @@ octeontx_fpavf_populate(struct rte_mempool *mp, unsigned int max_objs,
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
 
 	/* align object start address to a multiple of total_elt_sz */
-	off = total_elt_sz - ((uintptr_t)vaddr % total_elt_sz);
+	off = total_elt_sz - ((((uintptr_t)vaddr - 1) % total_elt_sz) + 1);
 
 	if (len < off)
 		return -EINVAL;
@@ -184,8 +185,10 @@ octeontx_fpavf_populate(struct rte_mempool *mp, unsigned int max_objs,
 	if (ret < 0)
 		return ret;
 
-	return rte_mempool_op_populate_helper(mp, max_objs, vaddr, iova, len,
-					       obj_cb, obj_cb_arg);
+	return rte_mempool_op_populate_helper(mp,
+					RTE_MEMPOOL_POPULATE_F_ALIGN_OBJ,
+					max_objs, vaddr, iova, len,
+					obj_cb, obj_cb_arg);
 }
 
 static struct rte_mempool_ops octeontx_fpavf_ops = {

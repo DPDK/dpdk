@@ -713,12 +713,15 @@ static ssize_t
 otx2_npa_calc_mem_size(const struct rte_mempool *mp, uint32_t obj_num,
 		       uint32_t pg_shift, size_t *min_chunk_size, size_t *align)
 {
-	/*
-	 * Simply need space for one more object to be able to
-	 * fulfill alignment requirements.
+	size_t total_elt_sz;
+
+	/* Need space for one more obj on each chunk to fulfill
+	 * alignment requirements.
 	 */
-	return rte_mempool_op_calc_mem_size_helper(mp, obj_num + 1, pg_shift,
-						    min_chunk_size, align);
+	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
+	return rte_mempool_op_calc_mem_size_helper(mp, obj_num, pg_shift,
+						total_elt_sz, min_chunk_size,
+						align);
 }
 
 static int
@@ -735,7 +738,7 @@ otx2_npa_populate(struct rte_mempool *mp, unsigned int max_objs, void *vaddr,
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
 
 	/* Align object start address to a multiple of total_elt_sz */
-	off = total_elt_sz - ((uintptr_t)vaddr % total_elt_sz);
+	off = total_elt_sz - ((((uintptr_t)vaddr - 1) % total_elt_sz) + 1);
 
 	if (len < off)
 		return -EINVAL;
@@ -749,8 +752,10 @@ otx2_npa_populate(struct rte_mempool *mp, unsigned int max_objs, void *vaddr,
 	if (npa_lf_aura_range_update_check(mp->pool_id) < 0)
 		return -EBUSY;
 
-	return rte_mempool_op_populate_helper(mp, max_objs, vaddr, iova, len,
-					       obj_cb, obj_cb_arg);
+	return rte_mempool_op_populate_helper(mp,
+					RTE_MEMPOOL_POPULATE_F_ALIGN_OBJ,
+					max_objs, vaddr, iova, len,
+					obj_cb, obj_cb_arg);
 }
 
 static struct rte_mempool_ops otx2_npa_ops = {

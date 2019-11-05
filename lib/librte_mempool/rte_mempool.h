@@ -491,6 +491,9 @@ typedef ssize_t (*rte_mempool_calc_mem_size_t)(const struct rte_mempool *mp,
  *   Number of objects to be added in mempool.
  * @param[in] pg_shift
  *   LOG2 of the physical pages size. If set to 0, ignore page boundaries.
+ * @param[in] chunk_reserve
+ *   Amount of memory that must be reserved at the beginning of each page,
+ *   or at the beginning of the memory area if pg_shift is 0.
  * @param[out] min_chunk_size
  *   Location for minimum size of the memory chunk which may be used to
  *   store memory pool objects.
@@ -501,7 +504,7 @@ typedef ssize_t (*rte_mempool_calc_mem_size_t)(const struct rte_mempool *mp,
  */
 __rte_experimental
 ssize_t rte_mempool_op_calc_mem_size_helper(const struct rte_mempool *mp,
-		uint32_t obj_num, uint32_t pg_shift,
+		uint32_t obj_num, uint32_t pg_shift, size_t chunk_reserve,
 		size_t *min_chunk_size, size_t *align);
 
 /**
@@ -509,7 +512,7 @@ ssize_t rte_mempool_op_calc_mem_size_helper(const struct rte_mempool *mp,
  * objects.
  *
  * Equivalent to rte_mempool_op_calc_mem_size_helper(mp, obj_num, pg_shift,
- * min_chunk_size, align).
+ * 0, min_chunk_size, align).
  */
 ssize_t rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 		uint32_t obj_num, uint32_t pg_shift,
@@ -564,16 +567,30 @@ typedef int (*rte_mempool_populate_t)(struct rte_mempool *mp,
 		rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg);
 
 /**
+ * Align objects on addresses multiple of total_elt_sz.
+ */
+#define RTE_MEMPOOL_POPULATE_F_ALIGN_OBJ 0x0001
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
  * @internal Helper to populate memory pool object using provided memory
- * chunk: just slice objects one by one.
+ * chunk: just slice objects one by one, taking care of not
+ * crossing page boundaries.
+ *
+ * If RTE_MEMPOOL_POPULATE_F_ALIGN_OBJ is set in flags, the addresses
+ * of object headers will be aligned on a multiple of total_elt_sz.
+ * This feature is used by octeontx hardware.
  *
  * This function is internal to mempool library and mempool drivers.
  *
  * @param[in] mp
  *   A pointer to the mempool structure.
+ * @param[in] flags
+ *   Logical OR of following flags:
+ *   - RTE_MEMPOOL_POPULATE_F_ALIGN_OBJ: align objects on addresses
+ *     multiple of total_elt_sz.
  * @param[in] max_objs
  *   Maximum number of objects to be added in mempool.
  * @param[in] vaddr
@@ -591,14 +608,14 @@ typedef int (*rte_mempool_populate_t)(struct rte_mempool *mp,
  */
 __rte_experimental
 int rte_mempool_op_populate_helper(struct rte_mempool *mp,
-		unsigned int max_objs,
+		unsigned int flags, unsigned int max_objs,
 		void *vaddr, rte_iova_t iova, size_t len,
 		rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg);
 
 /**
  * Default way to populate memory pool object using provided memory chunk.
  *
- * Equivalent to rte_mempool_op_populate_helper(mp, max_objs, vaddr, iova,
+ * Equivalent to rte_mempool_op_populate_helper(mp, 0, max_objs, vaddr, iova,
  * len, obj_cb, obj_cb_arg).
  */
 int rte_mempool_op_populate_default(struct rte_mempool *mp,

@@ -65,6 +65,11 @@ New Features
 
   The lock-free stack implementation is enabled for aarch64 platforms.
 
+* **Changed mempool allocation behaviour.**
+
+  Objects are no longer across pages by default.
+  It may consume more memory when using small memory pages.
+
 * **Added support of dynamic fields and flags in mbuf.**
 
   This new feature adds the ability to dynamically register some room

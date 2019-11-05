@@ -401,6 +401,11 @@ bucket_alloc(struct rte_mempool *mp)
 	struct bucket_data *bd;
 	unsigned int i;
 	unsigned int bucket_header_size;
+	size_t pg_sz;
+
+	rc = rte_mempool_get_page_size(mp, &pg_sz);
+	if (rc < 0)
+		return rc;
 
 	bd = rte_zmalloc_socket("bucket_pool", sizeof(*bd),
 				RTE_CACHE_LINE_SIZE, mp->socket_id);
@@ -416,7 +421,8 @@ bucket_alloc(struct rte_mempool *mp)
 	RTE_BUILD_BUG_ON(sizeof(struct bucket_header) > RTE_CACHE_LINE_SIZE);
 	bd->header_size = mp->header_size + bucket_header_size;
 	bd->total_elt_size = mp->header_size + mp->elt_size + mp->trailer_size;
-	bd->bucket_mem_size = RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB * 1024;
+	bd->bucket_mem_size = RTE_MIN(pg_sz,
+			(size_t)(RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB * 1024));
 	bd->obj_per_bucket = (bd->bucket_mem_size - bucket_header_size) /
 		bd->total_elt_size;
 	bd->bucket_page_mask = ~(rte_align64pow2(bd->bucket_mem_size) - 1);
@@ -585,7 +591,7 @@ bucket_populate(struct rte_mempool *mp, unsigned int max_objs,
 
 		hdr->fill_cnt = 0;
 		hdr->lcore_id = LCORE_ID_ANY;
-		rc = rte_mempool_op_populate_helper(mp,
+		rc = rte_mempool_op_populate_helper(mp, 0,
 						     RTE_MIN(bd->obj_per_bucket,
 							     max_objs - n_objs),
 						     iter + bucket_header_sz,

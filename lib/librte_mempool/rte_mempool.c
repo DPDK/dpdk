@@ -431,8 +431,6 @@ rte_mempool_get_page_size(struct rte_mempool *mp, size_t *pg_sz)
 
 	if (!need_iova_contig_obj)
 		*pg_sz = 0;
-	else if (!alloc_in_ext_mem && rte_eal_iova_mode() == RTE_IOVA_VA)
-		*pg_sz = 0;
 	else if (rte_eal_has_hugepages() || alloc_in_ext_mem)
 		*pg_sz = get_min_page_size(mp->socket_id);
 	else
@@ -481,17 +479,15 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	 * then just set page shift and page size to 0, because the user has
 	 * indicated that there's no need to care about anything.
 	 *
-	 * if we do need contiguous objects, there is also an option to reserve
-	 * the entire mempool memory as one contiguous block of memory, in
-	 * which case the page shift and alignment wouldn't matter as well.
+	 * if we do need contiguous objects (if a mempool driver has its
+	 * own calc_size() method returning min_chunk_size = mem_size),
+	 * there is also an option to reserve the entire mempool memory
+	 * as one contiguous block of memory.
 	 *
 	 * if we require contiguous objects, but not necessarily the entire
-	 * mempool reserved space to be contiguous, then there are two options.
-	 *
-	 * if our IO addresses are virtual, not actual physical (IOVA as VA
-	 * case), then no page shift needed - our memory allocation will give us
-	 * contiguous IO memory as far as the hardware is concerned, so
-	 * act as if we're getting contiguous memory.
+	 * mempool reserved space to be contiguous, pg_sz will be != 0,
+	 * and the default ops->populate() will take care of not placing
+	 * objects across pages.
 	 *
 	 * if our IO addresses are physical, we may get memory from bigger
 	 * pages, or we might get memory from smaller pages, and how much of it
@@ -504,11 +500,6 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	 *
 	 * If we fail to get enough contiguous memory, then we'll go and
 	 * reserve space in smaller chunks.
-	 *
-	 * We also have to take into account the fact that memory that we're
-	 * going to allocate from can belong to an externally allocated memory
-	 * area, in which case the assumption of IOVA as VA mode being
-	 * synonymous with IOVA contiguousness will not hold.
 	 */
 
 	need_iova_contig_obj = !(mp->flags & MEMPOOL_F_NO_IOVA_CONTIG);
