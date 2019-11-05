@@ -235,8 +235,9 @@ rte_fslmc_parse(const char *name, void *addr)
 {
 	uint16_t dev_id;
 	char *t_ptr;
-	char *sep = NULL;
+	const char *sep;
 	uint8_t sep_exists = 0;
+	int ret = -1;
 
 	DPAA2_BUS_DEBUG("Parsing dev=(%s)", name);
 
@@ -266,10 +267,11 @@ rte_fslmc_parse(const char *name, void *addr)
 		} else {
 			DPAA2_BUS_DEBUG("Invalid device for matching (%s).",
 					name);
+			ret = -EINVAL;
 			goto err_out;
 		}
 	} else
-		sep = strdup(name);
+		sep = name;
 
 jump_out:
 	/* Validate device name */
@@ -283,26 +285,23 @@ jump_out:
 	    strncmp("dpdmai", sep, 6) &&
 	    strncmp("dpdmux", sep, 6)) {
 		DPAA2_BUS_DEBUG("Unknown or unsupported device (%s)", sep);
+		ret = -EINVAL;
 		goto err_out;
 	}
 
 	t_ptr = strchr(sep, '.');
 	if (!t_ptr || sscanf(t_ptr + 1, "%hu", &dev_id) != 1) {
 		DPAA2_BUS_ERR("Missing device id in device name (%s)", sep);
+		ret = -EINVAL;
 		goto err_out;
 	}
 
-	if (addr) {
+	if (addr)
 		strcpy(addr, sep);
-		if (!sep_exists && sep)
-			free(sep);
-		return 0;
-	}
 
+	ret = 0;
 err_out:
-	if (!sep_exists && sep)
-		free(sep);
-	return -EINVAL;
+	return ret;
 }
 
 static int
