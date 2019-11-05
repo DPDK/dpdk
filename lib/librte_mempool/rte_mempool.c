@@ -368,17 +368,11 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 	size_t off, phys_len;
 	int ret, cnt = 0;
 
-	/* address and len must be page-aligned */
-	if (RTE_PTR_ALIGN_CEIL(addr, pg_sz) != addr)
-		return -EINVAL;
-	if (RTE_ALIGN_CEIL(len, pg_sz) != len)
-		return -EINVAL;
-
 	if (mp->flags & MEMPOOL_F_NO_IOVA_CONTIG)
 		return rte_mempool_populate_iova(mp, addr, RTE_BAD_IOVA,
 			len, free_cb, opaque);
 
-	for (off = 0; off + pg_sz <= len &&
+	for (off = 0; off < len &&
 		     mp->populated_size < mp->size; off += phys_len) {
 
 		iova = rte_mem_virt2iova(addr + off);
@@ -389,12 +383,18 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 		}
 
 		/* populate with the largest group of contiguous pages */
-		for (phys_len = pg_sz; off + phys_len < len; phys_len += pg_sz) {
+		for (phys_len = RTE_MIN(
+			(size_t)(RTE_PTR_ALIGN_CEIL(addr + off + 1, pg_sz) -
+				(addr + off)),
+			len - off);
+		     off + phys_len < len;
+		     phys_len = RTE_MIN(phys_len + pg_sz, len - off)) {
 			rte_iova_t iova_tmp;
 
 			iova_tmp = rte_mem_virt2iova(addr + off + phys_len);
 
-			if (iova_tmp != iova + phys_len)
+			if (iova_tmp == RTE_BAD_IOVA ||
+					iova_tmp != iova + phys_len)
 				break;
 		}
 
@@ -575,8 +575,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 			 * have
 			 */
 			mz = rte_memzone_reserve_aligned(mz_name, 0,
-					mp->socket_id, flags,
-					RTE_MAX(pg_sz, align));
+					mp->socket_id, flags, align);
 		}
 		if (mz == NULL) {
 			ret = -rte_errno;
@@ -601,7 +600,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 				(void *)(uintptr_t)mz);
 		else
 			ret = rte_mempool_populate_virt(mp, mz->addr,
-				RTE_ALIGN_FLOOR(mz->len, pg_sz), pg_sz,
+				mz->len, pg_sz,
 				rte_mempool_memchunk_mz_free,
 				(void *)(uintptr_t)mz);
 		if (ret < 0) {

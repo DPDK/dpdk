@@ -1042,9 +1042,8 @@ int rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
  *   A pointer to the mempool structure.
  * @param addr
  *   The virtual address of memory that should be used to store objects.
- *   Must be page-aligned.
  * @param len
- *   The length of memory in bytes. Must be page-aligned.
+ *   The length of memory in bytes.
  * @param pg_sz
  *   The size of memory pages in this virtual area.
  * @param free_cb
