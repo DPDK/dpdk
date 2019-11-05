@@ -23,6 +23,8 @@ CFLAGS += -diag-disable 2259
 endif
 endif
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 EXPORT_MAP := rte_mempool_octeontx2_version.map
 
 LIBABIVER := 1

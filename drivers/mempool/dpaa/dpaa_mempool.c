@@ -341,7 +341,7 @@ dpaa_populate(struct rte_mempool *mp, unsigned int max_objs,
 	 */
 	TAILQ_INSERT_HEAD(&rte_dpaa_memsegs, ms, next);
 
-	return rte_mempool_op_populate_default(mp, max_objs, vaddr, paddr, len,
+	return rte_mempool_op_populate_helper(mp, max_objs, vaddr, paddr, len,
 					       obj_cb, obj_cb_arg);
 }
 

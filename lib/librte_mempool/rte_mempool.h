@@ -465,8 +465,13 @@ typedef ssize_t (*rte_mempool_calc_mem_size_t)(const struct rte_mempool *mp,
 		size_t *min_chunk_size, size_t *align);
 
 /**
- * Default way to calculate memory size required to store given number of
- * objects.
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @internal Helper to calculate memory size required to store given
+ * number of objects.
+ *
+ * This function is internal to mempool library and mempool drivers.
  *
  * If page boundaries may be ignored, it is just a product of total
  * object size including header and trailer and number of objects.
@@ -479,6 +484,32 @@ typedef ssize_t (*rte_mempool_calc_mem_size_t)(const struct rte_mempool *mp,
  *
  * Minimum size of memory chunk is the total element size.
  * Required memory chunk alignment is the cache line size.
+ *
+ * @param[in] mp
+ *   A pointer to the mempool structure.
+ * @param[in] obj_num
+ *   Number of objects to be added in mempool.
+ * @param[in] pg_shift
+ *   LOG2 of the physical pages size. If set to 0, ignore page boundaries.
+ * @param[out] min_chunk_size
+ *   Location for minimum size of the memory chunk which may be used to
+ *   store memory pool objects.
+ * @param[out] align
+ *   Location for required memory chunk alignment.
+ * @return
+ *   Required memory size.
+ */
+__rte_experimental
+ssize_t rte_mempool_op_calc_mem_size_helper(const struct rte_mempool *mp,
+		uint32_t obj_num, uint32_t pg_shift,
+		size_t *min_chunk_size, size_t *align);
+
+/**
+ * Default way to calculate memory size required to store given number of
+ * objects.
+ *
+ * Equivalent to rte_mempool_op_calc_mem_size_helper(mp, obj_num, pg_shift,
+ * min_chunk_size, align).
  */
 ssize_t rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 		uint32_t obj_num, uint32_t pg_shift,
@@ -533,8 +564,42 @@ typedef int (*rte_mempool_populate_t)(struct rte_mempool *mp,
 		rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg);
 
 /**
- * Default way to populate memory pool object using provided memory
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @internal Helper to populate memory pool object using provided memory
  * chunk: just slice objects one by one.
+ *
+ * This function is internal to mempool library and mempool drivers.
+ *
+ * @param[in] mp
+ *   A pointer to the mempool structure.
+ * @param[in] max_objs
+ *   Maximum number of objects to be added in mempool.
+ * @param[in] vaddr
+ *   The virtual address of memory that should be used to store objects.
+ * @param[in] iova
+ *   The IO address corresponding to vaddr, or RTE_BAD_IOVA.
+ * @param[in] len
+ *   The length of memory in bytes.
+ * @param[in] obj_cb
+ *   Callback function to be executed for each populated object.
+ * @param[in] obj_cb_arg
+ *   An opaque pointer passed to the callback function.
+ * @return
+ *   The number of objects added in mempool.
+ */
+__rte_experimental
+int rte_mempool_op_populate_helper(struct rte_mempool *mp,
+		unsigned int max_objs,
+		void *vaddr, rte_iova_t iova, size_t len,
+		rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg);
+
+/**
+ * Default way to populate memory pool object using provided memory chunk.
+ *
+ * Equivalent to rte_mempool_op_populate_helper(mp, max_objs, vaddr, iova,
+ * len, obj_cb, obj_cb_arg).
  */
 int rte_mempool_op_populate_default(struct rte_mempool *mp,
 		unsigned int max_objs,

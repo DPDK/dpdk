@@ -137,7 +137,7 @@ octeontx_fpavf_calc_mem_size(const struct rte_mempool *mp,
 	 * Simply need space for one more object to be able to
 	 * fulfil alignment requirements.
 	 */
-	mem_size = rte_mempool_op_calc_mem_size_default(mp, obj_num + 1,
+	mem_size = rte_mempool_op_calc_mem_size_helper(mp, obj_num + 1,
 							pg_shift,
 							min_chunk_size, align);
 	if (mem_size >= 0) {
@@ -184,7 +184,7 @@ octeontx_fpavf_populate(struct rte_mempool *mp, unsigned int max_objs,
 	if (ret < 0)
 		return ret;
 
-	return rte_mempool_op_populate_default(mp, max_objs, vaddr, iova, len,
+	return rte_mempool_op_populate_helper(mp, max_objs, vaddr, iova, len,
 					       obj_cb, obj_cb_arg);
 }
 

@@ -7,9 +7,9 @@
 #include <rte_mempool.h>
 
 ssize_t
-rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
-				     uint32_t obj_num, uint32_t pg_shift,
-				     size_t *min_chunk_size, size_t *align)
+rte_mempool_op_calc_mem_size_helper(const struct rte_mempool *mp,
+				uint32_t obj_num, uint32_t pg_shift,
+				size_t *min_chunk_size, size_t *align)
 {
 	size_t total_elt_sz;
 	size_t obj_per_page, pg_sz, objs_in_last_page;
@@ -61,10 +61,19 @@ rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 	return mem_size;
 }
 
+ssize_t
+rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
+				uint32_t obj_num, uint32_t pg_shift,
+				size_t *min_chunk_size, size_t *align)
+{
+	return rte_mempool_op_calc_mem_size_helper(mp, obj_num, pg_shift,
+						min_chunk_size, align);
+}
+
 int
-rte_mempool_op_populate_default(struct rte_mempool *mp, unsigned int max_objs,
-		void *vaddr, rte_iova_t iova, size_t len,
-		rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg)
+rte_mempool_op_populate_helper(struct rte_mempool *mp, unsigned int max_objs,
+			void *vaddr, rte_iova_t iova, size_t len,
+			rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg)
 {
 	size_t total_elt_sz;
 	size_t off;
@@ -83,4 +92,14 @@ rte_mempool_op_populate_default(struct rte_mempool *mp, unsigned int max_objs,
 	}
 
 	return i;
+}
+
+int
+rte_mempool_op_populate_default(struct rte_mempool *mp, unsigned int max_objs,
+				void *vaddr, rte_iova_t iova, size_t len,
+				rte_mempool_populate_obj_cb_t *obj_cb,
+				void *obj_cb_arg)
+{
+	return rte_mempool_op_populate_helper(mp, max_objs, vaddr, iova,
+					len, obj_cb, obj_cb_arg);
 }

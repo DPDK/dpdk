@@ -585,7 +585,7 @@ bucket_populate(struct rte_mempool *mp, unsigned int max_objs,
 
 		hdr->fill_cnt = 0;
 		hdr->lcore_id = LCORE_ID_ANY;
-		rc = rte_mempool_op_populate_default(mp,
+		rc = rte_mempool_op_populate_helper(mp,
 						     RTE_MIN(bd->obj_per_bucket,
 							     max_objs - n_objs),
 						     iter + bucket_header_sz,

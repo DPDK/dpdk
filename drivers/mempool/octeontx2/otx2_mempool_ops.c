@@ -717,7 +717,7 @@ otx2_npa_calc_mem_size(const struct rte_mempool *mp, uint32_t obj_num,
 	 * Simply need space for one more object to be able to
 	 * fulfill alignment requirements.
 	 */
-	return rte_mempool_op_calc_mem_size_default(mp, obj_num + 1, pg_shift,
+	return rte_mempool_op_calc_mem_size_helper(mp, obj_num + 1, pg_shift,
 						    min_chunk_size, align);
 }
 
@@ -749,7 +749,7 @@ otx2_npa_populate(struct rte_mempool *mp, unsigned int max_objs, void *vaddr,
 	if (npa_lf_aura_range_update_check(mp->pool_id) < 0)
 		return -EBUSY;
 
-	return rte_mempool_op_populate_default(mp, max_objs, vaddr, iova, len,
+	return rte_mempool_op_populate_helper(mp, max_objs, vaddr, iova, len,
 					       obj_cb, obj_cb_arg);
 }
 

@@ -61,4 +61,6 @@ EXPERIMENTAL {
 
 	# added in 19.11
 	rte_mempool_get_page_size;
+	rte_mempool_op_calc_mem_size_helper;
+	rte_mempool_op_populate_helper;
 };

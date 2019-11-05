@@ -432,7 +432,7 @@ dpaa2_populate(struct rte_mempool *mp, unsigned int max_objs,
 	/* Insert entry into the PA->VA Table */
 	dpaax_iova_table_update(paddr, vaddr, len);
 
-	return rte_mempool_op_populate_default(mp, max_objs, vaddr, paddr, len,
+	return rte_mempool_op_populate_helper(mp, max_objs, vaddr, paddr, len,
 					       obj_cb, obj_cb_arg);
 }
 

@@ -6,4 +6,6 @@
 # This software was jointly developed between OKTET Labs (under contract
 # for Solarflare) and Solarflare Communications, Inc.
 
+allow_experimental_apis = true
+
 sources = files('rte_mempool_bucket.c')
