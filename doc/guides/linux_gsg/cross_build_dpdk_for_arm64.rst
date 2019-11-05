@@ -79,7 +79,7 @@ Copy the NUMA header files and lib to the cross compiler's directories:
 
 Configure and cross compile DPDK Build
 --------------------------------------
-To configure a build, choose one of the target configurations, like arm64-dpaa2-linux-gcc and arm64-thunderx-linux-gcc.
+To configure a build, choose one of the target configurations, like arm64-dpaa-linux-gcc and arm64-thunderx-linux-gcc.
 
 .. code-block:: console
 

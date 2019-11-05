@@ -441,21 +441,19 @@ Config File Options
 The following options can be modified in the ``config`` file.
 Please note that enabling debugging options may affect system performance.
 
-- ``CONFIG_RTE_LIBRTE_FSLMC_BUS`` (default ``n``)
+- ``CONFIG_RTE_LIBRTE_FSLMC_BUS`` (default ``y``)
 
-  By default it is enabled only for defconfig_arm64-dpaa2-* config.
   Toggle compilation of the ``librte_bus_fslmc`` driver.
 
-- ``CONFIG_RTE_LIBRTE_DPAA2_PMD`` (default ``n``)
+- ``CONFIG_RTE_LIBRTE_DPAA2_PMD`` (default ``y``)
 
-  By default it is enabled only for defconfig_arm64-dpaa2-* config.
   Toggle compilation of the ``librte_pmd_dpaa2`` driver.
 
 - ``CONFIG_RTE_LIBRTE_DPAA2_DEBUG_DRIVER`` (default ``n``)
 
   Toggle display of debugging messages/logic
 
-- ``CONFIG_RTE_LIBRTE_DPAA2_USE_PHYS_IOVA`` (default ``y``)
+- ``CONFIG_RTE_LIBRTE_DPAA2_USE_PHYS_IOVA`` (default ``n``)
 
   Toggle to use physical address vs virtual address for hardware accelerators.
 

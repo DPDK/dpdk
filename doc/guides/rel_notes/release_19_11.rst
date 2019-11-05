@@ -278,6 +278,9 @@ Removed Items
   * Quota and Watermark
   * vhost-scsi
 
+* Removed arm64-dpaa2-* build config. arm64-dpaa-* can now build for both
+  dpaa and dpaa2 platforms.
+
 
 API Changes
 -----------

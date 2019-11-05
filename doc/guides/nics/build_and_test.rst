@@ -35,7 +35,7 @@ Example output:
 
    arm-armv7a-linux-gcc
    arm64-armv8a-linux-gcc
-   arm64-dpaa2-linux-gcc
+   arm64-dpaa-linux-gcc
    arm64-thunderx-linux-gcc
    arm64-xgene1-linux-gcc
    i686-native-linux-gcc

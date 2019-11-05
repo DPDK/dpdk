@@ -201,14 +201,12 @@ Config File Options
 The following options can be modified in the ``config`` file.
 Please note that enabling debugging options may affect system performance.
 
-- ``CONFIG_RTE_LIBRTE_DPAA_BUS`` (default ``n``)
+- ``CONFIG_RTE_LIBRTE_DPAA_BUS`` (default ``y``)
 
-  By default it is enabled only for defconfig_arm64-dpaa-* config.
   Toggle compilation of the ``librte_bus_dpaa`` driver.
 
-- ``CONFIG_RTE_LIBRTE_DPAA_PMD`` (default ``n``)
+- ``CONFIG_RTE_LIBRTE_DPAA_PMD`` (default ``y``)
 
-  By default it is enabled only for defconfig_arm64-dpaa-* config.
   Toggle compilation of the ``librte_pmd_dpaa`` driver.
 
 - ``CONFIG_RTE_LIBRTE_DPAA_DEBUG_DRIVER`` (default ``n``)
@@ -222,12 +220,6 @@ Please note that enabling debugging options may affect system performance.
   Enables debugging of the Queue and Buffer Manager layer which interacts
   with the DPAA hardware.
 
-- ``CONFIG_RTE_MBUF_DEFAULT_MEMPOOL_OPS`` (default ``dpaa``)
-
-  This is not a DPAA specific configuration - it is a generic RTE config.
-  For optimal performance and hardware utilization, it is expected that DPAA
-  Mempool driver is used for mempools. For that, this configuration needs to
-  enabled.
 
 Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~

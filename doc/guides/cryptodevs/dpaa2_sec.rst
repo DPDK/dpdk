@@ -180,7 +180,7 @@ to enable DPAA2_SEC PMD.
 Please note that enabling debugging options may affect system performance.
 
 * ``CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC`` (default ``n``)
-  By default it is only enabled in defconfig_arm64-dpaa2-* config.
+  By default it is only enabled in defconfig_arm64-dpaa-* config.
   Toggle compilation of the ``librte_pmd_dpaa2_sec`` driver.
 
 Installations
@@ -191,7 +191,7 @@ following ``make`` command:
 .. code-block:: console
 
    cd <DPDK-source-directory>
-   make config T=arm64-dpaa2-linux-gcc install
+   make config T=arm64-dpaa-linux-gcc install
 
 Enabling logs
 -------------
