@@ -478,7 +478,6 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 			shared_desc_len = cnstr_shdsc_blkcipher(
 					cdb->sh_desc, true,
 					swap, SHR_NEVER, &alginfo_c,
-					NULL,
 					ses->iv.length,
 					ses->dir);
 			break;

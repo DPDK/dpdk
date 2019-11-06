@@ -289,12 +289,12 @@ cnstr_shdsc_snow_f9(uint32_t *descbuf, bool ps, bool swap,
 static inline int
 cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
 		      enum rta_share_type share,
-		      struct alginfo *cipherdata, uint8_t *iv,
+		      struct alginfo *cipherdata,
 		      uint32_t ivlen, uint8_t dir)
 {
 	struct program prg;
 	struct program *p = &prg;
-	uint32_t iv_off = 0;
+	uint32_t iv_off = 0, counter;
 	const bool need_dk = (dir == DIR_DEC) &&
 			     (cipherdata->algtype == OP_ALG_ALGSEL_AES) &&
 			     (cipherdata->algmode == OP_ALG_AAI_CBC);
@@ -336,12 +336,17 @@ cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
 	if (cipherdata->algmode == OP_ALG_AAI_CTR)
 		iv_off = 16;
 
-	if (iv)
-		/* IV load, convert size */
-		LOAD(p, (uintptr_t)iv, CONTEXT1, iv_off, ivlen, IMMED | COPY);
-	else
-		/* IV is present first before the actual message */
-		SEQLOAD(p, CONTEXT1, iv_off, ivlen, 0);
+	/* IV is present first before the actual message */
+	SEQLOAD(p, CONTEXT1, iv_off, ivlen, 0);
+
+	/* If IV len is less than 16 bytes, set 'counter' as 1 */
+	if (cipherdata->algmode == OP_ALG_AAI_CTR && ivlen < 16) {
+		counter = 1;
+		if (!swap)
+			counter = swab32(1);
+
+		LOAD(p, counter, CONTEXT1, (iv_off + ivlen), 16 - ivlen, IMMED);
+	}
 
 	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
 	MATHB(p, SEQINSZ, SUB, MATH2, VSEQOUTSZ, 4, 0);
