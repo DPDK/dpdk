@@ -2616,9 +2616,6 @@ parse_ntuple_filter(struct bnxt *bp,
 		return -EINVAL;
 	}
 
-	//TODO Priority
-	//nfilter->priority = (uint8_t)filter->priority;
-
 	bfilter->enables = en;
 	return 0;
 }
