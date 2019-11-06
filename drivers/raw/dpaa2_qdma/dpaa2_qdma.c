@@ -54,6 +54,267 @@ typedef int (dpdmai_dev_dequeue_multijob_t)(struct dpaa2_dpdmai_dev *dpdmai_dev,
 
 dpdmai_dev_dequeue_multijob_t *dpdmai_dev_dequeue_multijob;
 
+typedef uint16_t (dpdmai_dev_get_job_t)(const struct qbman_fd *fd,
+					struct rte_qdma_job **job);
+typedef int (dpdmai_dev_set_fd_t)(struct qbman_fd *fd,
+				  struct rte_qdma_job *job,
+				  struct rte_qdma_rbp *rbp,
+				  uint16_t vq_id);
+dpdmai_dev_get_job_t *dpdmai_dev_get_job;
+dpdmai_dev_set_fd_t *dpdmai_dev_set_fd;
+
+static inline int
+qdma_populate_fd_pci(phys_addr_t src, phys_addr_t dest,
+			uint32_t len, struct qbman_fd *fd,
+			struct rte_qdma_rbp *rbp)
+{
+	fd->simple_pci.saddr_lo = lower_32_bits((uint64_t) (src));
+	fd->simple_pci.saddr_hi = upper_32_bits((uint64_t) (src));
+
+	fd->simple_pci.len_sl = len;
+
+	fd->simple_pci.bmt = 1;
+	fd->simple_pci.fmt = 3;
+	fd->simple_pci.sl = 1;
+	fd->simple_pci.ser = 1;
+
+	fd->simple_pci.sportid = rbp->sportid;	/*pcie 3 */
+	fd->simple_pci.srbp = rbp->srbp;
+	if (rbp->srbp)
+		fd->simple_pci.rdttype = 0;
+	else
+		fd->simple_pci.rdttype = dpaa2_coherent_alloc_cache;
+
+	/*dest is pcie memory */
+	fd->simple_pci.dportid = rbp->dportid;	/*pcie 3 */
+	fd->simple_pci.drbp = rbp->drbp;
+	if (rbp->drbp)
+		fd->simple_pci.wrttype = 0;
+	else
+		fd->simple_pci.wrttype = dpaa2_coherent_no_alloc_cache;
+
+	fd->simple_pci.daddr_lo = lower_32_bits((uint64_t) (dest));
+	fd->simple_pci.daddr_hi = upper_32_bits((uint64_t) (dest));
+
+	return 0;
+}
+
+static inline int
+qdma_populate_fd_ddr(phys_addr_t src, phys_addr_t dest,
+			uint32_t len, struct qbman_fd *fd)
+{
+	fd->simple_ddr.saddr_lo = lower_32_bits((uint64_t) (src));
+	fd->simple_ddr.saddr_hi = upper_32_bits((uint64_t) (src));
+
+	fd->simple_ddr.len = len;
+
+	fd->simple_ddr.bmt = 1;
+	fd->simple_ddr.fmt = 3;
+	fd->simple_ddr.sl = 1;
+	fd->simple_ddr.ser = 1;
+	/**
+	 * src If RBP=0 {NS,RDTTYPE[3:0]}: 0_1011
+	 * Coherent copy of cacheable memory,
+	 * lookup in downstream cache, no allocate
+	 * on miss
+	 */
+	fd->simple_ddr.rns = 0;
+	fd->simple_ddr.rdttype = dpaa2_coherent_alloc_cache;
+	/**
+	 * dest If RBP=0 {NS,WRTTYPE[3:0]}: 0_0111
+	 * Coherent write of cacheable memory,
+	 * lookup in downstream cache, no allocate on miss
+	 */
+	fd->simple_ddr.wns = 0;
+	fd->simple_ddr.wrttype = dpaa2_coherent_no_alloc_cache;
+
+	fd->simple_ddr.daddr_lo = lower_32_bits((uint64_t) (dest));
+	fd->simple_ddr.daddr_hi = upper_32_bits((uint64_t) (dest));
+
+	return 0;
+}
+
+static void
+dpaa2_qdma_populate_fle(struct qbman_fle *fle,
+			struct rte_qdma_rbp *rbp,
+			uint64_t src, uint64_t dest,
+			size_t len, uint32_t flags)
+{
+	struct qdma_sdd *sdd;
+
+	sdd = (struct qdma_sdd *)((uint8_t *)(fle) +
+		(DPAA2_QDMA_MAX_FLE * sizeof(struct qbman_fle)));
+
+	/* first frame list to source descriptor */
+	DPAA2_SET_FLE_ADDR(fle, DPAA2_VADDR_TO_IOVA(sdd));
+	DPAA2_SET_FLE_LEN(fle, (2 * (sizeof(struct qdma_sdd))));
+
+	/* source and destination descriptor */
+	if (rbp && rbp->enable) {
+		/* source */
+		sdd->read_cmd.portid = rbp->sportid;
+		sdd->rbpcmd_simple.pfid = rbp->spfid;
+		sdd->rbpcmd_simple.vfid = rbp->svfid;
+
+		if (rbp->srbp) {
+			sdd->read_cmd.rbp = rbp->srbp;
+			sdd->read_cmd.rdtype = DPAA2_RBP_MEM_RW;
+		} else {
+			sdd->read_cmd.rdtype = dpaa2_coherent_no_alloc_cache;
+		}
+		sdd++;
+		/* destination */
+		sdd->write_cmd.portid = rbp->dportid;
+		sdd->rbpcmd_simple.pfid = rbp->dpfid;
+		sdd->rbpcmd_simple.vfid = rbp->dvfid;
+
+		if (rbp->drbp) {
+			sdd->write_cmd.rbp = rbp->drbp;
+			sdd->write_cmd.wrttype = DPAA2_RBP_MEM_RW;
+		} else {
+			sdd->write_cmd.wrttype = dpaa2_coherent_alloc_cache;
+		}
+
+	} else {
+		sdd->read_cmd.rdtype = dpaa2_coherent_no_alloc_cache;
+		sdd++;
+		sdd->write_cmd.wrttype = dpaa2_coherent_alloc_cache;
+	}
+	fle++;
+	/* source frame list to source buffer */
+	if (flags & RTE_QDMA_JOB_SRC_PHY) {
+		DPAA2_SET_FLE_ADDR(fle, src);
+		DPAA2_SET_FLE_BMT(fle);
+	} else {
+		DPAA2_SET_FLE_ADDR(fle, DPAA2_VADDR_TO_IOVA(src));
+	}
+	DPAA2_SET_FLE_LEN(fle, len);
+
+	fle++;
+	/* destination frame list to destination buffer */
+	if (flags & RTE_QDMA_JOB_DEST_PHY) {
+		DPAA2_SET_FLE_BMT(fle);
+		DPAA2_SET_FLE_ADDR(fle, dest);
+	} else {
+		DPAA2_SET_FLE_ADDR(fle, DPAA2_VADDR_TO_IOVA(dest));
+	}
+	DPAA2_SET_FLE_LEN(fle, len);
+
+	/* Final bit: 1, for last frame list */
+	DPAA2_SET_FLE_FIN(fle);
+}
+
+static inline int dpdmai_dev_set_fd_us(struct qbman_fd *fd,
+					struct rte_qdma_job *job,
+					struct rte_qdma_rbp *rbp,
+					uint16_t vq_id)
+{
+	struct rte_qdma_job **ppjob;
+	size_t iova;
+	int ret = 0;
+
+	if (job->src & QDMA_RBP_UPPER_ADDRESS_MASK)
+		iova = (size_t)job->dest;
+	else
+		iova = (size_t)job->src;
+
+	/* Set the metadata */
+	job->vq_id = vq_id;
+	ppjob = (struct rte_qdma_job **)DPAA2_IOVA_TO_VADDR(iova) - 1;
+	*ppjob = job;
+
+	if ((rbp->drbp == 1) || (rbp->srbp == 1))
+		ret = qdma_populate_fd_pci((phys_addr_t) job->src,
+					   (phys_addr_t) job->dest,
+					   job->len, fd, rbp);
+	else
+		ret = qdma_populate_fd_ddr((phys_addr_t) job->src,
+					   (phys_addr_t) job->dest,
+					   job->len, fd);
+	return ret;
+}
+static inline int dpdmai_dev_set_fd_lf(struct qbman_fd *fd,
+					struct rte_qdma_job *job,
+					struct rte_qdma_rbp *rbp,
+					uint16_t vq_id)
+{
+	struct rte_qdma_job **ppjob;
+	struct qbman_fle *fle;
+	int ret = 0;
+	/*
+	 * Get an FLE/SDD from FLE pool.
+	 * Note: IO metadata is before the FLE and SDD memory.
+	 */
+	ret = rte_mempool_get(qdma_dev.fle_pool, (void **)(&ppjob));
+	if (ret) {
+		DPAA2_QDMA_DP_DEBUG("Memory alloc failed for FLE");
+		return ret;
+	}
+
+	/* Set the metadata */
+	job->vq_id = vq_id;
+	*ppjob = job;
+
+	fle = (struct qbman_fle *)(ppjob + 1);
+
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(fle));
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+	DPAA2_SET_FD_FRC(fd, QDMA_SER_CTX);
+
+	/* Populate FLE */
+	memset(fle, 0, QDMA_FLE_POOL_SIZE);
+	dpaa2_qdma_populate_fle(fle, rbp, job->src, job->dest,
+				job->len, job->flags);
+
+	return 0;
+}
+
+static inline uint16_t dpdmai_dev_get_job_us(const struct qbman_fd *fd,
+					struct rte_qdma_job **job)
+{
+	uint16_t vqid;
+	size_t iova;
+	struct rte_qdma_job **ppjob;
+
+	if (fd->simple_pci.saddr_hi & (QDMA_RBP_UPPER_ADDRESS_MASK >> 32))
+		iova = (size_t) (((uint64_t)fd->simple_pci.daddr_hi) << 32
+				| (uint64_t)fd->simple_pci.daddr_lo);
+	else
+		iova = (size_t)(((uint64_t)fd->simple_pci.saddr_hi) << 32
+				| (uint64_t)fd->simple_pci.saddr_lo);
+
+	ppjob = (struct rte_qdma_job **)DPAA2_IOVA_TO_VADDR(iova) - 1;
+	*job = (struct rte_qdma_job *)*ppjob;
+	(*job)->status = (fd->simple_pci.acc_err << 8) | (fd->simple_pci.error);
+	vqid = (*job)->vq_id;
+
+	return vqid;
+}
+
+static inline uint16_t dpdmai_dev_get_job_lf(const struct qbman_fd *fd,
+					struct rte_qdma_job **job)
+{
+	struct rte_qdma_job **ppjob;
+	uint16_t vqid;
+	/*
+	 * Fetch metadata from FLE. job and vq_id were set
+	 * in metadata in the enqueue operation.
+	 */
+	ppjob = (struct rte_qdma_job **)
+			DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+	ppjob -= 1;
+
+	*job = (struct rte_qdma_job *)*ppjob;
+	(*job)->status = (DPAA2_GET_FD_ERR(fd) << 8) |
+			 (DPAA2_GET_FD_FRC(fd) & 0xFF);
+	vqid = (*job)->vq_id;
+
+	/* Free FLE to the pool */
+	rte_mempool_put(qdma_dev.fle_pool, (void *)ppjob);
+
+	return vqid;
+}
+
 static struct qdma_hw_queue *
 alloc_hw_queue(uint32_t lcore_id)
 {
@@ -291,6 +552,13 @@ rte_qdma_configure(struct rte_qdma_config *qdma_config)
 	}
 	qdma_dev.fle_pool_count = qdma_config->fle_pool_count;
 
+	if (qdma_config->format == RTE_QDMA_ULTRASHORT_FORMAT) {
+		dpdmai_dev_get_job = dpdmai_dev_get_job_us;
+		dpdmai_dev_set_fd = dpdmai_dev_set_fd_us;
+	} else {
+		dpdmai_dev_get_job = dpdmai_dev_get_job_lf;
+		dpdmai_dev_set_fd = dpdmai_dev_set_fd_lf;
+	}
 	return 0;
 }
 
@@ -377,112 +645,6 @@ rte_qdma_vq_create_rbp(uint32_t lcore_id, uint32_t flags,
 	memcpy(&qdma_vqs[i].rbp, rbp, sizeof(struct rte_qdma_rbp));
 
 	return i;
-}
-
-static void
-dpaa2_qdma_populate_fle(struct qbman_fle *fle,
-			struct rte_qdma_rbp *rbp,
-			uint64_t src, uint64_t dest,
-			size_t len, uint32_t flags)
-{
-	struct qdma_sdd *sdd;
-
-	sdd = (struct qdma_sdd *)((uint8_t *)(fle) +
-		(DPAA2_QDMA_MAX_FLE * sizeof(struct qbman_fle)));
-
-	/* first frame list to source descriptor */
-	DPAA2_SET_FLE_ADDR(fle, DPAA2_VADDR_TO_IOVA(sdd));
-	DPAA2_SET_FLE_LEN(fle, (2 * (sizeof(struct qdma_sdd))));
-
-	/* source and destination descriptor */
-	if (rbp && rbp->enable) {
-		/* source */
-		sdd->read_cmd.portid = rbp->sportid;
-		sdd->rbpcmd_simple.pfid = rbp->spfid;
-		sdd->rbpcmd_simple.vfid = rbp->svfid;
-
-		if (rbp->srbp) {
-			sdd->read_cmd.rbp = rbp->srbp;
-			sdd->read_cmd.rdtype = DPAA2_RBP_MEM_RW;
-		} else {
-			sdd->read_cmd.rdtype = dpaa2_coherent_no_alloc_cache;
-		}
-		sdd++;
-		/* destination */
-		sdd->write_cmd.portid = rbp->dportid;
-		sdd->rbpcmd_simple.pfid = rbp->dpfid;
-		sdd->rbpcmd_simple.vfid = rbp->dvfid;
-
-		if (rbp->drbp) {
-			sdd->write_cmd.rbp = rbp->drbp;
-			sdd->write_cmd.wrttype = DPAA2_RBP_MEM_RW;
-		} else {
-			sdd->write_cmd.wrttype = dpaa2_coherent_alloc_cache;
-		}
-
-	} else {
-		sdd->read_cmd.rdtype = dpaa2_coherent_no_alloc_cache;
-		sdd++;
-		sdd->write_cmd.wrttype = dpaa2_coherent_alloc_cache;
-	}
-	fle++;
-	/* source frame list to source buffer */
-	if (flags & RTE_QDMA_JOB_SRC_PHY) {
-		DPAA2_SET_FLE_ADDR(fle, src);
-		DPAA2_SET_FLE_BMT(fle);
-	} else {
-		DPAA2_SET_FLE_ADDR(fle, DPAA2_VADDR_TO_IOVA(src));
-	}
-	DPAA2_SET_FLE_LEN(fle, len);
-
-	fle++;
-	/* destination frame list to destination buffer */
-	if (flags & RTE_QDMA_JOB_DEST_PHY) {
-		DPAA2_SET_FLE_BMT(fle);
-		DPAA2_SET_FLE_ADDR(fle, dest);
-	} else {
-		DPAA2_SET_FLE_ADDR(fle, DPAA2_VADDR_TO_IOVA(dest));
-	}
-	DPAA2_SET_FLE_LEN(fle, len);
-
-	/* Final bit: 1, for last frame list */
-	DPAA2_SET_FLE_FIN(fle);
-}
-
-static inline uint16_t dpdmai_dev_set_fd(struct qbman_fd *fd,
-					struct rte_qdma_job *job,
-					struct rte_qdma_rbp *rbp,
-					uint16_t vq_id)
-{
-	struct qdma_io_meta *io_meta;
-	struct qbman_fle *fle;
-	int ret = 0;
-	/*
-	 * Get an FLE/SDD from FLE pool.
-	 * Note: IO metadata is before the FLE and SDD memory.
-	 */
-	ret = rte_mempool_get(qdma_dev.fle_pool, (void **)(&io_meta));
-	if (ret) {
-		DPAA2_QDMA_DP_DEBUG("Memory alloc failed for FLE");
-		return ret;
-	}
-
-	/* Set the metadata */
-	io_meta->cnxt = (size_t)job;
-	io_meta->id = vq_id;
-
-	fle = (struct qbman_fle *)(io_meta + 1);
-
-	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(fle));
-	DPAA2_SET_FD_COMPOUND_FMT(fd);
-	DPAA2_SET_FD_FRC(fd, QDMA_SER_CTX);
-
-	/* Populate FLE */
-	memset(fle, 0, QDMA_FLE_POOL_SIZE);
-	dpaa2_qdma_populate_fle(fle, rbp, job->src, job->dest,
-				job->len, job->flags);
-
-	return 0;
 }
 
 static int
@@ -600,31 +762,6 @@ rte_qdma_vq_enqueue(uint16_t vq_id,
 		    struct rte_qdma_job *job)
 {
 	return rte_qdma_vq_enqueue_multi(vq_id, &job, 1);
-}
-
-static inline uint16_t dpdmai_dev_get_job(const struct qbman_fd *fd,
-					struct rte_qdma_job **job)
-{
-	struct qbman_fle *fle;
-	struct qdma_io_meta *io_meta;
-	uint16_t vqid;
-	/*
-	 * Fetch metadata from FLE. job and vq_id were set
-	 * in metadata in the enqueue operation.
-	 */
-	fle = (struct qbman_fle *)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
-	io_meta = (struct qdma_io_meta *)(fle) - 1;
-
-	*job = (struct rte_qdma_job *)(size_t)io_meta->cnxt;
-	(*job)->status = (DPAA2_GET_FD_ERR(fd) << 8) |
-			 (DPAA2_GET_FD_FRC(fd) & 0xFF);
-
-	vqid = io_meta->id;
-
-	/* Free FLE to the pool */
-	rte_mempool_put(qdma_dev.fle_pool, io_meta);
-
-	return vqid;
 }
 
 /* Function to receive a QDMA job for a given device and queue*/

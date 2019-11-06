@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2019 NXP
  */
 
 #ifndef __DPAA2_QDMA_H__
 #define __DPAA2_QDMA_H__
 
 struct qdma_sdd;
-struct qdma_io_meta;
+struct rte_qdma_job;
 
 #define DPAA2_QDMA_MAX_FLE 3
 #define DPAA2_QDMA_MAX_SDD 2
@@ -14,7 +14,7 @@ struct qdma_io_meta;
 #define DPAA2_DPDMAI_MAX_QUEUES	8
 
 /** FLE pool size: 3 Frame list + 2 source/destination descriptor */
-#define QDMA_FLE_POOL_SIZE (sizeof(struct qdma_io_meta) + \
+#define QDMA_FLE_POOL_SIZE (sizeof(struct rte_qdma_job *) + \
 		sizeof(struct qbman_fle) * DPAA2_QDMA_MAX_FLE + \
 		sizeof(struct qdma_sdd) * DPAA2_QDMA_MAX_SDD)
 /** FLE pool cache size */
@@ -106,17 +106,6 @@ struct qdma_per_core_info {
 	struct qdma_hw_queue *hw_queues[MAX_HW_QUEUE_PER_CORE];
 	/* Number of hw queues allocated for this core */
 	uint16_t num_hw_queues;
-};
-
-/** Metadata which is stored with each operation */
-struct qdma_io_meta {
-	/**
-	 * Context which is stored in the FLE pool (just before the FLE).
-	 * QDMA job is stored as a this context as a part of metadata.
-	 */
-	uint64_t cnxt;
-	/** VQ ID is stored as a part of metadata of the enqueue command */
-	uint64_t id;
 };
 
 /** Source/Destination Descriptor */

@@ -33,6 +33,12 @@ enum {
 	RTE_QDMA_MODE_VIRTUAL
 };
 
+/** Determines the format of FD */
+enum {
+	RTE_QDMA_LONG_FORMAT,
+	RTE_QDMA_ULTRASHORT_FORMAT,
+};
+
 /**
  * If user has configured a Virtual Queue mode, but for some particular VQ
  * user needs an exclusive H/W queue associated (for better performance
@@ -62,6 +68,8 @@ struct rte_qdma_config {
 	uint16_t max_vqs;
 	/** mode of operation - physical(h/w) or virtual */
 	uint8_t mode;
+	/** FD format */
+	uint8_t format;
 	/**
 	 * User provides this as input to the driver as a size of the FLE pool.
 	 * FLE's (and corresponding source/destination descriptors) are
@@ -143,6 +151,7 @@ struct rte_qdma_job {
 	 * lower 8bits fd error
 	 */
 	uint16_t status;
+	uint16_t vq_id;
 };
 
 /**
