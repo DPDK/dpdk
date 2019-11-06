@@ -403,6 +403,10 @@ ABI Changes
   align the Ethernet header on receive and all known encapsulations
   preserve the alignment of the header.
 
+* security: A new field ``replay_win_sz`` has been added to the structure
+  ``rte_security_ipsec_xform``, which specify the Anti replay window size
+  to enable sequence replay attack handling.
+
 
 Shared Library Versions
 -----------------------
@@ -477,7 +481,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_reorder.so.1
      librte_ring.so.2
    + librte_sched.so.4
-     librte_security.so.2
+   + librte_security.so.3
      librte_stack.so.1
      librte_table.so.3
      librte_timer.so.1
