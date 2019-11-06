@@ -38,6 +38,7 @@ endforeach
 
 if build
 	allow_experimental_apis = true
+	deps += ['hash']
 	ext_deps += libs
 	sources = files(
 		'mlx5.c',
@@ -58,6 +59,7 @@ if build
 		'mlx5_txq.c',
 		'mlx5_vlan.c',
 		'mlx5_devx_cmds.c',
+		'mlx5_utils.c',
 	)
 	if (dpdk_conf.has('RTE_ARCH_X86_64')
 		or dpdk_conf.has('RTE_ARCH_ARM64')
