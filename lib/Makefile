@@ -89,7 +89,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += librte_distributor
 DEPDIRS-librte_distributor := librte_eal librte_mbuf librte_ethdev
 DIRS-$(CONFIG_RTE_LIBRTE_PORT) += librte_port
 DEPDIRS-librte_port := librte_eal librte_mempool librte_mbuf librte_ethdev
-DEPDIRS-librte_port += librte_ip_frag librte_sched
+DEPDIRS-librte_port += librte_ip_frag librte_sched librte_eventdev
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 DEPDIRS-librte_port += librte_kni
 endif
