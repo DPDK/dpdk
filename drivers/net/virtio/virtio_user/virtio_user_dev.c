@@ -613,6 +613,10 @@ virtio_user_handle_ctrl_msg(struct virtio_user_dev *dev, struct vring *vring,
 
 		queues = *(uint16_t *)(uintptr_t)vring->desc[idx_data].addr;
 		status = virtio_user_handle_mq(dev, queues);
+	} else if (hdr->class == VIRTIO_NET_CTRL_RX  ||
+		   hdr->class == VIRTIO_NET_CTRL_MAC ||
+		   hdr->class == VIRTIO_NET_CTRL_VLAN) {
+		status = 0;
 	}
 
 	/* Update status */
@@ -664,6 +668,10 @@ virtio_user_handle_ctrl_msg_packed(struct virtio_user_dev *dev,
 		queues = *(uint16_t *)(uintptr_t)
 				vring->desc[idx_data].addr;
 		status = virtio_user_handle_mq(dev, queues);
+	} else if (hdr->class == VIRTIO_NET_CTRL_RX  ||
+		   hdr->class == VIRTIO_NET_CTRL_MAC ||
+		   hdr->class == VIRTIO_NET_CTRL_VLAN) {
+		status = 0;
 	}
 
 	/* Update status */
