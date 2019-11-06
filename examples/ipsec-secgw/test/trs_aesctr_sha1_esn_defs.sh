@@ -2,7 +2,7 @@
 
 . ${DIR}/trs_aesctr_sha1_common_defs.sh
 
-SGW_CMD_XPRM='-e -w 300'
+SGW_CMD_XPRM='-e -w 300 -l'
 
 config_remote_xfrm()
 {

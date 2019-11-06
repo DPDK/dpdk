@@ -28,7 +28,7 @@ EOF
 	cat ${SGW_CFG_FILE}
 }
 
-SGW_CMD_XPRM='-w 300'
+SGW_CMD_XPRM='-w 300 -l'
 
 config_remote_xfrm()
 {
