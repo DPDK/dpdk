@@ -96,20 +96,13 @@ struct ipn3ke_tm_node {
 /* IPN3KE TM Hierarchy Specification */
 struct ipn3ke_tm_hierarchy {
 	struct ipn3ke_tm_node *port_node;
-	/*struct ipn3ke_tm_node_list vt_node_list;*/
-	/*struct ipn3ke_tm_node_list cos_node_list;*/
-
 	uint32_t n_shaper_profiles;
-	/*uint32_t n_shared_shapers;*/
 	uint32_t n_tdrop_profiles;
 	uint32_t n_vt_nodes;
 	uint32_t n_cos_nodes;
-
 	struct ipn3ke_tm_node *port_commit_node;
 	struct ipn3ke_tm_node_list vt_commit_node_list;
 	struct ipn3ke_tm_node_list cos_commit_node_list;
-
-	/*uint32_t n_tm_nodes[IPN3KE_TM_NODE_LEVEL_MAX];*/
 };
 
 struct ipn3ke_tm_internals {

@@ -1087,7 +1087,6 @@ ipn3ke_tm_node_add_check_mount(uint32_t tm_id,
 	uint32_t node_id, uint32_t parent_node_id, uint32_t level_id,
 	struct rte_tm_error *error)
 {
-	/*struct ipn3ke_tm_internals *tm = IPN3KE_DEV_PRIVATE_TO_TM(dev);*/
 	uint32_t node_index;
 	uint32_t parent_index;
 	uint32_t parent_index1;
