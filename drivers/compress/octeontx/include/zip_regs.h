@@ -36,7 +36,6 @@ typedef union {
 		uint64_t reserved_1_63         : 63;
 #endif /* Word 0 - End */
 	} s;
-	/* struct zip_vqx_ena_s cn; */
 } zip_vqx_ena_t;
 
 /**
@@ -64,7 +63,6 @@ typedef union {
 		uint64_t reserved_49_63        : 15;
 #endif /* Word 0 - End */
 	} s;
-	/* struct zip_vqx_sbuf_addr_s cn; */
 } zip_vqx_sbuf_addr_t;
 
 /**
@@ -84,7 +82,6 @@ typedef union {
 		uint64_t reserved_20_63        : 44;
 #endif /* Word 0 - End */
 	} s;
-	/* struct zip_quex_doorbell_s cn; */
 } zip_quex_doorbell_t;
 
 /**
@@ -104,7 +101,6 @@ union zip_nptr_s {
 		uint64_t addr                  : 64;
 #endif /* Word 0 - End */
 	} s;
-	/* struct zip_nptr_s_s cn83xx; */
 };
 
 /**
@@ -197,7 +193,6 @@ union zip_inst_s {
 		uint64_t ef                    : 1;
 		/** Beginning of file */
 		uint64_t bf                    : 1;
-		// uint64_t reserved_3_4          : 2;
 		/** Comp/decomp operation */
 		uint64_t op                    : 2;
 		/** Data sactter */
@@ -210,7 +205,6 @@ union zip_inst_s {
 		uint64_t hg                    : 1;
 		uint64_t dg                    : 1;
 		uint64_t ds                    : 1;
-		//uint64_t reserved_3_4          : 2;
 		uint64_t op                    : 2;
 		uint64_t bf                    : 1;
 		uint64_t ef                    : 1;
@@ -615,8 +609,6 @@ union zip_zres_s {
 		uint64_t hash3                 : 64;
 #endif /* Word 7 - End */
 	} /** ZIP Result Structure */s;
-
-	/* struct zip_zres_s_s cn83xx; */
 };
 
 /**
