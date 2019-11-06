@@ -2037,6 +2037,7 @@ dpaa_sec_cipher_init(struct rte_cryptodev *dev __rte_unused,
 		     struct rte_crypto_sym_xform *xform,
 		     dpaa_sec_session *session)
 {
+	session->ctxt = DPAA_SEC_CIPHER;
 	session->cipher_alg = xform->cipher.algo;
 	session->iv.length = xform->cipher.iv.length;
 	session->iv.offset = xform->cipher.iv.offset;
@@ -2086,6 +2087,7 @@ dpaa_sec_auth_init(struct rte_cryptodev *dev __rte_unused,
 		   struct rte_crypto_sym_xform *xform,
 		   dpaa_sec_session *session)
 {
+	session->ctxt = DPAA_SEC_AUTH;
 	session->auth_alg = xform->auth.algo;
 	session->auth_key.data = rte_zmalloc(NULL, xform->auth.key.length,
 					     RTE_CACHE_LINE_SIZE);
@@ -2158,6 +2160,7 @@ dpaa_sec_chain_init(struct rte_cryptodev *dev __rte_unused,
 	struct rte_crypto_cipher_xform *cipher_xform;
 	struct rte_crypto_auth_xform *auth_xform;
 
+	session->ctxt = DPAA_SEC_CIPHER_HASH;
 	if (session->auth_cipher_text) {
 		cipher_xform = &xform->cipher;
 		auth_xform = &xform->next->auth;
@@ -2359,6 +2362,7 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 	struct dpaa_sec_dev_private *internals = dev->data->dev_private;
 	dpaa_sec_session *session = sess;
 	uint32_t i;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2374,23 +2378,26 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 	/* Cipher Only */
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL) {
 		session->auth_alg = RTE_CRYPTO_AUTH_NULL;
-		session->ctxt = DPAA_SEC_CIPHER;
-		dpaa_sec_cipher_init(dev, xform, session);
+		ret = dpaa_sec_cipher_init(dev, xform, session);
 
 	/* Authentication Only */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
 		   xform->next == NULL) {
 		session->cipher_alg = RTE_CRYPTO_CIPHER_NULL;
 		session->ctxt = DPAA_SEC_AUTH;
-		dpaa_sec_auth_init(dev, xform, session);
+		ret = dpaa_sec_auth_init(dev, xform, session);
 
 	/* Cipher then Authenticate */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
 		   xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 		if (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
-			session->ctxt = DPAA_SEC_CIPHER_HASH;
 			session->auth_cipher_text = 1;
-			dpaa_sec_chain_init(dev, xform, session);
+			if (xform->cipher.algo == RTE_CRYPTO_CIPHER_NULL)
+				ret = dpaa_sec_auth_init(dev, xform, session);
+			else if (xform->next->auth.algo == RTE_CRYPTO_AUTH_NULL)
+				ret = dpaa_sec_cipher_init(dev, xform, session);
+			else
+				ret = dpaa_sec_chain_init(dev, xform, session);
 		} else {
 			DPAA_SEC_ERR("Not supported: Auth then Cipher");
 			return -EINVAL;
@@ -2399,9 +2406,14 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
 		   xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		if (xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
-			session->ctxt = DPAA_SEC_CIPHER_HASH;
 			session->auth_cipher_text = 0;
-			dpaa_sec_chain_init(dev, xform, session);
+			if (xform->auth.algo == RTE_CRYPTO_AUTH_NULL)
+				ret = dpaa_sec_cipher_init(dev, xform, session);
+			else if (xform->next->cipher.algo
+					== RTE_CRYPTO_CIPHER_NULL)
+				ret = dpaa_sec_auth_init(dev, xform, session);
+			else
+				ret = dpaa_sec_chain_init(dev, xform, session);
 		} else {
 			DPAA_SEC_ERR("Not supported: Auth then Cipher");
 			return -EINVAL;
@@ -2410,12 +2422,17 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 	/* AEAD operation for AES-GCM kind of Algorithms */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD &&
 		   xform->next == NULL) {
-		dpaa_sec_aead_init(dev, xform, session);
+		ret = dpaa_sec_aead_init(dev, xform, session);
 
 	} else {
 		DPAA_SEC_ERR("Invalid crypto type");
 		return -EINVAL;
 	}
+	if (ret) {
+		DPAA_SEC_ERR("unable to init session");
+		goto err1;
+	}
+
 	rte_spinlock_lock(&internals->lock);
 	for (i = 0; i < MAX_DPAA_CORES; i++) {
 		session->inq[i] = dpaa_sec_attach_rxq(internals);
