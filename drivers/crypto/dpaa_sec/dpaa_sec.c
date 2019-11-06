@@ -2303,7 +2303,7 @@ dpaa_sec_attach_rxq(struct dpaa_sec_dev_private *qi)
 {
 	unsigned int i;
 
-	for (i = 0; i < qi->max_nb_sessions * MAX_DPAA_CORES; i++) {
+	for (i = 0; i < RTE_DPAA_MAX_RX_QUEUE; i++) {
 		if (qi->inq_attach[i] == 0) {
 			qi->inq_attach[i] = 1;
 			return &qi->inq[i];
@@ -2319,9 +2319,10 @@ dpaa_sec_detach_rxq(struct dpaa_sec_dev_private *qi, struct qman_fq *fq)
 {
 	unsigned int i;
 
-	for (i = 0; i < qi->max_nb_sessions; i++) {
+	for (i = 0; i < RTE_DPAA_MAX_RX_QUEUE; i++) {
 		if (&qi->inq[i] == fq) {
-			qman_retire_fq(fq, NULL);
+			if (qman_retire_fq(fq, NULL) != 0)
+				DPAA_SEC_WARN("Queue is not retired\n");
 			qman_oos_fq(fq);
 			qi->inq_attach[i] = 0;
 			return 0;
@@ -3398,7 +3399,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 
 	flags = QMAN_FQ_FLAG_LOCKED | QMAN_FQ_FLAG_DYNAMIC_FQID |
 		QMAN_FQ_FLAG_TO_DCPORTAL;
-	for (i = 0; i < MAX_DPAA_CORES * internals->max_nb_sessions; i++) {
+	for (i = 0; i < RTE_DPAA_MAX_RX_QUEUE; i++) {
 		/* create rx qman fq for sessions*/
 		ret = qman_create_fq(0, flags, &internals->inq[i]);
 		if (unlikely(ret != 0)) {
