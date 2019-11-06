@@ -271,6 +271,7 @@ perf_test_names = [
         'member_perf_autotest',
         'efd_perf_autotest',
         'lpm6_perf_autotest',
+        'rib6_slow_autotest',
         'fib6_slow_autotest',
         'fib6_perf_autotest',
         'rcu_qsbr_perf_autotest',
