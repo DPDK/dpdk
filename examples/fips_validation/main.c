@@ -512,6 +512,7 @@ static int
 prepare_auth_op(void)
 {
 	struct rte_crypto_sym_op *sym = env.op->sym;
+	uint8_t *pt;
 
 	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 	rte_pktmbuf_reset(env.mbuf);
@@ -519,52 +520,25 @@ prepare_auth_op(void)
 	sym->m_src = env.mbuf;
 	sym->auth.data.offset = 0;
 
-	if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
-		uint8_t *pt;
+	pt = (uint8_t *)rte_pktmbuf_append(env.mbuf, vec.pt.len +
+			vec.cipher_auth.digest.len);
 
-		if (vec.pt.len > RTE_MBUF_MAX_NB_SEGS) {
-			RTE_LOG(ERR, USER1, "PT len %u\n", vec.pt.len);
-			return -EPERM;
-		}
-
-		pt = (uint8_t *)rte_pktmbuf_append(env.mbuf, vec.pt.len +
-				vec.cipher_auth.digest.len);
-
-		if (!pt) {
-			RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n",
-					-ENOMEM);
-			return -ENOMEM;
-		}
-
-		memcpy(pt, vec.pt.val, vec.pt.len);
-		sym->auth.data.length = vec.pt.len;
-		sym->auth.digest.data = pt + vec.pt.len;
-		sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
-				env.mbuf, vec.pt.len);
-
-	} else {
-		uint8_t *ct;
-
-		if (vec.ct.len > RTE_MBUF_MAX_NB_SEGS) {
-			RTE_LOG(ERR, USER1, "CT len %u\n", vec.ct.len);
-			return -EPERM;
-		}
-
-		ct = (uint8_t *)rte_pktmbuf_append(env.mbuf,
-				vec.ct.len + vec.cipher_auth.digest.len);
-
-		if (!ct) {
-			RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n",
-					-ENOMEM);
-			return -ENOMEM;
-		}
-
-		memcpy(ct, vec.ct.val, vec.ct.len);
-		sym->auth.data.length = vec.ct.len;
-		sym->auth.digest.data = vec.cipher_auth.digest.val;
-		sym->auth.digest.phys_addr = rte_malloc_virt2iova(
-				sym->auth.digest.data);
+	if (!pt) {
+		RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n",
+				-ENOMEM);
+		return -ENOMEM;
 	}
+
+	sym->auth.data.length = vec.pt.len;
+	sym->auth.digest.data = pt + vec.pt.len;
+	sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			env.mbuf, vec.pt.len);
+
+	memcpy(pt, vec.pt.val, vec.pt.len);
+
+	if (info.op == FIPS_TEST_DEC_AUTH_VERIF)
+		memcpy(pt + vec.pt.len, vec.cipher_auth.digest.val,
+				vec.cipher_auth.digest.len);
 
 	rte_crypto_op_attach_sym_session(env.op, env.sess);
 
