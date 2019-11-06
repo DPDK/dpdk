@@ -9581,7 +9581,7 @@ static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)
 		return -ENOMEM;
 	}
 
-#ifndef __FreeBSD__
+#ifndef RTE_EXEC_ENV_FREEBSD
 	pci_read(sc, PCI_STATUS, &status, 2);
 	if (!(status & PCI_STATUS_CAP_LIST)) {
 #else
@@ -9592,7 +9592,7 @@ static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)
 		return -1;
 	}
 
-#ifndef __FreeBSD__
+#ifndef RTE_EXEC_ENV_FREEBSD
 	pci_read(sc, PCI_CAPABILITY_LIST, &pci_cap.next, 1);
 #else
 	pci_read(sc, PCIR_CAP_PTR, &pci_cap.next, 1);

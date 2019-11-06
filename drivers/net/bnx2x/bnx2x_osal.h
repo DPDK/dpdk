@@ -8,7 +8,11 @@
 #ifndef BNX2X_OSAL_H
 #define BNX2X_OSAL_H
 
+#ifdef RTE_EXEC_ENV_FREEBSD
 #include <sys/stat.h>
+#else
+#include <linux/types.h>
+#endif
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #ifndef __LITTLE_ENDIAN
@@ -22,8 +26,10 @@
 #undef __LITTLE_ENDIAN
 #endif
 
+#ifdef RTE_EXEC_ENV_FREEBSD
 #define __le16		uint16_t
 #define __le32		uint32_t
 #define __le64		uint64_t
+#endif
 
 #endif /* BNX2X_OSAL_H */

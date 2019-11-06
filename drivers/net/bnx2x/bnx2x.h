@@ -30,7 +30,7 @@
 
 #include "elink.h"
 
-#ifndef __FreeBSD__
+#ifndef RTE_EXEC_ENV_FREEBSD
 #include <linux/pci_regs.h>
 
 #define PCIY_PMG                       PCI_CAP_ID_PM
@@ -60,7 +60,7 @@
 #define IFM_10G_TWINAX                 22 /* 10GBase Twinax copper */
 #define IFM_10G_T                      26 /* 10GBase-T - RJ45 */
 
-#ifndef __FreeBSD__
+#ifndef RTE_EXEC_ENV_FREEBSD
 #define PCIR_EXPRESS_DEVICE_STA        PCI_EXP_TYPE_RC_EC
 #define PCIM_EXP_STA_TRANSACTION_PND   PCI_EXP_DEVSTA_TRPND
 #define PCIR_EXPRESS_LINK_STA          PCI_EXP_LNKSTA
