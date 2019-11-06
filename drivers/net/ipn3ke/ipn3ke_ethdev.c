@@ -737,8 +737,7 @@ ipn3ke_cfg_probe(struct rte_vdev_device *dev)
 	}
 
 	ret = ipn3ke_cfg_parse_i40e_pf_ethdev(afu_name, pf_name);
-	if (ret)
-		goto end;
+
 end:
 	if (kvlist)
 		rte_kvargs_free(kvlist);
