@@ -15,7 +15,7 @@ otx2_cgx_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr)
 	struct otx2_mbox *mbox = dev->mbox;
 	int rc;
 
-	if (otx2_dev_is_vf(dev))
+	if (otx2_dev_is_vf_or_sdp(dev))
 		return -ENOTSUP;
 
 	if (otx2_dev_active_vfs(dev))
@@ -38,7 +38,7 @@ otx2_cgx_mac_max_entries_get(struct otx2_eth_dev *dev)
 	struct otx2_mbox *mbox = dev->mbox;
 	int rc;
 
-	if (otx2_dev_is_vf(dev))
+	if (otx2_dev_is_vf_or_sdp(dev))
 		return 0;
 
 	otx2_mbox_alloc_msg_cgx_mac_max_entries_get(mbox);
@@ -59,7 +59,7 @@ otx2_nix_mac_addr_add(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr,
 	struct cgx_mac_addr_add_rsp *rsp;
 	int rc;
 
-	if (otx2_dev_is_vf(dev))
+	if (otx2_dev_is_vf_or_sdp(dev))
 		return -ENOTSUP;
 
 	if (otx2_dev_active_vfs(dev))
@@ -89,7 +89,7 @@ otx2_nix_mac_addr_del(struct rte_eth_dev *eth_dev, uint32_t index)
 	struct cgx_mac_addr_del_req *req;
 	int rc;
 
-	if (otx2_dev_is_vf(dev))
+	if (otx2_dev_is_vf_or_sdp(dev))
 		return;
 
 	req = otx2_mbox_alloc_msg_cgx_mac_addr_del(mbox);

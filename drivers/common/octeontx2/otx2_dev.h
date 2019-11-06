@@ -19,6 +19,10 @@
 #define otx2_dev_is_lbk(dev)	((dev->hwcap & OTX2_HWCAP_F_VF) && \
 				 (dev->tx_chan_base < 0x700))
 #define otx2_dev_revid(dev)	(dev->hwcap & 0xFF)
+#define otx2_dev_is_sdp(dev)	(dev->sdp_link)
+
+#define otx2_dev_is_vf_or_sdp(dev)				\
+	(otx2_dev_is_vf(dev) || otx2_dev_is_sdp(dev))
 
 #define otx2_dev_is_A0(dev)					\
 	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\

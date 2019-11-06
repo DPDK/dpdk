@@ -93,7 +93,7 @@ otx2_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 
 	RTE_SET_USED(wait_to_complete);
 
-	if (otx2_dev_is_lbk(dev))
+	if (otx2_dev_is_lbk(dev) || otx2_dev_is_sdp(dev))
 		return 0;
 
 	otx2_mbox_alloc_msg_cgx_get_linkinfo(mbox);
@@ -129,7 +129,7 @@ otx2_nix_dev_set_link_up(struct rte_eth_dev *eth_dev)
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int rc, i;
 
-	if (otx2_dev_is_vf(dev))
+	if (otx2_dev_is_vf_or_sdp(dev))
 		return -ENOTSUP;
 
 	rc = nix_dev_set_link_state(eth_dev, 1);
@@ -150,7 +150,7 @@ otx2_nix_dev_set_link_down(struct rte_eth_dev *eth_dev)
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int i;
 
-	if (otx2_dev_is_vf(dev))
+	if (otx2_dev_is_vf_or_sdp(dev))
 		return -ENOTSUP;
 
 	/* Stop tx queues  */

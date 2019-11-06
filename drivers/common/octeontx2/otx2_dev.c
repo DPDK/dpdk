@@ -885,6 +885,7 @@ otx2_update_vf_hwcap(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 	case PCI_DEVID_OCTEONTX2_RVU_CPT_VF:
 	case PCI_DEVID_OCTEONTX2_RVU_AF_VF:
 	case PCI_DEVID_OCTEONTX2_RVU_VF:
+	case PCI_DEVID_OCTEONTX2_RVU_SDP_VF:
 		dev->hwcap |= OTX2_HWCAP_F_VF;
 		break;
 	}

@@ -321,6 +321,7 @@ struct otx2_eth_dev {
 	uint64_t clk_delta;
 	bool mc_tbl_set;
 	struct otx2_nix_mc_filter_tbl mc_fltr_tbl;
+	bool sdp_link; /* SDP flag */
 } __rte_cache_aligned;
 
 struct otx2_eth_txq {

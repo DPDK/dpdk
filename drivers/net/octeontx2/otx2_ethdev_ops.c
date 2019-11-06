@@ -36,6 +36,8 @@ otx2_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 
 	req = otx2_mbox_alloc_msg_nix_set_hw_frs(mbox);
 	req->update_smq = true;
+	if (otx2_dev_is_sdp(dev))
+		req->sdp_link = true;
 	/* FRS HW config should exclude FCS but include NPC VTAG insert size */
 	req->maxlen = frame_size - RTE_ETHER_CRC_LEN + NIX_MAX_VTAG_ACT_SIZE;
 
@@ -46,6 +48,8 @@ otx2_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	/* Now just update Rx MAXLEN */
 	req = otx2_mbox_alloc_msg_nix_set_hw_frs(mbox);
 	req->maxlen = frame_size - RTE_ETHER_CRC_LEN;
+	if (otx2_dev_is_sdp(dev))
+		req->sdp_link = true;
 
 	rc = otx2_mbox_process(mbox);
 	if (rc)
@@ -98,7 +102,7 @@ nix_cgx_promisc_config(struct rte_eth_dev *eth_dev, int en)
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct otx2_mbox *mbox = dev->mbox;
 
-	if (otx2_dev_is_vf(dev))
+	if (otx2_dev_is_vf_or_sdp(dev))
 		return;
 
 	if (en)

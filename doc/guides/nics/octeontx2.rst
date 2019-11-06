@@ -212,6 +212,10 @@ Multicast MAC filtering
 ``net_octeontx2`` pmd supports multicast mac filtering feature only on physical
 function devices.
 
+SDP interface support
+~~~~~~~~~~~~~~~~~~~~~
+OCTEON TX2 SDP interface support is limited to PF device, No VF support.
+
 Debugging Options
 -----------------
 

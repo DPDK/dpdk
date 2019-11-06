@@ -410,6 +410,12 @@ populate_tm_registers(struct otx2_eth_dev *dev,
 			*regval++ = shaper2regval(&cir) | 1;
 			req->num_regs++;
 		}
+		/* Configure TL4 to send to SDP channel instead of CGX/LBK */
+		if (otx2_dev_is_sdp(dev)) {
+			*reg++ = NIX_AF_TL4X_SDP_LINK_CFG(schq);
+			*regval++ = BIT_ULL(12);
+			req->num_regs++;
+		}
 
 		rc = send_tm_reqval(mbox, req);
 		if (rc)
@@ -465,9 +471,12 @@ populate_tm_registers(struct otx2_eth_dev *dev,
 		else
 			*regval++ = (strict_schedul_prio << 24) | rr_quantum;
 		req->num_regs++;
-		*reg++ = NIX_AF_TL3_TL2X_LINKX_CFG(schq, nix_get_link(dev));
-		*regval++ = BIT_ULL(12) | nix_get_relchan(dev);
-		req->num_regs++;
+		if (!otx2_dev_is_sdp(dev)) {
+			*reg++ = NIX_AF_TL3_TL2X_LINKX_CFG(schq,
+						nix_get_link(dev));
+			*regval++ = BIT_ULL(12) | nix_get_relchan(dev);
+			req->num_regs++;
+		}
 		if (pir.rate && pir.burst) {
 			*reg++ = NIX_AF_TL2X_PIR(schq);
 			*regval++ = shaper2regval(&pir) | 1;
@@ -521,9 +530,6 @@ nix_tm_txsch_reg_config(struct otx2_eth_dev *dev)
 	struct otx2_nix_tm_node *tm_node;
 	uint32_t lvl;
 	int rc = 0;
-
-	if (nix_get_link(dev) == 13)
-		return -EPERM;
 
 	for (lvl = 0; lvl < (uint32_t)dev->otx2_tm_root_lvl + 1; lvl++) {
 		TAILQ_FOREACH(tm_node, &dev->node_list, node) {

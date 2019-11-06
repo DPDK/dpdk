@@ -64,6 +64,8 @@ DPDK subsystem.
    +---+-----+--------------------------------------------------------------+
    | 8 | DPI | rte_rawdev                                                   |
    +---+-----+--------------------------------------------------------------+
+   | 9 | SDP | rte_ethdev                                                   |
+   +---+-----+--------------------------------------------------------------+
 
 PF0 is called the administrative / admin function (AF) and has exclusive
 privileges to provision RVU functional block's LFs to each of the PF/VF.
@@ -101,6 +103,25 @@ Typical application usage models are,
 #. Communication between the Linux kernel and DPDK application.
 #. Exception path to Linux kernel from DPDK application as SW ``KNI`` replacement.
 #. Communication between two different DPDK applications.
+
+SDP interface
+-------------
+
+System DPI Packet Interface unit(SDP) provides PCIe endpoint support for remote host
+to DMA packets into and out of OCTEON TX2 SoC. SDP interface comes in to live only when
+OCTEON TX2 SoC is connected in PCIe endpoint mode. It can be used to send/receive
+packets to/from remote host machine using input/output queue pairs exposed to it.
+SDP interface receives input packets from remote host from NIX-RX and sends packets
+to remote host using NIX-TX. Remote host machine need to use corresponding driver
+(kernel/user mode) to communicate with SDP interface on OCTEON TX2 SoC. SDP supports
+single PCIe SRIOV physical function(PF) and multiple virtual functions(VF's). Users
+can bind PF or VF to use SDP interface and it will be enumerated as ethdev ports.
+
+The primary use case for SDP is to enable the smart NIC use case. Typical usage models are,
+
+#. Communication channel between remote host and OCTEON TX2 SoC over PCIe.
+#. Transfer packets received from network interface to remote host over PCIe and
+   vice-versa.
 
 OCTEON TX2 packet flow
 ----------------------
