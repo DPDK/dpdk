@@ -477,7 +477,6 @@ dpaa2_eventdev_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
 
 	RTE_SET_USED(dev);
 	RTE_SET_USED(queue_id);
-	RTE_SET_USED(queue_conf);
 
 	queue_conf->nb_atomic_flows = DPAA2_EVENT_QUEUE_ATOMIC_FLOWS;
 	queue_conf->schedule_type = RTE_SCHED_TYPE_PARALLEL;
@@ -496,8 +495,9 @@ dpaa2_eventdev_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 	switch (queue_conf->schedule_type) {
 	case RTE_SCHED_TYPE_PARALLEL:
 	case RTE_SCHED_TYPE_ATOMIC:
-		break;
 	case RTE_SCHED_TYPE_ORDERED:
+		break;
+	default:
 		DPAA2_EVENTDEV_ERR("Schedule type is not supported.");
 		return -1;
 	}
