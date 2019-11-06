@@ -128,8 +128,6 @@ New Features
   ``rte_eth_tx_burst_mode_get`` that allow an application
   to retrieve the mode information about RX/TX packet burst
   such as Scalar or Vector, and Vector technology like AVX2.
-  Another new function ``rte_eth_burst_mode_option_name`` is
-  provided for burst mode options stringification.
 
 * **Updated the Intel ice driver.**
 

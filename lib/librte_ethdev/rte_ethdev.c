@@ -166,25 +166,6 @@ static const struct {
 
 #undef RTE_TX_OFFLOAD_BIT2STR
 
-static const struct {
-	uint64_t option;
-	const char *name;
-} rte_burst_option_names[] = {
-	{ RTE_ETH_BURST_SCALAR, "Scalar" },
-	{ RTE_ETH_BURST_VECTOR, "Vector" },
-
-	{ RTE_ETH_BURST_ALTIVEC, "AltiVec" },
-	{ RTE_ETH_BURST_NEON, "Neon" },
-	{ RTE_ETH_BURST_SSE, "SSE" },
-	{ RTE_ETH_BURST_AVX2, "AVX2" },
-	{ RTE_ETH_BURST_AVX512, "AVX512" },
-
-	{ RTE_ETH_BURST_SCATTERED, "Scattered" },
-	{ RTE_ETH_BURST_BULK_ALLOC, "Bulk Alloc" },
-	{ RTE_ETH_BURST_SIMPLE, "Simple" },
-	{ RTE_ETH_BURST_PER_QUEUE, "Per Queue" },
-};
-
 /**
  * The user application callback description.
  *
@@ -4476,22 +4457,6 @@ rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 	memset(mode, 0, sizeof(*mode));
 	return eth_err(port_id,
 		       dev->dev_ops->tx_burst_mode_get(dev, queue_id, mode));
-}
-
-const char *
-rte_eth_burst_mode_option_name(uint64_t option)
-{
-	const char *name = "";
-	unsigned int i;
-
-	for (i = 0; i < RTE_DIM(rte_burst_option_names); ++i) {
-		if (option == rte_burst_option_names[i].option) {
-			name = rte_burst_option_names[i].name;
-			break;
-		}
-	}
-
-	return name;
 }
 
 int

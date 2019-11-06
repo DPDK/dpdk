@@ -2831,37 +2831,39 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 	}
 }
 
+static const struct {
+	eth_rx_burst_t pkt_burst;
+	const char *info;
+} ice_rx_burst_infos[] = {
+	{ ice_recv_scattered_pkts,          "Scalar Scattered" },
+	{ ice_recv_pkts_bulk_alloc,         "Scalar Bulk Alloc" },
+	{ ice_recv_pkts,                    "Scalar" },
+#ifdef RTE_ARCH_X86
+	{ ice_recv_scattered_pkts_vec_avx2, "Vector AVX2 Scattered" },
+	{ ice_recv_pkts_vec_avx2,           "Vector AVX2" },
+	{ ice_recv_scattered_pkts_vec,      "Vector SSE Scattered" },
+	{ ice_recv_pkts_vec,                "Vector SSE" },
+#endif
+};
+
 int
 ice_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		      struct rte_eth_burst_mode *mode)
 {
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
-	uint64_t options;
+	int ret = -EINVAL;
+	unsigned int i;
 
-	if (pkt_burst == ice_recv_scattered_pkts)
-		options = RTE_ETH_BURST_SCALAR | RTE_ETH_BURST_SCATTERED;
-	else if (pkt_burst == ice_recv_pkts_bulk_alloc)
-		options = RTE_ETH_BURST_SCALAR | RTE_ETH_BURST_BULK_ALLOC;
-	else if (pkt_burst == ice_recv_pkts)
-		options = RTE_ETH_BURST_SCALAR;
-#ifdef RTE_ARCH_X86
-	else if (pkt_burst == ice_recv_scattered_pkts_vec_avx2)
-		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_AVX2 |
-			  RTE_ETH_BURST_SCATTERED;
-	else if (pkt_burst == ice_recv_pkts_vec_avx2)
-		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_AVX2;
-	else if (pkt_burst == ice_recv_scattered_pkts_vec)
-		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_SSE |
-			  RTE_ETH_BURST_SCATTERED;
-	else if (pkt_burst == ice_recv_pkts_vec)
-		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_SSE;
-#endif
-	else
-		options = 0;
+	for (i = 0; i < RTE_DIM(ice_rx_burst_infos); ++i) {
+		if (pkt_burst == ice_rx_burst_infos[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 ice_rx_burst_infos[i].info);
+			ret = 0;
+			break;
+		}
+	}
 
-	mode->options = options;
-
-	return options != 0 ? 0 : -EINVAL;
+	return ret;
 }
 
 void __attribute__((cold))
@@ -2987,29 +2989,36 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 	}
 }
 
+static const struct {
+	eth_tx_burst_t pkt_burst;
+	const char *info;
+} ice_tx_burst_infos[] = {
+	{ ice_xmit_pkts_simple,   "Scalar Simple" },
+	{ ice_xmit_pkts,          "Scalar" },
+#ifdef RTE_ARCH_X86
+	{ ice_xmit_pkts_vec_avx2, "Vector AVX2" },
+	{ ice_xmit_pkts_vec,      "Vector SSE" },
+#endif
+};
+
 int
 ice_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		      struct rte_eth_burst_mode *mode)
 {
 	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
-	uint64_t options;
+	int ret = -EINVAL;
+	unsigned int i;
 
-	if (pkt_burst == ice_xmit_pkts_simple)
-		options = RTE_ETH_BURST_SCALAR | RTE_ETH_BURST_SIMPLE;
-	else if (pkt_burst == ice_xmit_pkts)
-		options = RTE_ETH_BURST_SCALAR;
-#ifdef RTE_ARCH_X86
-	else if (pkt_burst == ice_xmit_pkts_vec_avx2)
-		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_AVX2;
-	else if (pkt_burst == ice_xmit_pkts_vec)
-		options = RTE_ETH_BURST_VECTOR | RTE_ETH_BURST_SSE;
-#endif
-	else
-		options = 0;
+	for (i = 0; i < RTE_DIM(ice_tx_burst_infos); ++i) {
+		if (pkt_burst == ice_tx_burst_infos[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 ice_tx_burst_infos[i].info);
+			ret = 0;
+			break;
+		}
+	}
 
-	mode->options = options;
-
-	return options != 0 ? 0 : -EINVAL;
+	return ret;
 }
 
 /* For each value it means, datasheet of hardware can tell more details

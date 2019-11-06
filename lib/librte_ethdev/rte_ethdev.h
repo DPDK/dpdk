@@ -1287,33 +1287,24 @@ struct rte_eth_txq_info {
 	uint16_t nb_desc;           /**< configured number of TXDs. */
 } __rte_cache_min_aligned;
 
+/* Generic Burst mode flag definition, values can be ORed. */
+
 /**
- * Burst mode types, values can be ORed to define the burst mode of a driver.
+ * If the queues have different burst mode description, this bit will be set
+ * by PMD, then the application can iterate to retrieve burst description for
+ * all other queues.
  */
-enum rte_eth_burst_mode_option {
-	RTE_ETH_BURST_SCALAR = (1 << 0),
-	RTE_ETH_BURST_VECTOR = (1 << 1),
-
-	/**< bits[15:2] are reserved for each vector type */
-	RTE_ETH_BURST_ALTIVEC = (1 << 2),
-	RTE_ETH_BURST_NEON = (1 << 3),
-	RTE_ETH_BURST_SSE = (1 << 4),
-	RTE_ETH_BURST_AVX2 = (1 << 5),
-	RTE_ETH_BURST_AVX512 = (1 << 6),
-
-	RTE_ETH_BURST_SCATTERED = (1 << 16), /**< Support scattered packets */
-	RTE_ETH_BURST_BULK_ALLOC = (1 << 17), /**< Support mbuf bulk alloc */
-	RTE_ETH_BURST_SIMPLE = (1 << 18),
-
-	RTE_ETH_BURST_PER_QUEUE = (1 << 19), /**< Support per queue burst */
-};
+#define RTE_ETH_BURST_FLAG_PER_QUEUE     (1ULL << 0)
 
 /**
  * Ethernet device RX/TX queue packet burst mode information structure.
  * Used to retrieve information about packet burst mode setting.
  */
 struct rte_eth_burst_mode {
-	uint64_t options;
+	uint64_t flags; /**< The ORed values of RTE_ETH_BURST_FLAG_xxx */
+
+#define RTE_ETH_BURST_MODE_INFO_SIZE 1024 /**< Maximum size for information */
+	char info[RTE_ETH_BURST_MODE_INFO_SIZE]; /**< burst mode information */
 };
 
 /** Maximum name length for extended statistics counters */
@@ -3786,20 +3777,6 @@ int rte_eth_rx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 __rte_experimental
 int rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 	struct rte_eth_burst_mode *mode);
-
-/**
- * Retrieve name about burst mode option.
- *
- * @param option
- *   The burst mode option of type *rte_eth_burst_mode_option*.
- *
- * @return
- *   - "": Not found
- *   - "xxx": name of the mode option.
- */
-__rte_experimental
-const char *
-rte_eth_burst_mode_option_name(uint64_t option);
 
 /**
  * Retrieve device registers and register attributes (number of registers and
