@@ -1773,6 +1773,14 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				nb_ops = loop;
 				goto send_pkts;
 			}
+
+			if (!ses) {
+				DPAA_SEC_DP_ERR("session not available");
+				frames_to_send = loop;
+				nb_ops = loop;
+				goto send_pkts;
+			}
+
 			if (unlikely(!ses->qp[rte_lcore_id() % MAX_DPAA_CORES])) {
 				if (dpaa_sec_attach_sess_q(qp, ses)) {
 					frames_to_send = loop;
