@@ -101,7 +101,7 @@ struct rte_ipv4_hdr {
 
 /* IPv4 default fields values */
 #define RTE_IPV4_MIN_IHL    (0x5)
-#define RTE_IPV4_VHL_DEF    (IPVERSION | RTE_IPV4_MIN_IHL)
+#define RTE_IPV4_VHL_DEF    ((IPVERSION << 4) | RTE_IPV4_MIN_IHL)
 
 /**
  * @internal Calculate a sum of all words in the buffer.
