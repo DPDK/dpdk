@@ -1365,6 +1365,9 @@ build_sec_fd(struct rte_crypto_op *op,
 	else
 		return -1;
 
+	if (!sess)
+		return -1;
+
 	/* Any of the buffer is segmented*/
 	if (!rte_pktmbuf_is_contiguous(op->sym->m_src) ||
 		  ((op->sym->m_dst != NULL) &&
