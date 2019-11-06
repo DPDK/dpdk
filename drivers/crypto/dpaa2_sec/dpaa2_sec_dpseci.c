@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2018 NXP
+ *   Copyright 2016-2019 NXP
  *
  */
 
@@ -1834,6 +1834,7 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 
 	flc = &priv->flc_desc[0].flc;
 
+	session->ctxt_type = DPAA2_SEC_CIPHER;
 	session->cipher_key.data = rte_zmalloc(NULL, xform->cipher.key.length,
 			RTE_CACHE_LINE_SIZE);
 	if (session->cipher_key.data == NULL) {
@@ -1970,6 +1971,7 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 	priv->fle_pool = dev_priv->fle_pool;
 	flc = &priv->flc_desc[DESC_INITFINAL].flc;
 
+	session->ctxt_type = DPAA2_SEC_AUTH;
 	session->auth_key.data = rte_zmalloc(NULL, xform->auth.key.length,
 			RTE_CACHE_LINE_SIZE);
 	if (session->auth_key.data == NULL) {
@@ -2478,27 +2480,33 @@ dpaa2_sec_set_session_parameters(struct rte_cryptodev *dev,
 
 	/* Cipher Only */
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL) {
-		session->ctxt_type = DPAA2_SEC_CIPHER;
 		ret = dpaa2_sec_cipher_init(dev, xform, session);
 
 	/* Authentication Only */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
 		   xform->next == NULL) {
-		session->ctxt_type = DPAA2_SEC_AUTH;
 		ret = dpaa2_sec_auth_init(dev, xform, session);
 
 	/* Cipher then Authenticate */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
 		   xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 		session->ext_params.aead_ctxt.auth_cipher_text = true;
-		ret = dpaa2_sec_aead_chain_init(dev, xform, session);
-
+		if (xform->cipher.algo == RTE_CRYPTO_CIPHER_NULL)
+			ret = dpaa2_sec_auth_init(dev, xform, session);
+		else if (xform->next->auth.algo == RTE_CRYPTO_AUTH_NULL)
+			ret = dpaa2_sec_cipher_init(dev, xform, session);
+		else
+			ret = dpaa2_sec_aead_chain_init(dev, xform, session);
 	/* Authenticate then Cipher */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
 		   xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		session->ext_params.aead_ctxt.auth_cipher_text = false;
-		ret = dpaa2_sec_aead_chain_init(dev, xform, session);
-
+		if (xform->auth.algo == RTE_CRYPTO_AUTH_NULL)
+			ret = dpaa2_sec_cipher_init(dev, xform, session);
+		else if (xform->next->cipher.algo == RTE_CRYPTO_CIPHER_NULL)
+			ret = dpaa2_sec_auth_init(dev, xform, session);
+		else
+			ret = dpaa2_sec_aead_chain_init(dev, xform, session);
 	/* AEAD operation for AES-GCM kind of Algorithms */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD &&
 		   xform->next == NULL) {
