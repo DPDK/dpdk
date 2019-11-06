@@ -1,5 +1,5 @@
 /*   SPDX-License-Identifier:        BSD-3-Clause
- *   Copyright 2017 NXP
+ *   Copyright 2017-2019 NXP
  */
 
 #include <assert.h>

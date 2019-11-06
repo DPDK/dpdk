@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2019 NXP
+# Copyright 2018-2019 NXP
 #
 
 include $(RTE_SDK)/mk/rte.vars.mk

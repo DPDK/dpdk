@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2019 NXP
  */
 
 #ifndef _RTE_PMD_DPAA2_H

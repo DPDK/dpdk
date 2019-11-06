@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2014-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017 NXP
+ *   Copyright 2017-2019 NXP
  *
  */
 #ifndef __DPAA_ETHDEV_H__

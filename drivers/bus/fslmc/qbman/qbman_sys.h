@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
- *
+ * Copyright 2019 NXP
  */
 /* qbman_sys_decl.h and qbman_sys.h are the two platform-specific files in the
  * driver. They are only included via qbman_private.h, which is itself a
