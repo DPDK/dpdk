@@ -1582,18 +1582,13 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 
 #ifdef RTE_LIBRTE_SECURITY
 	if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-		dpaa2_sec_session *sess = (dpaa2_sec_session *)
-			get_sec_session_private_data(op->sym->sec_session);
-		if (sess->ctxt_type == DPAA2_SEC_IPSEC ||
-				sess->ctxt_type == DPAA2_SEC_PDCP) {
-			uint16_t len = DPAA2_GET_FD_LEN(fd);
-			dst->pkt_len = len;
-			while (dst->next != NULL) {
-				len -= dst->data_len;
-				dst = dst->next;
-			}
-			dst->data_len = len;
+		uint16_t len = DPAA2_GET_FD_LEN(fd);
+		dst->pkt_len = len;
+		while (dst->next != NULL) {
+			len -= dst->data_len;
+			dst = dst->next;
 		}
+		dst->data_len = len;
 	}
 #endif
 	DPAA2_SEC_DP_DEBUG("mbuf %p BMAN buf addr %p,"
