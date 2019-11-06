@@ -695,9 +695,6 @@ single_link_w_stats(struct test *t)
 static int
 single_link(struct test *t)
 {
-	/* const uint8_t rx_port = 0; */
-	/* const uint8_t w1_port = 1; */
-	/* const uint8_t w3_port = 3; */
 	const uint8_t tx_port = 2;
 	int err;
 	struct rte_mbuf *mbufs[3];
