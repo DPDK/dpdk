@@ -49,6 +49,8 @@ set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
 		/* TODO support for Transport */
 	}
 	ipsec->esn_soft_limit = IPSEC_OFFLOAD_ESN_SOFTLIMIT;
+	ipsec->replay_win_sz = app_sa_prm.window_size;
+	ipsec->options.esn = app_sa_prm.enable_esn;
 }
 
 int
@@ -92,6 +94,7 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa,
 				.spi = sa->spi,
 				.salt = sa->salt,
 				.options = { 0 },
+				.replay_win_sz = 0,
 				.direction = sa->direction,
 				.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 				.mode = (IS_TUNNEL(sa->flags)) ?
@@ -151,6 +154,7 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			.spi = sa->spi,
 			.salt = sa->salt,
 			.options = { 0 },
+			.replay_win_sz = 0,
 			.direction = sa->direction,
 			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 			.mode = (sa->flags == IP4_TUNNEL ||

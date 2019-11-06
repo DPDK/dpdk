@@ -689,11 +689,11 @@ fill_ipsec_param(uint32_t replay_win_sz, uint64_t flags)
 
 	prm->userdata = 1;
 	prm->flags = flags;
-	prm->replay_win_sz = replay_win_sz;
 
 	/* setup ipsec xform */
 	prm->ipsec_xform = ut_params->ipsec_xform;
 	prm->ipsec_xform.salt = (uint32_t)rte_rand();
+	prm->ipsec_xform.replay_win_sz = replay_win_sz;
 
 	/* setup tunnel related fields */
 	prm->tun.hdr_len = sizeof(ipv4_outer);

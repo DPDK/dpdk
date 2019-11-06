@@ -1424,9 +1424,6 @@ print_app_sa_prm(const struct app_sa_prm *prm)
 	printf("librte_ipsec usage: %s\n",
 		(prm->enable == 0) ? "disabled" : "enabled");
 
-	if (prm->enable == 0)
-		return;
-
 	printf("replay window size: %u\n", prm->window_size);
 	printf("ESN: %s\n", (prm->enable_esn == 0) ? "disabled" : "enabled");
 	printf("SA flags: %#" PRIx64 "\n", prm->flags);
@@ -1495,11 +1492,9 @@ parse_args(int32_t argc, char **argv)
 			app_sa_prm.enable = 1;
 			break;
 		case 'w':
-			app_sa_prm.enable = 1;
 			app_sa_prm.window_size = parse_decimal(optarg);
 			break;
 		case 'e':
-			app_sa_prm.enable = 1;
 			app_sa_prm.enable_esn = 1;
 			break;
 		case 'a':

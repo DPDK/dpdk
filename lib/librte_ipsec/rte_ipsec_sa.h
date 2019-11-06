@@ -47,12 +47,6 @@ struct rte_ipsec_sa_prm {
 			uint8_t proto;  /**< next header protocol */
 		} trs; /**< transport mode related parameters */
 	};
-
-	/**
-	 * window size to enable sequence replay attack handling.
-	 * replay checking is disabled if the window size is 0.
-	 */
-	uint32_t replay_win_sz;
 };
 
 /**

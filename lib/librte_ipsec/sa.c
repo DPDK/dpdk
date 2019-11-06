@@ -439,7 +439,7 @@ rte_ipsec_sa_size(const struct rte_ipsec_sa_prm *prm)
 		return rc;
 
 	/* determine required size */
-	wsz = prm->replay_win_sz;
+	wsz = prm->ipsec_xform.replay_win_sz;
 	return ipsec_sa_size(type, &wsz, &nb);
 }
 
@@ -461,7 +461,7 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 		return rc;
 
 	/* determine required size */
-	wsz = prm->replay_win_sz;
+	wsz = prm->ipsec_xform.replay_win_sz;
 	sz = ipsec_sa_size(type, &wsz, &nb);
 	if (sz < 0)
 		return sz;
