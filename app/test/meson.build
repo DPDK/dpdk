@@ -259,6 +259,7 @@ perf_test_names = [
         'reciprocal_division',
         'reciprocal_division_perf',
         'lpm_perf_autotest',
+        'rib_slow_autotest',
         'fib_slow_autotest',
         'fib_perf_autotest',
         'red_all',

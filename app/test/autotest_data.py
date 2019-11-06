@@ -117,6 +117,12 @@ parallel_test_list = [
         "Report":  None,
     },
     {
+        "Name":    "RIB slow autotest",
+        "Command": "rib_slow_autotest",
+        "Func":    default_autotest,
+        "Report":  None,
+    },
+    {
         "Name":    "RIB6 autotest",
         "Command": "rib6_autotest",
         "Func":    default_autotest,

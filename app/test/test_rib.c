@@ -76,7 +76,7 @@ test_multiple_create(void)
 
 	config.ext_sz = 0;
 
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < 100; i++) {
 		config.max_nodes = MAX_RULES - i;
 		rib = rte_rib_create(__func__, SOCKET_ID_ANY, &config);
 		RTE_TEST_ASSERT(rib != NULL, "Failed to create RIB\n");
@@ -329,12 +329,21 @@ static struct unit_test_suite rib_tests = {
 	.teardown = NULL,
 	.unit_test_cases = {
 		TEST_CASE(test_create_invalid),
-		TEST_CASE(test_multiple_create),
 		TEST_CASE(test_free_null),
 		TEST_CASE(test_insert_invalid),
 		TEST_CASE(test_get_fn),
 		TEST_CASE(test_basic),
 		TEST_CASE(test_tree_traversal),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite rib_slow_tests = {
+	.suite_name = "rib slow autotest",
+	.setup = NULL,
+	.teardown = NULL,
+	.unit_test_cases = {
+		TEST_CASE(test_multiple_create),
 		TEST_CASES_END()
 	}
 };
@@ -348,4 +357,11 @@ test_rib(void)
 	return unit_test_suite_runner(&rib_tests);
 }
 
+static int
+test_slow_rib(void)
+{
+	return unit_test_suite_runner(&rib_slow_tests);
+}
+
 REGISTER_TEST_COMMAND(rib_autotest, test_rib);
+REGISTER_TEST_COMMAND(rib_slow_autotest, test_slow_rib);
