@@ -1510,12 +1510,6 @@ ipn3ke_tm_hierarchy_commit_check(struct rte_eth_dev *dev,
 						RTE_TM_ERROR_TYPE_UNSPECIFIED,
 						NULL,
 						rte_strerror(EINVAL));
-			} else {
-				return -rte_tm_error_set(error,
-						EINVAL,
-						RTE_TM_ERROR_TYPE_UNSPECIFIED,
-						NULL,
-						rte_strerror(EINVAL));
 			}
 		}
 	}
