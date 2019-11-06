@@ -287,6 +287,10 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 		.ptype = RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L4_UDP,
 	},
 	{
+		.tunnel = MLX5_FLOW_LAYER_GENEVE,
+		.ptype = RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L4_UDP,
+	},
+	{
 		.tunnel = MLX5_FLOW_LAYER_VXLAN_GPE,
 		.ptype = RTE_PTYPE_TUNNEL_VXLAN_GPE | RTE_PTYPE_L4_UDP,
 	},
