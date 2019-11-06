@@ -310,7 +310,8 @@ cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
 	memcpy(fctx->enc.encr_key, key, key_len);
 
 fc_success:
-	*ctrl_flags = rte_cpu_to_be_64(*ctrl_flags);
+	if (ctrl_flags != NULL)
+		*ctrl_flags = rte_cpu_to_be_64(*ctrl_flags);
 
 success:
 	cpt_ctx->enc_cipher = type;
