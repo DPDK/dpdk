@@ -2904,6 +2904,27 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 				sizeof(struct rte_ipv6_hdr) << 16;
 		if (ipsec_xform->options.esn)
 			decap_pdb.options |= PDBOPTS_ESP_ESN;
+
+		if (ipsec_xform->replay_win_sz) {
+			uint32_t win_sz;
+			win_sz = rte_align32pow2(ipsec_xform->replay_win_sz);
+
+			switch (win_sz) {
+			case 1:
+			case 2:
+			case 4:
+			case 8:
+			case 16:
+			case 32:
+				decap_pdb.options |= PDBOPTS_ESP_ARS32;
+				break;
+			case 64:
+				decap_pdb.options |= PDBOPTS_ESP_ARS64;
+				break;
+			default:
+				decap_pdb.options |= PDBOPTS_ESP_ARS128;
+			}
+		}
 		session->dir = DIR_DEC;
 		bufsize = cnstr_shdsc_ipsec_new_decap(priv->flc_desc[0].desc,
 				1, 0, SHR_SERIAL,
