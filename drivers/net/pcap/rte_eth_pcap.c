@@ -1240,12 +1240,6 @@ eth_from_pcaps_common(struct rte_vdev_device *vdev,
 	const unsigned int nb_tx_queues = tx_queues->num_of_queue;
 	unsigned int i;
 
-	/* do some parameter checking */
-	if (rx_queues == NULL && nb_rx_queues > 0)
-		return -1;
-	if (tx_queues == NULL && nb_tx_queues > 0)
-		return -1;
-
 	if (pmd_init_internals(vdev, nb_rx_queues, nb_tx_queues, internals,
 			eth_dev) < 0)
 		return -1;
