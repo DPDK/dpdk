@@ -11,7 +11,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <inttypes.h>
-#ifdef __FreeBSD__
+#ifdef RTE_EXEC_ENV_FREEBSD
 #include <sys/socket.h>
 #endif
 #include <netinet/in.h>
