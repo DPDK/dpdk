@@ -115,7 +115,7 @@ const struct supported_auth_algo auth_algos[] = {
 	{
 		.keyword = "sha256-hmac",
 		.algo = RTE_CRYPTO_AUTH_SHA256_HMAC,
-		.digest_len = 12,
+		.digest_len = 16,
 		.key_len = 32
 	}
 };
