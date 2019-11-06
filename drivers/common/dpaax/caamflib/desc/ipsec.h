@@ -256,14 +256,14 @@ struct ipsec_encap_cbc {
 
 /**
  * struct ipsec_encap_ctr - PDB part for IPsec CTR encapsulation
- * @ctr_nonce: 4-byte array nonce
+ * @ctr_nonce: 4-byte nonce
  * @ctr_initial: initial count constant
  * @iv: initialization vector
  */
 struct ipsec_encap_ctr {
-	uint8_t ctr_nonce[4];
+	uint32_t ctr_nonce;
 	uint32_t ctr_initial;
-	uint64_t iv;
+	uint8_t iv[8];
 };
 
 /**
@@ -346,10 +346,9 @@ __rta_copy_ipsec_encap_pdb(struct program *program,
 		break;
 
 	case OP_PCL_IPSEC_AES_CTR:
-		rta_copy_data(program, pdb->ctr.ctr_nonce,
-			      sizeof(pdb->ctr.ctr_nonce));
+		rta_copy_data(program, (uint8_t *)&pdb->ctr.ctr_nonce, 4);
 		__rta_out32(program, pdb->ctr.ctr_initial);
-		__rta_out64(program, true, pdb->ctr.iv);
+		rta_copy_data(program, pdb->ctr.iv, sizeof(pdb->ctr.iv));
 		break;
 
 	case OP_PCL_IPSEC_AES_CCM8:
@@ -386,11 +385,11 @@ struct ipsec_decap_cbc {
 
 /**
  * struct ipsec_decap_ctr - PDB part for IPsec CTR decapsulation
- * @ctr_nonce: 4-byte array nonce
+ * @ctr_nonce: 4-byte nonce
  * @ctr_initial: initial count constant
  */
 struct ipsec_decap_ctr {
-	uint8_t ctr_nonce[4];
+	uint32_t ctr_nonce;
 	uint32_t ctr_initial;
 };
 
@@ -464,8 +463,7 @@ __rta_copy_ipsec_decap_pdb(struct program *program,
 		break;
 
 	case OP_PCL_IPSEC_AES_CTR:
-		rta_copy_data(program, pdb->ctr.ctr_nonce,
-			      sizeof(pdb->ctr.ctr_nonce));
+		rta_copy_data(program, (uint8_t *)&pdb->ctr.ctr_nonce, 4);
 		__rta_out32(program, pdb->ctr.ctr_initial);
 		break;
 

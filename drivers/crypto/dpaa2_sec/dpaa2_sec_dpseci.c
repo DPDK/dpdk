@@ -2812,6 +2812,10 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 
 		/* copy algo specific data to PDB */
 		switch (cipherdata.algtype) {
+		case OP_PCL_IPSEC_AES_CTR:
+			encap_pdb.ctr.ctr_initial = 0x00000001;
+			encap_pdb.ctr.ctr_nonce = ipsec_xform->salt;
+			break;
 		case OP_PCL_IPSEC_AES_GCM8:
 		case OP_PCL_IPSEC_AES_GCM12:
 		case OP_PCL_IPSEC_AES_GCM16:
@@ -2882,6 +2886,10 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		memset(&decap_pdb, 0, sizeof(struct ipsec_decap_pdb));
 		/* copy algo specific data to PDB */
 		switch (cipherdata.algtype) {
+		case OP_PCL_IPSEC_AES_CTR:
+			decap_pdb.ctr.ctr_initial = 0x00000001;
+			decap_pdb.ctr.ctr_nonce = ipsec_xform->salt;
+			break;
 		case OP_PCL_IPSEC_AES_GCM8:
 		case OP_PCL_IPSEC_AES_GCM12:
 		case OP_PCL_IPSEC_AES_GCM16:

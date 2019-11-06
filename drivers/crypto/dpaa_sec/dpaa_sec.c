@@ -2581,6 +2581,7 @@ dpaa_sec_ipsec_aead_init(struct rte_crypto_aead_xform *aead_xform,
 static int
 dpaa_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 	struct rte_crypto_auth_xform *auth_xform,
+	struct rte_security_ipsec_xform *ipsec_xform,
 	dpaa_sec_session *session)
 {
 	if (cipher_xform) {
@@ -2688,6 +2689,13 @@ dpaa_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 	case RTE_CRYPTO_CIPHER_AES_CTR:
 		session->cipher_key.alg = OP_PCL_IPSEC_AES_CTR;
 		session->cipher_key.algmode = OP_ALG_AAI_CTR;
+		if (session->dir == DIR_ENC) {
+			session->encap_pdb.ctr.ctr_initial = 0x00000001;
+			session->encap_pdb.ctr.ctr_nonce = ipsec_xform->salt;
+		} else {
+			session->decap_pdb.ctr.ctr_initial = 0x00000001;
+			session->decap_pdb.ctr.ctr_nonce = ipsec_xform->salt;
+		}
 		break;
 	case RTE_CRYPTO_CIPHER_NULL:
 		session->cipher_key.alg = OP_PCL_IPSEC_NULL;
@@ -2739,13 +2747,13 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 		if (conf->crypto_xform->next)
 			auth_xform = &conf->crypto_xform->next->auth;
 		ret = dpaa_sec_ipsec_proto_init(cipher_xform, auth_xform,
-					session);
+					ipsec_xform, session);
 	} else if (conf->crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 		auth_xform = &conf->crypto_xform->auth;
 		if (conf->crypto_xform->next)
 			cipher_xform = &conf->crypto_xform->next->cipher;
 		ret = dpaa_sec_ipsec_proto_init(cipher_xform, auth_xform,
-					session);
+					ipsec_xform, session);
 	} else if (conf->crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		aead_xform = &conf->crypto_xform->aead;
 		ret = dpaa_sec_ipsec_aead_init(aead_xform,
