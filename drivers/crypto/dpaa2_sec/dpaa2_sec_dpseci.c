@@ -2547,12 +2547,40 @@ dpaa2_sec_ipsec_aead_init(struct rte_crypto_aead_xform *aead_xform,
 
 	switch (aead_xform->algo) {
 	case RTE_CRYPTO_AEAD_AES_GCM:
-		aeaddata->algtype = OP_ALG_ALGSEL_AES;
+		switch (session->digest_length) {
+		case 8:
+			aeaddata->algtype = OP_PCL_IPSEC_AES_GCM8;
+			break;
+		case 12:
+			aeaddata->algtype = OP_PCL_IPSEC_AES_GCM12;
+			break;
+		case 16:
+			aeaddata->algtype = OP_PCL_IPSEC_AES_GCM16;
+			break;
+		default:
+			DPAA2_SEC_ERR("Crypto: Undefined GCM digest %d",
+				      session->digest_length);
+			return -1;
+		}
 		aeaddata->algmode = OP_ALG_AAI_GCM;
 		session->aead_alg = RTE_CRYPTO_AEAD_AES_GCM;
 		break;
 	case RTE_CRYPTO_AEAD_AES_CCM:
-		aeaddata->algtype = OP_ALG_ALGSEL_AES;
+		switch (session->digest_length) {
+		case 8:
+			aeaddata->algtype = OP_PCL_IPSEC_AES_CCM8;
+			break;
+		case 12:
+			aeaddata->algtype = OP_PCL_IPSEC_AES_CCM12;
+			break;
+		case 16:
+			aeaddata->algtype = OP_PCL_IPSEC_AES_CCM16;
+			break;
+		default:
+			DPAA2_SEC_ERR("Crypto: Undefined CCM digest %d",
+				      session->digest_length);
+			return -1;
+		}
 		aeaddata->algmode = OP_ALG_AAI_CCM;
 		session->aead_alg = RTE_CRYPTO_AEAD_AES_CCM;
 		break;
@@ -2720,8 +2748,6 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 	struct rte_crypto_aead_xform *aead_xform = NULL;
 	dpaa2_sec_session *session = (dpaa2_sec_session *)sess;
 	struct ctxt_priv *priv;
-	struct ipsec_encap_pdb encap_pdb;
-	struct ipsec_decap_pdb decap_pdb;
 	struct alginfo authdata, cipherdata;
 	int bufsize;
 	struct sec_flow_context *flc;
@@ -2761,6 +2787,8 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		aead_xform = &conf->crypto_xform->aead;
 		ret = dpaa2_sec_ipsec_aead_init(aead_xform,
 					session, &cipherdata);
+		authdata.keylen = 0;
+		authdata.algtype = 0;
 	} else {
 		DPAA2_SEC_ERR("XFORM not specified");
 		ret = -EINVAL;
@@ -2776,10 +2804,22 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		uint8_t *hdr = NULL;
 		struct ip ip4_hdr;
 		struct rte_ipv6_hdr ip6_hdr;
+		struct ipsec_encap_pdb encap_pdb;
 
 		flc->dhr = SEC_FLC_DHR_OUTBOUND;
 		/* For Sec Proto only one descriptor is required. */
 		memset(&encap_pdb, 0, sizeof(struct ipsec_encap_pdb));
+
+		/* copy algo specific data to PDB */
+		switch (cipherdata.algtype) {
+		case OP_PCL_IPSEC_AES_GCM8:
+		case OP_PCL_IPSEC_AES_GCM12:
+		case OP_PCL_IPSEC_AES_GCM16:
+			memcpy(encap_pdb.gcm.salt,
+				(uint8_t *)&(ipsec_xform->salt), 4);
+			break;
+		}
+
 		encap_pdb.options = (IPVERSION << PDBNH_ESP_ENCAP_SHIFT) |
 			PDBOPTS_ESP_OIHI_PDB_INL |
 			PDBOPTS_ESP_IVSRC |
@@ -2836,8 +2876,20 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 				hdr, &cipherdata, &authdata);
 	} else if (ipsec_xform->direction ==
 			RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
+		struct ipsec_decap_pdb decap_pdb;
+
 		flc->dhr = SEC_FLC_DHR_INBOUND;
 		memset(&decap_pdb, 0, sizeof(struct ipsec_decap_pdb));
+		/* copy algo specific data to PDB */
+		switch (cipherdata.algtype) {
+		case OP_PCL_IPSEC_AES_GCM8:
+		case OP_PCL_IPSEC_AES_GCM12:
+		case OP_PCL_IPSEC_AES_GCM16:
+			memcpy(decap_pdb.gcm.salt,
+				(uint8_t *)&(ipsec_xform->salt), 4);
+			break;
+		}
+
 		decap_pdb.options = (ipsec_xform->tunnel.type ==
 				RTE_SECURITY_IPSEC_TUNNEL_IPV4) ?
 				sizeof(struct ip) << 16 :
