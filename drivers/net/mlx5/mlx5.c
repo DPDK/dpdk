@@ -1584,6 +1584,60 @@ exit:
 }
 
 /**
+ * Configures the metadata mask fields in the shared context.
+ *
+ * @param [in] dev
+ *   Pointer to Ethernet device.
+ */
+static void
+mlx5_set_metadata_mask(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
+	uint32_t meta, mark, reg_c0;
+
+	reg_c0 = ~priv->vport_meta_mask;
+	switch (priv->config.dv_xmeta_en) {
+	case MLX5_XMETA_MODE_LEGACY:
+		meta = UINT32_MAX;
+		mark = MLX5_FLOW_MARK_MASK;
+		break;
+	case MLX5_XMETA_MODE_META16:
+		meta = reg_c0 >> rte_bsf32(reg_c0);
+		mark = MLX5_FLOW_MARK_MASK;
+		break;
+	case MLX5_XMETA_MODE_META32:
+		meta = UINT32_MAX;
+		mark = (reg_c0 >> rte_bsf32(reg_c0)) & MLX5_FLOW_MARK_MASK;
+		break;
+	default:
+		meta = 0;
+		mark = 0;
+		assert(false);
+		break;
+	}
+	if (sh->dv_mark_mask && sh->dv_mark_mask != mark)
+		DRV_LOG(WARNING, "metadata MARK mask mismatche %08X:%08X",
+				 sh->dv_mark_mask, mark);
+	else
+		sh->dv_mark_mask = mark;
+	if (sh->dv_meta_mask && sh->dv_meta_mask != meta)
+		DRV_LOG(WARNING, "metadata META mask mismatche %08X:%08X",
+				 sh->dv_meta_mask, meta);
+	else
+		sh->dv_meta_mask = meta;
+	if (sh->dv_regc0_mask && sh->dv_regc0_mask != reg_c0)
+		DRV_LOG(WARNING, "metadata reg_c0 mask mismatche %08X:%08X",
+				 sh->dv_meta_mask, reg_c0);
+	else
+		sh->dv_regc0_mask = reg_c0;
+	DRV_LOG(DEBUG, "metadata mode %u", priv->config.dv_xmeta_en);
+	DRV_LOG(DEBUG, "metadata MARK mask %08X", sh->dv_mark_mask);
+	DRV_LOG(DEBUG, "metadata META mask %08X", sh->dv_meta_mask);
+	DRV_LOG(DEBUG, "metadata reg_c0 mask %08X", sh->dv_regc0_mask);
+}
+
+/**
  * Allocate page of door-bells and register it using DevX API.
  *
  * @param [in] dev
@@ -1803,7 +1857,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	uint16_t port_id;
 	unsigned int i;
 #ifdef HAVE_MLX5DV_DR_DEVX_PORT
-	struct mlx5dv_devx_port devx_port;
+	struct mlx5dv_devx_port devx_port = { .comp_mask = 0 };
 #endif
 
 	/* Determine if this port representor is supposed to be spawned. */
@@ -2035,13 +2089,17 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * vport index. The engaged part of metadata register is
 	 * defined by mask.
 	 */
-	devx_port.comp_mask = MLX5DV_DEVX_PORT_VPORT |
-			      MLX5DV_DEVX_PORT_MATCH_REG_C_0;
-	err = mlx5_glue->devx_port_query(sh->ctx, spawn->ibv_port, &devx_port);
-	if (err) {
-		DRV_LOG(WARNING, "can't query devx port %d on device %s",
-			spawn->ibv_port, spawn->ibv_dev->name);
-		devx_port.comp_mask = 0;
+	if (switch_info->representor || switch_info->master) {
+		devx_port.comp_mask = MLX5DV_DEVX_PORT_VPORT |
+				      MLX5DV_DEVX_PORT_MATCH_REG_C_0;
+		err = mlx5_glue->devx_port_query(sh->ctx, spawn->ibv_port,
+						 &devx_port);
+		if (err) {
+			DRV_LOG(WARNING,
+				"can't query devx port %d on device %s",
+				spawn->ibv_port, spawn->ibv_dev->name);
+			devx_port.comp_mask = 0;
+		}
 	}
 	if (devx_port.comp_mask & MLX5DV_DEVX_PORT_MATCH_REG_C_0) {
 		priv->vport_meta_tag = devx_port.reg_c_0.value;
@@ -2361,17 +2419,26 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	priv->config.flow_prio = err;
-	/* Query availibility of metadata reg_c's. */
-	err = mlx5_flow_discover_mreg_c(eth_dev);
-	if (err < 0) {
-		err = -err;
-		goto error;
-	}
 	if (!priv->config.dv_esw_en &&
 	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 		DRV_LOG(WARNING, "metadata mode %u is not supported "
 				 "(no E-Switch)", priv->config.dv_xmeta_en);
 		priv->config.dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
+	}
+	mlx5_set_metadata_mask(eth_dev);
+	if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+	    !priv->sh->dv_regc0_mask) {
+		DRV_LOG(ERR, "metadata mode %u is not supported "
+			     "(no metadata reg_c[0] is available)",
+			     priv->config.dv_xmeta_en);
+			err = ENOTSUP;
+			goto error;
+	}
+	/* Query availibility of metadata reg_c's. */
+	err = mlx5_flow_discover_mreg_c(eth_dev);
+	if (err < 0) {
+		err = -err;
+		goto error;
 	}
 	if (!mlx5_flow_ext_mreg_supported(eth_dev)) {
 		DRV_LOG(DEBUG,

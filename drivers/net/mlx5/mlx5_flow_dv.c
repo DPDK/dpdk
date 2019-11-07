@@ -901,13 +901,13 @@ flow_dv_convert_action_set_reg
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_convert_action_copy_mreg(struct rte_eth_dev *dev  __rte_unused,
+flow_dv_convert_action_copy_mreg(struct rte_eth_dev *dev,
 				 struct mlx5_flow_dv_modify_hdr_resource *res,
 				 const struct rte_flow_action *action,
 				 struct rte_flow_error *error)
 {
 	const struct mlx5_flow_action_copy_mreg *conf = action->conf;
-	uint32_t mask = RTE_BE32(UINT32_MAX);
+	rte_be32_t mask = RTE_BE32(UINT32_MAX);
 	struct rte_flow_item item = {
 		.spec = NULL,
 		.mask = &mask,
@@ -917,9 +917,44 @@ flow_dv_convert_action_copy_mreg(struct rte_eth_dev *dev  __rte_unused,
 		{0, 0, 0},
 	};
 	struct field_modify_info reg_dst = {
-		.offset = (uint32_t)-1, /* Same as src. */
+		.offset = 0,
 		.id = reg_to_field[conf->dst],
 	};
+	/* Adjust reg_c[0] usage according to reported mask. */
+	if (conf->dst == REG_C_0 || conf->src == REG_C_0) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		uint32_t reg_c0 = priv->sh->dv_regc0_mask;
+
+		assert(reg_c0);
+		assert(priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY);
+		if (conf->dst == REG_C_0) {
+			/* Copy to reg_c[0], within mask only. */
+			reg_dst.offset = rte_bsf32(reg_c0);
+			/*
+			 * Mask is ignoring the enianness, because
+			 * there is no conversion in datapath.
+			 */
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+			/* Copy from destination lower bits to reg_c[0]. */
+			mask = reg_c0 >> reg_dst.offset;
+#else
+			/* Copy from destination upper bits to reg_c[0]. */
+			mask = reg_c0 << (sizeof(reg_c0) * CHAR_BIT -
+					  rte_fls_u32(reg_c0));
+#endif
+		} else {
+			mask = rte_cpu_to_be_32(reg_c0);
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+			/* Copy from reg_c[0] to destination lower bits. */
+			reg_dst.offset = 0;
+#else
+			/* Copy from reg_c[0] to destination upper bits. */
+			reg_dst.offset = sizeof(reg_c0) * CHAR_BIT -
+					 (rte_fls_u32(reg_c0) -
+					  rte_bsf32(reg_c0));
+#endif
+		}
+	}
 	return flow_dv_convert_modify_action(&item,
 					     reg_src, &reg_dst, res,
 					     MLX5_MODIFICATION_TYPE_COPY,
