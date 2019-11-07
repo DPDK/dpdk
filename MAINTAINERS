@@ -871,7 +871,7 @@ F: doc/guides/nics/virtio.rst
 F: doc/guides/nics/features/virtio*.ini
 
 Wind River AVP
-M: Allain Legacy <allain.legacy@windriver.com>
+M: Steven Webster <steven.webster@windriver.com>
 M: Matt Peters <matt.peters@windriver.com>
 F: drivers/net/avp/
 F: doc/guides/nics/avp.rst
