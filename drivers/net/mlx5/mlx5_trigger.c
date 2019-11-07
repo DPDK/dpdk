@@ -420,7 +420,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		}
 		mlx5_txq_release(dev, i);
 	}
-	if (priv->config.dv_esw_en && !priv->config.vf)
+	if (priv->config.dv_esw_en && !priv->config.vf && !priv->representor)
 		if (!mlx5_flow_create_esw_table_zero_flow(dev))
 			goto error;
 	if (priv->isolated)
