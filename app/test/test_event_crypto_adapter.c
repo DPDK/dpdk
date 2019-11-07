@@ -302,6 +302,10 @@ test_sessionless_with_op_forward_mode(void)
 	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
 	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
 		map_adapter_service_core();
+	else {
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD))
+			return TEST_SKIPPED;
+	}
 
 	TEST_ASSERT_SUCCESS(rte_event_crypto_adapter_start(TEST_ADAPTER_ID),
 				"Failed to start event crypto adapter");
@@ -323,6 +327,10 @@ test_session_with_op_forward_mode(void)
 	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
 	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
 		map_adapter_service_core();
+	else {
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD))
+			return TEST_SKIPPED;
+	}
 
 	TEST_ASSERT_SUCCESS(rte_event_crypto_adapter_start(TEST_ADAPTER_ID
 				), "Failed to start event crypto adapter");
@@ -458,6 +466,10 @@ test_sessionless_with_op_new_mode(void)
 	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
 	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
 		map_adapter_service_core();
+	else {
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
+			return TEST_SKIPPED;
+	}
 
 	/* start the event crypto adapter */
 	TEST_ASSERT_SUCCESS(rte_event_crypto_adapter_start(TEST_ADAPTER_ID),
@@ -480,6 +492,10 @@ test_session_with_op_new_mode(void)
 	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
 	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
 		map_adapter_service_core();
+	else {
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
+			return TEST_SKIPPED;
+	}
 
 	TEST_ASSERT_SUCCESS(rte_event_crypto_adapter_start(TEST_ADAPTER_ID),
 				"Failed to start event crypto adapter");
