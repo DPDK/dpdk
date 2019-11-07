@@ -2754,7 +2754,10 @@ flow_hairpin_split(struct rte_eth_dev *dev,
  * @param dev
  *   Pointer to Ethernet device.
  * @param list
- *   Pointer to a TAILQ flow list.
+ *   Pointer to a TAILQ flow list. If this parameter NULL,
+ *   no list insertion occurred, flow is just created,
+ *   this is caller's responsibility to track the
+ *   created flow.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
@@ -2899,7 +2902,8 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		if (ret < 0)
 			goto error;
 	}
-	TAILQ_INSERT_TAIL(list, flow, next);
+	if (list)
+		TAILQ_INSERT_TAIL(list, flow, next);
 	flow_rxq_flags_set(dev, flow);
 	return flow;
 error_before_flow:
@@ -2993,7 +2997,8 @@ mlx5_flow_create(struct rte_eth_dev *dev,
  * @param dev
  *   Pointer to Ethernet device.
  * @param list
- *   Pointer to a TAILQ flow list.
+ *   Pointer to a TAILQ flow list. If this parameter NULL,
+ *   there is no flow removal from the list.
  * @param[in] flow
  *   Flow to destroy.
  */
@@ -3013,7 +3018,8 @@ flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		mlx5_flow_id_release(priv->sh->flow_id_pool,
 				     flow->hairpin_flow_id);
 	flow_drv_destroy(dev, flow);
-	TAILQ_REMOVE(list, flow, next);
+	if (list)
+		TAILQ_REMOVE(list, flow, next);
 	rte_free(flow->fdir);
 	rte_free(flow);
 }
