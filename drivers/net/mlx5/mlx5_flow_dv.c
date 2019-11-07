@@ -183,7 +183,7 @@ mlx5_flow_tunnel_ip_check(const struct rte_flow_item *item __rte_unused,
  *   Pointer to the rte_eth_dev structure.
  */
 static void
-flow_d_shared_lock(struct rte_eth_dev *dev)
+flow_dv_shared_lock(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ibv_shared *sh = priv->sh;
@@ -198,7 +198,7 @@ flow_d_shared_lock(struct rte_eth_dev *dev)
 }
 
 static void
-flow_d_shared_unlock(struct rte_eth_dev *dev)
+flow_dv_shared_unlock(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ibv_shared *sh = priv->sh;
@@ -5626,7 +5626,8 @@ flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
 }
 
 /**
- * Fill the flow with DV spec.
+ * Fill the flow with DV spec, lock free
+ * (mutex should be acquired by caller).
  *
  * @param[in] dev
  *   Pointer to rte_eth_dev structure.
@@ -5645,12 +5646,12 @@ flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_translate(struct rte_eth_dev *dev,
-		  struct mlx5_flow *dev_flow,
-		  const struct rte_flow_attr *attr,
-		  const struct rte_flow_item items[],
-		  const struct rte_flow_action actions[],
-		  struct rte_flow_error *error)
+__flow_dv_translate(struct rte_eth_dev *dev,
+		    struct mlx5_flow *dev_flow,
+		    const struct rte_flow_attr *attr,
+		    const struct rte_flow_item items[],
+		    const struct rte_flow_action actions[],
+		    struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow = dev_flow->flow;
@@ -5665,7 +5666,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	};
 	int actions_n = 0;
 	bool actions_end = false;
-	struct mlx5_flow_dv_modify_hdr_resource res = {
+	struct mlx5_flow_dv_modify_hdr_resource mhdr_res = {
 		.ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
 					  MLX5DV_FLOW_TABLE_TYPE_NIC_RX
 	};
@@ -5685,7 +5686,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		return ret;
 	dev_flow->group = table;
 	if (attr->transfer)
-		res.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
+		mhdr_res.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;
 	for (; !actions_end ; actions++) {
@@ -5834,7 +5835,7 @@ cnt_err:
 			mlx5_update_vlan_vid_pcp(actions, &vlan);
 			/* If no VLAN push - this is a modify header action */
 			if (flow_dv_convert_action_modify_vlan_vid
-							(&res, actions, error))
+						(&mhdr_res, actions, error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
 			break;
@@ -5933,8 +5934,8 @@ cnt_err:
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
-			if (flow_dv_convert_action_modify_mac(&res, actions,
-							      error))
+			if (flow_dv_convert_action_modify_mac
+					(&mhdr_res, actions, error))
 				return -rte_errno;
 			action_flags |= actions->type ==
 					RTE_FLOW_ACTION_TYPE_SET_MAC_SRC ?
@@ -5943,8 +5944,8 @@ cnt_err:
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
-			if (flow_dv_convert_action_modify_ipv4(&res, actions,
-							       error))
+			if (flow_dv_convert_action_modify_ipv4
+					(&mhdr_res, actions, error))
 				return -rte_errno;
 			action_flags |= actions->type ==
 					RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC ?
@@ -5953,8 +5954,8 @@ cnt_err:
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
-			if (flow_dv_convert_action_modify_ipv6(&res, actions,
-							       error))
+			if (flow_dv_convert_action_modify_ipv6
+					(&mhdr_res, actions, error))
 				return -rte_errno;
 			action_flags |= actions->type ==
 					RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC ?
@@ -5963,9 +5964,9 @@ cnt_err:
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
-			if (flow_dv_convert_action_modify_tp(&res, actions,
-							     items, &flow_attr,
-							     error))
+			if (flow_dv_convert_action_modify_tp
+					(&mhdr_res, actions, items,
+					 &flow_attr, error))
 				return -rte_errno;
 			action_flags |= actions->type ==
 					RTE_FLOW_ACTION_TYPE_SET_TP_SRC ?
@@ -5973,23 +5974,22 @@ cnt_err:
 					MLX5_FLOW_ACTION_SET_TP_DST;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
-			if (flow_dv_convert_action_modify_dec_ttl(&res, items,
-								  &flow_attr,
-								  error))
+			if (flow_dv_convert_action_modify_dec_ttl
+					(&mhdr_res, items, &flow_attr, error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_DEC_TTL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TTL:
-			if (flow_dv_convert_action_modify_ttl(&res, actions,
-							     items, &flow_attr,
-							     error))
+			if (flow_dv_convert_action_modify_ttl
+					(&mhdr_res, actions, items,
+					 &flow_attr, error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_TTL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ:
 		case RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ:
-			if (flow_dv_convert_action_modify_tcp_seq(&res, actions,
-								  error))
+			if (flow_dv_convert_action_modify_tcp_seq
+					(&mhdr_res, actions, error))
 				return -rte_errno;
 			action_flags |= actions->type ==
 					RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ ?
@@ -5999,8 +5999,8 @@ cnt_err:
 
 		case RTE_FLOW_ACTION_TYPE_INC_TCP_ACK:
 		case RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK:
-			if (flow_dv_convert_action_modify_tcp_ack(&res, actions,
-								  error))
+			if (flow_dv_convert_action_modify_tcp_ack
+					(&mhdr_res, actions, error))
 				return -rte_errno;
 			action_flags |= actions->type ==
 					RTE_FLOW_ACTION_TYPE_INC_TCP_ACK ?
@@ -6008,14 +6008,14 @@ cnt_err:
 					MLX5_FLOW_ACTION_DEC_TCP_ACK;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_TAG:
-			if (flow_dv_convert_action_set_reg(&res, actions,
-							   error))
+			if (flow_dv_convert_action_set_reg
+					(&mhdr_res, actions, error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_TAG;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG:
-			if (flow_dv_convert_action_copy_mreg(dev, &res,
-							     actions, error))
+			if (flow_dv_convert_action_copy_mreg
+					(dev, &mhdr_res, actions, error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_TAG;
 			break;
@@ -6024,9 +6024,7 @@ cnt_err:
 			if (action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS) {
 				/* create modify action if needed. */
 				if (flow_dv_modify_hdr_resource_register
-								(dev, &res,
-								 dev_flow,
-								 error))
+					(dev, &mhdr_res, dev_flow, error))
 					return -rte_errno;
 				dev_flow->dv.actions[modify_action_position] =
 					dev_flow->dv.modify_hdr->verbs_action;
@@ -6244,7 +6242,8 @@ cnt_err:
 }
 
 /**
- * Apply the flow to the NIC.
+ * Apply the flow to the NIC, lock free,
+ * (mutex should be acquired by caller).
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
@@ -6257,8 +6256,8 @@ cnt_err:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
-	      struct rte_flow_error *error)
+__flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
+		struct rte_flow_error *error)
 {
 	struct mlx5_flow_dv *dv;
 	struct mlx5_flow *dev_flow;
@@ -6556,6 +6555,7 @@ flow_dv_push_vlan_action_resource_release(struct mlx5_flow *flow)
 
 /**
  * Remove the flow from the NIC but keeps it in memory.
+ * Lock free, (mutex should be acquired by caller).
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
@@ -6563,7 +6563,7 @@ flow_dv_push_vlan_action_resource_release(struct mlx5_flow *flow)
  *   Pointer to flow structure.
  */
 static void
-flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
+__flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct mlx5_flow_dv *dv;
 	struct mlx5_flow *dev_flow;
@@ -6591,6 +6591,7 @@ flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 /**
  * Remove the flow from the NIC and the memory.
+ * Lock free, (mutex should be acquired by caller).
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
@@ -6598,13 +6599,13 @@ flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
  *   Pointer to flow structure.
  */
 static void
-flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
+__flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct mlx5_flow *dev_flow;
 
 	if (!flow)
 		return;
-	flow_dv_remove(dev, flow);
+	__flow_dv_remove(dev, flow);
 	if (flow->counter) {
 		flow_dv_counter_release(dev, flow->counter);
 		flow->counter = NULL;
@@ -6715,69 +6716,69 @@ flow_dv_query(struct rte_eth_dev *dev,
 }
 
 /*
- * Mutex-protected thunk to flow_dv_translate().
+ * Mutex-protected thunk to lock-free  __flow_dv_translate().
  */
 static int
-flow_d_translate(struct rte_eth_dev *dev,
-		 struct mlx5_flow *dev_flow,
-		 const struct rte_flow_attr *attr,
-		 const struct rte_flow_item items[],
-		 const struct rte_flow_action actions[],
-		 struct rte_flow_error *error)
+flow_dv_translate(struct rte_eth_dev *dev,
+		  struct mlx5_flow *dev_flow,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item items[],
+		  const struct rte_flow_action actions[],
+		  struct rte_flow_error *error)
 {
 	int ret;
 
-	flow_d_shared_lock(dev);
-	ret = flow_dv_translate(dev, dev_flow, attr, items, actions, error);
-	flow_d_shared_unlock(dev);
+	flow_dv_shared_lock(dev);
+	ret = __flow_dv_translate(dev, dev_flow, attr, items, actions, error);
+	flow_dv_shared_unlock(dev);
 	return ret;
 }
 
 /*
- * Mutex-protected thunk to flow_dv_apply().
+ * Mutex-protected thunk to lock-free  __flow_dv_apply().
  */
 static int
-flow_d_apply(struct rte_eth_dev *dev,
-	     struct rte_flow *flow,
-	     struct rte_flow_error *error)
+flow_dv_apply(struct rte_eth_dev *dev,
+	      struct rte_flow *flow,
+	      struct rte_flow_error *error)
 {
 	int ret;
 
-	flow_d_shared_lock(dev);
-	ret = flow_dv_apply(dev, flow, error);
-	flow_d_shared_unlock(dev);
+	flow_dv_shared_lock(dev);
+	ret = __flow_dv_apply(dev, flow, error);
+	flow_dv_shared_unlock(dev);
 	return ret;
 }
 
 /*
- * Mutex-protected thunk to flow_dv_remove().
+ * Mutex-protected thunk to lock-free __flow_dv_remove().
  */
 static void
-flow_d_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
+flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
-	flow_d_shared_lock(dev);
-	flow_dv_remove(dev, flow);
-	flow_d_shared_unlock(dev);
+	flow_dv_shared_lock(dev);
+	__flow_dv_remove(dev, flow);
+	flow_dv_shared_unlock(dev);
 }
 
 /*
- * Mutex-protected thunk to flow_dv_destroy().
+ * Mutex-protected thunk to lock-free __flow_dv_destroy().
  */
 static void
-flow_d_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
+flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
-	flow_d_shared_lock(dev);
-	flow_dv_destroy(dev, flow);
-	flow_d_shared_unlock(dev);
+	flow_dv_shared_lock(dev);
+	__flow_dv_destroy(dev, flow);
+	flow_dv_shared_unlock(dev);
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.validate = flow_dv_validate,
 	.prepare = flow_dv_prepare,
-	.translate = flow_d_translate,
-	.apply = flow_d_apply,
-	.remove = flow_d_remove,
-	.destroy = flow_d_destroy,
+	.translate = flow_dv_translate,
+	.apply = flow_dv_apply,
+	.remove = flow_dv_remove,
+	.destroy = flow_dv_destroy,
 	.query = flow_dv_query,
 };
 
