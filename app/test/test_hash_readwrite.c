@@ -298,7 +298,7 @@ test_rw_reader(void *arg)
 
 	begin = rte_rdtsc_precise();
 	for (i = 0; i < read_cnt; i++) {
-		void *data;
+		void *data = arg;
 		rte_hash_lookup_data(tbl_rw_test_param.h,
 				tbl_rw_test_param.keys + i,
 				&data);

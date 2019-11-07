@@ -475,7 +475,8 @@ find_max_block_free_size(unsigned int align, unsigned int socket_id)
 	struct rte_malloc_socket_stats stats;
 	size_t len, overhead;
 
-	rte_malloc_get_socket_stats(socket_id, &stats);
+	if (rte_malloc_get_socket_stats(socket_id, &stats) < 0)
+		return 0;
 
 	len = stats.greatest_free_size;
 	overhead = MALLOC_ELEM_OVERHEAD;

@@ -585,7 +585,13 @@ bond_get_update_timeout_ms(void)
 {
 	struct rte_eth_bond_8023ad_conf conf;
 
-	rte_eth_bond_8023ad_conf_get(test_params.bonded_port_id, &conf);
+	if (rte_eth_bond_8023ad_conf_get(test_params.bonded_port_id, &conf) < 0) {
+		RTE_LOG(DEBUG, EAL, "Failed to get bonding configuration: "
+				    "%s at %d\n", __func__, __LINE__);
+		RTE_TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);
+		return 0;
+	}
+
 	return conf.update_timeout_ms;
 }
 
