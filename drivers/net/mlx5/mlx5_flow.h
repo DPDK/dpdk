@@ -56,13 +56,13 @@ enum mlx5_rte_flow_action_type {
 /* Matches on selected register. */
 struct mlx5_rte_flow_item_tag {
 	uint16_t id;
-	rte_be32_t data;
+	uint32_t data;
 };
 
 /* Modify selected register. */
 struct mlx5_rte_flow_action_set_tag {
 	uint16_t id;
-	rte_be32_t data;
+	uint32_t data;
 };
 
 /* Matches on source queue. */

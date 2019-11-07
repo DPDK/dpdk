@@ -2725,7 +2725,7 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	actions_rx++;
 	set_tag = (void *)actions_rx;
 	set_tag->id = flow_get_reg_id(dev, MLX5_HAIRPIN_RX, 0, &error);
-	set_tag->data = rte_cpu_to_be_32(*flow_id);
+	set_tag->data = *flow_id;
 	tag_action->conf = set_tag;
 	/* Create Tx item list. */
 	rte_memcpy(actions_tx, actions, sizeof(struct rte_flow_action));
@@ -2733,8 +2733,8 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	item = pattern_tx;
 	item->type = MLX5_RTE_FLOW_ITEM_TYPE_TAG;
 	tag_item = (void *)addr;
-	tag_item->data = rte_cpu_to_be_32(*flow_id);
-	tag_item->id = flow_get_reg_id(dev, MLX5_HAIRPIN_TX, 0, &error);
+	tag_item->data = *flow_id;
+	tag_item->id = flow_get_reg_id(dev, MLX5_HAIRPIN_TX, 0, NULL);
 	item->spec = tag_item;
 	addr += sizeof(struct mlx5_rte_flow_item_tag);
 	tag_item = (void *)addr;
