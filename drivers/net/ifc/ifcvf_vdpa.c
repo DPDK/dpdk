@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
 #include <linux/virtio_net.h>
@@ -304,8 +305,8 @@ vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 	struct ifcvf_hw *hw = &internal->hw;
 	uint32_t i;
 	int vid;
-	uint64_t features;
-	uint64_t log_base, log_size;
+	uint64_t features = 0;
+	uint64_t log_base = 0, log_size = 0;
 	uint64_t len;
 
 	vid = internal->vid;
@@ -347,6 +348,8 @@ vdpa_enable_vfio_intr(struct ifcvf_internal *internal, bool m_rx)
 	int *fd_ptr;
 	struct rte_vhost_vring vring;
 	int fd;
+
+	vring.callfd = -1;
 
 	nr_vring = rte_vhost_get_vring_num(internal->vid);
 
@@ -442,6 +445,7 @@ notify_relay(void *arg)
 	}
 	internal->epfd = epfd;
 
+	vring.kickfd = -1;
 	for (qid = 0; qid < q_num; qid++) {
 		ev.events = EPOLLIN | EPOLLPRI;
 		rte_vhost_get_vhost_vring(internal->vid, qid, &vring);
@@ -583,6 +587,7 @@ m_ifcvf_start(struct ifcvf_internal *internal)
 	uint64_t size;
 	uint64_t gpa;
 
+	memset(&vq, 0, sizeof(vq));
 	vid = internal->vid;
 	nr_vring = rte_vhost_get_vring_num(vid);
 	rte_vhost_get_negotiated_features(vid, &hw->req_features);
@@ -721,6 +726,7 @@ vring_relay(void *arg)
 	}
 	internal->epfd = epfd;
 
+	vring.kickfd = -1;
 	for (qid = 0; qid < q_num; qid++) {
 		ev.events = EPOLLIN | EPOLLPRI;
 		rte_vhost_get_vhost_vring(vid, qid, &vring);
@@ -930,11 +936,11 @@ ifcvf_dev_close(int vid)
 static int
 ifcvf_set_features(int vid)
 {
-	uint64_t features;
+	uint64_t features = 0;
 	int did;
 	struct internal_list *list;
 	struct ifcvf_internal *internal;
-	uint64_t log_base, log_size;
+	uint64_t log_base = 0, log_size = 0;
 
 	did = rte_vhost_get_vdpa_device_id(vid);
 	list = find_internal_resource_by_did(did);
