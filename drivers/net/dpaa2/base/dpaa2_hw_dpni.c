@@ -51,6 +51,7 @@ rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 	kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_DATA;
 	kg_cfg.extracts[0].extract.from_data.offset = offset;
 	kg_cfg.extracts[0].extract.from_data.size = size;
+	kg_cfg.extracts[0].num_of_byte_masks = 0;
 	kg_cfg.num_extracts = 1;
 
 	ret = dpkg_prepare_key_cfg(&kg_cfg, p_params);

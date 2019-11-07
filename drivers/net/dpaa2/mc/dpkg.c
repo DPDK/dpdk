@@ -63,7 +63,10 @@ dpkg_prepare_key_cfg(const struct dpkg_profile_cfg *cfg, uint8_t *key_cfg_buf)
 		dpkg_set_field(extr->extract_type, EXTRACT_TYPE,
 			       cfg->extracts[i].type);
 
-		for (j = 0; j < DPKG_NUM_OF_MASKS; j++) {
+		if (extr->num_of_byte_masks > DPKG_NUM_OF_MASKS)
+			return -EINVAL;
+
+		for (j = 0; j < extr->num_of_byte_masks; j++) {
 			extr->masks[j].mask = cfg->extracts[i].masks[j].mask;
 			extr->masks[j].offset =
 				cfg->extracts[i].masks[j].offset;
