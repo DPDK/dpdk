@@ -2240,6 +2240,49 @@ mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
 	return 0;
 }
 
+/* Allocate unique ID for the split Q/RSS subflows. */
+static uint32_t
+flow_qrss_get_id(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t qrss_id, ret;
+
+	ret = mlx5_flow_id_get(priv->qrss_id_pool, &qrss_id);
+	if (ret)
+		return 0;
+	assert(qrss_id);
+	return qrss_id;
+}
+
+/* Free unique ID for the split Q/RSS subflows. */
+static void
+flow_qrss_free_id(struct rte_eth_dev *dev,  uint32_t qrss_id)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (qrss_id)
+		mlx5_flow_id_release(priv->qrss_id_pool, qrss_id);
+}
+
+/**
+ * Release resource related QUEUE/RSS action split.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param flow
+ *   Flow to release id's from.
+ */
+static void
+flow_mreg_split_qrss_release(struct rte_eth_dev *dev,
+			     struct rte_flow *flow)
+{
+	struct mlx5_flow *dev_flow;
+
+	LIST_FOREACH(dev_flow, &flow->dev_flows, next)
+		if (dev_flow->qrss_id)
+			flow_qrss_free_id(dev, dev_flow->qrss_id);
+}
+
 static int
 flow_null_validate(struct rte_eth_dev *dev __rte_unused,
 		   const struct rte_flow_attr *attr __rte_unused,
@@ -2529,6 +2572,7 @@ flow_drv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	const struct mlx5_flow_driver_ops *fops;
 	enum mlx5_flow_drv_type type = flow->drv_type;
 
+	flow_mreg_split_qrss_release(dev, flow);
 	assert(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
 	fops = flow_get_drv_ops(type);
 	fops->destroy(dev, flow);
@@ -2596,6 +2640,41 @@ find_graph_root(const struct rte_flow_item pattern[], uint32_t rss_level)
 				       MLX5_EXPANSION_ROOT_OUTER_ETH_VLAN;
 	return rss_level < 2 ? MLX5_EXPANSION_ROOT :
 			       MLX5_EXPANSION_ROOT_OUTER;
+}
+
+/**
+ * Get QUEUE/RSS action from the action list.
+ *
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[out] qrss
+ *   Pointer to the return pointer.
+ * @param[out] qrss_type
+ *   Pointer to the action type to return. RTE_FLOW_ACTION_TYPE_END is returned
+ *   if no QUEUE/RSS is found.
+ *
+ * @return
+ *   Total number of actions.
+ */
+static int
+flow_parse_qrss_action(const struct rte_flow_action actions[],
+		       const struct rte_flow_action **qrss)
+{
+	int actions_n = 0;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			*qrss = actions;
+			break;
+		default:
+			break;
+		}
+		actions_n++;
+	}
+	/* Count RTE_FLOW_ACTION_TYPE_END. */
+	return actions_n + 1;
 }
 
 /**
@@ -2850,6 +2929,351 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 }
 
 /**
+ * Split action list having QUEUE/RSS for metadata register copy.
+ *
+ * Once Q/RSS action is detected in user's action list, the flow action
+ * should be split in order to copy metadata registers, which will happen in
+ * RX_CP_TBL like,
+ *   - CQE->flow_tag := reg_c[1] (MARK)
+ *   - CQE->flow_table_metadata (reg_b) := reg_c[0] (META)
+ * The Q/RSS action will be performed on RX_ACT_TBL after passing by RX_CP_TBL.
+ * This is because the last action of each flow must be a terminal action
+ * (QUEUE, RSS or DROP).
+ *
+ * Flow ID must be allocated to identify actions in the RX_ACT_TBL and it is
+ * stored and kept in the mlx5_flow structure per each sub_flow.
+ *
+ * The Q/RSS action is replaced with,
+ *   - SET_TAG, setting the allocated flow ID to reg_c[2].
+ * And the following JUMP action is added at the end,
+ *   - JUMP, to RX_CP_TBL.
+ *
+ * A flow to perform remained Q/RSS action will be created in RX_ACT_TBL by
+ * flow_create_split_metadata() routine. The flow will look like,
+ *   - If flow ID matches (reg_c[2]), perform Q/RSS.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] split_actions
+ *   Pointer to store split actions to jump to CP_TBL.
+ * @param[in] actions
+ *   Pointer to the list of original flow actions.
+ * @param[in] qrss
+ *   Pointer to the Q/RSS action.
+ * @param[in] actions_n
+ *   Number of original actions.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   non-zero unique flow_id on success, otherwise 0 and
+ *   error/rte_error are set.
+ */
+static uint32_t
+flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
+			  struct rte_flow_action *split_actions,
+			  const struct rte_flow_action *actions,
+			  const struct rte_flow_action *qrss,
+			  int actions_n, struct rte_flow_error *error)
+{
+	struct mlx5_rte_flow_action_set_tag *set_tag;
+	struct rte_flow_action_jump *jump;
+	const int qrss_idx = qrss - actions;
+	uint32_t flow_id;
+	int ret = 0;
+
+	/*
+	 * Given actions will be split
+	 * - Replace QUEUE/RSS action with SET_TAG to set flow ID.
+	 * - Add jump to mreg CP_TBL.
+	 * As a result, there will be one more action.
+	 */
+	++actions_n;
+	/*
+	 * Allocate the new subflow ID. This one is unique within
+	 * device and not shared with representors. Otherwise,
+	 * we would have to resolve multi-thread access synch
+	 * issue. Each flow on the shared device is appended
+	 * with source vport identifier, so the resulting
+	 * flows will be unique in the shared (by master and
+	 * representors) domain even if they have coinciding
+	 * IDs.
+	 */
+	flow_id = flow_qrss_get_id(dev);
+	if (!flow_id)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "can't allocate id "
+					  "for split Q/RSS subflow");
+	/* Internal SET_TAG action to set flow ID. */
+	set_tag = (void *)(split_actions + actions_n);
+	*set_tag = (struct mlx5_rte_flow_action_set_tag){
+		.data = flow_id,
+	};
+	ret = mlx5_flow_get_reg_id(dev, MLX5_COPY_MARK, 0, error);
+	if (ret < 0)
+		return ret;
+	set_tag->id = ret;
+	/* JUMP action to jump to mreg copy table (CP_TBL). */
+	jump = (void *)(set_tag + 1);
+	*jump = (struct rte_flow_action_jump){
+		.group = MLX5_FLOW_MREG_CP_TABLE_GROUP,
+	};
+	/* Construct new actions array. */
+	memcpy(split_actions, actions, sizeof(*split_actions) * actions_n);
+	/* Replace QUEUE/RSS action. */
+	split_actions[qrss_idx] = (struct rte_flow_action){
+		.type = MLX5_RTE_FLOW_ACTION_TYPE_TAG,
+		.conf = set_tag,
+	};
+	split_actions[actions_n - 2] = (struct rte_flow_action){
+		.type = RTE_FLOW_ACTION_TYPE_JUMP,
+		.conf = jump,
+	};
+	split_actions[actions_n - 1] = (struct rte_flow_action){
+		.type = RTE_FLOW_ACTION_TYPE_END,
+	};
+	return flow_id;
+}
+
+/**
+ * Extend the given action list for Tx metadata copy.
+ *
+ * Copy the given action list to the ext_actions and add flow metadata register
+ * copy action in order to copy reg_a set by WQE to reg_c[0].
+ *
+ * @param[out] ext_actions
+ *   Pointer to the extended action list.
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[in] actions_n
+ *   Number of actions in the list.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, negative value otherwise
+ */
+static int
+flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
+		       struct rte_flow_action *ext_actions,
+		       const struct rte_flow_action *actions,
+		       int actions_n, struct rte_flow_error *error)
+{
+	struct mlx5_flow_action_copy_mreg *cp_mreg =
+		(struct mlx5_flow_action_copy_mreg *)
+			(ext_actions + actions_n + 1);
+	int ret;
+
+	ret = mlx5_flow_get_reg_id(dev, MLX5_METADATA_RX, 0, error);
+	if (ret < 0)
+		return ret;
+	cp_mreg->dst = ret;
+	ret = mlx5_flow_get_reg_id(dev, MLX5_METADATA_TX, 0, error);
+	if (ret < 0)
+		return ret;
+	cp_mreg->src = ret;
+	memcpy(ext_actions, actions,
+			sizeof(*ext_actions) * actions_n);
+	ext_actions[actions_n - 1] = (struct rte_flow_action){
+		.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+		.conf = cp_mreg,
+	};
+	ext_actions[actions_n] = (struct rte_flow_action){
+		.type = RTE_FLOW_ACTION_TYPE_END,
+	};
+	return 0;
+}
+
+/**
+ * The splitting for metadata feature.
+ *
+ * - Q/RSS action on NIC Rx should be split in order to pass by
+ *   the mreg copy table (RX_CP_TBL) and then it jumps to the
+ *   action table (RX_ACT_TBL) which has the split Q/RSS action.
+ *
+ * - All the actions on NIC Tx should have a mreg copy action to
+ *   copy reg_a from WQE to reg_c[0].
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Parent flow structure pointer.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] items
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   0 on success, negative value otherwise
+ */
+static int
+flow_create_split_metadata(struct rte_eth_dev *dev,
+			   struct rte_flow *flow,
+			   const struct rte_flow_attr *attr,
+			   const struct rte_flow_item items[],
+			   const struct rte_flow_action actions[],
+			   bool external, struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+	const struct rte_flow_action *qrss = NULL;
+	struct rte_flow_action *ext_actions = NULL;
+	struct mlx5_flow *dev_flow = NULL;
+	uint32_t qrss_id = 0;
+	size_t act_size;
+	int actions_n;
+	int ret;
+
+	/* Check whether extensive metadata feature is engaged. */
+	if (!config->dv_flow_en ||
+	    config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
+	    !mlx5_flow_ext_mreg_supported(dev))
+		return flow_create_split_inner(dev, flow, NULL, attr, items,
+					       actions, external, error);
+	actions_n = flow_parse_qrss_action(actions, &qrss);
+	if (qrss) {
+		/* Exclude hairpin flows from splitting. */
+		if (qrss->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
+			const struct rte_flow_action_queue *queue;
+
+			queue = qrss->conf;
+			if (mlx5_rxq_get_type(dev, queue->index) ==
+			    MLX5_RXQ_TYPE_HAIRPIN)
+				qrss = NULL;
+		} else if (qrss->type == RTE_FLOW_ACTION_TYPE_RSS) {
+			const struct rte_flow_action_rss *rss;
+
+			rss = qrss->conf;
+			if (mlx5_rxq_get_type(dev, rss->queue[0]) ==
+			    MLX5_RXQ_TYPE_HAIRPIN)
+				qrss = NULL;
+		}
+	}
+	if (qrss) {
+		/*
+		 * Q/RSS action on NIC Rx should be split in order to pass by
+		 * the mreg copy table (RX_CP_TBL) and then it jumps to the
+		 * action table (RX_ACT_TBL) which has the split Q/RSS action.
+		 */
+		act_size = sizeof(struct rte_flow_action) * (actions_n + 1) +
+			   sizeof(struct rte_flow_action_set_tag) +
+			   sizeof(struct rte_flow_action_jump);
+		ext_actions = rte_zmalloc(__func__, act_size, 0);
+		if (!ext_actions)
+			return rte_flow_error_set(error, ENOMEM,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "no memory to split "
+						  "metadata flow");
+		/*
+		 * Create the new actions list with removed Q/RSS action
+		 * and appended set tag and jump to register copy table
+		 * (RX_CP_TBL). We should preallocate unique tag ID here
+		 * in advance, because it is needed for set tag action.
+		 */
+		qrss_id = flow_mreg_split_qrss_prep(dev, ext_actions, actions,
+						    qrss, actions_n, error);
+		if (!qrss_id) {
+			ret = -rte_errno;
+			goto exit;
+		}
+	} else if (attr->egress && !attr->transfer) {
+		/*
+		 * All the actions on NIC Tx should have a metadata register
+		 * copy action to copy reg_a from WQE to reg_c[meta]
+		 */
+		act_size = sizeof(struct rte_flow_action) * (actions_n + 1) +
+			   sizeof(struct mlx5_flow_action_copy_mreg);
+		ext_actions = rte_zmalloc(__func__, act_size, 0);
+		if (!ext_actions)
+			return rte_flow_error_set(error, ENOMEM,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "no memory to split "
+						  "metadata flow");
+		/* Create the action list appended with copy register. */
+		ret = flow_mreg_tx_copy_prep(dev, ext_actions, actions,
+					     actions_n, error);
+		if (ret < 0)
+			goto exit;
+	}
+	/* Add the unmodified original or prefix subflow. */
+	ret = flow_create_split_inner(dev, flow, &dev_flow, attr, items,
+				      ext_actions ? ext_actions : actions,
+				      external, error);
+	if (ret < 0)
+		goto exit;
+	assert(dev_flow);
+	if (qrss_id) {
+		const struct rte_flow_attr q_attr = {
+			.group = MLX5_FLOW_MREG_ACT_TABLE_GROUP,
+			.ingress = 1,
+		};
+		/* Internal PMD action to set register. */
+		struct mlx5_rte_flow_item_tag q_tag_spec = {
+			.data = qrss_id,
+			.id = 0,
+		};
+		struct rte_flow_item q_items[] = {
+			{
+				.type = MLX5_RTE_FLOW_ITEM_TYPE_TAG,
+				.spec = &q_tag_spec,
+				.last = NULL,
+				.mask = NULL,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_END,
+			},
+		};
+		struct rte_flow_action q_actions[] = {
+			{
+				.type = qrss->type,
+				.conf = qrss->conf,
+			},
+			{
+				.type = RTE_FLOW_ACTION_TYPE_END,
+			},
+		};
+		uint64_t hash_fields = dev_flow->hash_fields;
+		/*
+		 * Put unique id in prefix flow due to it is destroyed after
+		 * prefix flow and id will be freed after there is no actual
+		 * flows with this id and identifier reallocation becomes
+		 * possible (for example, for other flows in other threads).
+		 */
+		dev_flow->qrss_id = qrss_id;
+		qrss_id = 0;
+		dev_flow = NULL;
+		ret = mlx5_flow_get_reg_id(dev, MLX5_COPY_MARK, 0, error);
+		if (ret < 0)
+			goto exit;
+		q_tag_spec.id = ret;
+		/* Add suffix subflow to execute Q/RSS. */
+		ret = flow_create_split_inner(dev, flow, &dev_flow,
+					      &q_attr, q_items, q_actions,
+					      external, error);
+		if (ret < 0)
+			goto exit;
+		assert(dev_flow);
+		dev_flow->hash_fields = hash_fields;
+	}
+
+exit:
+	/*
+	 * We do not destroy the partially created sub_flows in case of error.
+	 * These ones are included into parent flow list and will be destroyed
+	 * by flow_drv_destroy.
+	 */
+	flow_qrss_free_id(dev, qrss_id);
+	rte_free(ext_actions);
+	return ret;
+}
+
+/**
  * Split the flow to subflow set. The splitters might be linked
  * in the chain, like this:
  * flow_create_split_outer() calls:
@@ -2894,8 +3318,8 @@ flow_create_split_outer(struct rte_eth_dev *dev,
 {
 	int ret;
 
-	ret = flow_create_split_inner(dev, flow, NULL, attr, items,
-				      actions, external, error);
+	ret = flow_create_split_metadata(dev, flow, attr, items,
+					 actions, external, error);
 	assert(ret <= 0);
 	return ret;
 }

@@ -2411,6 +2411,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = mlx5_alloc_shared_dr(priv);
 		if (err)
 			goto error;
+		priv->qrss_id_pool = mlx5_flow_id_pool_alloc();
+		if (!priv->qrss_id_pool) {
+			DRV_LOG(ERR, "can't create flow id pool");
+			err = ENOMEM;
+			goto error;
+		}
 	}
 	/* Supported Verbs flow priority number detection. */
 	err = mlx5_flow_discover_priorities(eth_dev);
@@ -2463,6 +2469,8 @@ error:
 			close(priv->nl_socket_rdma);
 		if (priv->vmwa_context)
 			mlx5_vlan_vmwa_exit(priv->vmwa_context);
+		if (priv->qrss_id_pool)
+			mlx5_flow_id_pool_release(priv->qrss_id_pool);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		rte_free(priv);

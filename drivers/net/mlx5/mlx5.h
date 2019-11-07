@@ -735,6 +735,7 @@ struct mlx5_priv {
 	uint32_t nl_sn; /* Netlink message sequence number. */
 	LIST_HEAD(dbrpage, mlx5_devx_dbr_page) dbrpgs; /* Door-bell pages. */
 	struct mlx5_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
+	struct mlx5_flow_id_pool *qrss_id_pool;
 #ifndef RTE_ARCH_64
 	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
