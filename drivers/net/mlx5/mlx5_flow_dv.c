@@ -1060,6 +1060,103 @@ flow_dv_convert_action_mark(struct rte_eth_dev *dev,
 }
 
 /**
+ * Get metadata register index for specified steering domain.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] attr
+ *   Attributes of flow to determine steering domain.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   positive index on success, a negative errno value otherwise
+ *   and rte_errno is set.
+ */
+static enum modify_reg
+flow_dv_get_metadata_reg(struct rte_eth_dev *dev,
+			 const struct rte_flow_attr *attr,
+			 struct rte_flow_error *error)
+{
+	enum modify_reg reg =
+		mlx5_flow_get_reg_id(dev, attr->transfer ?
+					  MLX5_METADATA_FDB :
+					    attr->egress ?
+					    MLX5_METADATA_TX :
+					    MLX5_METADATA_RX, 0, error);
+	if (reg < 0)
+		return rte_flow_error_set(error,
+					  ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+					  NULL, "unavailable "
+					  "metadata register");
+	return reg;
+}
+
+/**
+ * Convert SET_META action to DV specification.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in,out] resource
+ *   Pointer to the modify-header resource.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
+ * @param[in] conf
+ *   Pointer to action specification.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_set_meta
+			(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_modify_hdr_resource *resource,
+			 const struct rte_flow_attr *attr,
+			 const struct rte_flow_action_set_meta *conf,
+			 struct rte_flow_error *error)
+{
+	uint32_t data = conf->data;
+	uint32_t mask = conf->mask;
+	struct rte_flow_item item = {
+		.spec = &data,
+		.mask = &mask,
+	};
+	struct field_modify_info reg_c_x[] = {
+		[1] = {0, 0, 0},
+	};
+	enum modify_reg reg = flow_dv_get_metadata_reg(dev, attr, error);
+
+	if (reg < 0)
+		return reg;
+	/*
+	 * In datapath code there is no endianness
+	 * coversions for perfromance reasons, all
+	 * pattern conversions are done in rte_flow.
+	 */
+	if (reg == REG_C_0) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		uint32_t msk_c0 = priv->sh->dv_regc0_mask;
+		uint32_t shl_c0;
+
+		assert(msk_c0);
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		shl_c0 = rte_bsf32(msk_c0);
+#else
+		shl_c0 = sizeof(msk_c0) * CHAR_BIT - rte_fls_u32(msk_c0);
+#endif
+		mask <<= shl_c0;
+		data <<= shl_c0;
+		assert(!(~msk_c0 & rte_cpu_to_be_32(mask)));
+	}
+	reg_c_x[0] = (struct field_modify_info){4, 0, reg_to_field[reg]};
+	/* The routine expects parameters in memory as big-endian ones. */
+	return flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
+					     MLX5_MODIFICATION_TYPE_SET, error);
+}
+
+/**
  * Validate MARK item.
  *
  * @param[in] dev
@@ -1149,11 +1246,14 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 			   const struct rte_flow_attr *attr,
 			   struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
 	const struct rte_flow_item_meta *spec = item->spec;
 	const struct rte_flow_item_meta *mask = item->mask;
-	const struct rte_flow_item_meta nic_mask = {
+	struct rte_flow_item_meta nic_mask = {
 		.data = UINT32_MAX
 	};
+	enum modify_reg reg;
 	int ret;
 
 	if (!spec)
@@ -1163,23 +1263,32 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 					  "data cannot be empty");
 	if (!spec->data)
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
-					  NULL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
 					  "data cannot be zero");
+	if (config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		if (!mlx5_flow_ext_mreg_supported(dev))
+			return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "extended metadata register"
+					  " isn't supported");
+		reg = flow_dv_get_metadata_reg(dev, attr, error);
+		if (reg < 0)
+			return reg;
+		if (reg == REG_B)
+			return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "match on reg_b "
+					  "isn't supported");
+		if (reg != REG_A)
+			nic_mask.data = priv->sh->dv_meta_mask;
+	}
 	if (!mask)
 		mask = &rte_flow_item_meta_mask;
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_meta),
 					error);
-	if (ret < 0)
-		return ret;
-	if (attr->ingress)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-					  NULL,
-					  "pattern not supported for ingress");
-	return 0;
+	return ret;
 }
 
 /**
@@ -1731,6 +1840,67 @@ flow_dv_validate_action_mark(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have 2 mark actions in same"
 					  " flow");
+	return 0;
+}
+
+/**
+ * Validate SET_META action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] action
+ *   Pointer to the encap action.
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] attr
+ *   Pointer to flow attributes
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_set_meta(struct rte_eth_dev *dev,
+				 const struct rte_flow_action *action,
+				 uint64_t action_flags __rte_unused,
+				 const struct rte_flow_attr *attr,
+				 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_set_meta *conf;
+	uint32_t nic_mask = UINT32_MAX;
+	enum modify_reg reg;
+
+	if (!mlx5_flow_ext_mreg_supported(dev))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "extended metadata register"
+					  " isn't supported");
+	reg = flow_dv_get_metadata_reg(dev, attr, error);
+	if (reg < 0)
+		return reg;
+	if (reg != REG_A && reg != REG_B) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+
+		nic_mask = priv->sh->dv_meta_mask;
+	}
+	if (!(action->conf))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "configuration cannot be null");
+	conf = (const struct rte_flow_action_set_meta *)action->conf;
+	if (!conf->mask)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "zero mask doesn't have any effect");
+	if (conf->mask & ~nic_mask)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "meta data must be within reg C0");
+	if (!(conf->data & conf->mask))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "zero value has no effect");
 	return 0;
 }
 
@@ -4289,6 +4459,17 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				++actions_n;
 			}
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_META:
+			ret = flow_dv_validate_action_set_meta(dev, actions,
+							       action_flags,
+							       attr, error);
+			if (ret < 0)
+				return ret;
+			/* Count all modify-header actions as one action. */
+			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
+				++actions_n;
+			action_flags |= MLX5_FLOW_ACTION_SET_META;
+			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TAG:
 			ret = flow_dv_validate_action_set_tag(dev, actions,
 							      action_flags,
@@ -5568,15 +5749,21 @@ flow_dv_translate_item_mark(struct rte_eth_dev *dev,
 /**
  * Add META item to matcher
  *
+ * @param[in] dev
+ *   The devich to configure through.
  * @param[in, out] matcher
  *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
  * @param[in] item
  *   Flow pattern to translate.
  */
 static void
-flow_dv_translate_item_meta(void *matcher, void *key,
+flow_dv_translate_item_meta(struct rte_eth_dev *dev,
+			    void *matcher, void *key,
+			    const struct rte_flow_attr *attr,
 			    const struct rte_flow_item *item)
 {
 	const struct rte_flow_item_meta *meta_m;
@@ -5586,10 +5773,34 @@ flow_dv_translate_item_meta(void *matcher, void *key,
 	if (!meta_m)
 		meta_m = &rte_flow_item_meta_mask;
 	meta_v = (const void *)item->spec;
-	if (meta_v)
-		flow_dv_match_meta_reg(matcher, key, REG_A,
-				       rte_cpu_to_be_32(meta_v->data),
-				       rte_cpu_to_be_32(meta_m->data));
+	if (meta_v) {
+		enum modify_reg reg;
+		uint32_t value = meta_v->data;
+		uint32_t mask = meta_m->data;
+
+		reg = flow_dv_get_metadata_reg(dev, attr, NULL);
+		if (reg < 0)
+			return;
+		/*
+		 * In datapath code there is no endianness
+		 * coversions for perfromance reasons, all
+		 * pattern conversions are done in rte_flow.
+		 */
+		value = rte_cpu_to_be_32(value);
+		mask = rte_cpu_to_be_32(mask);
+		if (reg == REG_C_0) {
+			struct mlx5_priv *priv = dev->data->dev_private;
+			uint32_t msk_c0 = priv->sh->dv_regc0_mask;
+			uint32_t shl_c0 = rte_bsf32(msk_c0);
+
+			msk_c0 = rte_cpu_to_be_32(msk_c0);
+			value <<= shl_c0;
+			mask <<= shl_c0;
+			assert(msk_c0);
+			assert(!(~msk_c0 & mask));
+		}
+		flow_dv_match_meta_reg(matcher, key, reg, value, mask);
+	}
 }
 
 /**
@@ -6357,6 +6568,14 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.tag_resource->action;
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_META:
+			if (flow_dv_convert_action_set_meta
+				(dev, &mhdr_res, attr,
+				 (const struct rte_flow_action_set_meta *)
+				  actions->conf, error))
+				return -rte_errno;
+			action_flags |= MLX5_FLOW_ACTION_SET_META;
+			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TAG:
 			if (flow_dv_convert_action_set_tag
 				(dev, &mhdr_res,
@@ -6811,8 +7030,8 @@ cnt_err:
 			last_item = MLX5_FLOW_ITEM_MARK;
 			break;
 		case RTE_FLOW_ITEM_TYPE_META:
-			flow_dv_translate_item_meta(match_mask, match_value,
-						    items);
+			flow_dv_translate_item_meta(dev, match_mask,
+						    match_value, attr, items);
 			last_item = MLX5_FLOW_ITEM_METADATA;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ICMP:
