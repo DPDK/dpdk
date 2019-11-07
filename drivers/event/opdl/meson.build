@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
 
+allow_experimental_apis = true
 sources = files(
 	'opdl_evdev.c',
 	'opdl_evdev_init.c',
