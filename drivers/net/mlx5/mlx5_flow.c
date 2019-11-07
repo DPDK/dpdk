@@ -2804,6 +2804,103 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 }
 
 /**
+ * The last stage of splitting chain, just creates the subflow
+ * without any modification.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Parent flow structure pointer.
+ * @param[in, out] sub_flow
+ *   Pointer to return the created subflow, may be NULL.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] items
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   0 on success, negative value otherwise
+ */
+static int
+flow_create_split_inner(struct rte_eth_dev *dev,
+			struct rte_flow *flow,
+			struct mlx5_flow **sub_flow,
+			const struct rte_flow_attr *attr,
+			const struct rte_flow_item items[],
+			const struct rte_flow_action actions[],
+			bool external, struct rte_flow_error *error)
+{
+	struct mlx5_flow *dev_flow;
+
+	dev_flow = flow_drv_prepare(flow, attr, items, actions, error);
+	if (!dev_flow)
+		return -rte_errno;
+	dev_flow->flow = flow;
+	dev_flow->external = external;
+	/* Subflow object was created, we must include one in the list. */
+	LIST_INSERT_HEAD(&flow->dev_flows, dev_flow, next);
+	if (sub_flow)
+		*sub_flow = dev_flow;
+	return flow_drv_translate(dev, dev_flow, attr, items, actions, error);
+}
+
+/**
+ * Split the flow to subflow set. The splitters might be linked
+ * in the chain, like this:
+ * flow_create_split_outer() calls:
+ *   flow_create_split_meter() calls:
+ *     flow_create_split_metadata(meter_subflow_0) calls:
+ *       flow_create_split_inner(metadata_subflow_0)
+ *       flow_create_split_inner(metadata_subflow_1)
+ *       flow_create_split_inner(metadata_subflow_2)
+ *     flow_create_split_metadata(meter_subflow_1) calls:
+ *       flow_create_split_inner(metadata_subflow_0)
+ *       flow_create_split_inner(metadata_subflow_1)
+ *       flow_create_split_inner(metadata_subflow_2)
+ *
+ * This provide flexible way to add new levels of flow splitting.
+ * The all of successfully created subflows are included to the
+ * parent flow dev_flow list.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Parent flow structure pointer.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] items
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   0 on success, negative value otherwise
+ */
+static int
+flow_create_split_outer(struct rte_eth_dev *dev,
+			struct rte_flow *flow,
+			const struct rte_flow_attr *attr,
+			const struct rte_flow_item items[],
+			const struct rte_flow_action actions[],
+			bool external, struct rte_flow_error *error)
+{
+	int ret;
+
+	ret = flow_create_split_inner(dev, flow, NULL, attr, items,
+				      actions, external, error);
+	assert(ret <= 0);
+	return ret;
+}
+
+/**
  * Create a flow and add it to @p list.
  *
  * @param dev
@@ -2921,16 +3018,15 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		buf->entry[0].pattern = (void *)(uintptr_t)items;
 	}
 	for (i = 0; i < buf->entries; ++i) {
-		dev_flow = flow_drv_prepare(flow, attr, buf->entry[i].pattern,
-					    p_actions_rx, error);
-		if (!dev_flow)
-			goto error;
-		dev_flow->flow = flow;
-		dev_flow->external = external;
-		LIST_INSERT_HEAD(&flow->dev_flows, dev_flow, next);
-		ret = flow_drv_translate(dev, dev_flow, attr,
-					 buf->entry[i].pattern,
-					 p_actions_rx, error);
+		/*
+		 * The splitter may create multiple dev_flows,
+		 * depending on configuration. In the simplest
+		 * case it just creates unmodified original flow.
+		 */
+		ret = flow_create_split_outer(dev, flow, attr,
+					      buf->entry[i].pattern,
+					      p_actions_rx, external,
+					      error);
 		if (ret < 0)
 			goto error;
 	}
