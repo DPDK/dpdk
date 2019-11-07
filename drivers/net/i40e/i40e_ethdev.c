@@ -8480,7 +8480,7 @@ static int
 i40e_add_vxlan_port(struct i40e_pf *pf, uint16_t port, int udp_type)
 {
 	int  idx, ret;
-	uint8_t filter_idx;
+	uint8_t filter_idx = 0;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 
 	idx = i40e_get_vxlan_port_idx(pf, port);
