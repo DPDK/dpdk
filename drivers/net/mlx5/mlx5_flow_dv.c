@@ -4932,6 +4932,78 @@ flow_dv_translate_item_mpls(void *matcher, void *key,
 }
 
 /**
+ * Add metadata register item to matcher
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] reg_type
+ *   Type of device metadata register
+ * @param[in] value
+ *   Register value
+ * @param[in] mask
+ *   Register mask
+ */
+static void
+flow_dv_match_meta_reg(void *matcher, void *key,
+		       enum modify_reg reg_type,
+		       uint32_t data, uint32_t mask)
+{
+	void *misc2_m =
+		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_2);
+	void *misc2_v =
+		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
+
+	data &= mask;
+	switch (reg_type) {
+	case REG_A:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_a, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_a, data);
+		break;
+	case REG_B:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_b, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_b, data);
+		break;
+	case REG_C_0:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_0, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_0, data);
+		break;
+	case REG_C_1:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_1, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_1, data);
+		break;
+	case REG_C_2:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_2, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_2, data);
+		break;
+	case REG_C_3:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_3, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_3, data);
+		break;
+	case REG_C_4:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_4, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_4, data);
+		break;
+	case REG_C_5:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_5, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_5, data);
+		break;
+	case REG_C_6:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_6, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_6, data);
+		break;
+	case REG_C_7:
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_7, mask);
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_7, data);
+		break;
+	default:
+		assert(false);
+		break;
+	}
+}
+
+/**
  * Add META item to matcher
  *
  * @param[in, out] matcher
@@ -4949,21 +5021,15 @@ flow_dv_translate_item_meta(void *matcher, void *key,
 {
 	const struct rte_flow_item_meta *meta_m;
 	const struct rte_flow_item_meta *meta_v;
-	void *misc2_m =
-		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_2);
-	void *misc2_v =
-		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
 
 	meta_m = (const void *)item->mask;
 	if (!meta_m)
 		meta_m = &rte_flow_item_meta_mask;
 	meta_v = (const void *)item->spec;
-	if (meta_v) {
-		MLX5_SET(fte_match_set_misc2, misc2_m,
-			 metadata_reg_a, meta_m->data);
-		MLX5_SET(fte_match_set_misc2, misc2_v,
-			 metadata_reg_a, meta_v->data & meta_m->data);
-	}
+	if (meta_v)
+		flow_dv_match_meta_reg(matcher, key, REG_A,
+				       rte_cpu_to_be_32(meta_v->data),
+				       rte_cpu_to_be_32(meta_m->data));
 }
 
 /**
@@ -4980,13 +5046,7 @@ static void
 flow_dv_translate_item_meta_vport(void *matcher, void *key,
 				  uint32_t value, uint32_t mask)
 {
-	void *misc2_m =
-		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_2);
-	void *misc2_v =
-		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
-
-	MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_0, mask);
-	MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_0, value);
+	flow_dv_match_meta_reg(matcher, key, REG_C_0, value, mask);
 }
 
 /**
@@ -5000,81 +5060,14 @@ flow_dv_translate_item_meta_vport(void *matcher, void *key,
  *   Flow pattern to translate.
  */
 static void
-flow_dv_translate_item_tag(void *matcher, void *key,
-			   const struct rte_flow_item *item)
+flow_dv_translate_mlx5_item_tag(void *matcher, void *key,
+				const struct rte_flow_item *item)
 {
-	void *misc2_m =
-		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_2);
-	void *misc2_v =
-		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
 	const struct mlx5_rte_flow_item_tag *tag_v = item->spec;
 	const struct mlx5_rte_flow_item_tag *tag_m = item->mask;
 	enum modify_reg reg = tag_v->id;
-	rte_be32_t value = tag_v->data;
-	rte_be32_t mask = tag_m->data;
 
-	switch (reg) {
-	case REG_A:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_a,
-				rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_a,
-				rte_be_to_cpu_32(value));
-		break;
-	case REG_B:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_b,
-				 rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_b,
-				rte_be_to_cpu_32(value));
-		break;
-	case REG_C_0:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_0,
-				 rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_0,
-				rte_be_to_cpu_32(value));
-		break;
-	case REG_C_1:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_1,
-				 rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_1,
-				rte_be_to_cpu_32(value));
-		break;
-	case REG_C_2:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_2,
-				 rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_2,
-				rte_be_to_cpu_32(value));
-		break;
-	case REG_C_3:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_3,
-				 rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_3,
-				rte_be_to_cpu_32(value));
-		break;
-	case REG_C_4:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_4,
-				 rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_4,
-				rte_be_to_cpu_32(value));
-		break;
-	case REG_C_5:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_5,
-				 rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_5,
-				rte_be_to_cpu_32(value));
-		break;
-	case REG_C_6:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_6,
-				 rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_6,
-				rte_be_to_cpu_32(value));
-		break;
-	case REG_C_7:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_7,
-				 rte_be_to_cpu_32(mask));
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_7,
-				rte_be_to_cpu_32(value));
-		break;
-	}
+	flow_dv_match_meta_reg(matcher, key, reg, tag_v->data, tag_m->data);
 }
 
 /**
@@ -6206,8 +6199,8 @@ cnt_err:
 			last_item = MLX5_FLOW_LAYER_ICMP6;
 			break;
 		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
-			flow_dv_translate_item_tag(match_mask, match_value,
-						   items);
+			flow_dv_translate_mlx5_item_tag(match_mask,
+							match_value, items);
 			last_item = MLX5_FLOW_ITEM_TAG;
 			break;
 		case MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE:
