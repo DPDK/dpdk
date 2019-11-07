@@ -337,7 +337,7 @@ tim_add_entry_brst(struct otx2_tim_ring * const tim_ring,
 		   const struct otx2_tim_ent *ents,
 		   const uint16_t nb_timers, const uint8_t flags)
 {
-	struct otx2_tim_ent *chunk;
+	struct otx2_tim_ent *chunk = NULL;
 	struct otx2_tim_bkt *bkt;
 	uint16_t chunk_remainder;
 	uint16_t index = 0;
