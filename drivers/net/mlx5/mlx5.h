@@ -569,8 +569,9 @@ struct mlx5_flow_tbl_resource {
 #define MLX5_HAIRPIN_TX_TABLE (UINT16_MAX - 1)
 /* Reserve the last two tables for metadata register copy. */
 #define MLX5_FLOW_MREG_ACT_TABLE_GROUP (MLX5_MAX_TABLES - 1)
-#define MLX5_FLOW_MREG_CP_TABLE_GROUP \
-	(MLX5_FLOW_MREG_ACT_TABLE_GROUP - 1)
+#define MLX5_FLOW_MREG_CP_TABLE_GROUP (MLX5_MAX_TABLES - 2)
+/* Tables for metering splits should be added here. */
+#define MLX5_MAX_TABLES_EXTERNAL (MLX5_MAX_TABLES - 3)
 #define MLX5_MAX_TABLES_FDB UINT16_MAX
 
 #define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
@@ -736,6 +737,8 @@ struct mlx5_priv {
 	LIST_HEAD(dbrpage, mlx5_devx_dbr_page) dbrpgs; /* Door-bell pages. */
 	struct mlx5_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
 	struct mlx5_flow_id_pool *qrss_id_pool;
+	struct mlx5_hlist *mreg_cp_tbl;
+	/* Hash table of Rx metadata register copy table. */
 #ifndef RTE_ARCH_64
 	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];

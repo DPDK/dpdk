@@ -4086,8 +4086,11 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 					  NULL,
 					  "groups are not supported");
 #else
-	uint32_t max_group = attributes->transfer ? MLX5_MAX_TABLES_FDB :
-						    MLX5_MAX_TABLES;
+	uint32_t max_group = attributes->transfer ?
+			     MLX5_MAX_TABLES_FDB :
+				external ?
+				MLX5_MAX_TABLES_EXTERNAL :
+				MLX5_MAX_TABLES;
 	uint32_t table;
 	int ret;
 
@@ -4721,6 +4724,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						MLX5_FLOW_ACTION_DEC_TCP_ACK;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_TAG:
+		case MLX5_RTE_FLOW_ACTION_TYPE_MARK:
 		case MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG:
 			break;
 		default:
@@ -6557,6 +6561,8 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 				action_flags |= MLX5_FLOW_ACTION_MARK_EXT;
 				break;
 			}
+			/* Fall-through */
+		case MLX5_RTE_FLOW_ACTION_TYPE_MARK:
 			/* Legacy (non-extensive) MARK action. */
 			tag_resource.tag = mlx5_flow_mark_set
 			      (((const struct rte_flow_action_mark *)

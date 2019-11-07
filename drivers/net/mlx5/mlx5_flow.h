@@ -38,6 +38,7 @@ enum mlx5_rte_flow_item_type {
 enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_END = INT_MIN,
 	MLX5_RTE_FLOW_ACTION_TYPE_TAG,
+	MLX5_RTE_FLOW_ACTION_TYPE_MARK,
 	MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 };
 
@@ -417,6 +418,21 @@ struct mlx5_flow_dv_push_vlan_action_resource {
 	rte_be32_t vlan_tag; /**< VLAN tag value. */
 };
 
+/* Metadata register copy table entry. */
+struct mlx5_flow_mreg_copy_resource {
+	/*
+	 * Hash list entry for copy table.
+	 *  - Key is 32/64-bit MARK action ID.
+	 *  - MUST be the first entry.
+	 */
+	struct mlx5_hlist_entry hlist_ent;
+	LIST_ENTRY(mlx5_flow_mreg_copy_resource) next;
+	/* List entry for device flows. */
+	uint32_t refcnt; /* Reference counter. */
+	uint32_t appcnt; /* Apply/Remove counter. */
+	struct rte_flow *flow; /* Built flow for copy. */
+};
+
 /*
  * Max number of actions per DV flow.
  * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
@@ -510,10 +526,13 @@ struct rte_flow {
 	enum mlx5_flow_drv_type drv_type; /**< Driver type. */
 	struct mlx5_flow_rss rss; /**< RSS context. */
 	struct mlx5_flow_counter *counter; /**< Holds flow counter. */
+	struct mlx5_flow_mreg_copy_resource *mreg_copy;
+	/**< pointer to metadata register copy table resource. */
 	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
 	/**< Device flows that are part of the flow. */
 	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */
 	uint32_t hairpin_flow_id; /**< The flow id used for hairpin. */
+	uint32_t copy_applied:1; /**< The MARK copy Flow os applied. */
 };
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,

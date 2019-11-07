@@ -675,7 +675,17 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 			container_of((*priv->rxqs)[idx],
 				     struct mlx5_rxq_ctrl, rxq);
 
-		if (mark) {
+		/*
+		 * To support metadata register copy on Tx loopback,
+		 * this must be always enabled (metadata may arive
+		 * from other port - not from local flows only.
+		 */
+		if (priv->config.dv_flow_en &&
+		    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+		    mlx5_flow_ext_mreg_supported(dev)) {
+			rxq_ctrl->rxq.mark = 1;
+			rxq_ctrl->flow_mark_n = 1;
+		} else if (mark) {
 			rxq_ctrl->rxq.mark = 1;
 			rxq_ctrl->flow_mark_n++;
 		}
@@ -739,7 +749,12 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 			container_of((*priv->rxqs)[idx],
 				     struct mlx5_rxq_ctrl, rxq);
 
-		if (mark) {
+		if (priv->config.dv_flow_en &&
+		    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+		    mlx5_flow_ext_mreg_supported(dev)) {
+			rxq_ctrl->rxq.mark = 1;
+			rxq_ctrl->flow_mark_n = 1;
+		} else if (mark) {
 			rxq_ctrl->flow_mark_n--;
 			rxq_ctrl->rxq.mark = !!rxq_ctrl->flow_mark_n;
 		}
@@ -2749,6 +2764,398 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* Declare flow create/destroy prototype in advance. */
+static struct rte_flow *
+flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_item items[],
+		 const struct rte_flow_action actions[],
+		 bool external, struct rte_flow_error *error);
+
+static void
+flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
+		  struct rte_flow *flow);
+
+/**
+ * Add a flow of copying flow metadata registers in RX_CP_TBL.
+ *
+ * As mark_id is unique, if there's already a registered flow for the mark_id,
+ * return by increasing the reference counter of the resource. Otherwise, create
+ * the resource (mcp_res) and flow.
+ *
+ * Flow looks like,
+ *   - If ingress port is ANY and reg_c[1] is mark_id,
+ *     flow_tag := mark_id, reg_b := reg_c[0] and jump to RX_ACT_TBL.
+ *
+ * For default flow (zero mark_id), flow is like,
+ *   - If ingress port is ANY,
+ *     reg_b := reg_c[0] and jump to RX_ACT_TBL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param mark_id
+ *   ID of MARK action, zero means default flow for META.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   Associated resource on success, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_flow_mreg_copy_resource *
+flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
+			  struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_attr attr = {
+		.group = MLX5_FLOW_MREG_CP_TABLE_GROUP,
+		.ingress = 1,
+	};
+	struct mlx5_rte_flow_item_tag tag_spec = {
+		.data = mark_id,
+	};
+	struct rte_flow_item items[] = {
+		[1] = { .type = RTE_FLOW_ITEM_TYPE_END, },
+	};
+	struct rte_flow_action_mark ftag = {
+		.id = mark_id,
+	};
+	struct mlx5_flow_action_copy_mreg cp_mreg = {
+		.dst = REG_B,
+		.src = 0,
+	};
+	struct rte_flow_action_jump jump = {
+		.group = MLX5_FLOW_MREG_ACT_TABLE_GROUP,
+	};
+	struct rte_flow_action actions[] = {
+		[3] = { .type = RTE_FLOW_ACTION_TYPE_END, },
+	};
+	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	int ret;
+
+	/* Fill the register fileds in the flow. */
+	ret = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
+	if (ret < 0)
+		return NULL;
+	tag_spec.id = ret;
+	ret = mlx5_flow_get_reg_id(dev, MLX5_METADATA_RX, 0, error);
+	if (ret < 0)
+		return NULL;
+	cp_mreg.src = ret;
+	/* Check if already registered. */
+	assert(priv->mreg_cp_tbl);
+	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl, mark_id);
+	if (mcp_res) {
+		/* For non-default rule. */
+		if (mark_id)
+			mcp_res->refcnt++;
+		assert(mark_id || mcp_res->refcnt == 1);
+		return mcp_res;
+	}
+	/* Provide the full width of FLAG specific value. */
+	if (mark_id == (priv->sh->dv_regc0_mask & MLX5_FLOW_MARK_DEFAULT))
+		tag_spec.data = MLX5_FLOW_MARK_DEFAULT;
+	/* Build a new flow. */
+	if (mark_id) {
+		items[0] = (struct rte_flow_item){
+			.type = MLX5_RTE_FLOW_ITEM_TYPE_TAG,
+			.spec = &tag_spec,
+		};
+		items[1] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		};
+		actions[0] = (struct rte_flow_action){
+			.type = MLX5_RTE_FLOW_ACTION_TYPE_MARK,
+			.conf = &ftag,
+		};
+		actions[1] = (struct rte_flow_action){
+			.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+			.conf = &cp_mreg,
+		};
+		actions[2] = (struct rte_flow_action){
+			.type = RTE_FLOW_ACTION_TYPE_JUMP,
+			.conf = &jump,
+		};
+		actions[3] = (struct rte_flow_action){
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		};
+	} else {
+		/* Default rule, wildcard match. */
+		attr.priority = MLX5_FLOW_PRIO_RSVD;
+		items[0] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		};
+		actions[0] = (struct rte_flow_action){
+			.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+			.conf = &cp_mreg,
+		};
+		actions[1] = (struct rte_flow_action){
+			.type = RTE_FLOW_ACTION_TYPE_JUMP,
+			.conf = &jump,
+		};
+		actions[2] = (struct rte_flow_action){
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		};
+	}
+	/* Build a new entry. */
+	mcp_res = rte_zmalloc(__func__, sizeof(*mcp_res), 0);
+	if (!mcp_res) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	/*
+	 * The copy Flows are not included in any list. There
+	 * ones are referenced from other Flows and can not
+	 * be applied, removed, deleted in ardbitrary order
+	 * by list traversing.
+	 */
+	mcp_res->flow = flow_list_create(dev, NULL, &attr, items,
+					 actions, false, error);
+	if (!mcp_res->flow)
+		goto error;
+	mcp_res->refcnt++;
+	mcp_res->hlist_ent.key = mark_id;
+	ret = mlx5_hlist_insert(priv->mreg_cp_tbl,
+				&mcp_res->hlist_ent);
+	assert(!ret);
+	if (ret)
+		goto error;
+	return mcp_res;
+error:
+	if (mcp_res->flow)
+		flow_list_destroy(dev, NULL, mcp_res->flow);
+	rte_free(mcp_res);
+	return NULL;
+}
+
+/**
+ * Release flow in RX_CP_TBL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @flow
+ *   Parent flow for wich copying is provided.
+ */
+static void
+flow_mreg_del_copy_action(struct rte_eth_dev *dev,
+			  struct rte_flow *flow)
+{
+	struct mlx5_flow_mreg_copy_resource *mcp_res = flow->mreg_copy;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!mcp_res || !priv->mreg_cp_tbl)
+		return;
+	if (flow->copy_applied) {
+		assert(mcp_res->appcnt);
+		flow->copy_applied = 0;
+		--mcp_res->appcnt;
+		if (!mcp_res->appcnt)
+			flow_drv_remove(dev, mcp_res->flow);
+	}
+	/*
+	 * We do not check availability of metadata registers here,
+	 * because copy resources are allocated in this case.
+	 */
+	if (--mcp_res->refcnt)
+		return;
+	assert(mcp_res->flow);
+	flow_list_destroy(dev, NULL, mcp_res->flow);
+	mlx5_hlist_remove(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
+	rte_free(mcp_res);
+	flow->mreg_copy = NULL;
+}
+
+/**
+ * Start flow in RX_CP_TBL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @flow
+ *   Parent flow for wich copying is provided.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_mreg_start_copy_action(struct rte_eth_dev *dev,
+			    struct rte_flow *flow)
+{
+	struct mlx5_flow_mreg_copy_resource *mcp_res = flow->mreg_copy;
+	int ret;
+
+	if (!mcp_res || flow->copy_applied)
+		return 0;
+	if (!mcp_res->appcnt) {
+		ret = flow_drv_apply(dev, mcp_res->flow, NULL);
+		if (ret)
+			return ret;
+	}
+	++mcp_res->appcnt;
+	flow->copy_applied = 1;
+	return 0;
+}
+
+/**
+ * Stop flow in RX_CP_TBL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @flow
+ *   Parent flow for wich copying is provided.
+ */
+static void
+flow_mreg_stop_copy_action(struct rte_eth_dev *dev,
+			   struct rte_flow *flow)
+{
+	struct mlx5_flow_mreg_copy_resource *mcp_res = flow->mreg_copy;
+
+	if (!mcp_res || !flow->copy_applied)
+		return;
+	assert(mcp_res->appcnt);
+	--mcp_res->appcnt;
+	flow->copy_applied = 0;
+	if (!mcp_res->appcnt)
+		flow_drv_remove(dev, mcp_res->flow);
+}
+
+/**
+ * Remove the default copy action from RX_CP_TBL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+static void
+flow_mreg_del_default_copy_action(struct rte_eth_dev *dev)
+{
+	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	/* Check if default flow is registered. */
+	if (!priv->mreg_cp_tbl)
+		return;
+	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl, 0ULL);
+	if (!mcp_res)
+		return;
+	assert(mcp_res->flow);
+	flow_list_destroy(dev, NULL, mcp_res->flow);
+	mlx5_hlist_remove(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
+	rte_free(mcp_res);
+}
+
+/**
+ * Add the default copy action in in RX_CP_TBL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 for success, negative value otherwise and rte_errno is set.
+ */
+static int
+flow_mreg_add_default_copy_action(struct rte_eth_dev *dev,
+				  struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_mreg_copy_resource *mcp_res;
+
+	/* Check whether extensive metadata feature is engaged. */
+	if (!priv->config.dv_flow_en ||
+	    priv->config.dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
+	    !mlx5_flow_ext_mreg_supported(dev) ||
+	    !priv->sh->dv_regc0_mask)
+		return 0;
+	mcp_res = flow_mreg_add_copy_action(dev, 0, error);
+	if (!mcp_res)
+		return -rte_errno;
+	return 0;
+}
+
+/**
+ * Add a flow of copying flow metadata registers in RX_CP_TBL.
+ *
+ * All the flow having Q/RSS action should be split by
+ * flow_mreg_split_qrss_prep() to pass by RX_CP_TBL. A flow in the RX_CP_TBL
+ * performs the following,
+ *   - CQE->flow_tag := reg_c[1] (MARK)
+ *   - CQE->flow_table_metadata (reg_b) := reg_c[0] (META)
+ * As CQE's flow_tag is not a register, it can't be simply copied from reg_c[1]
+ * but there should be a flow per each MARK ID set by MARK action.
+ *
+ * For the aforementioned reason, if there's a MARK action in flow's action
+ * list, a corresponding flow should be added to the RX_CP_TBL in order to copy
+ * the MARK ID to CQE's flow_tag like,
+ *   - If reg_c[1] is mark_id,
+ *     flow_tag := mark_id, reg_b := reg_c[0] and jump to RX_ACT_TBL.
+ *
+ * For SET_META action which stores value in reg_c[0], as the destination is
+ * also a flow metadata register (reg_b), adding a default flow is enough. Zero
+ * MARK ID means the default flow. The default flow looks like,
+ *   - For all flow, reg_b := reg_c[0] and jump to RX_ACT_TBL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param flow
+ *   Pointer to flow structure.
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+flow_mreg_update_copy_table(struct rte_eth_dev *dev,
+			    struct rte_flow *flow,
+			    const struct rte_flow_action *actions,
+			    struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	const struct rte_flow_action_mark *mark;
+
+	/* Check whether extensive metadata feature is engaged. */
+	if (!config->dv_flow_en ||
+	    config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
+	    !mlx5_flow_ext_mreg_supported(dev) ||
+	    !priv->sh->dv_regc0_mask)
+		return 0;
+	/* Find MARK action. */
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+			mcp_res = flow_mreg_add_copy_action
+				(dev, MLX5_FLOW_MARK_DEFAULT, error);
+			if (!mcp_res)
+				return -rte_errno;
+			flow->mreg_copy = mcp_res;
+			if (dev->data->dev_started) {
+				mcp_res->appcnt++;
+				flow->copy_applied = 1;
+			}
+			return 0;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			mark = (const struct rte_flow_action_mark *)
+				actions->conf;
+			mcp_res =
+				flow_mreg_add_copy_action(dev, mark->id, error);
+			if (!mcp_res)
+				return -rte_errno;
+			flow->mreg_copy = mcp_res;
+			if (dev->data->dev_started) {
+				mcp_res->appcnt++;
+				flow->copy_applied = 1;
+			}
+			return 0;
+		default:
+			break;
+		}
+	}
+	return 0;
+}
+
 #define MLX5_MAX_SPLIT_ACTIONS 24
 #define MLX5_MAX_SPLIT_ITEMS 24
 
@@ -3472,6 +3879,22 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		if (ret < 0)
 			goto error;
 	}
+	/*
+	 * Update the metadata register copy table. If extensive
+	 * metadata feature is enabled and registers are supported
+	 * we might create the extra rte_flow for each unique
+	 * MARK/FLAG action ID.
+	 *
+	 * The table is updated for ingress Flows only, because
+	 * the egress Flows belong to the different device and
+	 * copy table should be updated in peer NIC Rx domain.
+	 */
+	if (attr->ingress &&
+	    (external || attr->group != MLX5_FLOW_MREG_CP_TABLE_GROUP)) {
+		ret = flow_mreg_update_copy_table(dev, flow, actions, error);
+		if (ret)
+			goto error;
+	}
 	if (dev->data->dev_started) {
 		ret = flow_drv_apply(dev, flow, error);
 		if (ret < 0)
@@ -3487,6 +3910,8 @@ error_before_flow:
 				     hairpin_id);
 	return NULL;
 error:
+	assert(flow);
+	flow_mreg_del_copy_action(dev, flow);
 	ret = rte_errno; /* Save rte_errno before cleanup. */
 	if (flow->hairpin_flow_id)
 		mlx5_flow_id_release(priv->sh->flow_id_pool,
@@ -3595,6 +4020,7 @@ flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 	flow_drv_destroy(dev, flow);
 	if (list)
 		TAILQ_REMOVE(list, flow, next);
+	flow_mreg_del_copy_action(dev, flow);
 	rte_free(flow->fdir);
 	rte_free(flow);
 }
@@ -3631,8 +4057,11 @@ mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 {
 	struct rte_flow *flow;
 
-	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next)
+	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next) {
 		flow_drv_remove(dev, flow);
+		flow_mreg_stop_copy_action(dev, flow);
+	}
+	flow_mreg_del_default_copy_action(dev);
 	flow_rxq_flags_clear(dev);
 }
 
@@ -3654,7 +4083,15 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 	struct rte_flow_error error;
 	int ret = 0;
 
+	/* Make sure default copy action (reg_c[0] -> reg_b) is created. */
+	ret = flow_mreg_add_default_copy_action(dev, &error);
+	if (ret < 0)
+		return -rte_errno;
+	/* Apply Flows created by application. */
 	TAILQ_FOREACH(flow, list, next) {
+		ret = flow_mreg_start_copy_action(dev, flow);
+		if (ret < 0)
+			goto error;
 		ret = flow_drv_apply(dev, flow, &error);
 		if (ret < 0)
 			goto error;

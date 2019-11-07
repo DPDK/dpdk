@@ -1039,6 +1039,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->txqs = NULL;
 	}
 	mlx5_proc_priv_uninit(dev);
+	if (priv->mreg_cp_tbl)
+		mlx5_hlist_destroy(priv->mreg_cp_tbl, NULL, NULL);
 	mlx5_mprq_free_mp(dev);
 	mlx5_free_shared_dr(priv);
 	if (priv->rss_conf.rss_key != NULL)
@@ -2458,9 +2460,22 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			goto error;
 		}
 	}
+	if (priv->config.dv_flow_en &&
+	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+	    mlx5_flow_ext_mreg_supported(eth_dev) &&
+	    priv->sh->dv_regc0_mask) {
+		priv->mreg_cp_tbl = mlx5_hlist_create(MLX5_FLOW_MREG_HNAME,
+						      MLX5_FLOW_MREG_HTABLE_SZ);
+		if (!priv->mreg_cp_tbl) {
+			err = ENOMEM;
+			goto error;
+		}
+	}
 	return eth_dev;
 error:
 	if (priv) {
+		if (priv->mreg_cp_tbl)
+			mlx5_hlist_destroy(priv->mreg_cp_tbl, NULL, NULL);
 		if (priv->sh)
 			mlx5_free_shared_dr(priv);
 		if (priv->nl_socket_route >= 0)

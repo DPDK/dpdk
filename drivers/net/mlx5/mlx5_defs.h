@@ -145,6 +145,10 @@
 #define MLX5_XMETA_MODE_META16 1
 #define MLX5_XMETA_MODE_META32 2
 
+/* Size of the simple hash table for metadata register table. */
+#define MLX5_FLOW_MREG_HTABLE_SZ 4096
+#define MLX5_FLOW_MREG_HNAME "MARK_COPY_TABLE"
+
 /* Definition of static_assert found in /usr/include/assert.h */
 #ifndef HAVE_STATIC_ASSERT
 #define static_assert _Static_assert
