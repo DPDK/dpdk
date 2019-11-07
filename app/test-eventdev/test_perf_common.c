@@ -439,7 +439,7 @@ perf_event_timer_adapter_setup(struct test_perf *t)
 
 		if (!(adapter_info.caps &
 				RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT)) {
-			uint32_t service_id;
+			uint32_t service_id = -1U;
 
 			rte_event_timer_adapter_service_id_get(wl,
 					&service_id);

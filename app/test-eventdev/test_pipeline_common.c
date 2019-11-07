@@ -326,7 +326,7 @@ pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 		}
 
 		if (!(cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT)) {
-			uint32_t service_id;
+			uint32_t service_id = -1U;
 
 			rte_event_eth_rx_adapter_service_id_get(prod,
 					&service_id);
@@ -378,7 +378,7 @@ pipeline_event_tx_adapter_setup(struct evt_options *opt,
 		}
 
 		if (!(cap & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT)) {
-			uint32_t service_id;
+			uint32_t service_id = -1U;
 
 			rte_event_eth_tx_adapter_service_id_get(consm,
 					&service_id);
