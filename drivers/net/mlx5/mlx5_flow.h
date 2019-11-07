@@ -348,8 +348,13 @@ struct mlx5_flow_dv_tag_resource {
 	uint32_t tag; /**< the tag value. */
 };
 
-/* Number of modification commands. */
-#define MLX5_MODIFY_NUM 8
+/*
+ * Number of modification commands.
+ * If extensive metadata registers are supported
+ * the maximal actions amount is 16 and 8 otherwise.
+ */
+#define MLX5_MODIFY_NUM 16
+#define MLX5_MODIFY_NUM_NO_MREG 8
 
 /* Modify resource structure */
 struct mlx5_flow_dv_modify_hdr_resource {

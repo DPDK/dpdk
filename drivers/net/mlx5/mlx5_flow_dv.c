@@ -2749,6 +2749,27 @@ flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
 }
 
 /**
+ * Get the maximum number of modify header actions.
+ *
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
+ *
+ * @return
+ *   Max number of modify header actions device can support.
+ */
+static unsigned int
+flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev)
+{
+	/*
+	 * There's no way to directly query the max cap. Although it has to be
+	 * acquried by iterative trial, it is a safe assumption that more
+	 * actions are supported by FW if extensive metadata register is
+	 * supported.
+	 */
+	return mlx5_flow_ext_mreg_supported(dev) ? MLX5_MODIFY_NUM :
+						   MLX5_MODIFY_NUM_NO_MREG;
+}
+/**
  * Find existing modify-header resource or create and register a new one.
  *
  * @param dev[in, out]
@@ -2775,6 +2796,10 @@ flow_dv_modify_hdr_resource_register
 	struct mlx5_flow_dv_modify_hdr_resource *cache_resource;
 	struct mlx5dv_dr_domain *ns;
 
+	if (resource->actions_num > flow_dv_modify_hdr_action_max(dev))
+		return rte_flow_error_set(error, EOVERFLOW,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "too many modify header items");
 	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
 		ns = sh->fdb_domain;
 	else if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX)
