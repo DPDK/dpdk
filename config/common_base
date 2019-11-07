@@ -110,6 +110,11 @@ CONFIG_RTE_MAX_VFIO_CONTAINERS=64
 CONFIG_RTE_MALLOC_DEBUG=n
 CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES=n
 CONFIG_RTE_USE_LIBBSD=n
+# Use WFE instructions to implement the rte_wait_for_equal_xxx APIs,
+# calling these APIs put the cores in low power state while waiting
+# for the memory address to become equal to the expected value.
+# This is supported only by aarch64.
+CONFIG_RTE_ARM_USE_WFE=n
 
 #
 # Recognize/ignore the AVX/AVX512 CPU flags for performance/power testing.

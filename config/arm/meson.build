@@ -26,6 +26,7 @@ flags_common_default = [
 	['RTE_LIBRTE_AVP_PMD', false],
 
 	['RTE_SCHED_VECTOR', false],
+	['RTE_ARM_USE_WFE', false],
 ]
 
 flags_generic = [
