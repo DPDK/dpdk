@@ -863,7 +863,7 @@ flow_dv_convert_action_set_reg
 			 const struct rte_flow_action *action,
 			 struct rte_flow_error *error)
 {
-	const struct mlx5_rte_flow_action_set_tag *conf = (action->conf);
+	const struct mlx5_rte_flow_action_set_tag *conf = action->conf;
 	struct mlx5_modification_cmd *actions = resource->actions;
 	uint32_t i = resource->actions_num;
 
@@ -882,6 +882,47 @@ flow_dv_convert_action_set_reg
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "invalid modification flow item");
 	return 0;
+}
+
+/**
+ * Convert internal COPY_REG action to DV specification.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in,out] res
+ *   Pointer to the modify-header resource.
+ * @param[in] action
+ *   Pointer to action specification.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_copy_mreg(struct rte_eth_dev *dev  __rte_unused,
+				 struct mlx5_flow_dv_modify_hdr_resource *res,
+				 const struct rte_flow_action *action,
+				 struct rte_flow_error *error)
+{
+	const struct mlx5_flow_action_copy_mreg *conf = action->conf;
+	uint32_t mask = RTE_BE32(UINT32_MAX);
+	struct rte_flow_item item = {
+		.spec = NULL,
+		.mask = &mask,
+	};
+	struct field_modify_info reg_src[] = {
+		{4, 0, reg_to_field[conf->src]},
+		{0, 0, 0},
+	};
+	struct field_modify_info reg_dst = {
+		.offset = (uint32_t)-1, /* Same as src. */
+		.id = reg_to_field[conf->dst],
+	};
+	return flow_dv_convert_modify_action(&item,
+					     reg_src, &reg_dst, res,
+					     MLX5_MODIFICATION_TYPE_COPY,
+					     error);
 }
 
 /**
@@ -3978,6 +4019,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						MLX5_FLOW_ACTION_DEC_TCP_ACK;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_TAG:
+		case MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG:
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -5971,6 +6013,12 @@ cnt_err:
 		case MLX5_RTE_FLOW_ACTION_TYPE_TAG:
 			if (flow_dv_convert_action_set_reg(&res, actions,
 							   error))
+				return -rte_errno;
+			action_flags |= MLX5_FLOW_ACTION_SET_TAG;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG:
+			if (flow_dv_convert_action_copy_mreg(dev, &res,
+							     actions, error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_TAG;
 			break;

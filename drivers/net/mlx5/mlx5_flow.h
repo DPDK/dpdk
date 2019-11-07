@@ -47,22 +47,28 @@ enum mlx5_rte_flow_item_type {
 	MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
 };
 
-/* Private rte flow actions. */
+/* Private (internal) rte flow actions. */
 enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_END = INT_MIN,
 	MLX5_RTE_FLOW_ACTION_TYPE_TAG,
+	MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 };
 
 /* Matches on selected register. */
 struct mlx5_rte_flow_item_tag {
-	uint16_t id;
+	enum modify_reg id;
 	uint32_t data;
 };
 
 /* Modify selected register. */
 struct mlx5_rte_flow_action_set_tag {
-	uint16_t id;
+	enum modify_reg id;
 	uint32_t data;
+};
+
+struct mlx5_flow_action_copy_mreg {
+	enum modify_reg dst;
+	enum modify_reg src;
 };
 
 /* Matches on source queue. */
@@ -227,7 +233,6 @@ struct mlx5_rte_flow_item_tx_queue {
 
 #define MLX5_FLOW_VLAN_ACTIONS (MLX5_FLOW_ACTION_OF_POP_VLAN | \
 				MLX5_FLOW_ACTION_OF_PUSH_VLAN)
-
 #ifndef IPPROTO_MPLS
 #define IPPROTO_MPLS 137
 #endif
