@@ -7,9 +7,9 @@ MLX5 poll mode driver
 
 The MLX5 poll mode driver library (**librte_pmd_mlx5**) provides support
 for **Mellanox ConnectX-4**, **Mellanox ConnectX-4 Lx** , **Mellanox
-ConnectX-5**, **Mellanox ConnectX-6** and **Mellanox BlueField** families
-of 10/25/40/50/100/200 Gb/s adapters as well as their virtual functions (VF)
-in SR-IOV context.
+ConnectX-5**, **Mellanox ConnectX-6**, **Mellanox ConnectX-6DX** and
+**Mellanox BlueField** families of 10/25/40/50/100/200 Gb/s adapters
+as well as their virtual functions (VF) in SR-IOV context.
 
 Information and documentation about these adapters can be found on the
 `Mellanox website <http://www.mellanox.com>`__. Help is also provided by the
@@ -313,8 +313,10 @@ Run-time configuration
 
   Supported on:
 
-  - x86_64 with ConnectX-4, ConnectX-4 LX, ConnectX-5, ConnectX-6 and BlueField.
-  - POWER9 and ARMv8 with ConnectX-4 LX, ConnectX-5, ConnectX-6 and BlueField.
+  - x86_64 with ConnectX-4, ConnectX-4 LX, ConnectX-5, ConnectX-6, ConnectX-6 DX
+    and BlueField.
+  - POWER9 and ARMv8 with ConnectX-4 LX, ConnectX-5, ConnectX-6, ConnectX-6 DX
+    and BlueField.
 
 - ``rxq_cqe_pad_en`` parameter [int]
 
@@ -344,8 +346,10 @@ Run-time configuration
 
   Supported on:
 
-  - x86_64 with ConnectX-4, ConnectX-4 LX, ConnectX-5, ConnectX-6 and BlueField.
-  - POWER8 and ARMv8 with ConnectX-4 LX, ConnectX-5, ConnectX-6 and BlueField.
+  - x86_64 with ConnectX-4, ConnectX-4 LX, ConnectX-5, ConnectX-6, ConnectX-6 DX
+    and BlueField.
+  - POWER8 and ARMv8 with ConnectX-4 LX, ConnectX-5, ConnectX-6, ConnectX-6 DX
+    and BlueField.
 
 - ``mprq_en`` parameter [int]
 
@@ -537,11 +541,11 @@ Run-time configuration
 - ``txq_mpw_en`` parameter [int]
 
   A nonzero value enables Enhanced Multi-Packet Write (eMPW) for ConnectX-5,
-  ConnectX-6 and BlueField. eMPW allows the TX burst function to pack up multiple
-  packets in a single descriptor session in order to save PCI bandwidth and improve
-  performance at the cost of a slightly higher CPU usage. When ``txq_inline_mpw``
-  is set along with ``txq_mpw_en``, TX burst function copies entire packet
-  data on to TX descriptor instead of including pointer of packet.
+  ConnectX-6, ConnectX-6 DX and BlueField. eMPW allows the TX burst function to pack
+  up multiple packets in a single descriptor session in order to save PCI bandwidth
+  and improve performance at the cost of a slightly higher CPU usage. When
+  ``txq_inline_mpw`` is set along with ``txq_mpw_en``, TX burst function copies
+  entire packet data on to TX descriptor instead of including pointer of packet.
 
   The Enhanced Multi-Packet Write feature is enabled by default if NIC supports
   it, can be disabled by explicit specifying 0 value for ``txq_mpw_en`` option.
@@ -550,8 +554,8 @@ Run-time configuration
 
 - ``tx_vec_en`` parameter [int]
 
-  A nonzero value enables Tx vector on ConnectX-5, ConnectX-6 and BlueField
-  NICs if the number of global Tx queues on the port is less than
+  A nonzero value enables Tx vector on ConnectX-5, ConnectX-6, ConnectX-6 DX
+  and BlueField NICs if the number of global Tx queues on the port is less than
   ``txqs_max_vec``. The parameter is deprecated and ignored.
 
 - ``rx_vec_en`` parameter [int]
@@ -794,6 +798,7 @@ Mellanox OFED/EN
   - ConnectX-5: **16.21.1000** and above.
   - ConnectX-5 Ex: **16.21.1000** and above.
   - ConnectX-6: **20.99.5374** and above.
+  - ConnectX-6 DX: **22.27.0090** and above.
   - BlueField: **18.25.1010** and above.
 
 While these libraries and kernel modules are available on OpenFabrics
@@ -837,6 +842,9 @@ Supported NICs
 * Mellanox(R) ConnectX(R)-4 Lx 25G MCX4121A-ACAT (2x25G)
 * Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
 * Mellanox(R) ConnectX(R)-5 Ex EN 100G MCX516A-CDAT (2x100G)
+* Mellanox(R) ConnectX(R)-6 200G MCX654106A-HCAT (4x200G)
+* Mellanox(R) ConnectX(R)-6DX EN 100G MCX623106AN-CDAT (2*100g)
+* Mellanox(R) ConnectX(R)-6DX EN 200G MCX623105AN-VDAT (1*200g)
 
 Quick Start Guide on OFED/EN
 ----------------------------
