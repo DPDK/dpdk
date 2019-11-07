@@ -706,11 +706,11 @@ check_destination_event_queue(struct rte_event_timer *evtim,
 				       RTE_EVENT_QUEUE_ATTR_SCHEDULE_TYPE,
 				       &sched_type);
 
-	if ((ret < 0 && ret != -EOVERFLOW) ||
-	    evtim->ev.sched_type != sched_type)
-		return -1;
+	if ((ret == 0 && evtim->ev.sched_type == sched_type) ||
+	    ret == -EOVERFLOW)
+		return 0;
 
-	return 0;
+	return -1;
 }
 
 static int
