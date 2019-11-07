@@ -88,6 +88,10 @@ else
 		MACHINE_CFLAGS := $(filter-out -march% -mtune% -msse%,$(MACHINE_CFLAGS))
 	endif
 
+	ifeq ($(shell test $(GCC_VERSION) -lt 74 && echo 1), 1)
+		CONFIG_RTE_ENABLE_LTO=n
+	endif
+
 	# Disable thunderx PMD for gcc < 4.7
 	ifeq ($(shell test $(GCC_VERSION) -lt 47 && echo 1), 1)
 		CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD=d

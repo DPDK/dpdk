@@ -105,6 +105,15 @@ matrix:
       apt:
         packages:
           - *extra_packages
+  - env: DEF_LIB="static" OPTS="-Db_lto=true" EXTRA_PACKAGES=1 CC=gcc-7
+    compiler: gcc
+    addons:
+      apt:
+        sources:
+            - ubuntu-toolchain-r-test
+        packages:
+          - *extra_packages
+          - gcc-7
 
 
 script: ./.ci/${TRAVIS_OS_NAME}-build.sh

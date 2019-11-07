@@ -50,6 +50,11 @@ CONFIG_RTE_FORCE_INTRINSICS=n
 CONFIG_RTE_ARCH_STRICT_ALIGN=n
 
 #
+# Enable link time optimization
+#
+CONFIG_RTE_ENABLE_LTO=n
+
+#
 # Compile to share library
 #
 CONFIG_RTE_BUILD_SHARED_LIB=n

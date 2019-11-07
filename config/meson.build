@@ -225,3 +225,16 @@ add_project_arguments('-D_GNU_SOURCE', language: 'c')
 if is_freebsd
 	add_project_arguments('-D__BSD_VISIBLE', language: 'c')
 endif
+
+if get_option('b_lto')
+	if cc.has_argument('-ffat-lto-objects')
+		add_project_arguments('-ffat-lto-objects', language: 'c')
+	else
+		error('compiler does not support fat LTO objects - please turn LTO off')
+	endif
+	# workaround for gcc bug 81440
+	if cc.get_id() == 'gcc' and cc.version().version_compare('<8.0')
+		add_project_arguments('-Wno-lto-type-mismatch', language: 'c')
+		add_project_link_arguments('-Wno-lto-type-mismatch', language: 'c')
+	endif
+endif

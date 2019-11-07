@@ -65,5 +65,6 @@ Programmer's Guide
     ext_app_lib_make_help
     perf_opt_guidelines
     writing_efficient_code
+    lto
     profile_app
     glossary
