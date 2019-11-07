@@ -385,8 +385,7 @@ nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
 		ltail++;
 	}
 
-	while (__atomic_load_n(&rbdr->tail, __ATOMIC_RELAXED) != next_tail)
-		rte_pause();
+	rte_wait_until_equal_32(&rbdr->tail, next_tail, __ATOMIC_RELAXED);
 
 	__atomic_store_n(&rbdr->tail, ltail, __ATOMIC_RELEASE);
 	nicvf_addr_write(door, to_fill);

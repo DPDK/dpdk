@@ -10,6 +10,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_thunderx_nicvf.a
 
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 LDLIBS += -lm
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
