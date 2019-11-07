@@ -357,12 +357,14 @@ struct mlx5_cqe {
 	uint16_t hdr_type_etc;
 	uint16_t vlan_info;
 	uint8_t lro_num_seg;
-	uint8_t rsvd3[11];
+	uint8_t rsvd3[3];
+	uint32_t flow_table_metadata;
+	uint8_t rsvd4[4];
 	uint32_t byte_cnt;
 	uint64_t timestamp;
 	uint32_t sop_drop_qpn;
 	uint16_t wqe_counter;
-	uint8_t rsvd4;
+	uint8_t rsvd5;
 	uint8_t op_own;
 };
 

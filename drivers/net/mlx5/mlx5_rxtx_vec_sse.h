@@ -537,8 +537,8 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		cqe_tmp1 = _mm_loadu_si128((__m128i *)&cq[pos + p2].csum);
 		cqes[3] = _mm_blend_epi16(cqes[3], cqe_tmp2, 0x30);
 		cqes[2] = _mm_blend_epi16(cqes[2], cqe_tmp1, 0x30);
-		cqe_tmp2 = _mm_loadl_epi64((__m128i *)&cq[pos + p3].rsvd3[9]);
-		cqe_tmp1 = _mm_loadl_epi64((__m128i *)&cq[pos + p2].rsvd3[9]);
+		cqe_tmp2 = _mm_loadl_epi64((__m128i *)&cq[pos + p3].rsvd4[2]);
+		cqe_tmp1 = _mm_loadl_epi64((__m128i *)&cq[pos + p2].rsvd4[2]);
 		cqes[3] = _mm_blend_epi16(cqes[3], cqe_tmp2, 0x04);
 		cqes[2] = _mm_blend_epi16(cqes[2], cqe_tmp1, 0x04);
 		/* C.2 generate final structure for mbuf with swapping bytes. */
@@ -564,8 +564,8 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		cqe_tmp1 = _mm_loadu_si128((__m128i *)&cq[pos].csum);
 		cqes[1] = _mm_blend_epi16(cqes[1], cqe_tmp2, 0x30);
 		cqes[0] = _mm_blend_epi16(cqes[0], cqe_tmp1, 0x30);
-		cqe_tmp2 = _mm_loadl_epi64((__m128i *)&cq[pos + p1].rsvd3[9]);
-		cqe_tmp1 = _mm_loadl_epi64((__m128i *)&cq[pos].rsvd3[9]);
+		cqe_tmp2 = _mm_loadl_epi64((__m128i *)&cq[pos + p1].rsvd4[2]);
+		cqe_tmp1 = _mm_loadl_epi64((__m128i *)&cq[pos].rsvd4[2]);
 		cqes[1] = _mm_blend_epi16(cqes[1], cqe_tmp2, 0x04);
 		cqes[0] = _mm_blend_epi16(cqes[0], cqe_tmp1, 0x04);
 		/* C.2 generate final structure for mbuf with swapping bytes. */
@@ -639,6 +639,25 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 				rte_be_to_cpu_64(cq[pos + p2].timestamp);
 			pkts[pos + 3]->timestamp =
 				rte_be_to_cpu_64(cq[pos + p3].timestamp);
+		}
+		if (rte_flow_dynf_metadata_avail()) {
+			/* This code is subject for futher optimization. */
+			*RTE_FLOW_DYNF_METADATA(pkts[pos]) =
+				cq[pos].flow_table_metadata;
+			*RTE_FLOW_DYNF_METADATA(pkts[pos + 1]) =
+				cq[pos + p1].flow_table_metadata;
+			*RTE_FLOW_DYNF_METADATA(pkts[pos + 2]) =
+				cq[pos + p2].flow_table_metadata;
+			*RTE_FLOW_DYNF_METADATA(pkts[pos + 3]) =
+				cq[pos + p3].flow_table_metadata;
+			if (*RTE_FLOW_DYNF_METADATA(pkts[pos]))
+				pkts[pos]->ol_flags |= PKT_RX_DYNF_METADATA;
+			if (*RTE_FLOW_DYNF_METADATA(pkts[pos + 1]))
+				pkts[pos + 1]->ol_flags |= PKT_RX_DYNF_METADATA;
+			if (*RTE_FLOW_DYNF_METADATA(pkts[pos + 2]))
+				pkts[pos + 2]->ol_flags |= PKT_RX_DYNF_METADATA;
+			if (*RTE_FLOW_DYNF_METADATA(pkts[pos + 3]))
+				pkts[pos + 3]->ol_flags |= PKT_RX_DYNF_METADATA;
 		}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Add up received bytes count. */

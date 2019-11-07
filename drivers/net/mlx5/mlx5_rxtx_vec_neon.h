@@ -687,6 +687,29 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 					container_of(p3, struct mlx5_cqe,
 						     pkt_info)->timestamp);
 		}
+		if (rte_flow_dynf_metadata_avail()) {
+			/* This code is subject for futher optimization. */
+			*RTE_FLOW_DYNF_METADATA(elts[pos]) =
+				container_of(p0, struct mlx5_cqe,
+					     pkt_info)->flow_table_metadata;
+			*RTE_FLOW_DYNF_METADATA(elts[pos + 1]) =
+				container_of(p1, struct mlx5_cqe,
+					     pkt_info)->flow_table_metadata;
+			*RTE_FLOW_DYNF_METADATA(elts[pos + 2]) =
+				container_of(p2, struct mlx5_cqe,
+					     pkt_info)->flow_table_metadata;
+			*RTE_FLOW_DYNF_METADATA(elts[pos + 3]) =
+				container_of(p3, struct mlx5_cqe,
+					     pkt_info)->flow_table_metadata;
+			if (*RTE_FLOW_DYNF_METADATA(elts[pos]))
+				elts[pos]->ol_flags |= PKT_RX_DYNF_METADATA;
+			if (*RTE_FLOW_DYNF_METADATA(elts[pos + 1]))
+				elts[pos + 1]->ol_flags |= PKT_RX_DYNF_METADATA;
+			if (*RTE_FLOW_DYNF_METADATA(elts[pos + 2]))
+				elts[pos + 2]->ol_flags |= PKT_RX_DYNF_METADATA;
+			if (*RTE_FLOW_DYNF_METADATA(elts[pos + 3]))
+				elts[pos + 3]->ol_flags |= PKT_RX_DYNF_METADATA;
+		}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Add up received bytes count. */
 		byte_cnt = vbic_u16(byte_cnt, invalid_mask);

@@ -416,7 +416,6 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 			vec_cmpeq((vector unsigned int)flow_tag,
 			(vector unsigned int)pinfo_ft_mask)));
 	}
-
 	/*
 	 * Merge the two fields to generate the following:
 	 * bit[1]     = l3_ok
@@ -1011,7 +1010,29 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 			pkts[pos + 3]->timestamp =
 				rte_be_to_cpu_64(cq[pos + p3].timestamp);
 		}
+		if (rte_flow_dynf_metadata_avail()) {
+			uint64_t flag = rte_flow_dynf_metadata_mask;
+			int offs = rte_flow_dynf_metadata_offs;
+			uint32_t metadata;
 
+			/* This code is subject for futher optimization. */
+			metadata = cq[pos].flow_table_metadata;
+			*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *) =
+								metadata;
+			pkts[pos]->ol_flags |= metadata ? flag : 0ULL;
+			metadata = cq[pos + 1].flow_table_metadata;
+			*RTE_MBUF_DYNFIELD(pkts[pos + 1], offs, uint32_t *) =
+								metadata;
+			pkts[pos + 1]->ol_flags |= metadata ? flag : 0ULL;
+			metadata = cq[pos + 2].flow_table_metadata;
+			*RTE_MBUF_DYNFIELD(pkts[pos + 2], offs, uint32_t *) =
+								metadata;
+			pkts[pos + 2]->ol_flags |= metadata ? flag : 0ULL;
+			metadata = cq[pos + 3].flow_table_metadata;
+			*RTE_MBUF_DYNFIELD(pkts[pos + 3], offs, uint32_t *) =
+								metadata;
+			pkts[pos + 3]->ol_flags |= metadata ? flag : 0ULL;
+		}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Add up received bytes count. */
 		byte_cnt = vec_perm(op_own, zero, len_shuf_mask);
