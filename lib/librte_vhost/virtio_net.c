@@ -1159,7 +1159,8 @@ virtio_dev_rx_packed(struct virtio_net *dev,
 		rte_prefetch0(&vq->desc_packed[vq->last_avail_idx]);
 
 		if (remained >= PACKED_BATCH_SIZE) {
-			if (!virtio_dev_rx_batch_packed(dev, vq, pkts)) {
+			if (!virtio_dev_rx_batch_packed(dev, vq,
+							&pkts[pkt_idx])) {
 				pkt_idx += PACKED_BATCH_SIZE;
 				remained -= PACKED_BATCH_SIZE;
 				continue;
