@@ -3255,10 +3255,10 @@ flow_dv_validate_action_jump(const struct rte_flow_action *action,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP, NULL,
 					  "target group index out of range");
-	if (attributes->group >= target_group)
+	if (attributes->group == target_group)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "target group must be higher than"
+					  "target group must be other than"
 					  " the current flow group");
 	return 0;
 }
