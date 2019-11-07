@@ -215,11 +215,11 @@ library so that older binaries need not be immediately recompiled.
 The macros exported are:
 
 * ``VERSION_SYMBOL(b, e, n)``: Creates a symbol version table entry binding
-  versioned symbol ``b@DPDK_n`` to the internal function ``b_e``.
+  versioned symbol ``b@DPDK_n`` to the internal function ``be``.
 
 * ``BIND_DEFAULT_SYMBOL(b, e, n)``: Creates a symbol version entry instructing
   the linker to bind references to symbol ``b`` to the internal symbol
-  ``b_e``.
+  ``be``.
 
 * ``MAP_STATIC_SYMBOL(f, p)``: Declare the prototype ``f``, and map it to the
   fully qualified function ``p``, so that if a symbol becomes versioned, it
