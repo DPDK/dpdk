@@ -383,11 +383,12 @@ struct mlx5_cqe {
 /* CQE format value. */
 #define MLX5_COMPRESSED 0x3
 
-/* Write a specific data value to a field. */
-#define MLX5_MODIFICATION_TYPE_SET 1
-
-/* Add a specific data value to a field. */
-#define MLX5_MODIFICATION_TYPE_ADD 2
+/* Action type of header modification. */
+enum {
+	MLX5_MODIFICATION_TYPE_SET = 0x1,
+	MLX5_MODIFICATION_TYPE_ADD = 0x2,
+	MLX5_MODIFICATION_TYPE_COPY = 0x3,
+};
 
 /* The field of packet to be modified. */
 enum mlx5_modification_field {
@@ -470,6 +471,13 @@ struct mlx5_modification_cmd {
 	union {
 		uint32_t data1;
 		uint8_t data[4];
+		struct {
+			unsigned int rsvd2:8;
+			unsigned int dst_offset:5;
+			unsigned int rsvd3:3;
+			unsigned int dst_field:12;
+			unsigned int rsvd4:4;
+		};
 	};
 };
 

@@ -240,12 +240,62 @@ mlx5_update_vlan_vid_pcp(const struct rte_flow_action *action,
 }
 
 /**
+ * Fetch 1, 2, 3 or 4 byte field from the byte array
+ * and return as unsigned integer in host-endian format.
+ *
+ * @param[in] data
+ *   Pointer to data array.
+ * @param[in] size
+ *   Size of field to extract.
+ *
+ * @return
+ *   converted field in host endian format.
+ */
+static inline uint32_t
+flow_dv_fetch_field(const uint8_t *data, uint32_t size)
+{
+	uint32_t ret;
+
+	switch (size) {
+	case 1:
+		ret = *data;
+		break;
+	case 2:
+		ret = rte_be_to_cpu_16(*(const unaligned_uint16_t *)data);
+		break;
+	case 3:
+		ret = rte_be_to_cpu_16(*(const unaligned_uint16_t *)data);
+		ret = (ret << 8) | *(data + sizeof(uint16_t));
+		break;
+	case 4:
+		ret = rte_be_to_cpu_32(*(const unaligned_uint32_t *)data);
+		break;
+	default:
+		assert(false);
+		ret = 0;
+		break;
+	}
+	return ret;
+}
+
+/**
  * Convert modify-header action to DV specification.
+ *
+ * Data length of each action is determined by provided field description
+ * and the item mask. Data bit offset and width of each action is determined
+ * by provided item mask.
  *
  * @param[in] item
  *   Pointer to item specification.
  * @param[in] field
  *   Pointer to field modification information.
+ *     For MLX5_MODIFICATION_TYPE_SET specifies destination field.
+ *     For MLX5_MODIFICATION_TYPE_ADD specifies destination field.
+ *     For MLX5_MODIFICATION_TYPE_COPY specifies source field.
+ * @param[in] dcopy
+ *   Destination field info for MLX5_MODIFICATION_TYPE_COPY in @type.
+ *   Negative offset value sets the same offset as source offset.
+ *   size field is ignored, value is taken from source field.
  * @param[in,out] resource
  *   Pointer to the modify-header resource.
  * @param[in] type
@@ -259,38 +309,68 @@ mlx5_update_vlan_vid_pcp(const struct rte_flow_action *action,
 static int
 flow_dv_convert_modify_action(struct rte_flow_item *item,
 			      struct field_modify_info *field,
+			      struct field_modify_info *dcopy,
 			      struct mlx5_flow_dv_modify_hdr_resource *resource,
-			      uint32_t type,
-			      struct rte_flow_error *error)
+			      uint32_t type, struct rte_flow_error *error)
 {
 	uint32_t i = resource->actions_num;
 	struct mlx5_modification_cmd *actions = resource->actions;
-	const uint8_t *spec = item->spec;
-	const uint8_t *mask = item->mask;
-	uint32_t set;
 
-	while (field->size) {
-		set = 0;
-		/* Generate modify command for each mask segment. */
-		memcpy(&set, &mask[field->offset], field->size);
-		if (set) {
-			if (i >= MLX5_MODIFY_NUM)
-				return rte_flow_error_set(error, EINVAL,
-					 RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					 "too many items to modify");
-			actions[i].action_type = type;
-			actions[i].field = field->id;
-			actions[i].length = field->size ==
-					4 ? 0 : field->size * 8;
-			rte_memcpy(&actions[i].data[4 - field->size],
-				   &spec[field->offset], field->size);
-			actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
-			++i;
+	/*
+	 * The item and mask are provided in big-endian format.
+	 * The fields should be presented as in big-endian format either.
+	 * Mask must be always present, it defines the actual field width.
+	 */
+	assert(item->mask);
+	assert(field->size);
+	do {
+		unsigned int size_b;
+		unsigned int off_b;
+		uint32_t mask;
+		uint32_t data;
+
+		if (i >= MLX5_MODIFY_NUM)
+			return rte_flow_error_set(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				 "too many items to modify");
+		/* Fetch variable byte size mask from the array. */
+		mask = flow_dv_fetch_field((const uint8_t *)item->mask +
+					   field->offset, field->size);
+		if (!mask) {
+			++field;
+			continue;
 		}
-		if (resource->actions_num != i)
-			resource->actions_num = i;
-		field++;
-	}
+		/* Deduce actual data width in bits from mask value. */
+		off_b = rte_bsf32(mask);
+		size_b = sizeof(uint32_t) * CHAR_BIT -
+			 off_b - __builtin_clz(mask);
+		assert(size_b);
+		size_b = size_b == sizeof(uint32_t) * CHAR_BIT ? 0 : size_b;
+		actions[i].action_type = type;
+		actions[i].field = field->id;
+		actions[i].offset = off_b;
+		actions[i].length = size_b;
+		/* Convert entire record to expected big-endian format. */
+		actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
+		if (type == MLX5_MODIFICATION_TYPE_COPY) {
+			assert(dcopy);
+			actions[i].dst_field = dcopy->id;
+			actions[i].dst_offset =
+				(int)dcopy->offset < 0 ? off_b : dcopy->offset;
+			/* Convert entire record to big-endian format. */
+			actions[i].data1 = rte_cpu_to_be_32(actions[i].data1);
+		} else {
+			assert(item->spec);
+			data = flow_dv_fetch_field((const uint8_t *)item->spec +
+						   field->offset, field->size);
+			/* Shift out the trailing masked bits from data. */
+			data = (data & mask) >> off_b;
+			actions[i].data1 = rte_cpu_to_be_32(data);
+		}
+		++i;
+		++field;
+	} while (field->size);
+	resource->actions_num = i;
 	if (!resource->actions_num)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -334,7 +414,7 @@ flow_dv_convert_action_modify_ipv4
 	}
 	item.spec = &ipv4;
 	item.mask = &ipv4_mask;
-	return flow_dv_convert_modify_action(&item, modify_ipv4, resource,
+	return flow_dv_convert_modify_action(&item, modify_ipv4, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
 }
 
@@ -380,7 +460,7 @@ flow_dv_convert_action_modify_ipv6
 	}
 	item.spec = &ipv6;
 	item.mask = &ipv6_mask;
-	return flow_dv_convert_modify_action(&item, modify_ipv6, resource,
+	return flow_dv_convert_modify_action(&item, modify_ipv6, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
 }
 
@@ -426,7 +506,7 @@ flow_dv_convert_action_modify_mac
 	}
 	item.spec = &eth;
 	item.mask = &eth_mask;
-	return flow_dv_convert_modify_action(&item, modify_eth, resource,
+	return flow_dv_convert_modify_action(&item, modify_eth, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
 }
 
@@ -540,7 +620,7 @@ flow_dv_convert_action_modify_tp
 		item.mask = &tcp_mask;
 		field = modify_tcp;
 	}
-	return flow_dv_convert_modify_action(&item, field, resource,
+	return flow_dv_convert_modify_action(&item, field, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
 }
 
@@ -600,7 +680,7 @@ flow_dv_convert_action_modify_ttl
 		item.mask = &ipv6_mask;
 		field = modify_ipv6;
 	}
-	return flow_dv_convert_modify_action(&item, field, resource,
+	return flow_dv_convert_modify_action(&item, field, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
 }
 
@@ -657,7 +737,7 @@ flow_dv_convert_action_modify_dec_ttl
 		item.mask = &ipv6_mask;
 		field = modify_ipv6;
 	}
-	return flow_dv_convert_modify_action(&item, field, resource,
+	return flow_dv_convert_modify_action(&item, field, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_ADD, error);
 }
 
@@ -702,7 +782,7 @@ flow_dv_convert_action_modify_tcp_seq
 	item.type = RTE_FLOW_ITEM_TYPE_TCP;
 	item.spec = &tcp;
 	item.mask = &tcp_mask;
-	return flow_dv_convert_modify_action(&item, modify_tcp, resource,
+	return flow_dv_convert_modify_action(&item, modify_tcp, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_ADD, error);
 }
 
@@ -747,7 +827,7 @@ flow_dv_convert_action_modify_tcp_ack
 	item.type = RTE_FLOW_ITEM_TYPE_TCP;
 	item.spec = &tcp;
 	item.mask = &tcp_mask;
-	return flow_dv_convert_modify_action(&item, modify_tcp, resource,
+	return flow_dv_convert_modify_action(&item, modify_tcp, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_ADD, error);
 }
 
