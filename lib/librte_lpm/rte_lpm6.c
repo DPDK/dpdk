@@ -812,7 +812,7 @@ add_step(struct rte_lpm6 *lpm, struct rte_lpm6_tbl_entry *tbl,
 /*
  * Add a route
  */
-int
+int __vsym
 rte_lpm6_add_v20(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 		uint8_t next_hop)
 {
@@ -862,7 +862,7 @@ simulate_add(struct rte_lpm6 *lpm, const uint8_t *masked_ip, uint8_t depth)
 	return 0;
 }
 
-int
+int __vsym
 rte_lpm6_add_v1705(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 		uint32_t next_hop)
 {
@@ -955,7 +955,7 @@ lookup_step(const struct rte_lpm6 *lpm, const struct rte_lpm6_tbl_entry *tbl,
 /*
  * Looks up an IP
  */
-int
+int __vsym
 rte_lpm6_lookup_v20(const struct rte_lpm6 *lpm, uint8_t *ip, uint8_t *next_hop)
 {
 	uint32_t next_hop32 = 0;
@@ -973,7 +973,7 @@ rte_lpm6_lookup_v20(const struct rte_lpm6 *lpm, uint8_t *ip, uint8_t *next_hop)
 }
 VERSION_SYMBOL(rte_lpm6_lookup, _v20, 2.0);
 
-int
+int __vsym
 rte_lpm6_lookup_v1705(const struct rte_lpm6 *lpm, uint8_t *ip,
 		uint32_t *next_hop)
 {
@@ -1008,7 +1008,7 @@ MAP_STATIC_SYMBOL(int rte_lpm6_lookup(const struct rte_lpm6 *lpm, uint8_t *ip,
 /*
  * Looks up a group of IP addresses
  */
-int
+int __vsym
 rte_lpm6_lookup_bulk_func_v20(const struct rte_lpm6 *lpm,
 		uint8_t ips[][RTE_LPM6_IPV6_ADDR_SIZE],
 		int16_t * next_hops, unsigned n)
@@ -1049,7 +1049,7 @@ rte_lpm6_lookup_bulk_func_v20(const struct rte_lpm6 *lpm,
 }
 VERSION_SYMBOL(rte_lpm6_lookup_bulk_func, _v20, 2.0);
 
-int
+int __vsym
 rte_lpm6_lookup_bulk_func_v1705(const struct rte_lpm6 *lpm,
 		uint8_t ips[][RTE_LPM6_IPV6_ADDR_SIZE],
 		int32_t *next_hops, unsigned int n)
@@ -1099,7 +1099,7 @@ MAP_STATIC_SYMBOL(int rte_lpm6_lookup_bulk_func(const struct rte_lpm6 *lpm,
 /*
  * Look for a rule in the high-level rules table
  */
-int
+int __vsym
 rte_lpm6_is_rule_present_v20(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 		uint8_t *next_hop)
 {
@@ -1119,7 +1119,7 @@ rte_lpm6_is_rule_present_v20(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 }
 VERSION_SYMBOL(rte_lpm6_is_rule_present, _v20, 2.0);
 
-int
+int __vsym
 rte_lpm6_is_rule_present_v1705(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 		uint32_t *next_hop)
 {

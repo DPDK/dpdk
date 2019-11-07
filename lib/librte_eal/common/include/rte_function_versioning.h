@@ -52,6 +52,13 @@
  * symbol <b> to the internal symbol <b><e>
  */
 #define BIND_DEFAULT_SYMBOL(b, e, n) __asm__(".symver " RTE_STR(b) RTE_STR(e) ", " RTE_STR(b) "@@DPDK_" RTE_STR(n))
+
+/*
+ * __vsym
+ * Annotation to be used in declaration of the internal symbol <b><e> to signal
+ * that it is being used as an implementation of a particular version of symbol
+ * <b>.
+ */
 #define __vsym __attribute__((used))
 
 /*

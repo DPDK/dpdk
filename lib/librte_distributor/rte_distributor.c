@@ -32,7 +32,7 @@ EAL_REGISTER_TAILQ(rte_dist_burst_tailq)
 
 /**** Burst Packet APIs called by workers ****/
 
-void
+void __vsym
 rte_distributor_request_pkt_v1705(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **oldpkt,
 		unsigned int count)
@@ -89,7 +89,7 @@ MAP_STATIC_SYMBOL(void rte_distributor_request_pkt(struct rte_distributor *d,
 		unsigned int count),
 		rte_distributor_request_pkt_v1705);
 
-int
+int __vsym
 rte_distributor_poll_pkt_v1705(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **pkts)
 {
@@ -134,7 +134,7 @@ MAP_STATIC_SYMBOL(int rte_distributor_poll_pkt(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **pkts),
 		rte_distributor_poll_pkt_v1705);
 
-int
+int __vsym
 rte_distributor_get_pkt_v1705(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **pkts,
 		struct rte_mbuf **oldpkt, unsigned int return_count)
@@ -169,7 +169,7 @@ MAP_STATIC_SYMBOL(int rte_distributor_get_pkt(struct rte_distributor *d,
 		struct rte_mbuf **oldpkt, unsigned int return_count),
 		rte_distributor_get_pkt_v1705);
 
-int
+int __vsym
 rte_distributor_return_pkt_v1705(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **oldpkt, int num)
 {
@@ -359,7 +359,7 @@ release(struct rte_distributor *d, unsigned int wkr)
 
 
 /* process a set of packets to distribute them to workers */
-int
+int __vsym
 rte_distributor_process_v1705(struct rte_distributor *d,
 		struct rte_mbuf **mbufs, unsigned int num_mbufs)
 {
@@ -506,7 +506,7 @@ MAP_STATIC_SYMBOL(int rte_distributor_process(struct rte_distributor *d,
 		rte_distributor_process_v1705);
 
 /* return to the caller, packets returned from workers */
-int
+int __vsym
 rte_distributor_returned_pkts_v1705(struct rte_distributor *d,
 		struct rte_mbuf **mbufs, unsigned int max_mbufs)
 {
@@ -556,7 +556,7 @@ total_outstanding(const struct rte_distributor *d)
  * Flush the distributor, so that there are no outstanding packets in flight or
  * queued up.
  */
-int
+int __vsym
 rte_distributor_flush_v1705(struct rte_distributor *d)
 {
 	unsigned int flushed;
@@ -591,7 +591,7 @@ MAP_STATIC_SYMBOL(int rte_distributor_flush(struct rte_distributor *d),
 		rte_distributor_flush_v1705);
 
 /* clears the internal returns array in the distributor */
-void
+void __vsym
 rte_distributor_clear_returns_v1705(struct rte_distributor *d)
 {
 	unsigned int wkr;
@@ -613,7 +613,7 @@ MAP_STATIC_SYMBOL(void rte_distributor_clear_returns(struct rte_distributor *d),
 		rte_distributor_clear_returns_v1705);
 
 /* creates a distributor instance */
-struct rte_distributor *
+struct rte_distributor * __vsym
 rte_distributor_create_v1705(const char *name,
 		unsigned int socket_id,
 		unsigned int num_workers,

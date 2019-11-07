@@ -90,7 +90,7 @@ depth_to_range(uint8_t depth)
 /*
  * Find an existing lpm table and return a pointer to it.
  */
-struct rte_lpm_v20 *
+struct rte_lpm_v20 * __vsym
 rte_lpm_find_existing_v20(const char *name)
 {
 	struct rte_lpm_v20 *l = NULL;
@@ -116,7 +116,7 @@ rte_lpm_find_existing_v20(const char *name)
 }
 VERSION_SYMBOL(rte_lpm_find_existing, _v20, 2.0);
 
-struct rte_lpm *
+struct rte_lpm * __vsym
 rte_lpm_find_existing_v1604(const char *name)
 {
 	struct rte_lpm *l = NULL;
@@ -147,7 +147,7 @@ MAP_STATIC_SYMBOL(struct rte_lpm *rte_lpm_find_existing(const char *name),
 /*
  * Allocates memory for LPM object
  */
-struct rte_lpm_v20 *
+struct rte_lpm_v20 * __vsym
 rte_lpm_create_v20(const char *name, int socket_id, int max_rules,
 		__rte_unused int flags)
 {
@@ -220,7 +220,7 @@ exit:
 }
 VERSION_SYMBOL(rte_lpm_create, _v20, 2.0);
 
-struct rte_lpm *
+struct rte_lpm * __vsym
 rte_lpm_create_v1604(const char *name, int socket_id,
 		const struct rte_lpm_config *config)
 {
@@ -329,7 +329,7 @@ MAP_STATIC_SYMBOL(
 /*
  * Deallocates memory for given LPM table.
  */
-void
+void __vsym
 rte_lpm_free_v20(struct rte_lpm_v20 *lpm)
 {
 	struct rte_lpm_list *lpm_list;
@@ -358,7 +358,7 @@ rte_lpm_free_v20(struct rte_lpm_v20 *lpm)
 }
 VERSION_SYMBOL(rte_lpm_free, _v20, 2.0);
 
-void
+void __vsym
 rte_lpm_free_v1604(struct rte_lpm *lpm)
 {
 	struct rte_lpm_list *lpm_list;
@@ -1177,7 +1177,7 @@ add_depth_big_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 /*
  * Add a route
  */
-int
+int __vsym
 rte_lpm_add_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
 		uint8_t next_hop)
 {
@@ -1218,7 +1218,7 @@ rte_lpm_add_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
 }
 VERSION_SYMBOL(rte_lpm_add, _v20, 2.0);
 
-int
+int __vsym
 rte_lpm_add_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 		uint32_t next_hop)
 {
@@ -1264,7 +1264,7 @@ MAP_STATIC_SYMBOL(int rte_lpm_add(struct rte_lpm *lpm, uint32_t ip,
 /*
  * Look for a rule in the high-level rules table
  */
-int
+int __vsym
 rte_lpm_is_rule_present_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
 uint8_t *next_hop)
 {
@@ -1291,7 +1291,7 @@ uint8_t *next_hop)
 }
 VERSION_SYMBOL(rte_lpm_is_rule_present, _v20, 2.0);
 
-int
+int __vsym
 rte_lpm_is_rule_present_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 uint32_t *next_hop)
 {
@@ -1844,7 +1844,7 @@ delete_depth_big_v1604(struct rte_lpm *lpm, uint32_t ip_masked,
 /*
  * Deletes a rule
  */
-int
+int __vsym
 rte_lpm_delete_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth)
 {
 	int32_t rule_to_delete_index, sub_rule_index;
@@ -1898,7 +1898,7 @@ rte_lpm_delete_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth)
 }
 VERSION_SYMBOL(rte_lpm_delete, _v20, 2.0);
 
-int
+int __vsym
 rte_lpm_delete_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth)
 {
 	int32_t rule_to_delete_index, sub_rule_index;
@@ -1957,7 +1957,7 @@ MAP_STATIC_SYMBOL(int rte_lpm_delete(struct rte_lpm *lpm, uint32_t ip,
 /*
  * Delete all rules from the LPM table.
  */
-void
+void __vsym
 rte_lpm_delete_all_v20(struct rte_lpm_v20 *lpm)
 {
 	/* Zero rule information. */
@@ -1974,7 +1974,7 @@ rte_lpm_delete_all_v20(struct rte_lpm_v20 *lpm)
 }
 VERSION_SYMBOL(rte_lpm_delete_all, _v20, 2.0);
 
-void
+void __vsym
 rte_lpm_delete_all_v1604(struct rte_lpm *lpm)
 {
 	/* Zero rule information. */

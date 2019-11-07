@@ -225,6 +225,10 @@ The macros exported are:
   fully qualified function ``p``, so that if a symbol becomes versioned, it
   can still be mapped back to the public symbol name.
 
+* ``__vsym``:  Annotation to be used in a declaration of the internal symbol
+  ``be`` to signal that it is being used as an implementation of a particular
+  version of symbol ``b``.
+
 Examples of ABI Macro use
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -345,8 +349,9 @@ with the public symbol name
 
 .. code-block:: c
 
-  struct rte_acl_ctx *
+ -struct rte_acl_ctx *
  -rte_acl_create(const struct rte_acl_param *param)
+ +struct rte_acl_ctx * __vsym
  +rte_acl_create_v20(const struct rte_acl_param *param)
  {
         size_t sz;
@@ -354,7 +359,8 @@ with the public symbol name
         ...
 
 Note that the base name of the symbol was kept intact, as this is conducive to
-the macros used for versioning symbols.  That is our next step, mapping this new
+the macros used for versioning symbols and we have annotated the function as an
+implementation of versioned symbol.  That is our next step, mapping this new
 symbol name to the initial symbol name at version node 2.0.  Immediately after
 the function, we add this line of code
 
@@ -374,7 +380,7 @@ name, with a different suffix, and  implement it appropriately
 
 .. code-block:: c
 
-   struct rte_acl_ctx *
+   struct rte_acl_ctx * __vsym
    rte_acl_create_v21(const struct rte_acl_param *param, int debug);
    {
         struct rte_acl_ctx *ctx = rte_acl_create_v20(param);
@@ -423,7 +429,7 @@ defined, we add this
 
 .. code-block:: c
 
-   struct rte_acl_ctx *
+   struct rte_acl_ctx * __vsym
    rte_acl_create_v21(const struct rte_acl_param *param, int debug)
    {
         ...

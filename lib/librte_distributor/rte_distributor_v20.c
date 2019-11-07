@@ -27,7 +27,7 @@ EAL_REGISTER_TAILQ(rte_distributor_tailq)
 
 /**** APIs called by workers ****/
 
-void
+void __vsym
 rte_distributor_request_pkt_v20(struct rte_distributor_v20 *d,
 		unsigned worker_id, struct rte_mbuf *oldpkt)
 {
@@ -43,7 +43,7 @@ rte_distributor_request_pkt_v20(struct rte_distributor_v20 *d,
 }
 VERSION_SYMBOL(rte_distributor_request_pkt, _v20, 2.0);
 
-struct rte_mbuf *
+struct rte_mbuf * __vsym
 rte_distributor_poll_pkt_v20(struct rte_distributor_v20 *d,
 		unsigned worker_id)
 {
@@ -59,7 +59,7 @@ rte_distributor_poll_pkt_v20(struct rte_distributor_v20 *d,
 }
 VERSION_SYMBOL(rte_distributor_poll_pkt, _v20, 2.0);
 
-struct rte_mbuf *
+struct rte_mbuf * __vsym
 rte_distributor_get_pkt_v20(struct rte_distributor_v20 *d,
 		unsigned worker_id, struct rte_mbuf *oldpkt)
 {
@@ -71,7 +71,7 @@ rte_distributor_get_pkt_v20(struct rte_distributor_v20 *d,
 }
 VERSION_SYMBOL(rte_distributor_get_pkt, _v20, 2.0);
 
-int
+int __vsym
 rte_distributor_return_pkt_v20(struct rte_distributor_v20 *d,
 		unsigned worker_id, struct rte_mbuf *oldpkt)
 {
@@ -204,7 +204,7 @@ process_returns(struct rte_distributor_v20 *d)
 }
 
 /* process a set of packets to distribute them to workers */
-int
+int __vsym
 rte_distributor_process_v20(struct rte_distributor_v20 *d,
 		struct rte_mbuf **mbufs, unsigned num_mbufs)
 {
@@ -321,7 +321,7 @@ rte_distributor_process_v20(struct rte_distributor_v20 *d,
 VERSION_SYMBOL(rte_distributor_process, _v20, 2.0);
 
 /* return to the caller, packets returned from workers */
-int
+int __vsym
 rte_distributor_returned_pkts_v20(struct rte_distributor_v20 *d,
 		struct rte_mbuf **mbufs, unsigned max_mbufs)
 {
@@ -359,7 +359,7 @@ total_outstanding(const struct rte_distributor_v20 *d)
 
 /* flush the distributor, so that there are no outstanding packets in flight or
  * queued up. */
-int
+int __vsym
 rte_distributor_flush_v20(struct rte_distributor_v20 *d)
 {
 	const unsigned flushed = total_outstanding(d);
@@ -372,7 +372,7 @@ rte_distributor_flush_v20(struct rte_distributor_v20 *d)
 VERSION_SYMBOL(rte_distributor_flush, _v20, 2.0);
 
 /* clears the internal returns array in the distributor */
-void
+void __vsym
 rte_distributor_clear_returns_v20(struct rte_distributor_v20 *d)
 {
 	d->returns.start = d->returns.count = 0;
@@ -383,7 +383,7 @@ rte_distributor_clear_returns_v20(struct rte_distributor_v20 *d)
 VERSION_SYMBOL(rte_distributor_clear_returns, _v20, 2.0);
 
 /* creates a distributor instance */
-struct rte_distributor_v20 *
+struct rte_distributor_v20 * __vsym
 rte_distributor_create_v20(const char *name,
 		unsigned socket_id,
 		unsigned num_workers)
