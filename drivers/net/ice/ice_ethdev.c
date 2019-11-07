@@ -2242,10 +2242,12 @@ ice_dev_init(struct rte_eth_dev *dev)
 	/* get base queue pairs index  in the device */
 	ice_base_queue_get(pf);
 
-	ret = ice_flow_init(ad);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to initialize flow");
-		return ret;
+	if (!ad->is_safe_mode) {
+		ret = ice_flow_init(ad);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to initialize flow");
+			return ret;
+		}
 	}
 
 	ret = ice_reset_fxp_resource(hw);
@@ -2392,7 +2394,8 @@ ice_dev_close(struct rte_eth_dev *dev)
 
 	ice_dev_stop(dev);
 
-	ice_flow_uninit(ad);
+	if (!ad->is_safe_mode)
+		ice_flow_uninit(ad);
 
 	/* release all queue resource */
 	ice_free_queues(dev);
