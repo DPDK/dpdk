@@ -102,6 +102,7 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ITEM_METADATA (1u << 16)
 #define MLX5_FLOW_ITEM_PORT_ID (1u << 17)
 #define MLX5_FLOW_ITEM_TAG (1u << 18)
+#define MLX5_FLOW_ITEM_MARK (1u << 19)
 
 /* Pattern MISC bits. */
 #define MLX5_FLOW_LAYER_ICMP (1u << 19)
@@ -194,6 +195,7 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_INC_TCP_ACK (1u << 30)
 #define MLX5_FLOW_ACTION_DEC_TCP_ACK (1u << 31)
 #define MLX5_FLOW_ACTION_SET_TAG (1ull << 32)
+#define MLX5_FLOW_ACTION_MARK_EXT (1ull << 33)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \
@@ -228,7 +230,8 @@ enum mlx5_feature_name {
 				      MLX5_FLOW_ACTION_INC_TCP_ACK | \
 				      MLX5_FLOW_ACTION_DEC_TCP_ACK | \
 				      MLX5_FLOW_ACTION_OF_SET_VLAN_VID | \
-				      MLX5_FLOW_ACTION_SET_TAG)
+				      MLX5_FLOW_ACTION_SET_TAG | \
+				      MLX5_FLOW_ACTION_MARK_EXT)
 
 #define MLX5_FLOW_VLAN_ACTIONS (MLX5_FLOW_ACTION_OF_POP_VLAN | \
 				MLX5_FLOW_ACTION_OF_PUSH_VLAN)

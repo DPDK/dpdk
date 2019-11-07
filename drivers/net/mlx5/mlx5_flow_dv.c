@@ -1010,6 +1010,125 @@ flow_dv_convert_action_copy_mreg(struct rte_eth_dev *dev,
 }
 
 /**
+ * Convert MARK action to DV specification. This routine is used
+ * in extensive metadata only and requires metadata register to be
+ * handled. In legacy mode hardware tag resource is engaged.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] conf
+ *   Pointer to MARK action specification.
+ * @param[in,out] resource
+ *   Pointer to the modify-header resource.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_mark(struct rte_eth_dev *dev,
+			    const struct rte_flow_action_mark *conf,
+			    struct mlx5_flow_dv_modify_hdr_resource *resource,
+			    struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	rte_be32_t mask = rte_cpu_to_be_32(MLX5_FLOW_MARK_MASK &
+					   priv->sh->dv_mark_mask);
+	rte_be32_t data = rte_cpu_to_be_32(conf->id) & mask;
+	struct rte_flow_item item = {
+		.spec = &data,
+		.mask = &mask,
+	};
+	struct field_modify_info reg_c_x[] = {
+		{4, 0, 0}, /* dynamic instead of MLX5_MODI_META_REG_C_1. */
+		{0, 0, 0},
+	};
+	enum modify_reg reg;
+
+	if (!mask)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  NULL, "zero mark action mask");
+	reg = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
+	if (reg < 0)
+		return reg;
+	assert(reg > 0);
+	reg_c_x[0].id = reg_to_field[reg];
+	return flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
+					     MLX5_MODIFICATION_TYPE_SET, error);
+}
+
+/**
+ * Validate MARK item.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_mark(struct rte_eth_dev *dev,
+			   const struct rte_flow_item *item,
+			   const struct rte_flow_attr *attr __rte_unused,
+			   struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+	const struct rte_flow_item_mark *spec = item->spec;
+	const struct rte_flow_item_mark *mask = item->mask;
+	const struct rte_flow_item_mark nic_mask = {
+		.id = priv->sh->dv_mark_mask,
+	};
+	int ret;
+
+	if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "extended metadata feature"
+					  " isn't enabled");
+	if (!mlx5_flow_ext_mreg_supported(dev))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "extended metadata register"
+					  " isn't supported");
+	if (!nic_mask.id)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "extended metadata register"
+					  " isn't available");
+	ret = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
+	if (ret < 0)
+		return ret;
+	if (!spec)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "data cannot be empty");
+	if (spec->id >= (MLX5_FLOW_MARK_MAX & nic_mask.id))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &spec->id,
+					  "mark id exceeds the limit");
+	if (!mask)
+		mask = &nic_mask;
+	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+					(const uint8_t *)&nic_mask,
+					sizeof(struct rte_flow_item_mark),
+					error);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
+/**
  * Validate META item.
  *
  * @param[in] dev
@@ -1479,6 +1598,139 @@ flow_dv_validate_action_set_vlan_vid(uint64_t item_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "wrong action order, port_id should "
 					  "be after set VLAN VID");
+	return 0;
+}
+
+/*
+ * Validate the FLAG action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] attr
+ *   Pointer to flow attributes
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_flag(struct rte_eth_dev *dev,
+			     uint64_t action_flags,
+			     const struct rte_flow_attr *attr,
+			     struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+	int ret;
+
+	/* Fall back if no extended metadata register support. */
+	if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY)
+		return mlx5_flow_validate_action_flag(action_flags, attr,
+						      error);
+	/* Extensive metadata mode requires registers. */
+	if (!mlx5_flow_ext_mreg_supported(dev))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "no metadata registers "
+					  "to support flag action");
+	if (!(priv->sh->dv_mark_mask & MLX5_FLOW_MARK_DEFAULT))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "extended metadata register"
+					  " isn't available");
+	ret = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
+	if (ret < 0)
+		return ret;
+	assert(ret > 0);
+	if (action_flags & MLX5_FLOW_ACTION_DROP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't drop and flag in same flow");
+	if (action_flags & MLX5_FLOW_ACTION_MARK)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't mark and flag in same flow");
+	if (action_flags & MLX5_FLOW_ACTION_FLAG)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't have 2 flag"
+					  " actions in same flow");
+	return 0;
+}
+
+/**
+ * Validate MARK action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] action
+ *   Pointer to action.
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] attr
+ *   Pointer to flow attributes
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_mark(struct rte_eth_dev *dev,
+			     const struct rte_flow_action *action,
+			     uint64_t action_flags,
+			     const struct rte_flow_attr *attr,
+			     struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+	const struct rte_flow_action_mark *mark = action->conf;
+	int ret;
+
+	/* Fall back if no extended metadata register support. */
+	if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY)
+		return mlx5_flow_validate_action_mark(action, action_flags,
+						      attr, error);
+	/* Extensive metadata mode requires registers. */
+	if (!mlx5_flow_ext_mreg_supported(dev))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "no metadata registers "
+					  "to support mark action");
+	if (!priv->sh->dv_mark_mask)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "extended metadata register"
+					  " isn't available");
+	ret = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
+	if (ret < 0)
+		return ret;
+	assert(ret > 0);
+	if (!mark)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "configuration cannot be null");
+	if (mark->id >= (MLX5_FLOW_MARK_MAX & priv->sh->dv_mark_mask))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &mark->id,
+					  "mark id exceeds the limit");
+	if (action_flags & MLX5_FLOW_ACTION_DROP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't drop and mark in same flow");
+	if (action_flags & MLX5_FLOW_ACTION_FLAG)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't flag and mark in same flow");
+	if (action_flags & MLX5_FLOW_ACTION_MARK)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't have 2 mark actions in same"
+					  " flow");
 	return 0;
 }
 
@@ -3750,6 +4002,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			.dst_port = RTE_BE16(UINT16_MAX),
 		}
 	};
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *dev_conf = &priv->config;
 
 	if (items == NULL)
 		return -1;
@@ -3932,6 +4186,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = MLX5_FLOW_LAYER_MPLS;
 			break;
+
+		case RTE_FLOW_ITEM_TYPE_MARK:
+			ret = flow_dv_validate_item_mark(dev, items, attr,
+							 error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_ITEM_MARK;
+			break;
 		case RTE_FLOW_ITEM_TYPE_META:
 			ret = flow_dv_validate_item_meta(dev, items, attr,
 							 error);
@@ -3993,21 +4255,39 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
-			ret = mlx5_flow_validate_action_flag(action_flags,
-							     attr, error);
+			ret = flow_dv_validate_action_flag(dev, action_flags,
+							   attr, error);
 			if (ret < 0)
 				return ret;
-			action_flags |= MLX5_FLOW_ACTION_FLAG;
-			++actions_n;
+			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+				/* Count all modify-header actions as one. */
+				if (!(action_flags &
+				      MLX5_FLOW_MODIFY_HDR_ACTIONS))
+					++actions_n;
+				action_flags |= MLX5_FLOW_ACTION_FLAG |
+						MLX5_FLOW_ACTION_MARK_EXT;
+			} else {
+				action_flags |= MLX5_FLOW_ACTION_FLAG;
+				++actions_n;
+			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
-			ret = mlx5_flow_validate_action_mark(actions,
-							     action_flags,
-							     attr, error);
+			ret = flow_dv_validate_action_mark(dev, actions,
+							   action_flags,
+							   attr, error);
 			if (ret < 0)
 				return ret;
-			action_flags |= MLX5_FLOW_ACTION_MARK;
-			++actions_n;
+			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+				/* Count all modify-header actions as one. */
+				if (!(action_flags &
+				      MLX5_FLOW_MODIFY_HDR_ACTIONS))
+					++actions_n;
+				action_flags |= MLX5_FLOW_ACTION_MARK |
+						MLX5_FLOW_ACTION_MARK_EXT;
+			} else {
+				action_flags |= MLX5_FLOW_ACTION_MARK;
+				++actions_n;
+			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TAG:
 			ret = flow_dv_validate_action_set_tag(dev, actions,
@@ -4278,12 +4558,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					  " actions in the same rule");
 	/* Eswitch has few restrictions on using items and actions */
 	if (attr->transfer) {
-		if (action_flags & MLX5_FLOW_ACTION_FLAG)
+		if (!mlx5_flow_ext_mreg_supported(dev) &&
+		    action_flags & MLX5_FLOW_ACTION_FLAG)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL,
 						  "unsupported action FLAG");
-		if (action_flags & MLX5_FLOW_ACTION_MARK)
+		if (!mlx5_flow_ext_mreg_supported(dev) &&
+		    action_flags & MLX5_FLOW_ACTION_MARK)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL,
@@ -5246,6 +5528,44 @@ flow_dv_match_meta_reg(void *matcher, void *key,
 }
 
 /**
+ * Add MARK item to matcher
+ *
+ * @param[in] dev
+ *   The device to configure through.
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ */
+static void
+flow_dv_translate_item_mark(struct rte_eth_dev *dev,
+			    void *matcher, void *key,
+			    const struct rte_flow_item *item)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_mark *mark;
+	uint32_t value;
+	uint32_t mask;
+
+	mark = item->mask ? (const void *)item->mask :
+			    &rte_flow_item_mark_mask;
+	mask = mark->id & priv->sh->dv_mark_mask;
+	mark = (const void *)item->spec;
+	assert(mark);
+	value = mark->id & priv->sh->dv_mark_mask & mask;
+	if (mask) {
+		enum modify_reg reg;
+
+		/* Get the metadata register index for the mark. */
+		reg = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, NULL);
+		assert(reg > 0);
+		flow_dv_match_meta_reg(matcher, key, reg, value, mask);
+	}
+}
+
+/**
  * Add META item to matcher
  *
  * @param[in, out] matcher
@@ -5254,8 +5574,6 @@ flow_dv_match_meta_reg(void *matcher, void *key,
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
- * @param[in] inner
- *   Item is inner pattern.
  */
 static void
 flow_dv_translate_item_meta(void *matcher, void *key,
@@ -5926,6 +6244,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		    struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *dev_conf = &priv->config;
 	struct rte_flow *flow = dev_flow->flow;
 	uint64_t item_flags = 0;
 	uint64_t last_item = 0;
@@ -5960,7 +6279,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 	if (attr->transfer)
 		mhdr_res.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
 	if (priority == MLX5_FLOW_PRIO_RSVD)
-		priority = priv->config.flow_prio - 1;
+		priority = dev_conf->flow_prio - 1;
 	for (; !actions_end ; actions++) {
 		const struct rte_flow_action_queue *queue;
 		const struct rte_flow_action_rss *rss;
@@ -5991,6 +6310,19 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
+			action_flags |= MLX5_FLOW_ACTION_FLAG;
+			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+				struct rte_flow_action_mark mark = {
+					.id = MLX5_FLOW_MARK_DEFAULT,
+				};
+
+				if (flow_dv_convert_action_mark(dev, &mark,
+								&mhdr_res,
+								error))
+					return -rte_errno;
+				action_flags |= MLX5_FLOW_ACTION_MARK_EXT;
+				break;
+			}
 			tag_resource.tag =
 				mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT);
 			if (!dev_flow->dv.tag_resource)
@@ -5999,9 +6331,22 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 					return errno;
 			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.tag_resource->action;
-			action_flags |= MLX5_FLOW_ACTION_FLAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
+			action_flags |= MLX5_FLOW_ACTION_MARK;
+			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+				const struct rte_flow_action_mark *mark =
+					(const struct rte_flow_action_mark *)
+						actions->conf;
+
+				if (flow_dv_convert_action_mark(dev, mark,
+								&mhdr_res,
+								error))
+					return -rte_errno;
+				action_flags |= MLX5_FLOW_ACTION_MARK_EXT;
+				break;
+			}
+			/* Legacy (non-extensive) MARK action. */
 			tag_resource.tag = mlx5_flow_mark_set
 			      (((const struct rte_flow_action_mark *)
 			       (actions->conf))->id);
@@ -6011,7 +6356,6 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 					return errno;
 			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.tag_resource->action;
-			action_flags |= MLX5_FLOW_ACTION_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TAG:
 			if (flow_dv_convert_action_set_tag
@@ -6048,7 +6392,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			if (!priv->config.devx) {
+			if (!dev_conf->devx) {
 				rte_errno = ENOTSUP;
 				goto cnt_err;
 			}
@@ -6460,6 +6804,11 @@ cnt_err:
 			flow_dv_translate_item_mpls(match_mask, match_value,
 						    items, last_item, tunnel);
 			last_item = MLX5_FLOW_LAYER_MPLS;
+			break;
+		case RTE_FLOW_ITEM_TYPE_MARK:
+			flow_dv_translate_item_mark(dev, match_mask,
+						    match_value, items);
+			last_item = MLX5_FLOW_ITEM_MARK;
 			break;
 		case RTE_FLOW_ITEM_TYPE_META:
 			flow_dv_translate_item_meta(match_mask, match_value,
