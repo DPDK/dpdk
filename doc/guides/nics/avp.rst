@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2017 Wind River Systems, Inc. rights reserved.
+    Copyright(c) 2017 Wind River Systems, Inc.
     All rights reserved.
 
 AVP Poll Mode Driver
