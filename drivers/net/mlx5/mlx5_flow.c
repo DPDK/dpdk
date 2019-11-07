@@ -320,12 +320,6 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 	},
 };
 
-enum mlx5_feature_name {
-	MLX5_HAIRPIN_RX,
-	MLX5_HAIRPIN_TX,
-	MLX5_APPLICATION,
-};
-
 /**
  * Translate tag ID to register.
  *
@@ -342,36 +336,69 @@ enum mlx5_feature_name {
  *   The request register on success, a negative errno
  *   value otherwise and rte_errno is set.
  */
-__rte_unused
-static enum modify_reg flow_get_reg_id(struct rte_eth_dev *dev,
-				       enum mlx5_feature_name feature,
-				       uint32_t id,
-				       struct rte_flow_error *error)
+enum modify_reg
+mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
+		     enum mlx5_feature_name feature,
+		     uint32_t id,
+		     struct rte_flow_error *error)
 {
-	static enum modify_reg id2reg[] = {
-		[0] = REG_A,
-		[1] = REG_C_2,
-		[2] = REG_C_3,
-		[3] = REG_C_4,
-		[4] = REG_B,};
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
 
-	dev = (void *)dev;
 	switch (feature) {
 	case MLX5_HAIRPIN_RX:
 		return REG_B;
 	case MLX5_HAIRPIN_TX:
 		return REG_A;
-	case MLX5_APPLICATION:
-		if (id > 4)
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  NULL, "invalid tag id");
-		return id2reg[id];
+	case MLX5_METADATA_RX:
+		switch (config->dv_xmeta_en) {
+		case MLX5_XMETA_MODE_LEGACY:
+			return REG_B;
+		case MLX5_XMETA_MODE_META16:
+			return REG_C_0;
+		case MLX5_XMETA_MODE_META32:
+			return REG_C_1;
+		}
+		break;
+	case MLX5_METADATA_TX:
+		return REG_A;
+	case MLX5_METADATA_FDB:
+		return REG_C_0;
+	case MLX5_FLOW_MARK:
+		switch (config->dv_xmeta_en) {
+		case MLX5_XMETA_MODE_LEGACY:
+			return REG_NONE;
+		case MLX5_XMETA_MODE_META16:
+			return REG_C_1;
+		case MLX5_XMETA_MODE_META32:
+			return REG_C_0;
+		}
+		break;
+	case MLX5_COPY_MARK:
+		return REG_C_3;
+	case MLX5_APP_TAG:
+		/*
+		 * Suppose engaging reg_c_2 .. reg_c_7 registers.
+		 * reg_c_2 is reserved for coloring by meters.
+		 * reg_c_3 is reserved for split flows TAG.
+		 */
+		if (id > (REG_C_7 - REG_C_4))
+			return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					 NULL, "invalid tag id");
+		if (config->flow_mreg_c[id + REG_C_4 - REG_C_0] == REG_NONE)
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					 NULL, "unsupported tag id");
+		return config->flow_mreg_c[id + REG_C_4 - REG_C_0];
 	}
-	return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+	assert(false);
+	return rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, "invalid feature name");
 }
-
 
 /**
  * Check extensive flow metadata register support.
@@ -2685,7 +2712,6 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	struct mlx5_rte_flow_item_tag *tag_item;
 	struct rte_flow_item *item;
 	char *addr;
-	struct rte_flow_error error;
 	int encap = 0;
 
 	mlx5_flow_id_get(priv->sh->flow_id_pool, flow_id);
@@ -2751,7 +2777,8 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	rte_memcpy(actions_rx, actions, sizeof(struct rte_flow_action));
 	actions_rx++;
 	set_tag = (void *)actions_rx;
-	set_tag->id = flow_get_reg_id(dev, MLX5_HAIRPIN_RX, 0, &error);
+	set_tag->id = mlx5_flow_get_reg_id(dev, MLX5_HAIRPIN_RX, 0, NULL);
+	assert(set_tag->id > REG_NONE);
 	set_tag->data = *flow_id;
 	tag_action->conf = set_tag;
 	/* Create Tx item list. */
@@ -2761,7 +2788,8 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	item->type = MLX5_RTE_FLOW_ITEM_TYPE_TAG;
 	tag_item = (void *)addr;
 	tag_item->data = *flow_id;
-	tag_item->id = flow_get_reg_id(dev, MLX5_HAIRPIN_TX, 0, NULL);
+	tag_item->id = mlx5_flow_get_reg_id(dev, MLX5_HAIRPIN_TX, 0, NULL);
+	assert(set_tag->id > REG_NONE);
 	item->spec = tag_item;
 	addr += sizeof(struct mlx5_rte_flow_item_tag);
 	tag_item = (void *)addr;

@@ -63,6 +63,18 @@ struct mlx5_rte_flow_item_tx_queue {
 	uint32_t queue;
 };
 
+/* Feature name to allocate metadata register. */
+enum mlx5_feature_name {
+	MLX5_HAIRPIN_RX,
+	MLX5_HAIRPIN_TX,
+	MLX5_METADATA_RX,
+	MLX5_METADATA_TX,
+	MLX5_METADATA_FDB,
+	MLX5_FLOW_MARK,
+	MLX5_APP_TAG,
+	MLX5_COPY_MARK,
+};
+
 /* Pattern outer Layer bits. */
 #define MLX5_FLOW_LAYER_OUTER_L2 (1u << 0)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV4 (1u << 1)
@@ -534,6 +546,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_query_t query;
 };
 
+
 #define MLX5_CNT_CONTAINER(sh, batch, thread) (&(sh)->cmng.ccont \
 	[(((sh)->cmng.mhi[batch] >> (thread)) & 0x1) * 2 + (batch)])
 #define MLX5_CNT_CONTAINER_UNUSED(sh, batch, thread) (&(sh)->cmng.ccont \
@@ -554,6 +567,10 @@ uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow, int tunnel,
 				     uint64_t hash_fields);
 uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority);
+enum modify_reg mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
+				     enum mlx5_feature_name feature,
+				     uint32_t id,
+				     struct rte_flow_error *error);
 const struct rte_flow_action *mlx5_flow_find_action
 					(const struct rte_flow_action *actions,
 					 enum rte_flow_action_type action);
