@@ -864,8 +864,8 @@ flow_verbs_translate_action_queue(struct mlx5_flow *dev_flow,
 	const struct rte_flow_action_queue *queue = action->conf;
 	struct rte_flow *flow = dev_flow->flow;
 
-	if (flow->queue)
-		(*flow->queue)[0] = queue->index;
+	if (flow->rss.queue)
+		(*flow->rss.queue)[0] = queue->index;
 	flow->rss.queue_num = 1;
 }
 
@@ -889,16 +889,17 @@ flow_verbs_translate_action_rss(struct mlx5_flow *dev_flow,
 	const uint8_t *rss_key;
 	struct rte_flow *flow = dev_flow->flow;
 
-	if (flow->queue)
-		memcpy((*flow->queue), rss->queue,
+	if (flow->rss.queue)
+		memcpy((*flow->rss.queue), rss->queue,
 		       rss->queue_num * sizeof(uint16_t));
 	flow->rss.queue_num = rss->queue_num;
 	/* NULL RSS key indicates default RSS key. */
 	rss_key = !rss->key ? rss_hash_default_key : rss->key;
-	memcpy(flow->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
-	/* RSS type 0 indicates default RSS type (ETH_RSS_IP). */
-	flow->rss.types = !rss->types ? ETH_RSS_IP : rss->types;
-	flow->rss.level = rss->level;
+	memcpy(flow->rss.key, rss_key, MLX5_RSS_HASH_KEY_LEN);
+	/*
+	 * rss->level and rss.types should be set in advance when expanding
+	 * items for RSS.
+	 */
 }
 
 /**
@@ -1392,22 +1393,23 @@ flow_verbs_prepare(const struct rte_flow_attr *attr __rte_unused,
 		   const struct rte_flow_action actions[],
 		   struct rte_flow_error *error)
 {
-	uint32_t size = sizeof(struct mlx5_flow) + sizeof(struct ibv_flow_attr);
-	struct mlx5_flow *flow;
+	size_t size = sizeof(struct mlx5_flow) + sizeof(struct ibv_flow_attr);
+	struct mlx5_flow *dev_flow;
 
 	size += flow_verbs_get_actions_size(actions);
 	size += flow_verbs_get_items_size(items);
-	flow = rte_calloc(__func__, 1, size, 0);
-	if (!flow) {
+	dev_flow = rte_calloc(__func__, 1, size, 0);
+	if (!dev_flow) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "not enough memory to create flow");
 		return NULL;
 	}
-	flow->verbs.attr = (void *)(flow + 1);
-	flow->verbs.specs =
-		(uint8_t *)(flow + 1) + sizeof(struct ibv_flow_attr);
-	return flow;
+	dev_flow->verbs.attr = (void *)(dev_flow + 1);
+	dev_flow->verbs.specs = (void *)(dev_flow->verbs.attr + 1);
+	dev_flow->ingress = attr->ingress;
+	dev_flow->transfer = attr->transfer;
+	return dev_flow;
 }
 
 /**
@@ -1513,7 +1515,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			flow_verbs_translate_item_ipv4(dev_flow, items,
 						       item_flags);
 			subpriority = MLX5_PRIORITY_MAP_L3;
-			dev_flow->verbs.hash_fields |=
+			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
 					(dev_flow, tunnel,
 					 MLX5_IPV4_LAYER_TYPES,
@@ -1525,7 +1527,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			flow_verbs_translate_item_ipv6(dev_flow, items,
 						       item_flags);
 			subpriority = MLX5_PRIORITY_MAP_L3;
-			dev_flow->verbs.hash_fields |=
+			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
 					(dev_flow, tunnel,
 					 MLX5_IPV6_LAYER_TYPES,
@@ -1537,7 +1539,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			flow_verbs_translate_item_tcp(dev_flow, items,
 						      item_flags);
 			subpriority = MLX5_PRIORITY_MAP_L4;
-			dev_flow->verbs.hash_fields |=
+			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
 					(dev_flow, tunnel, ETH_RSS_TCP,
 					 (IBV_RX_HASH_SRC_PORT_TCP |
@@ -1549,7 +1551,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			flow_verbs_translate_item_udp(dev_flow, items,
 						      item_flags);
 			subpriority = MLX5_PRIORITY_MAP_L4;
-			dev_flow->verbs.hash_fields |=
+			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
 					(dev_flow, tunnel, ETH_RSS_UDP,
 					 (IBV_RX_HASH_SRC_PORT_UDP |
@@ -1694,16 +1696,17 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		} else {
 			struct mlx5_hrxq *hrxq;
 
-			hrxq = mlx5_hrxq_get(dev, flow->key,
+			assert(flow->rss.queue);
+			hrxq = mlx5_hrxq_get(dev, flow->rss.key,
 					     MLX5_RSS_HASH_KEY_LEN,
-					     verbs->hash_fields,
-					     (*flow->queue),
+					     dev_flow->hash_fields,
+					     (*flow->rss.queue),
 					     flow->rss.queue_num);
 			if (!hrxq)
-				hrxq = mlx5_hrxq_new(dev, flow->key,
+				hrxq = mlx5_hrxq_new(dev, flow->rss.key,
 						     MLX5_RSS_HASH_KEY_LEN,
-						     verbs->hash_fields,
-						     (*flow->queue),
+						     dev_flow->hash_fields,
+						     (*flow->rss.queue),
 						     flow->rss.queue_num,
 						     !!(dev_flow->layers &
 						       MLX5_FLOW_LAYER_TUNNEL));

@@ -417,7 +417,6 @@ struct mlx5_flow_dv_push_vlan_action_resource {
 
 /* DV flows structure. */
 struct mlx5_flow_dv {
-	uint64_t hash_fields; /**< Fields that participate in the hash. */
 	struct mlx5_hrxq *hrxq; /**< Hash Rx queues. */
 	/* Flow DV api: */
 	struct mlx5_flow_dv_matcher *matcher; /**< Cache to matcher. */
@@ -436,6 +435,8 @@ struct mlx5_flow_dv {
 	/**< Structure for VF VLAN workaround. */
 	struct mlx5_flow_dv_push_vlan_action_resource *push_vlan_res;
 	/**< Pointer to push VLAN action resource in cache. */
+	struct mlx5_flow_dv_tag_resource *tag_resource;
+	/**< pointer to the tag action. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
 	/**< Action list. */
@@ -460,9 +461,16 @@ struct mlx5_flow_verbs {
 	};
 	struct ibv_flow *flow; /**< Verbs flow pointer. */
 	struct mlx5_hrxq *hrxq; /**< Hash Rx queue object. */
-	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
 	struct mlx5_vf_vlan vf_vlan;
 	/**< Structure for VF VLAN workaround. */
+};
+
+struct mlx5_flow_rss {
+	uint32_t level;
+	uint32_t queue_num; /**< Number of entries in @p queue. */
+	uint64_t types; /**< Specific RSS hash types (see ETH_RSS_*). */
+	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
+	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 };
 
 /** Device flow structure. */
@@ -473,6 +481,10 @@ struct mlx5_flow {
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	uint64_t actions;
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
+	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
+	uint8_t ingress; /**< 1 if the flow is ingress. */
+	uint32_t group; /**< The group index. */
+	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
 	union {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		struct mlx5_flow_dv dv;
@@ -486,18 +498,11 @@ struct mlx5_flow {
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	enum mlx5_flow_drv_type drv_type; /**< Driver type. */
+	struct mlx5_flow_rss rss; /**< RSS context. */
 	struct mlx5_flow_counter *counter; /**< Holds flow counter. */
-	struct mlx5_flow_dv_tag_resource *tag_resource;
-	/**< pointer to the tag action. */
-	struct rte_flow_action_rss rss;/**< RSS context. */
-	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
-	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
 	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
 	/**< Device flows that are part of the flow. */
 	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */
-	uint8_t ingress; /**< 1 if the flow is ingress. */
-	uint32_t group; /**< The group index. */
-	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
 	uint32_t hairpin_flow_id; /**< The flow id used for hairpin. */
 };
 

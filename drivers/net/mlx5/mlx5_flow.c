@@ -616,7 +616,7 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 	unsigned int i;
 
 	for (i = 0; i != flow->rss.queue_num; ++i) {
-		int idx = (*flow->queue)[i];
+		int idx = (*flow->rss.queue)[i];
 		struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of((*priv->rxqs)[idx],
 				     struct mlx5_rxq_ctrl, rxq);
@@ -680,7 +680,7 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 
 	assert(dev->data->dev_started);
 	for (i = 0; i != flow->rss.queue_num; ++i) {
-		int idx = (*flow->queue)[i];
+		int idx = (*flow->rss.queue)[i];
 		struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of((*priv->rxqs)[idx],
 				     struct mlx5_rxq_ctrl, rxq);
@@ -2833,13 +2833,20 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		goto error_before_flow;
 	}
 	flow->drv_type = flow_get_drv_type(dev, attr);
-	flow->ingress = attr->ingress;
-	flow->transfer = attr->transfer;
 	if (hairpin_id != 0)
 		flow->hairpin_flow_id = hairpin_id;
 	assert(flow->drv_type > MLX5_FLOW_TYPE_MIN &&
 	       flow->drv_type < MLX5_FLOW_TYPE_MAX);
-	flow->queue = (void *)(flow + 1);
+	flow->rss.queue = (void *)(flow + 1);
+	if (rss) {
+		/*
+		 * The following information is required by
+		 * mlx5_flow_hashfields_adjust() in advance.
+		 */
+		flow->rss.level = rss->level;
+		/* RSS type 0 indicates default RSS type (ETH_RSS_IP). */
+		flow->rss.types = !rss->types ? ETH_RSS_IP : rss->types;
+	}
 	LIST_INIT(&flow->dev_flows);
 	if (rss && rss->types) {
 		unsigned int graph_root;
@@ -2879,6 +2886,7 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		if (!dev_flow)
 			goto error;
 		dev_flow->flow = flow;
+		dev_flow->external = 0;
 		LIST_INSERT_HEAD(&flow->dev_flows, dev_flow, next);
 		ret = flow_drv_translate(dev, dev_flow, &attr_tx,
 					 items_tx.items,

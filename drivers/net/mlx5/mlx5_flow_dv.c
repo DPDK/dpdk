@@ -1585,10 +1585,9 @@ flow_dv_encap_decap_resource_register
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_encap_decap_resource *cache_resource;
-	struct rte_flow *flow = dev_flow->flow;
 	struct mlx5dv_dr_domain *domain;
 
-	resource->flags = flow->group ? 0 : 1;
+	resource->flags = dev_flow->group ? 0 : 1;
 	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
 		domain = sh->fdb_domain;
 	else if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_RX)
@@ -2747,7 +2746,7 @@ flow_dv_modify_hdr_resource_register
 	else
 		ns = sh->rx_domain;
 	resource->flags =
-		dev_flow->flow->group ? 0 : MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL;
+		dev_flow->group ? 0 : MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL;
 	/* Lookup a matching resource from cache. */
 	LIST_FOREACH(cache_resource, &sh->modify_cmds, next) {
 		if (resource->ft_type == cache_resource->ft_type &&
@@ -4095,18 +4094,20 @@ flow_dv_prepare(const struct rte_flow_attr *attr __rte_unused,
 		const struct rte_flow_action actions[] __rte_unused,
 		struct rte_flow_error *error)
 {
-	uint32_t size = sizeof(struct mlx5_flow);
-	struct mlx5_flow *flow;
+	size_t size = sizeof(struct mlx5_flow);
+	struct mlx5_flow *dev_flow;
 
-	flow = rte_calloc(__func__, 1, size, 0);
-	if (!flow) {
+	dev_flow = rte_calloc(__func__, 1, size, 0);
+	if (!dev_flow) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "not enough memory to create flow");
 		return NULL;
 	}
-	flow->dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param);
-	return flow;
+	dev_flow->dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param);
+	dev_flow->ingress = attr->ingress;
+	dev_flow->transfer = attr->transfer;
+	return dev_flow;
 }
 
 #ifndef NDEBUG
@@ -5487,7 +5488,7 @@ flow_dv_tag_resource_register
 				(void *)cache_resource,
 				rte_atomic32_read(&cache_resource->refcnt));
 			rte_atomic32_inc(&cache_resource->refcnt);
-			dev_flow->flow->tag_resource = cache_resource;
+			dev_flow->dv.tag_resource = cache_resource;
 			return 0;
 		}
 	}
@@ -5509,7 +5510,7 @@ flow_dv_tag_resource_register
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
 	LIST_INSERT_HEAD(&sh->tags, cache_resource, next);
-	dev_flow->flow->tag_resource = cache_resource;
+	dev_flow->dv.tag_resource = cache_resource;
 	DRV_LOG(DEBUG, "new tag resource %p: refcnt %d++",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
@@ -5689,7 +5690,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				       &table, error);
 	if (ret)
 		return ret;
-	flow->group = table;
+	dev_flow->group = table;
 	if (attr->transfer)
 		res.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
 	if (priority == MLX5_FLOW_PRIO_RSVD)
@@ -5726,47 +5727,50 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			tag_resource.tag =
 				mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT);
-			if (!flow->tag_resource)
+			if (!dev_flow->dv.tag_resource)
 				if (flow_dv_tag_resource_register
 				    (dev, &tag_resource, dev_flow, error))
 					return errno;
 			dev_flow->dv.actions[actions_n++] =
-				flow->tag_resource->action;
+				dev_flow->dv.tag_resource->action;
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			tag_resource.tag = mlx5_flow_mark_set
 			      (((const struct rte_flow_action_mark *)
 			       (actions->conf))->id);
-			if (!flow->tag_resource)
+			if (!dev_flow->dv.tag_resource)
 				if (flow_dv_tag_resource_register
 				    (dev, &tag_resource, dev_flow, error))
 					return errno;
 			dev_flow->dv.actions[actions_n++] =
-				flow->tag_resource->action;
+				dev_flow->dv.tag_resource->action;
 			action_flags |= MLX5_FLOW_ACTION_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			action_flags |= MLX5_FLOW_ACTION_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			assert(flow->rss.queue);
 			queue = actions->conf;
 			flow->rss.queue_num = 1;
-			(*flow->queue)[0] = queue->index;
+			(*flow->rss.queue)[0] = queue->index;
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
+			assert(flow->rss.queue);
 			rss = actions->conf;
-			if (flow->queue)
-				memcpy((*flow->queue), rss->queue,
+			if (flow->rss.queue)
+				memcpy((*flow->rss.queue), rss->queue,
 				       rss->queue_num * sizeof(uint16_t));
 			flow->rss.queue_num = rss->queue_num;
 			/* NULL RSS key indicates default RSS key. */
 			rss_key = !rss->key ? rss_hash_default_key : rss->key;
-			memcpy(flow->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
-			/* RSS type 0 indicates default RSS type ETH_RSS_IP. */
-			flow->rss.types = !rss->types ? ETH_RSS_IP : rss->types;
-			flow->rss.level = rss->level;
+			memcpy(flow->rss.key, rss_key, MLX5_RSS_HASH_KEY_LEN);
+			/*
+			 * rss->level and rss.types should be set in advance
+			 * when expanding items for RSS.
+			 */
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
@@ -5777,7 +5781,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			flow->counter = flow_dv_counter_alloc(dev,
 							      count->shared,
 							      count->id,
-							      flow->group);
+							      dev_flow->group);
 			if (flow->counter == NULL)
 				goto cnt_err;
 			dev_flow->dv.actions[actions_n++] =
@@ -6075,9 +6079,10 @@ cnt_err:
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
 						  &item_flags, &tunnel);
 			flow_dv_translate_item_ipv4(match_mask, match_value,
-						    items, tunnel, flow->group);
+						    items, tunnel,
+						    dev_flow->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
-			dev_flow->dv.hash_fields |=
+			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
 					(dev_flow, tunnel,
 					 MLX5_IPV4_LAYER_TYPES,
@@ -6102,9 +6107,10 @@ cnt_err:
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
 						  &item_flags, &tunnel);
 			flow_dv_translate_item_ipv6(match_mask, match_value,
-						    items, tunnel, flow->group);
+						    items, tunnel,
+						    dev_flow->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
-			dev_flow->dv.hash_fields |=
+			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
 					(dev_flow, tunnel,
 					 MLX5_IPV6_LAYER_TYPES,
@@ -6129,7 +6135,7 @@ cnt_err:
 			flow_dv_translate_item_tcp(match_mask, match_value,
 						   items, tunnel);
 			matcher.priority = MLX5_PRIORITY_MAP_L4;
-			dev_flow->dv.hash_fields |=
+			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
 					(dev_flow, tunnel, ETH_RSS_TCP,
 					 IBV_RX_HASH_SRC_PORT_TCP |
@@ -6141,7 +6147,7 @@ cnt_err:
 			flow_dv_translate_item_udp(match_mask, match_value,
 						   items, tunnel);
 			matcher.priority = MLX5_PRIORITY_MAP_L4;
-			dev_flow->dv.hash_fields |=
+			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
 					(dev_flow, tunnel, ETH_RSS_UDP,
 					 IBV_RX_HASH_SRC_PORT_UDP |
@@ -6237,7 +6243,7 @@ cnt_err:
 	matcher.priority = mlx5_flow_adjust_priority(dev, priority,
 						     matcher.priority);
 	matcher.egress = attr->egress;
-	matcher.group = flow->group;
+	matcher.group = dev_flow->group;
 	matcher.transfer = attr->transfer;
 	if (flow_dv_matcher_register(dev, &matcher, dev_flow, error))
 		return -rte_errno;
@@ -6271,7 +6277,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		dv = &dev_flow->dv;
 		n = dv->actions_n;
 		if (dev_flow->actions & MLX5_FLOW_ACTION_DROP) {
-			if (flow->transfer) {
+			if (dev_flow->transfer) {
 				dv->actions[n++] = priv->sh->esw_drop_action;
 			} else {
 				dv->hrxq = mlx5_hrxq_drop_new(dev);
@@ -6289,15 +6295,18 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			   (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)) {
 			struct mlx5_hrxq *hrxq;
 
-			hrxq = mlx5_hrxq_get(dev, flow->key,
+			assert(flow->rss.queue);
+			hrxq = mlx5_hrxq_get(dev, flow->rss.key,
 					     MLX5_RSS_HASH_KEY_LEN,
-					     dv->hash_fields,
-					     (*flow->queue),
+					     dev_flow->hash_fields,
+					     (*flow->rss.queue),
 					     flow->rss.queue_num);
 			if (!hrxq) {
 				hrxq = mlx5_hrxq_new
-					(dev, flow->key, MLX5_RSS_HASH_KEY_LEN,
-					 dv->hash_fields, (*flow->queue),
+					(dev, flow->rss.key,
+					 MLX5_RSS_HASH_KEY_LEN,
+					 dev_flow->hash_fields,
+					 (*flow->rss.queue),
 					 flow->rss.queue_num,
 					 !!(dev_flow->layers &
 					    MLX5_FLOW_LAYER_TUNNEL));
@@ -6607,10 +6616,6 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		flow_dv_counter_release(dev, flow->counter);
 		flow->counter = NULL;
 	}
-	if (flow->tag_resource) {
-		flow_dv_tag_release(dev, flow->tag_resource);
-		flow->tag_resource = NULL;
-	}
 	while (!LIST_EMPTY(&flow->dev_flows)) {
 		dev_flow = LIST_FIRST(&flow->dev_flows);
 		LIST_REMOVE(dev_flow, next);
@@ -6626,6 +6631,8 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 			flow_dv_port_id_action_resource_release(dev_flow);
 		if (dev_flow->dv.push_vlan_res)
 			flow_dv_push_vlan_action_resource_release(dev_flow);
+		if (dev_flow->dv.tag_resource)
+			flow_dv_tag_release(dev, dev_flow->dv.tag_resource);
 		rte_free(dev_flow);
 	}
 }
