@@ -889,6 +889,7 @@ crypto_teardown(void)
 		params.session_mpool = NULL;
 	}
 	if (params.session_priv_mpool != NULL) {
+		rte_mempool_avail_count(params.session_priv_mpool);
 		rte_mempool_free(params.session_priv_mpool);
 		params.session_priv_mpool = NULL;
 	}
