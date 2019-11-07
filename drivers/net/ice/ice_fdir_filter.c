@@ -863,8 +863,10 @@ ice_fdir_init(struct ice_adapter *ad)
 
 	if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
 		parser = &ice_fdir_parser_comms;
-	else
+	else if (ad->active_pkg_type == ICE_PKG_TYPE_OS_DEFAULT)
 		parser = &ice_fdir_parser_os;
+	else
+		return -EINVAL;
 
 	return ice_register_parser(parser, ad);
 }

@@ -1122,8 +1122,10 @@ ice_switch_init(struct ice_adapter *ad)
 
 	if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
 		dist_parser = &ice_switch_dist_parser_comms;
-	else
+	else if (ad->active_pkg_type == ICE_PKG_TYPE_OS_DEFAULT)
 		dist_parser = &ice_switch_dist_parser_os;
+	else
+		return -EINVAL;
 
 	if (ad->devargs.pipe_mode_support)
 		ret = ice_register_parser(perm_parser, ad);

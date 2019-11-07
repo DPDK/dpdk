@@ -242,6 +242,8 @@ ice_hash_init(struct ice_adapter *ad)
 		parser = &ice_hash_parser_os;
 	else if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
 		parser = &ice_hash_parser_comms;
+	else
+		return -EINVAL;
 
 	return ice_register_parser(parser, ad);
 }
