@@ -66,8 +66,7 @@ static inline void
 rte_ticketlock_lock(rte_ticketlock_t *tl)
 {
 	uint16_t me = __atomic_fetch_add(&tl->s.next, 1, __ATOMIC_RELAXED);
-	while (__atomic_load_n(&tl->s.current, __ATOMIC_ACQUIRE) != me)
-		rte_pause();
+	rte_wait_until_equal_16(&tl->s.current, me, __ATOMIC_ACQUIRE);
 }
 
 /**
