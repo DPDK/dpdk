@@ -2328,7 +2328,7 @@ enum _ecore_status_t ecore_mcp_trans_speed_mask(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt,
 						u32 *p_speed_mask)
 {
-	u32 transceiver_type, transceiver_state;
+	u32 transceiver_type = ETH_TRANSCEIVER_TYPE_NONE, transceiver_state;
 
 	ecore_mcp_get_transceiver_data(p_hwfn, p_ptt, &transceiver_state,
 				       &transceiver_type);
@@ -3223,7 +3223,8 @@ enum _ecore_status_t ecore_mcp_nvm_put_file_begin(struct ecore_dev *p_dev,
 enum _ecore_status_t ecore_mcp_nvm_write(struct ecore_dev *p_dev, u32 cmd,
 					 u32 addr, u8 *p_buf, u32 len)
 {
-	u32 buf_idx, buf_size, nvm_cmd, nvm_offset, resp, param;
+	u32 buf_idx, buf_size, nvm_cmd, nvm_offset;
+	u32 resp = FW_MSG_CODE_ERROR, param;
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	enum _ecore_status_t rc = ECORE_INVAL;
 	struct ecore_ptt *p_ptt;
@@ -3322,7 +3323,7 @@ enum _ecore_status_t ecore_mcp_nvm_set_secure_mode(struct ecore_dev *p_dev,
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	struct ecore_ptt *p_ptt;
-	u32 resp, param;
+	u32 resp = 0, param;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
@@ -3430,7 +3431,7 @@ enum _ecore_status_t ecore_mcp_gpio_read(struct ecore_hwfn *p_hwfn,
 					 u16 gpio, u32 *gpio_val)
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS;
-	u32 drv_mb_param = 0, rsp;
+	u32 drv_mb_param = 0, rsp = 0;
 
 	drv_mb_param = (gpio << DRV_MB_PARAM_GPIO_NUMBER_OFFSET);
 
@@ -3451,7 +3452,7 @@ enum _ecore_status_t ecore_mcp_gpio_write(struct ecore_hwfn *p_hwfn,
 					  u16 gpio, u16 gpio_val)
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS;
-	u32 drv_mb_param = 0, param, rsp;
+	u32 drv_mb_param = 0, param, rsp = 0;
 
 	drv_mb_param = (gpio << DRV_MB_PARAM_GPIO_NUMBER_OFFSET) |
 		(gpio_val << DRV_MB_PARAM_GPIO_VALUE_OFFSET);
@@ -3541,7 +3542,7 @@ enum _ecore_status_t ecore_mcp_bist_clock_test(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_bist_nvm_test_get_num_images(
 	struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt, u32 *num_images)
 {
-	u32 drv_mb_param = 0, rsp;
+	u32 drv_mb_param = 0, rsp = 0;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	drv_mb_param = (DRV_MB_PARAM_BIST_NVM_TEST_NUM_IMAGES <<
@@ -3925,7 +3926,7 @@ enum _ecore_status_t
 __ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		      struct ecore_resc_lock_params *p_params)
 {
-	u32 param = 0, mcp_resp, mcp_param;
+	u32 param = 0, mcp_resp = 0, mcp_param = 0;
 	u8 opcode;
 	enum _ecore_status_t rc;
 
