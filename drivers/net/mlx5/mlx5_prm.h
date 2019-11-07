@@ -392,6 +392,7 @@ enum {
 
 /* The field of packet to be modified. */
 enum mlx5_modification_field {
+	MLX5_MODI_OUT_NONE = -1,
 	MLX5_MODI_OUT_SMAC_47_16 = 1,
 	MLX5_MODI_OUT_SMAC_15_0,
 	MLX5_MODI_OUT_ETHERTYPE,
@@ -453,6 +454,23 @@ enum mlx5_modification_field {
 	MLX5_MODI_IN_TCP_SEQ_NUM,
 	MLX5_MODI_OUT_TCP_ACK_NUM,
 	MLX5_MODI_IN_TCP_ACK_NUM = 0x5C,
+};
+
+/* Total number of metadata reg_c's. */
+#define MLX5_MREG_C_NUM (MLX5_MODI_META_REG_C_7 - MLX5_MODI_META_REG_C_0 + 1)
+
+enum modify_reg {
+	REG_NONE = 0,
+	REG_A,
+	REG_B,
+	REG_C_0,
+	REG_C_1,
+	REG_C_2,
+	REG_C_3,
+	REG_C_4,
+	REG_C_5,
+	REG_C_6,
+	REG_C_7,
 };
 
 /* Modification sub command. */

@@ -27,19 +27,6 @@
 #include "mlx5.h"
 #include "mlx5_prm.h"
 
-enum modify_reg {
-	REG_A,
-	REG_B,
-	REG_C_0,
-	REG_C_1,
-	REG_C_2,
-	REG_C_3,
-	REG_C_4,
-	REG_C_5,
-	REG_C_6,
-	REG_C_7,
-};
-
 /* Private rte flow items. */
 enum mlx5_rte_flow_item_type {
 	MLX5_RTE_FLOW_ITEM_TYPE_END = INT_MIN,

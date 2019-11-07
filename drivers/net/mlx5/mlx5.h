@@ -37,6 +37,7 @@
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 #include "mlx5_glue.h"
+#include "mlx5_prm.h"
 
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,
@@ -254,6 +255,8 @@ struct mlx5_dev_config {
 	} mprq; /* Configurations for Multi-Packet RQ. */
 	int mps; /* Multi-packet send supported mode. */
 	unsigned int flow_prio; /* Number of flow priorities. */
+	enum modify_reg flow_mreg_c[MLX5_MREG_C_NUM];
+	/* Availibility of mreg_c's. */
 	unsigned int tso_max_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	unsigned int max_dump_files_num; /* Maximum dump files per queue. */
@@ -563,6 +566,10 @@ struct mlx5_flow_tbl_resource {
 
 #define MLX5_MAX_TABLES UINT16_MAX
 #define MLX5_HAIRPIN_TX_TABLE (UINT16_MAX - 1)
+/* Reserve the last two tables for metadata register copy. */
+#define MLX5_FLOW_MREG_ACT_TABLE_GROUP (MLX5_MAX_TABLES - 1)
+#define MLX5_FLOW_MREG_CP_TABLE_GROUP \
+	(MLX5_FLOW_MREG_ACT_TABLE_GROUP - 1)
 #define MLX5_MAX_TABLES_FDB UINT16_MAX
 
 #define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
@@ -788,7 +795,7 @@ int mlx5_set_link_up(struct rte_eth_dev *dev);
 int mlx5_is_removed(struct rte_eth_dev *dev);
 eth_tx_burst_t mlx5_select_tx_function(struct rte_eth_dev *dev);
 eth_rx_burst_t mlx5_select_rx_function(struct rte_eth_dev *dev);
-struct mlx5_priv *mlx5_port_to_eswitch_info(uint16_t port);
+struct mlx5_priv *mlx5_port_to_eswitch_info(uint16_t port, bool valid);
 struct mlx5_priv *mlx5_dev_to_eswitch_info(struct rte_eth_dev *dev);
 int mlx5_sysfs_switch_info(unsigned int ifindex,
 			   struct mlx5_switch_info *info);
@@ -868,6 +875,8 @@ int mlx5_traffic_restart(struct rte_eth_dev *dev);
 
 /* mlx5_flow.c */
 
+int mlx5_flow_discover_mreg_c(struct rte_eth_dev *eth_dev);
+bool mlx5_flow_ext_mreg_supported(struct rte_eth_dev *dev);
 int mlx5_flow_discover_priorities(struct rte_eth_dev *dev);
 void mlx5_flow_print(struct rte_flow *flow);
 int mlx5_flow_validate(struct rte_eth_dev *dev,

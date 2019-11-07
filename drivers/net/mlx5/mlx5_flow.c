@@ -372,6 +372,33 @@ static enum modify_reg flow_get_reg_id(struct rte_eth_dev *dev,
 				  NULL, "invalid feature name");
 }
 
+
+/**
+ * Check extensive flow metadata register support.
+ *
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
+ *
+ * @return
+ *   True if device supports extensive flow metadata register, otherwise false.
+ */
+bool
+mlx5_flow_ext_mreg_supported(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+
+	/*
+	 * Having available reg_c can be regarded inclusively as supporting
+	 * extensive flow metadata register, which could mean,
+	 * - metadata register copy action by modify header.
+	 * - 16 modify header actions is supported.
+	 * - reg_c's are preserved across different domain (FDB and NIC) on
+	 *   packet loopback by flow lookup miss.
+	 */
+	return config->flow_mreg_c[2] != REG_NONE;
+}
+
 /**
  * Discover the maximum number of priority available.
  *
@@ -4049,5 +4076,76 @@ mlx5_flow_group_to_table(const struct rte_flow_attr *attributes, bool external,
 	} else {
 		*table = group;
 	}
+	return 0;
+}
+
+/**
+ * Discover availability of metadata reg_c's.
+ *
+ * Iteratively use test flows to check availability.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_discover_mreg_c(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
+	enum modify_reg idx;
+	int n = 0;
+
+	/* reg_c[0] and reg_c[1] are reserved. */
+	config->flow_mreg_c[n++] = REG_C_0;
+	config->flow_mreg_c[n++] = REG_C_1;
+	/* Discover availability of other reg_c's. */
+	for (idx = REG_C_2; idx <= REG_C_7; ++idx) {
+		struct rte_flow_attr attr = {
+			.group = MLX5_FLOW_MREG_CP_TABLE_GROUP,
+			.priority = MLX5_FLOW_PRIO_RSVD,
+			.ingress = 1,
+		};
+		struct rte_flow_item items[] = {
+			[0] = {
+				.type = RTE_FLOW_ITEM_TYPE_END,
+			},
+		};
+		struct rte_flow_action actions[] = {
+			[0] = {
+				.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+				.conf = &(struct mlx5_flow_action_copy_mreg){
+					.src = REG_C_1,
+					.dst = idx,
+				},
+			},
+			[1] = {
+				.type = RTE_FLOW_ACTION_TYPE_JUMP,
+				.conf = &(struct rte_flow_action_jump){
+					.group = MLX5_FLOW_MREG_ACT_TABLE_GROUP,
+				},
+			},
+			[2] = {
+				.type = RTE_FLOW_ACTION_TYPE_END,
+			},
+		};
+		struct rte_flow *flow;
+		struct rte_flow_error error;
+
+		if (!config->dv_flow_en)
+			break;
+		/* Create internal flow, validation skips copy action. */
+		flow = flow_list_create(dev, NULL, &attr, items,
+					actions, false, &error);
+		if (!flow)
+			continue;
+		if (dev->data->dev_started || !flow_drv_apply(dev, flow, NULL))
+			config->flow_mreg_c[n++] = idx;
+		flow_list_destroy(dev, NULL, flow);
+	}
+	for (; n < MLX5_MREG_C_NUM; ++n)
+		config->flow_mreg_c[n] = REG_NONE;
 	return 0;
 }

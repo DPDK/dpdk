@@ -832,6 +832,7 @@ flow_dv_convert_action_modify_tcp_ack
 }
 
 static enum mlx5_modification_field reg_to_field[] = {
+	[REG_NONE] = MLX5_MODI_OUT_NONE,
 	[REG_A] = MLX5_MODI_META_DATA_REG_A,
 	[REG_B] = MLX5_MODI_META_DATA_REG_B,
 	[REG_C_0] = MLX5_MODI_META_REG_C_0,
@@ -1040,7 +1041,7 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 		return ret;
 	if (!spec)
 		return 0;
-	esw_priv = mlx5_port_to_eswitch_info(spec->id);
+	esw_priv = mlx5_port_to_eswitch_info(spec->id, false);
 	if (!esw_priv)
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, spec,
@@ -2697,7 +2698,7 @@ flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
 					  "failed to obtain E-Switch info");
 	port_id = action->conf;
 	port = port_id->original ? dev->data->port_id : port_id->id;
-	act_priv = mlx5_port_to_eswitch_info(port);
+	act_priv = mlx5_port_to_eswitch_info(port, false);
 	if (!act_priv)
 		return rte_flow_error_set
 				(error, rte_errno,
@@ -5119,7 +5120,7 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 
 	mask = pid_m ? pid_m->id : 0xffff;
 	id = pid_v ? pid_v->id : dev->data->port_id;
-	priv = mlx5_port_to_eswitch_info(id);
+	priv = mlx5_port_to_eswitch_info(id, item == NULL);
 	if (!priv)
 		return -rte_errno;
 	/* Translate to vport field or to metadata, depending on mode. */
@@ -5567,7 +5568,7 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 			(const struct rte_flow_action_port_id *)action->conf;
 
 	port = conf->original ? dev->data->port_id : conf->id;
-	priv = mlx5_port_to_eswitch_info(port);
+	priv = mlx5_port_to_eswitch_info(port, false);
 	if (!priv)
 		return rte_flow_error_set(error, -rte_errno,
 					  RTE_FLOW_ERROR_TYPE_ACTION,

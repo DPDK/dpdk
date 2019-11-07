@@ -1793,6 +1793,10 @@ mlx5_is_removed(struct rte_eth_dev *dev)
  *
  * @param[in] port
  *   Device port id.
+ * @param[in] valid
+ *   Device port id is valid, skip check. This flag is useful
+ *   when trials are performed from probing and device is not
+ *   flagged as valid yet (in attaching process).
  * @param[out] es_domain_id
  *   E-Switch domain id.
  * @param[out] es_port_id
@@ -1803,7 +1807,7 @@ mlx5_is_removed(struct rte_eth_dev *dev)
  *   on success, NULL otherwise and rte_errno is set.
  */
 struct mlx5_priv *
-mlx5_port_to_eswitch_info(uint16_t port)
+mlx5_port_to_eswitch_info(uint16_t port, bool valid)
 {
 	struct rte_eth_dev *dev;
 	struct mlx5_priv *priv;
@@ -1812,7 +1816,7 @@ mlx5_port_to_eswitch_info(uint16_t port)
 		rte_errno = EINVAL;
 		return NULL;
 	}
-	if (!rte_eth_dev_is_valid_port(port)) {
+	if (!valid && !rte_eth_dev_is_valid_port(port)) {
 		rte_errno = ENODEV;
 		return NULL;
 	}

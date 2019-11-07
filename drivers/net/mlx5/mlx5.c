@@ -2341,6 +2341,17 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	priv->config.flow_prio = err;
+	/* Query availibility of metadata reg_c's. */
+	err = mlx5_flow_discover_mreg_c(eth_dev);
+	if (err < 0) {
+		err = -err;
+		goto error;
+	}
+	if (!mlx5_flow_ext_mreg_supported(eth_dev)) {
+		DRV_LOG(DEBUG,
+			"port %u extensive metadata register is not supported",
+			eth_dev->data->port_id);
+	}
 	return eth_dev;
 error:
 	if (priv) {
