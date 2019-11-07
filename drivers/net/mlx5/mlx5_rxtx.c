@@ -3875,6 +3875,7 @@ mlx5_tx_burst_empw_simple(struct mlx5_txq_data *restrict txq,
 		unsigned int slen = 0;
 
 next_empw:
+		assert(NB_SEGS(loc->mbuf) == 1);
 		part = RTE_MIN(pkts_n, MLX5_EMPW_MAX_PACKETS);
 		if (unlikely(loc->elts_free < part)) {
 			/* We have no enough elts to save all mbufs. */
@@ -3934,6 +3935,7 @@ next_empw:
 					return MLX5_TXCMP_CODE_EXIT;
 				return MLX5_TXCMP_CODE_MULTI;
 			}
+			assert(NB_SEGS(loc->mbuf) == 1);
 			if (ret == MLX5_TXCMP_CODE_TSO) {
 				part -= loop;
 				mlx5_tx_sdone_empw(txq, loc, part, slen, olx);
@@ -4033,6 +4035,7 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 		unsigned int room, part, nlim;
 		unsigned int slen = 0;
 
+		assert(NB_SEGS(loc->mbuf) == 1);
 		/*
 		 * Limits the amount of packets in one WQE
 		 * to improve CQE latency generation.
@@ -4173,6 +4176,7 @@ next_mbuf:
 					return MLX5_TXCMP_CODE_EXIT;
 				return MLX5_TXCMP_CODE_MULTI;
 			}
+			assert(NB_SEGS(loc->mbuf) == 1);
 			if (ret == MLX5_TXCMP_CODE_TSO) {
 				part -= room;
 				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
