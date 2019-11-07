@@ -113,11 +113,6 @@ use arm64-octeontx2-linux-gcc as target.
 Runtime Config Options
 ----------------------
 
-- ``HW offload ptype parsing disable`` (default ``0``)
-
-   Packet type parsing is HW offloaded by default and this feature may be toggled
-   using ``ptype_disable`` ``devargs`` parameter.
-
 - ``Rx&Tx scalar mode enable`` (default ``0``)
 
    Ethdev supports both scalar and vector mode, it may be selected at runtime

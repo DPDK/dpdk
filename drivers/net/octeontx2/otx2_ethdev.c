@@ -1995,6 +1995,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.dev_set_link_up          = otx2_nix_dev_set_link_up,
 	.dev_set_link_down        = otx2_nix_dev_set_link_down,
 	.dev_supported_ptypes_get = otx2_nix_supported_ptypes_get,
+	.dev_ptypes_set           = otx2_nix_ptypes_set,
 	.dev_reset                = otx2_nix_dev_reset,
 	.stats_get                = otx2_nix_dev_stats_get,
 	.stats_reset              = otx2_nix_dev_stats_reset,

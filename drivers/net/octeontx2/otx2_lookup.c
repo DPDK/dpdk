@@ -62,6 +62,21 @@ otx2_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 		return NULL;
 }
 
+int
+otx2_nix_ptypes_set(struct rte_eth_dev *eth_dev, uint32_t ptype_mask)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
+	if (ptype_mask)
+		dev->rx_offload_flags |= NIX_RX_OFFLOAD_PTYPE_F;
+	else
+		dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_PTYPE_F;
+
+	otx2_eth_set_rx_function(eth_dev);
+
+	return 0;
+}
+
 /*
  * +------------------ +------------------ +
  * |  | IL4 | IL3| IL2 | TU | L4 | L3 | L2 |

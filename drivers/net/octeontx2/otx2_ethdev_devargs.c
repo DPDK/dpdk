@@ -64,21 +64,6 @@ parse_reta_size(const char *key, const char *value, void *extra_args)
 }
 
 static int
-parse_ptype_flag(const char *key, const char *value, void *extra_args)
-{
-	RTE_SET_USED(key);
-	uint32_t val;
-
-	val = atoi(value);
-	if (val)
-		val = 0; /* Disable NIX_RX_OFFLOAD_PTYPE_F */
-
-	*(uint16_t *)extra_args = val;
-
-	return 0;
-}
-
-static int
 parse_flag(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
@@ -119,7 +104,6 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 }
 
 #define OTX2_RSS_RETA_SIZE "reta_size"
-#define OTX2_PTYPE_DISABLE "ptype_disable"
 #define OTX2_SCL_ENABLE "scalar_enable"
 #define OTX2_MAX_SQB_COUNT "max_sqb_count"
 #define OTX2_FLOW_PREALLOC_SIZE "flow_prealloc_size"
@@ -129,7 +113,6 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 int
 otx2_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx2_eth_dev *dev)
 {
-	uint16_t offload_flag = NIX_RX_OFFLOAD_PTYPE_F;
 	uint16_t rss_size = NIX_RSS_RETA_SIZE;
 	uint16_t sqb_count = NIX_MAX_SQB;
 	uint16_t flow_prealloc_size = 8;
@@ -145,8 +128,6 @@ otx2_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx2_eth_dev *dev)
 	if (kvlist == NULL)
 		goto exit;
 
-	rte_kvargs_process(kvlist, OTX2_PTYPE_DISABLE,
-			   &parse_ptype_flag, &offload_flag);
 	rte_kvargs_process(kvlist, OTX2_RSS_RETA_SIZE,
 			   &parse_reta_size, &rss_size);
 	rte_kvargs_process(kvlist, OTX2_SCL_ENABLE,
@@ -162,7 +143,6 @@ otx2_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx2_eth_dev *dev)
 	rte_kvargs_free(kvlist);
 
 null_devargs:
-	dev->rx_offload_flags = offload_flag;
 	dev->scalar_ena = scalar_enable;
 	dev->max_sqb_count = sqb_count;
 	dev->rss_info.rss_size = rss_size;
@@ -177,7 +157,6 @@ exit:
 
 RTE_PMD_REGISTER_PARAM_STRING(net_octeontx2,
 			      OTX2_RSS_RETA_SIZE "=<64|128|256>"
-			      OTX2_PTYPE_DISABLE "=1"
 			      OTX2_SCL_ENABLE "=1"
 			      OTX2_MAX_SQB_COUNT "=<8-512>"
 			      OTX2_FLOW_PREALLOC_SIZE "=<1-32>"
