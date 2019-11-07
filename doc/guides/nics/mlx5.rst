@@ -582,6 +582,55 @@ Run-time configuration
 
   Disabled by default.
 
+- ``dv_xmeta_en`` parameter [int]
+
+  A nonzero value enables extensive flow metadata support if device is
+  capable and driver supports it. This can enable extensive support of
+  ``MARK`` and ``META`` item of ``rte_flow``. The newly introduced
+  ``SET_TAG`` and ``SET_META`` actions do not depend on ``dv_xmeta_en``.
+
+  There are some possible configurations, depending on parameter value:
+
+  - 0, this is default value, defines the legacy mode, the ``MARK`` and
+    ``META`` related actions and items operate only within NIC Tx and
+    NIC Rx steering domains, no ``MARK`` and ``META`` information crosses
+    the domain boundaries. The ``MARK`` item is 24 bits wide, the ``META``
+    item is 32 bits wide and match supported on egress only.
+
+  - 1, this engages extensive metadata mode, the ``MARK`` and ``META``
+    related actions and items operate within all supported steering domains,
+    including FDB, ``MARK`` and ``META`` information may cross the domain
+    boundaries. The ``MARK`` item is 24 bits wide, the ``META`` item width
+    depends on kernel and firmware configurations and might be 0, 16 or
+    32 bits. Within NIC Tx domain ``META`` data width is 32 bits for
+    compatibility, the actual width of data transferred to the FDB domain
+    depends on kernel configuration and may be vary. The actual supported
+    width can be retrieved in runtime by series of rte_flow_validate()
+    trials.
+
+  - 2, this engages extensive metadata mode, the ``MARK`` and ``META``
+    related actions and items operate within all supported steering domains,
+    including FDB, ``MARK`` and ``META`` information may cross the domain
+    boundaries. The ``META`` item is 32 bits wide, the ``MARK`` item width
+    depends on kernel and firmware configurations and might be 0, 16 or
+    24 bits. The actual supported width can be retrieved in runtime by
+    series of rte_flow_validate() trials.
+
+  +------+-----------+-----------+-------------+-------------+
+  | Mode | ``MARK``  | ``META``  | ``META`` Tx | FDB/Through |
+  +======+===========+===========+=============+=============+
+  | 0    | 24 bits   | 32 bits   | 32 bits     | no          |
+  +------+-----------+-----------+-------------+-------------+
+  | 1    | 24 bits   | vary 0-32 | 32 bits     | yes         |
+  +------+-----------+-----------+-------------+-------------+
+  | 2    | vary 0-32 | 32 bits   | 32 bits     | yes         |
+  +------+-----------+-----------+-------------+-------------+
+
+  If there is no E-Switch configuration the ``dv_xmeta_en`` parameter is
+  ignored and the device is configured to operate in legacy mode (0).
+
+  Disabled by default (set to 0).
+
 - ``dv_flow_en`` parameter [int]
 
   A nonzero value enables the DV flow steering assuming it is supported

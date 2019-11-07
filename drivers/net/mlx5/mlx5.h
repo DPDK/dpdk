@@ -240,6 +240,7 @@ struct mlx5_dev_config {
 	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
 	unsigned int dv_esw_en:1; /* Enable E-Switch DV flow. */
 	unsigned int dv_flow_en:1; /* Enable DV flow. */
+	unsigned int dv_xmeta_en:2; /* Enable extensive flow metadata. */
 	unsigned int swp:1; /* Tx generic tunnel checksum and TSO offload. */
 	unsigned int devx:1; /* Whether devx interface is available or not. */
 	unsigned int dest_tir:1; /* Whether advanced DR API is available. */

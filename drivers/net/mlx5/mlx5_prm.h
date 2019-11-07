@@ -226,6 +226,9 @@
 /* Default mark value used when none is provided. */
 #define MLX5_FLOW_MARK_DEFAULT 0xffffff
 
+/* Default mark mask for metadata legacy mode. */
+#define MLX5_FLOW_MARK_MASK 0xffffff
+
 /* Maximum number of DS in WQE. Limited by 6-bit field. */
 #define MLX5_DSEG_MAX 63
 

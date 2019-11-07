@@ -125,6 +125,9 @@
 /* Activate DV flow steering. */
 #define MLX5_DV_FLOW_EN "dv_flow_en"
 
+/* Enable extensive flow metadata support. */
+#define MLX5_DV_XMETA_EN "dv_xmeta_en"
+
 /* Activate Netlink support in VF mode. */
 #define MLX5_VF_NL_EN "vf_nl_en"
 
@@ -1310,6 +1313,16 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->dv_esw_en = !!tmp;
 	} else if (strcmp(MLX5_DV_FLOW_EN, key) == 0) {
 		config->dv_flow_en = !!tmp;
+	} else if (strcmp(MLX5_DV_XMETA_EN, key) == 0) {
+		if (tmp != MLX5_XMETA_MODE_LEGACY &&
+		    tmp != MLX5_XMETA_MODE_META16 &&
+		    tmp != MLX5_XMETA_MODE_META32) {
+			DRV_LOG(WARNING, "invalid extensive "
+					 "metadata parameter");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		config->dv_xmeta_en = tmp;
 	} else if (strcmp(MLX5_MR_EXT_MEMSEG_EN, key) == 0) {
 		config->mr_ext_memseg_en = !!tmp;
 	} else if (strcmp(MLX5_MAX_DUMP_FILES_NUM, key) == 0) {
@@ -1361,6 +1374,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_VF_NL_EN,
 		MLX5_DV_ESW_EN,
 		MLX5_DV_FLOW_EN,
+		MLX5_DV_XMETA_EN,
 		MLX5_MR_EXT_MEMSEG_EN,
 		MLX5_REPRESENTOR,
 		MLX5_MAX_DUMP_FILES_NUM,
@@ -1730,6 +1744,12 @@ mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 		return 0;
 	if (sh_conf->dv_flow_en ^ config->dv_flow_en) {
 		DRV_LOG(ERR, "\"dv_flow_en\" configuration mismatch"
+			     " for shared %s context", sh->ibdev_name);
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+	if (sh_conf->dv_xmeta_en ^ config->dv_xmeta_en) {
+		DRV_LOG(ERR, "\"dv_xmeta_en\" configuration mismatch"
 			     " for shared %s context", sh->ibdev_name);
 		rte_errno = EINVAL;
 		return rte_errno;
@@ -2347,10 +2367,23 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = -err;
 		goto error;
 	}
+	if (!priv->config.dv_esw_en &&
+	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		DRV_LOG(WARNING, "metadata mode %u is not supported "
+				 "(no E-Switch)", priv->config.dv_xmeta_en);
+		priv->config.dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
+	}
 	if (!mlx5_flow_ext_mreg_supported(eth_dev)) {
 		DRV_LOG(DEBUG,
 			"port %u extensive metadata register is not supported",
 			eth_dev->data->port_id);
+		if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+			DRV_LOG(ERR, "metadata mode %u is not supported "
+				     "(no metadata registers available)",
+				     priv->config.dv_xmeta_en);
+			err = ENOTSUP;
+			goto error;
+		}
 	}
 	return eth_dev;
 error:
