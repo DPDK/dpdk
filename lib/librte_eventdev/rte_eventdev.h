@@ -1282,6 +1282,9 @@ struct rte_eventdev_data {
 
 	char name[RTE_EVENTDEV_NAME_MAX_LEN];
 	/**< Unique identifier name */
+
+	uint64_t reserved_64s[4]; /**< Reserved for future fields */
+	void *reserved_ptrs[4];   /**< Reserved for future fields */
 } __rte_cache_aligned;
 
 /** @internal The data structure associated with each event device. */
@@ -1314,6 +1317,9 @@ struct rte_eventdev {
 	RTE_STD_C11
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
+
+	uint64_t reserved_64s[4]; /**< Reserved for future fields */
+	void *reserved_ptrs[4];   /**< Reserved for future fields */
 } __rte_cache_aligned;
 
 extern struct rte_eventdev *rte_eventdevs;
