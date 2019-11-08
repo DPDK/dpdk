@@ -333,14 +333,13 @@ struct mlx5_flow_dv_match_params {
 /* Matcher structure. */
 struct mlx5_flow_dv_matcher {
 	LIST_ENTRY(mlx5_flow_dv_matcher) next;
-	/* Pointer to the next element. */
+	/**< Pointer to the next element. */
+	struct mlx5_flow_tbl_resource *tbl;
+	/**< Pointer to the table(group) the matcher associated with. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
 	void *matcher_object; /**< Pointer to DV matcher */
 	uint16_t crc; /**< CRC of key. */
 	uint16_t priority; /**< Priority of matcher. */
-	uint8_t egress; /**< Egress matcher. */
-	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
-	uint32_t group; /**< The matcher group. */
 	struct mlx5_flow_dv_match_params mask; /**< Matcher mask. */
 };
 
@@ -437,9 +436,11 @@ struct mlx5_flow_mreg_copy_resource {
 /* Table data structure of the hash organization. */
 struct mlx5_flow_tbl_data_entry {
 	struct mlx5_hlist_entry entry;
-	/**< flow table resource, better to locate at the beginning. */
+	/**< hash list entry, 64-bits key inside. */
 	struct mlx5_flow_tbl_resource tbl;
-	/**< flow table resource, better to locate at the beginning. */
+	/**< flow table resource. */
+	LIST_HEAD(matchers, mlx5_flow_dv_matcher) matchers;
+	/**< matchers' header associated with the flow table. */
 	struct mlx5_flow_dv_jump_tbl_resource jump;
 	/**< jump resource, at most one for each table created. */
 };

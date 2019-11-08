@@ -669,7 +669,6 @@ struct mlx5_ibv_shared {
 	/* Direct Rules tables for FDB, NIC TX+RX */
 	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */
 	void *pop_vlan_action; /* Pointer to DR pop VLAN action. */
-	LIST_HEAD(matchers, mlx5_flow_dv_matcher) matchers;
 	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
 	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;
 	LIST_HEAD(tag, mlx5_flow_dv_tag_resource) tags;

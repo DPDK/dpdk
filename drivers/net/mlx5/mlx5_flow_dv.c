@@ -6298,6 +6298,8 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
  *   Pointer to rte_eth_dev structure.
  * @param[in, out] matcher
  *   Pointer to flow matcher.
+ * @param[in, out] key
+ *   Pointer to flow table key.
  * @parm[in, out] dev_flow
  *   Pointer to the dev_flow.
  * @param[out] error
@@ -6309,6 +6311,7 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 static int
 flow_dv_matcher_register(struct rte_eth_dev *dev,
 			 struct mlx5_flow_dv_matcher *matcher,
+			 union mlx5_flow_tbl_key *key,
 			 struct mlx5_flow *dev_flow,
 			 struct rte_flow_error *error)
 {
@@ -6319,49 +6322,53 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		.type = IBV_FLOW_ATTR_NORMAL,
 		.match_mask = (void *)&matcher->mask,
 	};
-	struct mlx5_flow_tbl_resource *tbl = NULL;
+	struct mlx5_flow_tbl_resource *tbl;
+	struct mlx5_flow_tbl_data_entry *tbl_data;
 
+	tbl = flow_dv_tbl_resource_get(dev, key->table_id, key->direction,
+				       key->domain, error);
+	if (!tbl)
+		return -rte_errno;	/* No need to refill the error info */
+	tbl_data = container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
 	/* Lookup from cache. */
-	LIST_FOREACH(cache_matcher, &sh->matchers, next) {
+	LIST_FOREACH(cache_matcher, &tbl_data->matchers, next) {
 		if (matcher->crc == cache_matcher->crc &&
 		    matcher->priority == cache_matcher->priority &&
-		    matcher->egress == cache_matcher->egress &&
-		    matcher->group == cache_matcher->group &&
-		    matcher->transfer == cache_matcher->transfer &&
 		    !memcmp((const void *)matcher->mask.buf,
 			    (const void *)cache_matcher->mask.buf,
 			    cache_matcher->mask.size)) {
 			DRV_LOG(DEBUG,
-				"priority %hd use %s matcher %p: refcnt %d++",
+				"%s group %u priority %hd use %s "
+				"matcher %p: refcnt %d++",
+				key->domain ? "FDB" : "NIC", key->table_id,
 				cache_matcher->priority,
-				cache_matcher->egress ? "tx" : "rx",
+				key->direction ? "tx" : "rx",
 				(void *)cache_matcher,
 				rte_atomic32_read(&cache_matcher->refcnt));
 			rte_atomic32_inc(&cache_matcher->refcnt);
 			dev_flow->dv.matcher = cache_matcher;
+			/* old matcher should not make the table ref++. */
+#ifdef HAVE_MLX5DV_DR
+			flow_dv_tbl_resource_release(dev, tbl);
+#endif
 			return 0;
 		}
 	}
 	/* Register new matcher. */
 	cache_matcher = rte_calloc(__func__, 1, sizeof(*cache_matcher), 0);
-	if (!cache_matcher)
+	if (!cache_matcher) {
+#ifdef HAVE_MLX5DV_DR
+		flow_dv_tbl_resource_release(dev, tbl);
+#endif
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot allocate matcher memory");
-	tbl = flow_dv_tbl_resource_get(dev, matcher->group,
-				       matcher->egress, matcher->transfer,
-				       error);
-	if (!tbl) {
-		rte_free(cache_matcher);
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "cannot create table");
 	}
 	*cache_matcher = *matcher;
 	dv_attr.match_criteria_enable =
 		flow_dv_matcher_enable(cache_matcher->mask.buf);
 	dv_attr.priority = matcher->priority;
-	if (matcher->egress)
+	if (key->direction)
 		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
 	cache_matcher->matcher_object =
 		mlx5_glue->dv_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj);
@@ -6374,14 +6381,18 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create matcher");
 	}
+	/* Save the table information */
+	cache_matcher->tbl = tbl;
+	rte_atomic32_init(&cache_matcher->refcnt);
+	/* only matcher ref++, table ref++ already done above in get API. */
 	rte_atomic32_inc(&cache_matcher->refcnt);
-	LIST_INSERT_HEAD(&sh->matchers, cache_matcher, next);
+	LIST_INSERT_HEAD(&tbl_data->matchers, cache_matcher, next);
 	dev_flow->dv.matcher = cache_matcher;
-	DRV_LOG(DEBUG, "priority %hd new %s matcher %p: refcnt %d",
+	DRV_LOG(DEBUG, "%s group %u priority %hd new %s matcher %p: refcnt %d",
+		key->domain ? "FDB" : "NIC", key->table_id,
 		cache_matcher->priority,
-		cache_matcher->egress ? "tx" : "rx", (void *)cache_matcher,
+		key->direction ? "tx" : "rx", (void *)cache_matcher,
 		rte_atomic32_read(&cache_matcher->refcnt));
-	rte_atomic32_inc(&tbl->refcnt);
 	return 0;
 }
 
@@ -6610,6 +6621,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 	};
 	union flow_dv_attr flow_attr = { .attr = 0 };
 	struct mlx5_flow_dv_tag_resource tag_resource;
+	union mlx5_flow_tbl_key tbl_key;
 	uint32_t modify_action_position = UINT32_MAX;
 	void *match_mask = matcher.mask.buf;
 	void *match_value = dev_flow->dv.value.buf;
@@ -7242,10 +7254,11 @@ cnt_err:
 				    matcher.mask.size);
 	matcher.priority = mlx5_flow_adjust_priority(dev, priority,
 						     matcher.priority);
-	matcher.egress = attr->egress;
-	matcher.group = dev_flow->group;
-	matcher.transfer = attr->transfer;
-	if (flow_dv_matcher_register(dev, &matcher, dev_flow, error))
+	/* reserved field no needs to be set to 0 here. */
+	tbl_key.domain = attr->transfer;
+	tbl_key.direction = attr->egress;
+	tbl_key.table_id = dev_flow->group;
+	if (flow_dv_matcher_register(dev, &matcher, &tbl_key, dev_flow, error))
 		return -rte_errno;
 	return 0;
 }
@@ -7381,33 +7394,17 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 			struct mlx5_flow *flow)
 {
 	struct mlx5_flow_dv_matcher *matcher = flow->dv.matcher;
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ibv_shared *sh = priv->sh;
-	struct mlx5_flow_tbl_data_entry *tbl_data;
 
 	assert(matcher->matcher_object);
 	DRV_LOG(DEBUG, "port %u matcher %p: refcnt %d--",
 		dev->data->port_id, (void *)matcher,
 		rte_atomic32_read(&matcher->refcnt));
 	if (rte_atomic32_dec_and_test(&matcher->refcnt)) {
-		struct mlx5_hlist_entry *pos;
-		union mlx5_flow_tbl_key table_key = {
-			{
-				.table_id = matcher->group,
-				.reserved = 0,
-				.domain = !!matcher->transfer,
-				.direction = !!matcher->egress,
-			}
-		};
 		claim_zero(mlx5_glue->dv_destroy_flow_matcher
 			   (matcher->matcher_object));
 		LIST_REMOVE(matcher, next);
-		pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
-		if (pos) {
-			tbl_data = container_of(pos,
-				struct mlx5_flow_tbl_data_entry, entry);
-			flow_dv_tbl_resource_release(dev, &tbl_data->tbl);
-		}
+		/* table ref-- in release interface. */
+		flow_dv_tbl_resource_release(dev, matcher->tbl);
 		rte_free(matcher);
 		DRV_LOG(DEBUG, "port %u matcher %p: removed",
 			dev->data->port_id, (void *)matcher);
