@@ -4996,6 +4996,89 @@ mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
 	return fops->destroy_policer_rules(dev, fm, attr);
 }
 
+/**
+ * Allocate a counter.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   Pointer to allocated counter  on success, NULL otherwise.
+ */
+struct mlx5_flow_counter *
+mlx5_counter_alloc(struct rte_eth_dev *dev)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	struct rte_flow_attr attr = { .transfer = 0 };
+
+	if (flow_get_drv_type(dev, &attr) == MLX5_FLOW_TYPE_DV) {
+		fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+		return fops->counter_alloc(dev);
+	}
+	DRV_LOG(ERR,
+		"port %u counter allocate is not supported.",
+		 dev->data->port_id);
+	return NULL;
+}
+
+/**
+ * Free a counter.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device structure.
+ * @param[in] cnt
+ *   Pointer to counter to be free.
+ */
+void
+mlx5_counter_free(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	struct rte_flow_attr attr = { .transfer = 0 };
+
+	if (flow_get_drv_type(dev, &attr) == MLX5_FLOW_TYPE_DV) {
+		fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+		fops->counter_free(dev, cnt);
+		return;
+	}
+	DRV_LOG(ERR,
+		"port %u counter free is not supported.",
+		 dev->data->port_id);
+}
+
+/**
+ * Query counter statistics.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device structure.
+ * @param[in] cnt
+ *   Pointer to counter to query.
+ * @param[in] clear
+ *   Set to clear counter statistics.
+ * @param[out] pkts
+ *   The counter hits packets number to save.
+ * @param[out] bytes
+ *   The counter hits bytes number to save.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+int
+mlx5_counter_query(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt,
+		   bool clear, uint64_t *pkts, uint64_t *bytes)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	struct rte_flow_attr attr = { .transfer = 0 };
+
+	if (flow_get_drv_type(dev, &attr) == MLX5_FLOW_TYPE_DV) {
+		fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+		return fops->counter_query(dev, cnt, clear, pkts, bytes);
+	}
+	DRV_LOG(ERR,
+		"port %u counter query is not supported.",
+		 dev->data->port_id);
+	return -ENOTSUP;
+}
+
 #define MLX5_POOL_QUERY_FREQ_US 1000000
 
 /**

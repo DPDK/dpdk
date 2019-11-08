@@ -959,6 +959,10 @@ void mlx5_flow_async_pool_query_handle(struct mlx5_ibv_shared *sh,
 				       uint64_t async_id, int status);
 void mlx5_set_query_alarm(struct mlx5_ibv_shared *sh);
 void mlx5_flow_query_alarm(void *arg);
+struct mlx5_flow_counter *mlx5_counter_alloc(struct rte_eth_dev *dev);
+void mlx5_counter_free(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt);
+int mlx5_counter_query(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt,
+		       bool clear, uint64_t *pkts, uint64_t *bytes);
 
 /* mlx5_mp.c */
 void mlx5_mp_req_start_rxtx(struct rte_eth_dev *dev);

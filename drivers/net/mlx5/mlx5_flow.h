@@ -664,6 +664,14 @@ typedef int (*mlx5_flow_destroy_policer_rules_t)
 					(struct rte_eth_dev *dev,
 					 const struct mlx5_flow_meter *fm,
 					 const struct rte_flow_attr *attr);
+typedef struct mlx5_flow_counter * (*mlx5_flow_counter_alloc_t)
+				   (struct rte_eth_dev *dev);
+typedef void (*mlx5_flow_counter_free_t)(struct rte_eth_dev *dev,
+					 struct mlx5_flow_counter *cnt);
+typedef int (*mlx5_flow_counter_query_t)(struct rte_eth_dev *dev,
+					 struct mlx5_flow_counter *cnt,
+					 bool clear, uint64_t *pkts,
+					 uint64_t *bytes);
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
 	mlx5_flow_prepare_t prepare;
@@ -676,6 +684,9 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_destroy_mtr_tbls_t destroy_mtr_tbls;
 	mlx5_flow_create_policer_rules_t create_policer_rules;
 	mlx5_flow_destroy_policer_rules_t destroy_policer_rules;
+	mlx5_flow_counter_alloc_t counter_alloc;
+	mlx5_flow_counter_free_t counter_free;
+	mlx5_flow_counter_query_t counter_query;
 };
 
 

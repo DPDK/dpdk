@@ -8005,6 +8005,46 @@ error:
 	return -1;
 }
 
+/**
+ * Query a devx counter.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] cnt
+ *   Pointer to the flow counter.
+ * @param[in] clear
+ *   Set to clear the counter statistics.
+ * @param[out] pkts
+ *   The statistics value of packets.
+ * @param[out] bytes
+ *   The statistics value of bytes.
+ *
+ * @return
+ *   0 on success, otherwise return -1.
+ */
+static int
+flow_dv_counter_query(struct rte_eth_dev *dev,
+		      struct mlx5_flow_counter *cnt, bool clear,
+		      uint64_t *pkts, uint64_t *bytes)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint64_t inn_pkts, inn_bytes;
+	int ret;
+
+	if (!priv->config.devx)
+		return -1;
+	ret = _flow_dv_query_count(dev, cnt, &inn_pkts, &inn_bytes);
+	if (ret)
+		return -1;
+	*pkts = inn_pkts - cnt->hits;
+	*bytes = inn_bytes - cnt->bytes;
+	if (clear) {
+		cnt->hits = inn_pkts;
+		cnt->bytes = inn_bytes;
+	}
+	return 0;
+}
+
 /*
  * Mutex-protected thunk to lock-free  __flow_dv_translate().
  */
@@ -8062,6 +8102,31 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	flow_dv_shared_unlock(dev);
 }
 
+/*
+ * Mutex-protected thunk to lock-free flow_dv_counter_alloc().
+ */
+static struct mlx5_flow_counter *
+flow_dv_counter_allocate(struct rte_eth_dev *dev)
+{
+	struct mlx5_flow_counter *cnt;
+
+	flow_dv_shared_lock(dev);
+	cnt = flow_dv_counter_alloc(dev, 0, 0, 1);
+	flow_dv_shared_unlock(dev);
+	return cnt;
+}
+
+/*
+ * Mutex-protected thunk to lock-free flow_dv_counter_release().
+ */
+static void
+flow_dv_counter_free(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt)
+{
+	flow_dv_shared_lock(dev);
+	flow_dv_counter_release(dev, cnt);
+	flow_dv_shared_unlock(dev);
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.validate = flow_dv_validate,
 	.prepare = flow_dv_prepare,
@@ -8074,6 +8139,9 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.destroy_mtr_tbls = flow_dv_destroy_mtr_tbl,
 	.create_policer_rules = flow_dv_create_policer_rules,
 	.destroy_policer_rules = flow_dv_destroy_policer_rules,
+	.counter_alloc = flow_dv_counter_allocate,
+	.counter_free = flow_dv_counter_free,
+	.counter_query = flow_dv_counter_query,
 };
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
