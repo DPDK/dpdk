@@ -2293,7 +2293,25 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 #if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER)
 		if (config.hca_attr.qos.sup && config.hca_attr.qos.srtcm_sup &&
 		    config.dv_flow_en) {
-			priv->mtr_en = 1;
+			uint8_t reg_c_mask =
+				config.hca_attr.qos.flow_meter_reg_c_ids;
+			/*
+			 * Meter needs two REG_C's for color match and pre-sfx
+			 * flow match. Here get the REG_C for color match.
+			 * REG_C_0 and REG_C_1 is reserved for metadata feature.
+			 */
+			reg_c_mask &= 0xfc;
+			if (__builtin_popcount(reg_c_mask) < 1) {
+				priv->mtr_en = 0;
+				DRV_LOG(WARNING, "No available register for"
+					" meter.");
+			} else {
+				priv->mtr_color_reg = ffs(reg_c_mask) - 1 +
+						      REG_C_0;
+				priv->mtr_en = 1;
+				DRV_LOG(DEBUG, "The REG_C meter uses is %d",
+					priv->mtr_color_reg);
+			}
 		}
 #endif
 	}

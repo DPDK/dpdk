@@ -74,6 +74,8 @@ enum mlx5_feature_name {
 	MLX5_FLOW_MARK,
 	MLX5_APP_TAG,
 	MLX5_COPY_MARK,
+	MLX5_MTR_COLOR,
+	MLX5_MTR_SFX,
 };
 
 /* Pattern outer Layer bits. */

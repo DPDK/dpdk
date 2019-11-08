@@ -752,6 +752,8 @@ struct mlx5_priv {
 	struct mlx5_flow_id_pool *qrss_id_pool;
 	struct mlx5_hlist *mreg_cp_tbl;
 	/* Hash table of Rx metadata register copy table. */
+	uint8_t mtr_sfx_reg; /* Meter prefix-suffix flow match REG_C. */
+	uint8_t mtr_color_reg; /* Meter color match REG_C. */
 #ifndef RTE_ARCH_64
 	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];

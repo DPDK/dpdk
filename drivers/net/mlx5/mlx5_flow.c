@@ -344,6 +344,7 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *config = &priv->config;
+	enum modify_reg start_reg;
 
 	switch (feature) {
 	case MLX5_HAIRPIN_RX:
@@ -375,24 +376,53 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		}
 		break;
 	case MLX5_COPY_MARK:
-		return REG_C_3;
+	case MLX5_MTR_SFX:
+		/*
+		 * Metadata COPY_MARK register using is in meter suffix sub
+		 * flow while with meter. It's safe to share the same register.
+		 */
+		return priv->mtr_color_reg != REG_C_2 ? REG_C_2 : REG_C_3;
+	case MLX5_MTR_COLOR:
+		RTE_ASSERT(priv->mtr_color_reg != REG_NONE);
+		return priv->mtr_color_reg;
 	case MLX5_APP_TAG:
 		/*
-		 * Suppose engaging reg_c_2 .. reg_c_7 registers.
-		 * reg_c_2 is reserved for coloring by meters.
-		 * reg_c_3 is reserved for split flows TAG.
+		 * If meter is enable, it will engage two registers for color
+		 * match and flow match. If meter color match is not using the
+		 * REG_C_2, need to skip the REG_C_x be used by meter color
+		 * match.
+		 * If meter is disable, free to use all available registers.
 		 */
-		if (id > (REG_C_7 - REG_C_4))
-			return rte_flow_error_set
-					(error, EINVAL,
-					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					 NULL, "invalid tag id");
-		if (config->flow_mreg_c[id + REG_C_4 - REG_C_0] == REG_NONE)
-			return rte_flow_error_set
-					(error, ENOTSUP,
-					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					 NULL, "unsupported tag id");
-		return config->flow_mreg_c[id + REG_C_4 - REG_C_0];
+		if (priv->mtr_color_reg != REG_NONE)
+			start_reg = priv->mtr_color_reg != REG_C_2 ? REG_C_3 :
+				    REG_C_4;
+		else
+			start_reg = REG_C_2;
+		if (id > (REG_C_7 - start_reg))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL, "invalid tag id");
+		if (config->flow_mreg_c[id + start_reg - REG_C_0] == REG_NONE)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL, "unsupported tag id");
+		/*
+		 * This case means meter is using the REG_C_x great than 2.
+		 * Take care not to conflict with meter color REG_C_x.
+		 * If the available index REG_C_y >= REG_C_x, skip the
+		 * color register.
+		 */
+		if (start_reg == REG_C_3 && config->flow_mreg_c
+		    [id + REG_C_3 - REG_C_0] >= priv->mtr_color_reg) {
+			if (config->flow_mreg_c[id + 1 + REG_C_3 - REG_C_0] !=
+			    REG_NONE)
+				return config->flow_mreg_c
+						[id + 1 + REG_C_3 - REG_C_0];
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL, "unsupported tag id");
+		}
+		return config->flow_mreg_c[id + start_reg - REG_C_0];
 	}
 	assert(false);
 	return rte_flow_error_set(error, EINVAL,
