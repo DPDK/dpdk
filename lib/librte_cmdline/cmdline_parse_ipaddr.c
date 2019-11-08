@@ -13,9 +13,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#ifdef RTE_EXEC_ENV_FREEBSD
 #include <sys/socket.h>
-#endif
 
 #include <rte_string_fns.h>
 
