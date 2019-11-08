@@ -14,6 +14,8 @@
 #include "base/ice_flow.h"
 #include "base/ice_dcb.h"
 #include "base/ice_common.h"
+
+#include "rte_pmd_ice.h"
 #include "ice_ethdev.h"
 #include "ice_rxtx.h"
 #include "ice_generic_flow.h"
@@ -28,6 +30,37 @@ static const char * const ice_valid_args[] = {
 	ICE_PIPELINE_MODE_SUPPORT_ARG,
 	ICE_PROTO_XTR_ARG,
 	NULL
+};
+
+static const struct rte_mbuf_dynfield ice_proto_xtr_metadata_param = {
+	.name = "ice_dynfield_proto_xtr_metadata",
+	.size = sizeof(uint32_t),
+	.align = __alignof__(uint32_t),
+	.flags = 0,
+};
+
+struct proto_xtr_ol_flag {
+	const struct rte_mbuf_dynflag param;
+	uint64_t *ol_flag;
+	bool required;
+};
+
+static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
+	[PROTO_XTR_VLAN] = {
+		.param = { .name = "ice_dynflag_proto_xtr_vlan" },
+		.ol_flag = &rte_net_ice_dynflag_proto_xtr_vlan_mask },
+	[PROTO_XTR_IPV4] = {
+		.param = { .name = "ice_dynflag_proto_xtr_ipv4" },
+		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ipv4_mask },
+	[PROTO_XTR_IPV6] = {
+		.param = { .name = "ice_dynflag_proto_xtr_ipv6" },
+		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ipv6_mask },
+	[PROTO_XTR_IPV6_FLOW] = {
+		.param = { .name = "ice_dynflag_proto_xtr_ipv6_flow" },
+		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask },
+	[PROTO_XTR_TCP] = {
+		.param = { .name = "ice_dynflag_proto_xtr_tcp" },
+		.ol_flag = &rte_net_ice_dynflag_proto_xtr_tcp_mask },
 };
 
 #define ICE_DFLT_OUTER_TAG_TYPE ICE_AQ_VSI_OUTER_TAG_VLAN_9100
@@ -1384,6 +1417,9 @@ ice_init_proto_xtr(struct rte_eth_dev *dev)
 			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	const struct proto_xtr_ol_flag *ol_flag;
+	bool proto_xtr_enable = false;
+	int offset;
 	uint16_t i;
 
 	if (!ice_proto_xtr_support(hw)) {
@@ -1397,10 +1433,56 @@ ice_init_proto_xtr(struct rte_eth_dev *dev)
 		return;
 	}
 
-	for (i = 0; i < pf->lan_nb_qps; i++)
+	for (i = 0; i < pf->lan_nb_qps; i++) {
 		pf->proto_xtr[i] = ad->devargs.proto_xtr[i] != PROTO_XTR_NONE ?
 				   ad->devargs.proto_xtr[i] :
 				   ad->devargs.proto_xtr_dflt;
+
+		if (pf->proto_xtr[i] != PROTO_XTR_NONE) {
+			uint8_t type = pf->proto_xtr[i];
+
+			ice_proto_xtr_ol_flag_params[type].required = true;
+			proto_xtr_enable = true;
+		}
+	}
+
+	if (likely(!proto_xtr_enable))
+		return;
+
+	offset = rte_mbuf_dynfield_register(&ice_proto_xtr_metadata_param);
+	if (unlikely(offset == -1)) {
+		PMD_DRV_LOG(ERR,
+			    "Protocol extraction metadata is disabled in mbuf with error %d",
+			    -rte_errno);
+		return;
+	}
+
+	PMD_DRV_LOG(DEBUG,
+		    "Protocol extraction metadata offset in mbuf is : %d",
+		    offset);
+	rte_net_ice_dynfield_proto_xtr_metadata_offs = offset;
+
+	for (i = 0; i < RTE_DIM(ice_proto_xtr_ol_flag_params); i++) {
+		ol_flag = &ice_proto_xtr_ol_flag_params[i];
+
+		if (!ol_flag->required)
+			continue;
+
+		offset = rte_mbuf_dynflag_register(&ol_flag->param);
+		if (unlikely(offset == -1)) {
+			PMD_DRV_LOG(ERR,
+				    "Protocol extraction offload '%s' failed to register with error %d",
+				    ol_flag->param.name, -rte_errno);
+
+			rte_net_ice_dynfield_proto_xtr_metadata_offs = -1;
+			break;
+		}
+
+		PMD_DRV_LOG(DEBUG,
+			    "Protocol extraction offload '%s' offset in mbuf is : %d",
+			    ol_flag->param.name, offset);
+		*ol_flag->ol_flag = 1ULL << offset;
+	}
 }
 
 /*  Initialize SW parameters of PF */

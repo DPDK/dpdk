@@ -82,8 +82,8 @@ Runtime Config Options
 
 - ``Protocol extraction for per queue``
 
-  Configure the RX queues to do protocol extraction into ``rte_mbuf::udata64``
-  for protocol handling acceleration, like checking the TCP SYN packets quickly.
+  Configure the RX queues to do protocol extraction into mbuf for protocol
+  handling acceleration, like checking the TCP SYN packets quickly.
 
   The argument format is::
 
@@ -111,7 +111,8 @@ Runtime Config Options
   This setting means queues 1, 2-3, 8-9 are TCP extraction, queues 10-23 are
   IPv6 extraction, other queues use the default VLAN extraction.
 
-  The extraction will be copied into the lower 32 bit of ``rte_mbuf::udata64``.
+  The extraction metadata is copied into the registered dynamic mbuf field, and
+  the related dynamic mbuf flags is set.
 
   .. table:: Protocol extraction : ``vlan``
 
@@ -175,10 +176,11 @@ Runtime Config Options
 
   TCPHDR2 - Reserved
 
-  Use ``get_proto_xtr_flds(struct rte_mbuf *mb)`` to access the protocol
-  extraction, do not use ``rte_mbuf::udata64`` directly.
+  Use ``rte_net_ice_dynf_proto_xtr_metadata_get`` to access the protocol
+  extraction metadata, and use ``RTE_PKT_RX_DYNF_PROTO_XTR_*`` to get the
+  metadata type of ``struct rte_mbuf::ol_flags``.
 
-  The ``dump_proto_xtr_flds(struct rte_mbuf *mb)`` routine shows how to
+  The ``rte_net_ice_dump_proto_xtr_metadata`` routine shows how to
   access the protocol extraction result in ``struct rte_mbuf``.
 
 Driver compilation and testing

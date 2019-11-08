@@ -5,7 +5,6 @@
 #ifndef _ICE_RXTX_H_
 #define _ICE_RXTX_H_
 
-#include "rte_pmd_ice.h"
 #include "ice_ethdev.h"
 
 #define ICE_ALIGN_RING_DESC  32

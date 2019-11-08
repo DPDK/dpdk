@@ -241,6 +241,15 @@ struct ice_vsi {
 	bool offset_loaded;
 };
 
+enum proto_xtr_type {
+	PROTO_XTR_NONE,
+	PROTO_XTR_VLAN,
+	PROTO_XTR_IPV4,
+	PROTO_XTR_IPV6,
+	PROTO_XTR_IPV6_FLOW,
+	PROTO_XTR_TCP,
+};
+
 enum ice_fdir_tunnel_type {
 	ICE_FDIR_TUNNEL_TYPE_NONE = 0,
 	ICE_FDIR_TUNNEL_TYPE_VXLAN,
