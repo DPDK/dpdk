@@ -572,6 +572,18 @@ struct mlx5_ibv_shared_port {
 	 */
 };
 
+/* Table key of the hash organization. */
+union mlx5_flow_tbl_key {
+	struct {
+		/* Table ID should be at the lowest address. */
+		uint32_t table_id;	/**< ID of the table. */
+		uint16_t reserved;	/**< must be zero for comparison. */
+		uint8_t domain;		/**< 1 - FDB, 0 - NIC TX/RX. */
+		uint8_t direction;	/**< 1 - egress, 0 - ingress. */
+	};
+	uint64_t v64;			/**< full 64bits value of key */
+};
+
 /* Table structure. */
 struct mlx5_flow_tbl_resource {
 	void *obj; /**< Pointer to DR table object. */
@@ -645,23 +657,18 @@ struct mlx5_ibv_shared {
 	uint32_t dv_regc0_mask; /* available bits of metatada reg_c[0]. */
 	uint32_t dv_refcnt; /* DV/DR data reference counter. */
 	void *fdb_domain; /* FDB Direct Rules name space handle. */
-	struct mlx5_flow_tbl_resource fdb_tbl[MLX5_MAX_TABLES_FDB];
-	/* FDB Direct Rules tables. */
 	struct mlx5_flow_tbl_resource *fdb_mtr_sfx_tbl;
 	/* FDB meter suffix rules table. */
 	void *rx_domain; /* RX Direct Rules name space handle. */
-	struct mlx5_flow_tbl_resource rx_tbl[MLX5_MAX_TABLES];
-	/* RX Direct Rules tables. */
 	struct mlx5_flow_tbl_resource *rx_mtr_sfx_tbl;
 	/* RX meter suffix rules table. */
 	void *tx_domain; /* TX Direct Rules name space handle. */
-	struct mlx5_flow_tbl_resource tx_tbl[MLX5_MAX_TABLES];
-	/* TX Direct Rules tables. */
 	struct mlx5_flow_tbl_resource *tx_mtr_sfx_tbl;
 	/* TX meter suffix rules table. */
+	struct mlx5_hlist *flow_tbls;
+	/* Direct Rules tables for FDB, NIC TX+RX */
 	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */
 	void *pop_vlan_action; /* Pointer to DR pop VLAN action. */
-	/* TX Direct Rules tables/ */
 	LIST_HEAD(matchers, mlx5_flow_dv_matcher) matchers;
 	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
 	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;

@@ -190,6 +190,8 @@ static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define MLX5_FLOW_MIN_ID_POOL_SIZE 512
 #define MLX5_ID_GENERATION_ARRAY_FACTOR 16
 
+#define MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE 4096
+
 /**
  * Allocate ID pool structure.
  *
@@ -733,6 +735,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	struct mlx5_ibv_shared *sh = priv->sh;
 	int err = 0;
 	void *domain;
+	char s[MLX5_HLIST_NAMESIZE];
 
 	assert(sh);
 	if (sh->dv_refcnt) {
@@ -772,6 +775,14 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		sh->esw_drop_action = mlx5_glue->dr_create_flow_action_drop();
 	}
 #endif
+	snprintf(s, sizeof(s) - 1, "%s_flow_table", priv->sh->ibdev_name);
+	sh->flow_tbls = mlx5_hlist_create(s,
+					  MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE);
+	if (!sh->flow_tbls) {
+		DRV_LOG(ERR, "flow tables with hash creation failed.\n");
+		err = -ENOMEM;
+		goto error;
+	}
 	sh->pop_vlan_action = mlx5_glue->dr_create_flow_action_pop_vlan();
 	sh->dv_refcnt++;
 	priv->dr_shared = 1;
@@ -826,6 +837,11 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 	assert(sh->dv_refcnt);
 	if (sh->dv_refcnt && --sh->dv_refcnt)
 		return;
+	if (sh->flow_tbls) {
+		/* flow table entries should be handled properly before. */
+		mlx5_hlist_destroy(sh->flow_tbls, NULL, NULL);
+		sh->flow_tbls = NULL;
+	}
 	if (sh->rx_domain) {
 		mlx5_glue->dr_destroy_domain(sh->rx_domain);
 		sh->rx_domain = NULL;

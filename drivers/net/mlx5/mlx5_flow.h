@@ -437,6 +437,14 @@ struct mlx5_flow_mreg_copy_resource {
 	struct rte_flow *flow; /* Built flow for copy. */
 };
 
+/* Table data structure of the hash organization. */
+struct mlx5_flow_tbl_data_entry {
+	struct mlx5_hlist_entry entry;
+	/**< flow table resource, better to locate at the beginning. */
+	struct mlx5_flow_tbl_resource tbl;
+	/**< flow table resource, better to locate at the beginning. */
+};
+
 /*
  * Max number of actions per DV flow.
  * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
