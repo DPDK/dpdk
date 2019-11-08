@@ -6401,8 +6401,8 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
  *
  * @param dev[in, out]
  *   Pointer to rte_eth_dev structure.
- * @param[in, out] resource
- *   Pointer to tag resource.
+ * @param[in, out] tag_be24
+ *   Tag value in big endian then R-shift 8.
  * @parm[in, out] dev_flow
  *   Pointer to the dev_flow.
  * @param[out] error
@@ -6414,34 +6414,35 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 static int
 flow_dv_tag_resource_register
 			(struct rte_eth_dev *dev,
-			 struct mlx5_flow_dv_tag_resource *resource,
+			 uint32_t tag_be24,
 			 struct mlx5_flow *dev_flow,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_tag_resource *cache_resource;
+	struct mlx5_hlist_entry *entry;
 
 	/* Lookup a matching resource from cache. */
-	LIST_FOREACH(cache_resource, &sh->tags, next) {
-		if (resource->tag == cache_resource->tag) {
-			DRV_LOG(DEBUG, "tag resource %p: refcnt %d++",
-				(void *)cache_resource,
-				rte_atomic32_read(&cache_resource->refcnt));
-			rte_atomic32_inc(&cache_resource->refcnt);
-			dev_flow->dv.tag_resource = cache_resource;
-			return 0;
-		}
+	entry = mlx5_hlist_lookup(sh->tag_table, (uint64_t)tag_be24);
+	if (entry) {
+		cache_resource = container_of
+			(entry, struct mlx5_flow_dv_tag_resource, entry);
+		rte_atomic32_inc(&cache_resource->refcnt);
+		dev_flow->dv.tag_resource = cache_resource;
+		DRV_LOG(DEBUG, "cached tag resource %p: refcnt now %d++",
+			(void *)cache_resource,
+			rte_atomic32_read(&cache_resource->refcnt));
+		return 0;
 	}
-	/* Register new  resource. */
+	/* Register new resource. */
 	cache_resource = rte_calloc(__func__, 1, sizeof(*cache_resource), 0);
 	if (!cache_resource)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot allocate resource memory");
-	*cache_resource = *resource;
-	cache_resource->action = mlx5_glue->dv_create_flow_action_tag
-		(resource->tag);
+	cache_resource->entry.key = (uint64_t)tag_be24;
+	cache_resource->action = mlx5_glue->dv_create_flow_action_tag(tag_be24);
 	if (!cache_resource->action) {
 		rte_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
@@ -6450,9 +6451,15 @@ flow_dv_tag_resource_register
 	}
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
-	LIST_INSERT_HEAD(&sh->tags, cache_resource, next);
+	if (mlx5_hlist_insert(sh->tag_table, &cache_resource->entry)) {
+		mlx5_glue->destroy_flow_action(cache_resource->action);
+		rte_free(cache_resource);
+		return rte_flow_error_set(error, EEXIST,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "cannot insert tag");
+	}
 	dev_flow->dv.tag_resource = cache_resource;
-	DRV_LOG(DEBUG, "new tag resource %p: refcnt %d++",
+	DRV_LOG(DEBUG, "new tag resource %p: refcnt now %d++",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
 	return 0;
@@ -6473,13 +6480,16 @@ static int
 flow_dv_tag_release(struct rte_eth_dev *dev,
 		    struct mlx5_flow_dv_tag_resource *tag)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
+
 	assert(tag);
 	DRV_LOG(DEBUG, "port %u tag %p: refcnt %d--",
 		dev->data->port_id, (void *)tag,
 		rte_atomic32_read(&tag->refcnt));
 	if (rte_atomic32_dec_and_test(&tag->refcnt)) {
 		claim_zero(mlx5_glue->destroy_flow_action(tag->action));
-		LIST_REMOVE(tag, next);
+		mlx5_hlist_remove(sh->tag_table, &tag->entry);
 		DRV_LOG(DEBUG, "port %u tag %p: removed",
 			dev->data->port_id, (void *)tag);
 		rte_free(tag);
@@ -6620,7 +6630,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 					  MLX5DV_FLOW_TABLE_TYPE_NIC_RX
 	};
 	union flow_dv_attr flow_attr = { .attr = 0 };
-	struct mlx5_flow_dv_tag_resource tag_resource;
+	uint32_t tag_be;
 	union mlx5_flow_tbl_key tbl_key;
 	uint32_t modify_action_position = UINT32_MAX;
 	void *match_mask = matcher.mask.buf;
@@ -6682,12 +6692,11 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 				action_flags |= MLX5_FLOW_ACTION_MARK_EXT;
 				break;
 			}
-			tag_resource.tag =
-				mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT);
+			tag_be = mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT);
 			if (!dev_flow->dv.tag_resource)
 				if (flow_dv_tag_resource_register
-				    (dev, &tag_resource, dev_flow, error))
-					return errno;
+				    (dev, tag_be, dev_flow, error))
+					return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.tag_resource->action;
 			break;
@@ -6708,13 +6717,13 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			/* Fall-through */
 		case MLX5_RTE_FLOW_ACTION_TYPE_MARK:
 			/* Legacy (non-extensive) MARK action. */
-			tag_resource.tag = mlx5_flow_mark_set
+			tag_be = mlx5_flow_mark_set
 			      (((const struct rte_flow_action_mark *)
 			       (actions->conf))->id);
 			if (!dev_flow->dv.tag_resource)
 				if (flow_dv_tag_resource_register
-				    (dev, &tag_resource, dev_flow, error))
-					return errno;
+				    (dev, tag_be, dev_flow, error))
+					return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.tag_resource->action;
 			break;

@@ -361,12 +361,11 @@ struct mlx5_flow_dv_encap_decap_resource {
 
 /* Tag resource structure. */
 struct mlx5_flow_dv_tag_resource {
-	LIST_ENTRY(mlx5_flow_dv_tag_resource) next;
-	/* Pointer to next element. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	struct mlx5_hlist_entry entry;
+	/**< hash list entry for tag resource, tag value as the key. */
 	void *action;
 	/**< Verbs tag action object. */
-	uint32_t tag; /**< the tag value. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
 };
 
 /*
