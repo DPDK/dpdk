@@ -806,6 +806,74 @@ mlx5_flow_meter_disable(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/**
+ * Callback to update meter profile.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] meter_id
+ *   Meter id.
+ * @param[in] meter_profile_id
+ *   To be updated meter profile id.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_profile_update(struct rte_eth_dev *dev,
+			       uint32_t meter_id,
+			       uint32_t meter_profile_id,
+			       struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_profile *fmp;
+	struct mlx5_flow_meter_profile *old_fmp;
+	struct mlx5_flow_meter *fm;
+	uint64_t modify_bits = MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CBS |
+			       MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CIR;
+	int ret;
+
+	if (!priv->mtr_en)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter is not support");
+	/* Meter profile must exist. */
+	fmp = mlx5_flow_meter_profile_find(priv, meter_profile_id);
+	if (fmp == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  NULL, "Meter profile not found.");
+	/* Meter object must exist. */
+	fm = mlx5_flow_meter_find(priv, meter_id);
+	if (fm == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID,
+					  NULL, "Meter not found.");
+	/* MTR object already set to meter profile id. */
+	old_fmp = fm->profile;
+	if (fmp == old_fmp)
+		return 0;
+	/* Update the profile. */
+	fm->profile = fmp;
+	/* Update meter params in HW (if not disabled). */
+	if (fm->active_state == MLX5_FLOW_METER_DISABLE)
+		return 0;
+	ret = mlx5_flow_meter_action_modify(priv, fm, &fm->profile->srtcm_prm,
+					      modify_bits, fm->active_state);
+	if (ret) {
+		fm->profile = old_fmp;
+		return -rte_mtr_error_set(error, -ret,
+					  RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+					  NULL, "Failed to update meter"
+					  " parmeters in hardware.");
+	}
+	old_fmp->ref_cnt--;
+	fmp->ref_cnt++;
+	return 0;
+}
+
 static const struct rte_mtr_ops mlx5_flow_mtr_ops = {
 	.capabilities_get = mlx5_flow_mtr_cap_get,
 	.meter_profile_add = mlx5_flow_meter_profile_add,
@@ -814,7 +882,7 @@ static const struct rte_mtr_ops mlx5_flow_mtr_ops = {
 	.destroy = mlx5_flow_meter_destroy,
 	.meter_enable = mlx5_flow_meter_enable,
 	.meter_disable = mlx5_flow_meter_disable,
-	.meter_profile_update = NULL,
+	.meter_profile_update = mlx5_flow_meter_profile_update,
 	.meter_dscp_table_update = NULL,
 	.policer_actions_update = NULL,
 	.stats_update = NULL,
