@@ -614,6 +614,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	TAILQ_INSERT_TAIL(fms, fm, next);
 	fm->active_state = 1; /* Config meter starts as active. */
 	fm->shared = !!shared;
+	fm->policer_stats.stats_mask = params->stats_mask;
 	fm->profile->ref_cnt++;
 	return 0;
 error:
@@ -890,6 +891,141 @@ mlx5_flow_meter_profile_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * Callback to update meter stats mask.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] meter_id
+ *   Meter id.
+ * @param[in] stats_mask
+ *   To be updated stats_mask.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_stats_update(struct rte_eth_dev *dev,
+			     uint32_t meter_id,
+			     uint64_t stats_mask,
+			     struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter *fm;
+
+	if (!priv->mtr_en)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter is not support");
+	/* Meter object must exist. */
+	fm = mlx5_flow_meter_find(priv, meter_id);
+	if (fm == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID,
+					  NULL, "Meter object id not valid.");
+	fm->policer_stats.stats_mask = stats_mask;
+	return 0;
+}
+
+/**
+ * Callback to read meter statistics.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] meter_id
+ *   Meter id.
+ * @param[out] stats
+ *   Pointer to store the statistics.
+ * @param[out] stats_mask
+ *   Pointer to store the stats_mask.
+ * @param[in] clear
+ *   Statistic to be cleared after read or not.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_stats_read(struct rte_eth_dev *dev,
+			   uint32_t meter_id,
+			   struct rte_mtr_stats *stats,
+			   uint64_t *stats_mask,
+			   int clear,
+			   struct rte_mtr_error *error)
+{
+	static uint64_t meter2mask[RTE_MTR_DROPPED + 1] = {
+		RTE_MTR_STATS_N_PKTS_GREEN | RTE_MTR_STATS_N_BYTES_GREEN,
+		RTE_MTR_STATS_N_PKTS_YELLOW | RTE_MTR_STATS_N_BYTES_YELLOW,
+		RTE_MTR_STATS_N_PKTS_RED | RTE_MTR_STATS_N_BYTES_RED,
+		RTE_MTR_STATS_N_PKTS_DROPPED | RTE_MTR_STATS_N_BYTES_DROPPED
+	};
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter *fm;
+	struct mlx5_flow_policer_stats *ps;
+	uint64_t pkts_dropped = 0;
+	uint64_t bytes_dropped = 0;
+	uint64_t pkts;
+	uint64_t bytes;
+	int i;
+	int ret = 0;
+
+	if (!priv->mtr_en)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter is not support");
+	/* Meter object must exist. */
+	fm = mlx5_flow_meter_find(priv, meter_id);
+	if (fm == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID,
+					  NULL, "Meter object id not valid.");
+	ps = &fm->policer_stats;
+	*stats_mask = ps->stats_mask;
+	for (i = 0; i < RTE_MTR_DROPPED; i++) {
+		if (*stats_mask & meter2mask[i]) {
+			ret = mlx5_counter_query(dev, ps->cnt[i], clear, &pkts,
+						 &bytes);
+			if (ret)
+				goto error;
+			if (fm->params.action[i] == MTR_POLICER_ACTION_DROP) {
+				pkts_dropped += pkts;
+				bytes_dropped += bytes;
+			}
+			/* If need to read the packets, set it. */
+			if ((1 << i) & (*stats_mask & meter2mask[i]))
+				stats->n_pkts[i] = pkts;
+			/* If need to read the bytes, set it. */
+			if ((1 << (RTE_MTR_DROPPED + 1 + i)) &
+			   (*stats_mask & meter2mask[i]))
+				stats->n_bytes[i] = bytes;
+		}
+	}
+	/* Dropped packets/bytes are treated differently. */
+	if (*stats_mask & meter2mask[i]) {
+		ret = mlx5_counter_query(dev, ps->cnt[i], clear, &pkts,
+					 &bytes);
+		if (ret)
+			goto error;
+		pkts += pkts_dropped;
+		bytes += bytes_dropped;
+		/* If need to read the packets, set it. */
+		if ((*stats_mask & meter2mask[i]) &
+		   RTE_MTR_STATS_N_PKTS_DROPPED)
+			stats->n_pkts_dropped = pkts;
+		/* If need to read the bytes, set it. */
+		if ((*stats_mask & meter2mask[i]) &
+		   RTE_MTR_STATS_N_BYTES_DROPPED)
+			stats->n_bytes_dropped = bytes;
+	}
+	return 0;
+error:
+	return -rte_mtr_error_set(error, ret, RTE_MTR_ERROR_TYPE_STATS, NULL,
+				 "Failed to read policer counters.");
+}
+
 static const struct rte_mtr_ops mlx5_flow_mtr_ops = {
 	.capabilities_get = mlx5_flow_mtr_cap_get,
 	.meter_profile_add = mlx5_flow_meter_profile_add,
@@ -901,8 +1037,8 @@ static const struct rte_mtr_ops mlx5_flow_mtr_ops = {
 	.meter_profile_update = mlx5_flow_meter_profile_update,
 	.meter_dscp_table_update = NULL,
 	.policer_actions_update = NULL,
-	.stats_update = NULL,
-	.stats_read = NULL,
+	.stats_update = mlx5_flow_meter_stats_update,
+	.stats_read = mlx5_flow_meter_stats_read,
 };
 
 /**
