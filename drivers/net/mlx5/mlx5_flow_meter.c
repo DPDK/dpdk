@@ -35,6 +35,71 @@ mlx5_flow_meter_profile_find(struct mlx5_priv *priv, uint32_t meter_profile_id)
 }
 
 /**
+ * Validate the MTR profile.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] meter_profile_id
+ *   Meter profile id.
+ * @param[in] profile
+ *   Pointer to meter profile detail.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_profile_validate(struct rte_eth_dev *dev,
+				 uint32_t meter_profile_id,
+				 struct rte_mtr_meter_profile *profile,
+				 struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_profile *fmp;
+
+	/* Profile must not be NULL. */
+	if (profile == NULL)
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE,
+					  NULL, "Meter profile is null.");
+	/* Meter profile ID must be valid. */
+	if (meter_profile_id == UINT32_MAX)
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  NULL, "Meter profile id not valid.");
+	/* Meter profile must not exist. */
+	fmp = mlx5_flow_meter_profile_find(priv, meter_profile_id);
+	if (fmp)
+		return -rte_mtr_error_set(error, EEXIST,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  NULL,
+					  "Meter profile already exists.");
+	if (profile->alg == RTE_MTR_SRTCM_RFC2697) {
+		if (priv->config.hca_attr.qos.srtcm_sup) {
+			/* Verify support for flow meter parameters. */
+			if (profile->srtcm_rfc2697.cir > 0 &&
+			    profile->srtcm_rfc2697.cir <= MLX5_SRTCM_CIR_MAX &&
+			    profile->srtcm_rfc2697.cbs > 0 &&
+			    profile->srtcm_rfc2697.cbs <= MLX5_SRTCM_CBS_MAX &&
+			    profile->srtcm_rfc2697.ebs <= MLX5_SRTCM_EBS_MAX)
+				return 0;
+			else
+				return -rte_mtr_error_set
+					     (error, ENOTSUP,
+					      RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+					      NULL,
+					      profile->srtcm_rfc2697.ebs ?
+					      "Metering value ebs must be 0." :
+					      "Invalid metering parameters.");
+		}
+	}
+	return -rte_mtr_error_set(error, ENOTSUP,
+				  RTE_MTR_ERROR_TYPE_METER_PROFILE,
+				  NULL, "Metering algorithm not supported.");
+}
+
+/**
  * Calculate mantissa and exponent for cir.
  *
  * @param[in] cir
@@ -226,6 +291,11 @@ mlx5_flow_meter_profile_add(struct rte_eth_dev *dev,
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "Meter is not support");
+	/* Check input params. */
+	ret = mlx5_flow_meter_profile_validate(dev, meter_profile_id,
+					       profile, error);
+	if (ret)
+		return ret;
 	/* Meter profile memory allocation. */
 	fmp = rte_calloc(__func__, 1, sizeof(struct mlx5_flow_meter_profile),
 			 RTE_CACHE_LINE_SIZE);
