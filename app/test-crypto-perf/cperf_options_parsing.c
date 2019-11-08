@@ -442,6 +442,10 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 		{
 			cperf_op_type_strs[CPERF_AEAD],
 			CPERF_AEAD
+		},
+		{
+			cperf_op_type_strs[CPERF_PDCP],
+			CPERF_PDCP
 		}
 	};
 
@@ -616,6 +620,63 @@ parse_digest_sz(struct cperf_options *opts, const char *arg)
 	return parse_uint16_t(&opts->digest_sz, arg);
 }
 
+#ifdef RTE_LIBRTE_SECURITY
+static int
+parse_pdcp_sn_sz(struct cperf_options *opts, const char *arg)
+{
+	uint32_t val = 0;
+	int ret = parse_uint32_t(&val, arg);
+
+	if (ret < 0)
+		return ret;
+
+	if (val != RTE_SECURITY_PDCP_SN_SIZE_5 &&
+			val != RTE_SECURITY_PDCP_SN_SIZE_7 &&
+			val != RTE_SECURITY_PDCP_SN_SIZE_12 &&
+			val != RTE_SECURITY_PDCP_SN_SIZE_15 &&
+			val != RTE_SECURITY_PDCP_SN_SIZE_18) {
+		printf("\nInvalid pdcp SN size: %u\n", val);
+		return -ERANGE;
+	}
+	opts->pdcp_sn_sz = val;
+
+	return 0;
+}
+
+const char *cperf_pdcp_domain_strs[] = {
+	[RTE_SECURITY_PDCP_MODE_CONTROL] = "control",
+	[RTE_SECURITY_PDCP_MODE_DATA] = "data"
+};
+
+static int
+parse_pdcp_domain(struct cperf_options *opts, const char *arg)
+{
+	struct name_id_map pdcp_domain_namemap[] = {
+		{
+			cperf_pdcp_domain_strs
+			[RTE_SECURITY_PDCP_MODE_CONTROL],
+			RTE_SECURITY_PDCP_MODE_CONTROL },
+		{
+			cperf_pdcp_domain_strs
+			[RTE_SECURITY_PDCP_MODE_DATA],
+			RTE_SECURITY_PDCP_MODE_DATA
+		}
+	};
+
+	int id = get_str_key_id_mapping(pdcp_domain_namemap,
+			RTE_DIM(pdcp_domain_namemap), arg);
+	if (id < 0) {
+		RTE_LOG(ERR, USER1, "invalid pdcp domain specified"
+				"\n");
+		return -1;
+	}
+
+	opts->pdcp_domain = (enum rte_security_pdcp_domain)id;
+
+	return 0;
+}
+#endif
+
 static int
 parse_auth_iv_sz(struct cperf_options *opts, const char *arg)
 {
@@ -756,6 +817,10 @@ static struct option lgopts[] = {
 
 	{ CPERF_DIGEST_SZ, required_argument, 0, 0 },
 
+#ifdef RTE_LIBRTE_SECURITY
+	{ CPERF_PDCP_SN_SZ, required_argument, 0, 0 },
+	{ CPERF_PDCP_DOMAIN, required_argument, 0, 0 },
+#endif
 	{ CPERF_CSV, no_argument, 0, 0},
 
 	{ CPERF_PMDCC_DELAY_MS, required_argument, 0, 0 },
@@ -822,6 +887,10 @@ cperf_options_default(struct cperf_options *opts)
 	opts->digest_sz = 12;
 
 	opts->pmdcc_delay = 0;
+#ifdef RTE_LIBRTE_SECURITY
+	opts->pdcp_sn_sz = 12;
+	opts->pdcp_domain = RTE_SECURITY_PDCP_MODE_CONTROL;
+#endif
 }
 
 static int
@@ -857,6 +926,10 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_AEAD_IV_SZ,	parse_aead_iv_sz },
 		{ CPERF_AEAD_AAD_SZ,	parse_aead_aad_sz },
 		{ CPERF_DIGEST_SZ,	parse_digest_sz },
+#ifdef RTE_LIBRTE_SECURITY
+		{ CPERF_PDCP_SN_SZ,	parse_pdcp_sn_sz },
+		{ CPERF_PDCP_DOMAIN,	parse_pdcp_domain },
+#endif
 		{ CPERF_CSV,		parse_csv_friendly},
 		{ CPERF_PMDCC_DELAY_MS,	parse_pmd_cyclecount_delay_ms},
 	};

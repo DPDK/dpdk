@@ -412,6 +412,61 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 	t_vec->plaintext.data = plaintext;
 	t_vec->plaintext.length = options->max_buffer_size;
 
+	if (options->op_type ==	CPERF_PDCP) {
+		if (options->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
+			t_vec->cipher_key.length = 0;
+			t_vec->ciphertext.data = plaintext;
+			t_vec->cipher_key.data = NULL;
+		} else {
+			t_vec->cipher_key.length = options->cipher_key_sz;
+			t_vec->ciphertext.data = ciphertext;
+			t_vec->cipher_key.data = cipher_key;
+		}
+
+		/* Init IV data ptr */
+		t_vec->cipher_iv.data = NULL;
+
+		if (options->cipher_iv_sz != 0) {
+			/* Set IV parameters */
+			t_vec->cipher_iv.data = rte_malloc(NULL,
+					options->cipher_iv_sz, 16);
+			if (t_vec->cipher_iv.data == NULL) {
+				rte_free(t_vec);
+				return NULL;
+			}
+			memcpy(t_vec->cipher_iv.data, iv, options->cipher_iv_sz);
+		}
+		t_vec->ciphertext.length = options->max_buffer_size;
+		t_vec->cipher_iv.length = options->cipher_iv_sz;
+		t_vec->data.cipher_offset = 0;
+		t_vec->data.cipher_length = options->max_buffer_size;
+		if (options->auth_algo == RTE_CRYPTO_AUTH_NULL) {
+			t_vec->auth_key.length = 0;
+			t_vec->auth_key.data = NULL;
+			t_vec->digest.data = NULL;
+			t_vec->digest.length = 0;
+		} else {
+			t_vec->auth_key.length = options->auth_key_sz;
+			t_vec->auth_key.data = auth_key;
+
+			t_vec->digest.data = rte_malloc(NULL,
+					options->digest_sz,
+					16);
+			if (t_vec->digest.data == NULL) {
+				rte_free(t_vec->cipher_iv.data);
+				rte_free(t_vec);
+				return NULL;
+			}
+			t_vec->digest.phys_addr =
+				rte_malloc_virt2iova(t_vec->digest.data);
+			t_vec->digest.length = options->digest_sz;
+			memcpy(t_vec->digest.data, digest,
+					options->digest_sz);
+		}
+		t_vec->data.auth_offset = 0;
+		t_vec->data.auth_length = options->max_buffer_size;
+	}
+
 	if (options->op_type ==	CPERF_CIPHER_ONLY ||
 			options->op_type == CPERF_CIPHER_THEN_AUTH ||
 			options->op_type == CPERF_AUTH_THEN_CIPHER) {

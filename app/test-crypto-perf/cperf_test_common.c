@@ -30,6 +30,7 @@ fill_single_seg_mbuf(struct rte_mbuf *m, struct rte_mempool *mp,
 		mbuf_offset + mbuf_hdr_size;
 	m->buf_len = segment_sz;
 	m->data_len = data_len;
+	m->pkt_len = data_len;
 
 	/* Use headroom specified for the buffer */
 	m->data_off = headroom;

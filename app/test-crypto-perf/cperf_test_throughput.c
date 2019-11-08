@@ -32,17 +32,27 @@ struct cperf_throughput_ctx {
 static void
 cperf_throughput_test_free(struct cperf_throughput_ctx *ctx)
 {
-	if (ctx) {
-		if (ctx->sess) {
+	if (!ctx)
+		return;
+	if (ctx->sess) {
+#ifdef RTE_LIBRTE_SECURITY
+		if (ctx->options->op_type == CPERF_PDCP) {
+			struct rte_security_ctx *sec_ctx =
+				(struct rte_security_ctx *)
+				rte_cryptodev_get_sec_ctx(ctx->dev_id);
+			rte_security_session_destroy(sec_ctx,
+				(struct rte_security_session *)ctx->sess);
+		} else
+#endif
+		{
 			rte_cryptodev_sym_session_clear(ctx->dev_id, ctx->sess);
 			rte_cryptodev_sym_session_free(ctx->sess);
 		}
-
-		if (ctx->pool)
-			rte_mempool_free(ctx->pool);
-
-		rte_free(ctx);
 	}
+	if (ctx->pool)
+		rte_mempool_free(ctx->pool);
+
+	rte_free(ctx);
 }
 
 void *

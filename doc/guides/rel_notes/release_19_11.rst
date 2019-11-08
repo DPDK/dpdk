@@ -221,7 +221,7 @@ New Features
 
   PDCP support is added to DPAA_SEC and DPAA2_SEC PMDs using rte_security APIs.
   Support is added for all sequence number sizes for control and user plane.
-  Test application is updated for unit testing.
+  Test and test-crypto-perf applications are updated for unit testing.
 
 * **Updated the AESNI-MB PMD.**
 

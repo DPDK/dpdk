@@ -7,6 +7,44 @@
 #include "cperf_ops.h"
 #include "cperf_test_vectors.h"
 
+#ifdef RTE_LIBRTE_SECURITY
+static int
+cperf_set_ops_security(struct rte_crypto_op **ops,
+		uint32_t src_buf_offset __rte_unused,
+		uint32_t dst_buf_offset __rte_unused,
+		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		const struct cperf_options *options __rte_unused,
+		const struct cperf_test_vector *test_vector __rte_unused,
+		uint16_t iv_offset __rte_unused,
+		uint32_t *imix_idx __rte_unused)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
+		struct rte_security_session *sec_sess =
+			(struct rte_security_session *)sess;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		rte_security_attach_session(ops[i], sec_sess);
+		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] +
+							src_buf_offset);
+		sym_op->m_src->buf_len = options->segment_sz;
+		sym_op->m_src->data_len = options->test_buffer_size;
+		sym_op->m_src->pkt_len = sym_op->m_src->data_len;
+
+		/* Set dest mbuf to NULL if out-of-place (dst_buf_offset = 0) */
+		if (dst_buf_offset == 0)
+			sym_op->m_dst = NULL;
+		else
+			sym_op->m_dst = (struct rte_mbuf *)((uint8_t *)ops[i] +
+							dst_buf_offset);
+	}
+
+	return 0;
+}
+#endif
+
 static int
 cperf_set_ops_null_cipher(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
@@ -480,6 +518,78 @@ cperf_create_session(struct rte_mempool *sess_mp,
 	struct rte_crypto_sym_xform aead_xform;
 	struct rte_cryptodev_sym_session *sess = NULL;
 
+#ifdef RTE_LIBRTE_SECURITY
+	/*
+	 * security only
+	 */
+	if (options->op_type == CPERF_PDCP) {
+		/* Setup Cipher Parameters */
+		cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+		cipher_xform.next = NULL;
+		cipher_xform.cipher.algo = options->cipher_algo;
+		cipher_xform.cipher.op = options->cipher_op;
+		cipher_xform.cipher.iv.offset = iv_offset;
+
+		/* cipher different than null */
+		if (options->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+			cipher_xform.cipher.key.data = test_vector->cipher_key.data;
+			cipher_xform.cipher.key.length = test_vector->cipher_key.length;
+			cipher_xform.cipher.iv.length = test_vector->cipher_iv.length;
+		} else {
+			cipher_xform.cipher.key.data = NULL;
+			cipher_xform.cipher.key.length = 0;
+			cipher_xform.cipher.iv.length = 0;
+		}
+
+		/* Setup Auth Parameters */
+		if (options->auth_algo != 0) {
+			auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+			auth_xform.next = NULL;
+			auth_xform.auth.algo = options->auth_algo;
+			auth_xform.auth.op = options->auth_op;
+			auth_xform.auth.iv.offset = iv_offset +
+				cipher_xform.cipher.iv.length;
+
+			/* auth different than null */
+			if (options->auth_algo != RTE_CRYPTO_AUTH_NULL) {
+				auth_xform.auth.digest_length = options->digest_sz;
+				auth_xform.auth.key.length = test_vector->auth_key.length;
+				auth_xform.auth.key.data = test_vector->auth_key.data;
+				auth_xform.auth.iv.length = test_vector->auth_iv.length;
+			} else {
+				auth_xform.auth.digest_length = 0;
+				auth_xform.auth.key.length = 0;
+				auth_xform.auth.key.data = NULL;
+				auth_xform.auth.iv.length = 0;
+			}
+
+			cipher_xform.next = &auth_xform;
+		} else {
+			cipher_xform.next = NULL;
+		}
+
+		struct rte_security_session_conf sess_conf = {
+			.action_type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_PDCP,
+			{.pdcp = {
+				.bearer = 0x16,
+				.domain = options->pdcp_domain,
+				.pkt_dir = 0,
+				.sn_size = options->pdcp_sn_sz,
+				.hfn = 0x1,
+				.hfn_threshold = 0x70C0A,
+			} },
+			.crypto_xform = &cipher_xform
+		};
+
+		struct rte_security_ctx *ctx = (struct rte_security_ctx *)
+					rte_cryptodev_get_sec_ctx(dev_id);
+
+		/* Create security session */
+		return (void *)rte_security_session_create(ctx,
+					&sess_conf, sess_mp);
+	}
+#endif
 	sess = rte_cryptodev_sym_session_create(sess_mp);
 	/*
 	 * cipher only
@@ -657,6 +767,11 @@ cperf_get_op_functions(const struct cperf_options *options,
 			op_fns->populate_ops = cperf_set_ops_cipher;
 		return 0;
 	}
-
+#ifdef RTE_LIBRTE_SECURITY
+	if (options->op_type == CPERF_PDCP) {
+		op_fns->populate_ops = cperf_set_ops_security;
+		return 0;
+	}
+#endif
 	return -1;
 }
