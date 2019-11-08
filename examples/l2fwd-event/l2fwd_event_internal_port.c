@@ -193,19 +193,16 @@ static void
 l2fwd_rx_tx_adapter_setup_internal_port(struct l2fwd_resources *rsrc)
 {
 	struct l2fwd_event_resources *evt_rsrc = rsrc->evt_rsrc;
-	struct rte_event_eth_rx_adapter_queue_conf eth_q_conf = {
-		.rx_queue_flags = 0,
-		.ev = {
-			.queue_id = 0,
-			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
-		}
-	};
+	struct rte_event_eth_rx_adapter_queue_conf eth_q_conf;
 	uint8_t event_d_id = evt_rsrc->event_d_id;
 	uint16_t adapter_id = 0;
 	uint16_t nb_adapter = 0;
 	uint16_t port_id;
 	uint8_t q_id = 0;
 	int ret;
+
+	memset(&eth_q_conf, 0, sizeof(eth_q_conf));
+	eth_q_conf.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
 
 	RTE_ETH_FOREACH_DEV(port_id) {
 		if ((rsrc->enabled_port_mask & (1 << port_id)) == 0)

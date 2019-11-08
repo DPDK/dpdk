@@ -195,13 +195,7 @@ static void
 l2fwd_rx_tx_adapter_setup_generic(struct l2fwd_resources *rsrc)
 {
 	struct l2fwd_event_resources *evt_rsrc = rsrc->evt_rsrc;
-	struct rte_event_eth_rx_adapter_queue_conf eth_q_conf = {
-		.rx_queue_flags = 0,
-		.ev = {
-			.queue_id = 0,
-			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
-		}
-	};
+	struct rte_event_eth_rx_adapter_queue_conf eth_q_conf;
 	uint8_t event_d_id = evt_rsrc->event_d_id;
 	uint8_t rx_adptr_id = 0;
 	uint8_t tx_adptr_id = 0;
@@ -209,6 +203,9 @@ l2fwd_rx_tx_adapter_setup_generic(struct l2fwd_resources *rsrc)
 	uint16_t port_id;
 	uint32_t service_id;
 	int32_t ret, i = 0;
+
+	memset(&eth_q_conf, 0, sizeof(eth_q_conf));
+	eth_q_conf.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
 
 	/* Rx adapter setup */
 	evt_rsrc->rx_adptr.nb_rx_adptr = 1;
