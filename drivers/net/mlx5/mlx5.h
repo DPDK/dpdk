@@ -694,6 +694,8 @@ struct mlx5_proc_priv {
 
 /* MTR profile list. */
 TAILQ_HEAD(mlx5_mtr_profiles, mlx5_flow_meter_profile);
+/* MTR list. */
+TAILQ_HEAD(mlx5_flow_meters, mlx5_flow_meter);
 
 #define MLX5_PROC_PRIV(port_id) \
 	((struct mlx5_proc_priv *)rte_eth_devices[port_id].process_private)
@@ -766,6 +768,7 @@ struct mlx5_priv {
 	uint8_t mtr_sfx_reg; /* Meter prefix-suffix flow match REG_C. */
 	uint8_t mtr_color_reg; /* Meter color match REG_C. */
 	struct mlx5_mtr_profiles flow_meter_profiles; /* MTR profile list. */
+	struct mlx5_flow_meters flow_meters; /* MTR list. */
 #ifndef RTE_ARCH_64
 	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
@@ -1031,5 +1034,7 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_td(struct ibv_context *ctx);
 /* mlx5_flow_meter.c */
 
 int mlx5_flow_meter_ops_get(struct rte_eth_dev *dev, void *arg);
+struct mlx5_flow_meter *mlx5_flow_meter_find(struct mlx5_priv *priv,
+					     uint32_t meter_id);
 
 #endif /* RTE_PMD_MLX5_H_ */

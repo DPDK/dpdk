@@ -362,12 +362,227 @@ mlx5_flow_meter_profile_delete(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * Convert wrong color setting action to verbose error.
+ *
+ * @param[in] action
+ *   Policy color action.
+ *
+ * @return
+ *   Verbose meter color error type.
+ */
+static inline enum rte_mtr_error_type
+action2error(enum rte_mtr_policer_action action)
+{
+	switch (action) {
+	case MTR_POLICER_ACTION_COLOR_GREEN:
+		return RTE_MTR_ERROR_TYPE_POLICER_ACTION_GREEN;
+	case MTR_POLICER_ACTION_COLOR_YELLOW:
+		return RTE_MTR_ERROR_TYPE_POLICER_ACTION_YELLOW;
+	case MTR_POLICER_ACTION_COLOR_RED:
+		return RTE_MTR_ERROR_TYPE_POLICER_ACTION_RED;
+	default:
+		break;
+	}
+	return RTE_MTR_ERROR_TYPE_UNSPECIFIED;
+}
+
+/**
+ * Check meter validation.
+ *
+ * @param[in] priv
+ *   Pointer to mlx5 private data structure.
+ * @param[in] meter_id
+ *   Meter id.
+ * @param[in] params
+ *   Pointer to rte meter parameters.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_validate(struct mlx5_priv *priv, uint32_t meter_id,
+			 struct rte_mtr_params *params,
+			 struct rte_mtr_error *error)
+{
+	static enum rte_mtr_policer_action
+				valid_recol_action[RTE_COLORS] = {
+					       MTR_POLICER_ACTION_COLOR_GREEN,
+					       MTR_POLICER_ACTION_COLOR_YELLOW,
+					       MTR_POLICER_ACTION_COLOR_RED };
+	int i;
+
+	/* Meter params must not be NULL. */
+	if (params == NULL)
+		return -rte_mtr_error_set(error, EINVAL,
+					  RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+					  NULL, "Meter object params null.");
+	/* Previous meter color is not supported. */
+	if (params->use_prev_mtr_color)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+					  NULL,
+					  "Previous meter color "
+					  "not supported.");
+	/* Validate policer settings. */
+	for (i = 0; i < RTE_COLORS; i++)
+		if (params->action[i] != valid_recol_action[i] &&
+		    params->action[i] != MTR_POLICER_ACTION_DROP)
+			return -rte_mtr_error_set
+					(error, ENOTSUP,
+					 action2error(params->action[i]), NULL,
+					 "Recolor action not supported.");
+	/* Validate meter id. */
+	if (mlx5_flow_meter_find(priv, meter_id))
+		return -rte_mtr_error_set(error, EEXIST,
+					  RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
+					  "Meter object already exists.");
+	return 0;
+}
+
+/**
+ * Create meter rules.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] meter_id
+ *   Meter id.
+ * @param[in] params
+ *   Pointer to rte meter parameters.
+ * @param[in] shared
+ *   Meter shared with other flow or not.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
+		       struct rte_mtr_params *params, int shared,
+		       struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meters *fms = &priv->flow_meters;
+	struct mlx5_flow_meter_profile *fmp;
+	struct mlx5_flow_meter *fm;
+	const struct rte_flow_attr attr = {
+				.ingress = 1,
+				.egress = 1,
+				.transfer = priv->config.dv_esw_en ? 1 : 0,
+			};
+	int ret;
+
+	if (!priv->mtr_en)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter is not support");
+	/* Validate the parameters. */
+	ret = mlx5_flow_meter_validate(priv, meter_id, params, error);
+	if (ret)
+		return ret;
+	/* Meter profile must exist. */
+	fmp = mlx5_flow_meter_profile_find(priv, params->meter_profile_id);
+	if (fmp == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+					  NULL, "Meter profile id not valid.");
+	/* Allocate the flow meter memory. */
+	fm = rte_calloc(__func__, 1,
+			sizeof(struct mlx5_flow_meter), RTE_CACHE_LINE_SIZE);
+	if (fm == NULL)
+		return -rte_mtr_error_set(error, ENOMEM,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Memory alloc failed for meter.");
+	/* Fill the flow meter parameters. */
+	fm->meter_id = meter_id;
+	fm->profile = fmp;
+	fm->params = *params;
+	fm->mfts = mlx5_flow_create_mtr_tbls(dev);
+	if (!fm->mfts)
+		goto error;
+	ret = mlx5_flow_create_policer_rules(dev, fm, &attr);
+	if (ret)
+		goto error;
+	/* Add to the flow meter list. */
+	TAILQ_INSERT_TAIL(fms, fm, next);
+	fm->active_state = 1; /* Config meter starts as active. */
+	fm->shared = !!shared;
+	fm->profile->ref_cnt++;
+	return 0;
+error:
+	mlx5_flow_destroy_policer_rules(dev, fm, &attr);
+	mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);
+	rte_free(fm);
+	return -rte_mtr_error_set(error, -ret,
+				  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+				  NULL, "Failed to create devx meter.");
+}
+
+/**
+ * Destroy meter rules.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] meter_id
+ *   Meter id.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
+			struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meters *fms = &priv->flow_meters;
+	struct mlx5_flow_meter_profile *fmp;
+	struct mlx5_flow_meter *fm;
+	const struct rte_flow_attr attr = {
+				.ingress = 1,
+				.egress = 1,
+				.transfer = priv->config.dv_esw_en ? 1 : 0,
+			};
+
+	if (!priv->mtr_en)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter is not support");
+	/* Meter object must exist. */
+	fm = mlx5_flow_meter_find(priv, meter_id);
+	if (fm == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID,
+					  NULL, "Meter object id not valid.");
+	/* Meter object must not have any owner. */
+	if (fm->ref_cnt > 0)
+		return -rte_mtr_error_set(error, EBUSY,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "Meter object is being used.");
+	/* Get the meter profile. */
+	fmp = fm->profile;
+	RTE_ASSERT(fmp);
+	/* Update dependencies. */
+	fmp->ref_cnt--;
+	/* Remove from the flow meter list. */
+	TAILQ_REMOVE(fms, fm, next);
+	/* Free meter flow table */
+	mlx5_flow_destroy_policer_rules(dev, fm, &attr);
+	mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);
+	rte_free(fm);
+	return 0;
+}
+
 static const struct rte_mtr_ops mlx5_flow_mtr_ops = {
 	.capabilities_get = mlx5_flow_mtr_cap_get,
 	.meter_profile_add = mlx5_flow_meter_profile_add,
 	.meter_profile_delete = mlx5_flow_meter_profile_delete,
-	.create = NULL,
-	.destroy = NULL,
+	.create = mlx5_flow_meter_create,
+	.destroy = mlx5_flow_meter_destroy,
 	.meter_enable = NULL,
 	.meter_disable = NULL,
 	.meter_profile_update = NULL,
@@ -393,4 +608,27 @@ mlx5_flow_meter_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
 {
 	*(const struct rte_mtr_ops **)arg = &mlx5_flow_mtr_ops;
 	return 0;
+}
+
+/**
+ * Find meter by id.
+ *
+ * @param priv
+ *   Pointer to mlx5_priv.
+ * @param meter_id
+ *   Meter id.
+ *
+ * @return
+ *   Pointer to the profile found on success, NULL otherwise.
+ */
+struct mlx5_flow_meter *
+mlx5_flow_meter_find(struct mlx5_priv *priv, uint32_t meter_id)
+{
+	struct mlx5_flow_meters *fms = &priv->flow_meters;
+	struct mlx5_flow_meter *fm;
+
+	TAILQ_FOREACH(fm, fms, next)
+		if (meter_id == fm->meter_id)
+			return fm;
+	return NULL;
 }

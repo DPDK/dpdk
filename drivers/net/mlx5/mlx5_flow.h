@@ -557,14 +557,22 @@ struct mlx5_meter_domains_infos {
 
 /* Meter parameter structure. */
 struct mlx5_flow_meter {
+	TAILQ_ENTRY(mlx5_flow_meter) next;
+	/**< Pointer to the next flow meter structure. */
 	uint32_t meter_id;
 	/**< Meter id. */
 	struct rte_mtr_params params;
 	/**< Meter rule parameters. */
+	struct mlx5_flow_meter_profile *profile;
+	/**< Meter profile parameters. */
 	struct mlx5_meter_domains_infos *mfts;
 	/**< Flow table created for this meter. */
 	uint32_t ref_cnt;
 	/**< Use count. */
+	uint32_t active_state:1;
+	/**< Meter state. */
+	uint32_t shared:1;
+	/**< Meter shared or not. */
 };
 
 /* RFC2697 parameter structure. */
