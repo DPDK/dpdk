@@ -2328,6 +2328,27 @@ flow_mreg_split_qrss_release(struct rte_eth_dev *dev,
 			flow_qrss_free_id(dev, dev_flow->qrss_id);
 }
 
+/**
+ * Release meter prefix suffix flow match id.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param flow
+ *   Flow to release id's from.
+ */
+static void
+flow_meter_split_id_release(struct rte_eth_dev *dev,
+			    struct rte_flow *flow)
+{
+	struct mlx5_flow *dev_flow;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	LIST_FOREACH(dev_flow, &flow->dev_flows, next)
+		if (dev_flow->qrss_id)
+			mlx5_flow_id_release(priv->sh->flow_id_pool,
+					     dev_flow->mtr_flow_id);
+}
+
 static int
 flow_null_validate(struct rte_eth_dev *dev __rte_unused,
 		   const struct rte_flow_attr *attr __rte_unused,
@@ -2618,6 +2639,7 @@ flow_drv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	enum mlx5_flow_drv_type type = flow->drv_type;
 
 	flow_mreg_split_qrss_release(dev, flow);
+	flow_meter_split_id_release(dev, flow);
 	assert(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
 	fops = flow_get_drv_ops(type);
 	fops->destroy(dev, flow);
@@ -2642,6 +2664,26 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 	if (ret < 0)
 		return ret;
 	return 0;
+}
+
+/**
+ * Get port id item from the item list.
+ *
+ * @param[in] item
+ *   Pointer to the list of items.
+ *
+ * @return
+ *   Pointer to the port id item if exist, else return NULL.
+ */
+static const struct rte_flow_item *
+find_port_id_item(const struct rte_flow_item *item)
+{
+	assert(item);
+	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		if (item->type == RTE_FLOW_ITEM_TYPE_PORT_ID)
+			return item;
+	}
+	return NULL;
 }
 
 /**
@@ -2712,6 +2754,38 @@ flow_parse_qrss_action(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			*qrss = actions;
+			break;
+		default:
+			break;
+		}
+		actions_n++;
+	}
+	/* Count RTE_FLOW_ACTION_TYPE_END. */
+	return actions_n + 1;
+}
+
+/**
+ * Check meter action from the action list.
+ *
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[out] mtr
+ *   Pointer to the meter exist flag.
+ *
+ * @return
+ *   Total number of actions.
+ */
+static int
+flow_check_meter_action(const struct rte_flow_action actions[], uint32_t *mtr)
+{
+	int actions_n = 0;
+
+	assert(mtr);
+	*mtr = 0;
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_METER:
+			*mtr = 1;
 			break;
 		default:
 			break;
@@ -3366,6 +3440,111 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 }
 
 /**
+ * Split the meter flow.
+ *
+ * As meter flow will split to three sub flow, other than meter
+ * action, the other actions make sense to only meter accepts
+ * the packet. If it need to be dropped, no other additional
+ * actions should be take.
+ *
+ * One kind of special action which decapsulates the L3 tunnel
+ * header will be in the prefix sub flow, as not to take the
+ * L3 tunnel header into account.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[out] actions_sfx
+ *   Suffix flow actions.
+ * @param[out] actions_pre
+ *   Prefix flow actions.
+ * @param[out] pattern_sfx
+ *   The pattern items for the suffix flow.
+ * @param[out] tag_sfx
+ *   Pointer to suffix flow tag.
+ *
+ * @return
+ *   0 on success.
+ */
+static int
+flow_meter_split_prep(struct rte_eth_dev *dev,
+		 const struct rte_flow_action actions[],
+		 struct rte_flow_action actions_sfx[],
+		 struct rte_flow_action actions_pre[])
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_action *tag_action;
+	struct mlx5_rte_flow_action_set_tag *set_tag;
+	struct rte_flow_error error;
+	const struct rte_flow_action_raw_encap *raw_encap;
+	const struct rte_flow_action_raw_decap *raw_decap;
+	uint32_t tag_id;
+
+	/* Add the extra tag action first. */
+	tag_action = actions_pre;
+	tag_action->type = MLX5_RTE_FLOW_ACTION_TYPE_TAG;
+	actions_pre++;
+	/* Prepare the actions for prefix and suffix flow. */
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_METER:
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
+			memcpy(actions_pre, actions,
+			       sizeof(struct rte_flow_action));
+			actions_pre++;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+			raw_encap = actions->conf;
+			if (raw_encap->size >
+			    (sizeof(struct rte_flow_item_eth) +
+			     sizeof(struct rte_flow_item_ipv4))) {
+				memcpy(actions_sfx, actions,
+				       sizeof(struct rte_flow_action));
+				actions_sfx++;
+			} else {
+				rte_memcpy(actions_pre, actions,
+					   sizeof(struct rte_flow_action));
+				actions_pre++;
+			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+			raw_decap = actions->conf;
+			/* Size 0 decap means 50 bytes as vxlan decap. */
+			if (raw_decap->size && (raw_decap->size <
+			    (sizeof(struct rte_flow_item_eth) +
+			     sizeof(struct rte_flow_item_ipv4)))) {
+				memcpy(actions_sfx, actions,
+				       sizeof(struct rte_flow_action));
+				actions_sfx++;
+			} else {
+				rte_memcpy(actions_pre, actions,
+					   sizeof(struct rte_flow_action));
+				actions_pre++;
+			}
+			break;
+		default:
+			memcpy(actions_sfx, actions,
+				sizeof(struct rte_flow_action));
+			actions_sfx++;
+			break;
+		}
+	}
+	/* Add end action to the actions. */
+	actions_sfx->type = RTE_FLOW_ACTION_TYPE_END;
+	actions_pre->type = RTE_FLOW_ACTION_TYPE_END;
+	actions_pre++;
+	/* Set the tag. */
+	set_tag = (void *)actions_pre;
+	set_tag->id = mlx5_flow_get_reg_id(dev, MLX5_MTR_SFX, 0, &error);
+	mlx5_flow_id_get(priv->sh->flow_id_pool, &tag_id);
+	set_tag->data = rte_cpu_to_be_32(tag_id);
+	tag_action->conf = set_tag;
+	return tag_id;
+}
+
+/**
  * Split action list having QUEUE/RSS for metadata register copy.
  *
  * Once Q/RSS action is detected in user's action list, the flow action
@@ -3711,6 +3890,124 @@ exit:
 }
 
 /**
+ * The splitting for meter feature.
+ *
+ * - The meter flow will be split to two flows as prefix and
+ *   suffix flow. The packets make sense only it pass the prefix
+ *   meter action.
+ *
+ * - Reg_C_5 is used for the packet to match betweend prefix and
+ *   suffix flow.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Parent flow structure pointer.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] items
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   0 on success, negative value otherwise
+ */
+static int
+flow_create_split_meter(struct rte_eth_dev *dev,
+			   struct rte_flow *flow,
+			   const struct rte_flow_attr *attr,
+			   const struct rte_flow_item items[],
+			   const struct rte_flow_action actions[],
+			   bool external, struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_action *sfx_actions = NULL;
+	struct rte_flow_action *pre_actions = NULL;
+	struct rte_flow_item *sfx_items = NULL;
+	const  struct rte_flow_item *sfx_port_id_item;
+	struct mlx5_flow *dev_flow = NULL;
+	struct rte_flow_attr sfx_attr = *attr;
+	uint32_t mtr = 0;
+	uint32_t mtr_tag_id = 0;
+	size_t act_size;
+	size_t item_size;
+	int actions_n = 0;
+	int ret;
+
+	if (priv->mtr_en)
+		actions_n = flow_check_meter_action(actions, &mtr);
+	if (mtr) {
+		struct mlx5_rte_flow_item_tag *tag_spec;
+		/* The five prefix actions: meter, decap, encap, tag, end. */
+		act_size = sizeof(struct rte_flow_action) * (actions_n + 5) +
+			   sizeof(struct rte_flow_action_set_tag);
+		/* tag, end. */
+#define METER_SUFFIX_ITEM 3
+		item_size = sizeof(struct rte_flow_item) * METER_SUFFIX_ITEM +
+			    sizeof(struct mlx5_rte_flow_item_tag);
+		sfx_actions = rte_zmalloc(__func__, (act_size + item_size), 0);
+		if (!sfx_actions)
+			return rte_flow_error_set(error, ENOMEM,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "no memory to split "
+						  "meter flow");
+		pre_actions = sfx_actions + actions_n;
+		mtr_tag_id = flow_meter_split_prep(dev, actions, sfx_actions,
+						     pre_actions);
+		if (!mtr_tag_id) {
+			ret = -rte_errno;
+			goto exit;
+		}
+		/* Add the prefix subflow. */
+		ret = flow_create_split_inner(dev, flow, &dev_flow, attr, items,
+						  pre_actions, external, error);
+		if (ret) {
+			ret = -rte_errno;
+			goto exit;
+		}
+		dev_flow->mtr_flow_id = mtr_tag_id;
+		/* Prepare the suffix flow match pattern. */
+		sfx_items = (struct rte_flow_item *)((char *)sfx_actions +
+			     act_size);
+		tag_spec = (struct mlx5_rte_flow_item_tag *)(sfx_items +
+			    METER_SUFFIX_ITEM);
+		tag_spec->data = rte_cpu_to_be_32(dev_flow->mtr_flow_id);
+		tag_spec->id = mlx5_flow_get_reg_id(dev, MLX5_MTR_SFX, 0,
+						    error);
+		sfx_items->type = MLX5_RTE_FLOW_ITEM_TYPE_TAG;
+		sfx_items->spec = tag_spec;
+		sfx_items->last = NULL;
+		sfx_items->mask = NULL;
+		sfx_items++;
+		sfx_port_id_item = find_port_id_item(items);
+		if (sfx_port_id_item) {
+			memcpy(sfx_items, sfx_port_id_item,
+			       sizeof(*sfx_items));
+			sfx_items++;
+		}
+		sfx_items->type = RTE_FLOW_ITEM_TYPE_END;
+		sfx_items -= METER_SUFFIX_ITEM;
+		/* Setting the sfx group atrr. */
+		sfx_attr.group = sfx_attr.transfer ?
+				(MLX5_FLOW_TABLE_LEVEL_SUFFIX - 1) :
+				 MLX5_FLOW_TABLE_LEVEL_SUFFIX;
+	}
+	/* Add the prefix subflow. */
+	ret = flow_create_split_metadata(dev, flow, &sfx_attr,
+					 sfx_items ? sfx_items : items,
+					 sfx_actions ? sfx_actions : actions,
+					 external, error);
+exit:
+	if (sfx_actions)
+		rte_free(sfx_actions);
+	return ret;
+}
+
+/**
  * Split the flow to subflow set. The splitters might be linked
  * in the chain, like this:
  * flow_create_split_outer() calls:
@@ -3755,7 +4052,7 @@ flow_create_split_outer(struct rte_eth_dev *dev,
 {
 	int ret;
 
-	ret = flow_create_split_metadata(dev, flow, attr, items,
+	ret = flow_create_split_meter(dev, flow, attr, items,
 					 actions, external, error);
 	assert(ret <= 0);
 	return ret;
