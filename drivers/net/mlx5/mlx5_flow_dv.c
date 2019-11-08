@@ -7660,6 +7660,9 @@ flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* Number of meter flow actions, count and jump or count and drop. */
+#define METER_ACTIONS 2
+
 /**
  * Create specify domain meter table and suffix table.
  *
@@ -7697,12 +7700,6 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 		.match_criteria_enable = 0,
 		.match_mask = (void *)&mask,
 	};
-	/*
-	 * Need reserve two actions here. As for the meter flow, the action
-	 * to be performed will be jump or drop. The other reserve action is
-	 * for count.
-	 */
-#define METER_ACTIONS 2
 	void *actions[METER_ACTIONS];
 	struct mlx5_flow_tbl_resource **sfx_tbl;
 	struct mlx5_meter_domain_info *dtb;
@@ -7832,6 +7829,182 @@ error_exit:
 	return NULL;
 }
 
+/**
+ * Destroy domain policer rule.
+ *
+ * @param[in] dt
+ *   Pointer to domain table.
+ */
+static void
+flow_dv_destroy_domain_policer_rule(struct mlx5_meter_domain_info *dt)
+{
+	int i;
+
+	for (i = 0; i < RTE_MTR_DROPPED; i++) {
+		if (dt->policer_rules[i]) {
+			claim_zero(mlx5_glue->dv_destroy_flow
+				  (dt->policer_rules[i]));
+			dt->policer_rules[i] = NULL;
+		}
+	}
+	if (dt->jump_actn) {
+		claim_zero(mlx5_glue->destroy_flow_action(dt->jump_actn));
+		dt->jump_actn = NULL;
+	}
+}
+
+/**
+ * Destroy policer rules.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] fm
+ *   Pointer to flow meter structure.
+ * @param[in] attr
+ *   Pointer to flow attributes.
+ *
+ * @return
+ *   Always 0.
+ */
+static int
+flow_dv_destroy_policer_rules(struct rte_eth_dev *dev __rte_unused,
+			      const struct mlx5_flow_meter *fm,
+			      const struct rte_flow_attr *attr)
+{
+	struct mlx5_meter_domains_infos *mtb = fm ? fm->mfts : NULL;
+
+	if (!mtb)
+		return 0;
+	if (attr->egress)
+		flow_dv_destroy_domain_policer_rule(&mtb->egress);
+	if (attr->ingress)
+		flow_dv_destroy_domain_policer_rule(&mtb->ingress);
+	if (attr->transfer)
+		flow_dv_destroy_domain_policer_rule(&mtb->transfer);
+	return 0;
+}
+
+/**
+ * Create specify domain meter policer rule.
+ *
+ * @param[in] fm
+ *   Pointer to flow meter structure.
+ * @param[in] mtb
+ *   Pointer to DV meter table set.
+ * @param[in] sfx_tb
+ *   Pointer to suffix table.
+ * @param[in] mtr_reg_c
+ *   Color match REG_C.
+ *
+ * @return
+ *   0 on success, -1 otherwise.
+ */
+static int
+flow_dv_create_policer_forward_rule(struct mlx5_flow_meter *fm,
+				    struct mlx5_meter_domain_info *dtb,
+				    struct mlx5_flow_tbl_resource *sfx_tb,
+				    uint8_t mtr_reg_c)
+{
+	struct mlx5_flow_dv_match_params matcher = {
+		.size = sizeof(matcher.buf),
+	};
+	struct mlx5_flow_dv_match_params value = {
+		.size = sizeof(value.buf),
+	};
+	struct mlx5_meter_domains_infos *mtb = fm->mfts;
+	void *actions[METER_ACTIONS];
+	int i;
+
+	/* Create jump action. */
+	if (!sfx_tb)
+		return -1;
+	if (!dtb->jump_actn)
+		dtb->jump_actn =
+			mlx5_glue->dr_create_flow_action_dest_flow_tbl
+							(sfx_tb->obj);
+	if (!dtb->jump_actn) {
+		DRV_LOG(ERR, "Failed to create policer jump action.");
+		goto error;
+	}
+	for (i = 0; i < RTE_MTR_DROPPED; i++) {
+		int j = 0;
+
+		flow_dv_match_meta_reg(matcher.buf, value.buf, mtr_reg_c,
+				       rte_col_2_mlx5_col(i), UINT32_MAX);
+		if (fm->params.action[i] == MTR_POLICER_ACTION_DROP)
+			actions[j++] = mtb->drop_actn;
+		else
+			actions[j++] = dtb->jump_actn;
+		dtb->policer_rules[i] =
+			mlx5_glue->dv_create_flow(dtb->color_matcher,
+						 (void *)&value,
+						  j, actions);
+		if (!dtb->policer_rules[i]) {
+			DRV_LOG(ERR, "Failed to create policer rule.");
+			goto error;
+		}
+	}
+	return 0;
+error:
+	rte_errno = errno;
+	return -1;
+}
+
+/**
+ * Create policer rules.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] fm
+ *   Pointer to flow meter structure.
+ * @param[in] attr
+ *   Pointer to flow attributes.
+ *
+ * @return
+ *   0 on success, -1 otherwise.
+ */
+static int
+flow_dv_create_policer_rules(struct rte_eth_dev *dev,
+			     struct mlx5_flow_meter *fm,
+			     const struct rte_flow_attr *attr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_meter_domains_infos *mtb = fm->mfts;
+	int ret;
+
+	if (attr->egress) {
+		ret = flow_dv_create_policer_forward_rule(fm, &mtb->egress,
+						priv->sh->tx_mtr_sfx_tbl,
+						priv->mtr_color_reg);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to create egress policer.");
+			goto error;
+		}
+	}
+	if (attr->ingress) {
+		ret = flow_dv_create_policer_forward_rule(fm, &mtb->ingress,
+						priv->sh->rx_mtr_sfx_tbl,
+						priv->mtr_color_reg);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to create ingress policer.");
+			goto error;
+		}
+	}
+	if (attr->transfer) {
+		ret = flow_dv_create_policer_forward_rule(fm, &mtb->transfer,
+						priv->sh->fdb_mtr_sfx_tbl,
+						priv->mtr_color_reg);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to create transfer policer.");
+			goto error;
+		}
+	}
+	return 0;
+error:
+	flow_dv_destroy_policer_rules(dev, fm, attr);
+	return -1;
+}
+
 /*
  * Mutex-protected thunk to lock-free  __flow_dv_translate().
  */
@@ -7899,6 +8072,8 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.query = flow_dv_query,
 	.create_mtr_tbls = flow_dv_create_mtr_tbl,
 	.destroy_mtr_tbls = flow_dv_destroy_mtr_tbl,
+	.create_policer_rules = flow_dv_create_policer_rules,
+	.destroy_policer_rules = flow_dv_destroy_policer_rules,
 };
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */

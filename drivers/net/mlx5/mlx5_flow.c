@@ -4950,6 +4950,52 @@ mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
 	return fops->destroy_mtr_tbls(dev, tbls);
 }
 
+/**
+ * Create policer rules.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] fm
+ *   Pointer to flow meter structure.
+ * @param[in] attr
+ *   Pointer to flow attributes.
+ *
+ * @return
+ *   0 on success, -1 otherwise.
+ */
+int
+mlx5_flow_create_policer_rules(struct rte_eth_dev *dev,
+			       struct mlx5_flow_meter *fm,
+			       const struct rte_flow_attr *attr)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	return fops->create_policer_rules(dev, fm, attr);
+}
+
+/**
+ * Destroy policer rules.
+ *
+ * @param[in] fm
+ *   Pointer to flow meter structure.
+ * @param[in] attr
+ *   Pointer to flow attributes.
+ *
+ * @return
+ *   0 on success, -1 otherwise.
+ */
+int
+mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
+				struct mlx5_flow_meter *fm,
+				const struct rte_flow_attr *attr)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	return fops->destroy_policer_rules(dev, fm, attr);
+}
+
 #define MLX5_POOL_QUERY_FREQ_US 1000000
 
 /**

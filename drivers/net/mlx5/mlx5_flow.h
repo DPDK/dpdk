@@ -559,6 +559,8 @@ struct mlx5_meter_domains_infos {
 struct mlx5_flow_meter {
 	uint32_t meter_id;
 	/**< Meter id. */
+	struct rte_mtr_params params;
+	/**< Meter rule parameters. */
 	struct mlx5_meter_domains_infos *mfts;
 	/**< Flow table created for this meter. */
 	uint32_t ref_cnt;
@@ -636,6 +638,14 @@ typedef struct mlx5_meter_domains_infos *(*mlx5_flow_create_mtr_tbls_t)
 					    (struct rte_eth_dev *dev);
 typedef int (*mlx5_flow_destroy_mtr_tbls_t)(struct rte_eth_dev *dev,
 					struct mlx5_meter_domains_infos *tbls);
+typedef int (*mlx5_flow_create_policer_rules_t)
+					(struct rte_eth_dev *dev,
+					 struct mlx5_flow_meter *fm,
+					 const struct rte_flow_attr *attr);
+typedef int (*mlx5_flow_destroy_policer_rules_t)
+					(struct rte_eth_dev *dev,
+					 const struct mlx5_flow_meter *fm,
+					 const struct rte_flow_attr *attr);
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
 	mlx5_flow_prepare_t prepare;
@@ -646,6 +656,8 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_query_t query;
 	mlx5_flow_create_mtr_tbls_t create_mtr_tbls;
 	mlx5_flow_destroy_mtr_tbls_t destroy_mtr_tbls;
+	mlx5_flow_create_policer_rules_t create_policer_rules;
+	mlx5_flow_destroy_policer_rules_t destroy_policer_rules;
 };
 
 
@@ -776,4 +788,10 @@ struct mlx5_meter_domains_infos *mlx5_flow_create_mtr_tbls
 					(struct rte_eth_dev *dev);
 int mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
 			       struct mlx5_meter_domains_infos *tbl);
+int mlx5_flow_create_policer_rules(struct rte_eth_dev *dev,
+				   struct mlx5_flow_meter *fm,
+				   const struct rte_flow_attr *attr);
+int mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
+				    struct mlx5_flow_meter *fm,
+				    const struct rte_flow_attr *attr);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
