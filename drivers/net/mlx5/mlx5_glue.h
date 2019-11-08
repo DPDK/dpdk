@@ -52,6 +52,7 @@ struct mlx5dv_flow_matcher;
 struct mlx5dv_flow_matcher_attr;
 struct mlx5dv_flow_action_attr;
 struct mlx5dv_flow_match_parameters;
+struct mlx5dv_dr_flow_meter_attr;
 struct ibv_flow_action;
 enum mlx5dv_flow_action_packet_reformat_type { packet_reformat_type = 0, };
 enum mlx5dv_flow_table_type { flow_table_type = 0, };
@@ -78,6 +79,10 @@ struct mlx5dv_dr_domain;
 
 #ifndef HAVE_MLX5DV_DR_DEVX_PORT
 struct mlx5dv_devx_port;
+#endif
+
+#ifndef HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER
+struct mlx5dv_dr_flow_meter_attr;
 #endif
 
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
@@ -209,6 +214,10 @@ struct mlx5_glue {
 		 struct mlx5dv_dr_domain *domain,
 		 uint32_t flags, size_t data_sz, void *data);
 	void *(*dv_create_flow_action_tag)(uint32_t tag);
+	void *(*dv_create_flow_action_meter)
+		(struct mlx5dv_dr_flow_meter_attr *attr);
+	int (*dv_modify_flow_action_meter)(void *action,
+		struct mlx5dv_dr_flow_meter_attr *attr, uint64_t modify_bits);
 	int (*dv_destroy_flow)(void *flow);
 	int (*dv_destroy_flow_matcher)(void *matcher);
 	struct ibv_context *(*dv_open_device)(struct ibv_device *device);

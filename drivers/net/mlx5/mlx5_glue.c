@@ -765,6 +765,34 @@ mlx5_glue_dv_create_flow_action_tag(uint32_t tag)
 	return NULL;
 }
 
+static void *
+mlx5_glue_dv_create_flow_action_meter(struct mlx5dv_dr_flow_meter_attr *attr)
+{
+#if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER)
+	return mlx5dv_dr_action_create_flow_meter(attr);
+#else
+	(void)attr;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static int
+mlx5_glue_dv_modify_flow_action_meter(void *action,
+				      struct mlx5dv_dr_flow_meter_attr *attr,
+				      uint64_t modify_bits)
+{
+#if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER)
+	return mlx5dv_dr_action_modify_flow_meter(action, attr, modify_bits);
+#else
+	(void)action;
+	(void)attr;
+	(void)modify_bits;
+	errno = ENOTSUP;
+	return errno;
+#endif
+}
+
 static int
 mlx5_glue_dv_destroy_flow(void *flow_id)
 {
@@ -1084,6 +1112,8 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.dv_create_flow_action_packet_reformat =
 		mlx5_glue_dv_create_flow_action_packet_reformat,
 	.dv_create_flow_action_tag =  mlx5_glue_dv_create_flow_action_tag,
+	.dv_create_flow_action_meter = mlx5_glue_dv_create_flow_action_meter,
+	.dv_modify_flow_action_meter = mlx5_glue_dv_modify_flow_action_meter,
 	.dv_destroy_flow = mlx5_glue_dv_destroy_flow,
 	.dv_destroy_flow_matcher = mlx5_glue_dv_destroy_flow_matcher,
 	.dv_open_device = mlx5_glue_dv_open_device,
