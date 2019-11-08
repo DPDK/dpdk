@@ -28,10 +28,7 @@
 #define UDP_HEADER_LEN  8
 #define VXLAN_HEADER_LEN 8
 
-#define IP_VERSION 0x40
-#define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
 #define IP_DEFTTL  64   /* from RFC 1340. */
-#define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
 #define IP_DN_FRAGMENT_FLAG 0x0040
 
@@ -323,7 +320,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 	app_l2_hdr[portid].ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
 	ip = &app_ip_hdr[portid];
-	ip->version_ihl = IP_VHL_DEF;
+	ip->version_ihl = RTE_IPV4_VHL_DEF;
 	ip->type_of_service = 0;
 	ip->total_length = 0;
 	ip->packet_id = 0;

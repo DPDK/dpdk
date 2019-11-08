@@ -82,9 +82,6 @@ static struct rte_ether_addr cfg_ether_dst =
 	{{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x01 }};
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
-#define IP_VERSION 0x40
-#define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
-#define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
 static inline uint16_t
 ip_sum(const unaligned_uint16_t *hdr, int hdr_len)
@@ -178,7 +175,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		/* Initialize IP header. */
 		ip_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 		memset(ip_hdr, 0, sizeof(*ip_hdr));
-		ip_hdr->version_ihl	= IP_VHL_DEF;
+		ip_hdr->version_ihl	= RTE_IPV4_VHL_DEF;
 		ip_hdr->type_of_service	= 0;
 		ip_hdr->fragment_offset	= 0;
 		ip_hdr->time_to_live	= IP_DEFTTL;

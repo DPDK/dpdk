@@ -4,6 +4,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_mbuf.h>
+#include <rte_ip.h>
 
 #include "packet_burst_generator.h"
 
@@ -12,9 +13,6 @@
 
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
-#define IP_VERSION 0x40
-#define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
-#define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
 static void
 copy_buf_to_pkt_segs(void *buf, unsigned len, struct rte_mbuf *pkt,
@@ -167,7 +165,7 @@ initialize_ipv4_header(struct rte_ipv4_hdr *ip_hdr, uint32_t src_addr,
 	 */
 	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct rte_ipv4_hdr));
 
-	ip_hdr->version_ihl   = IP_VHL_DEF;
+	ip_hdr->version_ihl   = RTE_IPV4_VHL_DEF;
 	ip_hdr->type_of_service   = 0;
 	ip_hdr->fragment_offset = 0;
 	ip_hdr->time_to_live   = IP_DEFTTL;
@@ -215,7 +213,7 @@ initialize_ipv4_header_proto(struct rte_ipv4_hdr *ip_hdr, uint32_t src_addr,
 	 */
 	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct rte_ipv4_hdr));
 
-	ip_hdr->version_ihl   = IP_VHL_DEF;
+	ip_hdr->version_ihl   = RTE_IPV4_VHL_DEF;
 	ip_hdr->type_of_service   = 0;
 	ip_hdr->fragment_offset = 0;
 	ip_hdr->time_to_live   = IP_DEFTTL;

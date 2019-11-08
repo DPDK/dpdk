@@ -17,9 +17,6 @@
 #include "vnic_nic.h"
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
-#define IP_VERSION 0x40
-#define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
-#define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 #define IP6_VTC_FLOW 0x60000000
 
 /* Highest Item type supported by Flowman */
@@ -1000,7 +997,7 @@ enic_fm_copy_vxlan_encap(struct enic_flowman *fm,
 			sizeof(struct rte_vxlan_hdr);
 		append_template(&template, &off, item->spec,
 				sizeof(struct rte_ipv4_hdr));
-		ip4->version_ihl = IP_VHL_DEF;
+		ip4->version_ihl = RTE_IPV4_VHL_DEF;
 		if (ip4->time_to_live == 0)
 			ip4->time_to_live = IP_DEFTTL;
 		ip4->next_proto_id = IPPROTO_UDP;

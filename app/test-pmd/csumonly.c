@@ -47,9 +47,6 @@
 #include "testpmd.h"
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
-#define IP_VERSION 0x40
-#define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
-#define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
 #define GRE_CHECKSUM_PRESENT	0x8000
 #define GRE_KEY_PRESENT		0x2000

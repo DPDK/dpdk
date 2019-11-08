@@ -49,9 +49,6 @@ uint32_t tx_ip_src_addr = (192U << 24) | (18 << 16) | (0 << 8) | 1;
 uint32_t tx_ip_dst_addr = (192U << 24) | (18 << 16) | (0 << 8) | 2;
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
-#define IP_VERSION 0x40
-#define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
-#define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
 static struct rte_ipv4_hdr pkt_ip_hdr; /**< IP header of transmitted packets. */
 RTE_DEFINE_PER_LCORE(uint8_t, _ip_var); /**< IP address variation */
@@ -116,7 +113,7 @@ setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
 	 * Initialize IP header.
 	 */
 	pkt_len = (uint16_t) (pkt_len + sizeof(struct rte_ipv4_hdr));
-	ip_hdr->version_ihl   = IP_VHL_DEF;
+	ip_hdr->version_ihl   = RTE_IPV4_VHL_DEF;
 	ip_hdr->type_of_service   = 0;
 	ip_hdr->fragment_offset = 0;
 	ip_hdr->time_to_live   = IP_DEFTTL;
