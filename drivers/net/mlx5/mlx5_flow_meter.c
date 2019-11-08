@@ -12,6 +12,62 @@
 #include "mlx5_flow.h"
 
 /**
+ * Create the meter action.
+ *
+ * @param priv
+ *   Pointer to mlx5_priv.
+ * @param[in] fm
+ *   Pointer to flow meter to be converted.
+ *
+ * @return
+ *   Pointer to the meter action on success, NULL otherwise.
+ */
+static void *
+mlx5_flow_meter_action_create(struct mlx5_priv *priv,
+			      struct mlx5_flow_meter *fm)
+{
+#ifdef HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER
+	struct mlx5dv_dr_flow_meter_attr mtr_init;
+	void *attr = fm->mfts->fmp;
+	struct mlx5_flow_meter_srtcm_rfc2697_prm *srtcm =
+						     &fm->profile->srtcm_prm;
+
+	fm->mfts->fmp_size = MLX5_ST_SZ_BYTES(flow_meter_parameters);
+	memset(attr, 0, fm->mfts->fmp_size);
+	MLX5_SET(flow_meter_parameters, attr, valid, 1);
+	MLX5_SET(flow_meter_parameters, attr, bucket_overflow, 1);
+	MLX5_SET(flow_meter_parameters, attr,
+		 start_color, MLX5_FLOW_COLOR_GREEN);
+	MLX5_SET(flow_meter_parameters, attr, both_buckets_on_green, 0);
+	MLX5_SET(flow_meter_parameters,
+		 attr, cbs_exponent, srtcm->cbs_exponent);
+	MLX5_SET(flow_meter_parameters,
+		 attr, cbs_mantissa, srtcm->cbs_mantissa);
+	MLX5_SET(flow_meter_parameters,
+		 attr, cir_exponent, srtcm->cir_exponent);
+	MLX5_SET(flow_meter_parameters,
+		 attr, cir_mantissa, srtcm->cir_mantissa);
+	MLX5_SET(flow_meter_parameters,
+		 attr, ebs_exponent, srtcm->ebs_exponent);
+	MLX5_SET(flow_meter_parameters,
+		 attr, ebs_mantissa, srtcm->ebs_mantissa);
+	mtr_init.next_table =
+		fm->attr.transfer ? fm->mfts->transfer.tbl->obj :
+		    fm->attr.egress ? fm->mfts->egress.tbl->obj :
+				       fm->mfts->ingress.tbl->obj;
+	mtr_init.reg_c_index = priv->mtr_color_reg - REG_C_0;
+	mtr_init.flow_meter_parameter = fm->mfts->fmp;
+	mtr_init.flow_meter_parameter_sz = fm->mfts->fmp_size;
+	mtr_init.active = fm->active_state;
+	return mlx5_glue->dv_create_flow_action_meter(&mtr_init);
+#else
+	(void)priv;
+	(void)fm;
+	return NULL;
+#endif
+}
+
+/**
  * Find meter profile by id.
  *
  * @param priv
@@ -1080,4 +1136,89 @@ mlx5_flow_meter_find(struct mlx5_priv *priv, uint32_t meter_id)
 		if (meter_id == fm->meter_id)
 			return fm;
 	return NULL;
+}
+
+/**
+ * Attach meter to flow.
+ * Unidirectional Meter creation can only be done
+ * when flow direction is known, i.e. when calling meter_attach.
+ *
+ * @param [in] priv
+ *  Pointer to mlx5 private data.
+ * @param [in] meter_id
+ *  Flow meter id.
+ * @param [in] attr
+ *  Pointer to flow attributes.
+ * @param [out] error
+ *  Pointer to error structure.
+ *
+ * @return the flow meter pointer, NULL otherwise.
+ */
+struct mlx5_flow_meter *
+mlx5_flow_meter_attach(struct mlx5_priv *priv, uint32_t meter_id,
+		       const struct rte_flow_attr *attr,
+		       struct rte_flow_error *error)
+{
+	struct mlx5_flow_meter *fm;
+
+	fm = mlx5_flow_meter_find(priv, meter_id);
+	if (fm == NULL) {
+		rte_flow_error_set(error, ENOENT,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Meter object id not valid");
+		goto error;
+	}
+	if (!fm->shared && fm->ref_cnt) {
+		DRV_LOG(ERR, "Cannot share a non-shared meter.");
+		rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "Meter can't be shared");
+		goto error;
+	}
+	if (!fm->ref_cnt++) {
+		RTE_ASSERT(!fm->mfts->meter_action);
+		fm->attr = *attr;
+		/* This also creates the meter object. */
+		fm->mfts->meter_action = mlx5_flow_meter_action_create(priv,
+								       fm);
+		if (!fm->mfts->meter_action)
+			goto error_detach;
+	} else {
+		RTE_ASSERT(fm->mfts->meter_action);
+		if (attr->transfer != fm->attr.transfer ||
+		    attr->ingress != fm->attr.ingress ||
+		    attr->egress != fm->attr.egress) {
+			DRV_LOG(ERR, "meter I/O attributes do not "
+				"match flow I/O attributes.");
+			goto error_detach;
+		}
+	}
+	return fm;
+error_detach:
+	mlx5_flow_meter_detach(fm);
+	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			  fm->mfts->meter_action ? "Meter attr not match" :
+			  "Meter action create failed");
+error:
+	return NULL;
+}
+
+/**
+ * Detach meter from flow.
+ *
+ * @param [in] fm
+ *  Pointer to flow meter.
+ */
+void
+mlx5_flow_meter_detach(struct mlx5_flow_meter *fm)
+{
+	const struct rte_flow_attr attr = { 0 };
+
+	RTE_ASSERT(fm->ref_cnt);
+	if (--fm->ref_cnt)
+		return;
+	if (fm->mfts->meter_action)
+		mlx5_glue->destroy_flow_action(fm->mfts->meter_action);
+	fm->mfts->meter_action = NULL;
+	fm->attr = attr;
 }

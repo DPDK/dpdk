@@ -201,6 +201,7 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_SET_TAG (1ull << 32)
 #define MLX5_FLOW_ACTION_MARK_EXT (1ull << 33)
 #define MLX5_FLOW_ACTION_SET_META (1ull << 34)
+#define MLX5_FLOW_ACTION_METER (1ull << 35)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \
@@ -585,6 +586,8 @@ struct mlx5_flow_meter {
 	/**< Meter rule parameters. */
 	struct mlx5_flow_meter_profile *profile;
 	/**< Meter profile parameters. */
+	struct rte_flow_attr attr;
+	/**< Flow attributes. */
 	struct mlx5_meter_domains_infos *mfts;
 	/**< Flow table created for this meter. */
 	struct mlx5_flow_policer_stats policer_stats;
@@ -631,6 +634,7 @@ struct rte_flow {
 	struct mlx5_flow_counter *counter; /**< Holds flow counter. */
 	struct mlx5_flow_mreg_copy_resource *mreg_copy;
 	/**< pointer to metadata register copy table resource. */
+	struct mlx5_flow_meter *meter; /**< Holds flow meter. */
 	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
 	/**< Device flows that are part of the flow. */
 	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */

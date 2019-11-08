@@ -1040,5 +1040,11 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_td(struct ibv_context *ctx);
 int mlx5_flow_meter_ops_get(struct rte_eth_dev *dev, void *arg);
 struct mlx5_flow_meter *mlx5_flow_meter_find(struct mlx5_priv *priv,
 					     uint32_t meter_id);
+struct mlx5_flow_meter *mlx5_flow_meter_attach
+					(struct mlx5_priv *priv,
+					 uint32_t meter_id,
+					 const struct rte_flow_attr *attr,
+					 struct rte_flow_error *error);
+void mlx5_flow_meter_detach(struct mlx5_flow_meter *fm);
 
 #endif /* RTE_PMD_MLX5_H_ */
