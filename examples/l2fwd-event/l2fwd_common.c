@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(C) 2019 Marvell International Ltd.
+ */
+
 #include "l2fwd_common.h"
 
 int
