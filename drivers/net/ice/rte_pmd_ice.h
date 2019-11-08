@@ -5,6 +5,15 @@
 #ifndef _RTE_PMD_ICE_H_
 #define _RTE_PMD_ICE_H_
 
+/**
+ * @file rte_pmd_ice.h
+ *
+ * ice PMD specific functions.
+ *
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ */
+
 #include <stdio.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
@@ -13,6 +22,9 @@
 extern "C" {
 #endif
 
+/**
+ * The supported network protocol extraction metadata format.
+ */
 union rte_net_ice_proto_xtr_metadata {
 	uint32_t metadata;
 
@@ -78,26 +90,55 @@ extern uint64_t rte_net_ice_dynflag_proto_xtr_ipv6_mask;
 extern uint64_t rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask;
 extern uint64_t rte_net_ice_dynflag_proto_xtr_tcp_mask;
 
+/**
+ * The mbuf dynamic field pointer for protocol extraction metadata.
+ */
 #define RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(m) \
 	RTE_MBUF_DYNFIELD((m), \
 			  rte_net_ice_dynfield_proto_xtr_metadata_offs, \
 			  uint32_t *)
 
+/**
+ * The mbuf dynamic flag for VLAN protocol extraction metadata, it is valid
+ * when dev_args 'proto_xtr' has 'vlan' specified.
+ */
 #define RTE_PKT_RX_DYNF_PROTO_XTR_VLAN \
 	(rte_net_ice_dynflag_proto_xtr_vlan_mask)
 
+/**
+ * The mbuf dynamic flag for IPv4 protocol extraction metadata, it is valid
+ * when dev_args 'proto_xtr' has 'ipv4' specified.
+ */
 #define RTE_PKT_RX_DYNF_PROTO_XTR_IPV4 \
 	(rte_net_ice_dynflag_proto_xtr_ipv4_mask)
 
+/**
+ * The mbuf dynamic flag for IPv6 protocol extraction metadata, it is valid
+ * when dev_args 'proto_xtr' has 'ipv6' specified.
+ */
 #define RTE_PKT_RX_DYNF_PROTO_XTR_IPV6 \
 	(rte_net_ice_dynflag_proto_xtr_ipv6_mask)
 
+/**
+ * The mbuf dynamic flag for IPv6 with flow protocol extraction metadata, it is
+ * valid when dev_args 'proto_xtr' has 'ipv6_flow' specified.
+ */
 #define RTE_PKT_RX_DYNF_PROTO_XTR_IPV6_FLOW \
 	(rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask)
 
+/**
+ * The mbuf dynamic flag for TCP protocol extraction metadata, it is valid
+ * when dev_args 'proto_xtr' has 'tcp' specified.
+ */
 #define RTE_PKT_RX_DYNF_PROTO_XTR_TCP \
 	(rte_net_ice_dynflag_proto_xtr_tcp_mask)
 
+/**
+ * Check if mbuf dynamic field for protocol extraction metadata is registered.
+ *
+ * @return
+ *   True if registered, false otherwise.
+ */
 __rte_experimental
 static __rte_always_inline int
 rte_net_ice_dynf_proto_xtr_metadata_avail(void)
@@ -105,6 +146,14 @@ rte_net_ice_dynf_proto_xtr_metadata_avail(void)
 	return rte_net_ice_dynfield_proto_xtr_metadata_offs != -1;
 }
 
+/**
+ * Get the mbuf dynamic field for protocol extraction metadata.
+ *
+ * @param m
+ *    The pointer to the mbuf.
+ * @return
+ *   The saved protocol extraction metadata.
+ */
 __rte_experimental
 static __rte_always_inline uint32_t
 rte_net_ice_dynf_proto_xtr_metadata_get(struct rte_mbuf *m)
@@ -112,6 +161,12 @@ rte_net_ice_dynf_proto_xtr_metadata_get(struct rte_mbuf *m)
 	return *RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(m);
 }
 
+/**
+ * Dump the mbuf dynamic field for protocol extraction metadata.
+ *
+ * @param m
+ *    The pointer to the mbuf.
+ */
 __rte_experimental
 static inline void
 rte_net_ice_dump_proto_xtr_metadata(struct rte_mbuf *m)
