@@ -3266,6 +3266,10 @@ flow_dv_validate_action_jump(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have 2 fate actions in"
 					  " same flow");
+	if (action_flags & MLX5_FLOW_ACTION_METER)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "jump with meter not support");
 	if (!action->conf)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
@@ -3379,6 +3383,63 @@ flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev)
 	return mlx5_flow_ext_mreg_supported(dev) ? MLX5_MODIFY_NUM :
 						   MLX5_MODIFY_NUM_NO_MREG;
 }
+
+/**
+ * Validate the meter action.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] action_flags
+ *   Bit-fields that holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the meter action.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ */
+static int
+mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
+				uint64_t action_flags,
+				const struct rte_flow_action *action,
+				const struct rte_flow_attr *attr,
+				struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_meter *am = action->conf;
+	struct mlx5_flow_meter *fm = mlx5_flow_meter_find(priv, am->mtr_id);
+
+	if (action_flags & MLX5_FLOW_ACTION_METER)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "meter chaining not support");
+	if (action_flags & MLX5_FLOW_ACTION_JUMP)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "meter with jump not support");
+	if (!priv->mtr_en)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "meter action not supported");
+	if (!fm)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Meter not found");
+	if (fm->ref_cnt && (!(fm->attr.transfer == attr->transfer ||
+	      (!fm->attr.ingress && !attr->ingress && attr->egress) ||
+	      (!fm->attr.egress && !attr->egress && attr->ingress))))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Flow attributes are either invalid "
+					  "or have a conflict with current "
+					  "meter attributes");
+	return 0;
+}
+
 /**
  * Find existing modify-header resource or create and register a new one.
  *
@@ -4751,6 +4812,16 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case MLX5_RTE_FLOW_ACTION_TYPE_TAG:
 		case MLX5_RTE_FLOW_ACTION_TYPE_MARK:
 		case MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG:
+			break;
+		case RTE_FLOW_ACTION_TYPE_METER:
+			ret = mlx5_flow_validate_action_meter(dev,
+							      action_flags,
+							      actions, attr,
+							      error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_METER;
+			++actions_n;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -6527,6 +6598,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		const struct rte_flow_action_count *count = action->conf;
 		const uint8_t *rss_key;
 		const struct rte_flow_action_jump *jump_data;
+		const struct rte_flow_action_meter *mtr;
 		struct mlx5_flow_dv_jump_tbl_resource jump_tbl_resource;
 		struct mlx5_flow_tbl_resource *tbl;
 		uint32_t port_id = 0;
@@ -6892,6 +6964,25 @@ cnt_err:
 					(dev, &mhdr_res, actions, error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_TAG;
+			break;
+		case RTE_FLOW_ACTION_TYPE_METER:
+			mtr = actions->conf;
+			if (!flow->meter) {
+				flow->meter = mlx5_flow_meter_attach(priv,
+							mtr->mtr_id, attr,
+							error);
+				if (!flow->meter)
+					return rte_flow_error_set(error,
+						rte_errno,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"meter not found "
+						"or invalid parameters");
+			}
+			/* Set the meter action. */
+			dev_flow->dv.actions[actions_n++] =
+				flow->meter->mfts->meter_action;
+			action_flags |= MLX5_FLOW_ACTION_METER;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
@@ -7493,6 +7584,10 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	if (flow->counter) {
 		flow_dv_counter_release(dev, flow->counter);
 		flow->counter = NULL;
+	}
+	if (flow->meter) {
+		mlx5_flow_meter_detach(flow->meter);
+		flow->meter = NULL;
 	}
 	while (!LIST_EMPTY(&flow->dev_flows)) {
 		dev_flow = LIST_FIRST(&flow->dev_flows);
