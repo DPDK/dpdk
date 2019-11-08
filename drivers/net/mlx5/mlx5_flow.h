@@ -520,8 +520,10 @@ struct mlx5_flow {
 #endif
 		struct mlx5_flow_verbs verbs;
 	};
-	uint32_t qrss_id; /**< Uniqie Q/RSS suffix subflow tag. */
-	uint32_t mtr_flow_id; /**< Unique meter match flow id. */
+	union {
+		uint32_t qrss_id; /**< Uniqie Q/RSS suffix subflow tag. */
+		uint32_t mtr_flow_id; /**< Unique meter match flow id. */
+	};
 	bool external; /**< true if the flow is created external to PMD. */
 };
 

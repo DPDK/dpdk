@@ -2328,27 +2328,6 @@ flow_mreg_split_qrss_release(struct rte_eth_dev *dev,
 			flow_qrss_free_id(dev, dev_flow->qrss_id);
 }
 
-/**
- * Release meter prefix suffix flow match id.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param flow
- *   Flow to release id's from.
- */
-static void
-flow_meter_split_id_release(struct rte_eth_dev *dev,
-			    struct rte_flow *flow)
-{
-	struct mlx5_flow *dev_flow;
-	struct mlx5_priv *priv = dev->data->dev_private;
-
-	LIST_FOREACH(dev_flow, &flow->dev_flows, next)
-		if (dev_flow->qrss_id)
-			mlx5_flow_id_release(priv->sh->flow_id_pool,
-					     dev_flow->mtr_flow_id);
-}
-
 static int
 flow_null_validate(struct rte_eth_dev *dev __rte_unused,
 		   const struct rte_flow_attr *attr __rte_unused,
@@ -2639,7 +2618,6 @@ flow_drv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	enum mlx5_flow_drv_type type = flow->drv_type;
 
 	flow_mreg_split_qrss_release(dev, flow);
-	flow_meter_split_id_release(dev, flow);
 	assert(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
 	fops = flow_get_drv_ops(type);
 	fops->destroy(dev, flow);
@@ -3473,7 +3451,6 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		 struct rte_flow_action actions_sfx[],
 		 struct rte_flow_action actions_pre[])
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_action *tag_action;
 	struct mlx5_rte_flow_action_set_tag *set_tag;
 	struct rte_flow_error error;
@@ -3538,7 +3515,10 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	/* Set the tag. */
 	set_tag = (void *)actions_pre;
 	set_tag->id = mlx5_flow_get_reg_id(dev, MLX5_MTR_SFX, 0, &error);
-	mlx5_flow_id_get(priv->sh->flow_id_pool, &tag_id);
+	/*
+	 * Get the id from the qrss_pool to make qrss share the id with meter.
+	 */
+	tag_id = flow_qrss_get_id(dev);
 	set_tag->data = rte_cpu_to_be_32(tag_id);
 	tag_action->conf = set_tag;
 	return tag_id;
@@ -3595,7 +3575,7 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
 	struct mlx5_rte_flow_action_set_tag *set_tag;
 	struct rte_flow_action_jump *jump;
 	const int qrss_idx = qrss - actions;
-	uint32_t flow_id;
+	uint32_t flow_id = 0;
 	int ret = 0;
 
 	/*
@@ -3605,42 +3585,49 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
 	 * As a result, there will be one more action.
 	 */
 	++actions_n;
-	/*
-	 * Allocate the new subflow ID. This one is unique within
-	 * device and not shared with representors. Otherwise,
-	 * we would have to resolve multi-thread access synch
-	 * issue. Each flow on the shared device is appended
-	 * with source vport identifier, so the resulting
-	 * flows will be unique in the shared (by master and
-	 * representors) domain even if they have coinciding
-	 * IDs.
-	 */
-	flow_id = flow_qrss_get_id(dev);
-	if (!flow_id)
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_ACTION,
-					  NULL, "can't allocate id "
-					  "for split Q/RSS subflow");
-	/* Internal SET_TAG action to set flow ID. */
+	memcpy(split_actions, actions, sizeof(*split_actions) * actions_n);
 	set_tag = (void *)(split_actions + actions_n);
-	*set_tag = (struct mlx5_rte_flow_action_set_tag){
-		.data = flow_id,
-	};
-	ret = mlx5_flow_get_reg_id(dev, MLX5_COPY_MARK, 0, error);
-	if (ret < 0)
-		return ret;
-	set_tag->id = ret;
+	/*
+	 * If tag action is not set to void(it means we are not the meter
+	 * suffix flow), add the tag action. Since meter suffix flow already
+	 * has the tag added.
+	 */
+	if (split_actions[qrss_idx].type != RTE_FLOW_ACTION_TYPE_VOID) {
+		/*
+		 * Allocate the new subflow ID. This one is unique within
+		 * device and not shared with representors. Otherwise,
+		 * we would have to resolve multi-thread access synch
+		 * issue. Each flow on the shared device is appended
+		 * with source vport identifier, so the resulting
+		 * flows will be unique in the shared (by master and
+		 * representors) domain even if they have coinciding
+		 * IDs.
+		 */
+		flow_id = flow_qrss_get_id(dev);
+		if (!flow_id)
+			return rte_flow_error_set(error, ENOMEM,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "can't allocate id "
+						  "for split Q/RSS subflow");
+		/* Internal SET_TAG action to set flow ID. */
+		*set_tag = (struct mlx5_rte_flow_action_set_tag){
+			.data = flow_id,
+		};
+		ret = mlx5_flow_get_reg_id(dev, MLX5_COPY_MARK, 0, error);
+		if (ret < 0)
+			return ret;
+		set_tag->id = ret;
+		/* Construct new actions array. */
+		/* Replace QUEUE/RSS action. */
+		split_actions[qrss_idx] = (struct rte_flow_action){
+			.type = MLX5_RTE_FLOW_ACTION_TYPE_TAG,
+			.conf = set_tag,
+		};
+	}
 	/* JUMP action to jump to mreg copy table (CP_TBL). */
 	jump = (void *)(set_tag + 1);
 	*jump = (struct rte_flow_action_jump){
 		.group = MLX5_FLOW_MREG_CP_TABLE_GROUP,
-	};
-	/* Construct new actions array. */
-	memcpy(split_actions, actions, sizeof(*split_actions) * actions_n);
-	/* Replace QUEUE/RSS action. */
-	split_actions[qrss_idx] = (struct rte_flow_action){
-		.type = MLX5_RTE_FLOW_ACTION_TYPE_TAG,
-		.conf = set_tag,
 	};
 	split_actions[actions_n - 2] = (struct rte_flow_action){
 		.type = RTE_FLOW_ACTION_TYPE_JUMP,
@@ -3742,6 +3729,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	struct rte_flow_action *ext_actions = NULL;
 	struct mlx5_flow *dev_flow = NULL;
 	uint32_t qrss_id = 0;
+	int mtr_sfx = 0;
 	size_t act_size;
 	int actions_n;
 	int ret;
@@ -3772,6 +3760,10 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		}
 	}
 	if (qrss) {
+		/* Check if it is in meter suffix table. */
+		mtr_sfx = attr->group == (attr->transfer ?
+			  (MLX5_FLOW_TABLE_LEVEL_SUFFIX - 1) :
+			  MLX5_FLOW_TABLE_LEVEL_SUFFIX);
 		/*
 		 * Q/RSS action on NIC Rx should be split in order to pass by
 		 * the mreg copy table (RX_CP_TBL) and then it jumps to the
@@ -3787,6 +3779,16 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 						  NULL, "no memory to split "
 						  "metadata flow");
 		/*
+		 * If we are the suffix flow of meter, tag already exist.
+		 * Set the tag action to void.
+		 */
+		if (mtr_sfx)
+			ext_actions[qrss - actions].type =
+						RTE_FLOW_ACTION_TYPE_VOID;
+		else
+			ext_actions[qrss - actions].type =
+						MLX5_RTE_FLOW_ACTION_TYPE_TAG;
+		/*
 		 * Create the new actions list with removed Q/RSS action
 		 * and appended set tag and jump to register copy table
 		 * (RX_CP_TBL). We should preallocate unique tag ID here
@@ -3794,7 +3796,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		 */
 		qrss_id = flow_mreg_split_qrss_prep(dev, ext_actions, actions,
 						    qrss, actions_n, error);
-		if (!qrss_id) {
+		if (!mtr_sfx && !qrss_id) {
 			ret = -rte_errno;
 			goto exit;
 		}
@@ -3824,7 +3826,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	if (ret < 0)
 		goto exit;
 	assert(dev_flow);
-	if (qrss_id) {
+	if (qrss) {
 		const struct rte_flow_attr q_attr = {
 			.group = MLX5_FLOW_MREG_ACT_TABLE_GROUP,
 			.ingress = 1,
@@ -3855,22 +3857,32 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			},
 		};
 		uint64_t hash_fields = dev_flow->hash_fields;
-		/*
-		 * Put unique id in prefix flow due to it is destroyed after
-		 * prefix flow and id will be freed after there is no actual
-		 * flows with this id and identifier reallocation becomes
-		 * possible (for example, for other flows in other threads).
-		 */
-		dev_flow->qrss_id = qrss_id;
-		qrss_id = 0;
 		dev_flow = NULL;
-		ret = mlx5_flow_get_reg_id(dev, MLX5_COPY_MARK, 0, error);
-		if (ret < 0)
-			goto exit;
-		q_tag_spec.id = ret;
+		/*
+		 * Configure the tag action only if we are not the meter sub
+		 * flow. Since tag is already marked in the meter suffix sub
+		 * flow.
+		 */
+		if (qrss_id) {
+			/*
+			 * Put unique id in prefix flow due to it is destroyed
+			 * after prefix flow and id will be freed after there
+			 * is no actual flows with this id and identifier
+			 * reallocation becomes possible (for example, for
+			 * other flows in other threads).
+			 */
+			dev_flow->qrss_id = qrss_id;
+			qrss_id = 0;
+			ret = mlx5_flow_get_reg_id(dev, MLX5_COPY_MARK, 0,
+						   error);
+			if (ret < 0)
+				goto exit;
+			q_tag_spec.id = ret;
+		}
 		/* Add suffix subflow to execute Q/RSS. */
 		ret = flow_create_split_inner(dev, flow, &dev_flow,
-					      &q_attr, q_items, q_actions,
+					      &q_attr, mtr_sfx ? items :
+					      q_items, q_actions,
 					      external, error);
 		if (ret < 0)
 			goto exit;
