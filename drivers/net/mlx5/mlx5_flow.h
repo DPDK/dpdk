@@ -523,6 +523,10 @@ struct mlx5_flow {
 	bool external; /**< true if the flow is created external to PMD. */
 };
 
+/* Flow meter state. */
+#define MLX5_FLOW_METER_DISABLE 0
+#define MLX5_FLOW_METER_ENABLE 1
+
 #define MLX5_MAN_WIDTH 8
 /* Modify this value if enum rte_mtr_color changes. */
 #define RTE_MTR_DROPPED RTE_COLORS
@@ -553,6 +557,12 @@ struct mlx5_meter_domains_infos {
 	/**< FDB meter table. */
 	void *drop_actn;
 	/**< Drop action as not matched. */
+	uint32_t fmp[MLX5_ST_SZ_DW(flow_meter_parameters)];
+	/**< Flow meter parameter. */
+	size_t fmp_size;
+	/**< Flow meter parameter size. */
+	void *meter_action;
+	/**< Flow meter action. */
 };
 
 /* Meter parameter structure. */

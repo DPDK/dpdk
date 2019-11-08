@@ -1745,6 +1745,38 @@ struct mlx5_ifc_create_sq_in_bits {
 	struct mlx5_ifc_sqc_bits ctx;
 };
 
+enum {
+	MLX5_FLOW_METER_OBJ_MODIFY_FIELD_ACTIVE = (1ULL << 0),
+	MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CBS = (1ULL << 1),
+	MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CIR = (1ULL << 2),
+	MLX5_FLOW_METER_OBJ_MODIFY_FIELD_EBS = (1ULL << 3),
+	MLX5_FLOW_METER_OBJ_MODIFY_FIELD_EIR = (1ULL << 4),
+};
+
+struct mlx5_ifc_flow_meter_parameters_bits {
+	u8         valid[0x1];			// 00h
+	u8         bucket_overflow[0x1];
+	u8         start_color[0x2];
+	u8         both_buckets_on_green[0x1];
+	u8         meter_mode[0x2];
+	u8         reserved_at_1[0x19];
+	u8         reserved_at_2[0x20]; //04h
+	u8         reserved_at_3[0x3];
+	u8         cbs_exponent[0x5];		// 08h
+	u8         cbs_mantissa[0x8];
+	u8         reserved_at_4[0x3];
+	u8         cir_exponent[0x5];
+	u8         cir_mantissa[0x8];
+	u8         reserved_at_5[0x20];		// 0Ch
+	u8         reserved_at_6[0x3];
+	u8         ebs_exponent[0x5];		// 10h
+	u8         ebs_mantissa[0x8];
+	u8         reserved_at_7[0x3];
+	u8         eir_exponent[0x5];
+	u8         eir_mantissa[0x8];
+	u8         reserved_at_8[0x60];		// 14h-1Ch
+};
+
 /* CQE format mask. */
 #define MLX5E_CQE_FORMAT_MASK 0xc
 

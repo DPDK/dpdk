@@ -443,6 +443,103 @@ mlx5_flow_meter_validate(struct mlx5_priv *priv, uint32_t meter_id,
 }
 
 /**
+ * Modify the flow meter action.
+ *
+ * @param[in] priv
+ *   Pointer to mlx5 private data structure.
+ * @param[in] fm
+ *   Pointer to flow meter to be modified.
+ * @param[in] srtcm
+ *   Pointer to meter srtcm description parameter.
+ * @param[in] modify_bits
+ *   The bit in srtcm to be updated.
+ * @param[in] active_state
+ *   The state to be updated.
+ * @return
+ *   0 on success, o negative value otherwise.
+ */
+static int
+mlx5_flow_meter_action_modify(struct mlx5_priv *priv,
+		struct mlx5_flow_meter *fm,
+		const struct mlx5_flow_meter_srtcm_rfc2697_prm *srtcm,
+		uint64_t modify_bits, uint32_t active_state)
+{
+#ifdef HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER
+	uint32_t in[MLX5_ST_SZ_DW(flow_meter_parameters)] = { 0 };
+	uint32_t *attr;
+	struct mlx5dv_dr_flow_meter_attr mod_attr = { 0 };
+	int ret;
+
+	/* Fill command parameters. */
+	mod_attr.reg_c_index = priv->mtr_color_reg - REG_C_0;
+	mod_attr.flow_meter_parameter = in;
+	mod_attr.flow_meter_parameter_sz = fm->mfts->fmp_size;
+	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_ACTIVE)
+		mod_attr.active = !!active_state;
+	else
+		mod_attr.active = 0;
+	attr = in;
+	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CBS) {
+		MLX5_SET(flow_meter_parameters,
+			 attr, cbs_exponent, srtcm->cbs_exponent);
+		MLX5_SET(flow_meter_parameters,
+			 attr, cbs_mantissa, srtcm->cbs_mantissa);
+	}
+	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CIR) {
+		MLX5_SET(flow_meter_parameters,
+			 attr, cir_exponent, srtcm->cir_exponent);
+		MLX5_SET(flow_meter_parameters,
+			 attr, cir_mantissa, srtcm->cir_mantissa);
+	}
+	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_EBS) {
+		MLX5_SET(flow_meter_parameters,
+			 attr, ebs_exponent, srtcm->ebs_exponent);
+		MLX5_SET(flow_meter_parameters,
+			 attr, ebs_mantissa, srtcm->ebs_mantissa);
+	}
+	/* Apply modifications to meter only if it was created. */
+	if (fm->mfts->meter_action) {
+		ret = mlx5_glue->dv_modify_flow_action_meter
+					(fm->mfts->meter_action, &mod_attr,
+					rte_cpu_to_be_64(modify_bits));
+		if (ret)
+			return ret;
+	}
+	/* Update succeedded modify meter parameters. */
+	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_ACTIVE)
+		fm->active_state = !!active_state;
+	attr = fm->mfts->fmp;
+	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CBS) {
+		MLX5_SET(flow_meter_parameters,
+			 attr, cbs_exponent, srtcm->cbs_exponent);
+		MLX5_SET(flow_meter_parameters,
+			 attr, cbs_mantissa, srtcm->cbs_mantissa);
+	}
+	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CIR) {
+		MLX5_SET(flow_meter_parameters,
+			 attr, cir_exponent, srtcm->cir_exponent);
+		MLX5_SET(flow_meter_parameters,
+			 attr, cir_mantissa, srtcm->cir_mantissa);
+	}
+	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_EBS) {
+		MLX5_SET(flow_meter_parameters,
+			 attr, ebs_exponent, srtcm->ebs_exponent);
+		MLX5_SET(flow_meter_parameters,
+			 attr, ebs_mantissa, srtcm->ebs_mantissa);
+	}
+
+	return 0;
+#else
+	(void)priv;
+	(void)fm;
+	(void)srtcm;
+	(void)modify_bits;
+	(void)active_state;
+	return -ENOTSUP;
+#endif
+}
+
+/**
  * Create meter rules.
  *
  * @param[in] dev
@@ -577,14 +674,146 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 	return 0;
 }
 
+/**
+ * Modify meter state.
+ *
+ * @param[in] priv
+ *   Pointer to mlx5 private data structure.
+ * @param[in] fm
+ *   Pointer to flow meter.
+ * @param[in] new_state
+ *   New state to update.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_modify_state(struct mlx5_priv *priv,
+			     struct mlx5_flow_meter *fm,
+			     uint32_t new_state,
+			     struct rte_mtr_error *error)
+{
+	static const struct mlx5_flow_meter_srtcm_rfc2697_prm srtcm = {
+		.cbs_exponent = 20,
+		.cbs_mantissa = 191,
+		.cir_exponent = 0,
+		.cir_mantissa = 200,
+		.ebs_exponent = 0,
+		.ebs_mantissa = 0,
+	};
+	uint64_t modify_bits = MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CBS |
+			       MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CIR;
+	int ret;
+
+	if (new_state == MLX5_FLOW_METER_DISABLE)
+		ret = mlx5_flow_meter_action_modify(priv, fm, &srtcm,
+						    modify_bits, 0);
+	else
+		ret = mlx5_flow_meter_action_modify(priv, fm,
+						   &fm->profile->srtcm_prm,
+						    modify_bits, 0);
+	if (ret)
+		return -rte_mtr_error_set(error, -ret,
+					  RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+					  NULL,
+					  new_state ?
+					  "Failed to enable meter." :
+					  "Failed to disable meter.");
+	return 0;
+}
+
+/**
+ * Callback to enable flow meter.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] meter_id
+ *   Meter id.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_enable(struct rte_eth_dev *dev,
+		       uint32_t meter_id,
+		       struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter *fm;
+	int ret;
+
+	if (!priv->mtr_en)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter is not support");
+	/* Meter object must exist. */
+	fm = mlx5_flow_meter_find(priv, meter_id);
+	if (fm == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID,
+					  NULL, "Meter not found.");
+	if (fm->active_state == MLX5_FLOW_METER_ENABLE)
+		return 0;
+	ret = mlx5_flow_meter_modify_state(priv, fm, MLX5_FLOW_METER_ENABLE,
+					   error);
+	if (!ret)
+		fm->active_state = MLX5_FLOW_METER_ENABLE;
+	return ret;
+}
+
+/**
+ * Callback to disable flow meter.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] meter_id
+ *   Meter id.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_meter_disable(struct rte_eth_dev *dev,
+			uint32_t meter_id,
+			struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter *fm;
+	int ret;
+
+	if (!priv->mtr_en)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter is not support");
+	/* Meter object must exist. */
+	fm = mlx5_flow_meter_find(priv, meter_id);
+	if (fm == NULL)
+		return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID,
+					  NULL, "Meter not found.");
+	if (fm->active_state == MLX5_FLOW_METER_DISABLE)
+		return 0;
+	ret = mlx5_flow_meter_modify_state(priv, fm, MLX5_FLOW_METER_DISABLE,
+					   error);
+	if (!ret)
+		fm->active_state = MLX5_FLOW_METER_DISABLE;
+	return ret;
+}
+
 static const struct rte_mtr_ops mlx5_flow_mtr_ops = {
 	.capabilities_get = mlx5_flow_mtr_cap_get,
 	.meter_profile_add = mlx5_flow_meter_profile_add,
 	.meter_profile_delete = mlx5_flow_meter_profile_delete,
 	.create = mlx5_flow_meter_create,
 	.destroy = mlx5_flow_meter_destroy,
-	.meter_enable = NULL,
-	.meter_disable = NULL,
+	.meter_enable = mlx5_flow_meter_enable,
+	.meter_disable = mlx5_flow_meter_disable,
 	.meter_profile_update = NULL,
 	.meter_dscp_table_update = NULL,
 	.policer_actions_update = NULL,
