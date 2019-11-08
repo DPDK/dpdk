@@ -524,6 +524,46 @@ struct mlx5_flow {
 };
 
 #define MLX5_MAN_WIDTH 8
+/* Modify this value if enum rte_mtr_color changes. */
+#define RTE_MTR_DROPPED RTE_COLORS
+
+/* Meter table structure. */
+struct mlx5_meter_domain_info {
+	struct mlx5_flow_tbl_resource *tbl;
+	/**< Meter table. */
+	void *any_matcher;
+	/**< Meter color not match default criteria. */
+	void *color_matcher;
+	/**< Meter color match criteria. */
+	void *jump_actn;
+	/**< Meter match action. */
+	void *policer_rules[RTE_MTR_DROPPED + 1];
+	/**< Meter policer for the match. */
+};
+
+/* Meter table set for TX RX FDB. */
+struct mlx5_meter_domains_infos {
+	uint32_t ref_cnt;
+	/**< Table user count. */
+	struct mlx5_meter_domain_info egress;
+	/**< TX meter table. */
+	struct mlx5_meter_domain_info ingress;
+	/**< RX meter table. */
+	struct mlx5_meter_domain_info transfer;
+	/**< FDB meter table. */
+	void *drop_actn;
+	/**< Drop action as not matched. */
+};
+
+/* Meter parameter structure. */
+struct mlx5_flow_meter {
+	uint32_t meter_id;
+	/**< Meter id. */
+	struct mlx5_meter_domains_infos *mfts;
+	/**< Flow table created for this meter. */
+	uint32_t ref_cnt;
+	/**< Use count. */
+};
 
 /* RFC2697 parameter structure. */
 struct mlx5_flow_meter_srtcm_rfc2697_prm {
@@ -592,6 +632,10 @@ typedef int (*mlx5_flow_query_t)(struct rte_eth_dev *dev,
 				 const struct rte_flow_action *actions,
 				 void *data,
 				 struct rte_flow_error *error);
+typedef struct mlx5_meter_domains_infos *(*mlx5_flow_create_mtr_tbls_t)
+					    (struct rte_eth_dev *dev);
+typedef int (*mlx5_flow_destroy_mtr_tbls_t)(struct rte_eth_dev *dev,
+					struct mlx5_meter_domains_infos *tbls);
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
 	mlx5_flow_prepare_t prepare;
@@ -600,6 +644,8 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_remove_t remove;
 	mlx5_flow_destroy_t destroy;
 	mlx5_flow_query_t query;
+	mlx5_flow_create_mtr_tbls_t create_mtr_tbls;
+	mlx5_flow_destroy_mtr_tbls_t destroy_mtr_tbls;
 };
 
 
@@ -726,4 +772,8 @@ int mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
 				   uint64_t item_flags,
 				   struct rte_eth_dev *dev,
 				   struct rte_flow_error *error);
+struct mlx5_meter_domains_infos *mlx5_flow_create_mtr_tbls
+					(struct rte_eth_dev *dev);
+int mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
+			       struct mlx5_meter_domains_infos *tbl);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

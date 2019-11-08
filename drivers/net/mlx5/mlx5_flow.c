@@ -4911,6 +4911,45 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * Create the needed meter and suffix tables.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   Pointer to table set on success, NULL otherwise.
+ */
+struct mlx5_meter_domains_infos *
+mlx5_flow_create_mtr_tbls(struct rte_eth_dev *dev)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	return fops->create_mtr_tbls(dev);
+}
+
+/**
+ * Destroy the meter table set.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] tbl
+ *   Pointer to the meter table set.
+ *
+ * @return
+ *   0 on success.
+ */
+int
+mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
+			   struct mlx5_meter_domains_infos *tbls)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	return fops->destroy_mtr_tbls(dev, tbls);
+}
+
 #define MLX5_POOL_QUERY_FREQ_US 1000000
 
 /**

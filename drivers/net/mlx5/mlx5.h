@@ -578,6 +578,8 @@ struct mlx5_flow_tbl_resource {
 };
 
 #define MLX5_MAX_TABLES UINT16_MAX
+#define MLX5_FLOW_TABLE_LEVEL_METER (UINT16_MAX - 3)
+#define MLX5_FLOW_TABLE_LEVEL_SUFFIX (UINT16_MAX - 2)
 #define MLX5_HAIRPIN_TX_TABLE (UINT16_MAX - 1)
 /* Reserve the last two tables for metadata register copy. */
 #define MLX5_FLOW_MREG_ACT_TABLE_GROUP (MLX5_MAX_TABLES - 1)
@@ -644,12 +646,18 @@ struct mlx5_ibv_shared {
 	void *fdb_domain; /* FDB Direct Rules name space handle. */
 	struct mlx5_flow_tbl_resource fdb_tbl[MLX5_MAX_TABLES_FDB];
 	/* FDB Direct Rules tables. */
+	struct mlx5_flow_tbl_resource *fdb_mtr_sfx_tbl;
+	/* FDB meter suffix rules table. */
 	void *rx_domain; /* RX Direct Rules name space handle. */
 	struct mlx5_flow_tbl_resource rx_tbl[MLX5_MAX_TABLES];
 	/* RX Direct Rules tables. */
+	struct mlx5_flow_tbl_resource *rx_mtr_sfx_tbl;
+	/* RX meter suffix rules table. */
 	void *tx_domain; /* TX Direct Rules name space handle. */
 	struct mlx5_flow_tbl_resource tx_tbl[MLX5_MAX_TABLES];
 	/* TX Direct Rules tables. */
+	struct mlx5_flow_tbl_resource *tx_mtr_sfx_tbl;
+	/* TX meter suffix rules table. */
 	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */
 	void *pop_vlan_action; /* Pointer to DR pop VLAN action. */
 	/* TX Direct Rules tables/ */

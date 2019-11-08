@@ -1768,6 +1768,14 @@ struct mlx5_mini_cqe8 {
 	uint32_t byte_cnt;
 };
 
+/* srTCM PRM flow meter parameters. */
+enum {
+	MLX5_FLOW_COLOR_RED = 0,
+	MLX5_FLOW_COLOR_YELLOW,
+	MLX5_FLOW_COLOR_GREEN,
+	MLX5_FLOW_COLOR_UNDEFINED,
+};
+
 /* Maximum value of srTCM metering parameters. */
 #define MLX5_SRTCM_CBS_MAX (0xFF * (1ULL << 0x1F))
 #define MLX5_SRTCM_CIR_MAX (8 * (1ULL << 30) * 0xFF)
