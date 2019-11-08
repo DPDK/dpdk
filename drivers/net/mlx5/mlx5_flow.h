@@ -844,4 +844,6 @@ int mlx5_flow_create_policer_rules(struct rte_eth_dev *dev,
 int mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
 				    struct mlx5_flow_meter *fm,
 				    const struct rte_flow_attr *attr);
+int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
+			  struct rte_mtr_error *error);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

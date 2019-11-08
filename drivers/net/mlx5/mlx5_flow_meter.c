@@ -4,6 +4,7 @@
  */
 #include <math.h>
 
+#include <rte_tailq.h>
 #include <rte_malloc.h>
 #include <rte_mtr.h>
 #include <rte_mtr_driver.h>
@@ -1221,4 +1222,64 @@ mlx5_flow_meter_detach(struct mlx5_flow_meter *fm)
 		mlx5_glue->destroy_flow_action(fm->mfts->meter_action);
 	fm->mfts->meter_action = NULL;
 	fm->attr = attr;
+}
+
+/**
+ * Flush meter configuration.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meters *fms = &priv->flow_meters;
+	struct mlx5_mtr_profiles *fmps = &priv->flow_meter_profiles;
+	struct mlx5_flow_meter_profile *fmp;
+	struct mlx5_flow_meter *fm;
+	const struct rte_flow_attr attr = {
+				.ingress = 1,
+				.egress = 1,
+				.transfer = priv->config.dv_esw_en ? 1 : 0,
+			};
+	void *tmp;
+	uint32_t i;
+
+	TAILQ_FOREACH_SAFE(fm, fms, next, tmp) {
+		/* Meter object must not have any owner. */
+		RTE_ASSERT(!fm->ref_cnt);
+		/* Get meter profile. */
+		fmp = fm->profile;
+		if (fmp == NULL)
+			return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+				NULL, "MTR object meter profile invalid.");
+		/* Update dependencies. */
+		fmp->ref_cnt--;
+		/* Remove from list. */
+		TAILQ_REMOVE(fms, fm, next);
+		/* Free policer counters. */
+		for (i = 0; i < RTE_DIM(fm->policer_stats.cnt); i++)
+			if (fm->policer_stats.cnt[i])
+				mlx5_counter_free(dev,
+						  fm->policer_stats.cnt[i]);
+		/* Free meter flow table. */
+		mlx5_flow_destroy_policer_rules(dev, fm, &attr);
+		mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);
+		rte_free(fm);
+	}
+	TAILQ_FOREACH_SAFE(fmp, fmps, next, tmp) {
+		/* Check unused. */
+		RTE_ASSERT(!fmp->ref_cnt);
+		/* Remove from list. */
+		TAILQ_REMOVE(&priv->flow_meter_profiles, fmp, next);
+		rte_free(fmp);
+	}
+	return 0;
 }

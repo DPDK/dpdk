@@ -1016,6 +1016,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_dev_interrupt_handler_devx_uninstall(dev);
 	mlx5_traffic_disable(dev);
 	mlx5_flow_flush(dev, NULL);
+	mlx5_flow_meter_flush(dev, NULL);
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
