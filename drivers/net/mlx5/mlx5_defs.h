@@ -123,6 +123,22 @@
 #define MLX5_UAR_PAGE_NUM_MAX 64
 #define MLX5_UAR_PAGE_NUM_MASK ((MLX5_UAR_PAGE_NUM_MAX) - 1)
 
+/* Fields of memory mapping type in offset parameter of mmap() */
+#define MLX5_UAR_MMAP_CMD_SHIFT 8
+#define MLX5_UAR_MMAP_CMD_MASK 0xff
+
+/* Environment variable to control the doorbell register mapping. */
+#define MLX5_SHUT_UP_BF "MLX5_SHUT_UP_BF"
+#if defined(RTE_ARCH_ARM64)
+#define MLX5_SHUT_UP_BF_DEFAULT "0"
+#else
+#define MLX5_SHUT_UP_BF_DEFAULT "1"
+#endif
+
+#ifndef HAVE_MLX5DV_MMAP_GET_NC_PAGES_CMD
+#define MLX5_MMAP_GET_NC_PAGES_CMD 3
+#endif
+
 /* Log 2 of the default number of strides per WQE for Multi-Packet RQ. */
 #define MLX5_MPRQ_STRIDE_NUM_N 6U
 

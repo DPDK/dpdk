@@ -96,6 +96,12 @@
 #define MLX5_TXQ_MPW_EN "txq_mpw_en"
 
 /*
+ * Device parameter to force doorbell register mapping
+ * to non-cahed region eliminating the extra write memory barrier.
+ */
+#define MLX5_TX_DB_NC "tx_db_nc"
+
+/*
  * Device parameter to include 2 dsegs in the title WQEBB.
  * Deprecated, ignored.
  */
@@ -421,6 +427,37 @@ mlx5_get_pdn(struct ibv_pd *pd __rte_unused, uint32_t *pdn __rte_unused)
 }
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 
+static int
+mlx5_config_doorbell_mapping_env(const struct mlx5_dev_config *config)
+{
+	char *env;
+	int value;
+
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	/* Get environment variable to store. */
+	env = getenv(MLX5_SHUT_UP_BF);
+	value = env ? !!strcmp(env, "0") : MLX5_ARG_UNSET;
+	if (config->dbnc == MLX5_ARG_UNSET)
+		setenv(MLX5_SHUT_UP_BF, MLX5_SHUT_UP_BF_DEFAULT, 1);
+	else
+		setenv(MLX5_SHUT_UP_BF, config->dbnc ? "1" : "0", 1);
+	return value;
+}
+
+static void
+mlx5_restore_doorbell_mapping_env(const struct mlx5_dev_config *config,
+				  int value)
+{
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	if (config->dbnc == MLX5_ARG_UNSET)
+		return;
+	/* Restore the original environment variable state. */
+	if (value == MLX5_ARG_UNSET)
+		unsetenv(MLX5_SHUT_UP_BF);
+	else
+		setenv(MLX5_SHUT_UP_BF, value ? "1" : "0", 1);
+}
+
 /**
  * Allocate shared IB device context. If there is multiport device the
  * master and representors will share this context, if there is single
@@ -434,22 +471,26 @@ mlx5_get_pdn(struct ibv_pd *pd __rte_unused, uint32_t *pdn __rte_unused)
  *
  * @param[in] spawn
  *   Pointer to the IB device attributes (name, port, etc).
+ * @param[in] config
+ *   Pointer to device configuration structure.
  *
  * @return
  *   Pointer to mlx5_ibv_shared object on success,
  *   otherwise NULL and rte_errno is set.
  */
 static struct mlx5_ibv_shared *
-mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
+mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
+			const struct mlx5_dev_config *config)
 {
 	struct mlx5_ibv_shared *sh;
+	int dbmap_env;
 	int err = 0;
 	uint32_t i;
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_devx_tis_attr tis_attr = { 0 };
 #endif
 
-assert(spawn);
+	assert(spawn);
 	/* Secondary process should not create the shared context. */
 	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	pthread_mutex_lock(&mlx5_ibv_list_mutex);
@@ -472,16 +513,31 @@ assert(spawn);
 		rte_errno  = ENOMEM;
 		goto exit;
 	}
+	/*
+	 * Configure environment variable "MLX5_BF_SHUT_UP"
+	 * before the device creation. The rdma_core library
+	 * checks the variable at device creation and
+	 * stores the result internally.
+	 */
+	dbmap_env = mlx5_config_doorbell_mapping_env(config);
 	/* Try to open IB device with DV first, then usual Verbs. */
 	errno = 0;
 	sh->ctx = mlx5_glue->dv_open_device(spawn->ibv_dev);
 	if (sh->ctx) {
 		sh->devx = 1;
 		DRV_LOG(DEBUG, "DevX is supported");
+		/* The device is created, no need for environment. */
+		mlx5_restore_doorbell_mapping_env(config, dbmap_env);
 	} else {
+		/* The environment variable is still configured. */
 		sh->ctx = mlx5_glue->open_device(spawn->ibv_dev);
+		err = errno ? errno : ENODEV;
+		/*
+		 * The environment variable is not needed anymore,
+		 * all device creation attempts are completed.
+		 */
+		mlx5_restore_doorbell_mapping_env(config, dbmap_env);
 		if (!sh->ctx) {
-			err = errno ? errno : ENODEV;
 			goto error;
 		}
 		DRV_LOG(DEBUG, "DevX is NOT supported");
@@ -1300,6 +1356,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
 		config->mps = !!tmp;
+	} else if (strcmp(MLX5_TX_DB_NC, key) == 0) {
+		config->dbnc = !!tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_HDR_DSEG_EN, key) == 0) {
 		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_TXQ_MAX_INLINE_LEN, key) == 0) {
@@ -1373,6 +1431,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_TXQ_MPW_EN,
 		MLX5_TXQ_MPW_HDR_DSEG_EN,
 		MLX5_TXQ_MAX_INLINE_LEN,
+		MLX5_TX_DB_NC,
 		MLX5_TX_VEC_EN,
 		MLX5_RX_VEC_EN,
 		MLX5_L3_VXLAN_EN,
@@ -1938,7 +1997,20 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		eth_dev->tx_pkt_burst = mlx5_select_tx_function(eth_dev);
 		return eth_dev;
 	}
-	sh = mlx5_alloc_shared_ibctx(spawn);
+	/*
+	 * Some parameters ("tx_db_nc" in particularly) are needed in
+	 * advance to create dv/verbs device context. We proceed the
+	 * devargs here to get ones, and later proceed devargs again
+	 * to override some hardware settings.
+	 */
+	err = mlx5_args(&config, dpdk_dev->devargs);
+	if (err) {
+		err = rte_errno;
+		DRV_LOG(ERR, "failed to process device arguments: %s",
+			strerror(rte_errno));
+		goto error;
+	}
+	sh = mlx5_alloc_shared_ibctx(spawn, &config);
 	if (!sh)
 		return NULL;
 	config.devx = sh->devx;
@@ -2180,13 +2252,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		}
 		own_domain_id = 1;
 	}
-	err = mlx5_args(&config, dpdk_dev->devargs);
-	if (err) {
-		err = rte_errno;
-		DRV_LOG(ERR, "failed to process device arguments: %s",
-			strerror(rte_errno));
-		goto error;
-	}
+	/* Override some values set by hardware configuration. */
+	mlx5_args(&config, dpdk_dev->devargs);
 	err = mlx5_dev_check_sibling_config(priv, &config);
 	if (err)
 		goto error;
@@ -3031,6 +3098,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	dev_config = (struct mlx5_dev_config){
 		.hw_padding = 0,
 		.mps = MLX5_ARG_UNSET,
+		.dbnc = MLX5_ARG_UNSET,
 		.rx_vec_en = 1,
 		.txq_inline_max = MLX5_ARG_UNSET,
 		.txq_inline_min = MLX5_ARG_UNSET,

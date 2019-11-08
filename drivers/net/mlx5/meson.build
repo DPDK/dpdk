@@ -134,6 +134,8 @@ if build
 		'mlx5dv_dr_action_create_dest_devx_tir' ],
 		[ 'HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER', 'infiniband/mlx5dv.h',
 		'mlx5dv_dr_action_create_flow_meter' ],
+		[ 'HAVE_MLX5DV_MMAP_GET_NC_PAGES_CMD', 'infiniband/mlx5dv.h',
+		'MLX5_MMAP_GET_NC_PAGES_CMD' ],
 		[ 'HAVE_MLX5DV_DR', 'infiniband/mlx5dv.h',
 		'MLX5DV_DR_DOMAIN_TYPE_NIC_RX' ],
 		[ 'HAVE_MLX5DV_DR_ESWITCH', 'infiniband/mlx5dv.h',

@@ -18,6 +18,7 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 #include <infiniband/verbs.h>
+#include <infiniband/mlx5dv.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -302,6 +303,28 @@ mlx5_tx_queue_release(void *dpdk_txq)
 }
 
 /**
+ * Configure the doorbell register non-cached attribute.
+ *
+ * @param txq_ctrl
+ *   Pointer to Tx queue control structure.
+ * @param page_size
+ *   Systme page size
+ */
+static void
+txq_uar_ncattr_init(struct mlx5_txq_ctrl *txq_ctrl, size_t page_size)
+{
+	unsigned int cmd;
+
+	txq_ctrl->txq.db_nc = 0;
+	/* Check the doorbell register mapping type. */
+	cmd = txq_ctrl->uar_mmap_offset / page_size;
+	cmd >>= MLX5_UAR_MMAP_CMD_SHIFT;
+	cmd &= MLX5_UAR_MMAP_CMD_MASK;
+	if (cmd == MLX5_MMAP_GET_NC_PAGES_CMD)
+		txq_ctrl->txq.db_nc = 1;
+}
+
+/**
  * Initialize Tx UAR registers for primary process.
  *
  * @param txq_ctrl
@@ -312,9 +335,9 @@ txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	struct mlx5_priv *priv = txq_ctrl->priv;
 	struct mlx5_proc_priv *ppriv = MLX5_PROC_PRIV(PORT_ID(priv));
+	const size_t page_size = sysconf(_SC_PAGESIZE);
 #ifndef RTE_ARCH_64
 	unsigned int lock_idx;
-	const size_t page_size = sysconf(_SC_PAGESIZE);
 #endif
 
 	if (txq_ctrl->type != MLX5_TXQ_TYPE_STANDARD)
@@ -322,6 +345,7 @@ txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl)
 	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	assert(ppriv);
 	ppriv->uar_table[txq_ctrl->txq.idx] = txq_ctrl->bf_reg;
+	txq_uar_ncattr_init(txq_ctrl, page_size);
 #ifndef RTE_ARCH_64
 	/* Assign an UAR lock according to UAR page number */
 	lock_idx = (txq_ctrl->uar_mmap_offset / page_size) &
@@ -375,6 +399,7 @@ txq_uar_init_secondary(struct mlx5_txq_ctrl *txq_ctrl, int fd)
 	}
 	addr = RTE_PTR_ADD(addr, offset);
 	ppriv->uar_table[txq->idx] = addr;
+	txq_uar_ncattr_init(txq_ctrl, page_size);
 	return 0;
 }
 

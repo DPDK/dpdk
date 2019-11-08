@@ -4754,8 +4754,23 @@ enter_send_single:
 	 * to improve latencies. The pure software related data treatment
 	 * can be completed after doorbell. Tx CQEs for this SQ are
 	 * processed in this thread only by the polling.
+	 *
+	 * The rdma core library can map doorbell register in two ways,
+	 * depending on the environment variable "MLX5_SHUT_UP_BF":
+	 *
+	 * - as regular cached memory, the variable is either missing or
+	 *   set to zero. This type of mapping may cause the significant
+	 *   doorbell register writing latency and requires explicit
+	 *   memory write barrier to mitigate this issue and prevent
+	 *   write combining.
+	 *
+	 * - as non-cached memory, the variable is present and set to
+	 *   not "0" value. This type of mapping may cause performance
+	 *   impact under heavy loading conditions but the explicit write
+	 *   memory barrier is not required and it may improve core
+	 *   performance.
 	 */
-	mlx5_tx_dbrec_cond_wmb(txq, loc.wqe_last, 0);
+	mlx5_tx_dbrec_cond_wmb(txq, loc.wqe_last, !txq->db_nc);
 	/* Not all of the mbufs may be stored into elts yet. */
 	part = MLX5_TXOFF_CONFIG(INLINE) ? 0 : loc.pkts_sent - loc.pkts_copy;
 	if (!MLX5_TXOFF_CONFIG(INLINE) && part) {

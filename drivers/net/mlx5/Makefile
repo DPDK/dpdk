@@ -206,6 +206,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		func mlx5dv_dr_action_create_flow_meter \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_MLX5DV_MMAP_GET_NC_PAGES_CMD \
+		infiniband/mlx5dv.h \
+		enum MLX5_MMAP_GET_NC_PAGES_CMD \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_ETHTOOL_LINK_MODE_25G \
 		/usr/include/linux/ethtool.h \
 		enum ETHTOOL_LINK_MODE_25000baseCR_Full_BIT \

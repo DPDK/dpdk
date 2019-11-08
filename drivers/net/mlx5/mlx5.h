@@ -267,6 +267,7 @@ struct mlx5_dev_config {
 		/* Rx queue count threshold to enable MPRQ. */
 	} mprq; /* Configurations for Multi-Packet RQ. */
 	int mps; /* Multi-packet send supported mode. */
+	int dbnc; /* Skip doorbell register write barrier. */
 	unsigned int flow_prio; /* Number of flow priorities. */
 	enum modify_reg flow_mreg_c[MLX5_MREG_C_NUM];
 	/* Availibility of mreg_c's. */
