@@ -1,4 +1,5 @@
 #! /bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
 
 CRYPTO_DEV=${CRYPTO_DEV:-'--vdev="crypto_null0"'}
 

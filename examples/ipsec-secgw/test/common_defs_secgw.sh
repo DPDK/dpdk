@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
 
 # check required parameters
 SGW_REQ_VARS="SGW_PATH SGW_PORT_CFG SGW_WAIT_DEV"

@@ -1,4 +1,5 @@
 #! /bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
 
 #check ETH_DEV
 if [[ -z "${ETH_DEV}" ]]; then

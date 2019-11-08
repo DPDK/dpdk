@@ -1,4 +1,5 @@
 #! /bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
 
 # usage:  /bin/bash linux_test6.sh <ipsec_mode>
 # for list of available modes please refer to run_test.sh.

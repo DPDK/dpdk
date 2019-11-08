@@ -1,4 +1,5 @@
 #! /bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
 
 # usage: /bin/bash run_test.sh [-46]
 # Run all defined linux_test[4,6].sh test-cases one by one
