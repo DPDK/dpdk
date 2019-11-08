@@ -64,73 +64,6 @@ static struct pdump_rxtx_cbs {
 } rx_cbs[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT],
 tx_cbs[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];
 
-static inline int
-pdump_pktmbuf_copy_data(struct rte_mbuf *seg, const struct rte_mbuf *m)
-{
-	if (rte_pktmbuf_tailroom(seg) < m->data_len) {
-		RTE_LOG(ERR, PDUMP,
-			"User mempool: insufficient data_len of mbuf\n");
-		return -EINVAL;
-	}
-
-	seg->port = m->port;
-	seg->vlan_tci = m->vlan_tci;
-	seg->hash = m->hash;
-	seg->tx_offload = m->tx_offload;
-	seg->ol_flags = m->ol_flags;
-	seg->packet_type = m->packet_type;
-	seg->vlan_tci_outer = m->vlan_tci_outer;
-	seg->data_len = m->data_len;
-	seg->pkt_len = seg->data_len;
-	rte_memcpy(rte_pktmbuf_mtod(seg, void *),
-			rte_pktmbuf_mtod(m, void *),
-			rte_pktmbuf_data_len(seg));
-
-	return 0;
-}
-
-static inline struct rte_mbuf *
-pdump_pktmbuf_copy(struct rte_mbuf *m, struct rte_mempool *mp)
-{
-	struct rte_mbuf *m_dup, *seg, **prev;
-	uint32_t pktlen;
-	uint16_t nseg;
-
-	m_dup = rte_pktmbuf_alloc(mp);
-	if (unlikely(m_dup == NULL))
-		return NULL;
-
-	seg = m_dup;
-	prev = &seg->next;
-	pktlen = m->pkt_len;
-	nseg = 0;
-
-	do {
-		nseg++;
-		if (pdump_pktmbuf_copy_data(seg, m) < 0) {
-			if (seg != m_dup)
-				rte_pktmbuf_free_seg(seg);
-			rte_pktmbuf_free(m_dup);
-			return NULL;
-		}
-		*prev = seg;
-		prev = &seg->next;
-	} while ((m = m->next) != NULL &&
-			(seg = rte_pktmbuf_alloc(mp)) != NULL);
-
-	*prev = NULL;
-	m_dup->nb_segs = nseg;
-	m_dup->pkt_len = pktlen;
-
-	/* Allocation of new indirect segment failed */
-	if (unlikely(seg == NULL)) {
-		rte_pktmbuf_free(m_dup);
-		return NULL;
-	}
-
-	__rte_mbuf_sanity_check(m_dup, 1);
-	return m_dup;
-}
 
 static inline void
 pdump_copy(struct rte_mbuf **pkts, uint16_t nb_pkts, void *user_params)
@@ -148,7 +81,7 @@ pdump_copy(struct rte_mbuf **pkts, uint16_t nb_pkts, void *user_params)
 	ring = cbs->ring;
 	mp = cbs->mp;
 	for (i = 0; i < nb_pkts; i++) {
-		p = pdump_pktmbuf_copy(pkts[i], mp);
+		p = rte_pktmbuf_copy(pkts[i], mp, 0, UINT32_MAX);
 		if (p)
 			dup_bufs[d_pkts++] = p;
 	}
