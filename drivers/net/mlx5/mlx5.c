@@ -1173,6 +1173,7 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.get_module_info = mlx5_get_module_info,
 	.get_module_eeprom = mlx5_get_module_eeprom,
 	.hairpin_cap_get = mlx5_hairpin_cap_get,
+	.mtr_ops_get = mlx5_flow_meter_ops_get,
 };
 
 /* Available operations from secondary process. */
@@ -1236,6 +1237,7 @@ const struct eth_dev_ops mlx5_dev_ops_isolate = {
 	.get_module_info = mlx5_get_module_info,
 	.get_module_eeprom = mlx5_get_module_eeprom,
 	.hairpin_cap_get = mlx5_hairpin_cap_get,
+	.mtr_ops_get = mlx5_flow_meter_ops_get,
 };
 
 /**

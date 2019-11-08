@@ -1001,4 +1001,8 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_tis
 	(struct ibv_context *ctx, struct mlx5_devx_tis_attr *tis_attr);
 struct mlx5_devx_obj *mlx5_devx_cmd_create_td(struct ibv_context *ctx);
 
+/* mlx5_flow_meter.c */
+
+int mlx5_flow_meter_ops_get(struct rte_eth_dev *dev, void *arg);
+
 #endif /* RTE_PMD_MLX5_H_ */
