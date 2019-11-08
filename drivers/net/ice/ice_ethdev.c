@@ -2315,6 +2315,7 @@ ice_dev_close(struct rte_eth_dev *dev)
 	ice_res_pool_destroy(&pf->msix_pool);
 	ice_release_vsi(pf->main_vsi);
 	ice_sched_cleanup_all(hw);
+	ice_free_hw_tbls(hw);
 	rte_free(hw->port_info);
 	hw->port_info = NULL;
 	ice_shutdown_all_ctrlq(hw);
