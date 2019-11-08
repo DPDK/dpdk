@@ -684,6 +684,9 @@ struct mlx5_proc_priv {
 	/* Table of UAR registers for each process. */
 };
 
+/* MTR profile list. */
+TAILQ_HEAD(mlx5_mtr_profiles, mlx5_flow_meter_profile);
+
 #define MLX5_PROC_PRIV(port_id) \
 	((struct mlx5_proc_priv *)rte_eth_devices[port_id].process_private)
 
@@ -754,6 +757,7 @@ struct mlx5_priv {
 	/* Hash table of Rx metadata register copy table. */
 	uint8_t mtr_sfx_reg; /* Meter prefix-suffix flow match REG_C. */
 	uint8_t mtr_color_reg; /* Meter color match REG_C. */
+	struct mlx5_mtr_profiles flow_meter_profiles; /* MTR profile list. */
 #ifndef RTE_ARCH_64
 	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];

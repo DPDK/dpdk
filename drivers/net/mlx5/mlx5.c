@@ -2403,6 +2403,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		mlx5_nl_mac_addr_sync(eth_dev);
 	TAILQ_INIT(&priv->flows);
 	TAILQ_INIT(&priv->ctrl_flows);
+	TAILQ_INIT(&priv->flow_meter_profiles);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */
 	struct mlx5dv_ctx_allocators alctr = {
 		.alloc = &mlx5_alloc_verbs_buf,

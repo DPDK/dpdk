@@ -23,6 +23,7 @@
 
 #include <rte_atomic.h>
 #include <rte_alarm.h>
+#include <rte_mtr.h>
 
 #include "mlx5.h"
 #include "mlx5_prm.h"
@@ -520,6 +521,34 @@ struct mlx5_flow {
 	};
 	uint32_t qrss_id; /**< Uniqie Q/RSS suffix subflow tag. */
 	bool external; /**< true if the flow is created external to PMD. */
+};
+
+#define MLX5_MAN_WIDTH 8
+
+/* RFC2697 parameter structure. */
+struct mlx5_flow_meter_srtcm_rfc2697_prm {
+	/* green_saturation_value = cbs_mantissa * 2^cbs_exponent */
+	uint32_t cbs_exponent:5;
+	uint32_t cbs_mantissa:8;
+	/* cir = 8G * cir_mantissa * 1/(2^cir_exponent) Bytes/Sec */
+	uint32_t cir_exponent:5;
+	uint32_t cir_mantissa:8;
+	/* yellow _saturation_value = ebs_mantissa * 2^ebs_exponent */
+	uint32_t ebs_exponent:5;
+	uint32_t ebs_mantissa:8;
+};
+
+/* Flow meter profile structure. */
+struct mlx5_flow_meter_profile {
+	TAILQ_ENTRY(mlx5_flow_meter_profile) next;
+	/**< Pointer to the next flow meter structure. */
+	uint32_t meter_profile_id; /**< Profile id. */
+	struct rte_mtr_meter_profile profile; /**< Profile detail. */
+	union {
+		struct mlx5_flow_meter_srtcm_rfc2697_prm srtcm_prm;
+		/**< srtcm_rfc2697 struct. */
+	};
+	uint32_t ref_cnt; /**< Use count. */
 };
 
 /* Flow structure. */
