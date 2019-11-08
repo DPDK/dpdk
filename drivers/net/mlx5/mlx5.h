@@ -169,6 +169,17 @@ struct mlx5_devx_mkey_attr {
 	uint32_t pd;
 };
 
+/* HCA qos attributes. */
+struct mlx5_hca_qos_attr {
+	uint32_t sup:1;	/* Whether QOS is supported. */
+	uint32_t srtcm_sup:1; /* Whether srTCM mode is supported. */
+	uint8_t log_max_flow_meter;
+	/* Power of the maximum supported meters. */
+	uint8_t flow_meter_reg_c_ids;
+	/* Bitmap of the reg_Cs available for flow meter to use. */
+
+};
+
 /* HCA supports this number of time periods for LRO. */
 #define MLX5_LRO_NUM_SUPP_PERIODS 4
 
@@ -195,6 +206,7 @@ struct mlx5_hca_attr {
 	uint32_t log_max_hairpin_wq_data_sz:5;
 	uint32_t log_max_hairpin_num_packets:5;
 	uint32_t vhca_id:16;
+	struct mlx5_hca_qos_attr qos;
 };
 
 /* Flow list . */
@@ -692,6 +704,7 @@ struct mlx5_priv {
 	unsigned int master:1; /* Device is a E-Switch master. */
 	unsigned int dr_shared:1; /* DV/DR data is shared. */
 	unsigned int counter_fallback:1; /* Use counter fallback management. */
+	unsigned int mtr_en:1; /* Whether support meter. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */

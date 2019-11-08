@@ -2290,6 +2290,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			DRV_LOG(DEBUG, "LRO session timeout set to %d usec",
 				config.lro.timeout);
 		}
+#if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER)
+		if (config.hca_attr.qos.sup && config.hca_attr.qos.srtcm_sup &&
+		    config.dv_flow_en) {
+			priv->mtr_en = 1;
+		}
+#endif
 	}
 	if (config.mprq.enabled && mprq) {
 		if (config.mprq.stride_num_n > mprq_max_stride_num_n ||

@@ -335,6 +335,29 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 	attr->log_max_hairpin_num_packets = MLX5_GET
 		(cmd_hca_cap, hcattr, log_min_hairpin_wq_data_sz);
 	attr->vhca_id = MLX5_GET(cmd_hca_cap, hcattr, vhca_id);
+	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
+	if (attr->qos.sup) {
+		MLX5_SET(query_hca_cap_in, in, op_mod,
+			 MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
+			 MLX5_HCA_CAP_OPMOD_GET_CUR);
+		rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in),
+						 out, sizeof(out));
+		if (rc)
+			goto error;
+		if (status) {
+			DRV_LOG(DEBUG, "Failed to query devx QOS capabilities,"
+				" status %x, syndrome = %x",
+				status, syndrome);
+			return -1;
+		}
+		hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
+		attr->qos.srtcm_sup =
+				MLX5_GET(qos_cap, hcattr, flow_meter_srtcm);
+		attr->qos.log_max_flow_meter =
+				MLX5_GET(qos_cap, hcattr, log_max_flow_meter);
+		attr->qos.flow_meter_reg_c_ids =
+			MLX5_GET(qos_cap, hcattr, flow_meter_reg_id);
+	}
 	attr->eth_net_offloads = MLX5_GET(cmd_hca_cap, hcattr,
 					  eth_net_offloads);
 	attr->eth_virt = MLX5_GET(cmd_hca_cap, hcattr, eth_virt);
