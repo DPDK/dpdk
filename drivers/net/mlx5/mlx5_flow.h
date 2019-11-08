@@ -394,12 +394,9 @@ struct mlx5_flow_dv_modify_hdr_resource {
 
 /* Jump action resource structure. */
 struct mlx5_flow_dv_jump_tbl_resource {
-	LIST_ENTRY(mlx5_flow_dv_jump_tbl_resource) next;
-	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
-	void *action; /**< Pointer to the rdma core action. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
-	struct mlx5_flow_tbl_resource *tbl; /**< The target table. */
+	void *action; /**< Pointer to the rdma core action. */
 };
 
 /* Port ID resource structure. */
@@ -443,6 +440,8 @@ struct mlx5_flow_tbl_data_entry {
 	/**< flow table resource, better to locate at the beginning. */
 	struct mlx5_flow_tbl_resource tbl;
 	/**< flow table resource, better to locate at the beginning. */
+	struct mlx5_flow_dv_jump_tbl_resource jump;
+	/**< jump resource, at most one for each table created. */
 };
 
 /*

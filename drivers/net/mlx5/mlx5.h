@@ -673,7 +673,6 @@ struct mlx5_ibv_shared {
 	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
 	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;
 	LIST_HEAD(tag, mlx5_flow_dv_tag_resource) tags;
-	LIST_HEAD(jump, mlx5_flow_dv_jump_tbl_resource) jump_tbl;
 	LIST_HEAD(port_id_action_list, mlx5_flow_dv_port_id_action_resource)
 		port_id_action_list; /* List of port ID actions. */
 	LIST_HEAD(push_vlan_action_list, mlx5_flow_dv_push_vlan_action_resource)
