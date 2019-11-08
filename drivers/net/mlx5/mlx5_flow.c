@@ -4916,17 +4916,20 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
+ * @param[in] fm
+ *   Pointer to the flow meter.
  *
  * @return
  *   Pointer to table set on success, NULL otherwise.
  */
 struct mlx5_meter_domains_infos *
-mlx5_flow_create_mtr_tbls(struct rte_eth_dev *dev)
+mlx5_flow_create_mtr_tbls(struct rte_eth_dev *dev,
+			  const struct mlx5_flow_meter *fm)
 {
 	const struct mlx5_flow_driver_ops *fops;
 
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
-	return fops->create_mtr_tbls(dev);
+	return fops->create_mtr_tbls(dev, fm);
 }
 
 /**

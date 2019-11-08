@@ -531,6 +531,14 @@ struct mlx5_flow {
 /* Modify this value if enum rte_mtr_color changes. */
 #define RTE_MTR_DROPPED RTE_COLORS
 
+/* Meter policer statistics */
+struct mlx5_flow_policer_stats {
+	struct mlx5_flow_counter *cnt[RTE_COLORS + 1];
+	/**< Color counter, extra for drop. */
+	uint64_t stats_mask;
+	/**< Statistics mask for the colors. */
+};
+
 /* Meter table structure. */
 struct mlx5_meter_domain_info {
 	struct mlx5_flow_tbl_resource *tbl;
@@ -557,6 +565,8 @@ struct mlx5_meter_domains_infos {
 	/**< FDB meter table. */
 	void *drop_actn;
 	/**< Drop action as not matched. */
+	void *count_actns[RTE_MTR_DROPPED + 1];
+	/**< Counters for match and unmatched statistics. */
 	uint32_t fmp[MLX5_ST_SZ_DW(flow_meter_parameters)];
 	/**< Flow meter parameter. */
 	size_t fmp_size;
@@ -577,6 +587,8 @@ struct mlx5_flow_meter {
 	/**< Meter profile parameters. */
 	struct mlx5_meter_domains_infos *mfts;
 	/**< Flow table created for this meter. */
+	struct mlx5_flow_policer_stats policer_stats;
+	/**< Meter policer statistics. */
 	uint32_t ref_cnt;
 	/**< Use count. */
 	uint32_t active_state:1;
@@ -653,7 +665,8 @@ typedef int (*mlx5_flow_query_t)(struct rte_eth_dev *dev,
 				 void *data,
 				 struct rte_flow_error *error);
 typedef struct mlx5_meter_domains_infos *(*mlx5_flow_create_mtr_tbls_t)
-					    (struct rte_eth_dev *dev);
+					    (struct rte_eth_dev *dev,
+					     const struct mlx5_flow_meter *fm);
 typedef int (*mlx5_flow_destroy_mtr_tbls_t)(struct rte_eth_dev *dev,
 					struct mlx5_meter_domains_infos *tbls);
 typedef int (*mlx5_flow_create_policer_rules_t)
@@ -814,7 +827,8 @@ int mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
 				   struct rte_eth_dev *dev,
 				   struct rte_flow_error *error);
 struct mlx5_meter_domains_infos *mlx5_flow_create_mtr_tbls
-					(struct rte_eth_dev *dev);
+					(struct rte_eth_dev *dev,
+					 const struct mlx5_flow_meter *fm);
 int mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
 			       struct mlx5_meter_domains_infos *tbl);
 int mlx5_flow_create_policer_rules(struct rte_eth_dev *dev,

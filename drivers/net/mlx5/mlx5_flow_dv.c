@@ -7756,6 +7756,8 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 		DRV_LOG(ERR, "Failed to create meter policer color matcher.");
 		goto error_exit;
 	}
+	if (mtb->count_actns[RTE_MTR_DROPPED])
+		actions[i++] = mtb->count_actns[RTE_MTR_DROPPED];
 	actions[i++] = mtb->drop_actn;
 	/* Default rule: lowest priority, match any, actions: drop. */
 	dtb->policer_rules[RTE_MTR_DROPPED] =
@@ -7776,16 +7778,20 @@ error_exit:
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
+ * @param[in] fm
+ *   Pointer to the flow meter.
  *
  * @return
  *   Pointer to table set on success, NULL otherwise and rte_errno is set.
  */
 static struct mlx5_meter_domains_infos *
-flow_dv_create_mtr_tbl(struct rte_eth_dev *dev)
+flow_dv_create_mtr_tbl(struct rte_eth_dev *dev,
+		       const struct mlx5_flow_meter *fm)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_meter_domains_infos *mtb;
 	int ret;
+	int i;
 
 	if (!priv->mtr_en) {
 		rte_errno = ENOTSUP;
@@ -7795,6 +7801,12 @@ flow_dv_create_mtr_tbl(struct rte_eth_dev *dev)
 	if (!mtb) {
 		DRV_LOG(ERR, "Failed to allocate memory for meter.");
 		return NULL;
+	}
+	/* Create meter count actions */
+	for (i = 0; i <= RTE_MTR_DROPPED; i++) {
+		if (!fm->policer_stats.cnt[i])
+			continue;
+		mtb->count_actns[i] = fm->policer_stats.cnt[i]->action;
 	}
 	/* Create drop action. */
 	mtb->drop_actn = mlx5_glue->dr_create_flow_action_drop();
@@ -7931,6 +7943,8 @@ flow_dv_create_policer_forward_rule(struct mlx5_flow_meter *fm,
 
 		flow_dv_match_meta_reg(matcher.buf, value.buf, mtr_reg_c,
 				       rte_col_2_mlx5_col(i), UINT32_MAX);
+		if (mtb->count_actns[i])
+			actions[j++] = mtb->count_actns[i];
 		if (fm->params.action[i] == MTR_POLICER_ACTION_DROP)
 			actions[j++] = mtb->drop_actn;
 		else

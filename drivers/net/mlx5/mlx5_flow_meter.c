@@ -571,6 +571,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 				.transfer = priv->config.dv_esw_en ? 1 : 0,
 			};
 	int ret;
+	unsigned int i;
 
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -597,7 +598,13 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	fm->meter_id = meter_id;
 	fm->profile = fmp;
 	fm->params = *params;
-	fm->mfts = mlx5_flow_create_mtr_tbls(dev);
+	/* Alloc policer counters. */
+	for (i = 0; i < RTE_DIM(fm->policer_stats.cnt); i++) {
+		fm->policer_stats.cnt[i] = mlx5_counter_alloc(dev);
+		if (!fm->policer_stats.cnt[i])
+			goto error;
+	}
+	fm->mfts = mlx5_flow_create_mtr_tbls(dev, fm);
 	if (!fm->mfts)
 		goto error;
 	ret = mlx5_flow_create_policer_rules(dev, fm, &attr);
@@ -612,6 +619,10 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 error:
 	mlx5_flow_destroy_policer_rules(dev, fm, &attr);
 	mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);
+	/* Free policer counters. */
+	for (i = 0; i < RTE_DIM(fm->policer_stats.cnt); i++)
+		if (fm->policer_stats.cnt[i])
+			mlx5_counter_free(dev, fm->policer_stats.cnt[i]);
 	rte_free(fm);
 	return -rte_mtr_error_set(error, -ret,
 				  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
@@ -644,6 +655,7 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 				.egress = 1,
 				.transfer = priv->config.dv_esw_en ? 1 : 0,
 			};
+	unsigned int i;
 
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -667,6 +679,10 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 	fmp->ref_cnt--;
 	/* Remove from the flow meter list. */
 	TAILQ_REMOVE(fms, fm, next);
+	/* Free policer counters. */
+	for (i = 0; i < RTE_DIM(fm->policer_stats.cnt); i++)
+		if (fm->policer_stats.cnt[i])
+			mlx5_counter_free(dev, fm->policer_stats.cnt[i]);
 	/* Free meter flow table */
 	mlx5_flow_destroy_policer_rules(dev, fm, &attr);
 	mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);
