@@ -314,6 +314,9 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 		port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
+	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_RSS_HASH)
+		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
 	rx_conf = dev_info.default_rxconf;
 	rx_conf.offloads = port_conf.rxmode.offloads;
 
