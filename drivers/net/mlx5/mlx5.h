@@ -995,6 +995,8 @@ int mlx5_nl_promisc(struct rte_eth_dev *dev, int enable);
 int mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable);
 unsigned int mlx5_nl_portnum(int nl, const char *name);
 unsigned int mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex);
+int mlx5_nl_vf_mac_addr_modify(struct rte_eth_dev *dev,
+			       struct rte_ether_addr *mac, int vf_index);
 int mlx5_nl_switch_info(int nl, unsigned int ifindex,
 			struct mlx5_switch_info *info);
 

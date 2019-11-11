@@ -42,7 +42,15 @@
 #define MLX5_NDA_RTA(r) \
 	((struct rtattr *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct ndmsg))))
 #endif
-
+/*
+ * Define NLMSG_TAIL as defined in iproute2 sources.
+ *
+ * see in iproute2 sources file include/libnetlink.h
+ */
+#ifndef NLMSG_TAIL
+#define NLMSG_TAIL(nmsg) \
+	((struct rtattr *)(((char *)(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
+#endif
 /*
  * The following definitions are normally found in rdma/rdma_netlink.h,
  * however they are so recent that most systems do not expose them yet.
@@ -486,6 +494,94 @@ error:
 		" %s",
 		dev->data->port_id,
 		add ? "add" : "remove",
+		mac->addr_bytes[0], mac->addr_bytes[1],
+		mac->addr_bytes[2], mac->addr_bytes[3],
+		mac->addr_bytes[4], mac->addr_bytes[5],
+		strerror(rte_errno));
+	return -rte_errno;
+}
+
+/**
+ * Modify the VF MAC address neighbour table with Netlink.
+ *
+ * @param dev
+ *    Pointer to Ethernet device.
+ * @param mac
+ *    MAC address to consider.
+ * @param vf_index
+ *    VF index.
+ *
+ * @return
+ *    0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_nl_vf_mac_addr_modify(struct rte_eth_dev *dev,
+			   struct rte_ether_addr *mac, int vf_index)
+{
+	int fd, ret;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int iface_idx = mlx5_ifindex(dev);
+	struct {
+		struct nlmsghdr hdr;
+		struct ifinfomsg ifm;
+		struct rtattr vf_list_rta;
+		struct rtattr vf_info_rta;
+		struct rtattr vf_mac_rta;
+		struct ifla_vf_mac ivm;
+	} req = {
+		.hdr = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
+			.nlmsg_type = RTM_BASE,
+		},
+		.ifm = {
+			.ifi_index = iface_idx,
+		},
+		.vf_list_rta = {
+			.rta_type = IFLA_VFINFO_LIST,
+			.rta_len = RTA_ALIGN(RTA_LENGTH(0)),
+		},
+		.vf_info_rta = {
+			.rta_type = IFLA_VF_INFO,
+			.rta_len = RTA_ALIGN(RTA_LENGTH(0)),
+		},
+		.vf_mac_rta = {
+			.rta_type = IFLA_VF_MAC,
+		},
+	};
+	uint32_t sn = priv->nl_sn++;
+	struct ifla_vf_mac ivm = {
+		.vf = vf_index,
+	};
+
+	memcpy(&ivm.mac, mac, RTE_ETHER_ADDR_LEN);
+	memcpy(RTA_DATA(&req.vf_mac_rta), &ivm, sizeof(ivm));
+
+	req.vf_mac_rta.rta_len = RTA_LENGTH(sizeof(ivm));
+	req.hdr.nlmsg_len = NLMSG_ALIGN(req.hdr.nlmsg_len) +
+		RTA_ALIGN(req.vf_list_rta.rta_len) +
+		RTA_ALIGN(req.vf_info_rta.rta_len) +
+		RTA_ALIGN(req.vf_mac_rta.rta_len);
+	req.vf_list_rta.rta_len = RTE_PTR_DIFF(NLMSG_TAIL(&req.hdr),
+					       &req.vf_list_rta);
+	req.vf_info_rta.rta_len = RTE_PTR_DIFF(NLMSG_TAIL(&req.hdr),
+					       &req.vf_info_rta);
+
+	fd = priv->nl_socket_route;
+	if (fd < 0)
+		return -1;
+	ret = mlx5_nl_send(fd, &req.hdr, sn);
+	if (ret < 0)
+		goto error;
+	ret = mlx5_nl_recv(fd, sn, NULL, NULL);
+	if (ret < 0)
+		goto error;
+	return 0;
+error:
+	DRV_LOG(ERR,
+		"representor %u cannot set VF MAC address "
+		"%02X:%02X:%02X:%02X:%02X:%02X : %s",
+		vf_index,
 		mac->addr_bytes[0], mac->addr_bytes[1],
 		mac->addr_bytes[2], mac->addr_bytes[3],
 		mac->addr_bytes[4], mac->addr_bytes[5],
