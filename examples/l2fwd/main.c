@@ -713,6 +713,11 @@ main(int argc, char **argv)
 			"Cannot set error callback for tx buffer on port %u\n",
 				 portid);
 
+		ret = rte_eth_dev_set_ptypes(portid, RTE_PTYPE_UNKNOWN, NULL,
+					     0);
+		if (ret < 0)
+			printf("Port %u, Failed to disable Ptype parsing\n",
+					portid);
 		/* Start device */
 		ret = rte_eth_dev_start(portid);
 		if (ret < 0)
