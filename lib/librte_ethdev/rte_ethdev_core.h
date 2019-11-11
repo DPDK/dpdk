@@ -802,6 +802,9 @@ struct rte_eth_dev {
 	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 	enum rte_eth_dev_state state; /**< Flag indicating the port state */
 	void *security_ctx; /**< Context for security ops */
+
+	uint64_t reserved_64s[4]; /**< Reserved for future fields */
+	void *reserved_ptrs[4];   /**< Reserved for future fields */
 } __rte_cache_aligned;
 
 struct rte_eth_dev_sriov;
@@ -868,6 +871,9 @@ struct rte_eth_dev_data {
 			/**< Switch-specific identifier.
 			 *   Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
 			 */
+
+	uint64_t reserved_64s[4]; /**< Reserved for future fields */
+	void *reserved_ptrs[4];   /**< Reserved for future fields */
 } __rte_cache_aligned;
 
 /**

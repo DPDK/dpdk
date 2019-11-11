@@ -402,6 +402,9 @@ struct rte_eth_rxmode {
 	 * structure are allowed to be set.
 	 */
 	uint64_t offloads;
+
+	uint64_t reserved_64s[2]; /**< Reserved for future fields */
+	void *reserved_ptrs[2];   /**< Reserved for future fields */
 };
 
 /**
@@ -802,6 +805,9 @@ struct rte_eth_txmode {
 		/**< If set, reject sending out untagged pkts */
 		hw_vlan_insert_pvid : 1;
 		/**< If set, enable port based VLAN insertion */
+
+	uint64_t reserved_64s[2]; /**< Reserved for future fields */
+	void *reserved_ptrs[2];   /**< Reserved for future fields */
 };
 
 /**
@@ -818,6 +824,9 @@ struct rte_eth_rxconf {
 	 * fields on rte_eth_dev_info structure are allowed to be set.
 	 */
 	uint64_t offloads;
+
+	uint64_t reserved_64s[2]; /**< Reserved for future fields */
+	void *reserved_ptrs[2];   /**< Reserved for future fields */
 };
 
 /**
@@ -836,6 +845,9 @@ struct rte_eth_txconf {
 	 * fields on rte_eth_dev_info structure are allowed to be set.
 	 */
 	uint64_t offloads;
+
+	uint64_t reserved_64s[2]; /**< Reserved for future fields */
+	void *reserved_ptrs[2];   /**< Reserved for future fields */
 };
 
 /**
@@ -1261,6 +1273,9 @@ struct rte_eth_dev_info {
 	 * embedded managed interconnect/switch.
 	 */
 	struct rte_eth_switch_info switch_info;
+
+	uint64_t reserved_64s[2]; /**< Reserved for future fields */
+	void *reserved_ptrs[2];   /**< Reserved for future fields */
 };
 
 /**
