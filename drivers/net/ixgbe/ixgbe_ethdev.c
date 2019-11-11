@@ -2402,6 +2402,9 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+
+	dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
 	/* multipe queue mode checking */
 	ret  = ixgbe_check_mq_mode(dev);
 	if (ret != 0) {
@@ -5154,6 +5157,8 @@ ixgbevf_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
 		     dev->data->port_id);
+
+	dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	/*
 	 * VF has no ability to enable/disable HW CRC

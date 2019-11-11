@@ -56,7 +56,8 @@ static uint64_t dev_rx_offloads_nodis =
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_RSS_HASH;
 
 /* Supported Tx offloads */
 static uint64_t dev_tx_offloads_sup =

@@ -147,6 +147,8 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_vec_allowed = true;
 	ad->tx_vec_allowed = true;
 
+	dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
 	/* Vlan stripping setting */
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN) {
 		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
@@ -522,7 +524,8 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_SCATTER |
 		DEV_RX_OFFLOAD_JUMBO_FRAME |
-		DEV_RX_OFFLOAD_VLAN_FILTER;
+		DEV_RX_OFFLOAD_VLAN_FILTER |
+		DEV_RX_OFFLOAD_RSS_HASH;
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_QINQ_INSERT |

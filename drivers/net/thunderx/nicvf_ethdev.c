@@ -1920,6 +1920,8 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
 	if (!rte_eal_has_hugepages()) {
 		PMD_INIT_LOG(INFO, "Huge page is not configured");
 		return -EINVAL;

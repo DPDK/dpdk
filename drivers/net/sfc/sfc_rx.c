@@ -617,7 +617,8 @@ struct sfc_dp_rx sfc_efx_rx = {
 		.hw_fw_caps	= 0,
 	},
 	.features		= SFC_DP_RX_FEAT_INTR,
-	.dev_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM,
+	.dev_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM |
+				  DEV_RX_OFFLOAD_RSS_HASH,
 	.queue_offload_capa	= DEV_RX_OFFLOAD_SCATTER,
 	.qsize_up_rings		= sfc_efx_rx_qsize_up_rings,
 	.qcreate		= sfc_efx_rx_qcreate,
@@ -1555,6 +1556,10 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 		sfc_warn(sa, "Rx outer IPv4 checksum offload cannot be disabled - always on");
 		rxmode->offloads |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 	}
+
+	if ((offloads_supported & DEV_RX_OFFLOAD_RSS_HASH) &&
+	    (~rxmode->offloads & DEV_RX_OFFLOAD_RSS_HASH))
+		rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	return rc;
 }

@@ -685,7 +685,8 @@ mlx4_get_rx_queue_offloads(struct mlx4_priv *priv)
 {
 	uint64_t offloads = DEV_RX_OFFLOAD_SCATTER |
 			    DEV_RX_OFFLOAD_KEEP_CRC |
-			    DEV_RX_OFFLOAD_JUMBO_FRAME;
+			    DEV_RX_OFFLOAD_JUMBO_FRAME |
+			    DEV_RX_OFFLOAD_RSS_HASH;
 
 	if (priv->hw_csum)
 		offloads |= DEV_RX_OFFLOAD_CHECKSUM;

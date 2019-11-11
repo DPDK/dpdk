@@ -599,7 +599,8 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	struct rte_eth_rxmode *rxmode = &conf->rxmode;
 	uint16_t flags = 0;
 
-	if (rxmode->mq_mode == ETH_MQ_RX_RSS)
+	if (rxmode->mq_mode == ETH_MQ_RX_RSS &&
+			(dev->rx_offloads & DEV_RX_OFFLOAD_RSS_HASH))
 		flags |= NIX_RX_OFFLOAD_RSS_F;
 
 	if (dev->rx_offloads & (DEV_RX_OFFLOAD_TCP_CKSUM |

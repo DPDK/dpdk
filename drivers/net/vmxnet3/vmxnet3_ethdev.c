@@ -56,7 +56,8 @@
 	 DEV_RX_OFFLOAD_UDP_CKSUM |	\
 	 DEV_RX_OFFLOAD_TCP_CKSUM |	\
 	 DEV_RX_OFFLOAD_TCP_LRO |	\
-	 DEV_RX_OFFLOAD_JUMBO_FRAME)
+	 DEV_RX_OFFLOAD_JUMBO_FRAME |   \
+	 DEV_RX_OFFLOAD_RSS_HASH)
 
 static int eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev);
@@ -406,6 +407,8 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	size_t size;
 
 	PMD_INIT_FUNC_TRACE();
+
+	dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	if (dev->data->nb_tx_queues > VMXNET3_MAX_TX_QUEUES ||
 	    dev->data->nb_rx_queues > VMXNET3_MAX_RX_QUEUES) {

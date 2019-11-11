@@ -47,7 +47,8 @@
 			   DEV_RX_OFFLOAD_UDP_CKSUM | \
 			   DEV_RX_OFFLOAD_TCP_CKSUM | \
 			   DEV_RX_OFFLOAD_JUMBO_FRAME | \
-			   DEV_RX_OFFLOAD_SCATTER)
+			   DEV_RX_OFFLOAD_SCATTER | \
+			   DEV_RX_OFFLOAD_RSS_HASH)
 
 
 /* Common PF and VF devargs */

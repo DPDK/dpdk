@@ -318,6 +318,8 @@ static int hinic_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
 	/* mtu size is 256~9600 */
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len < HINIC_MIN_FRAME_SIZE ||
 	    dev->data->dev_conf.rxmode.max_rx_pkt_len >
@@ -740,7 +742,8 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 				DEV_RX_OFFLOAD_VLAN_FILTER |
 				DEV_RX_OFFLOAD_SCATTER |
 				DEV_RX_OFFLOAD_JUMBO_FRAME |
-				DEV_RX_OFFLOAD_TCP_LRO;
+				DEV_RX_OFFLOAD_TCP_LRO |
+				DEV_RX_OFFLOAD_RSS_HASH;
 
 	info->tx_queue_offload_capa = 0;
 	info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |

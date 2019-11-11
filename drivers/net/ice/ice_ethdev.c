@@ -2439,6 +2439,8 @@ ice_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_bulk_alloc_allowed = true;
 	ad->tx_simple_allowed = true;
 
+	dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
 	return 0;
 }
 
@@ -2891,7 +2893,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			DEV_RX_OFFLOAD_TCP_CKSUM |
 			DEV_RX_OFFLOAD_QINQ_STRIP |
 			DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-			DEV_RX_OFFLOAD_VLAN_EXTEND;
+			DEV_RX_OFFLOAD_VLAN_EXTEND |
+			DEV_RX_OFFLOAD_RSS_HASH;
 		dev_info->tx_offload_capa |=
 			DEV_TX_OFFLOAD_QINQ_INSERT |
 			DEV_TX_OFFLOAD_IPV4_CKSUM |

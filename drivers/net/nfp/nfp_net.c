@@ -407,6 +407,8 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	rxmode = &dev_conf->rxmode;
 	txmode = &dev_conf->txmode;
 
+	rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
 	/* Checking TX mode */
 	if (txmode->mq_mode) {
 		PMD_INIT_LOG(INFO, "TX mq_mode DCB and VMDq not supported");
@@ -1236,7 +1238,8 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 					     DEV_RX_OFFLOAD_UDP_CKSUM |
 					     DEV_RX_OFFLOAD_TCP_CKSUM;
 
-	dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_JUMBO_FRAME |
+				     DEV_RX_OFFLOAD_RSS_HASH;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
 		dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;

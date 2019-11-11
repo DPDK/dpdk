@@ -897,7 +897,8 @@ int hn_rndis_get_offload(struct hn_data *hv,
 	    == HN_NDIS_LSOV2_CAP_IP6)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
 
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
+				    DEV_RX_OFFLOAD_RSS_HASH;
 
 	if (hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_IP4)
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_IPV4_CKSUM;

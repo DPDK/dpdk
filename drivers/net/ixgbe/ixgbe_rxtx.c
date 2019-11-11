@@ -2872,7 +2872,8 @@ ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 		   DEV_RX_OFFLOAD_KEEP_CRC    |
 		   DEV_RX_OFFLOAD_JUMBO_FRAME |
 		   DEV_RX_OFFLOAD_VLAN_FILTER |
-		   DEV_RX_OFFLOAD_SCATTER;
+		   DEV_RX_OFFLOAD_SCATTER |
+		   DEV_RX_OFFLOAD_RSS_HASH;
 
 	if (hw->mac.type == ixgbe_mac_82598EB)
 		offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
