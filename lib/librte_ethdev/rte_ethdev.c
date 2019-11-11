@@ -1137,6 +1137,57 @@ rte_eth_dev_tx_offload_name(uint64_t offload)
 	return name;
 }
 
+/*
+ * Validate offloads that are requested through rte_eth_dev_configure against
+ * the offloads successfuly set by the ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param req_offloads
+ *   The offloads that have been requested through `rte_eth_dev_configure`.
+ * @param set_offloads
+ *   The offloads successfuly set by the ethernet device.
+ * @param offload_type
+ *   The offload type i.e. Rx/Tx string.
+ * @param offload_name
+ *   The function that prints the offload name.
+ * @return
+ *   - (0) if validation successful.
+ *   - (-EINVAL) if requested offload has been silently disabled.
+ *
+ */
+static int
+validate_offloads(uint16_t port_id, uint64_t req_offloads,
+		  uint64_t set_offloads, const char *offload_type,
+		  const char *(*offload_name)(uint64_t))
+{
+	uint64_t offloads_diff = req_offloads ^ set_offloads;
+	uint64_t offload;
+	int ret = 0;
+
+	while (offloads_diff != 0) {
+		/* Check if any offload is requested but not enabled. */
+		offload = 1ULL << __builtin_ctzll(offloads_diff);
+		if (offload & req_offloads) {
+			RTE_ETHDEV_LOG(ERR,
+				"Port %u failed to enable %s offload %s\n",
+				port_id, offload_type, offload_name(offload));
+			ret = -EINVAL;
+		}
+
+		/* Chech if offload couldn't be disabled. */
+		if (offload & set_offloads) {
+			RTE_ETHDEV_LOG(INFO,
+				"Port %u failed to disable %s offload %s\n",
+				port_id, offload_type, offload_name(offload));
+		}
+
+		offloads_diff &= ~offload;
+	}
+
+	return ret;
+}
+
 int
 rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		      const struct rte_eth_conf *dev_conf)
@@ -1343,10 +1394,8 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	if (diag != 0) {
 		RTE_ETHDEV_LOG(ERR, "Port%u dev_configure = %d\n",
 			port_id, diag);
-		rte_eth_dev_rx_queue_config(dev, 0);
-		rte_eth_dev_tx_queue_config(dev, 0);
 		ret = eth_err(port_id, diag);
-		goto rollback;
+		goto reset_queues;
 	}
 
 	/* Initialize Rx profiling if enabled at compilation time. */
@@ -1354,14 +1403,34 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	if (diag != 0) {
 		RTE_ETHDEV_LOG(ERR, "Port%u __rte_eth_dev_profile_init = %d\n",
 			port_id, diag);
-		rte_eth_dev_rx_queue_config(dev, 0);
-		rte_eth_dev_tx_queue_config(dev, 0);
 		ret = eth_err(port_id, diag);
-		goto rollback;
+		goto reset_queues;
+	}
+
+	/* Validate Rx offloads. */
+	diag = validate_offloads(port_id,
+			dev_conf->rxmode.offloads,
+			dev->data->dev_conf.rxmode.offloads, "Rx",
+			rte_eth_dev_rx_offload_name);
+	if (diag != 0) {
+		ret = diag;
+		goto reset_queues;
+	}
+
+	/* Validate Tx offloads. */
+	diag = validate_offloads(port_id,
+			dev_conf->txmode.offloads,
+			dev->data->dev_conf.txmode.offloads, "Tx",
+			rte_eth_dev_tx_offload_name);
+	if (diag != 0) {
+		ret = diag;
+		goto reset_queues;
 	}
 
 	return 0;
-
+reset_queues:
+	rte_eth_dev_rx_queue_config(dev, 0);
+	rte_eth_dev_tx_queue_config(dev, 0);
 rollback:
 	memcpy(&dev->data->dev_conf, &orig_conf, sizeof(dev->data->dev_conf));
 
