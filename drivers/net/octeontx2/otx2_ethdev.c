@@ -86,6 +86,7 @@ nix_lf_alloc(struct otx2_eth_dev *dev, uint32_t nb_rxq, uint32_t nb_txq)
 	dev->cints = rsp->cints;
 	dev->qints = rsp->qints;
 	dev->npc_flow.channel = dev->rx_chan_base;
+	dev->ptp_en = rsp->hw_rx_tstamp_en;
 
 	return 0;
 }
@@ -1900,7 +1901,11 @@ otx2_nix_dev_start(struct rte_eth_dev *eth_dev)
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int rc, i;
 
-	if (eth_dev->data->nb_rx_queues != 0) {
+	/* MTU recalculate should be avoided here if PTP is enabled by PF, as
+	 * otx2_nix_recalc_mtu would be invoked during otx2_nix_ptp_enable_vf
+	 * call below.
+	 */
+	if (eth_dev->data->nb_rx_queues != 0 && !otx2_ethdev_is_ptp_en(dev)) {
 		rc = otx2_nix_recalc_mtu(eth_dev);
 		if (rc)
 			return rc;
@@ -1935,6 +1940,12 @@ otx2_nix_dev_start(struct rte_eth_dev *eth_dev)
 		otx2_nix_timesync_enable(eth_dev);
 	else
 		otx2_nix_timesync_disable(eth_dev);
+
+	/* Update VF about data off shifted by 8 bytes if PTP already
+	 * enabled in PF owning this VF
+	 */
+	if (otx2_ethdev_is_ptp_en(dev) && otx2_dev_is_vf(dev))
+		otx2_nix_ptp_enable_vf(eth_dev);
 
 	rc = npc_rx_enable(dev);
 	if (rc) {

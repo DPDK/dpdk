@@ -8,6 +8,38 @@
 
 #define PTP_FREQ_ADJUST (1 << 9)
 
+/* Function to enable ptp config for VFs */
+void
+otx2_nix_ptp_enable_vf(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
+	if (otx2_nix_recalc_mtu(eth_dev))
+		otx2_err("Failed to set MTU size for ptp");
+
+	dev->scalar_ena = true;
+	dev->rx_offload_flags |= NIX_RX_OFFLOAD_TSTAMP_F;
+
+	/* Setting up the function pointers as per new offload flags */
+	otx2_eth_set_rx_function(eth_dev);
+	otx2_eth_set_tx_function(eth_dev);
+}
+
+static uint16_t
+nix_eth_ptp_vf_burst(void *queue, struct rte_mbuf **mbufs, uint16_t pkts)
+{
+	struct otx2_eth_rxq *rxq = queue;
+	struct rte_eth_dev *eth_dev;
+
+	RTE_SET_USED(mbufs);
+	RTE_SET_USED(pkts);
+
+	eth_dev = rxq->eth_dev;
+	otx2_nix_ptp_enable_vf(eth_dev);
+
+	return 0;
+}
+
 static int
 nix_read_raw_clock(struct otx2_eth_dev *dev, uint64_t *clock, uint64_t *tsc,
 		   uint8_t is_pmu)
@@ -104,7 +136,7 @@ nix_ptp_config(struct rte_eth_dev *eth_dev, int en)
 	struct otx2_mbox *mbox = dev->mbox;
 	uint8_t rc = -EINVAL;
 
-	if (otx2_dev_is_vf_or_sdp(dev))
+	if (otx2_dev_is_vf_or_sdp(dev) || otx2_dev_is_lbk(dev))
 		return rc;
 
 	if (en) {
@@ -153,6 +185,17 @@ otx2_eth_dev_ptp_info_update(struct otx2_dev *dev, bool ptp_en)
 			otx2_nix_rxq_mbuf_setup(otx2_dev,
 						eth_dev->data->port_id);
 	}
+	if (otx2_dev_is_vf(otx2_dev) && !(otx2_dev_is_sdp(otx2_dev)) &&
+	    !(otx2_dev_is_lbk(otx2_dev))) {
+		/* In case of VF, setting of MTU cant be done directly in this
+		 * function as this is running as part of MBOX request(PF->VF)
+		 * and MTU setting also requires MBOX message to be
+		 * sent(VF->PF)
+		 */
+		eth_dev->rx_pkt_burst = nix_eth_ptp_vf_burst;
+		rte_mb();
+	}
+
 	return 0;
 }
 
@@ -162,14 +205,16 @@ otx2_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int i, rc = 0;
 
-	if (otx2_ethdev_is_ptp_en(dev)) {
-		otx2_info("PTP mode is already enabled ");
+	/* If we are VF/SDP/LBK, ptp cannot not be enabled */
+	if (otx2_dev_is_vf_or_sdp(dev) || otx2_dev_is_lbk(dev)) {
+		otx2_info("PTP cannot be enabled in case of VF/SDP/LBK");
 		return -EINVAL;
 	}
 
-	/* If we are VF, no further action can be taken */
-	if (otx2_dev_is_vf_or_sdp(dev))
+	if (otx2_ethdev_is_ptp_en(dev)) {
+		otx2_info("PTP mode is already enabled");
 		return -EINVAL;
+	}
 
 	if (!(dev->rx_offload_flags & NIX_RX_OFFLOAD_PTYPE_F)) {
 		otx2_err("Ptype offload is disabled, it should be enabled");
@@ -207,6 +252,11 @@ otx2_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 		otx2_eth_set_rx_function(eth_dev);
 		otx2_eth_set_tx_function(eth_dev);
 	}
+
+	rc = otx2_nix_recalc_mtu(eth_dev);
+	if (rc)
+		otx2_err("Failed to set MTU size for ptp");
+
 	return rc;
 }
 
@@ -221,8 +271,7 @@ otx2_nix_timesync_disable(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 	}
 
-	/* If we are VF, nothing else can be done */
-	if (otx2_dev_is_vf_or_sdp(dev))
+	if (otx2_dev_is_vf_or_sdp(dev) || otx2_dev_is_lbk(dev))
 		return -EINVAL;
 
 	dev->rx_offloads &= ~DEV_RX_OFFLOAD_TIMESTAMP;
@@ -240,6 +289,11 @@ otx2_nix_timesync_disable(struct rte_eth_dev *eth_dev)
 		otx2_eth_set_rx_function(eth_dev);
 		otx2_eth_set_tx_function(eth_dev);
 	}
+
+	rc = otx2_nix_recalc_mtu(eth_dev);
+	if (rc)
+		otx2_err("Failed to set MTU size for ptp");
+
 	return rc;
 }
 

@@ -58,6 +58,8 @@ otx2_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
 	    (mbuf->data_off == RTE_PKTMBUF_HEADROOM +
 	     NIX_TIMESYNC_RX_OFFSET)) {
 
+		mbuf->pkt_len -= NIX_TIMESYNC_RX_OFFSET;
+
 		/* Reading the rx timestamp inserted by CGX, viz at
 		 * starting of the packet data.
 		 */

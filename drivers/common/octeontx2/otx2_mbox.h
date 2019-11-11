@@ -723,6 +723,7 @@ struct nix_lf_alloc_rsp {
 	uint8_t __otx2_io lf_tx_stats; /* NIX_AF_CONST1::LF_TX_STATS */
 	uint16_t __otx2_io cints; /* NIX_AF_CONST2::CINTS */
 	uint16_t __otx2_io qints; /* NIX_AF_CONST2::QINTS */
+	uint8_t __otx2_io hw_rx_tstamp_en; /*set if rx timestamping enabled */
 };
 
 struct nix_lf_free_req {

@@ -567,5 +567,6 @@ int otx2_nix_timesync_read_time(struct rte_eth_dev *eth_dev,
 int otx2_eth_dev_ptp_info_update(struct otx2_dev *dev, bool ptp_en);
 int otx2_nix_read_clock(struct rte_eth_dev *eth_dev, uint64_t *time);
 int otx2_nix_raw_clock_tsc_conv(struct otx2_eth_dev *dev);
+void otx2_nix_ptp_enable_vf(struct rte_eth_dev *eth_dev);
 
 #endif /* __OTX2_ETHDEV_H__ */
