@@ -157,7 +157,7 @@ Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines 
   * For other PMDs and more info, refer to the ``MAINTAINERS`` file.
 
 * New external functions should be added to the local ``version.map`` file.
-  See the :doc:`Guidelines for ABI policy and versioning </contributing/versioning>`.
+  See the :doc:`Guidelines for ABI policy and versioning </contributing/abi_versioning>`.
   New external functions should also be added in alphabetical order.
 
 * Important changes will require an addition to the release notes in ``doc/guides/rel_notes/``.

@@ -84,6 +84,10 @@ M: Marko Kovacevic <marko.kovacevic@intel.com>
 F: README
 F: doc/
 
+ABI Policy
+M: Ray Kinsella <mdr@ashroe.eu>
+F: doc/guides/contributing/abi_*.rst
+
 Developers and Maintainers Tools
 M: Thomas Monjalon <thomas@monjalon.net>
 F: MAINTAINERS
