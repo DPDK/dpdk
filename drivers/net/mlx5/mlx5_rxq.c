@@ -1702,7 +1702,6 @@ exit:
 	return 0;
 }
 
-#define MLX5_MAX_LRO_SIZE (UINT8_MAX * 256u)
 #define MLX5_MAX_TCP_HDR_OFFSET ((unsigned int)(sizeof(struct rte_ether_hdr) + \
 					sizeof(struct rte_vlan_hdr) * 2 + \
 					sizeof(struct rte_ipv6_hdr)))
@@ -1774,7 +1773,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			   dev->data->dev_conf.rxmode.offloads;
 	unsigned int lro_on_queue = !!(offloads & DEV_RX_OFFLOAD_TCP_LRO);
 	const int mprq_en = mlx5_check_mprq_support(dev) > 0;
-	unsigned int max_rx_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	unsigned int max_rx_pkt_len = lro_on_queue ?
+			dev->data->dev_conf.rxmode.max_lro_pkt_size :
+			dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	unsigned int non_scatter_min_mbuf_size = max_rx_pkt_len +
 							RTE_PKTMBUF_HEADROOM;
 	unsigned int max_lro_size = 0;

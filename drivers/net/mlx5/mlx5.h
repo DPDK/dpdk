@@ -218,6 +218,9 @@ TAILQ_HEAD(mlx5_flows, rte_flow);
 #define MLX5_LRO_SUPPORTED(dev) \
 	(((struct mlx5_priv *)((dev)->data->dev_private))->config.lro.supported)
 
+/* Maximal size of aggregated LRO packet. */
+#define MLX5_MAX_LRO_SIZE (UINT8_MAX * 256u)
+
 /* LRO configurations structure. */
 struct mlx5_lro_config {
 	uint32_t supported:1; /* Whether LRO is supported. */

@@ -207,6 +207,8 @@ Limitations
   - KEEP_CRC offload cannot be supported with LRO.
   - The first mbuf length, without head-room,  must be big enough to include the
     TCP header (122B).
+  - Rx queue with LRO offload enabled, receiving a non-LRO packet, can forward
+    it with size limited to max LRO size, not to max RX packet length.
 
 Statistics
 ----------
