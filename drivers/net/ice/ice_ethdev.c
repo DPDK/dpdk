@@ -2358,7 +2358,10 @@ ice_dev_stop(struct rte_eth_dev *dev)
 	/* Clear all queues and release mbufs */
 	ice_clear_queues(dev);
 
-	ice_dev_set_link_down(dev);
+	if (pf->init_link_up)
+		ice_dev_set_link_up(dev);
+	else
+		ice_dev_set_link_down(dev);
 
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
@@ -2732,6 +2735,27 @@ ice_rxq_intr_setup(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+ice_get_init_link_status(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	bool enable_lse = dev->data->dev_conf.intr_conf.lsc ? true : false;
+	struct ice_link_status link_status;
+	int ret;
+
+	ret = ice_aq_get_link_info(hw->port_info, enable_lse,
+				   &link_status, NULL);
+	if (ret != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to get link info");
+		pf->init_link_up = false;
+		return;
+	}
+
+	if (link_status.link_info & ICE_AQ_LINK_UP)
+		pf->init_link_up = true;
+}
+
 static int
 ice_dev_start(struct rte_eth_dev *dev)
 {
@@ -2801,6 +2825,8 @@ ice_dev_start(struct rte_eth_dev *dev)
 				     NULL);
 	if (ret != ICE_SUCCESS)
 		PMD_DRV_LOG(WARNING, "Fail to set phy mask");
+
+	ice_get_init_link_status(dev);
 
 	ice_dev_set_link_up(dev);
 

@@ -378,6 +378,7 @@ struct ice_pf {
 	struct ice_parser_list rss_parser_list;
 	struct ice_parser_list perm_parser_list;
 	struct ice_parser_list dist_parser_list;
+	bool init_link_up;
 };
 
 #define ICE_MAX_QUEUE_NUM  2048
