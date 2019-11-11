@@ -107,6 +107,8 @@ usage(char* progname)
 	printf("  --total-num-mbufs=N: set the number of mbufs to be allocated "
 	       "in mbuf pools.\n");
 	printf("  --max-pkt-len=N: set the maximum size of packet to N bytes.\n");
+	printf("  --max-lro-pkt-size=N: set the maximum LRO aggregated packet "
+	       "size to N bytes.\n");
 #ifdef RTE_LIBRTE_CMDLINE
 	printf("  --eth-peers-configfile=name: config file with ethernet addresses "
 	       "of peer ports.\n");
@@ -594,6 +596,7 @@ launch_args_parse(int argc, char** argv)
 		{ "mbuf-size",			1, 0, 0 },
 		{ "total-num-mbufs",		1, 0, 0 },
 		{ "max-pkt-len",		1, 0, 0 },
+		{ "max-lro-pkt-size",		1, 0, 0 },
 		{ "pkt-filter-mode",            1, 0, 0 },
 		{ "pkt-filter-report-hash",     1, 0, 0 },
 		{ "pkt-filter-size",            1, 0, 0 },
@@ -890,6 +893,10 @@ launch_args_parse(int argc, char** argv)
 					rte_exit(EXIT_FAILURE,
 						 "Invalid max-pkt-len=%d - should be > %d\n",
 						 n, RTE_ETHER_MIN_LEN);
+			}
+			if (!strcmp(lgopts[opt_idx].name, "max-lro-pkt-size")) {
+				n = atoi(optarg);
+				rx_mode.max_lro_pkt_size = (uint32_t) n;
 			}
 			if (!strcmp(lgopts[opt_idx].name, "pkt-filter-mode")) {
 				if (!strcmp(optarg, "signature"))

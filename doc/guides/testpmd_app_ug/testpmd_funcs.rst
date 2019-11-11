@@ -2154,6 +2154,15 @@ Set the maximum packet length::
 
 This is equivalent to the ``--max-pkt-len`` command-line option.
 
+port config - max-lro-pkt-size
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set the maximum LRO aggregated packet size::
+
+   testpmd> port config all max-lro-pkt-size (value)
+
+This is equivalent to the ``--max-lro-pkt-size`` command-line option.
+
 port config - Drop Packets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

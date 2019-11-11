@@ -780,6 +780,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config all max-pkt-len (value)\n"
 			"    Set the max packet length.\n\n"
 
+			"port config all max-lro-pkt-size (value)\n"
+			"    Set the max LRO aggregated packet size.\n\n"
+
 			"port config all drop-en (on|off)\n"
 			"    Enable or disable packet drop on all RX queues of all ports when no "
 			"receive buffers available.\n\n"
@@ -2039,6 +2042,78 @@ cmdline_parse_inst_t cmd_config_max_pkt_len = {
 		(void *)&cmd_config_max_pkt_len_all,
 		(void *)&cmd_config_max_pkt_len_name,
 		(void *)&cmd_config_max_pkt_len_value,
+		NULL,
+	},
+};
+
+/* *** config max LRO aggregated packet size *** */
+struct cmd_config_max_lro_pkt_size_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t all;
+	cmdline_fixed_string_t name;
+	uint32_t value;
+};
+
+static void
+cmd_config_max_lro_pkt_size_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_config_max_lro_pkt_size_result *res = parsed_result;
+	portid_t pid;
+
+	if (!all_ports_stopped()) {
+		printf("Please stop all ports first\n");
+		return;
+	}
+
+	RTE_ETH_FOREACH_DEV(pid) {
+		struct rte_port *port = &ports[pid];
+
+		if (!strcmp(res->name, "max-lro-pkt-size")) {
+			if (res->value ==
+					port->dev_conf.rxmode.max_lro_pkt_size)
+				return;
+
+			port->dev_conf.rxmode.max_lro_pkt_size = res->value;
+		} else {
+			printf("Unknown parameter\n");
+			return;
+		}
+	}
+
+	init_port_config();
+
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_max_lro_pkt_size_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_max_lro_pkt_size_result,
+				 port, "port");
+cmdline_parse_token_string_t cmd_config_max_lro_pkt_size_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_max_lro_pkt_size_result,
+				 keyword, "config");
+cmdline_parse_token_string_t cmd_config_max_lro_pkt_size_all =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_max_lro_pkt_size_result,
+				 all, "all");
+cmdline_parse_token_string_t cmd_config_max_lro_pkt_size_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_max_lro_pkt_size_result,
+				 name, "max-lro-pkt-size");
+cmdline_parse_token_num_t cmd_config_max_lro_pkt_size_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_max_lro_pkt_size_result,
+			      value, UINT32);
+
+cmdline_parse_inst_t cmd_config_max_lro_pkt_size = {
+	.f = cmd_config_max_lro_pkt_size_parsed,
+	.data = NULL,
+	.help_str = "port config all max-lro-pkt-size <value>",
+	.tokens = {
+		(void *)&cmd_config_max_lro_pkt_size_port,
+		(void *)&cmd_config_max_lro_pkt_size_keyword,
+		(void *)&cmd_config_max_lro_pkt_size_all,
+		(void *)&cmd_config_max_lro_pkt_size_name,
+		(void *)&cmd_config_max_lro_pkt_size_value,
 		NULL,
 	},
 };
@@ -19209,6 +19284,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_rx_tx,
 	(cmdline_parse_inst_t *)&cmd_config_mtu,
 	(cmdline_parse_inst_t *)&cmd_config_max_pkt_len,
+	(cmdline_parse_inst_t *)&cmd_config_max_lro_pkt_size,
 	(cmdline_parse_inst_t *)&cmd_config_rx_mode_flag,
 	(cmdline_parse_inst_t *)&cmd_config_rss,
 	(cmdline_parse_inst_t *)&cmd_config_rxtx_ring_size,
