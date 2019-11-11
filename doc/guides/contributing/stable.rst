@@ -1,7 +1,7 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright 2018 The DPDK contributors
 
-.. stable_lts_releases:
+.. _stable_lts_releases:
 
 DPDK Stable Releases and Long Term Support
 ==========================================
@@ -52,6 +52,9 @@ year's November (X.11) release will be maintained as an LTS for 2 years.
 
 After the X.11 release, an LTS branch will be created for it at
 http://git.dpdk.org/dpdk-stable where bugfixes will be backported to.
+
+A LTS release may align with the declaration of a new major ABI version,
+please read the :doc:`abi_policy` for more information.
 
 It is anticipated that there will be at least 4 releases per year of the LTS
 or approximately 1 every 3 months. However, the cadence can be shorter or
@@ -119,10 +122,3 @@ A Stable Release will be released by:
   list.
 
 Stable releases are available on the `dpdk.org download page <http://core.dpdk.org/download/>`_.
-
-
-ABI
----
-
-The Stable Release should not be seen as a way of breaking or circumventing
-the DPDK ABI policy.
