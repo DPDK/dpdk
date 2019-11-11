@@ -671,6 +671,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"ptype mapping update (port_id) (hw_ptype) (sw_ptype)\n"
 			"    Update a ptype mapping item on a port\n\n"
 
+			"set port (port_id) ptype_mask (ptype_mask)\n"
+			"    set packet types classification for a specific port\n\n"
+
 			"set port (port_id) queue-region region_id (value) "
 			"queue_start_index (value) queue_num (value)\n"
 			"    Set a queue region on a port\n\n"
@@ -19015,6 +19018,86 @@ cmdline_parse_inst_t cmd_show_rx_tx_desc_status = {
 	},
 };
 
+/* Common result structure for set port ptypes */
+struct cmd_set_port_ptypes_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t ptype_mask;
+	uint32_t mask;
+};
+
+/* Common CLI fields for set port ptypes */
+cmdline_parse_token_string_t cmd_set_port_ptypes_set =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_port_ptypes_result,
+		 set, "set");
+cmdline_parse_token_string_t cmd_set_port_ptypes_port =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_port_ptypes_result,
+		 port, "port");
+cmdline_parse_token_num_t cmd_set_port_ptypes_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_set_port_ptypes_result,
+		 port_id, UINT16);
+cmdline_parse_token_string_t cmd_set_port_ptypes_mask_str =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_port_ptypes_result,
+		 ptype_mask, "ptype_mask");
+cmdline_parse_token_num_t cmd_set_port_ptypes_mask_u32 =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_set_port_ptypes_result,
+		 mask, UINT32);
+
+static void
+cmd_set_port_ptypes_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_port_ptypes_result *res = parsed_result;
+#define PTYPE_NAMESIZE        256
+	char ptype_name[PTYPE_NAMESIZE];
+	uint16_t port_id = res->port_id;
+	uint32_t ptype_mask = res->mask;
+	int ret, i;
+
+	ret = rte_eth_dev_get_supported_ptypes(port_id, RTE_PTYPE_ALL_MASK,
+					       NULL, 0);
+	if (ret <= 0) {
+		printf("Port %d doesn't support any ptypes.\n", port_id);
+		return;
+	}
+
+	uint32_t ptypes[ret];
+
+	ret = rte_eth_dev_set_ptypes(port_id, ptype_mask, ptypes, ret);
+	if (ret < 0) {
+		printf("Unable to set requested ptypes for Port %d\n", port_id);
+		return;
+	}
+
+	printf("Successfully set following ptypes for Port %d\n", port_id);
+	for (i = 0; i < ret && ptypes[i] != RTE_PTYPE_UNKNOWN; i++) {
+		rte_get_ptype_name(ptypes[i], ptype_name, sizeof(ptype_name));
+		printf("%s\n", ptype_name);
+	}
+}
+
+cmdline_parse_inst_t cmd_set_port_ptypes = {
+	.f = cmd_set_port_ptypes_parsed,
+	.data = NULL,
+	.help_str = "set port <port_id> ptype_mask <mask>",
+	.tokens = {
+		(void *)&cmd_set_port_ptypes_set,
+		(void *)&cmd_set_port_ptypes_port,
+		(void *)&cmd_set_port_ptypes_port_id,
+		(void *)&cmd_set_port_ptypes_mask_str,
+		(void *)&cmd_set_port_ptypes_mask_u32,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -19254,6 +19337,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_show_vf_stats,
 	(cmdline_parse_inst_t *)&cmd_clear_vf_stats,
 	(cmdline_parse_inst_t *)&cmd_show_port_supported_ptypes,
+	(cmdline_parse_inst_t *)&cmd_set_port_ptypes,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_get,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_replace,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_reset,
