@@ -292,4 +292,5 @@ EXPERIMENTAL {
 	rte_flow_dynf_metadata_offs;
 	rte_flow_dynf_metadata_mask;
 	rte_flow_dynf_metadata_register;
+	rte_eth_dev_set_ptypes;
 };

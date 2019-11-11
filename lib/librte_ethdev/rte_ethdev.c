@@ -2880,6 +2880,92 @@ rte_eth_dev_get_supported_ptypes(uint16_t port_id, uint32_t ptype_mask,
 }
 
 int
+rte_eth_dev_set_ptypes(uint16_t port_id, uint32_t ptype_mask,
+				 uint32_t *set_ptypes, unsigned int num)
+{
+	const uint32_t valid_ptype_masks[] = {
+		RTE_PTYPE_L2_MASK,
+		RTE_PTYPE_L3_MASK,
+		RTE_PTYPE_L4_MASK,
+		RTE_PTYPE_TUNNEL_MASK,
+		RTE_PTYPE_INNER_L2_MASK,
+		RTE_PTYPE_INNER_L3_MASK,
+		RTE_PTYPE_INNER_L4_MASK,
+	};
+	const uint32_t *all_ptypes;
+	struct rte_eth_dev *dev;
+	uint32_t unused_mask;
+	unsigned int i, j;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (num > 0 && set_ptypes == NULL)
+		return -EINVAL;
+
+	if (*dev->dev_ops->dev_supported_ptypes_get == NULL ||
+			*dev->dev_ops->dev_ptypes_set == NULL) {
+		ret = 0;
+		goto ptype_unknown;
+	}
+
+	if (ptype_mask == 0) {
+		ret = (*dev->dev_ops->dev_ptypes_set)(dev,
+				ptype_mask);
+		goto ptype_unknown;
+	}
+
+	unused_mask = ptype_mask;
+	for (i = 0; i < RTE_DIM(valid_ptype_masks); i++) {
+		uint32_t mask = ptype_mask & valid_ptype_masks[i];
+		if (mask && mask != valid_ptype_masks[i]) {
+			ret = -EINVAL;
+			goto ptype_unknown;
+		}
+		unused_mask &= ~valid_ptype_masks[i];
+	}
+
+	if (unused_mask) {
+		ret = -EINVAL;
+		goto ptype_unknown;
+	}
+
+	all_ptypes = (*dev->dev_ops->dev_supported_ptypes_get)(dev);
+	if (all_ptypes == NULL) {
+		ret = 0;
+		goto ptype_unknown;
+	}
+
+	/*
+	 * Accommodate as many set_ptypes as possible. If the supplied
+	 * set_ptypes array is insufficient fill it partially.
+	 */
+	for (i = 0, j = 0; set_ptypes != NULL &&
+				(all_ptypes[i] != RTE_PTYPE_UNKNOWN); ++i) {
+		if (ptype_mask & all_ptypes[i]) {
+			if (j < num - 1) {
+				set_ptypes[j] = all_ptypes[i];
+				j++;
+				continue;
+			}
+			break;
+		}
+	}
+
+	if (set_ptypes != NULL && j < num)
+		set_ptypes[j] = RTE_PTYPE_UNKNOWN;
+
+	return (*dev->dev_ops->dev_ptypes_set)(dev, ptype_mask);
+
+ptype_unknown:
+	if (num > 0)
+		set_ptypes[0] = RTE_PTYPE_UNKNOWN;
+
+	return ret;
+}
+
+int
 rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr)
 {
 	struct rte_eth_dev *dev;
@@ -2890,7 +2976,6 @@ rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr)
 
 	return 0;
 }
-
 
 int
 rte_eth_dev_get_mtu(uint16_t port_id, uint16_t *mtu)

@@ -583,9 +583,12 @@ Packet type parsing
 -------------------
 
 Supports packet type parsing and returns a list of supported types.
+Allows application to set ptypes it is interested in.
 
-* **[implements] eth_dev_ops**: ``dev_supported_ptypes_get``.
-* **[related]    API**: ``rte_eth_dev_get_supported_ptypes()``.
+* **[implements] eth_dev_ops**: ``dev_supported_ptypes_get``,
+* **[related]    API**: ``rte_eth_dev_get_supported_ptypes()``,
+  ``rte_eth_dev_set_ptypes()``, ``dev_ptypes_set``.
+* **[provides]   mbuf**: ``mbuf.packet_type``.
 
 
 .. _nic_features_timesync:

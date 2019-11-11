@@ -94,6 +94,13 @@ New Features
   * Rx metadata is delivered to host via a dynamic field of ``rte_mbuf`` with
     PKT_RX_DYNF_METADATA.
 
+* **Added ethdev API to set supported packet types**
+
+  * Added new API ``rte_eth_dev_set_ptypes`` that allows an application to
+    inform PMD about about reduced range of packet types to handle.
+  * This scheme will allow PMDs to avoid lookup to internal ptype table on Rx
+    and thereby improve Rx performance if application wishes do so.
+
 * **Updated the enic driver.**
 
   * Added support for Geneve with options offload.
@@ -278,6 +285,7 @@ New Features
   the linker uses at the final stage of compilation process.
 
   See :doc:`../prog_guide/lto` for more information:
+
 
 
 Removed Items
