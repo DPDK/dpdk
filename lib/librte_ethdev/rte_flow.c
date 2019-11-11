@@ -218,12 +218,21 @@ rte_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 {
 	enum rte_flow_item_type ret = RTE_FLOW_ITEM_TYPE_VOID;
 	uint16_t ether_type = 0;
+	uint16_t ether_type_m;
 	uint8_t ip_next_proto = 0;
+	uint8_t ip_next_proto_m;
 
 	if (item == NULL || item->spec == NULL)
 		return ret;
 	switch (item->type) {
 	case RTE_FLOW_ITEM_TYPE_ETH:
+		if (item->mask)
+			ether_type_m = ((const struct rte_flow_item_eth *)
+						(item->mask))->type;
+		else
+			ether_type_m = rte_flow_item_eth_mask.type;
+		if (ether_type_m != RTE_BE16(0xFFFF))
+			break;
 		ether_type = ((const struct rte_flow_item_eth *)
 				(item->spec))->type;
 		if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV4)
@@ -234,6 +243,13 @@ rte_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 			ret = RTE_FLOW_ITEM_TYPE_VLAN;
 		break;
 	case RTE_FLOW_ITEM_TYPE_VLAN:
+		if (item->mask)
+			ether_type_m = ((const struct rte_flow_item_vlan *)
+						(item->mask))->inner_type;
+		else
+			ether_type_m = rte_flow_item_vlan_mask.inner_type;
+		if (ether_type_m != RTE_BE16(0xFFFF))
+			break;
 		ether_type = ((const struct rte_flow_item_vlan *)
 				(item->spec))->inner_type;
 		if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV4)
@@ -244,6 +260,14 @@ rte_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 			ret = RTE_FLOW_ITEM_TYPE_VLAN;
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV4:
+		if (item->mask)
+			ip_next_proto_m = ((const struct rte_flow_item_ipv4 *)
+					(item->mask))->hdr.next_proto_id;
+		else
+			ip_next_proto_m =
+				rte_flow_item_ipv4_mask.hdr.next_proto_id;
+		if (ip_next_proto_m != 0xFF)
+			break;
 		ip_next_proto = ((const struct rte_flow_item_ipv4 *)
 				(item->spec))->hdr.next_proto_id;
 		if (ip_next_proto == IPPROTO_UDP)
@@ -256,6 +280,14 @@ rte_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 			ret = RTE_FLOW_ITEM_TYPE_IPV6;
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV6:
+		if (item->mask)
+			ip_next_proto_m = ((const struct rte_flow_item_ipv6 *)
+						(item->mask))->hdr.proto;
+		else
+			ip_next_proto_m =
+				rte_flow_item_ipv6_mask.hdr.proto;
+		if (ip_next_proto_m != 0xFF)
+			break;
 		ip_next_proto = ((const struct rte_flow_item_ipv6 *)
 				(item->spec))->hdr.proto;
 		if (ip_next_proto == IPPROTO_UDP)
