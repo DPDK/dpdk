@@ -2115,7 +2115,7 @@ mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *rxq_ctrl = NULL;
 
-	if ((*priv->rxqs)[idx]) {
+	if (idx < priv->rxqs_n && (*priv->rxqs)[idx]) {
 		rxq_ctrl = container_of((*priv->rxqs)[idx],
 					struct mlx5_rxq_ctrl,
 					rxq);
