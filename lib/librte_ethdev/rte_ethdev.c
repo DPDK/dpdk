@@ -129,6 +129,7 @@ static const struct {
 	RTE_RX_OFFLOAD_BIT2STR(KEEP_CRC),
 	RTE_RX_OFFLOAD_BIT2STR(SCTP_CKSUM),
 	RTE_RX_OFFLOAD_BIT2STR(OUTER_UDP_CKSUM),
+	RTE_RX_OFFLOAD_BIT2STR(RSS_HASH),
 };
 
 #undef RTE_RX_OFFLOAD_BIT2STR
@@ -1301,6 +1302,17 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			"Ethdev port_id=%u invalid rss_hf: 0x%"PRIx64", valid value: 0x%"PRIx64"\n",
 			port_id, dev_conf->rx_adv_conf.rss_conf.rss_hf,
 			dev_info.flow_type_rss_offloads);
+		ret = -EINVAL;
+		goto rollback;
+	}
+
+	/* Check if Rx RSS distribution is disabled but RSS hash is enabled. */
+	if (((dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) == 0) &&
+	    (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_RSS_HASH)) {
+		RTE_ETHDEV_LOG(ERR,
+			"Ethdev port_id=%u config invalid Rx mq_mode without RSS but %s offload is requested",
+			port_id,
+			rte_eth_dev_rx_offload_name(DEV_RX_OFFLOAD_RSS_HASH));
 		ret = -EINVAL;
 		goto rollback;
 	}

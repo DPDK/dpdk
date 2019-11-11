@@ -274,6 +274,7 @@ Supports RSS hashing on RX.
 
 * **[uses]     user config**: ``dev_conf.rxmode.mq_mode`` = ``ETH_MQ_RX_RSS_FLAG``.
 * **[uses]     user config**: ``dev_conf.rx_adv_conf.rss_conf``.
+* **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_RSS_HASH``.
 * **[provides] rte_eth_dev_info**: ``flow_type_rss_offloads``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_RSS_HASH``, ``mbuf.rss``.
 
@@ -286,6 +287,7 @@ Inner RSS
 Supports RX RSS hashing on Inner headers.
 
 * **[uses]    rte_flow_action_rss**: ``level``.
+* **[uses]    rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_RSS_HASH``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_RSS_HASH``, ``mbuf.rss``.
 
 

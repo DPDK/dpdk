@@ -101,6 +101,13 @@ New Features
   * This scheme will allow PMDs to avoid lookup to internal ptype table on Rx
     and thereby improve Rx performance if application wishes do so.
 
+* **Added Rx offload flag to enable or disable RSS update**
+
+  * Added new Rx offload flag `DEV_RX_OFFLOAD_RSS_HASH` which can be used to
+    enable/disable PMDs write to `rte_mbuf::hash::rss`.
+  * PMDs notify the validity of `rte_mbuf::hash:rss` to the application
+    by enabling `PKT_RX_RSS_HASH ` flag in `rte_mbuf::ol_flags`.
+
 * **Updated the enic driver.**
 
   * Added support for Geneve with options offload.
