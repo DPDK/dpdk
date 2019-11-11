@@ -19,11 +19,11 @@ General Guidelines
 #. Major ABI versions are usually but not always declared aligned with a
    :ref:`LTS release <stable_lts_releases>`.
 #. The ABI version is managed at a project level in DPDK, and is reflected in
-   all non-experimental library's soname.
+   all non-experimental :ref:`library's soname <what_is_soname>`.
 #. The ABI should be preserved and not changed lightly. ABI changes must follow
    the outlined :ref:`deprecation process <abi_changes>`.
 #. The addition of symbols is generally not problematic. The modification of
-   symbols is managed with ABI Versioning.
+   symbols is managed with :ref:`ABI Versioning <abi_versioning>`.
 #. The removal of symbols is considered an :ref:`ABI breakage <abi_breakages>`,
    once approved these will form part of the next ABI version.
 #. Libraries or APIs marked as :ref:`experimental <experimental_apis>` may
@@ -68,13 +68,14 @@ An ABI version is an instance of a library's ABI at a specific release. Certain
 releases are considered to be milestone releases, the yearly LTS release for
 example. The ABI of a milestone release may be declared as a 'major ABI
 version', where this ABI version is then supported for some number of subsequent
-releases and is annotated in the library's soname.
+releases and is annotated in the library's :ref:`soname<what_is_soname>`.
 
 ABI version support in subsequent releases facilitates application upgrades, by
 enabling applications built against the milestone release to upgrade to
 subsequent releases of a library without a rebuild.
 
-More details on major ABI version can be found in the ABI Versioning guide.
+More details on major ABI version can be found in the :ref:`ABI versioning
+<major_abi_versions>` guide.
 
 The DPDK ABI policy
 -------------------
@@ -147,7 +148,7 @@ The requirements for changing the ABI are:
      CPU vendors, end-users, etc.
 
 #. Backward compatibility with the major ABI version must be maintained through
-   ABI Versioning, with :ref:`forward-only <forward-only>` compatibility
+   :ref:`abi_versioning`, with :ref:`forward-only <forward-only>` compatibility
    offered for any ABI changes that are indicated to be part of the next ABI
    version.
 
@@ -224,7 +225,7 @@ declarations of major ABI versions.
 
 * DPDK 20.02 release defines a new function ``rte_foo(uint8_t bar)``, and
   this is not a problem as long as the symbol ``rte_foo@DPDK20`` is
-  preserved through ABI Versioning.
+  preserved through :ref:`abi_versioning`.
 
   - The new function may be marked with the ``__rte_experimental`` tag for a
     number of releases, as described in the section :ref:`experimental_apis`.
@@ -322,5 +323,5 @@ Libraries
 Libraries marked as ``experimental`` are entirely not considered part of an ABI
 version, and may change without warning at any time. Experimental libraries
 always have a major version of ``0`` to indicate they exist outside of
-ABI Versioning, with the minor version incremented with each ABI change
+:ref:`abi_versioning` , with the minor version incremented with each ABI change
 to library.
