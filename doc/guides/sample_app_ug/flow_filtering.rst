@@ -513,4 +513,3 @@ The last part of the function is to validate the rule and create it.
    int res = rte_flow_validate(port_id, &attr, pattern, action, &error);
    if (!res)
         flow = rte_flow_create(port_id, &attr, pattern, action, &error);
-

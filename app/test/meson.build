@@ -459,4 +459,3 @@ foreach arg : dump_test_names
 		is_parallel : false,
 		suite : 'debug-tests')
 endforeach
-

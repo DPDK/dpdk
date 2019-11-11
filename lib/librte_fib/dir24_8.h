@@ -33,4 +33,3 @@ dir24_8_modify(struct rte_fib *fib, uint32_t ip, uint8_t depth,
 #endif
 
 #endif /* _DIR24_8_H_ */
-

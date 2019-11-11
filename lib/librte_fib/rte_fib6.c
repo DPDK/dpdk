@@ -319,4 +319,3 @@ rte_fib6_get_rib(struct rte_fib6 *fib)
 {
 	return (fib == NULL) ? NULL : fib->rib;
 }
-

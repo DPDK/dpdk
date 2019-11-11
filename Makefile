@@ -2,4 +2,3 @@
 # Copyright(c) 2010-2014 Intel Corporation
 
 .error Error please compile using GNU Make (gmake)
-

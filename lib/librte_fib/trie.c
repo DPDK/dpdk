@@ -757,4 +757,3 @@ trie_free(void *p)
 	rte_free(dp->tbl8);
 	rte_free(dp);
 }
-

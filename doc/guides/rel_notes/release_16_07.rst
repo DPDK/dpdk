@@ -550,4 +550,3 @@ Tested OSes
 - Ubuntu 15.10
 - Ubuntu 16.04 LTS
 - Wind River Linux 8
-

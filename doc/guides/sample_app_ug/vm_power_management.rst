@@ -761,4 +761,3 @@ will send the policy to the host:
 
 Once the policy is sent to the host, the host application takes over the power monitoring
 of the specified cores in the policy.
-

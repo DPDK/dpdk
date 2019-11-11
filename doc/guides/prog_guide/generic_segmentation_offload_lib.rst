@@ -237,4 +237,3 @@ To segment an outgoing packet, an application must:
    For tunneled packets, the outer IPv4 headers' checksums should also be
    updated. Alternatively, the application may offload checksum calculation
    to HW.
-

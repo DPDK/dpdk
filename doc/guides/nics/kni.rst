@@ -168,4 +168,3 @@ It is possible to test PMD quickly using KNI kernel module loopback feature:
         RX-packets: 71275820       RX-dropped: 0             RX-total: 71275820
         TX-packets: 71275884       TX-dropped: 0             TX-total: 71275884
         ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-

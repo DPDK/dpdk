@@ -1924,4 +1924,3 @@ iavf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
 
 	return RTE_ETH_TX_DESC_FULL;
 }
-

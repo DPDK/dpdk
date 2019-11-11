@@ -321,4 +321,3 @@ Ethtool is a Linux-specific tool with corresponding support in the kernel.
 The current version of kni provides minimal ethtool functionality
 including querying version and link state. It does not support link
 control, statistics, or dumping device registers.
-

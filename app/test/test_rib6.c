@@ -370,4 +370,3 @@ test_slow_rib6(void)
 
 REGISTER_TEST_COMMAND(rib6_autotest, test_rib6);
 REGISTER_TEST_COMMAND(rib6_slow_autotest, test_slow_rib6);
-

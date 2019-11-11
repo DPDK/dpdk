@@ -85,4 +85,3 @@ int at24_eeprom_write(struct altera_i2c_dev *dev, unsigned int slave_addr,
 
 	return write_count;
 }
-

@@ -34,4 +34,3 @@ trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 #endif
 
 #endif /* _TRIE_H_ */
-
