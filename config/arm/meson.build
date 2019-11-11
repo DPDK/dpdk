@@ -57,6 +57,12 @@ flags_armada = [
 	['RTE_MAX_LCORE', 16]]
 
 flags_default_extra = []
+flags_n1sdp_extra = [
+	['RTE_MACHINE', '"n1sdp"'],
+	['RTE_MAX_NUMA_NODES', 1],
+	['RTE_MAX_LCORE', 4],
+	['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
+	['RTE_LIBRTE_VHOST_NUMA', false]]
 flags_thunderx_extra = [
 	['RTE_MACHINE', '"thunderx"'],
 	['RTE_USE_C11_MEM_MODEL', false]]
@@ -83,7 +89,8 @@ machine_args_generic = [
 	['0xd07', ['-mcpu=cortex-a57']],
 	['0xd08', ['-mcpu=cortex-a72']],
 	['0xd09', ['-mcpu=cortex-a73']],
-	['0xd0a', ['-mcpu=cortex-a75']]]
+	['0xd0a', ['-mcpu=cortex-a75']],
+	['0xd0c', ['-march=armv8.2-a+crc+crypto', '-mcpu=neoverse-n1'], flags_n1sdp_extra]]
 
 machine_args_cavium = [
 	['default', ['-march=armv8-a+crc+crypto','-mcpu=thunderx']],

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2019 Arm Ltd.
+#
+
+#include "defconfig_arm64-armv8a-linux-gcc"
+
+CONFIG_RTE_MACHINE="n1sdp"
+CONFIG_RTE_MAX_LCORE=4
+CONFIG_RTE_MAX_NUMA_NODES=1
+CONFIG_RTE_CACHE_LINE_SIZE=64
+
+# Doesn't support NUMA
+CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES=n
+CONFIG_RTE_LIBRTE_VHOST_NUMA=n
