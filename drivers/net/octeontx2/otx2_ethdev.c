@@ -1701,13 +1701,13 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	rc = cgx_intlbk_enable(dev, eth_dev->data->dev_conf.lpbk_mode);
 	if (rc) {
 		otx2_err("Failed to configure cgx loop back mode rc=%d", rc);
-		goto q_irq_fini;
+		goto cq_fini;
 	}
 
 	rc = otx2_nix_rxchan_bpid_cfg(eth_dev, true);
 	if (rc) {
 		otx2_err("Failed to configure nix rx chan bpid cfg rc=%d", rc);
-		goto q_irq_fini;
+		goto cq_fini;
 	}
 
 	rc = otx2_nix_mc_addr_list_install(eth_dev);
