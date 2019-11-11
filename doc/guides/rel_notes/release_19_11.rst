@@ -277,6 +277,7 @@ New Features
 
   * Added a console command to testpmd app, ``show port (port_id) ptypes`` which
     gives ability to print port supported ptypes in different protocol layers.
+  * Packet type detection disabled by default for the supported PMDs.
 
 * **Added new example l2fwd-event application.**
 

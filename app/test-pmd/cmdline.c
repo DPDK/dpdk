@@ -19082,6 +19082,8 @@ cmd_set_port_ptypes_parsed(
 		rte_get_ptype_name(ptypes[i], ptype_name, sizeof(ptype_name));
 		printf("%s\n", ptype_name);
 	}
+
+	clear_ptypes = false;
 }
 
 cmdline_parse_inst_t cmd_set_port_ptypes = {

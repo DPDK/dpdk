@@ -359,6 +359,9 @@ uint8_t hot_plug = 0; /**< hotplug disabled by default. */
 /* After attach, port setup is called on event or by iterator */
 bool setup_on_probe_event = true;
 
+/* Clear ptypes on port initialization. */
+uint8_t clear_ptypes = true;
+
 /* Pretty printing of ethdev events */
 static const char * const eth_event_desc[] = {
 	[RTE_ETH_EVENT_UNKNOWN] = "unknown",
@@ -2269,6 +2272,15 @@ start_port(portid_t pid)
 				return -1;
 		}
 		configure_rxtx_dump_callbacks(verbose_level);
+		if (clear_ptypes) {
+			diag = rte_eth_dev_set_ptypes(pi, RTE_PTYPE_UNKNOWN,
+					NULL, 0);
+			if (diag < 0)
+				printf(
+				"Port %d: Failed to disable Ptype parsing\n",
+				pi);
+		}
+
 		/* start port */
 		if (rte_eth_dev_start(pi) < 0) {
 			printf("Fail to start port %d\n", pi);
