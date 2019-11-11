@@ -1137,6 +1137,33 @@ rte_eth_dev_tx_offload_name(uint64_t offload)
 	return name;
 }
 
+static inline int
+check_lro_pkt_size(uint16_t port_id, uint32_t config_size,
+		   uint32_t max_rx_pkt_len, uint32_t dev_info_size)
+{
+	int ret = 0;
+
+	if (dev_info_size == 0) {
+		if (config_size != max_rx_pkt_len) {
+			RTE_ETHDEV_LOG(ERR, "Ethdev port_id=%d max_lro_pkt_size"
+				       " %u != %u is not allowed\n",
+				       port_id, config_size, max_rx_pkt_len);
+			ret = -EINVAL;
+		}
+	} else if (config_size > dev_info_size) {
+		RTE_ETHDEV_LOG(ERR, "Ethdev port_id=%d max_lro_pkt_size %u "
+			       "> max allowed value %u\n", port_id, config_size,
+			       dev_info_size);
+		ret = -EINVAL;
+	} else if (config_size < RTE_ETHER_MIN_LEN) {
+		RTE_ETHDEV_LOG(ERR, "Ethdev port_id=%d max_lro_pkt_size %u "
+			       "< min allowed value %u\n", port_id, config_size,
+			       (unsigned int)RTE_ETHER_MIN_LEN);
+		ret = -EINVAL;
+	}
+	return ret;
+}
+
 /*
  * Validate offloads that are requested through rte_eth_dev_configure against
  * the offloads successfuly set by the ethernet device.
@@ -1316,6 +1343,22 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			/* Use default value */
 			dev->data->dev_conf.rxmode.max_rx_pkt_len =
 							RTE_ETHER_MAX_LEN;
+	}
+
+	/*
+	 * If LRO is enabled, check that the maximum aggregated packet
+	 * size is supported by the configured device.
+	 */
+	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO) {
+		if (dev_conf->rxmode.max_lro_pkt_size == 0)
+			dev->data->dev_conf.rxmode.max_lro_pkt_size =
+				dev->data->dev_conf.rxmode.max_rx_pkt_len;
+		ret = check_lro_pkt_size(port_id,
+				dev->data->dev_conf.rxmode.max_lro_pkt_size,
+				dev->data->dev_conf.rxmode.max_rx_pkt_len,
+				dev_info.max_lro_pkt_size);
+		if (ret != 0)
+			goto rollback;
 	}
 
 	/* Any requested offloading must be within its device capabilities */
@@ -1849,6 +1892,22 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 			dev_info.rx_queue_offload_capa,
 			__func__);
 		return -EINVAL;
+	}
+
+	/*
+	 * If LRO is enabled, check that the maximum aggregated packet
+	 * size is supported by the configured device.
+	 */
+	if (local_conf.offloads & DEV_RX_OFFLOAD_TCP_LRO) {
+		if (dev->data->dev_conf.rxmode.max_lro_pkt_size == 0)
+			dev->data->dev_conf.rxmode.max_lro_pkt_size =
+				dev->data->dev_conf.rxmode.max_rx_pkt_len;
+		int ret = check_lro_pkt_size(port_id,
+				dev->data->dev_conf.rxmode.max_lro_pkt_size,
+				dev->data->dev_conf.rxmode.max_rx_pkt_len,
+				dev_info.max_lro_pkt_size);
+		if (ret != 0)
+			return ret;
 	}
 
 	ret = (*dev->dev_ops->rx_queue_setup)(dev, rx_queue_id, nb_rx_desc,

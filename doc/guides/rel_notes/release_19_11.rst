@@ -460,6 +460,14 @@ ABI Changes
 * ipsec: The field ``replay_win_sz`` has been removed from the structure
   ``rte_ipsec_sa_prm`` as it has been added to the security library.
 
+* ethdev: Added 32-bit fields for maximum LRO aggregated packet size, in
+  struct ``rte_eth_dev_info`` for the port capability and in struct
+  ``rte_eth_rxmode`` for the port configuration.
+  Application should use the new field in struct ``rte_eth_rxmode`` to configure
+  the requested size.
+  PMD should use the new field in struct ``rte_eth_dev_info`` to report the
+  supported port capability.
+
 
 Shared Library Versions
 -----------------------

@@ -193,10 +193,12 @@ LRO
 Supports Large Receive Offload.
 
 * **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_TCP_LRO``.
+  ``dev_conf.rxmode.max_lro_pkt_size``.
 * **[implements] datapath**: ``LRO functionality``.
 * **[implements] rte_eth_dev_data**: ``lro``.
 * **[provides]   mbuf**: ``mbuf.ol_flags:PKT_RX_LRO``, ``mbuf.tso_segsz``.
 * **[provides]   rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_TCP_LRO``.
+* **[provides]   rte_eth_dev_info**: ``max_lro_pkt_size``.
 
 
 .. _nic_features_tso:

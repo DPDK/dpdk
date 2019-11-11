@@ -83,10 +83,6 @@ Deprecation Notices
   This scheme will allow PMDs to avoid lookup to internal ptype table on Rx and
   thereby improve Rx performance if application wishes do so.
 
-* ethdev: New 32-bit fields may be added for maximum LRO session size, in
-  struct ``rte_eth_dev_info`` for the port capability and in struct
-  ``rte_eth_rxmode`` for the port configuration.
-
 * cryptodev: support for using IV with all sizes is added, J0 still can
   be used but only when IV length in following structs ``rte_crypto_auth_xform``,
   ``rte_crypto_aead_xform`` is set to zero. When IV length is greater or equal
