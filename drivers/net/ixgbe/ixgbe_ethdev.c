@@ -1800,12 +1800,14 @@ static int eth_ixgbe_pci_remove(struct rte_pci_device *pci_dev)
 
 	ethdev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (!ethdev)
-		return -ENODEV;
+		return 0;
 
 	if (ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
-		return rte_eth_dev_destroy(ethdev, ixgbe_vf_representor_uninit);
+		return rte_eth_dev_pci_generic_remove(pci_dev,
+					ixgbe_vf_representor_uninit);
 	else
-		return rte_eth_dev_destroy(ethdev, eth_ixgbe_dev_uninit);
+		return rte_eth_dev_pci_generic_remove(pci_dev,
+						eth_ixgbe_dev_uninit);
 }
 
 static struct rte_pci_driver rte_ixgbe_pmd = {
