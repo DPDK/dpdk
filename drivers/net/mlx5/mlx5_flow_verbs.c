@@ -191,7 +191,7 @@ flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
 {
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) || \
 	defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
-	if (flow->counter->cs) {
+	if (flow->counter && flow->counter->cs) {
 		struct rte_flow_query_count *qc = data;
 		uint64_t counters[2] = {0, 0};
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
