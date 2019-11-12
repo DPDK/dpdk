@@ -335,6 +335,11 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 	attr->log_max_hairpin_num_packets = MLX5_GET
 		(cmd_hca_cap, hcattr, log_min_hairpin_wq_data_sz);
 	attr->vhca_id = MLX5_GET(cmd_hca_cap, hcattr, vhca_id);
+	attr->eth_net_offloads = MLX5_GET(cmd_hca_cap, hcattr,
+					  eth_net_offloads);
+	attr->eth_virt = MLX5_GET(cmd_hca_cap, hcattr, eth_virt);
+	attr->flex_parser_protocols = MLX5_GET(cmd_hca_cap, hcattr,
+					       flex_parser_protocols);
 	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
 	if (attr->qos.sup) {
 		MLX5_SET(query_hca_cap_in, in, op_mod,
@@ -358,11 +363,6 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 		attr->qos.flow_meter_reg_c_ids =
 			MLX5_GET(qos_cap, hcattr, flow_meter_reg_id);
 	}
-	attr->eth_net_offloads = MLX5_GET(cmd_hca_cap, hcattr,
-					  eth_net_offloads);
-	attr->eth_virt = MLX5_GET(cmd_hca_cap, hcattr, eth_virt);
-	attr->flex_parser_protocols = MLX5_GET(cmd_hca_cap, hcattr,
-					       flex_parser_protocols);
 	if (!attr->eth_net_offloads)
 		return 0;
 
