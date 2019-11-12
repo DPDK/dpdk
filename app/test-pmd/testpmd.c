@@ -2557,6 +2557,9 @@ detach_port_device(portid_t port_id)
 
 	printf("Removing a device...\n");
 
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
 	dev = rte_eth_devices[port_id].device;
 	if (dev == NULL) {
 		printf("Device already removed\n");
