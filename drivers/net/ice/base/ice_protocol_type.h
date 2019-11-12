@@ -155,38 +155,47 @@ struct ice_ether_hdr {
 };
 
 struct ice_ethtype_hdr {
-	u16 ethtype_id;
+	__be16 ethtype_id;
 };
 
 struct ice_ether_vlan_hdr {
 	u8 dst_addr[ETH_ALEN];
 	u8 src_addr[ETH_ALEN];
-	u32 vlan_id;
+	__be32 vlan_id;
 };
 
 struct ice_vlan_hdr {
-	u16 vlan;
-	u16 type;
+	__be16 vlan;
+	__be16 type;
 };
 
 struct ice_ipv4_hdr {
 	u8 version;
 	u8 tos;
-	u16 total_length;
-	u16 id;
-	u16 frag_off;
+	__be16 total_length;
+	__be16 id;
+	__be16 frag_off;
 	u8 time_to_live;
 	u8 protocol;
-	u16 check;
-	u32 src_addr;
-	u32 dst_addr;
+	__be16 check;
+	__be32 src_addr;
+	__be32 dst_addr;
+};
+
+struct ice_le_ver_tc_flow {
+	union {
+		struct {
+			u32 flow_label : 20;
+			u32 tc : 8;
+			u32 version : 4;
+		} fld;
+		u32 val;
+	} u;
 };
 
 struct ice_ipv6_hdr {
-	u32 version:4;
-	u32 tc:8;
-	u32 flow_label:20;
-	u16 payload_len;
+	__be32 be_ver_tc_flow;
+	__be16 payload_len;
 	u8 next_hdr;
 	u8 hop_limit;
 	u8 src_addr[ICE_IPV6_ADDR_LENGTH];
@@ -194,32 +203,32 @@ struct ice_ipv6_hdr {
 };
 
 struct ice_sctp_hdr {
-	u16 src_port;
-	u16 dst_port;
-	u32 verification_tag;
-	u32 check;
+	__be16 src_port;
+	__be16 dst_port;
+	__be32 verification_tag;
+	__be32 check;
 };
 
 struct ice_l4_hdr {
-	u16 src_port;
-	u16 dst_port;
-	u16 len;
-	u16 check;
+	__be16 src_port;
+	__be16 dst_port;
+	__be16 len;
+	__be16 check;
 };
 
 struct ice_udp_tnl_hdr {
-	u16 field;
-	u16 proto_type;
-	u32 vni;	/* only use lower 24-bits */
+	__be16 field;
+	__be16 proto_type;
+	__be32 vni;	/* only use lower 24-bits */
 };
 
 #pragma pack(1)
 struct ice_udp_gtp_hdr {
 	u8 flags;
 	u8 msg_type;
-	u16 rsrvd_len;
-	u32 teid;
-	u16 rsrvd_seq_nbr;
+	__be16 rsrvd_len;
+	__be32 teid;
+	__be16 rsrvd_seq_nbr;
 	u8 rsrvd_n_pdu_nbr;
 	u8 rsrvd_next_ext;
 	u8 rsvrd_ext_len;
@@ -230,17 +239,17 @@ struct ice_udp_gtp_hdr {
 
 struct ice_pppoe_hdr {
 	u8 rsrvd_ver_type;
-	u8 rsrved_code;
-	u16 session_id;
-	u16 length;
-	u16 ppp_prot_id; /* control and data only */
+	u8 rsrvd_code;
+	__be16 session_id;
+	__be16 length;
+	__be16 ppp_prot_id; /* control and data only */
 };
 #pragma pack()
 
 struct ice_nvgre {
-	u16 flags;
-	u16 protocol;
-	u32 tni_flow;
+	__be16 flags;
+	__be16 protocol;
+	__be32 tni_flow;
 };
 
 union ice_prot_hdr {

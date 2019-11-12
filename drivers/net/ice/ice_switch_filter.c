@@ -587,11 +587,16 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						(RTE_IPV6_HDR_TC_MASK))
 						== rte_cpu_to_be_32
 						(RTE_IPV6_HDR_TC_MASK)) {
-					f->tc = (rte_be_to_cpu_32
+					struct ice_le_ver_tc_flow vtf;
+					vtf.u.fld.version = 0;
+					vtf.u.fld.flow_label = 0;
+					vtf.u.fld.tc = (rte_be_to_cpu_32
 						(ipv6_spec->hdr.vtc_flow) &
 							RTE_IPV6_HDR_TC_MASK) >>
 							RTE_IPV6_HDR_TC_SHIFT;
-					s->tc = UINT8_MAX;
+					f->be_ver_tc_flow = CPU_TO_BE32(vtf.u.val);
+					vtf.u.fld.tc = UINT8_MAX;
+					s->be_ver_tc_flow = CPU_TO_BE32(vtf.u.val);
 				}
 				t++;
 			} else if (!ipv6_spec && !ipv6_mask) {
