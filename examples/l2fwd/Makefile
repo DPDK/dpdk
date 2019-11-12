@@ -21,6 +21,8 @@ PKGCONF=pkg-config --define-prefix
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
+# Add flag to allow experimental API as l2fwd uses rte_ethdev_set_ptype API
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = -Wl,-Bstatic $(shell $(PKGCONF) --static --libs libdpdk)
 
