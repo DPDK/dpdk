@@ -150,7 +150,8 @@ rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket)
 	void *new_ptr = rte_malloc_socket(NULL, size, align, socket);
 	if (new_ptr == NULL)
 		return NULL;
-	const unsigned old_size = elem->size - MALLOC_ELEM_OVERHEAD;
+	/* elem: |pad|data_elem|data|trailer| */
+	const size_t old_size = elem->size - elem->pad - MALLOC_ELEM_OVERHEAD;
 	rte_memcpy(new_ptr, ptr, old_size < size ? old_size : size);
 	rte_free(ptr);
 
