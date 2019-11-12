@@ -785,8 +785,9 @@ iavf_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	volatile struct iavf_tx_desc *txdp;
 	struct iavf_tx_entry *txep;
 	uint16_t n, nb_commit, tx_id;
-	uint64_t flags = IAVF_TX_DESC_CMD_EOP;
-	uint64_t rs = IAVF_TX_DESC_CMD_RS | IAVF_TX_DESC_CMD_EOP;
+	/* bit2 is reserved and must be set to 1 according to Spec */
+	uint64_t flags = IAVF_TX_DESC_CMD_EOP | IAVF_TX_DESC_CMD_ICRC;
+	uint64_t rs = IAVF_TX_DESC_CMD_RS | flags;
 
 	/* cross rx_thresh boundary is not allowed */
 	nb_pkts = RTE_MIN(nb_pkts, txq->rs_thresh);
