@@ -1069,7 +1069,7 @@ The mbuf ``length`` is inclusive of CRC24A/B where present and is equal
 the code block size ``K``.
 
 The first CB Virtual Circular Buffer (VCB) index is given by ``r`` but the
-the number of the remaining CB VCBs is calculated automatically by BBDEV
+number of the remaining CB VCBs is calculated automatically by BBDEV
 and passed down to the driver.
 
 The number of remaining CB VCBs should not be confused with ``c``, the

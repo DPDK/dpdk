@@ -254,7 +254,7 @@ to create a separate thread or secondary process to periodically call
 
 The KNI interfaces can be deleted by a DPDK application with
 ``rte_kni_release()``.  All KNI interfaces not explicitly deleted will be
-deleted when the the ``/dev/kni`` device is closed, either explicitly with
+deleted when the ``/dev/kni`` device is closed, either explicitly with
 ``rte_kni_close()`` or when the DPDK application is closed.
 
 DPDK mbuf Flow

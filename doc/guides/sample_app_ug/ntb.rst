@@ -82,7 +82,7 @@ The application is console-driven using the cmdline DPDK interface:
         ntb>
 
 From this interface the available commands and descriptions of what
-they do as as follows:
+they do as follows:
 
 * ``send [filepath]``: Send file to the peer host. Need to be in
   file-trans forwarding mode first.

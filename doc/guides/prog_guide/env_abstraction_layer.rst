@@ -249,7 +249,7 @@ manual memory management.
 
 + Using heap API's for externally allocated memory
 
-Using using a set of malloc heap API's is the recommended way to use externally
+Using a set of malloc heap API's is the recommended way to use externally
 allocated memory in DPDK. In this way, support for externally allocated memory
 is implemented through overloading the socket ID - externally allocated heaps
 will have socket ID's that would be considered invalid under normal

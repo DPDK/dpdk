@@ -158,7 +158,7 @@ Where:
     If packet is not reassembled within this time, received fragments
     will be discarded. Fragment lifetime should be decreased when
     there is a high fragmented traffic loss in high bandwidth networks.
-    Should be lower for for low number of reassembly buckets.
+    Should be lower for low number of reassembly buckets.
     Valid values: from 1 ns to 10 s. Default value: 10000000 (10 s).
 
 *   ``--reassemble NUM``: max number of entries in reassemble fragment table.

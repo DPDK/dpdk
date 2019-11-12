@@ -1650,7 +1650,7 @@ Counters can be retrieved and reset through ``rte_flow_query()``, see
 The shared flag indicates whether the counter is unique to the flow rule the
 action is specified with, or whether it is a shared counter.
 
-For a count action with the shared flag set, then then a global device
+For a count action with the shared flag set, then a global device
 namespace is assumed for the counter id, so that any matched flow rules using
 a count action with the same counter id on the same port will contribute to
 that counter.

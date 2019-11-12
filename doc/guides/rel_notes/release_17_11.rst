@@ -475,7 +475,7 @@ API Changes
 * **Added mbuf flags PKT_RX_VLAN and PKT_RX_QINQ.**
 
   Two ``mbuf`` flags have been added to indicate that the VLAN
-  identifier has been saved in in the ``mbuf`` structure. For instance:
+  identifier has been saved in the ``mbuf`` structure. For instance:
 
   - If VLAN is not stripped and TCI is saved: ``PKT_RX_VLAN``
   - If VLAN is stripped and TCI is saved: ``PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED``

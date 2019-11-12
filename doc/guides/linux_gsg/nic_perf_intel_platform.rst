@@ -150,7 +150,7 @@ Configurations before running DPDK
       # Mount to the specific folder.
       mount -t hugetlbfs nodev /mnt/huge
 
-2. Check the CPU layout using using the DPDK ``cpu_layout`` utility:
+2. Check the CPU layout using the DPDK ``cpu_layout`` utility:
 
    .. code-block:: console
 

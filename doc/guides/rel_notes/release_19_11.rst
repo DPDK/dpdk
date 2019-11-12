@@ -97,7 +97,7 @@ New Features
 * **Added ethdev API to set supported packet types**
 
   * Added new API ``rte_eth_dev_set_ptypes`` that allows an application to
-    inform PMD about about reduced range of packet types to handle.
+    inform PMD about reduced range of packet types to handle.
   * This scheme will allow PMDs to avoid lookup to internal ptype table on Rx
     and thereby improve Rx performance if application wishes do so.
 

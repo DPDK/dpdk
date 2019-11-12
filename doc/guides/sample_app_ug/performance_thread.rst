@@ -280,7 +280,7 @@ functionality into different threads, and the pairs of RX and TX threads are
 interconnected via software rings.
 
 On initialization an L-thread scheduler is started on every EAL thread. On all
-but the master EAL thread only a a dummy L-thread is initially started.
+but the master EAL thread only a dummy L-thread is initially started.
 The L-thread started on the master EAL thread then spawns other L-threads on
 different L-thread schedulers according the command line parameters.
 
