@@ -247,6 +247,7 @@ rte_pci_detach_dev(struct rte_pci_device *dev)
 
 	/* clear driver structure */
 	dev->driver = NULL;
+	dev->device.driver = NULL;
 
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
 		/* unmap resources for devices that use igb_uio */
