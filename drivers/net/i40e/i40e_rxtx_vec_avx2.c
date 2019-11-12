@@ -529,6 +529,7 @@ _recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			 * identifies an FDIR ID match, and zeros the RSS value
 			 * in the mbuf on FDIR match to keep mbuf data clean.
 			 */
+#define FDIR_BLEND_MASK ((1 << 3) | (1 << 7))
 
 			/* Flags:
 			 * - Take flags, shift bits to null out
@@ -557,9 +558,8 @@ _recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			 * otherwise the mb0_1 register RSS field is zeroed.
 			 */
 			const __m256i fdir_zero_mask = _mm256_setzero_si256();
-			const uint32_t fdir_blend_mask = (1 << 3) | (1 << 7);
 			__m256i tmp0_1 = _mm256_blend_epi32(fdir_zero_mask,
-						fdir_mask, fdir_blend_mask);
+						fdir_mask, FDIR_BLEND_MASK);
 			__m256i fdir_mb0_1 = _mm256_and_si256(mb0_1, fdir_mask);
 			mb0_1 = _mm256_andnot_si256(tmp0_1, mb0_1);
 
@@ -575,7 +575,7 @@ _recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			__m256i tmp2_3 = _mm256_alignr_epi8(fdir_mask, fdir_mask, 12);
 			__m256i fdir_mb2_3 = _mm256_and_si256(mb2_3, tmp2_3);
 			tmp2_3 = _mm256_blend_epi32(fdir_zero_mask, tmp2_3,
-						    fdir_blend_mask);
+						    FDIR_BLEND_MASK);
 			mb2_3 = _mm256_andnot_si256(tmp2_3, mb2_3);
 			rx_pkts[i + 2]->hash.fdir.hi = _mm256_extract_epi32(fdir_mb2_3, 3);
 			rx_pkts[i + 3]->hash.fdir.hi = _mm256_extract_epi32(fdir_mb2_3, 7);
@@ -583,7 +583,7 @@ _recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			__m256i tmp4_5 = _mm256_alignr_epi8(fdir_mask, fdir_mask, 8);
 			__m256i fdir_mb4_5 = _mm256_and_si256(mb4_5, tmp4_5);
 			tmp4_5 = _mm256_blend_epi32(fdir_zero_mask, tmp4_5,
-						    fdir_blend_mask);
+						    FDIR_BLEND_MASK);
 			mb4_5 = _mm256_andnot_si256(tmp4_5, mb4_5);
 			rx_pkts[i + 4]->hash.fdir.hi = _mm256_extract_epi32(fdir_mb4_5, 3);
 			rx_pkts[i + 5]->hash.fdir.hi = _mm256_extract_epi32(fdir_mb4_5, 7);
@@ -591,7 +591,7 @@ _recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			__m256i tmp6_7 = _mm256_alignr_epi8(fdir_mask, fdir_mask, 4);
 			__m256i fdir_mb6_7 = _mm256_and_si256(mb6_7, tmp6_7);
 			tmp6_7 = _mm256_blend_epi32(fdir_zero_mask, tmp6_7,
-						    fdir_blend_mask);
+						    FDIR_BLEND_MASK);
 			mb6_7 = _mm256_andnot_si256(tmp6_7, mb6_7);
 			rx_pkts[i + 6]->hash.fdir.hi = _mm256_extract_epi32(fdir_mb6_7, 3);
 			rx_pkts[i + 7]->hash.fdir.hi = _mm256_extract_epi32(fdir_mb6_7, 7);
