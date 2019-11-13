@@ -109,18 +109,18 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ITEM_MARK (1u << 19)
 
 /* Pattern MISC bits. */
-#define MLX5_FLOW_LAYER_ICMP (1u << 19)
-#define MLX5_FLOW_LAYER_ICMP6 (1u << 20)
-#define MLX5_FLOW_LAYER_GRE_KEY (1u << 21)
+#define MLX5_FLOW_LAYER_ICMP (1u << 20)
+#define MLX5_FLOW_LAYER_ICMP6 (1u << 21)
+#define MLX5_FLOW_LAYER_GRE_KEY (1u << 22)
 
 /* Pattern tunnel Layer bits (continued). */
-#define MLX5_FLOW_LAYER_IPIP (1u << 21)
-#define MLX5_FLOW_LAYER_IPV6_ENCAP (1u << 22)
-#define MLX5_FLOW_LAYER_NVGRE (1u << 23)
-#define MLX5_FLOW_LAYER_GENEVE (1u << 24)
+#define MLX5_FLOW_LAYER_IPIP (1u << 23)
+#define MLX5_FLOW_LAYER_IPV6_ENCAP (1u << 24)
+#define MLX5_FLOW_LAYER_NVGRE (1u << 25)
+#define MLX5_FLOW_LAYER_GENEVE (1u << 26)
 
 /* Queue items. */
-#define MLX5_FLOW_ITEM_TX_QUEUE (1u << 25)
+#define MLX5_FLOW_ITEM_TX_QUEUE (1u << 27)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
