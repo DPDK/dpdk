@@ -334,6 +334,7 @@ struct ice_fdir_info {
 	struct ice_rx_queue *rxq;
 	void *prg_pkt;                 /* memory for fdir program packet */
 	uint64_t dma_addr;             /* physic address of packet memory*/
+	const struct rte_memzone *mz;
 	struct ice_fdir_filter_conf conf;
 
 	struct ice_fdir_filter_conf **hash_map;

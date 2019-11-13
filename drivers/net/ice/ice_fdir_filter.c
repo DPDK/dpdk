@@ -127,6 +127,12 @@ static struct ice_flow_parser ice_fdir_parser_comms;
 static const struct rte_memzone *
 ice_memzone_reserve(const char *name, uint32_t len, int socket_id)
 {
+	const struct rte_memzone *mz;
+
+	mz = rte_memzone_lookup(name);
+	if (mz)
+		return mz;
+
 	return rte_memzone_reserve_aligned(name, len, socket_id,
 					   RTE_MEMZONE_IOVA_CONTIG,
 					   ICE_RING_BASE_ALIGN);
@@ -481,19 +487,23 @@ ice_fdir_setup(struct ice_pf *pf)
 	}
 	pf->fdir.prg_pkt = mz->addr;
 	pf->fdir.dma_addr = mz->iova;
+	pf->fdir.mz = mz;
 
 	err = ice_fdir_prof_alloc(hw);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Cannot allocate memory for "
 			    "flow director profile.");
 		err = -ENOMEM;
-		goto fail_mem;
+		goto fail_prof;
 	}
 
 	PMD_DRV_LOG(INFO, "FDIR setup successfully, with programming queue %u.",
 		    vsi->base_queue);
 	return ICE_SUCCESS;
 
+fail_prof:
+	rte_memzone_free(pf->fdir.mz);
+	pf->fdir.mz = NULL;
 fail_mem:
 	ice_rx_queue_release(pf->fdir.rxq);
 	pf->fdir.rxq = NULL;
@@ -607,6 +617,13 @@ ice_fdir_teardown(struct ice_pf *pf)
 	ice_fdir_prof_free(hw);
 	ice_release_vsi(vsi);
 	pf->fdir.fdir_vsi = NULL;
+
+	if (pf->fdir.mz) {
+		err = rte_memzone_free(pf->fdir.mz);
+		pf->fdir.mz = NULL;
+		if (err)
+			PMD_DRV_LOG(ERR, "Failed to free FDIR memezone.");
+	}
 }
 
 static int
