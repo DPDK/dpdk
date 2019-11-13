@@ -296,7 +296,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	if (queue_idx >= bp->max_rx_rings) {
+	if (queue_idx >= BNXT_MAX_RINGS(bp)) {
 		PMD_DRV_LOG(ERR,
 			"Cannot create Rx ring %d. Only %d rings available\n",
 			queue_idx, bp->max_rx_rings);
