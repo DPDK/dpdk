@@ -516,10 +516,15 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	rxq = bp->rx_queues[rx_queue_id];
-	vnic = rxq->vnic;
-
-	if (!rxq || !vnic) {
+	if (!rxq) {
 		PMD_DRV_LOG(ERR, "Invalid Rx queue %d\n", rx_queue_id);
+		return -EINVAL;
+	}
+
+	vnic = rxq->vnic;
+	if (!vnic) {
+		PMD_DRV_LOG(ERR, "VNIC not initialized for RxQ %d\n",
+			    rx_queue_id);
 		return -EINVAL;
 	}
 
