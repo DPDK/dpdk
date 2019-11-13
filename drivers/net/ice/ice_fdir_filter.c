@@ -152,7 +152,7 @@ ice_fdir_prof_alloc(struct ice_hw *hw)
 		if (!hw->fdir_prof)
 			return -ENOMEM;
 	}
-	for (ptype = ICE_FLTR_PTYPE_NONF_IPV4_UDP;
+	for (ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     ptype < ICE_FLTR_PTYPE_MAX;
 	     ptype++) {
 		if (!hw->fdir_prof[ptype]) {
@@ -165,7 +165,7 @@ ice_fdir_prof_alloc(struct ice_hw *hw)
 	return 0;
 
 fail_mem:
-	for (fltr_ptype = ICE_FLTR_PTYPE_NONF_IPV4_UDP;
+	for (fltr_ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     fltr_ptype < ptype;
 	     fltr_ptype++)
 		rte_free(hw->fdir_prof[fltr_ptype]);
@@ -521,7 +521,7 @@ ice_fdir_prof_free(struct ice_hw *hw)
 {
 	enum ice_fltr_ptype ptype;
 
-	for (ptype = ICE_FLTR_PTYPE_NONF_IPV4_UDP;
+	for (ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     ptype < ICE_FLTR_PTYPE_MAX;
 	     ptype++)
 		rte_free(hw->fdir_prof[ptype]);
@@ -571,7 +571,7 @@ ice_fdir_prof_rm_all(struct ice_pf *pf)
 {
 	enum ice_fltr_ptype ptype;
 
-	for (ptype = ICE_FLTR_PTYPE_NONF_NONE;
+	for (ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     ptype < ICE_FLTR_PTYPE_MAX;
 	     ptype++) {
 		ice_fdir_prof_rm(pf, ptype, false);
