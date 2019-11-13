@@ -891,6 +891,8 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	/* enable support intr */
 	igb_intr_enable(eth_dev);
 
+	eth_igb_dev_set_link_down(eth_dev);
+
 	/* initialize filter info */
 	memset(filter_info, 0,
 	       sizeof(struct e1000_filter_info));
