@@ -364,7 +364,7 @@ struct rte_bus *rte_bus_find_by_name(const char *busname);
 
 /**
  * Get the common iommu class of devices bound on to buses available in the
- * system. RTE_IOVA_DC means that no preferrence has been expressed.
+ * system. RTE_IOVA_DC means that no preference has been expressed.
  *
  * @return
  *     enum rte_iova_mode value.

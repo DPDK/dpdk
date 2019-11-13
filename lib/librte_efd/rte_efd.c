@@ -181,7 +181,7 @@ struct efd_offline_group_rules {
 	/**< Array with all values of the keys of the group. */
 
 	uint8_t bin_id[EFD_MAX_GROUP_NUM_RULES];
-	/**< Stores the bin for each correspending key to
+	/**< Stores the bin for each corresponding key to
 	 * avoid having to recompute it
 	 */
 };

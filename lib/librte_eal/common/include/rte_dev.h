@@ -230,7 +230,7 @@ __attribute__((used)) = str
  *   "pci:v8086:d*:sv*:sd*"  all PCI devices supported by this driver
  *                           whose vendor id is 0x8086.
  *
- * The format of the kernel modules list is a parenthesed expression
+ * The format of the kernel modules list is a parenthesized expression
  * containing logical-and (&) and logical-or (|).
  *
  * The device pattern and the kmod expression are separated by a space.

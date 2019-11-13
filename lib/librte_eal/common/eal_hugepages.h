@@ -12,7 +12,7 @@
 #define MAX_HUGEPAGE_PATH PATH_MAX
 
 /**
- * Structure used to store informations about hugepages that we mapped
+ * Structure used to store information about hugepages that we mapped
  * through the files in hugetlbfs.
  */
 struct hugepage_file {

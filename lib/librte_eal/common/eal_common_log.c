@@ -45,7 +45,7 @@ static struct rte_eal_opt_loglevel_list opt_loglevel_list =
 static FILE *default_log_stream;
 
 /**
- * This global structure stores some informations about the message
+ * This global structure stores some information about the message
  * that is currently being processed by one lcore
  */
 struct log_cur_msg {
