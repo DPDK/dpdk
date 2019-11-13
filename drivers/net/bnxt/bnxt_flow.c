@@ -1093,9 +1093,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		    vnic->fw_vnic_id != INVALID_HW_RING_ID)
 			goto use_vnic;
 
-		if (!rxq ||
-		    bp->vnic_info[0].fw_grp_ids[act_q->index] !=
-		    INVALID_HW_RING_ID) {
+		if (!rxq) {
 			PMD_DRV_LOG(ERR,
 				    "Queue invalid or used with other VNIC\n");
 			rte_flow_error_set(error,

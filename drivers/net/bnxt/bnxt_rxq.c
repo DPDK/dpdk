@@ -35,7 +35,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	int start_grp_id, end_grp_id = 1, rc = 0;
 	struct bnxt_vnic_info *vnic;
 	struct bnxt_filter_info *filter;
-	enum rte_eth_nb_pools pools = bp->rx_cp_nr_rings, max_pools = 0;
+	enum rte_eth_nb_pools pools = 1, max_pools = 0;
 	struct bnxt_rx_queue *rxq;
 
 	bp->nr_vnics = 0;
@@ -100,7 +100,11 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rc = -EINVAL;
 			goto err_out;
 		}
+	} else if (!dev_conf->rxmode.mq_mode) {
+		pools = bp->rx_cosq_cnt ? bp->rx_cosq_cnt : pools;
 	}
+
+	pools = RTE_MIN(pools, bp->rx_cp_nr_rings);
 	nb_q_per_grp = bp->rx_cp_nr_rings / pools;
 	bp->rx_num_qs_per_vnic = nb_q_per_grp;
 	PMD_DRV_LOG(DEBUG, "pools = %u nb_q_per_grp = %u\n",
