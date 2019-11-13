@@ -1024,7 +1024,7 @@ static int bnxt_add_mac_filter(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 	/* Attach requested MAC address to the new l2_filter */
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
 		if (filter->mac_index == index) {
-			PMD_DRV_LOG(ERR,
+			PMD_DRV_LOG(DEBUG,
 				    "MAC addr already existed for pool %d\n",
 				    pool);
 			return 0;
