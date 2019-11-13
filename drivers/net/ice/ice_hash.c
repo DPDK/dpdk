@@ -41,6 +41,11 @@ struct rss_meta {
 	uint8_t hash_function;
 };
 
+struct ice_hash_flow_cfg {
+	bool simple_xor;
+	struct ice_rss_cfg rss_cfg;
+};
+
 static int
 ice_hash_init(struct ice_adapter *ad);
 
@@ -452,14 +457,14 @@ ice_hash_create(struct ice_adapter *ad,
 	struct ice_vsi *vsi = pf->main_vsi;
 	int ret;
 	uint32_t reg;
-	struct ice_rss_cfg *filter_ptr;
+	struct ice_hash_flow_cfg *filter_ptr;
 
 	uint32_t headermask = ((struct rss_meta *)meta)->pkt_hdr;
 	uint64_t hash_field = ((struct rss_meta *)meta)->hash_flds;
 	uint8_t hash_function = ((struct rss_meta *)meta)->hash_function;
 
 	filter_ptr = rte_zmalloc("ice_rss_filter",
-				sizeof(struct ice_rss_cfg), 0);
+				sizeof(struct ice_hash_flow_cfg), 0);
 	if (!filter_ptr) {
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -474,19 +479,20 @@ ice_hash_create(struct ice_adapter *ad,
 			(2 << VSIQF_HASH_CTL_HASH_SCHEME_S);
 		ICE_WRITE_REG(hw, VSIQF_HASH_CTL(vsi->vsi_id), reg);
 
-		filter_ptr->symm = 0;
+		filter_ptr->simple_xor = 1;
 
 		goto out;
-	} else if (hash_function == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) {
-		ret = ice_add_rss_cfg(hw, vsi->idx, hash_field, headermask, 1);
-		if (ret) {
-			rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-					"rss flow create fail");
-			goto error;
-		}
 	} else {
-		ret = ice_add_rss_cfg(hw, vsi->idx, hash_field, headermask, 0);
+		filter_ptr->rss_cfg.packet_hdr = headermask;
+		filter_ptr->rss_cfg.hashed_flds = hash_field;
+		filter_ptr->rss_cfg.symm =
+			(hash_function ==
+				RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ);
+
+		ret = ice_add_rss_cfg(hw, vsi->idx,
+				filter_ptr->rss_cfg.hashed_flds,
+				filter_ptr->rss_cfg.packet_hdr,
+				filter_ptr->rss_cfg.symm);
 		if (ret) {
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -494,9 +500,6 @@ ice_hash_create(struct ice_adapter *ad,
 			goto error;
 		}
 	}
-
-	filter_ptr->packet_hdr = headermask;
-	filter_ptr->hashed_flds = hash_field;
 
 out:
 	flow->rule = filter_ptr;
@@ -519,11 +522,11 @@ ice_hash_destroy(struct ice_adapter *ad,
 	struct ice_vsi *vsi = pf->main_vsi;
 	int ret;
 	uint32_t reg;
-	struct ice_rss_cfg *filter_ptr;
+	struct ice_hash_flow_cfg *filter_ptr;
 
-	filter_ptr = (struct ice_rss_cfg *)flow->rule;
+	filter_ptr = (struct ice_hash_flow_cfg *)flow->rule;
 
-	if (filter_ptr->symm == 0) {
+	if (filter_ptr->simple_xor == 1) {
 		/* Return to symmetric_toeplitz state. */
 		reg = ICE_READ_REG(hw, VSIQF_HASH_CTL(vsi->vsi_id));
 		reg = (reg & (~VSIQF_HASH_CTL_HASH_SCHEME_M)) |
@@ -531,7 +534,8 @@ ice_hash_destroy(struct ice_adapter *ad,
 		ICE_WRITE_REG(hw, VSIQF_HASH_CTL(vsi->vsi_id), reg);
 	} else {
 		ret = ice_rem_rss_cfg(hw, vsi->idx,
-			filter_ptr->hashed_flds, filter_ptr->packet_hdr);
+				filter_ptr->rss_cfg.hashed_flds,
+				filter_ptr->rss_cfg.packet_hdr);
 		if (ret) {
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
