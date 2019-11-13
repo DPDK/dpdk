@@ -351,6 +351,8 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	pci_map_addr = RTE_PTR_ADD(mapaddr,
 			(size_t)dev->mem_resource[res_idx].len);
 
+	pci_map_addr = RTE_PTR_ALIGN(pci_map_addr, sysconf(_SC_PAGE_SIZE));
+
 	maps[map_idx].phaddr = dev->mem_resource[res_idx].phys_addr;
 	maps[map_idx].size = dev->mem_resource[res_idx].len;
 	maps[map_idx].addr = mapaddr;

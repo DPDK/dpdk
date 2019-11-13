@@ -750,6 +750,9 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 		bar_addr = pci_map_addr;
 		pci_map_addr = RTE_PTR_ADD(bar_addr, (size_t) reg->size);
 
+		pci_map_addr = RTE_PTR_ALIGN(pci_map_addr,
+					sysconf(_SC_PAGE_SIZE));
+
 		maps[i].addr = bar_addr;
 		maps[i].offset = reg->offset;
 		maps[i].size = reg->size;
