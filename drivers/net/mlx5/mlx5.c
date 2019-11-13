@@ -448,12 +448,9 @@ mlx5_config_doorbell_mapping_env(const struct mlx5_dev_config *config)
 }
 
 static void
-mlx5_restore_doorbell_mapping_env(const struct mlx5_dev_config *config,
-				  int value)
+mlx5_restore_doorbell_mapping_env(int value)
 {
 	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	if (config->dbnc == MLX5_ARG_UNSET)
-		return;
 	/* Restore the original environment variable state. */
 	if (value == MLX5_ARG_UNSET)
 		unsetenv(MLX5_SHUT_UP_BF);
@@ -530,7 +527,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 		sh->devx = 1;
 		DRV_LOG(DEBUG, "DevX is supported");
 		/* The device is created, no need for environment. */
-		mlx5_restore_doorbell_mapping_env(config, dbmap_env);
+		mlx5_restore_doorbell_mapping_env(dbmap_env);
 	} else {
 		/* The environment variable is still configured. */
 		sh->ctx = mlx5_glue->open_device(spawn->ibv_dev);
@@ -539,10 +536,9 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 		 * The environment variable is not needed anymore,
 		 * all device creation attempts are completed.
 		 */
-		mlx5_restore_doorbell_mapping_env(config, dbmap_env);
-		if (!sh->ctx) {
+		mlx5_restore_doorbell_mapping_env(dbmap_env);
+		if (!sh->ctx)
 			goto error;
-		}
 		DRV_LOG(DEBUG, "DevX is NOT supported");
 	}
 	err = mlx5_glue->query_device_ex(sh->ctx, NULL, &sh->device_attr);
