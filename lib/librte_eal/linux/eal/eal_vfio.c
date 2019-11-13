@@ -1294,7 +1294,7 @@ vfio_type1_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 			 */
 			if (errno == EEXIST) {
 				RTE_LOG(DEBUG, EAL,
-					" Memory segment is allready mapped,"
+					" Memory segment is already mapped,"
 					" skipping");
 			} else {
 				RTE_LOG(ERR, EAL,
@@ -1379,7 +1379,7 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 			 */
 			if (errno == EBUSY) {
 				RTE_LOG(DEBUG, EAL,
-					" Memory segment is allready mapped,"
+					" Memory segment is already mapped,"
 					" skipping");
 			} else {
 				RTE_LOG(ERR, EAL,

@@ -132,7 +132,7 @@ read_fd_message(int sockfd, char *buf, int buflen, int *fds, int max_fds,
 	}
 
 	if (msgh.msg_flags & (MSG_TRUNC | MSG_CTRUNC)) {
-		RTE_LOG(ERR, VHOST_CONFIG, "truncted msg\n");
+		RTE_LOG(ERR, VHOST_CONFIG, "truncated msg\n");
 		return -1;
 	}
 

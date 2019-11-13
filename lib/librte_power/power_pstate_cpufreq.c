@@ -33,7 +33,7 @@
 
 #define FOPEN_OR_ERR_RET(f, retval) do { \
 		if ((f) == NULL) { \
-			RTE_LOG(ERR, POWER, "File not openned\n"); \
+			RTE_LOG(ERR, POWER, "File not opened\n"); \
 			return retval; \
 		} \
 } while (0)
@@ -287,7 +287,7 @@ set_freq_internal(struct pstate_power_info *pi, uint32_t idx)
 			return -1;
 		}
 
-		POWER_DEBUG_TRACE("Freqency '%u' to be set for lcore %u\n",
+		POWER_DEBUG_TRACE("Frequency '%u' to be set for lcore %u\n",
 				  target_freq, pi->lcore_id);
 
 		fflush(pi->f_cur_min);
@@ -310,7 +310,7 @@ set_freq_internal(struct pstate_power_info *pi, uint32_t idx)
 			return -1;
 		}
 
-		POWER_DEBUG_TRACE("Freqency '%u' to be set for lcore %u\n",
+		POWER_DEBUG_TRACE("Frequency '%u' to be set for lcore %u\n",
 				  target_freq, pi->lcore_id);
 
 		fflush(pi->f_cur_max);
