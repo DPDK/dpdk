@@ -2067,7 +2067,11 @@ static void
 bnxt_rxq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo)
 {
+	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_rx_queue *rxq;
+
+	if (is_bnxt_in_error(bp))
+		return;
 
 	rxq = dev->data->rx_queues[queue_id];
 
@@ -2084,7 +2088,11 @@ static void
 bnxt_txq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo)
 {
+	struct bnxt *bp = dev->data->dev_private;
 	struct bnxt_tx_queue *txq;
+
+	if (is_bnxt_in_error(bp))
+		return;
 
 	txq = dev->data->tx_queues[queue_id];
 
