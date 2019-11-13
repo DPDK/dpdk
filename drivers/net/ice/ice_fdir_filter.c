@@ -167,9 +167,14 @@ ice_fdir_prof_alloc(struct ice_hw *hw)
 fail_mem:
 	for (fltr_ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     fltr_ptype < ptype;
-	     fltr_ptype++)
+	     fltr_ptype++) {
 		rte_free(hw->fdir_prof[fltr_ptype]);
+		hw->fdir_prof[fltr_ptype] = NULL;
+	}
+
 	rte_free(hw->fdir_prof);
+	hw->fdir_prof = NULL;
+
 	return -ENOMEM;
 }
 
@@ -249,8 +254,10 @@ ice_fdir_counter_release(struct ice_pf *pf)
 				&fdir_info->counter;
 	uint8_t i;
 
-	for (i = 0; i < container->index_free; i++)
+	for (i = 0; i < container->index_free; i++) {
 		rte_free(container->pools[i]);
+		container->pools[i] = NULL;
+	}
 
 	TAILQ_INIT(&container->pool_list);
 	container->index_free = 0;
@@ -400,6 +407,9 @@ ice_fdir_release_filter_list(struct ice_pf *pf)
 		rte_free(fdir_info->hash_map);
 	if (fdir_info->hash_table)
 		rte_hash_free(fdir_info->hash_table);
+
+	fdir_info->hash_map = NULL;
+	fdir_info->hash_table = NULL;
 }
 
 /*
@@ -526,10 +536,13 @@ ice_fdir_prof_free(struct ice_hw *hw)
 
 	for (ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     ptype < ICE_FLTR_PTYPE_MAX;
-	     ptype++)
+	     ptype++) {
 		rte_free(hw->fdir_prof[ptype]);
+		hw->fdir_prof[ptype] = NULL;
+	}
 
 	rte_free(hw->fdir_prof);
+	hw->fdir_prof = NULL;
 }
 
 /* Remove a profile for some filter type */
