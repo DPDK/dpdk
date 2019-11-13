@@ -673,9 +673,8 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 	uint64_t agg_bandwidth[RTE_MAX_ETHPORTS] = {0};
 	uint64_t agg_count[RTE_MAX_ETHPORTS] = {0};
 	uint16_t default_slave = 0;
-	uint16_t mode_count_id;
-	uint16_t mode_band_id;
 	struct rte_eth_link link_info;
+	uint16_t agg_new_idx = 0;
 	int ret;
 
 	slaves = internals->active_slaves;
@@ -696,8 +695,8 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 				slaves[i], rte_strerror(-ret));
 			continue;
 		}
-		agg_count[agg->aggregator_port_id] += 1;
-		agg_bandwidth[agg->aggregator_port_id] += link_info.link_speed;
+		agg_count[i] += 1;
+		agg_bandwidth[i] += link_info.link_speed;
 
 		/* Actors system ID is not checked since all slave device have the same
 		 * ID (MAC address). */
@@ -718,22 +717,22 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 
 	switch (internals->mode4.agg_selection) {
 	case AGG_COUNT:
-		mode_count_id = max_index(agg_count, slaves_count);
-		new_agg_id = mode_count_id;
+		agg_new_idx = max_index(agg_count, slaves_count);
+		new_agg_id = slaves[agg_new_idx];
 		break;
 	case AGG_BANDWIDTH:
-		mode_band_id = max_index(agg_bandwidth, slaves_count);
-		new_agg_id = mode_band_id;
+		agg_new_idx = max_index(agg_bandwidth, slaves_count);
+		new_agg_id = slaves[agg_new_idx];
 		break;
 	case AGG_STABLE:
 		if (default_slave == slaves_count)
-			new_agg_id = slave_id;
+			new_agg_id = slaves[slave_id];
 		else
 			new_agg_id = slaves[default_slave];
 		break;
 	default:
 		if (default_slave == slaves_count)
-			new_agg_id = slave_id;
+			new_agg_id = slaves[slave_id];
 		else
 			new_agg_id = slaves[default_slave];
 		break;
