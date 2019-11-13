@@ -252,6 +252,9 @@ ice_fdir_counter_release(struct ice_pf *pf)
 	for (i = 0; i < container->index_free; i++)
 		rte_free(container->pools[i]);
 
+	TAILQ_INIT(&container->pool_list);
+	container->index_free = 0;
+
 	return 0;
 }
 
