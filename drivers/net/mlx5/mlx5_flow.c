@@ -3862,16 +3862,18 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			},
 		};
 		uint64_t hash_fields = dev_flow->hash_fields;
-		dev_flow = NULL;
+
 		/*
-		 * Configure the tag action only if we are not the meter sub
-		 * flow. Since tag is already marked in the meter suffix sub
-		 * flow.
+		 * Configure the tag item only if there is no meter subflow.
+		 * Since tag is already marked in the meter suffix subflow
+		 * we can just use the meter suffix items as is.
 		 */
 		if (qrss_id) {
+			/* Not meter subflow. */
+			assert(!mtr_sfx);
 			/*
 			 * Put unique id in prefix flow due to it is destroyed
-			 * after prefix flow and id will be freed after there
+			 * after suffix flow and id will be freed after there
 			 * is no actual flows with this id and identifier
 			 * reallocation becomes possible (for example, for
 			 * other flows in other threads).
@@ -3884,6 +3886,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 				goto exit;
 			q_tag_spec.id = ret;
 		}
+		dev_flow = NULL;
 		/* Add suffix subflow to execute Q/RSS. */
 		ret = flow_create_split_inner(dev, flow, &dev_flow,
 					      &q_attr, mtr_sfx ? items :
