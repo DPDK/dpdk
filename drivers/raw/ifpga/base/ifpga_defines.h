@@ -1122,7 +1122,9 @@ struct feature_fme_ras_catfaterror {
 			u8  therm_catast_err:1;
 			/* Injected Catastrophic Error */
 			u8  injected_catast_err:1;
-			u64 rsvd:52;
+			/* SEU error on BMC */
+			u8  bmc_seu_catast_err:1;
+			u64 rsvd:51;
 		};
 	};
 };
