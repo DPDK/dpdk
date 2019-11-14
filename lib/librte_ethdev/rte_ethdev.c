@@ -1204,7 +1204,7 @@ validate_offloads(uint16_t port_id, uint64_t req_offloads,
 
 		/* Chech if offload couldn't be disabled. */
 		if (offload & set_offloads) {
-			RTE_ETHDEV_LOG(INFO,
+			RTE_ETHDEV_LOG(DEBUG,
 				"Port %u failed to disable %s offload %s\n",
 				port_id, offload_type, offload_name(offload));
 		}
