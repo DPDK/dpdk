@@ -149,12 +149,19 @@ int spi_reg_read(struct altera_spi_device *dev, u32 reg, u32 *val);
 #define NIOS_SPI_STAT 0x18
 #define NIOS_SPI_VALID BIT_ULL(32)
 #define NIOS_SPI_READ_DATA GENMASK_ULL(31, 0)
-#define NIOS_SPI_INIT_DONE 0x1000
 
-#define NIOS_SPI_INIT_DONE 0x1000
-#define NIOS_SPI_INIT_STS0 0x1020
-#define NIOS_SPI_INIT_STS1 0x1024
-#define PKVL_STATUS_RESET  0
-#define PKVL_10G_MODE      1
-#define PKVL_25G_MODE      2
+#define NIOS_INIT		0x1000
+#define REQ_FEC_MODE		GENMASK(23, 8)
+#define FEC_MODE_NO		0x0
+#define FEC_MODE_KR		0x5555
+#define FEC_MODE_RS		0xaaaa
+#define NIOS_INIT_START		BIT(1)
+#define NIOS_INIT_DONE		BIT(0)
+#define NIOS_VERSION		0x1004
+#define NIOS_VERSION_MAJOR_SHIFT 28
+#define NIOS_VERSION_MAJOR	GENMASK(31, 28)
+#define NIOS_VERSION_MINOR	GENMASK(27, 24)
+#define NIOS_VERSION_PATCH	GENMASK(23, 20)
+#define PKVL_A_MODE_STS		0x1020
+#define PKVL_B_MODE_STS		0x1024
 #endif

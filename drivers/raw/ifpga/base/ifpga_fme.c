@@ -941,9 +941,34 @@ static int nios_spi_wait_init_done(struct altera_spi_device *dev)
 	u32 val = 0;
 	unsigned long timeout = msecs_to_timer_cycles(10000);
 	unsigned long ticks;
+	int major_version;
 
+	if (spi_reg_read(dev, NIOS_VERSION, &val))
+		return -EIO;
+
+	major_version = (val >> NIOS_VERSION_MAJOR_SHIFT) &
+		NIOS_VERSION_MAJOR;
+	dev_debug(dev, "A10 NIOS FW version %d\n", major_version);
+
+	if (major_version >= 3) {
+		/* read NIOS_INIT to check if PKVL INIT done or not */
+		if (spi_reg_read(dev, NIOS_INIT, &val))
+			return -EIO;
+
+		/* check if PKVLs are initialized already */
+		if (val & NIOS_INIT_DONE || val & NIOS_INIT_START)
+			goto nios_init_done;
+
+		/* start to config the default FEC mode */
+		val = NIOS_INIT_START;
+
+		if (spi_reg_write(dev, NIOS_INIT, val))
+			return -EIO;
+	}
+
+nios_init_done:
 	do {
-		if (spi_reg_read(dev, NIOS_SPI_INIT_DONE, &val))
+		if (spi_reg_read(dev, NIOS_INIT, &val))
 			return -EIO;
 		if (val)
 			break;
@@ -961,23 +986,20 @@ static int nios_spi_check_error(struct altera_spi_device *dev)
 {
 	u32 value = 0;
 
-	if (spi_reg_read(dev, NIOS_SPI_INIT_STS0, &value))
+	if (spi_reg_read(dev, PKVL_A_MODE_STS, &value))
 		return -EIO;
 
-	dev_debug(dev, "SPI init status0 0x%x\n", value);
+	dev_debug(dev, "PKVL A Mode Status 0x%x\n", value);
 
-	/* Error code: 0xFFF0 to 0xFFFC */
-	if (value >= 0xFFF0 && value <= 0xFFFC)
+	if (value >= 0x100)
 		return -EINVAL;
 
-	value = 0;
-	if (spi_reg_read(dev, NIOS_SPI_INIT_STS1, &value))
+	if (spi_reg_read(dev, PKVL_B_MODE_STS, &value))
 		return -EIO;
 
-	dev_debug(dev, "SPI init status1 0x%x\n", value);
+	dev_debug(dev, "PKVL B Mode Status 0x%x\n", value);
 
-	/* Error code: 0xFFF0 to 0xFFFC */
-	if (value >= 0xFFF0 && value <= 0xFFFC)
+	if (value >= 0x100)
 		return -EINVAL;
 
 	return 0;
