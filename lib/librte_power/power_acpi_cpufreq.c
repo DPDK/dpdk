@@ -515,7 +515,8 @@ power_acpi_cpufreq_freq_up(unsigned int lcore_id)
 	}
 
 	pi = &lcore_power_info[lcore_id];
-	if (pi->curr_idx == 0)
+	if (pi->curr_idx == 0 ||
+	    (pi->curr_idx == 1 && pi->turbo_available && !pi->turbo_enable))
 		return 0;
 
 	/* Frequencies in the array are from high to low. */
