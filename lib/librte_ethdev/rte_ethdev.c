@@ -1404,7 +1404,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	if (((dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) == 0) &&
 	    (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_RSS_HASH)) {
 		RTE_ETHDEV_LOG(ERR,
-			"Ethdev port_id=%u config invalid Rx mq_mode without RSS but %s offload is requested",
+			"Ethdev port_id=%u config invalid Rx mq_mode without RSS but %s offload is requested\n",
 			port_id,
 			rte_eth_dev_rx_offload_name(DEV_RX_OFFLOAD_RSS_HASH));
 		ret = -EINVAL;
