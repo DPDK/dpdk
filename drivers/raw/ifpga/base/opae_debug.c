@@ -59,6 +59,9 @@ static void opae_adapter_data_dump(void *data)
 		opae_log("OPAE Adapter Type = PCI\n");
 		opae_log("PCI Device ID: 0x%04x\n", d_pci->device_id);
 		opae_log("PCI Vendor ID: 0x%04x\n", d_pci->vendor_id);
+		opae_log("PCI bus: 0x%04x\n", d_pci->bus);
+		opae_log("PCI devid: 0x%04x\n", d_pci->devid);
+		opae_log("PCI function: 0x%04x\n", d_pci->function);
 
 		for (i = 0; i < PCI_MAX_RESOURCE; i++) {
 			r = &d_pci->region[i];

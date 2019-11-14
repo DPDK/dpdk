@@ -28,6 +28,9 @@ int i2c_read(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
 {
 	u8 msgbuf[2];
 	int i = 0;
+	int ret;
+
+	pthread_mutex_lock(&dev->lock);
 
 	if (flags & I2C_FLAG_ADDR16)
 		msgbuf[i++] = offset >> 8;
@@ -49,10 +52,16 @@ int i2c_read(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
 		},
 	};
 
-	if (!dev->xfer)
-		return -ENODEV;
+	if (!dev->xfer) {
+		ret = -ENODEV;
+		goto exit;
+	}
 
-	return i2c_transfer(dev, msg, 2);
+	ret = i2c_transfer(dev, msg, 2);
+
+exit:
+	pthread_mutex_unlock(&dev->lock);
+	return ret;
 }
 
 int i2c_write(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
@@ -63,12 +72,18 @@ int i2c_write(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
 	int ret;
 	int i = 0;
 
-	if (!dev->xfer)
-		return -ENODEV;
+	pthread_mutex_lock(&dev->lock);
+
+	if (!dev->xfer) {
+		ret = -ENODEV;
+		goto exit;
+	}
 
 	buf = opae_malloc(I2C_MAX_OFFSET_LEN + len);
-	if (!buf)
-		return -ENOMEM;
+	if (!buf) {
+		ret = -ENOMEM;
+		goto exit;
+	}
 
 	msg.addr = slave_addr;
 	msg.flags = 0;
@@ -84,6 +99,8 @@ int i2c_write(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
 	ret = i2c_transfer(dev, &msg, 1);
 
 	opae_free(buf);
+exit:
+	pthread_mutex_unlock(&dev->lock);
 	return ret;
 }
 
@@ -477,14 +494,19 @@ struct altera_i2c_dev *altera_i2c_probe(void *base)
 	dev->i2c_clk = dev->i2c_param.ref_clk * 1000000;
 	dev->xfer = altera_i2c_xfer;
 
+	if (pthread_mutex_init(&dev->lock, NULL))
+		return NULL;
+
 	altera_i2c_hardware_init(dev);
 
 	return dev;
 }
 
-int altera_i2c_remove(struct altera_i2c_dev *dev)
+void altera_i2c_remove(struct altera_i2c_dev *dev)
 {
-	altera_i2c_disable(dev);
-
-	return 0;
+	if (dev) {
+		pthread_mutex_destroy(&dev->lock);
+		altera_i2c_disable(dev);
+		opae_free(dev);
+	}
 }

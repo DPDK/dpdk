@@ -26,6 +26,9 @@ struct max10_compatible_id {
 #define MAX10_FLAGS_SECURE		BIT(6)
 #define MAX10_FLAGS_MAC_CACHE		BIT(7)
 
+/** List of opae sensors */
+TAILQ_HEAD(opae_sensor_list, opae_sensor_info);
+
 struct intel_max10_device {
 	unsigned int flags; /*max10 hardware capability*/
 	struct altera_spi_device *spi_master;
@@ -33,6 +36,8 @@ struct intel_max10_device {
 	struct max10_compatible_id *id; /*max10 compatible*/
 	char *fdt_root;
 	unsigned int base; /* max10 base address */
+	u16 bus;
+	struct opae_sensor_list opae_sensor_list;
 };
 
 /* retimer speed */
@@ -136,17 +141,19 @@ struct opae_retimer_status {
 
 #define DFT_MAX_SIZE		0x7e0000
 
-int max10_reg_read(unsigned int reg, unsigned int *val);
-int max10_reg_write(unsigned int reg, unsigned int val);
-int max10_sys_read(unsigned int offset, unsigned int *val);
-int max10_sys_write(unsigned int offset, unsigned int val);
+int max10_reg_read(struct intel_max10_device *dev,
+	unsigned int reg, unsigned int *val);
+int max10_reg_write(struct intel_max10_device *dev,
+	unsigned int reg, unsigned int val);
+int max10_sys_read(struct intel_max10_device *dev,
+	unsigned int offset, unsigned int *val);
+int max10_sys_write(struct intel_max10_device *dev,
+	unsigned int offset, unsigned int val);
 struct intel_max10_device *
 intel_max10_device_probe(struct altera_spi_device *spi,
 		int chipselect);
 int intel_max10_device_remove(struct intel_max10_device *dev);
 
-/** List of opae sensors */
-TAILQ_HEAD(opae_sensor_list, opae_sensor_info);
 
 #define SENSOR_REG_VALUE 0x0
 #define SENSOR_REG_HIGH_WARN 0x1

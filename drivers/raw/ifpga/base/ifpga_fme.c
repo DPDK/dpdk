@@ -839,7 +839,12 @@ static int board_type_to_info(u32 type,
 static int fme_get_board_interface(struct ifpga_fme_hw *fme)
 {
 	struct fme_bitstream_id id;
+	struct ifpga_hw *hw;
 	u32 val;
+
+	hw = fme->parent;
+	if (!hw)
+		return -ENODEV;
 
 	if (fme_hdr_get_bitstream_id(fme, &id.id))
 		return -EINVAL;
@@ -854,7 +859,10 @@ static int fme_get_board_interface(struct ifpga_fme_hw *fme)
 	fme->board_info.seu = id.seu;
 	fme->board_info.ptp = id.ptp;
 
-	dev_info(fme, "found: board: %s type: %s\n",
+	dev_info(fme, "found: PCI dev: %02x:%02x:%x board: %s type: %s\n",
+			hw->pci_data->bus,
+			hw->pci_data->devid,
+			hw->pci_data->function,
 			board_major_to_string(fme->board_info.major),
 			board_type_to_string(fme->board_info.type));
 
@@ -882,11 +890,11 @@ static int fme_get_board_interface(struct ifpga_fme_hw *fme)
 			fme->board_info.nums_of_fvl,
 			fme->board_info.ports_per_fvl);
 
-	if (max10_sys_read(MAX10_BUILD_VER, &val))
+	if (max10_sys_read(fme->max10_dev, MAX10_BUILD_VER, &val))
 		return -EINVAL;
 	fme->board_info.max10_version = val & 0xffffff;
 
-	if (max10_sys_read(NIOS2_FW_VERSION, &val))
+	if (max10_sys_read(fme->max10_dev, NIOS2_FW_VERSION, &val))
 		return -EINVAL;
 	fme->board_info.nios_fw_version = val & 0xffffff;
 
@@ -897,12 +905,12 @@ static int fme_get_board_interface(struct ifpga_fme_hw *fme)
 	return 0;
 }
 
-static int spi_self_checking(void)
+static int spi_self_checking(struct intel_max10_device *dev)
 {
 	u32 val;
 	int ret;
 
-	ret = max10_sys_read(MAX10_TEST_REG, &val);
+	ret = max10_sys_read(dev, MAX10_TEST_REG, &val);
 	if (ret)
 		return -EIO;
 
@@ -937,10 +945,11 @@ static int fme_spi_init(struct ifpga_feature *feature)
 		goto spi_fail;
 	}
 
+
 	fme->max10_dev = max10;
 
 	/* SPI self test */
-	if (spi_self_checking()) {
+	if (spi_self_checking(max10)) {
 		ret = -EIO;
 		goto max10_fail;
 	}
@@ -1041,7 +1050,17 @@ static int fme_nios_spi_init(struct ifpga_feature *feature)
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 	struct altera_spi_device *spi_master;
 	struct intel_max10_device *max10;
+	struct ifpga_hw *hw;
+	struct opae_manager *mgr;
 	int ret = 0;
+
+	hw = fme->parent;
+	if (!hw)
+		return -ENODEV;
+
+	mgr = hw->adapter->mgr;
+	if (!mgr)
+		return -ENODEV;
 
 	dev_info(fme, "FME SPI Master (NIOS) Init.\n");
 	dev_debug(fme, "FME SPI base addr %p.\n",
@@ -1080,12 +1099,15 @@ static int fme_nios_spi_init(struct ifpga_feature *feature)
 		goto release_dev;
 	}
 
+	max10->bus = hw->pci_data->bus;
+
 	fme_get_board_interface(fme);
 
 	fme->max10_dev = max10;
+	mgr->sensor_list = &max10->opae_sensor_list;
 
 	/* SPI self test */
-	if (spi_self_checking())
+	if (spi_self_checking(max10))
 		goto spi_fail;
 
 	return ret;
@@ -1344,7 +1366,7 @@ int fme_mgr_get_retimer_status(struct ifpga_fme_hw *fme,
 	if (!dev)
 		return -ENODEV;
 
-	if (max10_sys_read(PKVL_LINK_STATUS, &val)) {
+	if (max10_sys_read(dev, PKVL_LINK_STATUS, &val)) {
 		dev_err(dev, "%s: read pkvl status fail\n", __func__);
 		return -EINVAL;
 	}
@@ -1372,7 +1394,7 @@ int fme_mgr_get_sensor_value(struct ifpga_fme_hw *fme,
 	if (!dev)
 		return -ENODEV;
 
-	if (max10_sys_read(sensor->value_reg, value)) {
+	if (max10_sys_read(dev, sensor->value_reg, value)) {
 		dev_err(dev, "%s: read sensor value register 0x%x fail\n",
 				__func__, sensor->value_reg);
 		return -EINVAL;

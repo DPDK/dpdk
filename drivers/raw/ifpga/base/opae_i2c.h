@@ -93,6 +93,7 @@ struct altera_i2c_dev {
 	u32 isr_mask;
 	u8 *buf;
 	int (*xfer)(struct altera_i2c_dev *dev, struct i2c_msg *msg, int num);
+	pthread_mutex_t lock;
 };
 
 /**
@@ -114,7 +115,7 @@ enum i2c_msg_flags {
 };
 
 struct altera_i2c_dev *altera_i2c_probe(void *base);
-int altera_i2c_remove(struct altera_i2c_dev *dev);
+void altera_i2c_remove(struct altera_i2c_dev *dev);
 int i2c_read(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
 		u32 offset, u8 *buf, u32 count);
 int i2c_write(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,

@@ -361,7 +361,7 @@ ifpga_monitor_sensor(struct rte_rawdev *raw_dev,
 	if (!mgr)
 		return -ENODEV;
 
-	opae_mgr_for_each_sensor(sensor) {
+	opae_mgr_for_each_sensor(mgr, sensor) {
 		if (!(sensor->flags & OPAE_SENSOR_VALID))
 			goto fail;
 
@@ -370,8 +370,8 @@ ifpga_monitor_sensor(struct rte_rawdev *raw_dev,
 			goto fail;
 
 		if (value == 0xdeadbeef) {
-			IFPGA_RAWDEV_PMD_ERR("sensor %s is invalid value %x\n",
-					sensor->name, value);
+			IFPGA_RAWDEV_PMD_ERR("dev_id %d sensor %s value %x\n",
+					raw_dev->dev_id, sensor->name, value);
 			continue;
 		}
 
@@ -394,8 +394,9 @@ ifpga_monitor_sensor(struct rte_rawdev *raw_dev,
 		/* monitor 12V AUX sensor */
 		if (!strcmp(sensor->name, "12V AUX Voltage")) {
 			if (value < AUX_VOLTAGE_WARN) {
-				IFPGA_RAWDEV_PMD_INFO("%s reach theshold %d\n",
-						sensor->name, value);
+				IFPGA_RAWDEV_PMD_INFO(
+					"%s reach theshold %d mV\n",
+					sensor->name, value);
 				*gsd_start = true;
 				break;
 			}
@@ -1433,6 +1434,9 @@ ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 	}
 	data->device_id = pci_dev->id.device_id;
 	data->vendor_id = pci_dev->id.vendor_id;
+	data->bus = pci_dev->addr.bus;
+	data->devid = pci_dev->addr.devid;
+	data->function = pci_dev->addr.function;
 	data->vfio_dev_fd = pci_dev->intr_handle.vfio_dev_fd;
 
 	adapter = rawdev->dev_private;

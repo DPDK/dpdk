@@ -181,7 +181,6 @@ static int spi_txrx(struct altera_spi_device *dev)
 	u32 rxd;
 	unsigned int tx_data;
 	u32 status;
-	int retry = 0;
 	int ret;
 
 	while (count < dev->len) {
@@ -194,10 +193,6 @@ static int spi_txrx(struct altera_spi_device *dev)
 				return -EIO;
 			if (status & ALTERA_SPI_STATUS_RRDY_MSK)
 				break;
-			if (retry++ > SPI_MAX_RETRY) {
-				dev_err(dev, "%s, read timeout\n", __func__);
-				return -EBUSY;
-			}
 		}
 
 		ret = spi_reg_read(dev, ALTERA_SPI_RXDATA, &rxd);

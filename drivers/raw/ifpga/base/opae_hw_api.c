@@ -583,11 +583,12 @@ int opae_manager_get_retimer_status(struct opae_manager *mgr,
  * Return: the pointer of the opae_sensor_info
  */
 struct opae_sensor_info *
-opae_mgr_get_sensor_by_id(unsigned int id)
+opae_mgr_get_sensor_by_id(struct opae_manager *mgr,
+		unsigned int id)
 {
 	struct opae_sensor_info *sensor;
 
-	opae_mgr_for_each_sensor(sensor)
+	opae_mgr_for_each_sensor(mgr, sensor)
 		if (sensor->id == id)
 			return sensor;
 
@@ -601,11 +602,12 @@ opae_mgr_get_sensor_by_id(unsigned int id)
  * Return: the pointer of the opae_sensor_info
  */
 struct opae_sensor_info *
-opae_mgr_get_sensor_by_name(const char *name)
+opae_mgr_get_sensor_by_name(struct opae_manager *mgr,
+		const char *name)
 {
 	struct opae_sensor_info *sensor;
 
-	opae_mgr_for_each_sensor(sensor)
+	opae_mgr_for_each_sensor(mgr, sensor)
 		if (!strcmp(sensor->name, name))
 			return sensor;
 
@@ -630,7 +632,7 @@ opae_mgr_get_sensor_value_by_name(struct opae_manager *mgr,
 	if (!mgr)
 		return -EINVAL;
 
-	sensor = opae_mgr_get_sensor_by_name(name);
+	sensor = opae_mgr_get_sensor_by_name(mgr, name);
 	if (!sensor)
 		return -ENODEV;
 
@@ -658,7 +660,7 @@ opae_mgr_get_sensor_value_by_id(struct opae_manager *mgr,
 	if (!mgr)
 		return -EINVAL;
 
-	sensor = opae_mgr_get_sensor_by_id(id);
+	sensor = opae_mgr_get_sensor_by_id(mgr, id);
 	if (!sensor)
 		return -ENODEV;
 

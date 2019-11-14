@@ -5,45 +5,50 @@
 #include "opae_intel_max10.h"
 #include <libfdt.h>
 
-static struct intel_max10_device *g_max10;
-
-struct opae_sensor_list opae_sensor_list =
-	TAILQ_HEAD_INITIALIZER(opae_sensor_list);
-
-int max10_reg_read(unsigned int reg, unsigned int *val)
+int max10_reg_read(struct intel_max10_device *dev,
+	unsigned int reg, unsigned int *val)
 {
-	if (!g_max10)
+	if (!dev)
 		return -ENODEV;
 
-	return spi_transaction_read(g_max10->spi_tran_dev,
+	dev_debug(dev, "%s: bus:0x%x, reg:0x%x\n", __func__, dev->bus, reg);
+
+	return spi_transaction_read(dev->spi_tran_dev,
 			reg, 4, (unsigned char *)val);
 }
 
-int max10_reg_write(unsigned int reg, unsigned int val)
+int max10_reg_write(struct intel_max10_device *dev,
+	unsigned int reg, unsigned int val)
 {
 	unsigned int tmp = val;
 
-	if (!g_max10)
+	if (!dev)
 		return -ENODEV;
 
-	return spi_transaction_write(g_max10->spi_tran_dev,
+	dev_debug(dev, "%s: bus:0x%x, reg:0x%x, val:0x%x\n", __func__,
+			dev->bus, reg, val);
+
+	return spi_transaction_write(dev->spi_tran_dev,
 			reg, 4, (unsigned char *)&tmp);
 }
 
-int max10_sys_read(unsigned int offset, unsigned int *val)
+int max10_sys_read(struct intel_max10_device *dev,
+	unsigned int offset, unsigned int *val)
 {
-	if (!g_max10)
+	if (!dev)
 		return -ENODEV;
 
-	return max10_reg_read(g_max10->base + offset, val);
+
+	return max10_reg_read(dev, dev->base + offset, val);
 }
 
-int max10_sys_write(unsigned int offset, unsigned int val)
+int max10_sys_write(struct intel_max10_device *dev,
+	unsigned int offset, unsigned int val)
 {
-	if (!g_max10)
+	if (!dev)
 		return -ENODEV;
 
-	return max10_reg_write(g_max10->base + offset, val);
+	return max10_reg_write(dev, dev->base + offset, val);
 }
 
 static struct max10_compatible_id max10_id_table[] = {
@@ -86,8 +91,8 @@ static void max10_check_capability(struct intel_max10_device *max10)
 		max10->flags |= MAX10_FLAGS_MAC_CACHE;
 }
 
-static int altera_nor_flash_read(u32 offset,
-		void *buffer, u32 len)
+static int altera_nor_flash_read(struct intel_max10_device *dev,
+	u32 offset, void *buffer, u32 len)
 {
 	int word_len;
 	int i;
@@ -95,13 +100,13 @@ static int altera_nor_flash_read(u32 offset,
 	unsigned int value;
 	int ret;
 
-	if (!buffer || len <= 0)
+	if (!dev || !buffer || len <= 0)
 		return -ENODEV;
 
 	word_len = len/4;
 
 	for (i = 0; i < word_len; i++) {
-		ret = max10_reg_read(offset + i*4,
+		ret = max10_reg_read(dev, offset + i*4,
 				&value);
 		if (ret)
 			return -EBUSY;
@@ -112,12 +117,12 @@ static int altera_nor_flash_read(u32 offset,
 	return 0;
 }
 
-static int enable_nor_flash(bool on)
+static int enable_nor_flash(struct intel_max10_device *dev, bool on)
 {
 	unsigned int val = 0;
 	int ret;
 
-	ret = max10_sys_read(RSU_REG, &val);
+	ret = max10_sys_read(dev, RSU_REG, &val);
 	if (ret) {
 		dev_err(NULL "enabling flash error\n");
 		return ret;
@@ -128,7 +133,7 @@ static int enable_nor_flash(bool on)
 	else
 		val &= ~RSU_ENABLE;
 
-	return max10_sys_write(RSU_REG, val);
+	return max10_sys_write(dev, RSU_REG, val);
 }
 
 static int init_max10_device_table(struct intel_max10_device *max10)
@@ -140,7 +145,7 @@ static int init_max10_device_table(struct intel_max10_device *max10)
 	u32 dt_size, dt_addr, val;
 	int ret;
 
-	ret = max10_sys_read(DT_AVAIL_REG, &val);
+	ret = max10_sys_read(max10, DT_AVAIL_REG, &val);
 	if (ret) {
 		dev_err(max10 "cannot read DT_AVAIL_REG\n");
 		return ret;
@@ -151,19 +156,19 @@ static int init_max10_device_table(struct intel_max10_device *max10)
 		return -EINVAL;
 	}
 
-	ret = max10_sys_read(DT_BASE_ADDR_REG, &dt_addr);
+	ret = max10_sys_read(max10, DT_BASE_ADDR_REG, &dt_addr);
 	if (ret) {
 		dev_info(max10 "cannot get base addr of device table\n");
 		return ret;
 	}
 
-	ret = enable_nor_flash(true);
+	ret = enable_nor_flash(max10, true);
 	if (ret) {
 		dev_err(max10 "fail to enable flash\n");
 		return ret;
 	}
 
-	ret = altera_nor_flash_read(dt_addr, &hdr, sizeof(hdr));
+	ret = altera_nor_flash_read(max10, dt_addr, &hdr, sizeof(hdr));
 	if (ret) {
 		dev_err(max10 "read fdt header fail\n");
 		goto done;
@@ -188,7 +193,7 @@ static int init_max10_device_table(struct intel_max10_device *max10)
 		goto done;
 	}
 
-	ret = altera_nor_flash_read(dt_addr, fdt_root, dt_size);
+	ret = altera_nor_flash_read(max10, dt_addr, fdt_root, dt_size);
 	if (ret) {
 		dev_err(max10 "cannot read device table\n");
 		goto done;
@@ -207,7 +212,7 @@ static int init_max10_device_table(struct intel_max10_device *max10)
 	max10->fdt_root = fdt_root;
 
 done:
-	ret = enable_nor_flash(false);
+	ret = enable_nor_flash(max10, false);
 
 	if (ret && fdt_root)
 		opae_free(fdt_root);
@@ -298,12 +303,12 @@ static int fdt_get_named_reg(const void *fdt, int node, const char *name,
 	return fdt_get_reg(fdt, node, idx, start, size);
 }
 
-static void max10_sensor_uinit(void)
+static void max10_sensor_uinit(struct intel_max10_device *dev)
 {
 	struct opae_sensor_info *info;
 
-	TAILQ_FOREACH(info, &opae_sensor_list, node) {
-		TAILQ_REMOVE(&opae_sensor_list, info, node);
+	TAILQ_FOREACH(info, &dev->opae_sensor_list, node) {
+		TAILQ_REMOVE(&dev->opae_sensor_list, info, node);
 		opae_free(info);
 	}
 }
@@ -313,8 +318,8 @@ static bool sensor_reg_valid(struct sensor_reg *reg)
 	return !!reg->size;
 }
 
-static int max10_add_sensor(struct raw_sensor_info *info,
-		struct opae_sensor_info *sensor)
+static int max10_add_sensor(struct intel_max10_device *dev,
+	struct raw_sensor_info *info, struct opae_sensor_info *sensor)
 {
 	int i;
 	int ret = 0;
@@ -332,12 +337,15 @@ static int max10_add_sensor(struct raw_sensor_info *info,
 		if (!sensor_reg_valid(&info->regs[i]))
 			continue;
 
-		ret = max10_sys_read(info->regs[i].regoff, &val);
+		ret = max10_sys_read(dev, info->regs[i].regoff, &val);
 		if (ret)
 			break;
 
-		if (val == 0xdeadbeef)
+		if (val == 0xdeadbeef) {
+			dev_debug(dev, "%s: sensor:%s invalid 0x%x at:%d\n",
+				__func__, sensor->name, val, i);
 			continue;
+		}
 
 		val *= info->multiplier;
 
@@ -458,7 +466,7 @@ max10_sensor_init(struct intel_max10_device *dev, int parent)
 		num = fdt_getprop(fdt_root, offset, "multiplier", NULL);
 		raw->multiplier = num ? fdt32_to_cpu(*num) : 1;
 
-		dev_info(dev, "found sensor from DTB: %s: %s: %u: %u\n",
+		dev_debug(dev, "found sensor from DTB: %s: %s: %u: %u\n",
 				raw->name, raw->type,
 				raw->id, raw->multiplier);
 
@@ -473,15 +481,16 @@ max10_sensor_init(struct intel_max10_device *dev, int parent)
 			goto free_sensor;
 		}
 
-		if (max10_add_sensor(raw, sensor)) {
+		if (max10_add_sensor(dev, raw, sensor)) {
 			ret = -EINVAL;
 			opae_free(sensor);
 			goto free_sensor;
 		}
 
-		if (sensor->flags & OPAE_SENSOR_VALID)
-			TAILQ_INSERT_TAIL(&opae_sensor_list, sensor, node);
-		else
+		if (sensor->flags & OPAE_SENSOR_VALID) {
+			TAILQ_INSERT_TAIL(&dev->opae_sensor_list, sensor, node);
+			dev_info(dev, "found valid sensor: %s\n", sensor->name);
+		} else
 			opae_free(sensor);
 
 		opae_free(raw);
@@ -492,7 +501,7 @@ max10_sensor_init(struct intel_max10_device *dev, int parent)
 free_sensor:
 	if (raw)
 		opae_free(raw);
-	max10_sensor_uinit();
+	max10_sensor_uinit(dev);
 	return ret;
 }
 
@@ -500,7 +509,7 @@ static int check_max10_version(struct intel_max10_device *dev)
 {
 	unsigned int v;
 
-	if (!max10_reg_read(MAX10_SEC_BASE_ADDR + MAX10_BUILD_VER,
+	if (!max10_reg_read(dev, MAX10_SEC_BASE_ADDR + MAX10_BUILD_VER,
 				&v)) {
 		if (v != 0xffffffff) {
 			dev_info(dev, "secure MAX10 detected\n");
@@ -565,6 +574,8 @@ intel_max10_device_probe(struct altera_spi_device *spi,
 	if (!dev)
 		return NULL;
 
+	TAILQ_INIT(&dev->opae_sensor_list);
+
 	dev->spi_master = spi;
 
 	dev->spi_tran_dev = spi_transaction_init(spi, chipselect);
@@ -572,9 +583,6 @@ intel_max10_device_probe(struct altera_spi_device *spi,
 		dev_err(dev, "%s spi tran init fail\n", __func__);
 		goto free_dev;
 	}
-
-	/* set the max10 device firstly */
-	g_max10 = dev;
 
 	/* check the max10 version */
 	ret = check_max10_version(dev);
@@ -601,7 +609,7 @@ intel_max10_device_probe(struct altera_spi_device *spi,
 	}
 
 	/* read FPGA loading information */
-	ret = max10_sys_read(FPGA_PAGE_INFO, &val);
+	ret = max10_sys_read(dev, FPGA_PAGE_INFO, &val);
 	if (ret) {
 		dev_err(dev, "fail to get FPGA loading info\n");
 		goto release_max10_hw;
@@ -611,14 +619,13 @@ intel_max10_device_probe(struct altera_spi_device *spi,
 	return dev;
 
 release_max10_hw:
-	max10_sensor_uinit();
+	max10_sensor_uinit(dev);
 free_dtb:
 	if (dev->fdt_root)
 		opae_free(dev->fdt_root);
 	if (dev->spi_tran_dev)
 		spi_transaction_remove(dev->spi_tran_dev);
 free_dev:
-	g_max10 = NULL;
 	opae_free(dev);
 
 	return NULL;
@@ -629,7 +636,7 @@ int intel_max10_device_remove(struct intel_max10_device *dev)
 	if (!dev)
 		return 0;
 
-	max10_sensor_uinit();
+	max10_sensor_uinit(dev);
 
 	if (dev->spi_tran_dev)
 		spi_transaction_remove(dev->spi_tran_dev);
@@ -637,7 +644,6 @@ int intel_max10_device_remove(struct intel_max10_device *dev)
 	if (dev->fdt_root)
 		opae_free(dev->fdt_root);
 
-	g_max10 = NULL;
 	opae_free(dev);
 
 	return 0;

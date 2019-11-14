@@ -40,6 +40,7 @@ struct opae_manager {
 	struct opae_adapter *adapter;
 	struct opae_manager_ops *ops;
 	struct opae_manager_networking_ops *network_ops;
+	struct opae_sensor_list *sensor_list;
 	void *data;
 };
 
@@ -75,9 +76,8 @@ struct opae_manager_networking_ops {
 			struct opae_retimer_status *status);
 };
 
-extern struct opae_sensor_list opae_sensor_list;
-#define opae_mgr_for_each_sensor(sensor) \
-	TAILQ_FOREACH(sensor, &opae_sensor_list, node)
+#define opae_mgr_for_each_sensor(mgr, sensor) \
+	TAILQ_FOREACH(sensor, mgr->sensor_list, node)
 
 /* OPAE Manager APIs */
 struct opae_manager *
@@ -88,8 +88,10 @@ int opae_manager_flash(struct opae_manager *mgr, int acc_id, const char *buf,
 		       u32 size, u64 *status);
 int opae_manager_get_eth_group_region_info(struct opae_manager *mgr,
 		u8 group_id, struct opae_eth_group_region_info *info);
-struct opae_sensor_info *opae_mgr_get_sensor_by_name(const char *name);
-struct opae_sensor_info *opae_mgr_get_sensor_by_id(unsigned int id);
+struct opae_sensor_info *opae_mgr_get_sensor_by_name(struct opae_manager *mgr,
+		const char *name);
+struct opae_sensor_info *opae_mgr_get_sensor_by_id(struct opae_manager *mgr,
+		unsigned int id);
 int opae_mgr_get_sensor_value_by_name(struct opae_manager *mgr,
 		const char *name, unsigned int *value);
 int opae_mgr_get_sensor_value_by_id(struct opae_manager *mgr,
@@ -241,6 +243,9 @@ struct opae_adapter_data_pci {
 	enum opae_adapter_type type;
 	u16 device_id;
 	u16 vendor_id;
+	u16 bus; /*Device bus for PCI */
+	u16 devid; /* Device ID */
+	u16 function; /* Device function */
 	struct opae_reg_region region[PCI_MAX_RESOURCE];
 	int vfio_dev_fd;  /* VFIO device file descriptor */
 };

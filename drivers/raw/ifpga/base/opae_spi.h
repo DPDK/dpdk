@@ -38,7 +38,7 @@
 #define SPI_WRITE 0x20
 #define WRITE_DATA_MASK GENMASK_ULL(31, 0)
 
-#define SPI_MAX_RETRY 100000
+#define SPI_MAX_RETRY 1000000
 
 #define TYPE_SPI 0
 #define TYPE_NIOS_SPI 1
@@ -102,6 +102,7 @@ struct spi_transaction_dev {
 	struct altera_spi_device *dev;
 	int chipselect;
 	struct spi_tran_buffer *buffer;
+	pthread_mutex_t lock;
 };
 
 struct spi_tran_header {
