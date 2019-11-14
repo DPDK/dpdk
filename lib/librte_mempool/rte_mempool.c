@@ -356,6 +356,19 @@ fail:
 	return ret;
 }
 
+static rte_iova_t
+get_iova(void *addr)
+{
+	struct rte_memseg *ms;
+
+	/* try registered memory first */
+	ms = rte_mem_virt2memseg(addr, NULL);
+	if (ms == NULL || ms->iova == RTE_BAD_IOVA)
+		/* fall back to actual physical address */
+		return rte_mem_virt2iova(addr);
+	return ms->iova + RTE_PTR_DIFF(addr, ms->addr);
+}
+
 /* Populate the mempool with a virtual area. Return the number of
  * objects added, or a negative value on error.
  */
@@ -375,7 +388,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 	for (off = 0; off < len &&
 		     mp->populated_size < mp->size; off += phys_len) {
 
-		iova = rte_mem_virt2iova(addr + off);
+		iova = get_iova(addr + off);
 
 		if (iova == RTE_BAD_IOVA && rte_eal_has_hugepages()) {
 			ret = -EINVAL;
@@ -391,7 +404,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 		     phys_len = RTE_MIN(phys_len + pg_sz, len - off)) {
 			rte_iova_t iova_tmp;
 
-			iova_tmp = rte_mem_virt2iova(addr + off + phys_len);
+			iova_tmp = get_iova(addr + off + phys_len);
 
 			if (iova_tmp == RTE_BAD_IOVA ||
 					iova_tmp != iova + phys_len)
