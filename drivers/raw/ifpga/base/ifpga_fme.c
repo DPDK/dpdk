@@ -787,8 +787,22 @@ static const char *board_type_to_string(u32 type)
 	return "unknown";
 }
 
+static const char *board_major_to_string(u32 major)
+{
+	switch (major) {
+	case VISTA_CREEK:
+		return "VISTA_CREEK";
+	case RUSH_CREEK:
+		return "RUSH_CREEK";
+	case DARBY_CREEK:
+		return "DARBY_CREEK";
+	}
+
+	return "unknown";
+}
+
 static int board_type_to_info(u32 type,
-		struct ifpga_fme_board_info *info)
+		struct opae_board_info *info)
 {
 	switch (type) {
 	case VC_8_10G:
@@ -830,17 +844,34 @@ static int fme_get_board_interface(struct ifpga_fme_hw *fme)
 	if (fme_hdr_get_bitstream_id(fme, &id.id))
 		return -EINVAL;
 
+	fme->board_info.major = id.major;
+	fme->board_info.minor = id.minor;
 	fme->board_info.type = id.interface;
-	fme->board_info.build_hash = id.hash;
-	fme->board_info.debug_version = id.debug;
-	fme->board_info.major_version = id.major;
-	fme->board_info.minor_version = id.minor;
+	fme->board_info.fvl_bypass = id.fvl_bypass;
+	fme->board_info.mac_lightweight = id.mac_lightweight;
+	fme->board_info.lightweight = id.lightweiht;
+	fme->board_info.disaggregate = id.disagregate;
+	fme->board_info.seu = id.seu;
+	fme->board_info.ptp = id.ptp;
 
-	dev_info(fme, "board type: %s major_version:%u minor_version:%u build_hash:%u\n",
-			board_type_to_string(fme->board_info.type),
-			fme->board_info.major_version,
-			fme->board_info.minor_version,
-			fme->board_info.build_hash);
+	dev_info(fme, "found: board: %s type: %s\n",
+			board_major_to_string(fme->board_info.major),
+			board_type_to_string(fme->board_info.type));
+
+	dev_info(fme, "support feature:\n"
+			"fvl_bypass:%s\n"
+			"mac_lightweight:%s\n"
+			"lightweight:%s\n"
+			"disaggregate:%s\n"
+			"seu:%s\n"
+			"ptp1588:%s\n",
+			check_support(fme->board_info.fvl_bypass),
+			check_support(fme->board_info.mac_lightweight),
+			check_support(fme->board_info.lightweight),
+			check_support(fme->board_info.disaggregate),
+			check_support(fme->board_info.seu),
+			check_support(fme->board_info.ptp));
+
 
 	if (board_type_to_info(fme->board_info.type, &fme->board_info))
 		return -EINVAL;

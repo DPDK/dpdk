@@ -1667,18 +1667,29 @@ struct bts_header {
 	(((bts_hdr)->guid_h == GBS_GUID_H) &&		\
 	((bts_hdr)->guid_l == GBS_GUID_L))
 
+#define check_support(n) (n == 1 ? "support" : "no")
+
 /* bitstream id definition */
 struct fme_bitstream_id {
 	union {
 		u64 id;
 		struct {
-			u64 hash:32;
-			u64 interface:4;
-			u64 reserved:12;
-			u64 debug:4;
-			u64 patch:4;
-			u64 minor:4;
-			u64 major:4;
+			u8 build_patch:8;
+			u8 build_minor:8;
+			u8 build_major:8;
+			u8 fvl_bypass:1;
+			u8 mac_lightweight:1;
+			u8 disagregate:1;
+			u8 lightweiht:1;
+			u8 seu:1;
+			u8 ptp:1;
+			u8 reserve:2;
+			u8 interface:4;
+			u32 afu_revision:12;
+			u8 patch:4;
+			u8 minor:4;
+			u8 major:4;
+			u8 reserved:4;
 		};
 	};
 };
@@ -1691,13 +1702,31 @@ enum board_interface {
 	VC_2_2_25G = 4,
 };
 
-struct ifpga_fme_board_info {
+enum pac_major {
+	VISTA_CREEK = 0,
+	RUSH_CREEK = 1,
+	DARBY_CREEK = 2,
+};
+
+enum pac_minor {
+	DCP_1_0 = 0,
+	DCP_1_1 = 1,
+	DCP_1_2 = 2,
+};
+
+struct opae_board_info {
+	enum pac_major major;
+	enum pac_minor minor;
 	enum board_interface type;
-	u32 build_hash;
-	u32 debug_version;
-	u32 patch_version;
-	u32 minor_version;
-	u32 major_version;
+
+	/* PAC features */
+	u8 fvl_bypass;
+	u8 mac_lightweight;
+	u8 disaggregate;
+	u8 lightweight;
+	u8 seu;
+	u8 ptp;
+
 	u32 max10_version;
 	u32 nios_fw_version;
 	u32 nums_of_retimer;

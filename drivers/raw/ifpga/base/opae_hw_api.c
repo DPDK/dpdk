@@ -690,3 +690,23 @@ opae_mgr_get_sensor_value(struct opae_manager *mgr,
 
 	return -ENOENT;
 }
+
+/**
+ * opae_manager_get_board_info - get board info
+ * sensor value
+ * @info: opae_board_info for the card
+ *
+ * Return: 0 on success, otherwise error code
+ */
+int
+opae_mgr_get_board_info(struct opae_manager *mgr,
+		struct opae_board_info **info)
+{
+	if (!mgr || !info)
+		return -EINVAL;
+
+	if (mgr->ops && mgr->ops->get_board_info)
+		return mgr->ops->get_board_info(mgr, info);
+
+	return -ENOENT;
+}

@@ -88,7 +88,7 @@ struct ifpga_fme_hw {
 	void *eth_dev[MAX_ETH_GROUP_DEVICES];
 	struct opae_reg_region
 		eth_group_region[MAX_ETH_GROUP_DEVICES];
-	struct ifpga_fme_board_info board_info;
+	struct opae_board_info board_info;
 	int nums_eth_dev;
 	unsigned int nums_acc_region;
 };

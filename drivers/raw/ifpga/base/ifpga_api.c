@@ -218,10 +218,21 @@ static int ifpga_mgr_get_sensor_value(struct opae_manager *mgr,
 	return fme_mgr_get_sensor_value(fme, sensor, value);
 }
 
+static int ifpga_mgr_get_board_info(struct opae_manager *mgr,
+		struct opae_board_info **info)
+{
+	struct ifpga_fme_hw *fme = mgr->data;
+
+	*info = &fme->board_info;
+
+	return 0;
+}
+
 struct opae_manager_ops ifpga_mgr_ops = {
 	.flash = ifpga_mgr_flash,
 	.get_eth_group_region_info = ifpga_mgr_get_eth_group_region_info,
 	.get_sensor_value = ifpga_mgr_get_sensor_value,
+	.get_board_info = ifpga_mgr_get_board_info,
 };
 
 static int ifpga_mgr_read_mac_rom(struct opae_manager *mgr, int offset,

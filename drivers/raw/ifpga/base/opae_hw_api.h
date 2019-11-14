@@ -13,6 +13,7 @@
 #include "opae_osdep.h"
 #include "opae_intel_max10.h"
 #include "opae_eth_group.h"
+#include "ifpga_defines.h"
 
 #ifndef PCI_MAX_RESOURCE
 #define PCI_MAX_RESOURCE 6
@@ -51,6 +52,8 @@ struct opae_manager_ops {
 	int (*get_sensor_value)(struct opae_manager *mgr,
 			struct opae_sensor_info *sensor,
 			unsigned int *value);
+	int (*get_board_info)(struct opae_manager *mgr,
+			struct opae_board_info **info);
 };
 
 /* networking management ops in FME */
@@ -319,4 +322,6 @@ int opae_manager_eth_group_write_reg(struct opae_manager *mgr, u8 group_id,
 		u8 type, u8 index, u16 addr, u32 data);
 int opae_manager_eth_group_read_reg(struct opae_manager *mgr, u8 group_id,
 		u8 type, u8 index, u16 addr, u32 *data);
+int opae_mgr_get_board_info(struct opae_manager *mgr,
+		struct opae_board_info **info);
 #endif /* _OPAE_HW_API_H_*/
