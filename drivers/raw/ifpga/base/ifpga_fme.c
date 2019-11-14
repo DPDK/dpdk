@@ -1300,3 +1300,24 @@ int fme_mgr_get_retimer_status(struct ifpga_fme_hw *fme,
 
 	return 0;
 }
+
+int fme_mgr_get_sensor_value(struct ifpga_fme_hw *fme,
+		struct opae_sensor_info *sensor,
+		unsigned int *value)
+{
+	struct intel_max10_device *dev;
+
+	dev = (struct intel_max10_device *)fme->max10_dev;
+	if (!dev)
+		return -ENODEV;
+
+	if (max10_reg_read(sensor->value_reg, value)) {
+		dev_err(dev, "%s: read sensor value register 0x%x fail\n",
+				__func__, sensor->value_reg);
+		return -EINVAL;
+	}
+
+	*value *= sensor->multiplier;
+
+	return 0;
+}

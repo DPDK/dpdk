@@ -218,4 +218,7 @@ int fme_mgr_get_retimer_info(struct ifpga_fme_hw *fme,
 		struct opae_retimer_info *info);
 int fme_mgr_get_retimer_status(struct ifpga_fme_hw *fme,
 		struct opae_retimer_status *status);
+int fme_mgr_get_sensor_value(struct ifpga_fme_hw *fme,
+		struct opae_sensor_info *sensor,
+		unsigned int *value);
 #endif /* _IFPGA_FEATURE_DEV_H_ */

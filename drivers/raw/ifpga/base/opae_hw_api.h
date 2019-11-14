@@ -48,6 +48,9 @@ struct opae_manager_ops {
 		     u32 size, u64 *status);
 	int (*get_eth_group_region_info)(struct opae_manager *mgr,
 			struct opae_eth_group_region_info *info);
+	int (*get_sensor_value)(struct opae_manager *mgr,
+			struct opae_sensor_info *sensor,
+			unsigned int *value);
 };
 
 /* networking management ops in FME */
@@ -69,6 +72,10 @@ struct opae_manager_networking_ops {
 			struct opae_retimer_status *status);
 };
 
+extern struct opae_sensor_list opae_sensor_list;
+#define opae_mgr_for_each_sensor(sensor) \
+	TAILQ_FOREACH(sensor, &opae_sensor_list, node)
+
 /* OPAE Manager APIs */
 struct opae_manager *
 opae_manager_alloc(const char *name, struct opae_manager_ops *ops,
@@ -78,6 +85,15 @@ int opae_manager_flash(struct opae_manager *mgr, int acc_id, const char *buf,
 		       u32 size, u64 *status);
 int opae_manager_get_eth_group_region_info(struct opae_manager *mgr,
 		u8 group_id, struct opae_eth_group_region_info *info);
+struct opae_sensor_info *opae_mgr_get_sensor_by_name(const char *name);
+struct opae_sensor_info *opae_mgr_get_sensor_by_id(unsigned int id);
+int opae_mgr_get_sensor_value_by_name(struct opae_manager *mgr,
+		const char *name, unsigned int *value);
+int opae_mgr_get_sensor_value_by_id(struct opae_manager *mgr,
+		unsigned int id, unsigned int *value);
+int opae_mgr_get_sensor_value(struct opae_manager *mgr,
+		struct opae_sensor_info *sensor,
+		unsigned int *value);
 
 /* OPAE Bridge Data Structure */
 struct opae_bridge_ops;
