@@ -1175,6 +1175,25 @@ static int fme_clear_warning_intr(struct opae_manager *mgr)
 	return 0;
 }
 
+static int fme_clean_fme_error(struct opae_manager *mgr)
+{
+	u64 val;
+
+	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_ERRORS, &val))
+		return -EINVAL;
+
+	IFPGA_RAWDEV_PMD_DEBUG("before clean 0x%" PRIx64 "\n", val);
+
+	ifpga_set_fme_error_prop(mgr, FME_ERR_PROP_CLEAR, val);
+
+	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_ERRORS, &val))
+		return -EINVAL;
+
+	IFPGA_RAWDEV_PMD_DEBUG("after clean 0x%" PRIx64 "\n", val);
+
+	return 0;
+}
+
 static int
 fme_err_handle_error0(struct opae_manager *mgr)
 {
@@ -1182,6 +1201,9 @@ fme_err_handle_error0(struct opae_manager *mgr)
 	u64 val;
 
 	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_ERRORS, &val))
+		return -EINVAL;
+
+	if (fme_clean_fme_error(mgr))
 		return -EINVAL;
 
 	fme_error0.csr = val;

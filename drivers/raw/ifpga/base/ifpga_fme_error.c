@@ -48,34 +48,14 @@ static int fme_err_set_clear(struct ifpga_fme_hw *fme, u64 val)
 	struct feature_fme_err *fme_err
 		= get_fme_feature_ioaddr_by_index(fme,
 						  FME_FEATURE_ID_GLOBAL_ERR);
-	struct feature_fme_error0 fme_error0;
-	struct feature_fme_first_error fme_first_err;
-	struct feature_fme_next_error fme_next_err;
-	int ret = 0;
 
 	spinlock_lock(&fme->lock);
-	writeq(GENMASK_ULL(63, 0), &fme_err->fme_err_mask);
 
-	fme_error0.csr = readq(&fme_err->fme_err);
-	if (val != fme_error0.csr) {
-		ret = -EBUSY;
-		goto exit;
-	}
+	writeq(val, &fme_err->fme_err);
 
-	fme_first_err.csr = readq(&fme_err->fme_first_err);
-	fme_next_err.csr = readq(&fme_err->fme_next_err);
-
-	writeq(fme_error0.csr, &fme_err->fme_err);
-	writeq(fme_first_err.csr & FME_FIRST_ERROR_MASK,
-	       &fme_err->fme_first_err);
-	writeq(fme_next_err.csr & FME_NEXT_ERROR_MASK,
-	       &fme_err->fme_next_err);
-
-exit:
-	writeq(FME_ERROR0_MASK_DEFAULT, &fme_err->fme_err_mask);
 	spinlock_unlock(&fme->lock);
 
-	return ret;
+	return 0;
 }
 
 static int fme_err_get_revision(struct ifpga_fme_hw *fme, u64 *val)
