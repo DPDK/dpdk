@@ -836,6 +836,8 @@ ifpga_rawdev_pr(struct rte_rawdev *dev,
 	rte_rawdev_obj_t pr_conf)
 {
 	struct opae_adapter *adapter;
+	struct opae_manager *mgr;
+	struct opae_board_info *info;
 	struct rte_afu_pr_conf *afu_pr_conf;
 	int ret;
 	struct uuid uuid;
@@ -862,22 +864,40 @@ ifpga_rawdev_pr(struct rte_rawdev *dev,
 		}
 	}
 
-	acc = opae_adapter_get_acc(adapter, afu_pr_conf->afu_id.port);
-	if (!acc)
-		return -ENODEV;
+	mgr = opae_adapter_get_mgr(adapter);
+	if (!mgr) {
+		IFPGA_RAWDEV_PMD_ERR("opae_manager of opae_adapter is NULL");
+		return -1;
+	}
 
-	ret = opae_acc_get_uuid(acc, &uuid);
-	if (ret)
-		return ret;
+	if (ifpga_mgr_ops.get_board_info(mgr, &info)) {
+		IFPGA_RAWDEV_PMD_ERR("ifpga manager get_board_info fail!");
+		return -1;
+	}
 
-	rte_memcpy(&afu_pr_conf->afu_id.uuid.uuid_low, uuid.b, sizeof(u64));
-	rte_memcpy(&afu_pr_conf->afu_id.uuid.uuid_high,
-		uuid.b + 8, sizeof(u64));
+	if (info->lightweight) {
+		/* set uuid to all 0, when fpga is lightweight image */
+		memset(&afu_pr_conf->afu_id.uuid.uuid_low, 0, sizeof(u64));
+		memset(&afu_pr_conf->afu_id.uuid.uuid_high, 0, sizeof(u64));
+	} else {
+		acc = opae_adapter_get_acc(adapter, afu_pr_conf->afu_id.port);
+		if (!acc)
+			return -ENODEV;
 
-	IFPGA_RAWDEV_PMD_INFO("%s: uuid_l=0x%lx, uuid_h=0x%lx\n", __func__,
-		(unsigned long)afu_pr_conf->afu_id.uuid.uuid_low,
-		(unsigned long)afu_pr_conf->afu_id.uuid.uuid_high);
+		ret = opae_acc_get_uuid(acc, &uuid);
+		if (ret)
+			return ret;
 
+		rte_memcpy(&afu_pr_conf->afu_id.uuid.uuid_low, uuid.b,
+			sizeof(u64));
+		rte_memcpy(&afu_pr_conf->afu_id.uuid.uuid_high, uuid.b + 8,
+			sizeof(u64));
+
+		IFPGA_RAWDEV_PMD_INFO("%s: uuid_l=0x%lx, uuid_h=0x%lx\n",
+			__func__,
+			(unsigned long)afu_pr_conf->afu_id.uuid.uuid_low,
+			(unsigned long)afu_pr_conf->afu_id.uuid.uuid_high);
+		}
 	return 0;
 }
 
