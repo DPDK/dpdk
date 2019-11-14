@@ -32,10 +32,12 @@ struct uuid {
 #ifndef BITS_PER_LONG
 #define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
 #endif
+#ifndef BITS_PER_LONG_LONG
+#define BITS_PER_LONG_LONG  (__SIZEOF_LONG_LONG__ * 8)
+#endif
 #ifndef BIT
 #define BIT(a) (1UL << (a))
 #endif /* BIT */
-#define U64_C(x) x ## ULL
 #ifndef BIT_ULL
 #define BIT_ULL(a) (1ULL << (a))
 #endif /* BIT_ULL */
@@ -43,7 +45,8 @@ struct uuid {
 #define GENMASK(h, l)	(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
 #endif /* GENMASK */
 #ifndef GENMASK_ULL
-#define GENMASK_ULL(h, l) (((U64_C(1) << ((h) - (l) + 1)) - 1) << (l))
+#define GENMASK_ULL(h, l) \
+	(((~0ULL) << (l)) & (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
 #endif /* GENMASK_ULL */
 #endif /* LINUX_MACROS */
 

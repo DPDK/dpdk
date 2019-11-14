@@ -54,7 +54,7 @@ static int fme_err_set_clear(struct ifpga_fme_hw *fme, u64 val)
 	int ret = 0;
 
 	spinlock_lock(&fme->lock);
-	writeq(FME_ERROR0_MASK, &fme_err->fme_err_mask);
+	writeq(GENMASK_ULL(63, 0), &fme_err->fme_err_mask);
 
 	fme_error0.csr = readq(&fme_err->fme_err);
 	if (val != fme_error0.csr) {
@@ -65,7 +65,7 @@ static int fme_err_set_clear(struct ifpga_fme_hw *fme, u64 val)
 	fme_first_err.csr = readq(&fme_err->fme_first_err);
 	fme_next_err.csr = readq(&fme_err->fme_next_err);
 
-	writeq(fme_error0.csr & FME_ERROR0_MASK, &fme_err->fme_err);
+	writeq(fme_error0.csr, &fme_err->fme_err);
 	writeq(fme_first_err.csr & FME_FIRST_ERROR_MASK,
 	       &fme_err->fme_first_err);
 	writeq(fme_next_err.csr & FME_NEXT_ERROR_MASK,

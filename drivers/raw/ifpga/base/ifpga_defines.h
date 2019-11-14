@@ -957,25 +957,24 @@ struct feature_fme_dperf {
 };
 
 struct feature_fme_error0 {
-#define FME_ERROR0_MASK        0xFFUL
 #define FME_ERROR0_MASK_DEFAULT 0x40UL  /* pcode workaround */
 	union {
 		u64 csr;
 		struct {
 			u8  fabric_err:1;	/* Fabric error */
 			u8  fabfifo_overflow:1;	/* Fabric fifo overflow */
-			u8  kticdc_parity_err:2;/* KTI CDC Parity Error */
-			u8  iommu_parity_err:1;	/* IOMMU Parity error */
+			u8  reserved2:3;
 			/* AFU PF/VF access mismatch detected */
 			u8  afu_acc_mode_err:1;
-			u8  mbp_err:1;		/* Indicates an MBP event */
+			u8  reserved6:1;
 			/* PCIE0 CDC Parity Error */
 			u8  pcie0cdc_parity_err:5;
 			/* PCIE1 CDC Parity Error */
 			u8  pcie1cdc_parity_err:5;
 			/* CVL CDC Parity Error */
 			u8  cvlcdc_parity_err:3;
-			u64 rsvd:44;		/* Reserved */
+			u8  fpgaseuerr:1;
+			u64 rsvd:43;		/* Reserved */
 		};
 	};
 };
