@@ -27,6 +27,8 @@
 #include <rte_bus_vdev.h>
 
 #include "base/opae_hw_api.h"
+#include "base/opae_ifpga_hw_api.h"
+#include "base/ifpga_api.h"
 #include "rte_rawdev.h"
 #include "rte_rawdev_pmd.h"
 #include "rte_bus_ifpga.h"
@@ -605,6 +607,232 @@ static const struct rte_rawdev_ops ifpga_rawdev_ops = {
 };
 
 static int
+ifpga_get_fme_error_prop(struct opae_manager *mgr,
+		u64 prop_id, u64 *val)
+{
+	struct feature_prop prop;
+
+	prop.feature_id = IFPGA_FME_FEATURE_ID_GLOBAL_ERR;
+	prop.prop_id = prop_id;
+
+	if (opae_manager_ifpga_get_prop(mgr, &prop))
+		return -EINVAL;
+
+	*val = prop.data;
+
+	return 0;
+}
+
+static int
+ifpga_set_fme_error_prop(struct opae_manager *mgr,
+		u64 prop_id, u64 val)
+{
+	struct feature_prop prop;
+
+	prop.feature_id = IFPGA_FME_FEATURE_ID_GLOBAL_ERR;
+	prop.prop_id = prop_id;
+
+	prop.data = val;
+
+	if (opae_manager_ifpga_set_prop(mgr, &prop))
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+fme_err_read_seu_emr(struct opae_manager *mgr)
+{
+	u64 val;
+	int ret;
+
+	ret = ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_SEU_EMR_LOW, &val);
+	if (ret)
+		return -EINVAL;
+
+	IFPGA_RAWDEV_PMD_INFO("seu emr low: 0x%" PRIx64 "\n", val);
+
+	ret = ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_SEU_EMR_HIGH, &val);
+	if (ret)
+		return -EINVAL;
+
+	IFPGA_RAWDEV_PMD_INFO("seu emr high: 0x%" PRIx64 "\n", val);
+
+	return 0;
+}
+
+static int fme_clear_warning_intr(struct opae_manager *mgr)
+{
+	u64 val;
+
+	if (ifpga_set_fme_error_prop(mgr, FME_ERR_PROP_INJECT_ERRORS, 0))
+		return -EINVAL;
+
+	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_NONFATAL_ERRORS, &val))
+		return -EINVAL;
+	if ((val & 0x40) != 0)
+		IFPGA_RAWDEV_PMD_INFO("clean not done\n");
+
+	return 0;
+}
+
+static int
+fme_err_handle_error0(struct opae_manager *mgr)
+{
+	struct feature_fme_error0 fme_error0;
+	u64 val;
+
+	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_ERRORS, &val))
+		return -EINVAL;
+
+	fme_error0.csr = val;
+
+	if (fme_error0.fabric_err)
+		IFPGA_RAWDEV_PMD_ERR("Fabric error\n");
+	else if (fme_error0.fabfifo_overflow)
+		IFPGA_RAWDEV_PMD_ERR("Fabric fifo under/overflow error\n");
+	else if (fme_error0.afu_acc_mode_err)
+		IFPGA_RAWDEV_PMD_ERR("AFU PF/VF access mismatch detected\n");
+	else if (fme_error0.pcie0cdc_parity_err)
+		IFPGA_RAWDEV_PMD_ERR("PCIe0 CDC Parity Error\n");
+	else if (fme_error0.cvlcdc_parity_err)
+		IFPGA_RAWDEV_PMD_ERR("CVL CDC Parity Error\n");
+	else if (fme_error0.fpgaseuerr)
+		fme_err_read_seu_emr(mgr);
+
+	/* clean the errors */
+	if (ifpga_set_fme_error_prop(mgr, FME_ERR_PROP_ERRORS, val))
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+fme_err_handle_catfatal_error(struct opae_manager *mgr)
+{
+	struct feature_fme_ras_catfaterror fme_catfatal;
+	u64 val;
+
+	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_CATFATAL_ERRORS, &val))
+		return -EINVAL;
+
+	fme_catfatal.csr = val;
+
+	if (fme_catfatal.cci_fatal_err)
+		IFPGA_RAWDEV_PMD_ERR("CCI error detected\n");
+	else if (fme_catfatal.fabric_fatal_err)
+		IFPGA_RAWDEV_PMD_ERR("Fabric fatal error detected\n");
+	else if (fme_catfatal.pcie_poison_err)
+		IFPGA_RAWDEV_PMD_ERR("Poison error from PCIe ports\n");
+	else if (fme_catfatal.inject_fata_err)
+		IFPGA_RAWDEV_PMD_ERR("Injected Fatal Error\n");
+	else if (fme_catfatal.crc_catast_err)
+		IFPGA_RAWDEV_PMD_ERR("a catastrophic EDCRC error\n");
+	else if (fme_catfatal.injected_catast_err)
+		IFPGA_RAWDEV_PMD_ERR("Injected Catastrophic Error\n");
+	else if (fme_catfatal.bmc_seu_catast_err)
+		fme_err_read_seu_emr(mgr);
+
+	return 0;
+}
+
+static int
+fme_err_handle_nonfaterror(struct opae_manager *mgr)
+{
+	struct feature_fme_ras_nonfaterror nonfaterr;
+	u64 val;
+
+	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_NONFATAL_ERRORS, &val))
+		return -EINVAL;
+
+	nonfaterr.csr = val;
+
+	if (nonfaterr.temp_thresh_ap1)
+		IFPGA_RAWDEV_PMD_INFO("Temperature threshold triggered AP1\n");
+	else if (nonfaterr.temp_thresh_ap2)
+		IFPGA_RAWDEV_PMD_INFO("Temperature threshold triggered AP2\n");
+	else if (nonfaterr.pcie_error)
+		IFPGA_RAWDEV_PMD_INFO("an error has occurred in pcie\n");
+	else if (nonfaterr.portfatal_error)
+		IFPGA_RAWDEV_PMD_INFO("fatal error occurred in AFU port.\n");
+	else if (nonfaterr.proc_hot)
+		IFPGA_RAWDEV_PMD_INFO("a ProcHot event\n");
+	else if (nonfaterr.afu_acc_mode_err)
+		IFPGA_RAWDEV_PMD_INFO("an AFU PF/VF access mismatch\n");
+	else if (nonfaterr.injected_nonfata_err) {
+		IFPGA_RAWDEV_PMD_INFO("Injected Warning Error\n");
+		fme_clear_warning_intr(mgr);
+	} else if (nonfaterr.temp_thresh_AP6)
+		IFPGA_RAWDEV_PMD_INFO("Temperature threshold triggered AP6\n");
+	else if (nonfaterr.power_thresh_AP1)
+		IFPGA_RAWDEV_PMD_INFO("Power threshold triggered AP1\n");
+	else if (nonfaterr.power_thresh_AP2)
+		IFPGA_RAWDEV_PMD_INFO("Power threshold triggered AP2\n");
+	else if (nonfaterr.mbp_err)
+		IFPGA_RAWDEV_PMD_INFO("an MBP event\n");
+
+	return 0;
+}
+
+static void
+fme_interrupt_handler(void *param)
+{
+	struct opae_manager *mgr = (struct opae_manager *)param;
+
+	IFPGA_RAWDEV_PMD_INFO("%s interrupt occurred\n", __func__);
+
+	fme_err_handle_error0(mgr);
+	fme_err_handle_nonfaterror(mgr);
+	fme_err_handle_catfatal_error(mgr);
+}
+
+static struct rte_intr_handle fme_intr_handle;
+
+static int ifpga_register_fme_interrupt(struct opae_manager *mgr)
+{
+	int ret;
+	struct fpga_fme_err_irq_set err_irq_set;
+
+	fme_intr_handle.type = RTE_INTR_HANDLE_VFIO_MSIX;
+
+	ret = rte_intr_efd_enable(&fme_intr_handle, 1);
+	if (ret)
+		return -EINVAL;
+
+	fme_intr_handle.fd = fme_intr_handle.efds[0];
+
+	IFPGA_RAWDEV_PMD_DEBUG("vfio_dev_fd=%d, efd=%d, fd=%d\n",
+			fme_intr_handle.vfio_dev_fd,
+			fme_intr_handle.efds[0], fme_intr_handle.fd);
+
+	err_irq_set.evtfd = fme_intr_handle.efds[0];
+	ret = opae_manager_ifpga_set_err_irq(mgr, &err_irq_set);
+	if (ret)
+		return -EINVAL;
+
+	/* register FME interrupt using DPDK API */
+	ret = rte_intr_callback_register(&fme_intr_handle,
+			fme_interrupt_handler,
+			(void *)mgr);
+	if (ret)
+		return -EINVAL;
+
+	IFPGA_RAWDEV_PMD_INFO("success register fme interrupt\n");
+
+	return 0;
+}
+
+static int
+ifpga_unregister_fme_interrupt(struct opae_manager *mgr)
+{
+	rte_intr_efd_disable(&fme_intr_handle);
+
+	return rte_intr_callback_unregister(&fme_intr_handle,
+			fme_interrupt_handler,
+			(void *)mgr);
+}
+
+static int
 ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 			int socket_id)
 {
@@ -652,6 +880,7 @@ ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 	}
 	data->device_id = pci_dev->id.device_id;
 	data->vendor_id = pci_dev->id.vendor_id;
+	data->vfio_dev_fd = pci_dev->intr_handle.vfio_dev_fd;
 
 	adapter = rawdev->dev_private;
 	/* create a opae_adapter based on above device data */
@@ -677,6 +906,10 @@ ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 		IFPGA_RAWDEV_PMD_INFO("this is a PF function");
 	}
 
+	ret = ifpga_register_fme_interrupt(mgr);
+	if (ret)
+		goto free_adapter_data;
+
 	return ret;
 
 free_adapter_data:
@@ -696,6 +929,7 @@ ifpga_rawdev_destroy(struct rte_pci_device *pci_dev)
 	struct rte_rawdev *rawdev;
 	char name[RTE_RAWDEV_NAME_MAX_LEN];
 	struct opae_adapter *adapter;
+	struct opae_manager *mgr;
 
 	if (!pci_dev) {
 		IFPGA_RAWDEV_PMD_ERR("Invalid pci_dev of the device!");
@@ -719,6 +953,13 @@ ifpga_rawdev_destroy(struct rte_pci_device *pci_dev)
 	adapter = ifpga_rawdev_get_priv(rawdev);
 	if (!adapter)
 		return -ENODEV;
+
+	mgr = opae_adapter_get_mgr(adapter);
+	if (!mgr)
+		return -ENODEV;
+
+	if (ifpga_unregister_fme_interrupt(mgr))
+		return -EINVAL;
 
 	opae_adapter_data_free(adapter->data);
 	opae_adapter_free(adapter);
