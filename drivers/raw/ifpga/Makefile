@@ -13,6 +13,7 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/bus/ifpga
 CFLAGS += -I$(RTE_SDK)/drivers/raw/ifpga_rawdev
+CFLAGS += -I$(RTE_SDK)/drivers/net/i40e
 CFLAGS += -I$(RTE_SDK)/drivers/net/ipn3ke
 LDLIBS += -lrte_eal
 LDLIBS += -lrte_rawdev
@@ -20,6 +21,10 @@ LDLIBS += -lrte_bus_vdev
 LDLIBS += -lrte_kvargs
 LDLIBS += -lrte_bus_pci
 LDLIBS += -lrte_bus_ifpga
+LDLIBS += -lpthread
+LDLIBS += -lfdt
+LDLIBS += -lrte_pmd_i40e
+LDLIBS += -lrte_pmd_ipn3ke
 
 EXPORT_MAP := rte_rawdev_ifpga_version.map
 

@@ -28,6 +28,7 @@
 #include <rte_common.h>
 #include <rte_bus_vdev.h>
 #include <rte_string_fns.h>
+#include <rte_pmd_i40e.h>
 
 #include "base/opae_hw_api.h"
 #include "base/opae_ifpga_hw_api.h"
@@ -1363,6 +1364,9 @@ ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 		ret = -EINVAL;
 		goto cleanup;
 	}
+
+	ipn3ke_bridge_func.get_ifpga_rawdev = ifpga_rawdev_get;
+	ipn3ke_bridge_func.set_i40e_sw_dev = rte_pmd_i40e_set_switch_dev;
 
 	dev = ifpga_rawdev_allocate(rawdev);
 	if (dev == NULL) {

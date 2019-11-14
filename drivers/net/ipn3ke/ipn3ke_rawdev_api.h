@@ -59,4 +59,16 @@ struct ifpga_rawdevg_link_info {
 	enum ifpga_rawdev_link_speed link_speed;
 };
 
+struct ipn3ke_pub_func {
+	struct ifpga_rawdev *(*get_ifpga_rawdev)(const struct rte_rawdev *rdv);
+	int (*set_i40e_sw_dev)(uint16_t port_id, struct rte_eth_dev *sw_dev);
+};
+
+/**
+ * @internal
+ * The publid functions of bridge PAC N3000 FPGA and I40e.
+ */
+extern struct ipn3ke_pub_func ipn3ke_bridge_func;
+
+
 #endif /* _IFPGA_RAWDEV_H_ */
