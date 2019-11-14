@@ -1149,7 +1149,8 @@ struct feature_fme_error_capability {
 			u8 support_intr:1;
 			/* MSI-X vector table entry number */
 			u16 intr_vector_num:12;
-			u64 rsvd:51;	/* Reserved */
+			u64 rsvd:50;	/* Reserved */
+			u64 seu_support:1;
 		};
 	};
 };
@@ -1171,6 +1172,8 @@ struct feature_fme_err {
 	struct feature_fme_ras_catfaterror ras_catfaterr;
 	struct feature_fme_ras_error_inj ras_error_inj;
 	struct feature_fme_error_capability fme_err_capability;
+	u64 seu_emr_l;
+	u64 seu_emr_h;
 };
 
 /* FME Partial Reconfiguration Control */
