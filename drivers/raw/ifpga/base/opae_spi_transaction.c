@@ -109,6 +109,34 @@ done:
 	return ret;
 }
 
+static void phy_tx_pad(unsigned char *phy_buf, unsigned int phy_buf_len,
+		unsigned int *aligned_len)
+{
+	unsigned char *p = &phy_buf[phy_buf_len - 1], *dst_p;
+
+	*aligned_len = IFPGA_ALIGN(phy_buf_len, 4);
+
+	if (*aligned_len == phy_buf_len)
+		return;
+
+	dst_p = &phy_buf[*aligned_len - 1];
+
+	/* move EOP and bytes after EOP to the end of aligned size */
+	while (p > phy_buf) {
+		*dst_p = *p;
+
+		if (*p == SPI_PACKET_EOP)
+			break;
+
+		p--;
+		dst_p--;
+	}
+
+	/* fill the hole with PHY_IDLE */
+	while (p < dst_p)
+		*p++ = SPI_BYTE_IDLE;
+}
+
 static int byte_to_core_convert(struct spi_transaction_dev *dev,
 		unsigned int send_len, unsigned char *send_data,
 		unsigned int resp_len, unsigned char *resp_data,
@@ -149,15 +177,19 @@ static int byte_to_core_convert(struct spi_transaction_dev *dev,
 		}
 	}
 
-	print_buffer("before spi:", send_packet, p-send_packet);
+	tx_len = p - send_packet;
 
-	reorder_phy_data(32, send_packet, p - send_packet);
+	print_buffer("before spi:", send_packet, tx_len);
 
-	print_buffer("after order to spi:", send_packet, p-send_packet);
+	phy_tx_pad(send_packet, tx_len, &tx_len);
+	print_buffer("after pad:", send_packet, tx_len);
+
+	reorder_phy_data(32, send_packet, tx_len);
+
+	print_buffer("after order to spi:", send_packet, tx_len);
 
 	/* call spi */
 	tx_buffer = send_packet;
-	tx_len = p - send_packet;
 	rx_buffer = resp_packet;
 	rx_len = resp_max_len;
 	spi_flags = SPI_NOT_FOUND;
