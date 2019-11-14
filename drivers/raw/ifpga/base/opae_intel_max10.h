@@ -103,4 +103,60 @@ intel_max10_device_probe(struct altera_spi_device *spi,
 		int chipselect);
 int intel_max10_device_remove(struct intel_max10_device *dev);
 
+/** List of opae sensors */
+TAILQ_HEAD(opae_sensor_list, opae_sensor_info);
+
+#define SENSOR_REG_VALUE 0x0
+#define SENSOR_REG_HIGH_WARN 0x1
+#define SENSOR_REG_HIGH_FATAL 0x2
+#define SENSOR_REG_LOW_WARN 0x3
+#define SENSOR_REG_LOW_FATAL 0x4
+#define SENSOR_REG_HYSTERESIS 0x5
+#define SENSOR_REG_MAX 0x6
+
+static const char * const sensor_reg_name[] = {
+	"value",
+	"high_warn",
+	"high_fatal",
+	"low_warn",
+	"low_fatal",
+	"hysteresis",
+};
+
+struct sensor_reg {
+	unsigned int regoff;
+	size_t size;
+};
+
+struct raw_sensor_info {
+	const char *name;
+	const char *type;
+	unsigned int id;
+	unsigned int multiplier;
+	struct sensor_reg regs[SENSOR_REG_MAX];
+};
+
+#define OPAE_SENSOR_VALID 0x1
+#define OPAE_SENSOR_HIGH_WARN_VALID 0x2
+#define OPAE_SENSOR_HIGH_FATAL_VALID 0x4
+#define OPAE_SENSOR_LOW_WARN_VALID 0x8
+#define OPAE_SENSOR_LOW_FATAL_VALID 0x10
+#define OPAE_SENSOR_HYSTERESIS_VALID 0x20
+
+struct opae_sensor_info {
+	TAILQ_ENTRY(opae_sensor_info) node;
+	const char *name;
+	const char *type;
+	unsigned int id;
+	unsigned int high_fatal;
+	unsigned int high_warn;
+	unsigned int low_fatal;
+	unsigned int low_warn;
+	unsigned int hysteresis;
+	unsigned int multiplier;
+	unsigned int flags;
+	unsigned int value;
+	unsigned int value_reg;
+};
+
 #endif

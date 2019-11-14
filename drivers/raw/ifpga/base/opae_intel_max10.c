@@ -7,6 +7,9 @@
 
 static struct intel_max10_device *g_max10;
 
+struct opae_sensor_list opae_sensor_list =
+	TAILQ_HEAD_INITIALIZER(opae_sensor_list);
+
 int max10_reg_read(unsigned int reg, unsigned int *val)
 {
 	if (!g_max10)
@@ -195,6 +198,277 @@ done:
 	return ret;
 }
 
+static u64 fdt_get_number(const fdt32_t *cell, int size)
+{
+	u64 r = 0;
+
+	while (size--)
+		r = (r << 32) | fdt32_to_cpu(*cell++);
+
+	return r;
+}
+
+static int fdt_get_reg(const void *fdt, int node, unsigned int idx,
+		u64 *start, u64 *size)
+{
+	const fdt32_t *prop, *end;
+	int na = 0, ns = 0, len = 0, parent;
+
+	parent = fdt_parent_offset(fdt, node);
+	if (parent < 0)
+		return parent;
+
+	prop = fdt_getprop(fdt, parent, "#address-cells", NULL);
+	na = prop ? fdt32_to_cpu(*prop) : 2;
+
+	prop = fdt_getprop(fdt, parent, "#size-cells", NULL);
+	ns = prop ? fdt32_to_cpu(*prop) : 2;
+
+	prop = fdt_getprop(fdt, node, "reg", &len);
+	if (!prop)
+		return -FDT_ERR_NOTFOUND;
+
+	end = prop + len/sizeof(*prop);
+	prop = prop + (na + ns) * idx;
+
+	if (prop + na + ns > end)
+		return -FDT_ERR_NOTFOUND;
+
+	*start = fdt_get_number(prop, na);
+	*size = fdt_get_number(prop + na, ns);
+
+	return 0;
+}
+
+static int __fdt_stringlist_search(const void *fdt, int offset,
+		const char *prop, const char *string)
+{
+	int length, len, index = 0;
+	const char *list, *end;
+
+	list = fdt_getprop(fdt, offset, prop, &length);
+	if (!list)
+		return length;
+
+	len = strlen(string) + 1;
+	end = list + length;
+
+	while (list < end) {
+		length = strnlen(list, end - list) + 1;
+
+		if (list + length > end)
+			return -FDT_ERR_BADVALUE;
+
+		if (length == len && memcmp(list, string, length) == 0)
+			return index;
+
+		list += length;
+		index++;
+	}
+
+	return -FDT_ERR_NOTFOUND;
+}
+
+static int fdt_get_named_reg(const void *fdt, int node, const char *name,
+		u64 *start, u64 *size)
+{
+	int idx;
+
+	idx = __fdt_stringlist_search(fdt, node, "reg-names", name);
+	if (idx < 0)
+		return idx;
+
+	return fdt_get_reg(fdt, node, idx, start, size);
+}
+
+static void max10_sensor_uinit(void)
+{
+	struct opae_sensor_info *info;
+
+	TAILQ_FOREACH(info, &opae_sensor_list, node) {
+		TAILQ_REMOVE(&opae_sensor_list, info, node);
+		opae_free(info);
+	}
+}
+
+static bool sensor_reg_valid(struct sensor_reg *reg)
+{
+	return !!reg->size;
+}
+
+static int max10_add_sensor(struct raw_sensor_info *info,
+		struct opae_sensor_info *sensor)
+{
+	int i;
+	int ret = 0;
+	unsigned int val;
+
+	if (!info || !sensor)
+		return -ENODEV;
+
+	sensor->id = info->id;
+	sensor->name = info->name;
+	sensor->type = info->type;
+	sensor->multiplier = info->multiplier;
+
+	for (i = SENSOR_REG_VALUE; i < SENSOR_REG_MAX; i++) {
+		if (!sensor_reg_valid(&info->regs[i]))
+			continue;
+
+		ret = max10_reg_read(info->regs[i].regoff, &val);
+		if (ret)
+			break;
+
+		if (val == 0xdeadbeef)
+			continue;
+
+		val *= info->multiplier;
+
+		switch (i) {
+		case SENSOR_REG_VALUE:
+			sensor->value_reg = info->regs[i].regoff;
+			sensor->flags |= OPAE_SENSOR_VALID;
+			break;
+		case SENSOR_REG_HIGH_WARN:
+			sensor->high_warn = val;
+			sensor->flags |= OPAE_SENSOR_HIGH_WARN_VALID;
+			break;
+		case SENSOR_REG_HIGH_FATAL:
+			sensor->high_fatal = val;
+			sensor->flags |= OPAE_SENSOR_HIGH_FATAL_VALID;
+			break;
+		case SENSOR_REG_LOW_WARN:
+			sensor->low_warn = val;
+			sensor->flags |= OPAE_SENSOR_LOW_WARN_VALID;
+			break;
+		case SENSOR_REG_LOW_FATAL:
+			sensor->low_fatal = val;
+			sensor->flags |= OPAE_SENSOR_LOW_FATAL_VALID;
+			break;
+		case SENSOR_REG_HYSTERESIS:
+			sensor->hysteresis = val;
+			sensor->flags |= OPAE_SENSOR_HYSTERESIS_VALID;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static int max10_sensor_init(struct intel_max10_device *dev)
+{
+	int i, ret = 0, offset = 0;
+	const fdt32_t *num;
+	const char *ptr;
+	u64 start, size;
+	struct raw_sensor_info *raw;
+	struct opae_sensor_info *sensor;
+	char *fdt_root = dev->fdt_root;
+
+	if (!fdt_root) {
+		dev_debug(dev, "skip sensor init as not find Device Tree\n");
+		return 0;
+	}
+
+	fdt_for_each_subnode(offset, fdt_root, 0) {
+		ptr = fdt_get_name(fdt_root, offset, NULL);
+		if (!ptr) {
+			dev_err(dev, "failed to fdt get name\n");
+			continue;
+		}
+
+		if (!strstr(ptr, "sensor")) {
+			dev_debug(dev, "%s is not a sensor node\n", ptr);
+			continue;
+		}
+
+		dev_debug(dev, "found sensor node %s\n", ptr);
+
+		raw = (struct raw_sensor_info *)opae_zmalloc(sizeof(*raw));
+		if (!raw) {
+			ret = -ENOMEM;
+			goto free_sensor;
+		}
+
+		raw->name = fdt_getprop(fdt_root, offset, "sensor_name", NULL);
+		if (!raw->name) {
+			ret = -EINVAL;
+			goto free_sensor;
+		}
+
+		raw->type = fdt_getprop(fdt_root, offset, "type", NULL);
+		if (!raw->type) {
+			ret = -EINVAL;
+			goto free_sensor;
+		}
+
+		for (i = SENSOR_REG_VALUE; i < SENSOR_REG_MAX; i++) {
+			ret = fdt_get_named_reg(fdt_root, offset,
+					sensor_reg_name[i], &start,
+					&size);
+			if (ret) {
+				dev_debug(dev, "no found %d: sensor node %s, %s\n",
+						ret, ptr, sensor_reg_name[i]);
+				if (i == SENSOR_REG_VALUE) {
+					ret = -EINVAL;
+					goto free_sensor;
+				}
+
+				continue;
+			}
+
+			raw->regs[i].regoff = start;
+			raw->regs[i].size = size;
+		}
+
+		num = fdt_getprop(fdt_root, offset, "id", NULL);
+		if (!num) {
+			ret = -EINVAL;
+			goto free_sensor;
+		}
+
+		raw->id = fdt32_to_cpu(*num);
+		num = fdt_getprop(fdt_root, offset, "multiplier", NULL);
+		raw->multiplier = num ? fdt32_to_cpu(*num) : 1;
+
+		dev_info(dev, "found sensor from DTB: %s: %s: %u: %u\n",
+				raw->name, raw->type,
+				raw->id, raw->multiplier);
+
+		for (i = SENSOR_REG_VALUE; i < SENSOR_REG_MAX; i++)
+			dev_debug(dev, "sensor reg[%d]: %x: %zu\n",
+					i, raw->regs[i].regoff,
+					raw->regs[i].size);
+
+		sensor = opae_zmalloc(sizeof(*sensor));
+		if (!sensor) {
+			ret = -EINVAL;
+			goto free_sensor;
+		}
+
+		if (max10_add_sensor(raw, sensor)) {
+			ret = -EINVAL;
+			opae_free(sensor);
+			goto free_sensor;
+		}
+
+		if (sensor->flags & OPAE_SENSOR_VALID)
+			TAILQ_INSERT_TAIL(&opae_sensor_list, sensor, node);
+		else
+			opae_free(sensor);
+
+		opae_free(raw);
+	}
+
+	return 0;
+
+free_sensor:
+	if (raw)
+		opae_free(raw);
+	max10_sensor_uinit();
+	return ret;
+}
+
 struct intel_max10_device *
 intel_max10_device_probe(struct altera_spi_device *spi,
 		int chipselect)
@@ -235,6 +509,9 @@ intel_max10_device_probe(struct altera_spi_device *spi,
 	}
 	dev_info(dev, "FPGA loaded from %s Image\n", val ? "User" : "Factory");
 
+
+	max10_sensor_init(dev);
+
 	return dev;
 
 spi_tran_fail:
@@ -252,6 +529,8 @@ int intel_max10_device_remove(struct intel_max10_device *dev)
 {
 	if (!dev)
 		return 0;
+
+	max10_sensor_uinit();
 
 	if (dev->spi_tran_dev)
 		spi_transaction_remove(dev->spi_tran_dev);
