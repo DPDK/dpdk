@@ -110,6 +110,11 @@ phys_addr_t rte_mem_virt2phy(const void *virt);
 /**
  * Get IO virtual address of any mapped virtual address in the current process.
  *
+ * @note This function will not check internal page table. Instead, in IOVA as
+ *       PA mode, it will fall back to getting real physical address (which may
+ *       not match the expected IOVA, such as what was specified for external
+ *       memory).
+ *
  * @param virt
  *   The virtual address.
  * @return
