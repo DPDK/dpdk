@@ -532,7 +532,8 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dev_conf->rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev_conf->rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	unsupported = txmode->offloads & ~HN_TX_OFFLOAD_CAPS;
 	if (unsupported) {

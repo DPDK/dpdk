@@ -248,7 +248,8 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 	struct rte_flow_error error;
 	int ret;
 
-	dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	/* Prepare internal flow rules. */
 	ret = mlx4_flow_sync(priv, &error);

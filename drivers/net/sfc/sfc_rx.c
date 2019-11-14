@@ -1558,7 +1558,7 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 	}
 
 	if ((offloads_supported & DEV_RX_OFFLOAD_RSS_HASH) &&
-	    (~rxmode->offloads & DEV_RX_OFFLOAD_RSS_HASH))
+	    (rxmode->mq_mode & ETH_MQ_RX_RSS_FLAG))
 		rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	return rc;

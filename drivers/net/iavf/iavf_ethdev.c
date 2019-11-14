@@ -147,7 +147,8 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_vec_allowed = true;
 	ad->tx_vec_allowed = true;
 
-	dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	/* Vlan stripping setting */
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN) {

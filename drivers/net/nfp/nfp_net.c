@@ -407,7 +407,8 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	rxmode = &dev_conf->rxmode;
 	txmode = &dev_conf->txmode;
 
-	rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (rxmode->mq_mode & ETH_MQ_RX_RSS_FLAG)
+		rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	/* Checking TX mode */
 	if (txmode->mq_mode) {

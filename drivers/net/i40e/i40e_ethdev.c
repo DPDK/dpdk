@@ -1816,7 +1816,8 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 	ad->tx_simple_allowed = true;
 	ad->tx_vec_allowed = true;
 
-	dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	/* Only legacy filter API needs the following fdir config. So when the
 	 * legacy filter API is deprecated, the following codes should also be

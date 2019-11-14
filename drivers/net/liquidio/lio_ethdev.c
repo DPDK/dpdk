@@ -1736,7 +1736,9 @@ lio_dev_configure(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	eth_dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_RSS_HASH;
 
 	/* Inform firmware about change in number of queues to use.
 	 * Disable IO queues and reset registers for re-configuration.

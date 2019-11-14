@@ -426,7 +426,9 @@ int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 
 	CXGBE_FUNC_TRACE();
 
-	eth_dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_RSS_HASH;
 
 	if (!(adapter->flags & FW_QUEUE_BOUND)) {
 		err = cxgbe_setup_sge_fwevtq(adapter);

@@ -405,7 +405,9 @@ static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
-	eth_dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_RSS_HASH;
 
 	enic->mc_count = 0;
 	enic->hw_ip_checksum = !!(eth_dev->data->dev_conf.rxmode.offloads &

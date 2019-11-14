@@ -1186,7 +1186,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE(edev);
 
-	rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (rxmode->mq_mode & ETH_MQ_RX_RSS_FLAG)
+		rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
 	/* We need to have min 1 RX queue.There is no min check in
 	 * rte_eth_dev_configure(), so we are checking it here.

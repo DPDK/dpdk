@@ -674,7 +674,8 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
 	bp->tx_cp_nr_rings = bp->tx_nr_rings;
 
-	rx_offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		rx_offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 	eth_dev->data->dev_conf.rxmode.offloads = rx_offloads;
 
 	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
