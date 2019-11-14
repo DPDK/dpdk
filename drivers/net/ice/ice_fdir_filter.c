@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2019 Intel Corporation
+ */
+
 #include <stdio.h>
 #include <rte_flow.h>
 #include <rte_hash.h>
