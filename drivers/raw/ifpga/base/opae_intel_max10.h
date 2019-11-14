@@ -23,6 +23,8 @@ struct max10_compatible_id {
 #define MAX10_FLAGS_SPI                 BIT(3)
 #define MAX10_FLGAS_NIOS_SPI            BIT(4)
 #define MAX10_FLAGS_PKVL                BIT(5)
+#define MAX10_FLAGS_SECURE		BIT(6)
+#define MAX10_FLAGS_MAC_CACHE		BIT(7)
 
 struct intel_max10_device {
 	unsigned int flags; /*max10 hardware capability*/
@@ -30,6 +32,7 @@ struct intel_max10_device {
 	struct spi_transaction_dev *spi_tran_dev;
 	struct max10_compatible_id *id; /*max10 compatible*/
 	char *fdt_root;
+	unsigned int base; /* max10 base address */
 };
 
 /* retimer speed */
@@ -74,30 +77,69 @@ struct opae_retimer_status {
 #define FLASH_BASE 0x10000000
 #define FLASH_OPTION_BITS 0x10000
 
-#define NIOS2_FW_VERSION_OFF   0x300400
-#define RSU_REG_OFF            0x30042c
-#define FPGA_RP_LOAD		BIT(3)
-#define NIOS2_PRERESET		BIT(4)
-#define NIOS2_HANG		BIT(5)
-#define RSU_ENABLE		BIT(6)
-#define NIOS2_RESET		BIT(7)
-#define NIOS2_I2C2_POLL_STOP	BIT(13)
-#define FPGA_RECONF_REG_OFF	0x300430
-#define COUNTDOWN_START		BIT(18)
-#define MAX10_BUILD_VER_OFF	0x300468
-#define PCB_INFO		GENMASK(31, 24)
-#define MAX10_BUILD_VERION	GENMASK(23, 0)
-#define FPGA_PAGE_INFO_OFF	0x30046c
-#define DT_AVAIL_REG_OFF	0x300490
-#define DT_AVAIL		BIT(0)
-#define DT_BASE_ADDR_REG_OFF	0x300494
-#define PKVL_POLLING_CTRL       0x300480
-#define PKVL_LINK_STATUS        0x300564
+/* System Registers */
+#define MAX10_BASE_ADDR		0x300400
+#define MAX10_SEC_BASE_ADDR	0x300800
+/* Register offset of system registers */
+#define NIOS2_FW_VERSION	0x0
+#define MAX10_MACADDR1		0x10
+#define   MAX10_MAC_BYTE4	GENMASK(7, 0)
+#define   MAX10_MAC_BYTE3	GENMASK(15, 8)
+#define   MAX10_MAC_BYTE2	GENMASK(23, 16)
+#define   MAX10_MAC_BYTE1	GENMASK(31, 24)
+#define MAX10_MACADDR2		0x14
+#define   MAX10_MAC_BYTE6	GENMASK(7, 0)
+#define   MAX10_MAC_BYTE5	GENMASK(15, 8)
+#define   MAX10_MAC_COUNT	GENMASK(23, 16)
+#define RSU_REG			0x2c
+#define   FPGA_RECONF_PAGE	GENMASK(2, 0)
+#define   FPGA_RP_LOAD		BIT(3)
+#define   NIOS2_PRERESET	BIT(4)
+#define   NIOS2_HANG		BIT(5)
+#define   RSU_ENABLE		BIT(6)
+#define   NIOS2_RESET		BIT(7)
+#define   NIOS2_I2C2_POLL_STOP	BIT(13)
+#define   PKVL_EEPROM_LOAD	BIT(31)
+#define FPGA_RECONF_REG		0x30
+#define MAX10_TEST_REG		0x3c
+#define   COUNTDOWN_START	BIT(18)
+#define MAX10_BUILD_VER		0x68
+#define   MAX10_VERSION_MAJOR	GENMASK(23, 16)
+#define   PCB_INFO		GENMASK(31, 24)
+#define FPGA_PAGE_INFO		0x6c
+#define DT_AVAIL_REG		0x90
+#define   DT_AVAIL		BIT(0)
+#define DT_BASE_ADDR_REG	0x94
+#define MAX10_DOORBELL		0x400
+#define   RSU_REQUEST		BIT(0)
+#define   SEC_PROGRESS		GENMASK(7, 4)
+#define   HOST_STATUS		GENMASK(11, 8)
+#define   SEC_STATUS		GENMASK(23, 16)
+
+/* PKVL related registers, in system register region */
+#define PKVL_POLLING_CTRL		0x80
+#define   POLLING_MODE			GENMASK(15, 0)
+#define   PKVL_A_PRELOAD		BIT(16)
+#define   PKVL_A_PRELOAD_TIMEOUT	BIT(17)
+#define   PKVL_A_DATA_TOO_BIG		BIT(18)
+#define   PKVL_A_HDR_CHECKSUM		BIT(20)
+#define   PKVL_B_PRELOAD		BIT(24)
+#define   PKVL_B_PRELOAD_TIMEOUT	BIT(25)
+#define   PKVL_B_DATA_TOO_BIG		BIT(26)
+#define   PKVL_B_HDR_CHECKSUM		BIT(28)
+#define   PKVL_EEPROM_UPG_STATUS	GENMASK(31, 16)
+#define PKVL_LINK_STATUS		0x164
+#define PKVL_A_VERSION			0x254
+#define PKVL_B_VERSION			0x258
+#define   SERDES_VERSION		GENMASK(15, 0)
+#define   SBUS_VERSION			GENMASK(31, 16)
 
 #define DFT_MAX_SIZE		0x7e0000
 
 int max10_reg_read(unsigned int reg, unsigned int *val);
 int max10_reg_write(unsigned int reg, unsigned int val);
+int max10_sys_read(unsigned int offset, unsigned int *val);
+int max10_sys_write(unsigned int offset, unsigned int val);
 struct intel_max10_device *
 intel_max10_device_probe(struct altera_spi_device *spi,
 		int chipselect);

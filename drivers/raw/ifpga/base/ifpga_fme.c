@@ -825,6 +825,7 @@ static int board_type_to_info(u32 type,
 static int fme_get_board_interface(struct ifpga_fme_hw *fme)
 {
 	struct fme_bitstream_id id;
+	u32 val;
 
 	if (fme_hdr_get_bitstream_id(fme, &id.id))
 		return -EINVAL;
@@ -850,6 +851,18 @@ static int fme_get_board_interface(struct ifpga_fme_hw *fme)
 			fme->board_info.nums_of_fvl,
 			fme->board_info.ports_per_fvl);
 
+	if (max10_sys_read(MAX10_BUILD_VER, &val))
+		return -EINVAL;
+	fme->board_info.max10_version = val & 0xffffff;
+
+	if (max10_sys_read(NIOS2_FW_VERSION, &val))
+		return -EINVAL;
+	fme->board_info.nios_fw_version = val & 0xffffff;
+
+	dev_info(fme, "max10 version 0x%x, nios fw version 0x%x\n",
+		fme->board_info.max10_version,
+		fme->board_info.nios_fw_version);
+
 	return 0;
 }
 
@@ -858,16 +871,11 @@ static int spi_self_checking(void)
 	u32 val;
 	int ret;
 
-	ret = max10_reg_read(0x30043c, &val);
+	ret = max10_sys_read(MAX10_TEST_REG, &val);
 	if (ret)
 		return -EIO;
 
-	if (val != 0x87654321) {
-		dev_err(NULL, "Read MAX10 test register fail: 0x%x\n", val);
-		return -EIO;
-	}
-
-	dev_info(NULL, "Read MAX10 test register success, SPI self-test done\n");
+	dev_info(NULL, "Read MAX10 test register 0x%x\n", val);
 
 	return 0;
 }
@@ -1283,7 +1291,7 @@ int fme_mgr_get_retimer_status(struct ifpga_fme_hw *fme,
 	if (!dev)
 		return -ENODEV;
 
-	if (max10_reg_read(PKVL_LINK_STATUS, &val)) {
+	if (max10_sys_read(PKVL_LINK_STATUS, &val)) {
 		dev_err(dev, "%s: read pkvl status fail\n", __func__);
 		return -EINVAL;
 	}
@@ -1311,7 +1319,7 @@ int fme_mgr_get_sensor_value(struct ifpga_fme_hw *fme,
 	if (!dev)
 		return -ENODEV;
 
-	if (max10_reg_read(sensor->value_reg, value)) {
+	if (max10_sys_read(sensor->value_reg, value)) {
 		dev_err(dev, "%s: read sensor value register 0x%x fail\n",
 				__func__, sensor->value_reg);
 		return -EINVAL;

@@ -30,6 +30,22 @@ int max10_reg_write(unsigned int reg, unsigned int val)
 			reg, 4, (unsigned char *)&tmp);
 }
 
+int max10_sys_read(unsigned int offset, unsigned int *val)
+{
+	if (!g_max10)
+		return -ENODEV;
+
+	return max10_reg_read(g_max10->base + offset, val);
+}
+
+int max10_sys_write(unsigned int offset, unsigned int val)
+{
+	if (!g_max10)
+		return -ENODEV;
+
+	return max10_reg_write(g_max10->base + offset, val);
+}
+
 static struct max10_compatible_id max10_id_table[] = {
 	{.compatible = MAX10_PAC,},
 	{.compatible = MAX10_PAC_N3000,},
@@ -66,7 +82,8 @@ static void max10_check_capability(struct intel_max10_device *max10)
 		max10->flags |= MAX10_FLAGS_NO_I2C2 |
 				MAX10_FLAGS_NO_BMCIMG_FLASH;
 		dev_info(max10, "found %s card\n", max10->id->compatible);
-	}
+	} else
+		max10->flags |= MAX10_FLAGS_MAC_CACHE;
 }
 
 static int altera_nor_flash_read(u32 offset,
@@ -100,7 +117,7 @@ static int enable_nor_flash(bool on)
 	unsigned int val = 0;
 	int ret;
 
-	ret = max10_reg_read(RSU_REG_OFF, &val);
+	ret = max10_sys_read(RSU_REG, &val);
 	if (ret) {
 		dev_err(NULL "enabling flash error\n");
 		return ret;
@@ -111,7 +128,7 @@ static int enable_nor_flash(bool on)
 	else
 		val &= ~RSU_ENABLE;
 
-	return max10_reg_write(RSU_REG_OFF, val);
+	return max10_sys_write(RSU_REG, val);
 }
 
 static int init_max10_device_table(struct intel_max10_device *max10)
@@ -123,7 +140,7 @@ static int init_max10_device_table(struct intel_max10_device *max10)
 	u32 dt_size, dt_addr, val;
 	int ret;
 
-	ret = max10_reg_read(DT_AVAIL_REG_OFF, &val);
+	ret = max10_sys_read(DT_AVAIL_REG, &val);
 	if (ret) {
 		dev_err(max10 "cannot read DT_AVAIL_REG\n");
 		return ret;
@@ -134,7 +151,7 @@ static int init_max10_device_table(struct intel_max10_device *max10)
 		return -EINVAL;
 	}
 
-	ret = max10_reg_read(DT_BASE_ADDR_REG_OFF, &dt_addr);
+	ret = max10_sys_read(DT_BASE_ADDR_REG, &dt_addr);
 	if (ret) {
 		dev_info(max10 "cannot get base addr of device table\n");
 		return ret;
@@ -315,7 +332,7 @@ static int max10_add_sensor(struct raw_sensor_info *info,
 		if (!sensor_reg_valid(&info->regs[i]))
 			continue;
 
-		ret = max10_reg_read(info->regs[i].regoff, &val);
+		ret = max10_sys_read(info->regs[i].regoff, &val);
 		if (ret)
 			break;
 
@@ -355,7 +372,8 @@ static int max10_add_sensor(struct raw_sensor_info *info,
 	return ret;
 }
 
-static int max10_sensor_init(struct intel_max10_device *dev)
+static int
+max10_sensor_init(struct intel_max10_device *dev, int parent)
 {
 	int i, ret = 0, offset = 0;
 	const fdt32_t *num;
@@ -370,7 +388,7 @@ static int max10_sensor_init(struct intel_max10_device *dev)
 		return 0;
 	}
 
-	fdt_for_each_subnode(offset, fdt_root, 0) {
+	fdt_for_each_subnode(offset, fdt_root, parent) {
 		ptr = fdt_get_name(fdt_root, offset, NULL);
 		if (!ptr) {
 			dev_err(dev, "failed to fdt get name\n");
@@ -417,7 +435,16 @@ static int max10_sensor_init(struct intel_max10_device *dev)
 				continue;
 			}
 
-			raw->regs[i].regoff = start;
+			/* This is a hack to compatible with non-secure
+			 * solution. If sensors are included in root node,
+			 * then it's non-secure dtb, which use absolute addr
+			 * of non-secure solution.
+			 */
+			if (parent)
+				raw->regs[i].regoff = start;
+			else
+				raw->regs[i].regoff = start -
+					MAX10_BASE_ADDR;
 			raw->regs[i].size = size;
 		}
 
@@ -469,6 +496,63 @@ free_sensor:
 	return ret;
 }
 
+static int check_max10_version(struct intel_max10_device *dev)
+{
+	unsigned int v;
+
+	if (!max10_reg_read(MAX10_SEC_BASE_ADDR + MAX10_BUILD_VER,
+				&v)) {
+		if (v != 0xffffffff) {
+			dev_info(dev, "secure MAX10 detected\n");
+			dev->base = MAX10_SEC_BASE_ADDR;
+			dev->flags |= MAX10_FLAGS_SECURE;
+		} else {
+			dev_info(dev, "non-secure MAX10 detected\n");
+			dev->base = MAX10_BASE_ADDR;
+		}
+		return 0;
+	}
+
+	return -ENODEV;
+}
+
+static int
+max10_secure_hw_init(struct intel_max10_device *dev)
+{
+	int offset, sysmgr_offset = 0;
+	char *fdt_root;
+
+	fdt_root = dev->fdt_root;
+	if (!fdt_root) {
+		dev_debug(dev, "skip init as not find Device Tree\n");
+		return 0;
+	}
+
+	fdt_for_each_subnode(offset, fdt_root, 0) {
+		if (!fdt_node_check_compatible(fdt_root, offset,
+					"intel-max10,system-manager")) {
+			sysmgr_offset = offset;
+			break;
+		}
+	}
+
+	max10_check_capability(dev);
+
+	max10_sensor_init(dev, sysmgr_offset);
+
+	return 0;
+}
+
+static int
+max10_non_secure_hw_init(struct intel_max10_device *dev)
+{
+	max10_check_capability(dev);
+
+	max10_sensor_init(dev, 0);
+
+	return 0;
+}
+
 struct intel_max10_device *
 intel_max10_device_probe(struct altera_spi_device *spi,
 		int chipselect)
@@ -492,32 +576,47 @@ intel_max10_device_probe(struct altera_spi_device *spi,
 	/* set the max10 device firstly */
 	g_max10 = dev;
 
-	/* init the MAX10 device table */
-	ret = init_max10_device_table(dev);
+	/* check the max10 version */
+	ret = check_max10_version(dev);
 	if (ret) {
-		dev_err(dev, "init max10 device table fail\n");
+		dev_err(dev, "Failed to find max10 hardware!\n");
 		goto free_dev;
 	}
 
-	max10_check_capability(dev);
+	/* load the MAX10 device table */
+	ret = init_max10_device_table(dev);
+	if (ret) {
+		dev_err(dev, "Init max10 device table fail\n");
+		goto free_dev;
+	}
+
+	/* init max10 devices, like sensor*/
+	if (dev->flags & MAX10_FLAGS_SECURE)
+		ret = max10_secure_hw_init(dev);
+	else
+		ret = max10_non_secure_hw_init(dev);
+	if (ret) {
+		dev_err(dev, "Failed to init max10 hardware!\n");
+		goto free_dtb;
+	}
 
 	/* read FPGA loading information */
-	ret = max10_reg_read(FPGA_PAGE_INFO_OFF, &val);
+	ret = max10_sys_read(FPGA_PAGE_INFO, &val);
 	if (ret) {
 		dev_err(dev, "fail to get FPGA loading info\n");
-		goto spi_tran_fail;
+		goto release_max10_hw;
 	}
 	dev_info(dev, "FPGA loaded from %s Image\n", val ? "User" : "Factory");
 
-
-	max10_sensor_init(dev);
-
 	return dev;
 
-spi_tran_fail:
+release_max10_hw:
+	max10_sensor_uinit();
+free_dtb:
 	if (dev->fdt_root)
 		opae_free(dev->fdt_root);
-	spi_transaction_remove(dev->spi_tran_dev);
+	if (dev->spi_tran_dev)
+		spi_transaction_remove(dev->spi_tran_dev);
 free_dev:
 	g_max10 = NULL;
 	opae_free(dev);

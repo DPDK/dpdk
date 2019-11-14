@@ -1698,6 +1698,8 @@ struct ifpga_fme_board_info {
 	u32 patch_version;
 	u32 minor_version;
 	u32 major_version;
+	u32 max10_version;
+	u32 nios_fw_version;
 	u32 nums_of_retimer;
 	u32 ports_per_retimer;
 	u32 nums_of_fvl;
