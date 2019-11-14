@@ -223,6 +223,15 @@ New Features
   Support is added for all sequence number sizes for control and user plane.
   Test application is updated for unit testing.
 
+* **Updated the AESNI-MB PMD.**
+
+  * Added support for intel-ipsec-mb version 0.53.
+
+* **Updated the AESNI-GCM PMD.**
+
+  * Added support for intel-ipsec-mb version 0.53.
+  * Supported in-place chained mbufs on AES-GCM algorithm.
+
 * **Enabled Single Pass GCM acceleration on QAT GEN3.**
 
   Added support for Single Pass GCM, available on QAT GEN3 only (Intel
