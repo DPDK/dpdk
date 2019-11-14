@@ -390,11 +390,6 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 
 		iova = get_iova(addr + off);
 
-		if (iova == RTE_BAD_IOVA && rte_eal_has_hugepages()) {
-			ret = -EINVAL;
-			goto fail;
-		}
-
 		/* populate with the largest group of contiguous pages */
 		for (phys_len = RTE_MIN(
 			(size_t)(RTE_PTR_ALIGN_CEIL(addr + off + 1, pg_sz) -
