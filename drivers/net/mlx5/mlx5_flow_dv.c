@@ -6532,7 +6532,8 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 					  NULL,
 					  "No eswitch info was found for port");
 	if (priv->vport_meta_mask)
-		*dst_port_id = priv->vport_meta_tag;
+		*dst_port_id = priv->vport_meta_tag >>
+			rte_bsf32(priv->vport_meta_mask);
 	else
 		*dst_port_id = priv->vport_id;
 	return 0;
