@@ -65,3 +65,9 @@ DPDK_18.02 {
 	rte_pmd_i40e_inset_get;
 	rte_pmd_i40e_inset_set;
 } DPDK_17.11;
+
+EXPERIMENTAL {
+	global:
+
+	rte_pmd_i40e_set_switch_dev;
+};

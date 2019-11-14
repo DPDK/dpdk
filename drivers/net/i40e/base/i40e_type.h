@@ -660,6 +660,9 @@ struct i40e_hw {
 	struct i40e_nvm_info nvm;
 	struct i40e_fc_info fc;
 
+	/* switch device is used to get link status when i40e is in ipn3ke */
+	struct rte_eth_dev *switch_dev;
+
 	/* pci info */
 	u16 device_id;
 	u16 vendor_id;

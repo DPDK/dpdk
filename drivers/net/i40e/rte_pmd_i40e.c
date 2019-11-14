@@ -3207,3 +3207,24 @@ rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
 	I40E_WRITE_FLUSH(hw);
 	return 0;
 }
+
+int
+rte_pmd_i40e_set_switch_dev(uint16_t port_id, struct rte_eth_dev *switch_dev)
+{
+	struct rte_eth_dev *i40e_dev;
+	struct i40e_hw *hw;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	i40e_dev = &rte_eth_devices[port_id];
+	if (!is_i40e_supported(i40e_dev))
+		return -ENOTSUP;
+
+	hw = I40E_DEV_PRIVATE_TO_HW(i40e_dev->data->dev_private);
+	if (!hw)
+		return -1;
+
+	hw->switch_dev = switch_dev;
+
+	return 0;
+}

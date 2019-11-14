@@ -1061,4 +1061,22 @@ rte_pmd_i40e_inset_field_clear(uint64_t *inset, uint8_t field_idx)
 	return 0;
 }
 
+/**
+ * For ipn3ke, i40e works with FPGA.
+ * In this situation, i40e get link status from fpga,
+ * fpga works as switch_dev for i40e.
+ * This function set switch_dev for i40e.
+ *
+ * @param port_id
+ *    port_id of i40e device to be set switch device.
+ * @param switch_dev
+ *    target switch device from which i40e device to get link status from.
+ * @return
+ *   - (less than 0) if failed.
+ *   - (0) if success.
+ */
+__rte_experimental
+int
+rte_pmd_i40e_set_switch_dev(uint16_t port_id, struct rte_eth_dev *switch_dev);
+
 #endif /* _PMD_I40E_H_ */
