@@ -9,12 +9,12 @@ endif
 dpdk_driver_classes = ['common',
 	       'bus',
 	       'mempool', # depends on common and bus.
-	       'net',     # depends on common, bus and mempool.
+	       'raw',     # depends on common and bus.
+	       'net',     # depends on common, bus, mempool and raw.
 	       'crypto',  # depends on common, bus and mempool (net in future).
 	       'compress', # depends on common, bus, mempool.
 	       'event',   # depends on common, bus, mempool and net.
-	       'baseband', # depends on common and bus.
-	       'raw']     # depends on common, bus, mempool, net and event.
+	       'baseband'] # depends on common and bus.
 
 disabled_drivers = get_option('disable_drivers').split(',')
 

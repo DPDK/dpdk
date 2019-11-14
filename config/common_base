@@ -347,7 +347,7 @@ CONFIG_RTE_LIBRTE_IAVF_16BYTE_RX_DESC=n
 #
 # Compile burst-oriented IPN3KE PMD driver
 #
-CONFIG_RTE_LIBRTE_IPN3KE_PMD=y
+CONFIG_RTE_LIBRTE_IPN3KE_PMD=n
 
 #
 # Compile burst-oriented Mellanox ConnectX-3 (MLX4) PMD

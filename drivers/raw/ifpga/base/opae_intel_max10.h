@@ -8,6 +8,14 @@
 #include "opae_osdep.h"
 #include "opae_spi.h"
 
+struct max10_compatible_id {
+	char compatible[128];
+};
+
+#define MAX10_PAC	"intel,max10"
+#define MAX10_PAC_N3000	"intel,max10-pac-n3000"
+#define MAX10_PAC_END    "intel,end"
+
 /* max10 capability flags */
 #define MAX10_FLAGS_NO_I2C2		BIT(0)
 #define MAX10_FLAGS_NO_BMCIMG_FLASH	BIT(1)
@@ -20,6 +28,8 @@ struct intel_max10_device {
 	unsigned int flags; /*max10 hardware capability*/
 	struct altera_spi_device *spi_master;
 	struct spi_transaction_dev *spi_tran_dev;
+	struct max10_compatible_id *id; /*max10 compatible*/
+	char *fdt_root;
 };
 
 /* retimer speed */
