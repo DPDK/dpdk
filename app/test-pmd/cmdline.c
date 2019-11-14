@@ -874,7 +874,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"udp_tso|outer_ipv4_cksum|qinq_insert|vxlan_tnl_tso|"
 			"gre_tnl_tso|ipip_tnl_tso|geneve_tnl_tso|"
 			"macsec_insert|mt_lockfree|multi_segs|mbuf_fast_free|"
-			"security|match_metadata on|off\n"
+			"security on|off\n"
 			"    Enable or disable a per port Tx offloading"
 			" on all Tx queues of a port\n\n"
 
@@ -18571,8 +18571,7 @@ cmdline_parse_token_string_t cmd_config_per_port_tx_offload_result_offload =
 			  "sctp_cksum#tcp_tso#udp_tso#outer_ipv4_cksum#"
 			  "qinq_insert#vxlan_tnl_tso#gre_tnl_tso#"
 			  "ipip_tnl_tso#geneve_tnl_tso#macsec_insert#"
-			  "mt_lockfree#multi_segs#mbuf_fast_free#security#"
-			  "match_metadata");
+			  "mt_lockfree#multi_segs#mbuf_fast_free#security");
 cmdline_parse_token_string_t cmd_config_per_port_tx_offload_result_on_off =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_config_per_port_tx_offload_result,
@@ -18657,8 +18656,7 @@ cmdline_parse_inst_t cmd_config_per_port_tx_offload = {
 		    "sctp_cksum|tcp_tso|udp_tso|outer_ipv4_cksum|"
 		    "qinq_insert|vxlan_tnl_tso|gre_tnl_tso|"
 		    "ipip_tnl_tso|geneve_tnl_tso|macsec_insert|"
-		    "mt_lockfree|multi_segs|mbuf_fast_free|security|"
-		    "match_metadata on|off",
+		    "mt_lockfree|multi_segs|mbuf_fast_free|security on|off",
 	.tokens = {
 		(void *)&cmd_config_per_port_tx_offload_result_port,
 		(void *)&cmd_config_per_port_tx_offload_result_config,
@@ -18857,7 +18855,7 @@ cmd_show_tx_metadata_parsed(void *parsed_result,
 	}
 	if (!strcmp(res->cmd_keyword, "tx_metadata")) {
 		printf("Port %u tx_metadata: %u\n", res->cmd_pid,
-			rte_be_to_cpu_32(ports[res->cmd_pid].tx_metadata));
+		       ports[res->cmd_pid].tx_metadata);
 	}
 }
 
