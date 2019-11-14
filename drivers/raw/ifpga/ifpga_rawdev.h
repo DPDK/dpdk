@@ -46,4 +46,20 @@ ifpga_rawdev_get_priv(const struct rte_rawdev *rawdev)
 	return rawdev->dev_private;
 }
 
+#define IFPGA_RAWDEV_MSIX_IRQ_NUM 7
+#define IFPGA_RAWDEV_NUM 32
+
+struct ifpga_rawdev {
+	int dev_id;
+	struct rte_rawdev *rawdev;
+	int aer_enable;
+	int intr_fd[IFPGA_RAWDEV_MSIX_IRQ_NUM+1];
+	uint32_t aer_old[2];
+	char fvl_bdf[8][16];
+	char parent_bdf[16];
+};
+
+struct ifpga_rawdev *
+ifpga_rawdev_get(const struct rte_rawdev *rawdev);
+
 #endif /* _IFPGA_RAWDEV_H_ */
