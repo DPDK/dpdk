@@ -536,7 +536,12 @@ ice_hash_destroy(struct ice_adapter *ad,
 		ret = ice_rem_rss_cfg(hw, vsi->idx,
 				filter_ptr->rss_cfg.hashed_flds,
 				filter_ptr->rss_cfg.packet_hdr);
-		if (ret) {
+		/* Fixme: Ignore the error if a rule does not exist.
+		 * Currently a rule for inputset change or symm turn on/off
+		 * will overwrite an exist rule, while application still
+		 * have 2 rte_flow handles.
+		 **/
+		if (ret && ret != ICE_ERR_DOES_NOT_EXIST) {
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 					"rss flow destroy fail");
