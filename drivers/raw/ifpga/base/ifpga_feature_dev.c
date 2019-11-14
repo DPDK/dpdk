@@ -3,6 +3,7 @@
  */
 
 #include <sys/ioctl.h>
+#include <rte_vfio.h>
 
 #include "ifpga_feature_dev.h"
 
@@ -329,5 +330,63 @@ int port_hw_init(struct ifpga_port_hw *port)
 	return 0;
 error:
 	port_hw_uinit(port);
+	return ret;
+}
+
+#define FPGA_MAX_MSIX_VEC_COUNT	128
+/* irq set buffer length for interrupt */
+#define MSIX_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
+				sizeof(int) * FPGA_MAX_MSIX_VEC_COUNT)
+
+/* only support msix for now*/
+static int vfio_msix_enable_block(s32 vfio_dev_fd, unsigned int vec_start,
+				  unsigned int count, s32 *fds)
+{
+	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
+	struct vfio_irq_set *irq_set;
+	int len, ret;
+	int *fd_ptr;
+
+	len = sizeof(irq_set_buf);
+
+	irq_set = (struct vfio_irq_set *)irq_set_buf;
+	irq_set->argsz = len;
+	/* 0 < irq_set->count < FPGA_MAX_MSIX_VEC_COUNT */
+	irq_set->count = count ?
+		(count > FPGA_MAX_MSIX_VEC_COUNT ?
+		 FPGA_MAX_MSIX_VEC_COUNT : count) : 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD |
+				VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
+	irq_set->start = vec_start;
+
+	fd_ptr = (int *)&irq_set->data;
+	opae_memcpy(fd_ptr, fds, sizeof(int) * count);
+
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	if (ret)
+		printf("Error enabling MSI-X interrupts\n");
+
+	return ret;
+}
+
+int fpga_msix_set_block(struct ifpga_feature *feature, unsigned int start,
+			unsigned int count, s32 *fds)
+{
+	struct feature_irq_ctx *ctx = feature->ctx;
+	unsigned int i;
+	int ret;
+
+	if (start >= feature->ctx_num || start + count > feature->ctx_num)
+		return -EINVAL;
+
+	/* assume that each feature has continuous vector space in msix*/
+	ret = vfio_msix_enable_block(feature->vfio_dev_fd,
+				     ctx[start].idx, count, fds);
+	if (!ret) {
+		for (i = 0; i < count; i++)
+			ctx[i].eventfd = fds[i];
+	}
+
 	return ret;
 }

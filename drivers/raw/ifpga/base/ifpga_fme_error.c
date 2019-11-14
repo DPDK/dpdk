@@ -373,9 +373,28 @@ static int fme_global_error_set_prop(struct ifpga_feature *feature,
 	return -ENOENT;
 }
 
+static int fme_global_err_set_irq(struct ifpga_feature *feature, void *irq_set)
+{
+	struct fpga_fme_err_irq_set *err_irq_set = irq_set;
+	struct ifpga_fme_hw *fme;
+	int ret;
+
+	fme = (struct ifpga_fme_hw *)feature->parent;
+
+	if (!(fme->capability & FPGA_FME_CAP_ERR_IRQ))
+		return -ENODEV;
+
+	spinlock_lock(&fme->lock);
+	ret = fpga_msix_set_block(feature, 0, 1, &err_irq_set->evtfd);
+	spinlock_unlock(&fme->lock);
+
+	return ret;
+}
+
 struct ifpga_feature_ops fme_global_err_ops = {
 	.init = fme_global_error_init,
 	.uinit = fme_global_error_uinit,
 	.get_prop = fme_global_error_get_prop,
 	.set_prop = fme_global_error_set_prop,
+	.set_irq = fme_global_err_set_irq,
 };

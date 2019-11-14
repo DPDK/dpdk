@@ -384,9 +384,27 @@ static void port_uint_uinit(struct ifpga_feature *feature)
 	dev_info(NULL, "PORT UINT UInit.\n");
 }
 
+static int port_uint_set_irq(struct ifpga_feature *feature, void *irq_set)
+{
+	struct fpga_uafu_irq_set *uafu_irq_set = irq_set;
+	struct ifpga_port_hw *port = feature->parent;
+	int ret;
+
+	if (!(port->capability & FPGA_PORT_CAP_UAFU_IRQ))
+		return -ENODEV;
+
+	spinlock_lock(&port->lock);
+	ret = fpga_msix_set_block(feature, uafu_irq_set->start,
+				  uafu_irq_set->count, uafu_irq_set->evtfds);
+	spinlock_unlock(&port->lock);
+
+	return ret;
+}
+
 struct ifpga_feature_ops ifpga_rawdev_port_uint_ops = {
 	.init = port_uint_init,
 	.uinit = port_uint_uinit,
+	.set_irq = port_uint_set_irq,
 };
 
 static int port_afu_init(struct ifpga_feature *feature)

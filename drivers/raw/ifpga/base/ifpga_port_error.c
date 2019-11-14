@@ -136,9 +136,28 @@ static int port_error_set_prop(struct ifpga_feature *feature,
 	return -ENOENT;
 }
 
+static int port_error_set_irq(struct ifpga_feature *feature, void *irq_set)
+{
+	struct fpga_port_err_irq_set *err_irq_set = irq_set;
+	struct ifpga_port_hw *port;
+	int ret;
+
+	port = feature->parent;
+
+	if (!(port->capability & FPGA_PORT_CAP_ERR_IRQ))
+		return -ENODEV;
+
+	spinlock_lock(&port->lock);
+	ret = fpga_msix_set_block(feature, 0, 1, &err_irq_set->evtfd);
+	spinlock_unlock(&port->lock);
+
+	return ret;
+}
+
 struct ifpga_feature_ops ifpga_rawdev_port_error_ops = {
 	.init = port_error_init,
 	.uinit = port_error_uinit,
 	.get_prop = port_error_get_prop,
 	.set_prop = port_error_set_prop,
+	.set_irq = port_error_set_irq,
 };
