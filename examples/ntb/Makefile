@@ -23,7 +23,7 @@ PKGCONF ?= pkg-config
 CFLAGS += -D_FILE_OFFSET_BITS=64
 LDFLAGS += -pthread
 
-PC_FILE := $(shell $(PKGCONF) --path libdpdk)
+PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = -Wl,-Bstatic $(shell $(PKGCONF) --static --libs libdpdk)
