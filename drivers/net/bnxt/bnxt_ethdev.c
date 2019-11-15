@@ -4582,10 +4582,6 @@ static int bnxt_init_fw(struct bnxt *bp)
 	if (rc)
 		bp->flags &= ~BNXT_FLAG_FW_CAP_ERROR_RECOVERY;
 
-	if (mtu >= RTE_ETHER_MIN_MTU && mtu <= BNXT_MAX_MTU &&
-	    mtu != bp->eth_dev->data->mtu)
-		bp->eth_dev->data->mtu = mtu;
-
 	bnxt_hwrm_port_led_qcaps(bp);
 
 	return 0;
