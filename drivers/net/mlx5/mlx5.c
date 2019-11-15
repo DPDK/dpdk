@@ -443,7 +443,8 @@ mlx5_config_doorbell_mapping_env(const struct mlx5_dev_config *config)
 	if (config->dbnc == MLX5_ARG_UNSET)
 		setenv(MLX5_SHUT_UP_BF, MLX5_SHUT_UP_BF_DEFAULT, 1);
 	else
-		setenv(MLX5_SHUT_UP_BF, config->dbnc ? "1" : "0", 1);
+		setenv(MLX5_SHUT_UP_BF,
+		       config->dbnc == MLX5_TXDB_NCACHED ? "1" : "0", 1);
 	return value;
 }
 
@@ -1505,7 +1506,15 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
 		config->mps = !!tmp;
 	} else if (strcmp(MLX5_TX_DB_NC, key) == 0) {
-		config->dbnc = !!tmp;
+		if (tmp != MLX5_TXDB_CACHED &&
+		    tmp != MLX5_TXDB_NCACHED &&
+		    tmp != MLX5_TXDB_HEURISTIC) {
+			DRV_LOG(ERR, "invalid Tx doorbell "
+				     "mapping parameter");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		config->dbnc = tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_HDR_DSEG_EN, key) == 0) {
 		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
 	} else if (strcmp(MLX5_TXQ_MAX_INLINE_LEN, key) == 0) {
@@ -1528,8 +1537,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		if (tmp != MLX5_XMETA_MODE_LEGACY &&
 		    tmp != MLX5_XMETA_MODE_META16 &&
 		    tmp != MLX5_XMETA_MODE_META32) {
-			DRV_LOG(WARNING, "invalid extensive "
-					 "metadata parameter");
+			DRV_LOG(ERR, "invalid extensive "
+				     "metadata parameter");
 			rte_errno = EINVAL;
 			return -rte_errno;
 		}

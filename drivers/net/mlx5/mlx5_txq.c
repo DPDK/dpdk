@@ -313,8 +313,10 @@ mlx5_tx_queue_release(void *dpdk_txq)
 static void
 txq_uar_ncattr_init(struct mlx5_txq_ctrl *txq_ctrl, size_t page_size)
 {
+	struct mlx5_priv *priv = txq_ctrl->priv;
 	unsigned int cmd;
 
+	txq_ctrl->txq.db_heu = priv->config.dbnc == MLX5_TXDB_HEURISTIC;
 	txq_ctrl->txq.db_nc = 0;
 	/* Check the doorbell register mapping type. */
 	cmd = txq_ctrl->uar_mmap_offset / page_size;

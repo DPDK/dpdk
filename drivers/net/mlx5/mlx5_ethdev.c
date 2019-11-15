@@ -533,8 +533,8 @@ mlx5_set_default_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	/* Minimum CPU utilization. */
 	info->default_rxportconf.ring_size = 256;
 	info->default_txportconf.ring_size = 256;
-	info->default_rxportconf.burst_size = 64;
-	info->default_txportconf.burst_size = 64;
+	info->default_rxportconf.burst_size = MLX5_RX_DEFAULT_BURST;
+	info->default_txportconf.burst_size = MLX5_TX_DEFAULT_BURST;
 	if (priv->link_speed_capa & ETH_LINK_SPEED_100G) {
 		info->default_rxportconf.nb_queues = 16;
 		info->default_txportconf.nb_queues = 16;

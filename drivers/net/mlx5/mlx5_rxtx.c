@@ -4769,8 +4769,18 @@ enter_send_single:
 	 *   impact under heavy loading conditions but the explicit write
 	 *   memory barrier is not required and it may improve core
 	 *   performance.
+	 *
+	 * - the legacy behaviour (prior 19.08 release) was to use some
+	 *   heuristics to decide whether write memory barrier should
+	 *   be performed. This behavior is supported with specifying
+	 *   tx_db_nc=2, write barrier is skipped if application
+	 *   provides the full recommended burst of packets, it
+	 *   supposes the next packets are coming and the write barrier
+	 *   will be issued on the next burst (after descriptor writing,
+	 *   at least).
 	 */
-	mlx5_tx_dbrec_cond_wmb(txq, loc.wqe_last, !txq->db_nc);
+	mlx5_tx_dbrec_cond_wmb(txq, loc.wqe_last, !txq->db_nc &&
+			(!txq->db_heu || pkts_n % MLX5_TX_DEFAULT_BURST));
 	/* Not all of the mbufs may be stored into elts yet. */
 	part = MLX5_TXOFF_CONFIG(INLINE) ? 0 : loc.pkts_sent - loc.pkts_copy;
 	if (!MLX5_TXOFF_CONFIG(INLINE) && part) {

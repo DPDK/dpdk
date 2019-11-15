@@ -565,17 +565,27 @@ Run-time configuration
   The type of mapping may slightly affect the Tx performance, the optimal choice
   is strongly relied on the host architecture and should be deduced practically.
 
-  If ``tx_db_nc`` is either omitted or set to zero, the doorbell is forced to be
-  mapped to regular memory, the PMD will perform the extra write memory barrier
-  after writing to doorbell, it might increase the needed CPU clocks per packet
-  to send, but latency might be improved.
+  If ``tx_db_nc`` is set to zero, the doorbell is forced to be mapped to regular
+  memory, the PMD will perform the extra write memory barrier after writing to
+  doorbell, it might increase the needed CPU clocks per packet to send, but
+  latency might be improved.
 
-  If ``tx_db_nc`` is set to not zero, the doorbell is forced to be mapped to
-  non cached memory, the PMD will not perform the extra write memory barrier
+  If ``tx_db_nc`` is set to one, the doorbell is forced to be mapped to non
+  cached memory, the PMD will not perform the extra write memory barrier
   after writing to doorbell, on some architectures it might improve the
   performance.
 
-  The default ``tx_db_nc`` value is zero ARM64 hosts and one for others.
+  If ``tx_db_nc`` is set to two, the doorbell is forced to be mapped to regular
+  memory, the PMD will use heuristics to decide whether write memory barrier
+  should be performed. For bursts with size multiple of recommended one (64 pkts)
+  it is supposed the next burst is coming and no need to issue the extra memory
+  barrier (it is supposed to be issued in the next coming burst, at least after
+  descriptor writing). It might increase latency (on some hosts till next
+  packets transmit) and should be used with care.
+
+  If ``tx_db_nc`` is omitted or set to zero, the preset (if any) environment
+  variable "MLX5_SHUT_UP_BF" value is used. If there is no "MLX5_SHUT_UP_BF",
+  the default ``tx_db_nc`` value is zero for ARM64 hosts and one for others.
 
 - ``tx_vec_en`` parameter [int]
 

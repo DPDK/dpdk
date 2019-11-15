@@ -97,6 +97,10 @@
 /* Maximum size of burst for vectorized Rx. */
 #define MLX5_VPMD_RX_MAX_BURST 64U
 
+/* Recommended optimal burst size. */
+#define MLX5_RX_DEFAULT_BURST 64U
+#define MLX5_TX_DEFAULT_BURST 64U
+
 /* Number of packets vectorized Rx can simultaneously process in a loop. */
 #define MLX5_VPMD_DESCS_PER_LOOP      4
 
@@ -157,9 +161,15 @@
 /* Cache size of mempool for Multi-Packet RQ. */
 #define MLX5_MPRQ_MP_CACHE_SZ 32U
 
+/* MLX5_DV_XMETA_EN supported values. */
 #define MLX5_XMETA_MODE_LEGACY 0
 #define MLX5_XMETA_MODE_META16 1
 #define MLX5_XMETA_MODE_META32 2
+
+/* MLX5_TX_DB_NC supported values. */
+#define MLX5_TXDB_CACHED 0
+#define MLX5_TXDB_NCACHED 1
+#define MLX5_TXDB_HEURISTIC 2
 
 /* Size of the simple hash table for metadata register table. */
 #define MLX5_FLOW_MREG_HTABLE_SZ 4096
