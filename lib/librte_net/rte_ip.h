@@ -463,7 +463,7 @@ rte_ipv6_udptcp_cksum(const struct rte_ipv6_hdr *ipv6_hdr, const void *l4_hdr)
  */
 __rte_experimental
 static inline int
-rte_ipv6_get_next_ext(uint8_t *p, int proto, size_t *ext_len)
+rte_ipv6_get_next_ext(const uint8_t *p, int proto, size_t *ext_len)
 {
 	int next_proto;
 
