@@ -19,7 +19,7 @@ static: build/$(APP)-static
 
 LDFLAGS += -pthread
 
-PKGCONF=pkg-config --define-prefix
+PKGCONF ?= pkg-config
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)

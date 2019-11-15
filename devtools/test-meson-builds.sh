@@ -133,7 +133,11 @@ load_env cc
 pc_file=$(find $DESTDIR -name libdpdk.pc)
 export PKG_CONFIG_PATH=$(dirname $pc_file):$PKG_CONFIG_PATH
 
-for example in cmdline helloworld l2fwd l3fwd skeleton timer; do
-	echo "## Building $example"
-	$MAKE -C $DESTDIR/usr/local/share/dpdk/examples/$example clean all
-done
+# if pkg-config defines the necessary flags, test building some examples
+if pkg-config --define-prefix libdpdk >/dev/null 2>&1; then
+	export PKGCONF="pkg-config --define-prefix"
+	for example in cmdline helloworld l2fwd l3fwd skeleton timer; do
+		echo "## Building $example"
+		$MAKE -C $DESTDIR/usr/local/share/dpdk/examples/$example clean all
+	done
+fi
