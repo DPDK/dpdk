@@ -309,6 +309,12 @@ A number of commands can be issued via the CLI in relation to VMs:
 
     set_pcpu {vm_name} {vcpu} {pcpu}
 
+  Enable query of physical core information from a VM:
+
+  .. code-block:: console
+
+    set_query {vm_name} enable|disable
+
 Manual control and inspection can also be carried in relation CPU frequency scaling:
 
   Get the current frequency for each core specified in the mask:
@@ -745,6 +751,22 @@ Where {core_num} is the lcore and channel to change frequency by scaling up/down
 .. code-block:: console
 
   set_cpu_freq {core_num} up|down|min|max
+
+To query the available frequences of an lcore, use the query_cpu_freq command.
+Where {core_num} is the lcore to query.
+Before using this command, please enable responses via the set_query command on the host.
+
+.. code-block:: console
+
+  query_cpu_freq {core_num}|all
+
+To query the capabilities of an lcore, use the query_cpu_caps command.
+Where {core_num} is the lcore to query.
+Before using this command, please enable responses via the set_query command on the host.
+
+.. code-block:: console
+
+  query_cpu_caps {core_num}|all
 
 To start the application and configure the power policy, and send it to the host:
 
