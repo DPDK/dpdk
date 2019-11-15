@@ -1435,7 +1435,7 @@ bpf_jit_arm64(struct rte_bpf *bpf)
 	}
 
 	/* Flush the icache */
-	__builtin___clear_cache(ctx.ins, ctx.ins + ctx.idx);
+	__builtin___clear_cache((char *)ctx.ins, (char *)(ctx.ins + ctx.idx));
 
 	bpf->jit.func = (void *)ctx.ins;
 	bpf->jit.sz = size;
