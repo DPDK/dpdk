@@ -15,10 +15,10 @@
 #include <rte_config.h>
 #endif
 
-/**
- * KNI name is part of memzone name.
+/*
+ * KNI name is part of memzone name. Must not exceed IFNAMSIZ.
  */
-#define RTE_KNI_NAMESIZE 32
+#define RTE_KNI_NAMESIZE 16
 
 #define RTE_CACHE_LINE_MIN_SIZE 64
 
