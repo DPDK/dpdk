@@ -475,6 +475,9 @@ devices would fail anyway.
     ``RTE_PCI_DRV_NEED_IOVA_AS_VA`` flag is used to dictate that this PCI
     driver can only work in RTE_IOVA_VA mode.
 
+    When the KNI kernel module is detected, RTE_IOVA_PA mode is preferred as a
+    performance penalty is expected in RTE_IOVA_VA mode.
+
 IOVA Mode Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
 
