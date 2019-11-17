@@ -348,15 +348,36 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	strncpy(kni->name, dev_info.name, RTE_KNI_NAMESIZE);
 
 	/* Translate user space info into kernel space info */
-	kni->tx_q = phys_to_virt(dev_info.tx_phys);
-	kni->rx_q = phys_to_virt(dev_info.rx_phys);
-	kni->alloc_q = phys_to_virt(dev_info.alloc_phys);
-	kni->free_q = phys_to_virt(dev_info.free_phys);
+	if (dev_info.iova_mode) {
+#ifdef HAVE_IOVA_TO_KVA_MAPPING_SUPPORT
+		kni->tx_q = iova_to_kva(current, dev_info.tx_phys);
+		kni->rx_q = iova_to_kva(current, dev_info.rx_phys);
+		kni->alloc_q = iova_to_kva(current, dev_info.alloc_phys);
+		kni->free_q = iova_to_kva(current, dev_info.free_phys);
 
-	kni->req_q = phys_to_virt(dev_info.req_phys);
-	kni->resp_q = phys_to_virt(dev_info.resp_phys);
-	kni->sync_va = dev_info.sync_va;
-	kni->sync_kva = phys_to_virt(dev_info.sync_phys);
+		kni->req_q = iova_to_kva(current, dev_info.req_phys);
+		kni->resp_q = iova_to_kva(current, dev_info.resp_phys);
+		kni->sync_va = dev_info.sync_va;
+		kni->sync_kva = iova_to_kva(current, dev_info.sync_phys);
+		kni->usr_tsk = current;
+		kni->iova_mode = 1;
+#else
+		pr_err("KNI module does not support IOVA to VA translation\n");
+		return -EINVAL;
+#endif
+	} else {
+
+		kni->tx_q = phys_to_virt(dev_info.tx_phys);
+		kni->rx_q = phys_to_virt(dev_info.rx_phys);
+		kni->alloc_q = phys_to_virt(dev_info.alloc_phys);
+		kni->free_q = phys_to_virt(dev_info.free_phys);
+
+		kni->req_q = phys_to_virt(dev_info.req_phys);
+		kni->resp_q = phys_to_virt(dev_info.resp_phys);
+		kni->sync_va = dev_info.sync_va;
+		kni->sync_kva = phys_to_virt(dev_info.sync_phys);
+		kni->iova_mode = 0;
+	}
 
 	kni->mbuf_size = dev_info.mbuf_size;
 

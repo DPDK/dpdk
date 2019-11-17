@@ -125,6 +125,7 @@ struct rte_kni_device_info {
 	unsigned int min_mtu;
 	unsigned int max_mtu;
 	uint8_t mac_addr[6];
+	uint8_t iova_mode;
 };
 
 #define KNI_DEVICE "kni"
