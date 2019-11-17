@@ -2343,7 +2343,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			err = ENOTSUP;
 			goto error;
 		}
-	} else if (devx_port.comp_mask & MLX5DV_DEVX_PORT_VPORT) {
+	}
+	if (devx_port.comp_mask & MLX5DV_DEVX_PORT_VPORT) {
 		priv->vport_id = devx_port.vport_num;
 	} else if (spawn->pf_bond >= 0) {
 		DRV_LOG(ERR, "can't deduce vport index for port %d"
