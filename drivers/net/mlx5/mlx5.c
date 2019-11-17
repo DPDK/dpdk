@@ -715,6 +715,143 @@ exit:
 }
 
 /**
+ * Destroy table hash list and all the root entries per domain.
+ *
+ * @param[in] priv
+ *   Pointer to the private device data structure.
+ */
+static void
+mlx5_free_table_hash_list(struct mlx5_priv *priv)
+{
+	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_flow_tbl_data_entry *tbl_data;
+	union mlx5_flow_tbl_key table_key = {
+		{
+			.table_id = 0,
+			.reserved = 0,
+			.domain = 0,
+			.direction = 0,
+		}
+	};
+	struct mlx5_hlist_entry *pos;
+
+	if (!sh->flow_tbls)
+		return;
+	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
+	if (pos) {
+		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
+					entry);
+		assert(tbl_data);
+		mlx5_hlist_remove(sh->flow_tbls, pos);
+		rte_free(tbl_data);
+	}
+	table_key.direction = 1;
+	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
+	if (pos) {
+		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
+					entry);
+		assert(tbl_data);
+		mlx5_hlist_remove(sh->flow_tbls, pos);
+		rte_free(tbl_data);
+	}
+	table_key.direction = 0;
+	table_key.domain = 1;
+	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
+	if (pos) {
+		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
+					entry);
+		assert(tbl_data);
+		mlx5_hlist_remove(sh->flow_tbls, pos);
+		rte_free(tbl_data);
+	}
+	mlx5_hlist_destroy(sh->flow_tbls, NULL, NULL);
+}
+
+/**
+ * Initialize flow table hash list and create the root tables entry
+ * for each domain.
+ *
+ * @param[in] priv
+ *   Pointer to the private device data structure.
+ *
+ * @return
+ *   Zero on success, positive error code otherwise.
+ */
+static int
+mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
+{
+	struct mlx5_ibv_shared *sh = priv->sh;
+	char s[MLX5_HLIST_NAMESIZE];
+	int err = 0;
+
+	assert(sh);
+	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
+	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE);
+	if (!sh->flow_tbls) {
+		DRV_LOG(ERR, "flow tables with hash creation failed.\n");
+		err = ENOMEM;
+		return err;
+	}
+#ifndef HAVE_MLX5DV_DR
+	/*
+	 * In case we have not DR support, the zero tables should be created
+	 * because DV expect to see them even if they cannot be created by
+	 * RDMA-CORE.
+	 */
+	union mlx5_flow_tbl_key table_key = {
+		{
+			.table_id = 0,
+			.reserved = 0,
+			.domain = 0,
+			.direction = 0,
+		}
+	};
+	struct mlx5_flow_tbl_data_entry *tbl_data = rte_zmalloc(NULL,
+							  sizeof(*tbl_data), 0);
+
+	if (!tbl_data) {
+		err = ENOMEM;
+		goto error;
+	}
+	tbl_data->entry.key = table_key.v64;
+	err = mlx5_hlist_insert(sh->flow_tbls, &tbl_data->entry);
+	if (err)
+		goto error;
+	rte_atomic32_init(&tbl_data->tbl.refcnt);
+	rte_atomic32_inc(&tbl_data->tbl.refcnt);
+	table_key.direction = 1;
+	tbl_data = rte_zmalloc(NULL, sizeof(*tbl_data), 0);
+	if (!tbl_data) {
+		err = ENOMEM;
+		goto error;
+	}
+	tbl_data->entry.key = table_key.v64;
+	err = mlx5_hlist_insert(sh->flow_tbls, &tbl_data->entry);
+	if (err)
+		goto error;
+	rte_atomic32_init(&tbl_data->tbl.refcnt);
+	rte_atomic32_inc(&tbl_data->tbl.refcnt);
+	table_key.direction = 0;
+	table_key.domain = 1;
+	tbl_data = rte_zmalloc(NULL, sizeof(*tbl_data), 0);
+	if (!tbl_data) {
+		err = ENOMEM;
+		goto error;
+	}
+	tbl_data->entry.key = table_key.v64;
+	err = mlx5_hlist_insert(sh->flow_tbls, &tbl_data->entry);
+	if (err)
+		goto error;
+	rte_atomic32_init(&tbl_data->tbl.refcnt);
+	rte_atomic32_inc(&tbl_data->tbl.refcnt);
+	return err;
+error:
+	mlx5_free_table_hash_list(priv);
+#endif /* HAVE_MLX5DV_DR */
+	return err;
+}
+
+/**
  * Initialize DR related data within private structure.
  * Routine checks the reference counter and does actual
  * resources creation/initialization only if counter is zero.
@@ -728,13 +865,15 @@ exit:
 static int
 mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 {
+	int err = mlx5_alloc_table_hash_list(priv);
+
+	if (err)
+		return err;
 #ifdef HAVE_MLX5DV_DR
 	struct mlx5_ibv_shared *sh = priv->sh;
-	int err = 0;
-	void *domain;
 	char s[MLX5_HLIST_NAMESIZE];
+	void *domain;
 
-	assert(sh);
 	if (sh->dv_refcnt) {
 		/* Shared DV/DR structures is already initialized. */
 		sh->dv_refcnt++;
@@ -772,20 +911,11 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		sh->esw_drop_action = mlx5_glue->dr_create_flow_action_drop();
 	}
 #endif
-	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
-	sh->flow_tbls = mlx5_hlist_create(s,
-					  MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE);
-	if (!sh->flow_tbls) {
-		DRV_LOG(ERR, "flow tables with hash creation failed.\n");
-		err = -ENOMEM;
-		goto error;
-	}
 	/* create tags hash list table. */
 	snprintf(s, sizeof(s), "%s_tags", priv->sh->ibdev_name);
 	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE);
 	if (!sh->flow_tbls) {
 		DRV_LOG(ERR, "tags with hash creation failed.\n");
-		err = -ENOMEM;
 		goto error;
 	}
 	sh->pop_vlan_action = mlx5_glue->dr_create_flow_action_pop_vlan();
@@ -807,10 +937,6 @@ error:
 		mlx5_glue->dr_destroy_domain(sh->fdb_domain);
 		sh->fdb_domain = NULL;
 	}
-	if (sh->flow_tbls) {
-		mlx5_hlist_destroy(sh->flow_tbls, NULL, NULL);
-		sh->flow_tbls = NULL;
-	}
 	if (sh->esw_drop_action) {
 		mlx5_glue->destroy_flow_action(sh->esw_drop_action);
 		sh->esw_drop_action = NULL;
@@ -819,11 +945,9 @@ error:
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
 		sh->pop_vlan_action = NULL;
 	}
-	return err;
-#else
-	(void)priv;
-	return 0;
+	mlx5_free_table_hash_list(priv);
 #endif
+	return err;
 }
 
 /**
@@ -846,16 +970,6 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 	assert(sh->dv_refcnt);
 	if (sh->dv_refcnt && --sh->dv_refcnt)
 		return;
-	if (sh->flow_tbls) {
-		/* flow table entries should be handled properly before. */
-		mlx5_hlist_destroy(sh->flow_tbls, NULL, NULL);
-		sh->flow_tbls = NULL;
-	}
-	if (sh->tag_table) {
-		/* tags should be destroyed with flow before. */
-		mlx5_hlist_destroy(sh->tag_table, NULL, NULL);
-		sh->tag_table = NULL;
-	}
 	if (sh->rx_domain) {
 		mlx5_glue->dr_destroy_domain(sh->rx_domain);
 		sh->rx_domain = NULL;
@@ -874,14 +988,18 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 		sh->esw_drop_action = NULL;
 	}
 #endif
+	if (sh->tag_table) {
+		/* tags should be destroyed with flow before. */
+		mlx5_hlist_destroy(sh->tag_table, NULL, NULL);
+		sh->tag_table = NULL;
+	}
 	if (sh->pop_vlan_action) {
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
 		sh->pop_vlan_action = NULL;
 	}
 	pthread_mutex_destroy(&sh->dv_mutex);
-#else
-	(void)priv;
-#endif
+#endif /* HAVE_MLX5DV_DR */
+	mlx5_free_table_hash_list(priv);
 }
 
 /**

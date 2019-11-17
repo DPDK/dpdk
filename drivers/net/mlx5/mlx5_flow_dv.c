@@ -6173,24 +6173,16 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 			.direction = !!egress,
 		}
 	};
-	struct mlx5_hlist_entry *pos;
+	struct mlx5_hlist_entry *pos = mlx5_hlist_lookup(sh->flow_tbls,
+							 table_key.v64);
 	struct mlx5_flow_tbl_data_entry *tbl_data;
-
-#ifdef HAVE_MLX5DV_DR
 	int ret;
 	void *domain;
 
-	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
 	if (pos) {
 		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
 					entry);
 		tbl = &tbl_data->tbl;
-		if (!tbl->obj) {
-			rte_flow_error_set(error, ENOKEY,
-					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					   NULL, "cannot find created table");
-			return NULL;
-		}
 		rte_atomic32_inc(&tbl->refcnt);
 		return tbl;
 	}
@@ -6236,24 +6228,6 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 	}
 	rte_atomic32_inc(&tbl->refcnt);
 	return tbl;
-#else
-	/* Just to make the compiling pass when no HAVE_MLX5DV_DR defined. */
-	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
-	if (pos) {
-		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
-					entry);
-		tbl = &tbl_data->tbl;
-		if (!tbl->obj) {
-			rte_flow_error_set(error, ENOKEY,
-					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					   NULL, "cannot find created table");
-			return NULL;
-		}
-		rte_atomic32_inc(&tbl->refcnt);
-		return tbl;
-	}
-	return NULL;
-#endif
 }
 
 /**
@@ -6348,18 +6322,14 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 			rte_atomic32_inc(&cache_matcher->refcnt);
 			dev_flow->dv.matcher = cache_matcher;
 			/* old matcher should not make the table ref++. */
-#ifdef HAVE_MLX5DV_DR
 			flow_dv_tbl_resource_release(dev, tbl);
-#endif
 			return 0;
 		}
 	}
 	/* Register new matcher. */
 	cache_matcher = rte_calloc(__func__, 1, sizeof(*cache_matcher), 0);
 	if (!cache_matcher) {
-#ifdef HAVE_MLX5DV_DR
 		flow_dv_tbl_resource_release(dev, tbl);
-#endif
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot allocate matcher memory");
