@@ -2730,6 +2730,7 @@ ice_rxq_intr_setup(struct rte_eth_dev *dev)
 
 	/* Enable FDIR MSIX interrupt */
 	if (pf->fdir.fdir_vsi) {
+		pf->fdir.fdir_vsi->nb_used_qps = 1;
 		ice_vsi_queues_bind_intr(pf->fdir.fdir_vsi);
 		ice_vsi_enable_queues_intr(pf->fdir.fdir_vsi);
 	}
