@@ -666,6 +666,10 @@ Run-time configuration
 
   Disabled by default (set to 0).
 
+  The Direct Verbs/Rules (engaged with ``dv_flow_en`` = 1) supports all
+  of the extensive metadata features. The legacy Verbs supports FLAG and
+  MARK metadata actions over NIC Rx steering domain only.
+
 - ``dv_flow_en`` parameter [int]
 
   A nonzero value enables the DV flow steering assuming it is supported
