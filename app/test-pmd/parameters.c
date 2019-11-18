@@ -1363,10 +1363,17 @@ launch_args_parse(int argc, char** argv)
 			break;
 		default:
 			usage(argv[0]);
+			printf("Invalid option: %s\n", argv[optind]);
 			rte_exit(EXIT_FAILURE,
 				 "Command line is incomplete or incorrect\n");
 			break;
 		}
+	}
+
+	if (optind != argc) {
+		usage(argv[0]);
+		printf("Invalid parameter: %s\n", argv[optind]);
+		rte_exit(EXIT_FAILURE, "Command line is incorrect\n");
 	}
 
 	/* Set offload configuration from command line parameters. */
