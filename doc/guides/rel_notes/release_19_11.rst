@@ -348,6 +348,11 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* Removed library-level ABI versions. These have been replaced with a single
+  project-level ABI version for non-experimental libraries and an ABI version of
+  ``0`` for experimental libraries. Review the :doc:`../contributing/abi_policy`
+  and :doc:`../contributing/abi_versioning` guides for more information.
+
 * Removed duplicated set of commands for Rx offload configuration from testpmd::
 
     port config all crc-strip|scatter|rx-cksum|rx-timestamp|
@@ -485,6 +490,12 @@ ABI Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
+
+* policy: Please note the revisions to the :doc:`../contributing/abi_policy`
+  introducing major ABI versions, with DPDK 19.11 becoming the first major
+  version ``v20``. ABI changes to add new features continue to be permitted in
+  subsequent releases, with the condition that ABI compatibility with the major
+  ABI version is maintained.
 
 * net: The Ethernet address and other header definitions have changed
   attributes. They have been modified to be aligned on 2-byte boundaries.
