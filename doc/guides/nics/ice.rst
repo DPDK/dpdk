@@ -20,6 +20,22 @@ Prerequisites
 - To get better performance on Intel platforms, please follow the "How to get best performance with NICs on Intel platforms"
   section of the :ref:`Getting Started Guide for Linux <linux_gsg>`.
 
+Recommended Matching List
+-------------------------
+
+It is highly recommended to upgrade the ice kernel driver and firmware and
+DDP packages to avoid the compatibility issues with ice PMD. Here is the
+suggested matching list.
+
+   +----------------------+-----------------------+------------------+----------------+-------------------+
+   |     DPDK version     | Kernel driver version | Firmware version | DDP OS Package | DDP COMMS Package |
+   +======================+=======================+==================+================+===================+
+   |        19.11         |        0.12.25        |     1.1.16.39    |      1.3.4     |       1.3.10      |
+   +----------------------+-----------------------+------------------+----------------+-------------------+
+   | 19.08 (experimental) |        0.10.1         |     1.1.12.7     |      1.2.0     |        N/A        |
+   +----------------------+-----------------------+------------------+----------------+-------------------+
+   | 19.05 (experimental) |        0.9.4          |     1.1.10.16    |      1.1.0     |        N/A        |
+   +----------------------+-----------------------+------------------+----------------+-------------------+
 
 Pre-Installation Configuration
 ------------------------------
