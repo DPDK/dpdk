@@ -491,6 +491,11 @@ ice_fdir_setup(struct ice_pf *pf)
 		goto fail_mem;
 	}
 
+	/* Enable FDIR MSIX interrupt */
+	vsi->nb_used_qps = 1;
+	ice_vsi_queues_bind_intr(vsi);
+	ice_vsi_enable_queues_intr(vsi);
+
 	/* reserve memory for the fdir programming packet */
 	snprintf(z_name, sizeof(z_name), "ICE_%s_%d",
 		 ICE_FDIR_MZ_NAME,
@@ -614,6 +619,8 @@ ice_fdir_teardown(struct ice_pf *pf)
 	vsi = pf->fdir.fdir_vsi;
 	if (!vsi)
 		return;
+
+	ice_vsi_disable_queues_intr(vsi);
 
 	err = ice_fdir_tx_queue_stop(eth_dev, pf->fdir.txq->queue_id);
 	if (err)

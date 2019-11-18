@@ -2301,7 +2301,7 @@ ice_release_vsi(struct ice_vsi *vsi)
 	return 0;
 }
 
-static void
+void
 ice_vsi_disable_queues_intr(struct ice_vsi *vsi)
 {
 	struct rte_eth_dev *dev = vsi->adapter->eth_dev;
@@ -2353,9 +2353,6 @@ ice_dev_stop(struct rte_eth_dev *dev)
 
 	/* disable all queue interrupts */
 	ice_vsi_disable_queues_intr(main_vsi);
-
-	if (pf->fdir.fdir_vsi)
-		ice_vsi_disable_queues_intr(pf->fdir.fdir_vsi);
 
 	/* Clear all queues and release mbufs */
 	ice_clear_queues(dev);
@@ -2605,7 +2602,7 @@ __vsi_queues_bind_intr(struct ice_vsi *vsi, uint16_t msix_vect,
 	}
 }
 
-static void
+void
 ice_vsi_queues_bind_intr(struct ice_vsi *vsi)
 {
 	struct rte_eth_dev *dev = vsi->adapter->eth_dev;
@@ -2658,7 +2655,7 @@ ice_vsi_queues_bind_intr(struct ice_vsi *vsi)
 	}
 }
 
-static void
+void
 ice_vsi_enable_queues_intr(struct ice_vsi *vsi)
 {
 	struct rte_eth_dev *dev = vsi->adapter->eth_dev;
@@ -2727,13 +2724,6 @@ ice_rxq_intr_setup(struct rte_eth_dev *dev)
 
 	/* Enable interrupts for all the queues */
 	ice_vsi_enable_queues_intr(vsi);
-
-	/* Enable FDIR MSIX interrupt */
-	if (pf->fdir.fdir_vsi) {
-		pf->fdir.fdir_vsi->nb_used_qps = 1;
-		ice_vsi_queues_bind_intr(pf->fdir.fdir_vsi);
-		ice_vsi_enable_queues_intr(pf->fdir.fdir_vsi);
-	}
 
 	rte_intr_enable(intr_handle);
 
