@@ -23,6 +23,11 @@ if [ "$BUILD_DOCS" = "1" ]; then
     OPTS="$OPTS -Denable_docs=true"
 fi
 
+if [ "$BUILD_32BIT" = "1" ]; then
+    OPTS="$OPTS -Dc_args=-m32 -Dc_link_args=-m32"
+    export PKG_CONFIG_LIBDIR="/usr/lib32/pkgconfig"
+fi
+
 OPTS="$OPTS --default-library=$DEF_LIB"
 meson build --werror -Dexamples=all $OPTS
 ninja -C build

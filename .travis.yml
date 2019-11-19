@@ -23,6 +23,10 @@ extra_packages: &extra_packages
   - *required_packages
   - [libbsd-dev, libpcap-dev, libcrypto++-dev, libjansson4]
 
+build_32b_packages: &build_32b_packages
+  - *required_packages
+  - [gcc-multilib]
+
 doc_packages: &doc_packages
   - [doxygen, graphviz, python3-sphinx]
 
@@ -37,6 +41,12 @@ env:
 
 matrix:
   include:
+  - env: DEF_LIB="static" BUILD_32BIT=1
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *build_32b_packages
   - env: DEF_LIB="static" OPTS="-Denable_kmods=false" AARCH64=1
     compiler: gcc
     addons:
