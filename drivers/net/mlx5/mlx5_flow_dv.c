@@ -2185,11 +2185,6 @@ flow_dv_validate_action_raw_decap(uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can only have a single decap"
 					  " action in a flow");
-	if (action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can't have decap action after"
-					  " modify action");
 	/* decap action is valid on egress only if it is followed by encap */
 	if (attr->egress) {
 		for (; action->type != RTE_FLOW_ACTION_TYPE_END &&
@@ -2202,6 +2197,11 @@ flow_dv_validate_action_raw_decap(uint64_t action_flags,
 					 RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
 					 NULL, "decap action not supported"
 					 " for egress");
+	} else if (action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS) {
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't have decap action after"
+					  " modify action");
 	}
 	return 0;
 }
