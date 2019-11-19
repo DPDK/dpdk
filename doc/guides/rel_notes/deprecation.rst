@@ -59,13 +59,12 @@ Deprecation Notices
   - ``rte_eth_dev_stop``
   - ``rte_eth_dev_close``
 
-* ethdev: New offload flags ``DEV_RX_OFFLOAD_RSS_HASH`` and
-  ``DEV_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
+* ethdev: New offload flags ``DEV_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
   This will allow application to enable or disable PMDs from updating
-  ``rte_mbuf::hash::rss`` and ``rte_mbuf::hash::fdir`` respectively.
+  ``rte_mbuf::hash::fdir``.
   This scheme will allow PMDs to avoid writes to ``rte_mbuf`` fields on Rx and
   thereby improve Rx performance if application wishes do so.
-  In 19.11 PMDs will still update the fields even when the offloads are not
+  In 19.11 PMDs will still update the field even when the offload is not
   enabled.
 
 * cryptodev: support for using IV with all sizes is added, J0 still can
