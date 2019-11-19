@@ -1212,7 +1212,8 @@ txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 	assert(txq_ctrl->max_inline_data <= max_inline);
 	assert(txq_ctrl->txq.inlen_mode <= max_inline);
 	assert(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_send);
-	assert(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_empw);
+	assert(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_empw ||
+	       !txq_ctrl->txq.inlen_empw);
 	return 0;
 error:
 	rte_errno = ENOMEM;
