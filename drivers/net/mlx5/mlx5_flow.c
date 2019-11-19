@@ -2814,6 +2814,8 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			queue = actions->conf;
+			if (queue == NULL)
+				return 0;
 			if (mlx5_rxq_get_type(dev, queue->index) !=
 			    MLX5_RXQ_TYPE_HAIRPIN)
 				return 0;
@@ -2822,6 +2824,8 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			rss = actions->conf;
+			if (rss == NULL || rss->queue_num == 0)
+				return 0;
 			if (mlx5_rxq_get_type(dev, rss->queue[0]) !=
 			    MLX5_RXQ_TYPE_HAIRPIN)
 				return 0;
