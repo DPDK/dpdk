@@ -2380,8 +2380,13 @@ flow_dv_port_id_action_resource_register
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot allocate resource memory");
 	*cache_resource = *resource;
+	/*
+	 * Depending on rdma_core version the glue routine calls
+	 * either mlx5dv_dr_action_create_dest_ib_port(domain, ibv_port)
+	 * or mlx5dv_dr_action_create_dest_vport(domain, vport_id).
+	 */
 	cache_resource->action =
-		mlx5_glue->dr_create_flow_action_dest_vport
+		mlx5_glue->dr_create_flow_action_dest_port
 			(priv->sh->fdb_domain, resource->port_id);
 	if (!cache_resource->action) {
 		rte_free(cache_resource);
@@ -6501,7 +6506,20 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "No eswitch info was found for port");
+#ifdef HAVE_MLX5DV_DR_DEVX_PORT
+	/*
+	 * This parameter is transferred to
+	 * mlx5dv_dr_action_create_dest_ib_port().
+	 */
+	*dst_port_id = priv->ibv_port;
+#else
+	/*
+	 * Legacy mode, no LAG configurations is supported.
+	 * This parameter is transferred to
+	 * mlx5dv_dr_action_create_dest_vport().
+	 */
 	*dst_port_id = priv->vport_id;
+#endif
 	return 0;
 }
 

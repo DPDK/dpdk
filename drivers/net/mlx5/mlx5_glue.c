@@ -391,15 +391,19 @@ mlx5_glue_dr_create_flow_action_dest_flow_tbl(void *tbl)
 }
 
 static void *
-mlx5_glue_dr_create_flow_action_dest_vport(void *domain, uint32_t vport)
+mlx5_glue_dr_create_flow_action_dest_port(void *domain, uint32_t port)
 {
+#ifdef HAVE_MLX5DV_DR_DEVX_PORT
+	return mlx5dv_dr_action_create_dest_ib_port(domain, port);
+#else
 #ifdef HAVE_MLX5DV_DR_ESWITCH
-	return mlx5dv_dr_action_create_dest_vport(domain, vport);
+	return mlx5dv_dr_action_create_dest_vport(domain, port);
 #else
 	(void)domain;
-	(void)vport;
+	(void)port;
 	errno = ENOTSUP;
 	return NULL;
+#endif
 #endif
 }
 
@@ -1081,8 +1085,8 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.cq_ex_to_cq = mlx5_glue_cq_ex_to_cq,
 	.dr_create_flow_action_dest_flow_tbl =
 		mlx5_glue_dr_create_flow_action_dest_flow_tbl,
-	.dr_create_flow_action_dest_vport =
-		mlx5_glue_dr_create_flow_action_dest_vport,
+	.dr_create_flow_action_dest_port =
+		mlx5_glue_dr_create_flow_action_dest_port,
 	.dr_create_flow_action_drop =
 		mlx5_glue_dr_create_flow_action_drop,
 	.dr_create_flow_action_push_vlan =

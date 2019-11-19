@@ -165,7 +165,8 @@ struct mlx5_glue {
 	const char *(*port_state_str)(enum ibv_port_state port_state);
 	struct ibv_cq *(*cq_ex_to_cq)(struct ibv_cq_ex *cq);
 	void *(*dr_create_flow_action_dest_flow_tbl)(void *tbl);
-	void *(*dr_create_flow_action_dest_vport)(void *domain, uint32_t vport);
+	void *(*dr_create_flow_action_dest_port)(void *domain,
+						 uint32_t port);
 	void *(*dr_create_flow_action_drop)();
 	void *(*dr_create_flow_action_push_vlan)
 					(struct mlx5dv_dr_domain *domain,
