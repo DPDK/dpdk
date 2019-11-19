@@ -2964,14 +2964,10 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 
 	/* EAL is SECONDARY and eth_dev is already created */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		rc = rte_intr_callback_register(&pci_dev->intr_handle,
-						hinic_dev_interrupt_handler,
-						(void *)eth_dev);
-		if (rc)
-			PMD_DRV_LOG(ERR, "Initialize %s failed in secondary process",
-				    eth_dev->data->name);
+		PMD_DRV_LOG(INFO, "Initialize %s in secondary process",
+			    eth_dev->data->name);
 
-		return rc;
+		return 0;
 	}
 
 	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(eth_dev);
