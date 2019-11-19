@@ -2162,10 +2162,6 @@ i40evf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int ret;
 
-	/* If enabled, just return */
-	if (vf->promisc_unicast_enabled)
-		return 0;
-
 	ret = i40evf_config_promisc(dev, 1, vf->promisc_multicast_enabled);
 	if (ret == 0)
 		vf->promisc_unicast_enabled = TRUE;
@@ -2180,10 +2176,6 @@ i40evf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int ret;
-
-	/* If disabled, just return */
-	if (!vf->promisc_unicast_enabled)
-		return 0;
 
 	ret = i40evf_config_promisc(dev, 0, vf->promisc_multicast_enabled);
 	if (ret == 0)
@@ -2200,10 +2192,6 @@ i40evf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int ret;
 
-	/* If enabled, just return */
-	if (vf->promisc_multicast_enabled)
-		return 0;
-
 	ret = i40evf_config_promisc(dev, vf->promisc_unicast_enabled, 1);
 	if (ret == 0)
 		vf->promisc_multicast_enabled = TRUE;
@@ -2218,10 +2206,6 @@ i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int ret;
-
-	/* If enabled, just return */
-	if (!vf->promisc_multicast_enabled)
-		return 0;
 
 	ret = i40evf_config_promisc(dev, vf->promisc_unicast_enabled, 0);
 	if (ret == 0)
