@@ -1245,7 +1245,9 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * Copy the dev_conf parameter into the dev structure.
 	 * rte_eth_dev_info_get() requires dev_conf, copy it before dev_info get
 	 */
-	memcpy(&dev->data->dev_conf, dev_conf, sizeof(dev->data->dev_conf));
+	if (dev_conf != &dev->data->dev_conf)
+		memcpy(&dev->data->dev_conf, dev_conf,
+		       sizeof(dev->data->dev_conf));
 
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0)
