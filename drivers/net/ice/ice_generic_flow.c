@@ -1698,6 +1698,8 @@ ice_parse_engine_create(struct ice_adapter *ad,
 	void *temp;
 
 	TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
+		int ret;
+
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
@@ -1712,8 +1714,11 @@ ice_parse_engine_create(struct ice_adapter *ad,
 			continue;
 		}
 
-		if (!(engine->create(ad, flow, *meta, error)))
+		ret = engine->create(ad, flow, *meta, error);
+		if (ret == 0)
 			return engine;
+		else if (ret == -EEXIST)
+			return NULL;
 	}
 	return NULL;
 }
