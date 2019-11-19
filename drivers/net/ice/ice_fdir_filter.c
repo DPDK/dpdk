@@ -1559,6 +1559,11 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			tcp_spec = item->spec;
 			tcp_mask = item->mask;
 
+			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
+				flow_type = ICE_FLTR_PTYPE_NONF_IPV4_TCP;
+			else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
+				flow_type = ICE_FLTR_PTYPE_NONF_IPV6_TCP;
+
 			if (tcp_spec && tcp_mask) {
 				/* Check TCP mask and update input set */
 				if (tcp_mask->hdr.sent_seq ||
@@ -1590,21 +1595,22 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 						tcp_spec->hdr.src_port;
 					filter->input.ip.v4.src_port =
 						tcp_spec->hdr.dst_port;
-					flow_type =
-						ICE_FLTR_PTYPE_NONF_IPV4_TCP;
 				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
 					filter->input.ip.v6.dst_port =
 						tcp_spec->hdr.src_port;
 					filter->input.ip.v6.src_port =
 						tcp_spec->hdr.dst_port;
-					flow_type =
-						ICE_FLTR_PTYPE_NONF_IPV6_TCP;
 				}
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp_spec = item->spec;
 			udp_mask = item->mask;
+
+			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
+				flow_type = ICE_FLTR_PTYPE_NONF_IPV4_UDP;
+			else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
+				flow_type = ICE_FLTR_PTYPE_NONF_IPV6_UDP;
 
 			if (udp_spec && udp_mask) {
 				/* Check UDP mask and update input set*/
@@ -1632,21 +1638,22 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 						udp_spec->hdr.src_port;
 					filter->input.ip.v4.src_port =
 						udp_spec->hdr.dst_port;
-					flow_type =
-						ICE_FLTR_PTYPE_NONF_IPV4_UDP;
 				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
 					filter->input.ip.v6.src_port =
 						udp_spec->hdr.dst_port;
 					filter->input.ip.v6.dst_port =
 						udp_spec->hdr.src_port;
-					flow_type =
-						ICE_FLTR_PTYPE_NONF_IPV6_UDP;
 				}
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_SCTP:
 			sctp_spec = item->spec;
 			sctp_mask = item->mask;
+
+			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
+				flow_type = ICE_FLTR_PTYPE_NONF_IPV4_SCTP;
+			else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
+				flow_type = ICE_FLTR_PTYPE_NONF_IPV6_SCTP;
 
 			if (sctp_spec && sctp_mask) {
 				/* Check SCTP mask and update input set */
@@ -1673,15 +1680,11 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 						sctp_spec->hdr.src_port;
 					filter->input.ip.v4.src_port =
 						sctp_spec->hdr.dst_port;
-					flow_type =
-						ICE_FLTR_PTYPE_NONF_IPV4_SCTP;
 				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
 					filter->input.ip.v6.dst_port =
 						sctp_spec->hdr.src_port;
 					filter->input.ip.v6.src_port =
 						sctp_spec->hdr.dst_port;
-					flow_type =
-						ICE_FLTR_PTYPE_NONF_IPV6_SCTP;
 				}
 			}
 			break;
