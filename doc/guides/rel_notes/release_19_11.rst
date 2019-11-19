@@ -131,6 +131,16 @@ New Features
   Added the new PFE driver for the NXP LS1012A platform. See the
   :doc:`../nics/pfe` NIC driver guide for more details on this new driver.
 
+* **Updated Broadcom bnxt driver.**
+
+  Updated Broadcom bnxt driver with new features and improvements, including:
+
+  * Added support for hot firmware upgrade.
+  * Added support for error recovery.
+  * Added support for querying and using COS classification in hardware.
+  * Added LRO support Thor devices.
+  * Update HWRM API to version 1.10.1.6
+
 * **Updated iavf PMD.**
 
   Enable AVX2 data path for iavf PMD.
