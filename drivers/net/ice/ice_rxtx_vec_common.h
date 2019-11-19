@@ -268,6 +268,12 @@ ice_rx_vec_dev_check_default(struct rte_eth_dev *dev)
 {
 	int i;
 	struct ice_rx_queue *rxq;
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	/* vPMD does not support flow mark. */
+	if (ad->devargs.flow_mark_support)
+		return -1;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];

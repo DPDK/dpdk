@@ -23,11 +23,13 @@
 /* devargs */
 #define ICE_SAFE_MODE_SUPPORT_ARG "safe-mode-support"
 #define ICE_PIPELINE_MODE_SUPPORT_ARG  "pipeline-mode-support"
+#define ICE_FLOW_MARK_SUPPORT_ARG	"flow-mark-support"
 #define ICE_PROTO_XTR_ARG         "proto_xtr"
 
 static const char * const ice_valid_args[] = {
 	ICE_SAFE_MODE_SUPPORT_ARG,
 	ICE_PIPELINE_MODE_SUPPORT_ARG,
+	ICE_FLOW_MARK_SUPPORT_ARG,
 	ICE_PROTO_XTR_ARG,
 	NULL
 };
@@ -1987,6 +1989,13 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 
 	ret = rte_kvargs_process(kvlist, ICE_PIPELINE_MODE_SUPPORT_ARG,
 				 &parse_bool, &ad->devargs.pipe_mode_support);
+	if (ret)
+		goto bail;
+
+	ret = rte_kvargs_process(kvlist, ICE_FLOW_MARK_SUPPORT_ARG,
+				 &parse_bool, &ad->devargs.flow_mark_support);
+	if (ret)
+		goto bail;
 
 bail:
 	rte_kvargs_free(kvlist);
@@ -4562,7 +4571,8 @@ RTE_PMD_REGISTER_KMOD_DEP(net_ice, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_ice,
 			      ICE_PROTO_XTR_ARG "=[queue:]<vlan|ipv4|ipv6|ipv6_flow|tcp>"
 			      ICE_SAFE_MODE_SUPPORT_ARG "=<0|1>"
-			      ICE_PIPELINE_MODE_SUPPORT_ARG "=<0|1>");
+			      ICE_PIPELINE_MODE_SUPPORT_ARG "=<0|1>"
+			      ICE_FLOW_MARK_SUPPORT_ARG "=<0|1>");
 
 RTE_INIT(ice_init_log)
 {

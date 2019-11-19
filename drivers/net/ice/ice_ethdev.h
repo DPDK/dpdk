@@ -391,6 +391,7 @@ struct ice_devargs {
 	int safe_mode_support;
 	uint8_t proto_xtr_dflt;
 	int pipe_mode_support;
+	int flow_mark_support;
 	uint8_t proto_xtr[ICE_MAX_QUEUE_NUM];
 };
 
