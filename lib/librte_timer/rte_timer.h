@@ -181,8 +181,6 @@ int rte_timer_data_dealloc(uint32_t id);
  *      subsystem
  */
 int rte_timer_subsystem_init(void);
-int rte_timer_subsystem_init_v1905(void);
-void rte_timer_subsystem_init_v20(void);
 
 /**
  * @warning
@@ -250,13 +248,6 @@ void rte_timer_init(struct rte_timer *tim);
 int rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
 		    enum rte_timer_type type, unsigned tim_lcore,
 		    rte_timer_cb_t fct, void *arg);
-int rte_timer_reset_v1905(struct rte_timer *tim, uint64_t ticks,
-			  enum rte_timer_type type, unsigned int tim_lcore,
-			  rte_timer_cb_t fct, void *arg);
-int rte_timer_reset_v20(struct rte_timer *tim, uint64_t ticks,
-			enum rte_timer_type type, unsigned int tim_lcore,
-			rte_timer_cb_t fct, void *arg);
-
 
 /**
  * Loop until rte_timer_reset() succeeds.
@@ -313,8 +304,6 @@ rte_timer_reset_sync(struct rte_timer *tim, uint64_t ticks,
  *   - (-1): The timer is in the RUNNING or CONFIG state.
  */
 int rte_timer_stop(struct rte_timer *tim);
-int rte_timer_stop_v1905(struct rte_timer *tim);
-int rte_timer_stop_v20(struct rte_timer *tim);
 
 /**
  * Loop until rte_timer_stop() succeeds.
@@ -358,8 +347,6 @@ int rte_timer_pending(struct rte_timer *tim);
  *   - -EINVAL: timer subsystem not yet initialized
  */
 int rte_timer_manage(void);
-int rte_timer_manage_v1905(void);
-void rte_timer_manage_v20(void);
 
 /**
  * Dump statistics about timers.
@@ -371,8 +358,6 @@ void rte_timer_manage_v20(void);
  *   - -EINVAL: timer subsystem not yet initialized
  */
 int rte_timer_dump_stats(FILE *f);
-int rte_timer_dump_stats_v1905(FILE *f);
-void rte_timer_dump_stats_v20(FILE *f);
 
 /**
  * @warning
