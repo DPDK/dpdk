@@ -83,9 +83,9 @@ int
 rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		rte_intr_callback_fn cb, void *cb_arg)
 {
-	struct rte_intr_callback *callback = NULL;
-	struct rte_intr_source *src = NULL;
-	int ret, add_event;
+	struct rte_intr_callback *callback;
+	struct rte_intr_source *src;
+	int ret, add_event = 0;
 
 	/* first do parameter checking */
 	if (intr_handle == NULL || intr_handle->fd < 0 || cb == NULL) {
@@ -98,47 +98,53 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		return -ENODEV;
 	}
 
-	/* allocate a new interrupt callback entity */
-	callback = calloc(1, sizeof(*callback));
-	if (callback == NULL) {
-		RTE_LOG(ERR, EAL, "Can not allocate memory\n");
-		return -ENOMEM;
-	}
-	callback->cb_fn = cb;
-	callback->cb_arg = cb_arg;
-	callback->pending_delete = 0;
-	callback->ucb_fn = NULL;
-
 	rte_spinlock_lock(&intr_lock);
 
-	/* check if there is at least one callback registered for the fd */
+	/* find the source for this intr_handle */
 	TAILQ_FOREACH(src, &intr_sources, next) {
-		if (src->intr_handle.fd == intr_handle->fd) {
-			/* we had no interrupts for this */
-			if (TAILQ_EMPTY(&src->callbacks))
-				add_event = 1;
-
-			TAILQ_INSERT_TAIL(&(src->callbacks), callback, next);
-			ret = 0;
+		if (src->intr_handle.fd == intr_handle->fd)
 			break;
-		}
 	}
 
-	/* no existing callbacks for this - add new source */
-	if (src == NULL) {
-		src = calloc(1, sizeof(*src));
-		if (src == NULL) {
+	/* if this is an alarm interrupt and it already has a callback,
+	 * then we don't want to create a new callback because the only
+	 * thing on the list should be eal_alarm_callback() and we may
+	 * be called just to reset the timer.
+	 */
+	if (src != NULL && src->intr_handle.type == RTE_INTR_HANDLE_ALARM &&
+		 !TAILQ_EMPTY(&src->callbacks)) {
+		callback = NULL;
+	} else {
+		/* allocate a new interrupt callback entity */
+		callback = calloc(1, sizeof(*callback));
+		if (callback == NULL) {
 			RTE_LOG(ERR, EAL, "Can not allocate memory\n");
 			ret = -ENOMEM;
 			goto fail;
-		} else {
-			src->intr_handle = *intr_handle;
-			TAILQ_INIT(&src->callbacks);
-			TAILQ_INSERT_TAIL(&(src->callbacks), callback, next);
-			TAILQ_INSERT_TAIL(&intr_sources, src, next);
-			add_event = 1;
-			ret = 0;
 		}
+		callback->cb_fn = cb;
+		callback->cb_arg = cb_arg;
+		callback->pending_delete = 0;
+		callback->ucb_fn = NULL;
+
+		if (src == NULL) {
+			src = calloc(1, sizeof(*src));
+			if (src == NULL) {
+				RTE_LOG(ERR, EAL, "Can not allocate memory\n");
+				ret = -ENOMEM;
+				goto fail;
+			} else {
+				src->intr_handle = *intr_handle;
+				TAILQ_INIT(&src->callbacks);
+				TAILQ_INSERT_TAIL(&intr_sources, src, next);
+			}
+		}
+
+		/* we had no interrupts for this */
+		if (TAILQ_EMPTY(&src->callbacks))
+			add_event = 1;
+
+		TAILQ_INSERT_TAIL(&(src->callbacks), callback, next);
 	}
 
 	/* add events to the queue. timer events are special as we need to
@@ -178,11 +184,12 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	}
 	rte_spinlock_unlock(&intr_lock);
 
-	return ret;
+	return 0;
 fail:
 	/* clean up */
 	if (src != NULL) {
-		TAILQ_REMOVE(&(src->callbacks), callback, next);
+		if (callback != NULL)
+			TAILQ_REMOVE(&(src->callbacks), callback, next);
 		if (TAILQ_EMPTY(&(src->callbacks))) {
 			TAILQ_REMOVE(&intr_sources, src, next);
 			free(src);
