@@ -117,7 +117,7 @@ export CC="clang"
 build build-arm64-host-clang $c $use_shared \
 	--cross-file $srcdir/config/arm/arm64_armv8_linux_gcc
 # all gcc/arm configurations
-for f in $srcdir/config/arm/arm*gcc ; do
+for f in $srcdir/config/arm/arm64_[bdo]*gcc ; do
 	export CC="$CCACHE gcc"
 	build build-$(basename $f | tr '_' '-' | cut -d'-' -f-2) $c \
 		$use_shared --cross-file $f
