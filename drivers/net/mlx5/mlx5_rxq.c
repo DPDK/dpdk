@@ -671,23 +671,25 @@ static int
 mlx5_rxq_obj_release(struct mlx5_rxq_obj *rxq_obj)
 {
 	assert(rxq_obj);
-	if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_IBV)
-		assert(rxq_obj->wq);
-	assert(rxq_obj->cq);
 	if (rte_atomic32_dec_and_test(&rxq_obj->refcnt)) {
 		switch (rxq_obj->type) {
 		case MLX5_RXQ_OBJ_TYPE_IBV:
+			assert(rxq_obj->wq);
+			assert(rxq_obj->cq);
 			rxq_free_elts(rxq_obj->rxq_ctrl);
 			claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
 			claim_zero(mlx5_glue->destroy_cq(rxq_obj->cq));
 			break;
 		case MLX5_RXQ_OBJ_TYPE_DEVX_RQ:
+			assert(rxq_obj->cq);
+			assert(rxq_obj->rq);
 			rxq_free_elts(rxq_obj->rxq_ctrl);
 			claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
 			rxq_release_rq_resources(rxq_obj->rxq_ctrl);
 			claim_zero(mlx5_glue->destroy_cq(rxq_obj->cq));
 			break;
 		case MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN:
+			assert(rxq_obj->rq);
 			rxq_obj_hairpin_release(rxq_obj);
 			break;
 		}
