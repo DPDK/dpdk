@@ -604,6 +604,8 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 
 	dev_info->rx_offload_capa = OCTEONTX_RX_OFFLOADS;
 	dev_info->tx_offload_capa = OCTEONTX_TX_OFFLOADS;
+	dev_info->rx_queue_offload_capa = OCTEONTX_RX_OFFLOADS;
+	dev_info->tx_queue_offload_capa = OCTEONTX_TX_OFFLOADS;
 
 	return 0;
 }
