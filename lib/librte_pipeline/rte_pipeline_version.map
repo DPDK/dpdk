@@ -1,6 +1,8 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
+	rte_pipeline_ah_packet_drop;
+	rte_pipeline_ah_packet_hijack;
 	rte_pipeline_check;
 	rte_pipeline_create;
 	rte_pipeline_flush;
@@ -9,42 +11,22 @@ DPDK_2.0 {
 	rte_pipeline_port_in_create;
 	rte_pipeline_port_in_disable;
 	rte_pipeline_port_in_enable;
+	rte_pipeline_port_in_stats_read;
 	rte_pipeline_port_out_create;
 	rte_pipeline_port_out_packet_insert;
+	rte_pipeline_port_out_stats_read;
 	rte_pipeline_run;
 	rte_pipeline_table_create;
 	rte_pipeline_table_default_entry_add;
 	rte_pipeline_table_default_entry_delete;
 	rte_pipeline_table_entry_add;
+	rte_pipeline_table_entry_add_bulk;
 	rte_pipeline_table_entry_delete;
+	rte_pipeline_table_entry_delete_bulk;
+	rte_pipeline_table_stats_read;
 
 	local: *;
 };
-
-DPDK_2.1 {
-	global:
-
-	rte_pipeline_port_in_stats_read;
-	rte_pipeline_port_out_stats_read;
-	rte_pipeline_table_stats_read;
-
-} DPDK_2.0;
-
-DPDK_2.2 {
-	global:
-
-	rte_pipeline_table_entry_add_bulk;
-	rte_pipeline_table_entry_delete_bulk;
-
-} DPDK_2.1;
-
-DPDK_16.04 {
-	global:
-
-	rte_pipeline_ah_packet_hijack;
-	rte_pipeline_ah_packet_drop;
-
-} DPDK_2.2;
 
 EXPERIMENTAL {
 	global:

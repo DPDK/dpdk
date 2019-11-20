@@ -1,8 +1,9 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
 	rte_ring_create;
 	rte_ring_dump;
+	rte_ring_free;
 	rte_ring_get_memsize;
 	rte_ring_init;
 	rte_ring_list_dump;
@@ -10,13 +11,6 @@ DPDK_2.0 {
 
 	local: *;
 };
-
-DPDK_2.2 {
-	global:
-
-	rte_ring_free;
-
-} DPDK_2.0;
 
 EXPERIMENTAL {
 	global:

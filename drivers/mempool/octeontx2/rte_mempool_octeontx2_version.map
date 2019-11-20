@@ -1,8 +1,8 @@
-DPDK_19.08 {
+DPDK_20.0 {
 	global:
 
-	otx2_npa_lf_init;
 	otx2_npa_lf_fini;
+	otx2_npa_lf_init;
 
 	local: *;
 };

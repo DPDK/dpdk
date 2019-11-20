@@ -1,12 +1,8 @@
-DPDK_17.05 {
-
-	local: *;
-};
-
-DPDK_18.11 {
+DPDK_20.0 {
 	global:
 
 	dpaa2_sec_eventq_attach;
 	dpaa2_sec_eventq_detach;
 
-} DPDK_17.05;
+	local: *;
+};

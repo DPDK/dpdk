@@ -1,4 +1,4 @@
-DPDK_17.11 {
+DPDK_20.0 {
 	global:
 
 	bman_acquire;
@@ -7,123 +7,90 @@ DPDK_17.11 {
 	bman_new_pool;
 	bman_query_free_buffers;
 	bman_release;
+	bman_thread_irq;
+	dpaa_logtype_eventdev;
 	dpaa_logtype_mempool;
 	dpaa_logtype_pmd;
 	dpaa_netcfg;
+	dpaa_svr_family;
 	fman_ccsr_map_fd;
 	fman_dealloc_bufs_mask_hi;
 	fman_dealloc_bufs_mask_lo;
 	fman_if_add_mac_addr;
 	fman_if_clear_mac_addr;
 	fman_if_disable_rx;
-	fman_if_enable_rx;
 	fman_if_discard_rx_errors;
-	fman_if_get_fc_threshold;
+	fman_if_enable_rx;
 	fman_if_get_fc_quanta;
+	fman_if_get_fc_threshold;
 	fman_if_get_fdoff;
+	fman_if_get_sg_enable;
 	fman_if_loopback_disable;
 	fman_if_loopback_enable;
 	fman_if_promiscuous_disable;
 	fman_if_promiscuous_enable;
 	fman_if_reset_mcast_filter_table;
 	fman_if_set_bp;
-	fman_if_set_fc_threshold;
 	fman_if_set_fc_quanta;
+	fman_if_set_fc_threshold;
 	fman_if_set_fdoff;
 	fman_if_set_ic_params;
 	fman_if_set_maxfrm;
 	fman_if_set_mcast_filter_table;
+	fman_if_set_sg;
 	fman_if_stats_get;
 	fman_if_stats_get_all;
 	fman_if_stats_reset;
 	fman_ip_rev;
+	fsl_qman_fq_portal_create;
 	netcfg_acquire;
 	netcfg_release;
+	per_lcore_dpaa_io;
+	per_lcore_held_bufs;
 	qm_channel_caam;
+	qm_channel_pool1;
+	qman_alloc_cgrid_range;
+	qman_alloc_pool_range;
+	qman_clear_irq;
+	qman_create_cgr;
 	qman_create_fq;
+	qman_dca_index;
+	qman_delete_cgr;
 	qman_dequeue;
 	qman_dqrr_consume;
 	qman_enqueue;
 	qman_enqueue_multi;
+	qman_enqueue_multi_fq;
 	qman_fq_fqid;
+	qman_fq_portal_irqsource_add;
+	qman_fq_portal_irqsource_remove;
+	qman_fq_portal_thread_irq;
 	qman_fq_state;
 	qman_init_fq;
+	qman_irqsource_add;
+	qman_irqsource_remove;
+	qman_modify_cgr;
+	qman_oos_fq;
 	qman_poll_dqrr;
+	qman_portal_dequeue;
+	qman_portal_poll_rx;
+	qman_query_fq_frm_cnt;
 	qman_query_fq_np;
-	qman_set_vdq;
+	qman_release_cgrid_range;
 	qman_reserve_fqid_range;
+	qman_retire_fq;
+	qman_set_fq_lookup_table;
+	qman_set_vdq;
+	qman_static_dequeue_add;
+	qman_thread_fd;
+	qman_thread_irq;
 	qman_volatile_dequeue;
 	rte_dpaa_driver_register;
 	rte_dpaa_driver_unregister;
 	rte_dpaa_mem_ptov;
+	rte_dpaa_portal_fq_close;
+	rte_dpaa_portal_fq_init;
 	rte_dpaa_portal_init;
 
 	local: *;
 };
-
-DPDK_18.02 {
-	global:
-
-	dpaa_logtype_eventdev;
-	dpaa_svr_family;
-	per_lcore_dpaa_io;
-	per_lcore_held_bufs;
-	qm_channel_pool1;
-	qman_alloc_cgrid_range;
-	qman_alloc_pool_range;
-	qman_create_cgr;
-	qman_dca_index;
-	qman_delete_cgr;
-	qman_enqueue_multi_fq;
-	qman_modify_cgr;
-	qman_oos_fq;
-	qman_portal_dequeue;
-	qman_portal_poll_rx;
-	qman_query_fq_frm_cnt;
-	qman_release_cgrid_range;
-	qman_retire_fq;
-	qman_static_dequeue_add;
-	rte_dpaa_portal_fq_close;
-	rte_dpaa_portal_fq_init;
-
-} DPDK_17.11;
-
-DPDK_18.08 {
-	global:
-
-	fman_if_get_sg_enable;
-	fman_if_set_sg;
-
-} DPDK_18.02;
-
-DPDK_18.11 {
-	global:
-
-	bman_thread_irq;
-	fman_if_get_sg_enable;
-	fman_if_set_sg;
-	qman_clear_irq;
-
-	qman_irqsource_add;
-	qman_irqsource_remove;
-	qman_thread_fd;
-	qman_thread_irq;
-
-} DPDK_18.08;
-
-DPDK_19.05 {
-	global:
-
-	qman_set_fq_lookup_table;
-
-} DPDK_18.11;
-
-DPDK_19.11 {
-	global:
-
-	fsl_qman_fq_portal_create;
-	qman_fq_portal_irqsource_add;
-	qman_fq_portal_irqsource_remove;
-	qman_fq_portal_thread_irq;
-
-} DPDK_19.05;

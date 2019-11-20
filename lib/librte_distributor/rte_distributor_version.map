@@ -1,4 +1,4 @@
-DPDK_17.05 {
+DPDK_20.0 {
 	global:
 
 	rte_distributor_clear_returns;
@@ -10,4 +10,6 @@ DPDK_17.05 {
 	rte_distributor_request_pkt;
 	rte_distributor_return_pkt;
 	rte_distributor_returned_pkts;
+
+	local: *;
 };

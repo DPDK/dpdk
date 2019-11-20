@@ -1,12 +1,9 @@
-DPDK_17.11 {
-
-	local: *;
-};
-
-DPDK_18.08 {
+DPDK_20.0 {
 	global:
 
 	dpaa_eth_eventq_attach;
 	dpaa_eth_eventq_detach;
 	rte_pmd_dpaa_set_tx_loopback;
-} DPDK_17.11;
+
+	local: *;
+};

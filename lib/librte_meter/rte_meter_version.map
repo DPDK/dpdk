@@ -1,21 +1,16 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
 	rte_meter_srtcm_color_aware_check;
 	rte_meter_srtcm_color_blind_check;
 	rte_meter_srtcm_config;
+	rte_meter_srtcm_profile_config;
 	rte_meter_trtcm_color_aware_check;
 	rte_meter_trtcm_color_blind_check;
 	rte_meter_trtcm_config;
+	rte_meter_trtcm_profile_config;
 
 	local: *;
-};
-
-DPDK_18.08 {
-	global:
-
-	rte_meter_srtcm_profile_config;
-	rte_meter_trtcm_profile_config;
 };
 
 EXPERIMENTAL {

@@ -1,16 +1,10 @@
-DPDK_17.05 {
+DPDK_20.0 {
 	global:
 
 	rte_dpaa2_bpid_info;
 	rte_dpaa2_mbuf_alloc_bulk;
-
-	local: *;
-};
-
-DPDK_18.05 {
-	global:
-
 	rte_dpaa2_mbuf_from_buf_addr;
 	rte_dpaa2_mbuf_pool_bpid;
 
-} DPDK_17.05;
+	local: *;
+};

@@ -1,4 +1,4 @@
-DPDK_17.08 {
+DPDK_20.0 {
 	global:
 
 	rte_gro_ctx_create;

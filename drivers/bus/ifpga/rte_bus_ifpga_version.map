@@ -1,17 +1,11 @@
-DPDK_18.05 {
+DPDK_20.0 {
 	global:
 
-	rte_ifpga_get_integer32_arg;
-	rte_ifpga_get_string_arg;
 	rte_ifpga_driver_register;
 	rte_ifpga_driver_unregister;
+	rte_ifpga_find_afu_by_name;
+	rte_ifpga_get_integer32_arg;
+	rte_ifpga_get_string_arg;
 
 	local: *;
 };
-
-DPDK_19.05 {
-	global:
-
-	rte_ifpga_find_afu_by_name;
-
-} DPDK_18.05;

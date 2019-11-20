@@ -1,5 +1,4 @@
-DPDK_18.11 {
-
+DPDK_20.0 {
 	local: *;
 };
 
@@ -13,4 +12,3 @@ EXPERIMENTAL {
 	rte_pmd_atl_macsec_select_txsa;
 	rte_pmd_atl_macsec_select_rxsa;
 };
-

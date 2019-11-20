@@ -1,15 +1,11 @@
-DPDK_17.05 {
-
-	local: *;
-};
-
-DPDK_17.11 {
+DPDK_20.0 {
 	global:
 
 	dpaa2_eth_eventq_attach;
 	dpaa2_eth_eventq_detach;
 
-} DPDK_17.05;
+	local: *;
+};
 
 EXPERIMENTAL {
 	global:
@@ -17,4 +13,4 @@ EXPERIMENTAL {
 	rte_pmd_dpaa2_mux_flow_create;
 	rte_pmd_dpaa2_set_custom_hash;
 	rte_pmd_dpaa2_set_timestamp;
-} DPDK_17.11;
+};

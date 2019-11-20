@@ -1,18 +1,12 @@
-DPDK_17.11 {
+DPDK_20.0 {
 	global:
 
+	rte_vdev_add_custom_scan;
 	rte_vdev_init;
 	rte_vdev_register;
+	rte_vdev_remove_custom_scan;
 	rte_vdev_uninit;
 	rte_vdev_unregister;
 
 	local: *;
 };
-
-DPDK_18.02 {
-	global:
-
-	rte_vdev_add_custom_scan;
-	rte_vdev_remove_custom_scan;
-
-} DPDK_17.11;

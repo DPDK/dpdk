@@ -1,13 +1,8 @@
-DPDK_16.04 {
+DPDK_20.0 {
 	global:
 
 	rte_eth_vhost_get_queue_event;
+	rte_eth_vhost_get_vid_from_port_id;
 
 	local: *;
-};
-
-DPDK_16.11 {
-	global:
-
-	rte_eth_vhost_get_vid_from_port_id;
 };

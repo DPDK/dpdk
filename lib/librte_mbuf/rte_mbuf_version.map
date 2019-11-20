@@ -1,26 +1,7 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
-	rte_get_rx_ol_flag_name;
-	rte_get_tx_ol_flag_name;
-	rte_mbuf_sanity_check;
-	rte_pktmbuf_dump;
-	rte_pktmbuf_init;
-	rte_pktmbuf_pool_init;
-
-	local: *;
-};
-
-DPDK_2.1 {
-	global:
-
-	rte_pktmbuf_pool_create;
-
-} DPDK_2.0;
-
-DPDK_16.11 {
-	global:
-
+	__rte_pktmbuf_linearize;
 	__rte_pktmbuf_read;
 	rte_get_ptype_inner_l2_name;
 	rte_get_ptype_inner_l3_name;
@@ -31,28 +12,24 @@ DPDK_16.11 {
 	rte_get_ptype_name;
 	rte_get_ptype_tunnel_name;
 	rte_get_rx_ol_flag_list;
+	rte_get_rx_ol_flag_name;
 	rte_get_tx_ol_flag_list;
-
-} DPDK_2.1;
-
-DPDK_18.08 {
-	global:
-
+	rte_get_tx_ol_flag_name;
 	rte_mbuf_best_mempool_ops;
 	rte_mbuf_platform_mempool_ops;
+	rte_mbuf_sanity_check;
 	rte_mbuf_set_platform_mempool_ops;
 	rte_mbuf_set_user_mempool_ops;
 	rte_mbuf_user_mempool_ops;
-	rte_pktmbuf_pool_create_by_ops;
-} DPDK_16.11;
-
-DPDK_19.11 {
-	global:
-
-	__rte_pktmbuf_linearize;
 	rte_pktmbuf_clone;
+	rte_pktmbuf_dump;
+	rte_pktmbuf_init;
+	rte_pktmbuf_pool_create;
+	rte_pktmbuf_pool_create_by_ops;
+	rte_pktmbuf_pool_init;
 
-} DPDK_18.08;
+	local: *;
+};
 
 EXPERIMENTAL {
 	global:
@@ -68,4 +45,4 @@ EXPERIMENTAL {
 	rte_pktmbuf_copy;
 	rte_pktmbuf_free_bulk;
 
-} DPDK_18.08;
+};

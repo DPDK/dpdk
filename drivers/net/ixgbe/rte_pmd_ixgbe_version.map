@@ -1,45 +1,4 @@
-DPDK_2.0 {
-
-	local: *;
-};
-
-DPDK_16.11 {
-	global:
-
-	rte_pmd_ixgbe_set_all_queues_drop_en;
-	rte_pmd_ixgbe_set_tx_loopback;
-	rte_pmd_ixgbe_set_vf_mac_addr;
-	rte_pmd_ixgbe_set_vf_mac_anti_spoof;
-	rte_pmd_ixgbe_set_vf_split_drop_en;
-	rte_pmd_ixgbe_set_vf_vlan_anti_spoof;
-	rte_pmd_ixgbe_set_vf_vlan_insert;
-	rte_pmd_ixgbe_set_vf_vlan_stripq;
-} DPDK_2.0;
-
-DPDK_17.02 {
-	global:
-
-	rte_pmd_ixgbe_macsec_config_rxsc;
-	rte_pmd_ixgbe_macsec_config_txsc;
-	rte_pmd_ixgbe_macsec_disable;
-	rte_pmd_ixgbe_macsec_enable;
-	rte_pmd_ixgbe_macsec_select_rxsa;
-	rte_pmd_ixgbe_macsec_select_txsa;
-	rte_pmd_ixgbe_set_vf_rate_limit;
-	rte_pmd_ixgbe_set_vf_rx;
-	rte_pmd_ixgbe_set_vf_rxmode;
-	rte_pmd_ixgbe_set_vf_tx;
-	rte_pmd_ixgbe_set_vf_vlan_filter;
-} DPDK_16.11;
-
-DPDK_17.05 {
-	global:
-
-	rte_pmd_ixgbe_ping_vf;
-	rte_pmd_ixgbe_set_tc_bw_alloc;
-} DPDK_17.02;
-
-DPDK_17.08 {
+DPDK_20.0 {
 	global:
 
 	rte_pmd_ixgbe_bypass_event_show;
@@ -51,7 +10,30 @@ DPDK_17.08 {
 	rte_pmd_ixgbe_bypass_wd_reset;
 	rte_pmd_ixgbe_bypass_wd_timeout_show;
 	rte_pmd_ixgbe_bypass_wd_timeout_store;
-} DPDK_17.05;
+	rte_pmd_ixgbe_macsec_config_rxsc;
+	rte_pmd_ixgbe_macsec_config_txsc;
+	rte_pmd_ixgbe_macsec_disable;
+	rte_pmd_ixgbe_macsec_enable;
+	rte_pmd_ixgbe_macsec_select_rxsa;
+	rte_pmd_ixgbe_macsec_select_txsa;
+	rte_pmd_ixgbe_ping_vf;
+	rte_pmd_ixgbe_set_all_queues_drop_en;
+	rte_pmd_ixgbe_set_tc_bw_alloc;
+	rte_pmd_ixgbe_set_tx_loopback;
+	rte_pmd_ixgbe_set_vf_mac_addr;
+	rte_pmd_ixgbe_set_vf_mac_anti_spoof;
+	rte_pmd_ixgbe_set_vf_rate_limit;
+	rte_pmd_ixgbe_set_vf_rx;
+	rte_pmd_ixgbe_set_vf_rxmode;
+	rte_pmd_ixgbe_set_vf_split_drop_en;
+	rte_pmd_ixgbe_set_vf_tx;
+	rte_pmd_ixgbe_set_vf_vlan_anti_spoof;
+	rte_pmd_ixgbe_set_vf_vlan_filter;
+	rte_pmd_ixgbe_set_vf_vlan_insert;
+	rte_pmd_ixgbe_set_vf_vlan_stripq;
+
+	local: *;
+};
 
 EXPERIMENTAL {
 	global:

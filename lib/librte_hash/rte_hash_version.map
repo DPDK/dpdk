@@ -1,58 +1,33 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
 	rte_fbk_hash_create;
 	rte_fbk_hash_find_existing;
 	rte_fbk_hash_free;
 	rte_hash_add_key;
+	rte_hash_add_key_data;
 	rte_hash_add_key_with_hash;
+	rte_hash_add_key_with_hash_data;
+	rte_hash_count;
 	rte_hash_create;
 	rte_hash_del_key;
 	rte_hash_del_key_with_hash;
 	rte_hash_find_existing;
 	rte_hash_free;
+	rte_hash_get_key_with_position;
 	rte_hash_hash;
+	rte_hash_iterate;
 	rte_hash_lookup;
 	rte_hash_lookup_bulk;
+	rte_hash_lookup_bulk_data;
+	rte_hash_lookup_data;
 	rte_hash_lookup_with_hash;
+	rte_hash_lookup_with_hash_data;
+	rte_hash_reset;
+	rte_hash_set_cmp_func;
 
 	local: *;
 };
-
-DPDK_2.1 {
-	global:
-
-	rte_hash_add_key_data;
-	rte_hash_add_key_with_hash_data;
-	rte_hash_iterate;
-	rte_hash_lookup_bulk_data;
-	rte_hash_lookup_data;
-	rte_hash_lookup_with_hash_data;
-	rte_hash_reset;
-
-} DPDK_2.0;
-
-DPDK_2.2 {
-	global:
-
-	rte_hash_set_cmp_func;
-
-} DPDK_2.1;
-
-DPDK_16.07 {
-	global:
-
-	rte_hash_get_key_with_position;
-
-} DPDK_2.2;
-
-
-DPDK_18.08 {
-	global:
-
-	rte_hash_count;
-
-} DPDK_16.07;
 
 EXPERIMENTAL {
 	global:

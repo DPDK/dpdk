@@ -1,25 +1,14 @@
-DPDK_16.11 {
-	global:
-	rte_net_get_ptype;
-
-	local: *;
-};
-
-DPDK_17.05 {
-	global:
-
-	rte_net_crc_calc;
-	rte_net_crc_set_alg;
-
-} DPDK_16.11;
-
-DPDK_19.08 {
+DPDK_20.0 {
 	global:
 
 	rte_eth_random_addr;
 	rte_ether_format_addr;
+	rte_net_crc_calc;
+	rte_net_crc_set_alg;
+	rte_net_get_ptype;
 
-} DPDK_17.05;
+	local: *;
+};
 
 EXPERIMENTAL {
 	global:

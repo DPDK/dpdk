@@ -1,39 +1,35 @@
-DPDK_19.08 {
+DPDK_20.0 {
 	global:
 
 	otx2_dev_active_vfs;
 	otx2_dev_fini;
 	otx2_dev_priv_init;
-
+	otx2_disable_irqs;
+	otx2_intra_dev_get_cfg;
 	otx2_logtype_base;
 	otx2_logtype_dpi;
 	otx2_logtype_mbox;
+	otx2_logtype_nix;
 	otx2_logtype_npa;
 	otx2_logtype_npc;
-	otx2_logtype_nix;
 	otx2_logtype_sso;
-	otx2_logtype_tm;
 	otx2_logtype_tim;
-
+	otx2_logtype_tm;
 	otx2_mbox_alloc_msg_rsp;
 	otx2_mbox_get_rsp;
 	otx2_mbox_get_rsp_tmo;
 	otx2_mbox_id2name;
 	otx2_mbox_msg_send;
 	otx2_mbox_wait_for_rsp;
-
-	otx2_intra_dev_get_cfg;
 	otx2_npa_lf_active;
 	otx2_npa_lf_obj_get;
 	otx2_npa_lf_obj_ref;
 	otx2_npa_pf_func_get;
 	otx2_npa_set_defaults;
+	otx2_register_irq;
 	otx2_sso_pf_func_get;
 	otx2_sso_pf_func_set;
-
-	otx2_disable_irqs;
 	otx2_unregister_irq;
-	otx2_register_irq;
 
 	local: *;
 };

@@ -1,57 +1,39 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
 	rte_mempool_audit;
-	rte_mempool_calc_obj_size;
-	rte_mempool_create;
-	rte_mempool_dump;
-	rte_mempool_list_dump;
-	rte_mempool_lookup;
-	rte_mempool_walk;
-
-	local: *;
-};
-
-DPDK_16.07 {
-	global:
-
 	rte_mempool_avail_count;
 	rte_mempool_cache_create;
 	rte_mempool_cache_flush;
 	rte_mempool_cache_free;
+	rte_mempool_calc_obj_size;
 	rte_mempool_check_cookies;
+	rte_mempool_contig_blocks_check_cookies;
+	rte_mempool_create;
 	rte_mempool_create_empty;
 	rte_mempool_default_cache;
+	rte_mempool_dump;
 	rte_mempool_free;
 	rte_mempool_generic_get;
 	rte_mempool_generic_put;
 	rte_mempool_in_use_count;
+	rte_mempool_list_dump;
+	rte_mempool_lookup;
 	rte_mempool_mem_iter;
 	rte_mempool_obj_iter;
+	rte_mempool_op_calc_mem_size_default;
+	rte_mempool_op_populate_default;
 	rte_mempool_ops_table;
 	rte_mempool_populate_anon;
 	rte_mempool_populate_default;
+	rte_mempool_populate_iova;
 	rte_mempool_populate_virt;
 	rte_mempool_register_ops;
 	rte_mempool_set_ops_byname;
+	rte_mempool_walk;
 
-} DPDK_2.0;
-
-DPDK_17.11 {
-	global:
-
-	rte_mempool_populate_iova;
-
-} DPDK_16.07;
-
-DPDK_18.05 {
-	global:
-
-	rte_mempool_contig_blocks_check_cookies;
-	rte_mempool_op_calc_mem_size_default;
-	rte_mempool_op_populate_default;
-
-} DPDK_17.11;
+	local: *;
+};
 
 EXPERIMENTAL {
 	global:

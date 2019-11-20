@@ -1,8 +1,9 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
 	rte_ip_frag_free_death_row;
 	rte_ip_frag_table_create;
+	rte_ip_frag_table_destroy;
 	rte_ip_frag_table_statistics_dump;
 	rte_ipv4_frag_reassemble_packet;
 	rte_ipv4_fragment_packet;
@@ -11,13 +12,6 @@ DPDK_2.0 {
 
 	local: *;
 };
-
-DPDK_17.08 {
-	global:
-
-	rte_ip_frag_table_destroy;
-
-} DPDK_2.0;
 
 EXPERIMENTAL {
 	global:

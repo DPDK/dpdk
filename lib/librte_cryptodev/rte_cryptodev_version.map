@@ -1,92 +1,62 @@
-DPDK_16.04 {
+DPDK_20.0 {
 	global:
 
-	rte_cryptodevs;
+	rte_crypto_aead_algorithm_strings;
+	rte_crypto_aead_operation_strings;
+	rte_crypto_auth_algorithm_strings;
+	rte_crypto_auth_operation_strings;
+	rte_crypto_cipher_algorithm_strings;
+	rte_crypto_cipher_operation_strings;
+	rte_crypto_op_pool_create;
+	rte_cryptodev_allocate_driver;
 	rte_cryptodev_callback_register;
 	rte_cryptodev_callback_unregister;
 	rte_cryptodev_close;
-	rte_cryptodev_count;
 	rte_cryptodev_configure;
+	rte_cryptodev_count;
+	rte_cryptodev_device_count_by_driver;
+	rte_cryptodev_devices_get;
+	rte_cryptodev_driver_id_get;
+	rte_cryptodev_driver_name_get;
+	rte_cryptodev_get_aead_algo_enum;
+	rte_cryptodev_get_auth_algo_enum;
+	rte_cryptodev_get_cipher_algo_enum;
 	rte_cryptodev_get_dev_id;
 	rte_cryptodev_get_feature_name;
+	rte_cryptodev_get_sec_ctx;
 	rte_cryptodev_info_get;
+	rte_cryptodev_name_get;
 	rte_cryptodev_pmd_allocate;
 	rte_cryptodev_pmd_callback_process;
+	rte_cryptodev_pmd_create;
+	rte_cryptodev_pmd_create_dev_name;
+	rte_cryptodev_pmd_destroy;
+	rte_cryptodev_pmd_get_dev;
+	rte_cryptodev_pmd_get_named_dev;
+	rte_cryptodev_pmd_is_valid_dev;
+	rte_cryptodev_pmd_parse_input_args;
 	rte_cryptodev_pmd_release_device;
-	rte_cryptodev_sym_session_create;
-	rte_cryptodev_sym_session_free;
+	rte_cryptodev_queue_pair_count;
+	rte_cryptodev_queue_pair_setup;
 	rte_cryptodev_socket_id;
 	rte_cryptodev_start;
 	rte_cryptodev_stats_get;
 	rte_cryptodev_stats_reset;
 	rte_cryptodev_stop;
-	rte_cryptodev_queue_pair_count;
-	rte_cryptodev_queue_pair_setup;
-	rte_crypto_op_pool_create;
-
-	local: *;
-};
-
-DPDK_17.02 {
-	global:
-
-	rte_cryptodev_devices_get;
-	rte_cryptodev_pmd_create_dev_name;
-	rte_cryptodev_pmd_get_dev;
-	rte_cryptodev_pmd_get_named_dev;
-	rte_cryptodev_pmd_is_valid_dev;
+	rte_cryptodev_sym_capability_check_aead;
 	rte_cryptodev_sym_capability_check_auth;
 	rte_cryptodev_sym_capability_check_cipher;
 	rte_cryptodev_sym_capability_get;
-	rte_crypto_auth_algorithm_strings;
-	rte_crypto_auth_operation_strings;
-	rte_crypto_cipher_algorithm_strings;
-	rte_crypto_cipher_operation_strings;
-
-} DPDK_16.04;
-
-DPDK_17.05 {
-	global:
-
-	rte_cryptodev_get_auth_algo_enum;
-	rte_cryptodev_get_cipher_algo_enum;
-
-} DPDK_17.02;
-
-DPDK_17.08 {
-	global:
-
-	rte_cryptodev_allocate_driver;
-	rte_cryptodev_device_count_by_driver;
-	rte_cryptodev_driver_id_get;
-	rte_cryptodev_driver_name_get;
-	rte_cryptodev_get_aead_algo_enum;
-	rte_cryptodev_sym_capability_check_aead;
-	rte_cryptodev_sym_session_init;
-	rte_cryptodev_sym_session_clear;
-	rte_crypto_aead_algorithm_strings;
-	rte_crypto_aead_operation_strings;
-
-} DPDK_17.05;
-
-DPDK_17.11 {
-	global:
-
-	rte_cryptodev_get_sec_ctx;
-	rte_cryptodev_name_get;
-	rte_cryptodev_pmd_create;
-	rte_cryptodev_pmd_destroy;
-	rte_cryptodev_pmd_parse_input_args;
-
-} DPDK_17.08;
-
-DPDK_18.05 {
-	global:
-
 	rte_cryptodev_sym_get_header_session_size;
 	rte_cryptodev_sym_get_private_session_size;
+	rte_cryptodev_sym_session_clear;
+	rte_cryptodev_sym_session_create;
+	rte_cryptodev_sym_session_free;
+	rte_cryptodev_sym_session_init;
+	rte_cryptodevs;
 
-} DPDK_17.11;
+	local: *;
+};
 
 EXPERIMENTAL {
 	global:

@@ -1,21 +1,16 @@
-DPDK_17.02 {
+DPDK_20.0 {
 	global:
 
 	rte_cryptodev_scheduler_load_user_scheduler;
-	rte_cryptodev_scheduler_slave_attach;
-	rte_cryptodev_scheduler_slave_detach;
-	rte_cryptodev_scheduler_ordering_set;
-	rte_cryptodev_scheduler_ordering_get;
-
-};
-
-DPDK_17.05 {
-	global:
-
 	rte_cryptodev_scheduler_mode_get;
 	rte_cryptodev_scheduler_mode_set;
 	rte_cryptodev_scheduler_option_get;
 	rte_cryptodev_scheduler_option_set;
+	rte_cryptodev_scheduler_ordering_get;
+	rte_cryptodev_scheduler_ordering_set;
+	rte_cryptodev_scheduler_slave_attach;
+	rte_cryptodev_scheduler_slave_detach;
 	rte_cryptodev_scheduler_slaves_get;
 
-} DPDK_17.02;
+	local: *;
+};

@@ -1,5 +1,4 @@
-DPDK_19.05 {
-
+DPDK_20.0 {
 	local: *;
 };
 
@@ -7,4 +6,4 @@ EXPERIMENTAL {
 	global:
 
 	ipn3ke_bridge_func;
-} DPDK_19.05;
+};

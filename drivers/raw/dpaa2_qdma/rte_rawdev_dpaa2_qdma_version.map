@@ -1,4 +1,4 @@
-DPDK_19.05 {
+DPDK_20.0 {
 	global:
 
 	rte_qdma_attr_get;
@@ -9,9 +9,9 @@ DPDK_19.05 {
 	rte_qdma_start;
 	rte_qdma_stop;
 	rte_qdma_vq_create;
-	rte_qdma_vq_destroy;
 	rte_qdma_vq_dequeue;
 	rte_qdma_vq_dequeue_multi;
+	rte_qdma_vq_destroy;
 	rte_qdma_vq_enqueue;
 	rte_qdma_vq_enqueue_multi;
 	rte_qdma_vq_stats;

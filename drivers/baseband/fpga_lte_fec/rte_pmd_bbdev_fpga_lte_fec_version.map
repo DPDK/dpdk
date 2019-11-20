@@ -1,10 +1,10 @@
-DPDK_19.08 {
-    local: *;
+DPDK_20.0 {
+	local: *;
 };
 
 EXPERIMENTAL {
-    global:
+	global:
 
-    fpga_lte_fec_configure;
+	fpga_lte_fec_configure;
 
 };

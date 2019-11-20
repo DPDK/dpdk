@@ -1,65 +1,35 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
 	rte_port_ethdev_reader_ops;
+	rte_port_ethdev_writer_nodrop_ops;
 	rte_port_ethdev_writer_ops;
+	rte_port_fd_reader_ops;
+	rte_port_fd_writer_nodrop_ops;
+	rte_port_fd_writer_ops;
+	rte_port_kni_reader_ops;
+	rte_port_kni_writer_nodrop_ops;
+	rte_port_kni_writer_ops;
+	rte_port_ring_multi_reader_ops;
+	rte_port_ring_multi_writer_nodrop_ops;
+	rte_port_ring_multi_writer_ops;
 	rte_port_ring_reader_ipv4_frag_ops;
+	rte_port_ring_reader_ipv6_frag_ops;
 	rte_port_ring_reader_ops;
 	rte_port_ring_writer_ipv4_ras_ops;
+	rte_port_ring_writer_ipv6_ras_ops;
+	rte_port_ring_writer_nodrop_ops;
 	rte_port_ring_writer_ops;
 	rte_port_sched_reader_ops;
 	rte_port_sched_writer_ops;
 	rte_port_sink_ops;
 	rte_port_source_ops;
+	rte_port_sym_crypto_reader_ops;
+	rte_port_sym_crypto_writer_nodrop_ops;
+	rte_port_sym_crypto_writer_ops;
 
 	local: *;
 };
-
-DPDK_2.1 {
-	global:
-
-	rte_port_ethdev_writer_nodrop_ops;
-	rte_port_ring_reader_ipv6_frag_ops;
-	rte_port_ring_writer_ipv6_ras_ops;
-	rte_port_ring_writer_nodrop_ops;
-
-} DPDK_2.0;
-
-DPDK_2.2 {
-	global:
-
-	rte_port_ring_multi_reader_ops;
-	rte_port_ring_multi_writer_ops;
-	rte_port_ring_multi_writer_nodrop_ops;
-
-} DPDK_2.1;
-
-DPDK_16.07 {
-	global:
-
-	rte_port_kni_reader_ops;
-	rte_port_kni_writer_ops;
-	rte_port_kni_writer_nodrop_ops;
-
-} DPDK_2.2;
-
-DPDK_16.11 {
-	global:
-
-	rte_port_fd_reader_ops;
-	rte_port_fd_writer_ops;
-	rte_port_fd_writer_nodrop_ops;
-
-} DPDK_16.07;
-
-DPDK_18.11 {
-	global:
-
-	rte_port_sym_crypto_reader_ops;
-	rte_port_sym_crypto_writer_ops;
-	rte_port_sym_crypto_writer_nodrop_ops;
-
-} DPDK_16.11;
 
 EXPERIMENTAL {
 	global:

@@ -1,4 +1,4 @@
-DPDK_18.11 {
+DPDK_20.0 {
 	global:
 
 	rte_security_attach_session;

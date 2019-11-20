@@ -1,38 +1,26 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
 	rte_power_exit;
+	rte_power_freq_disable_turbo;
 	rte_power_freq_down;
+	rte_power_freq_enable_turbo;
 	rte_power_freq_max;
 	rte_power_freq_min;
 	rte_power_freq_up;
 	rte_power_freqs;
+	rte_power_get_capabilities;
 	rte_power_get_env;
 	rte_power_get_freq;
+	rte_power_guest_channel_send_msg;
 	rte_power_init;
 	rte_power_set_env;
 	rte_power_set_freq;
+	rte_power_turbo_status;
 	rte_power_unset_env;
 
 	local: *;
 };
-
-DPDK_17.11 {
-	global:
-
-	rte_power_guest_channel_send_msg;
-	rte_power_freq_disable_turbo;
-	rte_power_freq_enable_turbo;
-	rte_power_turbo_status;
-
-} DPDK_2.0;
-
-DPDK_18.08 {
-	global:
-
-	rte_power_get_capabilities;
-
-} DPDK_17.11;
 
 EXPERIMENTAL {
 	global:

@@ -1,64 +1,34 @@
-DPDK_2.0 {
-	global:
-
-	rte_vhost_dequeue_burst;
-	rte_vhost_driver_callback_register;
-	rte_vhost_driver_register;
-	rte_vhost_enable_guest_notification;
-	rte_vhost_enqueue_burst;
-
-	local: *;
-};
-
-DPDK_2.1 {
-	global:
-
-	rte_vhost_driver_unregister;
-
-} DPDK_2.0;
-
-DPDK_16.07 {
+DPDK_20.0 {
 	global:
 
 	rte_vhost_avail_entries;
-	rte_vhost_get_ifname;
-	rte_vhost_get_numa_node;
-	rte_vhost_get_queue_num;
-
-} DPDK_2.1;
-
-DPDK_17.05 {
-	global:
-
+	rte_vhost_dequeue_burst;
+	rte_vhost_driver_callback_register;
 	rte_vhost_driver_disable_features;
 	rte_vhost_driver_enable_features;
 	rte_vhost_driver_get_features;
+	rte_vhost_driver_register;
 	rte_vhost_driver_set_features;
 	rte_vhost_driver_start;
+	rte_vhost_driver_unregister;
+	rte_vhost_enable_guest_notification;
+	rte_vhost_enqueue_burst;
+	rte_vhost_get_ifname;
 	rte_vhost_get_mem_table;
 	rte_vhost_get_mtu;
 	rte_vhost_get_negotiated_features;
+	rte_vhost_get_numa_node;
+	rte_vhost_get_queue_num;
 	rte_vhost_get_vhost_vring;
 	rte_vhost_get_vring_num;
 	rte_vhost_gpa_to_vva;
 	rte_vhost_log_used_vring;
 	rte_vhost_log_write;
-
-} DPDK_16.07;
-
-DPDK_17.08 {
-	global:
-
 	rte_vhost_rx_queue_count;
-
-} DPDK_17.05;
-
-DPDK_18.02 {
-	global:
-
 	rte_vhost_vring_call;
 
-} DPDK_17.08;
+	local: *;
+};
 
 EXPERIMENTAL {
 	global:

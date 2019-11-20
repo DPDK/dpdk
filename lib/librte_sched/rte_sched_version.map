@@ -1,4 +1,4 @@
-DPDK_2.0 {
+DPDK_20.0 {
 	global:
 
 	rte_approx;
@@ -14,21 +14,15 @@ DPDK_2.0 {
 	rte_sched_port_enqueue;
 	rte_sched_port_free;
 	rte_sched_port_get_memory_footprint;
+	rte_sched_port_pkt_read_color;
+	rte_sched_port_pkt_read_tree_path;
+	rte_sched_port_pkt_write;
 	rte_sched_queue_read_stats;
 	rte_sched_subport_config;
 	rte_sched_subport_read_stats;
 
 	local: *;
 };
-
-DPDK_2.1 {
-	global:
-
-	rte_sched_port_pkt_write;
-	rte_sched_port_pkt_read_tree_path;
-	rte_sched_port_pkt_read_color;
-
-} DPDK_2.0;
 
 EXPERIMENTAL {
 	global:

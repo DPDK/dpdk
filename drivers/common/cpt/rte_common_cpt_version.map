@@ -1,14 +1,9 @@
-DPDK_18.11 {
-	global:
-
-	cpt_pmd_ops_helper_get_mlen_direct_mode;
-	cpt_pmd_ops_helper_get_mlen_sg_mode;
-};
-
-DPDK_19.11 {
+DPDK_20.0 {
 	global:
 
 	cpt_pmd_ops_helper_asym_get_mlen;
+	cpt_pmd_ops_helper_get_mlen_direct_mode;
+	cpt_pmd_ops_helper_get_mlen_sg_mode;
 
 	local: *;
 };

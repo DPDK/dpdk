@@ -1,11 +1,7 @@
-DPDK_17.11 {
-
-	local: *;
-};
-
-DPDK_18.02 {
+DPDK_20.0 {
 	global:
 
 	rte_octeontx_pchan_map;
 
-} DPDK_17.11;
+	local: *;
+};
