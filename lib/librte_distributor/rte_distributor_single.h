@@ -2,8 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#ifndef _RTE_DISTRIB_V20_H_
-#define _RTE_DISTRIB_V20_H_
+#ifndef _RTE_DISTRIB_SINGLE_H_
+#define _RTE_DISTRIB_SINGLE_H_
 
 /**
  * @file
@@ -19,7 +19,7 @@ extern "C" {
 
 #define RTE_DISTRIBUTOR_NAMESIZE 32 /**< Length of name for instance */
 
-struct rte_distributor_v20;
+struct rte_distributor_single;
 struct rte_mbuf;
 
 /**
@@ -38,8 +38,8 @@ struct rte_mbuf;
  * @return
  *   The newly created distributor instance
  */
-struct rte_distributor_v20 *
-rte_distributor_create_v20(const char *name, unsigned int socket_id,
+struct rte_distributor_single *
+rte_distributor_create_single(const char *name, unsigned int socket_id,
 		unsigned int num_workers);
 
 /*  *** APIS to be called on the distributor lcore ***  */
@@ -74,7 +74,7 @@ rte_distributor_create_v20(const char *name, unsigned int socket_id,
  *   The number of mbufs processed.
  */
 int
-rte_distributor_process_v20(struct rte_distributor_v20 *d,
+rte_distributor_process_single(struct rte_distributor_single *d,
 		struct rte_mbuf **mbufs, unsigned int num_mbufs);
 
 /**
@@ -92,7 +92,7 @@ rte_distributor_process_v20(struct rte_distributor_v20 *d,
  *   The number of mbufs returned in the mbufs array.
  */
 int
-rte_distributor_returned_pkts_v20(struct rte_distributor_v20 *d,
+rte_distributor_returned_pkts_single(struct rte_distributor_single *d,
 		struct rte_mbuf **mbufs, unsigned int max_mbufs);
 
 /**
@@ -107,7 +107,7 @@ rte_distributor_returned_pkts_v20(struct rte_distributor_v20 *d,
  *   The number of queued/in-flight packets that were completed by this call.
  */
 int
-rte_distributor_flush_v20(struct rte_distributor_v20 *d);
+rte_distributor_flush_single(struct rte_distributor_single *d);
 
 /**
  * Clears the array of returned packets used as the source for the
@@ -119,7 +119,7 @@ rte_distributor_flush_v20(struct rte_distributor_v20 *d);
  *   The distributor instance to be used
  */
 void
-rte_distributor_clear_returns_v20(struct rte_distributor_v20 *d);
+rte_distributor_clear_returns_single(struct rte_distributor_single *d);
 
 /*  *** APIS to be called on the worker lcores ***  */
 /*
@@ -148,7 +148,7 @@ rte_distributor_clear_returns_v20(struct rte_distributor_v20 *d);
  *   A new packet to be processed by the worker thread.
  */
 struct rte_mbuf *
-rte_distributor_get_pkt_v20(struct rte_distributor_v20 *d,
+rte_distributor_get_pkt_single(struct rte_distributor_single *d,
 		unsigned int worker_id, struct rte_mbuf *oldpkt);
 
 /**
@@ -164,7 +164,7 @@ rte_distributor_get_pkt_v20(struct rte_distributor_v20 *d,
  *   The previous packet being processed by the worker
  */
 int
-rte_distributor_return_pkt_v20(struct rte_distributor_v20 *d,
+rte_distributor_return_pkt_single(struct rte_distributor_single *d,
 		unsigned int worker_id, struct rte_mbuf *mbuf);
 
 /**
@@ -188,7 +188,7 @@ rte_distributor_return_pkt_v20(struct rte_distributor_v20 *d,
  *   The previous packet, if any, being processed by the worker
  */
 void
-rte_distributor_request_pkt_v20(struct rte_distributor_v20 *d,
+rte_distributor_request_pkt_single(struct rte_distributor_single *d,
 		unsigned int worker_id, struct rte_mbuf *oldpkt);
 
 /**
@@ -208,7 +208,7 @@ rte_distributor_request_pkt_v20(struct rte_distributor_v20 *d,
  *   packet is yet available.
  */
 struct rte_mbuf *
-rte_distributor_poll_pkt_v20(struct rte_distributor_v20 *d,
+rte_distributor_poll_pkt_single(struct rte_distributor_single *d,
 		unsigned int worker_id);
 
 #ifdef __cplusplus

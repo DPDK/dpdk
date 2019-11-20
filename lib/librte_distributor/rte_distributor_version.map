@@ -1,19 +1,3 @@
-DPDK_2.0 {
-	global:
-
-	rte_distributor_clear_returns;
-	rte_distributor_create;
-	rte_distributor_flush;
-	rte_distributor_get_pkt;
-	rte_distributor_poll_pkt;
-	rte_distributor_process;
-	rte_distributor_request_pkt;
-	rte_distributor_return_pkt;
-	rte_distributor_returned_pkts;
-
-	local: *;
-};
-
 DPDK_17.05 {
 	global:
 
@@ -26,4 +10,4 @@ DPDK_17.05 {
 	rte_distributor_request_pkt;
 	rte_distributor_return_pkt;
 	rte_distributor_returned_pkts;
-} DPDK_2.0;
+};

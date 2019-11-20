@@ -17,7 +17,7 @@
 #include <rte_tailq.h>
 
 #include "rte_distributor.h"
-#include "rte_distributor_v20.h"
+#include "rte_distributor_single.h"
 #include "distributor_private.h"
 
 TAILQ_HEAD(rte_dist_burst_list, rte_distributor);
@@ -42,7 +42,7 @@ rte_distributor_request_pkt(struct rte_distributor *d,
 	volatile int64_t *retptr64;
 
 	if (unlikely(d->alg_type == RTE_DIST_ALG_SINGLE)) {
-		rte_distributor_request_pkt_v20(d->d_v20,
+		rte_distributor_request_pkt_single(d->d_single,
 			worker_id, oldpkt[0]);
 		return;
 	}
@@ -93,7 +93,8 @@ rte_distributor_poll_pkt(struct rte_distributor *d,
 	unsigned int i;
 
 	if (unlikely(d->alg_type == RTE_DIST_ALG_SINGLE)) {
-		pkts[0] = rte_distributor_poll_pkt_v20(d->d_v20, worker_id);
+		pkts[0] = rte_distributor_poll_pkt_single(d->d_single,
+			worker_id);
 		return (pkts[0]) ? 1 : 0;
 	}
 
@@ -133,7 +134,7 @@ rte_distributor_get_pkt(struct rte_distributor *d,
 
 	if (unlikely(d->alg_type == RTE_DIST_ALG_SINGLE)) {
 		if (return_count <= 1) {
-			pkts[0] = rte_distributor_get_pkt_v20(d->d_v20,
+			pkts[0] = rte_distributor_get_pkt_single(d->d_single,
 				worker_id, oldpkt[0]);
 			return (pkts[0]) ? 1 : 0;
 		} else
@@ -163,7 +164,7 @@ rte_distributor_return_pkt(struct rte_distributor *d,
 
 	if (unlikely(d->alg_type == RTE_DIST_ALG_SINGLE)) {
 		if (num == 1)
-			return rte_distributor_return_pkt_v20(d->d_v20,
+			return rte_distributor_return_pkt_single(d->d_single,
 				worker_id, oldpkt[0]);
 		else
 			return -EINVAL;
@@ -354,7 +355,8 @@ rte_distributor_process(struct rte_distributor *d,
 
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
-		return rte_distributor_process_v20(d->d_v20, mbufs, num_mbufs);
+		return rte_distributor_process_single(d->d_single,
+			mbufs, num_mbufs);
 	}
 
 	if (unlikely(num_mbufs == 0)) {
@@ -494,7 +496,7 @@ rte_distributor_returned_pkts(struct rte_distributor *d,
 
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
-		return rte_distributor_returned_pkts_v20(d->d_v20,
+		return rte_distributor_returned_pkts_single(d->d_single,
 				mbufs, max_mbufs);
 	}
 
@@ -537,7 +539,7 @@ rte_distributor_flush(struct rte_distributor *d)
 
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
-		return rte_distributor_flush_v20(d->d_v20);
+		return rte_distributor_flush_single(d->d_single);
 	}
 
 	flushed = total_outstanding(d);
@@ -568,7 +570,7 @@ rte_distributor_clear_returns(struct rte_distributor *d)
 
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
-		rte_distributor_clear_returns_v20(d->d_v20);
+		rte_distributor_clear_returns_single(d->d_single);
 		return;
 	}
 
@@ -610,9 +612,9 @@ rte_distributor_create(const char *name,
 			rte_errno = ENOMEM;
 			return NULL;
 		}
-		d->d_v20 = rte_distributor_create_v20(name,
+		d->d_single = rte_distributor_create_single(name,
 				socket_id, num_workers);
-		if (d->d_v20 == NULL) {
+		if (d->d_single == NULL) {
 			free(d);
 			/* rte_errno will have been set */
 			return NULL;

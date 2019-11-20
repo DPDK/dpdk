@@ -55,7 +55,7 @@ extern "C" {
  * the next cache line to worker 0, we pad this out to three cache lines.
  * Only 64-bits of the memory is actually used though.
  */
-union rte_distributor_buffer_v20 {
+union rte_distributor_buffer_single {
 	volatile int64_t bufptr64;
 	char pad[RTE_CACHE_LINE_SIZE*3];
 } __rte_cache_aligned;
@@ -80,8 +80,8 @@ struct rte_distributor_returned_pkts {
 	struct rte_mbuf *mbufs[RTE_DISTRIB_MAX_RETURNS];
 };
 
-struct rte_distributor_v20 {
-	TAILQ_ENTRY(rte_distributor_v20) next;    /**< Next in list. */
+struct rte_distributor_single {
+	TAILQ_ENTRY(rte_distributor_single) next;    /**< Next in list. */
 
 	char name[RTE_DISTRIBUTOR_NAMESIZE];  /**< Name of the ring. */
 	unsigned int num_workers;             /**< Number of workers polling */
@@ -96,7 +96,7 @@ struct rte_distributor_v20 {
 
 	struct rte_distributor_backlog backlog[RTE_DISTRIB_MAX_WORKERS];
 
-	union rte_distributor_buffer_v20 bufs[RTE_DISTRIB_MAX_WORKERS];
+	union rte_distributor_buffer_single bufs[RTE_DISTRIB_MAX_WORKERS];
 
 	struct rte_distributor_returned_pkts returns;
 };
@@ -154,7 +154,7 @@ struct rte_distributor {
 
 	enum rte_distributor_match_function dist_match_fn;
 
-	struct rte_distributor_v20 *d_v20;
+	struct rte_distributor_single *d_single;
 };
 
 void
