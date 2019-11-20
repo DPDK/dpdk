@@ -147,6 +147,7 @@ F: devtools/validate-abi.sh
 F: devtools/check-symbol-change.sh
 F: buildtools/check-experimental-syms.sh
 F: buildtools/map-list-symbol.sh
+F: buildtools/update-abi.sh
 F: buildtools/update_version_map_abi.py
 
 Driver information
