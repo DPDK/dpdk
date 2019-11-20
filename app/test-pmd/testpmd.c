@@ -2619,6 +2619,7 @@ detach_device(char *identifier)
 		if (ports[port_id].port_status != RTE_PORT_CLOSED) {
 			if (ports[port_id].port_status != RTE_PORT_STOPPED) {
 				printf("Port %u not stopped\n", port_id);
+				rte_eth_iterator_cleanup(&iterator);
 				return;
 			}
 
