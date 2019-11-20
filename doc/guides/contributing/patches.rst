@@ -407,8 +407,17 @@ This uses the Linux kernel development tool ``checkpatch.pl`` which  can be obta
 updating the Linux kernel sources.
 
 The path to the original Linux script must be set in the environment variable ``DPDK_CHECKPATCH_PATH``.
-This, and any other configuration variables required by the development tools, are loaded from the following
-files, in order of preference::
+
+Spell checking of commonly misspelled words
+can be enabled by downloading the codespell dictionary::
+
+   https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary.txt
+
+The path to the downloaded ``dictionary.txt`` must be set
+in the environment variable ``DPDK_CHECKPATCH_CODESPELL``.
+
+Environment variables required by the development tools,
+are loaded from the following files, in order of preference::
 
    .develconfig
    ~/.config/dpdk/devel.config
