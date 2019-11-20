@@ -1121,9 +1121,9 @@ eth_em_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_link link;
-	int link_check, count;
+	int link_up, count;
 
-	link_check = 0;
+	link_up = 0;
 	hw->mac.get_link_status = 1;
 
 	/* possible wait-to-complete in up to 9 seconds */
@@ -1133,31 +1133,31 @@ eth_em_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		case e1000_media_type_copper:
 			/* Do the work to read phy */
 			e1000_check_for_link(hw);
-			link_check = !hw->mac.get_link_status;
+			link_up = !hw->mac.get_link_status;
 			break;
 
 		case e1000_media_type_fiber:
 			e1000_check_for_link(hw);
-			link_check = (E1000_READ_REG(hw, E1000_STATUS) &
+			link_up = (E1000_READ_REG(hw, E1000_STATUS) &
 					E1000_STATUS_LU);
 			break;
 
 		case e1000_media_type_internal_serdes:
 			e1000_check_for_link(hw);
-			link_check = hw->mac.serdes_has_link;
+			link_up = hw->mac.serdes_has_link;
 			break;
 
 		default:
 			break;
 		}
-		if (link_check || wait_to_complete == 0)
+		if (link_up || wait_to_complete == 0)
 			break;
 		rte_delay_ms(EM_LINK_UPDATE_CHECK_INTERVAL);
 	}
 	memset(&link, 0, sizeof(link));
 
 	/* Now we check if a transition has happened */
-	if (link_check && (link.link_status == ETH_LINK_DOWN)) {
+	if (link_up) {
 		uint16_t duplex, speed;
 		hw->mac.ops.get_link_up_info(hw, &speed, &duplex);
 		link.link_duplex = (duplex == FULL_DUPLEX) ?
@@ -1167,7 +1167,7 @@ eth_em_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		link.link_status = ETH_LINK_UP;
 		link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 				ETH_LINK_SPEED_FIXED);
-	} else if (!link_check && (link.link_status == ETH_LINK_UP)) {
+	} else {
 		link.link_speed = ETH_SPEED_NUM_NONE;
 		link.link_duplex = ETH_LINK_HALF_DUPLEX;
 		link.link_status = ETH_LINK_DOWN;
