@@ -177,14 +177,6 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			return -rte_errno;
 		}
 
-		if (!item->spec || !item->mask) {
-			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "spec/mask is NULL");
-			return -rte_errno;
-		}
-
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_ANY:
 			inner =
