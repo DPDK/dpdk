@@ -10,8 +10,6 @@ LIB = librte_pmd_tap.a
 
 EXPORT_MAP := rte_pmd_tap_version.map
 
-LIBABIVER := 1
-
 #
 # TAP_MAX_QUEUES must be a power of 2
 #

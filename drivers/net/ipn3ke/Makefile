@@ -28,8 +28,6 @@ LDLIBS += -lpthread
 
 EXPORT_MAP := rte_pmd_ipn3ke_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

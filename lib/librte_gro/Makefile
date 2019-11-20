@@ -12,8 +12,6 @@ LDLIBS += -lrte_eal -lrte_mbuf -lrte_ethdev -lrte_net
 
 EXPORT_MAP := rte_gro_version.map
 
-LIBABIVER := 1
-
 # source files
 SRCS-$(CONFIG_RTE_LIBRTE_GRO) += rte_gro.c
 SRCS-$(CONFIG_RTE_LIBRTE_GRO) += gro_tcp4.c

@@ -11,8 +11,6 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 EXPORT_MAP := rte_cmdline_version.map
 
-LIBABIVER := 2
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) := cmdline.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_cirbuf.c

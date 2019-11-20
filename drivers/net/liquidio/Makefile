@@ -17,8 +17,6 @@ LDLIBS += -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_liquidio_version.map
 
-LIBABIVER := 1
-
 VPATH += $(RTE_SDK)/drivers/net/liquidio/base
 
 #

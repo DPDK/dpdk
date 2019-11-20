@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-version = 1
-
 dep = dependency('libfdt', required: false)
 if not dep.found()
 	dep = cc.find_library('libfdt', required: false)

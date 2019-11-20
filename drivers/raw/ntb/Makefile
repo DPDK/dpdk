@@ -17,8 +17,6 @@ LDLIBS += -lrte_rawdev
 
 EXPORT_MAP := rte_rawdev_ntb_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

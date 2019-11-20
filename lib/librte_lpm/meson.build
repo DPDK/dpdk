@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-version = 2
 sources = files('rte_lpm.c', 'rte_lpm6.c')
 headers = files('rte_lpm.h', 'rte_lpm6.h')
 # since header files have different names, we can install all vector headers

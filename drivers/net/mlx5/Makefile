@@ -73,8 +73,6 @@ LDLIBS += -lrte_bus_pci
 CFLAGS += -Wno-error=cast-qual
 
 EXPORT_MAP := rte_pmd_mlx5_version.map
-LIBABIVER := 1
-
 # memseg walk is not part of stable API
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 

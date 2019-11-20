@@ -31,8 +31,6 @@ CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec
 # versioning export map
 EXPORT_MAP := rte_pmd_dpaa2_event_version.map
 
-LIBABIVER := 2
-
 # depends on fslmc bus which uses experimental API
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 

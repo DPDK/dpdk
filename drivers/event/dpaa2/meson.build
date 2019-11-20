@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018 NXP
 
-version = 2
-
 if not is_linux
 	build = false
 	reason = 'only supported on linux'

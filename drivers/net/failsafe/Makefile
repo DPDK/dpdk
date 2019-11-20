@@ -9,8 +9,6 @@ LIB = librte_pmd_failsafe.a
 
 EXPORT_MAP := rte_pmd_failsafe_version.map
 
-LIBABIVER := 1
-
 # Sources are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_FAILSAFE) += failsafe.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_FAILSAFE) += failsafe_args.c

@@ -13,8 +13,6 @@ LDLIBS += -lrte_hash
 
 EXPORT_MAP := rte_ip_frag_version.map
 
-LIBABIVER := 1
-
 #source files
 SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ipv4_fragmentation.c
 SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += rte_ipv6_fragmentation.c

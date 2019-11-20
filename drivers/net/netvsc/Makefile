@@ -9,8 +9,6 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 EXPORT_MAP := rte_pmd_netvsc_version.map
 
-LIBABIVER := 1
-
 SRCS-$(CONFIG_RTE_LIBRTE_NETVSC_PMD) += hn_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_NETVSC_PMD) += hn_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_NETVSC_PMD) += hn_rndis.c

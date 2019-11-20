@@ -14,9 +14,6 @@ LDLIBS += -lrte_eal -lrte_rawdev
 LDLIBS += -lrte_pci -lrte_bus_pci
 LDLIBS += -lrte_mbuf -lrte_mempool
 
-# library version
-LIBABIVER := 1
-
 # versioning export map
 EXPORT_MAP := rte_rawdev_ioat_version.map
 

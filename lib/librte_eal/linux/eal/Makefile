@@ -10,8 +10,6 @@ ARCH_DIR ?= $(RTE_ARCH)
 EXPORT_MAP := ../../rte_eal_version.map
 VPATH += $(RTE_SDK)/lib/librte_eal/common/arch/$(ARCH_DIR)
 
-LIBABIVER := 12
-
 VPATH += $(RTE_SDK)/lib/librte_eal/common
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API

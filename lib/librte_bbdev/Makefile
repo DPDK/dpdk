@@ -6,9 +6,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_bbdev.a
 
-# library version
-LIBABIVER := 1
-
 # build flags
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3

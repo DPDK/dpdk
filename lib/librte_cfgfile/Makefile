@@ -15,8 +15,6 @@ LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_cfgfile_version.map
 
-LIBABIVER := 2
-
 #
 # all source are stored in SRCS-y
 #

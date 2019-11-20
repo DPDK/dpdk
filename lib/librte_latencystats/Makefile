@@ -13,8 +13,6 @@ LDLIBS += -lrte_eal -lrte_metrics -lrte_ethdev -lrte_mbuf
 
 EXPORT_MAP := rte_latencystats_version.map
 
-LIBABIVER := 1
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_LATENCY_STATS) := rte_latencystats.c
 

@@ -6,9 +6,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_cryptodev.a
 
-# library version
-LIBABIVER := 8
-
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

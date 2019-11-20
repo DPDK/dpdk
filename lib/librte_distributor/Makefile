@@ -12,8 +12,6 @@ LDLIBS += -lrte_eal -lrte_mbuf -lrte_ethdev
 
 EXPORT_MAP := rte_distributor_version.map
 
-LIBABIVER := 1
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) := rte_distributor_v20.c
 SRCS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += rte_distributor.c

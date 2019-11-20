@@ -24,8 +24,6 @@ endif
 
 EXPORT_MAP := rte_common_octeontx2_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

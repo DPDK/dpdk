@@ -20,8 +20,6 @@ LDLIBS += -lrte_bus_vdev -lrte_ethdev
 
 EXPORT_MAP := rte_pmd_octeontx_event_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

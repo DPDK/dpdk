@@ -18,8 +18,6 @@ LDLIBS += -lrte_timer
 
 EXPORT_MAP := rte_sched_version.map
 
-LIBABIVER := 4
-
 #
 # all source are stored in SRCS-y
 #

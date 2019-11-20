@@ -20,9 +20,6 @@ CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 # versioning export map
 EXPORT_MAP := rte_common_dpaax_version.map
 
-# library version
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

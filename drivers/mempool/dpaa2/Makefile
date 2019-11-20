@@ -18,9 +18,6 @@ CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
 # versioning export map
 EXPORT_MAP := rte_mempool_dpaa2_version.map
 
-# Lbrary version
-LIBABIVER := 2
-
 # depends on fslmc bus which uses experimental API
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 

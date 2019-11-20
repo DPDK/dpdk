@@ -62,8 +62,6 @@ $(foreach obj, $(BASE_DRIVER_OBJS), \
 
 EXPORT_MAP := rte_pmd_sfc_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

@@ -13,8 +13,6 @@ LIB = librte_pmd_bnxt.a
 
 EXPORT_MAP := rte_pmd_bnxt_version.map
 
-LIBABIVER := 2
-
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring

@@ -17,8 +17,6 @@ LDLIBS += -lrte_kvargs
 
 EXPORT_MAP := rte_rawdev_skeleton_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

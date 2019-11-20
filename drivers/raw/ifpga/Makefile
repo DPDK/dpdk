@@ -28,8 +28,6 @@ LDLIBS += -lrte_pmd_ipn3ke
 
 EXPORT_MAP := rte_rawdev_ifpga_version.map
 
-LIBABIVER := 1
-
 VPATH += $(SRCDIR)/base
 
 include $(RTE_SDK)/drivers/raw/ifpga/base/Makefile

@@ -17,9 +17,6 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
-# library version
-LIBABIVER := 1
-
 # versioning export map
 EXPORT_MAP := rte_pmd_kasumi_version.map
 

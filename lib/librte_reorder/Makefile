@@ -12,8 +12,6 @@ LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf
 
 EXPORT_MAP := rte_reorder_version.map
 
-LIBABIVER := 1
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_REORDER) := rte_reorder.c
 

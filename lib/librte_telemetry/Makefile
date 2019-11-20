@@ -17,8 +17,6 @@ LDLIBS += -ljansson
 
 EXPORT_MAP := rte_telemetry_version.map
 
-LIBABIVER := 1
-
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) := rte_telemetry.c
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += rte_telemetry_parser.c

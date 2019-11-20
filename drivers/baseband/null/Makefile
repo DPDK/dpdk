@@ -16,9 +16,6 @@ LDLIBS += -lrte_bus_vdev
 # versioning export map
 EXPORT_MAP := rte_pmd_bbdev_null_version.map
 
-# library version
-LIBABIVER := 1
-
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_NULL) += bbdev_null.c
 

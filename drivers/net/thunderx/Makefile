@@ -18,8 +18,6 @@ LDLIBS += -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_thunderx_version.map
 
-LIBABIVER := 1
-
 OBJS_BASE_DRIVER=$(sort $(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/base/*.c))))
 $(foreach obj, $(OBJS_BASE_DRIVER), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
 

@@ -12,8 +12,6 @@ LDLIBS += -lrte_eal -lrte_hash
 
 EXPORT_MAP := rte_lpm_version.map
 
-LIBABIVER := 2
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_LPM) := rte_lpm.c rte_lpm6.c
 

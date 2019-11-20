@@ -12,8 +12,6 @@ LIB = librte_common_octeontx.a
 CFLAGS += $(WERROR_FLAGS)
 EXPORT_MAP := rte_common_octeontx_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

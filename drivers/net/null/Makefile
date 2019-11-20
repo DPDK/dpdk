@@ -16,8 +16,6 @@ LDLIBS += -lrte_bus_vdev
 
 EXPORT_MAP := rte_pmd_null_version.map
 
-LIBABIVER := 2
-
 #
 # all source are stored in SRCS-y
 #

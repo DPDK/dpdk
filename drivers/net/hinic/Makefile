@@ -24,8 +24,6 @@ LDLIBS += -lpthread
 
 EXPORT_MAP := rte_pmd_hinic_version.map
 
-LIBABIVER := 1
-
 #
 # CFLAGS for 32-bits platforms
 #

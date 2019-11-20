@@ -15,9 +15,6 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 # versioning export map
 EXPORT_MAP := rte_bus_vdev_version.map
 
-# library version
-LIBABIVER := 2
-
 SRCS-y += vdev.c
 SRCS-y += vdev_params.c
 

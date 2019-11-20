@@ -14,8 +14,6 @@ CFLAGS += $(WERROR_FLAGS)
 
 EXPORT_MAP := rte_pmd_cxgbe_version.map
 
-LIBABIVER := 1
-
 #
 # CFLAGS for gcc/clang
 #

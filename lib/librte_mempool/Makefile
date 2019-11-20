@@ -12,8 +12,6 @@ LDLIBS += -lrte_eal -lrte_ring
 
 EXPORT_MAP := rte_mempool_version.map
 
-LIBABIVER := 5
-
 # memseg walk is not yet part of stable API
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 

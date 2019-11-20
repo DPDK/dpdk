@@ -14,8 +14,6 @@ LDLIBS += -lrte_eal -lrte_rib
 
 EXPORT_MAP := rte_fib_version.map
 
-LIBABIVER := 1
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_FIB) := rte_fib.c rte_fib6.c dir24_8.c trie.c
 

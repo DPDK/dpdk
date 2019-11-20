@@ -12,8 +12,6 @@ LDLIBS += -lrte_eal -lrte_timer
 
 EXPORT_MAP := rte_power_version.map
 
-LIBABIVER := 1
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_POWER) := rte_power.c power_acpi_cpufreq.c
 SRCS-$(CONFIG_RTE_LIBRTE_POWER) += power_kvm_vm.c guest_channel.c

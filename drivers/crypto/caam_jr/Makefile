@@ -25,9 +25,6 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
 # versioning export map
 EXPORT_MAP := rte_pmd_caam_jr_version.map
 
-# library version
-LIBABIVER := 1
-
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_CAAM_JR) += caam_jr.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_CAAM_JR) += caam_jr_capabilities.c

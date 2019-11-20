@@ -17,9 +17,6 @@ LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_compressdev
 LDLIBS += -lrte_bus_vdev
 
-# library version
-LIBABIVER := 1
-
 # versioning export map
 EXPORT_MAP := rte_pmd_isal_version.map
 

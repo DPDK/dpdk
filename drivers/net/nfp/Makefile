@@ -19,8 +19,6 @@ LDLIBS += -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_nfp_version.map
 
-LIBABIVER := 1
-
 VPATH += $(SRCDIR)/nfpcore
 
 SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_cppcore.c

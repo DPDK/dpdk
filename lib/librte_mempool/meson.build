@@ -11,7 +11,6 @@ foreach flag: extra_flags
 	endif
 endforeach
 
-version = 5
 sources = files('rte_mempool.c', 'rte_mempool_ops.c',
 		'rte_mempool_ops_default.c')
 headers = files('rte_mempool.h')

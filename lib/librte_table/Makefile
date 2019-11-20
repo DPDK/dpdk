@@ -18,8 +18,6 @@ endif
 
 EXPORT_MAP := rte_table_version.map
 
-LIBABIVER := 3
-
 #
 # all source are stored in SRCS-y
 #

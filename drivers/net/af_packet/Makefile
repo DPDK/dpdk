@@ -13,8 +13,6 @@ LIB = librte_pmd_af_packet.a
 
 EXPORT_MAP := rte_pmd_af_packet_version.map
 
-LIBABIVER := 1
-
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring

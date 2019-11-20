@@ -27,8 +27,6 @@ endif
 
 EXPORT_MAP := rte_pmd_octeontx2_event_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

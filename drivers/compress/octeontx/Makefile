@@ -6,9 +6,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_pmd_octeontx_zip.a
 
-# library version
-LIBABIVER := 1
-
 # build flags
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -O3

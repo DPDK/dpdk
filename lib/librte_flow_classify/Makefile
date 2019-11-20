@@ -12,8 +12,6 @@ CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 
 EXPORT_MAP := rte_flow_classify_version.map
 
-LIBABIVER := 1
-
 LDLIBS += -lrte_eal -lrte_ethdev -lrte_net -lrte_table -lrte_acl
 
 # all source are stored in SRCS-y

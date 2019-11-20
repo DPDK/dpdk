@@ -11,8 +11,6 @@ LIB = librte_pmd_enic.a
 
 EXPORT_MAP := rte_pmd_enic_version.map
 
-LIBABIVER := 1
-
 # Experimental APIs used: rte_intr_ack
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -I$(SRCDIR)/base/

@@ -11,9 +11,6 @@ CFLAGS += -O3
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS)
 
-# library version
-LIBABIVER := 1
-
 # versioning export map
 EXPORT_MAP := rte_pmd_aesni_gcm_version.map
 

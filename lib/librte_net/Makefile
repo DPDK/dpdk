@@ -10,8 +10,6 @@ CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 LDLIBS += -lrte_mbuf -lrte_eal -lrte_mempool
 
 EXPORT_MAP := rte_net_version.map
-LIBABIVER := 1
-
 SRCS-$(CONFIG_RTE_LIBRTE_NET) := rte_net.c
 SRCS-$(CONFIG_RTE_LIBRTE_NET) += rte_net_crc.c
 SRCS-$(CONFIG_RTE_LIBRTE_NET) += rte_ether.c

@@ -17,7 +17,6 @@ elif (toolchain == 'icc' and cc.version().version_compare('>=16.0.0'))
 endif
 dpdk_conf.set('RTE_LIBRTE_VHOST_POSTCOPY',
 	      cc.has_header('linux/userfaultfd.h'))
-version = 4
 allow_experimental_apis = true
 cflags += '-fno-strict-aliasing'
 sources = files('fd_man.c', 'iotlb.c', 'socket.c', 'vdpa.c',

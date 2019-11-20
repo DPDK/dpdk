@@ -6,7 +6,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 # Properties of the generated library.
 LIB = librte_pmd_vdev_netvsc.a
-LIBABIVER := 1
 EXPORT_MAP := rte_pmd_vdev_netvsc_version.map
 
 # Additional compilation flags.

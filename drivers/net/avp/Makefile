@@ -17,8 +17,6 @@ LDLIBS += -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_avp_version.map
 
-LIBABIVER := 1
-
 # install public header files to enable compilation of the hypervisor level
 # dpdk application
 SYMLINK-$(CONFIG_RTE_LIBRTE_AVP_PMD)-include += rte_avp_common.h

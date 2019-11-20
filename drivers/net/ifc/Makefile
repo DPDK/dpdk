@@ -25,8 +25,6 @@ VPATH += $(SRCDIR)/base
 
 EXPORT_MAP := rte_pmd_ifc_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

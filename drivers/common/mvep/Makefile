@@ -15,9 +15,6 @@ endif
 # library name
 LIB = librte_common_mvep.a
 
-# library version
-LIBABIVER := 1
-
 # versioning export map
 EXPORT_MAP := rte_common_mvep_version.map
 

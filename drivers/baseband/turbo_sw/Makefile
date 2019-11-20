@@ -47,9 +47,6 @@ LDLIBS += -L$(FLEXRAN_SDK)/lib_LDPC_ratematch_5gnr -lLDPC_ratematch_5gnr
 LDLIBS += -L$(FLEXRAN_SDK)/lib_rate_dematching_5gnr -lrate_dematching_5gnr
 endif
 
-# library version
-LIBABIVER := 1
-
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW) += bbdev_turbo_software.c
 

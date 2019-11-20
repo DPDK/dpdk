@@ -20,8 +20,6 @@ endif
 
 EXPORT_MAP := rte_pmd_virtio_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

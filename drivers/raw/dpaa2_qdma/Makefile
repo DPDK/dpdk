@@ -27,8 +27,6 @@ LDLIBS += -lrte_common_dpaax
 
 EXPORT_MAP := rte_rawdev_dpaa2_qdma_version.map
 
-LIBABIVER := 3
-
 #
 # all source are stored in SRCS-y
 #

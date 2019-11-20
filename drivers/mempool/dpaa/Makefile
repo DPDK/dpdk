@@ -19,9 +19,6 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
 # versioning export map
 EXPORT_MAP := rte_mempool_dpaa_version.map
 
-# Lbrary version
-LIBABIVER := 1
-
 # depends on dpaa bus which uses experimental API
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 

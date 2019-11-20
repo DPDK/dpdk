@@ -20,9 +20,6 @@ endif
 LDLIBS += -lrte_eal -lrte_eventdev -lrte_kvargs
 LDLIBS += -lrte_bus_vdev -lrte_mbuf -lrte_mempool
 
-# library version
-LIBABIVER := 1
-
 # versioning export map
 EXPORT_MAP := rte_pmd_opdl_event_version.map
 

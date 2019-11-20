@@ -16,9 +16,6 @@ endif
 # library name
 LIB = librte_pmd_mvneta.a
 
-# library version
-LIBABIVER := 1
-
 # versioning export map
 EXPORT_MAP := rte_pmd_mvneta_version.map
 

@@ -11,8 +11,6 @@ LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_metrics_version.map
 
-LIBABIVER := 1
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_METRICS) := rte_metrics.c
 

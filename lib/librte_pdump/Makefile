@@ -12,8 +12,6 @@ LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf -lrte_ethdev
 
 EXPORT_MAP := rte_pdump_version.map
 
-LIBABIVER := 3
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_PDUMP) := rte_pdump.c
 

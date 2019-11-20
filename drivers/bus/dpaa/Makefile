@@ -23,8 +23,6 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
 # versioning export map
 EXPORT_MAP := rte_bus_dpaa_version.map
 
-LIBABIVER := 2
-
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA_BUS) += \

@@ -2,7 +2,6 @@
 # Copyright(c) 2018 Intel Corporation
 
 install_headers('rte_pmd_bnxt.h')
-version = 2
 sources = files('bnxt_cpr.c',
 	'bnxt_ethdev.c',
 	'bnxt_filter.c',

@@ -14,8 +14,6 @@ LDLIBS += -lrte_eal -lrte_mempool -lrte_ring
 
 EXPORT_MAP := rte_mempool_ring_version.map
 
-LIBABIVER := 1
-
 SRCS-$(CONFIG_RTE_DRIVER_MEMPOOL_RING) += rte_mempool_ring.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

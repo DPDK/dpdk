@@ -12,8 +12,6 @@ LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_jobstats_version.map
 
-LIBABIVER := 1
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_JOBSTATS) := rte_jobstats.c
 

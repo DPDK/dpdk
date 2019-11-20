@@ -15,8 +15,6 @@ CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx/
 
 EXPORT_MAP := rte_pmd_octeontx_version.map
 
-LIBABIVER := 1
-
 OBJS_BASE_DRIVER=$(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/base/*.c)))
 $(foreach obj, $(OBJS_BASE_DRIVER), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
 

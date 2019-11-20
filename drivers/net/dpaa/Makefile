@@ -25,8 +25,6 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
 
 EXPORT_MAP := rte_pmd_dpaa_version.map
 
-LIBABIVER := 1
-
 # depends on dpaa bus which uses experimental API
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 

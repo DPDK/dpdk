@@ -27,8 +27,6 @@ CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa_sec
 
 EXPORT_MAP := rte_pmd_dpaa_event_version.map
 
-LIBABIVER := 1
-
 # Interfaces with DPDK
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA_EVENTDEV) += dpaa_eventdev.c
 

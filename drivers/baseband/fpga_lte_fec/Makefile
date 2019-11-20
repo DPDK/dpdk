@@ -17,9 +17,6 @@ LDLIBS += -lrte_pci -lrte_bus_pci
 # versioning export map
 EXPORT_MAP := rte_pmd_bbdev_fpga_lte_fec_version.map
 
-# library version
-LIBABIVER := 1
-
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC) += fpga_lte_fec.c
 

@@ -27,8 +27,6 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 EXPORT_MAP := rte_mempool_octeontx2_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

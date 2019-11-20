@@ -19,8 +19,6 @@ LDLIBS += -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_qede_version.map
 
-LIBABIVER := 1
-
 #
 # OS
 #

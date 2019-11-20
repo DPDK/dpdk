@@ -17,8 +17,6 @@ LDLIBS += -lrte_bus_pci -lrte_mempool -lrte_hash
 
 EXPORT_MAP := rte_pmd_ice_version.map
 
-LIBABIVER := 1
-
 #
 # Add extra flags for base driver files (also known as shared code)
 # to disable warnings

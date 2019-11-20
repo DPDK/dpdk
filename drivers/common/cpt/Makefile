@@ -13,8 +13,6 @@ CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/bus/pci
 EXPORT_MAP := rte_common_cpt_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

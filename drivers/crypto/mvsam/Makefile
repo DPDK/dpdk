@@ -24,9 +24,6 @@ CFLAGS += -I$(LIBMUSDK_PATH)/include
 CFLAGS += -DMVCONF_TYPES_PUBLIC
 CFLAGS += -DMVCONF_DMA_PHYS_ADDR_T_PUBLIC
 
-# library version
-LIBABIVER := 1
-
 # versioning export map
 EXPORT_MAP := rte_pmd_mvsam_version.map
 

@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-version = 1
 allow_experimental_apis = true
 headers = files('rte_ip.h',
 	'rte_tcp.h',

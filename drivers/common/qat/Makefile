@@ -49,8 +49,6 @@ ifdef build_qat
 	# library name
 	LIB = librte_pmd_qat.a
 
-	# library version
-	LIBABIVER := 1
 	# build flags
 	CFLAGS += $(WERROR_FLAGS)
 	CFLAGS += -O3

@@ -27,9 +27,6 @@ LDLIBS += -lrte_cryptodev
 # versioning export map
 EXPORT_MAP := rte_pmd_dpaa_sec_version.map
 
-# library version
-LIBABIVER := 1
-
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA_SEC) += dpaa_sec.c
 

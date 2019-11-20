@@ -23,8 +23,6 @@ LDLIBS += $(shell command -v pkg-config > /dev/null 2>&1 && pkg-config --libs ne
 
 EXPORT_MAP := rte_pmd_nfb_version.map
 
-LIBABIVER := 1
-
 #
 # all source are stored in SRCS-y
 #

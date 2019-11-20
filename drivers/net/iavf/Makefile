@@ -15,8 +15,6 @@ LDLIBS += -lrte_bus_pci
 
 EXPORT_MAP := rte_pmd_iavf_version.map
 
-LIBABIVER := 1
-
 #
 # Add extra flags for base driver files (also known as shared code)
 # to disable warnings

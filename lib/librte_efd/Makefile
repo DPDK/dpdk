@@ -12,8 +12,6 @@ LDLIBS += -lrte_eal -lrte_ring -lrte_hash
 
 EXPORT_MAP := rte_efd_version.map
 
-LIBABIVER := 1
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_EFD) := rte_efd.c
 

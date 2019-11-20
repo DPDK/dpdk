@@ -7,9 +7,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_pmd_octeontx_crypto.a
 
-# library version
-LIBABIVER := 1
-
 # build flags
 CFLAGS += $(WERROR_FLAGS)
 

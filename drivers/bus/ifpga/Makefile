@@ -18,9 +18,6 @@ LDLIBS += -lrte_kvargs
 # versioning export map
 EXPORT_MAP := rte_bus_ifpga_version.map
 
-# library version
-LIBABIVER := 2
-
 SRCS-$(CONFIG_RTE_LIBRTE_IFPGA_BUS) += ifpga_bus.c
 SRCS-$(CONFIG_RTE_LIBRTE_IFPGA_BUS) += ifpga_common.c
 

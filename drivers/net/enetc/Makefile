@@ -12,8 +12,6 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 EXPORT_MAP := rte_pmd_enetc_version.map
-LIBABIVER := 1
-
 SRCS-$(CONFIG_RTE_LIBRTE_ENETC_PMD) += enetc_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENETC_PMD) += enetc_rxtx.c
 

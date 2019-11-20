@@ -16,8 +16,6 @@ LDLIBS += -lrte_port -lrte_meter -lrte_sched -lrte_cryptodev
 
 EXPORT_MAP := rte_pipeline_version.map
 
-LIBABIVER := 3
-
 #
 # all source are stored in SRCS-y
 #

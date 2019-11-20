@@ -14,8 +14,6 @@ LDLIBS += -lrte_cryptodev -lrte_security -lrte_hash
 
 EXPORT_MAP := rte_ipsec_version.map
 
-LIBABIVER := 2
-
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += esp_inb.c
 SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += esp_outb.c

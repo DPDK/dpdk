@@ -21,8 +21,6 @@ CFLAGS += $(WERROR_FLAGS)
 
 EXPORT_MAP := rte_port_version.map
 
-LIBABIVER := 3
-
 #
 # all source are stored in SRCS-y
 #

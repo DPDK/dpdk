@@ -33,9 +33,6 @@ CFLAGS += -I$(RTE_SDK)/drivers/mempool/dpaa2/
 # versioning export map
 EXPORT_MAP := rte_pmd_dpaa2_sec_version.map
 
-# library version
-LIBABIVER := 2
-
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += dpaa2_sec_dpseci.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += mc/dpseci.c
