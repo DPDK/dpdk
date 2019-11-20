@@ -231,17 +231,15 @@ timvf_ring_create(struct rte_event_timer_adapter *adptr)
 {
 	char pool_name[25];
 	int ret;
+	uint8_t tim_ring_id;
 	uint64_t nb_timers;
 	struct rte_event_timer_adapter_conf *rcfg = &adptr->data->conf;
 	struct timvf_ring *timr;
-	struct timvf_info tinfo;
 	const char *mempool_ops;
 	unsigned int mp_flags = 0;
 
-	if (timvf_info(&tinfo) < 0)
-		return -ENODEV;
-
-	if (adptr->data->id >= tinfo.total_timvfs)
+	tim_ring_id = timvf_get_ring();
+	if (tim_ring_id == UINT8_MAX)
 		return -ENODEV;
 
 	timr = rte_zmalloc("octeontx_timvf_priv",
@@ -259,7 +257,7 @@ timvf_ring_create(struct rte_event_timer_adapter *adptr)
 	}
 
 	timr->clk_src = (int) rcfg->clk_src;
-	timr->tim_ring_id = adptr->data->id;
+	timr->tim_ring_id = tim_ring_id;
 	timr->tck_nsec = RTE_ALIGN_MUL_CEIL(rcfg->timer_tick_ns, 10);
 	timr->max_tout = rcfg->max_tmo_ns;
 	timr->nb_bkts = (timr->max_tout / timr->tck_nsec);
@@ -337,8 +335,10 @@ static int
 timvf_ring_free(struct rte_event_timer_adapter *adptr)
 {
 	struct timvf_ring *timr = adptr->data->adapter_priv;
+
 	rte_mempool_free(timr->chunk_pool);
 	rte_free(timr->bkt);
+	timvf_release_ring(timr->tim_ring_id);
 	rte_free(adptr->data->adapter_priv);
 	return 0;
 }

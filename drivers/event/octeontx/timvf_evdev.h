@@ -115,11 +115,6 @@
 extern int otx_logtype_timvf;
 static const uint16_t nb_chunk_slots = (TIM_CHUNK_SIZE / 16) - 1;
 
-struct timvf_info {
-	uint16_t domain; /* Domain id */
-	uint8_t total_timvfs; /* Total timvf available in domain */
-};
-
 enum timvf_clk_src {
 	TIM_CLK_SRC_SCLK = RTE_EVENT_TIMER_ADAPTER_CPU_CLK,
 	TIM_CLK_SRC_GPIO = RTE_EVENT_TIMER_ADAPTER_EXT_CLK0,
@@ -196,7 +191,8 @@ bkt_and(uint32_t rel_bkt, uint32_t nb_bkts)
 	return rel_bkt & (nb_bkts - 1);
 }
 
-int timvf_info(struct timvf_info *tinfo);
+uint8_t timvf_get_ring(void);
+void timvf_release_ring(uint8_t vfid);
 void *timvf_bar(uint8_t id, uint8_t bar);
 int timvf_timer_adapter_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		uint32_t *caps, const struct rte_event_timer_adapter_ops **ops,

@@ -20,6 +20,7 @@
 #define TIM_MAX_RINGS				(64)
 
 struct timvf_res {
+	uint8_t in_use;
 	uint16_t domain;
 	uint16_t vfid;
 	void *bar0;
@@ -34,50 +35,65 @@ struct timdev {
 
 static struct timdev tdev;
 
-int
-timvf_info(struct timvf_info *tinfo)
+uint8_t
+timvf_get_ring(void)
 {
+	uint16_t global_domain = octeontx_get_global_domain();
 	int i;
-	struct ssovf_info info;
-
-	if (tinfo == NULL)
-		return -EINVAL;
-
-	if (!tdev.total_timvfs)
-		return -ENODEV;
-
-	if (ssovf_info(&info) < 0)
-		return -EINVAL;
 
 	for (i = 0; i < tdev.total_timvfs; i++) {
-		if (info.domain != tdev.rings[i].domain) {
-			timvf_log_err("GRP error, vfid=%d/%d domain=%d/%d %p",
-				i, tdev.rings[i].vfid,
-				info.domain, tdev.rings[i].domain,
-				tdev.rings[i].bar0);
-			return -EINVAL;
-		}
+		if (tdev.rings[i].domain != global_domain)
+			continue;
+		if (tdev.rings[i].in_use)
+			continue;
+
+		tdev.rings[i].in_use = true;
+		return tdev.rings[i].vfid;
 	}
 
-	tinfo->total_timvfs = tdev.total_timvfs;
-	tinfo->domain = info.domain;
-	return 0;
+	return UINT8_MAX;
+}
+
+void
+timvf_release_ring(uint8_t tim_ring_id)
+{
+	uint16_t global_domain = octeontx_get_global_domain();
+	int i;
+
+	for (i = 0; i < tdev.total_timvfs; i++) {
+		if (tdev.rings[i].domain != global_domain)
+			continue;
+		if (tdev.rings[i].vfid == tim_ring_id)
+			tdev.rings[i].in_use = false;
+	}
 }
 
 void*
-timvf_bar(uint8_t id, uint8_t bar)
+timvf_bar(uint8_t vfid, uint8_t bar)
 {
+	uint16_t global_domain = octeontx_get_global_domain();
+	struct timvf_res *res = NULL;
+	int i;
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return NULL;
 
-	if (id > tdev.total_timvfs)
+	for (i = 0; i < tdev.total_timvfs; i++) {
+		if (tdev.rings[i].domain != global_domain)
+			continue;
+		if (tdev.rings[i].vfid == vfid)
+			res = &tdev.rings[i];
+
+	}
+
+	if (res == NULL)
 		return NULL;
 
 	switch (bar) {
 	case 0:
-		return tdev.rings[id].bar0;
+		return res->bar0;
 	case 4:
-		return tdev.rings[id].bar4;
+		return res->bar4;
 	default:
 		return NULL;
 	}
@@ -118,6 +134,7 @@ timvf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	res->bar2 = pci_dev->mem_resource[2].addr;
 	res->bar4 = pci_dev->mem_resource[4].addr;
 	res->domain = (val >> 7) & 0xffff;
+	res->in_use = false;
 	tdev.total_timvfs++;
 	rte_wmb();
 
