@@ -122,16 +122,11 @@
 #define HAVE_SIGNAL_FUNCTIONS_OWN_HEADER
 #endif
 
-#if KERNEL_VERSION(4, 6, 0) <= LINUX_VERSION_CODE
-
+/*
+ * iova to kva mapping support can be provided since 4.6.0, but required
+ * kernel version increased to > 4.9.0 because of the updates in
+ * get_user_pages_remote() kernel API
+ */
+#if KERNEL_VERSION(4, 9, 0) < LINUX_VERSION_CODE
 #define HAVE_IOVA_TO_KVA_MAPPING_SUPPORT
-
-#if KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
-#define GET_USER_PAGES_REMOTE_API_V1
-#elif KERNEL_VERSION(4, 9, 0) == LINUX_VERSION_CODE
-#define GET_USER_PAGES_REMOTE_API_V2
-#else
-#define GET_USER_PAGES_REMOTE_API_V3
-#endif
-
 #endif

@@ -308,7 +308,7 @@ New Features
   * Added IOVA = VA support for KNI, KNI can operate in IOVA = VA mode when
     `iova-mode=va` EAL option is passed to the application or when bus IOVA
     scheme is selected as RTE_IOVA_VA. This mode only works on Linux Kernel
-    versions 4.6.0 and above.
+    versions above 4.9.0.
 
   * Due to IOVA to KVA address translations, based on the KNI use case there
     can be a performance impact. For mitigation, forcing IOVA to PA via EAL

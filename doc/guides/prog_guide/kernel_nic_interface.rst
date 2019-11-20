@@ -305,7 +305,7 @@ IOVA = VA: Support
 
 KNI operates in IOVA_VA scheme when
 
-- LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0) and
+- LINUX_VERSION_CODE > KERNEL_VERSION(4, 9, 0) and
 - EAL option `iova-mode=va` is passed or bus IOVA scheme in the DPDK is selected
   as RTE_IOVA_VA.
 
