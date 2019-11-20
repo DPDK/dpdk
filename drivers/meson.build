@@ -41,7 +41,6 @@ foreach class:dpdk_driver_classes
 		build = true # set to false to disable, e.g. missing deps
 		reason = '<unknown reason>' # set if build == false to explain
 		name = drv
-		version = 1
 		allow_experimental_apis = false
 		sources = []
 		objs = []
@@ -124,12 +123,19 @@ foreach class:dpdk_driver_classes
 					output: out_filename,
 					depends: [pmdinfogen, tmp_lib])
 
-			if get_option('per_library_versions')
-				lib_version = '@0@.1'.format(version)
-				so_version = '@0@'.format(version)
+			version_map = '@0@/@1@/@2@_version.map'.format(
+					meson.current_source_dir(),
+					drv_path, lib_name)
+
+			is_experimental = run_command(is_experimental_cmd,
+				files(version_map)).returncode()
+
+			if is_experimental != 0
+				lib_version = experimental_abi_version
+				so_version = experimental_abi_version
 			else
-				lib_version = major_version
-				so_version = major_version
+				lib_version = abi_version
+				so_version = abi_version
 			endif
 
 			# now build the static driver

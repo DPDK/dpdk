@@ -65,11 +65,6 @@ CONFIG_RTE_BUILD_SHARED_LIB=n
 CONFIG_RTE_NEXT_ABI=y
 
 #
-# Major ABI to overwrite library specific LIBABIVER
-#
-CONFIG_RTE_MAJOR_ABI=
-
-#
 # Machine's cache line size
 #
 CONFIG_RTE_CACHE_LINE_SIZE=64

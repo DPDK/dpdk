@@ -18,6 +18,11 @@ endforeach
 # depending on the configuration options
 pver = meson.project_version().split('.')
 major_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
+abi_version = run_command(find_program('cat', 'more'),
+	files('../ABI_VERSION')).stdout().strip()
+# experimental libraries are versioned as 0.majorminor versions, e.g. 0.201
+ever = abi_version.split('.')
+experimental_abi_version = '0.@0@@1@'.format(ever.get(0), ever.get(1))
 
 # extract all version information into the build configuration
 dpdk_conf.set('RTE_VER_YEAR', pver.get(0).to_int())
@@ -37,7 +42,7 @@ endif
 
 pmd_subdir_opt = get_option('drivers_install_subdir')
 if pmd_subdir_opt.contains('<VERSION>')
-	pmd_subdir_opt = major_version.join(pmd_subdir_opt.split('<VERSION>'))
+	pmd_subdir_opt = abi_version.join(pmd_subdir_opt.split('<VERSION>'))
 endif
 driver_install_path = join_paths(get_option('libdir'), pmd_subdir_opt)
 eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)

@@ -47,7 +47,6 @@ foreach l:libraries
 	build = true
 	reason = '<unknown reason>' # set if build == false to explain why
 	name = l
-	version = 1
 	allow_experimental_apis = false
 	use_function_versioning = false
 	sources = []
@@ -106,12 +105,18 @@ foreach l:libraries
 				cflags += '-DRTE_USE_FUNCTION_VERSIONING'
 			endif
 
-			if get_option('per_library_versions')
-				lib_version = '@0@.1'.format(version)
-				so_version = '@0@'.format(version)
+			version_map = '@0@/@1@/rte_@2@_version.map'.format(
+					meson.current_source_dir(), dir_name, name)
+
+			is_experimental = run_command(is_experimental_cmd,
+					files(version_map)).returncode()
+
+			if is_experimental != 0
+				lib_version = experimental_abi_version
+				so_version = experimental_abi_version
 			else
-				lib_version = major_version
-				so_version = major_version
+				lib_version = abi_version
+				so_version = abi_version
 			endif
 
 			# first build static lib

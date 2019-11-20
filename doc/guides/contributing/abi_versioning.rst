@@ -111,16 +111,17 @@ how this may be done.
  ...
 
 At the same time, the major ABI version is changed atomically across all
-libraries by incrementing the major version in individual library's soname, e.g.
-``libacl.so.21``. This is done by bumping the LIBABIVER number in the libraries
-Makefile to indicate to dynamic linking applications that this is a later, and
-possibly incompatible library version:
+libraries by incrementing the major version in the ABI_VERSION file. This is
+done globally for all libraries that declare a stable ABI. For libraries marked
+as EXPERIMENTAL, their major ABI version is always set to 0.
 
-.. code-block:: c
+Minor ABI versions
+~~~~~~~~~~~~~~~~~~
 
-   -LIBABIVER := 20
-   +LIBABIVER := 21
-
+Each non-LTS release will also increment minor ABI version, to permit multiple
+DPDK versions being installed alongside each other. Both stable and
+experimental ABI's are versioned using the global version file that is updated
+at the start of each release cycle, and are managed at the project level.
 
 Versioning Macros
 -----------------

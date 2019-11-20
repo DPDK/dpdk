@@ -803,9 +803,8 @@ lpm, etc. For drivers, the same format of Makefile is used.
 	CFLAGS += -O3
 	CFLAGS += $(WERROR_FLAGS)
 
-	# the symbol version information for the library, and .so version
+	# the symbol version information for the library
 	EXPORT_MAP := rte_<name>_version.map
-	LIBABIVER := 1
 
 	# all source filenames are stored in SRCS-y
 	SRCS-$(CONFIG_RTE_LIBRTE_<NAME>) += rte_<name>.c
@@ -954,11 +953,6 @@ use_function_versioning
 	has, this value should be set to ensure that the C files are compiled
 	twice with suitable parameters for each of shared or static library
 	builds.
-
-version
-	**Default Value = 1**.
-	Specifies the ABI version of the library, and is used as the major
-	version number of the resulting ``.so`` library.
 
 Meson Build File Contents - Drivers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

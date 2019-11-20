@@ -11,20 +11,16 @@ EXTLIB_BUILD ?= n
 # VPATH contains at least SRCDIR
 VPATH += $(SRCDIR)
 
-ifneq ($(CONFIG_RTE_MAJOR_ABI),)
-ifneq ($(LIBABIVER),)
-LIBABIVER := $(CONFIG_RTE_MAJOR_ABI)
-endif
+ifneq ($(shell grep -s "^DPDK_" $(SRCDIR)/$(EXPORT_MAP)),)
+LIBABIVER := $(shell cat $(RTE_SRCDIR)/ABI_VERSION)
+else ifeq ($(LIBABIVER),)
+# EXPERIMENTAL ABI is versioned as 0.major+minor, e.g. 0.201 for 20.1 ABI
+LIBABIVER := 0.$(shell cat $(RTE_SRCDIR)/ABI_VERSION | tr -d '.')
 endif
 
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 LIB := $(patsubst %.a,%.so.$(LIBABIVER),$(LIB))
 ifeq ($(EXTLIB_BUILD),n)
-ifeq ($(CONFIG_RTE_MAJOR_ABI),)
-ifeq ($(CONFIG_RTE_NEXT_ABI),y)
-LIB := $(LIB).1
-endif
-endif
 CPU_LDFLAGS += --version-script=$(SRCDIR)/$(EXPORT_MAP)
 endif
 endif

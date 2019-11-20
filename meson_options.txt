@@ -28,8 +28,6 @@ option('max_lcores', type: 'integer', value: 128,
 	description: 'maximum number of cores/threads supported by EAL')
 option('max_numa_nodes', type: 'integer', value: 4,
 	description: 'maximum number of NUMA nodes supported by EAL')
-option('per_library_versions', type: 'boolean', value: true,
-	description: 'true: each lib gets its own version number, false: DPDK version used for each lib')
 option('tests', type: 'boolean', value: true,
 	description: 'build unit tests')
 option('use_hpet', type: 'boolean', value: false,
