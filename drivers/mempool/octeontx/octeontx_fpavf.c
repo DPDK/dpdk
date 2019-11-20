@@ -119,20 +119,22 @@ RTE_INIT(otx_pool_init_log)
 static int
 octeontx_fpa_gpool_alloc(unsigned int object_size)
 {
+	uint16_t global_domain = octeontx_get_global_domain();
 	struct fpavf_res *res = NULL;
-	uint16_t gpool;
 	unsigned int sz128;
+	int i;
 
 	sz128 = FPA_OBJSZ_2_CACHE_LINE(object_size);
 
-	for (gpool = 0; gpool < FPA_VF_MAX; gpool++) {
+	for (i = 0; i < FPA_VF_MAX; i++) {
 
 		/* Skip VF that is not mapped Or _inuse */
-		if ((fpadev.pool[gpool].bar0 == NULL) ||
-		    (fpadev.pool[gpool].is_inuse == true))
+		if ((fpadev.pool[i].bar0 == NULL) ||
+		    (fpadev.pool[i].is_inuse == true) ||
+		    (fpadev.pool[i].domain_id != global_domain))
 			continue;
 
-		res = &fpadev.pool[gpool];
+		res = &fpadev.pool[i];
 
 		RTE_ASSERT(res->domain_id != (uint16_t)~0);
 		RTE_ASSERT(res->vf_id != (uint16_t)~0);
@@ -140,13 +142,32 @@ octeontx_fpa_gpool_alloc(unsigned int object_size)
 
 		if (res->sz128 == 0) {
 			res->sz128 = sz128;
+			fpavf_log_dbg("gpool %d blk_sz %d\n", res->vf_id,
+				      sz128);
 
-			fpavf_log_dbg("gpool %d blk_sz %d\n", gpool, sz128);
-			return gpool;
+			return res->vf_id;
 		}
 	}
 
 	return -ENOSPC;
+}
+
+static __rte_always_inline struct fpavf_res *
+octeontx_get_fpavf(uint16_t gpool)
+{
+	uint16_t global_domain = octeontx_get_global_domain();
+	int i;
+
+	for (i = 0; i < FPA_VF_MAX; i++) {
+		if (fpadev.pool[i].domain_id != global_domain)
+			continue;
+		if (fpadev.pool[i].vf_id != gpool)
+			continue;
+
+		return &fpadev.pool[i];
+	}
+
+	return NULL;
 }
 
 /* lock is taken by caller */
@@ -156,8 +177,10 @@ octeontx_fpa_gpool2handle(uint16_t gpool)
 	struct fpavf_res *res = NULL;
 
 	RTE_ASSERT(gpool < FPA_VF_MAX);
+	res = octeontx_get_fpavf(gpool);
+	if (res == NULL)
+		return 0;
 
-	res = &fpadev.pool[gpool];
 	return (uintptr_t)res->bar0 | gpool;
 }
 
@@ -182,7 +205,7 @@ octeontx_fpa_handle_valid(uintptr_t handle)
 			continue;
 
 		/* validate gpool */
-		if (gpool != i)
+		if (gpool != fpadev.pool[i].vf_id)
 			return false;
 
 		res = &fpadev.pool[i];
@@ -212,7 +235,10 @@ octeontx_fpapf_pool_setup(unsigned int gpool, unsigned int buf_size,
 	struct octeontx_mbox_fpa_cfg cfg;
 	int ret = -1;
 
-	fpa = &fpadev.pool[gpool];
+	fpa = octeontx_get_fpavf(gpool);
+	if (fpa == NULL)
+		return -EINVAL;
+
 	memsz = FPA_ROUND_UP(max_buf_count / fpa->stack_ln_ptr, FPA_LN_SIZE) *
 			FPA_LN_SIZE;
 
@@ -278,7 +304,11 @@ octeontx_fpapf_pool_destroy(unsigned int gpool_index)
 	struct fpavf_res *fpa = NULL;
 	int ret = -1;
 
-	fpa = &fpadev.pool[gpool_index];
+	fpa = octeontx_get_fpavf(gpool_index);
+	if (fpa == NULL) {
+		ret = -EINVAL;
+		goto err;
+	}
 
 	hdr.coproc = FPA_COPROC;
 	hdr.msg = FPA_CONFIGSET;
@@ -422,6 +452,7 @@ err:
 static __rte_always_inline int
 octeontx_fpavf_free(unsigned int gpool)
 {
+	struct fpavf_res *res = octeontx_get_fpavf(gpool);
 	int ret = 0;
 
 	if (gpool >= FPA_MAX_POOL) {
@@ -430,7 +461,8 @@ octeontx_fpavf_free(unsigned int gpool)
 	}
 
 	/* Pool is free */
-	fpadev.pool[gpool].is_inuse = false;
+	if (res != NULL)
+		res->is_inuse = false;
 
 err:
 	return ret;
@@ -439,8 +471,10 @@ err:
 static __rte_always_inline int
 octeontx_gpool_free(uint16_t gpool)
 {
-	if (fpadev.pool[gpool].sz128 != 0) {
-		fpadev.pool[gpool].sz128 = 0;
+	struct fpavf_res *res = octeontx_get_fpavf(gpool);
+
+	if (res && res->sz128 != 0) {
+		res->sz128 = 0;
 		return 0;
 	}
 	return -EINVAL;
@@ -460,8 +494,8 @@ octeontx_fpa_bufpool_block_size(uintptr_t handle)
 
 	/* get the gpool */
 	gpool = octeontx_fpa_bufpool_gpool(handle);
-	res = &fpadev.pool[gpool];
-	return FPA_CACHE_LINE_2_OBJSZ(res->sz128);
+	res = octeontx_get_fpavf(gpool);
+	return res ? FPA_CACHE_LINE_2_OBJSZ(res->sz128) : 0;
 }
 
 int
@@ -722,6 +756,7 @@ octeontx_fpavf_identify(void *bar0)
 	uint16_t domain_id;
 	uint16_t vf_id;
 	uint64_t stack_ln_ptr;
+	static uint16_t vf_idx;
 
 	val = fpavf_read64((void *)((uintptr_t)bar0 +
 				FPA_VF_VHAURA_CNT_THRESHOLD(0)));
@@ -731,23 +766,18 @@ octeontx_fpavf_identify(void *bar0)
 
 	stack_ln_ptr = fpavf_read64((void *)((uintptr_t)bar0 +
 					FPA_VF_VHPOOL_THRESHOLD(0)));
-	if (vf_id >= FPA_VF_MAX) {
+	if (vf_idx >= FPA_VF_MAX) {
 		fpavf_log_err("vf_id(%d) greater than max vf (32)\n", vf_id);
-		return -1;
+		return -E2BIG;
 	}
 
-	if (fpadev.pool[vf_id].is_inuse) {
-		fpavf_log_err("vf_id %d is_inuse\n", vf_id);
-		return -1;
-	}
-
-	fpadev.pool[vf_id].domain_id = domain_id;
-	fpadev.pool[vf_id].vf_id = vf_id;
-	fpadev.pool[vf_id].bar0 = bar0;
-	fpadev.pool[vf_id].stack_ln_ptr = stack_ln_ptr;
+	fpadev.pool[vf_idx].domain_id = domain_id;
+	fpadev.pool[vf_idx].vf_id = vf_id;
+	fpadev.pool[vf_idx].bar0 = bar0;
+	fpadev.pool[vf_idx].stack_ln_ptr = stack_ln_ptr;
 
 	/* SUCCESS */
-	return vf_id;
+	return vf_idx++;
 }
 
 /* FPAVF pcie device aka mempool probe */
