@@ -35,6 +35,7 @@ struct mbox {
 	uint8_t *ram_mbox_base; /* Base address of mbox message stored in ram */
 	uint8_t *reg; /* Store to this register triggers PF mbox interrupt */
 	uint16_t tag_own; /* Last tag which was written to own channel */
+	uint16_t domain; /* Domain */
 	rte_spinlock_t lock;
 };
 
@@ -198,7 +199,7 @@ mbox_send(struct mbox *m, struct octeontx_mbox_hdr *hdr, const void *txmsg,
 }
 
 int
-octeontx_mbox_set_ram_mbox_base(uint8_t *ram_mbox_base)
+octeontx_mbox_set_ram_mbox_base(uint8_t *ram_mbox_base, uint16_t domain)
 {
 	struct mbox *m = &octeontx_mbox;
 
@@ -215,13 +216,14 @@ octeontx_mbox_set_ram_mbox_base(uint8_t *ram_mbox_base)
 	if (m->reg != NULL) {
 		rte_spinlock_init(&m->lock);
 		m->init_once = 1;
+		m->domain = domain;
 	}
 
 	return 0;
 }
 
 int
-octeontx_mbox_set_reg(uint8_t *reg)
+octeontx_mbox_set_reg(uint8_t *reg, uint16_t domain)
 {
 	struct mbox *m = &octeontx_mbox;
 
@@ -238,6 +240,7 @@ octeontx_mbox_set_reg(uint8_t *reg)
 	if (m->ram_mbox_base != NULL) {
 		rte_spinlock_init(&m->lock);
 		m->init_once = 1;
+		m->domain = domain;
 	}
 
 	return 0;
@@ -343,4 +346,12 @@ octeontx_mbox_init(void)
 	rte_mb();
 
 	return 0;
+}
+
+uint16_t
+octeontx_get_global_domain(void)
+{
+	struct mbox *m = &octeontx_mbox;
+
+	return m->domain;
 }

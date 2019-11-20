@@ -181,7 +181,8 @@ ssowvf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	sdev.total_ssowvfs++;
 	if (vfid == 0) {
 		ram_mbox_base = ssovf_bar(OCTEONTX_SSO_HWS, 0, 4);
-		if (octeontx_mbox_set_ram_mbox_base(ram_mbox_base)) {
+		if (octeontx_mbox_set_ram_mbox_base(ram_mbox_base,
+						    res->domain)) {
 			mbox_log_err("Invalid Failed to set ram mbox base");
 			return -EINVAL;
 		}
@@ -257,7 +258,7 @@ ssovf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	if (vfid == 0) {
 		reg = ssovf_bar(OCTEONTX_SSO_GROUP, 0, 0);
 		reg += SSO_VHGRP_PF_MBOX(1);
-		if (octeontx_mbox_set_reg(reg)) {
+		if (octeontx_mbox_set_reg(reg, res->domain)) {
 			mbox_log_err("Invalid Failed to set mbox_reg");
 			return -EINVAL;
 		}

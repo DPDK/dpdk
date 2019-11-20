@@ -36,8 +36,10 @@ struct octeontx_mbox_hdr {
 };
 
 int octeontx_mbox_init(void);
-int octeontx_mbox_set_ram_mbox_base(uint8_t *ram_mbox_base);
-int octeontx_mbox_set_reg(uint8_t *reg);
+void octeontx_set_global_domain(uint16_t global_domain);
+uint16_t octeontx_get_global_domain(void);
+int octeontx_mbox_set_ram_mbox_base(uint8_t *ram_mbox_base, uint16_t domain);
+int octeontx_mbox_set_reg(uint8_t *reg, uint16_t domain);
 int octeontx_mbox_send(struct octeontx_mbox_hdr *hdr,
 		void *txdata, uint16_t txlen, void *rxdata, uint16_t rxlen);
 

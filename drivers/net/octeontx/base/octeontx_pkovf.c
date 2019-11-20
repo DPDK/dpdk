@@ -24,6 +24,8 @@ struct octeontx_pko_iomem {
 };
 
 #define PKO_IOMEM_NULL (struct octeontx_pko_iomem){0, 0, 0}
+#define PKO_VALID	0x1
+#define PKO_INUSE	0x2
 
 struct octeontx_pko_fc_ctl_s {
 	int64_t buf_cnt;
@@ -33,13 +35,14 @@ struct octeontx_pko_fc_ctl_s {
 struct octeontx_pkovf {
 	uint8_t		*bar0;
 	uint8_t		*bar2;
+	uint8_t		status;
 	uint16_t	domain;
 	uint16_t	vfid;
 };
 
 struct octeontx_pko_vf_ctl_s {
 	rte_spinlock_t lock;
-
+	uint16_t global_domain;
 	struct octeontx_pko_iomem fc_iomem;
 	struct octeontx_pko_fc_ctl_s *fc_ctl;
 	struct octeontx_pkovf pko[PKO_VF_MAX];
@@ -403,7 +406,7 @@ octeontx_pko_channel_query(struct octeontx_pko_vf_ctl_s *ctl, uint64_t chanid,
 	curr.lmtline_va = ctl->pko[dq_vf].bar2;
 	curr.ioreg_va = (void *)((uintptr_t)ctl->pko[dq_vf].bar0
 		+ PKO_VF_DQ_OP_SEND((dq), 0));
-	curr.fc_status_va = ctl->fc_ctl + dq;
+	curr.fc_status_va = ctl->fc_ctl + dq_num;
 
 	octeontx_log_dbg("lmtline=%p ioreg_va=%p fc_status_va=%p",
 			 curr.lmtline_va, curr.ioreg_va,
@@ -431,13 +434,35 @@ octeontx_pko_channel_query_dqs(int chanid, void *out, size_t out_elem_size,
 int
 octeontx_pko_vf_count(void)
 {
+	uint16_t global_domain = octeontx_get_global_domain();
 	int vf_cnt;
 
+	pko_vf_ctl.global_domain = global_domain;
 	vf_cnt = 0;
 	while (pko_vf_ctl.pko[vf_cnt].bar0)
 		vf_cnt++;
 
 	return vf_cnt;
+}
+
+size_t
+octeontx_pko_get_vfid(void)
+{
+	size_t vf_cnt = octeontx_pko_vf_count();
+	size_t vf_idx;
+
+
+	for (vf_idx = 0; vf_idx < vf_cnt; vf_idx++) {
+		if (!(pko_vf_ctl.pko[vf_idx].status & PKO_VALID))
+			continue;
+		if (pko_vf_ctl.pko[vf_idx].status & PKO_INUSE)
+			continue;
+
+		pko_vf_ctl.pko[vf_idx].status |= PKO_INUSE;
+		return pko_vf_ctl.pko[vf_idx].vfid;
+	}
+
+	return SIZE_MAX;
 }
 
 int
@@ -467,8 +492,10 @@ octeontx_pko_init_fc(const size_t pko_vf_count)
 
 	/* Configure Flow-Control feature for all DQs of open VFs */
 	for (vf_idx = 0; vf_idx < pko_vf_count; vf_idx++) {
-		dq_ix = vf_idx * PKO_VF_NUM_DQ;
+		if (pko_vf_ctl.pko[vf_idx].domain != pko_vf_ctl.global_domain)
+			continue;
 
+		dq_ix = pko_vf_ctl.pko[vf_idx].vfid * PKO_VF_NUM_DQ;
 		vf_bar0 = pko_vf_ctl.pko[vf_idx].bar0;
 
 		reg = (pko_vf_ctl.fc_iomem.iova +
@@ -479,6 +506,7 @@ octeontx_pko_init_fc(const size_t pko_vf_count)
 		    (0x1 << 0);		/* ENABLE */
 
 		octeontx_write64(reg, vf_bar0 + PKO_VF_DQ_FC_CONFIG);
+		pko_vf_ctl.pko[vf_idx].status = PKO_VALID;
 
 		octeontx_log_dbg("PKO: bar0 %p VF_idx %d DQ_FC_CFG=%" PRIx64 "",
 				 vf_bar0, (int)vf_idx, reg);
@@ -528,6 +556,7 @@ pkovf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	uint16_t domain;
 	uint8_t *bar0;
 	uint8_t *bar2;
+	static uint8_t vf_cnt;
 	struct octeontx_pkovf *res;
 
 	RTE_SET_USED(pci_drv);
@@ -558,7 +587,7 @@ pkovf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		return -EINVAL;
 	}
 
-	res = &pko_vf_ctl.pko[vfid];
+	res = &pko_vf_ctl.pko[vf_cnt++];
 	res->vfid = vfid;
 	res->domain = domain;
 	res->bar0 = bar0;

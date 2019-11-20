@@ -5,6 +5,8 @@
 #ifndef	__OCTEONTX_PKO_H__
 #define	__OCTEONTX_PKO_H__
 
+#include <octeontx_mbox.h>
+
 /* PKO maximum constants */
 #define	PKO_VF_MAX			(32)
 #define	PKO_VF_NUM_DQ			(8)
@@ -63,6 +65,7 @@ int octeontx_pko_channel_close(int chanid);
 int octeontx_pko_channel_start(int chanid);
 int octeontx_pko_channel_stop(int chanid);
 int octeontx_pko_vf_count(void);
+size_t octeontx_pko_get_vfid(void);
 int octeontx_pko_init_fc(const size_t pko_vf_count);
 void octeontx_pko_fc_free(void);
 

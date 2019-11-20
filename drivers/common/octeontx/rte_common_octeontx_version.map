@@ -1,6 +1,7 @@
 DPDK_20.0 {
 	global:
 
+	octeontx_get_global_domain;
 	octeontx_logtype_mbox;
 	octeontx_mbox_init;
 	octeontx_mbox_send;

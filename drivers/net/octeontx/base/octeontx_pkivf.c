@@ -7,19 +7,50 @@
 #include <rte_eal.h>
 #include <rte_bus_pci.h>
 
+#include "../octeontx_logs.h"
+#include "octeontx_io.h"
 #include "octeontx_pkivf.h"
+
+
+struct octeontx_pkivf {
+	uint8_t		*bar0;
+	uint8_t		status;
+	uint16_t	domain;
+	uint16_t	vfid;
+};
+
+struct octeontx_pki_vf_ctl_s {
+	struct octeontx_pkivf pki[PKI_VF_MAX];
+};
+
+static struct octeontx_pki_vf_ctl_s pki_vf_ctl;
 
 int
 octeontx_pki_port_open(int port)
 {
+	uint16_t global_domain = octeontx_get_global_domain();
 	struct octeontx_mbox_hdr hdr;
-	int res;
+	mbox_pki_port_t port_type = {
+		.port_type = OCTTX_PORT_TYPE_NET,
+	};
+	int i, res;
+
+	/* Check if atleast one PKI vf is in application domain. */
+	for (i = 0; i < PKI_VF_MAX; i++) {
+		if (pki_vf_ctl.pki[i].domain != global_domain)
+			continue;
+		break;
+	}
+
+	if (i == PKI_VF_MAX)
+		return -ENODEV;
 
 	hdr.coproc = OCTEONTX_PKI_COPROC;
 	hdr.msg = MBOX_PKI_PORT_OPEN;
 	hdr.vfid = port;
 
-	res = octeontx_mbox_send(&hdr, NULL, 0, NULL, 0);
+	res = octeontx_mbox_send(&hdr, &port_type, sizeof(mbox_pki_port_t),
+				 NULL, 0);
 	if (res < 0)
 		return -EACCES;
 	return res;
@@ -113,13 +144,40 @@ octeontx_pki_port_errchk_config(int port, pki_errchk_cfg_t *cfg)
 static int
 pkivf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
-	RTE_SET_USED(pci_drv);
-	RTE_SET_USED(pci_dev);
+	struct octeontx_pkivf *res;
+	static uint8_t vf_cnt;
+	uint16_t domain;
+	uint16_t vfid;
+	uint8_t *bar0;
+	uint64_t val;
 
+	RTE_SET_USED(pci_drv);
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	if (pci_dev->mem_resource[0].addr == NULL) {
+		octeontx_log_err("PKI Empty bar[0] %p",
+				 pci_dev->mem_resource[0].addr);
+		return -ENODEV;
+	}
+
+	bar0 = pci_dev->mem_resource[0].addr;
+	val = octeontx_read64(bar0);
+	domain = val & 0xffff;
+	vfid = (val >> 16) & 0xffff;
+
+	if (unlikely(vfid >= PKI_VF_MAX)) {
+		octeontx_log_err("pki: Invalid vfid %d", vfid);
+		return -EINVAL;
+	}
+
+	res = &pki_vf_ctl.pki[vf_cnt++];
+	res->vfid = vfid;
+	res->domain = domain;
+	res->bar0 = bar0;
+
+	octeontx_log_dbg("PKI Domain=%d vfid=%d", res->domain, res->vfid);
 	return 0;
 }
 

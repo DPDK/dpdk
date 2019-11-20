@@ -48,6 +48,10 @@ enum  {
 	MBOX_PKI_PARSE_NOTHING = 0x7f
 };
 
+/* PKI maximum constants */
+#define PKI_VF_MAX			(32)
+#define PKI_MAX_PKTLEN			(32768)
+
 /* Interface types: */
 enum {
 	OCTTX_PORT_TYPE_NET, /* Network interface ports */
@@ -230,10 +234,6 @@ typedef struct mbox_pki_port_delete_qos_entry {
 	uint8_t port_type;
 	uint16_t index;
 } mbox_pki_del_qos_t;
-
-/* PKI maximum constants */
-#define PKI_VF_MAX			(1)
-#define PKI_MAX_PKTLEN			(32768)
 
 /* pki pkind parse mode */
 enum  {
