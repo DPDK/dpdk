@@ -65,31 +65,6 @@ extern "C" {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 /** @internal Tbl24 entry structure. */
 __extension__
-struct rte_lpm_tbl_entry_v20 {
-	/**
-	 * Stores Next hop (tbl8 or tbl24 when valid_group is not set) or
-	 * a group index pointing to a tbl8 structure (tbl24 only, when
-	 * valid_group is set)
-	 */
-	RTE_STD_C11
-	union {
-		uint8_t next_hop;
-		uint8_t group_idx;
-	};
-	/* Using single uint8_t to store 3 values. */
-	uint8_t valid     :1;   /**< Validation flag. */
-	/**
-	 * For tbl24:
-	 *  - valid_group == 0: entry stores a next hop
-	 *  - valid_group == 1: entry stores a group_index pointing to a tbl8
-	 * For tbl8:
-	 *  - valid_group indicates whether the current tbl8 is in use or not
-	 */
-	uint8_t valid_group :1;
-	uint8_t depth       :6; /**< Rule depth. */
-} __rte_aligned(sizeof(uint16_t));
-
-__extension__
 struct rte_lpm_tbl_entry {
 	/**
 	 * Stores Next hop (tbl8 or tbl24 when valid_group is not set) or
@@ -111,16 +86,6 @@ struct rte_lpm_tbl_entry {
 };
 
 #else
-__extension__
-struct rte_lpm_tbl_entry_v20 {
-	uint8_t depth       :6;
-	uint8_t valid_group :1;
-	uint8_t valid       :1;
-	union {
-		uint8_t group_idx;
-		uint8_t next_hop;
-	};
-} __rte_aligned(sizeof(uint16_t));
 
 __extension__
 struct rte_lpm_tbl_entry {
@@ -141,11 +106,6 @@ struct rte_lpm_config {
 };
 
 /** @internal Rule structure. */
-struct rte_lpm_rule_v20 {
-	uint32_t ip; /**< Rule IP address. */
-	uint8_t  next_hop; /**< Rule next hop. */
-};
-
 struct rte_lpm_rule {
 	uint32_t ip; /**< Rule IP address. */
 	uint32_t next_hop; /**< Rule next hop. */
@@ -158,21 +118,6 @@ struct rte_lpm_rule_info {
 };
 
 /** @internal LPM structure. */
-struct rte_lpm_v20 {
-	/* LPM metadata. */
-	char name[RTE_LPM_NAMESIZE];        /**< Name of the lpm. */
-	uint32_t max_rules; /**< Max. balanced rules per lpm. */
-	struct rte_lpm_rule_info rule_info[RTE_LPM_MAX_DEPTH]; /**< Rule info table. */
-
-	/* LPM Tables. */
-	struct rte_lpm_tbl_entry_v20 tbl24[RTE_LPM_TBL24_NUM_ENTRIES]
-			__rte_cache_aligned; /**< LPM tbl24 table. */
-	struct rte_lpm_tbl_entry_v20 tbl8[RTE_LPM_TBL8_NUM_ENTRIES]
-			__rte_cache_aligned; /**< LPM tbl8 table. */
-	struct rte_lpm_rule_v20 rules_tbl[]
-			__rte_cache_aligned; /**< LPM rules. */
-};
-
 struct rte_lpm {
 	/* LPM metadata. */
 	char name[RTE_LPM_NAMESIZE];        /**< Name of the lpm. */
@@ -209,11 +154,6 @@ struct rte_lpm {
 struct rte_lpm *
 rte_lpm_create(const char *name, int socket_id,
 		const struct rte_lpm_config *config);
-struct rte_lpm_v20 *
-rte_lpm_create_v20(const char *name, int socket_id, int max_rules, int flags);
-struct rte_lpm *
-rte_lpm_create_v1604(const char *name, int socket_id,
-		const struct rte_lpm_config *config);
 
 /**
  * Find an existing LPM object and return a pointer to it.
@@ -227,10 +167,6 @@ rte_lpm_create_v1604(const char *name, int socket_id,
  */
 struct rte_lpm *
 rte_lpm_find_existing(const char *name);
-struct rte_lpm_v20 *
-rte_lpm_find_existing_v20(const char *name);
-struct rte_lpm *
-rte_lpm_find_existing_v1604(const char *name);
 
 /**
  * Free an LPM object.
@@ -242,10 +178,6 @@ rte_lpm_find_existing_v1604(const char *name);
  */
 void
 rte_lpm_free(struct rte_lpm *lpm);
-void
-rte_lpm_free_v20(struct rte_lpm_v20 *lpm);
-void
-rte_lpm_free_v1604(struct rte_lpm *lpm);
 
 /**
  * Add a rule to the LPM table.
@@ -263,12 +195,6 @@ rte_lpm_free_v1604(struct rte_lpm *lpm);
  */
 int
 rte_lpm_add(struct rte_lpm *lpm, uint32_t ip, uint8_t depth, uint32_t next_hop);
-int
-rte_lpm_add_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
-		uint8_t next_hop);
-int
-rte_lpm_add_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
-		uint32_t next_hop);
 
 /**
  * Check if a rule is present in the LPM table,
@@ -288,12 +214,6 @@ rte_lpm_add_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 int
 rte_lpm_is_rule_present(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 uint32_t *next_hop);
-int
-rte_lpm_is_rule_present_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
-uint8_t *next_hop);
-int
-rte_lpm_is_rule_present_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
-uint32_t *next_hop);
 
 /**
  * Delete a rule from the LPM table.
@@ -309,10 +229,6 @@ uint32_t *next_hop);
  */
 int
 rte_lpm_delete(struct rte_lpm *lpm, uint32_t ip, uint8_t depth);
-int
-rte_lpm_delete_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth);
-int
-rte_lpm_delete_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth);
 
 /**
  * Delete all rules from the LPM table.
@@ -322,10 +238,6 @@ rte_lpm_delete_v1604(struct rte_lpm *lpm, uint32_t ip, uint8_t depth);
  */
 void
 rte_lpm_delete_all(struct rte_lpm *lpm);
-void
-rte_lpm_delete_all_v20(struct rte_lpm_v20 *lpm);
-void
-rte_lpm_delete_all_v1604(struct rte_lpm *lpm);
 
 /**
  * Lookup an IP into the LPM table.
