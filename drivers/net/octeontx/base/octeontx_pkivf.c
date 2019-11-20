@@ -30,9 +30,7 @@ octeontx_pki_port_open(int port)
 {
 	uint16_t global_domain = octeontx_get_global_domain();
 	struct octeontx_mbox_hdr hdr;
-	mbox_pki_port_t port_type = {
-		.port_type = OCTTX_PORT_TYPE_NET,
-	};
+	pki_port_type_t port_type;
 	int i, res;
 
 	/* Check if atleast one PKI vf is in application domain. */
@@ -45,11 +43,12 @@ octeontx_pki_port_open(int port)
 	if (i == PKI_VF_MAX)
 		return -ENODEV;
 
+	port_type.port_type = OCTTX_PORT_TYPE_NET;
 	hdr.coproc = OCTEONTX_PKI_COPROC;
 	hdr.msg = MBOX_PKI_PORT_OPEN;
 	hdr.vfid = port;
 
-	res = octeontx_mbox_send(&hdr, &port_type, sizeof(mbox_pki_port_t),
+	res = octeontx_mbox_send(&hdr, &port_type, sizeof(pki_port_type_t),
 				 NULL, 0);
 	if (res < 0)
 		return -EACCES;
@@ -62,8 +61,8 @@ octeontx_pki_port_hash_config(int port, pki_hash_cfg_t *hash_cfg)
 	struct octeontx_mbox_hdr hdr;
 	int res;
 
-	mbox_pki_hash_cfg_t h_cfg = *(mbox_pki_hash_cfg_t *)hash_cfg;
-	int len = sizeof(mbox_pki_hash_cfg_t);
+	pki_hash_cfg_t h_cfg = *(pki_hash_cfg_t *)hash_cfg;
+	int len = sizeof(pki_hash_cfg_t);
 
 	hdr.coproc = OCTEONTX_PKI_COPROC;
 	hdr.msg = MBOX_PKI_PORT_HASH_CONFIG;
@@ -82,8 +81,8 @@ octeontx_pki_port_pktbuf_config(int port, pki_pktbuf_cfg_t *buf_cfg)
 	struct octeontx_mbox_hdr hdr;
 	int res;
 
-	mbox_pki_pktbuf_cfg_t b_cfg = *(mbox_pki_pktbuf_cfg_t *)buf_cfg;
-	int len = sizeof(mbox_pki_pktbuf_cfg_t);
+	pki_pktbuf_cfg_t b_cfg = *(pki_pktbuf_cfg_t *)buf_cfg;
+	int len = sizeof(pki_pktbuf_cfg_t);
 
 	hdr.coproc = OCTEONTX_PKI_COPROC;
 	hdr.msg = MBOX_PKI_PORT_PKTBUF_CONFIG;
@@ -101,8 +100,8 @@ octeontx_pki_port_create_qos(int port, pki_qos_cfg_t *qos_cfg)
 	struct octeontx_mbox_hdr hdr;
 	int res;
 
-	mbox_pki_qos_cfg_t q_cfg = *(mbox_pki_qos_cfg_t *)qos_cfg;
-	int len = sizeof(mbox_pki_qos_cfg_t);
+	pki_qos_cfg_t q_cfg = *(pki_qos_cfg_t *)qos_cfg;
+	int len = sizeof(pki_qos_cfg_t);
 
 	hdr.coproc = OCTEONTX_PKI_COPROC;
 	hdr.msg = MBOX_PKI_PORT_CREATE_QOS;
@@ -122,9 +121,9 @@ octeontx_pki_port_errchk_config(int port, pki_errchk_cfg_t *cfg)
 	struct octeontx_mbox_hdr hdr;
 	int res;
 
-	mbox_pki_errcheck_cfg_t e_cfg;
-	e_cfg = *((mbox_pki_errcheck_cfg_t *)(cfg));
-	int len = sizeof(mbox_pki_errcheck_cfg_t);
+	pki_errchk_cfg_t e_cfg;
+	e_cfg = *((pki_errchk_cfg_t *)(cfg));
+	int len = sizeof(pki_errchk_cfg_t);
 
 	hdr.coproc = OCTEONTX_PKI_COPROC;
 	hdr.msg = MBOX_PKI_PORT_ERRCHK_CONFIG;
