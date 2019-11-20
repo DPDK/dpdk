@@ -11,6 +11,11 @@
 #define SSOW_BAR4_LEN			(64 * 1024)
 #define SSO_VHGRP_PF_MBOX(x)		(0x200ULL | ((x) << 3))
 
+#define NO_COPROC               0x0
+#define RM_START_APP            0x1
+#define RM_INTERFACE_VERSION    0x2
+
+
 #define MBOX_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, octeontx_logtype_mbox,\
 			"%s() line %u: " fmt "\n", __func__, __LINE__, ## args)
@@ -26,9 +31,11 @@ struct octeontx_mbox_hdr {
 	uint16_t vfid;  /* VF index or pf resource index local to the domain */
 	uint8_t coproc; /* Coprocessor id */
 	uint8_t msg;    /* Message id */
+	uint8_t oob;	/* out of band data */
 	uint8_t res_code; /* Functional layer response code */
 };
 
+int octeontx_mbox_init(void);
 int octeontx_mbox_set_ram_mbox_base(uint8_t *ram_mbox_base);
 int octeontx_mbox_set_reg(uint8_t *reg);
 int octeontx_mbox_send(struct octeontx_mbox_hdr *hdr,

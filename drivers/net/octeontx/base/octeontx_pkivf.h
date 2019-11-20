@@ -33,6 +33,9 @@
 #define MBOX_PKI_PORT_RESET_STATS		18
 #define MBOX_PKI_GET_PORT_CONFIG		19
 #define MBOX_PKI_GET_PORT_QOS_CONFIG		20
+#define MBOX_PKI_PORT_ALLOC_QPG			21
+#define MBOX_PKI_PORT_FREE_QPG			22
+#define MBOX_PKI_SET_PORT_CONFIG		23
 
 #define MBOX_PKI_MAX_QOS_ENTRY 64
 
@@ -64,6 +67,7 @@ typedef struct mbox_pki_port_cfg {
 	struct {
 		uint8_t fcs_pres:1;
 		uint8_t fcs_skip:1;
+		uint8_t inst_skip:1;
 		uint8_t parse_mode:1;
 		uint8_t mpls_parse:1;
 		uint8_t inst_hdr_parse:1;
@@ -74,6 +78,7 @@ typedef struct mbox_pki_port_cfg {
 	} mmask;
 	uint8_t fcs_pres;
 	uint8_t fcs_skip;
+	uint8_t inst_skip;
 	uint8_t parse_mode;
 	uint8_t mpls_parse;
 	uint8_t inst_hdr_parse;
@@ -189,6 +194,9 @@ struct mbox_pki_qos_entry {
 	uint16_t gaura;
 	uint8_t grptag_ok;
 	uint8_t grptag_bad;
+	uint8_t ena_red;
+	uint8_t ena_drop;
+	uint8_t tag_type;
 };
 
 /* pki flow/style enable qos */
@@ -201,7 +209,7 @@ typedef struct mbox_pki_port_create_qos {
 	struct mbox_pki_qos_entry qos_entry[MBOX_PKI_MAX_QOS_ENTRY];
 } mbox_pki_qos_cfg_t;
 
-/* pki flow/style enable qos */
+/* pki flow/style modify qos */
 typedef struct mbox_pki_port_modify_qos_entry {
 	uint8_t port_type;
 	uint16_t index;
@@ -214,11 +222,10 @@ typedef struct mbox_pki_port_modify_qos_entry {
 		uint8_t f_grptag_bad:1;
 		uint8_t f_tag_type:1;
 	} mmask;
-	uint8_t tag_type;
 	struct mbox_pki_qos_entry qos_entry;
 } mbox_pki_mod_qos_t;
 
-/* pki flow/style enable qos */
+/* pki flow/style delete qos */
 typedef struct mbox_pki_port_delete_qos_entry {
 	uint8_t port_type;
 	uint16_t index;
@@ -372,6 +379,7 @@ struct pki_qos_entry {
 	uint8_t grptag_bad;
 	uint8_t ena_red;
 	uint8_t ena_drop;
+	uint8_t tag_type;
 };
 
 #define PKO_MAX_QOS_ENTRY 64
@@ -405,7 +413,6 @@ typedef struct pki_port_modify_qos_entry {
 		uint8_t f_grptag_bad:1;
 		uint8_t f_tag_type:1;
 	} mmask;
-	uint8_t tag_type;
 	struct pki_qos_entry qos_entry;
 } pki_mod_qos_t;
 

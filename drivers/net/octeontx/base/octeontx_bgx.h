@@ -27,6 +27,7 @@
 #define MBOX_BGX_PORT_SET_BP            11
 #define MBOX_BGX_PORT_SET_BCAST         12
 #define MBOX_BGX_PORT_SET_MCAST         13
+#define MBOX_BGX_PORT_SET_MTU		14
 
 /* BGX port configuration parameters: */
 typedef struct octeontx_mbox_bgx_port_conf {
@@ -51,6 +52,8 @@ typedef struct octeontx_mbox_bgx_port_conf {
 typedef struct octeontx_mbox_bgx_port_status {
 	uint8_t link_up;
 	uint8_t bp;
+	uint8_t duplex;
+	uint32_t speed;
 } octeontx_mbox_bgx_port_status_t;
 
 /* BGX port statistics: */

@@ -174,3 +174,10 @@ The OCTEON TX SoC family NICs support a maximum of a 32K jumbo frame. The value
 is fixed and cannot be changed. So, even when the ``rxmode.max_rx_pkt_len``
 member of ``struct rte_eth_conf`` is set to a value lower than 32k, frames
 up to 32k bytes can still reach the host interface.
+
+Maximum mempool size
+~~~~~~~~~~~~~~~~~~~~
+
+The maximum mempool size supplied to Rx queue setup should be less than 128K.
+When running testpmd on OCTEON TX the application can limit the number of mbufs
+by using the option ``--total-num-mbufs=131072``.

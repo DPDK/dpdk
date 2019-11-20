@@ -19,8 +19,6 @@
 #define SSO_MAX_VHGRP                     (64)
 #define SSO_MAX_VHWS                      (32)
 
-#define SSO_VHGRP_AQ_THR                  (0x1E0ULL)
-
 struct ssovf_res {
 	uint16_t domain;
 	uint16_t vfid;

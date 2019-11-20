@@ -507,6 +507,7 @@ octeontx_fpa_bufpool_create(unsigned int object_size, unsigned int object_count,
 	RTE_SET_USED(node_id);
 	RTE_BUILD_BUG_ON(sizeof(struct rte_mbuf) > OCTEONTX_FPAVF_BUF_OFFSET);
 
+	octeontx_mbox_init();
 	object_size = RTE_CACHE_LINE_ROUNDUP(object_size);
 	if (object_size > FPA_MAX_OBJ_SIZE) {
 		errno = EINVAL;
