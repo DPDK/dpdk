@@ -297,7 +297,7 @@ set of API's under the ``rte_extmem_*`` namespace.
 
 These API's are (as their name implies) intended to allow registering or
 unregistering externally allocated memory to/from DPDK's internal page table, to
-allow API's like ``rte_virt2memseg`` etc. to work with externally allocated
+allow API's like ``rte_mem_virt2memseg`` etc. to work with externally allocated
 memory. Memory added this way will not be available for any regular DPDK
 allocators; DPDK will leave this memory for the user application to manage.
 
