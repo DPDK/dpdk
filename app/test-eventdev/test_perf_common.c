@@ -133,8 +133,9 @@ perf_event_timer_producer(void *arg)
 	fflush(stdout);
 	rte_delay_ms(1000);
 	printf("%s(): lcore %d Average event timer arm latency = %.3f us\n",
-			__func__, rte_lcore_id(), (float)(arm_latency / count) /
-			(rte_get_timer_hz() / 1000000));
+			__func__, rte_lcore_id(),
+			count ? (float)(arm_latency / count) /
+			(rte_get_timer_hz() / 1000000) : 0);
 	return 0;
 }
 
@@ -194,8 +195,9 @@ perf_event_timer_producer_burst(void *arg)
 	fflush(stdout);
 	rte_delay_ms(1000);
 	printf("%s(): lcore %d Average event timer arm latency = %.3f us\n",
-			__func__, rte_lcore_id(), (float)(arm_latency / count) /
-			(rte_get_timer_hz() / 1000000));
+			__func__, rte_lcore_id(),
+			count ? (float)(arm_latency / count) /
+			(rte_get_timer_hz() / 1000000) : 0);
 	return 0;
 }
 
