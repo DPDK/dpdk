@@ -654,6 +654,156 @@ ice_fdir_teardown(struct ice_pf *pf)
 }
 
 static int
+ice_fdir_cur_prof_conflict(struct ice_pf *pf,
+			   enum ice_fltr_ptype ptype,
+			   struct ice_flow_seg_info *seg,
+			   bool is_tunnel)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_flow_seg_info *ori_seg;
+	struct ice_fd_hw_prof *hw_prof;
+
+	hw_prof = hw->fdir_prof[ptype];
+	ori_seg = hw_prof->fdir_seg[is_tunnel];
+
+	/* profile does not exist */
+	if (!ori_seg)
+		return 0;
+
+	/* if no input set conflict, return -EEXIST */
+	if ((!is_tunnel && !memcmp(ori_seg, seg, sizeof(*seg))) ||
+	    (is_tunnel && !memcmp(&ori_seg[1], &seg[1], sizeof(*seg)))) {
+		PMD_DRV_LOG(DEBUG, "Profile already exists for flow type %d.",
+			    ptype);
+		return -EEXIST;
+	}
+
+	/* a rule with input set conflict already exist, so give up */
+	if (pf->fdir_fltr_cnt[ptype][is_tunnel]) {
+		PMD_DRV_LOG(DEBUG, "Failed to create profile for flow type %d due to conflict with existing rule.",
+			    ptype);
+		return -EINVAL;
+	}
+
+	/* it's safe to delete an empty profile */
+	ice_fdir_prof_rm(pf, ptype, is_tunnel);
+	return 0;
+}
+
+static bool
+ice_fdir_prof_resolve_conflict(struct ice_pf *pf,
+			       enum ice_fltr_ptype ptype,
+			       bool is_tunnel)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_fd_hw_prof *hw_prof;
+	struct ice_flow_seg_info *seg;
+
+	hw_prof = hw->fdir_prof[ptype];
+	seg = hw_prof->fdir_seg[is_tunnel];
+
+	/* profile does not exist */
+	if (!seg)
+		return true;
+
+	/* profile exists and rule exists, fail to resolve the conflict */
+	if (pf->fdir_fltr_cnt[ptype][is_tunnel] != 0)
+		return false;
+
+	/* it's safe to delete an empty profile */
+	ice_fdir_prof_rm(pf, ptype, is_tunnel);
+
+	return true;
+}
+
+static int
+ice_fdir_cross_prof_conflict(struct ice_pf *pf,
+			     enum ice_fltr_ptype ptype,
+			     bool is_tunnel)
+{
+	enum ice_fltr_ptype cflct_ptype;
+
+	switch (ptype) {
+	/* IPv4 */
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_TCP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_SCTP:
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_OTHER;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_OTHER:
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_UDP;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_TCP;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_SCTP;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		break;
+	/* IPv4 GTPU */
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_UDP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_TCP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_ICMP:
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER:
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		break;
+	/* IPv6 */
+	case ICE_FLTR_PTYPE_NONF_IPV6_UDP:
+	case ICE_FLTR_PTYPE_NONF_IPV6_TCP:
+	case ICE_FLTR_PTYPE_NONF_IPV6_SCTP:
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV6_OTHER;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV6_OTHER:
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV6_UDP;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV6_TCP;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		cflct_ptype = ICE_FLTR_PTYPE_NONF_IPV6_SCTP;
+		if (!ice_fdir_prof_resolve_conflict
+			(pf, cflct_ptype, is_tunnel))
+			goto err;
+		break;
+	default:
+		break;
+	}
+	return 0;
+err:
+	PMD_DRV_LOG(DEBUG, "Failed to create profile for flow type %d due to conflict with existing rule of flow type %d.",
+		    ptype, cflct_ptype);
+	return -EINVAL;
+}
+
+static int
 ice_fdir_hw_tbl_conf(struct ice_pf *pf, struct ice_vsi *vsi,
 		     struct ice_vsi *ctrl_vsi,
 		     struct ice_flow_seg_info *seg,
@@ -662,7 +812,6 @@ ice_fdir_hw_tbl_conf(struct ice_pf *pf, struct ice_vsi *vsi,
 {
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	enum ice_flow_dir dir = ICE_FLOW_RX;
-	struct ice_flow_seg_info *ori_seg;
 	struct ice_fd_hw_prof *hw_prof;
 	struct ice_flow_prof *prof;
 	uint64_t entry_1 = 0;
@@ -671,22 +820,15 @@ ice_fdir_hw_tbl_conf(struct ice_pf *pf, struct ice_vsi *vsi,
 	int ret;
 	uint64_t prof_id;
 
-	hw_prof = hw->fdir_prof[ptype];
-	ori_seg = hw_prof->fdir_seg[is_tunnel];
-	if (ori_seg) {
-		if (!is_tunnel) {
-			if (!memcmp(ori_seg, seg, sizeof(*seg)))
-				return -EAGAIN;
-		} else {
-			if (!memcmp(&ori_seg[1], &seg[1], sizeof(*seg)))
-				return -EAGAIN;
-		}
+	/* check if have input set conflict on current profile. */
+	ret = ice_fdir_cur_prof_conflict(pf, ptype, seg, is_tunnel);
+	if (ret)
+		return ret;
 
-		if (pf->fdir_fltr_cnt[ptype][is_tunnel])
-			return -EINVAL;
-
-		ice_fdir_prof_rm(pf, ptype, is_tunnel);
-	}
+	/* check if the profile is conflict with other profile. */
+	ret = ice_fdir_cross_prof_conflict(pf, ptype, is_tunnel);
+	if (ret)
+		return ret;
 
 	prof_id = ptype + is_tunnel * ICE_FLTR_PTYPE_MAX;
 	ret = ice_flow_add_prof(hw, ICE_BLK_FD, dir, prof_id, seg,
@@ -710,6 +852,7 @@ ice_fdir_hw_tbl_conf(struct ice_pf *pf, struct ice_vsi *vsi,
 		goto err_add_entry;
 	}
 
+	hw_prof = hw->fdir_prof[ptype];
 	pf->hw_prof_cnt[ptype][is_tunnel] = 0;
 	hw_prof->cnt = 0;
 	hw_prof->fdir_seg[is_tunnel] = seg;
@@ -873,7 +1016,7 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 		rte_free(seg);
 		if (is_tunnel)
 			rte_free(seg_tun);
-		return (ret == -EAGAIN) ? 0 : ret;
+		return (ret == -EEXIST) ? 0 : ret;
 	} else {
 		return ret;
 	}
