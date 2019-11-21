@@ -196,7 +196,12 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		struct rte_eth_conf local_port_conf = port_conf;
 		uint32_t caps = 0;
 
-		rte_event_eth_tx_adapter_caps_get(opt->dev_id, i, &caps);
+		ret = rte_event_eth_tx_adapter_caps_get(opt->dev_id, i, &caps);
+		if (ret != 0) {
+			evt_err("failed to get event tx adapter[%d] caps", i);
+			return ret;
+		}
+
 		if (!(caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT))
 			t->internal_port = 0;
 
@@ -424,7 +429,7 @@ int
 pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt)
 {
 	struct test_pipeline *t = evt_test_priv(test);
-	int i;
+	int i, ret;
 
 	if (!opt->mbuf_sz)
 		opt->mbuf_sz = RTE_MBUF_DEFAULT_BUF_SIZE;
@@ -437,7 +442,13 @@ pipeline_mempool_setup(struct evt_test *test, struct evt_options *opt)
 		uint16_t data_size = 0;
 
 		memset(&dev_info, 0, sizeof(dev_info));
-		rte_eth_dev_info_get(i, &dev_info);
+		ret = rte_eth_dev_info_get(i, &dev_info);
+		if (ret != 0) {
+			evt_err("Error during getting device (port %u) info: %s\n",
+				i, strerror(-ret));
+			return ret;
+		}
+
 		if (dev_info.rx_desc_lim.nb_mtu_seg_max != UINT16_MAX &&
 				dev_info.rx_desc_lim.nb_mtu_seg_max != 0) {
 			data_size = opt->max_pkt_sz /
