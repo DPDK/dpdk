@@ -364,7 +364,15 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 	case MLX5_METADATA_TX:
 		return REG_A;
 	case MLX5_METADATA_FDB:
-		return REG_C_0;
+		switch (config->dv_xmeta_en) {
+		case MLX5_XMETA_MODE_LEGACY:
+			return REG_NONE;
+		case MLX5_XMETA_MODE_META16:
+			return REG_C_0;
+		case MLX5_XMETA_MODE_META32:
+			return REG_C_1;
+		}
+		break;
 	case MLX5_FLOW_MARK:
 		switch (config->dv_xmeta_en) {
 		case MLX5_XMETA_MODE_LEGACY:
