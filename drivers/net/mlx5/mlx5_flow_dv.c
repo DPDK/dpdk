@@ -75,6 +75,9 @@ union flow_dv_attr {
 /**
  * Initialize flow attributes structure according to flow items' types.
  *
+ * flow_dv_validate() avoids multiple L3/L4 layers cases other than tunnel
+ * mode. For tunnel mode, the items to be modified are the outermost ones.
+ *
  * @param[in] item
  *   Pointer to item specification.
  * @param[out] attr
@@ -86,16 +89,20 @@ flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr)
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			attr->ipv4 = 1;
+			if (!attr->ipv6)
+				attr->ipv4 = 1;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			attr->ipv6 = 1;
+			if (!attr->ipv4)
+				attr->ipv6 = 1;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			attr->udp = 1;
+			if (!attr->tcp)
+				attr->udp = 1;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
-			attr->tcp = 1;
+			if (!attr->udp)
+				attr->tcp = 1;
 			break;
 		default:
 			break;
