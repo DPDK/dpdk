@@ -159,7 +159,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	uint8_t i;
 
 	if (unlikely(tx_pkt_split == TX_PKT_SPLIT_RND))
-		nb_segs = random() % tx_pkt_nb_segs + 1;
+		nb_segs = rte_rand() % tx_pkt_nb_segs + 1;
 	else
 		nb_segs = tx_pkt_nb_segs;
 
