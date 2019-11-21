@@ -866,13 +866,21 @@ error:
 static int
 mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 {
+	struct mlx5_ibv_shared *sh = priv->sh;
+	char s[MLX5_HLIST_NAMESIZE];
 	int err = mlx5_alloc_table_hash_list(priv);
 
 	if (err)
 		return err;
+	/* Create tags hash list table. */
+	snprintf(s, sizeof(s), "%s_tags", sh->ibdev_name);
+	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE);
+	if (!sh->tag_table) {
+		DRV_LOG(ERR, "tags with hash creation failed.\n");
+		err = ENOMEM;
+		goto error;
+	}
 #ifdef HAVE_MLX5DV_DR
-	struct mlx5_ibv_shared *sh = priv->sh;
-	char s[MLX5_HLIST_NAMESIZE];
 	void *domain;
 
 	if (sh->dv_refcnt) {
@@ -912,20 +920,13 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		sh->esw_drop_action = mlx5_glue->dr_create_flow_action_drop();
 	}
 #endif
-	/* create tags hash list table. */
-	snprintf(s, sizeof(s), "%s_tags", priv->sh->ibdev_name);
-	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE);
-	if (!sh->flow_tbls) {
-		DRV_LOG(ERR, "tags with hash creation failed.\n");
-		goto error;
-	}
 	sh->pop_vlan_action = mlx5_glue->dr_create_flow_action_pop_vlan();
+#endif /* HAVE_MLX5DV_DR */
 	sh->dv_refcnt++;
 	priv->dr_shared = 1;
 	return 0;
-
 error:
-       /* Rollback the created objects. */
+	/* Rollback the created objects. */
 	if (sh->rx_domain) {
 		mlx5_glue->dr_destroy_domain(sh->rx_domain);
 		sh->rx_domain = NULL;
@@ -946,8 +947,12 @@ error:
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
 		sh->pop_vlan_action = NULL;
 	}
+	if (sh->tag_table) {
+		/* tags should be destroyed with flow before. */
+		mlx5_hlist_destroy(sh->tag_table, NULL, NULL);
+		sh->tag_table = NULL;
+	}
 	mlx5_free_table_hash_list(priv);
-#endif
 	return err;
 }
 
@@ -960,7 +965,6 @@ error:
 static void
 mlx5_free_shared_dr(struct mlx5_priv *priv)
 {
-#ifdef HAVE_MLX5DV_DR
 	struct mlx5_ibv_shared *sh;
 
 	if (!priv->dr_shared)
@@ -968,6 +972,7 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 	priv->dr_shared = 0;
 	sh = priv->sh;
 	assert(sh);
+#ifdef HAVE_MLX5DV_DR
 	assert(sh->dv_refcnt);
 	if (sh->dv_refcnt && --sh->dv_refcnt)
 		return;
@@ -989,17 +994,17 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 		sh->esw_drop_action = NULL;
 	}
 #endif
-	if (sh->tag_table) {
-		/* tags should be destroyed with flow before. */
-		mlx5_hlist_destroy(sh->tag_table, NULL, NULL);
-		sh->tag_table = NULL;
-	}
 	if (sh->pop_vlan_action) {
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
 		sh->pop_vlan_action = NULL;
 	}
 	pthread_mutex_destroy(&sh->dv_mutex);
 #endif /* HAVE_MLX5DV_DR */
+	if (sh->tag_table) {
+		/* tags should be destroyed with flow before. */
+		mlx5_hlist_destroy(sh->tag_table, NULL, NULL);
+		sh->tag_table = NULL;
+	}
 	mlx5_free_table_hash_list(priv);
 }
 
