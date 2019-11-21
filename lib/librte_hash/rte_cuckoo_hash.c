@@ -1286,10 +1286,8 @@ __rte_hash_lookup_with_hash_lf(const struct rte_hash *h, const void *key,
 		/* Check if key is in primary location */
 		bkt = &h->buckets[prim_bucket_idx];
 		ret = search_one_bucket_lf(h, key, short_sig, data, bkt);
-		if (ret != -1) {
-			__hash_rw_reader_unlock(h);
+		if (ret != -1)
 			return ret;
-		}
 		/* Calculate secondary hash */
 		bkt = &h->buckets[sec_bucket_idx];
 
@@ -1297,10 +1295,8 @@ __rte_hash_lookup_with_hash_lf(const struct rte_hash *h, const void *key,
 		FOR_EACH_BUCKET(cur_bkt, bkt) {
 			ret = search_one_bucket_lf(h, key, short_sig,
 						data, cur_bkt);
-			if (ret != -1) {
-				__hash_rw_reader_unlock(h);
+			if (ret != -1)
 				return ret;
-			}
 		}
 
 		/* The loads of sig_current in search_one_bucket
