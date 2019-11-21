@@ -522,6 +522,7 @@ rte_pmd_ixgbe_macsec_enable(uint16_t port, uint8_t en, uint8_t rp)
 
 	dev = &rte_eth_devices[port];
 
+	macsec_setting.offload_en = 1;
 	macsec_setting.encrypt_en = en;
 	macsec_setting.replayprotect_en = rp;
 

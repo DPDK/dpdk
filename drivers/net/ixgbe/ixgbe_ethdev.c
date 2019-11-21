@@ -1095,6 +1095,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	PMD_INIT_FUNC_TRACE();
 
+	ixgbe_dev_macsec_setting_reset(eth_dev);
+
 	eth_dev->dev_ops = &ixgbe_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &ixgbe_xmit_pkts;
@@ -2548,7 +2550,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	uint32_t *link_speeds;
 	struct ixgbe_tm_conf *tm_conf =
 		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
-	struct ixgbe_macsec_setting *macsec_ctrl =
+	struct ixgbe_macsec_setting *macsec_setting =
 		IXGBE_DEV_PRIVATE_TO_MACSEC_SETTING(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
@@ -2802,8 +2804,9 @@ skip_link_setup:
 	 */
 	ixgbe_dev_link_update(dev, 0);
 
-	/* setup the macsec ctrl register */
-	ixgbe_dev_macsec_register_enable(dev, macsec_ctrl);
+	/* setup the macsec setting register */
+	if (macsec_setting->offload_en)
+		ixgbe_dev_macsec_register_enable(dev, macsec_setting);
 
 	return 0;
 
@@ -2835,9 +2838,6 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 		return;
 
 	PMD_INIT_FUNC_TRACE();
-
-	/* disable mecsec register */
-	ixgbe_dev_macsec_register_disable(dev);
 
 	rte_eal_alarm_cancel(ixgbe_dev_setup_link_alarm_handler, dev);
 
@@ -8847,6 +8847,7 @@ ixgbe_dev_macsec_setting_save(struct rte_eth_dev *dev,
 	struct ixgbe_macsec_setting *macsec =
 		IXGBE_DEV_PRIVATE_TO_MACSEC_SETTING(dev->data->dev_private);
 
+	macsec->offload_en = macsec_setting->offload_en;
 	macsec->encrypt_en = macsec_setting->encrypt_en;
 	macsec->replayprotect_en = macsec_setting->replayprotect_en;
 }
@@ -8857,6 +8858,7 @@ ixgbe_dev_macsec_setting_reset(struct rte_eth_dev *dev)
 	struct ixgbe_macsec_setting *macsec =
 		IXGBE_DEV_PRIVATE_TO_MACSEC_SETTING(dev->data->dev_private);
 
+	macsec->offload_en = 0;
 	macsec->encrypt_en = 0;
 	macsec->replayprotect_en = 0;
 }

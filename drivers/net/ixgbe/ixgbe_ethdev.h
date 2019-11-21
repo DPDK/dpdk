@@ -366,6 +366,7 @@ struct rte_flow {
 };
 
 struct ixgbe_macsec_setting {
+	uint8_t offload_en;
 	uint8_t encrypt_en;
 	uint8_t replayprotect_en;
 };
