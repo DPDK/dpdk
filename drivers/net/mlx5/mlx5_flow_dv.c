@@ -51,6 +51,8 @@
 #define MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL 1
 #endif
 
+#define MLX5_ENCAPSULATION_DECISION_SIZE (sizeof(struct rte_flow_item_eth) + \
+					  sizeof(struct rte_flow_item_ipv4))
 /* VLAN header definitions */
 #define MLX5DV_FLOW_VLAN_PCP_SHIFT 13
 #define MLX5DV_FLOW_VLAN_PCP_MASK (0x7 << MLX5DV_FLOW_VLAN_PCP_SHIFT)
@@ -2171,6 +2173,8 @@ flow_dv_validate_action_raw_decap(uint64_t action_flags,
 				  const struct rte_flow_attr *attr,
 				  struct rte_flow_error *error)
 {
+	const struct rte_flow_action_raw_decap *decap	= action->conf;
+
 	if (action_flags & MLX5_FLOW_ACTION_DROP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -2186,22 +2190,19 @@ flow_dv_validate_action_raw_decap(uint64_t action_flags,
 					  "can only have a single decap"
 					  " action in a flow");
 	/* decap action is valid on egress only if it is followed by encap */
-	if (attr->egress) {
-		for (; action->type != RTE_FLOW_ACTION_TYPE_END &&
-		       action->type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP;
-		       action++) {
-		}
-		if (action->type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP)
-			return rte_flow_error_set
-					(error, ENOTSUP,
-					 RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
-					 NULL, "decap action not supported"
-					 " for egress");
-	} else if (action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS) {
+	if (attr->egress && decap &&
+	    decap->size > MLX5_ENCAPSULATION_DECISION_SIZE) {
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+					  NULL, "decap action not supported"
+					  " for egress");
+	} else if (decap && decap->size > MLX5_ENCAPSULATION_DECISION_SIZE &&
+		   (action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS)) {
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can't have decap action after"
-					  " modify action");
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "can't have decap action "
+					  "after modify action");
 	}
 	return 0;
 }
@@ -2879,9 +2880,9 @@ flow_dv_create_action_raw_encap(struct rte_eth_dev *dev,
 	encap_data = (const struct rte_flow_action_raw_encap *)action->conf;
 	res.size = encap_data->size;
 	memcpy(res.buf, encap_data->data, res.size);
-	res.reformat_type = attr->egress ?
-		MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L3_TUNNEL :
-		MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L3_TUNNEL_TO_L2;
+	res.reformat_type = res.size < MLX5_ENCAPSULATION_DECISION_SIZE ?
+		MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L3_TUNNEL_TO_L2 :
+		MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L3_TUNNEL;
 	if (attr->transfer)
 		res.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
 	else
