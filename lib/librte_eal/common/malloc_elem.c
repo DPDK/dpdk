@@ -487,6 +487,10 @@ join_elem(struct malloc_elem *elem1, struct malloc_elem *elem2)
 	else
 		elem1->heap->last = elem1;
 	elem1->next = next;
+	if (elem1->pad) {
+		struct malloc_elem *inner = RTE_PTR_ADD(elem1, elem1->pad);
+		inner->size = elem1->size - elem1->pad;
+	}
 }
 
 struct malloc_elem *
