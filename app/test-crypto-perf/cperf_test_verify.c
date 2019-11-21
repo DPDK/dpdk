@@ -203,11 +203,19 @@ cperf_mbuf_set(struct rte_mbuf *mbuf,
 {
 	uint32_t segment_sz = options->segment_sz;
 	uint8_t *mbuf_data;
-	uint8_t *test_data =
-			(options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
+	uint8_t *test_data;
+	uint32_t remaining_bytes = options->max_buffer_size;
+
+	if (options->op_type == CPERF_AEAD) {
+		test_data = (options->aead_op == RTE_CRYPTO_AEAD_OP_ENCRYPT) ?
 					test_vector->plaintext.data :
 					test_vector->ciphertext.data;
-	uint32_t remaining_bytes = options->max_buffer_size;
+	} else {
+		test_data =
+			(options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
+				test_vector->plaintext.data :
+				test_vector->ciphertext.data;
+	}
 
 	while (remaining_bytes) {
 		mbuf_data = rte_pktmbuf_mtod(mbuf, uint8_t *);
