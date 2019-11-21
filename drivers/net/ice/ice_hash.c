@@ -120,22 +120,22 @@ static struct ice_pattern_match_item ice_hash_pattern_list_os[] = {
 
 /* Supported pattern for comms package. */
 static struct ice_pattern_match_item ice_hash_pattern_list_comms[] = {
-	{pattern_eth_ipv4,		 ICE_INSET_NONE,  &hint_1},
-	{pattern_eth_ipv4_udp,		 ICE_INSET_NONE,  &hint_2},
-	{pattern_eth_ipv4_tcp,		 ICE_INSET_NONE,  &hint_3},
-	{pattern_eth_ipv4_sctp,		 ICE_INSET_NONE,  &hint_4},
-	{pattern_eth_ipv6,		 ICE_INSET_NONE,  &hint_5},
-	{pattern_eth_ipv6_udp,		 ICE_INSET_NONE,  &hint_6},
-	{pattern_eth_ipv6_tcp,		 ICE_INSET_NONE,  &hint_7},
-	{pattern_eth_ipv6_sctp,		 ICE_INSET_NONE,  &hint_8},
-	{pattern_empty,			 ICE_INSET_NONE,  &hint_0},
-	{pattern_eth_ipv4_gtpu_ipv4,	 ICE_INSET_NONE,  &hint_9},
-	{pattern_eth_ipv4_gtpu_ipv4_udp, ICE_INSET_NONE,  &hint_9},
-	{pattern_eth_ipv4_gtpu_ipv4_tcp, ICE_INSET_NONE,  &hint_9},
-	{pattern_eth_pppoes_ipv4,	 ICE_INSET_NONE,  &hint_10},
-	{pattern_eth_pppoes_ipv4_udp,	 ICE_INSET_NONE,  &hint_11},
-	{pattern_eth_pppoes_ipv4_tcp,	 ICE_INSET_NONE,  &hint_12},
-	{pattern_eth_pppoes_ipv4_sctp,	 ICE_INSET_NONE,  &hint_13},
+	{pattern_eth_ipv4,		    ICE_INSET_NONE,  &hint_1},
+	{pattern_eth_ipv4_udp,		    ICE_INSET_NONE,  &hint_2},
+	{pattern_eth_ipv4_tcp,		    ICE_INSET_NONE,  &hint_3},
+	{pattern_eth_ipv4_sctp,		    ICE_INSET_NONE,  &hint_4},
+	{pattern_eth_ipv6,		    ICE_INSET_NONE,  &hint_5},
+	{pattern_eth_ipv6_udp,		    ICE_INSET_NONE,  &hint_6},
+	{pattern_eth_ipv6_tcp,		    ICE_INSET_NONE,  &hint_7},
+	{pattern_eth_ipv6_sctp,		    ICE_INSET_NONE,  &hint_8},
+	{pattern_empty,			    ICE_INSET_NONE,  &hint_0},
+	{pattern_eth_ipv4_gtpu_eh_ipv4,	    ICE_INSET_NONE,  &hint_9},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_udp, ICE_INSET_NONE,  &hint_9},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_tcp, ICE_INSET_NONE,  &hint_9},
+	{pattern_eth_pppoes_ipv4,	    ICE_INSET_NONE,  &hint_10},
+	{pattern_eth_pppoes_ipv4_udp,	    ICE_INSET_NONE,  &hint_11},
+	{pattern_eth_pppoes_ipv4_tcp,	    ICE_INSET_NONE,  &hint_12},
+	{pattern_eth_pppoes_ipv4_sctp,	    ICE_INSET_NONE,  &hint_13},
 };
 
 /**
