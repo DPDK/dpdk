@@ -234,6 +234,7 @@ check_all_ports_link_status(struct l2fwd_resources *rsrc,
 	uint16_t port_id;
 	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
+	int ret;
 
 	printf("\nChecking link status...");
 	fflush(stdout);
@@ -247,7 +248,14 @@ check_all_ports_link_status(struct l2fwd_resources *rsrc,
 			if ((port_mask & (1 << port_id)) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
-			rte_eth_link_get_nowait(port_id, &link);
+			ret = rte_eth_link_get_nowait(port_id, &link);
+			if (ret < 0) {
+				all_ports_up = 0;
+				if (print_flag == 1)
+					printf("Port %u link get failed: %s\n",
+						port_id, rte_strerror(-ret));
+				continue;
+			}
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)

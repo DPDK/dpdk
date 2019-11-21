@@ -41,8 +41,9 @@ l2fwd_event_service_enable(uint32_t service_id)
 	/* Get the core which has least number of services running. */
 	while (slcore_count--) {
 		/* Reset default mapping */
-		rte_service_map_lcore_set(service_id,
-				slcore_array[slcore_count], 0);
+		if (rte_service_map_lcore_set(service_id,
+					slcore_array[slcore_count], 0) != 0)
+			return -ENOENT;
 		service_count = rte_service_lcore_count_services(
 				slcore_array[slcore_count]);
 		if (service_count < min_service_count) {
@@ -50,7 +51,7 @@ l2fwd_event_service_enable(uint32_t service_id)
 			min_service_count = service_count;
 		}
 	}
-	if (rte_service_map_lcore_set(service_id, slcore, 1))
+	if (rte_service_map_lcore_set(service_id, slcore, 1) != 0)
 		return -ENOENT;
 	rte_service_lcore_start(slcore);
 
