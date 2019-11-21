@@ -67,6 +67,9 @@
 	ICE_FDIR_INSET_VXLAN_IPV4 | \
 	ICE_INSET_TUN_SCTP_SRC_PORT | ICE_INSET_TUN_SCTP_DST_PORT)
 
+#define ICE_FDIR_INSET_GTPU_IPV4 (\
+	ICE_INSET_GTPU_TEID)
+
 #define ICE_FDIR_INSET_GTPU_EH_IPV4 (\
 	ICE_INSET_GTPU_TEID | ICE_INSET_GTPU_QFI)
 
@@ -122,6 +125,7 @@ static struct ice_pattern_match_item ice_fdir_pattern_comms[] = {
 				       ICE_FDIR_INSET_VXLAN_IPV4_TCP,        ICE_INSET_NONE},
 	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_sctp,
 				       ICE_FDIR_INSET_VXLAN_IPV4_SCTP,       ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv4,   ICE_FDIR_INSET_GTPU_IPV4,             ICE_INSET_NONE},
 	{pattern_eth_ipv4_gtpu_eh_ipv4,
 				       ICE_FDIR_INSET_GTPU_EH_IPV4,          ICE_INSET_NONE},
 };
@@ -981,6 +985,7 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_ICMP:
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER:
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_GTPU_EH |
+				       ICE_FLOW_SEG_HDR_GTPU_IP |
 				  ICE_FLOW_SEG_HDR_IPV4);
 		break;
 	default:
@@ -1877,6 +1882,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 
 				filter->input.gtpu_data.teid = gtp_spec->teid;
 			}
+
+			tunnel_type = ICE_FDIR_TUNNEL_TYPE_GTPU;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
 			gtp_psc_spec = item->spec;
@@ -1889,8 +1896,6 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				filter->input.gtpu_data.qfi =
 					gtp_psc_spec->qfi;
 			}
-
-			tunnel_type = ICE_FDIR_TUNNEL_TYPE_GTPU;
 			break;
 		default:
 			rte_flow_error_set(error, EINVAL,

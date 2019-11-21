@@ -336,6 +336,7 @@ extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv6_sctp[];
 extern enum rte_flow_item_type pattern_eth_ipv6_nvgre_eth_ipv6_icmp6[];
 
 /* GTPU */
+extern enum rte_flow_item_type pattern_eth_ipv4_gtpu_ipv4[];
 extern enum rte_flow_item_type pattern_eth_ipv4_gtpu_eh_ipv4[];
 extern enum rte_flow_item_type pattern_eth_ipv4_gtpu_eh_ipv4_udp[];
 extern enum rte_flow_item_type pattern_eth_ipv4_gtpu_eh_ipv4_tcp[];
