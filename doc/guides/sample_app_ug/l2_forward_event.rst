@@ -103,7 +103,7 @@ scheduler. Following is the sample command:
 
 .. code-block:: console
 
-    ./build/l2fwd-event -l 0-7 -s 0-3 -n 4 ---vdev event_sw0 --q 8 -p ffff --mode=eventdev --eventq-sched=ordered
+    ./build/l2fwd-event -l 0-7 -s 0-3 -n 4 --vdev event_sw0 -- -q 8 -p ffff --mode=eventdev --eventq-sched=ordered
 
 Explanation
 -----------
