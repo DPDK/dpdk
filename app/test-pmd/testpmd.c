@@ -979,7 +979,7 @@ check_socket_id(const unsigned int socket_id)
 queueid_t
 get_allowed_max_nb_rxq(portid_t *pid)
 {
-	queueid_t allowed_max_rxq = MAX_QUEUE_ID;
+	queueid_t allowed_max_rxq = RTE_MAX_QUEUES_PER_PORT;
 	bool max_rxq_valid = false;
 	portid_t pi;
 	struct rte_eth_dev_info dev_info;
@@ -1029,7 +1029,7 @@ check_nb_rxq(queueid_t rxq)
 queueid_t
 get_allowed_max_nb_txq(portid_t *pid)
 {
-	queueid_t allowed_max_txq = MAX_QUEUE_ID;
+	queueid_t allowed_max_txq = RTE_MAX_QUEUES_PER_PORT;
 	bool max_txq_valid = false;
 	portid_t pi;
 	struct rte_eth_dev_info dev_info;
@@ -1079,7 +1079,7 @@ check_nb_txq(queueid_t txq)
 queueid_t
 get_allowed_max_nb_hairpinq(portid_t *pid)
 {
-	queueid_t allowed_max_hairpinq = MAX_QUEUE_ID;
+	queueid_t allowed_max_hairpinq = RTE_MAX_QUEUES_PER_PORT;
 	portid_t pi;
 	struct rte_eth_hairpin_cap cap;
 
