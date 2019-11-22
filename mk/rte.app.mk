@@ -379,10 +379,6 @@ filter-libs = \
 
 LDLIBS := $(call filter-libs,$(LDLIBS))
 
-ifeq ($(RTE_DEVEL_BUILD)$(CONFIG_RTE_BUILD_SHARED_LIB),yy)
-LDFLAGS += -rpath=$(RTE_SDK_BIN)/lib
-endif
-
 MAPFLAGS = -Map=$@.map --cref
 
 .PHONY: all

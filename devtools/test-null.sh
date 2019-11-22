@@ -11,6 +11,7 @@ coremask=${2:-3} # default using cores 0 and 1
 eal_options=$3
 testpmd_options=$4
 
+[ -f "$testpmd" ] && build=$(dirname $(dirname $testpmd))
 [ -f "$testpmd" ] || testpmd=$build/app/dpdk-testpmd
 [ -f "$testpmd" ] || testpmd=$build/app/testpmd
 if [ ! -f "$testpmd" ] ; then
@@ -19,6 +20,7 @@ if [ ! -f "$testpmd" ] ; then
 fi
 
 if ldd $testpmd | grep -q librte_ ; then
+	export LD_LIBRARY_PATH=$build/lib:$LD_LIBRARY_PATH
 	libs='-d librte_mempool_ring.so -d librte_pmd_null.so'
 else
 	libs=
