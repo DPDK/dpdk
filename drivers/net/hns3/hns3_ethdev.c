@@ -282,6 +282,11 @@ hns3_add_dev_vlan_table(struct hns3_adapter *hns, uint16_t vlan_id,
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_pf *pf = &hns->pf;
 
+	LIST_FOREACH(vlan_entry, &pf->vlan_list, next) {
+		if (vlan_entry->vlan_id == vlan_id)
+			return;
+	}
+
 	vlan_entry = rte_zmalloc("hns3_vlan_tbl", sizeof(*vlan_entry), 0);
 	if (vlan_entry == NULL) {
 		hns3_err(hw, "Failed to malloc hns3 vlan table");
