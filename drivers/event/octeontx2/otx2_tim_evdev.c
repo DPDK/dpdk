@@ -254,7 +254,6 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	struct tim_ring_req *free_req;
 	struct tim_lf_alloc_req *req;
 	struct tim_lf_alloc_rsp *rsp;
-	uint64_t nb_timers;
 	int i, rc;
 
 	if (dev == NULL)
@@ -300,7 +299,7 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	tim_ring->max_tout = rcfg->max_tmo_ns;
 	tim_ring->nb_bkts = (tim_ring->max_tout / tim_ring->tck_nsec);
 	tim_ring->chunk_sz = dev->chunk_sz;
-	nb_timers = rcfg->nb_timers;
+	tim_ring->nb_timers = rcfg->nb_timers;
 	tim_ring->disable_npa = dev->disable_npa;
 	tim_ring->enable_stats = dev->enable_stats;
 
@@ -316,7 +315,7 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		}
 	}
 
-	tim_ring->nb_chunks = nb_timers / OTX2_TIM_NB_CHUNK_SLOTS(
+	tim_ring->nb_chunks = tim_ring->nb_timers / OTX2_TIM_NB_CHUNK_SLOTS(
 							tim_ring->chunk_sz);
 	tim_ring->nb_chunk_slots = OTX2_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
 
@@ -373,7 +372,7 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	tim_set_fp_ops(tim_ring);
 
 	/* Update SSO xae count. */
-	sso_updt_xae_cnt(sso_pmd_priv(dev->event_dev), (void *)&nb_timers,
+	sso_updt_xae_cnt(sso_pmd_priv(dev->event_dev), (void *)tim_ring,
 			 RTE_EVENT_TYPE_TIMER);
 	sso_xae_reconfigure(dev->event_dev);
 

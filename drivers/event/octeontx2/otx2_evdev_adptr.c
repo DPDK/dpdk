@@ -199,41 +199,87 @@ fail:
 void
 sso_updt_xae_cnt(struct otx2_sso_evdev *dev, void *data, uint32_t event_type)
 {
+	int i;
+
 	switch (event_type) {
 	case RTE_EVENT_TYPE_ETHDEV:
 	{
 		struct otx2_eth_rxq *rxq = data;
-		int i, match = false;
 		uint64_t *old_ptr;
 
 		for (i = 0; i < dev->rx_adptr_pool_cnt; i++) {
 			if ((uint64_t)rxq->pool == dev->rx_adptr_pools[i])
-				match = true;
-		}
-
-		if (!match) {
-			dev->rx_adptr_pool_cnt++;
-			old_ptr = dev->rx_adptr_pools;
-			dev->rx_adptr_pools = rte_realloc(dev->rx_adptr_pools,
-							  sizeof(uint64_t) *
-							  dev->rx_adptr_pool_cnt
-							  , 0);
-			if (dev->rx_adptr_pools == NULL) {
-				dev->adptr_xae_cnt += rxq->pool->size;
-				dev->rx_adptr_pools = old_ptr;
-				dev->rx_adptr_pool_cnt--;
 				return;
-			}
-			dev->rx_adptr_pools[dev->rx_adptr_pool_cnt - 1] =
-				(uint64_t)rxq->pool;
-
-			dev->adptr_xae_cnt += rxq->pool->size;
 		}
+
+		dev->rx_adptr_pool_cnt++;
+		old_ptr = dev->rx_adptr_pools;
+		dev->rx_adptr_pools = rte_realloc(dev->rx_adptr_pools,
+						  sizeof(uint64_t) *
+						  dev->rx_adptr_pool_cnt, 0);
+		if (dev->rx_adptr_pools == NULL) {
+			dev->adptr_xae_cnt += rxq->pool->size;
+			dev->rx_adptr_pools = old_ptr;
+			dev->rx_adptr_pool_cnt--;
+			return;
+		}
+		dev->rx_adptr_pools[dev->rx_adptr_pool_cnt - 1] =
+			(uint64_t)rxq->pool;
+
+		dev->adptr_xae_cnt += rxq->pool->size;
 		break;
 	}
 	case RTE_EVENT_TYPE_TIMER:
 	{
-		dev->adptr_xae_cnt += (*(uint64_t *)data);
+		struct otx2_tim_ring *timr = data;
+		uint16_t *old_ring_ptr;
+		uint64_t *old_sz_ptr;
+
+		for (i = 0; i < dev->tim_adptr_ring_cnt; i++) {
+			if (timr->ring_id != dev->timer_adptr_rings[i])
+				continue;
+			if (timr->nb_timers == dev->timer_adptr_sz[i])
+				return;
+			dev->adptr_xae_cnt -= dev->timer_adptr_sz[i];
+			dev->adptr_xae_cnt += timr->nb_timers;
+			dev->timer_adptr_sz[i] = timr->nb_timers;
+
+			return;
+		}
+
+		dev->tim_adptr_ring_cnt++;
+		old_ring_ptr = dev->timer_adptr_rings;
+		old_sz_ptr = dev->timer_adptr_sz;
+
+		dev->timer_adptr_rings = rte_realloc(dev->timer_adptr_rings,
+						     sizeof(uint16_t) *
+						     dev->tim_adptr_ring_cnt,
+						     0);
+		if (dev->timer_adptr_rings == NULL) {
+			dev->adptr_xae_cnt += timr->nb_timers;
+			dev->timer_adptr_rings = old_ring_ptr;
+			dev->tim_adptr_ring_cnt--;
+			return;
+		}
+
+		dev->timer_adptr_sz = rte_realloc(dev->timer_adptr_sz,
+						  sizeof(uint64_t) *
+						  dev->tim_adptr_ring_cnt,
+						  0);
+
+		if (dev->timer_adptr_sz == NULL) {
+			dev->adptr_xae_cnt += timr->nb_timers;
+			dev->timer_adptr_sz = old_sz_ptr;
+			dev->tim_adptr_ring_cnt--;
+			return;
+		}
+
+		dev->timer_adptr_rings[dev->tim_adptr_ring_cnt - 1] =
+			timr->ring_id;
+		dev->timer_adptr_sz[dev->tim_adptr_ring_cnt - 1] =
+			timr->nb_timers;
+
+		dev->adptr_xae_cnt += timr->nb_timers;
 		break;
 	}
 	default:
