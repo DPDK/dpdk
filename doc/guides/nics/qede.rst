@@ -70,6 +70,12 @@ Co-existence considerations
   to the PFs of a given adapter and either qede PMD or Linux drivers
   (qed and qede) can be bound to the VFs of the adapter.
 
+- For sharing an adapter between DPDK and Linux drivers, SRIOV needs
+  to be enabled. Bind all the PFs to Linux Drivers(qed/qede). Create
+  a VF on PFs where DPDK is desired and bind these VFs to qede_pmd.
+  Binding of PFs simultaneously to DPDK and Linux drivers on a given
+  adapter is not supported.
+
 Supported QLogic Adapters
 -------------------------
 
@@ -82,9 +88,7 @@ Prerequisites
   inbox in certain newer Linux distros under the standard directory
   ``E.g. /lib/firmware/qed/qed_init_values-8.40.33.0.bin``.
   If the required firmware files are not available then download it from
-  `linux-firmware git repository <http://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/qed>`_
-  or `QLogic Driver Download Center <http://driverdownloads.qlogic.com/QLogicDriverDownloads_UI/DefaultNewSearch.aspx>`_.
-  To download firmware file from QLogic website, select adapter category, model and DPDK Poll Mode Driver.
+  `linux-firmware git repository <http://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/qed>`_.
 
 - Requires the NIC be updated minimally with **8.30.x.x** Management firmware(MFW) version supported for that NIC.
   It is highly recommended that the NIC be updated with the latest available management firmware version to get latest feature  set.
@@ -98,7 +102,6 @@ Prerequisites
   If the required PF driver is not available then download it from
   `QLogic Driver Download Center <http://driverdownloads.qlogic.com/QLogicDriverDownloads_UI/DefaultNewSearch.aspx>`_.
   For downloading PF driver, select adapter category, model and Linux distro.
-
 
 Performance note
 ~~~~~~~~~~~~~~~~
@@ -126,11 +129,25 @@ enabling debugging options may affect system performance.
 - ``CONFIG_RTE_LIBRTE_QEDE_FW`` (default **""**)
 
   Gives absolute path of firmware file.
-  ``Eg: "/lib/firmware/qed/qed_init_values-8.37.7.0.bin"``
+  ``Eg: "/lib/firmware/qed/qed_init_values-8.40.33.0.bin"``
   Empty string indicates driver will pick up the firmware file
   from the default location /lib/firmware/qed.
   CAUTION this option is more for custom firmware, it is not
   recommended for use under normal condition.
+
+Config notes
+~~~~~~~~~~~~
+
+When there are multiple adapters and/or large number of Rx/Tx queues
+configured on the adapters, the default (2560) number of memzone
+descriptors may not be enough. Please increase the number of memzone
+descriptors to a higher number as needed. When sufficient number of
+memzone descriptors are not configured, user can potentially run into
+following error.
+
+   .. code-block:: console
+
+      EAL: memzone_reserve_aligned_thread_unsafe(): No more room in config
 
 Driver compilation and testing
 ------------------------------
