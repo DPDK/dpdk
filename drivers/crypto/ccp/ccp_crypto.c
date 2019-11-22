@@ -2738,7 +2738,7 @@ process_ops_to_enqueue(struct ccp_qp *qp,
 							 session, auth_ctx);
 				if (op[i]->status !=
 				    RTE_CRYPTO_OP_STATUS_SUCCESS)
-					continue;
+					CCP_LOG_ERR("RTE_CRYPTO_OP_STATUS_AUTH_FAILED");
 			} else
 				result = ccp_crypto_auth(op[i], cmd_q, b_info);
 
