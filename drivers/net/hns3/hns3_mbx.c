@@ -24,7 +24,6 @@
 #include "hns3_logs.h"
 #include "hns3_intr.h"
 
-#define HNS3_REG_MSG_DATA_OFFSET	4
 #define HNS3_CMD_CODE_OFFSET		2
 
 static const struct errno_respcode_map err_code_map[] = {
@@ -320,8 +319,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			resp->resp_status = hns3_resp_to_errno(req->msg[3]);
 
 			temp = (uint8_t *)&req->msg[4];
-			for (i = 0; i < HNS3_MBX_MAX_RESP_DATA_SIZE &&
-			     i < HNS3_REG_MSG_DATA_OFFSET; i++) {
+			for (i = 0; i < HNS3_MBX_MAX_RESP_DATA_SIZE; i++) {
 				resp->additional_info[i] = *temp;
 				temp++;
 			}
