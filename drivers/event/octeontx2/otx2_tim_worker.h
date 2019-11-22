@@ -7,6 +7,13 @@
 
 #include "otx2_tim_evdev.h"
 
+static inline uint8_t
+tim_bkt_fetch_lock(uint64_t w1)
+{
+	return (w1 >> TIM_BUCKET_W1_S_LOCK) &
+		TIM_BUCKET_W1_M_LOCK;
+}
+
 static inline int16_t
 tim_bkt_fetch_rem(uint64_t w1)
 {
@@ -188,7 +195,6 @@ tim_insert_chunk(struct otx2_tim_bkt * const bkt,
 	} else {
 		bkt->first_chunk = (uintptr_t)chunk;
 	}
-
 	return chunk;
 }
 
@@ -208,11 +214,38 @@ tim_add_entry_sp(struct otx2_tim_ring * const tim_ring,
 
 __retry:
 	/* Get Bucket sema*/
-	lock_sema = tim_bkt_fetch_sema(bkt);
+	lock_sema = tim_bkt_fetch_sema_lock(bkt);
 
 	/* Bucket related checks. */
-	if (unlikely(tim_bkt_get_hbt(lock_sema)))
-		goto __retry;
+	if (unlikely(tim_bkt_get_hbt(lock_sema))) {
+		if (tim_bkt_get_nent(lock_sema) != 0) {
+			uint64_t hbt_state;
+#ifdef RTE_ARCH_ARM64
+			asm volatile(
+					"	ldaxr %[hbt], [%[w1]]	\n"
+					"	tbz %[hbt], 33, dne%=	\n"
+					"	sevl			\n"
+					"rty%=: wfe			\n"
+					"	ldaxr %[hbt], [%[w1]]	\n"
+					"	tbnz %[hbt], 33, rty%=	\n"
+					"dne%=:				\n"
+					: [hbt] "=&r" (hbt_state)
+					: [w1] "r" ((&bkt->w1))
+					: "memory"
+					);
+#else
+			do {
+				hbt_state = __atomic_load_n(&bkt->w1,
+						__ATOMIC_ACQUIRE);
+			} while (hbt_state & BIT_ULL(33));
+#endif
+
+			if (!(hbt_state & BIT_ULL(34))) {
+				tim_bkt_dec_lock(bkt);
+				goto __retry;
+			}
+		}
+	}
 
 	/* Insert the work. */
 	rem = tim_bkt_fetch_rem(lock_sema);
@@ -224,14 +257,15 @@ __retry:
 			chunk = tim_insert_chunk(bkt, tim_ring);
 
 		if (unlikely(chunk == NULL)) {
-			tim_bkt_set_rem(bkt, 0);
+			bkt->chunk_remainder = 0;
+			tim_bkt_dec_lock(bkt);
 			tim->impl_opaque[0] = 0;
 			tim->impl_opaque[1] = 0;
 			tim->state = RTE_EVENT_TIMER_ERROR;
 			return -ENOMEM;
 		}
 		bkt->current_chunk = (uintptr_t)chunk;
-		tim_bkt_set_rem(bkt, tim_ring->nb_chunk_slots - 1);
+		bkt->chunk_remainder = tim_ring->nb_chunk_slots - 1;
 	} else {
 		chunk = (struct otx2_tim_ent *)(uintptr_t)bkt->current_chunk;
 		chunk += tim_ring->nb_chunk_slots - rem;
@@ -241,6 +275,7 @@ __retry:
 	*chunk = *pent;
 
 	tim_bkt_inc_nent(bkt);
+	tim_bkt_dec_lock(bkt);
 
 	tim->impl_opaque[0] = (uintptr_t)chunk;
 	tim->impl_opaque[1] = (uintptr_t)bkt;
@@ -263,19 +298,60 @@ tim_add_entry_mp(struct otx2_tim_ring * const tim_ring,
 
 __retry:
 	bkt = tim_get_target_bucket(tim_ring, rel_bkt, flags);
-
 	/* Get Bucket sema*/
 	lock_sema = tim_bkt_fetch_sema_lock(bkt);
 
 	/* Bucket related checks. */
 	if (unlikely(tim_bkt_get_hbt(lock_sema))) {
-		tim_bkt_dec_lock(bkt);
-		goto __retry;
+		if (tim_bkt_get_nent(lock_sema) != 0) {
+			uint64_t hbt_state;
+#ifdef RTE_ARCH_ARM64
+			asm volatile(
+					"	ldaxr %[hbt], [%[w1]]	\n"
+					"	tbz %[hbt], 33, dne%=	\n"
+					"	sevl			\n"
+					"rty%=: wfe			\n"
+					"	ldaxr %[hbt], [%[w1]]	\n"
+					"	tbnz %[hbt], 33, rty%=	\n"
+					"dne%=:				\n"
+					: [hbt] "=&r" (hbt_state)
+					: [w1] "r" ((&bkt->w1))
+					: "memory"
+					);
+#else
+			do {
+				hbt_state = __atomic_load_n(&bkt->w1,
+						__ATOMIC_ACQUIRE);
+			} while (hbt_state & BIT_ULL(33));
+#endif
+
+			if (!(hbt_state & BIT_ULL(34))) {
+				tim_bkt_dec_lock(bkt);
+				goto __retry;
+			}
+		}
 	}
 
 	rem = tim_bkt_fetch_rem(lock_sema);
-
 	if (rem < 0) {
+#ifdef RTE_ARCH_ARM64
+		asm volatile(
+				"	ldaxrh %w[rem], [%[crem]]	\n"
+				"	tbz %w[rem], 15, dne%=		\n"
+				"	sevl				\n"
+				"rty%=: wfe				\n"
+				"	ldaxrh %w[rem], [%[crem]]	\n"
+				"	tbnz %w[rem], 15, rty%=		\n"
+				"dne%=:					\n"
+				: [rem] "=&r" (rem)
+				: [crem] "r" (&bkt->chunk_remainder)
+				: "memory"
+			    );
+#else
+		while (__atomic_load_n(&bkt->chunk_remainder,
+				       __ATOMIC_ACQUIRE) < 0)
+			;
+#endif
 		/* Goto diff bucket. */
 		tim_bkt_dec_lock(bkt);
 		goto __retry;
@@ -294,17 +370,23 @@ __retry:
 			tim->state = RTE_EVENT_TIMER_ERROR;
 			return -ENOMEM;
 		}
-		bkt->current_chunk = (uintptr_t)chunk;
-		tim_bkt_set_rem(bkt, tim_ring->nb_chunk_slots - 1);
+		*chunk = *pent;
+		while (tim_bkt_fetch_lock(lock_sema) !=
+				(-tim_bkt_fetch_rem(lock_sema)))
+			lock_sema = __atomic_load_n(&bkt->w1, __ATOMIC_ACQUIRE);
+
+		bkt->current_chunk =  (uintptr_t)chunk;
+		__atomic_store_n(&bkt->chunk_remainder,
+				tim_ring->nb_chunk_slots - 1, __ATOMIC_RELEASE);
 	} else {
-		chunk = (struct otx2_tim_ent *)(uintptr_t)bkt->current_chunk;
+		chunk = (struct otx2_tim_ent *)bkt->current_chunk;
 		chunk += tim_ring->nb_chunk_slots - rem;
+		*chunk = *pent;
 	}
 
 	/* Copy work entry. */
-	*chunk = *pent;
-	tim_bkt_dec_lock(bkt);
 	tim_bkt_inc_nent(bkt);
+	tim_bkt_dec_lock(bkt);
 	tim->impl_opaque[0] = (uintptr_t)chunk;
 	tim->impl_opaque[1] = (uintptr_t)bkt;
 	tim->state = RTE_EVENT_TIMER_ARMED;
@@ -360,8 +442,33 @@ __retry:
 
 	/* Bucket related checks. */
 	if (unlikely(tim_bkt_get_hbt(lock_sema))) {
-		tim_bkt_dec_lock(bkt);
-		goto __retry;
+		if (tim_bkt_get_nent(lock_sema) != 0) {
+			uint64_t hbt_state;
+#ifdef RTE_ARCH_ARM64
+			asm volatile(
+					"	ldaxr %[hbt], [%[w1]]	\n"
+					"	tbz %[hbt], 33, dne%=	\n"
+					"	sevl			\n"
+					"rty%=: wfe			\n"
+					"	ldaxr %[hbt], [%[w1]]	\n"
+					"	tbnz %[hbt], 33, rty%=	\n"
+					"dne%=:				\n"
+					: [hbt] "=&r" (hbt_state)
+					: [w1] "r" ((&bkt->w1))
+					: "memory"
+					);
+#else
+			do {
+				hbt_state = __atomic_load_n(&bkt->w1,
+						__ATOMIC_ACQUIRE);
+			} while (hbt_state & BIT_ULL(33));
+#endif
+
+			if (!(hbt_state & BIT_ULL(34))) {
+				tim_bkt_dec_lock(bkt);
+				goto __retry;
+			}
+		}
 	}
 
 	chunk_remainder = tim_bkt_fetch_rem(lock_sema);
