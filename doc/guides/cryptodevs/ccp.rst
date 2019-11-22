@@ -109,14 +109,14 @@ To validate ccp pmd, l2fwd-crypto example can be used with following command:
 
 .. code-block:: console
 
-	sudo ./build/l2fwd-crypto -l 1 -n 4 --vdev "crypto_ccp" -- -p 0x1
-	--chain CIPHER_HASH --cipher_op ENCRYPT --cipher_algo AES_CBC
-	--cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f
-	--iv 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:ff
-	--auth_op GENERATE --auth_algo SHA1_HMAC
-	--auth_key 11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
-	:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
-	:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
+        sudo ./build/l2fwd-crypto -l 1 -n 4 --vdev "crypto_ccp" -- -p 0x1
+        --chain CIPHER_HASH --cipher_op ENCRYPT --cipher_algo aes-cbc
+        --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f
+        --cipher_iv 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:ff
+        --auth_op GENERATE --auth_algo sha1-hmac
+        --auth_key 11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
+        :11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
+        :11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
 
 The CCP PMD also supports computing authentication over CPU with cipher offloaded to CCP.
 To enable this feature, pass an additional argument as ccp_auth_opt=1 to --vdev parameters as
@@ -124,14 +124,14 @@ following:
 
 .. code-block:: console
 
-	sudo ./build/l2fwd-crypto -l 1 -n 4 --vdev "crypto_ccp,ccp_auth_opt=1" -- -p 0x1
-	--chain CIPHER_HASH --cipher_op ENCRYPT --cipher_algo AES_CBC
-	--cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f
-	--iv 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:ff
-	--auth_op GENERATE --auth_algo SHA1_HMAC
-	--auth_key 11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
-	:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
-	:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
+        sudo ./build/l2fwd-crypto -l 1 -n 4 --vdev "crypto_ccp,ccp_auth_opt=1" -- -p 0x1
+        --chain CIPHER_HASH --cipher_op ENCRYPT --cipher_algo aes-cbc
+        --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f
+        --cipher_iv 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:ff
+        --auth_op GENERATE --auth_algo sha1-hmac
+        --auth_key 11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
+        :11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
+        :11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
 
 Limitations
 -----------
