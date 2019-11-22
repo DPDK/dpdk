@@ -1598,12 +1598,28 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/*
-		 * If the length of the packet is too long or zero, the packet
-		 * will be ignored.
+		 * If packet length is greater than HNS3_MAX_FRAME_LEN
+		 * driver support, the packet will be ignored.
 		 */
-		if (unlikely(tx_pkt->pkt_len > HNS3_MAX_FRAME_LEN ||
-			     tx_pkt->pkt_len == 0))
+		if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) > HNS3_MAX_FRAME_LEN))
 			break;
+
+		/*
+		 * If packet length is less than minimum packet size, driver
+		 * need to pad it.
+		 */
+		if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) < HNS3_MIN_PKT_SIZE)) {
+			uint16_t add_len;
+			char *appended;
+
+			add_len = HNS3_MIN_PKT_SIZE -
+					 rte_pktmbuf_pkt_len(tx_pkt);
+			appended = rte_pktmbuf_append(tx_pkt, add_len);
+			if (appended == NULL)
+				break;
+
+			memset(appended, 0, add_len);
+		}
 
 		m_seg = tx_pkt;
 		if (unlikely(nb_buf > HNS3_MAX_TX_BD_PER_PKT)) {
