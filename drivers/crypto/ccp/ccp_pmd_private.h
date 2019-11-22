@@ -31,9 +31,9 @@
 #endif
 
 /**< Maximum queue pairs supported by CCP PMD */
-#define CCP_PMD_MAX_QUEUE_PAIRS	1
+#define CCP_PMD_MAX_QUEUE_PAIRS	8
 #define CCP_NB_MAX_DESCRIPTORS 1024
-#define CCP_MAX_BURST 64
+#define CCP_MAX_BURST 256
 
 #include "ccp_dev.h"
 
