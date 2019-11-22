@@ -39,6 +39,8 @@ enum HNS3_MBX_OPCODE {
 	HNS3_MBX_SET_ALIVE,             /* (VF -> PF) set alive state */
 	HNS3_MBX_SET_MTU,               /* (VF -> PF) set mtu */
 	HNS3_MBX_GET_QID_IN_PF,         /* (VF -> PF) get queue id in pf */
+
+	HNS3_MBX_HANDLE_VF_TBL = 38,    /* (VF -> PF) store/clear hw cfg tbl */
 };
 
 /* below are per-VF mac-vlan subcodes */
@@ -56,6 +58,10 @@ enum hns3_mbx_vlan_cfg_subcode {
 	HNS3_MBX_VLAN_FILTER = 0,               /* set vlan filter */
 	HNS3_MBX_VLAN_TX_OFF_CFG,               /* set tx side vlan offload */
 	HNS3_MBX_VLAN_RX_OFF_CFG,               /* set rx side vlan offload */
+};
+
+enum hns3_mbx_tbl_cfg_subcode {
+	HNS3_MBX_VPORT_LIST_CLEAR = 0,
 };
 
 #define HNS3_MBX_MAX_MSG_SIZE	16

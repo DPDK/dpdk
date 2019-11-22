@@ -1097,6 +1097,14 @@ err_init_hardware:
 }
 
 static int
+hns3vf_clear_vport_list(struct hns3_hw *hw)
+{
+	return hns3_send_mbx_msg(hw, HNS3_MBX_HANDLE_VF_TBL,
+				 HNS3_MBX_VPORT_LIST_CLEAR, NULL, 0, false,
+				 NULL, 0);
+}
+
+static int
 hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -1146,6 +1154,12 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 	}
 
 	rte_eth_random_addr(hw->mac.mac_addr); /* Generate a random mac addr */
+
+	ret = hns3vf_clear_vport_list(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to clear tbl list: %d", ret);
+		goto err_get_config;
+	}
 
 	ret = hns3vf_init_hardware(hns);
 	if (ret)
