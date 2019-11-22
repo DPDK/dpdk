@@ -525,10 +525,8 @@ hns3_config_rss(struct hns3_adapter *hns)
 	enum rte_eth_rx_mq_mode mq_mode = hw->data->dev_conf.rxmode.mq_mode;
 
 	/* When there is no open RSS, redirect the packet queue 0 */
-	if (((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) == 0) {
+	if (((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) == 0)
 		hns3_rss_uninit(hns);
-		return 0;
-	}
 
 	/* Configure RSS hash algorithm and hash key offset */
 	ret = hns3_set_rss_algo_key(hw, hash_algo, hash_key);
