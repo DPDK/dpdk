@@ -2680,7 +2680,9 @@ process_ops_to_enqueue(struct ccp_qp *qp,
 		       struct rte_crypto_op **op,
 		       struct ccp_queue *cmd_q,
 		       uint16_t nb_ops,
-		       int slots_req)
+		       uint16_t total_nb_ops,
+		       int slots_req,
+		       uint16_t b_idx)
 {
 	int i, result = 0;
 	struct ccp_batch_info *b_info;
@@ -2701,6 +2703,7 @@ process_ops_to_enqueue(struct ccp_qp *qp,
 
 	/* populate batch info necessary for dequeue */
 	b_info->op_idx = 0;
+	b_info->b_idx = 0;
 	b_info->lsb_buf_idx = 0;
 	b_info->desccnt = 0;
 	b_info->cmd_q = cmd_q;
@@ -2710,7 +2713,7 @@ process_ops_to_enqueue(struct ccp_qp *qp,
 
 	b_info->head_offset = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx *
 					 Q_DESC_SIZE);
-	for (i = 0; i < nb_ops; i++) {
+	for (i = b_idx; i < (nb_ops+b_idx); i++) {
 		session = (struct ccp_session *)get_sym_session_private_data(
 						 op[i]->sym->session,
 						 ccp_cryptodev_driver_id);
@@ -2762,6 +2765,8 @@ process_ops_to_enqueue(struct ccp_qp *qp,
 	}
 
 	b_info->opcnt = i;
+	b_info->b_idx = b_idx;
+	b_info->total_nb_ops = total_nb_ops;
 	b_info->tail_offset = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx *
 					 Q_DESC_SIZE);
 
@@ -2776,7 +2781,7 @@ process_ops_to_enqueue(struct ccp_qp *qp,
 	rte_ring_enqueue(qp->processed_pkts, (void *)b_info);
 
 	EVP_MD_CTX_destroy(auth_ctx);
-	return i;
+	return i-b_idx;
 }
 
 static inline void ccp_auth_dq_prepare(struct rte_crypto_op *op)
@@ -2861,8 +2866,8 @@ ccp_prepare_ops(struct ccp_qp *qp,
 	}
 	min_ops = RTE_MIN(nb_ops, b_info->opcnt);
 
-	for (i = 0; i < min_ops; i++) {
-		op_d[i] = b_info->op[b_info->op_idx++];
+	for (i =  b_info->b_idx; i < min_ops; i++) {
+		op_d[i] = b_info->op[b_info->b_idx + b_info->op_idx++];
 		session = (struct ccp_session *)get_sym_session_private_data(
 						 op_d[i]->sym->session,
 						ccp_cryptodev_driver_id);
@@ -2903,7 +2908,8 @@ ccp_prepare_ops(struct ccp_qp *qp,
 int
 process_ops_to_dequeue(struct ccp_qp *qp,
 		       struct rte_crypto_op **op,
-		       uint16_t nb_ops)
+		       uint16_t nb_ops,
+		       uint16_t *total_nb_ops)
 {
 	struct ccp_batch_info *b_info;
 	uint32_t cur_head_offset;
@@ -2918,6 +2924,7 @@ process_ops_to_dequeue(struct ccp_qp *qp,
 
 	if (b_info->auth_ctr == b_info->opcnt)
 		goto success;
+	*total_nb_ops = b_info->total_nb_ops;
 	cur_head_offset = CCP_READ_REG(b_info->cmd_q->reg_base,
 				       CMD_Q_HEAD_LO_BASE);
 
@@ -2927,7 +2934,7 @@ process_ops_to_dequeue(struct ccp_qp *qp,
 			qp->b_info = b_info;
 			return 0;
 		}
-	} else {
+	} else if (b_info->tail_offset != b_info->head_offset) {
 		if ((cur_head_offset >= b_info->head_offset) ||
 		    (cur_head_offset < b_info->tail_offset)) {
 			qp->b_info = b_info;
@@ -2937,6 +2944,7 @@ process_ops_to_dequeue(struct ccp_qp *qp,
 
 
 success:
+	*total_nb_ops = b_info->total_nb_ops;
 	nb_ops = ccp_prepare_ops(qp, op, b_info, nb_ops);
 	rte_atomic64_add(&b_info->cmd_q->free_slots, b_info->desccnt);
 	b_info->desccnt = 0;

@@ -22,6 +22,7 @@
  */
 static unsigned int ccp_pmd_init_done;
 uint8_t ccp_cryptodev_driver_id;
+uint8_t cryptodev_cnt;
 
 struct ccp_pmd_init_params {
 	struct rte_cryptodev_pmd_init_params def_p;
@@ -201,30 +202,46 @@ ccp_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	struct ccp_queue *cmd_q;
 	struct rte_cryptodev *dev = qp->dev;
 	uint16_t i, enq_cnt = 0, slots_req = 0;
+	uint16_t tmp_ops = nb_ops, b_idx, cur_ops = 0;
 
 	if (nb_ops == 0)
 		return 0;
 
 	if (unlikely(rte_ring_full(qp->processed_pkts) != 0))
 		return 0;
-
-	for (i = 0; i < nb_ops; i++) {
-		sess = get_ccp_session(qp, ops[i]);
-		if (unlikely(sess == NULL) && (i == 0)) {
-			qp->qp_stats.enqueue_err_count++;
-			return 0;
-		} else if (sess == NULL) {
-			nb_ops = i;
-			break;
+	if (tmp_ops >= cryptodev_cnt)
+		cur_ops = nb_ops / cryptodev_cnt + (nb_ops)%cryptodev_cnt;
+	else
+		cur_ops = tmp_ops;
+	while (tmp_ops)	{
+		b_idx = nb_ops - tmp_ops;
+		slots_req = 0;
+		if (cur_ops <= tmp_ops) {
+			tmp_ops -= cur_ops;
+		} else {
+			cur_ops = tmp_ops;
+			tmp_ops = 0;
 		}
-		slots_req += ccp_compute_slot_count(sess);
+		for (i = 0; i < cur_ops; i++) {
+			sess = get_ccp_session(qp, ops[i + b_idx]);
+			if (unlikely(sess == NULL) && (i == 0)) {
+				qp->qp_stats.enqueue_err_count++;
+				return 0;
+			} else if (sess == NULL) {
+				cur_ops = i;
+				break;
+			}
+			slots_req += ccp_compute_slot_count(sess);
+		}
+
+		cmd_q = ccp_allot_queue(dev, slots_req);
+		if (unlikely(cmd_q == NULL))
+			return 0;
+		enq_cnt += process_ops_to_enqueue(qp, ops, cmd_q, cur_ops,
+				nb_ops, slots_req, b_idx);
+		i++;
 	}
 
-	cmd_q = ccp_allot_queue(dev, slots_req);
-	if (unlikely(cmd_q == NULL))
-		return 0;
-
-	enq_cnt = process_ops_to_enqueue(qp, ops, cmd_q, nb_ops, slots_req);
 	qp->qp_stats.enqueued_count += enq_cnt;
 	return enq_cnt;
 }
@@ -234,9 +251,16 @@ ccp_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
 	struct ccp_qp *qp = queue_pair;
-	uint16_t nb_dequeued = 0, i;
+	uint16_t nb_dequeued = 0, i, total_nb_ops;
 
-	nb_dequeued = process_ops_to_dequeue(qp, ops, nb_ops);
+	nb_dequeued = process_ops_to_dequeue(qp, ops, nb_ops, &total_nb_ops);
+
+	if (total_nb_ops) {
+		while (nb_dequeued != total_nb_ops) {
+			nb_dequeued = process_ops_to_dequeue(qp,
+					ops, nb_ops, &total_nb_ops);
+		}
+	}
 
 	/* Free session if a session-less crypto op */
 	for (i = 0; i < nb_dequeued; i++)
@@ -296,7 +320,6 @@ cryptodev_ccp_create(const char *name,
 {
 	struct rte_cryptodev *dev;
 	struct ccp_private *internals;
-	uint8_t cryptodev_cnt = 0;
 
 	if (init_params->def_p.name[0] == '\0')
 		strlcpy(init_params->def_p.name, name,

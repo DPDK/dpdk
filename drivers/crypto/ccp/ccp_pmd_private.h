@@ -50,8 +50,10 @@ struct ccp_batch_info {
 	struct rte_crypto_op *op[CCP_MAX_BURST];
 	/**< optable populated at enque time from app*/
 	int op_idx;
+	uint16_t b_idx;
 	struct ccp_queue *cmd_q;
 	uint16_t opcnt;
+	uint16_t total_nb_ops;
 	/**< no. of crypto ops in batch*/
 	int desccnt;
 	/**< no. of ccp queue descriptors*/
