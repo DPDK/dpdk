@@ -124,6 +124,7 @@ tim_chnk_pool_create(struct otx2_tim_ring *tim_ring,
 	char pool_name[25];
 	int rc;
 
+	cache_sz /= rte_lcore_count();
 	/* Create chunk pool. */
 	if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_SP_PUT) {
 		mp_flags = MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET;
@@ -138,10 +139,9 @@ tim_chnk_pool_create(struct otx2_tim_ring *tim_ring,
 		cache_sz = RTE_MEMPOOL_CACHE_MAX_SIZE;
 
 	if (!tim_ring->disable_npa) {
-		/* NPA need not have cache as free is not visible to SW */
 		tim_ring->chunk_pool = rte_mempool_create_empty(pool_name,
 				tim_ring->nb_chunks, tim_ring->chunk_sz,
-				0, 0, rte_socket_id(), mp_flags);
+				cache_sz, 0, rte_socket_id(), mp_flags);
 
 		if (tim_ring->chunk_pool == NULL) {
 			otx2_err("Unable to create chunkpool.");

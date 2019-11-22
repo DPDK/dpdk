@@ -144,8 +144,12 @@ static struct otx2_tim_ent *
 tim_clr_bkt(struct otx2_tim_ring * const tim_ring,
 	    struct otx2_tim_bkt * const bkt)
 {
+#define TIM_MAX_OUTSTANDING_OBJ		64
+	void *pend_chunks[TIM_MAX_OUTSTANDING_OBJ];
 	struct otx2_tim_ent *chunk;
 	struct otx2_tim_ent *pnext;
+	uint8_t objs = 0;
+
 
 	chunk = ((struct otx2_tim_ent *)(uintptr_t)bkt->first_chunk);
 	chunk = (struct otx2_tim_ent *)(uintptr_t)(chunk +
@@ -153,9 +157,18 @@ tim_clr_bkt(struct otx2_tim_ring * const tim_ring,
 	while (chunk) {
 		pnext = (struct otx2_tim_ent *)(uintptr_t)
 			((chunk + tim_ring->nb_chunk_slots)->w0);
-		rte_mempool_put(tim_ring->chunk_pool, chunk);
+		if (objs == TIM_MAX_OUTSTANDING_OBJ) {
+			rte_mempool_put_bulk(tim_ring->chunk_pool, pend_chunks,
+					     objs);
+			objs = 0;
+		}
+		pend_chunks[objs++] = chunk;
 		chunk = pnext;
 	}
+
+	if (objs)
+		rte_mempool_put_bulk(tim_ring->chunk_pool, pend_chunks,
+				objs);
 
 	return (struct otx2_tim_ent *)(uintptr_t)bkt->first_chunk;
 }
