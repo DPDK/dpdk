@@ -1246,6 +1246,7 @@ hns3vf_dev_stop(struct rte_eth_dev *eth_dev)
 		hns3_dev_release_mbufs(hns);
 		hw->adapter_state = HNS3_NIC_CONFIGURED;
 	}
+	rte_eal_alarm_cancel(hns3vf_service_handler, eth_dev);
 	rte_spinlock_unlock(&hw->lock);
 }
 
@@ -1265,7 +1266,6 @@ hns3vf_dev_close(struct rte_eth_dev *eth_dev)
 	hns3_reset_abort(hns);
 	hw->adapter_state = HNS3_NIC_CLOSED;
 	rte_eal_alarm_cancel(hns3vf_keep_alive_handler, eth_dev);
-	rte_eal_alarm_cancel(hns3vf_service_handler, eth_dev);
 	hns3vf_configure_all_mc_mac_addr(hns, true);
 	hns3vf_remove_all_vlan_table(hns);
 	hns3vf_uninit_vf(eth_dev);
@@ -1285,8 +1285,6 @@ hns3vf_dev_link_update(struct rte_eth_dev *eth_dev,
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_mac *mac = &hw->mac;
 	struct rte_eth_link new_link;
-
-	hns3vf_request_link_info(hw);
 
 	memset(&new_link, 0, sizeof(new_link));
 	switch (mac->link_speed) {
@@ -1352,6 +1350,8 @@ hns3vf_dev_start(struct rte_eth_dev *eth_dev)
 	rte_spinlock_unlock(&hw->lock);
 	hns3_set_rxtx_function(eth_dev);
 	hns3_mp_req_start_rxtx(eth_dev);
+	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler,
+			  eth_dev);
 	return 0;
 }
 
@@ -1788,8 +1788,6 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 		hns3_notify_reset_ready(hw, false);
 	}
 	rte_eal_alarm_set(HNS3VF_KEEP_ALIVE_INTERVAL, hns3vf_keep_alive_handler,
-			  eth_dev);
-	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler,
 			  eth_dev);
 	return 0;
 
