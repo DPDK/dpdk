@@ -25,6 +25,7 @@
 #define TIM_LF_RAS_INT_W1S		(0x308)
 #define TIM_LF_RAS_INT_ENA_W1S		(0x310)
 #define TIM_LF_RAS_INT_ENA_W1C		(0x318)
+#define TIM_LF_RING_REL			(0x400)
 
 #define TIM_BUCKET_W1_S_CHUNK_REMAINDER	(48)
 #define TIM_BUCKET_W1_M_CHUNK_REMAINDER	((1ULL << (64 - \
@@ -139,13 +140,15 @@ struct otx2_tim_evdev {
 
 struct otx2_tim_ring {
 	uintptr_t base;
-	struct rte_reciprocal_u64 fast_div;
 	uint16_t nb_chunk_slots;
 	uint32_t nb_bkts;
+	uint64_t last_updt_cyc;
 	uint64_t ring_start_cyc;
+	uint64_t tck_int;
+	uint64_t tot_int;
 	struct otx2_tim_bkt *bkt;
 	struct rte_mempool *chunk_pool;
-	uint64_t tck_int;
+	struct rte_reciprocal_u64 fast_div;
 	rte_atomic64_t arm_cnt;
 	uint8_t prod_type_sp;
 	uint8_t enable_stats;

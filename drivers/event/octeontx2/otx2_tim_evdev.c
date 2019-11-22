@@ -389,6 +389,31 @@ rng_mem_err:
 	return rc;
 }
 
+static void
+otx2_tim_calibrate_start_tsc(struct otx2_tim_ring *tim_ring)
+{
+#define OTX2_TIM_CALIB_ITER	1E6
+	uint32_t real_bkt, bucket;
+	int icount, ecount = 0;
+	uint64_t bkt_cyc;
+
+	for (icount = 0; icount < OTX2_TIM_CALIB_ITER; icount++) {
+		real_bkt = otx2_read64(tim_ring->base + TIM_LF_RING_REL) >> 44;
+		bkt_cyc = rte_rdtsc();
+		bucket = (bkt_cyc - tim_ring->ring_start_cyc) /
+							tim_ring->tck_int;
+		bucket = bucket % (tim_ring->nb_bkts);
+		tim_ring->ring_start_cyc = bkt_cyc - (real_bkt *
+							tim_ring->tck_int);
+		if (bucket != real_bkt)
+			ecount++;
+	}
+	tim_ring->last_updt_cyc = bkt_cyc;
+	otx2_tim_dbg("Bucket mispredict %3.2f distance %d\n",
+		     100 - (((double)(icount - ecount) / (double)icount) * 100),
+		     bucket - real_bkt);
+}
+
 static int
 otx2_tim_ring_start(const struct rte_event_timer_adapter *adptr)
 {
@@ -423,7 +448,10 @@ otx2_tim_ring_start(const struct rte_event_timer_adapter *adptr)
 	tim_ring->ring_start_cyc = rsp->timestarted;
 #endif
 	tim_ring->tck_int = NSEC2TICK(tim_ring->tck_nsec, rte_get_timer_hz());
+	tim_ring->tot_int = tim_ring->tck_int * tim_ring->nb_bkts;
 	tim_ring->fast_div = rte_reciprocal_value_u64(tim_ring->tck_int);
+
+	otx2_tim_calibrate_start_tsc(tim_ring);
 
 fail:
 	return rc;

@@ -38,6 +38,23 @@ tim_format_event(const struct rte_event_timer * const tim,
 	entry->wqe = tim->ev.u64;
 }
 
+static inline void
+tim_sync_start_cyc(struct otx2_tim_ring *tim_ring)
+{
+	uint64_t cur_cyc = rte_rdtsc();
+	uint32_t real_bkt;
+
+	if (cur_cyc - tim_ring->last_updt_cyc > tim_ring->tot_int) {
+		real_bkt = otx2_read64(tim_ring->base + TIM_LF_RING_REL) >> 44;
+		cur_cyc = rte_rdtsc();
+
+		tim_ring->ring_start_cyc = cur_cyc -
+						(real_bkt * tim_ring->tck_int);
+		tim_ring->last_updt_cyc = cur_cyc;
+	}
+
+}
+
 static __rte_always_inline uint16_t
 tim_timer_arm_burst(const struct rte_event_timer_adapter *adptr,
 		    struct rte_event_timer **tim,
@@ -49,6 +66,7 @@ tim_timer_arm_burst(const struct rte_event_timer_adapter *adptr,
 	uint16_t index;
 	int ret;
 
+	tim_sync_start_cyc(tim_ring);
 	for (index = 0; index < nb_timers; index++) {
 		if (tim_arm_checks(tim_ring, tim[index]))
 			break;
@@ -99,6 +117,7 @@ tim_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
 		return 0;
 	}
 
+	tim_sync_start_cyc(tim_ring);
 	while (arr_idx < nb_timers) {
 		for (idx = 0; idx < OTX2_TIM_MAX_BURST && (arr_idx < nb_timers);
 		     idx++, arr_idx++) {
