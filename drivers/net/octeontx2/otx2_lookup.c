@@ -67,10 +67,13 @@ otx2_nix_ptypes_set(struct rte_eth_dev *eth_dev, uint32_t ptype_mask)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 
-	if (ptype_mask)
+	if (ptype_mask) {
 		dev->rx_offload_flags |= NIX_RX_OFFLOAD_PTYPE_F;
-	else
+		dev->ptype_disable = 0;
+	} else {
 		dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_PTYPE_F;
+		dev->ptype_disable = 1;
+	}
 
 	otx2_eth_set_rx_function(eth_dev);
 

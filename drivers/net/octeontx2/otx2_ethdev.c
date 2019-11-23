@@ -622,6 +622,9 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
 		flags |= NIX_RX_OFFLOAD_TSTAMP_F;
 
+	if (!dev->ptype_disable)
+		flags |= NIX_RX_OFFLOAD_PTYPE_F;
+
 	return flags;
 }
 
@@ -2168,6 +2171,7 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	dev->configured = 0;
 	dev->drv_inited = true;
+	dev->ptype_disable = 0;
 	dev->base = dev->bar2 + (RVU_BLOCK_ADDR_NIX0 << 20);
 	dev->lmt_addr = dev->bar2 + (RVU_BLOCK_ADDR_LMT << 20);
 
