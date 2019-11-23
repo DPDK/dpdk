@@ -22,6 +22,7 @@ dpdk_extra_ldflags = []
 dpdk_app_link_libraries = []
 dpdk_libs_disabled = []
 dpdk_drvs_disabled = []
+abi_version_file = files('ABI_VERSION')
 
 # configure the build, and make sure configs here and in config folder are
 # able to be included in any file. We also store a global array of include dirs
