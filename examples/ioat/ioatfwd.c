@@ -457,7 +457,7 @@ ioat_tx_port(struct rxtx_port_config *tx_config)
 				MAX_PKT_BURST, NULL);
 		}
 
-		if (nb_dq == 0)
+		if (nb_dq <= 0)
 			return;
 
 		if (copy_mode == COPY_MODE_IOAT_NUM)
