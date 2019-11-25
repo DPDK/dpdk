@@ -170,7 +170,7 @@ print_stats(char *prgname)
 	unsigned int *ids_xstats, nb_xstats;
 	char status_string[120]; /* to print at the top of the output */
 	int status_strlen;
-
+	int ret;
 
 	const char clr[] = { 27, '[', '2', 'J', '\0' };
 	const char topLeft[] = { 27, '[', '1', ';', '1', 'H', '\0' };
@@ -197,8 +197,11 @@ print_stats(char *prgname)
 		"Ring Size = %d\n", ring_size);
 
 	/* Allocate memory for xstats names and values */
-	nb_xstats = rte_rawdev_xstats_names_get(
+	ret = rte_rawdev_xstats_names_get(
 		cfg.ports[0].ioat_ids[0], NULL, 0);
+	if (ret < 0)
+		return;
+	nb_xstats = (unsigned int)ret;
 
 	names_xstats = malloc(sizeof(*names_xstats) * nb_xstats);
 	if (names_xstats == NULL) {
