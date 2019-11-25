@@ -546,8 +546,11 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 	}
 
 	if (dev->vhostfds) {
-		for (i = 0; i < dev->max_queue_pairs; ++i)
+		for (i = 0; i < dev->max_queue_pairs; ++i) {
 			close(dev->vhostfds[i]);
+			if (dev->tapfds[i] >= 0)
+				close(dev->tapfds[i]);
+		}
 		free(dev->vhostfds);
 		free(dev->tapfds);
 	}

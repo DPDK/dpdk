@@ -49,6 +49,7 @@ struct virtio_user_dev {
 		struct vring_packed	packed_vrings[VIRTIO_MAX_VIRTQUEUES];
 	};
 	struct virtio_user_queue packed_queues[VIRTIO_MAX_VIRTQUEUES];
+	bool		qp_enabled[VIRTIO_MAX_VIRTQUEUE_PAIRS];
 
 	struct virtio_user_backend_ops *ops;
 	pthread_mutex_t	mutex;

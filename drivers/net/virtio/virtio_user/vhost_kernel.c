@@ -330,14 +330,32 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 
 	vhostfd = dev->vhostfds[pair_idx];
 
-	if (!enable) {
-		if (dev->tapfds[pair_idx] >= 0) {
-			close(dev->tapfds[pair_idx]);
-			dev->tapfds[pair_idx] = -1;
-		}
-		return vhost_kernel_set_backend(vhostfd, -1);
-	} else if (dev->tapfds[pair_idx] >= 0) {
+	if (dev->qp_enabled[pair_idx] == enable)
 		return 0;
+
+	if (!enable) {
+		tapfd = dev->tapfds[pair_idx];
+		if (vhost_kernel_set_backend(vhostfd, -1) < 0) {
+			PMD_DRV_LOG(ERR, "fail to set backend for vhost kernel");
+			return -1;
+		}
+		if (req_mq && vhost_kernel_tap_set_queue(tapfd, false) < 0) {
+			PMD_DRV_LOG(ERR, "fail to disable tap for vhost kernel");
+			return -1;
+		}
+		dev->qp_enabled[pair_idx] = false;
+		return 0;
+	}
+
+	if (dev->tapfds[pair_idx] >= 0) {
+		tapfd = dev->tapfds[pair_idx];
+		if (vhost_kernel_tap_set_offload(tapfd, dev->features) == -1)
+			return -1;
+		if (req_mq && vhost_kernel_tap_set_queue(tapfd, true) < 0) {
+			PMD_DRV_LOG(ERR, "fail to enable tap for vhost kernel");
+			return -1;
+		}
+		goto set_backend;
 	}
 
 	if ((dev->features & (1ULL << VIRTIO_NET_F_MRG_RXBUF)) ||
@@ -353,13 +371,15 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 		return -1;
 	}
 
+	dev->tapfds[pair_idx] = tapfd;
+
+set_backend:
 	if (vhost_kernel_set_backend(vhostfd, tapfd) < 0) {
 		PMD_DRV_LOG(ERR, "fail to set backend for vhost kernel");
-		close(tapfd);
 		return -1;
 	}
 
-	dev->tapfds[pair_idx] = tapfd;
+	dev->qp_enabled[pair_idx] = true;
 	return 0;
 }
 
