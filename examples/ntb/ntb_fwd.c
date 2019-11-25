@@ -1256,6 +1256,7 @@ ntb_mbuf_pool_create(uint16_t mbuf_seg_size, uint32_t nb_mbuf,
 	if (mp == NULL)
 		return NULL;
 
+	memset(&mbp_priv, 0, sizeof(mbp_priv));
 	mbp_priv.mbuf_data_room_size = mbuf_seg_size;
 	mbp_priv.mbuf_priv_size = 0;
 	rte_pktmbuf_pool_init(mp, &mbp_priv);

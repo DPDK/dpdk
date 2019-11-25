@@ -303,6 +303,7 @@ rte_mbuf_to_priv(struct rte_mbuf *m)
 struct rte_pktmbuf_pool_private {
 	uint16_t mbuf_data_room_size; /**< Size of data space in each mbuf. */
 	uint16_t mbuf_priv_size;      /**< Size of private area in each mbuf. */
+	uint32_t flags; /**< reserved for future use. */
 };
 
 #ifdef RTE_LIBRTE_MBUF_DEBUG

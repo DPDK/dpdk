@@ -49,7 +49,7 @@ rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
 	/* if no structure is provided, assume no mbuf private area */
 	user_mbp_priv = opaque_arg;
 	if (user_mbp_priv == NULL) {
-		default_mbp_priv.mbuf_priv_size = 0;
+		memset(&default_mbp_priv, 0, sizeof(default_mbp_priv));
 		if (mp->elt_size > sizeof(struct rte_mbuf))
 			roomsz = mp->elt_size - sizeof(struct rte_mbuf);
 		else
@@ -61,6 +61,7 @@ rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
 	RTE_ASSERT(mp->elt_size >= sizeof(struct rte_mbuf) +
 		user_mbp_priv->mbuf_data_room_size +
 		user_mbp_priv->mbuf_priv_size);
+	RTE_ASSERT(user_mbp_priv->flags == 0);
 
 	mbp_priv = rte_mempool_get_priv(mp);
 	memcpy(mbp_priv, user_mbp_priv, sizeof(*mbp_priv));
@@ -126,6 +127,7 @@ rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 	}
 	elt_size = sizeof(struct rte_mbuf) + (unsigned)priv_size +
 		(unsigned)data_room_size;
+	memset(&mbp_priv, 0, sizeof(mbp_priv));
 	mbp_priv.mbuf_data_room_size = data_room_size;
 	mbp_priv.mbuf_priv_size = priv_size;
 

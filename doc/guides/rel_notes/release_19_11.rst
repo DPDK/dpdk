@@ -65,6 +65,13 @@ New Features
 
   The lock-free stack implementation is enabled for aarch64 platforms.
 
+* **Extended pktmbuf mempool private structure.**
+
+  rte_pktmbuf_pool_private structure was extended to include flags field
+  for future compatibility.
+  As per 19.11 release this field is reserved and should be set to 0
+  by the user.
+
 * **Changed mempool allocation behaviour.**
 
   Objects are no longer across pages by default.
