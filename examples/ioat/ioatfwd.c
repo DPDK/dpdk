@@ -751,8 +751,9 @@ assign_rawdevs(void)
 				if (rdev_id == rte_rawdev_count())
 					goto end;
 				rte_rawdev_info_get(rdev_id++, &rdev_info);
-			} while (strcmp(rdev_info.driver_name,
-				IOAT_PMD_RAWDEV_NAME_STR) != 0);
+			} while (rdev_info.driver_name == NULL ||
+					strcmp(rdev_info.driver_name,
+						IOAT_PMD_RAWDEV_NAME_STR) != 0);
 
 			cfg.ports[i].ioat_ids[j] = rdev_id - 1;
 			configure_rawdev_queue(cfg.ports[i].ioat_ids[j]);
