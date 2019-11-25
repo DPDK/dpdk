@@ -487,6 +487,21 @@ set packet types classification for a specific port::
 
    testpmd> set port (port_id) ptypes_mask (mask)
 
+show port mac addresses info
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show mac addresses added for a specific port::
+
+   testpmd> show port (port_id) macs
+
+
+show port multicast mac addresses info
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show multicast mac addresses added for a specific port::
+
+   testpmd> show port (port_id) mcast_macs
+
 show device info
 ~~~~~~~~~~~~~~~~
 

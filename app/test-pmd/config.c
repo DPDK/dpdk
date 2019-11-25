@@ -3965,3 +3965,60 @@ port_queue_region_info_display(portid_t port_id, void *buf)
 
 	printf("\n\n");
 }
+
+void
+show_macs(portid_t port_id)
+{
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	struct rte_eth_dev_info dev_info;
+	struct rte_ether_addr *addr;
+	uint32_t i, num_macs = 0;
+	struct rte_eth_dev *dev;
+
+	dev = &rte_eth_devices[port_id];
+
+	rte_eth_dev_info_get(port_id, &dev_info);
+
+	for (i = 0; i < dev_info.max_mac_addrs; i++) {
+		addr = &dev->data->mac_addrs[i];
+
+		/* skip zero address */
+		if (rte_is_zero_ether_addr(addr))
+			continue;
+
+		num_macs++;
+	}
+
+	printf("Number of MAC address added: %d\n", num_macs);
+
+	for (i = 0; i < dev_info.max_mac_addrs; i++) {
+		addr = &dev->data->mac_addrs[i];
+
+		/* skip zero address */
+		if (rte_is_zero_ether_addr(addr))
+			continue;
+
+		rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, addr);
+		printf("  %s\n", buf);
+	}
+}
+
+void
+show_mcast_macs(portid_t port_id)
+{
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	struct rte_ether_addr *addr;
+	struct rte_port *port;
+	uint32_t i;
+
+	port = &ports[port_id];
+
+	printf("Number of Multicast MAC address added: %d\n", port->mc_addr_nb);
+
+	for (i = 0; i < port->mc_addr_nb; i++) {
+		addr = &port->mc_addr_pool[i];
+
+		rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, addr);
+		printf("  %s\n", buf);
+	}
+}

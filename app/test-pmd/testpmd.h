@@ -835,6 +835,9 @@ int eth_link_get_nowait_print_err(uint16_t port_id, struct rte_eth_link *link);
 int eth_macaddr_get_print_err(uint16_t port_id,
 			struct rte_ether_addr *mac_addr);
 
+/* Functions to display the set of MAC addresses added to a port*/
+void show_macs(portid_t port_id);
+void show_mcast_macs(portid_t port_id);
 
 /* Functions to manage the set of filtered Multicast MAC addresses */
 void mcast_addr_add(portid_t port_id, struct rte_ether_addr *mc_addr);

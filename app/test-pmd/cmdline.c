@@ -241,6 +241,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port (port_id) rxq|txq (queue_id) desc (desc_id) status"
 			"       Show status of rx|tx descriptor.\n\n"
+
+			"show port (port_id) macs|mcast_macs"
+			"       Display list of mac addresses added to port.\n\n"
 		);
 	}
 
@@ -19171,6 +19174,56 @@ cmdline_parse_inst_t cmd_set_port_ptypes = {
 	},
 };
 
+/* *** display mac addresses added to a port *** */
+struct cmd_showport_macs_result {
+	cmdline_fixed_string_t cmd_show;
+	cmdline_fixed_string_t cmd_port;
+	cmdline_fixed_string_t cmd_keyword;
+	portid_t cmd_pid;
+};
+
+static void
+cmd_showport_macs_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_showport_macs_result *res = parsed_result;
+
+	if (port_id_is_invalid(res->cmd_pid, ENABLED_WARN))
+		return;
+
+	if (!strcmp(res->cmd_keyword, "macs"))
+		show_macs(res->cmd_pid);
+	else if (!strcmp(res->cmd_keyword, "mcast_macs"))
+		show_mcast_macs(res->cmd_pid);
+}
+
+cmdline_parse_token_string_t cmd_showport_macs_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_macs_result,
+			cmd_show, "show");
+cmdline_parse_token_string_t cmd_showport_macs_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_macs_result,
+			cmd_port, "port");
+cmdline_parse_token_num_t cmd_showport_macs_pid =
+	TOKEN_NUM_INITIALIZER(struct cmd_showport_macs_result,
+			cmd_pid, UINT16);
+cmdline_parse_token_string_t cmd_showport_macs_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_macs_result,
+			cmd_keyword, "macs#mcast_macs");
+
+cmdline_parse_inst_t cmd_showport_macs = {
+	.f = cmd_showport_macs_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> macs|mcast_macs",
+	.tokens = {
+		(void *)&cmd_showport_macs_show,
+		(void *)&cmd_showport_macs_port,
+		(void *)&cmd_showport_macs_pid,
+		(void *)&cmd_showport_macs_keyword,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -19289,6 +19342,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_setup_rxtx_queue,
 	(cmdline_parse_inst_t *)&cmd_config_rss_reta,
 	(cmdline_parse_inst_t *)&cmd_showport_reta,
+	(cmdline_parse_inst_t *)&cmd_showport_macs,
 	(cmdline_parse_inst_t *)&cmd_config_burst,
 	(cmdline_parse_inst_t *)&cmd_config_thresh,
 	(cmdline_parse_inst_t *)&cmd_config_threshold,
