@@ -1649,6 +1649,7 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		} while (m_seg != NULL);
 
 		nb_hold += i;
+		txq->next_to_use = tx_next_use;
 	}
 
 end_of_tx:
@@ -1656,7 +1657,6 @@ end_of_tx:
 	if (likely(nb_tx)) {
 		hns3_queue_xmit(txq, nb_hold);
 		txq->next_to_clean = tx_next_clean;
-		txq->next_to_use   = tx_next_use;
 		txq->tx_bd_ready   = tx_bd_ready - nb_hold;
 	}
 
