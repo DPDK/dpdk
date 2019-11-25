@@ -148,7 +148,7 @@ int power_guest_channel_read_msg(void *pkt,
 		return -1;
 	} else if (ret < 0) {
 		RTE_LOG(ERR, GUEST_CHANNEL, "Error occurred during poll function: %s\n",
-				strerror(ret));
+				strerror(errno));
 		return -1;
 	}
 
