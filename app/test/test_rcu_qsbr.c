@@ -9,6 +9,7 @@
 #include <rte_hash_crc.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>
+#include <rte_random.h>
 #include <unistd.h>
 
 #include "test.h"
@@ -168,6 +169,7 @@ test_rcu_qsbr_thread_unregister(void)
 {
 	unsigned int num_threads[3] = {1, RTE_MAX_LCORE, 1};
 	unsigned int i, j;
+	unsigned int skip_thread_id;
 	uint64_t token;
 	int ret;
 
@@ -227,10 +229,11 @@ test_rcu_qsbr_thread_unregister(void)
 		token = rte_rcu_qsbr_start(t[0]);
 		TEST_RCU_QSBR_RETURN_IF_ERROR(
 			(token != (TEST_RCU_QSBR_CNT_INIT + 1)), "QSBR Start");
+		skip_thread_id = rte_rand() % RTE_MAX_LCORE;
 		/* Update quiescent state counter */
 		for (i = 0; i < num_threads[j]; i++) {
 			/* Skip one update */
-			if (i == (RTE_MAX_LCORE - 10))
+			if ((j == 1) && (i == skip_thread_id))
 				continue;
 			rte_rcu_qsbr_quiescent(t[0],
 				(j == 2) ? (RTE_MAX_LCORE - 1) : i);
@@ -242,7 +245,7 @@ test_rcu_qsbr_thread_unregister(void)
 			TEST_RCU_QSBR_RETURN_IF_ERROR((ret == 0),
 						"Non-blocking QSBR check");
 			/* Update the previously skipped thread */
-			rte_rcu_qsbr_quiescent(t[0], RTE_MAX_LCORE - 10);
+			rte_rcu_qsbr_quiescent(t[0], skip_thread_id);
 		}
 
 		/* Validate the updates */
