@@ -25,8 +25,8 @@ objdump -t $OBJFILE >$DUMPFILE
 ret=0
 for SYM in `$LIST_SYMBOL -S EXPERIMENTAL $MAPFILE |cut -d ' ' -f 3`
 do
-	if grep -q "\.text.*$SYM$" $DUMPFILE &&
-		! grep -q "\.text\.experimental.*$SYM$" $DUMPFILE
+	if grep -q "\.text.*[[:space:]]$SYM$" $DUMPFILE &&
+		! grep -q "\.text\.experimental.*[[:space:]]$SYM$" $DUMPFILE
 	then
 		cat >&2 <<- END_OF_MESSAGE
 		$SYM is not flagged as experimental
