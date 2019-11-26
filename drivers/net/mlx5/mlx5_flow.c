@@ -1998,8 +1998,8 @@ mlx5_flow_validate_item_gre_key(const struct rte_flow_item *item,
 	const rte_be32_t *mask = item->mask;
 	int ret = 0;
 	rte_be32_t gre_key_default_mask = RTE_BE32(UINT32_MAX);
-	const struct rte_flow_item_gre *gre_spec = gre_item->spec;
-	const struct rte_flow_item_gre *gre_mask = gre_item->mask;
+	const struct rte_flow_item_gre *gre_spec;
+	const struct rte_flow_item_gre *gre_mask;
 
 	if (item_flags & MLX5_FLOW_LAYER_GRE_KEY)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -2013,8 +2013,10 @@ mlx5_flow_validate_item_gre_key(const struct rte_flow_item *item,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "GRE key following a wrong item");
+	gre_mask = gre_item->mask;
 	if (!gre_mask)
 		gre_mask = &rte_flow_item_gre_mask;
+	gre_spec = gre_item->spec;
 	if (gre_spec && (gre_mask->c_rsvd0_ver & RTE_BE16(0x2000)) &&
 			 !(gre_spec->c_rsvd0_ver & RTE_BE16(0x2000)))
 		return rte_flow_error_set(error, EINVAL,
