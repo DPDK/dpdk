@@ -156,6 +156,8 @@ eth_kni_dev_start(struct rte_eth_dev *dev)
 	}
 
 	if (internals->no_request_thread == 0) {
+		internals->stop_thread = 0;
+
 		ret = rte_ctrl_thread_create(&internals->thread,
 			"kni_handle_req", NULL,
 			kni_handle_request, internals);
@@ -177,7 +179,7 @@ eth_kni_dev_stop(struct rte_eth_dev *dev)
 	struct pmd_internals *internals = dev->data->dev_private;
 	int ret;
 
-	if (internals->no_request_thread == 0) {
+	if (internals->no_request_thread == 0 && internals->stop_thread == 0) {
 		internals->stop_thread = 1;
 
 		ret = pthread_cancel(internals->thread);
@@ -187,8 +189,6 @@ eth_kni_dev_stop(struct rte_eth_dev *dev)
 		ret = pthread_join(internals->thread, NULL);
 		if (ret)
 			PMD_LOG(ERR, "Can't join the thread");
-
-		internals->stop_thread = 0;
 	}
 
 	dev->data->dev_link.link_status = 0;
