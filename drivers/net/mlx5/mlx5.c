@@ -2256,7 +2256,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		tunnel_en = ((dv_attr.tunnel_offloads_caps &
 			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN) &&
 			     (dv_attr.tunnel_offloads_caps &
-			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE));
+			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE) &&
+			     (dv_attr.tunnel_offloads_caps &
+			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GENEVE));
 	}
 	DRV_LOG(DEBUG, "tunnel offloading is %ssupported",
 		tunnel_en ? "" : "not ");
