@@ -136,15 +136,19 @@ ifcvf_vfio_setup(struct ifcvf_internal *internal)
 	struct rte_pci_device *dev = internal->pdev;
 	char devname[RTE_DEV_NAME_MAX_LEN] = {0};
 	int iommu_group_num;
-	int i;
+	int i, ret;
 
 	internal->vfio_dev_fd = -1;
 	internal->vfio_group_fd = -1;
 	internal->vfio_container_fd = -1;
 
 	rte_pci_device_name(&dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
-	rte_vfio_get_group_num(rte_pci_get_sysfs_path(), devname,
+	ret = rte_vfio_get_group_num(rte_pci_get_sysfs_path(), devname,
 			&iommu_group_num);
+	if (ret <= 0) {
+		DRV_LOG(ERR, "%s failed to get IOMMU group", devname);
+		return -1;
+	}
 
 	internal->vfio_container_fd = rte_vfio_container_create();
 	if (internal->vfio_container_fd < 0)
