@@ -33,5 +33,6 @@ EXPERIMENTAL {
 	global:
 
 	rte_hash_free_key_with_position;
+	rte_hash_max_key_id;
 
 };

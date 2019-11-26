@@ -507,6 +507,21 @@ rte_hash_hash(const struct rte_hash *h, const void *key)
 }
 
 int32_t
+rte_hash_max_key_id(const struct rte_hash *h)
+{
+	RETURN_IF_TRUE((h == NULL), -EINVAL);
+	if (h->use_local_cache)
+		/*
+		 * Increase number of slots by total number of indices
+		 * that can be stored in the lcore caches
+		 */
+		return (h->entries + ((RTE_MAX_LCORE - 1) *
+					(LCORE_CACHE_SIZE - 1)));
+	else
+		return h->entries;
+}
+
+int32_t
 rte_hash_count(const struct rte_hash *h)
 {
 	uint32_t tot_ring_cnt, cached_cnt = 0;

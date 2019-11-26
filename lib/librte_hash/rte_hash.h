@@ -165,6 +165,23 @@ int32_t
 rte_hash_count(const struct rte_hash *h);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Return the maximum key value ID that could possibly be returned by
+ * rte_hash_add_key function.
+ *
+ * @param h
+ *  Hash table to query from
+ * @return
+ *   - -EINVAL if parameters are invalid
+ *   - A value indicating the max key ID of key slots present in the table.
+ */
+__rte_experimental
+int32_t
+rte_hash_max_key_id(const struct rte_hash *h);
+
+/**
  * Add a key-value pair to an existing hash table.
  * This operation is not multi-thread safe
  * and should only be called from one thread by default.
@@ -234,7 +251,9 @@ rte_hash_add_key_with_hash_data(const struct rte_hash *h, const void *key,
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOSPC if there is no space in the hash for this key.
  *   - A positive value that can be used by the caller as an offset into an
- *     array of user data. This value is unique for this key.
+ *     array of user data. This value is unique for this key. This
+ *     unique key id may be larger than the user specified entry count
+ *     when RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD flag is set.
  */
 int32_t
 rte_hash_add_key(const struct rte_hash *h, const void *key);
@@ -256,7 +275,9 @@ rte_hash_add_key(const struct rte_hash *h, const void *key);
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOSPC if there is no space in the hash for this key.
  *   - A positive value that can be used by the caller as an offset into an
- *     array of user data. This value is unique for this key.
+ *     array of user data. This value is unique for this key. This
+ *     unique key ID may be larger than the user specified entry count
+ *     when RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD flag is set.
  */
 int32_t
 rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t sig);
