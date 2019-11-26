@@ -2479,7 +2479,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	else
 		config.mps = config.mps ? mps : MLX5_MPW_DISABLED;
 	DRV_LOG(INFO, "%sMPS is %s",
-		config.mps == MLX5_MPW_ENHANCED ? "enhanced " : "",
+		config.mps == MLX5_MPW_ENHANCED ? "enhanced " :
+		config.mps == MLX5_MPW ? "legacy " : "",
 		config.mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
 	if (config.cqe_comp && !cqe_comp) {
 		DRV_LOG(WARNING, "Rx CQE compression isn't supported");

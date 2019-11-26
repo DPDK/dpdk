@@ -957,7 +957,7 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 		     (unsigned int)config->txq_inline_mpw;
 	inlen_mode = (config->txq_inline_min == MLX5_ARG_UNSET) ?
 		     0 : (unsigned int)config->txq_inline_min;
-	if (config->mps != MLX5_MPW_ENHANCED)
+	if (config->mps != MLX5_MPW_ENHANCED && config->mps != MLX5_MPW)
 		inlen_empw = 0;
 	/*
 	 * If there is requested minimal amount of data to inline
