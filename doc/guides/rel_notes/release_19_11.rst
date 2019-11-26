@@ -115,10 +115,12 @@ New Features
   * PMDs notify the validity of `rte_mbuf::hash:rss` to the application
     by enabling `PKT_RX_RSS_HASH ` flag in `rte_mbuf::ol_flags`.
 
-* **Updated the enic driver.**
+* **Added RX/TX packet burst mode get API.**
 
-  * Added support for Geneve with options offload.
-  * Added flow API implementation based on VIC Flow Manager API.
+  Added two new functions ``rte_eth_rx_burst_mode_get`` and
+  ``rte_eth_tx_burst_mode_get`` that allow an application
+  to retrieve the mode information about RX/TX packet burst
+  such as Scalar or Vector, and Vector technology like AVX2.
 
 * **Added Hisilicon hns3 PMD.**
 
@@ -141,6 +143,11 @@ New Features
   * Added LRO support Thor devices.
   * Update HWRM API to version 1.10.1.6
 
+* **Updated the enic driver.**
+
+  * Added support for Geneve with options offload.
+  * Added flow API implementation based on VIC Flow Manager API.
+
 * **Updated iavf PMD.**
 
   Enable AVX2 data path for iavf PMD.
@@ -161,13 +168,6 @@ New Features
 
   Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
 
-* **Added RX/TX packet burst mode get API.**
-
-  Added two new functions ``rte_eth_rx_burst_mode_get`` and
-  ``rte_eth_tx_burst_mode_get`` that allow an application
-  to retrieve the mode information about RX/TX packet burst
-  such as Scalar or Vector, and Vector technology like AVX2.
-
 * **Updated the Intel ice driver.**
 
   Updated the Intel ice driver with new features and improvements, including:
@@ -183,11 +183,6 @@ New Features
   * Supported input set change and symmetric hash by rte_flow RSS action.
   * Added support for GTP Tx checksum offload.
   * Added new device IDs to support E810_XXV devices.
-
-* **Added cryptodev asymmetric session-less operation.**
-
-  Added session-less option to cryptodev asymmetric structure. It works the same
-  way as symmetric crypto, corresponding xform is used directly by the crypto op.
 
 * **Updated the Huawei hinic driver.**
 
@@ -220,6 +215,11 @@ New Features
 
   * Enabled zero copy between application mempools and UMEM by enabling the
     XDP_UMEM_UNALIGNED_CHUNKS UMEM flag.
+
+* **Added cryptodev asymmetric session-less operation.**
+
+  Added session-less option to cryptodev asymmetric structure. It works the same
+  way as symmetric crypto, corresponding xform is used directly by the crypto op.
 
 * **Added Marvell NITROX symmetric crypto PMD.**
 
