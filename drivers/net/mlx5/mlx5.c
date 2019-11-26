@@ -2428,7 +2428,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	!defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	DRV_LOG(DEBUG, "counters are not supported");
 #endif
-#ifndef HAVE_IBV_FLOW_DV_SUPPORT
+#if !defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_MLX5DV_DR)
 	if (config.dv_flow_en) {
 		DRV_LOG(WARNING, "DV flow is not supported");
 		config.dv_flow_en = 0;

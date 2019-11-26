@@ -673,7 +673,7 @@ Run-time configuration
 - ``dv_flow_en`` parameter [int]
 
   A nonzero value enables the DV flow steering assuming it is supported
-  by the driver.
+  by the driver (RDMA Core library version is rdma-core-24.0 or higher).
 
   Enabled by default if supported.
 
