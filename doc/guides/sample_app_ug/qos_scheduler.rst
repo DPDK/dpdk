@@ -22,7 +22,7 @@ There are two flavors of the runtime execution for this application,
 with two or three threads per each packet flow configuration being used.
 The RX thread reads packets from the RX port,
 classifies the packets based on the double VLAN (outer and inner) and
-the lower two bytes of the IP destination address and puts them into the ring queue.
+the lower byte of the IP destination address and puts them into the ring queue.
 The worker thread dequeues the packets from the ring and calls the QoS scheduler enqueue/dequeue functions.
 If a separate TX core is used, these are sent to the TX ring.
 Otherwise, they are sent directly to the TX port.
@@ -129,18 +129,28 @@ The profile file has the following format:
 
     frame overhead = 24
     number of subports per port = 1
-    number of pipes per subport = 4096
-    queue sizes = 64 64 64 64
 
     ; Subport configuration
 
     [subport 0]
+    number of pipes per subport = 4096
+    queue sizes = 64 64 64 64 64 64 64 64 64 64 64 64 64
     tb rate = 1250000000; Bytes per second
     tb size = 1000000; Bytes
     tc 0 rate = 1250000000;     Bytes per second
     tc 1 rate = 1250000000;     Bytes per second
     tc 2 rate = 1250000000;     Bytes per second
     tc 3 rate = 1250000000;     Bytes per second
+    tc 4 rate = 1250000000;     Bytes per second
+    tc 5 rate = 1250000000;     Bytes per second
+    tc 6 rate = 1250000000;     Bytes per second
+    tc 7 rate = 1250000000;     Bytes per second
+    tc 8 rate = 1250000000;     Bytes per second
+    tc 9 rate = 1250000000;     Bytes per second
+    tc 10 rate = 1250000000;     Bytes per second
+    tc 11 rate = 1250000000;     Bytes per second
+    tc 12 rate = 1250000000;     Bytes per second
+
     tc period = 10;             Milliseconds
     tc oversubscription period = 10;     Milliseconds
 
@@ -156,17 +166,32 @@ The profile file has the following format:
     tc 1 rate = 305175; Bytes per second
     tc 2 rate = 305175; Bytes per second
     tc 3 rate = 305175; Bytes per second
+    tc 4 rate = 305175; Bytes per second
+    tc 5 rate = 305175; Bytes per second
+    tc 6 rate = 305175; Bytes per second
+    tc 7 rate = 305175; Bytes per second
+    tc 8 rate = 305175; Bytes per second
+    tc 9 rate = 305175; Bytes per second
+    tc 10 rate = 305175; Bytes per second
+    tc 11 rate = 305175; Bytes per second
+    tc 12 rate = 305175; Bytes per second
     tc period = 40; Milliseconds
 
     tc 0 oversubscription weight = 1
     tc 1 oversubscription weight = 1
     tc 2 oversubscription weight = 1
     tc 3 oversubscription weight = 1
+    tc 4 oversubscription weight = 1
+    tc 5 oversubscription weight = 1
+    tc 6 oversubscription weight = 1
+    tc 7 oversubscription weight = 1
+    tc 8 oversubscription weight = 1
+    tc 9 oversubscription weight = 1
+    tc 10 oversubscription weight = 1
+    tc 11 oversubscription weight = 1
+    tc 12 oversubscription weight = 1
 
-    tc 0 wrr weights = 1 1 1 1
-    tc 1 wrr weights = 1 1 1 1
-    tc 2 wrr weights = 1 1 1 1
-    tc 3 wrr weights = 1 1 1 1
+    tc 12 wrr weights = 1 1 1 1
 
     ; RED params per traffic class and color (Green / Yellow / Red)
 
@@ -190,6 +215,51 @@ The profile file has the following format:
     tc 3 wred max = 64 64 64
     tc 3 wred inv prob = 10 10 10
     tc 3 wred weight = 9 9 9
+
+    tc 4 wred min = 48 40 32
+    tc 4 wred max = 64 64 64
+    tc 4 wred inv prob = 10 10 10
+    tc 4 wred weight = 9 9 9
+
+    tc 5 wred min = 48 40 32
+    tc 5 wred max = 64 64 64
+    tc 5 wred inv prob = 10 10 10
+    tc 5 wred weight = 9 9 9
+
+    tc 6 wred min = 48 40 32
+    tc 6 wred max = 64 64 64
+    tc 6 wred inv prob = 10 10 10
+    tc 6 wred weight = 9 9 9
+
+    tc 7 wred min = 48 40 32
+    tc 7 wred max = 64 64 64
+    tc 7 wred inv prob = 10 10 10
+    tc 7 wred weight = 9 9 9
+
+    tc 8 wred min = 48 40 32
+    tc 8 wred max = 64 64 64
+    tc 8 wred inv prob = 10 10 10
+    tc 8 wred weight = 9 9 9
+
+    tc 9 wred min = 48 40 32
+    tc 9 wred max = 64 64 64
+    tc 9 wred inv prob = 10 10 10
+    tc 9 wred weight = 9 9 9
+
+    tc 10 wred min = 48 40 32
+    tc 10 wred max = 64 64 64
+    tc 10 wred inv prob = 10 10 10
+    tc 10 wred weight = 9 9 9
+
+    tc 11 wred min = 48 40 32
+    tc 11 wred max = 64 64 64
+    tc 11 wred inv prob = 10 10 10
+    tc 11 wred weight = 9 9 9
+
+    tc 12 wred min = 48 40 32
+    tc 12 wred max = 64 64 64
+    tc 12 wred inv prob = 10 10 10
+    tc 12 wred weight = 9 9 9
 
 Interactive mode
 ~~~~~~~~~~~~~~~~
@@ -295,11 +365,11 @@ This application classifies based on the QinQ double VLAN tags and the IP destin
    | Pipe           | Config (4k)             | Traffic shaped (token bucket)                    | Inner VLAN tag                   |
    |                |                         |                                                  |                                  |
    +----------------+-------------------------+--------------------------------------------------+----------------------------------+
-   | Traffic Class  | 4                       | TCs of the same pipe services in strict priority | Destination IP address (0.0.X.0) |
+   | Traffic Class  | 13                      | TCs of the same pipe services in strict priority | Destination IP address (0.0.0.X) |
    |                |                         |                                                  |                                  |
    +----------------+-------------------------+--------------------------------------------------+----------------------------------+
-   | Queue          | 4                       | Queue of the same TC serviced in WRR             | Destination IP address (0.0.0.X) |
-   |                |                         |                                                  |                                  |
+   | Queue          | High Priority TC: 1,    | Queue of lowest priority traffic                 | Destination IP address (0.0.0.X) |
+   |                | Lowest Priority TC: 4   | class (Best effort) serviced in WRR              |                                  |
    +----------------+-------------------------+--------------------------------------------------+----------------------------------+
 
 Please refer to the "QoS Scheduler" chapter in the *DPDK Programmer's Guide* for more information about these parameters.

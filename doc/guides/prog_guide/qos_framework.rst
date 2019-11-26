@@ -171,7 +171,7 @@ The functionality of each hierarchical level is detailed in the following table.
    |   |                    |                            |     token bucket per pipe.                                    |
    |   |                    |                            |                                                               |
    +---+--------------------+----------------------------+---------------------------------------------------------------+
-   | 4 | Traffic Class (TC) | 4                          | #.  TCs of the same pipe handled in strict priority order.    |
+   | 4 | Traffic Class (TC) | 13                         | #.  TCs of the same pipe handled in strict priority order.    |
    |   |                    |                            |                                                               |
    |   |                    |                            | #.  Upper limit enforced per TC at the pipe level.            |
    |   |                    |                            |                                                               |
@@ -183,8 +183,13 @@ The functionality of each hierarchical level is detailed in the following table.
    |   |                    |                            |     adjusted value that is shared by all the subport pipes.   |
    |   |                    |                            |                                                               |
    +---+--------------------+----------------------------+---------------------------------------------------------------+
-   | 5 | Queue              | 4                          | #.  Queues of the same TC are serviced using Weighted Round   |
-   |   |                    |                            |     Robin (WRR) according to predefined weights.              |
+   | 5 | Queue              |  High priority TCs: 1,     | #.  All the high priority TCs (TC0, TC1,  ...,TC11) have      |
+   |   |                    |  Lowest priority TC: 4     |     exactly 1 queue, while the lowest priority TC (TC12),     |
+   |   |                    |                            |     called Best Effort (BE), has 4 queues.                    |
+   |   |                    |                            |                                                               |
+   |   |                    |                            | #.  Queues of the lowest priority TC (BE) are serviced using  |
+   |   |                    |                            |     Weighted Round Robin (WRR) according to predefined weights|
+   |   |                    |                            |     weights.                                                  |
    |   |                    |                            |                                                               |
    +---+--------------------+----------------------------+---------------------------------------------------------------+
 
@@ -730,10 +735,10 @@ Implementation of Strict Priority Scheduling
 
 Strict priority scheduling of traffic classes within the same pipe is implemented by the pipe dequeue state machine,
 which selects the queues in ascending order.
-Therefore, queues 0..3 (associated with TC 0, highest priority TC) are handled before
-queues 4..7 (TC 1, lower priority than TC 0),
-which are handled before queues 8..11 (TC 2),
-which are handled before queues 12..15 (TC 3, lowest priority TC).
+Therefore, queue 0 (associated with TC 0, highest priority TC) is handled before
+queue 1 (TC 1, lower priority than TC 0),
+which is handled before queue 2 (TC 2, lower priority than TC 1) and it conitnues until queues of all TCs except the
+lowest priority TC are handled. At last, queues 12..15 (best effort TC, lowest priority TC) are handled.
 
 Upper Limit Enforcement
 '''''''''''''''''''''''
@@ -753,14 +758,14 @@ as described in :numref:`table_qos_10` and :numref:`table_qos_11`.
    | # | Subport or pipe field | Unit  | Description                                                           |
    |   |                       |       |                                                                       |
    +===+=======================+=======+=======================================================================+
-   | 1 | tc_time               | Bytes | Time of the next update (upper limit refill) for the 4 TCs of the     |
+   | 1 | tc_time               | Bytes | Time of the next update (upper limit refill) for the TCs of the       |
    |   |                       |       | current subport / pipe.                                               |
    |   |                       |       |                                                                       |
    |   |                       |       | See  Section `Internal Time Reference`_ for the                       |
    |   |                       |       | explanation of why the time is maintained in byte units.              |
    |   |                       |       |                                                                       |
    +---+-----------------------+-------+-----------------------------------------------------------------------+
-   | 2 | tc_period             | Bytes | Time between two consecutive updates for the 4 TCs of the current     |
+   | 2 | tc_period             | Bytes | Time between two consecutive updates for the all TCs of the current   |
    |   |                       |       | subport / pipe. This is expected to be many times bigger than the     |
    |   |                       |       | typical value of the token bucket tb_period.                          |
    |   |                       |       |                                                                       |
@@ -815,7 +820,7 @@ as described in :numref:`table_qos_10` and :numref:`table_qos_11`.
 Weighted Round Robin (WRR)
 """"""""""""""""""""""""""
 
-The evolution of the WRR design solution from simple to complex is shown in :numref:`table_qos_12`.
+The evolution of the WRR design solution for the lowest priority traffic class (best effort TC) from simple to complex is shown in :numref:`table_qos_12`.
 
 .. _table_qos_12:
 
@@ -977,33 +982,33 @@ with the third approach selected for implementation.
    |     |                           |                                                                         |
    +-----+---------------------------+-------------------------------------------------------------------------+
 
-Typically, the subport TC oversubscription feature is enabled only for the lowest priority traffic class (TC 3),
+Typically, the subport TC oversubscription feature is enabled only for the lowest priority traffic class,
 which is typically used for best effort traffic,
 with the management plane preventing this condition from occurring for the other (higher priority) traffic classes.
 
-To ease implementation, it is also assumed that the upper limit for subport TC 3 is set to 100% of the subport rate,
-and that the upper limit for pipe TC 3 is set to 100% of pipe rate for all subport member pipes.
+To ease implementation, it is also assumed that the upper limit for subport best effort TC is set to 100% of the subport rate,
+and that the upper limit for pipe best effort TC is set to 100% of pipe rate for all subport member pipes.
 
 Implementation Overview
 '''''''''''''''''''''''
 
 The algorithm computes a watermark, which is periodically updated based on the current demand experienced by the subport member pipes,
-whose purpose is to limit the amount of traffic that each pipe is allowed to send for TC 3.
+whose purpose is to limit the amount of traffic that each pipe is allowed to send for best effort TC.
 The watermark is computed at the subport level at the beginning of each traffic class upper limit enforcement period and
 the same value is used by all the subport member pipes throughout the current enforcement period.
 illustrates how the watermark computed as subport level at the beginning of each period is propagated to all subport member pipes.
 
 At the beginning of the current enforcement period (which coincides with the end of the previous enforcement period),
-the value of the watermark is adjusted based on the amount of bandwidth allocated to TC 3 at the beginning of the previous period that
+the value of the watermark is adjusted based on the amount of bandwidth allocated to best effort TC at the beginning of the previous period that
 was not left unused by the subport member pipes at the end of the previous period.
 
-If there was subport TC 3 bandwidth left unused,
+If there was subport best effort TC bandwidth left unused,
 the value of the watermark for the current period is increased to encourage the subport member pipes to consume more bandwidth.
-Otherwise, the value of the watermark is decreased to enforce equality of bandwidth consumption among subport member pipes for TC 3.
+Otherwise, the value of the watermark is decreased to enforce equality of bandwidth consumption among subport member pipes for best effort TC.
 
 The increase or decrease in the watermark value is done in small increments,
 so several enforcement periods might be required to reach the equilibrium state.
-This state can change at any moment due to variations in the demand experienced by the subport member pipes for TC 3, for example,
+This state can change at any moment due to variations in the demand experienced by the subport member pipes for best effort TC, for example,
 as a result of demand increase (when the watermark needs to be lowered) or demand decrease (when the watermark needs to be increased).
 
 When demand is low, the watermark is set high to prevent it from impeding the subport member pipes from consuming more bandwidth.
@@ -1084,10 +1089,27 @@ The highest value for the watermark is picked as the highest rate configured for
    |     |                  |                                                                                  |
    |     |                  | tc3_cons = subport_tc3_credits_per_period - subport_tc3_credits;                 |
    |     |                  |                                                                                  |
-   |     |                  | tc3_cons_max = subport_tc3_credits_per_period - (tc0_cons + tc1_cons +           |
-   |     |                  | tc2_cons);                                                                       |
+   |     |                  | tc4_cons = subport_tc4_credits_per_period - subport_tc4_credits;                 |
    |     |                  |                                                                                  |
-   |     |                  | if(tc3_consumption > (tc3_consumption_max - MTU)){                               |
+   |     |                  | tc5_cons = subport_tc5_credits_per_period - subport_tc5_credits;                 |
+   |     |                  |                                                                                  |
+   |     |                  | tc6_cons = subport_tc6_credits_per_period - subport_tc6_credits;                 |
+   |     |                  |                                                                                  |
+   |     |                  | tc7_cons = subport_tc7_credits_per_period - subport_tc7_credits;                 |
+   |     |                  |                                                                                  |
+   |     |                  | tc8_cons = subport_tc8_credits_per_period - subport_tc8_credits;                 |
+   |     |                  |                                                                                  |
+   |     |                  | tc9_cons = subport_tc9_credits_per_period - subport_tc9_credits;                 |
+   |     |                  |                                                                                  |
+   |     |                  | tc10_cons = subport_tc10_credits_per_period - subport_tc10_credits;              |
+   |     |                  |                                                                                  |
+   |     |                  | tc11_cons = subport_tc11_credits_per_period - subport_tc11_credits;              |
+   |     |                  |                                                                                  |
+   |     |                  | tc_be_cons_max = subport_tc_be_credits_per_period - (tc0_cons + tc1_cons +       |
+   |     |                  | tc2_cons + tc3_cons + tc4_cons + tc5_cons + tc6_cons + tc7_cons + tc8_cons +     |
+   |     |                  | tc9_cons + tc10_cons + tc11_cons);                                               |
+   |     |                  |                                                                                  |
+   |     |                  | if(tc_be_consumption > (tc_be_consumption_max - MTU)){                           |
    |     |                  |                                                                                  |
    |     |                  |     wm -= wm >> 7;                                                               |
    |     |                  |                                                                                  |
@@ -1554,6 +1576,52 @@ A sample RED configuration is shown below. In this example, the queue size is 64
    tc 3 wred max = 32 32 32
    tc 3 wred inv prob = 10 10 10
    tc 3 wred weight = 9 9 9
+
+   tc 4 wred min = 28 22 16
+   tc 4 wred max = 32 32 32
+   tc 4 wred inv prob = 10 10 10
+   tc 4 wred weight = 9 9 9
+
+   tc 5 wred min = 28 22 16
+   tc 5 wred max = 32 32 32
+   tc 5 wred inv prob = 10 10 10
+   tc 5 wred weight = 9 9 9
+
+   tc 6 wred min = 28 22 16
+   tc 6 wred max = 32 32 32
+   tc 6 wred inv prob = 10 10 10
+   tc 6 wred weight = 9 9 9
+
+   tc 7 wred min = 28 22 16
+   tc 7 wred max = 32 32 32
+   tc 7 wred inv prob = 10 10 10
+   tc 7 wred weight = 9 9 9
+
+   tc 8 wred min = 28 22 16
+   tc 8 wred max = 32 32 32
+   tc 8 wred inv prob = 10 10 10
+   tc 8 wred weight = 9 9 9
+
+   tc 9 wred min = 28 22 16
+   tc 9 wred max = 32 32 32
+   tc 9 wred inv prob = 10 10 10
+   tc 9 wred weight = 9 9 9
+
+
+   tc 10 wred min = 28 22 16
+   tc 10 wred max = 32 32 32
+   tc 10 wred inv prob = 10 10 10
+   tc 10 wred weight = 9 9 9
+
+   tc 11 wred min = 28 22 16
+   tc 11 wred max = 32 32 32
+   tc 11 wred inv prob = 10 10 10
+   tc 11 wred weight = 9 9 9
+
+   tc 12 wred min = 28 22 16
+   tc 12 wred max = 32 32 32
+   tc 12 wred inv prob = 10 10 10
+   tc 12 wred weight = 9 9 9
 
 With this configuration file, the RED configuration that applies to green,
 yellow and red packets in traffic class 0 is shown in :numref:`table_qos_18`.
