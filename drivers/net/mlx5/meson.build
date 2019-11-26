@@ -206,10 +206,14 @@ if pmd_dlopen and build
 	dlopen_so_version = LIB_GLUE_VERSION
 	dlopen_sources = files('mlx5_glue.c')
 	dlopen_install_dir = [ eal_pmd_path + '-glue' ]
+	dlopen_includes = [global_inc]
+	dlopen_includes += include_directories(
+		'../../../lib/librte_eal/common/include/generic',
+	)
 	shared_lib = shared_library(
 		dlopen_lib_name,
 		dlopen_sources,
-		include_directories: global_inc,
+		include_directories: dlopen_includes,
 		c_args: cflags,
 		dependencies: libs,
 		link_args: [
