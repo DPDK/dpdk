@@ -1071,6 +1071,7 @@ rte_flow_expand_rss(struct rte_flow_expand_rss *buf, size_t size,
 	int elt = 0;
 	const struct rte_flow_item *last_item = NULL;
 
+	memset(&missed_item, 0, sizeof(missed_item));
 	lsize = offsetof(struct rte_flow_expand_rss, entry) +
 		elt_n * sizeof(buf->entry[0]);
 	if (lsize <= size) {
