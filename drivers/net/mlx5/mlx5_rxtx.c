@@ -4059,7 +4059,9 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 		 * Limits the amount of packets in one WQE
 		 * to improve CQE latency generation.
 		 */
-		nlim = RTE_MIN(pkts_n, MLX5_EMPW_MAX_PACKETS);
+		nlim = RTE_MIN(pkts_n, MLX5_TXOFF_CONFIG(MPW) ?
+				       MLX5_MPW_INLINE_MAX_PACKETS :
+				       MLX5_EMPW_MAX_PACKETS);
 		/* Check whether we have minimal amount WQEs */
 		if (unlikely(loc->wqe_free <
 			    ((2 + MLX5_EMPW_MIN_PACKETS + 3) / 4)))
