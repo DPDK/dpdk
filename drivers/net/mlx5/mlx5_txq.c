@@ -272,7 +272,6 @@ mlx5_tx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 	DRV_LOG(DEBUG, "port %u adding Tx queue %u to list",
 		dev->data->port_id, idx);
 	(*priv->txqs)[idx] = &txq_ctrl->txq;
-	txq_ctrl->type = MLX5_TXQ_TYPE_HAIRPIN;
 	return 0;
 }
 
