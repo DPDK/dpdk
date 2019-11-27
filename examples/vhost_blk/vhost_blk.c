@@ -856,6 +856,7 @@ new_device(int vid)
 				ctrlr->bdev->vid, i,
 				&blk_vq->last_avail_idx,
 				&blk_vq->last_used_idx);
+			assert(ret == 0);
 
 			blk_vq->avail_wrap_counter = blk_vq->last_avail_idx &
 				(1 << 15);
