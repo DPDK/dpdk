@@ -476,7 +476,7 @@ mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
 
 		rxq_data = (*priv->rxqs)[i];
 		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-		if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
+		if (rxq_ctrl && rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
 			rss_queue_arr[j++] = i;
 	}
 	rss_queue_n = j;

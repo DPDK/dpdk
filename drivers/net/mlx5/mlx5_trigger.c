@@ -106,9 +106,12 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 	unsigned int i;
 	int ret = 0;
 	enum mlx5_rxq_obj_type obj_type = MLX5_RXQ_OBJ_TYPE_IBV;
+	struct mlx5_rxq_data *rxq = NULL;
 
 	for (i = 0; i < priv->rxqs_n; ++i) {
-		if ((*priv->rxqs)[i]->lro) {
+		rxq = (*priv->rxqs)[i];
+
+		if (rxq && rxq->lro) {
 			obj_type =  MLX5_RXQ_OBJ_TYPE_DEVX_RQ;
 			break;
 		}
