@@ -483,7 +483,7 @@ service_lcore_en_dis_able(void)
 	int ret = rte_eal_remote_launch(service_remote_launch_func, NULL,
 					slcore_id);
 	TEST_ASSERT_EQUAL(0, ret, "Ex-service core remote launch failed.");
-	rte_eal_mp_wait_lcore();
+	rte_eal_wait_lcore(slcore_id);
 	TEST_ASSERT_EQUAL(1, service_remote_launch_flag,
 			"Ex-service core function call had no effect.");
 
