@@ -50,7 +50,7 @@ NUMA is required by most modern machines, not needed for non-NUMA architectures.
 
    git clone https://github.com/numactl/numactl.git
    cd numactl
-   git checkout v2.0.11 -b v2.0.11
+   git checkout v2.0.13 -b v2.0.13
    ./autogen.sh
    autoconf -i
    ./configure --host=aarch64-linux-gnu CC=aarch64-linux-gnu-gcc --prefix=<numa install dir>
