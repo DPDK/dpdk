@@ -941,7 +941,7 @@ F: doc/guides/cryptodevs/ccp.rst
 F: doc/guides/cryptodevs/features/ccp.ini
 
 ARMv8 Crypto
-M: Jerin Jacob <jerinj@marvell.com>
+M: Ruifeng Wang <ruifeng.wang@arm.com>
 F: drivers/crypto/armv8/
 F: doc/guides/cryptodevs/armv8.rst
 F: doc/guides/cryptodevs/features/armv8.ini
