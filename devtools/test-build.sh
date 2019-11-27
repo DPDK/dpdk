@@ -7,6 +7,7 @@ default_path=$PATH
 # Load config options:
 # - ARMV8_CRYPTO_LIB_PATH
 # - DPDK_BUILD_TEST_CONFIGS (defconfig1+option1+option2 defconfig2)
+# - DPDK_BUILD_TEST_DIR
 # - DPDK_DEP_ARCHIVE
 # - DPDK_DEP_BPF (y/[n])
 # - DPDK_DEP_CFLAGS
@@ -63,6 +64,7 @@ print_help () {
 [ -z $MAKE ] && echo "Cannot find make or gmake" && exit 1
 
 J=$DPDK_MAKE_JOBS
+builds_dir=${DPDK_BUILD_TEST_DIR:-.}
 short=false
 unset verbose
 maxerr=-Wfatal-errors
@@ -234,21 +236,24 @@ for conf in $configs ; do
 	. $(dirname $(readlink -f $0))/load-devel-config
 
 	options=$(echo $conf | sed 's,[^~+]*,,')
-	dir=$conf
+	dir=$builds_dir/$conf
 	config $dir $target $options
 
-	echo "================== Build $dir"
+	echo "================== Build $conf"
 	${MAKE} -j$J EXTRA_CFLAGS="$maxerr $DPDK_DEP_CFLAGS" \
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose O=$dir
 	! $short || break
-	echo "================== Build examples for $dir"
-	export RTE_SDK=$(pwd)
-	export RTE_TARGET=$dir
+	export RTE_TARGET=$target
+	rm -rf $dir/install
+	${MAKE} install O=$dir DESTDIR=$dir/install prefix=
+	echo "================== Build examples for $conf"
+	export RTE_SDK=$(readlink -f $dir)/install/share/dpdk
+	ln -sTf $(pwd)/lib $RTE_SDK/lib # workaround for vm_power_manager
 	${MAKE} -j$J -sC examples \
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose \
 		O=$(readlink -f $dir)/examples
 	unset RTE_TARGET
-	echo "################## $dir done."
+	echo "################## $conf done."
 	unset dir
 done
 

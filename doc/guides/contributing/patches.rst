@@ -480,6 +480,7 @@ Examples of configs are::
 The builds can be modified via the following environmental variables:
 
 * ``DPDK_BUILD_TEST_CONFIGS`` (target1+option1+option2 target2)
+* ``DPDK_BUILD_TEST_DIR``
 * ``DPDK_DEP_CFLAGS``
 * ``DPDK_DEP_LDFLAGS``
 * ``DPDK_DEP_PCAP`` (y/[n])
@@ -504,6 +505,12 @@ Compilation of patches is to be tested with ``devtools/test-meson-builds.sh`` sc
 
 The script internally checks for dependencies, then builds for several
 combinations of compilation configuration.
+By default, each build will be put in a subfolder of the current working directory.
+However, if it is preferred to place the builds in a different location,
+the environment variable ``DPDK_BUILD_TEST_DIR`` can be set to that desired location.
+For example, setting ``DPDK_BUILD_TEST_DIR=__builds`` will put all builds
+in a single subfolder called "__builds" created in the current directory.
+Setting ``DPDK_BUILD_TEST_DIR`` to an absolute directory path e.g. ``/tmp`` is also supported.
 
 
 Sending Patches

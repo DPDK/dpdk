@@ -12,8 +12,11 @@ PIPEFAIL=""
 set -o | grep -q pipefail && set -o pipefail && PIPEFAIL=1
 
 srcdir=$(dirname $(readlink -f $0))/..
+. $srcdir/devtools/load-devel-config
+
 MESON=${MESON:-meson}
 use_shared="--default-library=shared"
+builds_dir=${DPDK_BUILD_TEST_DIR:-.}
 
 if command -v gmake >/dev/null 2>&1 ; then
 	MAKE=gmake
@@ -56,7 +59,7 @@ load_env () # <target compiler>
 
 build () # <directory> <target compiler> <meson options>
 {
-	builddir=$1
+	builddir=$builds_dir/$1
 	shift
 	targetcc=$1
 	shift
@@ -131,8 +134,8 @@ done
 
 # Test installation of the x86-default target, to be used for checking
 # the sample apps build using the pkg-config file for cflags and libs
-build_path=build-x86-default
-export DESTDIR=$(pwd)/$build_path/install-root
+build_path=$(readlink -f $builds_dir/build-x86-default)
+export DESTDIR=$build_path/install-root
 $ninja_cmd -C $build_path install
 
 load_env cc
