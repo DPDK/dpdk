@@ -30,8 +30,7 @@ ssovf_octeontx_wqe_to_pkt(uint64_t work, uint16_t port_info)
 	octtx_wqe_t *wqe = (octtx_wqe_t *)(uintptr_t)work;
 
 	/* Get mbuf from wqe */
-	mbuf = (struct rte_mbuf *)((uintptr_t)wqe -
-			OCTTX_PACKET_WQE_SKIP);
+	mbuf = (struct rte_mbuf *)((uintptr_t)wqe - OCTTX_PACKET_WQE_SKIP);
 	rte_prefetch_non_temporal(mbuf);
 	mbuf->packet_type =
 		ptype_table[wqe->s.w2.lcty][wqe->s.w2.lety][wqe->s.w2.lfty];
@@ -44,6 +43,16 @@ ssovf_octeontx_wqe_to_pkt(uint64_t work, uint16_t port_info)
 	rte_mbuf_refcnt_set(mbuf, 1);
 
 	return mbuf;
+}
+
+static __rte_always_inline void
+ssovf_octeontx_wqe_free(uint64_t work)
+{
+	octtx_wqe_t *wqe = (octtx_wqe_t *)(uintptr_t)work;
+	struct rte_mbuf *mbuf;
+
+	mbuf = (struct rte_mbuf *)((uintptr_t)wqe - OCTTX_PACKET_WQE_SKIP);
+	rte_pktmbuf_free(mbuf);
 }
 
 static __rte_always_inline uint16_t
@@ -59,9 +68,13 @@ ssows_get_work(struct ssows *ws, struct rte_event *ev)
 	ws->cur_grp = sched_type_queue >> 2;
 	sched_type_queue = sched_type_queue << 38;
 	ev->event = sched_type_queue | (get_work0 & 0xffffffff);
+
 	if (get_work1 && ev->event_type == RTE_EVENT_TYPE_ETHDEV) {
 		ev->mbuf = ssovf_octeontx_wqe_to_pkt(get_work1,
 				(ev->event >> 20) & 0x7F);
+	} else if (unlikely((get_work0 & 0xFFFFFFFF) == 0xFFFFFFFF)) {
+		ssovf_octeontx_wqe_free(get_work1);
+		return 0;
 	} else {
 		ev->u64 = get_work1;
 	}
