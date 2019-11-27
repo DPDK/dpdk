@@ -34,29 +34,29 @@
 #define NEG_TEST_STR	"FAIL"
 
 struct fips_test_callback gcm_dec_vectors[] = {
-		{KEY_STR, parse_uint8_known_len_hex_str, &vec.cipher_auth.key},
+		{KEY_STR, parse_uint8_known_len_hex_str, &vec.aead.key},
 		{IV_STR, parse_uint8_known_len_hex_str, &vec.iv},
 		{CT_STR, parse_uint8_known_len_hex_str, &vec.ct},
-		{AAD_STR, parse_uint8_known_len_hex_str, &vec.cipher_auth.aad},
+		{AAD_STR, parse_uint8_known_len_hex_str, &vec.aead.aad},
 		{TAG_STR, parse_uint8_known_len_hex_str,
-				&vec.cipher_auth.digest},
+				&vec.aead.digest},
 		{NULL, NULL, NULL} /**< end pointer */
 };
 struct fips_test_callback gcm_interim_vectors[] = {
-		{KEYLEN_STR, parser_read_uint32_bit_val, &vec.cipher_auth.key},
+		{KEYLEN_STR, parser_read_uint32_bit_val, &vec.aead.key},
 		{IVLEN_STR, parser_read_uint32_bit_val, &vec.iv},
 		{PTLEN_STR, parser_read_uint32_bit_val, &vec.pt},
-		{AADLEN_STR, parser_read_uint32_bit_val, &vec.cipher_auth.aad},
+		{AADLEN_STR, parser_read_uint32_bit_val, &vec.aead.aad},
 		{TAGLEN_STR, parser_read_uint32_bit_val,
-				&vec.cipher_auth.digest},
+				&vec.aead.digest},
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
 struct fips_test_callback gcm_enc_vectors[] = {
-		{KEY_STR, parse_uint8_known_len_hex_str, &vec.cipher_auth.key},
+		{KEY_STR, parse_uint8_known_len_hex_str, &vec.aead.key},
 		{IV_STR, parse_uint8_known_len_hex_str, &vec.iv},
 		{PT_STR, parse_uint8_known_len_hex_str, &vec.pt},
-		{AAD_STR, parse_uint8_known_len_hex_str, &vec.cipher_auth.aad},
+		{AAD_STR, parse_uint8_known_len_hex_str, &vec.aead.aad},
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
