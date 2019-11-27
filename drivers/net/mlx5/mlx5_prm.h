@@ -99,6 +99,8 @@
  * in tx burst routine at the moment of freeing multiple mbufs.
  */
 #define MLX5_EMPW_MAX_PACKETS MLX5_TX_COMP_THRESH
+#define MLX5_MPW_MAX_PACKETS 6
+
 /*
  * Default packet length threshold to be inlined with
  * ordinary SEND. Inlining saves the MR key search

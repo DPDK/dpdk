@@ -3888,7 +3888,9 @@ mlx5_tx_burst_empw_simple(struct mlx5_txq_data *restrict txq,
 
 next_empw:
 		assert(NB_SEGS(loc->mbuf) == 1);
-		part = RTE_MIN(pkts_n, MLX5_EMPW_MAX_PACKETS);
+		part = RTE_MIN(pkts_n, MLX5_TXOFF_CONFIG(MPW) ?
+				       MLX5_MPW_MAX_PACKETS :
+				       MLX5_EMPW_MAX_PACKETS);
 		if (unlikely(loc->elts_free < part)) {
 			/* We have no enough elts to save all mbufs. */
 			if (unlikely(loc->elts_free < MLX5_EMPW_MIN_PACKETS))
