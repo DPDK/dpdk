@@ -774,7 +774,8 @@ F: doc/guides/nics/nfb.rst
 F: doc/guides/nics/features/nfb.ini
 
 Netronome nfp
-M: Alejandro Lucero <alejandro.lucero@netronome.com>
+M: Heinrich Kuhn <heinrich.kuhn@netronome.com>
+M: Jan Gutter <jan.gutter@netronome.com>
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
 F: doc/guides/nics/features/nfp*.ini
