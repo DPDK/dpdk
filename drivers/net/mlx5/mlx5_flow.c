@@ -2947,16 +2947,16 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl, mark_id);
 	if (mcp_res) {
 		/* For non-default rule. */
-		if (mark_id)
+		if (mark_id != MLX5_DEFAULT_COPY_ID)
 			mcp_res->refcnt++;
-		assert(mark_id || mcp_res->refcnt == 1);
+		assert(mark_id != MLX5_DEFAULT_COPY_ID || mcp_res->refcnt == 1);
 		return mcp_res;
 	}
 	/* Provide the full width of FLAG specific value. */
 	if (mark_id == (priv->sh->dv_regc0_mask & MLX5_FLOW_MARK_DEFAULT))
 		tag_spec.data = MLX5_FLOW_MARK_DEFAULT;
 	/* Build a new flow. */
-	if (mark_id) {
+	if (mark_id != MLX5_DEFAULT_COPY_ID) {
 		items[0] = (struct rte_flow_item){
 			.type = MLX5_RTE_FLOW_ITEM_TYPE_TAG,
 			.spec = &tag_spec,
@@ -3054,7 +3054,7 @@ flow_mreg_del_copy_action(struct rte_eth_dev *dev,
 	}
 	/*
 	 * We do not check availability of metadata registers here,
-	 * because copy resources are allocated in this case.
+	 * because copy resources are not allocated in this case.
 	 */
 	if (--mcp_res->refcnt)
 		return;
@@ -3133,7 +3133,8 @@ flow_mreg_del_default_copy_action(struct rte_eth_dev *dev)
 	/* Check if default flow is registered. */
 	if (!priv->mreg_cp_tbl)
 		return;
-	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl, 0ULL);
+	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl,
+					    MLX5_DEFAULT_COPY_ID);
 	if (!mcp_res)
 		return;
 	assert(mcp_res->flow);
@@ -3166,7 +3167,7 @@ flow_mreg_add_default_copy_action(struct rte_eth_dev *dev,
 	    !mlx5_flow_ext_mreg_supported(dev) ||
 	    !priv->sh->dv_regc0_mask)
 		return 0;
-	mcp_res = flow_mreg_add_copy_action(dev, 0, error);
+	mcp_res = flow_mreg_add_copy_action(dev, MLX5_DEFAULT_COPY_ID, error);
 	if (!mcp_res)
 		return -rte_errno;
 	return 0;
