@@ -1045,7 +1045,7 @@ eal_intr_handle_interrupts(int pfd, unsigned totalfds)
 static __attribute__((noreturn)) void *
 eal_intr_thread_main(__rte_unused void *arg)
 {
-	struct epoll_event ev;
+	struct epoll_event ev = { };
 
 	/* host thread, never break out */
 	for (;;) {
