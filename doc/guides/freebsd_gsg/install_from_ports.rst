@@ -84,47 +84,35 @@ compiled and run as below:
       INSTALL-APP helloworld
       INSTALL-MAP helloworld.map
 
-    sudo ./build/helloworld -l 0-3 -n 2
-
-    EAL: Contigmem driver has 2 buffers, each of size 1GB
+    sudo ./build//helloworld -l 0-3
     EAL: Sysctl reports 8 cpus
-    EAL: Detected lcore 0
-    EAL: Detected lcore 1
-    EAL: Detected lcore 2
-    EAL: Detected lcore 3
-    EAL: Support maximum 64 logical core(s) by configuration.
-    EAL: Detected 4 lcore(s)
-    EAL: Setting up physically contiguous memory...
-    EAL: Mapped memory segment 1 @ 0x802400000: len 1073741824
-    EAL: Mapped memory segment 2 @ 0x842400000: len 1073741824
-    EAL: WARNING: clock_gettime cannot use CLOCK_MONOTONIC_RAW and HPET
-         is not available - clock timings may be less accurate.
-    EAL: TSC frequency is ~3569023 KHz
-    EAL: PCI scan found 24 devices
-    EAL: Master core 0 is ready (tid=0x802006400)
-    EAL: Core 1 is ready (tid=0x802006800)
-    EAL: Core 3 is ready (tid=0x802007000)
-    EAL: Core 2 is ready (tid=0x802006c00)
+    EAL: Detected 8 lcore(s)
+    EAL: Detected 1 NUMA nodes
+    EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+    EAL: Selected IOVA mode 'PA'
+    EAL: Contigmem driver has 2 buffers, each of size 1GB
+    EAL: Mapped memory segment 0 @ 0x1040000000: physaddr:0x180000000, len 1073741824
+    EAL: Mapped memory segment 1 @ 0x1080000000: physaddr:0x1c0000000, len 1073741824
+    EAL: PCI device 0000:00:19.0 on NUMA socket 0
+    EAL:   probe driver: 8086:153b net_e1000_em
+    EAL:   0000:00:19.0 not managed by UIO driver, skipping
     EAL: PCI device 0000:01:00.0 on NUMA socket 0
-    EAL:   probe driver: 8086:10fb rte_ixgbe_pmd
-    EAL:   PCI memory mapped at 0x80074a000
-    EAL:   PCI memory mapped at 0x8007ca000
+    EAL:   probe driver: 8086:1572 net_i40e
+    EAL:   0000:01:00.0 not managed by UIO driver, skipping
     EAL: PCI device 0000:01:00.1 on NUMA socket 0
-    EAL:   probe driver: 8086:10fb rte_ixgbe_pmd
-    EAL:   PCI memory mapped at 0x8007ce000
-    EAL:   PCI memory mapped at 0x80084e000
-    EAL: PCI device 0000:02:00.0 on NUMA socket 0
-    EAL:   probe driver: 8086:10fb rte_ixgbe_pmd
-    EAL:   PCI memory mapped at 0x800852000
-    EAL:   PCI memory mapped at 0x8008d2000
-    EAL: PCI device 0000:02:00.1 on NUMA socket 0
-    EAL:   probe driver: 8086:10fb rte_ixgbe_pmd
-    EAL:   PCI memory mapped at 0x801b3f000
-    EAL:   PCI memory mapped at 0x8008d6000
+    EAL:   probe driver: 8086:1572 net_i40e
+    EAL:   0000:01:00.1 not managed by UIO driver, skipping
+    EAL: PCI device 0000:01:00.2 on NUMA socket 0
+    EAL:   probe driver: 8086:1572 net_i40e
+    EAL:   0000:01:00.2 not managed by UIO driver, skipping
+    EAL: PCI device 0000:01:00.3 on NUMA socket 0
+    EAL:   probe driver: 8086:1572 net_i40e
+    EAL:   0000:01:00.3 not managed by UIO driver, skipping
     hello from core 1
     hello from core 2
     hello from core 3
     hello from core 0
+
 
 .. note::
 
