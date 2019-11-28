@@ -37,49 +37,32 @@ Compilation of the DPDK
     The setup commands and installed packages needed on various systems may be different.
     For details on Linux distributions and the versions tested, please consult the DPDK Release Notes.
 
-*   GNU ``make``.
+*   General development tools including ``make``, and a supported C compiler such as ``gcc`` (version 4.9+) or ``clang`` (version 3.4+).
 
-*   coreutils: ``cmp``, ``sed``, ``grep``, ``arch``, etc.
+    * For RHEL/Fedora systems these can be installed using ``dnf groupinstall "Development Tools"``
 
-*   gcc: versions 4.9 or later is recommended for all platforms.
-    On some distributions, some specific compiler flags and linker flags are enabled by
-    default and affect performance (``-fstack-protector``, for example). Please refer to the documentation
-    of your distribution and to ``gcc -dumpspecs``.
+    * For Ubuntu/Debian systems these can be installed using ``apt install build-essential``
 
-*   libc headers, often packaged as ``gcc-multilib`` (``glibc-devel.i686`` / ``libc6-dev-i386``;
-    ``glibc-devel.x86_64`` / ``libc6-dev`` for 64-bit compilation on Intel architecture;
-    ``glibc-devel.ppc64`` for 64 bit IBM Power architecture;)
+*   Python, recommended version 3.5+.
 
-*   Linux kernel headers or sources required to build kernel modules. (kernel - devel.x86_64;
-    kernel - devel.ppc64)
+    * Python v3.5+ is needed to build DPDK using meson and ninja
 
-*   Additional packages required for 32-bit compilation on 64-bit systems are:
+    * Python 2.7+ or 3.2+, to use various helper scripts included in the DPDK package.
 
-    * glibc.i686, libgcc.i686, libstdc++.i686 and glibc-devel.i686 for Intel i686/x86_64;
+*   Meson (version 0.47.1+) and ninja
 
-    * glibc.ppc64, libgcc.ppc64, libstdc++.ppc64 and glibc-devel.ppc64 for IBM ppc_64;
+    * ``meson`` & ``ninja-build`` packages in most Linux distributions
 
-    .. note::
-
-       x86_x32 ABI is currently supported with distribution packages only on Ubuntu
-       higher than 13.10 or recent Debian distribution. The only supported  compiler is gcc 4.9+.
+    * If the packaged version is below the minimum version, the latest versions
+      can be installed from Python's "pip" repository: ``pip3 install meson ninja``
 
 *   Library for handling NUMA (Non Uniform Memory Access).
 
-    * numactl-devel in Red Hat/Fedora;
+    * ``numactl-devel`` in RHEL/Fedora;
 
-    * libnuma-dev in Debian/Ubuntu;
+    * ``libnuma-dev`` in Debian/Ubuntu;
 
-    .. note::
-
-        On systems with NUMA support, `libnuma-dev` (aka `numactl-devel`)
-        is a recommended dependency when `--legacy-mem` switch is used,
-        and a *required* dependency if default memory mode is used.
-        While DPDK will compile and run without `libnuma`
-        even on NUMA-enabled systems,
-        both usability and performance will be degraded.
-
-*   Python, version 2.7+ or 3.2+, to use various helper scripts included in the DPDK package.
+*   Linux kernel headers or sources required to build kernel modules.
 
 .. note::
 
@@ -96,10 +79,29 @@ Compilation of the DPDK
     which allows users to take leading edge advantage of IBM's latest POWER hardware features on Linux. To install
     it, see the IBM official installation document.
 
-*   libpcap headers and libraries (libpcap-devel) to compile and use the libpcap-based poll-mode driver.
-    This driver is disabled by default and can be enabled by setting ``CONFIG_RTE_LIBRTE_PMD_PCAP=y`` in the build time config file.
+**Additional Libraries**
 
-*   libarchive headers and library are needed for some unit tests using tar to get their resources.
+A number of DPDK components, such as libraries and poll-mode drivers (PMDs) have additional dependencies.
+For DPDK builds using meson, the presence or absence of these dependencies will be
+automatically detected enabling or disabling the relevant components appropriately.
+
+For builds using make, these components are disabled in the default configuration and
+need to be enabled manually by changing the relevant setting to "y" in the build configuration file
+i.e. the ``.config`` file in the build folder.
+
+In each case, the relevant library development package (``-devel`` or ``-dev``) is needed to build the DPDK components.
+
+For libraries the additional dependencies include:
+
+*   libarchive: for some unit tests using tar to get their resources.
+
+*   jansson: to compile and use the telemetry library.
+
+*   libelf: to compile and use the bpf library.
+
+For poll-mode drivers, the additional dependencies for each driver can be
+found in that driver's documentation in the relevant DPDK guide document,
+e.g. :doc:`../nics/index`
 
 
 Running DPDK Applications
