@@ -11,12 +11,6 @@ install it from the ports collection. Details of getting and using the ports
 collection are documented in the
 `FreeBSD Handbook <http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/index.html>`_.
 
-.. note::
-
-    Testing has been performed using FreeBSD 10.0-RELEASE (x86_64) and requires the
-    installation of the kernel sources, which should be included during the
-    installation of FreeBSD.
-
 Installing the DPDK FreeBSD Port
 --------------------------------
 
