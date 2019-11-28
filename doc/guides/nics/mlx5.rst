@@ -1115,26 +1115,36 @@ Supported hardware offloads
 .. table:: Minimal SW/HW versions for rte_flow offloads
 
    +-----------------------+-----------------+-----------------+
-   | Offload               | with E-Switch   | with vNIC       |
+   | Offload               | with E-Switch   | with NIC        |
    +=======================+=================+=================+
    | Count                 | | DPDK 19.05    | | DPDK 19.02    |
    |                       | | OFED 4.6      | | OFED 4.6      |
    |                       | | rdma-core 24  | | rdma-core 23  |
    |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
-   | Drop / Queue / RSS    | | DPDK 19.05    | | DPDK 18.11    |
+   | Drop                  | | DPDK 19.05    | | DPDK 18.11    |
    |                       | | OFED 4.6      | | OFED 4.5      |
    |                       | | rdma-core 24  | | rdma-core 23  |
    |                       | | ConnectX-5    | | ConnectX-4    |
    +-----------------------+-----------------+-----------------+
+   | Queue / RSS           | |               | | DPDK 18.11    |
+   |                       | |     N/A       | | OFED 4.5      |
+   |                       | |               | | rdma-core 23  |
+   |                       | |               | | ConnectX-4    |
+   +-----------------------+-----------------+-----------------+
    | Encapsulation         | | DPDK 19.05    | | DPDK 19.02    |
-   | (VXLAN / NVGRE / RAW) | | OFED 4.6-2    | | OFED 4.6      |
+   | (VXLAN / NVGRE / RAW) | | OFED 4.7-1    | | OFED 4.6      |
    |                       | | rdma-core 24  | | rdma-core 23  |
    |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
+   | Encapsulation         | | DPDK 19.11    | | DPDK 19.11    |
+   | GENEVE                | | OFED 4.7-3    | | OFED 4.7-3    |
+   |                       | | rdma-core 27  | | rdma-core 27  |
+   |                       | | ConnectX-5    | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
    | | Header rewrite      | | DPDK 19.05    | | DPDK 19.02    |
-   | | (set_ipv4_src /     | | OFED 4.6-2    | | OFED 4.6-2    |
-   | | set_ipv4_dst /      | | rdma-core 24  | | rdma-core 23  |
+   | | (set_ipv4_src /     | | OFED 4.7-1    | | OFED 4.7-1    |
+   | | set_ipv4_dst /      | | rdma-core 24  | | rdma-core 24  |
    | | set_ipv6_src /      | | ConnectX-5    | | ConnectX-5    |
    | | set_ipv6_dst /      | |               | |               |
    | | set_tp_src /        | |               | |               |
@@ -1145,11 +1155,11 @@ Supported hardware offloads
    | | set_mac_dst)        | |               | |               |
    | |                     | |               | |               |
    | | (of_set_vlan_vid)   | | DPDK 19.11    | | DPDK 19.11    |
-   |                       | | OFED 4.6-4    | | OFED 4.6-4    |
+   |                       | | OFED 4.7-1    | | OFED 4.7-1    |
    |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
    | Jump                  | | DPDK 19.05    | | DPDK 19.02    |
-   |                       | | OFED 4.6-4    | | OFED 4.6-4    |
+   |                       | | OFED 4.7-1    | | OFED 4.7-1    |
    |                       | | rdma-core 24  | | N/A           |
    |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
@@ -1159,15 +1169,30 @@ Supported hardware offloads
    |                       | | ConnectX-5    | | ConnectX-4    |
    +-----------------------+-----------------+-----------------+
    | Port ID               | | DPDK 19.05    |     | N/A       |
-   |                       | | OFED 4.6      |     | N/A       |
+   |                       | | OFED 4.7-1    |     | N/A       |
    |                       | | rdma-core 24  |     | N/A       |
    |                       | | ConnectX-5    |     | N/A       |
    +-----------------------+-----------------+-----------------+
    | | VLAN                | | DPDK 19.11    | | DPDK 19.11    |
-   | | (of_pop_vlan /      | | OFED 4.6-4    | | OFED 4.6-4    |
+   | | (of_pop_vlan /      | | OFED 4.7-1    | | OFED 4.7-1    |
    | | of_push_vlan /      | | ConnectX-5    | | ConnectX-5    |
    | | of_set_vlan_pcp /   |                 |                 |
    | | of_set_vlan_vid)    |                 |                 |
+   +-----------------------+-----------------+-----------------+
+   | Hairpin               | |               | | DPDK 19.11    |
+   |                       | |     N/A       | | OFED 4.7-3    |
+   |                       | |               | | rdma-core 26  |
+   |                       | |               | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
+   | Meta data             | |  DPDK 19.11   | | DPDK 19.11    |
+   |                       | |  OFED 4.7-3   | | OFED 4.7-3    |
+   |                       | |  rdma-core 26 | | rdma-core 26  |
+   |                       | |  ConnectX-5   | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
+   | Metering              | |  DPDK 19.11   | | DPDK 19.11    |
+   |                       | |  OFED 4.7-3   | | OFED 4.7-3    |
+   |                       | |  rdma-core 26 | | rdma-core 26  |
+   |                       | |  ConnectX-5   | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
 
 Notes for testpmd
