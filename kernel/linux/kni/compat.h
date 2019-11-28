@@ -124,9 +124,9 @@
 
 /*
  * iova to kva mapping support can be provided since 4.6.0, but required
- * kernel version increased to > 4.9.0 because of the updates in
+ * kernel version increased to >= 4.10.0 because of the updates in
  * get_user_pages_remote() kernel API
  */
-#if KERNEL_VERSION(4, 9, 0) < LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 10, 0) <= LINUX_VERSION_CODE
 #define HAVE_IOVA_TO_KVA_MAPPING_SUPPORT
 #endif
