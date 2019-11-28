@@ -17,7 +17,7 @@ addons:
 
 aarch64_packages: &aarch64_packages
   - *required_packages
-  - [gcc-aarch64-linux-gnu, libc6-dev-arm64-cross]
+  - [gcc-aarch64-linux-gnu, libc6-dev-arm64-cross, pkg-config-aarch64-linux-gnu]
 
 extra_packages: &extra_packages
   - *required_packages

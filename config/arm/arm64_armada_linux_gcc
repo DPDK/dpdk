@@ -4,6 +4,7 @@ cpp = 'aarch64-linux-gnu-cpp'
 ar = 'aarch64-linux-gnu-ar'
 as = 'aarch64-linux-gnu-as'
 strip = 'aarch64-linux-gnu-strip'
+pkgconfig = 'aarch64-linux-gnu-pkg-config'
 pcap-config = ''
 
 [host_machine]

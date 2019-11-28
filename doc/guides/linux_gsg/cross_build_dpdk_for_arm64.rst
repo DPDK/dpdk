@@ -82,6 +82,12 @@ Copy the NUMA header files and lib to the cross compiler's directories:
 Cross Compiling DPDK using Meson
 --------------------------------
 
+Meson depends on pkgconfig to find the dependencies.
+The package ``pkg-config-aarch64-linux-gnu`` is required for aarch64.
+To install it in Ubuntu::
+
+   sudo apt-get install pkg-config-aarch64-linux-gnu
+
 To cross-compile DPDK on a desired target machine we can use the following
 command::
 
