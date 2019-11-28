@@ -756,3 +756,165 @@ Tested Platforms
     * Ubuntu 16.10
     * Ubuntu 18.04.1
     * Ubuntu 19.04
+
+* Intel\ |reg| platforms with Mellanox\ |reg| NICs combinations
+
+  * CPU:
+
+    * Intel\ |reg| Xeon\ |reg| Gold 6154 CPU @ 3.00GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2697A v4 @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2697 v3 @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2680 v2 @ 2.80GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2650 v4 @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2640 @ 2.50GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2620 v4 @ 2.10GHz
+
+  * OS:
+
+    * Red Hat Enterprise Linux Server release 8.0 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.7 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.6 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.5 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.4 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.3 (Maipo)
+    * Red Hat Enterprise Linux Server release 7.2 (Maipo)
+    * Ubuntu 19.04
+    * Ubuntu 18.10
+    * Ubuntu 18.04
+    * Ubuntu 16.04
+    * SUSE Linux Enterprise Server 15
+
+  * OFED:
+
+    * MLNX_OFED 4.6-1.0.1.1
+    * MLNX_OFED 4.7-1.0.0.1
+    * MLNX_OFED 4.7-3.1.9.0 and above
+
+  * upstream kernel:
+
+    * Linux 5.3 and above
+
+  * rdma-core:
+
+    * rdma-core-24.1-1 and above
+
+  * NICs:
+
+    * Mellanox\ |reg| ConnectX\ |reg|-3 Pro 40G MCX354A-FCC_Ax (2x40G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1007
+      * Firmware version: 2.42.5000
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 10G MCX4111A-XCAT (1x10G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 10G MCX4121A-XCAT (2x10G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 25G MCX4111A-ACAT (1x25G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 25G MCX4121A-ACAT (2x25G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 40G MCX4131A-BCAT/MCX413A-BCAT (1x40G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 40G MCX415A-BCAT (1x40G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX4131A-GCAT/MCX413A-GCAT (1x50G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX414A-BCAT (2x50G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX415A-GCAT/MCX416A-BCAT/MCX416A-GCAT (2x50G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX415A-CCAT (1x100G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 100G MCX416A-CCAT (2x100G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Device ID: 15b3:1013
+      * Firmware version: 12.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 Lx 10G MCX4121A-XCAT (2x10G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1015
+      * Firmware version: 14.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4121A-ACAT (2x25G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Device ID: 15b3:1015
+      * Firmware version: 14.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-5 100G MCX556A-ECAT (2x100G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Device ID: 15b3:1017
+      * Firmware version: 16.26.2032 and above
+
+    * Mellanox\ |reg| ConnectX\ |reg|-5 Ex EN 100G MCX516A-CDAT (2x100G)
+
+      * Host interface: PCI Express 4.0 x16
+      * Device ID: 15b3:1019
+      * Firmware version: 16.26.2032 and above
+
+* IBM Power 9 platforms with Mellanox\ |reg| NICs combinations
+
+  * CPU:
+
+    * POWER9 2.2 (pvr 004e 1202) 2300MHz
+
+  * OS:
+
+    * Ubuntu 18.04.1 LTS (Bionic Beaver)
+
+  * NICs:
+
+    * Mellanox\ |reg| ConnectX\ |reg|-5 100G MCX556A-ECAT (2x100G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Device ID: 15b3:1017
+      * Firmware version: 16.26.1040
+
+  * OFED:
+
+    * MLNX_OFED 4.7-1.0.0.2
