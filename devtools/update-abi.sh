@@ -42,5 +42,5 @@ echo "Path to update:" $update_path
 echo $abi_version > $abi_version_file
 
 find $update_path -name  \*version.map -exec \
-      ./buildtools/update_version_map_abi.py {} \
+      devtools/update_version_map_abi.py {} \
       $abi_version \; -print

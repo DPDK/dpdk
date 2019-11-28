@@ -6,7 +6,7 @@
 A Python program that updates and merges all available stable ABI versions into
 one ABI version, while leaving experimental ABI exactly as it is. The intended
 ABI version is supplied via command-line parameter. This script is to be called
-from the buildtools/update-abi.sh utility.
+from the devtools/update-abi.sh utility.
 """
 
 from __future__ import print_function
