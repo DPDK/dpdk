@@ -77,8 +77,23 @@ Copy the NUMA header files and lib to the cross compiler's directories:
 
 .. _configure_and_cross_compile_dpdk_build:
 
-Configure and cross compile DPDK Build
---------------------------------------
+Cross Compiling DPDK using Meson
+--------------------------------
+
+To cross-compile DPDK on a desired target machine we can use the following
+command::
+
+	meson cross-build --cross-file <target_machine_configuration>
+	ninja -C cross-build
+
+For example if the target machine is arm64 we can use the following
+command::
+
+	meson arm64-build --cross-file config/arm/arm64_armv8_linux_gcc
+	ninja -C arm64-build
+
+Configure and Cross Compile DPDK using Make
+-------------------------------------------
 To configure a build, choose one of the target configurations, like arm64-dpaa-linux-gcc and arm64-thunderx-linux-gcc.
 
 .. code-block:: console
@@ -118,18 +133,3 @@ To compile for non-NUMA targets, without compiling the kernel modules, use the f
    .. code-block:: console
 
       make -j CROSS=aarch64-linux-gnu- CONFIG_RTE_KNI_KMOD=n CONFIG_RTE_EAL_IGB_UIO=n EXTRA_CFLAGS="-isystem <numa_install_dir>/include" EXTRA_LDFLAGS="-L<numa_install_dir>/lib -lnuma"
-
-Meson Cross Compiling DPDK
---------------------------
-
-To cross-compile DPDK on a desired target machine we can use the following
-command::
-
-	meson cross-build --cross-file <target_machine_configuration>
-	ninja -C cross-build
-
-For example if the target machine is arm64 we can use the following
-command::
-
-	meson arm64-build --cross-file config/arm/arm64_armv8_linux_gcc
-	ninja -C arm64-build
