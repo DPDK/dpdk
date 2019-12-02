@@ -29,7 +29,6 @@ struct lcore_config {
 	unsigned int core_id;      /**< core number on socket for this lcore */
 	int core_index;            /**< relative index, starting from 0 */
 	uint8_t core_role;         /**< role of core eg: OFF, RTE, SERVICE */
-	uint8_t detected;          /**< true if lcore was detected */
 
 	rte_cpuset_t cpuset;       /**< cpu set which the lcore affinity to */
 };

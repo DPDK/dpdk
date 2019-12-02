@@ -139,9 +139,7 @@ rte_eal_cpu_init(void)
 		socket_id = eal_cpu_socket_id(lcore_id);
 		lcore_to_socket_id[lcore_id] = socket_id;
 
-		/* in 1:1 mapping, record related cpu detected state */
-		lcore_config[lcore_id].detected = eal_cpu_detected(lcore_id);
-		if (lcore_config[lcore_id].detected == 0) {
+		if (eal_cpu_detected(lcore_id) == 0) {
 			config->lcore_role[lcore_id] = ROLE_OFF;
 			lcore_config[lcore_id].core_index = -1;
 			continue;

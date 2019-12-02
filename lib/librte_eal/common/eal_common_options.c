@@ -373,7 +373,7 @@ eal_parse_service_coremask(const char *coremask)
 					return -1;
 				}
 
-				if (!lcore_config[idx].detected) {
+				if (eal_cpu_detected(idx) == 0) {
 					RTE_LOG(ERR, EAL,
 						"lcore %u unavailable\n", idx);
 					return -1;
@@ -429,7 +429,7 @@ update_lcore_config(int *cores)
 
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
 		if (cores[i] != -1) {
-			if (!lcore_config[i].detected) {
+			if (eal_cpu_detected(i) == 0) {
 				RTE_LOG(ERR, EAL, "lcore %u unavailable\n", i);
 				ret = -1;
 				continue;
@@ -785,7 +785,7 @@ convert_to_cpuset(rte_cpuset_t *cpusetp,
 		if (!set[idx])
 			continue;
 
-		if (!lcore_config[idx].detected) {
+		if (eal_cpu_detected(idx) == 0) {
 			RTE_LOG(ERR, EAL, "core %u "
 				"unavailable\n", idx);
 			return -1;
@@ -1138,7 +1138,7 @@ available_cores(void)
 
 	/* find the first available cpu */
 	for (idx = 0; idx < RTE_MAX_LCORE; idx++) {
-		if (!lcore_config[idx].detected)
+		if (eal_cpu_detected(idx) == 0)
 			continue;
 		break;
 	}
@@ -1152,7 +1152,7 @@ available_cores(void)
 	sequence = 0;
 
 	for (idx++ ; idx < RTE_MAX_LCORE; idx++) {
-		if (!lcore_config[idx].detected)
+		if (eal_cpu_detected(idx) == 0)
 			continue;
 
 		if (idx == previous + 1) {
