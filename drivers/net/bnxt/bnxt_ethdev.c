@@ -4028,49 +4028,60 @@ static void bnxt_cancel_fw_health_check(struct bnxt *bp)
 	bp->flags &= ~BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED;
 }
 
-static bool bnxt_vf_pciid(uint16_t id)
+static bool bnxt_vf_pciid(uint16_t device_id)
 {
-	if (id == BROADCOM_DEV_ID_57304_VF ||
-	    id == BROADCOM_DEV_ID_57406_VF ||
-	    id == BROADCOM_DEV_ID_5731X_VF ||
-	    id == BROADCOM_DEV_ID_5741X_VF ||
-	    id == BROADCOM_DEV_ID_57414_VF ||
-	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF1 ||
-	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF2 ||
-	    id == BROADCOM_DEV_ID_58802_VF ||
-	    id == BROADCOM_DEV_ID_57500_VF1 ||
-	    id == BROADCOM_DEV_ID_57500_VF2)
+	switch (device_id) {
+	case BROADCOM_DEV_ID_57304_VF:
+	case BROADCOM_DEV_ID_57406_VF:
+	case BROADCOM_DEV_ID_5731X_VF:
+	case BROADCOM_DEV_ID_5741X_VF:
+	case BROADCOM_DEV_ID_57414_VF:
+	case BROADCOM_DEV_ID_STRATUS_NIC_VF1:
+	case BROADCOM_DEV_ID_STRATUS_NIC_VF2:
+	case BROADCOM_DEV_ID_58802_VF:
+	case BROADCOM_DEV_ID_57500_VF1:
+	case BROADCOM_DEV_ID_57500_VF2:
+		/* FALLTHROUGH */
 		return true;
-	return false;
+	default:
+		return false;
+	}
 }
 
-static bool bnxt_thor_device(uint16_t id)
+static bool bnxt_thor_device(uint16_t device_id)
 {
-	if (id == BROADCOM_DEV_ID_57508 ||
-	    id == BROADCOM_DEV_ID_57504 ||
-	    id == BROADCOM_DEV_ID_57502 ||
-	    id == BROADCOM_DEV_ID_57508_MF1 ||
-	    id == BROADCOM_DEV_ID_57504_MF1 ||
-	    id == BROADCOM_DEV_ID_57502_MF1 ||
-	    id == BROADCOM_DEV_ID_57508_MF2 ||
-	    id == BROADCOM_DEV_ID_57504_MF2 ||
-	    id == BROADCOM_DEV_ID_57502_MF2 ||
-	    id == BROADCOM_DEV_ID_57500_VF1 ||
-	    id == BROADCOM_DEV_ID_57500_VF2)
+	switch (device_id) {
+	case BROADCOM_DEV_ID_57508:
+	case BROADCOM_DEV_ID_57504:
+	case BROADCOM_DEV_ID_57502:
+	case BROADCOM_DEV_ID_57508_MF1:
+	case BROADCOM_DEV_ID_57504_MF1:
+	case BROADCOM_DEV_ID_57502_MF1:
+	case BROADCOM_DEV_ID_57508_MF2:
+	case BROADCOM_DEV_ID_57504_MF2:
+	case BROADCOM_DEV_ID_57502_MF2:
+	case BROADCOM_DEV_ID_57500_VF1:
+	case BROADCOM_DEV_ID_57500_VF2:
+		/* FALLTHROUGH */
 		return true;
-
-	return false;
+	default:
+		return false;
+	}
 }
 
 bool bnxt_stratus_device(struct bnxt *bp)
 {
-	uint16_t id = bp->pdev->id.device_id;
+	uint16_t device_id = bp->pdev->id.device_id;
 
-	if (id == BROADCOM_DEV_ID_STRATUS_NIC ||
-	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF1 ||
-	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF2)
+	switch (device_id) {
+	case BROADCOM_DEV_ID_STRATUS_NIC:
+	case BROADCOM_DEV_ID_STRATUS_NIC_VF1:
+	case BROADCOM_DEV_ID_STRATUS_NIC_VF2:
+		/* FALLTHROUGH */
 		return true;
-	return false;
+	default:
+		return false;
+	}
 }
 
 static int bnxt_init_board(struct rte_eth_dev *eth_dev)
