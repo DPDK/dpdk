@@ -4192,7 +4192,6 @@ int bnxt_hwrm_clear_em_filter(struct bnxt *bp, struct bnxt_filter_info *filter)
 	if (filter->fw_em_filter_id == UINT64_MAX)
 		return 0;
 
-	PMD_DRV_LOG(ERR, "Clear EM filter\n");
 	HWRM_PREP(req, CFA_EM_FLOW_FREE, BNXT_USE_KONG(bp));
 
 	req.em_filter_id = rte_cpu_to_le_64(filter->fw_em_filter_id);
