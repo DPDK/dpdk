@@ -365,20 +365,25 @@ dpaa2_check_lcore_cpuset(void)
 		dpaa2_cpu[lcore_id] = 0xffffffff;
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		for (i = 0; i < RTE_MAX_LCORE; i++) {
-			rte_cpuset_t cpuset = rte_lcore_cpuset(lcore_id);
+		rte_cpuset_t cpuset = rte_lcore_cpuset(lcore_id);
 
-			if (CPU_ISSET(i, &cpuset)) {
-				RTE_LOG(DEBUG, EAL, "lcore id = %u cpu=%u\n",
-					lcore_id, i);
-				if (dpaa2_cpu[lcore_id] != 0xffffffff) {
-					DPAA2_BUS_ERR(
-				    "ERR:lcore map to multi-cpu not supported");
-					ret = -1;
-				} else  {
-					dpaa2_cpu[lcore_id] = i;
-				}
+		for (i = 0; i < CPU_SETSIZE; i++) {
+			if (!CPU_ISSET(i, &cpuset))
+				continue;
+			if (i >= RTE_MAX_LCORE) {
+				DPAA2_BUS_ERR("ERR:lcore map to core %u (>= %u) not supported",
+					i, RTE_MAX_LCORE);
+				ret = -1;
+				continue;
 			}
+			RTE_LOG(DEBUG, EAL, "lcore id = %u cpu=%u\n",
+				lcore_id, i);
+			if (dpaa2_cpu[lcore_id] != 0xffffffff) {
+				DPAA2_BUS_ERR("ERR:lcore map to multi-cpu not supported");
+				ret = -1;
+				continue;
+			}
+			dpaa2_cpu[lcore_id] = i;
 		}
 	}
 	return ret;

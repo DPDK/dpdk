@@ -658,14 +658,14 @@ eal_parse_master_lcore(const char *arg)
  *                       ',' used for a single number.
  */
 static int
-eal_parse_set(const char *input, uint16_t set[], unsigned num)
+eal_parse_set(const char *input, rte_cpuset_t *set)
 {
 	unsigned idx;
 	const char *str = input;
 	char *end = NULL;
 	unsigned min, max;
 
-	memset(set, 0, num * sizeof(uint16_t));
+	CPU_ZERO(set);
 
 	while (isblank(*str))
 		str++;
@@ -678,7 +678,7 @@ eal_parse_set(const char *input, uint16_t set[], unsigned num)
 	if (*str != '(') {
 		errno = 0;
 		idx = strtoul(str, &end, 10);
-		if (errno || end == NULL || idx >= num)
+		if (errno || end == NULL || idx >= CPU_SETSIZE)
 			return -1;
 		else {
 			while (isblank(*end))
@@ -696,7 +696,7 @@ eal_parse_set(const char *input, uint16_t set[], unsigned num)
 
 				errno = 0;
 				idx = strtoul(end, &end, 10);
-				if (errno || end == NULL || idx >= num)
+				if (errno || end == NULL || idx >= CPU_SETSIZE)
 					return -1;
 				max = idx;
 				while (isblank(*end))
@@ -711,7 +711,7 @@ eal_parse_set(const char *input, uint16_t set[], unsigned num)
 
 			for (idx = RTE_MIN(min, max);
 			     idx <= RTE_MAX(min, max); idx++)
-				set[idx] = 1;
+				CPU_SET(idx, set);
 
 			return end - input;
 		}
@@ -736,7 +736,7 @@ eal_parse_set(const char *input, uint16_t set[], unsigned num)
 		/* get the digit value */
 		errno = 0;
 		idx = strtoul(str, &end, 10);
-		if (errno || end == NULL || idx >= num)
+		if (errno || end == NULL || idx >= CPU_SETSIZE)
 			return -1;
 
 		/* go ahead to separator '-',',' and ')' */
@@ -753,7 +753,7 @@ eal_parse_set(const char *input, uint16_t set[], unsigned num)
 				min = idx;
 			for (idx = RTE_MIN(min, max);
 			     idx <= RTE_MAX(min, max); idx++)
-				set[idx] = 1;
+				CPU_SET(idx, set);
 
 			min = RTE_MAX_LCORE;
 		} else
@@ -772,17 +772,13 @@ eal_parse_set(const char *input, uint16_t set[], unsigned num)
 	return str - input;
 }
 
-/* convert from set array to cpuset bitmap */
 static int
-convert_to_cpuset(rte_cpuset_t *cpusetp,
-	      uint16_t *set, unsigned num)
+check_cpuset(rte_cpuset_t *set)
 {
-	unsigned idx;
+	unsigned int idx;
 
-	CPU_ZERO(cpusetp);
-
-	for (idx = 0; idx < num; idx++) {
-		if (!set[idx])
+	for (idx = 0; idx < CPU_SETSIZE; idx++) {
+		if (!CPU_ISSET(idx, set))
 			continue;
 
 		if (eal_cpu_detected(idx) == 0) {
@@ -790,10 +786,7 @@ convert_to_cpuset(rte_cpuset_t *cpusetp,
 				"unavailable\n", idx);
 			return -1;
 		}
-
-		CPU_SET(idx, cpusetp);
 	}
-
 	return 0;
 }
 
@@ -815,7 +808,8 @@ static int
 eal_parse_lcores(const char *lcores)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
-	static uint16_t set[RTE_MAX_LCORE];
+	rte_cpuset_t lcore_set;
+	unsigned int set_count;
 	unsigned idx = 0;
 	unsigned count = 0;
 	const char *lcore_start = NULL;
@@ -864,18 +858,13 @@ eal_parse_lcores(const char *lcores)
 		lcores += strcspn(lcores, "@,");
 
 		if (*lcores == '@') {
-			/* explicit assign cpu_set */
-			offset = eal_parse_set(lcores + 1, set, RTE_DIM(set));
+			/* explicit assign cpuset and update the end cursor */
+			offset = eal_parse_set(lcores + 1, &cpuset);
 			if (offset < 0)
-				goto err;
-
-			/* prepare cpu_set and update the end cursor */
-			if (0 > convert_to_cpuset(&cpuset,
-						  set, RTE_DIM(set)))
 				goto err;
 			end = lcores + 1 + offset;
 		} else { /* ',' or '\0' */
-			/* haven't given cpu_set, current loop done */
+			/* haven't given cpuset, current loop done */
 			end = lcores;
 
 			/* go back to check <number>-<number> */
@@ -889,18 +878,19 @@ eal_parse_lcores(const char *lcores)
 			goto err;
 
 		/* parse lcore_set from start point */
-		if (0 > eal_parse_set(lcore_start, set, RTE_DIM(set)))
+		if (eal_parse_set(lcore_start, &lcore_set) < 0)
 			goto err;
 
-		/* without '@', by default using lcore_set as cpu_set */
-		if (*lcores != '@' &&
-		    0 > convert_to_cpuset(&cpuset, set, RTE_DIM(set)))
-			goto err;
+		/* without '@', by default using lcore_set as cpuset */
+		if (*lcores != '@')
+			rte_memcpy(&cpuset, &lcore_set, sizeof(cpuset));
 
+		set_count = CPU_COUNT(&lcore_set);
 		/* start to update lcore_set */
 		for (idx = 0; idx < RTE_MAX_LCORE; idx++) {
-			if (!set[idx])
+			if (!CPU_ISSET(idx, &lcore_set))
 				continue;
+			set_count--;
 
 			if (cfg->lcore_role[idx] != ROLE_RTE) {
 				lcore_config[idx].core_index = count;
@@ -912,9 +902,16 @@ eal_parse_lcores(const char *lcores)
 				CPU_ZERO(&cpuset);
 				CPU_SET(idx, &cpuset);
 			}
+
+			if (check_cpuset(&cpuset) < 0)
+				goto err;
 			rte_memcpy(&lcore_config[idx].cpuset, &cpuset,
 				   sizeof(rte_cpuset_t));
 		}
+
+		/* some cores from the lcore_set can't be handled by EAL */
+		if (set_count != 0)
+			goto err;
 
 		lcores = end + 1;
 	} while (*end != '\0');
