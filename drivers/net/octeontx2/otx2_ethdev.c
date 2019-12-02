@@ -204,7 +204,7 @@ cgx_intlbk_enable(struct otx2_eth_dev *dev, bool en)
 {
 	struct otx2_mbox *mbox = dev->mbox;
 
-	if (otx2_dev_is_vf_or_sdp(dev))
+	if (en && otx2_dev_is_vf_or_sdp(dev))
 		return -ENOTSUP;
 
 	if (en)
