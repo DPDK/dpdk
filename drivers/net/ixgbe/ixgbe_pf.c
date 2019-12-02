@@ -544,6 +544,7 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t new_mtu = msgbuf[1];
 	uint32_t max_frs;
+	uint32_t hlreg0;
 	int max_frame = new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
 	/* X540 and X550 support jumbo frames in IOV mode */
@@ -560,6 +561,18 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 	max_frs = (IXGBE_READ_REG(hw, IXGBE_MAXFRS) &
 		   IXGBE_MHADD_MFS_MASK) >> IXGBE_MHADD_MFS_SHIFT;
 	if (max_frs < new_mtu) {
+		hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
+		if (new_mtu > RTE_ETHER_MAX_LEN) {
+			dev->data->dev_conf.rxmode.offloads |=
+				DEV_RX_OFFLOAD_JUMBO_FRAME;
+			hlreg0 |= IXGBE_HLREG0_JUMBOEN;
+		} else {
+			dev->data->dev_conf.rxmode.offloads &=
+				~DEV_RX_OFFLOAD_JUMBO_FRAME;
+			hlreg0 &= ~IXGBE_HLREG0_JUMBOEN;
+		}
+		IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
+
 		max_frs = new_mtu << IXGBE_MHADD_MFS_SHIFT;
 		IXGBE_WRITE_REG(hw, IXGBE_MAXFRS, max_frs);
 	}
