@@ -14,8 +14,8 @@
 extern "C" {
 #endif
 
-#ifndef CPU_SET_SIZE
-#define CPU_SET_SIZE RTE_MAX_LCORE
+#ifndef CPU_SETSIZE
+#define CPU_SETSIZE RTE_MAX_LCORE
 #endif
 
 #define _BITS_PER_SET (sizeof(long long) * 8)
@@ -26,7 +26,7 @@ extern "C" {
 #define _WHICH_BIT(b) ((b) & (_BITS_PER_SET - 1))
 
 typedef struct _rte_cpuset_s {
-	long long _bits[_NUM_SETS(CPU_SET_SIZE)];
+	long long _bits[_NUM_SETS(CPU_SETSIZE)];
 } rte_cpuset_t;
 
 #define CPU_SET(b, s) ((s)->_bits[_WHICH_SET(b)] |= (1LL << _WHICH_BIT(b)))
@@ -35,7 +35,7 @@ typedef struct _rte_cpuset_s {
 	do {								\
 		unsigned int _i;					\
 									\
-		for (_i = 0; _i < _NUM_SETS(CPU_SET_SIZE); _i++)	\
+		for (_i = 0; _i < _NUM_SETS(CPU_SETSIZE); _i++)		\
 			(s)->_bits[_i] = 0LL;				\
 	} while (0)
 
