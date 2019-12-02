@@ -1271,7 +1271,7 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
-	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
 	uint16_t tbl_size = bnxt_rss_hash_tbl_size(bp);
 	uint16_t idx, sft;
 	int i, rc;
@@ -1328,7 +1328,7 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 			      uint16_t reta_size)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
 	uint16_t tbl_size = bnxt_rss_hash_tbl_size(bp);
 	uint16_t idx, sft, i;
 	int rc;
@@ -1402,7 +1402,7 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	memcpy(&bp->rss_conf, rss_conf, sizeof(*rss_conf));
 
 	/* Update the default RSS VNIC(s) */
-	vnic = &bp->vnic_info[0];
+	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_conf->rss_hf);
 
 	/*
@@ -1428,7 +1428,7 @@ static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
 				     struct rte_eth_rss_conf *rss_conf)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
 	int len, rc;
 	uint32_t hash_types;
 
@@ -1964,7 +1964,7 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
 {
 	struct bnxt *bp = dev->data->dev_private;
 	/* Default Filter is tied to VNIC 0 */
-	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
 	struct bnxt_filter_info *filter;
 	int rc;
 
@@ -2378,7 +2378,7 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 		goto exit;
 	}
 
-	vnic0 = &bp->vnic_info[0];
+	vnic0 = BNXT_GET_DEFAULT_VNIC(bp);
 	vnic = &bp->vnic_info[efilter->queue];
 	if (vnic == NULL) {
 		PMD_DRV_LOG(ERR, "Invalid queue %d\n", efilter->queue);
@@ -2437,7 +2437,7 @@ bnxt_ethertype_filter(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	vnic0 = &bp->vnic_info[0];
+	vnic0 = BNXT_GET_DEFAULT_VNIC(bp);
 	vnic = &bp->vnic_info[efilter->queue];
 
 	switch (filter_op) {
@@ -2652,7 +2652,7 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 		goto free_filter;
 
 	vnic = &bp->vnic_info[nfilter->queue];
-	vnic0 = &bp->vnic_info[0];
+	vnic0 = BNXT_GET_DEFAULT_VNIC(bp);
 	filter1 = STAILQ_FIRST(&vnic0->filter);
 	if (filter1 == NULL) {
 		ret = -EINVAL;
@@ -2945,7 +2945,7 @@ bnxt_parse_fdir_filter(struct bnxt *bp,
 		return -EINVAL;
 	}
 
-	vnic0 = &bp->vnic_info[0];
+	vnic0 = BNXT_GET_DEFAULT_VNIC(bp);
 	vnic = &bp->vnic_info[fdir->action.rx_queue];
 	if (vnic == NULL) {
 		PMD_DRV_LOG(ERR, "Invalid queue %d\n", fdir->action.rx_queue);
