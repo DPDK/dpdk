@@ -1470,7 +1470,7 @@ RTE_INIT(iavf_init_log)
 }
 
 /* memory func for base code */
-enum iavf_status_code
+enum iavf_status
 iavf_allocate_dma_mem_d(__rte_unused struct iavf_hw *hw,
 		       struct iavf_dma_mem *mem,
 		       u64 size,
@@ -1499,7 +1499,7 @@ iavf_allocate_dma_mem_d(__rte_unused struct iavf_hw *hw,
 	return IAVF_SUCCESS;
 }
 
-enum iavf_status_code
+enum iavf_status
 iavf_free_dma_mem_d(__rte_unused struct iavf_hw *hw,
 		   struct iavf_dma_mem *mem)
 {
@@ -1517,7 +1517,7 @@ iavf_free_dma_mem_d(__rte_unused struct iavf_hw *hw,
 	return IAVF_SUCCESS;
 }
 
-enum iavf_status_code
+enum iavf_status
 iavf_allocate_virt_mem_d(__rte_unused struct iavf_hw *hw,
 			struct iavf_virt_mem *mem,
 			u32 size)
@@ -1534,7 +1534,7 @@ iavf_allocate_virt_mem_d(__rte_unused struct iavf_hw *hw,
 		return IAVF_ERR_NO_MEMORY;
 }
 
-enum iavf_status_code
+enum iavf_status
 iavf_free_virt_mem_d(__rte_unused struct iavf_hw *hw,
 		    struct iavf_virt_mem *mem)
 {

@@ -15,9 +15,9 @@
  * This function sets the mac type of the adapter based on the
  * vendor ID and device ID stored in the hw structure.
  **/
-enum iavf_status_code iavf_set_mac_type(struct iavf_hw *hw)
+enum iavf_status iavf_set_mac_type(struct iavf_hw *hw)
 {
-	enum iavf_status_code status = IAVF_SUCCESS;
+	enum iavf_status status = IAVF_SUCCESS;
 
 	DEBUGFUNC("iavf_set_mac_type\n");
 
@@ -107,7 +107,7 @@ const char *iavf_aq_str(struct iavf_hw *hw, enum iavf_admin_queue_err aq_err)
  * @hw: pointer to the HW structure
  * @stat_err: the status error code to convert
  **/
-const char *iavf_stat_str(struct iavf_hw *hw, enum iavf_status_code stat_err)
+const char *iavf_stat_str(struct iavf_hw *hw, enum iavf_status stat_err)
 {
 	switch (stat_err) {
 	case IAVF_SUCCESS:
@@ -348,13 +348,13 @@ bool iavf_check_asq_alive(struct iavf_hw *hw)
  * Tell the Firmware that we're shutting down the AdminQ and whether
  * or not the driver is unloading as well.
  **/
-enum iavf_status_code iavf_aq_queue_shutdown(struct iavf_hw *hw,
+enum iavf_status iavf_aq_queue_shutdown(struct iavf_hw *hw,
 					     bool unloading)
 {
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_queue_shutdown *cmd =
 		(struct iavf_aqc_queue_shutdown *)&desc.params.raw;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	iavf_fill_default_direct_cmd_desc(&desc,
 					  iavf_aqc_opc_queue_shutdown);
@@ -377,12 +377,12 @@ enum iavf_status_code iavf_aq_queue_shutdown(struct iavf_hw *hw,
  *
  * Internal function to get or set RSS look up table
  **/
-STATIC enum iavf_status_code iavf_aq_get_set_rss_lut(struct iavf_hw *hw,
+STATIC enum iavf_status iavf_aq_get_set_rss_lut(struct iavf_hw *hw,
 						     u16 vsi_id, bool pf_lut,
 						     u8 *lut, u16 lut_size,
 						     bool set)
 {
-	enum iavf_status_code status;
+	enum iavf_status status;
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_get_set_rss_lut *cmd_resp =
 		   (struct iavf_aqc_get_set_rss_lut *)&desc.params.raw;
@@ -430,7 +430,7 @@ STATIC enum iavf_status_code iavf_aq_get_set_rss_lut(struct iavf_hw *hw,
  *
  * get the RSS lookup table, PF or VSI type
  **/
-enum iavf_status_code iavf_aq_get_rss_lut(struct iavf_hw *hw, u16 vsi_id,
+enum iavf_status iavf_aq_get_rss_lut(struct iavf_hw *hw, u16 vsi_id,
 					  bool pf_lut, u8 *lut, u16 lut_size)
 {
 	return iavf_aq_get_set_rss_lut(hw, vsi_id, pf_lut, lut, lut_size,
@@ -447,7 +447,7 @@ enum iavf_status_code iavf_aq_get_rss_lut(struct iavf_hw *hw, u16 vsi_id,
  *
  * set the RSS lookup table, PF or VSI type
  **/
-enum iavf_status_code iavf_aq_set_rss_lut(struct iavf_hw *hw, u16 vsi_id,
+enum iavf_status iavf_aq_set_rss_lut(struct iavf_hw *hw, u16 vsi_id,
 					  bool pf_lut, u8 *lut, u16 lut_size)
 {
 	return iavf_aq_get_set_rss_lut(hw, vsi_id, pf_lut, lut, lut_size, true);
@@ -462,12 +462,12 @@ enum iavf_status_code iavf_aq_set_rss_lut(struct iavf_hw *hw, u16 vsi_id,
  *
  * get the RSS key per VSI
  **/
-STATIC enum iavf_status_code iavf_aq_get_set_rss_key(struct iavf_hw *hw,
+STATIC enum iavf_status iavf_aq_get_set_rss_key(struct iavf_hw *hw,
 				      u16 vsi_id,
 				      struct iavf_aqc_get_set_rss_key_data *key,
 				      bool set)
 {
-	enum iavf_status_code status;
+	enum iavf_status status;
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_get_set_rss_key *cmd_resp =
 			(struct iavf_aqc_get_set_rss_key *)&desc.params.raw;
@@ -502,7 +502,7 @@ STATIC enum iavf_status_code iavf_aq_get_set_rss_key(struct iavf_hw *hw,
  * @key: pointer to key info struct
  *
  **/
-enum iavf_status_code iavf_aq_get_rss_key(struct iavf_hw *hw,
+enum iavf_status iavf_aq_get_rss_key(struct iavf_hw *hw,
 				      u16 vsi_id,
 				      struct iavf_aqc_get_set_rss_key_data *key)
 {
@@ -517,7 +517,7 @@ enum iavf_status_code iavf_aq_get_rss_key(struct iavf_hw *hw,
  *
  * set the RSS key per VSI
  **/
-enum iavf_status_code iavf_aq_set_rss_key(struct iavf_hw *hw,
+enum iavf_status iavf_aq_set_rss_key(struct iavf_hw *hw,
 				      u16 vsi_id,
 				      struct iavf_aqc_get_set_rss_key_data *key)
 {
@@ -896,9 +896,9 @@ struct iavf_rx_ptype_decoded iavf_ptype_lookup[] = {
  *
  * Tests a MAC address to ensure it is a valid Individual Address
  **/
-enum iavf_status_code iavf_validate_mac_addr(u8 *mac_addr)
+enum iavf_status iavf_validate_mac_addr(u8 *mac_addr)
 {
-	enum iavf_status_code status = IAVF_SUCCESS;
+	enum iavf_status status = IAVF_SUCCESS;
 
 	DEBUGFUNC("iavf_validate_mac_addr");
 
@@ -924,14 +924,14 @@ enum iavf_status_code iavf_validate_mac_addr(u8 *mac_addr)
  * Use the firmware to read the Rx control register,
  * especially useful if the Rx unit is under heavy pressure
  **/
-enum iavf_status_code iavf_aq_rx_ctl_read_register(struct iavf_hw *hw,
+enum iavf_status iavf_aq_rx_ctl_read_register(struct iavf_hw *hw,
 				u32 reg_addr, u32 *reg_val,
 				struct iavf_asq_cmd_details *cmd_details)
 {
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_rx_ctl_reg_read_write *cmd_resp =
 		(struct iavf_aqc_rx_ctl_reg_read_write *)&desc.params.raw;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	if (reg_val == NULL)
 		return IAVF_ERR_PARAM;
@@ -955,7 +955,7 @@ enum iavf_status_code iavf_aq_rx_ctl_read_register(struct iavf_hw *hw,
  **/
 u32 iavf_read_rx_ctl(struct iavf_hw *hw, u32 reg_addr)
 {
-	enum iavf_status_code status = IAVF_SUCCESS;
+	enum iavf_status status = IAVF_SUCCESS;
 	bool use_register;
 	int retry = 5;
 	u32 val = 0;
@@ -990,14 +990,14 @@ do_retry:
  * Use the firmware to write to an Rx control register,
  * especially useful if the Rx unit is under heavy pressure
  **/
-enum iavf_status_code iavf_aq_rx_ctl_write_register(struct iavf_hw *hw,
+enum iavf_status iavf_aq_rx_ctl_write_register(struct iavf_hw *hw,
 				u32 reg_addr, u32 reg_val,
 				struct iavf_asq_cmd_details *cmd_details)
 {
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_rx_ctl_reg_read_write *cmd =
 		(struct iavf_aqc_rx_ctl_reg_read_write *)&desc.params.raw;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	iavf_fill_default_direct_cmd_desc(&desc, iavf_aqc_opc_rx_ctl_reg_write);
 
@@ -1017,7 +1017,7 @@ enum iavf_status_code iavf_aq_rx_ctl_write_register(struct iavf_hw *hw,
  **/
 void iavf_write_rx_ctl(struct iavf_hw *hw, u32 reg_addr, u32 reg_val)
 {
-	enum iavf_status_code status = IAVF_SUCCESS;
+	enum iavf_status status = IAVF_SUCCESS;
 	bool use_register;
 	int retry = 5;
 
@@ -1051,7 +1051,7 @@ do_retry:
  *
  * Write the external PHY register.
  **/
-enum iavf_status_code iavf_aq_set_phy_register(struct iavf_hw *hw,
+enum iavf_status iavf_aq_set_phy_register(struct iavf_hw *hw,
 				u8 phy_select, u8 dev_addr,
 				u32 reg_addr, u32 reg_val,
 				struct iavf_asq_cmd_details *cmd_details)
@@ -1059,7 +1059,7 @@ enum iavf_status_code iavf_aq_set_phy_register(struct iavf_hw *hw,
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_phy_register_access *cmd =
 		(struct iavf_aqc_phy_register_access *)&desc.params.raw;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	iavf_fill_default_direct_cmd_desc(&desc,
 					  iavf_aqc_opc_set_phy_register);
@@ -1085,7 +1085,7 @@ enum iavf_status_code iavf_aq_set_phy_register(struct iavf_hw *hw,
  *
  * Read the external PHY register.
  **/
-enum iavf_status_code iavf_aq_get_phy_register(struct iavf_hw *hw,
+enum iavf_status iavf_aq_get_phy_register(struct iavf_hw *hw,
 				u8 phy_select, u8 dev_addr,
 				u32 reg_addr, u32 *reg_val,
 				struct iavf_asq_cmd_details *cmd_details)
@@ -1093,7 +1093,7 @@ enum iavf_status_code iavf_aq_get_phy_register(struct iavf_hw *hw,
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_phy_register_access *cmd =
 		(struct iavf_aqc_phy_register_access *)&desc.params.raw;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	iavf_fill_default_direct_cmd_desc(&desc,
 					  iavf_aqc_opc_get_phy_register);
@@ -1123,15 +1123,15 @@ enum iavf_status_code iavf_aq_get_phy_register(struct iavf_hw *hw,
  * is sent asynchronously, i.e. iavf_asq_send_command() does not wait for
  * completion before returning.
  **/
-enum iavf_status_code iavf_aq_send_msg_to_pf(struct iavf_hw *hw,
+enum iavf_status iavf_aq_send_msg_to_pf(struct iavf_hw *hw,
 				enum virtchnl_ops v_opcode,
-				enum iavf_status_code v_retval,
+				enum iavf_status v_retval,
 				u8 *msg, u16 msglen,
 				struct iavf_asq_cmd_details *cmd_details)
 {
 	struct iavf_aq_desc desc;
 	struct iavf_asq_cmd_details details;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	iavf_fill_default_direct_cmd_desc(&desc, iavf_aqc_opc_send_msg_to_pf);
 	desc.flags |= CPU_TO_LE16((u16)IAVF_AQ_FLAG_SI);
@@ -1200,7 +1200,7 @@ void iavf_parse_hw_config(struct iavf_hw *hw,
  * as none will be forthcoming. Immediately after calling this function,
  * the admin queue should be shut down and (optionally) reinitialized.
  **/
-enum iavf_status_code iavf_reset(struct iavf_hw *hw)
+enum iavf_status iavf_reset(struct iavf_hw *hw)
 {
 	return iavf_aq_send_msg_to_pf(hw, VIRTCHNL_OP_RESET_VF,
 				      IAVF_SUCCESS, NULL, 0, NULL);
@@ -1215,12 +1215,12 @@ enum iavf_status_code iavf_reset(struct iavf_hw *hw)
  * Set ARP offload parameters from pre-populated
  * iavf_aqc_arp_proxy_data struct
  **/
-enum iavf_status_code iavf_aq_set_arp_proxy_config(struct iavf_hw *hw,
+enum iavf_status iavf_aq_set_arp_proxy_config(struct iavf_hw *hw,
 				struct iavf_aqc_arp_proxy_data *proxy_config,
 				struct iavf_asq_cmd_details *cmd_details)
 {
 	struct iavf_aq_desc desc;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	if (!proxy_config)
 		return IAVF_ERR_PARAM;
@@ -1251,12 +1251,12 @@ enum iavf_status_code iavf_aq_set_arp_proxy_config(struct iavf_hw *hw,
  * Set IPv6 Neighbor Solicitation (NS) protocol offload parameters
  * from pre-populated iavf_aqc_ns_proxy_data struct
  **/
-enum iavf_status_code iavf_aq_set_ns_proxy_table_entry(struct iavf_hw *hw,
+enum iavf_status iavf_aq_set_ns_proxy_table_entry(struct iavf_hw *hw,
 			struct iavf_aqc_ns_proxy_data *ns_proxy_table_entry,
 			struct iavf_asq_cmd_details *cmd_details)
 {
 	struct iavf_aq_desc desc;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	if (!ns_proxy_table_entry)
 		return IAVF_ERR_PARAM;
@@ -1293,7 +1293,7 @@ enum iavf_status_code iavf_aq_set_ns_proxy_table_entry(struct iavf_hw *hw,
  *
  * Set or clear WoL filter for port attached to the PF
  **/
-enum iavf_status_code iavf_aq_set_clear_wol_filter(struct iavf_hw *hw,
+enum iavf_status iavf_aq_set_clear_wol_filter(struct iavf_hw *hw,
 				u8 filter_index,
 				struct iavf_aqc_set_wol_filter_data *filter,
 				bool set_filter, bool no_wol_tco,
@@ -1303,7 +1303,7 @@ enum iavf_status_code iavf_aq_set_clear_wol_filter(struct iavf_hw *hw,
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_set_wol_filter *cmd =
 		(struct iavf_aqc_set_wol_filter *)&desc.params.raw;
-	enum iavf_status_code status;
+	enum iavf_status status;
 	u16 cmd_flags = 0;
 	u16 valid_flags = 0;
 	u16 buff_len = 0;
@@ -1355,14 +1355,14 @@ enum iavf_status_code iavf_aq_set_clear_wol_filter(struct iavf_hw *hw,
  *
  * Get information for the reason of a Wake Up event
  **/
-enum iavf_status_code iavf_aq_get_wake_event_reason(struct iavf_hw *hw,
+enum iavf_status iavf_aq_get_wake_event_reason(struct iavf_hw *hw,
 				u16 *wake_reason,
 				struct iavf_asq_cmd_details *cmd_details)
 {
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_get_wake_reason_completion *resp =
 		(struct iavf_aqc_get_wake_reason_completion *)&desc.params.raw;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	iavf_fill_default_direct_cmd_desc(&desc, iavf_aqc_opc_get_wake_reason);
 
@@ -1381,11 +1381,11 @@ enum iavf_status_code iavf_aq_get_wake_event_reason(struct iavf_hw *hw,
 *
 * Get information for the reason of a Wake Up event
 **/
-enum iavf_status_code iavf_aq_clear_all_wol_filters(struct iavf_hw *hw,
+enum iavf_status iavf_aq_clear_all_wol_filters(struct iavf_hw *hw,
 	struct iavf_asq_cmd_details *cmd_details)
 {
 	struct iavf_aq_desc desc;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	iavf_fill_default_direct_cmd_desc(&desc,
 					  iavf_aqc_opc_clear_all_wol_filters);
@@ -1406,7 +1406,7 @@ enum iavf_status_code iavf_aq_clear_all_wol_filters(struct iavf_hw *hw,
  * @cmd_details: pointer to command details structure or NULL
  **/
 enum
-iavf_status_code iavf_aq_write_ddp(struct iavf_hw *hw, void *buff,
+iavf_status iavf_aq_write_ddp(struct iavf_hw *hw, void *buff,
 				   u16 buff_size, u32 track_id,
 				   u32 *error_offset, u32 *error_info,
 				   struct iavf_asq_cmd_details *cmd_details)
@@ -1416,7 +1416,7 @@ iavf_status_code iavf_aq_write_ddp(struct iavf_hw *hw, void *buff,
 		(struct iavf_aqc_write_personalization_profile *)
 		&desc.params.raw;
 	struct iavf_aqc_write_ddp_resp *resp;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	iavf_fill_default_direct_cmd_desc(&desc,
 				  iavf_aqc_opc_write_personalization_profile);
@@ -1450,14 +1450,14 @@ iavf_status_code iavf_aq_write_ddp(struct iavf_hw *hw, void *buff,
  * @cmd_details: pointer to command details structure or NULL
  **/
 enum
-iavf_status_code iavf_aq_get_ddp_list(struct iavf_hw *hw, void *buff,
+iavf_status iavf_aq_get_ddp_list(struct iavf_hw *hw, void *buff,
 				      u16 buff_size, u8 flags,
 				      struct iavf_asq_cmd_details *cmd_details)
 {
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_get_applied_profiles *cmd =
 		(struct iavf_aqc_get_applied_profiles *)&desc.params.raw;
-	enum iavf_status_code status;
+	enum iavf_status status;
 
 	iavf_fill_default_direct_cmd_desc(&desc,
 			  iavf_aqc_opc_get_personalization_profile_list);
@@ -1557,10 +1557,10 @@ iavf_find_section_in_profile(u32 section_type,
  * @aq: command buffer containing all data to execute AQ
  **/
 STATIC enum
-iavf_status_code iavf_ddp_exec_aq_section(struct iavf_hw *hw,
+iavf_status iavf_ddp_exec_aq_section(struct iavf_hw *hw,
 					  struct iavf_profile_aq_section *aq)
 {
-	enum iavf_status_code status;
+	enum iavf_status status;
 	struct iavf_aq_desc desc;
 	u8 *msg = NULL;
 	u16 msglen;
@@ -1605,12 +1605,12 @@ iavf_status_code iavf_ddp_exec_aq_section(struct iavf_hw *hw,
  *
  * Validates supported devices and profile's sections.
  */
-STATIC enum iavf_status_code
+STATIC enum iavf_status
 iavf_validate_profile(struct iavf_hw *hw, struct iavf_profile_segment *profile,
 		      u32 track_id, bool rollback)
 {
 	struct iavf_profile_section_header *sec = NULL;
-	enum iavf_status_code status = IAVF_SUCCESS;
+	enum iavf_status status = IAVF_SUCCESS;
 	struct iavf_section_table *sec_tbl;
 	u32 vendor_dev_id;
 	u32 dev_cnt;
@@ -1670,11 +1670,11 @@ iavf_validate_profile(struct iavf_hw *hw, struct iavf_profile_segment *profile,
  *
  * Handles the download of a complete package.
  */
-enum iavf_status_code
+enum iavf_status
 iavf_write_profile(struct iavf_hw *hw, struct iavf_profile_segment *profile,
 		   u32 track_id)
 {
-	enum iavf_status_code status = IAVF_SUCCESS;
+	enum iavf_status status = IAVF_SUCCESS;
 	struct iavf_section_table *sec_tbl;
 	struct iavf_profile_section_header *sec = NULL;
 	struct iavf_profile_aq_section *ddp_aq;
@@ -1733,12 +1733,12 @@ iavf_write_profile(struct iavf_hw *hw, struct iavf_profile_segment *profile,
  *
  * Rolls back previously loaded package.
  */
-enum iavf_status_code
+enum iavf_status
 iavf_rollback_profile(struct iavf_hw *hw, struct iavf_profile_segment *profile,
 		      u32 track_id)
 {
 	struct iavf_profile_section_header *sec = NULL;
-	enum iavf_status_code status = IAVF_SUCCESS;
+	enum iavf_status status = IAVF_SUCCESS;
 	struct iavf_section_table *sec_tbl;
 	u32 offset = 0, info = 0;
 	u32 section_size = 0;
@@ -1785,12 +1785,12 @@ iavf_rollback_profile(struct iavf_hw *hw, struct iavf_profile_segment *profile,
  *
  * Register a profile to the list of loaded profiles.
  */
-enum iavf_status_code
+enum iavf_status
 iavf_add_pinfo_to_list(struct iavf_hw *hw,
 		       struct iavf_profile_segment *profile,
 		       u8 *profile_info_sec, u32 track_id)
 {
-	enum iavf_status_code status = IAVF_SUCCESS;
+	enum iavf_status status = IAVF_SUCCESS;
 	struct iavf_profile_section_header *sec = NULL;
 	struct iavf_profile_info *pinfo;
 	u32 offset = 0, info = 0;

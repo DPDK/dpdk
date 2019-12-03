@@ -21,16 +21,16 @@ enum iavf_memory_type {
 };
 
 /* prototype for functions used for dynamic memory allocation */
-enum iavf_status_code iavf_allocate_dma_mem(struct iavf_hw *hw,
+enum iavf_status iavf_allocate_dma_mem(struct iavf_hw *hw,
 					    struct iavf_dma_mem *mem,
 					    enum iavf_memory_type type,
 					    u64 size, u32 alignment);
-enum iavf_status_code iavf_free_dma_mem(struct iavf_hw *hw,
+enum iavf_status iavf_free_dma_mem(struct iavf_hw *hw,
 					struct iavf_dma_mem *mem);
-enum iavf_status_code iavf_allocate_virt_mem(struct iavf_hw *hw,
+enum iavf_status iavf_allocate_virt_mem(struct iavf_hw *hw,
 					     struct iavf_virt_mem *mem,
 					     u32 size);
-enum iavf_status_code iavf_free_virt_mem(struct iavf_hw *hw,
+enum iavf_status iavf_free_virt_mem(struct iavf_hw *hw,
 					 struct iavf_virt_mem *mem);
 
 #endif /* _IAVF_ALLOC_H_ */
