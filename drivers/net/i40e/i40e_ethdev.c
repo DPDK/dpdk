@@ -2241,6 +2241,9 @@ i40e_apply_link_speed(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 
+	abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK |
+		     I40E_AQ_PHY_LINK_ENABLED;
+
 	if (conf->link_speeds == ETH_LINK_SPEED_AUTONEG) {
 		conf->link_speeds = ETH_LINK_SPEED_40G |
 				    ETH_LINK_SPEED_25G |
@@ -2248,11 +2251,12 @@ i40e_apply_link_speed(struct rte_eth_dev *dev)
 				    ETH_LINK_SPEED_10G |
 				    ETH_LINK_SPEED_1G |
 				    ETH_LINK_SPEED_100M;
+
+		abilities |= I40E_AQ_PHY_AN_ENABLED;
+	} else {
+		abilities &= ~I40E_AQ_PHY_AN_ENABLED;
 	}
 	speed = i40e_parse_link_speeds(conf->link_speeds);
-	abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK |
-		     I40E_AQ_PHY_AN_ENABLED |
-		     I40E_AQ_PHY_LINK_ENABLED;
 
 	return i40e_phy_conf_link(hw, abilities, speed, true);
 }
@@ -2270,13 +2274,6 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	struct i40e_vsi *vsi;
 
 	hw->adapter_stopped = 0;
-
-	if (dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED) {
-		PMD_INIT_LOG(ERR,
-		"Invalid link_speeds for port %u, autonegotiation disabled",
-			      dev->data->port_id);
-		return -EINVAL;
-	}
 
 	rte_intr_disable(intr_handle);
 
