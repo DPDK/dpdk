@@ -955,14 +955,14 @@ enum iavf_status iavf_aq_send_msg_to_pf(struct iavf_hw *hw,
 }
 
 /**
- * iavf_parse_hw_config
+ * iavf_vf_parse_hw_config
  * @hw: pointer to the hardware structure
  * @msg: pointer to the virtual channel VF resource structure
  *
  * Given a VF resource message from the PF, populate the hw struct
  * with appropriate information.
  **/
-void iavf_parse_hw_config(struct iavf_hw *hw,
+void iavf_vf_parse_hw_config(struct iavf_hw *hw,
 			     struct virtchnl_vf_resource *msg)
 {
 	struct virtchnl_vsi_resource *vsi_res;
@@ -991,14 +991,14 @@ void iavf_parse_hw_config(struct iavf_hw *hw,
 }
 
 /**
- * iavf_reset
+ * iavf_vf_reset
  * @hw: pointer to the hardware structure
  *
  * Send a VF_RESET message to the PF. Does not wait for response from PF
  * as none will be forthcoming. Immediately after calling this function,
  * the admin queue should be shut down and (optionally) reinitialized.
  **/
-enum iavf_status iavf_reset(struct iavf_hw *hw)
+enum iavf_status iavf_vf_reset(struct iavf_hw *hw)
 {
 	return iavf_aq_send_msg_to_pf(hw, VIRTCHNL_OP_RESET_VF,
 				      IAVF_SUCCESS, NULL, 0, NULL);

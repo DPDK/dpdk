@@ -363,7 +363,7 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 	rte_memcpy(vf->vf_res, args.out_buffer,
 		   RTE_MIN(args.out_size, len));
 	/* parse  VF config message back from PF*/
-	iavf_parse_hw_config(hw, vf->vf_res);
+	iavf_vf_parse_hw_config(hw, vf->vf_res);
 	for (i = 0; i < vf->vf_res->num_vsis; i++) {
 		if (vf->vf_res->vsi_res[i].vsi_type == VIRTCHNL_VSI_SRIOV)
 			vf->vsi_res = &vf->vf_res->vsi_res[i];

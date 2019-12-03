@@ -76,9 +76,9 @@ void iavf_acquire_spinlock(struct iavf_spinlock *sp);
 void iavf_release_spinlock(struct iavf_spinlock *sp);
 void iavf_destroy_spinlock(struct iavf_spinlock *sp);
 
-void iavf_parse_hw_config(struct iavf_hw *hw,
+void iavf_vf_parse_hw_config(struct iavf_hw *hw,
 			     struct virtchnl_vf_resource *msg);
-enum iavf_status iavf_reset(struct iavf_hw *hw);
+enum iavf_status iavf_vf_reset(struct iavf_hw *hw);
 enum iavf_status iavf_aq_send_msg_to_pf(struct iavf_hw *hw,
 				enum virtchnl_ops v_opcode,
 				enum iavf_status v_retval,
