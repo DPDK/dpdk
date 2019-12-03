@@ -245,6 +245,7 @@ ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 		DEV_TX_OFFLOAD_VLAN_INSERT |		 \
 		DEV_TX_OFFLOAD_SCTP_CKSUM |		 \
 		DEV_TX_OFFLOAD_UDP_CKSUM |		 \
+		DEV_TX_OFFLOAD_TCP_TSO |		 \
 		DEV_TX_OFFLOAD_TCP_CKSUM)
 
 static inline int
