@@ -262,14 +262,8 @@ STATIC enum iavf_status iavf_config_asq_regs(struct iavf_hw *hw)
 	wr32(hw, hw->aq.asq.tail, 0);
 
 	/* set starting point */
-#ifdef INTEGRATED_VF
-	if (iavf_is_vf(hw))
-		wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
-					  IAVF_VF_ATQLEN1_ATQENABLE_MASK));
-#else
 	wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
 				  IAVF_VF_ATQLEN1_ATQENABLE_MASK));
-#endif /* INTEGRATED_VF */
 	wr32(hw, hw->aq.asq.bal, IAVF_LO_DWORD(hw->aq.asq.desc_buf.pa));
 	wr32(hw, hw->aq.asq.bah, IAVF_HI_DWORD(hw->aq.asq.desc_buf.pa));
 
@@ -297,14 +291,8 @@ STATIC enum iavf_status iavf_config_arq_regs(struct iavf_hw *hw)
 	wr32(hw, hw->aq.arq.tail, 0);
 
 	/* set starting point */
-#ifdef INTEGRATED_VF
-	if (iavf_is_vf(hw))
-		wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
-					  IAVF_VF_ARQLEN1_ARQENABLE_MASK));
-#else
 	wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
 				  IAVF_VF_ARQLEN1_ARQENABLE_MASK));
-#endif /* INTEGRATED_VF */
 	wr32(hw, hw->aq.arq.bal, IAVF_LO_DWORD(hw->aq.arq.desc_buf.pa));
 	wr32(hw, hw->aq.arq.bah, IAVF_HI_DWORD(hw->aq.arq.desc_buf.pa));
 
@@ -897,14 +885,7 @@ enum iavf_status iavf_clean_arq_element(struct iavf_hw *hw,
 	}
 
 	/* set next_to_use to head */
-#ifdef INTEGRATED_VF
-	if (!iavf_is_vf(hw))
-		ntu = rd32(hw, hw->aq.arq.head) & IAVF_PF_ARQH_ARQH_MASK;
-	else
-		ntu = rd32(hw, hw->aq.arq.head) & IAVF_VF_ARQH1_ARQH_MASK;
-#else
 	ntu = rd32(hw, hw->aq.arq.head) & IAVF_VF_ARQH1_ARQH_MASK;
-#endif /* INTEGRATED_VF */
 	if (ntu == ntc) {
 		/* nothing to do - shouldn't need to update ring's values */
 		ret_code = IAVF_ERR_ADMIN_QUEUE_NO_WORK;

@@ -20,14 +20,8 @@
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s) (_p); (_q); (_r); (_s);
 #define UNREFERENCED_5PARAMETER(_p, _q, _r, _s, _t) (_p); (_q); (_r); (_s); (_t);
 
-#ifndef LINUX_MACROS
-#ifndef BIT
 #define BIT(a) (1UL << (a))
-#endif /* BIT */
-#ifndef BIT_ULL
 #define BIT_ULL(a) (1ULL << (a))
-#endif /* BIT_ULL */
-#endif /* LINUX_MACROS */
 
 /* IAVF_MASK is a macro used on 32 bit registers */
 #define IAVF_MASK(mask, shift) (mask << shift)
@@ -56,9 +50,7 @@
 struct iavf_hw;
 typedef void (*IAVF_ADMINQ_CALLBACK)(struct iavf_hw *, struct iavf_aq_desc *);
 
-#ifndef ETH_ALEN
 #define ETH_ALEN	6
-#endif
 /* Data type manipulation macros. */
 #define IAVF_HI_DWORD(x)	((u32)((((x) >> 16) >> 16) & 0xFFFFFFFF))
 #define IAVF_LO_DWORD(x)	((u32)((x) & 0xFFFFFFFF))

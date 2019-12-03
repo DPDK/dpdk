@@ -331,15 +331,10 @@ void iavf_debug_aq(struct iavf_hw *hw, enum iavf_debug_mask mask, void *desc,
 bool iavf_check_asq_alive(struct iavf_hw *hw)
 {
 	if (hw->aq.asq.len)
-#ifdef INTEGRATED_VF
-		if (iavf_is_vf(hw))
-			return !!(rd32(hw, hw->aq.asq.len) &
-				IAVF_VF_ATQLEN1_ATQENABLE_MASK);
-#else
 		return !!(rd32(hw, hw->aq.asq.len) &
 			IAVF_VF_ATQLEN1_ATQENABLE_MASK);
-#endif /* INTEGRATED_VF */
-	return false;
+	else
+		return false;
 }
 
 /**
