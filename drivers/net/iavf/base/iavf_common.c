@@ -1,12 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2013 - 2015 Intel Corporation
+ * Copyright(c) 2001-2019
  */
 
 #include "iavf_type.h"
 #include "iavf_adminq.h"
 #include "iavf_prototype.h"
 #include "virtchnl.h"
-
 
 /**
  * iavf_set_mac_type - Sets MAC type

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2013 - 2015 Intel Corporation
+ * Copyright(c) 2001-2019
  */
 
 #ifndef _IAVF_PROTOTYPE_H_

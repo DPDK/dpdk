@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2013 - 2015 Intel Corporation
+ * Copyright(c) 2001-2019
  */
 
 #include "iavf_status.h"
