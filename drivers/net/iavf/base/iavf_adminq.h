@@ -84,49 +84,6 @@ struct iavf_adminq_info {
 	enum iavf_admin_queue_err arq_last_status;
 };
 
-/**
- * iavf_aq_rc_to_posix - convert errors to user-land codes
- * aq_ret: AdminQ handler error code can override aq_rc
- * aq_rc: AdminQ firmware error code to convert
- **/
-STATIC INLINE int iavf_aq_rc_to_posix(int aq_ret, int aq_rc)
-{
-	int aq_to_posix[] = {
-		0,           /* IAVF_AQ_RC_OK */
-		-EPERM,      /* IAVF_AQ_RC_EPERM */
-		-ENOENT,     /* IAVF_AQ_RC_ENOENT */
-		-ESRCH,      /* IAVF_AQ_RC_ESRCH */
-		-EINTR,      /* IAVF_AQ_RC_EINTR */
-		-EIO,        /* IAVF_AQ_RC_EIO */
-		-ENXIO,      /* IAVF_AQ_RC_ENXIO */
-		-E2BIG,      /* IAVF_AQ_RC_E2BIG */
-		-EAGAIN,     /* IAVF_AQ_RC_EAGAIN */
-		-ENOMEM,     /* IAVF_AQ_RC_ENOMEM */
-		-EACCES,     /* IAVF_AQ_RC_EACCES */
-		-EFAULT,     /* IAVF_AQ_RC_EFAULT */
-		-EBUSY,      /* IAVF_AQ_RC_EBUSY */
-		-EEXIST,     /* IAVF_AQ_RC_EEXIST */
-		-EINVAL,     /* IAVF_AQ_RC_EINVAL */
-		-ENOTTY,     /* IAVF_AQ_RC_ENOTTY */
-		-ENOSPC,     /* IAVF_AQ_RC_ENOSPC */
-		-ENOSYS,     /* IAVF_AQ_RC_ENOSYS */
-		-ERANGE,     /* IAVF_AQ_RC_ERANGE */
-		-EPIPE,      /* IAVF_AQ_RC_EFLUSHED */
-		-ESPIPE,     /* IAVF_AQ_RC_BAD_ADDR */
-		-EROFS,      /* IAVF_AQ_RC_EMODE */
-		-EFBIG,      /* IAVF_AQ_RC_EFBIG */
-	};
-
-	/* aq_rc is invalid if AQ timed out */
-	if (aq_ret == IAVF_ERR_ADMIN_QUEUE_TIMEOUT)
-		return -EAGAIN;
-
-	if (!((u32)aq_rc < (sizeof(aq_to_posix) / sizeof((aq_to_posix)[0]))))
-		return -ERANGE;
-
-	return aq_to_posix[aq_rc];
-}
-
 /* general information */
 #define IAVF_AQ_LARGE_BUF	512
 #define IAVF_ASQ_CMD_TIMEOUT	250000  /* usecs */

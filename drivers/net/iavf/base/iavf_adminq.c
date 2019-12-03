@@ -17,18 +17,16 @@
 STATIC void iavf_adminq_init_regs(struct iavf_hw *hw)
 {
 	/* set head and tail registers in our local struct */
-	if (iavf_is_vf(hw)) {
-		hw->aq.asq.tail = IAVF_VF_ATQT1;
-		hw->aq.asq.head = IAVF_VF_ATQH1;
-		hw->aq.asq.len  = IAVF_VF_ATQLEN1;
-		hw->aq.asq.bal  = IAVF_VF_ATQBAL1;
-		hw->aq.asq.bah  = IAVF_VF_ATQBAH1;
-		hw->aq.arq.tail = IAVF_VF_ARQT1;
-		hw->aq.arq.head = IAVF_VF_ARQH1;
-		hw->aq.arq.len  = IAVF_VF_ARQLEN1;
-		hw->aq.arq.bal  = IAVF_VF_ARQBAL1;
-		hw->aq.arq.bah  = IAVF_VF_ARQBAH1;
-	}
+	hw->aq.asq.tail = IAVF_VF_ATQT1;
+	hw->aq.asq.head = IAVF_VF_ATQH1;
+	hw->aq.asq.len  = IAVF_VF_ATQLEN1;
+	hw->aq.asq.bal  = IAVF_VF_ATQBAL1;
+	hw->aq.asq.bah  = IAVF_VF_ATQBAH1;
+	hw->aq.arq.tail = IAVF_VF_ARQT1;
+	hw->aq.arq.head = IAVF_VF_ARQH1;
+	hw->aq.arq.len  = IAVF_VF_ARQLEN1;
+	hw->aq.arq.bal  = IAVF_VF_ARQBAL1;
+	hw->aq.arq.bah  = IAVF_VF_ARQBAH1;
 }
 
 /**
@@ -549,8 +547,6 @@ enum iavf_status iavf_init_adminq(struct iavf_hw *hw)
 	if (ret_code != IAVF_SUCCESS)
 		goto init_adminq_free_asq;
 
-	ret_code = IAVF_SUCCESS;
-
 	/* success! */
 	goto init_adminq_exit;
 
@@ -579,9 +575,6 @@ enum iavf_status iavf_shutdown_adminq(struct iavf_hw *hw)
 	iavf_shutdown_arq(hw);
 	iavf_destroy_spinlock(&hw->aq.asq_spinlock);
 	iavf_destroy_spinlock(&hw->aq.arq_spinlock);
-
-	if (hw->nvm_buff.va)
-		iavf_free_virt_mem(hw, &hw->nvm_buff);
 
 	return ret_code;
 }
