@@ -651,12 +651,13 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct vf_cmd_info args;
 	uint8_t cmd_buffer[sizeof(struct virtchnl_irq_map_info) + \
-		sizeof(struct virtchnl_vector_map)];
+		sizeof(struct virtchnl_vector_map) * dev->data->nb_rx_queues];
 	struct virtchnl_irq_map_info *map_info;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t vector_id;
 	int i, err;
+	uint16_t nb_msix;
 
 	if (dev->data->dev_conf.intr_conf.rxq != 0 &&
 	    rte_intr_allow_others(intr_handle))
@@ -664,19 +665,25 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	else
 		vector_id = I40E_MISC_VEC_ID;
 
+	nb_msix = RTE_MIN(vf->vf_res->max_vectors,
+			intr_handle->nb_efd);
+
 	map_info = (struct virtchnl_irq_map_info *)cmd_buffer;
-	map_info->num_vectors = 1;
-	map_info->vecmap[0].rxitr_idx = I40E_ITR_INDEX_DEFAULT;
-	map_info->vecmap[0].vsi_id = vf->vsi_res->vsi_id;
-	/* Alway use default dynamic MSIX interrupt */
-	map_info->vecmap[0].vector_id = vector_id;
-	/* Don't map any tx queue */
-	map_info->vecmap[0].txq_map = 0;
-	map_info->vecmap[0].rxq_map = 0;
+	map_info->num_vectors = dev->data->nb_rx_queues;
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		map_info->vecmap[0].rxq_map |= 1 << i;
+		map_info->vecmap[i].rxitr_idx = I40E_ITR_INDEX_DEFAULT;
+		map_info->vecmap[i].vsi_id = vf->vsi_res->vsi_id;
+		/* Always use default dynamic MSIX interrupt */
+		map_info->vecmap[i].vector_id = vector_id;
+		/* Don't map any tx queue */
+		map_info->vecmap[i].txq_map = 0;
+		map_info->vecmap[i].rxq_map = 1 << i;
 		if (rte_intr_dp_is_en(intr_handle))
 			intr_handle->intr_vec[i] = vector_id;
+		if (vector_id > I40E_MISC_VEC_ID)
+			vector_id++;
+		if (vector_id > nb_msix)
+			vector_id = I40E_RX_VEC_START;
 	}
 
 	args.ops = VIRTCHNL_OP_CONFIG_IRQ_MAP;
