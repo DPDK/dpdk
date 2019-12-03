@@ -23,9 +23,11 @@ enum iavf_status iavf_set_mac_type(struct iavf_hw *hw)
 
 	if (hw->vendor_id == IAVF_INTEL_VENDOR_ID) {
 		switch (hw->device_id) {
-	/* TODO: remove undefined device ID now, need to think how to
-	 * remove them in share code
-	 */
+		case IAVF_DEV_ID_X722_VF:
+			hw->mac.type = IAVF_MAC_X722_VF;
+			break;
+		case IAVF_DEV_ID_VF:
+		case IAVF_DEV_ID_VF_HV:
 		case IAVF_DEV_ID_ADAPTIVE_VF:
 			hw->mac.type = IAVF_MAC_VF;
 			break;
