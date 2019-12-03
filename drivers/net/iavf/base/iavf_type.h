@@ -332,7 +332,6 @@ struct iavf_hw {
 	u16 subsystem_device_id;
 	u16 subsystem_vendor_id;
 	u8 revision_id;
-	bool adapter_stopped;
 
 	/* capabilities for entire device and PCI func */
 	struct iavf_hw_capabilities dev_caps;

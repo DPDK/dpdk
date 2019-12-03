@@ -127,6 +127,7 @@ struct iavf_adapter {
 	/* For vector PMD */
 	bool rx_vec_allowed;
 	bool tx_vec_allowed;
+	bool stopped;
 };
 
 /* IAVF_DEV_PRIVATE_TO */

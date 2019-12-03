@@ -421,12 +421,11 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 
-	hw->adapter_stopped = 0;
+	adapter->stopped = 0;
 
 	vf->max_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	vf->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
@@ -481,12 +480,11 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (hw->adapter_stopped == 1)
+	if (adapter->stopped == 1)
 		return;
 
 	iavf_stop_queues(dev);
@@ -501,7 +499,7 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 
 	/* remove all mac addrs */
 	iavf_add_del_all_mac_addr(adapter, FALSE);
-	hw->adapter_stopped = 1;
+	adapter->stopped = 1;
 }
 
 static int
@@ -1333,6 +1331,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->back = IAVF_DEV_PRIVATE_TO_ADAPTER(eth_dev->data->dev_private);
 	adapter->eth_dev = eth_dev;
+	adapter->stopped = 1;
 
 	if (iavf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
@@ -1393,7 +1392,6 @@ static int
 iavf_dev_uninit(struct rte_eth_dev *dev)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
@@ -1401,8 +1399,7 @@ iavf_dev_uninit(struct rte_eth_dev *dev)
 	dev->dev_ops = NULL;
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
-	if (hw->adapter_stopped == 0)
-		iavf_dev_close(dev);
+	iavf_dev_close(dev);
 
 	rte_free(vf->vf_res);
 	vf->vsi_res = NULL;
