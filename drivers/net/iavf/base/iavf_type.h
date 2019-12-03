@@ -30,7 +30,7 @@
 #define IAVF_MAX_PF_VSI			64
 #define IAVF_MAX_PF_QP			128
 #define IAVF_MAX_VSI_QP			16
-#define IAVF_MAX_VF_VSI			3
+#define IAVF_MAX_VF_VSI			4
 #define IAVF_MAX_CHAINED_RX_BUFFERS	5
 
 /* something less than 1 minute */
