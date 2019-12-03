@@ -346,7 +346,7 @@ bool iavf_check_asq_alive(struct iavf_hw *hw)
  * or not the driver is unloading as well.
  **/
 enum iavf_status iavf_aq_queue_shutdown(struct iavf_hw *hw,
-					     bool unloading)
+					bool unloading)
 {
 	struct iavf_aq_desc desc;
 	struct iavf_aqc_queue_shutdown *cmd =
@@ -375,9 +375,9 @@ enum iavf_status iavf_aq_queue_shutdown(struct iavf_hw *hw,
  * Internal function to get or set RSS look up table
  **/
 STATIC enum iavf_status iavf_aq_get_set_rss_lut(struct iavf_hw *hw,
-						     u16 vsi_id, bool pf_lut,
-						     u8 *lut, u16 lut_size,
-						     bool set)
+						u16 vsi_id, bool pf_lut,
+						u8 *lut, u16 lut_size,
+						bool set)
 {
 	enum iavf_status status;
 	struct iavf_aq_desc desc;
@@ -428,7 +428,7 @@ STATIC enum iavf_status iavf_aq_get_set_rss_lut(struct iavf_hw *hw,
  * get the RSS lookup table, PF or VSI type
  **/
 enum iavf_status iavf_aq_get_rss_lut(struct iavf_hw *hw, u16 vsi_id,
-					  bool pf_lut, u8 *lut, u16 lut_size)
+				     bool pf_lut, u8 *lut, u16 lut_size)
 {
 	return iavf_aq_get_set_rss_lut(hw, vsi_id, pf_lut, lut, lut_size,
 				       false);
@@ -445,7 +445,7 @@ enum iavf_status iavf_aq_get_rss_lut(struct iavf_hw *hw, u16 vsi_id,
  * set the RSS lookup table, PF or VSI type
  **/
 enum iavf_status iavf_aq_set_rss_lut(struct iavf_hw *hw, u16 vsi_id,
-					  bool pf_lut, u8 *lut, u16 lut_size)
+				     bool pf_lut, u8 *lut, u16 lut_size)
 {
 	return iavf_aq_get_set_rss_lut(hw, vsi_id, pf_lut, lut, lut_size, true);
 }
@@ -500,8 +500,8 @@ STATIC enum iavf_status iavf_aq_get_set_rss_key(struct iavf_hw *hw,
  *
  **/
 enum iavf_status iavf_aq_get_rss_key(struct iavf_hw *hw,
-				      u16 vsi_id,
-				      struct iavf_aqc_get_set_rss_key_data *key)
+				     u16 vsi_id,
+				     struct iavf_aqc_get_set_rss_key_data *key)
 {
 	return iavf_aq_get_set_rss_key(hw, vsi_id, key, false);
 }
@@ -515,8 +515,8 @@ enum iavf_status iavf_aq_get_rss_key(struct iavf_hw *hw,
  * set the RSS key per VSI
  **/
 enum iavf_status iavf_aq_set_rss_key(struct iavf_hw *hw,
-				      u16 vsi_id,
-				      struct iavf_aqc_get_set_rss_key_data *key)
+				     u16 vsi_id,
+				     struct iavf_aqc_get_set_rss_key_data *key)
 {
 	return iavf_aq_get_set_rss_key(hw, vsi_id, key, true);
 }
@@ -1012,7 +1012,7 @@ enum iavf_status iavf_vf_reset(struct iavf_hw *hw)
 * Get information for the reason of a Wake Up event
 **/
 enum iavf_status iavf_aq_clear_all_wol_filters(struct iavf_hw *hw,
-	struct iavf_asq_cmd_details *cmd_details)
+			struct iavf_asq_cmd_details *cmd_details)
 {
 	struct iavf_aq_desc desc;
 	enum iavf_status status;

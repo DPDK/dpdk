@@ -31,8 +31,8 @@ void iavf_free_adminq_arq(struct iavf_hw *hw);
 enum iavf_status iavf_validate_mac_addr(u8 *mac_addr);
 void iavf_adminq_init_ring_data(struct iavf_hw *hw);
 enum iavf_status iavf_clean_arq_element(struct iavf_hw *hw,
-					     struct iavf_arq_event_info *e,
-					     u16 *events_pending);
+					struct iavf_arq_event_info *e,
+					u16 *events_pending);
 enum iavf_status iavf_asq_send_command(struct iavf_hw *hw,
 				struct iavf_aq_desc *desc,
 				void *buff, /* can be NULL */
@@ -49,9 +49,9 @@ bool iavf_check_asq_alive(struct iavf_hw *hw);
 enum iavf_status iavf_aq_queue_shutdown(struct iavf_hw *hw, bool unloading);
 
 enum iavf_status iavf_aq_get_rss_lut(struct iavf_hw *hw, u16 seid,
-					  bool pf_lut, u8 *lut, u16 lut_size);
+				     bool pf_lut, u8 *lut, u16 lut_size);
 enum iavf_status iavf_aq_set_rss_lut(struct iavf_hw *hw, u16 seid,
-					  bool pf_lut, u8 *lut, u16 lut_size);
+				     bool pf_lut, u8 *lut, u16 lut_size);
 enum iavf_status iavf_aq_get_rss_key(struct iavf_hw *hw,
 				     u16 seid,
 				     struct iavf_aqc_get_set_rss_key_data *key);
@@ -85,10 +85,10 @@ enum iavf_status iavf_aq_send_msg_to_pf(struct iavf_hw *hw,
 				u8 *msg, u16 msglen,
 				struct iavf_asq_cmd_details *cmd_details);
 enum iavf_status iavf_aq_debug_dump(struct iavf_hw *hw, u8 cluster_id,
-				u8 table_id, u32 start_index, u16 buff_size,
-				void *buff, u16 *ret_buff_size,
-				u8 *ret_next_table, u32 *ret_next_index,
-				struct iavf_asq_cmd_details *cmd_details);
+				    u8 table_id, u32 start_index, u16 buff_size,
+				    void *buff, u16 *ret_buff_size,
+				    u8 *ret_next_table, u32 *ret_next_index,
+				    struct iavf_asq_cmd_details *cmd_details);
 enum iavf_status iavf_aq_clear_all_wol_filters(struct iavf_hw *hw,
 			struct iavf_asq_cmd_details *cmd_details);
 #endif /* _IAVF_PROTOTYPE_H_ */
