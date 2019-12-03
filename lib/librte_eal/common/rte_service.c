@@ -137,6 +137,12 @@ service_valid(uint32_t id)
 	return !!(rte_services[id].internal_flags & SERVICE_F_REGISTERED);
 }
 
+static struct rte_service_spec_impl *
+service_get(uint32_t id)
+{
+	return &rte_services[id];
+}
+
 /* validate ID and retrieve service pointer, or return error value */
 #define SERVICE_VALID_GET_OR_ERR_RET(id, service, retval) do {          \
 	if (id >= RTE_SERVICE_NUM_MAX || !service_valid(id))            \
@@ -344,12 +350,14 @@ rte_service_runner_do_callback(struct rte_service_spec_impl *s,
 }
 
 
-static inline int32_t
-service_run(uint32_t i, struct core_state *cs, uint64_t service_mask)
+/* Expects the service 's' is valid. */
+static int32_t
+service_run(uint32_t i, struct core_state *cs, uint64_t service_mask,
+	    struct rte_service_spec_impl *s)
 {
-	if (!service_valid(i))
+	if (!s)
 		return -EINVAL;
-	struct rte_service_spec_impl *s = &rte_services[i];
+
 	if (s->comp_runstate != RUNSTATE_RUNNING ||
 			s->app_runstate != RUNSTATE_RUNNING ||
 			!(service_mask & (UINT64_C(1) << i))) {
@@ -383,7 +391,7 @@ rte_service_may_be_active(uint32_t id)
 	int32_t lcore_count = rte_service_lcore_list(ids, RTE_MAX_LCORE);
 	int i;
 
-	if (!service_valid(id))
+	if (id >= RTE_SERVICE_NUM_MAX || !service_valid(id))
 		return -EINVAL;
 
 	for (i = 0; i < lcore_count; i++) {
@@ -397,12 +405,10 @@ rte_service_may_be_active(uint32_t id)
 int32_t
 rte_service_run_iter_on_app_lcore(uint32_t id, uint32_t serialize_mt_unsafe)
 {
-	/* run service on calling core, using all-ones as the service mask */
-	if (!service_valid(id))
-		return -EINVAL;
-
 	struct core_state *cs = &lcore_states[rte_lcore_id()];
-	struct rte_service_spec_impl *s = &rte_services[id];
+	struct rte_service_spec_impl *s;
+
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 
 	/* Atomically add this core to the mapped cores first, then examine if
 	 * we can run the service. This avoids a race condition between
@@ -418,7 +424,7 @@ rte_service_run_iter_on_app_lcore(uint32_t id, uint32_t serialize_mt_unsafe)
 		return -EBUSY;
 	}
 
-	int ret = service_run(id, cs, UINT64_MAX);
+	int ret = service_run(id, cs, UINT64_MAX, s);
 
 	if (serialize_mt_unsafe)
 		rte_atomic32_dec(&s->num_mapped_cores);
@@ -438,8 +444,10 @@ rte_service_runner_func(void *arg)
 		const uint64_t service_mask = cs->service_mask;
 
 		for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
+			if (!service_valid(i))
+				continue;
 			/* return value ignored as no change to code flow */
-			service_run(i, cs, service_mask);
+			service_run(i, cs, service_mask, service_get(i));
 		}
 
 		cs->loops++;
