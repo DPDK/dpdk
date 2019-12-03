@@ -9,9 +9,9 @@
 #include "iavf_osdep.h"
 #include "iavf_register.h"
 #include "iavf_adminq.h"
-#include "iavf_hmc.h"
-#include "iavf_lan_hmc.h"
 #include "iavf_devids.h"
+
+#define IAVF_RXQ_CTX_DBUFF_SHIFT        7
 
 #define UNREFERENCED_XPARAMETER
 #define UNREFERENCED_1PARAMETER(_p) (_p);
@@ -682,9 +682,6 @@ struct iavf_hw {
 	struct iavf_virt_mem nvm_buff;
 	bool nvm_release_on_done;
 	u16 nvm_wait_opcode;
-
-	/* HMC info */
-	struct iavf_hmc_info hmc; /* HMC info struct */
 
 	/* LLDP/DCBX Status */
 	u16 dcbx_status;
