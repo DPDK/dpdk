@@ -803,6 +803,8 @@ enum iavf_status iavf_asq_send_command(struct iavf_hw *hw,
 		cmd_completed = true;
 		if ((enum iavf_admin_queue_err)retval == IAVF_AQ_RC_OK)
 			status = IAVF_SUCCESS;
+		else if ((enum iavf_admin_queue_err)retval == IAVF_AQ_RC_EBUSY)
+			status = IAVF_ERR_NOT_READY;
 		else
 			status = IAVF_ERR_ADMIN_QUEUE_ERROR;
 		hw->aq.asq_last_status = (enum iavf_admin_queue_err)retval;
