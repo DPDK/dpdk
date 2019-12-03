@@ -332,10 +332,10 @@ bool iavf_check_asq_alive(struct iavf_hw *hw)
 #ifdef INTEGRATED_VF
 		if (iavf_is_vf(hw))
 			return !!(rd32(hw, hw->aq.asq.len) &
-				IAVF_ATQLEN1_ATQENABLE_MASK);
+				IAVF_VF_ATQLEN1_ATQENABLE_MASK);
 #else
 		return !!(rd32(hw, hw->aq.asq.len) &
-			IAVF_ATQLEN1_ATQENABLE_MASK);
+			IAVF_VF_ATQLEN1_ATQENABLE_MASK);
 #endif /* INTEGRATED_VF */
 	return false;
 }

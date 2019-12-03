@@ -115,7 +115,7 @@ uint32_t iavf_read_addr(volatile void *addr)
 #define IAVF_WRITE_REG(hw, reg, value) \
 	IAVF_PCI_REG_WRITE(IAVF_PCI_REG_ADDR((hw), (reg)), (value))
 #define IAVF_WRITE_FLUSH(a) \
-	IAVF_READ_REG(a, IAVFGEN_RSTAT)
+	IAVF_READ_REG(a, IAVF_VFGEN_RSTAT)
 
 #define rd32(a, reg) iavf_read_addr(IAVF_PCI_REG_ADDR((a), (reg)))
 #define wr32(a, reg, value) \

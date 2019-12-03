@@ -323,9 +323,10 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 		    VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
 			/* If WB_ON_ITR supports, enable it */
 			vf->msix_base = IAVF_RX_VEC_START;
-			IAVF_WRITE_REG(hw, IAVFINT_DYN_CTLN1(vf->msix_base - 1),
-				      IAVFINT_DYN_CTLN1_ITR_INDX_MASK |
-				      IAVFINT_DYN_CTLN1_WB_ON_ITR_MASK);
+			IAVF_WRITE_REG(hw,
+				       IAVF_VFINT_DYN_CTLN1(vf->msix_base - 1),
+				       IAVF_VFINT_DYN_CTLN1_ITR_INDX_MASK |
+				       IAVF_VFINT_DYN_CTLN1_WB_ON_ITR_MASK);
 		} else {
 			/* If no WB_ON_ITR offload flags, need to set
 			 * interrupt for descriptor write back.
@@ -335,12 +336,12 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			/* set ITR to max */
 			interval = iavf_calc_itr_interval(
 					IAVF_QUEUE_ITR_INTERVAL_MAX);
-			IAVF_WRITE_REG(hw, IAVFINT_DYN_CTL01,
-				      IAVFINT_DYN_CTL01_INTENA_MASK |
-				      (IAVF_ITR_INDEX_DEFAULT <<
-				       IAVFINT_DYN_CTL01_ITR_INDX_SHIFT) |
-				      (interval <<
-				       IAVFINT_DYN_CTL01_INTERVAL_SHIFT));
+			IAVF_WRITE_REG(hw, IAVF_VFINT_DYN_CTL01,
+				       IAVF_VFINT_DYN_CTL01_INTENA_MASK |
+				       (IAVF_ITR_INDEX_DEFAULT <<
+					IAVF_VFINT_DYN_CTL01_ITR_INDX_SHIFT) |
+				       (interval <<
+					IAVF_VFINT_DYN_CTL01_INTERVAL_SHIFT));
 		}
 		IAVF_WRITE_FLUSH(hw);
 		/* map all queues to the same interrupt */
@@ -1115,16 +1116,17 @@ iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	msix_intr = pci_dev->intr_handle.intr_vec[queue_id];
 	if (msix_intr == IAVF_MISC_VEC_ID) {
 		PMD_DRV_LOG(INFO, "MISC is also enabled for control");
-		IAVF_WRITE_REG(hw, IAVFINT_DYN_CTL01,
-			      IAVFINT_DYN_CTL01_INTENA_MASK |
-			      IAVFINT_DYN_CTL01_CLEARPBA_MASK |
-			      IAVFINT_DYN_CTL01_ITR_INDX_MASK);
+		IAVF_WRITE_REG(hw, IAVF_VFINT_DYN_CTL01,
+			       IAVF_VFINT_DYN_CTL01_INTENA_MASK |
+			       IAVF_VFINT_DYN_CTL01_CLEARPBA_MASK |
+			       IAVF_VFINT_DYN_CTL01_ITR_INDX_MASK);
 	} else {
 		IAVF_WRITE_REG(hw,
-			      IAVFINT_DYN_CTLN1(msix_intr - IAVF_RX_VEC_START),
-			      IAVFINT_DYN_CTLN1_INTENA_MASK |
-			      IAVFINT_DYN_CTL01_CLEARPBA_MASK |
-			      IAVFINT_DYN_CTLN1_ITR_INDX_MASK);
+			       IAVF_VFINT_DYN_CTLN1
+				(msix_intr - IAVF_RX_VEC_START),
+			       IAVF_VFINT_DYN_CTLN1_INTENA_MASK |
+			       IAVF_VFINT_DYN_CTL01_CLEARPBA_MASK |
+			       IAVF_VFINT_DYN_CTLN1_ITR_INDX_MASK);
 	}
 
 	IAVF_WRITE_FLUSH(hw);
@@ -1148,7 +1150,7 @@ iavf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	}
 
 	IAVF_WRITE_REG(hw,
-		      IAVFINT_DYN_CTLN1(msix_intr - IAVF_RX_VEC_START),
+		      IAVF_VFINT_DYN_CTLN1(msix_intr - IAVF_RX_VEC_START),
 		      0);
 
 	IAVF_WRITE_FLUSH(hw);
@@ -1161,9 +1163,9 @@ iavf_check_vf_reset_done(struct iavf_hw *hw)
 	int i, reset;
 
 	for (i = 0; i < IAVF_RESET_WAIT_CNT; i++) {
-		reset = IAVF_READ_REG(hw, IAVFGEN_RSTAT) &
-			IAVFGEN_RSTAT_VFR_STATE_MASK;
-		reset = reset >> IAVFGEN_RSTAT_VFR_STATE_SHIFT;
+		reset = IAVF_READ_REG(hw, IAVF_VFGEN_RSTAT) &
+			IAVF_VFGEN_RSTAT_VFR_STATE_MASK;
+		reset = reset >> IAVF_VFGEN_RSTAT_VFR_STATE_SHIFT;
 		if (reset == VIRTCHNL_VFR_VFACTIVE ||
 		    reset == VIRTCHNL_VFR_COMPLETED)
 			break;
@@ -1260,10 +1262,13 @@ static inline void
 iavf_enable_irq0(struct iavf_hw *hw)
 {
 	/* Enable admin queue interrupt trigger */
-	IAVF_WRITE_REG(hw, IAVFINT_ICR0_ENA1, IAVFINT_ICR0_ENA1_ADMINQ_MASK);
+	IAVF_WRITE_REG(hw, IAVF_VFINT_ICR0_ENA1,
+		       IAVF_VFINT_ICR0_ENA1_ADMINQ_MASK);
 
-	IAVF_WRITE_REG(hw, IAVFINT_DYN_CTL01, IAVFINT_DYN_CTL01_INTENA_MASK |
-		IAVFINT_DYN_CTL01_CLEARPBA_MASK | IAVFINT_DYN_CTL01_ITR_INDX_MASK);
+	IAVF_WRITE_REG(hw, IAVF_VFINT_DYN_CTL01,
+		       IAVF_VFINT_DYN_CTL01_INTENA_MASK |
+		       IAVF_VFINT_DYN_CTL01_CLEARPBA_MASK |
+		       IAVF_VFINT_DYN_CTL01_ITR_INDX_MASK);
 
 	IAVF_WRITE_FLUSH(hw);
 }
@@ -1272,9 +1277,9 @@ static inline void
 iavf_disable_irq0(struct iavf_hw *hw)
 {
 	/* Disable all interrupt types */
-	IAVF_WRITE_REG(hw, IAVFINT_ICR0_ENA1, 0);
-	IAVF_WRITE_REG(hw, IAVFINT_DYN_CTL01,
-		      IAVFINT_DYN_CTL01_ITR_INDX_MASK);
+	IAVF_WRITE_REG(hw, IAVF_VFINT_ICR0_ENA1, 0);
+	IAVF_WRITE_REG(hw, IAVF_VFINT_DYN_CTL01,
+		       IAVF_VFINT_DYN_CTL01_ITR_INDX_MASK);
 	IAVF_WRITE_FLUSH(hw);
 }
 

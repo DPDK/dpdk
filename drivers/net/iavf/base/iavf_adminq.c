@@ -18,16 +18,16 @@ STATIC void iavf_adminq_init_regs(struct iavf_hw *hw)
 {
 	/* set head and tail registers in our local struct */
 	if (iavf_is_vf(hw)) {
-		hw->aq.asq.tail = IAVF_ATQT1;
-		hw->aq.asq.head = IAVF_ATQH1;
-		hw->aq.asq.len  = IAVF_ATQLEN1;
-		hw->aq.asq.bal  = IAVF_ATQBAL1;
-		hw->aq.asq.bah  = IAVF_ATQBAH1;
-		hw->aq.arq.tail = IAVF_ARQT1;
-		hw->aq.arq.head = IAVF_ARQH1;
-		hw->aq.arq.len  = IAVF_ARQLEN1;
-		hw->aq.arq.bal  = IAVF_ARQBAL1;
-		hw->aq.arq.bah  = IAVF_ARQBAH1;
+		hw->aq.asq.tail = IAVF_VF_ATQT1;
+		hw->aq.asq.head = IAVF_VF_ATQH1;
+		hw->aq.asq.len  = IAVF_VF_ATQLEN1;
+		hw->aq.asq.bal  = IAVF_VF_ATQBAL1;
+		hw->aq.asq.bah  = IAVF_VF_ATQBAH1;
+		hw->aq.arq.tail = IAVF_VF_ARQT1;
+		hw->aq.arq.head = IAVF_VF_ARQH1;
+		hw->aq.arq.len  = IAVF_VF_ARQLEN1;
+		hw->aq.arq.bal  = IAVF_VF_ARQBAL1;
+		hw->aq.arq.bah  = IAVF_VF_ARQBAH1;
 	}
 }
 
@@ -267,10 +267,10 @@ STATIC enum iavf_status iavf_config_asq_regs(struct iavf_hw *hw)
 #ifdef INTEGRATED_VF
 	if (iavf_is_vf(hw))
 		wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
-					  IAVF_ATQLEN1_ATQENABLE_MASK));
+					  IAVF_VF_ATQLEN1_ATQENABLE_MASK));
 #else
 	wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
-				  IAVF_ATQLEN1_ATQENABLE_MASK));
+				  IAVF_VF_ATQLEN1_ATQENABLE_MASK));
 #endif /* INTEGRATED_VF */
 	wr32(hw, hw->aq.asq.bal, IAVF_LO_DWORD(hw->aq.asq.desc_buf.pa));
 	wr32(hw, hw->aq.asq.bah, IAVF_HI_DWORD(hw->aq.asq.desc_buf.pa));
@@ -302,10 +302,10 @@ STATIC enum iavf_status iavf_config_arq_regs(struct iavf_hw *hw)
 #ifdef INTEGRATED_VF
 	if (iavf_is_vf(hw))
 		wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
-					  IAVF_ARQLEN1_ARQENABLE_MASK));
+					  IAVF_VF_ARQLEN1_ARQENABLE_MASK));
 #else
 	wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
-				  IAVF_ARQLEN1_ARQENABLE_MASK));
+				  IAVF_VF_ARQLEN1_ARQENABLE_MASK));
 #endif /* INTEGRATED_VF */
 	wr32(hw, hw->aq.arq.bal, IAVF_LO_DWORD(hw->aq.arq.desc_buf.pa));
 	wr32(hw, hw->aq.arq.bah, IAVF_HI_DWORD(hw->aq.arq.desc_buf.pa));
@@ -834,7 +834,7 @@ enum iavf_status iavf_asq_send_command(struct iavf_hw *hw,
 	/* update the error if time out occurred */
 	if ((!cmd_completed) &&
 	    (!details->async && !details->postpone)) {
-		if (rd32(hw, hw->aq.asq.len) & IAVF_ATQLEN1_ATQCRIT_MASK) {
+		if (rd32(hw, hw->aq.asq.len) & IAVF_VF_ATQLEN1_ATQCRIT_MASK) {
 			iavf_debug(hw, IAVF_DEBUG_AQ_MESSAGE,
 				   "AQTX: AQ Critical error.\n");
 			status = IAVF_ERR_ADMIN_QUEUE_CRITICAL_ERROR;
@@ -908,9 +908,9 @@ enum iavf_status iavf_clean_arq_element(struct iavf_hw *hw,
 	if (!iavf_is_vf(hw))
 		ntu = rd32(hw, hw->aq.arq.head) & IAVF_PF_ARQH_ARQH_MASK;
 	else
-		ntu = rd32(hw, hw->aq.arq.head) & IAVF_ARQH1_ARQH_MASK;
+		ntu = rd32(hw, hw->aq.arq.head) & IAVF_VF_ARQH1_ARQH_MASK;
 #else
-	ntu = rd32(hw, hw->aq.arq.head) & IAVF_ARQH1_ARQH_MASK;
+	ntu = rd32(hw, hw->aq.arq.head) & IAVF_VF_ARQH1_ARQH_MASK;
 #endif /* INTEGRATED_VF */
 	if (ntu == ntc) {
 		/* nothing to do - shouldn't need to update ring's values */
