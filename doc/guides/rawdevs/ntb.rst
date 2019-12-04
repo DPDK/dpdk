@@ -52,11 +52,11 @@ NTB PMD needs kernel PCI driver to support write combining (WC) to get
 better performance. The difference will be more than 10 times.
 To enable WC, there are 2 ways.
 
-- Insert igb_uio with ``wc_active=1`` flag if use igb_uio driver.
+- Insert igb_uio with ``wc_activate=1`` flag if use igb_uio driver.
 
 .. code-block:: console
 
-  insmod igb_uio.ko wc_active=1
+  insmod igb_uio.ko wc_activate=1
 
 - Enable WC for NTB device's Bar 2 and Bar 4 (Mapped memory) manually.
   The reference is https://www.kernel.org/doc/html/latest/x86/mtrr.html
