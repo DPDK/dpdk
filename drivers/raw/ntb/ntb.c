@@ -683,8 +683,8 @@ end_of_tx:
 			   sizeof(struct ntb_used) * nb1);
 		rte_memcpy(txq->tx_used_ring, tx_used + nb1,
 			   sizeof(struct ntb_used) * nb2);
-		*txq->used_cnt = txq->last_used;
 		rte_wmb();
+		*txq->used_cnt = txq->last_used;
 
 		/* update queue stats */
 		hw->ntb_xstats[NTB_TX_BYTES_ID + off] += bytes;
@@ -789,8 +789,8 @@ end_of_rx:
 			   sizeof(struct ntb_desc) * nb1);
 		rte_memcpy(rxq->rx_desc_ring, rx_desc + nb1,
 			   sizeof(struct ntb_desc) * nb2);
-		*rxq->avail_cnt = rxq->last_avail;
 		rte_wmb();
+		*rxq->avail_cnt = rxq->last_avail;
 
 		/* update queue stats */
 		off = NTB_XSTATS_NUM * ((size_t)context + 1);
