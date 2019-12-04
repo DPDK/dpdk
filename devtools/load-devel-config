@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+# This file is intended to be sourced into shell
+
 # Load DPDK devel config and allow override
 # from system file
 test ! -r /etc/dpdk/devel.config ||
