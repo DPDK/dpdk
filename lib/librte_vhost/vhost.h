@@ -498,14 +498,21 @@ vhost_log_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		__vhost_log_write(dev, iova, len);
 }
 
-/* Macros for printing using RTE_LOG */
-#define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
-#define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER1
+extern int vhost_config_log_level;
+extern int vhost_data_log_level;
+
+#define VHOST_LOG_CONFIG(level, fmt, args...)			\
+	rte_log(RTE_LOG_ ## level, vhost_config_log_level,	\
+		"VHOST_CONFIG: " fmt, ##args)
+
+#define VHOST_LOG_DATA(level, fmt, args...) \
+	(void)((RTE_LOG_ ## level <= RTE_LOG_DP_LEVEL) ?	\
+	 rte_log(RTE_LOG_ ## level,  vhost_data_log_level,	\
+		"VHOST_DATA : " fmt, ##args) :			\
+	 0)
 
 #ifdef RTE_LIBRTE_VHOST_DEBUG
 #define VHOST_MAX_PRINT_BUFF 6072
-#define VHOST_LOG_DEBUG(log_type, fmt, args...) \
-	RTE_LOG(DEBUG, log_type, fmt, ##args)
 #define PRINT_PACKET(device, addr, size, header) do { \
 	char *pkt_addr = (char *)(addr); \
 	unsigned int index; \
@@ -521,10 +528,9 @@ vhost_log_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	} \
 	snprintf(packet + strnlen(packet, VHOST_MAX_PRINT_BUFF), VHOST_MAX_PRINT_BUFF - strnlen(packet, VHOST_MAX_PRINT_BUFF), "\n"); \
 	\
-	VHOST_LOG_DEBUG(VHOST_DATA, "%s", packet); \
+	VHOST_LOG_DATA(DEBUG, "%s", packet); \
 } while (0)
 #else
-#define VHOST_LOG_DEBUG(log_type, fmt, args...) do {} while (0)
 #define PRINT_PACKET(device, addr, size, header) do {} while (0)
 #endif
 
@@ -578,7 +584,7 @@ get_device(int vid)
 	struct virtio_net *dev = vhost_devices[vid];
 
 	if (unlikely(!dev)) {
-		RTE_LOG(ERR, VHOST_CONFIG,
+		VHOST_LOG_CONFIG(ERR,
 			"(%d) device not found.\n", vid);
 	}
 
@@ -664,7 +670,7 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		vq->signalled_used = new;
 		vq->signalled_used_valid = true;
 
-		VHOST_LOG_DEBUG(VHOST_DATA, "%s: used_event_idx=%d, old=%d, new=%d\n",
+		VHOST_LOG_DATA(DEBUG, "%s: used_event_idx=%d, old=%d, new=%d\n",
 			__func__,
 			vhost_used_event(vq),
 			old, new);
