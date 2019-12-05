@@ -42,6 +42,7 @@ struct rte_latency_stats {
 	float avg_latency; /**< Average latency in nano seconds */
 	float max_latency; /**< Maximum latency in nano seconds */
 	float jitter; /** Latency variation */
+	rte_spinlock_t lock; /** Latency calculation lock */
 };
 
 static struct rte_latency_stats *glob_stats;
@@ -164,6 +165,7 @@ calc_latency(uint16_t pid __rte_unused,
 			latency[cnt++] = now - pkts[i]->timestamp;
 	}
 
+	rte_spinlock_lock(&glob_stats->lock);
 	for (i = 0; i < cnt; i++) {
 		/*
 		 * The jitter is calculated as statistical mean of interpacket
@@ -193,6 +195,7 @@ calc_latency(uint16_t pid __rte_unused,
 			alpha * (latency[i] - glob_stats->avg_latency);
 		prev_latency = latency[i];
 	}
+	rte_spinlock_unlock(&glob_stats->lock);
 
 	return nb_pkts;
 }
@@ -223,6 +226,7 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 	}
 
 	glob_stats = mz->addr;
+	rte_spinlock_init(&glob_stats->lock);
 	samp_intvl = app_samp_intvl * latencystat_cycles_per_ns();
 
 	/** Register latency stats with stats library */
