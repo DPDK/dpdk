@@ -292,6 +292,13 @@ static int hn_rss_reta_update(struct rte_eth_dev *dev,
 			hv->rss_ind[i] = reta_conf[idx].reta[shift];
 	}
 
+	err = hn_rndis_conf_rss(hv, NDIS_RSS_FLAG_DISABLE);
+	if (err) {
+		PMD_DRV_LOG(NOTICE,
+			"rss disable failed");
+		return err;
+	}
+
 	err = hn_rndis_conf_rss(hv, 0);
 	if (err) {
 		PMD_DRV_LOG(NOTICE,
@@ -576,6 +583,13 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 		if (err) {
 			PMD_DRV_LOG(NOTICE,
 				    "subchannel configuration failed");
+			return err;
+		}
+
+		err = hn_rndis_conf_rss(hv, NDIS_RSS_FLAG_DISABLE);
+		if (err) {
+			PMD_DRV_LOG(NOTICE,
+				"rss disable failed");
 			return err;
 		}
 
