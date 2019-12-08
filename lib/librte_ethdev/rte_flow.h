@@ -2286,6 +2286,11 @@ struct rte_flow_action_meter {
  * direction.
  *
  * Multiple flows can be configured to use the same security session.
+ *
+ * The NULL value is allowed for security session. If security session is NULL,
+ * then SPI field in ESP flow item and IP addresses in flow items 'IPv4' and
+ * 'IPv6' will be allowed to be a range. The rule thus created can enable
+ * security processing on multiple flows.
  */
 struct rte_flow_action_security {
 	void *security_session; /**< Pointer to security session structure. */
