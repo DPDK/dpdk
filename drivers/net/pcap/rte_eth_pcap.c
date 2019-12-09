@@ -313,7 +313,7 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct pcap_pkthdr header;
 	pcap_dumper_t *dumper;
 	unsigned char temp_data[RTE_ETH_PCAP_SNAPLEN];
-	size_t len;
+	size_t len, caplen;
 
 	pp = rte_eth_devices[dumper_q->port_id].process_private;
 	dumper = pp->tx_dumper[dumper_q->queue_id];
@@ -325,28 +325,24 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	 * dumper */
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = bufs[i];
-		len = rte_pktmbuf_pkt_len(mbuf);
+		len = caplen = rte_pktmbuf_pkt_len(mbuf);
 		if (unlikely(!rte_pktmbuf_is_contiguous(mbuf) &&
 				len > sizeof(temp_data))) {
-			PMD_LOG(ERR,
-				"Dropping multi segment PCAP packet. Size (%zd) > max size (%zd).",
-				len, sizeof(temp_data));
-			rte_pktmbuf_free(mbuf);
-			continue;
+			caplen = sizeof(temp_data);
 		}
 
 		calculate_timestamp(&header.ts);
 		header.len = len;
-		header.caplen = header.len;
+		header.caplen = caplen;
 		/* rte_pktmbuf_read() returns a pointer to the data directly
 		 * in the mbuf (when the mbuf is contiguous) or, otherwise,
 		 * a pointer to temp_data after copying into it.
 		 */
 		pcap_dump((u_char *)dumper, &header,
-			rte_pktmbuf_read(mbuf, 0, len, temp_data));
+			rte_pktmbuf_read(mbuf, 0, caplen, temp_data));
 
 		num_tx++;
-		tx_bytes += len;
+		tx_bytes += caplen;
 		rte_pktmbuf_free(mbuf);
 	}
 
