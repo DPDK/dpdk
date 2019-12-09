@@ -402,7 +402,9 @@ rte_ethtool_net_set_rx_mode(uint16_t port_id)
 	}
 
 	/* Enable Rx vlan filter, VF unspport status is discard */
-	rte_eth_dev_set_vlan_offload(port_id, ETH_VLAN_FILTER_MASK);
+	ret = rte_eth_dev_set_vlan_offload(port_id, ETH_VLAN_FILTER_MASK);
+	if (ret != 0)
+		return ret;
 
 	return 0;
 }
