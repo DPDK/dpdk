@@ -672,6 +672,11 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	else
 		bp->flags &= ~BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD;
 
+	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_HOT_RESET_CAPABLE)
+		bp->flags |= BNXT_FLAG_FW_CAP_HOT_RESET;
+	else
+		bp->flags &= ~BNXT_FLAG_FW_CAP_HOT_RESET;
+
 	HWRM_UNLOCK();
 
 	return rc;
@@ -756,7 +761,8 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 	if (bp->flags & BNXT_FLAG_REGISTERED)
 		return 0;
 
-	flags = HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_HOT_RESET_SUPPORT;
+	if (bp->flags & BNXT_FLAG_FW_CAP_HOT_RESET)
+		flags = HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_HOT_RESET_SUPPORT;
 	if (bp->flags & BNXT_FLAG_FW_CAP_ERROR_RECOVERY)
 		flags |= HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_ERROR_RECOVERY_SUPPORT;
 

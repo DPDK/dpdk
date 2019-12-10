@@ -517,6 +517,7 @@ struct bnxt {
 #define BNXT_FLAG_INIT_DONE			BIT(24)
 #define BNXT_FLAG_FW_CAP_ONE_STEP_TX_TS		BIT(25)
 #define BNXT_FLAG_ADV_FLOW_MGMT			BIT(26)
+#define BNXT_FLAG_FW_CAP_HOT_RESET		BIT(27)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR(bp)		((bp)->port_partition_type)
