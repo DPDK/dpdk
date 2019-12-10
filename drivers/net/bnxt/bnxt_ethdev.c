@@ -3796,6 +3796,48 @@ static void bnxt_dev_cleanup(struct bnxt *bp)
 	bnxt_uninit_resources(bp, true);
 }
 
+static int bnxt_restore_mac_filters(struct bnxt *bp)
+{
+	struct rte_eth_dev *dev = bp->eth_dev;
+	struct rte_eth_dev_info dev_info;
+	struct rte_ether_addr *addr;
+	uint64_t pool_mask;
+	uint32_t pool = 0;
+	uint16_t i;
+	int rc;
+
+	if (BNXT_VF(bp) & !BNXT_VF_IS_TRUSTED(bp))
+		return 0;
+
+	rc = bnxt_dev_info_get_op(dev, &dev_info);
+	if (rc)
+		return rc;
+
+	/* replay MAC address configuration */
+	for (i = 1; i < dev_info.max_mac_addrs; i++) {
+		addr = &dev->data->mac_addrs[i];
+
+		/* skip zero address */
+		if (rte_is_zero_ether_addr(addr))
+			continue;
+
+		pool = 0;
+		pool_mask = dev->data->mac_pool_sel[i];
+
+		do {
+			if (pool_mask & 1ULL) {
+				rc = bnxt_mac_addr_add_op(dev, addr, i, pool);
+				if (rc)
+					return rc;
+			}
+			pool_mask >>= 1;
+			pool++;
+		} while (pool_mask);
+	}
+
+	return 0;
+}
+
 static int bnxt_restore_filters(struct bnxt *bp)
 {
 	struct rte_eth_dev *dev = bp->eth_dev;
@@ -3806,6 +3848,7 @@ static int bnxt_restore_filters(struct bnxt *bp)
 	if (dev->data->promiscuous)
 		ret = bnxt_promiscuous_enable_op(dev);
 
+	ret = bnxt_restore_mac_filters(bp);
 	/* TODO restore other filters as well */
 	return ret;
 }
