@@ -21,7 +21,7 @@ void bnxt_wait_for_device_shutdown(struct bnxt *bp)
 	 * the SHUTDOWN bit in health register
 	 */
 	if (!(bp->recovery_info &&
-	      (bp->flags & BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD)))
+	      (bp->fw_cap & BNXT_FW_CAP_ERR_RECOVER_RELOAD)))
 		return;
 
 	/* Driver has to wait for fw_reset_max_msecs or shutdown bit which comes

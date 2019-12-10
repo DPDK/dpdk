@@ -661,21 +661,15 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		bp->flags |= BNXT_FLAG_EXT_STATS_SUPPORTED;
 
 	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ERROR_RECOVERY_CAPABLE) {
-		bp->flags |= BNXT_FLAG_FW_CAP_ERROR_RECOVERY;
+		bp->fw_cap |= BNXT_FW_CAP_ERROR_RECOVERY;
 		PMD_DRV_LOG(DEBUG, "Adapter Error recovery SUPPORTED\n");
-	} else {
-		bp->flags &= ~BNXT_FLAG_FW_CAP_ERROR_RECOVERY;
 	}
 
 	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ERR_RECOVER_RELOAD)
-		bp->flags |= BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD;
-	else
-		bp->flags &= ~BNXT_FLAG_FW_CAP_ERR_RECOVER_RELOAD;
+		bp->fw_cap |= BNXT_FW_CAP_ERR_RECOVER_RELOAD;
 
 	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_HOT_RESET_CAPABLE)
-		bp->flags |= BNXT_FLAG_FW_CAP_HOT_RESET;
-	else
-		bp->flags &= ~BNXT_FLAG_FW_CAP_HOT_RESET;
+		bp->fw_cap |= BNXT_FW_CAP_HOT_RESET;
 
 	HWRM_UNLOCK();
 
@@ -761,9 +755,9 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 	if (bp->flags & BNXT_FLAG_REGISTERED)
 		return 0;
 
-	if (bp->flags & BNXT_FLAG_FW_CAP_HOT_RESET)
+	if (bp->fw_cap & BNXT_FW_CAP_HOT_RESET)
 		flags = HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_HOT_RESET_SUPPORT;
-	if (bp->flags & BNXT_FLAG_FW_CAP_ERROR_RECOVERY)
+	if (bp->fw_cap & BNXT_FW_CAP_ERROR_RECOVERY)
 		flags |= HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_ERROR_RECOVERY_SUPPORT;
 
 	/* PFs and trusted VFs should indicate the support of the
@@ -803,7 +797,7 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 				 ASYNC_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE |
 				 ASYNC_CMPL_EVENT_ID_LINK_SPEED_CHANGE |
 				 ASYNC_CMPL_EVENT_ID_RESET_NOTIFY);
-	if (bp->flags & BNXT_FLAG_FW_CAP_ERROR_RECOVERY)
+	if (bp->fw_cap & BNXT_FW_CAP_ERROR_RECOVERY)
 		req.async_event_fwd[0] |=
 			rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_ERROR_RECOVERY);
 	req.async_event_fwd[1] |=
@@ -816,7 +810,7 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 
 	flags = rte_le_to_cpu_32(resp->flags);
 	if (flags & HWRM_FUNC_DRV_RGTR_OUTPUT_FLAGS_IF_CHANGE_SUPPORTED)
-		bp->flags |= BNXT_FLAG_FW_CAP_IF_CHANGE;
+		bp->fw_cap |= BNXT_FW_CAP_IF_CHANGE;
 
 	HWRM_UNLOCK();
 
@@ -4849,7 +4843,7 @@ int bnxt_hwrm_if_change(struct bnxt *bp, bool up)
 	uint32_t flags;
 	int rc;
 
-	if (!(bp->flags & BNXT_FLAG_FW_CAP_IF_CHANGE))
+	if (!(bp->fw_cap & BNXT_FW_CAP_IF_CHANGE))
 		return 0;
 
 	/* Do not issue FUNC_DRV_IF_CHANGE during reset recovery.
@@ -4892,7 +4886,7 @@ int bnxt_hwrm_error_recovery_qcfg(struct bnxt *bp)
 	int rc;
 
 	/* Older FW does not have error recovery support */
-	if (!(bp->flags & BNXT_FLAG_FW_CAP_ERROR_RECOVERY))
+	if (!(bp->fw_cap & BNXT_FW_CAP_ERROR_RECOVERY))
 		return 0;
 
 	if (!info) {
