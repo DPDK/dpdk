@@ -539,9 +539,9 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	return stat_count;
 }
 
-int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
-	struct rte_eth_xstat_name *xstats_names,
-	__rte_unused unsigned int limit)
+int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
+				 struct rte_eth_xstat_name *xstats_names,
+				 __rte_unused unsigned int limit)
 {
 	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +

@@ -77,7 +77,7 @@ bnxt_flow_non_void_action(const struct rte_flow_action *cur)
 
 static int
 bnxt_filter_type_check(const struct rte_flow_item pattern[],
-		       struct rte_flow_error *error __rte_unused)
+		       struct rte_flow_error *error)
 {
 	const struct rte_flow_item *item =
 		bnxt_flow_non_void_item(pattern);

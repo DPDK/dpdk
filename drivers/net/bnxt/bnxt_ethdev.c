@@ -3149,7 +3149,7 @@ free_filter:
 }
 
 static int
-bnxt_filter_ctrl_op(struct rte_eth_dev *dev __rte_unused,
+bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 		    enum rte_filter_type filter_type,
 		    enum rte_filter_op filter_op, void *arg)
 {
@@ -4173,7 +4173,7 @@ static int bnxt_init_board(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int bnxt_alloc_ctx_mem_blk(__rte_unused struct bnxt *bp,
+static int bnxt_alloc_ctx_mem_blk(struct bnxt *bp,
 				  struct bnxt_ctx_pg_info *ctx_pg,
 				  uint32_t mem_size,
 				  const char *suffix,
