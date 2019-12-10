@@ -3796,6 +3796,29 @@ static void bnxt_dev_cleanup(struct bnxt *bp)
 	bnxt_uninit_resources(bp, true);
 }
 
+static int bnxt_restore_vlan_filters(struct bnxt *bp)
+{
+	struct rte_eth_dev *dev = bp->eth_dev;
+	struct rte_vlan_filter_conf *vfc;
+	int vidx, vbit, rc;
+	uint16_t vlan_id;
+
+	for (vlan_id = 1; vlan_id <= RTE_ETHER_MAX_VLAN_ID; vlan_id++) {
+		vfc = &dev->data->vlan_filter_conf;
+		vidx = vlan_id / 64;
+		vbit = vlan_id % 64;
+
+		/* Each bit corresponds to a VLAN id */
+		if (vfc->ids[vidx] & (UINT64_C(1) << vbit)) {
+			rc = bnxt_add_vlan_filter(bp, vlan_id);
+			if (rc)
+				return rc;
+		}
+	}
+
+	return 0;
+}
+
 static int bnxt_restore_mac_filters(struct bnxt *bp)
 {
 	struct rte_eth_dev *dev = bp->eth_dev;
@@ -3849,6 +3872,10 @@ static int bnxt_restore_filters(struct bnxt *bp)
 		ret = bnxt_promiscuous_enable_op(dev);
 
 	ret = bnxt_restore_mac_filters(bp);
+	if (ret)
+		return ret;
+
+	ret = bnxt_restore_vlan_filters(bp);
 	/* TODO restore other filters as well */
 	return ret;
 }
