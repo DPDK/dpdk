@@ -1193,7 +1193,6 @@ enum _ecore_status_t ecore_mcp_unload_done(struct ecore_hwfn *p_hwfn,
 					   struct ecore_ptt *p_ptt)
 {
 	struct ecore_mcp_mb_params mb_params;
-	struct mcp_mac wol_mac;
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_CODE_UNLOAD_DONE;
@@ -2494,7 +2493,6 @@ ecore_mcp_get_shmem_proto_mfw(struct ecore_hwfn *p_hwfn,
 			      enum ecore_pci_personality *p_proto)
 {
 	u32 resp = 0, param = 0;
-	enum _ecore_status_t rc;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IFUP,
 		   "According to capabilities, L2 personality is %08x [resp %08x param %08x]\n",
