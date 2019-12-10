@@ -1521,7 +1521,6 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 
 exit:
 	/* No need to hold on to this filter if we are just validating flow */
-	filter->fw_l2_filter_id = UINT64_MAX;
 	bnxt_free_filter(bp, filter);
 	bnxt_release_flow_lock(bp);
 

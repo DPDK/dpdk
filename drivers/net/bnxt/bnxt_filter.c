@@ -192,5 +192,10 @@ struct bnxt_filter_info *bnxt_get_unused_filter(struct bnxt *bp)
 
 void bnxt_free_filter(struct bnxt *bp, struct bnxt_filter_info *filter)
 {
+	memset(filter, 0, sizeof(*filter));
+	filter->mac_index = INVALID_MAC_INDEX;
+	filter->fw_l2_filter_id = UINT64_MAX;
+	filter->fw_ntuple_filter_id = UINT64_MAX;
+	filter->fw_em_filter_id = UINT64_MAX;
 	STAILQ_INSERT_TAIL(&bp->free_filter_list, filter, next);
 }
