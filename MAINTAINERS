@@ -1374,6 +1374,7 @@ F: lib/librte_rib/
 F: app/test/test_rib*
 F: lib/librte_fib/
 F: app/test/test_fib*
+F: app/test-fib/
 
 Traffic metering
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
