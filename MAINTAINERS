@@ -601,7 +601,7 @@ F: doc/guides/nics/liquidio.rst
 F: doc/guides/nics/features/liquidio.ini
 
 Cavium OCTEON TX
-M: Jerin Jacob <jerinj@marvell.com>
+M: Harman Kalra <hkalra@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/common/octeontx/
 F: drivers/mempool/octeontx/
