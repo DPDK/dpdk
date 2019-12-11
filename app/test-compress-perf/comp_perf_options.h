@@ -24,8 +24,9 @@ enum cleanup_st {
 };
 
 enum cperf_test_type {
-	CPERF_TEST_TYPE_BENCHMARK,
-	CPERF_TEST_TYPE_VERIFY
+	CPERF_TEST_TYPE_THROUGHPUT,
+	CPERF_TEST_TYPE_VERIFY,
+	CPERF_TEST_TYPE_PMDCC
 };
 
 enum comp_operation {
@@ -68,6 +69,8 @@ struct comp_test_data {
 	double ratio;
 	enum cleanup_st cleanup;
 	int perf_comp_force_stop;
+
+	uint32_t cyclecount_delay;
 };
 
 int

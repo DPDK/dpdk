@@ -48,8 +48,8 @@ static int
 main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 {
 	struct comp_test_data *test_data = ctx->options;
-	uint8_t *output_data_ptr;
-	size_t *output_data_sz;
+	uint8_t *output_data_ptr = NULL;
+	size_t *output_data_sz = NULL;
 	struct cperf_mem_resources *mem = &ctx->mem;
 
 	uint8_t dev_id = mem->dev_id;

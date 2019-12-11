@@ -30,6 +30,9 @@
 #define CPERF_WINDOW_SIZE	("window-sz")
 #define CPERF_EXTERNAL_MBUFS	("external-mbufs")
 
+/* cyclecount-specific options */
+#define CPERF_CYCLECOUNT_DELAY_US ("cc-delay-us")
+
 struct name_id_map {
 	const char *name;
 	uint32_t id;
@@ -39,7 +42,7 @@ static void
 usage(char *progname)
 {
 	printf("%s [EAL options] --\n"
-		" --ptest benchmark / verify :"
+		" --ptest throughput / verify / pmd-cyclecount\n"
 		" --driver-name NAME: compress driver to use\n"
 		" --input-file NAME: file to compress and decompress\n"
 		" --extended-input-sz N: extend file data up to this size (default: no extension)\n"
@@ -61,6 +64,8 @@ usage(char *progname)
 		"		(e.g.: 15 => 32k, default: max supported by PMD)\n"
 		" --external-mbufs: use memzones as external buffers instead of\n"
 		"		keeping the data directly in mbuf area\n"
+		" --cc-delay-us N: delay between enqueue and dequeue operations in microseconds\n"
+		"		valid only for cyclecount perf test (default: 500 us)\n"
 		" -h: prints this help\n",
 		progname);
 }
@@ -85,12 +90,16 @@ parse_cperf_test_type(struct comp_test_data *test_data, const char *arg)
 {
 	struct name_id_map cperftest_namemap[] = {
 		{
-			comp_perf_test_type_strs[CPERF_TEST_TYPE_BENCHMARK],
-			CPERF_TEST_TYPE_BENCHMARK
+			comp_perf_test_type_strs[CPERF_TEST_TYPE_THROUGHPUT],
+			CPERF_TEST_TYPE_THROUGHPUT
 		},
 		{
 			comp_perf_test_type_strs[CPERF_TEST_TYPE_VERIFY],
 			CPERF_TEST_TYPE_VERIFY
+		},
+		{
+			comp_perf_test_type_strs[CPERF_TEST_TYPE_PMDCC],
+			CPERF_TEST_TYPE_PMDCC
 		}
 	};
 
@@ -531,17 +540,28 @@ parse_external_mbufs(struct comp_test_data *test_data,
 	return 0;
 }
 
+static int
+parse_cyclecount_delay_us(struct comp_test_data *test_data,
+			const char *arg)
+{
+	int ret = parse_uint32_t(&(test_data->cyclecount_delay), arg);
+
+	if (ret) {
+		RTE_LOG(ERR, USER1, "Failed to parse cyclecount delay\n");
+		return -1;
+	}
+	return 0;
+}
+
 typedef int (*option_parser_t)(struct comp_test_data *test_data,
 		const char *arg);
 
 struct long_opt_parser {
 	const char *lgopt_name;
 	option_parser_t parser_fn;
-
 };
 
 static struct option lgopts[] = {
-
 	{ CPERF_PTEST_TYPE, required_argument, 0, 0 },
 	{ CPERF_DRIVER_NAME, required_argument, 0, 0 },
 	{ CPERF_TEST_FILE, required_argument, 0, 0 },
@@ -556,6 +576,7 @@ static struct option lgopts[] = {
 	{ CPERF_LEVEL, required_argument, 0, 0 },
 	{ CPERF_WINDOW_SIZE, required_argument, 0, 0 },
 	{ CPERF_EXTERNAL_MBUFS, 0, 0, 0 },
+	{ CPERF_CYCLECOUNT_DELAY_US, required_argument, 0, 0 },
 	{ NULL, 0, 0, 0 }
 };
 
@@ -577,6 +598,7 @@ comp_perf_opts_parse_long(int opt_idx, struct comp_test_data *test_data)
 		{ CPERF_LEVEL,		parse_level },
 		{ CPERF_WINDOW_SIZE,	parse_window_sz },
 		{ CPERF_EXTERNAL_MBUFS,	parse_external_mbufs },
+		{ CPERF_CYCLECOUNT_DELAY_US,	parse_cyclecount_delay_us },
 	};
 	unsigned int i;
 
@@ -631,8 +653,9 @@ comp_perf_options_default(struct comp_test_data *test_data)
 	test_data->level_lst.min = RTE_COMP_LEVEL_MIN;
 	test_data->level_lst.max = RTE_COMP_LEVEL_MAX;
 	test_data->level_lst.inc = 1;
-	test_data->test = CPERF_TEST_TYPE_BENCHMARK;
+	test_data->test = CPERF_TEST_TYPE_THROUGHPUT;
 	test_data->use_external_mbufs = 0;
+	test_data->cyclecount_delay = 500;
 }
 
 int

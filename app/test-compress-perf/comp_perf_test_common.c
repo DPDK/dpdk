@@ -9,7 +9,8 @@
 
 #include "comp_perf.h"
 #include "comp_perf_options.h"
-#include "comp_perf_test_benchmark.h"
+#include "comp_perf_test_throughput.h"
+#include "comp_perf_test_cyclecount.h"
 #include "comp_perf_test_common.h"
 #include "comp_perf_test_verify.h"
 
@@ -276,9 +277,11 @@ comp_perf_allocate_memory(struct comp_test_data *test_data,
 
 	snprintf(pool_name, sizeof(pool_name), "op_pool_%u_qp_%u",
 			mem->dev_id, mem->qp_id);
+
+	/* one mempool for both src and dst mbufs */
 	mem->op_pool = rte_comp_op_pool_create(pool_name,
-				  mem->total_bufs,
-				  0, 0, rte_socket_id());
+				mem->total_bufs * 2,
+				0, 0, rte_socket_id());
 	if (mem->op_pool == NULL) {
 		RTE_LOG(ERR, USER1, "Comp op mempool could not be created\n");
 		return -1;
@@ -495,20 +498,24 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 }
 
 void
-print_test_dynamics(void)
+print_test_dynamics(const struct comp_test_data *test_data)
 {
 	uint32_t opt_total_segs = DIV_CEIL(buffer_info.input_data_sz,
 			MAX_SEG_SIZE);
 
 	if (buffer_info.total_buffs > 1) {
-		printf("\nWarning: for the current input parameters, number"
+		if (test_data->test == CPERF_TEST_TYPE_THROUGHPUT) {
+			printf("\nWarning: for the current input parameters, number"
 				" of ops is higher than one, which may result"
 				" in sub-optimal performance.\n");
-		printf("To improve the performance (for the current"
+			printf("To improve the performance (for the current"
 				" input data) following parameters are"
 				" suggested:\n");
-		printf("	* Segment size: %d\n", MAX_SEG_SIZE);
-		printf("	* Number of segments: %u\n", opt_total_segs);
+			printf("	* Segment size: %d\n",
+			       MAX_SEG_SIZE);
+			printf("	* Number of segments: %u\n",
+			       opt_total_segs);
+		}
 	} else if (buffer_info.total_buffs == 1) {
 		printf("\nInfo: there is only one op with %u segments -"
 				" the compression ratio is the best.\n",

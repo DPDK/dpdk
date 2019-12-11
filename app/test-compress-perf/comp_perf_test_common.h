@@ -49,6 +49,6 @@ int
 prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem);
 
 void
-print_test_dynamics(void);
+print_test_dynamics(const struct comp_test_data *test_data);
 
 #endif /* _COMP_PERF_TEST_COMMON_H_ */

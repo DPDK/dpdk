@@ -11,32 +11,41 @@
 #include <rte_log.h>
 #include <rte_compressdev.h>
 
-#include "comp_perf_options.h"
-#include "comp_perf_test_verify.h"
-#include "comp_perf_test_benchmark.h"
 #include "comp_perf.h"
+#include "comp_perf_options.h"
 #include "comp_perf_test_common.h"
+#include "comp_perf_test_cyclecount.h"
+#include "comp_perf_test_throughput.h"
+#include "comp_perf_test_verify.h"
 
 #define NUM_MAX_XFORMS 16
 #define NUM_MAX_INFLIGHT_OPS 512
 
 __extension__
 const char *comp_perf_test_type_strs[] = {
-	[CPERF_TEST_TYPE_BENCHMARK] = "benchmark",
-	[CPERF_TEST_TYPE_VERIFY] = "verify"
+	[CPERF_TEST_TYPE_THROUGHPUT] = "throughput",
+	[CPERF_TEST_TYPE_VERIFY] = "verify",
+	[CPERF_TEST_TYPE_PMDCC] = "pmd-cyclecount"
 };
 
 __extension__
 static const struct cperf_test cperf_testmap[] = {
-	[CPERF_TEST_TYPE_BENCHMARK] = {
-			cperf_benchmark_test_constructor,
-			cperf_benchmark_test_runner,
-			cperf_benchmark_test_destructor
+	[CPERF_TEST_TYPE_THROUGHPUT] = {
+			cperf_throughput_test_constructor,
+			cperf_throughput_test_runner,
+			cperf_throughput_test_destructor
+
 	},
 	[CPERF_TEST_TYPE_VERIFY] = {
 			cperf_verify_test_constructor,
 			cperf_verify_test_runner,
 			cperf_verify_test_destructor
+	},
+
+	[CPERF_TEST_TYPE_PMDCC] = {
+			cperf_cyclecount_test_constructor,
+			cperf_cyclecount_test_runner,
+			cperf_cyclecount_test_destructor
 	}
 };
 
@@ -116,7 +125,8 @@ comp_perf_initialize_compressdev(struct comp_test_data *test_data,
 	enabled_cdev_count = rte_compressdev_devices_get(test_data->driver_name,
 			enabled_cdevs, RTE_COMPRESS_MAX_DEVS);
 	if (enabled_cdev_count == 0) {
-		RTE_LOG(ERR, USER1, "No compress devices type %s available\n",
+		RTE_LOG(ERR, USER1, "No compress devices type %s available,"
+				    " please check the list of specified devices in EAL section\n",
 				test_data->driver_name);
 		return -EINVAL;
 	}
@@ -270,6 +280,7 @@ comp_perf_dump_input_data(struct comp_test_data *test_data)
 		data += data_to_read;
 	}
 
+	printf("\n");
 	if (test_data->input_data_sz > actual_file_sz)
 		RTE_LOG(INFO, USER1,
 		  "%zu bytes read from file %s, extending the file %.2f times\n",
@@ -365,9 +376,12 @@ main(int argc, char **argv)
 	else
 		test_data->level = test_data->level_lst.list[0];
 
-	printf("App uses socket: %u\n", rte_socket_id());
+	printf("\nApp uses socket: %u\n", rte_socket_id());
 	printf("Burst size = %u\n", test_data->burst_sz);
 	printf("Input data size = %zu\n", test_data->input_data_sz);
+	if (test_data->test == CPERF_TEST_TYPE_PMDCC)
+		printf("Cycle-count delay = %u [us]\n",
+		       test_data->cyclecount_delay);
 
 	test_data->cleanup = ST_DURING_TEST;
 	total_nb_qps = nb_compressdevs * test_data->nb_qps;
@@ -394,7 +408,7 @@ main(int argc, char **argv)
 		i++;
 	}
 
-	print_test_dynamics(); /* constructors must be executed first */
+	print_test_dynamics(test_data);
 
 	while (test_data->level <= test_data->level_lst.max) {
 
@@ -472,7 +486,28 @@ end:
 }
 
 __rte_weak void *
-cperf_benchmark_test_constructor(uint8_t dev_id __rte_unused,
+cperf_cyclecount_test_constructor(uint8_t dev_id __rte_unused,
+				 uint16_t qp_id __rte_unused,
+				 struct comp_test_data *options __rte_unused)
+{
+	RTE_LOG(INFO, USER1, "Cycle count test is not supported yet\n");
+	return NULL;
+}
+
+__rte_weak void
+cperf_cyclecount_test_destructor(void *arg __rte_unused)
+{
+	RTE_LOG(INFO, USER1, "Something wrong happened!!!\n");
+}
+
+__rte_weak int
+cperf_cyclecount_test_runner(void *test_ctx __rte_unused)
+{
+	return 0;
+}
+
+__rte_weak void *
+cperf_throughput_test_constructor(uint8_t dev_id __rte_unused,
 				 uint16_t qp_id __rte_unused,
 				 struct comp_test_data *options __rte_unused)
 {
@@ -481,13 +516,13 @@ cperf_benchmark_test_constructor(uint8_t dev_id __rte_unused,
 }
 
 __rte_weak void
-cperf_benchmark_test_destructor(void *arg __rte_unused)
+cperf_throughput_test_destructor(void *arg __rte_unused)
 {
 
 }
 
 __rte_weak int
-cperf_benchmark_test_runner(void *test_ctx __rte_unused)
+cperf_throughput_test_runner(void *test_ctx __rte_unused)
 {
 	return 0;
 }

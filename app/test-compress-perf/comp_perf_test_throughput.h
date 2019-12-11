@@ -24,13 +24,13 @@ struct cperf_benchmark_ctx {
 };
 
 void
-cperf_benchmark_test_destructor(void *arg);
+cperf_throughput_test_destructor(void *arg);
 
 int
-cperf_benchmark_test_runner(void *test_ctx);
+cperf_throughput_test_runner(void *test_ctx);
 
 void *
-cperf_benchmark_test_constructor(uint8_t dev_id, uint16_t qp_id,
+cperf_throughput_test_constructor(uint8_t dev_id, uint16_t qp_id,
 		struct comp_test_data *options);
 
 #endif

@@ -8,10 +8,10 @@
 #include <rte_cycles.h>
 #include <rte_compressdev.h>
 
-#include "comp_perf_test_benchmark.h"
+#include "comp_perf_test_throughput.h"
 
 void
-cperf_benchmark_test_destructor(void *arg)
+cperf_throughput_test_destructor(void *arg)
 {
 	if (arg) {
 		comp_perf_free_memory(
@@ -22,7 +22,7 @@ cperf_benchmark_test_destructor(void *arg)
 }
 
 void *
-cperf_benchmark_test_constructor(uint8_t dev_id, uint16_t qp_id,
+cperf_throughput_test_constructor(uint8_t dev_id, uint16_t qp_id,
 		struct comp_test_data *options)
 {
 	struct cperf_benchmark_ctx *ctx = NULL;
@@ -41,7 +41,7 @@ cperf_benchmark_test_constructor(uint8_t dev_id, uint16_t qp_id,
 			&& !prepare_bufs(ctx->ver.options, &ctx->ver.mem))
 		return ctx;
 
-	cperf_benchmark_test_destructor(ctx);
+	cperf_throughput_test_destructor(ctx);
 	return NULL;
 }
 
@@ -324,7 +324,7 @@ end:
 }
 
 int
-cperf_benchmark_test_runner(void *test_ctx)
+cperf_throughput_test_runner(void *test_ctx)
 {
 	struct cperf_benchmark_ctx *ctx = test_ctx;
 	struct comp_test_data *test_data = ctx->ver.options;

@@ -26,15 +26,15 @@ struct cperf_test {
 /* Needed for weak functions*/
 
 void *
-cperf_benchmark_test_constructor(uint8_t dev_id __rte_unused,
+cperf_throughput_test_constructor(uint8_t dev_id __rte_unused,
 				 uint16_t qp_id __rte_unused,
 				 struct comp_test_data *options __rte_unused);
 
 void
-cperf_benchmark_test_destructor(void *arg __rte_unused);
+cperf_throughput_test_destructor(void *arg __rte_unused);
 
 int
-cperf_benchmark_test_runner(void *test_ctx __rte_unused);
+cperf_throughput_test_runner(void *test_ctx __rte_unused);
 
 void *
 cperf_verify_test_constructor(uint8_t dev_id __rte_unused,
