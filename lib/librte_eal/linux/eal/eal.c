@@ -25,6 +25,7 @@
 #if defined(RTE_ARCH_X86)
 #include <sys/io.h>
 #endif
+#include <linux/version.h>
 
 #include <rte_compat.h>
 #include <rte_common.h>
