@@ -79,9 +79,10 @@ pmd_drv_log_basename(const char *s)
 
 /** Allocate a buffer on the stack and fill it with a printf format string. */
 #define MKSTR(name, ...) \
-	char name[snprintf(NULL, 0, __VA_ARGS__) + 1]; \
+	int mkstr_size_##name = snprintf(NULL, 0, "" __VA_ARGS__); \
+	char name[mkstr_size_##name + 1]; \
 	\
-	snprintf(name, sizeof(name), __VA_ARGS__)
+	snprintf(name, sizeof(name), "" __VA_ARGS__)
 
 /** Generate a string out of the provided arguments. */
 #define MLX4_STR(...) # __VA_ARGS__
