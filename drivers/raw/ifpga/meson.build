@@ -15,7 +15,7 @@ if build
 	objs = [base_objs]
 
 	deps += ['ethdev', 'rawdev', 'pci', 'bus_pci', 'kvargs',
-		'bus_vdev', 'bus_ifpga', 'net', 'i40e', 'ipn3ke']
+		'bus_vdev', 'bus_ifpga', 'net', 'pmd_i40e', 'pmd_ipn3ke']
 	ext_deps += dep
 
 	sources = files('ifpga_rawdev.c')

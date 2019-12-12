@@ -9,8 +9,8 @@ endif
 dpdk_driver_classes = ['common',
 	       'bus',
 	       'mempool', # depends on common and bus.
-	       'raw',     # depends on common and bus.
-	       'net',     # depends on common, bus, mempool and raw.
+	       'net',     # depends on common, bus, mempool
+	       'raw',     # depends on common, bus and net.
 	       'crypto',  # depends on common, bus and mempool (net in future).
 	       'compress', # depends on common, bus, mempool.
 	       'vdpa',    # depends on common, bus and mempool.

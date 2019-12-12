@@ -21,9 +21,11 @@ endif
 if build
 	allow_experimental_apis = true
 
+	includes += include_directories('../../raw/ifpga')
+
 	sources += files('ipn3ke_ethdev.c',
 		'ipn3ke_representor.c',
 		'ipn3ke_tm.c',
 		'ipn3ke_flow.c')
-	deps += ['bus_ifpga', 'sched', 'pmd_i40e', 'rawdev', 'rawdev_ifpga']
+	deps += ['bus_ifpga', 'ethdev', 'sched']
 endif
