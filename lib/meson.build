@@ -113,10 +113,10 @@ foreach l:libraries
 
 			if is_experimental != 0
 				lib_version = experimental_abi_version
-				so_version = experimental_abi_version
+				so_version = experimental_so_version
 			else
 				lib_version = abi_version
-				so_version = abi_version
+				so_version = stable_so_version
 			endif
 
 			# first build static lib
