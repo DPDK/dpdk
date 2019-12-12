@@ -61,7 +61,7 @@ CHECK_EXPERIMENTAL = $(EXPERIMENTAL_CHECK) $(SRCDIR)/$(EXPORT_MAP) $@
 
 PMDINFO_GEN = $(RTE_SDK_BIN)/app/dpdk-pmdinfogen $@ $@.pmd.c
 PMDINFO_CC = $(CC) $(CPPFLAGS) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@.pmd.o $@.pmd.c
-PMDINFO_LD = $(CROSS)ld $(LDFLAGS) -r -o $@.o $@.pmd.o $@
+PMDINFO_LD = $(CROSS)ld -r $(filter-out -export-dynamic,$(LDFLAGS)) -o $@.o $@.pmd.o $@
 PMDINFO_TO_O = if grep -q 'RTE_PMD_REGISTER_.*(.*)' $<; then \
 	echo "$(if $V,$(PMDINFO_GEN),  PMDINFO $@.pmd.c)" && \
 	$(PMDINFO_GEN) && \
