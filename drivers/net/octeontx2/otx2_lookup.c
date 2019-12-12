@@ -17,7 +17,7 @@
 const uint32_t *
 otx2_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 {
-	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	RTE_SET_USED(eth_dev);
 
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER_QINQ, /* LB */
@@ -56,10 +56,7 @@ otx2_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 		RTE_PTYPE_UNKNOWN,
 	};
 
-	if (dev->rx_offload_flags & NIX_RX_OFFLOAD_PTYPE_F)
-		return ptypes;
-	else
-		return NULL;
+	return ptypes;
 }
 
 int
