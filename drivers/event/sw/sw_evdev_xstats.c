@@ -391,8 +391,6 @@ sw_xstats_get_names(const struct rte_eventdev *dev,
 	const struct sw_evdev *sw = sw_pmd_priv_const(dev);
 	unsigned int i;
 	unsigned int xidx = 0;
-	RTE_SET_USED(mode);
-	RTE_SET_USED(queue_port_id);
 
 	uint32_t xstats_mode_count = 0;
 	uint32_t start_offset = 0;

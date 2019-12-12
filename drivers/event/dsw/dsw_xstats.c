@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Ericsson AB
+ * Copyright(c) 2018-2019 Ericsson AB
  */
 
 #include "dsw_evdev.h"
@@ -150,54 +150,81 @@ static struct dsw_xstats_port dsw_port_xstats[] = {
 	  false }
 };
 
-static int
-dsw_xstats_dev_get_names(struct rte_event_dev_xstats_name *xstats_names,
-			 unsigned int *ids, unsigned int size)
+typedef
+void (*dsw_xstats_foreach_fn)(const char *xstats_name,
+			      enum rte_event_dev_xstats_mode mode,
+			      uint8_t queue_port_id, unsigned int xstats_id,
+			      void *data);
+
+static void
+dsw_xstats_dev_foreach(dsw_xstats_foreach_fn fn, void *fn_data)
 {
 	unsigned int i;
 
-	for (i = 0; i < RTE_DIM(dsw_dev_xstats) && i < size; i++) {
-		ids[i] = i;
-		strcpy(xstats_names[i].name, dsw_dev_xstats[i].name);
-	}
-
-	return i;
+	for (i = 0; i < RTE_DIM(dsw_dev_xstats); i++)
+		fn(dsw_dev_xstats[i].name, RTE_EVENT_DEV_XSTATS_DEVICE, 0,
+		   i, fn_data);
 }
 
-static int
-dsw_xstats_port_get_names(struct dsw_evdev *dsw, uint8_t port_id,
-			  struct rte_event_dev_xstats_name *xstats_names,
-			  unsigned int *ids, unsigned int size)
+static void
+dsw_xstats_port_foreach(struct dsw_evdev *dsw, uint8_t port_id,
+			dsw_xstats_foreach_fn fn, void *fn_data)
 {
-	uint8_t queue_id = 0;
-	unsigned int id_idx;
+	uint8_t queue_id;
 	unsigned int stat_idx;
 
-	for (id_idx = 0, stat_idx = 0;
-	     id_idx < size && stat_idx < RTE_DIM(dsw_port_xstats);
-	     id_idx++) {
+	for (stat_idx = 0, queue_id = 0;
+	     stat_idx < RTE_DIM(dsw_port_xstats);) {
 		struct dsw_xstats_port *xstat = &dsw_port_xstats[stat_idx];
+		char xstats_name[RTE_EVENT_DEV_XSTATS_NAME_SIZE];
+		unsigned int xstats_id;
 
 		if (xstat->per_queue) {
-			ids[id_idx] = DSW_XSTATS_ID_CREATE(stat_idx, queue_id);
-			snprintf(xstats_names[id_idx].name,
-				 RTE_EVENT_DEV_XSTATS_NAME_SIZE,
+			xstats_id = DSW_XSTATS_ID_CREATE(stat_idx, queue_id);
+			snprintf(xstats_name, sizeof(xstats_name),
 				 dsw_port_xstats[stat_idx].name_fmt, port_id,
 				 queue_id);
 			queue_id++;
 		} else {
-			ids[id_idx] = stat_idx;
-			snprintf(xstats_names[id_idx].name,
-				 RTE_EVENT_DEV_XSTATS_NAME_SIZE,
+			xstats_id = stat_idx;
+			snprintf(xstats_name, sizeof(xstats_name),
 				 dsw_port_xstats[stat_idx].name_fmt, port_id);
 		}
+
+		fn(xstats_name, RTE_EVENT_DEV_XSTATS_PORT, port_id,
+		   xstats_id, fn_data);
 
 		if (!(xstat->per_queue && queue_id < dsw->num_queues)) {
 			stat_idx++;
 			queue_id = 0;
 		}
 	}
-	return id_idx;
+}
+
+struct store_ctx {
+	struct rte_event_dev_xstats_name *names;
+	unsigned int *ids;
+	unsigned int count;
+	unsigned int capacity;
+};
+
+static void
+dsw_xstats_store_stat(const char *xstats_name,
+		      enum rte_event_dev_xstats_mode mode,
+		      uint8_t queue_port_id, unsigned int xstats_id,
+		      void *data)
+{
+	struct store_ctx *ctx = data;
+
+	RTE_SET_USED(mode);
+	RTE_SET_USED(queue_port_id);
+
+	if (ctx->count < ctx->capacity) {
+		strcpy(ctx->names[ctx->count].name, xstats_name);
+		ctx->ids[ctx->count] = xstats_id;
+	}
+
+	ctx->count++;
 }
 
 int
@@ -205,16 +232,24 @@ dsw_xstats_get_names(const struct rte_eventdev *dev,
 		     enum rte_event_dev_xstats_mode mode,
 		     uint8_t queue_port_id,
 		     struct rte_event_dev_xstats_name *xstats_names,
-		     unsigned int *ids, unsigned int size)
+		     unsigned int *ids, unsigned int capacity)
 {
 	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
 
+	struct store_ctx ctx = {
+		.names = xstats_names,
+		.ids = ids,
+		.capacity = capacity
+	};
+
 	switch (mode) {
 	case RTE_EVENT_DEV_XSTATS_DEVICE:
-		return dsw_xstats_dev_get_names(xstats_names, ids, size);
+		dsw_xstats_dev_foreach(dsw_xstats_store_stat, &ctx);
+		return ctx.count;
 	case RTE_EVENT_DEV_XSTATS_PORT:
-		return dsw_xstats_port_get_names(dsw, queue_port_id,
-						 xstats_names, ids, size);
+		dsw_xstats_port_foreach(dsw, queue_port_id,
+					dsw_xstats_store_stat, &ctx);
+		return ctx.count;
 	case RTE_EVENT_DEV_XSTATS_QUEUE:
 		return 0;
 	default:
@@ -278,11 +313,48 @@ dsw_xstats_get(const struct rte_eventdev *dev,
 	return 0;
 }
 
-uint64_t dsw_xstats_get_by_name(const struct rte_eventdev *dev,
-				const char *name, unsigned int *id)
+struct find_ctx {
+	const struct rte_eventdev *dev;
+	const char *name;
+	unsigned int *id;
+	uint64_t value;
+};
+
+static void
+dsw_xstats_find_stat(const char *xstats_name,
+		     enum rte_event_dev_xstats_mode mode,
+		     uint8_t queue_port_id, unsigned int xstats_id,
+		     void *data)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(name);
-	RTE_SET_USED(id);
-	return 0;
+	struct find_ctx *ctx = data;
+
+	if (strcmp(ctx->name, xstats_name) == 0) {
+		if (ctx->id != NULL)
+			*ctx->id = xstats_id;
+		dsw_xstats_get(ctx->dev, mode, queue_port_id, &xstats_id,
+			       &ctx->value, 1);
+	}
+}
+
+uint64_t
+dsw_xstats_get_by_name(const struct rte_eventdev *dev, const char *name,
+		       unsigned int *id)
+{
+	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
+	uint16_t port_id;
+
+	struct find_ctx ctx = {
+		.dev = dev,
+		.name = name,
+		.id = id,
+		.value = -EINVAL
+	};
+
+	dsw_xstats_dev_foreach(dsw_xstats_find_stat, &ctx);
+
+	for (port_id = 0; port_id < dsw->num_ports; port_id++)
+		dsw_xstats_port_foreach(dsw, port_id, dsw_xstats_find_stat,
+					&ctx);
+
+	return ctx.value;
 }
