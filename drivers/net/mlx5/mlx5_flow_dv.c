@@ -3402,7 +3402,12 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_meter *am = action->conf;
-	struct mlx5_flow_meter *fm = mlx5_flow_meter_find(priv, am->mtr_id);
+	struct mlx5_flow_meter *fm;
+
+	if (!am)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "meter action conf is NULL");
 
 	if (action_flags & MLX5_FLOW_ACTION_METER)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -3417,6 +3422,7 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "meter action not supported");
+	fm = mlx5_flow_meter_find(priv, am->mtr_id);
 	if (!fm)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
