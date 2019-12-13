@@ -27,7 +27,7 @@
 
 #define DRV_MODULE_VER_MAJOR	2
 #define DRV_MODULE_VER_MINOR	0
-#define DRV_MODULE_VER_SUBMINOR	2
+#define DRV_MODULE_VER_SUBMINOR	3
 
 #define ENA_IO_TXQ_IDX(q)	(2 * (q))
 #define ENA_IO_RXQ_IDX(q)	(2 * (q) + 1)
@@ -408,6 +408,9 @@ static void ena_config_host_info(struct ena_com_dev *ena_dev)
 		(DRV_MODULE_VER_SUBMINOR <<
 			ENA_ADMIN_HOST_INFO_SUB_MINOR_SHIFT);
 	host_info->num_cpus = rte_lcore_count();
+
+	host_info->driver_supported_features =
+		ENA_ADMIN_HOST_INFO_RX_OFFSET_MASK;
 
 	rc = ena_com_set_host_attributes(ena_dev);
 	if (rc) {
@@ -2013,6 +2016,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		ena_rx_ctx.max_bufs = rx_ring->sgl_size;
 		ena_rx_ctx.ena_bufs = rx_ring->ena_bufs;
 		ena_rx_ctx.descs = 0;
+		ena_rx_ctx.pkt_offset = 0;
 		/* receive packet context */
 		rc = ena_com_rx_pkt(rx_ring->ena_com_io_cq,
 				    rx_ring->ena_com_io_sq,
@@ -2048,6 +2052,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				mbuf->nb_segs = ena_rx_ctx.descs;
 				mbuf->port = rx_ring->port_id;
 				mbuf->pkt_len = 0;
+				mbuf->data_off += ena_rx_ctx.pkt_offset;
 				mbuf_head = mbuf;
 			} else {
 				/* for multi-segment pkts create mbuf chain */
