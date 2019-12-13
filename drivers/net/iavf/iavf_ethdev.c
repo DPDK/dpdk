@@ -1068,7 +1068,7 @@ iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	if (ret == 0) {
 		iavf_update_stats(vsi, pstats);
 		stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +
-						pstats->rx_broadcast;
+				pstats->rx_broadcast - pstats->rx_discards;
 		stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
 						pstats->tx_unicast;
 		stats->imissed = pstats->rx_discards;
