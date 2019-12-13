@@ -314,6 +314,9 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			APP_CHECK(algo != NULL, status, "unrecognized "
 				"input \"%s\"", tokens[ti]);
 
+			if (status->status < 0)
+				return;
+
 			rule->cipher_algo = algo->algo;
 			rule->block_size = algo->block_size;
 			rule->iv_len = algo->iv_len;
@@ -378,6 +381,9 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			APP_CHECK(algo != NULL, status, "unrecognized "
 				"input \"%s\"", tokens[ti]);
 
+			if (status->status < 0)
+				return;
+
 			rule->auth_algo = algo->algo;
 			rule->auth_key_len = algo->key_len;
 			rule->digest_len = algo->digest_len;
@@ -432,6 +438,9 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 
 			APP_CHECK(algo != NULL, status, "unrecognized "
 				"input \"%s\"", tokens[ti]);
+
+			if (status->status < 0)
+				return;
 
 			rule->aead_algo = algo->algo;
 			rule->cipher_key_len = algo->key_len;
