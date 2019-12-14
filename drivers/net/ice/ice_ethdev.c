@@ -1576,7 +1576,7 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 		cfg = ICE_AQ_VSI_PROP_SECURITY_VALID |
 			ICE_AQ_VSI_PROP_FLOW_DIR_VALID;
 		vsi_ctx.info.valid_sections |= rte_cpu_to_le_16(cfg);
-		cfg = ICE_AQ_VSI_FD_ENABLE | ICE_AQ_VSI_FD_PROG_ENABLE;
+		cfg = ICE_AQ_VSI_FD_ENABLE;
 		vsi_ctx.info.fd_options = rte_cpu_to_le_16(cfg);
 		vsi_ctx.info.max_fd_fltr_dedicated =
 			rte_cpu_to_le_16(hw->func_caps.fd_fltr_guar);
@@ -1604,9 +1604,10 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 
 		cfg = ICE_AQ_VSI_PROP_FLOW_DIR_VALID;
 		vsi_ctx.info.valid_sections |= rte_cpu_to_le_16(cfg);
-		cfg = ICE_AQ_VSI_FD_ENABLE | ICE_AQ_VSI_FD_PROG_ENABLE;
+		cfg = ICE_AQ_VSI_FD_PROG_ENABLE;
 		vsi_ctx.info.fd_options = rte_cpu_to_le_16(cfg);
 		vsi_ctx.info.sw_id = hw->port_info->sw_id;
+		vsi_ctx.info.sw_flags2 = ICE_AQ_VSI_SW_FLAG_LAN_ENA;
 		ret = ice_vsi_config_tc_queue_mapping(vsi,
 						      &vsi_ctx.info,
 						      ICE_DEFAULT_TCMAP);
