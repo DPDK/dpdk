@@ -278,8 +278,9 @@ mbox_wait(struct otx2_mbox *mbox, int devid, uint32_t rst_timo)
 	volatile struct otx2_mbox_dev *mdev = &mbox->dev[devid];
 	uint32_t timeout = 0, sleep = 1;
 
+	rst_timo  = rst_timo * 1000; /* Milli seconds to micro seconds */
 	while (mdev->num_msgs > mdev->msgs_acked) {
-		rte_delay_ms(sleep);
+		rte_delay_us(sleep);
 		timeout += sleep;
 		if (timeout >= rst_timo) {
 			struct mbox_hdr *tx_hdr =
