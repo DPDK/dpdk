@@ -868,8 +868,13 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 {
 	struct mlx5_ibv_shared *sh = priv->sh;
 	char s[MLX5_HLIST_NAMESIZE];
-	int err = mlx5_alloc_table_hash_list(priv);
+	int err = 0;
 
+	if (!sh->flow_tbls)
+		err = mlx5_alloc_table_hash_list(priv);
+	else
+		DRV_LOG(DEBUG, "sh->flow_tbls[%p] already created, reuse\n",
+			(void *)sh->flow_tbls);
 	if (err)
 		return err;
 	/* Create tags hash list table. */
