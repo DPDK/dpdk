@@ -378,6 +378,7 @@ static int ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *udp_tunnel);
 static int ixgbe_filter_restore(struct rte_eth_dev *dev);
 static void ixgbe_l2_tunnel_conf(struct rte_eth_dev *dev);
+static int ixgbe_wait_for_link_up(struct ixgbe_hw *hw);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -2801,6 +2802,11 @@ skip_link_setup:
 			    "please call hierarchy_commit() "
 			    "before starting the port");
 
+	/* wait for the controller to acquire link */
+	err = ixgbe_wait_for_link_up(hw);
+	if (err)
+		goto error;
+
 	/*
 	 * Update link status right before return, because it may
 	 * start link configuration process in a separate thread.
@@ -4112,6 +4118,36 @@ ixgbe_dev_setup_link_alarm_handler(void *param)
 	ixgbe_setup_link(hw, speed, true);
 
 	intr->flags &= ~IXGBE_FLAG_NEED_LINK_CONFIG;
+}
+
+/*
+ * In freebsd environment, nic_uio drivers do not support interrupts,
+ * rte_intr_callback_register() will fail to register interrupts.
+ * We can not make link status to change from down to up by interrupt
+ * callback. So we need to wait for the controller to acquire link
+ * when ports start.
+ * It returns 0 on link up.
+ */
+static int
+ixgbe_wait_for_link_up(struct ixgbe_hw *hw)
+{
+#ifdef RTE_EXEC_ENV_FREEBSD
+	const int nb_iter = 25;
+#else
+	const int nb_iter = 0;
+#endif
+	int err, i, link_up = 0;
+	uint32_t speed = 0;
+
+	for (i = 0; i < nb_iter; i++) {
+		err = ixgbe_check_link(hw, &speed, &link_up, 0);
+		if (err)
+			return err;
+		if (link_up)
+			return 0;
+		msec_delay(200);
+	}
+	return 0;
 }
 
 /* return 0 means link status changed, -1 means not changed */
