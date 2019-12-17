@@ -1047,6 +1047,7 @@ dsw_event_enqueue_burst_generic(void *port, const struct rte_event events[],
 	 */
 	if (unlikely(events_len == 0)) {
 		dsw_port_note_op(source_port, DSW_MAX_PORT_OPS_PER_BG_TASK);
+		dsw_port_flush_out_buffers(dsw, port);
 		return 0;
 	}
 
