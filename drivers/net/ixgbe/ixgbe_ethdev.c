@@ -4155,9 +4155,11 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		return rte_eth_linkstatus_set(dev, &link);
 	}
 
-	esdp_reg = IXGBE_READ_REG(hw, IXGBE_ESDP);
-	if ((esdp_reg & IXGBE_ESDP_SDP3))
-		link_up = 0;
+	if (ixgbe_get_media_type(hw) == ixgbe_media_type_fiber) {
+		esdp_reg = IXGBE_READ_REG(hw, IXGBE_ESDP);
+		if ((esdp_reg & IXGBE_ESDP_SDP3))
+			link_up = 0;
+	}
 
 	if (link_up == 0) {
 		if (ixgbe_get_media_type(hw) == ixgbe_media_type_fiber) {
