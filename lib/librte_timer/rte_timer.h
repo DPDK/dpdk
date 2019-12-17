@@ -332,6 +332,22 @@ void rte_timer_stop_sync(struct rte_timer *tim);
 int rte_timer_pending(struct rte_timer *tim);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Time until the next timer on the current lcore
+ * This function gives the ticks until the next timer will be active.
+ *
+ * @return
+ *   - -EINVAL: invalid timer data instance identifier
+ *   - -ENOENT: no timer pending
+ *   - 0: a timer is pending and will run at next rte_timer_manage()
+ *   - >0: ticks until the next timer is ready
+ */
+__rte_experimental
+int64_t rte_timer_next_ticks(void);
+
+/**
  * Manage the timer list and execute callback functions.
  *
  * This function must be called periodically from EAL lcores

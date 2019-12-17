@@ -978,6 +978,33 @@ rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
 	return 0;
 }
 
+int64_t
+rte_timer_next_ticks(void)
+{
+	unsigned int lcore_id = rte_lcore_id();
+	struct rte_timer_data *timer_data;
+	struct priv_timer *priv_timer;
+	const struct rte_timer *tm;
+	uint64_t cur_time;
+	int64_t left = -ENOENT;
+
+	TIMER_DATA_VALID_GET_OR_ERR_RET(default_data_id, timer_data, -EINVAL);
+
+	priv_timer = timer_data->priv_timer;
+	cur_time = rte_get_timer_cycles();
+
+	rte_spinlock_lock(&priv_timer[lcore_id].list_lock);
+	tm = priv_timer[lcore_id].pending_head.sl_next[0];
+	if (tm) {
+		left = tm->expire - cur_time;
+		if (left < 0)
+			left = 0;
+	}
+	rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
+
+	return left;
+}
+
 /* dump statistics about timers */
 static void
 __rte_timer_dump_stats(struct rte_timer_data *timer_data __rte_unused, FILE *f)
