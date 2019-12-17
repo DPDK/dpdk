@@ -4,7 +4,7 @@ compiler:
   - gcc
   - clang
 
-dist: xenial
+dist: bionic
 
 os:
   - linux
@@ -118,7 +118,6 @@ matrix:
   - env: DEF_LIB="static"
     arch: arm64
     compiler: gcc
-    dist: bionic
     addons:
       apt:
         packages:
@@ -126,14 +125,12 @@ matrix:
   - env: DEF_LIB="shared"
     arch: arm64
     compiler: gcc
-    dist: bionic
     addons:
       apt:
         packages:
           - *required_packages
   - env: DEF_LIB="static"
     arch: arm64
-    dist: bionic
     compiler: clang
     addons:
       apt:
@@ -141,7 +138,6 @@ matrix:
           - *required_packages
   - env: DEF_LIB="shared"
     arch: arm64
-    dist: bionic
     compiler: clang
     addons:
       apt:
@@ -150,7 +146,6 @@ matrix:
   - env: DEF_LIB="shared" OPTS="-Denable_kmods=false" BUILD_DOCS=1
     arch: arm64
     compiler: gcc
-    dist: bionic
     addons:
       apt:
         packages:
