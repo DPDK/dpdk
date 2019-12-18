@@ -282,6 +282,27 @@ enum mlx5_feature_name {
 /* IBV hash source bits  for IPV6. */
 #define MLX5_IPV6_IBV_RX_HASH (IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6)
 
+/* IBV hash bits for L3 SRC. */
+#define MLX5_L3_SRC_IBV_RX_HASH (IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_SRC_IPV6)
+
+/* IBV hash bits for L3 DST. */
+#define MLX5_L3_DST_IBV_RX_HASH (IBV_RX_HASH_DST_IPV4 | IBV_RX_HASH_DST_IPV6)
+
+/* IBV hash bits for TCP. */
+#define MLX5_TCP_IBV_RX_HASH (IBV_RX_HASH_SRC_PORT_TCP | \
+			      IBV_RX_HASH_DST_PORT_TCP)
+
+/* IBV hash bits for UDP. */
+#define MLX5_UDP_IBV_RX_HASH (IBV_RX_HASH_SRC_PORT_UDP | \
+			      IBV_RX_HASH_DST_PORT_UDP)
+
+/* IBV hash bits for L4 SRC. */
+#define MLX5_L4_SRC_IBV_RX_HASH (IBV_RX_HASH_SRC_PORT_TCP | \
+				 IBV_RX_HASH_SRC_PORT_UDP)
+
+/* IBV hash bits for L4 DST. */
+#define MLX5_L4_DST_IBV_RX_HASH (IBV_RX_HASH_DST_PORT_TCP | \
+				 IBV_RX_HASH_DST_PORT_UDP)
 
 /* Geneve header first 16Bit */
 #define MLX5_GENEVE_VER_MASK 0x3
