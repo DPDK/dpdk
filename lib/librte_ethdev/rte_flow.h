@@ -502,7 +502,7 @@ enum rte_flow_item_type {
 	 */
 	RTE_FLOW_ITEM_TYPE_HIGIG2,
 
-	/*
+	/**
 	 * [META]
 	 *
 	 * Matches a tag value.
