@@ -104,8 +104,13 @@
 /* Number of packets vectorized Rx can simultaneously process in a loop. */
 #define MLX5_VPMD_DESCS_PER_LOOP      4
 
+/* Mask of RSS on source only or destination only. */
+#define MLX5_RSS_SRC_DST_ONLY (ETH_RSS_L3_SRC_ONLY | ETH_RSS_L3_DST_ONLY | \
+			       ETH_RSS_L4_SRC_ONLY | ETH_RSS_L4_DST_ONLY)
+
 /* Supported RSS */
-#define MLX5_RSS_HF_MASK (~(ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP))
+#define MLX5_RSS_HF_MASK (~(ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP | \
+			    MLX5_RSS_SRC_DST_ONLY))
 
 /* Timeout in seconds to get a valid link status. */
 #define MLX5_LINK_STATUS_TIMEOUT 10

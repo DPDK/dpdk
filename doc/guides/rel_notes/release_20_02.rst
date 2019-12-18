@@ -61,6 +61,12 @@ New Features
   A new API has been added to wait for a memory location to be updated with a
   16-bit, 32-bit, 64-bit value.
 
+* **Updated Mellanox mlx5 driver.**
+
+  Updated Mellanox mlx5 driver with new features and improvements, including:
+
+  * Added support for RSS using L3/L4 source/destination only.
+
 * **Added algorithms to cryptodev API.**
 
   * Chacha20-Poly1305 AEAD algorithm can now be supported in cryptodev.

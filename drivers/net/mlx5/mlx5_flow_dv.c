@@ -6577,6 +6577,75 @@ flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
 }
 
 /**
+ * Set the hash fields according to the @p flow information.
+ *
+ * @param[in] dev_flow
+ *   Pointer to the mlx5_flow.
+ */
+static void
+flow_dv_hashfields_set(struct mlx5_flow *dev_flow)
+{
+	struct rte_flow *flow = dev_flow->flow;
+	uint64_t items = dev_flow->layers;
+	int rss_inner = 0;
+	uint64_t rss_types = rte_eth_rss_hf_refine(flow->rss.types);
+
+	dev_flow->hash_fields = 0;
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	if (flow->rss.level >= 2) {
+		dev_flow->hash_fields |= IBV_RX_HASH_INNER;
+		rss_inner = 1;
+	}
+#endif
+	if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L3_IPV4)) ||
+	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L3_IPV4))) {
+		if (rss_types & MLX5_IPV4_LAYER_TYPES) {
+			if (rss_types & ETH_RSS_L3_SRC_ONLY)
+				dev_flow->hash_fields |= IBV_RX_HASH_SRC_IPV4;
+			else if (rss_types & ETH_RSS_L3_DST_ONLY)
+				dev_flow->hash_fields |= IBV_RX_HASH_DST_IPV4;
+			else
+				dev_flow->hash_fields |= MLX5_IPV4_IBV_RX_HASH;
+		}
+	} else if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L3_IPV6)) ||
+		   (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L3_IPV6))) {
+		if (rss_types & MLX5_IPV6_LAYER_TYPES) {
+			if (rss_types & ETH_RSS_L3_SRC_ONLY)
+				dev_flow->hash_fields |= IBV_RX_HASH_SRC_IPV6;
+			else if (rss_types & ETH_RSS_L3_DST_ONLY)
+				dev_flow->hash_fields |= IBV_RX_HASH_DST_IPV6;
+			else
+				dev_flow->hash_fields |= MLX5_IPV6_IBV_RX_HASH;
+		}
+	}
+	if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L4_UDP)) ||
+	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L4_UDP))) {
+		if (rss_types & ETH_RSS_UDP) {
+			if (rss_types & ETH_RSS_L4_SRC_ONLY)
+				dev_flow->hash_fields |=
+						IBV_RX_HASH_SRC_PORT_UDP;
+			else if (rss_types & ETH_RSS_L4_DST_ONLY)
+				dev_flow->hash_fields |=
+						IBV_RX_HASH_DST_PORT_UDP;
+			else
+				dev_flow->hash_fields |= MLX5_UDP_IBV_RX_HASH;
+		}
+	} else if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L4_TCP)) ||
+		   (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L4_TCP))) {
+		if (rss_types & ETH_RSS_TCP) {
+			if (rss_types & ETH_RSS_L4_SRC_ONLY)
+				dev_flow->hash_fields |=
+						IBV_RX_HASH_SRC_PORT_TCP;
+			else if (rss_types & ETH_RSS_L4_DST_ONLY)
+				dev_flow->hash_fields |=
+						IBV_RX_HASH_DST_PORT_TCP;
+			else
+				dev_flow->hash_fields |= MLX5_TCP_IBV_RX_HASH;
+		}
+	}
+}
+
+/**
  * Fill the flow with DV spec, lock free
  * (mutex should be acquired by caller).
  *
@@ -7086,11 +7155,6 @@ cnt_err:
 						    items, tunnel,
 						    dev_flow->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
-			dev_flow->hash_fields |=
-				mlx5_flow_hashfields_adjust
-					(dev_flow, tunnel,
-					 MLX5_IPV4_LAYER_TYPES,
-					 MLX5_IPV4_IBV_RX_HASH);
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
 					     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			if (items->mask != NULL &&
@@ -7114,11 +7178,6 @@ cnt_err:
 						    items, tunnel,
 						    dev_flow->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
-			dev_flow->hash_fields |=
-				mlx5_flow_hashfields_adjust
-					(dev_flow, tunnel,
-					 MLX5_IPV6_LAYER_TYPES,
-					 MLX5_IPV6_IBV_RX_HASH);
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
 					     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			if (items->mask != NULL &&
@@ -7139,11 +7198,6 @@ cnt_err:
 			flow_dv_translate_item_tcp(match_mask, match_value,
 						   items, tunnel);
 			matcher.priority = MLX5_PRIORITY_MAP_L4;
-			dev_flow->hash_fields |=
-				mlx5_flow_hashfields_adjust
-					(dev_flow, tunnel, ETH_RSS_TCP,
-					 IBV_RX_HASH_SRC_PORT_TCP |
-					 IBV_RX_HASH_DST_PORT_TCP);
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
 					     MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			break;
@@ -7151,11 +7205,6 @@ cnt_err:
 			flow_dv_translate_item_udp(match_mask, match_value,
 						   items, tunnel);
 			matcher.priority = MLX5_PRIORITY_MAP_L4;
-			dev_flow->hash_fields |=
-				mlx5_flow_hashfields_adjust
-					(dev_flow, tunnel, ETH_RSS_UDP,
-					 IBV_RX_HASH_SRC_PORT_UDP |
-					 IBV_RX_HASH_DST_PORT_UDP);
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
 					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
@@ -7251,6 +7300,8 @@ cnt_err:
 	assert(!flow_dv_check_valid_spec(matcher.mask.buf,
 					 dev_flow->dv.value.buf));
 	dev_flow->layers = item_flags;
+	if (action_flags & MLX5_FLOW_ACTION_RSS)
+		flow_dv_hashfields_set(dev_flow);
 	/* Register matcher. */
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				    matcher.mask.size);
