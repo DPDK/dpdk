@@ -1717,11 +1717,14 @@ exit:
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param idx
+ *   RX queue index.
  * @param max_lro_size
  *   The maximum size for LRO packet.
  */
 static void
-mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint32_t max_lro_size)
+mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint16_t idx,
+			     uint32_t max_lro_size)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
@@ -1730,13 +1733,17 @@ mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint32_t max_lro_size)
 	    MLX5_MAX_TCP_HDR_OFFSET)
 		max_lro_size -= MLX5_MAX_TCP_HDR_OFFSET;
 	max_lro_size = RTE_MIN(max_lro_size, MLX5_MAX_LRO_SIZE);
-	assert(max_lro_size >= 256u);
-	max_lro_size /= 256u;
+	assert(max_lro_size >= MLX5_LRO_SEG_CHUNK_SIZE);
+	max_lro_size /= MLX5_LRO_SEG_CHUNK_SIZE;
 	if (priv->max_lro_msg_size)
 		priv->max_lro_msg_size =
 			RTE_MIN((uint32_t)priv->max_lro_msg_size, max_lro_size);
 	else
 		priv->max_lro_msg_size = max_lro_size;
+	DRV_LOG(DEBUG,
+		"port %u Rx Queue %u max LRO message size adjusted to %u bytes",
+		dev->data->port_id, idx,
+		priv->max_lro_msg_size * MLX5_LRO_SEG_CHUNK_SIZE);
 }
 
 /**
@@ -1909,7 +1916,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = EINVAL;
 		goto error;
 	}
-	mlx5_max_lro_msg_size_adjust(dev, max_lro_size);
+	mlx5_max_lro_msg_size_adjust(dev, idx, max_lro_size);
 	/* Toggle RX checksum offload if hardware supports it. */
 	tmpl->rxq.csum = !!(offloads & DEV_RX_OFFLOAD_CHECKSUM);
 	tmpl->rxq.hw_timestamp = !!(offloads & DEV_RX_OFFLOAD_TIMESTAMP);

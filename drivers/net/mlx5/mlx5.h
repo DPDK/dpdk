@@ -218,8 +218,11 @@ TAILQ_HEAD(mlx5_flows, rte_flow);
 #define MLX5_LRO_SUPPORTED(dev) \
 	(((struct mlx5_priv *)((dev)->data->dev_private))->config.lro.supported)
 
+/* Maximal size of coalesced segment for LRO is set in chunks of 256 Bytes. */
+#define MLX5_LRO_SEG_CHUNK_SIZE	256u
+
 /* Maximal size of aggregated LRO packet. */
-#define MLX5_MAX_LRO_SIZE (UINT8_MAX * 256u)
+#define MLX5_MAX_LRO_SIZE (UINT8_MAX * MLX5_LRO_SEG_CHUNK_SIZE)
 
 /* LRO configurations structure. */
 struct mlx5_lro_config {
