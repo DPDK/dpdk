@@ -57,7 +57,7 @@ struct ark_rx_queue {
 
 	/* separate cache line */
 	/* second cache line - fields only used in slow path */
-	MARKER cacheline1 __rte_cache_min_aligned;
+	RTE_MARKER cacheline1 __rte_cache_min_aligned;
 
 	volatile uint32_t prod_index;	/* step 2 filled by FPGA */
 } __rte_cache_aligned;

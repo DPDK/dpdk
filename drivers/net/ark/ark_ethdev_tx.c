@@ -42,7 +42,7 @@ struct ark_tx_queue {
 	uint32_t pad[1];
 
 	/* second cache line - fields only used in slow path */
-	MARKER cacheline1 __rte_cache_min_aligned;
+	RTE_MARKER cacheline1 __rte_cache_min_aligned;
 	uint32_t cons_index;		/* hw is done, can be freed */
 } __rte_cache_aligned;
 

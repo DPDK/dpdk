@@ -55,7 +55,7 @@ union mbuf_initializer {
 };
 
 struct nicvf_rxq {
-	MARKER rxq_fastpath_data_start;
+	RTE_MARKER rxq_fastpath_data_start;
 	uint8_t  rbptr_offset;
 	uint16_t rx_free_thresh;
 	uint32_t head;
@@ -69,7 +69,7 @@ struct nicvf_rxq {
 	struct rte_mempool *pool;
 	union cq_entry_t *desc;
 	union mbuf_initializer mbuf_initializer;
-	MARKER rxq_fastpath_data_end;
+	RTE_MARKER rxq_fastpath_data_end;
 	uint8_t rx_drop_en;
 	uint16_t precharge_cnt;
 	uint16_t port_id;

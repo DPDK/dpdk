@@ -254,7 +254,7 @@ struct otx2_vlan_info {
 
 struct otx2_eth_dev {
 	OTX2_DEV; /* Base class */
-	MARKER otx2_eth_dev_data_start;
+	RTE_MARKER otx2_eth_dev_data_start;
 	uint16_t sqb_size;
 	uint16_t rx_chan_base;
 	uint16_t tx_chan_base;
@@ -335,7 +335,7 @@ struct otx2_eth_txq {
 	rte_iova_t fc_iova;
 	uint16_t sqes_per_sqb_log2;
 	int16_t nb_sqb_bufs_adj;
-	MARKER slow_path_start;
+	RTE_MARKER slow_path_start;
 	uint16_t nb_sqb_bufs;
 	uint16_t sq;
 	uint64_t offloads;
@@ -357,7 +357,7 @@ struct otx2_eth_rxq {
 	uint32_t available;
 	uint16_t rq;
 	struct otx2_timesync_info *tstamp;
-	MARKER slow_path_start;
+	RTE_MARKER slow_path_start;
 	uint64_t aura;
 	uint64_t offloads;
 	uint32_t qlen;
