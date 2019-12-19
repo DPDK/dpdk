@@ -305,10 +305,8 @@ octeontx_fpapf_pool_destroy(unsigned int gpool_index)
 	int ret = -1;
 
 	fpa = octeontx_get_fpavf(gpool_index);
-	if (fpa == NULL) {
-		ret = -EINVAL;
-		goto err;
-	}
+	if (fpa == NULL)
+		return -EINVAL;
 
 	hdr.coproc = FPA_COPROC;
 	hdr.msg = FPA_CONFIGSET;
