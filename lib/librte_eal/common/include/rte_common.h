@@ -335,6 +335,18 @@ typedef uint64_t phys_addr_t;
 typedef uint64_t rte_iova_t;
 #define RTE_BAD_IOVA ((rte_iova_t)-1)
 
+/*********** Structure alignment markers ********/
+
+/** Generic marker for any place in a structure. */
+__extension__ typedef void    *RTE_MARKER[0];
+/** Marker for 1B alignment in a structure. */
+__extension__ typedef uint8_t  RTE_MARKER8[0];
+/** Marker for 2B alignment in a structure. */
+__extension__ typedef uint16_t RTE_MARKER16[0];
+/** Marker for 4B alignment in a structure. */
+__extension__ typedef uint16_t RTE_MARKER32[0];
+/** Marker for 8B alignment in a structure. */
+__extension__ typedef uint64_t RTE_MARKER64[0];
 
 /**
  * Combines 32b inputs most significant set bits into the least
