@@ -406,19 +406,6 @@ extern "C" {
 #define	RTE_MBUF_DEFAULT_BUF_SIZE	\
 	(RTE_MBUF_DEFAULT_DATAROOM + RTE_PKTMBUF_HEADROOM)
 
-/*
- * define a set of marker types that can be used to refer to set points in the
- * mbuf.
- */
-__extension__
-typedef void    *MARKER[0];   /**< generic marker for a point in a structure */
-__extension__
-typedef uint8_t  MARKER8[0];  /**< generic marker with 1B alignment */
-
- /** marker that allows us to overwrite 8 bytes with a single assignment */
-__extension__
-typedef uint64_t MARKER64[0];
-
 struct rte_mbuf_sched {
 	uint32_t queue_id;   /**< Queue ID. */
 	uint8_t traffic_class;
@@ -478,7 +465,7 @@ enum {
  * The generic rte_mbuf, containing a packet mbuf.
  */
 struct rte_mbuf {
-	MARKER cacheline0;
+	RTE_MARKER cacheline0;
 
 	void *buf_addr;           /**< Virtual address of segment buffer. */
 	/**
@@ -494,7 +481,7 @@ struct rte_mbuf {
 	} __rte_aligned(sizeof(rte_iova_t));
 
 	/* next 8 bytes are initialised on RX descriptor rearm */
-	MARKER64 rearm_data;
+	RTE_MARKER64 rearm_data;
 	uint16_t data_off;
 
 	/**
@@ -522,7 +509,7 @@ struct rte_mbuf {
 	uint64_t ol_flags;        /**< Offload features. */
 
 	/* remaining bytes are set on RX when pulling packet from descriptor */
-	MARKER rx_descriptor_fields1;
+	RTE_MARKER rx_descriptor_fields1;
 
 	/*
 	 * The packet type, which is the combination of outer/inner L2, L3, L4
@@ -610,7 +597,7 @@ struct rte_mbuf {
 	uint64_t timestamp;
 
 	/* second cache line - fields only used in slow path or on TX */
-	MARKER cacheline1 __rte_cache_min_aligned;
+	RTE_MARKER cacheline1 __rte_cache_min_aligned;
 
 	RTE_STD_C11
 	union {
