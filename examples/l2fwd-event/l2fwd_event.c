@@ -67,7 +67,7 @@ l2fwd_event_service_setup(struct l2fwd_resources *rsrc)
 	int ret, i;
 
 	rte_event_dev_info_get(evt_rsrc->event_d_id, &evdev_info);
-	if (evdev_info.event_dev_cap  & RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED) {
+	if (!(evdev_info.event_dev_cap & RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED)) {
 		ret = rte_event_dev_service_id_get(evt_rsrc->event_d_id,
 				&service_id);
 		if (ret != -ESRCH && ret != 0)

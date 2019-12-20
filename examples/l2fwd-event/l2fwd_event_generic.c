@@ -42,8 +42,10 @@ l2fwd_event_device_setup_generic(struct l2fwd_resources *rsrc)
 
 	/* Event device configurtion */
 	rte_event_dev_info_get(event_d_id, &dev_info);
-	evt_rsrc->disable_implicit_release = !!(dev_info.event_dev_cap &
-				    RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE);
+
+	/* Enable implicit release */
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE)
+		evt_rsrc->disable_implicit_release = 0;
 
 	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES)
 		event_queue_cfg |= RTE_EVENT_QUEUE_CFG_ALL_TYPES;
@@ -70,7 +72,8 @@ l2fwd_event_device_setup_generic(struct l2fwd_resources *rsrc)
 		event_d_conf.nb_event_port_enqueue_depth =
 				dev_info.max_event_port_enqueue_depth;
 
-	num_workers = rte_lcore_count() - rte_service_lcore_count();
+	/* Ignore Master core and service cores. */
+	num_workers = rte_lcore_count() - 1 - rte_service_lcore_count();
 	if (dev_info.max_event_ports < num_workers)
 		num_workers = dev_info.max_event_ports;
 
