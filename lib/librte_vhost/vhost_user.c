@@ -2840,6 +2840,42 @@ vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 	return 0;
 }
 
+static int
+vhost_user_slave_config_change(struct virtio_net *dev, bool need_reply)
+{
+	int ret;
+	struct VhostUserMsg msg = {
+		.request.slave = VHOST_USER_SLAVE_CONFIG_CHANGE_MSG,
+		.flags = VHOST_USER_VERSION,
+		.size = 0,
+	};
+
+	if (need_reply)
+		msg.flags |= VHOST_USER_NEED_REPLY;
+
+	ret = send_vhost_slave_message(dev, &msg);
+	if (ret < 0) {
+		VHOST_LOG_CONFIG(ERR,
+				"Failed to send config change (%d)\n",
+				ret);
+		return ret;
+	}
+
+	return process_slave_message_reply(dev, &msg);
+}
+
+int
+rte_vhost_slave_config_change(int vid, bool need_reply)
+{
+	struct virtio_net *dev;
+
+	dev = get_device(vid);
+	if (!dev)
+		return -ENODEV;
+
+	return vhost_user_slave_config_change(dev, need_reply);
+}
+
 static int vhost_user_slave_set_vring_host_notifier(struct virtio_net *dev,
 						    int index, int fd,
 						    uint64_t offset,

@@ -65,4 +65,5 @@ EXPERIMENTAL {
 	rte_vhost_clr_inflight_desc_packed;
 	rte_vhost_get_vhost_ring_inflight;
 	rte_vhost_get_vring_base_from_inflight;
+	rte_vhost_slave_config_change;
 };
