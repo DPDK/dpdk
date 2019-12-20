@@ -97,7 +97,7 @@ nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 #define NIX_DESCS_PER_LOOP	4
 static __rte_always_inline uint16_t
 nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
-		     uint16_t pkts, const uint16_t flags)
+		     uint16_t pkts, uint64_t *cmd, const uint16_t flags)
 {
 	uint64x2_t dataoff_iova0, dataoff_iova1, dataoff_iova2, dataoff_iova3;
 	uint64x2_t len_olflags0, len_olflags1, len_olflags2, len_olflags3;
@@ -118,10 +118,12 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64x2_t cmd20, cmd21;
 	uint64x2_t cmd30, cmd31;
 	uint64_t lmt_status, i;
-
-	pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
+	uint16_t pkts_left;
 
 	NIX_XMIT_FC_OR_RETURN(txq, pkts);
+
+	pkts_left = pkts & (NIX_DESCS_PER_LOOP - 1);
+	pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
 
 	/* Reduce the cached count */
 	txq->fc_cache_pkts -= pkts;
@@ -929,17 +931,21 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 		} while (lmt_status == 0);
 	}
 
+	if (unlikely(pkts_left))
+		pkts += nix_xmit_pkts(tx_queue, tx_pkts, pkts_left, cmd, flags);
+
 	return pkts;
 }
 
 #else
 static __rte_always_inline uint16_t
 nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
-		     uint16_t pkts, const uint16_t flags)
+		     uint16_t pkts, uint64_t *cmd, const uint16_t flags)
 {
 	RTE_SET_USED(tx_queue);
 	RTE_SET_USED(tx_pkts);
 	RTE_SET_USED(pkts);
+	RTE_SET_USED(cmd);
 	RTE_SET_USED(flags);
 	return 0;
 }
@@ -985,12 +991,14 @@ static uint16_t __rte_noinline	__hot					\
 otx2_nix_xmit_pkts_vec_ ## name(void *tx_queue,				\
 			struct rte_mbuf **tx_pkts, uint16_t pkts)	\
 {									\
+	uint64_t cmd[sz];						\
+									\
 	/* VLAN, TSTMP, TSO is not supported by vec */			\
 	if ((flags) & NIX_TX_OFFLOAD_VLAN_QINQ_F ||			\
 	    (flags) & NIX_TX_OFFLOAD_TSTAMP_F ||			\
 	    (flags) & NIX_TX_OFFLOAD_TSO_F)				\
 		return 0;						\
-	return nix_xmit_pkts_vector(tx_queue, tx_pkts, pkts, (flags));	\
+	return nix_xmit_pkts_vector(tx_queue, tx_pkts, pkts, cmd, (flags)); \
 }
 
 NIX_TX_FASTPATH_MODES

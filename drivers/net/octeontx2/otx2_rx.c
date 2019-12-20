@@ -130,16 +130,22 @@ nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 	const uintptr_t desc = rxq->desc;
 	uint8x16_t f0, f1, f2, f3;
 	uint32_t head = rxq->head;
+	uint16_t pkts_left;
 
 	pkts = nix_rx_nb_pkts(rxq, wdata, pkts, qmask);
+	pkts_left = pkts & (NIX_DESCS_PER_LOOP - 1);
+
 	/* Packets has to be floor-aligned to NIX_DESCS_PER_LOOP */
 	pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
 
 	while (packets < pkts) {
-		/* Get the CQ pointers, since the ring size is multiple of
-		 * 4, We can avoid checking the wrap around of head
-		 * value after the each access unlike scalar version.
-		 */
+		/* Exit loop if head is about to wrap and become unaligned */
+		if (((head + NIX_DESCS_PER_LOOP - 1) & qmask) <
+				NIX_DESCS_PER_LOOP) {
+			pkts_left += (pkts - packets);
+			break;
+		}
+
 		const uintptr_t cq0 = desc + CQE_SZ(head);
 
 		/* Prefetch N desc ahead */
@@ -300,6 +306,10 @@ nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rte_cio_wmb();
 	/* Free all the CQs that we've processed */
 	otx2_write64((rxq->wdata | packets), rxq->cq_door);
+
+	if (unlikely(pkts_left))
+		packets += nix_recv_pkts(rx_queue, &rx_pkts[packets],
+					 pkts_left, flags);
 
 	return packets;
 }
