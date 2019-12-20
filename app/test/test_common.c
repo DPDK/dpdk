@@ -216,7 +216,19 @@ test_log2(void)
 	const uint32_t max = 0x10000;
 	const uint32_t step = 1;
 
-	for (i = 0; i < max; i = i + step) {
+	compare = rte_log2_u32(0);
+	if (compare != 0) {
+		printf("Wrong rte_log2_u32(0) val %x, expected 0\n", compare);
+		return TEST_FAILED;
+	}
+
+	compare = rte_log2_u64(0);
+	if (compare != 0) {
+		printf("Wrong rte_log2_u64(0) val %x, expected 0\n", compare);
+		return TEST_FAILED;
+	}
+
+	for (i = 1; i < max; i = i + step) {
 		uint64_t i64;
 
 		/* extend range for 64-bit */

@@ -538,6 +538,9 @@ rte_bsf32_safe(uint64_t v, uint32_t *pos)
 /**
  * Return the rounded-up log2 of a integer.
  *
+ * @note Contrary to the logarithm mathematical operation,
+ * rte_log2_u32(0) == 0 and not -inf.
+ *
  * @param v
  *     The input parameter.
  * @return
@@ -631,6 +634,9 @@ rte_fls_u64(uint64_t x)
 
 /**
  * Return the rounded-up log2 of a 64-bit integer.
+ *
+ * @note Contrary to the logarithm mathematical operation,
+ * rte_log2_u64(0) == 0 and not -inf.
  *
  * @param v
  *     The input parameter.
