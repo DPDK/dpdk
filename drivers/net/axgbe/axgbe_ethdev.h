@@ -438,6 +438,53 @@ struct axgbe_version_data {
 	unsigned int an_cdr_workaround;
 };
 
+struct axgbe_mmc_stats {
+	/* Tx Stats */
+	uint64_t txoctetcount_gb;
+	uint64_t txframecount_gb;
+	uint64_t txbroadcastframes_g;
+	uint64_t txmulticastframes_g;
+	uint64_t tx64octets_gb;
+	uint64_t tx65to127octets_gb;
+	uint64_t tx128to255octets_gb;
+	uint64_t tx256to511octets_gb;
+	uint64_t tx512to1023octets_gb;
+	uint64_t tx1024tomaxoctets_gb;
+	uint64_t txunicastframes_gb;
+	uint64_t txmulticastframes_gb;
+	uint64_t txbroadcastframes_gb;
+	uint64_t txunderflowerror;
+	uint64_t txoctetcount_g;
+	uint64_t txframecount_g;
+	uint64_t txpauseframes;
+	uint64_t txvlanframes_g;
+
+	/* Rx Stats */
+	uint64_t rxframecount_gb;
+	uint64_t rxoctetcount_gb;
+	uint64_t rxoctetcount_g;
+	uint64_t rxbroadcastframes_g;
+	uint64_t rxmulticastframes_g;
+	uint64_t rxcrcerror;
+	uint64_t rxrunterror;
+	uint64_t rxjabbererror;
+	uint64_t rxundersize_g;
+	uint64_t rxoversize_g;
+	uint64_t rx64octets_gb;
+	uint64_t rx65to127octets_gb;
+	uint64_t rx128to255octets_gb;
+	uint64_t rx256to511octets_gb;
+	uint64_t rx512to1023octets_gb;
+	uint64_t rx1024tomaxoctets_gb;
+	uint64_t rxunicastframes_g;
+	uint64_t rxlengtherror;
+	uint64_t rxoutofrangetype;
+	uint64_t rxpauseframes;
+	uint64_t rxfifooverflow;
+	uint64_t rxvlanframes_gb;
+	uint64_t rxwatchdogerror;
+};
+
 /*
  * Structure to store private data for each port.
  */
@@ -576,6 +623,8 @@ struct axgbe_port {
 	int crc_strip_enable;
 	/* csum enable to hardware */
 	uint32_t rx_csum_enable;
+
+	struct axgbe_mmc_stats mmc_stats;
 };
 
 void axgbe_init_function_ptrs_dev(struct axgbe_hw_if *hw_if);

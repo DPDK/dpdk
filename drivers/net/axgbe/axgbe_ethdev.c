@@ -24,8 +24,78 @@ static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 static int axgbe_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static int axgbe_dev_stats_reset(struct rte_eth_dev *dev);
+static int axgbe_dev_xstats_get(struct rte_eth_dev *dev,
+				struct rte_eth_xstat *stats,
+				unsigned int n);
+static int
+axgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
+			   struct rte_eth_xstat_name *xstats_names,
+			   unsigned int size);
+static int
+axgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev,
+			   const uint64_t *ids,
+			   uint64_t *values,
+			   unsigned int n);
+static int
+axgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
+				 struct rte_eth_xstat_name *xstats_names,
+				 const uint64_t *ids,
+				 unsigned int size);
+static int axgbe_dev_xstats_reset(struct rte_eth_dev *dev);
 static int  axgbe_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
+
+struct axgbe_xstats {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	int offset;
+};
+
+#define AXGMAC_MMC_STAT(_string, _var)                           \
+	{ _string,                                              \
+	  offsetof(struct axgbe_mmc_stats, _var),       \
+	}
+
+static const struct axgbe_xstats axgbe_xstats_strings[] = {
+	AXGMAC_MMC_STAT("tx_bytes", txoctetcount_gb),
+	AXGMAC_MMC_STAT("tx_packets", txframecount_gb),
+	AXGMAC_MMC_STAT("tx_unicast_packets", txunicastframes_gb),
+	AXGMAC_MMC_STAT("tx_broadcast_packets", txbroadcastframes_gb),
+	AXGMAC_MMC_STAT("tx_multicast_packets", txmulticastframes_gb),
+	AXGMAC_MMC_STAT("tx_vlan_packets", txvlanframes_g),
+	AXGMAC_MMC_STAT("tx_64_byte_packets", tx64octets_gb),
+	AXGMAC_MMC_STAT("tx_65_to_127_byte_packets", tx65to127octets_gb),
+	AXGMAC_MMC_STAT("tx_128_to_255_byte_packets", tx128to255octets_gb),
+	AXGMAC_MMC_STAT("tx_256_to_511_byte_packets", tx256to511octets_gb),
+	AXGMAC_MMC_STAT("tx_512_to_1023_byte_packets", tx512to1023octets_gb),
+	AXGMAC_MMC_STAT("tx_1024_to_max_byte_packets", tx1024tomaxoctets_gb),
+	AXGMAC_MMC_STAT("tx_underflow_errors", txunderflowerror),
+	AXGMAC_MMC_STAT("tx_pause_frames", txpauseframes),
+
+	AXGMAC_MMC_STAT("rx_bytes", rxoctetcount_gb),
+	AXGMAC_MMC_STAT("rx_packets", rxframecount_gb),
+	AXGMAC_MMC_STAT("rx_unicast_packets", rxunicastframes_g),
+	AXGMAC_MMC_STAT("rx_broadcast_packets", rxbroadcastframes_g),
+	AXGMAC_MMC_STAT("rx_multicast_packets", rxmulticastframes_g),
+	AXGMAC_MMC_STAT("rx_vlan_packets", rxvlanframes_gb),
+	AXGMAC_MMC_STAT("rx_64_byte_packets", rx64octets_gb),
+	AXGMAC_MMC_STAT("rx_65_to_127_byte_packets", rx65to127octets_gb),
+	AXGMAC_MMC_STAT("rx_128_to_255_byte_packets", rx128to255octets_gb),
+	AXGMAC_MMC_STAT("rx_256_to_511_byte_packets", rx256to511octets_gb),
+	AXGMAC_MMC_STAT("rx_512_to_1023_byte_packets", rx512to1023octets_gb),
+	AXGMAC_MMC_STAT("rx_1024_to_max_byte_packets", rx1024tomaxoctets_gb),
+	AXGMAC_MMC_STAT("rx_undersize_packets", rxundersize_g),
+	AXGMAC_MMC_STAT("rx_oversize_packets", rxoversize_g),
+	AXGMAC_MMC_STAT("rx_crc_errors", rxcrcerror),
+	AXGMAC_MMC_STAT("rx_crc_errors_small_packets", rxrunterror),
+	AXGMAC_MMC_STAT("rx_crc_errors_giant_packets", rxjabbererror),
+	AXGMAC_MMC_STAT("rx_length_errors", rxlengtherror),
+	AXGMAC_MMC_STAT("rx_out_of_range_errors", rxoutofrangetype),
+	AXGMAC_MMC_STAT("rx_fifo_overflow_errors", rxfifooverflow),
+	AXGMAC_MMC_STAT("rx_watchdog_errors", rxwatchdogerror),
+	AXGMAC_MMC_STAT("rx_pause_frames", rxpauseframes),
+};
+
+#define AXGBE_XSTATS_COUNT        ARRAY_SIZE(axgbe_xstats_strings)
 
 /* The set of PCI devices this driver supports */
 #define AMD_PCI_VENDOR_ID       0x1022
@@ -89,6 +159,11 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.link_update          = axgbe_dev_link_update,
 	.stats_get            = axgbe_dev_stats_get,
 	.stats_reset          = axgbe_dev_stats_reset,
+	.xstats_get	      = axgbe_dev_xstats_get,
+	.xstats_reset	      = axgbe_dev_xstats_reset,
+	.xstats_get_names     = axgbe_dev_xstats_get_names,
+	.xstats_get_names_by_id = axgbe_dev_xstats_get_names_by_id,
+	.xstats_get_by_id     = axgbe_dev_xstats_get_by_id,
 	.dev_infos_get        = axgbe_dev_info_get,
 	.rx_queue_setup       = axgbe_dev_rx_queue_setup,
 	.rx_queue_release     = axgbe_dev_rx_queue_release,
@@ -315,13 +390,340 @@ axgbe_dev_link_update(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static void axgbe_read_mmc_stats(struct axgbe_port *pdata)
+{
+	struct axgbe_mmc_stats *stats = &pdata->mmc_stats;
+
+	/* Freeze counters */
+	AXGMAC_IOWRITE_BITS(pdata, MMC_CR, MCF, 1);
+
+	/* Tx counters */
+	stats->txoctetcount_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TXOCTETCOUNT_GB_LO);
+	stats->txoctetcount_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXOCTETCOUNT_GB_HI) << 32);
+
+	stats->txframecount_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TXFRAMECOUNT_GB_LO);
+	stats->txframecount_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXFRAMECOUNT_GB_HI) << 32);
+
+	stats->txbroadcastframes_g +=
+		AXGMAC_IOREAD(pdata, MMC_TXBROADCASTFRAMES_G_LO);
+	stats->txbroadcastframes_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXBROADCASTFRAMES_G_HI) << 32);
+
+	stats->txmulticastframes_g +=
+		AXGMAC_IOREAD(pdata, MMC_TXMULTICASTFRAMES_G_LO);
+	stats->txmulticastframes_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXMULTICASTFRAMES_G_HI) << 32);
+
+	stats->tx64octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TX64OCTETS_GB_LO);
+	stats->tx64octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TX64OCTETS_GB_HI) << 32);
+
+	stats->tx65to127octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TX65TO127OCTETS_GB_LO);
+	stats->tx65to127octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TX65TO127OCTETS_GB_HI) << 32);
+
+	stats->tx128to255octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TX128TO255OCTETS_GB_LO);
+	stats->tx128to255octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TX128TO255OCTETS_GB_HI) << 32);
+
+	stats->tx256to511octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TX256TO511OCTETS_GB_LO);
+	stats->tx256to511octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TX256TO511OCTETS_GB_HI) << 32);
+
+	stats->tx512to1023octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TX512TO1023OCTETS_GB_LO);
+	stats->tx512to1023octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TX512TO1023OCTETS_GB_HI) << 32);
+
+	stats->tx1024tomaxoctets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TX1024TOMAXOCTETS_GB_LO);
+	stats->tx1024tomaxoctets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TX1024TOMAXOCTETS_GB_HI) << 32);
+
+	stats->txunicastframes_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TXUNICASTFRAMES_GB_LO);
+	stats->txunicastframes_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXUNICASTFRAMES_GB_HI) << 32);
+
+	stats->txmulticastframes_gb +=
+		AXGMAC_IOREAD(pdata, MMC_TXMULTICASTFRAMES_GB_LO);
+	stats->txmulticastframes_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXMULTICASTFRAMES_GB_HI) << 32);
+
+	stats->txbroadcastframes_g +=
+		AXGMAC_IOREAD(pdata, MMC_TXBROADCASTFRAMES_GB_LO);
+	stats->txbroadcastframes_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXBROADCASTFRAMES_GB_HI) << 32);
+
+	stats->txunderflowerror +=
+		AXGMAC_IOREAD(pdata, MMC_TXUNDERFLOWERROR_LO);
+	stats->txunderflowerror +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXUNDERFLOWERROR_HI) << 32);
+
+	stats->txoctetcount_g +=
+		AXGMAC_IOREAD(pdata, MMC_TXOCTETCOUNT_G_LO);
+	stats->txoctetcount_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXOCTETCOUNT_G_HI) << 32);
+
+	stats->txframecount_g +=
+		AXGMAC_IOREAD(pdata, MMC_TXFRAMECOUNT_G_LO);
+	stats->txframecount_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXFRAMECOUNT_G_HI) << 32);
+
+	stats->txpauseframes +=
+		AXGMAC_IOREAD(pdata, MMC_TXPAUSEFRAMES_LO);
+	stats->txpauseframes +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXPAUSEFRAMES_HI) << 32);
+
+	stats->txvlanframes_g +=
+		AXGMAC_IOREAD(pdata, MMC_TXVLANFRAMES_G_LO);
+	stats->txvlanframes_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_TXVLANFRAMES_G_HI) << 32);
+
+	/* Rx counters */
+	stats->rxframecount_gb +=
+		AXGMAC_IOREAD(pdata, MMC_RXFRAMECOUNT_GB_LO);
+	stats->rxframecount_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXFRAMECOUNT_GB_HI) << 32);
+
+	stats->rxoctetcount_gb +=
+		AXGMAC_IOREAD(pdata, MMC_RXOCTETCOUNT_GB_LO);
+	stats->rxoctetcount_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXOCTETCOUNT_GB_HI) << 32);
+
+	stats->rxoctetcount_g +=
+		AXGMAC_IOREAD(pdata, MMC_RXOCTETCOUNT_G_LO);
+	stats->rxoctetcount_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXOCTETCOUNT_G_HI) << 32);
+
+	stats->rxbroadcastframes_g +=
+		AXGMAC_IOREAD(pdata, MMC_RXBROADCASTFRAMES_G_LO);
+	stats->rxbroadcastframes_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXBROADCASTFRAMES_G_HI) << 32);
+
+	stats->rxmulticastframes_g +=
+		AXGMAC_IOREAD(pdata, MMC_RXMULTICASTFRAMES_G_LO);
+	stats->rxmulticastframes_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXMULTICASTFRAMES_G_HI) << 32);
+
+	stats->rxcrcerror +=
+		AXGMAC_IOREAD(pdata, MMC_RXCRCERROR_LO);
+	stats->rxcrcerror +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXCRCERROR_HI) << 32);
+
+	stats->rxrunterror +=
+		AXGMAC_IOREAD(pdata, MMC_RXRUNTERROR);
+
+	stats->rxjabbererror +=
+		AXGMAC_IOREAD(pdata, MMC_RXJABBERERROR);
+
+	stats->rxundersize_g +=
+		AXGMAC_IOREAD(pdata, MMC_RXUNDERSIZE_G);
+
+	stats->rxoversize_g +=
+		AXGMAC_IOREAD(pdata, MMC_RXOVERSIZE_G);
+
+	stats->rx64octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_RX64OCTETS_GB_LO);
+	stats->rx64octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RX64OCTETS_GB_HI) << 32);
+
+	stats->rx65to127octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_RX65TO127OCTETS_GB_LO);
+	stats->rx65to127octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RX65TO127OCTETS_GB_HI) << 32);
+
+	stats->rx128to255octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_RX128TO255OCTETS_GB_LO);
+	stats->rx128to255octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RX128TO255OCTETS_GB_HI) << 32);
+
+	stats->rx256to511octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_RX256TO511OCTETS_GB_LO);
+	stats->rx256to511octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RX256TO511OCTETS_GB_HI) << 32);
+
+	stats->rx512to1023octets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_RX512TO1023OCTETS_GB_LO);
+	stats->rx512to1023octets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RX512TO1023OCTETS_GB_HI) << 32);
+
+	stats->rx1024tomaxoctets_gb +=
+		AXGMAC_IOREAD(pdata, MMC_RX1024TOMAXOCTETS_GB_LO);
+	stats->rx1024tomaxoctets_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RX1024TOMAXOCTETS_GB_HI) << 32);
+
+	stats->rxunicastframes_g +=
+		AXGMAC_IOREAD(pdata, MMC_RXUNICASTFRAMES_G_LO);
+	stats->rxunicastframes_g +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXUNICASTFRAMES_G_HI) << 32);
+
+	stats->rxlengtherror +=
+		AXGMAC_IOREAD(pdata, MMC_RXLENGTHERROR_LO);
+	stats->rxlengtherror +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXLENGTHERROR_HI) << 32);
+
+	stats->rxoutofrangetype +=
+		AXGMAC_IOREAD(pdata, MMC_RXOUTOFRANGETYPE_LO);
+	stats->rxoutofrangetype +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXOUTOFRANGETYPE_HI) << 32);
+
+	stats->rxpauseframes +=
+		AXGMAC_IOREAD(pdata, MMC_RXPAUSEFRAMES_LO);
+	stats->rxpauseframes +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXPAUSEFRAMES_HI) << 32);
+
+	stats->rxfifooverflow +=
+		AXGMAC_IOREAD(pdata, MMC_RXFIFOOVERFLOW_LO);
+	stats->rxfifooverflow +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXFIFOOVERFLOW_HI) << 32);
+
+	stats->rxvlanframes_gb +=
+		AXGMAC_IOREAD(pdata, MMC_RXVLANFRAMES_GB_LO);
+	stats->rxvlanframes_gb +=
+	((uint64_t)AXGMAC_IOREAD(pdata, MMC_RXVLANFRAMES_GB_HI) << 32);
+
+	stats->rxwatchdogerror +=
+		AXGMAC_IOREAD(pdata, MMC_RXWATCHDOGERROR);
+
+	/* Un-freeze counters */
+	AXGMAC_IOWRITE_BITS(pdata, MMC_CR, MCF, 0);
+}
+
+static int
+axgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
+		     unsigned int n)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	unsigned int i;
+
+	if (!stats)
+		return 0;
+
+	axgbe_read_mmc_stats(pdata);
+
+	for (i = 0; i < n && i < AXGBE_XSTATS_COUNT; i++) {
+		stats[i].id = i;
+		stats[i].value = *(u64 *)((uint8_t *)&pdata->mmc_stats +
+				axgbe_xstats_strings[i].offset);
+	}
+
+	return i;
+}
+
+static int
+axgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+			   struct rte_eth_xstat_name *xstats_names,
+			   unsigned int n)
+{
+	unsigned int i;
+
+	if (n >= AXGBE_XSTATS_COUNT && xstats_names) {
+		for (i = 0; i < AXGBE_XSTATS_COUNT; ++i) {
+			snprintf(xstats_names[i].name,
+				 RTE_ETH_XSTATS_NAME_SIZE, "%s",
+				 axgbe_xstats_strings[i].name);
+		}
+	}
+
+	return AXGBE_XSTATS_COUNT;
+}
+
+static int
+axgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
+			   uint64_t *values, unsigned int n)
+{
+	unsigned int i;
+	uint64_t values_copy[AXGBE_XSTATS_COUNT];
+
+	if (!ids) {
+		struct axgbe_port *pdata = dev->data->dev_private;
+
+		if (n < AXGBE_XSTATS_COUNT)
+			return AXGBE_XSTATS_COUNT;
+
+		axgbe_read_mmc_stats(pdata);
+
+		for (i = 0; i < AXGBE_XSTATS_COUNT; i++) {
+			values[i] = *(u64 *)((uint8_t *)&pdata->mmc_stats +
+					axgbe_xstats_strings[i].offset);
+		}
+
+		return i;
+	}
+
+	axgbe_dev_xstats_get_by_id(dev, NULL, values_copy, AXGBE_XSTATS_COUNT);
+
+	for (i = 0; i < n; i++) {
+		if (ids[i] >= AXGBE_XSTATS_COUNT) {
+			PMD_DRV_LOG(ERR, "id value isn't valid\n");
+			return -1;
+		}
+		values[i] = values_copy[ids[i]];
+	}
+	return n;
+}
+
+static int
+axgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
+				 struct rte_eth_xstat_name *xstats_names,
+				 const uint64_t *ids,
+				 unsigned int size)
+{
+	struct rte_eth_xstat_name xstats_names_copy[AXGBE_XSTATS_COUNT];
+	unsigned int i;
+
+	if (!ids)
+		return axgbe_dev_xstats_get_names(dev, xstats_names, size);
+
+	axgbe_dev_xstats_get_names(dev, xstats_names_copy, size);
+
+	for (i = 0; i < size; i++) {
+		if (ids[i] >= AXGBE_XSTATS_COUNT) {
+			PMD_DRV_LOG(ERR, "id value isn't valid\n");
+			return -1;
+		}
+		strcpy(xstats_names[i].name, xstats_names_copy[ids[i]].name);
+	}
+	return size;
+}
+
+static int
+axgbe_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct axgbe_mmc_stats *stats = &pdata->mmc_stats;
+
+	/* MMC registers are configured for reset on read */
+	axgbe_read_mmc_stats(pdata);
+
+	/* Reset stats */
+	memset(stats, 0, sizeof(*stats));
+
+	return 0;
+}
+
 static int
 axgbe_dev_stats_get(struct rte_eth_dev *dev,
 		    struct rte_eth_stats *stats)
 {
 	struct axgbe_rx_queue *rxq;
 	struct axgbe_tx_queue *txq;
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct axgbe_mmc_stats *mmc_stats = &pdata->mmc_stats;
 	unsigned int i;
+
+	axgbe_read_mmc_stats(pdata);
+
+	stats->imissed = mmc_stats->rxfifooverflow;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
@@ -329,13 +731,18 @@ axgbe_dev_stats_get(struct rte_eth_dev *dev,
 		stats->ipackets += rxq->pkts;
 		stats->q_ibytes[i] = rxq->bytes;
 		stats->ibytes += rxq->bytes;
+		stats->rx_nombuf += rxq->rx_mbuf_alloc_failed;
+		stats->q_errors[i] = rxq->errors + rxq->rx_mbuf_alloc_failed;
+		stats->ierrors += rxq->errors;
 	}
+
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 		stats->q_opackets[i] = txq->pkts;
 		stats->opackets += txq->pkts;
 		stats->q_obytes[i] = txq->bytes;
 		stats->obytes += txq->bytes;
+		stats->oerrors += txq->errors;
 	}
 
 	return 0;
@@ -353,6 +760,7 @@ axgbe_dev_stats_reset(struct rte_eth_dev *dev)
 		rxq->pkts = 0;
 		rxq->bytes = 0;
 		rxq->errors = 0;
+		rxq->rx_mbuf_alloc_failed = 0;
 	}
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];

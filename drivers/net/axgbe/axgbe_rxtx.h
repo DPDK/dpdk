@@ -91,6 +91,7 @@ struct axgbe_rx_queue {
 	uint64_t pkts;
 	uint64_t bytes;
 	uint64_t errors;
+	uint64_t rx_mbuf_alloc_failed;
 	/* Number of mbufs allocated from pool*/
 	uint64_t mbuf_alloc;
 

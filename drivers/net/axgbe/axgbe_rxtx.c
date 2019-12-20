@@ -229,6 +229,7 @@ axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				    (unsigned int)rxq->queue_id);
 			rte_eth_devices[
 				rxq->port_id].data->rx_mbuf_alloc_failed++;
+			rxq->rx_mbuf_alloc_failed++;
 			break;
 		}
 		pidx = idx + 1;

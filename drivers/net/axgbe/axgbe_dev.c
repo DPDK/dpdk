@@ -1036,6 +1036,20 @@ static void axgbe_config_checksum_offload(struct axgbe_port *pdata)
 		AXGMAC_IOWRITE_BITS(pdata, MAC_RCR, IPC, 0);
 }
 
+static void axgbe_config_mmc(struct axgbe_port *pdata)
+{
+	struct axgbe_mmc_stats *stats = &pdata->mmc_stats;
+
+	/* Reset stats */
+	memset(stats, 0, sizeof(*stats));
+
+	/* Set counters to reset on read */
+	AXGMAC_IOWRITE_BITS(pdata, MMC_CR, ROR, 1);
+
+	/* Reset the counters */
+	AXGMAC_IOWRITE_BITS(pdata, MMC_CR, CR, 1);
+}
+
 static int axgbe_init(struct axgbe_port *pdata)
 {
 	int ret;
@@ -1078,6 +1092,7 @@ static int axgbe_init(struct axgbe_port *pdata)
 	axgbe_config_flow_control(pdata);
 	axgbe_config_mac_speed(pdata);
 	axgbe_config_checksum_offload(pdata);
+	axgbe_config_mmc(pdata);
 
 	return 0;
 }
