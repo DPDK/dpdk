@@ -598,6 +598,11 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 
 	eth_dev->dev_ops = is_vf ? &bnx2xvf_eth_dev_ops : &bnx2x_eth_dev_ops;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		PMD_DRV_LOG(ERR, sc, "Skipping device init from secondary process");
+		return 0;
+	}
+
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	sc->pcie_bus    = pci_dev->addr.bus;
