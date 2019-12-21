@@ -27,7 +27,6 @@
 
 #define HNS3_RSS_HASH_ALGO_TOEPLITZ	0
 #define HNS3_RSS_HASH_ALGO_SIMPLE	1
-#define HNS3_RSS_HASH_ALGO_SYMMETRIC	2
 #define HNS3_RSS_HASH_ALGO_MASK		0xf
 
 #define HNS3_RSS_INPUT_TUPLE_OTHER	GENMASK(3, 0)
@@ -55,15 +54,6 @@ struct hns3_rss_conf {
 	uint8_t rss_indirection_tbl[HNS3_RSS_IND_TBL_SIZE]; /* Shadow table */
 	uint16_t queue[HNS3_RSS_QUEUES_BUFFER_NUM]; /* Queues indices to use */
 };
-
-/* Bit 8 ~Bit 15 */
-#define HNS3_INSET_IPV4_SRC        0x00000100UL
-#define HNS3_INSET_IPV4_DST        0x00000200UL
-#define HNS3_INSET_IPV6_SRC        0x00000400UL
-#define HNS3_INSET_IPV6_DST        0x00000800UL
-#define HNS3_INSET_SRC_PORT        0x00001000UL
-#define HNS3_INSET_DST_PORT        0x00002000UL
-#define HNS3_INSET_SCTP_VT         0x00004000UL
 
 #ifndef ilog2
 static inline int rss_ilog2(uint32_t x)
