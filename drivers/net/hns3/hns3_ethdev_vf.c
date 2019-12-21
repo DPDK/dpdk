@@ -1167,7 +1167,6 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 
 	hns3_set_default_rss_args(hw);
 
-	(void)hns3_stats_reset(eth_dev);
 	return 0;
 
 err_get_config:
