@@ -1551,7 +1551,7 @@ hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		m = tx_pkts[i];
 
 		/* check the size of packet */
-		if (m->pkt_len < HNS3_MIN_FRAME_LEN) {
+		if (m->pkt_len < RTE_ETHER_MIN_LEN) {
 			rte_errno = EINVAL;
 			return i;
 		}

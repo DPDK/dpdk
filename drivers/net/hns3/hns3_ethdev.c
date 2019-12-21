@@ -2148,7 +2148,7 @@ hns3_set_mac_mtu(struct hns3_hw *hw, uint16_t new_mps)
 
 	req = (struct hns3_config_max_frm_size_cmd *)desc.data;
 	req->max_frm_size = rte_cpu_to_le_16(new_mps);
-	req->min_frm_size = HNS3_MIN_FRAME_LEN;
+	req->min_frm_size = RTE_ETHER_MIN_LEN;
 
 	return hns3_cmd_send(hw, &desc, 1);
 }
