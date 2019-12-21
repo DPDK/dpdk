@@ -211,7 +211,11 @@ hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw,
 			req->ipv6_fragment_en |= HNS3_IP_OTHER_BIT_MASK;
 			break;
 		default:
-			/* Other unsupported flow types won't change tuples */
+			/*
+			 * rss_hf doesn't include unsupported flow types
+			 * because the API framework has checked it, and
+			 * this branch will never go unless rss_hf is zero.
+			 */
 			break;
 		}
 	}
@@ -251,8 +255,8 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rss_tuple_cfg *tuple = &hw->rss_info.rss_tuple_sets;
 	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
-	uint8_t algo = rss_cfg->conf.func;
 	uint8_t key_len = rss_conf->rss_key_len;
+	uint8_t algo;
 	uint64_t rss_hf = rss_conf->rss_hf;
 	uint8_t *key = rss_conf->rss_key;
 	int ret;
@@ -285,6 +289,8 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 			ret = -EINVAL;
 			goto conf_err;
 		}
+		algo = rss_cfg->conf.func == RTE_ETH_HASH_FUNCTION_SIMPLE_XOR ?
+			HNS3_RSS_HASH_ALGO_SIMPLE : HNS3_RSS_HASH_ALGO_TOEPLITZ;
 		ret = hns3_set_rss_algo_key(hw, algo, key);
 		if (ret)
 			goto conf_err;
@@ -500,7 +506,9 @@ hns3_set_default_rss_args(struct hns3_hw *hw)
 	int i;
 
 	/* Default hash algorithm */
-	rss_cfg->conf.func = RTE_ETH_HASH_FUNCTION_SIMPLE_XOR;
+	rss_cfg->conf.func = RTE_ETH_HASH_FUNCTION_TOEPLITZ;
+
+	/* Default RSS key */
 	memcpy(rss_cfg->key, hns3_hash_key, HNS3_RSS_KEY_SIZE);
 
 	/* Initialize RSS indirection table */
