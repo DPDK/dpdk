@@ -131,7 +131,7 @@ hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 				     (pos + PCI_MSIX_FLAGS));
 		return 0;
 	}
-	return -1;
+	return -ENXIO;
 }
 
 static int
