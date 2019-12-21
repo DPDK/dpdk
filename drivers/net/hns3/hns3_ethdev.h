@@ -631,6 +631,7 @@ int hns3_dev_filter_ctrl(struct rte_eth_dev *dev,
 			 enum rte_filter_op filter_op, void *arg);
 bool hns3_is_reset_pending(struct hns3_adapter *hns);
 bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
+void hns3_update_link_status(struct hns3_hw *hw);
 
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)

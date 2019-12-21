@@ -282,6 +282,40 @@ hns3_update_resp_position(struct hns3_hw *hw, uint32_t resp_msg)
 	resp->tail = tail;
 }
 
+static void
+hns3_link_fail_parse(struct hns3_hw *hw, uint8_t link_fail_code)
+{
+	switch (link_fail_code) {
+	case HNS3_MBX_LF_NORMAL:
+		break;
+	case HNS3_MBX_LF_REF_CLOCK_LOST:
+		hns3_warn(hw, "Reference clock lost!");
+		break;
+	case HNS3_MBX_LF_XSFP_TX_DISABLE:
+		hns3_warn(hw, "SFP tx is disabled!");
+		break;
+	case HNS3_MBX_LF_XSFP_ABSENT:
+		hns3_warn(hw, "SFP is absent!");
+		break;
+	default:
+		hns3_warn(hw, "Unknown fail code:%u!", link_fail_code);
+		break;
+	}
+}
+
+static void
+hns3_handle_link_change_event(struct hns3_hw *hw,
+			      struct hns3_mbx_pf_to_vf_cmd *req)
+{
+#define LINK_STATUS_OFFSET     1
+#define LINK_FAIL_CODE_OFFSET  2
+
+	if (!req->msg[LINK_STATUS_OFFSET])
+		hns3_link_fail_parse(hw, req->msg[LINK_FAIL_CODE_OFFSET]);
+
+	hns3_update_link_status(hw);
+}
+
 void
 hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 {
@@ -334,6 +368,9 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			hns3_mbx_tail_ptr_move_arq(hw->arq);
 
 			hns3_mbx_handler(hw);
+			break;
+		case HNS3_MBX_PUSH_LINK_STATUS:
+			hns3_handle_link_change_event(hw, req);
 			break;
 		default:
 			hns3_err(hw,

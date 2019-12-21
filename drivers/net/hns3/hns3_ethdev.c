@@ -77,6 +77,7 @@ static enum hns3_reset_level hns3_get_reset_level(struct hns3_adapter *hns,
 static int hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid,
 				    int on);
+static int hns3_update_speed_duplex(struct rte_eth_dev *eth_dev);
 
 static void
 hns3_pf_disable_irq0(struct hns3_hw *hw)
@@ -218,6 +219,8 @@ hns3_interrupt_handler(void *param)
 		hns3_schedule_reset(hns);
 	} else if (event_cause == HNS3_VECTOR0_EVENT_RST)
 		hns3_schedule_reset(hns);
+	else if (event_cause == HNS3_VECTOR0_EVENT_MBX)
+		hns3_dev_handle_mbx_msg(hw);
 	else
 		hns3_err(hw, "Received unknown event");
 
@@ -2302,6 +2305,11 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev,
 	struct hns3_mac *mac = &hw->mac;
 	struct rte_eth_link new_link;
 
+	if (!hns3_is_reset_pending(hns)) {
+		hns3_update_speed_duplex(eth_dev);
+		hns3_update_link_status(hw);
+	}
+
 	memset(&new_link, 0, sizeof(new_link));
 	switch (mac->link_speed) {
 	case ETH_SPEED_NUM_10M:
@@ -3806,14 +3814,16 @@ hns3_get_mac_link_status(struct hns3_hw *hw)
 	return !!link_status;
 }
 
-static void
+void
 hns3_update_link_status(struct hns3_hw *hw)
 {
 	int state;
 
 	state = hns3_get_mac_link_status(hw);
-	if (state != hw->mac.link_status)
+	if (state != hw->mac.link_status) {
 		hw->mac.link_status = state;
+		hns3_warn(hw, "Link status change to %s!", state ? "up" : "down");
+	}
 }
 
 static void

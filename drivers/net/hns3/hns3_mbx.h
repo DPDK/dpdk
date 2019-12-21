@@ -41,6 +41,7 @@ enum HNS3_MBX_OPCODE {
 	HNS3_MBX_GET_QID_IN_PF,         /* (VF -> PF) get queue id in pf */
 
 	HNS3_MBX_HANDLE_VF_TBL = 38,    /* (VF -> PF) store/clear hw cfg tbl */
+	HNS3_MBX_PUSH_LINK_STATUS = 201, /* (IMP -> PF) get port link status */
 };
 
 /* below are per-VF mac-vlan subcodes */
@@ -62,6 +63,13 @@ enum hns3_mbx_vlan_cfg_subcode {
 
 enum hns3_mbx_tbl_cfg_subcode {
 	HNS3_MBX_VPORT_LIST_CLEAR = 0,
+};
+
+enum hns3_mbx_link_fail_subcode {
+	HNS3_MBX_LF_NORMAL = 0,
+	HNS3_MBX_LF_REF_CLOCK_LOST,
+	HNS3_MBX_LF_XSFP_TX_DISABLE,
+	HNS3_MBX_LF_XSFP_ABSENT,
 };
 
 #define HNS3_MBX_MAX_MSG_SIZE	16
