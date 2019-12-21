@@ -3597,7 +3597,7 @@ hns3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	bool en_mc_pmc = (dev->data->all_multicast == 1) ? true : false;
-	int ret = 0;
+	int ret;
 
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_set_promisc_mode(hw, true, en_mc_pmc);
@@ -3614,7 +3614,7 @@ hns3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	bool en_mc_pmc = (dev->data->all_multicast == 1) ? true : false;
-	int ret = 0;
+	int ret;
 
 	/* If now in all_multicast mode, must remain in all_multicast mode. */
 	rte_spinlock_lock(&hw->lock);
@@ -3632,7 +3632,7 @@ hns3_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	bool en_uc_pmc = (dev->data->promiscuous == 1) ? true : false;
-	int ret = 0;
+	int ret;
 
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_set_promisc_mode(hw, en_uc_pmc, true);
@@ -3649,7 +3649,7 @@ hns3_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	bool en_uc_pmc = (dev->data->promiscuous == 1) ? true : false;
-	int ret = 0;
+	int ret;
 
 	/* If now in promiscuous mode, must remain in all_multicast mode. */
 	if (dev->data->promiscuous == 1)
@@ -4135,7 +4135,7 @@ hns3_dev_start(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	int ret = 0;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 	if (rte_atomic16_read(&hw->reset.resetting))
