@@ -1210,6 +1210,35 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 	return rc;
 }
 
+static bool bnxt_find_lossy_profile(struct bnxt *bp)
+{
+	int i = 0;
+
+	for (i = BNXT_COS_QUEUE_COUNT - 1; i >= 0; i--) {
+		if (bp->tx_cos_queue[i].profile ==
+		    HWRM_QUEUE_SERVICE_PROFILE_LOSSY) {
+			bp->tx_cosq_id[0] = bp->tx_cos_queue[i].id;
+			return true;
+		}
+	}
+	return false;
+}
+
+static void bnxt_find_first_valid_profile(struct bnxt *bp)
+{
+	int i = 0;
+
+	for (i = BNXT_COS_QUEUE_COUNT - 1; i >= 0; i--) {
+		if (bp->tx_cos_queue[i].profile !=
+		    HWRM_QUEUE_SERVICE_PROFILE_UNKNOWN &&
+		    bp->tx_cos_queue[i].id !=
+		    HWRM_QUEUE_SERVICE_PROFILE_UNKNOWN) {
+			bp->tx_cosq_id[0] = bp->tx_cos_queue[i].id;
+			break;
+		}
+	}
+}
+
 int bnxt_hwrm_queue_qportcfg(struct bnxt *bp)
 {
 	int rc = 0;
@@ -1269,14 +1298,13 @@ get_rx_info:
 						bp->tx_cos_queue[i].id;
 			}
 		} else {
-			for (i = BNXT_COS_QUEUE_COUNT - 1; i >= 0; i--) {
-				if (bp->tx_cos_queue[i].profile ==
-					HWRM_QUEUE_SERVICE_PROFILE_LOSSY) {
-					bp->tx_cosq_id[0] =
-						bp->tx_cos_queue[i].id;
-					break;
-				}
-			}
+			/* When CoS classification is disabled, for normal NIC
+			 * operations, ideally we should look to use LOSSY.
+			 * If not found, fallback to the first valid profile
+			 */
+			if (!bnxt_find_lossy_profile(bp))
+				bnxt_find_first_valid_profile(bp);
+
 		}
 	}
 
