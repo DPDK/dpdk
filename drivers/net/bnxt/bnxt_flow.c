@@ -1126,7 +1126,16 @@ use_vnic:
 		PMD_DRV_LOG(DEBUG,
 			    "Setting vnic ff_idx %d\n", vnic->ff_pool_idx);
 		filter->dst_id = vnic->fw_vnic_id;
-		filter1 = bnxt_get_l2_filter(bp, filter, vnic);
+
+		/* For ntuple filter, create the L2 filter with default VNIC.
+		 * The user specified redirect queue will be set while creating
+		 * the ntuple filter in hardware.
+		 */
+		vnic0 = BNXT_GET_DEFAULT_VNIC(bp);
+		if (use_ntuple)
+			filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
+		else
+			filter1 = bnxt_get_l2_filter(bp, filter, vnic);
 		if (filter1 == NULL) {
 			rte_flow_error_set(error,
 					   ENOSPC,
