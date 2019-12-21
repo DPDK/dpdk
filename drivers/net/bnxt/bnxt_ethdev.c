@@ -856,7 +856,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->scattered_rx = bnxt_scattered_rx(eth_dev);
 
-	bnxt_link_update_op(eth_dev, 1);
+	bnxt_link_update(eth_dev, 1, ETH_LINK_UP);
 
 	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 		vlan_mask |= ETH_VLAN_FILTER_MASK;
@@ -940,7 +940,7 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	 * During reset recovery, there is no need to wait
 	 */
 	if (!is_bnxt_in_error(bp))
-		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL * 2);
+		bnxt_link_update(eth_dev, 1, ETH_LINK_DOWN);
 
 	/* Clean queue intr-vector mapping */
 	rte_intr_efd_disable(intr_handle);
@@ -1086,12 +1086,14 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
-int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
+int bnxt_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete,
+		     bool exp_link_status)
 {
 	int rc = 0;
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_eth_link new;
-	unsigned int cnt = BNXT_LINK_WAIT_CNT;
+	int cnt = exp_link_status ? BNXT_LINK_UP_WAIT_CNT :
+		  BNXT_LINK_DOWN_WAIT_CNT;
 
 	rc = is_bnxt_in_error(bp);
 	if (rc)
@@ -1109,7 +1111,7 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 			goto out;
 		}
 
-		if (!wait_to_complete || new.link_status)
+		if (!wait_to_complete || new.link_status == exp_link_status)
 			break;
 
 		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
@@ -1129,6 +1131,12 @@ out:
 	}
 
 	return rc;
+}
+
+static int bnxt_link_update_op(struct rte_eth_dev *eth_dev,
+			       int wait_to_complete)
+{
+	return bnxt_link_update(eth_dev, wait_to_complete, ETH_LINK_UP);
 }
 
 static int bnxt_promiscuous_enable_op(struct rte_eth_dev *eth_dev)

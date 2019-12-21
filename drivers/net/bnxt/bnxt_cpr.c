@@ -63,7 +63,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_SPEED_CHANGE:
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE:
 		/* FALLTHROUGH */
-		bnxt_link_update_op(bp->eth_dev, 0);
+		bnxt_link_update(bp->eth_dev, 0, ETH_LINK_UP);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PF_DRVR_UNLOAD:
 		PMD_DRV_LOG(INFO, "Async event: PF driver unloaded\n");

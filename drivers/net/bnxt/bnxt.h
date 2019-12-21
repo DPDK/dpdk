@@ -231,9 +231,10 @@ struct bnxt_pf_info {
 	uint8_t			evb_mode;
 };
 
-/* Max wait time is 10 * 100ms = 1s */
-#define BNXT_LINK_WAIT_CNT	10
-#define BNXT_LINK_WAIT_INTERVAL	100
+/* Max wait time for link up is 10s and link down is 500ms */
+#define BNXT_LINK_UP_WAIT_CNT	200
+#define BNXT_LINK_DOWN_WAIT_CNT	10
+#define BNXT_LINK_WAIT_INTERVAL	50
 struct bnxt_link_info {
 	uint32_t		phy_flags;
 	uint8_t			mac_type;
@@ -656,7 +657,8 @@ struct bnxt {
 };
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
-int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
+int bnxt_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete,
+		     bool exp_link_status);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 int is_bnxt_in_error(struct bnxt *bp);
 uint16_t bnxt_rss_ctxts(const struct bnxt *bp);
