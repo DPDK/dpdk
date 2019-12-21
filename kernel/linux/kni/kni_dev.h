@@ -32,7 +32,7 @@
 #define MBUF_BURST_SZ 32
 
 /* Default carrier state for created KNI network interfaces */
-extern uint32_t dflt_carrier;
+extern uint32_t kni_dflt_carrier;
 
 /**
  * A structure describing the private information for a kni device.

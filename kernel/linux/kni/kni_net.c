@@ -158,7 +158,7 @@ kni_net_open(struct net_device *dev)
 	struct kni_dev *kni = netdev_priv(dev);
 
 	netif_start_queue(dev);
-	if (dflt_carrier == 1)
+	if (kni_dflt_carrier == 1)
 		netif_carrier_on(dev);
 	else
 		netif_carrier_off(dev);

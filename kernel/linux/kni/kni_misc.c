@@ -39,7 +39,7 @@ static uint32_t multiple_kthread_on;
 
 /* Default carrier state for created KNI network interfaces */
 static char *carrier;
-uint32_t dflt_carrier;
+uint32_t kni_dflt_carrier;
 
 #define KNI_DEV_IN_USE_BIT_NUM 0 /* Bit number for device in use */
 
@@ -554,14 +554,14 @@ static int __init
 kni_parse_carrier_state(void)
 {
 	if (!carrier) {
-		dflt_carrier = 0;
+		kni_dflt_carrier = 0;
 		return 0;
 	}
 
 	if (strcmp(carrier, "off") == 0)
-		dflt_carrier = 0;
+		kni_dflt_carrier = 0;
 	else if (strcmp(carrier, "on") == 0)
-		dflt_carrier = 1;
+		kni_dflt_carrier = 1;
 	else
 		return -1;
 
@@ -588,7 +588,7 @@ kni_init(void)
 		return -EINVAL;
 	}
 
-	if (dflt_carrier == 0)
+	if (kni_dflt_carrier == 0)
 		pr_debug("Default carrier state set to off.\n");
 	else
 		pr_debug("Default carrier state set to on.\n");
