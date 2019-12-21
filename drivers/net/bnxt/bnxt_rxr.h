@@ -226,4 +226,15 @@ uint16_t bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 int bnxt_rxq_vec_setup(struct bnxt_rx_queue *rxq);
 #endif
 
+uint32_t bnxt_get_cfa_code_or_mark_id(struct bnxt *bp,
+				      struct rx_pkt_cmpl_hi *rxcmp1);
+#define BNXT_RX_META_CFA_CODE_SHIFT		19
+#define BNXT_CFA_CODE_META_SHIFT		16
+#define BNXT_RX_META_CFA_CODE_INT_ACT_REC_BIT	0x8000000
+#define BNXT_RX_META_CFA_CODE_EEM_BIT		0x4000000
+#define BNXT_CFA_META_FMT_MASK			0x70
+#define BNXT_CFA_META_FMT_SHFT			4
+#define BNXT_CFA_META_FMT_EM_EEM_SHFT		1
+#define BNXT_CFA_META_FMT_EEM			3
+
 #endif

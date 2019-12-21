@@ -515,6 +515,7 @@ struct bnxt {
 #define BNXT_FLAG_INIT_DONE			BIT(21)
 #define BNXT_FLAG_FW_CAP_ONE_STEP_TX_TS		BIT(22)
 #define BNXT_FLAG_ADV_FLOW_MGMT			BIT(23)
+#define BNXT_FLAG_RX_VECTOR_PKT_MODE		BIT(24)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR(bp)		((bp)->port_partition_type)
@@ -654,6 +655,10 @@ struct bnxt {
 
 	/* Struct to hold adapter error recovery related info */
 	struct bnxt_error_recovery_info *recovery_info;
+#define BNXT_MARK_TABLE_SZ	(sizeof(uint32_t)  * 64 * 1024)
+/* TCAM and EM should be 16-bit only. Other modes not supported. */
+#define BNXT_FLOW_ID_MASK	0x0000ffff
+	uint32_t		*mark_table;
 };
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);

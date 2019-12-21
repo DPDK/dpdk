@@ -458,6 +458,10 @@ skip_cosq_cfg:
 	}
 	bnxt_print_link_info(bp->eth_dev);
 
+	bp->mark_table = rte_zmalloc("bnxt_mark_table", BNXT_MARK_TABLE_SZ, 0);
+	if (!bp->mark_table)
+		PMD_DRV_LOG(ERR, "Allocation of mark table failed\n");
+
 	return 0;
 
 err_free:
@@ -740,8 +744,10 @@ static int bnxt_scattered_rx(struct rte_eth_dev *eth_dev)
 }
 
 static eth_rx_burst_t
-bnxt_receive_function(__rte_unused struct rte_eth_dev *eth_dev)
+bnxt_receive_function(struct rte_eth_dev *eth_dev)
 {
+	struct bnxt *bp = eth_dev->data->dev_private;
+
 #ifdef RTE_ARCH_X86
 #ifndef RTE_LIBRTE_IEEE1588
 	/*
@@ -762,6 +768,7 @@ bnxt_receive_function(__rte_unused struct rte_eth_dev *eth_dev)
 		DEV_RX_OFFLOAD_VLAN_FILTER))) {
 		PMD_DRV_LOG(INFO, "Using vector mode receive for port %d\n",
 			    eth_dev->data->port_id);
+		bp->flags |= BNXT_FLAG_RX_VECTOR_PKT_MODE;
 		return bnxt_recv_pkts_vec;
 	}
 	PMD_DRV_LOG(INFO, "Vector mode receive disabled for port %d\n",
@@ -773,6 +780,7 @@ bnxt_receive_function(__rte_unused struct rte_eth_dev *eth_dev)
 		    eth_dev->data->dev_conf.rxmode.offloads);
 #endif
 #endif
+	bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
 	return bnxt_recv_pkts;
 }
 
@@ -956,6 +964,8 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_int_handler(eth_dev);
 	bnxt_shutdown_nic(bp);
 	bnxt_hwrm_if_change(bp, 0);
+	memset(bp->mark_table, 0, BNXT_MARK_TABLE_SZ);
+	bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
 	bp->dev_stopped = 1;
 	bp->rx_cosq_cnt = 0;
 }
@@ -975,6 +985,9 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 		rte_free(bp->grp_info);
 		bp->grp_info = NULL;
 	}
+
+	rte_free(bp->mark_table);
+	bp->mark_table = NULL;
 
 	bnxt_dev_uninit(eth_dev);
 }
@@ -4775,6 +4788,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	bp = eth_dev->data->dev_private;
 
 	bp->dev_stopped = 1;
+	bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
 
 	if (bnxt_vf_pciid(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;

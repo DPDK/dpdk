@@ -489,7 +489,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		mbuf->hash.rss = rxcmp->rss_hash;
 		mbuf->ol_flags |= PKT_RX_RSS_HASH;
 	} else {
-		mbuf->hash.fdir.id = rxcmp1->cfa_code;
+		mbuf->hash.fdir.id = bnxt_get_cfa_code_or_mark_id(rxq->bp,
+								  rxcmp1);
 		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 	}
 #ifdef RTE_LIBRTE_IEEE1588
@@ -894,4 +895,42 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	PMD_DRV_LOG(DEBUG, "TPA alloc Done!\n");
 
 	return 0;
+}
+
+uint32_t bnxt_get_cfa_code_or_mark_id(struct bnxt *bp,
+				      struct rx_pkt_cmpl_hi *rxcmp1)
+{
+	uint32_t cfa_code = 0;
+	uint8_t meta_fmt =  0;
+	uint16_t flags2 = 0;
+	uint32_t meta =  0;
+
+	cfa_code = rte_le_to_cpu_16(rxcmp1->cfa_code);
+	if (!cfa_code)
+		return 0;
+
+	if (cfa_code && !bp->mark_table[cfa_code])
+		return cfa_code;
+
+	flags2 = rte_le_to_cpu_16(rxcmp1->flags2);
+	meta = rte_le_to_cpu_32(rxcmp1->metadata);
+	if (meta) {
+		meta >>= BNXT_RX_META_CFA_CODE_SHIFT;
+
+		/*
+		 * The flags field holds extra bits of info from [6:4]
+		 * which indicate if the flow is in TCAM or EM or EEM
+		 */
+		meta_fmt = (flags2 & BNXT_CFA_META_FMT_MASK) >>
+			   BNXT_CFA_META_FMT_SHFT;
+
+		/*
+		 * meta_fmt == 4 => 'b100 => 'b10x => EM.
+		 * meta_fmt == 5 => 'b101 => 'b10x => EM + VLAN
+		 * meta_fmt == 6 => 'b110 => 'b11x => EEM
+		 * meta_fmt == 7 => 'b111 => 'b11x => EEM + VLAN.
+		 */
+		meta_fmt >>= BNXT_CFA_META_FMT_EM_EEM_SHFT;
+	}
+	return bp->mark_table[cfa_code];
 }

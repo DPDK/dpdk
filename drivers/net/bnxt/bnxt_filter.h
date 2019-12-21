@@ -23,9 +23,11 @@ struct bnxt;
 #define BNXT_FLOW_L2_INNER_DST_VALID_FLAG	BIT(4)
 #define BNXT_FLOW_L2_DROP_FLAG			BIT(5)
 #define BNXT_FLOW_PARSE_INNER_FLAG		BIT(6)
+#define BNXT_FLOW_MARK_FLAG			BIT(7)
 
 struct bnxt_filter_info {
 	STAILQ_ENTRY(bnxt_filter_info)	next;
+	uint32_t		flow_id;
 	uint64_t		fw_l2_filter_id;
 	struct bnxt_filter_info *matching_l2_fltr_ptr;
 	uint64_t		fw_em_filter_id;
@@ -81,6 +83,7 @@ struct bnxt_filter_info {
 	 * to remember which vnic it was created on
 	 */
 	struct			bnxt_vnic_info *vnic;
+	uint32_t		mark;
 };
 
 struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp);
