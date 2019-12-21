@@ -5253,7 +5253,6 @@ static void ecore_emul_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 
 	/* MISCS_REG_ECO_RESERVED[15:12]: num of ports in an engine */
 	eco_reserved = ecore_rd(p_hwfn, p_ptt, MISCS_REG_ECO_RESERVED);
-
 	switch ((eco_reserved & 0xf000) >> 12) {
 		case 1:
 			p_dev->num_ports_in_engine = 1;
@@ -5268,7 +5267,7 @@ static void ecore_emul_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 			DP_NOTICE(p_hwfn, false,
 			  "Emulation: Unknown port mode [ECO_RESERVED 0x%08x]\n",
 			  eco_reserved);
-		p_dev->num_ports_in_engine = 2; /* Default to something */
+		p_dev->num_ports_in_engine = 1; /* Default to something */
 		break;
 		}
 
@@ -5281,8 +5280,8 @@ static void ecore_emul_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 static void ecore_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 				   struct ecore_ptt *p_ptt)
 {
+	u32 addr, global_offsize, global_addr, port_mode;
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
-	u32 addr, global_offsize, global_addr;
 
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_TEDIBEAR(p_dev)) {
@@ -5304,15 +5303,32 @@ static void ecore_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 		return;
 	}
 
-		addr = SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->public_base,
-					    PUBLIC_GLOBAL);
-		global_offsize = ecore_rd(p_hwfn, p_ptt, addr);
-		global_addr = SECTION_ADDR(global_offsize, 0);
-		addr = global_addr + OFFSETOF(struct public_global, max_ports);
-		p_dev->num_ports = (u8)ecore_rd(p_hwfn, p_ptt, addr);
+	/* Determine the number of ports per engine */
+	port_mode = ecore_rd(p_hwfn, p_ptt, MISC_REG_PORT_MODE);
+	switch (port_mode) {
+	case 0x0:
+		p_dev->num_ports_in_engine = 1;
+		break;
+	case 0x1:
+		p_dev->num_ports_in_engine = 2;
+		break;
+	case 0x2:
+		p_dev->num_ports_in_engine = 4;
+		break;
+	default:
+		DP_NOTICE(p_hwfn, false, "Unknown port mode 0x%08x\n",
+			  port_mode);
+		p_dev->num_ports_in_engine = 1; /* Default to something */
+		break;
+	}
 
-	p_dev->num_ports_in_engine = p_dev->num_ports >>
-				     (ecore_device_num_engines(p_dev) - 1);
+	/* Get the total number of ports of the device */
+	addr = SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->public_base,
+				    PUBLIC_GLOBAL);
+	global_offsize = ecore_rd(p_hwfn, p_ptt, addr);
+	global_addr = SECTION_ADDR(global_offsize, 0);
+	addr = global_addr + OFFSETOF(struct public_global, max_ports);
+	p_dev->num_ports = (u8)ecore_rd(p_hwfn, p_ptt, addr);
 }
 
 static void ecore_mcp_get_eee_caps(struct ecore_hwfn *p_hwfn,
