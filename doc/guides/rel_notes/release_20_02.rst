@@ -61,6 +61,12 @@ New Features
   A new API has been added to wait for a memory location to be updated with a
   16-bit, 32-bit, 64-bit value.
 
+* **Updated Hisilicon hns3 driver.**
+
+  Updated Hisilicon hns3 driver with new features and improvements, including:
+
+  * Added support for Rx interrupt.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:

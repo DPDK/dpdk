@@ -104,6 +104,19 @@ struct hns3_mbx_pf_to_vf_cmd {
 	uint16_t msg[8];
 };
 
+struct hns3_ring_chain_param {
+	uint8_t ring_type;
+	uint8_t tqp_index;
+	uint8_t int_gl_index;
+};
+
+#define HNS3_MBX_MAX_RING_CHAIN_PARAM_NUM	4
+struct hns3_vf_bind_vector_msg {
+	uint8_t vector_id;
+	uint8_t ring_num;
+	struct hns3_ring_chain_param param[HNS3_MBX_MAX_RING_CHAIN_PARAM_NUM];
+};
+
 struct hns3_vf_rst_cmd {
 	uint8_t dest_vfid;
 	uint8_t vf_rst;

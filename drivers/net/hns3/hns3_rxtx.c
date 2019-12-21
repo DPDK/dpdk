@@ -395,6 +395,47 @@ hns3_reset_all_queues(struct hns3_adapter *hns)
 	return 0;
 }
 
+void
+hns3_tqp_intr_enable(struct hns3_hw *hw, uint16_t tpq_int_num, bool en)
+{
+	uint32_t addr, value;
+
+	addr = HNS3_TQP_INTR_CTRL_REG + tpq_int_num * HNS3_VECTOR_REG_OFFSET;
+	value = en ? 1 : 0;
+
+	hns3_write_dev(hw, addr, value);
+}
+
+int
+hns3_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (dev->data->dev_conf.intr_conf.rxq == 0)
+		return -ENOTSUP;
+
+	/* enable the vectors */
+	hns3_tqp_intr_enable(hw, queue_id, true);
+
+	return rte_intr_ack(intr_handle);
+}
+
+int
+hns3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (dev->data->dev_conf.intr_conf.rxq == 0)
+		return -ENOTSUP;
+
+	/* disable the vectors */
+	hns3_tqp_intr_enable(hw, queue_id, false);
+
+	return 0;
+}
+
 static int
 hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 {

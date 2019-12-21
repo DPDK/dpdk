@@ -295,6 +295,8 @@ void hns3_dev_rx_queue_release(void *queue);
 void hns3_dev_tx_queue_release(void *queue);
 void hns3_free_all_queues(struct rte_eth_dev *dev);
 int hns3_reset_all_queues(struct hns3_adapter *hns);
+int hns3_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
+int hns3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 int hns3_start_queues(struct hns3_adapter *hns, bool reset_queue);
 int hns3_stop_queues(struct hns3_adapter *hns, bool reset_queue);
 void hns3_dev_release_mbufs(struct hns3_adapter *hns);
@@ -311,4 +313,5 @@ uint16_t hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev);
+void hns3_tqp_intr_enable(struct hns3_hw *hw, uint16_t tpq_int_num, bool en);
 #endif /* _HNS3_RXTX_H_ */

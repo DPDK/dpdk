@@ -22,6 +22,7 @@ Features of the HNS3 PMD are:
 - Port hardware statistics
 - Jumbo frames
 - Link state information
+- Interrupt mode for RX
 - VLAN stripping
 - NUMA support
 

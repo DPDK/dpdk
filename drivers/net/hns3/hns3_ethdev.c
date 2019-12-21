@@ -2022,6 +2022,40 @@ hns3_check_dcb_cfg(struct rte_eth_dev *dev)
 }
 
 static int
+hns3_bind_ring_with_vector(struct rte_eth_dev *dev, uint8_t vector_id,
+			   bool mmap, uint16_t queue_id)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_cmd_desc desc;
+	struct hns3_ctrl_vector_chain_cmd *req =
+		(struct hns3_ctrl_vector_chain_cmd *)desc.data;
+	enum hns3_cmd_status status;
+	enum hns3_opcode_type op;
+	uint16_t tqp_type_and_id = 0;
+
+	op = mmap ? HNS3_OPC_ADD_RING_TO_VECTOR : HNS3_OPC_DEL_RING_TO_VECTOR;
+	hns3_cmd_setup_basic_desc(&desc, op, false);
+	req->int_vector_id = vector_id;
+
+	hns3_set_field(tqp_type_and_id, HNS3_INT_TYPE_M, HNS3_INT_TYPE_S,
+		       HNS3_RING_TYPE_RX);
+	hns3_set_field(tqp_type_and_id, HNS3_TQP_ID_M, HNS3_TQP_ID_S, queue_id);
+	hns3_set_field(tqp_type_and_id, HNS3_INT_GL_IDX_M, HNS3_INT_GL_IDX_S,
+		       HNS3_RING_GL_RX);
+	req->tqp_type_and_id[0] = rte_cpu_to_le_16(tqp_type_and_id);
+
+	req->int_cause_num = 1;
+	status = hns3_cmd_send(hw, &desc, 1);
+	if (status) {
+		hns3_err(hw, "Map TQP %d fail, vector_id is %d, status is %d.",
+			 queue_id, vector_id, status);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int
 hns3_dev_configure(struct rte_eth_dev *dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -4020,15 +4054,83 @@ err_config_mac_mode:
 }
 
 static int
-hns3_dev_start(struct rte_eth_dev *eth_dev)
+hns3_map_rx_interrupt(struct rte_eth_dev *dev)
 {
-	struct hns3_adapter *hns = eth_dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t intr_vector;
+	uint8_t base = 0;
+	uint8_t vec = 0;
+	uint16_t q_id;
 	int ret;
+
+	if (dev->data->dev_conf.intr_conf.rxq == 0)
+		return 0;
+
+	/* disable uio/vfio intr/eventfd mapping */
+	rte_intr_disable(intr_handle);
+
+	/* check and configure queue intr-vector mapping */
+	if (rte_intr_cap_multiple(intr_handle) ||
+	    !RTE_ETH_DEV_SRIOV(dev).active) {
+		intr_vector = dev->data->nb_rx_queues;
+		/* creates event fd for each intr vector when MSIX is used */
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -EINVAL;
+	}
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (intr_handle->intr_vec == NULL) {
+			hns3_err(hw, "Failed to allocate %d rx_queues"
+				     " intr_vec", dev->data->nb_rx_queues);
+			ret = -ENOMEM;
+			goto alloc_intr_vec_error;
+		}
+	}
+
+	if (rte_intr_allow_others(intr_handle)) {
+		vec = RTE_INTR_VEC_RXTX_OFFSET;
+		base = RTE_INTR_VEC_RXTX_OFFSET;
+	}
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (q_id = 0; q_id < dev->data->nb_rx_queues; q_id++) {
+			ret = hns3_bind_ring_with_vector(dev, vec, true, q_id);
+			if (ret)
+				goto bind_vector_error;
+			intr_handle->intr_vec[q_id] = vec;
+			if (vec < base + intr_handle->nb_efd - 1)
+				vec++;
+		}
+	}
+	rte_intr_enable(intr_handle);
+	return 0;
+
+bind_vector_error:
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec) {
+		free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+	return ret;
+alloc_intr_vec_error:
+	rte_intr_efd_disable(intr_handle);
+	return ret;
+}
+
+static int
+hns3_dev_start(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE();
 	if (rte_atomic16_read(&hw->reset.resetting))
 		return -EBUSY;
+
 	rte_spinlock_lock(&hw->lock);
 	hw->adapter_state = HNS3_NIC_STARTING;
 
@@ -4041,8 +4143,12 @@ hns3_dev_start(struct rte_eth_dev *eth_dev)
 
 	hw->adapter_state = HNS3_NIC_STARTED;
 	rte_spinlock_unlock(&hw->lock);
-	hns3_set_rxtx_function(eth_dev);
-	hns3_mp_req_start_rxtx(eth_dev);
+
+	ret = hns3_map_rx_interrupt(dev);
+	if (ret)
+		return ret;
+	hns3_set_rxtx_function(dev);
+	hns3_mp_req_start_rxtx(dev);
 
 	hns3_info(hw, "hns3 dev start successful!");
 	return 0;
@@ -4070,18 +4176,50 @@ hns3_do_stop(struct hns3_adapter *hns)
 }
 
 static void
-hns3_dev_stop(struct rte_eth_dev *eth_dev)
+hns3_unmap_rx_interrupt(struct rte_eth_dev *dev)
 {
-	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint8_t base = 0;
+	uint8_t vec = 0;
+	uint16_t q_id;
+
+	if (dev->data->dev_conf.intr_conf.rxq == 0)
+		return;
+
+	/* unmap the ring with vector */
+	if (rte_intr_allow_others(intr_handle)) {
+		vec = RTE_INTR_VEC_RXTX_OFFSET;
+		base = RTE_INTR_VEC_RXTX_OFFSET;
+	}
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (q_id = 0; q_id < dev->data->nb_rx_queues; q_id++) {
+			(void)hns3_bind_ring_with_vector(dev, vec, false, q_id);
+			if (vec < base + intr_handle->nb_efd - 1)
+				vec++;
+		}
+	}
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+}
+
+static void
+hns3_dev_stop(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 
 	PMD_INIT_FUNC_TRACE();
 
 	hw->adapter_state = HNS3_NIC_STOPPING;
-	hns3_set_rxtx_function(eth_dev);
+	hns3_set_rxtx_function(dev);
 	rte_wmb();
 	/* Disable datapath on secondary process. */
-	hns3_mp_req_stop_rxtx(eth_dev);
+	hns3_mp_req_stop_rxtx(dev);
 	/* Prevent crashes when queues are still in use. */
 	rte_delay_ms(hw->tqps_num);
 
@@ -4092,6 +4230,7 @@ hns3_dev_stop(struct rte_eth_dev *eth_dev)
 		hw->adapter_state = HNS3_NIC_CONFIGURED;
 	}
 	rte_spinlock_unlock(&hw->lock);
+	hns3_unmap_rx_interrupt(dev);
 }
 
 static void
@@ -4748,6 +4887,8 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.tx_queue_setup         = hns3_tx_queue_setup,
 	.rx_queue_release       = hns3_dev_rx_queue_release,
 	.tx_queue_release       = hns3_dev_tx_queue_release,
+	.rx_queue_intr_enable   = hns3_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable  = hns3_dev_rx_queue_intr_disable,
 	.dev_configure          = hns3_dev_configure,
 	.flow_ctrl_get          = hns3_flow_ctrl_get,
 	.flow_ctrl_set          = hns3_flow_ctrl_set,

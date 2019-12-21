@@ -83,6 +83,9 @@
 
 #define HNS3_RING_EN_B				0
 
+#define HNS3_VECTOR_REG_OFFSET			0x4
+#define HNS3_VECTOR_VF_OFFSET			0x100000
+
 #define HNS3_TQP_REG_OFFSET			0x80000
 #define HNS3_TQP_REG_SIZE			0x200
 

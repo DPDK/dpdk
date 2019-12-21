@@ -209,6 +209,10 @@ enum hns3_opcode_type {
 	/* SFP command */
 	HNS3_OPC_SFP_GET_SPEED          = 0x7104,
 
+	/* Interrupts commands */
+	HNS3_OPC_ADD_RING_TO_VECTOR	= 0x1503,
+	HNS3_OPC_DEL_RING_TO_VECTOR	= 0x1504,
+
 	/* Error INT commands */
 	HNS3_QUERY_MSIX_INT_STS_BD_NUM          = 0x1513,
 	HNS3_QUERY_CLEAR_ALL_MPF_MSIX_INT       = 0x1514,
@@ -671,6 +675,30 @@ struct hns3_tqp_map_cmd {
 	uint8_t tqp_flag;       /* Indicate it's pf or vf tqp */
 	uint16_t tqp_vid;       /* Virtual id in this pf/vf */
 	uint8_t rsv[18];
+};
+
+#define HNS3_RING_TYPE_B	0
+#define HNS3_RING_TYPE_TX	0
+#define HNS3_RING_TYPE_RX	1
+#define HNS3_RING_GL_IDX_S	0
+#define HNS3_RING_GL_IDX_M	GENMASK(1, 0)
+#define HNS3_RING_GL_RX		0
+#define HNS3_RING_GL_TX		1
+
+#define HNS3_VECTOR_ELEMENTS_PER_CMD	10
+
+#define HNS3_INT_TYPE_S		0
+#define HNS3_INT_TYPE_M		GENMASK(1, 0)
+#define HNS3_TQP_ID_S		2
+#define HNS3_TQP_ID_M		GENMASK(12, 2)
+#define HNS3_INT_GL_IDX_S	13
+#define HNS3_INT_GL_IDX_M	GENMASK(14, 13)
+struct hns3_ctrl_vector_chain_cmd {
+	uint8_t int_vector_id;
+	uint8_t int_cause_num;
+	uint16_t tqp_type_and_id[HNS3_VECTOR_ELEMENTS_PER_CMD];
+	uint8_t vfid;
+	uint8_t rsv;
 };
 
 struct hns3_config_max_frm_size_cmd {
