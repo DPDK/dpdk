@@ -363,10 +363,11 @@ int bnxt_hwrm_cfa_vlan_antispoof_cfg(struct bnxt *bp, uint16_t fid,
 }
 
 int bnxt_hwrm_clear_l2_filter(struct bnxt *bp,
-			   struct bnxt_filter_info *filter)
+			     struct bnxt_filter_info *filter)
 {
 	int rc = 0;
 	struct bnxt_filter_info *l2_filter = filter;
+	struct bnxt_vnic_info *vnic = NULL;
 	struct hwrm_cfa_l2_filter_free_input req = {.req_type = 0 };
 	struct hwrm_cfa_l2_filter_free_output *resp = bp->hwrm_cmd_resp_addr;
 
@@ -378,6 +379,9 @@ int bnxt_hwrm_clear_l2_filter(struct bnxt *bp,
 
 	PMD_DRV_LOG(DEBUG, "filter: %p l2_filter: %p ref_cnt: %d\n",
 		    filter, l2_filter, l2_filter->l2_ref_cnt);
+
+	if (l2_filter->l2_ref_cnt == 0)
+		return 0;
 
 	if (l2_filter->l2_ref_cnt > 0)
 		l2_filter->l2_ref_cnt--;
@@ -395,6 +399,14 @@ int bnxt_hwrm_clear_l2_filter(struct bnxt *bp,
 	HWRM_UNLOCK();
 
 	filter->fw_l2_filter_id = UINT64_MAX;
+	if (l2_filter->l2_ref_cnt == 0) {
+		vnic = l2_filter->vnic;
+		if (vnic) {
+			STAILQ_REMOVE(&vnic->filter, l2_filter,
+				      bnxt_filter_info, next);
+			bnxt_free_filter(bp, l2_filter);
+		}
+	}
 
 	return 0;
 }
@@ -2483,8 +2495,7 @@ int bnxt_clear_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 			rc = bnxt_hwrm_clear_em_filter(bp, filter);
 		else if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
 			rc = bnxt_hwrm_clear_ntuple_filter(bp, filter);
-		else
-			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
+		rc = bnxt_hwrm_clear_l2_filter(bp, filter);
 		STAILQ_REMOVE(&vnic->filter, filter, bnxt_filter_info, next);
 		bnxt_free_filter(bp, filter);
 	}
@@ -2506,8 +2517,7 @@ bnxt_clear_hwrm_vnic_flows(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 			rc = bnxt_hwrm_clear_em_filter(bp, filter);
 		else if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
 			rc = bnxt_hwrm_clear_ntuple_filter(bp, filter);
-		else
-			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
+		rc = bnxt_hwrm_clear_l2_filter(bp, filter);
 
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
 		rte_free(flow);

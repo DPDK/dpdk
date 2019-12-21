@@ -746,10 +746,9 @@ bnxt_find_matching_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 {
 	struct bnxt_filter_info *mf, *f0;
 	struct bnxt_vnic_info *vnic0;
-	struct rte_flow *flow;
 	int i;
 
-	vnic0 = &bp->vnic_info[0];
+	vnic0 = BNXT_GET_DEFAULT_VNIC(bp);
 	f0 = STAILQ_FIRST(&vnic0->filter);
 
 	/* This flow has same DST MAC as the port/l2 filter. */
@@ -762,8 +761,7 @@ bnxt_find_matching_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 		if (vnic->fw_vnic_id == INVALID_VNIC_ID)
 			continue;
 
-		STAILQ_FOREACH(flow, &vnic->flow_list, next) {
-			mf = flow->filter;
+		STAILQ_FOREACH(mf, &vnic->filter, next) {
 
 			if (mf->matching_l2_fltr_ptr)
 				continue;
@@ -797,6 +795,8 @@ bnxt_create_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	filter1 = bnxt_get_unused_filter(bp);
 	if (filter1 == NULL)
 		return NULL;
+
+	memcpy(filter1, nf, sizeof(*filter1));
 
 	filter1->flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_XDP_DISABLE;
 	filter1->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
@@ -880,11 +880,14 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	l2_filter = bnxt_find_matching_l2_filter(bp, nf);
 	if (l2_filter) {
 		l2_filter->l2_ref_cnt++;
-		nf->matching_l2_fltr_ptr = l2_filter;
 	} else {
 		l2_filter = bnxt_create_l2_filter(bp, nf, vnic);
-		nf->matching_l2_fltr_ptr = NULL;
+		if (l2_filter) {
+			STAILQ_INSERT_TAIL(&vnic->filter, l2_filter, next);
+			l2_filter->vnic = vnic;
+		}
 	}
+	nf->matching_l2_fltr_ptr = l2_filter;
 
 	return l2_filter;
 }
@@ -1427,11 +1430,6 @@ vnic_found:
 				   "Invalid action.");
 		rc = -rte_errno;
 		goto ret;
-	}
-
-	if (filter1 && !filter->matching_l2_fltr_ptr) {
-		bnxt_free_filter(bp, filter1);
-		filter1->fw_l2_filter_id = -1;
 	}
 
 done:

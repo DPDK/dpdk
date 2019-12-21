@@ -77,6 +77,10 @@ struct bnxt_filter_info {
 	uint16_t                ip_addr_type;
 	uint16_t                ethertype;
 	uint32_t		priority;
+	/* Backptr to vnic. As of now, used only by an L2 filter
+	 * to remember which vnic it was created on
+	 */
+	struct			bnxt_vnic_info *vnic;
 };
 
 struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp);
