@@ -4,6 +4,7 @@
 subdir('pmdinfogen')
 
 pmdinfo = find_program('gen-pmdinfo-cfile.sh')
+group_libs = find_program('group-libs.sh')
 
 check_experimental_syms = find_program('check-experimental-syms.sh')
 

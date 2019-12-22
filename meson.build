@@ -61,6 +61,23 @@ configure_file(output: build_cfg,
 		install_dir: join_paths(get_option('includedir'),
 				get_option('include_subdir_arch')))
 
+
+custom_target('group_shared_libs',
+		input: dpdk_libraries,
+		output: 'libdpdk.so',
+		capture: true,
+		install: true,
+		install_dir: get_option('libdir'),
+		command: [group_libs, '@INPUT@'])
+
+custom_target('group_static_libs',
+		input: dpdk_static_libraries + dpdk_drivers,
+		output: 'libdpdk.a',
+		capture: true,
+		install: true,
+		install_dir: get_option('libdir'),
+		command: [group_libs, '@INPUT@'])
+
 # for static builds, include the drivers as libs and we need to "whole-archive"
 # them.
 dpdk_drivers = ['-Wl,--whole-archive'] + dpdk_drivers + ['-Wl,--no-whole-archive']
