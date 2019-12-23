@@ -15,11 +15,9 @@ if not is_windows
 endif
 
 # we require SSE4.2 for DPDK
-sse_errormsg = '''SSE4.2 instruction set is required for DPDK.
-Please set the machine type to "nehalem" or "corei7" or higher value'''
-
 if cc.get_define('__SSE4_2__', args: machine_args) == ''
-	error(sse_errormsg)
+	message('SSE 4.2 not enabled by default, explicitly enabling')
+	machine_args += '-msse4'
 endif
 
 base_flags = ['SSE', 'SSE2', 'SSE3','SSSE3', 'SSE4_1', 'SSE4_2']
