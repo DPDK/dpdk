@@ -7,13 +7,11 @@ endif
 
 test_sources = files('commands.c',
 	'packet_burst_generator.c',
-	'sample_packet_forward.c',
 	'test.c',
 	'test_acl.c',
 	'test_alarm.c',
 	'test_atomic.c',
 	'test_barrier.c',
-	'test_bitratestats.c',
 	'test_bpf.c',
 	'test_byteorder.c',
 	'test_cmdline.c',
@@ -43,7 +41,6 @@ test_sources = files('commands.c',
 	'test_event_crypto_adapter.c',
 	'test_event_eth_rx_adapter.c',
 	'test_event_ring.c',
-	'test_event_eth_tx_adapter.c',
 	'test_event_timer_adapter.c',
 	'test_eventdev.c',
 	'test_external_mem.c',
@@ -65,9 +62,7 @@ test_sources = files('commands.c',
 	'test_ipsec_sad.c',
 	'test_kni.c',
 	'test_kvargs.c',
-	'test_latencystats.c',
 	'test_link_bonding.c',
-	'test_link_bonding_mode4.c',
 	'test_link_bonding_rssconf.c',
 	'test_logs.c',
 	'test_lpm.c',
@@ -88,11 +83,8 @@ test_sources = files('commands.c',
 	'test_metrics.c',
 	'test_mcslock.c',
 	'test_mp_secondary.c',
-	'test_pdump.c',
 	'test_per_lcore.c',
 	'test_pmd_perf.c',
-	'test_pmd_ring.c',
-	'test_pmd_ring_perf.c',
 	'test_power.c',
 	'test_power_cpufreq.c',
 	'test_power_kvm_vm.c',
@@ -212,7 +204,6 @@ fast_test_names = [
         'rib_autotest',
         'rib6_autotest',
         'ring_autotest',
-        'ring_pmd_autotest',
         'rwlock_test1_autotest',
         'rwlock_rda_autotest',
         'rwlock_rds_wrm_autotest',
@@ -227,7 +218,6 @@ fast_test_names = [
         'timer_autotest',
         'user_delay_us',
         'version_autotest',
-        'bitratestats_autotest',
         'crc_autotest',
         'delay_us_sleep_autotest',
         'distributor_autotest',
@@ -237,10 +227,8 @@ fast_test_names = [
         'ipsec_autotest',
         'kni_autotest',
         'kvargs_autotest',
-        'latencystats_autotest',
         'member_autotest',
         'metrics_autotest',
-        'pdump_autotest',
         'power_cpufreq_autotest',
         'power_autotest',
         'power_kvm_vm_autotest',
@@ -276,7 +264,6 @@ perf_test_names = [
         'rcu_qsbr_perf_autotest',
         'red_perf',
         'distributor_perf_autotest',
-        'ring_pmd_perf_autotest',
         'pmd_perf_autotest',
         'stack_perf_autotest',
         'stack_lf_perf_autotest',
@@ -303,7 +290,6 @@ driver_test_names = [
         'eventdev_selftest_octeontx',
         'eventdev_selftest_sw',
         'link_bonding_autotest',
-        'link_bonding_mode4_autotest',
         'link_bonding_rssconf_autotest',
         'rawdev_autotest',
 ]
@@ -340,6 +326,21 @@ if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
 endif
 if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
 	test_deps += 'pmd_ring'
+	test_sources += 'test_pmd_ring_perf.c'
+	test_sources += 'test_pmd_ring.c'
+	test_sources += 'test_event_eth_tx_adapter.c'
+	test_sources += 'test_bitratestats.c'
+	test_sources += 'test_latencystats.c'
+	test_sources += 'test_link_bonding_mode4.c'
+	test_sources += 'sample_packet_forward.c'
+	test_sources += 'test_pdump.c'
+	fast_test_names += 'ring_pmd_autotest'
+	perf_test_names += 'ring_pmd_perf_autotest'
+	fast_test_names += 'event_eth_tx_adapter_autotest'
+	fast_test_names += 'bitratestats_autotest'
+	fast_test_names += 'latencystats_autotest'
+	driver_test_names += 'link_bonding_mode4_autotest'
+	fast_test_names += 'pdump_autotest'
 endif
 
 if dpdk_conf.has('RTE_LIBRTE_POWER')
@@ -403,7 +404,14 @@ get_coremask = find_program('get-coremask.sh')
 num_cores_arg = '-l ' + run_command(get_coremask).stdout().strip()
 
 test_args = [num_cores_arg]
+
 foreach arg : fast_test_names
+	if (get_option('default_library') == 'shared' and
+		arg == 'event_eth_tx_adapter_autotest')
+		foreach drv:dpdk_drivers
+			test_args += ['-d', drv.full_path().split('.a')[0] + '.so']
+		endforeach
+	endif
 	if host_machine.system() == 'linux'
 		test(arg, dpdk_test,
 			  env : ['DPDK_TEST=' + arg],

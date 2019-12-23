@@ -53,7 +53,9 @@ do_recursive_call(void)
 	} actions[] =  {
 			{ "run_secondary_instances", test_mp_secondary },
 #ifdef RTE_LIBRTE_PDUMP
+#ifdef RTE_LIBRTE_RING_PMD
 			{ "run_pdump_server_tests", test_pdump },
+#endif
 #endif
 			{ "test_missing_c_flag", no_action },
 			{ "test_master_lcore_flag", no_action },
