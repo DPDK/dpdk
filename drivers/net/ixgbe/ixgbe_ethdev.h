@@ -270,6 +270,7 @@ struct ixgbe_vf_info {
 	uint8_t api_version;
 	uint16_t switch_domain_id;
 	uint16_t xcast_mode;
+	uint16_t mac_count;
 };
 
 /*
