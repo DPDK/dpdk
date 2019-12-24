@@ -174,6 +174,17 @@ struct iavf_cmd_info {
 	uint32_t out_size;      /* buffer size for response */
 };
 
+/* notify current command done. Only call in case execute
+ * _atomic_set_cmd successfully.
+ */
+static inline void
+_notify_cmd(struct iavf_info *vf, uint32_t msg_ret)
+{
+	vf->cmd_retval = msg_ret;
+	rte_wmb();
+	vf->pend_cmd = VIRTCHNL_OP_UNKNOWN;
+}
+
 /* clear current command. Only call in case execute
  * _atomic_set_cmd successfully.
  */

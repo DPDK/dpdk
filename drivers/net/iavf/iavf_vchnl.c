@@ -210,12 +210,9 @@ iavf_handle_virtchnl_msg(struct rte_eth_dev *dev)
 							info.msg_len);
 			} else {
 				/* read message and it's expected one */
-				if (msg_opc == vf->pend_cmd) {
-					vf->cmd_retval = msg_ret;
-					/* prevent compiler reordering */
-					rte_compiler_barrier();
-					_clear_cmd(vf);
-				} else
+				if (msg_opc == vf->pend_cmd)
+					_notify_cmd(vf, msg_ret);
+				else
 					PMD_DRV_LOG(ERR, "command mismatch,"
 						    "expect %u, get %u",
 						    vf->pend_cmd, msg_opc);
