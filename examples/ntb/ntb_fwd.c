@@ -19,6 +19,7 @@
 #include <rte_lcore.h>
 #include <rte_cycles.h>
 #include <rte_pmd_ntb.h>
+#include <rte_mbuf_pool_ops.h>
 
 /* Per-port statistics struct */
 struct ntb_port_statistics {
@@ -1255,6 +1256,11 @@ ntb_mbuf_pool_create(uint16_t mbuf_seg_size, uint32_t nb_mbuf,
 				      socket_id, 0);
 	if (mp == NULL)
 		return NULL;
+
+	if (rte_mempool_set_ops_byname(mp, rte_mbuf_best_mempool_ops(), NULL)) {
+		printf("error setting mempool handler\n");
+		goto fail;
+	}
 
 	memset(&mbp_priv, 0, sizeof(mbp_priv));
 	mbp_priv.mbuf_data_room_size = mbuf_seg_size;
