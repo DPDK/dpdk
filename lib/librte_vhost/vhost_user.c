@@ -1645,8 +1645,11 @@ vhost_check_queue_inflights_split(struct virtio_net *dev,
 	    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD)))
 		return RTE_VHOST_MSG_RESULT_OK;
 
+	/* The frontend may still not support the inflight feature
+	 * although we negotiate the protocol feature.
+	 */
 	if ((!vq->inflight_split))
-		return RTE_VHOST_MSG_RESULT_ERR;
+		return RTE_VHOST_MSG_RESULT_OK;
 
 	if (!vq->inflight_split->version) {
 		vq->inflight_split->version = INFLIGHT_VERSION;
@@ -1726,8 +1729,11 @@ vhost_check_queue_inflights_packed(struct virtio_net *dev,
 	    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD)))
 		return RTE_VHOST_MSG_RESULT_OK;
 
+	/* The frontend may still not support the inflight feature
+	 * although we negotiate the protocol feature.
+	 */
 	if ((!vq->inflight_packed))
-		return RTE_VHOST_MSG_RESULT_ERR;
+		return RTE_VHOST_MSG_RESULT_OK;
 
 	if (!vq->inflight_packed->version) {
 		vq->inflight_packed->version = INFLIGHT_VERSION;
