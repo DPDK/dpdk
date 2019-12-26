@@ -924,9 +924,13 @@ rte_pktmbuf_ext_shinfo_init_helper(void *buf_addr, uint16_t *buf_len,
  * provided via shinfo. This callback function will be called once all the
  * mbufs are detached from the buffer (refcnt becomes zero).
  *
- * The headroom for the attaching mbuf will be set to zero and this can be
- * properly adjusted after attachment. For example, ``rte_pktmbuf_adj()``
+ * The headroom length of the attaching mbuf will be set to zero and this
+ * can be properly adjusted after attachment. For example, ``rte_pktmbuf_adj()``
  * or ``rte_pktmbuf_reset_headroom()`` might be used.
+ *
+ * Similarly, the packet length is initialized to 0. If the buffer contains
+ * data, the user has to adjust ``data_len`` and the ``pkt_len`` field of
+ * the mbuf accordingly.
  *
  * More mbufs can be attached to the same external buffer by
  * ``rte_pktmbuf_attach()`` once the external buffer has been attached by
