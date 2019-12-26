@@ -989,6 +989,24 @@ i40e_set_tso_ctx(struct rte_mbuf *mbuf, union i40e_tx_offload tx_offload)
 	return ctx_desc;
 }
 
+/* HW requires that Tx buffer size ranges from 1B up to (16K-1)B. */
+#define I40E_MAX_DATA_PER_TXD \
+	(I40E_TXD_QW1_TX_BUF_SZ_MASK >> I40E_TXD_QW1_TX_BUF_SZ_SHIFT)
+/* Calculate the number of TX descriptors needed for each pkt */
+static inline uint16_t
+i40e_calc_pkt_desc(struct rte_mbuf *tx_pkt)
+{
+	struct rte_mbuf *txd = tx_pkt;
+	uint16_t count = 0;
+
+	while (txd != NULL) {
+		count += DIV_ROUND_UP(txd->data_len, I40E_MAX_DATA_PER_TXD);
+		txd = txd->next;
+	}
+
+	return count;
+}
+
 uint16_t
 i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
@@ -1046,8 +1064,15 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * The number of descriptors that must be allocated for
 		 * a packet equals to the number of the segments of that
 		 * packet plus 1 context descriptor if needed.
+		 * Recalculate the needed tx descs when TSO enabled in case
+		 * the mbuf data size exceeds max data size that hw allows
+		 * per tx desc.
 		 */
-		nb_used = (uint16_t)(tx_pkt->nb_segs + nb_ctx);
+		if (ol_flags & PKT_TX_TCP_SEG)
+			nb_used = (uint16_t)(i40e_calc_pkt_desc(tx_pkt) +
+					     nb_ctx);
+		else
+			nb_used = (uint16_t)(tx_pkt->nb_segs + nb_ctx);
 		tx_last = (uint16_t)(tx_id + nb_used - 1);
 
 		/* Circular ring */
@@ -1160,6 +1185,24 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			slen = m_seg->data_len;
 			buf_dma_addr = rte_mbuf_data_iova(m_seg);
 
+			while ((ol_flags & PKT_TX_TCP_SEG) &&
+				unlikely(slen > I40E_MAX_DATA_PER_TXD)) {
+				txd->buffer_addr =
+					rte_cpu_to_le_64(buf_dma_addr);
+				txd->cmd_type_offset_bsz =
+					i40e_build_ctob(td_cmd,
+					td_offset, I40E_MAX_DATA_PER_TXD,
+					td_tag);
+
+				buf_dma_addr += I40E_MAX_DATA_PER_TXD;
+				slen -= I40E_MAX_DATA_PER_TXD;
+
+				txe->last_id = tx_last;
+				tx_id = txe->next_id;
+				txe = txn;
+				txd = &txr[tx_id];
+				txn = &sw_ring[txe->next_id];
+			}
 			PMD_TX_LOG(DEBUG, "mbuf: %p, TDD[%u]:\n"
 				"buf_dma_addr: %#"PRIx64";\n"
 				"td_cmd: %#x;\n"
