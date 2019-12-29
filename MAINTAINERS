@@ -372,6 +372,7 @@ F: doc/guides/prog_guide/switch_representation.rst
 
 Flow API
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
+M: Ori Kam <orika@mellanox.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: app/test-pmd/cmdline_flow.c
 F: doc/guides/prog_guide/rte_flow.rst
