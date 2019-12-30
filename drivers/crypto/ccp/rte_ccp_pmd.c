@@ -292,6 +292,9 @@ static struct rte_pci_id ccp_pci_id[] = {
 	{
 		RTE_PCI_DEVICE(0x1022, 0x1468), /* AMD CCP-5b */
 	},
+	{
+		RTE_PCI_DEVICE(0x1022, 0x15df), /* AMD CCP RV */
+	},
 	{.device_id = 0},
 };
 
