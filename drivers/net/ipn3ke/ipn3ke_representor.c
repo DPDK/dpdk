@@ -701,7 +701,7 @@ struct ipn3ke_rpst_hw_port_stats *hw_stats)
 		&tmp,
 		IPN3KE_25G_TX_STATISTICS_STATUS,
 		port_id,
-		1);
+		0);
 	if (tmp & IPN3KE_25G_TX_STATISTICS_STATUS_SHADOW_REQUEST_MASK) {
 		tmp = 0x00000000;
 		(*hw->f_mac_read)(hw,
