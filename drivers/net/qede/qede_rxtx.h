@@ -283,7 +283,9 @@ uint16_t qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
 uint16_t qede_recv_pkts_cmt(void *p_rxq, struct rte_mbuf **rx_pkts,
 			    uint16_t nb_pkts);
-
+uint16_t
+qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts,
+		       uint16_t nb_pkts);
 uint16_t qede_rxtx_pkts_dummy(void *p_rxq,
 			      struct rte_mbuf **pkts,
 			      uint16_t nb_pkts);
