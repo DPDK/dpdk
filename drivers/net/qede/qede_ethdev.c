@@ -270,8 +270,10 @@ qede_interrupt_handler(void *param)
 static void
 qede_assign_rxtx_handlers(struct rte_eth_dev *dev)
 {
+	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 	struct qede_dev *qdev = dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
+	bool use_tx_offload = false;
 
 	if (ECORE_IS_CMT(edev)) {
 		dev->rx_pkt_burst = qede_recv_pkts_cmt;
@@ -287,7 +289,18 @@ qede_assign_rxtx_handlers(struct rte_eth_dev *dev)
 		dev->rx_pkt_burst = qede_recv_pkts_regular;
 	}
 
-	dev->tx_pkt_burst = qede_xmit_pkts;
+	use_tx_offload = !!(tx_offloads &
+			    (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM | /* tunnel */
+			     DEV_TX_OFFLOAD_TCP_TSO | /* tso */
+			     DEV_TX_OFFLOAD_VLAN_INSERT)); /* vlan insert */
+
+	if (use_tx_offload) {
+		DP_INFO(edev, "Assigning qede_xmit_pkts\n");
+		dev->tx_pkt_burst = qede_xmit_pkts;
+	} else {
+		DP_INFO(edev, "Assigning qede_xmit_pkts_regular\n");
+		dev->tx_pkt_burst = qede_xmit_pkts_regular;
+	}
 }
 
 static void

@@ -2235,6 +2235,131 @@ qede_mpls_tunn_tx_sanity_check(struct rte_mbuf *mbuf,
 #endif
 
 uint16_t
+qede_xmit_pkts_regular(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct qede_tx_queue *txq = p_txq;
+	struct qede_dev *qdev = txq->qdev;
+	struct ecore_dev *edev = &qdev->edev;
+	struct eth_tx_1st_bd *bd1;
+	struct eth_tx_2nd_bd *bd2;
+	struct eth_tx_3rd_bd *bd3;
+	struct rte_mbuf *m_seg = NULL;
+	struct rte_mbuf *mbuf;
+	struct qede_tx_entry *sw_tx_ring;
+	uint16_t nb_tx_pkts;
+	uint16_t bd_prod;
+	uint16_t idx;
+	uint16_t nb_frags = 0;
+	uint16_t nb_pkt_sent = 0;
+	uint8_t nbds;
+	uint64_t tx_ol_flags;
+	/* BD1 */
+	uint16_t bd1_bf;
+	uint8_t bd1_bd_flags_bf;
+
+	if (unlikely(txq->nb_tx_avail < txq->tx_free_thresh)) {
+		PMD_TX_LOG(DEBUG, txq, "send=%u avail=%u free_thresh=%u",
+			   nb_pkts, txq->nb_tx_avail, txq->tx_free_thresh);
+		qede_process_tx_compl(edev, txq);
+	}
+
+	nb_tx_pkts  = nb_pkts;
+	bd_prod = rte_cpu_to_le_16(ecore_chain_get_prod_idx(&txq->tx_pbl));
+	sw_tx_ring = txq->sw_tx_ring;
+
+	while (nb_tx_pkts--) {
+		/* Init flags/values */
+		nbds = 0;
+		bd1 = NULL;
+		bd2 = NULL;
+		bd3 = NULL;
+		bd1_bf = 0;
+		bd1_bd_flags_bf = 0;
+		nb_frags = 0;
+
+		mbuf = *tx_pkts++;
+		assert(mbuf);
+
+
+		/* Check minimum TX BDS availability against available BDs */
+		if (unlikely(txq->nb_tx_avail < mbuf->nb_segs))
+			break;
+
+		tx_ol_flags = mbuf->ol_flags;
+		bd1_bd_flags_bf |= 1 << ETH_TX_1ST_BD_FLAGS_START_BD_SHIFT;
+
+		if (unlikely(txq->nb_tx_avail <
+				ETH_TX_MIN_BDS_PER_NON_LSO_PKT))
+			break;
+		bd1_bf |=
+		       (mbuf->pkt_len & ETH_TX_DATA_1ST_BD_PKT_LEN_MASK)
+			<< ETH_TX_DATA_1ST_BD_PKT_LEN_SHIFT;
+
+		/* Offload the IP checksum in the hardware */
+		if (tx_ol_flags & PKT_TX_IP_CKSUM)
+			bd1_bd_flags_bf |=
+				1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
+
+		/* L4 checksum offload (tcp or udp) */
+		if ((tx_ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6)) &&
+		    (tx_ol_flags & (PKT_TX_UDP_CKSUM | PKT_TX_TCP_CKSUM)))
+			bd1_bd_flags_bf |=
+				1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
+
+		/* Fill the entry in the SW ring and the BDs in the FW ring */
+		idx = TX_PROD(txq);
+		sw_tx_ring[idx].mbuf = mbuf;
+
+		/* BD1 */
+		bd1 = (struct eth_tx_1st_bd *)ecore_chain_produce(&txq->tx_pbl);
+		memset(bd1, 0, sizeof(struct eth_tx_1st_bd));
+		nbds++;
+
+		/* Map MBUF linear data for DMA and set in the BD1 */
+		QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_iova(mbuf),
+				     mbuf->data_len);
+		bd1->data.bitfields = rte_cpu_to_le_16(bd1_bf);
+		bd1->data.bd_flags.bitfields = bd1_bd_flags_bf;
+
+		/* Handle fragmented MBUF */
+		if (unlikely(mbuf->nb_segs > 1)) {
+			m_seg = mbuf->next;
+
+			/* Encode scatter gather buffer descriptors */
+			nb_frags = qede_encode_sg_bd(txq, m_seg, &bd2, &bd3,
+						     nbds - 1);
+		}
+
+		bd1->data.nbds = nbds + nb_frags;
+
+		txq->nb_tx_avail -= bd1->data.nbds;
+		txq->sw_tx_prod++;
+		bd_prod =
+		    rte_cpu_to_le_16(ecore_chain_get_prod_idx(&txq->tx_pbl));
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
+		print_tx_bd_info(txq, bd1, bd2, bd3, tx_ol_flags);
+#endif
+		nb_pkt_sent++;
+		txq->xmit_pkts++;
+	}
+
+	/* Write value of prod idx into bd_prod */
+	txq->tx_db.data.bd_prod = bd_prod;
+	rte_wmb();
+	rte_compiler_barrier();
+	DIRECT_REG_WR_RELAXED(edev, txq->doorbell_addr, txq->tx_db.raw);
+	rte_wmb();
+
+	/* Check again for Tx completions */
+	qede_process_tx_compl(edev, txq);
+
+	PMD_TX_LOG(DEBUG, txq, "to_send=%u sent=%u bd_prod=%u core=%d",
+		   nb_pkts, nb_pkt_sent, TX_PROD(txq), rte_lcore_id());
+
+	return nb_pkt_sent;
+}
+
+uint16_t
 qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct qede_tx_queue *txq = p_txq;

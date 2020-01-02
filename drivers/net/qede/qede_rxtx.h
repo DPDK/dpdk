@@ -275,6 +275,8 @@ uint16_t qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 uint16_t qede_xmit_pkts_cmt(void *p_txq, struct rte_mbuf **tx_pkts,
 			    uint16_t nb_pkts);
+uint16_t qede_xmit_pkts_regular(void *p_txq, struct rte_mbuf **tx_pkts,
+				uint16_t nb_pkts);
 
 uint16_t qede_xmit_prep_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
 			     uint16_t nb_pkts);
