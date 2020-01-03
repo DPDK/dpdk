@@ -73,26 +73,25 @@ To run a DPDK application, physically contiguous memory is required.
 In the absence of non-transparent superpages, the included sources for the
 contigmem kernel module provides the ability to present contiguous blocks of
 memory for the DPDK to use. The contigmem module must be loaded into the
-running kernel before any DPDK is run.  The module is found in the kmod
-sub-directory of the DPDK target directory.
+running kernel before any DPDK is run. Once DPDK is installed on the
+system, the module can be found in the `/boot/modules` directory.
 
 The amount of physically contiguous memory along with the number of physically
 contiguous blocks to be reserved by the module can be set at runtime prior to
-module loading using:
-
-.. code-block:: console
+module loading using::
 
     kenv hw.contigmem.num_buffers=n
     kenv hw.contigmem.buffer_size=m
 
 The kernel environment variables can also be specified during boot by placing the
-following in ``/boot/loader.conf``::
+following in ``/boot/loader.conf``:
 
-    hw.contigmem.num_buffers=n hw.contigmem.buffer_size=m
+.. code-block:: shell
 
-The variables can be inspected using the following command:
+    hw.contigmem.num_buffers=n
+    hw.contigmem.buffer_size=m
 
-.. code-block:: console
+The variables can be inspected using the following command::
 
     sysctl -a hw.contigmem
 
@@ -100,18 +99,19 @@ Where n is the number of blocks and m is the size in bytes of each area of
 contiguous memory.  A default of two buffers of size 1073741824 bytes (1 Gigabyte)
 each is set during module load if they are not specified in the environment.
 
-The module can then be loaded using kldload (assuming that the current directory
-is the DPDK target directory):
+The module can then be loaded using kldload::
 
-.. code-block:: console
-
-    kldload ./kmod/contigmem.ko
+    kldload contigmem
 
 It is advisable to include the loading of the contigmem module during the boot
 process to avoid issues with potential memory fragmentation during later system
-up time.  This can be achieved by copying the module to the ``/boot/kernel/``
-directory and placing the following into ``/boot/loader.conf``::
+up time.  This can be achieved by placing lines similar to the following into
+``/boot/loader.conf``:
 
+.. code-block:: shell
+
+    hw.contigmem.num_buffers=1
+    hw.contigmem.buffer_size=1073741824
     contigmem_load="YES"
 
 .. note::
@@ -120,17 +120,13 @@ directory and placing the following into ``/boot/loader.conf``::
     ``hw.contigmem.num_buffers`` and ``hw.contigmem.buffer_size`` if the default values
     are not to be used.
 
-An error such as:
-
-.. code-block:: console
+An error such as::
 
     kldload: can't load ./x86_64-native-freebsd-gcc/kmod/contigmem.ko:
              Exec format error
 
 is generally attributed to not having enough contiguous memory
-available and can be verified via dmesg or ``/var/log/messages``:
-
-.. code-block:: console
+available and can be verified via dmesg or ``/var/log/messages``::
 
     kernel: contigmalloc failed for buffer <n>
 
@@ -142,13 +138,9 @@ Loading the DPDK nic_uio Module
 -------------------------------
 
 After loading the contigmem module, the ``nic_uio`` module must also be loaded into the
-running kernel prior to running any DPDK application.  This module must
-be loaded using the kldload command as shown below (assuming that the current
-directory is the DPDK target directory).
+running kernel prior to running any DPDK application, e.g. using::
 
-.. code-block:: console
-
-    kldload ./kmod/nic_uio.ko
+    kldload nic_uio
 
 .. note::
 
@@ -159,8 +151,9 @@ directory is the DPDK target directory).
 Currently loaded modules can be seen by using the ``kldstat`` command and a module
 can be removed from the running kernel by using ``kldunload <module_name>``.
 
-To load the module during boot, copy the ``nic_uio`` module to ``/boot/kernel``
-and place the following into ``/boot/loader.conf``::
+To load the module during boot place the following into ``/boot/loader.conf``:
+
+.. code-block:: shell
 
     nic_uio_load="YES"
 
@@ -184,7 +177,7 @@ Binding Network Ports to the nic_uio Module
 Device ownership can be viewed using the pciconf -l command. The example below shows
 four Intel® 82599 network ports under ``if_ixgbe`` module ownership.
 
-.. code-block:: console
+.. code-block:: none
 
     pciconf -l
     ix0@pci0:1:0:0: class=0x020000 card=0x00038086 chip=0x10fb8086 rev=0x01 hdr=0x00
@@ -210,7 +203,7 @@ To avoid building a custom kernel, the ``nic_uio`` module can detach a network p
 from its current device driver. This is achieved by setting the ``hw.nic_uio.bdfs``
 kernel environment variable prior to loading ``nic_uio``, as follows::
 
-    hw.nic_uio.bdfs="b:d:f,b:d:f,..."
+    kenv hw.nic_uio.bdfs="b:d:f,b:d:f,..."
 
 Where a comma separated list of selectors is set, the list must not contain any
 whitespace.
@@ -222,7 +215,9 @@ upon loading, use the following command::
 
 The variable can also be specified during boot by placing the following into
 ``/boot/loader.conf``, before the previously-described ``nic_uio_load`` line - as
-shown::
+shown:
+
+.. code-block:: shell
 
     hw.nic_uio.bdfs="2:0:0,2:0:1"
     nic_uio_load="YES"
@@ -241,9 +236,7 @@ value, and reload the two drivers - first the original kernel driver, and then
 the ``nic_uio driver``. Note: the latter does not need to be reloaded unless there are
 ports that are still to be bound to it.
 
-Example commands to perform these steps are shown below:
-
-.. code-block:: console
+Example commands to perform these steps are shown below::
 
     kldunload nic_uio
     kldunload <original_driver>
