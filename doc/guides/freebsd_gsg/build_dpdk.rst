@@ -6,147 +6,63 @@
 Compiling the DPDK Target from Source
 =====================================
 
-System Requirements
--------------------
+Prerequisites
+-------------
 
-The DPDK and its applications require the GNU make system (gmake)
-to build on FreeBSD. Optionally, gcc may also be used in place of clang
-to build the DPDK, in which case it too must be installed prior to
-compiling the DPDK. The installation of these tools is covered in this
-section.
+The following FreeBSD packages are required to build DPDK:
 
-Compiling the DPDK requires the FreeBSD kernel sources, which should be
-included during the installation of FreeBSD on the development platform.
-The DPDK also requires the use of FreeBSD ports to compile and function.
+* meson
+* ninja
+* pkgconf
 
-To use the FreeBSD ports system, it is required to update and extract the FreeBSD
-ports tree by issuing the following commands:
+These can be installed using (as root)::
 
-.. code-block:: console
+  pkg install meson pkgconf
 
-    portsnap fetch
-    portsnap extract
+To compile the required kernel modules for memory management and working
+with physical NIC devices, the kernel sources for FreeBSD also
+need to be installed. If not already present on the system, these can be
+installed via commands like the following, for FreeBSD 12.1 on x86_64::
 
-If the environment requires proxies for external communication, these can be set
-using:
+  fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/12.1-RELEASE/src.txz
+  tar -C / -xJvf src.txz
 
-.. code-block:: console
+To enable the telemetry library in DPDK, the jansson library also needs to
+be installed, and can be installed via::
 
-    setenv http_proxy <my_proxy_host>:<port>
-    setenv ftp_proxy <my_proxy_host>:<port>
+  pkg install jansson
 
-The FreeBSD ports below need to be installed prior to building the DPDK.
-In general these can be installed using the following set of commands::
+Individual drivers may have additional requirements. Consult the relevant
+driver guide for any driver-specific requirements of interest.
 
-   cd /usr/ports/<port_location>
+Building DPDK
+-------------
 
-   make config-recursive
+The following commands can be used to build and install DPDK on a system.
+The final, install, step generally needs to be run as root::
 
-   make install
+  meson build
+  cd build
+  ninja
+  ninja install
 
-   make clean
-
-Each port location can be found using::
-
-   whereis <port_name>
-
-The ports required and their locations are as follows:
-
-* dialog4ports: ``/usr/ports/ports-mgmt/dialog4ports``
-
-* GNU make(gmake): ``/usr/ports/devel/gmake``
-
-* coreutils: ``/usr/ports/sysutils/coreutils``
-
-For compiling and using the DPDK with gcc, the compiler must be installed
-from the ports collection:
-
-* gcc: version 4.9 is recommended ``/usr/ports/lang/gcc49``.
-  Ensure that ``CPU_OPTS`` is selected (default is OFF).
-
-When running the make config-recursive command, a dialog may be presented to the
-user. For the installation of the DPDK, the default options were used.
+This will install the DPDK libraries and drivers to `/usr/local/lib` with a
+pkg-config file `libdpdk.pc` installed to `/usr/local/lib/pkgconfig`. The
+DPDK test applications, such as `dpdk-testpmd` are installed to
+`/usr/local/bin`. To use these applications, it is recommended that the
+`contigmem` and `nic_uio` kernel modules be loaded first, as described in
+the next section.
 
 .. note::
 
-    To avoid multiple dialogs being presented to the user during make install,
-    it is advisable before running the make install command to re-run the
-    make config-recursive command until no more dialogs are seen.
+        It is recommended that pkg-config be used to query information
+        about the compiler and linker flags needed to build applications
+        against DPDK.  In some cases, the path `/usr/local/lib/pkgconfig`
+        may not be in the default search paths for `.pc` files, which means
+        that queries for DPDK information may fail. This can be fixed by
+        setting the appropriate path in `PKG_CONFIG_PATH` environment
+        variable.
 
-
-Install the DPDK and Browse Sources
------------------------------------
-
-First, uncompress the archive and move to the DPDK source directory:
-
-.. code-block:: console
-
-    unzip DPDK-<version>.zip
-    cd DPDK-<version>
-
-The DPDK is composed of several directories:
-
-*   lib: Source code of DPDK libraries
-
-*   app: Source code of DPDK applications (automatic tests)
-
-*   examples: Source code of DPDK applications
-
-*   config, buildtools, mk: Framework-related makefiles, scripts and configuration
-
-Installation of the DPDK Target Environments
---------------------------------------------
-
-The format of a DPDK target is::
-
-   ARCH-MACHINE-EXECENV-TOOLCHAIN
-
-Where:
-
-* ``ARCH`` is: ``x86_64``
-
-* ``MACHINE`` is: ``native``
-
-* ``EXECENV`` is: ``freebsd``
-
-* ``TOOLCHAIN`` is: ``gcc`` | ``clang``
-
-The configuration files for the DPDK targets can be found in the DPDK/config
-directory in the form of::
-
-    defconfig_ARCH-MACHINE-EXECENV-TOOLCHAIN
-
-.. note::
-
-   Configuration files are provided with the ``RTE_MACHINE`` optimization level set.
-   Within the configuration files, the ``RTE_MACHINE`` configuration value is set
-   to native, which means that the compiled software is tuned for the platform
-   on which it is built.  For more information on this setting, and its
-   possible values, see the *DPDK Programmers Guide*.
-
-To make the target, use ``gmake install T=<target>``.
-
-For example to compile for FreeBSD use:
-
-.. code-block:: console
-
-    gmake install T=x86_64-native-freebsd-clang
-
-.. note::
-
-   If the compiler binary to be used does not correspond to that given in the
-   TOOLCHAIN part of the target, the compiler command may need to be explicitly
-   specified. For example, if compiling for gcc, where the gcc binary is called
-   gcc4.9, the command would need to be ``gmake install T=<target> CC=gcc4.9``.
-
-Browsing the Installed DPDK Environment Target
-----------------------------------------------
-
-Once a target is created, it contains all the libraries and header files for the
-DPDK environment that are required to build customer applications.
-In addition, the test and testpmd applications are built under the build/app
-directory, which may be used for testing.  A kmod directory is also present that
-contains the kernel modules to install.
 
 .. _loading_contigmem:
 
