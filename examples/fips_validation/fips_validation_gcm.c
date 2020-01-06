@@ -19,6 +19,7 @@
 #define PTLEN_STR	"PTlen = "
 #define AADLEN_STR	"AADlen = "
 #define TAGLEN_STR	"Taglen = "
+#define CTLEN_STR	"PTlen = "
 
 #define COUNT_STR	"Count = "
 #define KEY_STR		"Key = "
@@ -46,6 +47,7 @@ struct fips_test_callback gcm_interim_vectors[] = {
 		{KEYLEN_STR, parser_read_uint32_bit_val, &vec.aead.key},
 		{IVLEN_STR, parser_read_uint32_bit_val, &vec.iv},
 		{PTLEN_STR, parser_read_uint32_bit_val, &vec.pt},
+		{CTLEN_STR, parser_read_uint32_bit_val, &vec.ct},
 		{AADLEN_STR, parser_read_uint32_bit_val, &vec.aead.aad},
 		{TAGLEN_STR, parser_read_uint32_bit_val,
 				&vec.aead.digest},
