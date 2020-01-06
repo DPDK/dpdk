@@ -4880,7 +4880,7 @@ static bool ice_prot_type_to_id(enum ice_protocol_type type, u16 *id)
 {
 	u16 i;
 
-	for (i = 0; ice_prot_id_tbl[i].type != ICE_PROTOCOL_LAST; i++)
+	for (i = 0; i < ARRAY_SIZE(ice_prot_id_tbl); i++)
 		if (ice_prot_id_tbl[i].type == type) {
 			*id = ice_prot_id_tbl[i].protocol_id;
 			return true;
