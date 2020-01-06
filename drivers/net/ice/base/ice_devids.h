@@ -24,5 +24,9 @@
 #define ICE_DEV_ID_C822N_QSFP		0x1891
 /* Intel(R) Ethernet Connection C822N for SFP */
 #define ICE_DEV_ID_C822N_SFP		0x1892
+/* Intel(R) Ethernet Connection C822N/X557-AT 10GBASE-T */
+#define ICE_DEV_ID_C822N_10G_BASE_T	0x1893
+/* Intel(R) Ethernet Connection C822N 1GbE */
+#define ICE_DEV_ID_C822N_SGMII		0x1894
 
 #endif /* _ICE_DEVIDS_H_ */
