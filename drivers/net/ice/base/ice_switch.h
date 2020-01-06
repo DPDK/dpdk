@@ -444,7 +444,8 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 
 enum ice_status ice_replay_all_fltr(struct ice_hw *hw);
 
-enum ice_status ice_init_def_sw_recp(struct ice_hw *hw);
+enum ice_status
+ice_init_def_sw_recp(struct ice_hw *hw, struct ice_sw_recipe **recp_list);
 u16 ice_get_hw_vsi_num(struct ice_hw *hw, u16 vsi_handle);
 bool ice_is_vsi_valid(struct ice_hw *hw, u16 vsi_handle);
 

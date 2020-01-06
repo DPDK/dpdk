@@ -791,11 +791,13 @@ ice_get_recp_to_prof_map(struct ice_hw *hw)
 /**
  * ice_init_def_sw_recp - initialize the recipe book keeping tables
  * @hw: pointer to the HW struct
+ * @recp_list: pointer to sw recipe list
  *
  * Allocate memory for the entire recipe table and initialize the structures/
  * entries corresponding to basic recipes.
  */
-enum ice_status ice_init_def_sw_recp(struct ice_hw *hw)
+enum ice_status
+ice_init_def_sw_recp(struct ice_hw *hw, struct ice_sw_recipe **recp_list)
 {
 	struct ice_sw_recipe *recps;
 	u8 i;
@@ -813,7 +815,7 @@ enum ice_status ice_init_def_sw_recp(struct ice_hw *hw)
 		ice_init_lock(&recps[i].filt_rule_lock);
 	}
 
-	hw->switch_info->recp_list = recps;
+	*recp_list = recps;
 
 	return ICE_SUCCESS;
 }
@@ -2427,6 +2429,7 @@ ice_create_vsi_list_rule(struct ice_hw *hw, u16 *vsi_handle_arr, u16 num_vsi,
 /**
  * ice_create_pkt_fwd_rule
  * @hw: pointer to the hardware structure
+ * @recp_list: corresponding filter management list
  * @f_entry: entry containing packet forwarding information
  *
  * Create switch rule with given filter information and add an entry
@@ -2434,13 +2437,11 @@ ice_create_vsi_list_rule(struct ice_hw *hw, u16 *vsi_handle_arr, u16 num_vsi,
  * and VSI mapping
  */
 static enum ice_status
-ice_create_pkt_fwd_rule(struct ice_hw *hw,
+ice_create_pkt_fwd_rule(struct ice_hw *hw, struct ice_sw_recipe *recp_list,
 			struct ice_fltr_list_entry *f_entry)
 {
 	struct ice_fltr_mgmt_list_entry *fm_entry;
 	struct ice_aqc_sw_rules_elem *s_rule;
-	enum ice_sw_lkup_type l_type;
-	struct ice_sw_recipe *recp;
 	enum ice_status status;
 
 	s_rule = (struct ice_aqc_sw_rules_elem *)
@@ -2480,9 +2481,7 @@ ice_create_pkt_fwd_rule(struct ice_hw *hw,
 	/* The book keeping entries will get removed when base driver
 	 * calls remove filter AQ command
 	 */
-	l_type = fm_entry->fltr_info.lkup_type;
-	recp = &hw->switch_info->recp_list[l_type];
-	LIST_ADD(&fm_entry->list_entry, &recp->filt_rules);
+	LIST_ADD(&fm_entry->list_entry, &recp_list->filt_rules);
 
 ice_create_pkt_fwd_rule_exit:
 	ice_free(hw, s_rule);
@@ -2679,21 +2678,18 @@ ice_add_update_vsi_list(struct ice_hw *hw,
 
 /**
  * ice_find_rule_entry - Search a rule entry
- * @hw: pointer to the hardware structure
- * @recp_id: lookup type for which the specified rule needs to be searched
+ * @list_head: head of rule list
  * @f_info: rule information
  *
  * Helper function to search for a given rule entry
  * Returns pointer to entry storing the rule if found
  */
 static struct ice_fltr_mgmt_list_entry *
-ice_find_rule_entry(struct ice_hw *hw, u8 recp_id, struct ice_fltr_info *f_info)
+ice_find_rule_entry(struct LIST_HEAD_TYPE *list_head,
+		    struct ice_fltr_info *f_info)
 {
 	struct ice_fltr_mgmt_list_entry *list_itr, *ret = NULL;
-	struct ice_switch_info *sw = hw->switch_info;
-	struct LIST_HEAD_TYPE *list_head;
 
-	list_head = &sw->recp_list[recp_id].filt_rules;
 	LIST_FOR_EACH_ENTRY(list_itr, list_head, ice_fltr_mgmt_list_entry,
 			    list_entry) {
 		if (!memcmp(&f_info->l_data, &list_itr->fltr_info.l_data,
@@ -2764,16 +2760,16 @@ ice_find_vsi_list_entry(struct ice_hw *hw, u8 recp_id, u16 vsi_handle,
 /**
  * ice_add_rule_internal - add rule for a given lookup type
  * @hw: pointer to the hardware structure
- * @recp_id: lookup type (recipe ID) for which rule has to be added
+ * @recp_list: recipe list for which rule has to be added
+ * @lport: logic port number on which function add rule
  * @f_entry: structure containing MAC forwarding information
  *
  * Adds or updates the rule lists for a given recipe
  */
 static enum ice_status
-ice_add_rule_internal(struct ice_hw *hw, u8 recp_id,
-		      struct ice_fltr_list_entry *f_entry)
+ice_add_rule_internal(struct ice_hw *hw, struct ice_sw_recipe *recp_list,
+		      u8 lport, struct ice_fltr_list_entry *f_entry)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_fltr_info *new_fltr, *cur_fltr;
 	struct ice_fltr_mgmt_list_entry *m_entry;
 	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
@@ -2787,19 +2783,19 @@ ice_add_rule_internal(struct ice_hw *hw, u8 recp_id,
 		f_entry->fltr_info.fwd_id.hw_vsi_id =
 			ice_get_hw_vsi_num(hw, f_entry->fltr_info.vsi_handle);
 
-	rule_lock = &sw->recp_list[recp_id].filt_rule_lock;
+	rule_lock = &recp_list->filt_rule_lock;
 
 	ice_acquire_lock(rule_lock);
 	new_fltr = &f_entry->fltr_info;
 	if (new_fltr->flag & ICE_FLTR_RX)
-		new_fltr->src = hw->port_info->lport;
+		new_fltr->src = lport;
 	else if (new_fltr->flag & ICE_FLTR_TX)
 		new_fltr->src =
 			ice_get_hw_vsi_num(hw, f_entry->fltr_info.vsi_handle);
 
-	m_entry = ice_find_rule_entry(hw, recp_id, new_fltr);
+	m_entry = ice_find_rule_entry(&recp_list->filt_rules, new_fltr);
 	if (!m_entry) {
-		status = ice_create_pkt_fwd_rule(hw, f_entry);
+		status = ice_create_pkt_fwd_rule(hw, recp_list, f_entry);
 		goto exit_add_rule_internal;
 	}
 
@@ -2940,14 +2936,13 @@ ice_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
  * ice_remove_rule_internal - Remove a filter rule of a given type
  *
  * @hw: pointer to the hardware structure
- * @recp_id: recipe ID for which the rule needs to removed
+ * @recp_list: recipe list for which the rule needs to removed
  * @f_entry: rule entry containing filter information
  */
 static enum ice_status
-ice_remove_rule_internal(struct ice_hw *hw, u8 recp_id,
+ice_remove_rule_internal(struct ice_hw *hw, struct ice_sw_recipe *recp_list,
 			 struct ice_fltr_list_entry *f_entry)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_fltr_mgmt_list_entry *list_elem;
 	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
 	enum ice_status status = ICE_SUCCESS;
@@ -2959,9 +2954,10 @@ ice_remove_rule_internal(struct ice_hw *hw, u8 recp_id,
 	f_entry->fltr_info.fwd_id.hw_vsi_id =
 		ice_get_hw_vsi_num(hw, f_entry->fltr_info.vsi_handle);
 
-	rule_lock = &sw->recp_list[recp_id].filt_rule_lock;
+	rule_lock = &recp_list->filt_rule_lock;
 	ice_acquire_lock(rule_lock);
-	list_elem = ice_find_rule_entry(hw, recp_id, &f_entry->fltr_info);
+	list_elem = ice_find_rule_entry(&recp_list->filt_rules,
+					&f_entry->fltr_info);
 	if (!list_elem) {
 		status = ICE_ERR_DOES_NOT_EXIST;
 		goto exit;
@@ -3110,9 +3106,11 @@ ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
 }
 
 /**
- * ice_add_mac - Add a MAC address based filter rule
+ * ice_add_mac_rule - Add a MAC address based filter rule
  * @hw: pointer to the hardware structure
  * @m_list: list of MAC addresses and forwarding information
+ * @sw: pointer to switch info struct for which function add rule
+ * @lport: logic port number on which function add rule
  *
  * IMPORTANT: When the ucast_shared flag is set to false and m_list has
  * multiple unicast addresses, the function assumes that all the
@@ -3120,24 +3118,24 @@ ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
  * check for duplicates in this case, removing duplicates from a given
  * list should be taken care of in the caller of this function.
  */
-enum ice_status
-ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
+static enum ice_status
+ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
+		 struct ice_switch_info *sw, u8 lport)
 {
+	struct ice_sw_recipe *recp_list = &sw->recp_list[ICE_SW_LKUP_MAC];
 	struct ice_aqc_sw_rules_elem *s_rule, *r_iter;
 	struct ice_fltr_list_entry *m_list_itr;
 	struct LIST_HEAD_TYPE *rule_head;
 	u16 elem_sent, total_elem_left;
-	struct ice_switch_info *sw;
 	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
 	enum ice_status status = ICE_SUCCESS;
 	u16 num_unicast = 0;
 	u16 s_rule_size;
 
-	if (!m_list || !hw)
-		return ICE_ERR_PARAM;
 	s_rule = NULL;
-	sw = hw->switch_info;
-	rule_lock = &sw->recp_list[ICE_SW_LKUP_MAC].filt_rule_lock;
+	rule_lock = &recp_list->filt_rule_lock;
+	rule_head = &recp_list->filt_rules;
+
 	LIST_FOR_EACH_ENTRY(m_list_itr, m_list, ice_fltr_list_entry,
 			    list_entry) {
 		u8 *add = &m_list_itr->fltr_info.l_data.mac.mac_addr[0];
@@ -3160,7 +3158,7 @@ ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 		if (IS_UNICAST_ETHER_ADDR(add) && !hw->ucast_shared) {
 			/* Don't overwrite the unicast address */
 			ice_acquire_lock(rule_lock);
-			if (ice_find_rule_entry(hw, ICE_SW_LKUP_MAC,
+			if (ice_find_rule_entry(rule_head,
 						&m_list_itr->fltr_info)) {
 				ice_release_lock(rule_lock);
 				return ICE_ERR_ALREADY_EXISTS;
@@ -3170,7 +3168,7 @@ ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 		} else if (IS_MULTICAST_ETHER_ADDR(add) ||
 			   (IS_UNICAST_ETHER_ADDR(add) && hw->ucast_shared)) {
 			m_list_itr->status =
-				ice_add_rule_internal(hw, ICE_SW_LKUP_MAC,
+				ice_add_rule_internal(hw, recp_list, lport,
 						      m_list_itr);
 			if (m_list_itr->status)
 				return m_list_itr->status;
@@ -3184,7 +3182,6 @@ ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 		goto ice_add_mac_exit;
 	}
 
-	rule_head = &sw->recp_list[ICE_SW_LKUP_MAC].filt_rules;
 
 	/* Allocate switch rule buffer for the bulk update for unicast */
 	s_rule_size = ICE_SW_RULE_RX_TX_ETH_HDR_SIZE;
@@ -3266,6 +3263,23 @@ ice_add_mac_exit:
 }
 
 /**
+ * ice_add_mac - Add a MAC address based filter rule
+ * @hw: pointer to the hardware structure
+ * @m_list: list of MAC addresses and forwarding information
+ *
+ * Function add mac rule for logical port from hw struct
+ */
+enum ice_status
+ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
+{
+	if (!m_list || !hw)
+		return ICE_ERR_PARAM;
+
+	return ice_add_mac_rule(hw, m_list, hw->switch_info,
+				hw->port_info->lport);
+}
+
+/**
  * ice_add_vlan_internal - Add one VLAN based filter rule
  * @hw: pointer to the hardware structure
  * @f_entry: filter entry containing one VLAN information
@@ -3276,6 +3290,7 @@ ice_add_vlan_internal(struct ice_hw *hw, struct ice_fltr_list_entry *f_entry)
 	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_fltr_mgmt_list_entry *v_list_itr;
 	struct ice_fltr_info *new_fltr, *cur_fltr;
+	struct ice_sw_recipe *recp_list;
 	enum ice_sw_lkup_type lkup_type;
 	u16 vsi_list_id = 0, vsi_handle;
 	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
@@ -3298,9 +3313,10 @@ ice_add_vlan_internal(struct ice_hw *hw, struct ice_fltr_list_entry *f_entry)
 	new_fltr->src = new_fltr->fwd_id.hw_vsi_id;
 	lkup_type = new_fltr->lkup_type;
 	vsi_handle = new_fltr->vsi_handle;
-	rule_lock = &sw->recp_list[ICE_SW_LKUP_VLAN].filt_rule_lock;
+	recp_list = &sw->recp_list[ICE_SW_LKUP_VLAN];
+	rule_lock = &recp_list->filt_rule_lock;
 	ice_acquire_lock(rule_lock);
-	v_list_itr = ice_find_rule_entry(hw, ICE_SW_LKUP_VLAN, new_fltr);
+	v_list_itr = ice_find_rule_entry(&recp_list->filt_rules, new_fltr);
 	if (!v_list_itr) {
 		struct ice_vsi_list_map_info *map_info = NULL;
 
@@ -3327,9 +3343,9 @@ ice_add_vlan_internal(struct ice_hw *hw, struct ice_fltr_list_entry *f_entry)
 			new_fltr->fwd_id.vsi_list_id = vsi_list_id;
 		}
 
-		status = ice_create_pkt_fwd_rule(hw, f_entry);
+		status = ice_create_pkt_fwd_rule(hw, recp_list, f_entry);
 		if (!status) {
-			v_list_itr = ice_find_rule_entry(hw, ICE_SW_LKUP_VLAN,
+			v_list_itr = ice_find_rule_entry(&recp_list->filt_rules,
 							 new_fltr);
 			if (!v_list_itr) {
 				status = ICE_ERR_DOES_NOT_EXIST;
@@ -3458,10 +3474,12 @@ enum ice_status
 ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list)
 {
 	struct ice_fltr_list_entry *mv_list_itr;
+	struct ice_sw_recipe *recp_list;
 
 	if (!mv_list || !hw)
 		return ICE_ERR_PARAM;
 
+	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_MAC_VLAN];
 	LIST_FOR_EACH_ENTRY(mv_list_itr, mv_list, ice_fltr_list_entry,
 			    list_entry) {
 		enum ice_sw_lkup_type l_type =
@@ -3471,7 +3489,8 @@ ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list)
 			return ICE_ERR_PARAM;
 		mv_list_itr->fltr_info.flag = ICE_FLTR_TX;
 		mv_list_itr->status =
-			ice_add_rule_internal(hw, ICE_SW_LKUP_MAC_VLAN,
+			ice_add_rule_internal(hw, recp_list,
+					      hw->port_info->lport,
 					      mv_list_itr);
 		if (mv_list_itr->status)
 			return mv_list_itr->status;
@@ -3492,20 +3511,26 @@ enum ice_status
 ice_add_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
 {
 	struct ice_fltr_list_entry *em_list_itr;
+	u8 lport;
 
 	if (!em_list || !hw)
 		return ICE_ERR_PARAM;
 
+	lport = hw->port_info->lport;
 	LIST_FOR_EACH_ENTRY(em_list_itr, em_list, ice_fltr_list_entry,
 			    list_entry) {
-		enum ice_sw_lkup_type l_type =
-			em_list_itr->fltr_info.lkup_type;
+		struct ice_sw_recipe *recp_list;
+		enum ice_sw_lkup_type l_type;
+
+		l_type = em_list_itr->fltr_info.lkup_type;
+		recp_list = &hw->switch_info->recp_list[l_type];
 
 		if (l_type != ICE_SW_LKUP_ETHERTYPE_MAC &&
 		    l_type != ICE_SW_LKUP_ETHERTYPE)
 			return ICE_ERR_PARAM;
 
-		em_list_itr->status = ice_add_rule_internal(hw, l_type,
+		em_list_itr->status = ice_add_rule_internal(hw, recp_list,
+							    lport,
 							    em_list_itr);
 		if (em_list_itr->status)
 			return em_list_itr->status;
@@ -3522,6 +3547,7 @@ enum ice_status
 ice_remove_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
 {
 	struct ice_fltr_list_entry *em_list_itr, *tmp;
+	struct ice_sw_recipe *recp_list;
 
 	if (!em_list || !hw)
 		return ICE_ERR_PARAM;
@@ -3535,7 +3561,8 @@ ice_remove_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
 		    l_type != ICE_SW_LKUP_ETHERTYPE)
 			return ICE_ERR_PARAM;
 
-		em_list_itr->status = ice_remove_rule_internal(hw, l_type,
+		recp_list = &hw->switch_info->recp_list[l_type];
+		em_list_itr->status = ice_remove_rule_internal(hw, recp_list,
 							       em_list_itr);
 		if (em_list_itr->status)
 			return em_list_itr->status;
@@ -3695,8 +3722,7 @@ out:
 
 /**
  * ice_find_ucast_rule_entry - Search for a unicast MAC filter rule entry
- * @hw: pointer to the hardware structure
- * @recp_id: lookup type for which the specified rule needs to be searched
+ * @list_head: head of rule list
  * @f_info: rule information
  *
  * Helper function to search for a unicast rule entry - this is to be used
@@ -3706,14 +3732,11 @@ out:
  * Returns pointer to entry storing the rule if found
  */
 static struct ice_fltr_mgmt_list_entry *
-ice_find_ucast_rule_entry(struct ice_hw *hw, u8 recp_id,
+ice_find_ucast_rule_entry(struct LIST_HEAD_TYPE *list_head,
 			  struct ice_fltr_info *f_info)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_fltr_mgmt_list_entry *list_itr;
-	struct LIST_HEAD_TYPE *list_head;
 
-	list_head = &sw->recp_list[recp_id].filt_rules;
 	LIST_FOR_EACH_ENTRY(list_itr, list_head, ice_fltr_mgmt_list_entry,
 			    list_entry) {
 		if (!memcmp(&f_info->l_data, &list_itr->fltr_info.l_data,
@@ -3727,9 +3750,10 @@ ice_find_ucast_rule_entry(struct ice_hw *hw, u8 recp_id,
 }
 
 /**
- * ice_remove_mac - remove a MAC address based filter rule
+ * ice_remove_mac_rule - remove a MAC based filter rule
  * @hw: pointer to the hardware structure
  * @m_list: list of MAC addresses and forwarding information
+ * @recp_list: list from which function remove MAC address
  *
  * This function removes either a MAC filter rule or a specific VSI from a
  * VSI list for a multicast MAC address.
@@ -3739,8 +3763,9 @@ ice_find_ucast_rule_entry(struct ice_hw *hw, u8 recp_id,
  * the entries passed into m_list were added previously. It will not attempt to
  * do a partial remove of entries that were found.
  */
-enum ice_status
-ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
+static enum ice_status
+ice_remove_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
+		    struct ice_sw_recipe *recp_list)
 {
 	struct ice_fltr_list_entry *list_itr, *tmp;
 	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
@@ -3748,7 +3773,7 @@ ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 	if (!m_list)
 		return ICE_ERR_PARAM;
 
-	rule_lock = &hw->switch_info->recp_list[ICE_SW_LKUP_MAC].filt_rule_lock;
+	rule_lock = &recp_list->filt_rule_lock;
 	LIST_FOR_EACH_ENTRY_SAFE(list_itr, tmp, m_list, ice_fltr_list_entry,
 				 list_entry) {
 		enum ice_sw_lkup_type l_type = list_itr->fltr_info.lkup_type;
@@ -3770,20 +3795,34 @@ ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 			 * shared...
 			 */
 			ice_acquire_lock(rule_lock);
-			if (!ice_find_ucast_rule_entry(hw, ICE_SW_LKUP_MAC,
+			if (!ice_find_ucast_rule_entry(&recp_list->filt_rules,
 						       &list_itr->fltr_info)) {
 				ice_release_lock(rule_lock);
 				return ICE_ERR_DOES_NOT_EXIST;
 			}
 			ice_release_lock(rule_lock);
 		}
-		list_itr->status = ice_remove_rule_internal(hw,
-							    ICE_SW_LKUP_MAC,
+		list_itr->status = ice_remove_rule_internal(hw, recp_list,
 							    list_itr);
 		if (list_itr->status)
 			return list_itr->status;
 	}
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_remove_mac - remove a MAC address based filter rule
+ * @hw: pointer to the hardware structure
+ * @m_list: list of MAC addresses and forwarding information
+ *
+ */
+enum ice_status
+ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
+{
+	struct ice_sw_recipe *recp_list;
+
+	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_MAC];
+	return ice_remove_mac_rule(hw, m_list, recp_list);
 }
 
 /**
@@ -3795,18 +3834,19 @@ enum ice_status
 ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 {
 	struct ice_fltr_list_entry *v_list_itr, *tmp;
+	struct ice_sw_recipe *recp_list;
 
 	if (!v_list || !hw)
 		return ICE_ERR_PARAM;
 
+	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_VLAN];
 	LIST_FOR_EACH_ENTRY_SAFE(v_list_itr, tmp, v_list, ice_fltr_list_entry,
 				 list_entry) {
 		enum ice_sw_lkup_type l_type = v_list_itr->fltr_info.lkup_type;
 
 		if (l_type != ICE_SW_LKUP_VLAN)
 			return ICE_ERR_PARAM;
-		v_list_itr->status = ice_remove_rule_internal(hw,
-							      ICE_SW_LKUP_VLAN,
+		v_list_itr->status = ice_remove_rule_internal(hw, recp_list,
 							      v_list_itr);
 		if (v_list_itr->status)
 			return v_list_itr->status;
@@ -3823,10 +3863,12 @@ enum ice_status
 ice_remove_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 {
 	struct ice_fltr_list_entry *v_list_itr, *tmp;
+	struct ice_sw_recipe *recp_list;
 
 	if (!v_list || !hw)
 		return ICE_ERR_PARAM;
 
+	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_MAC_VLAN];
 	LIST_FOR_EACH_ENTRY_SAFE(v_list_itr, tmp, v_list, ice_fltr_list_entry,
 				 list_entry) {
 		enum ice_sw_lkup_type l_type = v_list_itr->fltr_info.lkup_type;
@@ -3834,7 +3876,7 @@ ice_remove_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 		if (l_type != ICE_SW_LKUP_MAC_VLAN)
 			return ICE_ERR_PARAM;
 		v_list_itr->status =
-			ice_remove_rule_internal(hw, ICE_SW_LKUP_MAC_VLAN,
+			ice_remove_rule_internal(hw, recp_list,
 						 v_list_itr);
 		if (v_list_itr->status)
 			return v_list_itr->status;
@@ -4065,11 +4107,13 @@ ice_remove_promisc(struct ice_hw *hw, u8 recp_id,
 		   struct LIST_HEAD_TYPE *v_list)
 {
 	struct ice_fltr_list_entry *v_list_itr, *tmp;
+	struct ice_sw_recipe *recp_list;
 
+	recp_list = &hw->switch_info->recp_list[recp_id];
 	LIST_FOR_EACH_ENTRY_SAFE(v_list_itr, tmp, v_list, ice_fltr_list_entry,
 				 list_entry) {
 		v_list_itr->status =
-			ice_remove_rule_internal(hw, recp_id, v_list_itr);
+			ice_remove_rule_internal(hw, recp_list, v_list_itr);
 		if (v_list_itr->status)
 			return v_list_itr->status;
 	}
@@ -4193,6 +4237,7 @@ ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask, u16 vid)
 	 * is found.
 	 */
 	while (promisc_mask) {
+		struct ice_sw_recipe *recp_list;
 		u8 *mac_addr;
 
 		pkt_type = 0;
@@ -4256,8 +4301,11 @@ ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask, u16 vid)
 		new_fltr.vsi_handle = vsi_handle;
 		new_fltr.fwd_id.hw_vsi_id = hw_vsi_id;
 		f_list_entry.fltr_info = new_fltr;
+		recp_list = &hw->switch_info->recp_list[recipe_id];
 
-		status = ice_add_rule_internal(hw, recipe_id, &f_list_entry);
+		status = ice_add_rule_internal(hw, recp_list,
+					       hw->port_info->lport,
+					       &f_list_entry);
 		if (status != ICE_SUCCESS)
 			goto set_promisc_exit;
 	}
@@ -4323,13 +4371,14 @@ free_fltr_list:
  * ice_remove_vsi_lkup_fltr - Remove lookup type filters for a VSI
  * @hw: pointer to the hardware structure
  * @vsi_handle: VSI handle to remove filters from
+ * @recp_list: recipe list from which function remove fltr
  * @lkup: switch rule filter lookup type
  */
 static void
 ice_remove_vsi_lkup_fltr(struct ice_hw *hw, u16 vsi_handle,
+			 struct ice_sw_recipe *recp_list,
 			 enum ice_sw_lkup_type lkup)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_fltr_list_entry *fm_entry;
 	struct LIST_HEAD_TYPE remove_list_head;
 	struct LIST_HEAD_TYPE *rule_head;
@@ -4338,8 +4387,8 @@ ice_remove_vsi_lkup_fltr(struct ice_hw *hw, u16 vsi_handle,
 	enum ice_status status;
 
 	INIT_LIST_HEAD(&remove_list_head);
-	rule_lock = &sw->recp_list[lkup].filt_rule_lock;
-	rule_head = &sw->recp_list[lkup].filt_rules;
+	rule_lock = &recp_list[lkup].filt_rule_lock;
+	rule_head = &recp_list[lkup].filt_rules;
 	ice_acquire_lock(rule_lock);
 	status = ice_add_to_vsi_fltr_list(hw, vsi_handle, rule_head,
 					  &remove_list_head);
@@ -4349,7 +4398,7 @@ ice_remove_vsi_lkup_fltr(struct ice_hw *hw, u16 vsi_handle,
 
 	switch (lkup) {
 	case ICE_SW_LKUP_MAC:
-		ice_remove_mac(hw, &remove_list_head);
+		ice_remove_mac_rule(hw, &remove_list_head, recp_list);
 		break;
 	case ICE_SW_LKUP_VLAN:
 		ice_remove_vlan(hw, &remove_list_head);
@@ -4382,22 +4431,43 @@ ice_remove_vsi_lkup_fltr(struct ice_hw *hw, u16 vsi_handle,
 }
 
 /**
+ * ice_remove_vsi_fltr_rule - Remove all filters for a VSI
+ * @hw: pointer to the hardware structure
+ * @vsi_handle: VSI handle to remove filters from
+ * @sw: pointer to switch info struct
+ */
+static void
+ice_remove_vsi_fltr_rule(struct ice_hw *hw, u16 vsi_handle,
+			 struct ice_switch_info *sw)
+{
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
+	ice_remove_vsi_lkup_fltr(hw, vsi_handle,
+				 sw->recp_list, ICE_SW_LKUP_MAC);
+	ice_remove_vsi_lkup_fltr(hw, vsi_handle,
+				 sw->recp_list, ICE_SW_LKUP_MAC_VLAN);
+	ice_remove_vsi_lkup_fltr(hw, vsi_handle,
+				 sw->recp_list, ICE_SW_LKUP_PROMISC);
+	ice_remove_vsi_lkup_fltr(hw, vsi_handle,
+				 sw->recp_list, ICE_SW_LKUP_VLAN);
+	ice_remove_vsi_lkup_fltr(hw, vsi_handle,
+				 sw->recp_list, ICE_SW_LKUP_DFLT);
+	ice_remove_vsi_lkup_fltr(hw, vsi_handle,
+				 sw->recp_list, ICE_SW_LKUP_ETHERTYPE);
+	ice_remove_vsi_lkup_fltr(hw, vsi_handle,
+				 sw->recp_list, ICE_SW_LKUP_ETHERTYPE_MAC);
+	ice_remove_vsi_lkup_fltr(hw, vsi_handle,
+				 sw->recp_list, ICE_SW_LKUP_PROMISC_VLAN);
+}
+
+/**
  * ice_remove_vsi_fltr - Remove all filters for a VSI
  * @hw: pointer to the hardware structure
  * @vsi_handle: VSI handle to remove filters from
  */
 void ice_remove_vsi_fltr(struct ice_hw *hw, u16 vsi_handle)
 {
-	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
-
-	ice_remove_vsi_lkup_fltr(hw, vsi_handle, ICE_SW_LKUP_MAC);
-	ice_remove_vsi_lkup_fltr(hw, vsi_handle, ICE_SW_LKUP_MAC_VLAN);
-	ice_remove_vsi_lkup_fltr(hw, vsi_handle, ICE_SW_LKUP_PROMISC);
-	ice_remove_vsi_lkup_fltr(hw, vsi_handle, ICE_SW_LKUP_VLAN);
-	ice_remove_vsi_lkup_fltr(hw, vsi_handle, ICE_SW_LKUP_DFLT);
-	ice_remove_vsi_lkup_fltr(hw, vsi_handle, ICE_SW_LKUP_ETHERTYPE);
-	ice_remove_vsi_lkup_fltr(hw, vsi_handle, ICE_SW_LKUP_ETHERTYPE_MAC);
-	ice_remove_vsi_lkup_fltr(hw, vsi_handle, ICE_SW_LKUP_PROMISC_VLAN);
+	ice_remove_vsi_fltr_rule(hw, vsi_handle, hw->switch_info);
 }
 
 /**
@@ -4559,9 +4629,9 @@ enum ice_status
 ice_add_mac_with_sw_marker(struct ice_hw *hw, struct ice_fltr_info *f_info,
 			   u16 sw_marker)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_fltr_mgmt_list_entry *m_entry;
 	struct ice_fltr_list_entry fl_info;
+	struct ice_sw_recipe *recp_list;
 	struct LIST_HEAD_TYPE l_head;
 	struct ice_lock *rule_lock;	/* Lock to protect filter rule list */
 	enum ice_status ret;
@@ -4590,16 +4660,18 @@ ice_add_mac_with_sw_marker(struct ice_hw *hw, struct ice_fltr_info *f_info,
 	LIST_ADD(&fl_info.list_entry, &l_head);
 
 	entry_exists = false;
-	ret = ice_add_mac(hw, &l_head);
+	ret = ice_add_mac_rule(hw, &l_head, hw->switch_info,
+			       hw->port_info->lport);
 	if (ret == ICE_ERR_ALREADY_EXISTS)
 		entry_exists = true;
 	else if (ret)
 		return ret;
 
-	rule_lock = &sw->recp_list[ICE_SW_LKUP_MAC].filt_rule_lock;
+	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_MAC];
+	rule_lock = &recp_list->filt_rule_lock;
 	ice_acquire_lock(rule_lock);
 	/* Get the book keeping entry for the filter */
-	m_entry = ice_find_rule_entry(hw, ICE_SW_LKUP_MAC, f_info);
+	m_entry = ice_find_rule_entry(&recp_list->filt_rules, f_info);
 	if (!m_entry)
 		goto exit_error;
 
@@ -4652,9 +4724,9 @@ exit_error:
 enum ice_status
 ice_add_mac_with_counter(struct ice_hw *hw, struct ice_fltr_info *f_info)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_fltr_mgmt_list_entry *m_entry;
 	struct ice_fltr_list_entry fl_info;
+	struct ice_sw_recipe *recp_list;
 	struct LIST_HEAD_TYPE l_head;
 	struct ice_lock *rule_lock;	/* Lock to protect filter rule list */
 	enum ice_status ret;
@@ -4671,10 +4743,11 @@ ice_add_mac_with_counter(struct ice_hw *hw, struct ice_fltr_info *f_info)
 	if (!ice_is_vsi_valid(hw, f_info->vsi_handle))
 		return ICE_ERR_PARAM;
 	f_info->fwd_id.hw_vsi_id = ice_get_hw_vsi_num(hw, f_info->vsi_handle);
+	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_MAC];
 
 	entry_exist = false;
 
-	rule_lock = &sw->recp_list[ICE_SW_LKUP_MAC].filt_rule_lock;
+	rule_lock = &recp_list->filt_rule_lock;
 
 	/* Add filter if it doesn't exist so then the adding of large
 	 * action always results in update
@@ -4684,14 +4757,15 @@ ice_add_mac_with_counter(struct ice_hw *hw, struct ice_fltr_info *f_info)
 	fl_info.fltr_info = *f_info;
 	LIST_ADD(&fl_info.list_entry, &l_head);
 
-	ret = ice_add_mac(hw, &l_head);
+	ret = ice_add_mac_rule(hw, &l_head, hw->switch_info,
+			       hw->port_info->lport);
 	if (ret == ICE_ERR_ALREADY_EXISTS)
 		entry_exist = true;
 	else if (ret)
 		return ret;
 
 	ice_acquire_lock(rule_lock);
-	m_entry = ice_find_rule_entry(hw, ICE_SW_LKUP_MAC, f_info);
+	m_entry = ice_find_rule_entry(&recp_list->filt_rules, f_info);
 	if (!m_entry) {
 		ret = ICE_ERR_BAD_PTR;
 		goto exit_error;
@@ -6716,12 +6790,15 @@ static enum ice_status
 ice_replay_fltr(struct ice_hw *hw, u8 recp_id, struct LIST_HEAD_TYPE *list_head)
 {
 	struct ice_fltr_mgmt_list_entry *itr;
-	struct LIST_HEAD_TYPE l_head;
 	enum ice_status status = ICE_SUCCESS;
+	struct ice_sw_recipe *recp_list;
+	u8 lport = hw->port_info->lport;
+	struct LIST_HEAD_TYPE l_head;
 
 	if (LIST_EMPTY(list_head))
 		return status;
 
+	recp_list = &hw->switch_info->recp_list[recp_id];
 	/* Move entries from the given list_head to a temporary l_head so that
 	 * they can be replayed. Otherwise when trying to re-add the same
 	 * filter, the function will return already exists
@@ -6737,7 +6814,8 @@ ice_replay_fltr(struct ice_hw *hw, u8 recp_id, struct LIST_HEAD_TYPE *list_head)
 
 		f_entry.fltr_info = itr->fltr_info;
 		if (itr->vsi_count < 2 && recp_id != ICE_SW_LKUP_VLAN) {
-			status = ice_add_rule_internal(hw, recp_id, &f_entry);
+			status = ice_add_rule_internal(hw, recp_list, lport,
+						       &f_entry);
 			if (status != ICE_SUCCESS)
 				goto end;
 			continue;
@@ -6761,7 +6839,8 @@ ice_replay_fltr(struct ice_hw *hw, u8 recp_id, struct LIST_HEAD_TYPE *list_head)
 			if (recp_id == ICE_SW_LKUP_VLAN)
 				status = ice_add_vlan_internal(hw, &f_entry);
 			else
-				status = ice_add_rule_internal(hw, recp_id,
+				status = ice_add_rule_internal(hw, recp_list,
+							       lport,
 							       &f_entry);
 			if (status != ICE_SUCCESS)
 				goto end;
@@ -6812,10 +6891,12 @@ ice_replay_vsi_fltr(struct ice_hw *hw, u16 vsi_handle, u8 recp_id,
 {
 	struct ice_fltr_mgmt_list_entry *itr;
 	enum ice_status status = ICE_SUCCESS;
+	struct ice_sw_recipe *recp_list;
 	u16 hw_vsi_id;
 
 	if (LIST_EMPTY(list_head))
 		return status;
+	recp_list = &hw->switch_info->recp_list[recp_id];
 	hw_vsi_id = ice_get_hw_vsi_num(hw, vsi_handle);
 
 	LIST_FOR_EACH_ENTRY(itr, list_head, ice_fltr_mgmt_list_entry,
@@ -6828,7 +6909,9 @@ ice_replay_vsi_fltr(struct ice_hw *hw, u16 vsi_handle, u8 recp_id,
 			/* update the src in case it is VSI num */
 			if (f_entry.fltr_info.src_id == ICE_SRC_ID_VSI)
 				f_entry.fltr_info.src = hw_vsi_id;
-			status = ice_add_rule_internal(hw, recp_id, &f_entry);
+			status = ice_add_rule_internal(hw, recp_list,
+						       hw->port_info->lport,
+						       &f_entry);
 			if (status != ICE_SUCCESS)
 				goto end;
 			continue;
@@ -6846,7 +6929,9 @@ ice_replay_vsi_fltr(struct ice_hw *hw, u16 vsi_handle, u8 recp_id,
 		if (recp_id == ICE_SW_LKUP_VLAN)
 			status = ice_add_vlan_internal(hw, &f_entry);
 		else
-			status = ice_add_rule_internal(hw, recp_id, &f_entry);
+			status = ice_add_rule_internal(hw, recp_list,
+						       hw->port_info->lport,
+						       &f_entry);
 		if (status != ICE_SUCCESS)
 			goto end;
 	}

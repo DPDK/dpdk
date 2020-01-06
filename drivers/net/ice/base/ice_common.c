@@ -462,7 +462,7 @@ static enum ice_status ice_init_fltr_mgmt_struct(struct ice_hw *hw)
 
 	INIT_LIST_HEAD(&sw->vsi_list_map_head);
 
-	return ice_init_def_sw_recp(hw);
+	return ice_init_def_sw_recp(hw, &hw->switch_info->recp_list);
 }
 
 /**
