@@ -996,9 +996,13 @@ test_eventdev_common(void)
 static int
 test_eventdev_selftest_impl(const char *pmd, const char *opts)
 {
-	rte_vdev_init(pmd, opts);
+	int ret = 0;
+
 	if (rte_event_dev_get_dev_id(pmd) == -ENODEV)
+		ret = rte_vdev_init(pmd, opts);
+	if (ret)
 		return TEST_SKIPPED;
+
 	return rte_event_dev_selftest(rte_event_dev_get_dev_id(pmd));
 }
 
