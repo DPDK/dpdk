@@ -1021,7 +1021,7 @@ test_eventdev_selftest_octeontx(void)
 static int
 test_eventdev_selftest_octeontx2(void)
 {
-	return test_eventdev_selftest_impl("otx2_eventdev", "");
+	return test_eventdev_selftest_impl("event_octeontx2", "");
 }
 
 static int
