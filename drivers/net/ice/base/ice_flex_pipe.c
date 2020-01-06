@@ -3618,6 +3618,61 @@ static void ice_init_flow_profs(struct ice_hw *hw, u8 blk_idx)
 }
 
 /**
+ * ice_clear_hw_tbls - clear HW tables and flow profiles
+ * @hw: pointer to the hardware structure
+ */
+void ice_clear_hw_tbls(struct ice_hw *hw)
+{
+	u8 i;
+
+	for (i = 0; i < ICE_BLK_COUNT; i++) {
+		struct ice_prof_redir *prof_redir = &hw->blk[i].prof_redir;
+		struct ice_prof_tcam *prof = &hw->blk[i].prof;
+		struct ice_xlt1 *xlt1 = &hw->blk[i].xlt1;
+		struct ice_xlt2 *xlt2 = &hw->blk[i].xlt2;
+		struct ice_es *es = &hw->blk[i].es;
+
+		if (hw->blk[i].is_list_init) {
+			ice_free_prof_map(hw, i);
+			ice_free_flow_profs(hw, i);
+		}
+
+		ice_free_vsig_tbl(hw, (enum ice_block)i);
+
+		ice_memset(xlt1->ptypes, 0, xlt1->count * sizeof(*xlt1->ptypes),
+			   ICE_NONDMA_MEM);
+		ice_memset(xlt1->ptg_tbl, 0,
+			   ICE_MAX_PTGS * sizeof(*xlt1->ptg_tbl),
+			   ICE_NONDMA_MEM);
+		ice_memset(xlt1->t, 0, xlt1->count * sizeof(*xlt1->t),
+			   ICE_NONDMA_MEM);
+
+		ice_memset(xlt2->vsis, 0, xlt2->count * sizeof(*xlt2->vsis),
+			   ICE_NONDMA_MEM);
+		ice_memset(xlt2->vsig_tbl, 0,
+			   xlt2->count * sizeof(*xlt2->vsig_tbl),
+			   ICE_NONDMA_MEM);
+		ice_memset(xlt2->t, 0, xlt2->count * sizeof(*xlt2->t),
+			   ICE_NONDMA_MEM);
+
+		ice_memset(prof->t, 0, prof->count * sizeof(*prof->t),
+			   ICE_NONDMA_MEM);
+		ice_memset(prof_redir->t, 0,
+			   prof_redir->count * sizeof(*prof_redir->t),
+			   ICE_NONDMA_MEM);
+
+		ice_memset(es->t, 0, es->count * sizeof(*es->t),
+			   ICE_NONDMA_MEM);
+		ice_memset(es->ref_count, 0, es->count * sizeof(*es->ref_count),
+			   ICE_NONDMA_MEM);
+		ice_memset(es->written, 0, es->count * sizeof(*es->written),
+			   ICE_NONDMA_MEM);
+		ice_memset(es->mask_ena, 0, es->count * sizeof(*es->mask_ena),
+			   ICE_NONDMA_MEM);
+	}
+}
+
+/**
  * ice_init_hw_tbls - init hardware table memory
  * @hw: pointer to the hardware structure
  */
