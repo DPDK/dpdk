@@ -480,10 +480,7 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		tx_bytes += mbuf->pkt_len;
 	}
 
-#if defined(XDP_USE_NEED_WAKEUP)
-	if (xsk_ring_prod__needs_wakeup(&txq->tx))
-#endif
-		kick_tx(txq);
+	kick_tx(txq);
 
 out:
 	xsk_ring_prod__submit(&txq->tx, count);
