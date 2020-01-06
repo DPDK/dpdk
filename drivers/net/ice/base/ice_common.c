@@ -592,7 +592,7 @@ void ice_print_rollback_msg(struct ice_hw *hw)
 	SNPRINTF(nvm_str, sizeof(nvm_str), "%x.%02x 0x%x %d.%d.%d", ver_hi,
 		 ver_lo, hw->nvm.eetrack, oem_ver, oem_build, oem_patch);
 	ice_warn(hw,
-		 "Firmware rollback mode detected. Current version is NVM: %s, FW: %d.%d. Device may exhibit limited functionality. Refer to the Intel(R) Ethernet Adapters and Devices User Guide for details on firmware rollback mode",
+		 "Firmware rollback mode detected. Current version is NVM: %s, FW: %d.%d. Device may exhibit limited functionality. Refer to the Intel(R) Ethernet Adapters and Devices User Guide for details on firmware rollback mode\n",
 		 nvm_str, hw->fw_maj_ver, hw->fw_min_ver);
 }
 

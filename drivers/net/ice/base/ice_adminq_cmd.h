@@ -1688,6 +1688,7 @@ struct ice_aqc_nvm {
 #define ICE_AQC_NVM_ACTIV_SEL_NVM	BIT(3) /* Write Activate/SR Dump only */
 #define ICE_AQC_NVM_ACTIV_SEL_OROM	BIT(4)
 #define ICE_AQC_NVM_ACTIV_SEL_NETLIST	BIT(5)
+#define ICE_AQC_NVM_SPECIAL_UPDATE	BIT(6)
 #define ICE_AQC_NVM_ACTIV_SEL_MASK	MAKEMASK(0x7, 3)
 #define ICE_AQC_NVM_FLASH_ONLY		BIT(7)
 	__le16 module_typeid;

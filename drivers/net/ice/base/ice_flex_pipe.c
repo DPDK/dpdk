@@ -3069,7 +3069,8 @@ ice_free_prof_mask(struct ice_hw *hw, enum ice_block blk, u16 mask_idx)
 	hw->blk[blk].masks.masks[mask_idx].idx = 0;
 
 	/* update mask as unused entry */
-	ice_debug(hw, ICE_DBG_PKG, "Free mask, blk %d, mask %d", blk, mask_idx);
+	ice_debug(hw, ICE_DBG_PKG, "Free mask, blk %d, mask %d\n", blk,
+		  mask_idx);
 	ice_write_prof_mask_reg(hw, blk, mask_idx, 0, 0);
 
 exit_ice_free_prof_mask:
@@ -4173,7 +4174,7 @@ ice_upd_prof_hw(struct ice_hw *hw, enum ice_block blk,
 	/* update package */
 	status = ice_update_pkg(hw, ice_pkg_buf(b), 1);
 	if (status == ICE_ERR_AQ_ERROR)
-		ice_debug(hw, ICE_DBG_INIT, "Unable to update HW profile.");
+		ice_debug(hw, ICE_DBG_INIT, "Unable to update HW profile\n");
 
 error_tmp:
 	ice_pkg_buf_free(hw, b);
@@ -5227,7 +5228,7 @@ ice_adj_prof_priorities(struct ice_hw *hw, enum ice_block blk, u16 vsig,
  * @blk: hardware block
  * @vsig: the VSIG to which this profile is to be added
  * @hdl: the profile handle indicating the profile to add
- * @rev: true to reverse the additions to the list
+ * @rev: true to add entries to the end of the list
  * @chg: the change list
  */
 static enum ice_status
@@ -5379,6 +5380,7 @@ err_ice_create_prof_id_vsig:
  * @blk: hardware block
  * @vsi: the initial VSI that will be in VSIG
  * @lst: the list of profile that will be added to the VSIG
+ * @new_vsig: return of new vsig
  * @chg: the change list
  */
 static enum ice_status

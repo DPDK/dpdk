@@ -14,9 +14,7 @@
 
 #define BITS_PER_BYTE	8
 
-#ifndef _FORCE_
 #define _FORCE_
-#endif
 
 #define ICE_BYTES_PER_WORD	2
 #define ICE_BYTES_PER_DWORD	4
@@ -130,9 +128,7 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 #define ICE_DBG_USER		BIT_ULL(31)
 #define ICE_DBG_ALL		0xFFFFFFFFFFFFFFFFULL
 
-#ifndef __ALWAYS_UNUSED
 #define __ALWAYS_UNUSED
-#endif
 
 #define IS_ETHER_ADDR_EQUAL(addr1, addr2) \
 	(((bool)((((u16 *)(addr1))[0] == ((u16 *)(addr2))[0]))) && \
