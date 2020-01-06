@@ -504,6 +504,7 @@ ice_validate_nvm_rw_reg(struct ice_nvm_access_cmd *cmd)
 	case GL_FWSTS:
 	case GL_MNG_FWSM:
 	case GLGEN_CSR_DEBUG_C:
+	case GLGEN_RSTAT:
 	case GLPCI_LBARCTRL:
 	case GLNVM_GENS:
 	case GLNVM_FLA:
@@ -579,9 +580,14 @@ ice_nvm_access_write(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 	if (status)
 		return status;
 
-	/* The HICR_EN register is read-only */
-	if (cmd->offset == GL_HICR_EN)
+	/* Reject requests to write to read-only registers */
+	switch (cmd->offset) {
+	case GL_HICR_EN:
+	case GLGEN_RSTAT:
 		return ICE_ERR_OUT_OF_RANGE;
+	default:
+		break;
+	}
 
 	ice_debug(hw, ICE_DBG_NVM,
 		  "NVM access: writing register %08x with value %08x\n",
