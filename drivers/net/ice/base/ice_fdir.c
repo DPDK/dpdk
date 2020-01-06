@@ -352,35 +352,6 @@ static const struct ice_fdir_base_pkt ice_fdir_pkt[] = {
 
 #define ICE_FDIR_NUM_PKT ARRAY_SIZE(ice_fdir_pkt)
 
-/* Flow Direcotr (FD) filter program descriptor Context */
-static const struct ice_ctx_ele ice_fd_fltr_desc_ctx_info[] = {
-					   /* Field		Width	LSB */
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, qindex,		11,	0),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, comp_q,		1,	11),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, comp_report,	2,	12),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, fd_space,		2,	14),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, cnt_index,		13,	16),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, cnt_ena,		2,	29),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, evict_ena,		1,	31),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, toq,		3,	32),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, toq_prio,		3,	35),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, dpu_recipe,		2,	38),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, drop,		1,	40),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, flex_prio,		3,	41),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, flex_mdid,		4,	44),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, flex_val,		16,	48),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, dtype,		4,	64),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, pcmd,		1,	68),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, desc_prof_prio,	3,	69),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, desc_prof,		6,	72),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, fd_vsi,		10,	78),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, swap,		1,	88),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, fdid_prio,		3,	89),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, fdid_mdid,		4,	92),
-	ICE_CTX_STORE(ice_fd_fltr_desc_ctx, fdid,		32,	96),
-	{ 0 }
-};
-
 /**
  * ice_set_dflt_val_fd_desc
  * @fd_fltr_ctx: pointer to fd filter descriptor
@@ -455,19 +426,66 @@ ice_fdir_get_prgm_desc(struct ice_hw *hw, struct ice_fdir_fltr *input,
 
 /**
  * ice_set_fd_desc_val
- * @fd_fltr_ctx: pointer to fd filter descriptor context
+ * @ctx: pointer to fd filter descriptor context
  * @fdir_desc: populated with fd filter descriptor values
  */
 void
-ice_set_fd_desc_val(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx,
+ice_set_fd_desc_val(struct ice_fd_fltr_desc_ctx *ctx,
 		    struct ice_fltr_desc *fdir_desc)
 {
-	u64 ctx_buf[2] = { 0 };
+	u64 qword;
 
-	ice_set_ctx((u8 *)fd_fltr_ctx, (u8 *)ctx_buf,
-		    ice_fd_fltr_desc_ctx_info);
-	fdir_desc->qidx_compq_space_stat = CPU_TO_LE64(ctx_buf[0]);
-	fdir_desc->dtype_cmd_vsi_fdid = CPU_TO_LE64(ctx_buf[1]);
+	/* prep QW0 of FD filter programming desc */
+	qword = ((u64)ctx->qindex << ICE_FXD_FLTR_QW0_QINDEX_S) &
+		ICE_FXD_FLTR_QW0_QINDEX_M;
+	qword |= ((u64)ctx->comp_q << ICE_FXD_FLTR_QW0_COMP_Q_S) &
+		 ICE_FXD_FLTR_QW0_COMP_Q_M;
+	qword |= ((u64)ctx->comp_report << ICE_FXD_FLTR_QW0_COMP_REPORT_S) &
+		 ICE_FXD_FLTR_QW0_COMP_REPORT_M;
+	qword |= ((u64)ctx->fd_space << ICE_FXD_FLTR_QW0_FD_SPACE_S) &
+		 ICE_FXD_FLTR_QW0_FD_SPACE_M;
+	qword |= ((u64)ctx->cnt_index << ICE_FXD_FLTR_QW0_STAT_CNT_S) &
+		 ICE_FXD_FLTR_QW0_STAT_CNT_M;
+	qword |= ((u64)ctx->cnt_ena << ICE_FXD_FLTR_QW0_STAT_ENA_S) &
+		 ICE_FXD_FLTR_QW0_STAT_ENA_M;
+	qword |= ((u64)ctx->evict_ena << ICE_FXD_FLTR_QW0_EVICT_ENA_S) &
+		 ICE_FXD_FLTR_QW0_EVICT_ENA_M;
+	qword |= ((u64)ctx->toq << ICE_FXD_FLTR_QW0_TO_Q_S) &
+		 ICE_FXD_FLTR_QW0_TO_Q_M;
+	qword |= ((u64)ctx->toq_prio << ICE_FXD_FLTR_QW0_TO_Q_PRI_S) &
+		 ICE_FXD_FLTR_QW0_TO_Q_PRI_M;
+	qword |= ((u64)ctx->dpu_recipe << ICE_FXD_FLTR_QW0_DPU_RECIPE_S) &
+		 ICE_FXD_FLTR_QW0_DPU_RECIPE_M;
+	qword |= ((u64)ctx->drop << ICE_FXD_FLTR_QW0_DROP_S) &
+		 ICE_FXD_FLTR_QW0_DROP_M;
+	qword |= ((u64)ctx->flex_prio << ICE_FXD_FLTR_QW0_FLEX_PRI_S) &
+		 ICE_FXD_FLTR_QW0_FLEX_PRI_M;
+	qword |= ((u64)ctx->flex_mdid << ICE_FXD_FLTR_QW0_FLEX_MDID_S) &
+		 ICE_FXD_FLTR_QW0_FLEX_MDID_M;
+	qword |= ((u64)ctx->flex_val << ICE_FXD_FLTR_QW0_FLEX_VAL_S) &
+		 ICE_FXD_FLTR_QW0_FLEX_VAL_M;
+	fdir_desc->qidx_compq_space_stat = CPU_TO_LE64(qword);
+
+	/* prep QW1 of FD filter programming desc */
+	qword = ((u64)ctx->dtype << ICE_FXD_FLTR_QW1_DTYPE_S) &
+		ICE_FXD_FLTR_QW1_DTYPE_M;
+	qword |= ((u64)ctx->pcmd << ICE_FXD_FLTR_QW1_PCMD_S) &
+		 ICE_FXD_FLTR_QW1_PCMD_M;
+	qword |= ((u64)ctx->desc_prof_prio << ICE_FXD_FLTR_QW1_PROF_PRI_S) &
+		 ICE_FXD_FLTR_QW1_PROF_PRI_M;
+	qword |= ((u64)ctx->desc_prof << ICE_FXD_FLTR_QW1_PROF_S) &
+		 ICE_FXD_FLTR_QW1_PROF_M;
+	qword |= ((u64)ctx->fd_vsi << ICE_FXD_FLTR_QW1_FD_VSI_S) &
+		 ICE_FXD_FLTR_QW1_FD_VSI_M;
+	qword |= ((u64)ctx->swap << ICE_FXD_FLTR_QW1_SWAP_S) &
+		 ICE_FXD_FLTR_QW1_SWAP_M;
+	qword |= ((u64)ctx->fdid_prio << ICE_FXD_FLTR_QW1_FDID_PRI_S) &
+		 ICE_FXD_FLTR_QW1_FDID_PRI_M;
+	qword |= ((u64)ctx->fdid_mdid << ICE_FXD_FLTR_QW1_FDID_MDID_S) &
+		 ICE_FXD_FLTR_QW1_FDID_MDID_M;
+	qword |= ((u64)ctx->fdid << ICE_FXD_FLTR_QW1_FDID_S) &
+		 ICE_FXD_FLTR_QW1_FDID_M;
+	fdir_desc->dtype_cmd_vsi_fdid = CPU_TO_LE64(qword);
 }
 
 /**
