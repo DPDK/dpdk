@@ -537,7 +537,8 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 		close(dev->kickfds[i]);
 	}
 
-	close(dev->vhostfd);
+	if (dev->vhostfd >= 0)
+		close(dev->vhostfd);
 
 	if (dev->is_server && dev->listenfd >= 0) {
 		close(dev->listenfd);
