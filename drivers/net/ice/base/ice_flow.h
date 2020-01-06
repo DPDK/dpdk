@@ -282,8 +282,8 @@ struct ice_flow_fld_info {
 };
 
 struct ice_flow_seg_fld_raw {
-	int off;	/* Offset from the start of the segment */
 	struct ice_flow_fld_info info;
+	u16 off;	/* Offset from the start of the segment */
 };
 
 struct ice_flow_seg_info {

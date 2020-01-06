@@ -868,20 +868,11 @@ ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 
 		raw = &params->prof->segs[seg].raws[i];
 
-		/* Only support matching raw fields in the payload */
-		if (raw->off < hdrs_sz)
-			return ICE_ERR_PARAM;
-
-		/* Convert the segment-relative offset into payload-relative
-		 * offset.
-		 */
-		off = raw->off - hdrs_sz;
-
 		/* Storing extraction information */
-		raw->info.xtrct.prot_id = ICE_PROT_PAY;
-		raw->info.xtrct.off = (off / ICE_FLOW_FV_EXTRACT_SZ) *
+		raw->info.xtrct.prot_id = ICE_PROT_MAC_OF_OR_S;
+		raw->info.xtrct.off = (raw->off / ICE_FLOW_FV_EXTRACT_SZ) *
 			ICE_FLOW_FV_EXTRACT_SZ;
-		raw->info.xtrct.disp = (off % ICE_FLOW_FV_EXTRACT_SZ) *
+		raw->info.xtrct.disp = (raw->off % ICE_FLOW_FV_EXTRACT_SZ) *
 			BITS_PER_BYTE;
 		raw->info.xtrct.idx = params->es_cnt;
 
@@ -909,7 +900,7 @@ ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 			else
 				idx = params->es_cnt;
 
-			params->es[idx].prot_id = ICE_PROT_PAY;
+			params->es[idx].prot_id = raw->info.xtrct.prot_id;
 			params->es[idx].off = off;
 			params->es_cnt++;
 			off += ICE_FLOW_FV_EXTRACT_SZ;
