@@ -327,7 +327,11 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 			tim_optimze_bkt_param(tim_ring);
 	}
 
-	tim_ring->nb_chunks = tim_ring->nb_chunks * tim_ring->nb_bkts;
+	if (tim_ring->disable_npa)
+		tim_ring->nb_chunks = tim_ring->nb_chunks * tim_ring->nb_bkts;
+	else
+		tim_ring->nb_chunks = tim_ring->nb_chunks + tim_ring->nb_bkts;
+
 	/* Create buckets. */
 	tim_ring->bkt = rte_zmalloc("otx2_tim_bucket", (tim_ring->nb_bkts) *
 				    sizeof(struct otx2_tim_bkt),
@@ -375,6 +379,11 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	sso_updt_xae_cnt(sso_pmd_priv(dev->event_dev), (void *)tim_ring,
 			 RTE_EVENT_TYPE_TIMER);
 	sso_xae_reconfigure(dev->event_dev);
+
+	otx2_tim_dbg("Total memory used %"PRIu64"MB\n",
+			(uint64_t)(((tim_ring->nb_chunks * tim_ring->chunk_sz)
+			+ (tim_ring->nb_bkts * sizeof(struct otx2_tim_bkt))) /
+			BIT_ULL(20)));
 
 	return rc;
 
