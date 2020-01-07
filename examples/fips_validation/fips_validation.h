@@ -31,6 +31,7 @@ enum fips_test_algorithms {
 		FIPS_TEST_ALGO_HMAC,
 		FIPS_TEST_ALGO_TDES,
 		FIPS_TEST_ALGO_SHA,
+		FIPS_TEST_ALGO_AES_XTS,
 		FIPS_TEST_ALGO_MAX
 };
 
@@ -221,6 +222,9 @@ parse_test_ccm_init(void);
 
 int
 parse_test_sha_init(void);
+
+int
+parse_test_xts_init(void);
 
 int
 parser_read_uint8_hex(uint8_t *value, const char *p);

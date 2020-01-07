@@ -912,6 +912,46 @@ prepare_sha_xform(struct rte_crypto_sym_xform *xform)
 	return 0;
 }
 
+static int
+prepare_xts_xform(struct rte_crypto_sym_xform *xform)
+{
+	const struct rte_cryptodev_symmetric_capability *cap;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	struct rte_crypto_cipher_xform *cipher_xform = &xform->cipher;
+
+	xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+
+	cipher_xform->algo = RTE_CRYPTO_CIPHER_AES_XTS;
+	cipher_xform->op = (info.op == FIPS_TEST_ENC_AUTH_GEN) ?
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT :
+			RTE_CRYPTO_CIPHER_OP_DECRYPT;
+	cipher_xform->key.data = vec.cipher_auth.key.val;
+	cipher_xform->key.length = vec.cipher_auth.key.len;
+	cipher_xform->iv.length = vec.iv.len;
+	cipher_xform->iv.offset = IV_OFF;
+
+	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_AES_XTS;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+
+	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	if (rte_cryptodev_sym_capability_check_cipher(cap,
+			cipher_xform->key.length,
+			cipher_xform->iv.length) != 0) {
+		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
+				info.device_name, cipher_xform->key.length,
+				cipher_xform->iv.length);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
 static void
 get_writeback_data(struct fips_val *val)
 {
@@ -1485,6 +1525,11 @@ init_test_ops(void)
 			test_ops.test = fips_mct_sha_test;
 		else
 			test_ops.test = fips_generic_test;
+		break;
+	case FIPS_TEST_ALGO_AES_XTS:
+		test_ops.prepare_op = prepare_cipher_op;
+		test_ops.prepare_xform = prepare_xts_xform;
+		test_ops.test = fips_generic_test;
 		break;
 	default:
 		if (strstr(info.file_name, "TECB") ||

@@ -14,6 +14,7 @@ SRCS-y += fips_validation_cmac.c
 SRCS-y += fips_validation_ccm.c
 SRCS-y += fips_validation_sha.c
 SRCS-y += fips_dev_self_test.c
+SRCS-y += fips_validation_xts.c
 SRCS-y += main.c
 
 # Build using pkg-config variables if possible

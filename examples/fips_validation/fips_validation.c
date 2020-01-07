@@ -150,6 +150,12 @@ fips_test_parse_header(void)
 				ret = parse_test_sha_init();
 				if (ret < 0)
 					return ret;
+			} else if (strstr(info.vec[i], "XTS")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_AES_XTS;
+				ret = parse_test_xts_init();
+				if (ret < 0)
+					return ret;
 			}
 		}
 

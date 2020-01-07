@@ -17,6 +17,7 @@ sources = files(
 	'fips_validation_cmac.c',
 	'fips_validation_ccm.c',
 	'fips_validation_sha.c',
+	'fips_validation_xts.c',
 	'fips_dev_self_test.c',
 	'main.c'
 )
