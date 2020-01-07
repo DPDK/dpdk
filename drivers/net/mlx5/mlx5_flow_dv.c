@@ -157,6 +157,7 @@ struct field_modify_info modify_vlan_out_first_vid[] = {
 };
 
 struct field_modify_info modify_ipv4[] = {
+	{1,  1, MLX5_MODI_OUT_IP_DSCP},
 	{1,  8, MLX5_MODI_OUT_IPV4_TTL},
 	{4, 12, MLX5_MODI_OUT_SIPV4},
 	{4, 16, MLX5_MODI_OUT_DIPV4},
@@ -164,6 +165,7 @@ struct field_modify_info modify_ipv4[] = {
 };
 
 struct field_modify_info modify_ipv6[] = {
+	{1,  0, MLX5_MODI_OUT_IP_DSCP},
 	{1,  7, MLX5_MODI_OUT_IPV6_HOPLIMIT},
 	{4,  8, MLX5_MODI_OUT_SIPV6_127_96},
 	{4, 12, MLX5_MODI_OUT_SIPV6_95_64},
@@ -1187,6 +1189,82 @@ flow_dv_convert_action_set_meta
 	reg_c_x[0] = (struct field_modify_info){4, 0, reg_to_field[reg]};
 	/* The routine expects parameters in memory as big-endian ones. */
 	return flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
+					     MLX5_MODIFICATION_TYPE_SET, error);
+}
+
+/**
+ * Convert modify-header set IPv4 DSCP action to DV specification.
+ *
+ * @param[in,out] resource
+ *   Pointer to the modify-header resource.
+ * @param[in] action
+ *   Pointer to action specification.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_modify_ipv4_dscp
+			(struct mlx5_flow_dv_modify_hdr_resource *resource,
+			 const struct rte_flow_action *action,
+			 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_set_dscp *conf =
+		(const struct rte_flow_action_set_dscp *)(action->conf);
+	struct rte_flow_item item = { .type = RTE_FLOW_ITEM_TYPE_IPV4 };
+	struct rte_flow_item_ipv4 ipv4;
+	struct rte_flow_item_ipv4 ipv4_mask;
+
+	memset(&ipv4, 0, sizeof(ipv4));
+	memset(&ipv4_mask, 0, sizeof(ipv4_mask));
+	ipv4.hdr.type_of_service = conf->dscp;
+	ipv4_mask.hdr.type_of_service = RTE_IPV4_HDR_DSCP_MASK >> 2;
+	item.spec = &ipv4;
+	item.mask = &ipv4_mask;
+	return flow_dv_convert_modify_action(&item, modify_ipv4, NULL, resource,
+					     MLX5_MODIFICATION_TYPE_SET, error);
+}
+
+/**
+ * Convert modify-header set IPv6 DSCP action to DV specification.
+ *
+ * @param[in,out] resource
+ *   Pointer to the modify-header resource.
+ * @param[in] action
+ *   Pointer to action specification.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_modify_ipv6_dscp
+			(struct mlx5_flow_dv_modify_hdr_resource *resource,
+			 const struct rte_flow_action *action,
+			 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_set_dscp *conf =
+		(const struct rte_flow_action_set_dscp *)(action->conf);
+	struct rte_flow_item item = { .type = RTE_FLOW_ITEM_TYPE_IPV6 };
+	struct rte_flow_item_ipv6 ipv6;
+	struct rte_flow_item_ipv6 ipv6_mask;
+
+	memset(&ipv6, 0, sizeof(ipv6));
+	memset(&ipv6_mask, 0, sizeof(ipv6_mask));
+	/*
+	 * Even though the DSCP bits offset of IPv6 is not byte aligned,
+	 * rdma-core only accept the DSCP bits byte aligned start from
+	 * bit 0 to 5 as to be compatible with IPv4. No need to shift the
+	 * bits in IPv6 case as rdma-core requires byte aligned value.
+	 */
+	ipv6.hdr.vtc_flow = conf->dscp;
+	ipv6_mask.hdr.vtc_flow = RTE_IPV6_HDR_DSCP_MASK >> 22;
+	item.spec = &ipv6;
+	item.mask = &ipv6_mask;
+	return flow_dv_convert_modify_action(&item, modify_ipv6, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
 }
 
@@ -3439,6 +3517,74 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate the modify-header IPv4 DSCP actions.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the modify action.
+ * @param[in] item_flags
+ *   Holds the items detected.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_modify_ipv4_dscp(const uint64_t action_flags,
+					 const struct rte_flow_action *action,
+					 const uint64_t item_flags,
+					 struct rte_flow_error *error)
+{
+	int ret = 0;
+
+	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
+	if (!ret) {
+		if (!(item_flags & MLX5_FLOW_LAYER_L3_IPV4))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "no ipv4 item in pattern");
+	}
+	return ret;
+}
+
+/**
+ * Validate the modify-header IPv6 DSCP actions.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the modify action.
+ * @param[in] item_flags
+ *   Holds the items detected.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_modify_ipv6_dscp(const uint64_t action_flags,
+					 const struct rte_flow_action *action,
+					 const uint64_t item_flags,
+					 struct rte_flow_error *error)
+{
+	int ret = 0;
+
+	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
+	if (!ret) {
+		if (!(item_flags & MLX5_FLOW_LAYER_L3_IPV6))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "no ipv6 item in pattern");
+	}
+	return ret;
+}
+
+/**
  * Find existing modify-header resource or create and register a new one.
  *
  * @param dev[in, out]
@@ -4811,6 +4957,32 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_METER;
 			++actions_n;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
+			ret = flow_dv_validate_action_modify_ipv4_dscp
+							 (action_flags,
+							  actions,
+							  item_flags,
+							  error);
+			if (ret < 0)
+				return ret;
+			/* Count all modify-header actions as one action. */
+			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
+				++actions_n;
+			action_flags |= MLX5_FLOW_ACTION_SET_IPV4_DSCP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP:
+			ret = flow_dv_validate_action_modify_ipv6_dscp
+								(action_flags,
+								 actions,
+								 item_flags,
+								 error);
+			if (ret < 0)
+				return ret;
+			/* Count all modify-header actions as one action. */
+			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
+				++actions_n;
+			action_flags |= MLX5_FLOW_ACTION_SET_IPV6_DSCP;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -7106,6 +7278,18 @@ cnt_err:
 			dev_flow->dv.actions[actions_n++] =
 				flow->meter->mfts->meter_action;
 			action_flags |= MLX5_FLOW_ACTION_METER;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
+			if (flow_dv_convert_action_modify_ipv4_dscp(&mhdr_res,
+							      actions, error))
+				return -rte_errno;
+			action_flags |= MLX5_FLOW_ACTION_SET_IPV4_DSCP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP:
+			if (flow_dv_convert_action_modify_ipv6_dscp(&mhdr_res,
+							      actions, error))
+				return -rte_errno;
+			action_flags |= MLX5_FLOW_ACTION_SET_IPV6_DSCP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
