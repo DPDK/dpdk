@@ -168,6 +168,8 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(DEC_TCP_ACK, sizeof(rte_be32_t)),
 	MK_FLOW_ACTION(SET_TAG, sizeof(struct rte_flow_action_set_tag)),
 	MK_FLOW_ACTION(SET_META, sizeof(struct rte_flow_action_set_meta)),
+	MK_FLOW_ACTION(SET_IPV4_DSCP, sizeof(struct rte_flow_action_set_dscp)),
+	MK_FLOW_ACTION(SET_IPV6_DSCP, sizeof(struct rte_flow_action_set_dscp)),
 };
 
 int

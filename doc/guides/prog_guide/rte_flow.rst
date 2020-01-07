@@ -2558,6 +2558,46 @@ the other path depending on HW capability.
    | ``mask`` | bit-mask applies to "data" |
    +----------+----------------------------+
 
+Action: ``SET_IPV4_DSCP``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set IPv4 DSCP.
+
+Modify DSCP in IPv4 header.
+
+It must be used with RTE_FLOW_ITEM_TYPE_IPV4 in pattern.
+Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
+
+.. _table_rte_flow_action_set_ipv4_dscp:
+
+.. table:: SET_IPV4_DSCP
+
+   +-----------+---------------------------------+
+   | Field     | Value                           |
+   +===========+=================================+
+   | ``dscp``  | DSCP in low 6 bits, rest ignore |
+   +-----------+---------------------------------+
+
+Action: ``SET_IPV6_DSCP``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set IPv6 DSCP.
+
+Modify DSCP in IPv6 header.
+
+It must be used with RTE_FLOW_ITEM_TYPE_IPV6 in pattern.
+Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
+
+.. _table_rte_flow_action_set_ipv6_dscp:
+
+.. table:: SET_IPV6_DSCP
+
+   +-----------+---------------------------------+
+   | Field     | Value                           |
+   +===========+=================================+
+   | ``dscp``  | DSCP in low 6 bits, rest ignore |
+   +-----------+---------------------------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 

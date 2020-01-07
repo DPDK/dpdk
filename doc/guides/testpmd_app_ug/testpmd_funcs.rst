@@ -4228,6 +4228,14 @@ This section lists supported actions and their attributes, if any.
 
   - ``value {unsigned}``: Value to decrease TCP acknowledgment number by.
 
+- ``set_ipv4_dscp``: Set IPv4 DSCP value with specified value
+
+  - ``dscp_value {unsigned}``: The new DSCP value to be set
+
+- ``set_ipv6_dscp``: Set IPv6 DSCP value with specified value
+
+  - ``dscp_value {unsigned}``: The new DSCP value to be set
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 

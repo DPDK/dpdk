@@ -2004,6 +2004,26 @@ enum rte_flow_action_type {
 	 * See struct rte_flow_action_set_meta.
 	 */
 	RTE_FLOW_ACTION_TYPE_SET_META,
+
+	/**
+	 * Modify IPv4 DSCP in the outermost IP header.
+	 *
+	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV4,
+	 * then the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION error.
+	 *
+	 * See struct rte_flow_action_set_dscp.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP,
+
+	/**
+	 * Modify IPv6 DSCP in the outermost IP header.
+	 *
+	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV6,
+	 * then the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION error.
+	 *
+	 * See struct rte_flow_action_set_dscp.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP,
 };
 
 /**
@@ -2528,6 +2548,17 @@ struct rte_flow_action_set_tag {
 struct rte_flow_action_set_meta {
 	uint32_t data;
 	uint32_t mask;
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP
+ * RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP
+ *
+ * Set the DSCP value for IPv4/IPv6 header.
+ * DSCP in low 6 bits, rest ignored.
+ */
+struct rte_flow_action_set_dscp {
+	uint8_t dscp;
 };
 
 /* Mbuf dynamic field offset for metadata. */

@@ -326,6 +326,10 @@ enum index {
 	ACTION_SET_META,
 	ACTION_SET_META_DATA,
 	ACTION_SET_META_MASK,
+	ACTION_SET_IPV4_DSCP,
+	ACTION_SET_IPV4_DSCP_VALUE,
+	ACTION_SET_IPV6_DSCP,
+	ACTION_SET_IPV6_DSCP_VALUE,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -1087,6 +1091,8 @@ static const enum index next_action[] = {
 	ACTION_RAW_DECAP,
 	ACTION_SET_TAG,
 	ACTION_SET_META,
+	ACTION_SET_IPV4_DSCP,
+	ACTION_SET_IPV6_DSCP,
 	ZERO,
 };
 
@@ -1296,6 +1302,18 @@ static const enum index action_set_tag[] = {
 static const enum index action_set_meta[] = {
 	ACTION_SET_META_DATA,
 	ACTION_SET_META_MASK,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_set_ipv4_dscp[] = {
+	ACTION_SET_IPV4_DSCP_VALUE,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_set_ipv6_dscp[] = {
+	ACTION_SET_IPV6_DSCP_VALUE,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -3491,6 +3509,38 @@ static const struct token token_list[] = {
 		.next = NEXT(action_set_meta, NEXT_ENTRY(UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY
 			     (struct rte_flow_action_set_meta, mask)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_SET_IPV4_DSCP] = {
+		.name = "set_ipv4_dscp",
+		.help = "set DSCP value",
+		.priv = PRIV_ACTION(SET_IPV4_DSCP,
+			sizeof(struct rte_flow_action_set_dscp)),
+		.next = NEXT(action_set_ipv4_dscp),
+		.call = parse_vc,
+	},
+	[ACTION_SET_IPV4_DSCP_VALUE] = {
+		.name = "dscp_value",
+		.help = "new IPv4 DSCP value to set",
+		.next = NEXT(action_set_ipv4_dscp, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY
+			     (struct rte_flow_action_set_dscp, dscp)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_SET_IPV6_DSCP] = {
+		.name = "set_ipv6_dscp",
+		.help = "set DSCP value",
+		.priv = PRIV_ACTION(SET_IPV6_DSCP,
+			sizeof(struct rte_flow_action_set_dscp)),
+		.next = NEXT(action_set_ipv6_dscp),
+		.call = parse_vc,
+	},
+	[ACTION_SET_IPV6_DSCP_VALUE] = {
+		.name = "dscp_value",
+		.help = "new IPv6 DSCP value to set",
+		.next = NEXT(action_set_ipv6_dscp, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY
+			     (struct rte_flow_action_set_dscp, dscp)),
 		.call = parse_vc_conf,
 	},
 };
