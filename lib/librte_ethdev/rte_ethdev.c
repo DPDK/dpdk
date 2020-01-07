@@ -4039,7 +4039,7 @@ rte_eth_dev_callback_unregister(uint16_t port_id,
 			next = TAILQ_NEXT(cb, next);
 
 			if (cb->cb_fn != cb_fn || cb->event != event ||
-			    (cb->cb_arg != (void *)-1 && cb->cb_arg != cb_arg))
+			    (cb_arg != (void *)-1 && cb->cb_arg != cb_arg))
 				continue;
 
 			/*
