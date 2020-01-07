@@ -1302,7 +1302,7 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	}
 
 	rte_eth_dev_probing_finish(eth_dev);
-	return data->port_id;
+	return 0;
 
 error:
 	if (internal) {
@@ -1455,8 +1455,10 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 	if (dev->device.numa_node == SOCKET_ID_ANY)
 		dev->device.numa_node = rte_socket_id();
 
-	eth_dev_vhost_create(dev, iface_name, queues, dev->device.numa_node,
-		flags, disable_flags);
+	ret = eth_dev_vhost_create(dev, iface_name, queues,
+				   dev->device.numa_node, flags, disable_flags);
+	if (ret == -1)
+		VHOST_LOG(ERR, "Failed to create %s\n", name);
 
 out_free:
 	rte_kvargs_free(kvlist);
