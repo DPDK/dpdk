@@ -912,7 +912,7 @@ F: drivers/net/null/
 F: doc/guides/nics/features/null.ini
 
 Fail-safe PMD
-M: Gaetan Rivet <gaetan.rivet@6wind.com>
+M: Gaetan Rivet <grive@u256.net>
 F: drivers/net/failsafe/
 F: doc/guides/nics/fail_safe.rst
 F: doc/guides/nics/features/failsafe.ini
@@ -1391,7 +1391,7 @@ F: app/test/test_rcu*
 F: doc/guides/prog_guide/rcu_lib.rst
 
 PCI
-M: Gaetan Rivet <gaetan.rivet@6wind.com>
+M: Gaetan Rivet <grive@u256.net>
 F: lib/librte_pci/
 
 Power management
