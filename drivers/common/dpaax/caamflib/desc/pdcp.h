@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause or GPL-2.0+
  * Copyright 2008-2013 Freescale Semiconductor, Inc.
- * Copyright 2019 NXP
+ * Copyright 2019-2020 NXP
  */
 
 #ifndef __DESC_PDCP_H__
@@ -3528,6 +3528,15 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 				KEY(p, KEY2, authdata->key_enc_flags,
 				    (uint64_t)authdata->key, authdata->keylen,
 				    INLINE_KEY(authdata));
+			else if (authdata && authdata->algtype == 0) {
+				err = pdcp_insert_uplane_with_int_op(p, swap,
+						cipherdata, authdata,
+						sn_size, era_2_sw_hfn_ovrd,
+						OP_TYPE_DECAP_PROTOCOL);
+				if (err)
+					return err;
+				break;
+			}
 
 			/* Insert Cipher Key */
 			KEY(p, KEY1, cipherdata->key_enc_flags,
