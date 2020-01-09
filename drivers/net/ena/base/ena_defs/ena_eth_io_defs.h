@@ -215,7 +215,7 @@ struct ena_eth_io_rx_cdesc_base {
 	 * 16 : l4_csum_checked - L4 checksum was verified
 	 *    (could be OK or error), when cleared the status of
 	 *    checksum is unknown
-	 * 23:17 : reserved16
+	 * 23:17 : reserved17 - MBZ
 	 * 24 : phase
 	 * 25 : l3_csum2 - second checksum engine result
 	 * 26 : first - Indicates first descriptor in
@@ -238,7 +238,9 @@ struct ena_eth_io_rx_cdesc_base {
 
 	uint16_t sub_qid;
 
-	uint16_t reserved;
+	uint8_t offset;
+
+	uint8_t reserved;
 };
 
 /* 8-word format */
@@ -938,4 +940,4 @@ static inline void set_ena_eth_io_numa_node_cfg_reg_enabled(struct ena_eth_io_nu
 }
 
 #endif /* !defined(DEFS_LINUX_MAINLINE) */
-#endif /*_ENA_ETH_IO_H_ */
+#endif /* _ENA_ETH_IO_H_ */

@@ -1169,7 +1169,7 @@ static int ena_queue_start(struct ena_ring *ring)
 
 	if (ring->type == ENA_RING_TYPE_TX) {
 		ring->tx_stats.available_desc =
-			ena_com_free_desc(ring->ena_com_io_sq);
+			ena_com_free_q_entries(ring->ena_com_io_sq);
 		return 0;
 	}
 
@@ -2357,7 +2357,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_ring->tx_stats.bytes += total_length;
 	}
 	tx_ring->tx_stats.available_desc =
-		ena_com_free_desc(tx_ring->ena_com_io_sq);
+		ena_com_free_q_entries(tx_ring->ena_com_io_sq);
 
 	/* If there are ready packets to be xmitted... */
 	if (sent_idx > 0) {
@@ -2392,7 +2392,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			break;
 	}
 	tx_ring->tx_stats.available_desc =
-		ena_com_free_desc(tx_ring->ena_com_io_sq);
+		ena_com_free_q_entries(tx_ring->ena_com_io_sq);
 
 	if (total_tx_descs > 0) {
 		/* acknowledge completion of sent packets */

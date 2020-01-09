@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 #include <errno.h>
 
@@ -170,6 +171,7 @@ do {                                                                   \
 #define ena_wait_event_t ena_wait_queue_t
 #define ENA_MIGHT_SLEEP()
 
+#define ena_time_t uint64_t
 #define ENA_TIME_EXPIRE(timeout)  (timeout < rte_get_timer_cycles())
 #define ENA_GET_SYSTEM_TIMEOUT(timeout_us)                             \
        (timeout_us * rte_get_timer_hz() / 1000000 + rte_get_timer_cycles())
@@ -232,7 +234,8 @@ extern uint32_t ena_alloc_cnt;
 	} while (0)
 
 #define ENA_MEM_ALLOC(dmadev, size) rte_zmalloc(NULL, size, 1)
-#define ENA_MEM_FREE(dmadev, ptr) ({ENA_TOUCH(dmadev); rte_free(ptr); })
+#define ENA_MEM_FREE(dmadev, ptr, size)					\
+	({ ENA_TOUCH(dmadev); ENA_TOUCH(size); rte_free(ptr); })
 
 #define ENA_DB_SYNC(mem_handle) ((void)mem_handle)
 
@@ -260,6 +263,7 @@ extern uint32_t ena_alloc_cnt;
 #define might_sleep()
 
 #define prefetch(x) rte_prefetch0(x)
+#define prefetchw(x) prefetch(x)
 
 #define lower_32_bits(x) ((uint32_t)(x))
 #define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
@@ -289,5 +293,7 @@ extern uint32_t ena_alloc_cnt;
 	} while(0)
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+
+#include "ena_includes.h"
 
 #endif /* DPDK_ENA_COM_ENA_PLAT_DPDK_H_ */
