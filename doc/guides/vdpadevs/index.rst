@@ -12,3 +12,4 @@ which can be used from an application through vhost API.
     :numbered:
 
     features_overview
+    ifc

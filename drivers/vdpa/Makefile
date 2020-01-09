@@ -3,6 +3,8 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-# DIRS-$(<configuration>) += <directory>
+ifeq ($(CONFIG_RTE_EAL_VFIO),y)
+DIRS-$(CONFIG_RTE_LIBRTE_IFC_PMD) += ifc
+endif
 
 include $(RTE_SDK)/mk/rte.subdir.mk

@@ -679,13 +679,6 @@ T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/iavf/
 F: doc/guides/nics/features/iavf*.ini
 
-Intel ifc
-M: Xiao Wang <xiao.w.wang@intel.com>
-T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/ifc/
-F: doc/guides/nics/ifc.rst
-F: doc/guides/nics/features/ifc*.ini
-
 Intel ice
 M: Qiming Yang <qiming.yang@intel.com>
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
@@ -1092,6 +1085,12 @@ F: doc/guides/compressdevs/features/zlib.ini
 vDPA Drivers
 ------------
 T: git://dpdk.org/next/dpdk-next-virtio
+
+Intel ifc
+M: Xiao Wang <xiao.w.wang@intel.com>
+F: drivers/vdpa/ifc/
+F: doc/guides/vdpadevs/ifc.rst
+F: doc/guides/vdpadevs/features/ifcvf.ini
 
 
 Eventdev Drivers

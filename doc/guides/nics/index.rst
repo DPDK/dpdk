@@ -31,7 +31,6 @@ Network Interface Controller Drivers
     hns3
     i40e
     ice
-    ifc
     igb
     ipn3ke
     ixgbe
