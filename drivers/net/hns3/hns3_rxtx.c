@@ -30,7 +30,7 @@
 #include "hns3_logs.h"
 
 #define HNS3_CFG_DESC_NUM(num)	((num) / 8 - 1)
-#define DEFAULT_RX_FREE_THRESH	16
+#define DEFAULT_RX_FREE_THRESH	32
 
 static void
 hns3_rx_queue_release_mbufs(struct hns3_rx_queue *rxq)
@@ -558,6 +558,7 @@ hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 
 	rxq->next_to_use = 0;
 	rxq->next_to_clean = 0;
+	rxq->nb_rx_hold = 0;
 	hns3_init_rx_queue_hw(rxq);
 
 	return 0;
@@ -572,6 +573,7 @@ hns3_fake_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 	rxq = (struct hns3_rx_queue *)hw->fkq_data.rx_queues[idx];
 	rxq->next_to_use = 0;
 	rxq->next_to_clean = 0;
+	rxq->nb_rx_hold = 0;
 	hns3_init_rx_queue_hw(rxq);
 }
 
@@ -1525,7 +1527,13 @@ pkt_err:
 	rxq->next_to_clean = rx_id;
 	rxq->pkt_first_seg = first_seg;
 	rxq->pkt_last_seg = last_seg;
-	hns3_clean_rx_buffers(rxq, nb_rx_bd);
+
+	nb_rx_bd = nb_rx_bd + rxq->nb_rx_hold;
+	if (nb_rx_bd > rxq->rx_free_thresh) {
+		hns3_clean_rx_buffers(rxq, nb_rx_bd);
+		nb_rx_bd = 0;
+	}
+	rxq->nb_rx_hold = nb_rx_bd;
 
 	return nb_rx;
 }
