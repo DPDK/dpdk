@@ -2145,9 +2145,6 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
  *   Pointer to TX queue structure.
  * @param loc
  *   Pointer to burst routine local context.
- * @param multi,
- *   Routine is called from multi-segment sending loop,
- *   do not correct the elts_head according to the pkts_copy.
  * @param olx
  *   Configured Tx offloads mask. It is fully defined at
  *   compile time and may be used for optimization.
@@ -2155,13 +2152,12 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 static __rte_always_inline void
 mlx5_tx_request_completion(struct mlx5_txq_data *restrict txq,
 			   struct mlx5_txq_local *restrict loc,
-			   bool multi,
 			   unsigned int olx)
 {
 	uint16_t head = txq->elts_head;
 	unsigned int part;
 
-	part = (MLX5_TXOFF_CONFIG(INLINE) || multi) ?
+	part = MLX5_TXOFF_CONFIG(INLINE) ?
 	       0 : loc->pkts_sent - loc->pkts_copy;
 	head += part;
 	if ((uint16_t)(head - txq->elts_comp) >= MLX5_TX_COMP_THRESH ||
@@ -3120,8 +3116,6 @@ mlx5_tx_packet_multi_tso(struct mlx5_txq_data *restrict txq,
 	wqe->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
-	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, true, olx);
 	return MLX5_TXCMP_CODE_MULTI;
 }
 
@@ -3230,8 +3224,6 @@ mlx5_tx_packet_multi_send(struct mlx5_txq_data *restrict txq,
 	} while (true);
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
-	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, true, olx);
 	return MLX5_TXCMP_CODE_MULTI;
 }
 
@@ -3388,8 +3380,6 @@ do_align:
 	wqe->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
-	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, true, olx);
 	return MLX5_TXCMP_CODE_MULTI;
 }
 
@@ -3599,8 +3589,6 @@ mlx5_tx_burst_tso(struct mlx5_txq_data *restrict txq,
 		--loc->elts_free;
 		++loc->pkts_sent;
 		--pkts_n;
-		/* Request CQE generation if limits are reached. */
-		mlx5_tx_request_completion(txq, loc, false, olx);
 		if (unlikely(!pkts_n || !loc->elts_free || !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
 		loc->mbuf = *pkts++;
@@ -3750,7 +3738,7 @@ mlx5_tx_sdone_empw(struct mlx5_txq_data *restrict txq,
 		   struct mlx5_txq_local *restrict loc,
 		   unsigned int ds,
 		   unsigned int slen,
-		   unsigned int olx)
+		   unsigned int olx __rte_unused)
 {
 	assert(!MLX5_TXOFF_CONFIG(INLINE));
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -3765,8 +3753,6 @@ mlx5_tx_sdone_empw(struct mlx5_txq_data *restrict txq,
 	loc->wqe_last->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
 	txq->wqe_ci += (ds + 3) / 4;
 	loc->wqe_free -= (ds + 3) / 4;
-	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, false, olx);
 }
 
 /*
@@ -3809,8 +3795,6 @@ mlx5_tx_idone_empw(struct mlx5_txq_data *restrict txq,
 	loc->wqe_last->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | len);
 	txq->wqe_ci += (len + 3) / 4;
 	loc->wqe_free -= (len + 3) / 4;
-	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, loc, false, olx);
 }
 
 /**
@@ -4011,8 +3995,6 @@ next_empw:
 		txq->wqe_ci += (2 + part + 3) / 4;
 		loc->wqe_free -= (2 + part + 3) / 4;
 		pkts_n -= part;
-		/* Request CQE generation if limits are reached. */
-		mlx5_tx_request_completion(txq, loc, false, olx);
 		if (unlikely(!pkts_n || !loc->elts_free || !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
 		loc->mbuf = *pkts++;
@@ -4496,8 +4478,6 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
 		}
 		++loc->pkts_sent;
 		--pkts_n;
-		/* Request CQE generation if limits are reached. */
-		mlx5_tx_request_completion(txq, loc, false, olx);
 		if (unlikely(!pkts_n || !loc->elts_free || !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
 		loc->mbuf = *pkts++;
@@ -4776,6 +4756,8 @@ enter_send_single:
 	/* Take a shortcut if nothing is sent. */
 	if (unlikely(loc.pkts_sent == loc.pkts_loop))
 		goto burst_exit;
+	/* Request CQE generation if limits are reached. */
+	mlx5_tx_request_completion(txq, &loc, olx);
 	/*
 	 * Ring QP doorbell immediately after WQE building completion
 	 * to improve latencies. The pure software related data treatment
