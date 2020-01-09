@@ -215,12 +215,12 @@ hns3_cmd_csq_clean(struct hns3_hw *hw)
 	head = hns3_read_dev(hw, HNS3_CMDQ_TX_HEAD_REG);
 
 	if (!is_valid_csq_clean_head(csq, head)) {
-		struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 		hns3_err(hw, "wrong cmd head (%u, %u-%u)", head,
 			    csq->next_to_use, csq->next_to_clean);
-		rte_atomic16_set(&hw->reset.disable_cmd, 1);
-
-		hns3_schedule_delayed_reset(hns);
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			rte_atomic16_set(&hw->reset.disable_cmd, 1);
+			hns3_schedule_delayed_reset(HNS3_DEV_HW_TO_ADAPTER(hw));
+		}
 
 		return -EIO;
 	}
