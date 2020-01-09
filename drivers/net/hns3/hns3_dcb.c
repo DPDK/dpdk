@@ -578,17 +578,33 @@ hns3_dcb_pri_shaper_cfg(struct hns3_hw *hw)
 }
 
 void
-hns3_tc_queue_mapping_cfg(struct hns3_hw *hw)
+hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
+{
+	uint16_t rx_qnum_per_tc;
+
+	rx_qnum_per_tc = nb_rx_q / hw->num_tc;
+	rx_qnum_per_tc = RTE_MIN(hw->rss_size_max, rx_qnum_per_tc);
+	if (hw->alloc_rss_size != rx_qnum_per_tc) {
+		hns3_info(hw, "rss size changes from %u to %u",
+			  hw->alloc_rss_size, rx_qnum_per_tc);
+		hw->alloc_rss_size = rx_qnum_per_tc;
+	}
+	hw->used_rx_queues = hw->num_tc * hw->alloc_rss_size;
+}
+
+void
+hns3_tc_queue_mapping_cfg(struct hns3_hw *hw, uint16_t nb_queue)
 {
 	struct hns3_tc_queue_info *tc_queue;
 	uint8_t i;
 
+	hw->tx_qnum_per_tc = nb_queue / hw->num_tc;
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		tc_queue = &hw->tc_queue[i];
 		if (hw->hw_tc_map & BIT(i) && i < hw->num_tc) {
 			tc_queue->enable = true;
-			tc_queue->tqp_offset = i * hw->alloc_rss_size;
-			tc_queue->tqp_count = hw->alloc_rss_size;
+			tc_queue->tqp_offset = i * hw->tx_qnum_per_tc;
+			tc_queue->tqp_count = hw->tx_qnum_per_tc;
 			tc_queue->tc = i;
 		} else {
 			/* Set to default queue if TC is disable */
@@ -598,30 +614,22 @@ hns3_tc_queue_mapping_cfg(struct hns3_hw *hw)
 			tc_queue->tc = 0;
 		}
 	}
+	hw->used_tx_queues = hw->num_tc * hw->tx_qnum_per_tc;
 }
 
 static void
-hns3_dcb_update_tc_queue_mapping(struct hns3_hw *hw, uint16_t queue_num)
+hns3_dcb_update_tc_queue_mapping(struct hns3_hw *hw, uint16_t nb_rx_q,
+				 uint16_t nb_tx_q)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_pf *pf = &hns->pf;
-	uint16_t tqpnum_per_tc;
-	uint16_t alloc_tqps;
 
-	alloc_tqps = RTE_MIN(hw->tqps_num, queue_num);
-	hw->num_tc = RTE_MIN(alloc_tqps, hw->dcb_info.num_tc);
-	tqpnum_per_tc = RTE_MIN(hw->rss_size_max, alloc_tqps / hw->num_tc);
+	hw->num_tc = hw->dcb_info.num_tc;
+	hns3_set_rss_size(hw, nb_rx_q);
+	hns3_tc_queue_mapping_cfg(hw, nb_tx_q);
 
-	if (hw->alloc_rss_size != tqpnum_per_tc) {
-		PMD_INIT_LOG(INFO, "rss size changes from %d to %d",
-			     hw->alloc_rss_size, tqpnum_per_tc);
-		hw->alloc_rss_size = tqpnum_per_tc;
-	}
-	hw->alloc_tqps = hw->num_tc * hw->alloc_rss_size;
-
-	hns3_tc_queue_mapping_cfg(hw);
-
-	memcpy(pf->prio_tc, hw->dcb_info.prio_tc, HNS3_MAX_USER_PRIO);
+	if (!hns->is_vf)
+		memcpy(pf->prio_tc, hw->dcb_info.prio_tc, HNS3_MAX_USER_PRIO);
 }
 
 int
@@ -1309,20 +1317,35 @@ hns3_dcb_info_cfg(struct hns3_adapter *hns)
 	for (i = 0; i < HNS3_MAX_USER_PRIO; i++)
 		hw->dcb_info.prio_tc[i] = dcb_rx_conf->dcb_tc[i];
 
-	hns3_dcb_update_tc_queue_mapping(hw, hw->data->nb_rx_queues);
+	hns3_dcb_update_tc_queue_mapping(hw, hw->data->nb_rx_queues,
+					 hw->data->nb_tx_queues);
 }
 
-static void
+static int
 hns3_dcb_info_update(struct hns3_adapter *hns, uint8_t num_tc)
 {
 	struct hns3_pf *pf = &hns->pf;
 	struct hns3_hw *hw = &hns->hw;
+	uint16_t nb_rx_q = hw->data->nb_rx_queues;
+	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	uint8_t bit_map = 0;
 	uint8_t i;
 
 	if (pf->tx_sch_mode != HNS3_FLAG_TC_BASE_SCH_MODE &&
 	    hw->dcb_info.num_pg != 1)
-		return;
+		return -EINVAL;
+
+	if (nb_rx_q < num_tc) {
+		hns3_err(hw, "number of Rx queues(%d) is less than tcs(%d).",
+			 nb_rx_q, num_tc);
+		return -EINVAL;
+	}
+
+	if (nb_tx_q < num_tc) {
+		hns3_err(hw, "number of Tx queues(%d) is less than tcs(%d).",
+			 nb_tx_q, num_tc);
+		return -EINVAL;
+	}
 
 	/* Currently not support uncontinuous tc */
 	hw->dcb_info.num_tc = num_tc;
@@ -1333,10 +1356,10 @@ hns3_dcb_info_update(struct hns3_adapter *hns, uint8_t num_tc)
 		bit_map = 1;
 		hw->dcb_info.num_tc = 1;
 	}
-
 	hw->hw_tc_map = bit_map;
-
 	hns3_dcb_info_cfg(hns);
+
+	return 0;
 }
 
 static int
@@ -1422,10 +1445,15 @@ hns3_dcb_configure(struct hns3_adapter *hns)
 
 	hns3_dcb_cfg_validate(hns, &num_tc, &map_changed);
 	if (map_changed || rte_atomic16_read(&hw->reset.resetting)) {
-		hns3_dcb_info_update(hns, num_tc);
+		ret = hns3_dcb_info_update(hns, num_tc);
+		if (ret) {
+			hns3_err(hw, "dcb info update failed: %d", ret);
+			return ret;
+		}
+
 		ret = hns3_dcb_hw_configure(hns);
 		if (ret) {
-			hns3_err(hw, "dcb sw configure fails: %d", ret);
+			hns3_err(hw, "dcb sw configure failed: %d", ret);
 			return ret;
 		}
 	}
@@ -1479,7 +1507,8 @@ hns3_dcb_init(struct hns3_hw *hw)
 			hns3_err(hw, "dcb info init failed: %d", ret);
 			return ret;
 		}
-		hns3_dcb_update_tc_queue_mapping(hw, hw->tqps_num);
+		hns3_dcb_update_tc_queue_mapping(hw, hw->tqps_num,
+						 hw->tqps_num);
 	}
 
 	/*
@@ -1502,10 +1531,11 @@ static int
 hns3_update_queue_map_configure(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
-	uint16_t queue_num = hw->data->nb_rx_queues;
+	uint16_t nb_rx_q = hw->data->nb_rx_queues;
+	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	int ret;
 
-	hns3_dcb_update_tc_queue_mapping(hw, queue_num);
+	hns3_dcb_update_tc_queue_mapping(hw, nb_rx_q, nb_tx_q);
 	ret = hns3_q_to_qs_map(hw);
 	if (ret) {
 		hns3_err(hw, "failed to map nq to qs! ret = %d", ret);

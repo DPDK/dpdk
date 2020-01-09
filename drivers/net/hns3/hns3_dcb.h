@@ -159,7 +159,9 @@ hns3_fc_enable(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf);
 int
 hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf);
 
-void hns3_tc_queue_mapping_cfg(struct hns3_hw *hw);
+void hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q);
+
+void hns3_tc_queue_mapping_cfg(struct hns3_hw *hw, uint16_t nb_queue);
 
 int hns3_dcb_cfg_update(struct hns3_adapter *hns);
 

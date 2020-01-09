@@ -2061,10 +2061,11 @@ hns3_bind_ring_with_vector(struct rte_eth_dev *dev, uint8_t vector_id,
 static int
 hns3_dev_configure(struct rte_eth_dev *dev)
 {
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
+	struct hns3_adapter *hns = dev->data->dev_private;
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 	enum rte_eth_rx_mq_mode mq_mode = conf->rxmode.mq_mode;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	uint16_t nb_rx_q = dev->data->nb_rx_queues;
 	uint16_t nb_tx_q = dev->data->nb_tx_queues;
 	struct rte_eth_rss_conf rss_conf;
@@ -2072,23 +2073,28 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	int ret;
 
 	/*
-	 * Hardware does not support where the number of rx and tx queues is
-	 * not equal in hip08.
+	 * Hardware does not support individually enable/disable/reset the Tx or
+	 * Rx queue in hns3 network engine. Driver must enable/disable/reset Tx
+	 * and Rx queues at the same time. When the numbers of Tx queues
+	 * allocated by upper applications are not equal to the numbers of Rx
+	 * queues, driver needs to setup fake Tx or Rx queues to adjust numbers
+	 * of Tx/Rx queues. otherwise, network engine can not work as usual. But
+	 * these fake queues are imperceptible, and can not be used by upper
+	 * applications.
 	 */
-	if (nb_rx_q != nb_tx_q) {
-		hns3_err(hw,
-			 "nb_rx_queues(%u) not equal with nb_tx_queues(%u)! "
-			 "Hardware does not support this configuration!",
-			 nb_rx_q, nb_tx_q);
-		return -EINVAL;
-	}
-
-	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
-		hns3_err(hw, "setting link speed/duplex not supported");
-		return -EINVAL;
+	ret = hns3_set_fake_rx_or_tx_queues(dev, nb_rx_q, nb_tx_q);
+	if (ret) {
+		hns3_err(hw, "Failed to set rx/tx fake queues: %d", ret);
+		return ret;
 	}
 
 	hw->adapter_state = HNS3_NIC_CONFIGURING;
+	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
+		hns3_err(hw, "setting link speed/duplex not supported");
+		ret = -EINVAL;
+		goto cfg_err;
+	}
+
 	if ((uint32_t)mq_mode & ETH_MQ_RX_DCB_FLAG) {
 		ret = hns3_check_dcb_cfg(dev);
 		if (ret)
@@ -2134,7 +2140,9 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 
 cfg_err:
+	(void)hns3_set_fake_rx_or_tx_queues(dev, 0, 0);
 	hw->adapter_state = HNS3_NIC_INITIALIZED;
+
 	return ret;
 }
 
@@ -4084,7 +4092,7 @@ hns3_map_rx_interrupt(struct rte_eth_dev *dev)
 	/* check and configure queue intr-vector mapping */
 	if (rte_intr_cap_multiple(intr_handle) ||
 	    !RTE_ETH_DEV_SRIOV(dev).active) {
-		intr_vector = dev->data->nb_rx_queues;
+		intr_vector = hw->used_rx_queues;
 		/* creates event fd for each intr vector when MSIX is used */
 		if (rte_intr_efd_enable(intr_handle, intr_vector))
 			return -EINVAL;
@@ -4092,10 +4100,10 @@ hns3_map_rx_interrupt(struct rte_eth_dev *dev)
 	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
 		intr_handle->intr_vec =
 			rte_zmalloc("intr_vec",
-				    dev->data->nb_rx_queues * sizeof(int), 0);
+				    hw->used_rx_queues * sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
 			hns3_err(hw, "Failed to allocate %d rx_queues"
-				     " intr_vec", dev->data->nb_rx_queues);
+				     " intr_vec", hw->used_rx_queues);
 			ret = -ENOMEM;
 			goto alloc_intr_vec_error;
 		}
@@ -4106,7 +4114,7 @@ hns3_map_rx_interrupt(struct rte_eth_dev *dev)
 		base = RTE_INTR_VEC_RXTX_OFFSET;
 	}
 	if (rte_intr_dp_is_en(intr_handle)) {
-		for (q_id = 0; q_id < dev->data->nb_rx_queues; q_id++) {
+		for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
 			ret = hns3_bind_ring_with_vector(dev, vec, true, q_id);
 			if (ret)
 				goto bind_vector_error;
@@ -4190,6 +4198,8 @@ hns3_unmap_rx_interrupt(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
 	uint8_t base = 0;
 	uint8_t vec = 0;
 	uint16_t q_id;
@@ -4203,7 +4213,7 @@ hns3_unmap_rx_interrupt(struct rte_eth_dev *dev)
 		base = RTE_INTR_VEC_RXTX_OFFSET;
 	}
 	if (rte_intr_dp_is_en(intr_handle)) {
-		for (q_id = 0; q_id < dev->data->nb_rx_queues; q_id++) {
+		for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
 			(void)hns3_bind_ring_with_vector(dev, vec, false, q_id);
 			if (vec < base + intr_handle->nb_efd - 1)
 				vec++;
@@ -4446,15 +4456,13 @@ hns3_get_dcb_info(struct rte_eth_dev *dev, struct rte_eth_dcb_info *dcb_info)
 	for (i = 0; i < dcb_info->nb_tcs; i++)
 		dcb_info->tc_bws[i] = hw->dcb_info.pg_info[0].tc_dwrr[i];
 
-	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
-		dcb_info->tc_queue.tc_rxq[0][i].base =
-					hw->tc_queue[i].tqp_offset;
+	for (i = 0; i < hw->num_tc; i++) {
+		dcb_info->tc_queue.tc_rxq[0][i].base = hw->alloc_rss_size * i;
 		dcb_info->tc_queue.tc_txq[0][i].base =
-					hw->tc_queue[i].tqp_offset;
-		dcb_info->tc_queue.tc_rxq[0][i].nb_queue =
-					hw->tc_queue[i].tqp_count;
+						hw->tc_queue[i].tqp_offset;
+		dcb_info->tc_queue.tc_rxq[0][i].nb_queue = hw->alloc_rss_size;
 		dcb_info->tc_queue.tc_txq[0][i].nb_queue =
-					hw->tc_queue[i].tqp_count;
+						hw->tc_queue[i].tqp_count;
 	}
 	rte_spinlock_unlock(&hw->lock);
 

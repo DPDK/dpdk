@@ -37,6 +37,7 @@ hns3_rx_queue_release_mbufs(struct hns3_rx_queue *rxq)
 {
 	uint16_t i;
 
+	/* Note: Fake rx queue will not enter here */
 	if (rxq->sw_ring) {
 		for (i = 0; i < rxq->nb_rx_desc; i++) {
 			if (rxq->sw_ring[i].mbuf) {
@@ -52,6 +53,7 @@ hns3_tx_queue_release_mbufs(struct hns3_tx_queue *txq)
 {
 	uint16_t i;
 
+	/* Note: Fake rx queue will not enter here */
 	if (txq->sw_ring) {
 		for (i = 0; i < txq->nb_tx_desc; i++) {
 			if (txq->sw_ring[i].mbuf) {
@@ -120,22 +122,115 @@ hns3_dev_tx_queue_release(void *queue)
 	rte_spinlock_unlock(&hns->hw.lock);
 }
 
-void
-hns3_free_all_queues(struct rte_eth_dev *dev)
+static void
+hns3_fake_rx_queue_release(struct hns3_rx_queue *queue)
 {
+	struct hns3_rx_queue *rxq = queue;
+	struct hns3_adapter *hns;
+	struct hns3_hw *hw;
+	uint16_t idx;
+
+	if (rxq == NULL)
+		return;
+
+	hns = rxq->hns;
+	hw = &hns->hw;
+	idx = rxq->queue_id;
+	if (hw->fkq_data.rx_queues[idx]) {
+		hns3_rx_queue_release(hw->fkq_data.rx_queues[idx]);
+		hw->fkq_data.rx_queues[idx] = NULL;
+	}
+
+	/* free fake rx queue arrays */
+	if (idx == (hw->fkq_data.nb_fake_rx_queues - 1)) {
+		hw->fkq_data.nb_fake_rx_queues = 0;
+		rte_free(hw->fkq_data.rx_queues);
+		hw->fkq_data.rx_queues = NULL;
+	}
+}
+
+static void
+hns3_fake_tx_queue_release(struct hns3_tx_queue *queue)
+{
+	struct hns3_tx_queue *txq = queue;
+	struct hns3_adapter *hns;
+	struct hns3_hw *hw;
+	uint16_t idx;
+
+	if (txq == NULL)
+		return;
+
+	hns = txq->hns;
+	hw = &hns->hw;
+	idx = txq->queue_id;
+	if (hw->fkq_data.tx_queues[idx]) {
+		hns3_tx_queue_release(hw->fkq_data.tx_queues[idx]);
+		hw->fkq_data.tx_queues[idx] = NULL;
+	}
+
+	/* free fake tx queue arrays */
+	if (idx == (hw->fkq_data.nb_fake_tx_queues - 1)) {
+		hw->fkq_data.nb_fake_tx_queues = 0;
+		rte_free(hw->fkq_data.tx_queues);
+		hw->fkq_data.tx_queues = NULL;
+	}
+}
+
+static void
+hns3_free_rx_queues(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_fake_queue_data *fkq_data;
+	struct hns3_hw *hw = &hns->hw;
+	uint16_t nb_rx_q;
 	uint16_t i;
 
-	if (dev->data->rx_queues)
-		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+	nb_rx_q = hw->data->nb_rx_queues;
+	for (i = 0; i < nb_rx_q; i++) {
+		if (dev->data->rx_queues[i]) {
 			hns3_rx_queue_release(dev->data->rx_queues[i]);
 			dev->data->rx_queues[i] = NULL;
 		}
+	}
 
-	if (dev->data->tx_queues)
-		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+	/* Free fake Rx queues */
+	fkq_data = &hw->fkq_data;
+	for (i = 0; i < fkq_data->nb_fake_rx_queues; i++) {
+		if (fkq_data->rx_queues[i])
+			hns3_fake_rx_queue_release(fkq_data->rx_queues[i]);
+	}
+}
+
+static void
+hns3_free_tx_queues(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_fake_queue_data *fkq_data;
+	struct hns3_hw *hw = &hns->hw;
+	uint16_t nb_tx_q;
+	uint16_t i;
+
+	nb_tx_q = hw->data->nb_tx_queues;
+	for (i = 0; i < nb_tx_q; i++) {
+		if (dev->data->tx_queues[i]) {
 			hns3_tx_queue_release(dev->data->tx_queues[i]);
 			dev->data->tx_queues[i] = NULL;
 		}
+	}
+
+	/* Free fake Tx queues */
+	fkq_data = &hw->fkq_data;
+	for (i = 0; i < fkq_data->nb_fake_tx_queues; i++) {
+		if (fkq_data->tx_queues[i])
+			hns3_fake_tx_queue_release(fkq_data->tx_queues[i]);
+	}
+}
+
+void
+hns3_free_all_queues(struct rte_eth_dev *dev)
+{
+	hns3_free_rx_queues(dev);
+	hns3_free_tx_queues(dev);
 }
 
 static int
@@ -223,17 +318,26 @@ hns3_init_tx_queue_hw(struct hns3_tx_queue *txq)
 static void
 hns3_enable_all_queues(struct hns3_hw *hw, bool en)
 {
+	uint16_t nb_rx_q = hw->data->nb_rx_queues;
+	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	struct hns3_rx_queue *rxq;
 	struct hns3_tx_queue *txq;
 	uint32_t rcb_reg;
 	int i;
 
-	for (i = 0; i < hw->data->nb_rx_queues; i++) {
-		rxq = hw->data->rx_queues[i];
-		txq = hw->data->tx_queues[i];
+	for (i = 0; i < hw->cfg_max_queues; i++) {
+		if (i < nb_rx_q)
+			rxq = hw->data->rx_queues[i];
+		else
+			rxq = hw->fkq_data.rx_queues[i - nb_rx_q];
+		if (i < nb_tx_q)
+			txq = hw->data->tx_queues[i];
+		else
+			txq = hw->fkq_data.tx_queues[i - nb_tx_q];
 		if (rxq == NULL || txq == NULL ||
 		    (en && (rxq->rx_deferred_start || txq->tx_deferred_start)))
 			continue;
+
 		rcb_reg = hns3_read_dev(rxq, HNS3_RING_EN_REG);
 		if (en)
 			rcb_reg |= BIT(HNS3_RING_EN_B);
@@ -382,10 +486,9 @@ int
 hns3_reset_all_queues(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
-	int ret;
-	uint16_t i;
+	int ret, i;
 
-	for (i = 0; i < hw->data->nb_rx_queues; i++) {
+	for (i = 0; i < hw->cfg_max_queues; i++) {
 		ret = hns3_reset_queue(hns, i);
 		if (ret) {
 			hns3_err(hw, "Failed to reset No.%d queue: %d", i, ret);
@@ -445,12 +548,11 @@ hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 
 	PMD_INIT_FUNC_TRACE();
 
-	rxq = hw->data->rx_queues[idx];
-
+	rxq = (struct hns3_rx_queue *)hw->data->rx_queues[idx];
 	ret = hns3_alloc_rx_queue_mbufs(hw, rxq);
 	if (ret) {
 		hns3_err(hw, "Failed to alloc mbuf for No.%d rx queue: %d",
-			    idx, ret);
+			 idx, ret);
 		return ret;
 	}
 
@@ -462,14 +564,23 @@ hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 }
 
 static void
-hns3_dev_tx_queue_start(struct hns3_adapter *hns, uint16_t idx)
+hns3_fake_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 {
 	struct hns3_hw *hw = &hns->hw;
-	struct hns3_tx_queue *txq;
+	struct hns3_rx_queue *rxq;
+
+	rxq = (struct hns3_rx_queue *)hw->fkq_data.rx_queues[idx];
+	rxq->next_to_use = 0;
+	rxq->next_to_clean = 0;
+	hns3_init_rx_queue_hw(rxq);
+}
+
+static void
+hns3_init_tx_queue(struct hns3_tx_queue *queue)
+{
+	struct hns3_tx_queue *txq = queue;
 	struct hns3_desc *desc;
 	int i;
-
-	txq = hw->data->tx_queues[idx];
 
 	/* Clear tx bd */
 	desc = txq->tx_ring;
@@ -480,8 +591,28 @@ hns3_dev_tx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 
 	txq->next_to_use = 0;
 	txq->next_to_clean = 0;
-	txq->tx_bd_ready   = txq->nb_tx_desc;
+	txq->tx_bd_ready = txq->nb_tx_desc;
 	hns3_init_tx_queue_hw(txq);
+}
+
+static void
+hns3_dev_tx_queue_start(struct hns3_adapter *hns, uint16_t idx)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_tx_queue *txq;
+
+	txq = (struct hns3_tx_queue *)hw->data->tx_queues[idx];
+	hns3_init_tx_queue(txq);
+}
+
+static void
+hns3_fake_tx_queue_start(struct hns3_adapter *hns, uint16_t idx)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_tx_queue *txq;
+
+	txq = (struct hns3_tx_queue *)hw->fkq_data.tx_queues[idx];
+	hns3_init_tx_queue(txq);
 }
 
 static void
@@ -500,7 +631,7 @@ hns3_init_tx_ring_tc(struct hns3_adapter *hns)
 
 		for (j = 0; j < tc_queue->tqp_count; j++) {
 			num = tc_queue->tqp_offset + j;
-			txq = hw->data->tx_queues[num];
+			txq = (struct hns3_tx_queue *)hw->data->tx_queues[num];
 			if (txq == NULL)
 				continue;
 
@@ -509,16 +640,13 @@ hns3_init_tx_ring_tc(struct hns3_adapter *hns)
 	}
 }
 
-int
-hns3_start_queues(struct hns3_adapter *hns, bool reset_queue)
+static int
+hns3_start_rx_queues(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
-	struct rte_eth_dev_data *dev_data = hw->data;
 	struct hns3_rx_queue *rxq;
-	struct hns3_tx_queue *txq;
+	int i, j;
 	int ret;
-	int i;
-	int j;
 
 	/* Initialize RSS for queues */
 	ret = hns3_config_rss(hns);
@@ -526,6 +654,65 @@ hns3_start_queues(struct hns3_adapter *hns, bool reset_queue)
 		hns3_err(hw, "Failed to configure rss %d", ret);
 		return ret;
 	}
+
+	for (i = 0; i < hw->data->nb_rx_queues; i++) {
+		rxq = (struct hns3_rx_queue *)hw->data->rx_queues[i];
+		if (rxq == NULL || rxq->rx_deferred_start)
+			continue;
+		ret = hns3_dev_rx_queue_start(hns, i);
+		if (ret) {
+			hns3_err(hw, "Failed to start No.%d rx queue: %d", i,
+				 ret);
+			goto out;
+		}
+	}
+
+	for (i = 0; i < hw->fkq_data.nb_fake_rx_queues; i++) {
+		rxq = (struct hns3_rx_queue *)hw->fkq_data.rx_queues[i];
+		if (rxq == NULL || rxq->rx_deferred_start)
+			continue;
+		hns3_fake_rx_queue_start(hns, i);
+	}
+	return 0;
+
+out:
+	for (j = 0; j < i; j++) {
+		rxq = (struct hns3_rx_queue *)hw->data->rx_queues[j];
+		hns3_rx_queue_release_mbufs(rxq);
+	}
+
+	return ret;
+}
+
+static void
+hns3_start_tx_queues(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_tx_queue *txq;
+	int i;
+
+	for (i = 0; i < hw->data->nb_tx_queues; i++) {
+		txq = (struct hns3_tx_queue *)hw->data->tx_queues[i];
+		if (txq == NULL || txq->tx_deferred_start)
+			continue;
+		hns3_dev_tx_queue_start(hns, i);
+	}
+
+	for (i = 0; i < hw->fkq_data.nb_fake_tx_queues; i++) {
+		txq = (struct hns3_tx_queue *)hw->fkq_data.tx_queues[i];
+		if (txq == NULL || txq->tx_deferred_start)
+			continue;
+		hns3_fake_tx_queue_start(hns, i);
+	}
+
+	hns3_init_tx_ring_tc(hns);
+}
+
+int
+hns3_start_queues(struct hns3_adapter *hns, bool reset_queue)
+{
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
 
 	if (reset_queue) {
 		ret = hns3_reset_all_queues(hns);
@@ -535,39 +722,16 @@ hns3_start_queues(struct hns3_adapter *hns, bool reset_queue)
 		}
 	}
 
-	/*
-	 * Hardware does not support where the number of rx and tx queues is
-	 * not equal in hip08. In .dev_configure callback function we will
-	 * check the two values, here we think that the number of rx and tx
-	 * queues is equal.
-	 */
-	for (i = 0; i < hw->data->nb_rx_queues; i++) {
-		rxq = dev_data->rx_queues[i];
-		txq = dev_data->tx_queues[i];
-		if (rxq == NULL || txq == NULL || rxq->rx_deferred_start ||
-		    txq->tx_deferred_start)
-			continue;
-
-		ret = hns3_dev_rx_queue_start(hns, i);
-		if (ret) {
-			hns3_err(hw, "Failed to start No.%d rx queue: %d", i,
-				 ret);
-			goto out;
-		}
-		hns3_dev_tx_queue_start(hns, i);
+	ret = hns3_start_rx_queues(hns);
+	if (ret) {
+		hns3_err(hw, "Failed to start rx queues: %d", ret);
+		return ret;
 	}
-	hns3_init_tx_ring_tc(hns);
 
+	hns3_start_tx_queues(hns);
 	hns3_enable_all_queues(hw, true);
+
 	return 0;
-
-out:
-	for (j = 0; j < i; j++) {
-		rxq = dev_data->rx_queues[j];
-		hns3_rx_queue_release_mbufs(rxq);
-	}
-
-	return ret;
 }
 
 int
@@ -585,6 +749,337 @@ hns3_stop_queues(struct hns3_adapter *hns, bool reset_queue)
 		}
 	}
 	return 0;
+}
+
+static void*
+hns3_alloc_rxq_and_dma_zone(struct rte_eth_dev *dev,
+			    struct hns3_queue_info *q_info)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	const struct rte_memzone *rx_mz;
+	struct hns3_rx_queue *rxq;
+	unsigned int rx_desc;
+
+	rxq = rte_zmalloc_socket(q_info->type, sizeof(struct hns3_rx_queue),
+				 RTE_CACHE_LINE_SIZE, q_info->socket_id);
+	if (rxq == NULL) {
+		hns3_err(hw, "Failed to allocate memory for No.%d rx ring!",
+			 q_info->idx);
+		return NULL;
+	}
+
+	/* Allocate rx ring hardware descriptors. */
+	rxq->queue_id = q_info->idx;
+	rxq->nb_rx_desc = q_info->nb_desc;
+	rx_desc = rxq->nb_rx_desc * sizeof(struct hns3_desc);
+	rx_mz = rte_eth_dma_zone_reserve(dev, q_info->ring_name, q_info->idx,
+					 rx_desc, HNS3_RING_BASE_ALIGN,
+					 q_info->socket_id);
+	if (rx_mz == NULL) {
+		hns3_err(hw, "Failed to reserve DMA memory for No.%d rx ring!",
+			 q_info->idx);
+		hns3_rx_queue_release(rxq);
+		return NULL;
+	}
+	rxq->mz = rx_mz;
+	rxq->rx_ring = (struct hns3_desc *)rx_mz->addr;
+	rxq->rx_ring_phys_addr = rx_mz->iova;
+
+	hns3_dbg(hw, "No.%d rx descriptors iova 0x%" PRIx64, q_info->idx,
+		 rxq->rx_ring_phys_addr);
+
+	return rxq;
+}
+
+static int
+hns3_fake_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
+			 uint16_t nb_desc, unsigned int socket_id)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_queue_info q_info;
+	struct hns3_rx_queue *rxq;
+	uint16_t nb_rx_q;
+
+	if (hw->fkq_data.rx_queues[idx]) {
+		hns3_rx_queue_release(hw->fkq_data.rx_queues[idx]);
+		hw->fkq_data.rx_queues[idx] = NULL;
+	}
+
+	q_info.idx = idx;
+	q_info.socket_id = socket_id;
+	q_info.nb_desc = nb_desc;
+	q_info.type = "hns3 fake RX queue";
+	q_info.ring_name = "rx_fake_ring";
+	rxq = hns3_alloc_rxq_and_dma_zone(dev, &q_info);
+	if (rxq == NULL) {
+		hns3_err(hw, "Failed to setup No.%d fake rx ring.", idx);
+		return -ENOMEM;
+	}
+
+	/* Don't need alloc sw_ring, because upper applications don't use it */
+	rxq->sw_ring = NULL;
+
+	rxq->hns = hns;
+	rxq->rx_deferred_start = false;
+	rxq->port_id = dev->data->port_id;
+	rxq->configured = true;
+	nb_rx_q = dev->data->nb_rx_queues;
+	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
+				(nb_rx_q + idx) * HNS3_TQP_REG_SIZE);
+	rxq->rx_buf_len = hw->rx_buf_len;
+
+	rte_spinlock_lock(&hw->lock);
+	hw->fkq_data.rx_queues[idx] = rxq;
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+}
+
+static void*
+hns3_alloc_txq_and_dma_zone(struct rte_eth_dev *dev,
+			    struct hns3_queue_info *q_info)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	const struct rte_memzone *tx_mz;
+	struct hns3_tx_queue *txq;
+	struct hns3_desc *desc;
+	unsigned int tx_desc;
+	int i;
+
+	txq = rte_zmalloc_socket(q_info->type, sizeof(struct hns3_tx_queue),
+				 RTE_CACHE_LINE_SIZE, q_info->socket_id);
+	if (txq == NULL) {
+		hns3_err(hw, "Failed to allocate memory for No.%d tx ring!",
+			 q_info->idx);
+		return NULL;
+	}
+
+	/* Allocate tx ring hardware descriptors. */
+	txq->queue_id = q_info->idx;
+	txq->nb_tx_desc = q_info->nb_desc;
+	tx_desc = txq->nb_tx_desc * sizeof(struct hns3_desc);
+	tx_mz = rte_eth_dma_zone_reserve(dev, q_info->ring_name, q_info->idx,
+					 tx_desc, HNS3_RING_BASE_ALIGN,
+					 q_info->socket_id);
+	if (tx_mz == NULL) {
+		hns3_err(hw, "Failed to reserve DMA memory for No.%d tx ring!",
+			 q_info->idx);
+		hns3_tx_queue_release(txq);
+		return NULL;
+	}
+	txq->mz = tx_mz;
+	txq->tx_ring = (struct hns3_desc *)tx_mz->addr;
+	txq->tx_ring_phys_addr = tx_mz->iova;
+
+	hns3_dbg(hw, "No.%d tx descriptors iova 0x%" PRIx64, q_info->idx,
+		 txq->tx_ring_phys_addr);
+
+	/* Clear tx bd */
+	desc = txq->tx_ring;
+	for (i = 0; i < txq->nb_tx_desc; i++) {
+		desc->tx.tp_fe_sc_vld_ra_ri = 0;
+		desc++;
+	}
+
+	return txq;
+}
+
+static int
+hns3_fake_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
+			 uint16_t nb_desc, unsigned int socket_id)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_queue_info q_info;
+	struct hns3_tx_queue *txq;
+	uint16_t nb_tx_q;
+
+	if (hw->fkq_data.tx_queues[idx] != NULL) {
+		hns3_tx_queue_release(hw->fkq_data.tx_queues[idx]);
+		hw->fkq_data.tx_queues[idx] = NULL;
+	}
+
+	q_info.idx = idx;
+	q_info.socket_id = socket_id;
+	q_info.nb_desc = nb_desc;
+	q_info.type = "hns3 fake TX queue";
+	q_info.ring_name = "tx_fake_ring";
+	txq = hns3_alloc_txq_and_dma_zone(dev, &q_info);
+	if (txq == NULL) {
+		hns3_err(hw, "Failed to setup No.%d fake tx ring.", idx);
+		return -ENOMEM;
+	}
+
+	/* Don't need alloc sw_ring, because upper applications don't use it */
+	txq->sw_ring = NULL;
+
+	txq->hns = hns;
+	txq->tx_deferred_start = false;
+	txq->port_id = dev->data->port_id;
+	txq->configured = true;
+	nb_tx_q = dev->data->nb_tx_queues;
+	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
+				(nb_tx_q + idx) * HNS3_TQP_REG_SIZE);
+
+	rte_spinlock_lock(&hw->lock);
+	hw->fkq_data.tx_queues[idx] = txq;
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+}
+
+static int
+hns3_fake_rx_queue_config(struct hns3_hw *hw, uint16_t nb_queues)
+{
+	uint16_t old_nb_queues = hw->fkq_data.nb_fake_rx_queues;
+	void **rxq;
+	uint8_t i;
+
+	if (hw->fkq_data.rx_queues == NULL && nb_queues != 0) {
+		/* first time configuration */
+
+		uint32_t size;
+		size = sizeof(hw->fkq_data.rx_queues[0]) * nb_queues;
+		hw->fkq_data.rx_queues = rte_zmalloc("fake_rx_queues", size,
+						     RTE_CACHE_LINE_SIZE);
+		if (hw->fkq_data.rx_queues == NULL) {
+			hw->fkq_data.nb_fake_rx_queues = 0;
+			return -ENOMEM;
+		}
+	} else if (hw->fkq_data.rx_queues != NULL && nb_queues != 0) {
+		/* re-configure */
+
+		rxq = hw->fkq_data.rx_queues;
+		for (i = nb_queues; i < old_nb_queues; i++)
+			hns3_dev_rx_queue_release(rxq[i]);
+
+		rxq = rte_realloc(rxq, sizeof(rxq[0]) * nb_queues,
+				  RTE_CACHE_LINE_SIZE);
+		if (rxq == NULL)
+			return -ENOMEM;
+		if (nb_queues > old_nb_queues) {
+			uint16_t new_qs = nb_queues - old_nb_queues;
+			memset(rxq + old_nb_queues, 0, sizeof(rxq[0]) * new_qs);
+		}
+
+		hw->fkq_data.rx_queues = rxq;
+	} else if (hw->fkq_data.rx_queues != NULL && nb_queues == 0) {
+		rxq = hw->fkq_data.rx_queues;
+		for (i = nb_queues; i < old_nb_queues; i++)
+			hns3_dev_rx_queue_release(rxq[i]);
+
+		rte_free(hw->fkq_data.rx_queues);
+		hw->fkq_data.rx_queues = NULL;
+	}
+
+	hw->fkq_data.nb_fake_rx_queues = nb_queues;
+
+	return 0;
+}
+
+static int
+hns3_fake_tx_queue_config(struct hns3_hw *hw, uint16_t nb_queues)
+{
+	uint16_t old_nb_queues = hw->fkq_data.nb_fake_tx_queues;
+	void **txq;
+	uint8_t i;
+
+	if (hw->fkq_data.tx_queues == NULL && nb_queues != 0) {
+		/* first time configuration */
+
+		uint32_t size;
+		size = sizeof(hw->fkq_data.tx_queues[0]) * nb_queues;
+		hw->fkq_data.tx_queues = rte_zmalloc("fake_tx_queues", size,
+						     RTE_CACHE_LINE_SIZE);
+		if (hw->fkq_data.tx_queues == NULL) {
+			hw->fkq_data.nb_fake_tx_queues = 0;
+			return -ENOMEM;
+		}
+	} else if (hw->fkq_data.tx_queues != NULL && nb_queues != 0) {
+		/* re-configure */
+
+		txq = hw->fkq_data.tx_queues;
+		for (i = nb_queues; i < old_nb_queues; i++)
+			hns3_dev_tx_queue_release(txq[i]);
+		txq = rte_realloc(txq, sizeof(txq[0]) * nb_queues,
+				  RTE_CACHE_LINE_SIZE);
+		if (txq == NULL)
+			return -ENOMEM;
+		if (nb_queues > old_nb_queues) {
+			uint16_t new_qs = nb_queues - old_nb_queues;
+			memset(txq + old_nb_queues, 0, sizeof(txq[0]) * new_qs);
+		}
+
+		hw->fkq_data.tx_queues = txq;
+	} else if (hw->fkq_data.tx_queues != NULL && nb_queues == 0) {
+		txq = hw->fkq_data.tx_queues;
+		for (i = nb_queues; i < old_nb_queues; i++)
+			hns3_dev_tx_queue_release(txq[i]);
+
+		rte_free(hw->fkq_data.tx_queues);
+		hw->fkq_data.tx_queues = NULL;
+	}
+	hw->fkq_data.nb_fake_tx_queues = nb_queues;
+
+	return 0;
+}
+
+int
+hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
+			      uint16_t nb_tx_q)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t rx_need_add_nb_q;
+	uint16_t tx_need_add_nb_q;
+	uint16_t port_id;
+	uint16_t q;
+	int ret;
+
+	/* Setup new number of fake RX/TX queues and reconfigure device. */
+	hw->cfg_max_queues = RTE_MAX(nb_rx_q, nb_tx_q);
+	rx_need_add_nb_q = hw->cfg_max_queues - nb_rx_q;
+	tx_need_add_nb_q = hw->cfg_max_queues - nb_tx_q;
+	ret = hns3_fake_rx_queue_config(hw, rx_need_add_nb_q);
+	if (ret) {
+		hns3_err(hw, "Fail to configure fake rx queues: %d", ret);
+		goto cfg_fake_rx_q_fail;
+	}
+
+	ret = hns3_fake_tx_queue_config(hw, tx_need_add_nb_q);
+	if (ret) {
+		hns3_err(hw, "Fail to configure fake rx queues: %d", ret);
+		goto cfg_fake_tx_q_fail;
+	}
+
+	/* Allocate and set up fake RX queue per Ethernet port. */
+	port_id = hw->data->port_id;
+	for (q = 0; q < rx_need_add_nb_q; q++) {
+		ret = hns3_fake_rx_queue_setup(dev, q, HNS3_MIN_RING_DESC,
+					       rte_eth_dev_socket_id(port_id));
+		if (ret)
+			goto setup_fake_rx_q_fail;
+	}
+
+	/* Allocate and set up fake TX queue per Ethernet port. */
+	for (q = 0; q < tx_need_add_nb_q; q++) {
+		ret = hns3_fake_tx_queue_setup(dev, q, HNS3_MIN_RING_DESC,
+					       rte_eth_dev_socket_id(port_id));
+		if (ret)
+			goto setup_fake_tx_q_fail;
+	}
+
+	return 0;
+
+setup_fake_tx_q_fail:
+setup_fake_rx_q_fail:
+	(void)hns3_fake_tx_queue_config(hw, 0);
+cfg_fake_tx_q_fail:
+	(void)hns3_fake_rx_queue_config(hw, 0);
+cfg_fake_rx_q_fail:
+	hw->cfg_max_queues = 0;
+
+	return ret;
 }
 
 void
@@ -618,11 +1113,9 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		    struct rte_mempool *mp)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
-	const struct rte_memzone *rx_mz;
 	struct hns3_hw *hw = &hns->hw;
+	struct hns3_queue_info q_info;
 	struct hns3_rx_queue *rxq;
-	unsigned int desc_size = sizeof(struct hns3_desc);
-	unsigned int rx_desc;
 	int rx_entry_len;
 
 	if (dev->data->dev_started) {
@@ -642,17 +1135,20 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		dev->data->rx_queues[idx] = NULL;
 	}
 
-	rxq = rte_zmalloc_socket("hns3 RX queue", sizeof(struct hns3_rx_queue),
-				 RTE_CACHE_LINE_SIZE, socket_id);
+	q_info.idx = idx;
+	q_info.socket_id = socket_id;
+	q_info.nb_desc = nb_desc;
+	q_info.type = "hns3 RX queue";
+	q_info.ring_name = "rx_ring";
+	rxq = hns3_alloc_rxq_and_dma_zone(dev, &q_info);
 	if (rxq == NULL) {
-		hns3_err(hw, "Failed to allocate memory for rx queue!");
+		hns3_err(hw,
+			 "Failed to alloc mem and reserve DMA mem for rx ring!");
 		return -ENOMEM;
 	}
 
 	rxq->hns = hns;
 	rxq->mb_pool = mp;
-	rxq->nb_rx_desc = nb_desc;
-	rxq->queue_id = idx;
 	if (conf->rx_free_thresh <= 0)
 		rxq->rx_free_thresh = DEFAULT_RX_FREE_THRESH;
 	else
@@ -667,23 +1163,6 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		hns3_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
-
-	/* Allocate rx ring hardware descriptors. */
-	rx_desc = rxq->nb_rx_desc * desc_size;
-	rx_mz = rte_eth_dma_zone_reserve(dev, "rx_ring", idx, rx_desc,
-					 HNS3_RING_BASE_ALIGN, socket_id);
-	if (rx_mz == NULL) {
-		hns3_err(hw, "Failed to reserve DMA memory for No.%d rx ring!",
-			 idx);
-		hns3_rx_queue_release(rxq);
-		return -ENOMEM;
-	}
-	rxq->mz = rx_mz;
-	rxq->rx_ring = (struct hns3_desc *)rx_mz->addr;
-	rxq->rx_ring_phys_addr = rx_mz->iova;
-
-	hns3_dbg(hw, "No.%d rx descriptors iova 0x%" PRIx64, idx,
-		 rxq->rx_ring_phys_addr);
 
 	rxq->next_to_use = 0;
 	rxq->next_to_clean = 0;
@@ -1062,14 +1541,10 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		    unsigned int socket_id, const struct rte_eth_txconf *conf)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
-	const struct rte_memzone *tx_mz;
 	struct hns3_hw *hw = &hns->hw;
+	struct hns3_queue_info q_info;
 	struct hns3_tx_queue *txq;
-	struct hns3_desc *desc;
-	unsigned int desc_size = sizeof(struct hns3_desc);
-	unsigned int tx_desc;
 	int tx_entry_len;
-	int i;
 
 	if (dev->data->dev_started) {
 		hns3_err(hw, "tx_queue_setup after dev_start no supported");
@@ -1088,17 +1563,19 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		dev->data->tx_queues[idx] = NULL;
 	}
 
-	txq = rte_zmalloc_socket("hns3 TX queue", sizeof(struct hns3_tx_queue),
-				 RTE_CACHE_LINE_SIZE, socket_id);
+	q_info.idx = idx;
+	q_info.socket_id = socket_id;
+	q_info.nb_desc = nb_desc;
+	q_info.type = "hns3 TX queue";
+	q_info.ring_name = "tx_ring";
+	txq = hns3_alloc_txq_and_dma_zone(dev, &q_info);
 	if (txq == NULL) {
-		hns3_err(hw, "Failed to allocate memory for tx queue!");
+		hns3_err(hw,
+			 "Failed to alloc mem and reserve DMA mem for tx ring!");
 		return -ENOMEM;
 	}
 
-	txq->nb_tx_desc = nb_desc;
-	txq->queue_id = idx;
 	txq->tx_deferred_start = conf->tx_deferred_start;
-
 	tx_entry_len = sizeof(struct hns3_entry) * txq->nb_tx_desc;
 	txq->sw_ring = rte_zmalloc_socket("hns3 TX sw ring", tx_entry_len,
 					  RTE_CACHE_LINE_SIZE, socket_id);
@@ -1108,34 +1585,10 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		return -ENOMEM;
 	}
 
-	/* Allocate tx ring hardware descriptors. */
-	tx_desc = txq->nb_tx_desc * desc_size;
-	tx_mz = rte_eth_dma_zone_reserve(dev, "tx_ring", idx, tx_desc,
-					 HNS3_RING_BASE_ALIGN, socket_id);
-	if (tx_mz == NULL) {
-		hns3_err(hw, "Failed to reserve DMA memory for No.%d tx ring!",
-			 idx);
-		hns3_tx_queue_release(txq);
-		return -ENOMEM;
-	}
-	txq->mz = tx_mz;
-	txq->tx_ring = (struct hns3_desc *)tx_mz->addr;
-	txq->tx_ring_phys_addr = tx_mz->iova;
-
-	hns3_dbg(hw, "No.%d tx descriptors iova 0x%" PRIx64, idx,
-		 txq->tx_ring_phys_addr);
-
-	/* Clear tx bd */
-	desc = txq->tx_ring;
-	for (i = 0; i < txq->nb_tx_desc; i++) {
-		desc->tx.tp_fe_sc_vld_ra_ri = 0;
-		desc++;
-	}
-
 	txq->hns = hns;
 	txq->next_to_use = 0;
 	txq->next_to_clean = 0;
-	txq->tx_bd_ready   = txq->nb_tx_desc;
+	txq->tx_bd_ready = txq->nb_tx_desc;
 	txq->port_id = dev->data->port_id;
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +

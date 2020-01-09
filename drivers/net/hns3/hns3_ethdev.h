@@ -153,6 +153,12 @@ struct hns3_mac {
 	uint32_t link_speed;      /* ETH_SPEED_NUM_ */
 };
 
+struct hns3_fake_queue_data {
+	void **rx_queues; /* Array of pointers to fake RX queues. */
+	void **tx_queues; /* Array of pointers to fake TX queues. */
+	uint16_t nb_fake_rx_queues; /* Number of fake RX queues. */
+	uint16_t nb_fake_tx_queues; /* Number of fake TX queues. */
+};
 
 /* Primary process maintains driver state in main thread.
  *
@@ -365,8 +371,14 @@ struct hns3_hw {
 	struct hns3_dcb_info dcb_info;
 	enum hns3_fc_status current_fc_status; /* current flow control status */
 	struct hns3_tc_queue_info tc_queue[HNS3_MAX_TC_NUM];
-	uint16_t alloc_tqps;
-	uint16_t alloc_rss_size;    /* Queue number per TC */
+	uint16_t used_rx_queues;
+	uint16_t used_tx_queues;
+
+	/* Config max queue numbers between rx and tx queues from user */
+	uint16_t cfg_max_queues;
+	struct hns3_fake_queue_data fkq_data;     /* fake queue data */
+	uint16_t alloc_rss_size;    /* RX queue number per TC */
+	uint16_t tx_qnum_per_tc;    /* TX queue number per TC */
 
 	uint32_t flag;
 	/*

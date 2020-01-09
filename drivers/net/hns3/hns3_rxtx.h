@@ -273,6 +273,14 @@ struct hns3_tx_queue {
 	bool configured;        /* indicate if tx queue has been configured */
 };
 
+struct hns3_queue_info {
+	const char *type;   /* point to queue memory name */
+	const char *ring_name;  /* point to hardware ring name */
+	uint16_t idx;
+	uint16_t nb_desc;
+	unsigned int socket_id;
+};
+
 #define HNS3_TX_CKSUM_OFFLOAD_MASK ( \
 	PKT_TX_OUTER_IPV6 | \
 	PKT_TX_OUTER_IPV4 | \
@@ -314,4 +322,7 @@ uint16_t hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev);
 void hns3_tqp_intr_enable(struct hns3_hw *hw, uint16_t tpq_int_num, bool en);
+int hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
+				  uint16_t nb_tx_q);
+
 #endif /* _HNS3_RXTX_H_ */
