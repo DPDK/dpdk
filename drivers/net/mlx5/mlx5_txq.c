@@ -62,7 +62,7 @@ txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl)
  * @param txq_ctrl
  *   Pointer to TX queue structure.
  */
-static void
+void
 txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	const uint16_t elts_n = 1 << txq_ctrl->txq.elts_n;

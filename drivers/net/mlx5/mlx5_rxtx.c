@@ -654,10 +654,10 @@ check_err_cqe_seen(volatile struct mlx5_err_cqe *err_cqe)
  *   Pointer to the error CQE.
  *
  * @return
- *   Negative value if queue recovery failed,
- *   the last Tx buffer element to free otherwise.
+ *   Negative value if queue recovery failed, otherwise
+ *   the error completion entry is handled successfully.
  */
-int
+static int
 mlx5_tx_error_cqe_handle(struct mlx5_txq_data *restrict txq,
 			 volatile struct mlx5_err_cqe *err_cqe)
 {
@@ -701,18 +701,14 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *restrict txq,
 			 */
 			txq->stats.oerrors += ((txq->wqe_ci & wqe_m) -
 						new_wqe_pi) & wqe_m;
-		if (tx_recover_qp(txq_ctrl) == 0) {
-			txq->cq_ci++;
-			/* Release all the remaining buffers. */
-			return txq->elts_head;
+		if (tx_recover_qp(txq_ctrl)) {
+			/* Recovering failed - retry later on the same WQE. */
+			return -1;
 		}
-		/* Recovering failed - try again later on the same WQE. */
-		return -1;
-	} else {
-		txq->cq_ci++;
+		/* Release all the remaining buffers. */
+		txq_free_elts(txq_ctrl);
 	}
-	/* Do not release buffers. */
-	return txq->elts_tail;
+	return 0;
 }
 
 /**
@@ -2034,8 +2030,6 @@ mlx5_tx_copy_elts(struct mlx5_txq_data *restrict txq,
  *   Pointer to TX queue structure.
  * @param valid CQE pointer
  *   if not NULL update txq->wqe_pi and flush the buffers
- * @param itail
- *   if not negative - flush the buffers till this index.
  * @param olx
  *   Configured Tx offloads mask. It is fully defined at
  *   compile time and may be used for optimization.
@@ -2043,25 +2037,18 @@ mlx5_tx_copy_elts(struct mlx5_txq_data *restrict txq,
 static __rte_always_inline void
 mlx5_tx_comp_flush(struct mlx5_txq_data *restrict txq,
 		   volatile struct mlx5_cqe *last_cqe,
-		   int itail,
 		   unsigned int olx __rte_unused)
 {
-	uint16_t tail;
-
 	if (likely(last_cqe != NULL)) {
+		uint16_t tail;
+
 		txq->wqe_pi = rte_be_to_cpu_16(last_cqe->wqe_counter);
 		tail = ((volatile struct mlx5_wqe_cseg *)
 			(txq->wqes + (txq->wqe_pi & txq->wqe_m)))->misc;
-	} else if (itail >= 0) {
-		tail = (uint16_t)itail;
-	} else {
-		return;
-	}
-	rte_compiler_barrier();
-	*txq->cq_db = rte_cpu_to_be_32(txq->cq_ci);
-	if (likely(tail != txq->elts_tail)) {
-		mlx5_tx_free_elts(txq, tail, olx);
-		assert(tail == txq->elts_tail);
+		if (likely(tail != txq->elts_tail)) {
+			mlx5_tx_free_elts(txq, tail, olx);
+			assert(tail == txq->elts_tail);
+		}
 	}
 }
 
@@ -2085,6 +2072,7 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 {
 	unsigned int count = MLX5_TX_COMP_MAX_CQE;
 	volatile struct mlx5_cqe *last_cqe = NULL;
+	uint16_t ci = txq->cq_ci;
 	int ret;
 
 	static_assert(MLX5_CQE_STATUS_HW_OWN < 0, "Must be negative value");
@@ -2092,8 +2080,8 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 	do {
 		volatile struct mlx5_cqe *cqe;
 
-		cqe = &txq->cqes[txq->cq_ci & txq->cqe_m];
-		ret = check_cqe(cqe, txq->cqe_s, txq->cq_ci);
+		cqe = &txq->cqes[ci & txq->cqe_m];
+		ret = check_cqe(cqe, txq->cqe_s, ci);
 		if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
 			if (likely(ret != MLX5_CQE_STATUS_ERR)) {
 				/* No new CQEs in completion queue. */
@@ -2109,31 +2097,49 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 			rte_wmb();
 			ret = mlx5_tx_error_cqe_handle
 				(txq, (volatile struct mlx5_err_cqe *)cqe);
+			if (unlikely(ret < 0)) {
+				/*
+				 * Some error occurred on queue error
+				 * handling, we do not advance the index
+				 * here, allowing to retry on next call.
+				 */
+				return;
+			}
 			/*
-			 * Flush buffers, update consuming index
-			 * if recovery succeeded. Otherwise
-			 * just try to recover later.
+			 * We are going to fetch all entries with
+			 * MLX5_CQE_SYNDROME_WR_FLUSH_ERR status.
 			 */
-			last_cqe = NULL;
-			break;
+			++ci;
+			continue;
 		}
 		/* Normal transmit completion. */
-		++txq->cq_ci;
+		++ci;
 		last_cqe = cqe;
 #ifndef NDEBUG
 		if (txq->cq_pi)
 			--txq->cq_pi;
 #endif
-	/*
-	 * We have to restrict the amount of processed CQEs
-	 * in one tx_burst routine call. The CQ may be large
-	 * and many CQEs may be updated by the NIC in one
-	 * transaction. Buffers freeing is time consuming,
-	 * multiple iterations may introduce significant
-	 * latency.
-	 */
-	} while (--count);
-	mlx5_tx_comp_flush(txq, last_cqe, ret, olx);
+		/*
+		 * We have to restrict the amount of processed CQEs
+		 * in one tx_burst routine call. The CQ may be large
+		 * and many CQEs may be updated by the NIC in one
+		 * transaction. Buffers freeing is time consuming,
+		 * multiple iterations may introduce significant
+		 * latency.
+		 */
+		if (--count == 0)
+			break;
+	} while (true);
+	if (likely(ci != txq->cq_ci)) {
+		/*
+		 * Update completion queue consuming index
+		 * and ring doorbell to notify hardware.
+		 */
+		rte_compiler_barrier();
+		txq->cq_ci = ci;
+		*txq->cq_db = rte_cpu_to_be_32(ci);
+		mlx5_tx_comp_flush(txq, last_cqe, olx);
+	}
 }
 
 /**
