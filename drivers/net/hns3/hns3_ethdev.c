@@ -3836,7 +3836,7 @@ hns3_get_mac_link_status(struct hns3_hw *hw)
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret) {
 		hns3_err(hw, "get link status cmd failed %d", ret);
-		return ret;
+		return ETH_LINK_DOWN;
 	}
 
 	req = (struct hns3_link_status_cmd *)desc.data;
