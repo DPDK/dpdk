@@ -2043,8 +2043,7 @@ mlx5_tx_comp_flush(struct mlx5_txq_data *restrict txq,
 		uint16_t tail;
 
 		txq->wqe_pi = rte_be_to_cpu_16(last_cqe->wqe_counter);
-		tail = ((volatile struct mlx5_wqe_cseg *)
-			(txq->wqes + (txq->wqe_pi & txq->wqe_m)))->misc;
+		tail = txq->fcqs[(txq->cq_ci - 1) & txq->cqe_m];
 		if (likely(tail != txq->elts_tail)) {
 			mlx5_tx_free_elts(txq, tail, olx);
 			assert(tail == txq->elts_tail);
@@ -2095,6 +2094,7 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 			 * here, before we might perform SQ reset.
 			 */
 			rte_wmb();
+			txq->cq_ci = ci;
 			ret = mlx5_tx_error_cqe_handle
 				(txq, (volatile struct mlx5_err_cqe *)cqe);
 			if (unlikely(ret < 0)) {
@@ -2108,17 +2108,18 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 			/*
 			 * We are going to fetch all entries with
 			 * MLX5_CQE_SYNDROME_WR_FLUSH_ERR status.
+			 * The send queue is supposed to be empty.
 			 */
 			++ci;
+			txq->cq_pi = ci;
+			last_cqe = NULL;
 			continue;
 		}
 		/* Normal transmit completion. */
+		assert(ci != txq->cq_pi);
+		assert((txq->fcqs[ci & txq->cqe_m] >> 16) == cqe->wqe_counter);
 		++ci;
 		last_cqe = cqe;
-#ifndef NDEBUG
-		if (txq->cq_pi)
-			--txq->cq_pi;
-#endif
 		/*
 		 * We have to restrict the amount of processed CQEs
 		 * in one tx_burst routine call. The CQ may be large
@@ -2127,7 +2128,7 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 		 * multiple iterations may introduce significant
 		 * latency.
 		 */
-		if (--count == 0)
+		if (likely(--count == 0))
 			break;
 	} while (true);
 	if (likely(ci != txq->cq_ci)) {
@@ -2177,15 +2178,15 @@ mlx5_tx_request_completion(struct mlx5_txq_data *restrict txq,
 		/* Request unconditional completion on last WQE. */
 		last->cseg.flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 					    MLX5_COMP_MODE_OFFSET);
-		/* Save elts_head in unused "immediate" field of WQE. */
-		last->cseg.misc = head;
-		/*
-		 * A CQE slot must always be available. Count the
-		 * issued CEQ "always" request instead of production
-		 * index due to here can be CQE with errors and
-		 * difference with ci may become inconsistent.
-		 */
-		assert(txq->cqe_s > ++txq->cq_pi);
+		/* Save elts_head in dedicated free on completion queue. */
+#ifdef NDEBUG
+		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head;
+#else
+		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head |
+					(last->cseg.opcode >> 8) << 16;
+#endif
+		/* A CQE slot must always be available. */
+		assert((txq->cq_pi - txq->cq_ci) <= txq->cqe_s);
 	}
 }
 

@@ -717,9 +717,7 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	txq_data->cq_db = cq_info.dbrec;
 	txq_data->cqes = (volatile struct mlx5_cqe *)cq_info.buf;
 	txq_data->cq_ci = 0;
-#ifndef NDEBUG
 	txq_data->cq_pi = 0;
-#endif
 	txq_data->wqe_ci = 0;
 	txq_data->wqe_pi = 0;
 	txq_data->wqe_comp = 0;
