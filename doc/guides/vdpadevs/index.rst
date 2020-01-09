@@ -10,3 +10,5 @@ which can be used from an application through vhost API.
 .. toctree::
     :maxdepth: 2
     :numbered:
+
+    features_overview
