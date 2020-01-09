@@ -464,6 +464,7 @@ struct hns3_mp_param {
 struct hns3_pf {
 	struct hns3_adapter *adapter;
 	bool is_main_pf;
+	uint16_t func_num; /* num functions of this pf, include pf and vfs */
 
 	uint32_t pkt_buf_size; /* Total pf buf size for tx/rx */
 	uint32_t tx_buf_size; /* Tx buffer size for each TC */
