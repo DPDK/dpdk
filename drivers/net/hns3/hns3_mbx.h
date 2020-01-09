@@ -41,6 +41,7 @@ enum HNS3_MBX_OPCODE {
 	HNS3_MBX_GET_QID_IN_PF,         /* (VF -> PF) get queue id in pf */
 
 	HNS3_MBX_HANDLE_VF_TBL = 38,    /* (VF -> PF) store/clear hw cfg tbl */
+	HNS3_MBX_GET_RING_VECTOR_MAP,   /* (VF -> PF) get ring-to-vector map */
 	HNS3_MBX_PUSH_LINK_STATUS = 201, /* (IMP -> PF) get port link status */
 };
 

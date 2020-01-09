@@ -150,6 +150,8 @@ hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 {
 	struct hns3_mbx_vf_to_pf_cmd *req;
 	struct hns3_cmd_desc desc;
+	bool is_ring_vector_msg;
+	int offset;
 	int ret;
 
 	req = (struct hns3_mbx_vf_to_pf_cmd *)desc.data;
@@ -164,9 +166,15 @@ hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MBX_VF_TO_PF, false);
 	req->msg[0] = code;
-	req->msg[1] = subcode;
-	if (msg_data)
-		memcpy(&req->msg[HNS3_CMD_CODE_OFFSET], msg_data, msg_len);
+	is_ring_vector_msg = (code == HNS3_MBX_MAP_RING_TO_VECTOR) ||
+			     (code == HNS3_MBX_UNMAP_RING_TO_VECTOR) ||
+			     (code == HNS3_MBX_GET_RING_VECTOR_MAP);
+	if (!is_ring_vector_msg)
+		req->msg[1] = subcode;
+	if (msg_data) {
+		offset = is_ring_vector_msg ? 1 : HNS3_CMD_CODE_OFFSET;
+		memcpy(&req->msg[offset], msg_data, msg_len);
+	}
 
 	/* synchronous send */
 	if (need_resp) {
