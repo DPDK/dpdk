@@ -208,12 +208,27 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_UNICAST,
 				HNS3_MBX_MAC_VLAN_UC_MODIFY, addr_bytes,
-				HNS3_TWO_ETHER_ADDR_LEN, false, NULL, 0);
+				HNS3_TWO_ETHER_ADDR_LEN, true, NULL, 0);
 	if (ret) {
-		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
-		hns3_err(hw, "Failed to set mac addr(%s) for vf: %d", mac_str,
-			 ret);
+		/*
+		 * The hns3 VF PMD driver depends on the hns3 PF kernel ethdev
+		 * driver. When user has configured a MAC address for VF device
+		 * by "ip link set ..." command based on the PF device, the hns3
+		 * PF kernel ethdev driver does not allow VF driver to request
+		 * reconfiguring a different default MAC address, and return
+		 * -EPREM to VF driver through mailbox.
+		 */
+		if (ret == -EPERM) {
+			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+					      old_addr);
+			hns3_warn(hw, "Has permanet mac addr(%s) for vf",
+				  mac_str);
+		} else {
+			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+					      mac_addr);
+			hns3_err(hw, "Failed to set mac addr(%s) for vf: %d",
+				 mac_str, ret);
+		}
 	}
 
 	rte_ether_addr_copy(mac_addr,
@@ -785,6 +800,24 @@ hns3vf_get_tc_info(struct hns3_hw *hw)
 }
 
 static int
+hns3vf_get_host_mac_addr(struct hns3_hw *hw)
+{
+	uint8_t host_mac[RTE_ETHER_ADDR_LEN];
+	int ret;
+
+	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_MAC_ADDR, 0, NULL, 0,
+				true, host_mac, RTE_ETHER_ADDR_LEN);
+	if (ret) {
+		hns3_err(hw, "Failed to get mac addr from PF: %d", ret);
+		return ret;
+	}
+
+	memcpy(hw->mac.mac_addr, host_mac, RTE_ETHER_ADDR_LEN);
+
+	return 0;
+}
+
+static int
 hns3vf_get_configuration(struct hns3_hw *hw)
 {
 	int ret;
@@ -798,6 +831,11 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 
 	/* Get queue depth info from PF */
 	ret = hns3vf_get_queue_depth(hw);
+	if (ret)
+		return ret;
+
+	/* Get user defined VF MAC addr from PF */
+	ret = hns3vf_get_host_mac_addr(hw);
 	if (ret)
 		return ret;
 
@@ -1170,7 +1208,20 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 		goto err_get_config;
 	}
 
-	rte_eth_random_addr(hw->mac.mac_addr); /* Generate a random mac addr */
+	/*
+	 * The hns3 PF ethdev driver in kernel support setting VF MAC address
+	 * on the host by "ip link set ..." command. To avoid some incorrect
+	 * scenes, for example, hns3 VF PMD driver fails to receive and send
+	 * packets after user configure the MAC address by using the
+	 * "ip link set ..." command, hns3 VF PMD driver keep the same MAC
+	 * address strategy as the hns3 kernel ethdev driver in the
+	 * initialization. If user configure a MAC address by the ip command
+	 * for VF device, then hns3 VF PMD driver will start with it, otherwise
+	 * start with a random MAC address in the initialization.
+	 */
+	ret = rte_is_zero_ether_addr((struct rte_ether_addr *)hw->mac.mac_addr);
+	if (ret)
+		rte_eth_random_addr(hw->mac.mac_addr);
 
 	ret = hns3vf_clear_vport_list(hw);
 	if (ret) {
@@ -1664,10 +1715,55 @@ hns3vf_start_service(struct hns3_adapter *hns)
 }
 
 static int
+hns3vf_check_default_mac_change(struct hns3_hw *hw)
+{
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct rte_ether_addr *hw_mac;
+	int ret;
+
+	/*
+	 * The hns3 PF ethdev driver in kernel support setting VF MAC address
+	 * on the host by "ip link set ..." command. If the hns3 PF kernel
+	 * ethdev driver sets the MAC address for VF device after the
+	 * initialization of the related VF device, the PF driver will notify
+	 * VF driver to reset VF device to make the new MAC address effective
+	 * immediately. The hns3 VF PMD driver should check whether the MAC
+	 * address has been changed by the PF kernel ethdev driver, if changed
+	 * VF driver should configure hardware using the new MAC address in the
+	 * recovering hardware configuration stage of the reset process.
+	 */
+	ret = hns3vf_get_host_mac_addr(hw);
+	if (ret)
+		return ret;
+
+	hw_mac = (struct rte_ether_addr *)hw->mac.mac_addr;
+	ret = rte_is_zero_ether_addr(hw_mac);
+	if (ret) {
+		rte_ether_addr_copy(&hw->data->mac_addrs[0], hw_mac);
+	} else {
+		ret = rte_is_same_ether_addr(&hw->data->mac_addrs[0], hw_mac);
+		if (!ret) {
+			rte_ether_addr_copy(hw_mac, &hw->data->mac_addrs[0]);
+			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+					      &hw->data->mac_addrs[0]);
+			hns3_warn(hw, "Default MAC address has been changed to:"
+				  " %s by the host PF kernel ethdev driver",
+				  mac_str);
+		}
+	}
+
+	return 0;
+}
+
+static int
 hns3vf_restore_conf(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
+
+	ret = hns3vf_check_default_mac_change(hw);
+	if (ret)
+		return ret;
 
 	ret = hns3vf_configure_mac_addr(hns, false);
 	if (ret)

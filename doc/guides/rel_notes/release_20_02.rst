@@ -70,6 +70,7 @@ New Features
   Updated Hisilicon hns3 driver with new features and improvements, including:
 
   * Added support for Rx interrupt.
+  * Added support setting VF MAC address by PF driver.
 
 * **Updated i40e driver to support L2TPv3 over IP flows.**
 
