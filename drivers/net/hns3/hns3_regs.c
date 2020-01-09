@@ -118,14 +118,8 @@ hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	int cmdq_lines, common_lines, ring_lines, tqp_intr_lines;
 	uint32_t regs_num_32_bit, regs_num_64_bit;
+	uint32_t len;
 	int ret;
-
-	ret = hns3_get_regs_num(hw, &regs_num_32_bit, &regs_num_64_bit);
-	if (ret) {
-		hns3_err(hw, "Get register number failed, ret = %d.",
-			 ret);
-		return -ENOTSUP;
-	}
 
 	cmdq_lines = sizeof(cmdq_reg_addrs) / REG_LEN_PER_LINE + 1;
 	if (hns->is_vf)
@@ -136,11 +130,21 @@ hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 	ring_lines = sizeof(ring_reg_addrs) / REG_LEN_PER_LINE + 1;
 	tqp_intr_lines = sizeof(tqp_intr_reg_addrs) / REG_LEN_PER_LINE + 1;
 
-	*length = (cmdq_lines + common_lines + ring_lines * hw->tqps_num +
-		   tqp_intr_lines * hw->num_msi) * REG_LEN_PER_LINE +
-		  regs_num_32_bit * sizeof(uint32_t) +
-		  regs_num_64_bit * sizeof(uint64_t);
+	len = (cmdq_lines + common_lines + ring_lines * hw->tqps_num +
+	      tqp_intr_lines * hw->num_msi) * REG_LEN_PER_LINE;
 
+	if (!hns->is_vf) {
+		ret = hns3_get_regs_num(hw, &regs_num_32_bit, &regs_num_64_bit);
+		if (ret) {
+			hns3_err(hw, "Get register number failed, ret = %d.",
+				 ret);
+			return -ENOTSUP;
+		}
+		len += regs_num_32_bit * sizeof(uint32_t) +
+		       regs_num_64_bit * sizeof(uint64_t);
+	}
+
+	*length = len;
 	return 0;
 }
 
@@ -345,6 +349,9 @@ hns3_get_regs(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
 
 	/* fetching per-PF registers values from PF PCIe register space */
 	hns3_direct_access_regs(hw, data);
+
+	if (hns->is_vf)
+		return 0;
 
 	ret = hns3_get_regs_num(hw, &regs_num_32_bit, &regs_num_64_bit);
 	if (ret) {
