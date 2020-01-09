@@ -115,7 +115,7 @@ add_project_link_arguments('-pthread', language: 'c')
 dpdk_extra_ldflags += '-pthread'
 
 # on some OS, maths functions are in a separate library
-if cc.find_library('libm', required : false).found()
+if cc.find_library('m', required : false).found()
 	# some libs depend on maths lib
 	add_project_link_arguments('-lm', language: 'c')
 	dpdk_extra_ldflags += '-lm'
