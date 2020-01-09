@@ -724,6 +724,17 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	txq_data->wqe_pi = 0;
 	txq_data->wqe_comp = 0;
 	txq_data->wqe_thres = txq_data->wqe_s / MLX5_TX_COMP_THRESH_INLINE_DIV;
+	txq_data->fcqs = rte_calloc_socket(__func__,
+					   txq_data->cqe_s,
+					   sizeof(*txq_data->fcqs),
+					   RTE_CACHE_LINE_SIZE,
+					   txq_ctrl->socket);
+	if (!txq_data->fcqs) {
+		DRV_LOG(ERR, "port %u Tx queue %u cannot allocate memory (FCQ)",
+			dev->data->port_id, idx);
+		rte_errno = ENOMEM;
+		goto error;
+	}
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	/*
 	 * If using DevX need to query and store TIS transport domain value.
@@ -772,6 +783,8 @@ error:
 		claim_zero(mlx5_glue->destroy_cq(tmpl.cq));
 	if (tmpl.qp)
 		claim_zero(mlx5_glue->destroy_qp(tmpl.qp));
+	if (txq_data && txq_data->fcqs)
+		rte_free(txq_data->fcqs);
 	if (txq_obj)
 		rte_free(txq_obj);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
@@ -826,6 +839,8 @@ mlx5_txq_obj_release(struct mlx5_txq_obj *txq_obj)
 		} else {
 			claim_zero(mlx5_glue->destroy_qp(txq_obj->qp));
 			claim_zero(mlx5_glue->destroy_cq(txq_obj->cq));
+				if (txq_obj->txq_ctrl->txq.fcqs)
+					rte_free(txq_obj->txq_ctrl->txq.fcqs);
 		}
 		LIST_REMOVE(txq_obj, next);
 		rte_free(txq_obj);
