@@ -591,7 +591,7 @@ hns3_init_tx_queue(struct hns3_tx_queue *queue)
 
 	txq->next_to_use = 0;
 	txq->next_to_clean = 0;
-	txq->tx_bd_ready = txq->nb_tx_desc;
+	txq->tx_bd_ready = txq->nb_tx_desc - 1;
 	hns3_init_tx_queue_hw(txq);
 }
 
@@ -1588,7 +1588,7 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->hns = hns;
 	txq->next_to_use = 0;
 	txq->next_to_clean = 0;
-	txq->tx_bd_ready = txq->nb_tx_desc;
+	txq->tx_bd_ready = txq->nb_tx_desc - 1;
 	txq->port_id = dev->data->port_id;
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
@@ -1598,19 +1598,6 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
-}
-
-static inline int
-tx_ring_dist(struct hns3_tx_queue *txq, int begin, int end)
-{
-	return (end - begin + txq->nb_tx_desc) % txq->nb_tx_desc;
-}
-
-static inline int
-tx_ring_space(struct hns3_tx_queue *txq)
-{
-	return txq->nb_tx_desc -
-		tx_ring_dist(txq, txq->next_to_clean, txq->next_to_use) - 1;
 }
 
 static inline void
@@ -1631,7 +1618,7 @@ hns3_tx_free_useless_buffer(struct hns3_tx_queue *txq)
 	struct rte_mbuf *mbuf;
 
 	while ((!hns3_get_bit(desc->tx.tp_fe_sc_vld_ra_ri, HNS3_TXD_VLD_B)) &&
-		(tx_next_use != tx_next_clean || tx_bd_ready < tx_bd_max)) {
+		tx_next_use != tx_next_clean) {
 		mbuf = tx_bak_pkt->mbuf;
 		if (mbuf) {
 			rte_pktmbuf_free_seg(mbuf);
@@ -2054,7 +2041,6 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct rte_mbuf *m_seg;
 	uint32_t nb_hold = 0;
 	uint16_t tx_next_use;
-	uint16_t tx_bd_ready;
 	uint16_t tx_pkt_num;
 	uint16_t tx_bd_max;
 	uint16_t nb_buf;
@@ -2063,13 +2049,10 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	/* free useless buffer */
 	hns3_tx_free_useless_buffer(txq);
-	tx_bd_ready = txq->tx_bd_ready;
-	if (tx_bd_ready == 0)
-		return 0;
 
 	tx_next_use   = txq->next_to_use;
 	tx_bd_max     = txq->nb_tx_desc;
-	tx_pkt_num = (tx_bd_ready < nb_pkts) ? tx_bd_ready : nb_pkts;
+	tx_pkt_num = nb_pkts;
 
 	/* send packets */
 	tx_bak_pkt = &txq->sw_ring[tx_next_use];
@@ -2078,7 +2061,7 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		nb_buf = tx_pkt->nb_segs;
 
-		if (nb_buf > tx_ring_space(txq)) {
+		if (nb_buf > txq->tx_bd_ready) {
 			if (nb_tx == 0)
 				return 0;
 
@@ -2137,14 +2120,13 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		nb_hold += i;
 		txq->next_to_use = tx_next_use;
+		txq->tx_bd_ready -= i;
 	}
 
 end_of_tx:
 
-	if (likely(nb_tx)) {
+	if (likely(nb_tx))
 		hns3_queue_xmit(txq, nb_hold);
-		txq->tx_bd_ready   = tx_bd_ready - nb_hold;
-	}
 
 	return nb_tx;
 }
