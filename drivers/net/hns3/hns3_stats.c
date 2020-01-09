@@ -219,8 +219,6 @@ static const struct hns3_xstats_name_offset hns3_reset_stats_strings[] = {
 
 /* The statistic of errors in Rx BD */
 static const struct hns3_xstats_name_offset hns3_rx_bd_error_strings[] = {
-	{"NONE_VALIDATED_DESCRIPTORS",
-		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(non_vld_descs)},
 	{"RX_PKT_LEN_ERRORS",
 		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(pkt_len_errors)},
 	{"L2_RX_ERRORS",
@@ -510,7 +508,6 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		rxq = eth_dev->data->rx_queues[i];
 		if (rxq) {
 			rxq->pkt_len_errors = 0;
-			rxq->non_vld_descs = 0;
 			rxq->l2_errors = 0;
 			rxq->l3_csum_erros = 0;
 			rxq->l4_csum_erros = 0;

@@ -245,7 +245,6 @@ struct hns3_rx_queue {
 	bool rx_deferred_start; /* don't start this queue in dev start */
 	bool configured;        /* indicate if rx queue has been configured */
 
-	uint64_t non_vld_descs; /* num of non valid rx descriptors */
 	uint64_t l2_errors;
 	uint64_t pkt_len_errors;
 	uint64_t l3_csum_erros;

@@ -1174,7 +1174,6 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
 	rxq->rx_buf_len = hw->rx_buf_len;
-	rxq->non_vld_descs = 0;
 	rxq->l2_errors = 0;
 	rxq->pkt_len_errors = 0;
 	rxq->l3_csum_erros = 0;
@@ -1421,7 +1420,6 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t pkt_len;
 	uint16_t nb_rx;
 	uint16_t rx_id;
-	int num;                        /* num of desc in ring */
 	int ret;
 
 	nb_rx = 0;
@@ -1435,15 +1433,11 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	last_seg = rxq->pkt_last_seg;
 	sw_ring = rxq->sw_ring;
 
-	/* Get num of packets in descriptor ring */
-	num = hns3_read_dev(rxq, HNS3_RING_RX_FBDNUM_REG);
-	while (nb_rx_bd < num && nb_rx < nb_pkts) {
+	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
 		bd_base_info = rte_le_to_cpu_32(rxdp->rx.bd_base_info);
-		if (unlikely(!hns3_get_bit(bd_base_info, HNS3_RXD_VLD_B))) {
-			rxq->non_vld_descs++;
+		if (unlikely(!hns3_get_bit(bd_base_info, HNS3_RXD_VLD_B)))
 			break;
-		}
 
 		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(nmb == NULL)) {
@@ -1454,7 +1448,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		nb_rx_bd++;
 		rxe = &sw_ring[rx_id];
 		rx_id++;
-		if (rx_id == rxq->nb_rx_desc)
+		if (unlikely(rx_id == rxq->nb_rx_desc))
 			rx_id = 0;
 
 		rte_prefetch0(sw_ring[rx_id].mbuf);
