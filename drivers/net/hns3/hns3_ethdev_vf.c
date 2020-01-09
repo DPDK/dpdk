@@ -1559,6 +1559,7 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
 	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler, dev);
+
 	return ret;
 }
 
@@ -1671,7 +1672,8 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 	struct rte_eth_dev *eth_dev;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
-	rte_eal_alarm_cancel(hns3vf_service_handler, eth_dev);
+	if (hw->adapter_state == HNS3_NIC_STARTED)
+		rte_eal_alarm_cancel(hns3vf_service_handler, eth_dev);
 	hw->mac.link_status = ETH_LINK_DOWN;
 
 	hns3_set_rxtx_function(eth_dev);
@@ -1709,8 +1711,9 @@ hns3vf_start_service(struct hns3_adapter *hns)
 	eth_dev = &rte_eth_devices[hw->data->port_id];
 	hns3_set_rxtx_function(eth_dev);
 	hns3_mp_req_start_rxtx(eth_dev);
+	if (hw->adapter_state == HNS3_NIC_STARTED)
+		hns3vf_service_handler(eth_dev);
 
-	hns3vf_service_handler(eth_dev);
 	return 0;
 }
 
