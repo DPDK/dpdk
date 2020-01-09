@@ -13,6 +13,7 @@ dpdk_driver_classes = ['common',
 	       'net',     # depends on common, bus, mempool and raw.
 	       'crypto',  # depends on common, bus and mempool (net in future).
 	       'compress', # depends on common, bus, mempool.
+	       'vdpa',    # depends on common, bus and mempool.
 	       'event',   # depends on common, bus, mempool and net.
 	       'baseband'] # depends on common and bus.
 

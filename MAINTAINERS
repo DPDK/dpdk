@@ -1089,6 +1089,11 @@ F: doc/guides/compressdevs/zlib.rst
 F: doc/guides/compressdevs/features/zlib.ini
 
 
+vDPA Drivers
+------------
+T: git://dpdk.org/next/dpdk-next-virtio
+
+
 Eventdev Drivers
 ----------------
 M: Jerin Jacob <jerinj@marvell.com>
