@@ -5,12 +5,12 @@
 #ifndef _VMXNET3_OSDEP_H
 #define _VMXNET3_OSDEP_H
 
+#include <stdbool.h>
+
 typedef uint64_t	uint64;
 typedef uint32_t	uint32;
 typedef uint16_t	uint16;
 typedef uint8_t		uint8;
-typedef int		bool;
-typedef char		Bool;
 
 #ifndef UNLIKELY
 #define UNLIKELY(x)  __builtin_expect((x),0)

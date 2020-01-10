@@ -577,7 +577,7 @@ enum vmxnet3_intr_type {
 typedef
 #include "vmware_pack_begin.h"
 struct Vmxnet3_IntrConf {
-   Bool   autoMask;
+   bool   autoMask;
    uint8  numIntrs;      /* # of interrupts */
    uint8  eventIntrIdx;
    uint8  modLevels[VMXNET3_MAX_INTRS]; /* moderation level for each intr */
@@ -593,7 +593,7 @@ Vmxnet3_IntrConf;
 typedef
 #include "vmware_pack_begin.h"
 struct Vmxnet3_QueueStatus {
-   Bool    stopped;
+   bool    stopped;
    uint8   _pad[3];
    __le32  error;
 }
@@ -613,7 +613,7 @@ Vmxnet3_TxQueueCtrl;
 typedef
 #include "vmware_pack_begin.h"
 struct Vmxnet3_RxQueueCtrl {
-   Bool    updateRxProd;
+   bool    updateRxProd;
    uint8   _pad[7];
    __le64  reserved;
 }
