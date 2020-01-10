@@ -245,7 +245,7 @@ static struct ecore_exeq_elem *ecore_exe_queue_alloc_elem(struct
 }
 
 /************************ raw_obj functions ***********************************/
-static int ecore_raw_check_pending(struct ecore_raw_obj *o)
+static bool ecore_raw_check_pending(struct ecore_raw_obj *o)
 {
 	/*
 	 * !! converts the value returned by ECORE_TEST_BIT such that it
@@ -328,7 +328,7 @@ static int ecore_raw_wait(struct bnx2x_softc *sc, struct ecore_raw_obj *raw)
 
 /***************** Classification verbs: Set/Del MAC/VLAN/VLAN-MAC ************/
 /* credit handling callbacks */
-static int ecore_get_cam_offset_mac(struct ecore_vlan_mac_obj *o, int *offset)
+static bool ecore_get_cam_offset_mac(struct ecore_vlan_mac_obj *o, int *offset)
 {
 	struct ecore_credit_pool_obj *mp = o->macs_pool;
 
@@ -337,7 +337,7 @@ static int ecore_get_cam_offset_mac(struct ecore_vlan_mac_obj *o, int *offset)
 	return mp->get_entry(mp, offset);
 }
 
-static int ecore_get_credit_mac(struct ecore_vlan_mac_obj *o)
+static bool ecore_get_credit_mac(struct ecore_vlan_mac_obj *o)
 {
 	struct ecore_credit_pool_obj *mp = o->macs_pool;
 
@@ -346,14 +346,14 @@ static int ecore_get_credit_mac(struct ecore_vlan_mac_obj *o)
 	return mp->get(mp, 1);
 }
 
-static int ecore_put_cam_offset_mac(struct ecore_vlan_mac_obj *o, int offset)
+static bool ecore_put_cam_offset_mac(struct ecore_vlan_mac_obj *o, int offset)
 {
 	struct ecore_credit_pool_obj *mp = o->macs_pool;
 
 	return mp->put_entry(mp, offset);
 }
 
-static int ecore_put_credit_mac(struct ecore_vlan_mac_obj *o)
+static bool ecore_put_credit_mac(struct ecore_vlan_mac_obj *o)
 {
 	struct ecore_credit_pool_obj *mp = o->macs_pool;
 
@@ -661,7 +661,7 @@ static struct ecore_vlan_mac_registry_elem *ecore_check_mac_del(struct bnx2x_sof
 }
 
 /* check_move() callback */
-static int ecore_check_move(struct bnx2x_softc *sc,
+static bool ecore_check_move(struct bnx2x_softc *sc,
 			    struct ecore_vlan_mac_obj *src_o,
 			    struct ecore_vlan_mac_obj *dst_o,
 			    union ecore_classification_ramrod_data *data)
@@ -686,7 +686,7 @@ static int ecore_check_move(struct bnx2x_softc *sc,
 	return TRUE;
 }
 
-static int ecore_check_move_always_err(__rte_unused struct bnx2x_softc *sc,
+static bool ecore_check_move_always_err(__rte_unused struct bnx2x_softc *sc,
 				       __rte_unused struct ecore_vlan_mac_obj
 				       *src_o, __rte_unused struct ecore_vlan_mac_obj
 				       *dst_o, __rte_unused union
@@ -713,7 +713,7 @@ static uint8_t ecore_vlan_mac_get_rx_tx_flag(struct ecore_vlan_mac_obj
 }
 
 void ecore_set_mac_in_nig(struct bnx2x_softc *sc,
-				 int add, unsigned char *dev_addr, int index)
+				 bool add, unsigned char *dev_addr, int index)
 {
 	uint32_t wb_data[2];
 	uint32_t reg_offset = ECORE_PORT_ID(sc) ? NIG_REG_LLH1_FUNC_MEM :
@@ -754,7 +754,7 @@ void ecore_set_mac_in_nig(struct bnx2x_softc *sc,
  *
  */
 static void ecore_vlan_mac_set_cmd_hdr_e2(struct ecore_vlan_mac_obj *o,
-					  int add, int opcode,
+					  bool add, int opcode,
 					  struct eth_classify_cmd_header
 					  *hdr)
 {
@@ -803,7 +803,7 @@ static void ecore_set_one_mac_e2(struct bnx2x_softc *sc,
 	    (struct eth_classify_rules_ramrod_data *)(raw->rdata);
 	int rule_cnt = rule_idx + 1, cmd = elem->cmd_data.vlan_mac.cmd;
 	union eth_classify_rule_cmd *rule_entry = &data->rules[rule_idx];
-	int add = (cmd == ECORE_VLAN_MAC_ADD) ? TRUE : FALSE;
+	bool add = (cmd == ECORE_VLAN_MAC_ADD) ? TRUE : FALSE;
 	unsigned long *vlan_mac_flags = &elem->cmd_data.vlan_mac.vlan_mac_flags;
 	uint8_t *mac = elem->cmd_data.vlan_mac.u.mac.mac;
 
@@ -3117,12 +3117,12 @@ static void ecore_mcast_set_sched(struct ecore_mcast_obj *o)
 	ECORE_SMP_MB_AFTER_CLEAR_BIT();
 }
 
-static int ecore_mcast_check_sched(struct ecore_mcast_obj *o)
+static bool ecore_mcast_check_sched(struct ecore_mcast_obj *o)
 {
 	return ! !ECORE_TEST_BIT(o->sched_state, o->raw.pstate);
 }
 
-static int ecore_mcast_check_pending(struct ecore_mcast_obj *o)
+static bool ecore_mcast_check_pending(struct ecore_mcast_obj *o)
 {
 	return o->raw.check_pending(&o->raw) || o->check_sched(o);
 }
@@ -3195,7 +3195,7 @@ void ecore_init_mcast_obj(struct bnx2x_softc *sc,
  * returns TRUE if (v + a) was less than u, and FALSE otherwise.
  *
  */
-static int __atomic_add_ifless(ecore_atomic_t * v, int a, int u)
+static bool __atomic_add_ifless(ecore_atomic_t *v, int a, int u)
 {
 	int c, old;
 
@@ -3223,7 +3223,7 @@ static int __atomic_add_ifless(ecore_atomic_t * v, int a, int u)
  * returns TRUE if (v - a) was more or equal than u, and FALSE
  * otherwise.
  */
-static int __atomic_dec_ifmoe(ecore_atomic_t * v, int a, int u)
+static bool __atomic_dec_ifmoe(ecore_atomic_t *v, int a, int u)
 {
 	int c, old;
 
@@ -3241,9 +3241,9 @@ static int __atomic_dec_ifmoe(ecore_atomic_t * v, int a, int u)
 	return TRUE;
 }
 
-static int ecore_credit_pool_get(struct ecore_credit_pool_obj *o, int cnt)
+static bool ecore_credit_pool_get(struct ecore_credit_pool_obj *o, int cnt)
 {
-	int rc;
+	bool rc;
 
 	ECORE_SMP_MB();
 	rc = __atomic_dec_ifmoe(&o->credit, cnt, 0);
@@ -3252,9 +3252,9 @@ static int ecore_credit_pool_get(struct ecore_credit_pool_obj *o, int cnt)
 	return rc;
 }
 
-static int ecore_credit_pool_put(struct ecore_credit_pool_obj *o, int cnt)
+static bool ecore_credit_pool_put(struct ecore_credit_pool_obj *o, int cnt)
 {
-	int rc;
+	bool rc;
 
 	ECORE_SMP_MB();
 
@@ -3276,14 +3276,14 @@ static int ecore_credit_pool_check(struct ecore_credit_pool_obj *o)
 	return cur_credit;
 }
 
-static int ecore_credit_pool_always_TRUE(__rte_unused struct
+static bool ecore_credit_pool_always_TRUE(__rte_unused struct
 					 ecore_credit_pool_obj *o,
 					 __rte_unused int cnt)
 {
 	return TRUE;
 }
 
-static int ecore_credit_pool_get_entry(struct ecore_credit_pool_obj *o,
+static bool ecore_credit_pool_get_entry(struct ecore_credit_pool_obj *o,
 				       int *offset)
 {
 	int idx, vec, i;
@@ -3312,7 +3312,7 @@ static int ecore_credit_pool_get_entry(struct ecore_credit_pool_obj *o,
 	return FALSE;
 }
 
-static int ecore_credit_pool_put_entry(struct ecore_credit_pool_obj *o,
+static bool ecore_credit_pool_put_entry(struct ecore_credit_pool_obj *o,
 				       int offset)
 {
 	if (offset < o->base_pool_offset)
@@ -3329,14 +3329,14 @@ static int ecore_credit_pool_put_entry(struct ecore_credit_pool_obj *o,
 	return TRUE;
 }
 
-static int ecore_credit_pool_put_entry_always_TRUE(__rte_unused struct
+static bool ecore_credit_pool_put_entry_always_TRUE(__rte_unused struct
 						   ecore_credit_pool_obj *o,
 						   __rte_unused int offset)
 {
 	return TRUE;
 }
 
-static int ecore_credit_pool_get_entry_always_TRUE(__rte_unused struct
+static bool ecore_credit_pool_get_entry_always_TRUE(__rte_unused struct
 						   ecore_credit_pool_obj *o,
 						   __rte_unused int *offset)
 {
