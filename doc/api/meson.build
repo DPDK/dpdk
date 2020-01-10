@@ -38,8 +38,7 @@ if doxygen.found()
 
 	doxy_conf = configure_file(input: 'doxy-api.conf.in',
 		output: 'doxy-api.conf',
-		configuration: cdata,
-		install: false)
+		configuration: cdata)
 
 	doxy_build = custom_target('doxygen',
 		depends: example,
