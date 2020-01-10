@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <string.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -58,7 +59,6 @@ typedef int64_t		s64;
 typedef int32_t		s32;
 typedef int16_t		s16;
 typedef int8_t		s8;
-typedef int		bool;
 
 #define __le16		u16
 #define __le32		u32
@@ -162,8 +162,5 @@ static inline uint16_t e1000_read_addr16(volatile void *addr)
 #ifndef ETH_ADDR_LEN
 #define ETH_ADDR_LEN                  6
 #endif
-
-#define false                         FALSE
-#define true                          TRUE
 
 #endif /* _E1000_OSDEP_H_ */
