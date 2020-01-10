@@ -21,8 +21,6 @@
 #include <rte_log.h>
 #include <rte_io.h>
 
-#include "../iavf_log.h"
-
 #define INLINE inline
 #define STATIC static
 
@@ -72,10 +70,6 @@ typedef uint64_t        u64;
 #define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
 #define ASSERT(x) if(!(x)) rte_panic("IAVF: x")
 
-#define DEBUGOUT(S)             PMD_DRV_LOG_RAW(DEBUG, S)
-#define DEBUGOUT2(S, A...)      PMD_DRV_LOG_RAW(DEBUG, S, ##A)
-#define DEBUGFUNC(F)            DEBUGOUT(F "\n")
-
 #define CPU_TO_LE16(o) rte_cpu_to_le_16(o)
 #define CPU_TO_LE32(s) rte_cpu_to_le_32(s)
 #define CPU_TO_LE64(h) rte_cpu_to_le_64(h)
@@ -123,10 +117,17 @@ uint32_t iavf_read_addr(volatile void *addr)
 
 #define ARRAY_SIZE(arr) (sizeof(arr)/sizeof(arr[0]))
 
+extern int iavf_common_logger;
+
+#define DEBUGOUT(S)          rte_log(RTE_LOG_DEBUG, iavf_common_logger, S)
+#define DEBUGOUT2(S, A...)   rte_log(RTE_LOG_DEBUG, iavf_common_logger, S, ##A)
+#define DEBUGFUNC(F)         DEBUGOUT(F "\n")
+
 #define iavf_debug(h, m, s, ...)                                \
 do {                                                            \
 	if (((m) & (h)->debug_mask))                            \
-		PMD_DRV_LOG_RAW(DEBUG, "iavf %02x.%x " s,       \
+		rte_log(RTE_LOG_DEBUG, iavf_common_logger,      \
+			"iavf %02x.%x " s,                      \
 			(h)->bus.device, (h)->bus.func,         \
 					##__VA_ARGS__);         \
 } while (0)

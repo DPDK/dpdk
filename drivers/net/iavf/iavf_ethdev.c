@@ -25,11 +25,6 @@
 #include <rte_memzone.h>
 #include <rte_dev.h>
 
-#include "iavf_log.h"
-#include "base/iavf_prototype.h"
-#include "base/iavf_adminq_cmd.h"
-#include "base/iavf_type.h"
-
 #include "iavf.h"
 #include "iavf_rxtx.h"
 
@@ -1469,82 +1464,4 @@ RTE_INIT(iavf_init_log)
 	if (iavf_logtype_tx_free >= 0)
 		rte_log_set_level(iavf_logtype_tx_free, RTE_LOG_DEBUG);
 #endif
-}
-
-/* memory func for base code */
-enum iavf_status
-iavf_allocate_dma_mem_d(__rte_unused struct iavf_hw *hw,
-		       struct iavf_dma_mem *mem,
-		       u64 size,
-		       u32 alignment)
-{
-	const struct rte_memzone *mz = NULL;
-	char z_name[RTE_MEMZONE_NAMESIZE];
-
-	if (!mem)
-		return IAVF_ERR_PARAM;
-
-	snprintf(z_name, sizeof(z_name), "iavf_dma_%"PRIu64, rte_rand());
-	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY,
-			RTE_MEMZONE_IOVA_CONTIG, alignment, RTE_PGSIZE_2M);
-	if (!mz)
-		return IAVF_ERR_NO_MEMORY;
-
-	mem->size = size;
-	mem->va = mz->addr;
-	mem->pa = mz->phys_addr;
-	mem->zone = (const void *)mz;
-	PMD_DRV_LOG(DEBUG,
-		    "memzone %s allocated with physical address: %"PRIu64,
-		    mz->name, mem->pa);
-
-	return IAVF_SUCCESS;
-}
-
-enum iavf_status
-iavf_free_dma_mem_d(__rte_unused struct iavf_hw *hw,
-		   struct iavf_dma_mem *mem)
-{
-	if (!mem)
-		return IAVF_ERR_PARAM;
-
-	PMD_DRV_LOG(DEBUG,
-		    "memzone %s to be freed with physical address: %"PRIu64,
-		    ((const struct rte_memzone *)mem->zone)->name, mem->pa);
-	rte_memzone_free((const struct rte_memzone *)mem->zone);
-	mem->zone = NULL;
-	mem->va = NULL;
-	mem->pa = (u64)0;
-
-	return IAVF_SUCCESS;
-}
-
-enum iavf_status
-iavf_allocate_virt_mem_d(__rte_unused struct iavf_hw *hw,
-			struct iavf_virt_mem *mem,
-			u32 size)
-{
-	if (!mem)
-		return IAVF_ERR_PARAM;
-
-	mem->size = size;
-	mem->va = rte_zmalloc("iavf", size, 0);
-
-	if (mem->va)
-		return IAVF_SUCCESS;
-	else
-		return IAVF_ERR_NO_MEMORY;
-}
-
-enum iavf_status
-iavf_free_virt_mem_d(__rte_unused struct iavf_hw *hw,
-		    struct iavf_virt_mem *mem)
-{
-	if (!mem)
-		return IAVF_ERR_PARAM;
-
-	rte_free(mem->va);
-	mem->va = NULL;
-
-	return IAVF_SUCCESS;
 }

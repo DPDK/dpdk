@@ -24,9 +24,6 @@
 #include <rte_ip.h>
 #include <rte_net.h>
 
-#include "iavf_log.h"
-#include "base/iavf_prototype.h"
-#include "base/iavf_type.h"
 #include "iavf.h"
 #include "iavf_rxtx.h"
 

@@ -30,4 +30,9 @@ ifeq ($(CONFIG_RTE_LIBRTE_COMMON_DPAAX),y)
 DIRS-y += dpaax
 endif
 
+IAVF-y := $(CONFIG_RTE_LIBRTE_IAVF_PMD)
+ifneq (,$(findstring y,$(IAVF-y)))
+DIRS-y += iavf
+endif
+
 include $(RTE_SDK)/mk/rte.subdir.mk

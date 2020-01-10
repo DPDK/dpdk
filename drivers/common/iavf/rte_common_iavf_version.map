@@ -1,0 +1,12 @@
+DPDK_20.0 {
+	global:
+
+	iavf_init_adminq;
+	iavf_shutdown_adminq;
+	iavf_aq_send_msg_to_pf;
+	iavf_clean_arq_element;
+	iavf_set_mac_type;
+	iavf_vf_parse_hw_config;
+
+	local: *;
+};

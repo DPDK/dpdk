@@ -17,3 +17,4 @@ NOTE: The source code in this directory should not be modified apart from
 the following file(s):
 
     iavf_osdep.h
+    iavf_impl.c

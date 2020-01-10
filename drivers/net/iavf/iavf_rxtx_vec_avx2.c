@@ -2,7 +2,6 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
-#include "base/iavf_prototype.h"
 #include "iavf_rxtx_vec_common.h"
 
 #include <x86intrin.h>

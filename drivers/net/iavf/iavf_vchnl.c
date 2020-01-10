@@ -19,11 +19,6 @@
 #include <rte_ethdev_driver.h>
 #include <rte_dev.h>
 
-#include "iavf_log.h"
-#include "base/iavf_prototype.h"
-#include "base/iavf_adminq_cmd.h"
-#include "base/iavf_type.h"
-
 #include "iavf.h"
 #include "iavf_rxtx.h"
 

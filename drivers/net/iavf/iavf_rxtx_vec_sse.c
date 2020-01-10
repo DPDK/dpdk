@@ -6,8 +6,6 @@
 #include <rte_ethdev_driver.h>
 #include <rte_malloc.h>
 
-#include "base/iavf_prototype.h"
-#include "base/iavf_type.h"
 #include "iavf.h"
 #include "iavf_rxtx.h"
 #include "iavf_rxtx_vec_common.h"

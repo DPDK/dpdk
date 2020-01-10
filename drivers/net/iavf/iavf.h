@@ -6,7 +6,11 @@
 #define _IAVF_ETHDEV_H_
 
 #include <rte_kvargs.h>
-#include "base/iavf_type.h"
+#include <iavf_prototype.h>
+#include <iavf_adminq_cmd.h>
+#include <iavf_type.h>
+
+#include "iavf_log.h"
 
 #define IAVF_AQ_LEN               32
 #define IAVF_AQ_BUF_SZ            4096

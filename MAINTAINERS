@@ -679,6 +679,7 @@ M: Jingjing Wu <jingjing.wu@intel.com>
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/iavf/
+F: drivers/common/iavf/
 F: doc/guides/nics/features/iavf*.ini
 
 Intel ice

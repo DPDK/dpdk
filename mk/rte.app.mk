@@ -183,6 +183,10 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_HNS3_PMD)       += -lrte_pmd_hns3
 _LDLIBS-$(CONFIG_RTE_LIBRTE_I40E_PMD)       += -lrte_pmd_i40e
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IAVF_PMD)       += -lrte_pmd_iavf
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ICE_PMD)        += -lrte_pmd_ice
+IAVF-y := $(CONFIG_RTE_LIBRTE_IAVF_PMD)
+ifeq ($(findstring y,$(IAVF-y)),y)
+_LDLIBS-y += -lrte_common_iavf
+endif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD)      += -lrte_pmd_ixgbe
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_KNI)        += -lrte_pmd_kni
