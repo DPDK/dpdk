@@ -709,11 +709,12 @@ out:
 	return ret;
 }
 
-static void cxgbe_get_devargs_int(struct adapter *adap, int *dst,
-				  const char *key, int default_value)
+static void cxgbe_get_devargs_int(struct adapter *adap, bool *dst,
+				  const char *key, bool default_value)
 {
 	struct rte_pci_device *pdev = adap->pdev;
-	int ret, devarg_value = default_value;
+	int ret;
+	bool devarg_value = default_value;
 
 	*dst = default_value;
 	if (!pdev)
@@ -729,11 +730,11 @@ static void cxgbe_get_devargs_int(struct adapter *adap, int *dst,
 void cxgbe_process_devargs(struct adapter *adap)
 {
 	cxgbe_get_devargs_int(adap, &adap->devargs.keep_ovlan,
-			      CXGBE_DEVARG_CMN_KEEP_OVLAN, 0);
+			      CXGBE_DEVARG_CMN_KEEP_OVLAN, false);
 	cxgbe_get_devargs_int(adap, &adap->devargs.tx_mode_latency,
-			      CXGBE_DEVARG_CMN_TX_MODE_LATENCY, 0);
+			      CXGBE_DEVARG_CMN_TX_MODE_LATENCY, false);
 	cxgbe_get_devargs_int(adap, &adap->devargs.force_link_up,
-			      CXGBE_DEVARG_VF_FORCE_LINK_UP, 0);
+			      CXGBE_DEVARG_VF_FORCE_LINK_UP, false);
 }
 
 static void configure_vlan_types(struct adapter *adapter)

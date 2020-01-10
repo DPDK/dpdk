@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #include <rte_common.h>
 #include <rte_memcpy.h>
@@ -86,7 +87,6 @@ typedef uint16_t  u16;
 typedef uint32_t  u32;
 typedef int32_t   s32;
 typedef uint64_t  u64;
-typedef int       bool;
 typedef uint64_t  dma_addr_t;
 
 #ifndef __le16
@@ -122,8 +122,6 @@ typedef uint64_t  dma_addr_t;
 
 #define FALSE	0
 #define TRUE	1
-#define false	0
-#define true	1
 
 #ifndef min
 #define min(a, b) RTE_MIN(a, b)
