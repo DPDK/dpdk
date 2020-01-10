@@ -7,24 +7,18 @@ if not sphinx.found()
 	subdir_done()
 endif
 
-htmldir = join_paths('share', 'doc', 'dpdk')
+htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
 html_guides = custom_target('html_guides',
-	input: meson.current_source_dir(),
-	output: 'guides',
-	command: [sphinx, '-b', 'html',
-		'-d', meson.current_build_dir() + '/.doctrees',
-		'@INPUT@', meson.current_build_dir() + '/guides'],
+	input: files('index.rst'),
+	output: 'html',
+	command: [sphinx_wrapper, sphinx, meson.current_source_dir(), meson.current_build_dir()],
+	depfile: '.html.d',
 	build_by_default: get_option('enable_docs'),
 	install: get_option('enable_docs'),
 	install_dir: htmldir)
 
+install_data(files('custom.css'),
+			install_dir: join_paths(htmldir,'_static', 'css'))
+
 doc_targets += html_guides
 doc_target_names += 'HTML_Guides'
-
-# sphinx leaves a .buildinfo in the target directory, which we don't
-# want to install. Note that sh -c has to be used, otherwise the
-# env var does not get expanded if calling rm/install directly.
-meson.add_install_script('sh', '-c',
-	'rm -f $MESON_INSTALL_DESTDIR_PREFIX/share/doc/dpdk/guides/.buildinfo')
-meson.add_install_script('sh', '-c',
-	'install -D -m0644 $MESON_SOURCE_ROOT/doc/guides/custom.css $MESON_INSTALL_DESTDIR_PREFIX/share/doc/dpdk/guides/_static/css/custom.css')
