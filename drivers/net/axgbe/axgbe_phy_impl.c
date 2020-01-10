@@ -957,6 +957,41 @@ static enum axgbe_mode axgbe_phy_an73_outcome(struct axgbe_port *pdata)
 	return mode;
 }
 
+static enum axgbe_mode axgbe_phy_an37_sgmii_outcome(struct axgbe_port *pdata)
+{
+	enum axgbe_mode mode;
+
+	pdata->phy.lp_advertising |= ADVERTISED_Autoneg;
+	pdata->phy.lp_advertising |= ADVERTISED_1000baseT_Full;
+
+	if (pdata->phy.pause_autoneg)
+		axgbe_phy_phydev_flowctrl(pdata);
+
+	switch (pdata->an_status & AXGBE_SGMII_AN_LINK_SPEED) {
+	case AXGBE_SGMII_AN_LINK_SPEED_100:
+		if (pdata->an_status & AXGBE_SGMII_AN_LINK_DUPLEX) {
+			pdata->phy.lp_advertising |= ADVERTISED_100baseT_Full;
+			mode = AXGBE_MODE_SGMII_100;
+		} else {
+			mode = AXGBE_MODE_UNKNOWN;
+		}
+		break;
+	case AXGBE_SGMII_AN_LINK_SPEED_1000:
+		if (pdata->an_status & AXGBE_SGMII_AN_LINK_DUPLEX) {
+			pdata->phy.lp_advertising |= ADVERTISED_1000baseT_Full;
+			mode = AXGBE_MODE_SGMII_1000;
+		} else {
+			/* Half-duplex not supported */
+			mode = AXGBE_MODE_UNKNOWN;
+		}
+		break;
+	default:
+		mode = AXGBE_MODE_UNKNOWN;
+		break;
+	}
+	return mode;
+}
+
 static enum axgbe_mode axgbe_phy_an_outcome(struct axgbe_port *pdata)
 {
 	switch (pdata->an_mode) {
@@ -966,6 +1001,7 @@ static enum axgbe_mode axgbe_phy_an_outcome(struct axgbe_port *pdata)
 		return axgbe_phy_an73_redrv_outcome(pdata);
 	case AXGBE_AN_MODE_CL37:
 	case AXGBE_AN_MODE_CL37_SGMII:
+		return axgbe_phy_an37_sgmii_outcome(pdata);
 	default:
 		return AXGBE_MODE_UNKNOWN;
 	}
@@ -1957,6 +1993,7 @@ static int axgbe_phy_start(struct axgbe_port *pdata)
 	default:
 		break;
 	}
+	pdata->phy.advertising &= axgbe_phy_an_advertising(pdata);
 
 	return ret;
 }
