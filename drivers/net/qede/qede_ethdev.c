@@ -450,7 +450,7 @@ int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg)
 	params.update_vport_active_tx_flg = 1;
 	params.vport_active_rx_flg = flg;
 	params.vport_active_tx_flg = flg;
-	if (~qdev->enable_tx_switching & flg) {
+	if ((qdev->enable_tx_switching == false) && (flg == true)) {
 		params.update_tx_switching_flg = 1;
 		params.tx_switching_flg = !flg;
 	}

@@ -7,6 +7,7 @@
 #ifndef __BCM_OSAL_H
 #define __BCM_OSAL_H
 
+#include <stdbool.h>
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
@@ -70,10 +71,6 @@ typedef void *osal_dpc_t;
 typedef size_t osal_size_t;
 
 typedef intptr_t osal_int_ptr_t;
-
-typedef int bool;
-#define true 1
-#define false 0
 
 #define nothing do {} while (0)
 
