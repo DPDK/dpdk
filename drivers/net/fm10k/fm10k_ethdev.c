@@ -3210,19 +3210,19 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 
 	/* Make sure Switch Manager is ready before going forward. */
 	if (hw->mac.type == fm10k_mac_pf) {
-		int switch_ready = 0;
+		bool switch_ready = false;
 
 		for (i = 0; i < MAX_QUERY_SWITCH_STATE_TIMES; i++) {
 			fm10k_mbx_lock(hw);
 			hw->mac.ops.get_host_state(hw, &switch_ready);
 			fm10k_mbx_unlock(hw);
-			if (switch_ready)
+			if (switch_ready == true)
 				break;
 			/* Delay some time to acquire async LPORT_MAP info. */
 			rte_delay_us(WAIT_SWITCH_MSG_US);
 		}
 
-		if (switch_ready == 0) {
+		if (switch_ready == false) {
 			PMD_INIT_LOG(ERR, "switch is not ready");
 			return -1;
 		}

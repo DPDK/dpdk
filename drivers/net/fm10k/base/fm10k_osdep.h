@@ -6,6 +6,7 @@
 #define _FM10K_OSDEP_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <rte_atomic.h>
 #include <rte_byteorder.h>
@@ -32,12 +33,6 @@
 
 #define FALSE      0
 #define TRUE       1
-#ifndef false
-#define false      FALSE
-#endif
-#ifndef true
-#define true       TRUE
-#endif
 
 typedef uint8_t    u8;
 typedef int8_t     s8;
@@ -47,7 +42,6 @@ typedef uint32_t   u32;
 typedef int32_t    s32;
 typedef int64_t    s64;
 typedef uint64_t   u64;
-typedef int        bool;
 
 #ifndef __le16
 #define __le16     u16
