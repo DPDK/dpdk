@@ -15,13 +15,43 @@
  *
  */
 
+#include <inttypes.h>
+#include <string.h>
+
 #include <rte_mbuf.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct rte_reorder_buffer;
+#define NO_FLAGS 0
+#define RTE_REORDER_PREFIX "RO_"
+#define RTE_REORDER_NAMESIZE 32
+
+/**
+ * @brief A generic circular buffer 
+ */
+struct cir_buffer {
+	unsigned int size;   /**< Number of entries that can be stored */
+	unsigned int mask;   /**< [buffer_size - 1]: used for wrap-around */
+	unsigned int head;   /**< insertion point in buffer */
+	unsigned int tail;   /**< extraction point in buffer */
+	struct rte_mbuf **entries;
+} __rte_cache_aligned;
+
+
+/**
+ * @brief The reorder buffer data structure itself 
+ */
+struct rte_reorder_buffer {
+	char name[RTE_REORDER_NAMESIZE];
+	uint32_t min_seqn;  /**< Lowest seq. number that can be in the buffer */
+	unsigned int memsize; /**< memory area size of reorder buffer */
+	struct cir_buffer ready_buf; /**< temp buffer for dequeued entries */
+	struct cir_buffer order_buf; /**< buffer used to reorder entries */
+	int is_initialized;
+} __rte_cache_aligned;
+
 
 /**
  * Create a new reorder buffer instance
