@@ -112,7 +112,6 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64x2_t ltypes01, ltypes23;
 	uint64x2_t xtmp128, ytmp128;
 	uint64x2_t xmask01, xmask23;
-	uint64x2_t mbuf01, mbuf23;
 	uint64x2_t cmd00, cmd01;
 	uint64x2_t cmd10, cmd11;
 	uint64x2_t cmd20, cmd21;
@@ -139,9 +138,6 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 	sgdesc23_w0 = sgdesc01_w0;
 
 	for (i = 0; i < pkts; i += NIX_DESCS_PER_LOOP) {
-		mbuf01 = vld1q_u64((uint64_t *)tx_pkts);
-		mbuf23 = vld1q_u64((uint64_t *)(tx_pkts + 2));
-
 		/* Clear lower 32bit of SEND_HDR_W0 and SEND_SG_W0 */
 		senddesc01_w0 = vbicq_u64(senddesc01_w0,
 					  vdupq_n_u64(0xFFFFFFFF));
@@ -151,13 +147,11 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 		senddesc23_w0 = senddesc01_w0;
 		sgdesc23_w0 = sgdesc01_w0;
 
-		tx_pkts = tx_pkts + NIX_DESCS_PER_LOOP;
-
 		/* Move mbufs to iova */
-		mbuf0 = (uint64_t *)vgetq_lane_u64(mbuf01, 0);
-		mbuf1 = (uint64_t *)vgetq_lane_u64(mbuf01, 1);
-		mbuf2 = (uint64_t *)vgetq_lane_u64(mbuf23, 0);
-		mbuf3 = (uint64_t *)vgetq_lane_u64(mbuf23, 1);
+		mbuf0 = (uint64_t *)tx_pkts[0];
+		mbuf1 = (uint64_t *)tx_pkts[1];
+		mbuf2 = (uint64_t *)tx_pkts[2];
+		mbuf3 = (uint64_t *)tx_pkts[3];
 
 		mbuf0 = (uint64_t *)((uintptr_t)mbuf0 +
 				     offsetof(struct rte_mbuf, buf_iova));
@@ -929,6 +923,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			lmt_status = otx2_lmt_submit(io_addr);
 
 		} while (lmt_status == 0);
+		tx_pkts = tx_pkts + NIX_DESCS_PER_LOOP;
 	}
 
 	if (unlikely(pkts_left))
