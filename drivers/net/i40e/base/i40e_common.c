@@ -4869,8 +4869,6 @@ enum i40e_status_code i40e_aq_add_mcast_etag(struct i40e_hw *hw, u16 pv_seid,
 	cmd->num_unicast_etags = num_tags_in_buf;
 
 	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
-	if (length > I40E_AQ_LARGE_BUF)
-		desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_LB);
 
 	status = i40e_asq_send_command(hw, &desc, buf, length, cmd_details);
 
