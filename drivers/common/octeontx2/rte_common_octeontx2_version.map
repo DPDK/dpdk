@@ -33,3 +33,9 @@ DPDK_20.0 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	otx2_logtype_ep;
+};

@@ -36,5 +36,8 @@ LIBABIVER := 1
 # All source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_EP_RAWDEV) += otx2_ep_rawdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_EP_RAWDEV) += otx2_ep_enqdeq.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_EP_RAWDEV) += otx2_ep_vf.c
+
 
 include $(RTE_SDK)/mk/rte.lib.mk

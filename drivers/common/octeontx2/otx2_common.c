@@ -205,6 +205,10 @@ int otx2_logtype_tim;
  * @internal
  */
 int otx2_logtype_dpi;
+/**
+ * @internal
+ */
+int otx2_logtype_ep;
 
 RTE_INIT(otx2_log_init);
 static void
@@ -245,4 +249,9 @@ otx2_log_init(void)
 	otx2_logtype_dpi = rte_log_register("pmd.raw.octeontx2.dpi");
 	if (otx2_logtype_dpi >= 0)
 		rte_log_set_level(otx2_logtype_dpi, RTE_LOG_NOTICE);
+
+	otx2_logtype_ep = rte_log_register("pmd.raw.octeontx2.ep");
+	if (otx2_logtype_ep >= 0)
+		rte_log_set_level(otx2_logtype_ep, RTE_LOG_NOTICE);
+
 }

@@ -39,3 +39,31 @@ entry `sriov_numvfs` for the corresponding PF driver.
 
 Once the required VFs are enabled, to be accessible from DPDK, VFs need to be
 bound to vfio-pci driver.
+
+Device Setup
+------------
+
+The OCTEON TX2 SDP End Point VF devices will need to be bound to a
+user-space IO driver for use. The script ``dpdk-devbind.py`` script
+included with DPDK can be used to view the state of the devices and to bind
+them to a suitable DPDK-supported kernel driver. When querying the status
+of the devices, they will appear under the category of "Misc (rawdev)
+devices", i.e. the command ``dpdk-devbind.py --status-dev misc`` can be
+used to see the state of those devices alone.
+
+Device Configuration
+--------------------
+
+Configuring SDP EP rawdev device is done using the ``rte_rawdev_configure()``
+API, which takes the mempool as parameter. PMD uses this pool to send/receive
+packets to/from the HW.
+
+The following code shows how the device is configured
+
+.. code-block:: c
+
+   struct sdp_rawdev_info config = {0};
+   struct rte_rawdev_info rdev_info = {.dev_private = &config};
+   config.enqdeq_mpool = (void *)rte_mempool_create(...);
+
+   rte_rawdev_configure(dev_id, (rte_rawdev_obj_t)&rdev_info);

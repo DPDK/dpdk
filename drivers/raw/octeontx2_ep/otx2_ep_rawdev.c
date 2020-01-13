@@ -17,6 +17,7 @@
 
 #include "otx2_common.h"
 #include "otx2_ep_rawdev.h"
+#include "otx2_ep_vf.h"
 
 static const struct rte_pci_id pci_sdp_vf_map[] = {
 	{
@@ -26,6 +27,152 @@ static const struct rte_pci_id pci_sdp_vf_map[] = {
 	{
 		.vendor_id = 0,
 	},
+};
+
+/* SDP_VF default configuration */
+const struct sdp_config default_sdp_conf = {
+	/* IQ attributes */
+	.iq                        = {
+		.max_iqs           = SDP_VF_CFG_IO_QUEUES,
+		.instr_type        = SDP_VF_64BYTE_INSTR,
+		.pending_list_size = (SDP_VF_MAX_IQ_DESCRIPTORS *
+				      SDP_VF_CFG_IO_QUEUES),
+	},
+
+	/* OQ attributes */
+	.oq                        = {
+		.max_oqs           = SDP_VF_CFG_IO_QUEUES,
+		.info_ptr          = SDP_VF_OQ_INFOPTR_MODE,
+		.refill_threshold  = SDP_VF_OQ_REFIL_THRESHOLD,
+	},
+
+	.num_iqdef_descs           = SDP_VF_MAX_IQ_DESCRIPTORS,
+	.num_oqdef_descs           = SDP_VF_MAX_OQ_DESCRIPTORS,
+	.oqdef_buf_size            = SDP_VF_OQ_BUF_SIZE,
+
+};
+
+const struct sdp_config*
+sdp_get_defconf(struct sdp_device *sdp_dev __rte_unused)
+{
+	const struct sdp_config *default_conf = NULL;
+
+	default_conf = &default_sdp_conf;
+
+	return default_conf;
+}
+
+static int
+sdp_chip_specific_setup(struct sdp_device *sdpvf)
+{
+	struct rte_pci_device *pdev = sdpvf->pci_dev;
+	uint32_t dev_id = pdev->id.device_id;
+	int ret;
+
+	switch (dev_id) {
+	case PCI_DEVID_OCTEONTX2_EP_VF:
+		sdpvf->chip_id = PCI_DEVID_OCTEONTX2_EP_VF;
+		ret = sdp_vf_setup_device(sdpvf);
+
+		break;
+	default:
+		otx2_err("Unsupported device");
+		ret = -EINVAL;
+	}
+
+	if (!ret)
+		otx2_info("SDP dev_id[%d]", dev_id);
+
+	return ret;
+}
+
+/* SDP VF device initialization */
+static int
+sdp_vfdev_init(struct sdp_device *sdpvf)
+{
+	uint32_t rawdev_queues, q;
+
+	if (sdp_chip_specific_setup(sdpvf)) {
+		otx2_err("Chip specific setup failed");
+		goto setup_fail;
+	}
+
+	if (sdpvf->fn_list.setup_device_regs(sdpvf)) {
+		otx2_err("Failed to configure device registers");
+		goto setup_fail;
+	}
+
+	rawdev_queues = (uint32_t)(sdpvf->sriov_info.rings_per_vf);
+
+	/* Rawdev queues setup for enqueue/dequeue */
+	for (q = 0; q < rawdev_queues; q++) {
+		if (sdp_setup_iqs(sdpvf, q)) {
+			otx2_err("Failed to setup IQs");
+			goto iq_fail;
+		}
+	}
+	otx2_info("Total[%d] IQs setup", sdpvf->num_iqs);
+
+	for (q = 0; q < rawdev_queues; q++) {
+		if (sdp_setup_oqs(sdpvf, q)) {
+			otx2_err("Failed to setup OQs");
+			goto oq_fail;
+		}
+	}
+	otx2_info("Total [%d] OQs setup", sdpvf->num_oqs);
+
+	/* Enable IQ/OQ for this device */
+	sdpvf->fn_list.enable_io_queues(sdpvf);
+
+	/* Send OQ desc credits for OQs, credits are always
+	 * sent after the OQs are enabled.
+	 */
+	for (q = 0; q < rawdev_queues; q++) {
+		rte_write32(sdpvf->droq[q]->nb_desc,
+			    sdpvf->droq[q]->pkts_credit_reg);
+
+		rte_io_mb();
+		otx2_info("OQ[%d] dbells [%d]", q,
+		rte_read32(sdpvf->droq[q]->pkts_credit_reg));
+	}
+
+	rte_wmb();
+
+	otx2_info("SDP Device is Ready");
+
+	return 0;
+
+oq_fail:
+iq_fail:
+setup_fail:
+	return -ENOMEM;
+}
+
+static int
+sdp_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
+{
+	struct sdp_rawdev_info *app_info = (struct sdp_rawdev_info *)config;
+	struct sdp_device *sdpvf;
+
+	if (app_info == NULL) {
+		otx2_err("Application config info [NULL]");
+		return -EINVAL;
+	}
+
+	sdpvf = (struct sdp_device *)dev->dev_private;
+
+	sdpvf->conf = app_info->app_conf;
+	sdpvf->enqdeq_mpool = app_info->enqdeq_mpool;
+
+	sdp_vfdev_init(sdpvf);
+
+	return 0;
+
+}
+
+/* SDP VF endpoint rawdev ops */
+static const struct rte_rawdev_ops sdp_rawdev_ops = {
+	.dev_configure  = sdp_rawdev_configure,
 };
 
 static int
@@ -66,6 +213,7 @@ otx2_sdp_rawdev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return -ENOMEM;
 	}
 
+	sdp_rawdev->dev_ops = &sdp_rawdev_ops;
 	sdp_rawdev->device = &pci_dev->device;
 	sdp_rawdev->driver_name = pci_dev->driver->driver.name;
 

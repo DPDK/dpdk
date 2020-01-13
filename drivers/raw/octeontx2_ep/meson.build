@@ -3,4 +3,6 @@
 #
 
 deps += ['bus_pci', 'common_octeontx2', 'rawdev']
-sources = files('otx2_ep_rawdev.c')
+sources = files('otx2_ep_rawdev.c',
+		'otx2_ep_enqdeq.c',
+		'otx2_ep_vf.c')
