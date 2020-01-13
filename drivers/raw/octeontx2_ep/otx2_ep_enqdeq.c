@@ -21,6 +21,59 @@
 #include "otx2_common.h"
 #include "otx2_ep_enqdeq.h"
 
+static void
+sdp_dmazone_free(const struct rte_memzone *mz)
+{
+	const struct rte_memzone *mz_tmp;
+	int ret = 0;
+
+	if (mz == NULL) {
+		otx2_err("Memzone %s : NULL", mz->name);
+		return;
+	}
+
+	mz_tmp = rte_memzone_lookup(mz->name);
+	if (mz_tmp == NULL) {
+		otx2_err("Memzone %s Not Found", mz->name);
+		return;
+	}
+
+	ret = rte_memzone_free(mz);
+	if (ret)
+		otx2_err("Memzone free failed : ret = %d", ret);
+
+}
+
+/* Free IQ resources */
+int
+sdp_delete_iqs(struct sdp_device *sdpvf, uint32_t iq_no)
+{
+	struct sdp_instr_queue *iq;
+
+	iq = sdpvf->instr_queue[iq_no];
+	if (iq == NULL) {
+		otx2_err("Invalid IQ[%d]\n", iq_no);
+		return -ENOMEM;
+	}
+
+	rte_free(iq->req_list);
+	iq->req_list = NULL;
+
+	if (iq->iq_mz) {
+		sdp_dmazone_free(iq->iq_mz);
+		iq->iq_mz = NULL;
+	}
+
+	rte_free(sdpvf->instr_queue[iq_no]);
+	sdpvf->instr_queue[iq_no] = NULL;
+
+	sdpvf->num_iqs--;
+
+	otx2_info("IQ[%d] is deleted", iq_no);
+
+	return 0;
+}
+
 /* IQ initialization */
 static int
 sdp_init_instr_queue(struct sdp_device *sdpvf, int iq_no)
@@ -126,6 +179,7 @@ sdp_setup_iqs(struct sdp_device *sdpvf, uint32_t iq_no)
 	return 0;
 
 delete_IQ:
+	sdp_delete_iqs(sdpvf, iq_no);
 	return -ENOMEM;
 }
 
@@ -137,6 +191,61 @@ sdp_droq_reset_indices(struct sdp_droq *droq)
 	droq->refill_idx = 0;
 	droq->refill_count = 0;
 	rte_atomic64_set(&droq->pkts_pending, 0);
+}
+
+static void
+sdp_droq_destroy_ring_buffers(struct sdp_device *sdpvf,
+				struct sdp_droq *droq)
+{
+	uint32_t idx;
+
+	for (idx = 0; idx < droq->nb_desc; idx++) {
+		if (droq->recv_buf_list[idx].buffer) {
+			rte_mempool_put(sdpvf->enqdeq_mpool,
+				droq->recv_buf_list[idx].buffer);
+
+			droq->recv_buf_list[idx].buffer = NULL;
+		}
+	}
+
+	sdp_droq_reset_indices(droq);
+}
+
+/* Free OQs resources */
+int
+sdp_delete_oqs(struct sdp_device *sdpvf, uint32_t oq_no)
+{
+	struct sdp_droq *droq;
+
+	droq = sdpvf->droq[oq_no];
+	if (droq == NULL) {
+		otx2_err("Invalid droq[%d]", oq_no);
+		return -ENOMEM;
+	}
+
+	sdp_droq_destroy_ring_buffers(sdpvf, droq);
+	rte_free(droq->recv_buf_list);
+	droq->recv_buf_list = NULL;
+
+	if (droq->info_mz) {
+		sdp_dmazone_free(droq->info_mz);
+		droq->info_mz = NULL;
+	}
+
+	if (droq->desc_ring_mz) {
+		sdp_dmazone_free(droq->desc_ring_mz);
+		droq->desc_ring_mz = NULL;
+	}
+
+	memset(droq, 0, SDP_DROQ_SIZE);
+
+	rte_free(sdpvf->droq[oq_no]);
+	sdpvf->droq[oq_no] = NULL;
+
+	sdpvf->num_oqs--;
+
+	otx2_info("OQ[%d] is deleted", oq_no);
+	return 0;
 }
 
 static int
@@ -290,5 +399,7 @@ sdp_setup_oqs(struct sdp_device *sdpvf, uint32_t oq_no)
 	return 0;
 
 delete_OQ:
+	sdp_delete_oqs(sdpvf, oq_no);
 	return -ENOMEM;
 }
+

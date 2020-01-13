@@ -63,6 +63,45 @@ sdp_get_defconf(struct sdp_device *sdp_dev __rte_unused)
 }
 
 static int
+sdp_vfdev_exit(struct rte_rawdev *rawdev)
+{
+	struct sdp_device *sdpvf;
+	uint32_t rawdev_queues, q;
+
+	otx2_info("%s:", __func__);
+
+	sdpvf = (struct sdp_device *)rawdev->dev_private;
+
+	sdpvf->fn_list.disable_io_queues(sdpvf);
+
+	rawdev_queues = sdpvf->num_oqs;
+	for (q = 0; q < rawdev_queues; q++) {
+		if (sdp_delete_oqs(sdpvf, q)) {
+			otx2_err("Failed to delete OQ:%d", q);
+			return -ENOMEM;
+		}
+	}
+	otx2_info("Num OQs:%d freed", sdpvf->num_oqs);
+
+	/* Free the oqbuf_pool */
+	rte_mempool_free(sdpvf->enqdeq_mpool);
+	sdpvf->enqdeq_mpool = NULL;
+
+	otx2_info("Enqdeq_mpool free done");
+
+	rawdev_queues = sdpvf->num_iqs;
+	for (q = 0; q < rawdev_queues; q++) {
+		if (sdp_delete_iqs(sdpvf, q)) {
+			otx2_err("Failed to delete IQ:%d", q);
+			return -ENOMEM;
+		}
+	}
+	otx2_sdp_dbg("Num IQs:%d freed", sdpvf->num_iqs);
+
+	return 0;
+}
+
+static int
 sdp_chip_specific_setup(struct sdp_device *sdpvf)
 {
 	struct rte_pci_device *pdev = sdpvf->pci_dev;
@@ -142,10 +181,46 @@ sdp_vfdev_init(struct sdp_device *sdpvf)
 
 	return 0;
 
+/* Error handling  */
 oq_fail:
+	/* Free the allocated OQs */
+	for (q = 0; q < sdpvf->num_oqs; q++)
+		sdp_delete_oqs(sdpvf, q);
+
 iq_fail:
+	/* Free the allocated IQs */
+	for (q = 0; q < sdpvf->num_iqs; q++)
+		sdp_delete_iqs(sdpvf, q);
+
 setup_fail:
 	return -ENOMEM;
+}
+
+static int
+sdp_rawdev_start(struct rte_rawdev *dev)
+{
+	dev->started = 1;
+
+	return 0;
+}
+
+static void
+sdp_rawdev_stop(struct rte_rawdev *dev)
+{
+	dev->started = 0;
+}
+
+static int
+sdp_rawdev_close(struct rte_rawdev *dev)
+{
+	int ret;
+	ret = sdp_vfdev_exit(dev);
+	if (ret) {
+		otx2_err(" SDP_EP rawdev exit error");
+		return ret;
+	}
+
+	return 0;
 }
 
 static int
@@ -173,6 +248,9 @@ sdp_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 /* SDP VF endpoint rawdev ops */
 static const struct rte_rawdev_ops sdp_rawdev_ops = {
 	.dev_configure  = sdp_rawdev_configure,
+	.dev_start      = sdp_rawdev_start,
+	.dev_stop       = sdp_rawdev_stop,
+	.dev_close      = sdp_rawdev_close,
 };
 
 static int

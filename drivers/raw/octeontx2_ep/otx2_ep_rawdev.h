@@ -378,10 +378,16 @@ struct sdp_config {
 struct sdp_fn_list {
 	void (*setup_iq_regs)(struct sdp_device *sdpvf, uint32_t q_no);
 	void (*setup_oq_regs)(struct sdp_device *sdpvf, uint32_t q_no);
+
 	int (*setup_device_regs)(struct sdp_device *sdpvf);
 	void (*enable_io_queues)(struct sdp_device *sdpvf);
+	void (*disable_io_queues)(struct sdp_device *sdpvf);
+
 	void (*enable_iq)(struct sdp_device *sdpvf, uint32_t q_no);
+	void (*disable_iq)(struct sdp_device *sdpvf, uint32_t q_no);
+
 	void (*enable_oq)(struct sdp_device *sdpvf, uint32_t q_no);
+	void (*disable_oq)(struct sdp_device *sdpvf, uint32_t q_no);
 };
 
 /* SRIOV information */
@@ -447,7 +453,9 @@ struct sdp_device {
 
 const struct sdp_config *sdp_get_defconf(struct sdp_device *sdp_dev);
 int sdp_setup_iqs(struct sdp_device *sdpvf, uint32_t iq_no);
+int sdp_delete_iqs(struct sdp_device *sdpvf, uint32_t iq_no);
 
 int sdp_setup_oqs(struct sdp_device *sdpvf, uint32_t oq_no);
+int sdp_delete_oqs(struct sdp_device *sdpvf, uint32_t oq_no);
 
 #endif /* _OTX2_EP_RAWDEV_H_ */

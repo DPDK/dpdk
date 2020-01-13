@@ -371,6 +371,44 @@ sdp_vf_enable_io_queues(struct sdp_device *sdpvf)
 		sdp_vf_enable_oq(sdpvf, q_no);
 }
 
+static void
+sdp_vf_disable_iq(struct sdp_device *sdpvf, uint32_t q_no)
+{
+	volatile uint64_t reg_val = 0ull;
+
+	/* Reset the doorbell register for this Input Queue. */
+	reg_val = otx2_read64(sdpvf->hw_addr + SDP_VF_R_IN_ENABLE(q_no));
+	reg_val &= ~0x1ull;
+
+	otx2_write64(reg_val, sdpvf->hw_addr + SDP_VF_R_IN_ENABLE(q_no));
+}
+
+static void
+sdp_vf_disable_oq(struct sdp_device *sdpvf, uint32_t q_no)
+{
+	volatile uint64_t reg_val = 0ull;
+
+	reg_val = otx2_read64(sdpvf->hw_addr + SDP_VF_R_OUT_ENABLE(q_no));
+	reg_val &= ~0x1ull;
+
+	otx2_write64(reg_val, sdpvf->hw_addr + SDP_VF_R_OUT_ENABLE(q_no));
+
+}
+
+static void
+sdp_vf_disable_io_queues(struct sdp_device *sdpvf)
+{
+	uint32_t q_no = 0;
+
+	/* Disable Input Queues. */
+	for (q_no = 0; q_no < sdpvf->num_iqs; q_no++)
+		sdp_vf_disable_iq(sdpvf, q_no);
+
+	/* Disable Output Queues. */
+	for (q_no = 0; q_no < sdpvf->num_oqs; q_no++)
+		sdp_vf_disable_oq(sdpvf, q_no);
+}
+
 int
 sdp_vf_setup_device(struct sdp_device *sdpvf)
 {
@@ -396,10 +434,16 @@ sdp_vf_setup_device(struct sdp_device *sdpvf)
 
 	sdpvf->fn_list.setup_iq_regs       = sdp_vf_setup_iq_regs;
 	sdpvf->fn_list.setup_oq_regs       = sdp_vf_setup_oq_regs;
+
 	sdpvf->fn_list.setup_device_regs   = sdp_vf_setup_device_regs;
 	sdpvf->fn_list.enable_io_queues    = sdp_vf_enable_io_queues;
+	sdpvf->fn_list.disable_io_queues   = sdp_vf_disable_io_queues;
+
 	sdpvf->fn_list.enable_iq           = sdp_vf_enable_iq;
+	sdpvf->fn_list.disable_iq          = sdp_vf_disable_iq;
+
 	sdpvf->fn_list.enable_oq           = sdp_vf_enable_oq;
+	sdpvf->fn_list.disable_oq          = sdp_vf_disable_oq;
 
 
 	return 0;
