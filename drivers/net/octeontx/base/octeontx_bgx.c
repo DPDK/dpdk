@@ -243,3 +243,58 @@ octeontx_bgx_port_mac_set(int port, uint8_t *mac_addr)
 
 	return res;
 }
+
+int
+octeontx_bgx_port_mac_add(int port, uint8_t *mac_addr)
+{
+	struct octeontx_mbox_hdr hdr;
+	int resp = 0;
+	int len = 6;
+	int res = 0;
+
+	hdr.coproc = OCTEONTX_BGX_COPROC;
+	hdr.msg = MBOX_BGX_PORT_ADD_MACADDR;
+	hdr.vfid = port;
+
+	res = octeontx_mbox_send(&hdr, mac_addr, len, &resp, sizeof(int));
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
+octeontx_bgx_port_mac_del(int port, uint32_t index)
+{
+	struct octeontx_mbox_hdr hdr;
+	int len = sizeof(uint32_t);
+	int res = 0;
+
+	hdr.coproc = OCTEONTX_BGX_COPROC;
+	hdr.msg = MBOX_BGX_PORT_DEL_MACADDR;
+	hdr.vfid = port;
+
+	res = octeontx_mbox_send(&hdr, &index, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
+octeontx_bgx_port_mac_entries_get(int port)
+{
+	struct octeontx_mbox_hdr hdr;
+	int resp = 6;
+	int res = 0;
+
+	hdr.coproc = OCTEONTX_BGX_COPROC;
+	hdr.msg = MBOX_BGX_PORT_GET_MACADDR_ENTRIES;
+	hdr.vfid = port;
+
+	res = octeontx_mbox_send(&hdr, NULL, 0, &resp, sizeof(int));
+	if (res < 0)
+		return -EACCES;
+
+	return resp;
+}

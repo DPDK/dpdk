@@ -558,6 +558,37 @@ octeontx_dev_stats_reset(struct rte_eth_dev *dev)
 	return octeontx_port_stats_clr(nic);
 }
 
+static void
+octeontx_dev_mac_addr_del(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	int ret;
+
+	ret = octeontx_bgx_port_mac_del(nic->port_id, index);
+	if (ret != 0)
+		octeontx_log_err("failed to del MAC address filter on port %d",
+				 nic->port_id);
+}
+
+static int
+octeontx_dev_mac_addr_add(struct rte_eth_dev *dev,
+			  struct rte_ether_addr *mac_addr,
+			  __rte_unused uint32_t index,
+			  __rte_unused uint32_t vmdq)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	int ret;
+
+	ret = octeontx_bgx_port_mac_add(nic->port_id, mac_addr->addr_bytes);
+	if (ret < 0) {
+		octeontx_log_err("failed to add MAC address filter on port %d",
+				 nic->port_id);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int
 octeontx_dev_default_mac_addr_set(struct rte_eth_dev *dev,
 					struct rte_ether_addr *addr)
@@ -577,7 +608,7 @@ static int
 octeontx_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
-	RTE_SET_USED(dev);
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 
 	/* Autonegotiation may be disabled */
 	dev_info->speed_capa = ETH_LINK_SPEED_FIXED;
@@ -585,7 +616,8 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 			ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
 			ETH_LINK_SPEED_40G;
 
-	dev_info->max_mac_addrs = 1;
+	dev_info->max_mac_addrs =
+				octeontx_bgx_port_mac_entries_get(nic->port_id);
 	dev_info->max_rx_pktlen = PKI_MAX_PKTLEN;
 	dev_info->max_rx_queues = 1;
 	dev_info->max_tx_queues = PKO_MAX_NUM_DQ;
@@ -986,6 +1018,8 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.link_update		 = octeontx_dev_link_update,
 	.stats_get		 = octeontx_dev_stats_get,
 	.stats_reset		 = octeontx_dev_stats_reset,
+	.mac_addr_remove	 = octeontx_dev_mac_addr_del,
+	.mac_addr_add		 = octeontx_dev_mac_addr_add,
 	.mac_addr_set		 = octeontx_dev_default_mac_addr_set,
 	.tx_queue_start		 = octeontx_dev_tx_queue_start,
 	.tx_queue_stop		 = octeontx_dev_tx_queue_stop,
@@ -1009,6 +1043,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	struct rte_eth_dev *eth_dev = NULL;
 	struct rte_eth_dev_data *data;
 	const char *name = rte_vdev_device_name(dev);
+	int max_entries;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1082,7 +1117,16 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	data->all_multicast = 0;
 	data->scattered_rx = 0;
 
-	data->mac_addrs = rte_zmalloc_socket(octtx_name, RTE_ETHER_ADDR_LEN, 0,
+	/* Get maximum number of supported MAC entries */
+	max_entries = octeontx_bgx_port_mac_entries_get(nic->port_id);
+	if (max_entries < 0) {
+		octeontx_log_err("Failed to get max entries for mac addr");
+		res = -ENOTSUP;
+		goto err;
+	}
+
+	data->mac_addrs = rte_zmalloc_socket(octtx_name, max_entries *
+					     RTE_ETHER_ADDR_LEN, 0,
 							socket_id);
 	if (data->mac_addrs == NULL) {
 		octeontx_log_err("failed to allocate memory for mac_addrs");

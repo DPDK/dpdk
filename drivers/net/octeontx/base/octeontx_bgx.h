@@ -28,6 +28,9 @@
 #define MBOX_BGX_PORT_SET_BCAST         12
 #define MBOX_BGX_PORT_SET_MCAST         13
 #define MBOX_BGX_PORT_SET_MTU		14
+#define MBOX_BGX_PORT_ADD_MACADDR	15
+#define MBOX_BGX_PORT_DEL_MACADDR	16
+#define MBOX_BGX_PORT_GET_MACADDR_ENTRIES 17
 
 /* BGX port configuration parameters: */
 typedef struct octeontx_mbox_bgx_port_conf {
@@ -120,6 +123,9 @@ int octeontx_bgx_port_stats_clr(int port);
 int octeontx_bgx_port_link_status(int port);
 int octeontx_bgx_port_promisc_set(int port, int en);
 int octeontx_bgx_port_mac_set(int port, uint8_t *mac_addr);
+int octeontx_bgx_port_mac_add(int port, uint8_t *mac_addr);
+int octeontx_bgx_port_mac_del(int port, uint32_t index);
+int octeontx_bgx_port_mac_entries_get(int port);
 
 #endif	/* __OCTEONTX_BGX_H__ */
 
