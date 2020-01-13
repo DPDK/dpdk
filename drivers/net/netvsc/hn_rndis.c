@@ -60,10 +60,9 @@ hn_rndis_rid(struct hn_data *hv)
 	return rid;
 }
 
-static void *hn_rndis_alloc(struct hn_data *hv, size_t size)
+static void *hn_rndis_alloc(size_t size)
 {
-	return rte_zmalloc_socket("RNDIS", size, PAGE_SIZE,
-				 hv->vmbus->device.numa_node);
+	return rte_zmalloc("RNDIS", size, PAGE_SIZE);
 }
 
 #ifdef RTE_LIBRTE_NETVSC_DEBUG_DUMP
@@ -442,7 +441,7 @@ hn_rndis_query(struct hn_data *hv, uint32_t oid,
 	uint32_t rid;
 
 	reqlen = sizeof(*req) + idlen;
-	req = hn_rndis_alloc(hv, reqlen);
+	req = hn_rndis_alloc(reqlen);
 	if (req == NULL)
 		return -ENOMEM;
 
@@ -517,7 +516,7 @@ hn_rndis_halt(struct hn_data *hv)
 {
 	struct rndis_halt_req *halt;
 
-	halt = hn_rndis_alloc(hv, sizeof(*halt));
+	halt = hn_rndis_alloc(sizeof(*halt));
 	if (halt == NULL)
 		return -ENOMEM;
 
@@ -1004,7 +1003,7 @@ static int hn_rndis_init(struct hn_data *hv)
 	uint32_t comp_len, rid;
 	int error;
 
-	req = hn_rndis_alloc(hv, sizeof(*req));
+	req = hn_rndis_alloc(sizeof(*req));
 	if (!req) {
 		PMD_DRV_LOG(ERR, "no memory for RNDIS init");
 		return -ENXIO;
