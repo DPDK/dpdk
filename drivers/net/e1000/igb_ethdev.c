@@ -2915,7 +2915,7 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev,
 				     dev->data->port_id);
 		}
 
-		PMD_INIT_LOG(DEBUG, "PCI Address: %04d:%02d:%02d:%d",
+		PMD_INIT_LOG(DEBUG, "PCI Address: " PCI_PRI_FMT,
 			     pci_dev->addr.domain,
 			     pci_dev->addr.bus,
 			     pci_dev->addr.devid,
