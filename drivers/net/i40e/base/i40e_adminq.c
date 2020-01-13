@@ -570,6 +570,57 @@ STATIC void i40e_resume_aq(struct i40e_hw *hw)
 #endif /* PF_DRIVER */
 
 /**
+ *  i40e_set_hw_flags - set HW flags
+ *  @hw: pointer to the hardware structure
+ **/
+STATIC void i40e_set_hw_flags(struct i40e_hw *hw)
+{
+	struct i40e_adminq_info *aq = &hw->aq;
+
+	hw->flags = 0;
+
+	switch (hw->mac.type) {
+	case I40E_MAC_XL710:
+		if (aq->api_maj_ver > 1 ||
+		    (aq->api_maj_ver == 1 &&
+		     aq->api_min_ver >= I40E_MINOR_VER_GET_LINK_INFO_XL710)) {
+			hw->flags |= I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE;
+			hw->flags |= I40E_HW_FLAG_FW_LLDP_STOPPABLE;
+			/* The ability to RX (not drop) 802.1ad frames */
+			hw->flags |= I40E_HW_FLAG_802_1AD_CAPABLE;
+		}
+		break;
+	case I40E_MAC_X722:
+		hw->flags |= I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE |
+			     I40E_HW_FLAG_NVM_READ_REQUIRES_LOCK;
+
+		if (aq->api_maj_ver > 1 ||
+		    (aq->api_maj_ver == 1 &&
+		     aq->api_min_ver >= I40E_MINOR_VER_FW_LLDP_STOPPABLE_X722))
+			hw->flags |= I40E_HW_FLAG_FW_LLDP_STOPPABLE;
+		/* fall through */
+	default:
+		break;
+	}
+
+	/* Newer versions of firmware require lock when reading the NVM */
+	if (aq->api_maj_ver > 1 ||
+	    (aq->api_maj_ver == 1 &&
+	     aq->api_min_ver >= 5))
+		hw->flags |= I40E_HW_FLAG_NVM_READ_REQUIRES_LOCK;
+
+	if (aq->api_maj_ver > 1 ||
+	    (aq->api_maj_ver == 1 &&
+	     aq->api_min_ver >= 8))
+		hw->flags |= I40E_HW_FLAG_FW_LLDP_PERSISTENT;
+
+	if (aq->api_maj_ver > 1 ||
+	    (aq->api_maj_ver == 1 &&
+	     aq->api_min_ver >= 9))
+		hw->flags |= I40E_HW_FLAG_AQ_PHY_ACCESS_EXTENDED;
+}
+
+/**
  *  i40e_init_adminq - main initialization routine for Admin Queue
  *  @hw: pointer to the hardware structure
  *
@@ -635,6 +686,12 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 	} while (retry < 10);
 	if (ret_code != I40E_SUCCESS)
 		goto init_adminq_free_arq;
+
+	/*
+	 * Some features were introduced in different FW API version
+	 * for different MAC type.
+	 */
+	i40e_set_hw_flags(hw);
 
 	/* get the NVM version info */
 	i40e_read_nvm_word(hw, I40E_SR_NVM_DEV_STARTER_VERSION,
