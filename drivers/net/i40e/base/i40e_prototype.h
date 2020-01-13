@@ -73,7 +73,10 @@ enum i40e_status_code i40e_led_get_phy(struct i40e_hw *hw, u16 *led_addr,
 				       u16 *val);
 enum i40e_status_code i40e_blink_phy_link_led(struct i40e_hw *hw,
 					      u32 time, u32 interval);
-
+enum i40e_status_code i40e_led_get_reg(struct i40e_hw *hw, u16 led_addr,
+				       u32 *reg_val);
+enum i40e_status_code i40e_led_set_reg(struct i40e_hw *hw, u16 led_addr,
+				       u32 reg_val);
 enum i40e_status_code i40e_get_phy_lpi_status(struct i40e_hw *hw,
 					      struct i40e_hw_port_stats *stats);
 enum i40e_status_code i40e_get_lpi_counters(struct i40e_hw *hw, u32 *tx_counter,
