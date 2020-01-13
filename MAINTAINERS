@@ -319,7 +319,7 @@ F: kernel/freebsd/nic_uio/
 Windows support
 M: Harini Ramakrishnan <harini.ramakrishnan@microsoft.com>
 M: Omar Cardona <ocardona@microsoft.com>
-M: Anand Rawat <anand.rawat@intel.com>
+M: Pallavi Kadam <pallavi.kadam@intel.com>
 M: Ranjit Menon <ranjit.menon@intel.com>
 F: kernel/windows/
 F: lib/librte_eal/windows/
