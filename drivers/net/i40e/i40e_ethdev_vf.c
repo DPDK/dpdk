@@ -215,6 +215,7 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.rss_hash_conf_get    = i40evf_dev_rss_hash_conf_get,
 	.mtu_set              = i40evf_dev_mtu_set,
 	.mac_addr_set         = i40evf_set_default_mac_addr,
+	.tx_done_cleanup      = i40e_tx_done_cleanup,
 };
 
 /*

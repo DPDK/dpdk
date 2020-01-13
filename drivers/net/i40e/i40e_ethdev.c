@@ -524,6 +524,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.mac_addr_set                 = i40e_set_default_mac_addr,
 	.mtu_set                      = i40e_dev_mtu_set,
 	.tm_ops_get                   = i40e_tm_ops_get,
+	.tx_done_cleanup              = i40e_tx_done_cleanup,
 };
 
 /* store statistics names and its offset in stats structure */
