@@ -4311,7 +4311,7 @@ enum i40e_status_code i40e_aq_set_lldp_mib(struct i40e_hw *hw,
 
 	cmd->type = mib_type;
 	cmd->length = CPU_TO_LE16(buff_size);
-	cmd->address_high = CPU_TO_LE32(I40E_HI_WORD((u64)buff));
+	cmd->address_high = CPU_TO_LE32(I40E_HI_DWORD((u64)buff));
 	cmd->address_low =  CPU_TO_LE32(I40E_LO_DWORD((u64)buff));
 
 	status = i40e_asq_send_command(hw, &desc, buff, buff_size, cmd_details);
