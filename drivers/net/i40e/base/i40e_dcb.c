@@ -915,6 +915,49 @@ enum i40e_status_code i40e_init_dcb(struct i40e_hw *hw, bool enable_mib_change)
 }
 
 /**
+ * i40e_get_fw_lldp_status
+ * @hw: pointer to the hw struct
+ * @lldp_status: pointer to the status enum
+ *
+ * Get status of FW Link Layer Discovery Protocol (LLDP) Agent.
+ * Status of agent is reported via @lldp_status parameter.
+ **/
+enum i40e_status_code
+i40e_get_fw_lldp_status(struct i40e_hw *hw,
+			enum i40e_get_fw_lldp_status_resp *lldp_status)
+{
+	enum i40e_status_code ret;
+	struct i40e_virt_mem mem;
+	u8 *lldpmib;
+
+	if (!lldp_status)
+		return I40E_ERR_PARAM;
+
+	/* Allocate buffer for the LLDPDU */
+	ret = i40e_allocate_virt_mem(hw, &mem, I40E_LLDPDU_SIZE);
+	if (ret)
+		return ret;
+
+	lldpmib = (u8 *)mem.va;
+	ret = i40e_aq_get_lldp_mib(hw, 0, 0, (void *)lldpmib,
+				   I40E_LLDPDU_SIZE, NULL, NULL, NULL);
+
+	if (ret == I40E_SUCCESS) {
+		*lldp_status = I40E_GET_FW_LLDP_STATUS_ENABLED;
+	} else if (hw->aq.asq_last_status == I40E_AQ_RC_ENOENT) {
+		/* MIB is not available yet but the agent is running */
+		*lldp_status = I40E_GET_FW_LLDP_STATUS_ENABLED;
+		ret = I40E_SUCCESS;
+	} else if (hw->aq.asq_last_status == I40E_AQ_RC_EPERM) {
+		*lldp_status = I40E_GET_FW_LLDP_STATUS_DISABLED;
+		ret = I40E_SUCCESS;
+	}
+
+	i40e_free_virt_mem(hw, &mem);
+	return ret;
+}
+
+/**
  * i40e_add_ieee_ets_tlv - Prepare ETS TLV in IEEE format
  * @tlv: Fill the ETS config data in IEEE format
  * @dcbcfg: Local store which holds the DCB Config
