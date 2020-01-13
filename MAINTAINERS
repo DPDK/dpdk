@@ -1180,6 +1180,11 @@ M: Vamsi Attunuru <vattunuru@marvell.com>
 F: drivers/raw/octeontx2_dma/
 F: doc/guides/rawdevs/octeontx2_dma.rst
 
+Marvell OCTEON TX2 EP
+M: Mahipal Challa <mchalla@marvell.com>
+F: drivers/raw/octeontx2_ep/
+F: doc/guides/rawdevs/octeontx2_ep.rst
+
 NTB
 M: Xiaoyun Li <xiaoyun.li@intel.com>
 M: Jingjing Wu <jingjing.wu@intel.com>

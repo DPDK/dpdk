@@ -17,3 +17,4 @@ application through rawdev API.
     ioat
     ntb
     octeontx2_dma
+    octeontx2_ep

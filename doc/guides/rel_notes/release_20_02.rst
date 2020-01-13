@@ -132,6 +132,11 @@ New Features
 
   Added Chacha20-Poly1305 AEAD algorithm.
 
+* **Added Marvell OCTEON TX2 End Point rawdev PMD.**
+
+  Added a new OCTEON TX2 rawdev PMD for End Point mode of operation.
+  See the :doc:`../rawdevs/octeontx2_ep` for more details on this new PMD.
+
 
 Removed Items
 -------------
