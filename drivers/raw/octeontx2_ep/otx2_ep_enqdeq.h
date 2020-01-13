@@ -11,6 +11,8 @@
 #define SDP_IQ_SEND_FAILED      (-1)
 #define SDP_IQ_SEND_SUCCESS     (0)
 
+#define SDP_OQ_RECV_FAILED      (-1)
+#define SDP_OQ_RECV_SUCCESS     (0)
 
 static inline uint64_t
 sdp_endian_swap_8B(uint64_t _d)

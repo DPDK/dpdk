@@ -279,6 +279,18 @@ struct sdp_recv_buffer {
 };
 #define SDP_DROQ_RECVBUF_SIZE	(sizeof(struct sdp_recv_buffer))
 
+/* DROQ statistics. Each output queue has four stats fields. */
+struct sdp_droq_stats {
+	/* Number of packets received in this queue. */
+	uint64_t pkts_received;
+
+	/* Bytes received by this queue. */
+	uint64_t bytes_received;
+
+	/* Num of failures of rte_pktmbuf_alloc() */
+	uint64_t rx_alloc_failure;
+};
+
 /* Structure to define the configuration attributes for each Output queue. */
 struct sdp_oq_config {
 	/* Max number of OQs available */
@@ -344,6 +356,9 @@ struct sdp_droq {
 	 *  number of packets DMA'ed to host memory in this register.
 	 */
 	void *pkts_sent_reg;
+
+	/* Statistics for this DROQ. */
+	struct sdp_droq_stats stats;
 
 	/* DMA mapped address of the DROQ descriptor ring. */
 	size_t desc_ring_dma;
@@ -476,6 +491,7 @@ int sdp_delete_oqs(struct sdp_device *sdpvf, uint32_t oq_no);
 
 int sdp_rawdev_enqueue(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
 		       unsigned int count, rte_rawdev_obj_t context);
-
+int sdp_rawdev_dequeue(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
+		       unsigned int count, rte_rawdev_obj_t context);
 
 #endif /* _OTX2_EP_RAWDEV_H_ */
