@@ -79,8 +79,8 @@ typedef void (*I40E_ADMINQ_CALLBACK)(struct i40e_hw *, struct i40e_aq_desc *);
 #define I40E_HI_BYTE(x)		((u8)(((x) >> 8) & 0xFF))
 #define I40E_LO_BYTE(x)		((u8)((x) & 0xFF))
 
-/* Number of Transmit Descriptors must be a multiple of 8. */
-#define I40E_REQ_TX_DESCRIPTOR_MULTIPLE	8
+/* Number of Transmit Descriptors must be a multiple of 32. */
+#define I40E_REQ_TX_DESCRIPTOR_MULTIPLE	32
 /* Number of Receive Descriptors must be a multiple of 32 if
  * the number of descriptors is greater than 32.
  */
