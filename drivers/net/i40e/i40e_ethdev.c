@@ -11579,7 +11579,7 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 				PMD_INIT_LOG(DEBUG, "Failed to stop lldp");
 		}
 
-		ret = i40e_init_dcb(hw);
+		ret = i40e_init_dcb(hw, true);
 		/* If lldp agent is stopped, the return value from
 		 * i40e_init_dcb we expect is failure with I40E_AQ_RC_EPERM
 		 * adminq status. Otherwise, it should return success.
@@ -11627,7 +11627,7 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 		if (ret != I40E_SUCCESS)
 			PMD_INIT_LOG(DEBUG, "Failed to start lldp");
 
-		ret = i40e_init_dcb(hw);
+		ret = i40e_init_dcb(hw, true);
 		if (!ret) {
 			if (hw->dcbx_status == I40E_DCBX_STATUS_DISABLED) {
 				PMD_INIT_LOG(ERR,

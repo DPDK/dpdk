@@ -186,7 +186,8 @@ enum i40e_status_code i40e_aq_get_dcb_config(struct i40e_hw *hw, u8 mib_type,
 					     u8 bridgetype,
 					     struct i40e_dcbx_config *dcbcfg);
 enum i40e_status_code i40e_get_dcb_config(struct i40e_hw *hw);
-enum i40e_status_code i40e_init_dcb(struct i40e_hw *hw);
+enum i40e_status_code i40e_init_dcb(struct i40e_hw *hw,
+				    bool enable_mib_change);
 enum i40e_status_code i40e_set_dcb_config(struct i40e_hw *hw);
 enum i40e_status_code i40e_dcb_config_to_lldp(u8 *lldpmib, u16 *miblen,
 					      struct i40e_dcbx_config *dcbcfg);
