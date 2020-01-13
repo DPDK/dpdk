@@ -494,4 +494,6 @@ int sdp_rawdev_enqueue(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
 int sdp_rawdev_dequeue(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
 		       unsigned int count, rte_rawdev_obj_t context);
 
+int sdp_rawdev_selftest(uint16_t dev_id);
+
 #endif /* _OTX2_EP_RAWDEV_H_ */

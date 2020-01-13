@@ -73,3 +73,17 @@ Performing Data Transfer
 
 To perform data transfer using SDP VF EP rawdev devices use standard
 ``rte_rawdev_enqueue_buffers()`` and ``rte_rawdev_dequeue_buffers()`` APIs.
+
+Self test
+---------
+
+On EAL initialization, SDP VF devices will be probed and populated into the
+raw devices. The rawdev ID of the device can be obtained using
+
+* Invoke ``rte_rawdev_get_dev_id("SDPEP:x")`` from the test application
+  where x is the VF device's bus id specified in "bus:device.func"(BDF)
+  format. Use this index for further rawdev function calls.
+
+* The driver's selftest rawdev API can be used to verify the SDP EP mode
+  functional tests which can send/receive the raw data packets to/from the
+  EP device.

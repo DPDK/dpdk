@@ -253,6 +253,7 @@ static const struct rte_rawdev_ops sdp_rawdev_ops = {
 	.dev_close      = sdp_rawdev_close,
 	.enqueue_bufs   = sdp_rawdev_enqueue,
 	.dequeue_bufs   = sdp_rawdev_dequeue,
+	.dev_selftest   = sdp_rawdev_selftest,
 };
 
 static int
