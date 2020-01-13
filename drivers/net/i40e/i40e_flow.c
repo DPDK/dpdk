@@ -1615,6 +1615,20 @@ static enum rte_flow_item_type pattern_qinq_1[] = {
 	RTE_FLOW_ITEM_TYPE_END,
 };
 
+static enum rte_flow_item_type pattern_fdir_ipv4_l2tpv3oip[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_L2TPV3OIP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_l2tpv3oip[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_L2TPV3OIP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
 static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	/* Ethertype */
 	{ pattern_ethertype, i40e_flow_parse_ethertype_filter },
@@ -1795,6 +1809,9 @@ static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	{ pattern_fdir_ipv6_gtpu, i40e_flow_parse_gtp_filter },
 	/* QINQ */
 	{ pattern_qinq_1, i40e_flow_parse_qinq_filter },
+	/* L2TPv3 over IP */
+	{ pattern_fdir_ipv4_l2tpv3oip, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_l2tpv3oip, i40e_flow_parse_fdir_filter },
 };
 
 #define NEXT_ITEM_OF_ACTION(act, actions, index)                        \
@@ -2420,6 +2437,15 @@ i40e_flow_fdir_get_pctype_value(struct i40e_pf *pf,
 			cus_pctype = i40e_find_customized_pctype(pf,
 						 I40E_CUSTOMIZED_GTPU_IPV6);
 		break;
+	case RTE_FLOW_ITEM_TYPE_L2TPV3OIP:
+		if (filter->input.flow_ext.oip_type == I40E_FDIR_IPTYPE_IPV4)
+			cus_pctype = i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_IPV4_L2TPV3);
+		else if (filter->input.flow_ext.oip_type ==
+			 I40E_FDIR_IPTYPE_IPV6)
+			cus_pctype = i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_IPV6_L2TPV3);
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "Unsupported item type");
 		break;
@@ -2461,6 +2487,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	const struct rte_flow_item_gtp *gtp_spec, *gtp_mask;
 	const struct rte_flow_item_raw *raw_spec, *raw_mask;
 	const struct rte_flow_item_vf *vf_spec;
+	const struct rte_flow_item_l2tpv3oip *l2tpv3oip_spec, *l2tpv3oip_mask;
 
 	uint8_t pctype = 0;
 	uint64_t input_set = I40E_INSET_NONE;
@@ -3011,6 +3038,36 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 						   "Invalid VF ID for FDIR.");
 				return -rte_errno;
 			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_L2TPV3OIP:
+			l2tpv3oip_spec = item->spec;
+			l2tpv3oip_mask = item->mask;
+
+			if (!l2tpv3oip_spec || !l2tpv3oip_mask)
+				break;
+
+			if (l2tpv3oip_mask->session_id != UINT32_MAX) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"Invalid L2TPv3 mask");
+				return -rte_errno;
+			}
+
+			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+				filter->input.flow.ip4_l2tpv3oip_flow.session_id =
+					l2tpv3oip_spec->session_id;
+				filter->input.flow_ext.oip_type =
+					I40E_FDIR_IPTYPE_IPV4;
+			} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+				filter->input.flow.ip6_l2tpv3oip_flow.session_id =
+					l2tpv3oip_spec->session_id;
+				filter->input.flow_ext.oip_type =
+					I40E_FDIR_IPTYPE_IPV6;
+			}
+
+			filter->input.flow_ext.customized_pctype = true;
+			cus_proto = item_type;
 			break;
 		default:
 			break;

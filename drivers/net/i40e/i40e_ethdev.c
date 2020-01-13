@@ -12350,6 +12350,14 @@ i40e_update_customized_pctype(struct rte_eth_dev *dev, uint8_t *pkg,
 			new_pctype =
 				i40e_find_customized_pctype(pf,
 						      I40E_CUSTOMIZED_GTPU);
+		else if (!strcmp(name, "IPV4_L2TPV3"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_IPV4_L2TPV3);
+		else if (!strcmp(name, "IPV6_L2TPV3"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_IPV6_L2TPV3);
 		if (new_pctype) {
 			if (op == RTE_PMD_I40E_PKG_OP_WR_ADD) {
 				new_pctype->pctype = pctype_value;
@@ -12543,7 +12551,8 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 						RTE_PTYPE_TUNNEL_GRENAT;
 					in_tunnel = true;
 				} else if (!strncasecmp(name, "L2TPV2CTL", 9) ||
-					   !strncasecmp(name, "L2TPV2", 6)) {
+					   !strncasecmp(name, "L2TPV2", 6) ||
+					   !strncasecmp(name, "L2TPV3", 6)) {
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_TUNNEL_L2TP;
 					in_tunnel = true;

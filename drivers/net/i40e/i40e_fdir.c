@@ -33,6 +33,10 @@
 #define IPV6_ADDR_LEN              16
 #endif
 
+#ifndef IPPROTO_L2TP
+#define IPPROTO_L2TP		  115
+#endif
+
 #define I40E_FDIR_PKT_LEN                   512
 #define I40E_FDIR_IP_DEFAULT_LEN            420
 #define I40E_FDIR_IP_DEFAULT_TTL            0x40
@@ -1026,7 +1030,12 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 		 pctype == I40E_FILTER_PCTYPE_NONF_IPV4_SCTP ||
 		 pctype == I40E_FILTER_PCTYPE_NONF_IPV4_OTHER ||
 		 pctype == I40E_FILTER_PCTYPE_FRAG_IPV4 ||
-		 is_customized_pctype) {
+		 ((is_customized_pctype) &&
+		  ((cus_pctype->index == I40E_CUSTOMIZED_GTPC) ||
+		   (cus_pctype->index == I40E_CUSTOMIZED_GTPU_IPV4) ||
+		   (cus_pctype->index == I40E_CUSTOMIZED_GTPU_IPV6) ||
+		   (cus_pctype->index == I40E_CUSTOMIZED_GTPU) ||
+		   (cus_pctype->index == I40E_CUSTOMIZED_IPV4_L2TPV3)))) {
 		ip = (struct rte_ipv4_hdr *)raw_pkt;
 
 		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
@@ -1054,12 +1063,16 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 			 cus_pctype->index == I40E_CUSTOMIZED_GTPU_IPV6 ||
 			 cus_pctype->index == I40E_CUSTOMIZED_GTPU)
 			ip->next_proto_id = IPPROTO_UDP;
+		else if (cus_pctype->index == I40E_CUSTOMIZED_IPV4_L2TPV3)
+			ip->next_proto_id = IPPROTO_L2TP;
 		len += sizeof(struct rte_ipv4_hdr);
 	} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV6_TCP ||
 		   pctype == I40E_FILTER_PCTYPE_NONF_IPV6_UDP ||
 		   pctype == I40E_FILTER_PCTYPE_NONF_IPV6_SCTP ||
 		   pctype == I40E_FILTER_PCTYPE_NONF_IPV6_OTHER ||
-		   pctype == I40E_FILTER_PCTYPE_FRAG_IPV6) {
+		   pctype == I40E_FILTER_PCTYPE_FRAG_IPV6 ||
+		   ((is_customized_pctype) &&
+		    (cus_pctype->index == I40E_CUSTOMIZED_IPV6_L2TPV3))) {
 		ip6 = (struct rte_ipv6_hdr *)raw_pkt;
 
 		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
@@ -1069,9 +1082,12 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 					  I40E_FDIR_IPv6_TC_OFFSET));
 		ip6->payload_len =
 			rte_cpu_to_be_16(I40E_FDIR_IPv6_PAYLOAD_LEN);
-		ip6->proto = fdir_input->flow.ipv6_flow.proto ?
-			fdir_input->flow.ipv6_flow.proto :
-			next_proto[fdir_input->pctype];
+		if (!is_customized_pctype)
+			ip6->proto = fdir_input->flow.ipv6_flow.proto ?
+				fdir_input->flow.ipv6_flow.proto :
+				next_proto[fdir_input->pctype];
+		else if (cus_pctype->index == I40E_CUSTOMIZED_IPV6_L2TPV3)
+			ip6->proto = IPPROTO_L2TP;
 		ip6->hop_limits = fdir_input->flow.ipv6_flow.hop_limits ?
 			fdir_input->flow.ipv6_flow.hop_limits :
 			I40E_FDIR_IPv6_DEFAULT_HOP_LIMITS;
@@ -1115,6 +1131,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 	struct rte_flow_item_gtp *gtp;
 	struct rte_ipv4_hdr *gtp_ipv4;
 	struct rte_ipv6_hdr *gtp_ipv6;
+	struct rte_flow_item_l2tpv3oip *l2tpv3oip;
 	uint8_t size, dst = 0;
 	uint8_t i, pit_idx, set_idx = I40E_FLXPLD_L4_IDX; /* use l4 by default*/
 	int len;
@@ -1285,6 +1302,19 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 			} else
 				payload = (unsigned char *)gtp +
 					sizeof(struct rte_flow_item_gtp);
+		} else if (cus_pctype->index == I40E_CUSTOMIZED_IPV4_L2TPV3 ||
+			   cus_pctype->index == I40E_CUSTOMIZED_IPV6_L2TPV3) {
+			l2tpv3oip = (struct rte_flow_item_l2tpv3oip *)(raw_pkt
+								       + len);
+
+			if (cus_pctype->index == I40E_CUSTOMIZED_IPV4_L2TPV3)
+				l2tpv3oip->session_id =
+				 fdir_input->flow.ip4_l2tpv3oip_flow.session_id;
+			else
+				l2tpv3oip->session_id =
+				 fdir_input->flow.ip6_l2tpv3oip_flow.session_id;
+			payload = (unsigned char *)l2tpv3oip +
+				sizeof(struct rte_flow_item_l2tpv3oip);
 		}
 	} else {
 		PMD_DRV_LOG(ERR, "unknown pctype %u.",
