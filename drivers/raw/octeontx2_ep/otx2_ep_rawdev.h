@@ -8,6 +8,10 @@
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
 
+/* IQ instruction req types */
+#define SDP_REQTYPE_NONE             (0)
+#define SDP_REQTYPE_NORESP           (1)
+#define SDP_REQTYPE_NORESP_GATHER    (2)
 
 /* Input Request Header format */
 struct sdp_instr_irh {
@@ -128,6 +132,13 @@ struct sdp_instr_list {
 };
 #define SDP_IQREQ_LIST_SIZE	(sizeof(struct sdp_instr_list))
 
+/* Input Queue statistics. Each input queue has four stats fields. */
+struct sdp_iq_stats {
+	uint64_t instr_posted; /* Instructions posted to this queue. */
+	uint64_t instr_processed; /* Instructions processed in this queue. */
+	uint64_t instr_dropped; /* Instructions that could not be processed */
+};
+
 /* Structure to define the configuration attributes for each Input queue. */
 struct sdp_iq_config {
 	/* Max number of IQs available */
@@ -194,6 +205,9 @@ struct sdp_instr_queue {
 
 	/* Number of instructions pending to be posted to OCTEON TX2. */
 	uint32_t fill_cnt;
+
+	/* Statistics for this input queue. */
+	struct sdp_iq_stats stats;
 
 	/* DMA mapped base address of the input descriptor ring. */
 	uint64_t base_addr_dma;
@@ -380,6 +394,8 @@ struct sdp_fn_list {
 	void (*setup_oq_regs)(struct sdp_device *sdpvf, uint32_t q_no);
 
 	int (*setup_device_regs)(struct sdp_device *sdpvf);
+	uint32_t (*update_iq_read_idx)(struct sdp_instr_queue *iq);
+
 	void (*enable_io_queues)(struct sdp_device *sdpvf);
 	void (*disable_io_queues)(struct sdp_device *sdpvf);
 
@@ -457,5 +473,9 @@ int sdp_delete_iqs(struct sdp_device *sdpvf, uint32_t iq_no);
 
 int sdp_setup_oqs(struct sdp_device *sdpvf, uint32_t oq_no);
 int sdp_delete_oqs(struct sdp_device *sdpvf, uint32_t oq_no);
+
+int sdp_rawdev_enqueue(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
+		       unsigned int count, rte_rawdev_obj_t context);
+
 
 #endif /* _OTX2_EP_RAWDEV_H_ */

@@ -403,3 +403,245 @@ delete_OQ:
 	return -ENOMEM;
 }
 
+static inline void
+sdp_iqreq_delete(struct sdp_device *sdpvf,
+		struct sdp_instr_queue *iq, uint32_t idx)
+{
+	uint32_t reqtype;
+	void *buf;
+
+	buf     = iq->req_list[idx].buf;
+	reqtype = iq->req_list[idx].reqtype;
+
+	switch (reqtype) {
+	case SDP_REQTYPE_NORESP:
+		rte_mempool_put(sdpvf->enqdeq_mpool, buf);
+		otx2_sdp_dbg("IQ buffer freed at idx[%d]", idx);
+		break;
+
+	case SDP_REQTYPE_NORESP_GATHER:
+	case SDP_REQTYPE_NONE:
+	default:
+		otx2_info("This iqreq mode is not supported:%d", reqtype);
+
+	}
+
+	/* Reset the request list at this index */
+	iq->req_list[idx].buf = NULL;
+	iq->req_list[idx].reqtype = 0;
+}
+
+static inline void
+sdp_iqreq_add(struct sdp_instr_queue *iq, void *buf,
+		uint32_t reqtype)
+{
+	iq->req_list[iq->host_write_index].buf = buf;
+	iq->req_list[iq->host_write_index].reqtype = reqtype;
+
+	otx2_sdp_dbg("IQ buffer added at idx[%d]", iq->host_write_index);
+
+}
+
+static void
+sdp_flush_iq(struct sdp_device *sdpvf,
+		struct sdp_instr_queue *iq,
+		uint32_t pending_thresh __rte_unused)
+{
+	uint32_t instr_processed = 0;
+
+	rte_spinlock_lock(&iq->lock);
+
+	iq->otx_read_index = sdpvf->fn_list.update_iq_read_idx(iq);
+	while (iq->flush_index != iq->otx_read_index) {
+		/* Free the IQ data buffer to the pool */
+		sdp_iqreq_delete(sdpvf, iq, iq->flush_index);
+		iq->flush_index =
+			sdp_incr_index(iq->flush_index, 1, iq->nb_desc);
+
+		instr_processed++;
+	}
+
+	iq->stats.instr_processed = instr_processed;
+	rte_atomic64_sub(&iq->instr_pending, instr_processed);
+
+	rte_spinlock_unlock(&iq->lock);
+}
+
+static inline void
+sdp_ring_doorbell(struct sdp_device *sdpvf __rte_unused,
+		struct sdp_instr_queue *iq)
+{
+	otx2_write64(iq->fill_cnt, iq->doorbell_reg);
+
+	/* Make sure doorbell writes observed by HW */
+	rte_cio_wmb();
+	iq->fill_cnt = 0;
+
+}
+
+static inline int
+post_iqcmd(struct sdp_instr_queue *iq, uint8_t *iqcmd)
+{
+	uint8_t *iqptr, cmdsize;
+
+	/* This ensures that the read index does not wrap around to
+	 * the same position if queue gets full before OCTEON TX2 could
+	 * fetch any instr.
+	 */
+	if (rte_atomic64_read(&iq->instr_pending) >=
+			      (int32_t)(iq->nb_desc - 1)) {
+		otx2_err("IQ is full, pending:%ld",
+			 (long)rte_atomic64_read(&iq->instr_pending));
+
+		return SDP_IQ_SEND_FAILED;
+	}
+
+	/* Copy cmd into iq */
+	cmdsize = ((iq->iqcmd_64B) ? 64 : 32);
+	iqptr   = iq->base_addr + (cmdsize * iq->host_write_index);
+
+	rte_memcpy(iqptr, iqcmd, cmdsize);
+
+	otx2_sdp_dbg("IQ cmd posted @ index:%d", iq->host_write_index);
+
+	/* Increment the host write index */
+	iq->host_write_index =
+		sdp_incr_index(iq->host_write_index, 1, iq->nb_desc);
+
+	iq->fill_cnt++;
+
+	/* Flush the command into memory. We need to be sure the data
+	 * is in memory before indicating that the instruction is
+	 * pending.
+	 */
+	rte_smp_wmb();
+	rte_atomic64_inc(&iq->instr_pending);
+
+	/* SDP_IQ_SEND_SUCCESS */
+	return 0;
+}
+
+
+static int
+sdp_send_data(struct sdp_device *sdpvf,
+	      struct sdp_instr_queue *iq, void *cmd)
+{
+	uint32_t ret;
+
+	/* Lock this IQ command queue before posting instruction */
+	rte_spinlock_lock(&iq->post_lock);
+
+	/* Submit IQ command */
+	ret = post_iqcmd(iq, cmd);
+
+	if (ret == SDP_IQ_SEND_SUCCESS) {
+		sdp_ring_doorbell(sdpvf, iq);
+
+		iq->stats.instr_posted++;
+		otx2_sdp_dbg("Instr submit success posted: %ld\n",
+			     (long)iq->stats.instr_posted);
+
+	} else {
+		iq->stats.instr_dropped++;
+		otx2_err("Instr submit failed, dropped: %ld\n",
+			 (long)iq->stats.instr_dropped);
+
+	}
+
+	rte_spinlock_unlock(&iq->post_lock);
+
+	return ret;
+}
+
+
+/* Enqueue requests/packets to SDP IQ queue.
+ * returns number of requests enqueued successfully
+ */
+int
+sdp_rawdev_enqueue(struct rte_rawdev *rawdev,
+		   struct rte_rawdev_buf **buffers __rte_unused,
+		   unsigned int count, rte_rawdev_obj_t context)
+{
+	struct sdp_instr_64B *iqcmd;
+	struct sdp_instr_queue *iq;
+	struct sdp_soft_instr *si;
+	struct sdp_device *sdpvf;
+
+	struct sdp_instr_ih ihx;
+
+	sdpvf = (struct sdp_device *)rawdev->dev_private;
+	si = (struct sdp_soft_instr *)context;
+
+	iq = sdpvf->instr_queue[si->q_no];
+
+	if ((count > 1) || (count < 1)) {
+		otx2_err("This mode not supported: req[%d]", count);
+		goto enq_fail;
+	}
+
+	memset(&ihx, 0, sizeof(struct sdp_instr_ih));
+
+	iqcmd = &si->command;
+	memset(iqcmd, 0, sizeof(struct sdp_instr_64B));
+
+	iqcmd->dptr = (uint64_t)si->dptr;
+
+	/* Populate SDP IH */
+	ihx.pkind  = sdpvf->pkind;
+	ihx.fsz    = si->ih.fsz + 8; /* 8B for NIX IH */
+	ihx.gather = si->ih.gather;
+
+	/* Direct data instruction */
+	ihx.tlen   = si->ih.tlen + ihx.fsz;
+
+	switch (ihx.gather) {
+	case 0: /* Direct data instr */
+		ihx.tlen = si->ih.tlen + ihx.fsz;
+		break;
+
+	default: /* Gather */
+		switch (si->ih.gsz) {
+		case 0: /* Direct gather instr */
+			otx2_err("Direct Gather instr : not supported");
+			goto enq_fail;
+
+		default: /* Indirect gather instr */
+			otx2_err("Indirect Gather instr : not supported");
+			goto enq_fail;
+		}
+	}
+
+	rte_memcpy(&iqcmd->ih, &ihx, sizeof(uint64_t));
+	iqcmd->rptr = (uint64_t)si->rptr;
+	rte_memcpy(&iqcmd->irh, &si->irh, sizeof(uint64_t));
+
+	/* Swap FSZ(front data) here, to avoid swapping on OCTEON TX2 side */
+	sdp_swap_8B_data(&iqcmd->rptr, 1);
+	sdp_swap_8B_data(&iqcmd->irh, 1);
+
+	otx2_sdp_dbg("After swapping");
+	otx2_sdp_dbg("Word0 [dptr]: 0x%016lx", (unsigned long)iqcmd->dptr);
+	otx2_sdp_dbg("Word1 [ihtx]: 0x%016lx", (unsigned long)iqcmd->ih);
+	otx2_sdp_dbg("Word2 [rptr]: 0x%016lx", (unsigned long)iqcmd->rptr);
+	otx2_sdp_dbg("Word3 [irh]: 0x%016lx", (unsigned long)iqcmd->irh);
+	otx2_sdp_dbg("Word4 [exhdr[0]]: 0x%016lx",
+			(unsigned long)iqcmd->exhdr[0]);
+
+	sdp_iqreq_add(iq, si->dptr, si->reqtype);
+
+	if (sdp_send_data(sdpvf, iq, iqcmd)) {
+		otx2_err("Data send failed :");
+		sdp_iqreq_delete(sdpvf, iq, iq->host_write_index);
+		goto enq_fail;
+	}
+
+	if (rte_atomic64_read(&iq->instr_pending) >= 1)
+		sdp_flush_iq(sdpvf, iq, 1 /*(iq->nb_desc / 2)*/);
+
+	/* Return no# of instructions posted successfully. */
+	return count;
+
+enq_fail:
+	return SDP_IQ_SEND_FAILED;
+}
+

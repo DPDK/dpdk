@@ -67,3 +67,9 @@ The following code shows how the device is configured
    config.enqdeq_mpool = (void *)rte_mempool_create(...);
 
    rte_rawdev_configure(dev_id, (rte_rawdev_obj_t)&rdev_info);
+
+Performing Data Transfer
+------------------------
+
+To perform data transfer using SDP VF EP rawdev devices use standard
+``rte_rawdev_enqueue_buffers()`` and ``rte_rawdev_dequeue_buffers()`` APIs.

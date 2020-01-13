@@ -409,6 +409,28 @@ sdp_vf_disable_io_queues(struct sdp_device *sdpvf)
 		sdp_vf_disable_oq(sdpvf, q_no);
 }
 
+static uint32_t
+sdp_vf_update_read_index(struct sdp_instr_queue *iq)
+{
+	uint32_t new_idx = rte_read32(iq->inst_cnt_reg);
+
+	/* The new instr cnt reg is a 32-bit counter that can roll over.
+	 * We have noted the counter's initial value at init time into
+	 * reset_instr_cnt
+	 */
+	if (iq->reset_instr_cnt < new_idx)
+		new_idx -= iq->reset_instr_cnt;
+	else
+		new_idx += (0xffffffff - iq->reset_instr_cnt) + 1;
+
+	/* Modulo of the new index with the IQ size will give us
+	 * the new index.
+	 */
+	new_idx %= iq->nb_desc;
+
+	return new_idx;
+}
+
 int
 sdp_vf_setup_device(struct sdp_device *sdpvf)
 {
@@ -436,6 +458,8 @@ sdp_vf_setup_device(struct sdp_device *sdpvf)
 	sdpvf->fn_list.setup_oq_regs       = sdp_vf_setup_oq_regs;
 
 	sdpvf->fn_list.setup_device_regs   = sdp_vf_setup_device_regs;
+	sdpvf->fn_list.update_iq_read_idx  = sdp_vf_update_read_index;
+
 	sdpvf->fn_list.enable_io_queues    = sdp_vf_enable_io_queues;
 	sdpvf->fn_list.disable_io_queues   = sdp_vf_disable_io_queues;
 
