@@ -61,6 +61,10 @@ New Features
   A new API has been added to wait for a memory location to be updated with a
   16-bit, 32-bit, 64-bit value.
 
+* **Added algorithms to cryptodev API.**
+
+  * Chacha20-Poly1305 AEAD algorithm can now be supported in cryptodev.
+
 
 Removed Items
 -------------

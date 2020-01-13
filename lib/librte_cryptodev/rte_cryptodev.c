@@ -151,6 +151,7 @@ const char *
 rte_crypto_aead_algorithm_strings[] = {
 	[RTE_CRYPTO_AEAD_AES_CCM]	= "aes-ccm",
 	[RTE_CRYPTO_AEAD_AES_GCM]	= "aes-gcm",
+	[RTE_CRYPTO_AEAD_CHACHA20_POLY1305] = "chacha20-poly1305"
 };
 
 /**
