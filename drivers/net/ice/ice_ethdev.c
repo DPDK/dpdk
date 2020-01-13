@@ -225,6 +225,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.filter_ctrl                  = ice_dev_filter_ctrl,
 	.udp_tunnel_port_add          = ice_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del          = ice_dev_udp_tunnel_port_del,
+	.tx_done_cleanup              = ice_tx_done_cleanup,
 };
 
 /* store statistics names and its offset in stats structure */

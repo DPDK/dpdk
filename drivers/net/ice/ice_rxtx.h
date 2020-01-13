@@ -202,4 +202,6 @@ uint16_t ice_recv_scattered_pkts_vec_avx2(void *rx_queue,
 uint16_t ice_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts);
 int ice_fdir_programming(struct ice_pf *pf, struct ice_fltr_desc *fdir_desc);
+int ice_tx_done_cleanup(void *txq, uint32_t free_cnt);
+
 #endif /* _ICE_RXTX_H_ */
