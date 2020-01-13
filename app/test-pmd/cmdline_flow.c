@@ -213,6 +213,8 @@ enum index {
 	ITEM_TAG,
 	ITEM_TAG_DATA,
 	ITEM_TAG_INDEX,
+	ITEM_L2TPV3OIP,
+	ITEM_L2TPV3OIP_SESSION_ID,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -750,6 +752,7 @@ static const enum index next_item[] = {
 	ITEM_PPPOE_PROTO_ID,
 	ITEM_HIGIG2,
 	ITEM_TAG,
+	ITEM_L2TPV3OIP,
 	END_SET,
 	ZERO,
 };
@@ -1030,6 +1033,12 @@ static const enum index next_set_raw[] = {
 static const enum index item_tag[] = {
 	ITEM_TAG_DATA,
 	ITEM_TAG_INDEX,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_l2tpv3oip[] = {
+	ITEM_L2TPV3OIP_SESSION_ID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2611,6 +2620,22 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(ITEM_PARAM_IS)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_tag, index)),
 	},
+	[ITEM_L2TPV3OIP] = {
+		.name = "l2tpv3oip",
+		.help = "match L2TPv3 over IP header",
+		.priv = PRIV_ITEM(L2TPV3OIP,
+				  sizeof(struct rte_flow_item_l2tpv3oip)),
+		.next = NEXT(item_l2tpv3oip),
+		.call = parse_vc,
+	},
+	[ITEM_L2TPV3OIP_SESSION_ID] = {
+		.name = "session_id",
+		.help = "session identifier",
+		.next = NEXT(item_l2tpv3oip, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv3oip,
+					     session_id)),
+	},
+
 	/* Validate/create actions. */
 	[ACTIONS] = {
 		.name = "actions",
@@ -6291,6 +6316,10 @@ flow_item_default_mask(const struct rte_flow_item *item)
 		break;
 	case RTE_FLOW_ITEM_TYPE_PPPOE_PROTO_ID:
 		mask = &rte_flow_item_pppoe_proto_id_mask;
+		break;
+	case RTE_FLOW_ITEM_TYPE_L2TPV3OIP:
+		mask = &rte_flow_item_l2tpv3oip_mask;
+		break;
 	default:
 		break;
 	}
@@ -6379,6 +6408,10 @@ cmd_set_raw_parsed(const struct buffer *in)
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
 			size = sizeof(struct rte_flow_item_geneve);
+			break;
+		case RTE_FLOW_ITEM_TYPE_L2TPV3OIP:
+			size = sizeof(struct rte_flow_item_l2tpv3oip);
+			proto = 0x73;
 			break;
 		default:
 			printf("Error - Not supported item\n");

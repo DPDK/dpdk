@@ -510,6 +510,16 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_tag.
 	 */
 	RTE_FLOW_ITEM_TYPE_TAG,
+
+	/**
+	 * Matches a L2TPv3 over IP header.
+	 *
+	 * Configure flow for L2TPv3 over IP packets.
+	 *
+	 * See struct rte_flow_item_l2tpv3oip.
+	 */
+	RTE_FLOW_ITEM_TYPE_L2TPV3OIP,
+
 };
 
 /**
@@ -1372,6 +1382,23 @@ static const struct rte_flow_item_tag rte_flow_item_tag_mask = {
 	.index = 0xff,
 };
 #endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_L2TPV3OIP.
+ *
+ * Matches a L2TPv3 over IP header.
+ */
+struct rte_flow_item_l2tpv3oip {
+	rte_be32_t session_id; /**< Session ID. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_L2TPV3OIP. */
+#ifndef __cplusplus
+static const struct rte_flow_item_l2tpv3oip rte_flow_item_l2tpv3oip_mask = {
+	.session_id = RTE_BE32(UINT32_MAX),
+};
+#endif
+
 
 /**
  * @warning

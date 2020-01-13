@@ -1336,6 +1336,13 @@ Broadcom switches.
 
 - Default ``mask`` matches classification and vlan.
 
+Item: ``L2TPV3OIP``
+^^^^^^^^^^^^^^^^^^^
+
+Matches a L2TPv3 over IP header.
+
+- ``session_id``: L2TPv3 over IP session identifier.
+- Default ``mask`` matches session_id only.
 
 Actions
 ~~~~~~~

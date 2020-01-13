@@ -61,6 +61,10 @@ New Features
   A new API has been added to wait for a memory location to be updated with a
   16-bit, 32-bit, 64-bit value.
 
+* **Updated rte_flow api to support L2TPv3 over IP flows.**
+
+  Added support for new flow item to handle L2TPv3 over IP rte_flow patterns.
+
 * **Updated Hisilicon hns3 driver.**
 
   Updated Hisilicon hns3 driver with new features and improvements, including:
@@ -72,6 +76,11 @@ New Features
   Updated Mellanox mlx5 driver with new features and improvements, including:
 
   * Added support for RSS using L3/L4 source/destination only.
+
+* **Updated testpmd to support L2TPv3 over IP flows.**
+
+  Added support for L2TPv3 over IP rte_flow patterns to the testpmd
+  application.
 
 * **Added algorithms to cryptodev API.**
 
