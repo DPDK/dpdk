@@ -472,10 +472,8 @@ void i40e_set_pci_config_data(struct i40e_hw *hw, u16 link_status);
 #endif /* PF_DRIVER */
 enum i40e_status_code i40e_enable_eee(struct i40e_hw *hw, bool enable);
 
-#if defined(I40E_QV) || defined(VF_DRIVER)
 enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw);
 
-#endif
 extern struct i40e_rx_ptype_decoded i40e_ptype_lookup[];
 
 STATIC INLINE struct i40e_rx_ptype_decoded decode_rx_desc_ptype(u8 ptype)

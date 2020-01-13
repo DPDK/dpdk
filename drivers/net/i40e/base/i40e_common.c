@@ -14,11 +14,7 @@
  * This function sets the mac type of the adapter based on the
  * vendor ID and device ID stored in the hw structure.
  **/
-#if defined(INTEGRATED_VF) || defined(VF_DRIVER)
 enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
-#else
-STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
-#endif
 {
 	enum i40e_status_code status = I40E_SUCCESS;
 
