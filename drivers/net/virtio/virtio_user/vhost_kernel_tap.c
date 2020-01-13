@@ -74,6 +74,7 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq,
 	int sndbuf = INT_MAX;
 	struct ifreq ifr;
 	int tapfd;
+	int ret;
 
 	/* TODO:
 	 * 1. verify we can get/set vnet_hdr_len, tap_probe_vnet_hdr_len
@@ -139,7 +140,9 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq,
 		goto error;
 	}
 
-	vhost_kernel_tap_set_offload(tapfd, features);
+	ret = vhost_kernel_tap_set_offload(tapfd, features);
+	if (ret < 0 && ret != -ENOTSUP)
+		goto error;
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
