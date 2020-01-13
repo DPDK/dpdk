@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2018
+ * Copyright(c) 2001-2019
  */
 
 #ifndef _I40E_DCB_H_
@@ -205,5 +205,4 @@ i40e_get_fw_lldp_status(struct i40e_hw *hw,
 enum i40e_status_code i40e_set_dcb_config(struct i40e_hw *hw);
 enum i40e_status_code i40e_dcb_config_to_lldp(u8 *lldpmib, u16 *miblen,
 					      struct i40e_dcbx_config *dcbcfg);
-
 #endif /* _I40E_DCB_H_ */
