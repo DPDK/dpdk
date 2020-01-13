@@ -314,7 +314,7 @@ static void
 txq_uar_ncattr_init(struct mlx5_txq_ctrl *txq_ctrl, size_t page_size)
 {
 	struct mlx5_priv *priv = txq_ctrl->priv;
-	unsigned int cmd;
+	off_t cmd;
 
 	txq_ctrl->txq.db_heu = priv->config.dbnc == MLX5_TXDB_HEURISTIC;
 	txq_ctrl->txq.db_nc = 0;
