@@ -74,6 +74,8 @@ enum i40e_status_code i40e_led_get_phy(struct i40e_hw *hw, u16 *led_addr,
 enum i40e_status_code i40e_blink_phy_link_led(struct i40e_hw *hw,
 					      u32 time, u32 interval);
 
+enum i40e_status_code i40e_get_phy_lpi_status(struct i40e_hw *hw,
+					      struct i40e_hw_port_stats *stats);
 /* admin send queue commands */
 
 enum i40e_status_code i40e_aq_get_firmware_version(struct i40e_hw *hw,

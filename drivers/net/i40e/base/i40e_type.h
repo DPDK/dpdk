@@ -2038,4 +2038,10 @@ struct i40e_profile_info {
 	u8 reserved[7];
 	u8 name[I40E_DDP_NAME_SIZE];
 };
+
+#define I40E_BCM_PHY_PCS_STATUS1_PAGE	0x3
+#define I40E_BCM_PHY_PCS_STATUS1_REG	0x0001
+#define I40E_BCM_PHY_PCS_STATUS1_RX_LPI	BIT(8)
+#define I40E_BCM_PHY_PCS_STATUS1_TX_LPI	BIT(9)
+
 #endif /* _I40E_TYPE_H_ */

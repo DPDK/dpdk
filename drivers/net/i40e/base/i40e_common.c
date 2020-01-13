@@ -6982,6 +6982,51 @@ restore_config:
 	return status;
 }
 #endif /* PF_DRIVER */
+/**
+ * i40e_get_phy_lpi_status - read LPI status from PHY or MAC register
+ * @hw: pointer to the hw struct
+ * @stat: pointer to structure with status of rx and tx lpi
+ *
+ * Read LPI state directly from external PHY register or from MAC
+ * register, depending on device ID and current link speed.
+ */
+enum i40e_status_code i40e_get_phy_lpi_status(struct i40e_hw *hw,
+					      struct i40e_hw_port_stats *stat)
+{
+	enum i40e_status_code ret = I40E_SUCCESS;
+	u32 val;
+
+	stat->rx_lpi_status = 0;
+	stat->tx_lpi_status = 0;
+
+	if (hw->device_id == I40E_DEV_ID_10G_BASE_T_BC &&
+	    (hw->phy.link_info.link_speed == I40E_LINK_SPEED_2_5GB ||
+	     hw->phy.link_info.link_speed == I40E_LINK_SPEED_5GB)) {
+		ret = i40e_aq_get_phy_register(hw,
+					       I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
+					       I40E_BCM_PHY_PCS_STATUS1_PAGE,
+					       true,
+					       I40E_BCM_PHY_PCS_STATUS1_REG,
+					       &val, NULL);
+
+		if (ret != I40E_SUCCESS)
+			return ret;
+
+		stat->rx_lpi_status = !!(val & I40E_BCM_PHY_PCS_STATUS1_RX_LPI);
+		stat->tx_lpi_status = !!(val & I40E_BCM_PHY_PCS_STATUS1_TX_LPI);
+
+		return ret;
+	}
+
+	val = rd32(hw, I40E_PRTPM_EEE_STAT);
+	stat->rx_lpi_status = (val & I40E_PRTPM_EEE_STAT_RX_LPI_STATUS_MASK) >>
+			       I40E_PRTPM_EEE_STAT_RX_LPI_STATUS_SHIFT;
+	stat->tx_lpi_status = (val & I40E_PRTPM_EEE_STAT_TX_LPI_STATUS_MASK) >>
+			       I40E_PRTPM_EEE_STAT_TX_LPI_STATUS_SHIFT;
+
+	return ret;
+}
+
 
 /**
  * i40e_aq_rx_ctl_read_register - use FW to read from an Rx control register
