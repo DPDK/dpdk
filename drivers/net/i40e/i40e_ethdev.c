@@ -11574,7 +11574,7 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 	 */
 	if (sw_dcb == TRUE) {
 		if (i40e_need_stop_lldp(dev)) {
-			ret = i40e_aq_stop_lldp(hw, TRUE, NULL);
+			ret = i40e_aq_stop_lldp(hw, TRUE, TRUE, NULL);
 			if (ret != I40E_SUCCESS)
 				PMD_INIT_LOG(DEBUG, "Failed to stop lldp");
 		}
@@ -11623,7 +11623,7 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 			return -ENOTSUP;
 		}
 	} else {
-		ret = i40e_aq_start_lldp(hw, NULL);
+		ret = i40e_aq_start_lldp(hw, true, NULL);
 		if (ret != I40E_SUCCESS)
 			PMD_INIT_LOG(DEBUG, "Failed to start lldp");
 

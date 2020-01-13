@@ -251,26 +251,18 @@ enum i40e_status_code i40e_aq_set_lldp_mib(struct i40e_hw *hw,
 enum i40e_status_code i40e_aq_cfg_lldp_mib_change_event(struct i40e_hw *hw,
 				bool enable_update,
 				struct i40e_asq_cmd_details *cmd_details);
-enum i40e_status_code i40e_aq_add_lldp_tlv(struct i40e_hw *hw, u8 bridge_type,
-				void *buff, u16 buff_size, u16 tlv_len,
-				u16 *mib_len,
-				struct i40e_asq_cmd_details *cmd_details);
-enum i40e_status_code i40e_aq_update_lldp_tlv(struct i40e_hw *hw,
-				u8 bridge_type, void *buff, u16 buff_size,
-				u16 old_len, u16 new_len, u16 offset,
-				u16 *mib_len,
-				struct i40e_asq_cmd_details *cmd_details);
-enum i40e_status_code i40e_aq_delete_lldp_tlv(struct i40e_hw *hw,
-				u8 bridge_type, void *buff, u16 buff_size,
-				u16 tlv_len, u16 *mib_len,
-				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code
+i40e_aq_restore_lldp(struct i40e_hw *hw, u8 *setting, bool restore,
+		     struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_stop_lldp(struct i40e_hw *hw, bool shutdown_agent,
+				bool persist,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_dcb_parameters(struct i40e_hw *hw,
 						 bool dcb_enable,
 						 struct i40e_asq_cmd_details
 						 *cmd_details);
 enum i40e_status_code i40e_aq_start_lldp(struct i40e_hw *hw,
+				bool persist,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_get_cee_dcb_config(struct i40e_hw *hw,
 				void *buff, u16 buff_size,

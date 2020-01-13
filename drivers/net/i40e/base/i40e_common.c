@@ -4347,151 +4347,39 @@ enum i40e_status_code i40e_aq_cfg_lldp_mib_change_event(struct i40e_hw *hw,
 }
 
 /**
- * i40e_aq_add_lldp_tlv
+ * i40e_aq_restore_lldp
  * @hw: pointer to the hw struct
- * @bridge_type: type of bridge
- * @buff: buffer with TLV to add
- * @buff_size: length of the buffer
- * @tlv_len: length of the TLV to be added
- * @mib_len: length of the LLDP MIB returned in response
+ * @setting: pointer to factory setting variable or NULL
+ * @restore: True if factory settings should be restored
  * @cmd_details: pointer to command details structure or NULL
  *
- * Add the specified TLV to LLDP Local MIB for the given bridge type,
- * it is responsibility of the caller to make sure that the TLV is not
- * already present in the LLDPDU.
- * In return firmware will write the complete LLDP MIB with the newly
- * added TLV in the response buffer.
+ * Restore LLDP Agent factory settings if @restore set to True. In other case
+ * only returns factory setting in AQ response.
  **/
-enum i40e_status_code i40e_aq_add_lldp_tlv(struct i40e_hw *hw, u8 bridge_type,
-				void *buff, u16 buff_size, u16 tlv_len,
-				u16 *mib_len,
-				struct i40e_asq_cmd_details *cmd_details)
+enum i40e_status_code
+i40e_aq_restore_lldp(struct i40e_hw *hw, u8 *setting, bool restore,
+		     struct i40e_asq_cmd_details *cmd_details)
 {
 	struct i40e_aq_desc desc;
-	struct i40e_aqc_lldp_add_tlv *cmd =
-		(struct i40e_aqc_lldp_add_tlv *)&desc.params.raw;
+	struct i40e_aqc_lldp_restore *cmd =
+		(struct i40e_aqc_lldp_restore *)&desc.params.raw;
 	enum i40e_status_code status;
 
-	if (buff_size == 0 || !buff || tlv_len == 0)
-		return I40E_ERR_PARAM;
-
-	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_lldp_add_tlv);
-
-	/* Indirect Command */
-	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
-	if (buff_size > I40E_AQ_LARGE_BUF)
-		desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_LB);
-	desc.datalen = CPU_TO_LE16(buff_size);
-
-	cmd->type = ((bridge_type << I40E_AQ_LLDP_BRIDGE_TYPE_SHIFT) &
-		      I40E_AQ_LLDP_BRIDGE_TYPE_MASK);
-	cmd->len = CPU_TO_LE16(tlv_len);
-
-	status = i40e_asq_send_command(hw, &desc, buff, buff_size, cmd_details);
-	if (!status) {
-		if (mib_len != NULL)
-			*mib_len = LE16_TO_CPU(desc.datalen);
+	if (!(hw->flags & I40E_HW_FLAG_FW_LLDP_PERSISTENT)) {
+		i40e_debug(hw, I40E_DEBUG_ALL,
+			   "Restore LLDP not supported by current FW version.\n");
+		return I40E_ERR_DEVICE_NOT_SUPPORTED;
 	}
 
-	return status;
-}
+	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_lldp_restore);
 
-/**
- * i40e_aq_update_lldp_tlv
- * @hw: pointer to the hw struct
- * @bridge_type: type of bridge
- * @buff: buffer with TLV to update
- * @buff_size: size of the buffer holding original and updated TLVs
- * @old_len: Length of the Original TLV
- * @new_len: Length of the Updated TLV
- * @offset: offset of the updated TLV in the buff
- * @mib_len: length of the returned LLDP MIB
- * @cmd_details: pointer to command details structure or NULL
- *
- * Update the specified TLV to the LLDP Local MIB for the given bridge type.
- * Firmware will place the complete LLDP MIB in response buffer with the
- * updated TLV.
- **/
-enum i40e_status_code i40e_aq_update_lldp_tlv(struct i40e_hw *hw,
-				u8 bridge_type, void *buff, u16 buff_size,
-				u16 old_len, u16 new_len, u16 offset,
-				u16 *mib_len,
-				struct i40e_asq_cmd_details *cmd_details)
-{
-	struct i40e_aq_desc desc;
-	struct i40e_aqc_lldp_update_tlv *cmd =
-		(struct i40e_aqc_lldp_update_tlv *)&desc.params.raw;
-	enum i40e_status_code status;
+	if (restore)
+		cmd->command |= I40E_AQ_LLDP_AGENT_RESTORE;
 
-	if (buff_size == 0 || !buff || offset == 0 ||
-	    old_len == 0 || new_len == 0)
-		return I40E_ERR_PARAM;
+	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 
-	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_lldp_update_tlv);
-
-	/* Indirect Command */
-	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
-	if (buff_size > I40E_AQ_LARGE_BUF)
-		desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_LB);
-	desc.datalen = CPU_TO_LE16(buff_size);
-
-	cmd->type = ((bridge_type << I40E_AQ_LLDP_BRIDGE_TYPE_SHIFT) &
-		      I40E_AQ_LLDP_BRIDGE_TYPE_MASK);
-	cmd->old_len = CPU_TO_LE16(old_len);
-	cmd->new_offset = CPU_TO_LE16(offset);
-	cmd->new_len = CPU_TO_LE16(new_len);
-
-	status = i40e_asq_send_command(hw, &desc, buff, buff_size, cmd_details);
-	if (!status) {
-		if (mib_len != NULL)
-			*mib_len = LE16_TO_CPU(desc.datalen);
-	}
-
-	return status;
-}
-
-/**
- * i40e_aq_delete_lldp_tlv
- * @hw: pointer to the hw struct
- * @bridge_type: type of bridge
- * @buff: pointer to a user supplied buffer that has the TLV
- * @buff_size: length of the buffer
- * @tlv_len: length of the TLV to be deleted
- * @mib_len: length of the returned LLDP MIB
- * @cmd_details: pointer to command details structure or NULL
- *
- * Delete the specified TLV from LLDP Local MIB for the given bridge type.
- * The firmware places the entire LLDP MIB in the response buffer.
- **/
-enum i40e_status_code i40e_aq_delete_lldp_tlv(struct i40e_hw *hw,
-				u8 bridge_type, void *buff, u16 buff_size,
-				u16 tlv_len, u16 *mib_len,
-				struct i40e_asq_cmd_details *cmd_details)
-{
-	struct i40e_aq_desc desc;
-	struct i40e_aqc_lldp_add_tlv *cmd =
-		(struct i40e_aqc_lldp_add_tlv *)&desc.params.raw;
-	enum i40e_status_code status;
-
-	if (buff_size == 0 || !buff)
-		return I40E_ERR_PARAM;
-
-	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_lldp_delete_tlv);
-
-	/* Indirect Command */
-	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
-	if (buff_size > I40E_AQ_LARGE_BUF)
-		desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_LB);
-	desc.datalen = CPU_TO_LE16(buff_size);
-	cmd->len = CPU_TO_LE16(tlv_len);
-	cmd->type = ((bridge_type << I40E_AQ_LLDP_BRIDGE_TYPE_SHIFT) &
-		      I40E_AQ_LLDP_BRIDGE_TYPE_MASK);
-
-	status = i40e_asq_send_command(hw, &desc, buff, buff_size, cmd_details);
-	if (!status) {
-		if (mib_len != NULL)
-			*mib_len = LE16_TO_CPU(desc.datalen);
-	}
+	if (setting)
+		*setting = cmd->command & 1;
 
 	return status;
 }
@@ -4500,11 +4388,13 @@ enum i40e_status_code i40e_aq_delete_lldp_tlv(struct i40e_hw *hw,
  * i40e_aq_stop_lldp
  * @hw: pointer to the hw struct
  * @shutdown_agent: True if LLDP Agent needs to be Shutdown
+ * @persist: True if stop of LLDP should be persistent across power cycles
  * @cmd_details: pointer to command details structure or NULL
  *
  * Stop or Shutdown the embedded LLDP Agent
  **/
 enum i40e_status_code i40e_aq_stop_lldp(struct i40e_hw *hw, bool shutdown_agent,
+				bool persist,
 				struct i40e_asq_cmd_details *cmd_details)
 {
 	struct i40e_aq_desc desc;
@@ -4517,6 +4407,14 @@ enum i40e_status_code i40e_aq_stop_lldp(struct i40e_hw *hw, bool shutdown_agent,
 	if (shutdown_agent)
 		cmd->command |= I40E_AQ_LLDP_AGENT_SHUTDOWN;
 
+	if (persist) {
+		if (hw->flags & I40E_HW_FLAG_FW_LLDP_PERSISTENT)
+			cmd->command |= I40E_AQ_LLDP_AGENT_STOP_PERSIST;
+		else
+			i40e_debug(hw, I40E_DEBUG_ALL,
+				   "Persistent Stop LLDP not supported by current FW version.\n");
+	}
+
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 
 	return status;
@@ -4525,11 +4423,13 @@ enum i40e_status_code i40e_aq_stop_lldp(struct i40e_hw *hw, bool shutdown_agent,
 /**
  * i40e_aq_start_lldp
  * @hw: pointer to the hw struct
+ * @persist: True if start of LLDP should be persistent across power cycles
  * @cmd_details: pointer to command details structure or NULL
  *
  * Start the embedded LLDP Agent on all ports.
  **/
 enum i40e_status_code i40e_aq_start_lldp(struct i40e_hw *hw,
+				bool persist,
 				struct i40e_asq_cmd_details *cmd_details)
 {
 	struct i40e_aq_desc desc;
@@ -4540,6 +4440,15 @@ enum i40e_status_code i40e_aq_start_lldp(struct i40e_hw *hw,
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_lldp_start);
 
 	cmd->command = I40E_AQ_LLDP_AGENT_START;
+
+	if (persist) {
+		if (hw->flags & I40E_HW_FLAG_FW_LLDP_PERSISTENT)
+			cmd->command |= I40E_AQ_LLDP_AGENT_START_PERSIST;
+		else
+			i40e_debug(hw, I40E_DEBUG_ALL,
+				   "Persistent Start LLDP not supported by current FW version.\n");
+	}
+
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 
 	return status;
