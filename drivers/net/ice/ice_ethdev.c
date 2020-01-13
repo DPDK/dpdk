@@ -875,7 +875,7 @@ ice_add_mac_filter(struct ice_vsi *vsi, struct rte_ether_addr *mac_addr)
 		ret = -ENOMEM;
 		goto DONE;
 	}
-	rte_memcpy(&f->mac_info.mac_addr, mac_addr, ETH_ADDR_LEN);
+	rte_ether_addr_copy(mac_addr, &f->mac_info.mac_addr);
 	TAILQ_INSERT_TAIL(&vsi->mac_list, f, next);
 	vsi->mac_num++;
 
@@ -1663,16 +1663,16 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 
 	if (type == ICE_VSI_PF) {
 		/* MAC configuration */
-		rte_memcpy(pf->dev_addr.addr_bytes,
-			   hw->port_info->mac.perm_addr,
-			   ETH_ADDR_LEN);
+		rte_ether_addr_copy((struct rte_ether_addr *)
+					hw->port_info->mac.perm_addr,
+				    &pf->dev_addr);
 
-		rte_memcpy(&mac_addr, &pf->dev_addr, RTE_ETHER_ADDR_LEN);
+		rte_ether_addr_copy(&pf->dev_addr, &mac_addr);
 		ret = ice_add_mac_filter(vsi, &mac_addr);
 		if (ret != ICE_SUCCESS)
 			PMD_INIT_LOG(ERR, "Failed to add dflt MAC filter");
 
-		rte_memcpy(&mac_addr, &broadcast, RTE_ETHER_ADDR_LEN);
+		rte_ether_addr_copy(&broadcast, &mac_addr);
 		ret = ice_add_mac_filter(vsi, &mac_addr);
 		if (ret != ICE_SUCCESS)
 			PMD_INIT_LOG(ERR, "Failed to add MAC filter");
@@ -3270,7 +3270,7 @@ static int ice_macaddr_set(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR, "Failed to add mac filter");
 		return -EIO;
 	}
-	memcpy(&pf->dev_addr, mac_addr, ETH_ADDR_LEN);
+	rte_ether_addr_copy(mac_addr, &pf->dev_addr);
 
 	flags = ICE_AQC_MAN_MAC_UPDATE_LAA_WOL;
 	ret = ice_aq_manage_mac_write(hw, mac_addr->addr_bytes, flags, NULL);
