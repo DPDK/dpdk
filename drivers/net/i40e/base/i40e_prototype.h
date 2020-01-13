@@ -442,6 +442,9 @@ enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 void i40e_release_nvm(struct i40e_hw *hw);
 enum i40e_status_code i40e_read_nvm_word(struct i40e_hw *hw, u16 offset,
 					 u16 *data);
+enum i40e_status_code
+i40e_read_nvm_module_data(struct i40e_hw *hw, u8 module_ptr, u16 module_offset,
+			  u16 data_offset, u16 words_data_size, u16 *data_ptr);
 enum i40e_status_code i40e_read_nvm_buffer(struct i40e_hw *hw, u16 offset,
 					   u16 *words, u16 *data);
 enum i40e_status_code i40e_write_nvm_aq(struct i40e_hw *hw, u8 module,
