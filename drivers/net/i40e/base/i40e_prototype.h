@@ -114,6 +114,7 @@ enum i40e_status_code i40e_aq_set_phy_int_mask(struct i40e_hw *hw, u16 mask,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_set_mac_config(struct i40e_hw *hw,
 				u16 max_frame_size, bool crc_en, u16 pacing,
+				bool auto_drop_blocking_packets,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_get_local_advt_reg(struct i40e_hw *hw,
 				u64 *advt_reg,

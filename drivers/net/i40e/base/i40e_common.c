@@ -1873,6 +1873,7 @@ enum i40e_status_code i40e_set_fc(struct i40e_hw *hw, u8 *aq_failures,
  * @max_frame_size: Maximum Frame Size to be supported by the port
  * @crc_en: Tell HW to append a CRC to outgoing frames
  * @pacing: Pacing configurations
+ * @auto_drop_blocking_packets: Tell HW to drop packets if TC queue is blocked
  * @cmd_details: pointer to command details structure or NULL
  *
  * Configure MAC settings for frame size, jumbo frame support and the
@@ -1881,6 +1882,7 @@ enum i40e_status_code i40e_set_fc(struct i40e_hw *hw, u8 *aq_failures,
 enum i40e_status_code i40e_aq_set_mac_config(struct i40e_hw *hw,
 				u16 max_frame_size,
 				bool crc_en, u16 pacing,
+				bool auto_drop_blocking_packets,
 				struct i40e_asq_cmd_details *cmd_details)
 {
 	struct i40e_aq_desc desc;
@@ -1898,6 +1900,15 @@ enum i40e_status_code i40e_aq_set_mac_config(struct i40e_hw *hw,
 	cmd->params = ((u8)pacing & 0x0F) << 3;
 	if (crc_en)
 		cmd->params |= I40E_AQ_SET_MAC_CONFIG_CRC_EN;
+
+	if (auto_drop_blocking_packets) {
+		if (hw->flags & I40E_HW_FLAG_DROP_MODE)
+			cmd->params |=
+				I40E_AQ_SET_MAC_CONFIG_DROP_BLOCKING_PACKET_EN;
+		else
+			i40e_debug(hw, I40E_DEBUG_ALL,
+				   "This FW api version does not support drop mode.\n");
+	}
 
 #define I40E_AQ_SET_MAC_CONFIG_FC_DEFAULT_THRESHOLD	0x7FFF
 	cmd->fc_refresh_threshold =
