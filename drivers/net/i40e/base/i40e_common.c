@@ -1014,6 +1014,17 @@ enum i40e_status_code i40e_init_shared_code(struct i40e_hw *hw)
 	if (hw->mac.type == I40E_MAC_X722)
 		hw->flags |= I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE |
 			     I40E_HW_FLAG_NVM_READ_REQUIRES_LOCK;
+	/* NVMUpdate features structure initialization */
+	hw->nvmupd_features.major = I40E_NVMUPD_FEATURES_API_VER_MAJOR;
+	hw->nvmupd_features.minor = I40E_NVMUPD_FEATURES_API_VER_MINOR;
+	hw->nvmupd_features.size = sizeof(hw->nvmupd_features);
+	i40e_memset(hw->nvmupd_features.features, 0x0,
+		    I40E_NVMUPD_FEATURES_API_FEATURES_ARRAY_LEN *
+		    sizeof(*hw->nvmupd_features.features),
+		    I40E_NONDMA_MEM);
+
+	/* No features supported at the moment */
+	hw->nvmupd_features.features[0] = 0;
 
 	status = i40e_init_nvm(hw);
 	return status;

@@ -478,6 +478,7 @@ enum i40e_nvmupd_cmd {
 	I40E_NVMUPD_EXEC_AQ,
 	I40E_NVMUPD_GET_AQ_RESULT,
 	I40E_NVMUPD_GET_AQ_EVENT,
+	I40E_NVMUPD_FEATURES,
 };
 
 enum i40e_nvmupd_state {
@@ -513,6 +514,10 @@ enum i40e_nvmupd_state {
 #define I40E_NVM_AQE				0xe
 #define I40E_NVM_EXEC				0xf
 
+#define I40E_NVM_EXEC_GET_AQ_RESULT		0x0
+#define I40E_NVM_EXEC_FEATURES			0xe
+#define I40E_NVM_EXEC_STATUS			0xf
+
 #define I40E_NVM_ADAPT_SHIFT	16
 #define I40E_NVM_ADAPT_MASK	(0xffffULL << I40E_NVM_ADAPT_SHIFT)
 
@@ -525,6 +530,20 @@ struct i40e_nvm_access {
 	u32 offset;	/* in bytes */
 	u32 data_size;	/* in bytes */
 	u8 data[1];
+};
+
+/* NVMUpdate features API */
+#define I40E_NVMUPD_FEATURES_API_VER_MAJOR		0
+#define I40E_NVMUPD_FEATURES_API_VER_MINOR		14
+#define I40E_NVMUPD_FEATURES_API_FEATURES_ARRAY_LEN	12
+
+#define I40E_NVMUPD_FEATURE_FLAT_NVM_SUPPORT		BIT(0)
+
+struct i40e_nvmupd_features {
+	u8 major;
+	u8 minor;
+	u16 size;
+	u8 features[I40E_NVMUPD_FEATURES_API_FEATURES_ARRAY_LEN];
 };
 
 /* (Q)SFP module access definitions */
@@ -729,6 +748,9 @@ struct i40e_hw {
 	u16 switch_tag;
 	u16 first_tag;
 	u16 second_tag;
+
+	/* NVMUpdate features */
+	struct i40e_nvmupd_features nvmupd_features;
 
 	/* debug mask */
 	u32 debug_mask;
