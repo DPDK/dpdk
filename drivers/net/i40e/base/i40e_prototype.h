@@ -76,6 +76,12 @@ enum i40e_status_code i40e_blink_phy_link_led(struct i40e_hw *hw,
 
 enum i40e_status_code i40e_get_phy_lpi_status(struct i40e_hw *hw,
 					      struct i40e_hw_port_stats *stats);
+enum i40e_status_code i40e_get_lpi_counters(struct i40e_hw *hw, u32 *tx_counter,
+					    u32 *rx_counter, bool *is_clear);
+enum i40e_status_code i40e_lpi_stat_update(struct i40e_hw *hw,
+					   bool offset_loaded, u64 *tx_offset,
+					   u64 *tx_stat, u64 *rx_offset,
+					   u64 *rx_stat);
 /* admin send queue commands */
 
 enum i40e_status_code i40e_aq_get_firmware_version(struct i40e_hw *hw,
@@ -550,6 +556,10 @@ enum i40e_status_code i40e_aq_get_phy_register(struct i40e_hw *hw,
 				u8 phy_select, u8 dev_addr, bool page_change,
 				u32 reg_addr, u32 *reg_val,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code
+i40e_aq_run_phy_activity(struct i40e_hw *hw, u16 activity_id, u32 opcode,
+			 u32 *cmd_status, u32 *data0, u32 *data1,
+			 struct i40e_asq_cmd_details *cmd_details);
 
 enum i40e_status_code i40e_aq_set_arp_proxy_config(struct i40e_hw *hw,
 			struct i40e_aqc_arp_proxy_data *proxy_config,

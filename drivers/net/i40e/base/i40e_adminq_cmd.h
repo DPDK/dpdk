@@ -2272,15 +2272,32 @@ enum i40e_aq_phy_reg_type {
 	I40E_AQC_PHY_REG_EXERNAL_MODULE	= 0x3
 };
 
+#pragma pack(1)
 /* Run PHY Activity (0x0626) */
 struct i40e_aqc_run_phy_activity {
-	__le16  activity_id;
-	u8      flags;
-	u8      reserved1;
-	__le32  control;
-	__le32  data;
-	u8      reserved2[4];
+	u8	cmd_flags;
+	__le16	activity_id;
+#define I40E_AQ_RUN_PHY_ACT_ID_USR_DFND			0x10
+	u8	reserved;
+	union {
+		struct {
+			__le32  dnl_opcode;
+#define I40E_AQ_RUN_PHY_ACT_DNL_OPCODE_GET_EEE_STAT_DUR	0x801a
+#define I40E_AQ_RUN_PHY_ACT_DNL_OPCODE_GET_EEE_STAT	0x801b
+#define I40E_AQ_RUN_PHY_ACT_DNL_OPCODE_GET_EEE_DUR	0x1801b
+			__le32  data;
+			u8	reserved2[4];
+		} cmd;
+		struct {
+			__le32	cmd_status;
+#define I40E_AQ_RUN_PHY_ACT_CMD_STAT_SUCC		0x4
+#define I40E_AQ_RUN_PHY_ACT_CMD_STAT_MASK		0xFFFF
+			__le32	data0;
+			__le32	data1;
+		} resp;
+	} params;
 };
+#pragma pack()
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_run_phy_activity);
 
