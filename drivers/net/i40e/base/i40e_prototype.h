@@ -82,6 +82,9 @@ enum i40e_status_code i40e_lpi_stat_update(struct i40e_hw *hw,
 					   bool offset_loaded, u64 *tx_offset,
 					   u64 *tx_stat, u64 *rx_offset,
 					   u64 *rx_stat);
+enum i40e_status_code i40e_get_lpi_duration(struct i40e_hw *hw,
+					    struct i40e_hw_port_stats *stat,
+					    u64 *tx_duration, u64 *rx_duration);
 /* admin send queue commands */
 
 enum i40e_status_code i40e_aq_get_firmware_version(struct i40e_hw *hw,

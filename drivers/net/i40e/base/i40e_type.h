@@ -1498,6 +1498,8 @@ struct i40e_hw_port_stats {
 	u32 rx_lpi_status;
 	u64 tx_lpi_count;		/* etlpic */
 	u64 rx_lpi_count;		/* erlpic */
+	u64 tx_lpi_duration;
+	u64 rx_lpi_duration;
 };
 
 /* Checksum and Shadow RAM pointers */

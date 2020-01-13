@@ -7084,6 +7084,62 @@ enum i40e_status_code i40e_get_lpi_counters(struct i40e_hw *hw,
 }
 
 /**
+ * i40e_get_lpi_duration - read LPI time duration from EEE statistics
+ * @hw: pointer to the hw struct
+ * @stat: pointer to structure with status of rx and tx lpi
+ * @tx_duration: pointer to memory for TX LPI time duration
+ * @rx_duration: pointer to memory for RX LPI time duration
+ *
+ * Read Low Power Idle (LPI) mode time duration from Energy Efficient
+ * Ethernet (EEE) statistics.
+ */
+enum i40e_status_code i40e_get_lpi_duration(struct i40e_hw *hw,
+					    struct i40e_hw_port_stats *stat,
+					    u64 *tx_duration, u64 *rx_duration)
+{
+	u32 tx_time_dur, rx_time_dur;
+	enum i40e_status_code retval;
+	u32 cmd_status;
+
+	if (hw->device_id != I40E_DEV_ID_10G_BASE_T_BC)
+		return I40E_ERR_NOT_IMPLEMENTED;
+
+	retval = i40e_aq_run_phy_activity
+		(hw, I40E_AQ_RUN_PHY_ACT_ID_USR_DFND,
+		I40E_AQ_RUN_PHY_ACT_DNL_OPCODE_GET_EEE_DUR,
+		&cmd_status, &tx_time_dur, &rx_time_dur, NULL);
+
+	if (retval)
+		return retval;
+	if ((cmd_status & I40E_AQ_RUN_PHY_ACT_CMD_STAT_MASK) !=
+	    I40E_AQ_RUN_PHY_ACT_CMD_STAT_SUCC)
+		return I40E_ERR_ADMIN_QUEUE_ERROR;
+
+	if (hw->phy.link_info.link_speed == I40E_LINK_SPEED_1GB &&
+	    !tx_time_dur && !rx_time_dur &&
+	    stat->tx_lpi_status && stat->rx_lpi_status) {
+		retval = i40e_aq_run_phy_activity
+			(hw, I40E_AQ_RUN_PHY_ACT_ID_USR_DFND,
+			I40E_AQ_RUN_PHY_ACT_DNL_OPCODE_GET_EEE_STAT_DUR,
+			&cmd_status,
+			&tx_time_dur, &rx_time_dur, NULL);
+
+		if (retval)
+			return retval;
+		if ((cmd_status & I40E_AQ_RUN_PHY_ACT_CMD_STAT_MASK) !=
+		    I40E_AQ_RUN_PHY_ACT_CMD_STAT_SUCC)
+			return I40E_ERR_ADMIN_QUEUE_ERROR;
+		tx_time_dur = 0;
+		rx_time_dur = 0;
+	}
+
+	*tx_duration = tx_time_dur;
+	*rx_duration = rx_time_dur;
+
+	return retval;
+}
+
+/**
  * i40e_lpi_stat_update - update LPI counters with values relative to offset
  * @hw: pointer to the hw struct
  * @offset_loaded: flag indicating need of writing current value to offset
