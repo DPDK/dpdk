@@ -79,7 +79,7 @@
 #define NIX_RX_NB_SEG_MAX		6
 #define NIX_CQ_ENTRY_SZ			128
 #define NIX_CQ_ALIGN			512
-#define NIX_SQB_LOWER_THRESH		90
+#define NIX_SQB_LOWER_THRESH		70
 #define LMT_SLOT_MASK			0x7f
 #define NIX_RX_DEFAULT_RING_SZ		4096
 

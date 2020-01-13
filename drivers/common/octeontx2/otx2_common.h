@@ -124,9 +124,6 @@ extern int otx2_logtype_dpi;
 #define PCI_DEVID_OCTEONTX2_RVU_SDP_PF		0xA0f6
 #define PCI_DEVID_OCTEONTX2_RVU_SDP_VF		0xA0f7
 
-/* Subsystem Device ID */
-#define PCI_SUBSYS_DEVID_96XX_95XX		0xB200
-
 /*
  * REVID for RVU PCIe devices.
  * Bits 0..1: minor pass

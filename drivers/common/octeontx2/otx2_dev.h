@@ -103,11 +103,7 @@ otx2_dev_init(struct rte_pci_device *pci_dev, void *otx2_dev)
 		return rc;
 	}
 
-	if (pci_dev->id.subsystem_device_id == PCI_SUBSYS_DEVID_96XX_95XX)
-		dev->hwcap = rev_id;
-	else
-		dev->hwcap = 0;
-
+	dev->hwcap = rev_id;
 	return otx2_dev_priv_init(pci_dev, otx2_dev);
 }
 
