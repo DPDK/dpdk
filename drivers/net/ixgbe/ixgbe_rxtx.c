@@ -339,7 +339,6 @@ ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx;
 }
 
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 static uint16_t
 ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		    uint16_t nb_pkts)
@@ -361,7 +360,6 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	return nb_tx;
 }
-#endif
 
 static inline void
 ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
@@ -2497,14 +2495,12 @@ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
 			(txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST)) {
 		PMD_INIT_LOG(DEBUG, "Using simple tx code path");
 		dev->tx_pkt_prepare = NULL;
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 		if (txq->tx_rs_thresh <= RTE_IXGBE_TX_MAX_FREE_BUF_SZ &&
 				(rte_eal_process_type() != RTE_PROC_PRIMARY ||
 					ixgbe_txq_vec_setup(txq) == 0)) {
 			PMD_INIT_LOG(DEBUG, "Vector tx enabled.");
 			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
 		} else
-#endif
 		dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
 	} else {
 		PMD_INIT_LOG(DEBUG, "Using full-featured tx code path");
@@ -2792,13 +2788,11 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 {
 	unsigned i;
 
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	/* SSE Vector driver has a different way of releasing mbufs. */
 	if (rxq->rx_using_sse) {
 		ixgbe_rx_queue_release_mbufs_vec(rxq);
 		return;
 	}
-#endif
 
 	if (rxq->sw_ring != NULL) {
 		for (i = 0; i < rxq->nb_rx_desc; i++) {
@@ -5943,5 +5937,25 @@ int
 ixgbe_rxq_vec_setup(struct ixgbe_rx_queue __rte_unused *rxq)
 {
 	return -1;
+}
+
+uint16_t
+ixgbe_xmit_fixed_burst_vec(void __rte_unused *tx_queue,
+		struct rte_mbuf __rte_unused **tx_pkts,
+		uint16_t __rte_unused nb_pkts)
+{
+	return 0;
+}
+
+int
+ixgbe_txq_vec_setup(struct ixgbe_tx_queue __rte_unused *txq)
+{
+	return -1;
+}
+
+void
+ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue __rte_unused *rxq)
+{
+	return;
 }
 #endif
