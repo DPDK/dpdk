@@ -1052,9 +1052,10 @@ again:
 				next = TAILQ_NEXT(conn, next);
 
 				/*
-				 * If r/wcb is executing, release the
-				 * conn_mutex lock, and try again since
-				 * the r/wcb may use the conn_mutex lock.
+				 * If r/wcb is executing, release vsocket's
+				 * conn_mutex and vhost_user's mutex locks, and
+				 * try again since the r/wcb may use the
+				 * conn_mutex and mutex locks.
 				 */
 				if (fdset_try_del(&vhost_user.fdset,
 						  conn->connfd) == -1) {
@@ -1075,8 +1076,17 @@ again:
 			pthread_mutex_unlock(&vsocket->conn_mutex);
 
 			if (vsocket->is_server) {
-				fdset_del(&vhost_user.fdset,
-						vsocket->socket_fd);
+				/*
+				 * If r/wcb is executing, release vhost_user's
+				 * mutex lock, and try again since the r/wcb
+				 * may use the mutex lock.
+				 */
+				if (fdset_try_del(&vhost_user.fdset,
+						vsocket->socket_fd) == -1) {
+					pthread_mutex_unlock(&vhost_user.mutex);
+					goto again;
+				}
+
 				close(vsocket->socket_fd);
 				unlink(path);
 			} else if (vsocket->reconnect) {
