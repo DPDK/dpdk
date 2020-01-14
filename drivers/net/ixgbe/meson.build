@@ -25,7 +25,6 @@ sources = files(
 deps += ['hash', 'security']
 
 if arch_subdir == 'x86'
-	dpdk_conf.set('RTE_IXGBE_INC_VECTOR', 1)
 	sources += files('ixgbe_rxtx_vec_sse.c')
 endif
 

@@ -87,7 +87,7 @@
 #define rte_ixgbe_prefetch(p)   do {} while (0)
 #endif
 
-#ifdef RTE_IXGBE_INC_VECTOR
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 uint16_t ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 				    uint16_t nb_pkts);
 #endif
@@ -344,7 +344,7 @@ ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx;
 }
 
-#ifdef RTE_IXGBE_INC_VECTOR
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 static uint16_t
 ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		    uint16_t nb_pkts)
@@ -2502,7 +2502,7 @@ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
 			(txq->tx_rs_thresh >= RTE_PMD_IXGBE_TX_MAX_BURST)) {
 		PMD_INIT_LOG(DEBUG, "Using simple tx code path");
 		dev->tx_pkt_prepare = NULL;
-#ifdef RTE_IXGBE_INC_VECTOR
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 		if (txq->tx_rs_thresh <= RTE_IXGBE_TX_MAX_FREE_BUF_SZ &&
 				(rte_eal_process_type() != RTE_PROC_PRIMARY ||
 					ixgbe_txq_vec_setup(txq) == 0)) {
@@ -2797,7 +2797,7 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 {
 	unsigned i;
 
-#ifdef RTE_IXGBE_INC_VECTOR
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	/* SSE Vector driver has a different way of releasing mbufs. */
 	if (rxq->rx_using_sse) {
 		ixgbe_rx_queue_release_mbufs_vec(rxq);
@@ -2935,7 +2935,7 @@ ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 
-#ifdef RTE_IXGBE_INC_VECTOR
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	rxq->rxrearm_start = 0;
 	rxq->rxrearm_nb = 0;
 #endif
@@ -3249,7 +3249,7 @@ ixgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	if (unlikely(offset >= rxq->nb_rx_desc))
 		return -EINVAL;
 
-#ifdef RTE_IXGBE_INC_VECTOR
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	if (rxq->rx_using_sse)
 		nb_hold = rxq->rxrearm_nb;
 	else
@@ -4748,8 +4748,7 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 	if (ixgbe_rx_vec_dev_conf_condition_check(dev) ||
 	    !adapter->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Port[%d] doesn't meet Vector Rx "
-				    "preconditions or RTE_IXGBE_INC_VECTOR is "
-				    "not enabled",
+				    "preconditions",
 			     dev->data->port_id);
 
 		adapter->rx_vec_allowed = false;
@@ -5919,7 +5918,7 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/* Stubs needed for linkage when CONFIG_RTE_IXGBE_INC_VECTOR is set to 'n' */
+/* Stubs needed for linkage for ppc arch */
 __rte_weak int
 ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev __rte_unused *dev)
 {
