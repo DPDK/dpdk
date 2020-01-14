@@ -73,6 +73,7 @@ struct otx2_mbox {
 	uint16_t tx_size;  /* Size of Tx region */
 	uint16_t ndevs;    /* The number of peers */
 	struct otx2_mbox_dev *dev;
+	uint64_t intr_offset; /* Offset to interrupt register */
 };
 
 /* Header which precedes all mbox messages */
@@ -1575,8 +1576,8 @@ struct tim_enable_rsp {
 const char *otx2_mbox_id2name(uint16_t id);
 int otx2_mbox_id2size(uint16_t id);
 void otx2_mbox_reset(struct otx2_mbox *mbox, int devid);
-int otx2_mbox_init(struct otx2_mbox *mbox, uintptr_t hwbase,
-		   uintptr_t reg_base, int direction, int ndevs);
+int otx2_mbox_init(struct otx2_mbox *mbox, uintptr_t hwbase, uintptr_t reg_base,
+		   int direction, int ndevsi, uint64_t intr_offset);
 void otx2_mbox_fini(struct otx2_mbox *mbox);
 void otx2_mbox_msg_send(struct otx2_mbox *mbox, int devid);
 int otx2_mbox_wait_for_rsp(struct otx2_mbox *mbox, int devid);
