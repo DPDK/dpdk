@@ -1018,12 +1018,12 @@ dsw_event_enqueue(void *port, const struct rte_event *ev)
 }
 
 static __rte_always_inline uint16_t
-dsw_event_enqueue_burst_generic(void *port, const struct rte_event events[],
+dsw_event_enqueue_burst_generic(struct dsw_port *source_port,
+				const struct rte_event events[],
 				uint16_t events_len, bool op_types_known,
 				uint16_t num_new, uint16_t num_release,
 				uint16_t num_non_release)
 {
-	struct dsw_port *source_port = port;
 	struct dsw_evdev *dsw = source_port->dsw;
 	bool enough_credits;
 	uint16_t i;
@@ -1047,12 +1047,9 @@ dsw_event_enqueue_burst_generic(void *port, const struct rte_event events[],
 	 */
 	if (unlikely(events_len == 0)) {
 		dsw_port_note_op(source_port, DSW_MAX_PORT_OPS_PER_BG_TASK);
-		dsw_port_flush_out_buffers(dsw, port);
+		dsw_port_flush_out_buffers(dsw, source_port);
 		return 0;
 	}
-
-	if (unlikely(events_len > source_port->enqueue_depth))
-		events_len = source_port->enqueue_depth;
 
 	dsw_port_note_op(source_port, events_len);
 
@@ -1109,24 +1106,41 @@ uint16_t
 dsw_event_enqueue_burst(void *port, const struct rte_event events[],
 			uint16_t events_len)
 {
-	return dsw_event_enqueue_burst_generic(port, events, events_len, false,
-					       0, 0, 0);
+	struct dsw_port *source_port = port;
+
+	if (unlikely(events_len > source_port->enqueue_depth))
+		events_len = source_port->enqueue_depth;
+
+	return dsw_event_enqueue_burst_generic(source_port, events,
+					       events_len, false, 0, 0, 0);
 }
 
 uint16_t
 dsw_event_enqueue_new_burst(void *port, const struct rte_event events[],
 			    uint16_t events_len)
 {
-	return dsw_event_enqueue_burst_generic(port, events, events_len, true,
-					       events_len, 0, events_len);
+	struct dsw_port *source_port = port;
+
+	if (unlikely(events_len > source_port->enqueue_depth))
+		events_len = source_port->enqueue_depth;
+
+	return dsw_event_enqueue_burst_generic(source_port, events,
+					       events_len, true, events_len,
+					       0, events_len);
 }
 
 uint16_t
 dsw_event_enqueue_forward_burst(void *port, const struct rte_event events[],
 				uint16_t events_len)
 {
-	return dsw_event_enqueue_burst_generic(port, events, events_len, true,
-					       0, 0, events_len);
+	struct dsw_port *source_port = port;
+
+	if (unlikely(events_len > source_port->enqueue_depth))
+		events_len = source_port->enqueue_depth;
+
+	return dsw_event_enqueue_burst_generic(source_port, events,
+					       events_len, true, 0, 0,
+					       events_len);
 }
 
 uint16_t
