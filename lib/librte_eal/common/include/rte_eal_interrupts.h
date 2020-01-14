@@ -220,4 +220,19 @@ rte_intr_allow_others(struct rte_intr_handle *intr_handle);
 int
 rte_intr_cap_multiple(struct rte_intr_handle *intr_handle);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @internal
+ * Check if currently executing in interrupt context
+ *
+ * @return
+ *  - non zero in case of interrupt context
+ *  - zero in case of process context
+ */
+__rte_experimental
+int
+rte_thread_is_intr(void);
+
 #endif /* _RTE_EAL_INTERRUPTS_H_ */

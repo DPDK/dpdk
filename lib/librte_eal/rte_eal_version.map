@@ -332,4 +332,7 @@ EXPERIMENTAL {
 	# added in 19.11
 	rte_log_get_stream;
 	rte_mcfg_get_single_file_segments;
+
+	# added in 20.02
+	rte_thread_is_intr;
 };
