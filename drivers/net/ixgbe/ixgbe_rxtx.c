@@ -87,11 +87,6 @@
 #define rte_ixgbe_prefetch(p)   do {} while (0)
 #endif
 
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
-uint16_t ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
-				    uint16_t nb_pkts);
-#endif
-
 /*********************************************************************
  *
  *  TX functions
