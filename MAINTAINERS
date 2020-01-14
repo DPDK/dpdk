@@ -1472,20 +1472,24 @@ Driver testing tool
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 M: Jingjing Wu <jingjing.wu@intel.com>
 M: Bernard Iremonger <bernard.iremonger@intel.com>
+T: git://dpdk.org/next/dpdk-next-net
 F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
 Compression performance test application
+T: git://dpdk.org/next/dpdk-next-crypto
 F: app/test-compress-perf/
 F: doc/guides/tools/comp_perf.rst
 
 Crypto performance test application
 M: Declan Doherty <declan.doherty@intel.com>
+T: git://dpdk.org/next/dpdk-next-crypto
 F: app/test-crypto-perf/
 F: doc/guides/tools/cryptoperf.rst
 
 Eventdev test application
 M: Jerin Jacob <jerinj@marvell.com>
+T: git://dpdk.org/next/dpdk-next-eventdev
 F: app/test-eventdev/
 F: doc/guides/tools/testeventdev.rst
 F: doc/guides/tools/img/eventdev_*
