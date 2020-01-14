@@ -13,27 +13,27 @@
 
 /* Work queue control */
 struct vnic_wq_ctrl {
-	u64 ring_base;			/* 0x00 */
-	u32 ring_size;			/* 0x08 */
-	u32 pad0;
-	u32 posted_index;		/* 0x10 */
-	u32 pad1;
-	u32 cq_index;			/* 0x18 */
-	u32 pad2;
-	u32 enable;			/* 0x20 */
-	u32 pad3;
-	u32 running;			/* 0x28 */
-	u32 pad4;
-	u32 fetch_index;		/* 0x30 */
-	u32 pad5;
-	u32 dca_value;			/* 0x38 */
-	u32 pad6;
-	u32 error_interrupt_enable;	/* 0x40 */
-	u32 pad7;
-	u32 error_interrupt_offset;	/* 0x48 */
-	u32 pad8;
-	u32 error_status;		/* 0x50 */
-	u32 pad9;
+	uint64_t ring_base;			/* 0x00 */
+	uint32_t ring_size;			/* 0x08 */
+	uint32_t pad0;
+	uint32_t posted_index;			/* 0x10 */
+	uint32_t pad1;
+	uint32_t cq_index;			/* 0x18 */
+	uint32_t pad2;
+	uint32_t enable;			/* 0x20 */
+	uint32_t pad3;
+	uint32_t running;			/* 0x28 */
+	uint32_t pad4;
+	uint32_t fetch_index;			/* 0x30 */
+	uint32_t pad5;
+	uint32_t dca_value;			/* 0x38 */
+	uint32_t pad6;
+	uint32_t error_interrupt_enable;	/* 0x40 */
+	uint32_t pad7;
+	uint32_t error_interrupt_offset;	/* 0x48 */
+	uint32_t pad8;
+	uint32_t error_status;			/* 0x50 */
+	uint32_t pad9;
 };
 
 struct vnic_wq {
@@ -119,7 +119,8 @@ static inline unsigned int num_cache_lines_touched(dma_addr_t addr,
 	return lines >> PI_LOG2_CACHE_LINE_SIZE;
 }
 
-static inline u64 vnic_cached_posted_index(dma_addr_t addr, unsigned int len,
+static inline uint64_t vnic_cached_posted_index(dma_addr_t addr,
+						unsigned int len,
 						unsigned int index)
 {
 	unsigned int num_cache_lines = num_cache_lines_touched(addr, len);

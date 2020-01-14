@@ -79,7 +79,7 @@ static void enic_free_wq_buf(struct rte_mbuf **buf)
 static void enic_log_q_error(struct enic *enic)
 {
 	unsigned int i;
-	u32 error_status;
+	uint32_t error_status;
 
 	for (i = 0; i < enic->wq_count; i++) {
 		error_status = vnic_wq_error_status(&enic->wq[i]);
@@ -264,7 +264,7 @@ void enic_init_vnic_resources(struct enic *enic)
 			0 /* cq_entry_enable */,
 			1 /* cq_message_enable */,
 			0 /* interrupt offset */,
-			(u64)enic->wq[index].cqmsg_rz->iova);
+			(uint64_t)enic->wq[index].cqmsg_rz->iova);
 	}
 
 	for (index = 0; index < enic->intr_count; index++) {
@@ -359,7 +359,7 @@ enic_initial_post_rx(struct enic *enic, struct vnic_rq *rq)
 
 void *
 enic_alloc_consistent(void *priv, size_t size,
-	dma_addr_t *dma_handle, u8 *name)
+	dma_addr_t *dma_handle, uint8_t *name)
 {
 	void *vaddr;
 	const struct rte_memzone *rz;
@@ -368,7 +368,7 @@ enic_alloc_consistent(void *priv, size_t size,
 	struct enic_memzone_entry *mze;
 
 	rz = rte_memzone_reserve_aligned((const char *)name, size,
-			SOCKET_ID_ANY, RTE_MEMZONE_IOVA_CONTIG, ENIC_ALIGN);
+			SOCKET_ID_ANY, RTE_MEMZONE_IOVA_CONTIG, ENIC_PAGE_SIZE);
 	if (!rz) {
 		pr_err("%s : Failed to allocate memory requested for %s\n",
 			__func__, name);
@@ -1044,7 +1044,7 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
 
 	wq->cqmsg_rz = rte_memzone_reserve_aligned((const char *)name,
 			sizeof(uint32_t), SOCKET_ID_ANY,
-			RTE_MEMZONE_IOVA_CONTIG, ENIC_ALIGN);
+			RTE_MEMZONE_IOVA_CONTIG, ENIC_PAGE_SIZE);
 	if (!wq->cqmsg_rz)
 		return -ENOMEM;
 
@@ -1154,7 +1154,7 @@ static int enic_set_rsskey(struct enic *enic, uint8_t *user_key)
 	dma_addr_t rss_key_buf_pa;
 	union vnic_rss_key *rss_key_buf_va = NULL;
 	int err, i;
-	u8 name[RTE_MEMZONE_NAMESIZE];
+	uint8_t name[RTE_MEMZONE_NAMESIZE];
 
 	RTE_ASSERT(user_key != NULL);
 	snprintf((char *)name, sizeof(name), "rss_key-%s", enic->bdf_name);
@@ -1186,7 +1186,7 @@ int enic_set_rss_reta(struct enic *enic, union vnic_rss_cpu *rss_cpu)
 	dma_addr_t rss_cpu_buf_pa;
 	union vnic_rss_cpu *rss_cpu_buf_va = NULL;
 	int err;
-	u8 name[RTE_MEMZONE_NAMESIZE];
+	uint8_t name[RTE_MEMZONE_NAMESIZE];
 
 	snprintf((char *)name, sizeof(name), "rss_cpu-%s", enic->bdf_name);
 	rss_cpu_buf_va = enic_alloc_consistent(enic, sizeof(union vnic_rss_cpu),
@@ -1209,10 +1209,11 @@ int enic_set_rss_reta(struct enic *enic, union vnic_rss_cpu *rss_cpu)
 	return err;
 }
 
-static int enic_set_niccfg(struct enic *enic, u8 rss_default_cpu,
-	u8 rss_hash_type, u8 rss_hash_bits, u8 rss_base_cpu, u8 rss_enable)
+static int enic_set_niccfg(struct enic *enic, uint8_t rss_default_cpu,
+	uint8_t rss_hash_type, uint8_t rss_hash_bits, uint8_t rss_base_cpu,
+	uint8_t rss_enable)
 {
-	const u8 tso_ipid_split_en = 0;
+	const uint8_t tso_ipid_split_en = 0;
 	int err;
 
 	err = enic_set_nic_cfg(enic,
@@ -1308,8 +1309,8 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 {
 	struct rte_eth_dev *eth_dev;
 	uint64_t rss_hf;
-	u8 rss_hash_type;
-	u8 rss_enable;
+	uint8_t rss_hash_type;
+	uint8_t rss_enable;
 	int ret;
 
 	RTE_ASSERT(rss_conf != NULL);

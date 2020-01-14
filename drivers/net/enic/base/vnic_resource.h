@@ -44,24 +44,24 @@ enum vnic_res_type {
 };
 
 struct vnic_resource_header {
-	u32 magic;
-	u32 version;
+	uint32_t magic;
+	uint32_t version;
 };
 
 struct mgmt_barmap_hdr {
-	u32 magic;			/* magic number */
-	u32 version;			/* header format version */
-	u16 lif;			/* loopback lif for mgmt frames */
-	u16 pci_slot;			/* installed pci slot */
+	uint32_t magic;			/* magic number */
+	uint32_t version;		/* header format version */
+	uint16_t lif;			/* loopback lif for mgmt frames */
+	uint16_t pci_slot;		/* installed pci slot */
 	char serial[16];		/* card serial number */
 };
 
 struct vnic_resource {
-	u8 type;
-	u8 bar;
-	u8 pad[2];
-	u32 bar_offset;
-	u32 count;
+	uint8_t type;
+	uint8_t bar;
+	uint8_t pad[2];
+	uint32_t bar_offset;
+	uint32_t count;
 };
 
 #endif /* _VNIC_RESOURCE_H_ */

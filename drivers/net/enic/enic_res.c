@@ -68,8 +68,8 @@ int enic_get_vnic_config(struct enic *enic)
 	if (c->mtu == 0)
 		c->mtu = 1500;
 
-	enic->rte_dev->data->mtu = min_t(u16, enic->max_mtu,
-					 max_t(u16, ENIC_MIN_MTU, c->mtu));
+	enic->rte_dev->data->mtu = min_t(uint16_t, enic->max_mtu,
+					 max_t(uint16_t, ENIC_MIN_MTU, c->mtu));
 
 	enic->adv_filters = vnic_dev_capable_adv_filters(enic->vdev);
 	dev_info(enic, "Advanced Filters %savailable\n", ((enic->adv_filters)
@@ -101,18 +101,18 @@ int enic_get_vnic_config(struct enic *enic)
 		 "count " : ""));
 
 	c->wq_desc_count =
-		min_t(u32, ENIC_MAX_WQ_DESCS,
-		max_t(u32, ENIC_MIN_WQ_DESCS,
+		min_t(uint32_t, ENIC_MAX_WQ_DESCS,
+		max_t(uint32_t, ENIC_MIN_WQ_DESCS,
 		c->wq_desc_count));
 	c->wq_desc_count &= 0xffffffe0; /* must be aligned to groups of 32 */
 
 	c->rq_desc_count =
-		min_t(u32, ENIC_MAX_RQ_DESCS,
-		max_t(u32, ENIC_MIN_RQ_DESCS,
+		min_t(uint32_t, ENIC_MAX_RQ_DESCS,
+		max_t(uint32_t, ENIC_MIN_RQ_DESCS,
 		c->rq_desc_count));
 	c->rq_desc_count &= 0xffffffe0; /* must be aligned to groups of 32 */
 
-	c->intr_timer_usec = min_t(u32, c->intr_timer_usec,
+	c->intr_timer_usec = min_t(uint32_t, c->intr_timer_usec,
 		vnic_dev_get_intr_coal_timer_max(enic->vdev));
 
 	dev_info(enic_get_dev(enic),
@@ -218,13 +218,14 @@ int enic_get_vnic_config(struct enic *enic)
 	return 0;
 }
 
-int enic_set_nic_cfg(struct enic *enic, u8 rss_default_cpu, u8 rss_hash_type,
-	u8 rss_hash_bits, u8 rss_base_cpu, u8 rss_enable, u8 tso_ipid_split_en,
-	u8 ig_vlan_strip_en)
+int enic_set_nic_cfg(struct enic *enic, uint8_t rss_default_cpu,
+		     uint8_t rss_hash_type, uint8_t rss_hash_bits,
+		     uint8_t rss_base_cpu, uint8_t rss_enable,
+		     uint8_t tso_ipid_split_en, uint8_t ig_vlan_strip_en)
 {
 	enum vnic_devcmd_cmd cmd;
-	u64 a0, a1;
-	u32 nic_cfg;
+	uint64_t a0, a1;
+	uint32_t nic_cfg;
 	int wait = 1000;
 
 	vnic_set_nic_cfg(&nic_cfg, rss_default_cpu,
@@ -237,17 +238,17 @@ int enic_set_nic_cfg(struct enic *enic, u8 rss_default_cpu, u8 rss_hash_type,
 	return vnic_dev_cmd(enic->vdev, cmd, &a0, &a1, wait);
 }
 
-int enic_set_rss_key(struct enic *enic, dma_addr_t key_pa, u64 len)
+int enic_set_rss_key(struct enic *enic, dma_addr_t key_pa, uint64_t len)
 {
-	u64 a0 = (u64)key_pa, a1 = len;
+	uint64_t a0 = (uint64_t)key_pa, a1 = len;
 	int wait = 1000;
 
 	return vnic_dev_cmd(enic->vdev, CMD_RSS_KEY, &a0, &a1, wait);
 }
 
-int enic_set_rss_cpu(struct enic *enic, dma_addr_t cpu_pa, u64 len)
+int enic_set_rss_cpu(struct enic *enic, dma_addr_t cpu_pa, uint64_t len)
 {
-	u64 a0 = (u64)cpu_pa, a1 = len;
+	uint64_t a0 = (uint64_t)cpu_pa, a1 = len;
 	int wait = 1000;
 
 	return vnic_dev_cmd(enic->vdev, CMD_RSS_CPU, &a0, &a1, wait);

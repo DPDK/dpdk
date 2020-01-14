@@ -631,7 +631,7 @@ enic_fet_alloc(struct enic_flowman *fm, uint8_t ingress,
 	struct fm_exact_match_table *cmd;
 	struct fm_header_set *hdr;
 	struct enic_fm_fet *fet;
-	u64 args[3];
+	uint64_t args[3];
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
@@ -1068,7 +1068,7 @@ enic_fm_find_vnic(struct enic *enic, const struct rte_pci_addr *addr,
 		  uint64_t *handle)
 {
 	uint32_t bdf;
-	u64 args[2];
+	uint64_t args[2];
 	int rc;
 
 	ENICPMD_FUNC_TRACE();
@@ -1602,7 +1602,7 @@ enic_fm_more_counters(struct enic_flowman *fm)
 	struct enic_fm_counter *ctrs;
 	struct enic *enic;
 	int i, rc;
-	u64 args[2];
+	uint64_t args[2];
 
 	ENICPMD_FUNC_TRACE();
 	enic = fm->enic;
@@ -1638,7 +1638,7 @@ static int
 enic_fm_counter_zero(struct enic_flowman *fm, struct enic_fm_counter *c)
 {
 	struct enic *enic;
-	u64 args[3];
+	uint64_t args[3];
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
@@ -1680,7 +1680,7 @@ enic_fm_counter_alloc(struct enic_flowman *fm, struct rte_flow_error *error,
 static int
 enic_fm_action_free(struct enic_flowman *fm, uint64_t handle)
 {
-	u64 args[2];
+	uint64_t args[2];
 	int rc;
 
 	ENICPMD_FUNC_TRACE();
@@ -1696,7 +1696,7 @@ enic_fm_action_free(struct enic_flowman *fm, uint64_t handle)
 static int
 enic_fm_entry_free(struct enic_flowman *fm, uint64_t handle)
 {
-	u64 args[2];
+	uint64_t args[2];
 	int rc;
 
 	ENICPMD_FUNC_TRACE();
@@ -1795,7 +1795,7 @@ enic_fm_add_tcam_entry(struct enic_flowman *fm,
 		       struct rte_flow_error *error)
 {
 	struct fm_tcam_match_entry *ftm;
-	u64 args[3];
+	uint64_t args[3];
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
@@ -1828,7 +1828,7 @@ enic_fm_add_exact_entry(struct enic_flowman *fm,
 			struct rte_flow_error *error)
 {
 	struct fm_exact_match_entry *fem;
-	u64 args[3];
+	uint64_t args[3];
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
@@ -1886,7 +1886,7 @@ __enic_fm_flow_add_entry(struct enic_flowman *fm,
 	struct fm_action *fma;
 	uint64_t action_h;
 	uint64_t entry_h;
-	u64 args[3];
+	uint64_t args[3];
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
@@ -2088,7 +2088,7 @@ enic_fm_flow_query_count(struct rte_eth_dev *dev,
 	struct rte_flow_query_count *query;
 	struct enic_fm_flow *fm_flow;
 	struct enic *enic;
-	u64 args[3];
+	uint64_t args[3];
 	int rc;
 
 	ENICPMD_FUNC_TRACE();
@@ -2252,7 +2252,7 @@ enic_fm_flow_flush(struct rte_eth_dev *dev,
 static int
 enic_fm_tbl_free(struct enic_flowman *fm, uint64_t handle)
 {
-	u64 args[2];
+	uint64_t args[2];
 	int rc;
 
 	args[0] = FM_MATCH_TABLE_FREE;
@@ -2270,7 +2270,7 @@ enic_fm_tcam_tbl_alloc(struct enic_flowman *fm, uint32_t direction,
 {
 	struct fm_tcam_match_table *tcam_tbl;
 	struct enic *enic;
-	u64 args[2];
+	uint64_t args[2];
 	int rc;
 
 	ENICPMD_FUNC_TRACE();
@@ -2305,7 +2305,7 @@ static void
 enic_fm_free_all_counters(struct enic_flowman *fm)
 {
 	struct enic *enic;
-	u64 args[2];
+	uint64_t args[2];
 	int rc;
 
 	enic = fm->enic;
@@ -2354,7 +2354,7 @@ int
 enic_fm_init(struct enic *enic)
 {
 	struct enic_flowman *fm;
-	u8 name[RTE_MEMZONE_NAMESIZE];
+	uint8_t name[RTE_MEMZONE_NAMESIZE];
 	int rc;
 
 	if (enic->flow_filter_mode != FILTER_FLOWMAN)

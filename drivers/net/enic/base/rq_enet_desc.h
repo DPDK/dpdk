@@ -10,9 +10,9 @@
 
 /* Ethernet receive queue descriptor: 16B */
 struct rq_enet_desc {
-	__le64 address;
-	__le16 length_type;
-	u8 reserved[6];
+	uint64_t address;
+	uint16_t length_type;
+	uint8_t reserved[6];
 };
 
 enum rq_enet_type_types {
@@ -29,7 +29,7 @@ enum rq_enet_type_types {
 #define RQ_ENET_TYPE_MASK		((1 << RQ_ENET_TYPE_BITS) - 1)
 
 static inline void rq_enet_desc_enc(volatile struct rq_enet_desc *desc,
-	u64 address, u8 type, u16 length)
+	uint64_t address, uint8_t type, uint16_t length)
 {
 	desc->address = rte_cpu_to_le_64(address);
 	desc->length_type = rte_cpu_to_le_16((length & RQ_ENET_LEN_MASK) |
@@ -37,12 +37,12 @@ static inline void rq_enet_desc_enc(volatile struct rq_enet_desc *desc,
 }
 
 static inline void rq_enet_desc_dec(struct rq_enet_desc *desc,
-	u64 *address, u8 *type, u16 *length)
+	uint64_t *address, uint8_t *type, uint16_t *length)
 {
 	*address = rte_le_to_cpu_64(desc->address);
 	*length = rte_le_to_cpu_16(desc->length_type) & RQ_ENET_LEN_MASK;
-	*type = (u8)((rte_le_to_cpu_16(desc->length_type) >> RQ_ENET_LEN_BITS) &
-		RQ_ENET_TYPE_MASK);
+	*type = (uint8_t)((rte_le_to_cpu_16(desc->length_type) >>
+		RQ_ENET_LEN_BITS) & RQ_ENET_TYPE_MASK);
 }
 
 #endif /* _RQ_ENET_DESC_H_ */

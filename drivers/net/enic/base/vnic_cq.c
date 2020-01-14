@@ -44,11 +44,11 @@ void vnic_cq_init(struct vnic_cq *cq, unsigned int flow_control_enable,
 	unsigned int color_enable, unsigned int cq_head, unsigned int cq_tail,
 	unsigned int cq_tail_color, unsigned int interrupt_enable,
 	unsigned int cq_entry_enable, unsigned int cq_message_enable,
-	unsigned int interrupt_offset, u64 cq_message_addr)
+	unsigned int interrupt_offset, uint64_t cq_message_addr)
 {
-	u64 paddr;
+	uint64_t paddr;
 
-	paddr = (u64)cq->ring.base_addr | VNIC_PADDR_TARGET;
+	paddr = (uint64_t)cq->ring.base_addr | VNIC_PADDR_TARGET;
 	writeq(paddr, &cq->ctrl->ring_base);
 	iowrite32(cq->ring.desc_count, &cq->ctrl->ring_size);
 	iowrite32(flow_control_enable, &cq->ctrl->flow_control_enable);

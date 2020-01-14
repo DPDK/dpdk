@@ -55,7 +55,7 @@ void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *info)
 
 void enic_fdir_info(struct enic *enic)
 {
-	enic->fdir.modes = (u32)RTE_FDIR_MODE_PERFECT;
+	enic->fdir.modes = (uint32_t)RTE_FDIR_MODE_PERFECT;
 	enic->fdir.types_mask  = 1 << RTE_ETH_FLOW_NONFRAG_IPV4_UDP |
 				 1 << RTE_ETH_FLOW_NONFRAG_IPV4_TCP;
 	if (enic->adv_filters) {
@@ -337,11 +337,11 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 	struct enic_fdir_node *key;
 	struct filter_v2 fltr;
 	int32_t pos;
-	u8 do_free = 0;
-	u16 old_fltr_id = 0;
-	u32 flowtype_supported;
-	u16 flex_bytes;
-	u16 queue;
+	uint8_t do_free = 0;
+	uint16_t old_fltr_id = 0;
+	uint32_t flowtype_supported;
+	uint16_t flex_bytes;
+	uint16_t queue;
 	struct filter_action_v2 action;
 
 	memset(&fltr, 0, sizeof(fltr));
@@ -464,7 +464,7 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 
 void enic_clsf_destroy(struct enic *enic)
 {
-	u32 index;
+	uint32_t index;
 	struct enic_fdir_node *key;
 	/* delete classifier entries */
 	for (index = 0; index < ENICPMD_FDIR_MAX; index++) {

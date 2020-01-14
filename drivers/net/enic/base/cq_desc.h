@@ -25,14 +25,14 @@ enum cq_desc_types {
 /* Completion queue descriptor: 16B
  *
  * All completion queues have this basic layout.  The
- * type_specfic area is unique for each completion
+ * type_specific area is unique for each completion
  * queue type.
  */
 struct cq_desc {
-	__le16 completed_index;
-	__le16 q_number;
-	u8 type_specfic[11];
-	u8 type_color;
+	uint16_t completed_index;
+	uint16_t q_number;
+	uint8_t type_specific[11];
+	uint8_t type_color;
 };
 
 #define CQ_DESC_TYPE_BITS        4
@@ -45,7 +45,7 @@ struct cq_desc {
 #define CQ_DESC_COMP_NDX_BITS    12
 #define CQ_DESC_COMP_NDX_MASK    ((1 << CQ_DESC_COMP_NDX_BITS) - 1)
 
-static inline void cq_color_enc(struct cq_desc *desc, const u8 color)
+static inline void cq_color_enc(struct cq_desc *desc, const uint8_t color)
 {
 	if (color)
 		desc->type_color |=  (1 << CQ_DESC_COLOR_SHIFT);
@@ -54,8 +54,8 @@ static inline void cq_color_enc(struct cq_desc *desc, const u8 color)
 }
 
 static inline void cq_desc_enc(struct cq_desc *desc,
-	const u8 type, const u8 color, const u16 q_number,
-	const u16 completed_index)
+	const uint8_t type, const uint8_t color, const uint16_t q_number,
+	const uint16_t completed_index)
 {
 	desc->type_color = (type & CQ_DESC_TYPE_MASK) |
 		((color & CQ_DESC_COLOR_MASK) << CQ_DESC_COLOR_SHIFT);
@@ -65,10 +65,11 @@ static inline void cq_desc_enc(struct cq_desc *desc,
 }
 
 static inline void cq_desc_dec(const struct cq_desc *desc_arg,
-	u8 *type, u8 *color, u16 *q_number, u16 *completed_index)
+	uint8_t *type, uint8_t *color, uint16_t *q_number,
+	uint16_t *completed_index)
 {
 	const struct cq_desc *desc = desc_arg;
-	const u8 type_color = desc->type_color;
+	const uint8_t type_color = desc->type_color;
 
 	*color = (type_color >> CQ_DESC_COLOR_SHIFT) & CQ_DESC_COLOR_MASK;
 
@@ -80,7 +81,7 @@ static inline void cq_desc_dec(const struct cq_desc *desc_arg,
 	 * result in reading stale values.
 	 */
 
-	rmb();
+	rte_rmb();
 
 	*type = type_color & CQ_DESC_TYPE_MASK;
 	*q_number = rte_le_to_cpu_16(desc->q_number) & CQ_DESC_Q_NUM_MASK;
@@ -88,7 +89,7 @@ static inline void cq_desc_dec(const struct cq_desc *desc_arg,
 		CQ_DESC_COMP_NDX_MASK;
 }
 
-static inline void cq_color_dec(const struct cq_desc *desc_arg, u8 *color)
+static inline void cq_color_dec(const struct cq_desc *desc_arg, uint8_t *color)
 {
 	volatile const struct cq_desc *desc = desc_arg;
 

@@ -59,11 +59,12 @@
 struct enic;
 
 int enic_get_vnic_config(struct enic *);
-int enic_set_nic_cfg(struct enic *enic, u8 rss_default_cpu, u8 rss_hash_type,
-	u8 rss_hash_bits, u8 rss_base_cpu, u8 rss_enable, u8 tso_ipid_split_en,
-	u8 ig_vlan_strip_en);
-int enic_set_rss_key(struct enic *enic, dma_addr_t key_pa, u64 len);
-int enic_set_rss_cpu(struct enic *enic, dma_addr_t cpu_pa, u64 len);
+int enic_set_nic_cfg(struct enic *enic, uint8_t rss_default_cpu,
+		     uint8_t rss_hash_type, uint8_t rss_hash_bits,
+		     uint8_t rss_base_cpu, uint8_t rss_enable,
+		     uint8_t tso_ipid_split_en, uint8_t ig_vlan_strip_en);
+int enic_set_rss_key(struct enic *enic, dma_addr_t key_pa, uint64_t len);
+int enic_set_rss_cpu(struct enic *enic, dma_addr_t cpu_pa, uint64_t len);
 void enic_get_res_counts(struct enic *enic);
 void enic_init_vnic_resources(struct enic *enic);
 int enic_alloc_vnic_resources(struct enic *);

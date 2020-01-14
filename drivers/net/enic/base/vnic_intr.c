@@ -26,7 +26,7 @@ int vnic_intr_alloc(struct vnic_dev *vdev, struct vnic_intr *intr,
 	return 0;
 }
 
-void vnic_intr_init(struct vnic_intr *intr, u32 coalescing_timer,
+void vnic_intr_init(struct vnic_intr *intr, uint32_t coalescing_timer,
 	unsigned int coalescing_type, unsigned int mask_on_assertion)
 {
 	vnic_intr_coalescing_timer_set(intr, coalescing_timer);
@@ -36,7 +36,7 @@ void vnic_intr_init(struct vnic_intr *intr, u32 coalescing_timer,
 }
 
 void vnic_intr_coalescing_timer_set(struct vnic_intr *intr,
-	u32 coalescing_timer)
+	uint32_t coalescing_timer)
 {
 	iowrite32(vnic_dev_intr_coal_timer_usec_to_hw(intr->vdev,
 		coalescing_timer), &intr->ctrl->coalescing_timer);

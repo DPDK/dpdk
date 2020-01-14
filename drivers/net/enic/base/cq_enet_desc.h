@@ -11,21 +11,23 @@
 
 /* Ethernet completion queue descriptor: 16B */
 struct cq_enet_wq_desc {
-	__le16 completed_index;
-	__le16 q_number;
-	u8 reserved[11];
-	u8 type_color;
+	uint16_t completed_index;
+	uint16_t q_number;
+	uint8_t reserved[11];
+	uint8_t type_color;
 };
 
 static inline void cq_enet_wq_desc_enc(struct cq_enet_wq_desc *desc,
-	u8 type, u8 color, u16 q_number, u16 completed_index)
+	uint8_t type, uint8_t color, uint16_t q_number,
+	uint16_t completed_index)
 {
 	cq_desc_enc((struct cq_desc *)desc, type,
 		color, q_number, completed_index);
 }
 
 static inline void cq_enet_wq_desc_dec(struct cq_enet_wq_desc *desc,
-	u8 *type, u8 *color, u16 *q_number, u16 *completed_index)
+	uint8_t *type, uint8_t *color, uint16_t *q_number,
+	uint16_t *completed_index)
 {
 	cq_desc_dec((struct cq_desc *)desc, type,
 		color, q_number, completed_index);
@@ -33,27 +35,27 @@ static inline void cq_enet_wq_desc_dec(struct cq_enet_wq_desc *desc,
 
 /* Completion queue descriptor: Ethernet receive queue, 16B */
 struct cq_enet_rq_desc {
-	__le16 completed_index_flags;
-	__le16 q_number_rss_type_flags;
-	__le32 rss_hash;
-	__le16 bytes_written_flags;
-	__le16 vlan;
-	__le16 checksum_fcoe;
-	u8 flags;
-	u8 type_color;
+	uint16_t completed_index_flags;
+	uint16_t q_number_rss_type_flags;
+	uint32_t rss_hash;
+	uint16_t bytes_written_flags;
+	uint16_t vlan;
+	uint16_t checksum_fcoe;
+	uint8_t flags;
+	uint8_t type_color;
 };
 
 /* Completion queue descriptor: Ethernet receive queue, 16B */
 struct cq_enet_rq_clsf_desc {
-	__le16 completed_index_flags;
-	__le16 q_number_rss_type_flags;
-	__le16 filter_id;
-	__le16 lif;
-	__le16 bytes_written_flags;
-	__le16 vlan;
-	__le16 checksum_fcoe;
-	u8 flags;
-	u8 type_color;
+	uint16_t completed_index_flags;
+	uint16_t q_number_rss_type_flags;
+	uint16_t filter_id;
+	uint16_t lif;
+	uint16_t bytes_written_flags;
+	uint16_t vlan;
+	uint16_t checksum_fcoe;
+	uint8_t flags;
+	uint8_t type_color;
 };
 
 #define CQ_ENET_RQ_DESC_FLAGS_INGRESS_PORT          (0x1 << 12)
@@ -109,12 +111,15 @@ struct cq_enet_rq_clsf_desc {
 #define CQ_ENET_RQ_DESC_FLAGS_FCS_OK                (0x1 << 7)
 
 static inline void cq_enet_rq_desc_enc(struct cq_enet_rq_desc *desc,
-	u8 type, u8 color, u16 q_number, u16 completed_index,
-	u8 ingress_port, u8 fcoe, u8 eop, u8 sop, u8 rss_type, u8 csum_not_calc,
-	u32 rss_hash, u16 bytes_written, u8 packet_error, u8 vlan_stripped,
-	u16 vlan, u16 checksum, u8 fcoe_sof, u8 fcoe_fc_crc_ok,
-	u8 fcoe_enc_error, u8 fcoe_eof, u8 tcp_udp_csum_ok, u8 udp, u8 tcp,
-	u8 ipv4_csum_ok, u8 ipv6, u8 ipv4, u8 ipv4_fragment, u8 fcs_ok)
+	uint8_t type, uint8_t color, uint16_t q_number,
+	uint16_t completed_index, uint8_t ingress_port, uint8_t fcoe,
+	uint8_t eop, uint8_t sop, uint8_t rss_type, uint8_t csum_not_calc,
+	uint32_t rss_hash, uint16_t bytes_written, uint8_t packet_error,
+	uint8_t vlan_stripped, uint16_t vlan, uint16_t checksum,
+	uint8_t fcoe_sof, uint8_t fcoe_fc_crc_ok, uint8_t fcoe_enc_error,
+	uint8_t fcoe_eof, uint8_t tcp_udp_csum_ok, uint8_t udp, uint8_t tcp,
+	uint8_t ipv4_csum_ok, uint8_t ipv6, uint8_t ipv4, uint8_t ipv4_fragment,
+	uint8_t fcs_ok)
 {
 	cq_desc_enc((struct cq_desc *)desc, type,
 		color, q_number, completed_index);
@@ -162,17 +167,19 @@ static inline void cq_enet_rq_desc_enc(struct cq_enet_rq_desc *desc,
 }
 
 static inline void cq_enet_rq_desc_dec(struct cq_enet_rq_desc *desc,
-	u8 *type, u8 *color, u16 *q_number, u16 *completed_index,
-	u8 *ingress_port, u8 *fcoe, u8 *eop, u8 *sop, u8 *rss_type,
-	u8 *csum_not_calc, u32 *rss_hash, u16 *bytes_written, u8 *packet_error,
-	u8 *vlan_stripped, u16 *vlan_tci, u16 *checksum, u8 *fcoe_sof,
-	u8 *fcoe_fc_crc_ok, u8 *fcoe_enc_error, u8 *fcoe_eof,
-	u8 *tcp_udp_csum_ok, u8 *udp, u8 *tcp, u8 *ipv4_csum_ok,
-	u8 *ipv6, u8 *ipv4, u8 *ipv4_fragment, u8 *fcs_ok)
+	uint8_t *type, uint8_t *color, uint16_t *q_number,
+	uint16_t *completed_index, uint8_t *ingress_port, uint8_t *fcoe,
+	uint8_t *eop, uint8_t *sop, uint8_t *rss_type, uint8_t *csum_not_calc,
+	uint32_t *rss_hash, uint16_t *bytes_written, uint8_t *packet_error,
+	uint8_t *vlan_stripped, uint16_t *vlan_tci, uint16_t *checksum,
+	uint8_t *fcoe_sof, uint8_t *fcoe_fc_crc_ok, uint8_t *fcoe_enc_error,
+	uint8_t *fcoe_eof, uint8_t *tcp_udp_csum_ok, uint8_t *udp, uint8_t *tcp,
+	uint8_t *ipv4_csum_ok, uint8_t *ipv6, uint8_t *ipv4,
+	uint8_t *ipv4_fragment, uint8_t *fcs_ok)
 {
-	u16 completed_index_flags;
-	u16 q_number_rss_type_flags;
-	u16 bytes_written_flags;
+	uint16_t completed_index_flags;
+	uint16_t q_number_rss_type_flags;
+	uint16_t bytes_written_flags;
 
 	cq_desc_dec((struct cq_desc *)desc, type,
 		color, q_number, completed_index);
@@ -191,7 +198,7 @@ static inline void cq_enet_rq_desc_dec(struct cq_enet_rq_desc *desc,
 	*sop = (completed_index_flags & CQ_ENET_RQ_DESC_FLAGS_SOP) ?
 		1 : 0;
 
-	*rss_type = (u8)((q_number_rss_type_flags >> CQ_DESC_Q_NUM_BITS) &
+	*rss_type = (uint8_t)((q_number_rss_type_flags >> CQ_DESC_Q_NUM_BITS) &
 		CQ_ENET_RQ_DESC_RSS_TYPE_MASK);
 	*csum_not_calc = (q_number_rss_type_flags &
 		CQ_ENET_RQ_DESC_FLAGS_CSUM_NOT_CALC) ? 1 : 0;
@@ -211,13 +218,13 @@ static inline void cq_enet_rq_desc_dec(struct cq_enet_rq_desc *desc,
 	*vlan_tci = rte_le_to_cpu_16(desc->vlan);
 
 	if (*fcoe) {
-		*fcoe_sof = (u8)(rte_le_to_cpu_16(desc->checksum_fcoe) &
+		*fcoe_sof = (uint8_t)(rte_le_to_cpu_16(desc->checksum_fcoe) &
 			CQ_ENET_RQ_DESC_FCOE_SOF_MASK);
 		*fcoe_fc_crc_ok = (desc->flags &
 			CQ_ENET_RQ_DESC_FCOE_FC_CRC_OK) ? 1 : 0;
 		*fcoe_enc_error = (desc->flags &
 			CQ_ENET_RQ_DESC_FCOE_ENC_ERROR) ? 1 : 0;
-		*fcoe_eof = (u8)((rte_le_to_cpu_16(desc->checksum_fcoe) >>
+		*fcoe_eof = (uint8_t)((rte_le_to_cpu_16(desc->checksum_fcoe) >>
 			CQ_ENET_RQ_DESC_FCOE_EOF_SHIFT) &
 			CQ_ENET_RQ_DESC_FCOE_EOF_MASK);
 		*checksum = 0;

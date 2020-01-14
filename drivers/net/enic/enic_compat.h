@@ -14,18 +14,9 @@
 #include <rte_log.h>
 #include <rte_io.h>
 
-#define ENIC_PAGE_ALIGN 4096UL
-#define ENIC_ALIGN      ENIC_PAGE_ALIGN
 #define ETH_ALEN        6
 
 #define __iomem
-
-#define rmb()     rte_rmb() /* dpdk rte provided rmb */
-#define wmb()     rte_wmb() /* dpdk rte provided wmb */
-
-#ifndef offsetof
-#define offsetof(t, m) ((size_t) &((t *)0)->m)
-#endif
 
 #define pr_err(y, args...) dev_err(0, y, ##args)
 #define pr_warn(y, args...) dev_warning(0, y, ##args)
@@ -33,11 +24,6 @@
 
 #define VNIC_ALIGN(x, a)         __ALIGN_MASK(x, (typeof(x))(a)-1)
 #define __ALIGN_MASK(x, mask)    (((x)+(mask))&~(mask))
-#define udelay usleep
-#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
-
-#define kzalloc(size, flags) calloc(1, size)
-#define kfree(x) free(x)
 
 extern int enic_pmd_logtype;
 
@@ -55,14 +41,6 @@ extern int enic_pmd_logtype;
 		"%s " fmt "\n", __func__, ##args)
 #define ENICPMD_FUNC_TRACE() ENICPMD_LOG(DEBUG, ">>")
 
-#define __le16 u16
-#define __le32 u32
-#define __le64 u64
-
-typedef		unsigned char       u8;
-typedef		unsigned short      u16;
-typedef		unsigned int        u32;
-typedef         unsigned long long  u64;
 typedef         unsigned long long  dma_addr_t;
 
 static inline uint32_t ioread32(volatile void *addr)

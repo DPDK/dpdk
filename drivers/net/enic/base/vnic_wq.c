@@ -89,10 +89,10 @@ void vnic_wq_init_start(struct vnic_wq *wq, unsigned int cq_index,
 	unsigned int error_interrupt_enable,
 	unsigned int error_interrupt_offset)
 {
-	u64 paddr;
+	uint64_t paddr;
 	unsigned int count = wq->ring.desc_count;
 
-	paddr = (u64)wq->ring.base_addr | VNIC_PADDR_TARGET;
+	paddr = (uint64_t)wq->ring.base_addr | VNIC_PADDR_TARGET;
 	writeq(paddr, &wq->ctrl->ring_base);
 	iowrite32(count, &wq->ctrl->ring_size);
 	iowrite32(fetch_index, &wq->ctrl->fetch_index);
@@ -137,7 +137,7 @@ int vnic_wq_disable(struct vnic_wq *wq)
 	for (wait = 0; wait < 1000; wait++) {
 		if (!(ioread32(&wq->ctrl->running)))
 			return 0;
-		udelay(10);
+		usleep(10);
 	}
 
 	pr_err("Failed to disable WQ[%d]\n", wq->index);

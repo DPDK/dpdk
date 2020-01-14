@@ -13,37 +13,37 @@
 
 /* Receive queue control */
 struct vnic_rq_ctrl {
-	u64 ring_base;			/* 0x00 */
-	u32 ring_size;			/* 0x08 */
-	u32 pad0;
-	u32 posted_index;		/* 0x10 */
-	u32 pad1;
-	u32 cq_index;			/* 0x18 */
-	u32 pad2;
-	u32 enable;			/* 0x20 */
-	u32 pad3;
-	u32 running;			/* 0x28 */
-	u32 pad4;
-	u32 fetch_index;		/* 0x30 */
-	u32 pad5;
-	u32 error_interrupt_enable;	/* 0x38 */
-	u32 pad6;
-	u32 error_interrupt_offset;	/* 0x40 */
-	u32 pad7;
-	u32 error_status;		/* 0x48 */
-	u32 pad8;
-	u32 tcp_sn;			/* 0x50 */
-	u32 pad9;
-	u32 unused;			/* 0x58 */
-	u32 pad10;
-	u32 dca_select;			/* 0x60 */
-	u32 pad11;
-	u32 dca_value;			/* 0x68 */
-	u32 pad12;
-	u32 data_ring;			/* 0x70 */
-	u32 pad13;
-	u32 header_split;		/* 0x78 */
-	u32 pad14;
+	uint64_t ring_base;			/* 0x00 */
+	uint32_t ring_size;			/* 0x08 */
+	uint32_t pad0;
+	uint32_t posted_index;			/* 0x10 */
+	uint32_t pad1;
+	uint32_t cq_index;			/* 0x18 */
+	uint32_t pad2;
+	uint32_t enable;			/* 0x20 */
+	uint32_t pad3;
+	uint32_t running;			/* 0x28 */
+	uint32_t pad4;
+	uint32_t fetch_index;			/* 0x30 */
+	uint32_t pad5;
+	uint32_t error_interrupt_enable;	/* 0x38 */
+	uint32_t pad6;
+	uint32_t error_interrupt_offset;	/* 0x40 */
+	uint32_t pad7;
+	uint32_t error_status;			/* 0x48 */
+	uint32_t pad8;
+	uint32_t tcp_sn;			/* 0x50 */
+	uint32_t pad9;
+	uint32_t unused;			/* 0x58 */
+	uint32_t pad10;
+	uint32_t dca_select;			/* 0x60 */
+	uint32_t pad11;
+	uint32_t dca_value;			/* 0x68 */
+	uint32_t pad12;
+	uint32_t data_ring;			/* 0x70 */
+	uint32_t pad13;
+	uint32_t header_split;			/* 0x78 */
+	uint32_t pad14;
 };
 
 struct vnic_rq {

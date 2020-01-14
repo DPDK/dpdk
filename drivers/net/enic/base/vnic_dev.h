@@ -20,16 +20,16 @@
 #endif
 
 #ifndef readq
-static inline u64 readq(void __iomem *reg)
+static inline uint64_t readq(void __iomem *reg)
 {
-	return ((u64)readl((char *)reg + 0x4UL) << 32) |
-		(u64)readl(reg);
+	return ((uint64_t)readl((char *)reg + 0x4UL) << 32) |
+		(uint64_t)readl(reg);
 }
 
-static inline void writeq(u64 val, void __iomem *reg)
+static inline void writeq(uint64_t val, void __iomem *reg)
 {
 	writel(val & 0xffffffff, reg);
-	writel((u32)(val >> 32), (char *)reg + 0x4UL);
+	writel((uint32_t)(val >> 32), (char *)reg + 0x4UL);
 }
 #endif
 
@@ -76,7 +76,7 @@ unsigned int vnic_dev_get_res_count(struct vnic_dev *vdev,
 	enum vnic_res_type type);
 void vnic_register_cbacks(struct vnic_dev *vdev,
 	void *(*alloc_consistent)(void *priv, size_t size,
-		dma_addr_t *dma_handle, u8 *name),
+		dma_addr_t *dma_handle, uint8_t *name),
 	void (*free_consistent)(void *priv,
 		size_t size, void *vaddr,
 		dma_addr_t dma_handle));
@@ -99,21 +99,22 @@ int vnic_dev_alloc_desc_ring(struct vnic_dev *vdev, struct vnic_dev_ring *ring,
 void vnic_dev_free_desc_ring(struct vnic_dev *vdev,
 	struct vnic_dev_ring *ring);
 int vnic_dev_cmd(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd,
-	u64 *a0, u64 *a1, int wait);
+	uint64_t *a0, uint64_t *a1, int wait);
 int vnic_dev_cmd_args(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd,
-	u64 *args, int nargs, int wait);
-void vnic_dev_cmd_proxy_by_index_start(struct vnic_dev *vdev, u16 index);
-void vnic_dev_cmd_proxy_by_bdf_start(struct vnic_dev *vdev, u16 bdf);
+	uint64_t *args, int nargs, int wait);
+void vnic_dev_cmd_proxy_by_index_start(struct vnic_dev *vdev, uint16_t index);
+void vnic_dev_cmd_proxy_by_bdf_start(struct vnic_dev *vdev, uint16_t bdf);
 void vnic_dev_cmd_proxy_end(struct vnic_dev *vdev);
 int vnic_dev_fw_info(struct vnic_dev *vdev,
 	struct vnic_devcmd_fw_info **fw_info);
 int vnic_dev_capable_adv_filters(struct vnic_dev *vdev);
 int vnic_dev_capable(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd);
-int vnic_dev_capable_filter_mode(struct vnic_dev *vdev, u32 *mode,
-				 u8 *filter_actions);
+int vnic_dev_capable_filter_mode(struct vnic_dev *vdev, uint32_t *mode,
+				 uint8_t *filter_actions);
 void vnic_dev_capable_udp_rss_weak(struct vnic_dev *vdev, bool *cfg_chk,
 				   bool *weak);
-int vnic_dev_asic_info(struct vnic_dev *vdev, u16 *asic_type, u16 *asic_rev);
+int vnic_dev_asic_info(struct vnic_dev *vdev, uint16_t *asic_type,
+		       uint16_t *asic_rev);
 int vnic_dev_spec(struct vnic_dev *vdev, unsigned int offset, size_t size,
 	void *value);
 int vnic_dev_stats_clear(struct vnic_dev *vdev);
@@ -123,23 +124,23 @@ int vnic_dev_packet_filter(struct vnic_dev *vdev, int directed, int multicast,
 	int broadcast, int promisc, int allmulti);
 int vnic_dev_packet_filter_all(struct vnic_dev *vdev, int directed,
 	int multicast, int broadcast, int promisc, int allmulti);
-int vnic_dev_add_addr(struct vnic_dev *vdev, u8 *addr);
-int vnic_dev_del_addr(struct vnic_dev *vdev, u8 *addr);
-int vnic_dev_get_mac_addr(struct vnic_dev *vdev, u8 *mac_addr);
-int vnic_dev_raise_intr(struct vnic_dev *vdev, u16 intr);
-int vnic_dev_notify_set(struct vnic_dev *vdev, u16 intr);
+int vnic_dev_add_addr(struct vnic_dev *vdev, uint8_t *addr);
+int vnic_dev_del_addr(struct vnic_dev *vdev, uint8_t *addr);
+int vnic_dev_get_mac_addr(struct vnic_dev *vdev, uint8_t *mac_addr);
+int vnic_dev_raise_intr(struct vnic_dev *vdev, uint16_t intr);
+int vnic_dev_notify_set(struct vnic_dev *vdev, uint16_t intr);
 void vnic_dev_set_reset_flag(struct vnic_dev *vdev, int state);
 int vnic_dev_notify_unset(struct vnic_dev *vdev);
 int vnic_dev_notify_setcmd(struct vnic_dev *vdev,
-	void *notify_addr, dma_addr_t notify_pa, u16 intr);
+	void *notify_addr, dma_addr_t notify_pa, uint16_t intr);
 int vnic_dev_notify_unsetcmd(struct vnic_dev *vdev);
 int vnic_dev_link_status(struct vnic_dev *vdev);
-u32 vnic_dev_port_speed(struct vnic_dev *vdev);
-u32 vnic_dev_msg_lvl(struct vnic_dev *vdev);
-u32 vnic_dev_mtu(struct vnic_dev *vdev);
-u32 vnic_dev_link_down_cnt(struct vnic_dev *vdev);
-u32 vnic_dev_notify_status(struct vnic_dev *vdev);
-u32 vnic_dev_uif(struct vnic_dev *vdev);
+uint32_t vnic_dev_port_speed(struct vnic_dev *vdev);
+uint32_t vnic_dev_msg_lvl(struct vnic_dev *vdev);
+uint32_t vnic_dev_mtu(struct vnic_dev *vdev);
+uint32_t vnic_dev_link_down_cnt(struct vnic_dev *vdev);
+uint32_t vnic_dev_notify_status(struct vnic_dev *vdev);
+uint32_t vnic_dev_uif(struct vnic_dev *vdev);
 int vnic_dev_close(struct vnic_dev *vdev);
 int vnic_dev_enable(struct vnic_dev *vdev);
 int vnic_dev_enable_wait(struct vnic_dev *vdev);
@@ -148,7 +149,7 @@ int vnic_dev_open(struct vnic_dev *vdev, int arg);
 int vnic_dev_open_done(struct vnic_dev *vdev, int *done);
 int vnic_dev_init(struct vnic_dev *vdev, int arg);
 int vnic_dev_init_done(struct vnic_dev *vdev, int *done, int *err);
-int vnic_dev_init_prov(struct vnic_dev *vdev, u8 *buf, u32 len);
+int vnic_dev_init_prov(struct vnic_dev *vdev, uint8_t *buf, uint32_t len);
 int vnic_dev_deinit(struct vnic_dev *vdev);
 void vnic_dev_intr_coal_timer_info_default(struct vnic_dev *vdev);
 int vnic_dev_intr_coal_timer_info(struct vnic_dev *vdev);
@@ -159,12 +160,14 @@ int vnic_dev_hang_reset_done(struct vnic_dev *vdev, int *done);
 void vnic_dev_set_intr_mode(struct vnic_dev *vdev,
 	enum vnic_dev_intr_mode intr_mode);
 enum vnic_dev_intr_mode vnic_dev_get_intr_mode(struct vnic_dev *vdev);
-u32 vnic_dev_intr_coal_timer_usec_to_hw(struct vnic_dev *vdev, u32 usec);
-u32 vnic_dev_intr_coal_timer_hw_to_usec(struct vnic_dev *vdev, u32 hw_cycles);
-u32 vnic_dev_get_intr_coal_timer_max(struct vnic_dev *vdev);
+uint32_t vnic_dev_intr_coal_timer_usec_to_hw(struct vnic_dev *vdev,
+					     uint32_t usec);
+uint32_t vnic_dev_intr_coal_timer_hw_to_usec(struct vnic_dev *vdev,
+					     uint32_t hw_cycles);
+uint32_t vnic_dev_get_intr_coal_timer_max(struct vnic_dev *vdev);
 void vnic_dev_unregister(struct vnic_dev *vdev);
 int vnic_dev_set_ig_vlan_rewrite_mode(struct vnic_dev *vdev,
-	u8 ig_vlan_rewrite_mode);
+	uint8_t ig_vlan_rewrite_mode);
 struct vnic_dev *vnic_dev_register(struct vnic_dev *vdev,
 	void *priv, struct rte_pci_device *pdev, struct vnic_dev_bar *bar,
 	unsigned int num_bars);
@@ -172,21 +175,21 @@ struct rte_pci_device *vnic_dev_get_pdev(struct vnic_dev *vdev);
 int vnic_dev_alloc_stats_mem(struct vnic_dev *vdev);
 int vnic_dev_cmd_init(struct vnic_dev *vdev, int fallback);
 int vnic_dev_get_size(void);
-int vnic_dev_int13(struct vnic_dev *vdev, u64 arg, u32 op);
-int vnic_dev_perbi(struct vnic_dev *vdev, u64 arg, u32 op);
-u32 vnic_dev_perbi_rebuild_cnt(struct vnic_dev *vdev);
-int vnic_dev_init_prov2(struct vnic_dev *vdev, u8 *buf, u32 len);
+int vnic_dev_int13(struct vnic_dev *vdev, uint64_t arg, uint32_t op);
+int vnic_dev_perbi(struct vnic_dev *vdev, uint64_t arg, uint32_t op);
+uint32_t vnic_dev_perbi_rebuild_cnt(struct vnic_dev *vdev);
+int vnic_dev_init_prov2(struct vnic_dev *vdev, uint8_t *buf, uint32_t len);
 int vnic_dev_enable2(struct vnic_dev *vdev, int active);
 int vnic_dev_enable2_done(struct vnic_dev *vdev, int *status);
 int vnic_dev_deinit_done(struct vnic_dev *vdev, int *status);
-int vnic_dev_set_mac_addr(struct vnic_dev *vdev, u8 *mac_addr);
-int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
+int vnic_dev_set_mac_addr(struct vnic_dev *vdev, uint8_t *mac_addr);
+int vnic_dev_classifier(struct vnic_dev *vdev, uint8_t cmd, uint16_t *entry,
 	struct filter_v2 *data, struct filter_action_v2 *action_v2);
-int vnic_dev_flowman_cmd(struct vnic_dev *vdev, u64 *args, int nargs);
+int vnic_dev_flowman_cmd(struct vnic_dev *vdev, uint64_t *args, int nargs);
 int vnic_dev_overlay_offload_ctrl(struct vnic_dev *vdev,
-	u8 overlay, u8 config);
-int vnic_dev_overlay_offload_cfg(struct vnic_dev *vdev, u8 overlay,
-	u16 vxlan_udp_port_number);
+	uint8_t overlay, uint8_t config);
+int vnic_dev_overlay_offload_cfg(struct vnic_dev *vdev, uint8_t overlay,
+	uint16_t vxlan_udp_port_number);
 int vnic_dev_capable_vxlan(struct vnic_dev *vdev);
 int vnic_dev_capable_geneve(struct vnic_dev *vdev);
 #endif /* _VNIC_DEV_H_ */

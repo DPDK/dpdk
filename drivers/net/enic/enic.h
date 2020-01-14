@@ -64,16 +64,16 @@
 
 struct enic_fdir_node {
 	struct rte_eth_fdir_filter filter;
-	u16 fltr_id;
-	u16 rq_index;
+	uint16_t fltr_id;
+	uint16_t rq_index;
 };
 
 struct enic_fdir {
 	struct rte_eth_fdir_stats stats;
 	struct rte_hash *hash;
 	struct enic_fdir_node *nodes[ENICPMD_FDIR_MAX];
-	u32 modes;
-	u32 types_mask;
+	uint32_t modes;
+	uint32_t types_mask;
 	void (*copy_fltr_fn)(struct filter_v2 *filt,
 			     const struct rte_eth_fdir_input *input,
 			     const struct rte_eth_fdir_masks *masks);
@@ -130,13 +130,13 @@ struct enic {
 	pthread_t err_intr_thread;
 	int promisc;
 	int allmulti;
-	u8 ig_vlan_strip_en;
+	uint8_t ig_vlan_strip_en;
 	int link_status;
-	u8 hw_ip_checksum;
-	u16 max_mtu;
-	u8 adv_filters;
-	u32 flow_filter_mode;
-	u8 filter_actions; /* HW supported actions */
+	uint8_t hw_ip_checksum;
+	uint16_t max_mtu;
+	uint8_t adv_filters;
+	uint32_t flow_filter_mode;
+	uint8_t filter_actions; /* HW supported actions */
 	bool vxlan;
 	bool disable_overlay; /* devargs disable_overlay=1 */
 	uint8_t enable_avx2_rx;  /* devargs enable-avx2-rx=1 */
@@ -339,7 +339,7 @@ void enic_clsf_destroy(struct enic *enic);
 int enic_fm_init(struct enic *enic);
 void enic_fm_destroy(struct enic *enic);
 void *enic_alloc_consistent(void *priv, size_t size, dma_addr_t *dma_handle,
-			    u8 *name);
+			    uint8_t *name);
 void enic_free_consistent(void *priv, size_t size, void *vaddr,
 			  dma_addr_t dma_handle);
 uint16_t enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,

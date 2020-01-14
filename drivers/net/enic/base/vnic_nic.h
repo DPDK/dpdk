@@ -36,11 +36,11 @@
 #define NIC_CFG_RSS_HASH_TYPE_RSVD2		(1 << 6)
 #define NIC_CFG_RSS_HASH_TYPE_UDP_IPV6		(1 << 7)
 
-static inline void vnic_set_nic_cfg(u32 *nic_cfg,
-	u8 rss_default_cpu, u8 rss_hash_type,
-	u8 rss_hash_bits, u8 rss_base_cpu,
-	u8 rss_enable, u8 tso_ipid_split_en,
-	u8 ig_vlan_strip_en)
+static inline void vnic_set_nic_cfg(uint32_t *nic_cfg,
+	uint8_t rss_default_cpu, uint8_t rss_hash_type,
+	uint8_t rss_hash_bits, uint8_t rss_base_cpu,
+	uint8_t rss_enable, uint8_t tso_ipid_split_en,
+	uint8_t ig_vlan_strip_en)
 {
 	*nic_cfg = (rss_default_cpu & NIC_CFG_RSS_DEFAULT_CPU_MASK_FIELD) |
 		((rss_hash_type & NIC_CFG_RSS_HASH_TYPE_MASK_FIELD)

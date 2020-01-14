@@ -14,20 +14,20 @@
 
 /* Interrupt control */
 struct vnic_intr_ctrl {
-	u32 coalescing_timer;		/* 0x00 */
-	u32 pad0;
-	u32 coalescing_value;		/* 0x08 */
-	u32 pad1;
-	u32 coalescing_type;		/* 0x10 */
-	u32 pad2;
-	u32 mask_on_assertion;		/* 0x18 */
-	u32 pad3;
-	u32 mask;			/* 0x20 */
-	u32 pad4;
-	u32 int_credits;		/* 0x28 */
-	u32 pad5;
-	u32 int_credit_return;		/* 0x30 */
-	u32 pad6;
+	uint32_t coalescing_timer;		/* 0x00 */
+	uint32_t pad0;
+	uint32_t coalescing_value;		/* 0x08 */
+	uint32_t pad1;
+	uint32_t coalescing_type;		/* 0x10 */
+	uint32_t pad2;
+	uint32_t mask_on_assertion;		/* 0x18 */
+	uint32_t pad3;
+	uint32_t mask;				/* 0x20 */
+	uint32_t pad4;
+	uint32_t int_credits;			/* 0x28 */
+	uint32_t pad5;
+	uint32_t int_credit_return;		/* 0x30 */
+	uint32_t pad6;
 };
 
 struct vnic_intr {
@@ -57,7 +57,7 @@ static inline void vnic_intr_return_credits(struct vnic_intr *intr,
 #define VNIC_INTR_UNMASK_SHIFT		16
 #define VNIC_INTR_RESET_TIMER_SHIFT	17
 
-	u32 int_credit_return = (credits & 0xffff) |
+	uint32_t int_credit_return = (credits & 0xffff) |
 		(unmask ? (1 << VNIC_INTR_UNMASK_SHIFT) : 0) |
 		(reset_timer ? (1 << VNIC_INTR_RESET_TIMER_SHIFT) : 0);
 
@@ -78,7 +78,7 @@ static inline void vnic_intr_return_all_credits(struct vnic_intr *intr)
 	vnic_intr_return_credits(intr, credits, unmask, reset_timer);
 }
 
-static inline u32 vnic_intr_legacy_pba(u32 __iomem *legacy_pba)
+static inline uint32_t vnic_intr_legacy_pba(uint32_t __iomem *legacy_pba)
 {
 	/* read PBA without clearing */
 	return ioread32(legacy_pba);
@@ -87,10 +87,10 @@ static inline u32 vnic_intr_legacy_pba(u32 __iomem *legacy_pba)
 void vnic_intr_free(struct vnic_intr *intr);
 int vnic_intr_alloc(struct vnic_dev *vdev, struct vnic_intr *intr,
 	unsigned int index);
-void vnic_intr_init(struct vnic_intr *intr, u32 coalescing_timer,
+void vnic_intr_init(struct vnic_intr *intr, uint32_t coalescing_timer,
 	unsigned int coalescing_type, unsigned int mask_on_assertion);
 void vnic_intr_coalescing_timer_set(struct vnic_intr *intr,
-	u32 coalescing_timer);
+	uint32_t coalescing_timer);
 void vnic_intr_clean(struct vnic_intr *intr);
 
 #endif /* _VNIC_INTR_H_ */
