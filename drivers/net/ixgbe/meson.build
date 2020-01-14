@@ -26,6 +26,8 @@ deps += ['hash', 'security']
 
 if arch_subdir == 'x86'
 	sources += files('ixgbe_rxtx_vec_sse.c')
+elif arch_subdir == 'arm'
+	sources += files('ixgbe_rxtx_vec_neon.c')
 endif
 
 includes += include_directories('base')
