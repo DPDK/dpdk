@@ -11,6 +11,16 @@
 #include "vnic_wq.h"
 #include "vnic_rq.h"
 
+#define min_t(type, x, y) ({                    \
+	type __min1 = (x);                      \
+	type __min2 = (y);                      \
+	__min1 < __min2 ? __min1 : __min2; })
+
+#define max_t(type, x, y) ({                    \
+	type __max1 = (x);                      \
+	type __max2 = (y);                      \
+	__max1 > __max2 ? __max1 : __max2; })
+
 #define ENIC_MIN_WQ_DESCS		64
 #define ENIC_MAX_WQ_DESCS		4096
 #define ENIC_MIN_RQ_DESCS		64
@@ -54,7 +64,6 @@
 #define ENIC_RSS_HASH_KEY_SIZE  40
 
 #define ENIC_SETTING(enic, f) ((enic->config.flags & VENETF_##f) ? 1 : 0)
-
 
 struct enic;
 
