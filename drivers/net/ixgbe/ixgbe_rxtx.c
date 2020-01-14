@@ -5918,14 +5918,15 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/* Stubs needed for linkage for ppc arch */
-__rte_weak int
+/* Stubs needed for linkage when CONFIG_RTE_ARCH_PPC_64 is set */
+#if defined(RTE_ARCH_PPC_64)
+int
 ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev __rte_unused *dev)
 {
 	return -1;
 }
 
-__rte_weak uint16_t
+uint16_t
 ixgbe_recv_pkts_vec(
 	void __rte_unused *rx_queue,
 	struct rte_mbuf __rte_unused **rx_pkts,
@@ -5934,7 +5935,7 @@ ixgbe_recv_pkts_vec(
 	return 0;
 }
 
-__rte_weak uint16_t
+uint16_t
 ixgbe_recv_scattered_pkts_vec(
 	void __rte_unused *rx_queue,
 	struct rte_mbuf __rte_unused **rx_pkts,
@@ -5943,8 +5944,9 @@ ixgbe_recv_scattered_pkts_vec(
 	return 0;
 }
 
-__rte_weak int
+int
 ixgbe_rxq_vec_setup(struct ixgbe_rx_queue __rte_unused *rxq)
 {
 	return -1;
 }
+#endif
