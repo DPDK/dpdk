@@ -221,6 +221,11 @@ otx2_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 	}
 
+	if (dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_HIGIG) {
+		otx2_err("Both PTP and switch header enabled");
+		return -EINVAL;
+	}
+
 	/* Allocating a iova address for tx tstamp */
 	const struct rte_memzone *ts;
 	ts = rte_eth_dma_zone_reserve(eth_dev, "otx2_ts",
