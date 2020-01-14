@@ -20,7 +20,7 @@ static inline
 int vnic_wq_alloc_ring(struct vnic_dev *vdev, struct vnic_wq *wq,
 				unsigned int desc_count, unsigned int desc_size)
 {
-	char res_name[NAME_MAX];
+	char res_name[RTE_MEMZONE_NAMESIZE];
 	static int instance;
 
 	snprintf(res_name, sizeof(res_name), "%d-wq-%u", instance++, wq->index);

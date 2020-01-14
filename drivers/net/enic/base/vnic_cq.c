@@ -5,6 +5,7 @@
 
 #include "vnic_dev.h"
 #include "vnic_cq.h"
+#include <rte_memzone.h>
 
 void vnic_cq_free(struct vnic_cq *cq)
 {
@@ -18,7 +19,7 @@ int vnic_cq_alloc(struct vnic_dev *vdev, struct vnic_cq *cq, unsigned int index,
 	unsigned int desc_count, unsigned int desc_size)
 {
 	int err;
-	char res_name[NAME_MAX];
+	char res_name[RTE_MEMZONE_NAMESIZE];
 	static int instance;
 
 	cq->index = index;

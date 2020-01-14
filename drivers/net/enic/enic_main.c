@@ -1010,7 +1010,7 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
 	int err;
 	struct vnic_wq *wq = &enic->wq[queue_idx];
 	unsigned int cq_index = enic_cq_wq(enic, queue_idx);
-	char name[NAME_MAX];
+	char name[RTE_MEMZONE_NAMESIZE];
 	static int instance;
 
 	wq->socket_id = socket_id;
@@ -1154,10 +1154,10 @@ static int enic_set_rsskey(struct enic *enic, uint8_t *user_key)
 	dma_addr_t rss_key_buf_pa;
 	union vnic_rss_key *rss_key_buf_va = NULL;
 	int err, i;
-	u8 name[NAME_MAX];
+	u8 name[RTE_MEMZONE_NAMESIZE];
 
 	RTE_ASSERT(user_key != NULL);
-	snprintf((char *)name, NAME_MAX, "rss_key-%s", enic->bdf_name);
+	snprintf((char *)name, sizeof(name), "rss_key-%s", enic->bdf_name);
 	rss_key_buf_va = enic_alloc_consistent(enic, sizeof(union vnic_rss_key),
 		&rss_key_buf_pa, name);
 	if (!rss_key_buf_va)
@@ -1186,9 +1186,9 @@ int enic_set_rss_reta(struct enic *enic, union vnic_rss_cpu *rss_cpu)
 	dma_addr_t rss_cpu_buf_pa;
 	union vnic_rss_cpu *rss_cpu_buf_va = NULL;
 	int err;
-	u8 name[NAME_MAX];
+	u8 name[RTE_MEMZONE_NAMESIZE];
 
-	snprintf((char *)name, NAME_MAX, "rss_cpu-%s", enic->bdf_name);
+	snprintf((char *)name, sizeof(name), "rss_cpu-%s", enic->bdf_name);
 	rss_cpu_buf_va = enic_alloc_consistent(enic, sizeof(union vnic_rss_cpu),
 		&rss_cpu_buf_pa, name);
 	if (!rss_cpu_buf_va)

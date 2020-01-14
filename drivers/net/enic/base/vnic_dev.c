@@ -6,6 +6,7 @@
 #include <rte_memzone.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
+#include <rte_ether.h>
 
 #include "vnic_dev.h"
 #include "vnic_resource.h"
@@ -461,7 +462,7 @@ int vnic_dev_cmd_args(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd,
 int vnic_dev_fw_info(struct vnic_dev *vdev,
 		     struct vnic_devcmd_fw_info **fw_info)
 {
-	char name[NAME_MAX];
+	char name[RTE_MEMZONE_NAMESIZE];
 	u64 a0, a1 = 0;
 	int wait = 1000;
 	int err = 0;
@@ -515,7 +516,7 @@ int vnic_dev_flowman_cmd(struct vnic_dev *vdev, u64 *args, int nargs)
 static int vnic_dev_flowman_enable(struct vnic_dev *vdev, u32 *mode,
 				   u8 *filter_actions)
 {
-	char name[NAME_MAX];
+	char name[RTE_MEMZONE_NAMESIZE];
 	u64 args[3];
 	u64 ops;
 	static u32 instance;
@@ -536,7 +537,7 @@ static int vnic_dev_flowman_enable(struct vnic_dev *vdev, u32 *mode,
 		return 0;
 	/* Can we get fm_info? */
 	if (!vdev->flowman_info) {
-		snprintf((char *)name, sizeof(name), "vnic_flowman_info-%u",
+		snprintf((char *)name, sizeof(name), "vnic_fm_info-%u",
 			 instance++);
 		vdev->flowman_info = vdev->alloc_consistent(vdev->priv,
 			sizeof(struct fm_info),
@@ -770,14 +771,14 @@ int vnic_dev_get_mac_addr(struct vnic_dev *vdev, u8 *mac_addr)
 	int wait = 1000;
 	int err, i;
 
-	for (i = 0; i < ETH_ALEN; i++)
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 		mac_addr[i] = 0;
 
 	err = vnic_dev_cmd(vdev, CMD_GET_MAC_ADDR, &a0, &a1, wait);
 	if (err)
 		return err;
 
-	for (i = 0; i < ETH_ALEN; i++)
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 		mac_addr[i] = ((u8 *)&a0)[i];
 
 	return 0;
@@ -810,7 +811,7 @@ int vnic_dev_add_addr(struct vnic_dev *vdev, u8 *addr)
 	int err;
 	int i;
 
-	for (i = 0; i < ETH_ALEN; i++)
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 		((u8 *)&a0)[i] = addr[i];
 
 	err = vnic_dev_cmd(vdev, CMD_ADDR_ADD, &a0, &a1, wait);
@@ -829,7 +830,7 @@ int vnic_dev_del_addr(struct vnic_dev *vdev, u8 *addr)
 	int err;
 	int i;
 
-	for (i = 0; i < ETH_ALEN; i++)
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 		((u8 *)&a0)[i] = addr[i];
 
 	err = vnic_dev_cmd(vdev, CMD_ADDR_DEL, &a0, &a1, wait);
@@ -892,7 +893,7 @@ int vnic_dev_notify_set(struct vnic_dev *vdev, u16 intr)
 {
 	void *notify_addr = NULL;
 	dma_addr_t notify_pa = 0;
-	char name[NAME_MAX];
+	char name[RTE_MEMZONE_NAMESIZE];
 	static u32 instance;
 
 	if (vdev->notify || vdev->notify_pa) {
@@ -1030,7 +1031,7 @@ u32 vnic_dev_get_intr_coal_timer_max(struct vnic_dev *vdev)
 
 int vnic_dev_alloc_stats_mem(struct vnic_dev *vdev)
 {
-	char name[NAME_MAX];
+	char name[RTE_MEMZONE_NAMESIZE];
 	static u32 instance;
 
 	snprintf((char *)name, sizeof(name), "vnic_stats-%u", instance++);
@@ -1069,7 +1070,7 @@ struct vnic_dev *vnic_dev_register(struct vnic_dev *vdev,
 	unsigned int num_bars)
 {
 	if (!vdev) {
-		char name[NAME_MAX];
+		char name[RTE_MEMZONE_NAMESIZE];
 		snprintf((char *)name, sizeof(name), "%s-vnic",
 			  pdev->device.name);
 		vdev = (struct vnic_dev *)rte_zmalloc_socket(name,

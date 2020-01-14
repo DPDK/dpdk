@@ -5,6 +5,7 @@
 
 #ifndef _CQ_DESC_H_
 #define _CQ_DESC_H_
+#include <rte_byteorder.h>
 
 /*
  * Completion queue descriptor types
@@ -58,8 +59,8 @@ static inline void cq_desc_enc(struct cq_desc *desc,
 {
 	desc->type_color = (type & CQ_DESC_TYPE_MASK) |
 		((color & CQ_DESC_COLOR_MASK) << CQ_DESC_COLOR_SHIFT);
-	desc->q_number = cpu_to_le16(q_number & CQ_DESC_Q_NUM_MASK);
-	desc->completed_index = cpu_to_le16(completed_index &
+	desc->q_number = rte_cpu_to_le_16(q_number & CQ_DESC_Q_NUM_MASK);
+	desc->completed_index = rte_cpu_to_le_16(completed_index &
 		CQ_DESC_COMP_NDX_MASK);
 }
 
@@ -82,8 +83,8 @@ static inline void cq_desc_dec(const struct cq_desc *desc_arg,
 	rmb();
 
 	*type = type_color & CQ_DESC_TYPE_MASK;
-	*q_number = le16_to_cpu(desc->q_number) & CQ_DESC_Q_NUM_MASK;
-	*completed_index = le16_to_cpu(desc->completed_index) &
+	*q_number = rte_le_to_cpu_16(desc->q_number) & CQ_DESC_Q_NUM_MASK;
+	*completed_index = rte_le_to_cpu_16(desc->completed_index) &
 		CQ_DESC_COMP_NDX_MASK;
 }
 

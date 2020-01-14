@@ -16,20 +16,12 @@
 
 #define ENIC_PAGE_ALIGN 4096UL
 #define ENIC_ALIGN      ENIC_PAGE_ALIGN
-#define NAME_MAX        255
 #define ETH_ALEN        6
 
 #define __iomem
 
 #define rmb()     rte_rmb() /* dpdk rte provided rmb */
 #define wmb()     rte_wmb() /* dpdk rte provided wmb */
-
-#define le16_to_cpu
-#define le32_to_cpu
-#define le64_to_cpu
-#define cpu_to_le16
-#define cpu_to_le32
-#define cpu_to_le64
 
 #ifndef offsetof
 #define offsetof(t, m) ((size_t) &((t *)0)->m)

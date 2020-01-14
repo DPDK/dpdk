@@ -6,6 +6,7 @@
 #ifndef _CQ_ENET_DESC_H_
 #define _CQ_ENET_DESC_H_
 
+#include <rte_byteorder.h>
 #include "cq_desc.h"
 
 /* Ethernet completion queue descriptor: 16B */
@@ -118,33 +119,33 @@ static inline void cq_enet_rq_desc_enc(struct cq_enet_rq_desc *desc,
 	cq_desc_enc((struct cq_desc *)desc, type,
 		color, q_number, completed_index);
 
-	desc->completed_index_flags |= cpu_to_le16(
-		(ingress_port ? CQ_ENET_RQ_DESC_FLAGS_INGRESS_PORT : 0) |
+	desc->completed_index_flags |= rte_cpu_to_le_16
+		((ingress_port ? CQ_ENET_RQ_DESC_FLAGS_INGRESS_PORT : 0) |
 		(fcoe ? CQ_ENET_RQ_DESC_FLAGS_FCOE : 0) |
 		(eop ? CQ_ENET_RQ_DESC_FLAGS_EOP : 0) |
 		(sop ? CQ_ENET_RQ_DESC_FLAGS_SOP : 0));
 
-	desc->q_number_rss_type_flags |= cpu_to_le16(
-		((rss_type & CQ_ENET_RQ_DESC_RSS_TYPE_MASK) <<
+	desc->q_number_rss_type_flags |= rte_cpu_to_le_16
+		(((rss_type & CQ_ENET_RQ_DESC_RSS_TYPE_MASK) <<
 		CQ_DESC_Q_NUM_BITS) |
 		(csum_not_calc ? CQ_ENET_RQ_DESC_FLAGS_CSUM_NOT_CALC : 0));
 
-	desc->rss_hash = cpu_to_le32(rss_hash);
+	desc->rss_hash = rte_cpu_to_le_32(rss_hash);
 
-	desc->bytes_written_flags = cpu_to_le16(
-		(bytes_written & CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK) |
+	desc->bytes_written_flags = rte_cpu_to_le_16
+		((bytes_written & CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK) |
 		(packet_error ? CQ_ENET_RQ_DESC_FLAGS_TRUNCATED : 0) |
 		(vlan_stripped ? CQ_ENET_RQ_DESC_FLAGS_VLAN_STRIPPED : 0));
 
-	desc->vlan = cpu_to_le16(vlan);
+	desc->vlan = rte_cpu_to_le_16(vlan);
 
 	if (fcoe) {
-		desc->checksum_fcoe = cpu_to_le16(
-			(fcoe_sof & CQ_ENET_RQ_DESC_FCOE_SOF_MASK) |
+		desc->checksum_fcoe = rte_cpu_to_le_16
+			((fcoe_sof & CQ_ENET_RQ_DESC_FCOE_SOF_MASK) |
 			((fcoe_eof & CQ_ENET_RQ_DESC_FCOE_EOF_MASK) <<
 				CQ_ENET_RQ_DESC_FCOE_EOF_SHIFT));
 	} else {
-		desc->checksum_fcoe = cpu_to_le16(checksum);
+		desc->checksum_fcoe = rte_cpu_to_le_16(checksum);
 	}
 
 	desc->flags =
@@ -176,10 +177,10 @@ static inline void cq_enet_rq_desc_dec(struct cq_enet_rq_desc *desc,
 	cq_desc_dec((struct cq_desc *)desc, type,
 		color, q_number, completed_index);
 
-	completed_index_flags = le16_to_cpu(desc->completed_index_flags);
+	completed_index_flags = rte_le_to_cpu_16(desc->completed_index_flags);
 	q_number_rss_type_flags =
-		le16_to_cpu(desc->q_number_rss_type_flags);
-	bytes_written_flags = le16_to_cpu(desc->bytes_written_flags);
+		rte_le_to_cpu_16(desc->q_number_rss_type_flags);
+	bytes_written_flags = rte_le_to_cpu_16(desc->bytes_written_flags);
 
 	*ingress_port = (completed_index_flags &
 		CQ_ENET_RQ_DESC_FLAGS_INGRESS_PORT) ? 1 : 0;
@@ -195,7 +196,7 @@ static inline void cq_enet_rq_desc_dec(struct cq_enet_rq_desc *desc,
 	*csum_not_calc = (q_number_rss_type_flags &
 		CQ_ENET_RQ_DESC_FLAGS_CSUM_NOT_CALC) ? 1 : 0;
 
-	*rss_hash = le32_to_cpu(desc->rss_hash);
+	*rss_hash = rte_le_to_cpu_32(desc->rss_hash);
 
 	*bytes_written = bytes_written_flags &
 		CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK;
@@ -207,16 +208,16 @@ static inline void cq_enet_rq_desc_dec(struct cq_enet_rq_desc *desc,
 	/*
 	 * Tag Control Information(16) = user_priority(3) + cfi(1) + vlan(12)
 	 */
-	*vlan_tci = le16_to_cpu(desc->vlan);
+	*vlan_tci = rte_le_to_cpu_16(desc->vlan);
 
 	if (*fcoe) {
-		*fcoe_sof = (u8)(le16_to_cpu(desc->checksum_fcoe) &
+		*fcoe_sof = (u8)(rte_le_to_cpu_16(desc->checksum_fcoe) &
 			CQ_ENET_RQ_DESC_FCOE_SOF_MASK);
 		*fcoe_fc_crc_ok = (desc->flags &
 			CQ_ENET_RQ_DESC_FCOE_FC_CRC_OK) ? 1 : 0;
 		*fcoe_enc_error = (desc->flags &
 			CQ_ENET_RQ_DESC_FCOE_ENC_ERROR) ? 1 : 0;
-		*fcoe_eof = (u8)((le16_to_cpu(desc->checksum_fcoe) >>
+		*fcoe_eof = (u8)((rte_le_to_cpu_16(desc->checksum_fcoe) >>
 			CQ_ENET_RQ_DESC_FCOE_EOF_SHIFT) &
 			CQ_ENET_RQ_DESC_FCOE_EOF_MASK);
 		*checksum = 0;
@@ -225,7 +226,7 @@ static inline void cq_enet_rq_desc_dec(struct cq_enet_rq_desc *desc,
 		*fcoe_fc_crc_ok = 0;
 		*fcoe_enc_error = 0;
 		*fcoe_eof = 0;
-		*checksum = le16_to_cpu(desc->checksum_fcoe);
+		*checksum = rte_le_to_cpu_16(desc->checksum_fcoe);
 	}
 
 	*tcp_udp_csum_ok =

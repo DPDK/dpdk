@@ -7,7 +7,7 @@
 #define _ENIC_H_
 
 #include <rte_vxlan.h>
-
+#include <rte_ether.h>
 #include "vnic_enet.h"
 #include "vnic_dev.h"
 #include "vnic_flowman.h"
@@ -126,7 +126,7 @@ struct enic {
 	int iommu_group_fd;
 	int iommu_groupid;
 	int eventfd;
-	uint8_t mac_addr[ETH_ALEN];
+	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	pthread_t err_intr_thread;
 	int promisc;
 	int allmulti;

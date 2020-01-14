@@ -10,6 +10,7 @@
 #include <rte_ether.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
+#include <rte_memzone.h>
 
 #include "enic_compat.h"
 #include "enic.h"
@@ -2353,7 +2354,7 @@ int
 enic_fm_init(struct enic *enic)
 {
 	struct enic_flowman *fm;
-	u8 name[NAME_MAX];
+	u8 name[RTE_MEMZONE_NAMESIZE];
 	int rc;
 
 	if (enic->flow_filter_mode != FILTER_FLOWMAN)
@@ -2368,7 +2369,7 @@ enic_fm_init(struct enic *enic)
 	TAILQ_INIT(&fm->fet_list);
 	TAILQ_INIT(&fm->jump_list);
 	/* Allocate host memory for flowman commands */
-	snprintf((char *)name, NAME_MAX, "fm-cmd-%s", enic->bdf_name);
+	snprintf((char *)name, sizeof(name), "fm-cmd-%s", enic->bdf_name);
 	fm->cmd.va = enic_alloc_consistent(enic,
 		sizeof(union enic_flowman_cmd_mem), &fm->cmd.pa, name);
 	if (!fm->cmd.va) {

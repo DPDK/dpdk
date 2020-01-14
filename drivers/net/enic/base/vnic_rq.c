@@ -3,6 +3,7 @@
  * Copyright 2007 Nuova Systems, Inc.  All rights reserved.
  */
 
+#include <rte_memzone.h>
 #include "vnic_dev.h"
 #include "vnic_rq.h"
 
@@ -21,7 +22,7 @@ int vnic_rq_alloc(struct vnic_dev *vdev, struct vnic_rq *rq, unsigned int index,
 	unsigned int desc_count, unsigned int desc_size)
 {
 	int rc;
-	char res_name[NAME_MAX];
+	char res_name[RTE_MEMZONE_NAMESIZE];
 	static int instance;
 
 	rq->index = index;
