@@ -27,10 +27,10 @@ In debug mode (CONFIG_RTE_LIBRTE_MEMPOOL_DEBUG is enabled),
 statistics about get from/put in the pool are stored in the mempool structure.
 Statistics are per-lcore to avoid concurrent access to statistics counters.
 
-Memory Alignment Constraints
-----------------------------
+Memory Alignment Constraints on x86 architecture
+------------------------------------------------
 
-Depending on hardware memory configuration, performance can be greatly improved by adding a specific padding between objects.
+Depending on hardware memory configuration on X86 architecture, performance can be greatly improved by adding a specific padding between objects.
 The objective is to ensure that the beginning of each object starts on a different channel and rank in memory so that all channels are equally loaded.
 
 This is particularly true for packet buffers when doing L3 forwarding or flow classification.

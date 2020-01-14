@@ -260,7 +260,8 @@ struct rte_mempool {
 #endif
 }  __rte_cache_aligned;
 
-#define MEMPOOL_F_NO_SPREAD      0x0001 /**< Do not spread among memory channels. */
+#define MEMPOOL_F_NO_SPREAD      0x0001
+		/**< Spreading among memory channels not required. */
 #define MEMPOOL_F_NO_CACHE_ALIGN 0x0002 /**< Do not align objs on cache lines.*/
 #define MEMPOOL_F_SP_PUT         0x0004 /**< Default put is "single-producer".*/
 #define MEMPOOL_F_SC_GET         0x0008 /**< Default get is "single-consumer".*/

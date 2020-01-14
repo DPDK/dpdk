@@ -45,6 +45,7 @@ EAL_REGISTER_TAILQ(rte_mempool_tailq)
 #define CALC_CACHE_FLUSHTHRESH(c)	\
 	((typeof(c))((c) * CACHE_FLUSHTHRESH_MULTIPLIER))
 
+#if defined(RTE_ARCH_X86)
 /*
  * return the greatest common divisor between a and b (fast algorithm)
  *
@@ -74,12 +75,13 @@ static unsigned get_gcd(unsigned a, unsigned b)
 }
 
 /*
- * Depending on memory configuration, objects addresses are spread
+ * Depending on memory configuration on x86 arch, objects addresses are spread
  * between channels and ranks in RAM: the pool allocator will add
  * padding between objects. This function return the new size of the
  * object.
  */
-static unsigned optimize_object_size(unsigned obj_size)
+static unsigned int
+arch_mem_object_align(unsigned int obj_size)
 {
 	unsigned nrank, nchan;
 	unsigned new_obj_size;
@@ -99,6 +101,13 @@ static unsigned optimize_object_size(unsigned obj_size)
 		new_obj_size++;
 	return new_obj_size * RTE_MEMPOOL_ALIGN;
 }
+#else
+static unsigned int
+arch_mem_object_align(unsigned int obj_size)
+{
+	return obj_size;
+}
+#endif
 
 struct pagesz_walk_arg {
 	int socket_id;
@@ -234,8 +243,8 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	 */
 	if ((flags & MEMPOOL_F_NO_SPREAD) == 0) {
 		unsigned new_size;
-		new_size = optimize_object_size(sz->header_size + sz->elt_size +
-			sz->trailer_size);
+		new_size = arch_mem_object_align
+			    (sz->header_size + sz->elt_size + sz->trailer_size);
 		sz->trailer_size = new_size - sz->header_size - sz->elt_size;
 	}
 
