@@ -35,4 +35,15 @@ static inline int verify_modexp(uint8_t *mod_exp,
 	return 0;
 }
 
+static inline int verify_ecdsa_sign(uint8_t *sign_r,
+		uint8_t *sign_s, struct rte_crypto_op *result_op)
+{
+	if (memcmp(sign_r, result_op->asym->ecdsa.r.data,
+		   result_op->asym->ecdsa.r.length) ||
+		   memcmp(sign_s, result_op->asym->ecdsa.s.data,
+		   result_op->asym->ecdsa.s.length))
+		return -1;
+	return 0;
+}
+
 #endif /* TEST_CRYPTODEV_ASYM_TEST_UTIL_H__ */
