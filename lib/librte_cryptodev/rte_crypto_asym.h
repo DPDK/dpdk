@@ -27,6 +27,13 @@ extern "C" {
 
 #include "rte_crypto_sym.h"
 
+/**
+ * Buffer to hold crypto params required for asym operations.
+ *
+ * These buffers can be used for both input to PMD and output from PMD. When
+ * used for output from PMD, application has to ensure the buffer is large
+ * enough to hold the target data.
+ */
 typedef struct rte_crypto_param_t {
 	uint8_t *data;
 	/**< pointer to buffer holding data */
@@ -80,6 +87,10 @@ enum rte_crypto_asym_xform_type {
 	RTE_CRYPTO_ASYM_XFORM_MODEX,
 	/**< Modular Exponentiation
 	 * Perform Modular Exponentiation b^e mod n
+	 */
+	RTE_CRYPTO_ASYM_XFORM_ECDSA,
+	/**< Elliptic Curve Digital Signature Algorithm
+	 * Perform Signature Generation and Verification.
 	 */
 	RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
 	/**< End of list */
@@ -319,6 +330,40 @@ struct rte_crypto_dsa_xform {
 };
 
 /**
+ * TLS named curves
+ * https://tools.ietf.org/html/rfc8422
+ */
+enum rte_crypto_ec_group {
+	RTE_CRYPTO_EC_GROUP_UNKNOWN  = 0,
+	RTE_CRYPTO_EC_GROUP_SECP192R1 = 19,
+	RTE_CRYPTO_EC_GROUP_SECP224R1 = 21,
+	RTE_CRYPTO_EC_GROUP_SECP256R1 = 23,
+	RTE_CRYPTO_EC_GROUP_SECP384R1 = 24,
+	RTE_CRYPTO_EC_GROUP_SECP521R1 = 25,
+};
+
+/**
+ * Structure for elliptic curve point
+ */
+struct rte_crypto_ec_point {
+	rte_crypto_param x;
+	/**< X coordinate */
+	rte_crypto_param y;
+	/**< Y coordinate */
+};
+
+/**
+ * Asymmetric elliptic curve transform data
+ *
+ * Structure describing all EC based xform params
+ *
+ */
+struct rte_crypto_ec_xform {
+	enum rte_crypto_ec_group curve_id;
+	/**< Pre-defined ec groups */
+};
+
+/**
  * Operations params for modular operations:
  * exponentiation and multiplicative inverse
  *
@@ -372,6 +417,11 @@ struct rte_crypto_asym_xform {
 
 		struct rte_crypto_dsa_xform dsa;
 		/**< DSA xform parameters */
+
+		struct rte_crypto_ec_xform ec;
+		/**< EC xform parameters, used by elliptic curve based
+		 * operations.
+		 */
 	};
 };
 
@@ -516,6 +566,39 @@ struct rte_crypto_dsa_op_param {
 };
 
 /**
+ * ECDSA operation params
+ */
+struct rte_crypto_ecdsa_op_param {
+	enum rte_crypto_asym_op_type op_type;
+	/**< Signature generation or verification */
+
+	rte_crypto_param pkey;
+	/**< Private key of the signer for signature generation */
+
+	struct rte_crypto_ec_point q;
+	/**< Public key of the signer for verification */
+
+	rte_crypto_param message;
+	/**< Input message digest to be signed or verified */
+
+	rte_crypto_param k;
+	/**< The ECDSA per-message secret number, which is an integer
+	 * in the interval (1, n-1)
+	 */
+
+	rte_crypto_param r;
+	/**< r component of elliptic curve signature
+	 *     output : for signature generation
+	 *     input  : for signature verification
+	 */
+	rte_crypto_param s;
+	/**< s component of elliptic curve signature
+	 *     output : for signature generation
+	 *     input  : for signature verification
+	 */
+};
+
+/**
  * Asymmetric Cryptographic Operation.
  *
  * Structure describing asymmetric crypto operation params.
@@ -537,6 +620,7 @@ struct rte_crypto_asym_op {
 		struct rte_crypto_mod_op_param modinv;
 		struct rte_crypto_dh_op_param dh;
 		struct rte_crypto_dsa_op_param dsa;
+		struct rte_crypto_ecdsa_op_param ecdsa;
 	};
 };
 

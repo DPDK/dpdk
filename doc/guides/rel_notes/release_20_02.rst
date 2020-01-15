@@ -64,6 +64,8 @@ New Features
 * **Added algorithms to cryptodev API.**
 
   * Chacha20-Poly1305 AEAD algorithm can now be supported in cryptodev.
+  * ECDSA (Elliptic Curve Digital Signature Algorithm) is added to
+    asymmetric crypto library specifications.
 
 
 Removed Items
