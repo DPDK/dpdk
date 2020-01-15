@@ -46,4 +46,15 @@ static inline int verify_ecdsa_sign(uint8_t *sign_r,
 	return 0;
 }
 
+static inline int verify_ecpm(uint8_t *result_x, uint8_t *result_y,
+			      struct rte_crypto_op *result_op)
+{
+	if (memcmp(result_x, result_op->asym->ecpm.r.x.data,
+		   result_op->asym->ecpm.r.x.length) ||
+		   memcmp(result_y, result_op->asym->ecpm.r.y.data,
+		   result_op->asym->ecpm.r.y.length))
+		return -1;
+
+	return 0;
+}
 #endif /* TEST_CRYPTODEV_ASYM_TEST_UTIL_H__ */
