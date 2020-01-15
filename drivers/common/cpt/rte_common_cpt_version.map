@@ -7,3 +7,12 @@ DPDK_20.0 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	cpt_fpm_clear;
+	cpt_fpm_init;
+
+	local: *;
+};

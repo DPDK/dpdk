@@ -126,6 +126,37 @@ cpt_fill_rsa_params(struct cpt_asym_sess_misc *sess,
 }
 
 static __rte_always_inline int
+cpt_fill_ec_params(struct cpt_asym_sess_misc *sess,
+		      struct rte_crypto_asym_xform *xform)
+{
+	struct cpt_asym_ec_ctx *ec = &sess->ec_ctx;
+
+	switch (xform->ec.curve_id) {
+	case RTE_CRYPTO_EC_GROUP_SECP192R1:
+		ec->curveid = CPT_EC_ID_P192;
+		break;
+	case RTE_CRYPTO_EC_GROUP_SECP224R1:
+		ec->curveid = CPT_EC_ID_P224;
+		break;
+	case RTE_CRYPTO_EC_GROUP_SECP256R1:
+		ec->curveid = CPT_EC_ID_P256;
+		break;
+	case RTE_CRYPTO_EC_GROUP_SECP384R1:
+		ec->curveid = CPT_EC_ID_P384;
+		break;
+	case RTE_CRYPTO_EC_GROUP_SECP521R1:
+		ec->curveid = CPT_EC_ID_P521;
+		break;
+	default:
+		/* Only NIST curves (FIPS 186-4) are supported */
+		CPT_LOG_DP_ERR("Unsupported curve");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static __rte_always_inline int
 cpt_fill_asym_session_parameters(struct cpt_asym_sess_misc *sess,
 				 struct rte_crypto_asym_xform *xform)
 {
@@ -139,6 +170,9 @@ cpt_fill_asym_session_parameters(struct cpt_asym_sess_misc *sess,
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_MODEX:
 		ret = cpt_fill_modex_params(sess, xform);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+		ret = cpt_fill_ec_params(sess, xform);
 		break;
 	default:
 		CPT_LOG_DP_ERR("Unsupported transform type");
@@ -163,6 +197,8 @@ cpt_free_asym_session_parameters(struct cpt_asym_sess_misc *sess)
 		mod = &sess->mod_ctx;
 		if (mod->modulus.data)
 			rte_free(mod->modulus.data);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 		break;
 	default:
 		CPT_LOG_DP_ERR("Invalid transform type");
@@ -450,4 +486,346 @@ cpt_enqueue_rsa_op(struct rte_crypto_op *op,
 	}
 	return 0;
 }
+
+static const struct cpt_ec_group ec_grp[CPT_EC_ID_PMAX] = {
+	{
+		.prime = {
+			.data =	{
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+			},
+			.length = 24,
+		},
+		.order = {
+			.data = {
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0x99, 0xDE, 0xF8, 0x36,
+				0x14, 0x6B, 0xC9, 0xB1, 0xB4, 0xD2, 0x28, 0x31
+			},
+			.length = 24
+		},
+	},
+	{
+		.prime = {
+			.data = {
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x01
+			},
+			.length = 28
+		},
+		.order = {
+			.data = {
+				0XFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF,
+				0XFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF, 0X16, 0XA2,
+				0XE0, 0XB8, 0XF0, 0X3E, 0X13, 0XDD, 0X29, 0X45,
+				0X5C, 0X5C, 0X2A, 0X3D
+			},
+			.length = 28
+		},
+	},
+	{
+		.prime = {
+			.data = {
+				0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+			},
+			.length = 32
+		},
+		.order = {
+			.data = {
+				0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xBC, 0xE6, 0xFA, 0xAD, 0xA7, 0x17, 0x9E, 0x84,
+				0xF3, 0xB9, 0xCA, 0xC2, 0xFC, 0x63, 0x25, 0x51
+			},
+			.length = 32
+		},
+	},
+	{
+		.prime = {
+			.data = {
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
+				0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF
+			},
+			.length = 48
+		},
+		.order = {
+			.data = {
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xC7, 0x63, 0x4D, 0x81, 0xF4, 0x37, 0x2D, 0xDF,
+				0x58, 0x1A, 0x0D, 0xB2, 0x48, 0xB0, 0xA7, 0x7A,
+				0xEC, 0xEC, 0x19, 0x6A, 0xCC, 0xC5, 0x29, 0x73
+			},
+			.length = 48
+		}
+	},
+	{
+		.prime = {
+			.data = {
+				0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF
+			},
+			.length = 66
+		},
+		.order = {
+			.data = {
+				0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFA, 0x51, 0x86, 0x87, 0x83, 0xBF, 0x2F,
+				0x96, 0x6B, 0x7F, 0xCC, 0x01, 0x48, 0xF7, 0x09,
+				0xA5, 0xD0, 0x3B, 0xB5, 0xC9, 0xB8, 0x89, 0x9C,
+				0x47, 0xAE, 0xBB, 0x6F, 0xB7, 0x1E, 0x91, 0x38,
+				0x64, 0x09
+			},
+			.length = 66
+		}
+	}
+};
+
+static __rte_always_inline void
+cpt_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
+		    struct asym_op_params *ecdsa_params,
+		    uint64_t fpm_table_iova,
+		    uint8_t curveid)
+{
+	struct cpt_request_info *req = ecdsa_params->req;
+	uint16_t message_len = ecdsa->message.length;
+	phys_addr_t mphys = ecdsa_params->meta_buf;
+	uint16_t pkey_len = ecdsa->pkey.length;
+	uint16_t p_align, k_align, m_align;
+	uint16_t k_len = ecdsa->k.length;
+	uint16_t order_len, prime_len;
+	uint16_t o_offset, pk_offset;
+	vq_cmd_word0_t vq_cmd_w0;
+	opcode_info_t opcode;
+	uint16_t rlen, dlen;
+	buf_ptr_t caddr;
+	uint8_t *dptr;
+
+	prime_len = ec_grp[curveid].prime.length;
+	order_len = ec_grp[curveid].order.length;
+
+	/* Truncate input length to curve prime length */
+	if (message_len > prime_len)
+		message_len = prime_len;
+	m_align = ROUNDUP8(message_len);
+
+	p_align = ROUNDUP8(prime_len);
+	k_align = ROUNDUP8(k_len);
+
+	/* Set write offset for order and private key */
+	o_offset = prime_len - order_len;
+	pk_offset = prime_len - pkey_len;
+
+	/* Input buffer */
+	dptr = RTE_PTR_ADD(req, sizeof(struct cpt_request_info));
+
+	/*
+	 * Set dlen = sum(sizeof(fpm address), ROUNDUP8(scalar len, input len),
+	 * ROUNDUP8(priv key len, prime len, order len)).
+	 * Please note, private key, order cannot exceed prime
+	 * length i.e 3 * p_align.
+	 */
+	dlen = sizeof(fpm_table_iova) + k_align + m_align + p_align * 3;
+
+	memset(dptr, 0, dlen);
+
+	*(uint64_t *)dptr = fpm_table_iova;
+	dptr += sizeof(fpm_table_iova);
+
+	memcpy(dptr, ecdsa->k.data, k_len);
+	dptr += k_align;
+
+	memcpy(dptr, ec_grp[curveid].prime.data, prime_len);
+	dptr += p_align;
+
+	memcpy(dptr + o_offset, ec_grp[curveid].order.data, order_len);
+	dptr += p_align;
+
+	memcpy(dptr + pk_offset, ecdsa->pkey.data, pkey_len);
+	dptr += p_align;
+
+	memcpy(dptr, ecdsa->message.data, message_len);
+	dptr += m_align;
+
+	/* 2 * prime length (for sign r and s ) */
+	rlen = 2 * p_align;
+
+	/* Setup opcodes */
+	opcode.s.major = CPT_MAJOR_OP_ECDSA;
+	opcode.s.minor = CPT_MINOR_OP_ECDSA_SIGN;
+	vq_cmd_w0.s.opcode = opcode.flags;
+
+	/* GP op header */
+	vq_cmd_w0.s.param1 = curveid | (message_len << 8);
+	vq_cmd_w0.s.param2 = k_len;
+	vq_cmd_w0.s.dlen = dlen;
+
+	/* Filling cpt_request_info structure */
+	req->ist.ei0 = vq_cmd_w0.u64;
+	req->ist.ei1 = mphys;
+	req->ist.ei2 = mphys + dlen;
+
+	/* Result pointer to store result data */
+	req->rptr = dptr;
+
+	/* alternate_caddr to write completion status of the microcode */
+	req->alternate_caddr = (uint64_t *)(dptr + rlen);
+	*req->alternate_caddr = ~((uint64_t)COMPLETION_CODE_INIT);
+
+	/* Preparing completion addr, +1 for completion code */
+	caddr.vaddr = dptr + rlen + 1;
+	caddr.dma_addr = mphys + dlen + rlen + 1;
+
+	cpt_fill_req_comp_addr(req, caddr);
+}
+
+static __rte_always_inline void
+cpt_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
+		      struct asym_op_params *ecdsa_params,
+		      uint64_t fpm_table_iova,
+		      uint8_t curveid)
+{
+	struct cpt_request_info *req = ecdsa_params->req;
+	uint32_t message_len = ecdsa->message.length;
+	phys_addr_t mphys = ecdsa_params->meta_buf;
+	uint16_t o_offset, r_offset, s_offset;
+	uint16_t qx_len = ecdsa->q.x.length;
+	uint16_t qy_len = ecdsa->q.y.length;
+	uint16_t r_len = ecdsa->r.length;
+	uint16_t s_len = ecdsa->s.length;
+	uint16_t order_len, prime_len;
+	uint16_t qx_offset, qy_offset;
+	uint16_t p_align, m_align;
+	vq_cmd_word0_t vq_cmd_w0;
+	opcode_info_t opcode;
+	buf_ptr_t caddr;
+	uint16_t dlen;
+	uint8_t *dptr;
+
+	prime_len = ec_grp[curveid].prime.length;
+	order_len = ec_grp[curveid].order.length;
+
+	/* Truncate input length to curve prime length */
+	if (message_len > prime_len)
+		message_len = prime_len;
+
+	m_align = ROUNDUP8(message_len);
+	p_align = ROUNDUP8(prime_len);
+
+	/* Set write offset for sign, order and public key coordinates */
+	o_offset = prime_len - order_len;
+	qx_offset = prime_len - qx_len;
+	qy_offset = prime_len - qy_len;
+	r_offset = prime_len - r_len;
+	s_offset = prime_len - s_len;
+
+	/* Input buffer */
+	dptr = RTE_PTR_ADD(req, sizeof(struct cpt_request_info));
+
+	/*
+	 * Set dlen = sum(sizeof(fpm address), ROUNDUP8(message len),
+	 * ROUNDUP8(sign len(r and s), public key len(x and y coordinates),
+	 * prime len, order len)).
+	 * Please note sign, public key and order can not excede prime length
+	 * i.e. 6 * p_align
+	 */
+	dlen = sizeof(fpm_table_iova) + m_align + (6 * p_align);
+
+	memset(dptr, 0, dlen);
+
+	*(uint64_t *)dptr = fpm_table_iova;
+	dptr += sizeof(fpm_table_iova);
+
+	memcpy(dptr + r_offset, ecdsa->r.data, r_len);
+	dptr += p_align;
+
+	memcpy(dptr + s_offset, ecdsa->s.data, s_len);
+	dptr += p_align;
+
+	memcpy(dptr, ecdsa->message.data, message_len);
+	dptr += m_align;
+
+	memcpy(dptr + o_offset, ec_grp[curveid].order.data, order_len);
+	dptr += p_align;
+
+	memcpy(dptr, ec_grp[curveid].prime.data, prime_len);
+	dptr += p_align;
+
+	memcpy(dptr + qx_offset, ecdsa->q.x.data, qx_len);
+	dptr += p_align;
+
+	memcpy(dptr + qy_offset, ecdsa->q.y.data, qy_len);
+	dptr += p_align;
+
+	/* Setup opcodes */
+	opcode.s.major = CPT_MAJOR_OP_ECDSA;
+	opcode.s.minor = CPT_MINOR_OP_ECDSA_VERIFY;
+	vq_cmd_w0.s.opcode = opcode.flags;
+
+	/* GP op header */
+	vq_cmd_w0.s.param1 = curveid | (message_len << 8);
+	vq_cmd_w0.s.param2 = 0;
+	vq_cmd_w0.s.dlen = dlen;
+
+	/* Filling cpt_request_info structure */
+	req->ist.ei0 = vq_cmd_w0.u64;
+	req->ist.ei1 = mphys;
+	req->ist.ei2 = mphys + dlen;
+
+	/* Result pointer to store result data */
+	req->rptr = dptr;
+
+	/* alternate_caddr to write completion status of the microcode */
+	req->alternate_caddr = (uint64_t *)dptr;
+	*req->alternate_caddr = ~((uint64_t)COMPLETION_CODE_INIT);
+
+	/* Preparing completion addr, +1 for completion code */
+	caddr.vaddr = dptr + 1;
+	caddr.dma_addr = mphys + dlen + 1;
+
+	cpt_fill_req_comp_addr(req, caddr);
+}
+
+static __rte_always_inline int __hot
+cpt_enqueue_ecdsa_op(struct rte_crypto_op *op,
+		     struct asym_op_params *params,
+		     struct cpt_asym_sess_misc *sess,
+		     uint64_t *fpm_iova)
+{
+	struct rte_crypto_ecdsa_op_param *ecdsa = &op->asym->ecdsa;
+	uint8_t curveid = sess->ec_ctx.curveid;
+
+	if (ecdsa->op_type == RTE_CRYPTO_ASYM_OP_SIGN)
+		cpt_ecdsa_sign_prep(ecdsa, params, fpm_iova[curveid], curveid);
+	else if (ecdsa->op_type == RTE_CRYPTO_ASYM_OP_VERIFY)
+		cpt_ecdsa_verify_prep(ecdsa, params, fpm_iova[curveid],
+				      curveid);
+	else {
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		return -EINVAL;
+	}
+	return 0;
+}
+
 #endif /* _CPT_UCODE_ASYM_H_ */

@@ -23,12 +23,15 @@
 
 /* AE opcodes */
 #define CPT_MAJOR_OP_MODEX	0x03
+#define CPT_MAJOR_OP_ECDSA	0x04
 #define CPT_MINOR_OP_MODEX	0x01
 #define CPT_MINOR_OP_PKCS_ENC	0x02
 #define CPT_MINOR_OP_PKCS_ENC_CRT	0x03
 #define CPT_MINOR_OP_PKCS_DEC	0x04
 #define CPT_MINOR_OP_PKCS_DEC_CRT	0x05
 #define CPT_MINOR_OP_MODEX_CRT	0x06
+#define CPT_MINOR_OP_ECDSA_SIGN	0x01
+#define CPT_MINOR_OP_ECDSA_VERIFY	0x02
 
 #define CPT_BLOCK_TYPE1 0
 #define CPT_BLOCK_TYPE2 1
@@ -203,6 +206,20 @@ typedef enum {
 	CPT_8X_COMP_E_LAST_ENTRY = (0xFF)
 } cpt_comp_e_t;
 
+/**
+ * Enumeration cpt_ec_id
+ *
+ * Enumerates supported elliptic curves
+ */
+typedef enum {
+	CPT_EC_ID_P192 = 0,
+	CPT_EC_ID_P224 = 1,
+	CPT_EC_ID_P256 = 2,
+	CPT_EC_ID_P384 = 3,
+	CPT_EC_ID_P521 = 4,
+	CPT_EC_ID_PMAX = 5
+} cpt_ec_id_t;
+
 typedef struct sglist_comp {
 	union {
 		uint64_t len;
@@ -329,11 +346,32 @@ struct cpt_ctx {
 	uint8_t  auth_key[64];
 };
 
+/* Prime and order fields of built-in elliptic curves */
+struct cpt_ec_group {
+	struct {
+		/* P521 maximum length */
+		uint8_t data[66];
+		unsigned int length;
+	} prime;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[66];
+		unsigned int length;
+	} order;
+};
+
+struct cpt_asym_ec_ctx {
+	/* Prime length defined by microcode for EC operations */
+	uint8_t curveid;
+};
+
 struct cpt_asym_sess_misc {
 	enum rte_crypto_asym_xform_type xfrm_type;
 	union {
 		struct rte_crypto_rsa_xform rsa_ctx;
 		struct rte_crypto_modex_xform mod_ctx;
+		struct cpt_asym_ec_ctx ec_ctx;
 	};
 };
 

@@ -17,8 +17,11 @@
 #include "otx_cryptodev_ops.h"
 
 #include "cpt_pmd_logs.h"
+#include "cpt_pmd_ops_helper.h"
 #include "cpt_ucode.h"
 #include "cpt_ucode_asym.h"
+
+static uint64_t otx_fpm_iova[CPT_EC_ID_PMAX];
 
 /* Forward declarations */
 
@@ -52,11 +55,18 @@ otx_cpt_periodic_alarm_stop(void *arg)
 /* PMD ops */
 
 static int
-otx_cpt_dev_config(struct rte_cryptodev *dev __rte_unused,
+otx_cpt_dev_config(struct rte_cryptodev *dev,
 		   struct rte_cryptodev_config *config __rte_unused)
 {
+	int ret = 0;
+
 	CPT_PMD_INIT_FUNC_TRACE();
-	return 0;
+
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO)
+		/* Initialize shared FPM table */
+		ret = cpt_fpm_init(otx_fpm_iova);
+
+	return ret;
 }
 
 static int
@@ -75,6 +85,9 @@ otx_cpt_dev_stop(struct rte_cryptodev *c_dev)
 	void *cptvf = c_dev->data->dev_private;
 
 	CPT_PMD_INIT_FUNC_TRACE();
+
+	if (c_dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO)
+		cpt_fpm_clear();
 
 	otx_cpt_stop_device(cptvf);
 }
@@ -425,6 +438,11 @@ otx_cpt_enq_single_asym(struct cpt_instance *instance,
 		if (unlikely(ret))
 			goto req_fail;
 		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+		ret = cpt_enqueue_ecdsa_op(op, &params, sess, otx_fpm_iova);
+		if (unlikely(ret))
+			goto req_fail;
+		break;
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		ret = -EINVAL;
@@ -668,6 +686,24 @@ otx_cpt_asym_rsa_op(struct rte_crypto_op *cop, struct cpt_request_info *req,
 	}
 }
 
+static __rte_always_inline void
+otx_cpt_asym_dequeue_ecdsa_op(struct rte_crypto_ecdsa_op_param *ecdsa,
+			    struct cpt_request_info *req,
+			    struct cpt_asym_ec_ctx *ec)
+
+{
+	int prime_len = ec_grp[ec->curveid].prime.length;
+
+	if (ecdsa->op_type == RTE_CRYPTO_ASYM_OP_VERIFY)
+		return;
+
+	/* Separate out sign r and s components */
+	memcpy(ecdsa->r.data, req->rptr, prime_len);
+	memcpy(ecdsa->s.data, req->rptr + ROUNDUP8(prime_len), prime_len);
+	ecdsa->r.length = prime_len;
+	ecdsa->s.length = prime_len;
+}
+
 static __rte_always_inline void __hot
 otx_cpt_asym_post_process(struct rte_crypto_op *cop,
 			  struct cpt_request_info *req)
@@ -686,6 +722,9 @@ otx_cpt_asym_post_process(struct rte_crypto_op *cop,
 		op->modex.result.length = sess->mod_ctx.modulus.length;
 		memcpy(op->modex.result.data, req->rptr,
 		       op->modex.result.length);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+		otx_cpt_asym_dequeue_ecdsa_op(&op->ecdsa, req, &sess->ec_ctx);
 		break;
 	default:
 		CPT_LOG_DP_DEBUG("Invalid crypto xform type");
