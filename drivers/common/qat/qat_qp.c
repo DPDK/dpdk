@@ -608,7 +608,18 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 			if (nb_ops_possible == 0)
 				return 0;
 		}
+		/* QAT has plenty of work queued already, so don't waste cycles
+		 * enqueueing, wait til the application has gathered a bigger
+		 * burst or some completed ops have been dequeued
+		 */
+		if (tmp_qp->min_enq_burst_threshold && inflights >
+				QAT_QP_MIN_INFL_THRESHOLD && nb_ops_possible <
+				tmp_qp->min_enq_burst_threshold) {
+			tmp_qp->stats.threshold_hit_count++;
+			return 0;
+		}
 	}
+
 
 	while (nb_ops_sent != nb_ops_possible) {
 		ret = tmp_qp->build_request(*ops, base_addr + tail,

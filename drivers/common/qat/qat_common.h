@@ -61,6 +61,9 @@ struct qat_common_stats {
 	/**< Total error count on operations enqueued */
 	uint64_t dequeue_err_count;
 	/**< Total error count on operations dequeued */
+	uint64_t threshold_hit_count;
+	/**< Total number of times min qp threshold condition was fulfilled */
+
 };
 
 struct qat_pci_device;

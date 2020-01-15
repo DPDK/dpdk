@@ -32,10 +32,12 @@ struct qat_comp_dev_private {
 	/**< The device's pool for qat_comp_xforms */
 	struct rte_mempool *streampool;
 	/**< The device's pool for qat_comp_streams */
+	uint16_t min_enq_burst_threshold;
 };
 
 int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev);
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
+		struct qat_dev_cmd_param *qat_dev_cmd_param);
 
 int
 qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev);

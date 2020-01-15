@@ -12,6 +12,8 @@ struct qat_pci_device;
 #define QAT_CSR_HEAD_WRITE_THRESH 32U
 /* number of requests to accumulate before writing head CSR */
 
+#define QAT_QP_MIN_INFL_THRESHOLD	256
+
 typedef int (*build_request_t)(void *op,
 		uint8_t *req, void *op_cookie,
 		enum qat_device_gen qat_dev_gen);
@@ -77,6 +79,7 @@ struct qat_qp {
 	uint32_t enqueued;
 	uint32_t dequeued __rte_aligned(4);
 	uint16_t max_inflights;
+	uint16_t min_enq_burst_threshold;
 } __rte_cache_aligned;
 
 extern const struct qat_qp_hw_data qat_gen1_qps[][ADF_MAX_QPS_ON_ANY_SERVICE];

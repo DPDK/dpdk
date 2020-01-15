@@ -94,6 +94,9 @@ void qat_stats_get(struct qat_pci_device *dev,
 		stats->dequeued_count += qp[i]->stats.dequeued_count;
 		stats->enqueue_err_count += qp[i]->stats.enqueue_err_count;
 		stats->dequeue_err_count += qp[i]->stats.dequeue_err_count;
+		stats->threshold_hit_count += qp[i]->stats.threshold_hit_count;
+		QAT_LOG(DEBUG, "Threshold was used for qp %d %"PRIu64" times",
+				i, stats->threshold_hit_count);
 	}
 }
 

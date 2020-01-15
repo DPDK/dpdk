@@ -139,6 +139,7 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 								= *qp_addr;
 
 	qp = (struct qat_qp *)*qp_addr;
+	qp->min_enq_burst_threshold = qat_private->min_enq_burst_threshold;
 
 	for (i = 0; i < qp->nb_descriptors; i++) {
 
@@ -660,8 +661,10 @@ static const struct rte_driver compdev_qat_driver = {
 	.alias = qat_comp_drv_name
 };
 int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
+		struct qat_dev_cmd_param *qat_dev_cmd_param)
 {
+	int i = 0;
 	if (qat_pci_dev->qat_dev_gen == QAT_GEN3) {
 		QAT_LOG(ERR, "Compression PMD not supported on QAT c4xxx");
 		return 0;
@@ -717,6 +720,15 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 			"QAT gen %d capabilities unknown, default to GEN1",
 					qat_pci_dev->qat_dev_gen);
 		break;
+	}
+
+	while (1) {
+		if (qat_dev_cmd_param[i].name == NULL)
+			break;
+		if (!strcmp(qat_dev_cmd_param[i].name, COMP_ENQ_THRESHOLD_NAME))
+			comp_dev->min_enq_burst_threshold =
+					qat_dev_cmd_param[i].val;
+		i++;
 	}
 
 	QAT_LOG(DEBUG,

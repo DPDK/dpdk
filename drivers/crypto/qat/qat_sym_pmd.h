@@ -28,10 +28,12 @@ struct qat_sym_dev_private {
 	/**< Device instance for this rte_cryptodev */
 	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
 	/* QAT device symmetric crypto capabilities */
+	uint16_t min_enq_burst_threshold;
 };
 
 int
-qat_sym_dev_create(struct qat_pci_device *qat_pci_dev);
+qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
+		struct qat_dev_cmd_param *qat_dev_cmd_param);
 
 int
 qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev);

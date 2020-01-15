@@ -16,6 +16,16 @@
 
 #define QAT_DEV_NAME_MAX_LEN	64
 
+#define SYM_ENQ_THRESHOLD_NAME "qat_sym_enq_threshold"
+#define ASYM_ENQ_THRESHOLD_NAME "qat_asym_enq_threshold"
+#define COMP_ENQ_THRESHOLD_NAME "qat_comp_enq_threshold"
+#define MAX_QP_THRESHOLD_SIZE	32
+
+struct qat_dev_cmd_param {
+	const char *name;
+	uint16_t val;
+};
+
 enum qat_comp_num_im_buffers {
 	QAT_NUM_INTERM_BUFS_GEN1 = 12,
 	QAT_NUM_INTERM_BUFS_GEN2 = 20,
@@ -94,7 +104,8 @@ struct qat_gen_hw_data {
 extern struct qat_gen_hw_data qat_gen_config[];
 
 struct qat_pci_device *
-qat_pci_device_allocate(struct rte_pci_device *pci_dev);
+qat_pci_device_allocate(struct rte_pci_device *pci_dev,
+		struct qat_dev_cmd_param *qat_dev_cmd_param);
 
 int
 qat_pci_device_release(struct rte_pci_device *pci_dev);
@@ -104,10 +115,12 @@ qat_get_qat_dev_from_pci_dev(struct rte_pci_device *pci_dev);
 
 /* declaration needed for weak functions */
 int
-qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused);
+qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
+		struct qat_dev_cmd_param *qat_dev_cmd_param);
 
 int
-qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused);
+qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
+		struct qat_dev_cmd_param *qat_dev_cmd_param);
 
 int
 qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
@@ -116,7 +129,8 @@ int
 qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
 
 int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused);
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
+		struct qat_dev_cmd_param *qat_dev_cmd_param);
 
 int
 qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);

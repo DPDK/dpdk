@@ -243,6 +243,29 @@ allocated while for GEN1 devices, 12 buffers are allocated, plus 1472 bytes over
 	larger than the input size).
 
 
+Running QAT PMD with minimum threshold for burst size
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If only a small number or packets can be enqueued. Each enqueue causes an expensive MMIO write.
+These MMIO write occurrences can be optimised by setting any of the following parameters:
+
+- qat_sym_enq_threshold
+- qat_asym_enq_threshold
+- qat_comp_enq_threshold
+
+When any of these parameters is set rte_cryptodev_enqueue_burst function will
+return 0 (thereby avoiding an MMIO) if the device is congested and number of packets
+possible to enqueue is smaller.
+To use this feature the user must set the parameter on process start as a device additional parameter::
+
+  -w 03:01.1,qat_sym_enq_threshold=32,qat_comp_enq_threshold=16
+
+All parameters can be used with the same device regardless of order. Parameters are separated
+by comma. When the same parameter is used more than once first occurrence of the parameter
+is used.
+Maximum threshold that can be set is 32.
+
+
 Device and driver naming
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
