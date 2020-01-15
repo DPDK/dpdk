@@ -7814,6 +7814,7 @@ test_authenticated_encryption(const struct aead_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
 
 	int retval;
 	uint8_t *ciphertext, *auth_tag;
@@ -7827,6 +7828,15 @@ test_authenticated_encryption(const struct aead_test_data *tdata)
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->auth_tag.len,
 			tdata->iv.len);
+
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;
+	cap_idx.algo.aead = tdata->algo;
+
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL) {
+		return -ENOTSUP;
+	}
+
 	if (retval < 0)
 		return retval;
 
@@ -8704,6 +8714,7 @@ test_authenticated_decryption(const struct aead_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
 
 	int retval;
 	uint8_t *plaintext;
@@ -8718,6 +8729,14 @@ test_authenticated_decryption(const struct aead_test_data *tdata)
 			tdata->iv.len);
 	if (retval < 0)
 		return retval;
+
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;
+	cap_idx.algo.aead = tdata->algo;
+
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL) {
+		return -ENOTSUP;
+	}
 
 	/* alloc mbuf and set payload */
 	if (tdata->aad.len > MBUF_SIZE) {
@@ -8769,6 +8788,18 @@ test_authenticated_decryption(const struct aead_test_data *tdata)
 			"Authentication failed");
 
 	return 0;
+}
+
+static int
+test_chacha20_poly1305_encrypt_test_case_rfc8439(void)
+{
+	return test_authenticated_encryption(&chacha20_poly1305_case_rfc8439);
+}
+
+static int
+test_chacha20_poly1305_decrypt_test_case_rfc8439(void)
+{
+	return test_authenticated_decryption(&chacha20_poly1305_case_rfc8439);
 }
 
 static int
@@ -12168,6 +12199,10 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_CCM_authenticated_decryption_test_case_128_3),
 
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_chacha20_poly1305_encrypt_test_case_rfc8439),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_chacha20_poly1305_decrypt_test_case_rfc8439),
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_encrypt_SGL_in_place_1500B),
