@@ -92,6 +92,8 @@ enum rte_crypto_asym_xform_type {
 	/**< Elliptic Curve Digital Signature Algorithm
 	 * Perform Signature Generation and Verification.
 	 */
+	RTE_CRYPTO_ASYM_XFORM_ECPM,
+	/**< Elliptic Curve Point Multiplication */
 	RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
 	/**< End of list */
 };
@@ -599,6 +601,20 @@ struct rte_crypto_ecdsa_op_param {
 };
 
 /**
+ * Structure for EC point multiplication operation param
+ */
+struct rte_crypto_ecpm_op_param {
+	struct rte_crypto_ec_point p;
+	/**< x and y coordinates of input point */
+
+	struct rte_crypto_ec_point r;
+	/**< x and y coordinates of resultant point */
+
+	rte_crypto_param scalar;
+	/**< Scalar to multiply the input point */
+};
+
+/**
  * Asymmetric Cryptographic Operation.
  *
  * Structure describing asymmetric crypto operation params.
@@ -621,6 +637,7 @@ struct rte_crypto_asym_op {
 		struct rte_crypto_dh_op_param dh;
 		struct rte_crypto_dsa_op_param dsa;
 		struct rte_crypto_ecdsa_op_param ecdsa;
+		struct rte_crypto_ecpm_op_param ecpm;
 	};
 };
 
