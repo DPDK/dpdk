@@ -27,6 +27,13 @@ static const struct rte_cryptodev_capabilities qat_gen2_sym_capabilities[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
+static const struct rte_cryptodev_capabilities qat_gen3_sym_capabilities[] = {
+	QAT_BASE_GEN1_SYM_CAPABILITIES,
+	QAT_EXTRA_GEN2_SYM_CAPABILITIES,
+	QAT_EXTRA_GEN3_SYM_CAPABILITIES,
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
 static int qat_sym_qp_release(struct rte_cryptodev *dev,
 	uint16_t queue_pair_id);
 
@@ -294,8 +301,10 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		internals->qat_dev_capabilities = qat_gen1_sym_capabilities;
 		break;
 	case QAT_GEN2:
-	case QAT_GEN3:
 		internals->qat_dev_capabilities = qat_gen2_sym_capabilities;
+		break;
+	case QAT_GEN3:
+		internals->qat_dev_capabilities = qat_gen3_sym_capabilities;
 		break;
 	default:
 		internals->qat_dev_capabilities = qat_gen2_sym_capabilities;

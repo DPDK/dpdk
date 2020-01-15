@@ -77,6 +77,10 @@ New Features
   Such algorithm combinations are not supported on GEN1/GEN2 hardware
   and executing the request returns RTE_CRYPTO_OP_STATUS_INVALID_SESSION.
 
+* **Updated the Intel QuickAssist Technology (QAT) symmetric crypto PMD.**
+
+  Added Chacha20-Poly1305 AEAD algorithm.
+
 
 Removed Items
 -------------
