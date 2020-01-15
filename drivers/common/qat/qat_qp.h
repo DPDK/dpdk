@@ -51,7 +51,6 @@ struct qat_queue {
 	uint32_t	tail;			/* Shadow copy of the tail */
 	uint32_t	modulo_mask;
 	uint32_t	msg_size;
-	uint16_t	max_inflights;
 	uint32_t	queue_size;
 	uint8_t		hw_bundle_number;
 	uint8_t		hw_queue_number;
@@ -76,6 +75,7 @@ struct qat_qp {
 	enum qat_service_type service_type;
 	struct qat_pci_device *qat_dev;
 	/**< qat device this qp is on */
+	uint16_t max_inflights;
 } __rte_cache_aligned;
 
 extern const struct qat_qp_hw_data qat_gen1_qps[][ADF_MAX_QPS_ON_ANY_SERVICE];

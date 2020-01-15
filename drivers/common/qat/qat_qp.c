@@ -239,6 +239,15 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 		goto create_err;
 	}
 
+	qp->max_inflights = ADF_MAX_INFLIGHTS(qp->tx_q.queue_size,
+				ADF_BYTES_TO_MSG_SIZE(qp->tx_q.msg_size));
+
+	if (qp->max_inflights < 2) {
+		QAT_LOG(ERR, "Invalid num inflights");
+		qat_queue_delete(&(qp->tx_q));
+		goto create_err;
+	}
+
 	if (qat_queue_create(qat_dev, &(qp->rx_q), qat_qp_conf,
 					ADF_RING_DIR_RX) != 0) {
 		QAT_LOG(ERR, "Rx queue create failed "
@@ -416,15 +425,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 		goto queue_create_err;
 	}
 
-	queue->max_inflights = ADF_MAX_INFLIGHTS(queue->queue_size,
-					ADF_BYTES_TO_MSG_SIZE(desc_size));
 	queue->modulo_mask = (1 << ADF_RING_SIZE_MODULO(queue->queue_size)) - 1;
-
-	if (queue->max_inflights < 2) {
-		QAT_LOG(ERR, "Invalid num inflights");
-		ret = -EINVAL;
-		goto queue_create_err;
-	}
 	queue->head = 0;
 	queue->tail = 0;
 	queue->msg_size = desc_size;
@@ -443,11 +444,11 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 			queue->hw_queue_number, queue_base);
 
 	QAT_LOG(DEBUG, "RING: Name:%s, size in CSR: %u, in bytes %u,"
-		" nb msgs %u, msg_size %u, max_inflights %u modulo mask %u",
+		" nb msgs %u, msg_size %u, modulo mask %u",
 			queue->memz_name,
 			queue->queue_size, queue_size_bytes,
 			qp_conf->nb_descriptors, desc_size,
-			queue->max_inflights, queue->modulo_mask);
+			queue->modulo_mask);
 
 	return 0;
 
@@ -590,7 +591,7 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 
 	/* Find how many can actually fit on the ring */
 	tmp_qp->inflights16 += nb_ops;
-	overflow = tmp_qp->inflights16 - queue->max_inflights;
+	overflow = tmp_qp->inflights16 - tmp_qp->max_inflights;
 	if (overflow > 0) {
 		tmp_qp->inflights16 -= overflow;
 		nb_ops_possible = nb_ops - overflow;
