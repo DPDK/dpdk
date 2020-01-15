@@ -641,6 +641,16 @@ static const struct rte_cryptodev_capabilities otx_asym_capabilities[] = {
 			},
 		}
 	},
+	{	/* ECPM */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ECPM,
+				.op_types = 0
+				}
+			},
+		}
+	},
 	/* End of asymmetric capabilities */
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };

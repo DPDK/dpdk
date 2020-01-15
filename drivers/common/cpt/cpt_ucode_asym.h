@@ -172,6 +172,8 @@ cpt_fill_asym_session_parameters(struct cpt_asym_sess_misc *sess,
 		ret = cpt_fill_modex_params(sess, xform);
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+		/* Fall through */
+	case RTE_CRYPTO_ASYM_XFORM_ECPM:
 		ret = cpt_fill_ec_params(sess, xform);
 		break;
 	default:
@@ -199,6 +201,8 @@ cpt_free_asym_session_parameters(struct cpt_asym_sess_misc *sess)
 			rte_free(mod->modulus.data);
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+		/* Fall through */
+	case RTE_CRYPTO_ASYM_XFORM_ECPM:
 		break;
 	default:
 		CPT_LOG_DP_ERR("Invalid transform type");
@@ -828,4 +832,85 @@ cpt_enqueue_ecdsa_op(struct rte_crypto_op *op,
 	return 0;
 }
 
+static __rte_always_inline int
+cpt_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
+	      struct asym_op_params *asym_params,
+	      uint8_t curveid)
+{
+	struct cpt_request_info *req = asym_params->req;
+	phys_addr_t mphys = asym_params->meta_buf;
+	uint16_t x1_len = ecpm->p.x.length;
+	uint16_t y1_len = ecpm->p.y.length;
+	uint16_t scalar_align, p_align;
+	uint16_t dlen, rlen, prime_len;
+	uint16_t x1_offset, y1_offset;
+	vq_cmd_word0_t vq_cmd_w0;
+	opcode_info_t opcode;
+	buf_ptr_t caddr;
+	uint8_t *dptr;
+
+	prime_len = ec_grp[curveid].prime.length;
+
+	/* Input buffer */
+	dptr = RTE_PTR_ADD(req, sizeof(struct cpt_request_info));
+
+	p_align = ROUNDUP8(prime_len);
+	scalar_align = ROUNDUP8(ecpm->scalar.length);
+
+	/*
+	 * Set dlen = sum(ROUNDUP8(input point(x and y coordinates), prime,
+	 * scalar length),
+	 * Please note point length is equivalent to prime of the curve
+	 */
+	dlen = 3 * p_align + scalar_align;
+
+	x1_offset = prime_len - x1_len;
+	y1_offset = prime_len - y1_len;
+
+	memset(dptr, 0, dlen);
+
+	/* Copy input point, scalar, prime */
+	memcpy(dptr + x1_offset, ecpm->p.x.data, x1_len);
+	dptr += p_align;
+	memcpy(dptr + y1_offset, ecpm->p.y.data, y1_len);
+	dptr += p_align;
+	memcpy(dptr, ecpm->scalar.data, ecpm->scalar.length);
+	dptr += scalar_align;
+	memcpy(dptr, ec_grp[curveid].prime.data, ec_grp[curveid].prime.length);
+	dptr += p_align;
+
+	/* Setup opcodes */
+	opcode.s.major = CPT_MAJOR_OP_ECC;
+	opcode.s.minor = CPT_MINOR_OP_ECC_UMP;
+
+	/* GP op header */
+	vq_cmd_w0.s.opcode = opcode.flags;
+	vq_cmd_w0.s.param1 = curveid;
+	vq_cmd_w0.s.param2 = ecpm->scalar.length;
+	vq_cmd_w0.s.dlen = dlen;
+	vq_cmd_w0.u64 = vq_cmd_w0.u64;
+
+	/* Filling cpt_request_info structure */
+	req->ist.ei0 = vq_cmd_w0.u64;
+	req->ist.ei1 = mphys;
+	req->ist.ei2 = mphys + dlen;
+
+	/* Result buffer will store output point where length of
+	 * each coordinate will be of prime length, thus set
+	 * rlen to twice of prime length.
+	 */
+	rlen = p_align << 1;
+	req->rptr = dptr;
+
+	/* alternate_caddr to write completion status by the microcode */
+	req->alternate_caddr = (uint64_t *)(dptr + rlen);
+	*req->alternate_caddr = ~((uint64_t)COMPLETION_CODE_INIT);
+
+	/* Preparing completion addr, +1 for completion code */
+	caddr.vaddr = dptr + rlen + 1;
+	caddr.dma_addr = mphys + dlen + rlen + 1;
+
+	cpt_fill_req_comp_addr(req, caddr);
+	return 0;
+}
 #endif /* _CPT_UCODE_ASYM_H_ */

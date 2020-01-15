@@ -443,6 +443,13 @@ otx_cpt_enq_single_asym(struct cpt_instance *instance,
 		if (unlikely(ret))
 			goto req_fail;
 		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECPM:
+		ret = cpt_ecpm_prep(&asym_op->ecpm, &params,
+				    sess->ec_ctx.curveid);
+		if (unlikely(ret))
+			goto req_fail;
+		break;
+
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		ret = -EINVAL;
@@ -704,6 +711,19 @@ otx_cpt_asym_dequeue_ecdsa_op(struct rte_crypto_ecdsa_op_param *ecdsa,
 	ecdsa->s.length = prime_len;
 }
 
+static __rte_always_inline void
+otx_cpt_asym_dequeue_ecpm_op(struct rte_crypto_ecpm_op_param *ecpm,
+			     struct cpt_request_info *req,
+			     struct cpt_asym_ec_ctx *ec)
+{
+	int prime_len = ec_grp[ec->curveid].prime.length;
+
+	memcpy(ecpm->r.x.data, req->rptr, prime_len);
+	memcpy(ecpm->r.y.data, req->rptr + ROUNDUP8(prime_len), prime_len);
+	ecpm->r.x.length = prime_len;
+	ecpm->r.y.length = prime_len;
+}
+
 static __rte_always_inline void __hot
 otx_cpt_asym_post_process(struct rte_crypto_op *cop,
 			  struct cpt_request_info *req)
@@ -725,6 +745,9 @@ otx_cpt_asym_post_process(struct rte_crypto_op *cop,
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 		otx_cpt_asym_dequeue_ecdsa_op(&op->ecdsa, req, &sess->ec_ctx);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECPM:
+		otx_cpt_asym_dequeue_ecpm_op(&op->ecpm, req, &sess->ec_ctx);
 		break;
 	default:
 		CPT_LOG_DP_DEBUG("Invalid crypto xform type");
