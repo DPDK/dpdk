@@ -538,7 +538,6 @@ static inline void
 txq_write_tail(struct qat_qp *qp, struct qat_queue *q) {
 	WRITE_CSR_RING_TAIL(qp->mmap_bar_addr, q->hw_bundle_number,
 			q->hw_queue_number, q->tail);
-	q->nb_pending_requests = 0;
 	q->csr_tail = q->tail;
 }
 
@@ -622,25 +621,20 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 kick_tail:
 	queue->tail = tail;
 	tmp_qp->stats.enqueued_count += nb_ops_sent;
-	queue->nb_pending_requests += nb_ops_sent;
-	if (tmp_qp->inflights16 < QAT_CSR_TAIL_FORCE_WRITE_THRESH ||
-		    queue->nb_pending_requests > QAT_CSR_TAIL_WRITE_THRESH) {
-		txq_write_tail(tmp_qp, queue);
-	}
+	txq_write_tail(tmp_qp, queue);
 	return nb_ops_sent;
 }
 
 uint16_t
 qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 {
-	struct qat_queue *rx_queue, *tx_queue;
+	struct qat_queue *rx_queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
 	uint32_t head;
 	uint32_t resp_counter = 0;
 	uint8_t *resp_msg;
 
 	rx_queue = &(tmp_qp->rx_q);
-	tx_queue = &(tmp_qp->tx_q);
 	head = rx_queue->head;
 	resp_msg = (uint8_t *)rx_queue->base_addr + rx_queue->head;
 
@@ -677,11 +671,7 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 						QAT_CSR_HEAD_WRITE_THRESH)
 			rxq_free_desc(tmp_qp, rx_queue);
 	}
-	/* also check if tail needs to be advanced */
-	if (tmp_qp->inflights16 <= QAT_CSR_TAIL_FORCE_WRITE_THRESH &&
-		tx_queue->tail != tx_queue->csr_tail) {
-		txq_write_tail(tmp_qp, tx_queue);
-	}
+
 	return resp_counter;
 }
 
