@@ -230,7 +230,7 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 	}
 
 	qp->mmap_bar_addr = pci_dev->mem_resource[0].addr;
-	qp->inflights16 = 0;
+	qp->enqueued = qp->dequeued = 0;
 
 	if (qat_queue_create(qat_dev, &(qp->tx_q), qat_qp_conf,
 					ADF_RING_DIR_TX) != 0) {
@@ -321,7 +321,7 @@ int qat_qp_release(struct qat_qp **qp_addr)
 				qp->qat_dev->qat_dev_id);
 
 	/* Don't free memory if there are still responses to be processed */
-	if (qp->inflights16 == 0) {
+	if ((qp->enqueued - qp->dequeued) == 0) {
 		qat_queue_delete(&(qp->tx_q));
 		qat_queue_delete(&(qp->rx_q));
 	} else {
@@ -579,7 +579,6 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	uint16_t nb_ops_possible = nb_ops;
 	register uint8_t *base_addr;
 	register uint32_t tail;
-	int overflow;
 
 	if (unlikely(nb_ops == 0))
 		return 0;
@@ -590,13 +589,25 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	tail = queue->tail;
 
 	/* Find how many can actually fit on the ring */
-	tmp_qp->inflights16 += nb_ops;
-	overflow = tmp_qp->inflights16 - tmp_qp->max_inflights;
-	if (overflow > 0) {
-		tmp_qp->inflights16 -= overflow;
-		nb_ops_possible = nb_ops - overflow;
-		if (nb_ops_possible == 0)
-			return 0;
+	{
+		/* dequeued can only be written by one thread, but it may not
+		 * be this thread. As it's 4-byte aligned it will be read
+		 * atomically here by any Intel CPU.
+		 * enqueued can wrap before dequeued, but cannot
+		 * lap it as var size of enq/deq (uint32_t) > var size of
+		 * max_inflights (uint16_t). In reality inflights is never
+		 * even as big as max uint16_t, as it's <= ADF_MAX_DESC.
+		 * On wrapping, the calculation still returns the correct
+		 * positive value as all three vars are unsigned.
+		 */
+		uint32_t inflights =
+			tmp_qp->enqueued - tmp_qp->dequeued;
+
+		if ((inflights + nb_ops) > tmp_qp->max_inflights) {
+			nb_ops_possible = tmp_qp->max_inflights - inflights;
+			if (nb_ops_possible == 0)
+				return 0;
+		}
 	}
 
 	while (nb_ops_sent != nb_ops_possible) {
@@ -605,11 +616,7 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 				tmp_qp->qat_dev_gen);
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
-			/*
-			 * This message cannot be enqueued,
-			 * decrease number of ops that wasn't sent
-			 */
-			tmp_qp->inflights16 -= nb_ops_possible - nb_ops_sent;
+			/* This message cannot be enqueued */
 			if (nb_ops_sent == 0)
 				return 0;
 			goto kick_tail;
@@ -621,6 +628,7 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	}
 kick_tail:
 	queue->tail = tail;
+	tmp_qp->enqueued += nb_ops_sent;
 	tmp_qp->stats.enqueued_count += nb_ops_sent;
 	txq_write_tail(tmp_qp, queue);
 	return nb_ops_sent;
@@ -664,9 +672,9 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	}
 	if (resp_counter > 0) {
 		rx_queue->head = head;
+		tmp_qp->dequeued += resp_counter;
 		tmp_qp->stats.dequeued_count += resp_counter;
 		rx_queue->nb_processed_responses += resp_counter;
-		tmp_qp->inflights16 -= resp_counter;
 
 		if (rx_queue->nb_processed_responses >
 						QAT_CSR_HEAD_WRITE_THRESH)

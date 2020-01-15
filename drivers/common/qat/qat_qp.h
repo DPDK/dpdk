@@ -63,7 +63,6 @@ struct qat_queue {
 
 struct qat_qp {
 	void			*mmap_bar_addr;
-	uint16_t		inflights16;
 	struct qat_queue	tx_q;
 	struct qat_queue	rx_q;
 	struct qat_common_stats stats;
@@ -75,6 +74,8 @@ struct qat_qp {
 	enum qat_service_type service_type;
 	struct qat_pci_device *qat_dev;
 	/**< qat device this qp is on */
+	uint32_t enqueued;
+	uint32_t dequeued __rte_aligned(4);
 	uint16_t max_inflights;
 } __rte_cache_aligned;
 
