@@ -511,6 +511,8 @@ struct ixgbe_adapter {
 	 * mailbox status) link status.
 	 */
 	uint8_t pflink_fullchk;
+	rte_atomic32_t link_thread_running;
+	pthread_t link_thread_tid;
 };
 
 struct ixgbe_vf_representor {

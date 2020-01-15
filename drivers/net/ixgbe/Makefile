@@ -57,6 +57,7 @@ endif
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_hash
 LDLIBS += -lrte_bus_pci
+LDLIBS += -lpthread
 
 #
 # Add extra flags for base driver files (also known as shared code)
