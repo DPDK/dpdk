@@ -95,11 +95,11 @@ check_rx_vec_allow(struct iavf_rx_queue *rxq)
 	if (rxq->rx_free_thresh >= IAVF_VPMD_RX_MAX_BURST &&
 	    rxq->nb_rx_desc % rxq->rx_free_thresh == 0) {
 		PMD_INIT_LOG(DEBUG, "Vector Rx can be enabled on this rxq.");
-		return TRUE;
+		return true;
 	}
 
 	PMD_INIT_LOG(DEBUG, "Vector Rx cannot be enabled on this rxq.");
-	return FALSE;
+	return false;
 }
 
 static inline bool
@@ -109,29 +109,29 @@ check_tx_vec_allow(struct iavf_tx_queue *txq)
 	    txq->rs_thresh >= IAVF_VPMD_TX_MAX_BURST &&
 	    txq->rs_thresh <= IAVF_VPMD_TX_MAX_FREE_BUF) {
 		PMD_INIT_LOG(DEBUG, "Vector tx can be enabled on this txq.");
-		return TRUE;
+		return true;
 	}
 	PMD_INIT_LOG(DEBUG, "Vector Tx cannot be enabled on this txq.");
-	return FALSE;
+	return false;
 }
 
 static inline bool
 check_rx_bulk_allow(struct iavf_rx_queue *rxq)
 {
-	int ret = TRUE;
+	int ret = true;
 
 	if (!(rxq->rx_free_thresh >= IAVF_RX_MAX_BURST)) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
 			     "rxq->rx_free_thresh=%d, "
 			     "IAVF_RX_MAX_BURST=%d",
 			     rxq->rx_free_thresh, IAVF_RX_MAX_BURST);
-		ret = FALSE;
+		ret = false;
 	} else if (rxq->nb_rx_desc % rxq->rx_free_thresh != 0) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
 			     "rxq->nb_rx_desc=%d, "
 			     "rxq->rx_free_thresh=%d",
 			     rxq->nb_rx_desc, rxq->rx_free_thresh);
-		ret = FALSE;
+		ret = false;
 	}
 	return ret;
 }
@@ -390,12 +390,12 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	rxq->mz = mz;
 	reset_rx_queue(rxq);
-	rxq->q_set = TRUE;
+	rxq->q_set = true;
 	dev->data->rx_queues[queue_idx] = rxq;
 	rxq->qrx_tail = hw->hw_addr + IAVF_QRX_TAIL1(rxq->queue_id);
 	rxq->ops = &def_rxq_ops;
 
-	if (check_rx_bulk_allow(rxq) == TRUE) {
+	if (check_rx_bulk_allow(rxq) == true) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
 			     "satisfied. Rx Burst Bulk Alloc function will be "
 			     "used on port=%d, queue=%d.",
@@ -408,7 +408,7 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		ad->rx_bulk_alloc_allowed = false;
 	}
 
-	if (check_rx_vec_allow(rxq) == FALSE)
+	if (check_rx_vec_allow(rxq) == false)
 		ad->rx_vec_allowed = false;
 
 	return 0;
@@ -500,12 +500,12 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	txq->mz = mz;
 	reset_tx_queue(txq);
-	txq->q_set = TRUE;
+	txq->q_set = true;
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->qtx_tail = hw->hw_addr + IAVF_QTX_TAIL1(queue_idx);
 	txq->ops = &def_txq_ops;
 
-	if (check_tx_vec_allow(txq) == FALSE) {
+	if (check_tx_vec_allow(txq) == false) {
 		struct iavf_adapter *ad =
 			IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 		ad->tx_vec_allowed = false;
@@ -543,7 +543,7 @@ iavf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	IAVF_WRITE_FLUSH(hw);
 
 	/* Ready to switch the queue on */
-	err = iavf_switch_queue(adapter, rx_queue_id, TRUE, TRUE);
+	err = iavf_switch_queue(adapter, rx_queue_id, true, true);
 	if (err)
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
 			    rx_queue_id);
@@ -575,7 +575,7 @@ iavf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	IAVF_WRITE_FLUSH(hw);
 
 	/* Ready to switch the queue on */
-	err = iavf_switch_queue(adapter, tx_queue_id, FALSE, TRUE);
+	err = iavf_switch_queue(adapter, tx_queue_id, false, true);
 
 	if (err)
 		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on",
@@ -600,7 +600,7 @@ iavf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (rx_queue_id >= dev->data->nb_rx_queues)
 		return -EINVAL;
 
-	err = iavf_switch_queue(adapter, rx_queue_id, TRUE, FALSE);
+	err = iavf_switch_queue(adapter, rx_queue_id, true, false);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
 			    rx_queue_id);
@@ -628,7 +628,7 @@ iavf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (tx_queue_id >= dev->data->nb_tx_queues)
 		return -EINVAL;
 
-	err = iavf_switch_queue(adapter, tx_queue_id, FALSE, FALSE);
+	err = iavf_switch_queue(adapter, tx_queue_id, false, false);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u off",
 			    tx_queue_id);
@@ -1815,7 +1815,7 @@ iavf_dev_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->nb_desc = rxq->nb_rx_desc;
 
 	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
-	qinfo->conf.rx_drop_en = TRUE;
+	qinfo->conf.rx_drop_en = true;
 	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
 }
 

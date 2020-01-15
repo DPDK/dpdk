@@ -454,7 +454,7 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Set all mac addrs */
-	iavf_add_del_all_mac_addr(adapter, TRUE);
+	iavf_add_del_all_mac_addr(adapter, true);
 
 	if (iavf_start_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "enable queues failed");
@@ -464,7 +464,7 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	return 0;
 
 err_mac:
-	iavf_add_del_all_mac_addr(adapter, FALSE);
+	iavf_add_del_all_mac_addr(adapter, false);
 err_queue:
 err_rss:
 	return -1;
@@ -493,7 +493,7 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	/* remove all mac addrs */
-	iavf_add_del_all_mac_addr(adapter, FALSE);
+	iavf_add_del_all_mac_addr(adapter, false);
 	adapter->stopped = 1;
 }
 
@@ -648,9 +648,9 @@ iavf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	if (vf->promisc_unicast_enabled)
 		return 0;
 
-	ret = iavf_config_promisc(adapter, TRUE, vf->promisc_multicast_enabled);
+	ret = iavf_config_promisc(adapter, true, vf->promisc_multicast_enabled);
 	if (!ret)
-		vf->promisc_unicast_enabled = TRUE;
+		vf->promisc_unicast_enabled = true;
 	else
 		ret = -EAGAIN;
 
@@ -668,9 +668,10 @@ iavf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	if (!vf->promisc_unicast_enabled)
 		return 0;
 
-	ret = iavf_config_promisc(adapter, FALSE, vf->promisc_multicast_enabled);
+	ret = iavf_config_promisc(adapter, false,
+				  vf->promisc_multicast_enabled);
 	if (!ret)
-		vf->promisc_unicast_enabled = FALSE;
+		vf->promisc_unicast_enabled = false;
 	else
 		ret = -EAGAIN;
 
@@ -688,9 +689,9 @@ iavf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	if (vf->promisc_multicast_enabled)
 		return 0;
 
-	ret = iavf_config_promisc(adapter, vf->promisc_unicast_enabled, TRUE);
+	ret = iavf_config_promisc(adapter, vf->promisc_unicast_enabled, true);
 	if (!ret)
-		vf->promisc_multicast_enabled = TRUE;
+		vf->promisc_multicast_enabled = true;
 	else
 		ret = -EAGAIN;
 
@@ -708,9 +709,9 @@ iavf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	if (!vf->promisc_multicast_enabled)
 		return 0;
 
-	ret = iavf_config_promisc(adapter, vf->promisc_unicast_enabled, FALSE);
+	ret = iavf_config_promisc(adapter, vf->promisc_unicast_enabled, false);
 	if (!ret)
-		vf->promisc_multicast_enabled = FALSE;
+		vf->promisc_multicast_enabled = false;
 	else
 		ret = -EAGAIN;
 
@@ -732,7 +733,7 @@ iavf_dev_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr,
 		return -EINVAL;
 	}
 
-	err = iavf_add_del_eth_addr(adapter, addr, TRUE);
+	err = iavf_add_del_eth_addr(adapter, addr, true);
 	if (err) {
 		PMD_DRV_LOG(ERR, "fail to add MAC address");
 		return -EIO;
@@ -754,7 +755,7 @@ iavf_dev_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 
 	addr = &dev->data->mac_addrs[index];
 
-	err = iavf_add_del_eth_addr(adapter, addr, FALSE);
+	err = iavf_add_del_eth_addr(adapter, addr, false);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to delete MAC address");
 
@@ -979,7 +980,7 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	if (rte_is_valid_assigned_ether_addr(perm_addr))
 		return -EPERM;
 
-	ret = iavf_add_del_eth_addr(adapter, old_addr, FALSE);
+	ret = iavf_add_del_eth_addr(adapter, old_addr, false);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Fail to delete old MAC:"
 			    " %02X:%02X:%02X:%02X:%02X:%02X",
@@ -990,7 +991,7 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 			    old_addr->addr_bytes[4],
 			    old_addr->addr_bytes[5]);
 
-	ret = iavf_add_del_eth_addr(adapter, mac_addr, TRUE);
+	ret = iavf_add_del_eth_addr(adapter, mac_addr, true);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Fail to add new MAC:"
 			    " %02X:%02X:%02X:%02X:%02X:%02X",
