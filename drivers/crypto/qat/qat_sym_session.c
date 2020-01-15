@@ -416,6 +416,74 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 	return 0;
 }
 
+static void
+qat_sym_session_set_ext_hash_flags(struct qat_sym_session *session,
+		uint8_t hash_flag)
+{
+	struct icp_qat_fw_comn_req_hdr *header = &session->fw_req.comn_hdr;
+	struct icp_qat_fw_cipher_auth_cd_ctrl_hdr *cd_ctrl =
+			(struct icp_qat_fw_cipher_auth_cd_ctrl_hdr *)
+			session->fw_req.cd_ctrl.content_desc_ctrl_lw;
+
+	/* Set the Use Extended Protocol Flags bit in LW 1 */
+	QAT_FIELD_SET(header->comn_req_flags,
+			QAT_COMN_EXT_FLAGS_USED,
+			QAT_COMN_EXT_FLAGS_BITPOS,
+			QAT_COMN_EXT_FLAGS_MASK);
+
+	/* Set Hash Flags in LW 28 */
+	cd_ctrl->hash_flags |= hash_flag;
+
+	/* Set proto flags in LW 1 */
+	switch (session->qat_cipher_alg) {
+	case ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2:
+		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
+				ICP_QAT_FW_LA_SNOW_3G_PROTO);
+		ICP_QAT_FW_LA_ZUC_3G_PROTO_FLAG_SET(
+				header->serv_specif_flags, 0);
+		break;
+	case ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3:
+		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
+				ICP_QAT_FW_LA_NO_PROTO);
+		ICP_QAT_FW_LA_ZUC_3G_PROTO_FLAG_SET(
+				header->serv_specif_flags,
+				ICP_QAT_FW_LA_ZUC_3G_PROTO);
+		break;
+	default:
+		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
+				ICP_QAT_FW_LA_NO_PROTO);
+		ICP_QAT_FW_LA_ZUC_3G_PROTO_FLAG_SET(
+				header->serv_specif_flags, 0);
+		break;
+	}
+}
+
+static void
+qat_sym_session_handle_mixed(struct qat_sym_session *session)
+{
+	if (session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3 &&
+			session->qat_cipher_alg !=
+			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3) {
+		session->min_qat_dev_gen = QAT_GEN3;
+		qat_sym_session_set_ext_hash_flags(session,
+			1 << ICP_QAT_FW_AUTH_HDR_FLAG_ZUC_EIA3_BITPOS);
+	} else if (session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2 &&
+			session->qat_cipher_alg !=
+			ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2) {
+		session->min_qat_dev_gen = QAT_GEN3;
+		qat_sym_session_set_ext_hash_flags(session,
+			1 << ICP_QAT_FW_AUTH_HDR_FLAG_SNOW3G_UIA2_BITPOS);
+	} else if ((session->aes_cmac ||
+			session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) &&
+			(session->qat_cipher_alg ==
+			ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2 ||
+			session->qat_cipher_alg ==
+			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3)) {
+		session->min_qat_dev_gen = QAT_GEN3;
+		qat_sym_session_set_ext_hash_flags(session, 0);
+	}
+}
+
 int
 qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
@@ -463,6 +531,8 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 					xform, session);
 			if (ret < 0)
 				return ret;
+			/* Special handling of mixed hash+cipher algorithms */
+			qat_sym_session_handle_mixed(session);
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_HASH_CIPHER:
@@ -480,6 +550,8 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 					xform, session);
 			if (ret < 0)
 				return ret;
+			/* Special handling of mixed hash+cipher algorithms */
+			qat_sym_session_handle_mixed(session);
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_TRNG_GET_RANDOM:

@@ -69,6 +69,14 @@ New Features
   * ECPM (Elliptic Curve Point Multiplication) is added to
     asymmetric crypto library specifications.
 
+* **Added handling of mixed algorithms in encrypted digest requests in QAT PMD.**
+
+  Added handling of mixed algorithms in encrypted digest hash-cipher
+  (generation) and cipher-hash (verification) requests (e.g. SNOW3G + ZUC or
+  ZUC + AES CTR) in QAT PMD possible when running on GEN3 QAT hardware.
+  Such algorithm combinations are not supported on GEN1/GEN2 hardware
+  and executing the request returns RTE_CRYPTO_OP_STATUS_INVALID_SESSION.
+
 
 Removed Items
 -------------
