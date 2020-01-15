@@ -13,6 +13,7 @@
 #include <rte_ethdev_vdev.h>
 #include <rte_bus_vdev.h>
 #include <rte_alarm.h>
+#include <rte_cycles.h>
 
 #include "virtio_ethdev.h"
 #include "virtio_logs.h"
@@ -25,12 +26,48 @@
 #define virtio_user_get_dev(hw) \
 	((struct virtio_user_dev *)(hw)->virtio_user_dev)
 
+static void
+virtio_user_reset_queues_packed(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtnet_rx *rxvq;
+	struct virtnet_tx *txvq;
+	uint16_t i;
+
+	/* Add lock to avoid queue contention. */
+	rte_spinlock_lock(&hw->state_lock);
+	hw->started = 0;
+
+	/*
+	 * Waitting for datapath to complete before resetting queues.
+	 * 1 ms should be enough for the ongoing Tx/Rx function to finish.
+	 */
+	rte_delay_ms(1);
+
+	/* Vring reset for each Tx queue and Rx queue. */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxvq = dev->data->rx_queues[i];
+		virtqueue_rxvq_reset_packed(rxvq->vq);
+		virtio_dev_rx_queue_setup_finish(dev, i);
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txvq = dev->data->tx_queues[i];
+		virtqueue_txvq_reset_packed(txvq->vq);
+	}
+
+	hw->started = 1;
+	rte_spinlock_unlock(&hw->state_lock);
+}
+
+
 static int
 virtio_user_server_reconnect(struct virtio_user_dev *dev)
 {
 	int ret;
 	int connectfd;
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
+	struct virtio_hw *hw = eth_dev->data->dev_private;
 
 	connectfd = accept(dev->listenfd, NULL, NULL);
 	if (connectfd < 0)
@@ -50,6 +87,12 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 	dev->device_features &= ~(dev->unsupported_features);
 
 	dev->features &= dev->device_features;
+
+	/* For packed ring, resetting queues is required in reconnection. */
+	if (vtpci_packed_queue(hw))
+		PMD_INIT_LOG(NOTICE, "Packets on the fly will be dropped"
+				" when packed ring reconnecting.");
+		virtio_user_reset_queues_packed(eth_dev);
 
 	ret = virtio_user_start_device(dev);
 	if (ret < 0)

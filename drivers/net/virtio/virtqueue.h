@@ -443,6 +443,10 @@ struct rte_mbuf *virtqueue_detach_unused(struct virtqueue *vq);
 /* Flush the elements in the used ring. */
 void virtqueue_rxvq_flush(struct virtqueue *vq);
 
+int virtqueue_rxvq_reset_packed(struct virtqueue *vq);
+
+int virtqueue_txvq_reset_packed(struct virtqueue *vq);
+
 static inline int
 virtqueue_full(const struct virtqueue *vq)
 {

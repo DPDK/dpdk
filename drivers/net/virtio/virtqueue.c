@@ -141,3 +141,74 @@ virtqueue_rxvq_flush(struct virtqueue *vq)
 	else
 		virtqueue_rxvq_flush_split(vq);
 }
+
+int
+virtqueue_rxvq_reset_packed(struct virtqueue *vq)
+{
+	int size = vq->vq_nentries;
+	struct vq_desc_extra *dxp;
+	struct virtnet_rx *rxvq;
+	uint16_t desc_idx;
+
+	vq->vq_used_cons_idx = 0;
+	vq->vq_desc_head_idx = 0;
+	vq->vq_avail_idx = 0;
+	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
+	vq->vq_free_cnt = vq->vq_nentries;
+
+	vq->vq_packed.used_wrap_counter = 1;
+	vq->vq_packed.cached_flags = VRING_PACKED_DESC_F_AVAIL;
+	vq->vq_packed.event_flags_shadow = 0;
+	vq->vq_packed.cached_flags |= VRING_DESC_F_WRITE;
+
+	rxvq = &vq->rxq;
+	memset(rxvq->mz->addr, 0, rxvq->mz->len);
+
+	for (desc_idx = 0; desc_idx < vq->vq_nentries; desc_idx++) {
+		dxp = &vq->vq_descx[desc_idx];
+		if (dxp->cookie != NULL) {
+			rte_pktmbuf_free(dxp->cookie);
+			dxp->cookie = NULL;
+		}
+	}
+
+	vring_desc_init_packed(vq, size);
+
+	return 0;
+}
+
+int
+virtqueue_txvq_reset_packed(struct virtqueue *vq)
+{
+	int size = vq->vq_nentries;
+	struct vq_desc_extra *dxp;
+	struct virtnet_tx *txvq;
+	uint16_t desc_idx;
+
+	vq->vq_used_cons_idx = 0;
+	vq->vq_desc_head_idx = 0;
+	vq->vq_avail_idx = 0;
+	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
+	vq->vq_free_cnt = vq->vq_nentries;
+
+	vq->vq_packed.used_wrap_counter = 1;
+	vq->vq_packed.cached_flags = VRING_PACKED_DESC_F_AVAIL;
+	vq->vq_packed.event_flags_shadow = 0;
+
+	txvq = &vq->txq;
+	memset(txvq->mz->addr, 0, txvq->mz->len);
+	memset(txvq->virtio_net_hdr_mz->addr, 0,
+		txvq->virtio_net_hdr_mz->len);
+
+	for (desc_idx = 0; desc_idx < vq->vq_nentries; desc_idx++) {
+		dxp = &vq->vq_descx[desc_idx];
+		if (dxp->cookie != NULL) {
+			rte_pktmbuf_free(dxp->cookie);
+			dxp->cookie = NULL;
+		}
+	}
+
+	vring_desc_init_packed(vq, size);
+
+	return 0;
+}
