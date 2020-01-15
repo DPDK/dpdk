@@ -424,7 +424,7 @@ ice_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	/* Init the RX tail register. */
 	ICE_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 
-	err = ice_switch_rx_queue(hw, rxq->reg_idx, TRUE);
+	err = ice_switch_rx_queue(hw, rxq->reg_idx, true);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
 			    rx_queue_id);
@@ -450,7 +450,7 @@ ice_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (rx_queue_id < dev->data->nb_rx_queues) {
 		rxq = dev->data->rx_queues[rx_queue_id];
 
-		err = ice_switch_rx_queue(hw, rxq->reg_idx, FALSE);
+		err = ice_switch_rx_queue(hw, rxq->reg_idx, false);
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
 				    rx_queue_id);
@@ -630,7 +630,7 @@ ice_fdir_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	/* Init the RX tail register. */
 	ICE_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 
-	err = ice_switch_rx_queue(hw, rxq->reg_idx, TRUE);
+	err = ice_switch_rx_queue(hw, rxq->reg_idx, true);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to switch FDIR RX queue %u on",
 			    rx_queue_id);
@@ -816,7 +816,7 @@ ice_fdir_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	rxq = pf->fdir.rxq;
 
-	err = ice_switch_rx_queue(hw, rxq->reg_idx, FALSE);
+	err = ice_switch_rx_queue(hw, rxq->reg_idx, false);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to switch FDIR RX queue %u off",
 			    rx_queue_id);
@@ -970,7 +970,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	ice_reset_rx_queue(rxq);
-	rxq->q_set = TRUE;
+	rxq->q_set = true;
 	dev->data->rx_queues[queue_idx] = rxq;
 	rxq->rx_rel_mbufs = _ice_rx_queue_release_mbufs;
 
@@ -1183,7 +1183,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	ice_reset_tx_queue(txq);
-	txq->q_set = TRUE;
+	txq->q_set = true;
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->tx_rel_mbufs = _ice_tx_queue_release_mbufs;
 	ice_set_tx_function_flag(dev, txq);
@@ -2040,7 +2040,7 @@ ice_fdir_setup_tx_resources(struct ice_pf *pf)
 	 * don't need to allocate software ring and reset for the fdir
 	 * program queue just set the queue has been configured.
 	 */
-	txq->q_set = TRUE;
+	txq->q_set = true;
 	pf->fdir.txq = txq;
 
 	txq->tx_rel_mbufs = _ice_tx_queue_release_mbufs;
@@ -2101,7 +2101,7 @@ ice_fdir_setup_rx_resources(struct ice_pf *pf)
 	 * Don't need to allocate software ring and reset for the fdir
 	 * rx queue, just set the queue has been configured.
 	 */
-	rxq->q_set = TRUE;
+	rxq->q_set = true;
 	pf->fdir.rxq = rxq;
 
 	rxq->rx_rel_mbufs = _ice_rx_queue_release_mbufs;

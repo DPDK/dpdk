@@ -1720,7 +1720,7 @@ ice_pf_setup(struct ice_pf *pf)
 	uint16_t unused;
 
 	/* Clear all stats counters */
-	pf->offset_loaded = FALSE;
+	pf->offset_loaded = false;
 	memset(&pf->stats, 0, sizeof(struct ice_hw_port_stats));
 	memset(&pf->stats_offset, 0, sizeof(struct ice_hw_port_stats));
 	memset(&pf->internal_stats, 0, sizeof(struct ice_eth_stats));
@@ -2234,16 +2234,16 @@ ice_dev_init(struct rte_eth_dev *dev)
 	vsi = pf->main_vsi;
 
 	/* Disable double vlan by default */
-	ice_vsi_config_double_vlan(vsi, FALSE);
+	ice_vsi_config_double_vlan(vsi, false);
 
-	ret = ice_aq_stop_lldp(hw, TRUE, FALSE, NULL);
+	ret = ice_aq_stop_lldp(hw, true, false, NULL);
 	if (ret != ICE_SUCCESS)
 		PMD_INIT_LOG(DEBUG, "lldp has already stopped\n");
-	ret = ice_init_dcb(hw, TRUE);
+	ret = ice_init_dcb(hw, true);
 	if (ret != ICE_SUCCESS)
 		PMD_INIT_LOG(DEBUG, "Failed to init DCB\n");
 	/* Forward LLDP packets to default VSI */
-	ret = ice_vsi_config_sw_lldp(vsi, TRUE);
+	ret = ice_vsi_config_sw_lldp(vsi, true);
 	if (ret != ICE_SUCCESS)
 		PMD_INIT_LOG(DEBUG, "Failed to cfg lldp\n");
 	/* register callback func to eal lib */
@@ -3449,23 +3449,23 @@ ice_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	rxmode = &dev->data->dev_conf.rxmode;
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
-			ice_vsi_config_vlan_filter(vsi, TRUE);
+			ice_vsi_config_vlan_filter(vsi, true);
 		else
-			ice_vsi_config_vlan_filter(vsi, FALSE);
+			ice_vsi_config_vlan_filter(vsi, false);
 	}
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
-			ice_vsi_config_vlan_stripping(vsi, TRUE);
+			ice_vsi_config_vlan_stripping(vsi, true);
 		else
-			ice_vsi_config_vlan_stripping(vsi, FALSE);
+			ice_vsi_config_vlan_stripping(vsi, false);
 	}
 
 	if (mask & ETH_VLAN_EXTEND_MASK) {
 		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
-			ice_vsi_config_double_vlan(vsi, TRUE);
+			ice_vsi_config_double_vlan(vsi, true);
 		else
-			ice_vsi_config_double_vlan(vsi, FALSE);
+			ice_vsi_config_double_vlan(vsi, false);
 	}
 
 	return 0;
