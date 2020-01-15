@@ -21,24 +21,20 @@
 #include <rte_log.h>
 #include <rte_io.h>
 
+#ifndef __INTEL_NET_BASE_OSDEP__
+#define __INTEL_NET_BASE_OSDEP__
+
 #define INLINE inline
 #define STATIC static
 
 typedef uint8_t         u8;
 typedef int8_t          s8;
 typedef uint16_t        u16;
+typedef int16_t         s16;
 typedef uint32_t        u32;
 typedef int32_t         s32;
 typedef uint64_t        u64;
-
-#define __iomem
-#define hw_dbg(hw, S, A...) do {} while (0)
-#define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
-#define lower_32_bits(n) ((u32)(n))
-
-#ifndef ETH_ADDR_LEN
-#define ETH_ADDR_LEN                  6
-#endif
+typedef uint64_t        s64;
 
 #ifndef __le16
 #define __le16          uint16_t
@@ -59,16 +55,11 @@ typedef uint64_t        u64;
 #define __be64          uint64_t
 #endif
 
-#define FALSE           0
-#define TRUE            1
-#define false           0
-#define true            1
+#define min(a, b) RTE_MIN(a, b)
+#define max(a, b) RTE_MAX(a, b)
 
-#define min(a,b) RTE_MIN(a,b)
-#define max(a,b) RTE_MAX(a,b)
-
-#define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
-#define ASSERT(x) if(!(x)) rte_panic("IAVF: x")
+#define FIELD_SIZEOF(t, f) RTE_SIZEOF_FIELD(t, f)
+#define ARRAY_SIZE(arr) RTE_DIM(arr)
 
 #define CPU_TO_LE16(o) rte_cpu_to_le_16(o)
 #define CPU_TO_LE32(s) rte_cpu_to_le_32(s)
@@ -77,12 +68,51 @@ typedef uint64_t        u64;
 #define LE32_TO_CPU(c) rte_le_to_cpu_32(c)
 #define LE64_TO_CPU(k) rte_le_to_cpu_64(k)
 
-#define cpu_to_le16(o) rte_cpu_to_le_16(o)
-#define cpu_to_le32(s) rte_cpu_to_le_32(s)
-#define cpu_to_le64(h) rte_cpu_to_le_64(h)
-#define le16_to_cpu(a) rte_le_to_cpu_16(a)
-#define le32_to_cpu(c) rte_le_to_cpu_32(c)
-#define le64_to_cpu(k) rte_le_to_cpu_64(k)
+#define CPU_TO_BE16(o) rte_cpu_to_be_16(o)
+#define CPU_TO_BE32(o) rte_cpu_to_be_32(o)
+#define CPU_TO_BE64(o) rte_cpu_to_be_64(o)
+
+#define NTOHS(a) rte_be_to_cpu_16(a)
+#define NTOHL(a) rte_be_to_cpu_32(a)
+#define HTONS(a) rte_cpu_to_be_16(a)
+#define HTONL(a) rte_cpu_to_be_32(a)
+
+static __rte_always_inline uint32_t
+readl(volatile void *addr)
+{
+	return rte_le_to_cpu_32(rte_read32(addr));
+}
+
+static __rte_always_inline void
+writel(uint32_t value, volatile void *addr)
+{
+	rte_write32(rte_cpu_to_le_32(value), addr);
+}
+
+static __rte_always_inline void
+writel_relaxed(uint32_t value, volatile void *addr)
+{
+	rte_write32_relaxed(rte_cpu_to_le_32(value), addr);
+}
+
+static __rte_always_inline uint64_t
+readq(volatile void *addr)
+{
+	return rte_le_to_cpu_64(rte_read64(addr));
+}
+
+static __rte_always_inline void
+writeq(uint64_t value, volatile void *addr)
+{
+	rte_write64(rte_cpu_to_le_64(value), addr);
+}
+
+#define wr32(a, reg, value) writel((value), (a)->hw_addr + (reg))
+#define rd32(a, reg)        readl((a)->hw_addr + (reg))
+#define wr64(a, reg, value) writeq((value), (a)->hw_addr + (reg))
+#define rd64(a, reg)        readq((a)->hw_addr + (reg))
+
+#endif /* __INTEL_NET_BASE_OSDEP__ */
 
 #define iavf_memset(a, b, c, d) memset((a), (b), (c))
 #define iavf_memcpy(a, b, c, d) rte_memcpy((a), (b), (c))
@@ -90,32 +120,13 @@ typedef uint64_t        u64;
 #define iavf_usec_delay(x) rte_delay_us_sleep(x)
 #define iavf_msec_delay(x) iavf_usec_delay(1000 * (x))
 
-#define IAVF_PCI_REG(reg)		rte_read32(reg)
-#define IAVF_PCI_REG_ADDR(a, reg) \
-	((volatile uint32_t *)((char *)(a)->hw_addr + (reg)))
+#define IAVF_PCI_REG_WRITE(reg, value)         writel(value, reg)
+#define IAVF_PCI_REG_WRITE_RELAXED(reg, value) writel_relaxed(value, reg)
 
-#define IAVF_PCI_REG_WRITE(reg, value)		\
-	rte_write32((rte_cpu_to_le_32(value)), reg)
-#define IAVF_PCI_REG_WRITE_RELAXED(reg, value)	\
-	rte_write32_relaxed((rte_cpu_to_le_32(value)), reg)
-static inline
-uint32_t iavf_read_addr(volatile void *addr)
-{
-	return rte_le_to_cpu_32(IAVF_PCI_REG(addr));
-}
+#define IAVF_READ_REG(hw, reg)                 rd32(hw, reg)
+#define IAVF_WRITE_REG(hw, reg, value)         wr32(hw, reg, value)
 
-#define IAVF_READ_REG(hw, reg) \
-	iavf_read_addr(IAVF_PCI_REG_ADDR((hw), (reg)))
-#define IAVF_WRITE_REG(hw, reg, value) \
-	IAVF_PCI_REG_WRITE(IAVF_PCI_REG_ADDR((hw), (reg)), (value))
-#define IAVF_WRITE_FLUSH(a) \
-	IAVF_READ_REG(a, IAVF_VFGEN_RSTAT)
-
-#define rd32(a, reg) iavf_read_addr(IAVF_PCI_REG_ADDR((a), (reg)))
-#define wr32(a, reg, value) \
-	IAVF_PCI_REG_WRITE(IAVF_PCI_REG_ADDR((a), (reg)), (value))
-
-#define ARRAY_SIZE(arr) (sizeof(arr)/sizeof(arr[0]))
+#define IAVF_WRITE_FLUSH(a) IAVF_READ_REG(a, IAVF_VFGEN_RSTAT)
 
 extern int iavf_common_logger;
 
