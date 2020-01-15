@@ -22,6 +22,8 @@
 
 #define METABUF_POOL_CACHE_SIZE	512
 
+static uint64_t otx2_fpm_iova[CPT_EC_ID_PMAX];
+
 /* Forward declarations */
 
 static int
@@ -440,6 +442,11 @@ otx2_cpt_enqueue_asym(struct otx2_cpt_qp *qp,
 		if (unlikely(ret))
 			goto req_fail;
 		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+		ret = cpt_enqueue_ecdsa_op(op, &params, sess, otx2_fpm_iova);
+		if (unlikely(ret))
+			goto req_fail;
+		break;
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		ret = -EINVAL;
@@ -641,6 +648,23 @@ otx2_cpt_asym_rsa_op(struct rte_crypto_op *cop, struct cpt_request_info *req,
 	}
 }
 
+static __rte_always_inline void
+otx2_cpt_asym_dequeue_ecdsa_op(struct rte_crypto_ecdsa_op_param *ecdsa,
+			       struct cpt_request_info *req,
+			       struct cpt_asym_ec_ctx *ec)
+{
+	int prime_len = ec_grp[ec->curveid].prime.length;
+
+	if (ecdsa->op_type == RTE_CRYPTO_ASYM_OP_VERIFY)
+		return;
+
+	/* Separate out sign r and s components */
+	memcpy(ecdsa->r.data, req->rptr, prime_len);
+	memcpy(ecdsa->s.data, req->rptr + ROUNDUP8(prime_len), prime_len);
+	ecdsa->r.length = prime_len;
+	ecdsa->s.length = prime_len;
+}
+
 static void
 otx2_cpt_asym_post_process(struct rte_crypto_op *cop,
 			   struct cpt_request_info *req)
@@ -659,6 +683,9 @@ otx2_cpt_asym_post_process(struct rte_crypto_op *cop,
 		op->modex.result.length = sess->mod_ctx.modulus.length;
 		memcpy(op->modex.result.data, req->rptr,
 		       op->modex.result.length);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+		otx2_cpt_asym_dequeue_ecdsa_op(&op->ecdsa, req, &sess->ec_ctx);
 		break;
 	default:
 		CPT_LOG_DP_DEBUG("Invalid crypto xform type");
@@ -824,6 +851,13 @@ otx2_cpt_dev_config(struct rte_cryptodev *dev,
 
 	dev->feature_flags &= ~conf->ff_disable;
 
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
+		/* Initialize shared FPM table */
+		ret = cpt_fpm_init(otx2_fpm_iova);
+		if (ret)
+			return ret;
+	}
+
 	/* Unregister error interrupts */
 	if (vf->err_intr_registered)
 		otx2_cpt_err_intr_unregister(dev);
@@ -881,9 +915,10 @@ otx2_cpt_dev_start(struct rte_cryptodev *dev)
 static void
 otx2_cpt_dev_stop(struct rte_cryptodev *dev)
 {
-	RTE_SET_USED(dev);
-
 	CPT_PMD_INIT_FUNC_TRACE();
+
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO)
+		cpt_fpm_clear();
 }
 
 static int

@@ -628,6 +628,17 @@ rte_cryptodev_capabilities otx2_cpt_capabilities[] = {
 			}
 		}, }
 	},
+	{	/* ECDSA */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDSA,
+				.op_types = ((1 << RTE_CRYPTO_ASYM_OP_SIGN) |
+					(1 << RTE_CRYPTO_ASYM_OP_VERIFY)),
+				}
+			},
+		}
+	},
 	/* End of asymmetric capabilities */
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
