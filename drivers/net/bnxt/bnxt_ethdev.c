@@ -986,16 +986,22 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	if (bp->dev_stopped == 0)
 		bnxt_dev_stop_op(eth_dev);
 
-	if (eth_dev->data->mac_addrs != NULL) {
-		rte_free(eth_dev->data->mac_addrs);
-		eth_dev->data->mac_addrs = NULL;
-	}
-	if (bp->grp_info != NULL) {
-		rte_free(bp->grp_info);
-		bp->grp_info = NULL;
-	}
+	bnxt_uninit_resources(bp, false);
 
-	bnxt_dev_uninit(eth_dev);
+	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+
+	rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
+	bp->tx_mem_zone = NULL;
+	rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
+	bp->rx_mem_zone = NULL;
+
+	rte_free(bp->pf.vf_info);
+	bp->pf.vf_info = NULL;
+
+	rte_free(bp->grp_info);
+	bp->grp_info = NULL;
 }
 
 static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,
@@ -4856,6 +4862,11 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto error_free;
 
+	/* Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	PMD_DRV_LOG(INFO,
 		    DRV_MODULE_NAME "found at mem %" PRIX64 ", node addr %pM\n",
 		    pci_dev->mem_resource[0].phys_addr,
@@ -4904,35 +4915,15 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 static int
 bnxt_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct bnxt *bp = eth_dev->data->dev_private;
-	int rc;
-
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
 
 	PMD_DRV_LOG(DEBUG, "Calling Device uninit\n");
 
-	rc = bnxt_uninit_resources(bp, false);
-
-	if (bp->tx_mem_zone) {
-		rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
-		bp->tx_mem_zone = NULL;
-	}
-
-	if (bp->rx_mem_zone) {
-		rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
-		bp->rx_mem_zone = NULL;
-	}
-
-	if (bp->dev_stopped == 0)
+	if (eth_dev->state != RTE_ETH_DEV_UNUSED)
 		bnxt_dev_close_op(eth_dev);
-	if (bp->pf.vf_info)
-		rte_free(bp->pf.vf_info);
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
 
-	return rc;
+	return 0;
 }
 
 static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
