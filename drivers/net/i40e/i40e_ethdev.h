@@ -501,6 +501,29 @@ struct i40e_gtp_ipv6_flow {
 	struct rte_eth_ipv6_flow ip6;
 };
 
+/* A structure used to define the input for ESP IPV4 flow */
+struct i40e_esp_ipv4_flow {
+	struct rte_eth_ipv4_flow ipv4;
+	uint32_t spi;	/* SPI in big endian. */
+};
+
+/* A structure used to define the input for ESP IPV6 flow */
+struct i40e_esp_ipv6_flow {
+	struct rte_eth_ipv6_flow ipv6;
+	uint32_t spi;	/* SPI in big endian. */
+};
+/* A structure used to define the input for ESP IPV4 UDP flow */
+struct i40e_esp_ipv4_udp_flow {
+	struct rte_eth_udpv4_flow udp;
+	uint32_t spi;	/* SPI in big endian. */
+};
+
+/* A structure used to define the input for ESP IPV6 UDP flow */
+struct i40e_esp_ipv6_udp_flow {
+	struct rte_eth_udpv6_flow udp;
+	uint32_t spi;	/* SPI in big endian. */
+};
+
 /* A structure used to define the input for raw type flow */
 struct i40e_raw_flow {
 	uint16_t pctype;
@@ -540,6 +563,10 @@ union i40e_fdir_flow {
 	struct i40e_raw_flow            raw_flow;
 	struct i40e_ipv4_l2tpv3oip_flow ip4_l2tpv3oip_flow;
 	struct i40e_ipv6_l2tpv3oip_flow ip6_l2tpv3oip_flow;
+	struct i40e_esp_ipv4_flow       esp_ipv4_flow;
+	struct i40e_esp_ipv6_flow       esp_ipv6_flow;
+	struct i40e_esp_ipv4_udp_flow   esp_ipv4_udp_flow;
+	struct i40e_esp_ipv6_udp_flow   esp_ipv6_udp_flow;
 };
 
 enum i40e_fdir_ip_type {
@@ -559,6 +586,7 @@ struct i40e_fdir_flow_ext {
 	enum i40e_fdir_ip_type oip_type; /* ip type for outer ip */
 	bool customized_pctype; /* If customized pctype is used */
 	bool pkt_template; /* If raw packet template is used */
+	bool is_udp; /* ipv4|ipv6 udp flow */
 };
 
 /* A structure used to define the input for a flow director filter entry */
@@ -784,6 +812,8 @@ enum i40e_tunnel_type {
 	I40E_TUNNEL_TYPE_QINQ,
 	I40E_TUNNEL_TYPE_GTPC,
 	I40E_TUNNEL_TYPE_GTPU,
+	I40E_TUNNEL_TYPE_ESPoUDP,
+	I40E_TUNNEL_TYPE_ESPoIP,
 	I40E_TUNNEL_TYPE_MAX,
 };
 
@@ -914,6 +944,12 @@ enum i40e_new_pctype {
 	I40E_CUSTOMIZED_GTPU,
 	I40E_CUSTOMIZED_IPV4_L2TPV3,
 	I40E_CUSTOMIZED_IPV6_L2TPV3,
+	I40E_CUSTOMIZED_ESP_IPV4,
+	I40E_CUSTOMIZED_ESP_IPV6,
+	I40E_CUSTOMIZED_ESP_IPV4_UDP,
+	I40E_CUSTOMIZED_ESP_IPV6_UDP,
+	I40E_CUSTOMIZED_AH_IPV4,
+	I40E_CUSTOMIZED_AH_IPV6,
 	I40E_CUSTOMIZED_MAX,
 };
 
@@ -1018,6 +1054,7 @@ struct i40e_pf {
 
 	/* Dynamic Device Personalization */
 	bool gtp_support; /* 1 - support GTP-C and GTP-U */
+	bool esp_support; /* 1 - support ESP SPI */
 	/* customer customized pctype */
 	struct i40e_customized_pctype customized_pctype[I40E_CUSTOMIZED_MAX];
 	/* Switch Domain Id */
