@@ -970,7 +970,10 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_int_handler(eth_dev);
 	bnxt_shutdown_nic(bp);
 	bnxt_hwrm_if_change(bp, 0);
-	memset(bp->mark_table, 0, BNXT_MARK_TABLE_SZ);
+
+	rte_free(bp->mark_table);
+	bp->mark_table = NULL;
+
 	bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
 	bp->dev_stopped = 1;
 	bp->rx_cosq_cnt = 0;
@@ -991,9 +994,6 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 		rte_free(bp->grp_info);
 		bp->grp_info = NULL;
 	}
-
-	rte_free(bp->mark_table);
-	bp->mark_table = NULL;
 
 	bnxt_dev_uninit(eth_dev);
 }
