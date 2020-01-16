@@ -318,16 +318,16 @@ vhost_user_read_cb(int connfd, void *dat, int *remove)
 
 		vhost_destroy_device(conn->vid);
 
+		if (vsocket->reconnect) {
+			create_unix_socket(vsocket);
+			vhost_user_start_client(vsocket);
+		}
+
 		pthread_mutex_lock(&vsocket->conn_mutex);
 		TAILQ_REMOVE(&vsocket->conn_list, conn, next);
 		pthread_mutex_unlock(&vsocket->conn_mutex);
 
 		free(conn);
-
-		if (vsocket->reconnect) {
-			create_unix_socket(vsocket);
-			vhost_user_start_client(vsocket);
-		}
 	}
 }
 
