@@ -1887,8 +1887,6 @@ hns3_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
 	struct hns3_hw *hw;
 	int ret = 0;
 
-	if (dev == NULL)
-		return -EINVAL;
 	hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	switch (filter_type) {
 	case RTE_ETH_FILTER_GENERIC:
