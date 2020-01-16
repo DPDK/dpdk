@@ -181,5 +181,13 @@ int bnxt_request_int(struct bnxt *bp)
 			irq->requested = 1;
 	}
 
+#ifdef RTE_EXEC_ENV_FREEBSD
+	/**
+	 * In FreeBSD OS, nic_uio does not support interrupts and
+	 * interrupt register callback will fail.
+	 */
+	rc = 0;
+#endif
+
 	return rc;
 }
