@@ -870,6 +870,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	eth_dev->data->scattered_rx = bnxt_scattered_rx(eth_dev);
 
 	bnxt_link_update(eth_dev, 1, ETH_LINK_UP);
+	bp->dev_stopped = 0;
 
 	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 		vlan_mask |= ETH_VLAN_FILTER_MASK;
@@ -884,7 +885,6 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	bp->flags |= BNXT_FLAG_INIT_DONE;
 	eth_dev->data->dev_started = 1;
-	bp->dev_stopped = 0;
 	pthread_mutex_lock(&bp->def_cp_lock);
 	bnxt_schedule_fw_health_check(bp);
 	pthread_mutex_unlock(&bp->def_cp_lock);
@@ -895,6 +895,7 @@ error:
 	bnxt_shutdown_nic(bp);
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
+	bp->dev_stopped = 1;
 	return rc;
 }
 
@@ -1168,6 +1169,10 @@ static int bnxt_promiscuous_enable_op(struct rte_eth_dev *eth_dev)
 	if (rc)
 		return rc;
 
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return 0;
+
 	if (bp->vnic_info == NULL)
 		return 0;
 
@@ -1192,6 +1197,10 @@ static int bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	rc = is_bnxt_in_error(bp);
 	if (rc)
 		return rc;
+
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return 0;
 
 	if (bp->vnic_info == NULL)
 		return 0;
@@ -1218,6 +1227,10 @@ static int bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
 	if (rc)
 		return rc;
 
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return 0;
+
 	if (bp->vnic_info == NULL)
 		return 0;
 
@@ -1242,6 +1255,10 @@ static int bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 	rc = is_bnxt_in_error(bp);
 	if (rc)
 		return rc;
+
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return 0;
 
 	if (bp->vnic_info == NULL)
 		return 0;
@@ -1962,6 +1979,10 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 	rc = is_bnxt_in_error(bp);
 	if (rc)
 		return rc;
+
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return 0;
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		/* Enable or disable VLAN filtering */
