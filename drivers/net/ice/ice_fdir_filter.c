@@ -1939,23 +1939,25 @@ ice_fdir_parse(struct ice_adapter *ad,
 
 	ret = ice_fdir_parse_pattern(ad, pattern, error, filter);
 	if (ret)
-		return ret;
+		goto error;
 	input_set = filter->input_set;
 	if (!input_set || input_set & ~item->input_set_mask) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 				   pattern,
 				   "Invalid input set");
-		return -rte_errno;
+		ret = -rte_errno;
+		goto error;
 	}
 
 	ret = ice_fdir_parse_action(ad, actions, error, filter);
 	if (ret)
-		return ret;
+		goto error;
 
 	*meta = filter;
-
-	return 0;
+error:
+	rte_free(item);
+	return ret;
 }
 
 static struct ice_flow_parser ice_fdir_parser_os = {

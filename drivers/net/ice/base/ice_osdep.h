@@ -345,6 +345,21 @@ static inline void list_add_tail(struct ice_list_entry *entry,
 				  member) :				       \
 		     0)
 
+#define LIST_FOR_EACH_ENTRY_SAFE(pos, tmp, head, type, member)		       \
+	for ((pos) = (head)->lh_first ?					       \
+		     container_of((head)->lh_first, struct type, member) :     \
+		     0,                                                        \
+		     (tmp) = (pos) == 0 ? 0 : ((pos)->member.next.le_next ?    \
+		     container_of((pos)->member.next.le_next, struct type,     \
+				  member) :				       \
+		     0);						       \
+	     (pos);							       \
+	     (pos) = (tmp),						       \
+	     (tmp) = (pos) == 0 ? 0 : ((tmp)->member.next.le_next ?	       \
+		     container_of((pos)->member.next.le_next, struct type,     \
+				  member) :				       \
+		     0))
+
 #define LIST_REPLACE_INIT(list_head, head) do {				\
 	(head)->lh_first = (list_head)->lh_first;			\
 	INIT_LIST_HEAD(list_head);					\
@@ -357,8 +372,6 @@ static inline void list_add_tail(struct ice_list_entry *entry,
 #define HLIST_EMPTY(list_head)                 LIST_EMPTY(list_head)
 #define HLIST_DEL(entry)                       LIST_DEL(entry)
 #define HLIST_FOR_EACH_ENTRY(pos, head, type, member) \
-	LIST_FOR_EACH_ENTRY(pos, head, type, member)
-#define LIST_FOR_EACH_ENTRY_SAFE(pos, tmp, head, type, member) \
 	LIST_FOR_EACH_ENTRY(pos, head, type, member)
 
 #ifndef ICE_DBG_TRACE

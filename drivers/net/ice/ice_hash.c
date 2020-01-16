@@ -409,7 +409,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 			void **meta,
 			struct rte_flow_error *error)
 {
-	int ret = 0;
+	int ret = -rte_errno;
 	struct ice_pattern_match_item *pattern_match_item;
 	struct rss_meta *rss_meta_ptr;
 
@@ -425,11 +425,11 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 	pattern_match_item = ice_search_pattern_match_item(pattern,
 					array, array_len, error);
 	if (!pattern_match_item)
-		return -rte_errno;
+		goto error;
 
 	ret = ice_hash_check_inset(pattern, error);
 	if (ret)
-		return -rte_errno;
+		goto error;
 
 	/* Save protocol header to rss_meta. */
 	*meta = rss_meta_ptr;
@@ -438,12 +438,12 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 
 	/* Check rss action. */
 	ret = ice_hash_parse_action(pattern_match_item, actions, meta, error);
+error:
 	if (ret)
-		return -rte_errno;
-
+		rte_free(rss_meta_ptr);
 	rte_free(pattern_match_item);
 
-	return 0;
+	return ret;
 }
 
 static int
