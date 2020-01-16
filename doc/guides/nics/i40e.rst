@@ -459,7 +459,7 @@ which is used to configure hardware by downloading a profile to support
 protocols/filters which are not supported by default. The DDP
 functionality requires a NIC firmware version of 6.0 or greater.
 
-Current implementation supports GTP-C/GTP-U/PPPoE/PPPoL2TP,
+Current implementation supports GTP-C/GTP-U/PPPoE/PPPoL2TP/ESP,
 steering can be used with rte_flow API.
 
 GTPv1 package is released, and it can be downloaded from
@@ -467,6 +467,8 @@ https://downloadcenter.intel.com/download/27587.
 
 PPPoE package is released, and it can be downloaded from
 https://downloadcenter.intel.com/download/28040.
+
+ESP-AH package is not released yet.
 
 Load a profile which supports GTP and store backup profile:
 
