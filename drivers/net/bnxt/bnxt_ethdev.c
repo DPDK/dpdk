@@ -132,6 +132,7 @@ static int bnxt_dev_uninit(struct rte_eth_dev *eth_dev);
 static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev);
 static int bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev);
 static void bnxt_cancel_fw_health_check(struct bnxt *bp);
+static int bnxt_restore_vlan_filters(struct bnxt *bp);
 
 int is_bnxt_in_error(struct bnxt *bp)
 {
@@ -228,14 +229,97 @@ alloc_mem_err:
 	return rc;
 }
 
+static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
+{
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct bnxt_vnic_info *vnic = &bp->vnic_info[vnic_id];
+	uint64_t rx_offloads = dev_conf->rxmode.offloads;
+	struct bnxt_rx_queue *rxq;
+	unsigned int j;
+	int rc;
+
+	rc = bnxt_vnic_grp_alloc(bp, vnic);
+	if (rc)
+		goto err_out;
+
+	PMD_DRV_LOG(DEBUG, "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
+		    vnic_id, vnic, vnic->fw_grp_ids);
+
+	rc = bnxt_hwrm_vnic_alloc(bp, vnic);
+	if (rc)
+		goto err_out;
+
+	/* Alloc RSS context only if RSS mode is enabled */
+	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) {
+		int j, nr_ctxs = bnxt_rss_ctxts(bp);
+
+		rc = 0;
+		for (j = 0; j < nr_ctxs; j++) {
+			rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic, j);
+			if (rc)
+				break;
+		}
+		if (rc) {
+			PMD_DRV_LOG(ERR,
+				    "HWRM vnic %d ctx %d alloc failure rc: %x\n",
+				    vnic_id, j, rc);
+			goto err_out;
+		}
+		vnic->num_lb_ctxts = nr_ctxs;
+	}
+
+	/*
+	 * Firmware sets pf pair in default vnic cfg. If the VLAN strip
+	 * setting is not available at this time, it will not be
+	 * configured correctly in the CFA.
+	 */
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+		vnic->vlan_strip = true;
+	else
+		vnic->vlan_strip = false;
+
+	rc = bnxt_hwrm_vnic_cfg(bp, vnic);
+	if (rc)
+		goto err_out;
+
+	rc = bnxt_set_hwrm_vnic_filters(bp, vnic);
+	if (rc)
+		goto err_out;
+
+	for (j = 0; j < bp->rx_num_qs_per_vnic; j++) {
+		rxq = bp->eth_dev->data->rx_queues[j];
+
+		PMD_DRV_LOG(DEBUG,
+			    "rxq[%d]->vnic=%p vnic->fw_grp_ids=%p\n",
+			    j, rxq->vnic, rxq->vnic->fw_grp_ids);
+
+		if (BNXT_HAS_RING_GRPS(bp) && rxq->rx_deferred_start)
+			rxq->vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
+	}
+
+	rc = bnxt_vnic_rss_configure(bp, vnic);
+	if (rc)
+		goto err_out;
+
+	bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
+
+	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
+		bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 1);
+	else
+		bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 0);
+
+	return 0;
+err_out:
+	PMD_DRV_LOG(ERR, "HWRM vnic %d cfg failure rc: %x\n",
+		    vnic_id, rc);
+	return rc;
+}
+
 static int bnxt_init_chip(struct bnxt *bp)
 {
-	struct bnxt_rx_queue *rxq;
 	struct rte_eth_link new;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(bp->eth_dev);
-	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
-	uint64_t rx_offloads = dev_conf->rxmode.offloads;
 	uint32_t intr_vector = 0;
 	uint32_t queue_id, base = BNXT_MISC_VEC_ID;
 	uint32_t vec = BNXT_MISC_VEC_ID;
@@ -303,93 +387,11 @@ skip_cosq_cfg:
 
 	/* VNIC configuration */
 	for (i = 0; i < bp->nr_vnics; i++) {
-		struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
-		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
-
-		rc = bnxt_vnic_grp_alloc(bp, vnic);
+		rc = bnxt_setup_one_vnic(bp, i);
 		if (rc)
 			goto err_out;
-
-		PMD_DRV_LOG(DEBUG, "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
-			    i, vnic, vnic->fw_grp_ids);
-
-		rc = bnxt_hwrm_vnic_alloc(bp, vnic);
-		if (rc) {
-			PMD_DRV_LOG(ERR, "HWRM vnic %d alloc failure rc: %x\n",
-				i, rc);
-			goto err_out;
-		}
-
-		/* Alloc RSS context only if RSS mode is enabled */
-		if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) {
-			int j, nr_ctxs = bnxt_rss_ctxts(bp);
-
-			rc = 0;
-			for (j = 0; j < nr_ctxs; j++) {
-				rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic, j);
-				if (rc)
-					break;
-			}
-			if (rc) {
-				PMD_DRV_LOG(ERR,
-				  "HWRM vnic %d ctx %d alloc failure rc: %x\n",
-				  i, j, rc);
-				goto err_out;
-			}
-			vnic->num_lb_ctxts = nr_ctxs;
-		}
-
-		/*
-		 * Firmware sets pf pair in default vnic cfg. If the VLAN strip
-		 * setting is not available at this time, it will not be
-		 * configured correctly in the CFA.
-		 */
-		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
-			vnic->vlan_strip = true;
-		else
-			vnic->vlan_strip = false;
-
-		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
-		if (rc) {
-			PMD_DRV_LOG(ERR, "HWRM vnic %d cfg failure rc: %x\n",
-				i, rc);
-			goto err_out;
-		}
-
-		rc = bnxt_set_hwrm_vnic_filters(bp, vnic);
-		if (rc) {
-			PMD_DRV_LOG(ERR,
-				"HWRM vnic %d filter failure rc: %x\n",
-				i, rc);
-			goto err_out;
-		}
-
-		for (j = 0; j < bp->rx_num_qs_per_vnic; j++) {
-			rxq = bp->eth_dev->data->rx_queues[j];
-
-			PMD_DRV_LOG(DEBUG,
-				    "rxq[%d]->vnic=%p vnic->fw_grp_ids=%p\n",
-				    j, rxq->vnic, rxq->vnic->fw_grp_ids);
-
-			if (BNXT_HAS_RING_GRPS(bp) && rxq->rx_deferred_start)
-				rxq->vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
-		}
-
-		rc = bnxt_vnic_rss_configure(bp, vnic);
-		if (rc) {
-			PMD_DRV_LOG(ERR,
-				    "HWRM vnic set RSS failure rc: %x\n", rc);
-			goto err_out;
-		}
-
-		bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
-
-		if (bp->eth_dev->data->dev_conf.rxmode.offloads &
-		    DEV_RX_OFFLOAD_TCP_LRO)
-			bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 1);
-		else
-			bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 0);
 	}
+
 	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0], 0, NULL);
 	if (rc) {
 		PMD_DRV_LOG(ERR,
@@ -1892,12 +1894,69 @@ bnxt_config_vlan_hw_filter(struct bnxt *bp, uint64_t rx_offloads)
 	return 0;
 }
 
+static int bnxt_free_one_vnic(struct bnxt *bp, uint16_t vnic_id)
+{
+	struct bnxt_vnic_info *vnic = &bp->vnic_info[vnic_id];
+	unsigned int i;
+	int rc;
+
+	/* Destroy vnic filters and vnic */
+	if (bp->eth_dev->data->dev_conf.rxmode.offloads &
+	    DEV_RX_OFFLOAD_VLAN_FILTER) {
+		for (i = 0; i < RTE_ETHER_MAX_VLAN_ID; i++)
+			bnxt_del_vlan_filter(bp, i);
+	}
+	bnxt_del_dflt_mac_filter(bp, vnic);
+
+	rc = bnxt_hwrm_vnic_free(bp, vnic);
+	if (rc)
+		return rc;
+
+	rte_free(vnic->fw_grp_ids);
+	vnic->fw_grp_ids = NULL;
+
+	return 0;
+}
+
+static int
+bnxt_config_vlan_hw_stripping(struct bnxt *bp, uint64_t rx_offloads)
+{
+	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	int rc;
+
+	/* Destroy, recreate and reconfigure the default vnic */
+	rc = bnxt_free_one_vnic(bp, 0);
+	if (rc)
+		return rc;
+
+	/* default vnic 0 */
+	rc = bnxt_setup_one_vnic(bp, 0);
+	if (rc)
+		return rc;
+
+	if (bp->eth_dev->data->dev_conf.rxmode.offloads &
+	    DEV_RX_OFFLOAD_VLAN_FILTER) {
+		rc = bnxt_add_vlan_filter(bp, 0);
+		bnxt_restore_vlan_filters(bp);
+	} else {
+		rc = bnxt_add_mac_filter(bp, vnic, NULL, 0, 0);
+	}
+
+	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
+	if (rc)
+		return rc;
+
+	PMD_DRV_LOG(DEBUG, "VLAN Strip Offload: %d\n",
+		    !!(rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP));
+
+	return rc;
+}
+
 static int
 bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 {
 	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	struct bnxt *bp = dev->data->dev_private;
-	unsigned int i;
 	int rc;
 
 	rc = is_bnxt_in_error(bp);
@@ -1913,16 +1972,9 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
-		for (i = 0; i < bp->nr_vnics; i++) {
-			struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
-			if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
-				vnic->vlan_strip = true;
-			else
-				vnic->vlan_strip = false;
-			bnxt_hwrm_vnic_cfg(bp, vnic);
-		}
-		PMD_DRV_LOG(DEBUG, "VLAN Strip Offload: %d\n",
-			!!(rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP));
+		rc = bnxt_config_vlan_hw_stripping(bp, rx_offloads);
+		if (rc)
+			return rc;
 	}
 
 	if (mask & ETH_VLAN_EXTEND_MASK) {
