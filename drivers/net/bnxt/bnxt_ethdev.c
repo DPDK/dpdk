@@ -1860,17 +1860,11 @@ static int bnxt_del_dflt_mac_filter(struct bnxt *bp,
 }
 
 static int
-bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
+bnxt_config_vlan_hw_filter(struct bnxt *bp, uint64_t rx_offloads)
 {
-	struct bnxt *bp = dev->data->dev_private;
-	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	struct bnxt_vnic_info *vnic;
 	unsigned int i;
 	int rc;
-
-	rc = is_bnxt_in_error(bp);
-	if (rc)
-		return rc;
 
 	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 	if (!(rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)) {
@@ -1894,6 +1888,28 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 	}
 	PMD_DRV_LOG(DEBUG, "VLAN Filtering: %d\n",
 		    !!(rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER));
+
+	return 0;
+}
+
+static int
+bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
+{
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
+	struct bnxt *bp = dev->data->dev_private;
+	unsigned int i;
+	int rc;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		/* Enable or disable VLAN filtering */
+		rc = bnxt_config_vlan_hw_filter(bp, rx_offloads);
+		if (rc)
+			return rc;
+	}
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
@@ -1984,7 +2000,6 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
 	struct bnxt *bp = dev->data->dev_private;
 	/* Default Filter is tied to VNIC 0 */
 	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
-	struct bnxt_filter_info *filter;
 	int rc;
 
 	rc = is_bnxt_in_error(bp);
@@ -1997,32 +2012,23 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
 	if (rte_is_zero_ether_addr(addr))
 		return -EINVAL;
 
-	STAILQ_FOREACH(filter, &vnic->filter, next) {
-		/* Default Filter is at Index 0 */
-		if (filter->mac_index != 0)
-			continue;
-
-		memcpy(filter->l2_addr, addr, RTE_ETHER_ADDR_LEN);
-		memset(filter->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
-		filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX |
-			HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
-		filter->enables |=
-			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
-			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
-
-		rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
-		if (rc) {
-			memcpy(filter->l2_addr, bp->mac_addr,
-			       RTE_ETHER_ADDR_LEN);
-			return rc;
-		}
-
-		memcpy(bp->mac_addr, addr, RTE_ETHER_ADDR_LEN);
-		PMD_DRV_LOG(DEBUG, "Set MAC addr\n");
+	/* Check if the requested MAC is already added */
+	if (memcmp(addr, bp->mac_addr, RTE_ETHER_ADDR_LEN) == 0)
 		return 0;
+
+	/* Destroy filter and re-create it */
+	bnxt_del_dflt_mac_filter(bp, vnic);
+
+	memcpy(bp->mac_addr, addr, RTE_ETHER_ADDR_LEN);
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
+		/* This filter will allow only untagged packets */
+		rc = bnxt_add_vlan_filter(bp, 0);
+	} else {
+		rc = bnxt_add_mac_filter(bp, vnic, addr, 0, 0);
 	}
 
-	return 0;
+	PMD_DRV_LOG(DEBUG, "Set MAC addr\n");
+	return rc;
 }
 
 static int

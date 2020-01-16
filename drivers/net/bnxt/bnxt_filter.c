@@ -39,9 +39,10 @@ struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp)
 	filter->flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
 	filter->enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
-	memcpy(filter->l2_addr, bp->eth_dev->data->mac_addrs->addr_bytes,
-	       RTE_ETHER_ADDR_LEN);
+	memcpy(filter->l2_addr, bp->mac_addr, RTE_ETHER_ADDR_LEN);
 	memset(filter->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
+	/* bump up the reference count of filter */
+	filter->l2_ref_cnt++;
 	return filter;
 }
 
