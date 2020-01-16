@@ -1402,13 +1402,14 @@ hns3_rx_set_cksum_flag(struct rte_mbuf *rxm, uint64_t packet_type,
 uint16_t
 hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
+	volatile struct hns3_desc *rx_ring;  /* RX ring (desc) */
+	volatile struct hns3_desc *rxdp;     /* pointer of the current desc */
 	struct hns3_rx_queue *rxq;      /* RX queue */
-	struct hns3_desc *rx_ring;      /* RX ring (desc) */
 	struct hns3_entry *sw_ring;
 	struct hns3_entry *rxe;
-	struct hns3_desc *rxdp;         /* pointer of the current desc */
 	struct rte_mbuf *first_seg;
 	struct rte_mbuf *last_seg;
+	struct hns3_desc rxd;
 	struct rte_mbuf *nmb;           /* pointer of the new mbuf */
 	struct rte_mbuf *rxm;
 	struct rte_eth_dev *dev;
@@ -1440,6 +1441,67 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		bd_base_info = rte_le_to_cpu_32(rxdp->rx.bd_base_info);
 		if (unlikely(!hns3_get_bit(bd_base_info, HNS3_RXD_VLD_B)))
 			break;
+		/*
+		 * The interactive process between software and hardware of
+		 * receiving a new packet in hns3 network engine:
+		 * 1. Hardware network engine firstly writes the packet content
+		 *    to the memory pointed by the 'addr' field of the Rx Buffer
+		 *    Descriptor, secondly fills the result of parsing the
+		 *    packet include the valid field into the Rx Buffer
+		 *    Descriptor in one write operation.
+		 * 2. Driver reads the Rx BD's valid field in the loop to check
+		 *    whether it's valid, if valid then assign a new address to
+		 *    the addr field, clear the valid field, get the other
+		 *    information of the packet by parsing Rx BD's other fields,
+		 *    finally write back the number of Rx BDs processed by the
+		 *    driver to the HNS3_RING_RX_HEAD_REG register to inform
+		 *    hardware.
+		 * In the above process, the ordering is very important. We must
+		 * make sure that CPU read Rx BD's other fields only after the
+		 * Rx BD is valid.
+		 *
+		 * There are two type of re-ordering: compiler re-ordering and
+		 * CPU re-ordering under the ARMv8 architecture.
+		 * 1. we use volatile to deal with compiler re-ordering, so you
+		 *    can see that rx_ring/rxdp defined with volatile.
+		 * 2. we commonly use memory barrier to deal with CPU
+		 *    re-ordering, but the cost is high.
+		 *
+		 * In order to solve the high cost of using memory barrier, we
+		 * use the data dependency order under the ARMv8 architecture,
+		 * for example:
+		 *      instr01: load A
+		 *      instr02: load B <- A
+		 * the instr02 will always execute after instr01.
+		 *
+		 * To construct the data dependency ordering, we use the
+		 * following assignment:
+		 *      rxd = rxdp[(bd_base_info & (1u << HNS3_RXD_VLD_B)) -
+		 *                 (1u<<HNS3_RXD_VLD_B)]
+		 * Using gcc compiler under the ARMv8 architecture, the related
+		 * assembly code example as follows:
+		 * note: (1u << HNS3_RXD_VLD_B) equal 0x10
+		 *      instr01: ldr w26, [x22, #28]  --read bd_base_info
+		 *      instr02: and w0, w26, #0x10   --calc bd_base_info & 0x10
+		 *      instr03: sub w0, w0, #0x10    --calc (bd_base_info &
+		 *                                            0x10) - 0x10
+		 *      instr04: add x0, x22, x0, lsl #5 --calc copy source addr
+		 *      instr05: ldp x2, x3, [x0]
+		 *      instr06: stp x2, x3, [x29, #256] --copy BD's [0 ~ 15]B
+		 *      instr07: ldp x4, x5, [x0, #16]
+		 *      instr08: stp x4, x5, [x29, #272] --copy BD's [16 ~ 31]B
+		 * the instr05~08 depend on x0's value, x0 depent on w26's
+		 * value, the w26 is the bd_base_info, this form the data
+		 * dependency ordering.
+		 * note: if BD is valid, (bd_base_info & (1u<<HNS3_RXD_VLD_B)) -
+		 *       (1u<<HNS3_RXD_VLD_B) will always zero, so the
+		 *       assignment is correct.
+		 *
+		 * So we use the data dependency ordering instead of memory
+		 * barrier to improve receive performance.
+		 */
+		rxd = rxdp[(bd_base_info & (1u << HNS3_RXD_VLD_B)) -
+			   (1u << HNS3_RXD_VLD_B)];
 
 		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(nmb == NULL)) {
@@ -1463,14 +1525,13 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxe->mbuf = nmb;
 
 		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
-		rxdp->addr = dma_addr;
 		rxdp->rx.bd_base_info = 0;
+		rxdp->addr = dma_addr;
 
-		rte_cio_rmb();
 		/* Load remained descriptor data and extract necessary fields */
-		data_len = (uint16_t)(rte_le_to_cpu_16(rxdp->rx.size));
-		l234_info = rte_le_to_cpu_32(rxdp->rx.l234_info);
-		ol_info = rte_le_to_cpu_32(rxdp->rx.ol_info);
+		data_len = (uint16_t)(rte_le_to_cpu_16(rxd.rx.size));
+		l234_info = rte_le_to_cpu_32(rxd.rx.l234_info);
+		ol_info = rte_le_to_cpu_32(rxd.rx.ol_info);
 
 		if (first_seg == NULL) {
 			first_seg = rxm;
@@ -1489,14 +1550,14 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 
 		/* The last buffer of the received packet */
-		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxdp->rx.pkt_len));
+		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.rx.pkt_len));
 		first_seg->pkt_len = pkt_len;
 		first_seg->port = rxq->port_id;
-		first_seg->hash.rss = rte_le_to_cpu_32(rxdp->rx.rss_hash);
+		first_seg->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
 		first_seg->ol_flags |= PKT_RX_RSS_HASH;
 		if (unlikely(hns3_get_bit(bd_base_info, HNS3_RXD_LUM_B))) {
 			first_seg->hash.fdir.hi =
-				rte_le_to_cpu_32(rxdp->rx.fd_id);
+				rte_le_to_cpu_32(rxd.rx.fd_id);
 			first_seg->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 		}
 		rxm->next = NULL;
@@ -1513,9 +1574,9 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			hns3_rx_set_cksum_flag(rxm, first_seg->packet_type,
 					       cksum_err);
 
-		first_seg->vlan_tci = rte_le_to_cpu_16(rxdp->rx.vlan_tag);
+		first_seg->vlan_tci = rte_le_to_cpu_16(rxd.rx.vlan_tag);
 		first_seg->vlan_tci_outer =
-			rte_le_to_cpu_16(rxdp->rx.ot_vlan_tag);
+			rte_le_to_cpu_16(rxd.rx.ot_vlan_tag);
 		rx_pkts[nb_rx++] = first_seg;
 		first_seg = NULL;
 		continue;
