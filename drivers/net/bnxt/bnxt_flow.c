@@ -1702,7 +1702,9 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 
 	filter = bnxt_get_unused_filter(bp);
 	if (filter == NULL) {
-		PMD_DRV_LOG(ERR, "Not enough resources for a new flow.\n");
+		rte_flow_error_set(error, ENOSPC,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Not enough resources for a new flow");
 		goto free_flow;
 	}
 
