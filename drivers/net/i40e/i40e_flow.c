@@ -110,8 +110,7 @@ static int i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 static int i40e_flow_flush_fdir_filter(struct i40e_pf *pf);
 static int i40e_flow_flush_ethertype_filter(struct i40e_pf *pf);
 static int i40e_flow_flush_tunnel_filter(struct i40e_pf *pf);
-static int
-i40e_flow_flush_rss_filter(struct rte_eth_dev *dev);
+static int i40e_flow_flush_rss_filter(struct rte_eth_dev *dev);
 static int
 i40e_flow_parse_qinq_filter(struct rte_eth_dev *dev,
 			      const struct rte_flow_attr *attr,
@@ -1629,6 +1628,36 @@ static enum rte_flow_item_type pattern_fdir_ipv6_l2tpv3oip[] = {
 	RTE_FLOW_ITEM_TYPE_END,
 };
 
+static enum rte_flow_item_type pattern_fdir_ipv4_esp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_ESP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_esp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_ESP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_udp_esp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_ESP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_udp_esp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_ESP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
 static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	/* Ethertype */
 	{ pattern_ethertype, i40e_flow_parse_ethertype_filter },
@@ -1642,6 +1671,8 @@ static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	{ pattern_fdir_ipv4_gtpu, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv4_gtpu_ipv4, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv4_gtpu_ipv6, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_esp, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_udp_esp, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_udp, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_tcp, i40e_flow_parse_fdir_filter },
@@ -1650,6 +1681,8 @@ static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	{ pattern_fdir_ipv6_gtpu, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_gtpu_ipv4, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_gtpu_ipv6, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_esp, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_udp_esp, i40e_flow_parse_fdir_filter },
 	/* FDIR - support default flow type with flexible payload */
 	{ pattern_fdir_ethertype_raw_1, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ethertype_raw_2, i40e_flow_parse_fdir_filter },
@@ -2446,6 +2479,28 @@ i40e_flow_fdir_get_pctype_value(struct i40e_pf *pf,
 			cus_pctype = i40e_find_customized_pctype(pf,
 						I40E_CUSTOMIZED_IPV6_L2TPV3);
 		break;
+	case RTE_FLOW_ITEM_TYPE_ESP:
+		if (!filter->input.flow_ext.is_udp) {
+			if (filter->input.flow_ext.oip_type ==
+				I40E_FDIR_IPTYPE_IPV4)
+				cus_pctype = i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_ESP_IPV4);
+			else if (filter->input.flow_ext.oip_type ==
+				I40E_FDIR_IPTYPE_IPV6)
+				cus_pctype = i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_ESP_IPV6);
+		} else {
+			if (filter->input.flow_ext.oip_type ==
+				I40E_FDIR_IPTYPE_IPV4)
+				cus_pctype = i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_ESP_IPV4_UDP);
+			else if (filter->input.flow_ext.oip_type ==
+					I40E_FDIR_IPTYPE_IPV6)
+				cus_pctype = i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_ESP_IPV6_UDP);
+			filter->input.flow_ext.is_udp = false;
+		}
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "Unsupported item type");
 		break;
@@ -2455,6 +2510,30 @@ i40e_flow_fdir_get_pctype_value(struct i40e_pf *pf,
 		return cus_pctype->pctype;
 
 	return I40E_FILTER_PCTYPE_INVALID;
+}
+
+static void
+i40e_flow_set_filter_spi(struct i40e_fdir_filter_conf *filter,
+	const struct rte_flow_item_esp *esp_spec)
+{
+	if (filter->input.flow_ext.oip_type ==
+		I40E_FDIR_IPTYPE_IPV4) {
+		if (filter->input.flow_ext.is_udp)
+			filter->input.flow.esp_ipv4_udp_flow.spi =
+				esp_spec->hdr.spi;
+		else
+			filter->input.flow.esp_ipv4_flow.spi =
+				esp_spec->hdr.spi;
+	}
+	if (filter->input.flow_ext.oip_type ==
+		I40E_FDIR_IPTYPE_IPV6) {
+		if (filter->input.flow_ext.is_udp)
+			filter->input.flow.esp_ipv6_udp_flow.spi =
+				esp_spec->hdr.spi;
+		else
+			filter->input.flow.esp_ipv6_flow.spi =
+				esp_spec->hdr.spi;
+	}
 }
 
 /* 1. Last in item should be NULL as range is not supported.
@@ -2485,6 +2564,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	const struct rte_flow_item_udp *udp_spec, *udp_mask;
 	const struct rte_flow_item_sctp *sctp_spec, *sctp_mask;
 	const struct rte_flow_item_gtp *gtp_spec, *gtp_mask;
+	const struct rte_flow_item_esp *esp_spec, *esp_mask;
 	const struct rte_flow_item_raw *raw_spec, *raw_mask;
 	const struct rte_flow_item_vf *vf_spec;
 	const struct rte_flow_item_l2tpv3oip *l2tpv3oip_spec, *l2tpv3oip_mask;
@@ -2681,9 +2761,17 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					ipv4_spec->hdr.src_addr;
 				filter->input.flow.ip4_flow.dst_ip =
 					ipv4_spec->hdr.dst_addr;
+
+				filter->input.flow_ext.inner_ip = false;
+				filter->input.flow_ext.oip_type =
+					I40E_FDIR_IPTYPE_IPV4;
 			} else if (!ipv4_spec && !ipv4_mask && !outer_ip) {
 				filter->input.flow_ext.inner_ip = true;
 				filter->input.flow_ext.iip_type =
+					I40E_FDIR_IPTYPE_IPV4;
+			} else if (!ipv4_spec && !ipv4_mask && outer_ip) {
+				filter->input.flow_ext.inner_ip = false;
+				filter->input.flow_ext.oip_type =
 					I40E_FDIR_IPTYPE_IPV4;
 			} else if ((ipv4_spec || ipv4_mask) && !outer_ip) {
 				rte_flow_error_set(error, EINVAL,
@@ -2743,6 +2831,10 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				filter->input.flow.ipv6_flow.hop_limits =
 					ipv6_spec->hdr.hop_limits;
 
+				filter->input.flow_ext.inner_ip = false;
+				filter->input.flow_ext.oip_type =
+					I40E_FDIR_IPTYPE_IPV6;
+
 				rte_memcpy(filter->input.flow.ipv6_flow.src_ip,
 					   ipv6_spec->hdr.src_addr, 16);
 				rte_memcpy(filter->input.flow.ipv6_flow.dst_ip,
@@ -2755,6 +2847,10 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			} else if (!ipv6_spec && !ipv6_mask && !outer_ip) {
 				filter->input.flow_ext.inner_ip = true;
 				filter->input.flow_ext.iip_type =
+					I40E_FDIR_IPTYPE_IPV6;
+			} else if (!ipv6_spec && !ipv6_mask && outer_ip) {
+				filter->input.flow_ext.inner_ip = false;
+				filter->input.flow_ext.oip_type =
 					I40E_FDIR_IPTYPE_IPV6;
 			} else if ((ipv6_spec || ipv6_mask) && !outer_ip) {
 				rte_flow_error_set(error, EINVAL,
@@ -2855,7 +2951,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 						udp_spec->hdr.dst_port;
 				}
 			}
-
+			filter->input.flow_ext.is_udp = true;
 			layer_idx = I40E_FLXPLD_L4_IDX;
 
 			break;
@@ -2886,6 +2982,39 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 				filter->input.flow.gtp_flow.teid =
 					gtp_spec->teid;
+				filter->input.flow_ext.customized_pctype = true;
+				cus_proto = item_type;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_ESP:
+			if (!pf->esp_support) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Unsupported ESP protocol");
+				return -rte_errno;
+			}
+
+			esp_spec = item->spec;
+			esp_mask = item->mask;
+
+			if (!esp_spec || !esp_mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid ESP item");
+				return -rte_errno;
+			}
+
+			if (esp_spec && esp_mask) {
+				if (esp_mask->hdr.spi != UINT32_MAX) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid ESP mask");
+					return -rte_errno;
+				}
+				i40e_flow_set_filter_spi(filter, esp_spec);
 				filter->input.flow_ext.customized_pctype = true;
 				cus_proto = item_type;
 			}
