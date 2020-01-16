@@ -8679,7 +8679,9 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 			num);
 
 	if (num == 0) {
-		PMD_INIT_LOG(ERR, "No PF queues are configured to enable RSS");
+		PMD_INIT_LOG(ERR,
+			"No PF queues are configured to enable RSS for port %u",
+			pf->dev_data->port_id);
 		return -ENOTSUP;
 	}
 
@@ -12849,7 +12851,9 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 			num);
 
 	if (num == 0) {
-		PMD_DRV_LOG(ERR, "No PF queues are configured to enable RSS");
+		PMD_DRV_LOG(ERR,
+			"No PF queues are configured to enable RSS for port %u",
+			pf->dev_data->port_id);
 		return -ENOTSUP;
 	}
 
