@@ -2968,6 +2968,7 @@ rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 	 * return status and does not know if get is successful or not.
 	 */
 	memset(dev_info, 0, sizeof(struct rte_eth_dev_info));
+	dev_info->switch_info.domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
@@ -5064,8 +5065,7 @@ rte_eth_switch_domain_alloc(uint16_t *domain_id)
 
 	*domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
 
-	for (i = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID + 1;
-		i < RTE_MAX_ETHPORTS; i++) {
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (rte_eth_switch_domains[i].state ==
 			RTE_ETH_SWITCH_DOMAIN_UNUSED) {
 			rte_eth_switch_domains[i].state =

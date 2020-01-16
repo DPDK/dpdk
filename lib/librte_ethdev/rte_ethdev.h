@@ -1196,7 +1196,7 @@ struct rte_eth_dev_portconf {
  * Default values for switch domain id when ethdev does not support switch
  * domain definitions.
  */
-#define RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID	(0)
+#define RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID	(UINT16_MAX)
 
 /**
  * Ethernet device associated switch information
