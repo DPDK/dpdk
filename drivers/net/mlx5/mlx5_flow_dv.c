@@ -27,6 +27,7 @@
 #include <rte_ip.h>
 #include <rte_gre.h>
 #include <rte_vxlan.h>
+#include <rte_gtp.h>
 
 #include "mlx5.h"
 #include "mlx5_defs.h"
@@ -1549,6 +1550,56 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 					  "cannot match on a port from a"
 					  " different E-Switch");
 	return 0;
+}
+
+/**
+ * Validate GTP item.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
+			  const struct rte_flow_item *item,
+			  uint64_t item_flags,
+			  struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_gtp *mask = item->mask;
+	const struct rte_flow_item_gtp nic_mask = {
+		.msg_type = 0xff,
+		.teid = RTE_BE32(0xffffffff),
+	};
+
+	if (!priv->config.hca_attr.tunnel_stateless_gtp)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "GTP support is not enabled");
+	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple tunnel layers not"
+					  " supported");
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "no outer UDP layer found");
+	if (!mask)
+		mask = &rte_flow_item_gtp_mask;
+	return mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&nic_mask,
+		 sizeof(struct rte_flow_item_gtp),
+		 error);
 }
 
 /**
@@ -4629,6 +4680,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
 		case MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE:
 			break;
+		case RTE_FLOW_ITEM_TYPE_GTP:
+			ret = flow_dv_validate_item_gtp(dev, items, item_flags,
+							error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_LAYER_GTP;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
@@ -6337,6 +6395,57 @@ flow_dv_translate_item_icmp(void *matcher, void *key,
 		 icmp_v->hdr.icmp_code & icmp_m->hdr.icmp_code);
 }
 
+/**
+ * Add GTP item to matcher and to the value.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ */
+static void
+flow_dv_translate_item_gtp(void *matcher, void *key,
+			   const struct rte_flow_item *item, int inner)
+{
+	const struct rte_flow_item_gtp *gtp_m = item->mask;
+	const struct rte_flow_item_gtp *gtp_v = item->spec;
+	void *headers_m;
+	void *headers_v;
+	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
+				     misc_parameters_3);
+	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+	uint16_t dport = RTE_GTPU_UDP_PORT;
+
+	if (inner) {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 inner_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+	} else {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 outer_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	}
+	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, dport);
+	}
+	if (!gtp_v)
+		return;
+	if (!gtp_m)
+		gtp_m = &rte_flow_item_gtp_mask;
+	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_msg_type, gtp_m->msg_type);
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_type,
+		 gtp_v->msg_type & gtp_m->msg_type);
+	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_teid,
+		 rte_be_to_cpu_32(gtp_m->teid));
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_teid,
+		 rte_be_to_cpu_32(gtp_v->teid & gtp_m->teid));
+}
+
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
 
 #define HEADER_IS_ZERO(match_criteria, headers)				     \
@@ -7514,6 +7623,11 @@ cnt_err:
 							match_value,
 							items);
 			last_item = MLX5_FLOW_ITEM_TX_QUEUE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GTP:
+			flow_dv_translate_item_gtp(match_mask, match_value,
+						   items, tunnel);
+			last_item = MLX5_FLOW_LAYER_GTP;
 			break;
 		default:
 			break;

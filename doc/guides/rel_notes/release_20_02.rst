@@ -111,6 +111,7 @@ New Features
   Updated Mellanox mlx5 driver with new features and improvements, including:
 
   * Added support for RSS using L3/L4 source/destination only.
+  * Added support for matching on GTP tunnel header item.
 
 * **Updated testpmd application.**
 

@@ -195,6 +195,7 @@ struct mlx5_hca_attr {
 	uint32_t vport_inline_mode:3;
 	uint32_t tunnel_stateless_geneve_rx:1;
 	uint32_t geneve_max_opt_len:1; /* 0x0: 14DW, 0x1: 63DW */
+	uint32_t tunnel_stateless_gtp:1;
 	uint32_t lro_cap:1;
 	uint32_t tunnel_lro_gre:1;
 	uint32_t tunnel_lro_vxlan:1;

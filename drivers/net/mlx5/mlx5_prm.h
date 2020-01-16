@@ -682,7 +682,11 @@ struct mlx5_ifc_fte_match_set_misc3_bits {
 	u8 icmp_code[0x8];
 	u8 icmpv6_type[0x8];
 	u8 icmpv6_code[0x8];
-	u8 reserved_at_1a0[0xe0];
+	u8 reserved_at_120[0x20];
+	u8 gtpu_teid[0x20];
+	u8 gtpu_msg_type[0x08];
+	u8 gtpu_msg_flags[0x08];
+	u8 reserved_at_170[0x90];
 };
 
 /* Flow matcher. */
@@ -1235,7 +1239,9 @@ struct mlx5_ifc_per_protocol_networking_offload_caps_bits {
 	u8 swp[0x1];
 	u8 swp_csum[0x1];
 	u8 swp_lso[0x1];
-	u8 reserved_at_23[0xd];
+	u8 reserved_at_23[0x8];
+	u8 tunnel_stateless_gtp[0x1];
+	u8 reserved_at_25[0x4];
 	u8 max_vxlan_udp_ports[0x8];
 	u8 reserved_at_38[0x6];
 	u8 max_geneve_opt_len[0x1];

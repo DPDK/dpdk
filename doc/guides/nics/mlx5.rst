@@ -90,6 +90,7 @@ Features
 - Statistics query including Basic, Extended and per queue.
 - Rx HW timestamp.
 - Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE, MPLSoGRE, MPLSoUDP, IP-in-IP, Geneve.
+- Tunnel types: VXLAN, L3 VXLAN, VXLAN-GPE, GRE, MPLSoGRE, MPLSoUDP, IP-in-IP, Geneve, GTP.
 - Tunnel HW offloads: packet type, inner/outer RSS, IP and UDP checksum verification.
 - NIC HW offloads: encapsulation (vxlan, gre, mplsoudp, mplsogre), NAT, routing, TTL
   increment/decrement, count, drop, mark. For details please see :ref:`mlx5_offloads_support`.
@@ -158,6 +159,11 @@ Limitations
 
 - VF: flow rules created on VF devices can only match traffic targeted at the
   configured MAC addresses (see ``rte_eth_dev_mac_addr_add()``).
+
+- Match on GTP tunnel header item supports the following fields only:
+
+     - msg_type
+     - teid
 
 .. note::
 
@@ -787,6 +793,10 @@ Below are some firmware configurations listed.
 - enable Geneve flow matching::
 
    FLEX_PARSER_PROFILE_ENABLE=0
+
+- enable GTP flow matching::
+
+   FLEX_PARSER_PROFILE_ENABLE=3
 
 Prerequisites
 -------------

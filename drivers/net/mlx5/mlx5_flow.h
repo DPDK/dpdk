@@ -122,6 +122,9 @@ enum mlx5_feature_name {
 /* Queue items. */
 #define MLX5_FLOW_ITEM_TX_QUEUE (1u << 27)
 
+/* Pattern tunnel Layer bits (continued). */
+#define MLX5_FLOW_LAYER_GTP (1u << 28)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -136,7 +139,7 @@ enum mlx5_feature_name {
 	(MLX5_FLOW_LAYER_VXLAN | MLX5_FLOW_LAYER_VXLAN_GPE | \
 	 MLX5_FLOW_LAYER_GRE | MLX5_FLOW_LAYER_NVGRE | MLX5_FLOW_LAYER_MPLS | \
 	 MLX5_FLOW_LAYER_IPIP | MLX5_FLOW_LAYER_IPV6_ENCAP | \
-	 MLX5_FLOW_LAYER_GENEVE)
+	 MLX5_FLOW_LAYER_GENEVE | MLX5_FLOW_LAYER_GTP)
 
 /* Inner Masks. */
 #define MLX5_FLOW_LAYER_INNER_L3 \

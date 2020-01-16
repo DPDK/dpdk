@@ -319,6 +319,10 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 		.tunnel = MLX5_FLOW_LAYER_IPV6_ENCAP,
 		.ptype = RTE_PTYPE_TUNNEL_IP,
 	},
+	{
+		.tunnel = MLX5_FLOW_LAYER_GTP,
+		.ptype = RTE_PTYPE_TUNNEL_GTPU,
+	},
 };
 
 /**

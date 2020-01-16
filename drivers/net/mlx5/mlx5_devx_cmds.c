@@ -415,6 +415,9 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 			     hcattr, max_geneve_opt_len);
 	attr->wqe_inline_mode = MLX5_GET(per_protocol_networking_offload_caps,
 					 hcattr, wqe_inline_mode);
+	attr->tunnel_stateless_gtp = MLX5_GET
+					(per_protocol_networking_offload_caps,
+					 hcattr, tunnel_stateless_gtp);
 	if (attr->wqe_inline_mode != MLX5_CAP_INLINE_MODE_VPORT_CONTEXT)
 		return 0;
 	if (attr->eth_virt) {
