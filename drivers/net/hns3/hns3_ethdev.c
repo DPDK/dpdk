@@ -1473,8 +1473,6 @@ hns3_remove_mac_addr(struct rte_eth_dev *dev, uint32_t idx)
 		return;
 	}
 
-	if (idx == 0)
-		hw->mac.default_addr_setted = false;
 	rte_spinlock_unlock(&hw->lock);
 }
 
