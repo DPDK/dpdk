@@ -1109,6 +1109,7 @@ i40e_init_customized_info(struct i40e_pf *pf)
 	}
 
 	pf->gtp_support = false;
+	pf->esp_support = false;
 }
 
 void
@@ -12337,6 +12338,7 @@ i40e_update_customized_pctype(struct rte_eth_dev *dev, uint8_t *pkg,
 			}
 		}
 		name[strlen(name) - 1] = '\0';
+		PMD_DRV_LOG(INFO, "name = %s\n", name);
 		if (!strcmp(name, "GTPC"))
 			new_pctype =
 				i40e_find_customized_pctype(pf,
@@ -12361,6 +12363,30 @@ i40e_update_customized_pctype(struct rte_eth_dev *dev, uint8_t *pkg,
 			new_pctype =
 				i40e_find_customized_pctype(pf,
 						I40E_CUSTOMIZED_IPV6_L2TPV3);
+		else if (!strcmp(name, "IPV4_ESP"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_ESP_IPV4);
+		else if (!strcmp(name, "IPV6_ESP"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_ESP_IPV6);
+		else if (!strcmp(name, "IPV4_UDP_ESP"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_ESP_IPV4_UDP);
+		else if (!strcmp(name, "IPV6_UDP_ESP"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_ESP_IPV6_UDP);
+		else if (!strcmp(name, "IPV4_AH"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_AH_IPV4);
+		else if (!strcmp(name, "IPV6_AH"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						I40E_CUSTOMIZED_AH_IPV6);
 		if (new_pctype) {
 			if (op == RTE_PMD_I40E_PKG_OP_WR_ADD) {
 				new_pctype->pctype = pctype_value;
@@ -12456,6 +12482,7 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 					continue;
 				memset(name, 0, sizeof(name));
 				strcpy(name, proto[n].name);
+				PMD_DRV_LOG(INFO, "name = %s\n", name);
 				if (!strncasecmp(name, "PPPOE", 5))
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_L2_ETHER_PPPOE;
@@ -12549,6 +12576,10 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_TUNNEL_GTPU;
 					in_tunnel = true;
+				} else if (!strncasecmp(name, "ESP", 3)) {
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_TUNNEL_ESP;
+					in_tunnel = true;
 				} else if (!strncasecmp(name, "GRENAT", 6)) {
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_TUNNEL_GRENAT;
@@ -12569,7 +12600,7 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 	ret = rte_pmd_i40e_ptype_mapping_update(port_id, ptype_mapping,
 						ptype_num, 0);
 	if (ret)
-		PMD_DRV_LOG(ERR, "Failed to update mapping table.");
+		PMD_DRV_LOG(ERR, "Failed to update ptype mapping table.");
 
 	rte_free(ptype_mapping);
 	rte_free(ptype);
@@ -12630,6 +12661,17 @@ i40e_update_customized_info(struct rte_eth_dev *dev, uint8_t *pkg,
 				pf->gtp_support = true;
 			else
 				pf->gtp_support = false;
+			break;
+		}
+	}
+
+	/* Check if ESP is supported. */
+	for (i = 0; i < proto_num; i++) {
+		if (!strncmp(proto[i].name, "ESP", 3)) {
+			if (op == RTE_PMD_I40E_PKG_OP_WR_ADD)
+				pf->esp_support = true;
+			else
+				pf->esp_support = false;
 			break;
 		}
 	}
