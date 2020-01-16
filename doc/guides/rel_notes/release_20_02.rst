@@ -83,9 +83,9 @@ New Features
 
   * Added support for RSS using L3/L4 source/destination only.
 
-* **Updated testpmd to support L2TPv3 over IP flows.**
+* **Updated testpmd application.**
 
-  Added support for L2TPv3 over IP rte_flow patterns to the testpmd
+  Added support for ESP and L2TPv3 over IP rte_flow patterns to the testpmd
   application.
 
 * **Added algorithms to cryptodev API.**

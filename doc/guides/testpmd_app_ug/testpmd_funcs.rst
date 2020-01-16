@@ -4778,6 +4778,20 @@ Decapsulating VxLAN::
  testpmd> flow create 0 ingress pattern eth / ipv4 / udp / vxlan / eth / ipv4 /
         end actions raw_decap / queue index 0 / end
 
+Sample ESP rules
+~~~~~~~~~~~~~~~~
+
+ESP rules can be created by the following commands::
+
+ testpmd> flow create 0 ingress pattern eth / ipv4 / esp spi is 1 / end actions
+        queue index 3 / end
+ testpmd> flow create 0 ingress pattern eth / ipv4 / udp / esp spi is 1 / end
+        actions queue index 3 / end
+ testpmd> flow create 0 ingress pattern eth / ipv6 / esp spi is 1 / end actions
+        queue index 3 / end
+ testpmd> flow create 0 ingress pattern eth / ipv6 / udp / esp spi is 1 / end
+        actions queue index 3 / end
+
 BPF Functions
 --------------
 
