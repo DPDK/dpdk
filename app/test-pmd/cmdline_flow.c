@@ -168,6 +168,7 @@ enum index {
 	ITEM_FUZZY,
 	ITEM_FUZZY_THRESH,
 	ITEM_GTP,
+	ITEM_GTP_MSG_TYPE,
 	ITEM_GTP_TEID,
 	ITEM_GTPC,
 	ITEM_GTPU,
@@ -919,6 +920,7 @@ static const enum index item_gre_key[] = {
 };
 
 static const enum index item_gtp[] = {
+	ITEM_GTP_MSG_TYPE,
 	ITEM_GTP_TEID,
 	ITEM_NEXT,
 	ZERO,
@@ -2292,6 +2294,13 @@ static const struct token token_list[] = {
 		.priv = PRIV_ITEM(GTP, sizeof(struct rte_flow_item_gtp)),
 		.next = NEXT(item_gtp),
 		.call = parse_vc,
+	},
+	[ITEM_GTP_MSG_TYPE] = {
+		.name = "msg_type",
+		.help = "GTP message type",
+		.next = NEXT(item_gtp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gtp,
+					     msg_type)),
 	},
 	[ITEM_GTP_TEID] = {
 		.name = "teid",
