@@ -1145,6 +1145,21 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			goto err_mmap;
 		}
 		mmap_size = RTE_ALIGN_CEIL(mmap_size, alignment);
+		if (mmap_size == 0) {
+			/*
+			 * It could happen if initial mmap_size + alignment
+			 * overflows the sizeof uint64, which could happen if
+			 * either mmap_size or alignment value is wrong.
+			 *
+			 * mmap() kernel implementation would return an error,
+			 * but better catch it before and provide useful info
+			 * in the logs.
+			 */
+			VHOST_LOG_CONFIG(ERR, "mmap size (0x%" PRIx64 ") "
+					"or alignment (0x%" PRIx64 ") is invalid\n",
+					reg->size + mmap_offset, alignment);
+			goto err_mmap;
+		}
 
 		populate = (dev->dequeue_zero_copy) ? MAP_POPULATE : 0;
 		mmap_addr = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
