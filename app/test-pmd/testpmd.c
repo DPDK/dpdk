@@ -502,6 +502,9 @@ static int all_ports_started(void);
 struct gso_status gso_ports[RTE_MAX_ETHPORTS];
 uint16_t gso_max_segment_size = RTE_ETHER_MAX_LEN - RTE_ETHER_CRC_LEN;
 
+/* Holds the registered mbuf dynamic flags names. */
+char dynf_names[64][RTE_MBUF_DYN_NAMESIZE];
+
 /*
  * Helper function to check if socket is already discovered.
  * If yes, return positive value. If not, return zero.

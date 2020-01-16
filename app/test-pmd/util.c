@@ -39,6 +39,7 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 	uint16_t udp_port;
 	uint32_t vx_vni;
 	const char *reason;
+	int dynf_index;
 
 	if (!nb_pkts)
 		return;
@@ -88,6 +89,12 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		if (is_rx && (ol_flags & PKT_RX_DYNF_METADATA))
 			printf(" - Rx metadata: 0x%x",
 			       *RTE_FLOW_DYNF_METADATA(mb));
+		for (dynf_index = 0; dynf_index < 64; dynf_index++) {
+			if (dynf_names[dynf_index][0] != '\0')
+				printf(" - dynf %s: %d",
+				       dynf_names[dynf_index],
+				       !!(ol_flags & (1UL << dynf_index)));
+		}
 		if (mb->packet_type) {
 			rte_get_ptype_name(mb->packet_type, buf, sizeof(buf));
 			printf(" - hw ptype: %s", buf);
@@ -238,6 +245,62 @@ remove_tx_md_callback(portid_t portid)
 			rte_eth_remove_tx_callback(portid, queue,
 				ports[portid].tx_set_md_cb[queue]);
 			ports[portid].tx_set_md_cb[queue] = NULL;
+		}
+}
+
+uint16_t
+tx_pkt_set_dynf(uint16_t port_id, __rte_unused uint16_t queue,
+		struct rte_mbuf *pkts[], uint16_t nb_pkts,
+		__rte_unused void *user_param)
+{
+	uint16_t i = 0;
+
+	if (ports[port_id].mbuf_dynf)
+		for (i = 0; i < nb_pkts; i++)
+			pkts[i]->ol_flags |= ports[port_id].mbuf_dynf;
+	return nb_pkts;
+}
+
+void
+add_tx_dynf_callback(portid_t portid)
+{
+	struct rte_eth_dev_info dev_info;
+	uint16_t queue;
+	int ret;
+
+	if (port_id_is_invalid(portid, ENABLED_WARN))
+		return;
+
+	ret = eth_dev_info_get_print_err(portid, &dev_info);
+	if (ret != 0)
+		return;
+
+	for (queue = 0; queue < dev_info.nb_tx_queues; queue++)
+		if (!ports[portid].tx_set_dynf_cb[queue])
+			ports[portid].tx_set_dynf_cb[queue] =
+				rte_eth_add_tx_callback(portid, queue,
+							tx_pkt_set_dynf, NULL);
+}
+
+void
+remove_tx_dynf_callback(portid_t portid)
+{
+	struct rte_eth_dev_info dev_info;
+	uint16_t queue;
+	int ret;
+
+	if (port_id_is_invalid(portid, ENABLED_WARN))
+		return;
+
+	ret = eth_dev_info_get_print_err(portid, &dev_info);
+	if (ret != 0)
+		return;
+
+	for (queue = 0; queue < dev_info.nb_tx_queues; queue++)
+		if (ports[portid].tx_set_dynf_cb[queue]) {
+			rte_eth_remove_tx_callback(portid, queue,
+				ports[portid].tx_set_dynf_cb[queue]);
+			ports[portid].tx_set_dynf_cb[queue] = NULL;
 		}
 }
 

@@ -104,6 +104,13 @@ struct rss_type_info {
 extern const struct rss_type_info rss_type_table[];
 
 /**
+ * Dynf name array.
+ *
+ * Array that holds the name for each dynf.
+ */
+extern char dynf_names[64][RTE_MBUF_DYN_NAMESIZE];
+
+/**
  * The data structure associated with a forwarding stream between a receive
  * port/queue and a transmit port/queue.
  */
@@ -193,6 +200,9 @@ struct rte_port {
 	/**< metadata value to insert in Tx packets. */
 	uint32_t		tx_metadata;
 	const struct rte_eth_rxtx_callback *tx_set_md_cb[RTE_MAX_QUEUES_PER_PORT+1];
+	/**< dynamic flags. */
+	uint64_t		mbuf_dynf;
+	const struct rte_eth_rxtx_callback *tx_set_dynf_cb[RTE_MAX_QUEUES_PER_PORT+1];
 };
 
 /**
@@ -883,6 +893,12 @@ uint16_t tx_pkt_set_md(uint16_t port_id, __rte_unused uint16_t queue,
 		       __rte_unused void *user_param);
 void add_tx_md_callback(portid_t portid);
 void remove_tx_md_callback(portid_t portid);
+
+uint16_t tx_pkt_set_dynf(uint16_t port_id, __rte_unused uint16_t queue,
+			 struct rte_mbuf *pkts[], uint16_t nb_pkts,
+			 __rte_unused void *user_param);
+void add_tx_dynf_callback(portid_t portid);
+void remove_tx_dynf_callback(portid_t portid);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the

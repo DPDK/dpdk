@@ -2317,6 +2317,16 @@ testpmd will add this value to any Tx packet sent from this port::
 
    testpmd> port config (port_id) tx_metadata (value)
 
+port config dynf
+~~~~~~~~~~~~~~~~
+
+Set/clear dynamic flag per port.
+testpmd will register this flag in the mbuf (same registration
+for both Tx and Rx). Then set/clear this flag for each Tx
+packet sent from this port. The set bit only works for Tx packet::
+
+   testpmd> port config (port_id) dynf (name) (set|clear)
+
 port config mtu
 ~~~~~~~~~~~~~~~
 
