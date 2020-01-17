@@ -1167,8 +1167,8 @@ int rte_mempool_populate_default(struct rte_mempool *mp);
  *   A pointer to the mempool structure.
  * @return
  *   The number of objects added on success.
- *   On error, the chunk is not added in the memory list of the
- *   mempool and a negative errno is returned.
+ *   On error, 0 is returned, rte_errno is set, and the chunk is not added in
+ *   the memory list of the mempool.
  */
 int rte_mempool_populate_anon(struct rte_mempool *mp);
 
