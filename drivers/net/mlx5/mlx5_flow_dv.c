@@ -6081,8 +6081,12 @@ flow_dv_translate_item_meta(struct rte_eth_dev *dev,
 			struct mlx5_priv *priv = dev->data->dev_private;
 			uint32_t msk_c0 = priv->sh->dv_regc0_mask;
 			uint32_t shl_c0 = rte_bsf32(msk_c0);
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+			uint32_t shr_c0 = __builtin_clz(priv->sh->dv_meta_mask);
 
-			msk_c0 = rte_cpu_to_be_32(msk_c0);
+			value >>= shr_c0;
+			mask >>= shr_c0;
+#endif
 			value <<= shl_c0;
 			mask <<= shl_c0;
 			assert(msk_c0);
