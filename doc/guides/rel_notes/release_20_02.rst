@@ -72,15 +72,34 @@ New Features
   * Added support for Rx interrupt.
   * Added support setting VF MAC address by PF driver.
 
-* **Updated i40e driver.**
+* **Updated the Intel ice driver.**
 
-  Updated the i40e PMD to support L2TPv3 over IP profiles which can be
-  programmed by the dynamic device personalization (DDP) process.
+  Updated the Intel ice driver with new features and improvements, including:
 
-  Updated the i40e PMD to support ESP-AH supporting profiles which can be
-  programmed by the dynamic device personalization (DDP) process.
+  * Added support for MAC rules on specific port.
+  * Added support for MAC/VLAN with TCP/UDP in switch rule.
+  * Added support for 1/10G device.
 
-  Added PF support Malicious Device Drive event catch and notify.
+* **Updated Intel iavf driver.**
+
+  Updated iavf PMD with new features and improvements, including:
+
+  * Added more supported device IDs.
+  * Updated virtual channel to latest AVF spec.
+
+* **Updated Intel i40e driver.**
+
+  Updated i40e PMD with new features and improvements, including:
+
+  * Added support for L2TPv3 over IP profiles which can be programmed by the
+    dynamic device personalization (DDP) process.
+  * Added support for ESP-AH profiles which can be programmed by the
+    dynamic device personalization (DDP) process.
+  * Added PF support Malicious Device Drive event catch and notify.
+  * Added LLDP support.
+  * Extended PHY access AQ cmd.
+  * Added support for reading LPI counters.
+  * Added support for Energy Efficient Ethernet
 
 * **Updated Mellanox mlx5 driver.**
 
