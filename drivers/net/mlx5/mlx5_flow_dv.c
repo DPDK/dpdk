@@ -5920,6 +5920,7 @@ flow_dv_match_meta_reg(void *matcher, void *key,
 		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_2);
 	void *misc2_v =
 		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
+	uint32_t temp;
 
 	data &= mask;
 	switch (reg_type) {
@@ -5932,8 +5933,18 @@ flow_dv_match_meta_reg(void *matcher, void *key,
 		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_b, data);
 		break;
 	case REG_C_0:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_0, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_0, data);
+		/*
+		 * The metadata register C0 field might be divided into
+		 * source vport index and META item value, we should set
+		 * this field according to specified mask, not as whole one.
+		 */
+		temp = MLX5_GET(fte_match_set_misc2, misc2_m, metadata_reg_c_0);
+		temp |= mask;
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_0, temp);
+		temp = MLX5_GET(fte_match_set_misc2, misc2_v, metadata_reg_c_0);
+		temp &= ~mask;
+		temp |= data;
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_0, temp);
 		break;
 	case REG_C_1:
 		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_1, mask);
