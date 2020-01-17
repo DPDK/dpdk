@@ -15,7 +15,7 @@ generate_doxygen = find_program('generate_doxygen.sh')
 generate_examples = find_program('generate_examples.sh')
 generate_css = find_program('doxy-html-custom.sh')
 
-htmldir = join_paths('share', 'doc', 'dpdk')
+htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
 
 # due to the following bug: https://github.com/mesonbuild/meson/issues/4107
 # if install is set to true it will override build_by_default and it will
@@ -46,6 +46,7 @@ doxy_build = custom_target('doxygen',
 	depends: example,
 	input: doxy_conf,
 	output: 'api',
+	depfile: 'api.d',
 	command: [generate_doxygen, '@INPUT@', '@OUTPUT@', generate_css],
 	install: get_option('enable_docs'),
 	install_dir: htmldir,
