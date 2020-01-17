@@ -42,6 +42,8 @@
 
 /**
  * Copy pci device info to the Ethernet device data.
+ * Shared memory (eth_dev->data) only updated by primary process, so it is safe
+ * to call this function from both primary and secondary processes.
  *
  * @param eth_dev
  * The *eth_dev* pointer is the address of the *rte_eth_dev* structure.
@@ -60,14 +62,16 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
 
 	eth_dev->intr_handle = &pci_dev->intr_handle;
 
-	eth_dev->data->dev_flags = 0;
-	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
-		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
-	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_RMV)
-		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_RMV;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		eth_dev->data->dev_flags = 0;
+		if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+			eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
+		if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_RMV)
+			eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_RMV;
 
-	eth_dev->data->kdrv = pci_dev->kdrv;
-	eth_dev->data->numa_node = pci_dev->device.numa_node;
+		eth_dev->data->kdrv = pci_dev->kdrv;
+		eth_dev->data->numa_node = pci_dev->device.numa_node;
+	}
 }
 
 static inline int
