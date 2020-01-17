@@ -150,6 +150,12 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Disabled building all the Linux kernel modules by default.**
+
+  In order to remove the build time dependency with Linux kernel,
+  the Technical Board decided to disable all the kernel modules
+  by default from 20.02 version.
+
 
 API Changes
 -----------

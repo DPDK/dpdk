@@ -6,7 +6,7 @@ option('drivers_install_subdir', type: 'string', value: 'dpdk/pmds-<VERSION>',
 	description: 'Subdirectory of libdir where to install PMDs. Defaults to using a versioned subdirectory.')
 option('enable_docs', type: 'boolean', value: false,
 	description: 'build documentation')
-option('enable_kmods', type: 'boolean', value: true,
+option('enable_kmods', type: 'boolean', value: false,
 	description: 'build kernel modules')
 option('examples', type: 'string', value: '',
 	description: 'Comma-separated list of examples to build by default')
