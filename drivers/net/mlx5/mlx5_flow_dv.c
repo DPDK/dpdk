@@ -1090,6 +1090,14 @@ flow_dv_convert_action_mark(struct rte_eth_dev *dev,
 	if (reg < 0)
 		return reg;
 	assert(reg > 0);
+	if (reg == REG_C_0) {
+		uint32_t msk_c0 = priv->sh->dv_regc0_mask;
+		uint32_t shl_c0 = rte_bsf32(msk_c0);
+
+		data = rte_cpu_to_be_32(rte_cpu_to_be_32(data) << shl_c0);
+		mask = rte_cpu_to_be_32(mask) & msk_c0;
+		mask = rte_cpu_to_be_32(mask << shl_c0);
+	}
 	reg_c_x[0].id = reg_to_field[reg];
 	return flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
@@ -6014,6 +6022,15 @@ flow_dv_translate_item_mark(struct rte_eth_dev *dev,
 		/* Get the metadata register index for the mark. */
 		reg = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, NULL);
 		assert(reg > 0);
+		if (reg == REG_C_0) {
+			struct mlx5_priv *priv = dev->data->dev_private;
+			uint32_t msk_c0 = priv->sh->dv_regc0_mask;
+			uint32_t shl_c0 = rte_bsf32(msk_c0);
+
+			mask &= msk_c0;
+			mask <<= shl_c0;
+			value <<= shl_c0;
+		}
 		flow_dv_match_meta_reg(matcher, key, reg, value, mask);
 	}
 }
@@ -6095,6 +6112,8 @@ flow_dv_translate_item_meta_vport(void *matcher, void *key,
 /**
  * Add tag item to matcher
  *
+ * @param[in] dev
+ *   The devich to configure through.
  * @param[in, out] matcher
  *   Flow matcher.
  * @param[in, out] key
@@ -6103,15 +6122,27 @@ flow_dv_translate_item_meta_vport(void *matcher, void *key,
  *   Flow pattern to translate.
  */
 static void
-flow_dv_translate_mlx5_item_tag(void *matcher, void *key,
+flow_dv_translate_mlx5_item_tag(struct rte_eth_dev *dev,
+				void *matcher, void *key,
 				const struct rte_flow_item *item)
 {
 	const struct mlx5_rte_flow_item_tag *tag_v = item->spec;
 	const struct mlx5_rte_flow_item_tag *tag_m = item->mask;
+	uint32_t mask, value;
 
 	assert(tag_v);
-	flow_dv_match_meta_reg(matcher, key, tag_v->id, tag_v->data,
-			       tag_m ? tag_m->data : UINT32_MAX);
+	value = tag_v->data;
+	mask = tag_m ? tag_m->data : UINT32_MAX;
+	if (tag_v->id == REG_C_0) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		uint32_t msk_c0 = priv->sh->dv_regc0_mask;
+		uint32_t shl_c0 = rte_bsf32(msk_c0);
+
+		mask &= msk_c0;
+		mask <<= shl_c0;
+		value <<= shl_c0;
+	}
+	flow_dv_match_meta_reg(matcher, key, tag_v->id, value, mask);
 }
 
 /**
@@ -7470,7 +7501,7 @@ cnt_err:
 			last_item = MLX5_FLOW_ITEM_TAG;
 			break;
 		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
-			flow_dv_translate_mlx5_item_tag(match_mask,
+			flow_dv_translate_mlx5_item_tag(dev, match_mask,
 							match_value, items);
 			last_item = MLX5_FLOW_ITEM_TAG;
 			break;
