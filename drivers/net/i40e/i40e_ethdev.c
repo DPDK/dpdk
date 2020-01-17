@@ -6761,6 +6761,92 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 	rte_free(info.msg_buf);
 }
 
+static void
+i40e_handle_mdd_event(struct rte_eth_dev *dev)
+{
+#define I40E_MDD_CLEAR32 0xFFFFFFFF
+#define I40E_MDD_CLEAR16 0xFFFF
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	bool mdd_detected = false;
+	struct i40e_pf_vf *vf;
+	uint32_t reg;
+	int i;
+
+	/* find what triggered the MDD event */
+	reg = I40E_READ_REG(hw, I40E_GL_MDET_TX);
+	if (reg & I40E_GL_MDET_TX_VALID_MASK) {
+		uint8_t pf_num = (reg & I40E_GL_MDET_TX_PF_NUM_MASK) >>
+				I40E_GL_MDET_TX_PF_NUM_SHIFT;
+		uint16_t vf_num = (reg & I40E_GL_MDET_TX_VF_NUM_MASK) >>
+				I40E_GL_MDET_TX_VF_NUM_SHIFT;
+		uint8_t event = (reg & I40E_GL_MDET_TX_EVENT_MASK) >>
+				I40E_GL_MDET_TX_EVENT_SHIFT;
+		uint16_t queue = ((reg & I40E_GL_MDET_TX_QUEUE_MASK) >>
+				I40E_GL_MDET_TX_QUEUE_SHIFT) -
+					hw->func_caps.base_queue;
+		PMD_DRV_LOG(WARNING, "Malicious Driver Detection event 0x%02x on TX "
+			"queue %d PF number 0x%02x VF number 0x%02x device %s\n",
+				event, queue, pf_num, vf_num, dev->data->name);
+		I40E_WRITE_REG(hw, I40E_GL_MDET_TX, I40E_MDD_CLEAR32);
+		mdd_detected = true;
+	}
+	reg = I40E_READ_REG(hw, I40E_GL_MDET_RX);
+	if (reg & I40E_GL_MDET_RX_VALID_MASK) {
+		uint8_t func = (reg & I40E_GL_MDET_RX_FUNCTION_MASK) >>
+				I40E_GL_MDET_RX_FUNCTION_SHIFT;
+		uint8_t event = (reg & I40E_GL_MDET_RX_EVENT_MASK) >>
+				I40E_GL_MDET_RX_EVENT_SHIFT;
+		uint16_t queue = ((reg & I40E_GL_MDET_RX_QUEUE_MASK) >>
+				I40E_GL_MDET_RX_QUEUE_SHIFT) -
+					hw->func_caps.base_queue;
+
+		PMD_DRV_LOG(WARNING, "Malicious Driver Detection event 0x%02x on RX "
+				"queue %d of function 0x%02x device %s\n",
+					event, queue, func, dev->data->name);
+		I40E_WRITE_REG(hw, I40E_GL_MDET_RX, I40E_MDD_CLEAR32);
+		mdd_detected = true;
+	}
+
+	if (mdd_detected) {
+		reg = I40E_READ_REG(hw, I40E_PF_MDET_TX);
+		if (reg & I40E_PF_MDET_TX_VALID_MASK) {
+			I40E_WRITE_REG(hw, I40E_PF_MDET_TX, I40E_MDD_CLEAR16);
+			PMD_DRV_LOG(WARNING, "TX driver issue detected on PF\n");
+		}
+		reg = I40E_READ_REG(hw, I40E_PF_MDET_RX);
+		if (reg & I40E_PF_MDET_RX_VALID_MASK) {
+			I40E_WRITE_REG(hw, I40E_PF_MDET_RX,
+					I40E_MDD_CLEAR16);
+			PMD_DRV_LOG(WARNING, "RX driver issue detected on PF\n");
+		}
+	}
+
+	/* see if one of the VFs needs its hand slapped */
+	for (i = 0; i < pf->vf_num && mdd_detected; i++) {
+		vf = &pf->vfs[i];
+		reg = I40E_READ_REG(hw, I40E_VP_MDET_TX(i));
+		if (reg & I40E_VP_MDET_TX_VALID_MASK) {
+			I40E_WRITE_REG(hw, I40E_VP_MDET_TX(i),
+					I40E_MDD_CLEAR16);
+			vf->num_mdd_events++;
+			PMD_DRV_LOG(WARNING, "TX driver issue detected on VF %d %-"
+					PRIu64 "times\n",
+					i, vf->num_mdd_events);
+		}
+
+		reg = I40E_READ_REG(hw, I40E_VP_MDET_RX(i));
+		if (reg & I40E_VP_MDET_RX_VALID_MASK) {
+			I40E_WRITE_REG(hw, I40E_VP_MDET_RX(i),
+					I40E_MDD_CLEAR16);
+			vf->num_mdd_events++;
+			PMD_DRV_LOG(WARNING, "RX driver issue detected on VF %d %-"
+					PRIu64 "times\n",
+					i, vf->num_mdd_events);
+		}
+	}
+}
+
 /**
  * Interrupt handler triggered by NIC  for handling
  * specific interrupt.
@@ -6793,8 +6879,10 @@ i40e_dev_interrupt_handler(void *param)
 	}
 	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
 		PMD_DRV_LOG(ERR, "ICR0: unrecoverable ECC error");
-	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
+	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK) {
 		PMD_DRV_LOG(ERR, "ICR0: malicious programming detected");
+		i40e_handle_mdd_event(dev);
+	}
 	if (icr0 & I40E_PFINT_ICR0_GRST_MASK)
 		PMD_DRV_LOG(INFO, "ICR0: global reset requested");
 	if (icr0 & I40E_PFINT_ICR0_PCI_EXCEPTION_MASK)
@@ -6838,8 +6926,10 @@ i40e_dev_alarm_handler(void *param)
 		goto done;
 	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
 		PMD_DRV_LOG(ERR, "ICR0: unrecoverable ECC error");
-	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
+	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK) {
 		PMD_DRV_LOG(ERR, "ICR0: malicious programming detected");
+		i40e_handle_mdd_event(dev);
+	}
 	if (icr0 & I40E_PFINT_ICR0_GRST_MASK)
 		PMD_DRV_LOG(INFO, "ICR0: global reset requested");
 	if (icr0 & I40E_PFINT_ICR0_PCI_EXCEPTION_MASK)

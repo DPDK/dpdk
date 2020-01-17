@@ -43,6 +43,7 @@ Features of the i40e PMD are:
 - Dynamic Device Personalization (DDP)
 - Queue region configuration
 - Virtual Function Port Representors
+- Malicious Device Drive event catch and notify
 
 Prerequisites
 -------------

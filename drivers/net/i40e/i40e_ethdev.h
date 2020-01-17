@@ -426,6 +426,7 @@ struct i40e_pf_vf {
 	/* version of the virtchnl from VF */
 	struct virtchnl_version_info version;
 	uint32_t request_caps; /* offload caps requested from VF */
+	uint64_t num_mdd_events; /* num of mdd events detected */
 
 	/*
 	 * Variables for store the arrival timestamp of VF messages.

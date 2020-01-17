@@ -72,15 +72,15 @@ New Features
   * Added support for Rx interrupt.
   * Added support setting VF MAC address by PF driver.
 
-* **Updated i40e driver to support L2TPv3 over IP flows.**
+* **Updated i40e driver.**
 
   Updated the i40e PMD to support L2TPv3 over IP profiles which can be
   programmed by the dynamic device personalization (DDP) process.
 
-* **Updated i40e driver to support ESP.**
-
   Updated the i40e PMD to support ESP-AH supporting profiles which can be
   programmed by the dynamic device personalization (DDP) process.
+
+  Added PF support Malicious Device Drive event catch and notify.
 
 * **Updated Mellanox mlx5 driver.**
 
