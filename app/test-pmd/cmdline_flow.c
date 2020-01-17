@@ -41,6 +41,7 @@ enum index {
 	BOOLEAN,
 	STRING,
 	HEX,
+	FILE_PATH,
 	MAC_ADDR,
 	IPV4_ADDR,
 	IPV6_ADDR,
@@ -63,6 +64,7 @@ enum index {
 	CREATE,
 	DESTROY,
 	FLUSH,
+	DUMP,
 	QUERY,
 	LIST,
 	ISOLATE,
@@ -641,6 +643,9 @@ struct buffer {
 			uint32_t rule_n;
 		} destroy; /**< Destroy arguments. */
 		struct {
+			char file[128];
+		} dump; /**< Dump arguments. */
+		struct {
 			uint32_t rule;
 			struct rte_flow_action action;
 		} query; /**< Query arguments. */
@@ -690,6 +695,12 @@ static const enum index next_vc_attr[] = {
 
 static const enum index next_destroy_attr[] = {
 	DESTROY_RULE,
+	END,
+	ZERO,
+};
+
+static const enum index next_dump_attr[] = {
+	FILE_PATH,
 	END,
 	ZERO,
 };
@@ -1412,6 +1423,9 @@ static int parse_destroy(struct context *, const struct token *,
 static int parse_flush(struct context *, const struct token *,
 		       const char *, unsigned int,
 		       void *, unsigned int);
+static int parse_dump(struct context *, const struct token *,
+		      const char *, unsigned int,
+		      void *, unsigned int);
 static int parse_query(struct context *, const struct token *,
 		       const char *, unsigned int,
 		       void *, unsigned int);
@@ -1439,6 +1453,9 @@ static int parse_string(struct context *, const struct token *,
 static int parse_hex(struct context *ctx, const struct token *token,
 			const char *str, unsigned int len,
 			void *buf, unsigned int size);
+static int parse_string0(struct context *, const struct token *,
+			const char *, unsigned int,
+			void *, unsigned int);
 static int parse_mac_addr(struct context *, const struct token *,
 			  const char *, unsigned int,
 			  void *, unsigned int);
@@ -1532,6 +1549,12 @@ static const struct token token_list[] = {
 		.type = "HEX",
 		.help = "fixed string",
 		.call = parse_hex,
+	},
+	[FILE_PATH] = {
+		.name = "{file path}",
+		.type = "STRING",
+		.help = "file path",
+		.call = parse_string0,
 		.comp = comp_none,
 	},
 	[MAC_ADDR] = {
@@ -1593,6 +1616,7 @@ static const struct token token_list[] = {
 			      CREATE,
 			      DESTROY,
 			      FLUSH,
+			      DUMP,
 			      LIST,
 			      QUERY,
 			      ISOLATE)),
@@ -1626,6 +1650,14 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY(PORT_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_flush,
+	},
+	[DUMP] = {
+		.name = "dump",
+		.help = "dump all flow rules to file",
+		.next = NEXT(next_dump_attr, NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.dump.file),
+			     ARGS_ENTRY(struct buffer, port)),
+		.call = parse_dump,
 	},
 	[QUERY] = {
 		.name = "query",
@@ -5118,6 +5150,33 @@ parse_flush(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse tokens for dump command. */
+static int
+parse_dump(struct context *ctx, const struct token *token,
+	    const char *str, unsigned int len,
+	    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != DUMP)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+	}
+	return len;
+}
+
 /** Parse tokens for query command. */
 static int
 parse_query(struct context *ctx, const struct token *token,
@@ -5513,6 +5572,35 @@ error:
 	push_args(ctx, arg_data);
 	return -1;
 
+}
+
+/**
+ * Parse a zero-ended string.
+ */
+static int
+parse_string0(struct context *ctx, const struct token *token __rte_unused,
+	     const char *str, unsigned int len,
+	     void *buf, unsigned int size)
+{
+	const struct arg *arg_data = pop_args(ctx);
+
+	/* Arguments are expected. */
+	if (!arg_data)
+		return -1;
+	size = arg_data->size;
+	/* Bit-mask fill is not supported. */
+	if (arg_data->mask || size < len + 1)
+		goto error;
+	if (!ctx->object)
+		return len;
+	buf = (uint8_t *)ctx->object + arg_data->offset;
+	strncpy(buf, str, len);
+	if (ctx->objmask)
+		memset((uint8_t *)ctx->objmask + arg_data->offset, 0xff, len);
+	return len;
+error:
+	push_args(ctx, arg_data);
+	return -1;
 }
 
 /**
@@ -6173,6 +6261,9 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case FLUSH:
 		port_flow_flush(in->port);
+		break;
+	case DUMP:
+		port_flow_dump(in->port, in->args.dump.file);
 		break;
 	case QUERY:
 		port_flow_query(in->port, in->args.query.rule,

@@ -1441,6 +1441,33 @@ port_flow_flush(portid_t port_id)
 	return ret;
 }
 
+/** Dump all flow rules. */
+int
+port_flow_dump(portid_t port_id, const char *file_name)
+{
+	int ret = 0;
+	FILE *file = stdout;
+	struct rte_flow_error error;
+
+	if (file_name && strlen(file_name)) {
+		file = fopen(file_name, "w");
+		if (!file) {
+			printf("Failed to create file %s: %s\n", file_name,
+			       strerror(errno));
+			return -errno;
+		}
+	}
+	ret = rte_flow_dev_dump(port_id, file, &error);
+	if (ret) {
+		port_flow_complain(&error);
+		printf("Failed to dump flow: %s\n", strerror(-ret));
+	} else
+		printf("Flow dump finished\n");
+	if (file_name && strlen(file_name))
+		fclose(file);
+	return ret;
+}
+
 /** Query a flow rule. */
 int
 port_flow_query(portid_t port_id, uint32_t rule,
