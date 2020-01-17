@@ -11,7 +11,7 @@ build = true
 
 pmd_dlopen = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_pmd_mlx5_glue.so'
-LIB_GLUE_VERSION = '19.08.0'
+LIB_GLUE_VERSION = '20.02.0'
 LIB_GLUE = LIB_GLUE_BASE + '.' + LIB_GLUE_VERSION
 if pmd_dlopen
 	dpdk_conf.set('RTE_IBVERBS_LINK_DLOPEN', 1)
@@ -186,6 +186,8 @@ if build
 		'RDMA_NLDEV_ATTR_PORT_INDEX' ],
 		[ 'HAVE_RDMA_NLDEV_ATTR_NDEV_INDEX', 'rdma/rdma_netlink.h',
 		'RDMA_NLDEV_ATTR_NDEV_INDEX' ],
+		[ 'HAVE_MLX5_DR_FLOW_DUMP', 'infiniband/mlx5dv.h',
+		'mlx5dv_dump_dr_domain'],
 	]
 	config = configuration_data()
 	foreach arg:has_sym_args

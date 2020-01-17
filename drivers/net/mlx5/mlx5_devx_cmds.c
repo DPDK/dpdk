@@ -927,3 +927,38 @@ mlx5_devx_cmd_create_td(struct ibv_context *ctx)
 			   transport_domain);
 	return td;
 }
+
+/**
+ * Dump all flows to file.
+ *
+ * @param[in] sh
+ *   Pointer to context.
+ * @param[out] file
+ *   Pointer to file stream.
+ *
+ * @return
+ *   0 on success, a nagative value otherwise.
+ */
+int
+mlx5_devx_cmd_flow_dump(struct mlx5_ibv_shared *sh __rte_unused,
+			FILE *file __rte_unused)
+{
+	int ret = 0;
+
+#ifdef HAVE_MLX5_DR_FLOW_DUMP
+	if (sh->fdb_domain) {
+		ret = mlx5_glue->dr_dump_domain(file, sh->fdb_domain);
+		if (ret)
+			return ret;
+	}
+	assert(sh->rx_domain);
+	ret = mlx5_glue->dr_dump_domain(file, sh->rx_domain);
+	if (ret)
+		return ret;
+	assert(sh->tx_domain);
+	ret = mlx5_glue->dr_dump_domain(file, sh->tx_domain);
+#else
+	ret = ENOTSUP;
+#endif
+	return -ret;
+}

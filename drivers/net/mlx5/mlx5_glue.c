@@ -1037,6 +1037,18 @@ mlx5_glue_devx_port_query(struct ibv_context *ctx,
 #endif
 }
 
+static int
+mlx5_glue_dr_dump_domain(FILE *file, void *domain)
+{
+#ifdef HAVE_MLX5_DR_FLOW_DUMP
+	return mlx5dv_dump_dr_domain(file, domain);
+#else
+	RTE_SET_USED(file);
+	RTE_SET_USED(domain);
+	return -ENOTSUP;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -1134,4 +1146,5 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_umem_dereg = mlx5_glue_devx_umem_dereg,
 	.devx_qp_query = mlx5_glue_devx_qp_query,
 	.devx_port_query = mlx5_glue_devx_port_query,
+	.dr_dump_domain = mlx5_glue_dr_dump_domain,
 };

@@ -975,6 +975,8 @@ struct mlx5_flow_counter *mlx5_counter_alloc(struct rte_eth_dev *dev);
 void mlx5_counter_free(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt);
 int mlx5_counter_query(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt,
 		       bool clear, uint64_t *pkts, uint64_t *bytes);
+int mlx5_flow_dev_dump(struct rte_eth_dev *dev, FILE *file,
+		       struct rte_flow_error *error);
 
 /* mlx5_mp.c */
 void mlx5_mp_req_start_rxtx(struct rte_eth_dev *dev);
@@ -1048,6 +1050,8 @@ int mlx5_devx_cmd_modify_sq
 struct mlx5_devx_obj *mlx5_devx_cmd_create_tis
 	(struct ibv_context *ctx, struct mlx5_devx_tis_attr *tis_attr);
 struct mlx5_devx_obj *mlx5_devx_cmd_create_td(struct ibv_context *ctx);
+
+int mlx5_devx_cmd_flow_dump(struct mlx5_ibv_shared *sh, FILE *file);
 
 /* mlx5_flow_meter.c */
 
