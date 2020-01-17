@@ -463,6 +463,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	unsigned mz_id, n;
 	int ret;
 	bool need_iova_contig_obj;
+	size_t max_alloc_size = SIZE_MAX;
 
 	ret = mempool_ops_alloc_once(mp);
 	if (ret != 0)
@@ -542,27 +543,21 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 		if (min_chunk_size == (size_t)mem_size)
 			mz_flags |= RTE_MEMZONE_IOVA_CONTIG;
 
-		mz = rte_memzone_reserve_aligned(mz_name, mem_size,
+		/* Allocate a memzone, retrying with a smaller area on ENOMEM */
+		do {
+			mz = rte_memzone_reserve_aligned(mz_name,
+				RTE_MIN((size_t)mem_size, max_alloc_size),
 				mp->socket_id, mz_flags, align);
 
-		/* don't try reserving with 0 size if we were asked to reserve
-		 * IOVA-contiguous memory.
-		 */
-		if (min_chunk_size < (size_t)mem_size && mz == NULL) {
-			/* not enough memory, retry with the biggest zone we
-			 * have
-			 */
-			mz = rte_memzone_reserve_aligned(mz_name, 0,
-					mp->socket_id, mz_flags, align);
-		}
+			if (mz == NULL && rte_errno != ENOMEM)
+				break;
+
+			max_alloc_size = RTE_MIN(max_alloc_size,
+						(size_t)mem_size) / 2;
+		} while (mz == NULL && max_alloc_size >= min_chunk_size);
+
 		if (mz == NULL) {
 			ret = -rte_errno;
-			goto fail;
-		}
-
-		if (mz->len < min_chunk_size) {
-			rte_memzone_free(mz);
-			ret = -ENOMEM;
 			goto fail;
 		}
 
