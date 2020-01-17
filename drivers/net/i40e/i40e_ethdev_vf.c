@@ -658,16 +658,12 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t vector_id;
 	int i, err;
-	uint16_t nb_msix;
 
 	if (dev->data->dev_conf.intr_conf.rxq != 0 &&
 	    rte_intr_allow_others(intr_handle))
 		vector_id = I40E_RX_VEC_START;
 	else
 		vector_id = I40E_MISC_VEC_ID;
-
-	nb_msix = RTE_MIN(vf->vf_res->max_vectors,
-			intr_handle->nb_efd);
 
 	map_info = (struct virtchnl_irq_map_info *)cmd_buffer;
 	map_info->num_vectors = dev->data->nb_rx_queues;
@@ -683,7 +679,7 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 			intr_handle->intr_vec[i] = vector_id;
 		if (vector_id > I40E_MISC_VEC_ID)
 			vector_id++;
-		if (vector_id > nb_msix)
+		if (vector_id >= vf->vf_res->max_vectors)
 			vector_id = I40E_RX_VEC_START;
 	}
 
