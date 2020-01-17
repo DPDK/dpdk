@@ -2954,6 +2954,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mlx5_dev_config dev_config;
 	int ret;
 
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		mlx5_pmd_socket_init();
 	ret = mlx5_init_once();
 	if (ret) {
 		DRV_LOG(ERR, "unable to init PMD global data: %s",

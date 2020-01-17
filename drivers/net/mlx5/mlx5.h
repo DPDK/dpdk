@@ -990,6 +990,11 @@ void mlx5_mp_uninit_primary(void);
 int mlx5_mp_init_secondary(void);
 void mlx5_mp_uninit_secondary(void);
 
+/* mlx5_socket.c */
+
+int mlx5_pmd_socket_init(void);
+void mlx5_pmd_socket_uninit(void);
+
 /* mlx5_nl.c */
 
 int mlx5_nl_init(int protocol);
