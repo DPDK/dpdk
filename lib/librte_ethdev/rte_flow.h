@@ -2849,6 +2849,27 @@ enum rte_flow_conv_op {
 };
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Dump hardware internal representation information of
+ * rte flow to file.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] file
+ *   A pointer to a file for output.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   0 on success, a nagative value otherwise.
+ */
+__rte_experimental
+int
+rte_flow_dev_dump(uint16_t port_id, FILE *file, struct rte_flow_error *error);
+
+/**
  * Check if mbuf dynamic field for metadata is registered.
  *
  * @return
