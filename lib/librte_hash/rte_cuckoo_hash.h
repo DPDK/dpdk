@@ -124,7 +124,7 @@ const rte_hash_cmp_eq_t cmp_jump_table[NUM_KEY_CMP_CASES] = {
 
 struct lcore_cache {
 	unsigned len; /**< Cache len */
-	void *objs[LCORE_CACHE_SIZE]; /**< Cache objects */
+	uint32_t objs[LCORE_CACHE_SIZE]; /**< Cache objects */
 } __rte_cache_aligned;
 
 /* Structure that stores key-value pair */
