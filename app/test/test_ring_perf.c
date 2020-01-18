@@ -357,10 +357,10 @@ test_single_enqueue_dequeue(struct rte_ring *r)
 	}
 	const uint64_t mc_end = rte_rdtsc();
 
-	printf("SP/SC single enq/dequeue: %"PRIu64"\n",
-			(sc_end-sc_start) >> iter_shift);
-	printf("MP/MC single enq/dequeue: %"PRIu64"\n",
-			(mc_end-mc_start) >> iter_shift);
+	printf("SP/SC single enq/dequeue: %.2F\n",
+			((double)(sc_end-sc_start)) / iterations);
+	printf("MP/MC single enq/dequeue: %.2F\n",
+			((double)(mc_end-mc_start)) / iterations);
 }
 
 /*
@@ -395,13 +395,15 @@ test_burst_enqueue_dequeue(struct rte_ring *r)
 		}
 		const uint64_t mc_end = rte_rdtsc();
 
-		uint64_t mc_avg = ((mc_end-mc_start) >> iter_shift) / bulk_sizes[sz];
-		uint64_t sc_avg = ((sc_end-sc_start) >> iter_shift) / bulk_sizes[sz];
+		double mc_avg = ((double)(mc_end-mc_start) / iterations) /
+					bulk_sizes[sz];
+		double sc_avg = ((double)(sc_end-sc_start) / iterations) /
+					bulk_sizes[sz];
 
-		printf("SP/SC burst enq/dequeue (size: %u): %"PRIu64"\n", bulk_sizes[sz],
-				sc_avg);
-		printf("MP/MC burst enq/dequeue (size: %u): %"PRIu64"\n", bulk_sizes[sz],
-				mc_avg);
+		printf("SP/SC burst enq/dequeue (size: %u): %.2F\n",
+				bulk_sizes[sz], sc_avg);
+		printf("MP/MC burst enq/dequeue (size: %u): %.2F\n",
+				bulk_sizes[sz], mc_avg);
 	}
 }
 
