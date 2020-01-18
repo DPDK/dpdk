@@ -33,6 +33,7 @@
 #include <rte_tailq.h>
 
 #include "rte_ring.h"
+#include "rte_ring_elem.h"
 
 TAILQ_HEAD(rte_ring_list, rte_tailq_entry);
 
@@ -46,21 +47,36 @@ EAL_REGISTER_TAILQ(rte_ring_tailq)
 
 /* return the size of memory occupied by a ring */
 ssize_t
-rte_ring_get_memsize(unsigned count)
+rte_ring_get_memsize_elem(unsigned int esize, unsigned int count)
 {
 	ssize_t sz;
+
+	/* Check if element size is a multiple of 4B */
+	if (esize % 4 != 0) {
+		RTE_LOG(ERR, RING, "element size is not a multiple of 4\n");
+
+		return -EINVAL;
+	}
 
 	/* count must be a power of 2 */
 	if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK )) {
 		RTE_LOG(ERR, RING,
-			"Requested size is invalid, must be power of 2, and "
-			"do not exceed the size limit %u\n", RTE_RING_SZ_MASK);
+			"Requested number of elements is invalid, must be power of 2, and not exceed %u\n",
+			RTE_RING_SZ_MASK);
+
 		return -EINVAL;
 	}
 
-	sz = sizeof(struct rte_ring) + count * sizeof(void *);
+	sz = sizeof(struct rte_ring) + count * esize;
 	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
 	return sz;
+}
+
+/* return the size of memory occupied by a ring */
+ssize_t
+rte_ring_get_memsize(unsigned int count)
+{
+	return rte_ring_get_memsize_elem(sizeof(void *), count);
 }
 
 void
@@ -114,10 +130,10 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 	return 0;
 }
 
-/* create the ring */
+/* create the ring for a given element size */
 struct rte_ring *
-rte_ring_create(const char *name, unsigned count, int socket_id,
-		unsigned flags)
+rte_ring_create_elem(const char *name, unsigned int esize, unsigned int count,
+		int socket_id, unsigned int flags)
 {
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	struct rte_ring *r;
@@ -135,7 +151,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	if (flags & RING_F_EXACT_SZ)
 		count = rte_align32pow2(count + 1);
 
-	ring_size = rte_ring_get_memsize(count);
+	ring_size = rte_ring_get_memsize_elem(esize, count);
 	if (ring_size < 0) {
 		rte_errno = ring_size;
 		return NULL;
@@ -180,6 +196,15 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	rte_mcfg_tailq_write_unlock();
 
 	return r;
+}
+
+/* create the ring */
+struct rte_ring *
+rte_ring_create(const char *name, unsigned int count, int socket_id,
+		unsigned int flags)
+{
+	return rte_ring_create_elem(name, sizeof(void *), count, socket_id,
+		flags);
 }
 
 /* free the ring */

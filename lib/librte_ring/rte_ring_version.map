@@ -15,6 +15,10 @@ DPDK_20.0 {
 EXPERIMENTAL {
 	global:
 
+	# added in 19.08
 	rte_ring_reset;
 
+	# added in 20.02
+	rte_ring_create_elem;
+	rte_ring_get_memsize_elem;
 };
