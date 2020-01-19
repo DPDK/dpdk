@@ -24,6 +24,7 @@ LDLIBS += -lrte_bus_pci
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_mac_api.c
+SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_rx_filter.c
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_dev.c
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_lif.c

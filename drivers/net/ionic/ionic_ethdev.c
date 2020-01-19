@@ -49,6 +49,14 @@ static const struct eth_dev_ops ionic_eth_dev_ops = {
 	.link_update            = ionic_dev_link_update,
 	.dev_set_link_up        = ionic_dev_set_link_up,
 	.dev_set_link_down      = ionic_dev_set_link_down,
+	.mac_addr_add           = ionic_dev_add_mac,
+	.mac_addr_remove        = ionic_dev_remove_mac,
+	.mac_addr_set           = ionic_dev_set_mac,
+	.vlan_filter_set        = ionic_dev_vlan_filter_set,
+	.promiscuous_enable     = ionic_dev_promiscuous_enable,
+	.promiscuous_disable    = ionic_dev_promiscuous_disable,
+	.allmulticast_enable    = ionic_dev_allmulticast_enable,
+	.allmulticast_disable   = ionic_dev_allmulticast_disable,
 };
 
 /*

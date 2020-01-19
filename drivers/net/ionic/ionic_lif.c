@@ -9,6 +9,7 @@
 #include "ionic_logs.h"
 #include "ionic_lif.h"
 #include "ionic_ethdev.h"
+#include "ionic_rx_filter.h"
 
 static int ionic_lif_addr_add(struct ionic_lif *lif, const uint8_t *addr);
 static int ionic_lif_addr_del(struct ionic_lif *lif, const uint8_t *addr);
@@ -83,21 +84,198 @@ ionic_lif_reset(struct ionic_lif *lif)
 }
 
 static int
-ionic_lif_addr_add(struct ionic_lif *lif __rte_unused,
-		const uint8_t *addr __rte_unused)
+ionic_lif_addr_add(struct ionic_lif *lif, const uint8_t *addr)
 {
-	IONIC_PRINT(INFO, "%s: stubbed", __func__);
+	struct ionic_admin_ctx ctx = {
+		.pending_work = true,
+		.cmd.rx_filter_add = {
+			.opcode = IONIC_CMD_RX_FILTER_ADD,
+			.match = IONIC_RX_FILTER_MATCH_MAC,
+		},
+	};
+	int err;
+
+	memcpy(ctx.cmd.rx_filter_add.mac.addr, addr, RTE_ETHER_ADDR_LEN);
+
+	err = ionic_adminq_post_wait(lif, &ctx);
+	if (err)
+		return err;
+
+	IONIC_PRINT(INFO, "rx_filter add (id %d)",
+		ctx.comp.rx_filter_add.filter_id);
+
+	return ionic_rx_filter_save(lif, 0, IONIC_RXQ_INDEX_ANY, &ctx);
+}
+
+static int
+ionic_lif_addr_del(struct ionic_lif *lif, const uint8_t *addr)
+{
+	struct ionic_admin_ctx ctx = {
+		.pending_work = true,
+		.cmd.rx_filter_del = {
+			.opcode = IONIC_CMD_RX_FILTER_DEL,
+		},
+	};
+	struct ionic_rx_filter *f;
+	int err;
+
+	IONIC_PRINT_CALL();
+
+	rte_spinlock_lock(&lif->rx_filters.lock);
+
+	f = ionic_rx_filter_by_addr(lif, addr);
+	if (!f) {
+		rte_spinlock_unlock(&lif->rx_filters.lock);
+		return -ENOENT;
+	}
+
+	ctx.cmd.rx_filter_del.filter_id = f->filter_id;
+	ionic_rx_filter_free(f);
+
+	rte_spinlock_unlock(&lif->rx_filters.lock);
+
+	err = ionic_adminq_post_wait(lif, &ctx);
+	if (err)
+		return err;
+
+	IONIC_PRINT(INFO, "rx_filter del (id %d)",
+		ctx.cmd.rx_filter_del.filter_id);
 
 	return 0;
 }
 
-static int
-ionic_lif_addr_del(struct ionic_lif *lif __rte_unused,
-		const uint8_t *addr __rte_unused)
+int
+ionic_dev_add_mac(struct rte_eth_dev *eth_dev,
+		struct rte_ether_addr *mac_addr,
+		uint32_t index __rte_unused, uint32_t pool __rte_unused)
 {
-	IONIC_PRINT(INFO, "%s: stubbed", __func__);
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+
+	IONIC_PRINT_CALL();
+
+	return ionic_lif_addr_add(lif, (const uint8_t *)mac_addr);
+}
+
+void
+ionic_dev_remove_mac(struct rte_eth_dev *eth_dev, uint32_t index __rte_unused)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_adapter *adapter = lif->adapter;
+
+	IONIC_PRINT_CALL();
+
+	if (index >= adapter->max_mac_addrs) {
+		IONIC_PRINT(WARNING,
+			"Index %u is above MAC filter limit %u",
+			index, adapter->max_mac_addrs);
+		return;
+	}
+
+	if (!rte_is_valid_assigned_ether_addr(&eth_dev->data->mac_addrs[index]))
+		return;
+
+	ionic_lif_addr_del(lif, (const uint8_t *)
+		&eth_dev->data->mac_addrs[index]);
+}
+
+int
+ionic_dev_set_mac(struct rte_eth_dev *eth_dev, struct rte_ether_addr *mac_addr)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+
+	IONIC_PRINT_CALL();
+
+	if (mac_addr == NULL) {
+		IONIC_PRINT(NOTICE, "New mac is null");
+		return -1;
+	}
+
+	if (!rte_is_zero_ether_addr((struct rte_ether_addr *)lif->mac_addr)) {
+		IONIC_PRINT(INFO, "Deleting mac addr %pM",
+			lif->mac_addr);
+		ionic_lif_addr_del(lif, lif->mac_addr);
+		memset(lif->mac_addr, 0, RTE_ETHER_ADDR_LEN);
+	}
+
+	IONIC_PRINT(INFO, "Updating mac addr");
+
+	rte_ether_addr_copy(mac_addr, (struct rte_ether_addr *)lif->mac_addr);
+
+	return ionic_lif_addr_add(lif, (const uint8_t *)mac_addr);
+}
+
+static int
+ionic_vlan_rx_add_vid(struct ionic_lif *lif, uint16_t vid)
+{
+	struct ionic_admin_ctx ctx = {
+		.pending_work = true,
+		.cmd.rx_filter_add = {
+			.opcode = IONIC_CMD_RX_FILTER_ADD,
+			.match = IONIC_RX_FILTER_MATCH_VLAN,
+			.vlan.vlan = vid,
+		},
+	};
+	int err;
+
+	err = ionic_adminq_post_wait(lif, &ctx);
+	if (err)
+		return err;
+
+	IONIC_PRINT(INFO, "rx_filter add VLAN %d (id %d)", vid,
+		ctx.comp.rx_filter_add.filter_id);
+
+	return ionic_rx_filter_save(lif, 0, IONIC_RXQ_INDEX_ANY, &ctx);
+}
+
+static int
+ionic_vlan_rx_kill_vid(struct ionic_lif *lif, uint16_t vid)
+{
+	struct ionic_admin_ctx ctx = {
+		.pending_work = true,
+		.cmd.rx_filter_del = {
+			.opcode = IONIC_CMD_RX_FILTER_DEL,
+		},
+	};
+	struct ionic_rx_filter *f;
+	int err;
+
+	IONIC_PRINT_CALL();
+
+	rte_spinlock_lock(&lif->rx_filters.lock);
+
+	f = ionic_rx_filter_by_vlan(lif, vid);
+	if (!f) {
+		rte_spinlock_unlock(&lif->rx_filters.lock);
+		return -ENOENT;
+	}
+
+	ctx.cmd.rx_filter_del.filter_id = f->filter_id;
+	ionic_rx_filter_free(f);
+	rte_spinlock_unlock(&lif->rx_filters.lock);
+
+	err = ionic_adminq_post_wait(lif, &ctx);
+	if (err)
+		return err;
+
+	IONIC_PRINT(INFO, "rx_filter del VLAN %d (id %d)", vid,
+		ctx.cmd.rx_filter_del.filter_id);
 
 	return 0;
+}
+
+int
+ionic_dev_vlan_filter_set(struct rte_eth_dev *eth_dev, uint16_t vlan_id,
+		int on)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	int err;
+
+	if (on)
+		err = ionic_vlan_rx_add_vid(lif, vlan_id);
+	else
+		err = ionic_vlan_rx_kill_vid(lif, vlan_id);
+
+	return err;
 }
 
 static void
@@ -138,6 +316,59 @@ ionic_set_rx_mode(struct ionic_lif *lif, uint32_t rx_mode)
 	}
 }
 
+int
+ionic_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	uint32_t rx_mode = lif->rx_mode;
+
+	IONIC_PRINT_CALL();
+
+	rx_mode |= IONIC_RX_MODE_F_PROMISC;
+
+	ionic_set_rx_mode(lif, rx_mode);
+
+	return 0;
+}
+
+int
+ionic_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	uint32_t rx_mode = lif->rx_mode;
+
+	rx_mode &= ~IONIC_RX_MODE_F_PROMISC;
+
+	ionic_set_rx_mode(lif, rx_mode);
+
+	return 0;
+}
+
+int
+ionic_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	uint32_t rx_mode = lif->rx_mode;
+
+	rx_mode |= IONIC_RX_MODE_F_ALLMULTI;
+
+	ionic_set_rx_mode(lif, rx_mode);
+
+	return 0;
+}
+
+int
+ionic_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	uint32_t rx_mode = lif->rx_mode;
+
+	rx_mode &= ~IONIC_RX_MODE_F_ALLMULTI;
+
+	ionic_set_rx_mode(lif, rx_mode);
+
+	return 0;
+}
 
 int
 ionic_lif_change_mtu(struct ionic_lif *lif, int new_mtu)
@@ -840,15 +1071,22 @@ ionic_lif_init(struct ionic_lif *lif)
 	if (err)
 		goto err_out_notifyq_deinit;
 
-	err = ionic_station_set(lif);
+	err = ionic_rx_filters_init(lif);
 	if (err)
 		goto err_out_notifyq_deinit;
+
+	err = ionic_station_set(lif);
+	if (err)
+		goto err_out_rx_filter_deinit;
 
 	ionic_lif_set_name(lif);
 
 	lif->state |= IONIC_LIF_F_INITED;
 
 	return 0;
+
+err_out_rx_filter_deinit:
+	ionic_rx_filters_deinit(lif);
 
 err_out_notifyq_deinit:
 	ionic_lif_qcq_deinit(lif, lif->notifyqcq);
@@ -865,6 +1103,7 @@ ionic_lif_deinit(struct ionic_lif *lif)
 	if (!(lif->state & IONIC_LIF_F_INITED))
 		return;
 
+	ionic_rx_filters_deinit(lif);
 	ionic_lif_qcq_deinit(lif, lif->notifyqcq);
 	ionic_lif_qcq_deinit(lif, lif->adminqcq);
 

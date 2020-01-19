@@ -12,6 +12,7 @@
 
 #include "ionic_osdep.h"
 #include "ionic_dev.h"
+#include "ionic_rx_filter.h"
 
 #define IONIC_ADMINQ_LENGTH	16	/* must be a power of two */
 #define IONIC_NOTIFYQ_LENGTH	64	/* must be a power of two */
@@ -53,6 +54,7 @@ struct ionic_lif {
 	rte_spinlock_t adminq_service_lock;
 	struct ionic_qcq *adminqcq;
 	struct ionic_qcq *notifyqcq;
+	struct ionic_rx_filters rx_filters;
 	struct ionic_doorbell __iomem *kern_dbpage;
 	uint64_t last_eid;
 	uint64_t features;
@@ -90,6 +92,20 @@ int ionic_qcq_service(struct ionic_qcq *qcq, int budget, ionic_cq_cb cb,
 	void *cb_arg);
 
 int ionic_lif_change_mtu(struct ionic_lif *lif, int new_mtu);
+
+int ionic_dev_add_mac(struct rte_eth_dev *eth_dev,
+	struct rte_ether_addr *mac_addr,
+	uint32_t index __rte_unused, uint32_t pool __rte_unused);
+void ionic_dev_remove_mac(struct rte_eth_dev *eth_dev,
+	uint32_t index __rte_unused);
+int ionic_dev_set_mac(struct rte_eth_dev *eth_dev,
+	struct rte_ether_addr *mac_addr);
+int ionic_dev_vlan_filter_set(struct rte_eth_dev *eth_dev, uint16_t vlan_id,
+	int on);
+int ionic_dev_promiscuous_enable(struct rte_eth_dev *dev);
+int ionic_dev_promiscuous_disable(struct rte_eth_dev *dev);
+int ionic_dev_allmulticast_enable(struct rte_eth_dev *dev);
+int ionic_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
 void ionic_qcq_free(struct ionic_qcq *qcq);
 
