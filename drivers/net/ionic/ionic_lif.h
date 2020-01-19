@@ -17,6 +17,14 @@
 #define IONIC_ADMINQ_LENGTH	16	/* must be a power of two */
 #define IONIC_NOTIFYQ_LENGTH	64	/* must be a power of two */
 
+#define IONIC_RSS_OFFLOAD_ALL ( \
+	IONIC_RSS_TYPE_IPV4 | \
+	IONIC_RSS_TYPE_IPV4_TCP | \
+	IONIC_RSS_TYPE_IPV4_UDP | \
+	IONIC_RSS_TYPE_IPV6 | \
+	IONIC_RSS_TYPE_IPV6_TCP | \
+	IONIC_RSS_TYPE_IPV6_UDP)
+
 #define IONIC_GET_SG_CNTR_IDX(num_sg_elems)	(num_sg_elems)
 
 struct ionic_tx_stats {
@@ -96,6 +104,11 @@ struct ionic_lif {
 	uint32_t rx_mode;
 	char name[IONIC_LIF_NAME_MAX_SZ];
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
+	uint16_t rss_types;
+	uint8_t rss_hash_key[IONIC_RSS_HASH_KEY_SIZE];
+	uint8_t *rss_ind_tbl;
+	rte_iova_t rss_ind_tbl_pa;
+	const struct rte_memzone *rss_ind_tbl_z;
 	uint32_t info_sz;
 	struct ionic_lif_info *info;
 	rte_iova_t info_pa;
@@ -155,6 +168,9 @@ void ionic_lif_rxq_deinit(struct ionic_qcq *qcq);
 
 int ionic_lif_txq_init(struct ionic_qcq *qcq);
 void ionic_lif_txq_deinit(struct ionic_qcq *qcq);
+
+int ionic_lif_rss_config(struct ionic_lif *lif, const uint16_t types,
+	const uint8_t *key, const uint32_t *indir);
 
 int ionic_lif_set_features(struct ionic_lif *lif);
 

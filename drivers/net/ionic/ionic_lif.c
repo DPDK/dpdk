@@ -775,6 +775,97 @@ ionic_lif_free(struct ionic_lif *lif)
 	}
 }
 
+int
+ionic_lif_rss_config(struct ionic_lif *lif,
+		const uint16_t types, const uint8_t *key, const uint32_t *indir)
+{
+	struct ionic_admin_ctx ctx = {
+		.pending_work = true,
+		.cmd.lif_setattr = {
+			.opcode = IONIC_CMD_LIF_SETATTR,
+			.attr = IONIC_LIF_ATTR_RSS,
+			.rss.types = types,
+			.rss.addr = lif->rss_ind_tbl_pa,
+		},
+	};
+	unsigned int i;
+
+	IONIC_PRINT_CALL();
+
+	lif->rss_types = types;
+
+	if (key)
+		memcpy(lif->rss_hash_key, key, IONIC_RSS_HASH_KEY_SIZE);
+
+	if (indir)
+		for (i = 0; i < lif->adapter->ident.lif.eth.rss_ind_tbl_sz; i++)
+			lif->rss_ind_tbl[i] = indir[i];
+
+	memcpy(ctx.cmd.lif_setattr.rss.key, lif->rss_hash_key,
+	       IONIC_RSS_HASH_KEY_SIZE);
+
+	return ionic_adminq_post_wait(lif, &ctx);
+}
+
+static int
+ionic_lif_rss_setup(struct ionic_lif *lif)
+{
+	size_t tbl_size = sizeof(*lif->rss_ind_tbl) *
+		lif->adapter->ident.lif.eth.rss_ind_tbl_sz;
+	static const uint8_t toeplitz_symmetric_key[] = {
+		0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
+		0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
+		0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
+		0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
+		0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
+	};
+	uint32_t socket_id = rte_socket_id();
+	uint32_t i;
+	int err;
+
+	IONIC_PRINT_CALL();
+
+	lif->rss_ind_tbl_z = rte_eth_dma_zone_reserve(lif->eth_dev,
+		"rss_ind_tbl",
+		0 /* queue_idx*/, tbl_size, IONIC_ALIGN, socket_id);
+
+	if (!lif->rss_ind_tbl_z) {
+		IONIC_PRINT(ERR, "OOM");
+		return -ENOMEM;
+	}
+
+	lif->rss_ind_tbl = lif->rss_ind_tbl_z->addr;
+	lif->rss_ind_tbl_pa = lif->rss_ind_tbl_z->iova;
+
+	/* Fill indirection table with 'default' values */
+	for (i = 0; i < lif->adapter->ident.lif.eth.rss_ind_tbl_sz; i++)
+		lif->rss_ind_tbl[i] = i % lif->nrxqcqs;
+
+	err = ionic_lif_rss_config(lif, IONIC_RSS_OFFLOAD_ALL,
+		toeplitz_symmetric_key, NULL);
+	if (err)
+		return err;
+
+	return 0;
+}
+
+static void
+ionic_lif_rss_teardown(struct ionic_lif *lif)
+{
+	if (!lif->rss_ind_tbl)
+		return;
+
+	if (lif->rss_ind_tbl_z) {
+		/* Disable RSS on the NIC */
+		ionic_lif_rss_config(lif, 0x0, NULL, NULL);
+
+		lif->rss_ind_tbl = NULL;
+		lif->rss_ind_tbl_pa = 0;
+		rte_memzone_free(lif->rss_ind_tbl_z);
+		lif->rss_ind_tbl_z = NULL;
+	}
+}
+
 static void
 ionic_lif_qcq_deinit(struct ionic_lif *lif, struct ionic_qcq *qcq)
 {
@@ -1293,6 +1384,7 @@ ionic_lif_deinit(struct ionic_lif *lif)
 		return;
 
 	ionic_rx_filters_deinit(lif);
+	ionic_lif_rss_teardown(lif);
 	ionic_lif_qcq_deinit(lif, lif->notifyqcq);
 	ionic_lif_qcq_deinit(lif, lif->adminqcq);
 
@@ -1302,10 +1394,27 @@ ionic_lif_deinit(struct ionic_lif *lif)
 int
 ionic_lif_configure(struct ionic_lif *lif)
 {
+	struct ionic_identity *ident = &lif->adapter->ident;
+	uint32_t ntxqs_per_lif =
+		ident->lif.eth.config.queue_count[IONIC_QTYPE_TXQ];
+	uint32_t nrxqs_per_lif =
+		ident->lif.eth.config.queue_count[IONIC_QTYPE_RXQ];
+	uint32_t nrxqs = lif->eth_dev->data->nb_rx_queues;
+	uint32_t ntxqs = lif->eth_dev->data->nb_tx_queues;
+
 	lif->port_id = lif->eth_dev->data->port_id;
 
-	lif->nrxqcqs = 1;
-	lif->ntxqcqs = 1;
+	IONIC_PRINT(DEBUG, "Configuring LIF on port %u",
+		lif->port_id);
+
+	if (nrxqs > 0)
+		nrxqs_per_lif = RTE_MIN(nrxqs_per_lif, nrxqs);
+
+	if (ntxqs > 0)
+		ntxqs_per_lif = RTE_MIN(ntxqs_per_lif, ntxqs);
+
+	lif->nrxqcqs = nrxqs_per_lif;
+	lif->ntxqcqs = ntxqs_per_lif;
 
 	return 0;
 }
@@ -1316,6 +1425,13 @@ ionic_lif_start(struct ionic_lif *lif)
 	uint32_t rx_mode = 0;
 	uint32_t i;
 	int err;
+
+	IONIC_PRINT(DEBUG, "Setting RSS configuration on port %u",
+		lif->port_id);
+
+	err = ionic_lif_rss_setup(lif);
+	if (err)
+		return err;
 
 	IONIC_PRINT(DEBUG, "Setting RX mode on port %u",
 		lif->port_id);

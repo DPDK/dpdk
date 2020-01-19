@@ -700,6 +700,10 @@ ionic_rx_clean(struct ionic_queue *q,
 		rxm->nb_segs++;
 	}
 
+	/* RSS */
+	pkt_flags |= PKT_RX_RSS_HASH;
+	rxm->hash.rss = cq_desc->rss_hash;
+
 	/* Vlan Strip */
 	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_VLAN) {
 		pkt_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;

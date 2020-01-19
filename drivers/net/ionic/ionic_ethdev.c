@@ -35,6 +35,14 @@ static int  ionic_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 static int  ionic_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	struct rte_eth_fc_conf *fc_conf);
 static int  ionic_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask);
+static int  ionic_dev_rss_reta_update(struct rte_eth_dev *eth_dev,
+	struct rte_eth_rss_reta_entry64 *reta_conf, uint16_t reta_size);
+static int  ionic_dev_rss_reta_query(struct rte_eth_dev *eth_dev,
+	struct rte_eth_rss_reta_entry64 *reta_conf, uint16_t reta_size);
+static int  ionic_dev_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
+	struct rte_eth_rss_conf *rss_conf);
+static int  ionic_dev_rss_hash_update(struct rte_eth_dev *eth_dev,
+	struct rte_eth_rss_conf *rss_conf);
 
 int ionic_logtype;
 
@@ -90,6 +98,10 @@ static const struct eth_dev_ops ionic_eth_dev_ops = {
 	.tx_queue_start	        = ionic_dev_tx_queue_start,
 	.tx_queue_stop          = ionic_dev_tx_queue_stop,
 	.vlan_offload_set       = ionic_vlan_offload_set,
+	.reta_update            = ionic_dev_rss_reta_update,
+	.reta_query             = ionic_dev_rss_reta_query,
+	.rss_hash_conf_get      = ionic_dev_rss_hash_conf_get,
+	.rss_hash_update        = ionic_dev_rss_hash_update,
 };
 
 /*
@@ -263,6 +275,10 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->min_mtu = IONIC_MIN_MTU;
 	dev_info->max_mtu = IONIC_MAX_MTU;
 
+	dev_info->hash_key_size = IONIC_RSS_HASH_KEY_SIZE;
+	dev_info->reta_size = ident->lif.eth.rss_ind_tbl_sz;
+	dev_info->flow_type_rss_offloads = IONIC_ETH_RSS_OFFLOAD_ALL;
+
 	dev_info->speed_capa =
 		ETH_LINK_SPEED_10G |
 		ETH_LINK_SPEED_25G |
@@ -401,6 +417,165 @@ ionic_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 	}
 
 	ionic_lif_set_features(lif);
+
+	return 0;
+}
+
+static int
+ionic_dev_rss_reta_update(struct rte_eth_dev *eth_dev,
+		struct rte_eth_rss_reta_entry64 *reta_conf,
+		uint16_t reta_size)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_adapter *adapter = lif->adapter;
+	struct ionic_identity *ident = &adapter->ident;
+	uint32_t i, j, index, num;
+
+	IONIC_PRINT_CALL();
+
+	if (!lif->rss_ind_tbl) {
+		IONIC_PRINT(ERR, "RSS RETA not initialized, "
+			"can't update the table");
+		return -EINVAL;
+	}
+
+	if (reta_size != ident->lif.eth.rss_ind_tbl_sz) {
+		IONIC_PRINT(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)",
+			reta_size, ident->lif.eth.rss_ind_tbl_sz);
+		return -EINVAL;
+	}
+
+	num = lif->adapter->ident.lif.eth.rss_ind_tbl_sz / RTE_RETA_GROUP_SIZE;
+
+	for (i = 0; i < num; i++) {
+		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++) {
+			if (reta_conf[i].mask & ((uint64_t)1 << j)) {
+				index = (i * RTE_RETA_GROUP_SIZE) + j;
+				lif->rss_ind_tbl[index] = reta_conf[i].reta[j];
+			}
+		}
+	}
+
+	return ionic_lif_rss_config(lif, lif->rss_types, NULL, NULL);
+}
+
+static int
+ionic_dev_rss_reta_query(struct rte_eth_dev *eth_dev,
+		struct rte_eth_rss_reta_entry64 *reta_conf,
+		uint16_t reta_size)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_adapter *adapter = lif->adapter;
+	struct ionic_identity *ident = &adapter->ident;
+	int i, num;
+
+	IONIC_PRINT_CALL();
+
+	if (reta_size != ident->lif.eth.rss_ind_tbl_sz) {
+		IONIC_PRINT(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)",
+			reta_size, ident->lif.eth.rss_ind_tbl_sz);
+		return -EINVAL;
+	}
+
+	if (!lif->rss_ind_tbl) {
+		IONIC_PRINT(ERR, "RSS RETA has not been built yet");
+		return -EINVAL;
+	}
+
+	num = reta_size / RTE_RETA_GROUP_SIZE;
+
+	for (i = 0; i < num; i++) {
+		memcpy(reta_conf->reta,
+			&lif->rss_ind_tbl[i * RTE_RETA_GROUP_SIZE],
+			RTE_RETA_GROUP_SIZE);
+		reta_conf++;
+	}
+
+	return 0;
+}
+
+static int
+ionic_dev_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
+		struct rte_eth_rss_conf *rss_conf)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	uint64_t rss_hf = 0;
+
+	IONIC_PRINT_CALL();
+
+	if (!lif->rss_ind_tbl) {
+		IONIC_PRINT(NOTICE, "RSS not enabled");
+		return 0;
+	}
+
+	/* Get key value (if not null, rss_key is 40-byte) */
+	if (rss_conf->rss_key != NULL &&
+			rss_conf->rss_key_len >= IONIC_RSS_HASH_KEY_SIZE)
+		memcpy(rss_conf->rss_key, lif->rss_hash_key,
+			IONIC_RSS_HASH_KEY_SIZE);
+
+	if (lif->rss_types & IONIC_RSS_TYPE_IPV4)
+		rss_hf |= ETH_RSS_IPV4;
+	if (lif->rss_types & IONIC_RSS_TYPE_IPV4_TCP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+	if (lif->rss_types & IONIC_RSS_TYPE_IPV4_UDP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+	if (lif->rss_types & IONIC_RSS_TYPE_IPV6)
+		rss_hf |= ETH_RSS_IPV6;
+	if (lif->rss_types & IONIC_RSS_TYPE_IPV6_TCP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+	if (lif->rss_types & IONIC_RSS_TYPE_IPV6_UDP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+
+	rss_conf->rss_hf = rss_hf;
+
+	return 0;
+}
+
+static int
+ionic_dev_rss_hash_update(struct rte_eth_dev *eth_dev,
+		struct rte_eth_rss_conf *rss_conf)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	uint32_t rss_types = 0;
+	uint8_t *key = NULL;
+
+	IONIC_PRINT_CALL();
+
+	if (rss_conf->rss_key)
+		key = rss_conf->rss_key;
+
+	if ((rss_conf->rss_hf & IONIC_ETH_RSS_OFFLOAD_ALL) == 0) {
+		/*
+		 * Can't disable rss through hash flags,
+		 * if it is enabled by default during init
+		 */
+		if (lif->rss_ind_tbl)
+			return -EINVAL;
+	} else {
+		/* Can't enable rss if disabled by default during init */
+		if (!lif->rss_ind_tbl)
+			return -EINVAL;
+
+		if (rss_conf->rss_hf & ETH_RSS_IPV4)
+			rss_types |= IONIC_RSS_TYPE_IPV4;
+		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+			rss_types |= IONIC_RSS_TYPE_IPV4_TCP;
+		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+			rss_types |= IONIC_RSS_TYPE_IPV4_UDP;
+		if (rss_conf->rss_hf & ETH_RSS_IPV6)
+			rss_types |= IONIC_RSS_TYPE_IPV6;
+		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+			rss_types |= IONIC_RSS_TYPE_IPV6_TCP;
+		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+			rss_types |= IONIC_RSS_TYPE_IPV6_UDP;
+
+		ionic_lif_rss_config(lif, rss_types, key, NULL);
+	}
 
 	return 0;
 }
