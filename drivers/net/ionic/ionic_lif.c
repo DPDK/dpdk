@@ -84,6 +84,153 @@ ionic_lif_reset(struct ionic_lif *lif)
 	ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
 }
 
+static void
+ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats)
+{
+	struct ionic_lif_stats *ls = &lif->info->stats;
+	uint32_t i;
+	uint32_t num_rx_q_counters = RTE_MIN(lif->nrxqcqs, (uint32_t)
+			RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	uint32_t num_tx_q_counters = RTE_MIN(lif->ntxqcqs, (uint32_t)
+			RTE_ETHDEV_QUEUE_STAT_CNTRS);
+
+	memset(stats, 0, sizeof(*stats));
+
+	if (ls == NULL) {
+		IONIC_PRINT(DEBUG, "Stats on port %u not yet initialized",
+			lif->port_id);
+		return;
+	}
+
+	/* RX */
+
+	stats->ipackets = ls->rx_ucast_packets +
+		ls->rx_mcast_packets +
+		ls->rx_bcast_packets;
+
+	stats->ibytes = ls->rx_ucast_bytes +
+		ls->rx_mcast_bytes +
+		ls->rx_bcast_bytes;
+
+	for (i = 0; i < lif->nrxqcqs; i++) {
+		struct ionic_rx_stats *rx_stats = &lif->rxqcqs[i]->stats.rx;
+		stats->imissed +=
+			rx_stats->no_cb_arg +
+			rx_stats->bad_cq_status +
+			rx_stats->no_room +
+			rx_stats->bad_len;
+	}
+
+	stats->imissed +=
+		ls->rx_ucast_drop_packets +
+		ls->rx_mcast_drop_packets +
+		ls->rx_bcast_drop_packets;
+
+	stats->imissed +=
+		ls->rx_queue_empty +
+		ls->rx_dma_error +
+		ls->rx_queue_disabled +
+		ls->rx_desc_fetch_error +
+		ls->rx_desc_data_error;
+
+	for (i = 0; i < num_rx_q_counters; i++) {
+		struct ionic_rx_stats *rx_stats = &lif->rxqcqs[i]->stats.rx;
+		stats->q_ipackets[i] = rx_stats->packets;
+		stats->q_ibytes[i] = rx_stats->bytes;
+		stats->q_errors[i] =
+			rx_stats->no_cb_arg +
+			rx_stats->bad_cq_status +
+			rx_stats->no_room +
+			rx_stats->bad_len;
+	}
+
+	/* TX */
+
+	stats->opackets = ls->tx_ucast_packets +
+		ls->tx_mcast_packets +
+		ls->tx_bcast_packets;
+
+	stats->obytes = ls->tx_ucast_bytes +
+		ls->tx_mcast_bytes +
+		ls->tx_bcast_bytes;
+
+	for (i = 0; i < lif->ntxqcqs; i++) {
+		struct ionic_tx_stats *tx_stats = &lif->txqcqs[i]->stats.tx;
+		stats->oerrors += tx_stats->drop;
+	}
+
+	stats->oerrors +=
+		ls->tx_ucast_drop_packets +
+		ls->tx_mcast_drop_packets +
+		ls->tx_bcast_drop_packets;
+
+	stats->oerrors +=
+		ls->tx_dma_error +
+		ls->tx_queue_disabled +
+		ls->tx_desc_fetch_error +
+		ls->tx_desc_data_error;
+
+	for (i = 0; i < num_tx_q_counters; i++) {
+		struct ionic_tx_stats *tx_stats = &lif->txqcqs[i]->stats.tx;
+		stats->q_opackets[i] = tx_stats->packets;
+		stats->q_obytes[i] = tx_stats->bytes;
+	}
+}
+
+void
+ionic_lif_get_stats(const struct ionic_lif *lif,
+		struct rte_eth_stats *stats)
+{
+	ionic_lif_get_abs_stats(lif, stats);
+
+	stats->ipackets  -= lif->stats_base.ipackets;
+	stats->opackets  -= lif->stats_base.opackets;
+	stats->ibytes    -= lif->stats_base.ibytes;
+	stats->obytes    -= lif->stats_base.obytes;
+	stats->imissed   -= lif->stats_base.imissed;
+	stats->ierrors   -= lif->stats_base.ierrors;
+	stats->oerrors   -= lif->stats_base.oerrors;
+	stats->rx_nombuf -= lif->stats_base.rx_nombuf;
+}
+
+void
+ionic_lif_reset_stats(struct ionic_lif *lif)
+{
+	uint32_t i;
+
+	for (i = 0; i < lif->nrxqcqs; i++) {
+		memset(&lif->rxqcqs[i]->stats.rx, 0,
+			sizeof(struct ionic_rx_stats));
+		memset(&lif->txqcqs[i]->stats.tx, 0,
+			sizeof(struct ionic_tx_stats));
+	}
+
+	ionic_lif_get_abs_stats(lif, &lif->stats_base);
+}
+
+void
+ionic_lif_get_hw_stats(struct ionic_lif *lif, struct ionic_lif_stats *stats)
+{
+	uint16_t i, count = sizeof(struct ionic_lif_stats) / sizeof(uint64_t);
+	uint64_t *stats64 = (uint64_t *)stats;
+	uint64_t *lif_stats64 = (uint64_t *)&lif->info->stats;
+	uint64_t *lif_stats64_base = (uint64_t *)&lif->lif_stats_base;
+
+	for (i = 0; i < count; i++)
+		stats64[i] = lif_stats64[i] - lif_stats64_base[i];
+}
+
+void
+ionic_lif_reset_hw_stats(struct ionic_lif *lif)
+{
+	uint16_t i, count = sizeof(struct ionic_lif_stats) / sizeof(uint64_t);
+	uint64_t *lif_stats64 = (uint64_t *)&lif->info->stats;
+	uint64_t *lif_stats64_base = (uint64_t *)&lif->lif_stats_base;
+
+	for (i = 0; i < count; i++)
+		lif_stats64_base[i] = lif_stats64[i];
+}
+
 static int
 ionic_lif_addr_add(struct ionic_lif *lif, const uint8_t *addr)
 {
@@ -1318,6 +1465,8 @@ ionic_lif_init(struct ionic_lif *lif)
 	struct ionic_dev *idev = &lif->adapter->idev;
 	struct ionic_q_init_comp comp;
 	int err;
+
+	memset(&lif->stats_base, 0, sizeof(lif->stats_base));
 
 	ionic_dev_cmd_lif_init(idev, lif->index, lif->info_pa);
 	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);

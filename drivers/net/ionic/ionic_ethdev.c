@@ -43,6 +43,19 @@ static int  ionic_dev_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 	struct rte_eth_rss_conf *rss_conf);
 static int  ionic_dev_rss_hash_update(struct rte_eth_dev *eth_dev,
 	struct rte_eth_rss_conf *rss_conf);
+static int  ionic_dev_stats_get(struct rte_eth_dev *eth_dev,
+	struct rte_eth_stats *stats);
+static int  ionic_dev_stats_reset(struct rte_eth_dev *eth_dev);
+static int  ionic_dev_xstats_get(struct rte_eth_dev *dev,
+	struct rte_eth_xstat *xstats, unsigned int n);
+static int  ionic_dev_xstats_get_by_id(struct rte_eth_dev *dev,
+	const uint64_t *ids, uint64_t *values, unsigned int n);
+static int  ionic_dev_xstats_reset(struct rte_eth_dev *dev);
+static int  ionic_dev_xstats_get_names(struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, unsigned int size);
+static int  ionic_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+	unsigned int limit);
 
 int ionic_logtype;
 
@@ -102,7 +115,101 @@ static const struct eth_dev_ops ionic_eth_dev_ops = {
 	.reta_query             = ionic_dev_rss_reta_query,
 	.rss_hash_conf_get      = ionic_dev_rss_hash_conf_get,
 	.rss_hash_update        = ionic_dev_rss_hash_update,
+	.stats_get              = ionic_dev_stats_get,
+	.stats_reset            = ionic_dev_stats_reset,
+	.xstats_get             = ionic_dev_xstats_get,
+	.xstats_get_by_id       = ionic_dev_xstats_get_by_id,
+	.xstats_reset           = ionic_dev_xstats_reset,
+	.xstats_get_names       = ionic_dev_xstats_get_names,
+	.xstats_get_names_by_id = ionic_dev_xstats_get_names_by_id,
 };
+
+struct rte_ionic_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct rte_ionic_xstats_name_off rte_ionic_xstats_strings[] = {
+	/* RX */
+	{"rx_ucast_bytes", offsetof(struct ionic_lif_stats,
+			rx_ucast_bytes)},
+	{"rx_ucast_packets", offsetof(struct ionic_lif_stats,
+			rx_ucast_packets)},
+	{"rx_mcast_bytes", offsetof(struct ionic_lif_stats,
+			rx_mcast_bytes)},
+	{"rx_mcast_packets", offsetof(struct ionic_lif_stats,
+			rx_mcast_packets)},
+	{"rx_bcast_bytes", offsetof(struct ionic_lif_stats,
+			rx_bcast_bytes)},
+	{"rx_bcast_packets", offsetof(struct ionic_lif_stats,
+			rx_bcast_packets)},
+	/* RX drops */
+	{"rx_ucast_drop_bytes", offsetof(struct ionic_lif_stats,
+			rx_ucast_drop_bytes)},
+	{"rx_ucast_drop_packets", offsetof(struct ionic_lif_stats,
+			rx_ucast_drop_packets)},
+	{"rx_mcast_drop_bytes", offsetof(struct ionic_lif_stats,
+			rx_mcast_drop_bytes)},
+	{"rx_mcast_drop_packets", offsetof(struct ionic_lif_stats,
+			rx_mcast_drop_packets)},
+	{"rx_bcast_drop_bytes", offsetof(struct ionic_lif_stats,
+			rx_bcast_drop_bytes)},
+	{"rx_bcast_drop_packets", offsetof(struct ionic_lif_stats,
+			rx_bcast_drop_packets)},
+	{"rx_dma_error", offsetof(struct ionic_lif_stats,
+			rx_dma_error)},
+	/* TX */
+	{"tx_ucast_bytes", offsetof(struct ionic_lif_stats,
+			tx_ucast_bytes)},
+	{"tx_ucast_packets", offsetof(struct ionic_lif_stats,
+			tx_ucast_packets)},
+	{"tx_mcast_bytes", offsetof(struct ionic_lif_stats,
+			tx_mcast_bytes)},
+	{"tx_mcast_packets", offsetof(struct ionic_lif_stats,
+			tx_mcast_packets)},
+	{"tx_bcast_bytes", offsetof(struct ionic_lif_stats,
+			tx_bcast_bytes)},
+	{"tx_bcast_packets", offsetof(struct ionic_lif_stats,
+			tx_bcast_packets)},
+	/* TX drops */
+	{"tx_ucast_drop_bytes", offsetof(struct ionic_lif_stats,
+			tx_ucast_drop_bytes)},
+	{"tx_ucast_drop_packets", offsetof(struct ionic_lif_stats,
+			tx_ucast_drop_packets)},
+	{"tx_mcast_drop_bytes", offsetof(struct ionic_lif_stats,
+			tx_mcast_drop_bytes)},
+	{"tx_mcast_drop_packets", offsetof(struct ionic_lif_stats,
+			tx_mcast_drop_packets)},
+	{"tx_bcast_drop_bytes", offsetof(struct ionic_lif_stats,
+			tx_bcast_drop_bytes)},
+	{"tx_bcast_drop_packets", offsetof(struct ionic_lif_stats,
+			tx_bcast_drop_packets)},
+	{"tx_dma_error", offsetof(struct ionic_lif_stats,
+			tx_dma_error)},
+	/* Rx Queue/Ring drops */
+	{"rx_queue_disabled", offsetof(struct ionic_lif_stats,
+			rx_queue_disabled)},
+	{"rx_queue_empty", offsetof(struct ionic_lif_stats,
+			rx_queue_empty)},
+	{"rx_queue_error", offsetof(struct ionic_lif_stats,
+			rx_queue_error)},
+	{"rx_desc_fetch_error", offsetof(struct ionic_lif_stats,
+			rx_desc_fetch_error)},
+	{"rx_desc_data_error", offsetof(struct ionic_lif_stats,
+			rx_desc_data_error)},
+	/* Tx Queue/Ring drops */
+	{"tx_queue_disabled", offsetof(struct ionic_lif_stats,
+			tx_queue_disabled)},
+	{"tx_queue_error", offsetof(struct ionic_lif_stats,
+			tx_queue_error)},
+	{"tx_desc_fetch_error", offsetof(struct ionic_lif_stats,
+			tx_desc_fetch_error)},
+	{"tx_desc_data_error", offsetof(struct ionic_lif_stats,
+			tx_desc_data_error)},
+};
+
+#define IONIC_NB_HW_STATS (sizeof(rte_ionic_xstats_strings) / \
+		sizeof(rte_ionic_xstats_strings[0]))
 
 /*
  * Set device link up, enable tx.
@@ -576,6 +683,152 @@ ionic_dev_rss_hash_update(struct rte_eth_dev *eth_dev,
 
 		ionic_lif_rss_config(lif, rss_types, key, NULL);
 	}
+
+	return 0;
+}
+
+static int
+ionic_dev_stats_get(struct rte_eth_dev *eth_dev,
+		struct rte_eth_stats *stats)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+
+	ionic_lif_get_stats(lif, stats);
+
+	return 0;
+}
+
+static int
+ionic_dev_stats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+
+	IONIC_PRINT_CALL();
+
+	ionic_lif_reset_stats(lif);
+
+	return 0;
+}
+
+static int
+ionic_dev_xstats_get_names(__rte_unused struct rte_eth_dev *eth_dev,
+		struct rte_eth_xstat_name *xstats_names,
+		__rte_unused unsigned int size)
+{
+	unsigned int i;
+
+	if (xstats_names != NULL) {
+		for (i = 0; i < IONIC_NB_HW_STATS; i++) {
+			snprintf(xstats_names[i].name,
+					sizeof(xstats_names[i].name),
+					"%s", rte_ionic_xstats_strings[i].name);
+		}
+	}
+
+	return IONIC_NB_HW_STATS;
+}
+
+static int
+ionic_dev_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
+		struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+		unsigned int limit)
+{
+	struct rte_eth_xstat_name xstats_names_copy[IONIC_NB_HW_STATS];
+	uint16_t i;
+
+	if (!ids) {
+		if (xstats_names != NULL) {
+			for (i = 0; i < IONIC_NB_HW_STATS; i++) {
+				snprintf(xstats_names[i].name,
+					sizeof(xstats_names[i].name),
+					"%s", rte_ionic_xstats_strings[i].name);
+			}
+		}
+
+		return IONIC_NB_HW_STATS;
+	}
+
+	ionic_dev_xstats_get_names_by_id(eth_dev, xstats_names_copy, NULL,
+		IONIC_NB_HW_STATS);
+
+	for (i = 0; i < limit; i++) {
+		if (ids[i] >= IONIC_NB_HW_STATS) {
+			IONIC_PRINT(ERR, "id value isn't valid");
+			return -1;
+		}
+
+		strcpy(xstats_names[i].name, xstats_names_copy[ids[i]].name);
+	}
+
+	return limit;
+}
+
+static int
+ionic_dev_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *xstats,
+		unsigned int n)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_lif_stats hw_stats;
+	uint16_t i;
+
+	if (n < IONIC_NB_HW_STATS)
+		return IONIC_NB_HW_STATS;
+
+	ionic_lif_get_hw_stats(lif, &hw_stats);
+
+	for (i = 0; i < IONIC_NB_HW_STATS; i++) {
+		xstats[i].value = *(uint64_t *)(((char *)&hw_stats) +
+				rte_ionic_xstats_strings[i].offset);
+		xstats[i].id = i;
+	}
+
+	return IONIC_NB_HW_STATS;
+}
+
+static int
+ionic_dev_xstats_get_by_id(struct rte_eth_dev *eth_dev, const uint64_t *ids,
+		uint64_t *values, unsigned int n)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_lif_stats hw_stats;
+	uint64_t values_copy[IONIC_NB_HW_STATS];
+	uint16_t i;
+
+	if (!ids) {
+		if (!ids && n < IONIC_NB_HW_STATS)
+			return IONIC_NB_HW_STATS;
+
+		ionic_lif_get_hw_stats(lif, &hw_stats);
+
+		for (i = 0; i < IONIC_NB_HW_STATS; i++) {
+			values[i] = *(uint64_t *)(((char *)&hw_stats) +
+					rte_ionic_xstats_strings[i].offset);
+		}
+
+		return IONIC_NB_HW_STATS;
+	}
+
+	ionic_dev_xstats_get_by_id(eth_dev, NULL, values_copy,
+			IONIC_NB_HW_STATS);
+
+	for (i = 0; i < n; i++) {
+		if (ids[i] >= IONIC_NB_HW_STATS) {
+			IONIC_PRINT(ERR, "id value isn't valid");
+			return -1;
+		}
+
+		values[i] = values_copy[ids[i]];
+	}
+
+	return n;
+}
+
+static int
+ionic_dev_xstats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+
+	ionic_lif_reset_hw_stats(lif);
 
 	return 0;
 }

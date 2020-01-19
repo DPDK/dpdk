@@ -113,6 +113,8 @@ struct ionic_lif {
 	struct ionic_lif_info *info;
 	rte_iova_t info_pa;
 	const struct rte_memzone *info_z;
+	struct rte_eth_stats stats_base;
+	struct ionic_lif_stats lif_stats_base;
 };
 
 int ionic_lif_identify(struct ionic_adapter *adapter);
@@ -173,6 +175,14 @@ int ionic_lif_rss_config(struct ionic_lif *lif, const uint16_t types,
 	const uint8_t *key, const uint32_t *indir);
 
 int ionic_lif_set_features(struct ionic_lif *lif);
+
+void ionic_lif_get_stats(const struct ionic_lif *lif,
+	struct rte_eth_stats *stats);
+void ionic_lif_reset_stats(struct ionic_lif *lif);
+
+void ionic_lif_get_hw_stats(struct ionic_lif *lif,
+	struct ionic_lif_stats *stats);
+void ionic_lif_reset_hw_stats(struct ionic_lif *lif);
 
 int ionic_notifyq_handler(struct ionic_lif *lif, int budget);
 
