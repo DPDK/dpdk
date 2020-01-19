@@ -4,6 +4,7 @@
 sources = files(
 	'ionic_mac_api.c',
 	'ionic_rx_filter.c',
+	'ionic_rxtx.c',
 	'ionic_dev.c',
 	'ionic_ethdev.c',
 	'ionic_lif.c',

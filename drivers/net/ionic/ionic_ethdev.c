@@ -15,6 +15,7 @@
 #include "ionic_mac_api.h"
 #include "ionic_lif.h"
 #include "ionic_ethdev.h"
+#include "ionic_rxtx.h"
 
 static int  eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params);
 static int  eth_ionic_dev_uninit(struct rte_eth_dev *eth_dev);
@@ -33,6 +34,7 @@ static int  ionic_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 	struct rte_eth_fc_conf *fc_conf);
 static int  ionic_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	struct rte_eth_fc_conf *fc_conf);
+static int  ionic_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask);
 
 int ionic_logtype;
 
@@ -41,6 +43,20 @@ static const struct rte_pci_id pci_id_ionic_map[] = {
 	{ RTE_PCI_DEVICE(IONIC_PENSANDO_VENDOR_ID, IONIC_DEV_ID_ETH_VF) },
 	{ RTE_PCI_DEVICE(IONIC_PENSANDO_VENDOR_ID, IONIC_DEV_ID_ETH_MGMT) },
 	{ .vendor_id = 0, /* sentinel */ },
+};
+
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max = IONIC_MAX_RING_DESC,
+	.nb_min = IONIC_MIN_RING_DESC,
+	.nb_align = 1,
+};
+
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max = IONIC_MAX_RING_DESC,
+	.nb_min = IONIC_MIN_RING_DESC,
+	.nb_align = 1,
+	.nb_seg_max = IONIC_TX_MAX_SG_ELEMS,
+	.nb_mtu_seg_max = IONIC_TX_MAX_SG_ELEMS,
 };
 
 static const struct eth_dev_ops ionic_eth_dev_ops = {
@@ -63,6 +79,17 @@ static const struct eth_dev_ops ionic_eth_dev_ops = {
 	.allmulticast_disable   = ionic_dev_allmulticast_disable,
 	.flow_ctrl_get          = ionic_flow_ctrl_get,
 	.flow_ctrl_set          = ionic_flow_ctrl_set,
+	.rxq_info_get           = ionic_rxq_info_get,
+	.txq_info_get           = ionic_txq_info_get,
+	.rx_queue_setup         = ionic_dev_rx_queue_setup,
+	.rx_queue_release       = ionic_dev_rx_queue_release,
+	.rx_queue_start	        = ionic_dev_rx_queue_start,
+	.rx_queue_stop          = ionic_dev_rx_queue_stop,
+	.tx_queue_setup         = ionic_dev_tx_queue_setup,
+	.tx_queue_release       = ionic_dev_tx_queue_release,
+	.tx_queue_start	        = ionic_dev_tx_queue_start,
+	.tx_queue_stop          = ionic_dev_tx_queue_stop,
+	.vlan_offload_set       = ionic_vlan_offload_set,
 };
 
 /*
@@ -243,6 +270,50 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 		ETH_LINK_SPEED_50G |
 		ETH_LINK_SPEED_100G;
 
+	/*
+	 * Per-queue capabilities. Actually most of the offloads are enabled
+	 * by default on the port and can be used on selected queues (by adding
+	 * packet flags at runtime when required)
+	 */
+
+	dev_info->rx_queue_offload_capa =
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		0;
+
+	dev_info->tx_queue_offload_capa =
+		DEV_TX_OFFLOAD_VLAN_INSERT |
+		0;
+
+	/*
+	 * Per-port capabilities
+	 * See ionic_set_features to request and check supported features
+	 */
+
+	dev_info->rx_offload_capa = dev_info->rx_queue_offload_capa |
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_VLAN_FILTER |
+		DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_SCATTER |
+		0;
+
+	dev_info->tx_offload_capa = dev_info->tx_queue_offload_capa |
+		DEV_TX_OFFLOAD_MULTI_SEGS |
+		DEV_TX_OFFLOAD_TCP_TSO |
+		0;
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
+
+	/* Driver-preferred Rx/Tx parameters */
+	dev_info->default_rxportconf.burst_size = 32;
+	dev_info->default_txportconf.burst_size = 32;
+	dev_info->default_rxportconf.nb_queues = 1;
+	dev_info->default_txportconf.nb_queues = 1;
+	dev_info->default_rxportconf.ring_size = IONIC_DEF_TXRX_DESC;
+	dev_info->default_txportconf.ring_size = IONIC_DEF_TXRX_DESC;
+
 	return 0;
 }
 
@@ -292,6 +363,44 @@ ionic_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 
 	ionic_dev_cmd_port_pause(idev, pause_type);
 	ionic_dev_cmd_port_autoneg(idev, an_enable);
+
+	return 0;
+}
+
+static int
+ionic_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct rte_eth_rxmode *rxmode;
+	rxmode = &eth_dev->data->dev_conf.rxmode;
+	int i;
+
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
+			for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+				struct ionic_qcq *rxq =
+					eth_dev->data->rx_queues[i];
+				rxq->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+			}
+			lif->features |= IONIC_ETH_HW_VLAN_RX_STRIP;
+		} else {
+			for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+				struct ionic_qcq *rxq =
+					eth_dev->data->rx_queues[i];
+				rxq->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+			}
+			lif->features &= ~IONIC_ETH_HW_VLAN_RX_STRIP;
+		}
+	}
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+			lif->features |= IONIC_ETH_HW_VLAN_RX_FILTER;
+		else
+			lif->features &= ~IONIC_ETH_HW_VLAN_RX_FILTER;
+	}
+
+	ionic_lif_set_features(lif);
 
 	return 0;
 }
@@ -428,6 +537,9 @@ eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params)
 	IONIC_PRINT_CALL();
 
 	eth_dev->dev_ops = &ionic_eth_dev_ops;
+	eth_dev->rx_pkt_burst = &ionic_recv_pkts;
+	eth_dev->tx_pkt_burst = &ionic_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &ionic_prep_pkts;
 
 	/* Multi-process not supported, primary does initialization anyway */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -499,6 +611,9 @@ eth_ionic_dev_uninit(struct rte_eth_dev *eth_dev)
 	ionic_lif_free(lif);
 
 	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+	eth_dev->tx_pkt_prepare = NULL;
 
 	return 0;
 }
