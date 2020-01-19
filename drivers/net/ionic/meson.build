@@ -2,6 +2,9 @@
 # Copyright(c) 2019 Pensando
 
 sources = files(
-	'ionic_ethdev.c'
+	'ionic_mac_api.c',
+	'ionic_dev.c',
+	'ionic_ethdev.c',
+	'ionic_main.c'
 )
 
