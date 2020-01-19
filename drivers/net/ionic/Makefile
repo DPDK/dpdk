@@ -8,6 +8,9 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_ionic.a
 
+# Required to use rte_eth_dev_create and rte_eth_dev_destroy
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
@@ -23,6 +26,7 @@ LDLIBS += -lrte_bus_pci
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_mac_api.c
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_dev.c
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_lif.c
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_main.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -7,11 +7,17 @@
 #include <rte_ethdev.h>
 #include <rte_ethdev_driver.h>
 #include <rte_malloc.h>
+#include <rte_ethdev_pci.h>
 
 #include "ionic_logs.h"
 #include "ionic.h"
 #include "ionic_dev.h"
 #include "ionic_mac_api.h"
+#include "ionic_lif.h"
+#include "ionic_ethdev.h"
+
+static int  eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params);
+static int  eth_ionic_dev_uninit(struct rte_eth_dev *eth_dev);
 
 int ionic_logtype;
 
@@ -22,10 +28,81 @@ static const struct rte_pci_id pci_id_ionic_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+static const struct eth_dev_ops ionic_eth_dev_ops = {
+};
+
+static int
+eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_adapter *adapter = (struct ionic_adapter *)init_params;
+	int err;
+
+	IONIC_PRINT_CALL();
+
+	eth_dev->dev_ops = &ionic_eth_dev_ops;
+
+	/* Multi-process not supported, primary does initialization anyway */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
+	lif->index = adapter->nlifs;
+	lif->eth_dev = eth_dev;
+	lif->adapter = adapter;
+	adapter->lifs[adapter->nlifs] = lif;
+
+	err = ionic_lif_alloc(lif);
+	if (err) {
+		IONIC_PRINT(ERR, "Cannot allocate LIFs: %d, aborting",
+			err);
+		goto err;
+	}
+
+	err = ionic_lif_init(lif);
+	if (err) {
+		IONIC_PRINT(ERR, "Cannot init LIFs: %d, aborting", err);
+		goto err_free_lif;
+	}
+
+	IONIC_PRINT(DEBUG, "Port %u initialized", eth_dev->data->port_id);
+
+	return 0;
+
+err_free_lif:
+	ionic_lif_free(lif);
+err:
+	return err;
+}
+
+static int
+eth_ionic_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_adapter *adapter = lif->adapter;
+
+	IONIC_PRINT_CALL();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	adapter->lifs[lif->index] = NULL;
+
+	ionic_lif_deinit(lif);
+	ionic_lif_free(lif);
+
+	eth_dev->dev_ops = NULL;
+
+	return 0;
+}
+
 static int
 eth_ionic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
+	char name[RTE_ETH_NAME_MAX_LEN];
 	struct rte_mem_resource *resource;
 	struct ionic_adapter *adapter;
 	struct ionic_hw *hw;
@@ -112,6 +189,38 @@ eth_ionic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto err_free_adapter;
 	}
 
+	/* Configure LIFs */
+	err = ionic_lif_identify(adapter);
+	if (err) {
+		IONIC_PRINT(ERR, "Cannot identify lif: %d, aborting", err);
+		goto err_free_adapter;
+	}
+
+	/* Allocate and init LIFs */
+	err = ionic_lifs_size(adapter);
+	if (err) {
+		IONIC_PRINT(ERR, "Cannot size LIFs: %d, aborting", err);
+		goto err_free_adapter;
+	}
+
+	adapter->nlifs = 0;
+	for (i = 0; i < adapter->ident.dev.nlifs; i++) {
+		snprintf(name, sizeof(name), "net_%s_lif_%lu",
+			pci_dev->device.name, i);
+
+		err = rte_eth_dev_create(&pci_dev->device, name,
+			sizeof(struct ionic_lif),
+			NULL, NULL,
+			eth_ionic_dev_init, adapter);
+		if (err) {
+			IONIC_PRINT(ERR, "Cannot create eth device for "
+				"ionic lif %s", name);
+			break;
+		}
+
+		adapter->nlifs++;
+	}
+
 	return 0;
 
 err_free_adapter:
@@ -123,6 +232,31 @@ err:
 static int
 eth_ionic_pci_remove(struct rte_pci_device *pci_dev __rte_unused)
 {
+	char name[RTE_ETH_NAME_MAX_LEN];
+	struct ionic_adapter *adapter = NULL;
+	struct rte_eth_dev *eth_dev;
+	struct ionic_lif *lif;
+	uint32_t i;
+
+	/* Adapter lookup is using (the first) eth_dev name */
+	snprintf(name, sizeof(name), "net_%s_lif_0",
+		pci_dev->device.name);
+
+	eth_dev = rte_eth_dev_allocated(name);
+	if (eth_dev) {
+		lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+		adapter = lif->adapter;
+	}
+
+	if (adapter) {
+		for (i = 0; i < adapter->nlifs; i++) {
+			lif = adapter->lifs[i];
+			rte_eth_dev_destroy(lif->eth_dev, eth_ionic_dev_uninit);
+		}
+
+		rte_free(adapter);
+	}
+
 	return 0;
 }
 

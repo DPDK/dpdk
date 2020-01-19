@@ -9,6 +9,8 @@
 #include "ionic_if.h"
 #include "ionic_regs.h"
 
+#define IONIC_LIFS_MAX			1024
+
 #define IONIC_DEVCMD_TIMEOUT	30 /* devcmd_timeout */
 #define	IONIC_ALIGN             4096
 
@@ -141,5 +143,11 @@ void ionic_dev_cmd_port_fec(struct ionic_dev *idev, uint8_t fec_type);
 void ionic_dev_cmd_port_pause(struct ionic_dev *idev, uint8_t pause_type);
 void ionic_dev_cmd_port_loopback(struct ionic_dev *idev,
 	uint8_t loopback_mode);
+
+void ionic_dev_cmd_lif_identify(struct ionic_dev *idev, uint8_t type,
+	uint8_t ver);
+void ionic_dev_cmd_lif_init(struct ionic_dev *idev, uint16_t lif_index,
+	rte_iova_t addr);
+void ionic_dev_cmd_lif_reset(struct ionic_dev *idev, uint16_t lif_index);
 
 #endif /* _IONIC_DEV_H_ */

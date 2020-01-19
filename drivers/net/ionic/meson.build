@@ -5,6 +5,7 @@ sources = files(
 	'ionic_mac_api.c',
 	'ionic_dev.c',
 	'ionic_ethdev.c',
+	'ionic_lif.c',
 	'ionic_main.c'
 )
 

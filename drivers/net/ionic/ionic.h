@@ -50,7 +50,12 @@ struct ionic_adapter {
 	struct ionic_dev idev;
 	struct ionic_dev_bar bars[IONIC_BARS_MAX];
 	struct ionic_identity	ident;
+	struct ionic_lif *lifs[IONIC_LIFS_MAX];
 	uint32_t num_bars;
+	uint32_t nlifs;
+	uint32_t max_ntxqs_per_lif;
+	uint32_t max_nrxqs_per_lif;
+	uint32_t nintrs;
 	bool is_mgmt_nic;
 	struct rte_pci_device *pci_dev;
 	LIST_ENTRY(ionic_adapter) pci_adapters;
