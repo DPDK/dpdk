@@ -121,6 +121,22 @@ struct ionic_dev {
 	uint32_t port_info_sz;
 };
 
+#define IONIC_INTR_INDEX_NOT_ASSIGNED	(-1)
+#define IONIC_INTR_NAME_MAX_SZ		(32)
+
+struct ionic_intr_info {
+	char name[IONIC_INTR_NAME_MAX_SZ];
+	int index;
+	uint32_t vector;
+	struct ionic_intr __iomem *ctrl;
+};
+
+struct ionic_lif;
+struct ionic_adapter;
+
+void ionic_intr_init(struct ionic_dev *idev, struct ionic_intr_info *intr,
+	unsigned long index);
+
 int ionic_dev_setup(struct ionic_adapter *adapter);
 
 void ionic_dev_cmd_go(struct ionic_dev *idev, union ionic_dev_cmd *cmd);
@@ -149,5 +165,7 @@ void ionic_dev_cmd_lif_identify(struct ionic_dev *idev, uint8_t type,
 void ionic_dev_cmd_lif_init(struct ionic_dev *idev, uint16_t lif_index,
 	rte_iova_t addr);
 void ionic_dev_cmd_lif_reset(struct ionic_dev *idev, uint16_t lif_index);
+
+int ionic_db_page_num(struct ionic_lif *lif, int pid);
 
 #endif /* _IONIC_DEV_H_ */

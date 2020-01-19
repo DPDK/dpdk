@@ -5,6 +5,7 @@
 #include <rte_malloc.h>
 
 #include "ionic_dev.h"
+#include "ionic_lif.h"
 #include "ionic.h"
 
 int
@@ -296,4 +297,18 @@ ionic_dev_cmd_lif_reset(struct ionic_dev *idev, uint16_t lif_index)
 	};
 
 	ionic_dev_cmd_go(idev, &cmd);
+}
+
+int
+ionic_db_page_num(struct ionic_lif *lif, int pid)
+{
+	return (lif->index * 0) + pid;
+}
+
+void
+ionic_intr_init(struct ionic_dev *idev, struct ionic_intr_info *intr,
+		unsigned long index)
+{
+	ionic_intr_clean(idev->intr_ctrl, index);
+	intr->index = index;
 }

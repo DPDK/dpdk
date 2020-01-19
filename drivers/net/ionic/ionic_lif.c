@@ -10,14 +10,37 @@
 #include "ionic_lif.h"
 #include "ionic_ethdev.h"
 
+static void *
+ionic_bus_map_dbpage(struct ionic_adapter *adapter, int page_num)
+{
+	char *vaddr = adapter->bars[IONIC_PCI_BAR_DBELL].vaddr;
+
+	if (adapter->num_bars <= IONIC_PCI_BAR_DBELL)
+		return NULL;
+
+	return (void *)&vaddr[page_num << PAGE_SHIFT];
+}
+
 int
 ionic_lif_alloc(struct ionic_lif *lif)
 {
+	struct ionic_adapter *adapter = lif->adapter;
 	uint32_t socket_id = rte_socket_id();
+	int dbpage_num;
 
 	snprintf(lif->name, sizeof(lif->name), "lif%u", lif->index);
 
 	IONIC_PRINT(DEBUG, "Allocating Lif Info");
+
+	lif->kern_pid = 0;
+
+	dbpage_num = ionic_db_page_num(lif, 0);
+
+	lif->kern_dbpage = ionic_bus_map_dbpage(adapter, dbpage_num);
+	if (!lif->kern_dbpage) {
+		IONIC_PRINT(ERR, "Cannot map dbpage, aborting");
+		return -ENOMEM;
+	}
 
 	lif->info_sz = RTE_ALIGN(sizeof(*lif->info), PAGE_SIZE);
 
