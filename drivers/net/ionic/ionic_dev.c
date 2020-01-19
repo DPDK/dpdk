@@ -132,3 +132,130 @@ ionic_dev_cmd_reset(struct ionic_dev *idev)
 
 	ionic_dev_cmd_go(idev, &cmd);
 }
+
+/* Port commands */
+
+void
+ionic_dev_cmd_port_identify(struct ionic_dev *idev)
+{
+	union ionic_dev_cmd cmd = {
+		.port_init.opcode = IONIC_CMD_PORT_IDENTIFY,
+		.port_init.index = 0,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
+ionic_dev_cmd_port_init(struct ionic_dev *idev)
+{
+	union ionic_dev_cmd cmd = {
+		.port_init.opcode = IONIC_CMD_PORT_INIT,
+		.port_init.index = 0,
+		.port_init.info_pa = idev->port_info_pa,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
+ionic_dev_cmd_port_reset(struct ionic_dev *idev)
+{
+	union ionic_dev_cmd cmd = {
+		.port_reset.opcode = IONIC_CMD_PORT_RESET,
+		.port_reset.index = 0,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
+ionic_dev_cmd_port_state(struct ionic_dev *idev, uint8_t state)
+{
+	union ionic_dev_cmd cmd = {
+		.port_setattr.opcode = IONIC_CMD_PORT_SETATTR,
+		.port_setattr.index = 0,
+		.port_setattr.attr = IONIC_PORT_ATTR_STATE,
+		.port_setattr.state = state,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
+ionic_dev_cmd_port_speed(struct ionic_dev *idev, uint32_t speed)
+{
+	union ionic_dev_cmd cmd = {
+		.port_setattr.opcode = IONIC_CMD_PORT_SETATTR,
+		.port_setattr.index = 0,
+		.port_setattr.attr = IONIC_PORT_ATTR_SPEED,
+		.port_setattr.speed = speed,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
+ionic_dev_cmd_port_mtu(struct ionic_dev *idev, uint32_t mtu)
+{
+	union ionic_dev_cmd cmd = {
+		.port_setattr.opcode = IONIC_CMD_PORT_SETATTR,
+		.port_setattr.index = 0,
+		.port_setattr.attr = IONIC_PORT_ATTR_MTU,
+		.port_setattr.mtu = mtu,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
+ionic_dev_cmd_port_autoneg(struct ionic_dev *idev, uint8_t an_enable)
+{
+	union ionic_dev_cmd cmd = {
+		.port_setattr.opcode = IONIC_CMD_PORT_SETATTR,
+		.port_setattr.index = 0,
+		.port_setattr.attr = IONIC_PORT_ATTR_AUTONEG,
+		.port_setattr.an_enable = an_enable,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
+ionic_dev_cmd_port_fec(struct ionic_dev *idev, uint8_t fec_type)
+{
+	union ionic_dev_cmd cmd = {
+		.port_setattr.opcode = IONIC_CMD_PORT_SETATTR,
+		.port_setattr.index = 0,
+		.port_setattr.attr = IONIC_PORT_ATTR_FEC,
+		.port_setattr.fec_type = fec_type,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
+ionic_dev_cmd_port_pause(struct ionic_dev *idev, uint8_t pause_type)
+{
+	union ionic_dev_cmd cmd = {
+		.port_setattr.opcode = IONIC_CMD_PORT_SETATTR,
+		.port_setattr.index = 0,
+		.port_setattr.attr = IONIC_PORT_ATTR_PAUSE,
+		.port_setattr.pause_type = pause_type,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
+ionic_dev_cmd_port_loopback(struct ionic_dev *idev, uint8_t loopback_mode)
+{
+	union ionic_dev_cmd cmd = {
+		.port_setattr.opcode = IONIC_CMD_PORT_SETATTR,
+		.port_setattr.index = 0,
+		.port_setattr.attr = IONIC_PORT_ATTR_LOOPBACK,
+		.port_setattr.loopback_mode = loopback_mode,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}

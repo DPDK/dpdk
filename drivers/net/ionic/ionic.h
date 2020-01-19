@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#include <rte_bus_pci.h>
+
 #include "ionic_dev.h"
 #include "ionic_if.h"
 #include "ionic_osdep.h"
@@ -60,5 +62,9 @@ int ionic_setup(struct ionic_adapter *adapter);
 int ionic_identify(struct ionic_adapter *adapter);
 int ionic_init(struct ionic_adapter *adapter);
 int ionic_reset(struct ionic_adapter *adapter);
+
+int ionic_port_identify(struct ionic_adapter *adapter);
+int ionic_port_init(struct ionic_adapter *adapter);
+int ionic_port_reset(struct ionic_adapter *adapter);
 
 #endif /* _IONIC_H_ */

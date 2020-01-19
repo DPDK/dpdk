@@ -10,6 +10,7 @@
 #include "ionic_regs.h"
 
 #define IONIC_DEVCMD_TIMEOUT	30 /* devcmd_timeout */
+#define	IONIC_ALIGN             4096
 
 struct ionic_adapter;
 
@@ -111,6 +112,11 @@ struct ionic_dev {
 	struct ionic_intr __iomem *intr_ctrl;
 
 	struct ionic_intr_status __iomem *intr_status;
+
+	struct ionic_port_info *port_info;
+	const struct rte_memzone *port_info_z;
+	rte_iova_t port_info_pa;
+	uint32_t port_info_sz;
 };
 
 int ionic_dev_setup(struct ionic_adapter *adapter);
@@ -123,5 +129,17 @@ void ionic_dev_cmd_comp(struct ionic_dev *idev, void *mem);
 void ionic_dev_cmd_identify(struct ionic_dev *idev, uint8_t ver);
 void ionic_dev_cmd_init(struct ionic_dev *idev);
 void ionic_dev_cmd_reset(struct ionic_dev *idev);
+
+void ionic_dev_cmd_port_identify(struct ionic_dev *idev);
+void ionic_dev_cmd_port_init(struct ionic_dev *idev);
+void ionic_dev_cmd_port_reset(struct ionic_dev *idev);
+void ionic_dev_cmd_port_state(struct ionic_dev *idev, uint8_t state);
+void ionic_dev_cmd_port_speed(struct ionic_dev *idev, uint32_t speed);
+void ionic_dev_cmd_port_mtu(struct ionic_dev *idev, uint32_t mtu);
+void ionic_dev_cmd_port_autoneg(struct ionic_dev *idev, uint8_t an_enable);
+void ionic_dev_cmd_port_fec(struct ionic_dev *idev, uint8_t fec_type);
+void ionic_dev_cmd_port_pause(struct ionic_dev *idev, uint8_t pause_type);
+void ionic_dev_cmd_port_loopback(struct ionic_dev *idev,
+	uint8_t loopback_mode);
 
 #endif /* _IONIC_DEV_H_ */
