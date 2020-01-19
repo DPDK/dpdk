@@ -14,10 +14,12 @@
 #include "ionic_dev.h"
 
 #define IONIC_ADMINQ_LENGTH	16	/* must be a power of two */
+#define IONIC_NOTIFYQ_LENGTH	64	/* must be a power of two */
 
 #define IONIC_QCQ_F_INITED	BIT(0)
 #define IONIC_QCQ_F_SG		BIT(1)
 #define IONIC_QCQ_F_INTR	BIT(2)
+#define IONIC_QCQ_F_NOTIFYQ	BIT(3)
 
 /* Queue / Completion Queue */
 struct ionic_qcq {
@@ -34,6 +36,7 @@ struct ionic_qcq {
 };
 
 #define IONIC_LIF_F_INITED		BIT(0)
+#define IONIC_LIF_F_LINK_CHECK_NEEDED	BIT(1)
 
 #define IONIC_LIF_NAME_MAX_SZ		(32)
 
@@ -48,7 +51,9 @@ struct ionic_lif {
 	rte_spinlock_t adminq_lock;
 	rte_spinlock_t adminq_service_lock;
 	struct ionic_qcq *adminqcq;
+	struct ionic_qcq *notifyqcq;
 	struct ionic_doorbell __iomem *kern_dbpage;
+	uint64_t last_eid;
 	char name[IONIC_LIF_NAME_MAX_SZ];
 	uint32_t info_sz;
 	struct ionic_lif_info *info;
@@ -82,5 +87,7 @@ void ionic_qcq_free(struct ionic_qcq *qcq);
 
 int ionic_qcq_enable(struct ionic_qcq *qcq);
 int ionic_qcq_disable(struct ionic_qcq *qcq);
+
+int ionic_notifyq_handler(struct ionic_lif *lif, int budget);
 
 #endif /* _IONIC_LIF_H_ */

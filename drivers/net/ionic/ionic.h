@@ -55,9 +55,11 @@ struct ionic_adapter {
 	uint32_t nlifs;
 	uint32_t max_ntxqs_per_lif;
 	uint32_t max_nrxqs_per_lif;
+	uint32_t link_speed;
 	uint32_t nintrs;
 	bool intrs[IONIC_INTR_CTRL_REGS_MAX];
 	bool is_mgmt_nic;
+	bool link_up;
 	struct rte_pci_device *pci_dev;
 	LIST_ENTRY(ionic_adapter) pci_adapters;
 };
