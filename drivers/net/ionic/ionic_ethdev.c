@@ -29,6 +29,10 @@ static int  ionic_dev_set_link_up(struct rte_eth_dev *dev);
 static int  ionic_dev_set_link_down(struct rte_eth_dev *dev);
 static int  ionic_dev_link_update(struct rte_eth_dev *eth_dev,
 	int wait_to_complete);
+static int  ionic_flow_ctrl_get(struct rte_eth_dev *eth_dev,
+	struct rte_eth_fc_conf *fc_conf);
+static int  ionic_flow_ctrl_set(struct rte_eth_dev *eth_dev,
+	struct rte_eth_fc_conf *fc_conf);
 
 int ionic_logtype;
 
@@ -57,6 +61,8 @@ static const struct eth_dev_ops ionic_eth_dev_ops = {
 	.promiscuous_disable    = ionic_dev_promiscuous_disable,
 	.allmulticast_enable    = ionic_dev_allmulticast_enable,
 	.allmulticast_disable   = ionic_dev_allmulticast_disable,
+	.flow_ctrl_get          = ionic_flow_ctrl_get,
+	.flow_ctrl_set          = ionic_flow_ctrl_set,
 };
 
 /*
@@ -236,6 +242,56 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 		ETH_LINK_SPEED_40G |
 		ETH_LINK_SPEED_50G |
 		ETH_LINK_SPEED_100G;
+
+	return 0;
+}
+
+static int
+ionic_flow_ctrl_get(struct rte_eth_dev *eth_dev,
+		struct rte_eth_fc_conf *fc_conf)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_adapter *adapter = lif->adapter;
+	struct ionic_dev *idev = &adapter->idev;
+
+	if (idev->port_info) {
+		fc_conf->autoneg = idev->port_info->config.an_enable;
+
+		if (idev->port_info->config.pause_type)
+			fc_conf->mode = RTE_FC_FULL;
+		else
+			fc_conf->mode = RTE_FC_NONE;
+	}
+
+	return 0;
+}
+
+static int
+ionic_flow_ctrl_set(struct rte_eth_dev *eth_dev,
+		struct rte_eth_fc_conf *fc_conf)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_adapter *adapter = lif->adapter;
+	struct ionic_dev *idev = &adapter->idev;
+	uint8_t pause_type = IONIC_PORT_PAUSE_TYPE_NONE;
+	uint8_t an_enable;
+
+	switch (fc_conf->mode) {
+	case RTE_FC_NONE:
+		pause_type = IONIC_PORT_PAUSE_TYPE_NONE;
+		break;
+	case RTE_FC_FULL:
+		pause_type = IONIC_PORT_PAUSE_TYPE_LINK;
+		break;
+	case RTE_FC_RX_PAUSE:
+	case RTE_FC_TX_PAUSE:
+		return -ENOTSUP;
+	}
+
+	an_enable = fc_conf->autoneg;
+
+	ionic_dev_cmd_port_pause(idev, pause_type);
+	ionic_dev_cmd_port_autoneg(idev, an_enable);
 
 	return 0;
 }
