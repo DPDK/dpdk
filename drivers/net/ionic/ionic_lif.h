@@ -44,6 +44,7 @@ struct ionic_lif {
 	struct ionic_adapter *adapter;
 	struct rte_eth_dev *eth_dev;
 	uint16_t port_id;  /**< Device port identifier */
+	uint16_t mtu;
 	uint32_t index;
 	uint32_t hw_index;
 	uint32_t state;
@@ -54,7 +55,11 @@ struct ionic_lif {
 	struct ionic_qcq *notifyqcq;
 	struct ionic_doorbell __iomem *kern_dbpage;
 	uint64_t last_eid;
+	uint64_t features;
+	uint32_t hw_features;
+	uint32_t rx_mode;
 	char name[IONIC_LIF_NAME_MAX_SZ];
+	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	uint32_t info_sz;
 	struct ionic_lif_info *info;
 	rte_iova_t info_pa;
@@ -71,6 +76,7 @@ int ionic_lif_init(struct ionic_lif *lif);
 void ionic_lif_deinit(struct ionic_lif *lif);
 
 int ionic_lif_start(struct ionic_lif *lif);
+int ionic_lif_stop(struct ionic_lif *lif);
 
 int ionic_lif_configure(struct ionic_lif *lif);
 void ionic_lif_reset(struct ionic_lif *lif);
@@ -83,10 +89,14 @@ bool ionic_adminq_service(struct ionic_cq *cq, uint32_t cq_desc_index,
 int ionic_qcq_service(struct ionic_qcq *qcq, int budget, ionic_cq_cb cb,
 	void *cb_arg);
 
+int ionic_lif_change_mtu(struct ionic_lif *lif, int new_mtu);
+
 void ionic_qcq_free(struct ionic_qcq *qcq);
 
 int ionic_qcq_enable(struct ionic_qcq *qcq);
 int ionic_qcq_disable(struct ionic_qcq *qcq);
+
+int ionic_lif_set_features(struct ionic_lif *lif);
 
 int ionic_notifyq_handler(struct ionic_lif *lif, int budget);
 

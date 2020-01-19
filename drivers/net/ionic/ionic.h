@@ -55,6 +55,7 @@ struct ionic_adapter {
 	uint32_t nlifs;
 	uint32_t max_ntxqs_per_lif;
 	uint32_t max_nrxqs_per_lif;
+	uint32_t max_mac_addrs;
 	uint32_t link_speed;
 	uint32_t nintrs;
 	bool intrs[IONIC_INTR_CTRL_REGS_MAX];
