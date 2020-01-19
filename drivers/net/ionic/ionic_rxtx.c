@@ -231,15 +231,58 @@ ionic_dev_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 }
 
 static void
+ionic_tx_tcp_pseudo_csum(struct rte_mbuf *txm)
+{
+	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(txm, struct ether_hdr *);
+	char *l3_hdr = ((char *)eth_hdr) + txm->l2_len;
+	struct rte_tcp_hdr *tcp_hdr = (struct rte_tcp_hdr *)
+		(l3_hdr + txm->l3_len);
+
+	if (txm->ol_flags & PKT_TX_IP_CKSUM) {
+		struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *)l3_hdr;
+		ipv4_hdr->hdr_checksum = 0;
+		tcp_hdr->cksum = 0;
+		tcp_hdr->cksum = rte_ipv4_udptcp_cksum(ipv4_hdr, tcp_hdr);
+	} else {
+		struct rte_ipv6_hdr *ipv6_hdr = (struct rte_ipv6_hdr *)l3_hdr;
+		tcp_hdr->cksum = 0;
+		tcp_hdr->cksum = rte_ipv6_udptcp_cksum(ipv6_hdr, tcp_hdr);
+	}
+}
+
+static void
+ionic_tx_tcp_inner_pseudo_csum(struct rte_mbuf *txm)
+{
+	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(txm, struct ether_hdr *);
+	char *l3_hdr = ((char *)eth_hdr) + txm->outer_l2_len +
+		txm->outer_l3_len + txm->l2_len;
+	struct rte_tcp_hdr *tcp_hdr = (struct rte_tcp_hdr *)
+		(l3_hdr + txm->l3_len);
+
+	if (txm->ol_flags & PKT_TX_IPV4) {
+		struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *)l3_hdr;
+		ipv4_hdr->hdr_checksum = 0;
+		tcp_hdr->cksum = 0;
+		tcp_hdr->cksum = rte_ipv4_udptcp_cksum(ipv4_hdr, tcp_hdr);
+	} else {
+		struct rte_ipv6_hdr *ipv6_hdr = (struct rte_ipv6_hdr *)l3_hdr;
+		tcp_hdr->cksum = 0;
+		tcp_hdr->cksum = rte_ipv6_udptcp_cksum(ipv6_hdr, tcp_hdr);
+	}
+}
+
+static void
 ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 		struct rte_mbuf *txm,
 		rte_iova_t addr, uint8_t nsge, uint16_t len,
 		uint32_t hdrlen, uint32_t mss,
+		bool encap,
 		uint16_t vlan_tci, bool has_vlan,
 		bool start, bool done)
 {
 	uint8_t flags = 0;
 	flags |= has_vlan ? IONIC_TXQ_DESC_FLAG_VLAN : 0;
+	flags |= encap ? IONIC_TXQ_DESC_FLAG_ENCAP : 0;
 	flags |= start ? IONIC_TXQ_DESC_FLAG_TSO_SOT : 0;
 	flags |= done ? IONIC_TXQ_DESC_FLAG_TSO_EOT : 0;
 
@@ -284,10 +327,29 @@ ionic_tx_tso(struct ionic_queue *q, struct rte_mbuf *txm,
 	uint32_t len;
 	uint32_t offset = 0;
 	bool start, done;
+	bool encap;
 	bool has_vlan = !!(txm->ol_flags & PKT_TX_VLAN_PKT);
 	uint16_t vlan_tci = txm->vlan_tci;
+	uint64_t ol_flags = txm->ol_flags;
 
-	hdrlen = txm->l2_len + txm->l3_len;
+	encap = ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
+		(ol_flags & PKT_TX_OUTER_UDP_CKSUM)) &&
+		((ol_flags & PKT_TX_OUTER_IPV4) ||
+		(ol_flags & PKT_TX_OUTER_IPV6));
+
+	/* Preload inner-most TCP csum field with IP pseudo hdr
+	 * calculated with IP length set to zero.  HW will later
+	 * add in length to each TCP segment resulting from the TSO.
+	 */
+
+	if (encap) {
+		ionic_tx_tcp_inner_pseudo_csum(txm);
+		hdrlen = txm->outer_l2_len + txm->outer_l3_len +
+			txm->l2_len + txm->l3_len + txm->l4_len;
+	} else {
+		ionic_tx_tcp_pseudo_csum(txm);
+		hdrlen = txm->l2_len + txm->l3_len + txm->l4_len;
+	}
 
 	seglen = hdrlen + mss;
 	left = txm->data_len;
@@ -311,6 +373,7 @@ ionic_tx_tso(struct ionic_queue *q, struct rte_mbuf *txm,
 		ionic_tx_tso_post(q, desc, txm,
 			desc_addr, desc_nsge, desc_len,
 			hdrlen, mss,
+			encap,
 			vlan_tci, has_vlan,
 			start, done && not_xmit_more);
 		desc = ionic_tx_tso_next(q, &elem);
@@ -352,6 +415,7 @@ ionic_tx_tso(struct ionic_queue *q, struct rte_mbuf *txm,
 			ionic_tx_tso_post(q, desc, txm_seg,
 				desc_addr, desc_nsge, desc_len,
 				hdrlen, mss,
+				encap,
 				vlan_tci, has_vlan,
 				start, done && not_xmit_more);
 			desc = ionic_tx_tso_next(q, &elem);
@@ -368,7 +432,7 @@ ionic_tx_tso(struct ionic_queue *q, struct rte_mbuf *txm,
 
 static int
 ionic_tx(struct ionic_queue *q, struct rte_mbuf *txm,
-		uint64_t offloads __rte_unused, bool not_xmit_more)
+		uint64_t offloads, bool not_xmit_more)
 {
 	struct ionic_txq_desc *desc_base = q->base;
 	struct ionic_txq_sg_desc *sg_desc_base = q->sg_base;
@@ -377,15 +441,34 @@ ionic_tx(struct ionic_queue *q, struct rte_mbuf *txm,
 	struct ionic_txq_sg_elem *elem = sg_desc->elems;
 	struct ionic_tx_stats *stats = IONIC_Q_TO_TX_STATS(q);
 	struct rte_mbuf *txm_seg;
+	bool encap;
 	bool has_vlan;
 	uint64_t ol_flags = txm->ol_flags;
 	uint64_t addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(txm));
 	uint8_t opcode = IONIC_TXQ_DESC_OPCODE_CSUM_NONE;
 	uint8_t flags = 0;
 
+	if ((ol_flags & PKT_TX_IP_CKSUM) &&
+			(offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)) {
+		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
+		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L3;
+		if (((ol_flags & PKT_TX_TCP_CKSUM) &&
+				(offloads & DEV_TX_OFFLOAD_TCP_CKSUM)) ||
+				((ol_flags & PKT_TX_UDP_CKSUM) &&
+				(offloads & DEV_TX_OFFLOAD_UDP_CKSUM)))
+			flags |= IONIC_TXQ_DESC_FLAG_CSUM_L4;
+	} else {
+		stats->no_csum++;
+	}
+
 	has_vlan = (ol_flags & PKT_TX_VLAN_PKT);
+	encap = ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
+			(ol_flags & PKT_TX_OUTER_UDP_CKSUM)) &&
+			((ol_flags & PKT_TX_OUTER_IPV4) ||
+			(ol_flags & PKT_TX_OUTER_IPV6));
 
 	flags |= has_vlan ? IONIC_TXQ_DESC_FLAG_VLAN : 0;
+	flags |= encap ? IONIC_TXQ_DESC_FLAG_ENCAP : 0;
 
 	desc->cmd = encode_txq_desc_cmd(opcode, flags, txm->nb_segs - 1, addr);
 	desc->len = txm->data_len;
@@ -469,6 +552,7 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	PKT_TX_IPV4 |		\
 	PKT_TX_IPV6 |		\
 	PKT_TX_VLAN |		\
+	PKT_TX_IP_CKSUM |	\
 	PKT_TX_TCP_SEG |	\
 	PKT_TX_L4_MASK)
 

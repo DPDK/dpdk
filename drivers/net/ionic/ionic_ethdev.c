@@ -406,7 +406,12 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 		0;
 
 	dev_info->tx_queue_offload_capa =
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM |
 		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_OUTER_UDP_CKSUM |
 		0;
 
 	/*

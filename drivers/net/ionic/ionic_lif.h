@@ -32,6 +32,7 @@ struct ionic_tx_stats {
 	uint64_t bytes;
 	uint64_t drop;
 	uint64_t stop;
+	uint64_t no_csum;
 	uint64_t tso;
 	uint64_t frags;
 };

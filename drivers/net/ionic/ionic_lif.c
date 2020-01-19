@@ -1491,6 +1491,7 @@ ionic_lif_init(struct ionic_lif *lif)
 		| IONIC_ETH_HW_RX_HASH
 		| IONIC_ETH_HW_TX_SG
 		| IONIC_ETH_HW_RX_SG
+		| IONIC_ETH_HW_TX_CSUM
 		| IONIC_ETH_HW_RX_CSUM
 		| IONIC_ETH_HW_TSO
 		| IONIC_ETH_HW_TSO_IPV6
