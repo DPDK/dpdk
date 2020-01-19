@@ -61,6 +61,7 @@ struct ionic_adapter {
 	bool intrs[IONIC_INTR_CTRL_REGS_MAX];
 	bool is_mgmt_nic;
 	bool link_up;
+	char fw_version[IONIC_DEVINFO_FWVERS_BUFLEN];
 	struct rte_pci_device *pci_dev;
 	LIST_ENTRY(ionic_adapter) pci_adapters;
 };

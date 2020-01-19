@@ -16,6 +16,7 @@ ionic_dev_setup(struct ionic_adapter *adapter)
 	struct ionic_dev *idev = &adapter->idev;
 	uint32_t sig;
 	u_char *bar0_base;
+	unsigned int i;
 
 	/* BAR0: dev_cmd and interrupts */
 	if (num_bars < 1) {
@@ -46,6 +47,13 @@ ionic_dev_setup(struct ionic_adapter *adapter)
 			sig);
 		return -EFAULT;
 	}
+
+	for (i = 0; i < IONIC_DEVINFO_FWVERS_BUFLEN; i++)
+		adapter->fw_version[i] =
+			ioread8(&idev->dev_info->fw_version[i]);
+	adapter->fw_version[IONIC_DEVINFO_FWVERS_BUFLEN - 1] = '\0';
+
+	IONIC_PRINT(DEBUG, "Firmware version: %s", adapter->fw_version);
 
 	/* BAR1: doorbells */
 	bar++;

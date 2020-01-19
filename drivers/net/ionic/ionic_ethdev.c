@@ -56,6 +56,8 @@ static int  ionic_dev_xstats_get_names(struct rte_eth_dev *dev,
 static int  ionic_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
 	unsigned int limit);
+static int  ionic_dev_fw_version_get(struct rte_eth_dev *eth_dev,
+	char *fw_version, size_t fw_size);
 
 int ionic_logtype;
 
@@ -122,6 +124,7 @@ static const struct eth_dev_ops ionic_eth_dev_ops = {
 	.xstats_reset           = ionic_dev_xstats_reset,
 	.xstats_get_names       = ionic_dev_xstats_get_names,
 	.xstats_get_names_by_id = ionic_dev_xstats_get_names_by_id,
+	.fw_version_get         = ionic_dev_fw_version_get,
 };
 
 struct rte_ionic_xstats_name_off {
@@ -210,6 +213,23 @@ static const struct rte_ionic_xstats_name_off rte_ionic_xstats_strings[] = {
 
 #define IONIC_NB_HW_STATS (sizeof(rte_ionic_xstats_strings) / \
 		sizeof(rte_ionic_xstats_strings[0]))
+
+static int
+ionic_dev_fw_version_get(struct rte_eth_dev *eth_dev,
+		char *fw_version, size_t fw_size)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_adapter *adapter = lif->adapter;
+
+	if (fw_version == NULL || fw_size <= 0)
+		return -EINVAL;
+
+	snprintf(fw_version, fw_size, "%s",
+		 adapter->fw_version);
+	fw_version[fw_size - 1] = '\0';
+
+	return 0;
+}
 
 /*
  * Set device link up, enable tx.
