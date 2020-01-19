@@ -5,6 +5,190 @@
 #include <rte_memzone.h>
 
 #include "ionic.h"
+#include "ionic_ethdev.h"
+#include "ionic_lif.h"
+
+static const char *
+ionic_error_to_str(enum ionic_status_code code)
+{
+	switch (code) {
+	case IONIC_RC_SUCCESS:
+		return "IONIC_RC_SUCCESS";
+	case IONIC_RC_EVERSION:
+		return "IONIC_RC_EVERSION";
+	case IONIC_RC_EOPCODE:
+		return "IONIC_RC_EOPCODE";
+	case IONIC_RC_EIO:
+		return "IONIC_RC_EIO";
+	case IONIC_RC_EPERM:
+		return "IONIC_RC_EPERM";
+	case IONIC_RC_EQID:
+		return "IONIC_RC_EQID";
+	case IONIC_RC_EQTYPE:
+		return "IONIC_RC_EQTYPE";
+	case IONIC_RC_ENOENT:
+		return "IONIC_RC_ENOENT";
+	case IONIC_RC_EINTR:
+		return "IONIC_RC_EINTR";
+	case IONIC_RC_EAGAIN:
+		return "IONIC_RC_EAGAIN";
+	case IONIC_RC_ENOMEM:
+		return "IONIC_RC_ENOMEM";
+	case IONIC_RC_EFAULT:
+		return "IONIC_RC_EFAULT";
+	case IONIC_RC_EBUSY:
+		return "IONIC_RC_EBUSY";
+	case IONIC_RC_EEXIST:
+		return "IONIC_RC_EEXIST";
+	case IONIC_RC_EINVAL:
+		return "IONIC_RC_EINVAL";
+	case IONIC_RC_ENOSPC:
+		return "IONIC_RC_ENOSPC";
+	case IONIC_RC_ERANGE:
+		return "IONIC_RC_ERANGE";
+	case IONIC_RC_BAD_ADDR:
+		return "IONIC_RC_BAD_ADDR";
+	case IONIC_RC_DEV_CMD:
+		return "IONIC_RC_DEV_CMD";
+	case IONIC_RC_ERROR:
+		return "IONIC_RC_ERROR";
+	case IONIC_RC_ERDMA:
+		return "IONIC_RC_ERDMA";
+	default:
+		return "IONIC_RC_UNKNOWN";
+	}
+}
+
+static const char *
+ionic_opcode_to_str(enum ionic_cmd_opcode opcode)
+{
+	switch (opcode) {
+	case IONIC_CMD_NOP:
+		return "IONIC_CMD_NOP";
+	case IONIC_CMD_INIT:
+		return "IONIC_CMD_INIT";
+	case IONIC_CMD_RESET:
+		return "IONIC_CMD_RESET";
+	case IONIC_CMD_IDENTIFY:
+		return "IONIC_CMD_IDENTIFY";
+	case IONIC_CMD_GETATTR:
+		return "IONIC_CMD_GETATTR";
+	case IONIC_CMD_SETATTR:
+		return "IONIC_CMD_SETATTR";
+	case IONIC_CMD_PORT_IDENTIFY:
+		return "IONIC_CMD_PORT_IDENTIFY";
+	case IONIC_CMD_PORT_INIT:
+		return "IONIC_CMD_PORT_INIT";
+	case IONIC_CMD_PORT_RESET:
+		return "IONIC_CMD_PORT_RESET";
+	case IONIC_CMD_PORT_GETATTR:
+		return "IONIC_CMD_PORT_GETATTR";
+	case IONIC_CMD_PORT_SETATTR:
+		return "IONIC_CMD_PORT_SETATTR";
+	case IONIC_CMD_LIF_INIT:
+		return "IONIC_CMD_LIF_INIT";
+	case IONIC_CMD_LIF_RESET:
+		return "IONIC_CMD_LIF_RESET";
+	case IONIC_CMD_LIF_IDENTIFY:
+		return "IONIC_CMD_LIF_IDENTIFY";
+	case IONIC_CMD_LIF_SETATTR:
+		return "IONIC_CMD_LIF_SETATTR";
+	case IONIC_CMD_LIF_GETATTR:
+		return "IONIC_CMD_LIF_GETATTR";
+	case IONIC_CMD_RX_MODE_SET:
+		return "IONIC_CMD_RX_MODE_SET";
+	case IONIC_CMD_RX_FILTER_ADD:
+		return "IONIC_CMD_RX_FILTER_ADD";
+	case IONIC_CMD_RX_FILTER_DEL:
+		return "IONIC_CMD_RX_FILTER_DEL";
+	case IONIC_CMD_Q_INIT:
+		return "IONIC_CMD_Q_INIT";
+	case IONIC_CMD_Q_CONTROL:
+		return "IONIC_CMD_Q_CONTROL";
+	case IONIC_CMD_RDMA_RESET_LIF:
+		return "IONIC_CMD_RDMA_RESET_LIF";
+	case IONIC_CMD_RDMA_CREATE_EQ:
+		return "IONIC_CMD_RDMA_CREATE_EQ";
+	case IONIC_CMD_RDMA_CREATE_CQ:
+		return "IONIC_CMD_RDMA_CREATE_CQ";
+	case IONIC_CMD_RDMA_CREATE_ADMINQ:
+		return "IONIC_CMD_RDMA_CREATE_ADMINQ";
+	default:
+		return "DEVCMD_UNKNOWN";
+	}
+}
+
+int
+ionic_adminq_check_err(struct ionic_admin_ctx *ctx, bool timeout)
+{
+	const char *name;
+	const char *status;
+
+	if (ctx->comp.comp.status || timeout) {
+		name = ionic_opcode_to_str(ctx->cmd.cmd.opcode);
+		status = ionic_error_to_str(ctx->comp.comp.status);
+		IONIC_PRINT(ERR, "%s (%d) failed: %s (%d)",
+			name,
+			ctx->cmd.cmd.opcode,
+			timeout ? "TIMEOUT" : status,
+			timeout ? -1 : ctx->comp.comp.status);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int
+ionic_wait_ctx_for_completion(struct ionic_lif *lif, struct ionic_qcq *qcq,
+		struct ionic_admin_ctx *ctx, unsigned long max_wait)
+{
+	unsigned long step_msec = 1;
+	unsigned int max_wait_msec = max_wait * 1000;
+	unsigned long elapsed_msec = 0;
+	int budget = 8;
+
+	while (ctx->pending_work && elapsed_msec < max_wait_msec) {
+		/*
+		 * Locking here as adminq is served inline (this could be called
+		 * from multiple places)
+		 */
+		rte_spinlock_lock(&lif->adminq_service_lock);
+
+		ionic_qcq_service(qcq, budget, ionic_adminq_service, NULL);
+
+		rte_spinlock_unlock(&lif->adminq_service_lock);
+
+		msec_delay(step_msec);
+		elapsed_msec += step_msec;
+	}
+
+	return (!ctx->pending_work);
+}
+
+int
+ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
+{
+	struct ionic_qcq *qcq = lif->adminqcq;
+	bool done;
+	int err;
+
+	IONIC_PRINT(DEBUG, "Sending %s to the admin queue",
+		ionic_opcode_to_str(ctx->cmd.cmd.opcode));
+
+	err = ionic_adminq_post(lif, ctx);
+	if (err) {
+		IONIC_PRINT(ERR, "Failure posting to the admin queue %d (%d)",
+			ctx->cmd.cmd.opcode, err);
+
+		return err;
+	}
+
+	done = ionic_wait_ctx_for_completion(lif, qcq, ctx,
+		IONIC_DEVCMD_TIMEOUT);
+
+	err = ionic_adminq_check_err(ctx, !done /* timed out */);
+	return err;
+}
 
 static int
 ionic_dev_cmd_wait(struct ionic_dev *idev, unsigned long max_wait)

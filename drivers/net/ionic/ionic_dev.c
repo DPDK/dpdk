@@ -299,6 +299,12 @@ ionic_dev_cmd_lif_reset(struct ionic_dev *idev, uint16_t lif_index)
 	ionic_dev_cmd_go(idev, &cmd);
 }
 
+struct ionic_doorbell *
+ionic_db_map(struct ionic_lif *lif, struct ionic_queue *q)
+{
+	return lif->kern_dbpage + q->hw_type;
+}
+
 int
 ionic_db_page_num(struct ionic_lif *lif, int pid)
 {
@@ -311,4 +317,253 @@ ionic_intr_init(struct ionic_dev *idev, struct ionic_intr_info *intr,
 {
 	ionic_intr_clean(idev->intr_ctrl, index);
 	intr->index = index;
+}
+
+void
+ionic_dev_cmd_adminq_init(struct ionic_dev *idev,
+		struct ionic_qcq *qcq,
+		uint16_t lif_index, uint16_t intr_index)
+{
+	struct ionic_queue *q = &qcq->q;
+	struct ionic_cq *cq = &qcq->cq;
+
+	union ionic_dev_cmd cmd = {
+		.q_init.opcode = IONIC_CMD_Q_INIT,
+		.q_init.lif_index = lif_index,
+		.q_init.type = q->type,
+		.q_init.index = q->index,
+		.q_init.flags = IONIC_QINIT_F_ENA,
+		.q_init.pid = q->pid,
+		.q_init.intr_index = intr_index,
+		.q_init.ring_size = rte_log2_u32(q->num_descs),
+		.q_init.ring_base = q->base_pa,
+		.q_init.cq_ring_base = cq->base_pa,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+int
+ionic_cq_init(struct ionic_lif *lif, struct ionic_cq *cq,
+		struct ionic_intr_info *intr,
+		uint32_t num_descs, size_t desc_size)
+{
+	if (desc_size == 0) {
+		IONIC_PRINT(ERR, "Descriptor size is %zu", desc_size);
+		return -EINVAL;
+	}
+
+	if (!rte_is_power_of_2(num_descs) ||
+	    num_descs < IONIC_MIN_RING_DESC ||
+	    num_descs > IONIC_MAX_RING_DESC) {
+		IONIC_PRINT(ERR, "%u descriptors (min: %u max: %u)",
+			num_descs, IONIC_MIN_RING_DESC, IONIC_MAX_RING_DESC);
+		return -EINVAL;
+	}
+
+	cq->lif = lif;
+	cq->bound_intr = intr;
+	cq->num_descs = num_descs;
+	cq->desc_size = desc_size;
+	cq->tail_idx = 0;
+	cq->done_color = 1;
+
+	return 0;
+}
+
+void
+ionic_cq_map(struct ionic_cq *cq, void *base, rte_iova_t base_pa)
+{
+	cq->base = base;
+	cq->base_pa = base_pa;
+}
+
+void
+ionic_cq_bind(struct ionic_cq *cq, struct ionic_queue *q)
+{
+	cq->bound_q = q;
+	q->bound_cq = cq;
+}
+
+uint32_t
+ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
+		 ionic_cq_cb cb, void *cb_arg)
+{
+	uint32_t work_done = 0;
+
+	if (work_to_do == 0)
+		return 0;
+
+	while (cb(cq, cq->tail_idx, cb_arg)) {
+		cq->tail_idx = (cq->tail_idx + 1) & (cq->num_descs - 1);
+		if (cq->tail_idx == 0)
+			cq->done_color = !cq->done_color;
+
+		if (++work_done == work_to_do)
+			break;
+	}
+
+	return work_done;
+}
+
+int
+ionic_q_init(struct ionic_lif *lif, struct ionic_dev *idev,
+	     struct ionic_queue *q, uint32_t index, uint32_t num_descs,
+	     size_t desc_size, size_t sg_desc_size, uint32_t pid)
+{
+	uint32_t ring_size;
+
+	if (desc_size == 0 || !rte_is_power_of_2(num_descs))
+		return -EINVAL;
+
+	ring_size = rte_log2_u32(num_descs);
+
+	if (ring_size < 2 || ring_size > 16)
+		return -EINVAL;
+
+	q->lif = lif;
+	q->idev = idev;
+	q->index = index;
+	q->num_descs = num_descs;
+	q->desc_size = desc_size;
+	q->sg_desc_size = sg_desc_size;
+	q->head_idx = 0;
+	q->tail_idx = 0;
+	q->pid = pid;
+
+	return 0;
+}
+
+void
+ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa)
+{
+	q->base = base;
+	q->base_pa = base_pa;
+}
+
+void
+ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa)
+{
+	q->sg_base = base;
+	q->sg_base_pa = base_pa;
+}
+
+void
+ionic_q_flush(struct ionic_queue *q)
+{
+	writeq(IONIC_DBELL_QID(q->hw_index) | q->head_idx, q->db);
+}
+
+void
+ionic_q_post(struct ionic_queue *q, bool ring_doorbell, desc_cb cb,
+	     void *cb_arg)
+{
+	struct ionic_desc_info *head = &q->info[q->head_idx];
+
+	head->cb = cb;
+	head->cb_arg = cb_arg;
+
+	q->head_idx = (q->head_idx + 1) & (q->num_descs - 1);
+
+	if (ring_doorbell)
+		ionic_q_flush(q);
+}
+
+uint32_t
+ionic_q_space_avail(struct ionic_queue *q)
+{
+	uint32_t avail = q->tail_idx;
+
+	if (q->head_idx >= avail)
+		avail += q->num_descs - q->head_idx - 1;
+	else
+		avail -= q->head_idx + 1;
+
+	return avail;
+}
+
+bool
+ionic_q_has_space(struct ionic_queue *q, uint32_t want)
+{
+	return ionic_q_space_avail(q) >= want;
+}
+
+void
+ionic_q_service(struct ionic_queue *q, uint32_t cq_desc_index,
+		uint32_t stop_index, void *service_cb_arg)
+{
+	struct ionic_desc_info *desc_info;
+	uint32_t curr_q_tail_idx;
+
+	do {
+		desc_info = &q->info[q->tail_idx];
+
+		if (desc_info->cb)
+			desc_info->cb(q, q->tail_idx, cq_desc_index,
+				desc_info->cb_arg, service_cb_arg);
+
+		desc_info->cb = NULL;
+		desc_info->cb_arg = NULL;
+
+		curr_q_tail_idx = q->tail_idx;
+		q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
+
+	} while (curr_q_tail_idx != stop_index);
+}
+
+static void
+ionic_adminq_cb(struct ionic_queue *q,
+		uint32_t q_desc_index, uint32_t cq_desc_index,
+		void *cb_arg, void *service_cb_arg __rte_unused)
+{
+	struct ionic_admin_ctx *ctx = cb_arg;
+	struct ionic_admin_comp *cq_desc_base = q->bound_cq->base;
+	struct ionic_admin_comp *cq_desc = &cq_desc_base[cq_desc_index];
+
+	if (unlikely(cq_desc->comp_index != q_desc_index)) {
+		IONIC_WARN_ON(cq_desc->comp_index != q_desc_index);
+		return;
+	}
+
+	memcpy(&ctx->comp, cq_desc, sizeof(*cq_desc));
+
+	ctx->pending_work = false; /* done */
+}
+
+/** ionic_adminq_post - Post an admin command.
+ * @lif:		Handle to lif.
+ * @cmd_ctx:		Api admin command context.
+ *
+ * Post the command to an admin queue in the ethernet driver.  If this command
+ * succeeds, then the command has been posted, but that does not indicate a
+ * completion.  If this command returns success, then the completion callback
+ * will eventually be called.
+ *
+ * Return: zero or negative error status.
+ */
+int
+ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
+{
+	struct ionic_queue *adminq = &lif->adminqcq->q;
+	struct ionic_admin_cmd *q_desc_base = adminq->base;
+	struct ionic_admin_cmd *q_desc;
+	int err = 0;
+
+	rte_spinlock_lock(&lif->adminq_lock);
+
+	if (!ionic_q_has_space(adminq, 1)) {
+		err = -ENOSPC;
+		goto err_out;
+	}
+
+	q_desc = &q_desc_base[adminq->head_idx];
+
+	memcpy(q_desc, &ctx->cmd, sizeof(ctx->cmd));
+
+	ionic_q_post(adminq, true, ionic_adminq_cb, ctx);
+
+err_out:
+	rte_spinlock_unlock(&lif->adminq_lock);
+
+	return err;
 }

@@ -56,11 +56,14 @@ struct ionic_adapter {
 	uint32_t max_ntxqs_per_lif;
 	uint32_t max_nrxqs_per_lif;
 	uint32_t nintrs;
+	bool intrs[IONIC_INTR_CTRL_REGS_MAX];
 	bool is_mgmt_nic;
 	struct rte_pci_device *pci_dev;
 	LIST_ENTRY(ionic_adapter) pci_adapters;
 };
 
+int ionic_adminq_check_err(struct ionic_admin_ctx *ctx, bool timeout);
+int ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
 int ionic_dev_cmd_wait_check(struct ionic_dev *idev, unsigned long max_wait);
 int ionic_setup(struct ionic_adapter *adapter);
 
