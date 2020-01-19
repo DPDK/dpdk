@@ -806,6 +806,12 @@ F: doc/guides/nics/pfe.rst
 F: drivers/net/pfe/
 F: doc/guides/nics/features/pfe.ini
 
+Pensando ionic
+M: Alfredo Cardigliano <cardigliano@ntop.org>
+F: drivers/net/ionic/
+F: doc/guides/nics/ionic.rst
+F: doc/guides/nics/features/ionic.ini
+
 QLogic bnx2x
 M: Rasesh Mody <rmody@marvell.com>
 M: Shahed Shaikh <shshaikh@marvell.com>

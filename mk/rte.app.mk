@@ -188,6 +188,7 @@ IAVF-y := $(CONFIG_RTE_LIBRTE_IAVF_PMD)
 ifeq ($(findstring y,$(IAVF-y)),y)
 _LDLIBS-y += -lrte_common_iavf
 endif
+_LDLIBS-$(CONFIG_RTE_LIBRTE_IONIC_PMD)      += -lrte_pmd_ionic
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD)      += -lrte_pmd_ixgbe
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_KNI)        += -lrte_pmd_kni
