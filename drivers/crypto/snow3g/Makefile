@@ -1,13 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2016 Intel Corporation
+# Copyright(c) 2016-2019 Intel Corporation
 
 include $(RTE_SDK)/mk/rte.vars.mk
-
-ifneq ($(MAKECMDGOALS),clean)
-ifeq ($(LIBSSO_SNOW3G_PATH),)
-$(error "Please define LIBSSO_SNOW3G_PATH environment variable")
-endif
-endif
 
 # library name
 LIB = librte_pmd_snow3g.a
@@ -21,13 +15,26 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 EXPORT_MAP := rte_pmd_snow3g_version.map
 
 # external library dependencies
-CFLAGS += -I$(LIBSSO_SNOW3G_PATH)
-CFLAGS += -I$(LIBSSO_SNOW3G_PATH)/include
-CFLAGS += -I$(LIBSSO_SNOW3G_PATH)/build
-LDLIBS += -L$(LIBSSO_SNOW3G_PATH)/build -lsso_snow3g
+LDLIBS += -lIPSec_MB
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
 LDLIBS += -lrte_bus_vdev
+
+IMB_HDR = $(shell echo '\#include <intel-ipsec-mb.h>' | \
+	$(CC) -E $(EXTRA_CFLAGS) - | grep 'intel-ipsec-mb.h' | \
+	head -n1 | cut -d'"' -f2)
+
+# Detect library version
+IMB_VERSION = $(shell grep -e "IMB_VERSION_STR" $(IMB_HDR) | cut -d'"' -f2)
+IMB_VERSION_NUM = $(shell grep -e "IMB_VERSION_NUM" $(IMB_HDR) | cut -d' ' -f3)
+
+ifeq ($(IMB_VERSION),)
+$(error "IPSec_MB version >= 0.53 is required")
+endif
+
+ifeq ($(shell expr $(IMB_VERSION_NUM) \< 0x3400), 1)
+$(error "IPSec_MB version >= 0.53 is required")
+endif
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += rte_snow3g_pmd.c

@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2018 Intel Corporation
+ * Copyright(c) 2016-2019 Intel Corporation
  */
 
 #ifndef _SNOW3G_PMD_PRIVATE_H_
 #define _SNOW3G_PMD_PRIVATE_H_
 
-#include <sso_snow3g.h>
+#include <intel-ipsec-mb.h>
 
 #define CRYPTODEV_NAME_SNOW3G_PMD	crypto_snow3g
 /**< SNOW 3G PMD device name */
@@ -25,6 +25,8 @@ int snow3g_logtype_driver;
 struct snow3g_private {
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
+	MB_MGR *mgr;
+	/**< Multi-buffer instance */
 };
 
 /** SNOW 3G buffer queue pair */
@@ -46,6 +48,8 @@ struct snow3g_qp {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
+	MB_MGR *mgr;
+	/**< Multi-buffer instance */
 } __rte_cache_aligned;
 
 enum snow3g_operation {
@@ -60,15 +64,15 @@ enum snow3g_operation {
 struct snow3g_session {
 	enum snow3g_operation op;
 	enum rte_crypto_auth_operation auth_op;
-	sso_snow3g_key_schedule_t pKeySched_cipher;
-	sso_snow3g_key_schedule_t pKeySched_hash;
+	snow3g_key_schedule_t pKeySched_cipher;
+	snow3g_key_schedule_t pKeySched_hash;
 	uint16_t cipher_iv_offset;
 	uint16_t auth_iv_offset;
 } __rte_cache_aligned;
 
 
 extern int
-snow3g_set_session_parameters(struct snow3g_session *sess,
+snow3g_set_session_parameters(MB_MGR *mgr, struct snow3g_session *sess,
 		const struct rte_crypto_sym_xform *xform);
 
 

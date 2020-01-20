@@ -53,7 +53,7 @@ snow3g_get_mode(const struct rte_crypto_sym_xform *xform)
 
 /** Parse crypto xform chain and set private session parameters. */
 int
-snow3g_set_session_parameters(struct snow3g_session *sess,
+snow3g_set_session_parameters(MB_MGR *mgr, struct snow3g_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
@@ -84,8 +84,6 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 	}
 
 	if (cipher_xform) {
-		uint8_t cipher_key[SNOW3G_MAX_KEY_SIZE];
-
 		/* Only SNOW 3G UEA2 supported */
 		if (cipher_xform->cipher.algo != RTE_CRYPTO_CIPHER_SNOW3G_UEA2)
 			return -ENOTSUP;
@@ -102,14 +100,11 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 		sess->cipher_iv_offset = cipher_xform->cipher.iv.offset;
 
 		/* Initialize key */
-		memcpy(cipher_key, cipher_xform->cipher.key.data,
-				cipher_xform->cipher.key.length);
-		sso_snow3g_init_key_sched(cipher_key, &sess->pKeySched_cipher);
+		IMB_SNOW3G_INIT_KEY_SCHED(mgr, cipher_xform->cipher.key.data,
+					&sess->pKeySched_cipher);
 	}
 
 	if (auth_xform) {
-		uint8_t auth_key[SNOW3G_MAX_KEY_SIZE];
-
 		/* Only SNOW 3G UIA2 supported */
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_SNOW3G_UIA2)
 			return -ENOTSUP;
@@ -132,11 +127,9 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 		sess->auth_iv_offset = auth_xform->auth.iv.offset;
 
 		/* Initialize key */
-		memcpy(auth_key, auth_xform->auth.key.data,
-				auth_xform->auth.key.length);
-		sso_snow3g_init_key_sched(auth_key, &sess->pKeySched_hash);
+		IMB_SNOW3G_INIT_KEY_SCHED(mgr, auth_xform->auth.key.data,
+					&sess->pKeySched_hash);
 	}
-
 
 	sess->op = mode;
 
@@ -168,7 +161,7 @@ snow3g_get_session(struct snow3g_qp *qp, struct rte_crypto_op *op)
 
 		sess = (struct snow3g_session *)_sess_private_data;
 
-		if (unlikely(snow3g_set_session_parameters(sess,
+		if (unlikely(snow3g_set_session_parameters(qp->mgr, sess,
 				op->sym->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
 			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
@@ -188,14 +181,15 @@ snow3g_get_session(struct snow3g_qp *qp, struct rte_crypto_op *op)
 
 /** Encrypt/decrypt mbufs with same cipher key. */
 static uint8_t
-process_snow3g_cipher_op(struct rte_crypto_op **ops,
+process_snow3g_cipher_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
 		struct snow3g_session *session,
 		uint8_t num_ops)
 {
 	unsigned i;
 	uint8_t processed_ops = 0;
-	uint8_t *src[SNOW3G_MAX_BURST], *dst[SNOW3G_MAX_BURST];
-	uint8_t *iv[SNOW3G_MAX_BURST];
+	const void *src[SNOW3G_MAX_BURST];
+	void *dst[SNOW3G_MAX_BURST];
+	const void *iv[SNOW3G_MAX_BURST];
 	uint32_t num_bytes[SNOW3G_MAX_BURST];
 
 	for (i = 0; i < num_ops; i++) {
@@ -213,15 +207,16 @@ process_snow3g_cipher_op(struct rte_crypto_op **ops,
 		processed_ops++;
 	}
 
-	sso_snow3g_f8_n_buffer(&session->pKeySched_cipher, iv, src, dst,
-			num_bytes, processed_ops);
+	IMB_SNOW3G_F8_N_BUFFER(qp->mgr, &session->pKeySched_cipher, iv,
+			src, dst, num_bytes, processed_ops);
 
 	return processed_ops;
 }
 
 /** Encrypt/decrypt mbuf (bit level function). */
 static uint8_t
-process_snow3g_cipher_op_bit(struct rte_crypto_op *op,
+process_snow3g_cipher_op_bit(struct snow3g_qp *qp,
+		struct rte_crypto_op *op,
 		struct snow3g_session *session)
 {
 	uint8_t *src, *dst;
@@ -240,7 +235,7 @@ process_snow3g_cipher_op_bit(struct rte_crypto_op *op,
 				session->cipher_iv_offset);
 	length_in_bits = op->sym->cipher.data.length;
 
-	sso_snow3g_f8_1_buffer_bit(&session->pKeySched_cipher, iv,
+	IMB_SNOW3G_F8_1_BUFFER_BIT(qp->mgr, &session->pKeySched_cipher, iv,
 			src, dst, length_in_bits, offset_in_bits);
 
 	return 1;
@@ -276,9 +271,9 @@ process_snow3g_hash_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			dst = qp->temp_digest;
 
-			sso_snow3g_f9_1_buffer(&session->pKeySched_hash,
-					iv, src,
-					length_in_bits,	dst);
+			IMB_SNOW3G_F9_1_BUFFER(qp->mgr,
+					&session->pKeySched_hash,
+					iv, src, length_in_bits, dst);
 			/* Verify digest. */
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
 					SNOW3G_DIGEST_LENGTH) != 0)
@@ -286,9 +281,9 @@ process_snow3g_hash_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
 		} else  {
 			dst = ops[i]->sym->auth.digest.data;
 
-			sso_snow3g_f9_1_buffer(&session->pKeySched_hash,
-					iv, src,
-					length_in_bits, dst);
+			IMB_SNOW3G_F9_1_BUFFER(qp->mgr,
+					&session->pKeySched_hash,
+					iv, src, length_in_bits, dst);
 		}
 		processed_ops++;
 	}
@@ -322,7 +317,7 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 
 	switch (session->op) {
 	case SNOW3G_OP_ONLY_CIPHER:
-		processed_ops = process_snow3g_cipher_op(ops,
+		processed_ops = process_snow3g_cipher_op(qp, ops,
 				session, num_ops);
 		break;
 	case SNOW3G_OP_ONLY_AUTH:
@@ -330,14 +325,14 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 				num_ops);
 		break;
 	case SNOW3G_OP_CIPHER_AUTH:
-		processed_ops = process_snow3g_cipher_op(ops, session,
+		processed_ops = process_snow3g_cipher_op(qp, ops, session,
 				num_ops);
 		process_snow3g_hash_op(qp, ops, session, processed_ops);
 		break;
 	case SNOW3G_OP_AUTH_CIPHER:
 		processed_ops = process_snow3g_hash_op(qp, ops, session,
 				num_ops);
-		process_snow3g_cipher_op(ops, session, processed_ops);
+		process_snow3g_cipher_op(qp, ops, session, processed_ops);
 		break;
 	default:
 		/* Operation not supported. */
@@ -380,21 +375,21 @@ process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
 
 	switch (session->op) {
 	case SNOW3G_OP_ONLY_CIPHER:
-		processed_op = process_snow3g_cipher_op_bit(op,
+		processed_op = process_snow3g_cipher_op_bit(qp, op,
 				session);
 		break;
 	case SNOW3G_OP_ONLY_AUTH:
 		processed_op = process_snow3g_hash_op(qp, &op, session, 1);
 		break;
 	case SNOW3G_OP_CIPHER_AUTH:
-		processed_op = process_snow3g_cipher_op_bit(op, session);
+		processed_op = process_snow3g_cipher_op_bit(qp, op, session);
 		if (processed_op == 1)
 			process_snow3g_hash_op(qp, &op, session, 1);
 		break;
 	case SNOW3G_OP_AUTH_CIPHER:
 		processed_op = process_snow3g_hash_op(qp, &op, session, 1);
 		if (processed_op == 1)
-			process_snow3g_cipher_op_bit(op, session);
+			process_snow3g_cipher_op_bit(qp, op, session);
 		break;
 	default:
 		/* Operation not supported. */
@@ -550,7 +545,7 @@ cryptodev_snow3g_create(const char *name,
 {
 	struct rte_cryptodev *dev;
 	struct snow3g_private *internals;
-	uint64_t cpu_flags = RTE_CRYPTODEV_FF_CPU_SSE;
+	MB_MGR *mgr;
 
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
@@ -566,10 +561,25 @@ cryptodev_snow3g_create(const char *name,
 	dev->enqueue_burst = snow3g_pmd_enqueue_burst;
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
-			cpu_flags;
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+
+	mgr = alloc_mb_mgr(0);
+	if (mgr == NULL)
+		return -ENOMEM;
+
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2)) {
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX2;
+		init_mb_mgr_avx2(mgr);
+	} else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX)) {
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX;
+		init_mb_mgr_avx(mgr);
+	} else {
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
+		init_mb_mgr_sse(mgr);
+	}
 
 	internals = dev->data->dev_private;
+	internals->mgr = mgr;
 
 	internals->max_nb_queue_pairs = init_params->max_nb_queue_pairs;
 
@@ -609,6 +619,7 @@ cryptodev_snow3g_remove(struct rte_vdev_device *vdev)
 {
 	struct rte_cryptodev *cryptodev;
 	const char *name;
+	struct snow3g_private *internals;
 
 	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
@@ -617,6 +628,10 @@ cryptodev_snow3g_remove(struct rte_vdev_device *vdev)
 	cryptodev = rte_cryptodev_pmd_get_named_dev(name);
 	if (cryptodev == NULL)
 		return -ENODEV;
+
+	internals = cryptodev->data->dev_private;
+
+	free_mb_mgr(internals->mgr);
 
 	return rte_cryptodev_pmd_destroy(cryptodev);
 }

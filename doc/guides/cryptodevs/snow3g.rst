@@ -1,12 +1,12 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2016 Intel Corporation.
+    Copyright(c) 2016-2019 Intel Corporation.
 
 SNOW 3G Crypto Poll Mode Driver
 ===============================
 
-The SNOW 3G PMD (**librte_pmd_snow3g**) provides poll mode crypto driver
-support for utilizing Intel Libsso library, which implements F8 and F9 functions
-for SNOW 3G UEA2 cipher and UIA2 hash algorithms.
+The SNOW3G PMD (**librte_snow3g_zuc**) provides poll mode crypto driver support for
+utilizing `Intel IPSec Multi-buffer library <https://github.com/01org/intel-ipsec-mb>`_
+which implements F8 and F8 functions for SNOW 3G UEA2 cipher and UIA2 hash algorithms.
 
 Features
 --------
@@ -32,26 +32,33 @@ Limitations
 Installation
 ------------
 
-To build DPDK with the SNOW3G_PMD the user is required to download
-the export controlled ``libsso_snow3g`` library, by registering in
-`Intel Resource & Design Center <https://www.intel.com/content/www/us/en/design/resource-design-center.html>`_.
-Once approval has been granted, the user needs to search for
-*Snow3G F8 F9 3GPP cryptographic algorithms Software Library* to download the
-library or directly through this `link <https://cdrdv2.intel.com/v1/dl/getContent/575867>`_.
+To build DPDK with the SNOW3G_PMD the user is required to download the multi-buffer
+library from `here <https://github.com/01org/intel-ipsec-mb>`_
+and compile it on their user system before building DPDK.
+The latest version of the library supported by this PMD is v0.53, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v0.53.zip>`_.
+
 After downloading the library, the user needs to unpack and compile it
-on their system before building DPDK::
+on their system before building DPDK:
 
-   make snow3G
+.. code-block:: console
 
-**Note**: When encrypting with SNOW3G UEA2, by default the library
-encrypts blocks of 4 bytes, regardless the number of bytes to
-be encrypted provided (which leads to a possible buffer overflow).
-To avoid this situation, it is necessary not to pass
-3GPP_SAFE_BUFFERS as a compilation flag.
-For this, in the Makefile of the library, make sure that this flag
-is commented out.::
+    make
+    make install
 
-  #EXTRA_CFLAGS  += -D_3GPP_SAFE_BUFFERS
+As a reference, the following table shows a mapping between the past DPDK versions
+and the external crypto libraries supported by them:
+
+.. _table_snow3g_versions:
+
+.. table:: DPDK and external crypto library version compatibility
+
+   =============  ================================
+   DPDK version   Crypto library version
+   =============  ================================
+   16.04 - 19.11  LibSSO SNOW3G
+   20.02+         Multi-buffer library 0.53
+   =============  ================================
 
 
 Initialization
@@ -59,12 +66,15 @@ Initialization
 
 In order to enable this virtual crypto PMD, user must:
 
-* Export the environmental variable LIBSSO_SNOW3G_PATH with the path where
-  the library was extracted (snow3g folder).
+* Build the multi buffer library (explained in Installation section).
 
-* Build the LIBSSO_SNOW3G library (explained in Installation section).
+* Build DPDK as follows:
 
-* Set CONFIG_RTE_LIBRTE_PMD_SNOW3G=y in config/common_base.
+.. code-block:: console
+
+	make config T=x86_64-native-linux-gcc
+	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_SNOW3G\)=n,\1=y,' build/.config
+	make
 
 To use the PMD in an application, user must:
 

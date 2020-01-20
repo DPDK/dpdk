@@ -201,6 +201,7 @@ snow3g_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		int socket_id)
 {
 	struct snow3g_qp *qp = NULL;
+	struct snow3g_private *internals = dev->data->dev_private;
 
 	/* Free memory prior to re-allocation if needed. */
 	if (dev->data->queue_pairs[qp_id] != NULL)
@@ -223,6 +224,7 @@ snow3g_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	if (qp->processed_ops == NULL)
 		goto qp_setup_cleanup;
 
+	qp->mgr = internals->mgr;
 	qp->sess_mp = qp_conf->mp_session;
 	qp->sess_mp_priv = qp_conf->mp_session_private;
 
@@ -253,13 +255,14 @@ snow3g_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 
 /** Configure a SNOW 3G session from a crypto xform chain */
 static int
-snow3g_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
+snow3g_pmd_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess,
 		struct rte_mempool *mempool)
 {
 	void *sess_private_data;
 	int ret;
+	struct snow3g_private *internals = dev->data->dev_private;
 
 	if (unlikely(sess == NULL)) {
 		SNOW3G_LOG(ERR, "invalid session struct");
@@ -272,7 +275,8 @@ snow3g_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		return -ENOMEM;
 	}
 
-	ret = snow3g_set_session_parameters(sess_private_data, xform);
+	ret = snow3g_set_session_parameters(internals->mgr,
+					sess_private_data, xform);
 	if (ret != 0) {
 		SNOW3G_LOG(ERR, "failed configure session parameters");
 

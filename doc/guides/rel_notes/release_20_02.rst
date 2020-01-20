@@ -150,6 +150,11 @@ New Features
   * Transistioned underlying library from libSSO KASUMI to intel-ipsec-mb
     library (minimum version required 0.53).
 
+* **Updated the SNOW3G PMD.**
+
+  * Transistioned underlying library from libSSO SNOW3G to intel-ipsec-mb
+    library (minimum version required 0.53).
+
 * **Added Marvell OCTEON TX2 End Point rawdev PMD.**
 
   Added a new OCTEON TX2 rawdev PMD for End Point mode of operation.
