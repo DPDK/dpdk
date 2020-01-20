@@ -392,11 +392,14 @@ struct mlx5_flow_dv_tag_resource {
 
 /*
  * Number of modification commands.
- * If extensive metadata registers are supported
- * the maximal actions amount is 16 and 8 otherwise.
+ * If extensive metadata registers are supported, the maximal actions amount is
+ * 16 and 8 otherwise on root table. The validation could also be done in the
+ * lower driver layer.
+ * On non-root table, there is no limitation, but 32 is enough right now.
  */
-#define MLX5_MODIFY_NUM 16
-#define MLX5_MODIFY_NUM_NO_MREG 8
+#define MLX5_MAX_MODIFY_NUM			32
+#define MLX5_ROOT_TBL_MODIFY_NUM		16
+#define MLX5_ROOT_TBL_MODIFY_NUM_NO_MREG	8
 
 /* Modify resource structure */
 struct mlx5_flow_dv_modify_hdr_resource {
@@ -407,9 +410,9 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	/**< Verbs modify header action object. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	uint32_t actions_num; /**< Number of modification actions. */
-	struct mlx5_modification_cmd actions[MLX5_MODIFY_NUM];
-	/**< Modification actions. */
 	uint64_t flags; /**< Flags for RDMA API. */
+	struct mlx5_modification_cmd actions[];
+	/**< Modification actions. */
 };
 
 /* Jump action resource structure. */
