@@ -1596,7 +1596,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 }
 
 static int
-test_AES_cipheronly_mb_all(void)
+test_blockcipher(enum blockcipher_test_type test_type)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	int status;
@@ -1605,9 +1605,11 @@ test_AES_cipheronly_mb_all(void)
 		ts_params->op_mpool,
 		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
+		gbl_driver_id,
+		test_type);
+
+	if (status == -ENOTSUP)
+		return status;
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
@@ -1615,901 +1617,51 @@ test_AES_cipheronly_mb_all(void)
 }
 
 static int
-test_AES_docsis_mb_all(void)
+test_AES_cipheronly_all(void)
 {
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
-		BLKCIPHER_AES_DOCSIS_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
+	return test_blockcipher(BLKCIPHER_AES_CIPHERONLY_TYPE);
 }
 
 static int
-test_AES_docsis_qat_all(void)
+test_AES_docsis_all(void)
 {
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
-		BLKCIPHER_AES_DOCSIS_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
+	return test_blockcipher(BLKCIPHER_AES_DOCSIS_TYPE);
 }
 
 static int
-test_DES_docsis_qat_all(void)
+test_DES_docsis_all(void)
 {
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
-		BLKCIPHER_DES_DOCSIS_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
+	return test_blockcipher(BLKCIPHER_DES_DOCSIS_TYPE);
 }
 
 static int
-test_authonly_mb_all(void)
+test_DES_cipheronly_all(void)
 {
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
+	return test_blockcipher(BLKCIPHER_DES_CIPHERONLY_TYPE);
 }
 
 static int
-test_authonly_qat_all(void)
+test_authonly_all(void)
 {
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
+	return test_blockcipher(BLKCIPHER_AUTHONLY_TYPE);
 }
 
 static int
-test_AES_chain_null_all(void)
+test_AES_chain_all(void)
 {
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_NULL_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
+	return test_blockcipher(BLKCIPHER_AES_CHAIN_TYPE);
 }
 
 static int
-test_AES_cipheronly_null_all(void)
+test_3DES_chain_all(void)
 {
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_NULL_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
+	return test_blockcipher(BLKCIPHER_3DES_CHAIN_TYPE);
 }
 
 static int
-test_authonly_null_all(void)
+test_3DES_cipheronly_all(void)
 {
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_NULL_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_mb_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
-
-static int
-test_AES_cipheronly_scheduler_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_scheduler_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_authonly_scheduler_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-#endif /* RTE_LIBRTE_PMD_CRYPTO_SCHEDULER */
-
-static int
-test_AES_chain_openssl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_openssl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_ccp_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_ccp_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_qat_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_qat_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_virtio_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_caam_jr_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_caam_jr_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_authonly_caam_jr_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-
-static int
-test_AES_chain_dpaa_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_dpaa_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_authonly_dpaa_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_dpaa2_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_dpaa2_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_authonly_dpaa2_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_authonly_openssl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_authonly_ccp_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_armv8_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_ARMV8_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_mrvl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_mrvl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_authonly_mrvl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_chain_mrvl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
-		BLKCIPHER_3DES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_cipheronly_mrvl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_octeontx_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_octeontx_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_chain_octeontx_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
-		BLKCIPHER_3DES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_nitrox_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_NITROX_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_cipheronly_octeontx_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_authonly_octeontx_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_chain_octeontx2_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD)),
-		BLKCIPHER_AES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_AES_cipheronly_octeontx2_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD)),
-		BLKCIPHER_AES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_chain_octeontx2_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD)),
-		BLKCIPHER_3DES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_cipheronly_octeontx2_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_authonly_octeontx2_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool, ts_params->session_mpool,
-		ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD)),
-		BLKCIPHER_AUTHONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
+	return test_blockcipher(BLKCIPHER_3DES_CIPHERONLY_TYPE);
 }
 
 /* ***** SNOW 3G Tests ***** */
@@ -7251,347 +6403,6 @@ test_verify_auth_aes_cmac_cipher_null_test_case_1(void)
 		&auth_aes_cmac_cipher_null_test_case_1, OUT_OF_PLACE, 1);
 }
 
-static int
-test_3DES_chain_qat_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
-		BLKCIPHER_3DES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_DES_cipheronly_qat_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
-		BLKCIPHER_DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_DES_cipheronly_openssl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
-		BLKCIPHER_DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_DES_docsis_openssl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
-		BLKCIPHER_DES_DOCSIS_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_DES_cipheronly_mb_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
-		BLKCIPHER_DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-static int
-test_3DES_cipheronly_mb_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_DES_docsis_mb_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
-		BLKCIPHER_DES_DOCSIS_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_chain_caam_jr_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
-		BLKCIPHER_3DES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_cipheronly_caam_jr_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_chain_dpaa_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
-		BLKCIPHER_3DES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_cipheronly_dpaa_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_chain_dpaa2_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
-		BLKCIPHER_3DES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_cipheronly_dpaa2_sec_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_chain_ccp_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
-		BLKCIPHER_3DES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_cipheronly_ccp_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_cipheronly_qat_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_chain_openssl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
-		BLKCIPHER_3DES_CHAIN_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
-static int
-test_3DES_cipheronly_openssl_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	int status;
-
-	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
-		ts_params->op_mpool,
-		ts_params->session_mpool, ts_params->session_priv_mpool,
-		ts_params->valid_devs[0],
-		rte_cryptodev_driver_id_get(
-		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
-		BLKCIPHER_3DES_CIPHERONLY_TYPE);
-
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
-
-	return TEST_SUCCESS;
-}
-
 /* ***** AEAD algorithm Tests ***** */
 
 static int
@@ -12076,45 +10887,33 @@ static struct unit_test_suite cryptodev_scheduler_testsuite  = {
 		/* Multi Core */
 		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
 		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_multicore_op),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_chain_scheduler_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_cipheronly_scheduler_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-					test_authonly_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
 
 		/* Round Robin */
 		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
 		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_roundrobin_op),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_AES_chain_scheduler_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_AES_cipheronly_scheduler_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_authonly_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
 
 		/* Fail over */
 		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
 		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_failover_op),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_chain_scheduler_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_cipheronly_scheduler_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-					test_authonly_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
 
 		/* PKT SIZE */
 		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
 		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_pkt_size_distr_op),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_chain_scheduler_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-					test_AES_cipheronly_scheduler_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-					test_authonly_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
@@ -12137,19 +10936,14 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_multi_session),
 
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_qat_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-						test_AES_cipheronly_qat_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_qat_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-						test_3DES_cipheronly_qat_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-						test_DES_cipheronly_qat_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-						test_AES_docsis_qat_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-						test_DES_docsis_qat_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_qat_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_docsis_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_DES_docsis_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_stats),
 
 		/** AES CCM Authenticated Encryption 128 bits key */
@@ -12621,8 +11415,7 @@ static struct unit_test_suite cryptodev_virtio_testsuite = {
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_AES_cipheronly_virtio_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
@@ -12762,16 +11555,13 @@ static struct unit_test_suite cryptodev_aesni_mb_testsuite  = {
 			test_AES_GMAC_authentication_verify_test_case_3),
 #endif /* IMB_VERSION_NUM >= IMB_VERSION(0, 51, 0) */
 
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_mb_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_mb_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_docsis_mb_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_mb_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-						test_DES_cipheronly_mb_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-						test_DES_docsis_mb_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-						test_3DES_cipheronly_mb_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_docsis_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_DES_docsis_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_CCM_authenticated_encryption_test_case_128_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -12797,20 +11587,13 @@ static struct unit_test_suite cryptodev_openssl_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_multi_session),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_multi_session_random_usage),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_AES_chain_openssl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_AES_cipheronly_openssl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_3DES_chain_openssl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_3DES_cipheronly_openssl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_DES_cipheronly_openssl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_DES_docsis_openssl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_authonly_openssl_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_DES_docsis_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -13407,16 +12190,11 @@ static struct unit_test_suite cryptodev_caam_jr_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			     test_multi_session),
 
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_AES_chain_caam_jr_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_3DES_chain_caam_jr_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_AES_cipheronly_caam_jr_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_3DES_cipheronly_caam_jr_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_authonly_caam_jr_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
@@ -13432,16 +12210,11 @@ static struct unit_test_suite cryptodev_dpaa_sec_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			     test_multi_session),
 
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_AES_chain_dpaa_sec_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_3DES_chain_dpaa_sec_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_AES_cipheronly_dpaa_sec_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_3DES_cipheronly_dpaa_sec_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_authonly_dpaa_sec_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 
 #ifdef RTE_LIBRTE_SECURITY
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -13696,16 +12469,11 @@ static struct unit_test_suite cryptodev_dpaa2_sec_testsuite  = {
 			test_device_configure_invalid_dev_id),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_multi_session),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_AES_chain_dpaa2_sec_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_3DES_chain_dpaa2_sec_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_AES_cipheronly_dpaa2_sec_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_3DES_cipheronly_dpaa2_sec_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_authonly_dpaa2_sec_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 
 #ifdef RTE_LIBRTE_SECURITY
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -13971,12 +12739,9 @@ static struct unit_test_suite cryptodev_null_testsuite  = {
 			test_null_invalid_operation),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_null_burst_operation),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_AES_chain_null_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_AES_cipheronly_null_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_authonly_null_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
@@ -13987,7 +12752,7 @@ static struct unit_test_suite cryptodev_armv8_testsuite  = {
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_armv8_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
 
 		/** Negative tests */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -14007,16 +12772,11 @@ static struct unit_test_suite cryptodev_mrvl_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_multi_session),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_multi_session_random_usage),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_AES_chain_mrvl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_AES_cipheronly_mrvl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_authonly_mrvl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_3DES_chain_mrvl_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_3DES_cipheronly_mrvl_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
 
 		/** Negative tests */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -14040,16 +12800,11 @@ static struct unit_test_suite cryptodev_ccp_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_multi_session),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_multi_session_random_usage),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_AES_chain_ccp_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_AES_cipheronly_ccp_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_3DES_chain_ccp_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_3DES_cipheronly_ccp_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_authonly_ccp_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 
 		/** Negative tests */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -14070,16 +12825,11 @@ static struct unit_test_suite cryptodev_octeontx_testsuite  = {
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_AES_chain_octeontx_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_AES_cipheronly_octeontx_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_3DES_chain_octeontx_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_3DES_cipheronly_octeontx_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_authonly_octeontx_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -14286,8 +13036,7 @@ static struct unit_test_suite cryptodev_nitrox_testsuite  = {
 			     test_device_configure_invalid_dev_id),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_device_configure_invalid_queue_pair_ids),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_AES_chain_nitrox_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
@@ -14298,16 +13047,11 @@ static struct unit_test_suite cryptodev_octeontx2_testsuite  = {
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_AES_chain_octeontx2_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_AES_cipheronly_octeontx2_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_3DES_chain_octeontx2_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_3DES_cipheronly_octeontx2_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_authonly_octeontx2_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_cipheronly_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_all),
 
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
