@@ -3604,6 +3604,10 @@ following sections.
 
    flow isolate {port_id} {boolean}
 
+- Dump internal representation information of all flows in hardware::
+
+   flow dump {port_id} {output_file}
+
 Validating flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -4465,6 +4469,22 @@ Disabling isolated mode::
  testpmd> flow isolate 0 false
  Ingress traffic on port 0 is not restricted anymore to the defined flow rules
  testpmd>
+
+Dumping HW internal information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow dump`` dumps the hardware's internal representation information of
+all flows. It is bound to ``rte_flow_dev_dump()``::
+
+   flow dump {port_id} {output_file}
+
+If successful, it will show::
+
+   Flow dump finished
+
+Otherwise, it will complain error occurred::
+
+   Caught error type [...] ([...]): [...]
 
 Sample QinQ flow rules
 ~~~~~~~~~~~~~~~~~~~~~~
