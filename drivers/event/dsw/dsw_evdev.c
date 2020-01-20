@@ -8,6 +8,7 @@
 #include <rte_eventdev_pmd.h>
 #include <rte_eventdev_pmd_vdev.h>
 #include <rte_random.h>
+#include <rte_ring_elem.h>
 
 #include "dsw_evdev.h"
 
@@ -46,9 +47,11 @@ dsw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	snprintf(ring_name, sizeof(ring_name), "dswctl%d_p%u",
 		 dev->data->dev_id, port_id);
 
-	ctl_in_ring = rte_ring_create(ring_name, DSW_CTL_IN_RING_SIZE,
-				      dev->data->socket_id,
-				      RING_F_SC_DEQ|RING_F_EXACT_SZ);
+	ctl_in_ring = rte_ring_create_elem(ring_name,
+					   sizeof(struct dsw_ctl_msg),
+					   DSW_CTL_IN_RING_SIZE,
+					   dev->data->socket_id,
+					   RING_F_SC_DEQ|RING_F_EXACT_SZ);
 
 	if (ctl_in_ring == NULL) {
 		rte_event_ring_free(in_ring);

@@ -10,7 +10,6 @@
 
 #define DSW_PMD_NAME RTE_STR(event_dsw)
 
-/* Code changes are required to allow more ports. */
 #define DSW_MAX_PORTS (64)
 #define DSW_MAX_PORT_DEQUEUE_DEPTH (128)
 #define DSW_MAX_PORT_ENQUEUE_DEPTH (128)
@@ -226,15 +225,12 @@ struct dsw_evdev {
 #define DSW_CTL_UNPAUS_REQ (1)
 #define DSW_CTL_CFM (2)
 
-/* sizeof(struct dsw_ctl_msg) must be equal or less than
- * sizeof(void *), to fit on the control ring.
- */
 struct dsw_ctl_msg {
-	uint8_t type:2;
-	uint8_t originating_port_id:6;
+	uint8_t type;
+	uint8_t originating_port_id;
 	uint8_t queue_id;
 	uint16_t flow_hash;
-} __rte_packed;
+} __rte_aligned(4);
 
 uint16_t dsw_event_enqueue(void *port, const struct rte_event *event);
 uint16_t dsw_event_enqueue_burst(void *port,

@@ -11,6 +11,9 @@ ifneq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 CFLAGS += -Wno-format-nonliteral
 endif
 
+# Depends on rte_ring_elem_*()
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 LDLIBS += -lrte_eal
 LDLIBS += -lrte_mbuf
 LDLIBS += -lrte_mempool

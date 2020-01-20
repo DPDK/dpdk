@@ -6,3 +6,6 @@ if cc.has_argument('-Wno-format-nonliteral')
 	cflags += '-Wno-format-nonliteral'
 endif
 sources = files('dsw_evdev.c', 'dsw_event.c', 'dsw_xstats.c')
+
+# Depends on rte_ring_elem_*()
+allow_experimental_apis = true

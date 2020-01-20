@@ -176,27 +176,15 @@ dsw_port_consider_load_update(struct dsw_port *port, uint64_t now)
 static void
 dsw_port_ctl_enqueue(struct dsw_port *port, struct dsw_ctl_msg *msg)
 {
-	void *raw_msg;
-
-	memcpy(&raw_msg, msg, sizeof(*msg));
-
 	/* there's always room on the ring */
-	while (rte_ring_enqueue(port->ctl_in_ring, raw_msg) != 0)
+	while (rte_ring_enqueue_elem(port->ctl_in_ring, msg, sizeof(*msg)) != 0)
 		rte_pause();
 }
 
 static int
 dsw_port_ctl_dequeue(struct dsw_port *port, struct dsw_ctl_msg *msg)
 {
-	void *raw_msg;
-	int rc;
-
-	rc = rte_ring_dequeue(port->ctl_in_ring, &raw_msg);
-
-	if (rc == 0)
-		memcpy(msg, &raw_msg, sizeof(*msg));
-
-	return rc;
+	return rte_ring_dequeue_elem(port->ctl_in_ring, msg, sizeof(*msg));
 }
 
 static void
