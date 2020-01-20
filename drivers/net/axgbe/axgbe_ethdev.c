@@ -99,6 +99,7 @@ static const struct axgbe_xstats axgbe_xstats_strings[] = {
 
 /* The set of PCI devices this driver supports */
 #define AMD_PCI_VENDOR_ID       0x1022
+#define AMD_PCI_RV_ROOT_COMPLEX_ID	0x15d0
 #define AMD_PCI_AXGBE_DEVICE_V2A 0x1458
 #define AMD_PCI_AXGBE_DEVICE_V2B 0x1459
 
@@ -982,6 +983,30 @@ static void axgbe_default_config(struct axgbe_port *pdata)
 	pdata->power_down = 0;
 }
 
+static int
+pci_device_cmp(const struct rte_device *dev, const void *_pci_id)
+{
+	const struct rte_pci_device *pdev = RTE_DEV_TO_PCI_CONST(dev);
+	const struct rte_pci_id *pcid = _pci_id;
+
+	if (pdev->id.vendor_id == AMD_PCI_VENDOR_ID &&
+			pdev->id.device_id == pcid->device_id)
+		return 0;
+	return 1;
+}
+
+static bool
+pci_search_device(int device_id)
+{
+	struct rte_bus *pci_bus;
+	struct rte_pci_id dev_id;
+
+	dev_id.device_id = device_id;
+	pci_bus = rte_bus_find_by_name("pci");
+	return (pci_bus != NULL) &&
+		(pci_bus->find_device(NULL, pci_device_cmp, &dev_id) != NULL);
+}
+
 /*
  * It returns 0 on success.
  */
@@ -1013,6 +1038,17 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	pdata->pci_dev = pci_dev;
 
+	/*
+	 * Use root complex device ID to differentiate RV AXGBE vs SNOWY AXGBE
+	 */
+	if (pci_search_device(AMD_PCI_RV_ROOT_COMPLEX_ID)) {
+		pdata->xpcs_window_def_reg = PCS_V2_RV_WINDOW_DEF;
+		pdata->xpcs_window_sel_reg = PCS_V2_RV_WINDOW_SELECT;
+	} else {
+		pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
+		pdata->xpcs_window_sel_reg = PCS_V2_WINDOW_SELECT;
+	}
+
 	pdata->xgmac_regs =
 		(void *)pci_dev->mem_resource[AXGBE_AXGMAC_BAR].addr;
 	pdata->xprop_regs = (void *)((uint8_t *)pdata->xgmac_regs
@@ -1028,14 +1064,13 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 		pdata->vdata = &axgbe_v2b;
 
 	/* Configure the PCS indirect addressing support */
-	reg = XPCS32_IOREAD(pdata, PCS_V2_WINDOW_DEF);
+	reg = XPCS32_IOREAD(pdata, pdata->xpcs_window_def_reg);
 	pdata->xpcs_window = XPCS_GET_BITS(reg, PCS_V2_WINDOW_DEF, OFFSET);
 	pdata->xpcs_window <<= 6;
 	pdata->xpcs_window_size = XPCS_GET_BITS(reg, PCS_V2_WINDOW_DEF, SIZE);
 	pdata->xpcs_window_size = 1 << (pdata->xpcs_window_size + 7);
 	pdata->xpcs_window_mask = pdata->xpcs_window_size - 1;
-	pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
-	pdata->xpcs_window_sel_reg = PCS_V2_WINDOW_SELECT;
+
 	PMD_INIT_LOG(DEBUG,
 		     "xpcs window :%x, size :%x, mask :%x ", pdata->xpcs_window,
 		     pdata->xpcs_window_size, pdata->xpcs_window_mask);
