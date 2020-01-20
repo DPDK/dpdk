@@ -398,20 +398,8 @@ dpdk_test = executable('dpdk-test',
 timeout_seconds = 600
 timeout_seconds_fast = 10
 
-# Retrieve the number of CPU cores, defaulting to 4.
-num_cores = '0-3'
-if host_machine.system() == 'linux'
-	num_cores = run_command('cat',
-				'/sys/devices/system/cpu/present'
-			       ).stdout().strip()
-elif host_machine.system() == 'freebsd'
-	snum_cores = run_command('/sbin/sysctl', '-n',
-				 'hw.ncpu').stdout().strip()
-	inum_cores = snum_cores.to_int() - 1
-        num_cores = '0-@0@'.format(inum_cores)
-endif
-
-num_cores_arg = '-l ' + num_cores
+get_coremask = find_program('get-coremask.sh')
+num_cores_arg = '-l ' + run_command(get_coremask).stdout().strip()
 
 test_args = [num_cores_arg]
 foreach arg : fast_test_names
