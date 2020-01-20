@@ -201,6 +201,7 @@ zuc_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		int socket_id)
 {
 	struct zuc_qp *qp = NULL;
+	struct zuc_private *internals = dev->data->dev_private;
 
 	/* Free memory prior to re-allocation if needed. */
 	if (dev->data->queue_pairs[qp_id] != NULL)
@@ -223,6 +224,7 @@ zuc_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	if (qp->processed_ops == NULL)
 		goto qp_setup_cleanup;
 
+	qp->mb_mgr = internals->mb_mgr;
 	qp->sess_mp = qp_conf->mp_session;
 	qp->sess_mp_priv = qp_conf->mp_session_private;
 

@@ -5,7 +5,7 @@
 #ifndef _ZUC_PMD_PRIVATE_H_
 #define _ZUC_PMD_PRIVATE_H_
 
-#include <sso_zuc.h>
+#include <intel-ipsec-mb.h>
 
 #define CRYPTODEV_NAME_ZUC_PMD		crypto_zuc
 /**< KASUMI PMD device name */
@@ -24,6 +24,8 @@ int zuc_logtype_driver;
 struct zuc_private {
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
+	MB_MGR *mb_mgr;
+	/**< Multi-buffer instance */
 };
 
 /** ZUC buffer queue pair */
@@ -45,6 +47,8 @@ struct zuc_qp {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
+	MB_MGR *mb_mgr;
+	/**< Multi-buffer instance */
 } __rte_cache_aligned;
 
 enum zuc_operation {

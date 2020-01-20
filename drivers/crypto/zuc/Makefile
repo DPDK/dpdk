@@ -1,13 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2016 Intel Corporation
+# Copyright(c) 2016-2019 Intel Corporation
 
 include $(RTE_SDK)/mk/rte.vars.mk
-
-ifneq ($(MAKECMDGOALS),clean)
-ifeq ($(LIBSSO_ZUC_PATH),)
-$(error "Please define LIBSSO_ZUC_PATH environment variable")
-endif
-endif
 
 # library name
 LIB = librte_pmd_zuc.a
@@ -21,14 +15,26 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 EXPORT_MAP := rte_pmd_zuc_version.map
 
 # external library dependencies
-CFLAGS += -I$(LIBSSO_ZUC_PATH)
-CFLAGS += -I$(LIBSSO_ZUC_PATH)/include
-CFLAGS += -I$(LIBSSO_ZUC_PATH)/build
-LDLIBS += -L$(LIBSSO_ZUC_PATH)/build -lsso_zuc
+LDLIBS += -lIPSec_MB
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
 LDLIBS += -lrte_bus_vdev
 
+IMB_HDR = $(shell echo '\#include <intel-ipsec-mb.h>' | \
+	$(CC) -E $(EXTRA_CFLAGS) - | grep 'intel-ipsec-mb.h' | \
+	head -n1 | cut -d'"' -f2)
+
+# Detect library version
+IMB_VERSION = $(shell grep -e "IMB_VERSION_STR" $(IMB_HDR) | cut -d'"' -f2)
+IMB_VERSION_NUM = $(shell grep -e "IMB_VERSION_NUM" $(IMB_HDR) | cut -d' ' -f3)
+
+ifeq ($(IMB_VERSION),)
+$(error "IPSec_MB version >= 0.53 is required")
+endif
+
+ifeq ($(shell expr $(IMB_VERSION_NUM) \< 0x3400), 1)
+$(error "IPSec_MB version >= 0.53 is required")
+endif
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += rte_zuc_pmd.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += rte_zuc_pmd_ops.c

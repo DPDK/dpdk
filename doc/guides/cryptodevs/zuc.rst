@@ -1,12 +1,12 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2016 Intel Corporation.
+    Copyright(c) 2016-2019 Intel Corporation.
 
 ZUC Crypto Poll Mode Driver
 ===========================
 
-The ZUC PMD (**librte_pmd_zuc**) provides poll mode crypto driver
-support for utilizing Intel Libsso library, which implements F8 and F9 functions
-for ZUC EEA3 cipher and EIA3 hash algorithms.
+The ZUC PMD (**librte_pmd_zuc**) provides poll mode crypto driver support for
+utilizing `Intel IPSec Multi-buffer library <https://github.com/01org/intel-ipsec-mb>`_
+which implements F8 and F9 functions for ZUC EEA3 cipher and EIA3 hash algorithms.
 
 Features
 --------
@@ -27,36 +27,46 @@ Limitations
 * Chained mbufs are not supported.
 * ZUC (EIA3) supported only if hash offset field is byte-aligned.
 * ZUC (EEA3) supported only if cipher length, cipher offset fields are byte-aligned.
-* ZUC PMD cannot be built as a shared library, due to limitations in
-  the underlying library.
 
 
 Installation
 ------------
 
-To build DPDK with the ZUC_PMD the user is required to download
-the export controlled ``libsso_zuc`` library, by registering in
-`Intel Resource & Design Center <https://www.intel.com/content/www/us/en/design/resource-design-center.html>`_.
-Once approval has been granted, the user needs to search for
-*ZUC 128-EAA3 and 128-EIA3 3GPP cryptographic algorithms Software Library* to download the
-library or directly through this `link <https://cdrdv2.intel.com/v1/dl/getContent/575868>`_.
-After downloading the library, the user needs to unpack and compile it
-on their system before building DPDK::
+To build DPDK with the ZUC_PMD the user is required to download the multi-buffer
+library from `here <https://github.com/01org/intel-ipsec-mb>`_
+and compile it on their user system before building DPDK.
+The latest version of the library supported by this PMD is v0.53, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v0.53.zip>`_.
 
-   make
+After downloading the library, the user needs to unpack and compile it
+on their system before building DPDK:
+
+.. code-block:: console
+
+    make
+    make install
+
+As a reference, the following table shows a mapping between the past DPDK versions
+and the external crypto libraries supported by them:
+
+.. _table_zuc_versions:
+
+.. table:: DPDK and external crypto library version compatibility
+
+   =============  ================================
+   DPDK version   Crypto library version
+   =============  ================================
+   16.11 - 19.11  LibSSO ZUC
+   20.02+         Multi-buffer library 0.53
+   =============  ================================
+
 
 Initialization
 --------------
 
 In order to enable this virtual crypto PMD, user must:
 
-* Export the environmental variable LIBSSO_ZUC_PATH with the path where
-  the library was extracted (zuc folder).
-
-* Export the environmental variable LD_LIBRARY_PATH with the path
-  where the built libsso library is (LIBSSO_ZUC_PATH/build).
-
-* Build the LIBSSO_ZUC library (explained in Installation section).
+* Build the multi buffer library (explained in Installation section).
 
 * Build DPDK as follows:
 

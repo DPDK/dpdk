@@ -138,6 +138,13 @@ New Features
   Such algorithm combinations are not supported on GEN1/GEN2 hardware
   and executing the request returns RTE_CRYPTO_OP_STATUS_INVALID_SESSION.
 
+* **Updated the ZUC PMD.**
+
+  * Transistioned underlying library from libSSO ZUC to intel-ipsec-mb
+    library (minimum version required 0.53).
+  * Removed dynamic library limitation, so PMD can be built as a shared
+    object now.
+
 * **Added Marvell OCTEON TX2 End Point rawdev PMD.**
 
   Added a new OCTEON TX2 rawdev PMD for End Point mode of operation.
