@@ -161,6 +161,7 @@ F: doc/guides/tools/pmdinfo.rst
 
 Environment Abstraction Layer
 -----------------------------
+T: git://dpdk.org/dpdk
 
 EAL API and common code
 F: lib/librte_eal/common/*
@@ -329,6 +330,7 @@ F: doc/guides/windows_gsg/
 
 Core Libraries
 --------------
+T: git://dpdk.org/dpdk
 
 Memory pool
 M: Olivier Matz <olivier.matz@6wind.com>
