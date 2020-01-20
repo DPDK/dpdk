@@ -306,6 +306,23 @@ struct rte_pktmbuf_pool_private {
 	uint32_t flags; /**< reserved for future use. */
 };
 
+/**
+ * Return the flags from private data in an mempool structure.
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ * @return
+ *   The flags from the private data structure.
+ */
+static inline uint32_t
+rte_pktmbuf_priv_flags(struct rte_mempool *mp)
+{
+	struct rte_pktmbuf_pool_private *mbp_priv;
+
+	mbp_priv = (struct rte_pktmbuf_pool_private *)rte_mempool_get_priv(mp);
+	return mbp_priv->flags;
+}
+
 #ifdef RTE_LIBRTE_MBUF_DEBUG
 
 /**  check mbuf type in debug mode */
