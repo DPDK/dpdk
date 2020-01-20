@@ -54,7 +54,7 @@ kasumi_get_mode(const struct rte_crypto_sym_xform *xform)
 
 /** Parse crypto xform chain and set private session parameters. */
 int
-kasumi_set_session_parameters(struct kasumi_session *sess,
+kasumi_set_session_parameters(MB_MGR *mgr, struct kasumi_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
@@ -97,7 +97,7 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 		}
 
 		/* Initialize key */
-		sso_kasumi_init_f8_key_sched(cipher_xform->cipher.key.data,
+		IMB_KASUMI_INIT_F8_KEY_SCHED(mgr, cipher_xform->cipher.key.data,
 				&sess->pKeySched_cipher);
 	}
 
@@ -116,7 +116,7 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 		sess->auth_op = auth_xform->auth.op;
 
 		/* Initialize key */
-		sso_kasumi_init_f9_key_sched(auth_xform->auth.key.data,
+		IMB_KASUMI_INIT_F9_KEY_SCHED(mgr, auth_xform->auth.key.data,
 				&sess->pKeySched_hash);
 	}
 
@@ -151,7 +151,7 @@ kasumi_get_session(struct kasumi_qp *qp, struct rte_crypto_op *op)
 
 		sess = (struct kasumi_session *)_sess_private_data;
 
-		if (unlikely(kasumi_set_session_parameters(sess,
+		if (unlikely(kasumi_set_session_parameters(qp->mgr, sess,
 				op->sym->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
 			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
@@ -170,13 +170,13 @@ kasumi_get_session(struct kasumi_qp *qp, struct rte_crypto_op *op)
 
 /** Encrypt/decrypt mbufs with same cipher key. */
 static uint8_t
-process_kasumi_cipher_op(struct rte_crypto_op **ops,
-		struct kasumi_session *session,
-		uint8_t num_ops)
+process_kasumi_cipher_op(struct kasumi_qp *qp, struct rte_crypto_op **ops,
+		struct kasumi_session *session, uint8_t num_ops)
 {
 	unsigned i;
 	uint8_t processed_ops = 0;
-	uint8_t *src[num_ops], *dst[num_ops];
+	const void *src[num_ops];
+	void *dst[num_ops];
 	uint8_t *iv_ptr;
 	uint64_t iv[num_ops];
 	uint32_t num_bytes[num_ops];
@@ -198,7 +198,7 @@ process_kasumi_cipher_op(struct rte_crypto_op **ops,
 	}
 
 	if (processed_ops != 0)
-		sso_kasumi_f8_n_buffer(&session->pKeySched_cipher, iv,
+		IMB_KASUMI_F8_N_BUFFER(qp->mgr, &session->pKeySched_cipher, iv,
 			src, dst, num_bytes, processed_ops);
 
 	return processed_ops;
@@ -206,7 +206,7 @@ process_kasumi_cipher_op(struct rte_crypto_op **ops,
 
 /** Encrypt/decrypt mbuf (bit level function). */
 static uint8_t
-process_kasumi_cipher_op_bit(struct rte_crypto_op *op,
+process_kasumi_cipher_op_bit(struct kasumi_qp *qp, struct rte_crypto_op *op,
 		struct kasumi_session *session)
 {
 	uint8_t *src, *dst;
@@ -216,18 +216,16 @@ process_kasumi_cipher_op_bit(struct rte_crypto_op *op,
 
 	offset_in_bits = op->sym->cipher.data.offset;
 	src = rte_pktmbuf_mtod(op->sym->m_src, uint8_t *);
-	if (op->sym->m_dst == NULL) {
-		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-		KASUMI_LOG(ERR, "bit-level in-place not supported");
-		return 0;
-	}
-	dst = rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *);
+	if (op->sym->m_dst == NULL)
+		dst = src;
+	else
+		dst = rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *);
 	iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			session->cipher_iv_offset);
 	iv = *((uint64_t *)(iv_ptr));
 	length_in_bits = op->sym->cipher.data.length;
 
-	sso_kasumi_f8_1_buffer_bit(&session->pKeySched_cipher, iv,
+	IMB_KASUMI_F8_1_BUFFER_BIT(qp->mgr, &session->pKeySched_cipher, iv,
 			src, dst, length_in_bits, offset_in_bits);
 
 	return 1;
@@ -262,7 +260,8 @@ process_kasumi_hash_op(struct kasumi_qp *qp, struct rte_crypto_op **ops,
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			dst = qp->temp_digest;
-			sso_kasumi_f9_1_buffer(&session->pKeySched_hash, src,
+			IMB_KASUMI_F9_1_BUFFER(qp->mgr,
+					&session->pKeySched_hash, src,
 					num_bytes, dst);
 
 			/* Verify digest. */
@@ -272,7 +271,8 @@ process_kasumi_hash_op(struct kasumi_qp *qp, struct rte_crypto_op **ops,
 		} else  {
 			dst = ops[i]->sym->auth.digest.data;
 
-			sso_kasumi_f9_1_buffer(&session->pKeySched_hash, src,
+			IMB_KASUMI_F9_1_BUFFER(qp->mgr,
+					&session->pKeySched_hash, src,
 					num_bytes, dst);
 		}
 		processed_ops++;
@@ -292,7 +292,7 @@ process_ops(struct rte_crypto_op **ops, struct kasumi_session *session,
 
 	switch (session->op) {
 	case KASUMI_OP_ONLY_CIPHER:
-		processed_ops = process_kasumi_cipher_op(ops,
+		processed_ops = process_kasumi_cipher_op(qp, ops,
 				session, num_ops);
 		break;
 	case KASUMI_OP_ONLY_AUTH:
@@ -300,14 +300,14 @@ process_ops(struct rte_crypto_op **ops, struct kasumi_session *session,
 				num_ops);
 		break;
 	case KASUMI_OP_CIPHER_AUTH:
-		processed_ops = process_kasumi_cipher_op(ops, session,
+		processed_ops = process_kasumi_cipher_op(qp, ops, session,
 				num_ops);
 		process_kasumi_hash_op(qp, ops, session, processed_ops);
 		break;
 	case KASUMI_OP_AUTH_CIPHER:
 		processed_ops = process_kasumi_hash_op(qp, ops, session,
 				num_ops);
-		process_kasumi_cipher_op(ops, session, processed_ops);
+		process_kasumi_cipher_op(qp, ops, session, processed_ops);
 		break;
 	default:
 		/* Operation not supported. */
@@ -350,21 +350,21 @@ process_op_bit(struct rte_crypto_op *op, struct kasumi_session *session,
 
 	switch (session->op) {
 	case KASUMI_OP_ONLY_CIPHER:
-		processed_op = process_kasumi_cipher_op_bit(op,
+		processed_op = process_kasumi_cipher_op_bit(qp, op,
 				session);
 		break;
 	case KASUMI_OP_ONLY_AUTH:
 		processed_op = process_kasumi_hash_op(qp, &op, session, 1);
 		break;
 	case KASUMI_OP_CIPHER_AUTH:
-		processed_op = process_kasumi_cipher_op_bit(op, session);
+		processed_op = process_kasumi_cipher_op_bit(qp, op, session);
 		if (processed_op == 1)
 			process_kasumi_hash_op(qp, &op, session, 1);
 		break;
 	case KASUMI_OP_AUTH_CIPHER:
 		processed_op = process_kasumi_hash_op(qp, &op, session, 1);
 		if (processed_op == 1)
-			process_kasumi_cipher_op_bit(op, session);
+			process_kasumi_cipher_op_bit(qp, op, session);
 		break;
 	default:
 		/* Operation not supported. */
@@ -533,19 +533,13 @@ cryptodev_kasumi_create(const char *name,
 {
 	struct rte_cryptodev *dev;
 	struct kasumi_private *internals;
-	uint64_t cpu_flags = 0;
+	MB_MGR *mgr;
 
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
 		KASUMI_LOG(ERR, "failed to create cryptodev vdev");
 		goto init_error;
 	}
-
-	/* Check CPU for supported vector instruction set */
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX))
-		cpu_flags |= RTE_CRYPTODEV_FF_CPU_AVX;
-	else
-		cpu_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
 
 	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_kasumi_pmd_ops;
@@ -555,12 +549,24 @@ cryptodev_kasumi_create(const char *name,
 	dev->enqueue_burst = kasumi_pmd_enqueue_burst;
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
-			cpu_flags;
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+
+	mgr = alloc_mb_mgr(0);
+	if (mgr == NULL)
+		return -ENOMEM;
+
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX)) {
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX;
+		init_mb_mgr_avx(mgr);
+	} else {
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
+		init_mb_mgr_sse(mgr);
+	}
 
 	internals = dev->data->dev_private;
 
 	internals->max_nb_queue_pairs = init_params->max_nb_queue_pairs;
+	internals->mgr = mgr;
 
 	return 0;
 init_error:
@@ -598,6 +604,7 @@ cryptodev_kasumi_remove(struct rte_vdev_device *vdev)
 {
 	struct rte_cryptodev *cryptodev;
 	const char *name;
+	struct kasumi_private *internals;
 
 	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
@@ -606,6 +613,10 @@ cryptodev_kasumi_remove(struct rte_vdev_device *vdev)
 	cryptodev = rte_cryptodev_pmd_get_named_dev(name);
 	if (cryptodev == NULL)
 		return -ENODEV;
+
+	internals = cryptodev->data->dev_private;
+
+	free_mb_mgr(internals->mgr);
 
 	return rte_cryptodev_pmd_destroy(cryptodev);
 }

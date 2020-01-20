@@ -1,12 +1,12 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2016 Intel Corporation.
+    Copyright(c) 2016-2019 Intel Corporation.
 
 KASUMI Crypto Poll Mode Driver
 ===============================
 
-The KASUMI PMD (**librte_pmd_kasumi**) provides poll mode crypto driver
-support for utilizing Intel Libsso library, which implements F8 and F9 functions
-for KASUMI UEA1 cipher and UIA1 hash algorithms.
+The KASUMI PMD (**librte_pmd_kasumi**) provides poll mode crypto driver support for
+utilizing `Intel IPSec Multi-buffer library <https://github.com/01org/intel-ipsec-mb>`_
+which implements F8 and F9 functions for KASUMI UEA1 cipher and UIA1 hash algorithms.
 
 Features
 --------
@@ -33,33 +33,33 @@ Limitations
 Installation
 ------------
 
-To build DPDK with the KASUMI_PMD the user is required to download
-the export controlled ``libsso_kasumi`` library, by registering in
-`Intel Resource & Design Center <https://www.intel.com/content/www/us/en/design/resource-design-center.html>`_.
-Once approval has been granted, the user needs to search for
-*Kasumi F8 F9 3GPP cryptographic algorithms Software Library* to download the
-library or directly through this `link <https://cdrdv2.intel.com/v1/dl/getContent/575866>`_.
+To build DPDK with the KASUMI_PMD the user is required to download the multi-buffer
+library from `here <https://github.com/01org/intel-ipsec-mb>`_
+and compile it on their user system before building DPDK.
+The latest version of the library supported by this PMD is v0.53, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v0.53.zip>`_.
+
 After downloading the library, the user needs to unpack and compile it
-on their system before building DPDK::
+on their system before building DPDK:
 
-   make
+.. code-block:: console
 
-**Note**: When encrypting with KASUMI F8, by default the library
-encrypts full blocks of 8 bytes, regardless the number of bytes to
-be encrypted provided (which leads to a possible buffer overflow).
-To avoid this situation, it is necessary not to pass
-3GPP_SAFE_BUFFERS as a compilation flag.
-Also, this is required when using chained operations
-(cipher-then-auth/auth-then-cipher).
-For this, in the Makefile of the library, make sure that this flag
-is commented out::
+    make
+    make install
 
-  #EXTRA_CFLAGS  += -D_3GPP_SAFE_BUFFERS
+As a reference, the following table shows a mapping between the past DPDK versions
+and the external crypto libraries supported by them:
 
-**Note**: To build the PMD as a shared library, the libsso_kasumi
-library must be built as follows::
+.. _table_kasumi_versions:
 
-  make KASUMI_CFLAGS=-DKASUMI_C
+.. table:: DPDK and external crypto library version compatibility
+
+   =============  ================================
+   DPDK version   Crypto library version
+   =============  ================================
+   16.11 - 19.11  LibSSO KASUMI
+   20.02+         Multi-buffer library 0.53
+   =============  ================================
 
 
 Initialization
@@ -67,12 +67,16 @@ Initialization
 
 In order to enable this virtual crypto PMD, user must:
 
-* Export the environmental variable LIBSSO_KASUMI_PATH with the path where
-  the library was extracted (kasumi folder).
+* Build the multi buffer library (explained in Installation section).
 
-* Build the LIBSSO library (explained in Installation section).
+* Build DPDK as follows:
 
-* Set CONFIG_RTE_LIBRTE_PMD_KASUMI=y in config/common_base.
+.. code-block:: console
+
+	make config T=x86_64-native-linux-gcc
+	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_KASUMI\)=n,\1=y,' build/.config
+	make
+
 
 To use the PMD in an application, user must:
 

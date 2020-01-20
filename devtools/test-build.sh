@@ -30,7 +30,6 @@ default_path=$PATH
 # - FLEXRAN_SDK
 # - LIBMUSDK_PATH
 # - LIBSSO_SNOW3G_PATH
-# - LIBSSO_KASUMI_PATH
 devtools_dir=$(dirname $(readlink -f $0))
 . $devtools_dir/load-devel-config
 
@@ -125,7 +124,6 @@ reset_env ()
 	unset FLEXRAN_SDK
 	unset LIBMUSDK_PATH
 	unset LIBSSO_SNOW3G_PATH
-	unset LIBSSO_KASUMI_PATH
 	unset PQOS_INSTALL_PATH
 }
 
@@ -187,10 +185,10 @@ config () # <directory> <target> <options>
 		sed -ri=""      's,(PMD_AESNI_GCM=)n,\1y,' $1/.config
 		test "$DPDK_DEP_IPSEC_MB" != y || \
 		sed -ri=""            's,(PMD_ZUC=)n,\1y,' $1/.config
+		test "$DPDK_DEP_IPSEC_MB" != y || \
+		sed -ri=""         's,(PMD_KASUMI=)n,\1y,' $1/.config
 		test -z "$LIBSSO_SNOW3G_PATH" || \
 		sed -ri=""         's,(PMD_SNOW3G=)n,\1y,' $1/.config
-		test -z "$LIBSSO_KASUMI_PATH" || \
-		sed -ri=""         's,(PMD_KASUMI=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
 		sed -ri=""            's,(PMD_CCP=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
