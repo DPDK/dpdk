@@ -804,7 +804,7 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	else if (driver_id == nitrox_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NITROX;
 	else
-		TEST_ASSERT(0, "Unrecognized cryptodev type");
+		return -ENOTSUP; /* Unrecognized cryptodev type */
 
 	for (i = 0; i < n_test_cases; i++) {
 		const struct blockcipher_test_case *tc = &tcs[i];
