@@ -44,5 +44,6 @@ EXPERIMENTAL {
 	rte_mbuf_dyn_dump;
 	rte_pktmbuf_copy;
 	rte_pktmbuf_free_bulk;
+	rte_pktmbuf_pool_create_extbuf;
 
 };

@@ -637,7 +637,6 @@ rte_mbuf_raw_free(struct rte_mbuf *m)
 void rte_pktmbuf_init(struct rte_mempool *mp, void *opaque_arg,
 		      void *m, unsigned i);
 
-
 /**
  * A  packet mbuf pool constructor.
  *
@@ -737,6 +736,63 @@ struct rte_mempool *
 rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size, uint16_t data_room_size,
 	int socket_id, const char *ops_name);
+
+/** A structure that describes the pinned external buffer segment. */
+struct rte_pktmbuf_extmem {
+	void *buf_ptr;		/**< The virtual address of data buffer. */
+	rte_iova_t buf_iova;	/**< The IO address of the data buffer. */
+	size_t buf_len;		/**< External buffer length in bytes. */
+	uint16_t elt_size;	/**< mbuf element size in bytes. */
+};
+
+/**
+ * Create a mbuf pool with external pinned data buffers.
+ *
+ * This function creates and initializes a packet mbuf pool that contains
+ * only mbufs with external buffer. It is a wrapper to rte_mempool functions.
+ *
+ * @param name
+ *   The name of the mbuf pool.
+ * @param n
+ *   The number of elements in the mbuf pool. The optimum size (in terms
+ *   of memory usage) for a mempool is when n is a power of two minus one:
+ *   n = (2^q - 1).
+ * @param cache_size
+ *   Size of the per-core object cache. See rte_mempool_create() for
+ *   details.
+ * @param priv_size
+ *   Size of application private are between the rte_mbuf structure
+ *   and the data buffer. This value must be aligned to RTE_MBUF_PRIV_ALIGN.
+ * @param data_room_size
+ *   Size of data buffer in each mbuf, including RTE_PKTMBUF_HEADROOM.
+ * @param socket_id
+ *   The socket identifier where the memory should be allocated. The
+ *   value can be *SOCKET_ID_ANY* if there is no NUMA constraint for the
+ *   reserved zone.
+ * @param ext_mem
+ *   Pointer to the array of structures describing the external memory
+ *   for data buffers. It is caller responsibility to register this memory
+ *   with rte_extmem_register() (if needed), map this memory to appropriate
+ *   physical device, etc.
+ * @param ext_num
+ *   Number of elements in the ext_mem array.
+ * @return
+ *   The pointer to the new allocated mempool, on success. NULL on error
+ *   with rte_errno set appropriately. Possible rte_errno values include:
+ *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
+ *    - E_RTE_SECONDARY - function was called from a secondary process instance
+ *    - EINVAL - cache size provided is too large, or priv_size is not aligned.
+ *    - ENOSPC - the maximum number of memzones has already been allocated
+ *    - EEXIST - a memzone with the same name already exists
+ *    - ENOMEM - no appropriate memory area found in which to create memzone
+ */
+__rte_experimental
+struct rte_mempool *
+rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
+	unsigned int cache_size, uint16_t priv_size,
+	uint16_t data_room_size, int socket_id,
+	const struct rte_pktmbuf_extmem *ext_mem,
+	unsigned int ext_num);
 
 /**
  * Get the data room size of mbufs stored in a pktmbuf_pool
