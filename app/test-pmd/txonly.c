@@ -170,7 +170,8 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 
 	rte_pktmbuf_reset_headroom(pkt);
 	pkt->data_len = tx_pkt_seg_lengths[0];
-	pkt->ol_flags = ol_flags;
+	pkt->ol_flags &= EXT_ATTACHED_MBUF;
+	pkt->ol_flags |= ol_flags;
 	pkt->vlan_tci = vlan_tci;
 	pkt->vlan_tci_outer = vlan_tci_outer;
 	pkt->l2_len = sizeof(struct rte_ether_hdr);

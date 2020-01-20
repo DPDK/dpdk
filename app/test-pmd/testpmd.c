@@ -78,6 +78,7 @@
 #endif
 
 #define EXTMEM_HEAP_NAME "extmem"
+#define EXTBUF_ZONE_SIZE RTE_PGSIZE_2M
 
 uint16_t verbose_level = 0; /**< Silent by default. */
 int testpmd_logtype; /**< Log type for testpmd logs */
@@ -868,6 +869,66 @@ dma_map_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
 	}
 }
 
+static unsigned int
+setup_extbuf(uint32_t nb_mbufs, uint16_t mbuf_sz, unsigned int socket_id,
+	    char *pool_name, struct rte_pktmbuf_extmem **ext_mem)
+{
+	struct rte_pktmbuf_extmem *xmem;
+	unsigned int ext_num, zone_num, elt_num;
+	uint16_t elt_size;
+
+	elt_size = RTE_ALIGN_CEIL(mbuf_sz, RTE_CACHE_LINE_SIZE);
+	elt_num = EXTBUF_ZONE_SIZE / elt_size;
+	zone_num = (nb_mbufs + elt_num - 1) / elt_num;
+
+	xmem = malloc(sizeof(struct rte_pktmbuf_extmem) * zone_num);
+	if (xmem == NULL) {
+		TESTPMD_LOG(ERR, "Cannot allocate memory for "
+				 "external buffer descriptors\n");
+		*ext_mem = NULL;
+		return 0;
+	}
+	for (ext_num = 0; ext_num < zone_num; ext_num++) {
+		struct rte_pktmbuf_extmem *xseg = xmem + ext_num;
+		const struct rte_memzone *mz;
+		char mz_name[RTE_MEMZONE_NAMESIZE];
+		int ret;
+
+		ret = snprintf(mz_name, sizeof(mz_name),
+			RTE_MEMPOOL_MZ_FORMAT "_xb_%u", pool_name, ext_num);
+		if (ret < 0 || ret >= (int)sizeof(mz_name)) {
+			errno = ENAMETOOLONG;
+			ext_num = 0;
+			break;
+		}
+		mz = rte_memzone_reserve_aligned(mz_name, EXTBUF_ZONE_SIZE,
+						 socket_id,
+						 RTE_MEMZONE_IOVA_CONTIG |
+						 RTE_MEMZONE_1GB |
+						 RTE_MEMZONE_SIZE_HINT_ONLY,
+						 EXTBUF_ZONE_SIZE);
+		if (mz == NULL) {
+			/*
+			 * The caller exits on external buffer creation
+			 * error, so there is no need to free memzones.
+			 */
+			errno = ENOMEM;
+			ext_num = 0;
+			break;
+		}
+		xseg->buf_ptr = mz->addr;
+		xseg->buf_iova = mz->iova;
+		xseg->buf_len = EXTBUF_ZONE_SIZE;
+		xseg->elt_size = elt_size;
+	}
+	if (ext_num == 0 && xmem != NULL) {
+		free(xmem);
+		xmem = NULL;
+	}
+	*ext_mem = xmem;
+	return ext_num;
+}
+
 /*
  * Configuration initialisation done once at init time.
  */
@@ -934,6 +995,26 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 			rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
 					mb_mempool_cache, 0, mbuf_seg_size,
 					heap_socket);
+			break;
+		}
+	case MP_ALLOC_XBUF:
+		{
+			struct rte_pktmbuf_extmem *ext_mem;
+			unsigned int ext_num;
+
+			ext_num = setup_extbuf(nb_mbuf,	mbuf_seg_size,
+					       socket_id, pool_name, &ext_mem);
+			if (ext_num == 0)
+				rte_exit(EXIT_FAILURE,
+					 "Can't create pinned data buffers\n");
+
+			TESTPMD_LOG(INFO, "preferred mempool ops selected: %s\n",
+					rte_mbuf_best_mempool_ops());
+			rte_mp = rte_pktmbuf_pool_create_extbuf
+					(pool_name, nb_mbuf, mb_mempool_cache,
+					 0, mbuf_seg_size, socket_id,
+					 ext_mem, ext_num);
+			free(ext_mem);
 			break;
 		}
 	default:

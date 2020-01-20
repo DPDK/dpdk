@@ -76,8 +76,10 @@ enum {
 	/**< allocate mempool natively, but populate using anonymous memory */
 	MP_ALLOC_XMEM,
 	/**< allocate and populate mempool using anonymous memory */
-	MP_ALLOC_XMEM_HUGE
+	MP_ALLOC_XMEM_HUGE,
 	/**< allocate and populate mempool using anonymous hugepage memory */
+	MP_ALLOC_XBUF
+	/**< allocate mempool natively, use rte_pktmbuf_pool_create_extbuf */
 };
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS

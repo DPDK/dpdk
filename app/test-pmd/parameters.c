@@ -841,6 +841,8 @@ launch_args_parse(int argc, char** argv)
 					mp_alloc_type = MP_ALLOC_XMEM;
 				else if (!strcmp(optarg, "xmemhuge"))
 					mp_alloc_type = MP_ALLOC_XMEM_HUGE;
+				else if (!strcmp(optarg, "xbuf"))
+					mp_alloc_type = MP_ALLOC_XBUF;
 				else
 					rte_exit(EXIT_FAILURE,
 						"mp-alloc %s invalid - must be: "
