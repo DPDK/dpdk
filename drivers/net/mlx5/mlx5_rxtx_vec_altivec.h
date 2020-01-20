@@ -344,9 +344,8 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 		PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
 		PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED};
 	const vector unsigned char mbuf_init =
-		(vector unsigned char)(vector unsigned long){
-		*(__attribute__((__aligned__(8))) unsigned long *)
-		&rxq->mbuf_initializer, 0LL};
+		(vector unsigned char)vec_vsx_ld
+			(0, (vector unsigned char *)&rxq->mbuf_initializer);
 	const vector unsigned short rearm_sel_mask =
 		(vector unsigned short){0, 0, 0, 0, 0xffff, 0xffff, 0, 0};
 	vector unsigned char rearm0, rearm1, rearm2, rearm3;

@@ -225,6 +225,9 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 	if (mlx5_rxq_check_vec_support(&rxq_ctrl->rxq) > 0) {
 		struct mlx5_rxq_data *rxq = &rxq_ctrl->rxq;
 		struct rte_mbuf *mbuf_init = &rxq->fake_mbuf;
+		struct rte_pktmbuf_pool_private *priv =
+			(struct rte_pktmbuf_pool_private *)
+				rte_mempool_get_priv(rxq_ctrl->rxq.mp);
 		int j;
 
 		/* Initialize default rearm_data for vPMD. */
@@ -232,13 +235,15 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 		rte_mbuf_refcnt_set(mbuf_init, 1);
 		mbuf_init->nb_segs = 1;
 		mbuf_init->port = rxq->port_id;
+		if (priv->flags & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF)
+			mbuf_init->ol_flags = EXT_ATTACHED_MBUF;
 		/*
 		 * prevent compiler reordering:
 		 * rearm_data covers previous fields.
 		 */
 		rte_compiler_barrier();
 		rxq->mbuf_initializer =
-			*(uint64_t *)&mbuf_init->rearm_data;
+			*(rte_xmm_t *)&mbuf_init->rearm_data;
 		/* Padding with a fake mbuf for vectorized Rx. */
 		for (j = 0; j < MLX5_VPMD_DESCS_PER_LOOP; ++j)
 			(*rxq->elts)[elts_n + j] = &rxq->fake_mbuf;

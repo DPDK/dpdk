@@ -264,8 +264,8 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	const uint32x4_t cv_mask =
 		vdupq_n_u32(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
 			    PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
-	const uint64x1_t mbuf_init = vld1_u64(&rxq->mbuf_initializer);
-	const uint64x1_t r32_mask = vcreate_u64(0xffffffff);
+	const uint64x2_t mbuf_init = vld1q_u64
+				((const uint64_t *)&rxq->mbuf_initializer);
 	uint64x2_t rearm0, rearm1, rearm2, rearm3;
 	uint8_t pt_idx0, pt_idx1, pt_idx2, pt_idx3;
 
@@ -326,18 +326,19 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	/* Merge to ol_flags. */
 	ol_flags = vorrq_u32(ol_flags, cv_flags);
 	/* Merge mbuf_init and ol_flags, and store. */
-	rearm0 = vcombine_u64(mbuf_init,
-			      vshr_n_u64(vget_high_u64(vreinterpretq_u64_u32(
-						       ol_flags)), 32));
-	rearm1 = vcombine_u64(mbuf_init,
-			      vand_u64(vget_high_u64(vreinterpretq_u64_u32(
-						     ol_flags)), r32_mask));
-	rearm2 = vcombine_u64(mbuf_init,
-			      vshr_n_u64(vget_low_u64(vreinterpretq_u64_u32(
-						      ol_flags)), 32));
-	rearm3 = vcombine_u64(mbuf_init,
-			      vand_u64(vget_low_u64(vreinterpretq_u64_u32(
-						    ol_flags)), r32_mask));
+	rearm0 = vreinterpretq_u64_u32(vsetq_lane_u32
+					(vgetq_lane_u32(ol_flags, 3),
+					 vreinterpretq_u32_u64(mbuf_init), 2));
+	rearm1 = vreinterpretq_u64_u32(vsetq_lane_u32
+					(vgetq_lane_u32(ol_flags, 2),
+					 vreinterpretq_u32_u64(mbuf_init), 2));
+	rearm2 = vreinterpretq_u64_u32(vsetq_lane_u32
+					(vgetq_lane_u32(ol_flags, 1),
+					 vreinterpretq_u32_u64(mbuf_init), 2));
+	rearm3 = vreinterpretq_u64_u32(vsetq_lane_u32
+					(vgetq_lane_u32(ol_flags, 0),
+					 vreinterpretq_u32_u64(mbuf_init), 2));
+
 	vst1q_u64((void *)&pkts[0]->rearm_data, rearm0);
 	vst1q_u64((void *)&pkts[1]->rearm_data, rearm1);
 	vst1q_u64((void *)&pkts[2]->rearm_data, rearm2);

@@ -144,7 +144,7 @@ struct mlx5_rxq_data {
 	struct mlx5_mprq_buf *mprq_repl; /* Stashed mbuf for replenish. */
 	uint16_t idx; /* Queue index. */
 	struct mlx5_rxq_stats stats;
-	uint64_t mbuf_initializer; /* Default rearm_data for vectorized Rx. */
+	rte_xmm_t mbuf_initializer; /* Default rearm/flags for vectorized Rx. */
 	struct rte_mbuf fake_mbuf; /* elts padding for vectorized Rx. */
 	void *cq_uar; /* CQ user access region. */
 	uint32_t cqn; /* CQ number. */

@@ -259,7 +259,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 			      PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
 			      PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
 	const __m128i mbuf_init =
-		_mm_loadl_epi64((__m128i *)&rxq->mbuf_initializer);
+		_mm_load_si128((__m128i *)&rxq->mbuf_initializer);
 	__m128i rearm0, rearm1, rearm2, rearm3;
 	uint8_t pt_idx0, pt_idx1, pt_idx2, pt_idx3;
 

@@ -1341,7 +1341,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			}
 			pkt = seg;
 			assert(len >= (rxq->crc_present << 2));
-			pkt->ol_flags = 0;
+			pkt->ol_flags &= EXT_ATTACHED_MBUF;
 			/* If compressed, take hash result from mini-CQE. */
 			rss_hash_res = rte_be_to_cpu_32(mcqe == NULL ?
 							cqe->rx_hash_res :

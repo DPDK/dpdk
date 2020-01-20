@@ -97,18 +97,12 @@ mlx5_rx_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq, uint16_t n)
 		void *buf_addr;
 
 		/*
-		 * Load the virtual address for Rx WQE. non-x86 processors
-		 * (mostly RISC such as ARM and Power) are more vulnerable to
-		 * load stall. For x86, reducing the number of instructions
-		 * seems to matter most.
+		 * In order to support the mbufs with external attached
+		 * data buffer we should use the buf_addr pointer instead of
+		 * rte_mbuf_buf_addr(). It touches the mbuf itself and may
+		 * impact the performance.
 		 */
-#ifdef RTE_ARCH_X86_64
 		buf_addr = elts[i]->buf_addr;
-		assert(buf_addr == rte_mbuf_buf_addr(elts[i], rxq->mp));
-#else
-		buf_addr = rte_mbuf_buf_addr(elts[i], rxq->mp);
-		assert(buf_addr == elts[i]->buf_addr);
-#endif
 		wq[i].addr = rte_cpu_to_be_64((uintptr_t)buf_addr +
 					      RTE_PKTMBUF_HEADROOM);
 		/* If there's only one MR, no need to replace LKey in WQE. */
