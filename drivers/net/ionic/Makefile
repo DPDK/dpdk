@@ -31,4 +31,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_lif.c
 SRCS-$(CONFIG_RTE_LIBRTE_IONIC_PMD) += ionic_main.c
 
+CFLAGS_ionic_dev.o += -Wno-missing-field-initializers
+CFLAGS_ionic_lif.o += -Wno-missing-field-initializers
+
 include $(RTE_SDK)/mk/rte.lib.mk

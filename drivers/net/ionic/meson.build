@@ -11,3 +11,12 @@ sources = files(
 	'ionic_main.c'
 )
 
+error_cflags = [
+  '-Wno-missing-field-initializers',
+]
+
+foreach flag: error_cflags
+        if cc.has_argument(flag)
+                c_args += flag
+        endif
+endforeach
