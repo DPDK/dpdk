@@ -68,8 +68,8 @@ int enic_get_vnic_config(struct enic *enic)
 	if (c->mtu == 0)
 		c->mtu = 1500;
 
-	enic->rte_dev->data->mtu = min_t(uint16_t, enic->max_mtu,
-					 max_t(uint16_t, ENIC_MIN_MTU, c->mtu));
+	enic->rte_dev->data->mtu = RTE_MIN(enic->max_mtu,
+				RTE_MAX((uint16_t)ENIC_MIN_MTU, c->mtu));
 
 	enic->adv_filters = vnic_dev_capable_adv_filters(enic->vdev);
 	dev_info(enic, "Advanced Filters %savailable\n", ((enic->adv_filters)
@@ -100,20 +100,16 @@ int enic_get_vnic_config(struct enic *enic)
 		((enic->filter_actions & FILTER_ACTION_COUNTER_FLAG) ?
 		 "count " : ""));
 
-	c->wq_desc_count =
-		min_t(uint32_t, ENIC_MAX_WQ_DESCS,
-		max_t(uint32_t, ENIC_MIN_WQ_DESCS,
-		c->wq_desc_count));
+	c->wq_desc_count = RTE_MIN((uint32_t)ENIC_MAX_WQ_DESCS,
+			RTE_MAX((uint32_t)ENIC_MIN_WQ_DESCS, c->wq_desc_count));
 	c->wq_desc_count &= 0xffffffe0; /* must be aligned to groups of 32 */
 
-	c->rq_desc_count =
-		min_t(uint32_t, ENIC_MAX_RQ_DESCS,
-		max_t(uint32_t, ENIC_MIN_RQ_DESCS,
-		c->rq_desc_count));
+	c->rq_desc_count = RTE_MIN((uint32_t)ENIC_MAX_RQ_DESCS,
+			RTE_MAX((uint32_t)ENIC_MIN_RQ_DESCS, c->rq_desc_count));
 	c->rq_desc_count &= 0xffffffe0; /* must be aligned to groups of 32 */
 
-	c->intr_timer_usec = min_t(uint32_t, c->intr_timer_usec,
-		vnic_dev_get_intr_coal_timer_max(enic->vdev));
+	c->intr_timer_usec = RTE_MIN(c->intr_timer_usec,
+				  vnic_dev_get_intr_coal_timer_max(enic->vdev));
 
 	dev_info(enic_get_dev(enic),
 		"vNIC MAC addr %02x:%02x:%02x:%02x:%02x:%02x "
