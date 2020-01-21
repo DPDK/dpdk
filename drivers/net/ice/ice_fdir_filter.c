@@ -67,10 +67,10 @@
 	ICE_FDIR_INSET_VXLAN_IPV4 | \
 	ICE_INSET_TUN_SCTP_SRC_PORT | ICE_INSET_TUN_SCTP_DST_PORT)
 
-#define ICE_FDIR_INSET_GTPU_IPV4 (\
+#define ICE_FDIR_INSET_GTPU (\
 	ICE_INSET_GTPU_TEID)
 
-#define ICE_FDIR_INSET_GTPU_EH_IPV4 (\
+#define ICE_FDIR_INSET_GTPU_EH (\
 	ICE_INSET_GTPU_TEID | ICE_INSET_GTPU_QFI)
 
 static struct ice_pattern_match_item ice_fdir_pattern_os[] = {
@@ -125,9 +125,8 @@ static struct ice_pattern_match_item ice_fdir_pattern_comms[] = {
 				       ICE_FDIR_INSET_VXLAN_IPV4_TCP,        ICE_INSET_NONE},
 	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_sctp,
 				       ICE_FDIR_INSET_VXLAN_IPV4_SCTP,       ICE_INSET_NONE},
-	{pattern_eth_ipv4_gtpu_ipv4,   ICE_FDIR_INSET_GTPU_IPV4,             ICE_INSET_NONE},
-	{pattern_eth_ipv4_gtpu_eh_ipv4,
-				       ICE_FDIR_INSET_GTPU_EH_IPV4,          ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu,	       ICE_FDIR_INSET_GTPU,                  ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh,     ICE_FDIR_INSET_GTPU_EH,               ICE_INSET_NONE},
 };
 
 static struct ice_flow_parser ice_fdir_parser_os;
