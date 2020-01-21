@@ -7089,6 +7089,7 @@ cmd_priority_flow_ctrl_set_parsed(void *parsed_result,
 		{RTE_FC_NONE, RTE_FC_TX_PAUSE}, {RTE_FC_RX_PAUSE, RTE_FC_FULL}
 	};
 
+	memset(&pfc_conf, 0, sizeof(struct rte_eth_pfc_conf));
 	rx_fc_enable = (!strncmp(res->rx_pfc_mode, "on",2)) ? 1 : 0;
 	tx_fc_enable = (!strncmp(res->tx_pfc_mode, "on",2)) ? 1 : 0;
 	pfc_conf.fc.mode       = rx_tx_onoff_2_pfc_mode[rx_fc_enable][tx_fc_enable];
