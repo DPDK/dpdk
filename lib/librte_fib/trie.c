@@ -240,9 +240,8 @@ tbl8_alloc(struct rte_trie_tbl *dp, uint64_t nh)
 	tbl8_idx = tbl8_get(dp);
 	if (tbl8_idx < 0)
 		return tbl8_idx;
-	tbl8_ptr = (uint8_t *)dp->tbl8 +
-		((tbl8_idx * TRIE_TBL8_GRP_NUM_ENT) <<
-		dp->nh_sz);
+	tbl8_ptr = get_tbl_p_by_idx(dp->tbl8,
+		tbl8_idx * TRIE_TBL8_GRP_NUM_ENT, dp->nh_sz);
 	/*Init tbl8 entries with nexthop from tbl24*/
 	write_to_dp((void *)tbl8_ptr, nh, dp->nh_sz,
 		TRIE_TBL8_GRP_NUM_ENT);
@@ -317,7 +316,7 @@ get_idx(const uint8_t *ip, uint32_t prev_idx, int bytes, int first_byte)
 		bitshift = (int8_t)(((first_byte + bytes - 1) - i)*BYTE_SIZE);
 		idx |= ip[i] <<  bitshift;
 	}
-	return (prev_idx * 256) + idx;
+	return (prev_idx * TRIE_TBL8_GRP_NUM_ENT) + idx;
 }
 
 static inline uint64_t
@@ -354,8 +353,8 @@ recycle_root_path(struct rte_trie_tbl *dp, const uint8_t *ip_part,
 		return;
 
 	if (common_tbl8 != 0) {
-		p = get_tbl_p_by_idx(dp->tbl8, (val >> 1) * 256 + *ip_part,
-			dp->nh_sz);
+		p = get_tbl_p_by_idx(dp->tbl8, (val >> 1) *
+			TRIE_TBL8_GRP_NUM_ENT + *ip_part, dp->nh_sz);
 		recycle_root_path(dp, ip_part + 1, common_tbl8 - 1, p);
 	}
 	tbl8_recycle(dp, prev, val >> 1);
@@ -388,7 +387,8 @@ build_common_root(struct rte_trie_tbl *dp, const uint8_t *ip,
 		j = i;
 		cur_tbl = dp->tbl8;
 	}
-	*tbl = get_tbl_p_by_idx(cur_tbl, prev_idx * 256, dp->nh_sz);
+	*tbl = get_tbl_p_by_idx(cur_tbl, prev_idx * TRIE_TBL8_GRP_NUM_ENT,
+		dp->nh_sz);
 	return 0;
 }
 
@@ -411,8 +411,8 @@ write_edge(struct rte_trie_tbl *dp, const uint8_t *ip_part, uint64_t next_hop,
 				return tbl8_idx;
 			val = (tbl8_idx << 1)|TRIE_EXT_ENT;
 		}
-		p = get_tbl_p_by_idx(dp->tbl8, (tbl8_idx * 256) + *ip_part,
-			dp->nh_sz);
+		p = get_tbl_p_by_idx(dp->tbl8, (tbl8_idx *
+			TRIE_TBL8_GRP_NUM_ENT) + *ip_part, dp->nh_sz);
 		ret = write_edge(dp, ip_part + 1, next_hop, len - 1, edge, p);
 		if (ret < 0)
 			return ret;
@@ -420,8 +420,8 @@ write_edge(struct rte_trie_tbl *dp, const uint8_t *ip_part, uint64_t next_hop,
 			write_to_dp((uint8_t *)p + (1 << dp->nh_sz),
 				next_hop << 1, dp->nh_sz, UINT8_MAX - *ip_part);
 		} else {
-			write_to_dp(get_tbl_p_by_idx(dp->tbl8, tbl8_idx * 256,
-				dp->nh_sz),
+			write_to_dp(get_tbl_p_by_idx(dp->tbl8, tbl8_idx *
+				TRIE_TBL8_GRP_NUM_ENT, dp->nh_sz),
 				next_hop << 1, dp->nh_sz, *ip_part);
 		}
 		tbl8_recycle(dp, &val, tbl8_idx);
