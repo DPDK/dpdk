@@ -48,7 +48,7 @@ endif
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
 
-# workaround clang bug with warning "missing field initializer" for "= {0}"
+# disable warning for non-initialised fields
 WERROR_FLAGS += -Wno-missing-field-initializers
 
 # disable packed member unalign warnings
