@@ -3,6 +3,7 @@
 # Copyright(c) 2018 Intel Corporation
 
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import socket
 import os
@@ -65,18 +66,19 @@ class Client:
         self.socket.recv_fd.settimeout(2)
         self.socket.send_fd.connect("/var/run/dpdk/rte/telemetry")
         JSON = (API_REG + self.file_path + "\"}}")
-        self.socket.send_fd.sendall(JSON)
+        self.socket.send_fd.sendall(JSON.encode())
+
         self.socket.recv_fd.listen(1)
         self.socket.client_fd = self.socket.recv_fd.accept()[0]
 
     def unregister(self): # Unregister a given client
-        self.socket.client_fd.send(API_UNREG + self.file_path + "\"}}")
+        self.socket.client_fd.send((API_UNREG + self.file_path + "\"}}").encode())
         self.socket.client_fd.close()
 
     def requestMetrics(self): # Requests metrics for given client
-        self.socket.client_fd.send(METRICS_REQ)
-        data = self.socket.client_fd.recv(BUFFER_SIZE)
-        print("\nResponse: \n", str(data))
+        self.socket.client_fd.send(METRICS_REQ.encode())
+        data = self.socket.client_fd.recv(BUFFER_SIZE).decode()
+        print("\nResponse: \n", data)
 
     def repeatedlyRequestMetrics(self, sleep_time): # Recursively requests metrics for given client
         print("\nPlease enter the number of times you'd like to continuously request Metrics:")
@@ -88,9 +90,9 @@ class Client:
             time.sleep(sleep_time)
 
     def requestGlobalMetrics(self): #Requests global metrics for given client
-        self.socket.client_fd.send(GLOBAL_METRICS_REQ)
-        data = self.socket.client_fd.recv(BUFFER_SIZE)
-        print("\nResponse: \n", str(data))
+        self.socket.client_fd.send(GLOBAL_METRICS_REQ.encode())
+        data = self.socket.client_fd.recv(BUFFER_SIZE).decode()
+        print("\nResponse: \n", data)
 
     def interactiveMenu(self, sleep_time): # Creates Interactive menu within the script
         while self.choice != 4:
