@@ -1591,8 +1591,11 @@ tap_intr_handle_set(struct rte_eth_dev *dev, int set)
 	int err;
 
 	err = tap_lsc_intr_handle_set(dev, set);
-	if (err)
+	if (err < 0) {
+		if (!set)
+			tap_rx_intr_vec_set(dev, 0);
 		return err;
+	}
 	err = tap_rx_intr_vec_set(dev, set);
 	if (err && set)
 		tap_lsc_intr_handle_set(dev, 0);
