@@ -1499,8 +1499,7 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 			dest_num++;
 
 			filter->input.dest_ctl =
-				ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_QINDEX;
-			filter->input.q_index = 0;
+				ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_OTHER;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			dest_num++;
