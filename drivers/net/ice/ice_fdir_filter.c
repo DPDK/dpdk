@@ -1504,6 +1504,7 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 
 			mark_spec = actions->conf;
 			filter->input.fltr_id = mark_spec->id;
+			filter->input.fdid_prio = ICE_FXD_FLTR_QW1_FDID_PRI_ONE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			counter_num++;
