@@ -1640,17 +1640,10 @@ flow_dv_validate_action_pop_vlan(struct rte_eth_dev *dev,
 					  NULL,
 					  "pop vlan action not supported for "
 					  "egress");
-	/*
-	 * Check for inconsistencies:
-	 *  fail strip_vlan in a flow that matches packets without VLAN tags.
-	 *  fail strip_vlan in a flow that matches packets without explicitly a
-	 *  matching on VLAN tag ?
-	 */
-	if (action_flags & MLX5_FLOW_ACTION_OF_POP_VLAN)
+	if (action_flags & MLX5_FLOW_VLAN_ACTIONS)
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL,
-					  "no support for multiple vlan pop "
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "no support for multiple VLAN "
 					  "actions");
 	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_VLAN))
 		return rte_flow_error_set(error, ENOTSUP,
