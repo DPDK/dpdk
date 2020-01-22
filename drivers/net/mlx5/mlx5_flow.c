@@ -905,11 +905,6 @@ mlx5_flow_validate_action_flag(uint64_t action_flags,
 			       const struct rte_flow_attr *attr,
 			       struct rte_flow_error *error)
 {
-
-	if (action_flags & MLX5_FLOW_ACTION_DROP)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can't drop and flag in same flow");
 	if (action_flags & MLX5_FLOW_ACTION_MARK)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -961,10 +956,6 @@ mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
 					  &mark->id,
 					  "mark id must in 0 <= id < "
 					  RTE_STR(MLX5_FLOW_MARK_MAX));
-	if (action_flags & MLX5_FLOW_ACTION_DROP)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can't drop and mark in same flow");
 	if (action_flags & MLX5_FLOW_ACTION_FLAG)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -996,24 +987,10 @@ mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_action_drop(uint64_t action_flags,
+mlx5_flow_validate_action_drop(uint64_t action_flags __rte_unused,
 			       const struct rte_flow_attr *attr,
 			       struct rte_flow_error *error)
 {
-	if (action_flags & MLX5_FLOW_ACTION_FLAG)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can't drop and flag in same flow");
-	if (action_flags & MLX5_FLOW_ACTION_MARK)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can't drop and mark in same flow");
-	if (action_flags & (MLX5_FLOW_FATE_ACTIONS |
-			    MLX5_FLOW_FATE_ESWITCH_ACTIONS))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can't have 2 fate actions in"
-					  " same flow");
 	if (attr->egress)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
