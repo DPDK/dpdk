@@ -760,7 +760,7 @@ uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow, int tunnel,
 				     uint64_t hash_fields);
 uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority);
-enum modify_reg mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
+int mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 				     enum mlx5_feature_name feature,
 				     uint32_t id,
 				     struct rte_flow_error *error);

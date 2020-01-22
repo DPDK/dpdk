@@ -1077,7 +1077,7 @@ flow_dv_convert_action_mark(struct rte_eth_dev *dev,
 		{4, 0, 0}, /* dynamic instead of MLX5_MODI_META_REG_C_1. */
 		{0, 0, 0},
 	};
-	enum modify_reg reg;
+	int reg;
 
 	if (!mask)
 		return rte_flow_error_set(error, EINVAL,
@@ -1119,7 +1119,7 @@ flow_dv_get_metadata_reg(struct rte_eth_dev *dev,
 			 const struct rte_flow_attr *attr,
 			 struct rte_flow_error *error)
 {
-	enum modify_reg reg =
+	int reg =
 		mlx5_flow_get_reg_id(dev, attr->transfer ?
 					  MLX5_METADATA_FDB :
 					    attr->egress ?
@@ -1167,7 +1167,7 @@ flow_dv_convert_action_set_meta
 	struct field_modify_info reg_c_x[] = {
 		[1] = {0, 0, 0},
 	};
-	enum modify_reg reg = flow_dv_get_metadata_reg(dev, attr, error);
+	int reg = flow_dv_get_metadata_reg(dev, attr, error);
 
 	if (reg < 0)
 		return reg;
@@ -1370,7 +1370,7 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 	struct rte_flow_item_meta nic_mask = {
 		.data = UINT32_MAX
 	};
-	enum modify_reg reg;
+	int reg;
 	int ret;
 
 	if (!spec)
@@ -2004,7 +2004,7 @@ flow_dv_validate_action_set_meta(struct rte_eth_dev *dev,
 {
 	const struct rte_flow_action_set_meta *conf;
 	uint32_t nic_mask = UINT32_MAX;
-	enum modify_reg reg;
+	int reg;
 
 	if (!mlx5_flow_ext_mreg_supported(dev))
 		return rte_flow_error_set(error, ENOTSUP,
@@ -6081,7 +6081,7 @@ flow_dv_translate_item_meta(struct rte_eth_dev *dev,
 		meta_m = &rte_flow_item_meta_mask;
 	meta_v = (const void *)item->spec;
 	if (meta_v) {
-		enum modify_reg reg;
+		int reg;
 		uint32_t value = meta_v->data;
 		uint32_t mask = meta_m->data;
 

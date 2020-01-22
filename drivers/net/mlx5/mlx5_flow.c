@@ -341,7 +341,7 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
  *   The request register on success, a negative errno
  *   value otherwise and rte_errno is set.
  */
-enum modify_reg
+int
 mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		     enum mlx5_feature_name feature,
 		     uint32_t id,
