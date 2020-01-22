@@ -7602,13 +7602,13 @@ cnt_err:
 		item_flags |= last_item;
 	}
 	/*
-	 * In case of ingress traffic when E-Switch mode is enabled,
-	 * we have two cases where we need to set the source port manually.
+	 * When E-Switch mode is enabled, we have two cases where we need to
+	 * set the source port manually.
 	 * The first one, is in case of Nic steering rule, and the second is
 	 * E-Switch rule where no port_id item was found. In both cases
 	 * the source port is set according the current port in use.
 	 */
-	if ((attr->ingress && !(item_flags & MLX5_FLOW_ITEM_PORT_ID)) &&
+	if (!(item_flags & MLX5_FLOW_ITEM_PORT_ID) &&
 	    (priv->representor || priv->master)) {
 		if (flow_dv_translate_item_port_id(dev, match_mask,
 						   match_value, NULL))
