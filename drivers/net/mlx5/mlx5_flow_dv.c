@@ -5060,13 +5060,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  "action not supported");
 		}
 	}
-	if ((action_flags & MLX5_FLOW_LAYER_TUNNEL) &&
-	    (action_flags & MLX5_FLOW_VLAN_ACTIONS))
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION,
-					  actions,
-					  "can't have vxlan and vlan"
-					  " actions in the same rule");
 	/* Eswitch has few restrictions on using items and actions */
 	if (attr->transfer) {
 		if (!mlx5_flow_ext_mreg_supported(dev) &&
