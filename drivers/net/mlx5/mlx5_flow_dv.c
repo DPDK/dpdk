@@ -2883,8 +2883,6 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 			(const struct rte_flow_action_raw_encap *)action->conf;
 		res.size = raw_encap_data->size;
 		memcpy(res.buf, raw_encap_data->data, res.size);
-		if (flow_dv_zero_encap_udp_csum(res.buf, error))
-			return -rte_errno;
 	} else {
 		if (action->type == RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP)
 			encap_data =
@@ -2898,6 +2896,8 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 					       &res.size, error))
 			return -rte_errno;
 	}
+	if (flow_dv_zero_encap_udp_csum(res.buf, error))
+		return -rte_errno;
 	if (flow_dv_encap_decap_resource_register(dev, &res, dev_flow, error))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
