@@ -118,7 +118,8 @@ rte_pktmbuf_init(struct rte_mempool *mp,
  * indirect buffer) mbufs on detaching from the mbuf with pinned external
  * buffer.
  */
-static void rte_pktmbuf_free_pinned_extmem(void *addr, void *opaque)
+static void
+rte_pktmbuf_free_pinned_extmem(void *addr, void *opaque)
 {
 	struct rte_mbuf *m = opaque;
 
