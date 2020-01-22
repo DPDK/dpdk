@@ -4402,6 +4402,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	uint8_t next_protocol = 0xff;
 	uint16_t ether_type = 0;
 	int actions_n = 0;
+	uint8_t item_ipv6_proto = 0;
 	const struct rte_flow_item *gre_item = NULL;
 	struct rte_flow_item_tcp nic_tcp_mask = {
 		.hdr = {
@@ -4509,6 +4510,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (items->mask != NULL &&
 			    ((const struct rte_flow_item_ipv6 *)
 			     items->mask)->hdr.proto) {
+				item_ipv6_proto =
+					((const struct rte_flow_item_ipv6 *)
+					 items->spec)->hdr.proto;
 				next_protocol =
 					((const struct rte_flow_item_ipv6 *)
 					 items->spec)->hdr.proto;
@@ -4881,6 +4885,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 								  error);
 			if (ret < 0)
 				return ret;
+			if (item_ipv6_proto == IPPROTO_ICMPV6)
+				return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					actions,
+					"Can't change header "
+					"with ICMPv6 proto");
 			/* Count all modify-header actions as one action. */
 			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
 				++actions_n;
