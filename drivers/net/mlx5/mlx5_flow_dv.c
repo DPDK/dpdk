@@ -1734,7 +1734,7 @@ flow_dev_get_vlan_info_from_items(const struct rte_flow_item *items,
  */
 static int
 flow_dv_validate_action_push_vlan(uint64_t action_flags,
-				  uint64_t item_flags,
+				  uint64_t item_flags __rte_unused,
 				  const struct rte_flow_action *action,
 				  const struct rte_flow_attr *attr,
 				  struct rte_flow_error *error)
@@ -1751,14 +1751,6 @@ flow_dv_validate_action_push_vlan(uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "no support for multiple VLAN "
 					  "actions");
-	if (!mlx5_flow_find_action
-			(action + 1, RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID) &&
-	    !(item_flags & MLX5_FLOW_LAYER_OUTER_VLAN))
-		return rte_flow_error_set(error, ENOTSUP,
-				RTE_FLOW_ERROR_TYPE_ACTION, action,
-				"push VLAN needs to match on VLAN in order to "
-				"get VLAN VID information because there is "
-				"no followed set VLAN VID action");
 	if (action_flags & MLX5_FLOW_ACTION_PORT_ID)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
