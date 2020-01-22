@@ -1746,8 +1746,7 @@ flow_dv_validate_action_push_vlan(uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "invalid vlan ethertype");
-	if (action_flags &
-		(MLX5_FLOW_ACTION_OF_POP_VLAN | MLX5_FLOW_ACTION_OF_PUSH_VLAN))
+	if (action_flags & MLX5_FLOW_VLAN_ACTIONS)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "no support for multiple VLAN "
