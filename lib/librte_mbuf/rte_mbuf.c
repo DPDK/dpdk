@@ -675,18 +675,25 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 
 	__rte_mbuf_sanity_check(m, 1);
 
-	fprintf(f, "dump mbuf at %p, iova=%"PRIx64", buf_len=%u\n",
-	       m, (uint64_t)m->buf_iova, (unsigned)m->buf_len);
-	fprintf(f, "  pkt_len=%"PRIu32", ol_flags=%"PRIx64", nb_segs=%u, "
-	       "in_port=%u\n", m->pkt_len, m->ol_flags,
-	       (unsigned)m->nb_segs, (unsigned)m->port);
+	fprintf(f, "dump mbuf at %p, iova=%#"PRIx64", buf_len=%u\n",
+		m, m->buf_iova, m->buf_len);
+	fprintf(f, "  pkt_len=%u, ol_flags=%#"PRIx64", nb_segs=%u, port=%u",
+		m->pkt_len, m->ol_flags, m->nb_segs, m->port);
+
+	if (m->ol_flags & (PKT_RX_VLAN | PKT_TX_VLAN))
+		fprintf(f, ", vlan_tci=%u", m->vlan_tci);
+
+	fprintf(f, ", ptype=%#"PRIx32"\n", m->packet_type);
+
 	nb_segs = m->nb_segs;
 
 	while (m && nb_segs != 0) {
 		__rte_mbuf_sanity_check(m, 0);
 
-		fprintf(f, "  segment at %p, data=%p, data_len=%u\n",
-			m, rte_pktmbuf_mtod(m, void *), (unsigned)m->data_len);
+		fprintf(f, "  segment at %p, data=%p, len=%u, off=%u, refcnt=%u\n",
+			m, rte_pktmbuf_mtod(m, void *),
+			m->data_len, m->data_off, rte_mbuf_refcnt_read(m));
+
 		len = dump_len;
 		if (len > m->data_len)
 			len = m->data_len;
