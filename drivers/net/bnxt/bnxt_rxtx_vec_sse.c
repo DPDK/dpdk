@@ -289,7 +289,8 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 					(RX_PKT_CMPL_METADATA_VID_MASK |
 					RX_PKT_CMPL_METADATA_DE |
 					RX_PKT_CMPL_METADATA_PRI_MASK);
-				mbuf->ol_flags |= PKT_RX_VLAN;
+				mbuf->ol_flags |=
+					PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 			}
 
 			bnxt_parse_csum(mbuf, rxcmp1);
