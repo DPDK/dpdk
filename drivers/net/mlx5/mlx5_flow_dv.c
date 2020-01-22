@@ -1634,6 +1634,12 @@ flow_dv_validate_action_pop_vlan(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "pop vlan action is not supported");
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+					  NULL,
+					  "pop vlan action not supported for "
+					  "egress");
 	/*
 	 * Check for inconsistencies:
 	 *  fail strip_vlan in a flow that matches packets without VLAN tags.
