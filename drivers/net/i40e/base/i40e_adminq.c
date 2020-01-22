@@ -673,6 +673,10 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 	if (ret_code != I40E_SUCCESS)
 		goto init_adminq_free_asq;
 
+	/* VF has no need of firmware */
+	if (i40e_is_vf(hw))
+		goto init_adminq_exit;
+
 	/* There are some cases where the firmware may not be quite ready
 	 * for AdminQ operations, so we retry the AdminQ setup a few times
 	 * if we see timeouts in this first AQ call.
