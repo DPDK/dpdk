@@ -133,6 +133,9 @@ static struct ice_pattern_match_item ice_fdir_pattern_comms[] = {
 static struct ice_flow_parser ice_fdir_parser_os;
 static struct ice_flow_parser ice_fdir_parser_comms;
 
+static int
+ice_fdir_is_tunnel_profile(enum ice_fdir_tunnel_type tunnel_type);
+
 static const struct rte_memzone *
 ice_memzone_reserve(const char *name, uint32_t len, int socket_id)
 {
@@ -915,7 +918,7 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 		{ICE_INSET_TUN_UDP_DST_PORT, ICE_FLOW_FIELD_IDX_UDP_DST_PORT},
 		{ICE_INSET_TUN_SCTP_SRC_PORT, ICE_FLOW_FIELD_IDX_SCTP_SRC_PORT},
 		{ICE_INSET_TUN_SCTP_DST_PORT, ICE_FLOW_FIELD_IDX_SCTP_DST_PORT},
-		{ICE_INSET_GTPU_TEID, ICE_FLOW_FIELD_IDX_GTPU_EH_TEID},
+		{ICE_INSET_GTPU_TEID, ICE_FLOW_FIELD_IDX_GTPU_IP_TEID},
 		{ICE_INSET_GTPU_QFI, ICE_FLOW_FIELD_IDX_GTPU_EH_QFI},
 	};
 
@@ -928,11 +931,12 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 
 static int
 ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
-			uint64_t input_set, bool is_tunnel)
+			uint64_t input_set, enum ice_fdir_tunnel_type ttype)
 {
 	struct ice_flow_seg_info *seg;
 	struct ice_flow_seg_info *seg_tun = NULL;
 	enum ice_flow_field field[ICE_FLOW_FIELD_IDX_MAX];
+	bool is_tunnel;
 	int i, ret;
 
 	if (!input_set)
@@ -984,9 +988,15 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_TCP:
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_ICMP:
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER:
-		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_GTPU_EH |
-				       ICE_FLOW_SEG_HDR_GTPU_IP |
-				  ICE_FLOW_SEG_HDR_IPV4);
+		if (ttype == ICE_FDIR_TUNNEL_TYPE_GTPU)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_GTPU_IP |
+					  ICE_FLOW_SEG_HDR_IPV4);
+		else if (ttype == ICE_FDIR_TUNNEL_TYPE_GTPU_EH)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_GTPU_EH |
+					  ICE_FLOW_SEG_HDR_GTPU_IP |
+					  ICE_FLOW_SEG_HDR_IPV4);
+		else
+			PMD_DRV_LOG(ERR, "not supported tunnel type.");
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "not supported filter type.");
@@ -1000,6 +1010,7 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 				 ICE_FLOW_FLD_OFF_INVAL, false);
 	}
 
+	is_tunnel = ice_fdir_is_tunnel_profile(ttype);
 	if (!is_tunnel) {
 		ret = ice_fdir_hw_tbl_conf(pf, pf->main_vsi, pf->fdir.fdir_vsi,
 					   seg, flow, false);
@@ -1224,7 +1235,7 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 	is_tun = ice_fdir_is_tunnel_profile(filter->tunnel_type);
 
 	ret = ice_fdir_input_set_conf(pf, filter->input.flow_type,
-			filter->input_set, is_tun);
+			filter->input_set, filter->tunnel_type);
 	if (ret) {
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -1897,6 +1908,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				filter->input.gtpu_data.qfi =
 					gtp_psc_spec->qfi;
 			}
+			tunnel_type = ICE_FDIR_TUNNEL_TYPE_GTPU_EH;
 			break;
 		default:
 			rte_flow_error_set(error, EINVAL,
@@ -1907,7 +1919,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 		}
 	}
 
-	if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_GTPU)
+	if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_GTPU ||
+	    tunnel_type == ICE_FDIR_TUNNEL_TYPE_GTPU_EH)
 		flow_type = ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER;
 
 	filter->tunnel_type = tunnel_type;
