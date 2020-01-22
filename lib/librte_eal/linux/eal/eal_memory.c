@@ -1928,7 +1928,7 @@ eal_legacy_hugepage_attach(void)
 		if (flock(fd, LOCK_SH) < 0) {
 			RTE_LOG(DEBUG, EAL, "%s(): Locking file failed: %s\n",
 				__func__, strerror(errno));
-			goto fd_error;
+			goto mmap_error;
 		}
 
 		/* find segment data */
@@ -1936,13 +1936,13 @@ eal_legacy_hugepage_attach(void)
 		if (msl == NULL) {
 			RTE_LOG(DEBUG, EAL, "%s(): Cannot find memseg list\n",
 				__func__);
-			goto fd_error;
+			goto mmap_error;
 		}
 		ms = rte_mem_virt2memseg(map_addr, msl);
 		if (ms == NULL) {
 			RTE_LOG(DEBUG, EAL, "%s(): Cannot find memseg\n",
 				__func__);
-			goto fd_error;
+			goto mmap_error;
 		}
 
 		msl_idx = msl - mcfg->memsegs;
@@ -1950,7 +1950,7 @@ eal_legacy_hugepage_attach(void)
 		if (ms_idx < 0) {
 			RTE_LOG(DEBUG, EAL, "%s(): Cannot find memseg idx\n",
 				__func__);
-			goto fd_error;
+			goto mmap_error;
 		}
 
 		/* store segment fd internally */
@@ -1963,18 +1963,15 @@ eal_legacy_hugepage_attach(void)
 	close(fd_hugepage);
 	return 0;
 
+mmap_error:
+	munmap(hp[i].final_va, hp[i].size);
 fd_error:
 	close(fd);
 error:
-	/* map all segments into memory to make sure we get the addrs */
-	cur_seg = 0;
-	for (cur_seg = 0; cur_seg < i; cur_seg++) {
-		struct hugepage_file *hf = &hp[i];
-		size_t map_sz = hf->size;
-		void *map_addr = hf->final_va;
+	/* unwind mmap's done so far */
+	for (cur_seg = 0; cur_seg < i; cur_seg++)
+		munmap(hp[cur_seg].final_va, hp[cur_seg].size);
 
-		munmap(map_addr, map_sz);
-	}
 	if (hp != NULL && hp != MAP_FAILED)
 		munmap(hp, size);
 	if (fd_hugepage >= 0)
