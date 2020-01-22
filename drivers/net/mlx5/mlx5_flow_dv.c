@@ -1815,10 +1815,10 @@ flow_dv_validate_action_set_vlan_pcp(uint64_t action_flags,
  *
  * @param[in] item_flags
  *   Holds the items detected in this rule.
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
  * @param[in] actions
  *   Pointer to the list of actions remaining in the flow rule.
- * @param[in] attr
- *   Pointer to flow attributes
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -1838,33 +1838,17 @@ flow_dv_validate_action_set_vlan_vid(uint64_t item_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "VLAN VID value is too big");
-	/* there is an of_push_vlan action before us */
-	if (action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN) {
-		if (mlx5_flow_find_action(actions + 1,
-					  RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID))
-			return rte_flow_error_set(error, ENOTSUP,
-					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"Multiple VLAN VID modifications are "
-					"not supported");
-		else
-			return 0;
-	}
-
-	/*
-	 * Action is on an existing VLAN header:
-	 *    Need to verify this is a single modify CID action.
-	 *   Rule mast include a match on outer VLAN.
-	 */
+	if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN) &&
+	    !(item_flags & MLX5_FLOW_LAYER_OUTER_VLAN))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "set VLAN VID action must follow push"
+					  " VLAN action or match on VLAN item");
 	if (action_flags & MLX5_FLOW_ACTION_OF_SET_VLAN_VID)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "Multiple VLAN VID modifications are "
 					  "not supported");
-	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_VLAN))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "match on VLAN is required in order "
-					  "to set VLAN VID");
 	if (action_flags & MLX5_FLOW_ACTION_PORT_ID)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
