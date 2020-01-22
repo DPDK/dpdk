@@ -1165,10 +1165,6 @@ Supported hardware offloads
    | | set_ttl /           | |               | |               |
    | | set_mac_src /       | |               | |               |
    | | set_mac_dst)        | |               | |               |
-   | |                     | |               | |               |
-   | | (of_set_vlan_vid)   | | DPDK 19.11    | | DPDK 19.11    |
-   |                       | | OFED 4.7-1    | | OFED 4.7-1    |
-   |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
    | Jump                  | | DPDK 19.05    | | DPDK 19.02    |
    |                       | | OFED 4.7-1    | | OFED 4.7-1    |
@@ -1188,8 +1184,8 @@ Supported hardware offloads
    | | VLAN                | | DPDK 19.11    | | DPDK 19.11    |
    | | (of_pop_vlan /      | | OFED 4.7-1    | | OFED 4.7-1    |
    | | of_push_vlan /      | | ConnectX-5    | | ConnectX-5    |
-   | | of_set_vlan_pcp /   |                 |                 |
-   | | of_set_vlan_vid)    |                 |                 |
+   | | of_set_vlan_pcp /   | |               | |               |
+   | | of_set_vlan_vid)    | |               | |               |
    +-----------------------+-----------------+-----------------+
    | Hairpin               | |               | | DPDK 19.11    |
    |                       | |     N/A       | | OFED 4.7-3    |
