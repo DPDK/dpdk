@@ -3,6 +3,7 @@
 
 drivers = ['aesni_gcm',
 	   'aesni_mb',
+	   'armv8',
 	   'caam_jr',
 	   'ccp',
 	   'dpaa_sec',
