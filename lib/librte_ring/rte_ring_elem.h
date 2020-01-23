@@ -110,8 +110,8 @@ struct rte_ring *rte_ring_create_elem(const char *name, unsigned int esize,
 			unsigned int count, int socket_id, unsigned int flags);
 
 static __rte_always_inline void
-enqueue_elems_32(struct rte_ring *r, const uint32_t size, uint32_t idx,
-		const void *obj_table, uint32_t n)
+__rte_ring_enqueue_elems_32(struct rte_ring *r, const uint32_t size,
+		uint32_t idx, const void *obj_table, uint32_t n)
 {
 	unsigned int i;
 	uint32_t *ring = (uint32_t *)&r[1];
@@ -153,7 +153,7 @@ enqueue_elems_32(struct rte_ring *r, const uint32_t size, uint32_t idx,
 }
 
 static __rte_always_inline void
-enqueue_elems_64(struct rte_ring *r, uint32_t prod_head,
+__rte_ring_enqueue_elems_64(struct rte_ring *r, uint32_t prod_head,
 		const void *obj_table, uint32_t n)
 {
 	unsigned int i;
@@ -186,7 +186,7 @@ enqueue_elems_64(struct rte_ring *r, uint32_t prod_head,
 }
 
 static __rte_always_inline void
-enqueue_elems_128(struct rte_ring *r, uint32_t prod_head,
+__rte_ring_enqueue_elems_128(struct rte_ring *r, uint32_t prod_head,
 		const void *obj_table, uint32_t n)
 {
 	unsigned int i;
@@ -219,16 +219,16 @@ enqueue_elems_128(struct rte_ring *r, uint32_t prod_head,
  * single and multi producer enqueue functions.
  */
 static __rte_always_inline void
-enqueue_elems(struct rte_ring *r, uint32_t prod_head, const void *obj_table,
-		uint32_t esize, uint32_t num)
+__rte_ring_enqueue_elems(struct rte_ring *r, uint32_t prod_head,
+		const void *obj_table, uint32_t esize, uint32_t num)
 {
 	/* 8B and 16B copies implemented individually to retain
 	 * the current performance.
 	 */
 	if (esize == 8)
-		enqueue_elems_64(r, prod_head, obj_table, num);
+		__rte_ring_enqueue_elems_64(r, prod_head, obj_table, num);
 	else if (esize == 16)
-		enqueue_elems_128(r, prod_head, obj_table, num);
+		__rte_ring_enqueue_elems_128(r, prod_head, obj_table, num);
 	else {
 		uint32_t idx, scale, nr_idx, nr_num, nr_size;
 
@@ -238,13 +238,14 @@ enqueue_elems(struct rte_ring *r, uint32_t prod_head, const void *obj_table,
 		idx = prod_head & r->mask;
 		nr_idx = idx * scale;
 		nr_size = r->size * scale;
-		enqueue_elems_32(r, nr_size, nr_idx, obj_table, nr_num);
+		__rte_ring_enqueue_elems_32(r, nr_size, nr_idx,
+				obj_table, nr_num);
 	}
 }
 
 static __rte_always_inline void
-dequeue_elems_32(struct rte_ring *r, const uint32_t size, uint32_t idx,
-		void *obj_table, uint32_t n)
+__rte_ring_dequeue_elems_32(struct rte_ring *r, const uint32_t size,
+		uint32_t idx, void *obj_table, uint32_t n)
 {
 	unsigned int i;
 	uint32_t *ring = (uint32_t *)&r[1];
@@ -286,7 +287,7 @@ dequeue_elems_32(struct rte_ring *r, const uint32_t size, uint32_t idx,
 }
 
 static __rte_always_inline void
-dequeue_elems_64(struct rte_ring *r, uint32_t prod_head,
+__rte_ring_dequeue_elems_64(struct rte_ring *r, uint32_t prod_head,
 		void *obj_table, uint32_t n)
 {
 	unsigned int i;
@@ -319,7 +320,7 @@ dequeue_elems_64(struct rte_ring *r, uint32_t prod_head,
 }
 
 static __rte_always_inline void
-dequeue_elems_128(struct rte_ring *r, uint32_t prod_head,
+__rte_ring_dequeue_elems_128(struct rte_ring *r, uint32_t prod_head,
 		void *obj_table, uint32_t n)
 {
 	unsigned int i;
@@ -348,16 +349,16 @@ dequeue_elems_128(struct rte_ring *r, uint32_t prod_head,
  * single and multi producer enqueue functions.
  */
 static __rte_always_inline void
-dequeue_elems(struct rte_ring *r, uint32_t cons_head, void *obj_table,
-		uint32_t esize, uint32_t num)
+__rte_ring_dequeue_elems(struct rte_ring *r, uint32_t cons_head,
+		void *obj_table, uint32_t esize, uint32_t num)
 {
 	/* 8B and 16B copies implemented individually to retain
 	 * the current performance.
 	 */
 	if (esize == 8)
-		dequeue_elems_64(r, cons_head, obj_table, num);
+		__rte_ring_dequeue_elems_64(r, cons_head, obj_table, num);
 	else if (esize == 16)
-		dequeue_elems_128(r, cons_head, obj_table, num);
+		__rte_ring_dequeue_elems_128(r, cons_head, obj_table, num);
 	else {
 		uint32_t idx, scale, nr_idx, nr_num, nr_size;
 
@@ -367,7 +368,8 @@ dequeue_elems(struct rte_ring *r, uint32_t cons_head, void *obj_table,
 		idx = cons_head & r->mask;
 		nr_idx = idx * scale;
 		nr_size = r->size * scale;
-		dequeue_elems_32(r, nr_size, nr_idx, obj_table, nr_num);
+		__rte_ring_dequeue_elems_32(r, nr_size, nr_idx,
+				obj_table, nr_num);
 	}
 }
 
@@ -424,7 +426,7 @@ __rte_ring_do_enqueue_elem(struct rte_ring *r, const void *obj_table,
 	if (n == 0)
 		goto end;
 
-	enqueue_elems(r, prod_head, obj_table, esize, n);
+	__rte_ring_enqueue_elems(r, prod_head, obj_table, esize, n);
 
 	update_tail(&r->prod, prod_head, prod_next, is_sp, 1);
 end:
@@ -471,7 +473,7 @@ __rte_ring_do_dequeue_elem(struct rte_ring *r, void *obj_table,
 	if (n == 0)
 		goto end;
 
-	dequeue_elems(r, cons_head, obj_table, esize, n);
+	__rte_ring_dequeue_elems(r, cons_head, obj_table, esize, n);
 
 	update_tail(&r->cons, cons_head, cons_next, is_sc, 0);
 
