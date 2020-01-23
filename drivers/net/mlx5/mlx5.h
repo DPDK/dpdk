@@ -173,6 +173,8 @@ struct mlx5_devx_mkey_attr {
 struct mlx5_hca_qos_attr {
 	uint32_t sup:1;	/* Whether QOS is supported. */
 	uint32_t srtcm_sup:1; /* Whether srTCM mode is supported. */
+	uint32_t flow_meter_reg_share:1;
+	/* Whether reg_c share is supported. */
 	uint8_t log_max_flow_meter;
 	/* Power of the maximum supported meters. */
 	uint8_t flow_meter_reg_c_ids;
@@ -732,6 +734,7 @@ struct mlx5_priv {
 	unsigned int dr_shared:1; /* DV/DR data is shared. */
 	unsigned int counter_fallback:1; /* Use counter fallback management. */
 	unsigned int mtr_en:1; /* Whether support meter. */
+	unsigned int mtr_reg_share:1; /* Whether support meter REG_C share. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */

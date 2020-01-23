@@ -362,6 +362,8 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 				MLX5_GET(qos_cap, hcattr, log_max_flow_meter);
 		attr->qos.flow_meter_reg_c_ids =
 			MLX5_GET(qos_cap, hcattr, flow_meter_reg_id);
+		attr->qos.flow_meter_reg_share =
+			MLX5_GET(qos_cap, hcattr, flow_meter_reg_share);
 	}
 	if (!attr->eth_net_offloads)
 		return 0;

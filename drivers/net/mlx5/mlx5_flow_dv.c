@@ -8271,7 +8271,7 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 	dv_attr.match_criteria_enable =
 				1 << MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT;
 	flow_dv_match_meta_reg(mask.buf, value.buf, color_reg_c_idx,
-			       rte_col_2_mlx5_col(RTE_COLORS), UINT32_MAX);
+			       rte_col_2_mlx5_col(RTE_COLORS), UINT8_MAX);
 	dtb->color_matcher = mlx5_glue->dv_create_flow_matcher(sh->ctx,
 							       &dv_attr,
 							       dtb->tbl->obj);
@@ -8465,7 +8465,7 @@ flow_dv_create_policer_forward_rule(struct mlx5_flow_meter *fm,
 		int j = 0;
 
 		flow_dv_match_meta_reg(matcher.buf, value.buf, mtr_reg_c,
-				       rte_col_2_mlx5_col(i), UINT32_MAX);
+				       rte_col_2_mlx5_col(i), UINT8_MAX);
 		if (mtb->count_actns[i])
 			actions[j++] = mtb->count_actns[i];
 		if (fm->params.action[i] == MTR_POLICER_ACTION_DROP)

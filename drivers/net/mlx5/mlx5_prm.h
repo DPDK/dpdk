@@ -1200,7 +1200,9 @@ struct mlx5_ifc_qos_cap_bits {
 	u8 reserved_at_8[0x8];
 	u8 log_max_flow_meter[0x8];
 	u8 flow_meter_reg_id[0x8];
-	u8 reserved_at_25[0x20];
+	u8 reserved_at_25[0x8];
+	u8 flow_meter_reg_share[0x1];
+	u8 reserved_at_2e[0x17];
 	u8 packet_pacing_max_rate[0x20];
 	u8 packet_pacing_min_rate[0x20];
 	u8 reserved_at_80[0x10];
@@ -1821,6 +1823,9 @@ enum {
 #define MLX5_SRTCM_CBS_MAX (0xFF * (1ULL << 0x1F))
 #define MLX5_SRTCM_CIR_MAX (8 * (1ULL << 30) * 0xFF)
 #define MLX5_SRTCM_EBS_MAX 0
+
+/* The bits meter color use. */
+#define MLX5_MTR_COLOR_BITS 8
 
 /**
  * Convert a user mark to flow mark.

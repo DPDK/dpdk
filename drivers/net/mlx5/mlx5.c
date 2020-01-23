@@ -2552,6 +2552,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 				priv->mtr_color_reg = ffs(reg_c_mask) - 1 +
 						      REG_C_0;
 				priv->mtr_en = 1;
+				priv->mtr_reg_share =
+				      config.hca_attr.qos.flow_meter_reg_share;
 				DRV_LOG(DEBUG, "The REG_C meter uses is %d",
 					priv->mtr_color_reg);
 			}
@@ -2684,7 +2686,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = mlx5_alloc_shared_dr(priv);
 		if (err)
 			goto error;
-		priv->qrss_id_pool = mlx5_flow_id_pool_alloc(UINT32_MAX);
+		/*
+		 * RSS id is shared with meter flow id. Meter flow id can only
+		 * use the 24 MSB of the register.
+		 */
+		priv->qrss_id_pool = mlx5_flow_id_pool_alloc(UINT32_MAX >>
+				     MLX5_MTR_COLOR_BITS);
 		if (!priv->qrss_id_pool) {
 			DRV_LOG(ERR, "can't create flow id pool");
 			err = ENOMEM;

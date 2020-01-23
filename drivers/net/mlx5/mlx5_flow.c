@@ -350,6 +350,7 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *config = &priv->config;
 	enum modify_reg start_reg;
+	bool skip_mtr_reg = false;
 
 	switch (feature) {
 	case MLX5_HAIRPIN_RX:
@@ -388,29 +389,36 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 			return REG_C_0;
 		}
 		break;
-	case MLX5_COPY_MARK:
 	case MLX5_MTR_SFX:
+		/*
+		 * If meter color and flow match share one register, flow match
+		 * should use the meter color register for match.
+		 */
+		if (priv->mtr_reg_share)
+			return priv->mtr_color_reg;
+		else
+			return priv->mtr_color_reg != REG_C_2 ? REG_C_2 :
+			       REG_C_3;
+	case MLX5_MTR_COLOR:
+		RTE_ASSERT(priv->mtr_color_reg != REG_NONE);
+		return priv->mtr_color_reg;
+	case MLX5_COPY_MARK:
 		/*
 		 * Metadata COPY_MARK register using is in meter suffix sub
 		 * flow while with meter. It's safe to share the same register.
 		 */
 		return priv->mtr_color_reg != REG_C_2 ? REG_C_2 : REG_C_3;
-	case MLX5_MTR_COLOR:
-		RTE_ASSERT(priv->mtr_color_reg != REG_NONE);
-		return priv->mtr_color_reg;
 	case MLX5_APP_TAG:
 		/*
-		 * If meter is enable, it will engage two registers for color
+		 * If meter is enable, it will engage the register for color
 		 * match and flow match. If meter color match is not using the
 		 * REG_C_2, need to skip the REG_C_x be used by meter color
 		 * match.
 		 * If meter is disable, free to use all available registers.
 		 */
-		if (priv->mtr_color_reg != REG_NONE)
-			start_reg = priv->mtr_color_reg != REG_C_2 ? REG_C_3 :
-				    REG_C_4;
-		else
-			start_reg = REG_C_2;
+		start_reg = priv->mtr_color_reg != REG_C_2 ? REG_C_2 :
+			    (priv->mtr_reg_share ? REG_C_3 : REG_C_4);
+		skip_mtr_reg = !!(priv->mtr_en && start_reg == REG_C_2);
 		if (id > (REG_C_7 - start_reg))
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
@@ -425,12 +433,12 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		 * If the available index REG_C_y >= REG_C_x, skip the
 		 * color register.
 		 */
-		if (start_reg == REG_C_3 && config->flow_mreg_c
-		    [id + REG_C_3 - REG_C_0] >= priv->mtr_color_reg) {
-			if (config->flow_mreg_c[id + 1 + REG_C_3 - REG_C_0] !=
-			    REG_NONE)
+		if (skip_mtr_reg && config->flow_mreg_c
+		    [id + start_reg - REG_C_0] >= priv->mtr_color_reg) {
+			if (config->flow_mreg_c
+			    [id + 1 + start_reg - REG_C_0] != REG_NONE)
 				return config->flow_mreg_c
-						[id + 1 + REG_C_3 - REG_C_0];
+					       [id + 1 + start_reg - REG_C_0];
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  NULL, "unsupported tag id");
@@ -3533,7 +3541,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	 * Get the id from the qrss_pool to make qrss share the id with meter.
 	 */
 	tag_id = flow_qrss_get_id(dev);
-	set_tag->data = rte_cpu_to_be_32(tag_id);
+	set_tag->data = tag_id << MLX5_MTR_COLOR_BITS;
 	tag_action->conf = set_tag;
 	return tag_id;
 }
@@ -3971,13 +3979,14 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		actions_n = flow_check_meter_action(actions, &mtr);
 	if (mtr) {
 		struct mlx5_rte_flow_item_tag *tag_spec;
+		struct mlx5_rte_flow_item_tag *tag_mask;
 		/* The five prefix actions: meter, decap, encap, tag, end. */
 		act_size = sizeof(struct rte_flow_action) * (actions_n + 5) +
 			   sizeof(struct rte_flow_action_set_tag);
 		/* tag, end. */
 #define METER_SUFFIX_ITEM 3
 		item_size = sizeof(struct rte_flow_item) * METER_SUFFIX_ITEM +
-			    sizeof(struct mlx5_rte_flow_item_tag);
+			    sizeof(struct mlx5_rte_flow_item_tag) * 2;
 		sfx_actions = rte_zmalloc(__func__, (act_size + item_size), 0);
 		if (!sfx_actions)
 			return rte_flow_error_set(error, ENOMEM,
@@ -4004,13 +4013,15 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			     act_size);
 		tag_spec = (struct mlx5_rte_flow_item_tag *)(sfx_items +
 			    METER_SUFFIX_ITEM);
-		tag_spec->data = rte_cpu_to_be_32(dev_flow->mtr_flow_id);
+		tag_spec->data = dev_flow->mtr_flow_id << MLX5_MTR_COLOR_BITS;
 		tag_spec->id = mlx5_flow_get_reg_id(dev, MLX5_MTR_SFX, 0,
 						    error);
+		tag_mask = tag_spec + 1;
+		tag_mask->data = 0xffffff00;
 		sfx_items->type = MLX5_RTE_FLOW_ITEM_TYPE_TAG;
 		sfx_items->spec = tag_spec;
 		sfx_items->last = NULL;
-		sfx_items->mask = NULL;
+		sfx_items->mask = tag_mask;
 		sfx_items++;
 		sfx_port_id_item = find_port_id_item(items);
 		if (sfx_port_id_item) {
