@@ -86,12 +86,12 @@ crypto_op_ca_encrypt = {
 
 static const crypto_func_tbl_t
 crypto_op_ca_decrypt = {
-	NULL
+	{ {NULL} }
 };
 
 static const crypto_func_tbl_t
 crypto_op_ac_encrypt = {
-	NULL
+	{ {NULL} }
 };
 
 static const crypto_func_tbl_t
@@ -377,7 +377,16 @@ armv8_crypto_set_session_chained_parameters(struct armv8_crypto_session *sess,
 	/* Select cipher key */
 	sess->cipher.key.length = cipher_xform->cipher.key.length;
 	/* Set cipher direction */
-	cop = sess->cipher.direction;
+	switch (sess->cipher.direction) {
+	case RTE_CRYPTO_CIPHER_OP_ENCRYPT:
+		cop = ARMV8_CRYPTO_CIPHER_OP_ENCRYPT;
+		break;
+	case RTE_CRYPTO_CIPHER_OP_DECRYPT:
+		cop = ARMV8_CRYPTO_CIPHER_OP_DECRYPT;
+		break;
+	default:
+		return -ENOTSUP;
+	}
 	/* Set cipher algorithm */
 	calg = cipher_xform->cipher.algo;
 
