@@ -5,6 +5,8 @@
 #ifndef _ARMV8_PMD_PRIVATE_H_
 #define _ARMV8_PMD_PRIVATE_H_
 
+#include "AArch64cryptolib.h"
+
 #define CRYPTODEV_NAME_ARMV8_PMD	crypto_armv8
 /**< ARMv8 Crypto PMD device name */
 
@@ -98,7 +100,7 @@ enum armv8_crypto_auth_mode {
 
 typedef int (*crypto_func_t)(uint8_t *, uint8_t *, uint64_t,
 				uint8_t *, uint8_t *, uint64_t,
-				crypto_arg_t *);
+				armv8_cipher_digest_t *);
 
 typedef void (*crypto_key_sched_t)(uint8_t *, const uint8_t *);
 

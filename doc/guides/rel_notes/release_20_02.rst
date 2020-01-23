@@ -155,6 +155,12 @@ New Features
   * Transistioned underlying library from libSSO SNOW3G to intel-ipsec-mb
     library (minimum version required 0.53).
 
+* **Changed armv8 crypto PMD external dependency.**
+
+  armv8 crypto PMD now depends on Arm crypto library, and Marvell's
+  armv8 crypto library is not used anymore. Library name is changed
+  from armv8_crypto to AArch64crypto.
+
 * **Added Marvell OCTEON TX2 End Point rawdev PMD.**
 
   Added a new OCTEON TX2 rawdev PMD for End Point mode of operation.

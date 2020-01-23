@@ -8,8 +8,6 @@
 #include <rte_malloc.h>
 #include <rte_cryptodev_pmd.h>
 
-#include "armv8_crypto_defs.h"
-
 #include "armv8_pmd_private.h"
 
 static const struct rte_cryptodev_capabilities

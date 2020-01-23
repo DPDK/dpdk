@@ -28,12 +28,11 @@ Installation
 
 In order to enable this virtual crypto PMD, user must:
 
-* Download ARMv8 crypto library source code from
-  `here <https://github.com/caviumnetworks/armv8_crypto>`_
+* Download AArch64 crypto library source code from
+  `here <https://github.com/ARM-software/AArch64cryptolib>`_
 
 * Export the environmental variable ARMV8_CRYPTO_LIB_PATH with
-  the path where the ``armv8_crypto`` library was downloaded
-  or cloned.
+  the path to ``AArch64cryptolib`` library.
 
 * Build the library by invoking:
 

@@ -24,9 +24,8 @@ EXPORT_MAP := rte_pmd_armv8_version.map
 
 # external library dependencies
 CFLAGS += -I$(ARMV8_CRYPTO_LIB_PATH)
-CFLAGS += -I$(ARMV8_CRYPTO_LIB_PATH)/asm/include
 CFLAGS += -DALLOW_EXPERIMENTAL_API
-LDLIBS += -L$(ARMV8_CRYPTO_LIB_PATH) -larmv8_crypto
+LDLIBS += -L$(ARMV8_CRYPTO_LIB_PATH) -lAArch64crypto
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
 LDLIBS += -lrte_bus_vdev
