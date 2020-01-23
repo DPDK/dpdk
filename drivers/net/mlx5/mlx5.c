@@ -196,11 +196,14 @@ static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 /**
  * Allocate ID pool structure.
  *
+ * @param[in] max_id
+ *   The maximum id can be allocated from the pool.
+ *
  * @return
  *   Pointer to pool object, NULL value otherwise.
  */
 struct mlx5_flow_id_pool *
-mlx5_flow_id_pool_alloc(void)
+mlx5_flow_id_pool_alloc(uint32_t max_id)
 {
 	struct mlx5_flow_id_pool *pool;
 	void *mem;
@@ -223,6 +226,7 @@ mlx5_flow_id_pool_alloc(void)
 	pool->curr = pool->free_arr;
 	pool->last = pool->free_arr + MLX5_FLOW_MIN_ID_POOL_SIZE;
 	pool->base_index = 0;
+	pool->max_id = max_id;
 	return pool;
 error:
 	rte_free(pool);
@@ -257,7 +261,7 @@ uint32_t
 mlx5_flow_id_get(struct mlx5_flow_id_pool *pool, uint32_t *id)
 {
 	if (pool->curr == pool->free_arr) {
-		if (pool->base_index == UINT32_MAX) {
+		if (pool->base_index == pool->max_id) {
 			rte_errno  = ENOMEM;
 			DRV_LOG(ERR, "no free id");
 			return -rte_errno;
@@ -590,7 +594,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 			goto error;
 		}
 	}
-	sh->flow_id_pool = mlx5_flow_id_pool_alloc();
+	sh->flow_id_pool = mlx5_flow_id_pool_alloc(UINT32_MAX);
 	if (!sh->flow_id_pool) {
 		DRV_LOG(ERR, "can't create flow id pool");
 		err = ENOMEM;
@@ -2680,7 +2684,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = mlx5_alloc_shared_dr(priv);
 		if (err)
 			goto error;
-		priv->qrss_id_pool = mlx5_flow_id_pool_alloc();
+		priv->qrss_id_pool = mlx5_flow_id_pool_alloc(UINT32_MAX);
 		if (!priv->qrss_id_pool) {
 			DRV_LOG(ERR, "can't create flow id pool");
 			err = ENOMEM;

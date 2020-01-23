@@ -630,6 +630,7 @@ struct mlx5_flow_id_pool {
 	/**< The next index that can be used without any free elements. */
 	uint32_t *curr; /**< Pointer to the index to pop. */
 	uint32_t *last; /**< Pointer to the last element in the empty arrray. */
+	uint32_t max_id; /**< Maximum id can be allocated from the pool. */
 };
 
 /*

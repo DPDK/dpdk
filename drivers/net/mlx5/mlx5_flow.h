@@ -747,7 +747,7 @@ struct mlx5_flow_driver_ops {
 
 /* mlx5_flow.c */
 
-struct mlx5_flow_id_pool *mlx5_flow_id_pool_alloc(void);
+struct mlx5_flow_id_pool *mlx5_flow_id_pool_alloc(uint32_t max_id);
 void mlx5_flow_id_pool_release(struct mlx5_flow_id_pool *pool);
 uint32_t mlx5_flow_id_get(struct mlx5_flow_id_pool *pool, uint32_t *id);
 uint32_t mlx5_flow_id_release(struct mlx5_flow_id_pool *pool,
