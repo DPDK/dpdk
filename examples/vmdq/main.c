@@ -503,7 +503,7 @@ lcore_main(__attribute__((__unused__)) void *dummy)
 
 	for (;;) {
 		struct rte_mbuf *buf[MAX_PKT_BURST];
-		const uint16_t buf_size = sizeof(buf) / sizeof(buf[0]);
+		const uint16_t buf_size = RTE_DIM(buf);
 
 		for (p = 0; p < num_ports; p++) {
 			const uint8_t sport = ports[p];

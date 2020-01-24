@@ -238,8 +238,7 @@ static struct lcore_params lcore_params_array_default[] = {
 };
 
 struct lcore_params *lcore_params = lcore_params_array_default;
-uint16_t nb_lcore_params = sizeof(lcore_params_array_default) /
-				sizeof(lcore_params_array_default[0]);
+uint16_t nb_lcore_params = RTE_DIM(lcore_params_array_default);
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
@@ -326,12 +325,6 @@ static lookup_struct_t *ipv6_l3fwd_lookup_struct[NB_SOCKETS];
 
 #define L3FWD_HASH_ENTRIES	1024
 
-#define IPV4_L3FWD_NUM_ROUTES \
-	(sizeof(ipv4_l3fwd_route_array) / sizeof(ipv4_l3fwd_route_array[0]))
-
-#define IPV6_L3FWD_NUM_ROUTES \
-	(sizeof(ipv6_l3fwd_route_array) / sizeof(ipv6_l3fwd_route_array[0]))
-
 static uint16_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
 static uint16_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
 #endif
@@ -353,9 +346,6 @@ static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
 	{RTE_IPV4(7,1,1,0), 24, 6},
 	{RTE_IPV4(8,1,1,0), 24, 7},
 };
-
-#define IPV4_L3FWD_NUM_ROUTES \
-	(sizeof(ipv4_l3fwd_route_array) / sizeof(ipv4_l3fwd_route_array[0]))
 
 #define IPV4_L3FWD_LPM_MAX_RULES     1024
 
@@ -1841,7 +1831,7 @@ setup_hash(int socketid)
 
 
 	/* populate the ipv4 hash */
-	for (i = 0; i < IPV4_L3FWD_NUM_ROUTES; i++) {
+	for (i = 0; i < RTE_DIM(ipv4_l3fwd_route_array); i++) {
 		ret = rte_hash_add_key (ipv4_l3fwd_lookup_struct[socketid],
 				(void *) &ipv4_l3fwd_route_array[i].key);
 		if (ret < 0) {
@@ -1854,7 +1844,7 @@ setup_hash(int socketid)
 	}
 
 	/* populate the ipv6 hash */
-	for (i = 0; i < IPV6_L3FWD_NUM_ROUTES; i++) {
+	for (i = 0; i < RTE_DIM(ipv6_l3fwd_route_array); i++) {
 		ret = rte_hash_add_key (ipv6_l3fwd_lookup_struct[socketid],
 				(void *) &ipv6_l3fwd_route_array[i].key);
 		if (ret < 0) {
@@ -1891,7 +1881,7 @@ setup_lpm(int socketid)
 				" on socket %d\n", socketid);
 
 	/* populate the LPM table */
-	for (i = 0; i < IPV4_L3FWD_NUM_ROUTES; i++) {
+	for (i = 0; i < RTE_DIM(ipv4_l3fwd_route_array); i++) {
 		ret = rte_lpm_add(ipv4_l3fwd_lookup_struct[socketid],
 			ipv4_l3fwd_route_array[i].ip,
 			ipv4_l3fwd_route_array[i].depth,

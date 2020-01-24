@@ -528,7 +528,7 @@ my_ether_aton(const char *a)
 		if (errno != 0 || end == a || (end[0] != ':' && end[0] != 0))
 			return NULL;
 		a = end + 1;
-	} while (++i != sizeof(o) / sizeof(o[0]) && end[0] != 0);
+	} while (++i != RTE_DIM(o) && end[0] != 0);
 
 	/* Junk at the end of line */
 	if (end[0] != 0)

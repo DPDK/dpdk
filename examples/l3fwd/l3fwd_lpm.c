@@ -66,11 +66,6 @@ static struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
 	{{32, 1, 2, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0}, 48, 7},
 };
 
-#define IPV4_L3FWD_LPM_NUM_ROUTES \
-	(sizeof(ipv4_l3fwd_lpm_route_array) / sizeof(ipv4_l3fwd_lpm_route_array[0]))
-#define IPV6_L3FWD_LPM_NUM_ROUTES \
-	(sizeof(ipv6_l3fwd_lpm_route_array) / sizeof(ipv6_l3fwd_lpm_route_array[0]))
-
 #define IPV4_L3FWD_LPM_MAX_RULES         1024
 #define IPV4_L3FWD_LPM_NUMBER_TBL8S (1 << 8)
 #define IPV6_L3FWD_LPM_MAX_RULES         1024
@@ -480,7 +475,7 @@ setup_lpm(const int socketid)
 			socketid);
 
 	/* populate the LPM table */
-	for (i = 0; i < IPV4_L3FWD_LPM_NUM_ROUTES; i++) {
+	for (i = 0; i < RTE_DIM(ipv4_l3fwd_lpm_route_array); i++) {
 		struct in_addr in;
 
 		/* skip unused ports */
@@ -520,7 +515,7 @@ setup_lpm(const int socketid)
 			socketid);
 
 	/* populate the LPM table */
-	for (i = 0; i < IPV6_L3FWD_LPM_NUM_ROUTES; i++) {
+	for (i = 0; i < RTE_DIM(ipv6_l3fwd_lpm_route_array); i++) {
 
 		/* skip unused ports */
 		if ((1 << ipv6_l3fwd_lpm_route_array[i].if_out &

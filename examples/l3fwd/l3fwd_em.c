@@ -204,11 +204,9 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len,
 	return init_val;
 }
 
-#define IPV4_L3FWD_EM_NUM_ROUTES \
-	(sizeof(ipv4_l3fwd_em_route_array) / sizeof(ipv4_l3fwd_em_route_array[0]))
+#define IPV4_L3FWD_EM_NUM_ROUTES RTE_DIM(ipv4_l3fwd_em_route_array)
 
-#define IPV6_L3FWD_EM_NUM_ROUTES \
-	(sizeof(ipv6_l3fwd_em_route_array) / sizeof(ipv6_l3fwd_em_route_array[0]))
+#define IPV6_L3FWD_EM_NUM_ROUTES RTE_DIM(ipv6_l3fwd_em_route_array)
 
 static uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
 static uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
