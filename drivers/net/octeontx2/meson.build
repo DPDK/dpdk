@@ -28,9 +28,7 @@ sources = files('otx2_rx.c',
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']
 deps += ['common_octeontx2', 'mempool_octeontx2']
 
-cflags += ['-flax-vector-conversions']
-
-extra_flags = []
+extra_flags = ['-flax-vector-conversions']
 # This integrated controller runs only on a arm64 machine, remove 32bit warnings
 if not dpdk_conf.get('RTE_ARCH_64')
 	extra_flags += ['-Wno-int-to-pointer-cast', '-Wno-pointer-to-int-cast']
