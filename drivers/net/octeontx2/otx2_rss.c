@@ -210,6 +210,18 @@ otx2_rss_ethdev_to_nix(struct otx2_eth_dev *dev, uint64_t ethdev_rss,
 
 	dev->rss_info.nix_rss = ethdev_rss;
 
+	if (ethdev_rss & ETH_RSS_L3_SRC_ONLY)
+		flowkey_cfg |= FLOW_KEY_TYPE_L3_SRC;
+
+	if (ethdev_rss & ETH_RSS_L3_DST_ONLY)
+		flowkey_cfg |= FLOW_KEY_TYPE_L3_DST;
+
+	if (ethdev_rss & ETH_RSS_L4_SRC_ONLY)
+		flowkey_cfg |= FLOW_KEY_TYPE_L4_SRC;
+
+	if (ethdev_rss & ETH_RSS_L4_DST_ONLY)
+		flowkey_cfg |= FLOW_KEY_TYPE_L4_DST;
+
 	if (ethdev_rss & RSS_IPV4_ENABLE)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_IPV4_INDEX];
 

@@ -918,7 +918,11 @@ struct nix_rss_flowkey_cfg {
 #define FLOW_KEY_TYPE_INNR_UDP      BIT(15)
 #define FLOW_KEY_TYPE_INNR_SCTP     BIT(16)
 #define FLOW_KEY_TYPE_INNR_ETH_DMAC BIT(17)
-	uint8_t	group;       /* RSS context or group */
+#define FLOW_KEY_TYPE_L4_DST BIT(28)
+#define FLOW_KEY_TYPE_L4_SRC BIT(29)
+#define FLOW_KEY_TYPE_L3_DST BIT(30)
+#define FLOW_KEY_TYPE_L3_SRC BIT(31)
+	uint8_t	__otx2_io group;       /* RSS context or group */
 };
 
 struct nix_rss_flowkey_cfg_rsp {
