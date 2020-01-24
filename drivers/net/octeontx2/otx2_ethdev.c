@@ -93,7 +93,7 @@ nix_lf_alloc(struct otx2_eth_dev *dev, uint32_t nb_rxq, uint32_t nb_txq)
 }
 
 static int
-nix_lf_switch_header_type_enable(struct otx2_eth_dev *dev)
+nix_lf_switch_header_type_enable(struct otx2_eth_dev *dev, bool enable)
 {
 	struct otx2_mbox *mbox = dev->mbox;
 	struct npc_set_pkind *req;
@@ -106,12 +106,16 @@ nix_lf_switch_header_type_enable(struct otx2_eth_dev *dev)
 	/* Notify AF about higig2 config */
 	req = otx2_mbox_alloc_msg_npc_set_pkind(mbox);
 	req->mode = dev->npc_flow.switch_header_type;
+	if (enable == 0)
+		req->mode = OTX2_PRIV_FLAGS_DEFAULT;
 	req->dir = PKIND_RX;
 	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
 		return rc;
 	req = otx2_mbox_alloc_msg_npc_set_pkind(mbox);
 	req->mode = dev->npc_flow.switch_header_type;
+	if (enable == 0)
+		req->mode = OTX2_PRIV_FLAGS_DEFAULT;
 	req->dir = PKIND_TX;
 	return otx2_mbox_process_msg(mbox, (void *)&rsp);
 }
@@ -1648,7 +1652,7 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto free_nix_lf;
 	}
 
-	rc = nix_lf_switch_header_type_enable(dev);
+	rc = nix_lf_switch_header_type_enable(dev, true);
 	if (rc) {
 		otx2_err("Failed to enable switch type nix_lf rc=%d", rc);
 		goto free_nix_lf;
@@ -1882,6 +1886,7 @@ otx2_nix_dev_stop(struct rte_eth_dev *eth_dev)
 	struct otx2_eth_rxq *rxq;
 	int count, i, j, rc;
 
+	nix_lf_switch_header_type_enable(dev, false);
 	nix_cgx_stop_link_event(dev);
 	npc_rx_disable(dev);
 
