@@ -18,8 +18,7 @@
 #include "process.h"
 #include "test_pdump.h"
 
-#define launch_p(ARGV) process_dup(ARGV, \
-		sizeof(ARGV)/(sizeof(ARGV[0])), __func__)
+#define launch_p(ARGV) process_dup(ARGV, RTE_DIM(ARGV), __func__)
 
 struct rte_ring *ring_server;
 uint16_t portid;

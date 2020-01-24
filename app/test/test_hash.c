@@ -235,15 +235,9 @@ static void run_hash_func_tests(void)
 {
 	unsigned i, j, k;
 
-	for (i = 0;
-	     i < sizeof(hashtest_funcs) / sizeof(rte_hash_function);
-	     i++) {
-		for (j = 0;
-		     j < sizeof(hashtest_initvals) / sizeof(uint32_t);
-		     j++) {
-			for (k = 0;
-			     k < sizeof(hashtest_key_lens) / sizeof(uint32_t);
-			     k++) {
+	for (i = 0; i < RTE_DIM(hashtest_funcs); i++) {
+		for (j = 0; j < RTE_DIM(hashtest_initvals); j++) {
+			for (k = 0; k < RTE_DIM(hashtest_key_lens); k++) {
 				run_hash_func_test(hashtest_funcs[i],
 						hashtest_initvals[j],
 						hashtest_key_lens[k]);

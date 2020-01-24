@@ -100,7 +100,7 @@ test_bulk_enqueue_dequeue(void)
 	unsigned sz, i = 0;
 	struct rte_mbuf *burst[MAX_BURST] = {0};
 
-	for (sz = 0; sz < sizeof(bulk_sizes)/sizeof(bulk_sizes[0]); sz++) {
+	for (sz = 0; sz < RTE_DIM(bulk_sizes); sz++) {
 		const uint64_t sc_start = rte_rdtsc();
 		for (i = 0; i < iterations; i++) {
 			rte_ring_sp_enqueue_bulk(r, (void *)burst,

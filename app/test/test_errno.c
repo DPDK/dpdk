@@ -36,7 +36,7 @@ test_errno(void)
 	if (rte_errno != 0)
 		return -1;
 	/* check for standard errors we return the same as libc */
-	for (i = 0; i < sizeof(std_errs)/sizeof(std_errs[0]); i++){
+	for (i = 0; i < RTE_DIM(std_errs); i++) {
 		rte_retval = rte_strerror(std_errs[i]);
 		libc_retval = strerror(std_errs[i]);
 		printf("rte_strerror: '%s', strerror: '%s'\n",
@@ -47,7 +47,7 @@ test_errno(void)
 	/* for rte-specific errors ensure we return a different string
 	 * and that the string for libc is for an unknown error
 	 */
-	for (i = 0; i < sizeof(rte_errs)/sizeof(rte_errs[0]); i++){
+	for (i = 0; i < RTE_DIM(rte_errs); i++) {
 		rte_retval = rte_strerror(rte_errs[i]);
 		libc_retval = strerror(rte_errs[i]);
 		printf("rte_strerror: '%s', strerror: '%s'\n",

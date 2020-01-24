@@ -74,7 +74,7 @@ do_recursive_call(void)
 
 	if (recursive_call == NULL)
 		return -1;
-	for (i = 0; i < sizeof(actions)/sizeof(actions[0]); i++) {
+	for (i = 0; i < RTE_DIM(actions); i++) {
 		if (strcmp(actions[i].env_var, recursive_call) == 0)
 			return (actions[i].action_fn)();
 	}

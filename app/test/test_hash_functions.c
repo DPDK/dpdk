@@ -152,10 +152,10 @@ verify_precalculated_hash_func_tests(void)
 	for (i = 0; i < 64; i++)
 		key[i] = (uint8_t) i;
 
-	for (i = 0; i < sizeof(hashtest_key_lens) / sizeof(uint32_t); i++) {
-		for (j = 0; j < sizeof(hashtest_initvals) / sizeof(uint32_t); j++) {
+	for (i = 0; i < RTE_DIM(hashtest_key_lens); i++) {
+		for (j = 0; j < RTE_DIM(hashtest_initvals); j++) {
 			hash = rte_jhash(key, hashtest_key_lens[i],
-					hashtest_initvals[j]);
+					 hashtest_initvals[j]);
 			if (hash != hash_values_jhash[j][i]) {
 				printf("jhash for %u bytes with initial value 0x%x."
 				       "Expected 0x%x, but got 0x%x\n",
@@ -192,8 +192,8 @@ verify_jhash_32bits(void)
 	for (i = 0; i < 64; i++)
 		key[i] = rand() & 0xff;
 
-	for (i = 0; i < sizeof(hashtest_key_lens) / sizeof(uint32_t); i++) {
-		for (j = 0; j < sizeof(hashtest_initvals) / sizeof(uint32_t); j++) {
+	for (i = 0; i < RTE_DIM(hashtest_key_lens); i++) {
+		for (j = 0; j < RTE_DIM(hashtest_initvals); j++) {
 			/* Key size must be multiple of 4 (32 bits) */
 			if ((hashtest_key_lens[i] & 0x3) == 0) {
 				hash = rte_jhash(key, hashtest_key_lens[i],

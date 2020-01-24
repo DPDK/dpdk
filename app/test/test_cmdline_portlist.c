@@ -6,6 +6,8 @@
 #include <string.h>
 #include <inttypes.h>
 
+#include <rte_common.h>
+
 #include <cmdline_parse.h>
 #include <cmdline_parse_portlist.h>
 
@@ -88,16 +90,6 @@ const char * portlist_invalid_strs[] = {
 		"0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,2",
 };
 
-#define PORTLIST_VALID_STRS_SIZE \
-	(sizeof(portlist_valid_strs) / sizeof(portlist_valid_strs[0]))
-#define PORTLIST_GARBAGE_STRS_SIZE \
-	(sizeof(portlist_garbage_strs) / sizeof(portlist_garbage_strs[0]))
-#define PORTLIST_INVALID_STRS_SIZE \
-	(sizeof(portlist_invalid_strs) / sizeof(portlist_invalid_strs[0]))
-
-
-
-
 /* test invalid parameters */
 int
 test_parse_portlist_invalid_param(void)
@@ -155,7 +147,7 @@ test_parse_portlist_invalid_data(void)
 	cmdline_portlist_t result;
 
 	/* test invalid strings */
-	for (i = 0; i < PORTLIST_INVALID_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(portlist_invalid_strs); i++) {
 
 		memset(&result, 0, sizeof(cmdline_portlist_t));
 
@@ -180,7 +172,7 @@ test_parse_portlist_valid(void)
 	cmdline_portlist_t result;
 
 	/* test full strings */
-	for (i = 0; i < PORTLIST_VALID_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(portlist_valid_strs); i++) {
 
 		memset(&result, 0, sizeof(cmdline_portlist_t));
 
@@ -199,7 +191,7 @@ test_parse_portlist_valid(void)
 	}
 
 	/* test garbage strings */
-	for (i = 0; i < PORTLIST_GARBAGE_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(portlist_garbage_strs); i++) {
 
 		memset(&result, 0, sizeof(cmdline_portlist_t));
 

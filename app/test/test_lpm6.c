@@ -85,7 +85,6 @@ rte_lpm6_test tests6[] = {
 	test28,
 };
 
-#define NUM_LPM6_TESTS                (sizeof(tests6)/sizeof(tests6[0]))
 #define MAX_DEPTH                                                    128
 #define MAX_RULES                                                1000000
 #define NUMBER_TBL8S                                           (1 << 16)
@@ -1780,7 +1779,7 @@ test_lpm6(void)
 	unsigned i;
 	int status = -1, global_status = 0;
 
-	for (i = 0; i < NUM_LPM6_TESTS; i++) {
+	for (i = 0; i < RTE_DIM(tests6); i++) {
 		printf("# test %02d\n", i);
 		status = tests6[i]();
 

@@ -23,8 +23,7 @@
 #define TEST_INFO_MZ_NAME	"test_timer_info_mz"
 #define MSECPERSEC		1E3
 
-#define launch_proc(ARGV) \
-	process_dup(ARGV, sizeof(ARGV)/(sizeof(ARGV[0])), __func__)
+#define launch_proc(ARGV) process_dup(ARGV, RTE_DIM(ARGV), __func__)
 
 struct test_info {
 	unsigned int mstr_lcore;

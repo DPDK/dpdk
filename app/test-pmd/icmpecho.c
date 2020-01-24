@@ -188,7 +188,7 @@ ip_proto_name(uint16_t ip_proto)
 		"PIM",        /**< Protocol Independent Mcast */
 	};
 
-	if (ip_proto < sizeof(ip_proto_names) / sizeof(ip_proto_names[0]))
+	if (ip_proto < RTE_DIM(ip_proto_names))
 		return ip_proto_names[ip_proto];
 	switch (ip_proto) {
 #ifdef IPPROTO_PGM

@@ -135,10 +135,8 @@ test_power(void)
 			PM_ENV_KVM_VM,
 			PM_ENV_PSTATE_CPUFREQ};
 
-	const int envs_size = sizeof(envs)/sizeof(enum power_management_env);
-
-	int i;
-	for (i = 0; i < envs_size; ++i) {
+	unsigned int i;
+	for (i = 0; i < RTE_DIM(envs); ++i) {
 
 		/* Test setting a valid environment */
 		ret = rte_power_set_env(envs[i]);

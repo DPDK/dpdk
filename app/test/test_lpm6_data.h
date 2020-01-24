@@ -1029,8 +1029,7 @@ static struct rules_tbl_entry large_route_table[] = {
 	{{234, 149, 220, 106, 0, 144, 214, 128, 35, 102, 0, 0, 0, 0, 0, 0}, 79, 106},
 };
 
-#define  NUM_ROUTE_ENTRIES \
-	(sizeof(large_route_table) / sizeof(large_route_table[0]))
+#define  NUM_ROUTE_ENTRIES RTE_DIM(large_route_table)
 
 #define  NUM_IPS_ENTRIES (NUM_ROUTE_ENTRIES * 100)
 

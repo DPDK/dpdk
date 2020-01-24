@@ -480,7 +480,7 @@ test_func_reentrancy(void)
 	else if (rte_lcore_count() > MAX_LCORES)
 		printf("Too many lcores, some cores will be disabled\n");
 
-	for (case_id = 0; case_id < sizeof(test_cases)/sizeof(struct test_case); case_id ++) {
+	for (case_id = 0; case_id < RTE_DIM(test_cases); case_id++) {
 		pt_case = &test_cases[case_id];
 		if (pt_case->func == NULL)
 			continue;

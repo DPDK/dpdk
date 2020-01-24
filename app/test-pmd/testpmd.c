@@ -2796,8 +2796,6 @@ struct pmd_test_command {
 	cmd_func_t cmd_func;
 };
 
-#define PMD_TEST_CMD_NB (sizeof(pmd_test_menu) / sizeof(pmd_test_menu[0]))
-
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
 check_all_ports_link_status(uint32_t port_mask)

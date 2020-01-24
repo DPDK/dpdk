@@ -81,7 +81,7 @@ test_exit(void)
 {
 	int test_vals[] = { 0, 1, 2, 255, -1 };
 	unsigned i;
-	for (i = 0; i < sizeof(test_vals) / sizeof(test_vals[0]); i++){
+	for (i = 0; i < RTE_DIM(test_vals); i++) {
 		if (test_exit_val(test_vals[i]) < 0)
 			return -1;
 	}

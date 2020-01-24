@@ -293,7 +293,7 @@ run_on_core_pair(struct lcore_pair *cores, struct rte_ring *r, const int esize)
 		f2 = dequeue_bulk_16B;
 	}
 
-	for (i = 0; i < sizeof(bulk_sizes)/sizeof(bulk_sizes[0]); i++) {
+	for (i = 0; i < RTE_DIM(bulk_sizes); i++) {
 		lcore_count = 0;
 		param1.size = param2.size = bulk_sizes[i];
 		param1.r = param2.r = r;

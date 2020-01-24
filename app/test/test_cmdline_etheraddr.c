@@ -72,15 +72,6 @@ const char * ether_addr_invalid_strs[] = {
 		" ",
 };
 
-#define ETHERADDR_VALID_STRS_SIZE \
-	(sizeof(ether_addr_valid_strs) / sizeof(ether_addr_valid_strs[0]))
-#define ETHERADDR_GARBAGE_STRS_SIZE \
-	(sizeof(ether_addr_garbage_strs) / sizeof(ether_addr_garbage_strs[0]))
-#define ETHERADDR_INVALID_STRS_SIZE \
-	(sizeof(ether_addr_invalid_strs) / sizeof(ether_addr_invalid_strs[0]))
-
-
-
 static int
 is_addr_different(const struct rte_ether_addr addr, uint64_t num)
 {
@@ -151,7 +142,7 @@ test_parse_etheraddr_invalid_data(void)
 	struct rte_ether_addr result;
 
 	/* test full strings */
-	for (i = 0; i < ETHERADDR_INVALID_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(ether_addr_invalid_strs); i++) {
 
 		memset(&result, 0, sizeof(struct rte_ether_addr));
 
@@ -176,7 +167,7 @@ test_parse_etheraddr_valid(void)
 	struct rte_ether_addr result;
 
 	/* test full strings */
-	for (i = 0; i < ETHERADDR_VALID_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(ether_addr_valid_strs); i++) {
 
 		memset(&result, 0, sizeof(struct rte_ether_addr));
 
@@ -195,7 +186,7 @@ test_parse_etheraddr_valid(void)
 	}
 
 	/* test garbage strings */
-	for (i = 0; i < ETHERADDR_GARBAGE_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(ether_addr_garbage_strs); i++) {
 
 		memset(&result, 0, sizeof(struct rte_ether_addr));
 

@@ -47,8 +47,7 @@
 
 #include "process.h"
 
-#define launch_proc(ARGV) process_dup(ARGV, \
-		sizeof(ARGV)/(sizeof(ARGV[0])), __func__)
+#define launch_proc(ARGV) process_dup(ARGV, RTE_DIM(ARGV), __func__)
 
 /*
  * This function is called in the primary i.e. main test, to spawn off secondary

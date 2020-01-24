@@ -5565,7 +5565,7 @@ cmd_show_bypass_config_parsed(void *parsed_result,
 	uint32_t event_mode;
 	uint32_t bypass_mode;
 	uint32_t timeout = bypass_timeout;
-	int i;
+	unsigned int i;
 
 	static const char * const timeouts[RTE_PMD_IXGBE_BYPASS_TMT_NUM] =
 		{"off", "1.5", "2", "3", "4", "8", "16", "32"};
@@ -5578,7 +5578,6 @@ cmd_show_bypass_config_parsed(void *parsed_result,
 		"OS/board off",
 		"power supply off",
 		"timeout"};
-	int num_events = (sizeof events) / (sizeof events[0]);
 
 	/* Display the bypass mode.*/
 	if (rte_pmd_ixgbe_bypass_state_show(port_id, &bypass_mode) != 0) {
@@ -5599,7 +5598,7 @@ cmd_show_bypass_config_parsed(void *parsed_result,
 	printf("\tbypass timeout = %s\n", timeouts[timeout]);
 
 	/* Display the bypass events and associated modes. */
-	for (i = RTE_PMD_IXGBE_BYPASS_EVENT_START; i < num_events; i++) {
+	for (i = RTE_PMD_IXGBE_BYPASS_EVENT_START; i < RTE_DIM(events); i++) {
 
 		if (rte_pmd_ixgbe_bypass_event_show(port_id, i, &event_mode)) {
 			printf("\tFailed to get bypass mode for event = %s\n",

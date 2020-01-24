@@ -113,19 +113,6 @@ const char * string_help_strs[] = {
 		"multi#str",
 };
 
-
-
-#define STRING_PARSE_STRS_SIZE \
-	(sizeof(string_parse_strs) / sizeof(string_parse_strs[0]))
-#define STRING_HELP_STRS_SIZE \
-	(sizeof(string_help_strs) / sizeof(string_help_strs[0]))
-#define STRING_ELT_STRS_SIZE \
-	(sizeof(string_elt_strs) / sizeof(string_elt_strs[0]))
-#define STRING_NB_STRS_SIZE \
-	(sizeof(string_nb_strs) / sizeof(string_nb_strs[0]))
-#define STRING_INVALID_STRS_SIZE \
-	(sizeof(string_invalid_strs) / sizeof(string_invalid_strs[0]))
-
 #define SMALL_BUF 8
 
 /* test invalid parameters */
@@ -203,7 +190,7 @@ test_parse_string_invalid_data(void)
 	unsigned i;
 
 	/* test parsing invalid strings */
-	for (i = 0; i < STRING_INVALID_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(string_invalid_strs); i++) {
 		memset(&token, 0, sizeof(token));
 		memset(buf, 0, sizeof(buf));
 
@@ -302,7 +289,7 @@ test_parse_string_valid(void)
 	unsigned i;
 
 	/* test parsing strings */
-	for (i = 0; i < STRING_PARSE_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(string_parse_strs); i++) {
 		memset(&token, 0, sizeof(token));
 		memset(buf, 0, sizeof(buf));
 
@@ -334,7 +321,7 @@ test_parse_string_valid(void)
 	}
 
 	/* get number of string tokens and verify it's correct */
-	for (i = 0; i < STRING_NB_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(string_nb_strs); i++) {
 		memset(&token, 0, sizeof(token));
 
 		token.string_data.str = string_nb_strs[i].str;
@@ -348,7 +335,7 @@ test_parse_string_valid(void)
 	}
 
 	/* get token at specified position and verify it's correct */
-	for (i = 0; i < STRING_ELT_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(string_elt_strs); i++) {
 		memset(&token, 0, sizeof(token));
 		memset(buf, 0, sizeof(buf));
 
@@ -368,7 +355,7 @@ test_parse_string_valid(void)
 	}
 
 	/* cover all cases with help strings */
-	for (i = 0; i < STRING_HELP_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(string_help_strs); i++) {
 		memset(&help_token, 0, sizeof(help_token));
 		memset(help_str, 0, sizeof(help_str));
 		help_token.string_data.str = string_help_strs[i];

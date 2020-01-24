@@ -250,9 +250,8 @@ perf_test_constant_unaligned(void)
 static inline void
 perf_test_variable_aligned(void)
 {
-	unsigned n = sizeof(buf_sizes) / sizeof(buf_sizes[0]);
 	unsigned i;
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < RTE_DIM(buf_sizes); i++) {
 		ALL_PERF_TESTS_FOR_SIZE((size_t)buf_sizes[i]);
 	}
 }
@@ -261,9 +260,8 @@ perf_test_variable_aligned(void)
 static inline void
 perf_test_variable_unaligned(void)
 {
-	unsigned n = sizeof(buf_sizes) / sizeof(buf_sizes[0]);
 	unsigned i;
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < RTE_DIM(buf_sizes); i++) {
 		ALL_PERF_TESTS_FOR_SIZE_UNALIGNED((size_t)buf_sizes[i]);
 	}
 }

@@ -64,7 +64,6 @@ rte_lpm_test tests[] = {
 	test18
 };
 
-#define NUM_LPM_TESTS (sizeof(tests)/sizeof(tests[0]))
 #define MAX_DEPTH 32
 #define MAX_RULES 256
 #define NUMBER_TBL8S 256
@@ -1276,7 +1275,7 @@ test_lpm(void)
 	unsigned i;
 	int status, global_status = 0;
 
-	for (i = 0; i < NUM_LPM_TESTS; i++) {
+	for (i = 0; i < RTE_DIM(tests); i++) {
 		status = tests[i]();
 		if (status < 0) {
 			printf("ERROR: LPM Test %u: FAIL\n", i);

@@ -262,19 +262,6 @@ const char * ipaddr_invalid_strs[] = {
 		" ",
 };
 
-#define IPADDR_VALID_STRS_SIZE \
-	(sizeof(ipaddr_valid_strs) / sizeof(ipaddr_valid_strs[0]))
-#define IPADDR_GARBAGE_ADDR4_STRS_SIZE \
-	(sizeof(ipaddr_garbage_addr4_strs) / sizeof(ipaddr_garbage_addr4_strs[0]))
-#define IPADDR_GARBAGE_ADDR6_STRS_SIZE \
-	(sizeof(ipaddr_garbage_addr6_strs) / sizeof(ipaddr_garbage_addr6_strs[0]))
-#define IPADDR_GARBAGE_NETWORK4_STRS_SIZE \
-	(sizeof(ipaddr_garbage_network4_strs) / sizeof(ipaddr_garbage_network4_strs[0]))
-#define IPADDR_GARBAGE_NETWORK6_STRS_SIZE \
-	(sizeof(ipaddr_garbage_network6_strs) / sizeof(ipaddr_garbage_network6_strs[0]))
-#define IPADDR_INVALID_STRS_SIZE \
-	(sizeof(ipaddr_invalid_strs) / sizeof(ipaddr_invalid_strs[0]))
-
 static void
 dump_addr(cmdline_ipaddr_t addr)
 {
@@ -367,7 +354,7 @@ test_parse_ipaddr_valid(void)
 	}
 
 	/* test valid strings */
-	for (i = 0; i < IPADDR_VALID_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(ipaddr_valid_strs); i++) {
 
 		/* test each valid string against different flags */
 		for (flags = 1; flags < 0x8; flags++) {
@@ -415,7 +402,7 @@ test_parse_ipaddr_valid(void)
 	}
 
 	/* test garbage ipv4 address strings */
-	for (i = 0; i < IPADDR_GARBAGE_ADDR4_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(ipaddr_garbage_addr4_strs); i++) {
 
 		struct in_addr tmp = IPv4_GARBAGE_ADDR;
 
@@ -457,7 +444,7 @@ test_parse_ipaddr_valid(void)
 	}
 
 	/* test garbage ipv6 address strings */
-	for (i = 0; i < IPADDR_GARBAGE_ADDR6_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(ipaddr_garbage_addr6_strs); i++) {
 
 		cmdline_ipaddr_t tmp = {.addr = IPv6_GARBAGE_ADDR};
 
@@ -500,7 +487,7 @@ test_parse_ipaddr_valid(void)
 
 
 	/* test garbage ipv4 network strings */
-	for (i = 0; i < IPADDR_GARBAGE_NETWORK4_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(ipaddr_garbage_network4_strs); i++) {
 
 		struct in_addr tmp = IPv4_GARBAGE_ADDR;
 
@@ -542,7 +529,7 @@ test_parse_ipaddr_valid(void)
 	}
 
 	/* test garbage ipv6 address strings */
-	for (i = 0; i < IPADDR_GARBAGE_NETWORK6_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(ipaddr_garbage_network6_strs); i++) {
 
 		cmdline_ipaddr_t tmp = {.addr = IPv6_GARBAGE_ADDR};
 
@@ -599,7 +586,7 @@ test_parse_ipaddr_invalid_data(void)
 	memset(&result, 0, sizeof(result));
 
 	/* test invalid strings */
-	for (i = 0; i < IPADDR_INVALID_STRS_SIZE; i++) {
+	for (i = 0; i < RTE_DIM(ipaddr_invalid_strs); i++) {
 
 		/* test each valid string against different flags */
 		for (flags = 1; flags < 0x8; flags++) {

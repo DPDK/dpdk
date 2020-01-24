@@ -216,19 +216,6 @@ const char * num_invalid_strs[] = {
 		"\0",
 };
 
-#define NUM_POSITIVE_STRS_SIZE \
-	(sizeof(num_valid_positive_strs) / sizeof(num_valid_positive_strs[0]))
-#define NUM_NEGATIVE_STRS_SIZE \
-	(sizeof(num_valid_negative_strs) / sizeof(num_valid_negative_strs[0]))
-#define NUM_POSITIVE_GARBAGE_STRS_SIZE \
-	(sizeof(num_garbage_positive_strs) / sizeof(num_garbage_positive_strs[0]))
-#define NUM_NEGATIVE_GARBAGE_STRS_SIZE \
-	(sizeof(num_garbage_negative_strs) / sizeof(num_garbage_negative_strs[0]))
-#define NUM_INVALID_STRS_SIZE \
-	(sizeof(num_invalid_strs) / sizeof(num_invalid_strs[0]))
-
-
-
 static int
 can_parse_unsigned(uint64_t expected_result, enum cmdline_numtype type)
 {
@@ -392,7 +379,7 @@ test_parse_num_invalid_data(void)
 		token.num_data.type = type;
 
 		/* test full strings */
-		for (i = 0; i < NUM_INVALID_STRS_SIZE; i++) {
+		for (i = 0; i < RTE_DIM(num_invalid_strs); i++) {
 
 			memset(&result, 0, sizeof(uint64_t));
 			memset(&buf, 0, sizeof(buf));
@@ -431,7 +418,7 @@ test_parse_num_valid(void)
 		token.num_data.type = type;
 
 		/* test positive strings */
-		for (i = 0; i < NUM_POSITIVE_STRS_SIZE; i++) {
+		for (i = 0; i < RTE_DIM(num_valid_positive_strs); i++) {
 			result = 0;
 			memset(&buf, 0, sizeof(buf));
 
@@ -459,7 +446,7 @@ test_parse_num_valid(void)
 		}
 
 		/* test negative strings */
-		for (i = 0; i < NUM_NEGATIVE_STRS_SIZE; i++) {
+		for (i = 0; i < RTE_DIM(num_valid_negative_strs); i++) {
 			result = 0;
 			memset(&buf, 0, sizeof(buf));
 
@@ -509,7 +496,7 @@ test_parse_num_valid(void)
 		token.num_data.type = type;
 
 		/* test positive garbage strings */
-		for (i = 0; i < NUM_POSITIVE_GARBAGE_STRS_SIZE; i++) {
+		for (i = 0; i < RTE_DIM(num_garbage_positive_strs); i++) {
 			result = 0;
 			memset(&buf, 0, sizeof(buf));
 
@@ -537,7 +524,7 @@ test_parse_num_valid(void)
 		}
 
 		/* test negative strings */
-		for (i = 0; i < NUM_NEGATIVE_GARBAGE_STRS_SIZE; i++) {
+		for (i = 0; i < RTE_DIM(num_garbage_negative_strs); i++) {
 			result = 0;
 			memset(&buf, 0, sizeof(buf));
 

@@ -255,7 +255,7 @@ test_str_to_size(void)
 			{"18446744073709551616", 0} /* ULLONG_MAX + 1 == out of range*/
 	};
 	unsigned i;
-	for (i = 0; i < sizeof(test_values)/sizeof(test_values[0]); i++)
+	for (i = 0; i < RTE_DIM(test_values); i++)
 		if (rte_str_to_size(test_values[i].str) != test_values[i].value)
 			return -1;
 	return 0;
