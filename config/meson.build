@@ -197,6 +197,12 @@ if not dpdk_conf.get('RTE_ARCH_64')
 # for 32-bit, don't warn about casting a 32-bit pointer to 64-bit int - it's fine!!
 	warning_flags += '-Wno-pointer-to-int-cast'
 endif
+if cc.get_id() == 'intel'
+	warning_ids = [188, 2203, 2279, 2557, 3179, 3656]
+	foreach i:warning_ids
+		warning_flags += '-diag-disable=@0@'.format(i)
+	endforeach
+endif
 foreach arg: warning_flags
 	if cc.has_argument(arg)
 		add_project_arguments(arg, language: 'c')
