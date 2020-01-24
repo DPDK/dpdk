@@ -463,10 +463,8 @@ rte_telemetry_parser_test(struct telemetry_impl *telemetry)
 	};
 
 
-#define NUM_TEST_TYPES (sizeof(test_types)/sizeof(const char * const))
-
 	uint32_t i;
-	for (i = 0; i < NUM_TEST_TYPES; i++) {
+	for (i = 0; i < RTE_DIM(test_types); i++) {
 		TELEMETRY_LOG_INFO("%s", test_types[i]);
 
 		ret = rte_telemetry_send_get_ports_and_stats_request(telemetry,

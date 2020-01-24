@@ -86,7 +86,7 @@ static const struct rte_eth_xstats_name_off rte_stats_strings[] = {
 		rx_nombuf)},
 };
 
-#define RTE_NB_STATS (sizeof(rte_stats_strings) / sizeof(rte_stats_strings[0]))
+#define RTE_NB_STATS RTE_DIM(rte_stats_strings)
 
 static const struct rte_eth_xstats_name_off rte_rxq_stats_strings[] = {
 	{"packets", offsetof(struct rte_eth_stats, q_ipackets)},
@@ -94,15 +94,13 @@ static const struct rte_eth_xstats_name_off rte_rxq_stats_strings[] = {
 	{"errors", offsetof(struct rte_eth_stats, q_errors)},
 };
 
-#define RTE_NB_RXQ_STATS (sizeof(rte_rxq_stats_strings) /	\
-		sizeof(rte_rxq_stats_strings[0]))
+#define RTE_NB_RXQ_STATS RTE_DIM(rte_rxq_stats_strings)
 
 static const struct rte_eth_xstats_name_off rte_txq_stats_strings[] = {
 	{"packets", offsetof(struct rte_eth_stats, q_opackets)},
 	{"bytes", offsetof(struct rte_eth_stats, q_obytes)},
 };
-#define RTE_NB_TXQ_STATS (sizeof(rte_txq_stats_strings) /	\
-		sizeof(rte_txq_stats_strings[0]))
+#define RTE_NB_TXQ_STATS RTE_DIM(rte_txq_stats_strings)
 
 #define RTE_RX_OFFLOAD_BIT2STR(_name)	\
 	{ DEV_RX_OFFLOAD_##_name, #_name }

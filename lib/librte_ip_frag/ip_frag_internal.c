@@ -107,8 +107,7 @@ ip_frag_process(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
 				IP_LAST_FRAG_IDX : UINT32_MAX;
 
 	/* this is the intermediate fragment. */
-	} else if ((idx = fp->last_idx) <
-		sizeof (fp->frags) / sizeof (fp->frags[0])) {
+	} else if ((idx = fp->last_idx) < RTE_DIM(fp->frags)) {
 		fp->last_idx++;
 	}
 
@@ -116,7 +115,7 @@ ip_frag_process(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
 	 * erroneous packet: either exceed max allowed number of fragments,
 	 * or duplicate first/last fragment encountered.
 	 */
-	if (idx >= sizeof (fp->frags) / sizeof (fp->frags[0])) {
+	if (idx >= RTE_DIM(fp->frags)) {
 
 		/* report an error. */
 		if (fp->key.key_len == IPV4_KEYLEN)

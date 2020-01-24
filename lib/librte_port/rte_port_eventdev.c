@@ -179,7 +179,7 @@ rte_port_eventdev_writer_create(void *params, int socket_id)
 	port->evt_op = conf->evt_op;
 	memset(&port->ev, 0, sizeof(port->ev));
 
-	for (i = 0; i < ARRAY_SIZE(port->ev); i++) {
+	for (i = 0; i < RTE_DIM(port->ev); i++) {
 		port->ev[i].queue_id = port->queue_id;
 		port->ev[i].sched_type = port->sched_type;
 		port->ev[i].op = port->evt_op;
@@ -386,7 +386,7 @@ rte_port_eventdev_writer_nodrop_create(void *params, int socket_id)
 	port->evt_op = conf->evt_op;
 	memset(&port->ev, 0, sizeof(port->ev));
 
-	for (i = 0; i < ARRAY_SIZE(port->ev); i++) {
+	for (i = 0; i < RTE_DIM(port->ev); i++) {
 		port->ev[i].queue_id = port->queue_id;
 		port->ev[i].sched_type = port->sched_type;
 		port->ev[i].op = port->evt_op;
