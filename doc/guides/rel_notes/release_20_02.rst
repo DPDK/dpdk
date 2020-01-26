@@ -61,6 +61,10 @@ New Features
   A new API has been added to wait for a memory location to be updated with a
   16-bit, 32-bit, 64-bit value.
 
+* **Added rte_ring_xxx_elem APIs.**
+
+  New APIs have been added to support rings with custom element size.
+
 * **Updated rte_flow api to support L2TPv3 over IP flows.**
 
   Added support for new flow item to handle L2TPv3 over IP rte_flow patterns.
