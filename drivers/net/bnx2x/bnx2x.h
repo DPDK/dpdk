@@ -360,6 +360,9 @@ struct bnx2x_fastpath {
 	/* pointer back to parent structure */
 	struct bnx2x_softc *sc;
 
+	/* Used to synchronize fastpath Rx access */
+	rte_spinlock_t rx_mtx;
+
 	/* status block */
 	struct bnx2x_dma                 sb_dma;
 	union bnx2x_host_hc_status_block status_block;

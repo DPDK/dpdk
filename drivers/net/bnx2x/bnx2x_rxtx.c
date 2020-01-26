@@ -346,6 +346,8 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t len, pad;
 	struct rte_mbuf *rx_mb = NULL;
 
+	rte_spinlock_lock(&(fp)->rx_mtx);
+
 	hw_cq_cons = le16toh(*fp->rx_cq_cons_sb);
 	if ((hw_cq_cons & USABLE_RCQ_ENTRIES_PER_PAGE) ==
 			USABLE_RCQ_ENTRIES_PER_PAGE) {
@@ -357,8 +359,10 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	sw_cq_cons = rxq->rx_cq_head;
 	sw_cq_prod = rxq->rx_cq_tail;
 
-	if (sw_cq_cons == hw_cq_cons)
+	if (sw_cq_cons == hw_cq_cons) {
+		rte_spinlock_unlock(&(fp)->rx_mtx);
 		return 0;
+	}
 
 	while (nb_rx < nb_pkts && sw_cq_cons != hw_cq_cons) {
 
@@ -438,6 +442,8 @@ next_rx:
 	rxq->rx_cq_tail = sw_cq_prod;
 
 	bnx2x_upd_rx_prod_fast(sc, fp, bd_prod, sw_cq_prod);
+
+	rte_spinlock_unlock(&(fp)->rx_mtx);
 
 	return nb_rx;
 }
