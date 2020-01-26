@@ -94,8 +94,8 @@ rte_lpm6_free(struct rte_lpm6 *lpm);
  *   0 on success, negative value otherwise
  */
 int
-rte_lpm6_add(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
-		uint32_t next_hop);
+rte_lpm6_add(struct rte_lpm6 *lpm, const uint8_t *ip, uint8_t depth,
+	     uint32_t next_hop);
 
 /**
  * Check if a rule is present in the LPM table,
@@ -171,7 +171,7 @@ rte_lpm6_delete_all(struct rte_lpm6 *lpm);
  *   -EINVAL for incorrect arguments, -ENOENT on lookup miss, 0 on lookup hit
  */
 int
-rte_lpm6_lookup(const struct rte_lpm6 *lpm, uint8_t *ip, uint32_t *next_hop);
+rte_lpm6_lookup(const struct rte_lpm6 *lpm, const uint8_t *ip, uint32_t *next_hop);
 
 /**
  * Lookup multiple IP addresses in an LPM table.

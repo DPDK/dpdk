@@ -853,8 +853,8 @@ simulate_add(struct rte_lpm6 *lpm, const uint8_t *masked_ip, uint8_t depth)
  * Add a route
  */
 int
-rte_lpm6_add(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
-	uint32_t next_hop)
+rte_lpm6_add(struct rte_lpm6 *lpm, const uint8_t *ip, uint8_t depth,
+	     uint32_t next_hop)
 {
 	struct rte_lpm6_tbl_entry *tbl;
 	struct rte_lpm6_tbl_entry *tbl_next = NULL;
@@ -912,7 +912,7 @@ rte_lpm6_add(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
  */
 static inline int
 lookup_step(const struct rte_lpm6 *lpm, const struct rte_lpm6_tbl_entry *tbl,
-		const struct rte_lpm6_tbl_entry **tbl_next, uint8_t *ip,
+		const struct rte_lpm6_tbl_entry **tbl_next, const uint8_t *ip,
 		uint8_t first_byte, uint32_t *next_hop)
 {
 	uint32_t tbl8_index, tbl_entry;
@@ -942,7 +942,7 @@ lookup_step(const struct rte_lpm6 *lpm, const struct rte_lpm6_tbl_entry *tbl,
  * Looks up an IP
  */
 int
-rte_lpm6_lookup(const struct rte_lpm6 *lpm, uint8_t *ip,
+rte_lpm6_lookup(const struct rte_lpm6 *lpm, const uint8_t *ip,
 		uint32_t *next_hop)
 {
 	const struct rte_lpm6_tbl_entry *tbl;
