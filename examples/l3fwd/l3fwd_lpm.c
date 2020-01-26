@@ -71,8 +71,8 @@ static struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
 #define IPV6_L3FWD_LPM_MAX_RULES         1024
 #define IPV6_L3FWD_LPM_NUMBER_TBL8S (1 << 16)
 
-struct rte_lpm *ipv4_l3fwd_lpm_lookup_struct[NB_SOCKETS];
-struct rte_lpm6 *ipv6_l3fwd_lpm_lookup_struct[NB_SOCKETS];
+static struct rte_lpm *ipv4_l3fwd_lpm_lookup_struct[NB_SOCKETS];
+static struct rte_lpm6 *ipv6_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 
 static inline uint16_t
 lpm_get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid, void *lookup_struct)
