@@ -43,7 +43,7 @@ struct ipv6_l3fwd_lpm_route {
 };
 
 /* 198.18.0.0/16 are set aside for RFC2544 benchmarking (RFC5735). */
-static struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {
+static const struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {
 	{RTE_IPV4(198, 18, 0, 0), 24, 0},
 	{RTE_IPV4(198, 18, 1, 0), 24, 1},
 	{RTE_IPV4(198, 18, 2, 0), 24, 2},
@@ -55,7 +55,7 @@ static struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {
 };
 
 /* 2001:0200::/48 is IANA reserved range for IPv6 benchmarking (RFC5180) */
-static struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
+static const struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
 	{{32, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 48, 0},
 	{{32, 1, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0}, 48, 1},
 	{{32, 1, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0}, 48, 2},
