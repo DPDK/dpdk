@@ -6,7 +6,7 @@ if not is_linux
 	reason = 'only supported on linux'
 endif
 
-deps += ['bus_dpaa', 'security']
+deps += ['bus_dpaa', 'mempool_dpaa', 'security']
 sources = files('dpaa_sec.c')
 
 allow_experimental_apis = true

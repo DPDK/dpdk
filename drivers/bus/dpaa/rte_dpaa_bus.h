@@ -132,7 +132,23 @@ static inline void *rte_dpaa_mem_ptov(phys_addr_t paddr)
 	}
 
 	/* If not, Fallback to full memseg list searching */
-	return rte_mem_iova2virt(paddr);
+	va = rte_mem_iova2virt(paddr);
+
+	dpaax_iova_table_update(paddr, va, RTE_CACHE_LINE_SIZE);
+
+	return va;
+}
+
+static inline rte_iova_t
+rte_dpaa_mem_vtop(void *vaddr)
+{
+	const struct rte_memseg *ms;
+
+	ms = rte_mem_virt2memseg(vaddr, NULL);
+	if (ms)
+		return ms->iova + RTE_PTR_DIFF(vaddr, ms->addr);
+
+	return (size_t)NULL;
 }
 
 /**
