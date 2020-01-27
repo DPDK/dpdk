@@ -14,7 +14,7 @@ elif dpdk_conf.has('RTE_ARCH_ARM64')
 	sources += files('bpf_jit_arm64.c')
 endif
 
-install_headers = files('bpf_def.h',
+install_headers('bpf_def.h',
 			'rte_bpf.h',
 			'rte_bpf_ethdev.h')
 
