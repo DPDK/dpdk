@@ -45,8 +45,8 @@ uint16_t tx_udp_src_port = 9;
 uint16_t tx_udp_dst_port = 9;
 
 /* use RFC5735 / RFC2544 reserved network test addresses */
-uint32_t tx_ip_src_addr = (192U << 24) | (18 << 16) | (0 << 8) | 1;
-uint32_t tx_ip_dst_addr = (192U << 24) | (18 << 16) | (0 << 8) | 2;
+uint32_t tx_ip_src_addr = (198U << 24) | (18 << 16) | (0 << 8) | 1;
+uint32_t tx_ip_dst_addr = (198U << 24) | (18 << 16) | (0 << 8) | 2;
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
 
