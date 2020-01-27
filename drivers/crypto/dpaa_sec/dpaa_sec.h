@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2016 NXP
+ *   Copyright 2016-2020 NXP
  *
  */
 
@@ -117,6 +117,9 @@ struct sec_pdcp_ctxt {
 };
 #endif
 typedef struct dpaa_sec_session_entry {
+	struct sec_cdb cdb;	/**< cmd block associated with qp */
+	struct dpaa_sec_qp *qp[MAX_DPAA_CORES];
+	struct qman_fq *inq[MAX_DPAA_CORES];
 	uint8_t dir;         /*!< Operation Direction */
 	uint8_t ctxt;	/*!< Session Context Type */
 	enum rte_crypto_cipher_algorithm cipher_alg; /*!< Cipher Algorithm*/
@@ -169,9 +172,6 @@ typedef struct dpaa_sec_session_entry {
 		struct sec_pdcp_ctxt pdcp;
 #endif
 	};
-	struct dpaa_sec_qp *qp[MAX_DPAA_CORES];
-	struct qman_fq *inq[MAX_DPAA_CORES];
-	struct sec_cdb cdb;	/**< cmd block associated with qp */
 } dpaa_sec_session;
 
 struct dpaa_sec_qp {
