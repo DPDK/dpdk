@@ -130,6 +130,7 @@ F: meson_options.txt
 F: config/rte_config.h
 F: buildtools/call-sphinx-build.py
 F: buildtools/gen-pmdinfo-cfile.sh
+F: buildtools/list-dir-globs.py
 F: buildtools/map_to_def.py
 F: buildtools/symlink-drivers-solibs.sh
 

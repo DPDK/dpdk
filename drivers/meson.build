@@ -17,7 +17,8 @@ dpdk_driver_classes = ['common',
 	       'event',   # depends on common, bus, mempool and net.
 	       'baseband'] # depends on common and bus.
 
-disabled_drivers = get_option('disable_drivers').split(',')
+disabled_drivers = run_command(list_dir_globs, get_option('disable_drivers'),
+		).stdout().split()
 
 default_cflags = machine_args
 if cc.has_argument('-Wno-format-truncation')

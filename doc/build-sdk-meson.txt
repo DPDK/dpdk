@@ -84,7 +84,10 @@ Project-specific options are passed used -Doption=value::
 
 	meson -Dmachine=default  # use builder-independent baseline -march
 
-Examples of setting the same options using meson configure::
+	meson -Ddisable_drivers=event/*,net/tap  # disable tap driver and all
+					# eventdev PMDs for a smaller build
+
+Examples of setting some of the same options using meson configure::
 
 	meson configure -Dwerror=true
 
