@@ -257,8 +257,8 @@ sdp_droq_setup_ring_buffers(struct sdp_device *sdpvf,
 	void *buf;
 
 	for (idx = 0; idx < droq->nb_desc; idx++) {
-		rte_mempool_get(sdpvf->enqdeq_mpool, &buf);
-		if (buf == NULL) {
+		if (rte_mempool_get(sdpvf->enqdeq_mpool, &buf) ||
+		    (buf == NULL)) {
 			otx2_err("OQ buffer alloc failed");
 			droq->stats.rx_alloc_failure++;
 			/* sdp_droq_destroy_ring_buffers(droq);*/
@@ -662,11 +662,11 @@ sdp_droq_refill(struct sdp_device *sdpvf, struct sdp_droq *droq)
 		if (droq->recv_buf_list[droq->refill_idx].buffer != NULL)
 			break;
 
-		rte_mempool_get(sdpvf->enqdeq_mpool, &buf);
-		/* If a buffer could not be allocated, no point in
-		 * continuing
-		 */
-		if (buf == NULL) {
+		if (rte_mempool_get(sdpvf->enqdeq_mpool, &buf) ||
+		    (buf == NULL)) {
+			/* If a buffer could not be allocated, no point in
+			 * continuing
+			 */
 			droq->stats.rx_alloc_failure++;
 			break;
 		}
@@ -780,7 +780,7 @@ sdp_rawdev_dequeue(struct rte_rawdev *rawdev,
 	droq = sdpvf->droq[q_no];
 	if (!droq) {
 		otx2_err("Invalid droq[%d]", q_no);
-		goto deq_fail;
+		goto droq_err;
 	}
 
 	/* Grab the lock */
@@ -840,5 +840,7 @@ sdp_rawdev_dequeue(struct rte_rawdev *rawdev,
 
 deq_fail:
 	rte_spinlock_unlock(&droq->lock);
+
+droq_err:
 	return SDP_OQ_RECV_FAILED;
 }
