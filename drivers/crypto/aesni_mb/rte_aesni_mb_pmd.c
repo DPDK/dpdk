@@ -729,10 +729,10 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
 					op->sym->session,
 					cryptodev_driver_id);
 	} else {
-		void *_sess = NULL;
+		void *_sess = rte_cryptodev_sym_session_create(qp->sess_mp);
 		void *_sess_private_data = NULL;
 
-		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
+		if (_sess == NULL)
 			return NULL;
 
 		if (rte_mempool_get(qp->sess_mp_priv,

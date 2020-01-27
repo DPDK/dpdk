@@ -762,10 +762,10 @@ get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 			return NULL;
 
 		/* provide internal session */
-		void *_sess = NULL;
+		void *_sess = rte_cryptodev_sym_session_create(qp->sess_mp);
 		void *_sess_private_data = NULL;
 
-		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
+		if (_sess == NULL)
 			return NULL;
 
 		if (rte_mempool_get(qp->sess_mp_priv,
