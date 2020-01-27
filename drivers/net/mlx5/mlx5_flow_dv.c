@@ -5779,6 +5779,76 @@ flow_dv_translate_item_vxlan(void *matcher, void *key,
 }
 
 /**
+ * Add VXLAN-GPE item to matcher and to the value.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ */
+
+static void
+flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
+				 const struct rte_flow_item *item, int inner)
+{
+	const struct rte_flow_item_vxlan_gpe *vxlan_m = item->mask;
+	const struct rte_flow_item_vxlan_gpe *vxlan_v = item->spec;
+	void *headers_m;
+	void *headers_v;
+	void *misc_m =
+		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_3);
+	void *misc_v =
+		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+	char *vni_m;
+	char *vni_v;
+	uint16_t dport;
+	int size;
+	int i;
+	uint8_t flags_m = 0xff;
+	uint8_t flags_v = 0xc;
+
+	if (inner) {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 inner_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+	} else {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 outer_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	}
+	dport = item->type == RTE_FLOW_ITEM_TYPE_VXLAN ?
+		MLX5_UDP_PORT_VXLAN : MLX5_UDP_PORT_VXLAN_GPE;
+	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, dport);
+	}
+	if (!vxlan_v)
+		return;
+	if (!vxlan_m)
+		vxlan_m = &rte_flow_item_vxlan_gpe_mask;
+	size = sizeof(vxlan_m->vni);
+	vni_m = MLX5_ADDR_OF(fte_match_set_misc3, misc_m, outer_vxlan_gpe_vni);
+	vni_v = MLX5_ADDR_OF(fte_match_set_misc3, misc_v, outer_vxlan_gpe_vni);
+	memcpy(vni_m, vxlan_m->vni, size);
+	for (i = 0; i < size; ++i)
+		vni_v[i] = vni_m[i] & vxlan_v->vni[i];
+	if (vxlan_m->flags) {
+		flags_m = vxlan_m->flags;
+		flags_v = vxlan_v->flags;
+	}
+	MLX5_SET(fte_match_set_misc3, misc_m, outer_vxlan_gpe_flags, flags_m);
+	MLX5_SET(fte_match_set_misc3, misc_v, outer_vxlan_gpe_flags, flags_v);
+	MLX5_SET(fte_match_set_misc3, misc_m, outer_vxlan_gpe_next_protocol,
+		 vxlan_m->protocol);
+	MLX5_SET(fte_match_set_misc3, misc_v, outer_vxlan_gpe_next_protocol,
+		 vxlan_v->protocol);
+}
+
+/**
  * Add Geneve item to matcher and to the value.
  *
  * @param[in, out] matcher
@@ -7559,8 +7629,9 @@ cnt_err:
 			last_item = MLX5_FLOW_LAYER_VXLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-			flow_dv_translate_item_vxlan(match_mask, match_value,
-						     items, tunnel);
+			flow_dv_translate_item_vxlan_gpe(match_mask,
+							 match_value, items,
+							 tunnel);
 			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
