@@ -2952,10 +2952,10 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_5:
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR2_0:
 		/* FALLTHROUGH */
-		bp->port_partition_type = resp->port_partition_type;
+		bp->flags |= BNXT_FLAG_NPAR_PF;
 		break;
 	default:
-		bp->port_partition_type = 0;
+		bp->flags &= ~BNXT_FLAG_NPAR_PF;
 		break;
 	}
 
