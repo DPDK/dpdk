@@ -696,11 +696,23 @@ extern const struct rte_flow_ops bnxt_flow_ops;
 #define bnxt_release_flow_lock(bp) \
 	pthread_mutex_unlock(&(bp)->flow_lock)
 
+#define BNXT_VALID_VNIC_OR_RET(bp, vnic_id) do { \
+	if ((vnic_id) >= (bp)->max_vnics) { \
+		rte_flow_error_set(error, \
+				EINVAL, \
+				RTE_FLOW_ERROR_TYPE_ATTR_GROUP, \
+				NULL, \
+				"Group id is invalid!"); \
+		rc = -rte_errno; \
+		goto ret; \
+	} \
+} while (0)
+
 extern int bnxt_logtype_driver;
 #define PMD_DRV_LOG_RAW(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, bnxt_logtype_driver, "%s(): " fmt, \
 		__func__, ## args)
 
 #define PMD_DRV_LOG(level, fmt, args...) \
-	PMD_DRV_LOG_RAW(level, fmt, ## args)
+	  PMD_DRV_LOG_RAW(level, fmt, ## args)
 #endif

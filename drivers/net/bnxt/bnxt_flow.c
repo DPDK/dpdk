@@ -1059,16 +1059,9 @@ start:
 			vnic_id = act_q->index;
 		}
 
+		BNXT_VALID_VNIC_OR_RET(bp, vnic_id);
+
 		vnic = &bp->vnic_info[vnic_id];
-		if (vnic == NULL) {
-			rte_flow_error_set(error,
-					   EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   act,
-					   "No matching VNIC found.");
-			rc = -rte_errno;
-			goto ret;
-		}
 		if (vnic->rx_queue_cnt) {
 			if (vnic->start_grp_id != act_q->index) {
 				PMD_DRV_LOG(ERR,
@@ -1268,28 +1261,10 @@ use_vnic:
 		rss = (const struct rte_flow_action_rss *)act->conf;
 
 		vnic_id = attr->group;
-		if (!vnic_id) {
-			PMD_DRV_LOG(ERR, "Group id cannot be 0\n");
-			rte_flow_error_set(error,
-					   EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ATTR,
-					   NULL,
-					   "Group id cannot be 0");
-			rc = -rte_errno;
-			goto ret;
-		}
+
+		BNXT_VALID_VNIC_OR_RET(bp, vnic_id);
 
 		vnic = &bp->vnic_info[vnic_id];
-		if (vnic == NULL) {
-			rte_flow_error_set(error,
-					   EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   act,
-					   "No matching VNIC for RSS group.");
-			rc = -rte_errno;
-			goto ret;
-		}
-		PMD_DRV_LOG(DEBUG, "VNIC found\n");
 
 		/* Check if requested RSS config matches RSS config of VNIC
 		 * only if it is not a fresh VNIC configuration.

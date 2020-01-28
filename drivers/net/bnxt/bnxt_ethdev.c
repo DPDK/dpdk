@@ -295,7 +295,11 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 
 		if (BNXT_HAS_RING_GRPS(bp) && rxq->rx_deferred_start)
 			rxq->vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
+		else
+			vnic->rx_queue_cnt++;
 	}
+
+	PMD_DRV_LOG(DEBUG, "vnic->rx_queue_cnt = %d\n", vnic->rx_queue_cnt);
 
 	rc = bnxt_vnic_rss_configure(bp, vnic);
 	if (rc)
