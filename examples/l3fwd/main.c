@@ -19,6 +19,7 @@
 #include <rte_vect.h>
 #include <rte_byteorder.h>
 #include <rte_log.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_eal.h>
@@ -33,7 +34,6 @@
 #include <rte_random.h>
 #include <rte_debug.h>
 #include <rte_ether.h>
-#include <rte_ethdev.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_ip.h>
@@ -46,6 +46,7 @@
 #include <cmdline_parse_etheraddr.h>
 
 #include "l3fwd.h"
+#include "l3fwd_event.h"
 
 /*
  * Configurable number of RX/TX ring descriptors
@@ -289,7 +290,9 @@ print_usage(const char *prgname)
 		" [--hash-entry-num]"
 		" [--ipv6]"
 		" [--parse-ptype]"
-		" [--per-port-pool]\n\n"
+		" [--per-port-pool]"
+		" [--mode]"
+		" [--eventq-sched]\n\n"
 
 		"  -p PORTMASK: Hexadecimal bitmask of ports to configure\n"
 		"  -P : Enable promiscuous mode\n"
@@ -304,7 +307,16 @@ print_usage(const char *prgname)
 		"  --hash-entry-num: Specify the hash entry number in hexadecimal to be setup\n"
 		"  --ipv6: Set if running ipv6 packets\n"
 		"  --parse-ptype: Set to use software to analyze packet type\n"
-		"  --per-port-pool: Use separate buffer pool per port\n\n",
+		"  --per-port-pool: Use separate buffer pool per port\n"
+		"  --mode: Packet transfer mode for I/O, poll or eventdev\n"
+		"          Default mode = poll\n"
+		"  --eventq-sched: Event queue synchronization method\n"
+		"                  ordered, atomic or parallel.\n"
+		"                  Default: atomic\n"
+		"                  Valid only if --mode=eventdev\n"
+		"  --event-eth-rxqs: Number of ethernet RX queues per device.\n"
+		"                    Default: 1\n"
+		"                    Valid only if --mode=eventdev\n\n",
 		prgname);
 }
 
@@ -440,6 +452,48 @@ parse_eth_dest(const char *optarg)
 	*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
 }
 
+static void
+parse_mode(const char *optarg)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	if (!strcmp(optarg, "poll"))
+		evt_rsrc->enabled = false;
+	else if (!strcmp(optarg, "eventdev"))
+		evt_rsrc->enabled = true;
+}
+
+static void
+parse_eventq_sched(const char *optarg)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+
+	if (!strcmp(optarg, "ordered"))
+		evt_rsrc->sched_type = RTE_SCHED_TYPE_ORDERED;
+	if (!strcmp(optarg, "atomic"))
+		evt_rsrc->sched_type = RTE_SCHED_TYPE_ATOMIC;
+	if (!strcmp(optarg, "parallel"))
+		evt_rsrc->sched_type = RTE_SCHED_TYPE_PARALLEL;
+}
+
+static void
+parse_event_eth_rx_queues(const char *eth_rx_queues)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+	char *end = NULL;
+	uint8_t num_eth_rx_queues;
+
+	/* parse decimal string */
+	num_eth_rx_queues = strtoul(eth_rx_queues, &end, 10);
+	if ((eth_rx_queues[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return;
+
+	if (num_eth_rx_queues == 0)
+		return;
+
+	evt_rsrc->eth_rx_queues = num_eth_rx_queues;
+}
+
 #define MAX_JUMBO_PKT_LEN  9600
 #define MEMPOOL_CACHE_SIZE 256
 
@@ -458,6 +512,9 @@ static const char short_options[] =
 #define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
 #define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
 #define CMD_LINE_OPT_PER_PORT_POOL "per-port-pool"
+#define CMD_LINE_OPT_MODE "mode"
+#define CMD_LINE_OPT_EVENTQ_SYNC "eventq-sched"
+#define CMD_LINE_OPT_EVENT_ETH_RX_QUEUES "event-eth-rxqs"
 enum {
 	/* long options mapped to a short option */
 
@@ -472,6 +529,9 @@ enum {
 	CMD_LINE_OPT_HASH_ENTRY_NUM_NUM,
 	CMD_LINE_OPT_PARSE_PTYPE_NUM,
 	CMD_LINE_OPT_PARSE_PER_PORT_POOL,
+	CMD_LINE_OPT_MODE_NUM,
+	CMD_LINE_OPT_EVENTQ_SYNC_NUM,
+	CMD_LINE_OPT_EVENT_ETH_RX_QUEUES_NUM,
 };
 
 static const struct option lgopts[] = {
@@ -483,6 +543,10 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, CMD_LINE_OPT_HASH_ENTRY_NUM_NUM},
 	{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, CMD_LINE_OPT_PARSE_PTYPE_NUM},
 	{CMD_LINE_OPT_PER_PORT_POOL, 0, 0, CMD_LINE_OPT_PARSE_PER_PORT_POOL},
+	{CMD_LINE_OPT_MODE, 1, 0, CMD_LINE_OPT_MODE_NUM},
+	{CMD_LINE_OPT_EVENTQ_SYNC, 1, 0, CMD_LINE_OPT_EVENTQ_SYNC_NUM},
+	{CMD_LINE_OPT_EVENT_ETH_RX_QUEUES, 1, 0,
+					CMD_LINE_OPT_EVENT_ETH_RX_QUEUES_NUM},
 	{NULL, 0, 0, 0}
 };
 
@@ -508,6 +572,10 @@ parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
+	uint8_t lcore_params = 0;
+	uint8_t eventq_sched = 0;
+	uint8_t eth_rx_q = 0;
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
 
 	argvopt = argv;
 
@@ -546,6 +614,7 @@ parse_args(int argc, char **argv)
 				print_usage(prgname);
 				return -1;
 			}
+			lcore_params = 1;
 			break;
 
 		case CMD_LINE_OPT_ETH_DEST_NUM:
@@ -607,6 +676,20 @@ parse_args(int argc, char **argv)
 			per_port_pool = 1;
 			break;
 
+		case CMD_LINE_OPT_MODE_NUM:
+			parse_mode(optarg);
+			break;
+
+		case CMD_LINE_OPT_EVENTQ_SYNC_NUM:
+			parse_eventq_sched(optarg);
+			eventq_sched = 1;
+			break;
+
+		case CMD_LINE_OPT_EVENT_ETH_RX_QUEUES_NUM:
+			parse_event_eth_rx_queues(optarg);
+			eth_rx_q = 1;
+			break;
+
 		default:
 			print_usage(prgname);
 			return -1;
@@ -616,6 +699,21 @@ parse_args(int argc, char **argv)
 	/* If both LPM and EM are selected, return error. */
 	if (l3fwd_lpm_on && l3fwd_em_on) {
 		fprintf(stderr, "LPM and EM are mutually exclusive, select only one\n");
+		return -1;
+	}
+
+	if (evt_rsrc->enabled && lcore_params) {
+		fprintf(stderr, "lcore config is not valid when event mode is selected\n");
+		return -1;
+	}
+
+	if (!evt_rsrc->enabled && eth_rx_q) {
+		fprintf(stderr, "eth_rx_queues is valid only when event mode is selected\n");
+		return -1;
+	}
+
+	if (!evt_rsrc->enabled && eventq_sched) {
+		fprintf(stderr, "eventq_sched is valid only when event mode is selected\n");
 		return -1;
 	}
 
@@ -811,6 +909,7 @@ prepare_ptype_parser(uint16_t portid, uint16_t queueid)
 int
 main(int argc, char **argv)
 {
+	struct l3fwd_event_resources *evt_rsrc;
 	struct lcore_conf *qconf;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf *txconf;
@@ -839,10 +938,15 @@ main(int argc, char **argv)
 		*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
 	}
 
+	evt_rsrc = l3fwd_get_eventdev_rsrc();
+	RTE_SET_USED(evt_rsrc);
 	/* parse application arguments (after the EAL ones) */
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
+
+	/* Configure eventdev parameters if user has requested */
+	l3fwd_event_resource_setup();
 
 	if (check_lcore_params() < 0)
 		rte_exit(EXIT_FAILURE, "check_lcore_params failed\n");

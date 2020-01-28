@@ -5,6 +5,7 @@
 #ifndef __L3_FWD_H__
 #define __L3_FWD_H__
 
+#include <rte_ethdev.h>
 #include <rte_vect.h>
 
 #define DO_RFC_1812_CHECKS
