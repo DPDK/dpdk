@@ -188,10 +188,30 @@ l3fwd_event_capability_setup(void)
 		l3fwd_event_set_internal_port_ops(&evt_rsrc->ops);
 }
 
+int
+l3fwd_get_free_event_port(struct l3fwd_event_resources *evt_rsrc)
+{
+	static int index;
+	int port_id;
+
+	rte_spinlock_lock(&evt_rsrc->evp.lock);
+	if (index >= evt_rsrc->evp.nb_ports) {
+		printf("No free event port is available\n");
+		return -1;
+	}
+
+	port_id = evt_rsrc->evp.event_p_id[index];
+	index++;
+	rte_spinlock_unlock(&evt_rsrc->evp.lock);
+
+	return port_id;
+}
+
 void
 l3fwd_event_resource_setup(struct rte_eth_conf *port_conf)
 {
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+	uint32_t event_queue_cfg;
 
 	if (!evt_rsrc->enabled)
 		return;
@@ -206,5 +226,11 @@ l3fwd_event_resource_setup(struct rte_eth_conf *port_conf)
 	l3fwd_eth_dev_port_setup(port_conf);
 
 	/* Event device configuration */
-	evt_rsrc->ops.event_device_setup();
+	event_queue_cfg = evt_rsrc->ops.event_device_setup();
+
+	/* Event queue configuration */
+	evt_rsrc->ops.event_queue_setup(event_queue_cfg);
+
+	/* Event port configuration */
+	evt_rsrc->ops.event_port_setup();
 }
