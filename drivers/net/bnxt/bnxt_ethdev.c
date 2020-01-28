@@ -1956,9 +1956,15 @@ bnxt_config_vlan_hw_stripping(struct bnxt *bp, uint64_t rx_offloads)
 	if (bp->eth_dev->data->dev_conf.rxmode.offloads &
 	    DEV_RX_OFFLOAD_VLAN_FILTER) {
 		rc = bnxt_add_vlan_filter(bp, 0);
-		bnxt_restore_vlan_filters(bp);
+		if (rc)
+			return rc;
+		rc = bnxt_restore_vlan_filters(bp);
+		if (rc)
+			return rc;
 	} else {
 		rc = bnxt_add_mac_filter(bp, vnic, NULL, 0, 0);
+		if (rc)
+			return rc;
 	}
 
 	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
@@ -3961,10 +3967,16 @@ static int bnxt_restore_filters(struct bnxt *bp)
 	struct rte_eth_dev *dev = bp->eth_dev;
 	int ret = 0;
 
-	if (dev->data->all_multicast)
+	if (dev->data->all_multicast) {
 		ret = bnxt_allmulticast_enable_op(dev);
-	if (dev->data->promiscuous)
+		if (ret)
+			return ret;
+	}
+	if (dev->data->promiscuous) {
 		ret = bnxt_promiscuous_enable_op(dev);
+		if (ret)
+			return ret;
+	}
 
 	ret = bnxt_restore_mac_filters(bp);
 	if (ret)
