@@ -68,4 +68,7 @@ l3fwd_event_resource_setup(void)
 
 	/* Setup eventdev capability callbacks */
 	l3fwd_event_capability_setup();
+
+	/* Event device configuration */
+	evt_rsrc->ops.event_device_setup();
 }
