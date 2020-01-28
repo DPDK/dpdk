@@ -177,10 +177,103 @@ l3fwd_event_queue_setup_internal_port(uint32_t event_queue_cfg)
 	}
 }
 
+static void
+l3fwd_rx_tx_adapter_setup_internal_port(void)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+	struct rte_event_eth_rx_adapter_queue_conf eth_q_conf;
+	uint8_t event_d_id = evt_rsrc->event_d_id;
+	uint16_t adapter_id = 0;
+	uint16_t nb_adapter = 0;
+	uint16_t port_id;
+	uint8_t q_id = 0;
+	int ret;
+
+	memset(&eth_q_conf, 0, sizeof(eth_q_conf));
+	eth_q_conf.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+
+	RTE_ETH_FOREACH_DEV(port_id) {
+		if ((evt_rsrc->port_mask & (1 << port_id)) == 0)
+			continue;
+		nb_adapter++;
+	}
+
+	evt_rsrc->rx_adptr.nb_rx_adptr = nb_adapter;
+	evt_rsrc->rx_adptr.rx_adptr = (uint8_t *)malloc(sizeof(uint8_t) *
+					evt_rsrc->rx_adptr.nb_rx_adptr);
+	if (!evt_rsrc->rx_adptr.rx_adptr) {
+		free(evt_rsrc->evp.event_p_id);
+		free(evt_rsrc->evq.event_q_id);
+		rte_panic("Failed to allocate memory for Rx adapter\n");
+	}
+
+
+	RTE_ETH_FOREACH_DEV(port_id) {
+		if ((evt_rsrc->port_mask & (1 << port_id)) == 0)
+			continue;
+		ret = rte_event_eth_rx_adapter_create(adapter_id, event_d_id,
+						&evt_rsrc->def_p_conf);
+		if (ret)
+			rte_panic("Failed to create rx adapter[%d]\n",
+				  adapter_id);
+
+		/* Configure user requested sched type*/
+		eth_q_conf.ev.sched_type = evt_rsrc->sched_type;
+		eth_q_conf.ev.queue_id = evt_rsrc->evq.event_q_id[q_id];
+		ret = rte_event_eth_rx_adapter_queue_add(adapter_id, port_id,
+							 -1, &eth_q_conf);
+		if (ret)
+			rte_panic("Failed to add queues to Rx adapter\n");
+
+		ret = rte_event_eth_rx_adapter_start(adapter_id);
+		if (ret)
+			rte_panic("Rx adapter[%d] start Failed\n", adapter_id);
+
+		evt_rsrc->rx_adptr.rx_adptr[adapter_id] = adapter_id;
+		adapter_id++;
+		if (q_id < evt_rsrc->evq.nb_queues)
+			q_id++;
+	}
+
+	evt_rsrc->tx_adptr.nb_tx_adptr = nb_adapter;
+	evt_rsrc->tx_adptr.tx_adptr = (uint8_t *)malloc(sizeof(uint8_t) *
+					evt_rsrc->tx_adptr.nb_tx_adptr);
+	if (!evt_rsrc->tx_adptr.tx_adptr) {
+		free(evt_rsrc->rx_adptr.rx_adptr);
+		free(evt_rsrc->evp.event_p_id);
+		free(evt_rsrc->evq.event_q_id);
+		rte_panic("Failed to allocate memory for Rx adapter\n");
+	}
+
+	adapter_id = 0;
+	RTE_ETH_FOREACH_DEV(port_id) {
+		if ((evt_rsrc->port_mask & (1 << port_id)) == 0)
+			continue;
+		ret = rte_event_eth_tx_adapter_create(adapter_id, event_d_id,
+						&evt_rsrc->def_p_conf);
+		if (ret)
+			rte_panic("Failed to create tx adapter[%d]\n",
+				  adapter_id);
+
+		ret = rte_event_eth_tx_adapter_queue_add(adapter_id, port_id,
+							 -1);
+		if (ret)
+			rte_panic("Failed to add queues to Tx adapter\n");
+
+		ret = rte_event_eth_tx_adapter_start(adapter_id);
+		if (ret)
+			rte_panic("Tx adapter[%d] start Failed\n", adapter_id);
+
+		evt_rsrc->tx_adptr.tx_adptr[adapter_id] = adapter_id;
+		adapter_id++;
+	}
+}
+
 void
 l3fwd_event_set_internal_port_ops(struct l3fwd_event_setup_ops *ops)
 {
 	ops->event_device_setup = l3fwd_event_device_setup_internal_port;
 	ops->event_queue_setup = l3fwd_event_queue_setup_internal_port;
 	ops->event_port_setup = l3fwd_event_port_setup_internal_port;
+	ops->adapter_setup = l3fwd_rx_tx_adapter_setup_internal_port;
 }

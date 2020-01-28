@@ -7,6 +7,7 @@
 
 #include <rte_common.h>
 #include <rte_eventdev.h>
+#include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>
 #include <rte_service.h>
 #include <rte_spinlock.h>
