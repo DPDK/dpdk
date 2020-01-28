@@ -899,49 +899,18 @@ prepare_ptype_parser(uint16_t portid, uint16_t queueid)
 	return 0;
 }
 
-int
-main(int argc, char **argv)
+static void
+l3fwd_poll_resource_setup(void)
 {
-	struct l3fwd_event_resources *evt_rsrc;
-	struct lcore_conf *qconf;
-	struct rte_eth_dev_info dev_info;
-	struct rte_eth_txconf *txconf;
-	int ret;
-	unsigned nb_ports;
-	uint16_t queueid, portid;
-	unsigned lcore_id;
-	uint32_t n_tx_queue, nb_lcores;
 	uint8_t nb_rx_queue, queue, socketid;
-
-	/* init EAL */
-	ret = rte_eal_init(argc, argv);
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Invalid EAL parameters\n");
-	argc -= ret;
-	argv += ret;
-
-	force_quit = false;
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-
-	/* pre-init dst MACs for all ports to 02:00:00:00:00:xx */
-	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-		dest_eth_addr[portid] =
-			RTE_ETHER_LOCAL_ADMIN_ADDR + ((uint64_t)portid << 40);
-		*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
-	}
-
-	evt_rsrc = l3fwd_get_eventdev_rsrc();
-	/* parse application arguments (after the EAL ones) */
-	ret = parse_args(argc, argv);
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
-
-	evt_rsrc->per_port_pool = per_port_pool;
-	evt_rsrc->pkt_pool = pktmbuf_pool;
-	evt_rsrc->port_mask = enabled_port_mask;
-	/* Configure eventdev parameters if user has requested */
-	l3fwd_event_resource_setup(&port_conf);
+	struct rte_eth_dev_info dev_info;
+	uint32_t n_tx_queue, nb_lcores;
+	struct rte_eth_txconf *txconf;
+	struct lcore_conf *qconf;
+	uint16_t queueid, portid;
+	unsigned int nb_ports;
+	unsigned int lcore_id;
+	int ret;
 
 	if (check_lcore_params() < 0)
 		rte_exit(EXIT_FAILURE, "check_lcore_params failed\n");
@@ -956,9 +925,6 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "check_port_config failed\n");
 
 	nb_lcores = rte_lcore_count();
-
-	/* Setup function pointers for lookup method. */
-	setup_l3fwd_lookup_tables();
 
 	/* initialize all ports */
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -1127,7 +1093,142 @@ main(int argc, char **argv)
 		}
 	}
 
-	printf("\n");
+
+}
+
+static inline int
+l3fwd_service_enable(uint32_t service_id)
+{
+	uint8_t min_service_count = UINT8_MAX;
+	uint32_t slcore_array[RTE_MAX_LCORE];
+	unsigned int slcore = 0;
+	uint8_t service_count;
+	int32_t slcore_count;
+
+	if (!rte_service_lcore_count())
+		return -ENOENT;
+
+	slcore_count = rte_service_lcore_list(slcore_array, RTE_MAX_LCORE);
+	if (slcore_count < 0)
+		return -ENOENT;
+	/* Get the core which has least number of services running. */
+	while (slcore_count--) {
+		/* Reset default mapping */
+		rte_service_map_lcore_set(service_id,
+				slcore_array[slcore_count], 0);
+		service_count = rte_service_lcore_count_services(
+				slcore_array[slcore_count]);
+		if (service_count < min_service_count) {
+			slcore = slcore_array[slcore_count];
+			min_service_count = service_count;
+		}
+	}
+	if (rte_service_map_lcore_set(service_id, slcore, 1))
+		return -ENOENT;
+	rte_service_lcore_start(slcore);
+
+	return 0;
+}
+
+static void
+l3fwd_event_service_setup(void)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+	struct rte_event_dev_info evdev_info;
+	uint32_t service_id, caps;
+	int ret, i;
+
+	rte_event_dev_info_get(evt_rsrc->event_d_id, &evdev_info);
+	if (!(evdev_info.event_dev_cap & RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED)) {
+		ret = rte_event_dev_service_id_get(evt_rsrc->event_d_id,
+				&service_id);
+		if (ret != -ESRCH && ret != 0)
+			rte_exit(EXIT_FAILURE,
+				 "Error in starting eventdev service\n");
+		l3fwd_service_enable(service_id);
+	}
+
+	for (i = 0; i < evt_rsrc->rx_adptr.nb_rx_adptr; i++) {
+		ret = rte_event_eth_rx_adapter_caps_get(evt_rsrc->event_d_id,
+				evt_rsrc->rx_adptr.rx_adptr[i], &caps);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Failed to get Rx adapter[%d] caps\n",
+				 evt_rsrc->rx_adptr.rx_adptr[i]);
+		ret = rte_event_eth_rx_adapter_service_id_get(
+				evt_rsrc->event_d_id,
+				&service_id);
+		if (ret != -ESRCH && ret != 0)
+			rte_exit(EXIT_FAILURE,
+				 "Error in starting Rx adapter[%d] service\n",
+				 evt_rsrc->rx_adptr.rx_adptr[i]);
+		l3fwd_service_enable(service_id);
+	}
+
+	for (i = 0; i < evt_rsrc->tx_adptr.nb_tx_adptr; i++) {
+		ret = rte_event_eth_tx_adapter_caps_get(evt_rsrc->event_d_id,
+				evt_rsrc->tx_adptr.tx_adptr[i], &caps);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Failed to get Rx adapter[%d] caps\n",
+				 evt_rsrc->tx_adptr.tx_adptr[i]);
+		ret = rte_event_eth_tx_adapter_service_id_get(
+				evt_rsrc->event_d_id,
+				&service_id);
+		if (ret != -ESRCH && ret != 0)
+			rte_exit(EXIT_FAILURE,
+				 "Error in starting Rx adapter[%d] service\n",
+				 evt_rsrc->tx_adptr.tx_adptr[i]);
+		l3fwd_service_enable(service_id);
+	}
+}
+
+int
+main(int argc, char **argv)
+{
+	struct l3fwd_event_resources *evt_rsrc;
+	struct lcore_conf *qconf;
+	uint16_t queueid, portid;
+	unsigned int lcore_id;
+	uint8_t queue;
+	int ret;
+
+	/* init EAL */
+	ret = rte_eal_init(argc, argv);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Invalid EAL parameters\n");
+	argc -= ret;
+	argv += ret;
+
+	force_quit = false;
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
+
+	/* pre-init dst MACs for all ports to 02:00:00:00:00:xx */
+	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
+		dest_eth_addr[portid] =
+			RTE_ETHER_LOCAL_ADMIN_ADDR + ((uint64_t)portid << 40);
+		*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
+	}
+
+	evt_rsrc = l3fwd_get_eventdev_rsrc();
+	/* parse application arguments (after the EAL ones) */
+	ret = parse_args(argc, argv);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
+
+	/* Setup function pointers for lookup method. */
+	setup_l3fwd_lookup_tables();
+
+	evt_rsrc->per_port_pool = per_port_pool;
+	evt_rsrc->pkt_pool = pktmbuf_pool;
+	evt_rsrc->port_mask = enabled_port_mask;
+	/* Configure eventdev parameters if user has requested */
+	if (evt_rsrc->enabled) {
+		l3fwd_event_resource_setup(&port_conf);
+		l3fwd_event_service_setup();
+	} else
+		l3fwd_poll_resource_setup();
 
 	/* start ports */
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -1169,7 +1270,6 @@ main(int argc, char **argv)
 				rte_exit(EXIT_FAILURE, "ptype check fails\n");
 		}
 	}
-
 
 	check_all_ports_link_status(enabled_port_mask);
 
