@@ -648,7 +648,6 @@ struct bnxt {
 #define BNXT_OUTER_TPID_BD_SHFT	16
 	uint32_t		outer_tpid_bd;
 	struct bnxt_pf_info	pf;
-	uint8_t			dev_stopped;
 	uint8_t			vxlan_port_cnt;
 	uint8_t			geneve_port_cnt;
 	uint16_t		vxlan_port;
