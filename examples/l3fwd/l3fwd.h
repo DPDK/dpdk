@@ -216,6 +216,16 @@ lpm_event_main_loop_tx_q(__attribute__((unused)) void *dummy);
 int
 lpm_event_main_loop_tx_q_burst(__attribute__((unused)) void *dummy);
 
+int
+em_event_main_loop_tx_d(__attribute__((unused)) void *dummy);
+int
+em_event_main_loop_tx_d_burst(__attribute__((unused)) void *dummy);
+int
+em_event_main_loop_tx_q(__attribute__((unused)) void *dummy);
+int
+em_event_main_loop_tx_q_burst(__attribute__((unused)) void *dummy);
+
+
 /* Return ipv4/ipv6 fwd lookup struct for LPM or EM. */
 void *
 em_get_ipv4_l3fwd_lookup_struct(const int socketid);

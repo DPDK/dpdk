@@ -26,6 +26,7 @@
 #include <rte_hash.h>
 
 #include "l3fwd.h"
+#include "l3fwd_event.h"
 
 #if defined(RTE_ARCH_X86) || defined(RTE_MACHINE_CPUFLAG_CRC32)
 #define EM_HASH_CRC 1
@@ -696,6 +697,182 @@ em_main_loop(__attribute__((unused)) void *dummy)
 		}
 	}
 
+	return 0;
+}
+
+static __rte_always_inline void
+em_event_loop_single(struct l3fwd_event_resources *evt_rsrc,
+		const uint8_t flags)
+{
+	const int event_p_id = l3fwd_get_free_event_port(evt_rsrc);
+	const uint8_t tx_q_id = evt_rsrc->evq.event_q_id[
+		evt_rsrc->evq.nb_queues - 1];
+	const uint8_t event_d_id = evt_rsrc->event_d_id;
+	struct lcore_conf *lconf;
+	unsigned int lcore_id;
+	struct rte_event ev;
+
+	if (event_p_id < 0)
+		return;
+
+	lcore_id = rte_lcore_id();
+	lconf = &lcore_conf[lcore_id];
+
+	RTE_LOG(INFO, L3FWD, "entering %s on lcore %u\n", __func__, lcore_id);
+	while (!force_quit) {
+		if (!rte_event_dequeue_burst(event_d_id, event_p_id, &ev, 1, 0))
+			continue;
+
+		struct rte_mbuf *mbuf = ev.mbuf;
+
+#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
+		mbuf->port = em_get_dst_port(lconf, mbuf, mbuf->port);
+		process_packet(mbuf, &mbuf->port);
+#else
+		l3fwd_em_simple_process(mbuf, lconf);
+#endif
+		if (mbuf->port == BAD_PORT) {
+			rte_pktmbuf_free(mbuf);
+			continue;
+		}
+
+		if (flags & L3FWD_EVENT_TX_ENQ) {
+			ev.queue_id = tx_q_id;
+			ev.op = RTE_EVENT_OP_FORWARD;
+			while (rte_event_enqueue_burst(event_d_id, event_p_id,
+						&ev, 1) && !force_quit)
+				;
+		}
+
+		if (flags & L3FWD_EVENT_TX_DIRECT) {
+			rte_event_eth_tx_adapter_txq_set(mbuf, 0);
+			while (!rte_event_eth_tx_adapter_enqueue(event_d_id,
+						event_p_id, &ev, 1, 0) &&
+					!force_quit)
+				;
+		}
+	}
+}
+
+static __rte_always_inline void
+em_event_loop_burst(struct l3fwd_event_resources *evt_rsrc,
+		const uint8_t flags)
+{
+	const int event_p_id = l3fwd_get_free_event_port(evt_rsrc);
+	const uint8_t tx_q_id = evt_rsrc->evq.event_q_id[
+		evt_rsrc->evq.nb_queues - 1];
+	const uint8_t event_d_id = evt_rsrc->event_d_id;
+	const uint16_t deq_len = evt_rsrc->deq_depth;
+	struct rte_event events[MAX_PKT_BURST];
+	struct lcore_conf *lconf;
+	unsigned int lcore_id;
+	int i, nb_enq, nb_deq;
+
+	if (event_p_id < 0)
+		return;
+
+	lcore_id = rte_lcore_id();
+
+	lconf = &lcore_conf[lcore_id];
+
+	RTE_LOG(INFO, L3FWD, "entering %s on lcore %u\n", __func__, lcore_id);
+
+	while (!force_quit) {
+		/* Read events from RX queues */
+		nb_deq = rte_event_dequeue_burst(event_d_id, event_p_id,
+				events, deq_len, 0);
+		if (nb_deq == 0) {
+			rte_pause();
+			continue;
+		}
+
+#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
+		l3fwd_em_process_events(nb_deq, (struct rte_event **)&events,
+					lconf);
+#else
+		l3fwd_em_no_opt_process_events(nb_deq,
+					       (struct rte_event **)&events,
+					       lconf);
+#endif
+		for (i = 0; i < nb_deq; i++) {
+			if (flags & L3FWD_EVENT_TX_ENQ) {
+				events[i].queue_id = tx_q_id;
+				events[i].op = RTE_EVENT_OP_FORWARD;
+			}
+
+			if (flags & L3FWD_EVENT_TX_DIRECT)
+				rte_event_eth_tx_adapter_txq_set(events[i].mbuf,
+								 0);
+		}
+
+		if (flags & L3FWD_EVENT_TX_ENQ) {
+			nb_enq = rte_event_enqueue_burst(event_d_id, event_p_id,
+					events, nb_deq);
+			while (nb_enq < nb_deq && !force_quit)
+				nb_enq += rte_event_enqueue_burst(event_d_id,
+						event_p_id, events + nb_enq,
+						nb_deq - nb_enq);
+		}
+
+		if (flags & L3FWD_EVENT_TX_DIRECT) {
+			nb_enq = rte_event_eth_tx_adapter_enqueue(event_d_id,
+					event_p_id, events, nb_deq, 0);
+			while (nb_enq < nb_deq && !force_quit)
+				nb_enq += rte_event_eth_tx_adapter_enqueue(
+						event_d_id, event_p_id,
+						events + nb_enq,
+						nb_deq - nb_enq, 0);
+		}
+	}
+}
+
+static __rte_always_inline void
+em_event_loop(struct l3fwd_event_resources *evt_rsrc,
+		 const uint8_t flags)
+{
+	if (flags & L3FWD_EVENT_SINGLE)
+		em_event_loop_single(evt_rsrc, flags);
+	if (flags & L3FWD_EVENT_BURST)
+		em_event_loop_burst(evt_rsrc, flags);
+}
+
+int __rte_noinline
+em_event_main_loop_tx_d(__attribute__((unused)) void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc =
+					l3fwd_get_eventdev_rsrc();
+
+	em_event_loop(evt_rsrc, L3FWD_EVENT_TX_DIRECT | L3FWD_EVENT_SINGLE);
+	return 0;
+}
+
+int __rte_noinline
+em_event_main_loop_tx_d_burst(__attribute__((unused)) void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc =
+					l3fwd_get_eventdev_rsrc();
+
+	em_event_loop(evt_rsrc, L3FWD_EVENT_TX_DIRECT | L3FWD_EVENT_BURST);
+	return 0;
+}
+
+int __rte_noinline
+em_event_main_loop_tx_q(__attribute__((unused)) void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc =
+					l3fwd_get_eventdev_rsrc();
+
+	em_event_loop(evt_rsrc, L3FWD_EVENT_TX_ENQ | L3FWD_EVENT_SINGLE);
+	return 0;
+}
+
+int __rte_noinline
+em_event_main_loop_tx_q_burst(__attribute__((unused)) void *dummy)
+{
+	struct l3fwd_event_resources *evt_rsrc =
+					l3fwd_get_eventdev_rsrc();
+
+	em_event_loop(evt_rsrc, L3FWD_EVENT_TX_ENQ | L3FWD_EVENT_BURST);
 	return 0;
 }
 

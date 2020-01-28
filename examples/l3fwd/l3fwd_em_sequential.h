@@ -95,4 +95,30 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 
 	send_packets_multi(qconf, pkts_burst, dst_port, nb_rx);
 }
+
+/*
+ * Buffer optimized handling of events, invoked
+ * from main_loop.
+ */
+static inline void
+l3fwd_em_process_events(int nb_rx, struct rte_event **events,
+		     struct lcore_conf *qconf)
+{
+	int32_t i, j;
+
+	rte_prefetch0(rte_pktmbuf_mtod(events[0]->mbuf,
+		      struct rte_ether_hdr *) + 1);
+
+	for (i = 1, j = 0; j < nb_rx; i++, j++) {
+		struct rte_mbuf *mbuf = events[j]->mbuf;
+
+		if (i < nb_rx) {
+			rte_prefetch0(rte_pktmbuf_mtod(
+					events[i]->mbuf,
+					struct rte_ether_hdr *) + 1);
+		}
+		mbuf->port = em_get_dst_port(qconf, mbuf, mbuf->port);
+		process_packet(mbuf, &mbuf->port);
+	}
+}
 #endif /* __L3FWD_EM_SEQUENTIAL_H__ */

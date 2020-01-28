@@ -1226,7 +1226,10 @@ main(int argc, char **argv)
 	/* Configure eventdev parameters if user has requested */
 	if (evt_rsrc->enabled) {
 		l3fwd_event_resource_setup(&port_conf);
-		l3fwd_lkp.main_loop = evt_rsrc->ops.lpm_event_loop;
+		if (l3fwd_em_on)
+			l3fwd_lkp.main_loop = evt_rsrc->ops.em_event_loop;
+		else
+			l3fwd_lkp.main_loop = evt_rsrc->ops.lpm_event_loop;
 		l3fwd_event_service_setup();
 	} else
 		l3fwd_poll_resource_setup();
