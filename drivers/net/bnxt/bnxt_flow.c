@@ -1263,7 +1263,6 @@ use_vnic:
 		vnic_id = attr->group;
 
 		BNXT_VALID_VNIC_OR_RET(bp, vnic_id);
-
 		vnic = &bp->vnic_info[vnic_id];
 
 		/* Check if requested RSS config matches RSS config of VNIC
@@ -1641,7 +1640,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	bool update_flow = false;
 	struct rte_flow *flow;
 	int ret = 0;
-	uint32_t tun_type;
+	uint32_t tun_type, flow_id;
 
 	if (BNXT_VF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
 		rte_flow_error_set(error, EINVAL,
@@ -1773,8 +1772,16 @@ done:
 			/* TCAM and EM should be 16-bit only.
 			 * Other modes not supported.
 			 */
-			bp->mark_table[filter->flow_id & BNXT_FLOW_ID_MASK] =
-				filter->mark;
+			flow_id = filter->flow_id & BNXT_FLOW_ID_MASK;
+			if (bp->mark_table[flow_id].valid) {
+				PMD_DRV_LOG(ERR,
+					    "Entry for Mark id 0x%x occupied"
+					    " flow id 0x%x\n",
+					    filter->mark, filter->flow_id);
+				goto free_filter;
+			}
+			bp->mark_table[flow_id].valid = true;
+			bp->mark_table[flow_id].mark_id = filter->mark;
 		}
 		bnxt_release_flow_lock(bp);
 		return flow;
@@ -1850,6 +1857,7 @@ _bnxt_flow_destroy(struct bnxt *bp,
 	struct bnxt_filter_info *filter;
 	struct bnxt_vnic_info *vnic;
 	int ret = 0;
+	uint32_t flow_id;
 
 	filter = flow->filter;
 	vnic = flow->vnic;
@@ -1868,7 +1876,9 @@ _bnxt_flow_destroy(struct bnxt *bp,
 		PMD_DRV_LOG(ERR, "Could not find matching flow\n");
 
 	if (filter->valid_flags & BNXT_FLOW_MARK_FLAG) {
-		bp->mark_table[filter->flow_id & BNXT_FLOW_ID_MASK] = 0;
+		flow_id = filter->flow_id & BNXT_FLOW_ID_MASK;
+		memset(&bp->mark_table[flow_id], 0,
+		       sizeof(bp->mark_table[flow_id]));
 		filter->flow_id = 0;
 	}
 

@@ -488,11 +488,10 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID) {
 		mbuf->hash.rss = rxcmp->rss_hash;
 		mbuf->ol_flags |= PKT_RX_RSS_HASH;
-	} else {
-		mbuf->hash.fdir.id = bnxt_get_cfa_code_or_mark_id(rxq->bp,
-								  rxcmp1);
-		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 	}
+
+	bnxt_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf);
+
 #ifdef RTE_LIBRTE_IEEE1588
 	if (unlikely((flags_type & RX_PKT_CMPL_FLAGS_MASK) ==
 		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP)) {
@@ -897,8 +896,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	return 0;
 }
 
-uint32_t bnxt_get_cfa_code_or_mark_id(struct bnxt *bp,
-				      struct rx_pkt_cmpl_hi *rxcmp1)
+void bnxt_set_mark_in_mbuf(struct bnxt *bp,
+			   struct rx_pkt_cmpl_hi *rxcmp1,
+			   struct rte_mbuf *mbuf)
 {
 	uint32_t cfa_code = 0;
 	uint8_t meta_fmt =  0;
@@ -907,10 +907,13 @@ uint32_t bnxt_get_cfa_code_or_mark_id(struct bnxt *bp,
 
 	cfa_code = rte_le_to_cpu_16(rxcmp1->cfa_code);
 	if (!cfa_code)
-		return 0;
+		return;
 
-	if (cfa_code && !bp->mark_table[cfa_code])
-		return cfa_code;
+	if (cfa_code && !bp->mark_table[cfa_code].valid) {
+		PMD_DRV_LOG(WARNING, "Invalid mark_tbl entry! cfa_code: 0x%x\n",
+			    cfa_code);
+		return;
+	}
 
 	flags2 = rte_le_to_cpu_16(rxcmp1->flags2);
 	meta = rte_le_to_cpu_32(rxcmp1->metadata);
@@ -932,5 +935,7 @@ uint32_t bnxt_get_cfa_code_or_mark_id(struct bnxt *bp,
 		 */
 		meta_fmt >>= BNXT_CFA_META_FMT_EM_EEM_SHFT;
 	}
-	return bp->mark_table[cfa_code];
+
+	mbuf->hash.fdir.hi = bp->mark_table[cfa_code].mark_id;
+	mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 }

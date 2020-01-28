@@ -470,6 +470,11 @@ struct bnxt_error_recovery_info {
 	uint32_t        last_reset_counter;
 };
 
+struct bnxt_mark_info {
+	uint32_t	mark_id;
+	bool		valid;
+};
+
 /* address space location of register */
 #define BNXT_FW_STATUS_REG_TYPE_MASK	3
 /* register is located in PCIe config space */
@@ -668,10 +673,10 @@ struct bnxt {
 
 	/* Struct to hold adapter error recovery related info */
 	struct bnxt_error_recovery_info *recovery_info;
-#define BNXT_MARK_TABLE_SZ	(sizeof(uint32_t)  * 64 * 1024)
+#define BNXT_MARK_TABLE_SZ	(sizeof(struct bnxt_mark_info)  * 64 * 1024)
 /* TCAM and EM should be 16-bit only. Other modes not supported. */
 #define BNXT_FLOW_ID_MASK	0x0000ffff
-	uint32_t		*mark_table;
+	struct bnxt_mark_info	*mark_table;
 };
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
