@@ -488,6 +488,8 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	filter->flow_id = rte_le_to_cpu_32(resp->flow_id);
 	HWRM_UNLOCK();
 
+	filter->l2_ref_cnt++;
+
 	return rc;
 }
 

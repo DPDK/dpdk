@@ -867,7 +867,6 @@ bnxt_create_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 		bnxt_free_filter(bp, filter1);
 		return NULL;
 	}
-	filter1->l2_ref_cnt++;
 	return filter1;
 }
 
