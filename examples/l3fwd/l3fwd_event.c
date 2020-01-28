@@ -10,6 +10,14 @@
 #include "l3fwd.h"
 #include "l3fwd_event.h"
 
+static void
+print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
+{
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
+	printf("%s%s", name, buf);
+}
+
 struct l3fwd_event_resources *
 l3fwd_get_eventdev_rsrc(void)
 {
@@ -28,6 +36,131 @@ l3fwd_get_eventdev_rsrc(void)
 	rte_exit(EXIT_FAILURE, "Unable to allocate memory for eventdev cfg\n");
 
 	return NULL;
+}
+
+static void
+l3fwd_eth_dev_port_setup(struct rte_eth_conf *port_conf)
+{
+	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+	uint16_t nb_ports = rte_eth_dev_count_avail();
+	uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
+	uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
+	unsigned int nb_lcores = rte_lcore_count();
+	struct rte_eth_conf local_port_conf;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf txconf;
+	struct rte_eth_rxconf rxconf;
+	unsigned int nb_mbuf;
+	uint16_t port_id;
+	uint8_t eth_qid;
+	int32_t ret;
+
+	/* initialize all ports */
+	RTE_ETH_FOREACH_DEV(port_id) {
+		local_port_conf = *port_conf;
+		/* skip ports that are not enabled */
+		if ((evt_rsrc->port_mask & (1 << port_id)) == 0) {
+			printf("\nSkipping disabled port %d\n", port_id);
+			continue;
+		}
+
+		/* init port */
+		printf("Initializing port %d ... ", port_id);
+		fflush(stdout);
+		printf("Creating queues: nb_rxq=%d nb_txq=1...\n",
+		       evt_rsrc->eth_rx_queues);
+
+		rte_eth_dev_info_get(port_id, &dev_info);
+		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			local_port_conf.txmode.offloads |=
+						DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+
+		local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
+						dev_info.flow_type_rss_offloads;
+		if (local_port_conf.rx_adv_conf.rss_conf.rss_hf !=
+				port_conf->rx_adv_conf.rss_conf.rss_hf) {
+			printf("Port %u modified RSS hash function "
+			       "based on hardware support,"
+			       "requested:%#"PRIx64" configured:%#"PRIx64"\n",
+			       port_id,
+			       port_conf->rx_adv_conf.rss_conf.rss_hf,
+			       local_port_conf.rx_adv_conf.rss_conf.rss_hf);
+		}
+
+		ret = rte_eth_dev_configure(port_id, evt_rsrc->eth_rx_queues,
+					    1, &local_port_conf);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Cannot configure device: err=%d, port=%d\n",
+				 ret, port_id);
+
+		ret = rte_eth_dev_adjust_nb_rx_tx_desc(port_id, &nb_rxd,
+						       &nb_txd);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Cannot adjust number of descriptors: err=%d, "
+				 "port=%d\n", ret, port_id);
+
+		rte_eth_macaddr_get(port_id, &ports_eth_addr[port_id]);
+		print_ethaddr(" Address:", &ports_eth_addr[port_id]);
+		printf(", ");
+		print_ethaddr("Destination:",
+			(const struct rte_ether_addr *)&dest_eth_addr[port_id]);
+		printf(", ");
+
+		/* prepare source MAC for each port. */
+		rte_ether_addr_copy(&ports_eth_addr[port_id],
+			(struct rte_ether_addr *)(val_eth + port_id) + 1);
+
+		/* init memory */
+		if (!evt_rsrc->per_port_pool) {
+			/* port_id = 0; this is *not* signifying the first port,
+			 * rather, it signifies that port_id is ignored.
+			 */
+			nb_mbuf = RTE_MAX(nb_ports * nb_rxd +
+					  nb_ports * nb_txd +
+					  nb_ports * nb_lcores *
+							MAX_PKT_BURST +
+					  nb_lcores * MEMPOOL_CACHE_SIZE,
+					  8192u);
+			ret = init_mem(0, nb_mbuf);
+		} else {
+			nb_mbuf = RTE_MAX(nb_rxd + nb_rxd +
+					  nb_lcores * MAX_PKT_BURST +
+					  nb_lcores * MEMPOOL_CACHE_SIZE,
+					  8192u);
+			ret = init_mem(port_id, nb_mbuf);
+		}
+		/* init Rx queues per port */
+		rxconf = dev_info.default_rxconf;
+		rxconf.offloads = local_port_conf.rxmode.offloads;
+
+		for (eth_qid = 0; eth_qid < evt_rsrc->eth_rx_queues;
+		     eth_qid++) {
+			if (!evt_rsrc->per_port_pool)
+				ret = rte_eth_rx_queue_setup(port_id, eth_qid,
+					nb_rxd, 0, &rxconf,
+					evt_rsrc->pkt_pool[0][0]);
+			else
+				ret = rte_eth_rx_queue_setup(port_id, eth_qid,
+					nb_rxd, 0, &rxconf,
+					evt_rsrc->pkt_pool[port_id][0]);
+			if (ret < 0)
+				rte_exit(EXIT_FAILURE,
+					 "rte_eth_rx_queue_setup: err=%d, "
+					 "port=%d, eth_qid: %d\n",
+					 ret, port_id, eth_qid);
+		}
+
+		/* init one Tx queue per port */
+		txconf = dev_info.default_txconf;
+		txconf.offloads = local_port_conf.txmode.offloads;
+		ret = rte_eth_tx_queue_setup(port_id, 0, nb_txd, 0, &txconf);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "rte_eth_tx_queue_setup: err=%d, "
+				 "port=%d\n", ret, port_id);
+	}
 }
 
 static void
@@ -56,7 +189,7 @@ l3fwd_event_capability_setup(void)
 }
 
 void
-l3fwd_event_resource_setup(void)
+l3fwd_event_resource_setup(struct rte_eth_conf *port_conf)
 {
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
 
@@ -68,6 +201,9 @@ l3fwd_event_resource_setup(void)
 
 	/* Setup eventdev capability callbacks */
 	l3fwd_event_capability_setup();
+
+	/* Ethernet device configuration */
+	l3fwd_eth_dev_port_setup(port_conf);
 
 	/* Event device configuration */
 	evt_rsrc->ops.event_device_setup();

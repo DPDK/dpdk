@@ -72,7 +72,7 @@ struct l3fwd_event_resources {
 };
 
 struct l3fwd_event_resources *l3fwd_get_eventdev_rsrc(void);
-void l3fwd_event_resource_setup(void);
+void l3fwd_event_resource_setup(struct rte_eth_conf *port_conf);
 void l3fwd_event_set_generic_ops(struct l3fwd_event_setup_ops *ops);
 void l3fwd_event_set_internal_port_ops(struct l3fwd_event_setup_ops *ops);
 
