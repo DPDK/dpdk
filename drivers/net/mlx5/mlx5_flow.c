@@ -5577,6 +5577,8 @@ mlx5_flow_async_pool_query_handle(struct mlx5_ibv_shared *sh,
  *   Value is part of flow rule created by request external to PMD.
  * @param[in] group
  *   rte_flow group index value.
+ * @param[out] fdb_def_rule
+ *   Whether fdb jump to table 1 is configured.
  * @param[out] table
  *   HW table value.
  * @param[out] error
@@ -5587,10 +5589,10 @@ mlx5_flow_async_pool_query_handle(struct mlx5_ibv_shared *sh,
  */
 int
 mlx5_flow_group_to_table(const struct rte_flow_attr *attributes, bool external,
-			 uint32_t group, uint32_t *table,
+			 uint32_t group, bool fdb_def_rule, uint32_t *table,
 			 struct rte_flow_error *error)
 {
-	if (attributes->transfer && external) {
+	if (attributes->transfer && external && fdb_def_rule) {
 		if (group == UINT32_MAX)
 			return rte_flow_error_set
 						(error, EINVAL,

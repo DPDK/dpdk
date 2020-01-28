@@ -3359,7 +3359,7 @@ flow_dv_validate_action_jump(const struct rte_flow_action *action,
 	target_group =
 		((const struct rte_flow_action_jump *)action->conf)->group;
 	ret = mlx5_flow_group_to_table(attributes, external, target_group,
-				       &table, error);
+				       true, &table, error);
 	if (ret)
 		return ret;
 	if (attributes->group == target_group)
@@ -4340,7 +4340,7 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 	int ret;
 
 	ret = mlx5_flow_group_to_table(attributes, external,
-				       attributes->group,
+				       attributes->group, !!priv->fdb_def_rule,
 				       &table, error);
 	if (ret)
 		return ret;
@@ -7017,7 +7017,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 	mhdr_res->ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
 					   MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
 	ret = mlx5_flow_group_to_table(attr, dev_flow->external, attr->group,
-				       &table, error);
+				       !!priv->fdb_def_rule, &table, error);
 	if (ret)
 		return ret;
 	dev_flow->group = table;
@@ -7285,8 +7285,9 @@ cnt_err:
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			jump_data = action->conf;
 			ret = mlx5_flow_group_to_table(attr, dev_flow->external,
-						       jump_data->group, &table,
-						       error);
+						       jump_data->group,
+						       !!priv->fdb_def_rule,
+						       &table, error);
 			if (ret)
 				return ret;
 			tbl = flow_dv_tbl_resource_get(dev, table,

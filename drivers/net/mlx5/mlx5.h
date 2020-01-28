@@ -554,6 +554,7 @@ struct mlx5_priv {
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
 	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
+	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
