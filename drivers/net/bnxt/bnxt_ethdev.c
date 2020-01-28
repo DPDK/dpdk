@@ -887,7 +887,6 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
 	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
 
-	bp->flags |= BNXT_FLAG_INIT_DONE;
 	eth_dev->data->dev_started = 1;
 	pthread_mutex_lock(&bp->def_cp_lock);
 	bnxt_schedule_fw_health_check(bp);
@@ -947,7 +946,6 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 
 	bnxt_cancel_fw_health_check(bp);
 
-	bp->flags &= ~BNXT_FLAG_INIT_DONE;
 	bnxt_dev_set_link_down_op(eth_dev);
 
 	/* Wait for link to be reset and the async notification to process.
