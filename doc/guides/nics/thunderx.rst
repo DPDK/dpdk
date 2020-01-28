@@ -313,6 +313,55 @@ We will choose four secondary queue sets from the ending of the list (0002:01:01
 
 The nicvf thunderx driver will make use of attached secondary VFs automatically during the interface configuration stage.
 
+driver thunder-nic VF's
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Use sysfs to distinguish thunder-nic primary VFs and secondary VFs.
+   .. code-block:: console
+
+   ll /sys/bus/pci/drivers/thunder-nic/
+   total 0
+   drwxr-xr-x  2 root root     0 Jan 22 11:19 ./
+   drwxr-xr-x 86 root root     0 Jan 22 11:07 ../
+   lrwxrwxrwx  1 root root     0 Jan 22 11:19 0001:01:00.0 -> '../../../../devices/platform/soc@0/849000000000.pci/pci0001:00/0001:00:10.0/0001:01:00.0'/
+
+   cat /sys/bus/pci/drivers/thunder-nic/0001\:01\:00.0/sriov_sqs_assignment
+   12
+   0 0001:01:00.1 vfio-pci +: 12 13
+   1 0001:01:00.2 thunder-nicvf -:
+   2 0001:01:00.3 thunder-nicvf -:
+   3 0001:01:00.4 thunder-nicvf -:
+   4 0001:01:00.5 thunder-nicvf -:
+   5 0001:01:00.6 thunder-nicvf -:
+   6 0001:01:00.7 thunder-nicvf -:
+   7 0001:01:01.0 thunder-nicvf -:
+   8 0001:01:01.1 thunder-nicvf -:
+   9 0001:01:01.2 thunder-nicvf -:
+   10 0001:01:01.3 thunder-nicvf -:
+   11 0001:01:01.4 thunder-nicvf -:
+   12 0001:01:01.5 vfio-pci: 0
+   13 0001:01:01.6 vfio-pci: 0
+   14 0001:01:01.7 thunder-nicvf: 255
+   15 0001:01:02.0 thunder-nicvf: 255
+   16 0001:01:02.1 thunder-nicvf: 255
+   17 0001:01:02.2 thunder-nicvf: 255
+   18 0001:01:02.3 thunder-nicvf: 255
+   19 0001:01:02.4 thunder-nicvf: 255
+   20 0001:01:02.5 thunder-nicvf: 255
+   21 0001:01:02.6 thunder-nicvf: 255
+   22 0001:01:02.7 thunder-nicvf: 255
+   23 0001:01:03.0 thunder-nicvf: 255
+   24 0001:01:03.1 thunder-nicvf: 255
+   25 0001:01:03.2 thunder-nicvf: 255
+   26 0001:01:03.3 thunder-nicvf: 255
+   27 0001:01:03.4 thunder-nicvf: 255
+   28 0001:01:03.5 thunder-nicvf: 255
+   29 0001:01:03.6 thunder-nicvf: 255
+   30 0001:01:03.7 thunder-nicvf: 255
+   31 0001:01:04.0 thunder-nicvf: 255
+
+Every column that ends with 'thunder-nicvf: number' can be used as secondary VF.
+In printout above all entres after '14 0001:01:01.7 thunder-nicvf: 255' can be used as secondary VF.
 
 Module params
 --------------
