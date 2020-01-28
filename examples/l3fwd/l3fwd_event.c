@@ -211,6 +211,12 @@ void
 l3fwd_event_resource_setup(struct rte_eth_conf *port_conf)
 {
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+	const event_loop_cb lpm_event_loop[2][2] = {
+		[0][0] = lpm_event_main_loop_tx_d,
+		[0][1] = lpm_event_main_loop_tx_d_burst,
+		[1][0] = lpm_event_main_loop_tx_q,
+		[1][1] = lpm_event_main_loop_tx_q_burst,
+	};
 	uint32_t event_queue_cfg;
 	int ret;
 
@@ -242,4 +248,7 @@ l3fwd_event_resource_setup(struct rte_eth_conf *port_conf)
 	ret = rte_event_dev_start(evt_rsrc->event_d_id);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error in starting eventdev");
+
+	evt_rsrc->ops.lpm_event_loop = lpm_event_loop[evt_rsrc->tx_mode_q]
+						       [evt_rsrc->has_burst];
 }

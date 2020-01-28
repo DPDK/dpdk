@@ -14,6 +14,11 @@
 
 #include "l3fwd.h"
 
+#define L3FWD_EVENT_SINGLE     0x1
+#define L3FWD_EVENT_BURST      0x2
+#define L3FWD_EVENT_TX_DIRECT  0x4
+#define L3FWD_EVENT_TX_ENQ     0x8
+
 typedef uint32_t (*event_device_setup_cb)(void);
 typedef void (*event_queue_setup_cb)(uint32_t event_queue_cfg);
 typedef void (*event_port_setup_cb)(void);
