@@ -948,10 +948,6 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_cancel_fw_health_check(bp);
 
 	bp->flags &= ~BNXT_FLAG_INIT_DONE;
-	if (bp->eth_dev->data->dev_started) {
-		/* TBD: STOP HW queues DMA */
-		eth_dev->data->dev_link.link_status = 0;
-	}
 	bnxt_dev_set_link_down_op(eth_dev);
 
 	/* Wait for link to be reset and the async notification to process.
