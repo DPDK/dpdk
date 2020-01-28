@@ -143,6 +143,11 @@ New Features
   Added a new OCTEON TX2 rawdev PMD for End Point mode of operation.
   See the :doc:`../rawdevs/octeontx2_ep` for more details on this new PMD.
 
+* **Added event mode to l3fwd sample application.**
+
+  Add event device support for ``l3fwd`` sample application. It demonstrates
+  usage of poll and event mode IO mechanism under a single application.
+
 
 Removed Items
 -------------
