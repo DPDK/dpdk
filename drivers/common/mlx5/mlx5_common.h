@@ -9,7 +9,10 @@
 #include <stdio.h>
 
 #include <rte_pci.h>
+#include <rte_atomic.h>
 #include <rte_log.h>
+
+#include "mlx5_prm.h"
 
 
 /*
@@ -106,6 +109,44 @@ enum {
 	PCI_DEVICE_ID_MELLANOX_CONNECTX6DX = 0x101d,
 	PCI_DEVICE_ID_MELLANOX_CONNECTX6DXVF = 0x101e,
 };
+
+/* CQE status. */
+enum mlx5_cqe_status {
+	MLX5_CQE_STATUS_SW_OWN = -1,
+	MLX5_CQE_STATUS_HW_OWN = -2,
+	MLX5_CQE_STATUS_ERR = -3,
+};
+
+/**
+ * Check whether CQE is valid.
+ *
+ * @param cqe
+ *   Pointer to CQE.
+ * @param cqes_n
+ *   Size of completion queue.
+ * @param ci
+ *   Consumer index.
+ *
+ * @return
+ *   The CQE status.
+ */
+static __rte_always_inline enum mlx5_cqe_status
+check_cqe(volatile struct mlx5_cqe *cqe, const uint16_t cqes_n,
+	  const uint16_t ci)
+{
+	const uint16_t idx = ci & cqes_n;
+	const uint8_t op_own = cqe->op_own;
+	const uint8_t op_owner = MLX5_CQE_OWNER(op_own);
+	const uint8_t op_code = MLX5_CQE_OPCODE(op_own);
+
+	if (unlikely((op_owner != (!!(idx))) || (op_code == MLX5_CQE_INVALID)))
+		return MLX5_CQE_STATUS_HW_OWN;
+	rte_cio_rmb();
+	if (unlikely(op_code == MLX5_CQE_RESP_ERR ||
+		     op_code == MLX5_CQE_REQ_ERR))
+		return MLX5_CQE_STATUS_ERR;
+	return MLX5_CQE_STATUS_SW_OWN;
+}
 
 int mlx5_dev_to_pci_addr(const char *dev_path, struct rte_pci_addr *pci_addr);
 
