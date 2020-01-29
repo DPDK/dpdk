@@ -418,7 +418,7 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 */
 		if (cqe_fp->pars_flags.flags & PARSING_FLAGS_VLAN) {
 			rx_mb->vlan_tci = cqe_fp->vlan_tag;
-			rx_mb->ol_flags |= PKT_RX_VLAN;
+			rx_mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		}
 
 		rx_pkts[nb_rx] = rx_mb;
