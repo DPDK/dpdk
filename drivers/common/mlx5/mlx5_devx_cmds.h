@@ -78,6 +78,7 @@ struct mlx5_hca_vdpa_attr {
 struct mlx5_hca_attr {
 	uint32_t eswitch_manager:1;
 	uint32_t flow_counters_dump:1;
+	uint32_t log_max_rqt_size:5;
 	uint8_t flow_counter_bulk_alloc_bitmap;
 	uint32_t eth_net_offloads:1;
 	uint32_t eth_virt:1;
