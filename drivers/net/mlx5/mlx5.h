@@ -39,6 +39,7 @@
 #include "mlx5_defs.h"
 #include "mlx5_utils.h"
 #include "mlx5_mr.h"
+#include "mlx5_nl.h"
 #include "mlx5_autoconf.h"
 
 /* Request types for IPC. */
@@ -75,24 +76,6 @@ struct mlx5_mp_param {
 /** Key string for IPC. */
 #define MLX5_MP_NAME "net_mlx5_mp"
 
-/* Recognized Infiniband device physical port name types. */
-enum mlx5_phys_port_name_type {
-	MLX5_PHYS_PORT_NAME_TYPE_NOTSET = 0, /* Not set. */
-	MLX5_PHYS_PORT_NAME_TYPE_LEGACY, /* before kernel ver < 5.0 */
-	MLX5_PHYS_PORT_NAME_TYPE_UPLINK, /* p0, kernel ver >= 5.0 */
-	MLX5_PHYS_PORT_NAME_TYPE_PFVF, /* pf0vf0, kernel ver >= 5.0 */
-	MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN, /* Unrecognized. */
-};
-
-/** Switch information returned by mlx5_nl_switch_info(). */
-struct mlx5_switch_info {
-	uint32_t master:1; /**< Master device. */
-	uint32_t representor:1; /**< Representor device. */
-	enum mlx5_phys_port_name_type name_type; /** < Port name type. */
-	int32_t pf_num; /**< PF number (valid for pfxvfx format only). */
-	int32_t port_name; /**< Representor port name. */
-	uint64_t switch_id; /**< Switch identifier. */
-};
 
 LIST_HEAD(mlx5_dev_list, mlx5_ibv_shared);
 
@@ -226,28 +209,10 @@ enum mlx5_verbs_alloc_type {
 	MLX5_VERBS_ALLOC_TYPE_RX_QUEUE,
 };
 
-/* VLAN netdev for VLAN workaround. */
-struct mlx5_vlan_dev {
-	uint32_t refcnt;
-	uint32_t ifindex; /**< Own interface index. */
-};
-
 /* Structure for VF VLAN workaround. */
 struct mlx5_vf_vlan {
 	uint32_t tag:12;
 	uint32_t created:1;
-};
-
-/*
- * Array of VLAN devices created on the base of VF
- * used for workaround in virtual environments.
- */
-struct mlx5_vlan_vmwa_context {
-	int nl_socket;
-	uint32_t nl_sn;
-	uint32_t vf_ifindex;
-	struct rte_eth_dev *dev;
-	struct mlx5_vlan_dev vlan_dev[4096];
 };
 
 /**
@@ -576,7 +541,7 @@ struct mlx5_priv {
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
 	uint32_t nl_sn; /* Netlink message sequence number. */
 	LIST_HEAD(dbrpage, mlx5_devx_dbr_page) dbrpgs; /* Door-bell pages. */
-	struct mlx5_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
+	struct mlx5_nl_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
 	struct mlx5_flow_id_pool *qrss_id_pool;
 	struct mlx5_hlist *mreg_cp_tbl;
 	/* Hash table of Rx metadata register copy table. */
@@ -672,6 +637,8 @@ int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);
 void mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 int mlx5_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		      uint32_t index, uint32_t vmdq);
+struct mlx5_nl_vlan_vmwa_context *mlx5_vlan_vmwa_init
+				    (struct rte_eth_dev *dev, uint32_t ifindex);
 int mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 int mlx5_set_mc_addr_list(struct rte_eth_dev *dev,
 			struct rte_ether_addr *mc_addr_set,
@@ -715,6 +682,11 @@ int mlx5_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 int mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 void mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on);
 int mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+void mlx5_vlan_vmwa_exit(struct mlx5_nl_vlan_vmwa_context *ctx);
+void mlx5_vlan_vmwa_release(struct rte_eth_dev *dev,
+			    struct mlx5_vf_vlan *vf_vlan);
+void mlx5_vlan_vmwa_acquire(struct rte_eth_dev *dev,
+			    struct mlx5_vf_vlan *vf_vlan);
 
 /* mlx5_trigger.c */
 
@@ -795,32 +767,6 @@ void mlx5_mp_uninit_secondary(void);
 
 int mlx5_pmd_socket_init(void);
 void mlx5_pmd_socket_uninit(void);
-
-/* mlx5_nl.c */
-
-int mlx5_nl_init(int protocol);
-int mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
-			 uint32_t index);
-int mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
-			    uint32_t index);
-void mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev);
-void mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev);
-int mlx5_nl_promisc(struct rte_eth_dev *dev, int enable);
-int mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable);
-unsigned int mlx5_nl_portnum(int nl, const char *name);
-unsigned int mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex);
-int mlx5_nl_vf_mac_addr_modify(struct rte_eth_dev *dev,
-			       struct rte_ether_addr *mac, int vf_index);
-int mlx5_nl_switch_info(int nl, unsigned int ifindex,
-			struct mlx5_switch_info *info);
-
-struct mlx5_vlan_vmwa_context *mlx5_vlan_vmwa_init(struct rte_eth_dev *dev,
-						   uint32_t ifindex);
-void mlx5_vlan_vmwa_exit(struct mlx5_vlan_vmwa_context *ctx);
-void mlx5_vlan_vmwa_release(struct rte_eth_dev *dev,
-			    struct mlx5_vf_vlan *vf_vlan);
-void mlx5_vlan_vmwa_acquire(struct rte_eth_dev *dev,
-			    struct mlx5_vf_vlan *vf_vlan);
 
 /* mlx5_flow_meter.c */
 
