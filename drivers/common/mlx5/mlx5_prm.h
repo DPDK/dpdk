@@ -1734,8 +1734,9 @@ struct mlx5_ifc_rq_num_bits {
 };
 
 struct mlx5_ifc_rqtc_bits {
-	u8 reserved_at_0[0xa0];
-	u8 reserved_at_a0[0x10];
+	u8 reserved_at_0[0xa5];
+	u8 list_q_type[0x3];
+	u8 reserved_at_a8[0x8];
 	u8 rqt_max_size[0x10];
 	u8 reserved_at_c0[0x10];
 	u8 rqt_actual_size[0x10];

@@ -846,6 +846,7 @@ mlx5_devx_cmd_create_rqt(struct ibv_context *ctx,
 	}
 	MLX5_SET(create_rqt_in, in, opcode, MLX5_CMD_OP_CREATE_RQT);
 	rqt_ctx = MLX5_ADDR_OF(create_rqt_in, in, rqt_context);
+	MLX5_SET(rqtc, rqt_ctx, list_q_type, rqt_attr->rq_type);
 	MLX5_SET(rqtc, rqt_ctx, rqt_max_size, rqt_attr->rqt_max_size);
 	MLX5_SET(rqtc, rqt_ctx, rqt_actual_size, rqt_attr->rqt_actual_size);
 	for (i = 0; i < rqt_attr->rqt_actual_size; i++)

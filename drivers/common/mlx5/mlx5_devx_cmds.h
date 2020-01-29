@@ -188,6 +188,7 @@ struct mlx5_devx_tir_attr {
 
 /* RQT attributes structure, used by RQT operations. */
 struct mlx5_devx_rqt_attr {
+	uint8_t rq_type;
 	uint32_t rqt_max_size:16;
 	uint32_t rqt_actual_size:16;
 	uint32_t rq_list[];
