@@ -130,6 +130,7 @@ uint8_t mlx5_cksum_table[1 << 10] __rte_cache_aligned;
 uint8_t mlx5_swp_types_table[1 << 10] __rte_cache_aligned;
 
 uint64_t rte_net_mlx5_dynf_inline_mask;
+#define PKT_TX_DYNF_NOINLINE rte_net_mlx5_dynf_inline_mask
 
 /**
  * Build a table to translate Rx completion flags to packet type.
@@ -2530,21 +2531,30 @@ mlx5_tx_eseg_data(struct mlx5_txq_data *restrict txq,
  *   Pointer to burst routine local context.
  * @param len
  *   Length of data to be copied.
+ * @param must
+ *   Length of data to be copied ignoring no inline hint.
  * @param olx
  *   Configured Tx offloads mask. It is fully defined at
  *   compile time and may be used for optimization.
+ *
+ * @return
+ *   Number of actual copied data bytes. This is always greater than or
+ *   equal to must parameter and might be lesser than len in no inline
+ *   hint flag is encountered.
  */
-static __rte_always_inline void
+static __rte_always_inline unsigned int
 mlx5_tx_mseg_memcpy(uint8_t *pdst,
 		    struct mlx5_txq_local *restrict loc,
 		    unsigned int len,
+		    unsigned int must,
 		    unsigned int olx __rte_unused)
 {
 	struct rte_mbuf *mbuf;
-	unsigned int part, dlen;
+	unsigned int part, dlen, copy = 0;
 	uint8_t *psrc;
 
 	assert(len);
+	assert(must <= len);
 	do {
 		/* Allow zero length packets, must check first. */
 		dlen = rte_pktmbuf_data_len(loc->mbuf);
@@ -2557,6 +2567,25 @@ mlx5_tx_mseg_memcpy(uint8_t *pdst,
 			assert(loc->mbuf_nseg > 1);
 			assert(loc->mbuf);
 			--loc->mbuf_nseg;
+			if (loc->mbuf->ol_flags & PKT_TX_DYNF_NOINLINE) {
+				unsigned int diff;
+
+				if (copy >= must) {
+					/*
+					 * We already copied the minimal
+					 * requested amount of data.
+					 */
+					return copy;
+				}
+				diff = must - copy;
+				if (diff <= rte_pktmbuf_data_len(loc->mbuf)) {
+					/*
+					 * Copy only the minimal required
+					 * part of the data buffer.
+					 */
+					len = diff;
+				}
+			}
 			continue;
 		}
 		dlen -= loc->mbuf_off;
@@ -2564,6 +2593,7 @@ mlx5_tx_mseg_memcpy(uint8_t *pdst,
 					       loc->mbuf_off);
 		part = RTE_MIN(len, dlen);
 		rte_memcpy(pdst, psrc, part);
+		copy += part;
 		loc->mbuf_off += part;
 		len -= part;
 		if (!len) {
@@ -2577,7 +2607,7 @@ mlx5_tx_mseg_memcpy(uint8_t *pdst,
 				assert(loc->mbuf_nseg >= 1);
 				--loc->mbuf_nseg;
 			}
-			return;
+			return copy;
 		}
 		pdst += part;
 	} while (true);
@@ -2622,7 +2652,7 @@ mlx5_tx_eseg_mdat(struct mlx5_txq_data *restrict txq,
 	struct mlx5_wqe_eseg *restrict es = &wqe->eseg;
 	uint32_t csum;
 	uint8_t *pdst;
-	unsigned int part;
+	unsigned int part, tlen = 0;
 
 	/*
 	 * Calculate and set check sum flags first, uint32_t field
@@ -2655,17 +2685,18 @@ mlx5_tx_eseg_mdat(struct mlx5_txq_data *restrict txq,
 				 2 * RTE_ETHER_ADDR_LEN),
 		      "invalid Ethernet Segment data size");
 	assert(inlen >= MLX5_ESEG_MIN_INLINE_SIZE);
-	es->inline_hdr_sz = rte_cpu_to_be_16(inlen);
 	pdst = (uint8_t *)&es->inline_data;
 	if (MLX5_TXOFF_CONFIG(VLAN) && vlan) {
 		/* Implement VLAN tag insertion as part inline data. */
-		mlx5_tx_mseg_memcpy(pdst, loc, 2 * RTE_ETHER_ADDR_LEN, olx);
+		mlx5_tx_mseg_memcpy(pdst, loc,
+				    2 * RTE_ETHER_ADDR_LEN,
+				    2 * RTE_ETHER_ADDR_LEN, olx);
 		pdst += 2 * RTE_ETHER_ADDR_LEN;
 		*(unaligned_uint32_t *)pdst = rte_cpu_to_be_32
 						((RTE_ETHER_TYPE_VLAN << 16) |
 						 loc->mbuf->vlan_tci);
 		pdst += sizeof(struct rte_vlan_hdr);
-		inlen -= 2 * RTE_ETHER_ADDR_LEN + sizeof(struct rte_vlan_hdr);
+		tlen += 2 * RTE_ETHER_ADDR_LEN + sizeof(struct rte_vlan_hdr);
 	}
 	assert(pdst < (uint8_t *)txq->wqes_end);
 	/*
@@ -2673,18 +2704,26 @@ mlx5_tx_eseg_mdat(struct mlx5_txq_data *restrict txq,
 	 * Here we should be aware of WQE ring buffer wraparound only.
 	 */
 	part = (uint8_t *)txq->wqes_end - pdst;
-	part = RTE_MIN(part, inlen);
+	part = RTE_MIN(part, inlen - tlen);
 	assert(part);
 	do {
-		mlx5_tx_mseg_memcpy(pdst, loc, part, olx);
-		inlen -= part;
-		if (likely(!inlen)) {
-			pdst += part;
+		unsigned int copy;
+
+		/*
+		 * Copying may be interrupted inside the routine
+		 * if run into no inline hint flag.
+		 */
+		copy = tlen >= txq->inlen_mode ? 0 : (txq->inlen_mode - tlen);
+		copy = mlx5_tx_mseg_memcpy(pdst, loc, part, copy, olx);
+		tlen += copy;
+		if (likely(inlen <= tlen) || copy < part) {
+			es->inline_hdr_sz = rte_cpu_to_be_16(tlen);
+			pdst += copy;
 			pdst = RTE_PTR_ALIGN(pdst, MLX5_WSEG_SIZE);
 			return (struct mlx5_wqe_dseg *)pdst;
 		}
 		pdst = (uint8_t *)txq->wqes;
-		part = inlen;
+		part = inlen - tlen;
 	} while (true);
 }
 
@@ -3283,7 +3322,8 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *restrict txq,
 	if (inlen <= MLX5_ESEG_MIN_INLINE_SIZE)
 		return MLX5_TXCMP_CODE_ERROR;
 	assert(txq->inlen_send >= MLX5_ESEG_MIN_INLINE_SIZE);
-	if (inlen > txq->inlen_send) {
+	if (inlen > txq->inlen_send ||
+	    loc->mbuf->ol_flags & PKT_TX_DYNF_NOINLINE) {
 		struct rte_mbuf *mbuf;
 		unsigned int nxlen;
 		uintptr_t start;
@@ -3298,7 +3338,8 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *restrict txq,
 			assert(txq->inlen_mode <= txq->inlen_send);
 			inlen = txq->inlen_mode;
 		} else {
-			if (!vlan || txq->vlan_en) {
+			if (loc->mbuf->ol_flags & PKT_TX_DYNF_NOINLINE ||
+			    !vlan || txq->vlan_en) {
 				/*
 				 * VLAN insertion will be done inside by HW.
 				 * It is not utmost effective - VLAN flag is
@@ -4109,7 +4150,8 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 				return MLX5_TXCMP_CODE_ERROR;
 			}
 			/* Inline or not inline - that's the Question. */
-			if (dlen > txq->inlen_empw)
+			if (dlen > txq->inlen_empw ||
+			    loc->mbuf->ol_flags & PKT_TX_DYNF_NOINLINE)
 				goto pointer_empw;
 			/* Inline entire packet, optional VLAN insertion. */
 			tlen = sizeof(dseg->bcount) + dlen;
@@ -4305,6 +4347,33 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
 				/* Check against minimal length. */
 				if (inlen <= MLX5_ESEG_MIN_INLINE_SIZE)
 					return MLX5_TXCMP_CODE_ERROR;
+				if (loc->mbuf->ol_flags &
+				    PKT_TX_DYNF_NOINLINE) {
+					/*
+					 * The hint flag not to inline packet
+					 * data is set. Check whether we can
+					 * follow the hint.
+					 */
+					if ((!MLX5_TXOFF_CONFIG(EMPW) &&
+					      txq->inlen_mode) ||
+					    (MLX5_TXOFF_CONFIG(MPW) &&
+					     txq->inlen_mode)) {
+						/*
+						 * The hardware requires the
+						 * minimal inline data header.
+						 */
+						goto single_min_inline;
+					}
+					if (MLX5_TXOFF_CONFIG(VLAN) &&
+					    vlan && !txq->vlan_en) {
+						/*
+						 * We must insert VLAN tag
+						 * by software means.
+						 */
+						goto single_part_inline;
+					}
+					goto single_no_inline;
+				}
 				/*
 				 * Completely inlined packet data WQE:
 				 * - Control Segment, SEND opcode
@@ -4354,6 +4423,7 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
 				 * We should check the free space in
 				 * WQE ring buffer to inline partially.
 				 */
+single_min_inline:
 				assert(txq->inlen_send >= txq->inlen_mode);
 				assert(inlen > txq->inlen_mode);
 				assert(txq->inlen_mode >=
@@ -4421,6 +4491,7 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
 				 * We also get here if VLAN insertion is not
 				 * supported by HW, the inline is enabled.
 				 */
+single_part_inline:
 				wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 				loc->wqe_last = wqe;
 				mlx5_tx_cseg_init(txq, loc, wqe, 4,
@@ -4461,6 +4532,7 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
 			 * - Ethernet Segment, optional VLAN, no inline
 			 * - Data Segment, pointer type
 			 */
+single_no_inline:
 			wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 			loc->wqe_last = wqe;
 			mlx5_tx_cseg_init(txq, loc, wqe, 3,
