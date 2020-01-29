@@ -46,6 +46,7 @@
 #include "mlx5_glue.h"
 #include "mlx5_mr.h"
 #include "mlx5_flow.h"
+#include "mlx5_devx_cmds.h"
 
 /* Device parameter to enable RX completion queue compression. */
 #define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"

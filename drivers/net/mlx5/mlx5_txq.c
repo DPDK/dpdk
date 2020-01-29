@@ -34,6 +34,7 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_glue.h"
+#include "mlx5_devx_cmds.h"
 
 /**
  * Allocate TX queue elements.

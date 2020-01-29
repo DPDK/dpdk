@@ -37,6 +37,7 @@
 #include "mlx5_defs.h"
 #include "mlx5_glue.h"
 #include "mlx5_flow.h"
+#include "mlx5_devx_cmds.h"
 
 /* Default RSS hash key also used for ConnectX-3. */
 uint8_t rss_hash_default_key[] = {

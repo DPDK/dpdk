@@ -31,6 +31,7 @@
 #include "mlx5_defs.h"
 #include "mlx5_flow.h"
 #include "mlx5_glue.h"
+#include "mlx5_devx_cmds.h"
 #include "mlx5_prm.h"
 #include "mlx5_rxtx.h"
 
@@ -5692,6 +5693,8 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev,
 		   struct rte_flow_error *error __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
 
-	return mlx5_devx_cmd_flow_dump(priv->sh, file);
+	return mlx5_devx_cmd_flow_dump(sh->fdb_domain, sh->rx_domain,
+				       sh->tx_domain, file);
 }

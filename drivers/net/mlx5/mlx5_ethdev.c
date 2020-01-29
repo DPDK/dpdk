@@ -38,6 +38,7 @@
 
 #include "mlx5.h"
 #include "mlx5_glue.h"
+#include "mlx5_devx_cmds.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 

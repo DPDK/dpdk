@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /* Copyright 2018 Mellanox Technologies, Ltd */
 
-#include <rte_flow_driver.h>
-#include <rte_malloc.h>
 #include <unistd.h>
 
-#include "mlx5.h"
-#include "mlx5_glue.h"
+#include <rte_flow_driver.h>
+#include <rte_malloc.h>
+
 #include "mlx5_prm.h"
+#include "mlx5_devx_cmds.h"
+#include "mlx5_utils.h"
+
 
 /**
  * Allocate flow counters via devx interface.
@@ -936,8 +938,12 @@ mlx5_devx_cmd_create_td(struct ibv_context *ctx)
 /**
  * Dump all flows to file.
  *
- * @param[in] sh
- *   Pointer to context.
+ * @param[in] fdb_domain
+ *   FDB domain.
+ * @param[in] rx_domain
+ *   RX domain.
+ * @param[in] tx_domain
+ *   TX domain.
  * @param[out] file
  *   Pointer to file stream.
  *
@@ -945,23 +951,24 @@ mlx5_devx_cmd_create_td(struct ibv_context *ctx)
  *   0 on success, a nagative value otherwise.
  */
 int
-mlx5_devx_cmd_flow_dump(struct mlx5_ibv_shared *sh __rte_unused,
-			FILE *file __rte_unused)
+mlx5_devx_cmd_flow_dump(void *fdb_domain __rte_unused,
+			void *rx_domain __rte_unused,
+			void *tx_domain __rte_unused, FILE *file __rte_unused)
 {
 	int ret = 0;
 
 #ifdef HAVE_MLX5_DR_FLOW_DUMP
-	if (sh->fdb_domain) {
-		ret = mlx5_glue->dr_dump_domain(file, sh->fdb_domain);
+	if (fdb_domain) {
+		ret = mlx5_glue->dr_dump_domain(file, fdb_domain);
 		if (ret)
 			return ret;
 	}
-	assert(sh->rx_domain);
-	ret = mlx5_glue->dr_dump_domain(file, sh->rx_domain);
+	assert(rx_domain);
+	ret = mlx5_glue->dr_dump_domain(file, rx_domain);
 	if (ret)
 		return ret;
-	assert(sh->tx_domain);
-	ret = mlx5_glue->dr_dump_domain(file, sh->tx_domain);
+	assert(tx_domain);
+	ret = mlx5_glue->dr_dump_domain(file, tx_domain);
 #else
 	ret = ENOTSUP;
 #endif
