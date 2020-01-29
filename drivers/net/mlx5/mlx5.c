@@ -1270,7 +1270,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->reta_idx != NULL)
 		rte_free(priv->reta_idx);
 	if (priv->config.vf)
-		mlx5_nl_mac_addr_flush(dev);
+		mlx5_nl_mac_addr_flush(priv->nl_socket_route, mlx5_ifindex(dev),
+				       dev->data->mac_addrs,
+				       MLX5_MAX_MAC_ADDRESSES, priv->mac_own);
 	if (priv->nl_socket_route >= 0)
 		close(priv->nl_socket_route);
 	if (priv->nl_socket_rdma >= 0)
@@ -2330,7 +2332,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	/* Some internal functions rely on Netlink sockets, open them now. */
 	priv->nl_socket_rdma = mlx5_nl_init(NETLINK_RDMA);
 	priv->nl_socket_route =	mlx5_nl_init(NETLINK_ROUTE);
-	priv->nl_sn = 0;
 	priv->representor = !!switch_info->representor;
 	priv->master = !!switch_info->master;
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
@@ -2650,7 +2651,10 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	/* Register MAC address. */
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
 	if (config.vf && config.vf_nl_en)
-		mlx5_nl_mac_addr_sync(eth_dev);
+		mlx5_nl_mac_addr_sync(priv->nl_socket_route,
+				      mlx5_ifindex(eth_dev),
+				      eth_dev->data->mac_addrs,
+				      MLX5_MAX_MAC_ADDRESSES);
 	TAILQ_INIT(&priv->flows);
 	TAILQ_INIT(&priv->ctrl_flows);
 	TAILQ_INIT(&priv->flow_meters);

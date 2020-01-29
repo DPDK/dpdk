@@ -39,30 +39,33 @@ struct mlx5_nl_vlan_dev {
  */
 struct mlx5_nl_vlan_vmwa_context {
 	int nl_socket;
-	uint32_t nl_sn;
 	uint32_t vf_ifindex;
 	struct mlx5_nl_vlan_dev vlan_dev[4096];
 };
 
 
 int mlx5_nl_init(int protocol);
-int mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
-			 uint32_t index);
-int mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
+int mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx, uint64_t *mac_own,
+			 struct rte_ether_addr *mac, uint32_t index);
+int mlx5_nl_mac_addr_remove(int nlsk_fd, unsigned int iface_idx,
+			    uint64_t *mac_own, struct rte_ether_addr *mac,
 			    uint32_t index);
-void mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev);
-void mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev);
-int mlx5_nl_promisc(struct rte_eth_dev *dev, int enable);
-int mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable);
+void mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
+			   struct rte_ether_addr *mac_addrs, int n);
+void mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
+			    struct rte_ether_addr *mac_addrs, int n,
+			    uint64_t *mac_own);
+int mlx5_nl_promisc(int nlsk_fd, unsigned int iface_idx, int enable);
+int mlx5_nl_allmulti(int nlsk_fd, unsigned int iface_idx, int enable);
 unsigned int mlx5_nl_portnum(int nl, const char *name);
 unsigned int mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex);
-int mlx5_nl_vf_mac_addr_modify(struct rte_eth_dev *dev,
+int mlx5_nl_vf_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
 			       struct rte_ether_addr *mac, int vf_index);
 int mlx5_nl_switch_info(int nl, unsigned int ifindex,
 			struct mlx5_switch_info *info);
 
 void mlx5_nl_vlan_vmwa_delete(struct mlx5_nl_vlan_vmwa_context *vmwa,
-			   uint32_t ifindex);
+			      uint32_t ifindex);
 uint32_t mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
 				  uint32_t ifindex, uint16_t tag);
 

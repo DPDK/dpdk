@@ -304,7 +304,6 @@ mlx5_vlan_vmwa_init(struct rte_eth_dev *dev, uint32_t ifindex)
 		rte_free(vmwa);
 		return NULL;
 	}
-	vmwa->nl_sn = random();
 	vmwa->vf_ifindex = ifindex;
 	/* Cleanup for existing VLAN devices. */
 	return vmwa;

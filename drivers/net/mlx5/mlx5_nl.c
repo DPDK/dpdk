@@ -17,8 +17,11 @@
 #include <unistd.h>
 
 #include <rte_errno.h>
+#include <rte_atomic.h>
+#include <rte_ether.h>
 
 #include "mlx5.h"
+#include "mlx5_nl.h"
 #include "mlx5_utils.h"
 
 /* Size of the buffer to receive kernel messages */
@@ -108,6 +111,11 @@ struct mlx5_nl_ifindex_data {
 	uint32_t ifindex; /**< Network interface index (out). */
 	uint32_t portnum; /**< IB device max port number (out). */
 };
+
+rte_atomic32_t atomic_sn = RTE_ATOMIC32_INIT(0);
+
+/* Generate Netlink sequence number. */
+#define MLX5_NL_SN_GENERATE ((uint32_t)rte_atomic32_add_return(&atomic_sn, 1))
 
 /**
  * Opens a Netlink socket.
@@ -369,8 +377,10 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
 /**
  * Get bridge MAC addresses.
  *
- * @param dev
- *   Pointer to Ethernet device.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
  * @param mac[out]
  *   Pointer to the array table of MAC addresses to fill.
  *   Its size should be of MLX5_MAX_MAC_ADDRESSES.
@@ -381,11 +391,9 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_nl_mac_addr_list(struct rte_eth_dev *dev, struct rte_ether_addr (*mac)[],
-		      int *mac_n)
+mlx5_nl_mac_addr_list(int nlsk_fd, unsigned int iface_idx,
+		      struct rte_ether_addr (*mac)[], int *mac_n)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int iface_idx = mlx5_ifindex(dev);
 	struct {
 		struct nlmsghdr	hdr;
 		struct ifinfomsg ifm;
@@ -404,33 +412,33 @@ mlx5_nl_mac_addr_list(struct rte_eth_dev *dev, struct rte_ether_addr (*mac)[],
 		.mac = mac,
 		.mac_n = 0,
 	};
-	int fd;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
-	uint32_t sn = priv->nl_sn++;
 
-	if (priv->nl_socket_route == -1)
+	if (nlsk_fd == -1)
 		return 0;
-	fd = priv->nl_socket_route;
-	ret = mlx5_nl_request(fd, &req.hdr, sn, &req.ifm,
+	ret = mlx5_nl_request(nlsk_fd, &req.hdr, sn, &req.ifm,
 			      sizeof(struct ifinfomsg));
 	if (ret < 0)
 		goto error;
-	ret = mlx5_nl_recv(fd, sn, mlx5_nl_mac_addr_cb, &data);
+	ret = mlx5_nl_recv(nlsk_fd, sn, mlx5_nl_mac_addr_cb, &data);
 	if (ret < 0)
 		goto error;
 	*mac_n = data.mac_n;
 	return 0;
 error:
-	DRV_LOG(DEBUG, "port %u cannot retrieve MAC address list %s",
-		dev->data->port_id, strerror(rte_errno));
+	DRV_LOG(DEBUG, "Interface %u cannot retrieve MAC address list %s",
+		iface_idx, strerror(rte_errno));
 	return -rte_errno;
 }
 
 /**
  * Modify the MAC address neighbour table with Netlink.
  *
- * @param dev
- *   Pointer to Ethernet device.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
  * @param mac
  *   MAC address to consider.
  * @param add
@@ -440,11 +448,9 @@ error:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
-			int add)
+mlx5_nl_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
+			struct rte_ether_addr *mac, int add)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int iface_idx = mlx5_ifindex(dev);
 	struct {
 		struct nlmsghdr hdr;
 		struct ndmsg ndm;
@@ -468,28 +474,26 @@ mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 			.rta_len = RTA_LENGTH(RTE_ETHER_ADDR_LEN),
 		},
 	};
-	int fd;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
-	uint32_t sn = priv->nl_sn++;
 
-	if (priv->nl_socket_route == -1)
+	if (nlsk_fd == -1)
 		return 0;
-	fd = priv->nl_socket_route;
 	memcpy(RTA_DATA(&req.rta), mac, RTE_ETHER_ADDR_LEN);
 	req.hdr.nlmsg_len = NLMSG_ALIGN(req.hdr.nlmsg_len) +
 		RTA_ALIGN(req.rta.rta_len);
-	ret = mlx5_nl_send(fd, &req.hdr, sn);
+	ret = mlx5_nl_send(nlsk_fd, &req.hdr, sn);
 	if (ret < 0)
 		goto error;
-	ret = mlx5_nl_recv(fd, sn, NULL, NULL);
+	ret = mlx5_nl_recv(nlsk_fd, sn, NULL, NULL);
 	if (ret < 0)
 		goto error;
 	return 0;
 error:
 	DRV_LOG(DEBUG,
-		"port %u cannot %s MAC address %02X:%02X:%02X:%02X:%02X:%02X"
-		" %s",
-		dev->data->port_id,
+		"Interface %u cannot %s MAC address"
+		" %02X:%02X:%02X:%02X:%02X:%02X %s",
+		iface_idx,
 		add ? "add" : "remove",
 		mac->addr_bytes[0], mac->addr_bytes[1],
 		mac->addr_bytes[2], mac->addr_bytes[3],
@@ -501,8 +505,10 @@ error:
 /**
  * Modify the VF MAC address neighbour table with Netlink.
  *
- * @param dev
- *    Pointer to Ethernet device.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
  * @param mac
  *    MAC address to consider.
  * @param vf_index
@@ -512,12 +518,10 @@ error:
  *    0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_nl_vf_mac_addr_modify(struct rte_eth_dev *dev,
+mlx5_nl_vf_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
 			   struct rte_ether_addr *mac, int vf_index)
 {
-	int fd, ret;
-	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int iface_idx = mlx5_ifindex(dev);
+	int ret;
 	struct {
 		struct nlmsghdr hdr;
 		struct ifinfomsg ifm;
@@ -546,10 +550,10 @@ mlx5_nl_vf_mac_addr_modify(struct rte_eth_dev *dev,
 			.rta_type = IFLA_VF_MAC,
 		},
 	};
-	uint32_t sn = priv->nl_sn++;
 	struct ifla_vf_mac ivm = {
 		.vf = vf_index,
 	};
+	uint32_t sn = MLX5_NL_SN_GENERATE;
 
 	memcpy(&ivm.mac, mac, RTE_ETHER_ADDR_LEN);
 	memcpy(RTA_DATA(&req.vf_mac_rta), &ivm, sizeof(ivm));
@@ -564,13 +568,12 @@ mlx5_nl_vf_mac_addr_modify(struct rte_eth_dev *dev,
 	req.vf_info_rta.rta_len = RTE_PTR_DIFF(NLMSG_TAIL(&req.hdr),
 					       &req.vf_info_rta);
 
-	fd = priv->nl_socket_route;
-	if (fd < 0)
+	if (nlsk_fd < 0)
 		return -1;
-	ret = mlx5_nl_send(fd, &req.hdr, sn);
+	ret = mlx5_nl_send(nlsk_fd, &req.hdr, sn);
 	if (ret < 0)
 		goto error;
-	ret = mlx5_nl_recv(fd, sn, NULL, NULL);
+	ret = mlx5_nl_recv(nlsk_fd, sn, NULL, NULL);
 	if (ret < 0)
 		goto error;
 	return 0;
@@ -589,8 +592,12 @@ error:
 /**
  * Add a MAC address.
  *
- * @param dev
- *   Pointer to Ethernet device.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
+ * @param mac_own
+ *   BITFIELD_DECLARE array to store the mac.
  * @param mac
  *   MAC address to register.
  * @param index
@@ -600,15 +607,15 @@ error:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
+mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
+		     uint64_t *mac_own, struct rte_ether_addr *mac,
 		     uint32_t index)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
-	ret = mlx5_nl_mac_addr_modify(dev, mac, 1);
+	ret = mlx5_nl_mac_addr_modify(nlsk_fd, iface_idx, mac, 1);
 	if (!ret)
-		BITFIELD_SET(priv->mac_own, index);
+		BITFIELD_SET(mac_own, index);
 	if (ret == -EEXIST)
 		return 0;
 	return ret;
@@ -617,8 +624,12 @@ mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 /**
  * Remove a MAC address.
  *
- * @param dev
- *   Pointer to Ethernet device.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
+ * @param mac_own
+ *   BITFIELD_DECLARE array to store the mac.
  * @param mac
  *   MAC address to remove.
  * @param index
@@ -628,46 +639,50 @@ mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
-			uint32_t index)
+mlx5_nl_mac_addr_remove(int nlsk_fd, unsigned int iface_idx, uint64_t *mac_own,
+			struct rte_ether_addr *mac, uint32_t index)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-
-	BITFIELD_RESET(priv->mac_own, index);
-	return mlx5_nl_mac_addr_modify(dev, mac, 0);
+	BITFIELD_RESET(mac_own, index);
+	return mlx5_nl_mac_addr_modify(nlsk_fd, iface_idx, mac, 0);
 }
 
 /**
  * Synchronize Netlink bridge table to the internal table.
  *
- * @param dev
- *   Pointer to Ethernet device.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
+ * @param mac_addrs
+ *   Mac addresses array to sync.
+ * @param n
+ *   @p mac_addrs array size.
  */
 void
-mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev)
+mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
+		      struct rte_ether_addr *mac_addrs, int n)
 {
-	struct rte_ether_addr macs[MLX5_MAX_MAC_ADDRESSES];
+	struct rte_ether_addr macs[n];
 	int macs_n = 0;
 	int i;
 	int ret;
 
-	ret = mlx5_nl_mac_addr_list(dev, &macs, &macs_n);
+	ret = mlx5_nl_mac_addr_list(nlsk_fd, iface_idx, &macs, &macs_n);
 	if (ret)
 		return;
 	for (i = 0; i != macs_n; ++i) {
 		int j;
 
 		/* Verify the address is not in the array yet. */
-		for (j = 0; j != MLX5_MAX_MAC_ADDRESSES; ++j)
-			if (rte_is_same_ether_addr(&macs[i],
-					       &dev->data->mac_addrs[j]))
+		for (j = 0; j != n; ++j)
+			if (rte_is_same_ether_addr(&macs[i], &mac_addrs[j]))
 				break;
-		if (j != MLX5_MAX_MAC_ADDRESSES)
+		if (j != n)
 			continue;
 		/* Find the first entry available. */
-		for (j = 0; j != MLX5_MAX_MAC_ADDRESSES; ++j) {
-			if (rte_is_zero_ether_addr(&dev->data->mac_addrs[j])) {
-				dev->data->mac_addrs[j] = macs[i];
+		for (j = 0; j != n; ++j) {
+			if (rte_is_zero_ether_addr(&mac_addrs[j])) {
+				mac_addrs[j] = macs[i];
 				break;
 			}
 		}
@@ -677,28 +692,40 @@ mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev)
 /**
  * Flush all added MAC addresses.
  *
- * @param dev
- *   Pointer to Ethernet device.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
+ * @param[in] mac_addrs
+ *   Mac addresses array to flush.
+ * @param n
+ *   @p mac_addrs array size.
+ * @param mac_own
+ *   BITFIELD_DECLARE array to store the mac.
  */
 void
-mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev)
+mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
+		       struct rte_ether_addr *mac_addrs, int n,
+		       uint64_t *mac_own)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	int i;
 
-	for (i = MLX5_MAX_MAC_ADDRESSES - 1; i >= 0; --i) {
-		struct rte_ether_addr *m = &dev->data->mac_addrs[i];
+	for (i = n - 1; i >= 0; --i) {
+		struct rte_ether_addr *m = &mac_addrs[i];
 
-		if (BITFIELD_ISSET(priv->mac_own, i))
-			mlx5_nl_mac_addr_remove(dev, m, i);
+		if (BITFIELD_ISSET(mac_own, i))
+			mlx5_nl_mac_addr_remove(nlsk_fd, iface_idx, mac_own, m,
+						i);
 	}
 }
 
 /**
  * Enable promiscuous / all multicast mode through Netlink.
  *
- * @param dev
- *   Pointer to Ethernet device structure.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
  * @param flags
  *   IFF_PROMISC for promiscuous, IFF_ALLMULTI for allmulti.
  * @param enable
@@ -708,10 +735,9 @@ mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_nl_device_flags(struct rte_eth_dev *dev, uint32_t flags, int enable)
+mlx5_nl_device_flags(int nlsk_fd, unsigned int iface_idx, uint32_t flags,
+		     int enable)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int iface_idx = mlx5_ifindex(dev);
 	struct {
 		struct nlmsghdr hdr;
 		struct ifinfomsg ifi;
@@ -727,14 +753,13 @@ mlx5_nl_device_flags(struct rte_eth_dev *dev, uint32_t flags, int enable)
 			.ifi_index = iface_idx,
 		},
 	};
-	int fd;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
 
 	assert(!(flags & ~(IFF_PROMISC | IFF_ALLMULTI)));
-	if (priv->nl_socket_route < 0)
+	if (nlsk_fd < 0)
 		return 0;
-	fd = priv->nl_socket_route;
-	ret = mlx5_nl_send(fd, &req.hdr, priv->nl_sn++);
+	ret = mlx5_nl_send(nlsk_fd, &req.hdr, sn);
 	if (ret < 0)
 		return ret;
 	return 0;
@@ -743,8 +768,10 @@ mlx5_nl_device_flags(struct rte_eth_dev *dev, uint32_t flags, int enable)
 /**
  * Enable promiscuous mode through Netlink.
  *
- * @param dev
- *   Pointer to Ethernet device structure.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
  * @param enable
  *   Nonzero to enable, disable otherwise.
  *
@@ -752,14 +779,14 @@ mlx5_nl_device_flags(struct rte_eth_dev *dev, uint32_t flags, int enable)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_nl_promisc(struct rte_eth_dev *dev, int enable)
+mlx5_nl_promisc(int nlsk_fd, unsigned int iface_idx, int enable)
 {
-	int ret = mlx5_nl_device_flags(dev, IFF_PROMISC, enable);
+	int ret = mlx5_nl_device_flags(nlsk_fd, iface_idx, IFF_PROMISC, enable);
 
 	if (ret)
 		DRV_LOG(DEBUG,
-			"port %u cannot %s promisc mode: Netlink error %s",
-			dev->data->port_id, enable ? "enable" : "disable",
+			"Interface %u cannot %s promisc mode: Netlink error %s",
+			iface_idx, enable ? "enable" : "disable",
 			strerror(rte_errno));
 	return ret;
 }
@@ -767,8 +794,10 @@ mlx5_nl_promisc(struct rte_eth_dev *dev, int enable)
 /**
  * Enable all multicast mode through Netlink.
  *
- * @param dev
- *   Pointer to Ethernet device structure.
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
  * @param enable
  *   Nonzero to enable, disable otherwise.
  *
@@ -776,14 +805,15 @@ mlx5_nl_promisc(struct rte_eth_dev *dev, int enable)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable)
+mlx5_nl_allmulti(int nlsk_fd, unsigned int iface_idx, int enable)
 {
-	int ret = mlx5_nl_device_flags(dev, IFF_ALLMULTI, enable);
+	int ret = mlx5_nl_device_flags(nlsk_fd, iface_idx, IFF_ALLMULTI,
+				       enable);
 
 	if (ret)
 		DRV_LOG(DEBUG,
-			"port %u cannot %s allmulti mode: Netlink error %s",
-			dev->data->port_id, enable ? "enable" : "disable",
+			"Interface %u cannot %s allmulti : Netlink error %s",
+			iface_idx, enable ? "enable" : "disable",
 			strerror(rte_errno));
 	return ret;
 }
@@ -879,7 +909,6 @@ error:
 unsigned int
 mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
 {
-	uint32_t seq = random();
 	struct mlx5_nl_ifindex_data data = {
 		.name = name,
 		.flags = 0,
@@ -900,19 +929,20 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
 		},
 	};
 	struct nlattr *na;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
 
-	ret = mlx5_nl_send(nl, &req.nh, seq);
+	ret = mlx5_nl_send(nl, &req.nh, sn);
 	if (ret < 0)
 		return 0;
-	ret = mlx5_nl_recv(nl, seq, mlx5_nl_cmdget_cb, &data);
+	ret = mlx5_nl_recv(nl, sn, mlx5_nl_cmdget_cb, &data);
 	if (ret < 0)
 		return 0;
 	if (!(data.flags & MLX5_NL_CMD_GET_IB_NAME) ||
 	    !(data.flags & MLX5_NL_CMD_GET_IB_INDEX))
 		goto error;
 	data.flags = 0;
-	++seq;
+	sn = MLX5_NL_SN_GENERATE;
 	req.nh.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
 					     RDMA_NLDEV_CMD_PORT_GET);
 	req.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
@@ -927,10 +957,10 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
 	na->nla_type = RDMA_NLDEV_ATTR_PORT_INDEX;
 	memcpy((void *)((uintptr_t)na + NLA_HDRLEN),
 	       &pindex, sizeof(pindex));
-	ret = mlx5_nl_send(nl, &req.nh, seq);
+	ret = mlx5_nl_send(nl, &req.nh, sn);
 	if (ret < 0)
 		return 0;
-	ret = mlx5_nl_recv(nl, seq, mlx5_nl_cmdget_cb, &data);
+	ret = mlx5_nl_recv(nl, sn, mlx5_nl_cmdget_cb, &data);
 	if (ret < 0)
 		return 0;
 	if (!(data.flags & MLX5_NL_CMD_GET_IB_NAME) ||
@@ -959,7 +989,6 @@ error:
 unsigned int
 mlx5_nl_portnum(int nl, const char *name)
 {
-	uint32_t seq = random();
 	struct mlx5_nl_ifindex_data data = {
 		.flags = 0,
 		.name = name,
@@ -972,12 +1001,13 @@ mlx5_nl_portnum(int nl, const char *name)
 					       RDMA_NLDEV_CMD_GET),
 		.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_DUMP,
 	};
+	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
 
-	ret = mlx5_nl_send(nl, &req, seq);
+	ret = mlx5_nl_send(nl, &req, sn);
 	if (ret < 0)
 		return 0;
-	ret = mlx5_nl_recv(nl, seq, mlx5_nl_cmdget_cb, &data);
+	ret = mlx5_nl_recv(nl, sn, mlx5_nl_cmdget_cb, &data);
 	if (ret < 0)
 		return 0;
 	if (!(data.flags & MLX5_NL_CMD_GET_IB_NAME) ||
@@ -989,6 +1019,55 @@ mlx5_nl_portnum(int nl, const char *name)
 	if (!data.portnum)
 		rte_errno = EINVAL;
 	return data.portnum;
+}
+
+/**
+ * Analyze gathered port parameters via Netlink to recognize master
+ * and representor devices for E-Switch configuration.
+ *
+ * @param[in] num_vf_set
+ *   flag of presence of number of VFs port attribute.
+ * @param[inout] switch_info
+ *   Port information, including port name as a number and port name
+ *   type if recognized
+ *
+ * @return
+ *   master and representor flags are set in switch_info according to
+ *   recognized parameters (if any).
+ */
+static void
+mlx5_nl_check_switch_info(bool num_vf_set,
+			  struct mlx5_switch_info *switch_info)
+{
+	switch (switch_info->name_type) {
+	case MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN:
+		/*
+		 * Name is not recognized, assume the master,
+		 * check the number of VFs key presence.
+		 */
+		switch_info->master = num_vf_set;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_NOTSET:
+		/*
+		 * Name is not set, this assumes the legacy naming
+		 * schema for master, just check if there is a
+		 * number of VFs key.
+		 */
+		switch_info->master = num_vf_set;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_UPLINK:
+		/* New uplink naming schema recognized. */
+		switch_info->master = 1;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_LEGACY:
+		/* Legacy representors naming schema. */
+		switch_info->representor = !num_vf_set;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
+		/* New representors naming schema. */
+		switch_info->representor = 1;
+		break;
+	}
 }
 
 /**
@@ -1072,7 +1151,6 @@ int
 mlx5_nl_switch_info(int nl, unsigned int ifindex,
 		    struct mlx5_switch_info *info)
 {
-	uint32_t seq = random();
 	struct {
 		struct nlmsghdr nh;
 		struct ifinfomsg info;
@@ -1096,11 +1174,12 @@ mlx5_nl_switch_info(int nl, unsigned int ifindex,
 		},
 		.extmask = RTE_LE32(1),
 	};
+	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
 
-	ret = mlx5_nl_send(nl, &req.nh, seq);
+	ret = mlx5_nl_send(nl, &req.nh, sn);
 	if (ret >= 0)
-		ret = mlx5_nl_recv(nl, seq, mlx5_nl_switch_info_cb, info);
+		ret = mlx5_nl_recv(nl, sn, mlx5_nl_switch_info_cb, info);
 	if (info->master && info->representor) {
 		DRV_LOG(ERR, "ifindex %u device is recognized as master"
 			     " and as representor", ifindex);
@@ -1122,6 +1201,7 @@ void
 mlx5_nl_vlan_vmwa_delete(struct mlx5_nl_vlan_vmwa_context *vmwa,
 		      uint32_t ifindex)
 {
+	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
 	struct {
 		struct nlmsghdr nh;
@@ -1139,18 +1219,12 @@ mlx5_nl_vlan_vmwa_delete(struct mlx5_nl_vlan_vmwa_context *vmwa,
 	};
 
 	if (ifindex) {
-		++vmwa->nl_sn;
-		if (!vmwa->nl_sn)
-			++vmwa->nl_sn;
-		ret = mlx5_nl_send(vmwa->nl_socket, &req.nh, vmwa->nl_sn);
+		ret = mlx5_nl_send(vmwa->nl_socket, &req.nh, sn);
 		if (ret >= 0)
-			ret = mlx5_nl_recv(vmwa->nl_socket,
-					   vmwa->nl_sn,
-					   NULL, NULL);
+			ret = mlx5_nl_recv(vmwa->nl_socket, sn, NULL, NULL);
 		if (ret < 0)
-			DRV_LOG(WARNING, "netlink: error deleting"
-					 " VLAN WA ifindex %u, %d",
-					 ifindex, ret);
+			DRV_LOG(WARNING, "netlink: error deleting VLAN WA"
+				" ifindex %u, %d", ifindex, ret);
 	}
 }
 
@@ -1202,8 +1276,7 @@ nl_attr_nest_end(struct nlmsghdr *nlh, struct nlattr *nest)
  */
 uint32_t
 mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
-		      uint32_t ifindex,
-		      uint16_t tag)
+			 uint32_t ifindex, uint16_t tag)
 {
 	struct nlmsghdr *nlh;
 	struct ifinfomsg *ifm;
@@ -1220,12 +1293,10 @@ mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
 		    NLMSG_ALIGN(sizeof(uint16_t)) + 16];
 	struct nlattr *na_info;
 	struct nlattr *na_vlan;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
 
 	memset(buf, 0, sizeof(buf));
-	++vmwa->nl_sn;
-	if (!vmwa->nl_sn)
-		++vmwa->nl_sn;
 	nlh = (struct nlmsghdr *)buf;
 	nlh->nlmsg_len = sizeof(struct nlmsghdr);
 	nlh->nlmsg_type = RTM_NEWLINK;
@@ -1249,20 +1320,18 @@ mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
 	nl_attr_nest_end(nlh, na_vlan);
 	nl_attr_nest_end(nlh, na_info);
 	assert(sizeof(buf) >= nlh->nlmsg_len);
-	ret = mlx5_nl_send(vmwa->nl_socket, nlh, vmwa->nl_sn);
+	ret = mlx5_nl_send(vmwa->nl_socket, nlh, sn);
 	if (ret >= 0)
-		ret = mlx5_nl_recv(vmwa->nl_socket, vmwa->nl_sn, NULL, NULL);
+		ret = mlx5_nl_recv(vmwa->nl_socket, sn, NULL, NULL);
 	if (ret < 0) {
-		DRV_LOG(WARNING,
-			"netlink: VLAN %s create failure (%d)",
-			name, ret);
+		DRV_LOG(WARNING, "netlink: VLAN %s create failure (%d)", name,
+			ret);
 	}
 	// Try to get ifindex of created or pre-existing device.
 	ret = if_nametoindex(name);
 	if (!ret) {
-		DRV_LOG(WARNING,
-			"VLAN %s failed to get index (%d)",
-			name, errno);
+		DRV_LOG(WARNING, "VLAN %s failed to get index (%d)", name,
+			errno);
 		return 0;
 	}
 	return ret;

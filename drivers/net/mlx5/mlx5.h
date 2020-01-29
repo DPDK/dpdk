@@ -539,7 +539,6 @@ struct mlx5_priv {
 	/* Context for Verbs allocator. */
 	int nl_socket_rdma; /* Netlink socket (NETLINK_RDMA). */
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
-	uint32_t nl_sn; /* Netlink message sequence number. */
 	LIST_HEAD(dbrpage, mlx5_devx_dbr_page) dbrpgs; /* Door-bell pages. */
 	struct mlx5_nl_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
 	struct mlx5_flow_id_pool *qrss_id_pool;
@@ -617,8 +616,6 @@ int mlx5_sysfs_switch_info(unsigned int ifindex,
 			   struct mlx5_switch_info *info);
 void mlx5_sysfs_check_switch_info(bool device_dir,
 				  struct mlx5_switch_info *switch_info);
-void mlx5_nl_check_switch_info(bool nun_vf_set,
-			       struct mlx5_switch_info *switch_info);
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
 void mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,

@@ -47,7 +47,8 @@ mlx5_promiscuous_enable(struct rte_eth_dev *dev)
 		return 0;
 	}
 	if (priv->config.vf) {
-		ret = mlx5_nl_promisc(dev, 1);
+		ret = mlx5_nl_promisc(priv->nl_socket_route, mlx5_ifindex(dev),
+				      1);
 		if (ret)
 			return ret;
 	}
@@ -80,7 +81,8 @@ mlx5_promiscuous_disable(struct rte_eth_dev *dev)
 
 	dev->data->promiscuous = 0;
 	if (priv->config.vf) {
-		ret = mlx5_nl_promisc(dev, 0);
+		ret = mlx5_nl_promisc(priv->nl_socket_route, mlx5_ifindex(dev),
+				      0);
 		if (ret)
 			return ret;
 	}
@@ -120,7 +122,8 @@ mlx5_allmulticast_enable(struct rte_eth_dev *dev)
 		return 0;
 	}
 	if (priv->config.vf) {
-		ret = mlx5_nl_allmulti(dev, 1);
+		ret = mlx5_nl_allmulti(priv->nl_socket_route, mlx5_ifindex(dev),
+				       1);
 		if (ret)
 			goto error;
 	}
@@ -153,7 +156,8 @@ mlx5_allmulticast_disable(struct rte_eth_dev *dev)
 
 	dev->data->all_multicast = 0;
 	if (priv->config.vf) {
-		ret = mlx5_nl_allmulti(dev, 0);
+		ret = mlx5_nl_allmulti(priv->nl_socket_route, mlx5_ifindex(dev),
+				       0);
 		if (ret)
 			goto error;
 	}

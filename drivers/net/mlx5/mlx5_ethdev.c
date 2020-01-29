@@ -1891,55 +1891,6 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 }
 
 /**
- * Analyze gathered port parameters via Netlink to recognize master
- * and representor devices for E-Switch configuration.
- *
- * @param[in] num_vf_set
- *   flag of presence of number of VFs port attribute.
- * @param[inout] switch_info
- *   Port information, including port name as a number and port name
- *   type if recognized
- *
- * @return
- *   master and representor flags are set in switch_info according to
- *   recognized parameters (if any).
- */
-void
-mlx5_nl_check_switch_info(bool num_vf_set,
-			  struct mlx5_switch_info *switch_info)
-{
-	switch (switch_info->name_type) {
-	case MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN:
-		/*
-		 * Name is not recognized, assume the master,
-		 * check the number of VFs key presence.
-		 */
-		switch_info->master = num_vf_set;
-		break;
-	case MLX5_PHYS_PORT_NAME_TYPE_NOTSET:
-		/*
-		 * Name is not set, this assumes the legacy naming
-		 * schema for master, just check if there is a
-		 * number of VFs key.
-		 */
-		switch_info->master = num_vf_set;
-		break;
-	case MLX5_PHYS_PORT_NAME_TYPE_UPLINK:
-		/* New uplink naming schema recognized. */
-		switch_info->master = 1;
-		break;
-	case MLX5_PHYS_PORT_NAME_TYPE_LEGACY:
-		/* Legacy representors naming schema. */
-		switch_info->representor = !num_vf_set;
-		break;
-	case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
-		/* New representors naming schema. */
-		switch_info->representor = 1;
-		break;
-	}
-}
-
-/**
  * Analyze gathered port parameters via sysfs to recognize master
  * and representor devices for E-Switch configuration.
  *

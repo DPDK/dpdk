@@ -74,8 +74,9 @@ mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	if (rte_is_zero_ether_addr(&dev->data->mac_addrs[index]))
 		return;
 	if (vf)
-		mlx5_nl_mac_addr_remove(dev, &dev->data->mac_addrs[index],
-					index);
+		mlx5_nl_mac_addr_remove(priv->nl_socket_route,
+					mlx5_ifindex(dev), priv->mac_own,
+					&dev->data->mac_addrs[index], index);
 	memset(&dev->data->mac_addrs[index], 0, sizeof(struct rte_ether_addr));
 }
 
@@ -117,7 +118,9 @@ mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		return -rte_errno;
 	}
 	if (vf) {
-		int ret = mlx5_nl_mac_addr_add(dev, mac, index);
+		int ret = mlx5_nl_mac_addr_add(priv->nl_socket_route,
+					       mlx5_ifindex(dev), priv->mac_own,
+					       mac, index);
 
 		if (ret)
 			return ret;
@@ -209,8 +212,9 @@ mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 			if (priv->master == 1) {
 				priv = dev->data->dev_private;
 				return mlx5_nl_vf_mac_addr_modify
-					(&rte_eth_devices[port_id],
-					 mac_addr, priv->representor_id);
+				       (priv->nl_socket_route,
+					mlx5_ifindex(&rte_eth_devices[port_id]),
+					mac_addr, priv->representor_id);
 			}
 		}
 		rte_errno = -ENOTSUP;
