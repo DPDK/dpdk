@@ -109,6 +109,7 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 #define OTX2_FLOW_PREALLOC_SIZE "flow_prealloc_size"
 #define OTX2_FLOW_MAX_PRIORITY "flow_max_priority"
 #define OTX2_SWITCH_HEADER_TYPE "switch_header"
+#define OTX2_RSS_TAG_AS_XOR "tag_as_xor"
 
 int
 otx2_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx2_eth_dev *dev)
@@ -119,6 +120,7 @@ otx2_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx2_eth_dev *dev)
 	uint16_t switch_header_type = 0;
 	uint16_t flow_max_priority = 3;
 	uint16_t scalar_enable = 0;
+	uint16_t rss_tag_as_xor = 0;
 	struct rte_kvargs *kvlist;
 
 	if (devargs == NULL)
@@ -140,10 +142,13 @@ otx2_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx2_eth_dev *dev)
 			   &parse_flow_max_priority, &flow_max_priority);
 	rte_kvargs_process(kvlist, OTX2_SWITCH_HEADER_TYPE,
 			   &parse_switch_header_type, &switch_header_type);
+	rte_kvargs_process(kvlist, OTX2_RSS_TAG_AS_XOR,
+			   &parse_flag, &rss_tag_as_xor);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
 	dev->scalar_ena = scalar_enable;
+	dev->rss_tag_as_xor = rss_tag_as_xor;
 	dev->max_sqb_count = sqb_count;
 	dev->rss_info.rss_size = rss_size;
 	dev->npc_flow.flow_prealloc_size = flow_prealloc_size;
@@ -161,4 +166,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_octeontx2,
 			      OTX2_MAX_SQB_COUNT "=<8-512>"
 			      OTX2_FLOW_PREALLOC_SIZE "=<1-32>"
 			      OTX2_FLOW_MAX_PRIORITY "=<1-32>"
-			      OTX2_SWITCH_HEADER_TYPE "=<higig2|dsa>");
+			      OTX2_SWITCH_HEADER_TYPE "=<higig2|dsa>"
+			      OTX2_RSS_TAG_AS_XOR "=1");

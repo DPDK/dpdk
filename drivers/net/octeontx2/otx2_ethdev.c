@@ -70,6 +70,8 @@ nix_lf_alloc(struct otx2_eth_dev *dev, uint32_t nb_rxq, uint32_t nb_txq)
 		req->rx_cfg |= BIT_ULL(36 /* CSUM_IL4 */);
 	}
 	req->rx_cfg |= BIT_ULL(32 /* DROP_RE */);
+	if (dev->rss_tag_as_xor == 0)
+		req->flags = NIX_LF_RSS_TAG_LSB_AS_ADDER;
 
 	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)

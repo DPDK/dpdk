@@ -165,7 +165,7 @@ Runtime Config Options
    With the above configuration, each send queue's decscriptor buffer count is
    limited to a maximum of 64 buffers.
 
-- ``switch header enable`` (default ``none``)
+- ``Switch header enable`` (default ``none``)
 
    A port can be configured to a specific switch header type by using
    ``switch_header`` ``devargs`` parameter.
@@ -177,6 +177,23 @@ Runtime Config Options
    With the above configuration, higig2 will be enabled on that port and the
    traffic on this port should be higig2 traffic only. Supported switch header
    types are "higig2" and "dsa".
+
+- ``RSS tag as XOR`` (default ``0``)
+
+   C0 HW revision onward, The HW gives an option to configure the RSS adder as
+
+   * ``rss_adder<7:0> = flow_tag<7:0> ^ flow_tag<15:8> ^ flow_tag<23:16> ^ flow_tag<31:24>``
+
+   * ``rss_adder<7:0> = flow_tag<7:0>``
+
+   Latter one aligns with standard NIC behavior vs former one is a legacy
+   RSS adder scheme used in OCTEON TX2 products.
+
+   By default, the driver runs in the latter mode from C0 HW revision onward.
+   Setting this flag to 1 to select the legacy mode.
+
+   For example to select the legacy mode(RSS tag adder as XOR)::
+      -w 0002:02:00.0,tag_as_xor=1
 
 .. note::
 
