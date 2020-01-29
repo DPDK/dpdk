@@ -245,22 +245,21 @@ octeontx_bgx_port_mac_set(int port, uint8_t *mac_addr)
 }
 
 int
-octeontx_bgx_port_mac_add(int port, uint8_t *mac_addr)
+octeontx_bgx_port_mac_add(int port, uint8_t *mac_addr, int index)
 {
+	struct octeontx_mbox_bgx_port_mac_filter filter;
 	struct octeontx_mbox_hdr hdr;
-	int resp = 0;
 	int len = 6;
-	int res = 0;
 
 	hdr.coproc = OCTEONTX_BGX_COPROC;
 	hdr.msg = MBOX_BGX_PORT_ADD_MACADDR;
 	hdr.vfid = port;
 
-	res = octeontx_mbox_send(&hdr, mac_addr, len, &resp, sizeof(int));
-	if (res < 0)
-		return -EACCES;
+	memcpy(filter.mac_addr, mac_addr, len);
+	filter.index = index;
+	len = sizeof(struct octeontx_mbox_bgx_port_mac_filter);
 
-	return res;
+	return octeontx_mbox_send(&hdr, &filter, len, NULL, 0);
 }
 
 int

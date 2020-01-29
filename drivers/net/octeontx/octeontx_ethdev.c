@@ -577,13 +577,14 @@ octeontx_dev_mac_addr_del(struct rte_eth_dev *dev, uint32_t index)
 static int
 octeontx_dev_mac_addr_add(struct rte_eth_dev *dev,
 			  struct rte_ether_addr *mac_addr,
-			  __rte_unused uint32_t index,
+			  uint32_t index,
 			  __rte_unused uint32_t vmdq)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 	int ret;
 
-	ret = octeontx_bgx_port_mac_add(nic->port_id, mac_addr->addr_bytes);
+	ret = octeontx_bgx_port_mac_add(nic->port_id, mac_addr->addr_bytes,
+					index);
 	if (ret < 0) {
 		octeontx_log_err("failed to add MAC address filter on port %d",
 				 nic->port_id);
@@ -598,12 +599,21 @@ octeontx_dev_default_mac_addr_set(struct rte_eth_dev *dev,
 					struct rte_ether_addr *addr)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	uint8_t prom_mode = dev->data->promiscuous;
 	int ret;
 
+	dev->data->promiscuous = 0;
 	ret = octeontx_bgx_port_mac_set(nic->port_id, addr->addr_bytes);
-	if (ret != 0)
+	if (ret == 0) {
+		/* Update same mac address to BGX CAM table */
+		ret = octeontx_bgx_port_mac_add(nic->port_id, addr->addr_bytes,
+						0);
+	}
+	if (ret < 0) {
+		dev->data->promiscuous = prom_mode;
 		octeontx_log_err("failed to set MAC address on port %d",
-				nic->port_id);
+				 nic->port_id);
+	}
 
 	return ret;
 }
@@ -1152,6 +1162,9 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 
 	/* Update port_id mac to eth_dev */
 	memcpy(data->mac_addrs, nic->mac_addr, RTE_ETHER_ADDR_LEN);
+
+	/* Update same mac address to BGX CAM table at index 0 */
+	octeontx_bgx_port_mac_add(nic->port_id, nic->mac_addr, 0);
 
 	PMD_INIT_LOG(DEBUG, "ethdev info: ");
 	PMD_INIT_LOG(DEBUG, "port %d, port_ena %d ochan %d num_ochan %d tx_q %d",
