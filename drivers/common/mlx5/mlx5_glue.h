@@ -138,6 +138,7 @@ struct mlx5_glue {
 			 int attr_mask);
 	struct ibv_mr *(*reg_mr)(struct ibv_pd *pd, void *addr,
 				 size_t length, int access);
+	struct ibv_mr *(*alloc_null_mr)(struct ibv_pd *pd);
 	int (*dereg_mr)(struct ibv_mr *mr);
 	struct ibv_counter_set *(*create_counter_set)
 		(struct ibv_context *context,

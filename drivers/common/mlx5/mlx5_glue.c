@@ -226,6 +226,18 @@ mlx5_glue_reg_mr(struct ibv_pd *pd, void *addr, size_t length, int access)
 	return ibv_reg_mr(pd, addr, length, access);
 }
 
+static struct ibv_mr *
+mlx5_glue_alloc_null_mr(struct ibv_pd *pd)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return ibv_alloc_null_mr(pd);
+#else
+	(void)pd;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
 static int
 mlx5_glue_dereg_mr(struct ibv_mr *mr)
 {
@@ -1070,6 +1082,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.destroy_qp = mlx5_glue_destroy_qp,
 	.modify_qp = mlx5_glue_modify_qp,
 	.reg_mr = mlx5_glue_reg_mr,
+	.alloc_null_mr = mlx5_glue_alloc_null_mr,
 	.dereg_mr = mlx5_glue_dereg_mr,
 	.create_counter_set = mlx5_glue_create_counter_set,
 	.destroy_counter_set = mlx5_glue_destroy_counter_set,
