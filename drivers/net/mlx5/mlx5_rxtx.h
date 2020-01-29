@@ -44,6 +44,9 @@
 /* Support tunnel matching. */
 #define MLX5_FLOW_TUNNEL 10
 
+/* Mbuf dynamic flag offset for inline. */
+extern uint64_t rte_net_mlx5_dynf_inline_mask;
+
 struct mlx5_rxq_stats {
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	uint64_t ipackets; /**< Total of successfully received packets. */

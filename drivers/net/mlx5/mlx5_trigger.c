@@ -13,6 +13,7 @@
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
+#include "rte_pmd_mlx5.h"
 
 /**
  * Stop traffic on Tx queues.
@@ -270,8 +271,15 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
+	int fine_inline;
 
 	DRV_LOG(DEBUG, "port %u starting device", dev->data->port_id);
+	fine_inline = rte_mbuf_dynflag_lookup
+		(RTE_PMD_MLX5_FINE_GRANULARITY_INLINE, NULL);
+	if (fine_inline > 0)
+		rte_net_mlx5_dynf_inline_mask = 1UL << fine_inline;
+	else
+		rte_net_mlx5_dynf_inline_mask = 0;
 	ret = mlx5_dev_configure_rss_reta(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u reta config failed: %s",

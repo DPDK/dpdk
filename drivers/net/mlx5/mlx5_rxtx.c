@@ -129,6 +129,8 @@ uint32_t mlx5_ptype_table[] __rte_cache_aligned = {
 uint8_t mlx5_cksum_table[1 << 10] __rte_cache_aligned;
 uint8_t mlx5_swp_types_table[1 << 10] __rte_cache_aligned;
 
+uint64_t rte_net_mlx5_dynf_inline_mask;
+
 /**
  * Build a table to translate Rx completion flags to packet type.
  *
