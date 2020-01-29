@@ -864,6 +864,53 @@ mlx5_devx_cmd_create_rqt(struct ibv_context *ctx,
 }
 
 /**
+ * Modify RQT using DevX API.
+ *
+ * @param[in] rqt
+ *   Pointer to RQT DevX object structure.
+ * @param [in] rqt_attr
+ *   Pointer to RQT attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
+			 struct mlx5_devx_rqt_attr *rqt_attr)
+{
+	uint32_t inlen = MLX5_ST_SZ_BYTES(modify_rqt_in) +
+			 rqt_attr->rqt_actual_size * sizeof(uint32_t);
+	uint32_t out[MLX5_ST_SZ_DW(modify_rqt_out)] = {0};
+	uint32_t *in = rte_calloc(__func__, 1, inlen, 0);
+	void *rqt_ctx;
+	int i;
+	int ret;
+
+	if (!in) {
+		DRV_LOG(ERR, "Failed to allocate RQT modify IN data.");
+		rte_errno = ENOMEM;
+		return -ENOMEM;
+	}
+	MLX5_SET(modify_rqt_in, in, opcode, MLX5_CMD_OP_MODIFY_RQT);
+	MLX5_SET(modify_rqt_in, in, rqtn, rqt->id);
+	MLX5_SET64(modify_rqt_in, in, modify_bitmask, 0x1);
+	rqt_ctx = MLX5_ADDR_OF(modify_rqt_in, in, rqt_context);
+	MLX5_SET(rqtc, rqt_ctx, list_q_type, rqt_attr->rq_type);
+	MLX5_SET(rqtc, rqt_ctx, rqt_max_size, rqt_attr->rqt_max_size);
+	MLX5_SET(rqtc, rqt_ctx, rqt_actual_size, rqt_attr->rqt_actual_size);
+	for (i = 0; i < rqt_attr->rqt_actual_size; i++)
+		MLX5_SET(rqtc, rqt_ctx, rq_num[i], rqt_attr->rq_list[i]);
+	ret = mlx5_glue->devx_obj_modify(rqt->obj, in, inlen, out, sizeof(out));
+	rte_free(in);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to modify RQT using DevX.");
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	return ret;
+}
+
+/**
  * Create SQ using DevX API.
  *
  * @param[in] ctx

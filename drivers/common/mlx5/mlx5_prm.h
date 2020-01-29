@@ -747,6 +747,7 @@ enum {
 	MLX5_CMD_OP_CREATE_TIS = 0x912,
 	MLX5_CMD_OP_QUERY_TIS = 0x915,
 	MLX5_CMD_OP_CREATE_RQT = 0x916,
+	MLX5_CMD_OP_MODIFY_RQT = 0x917,
 	MLX5_CMD_OP_ALLOC_FLOW_COUNTER = 0x939,
 	MLX5_CMD_OP_QUERY_FLOW_COUNTER = 0x93b,
 	MLX5_CMD_OP_CREATE_GENERAL_OBJECT = 0xa00,
@@ -1774,9 +1775,29 @@ struct mlx5_ifc_create_rqt_in_bits {
 	u8 reserved_at_40[0xc0];
 	struct mlx5_ifc_rqtc_bits rqt_context;
 };
+
+struct mlx5_ifc_modify_rqt_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x8];
+	u8 rqtn[0x18];
+	u8 reserved_at_60[0x20];
+	u8 modify_bitmask[0x40];
+	u8 reserved_at_c0[0x40];
+	struct mlx5_ifc_rqtc_bits rqt_context;
+};
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
+
+struct mlx5_ifc_modify_rqt_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+};
 
 enum {
 	MLX5_SQC_STATE_RST  = 0x0,

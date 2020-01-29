@@ -17,6 +17,7 @@ DPDK_20.02 {
 	mlx5_devx_cmd_mkey_create;
 	mlx5_devx_cmd_modify_qp_state;
 	mlx5_devx_cmd_modify_rq;
+	mlx5_devx_cmd_modify_rqt;
 	mlx5_devx_cmd_modify_sq;
 	mlx5_devx_cmd_modify_virtq;
 	mlx5_devx_cmd_qp_query_tis_td;

@@ -344,5 +344,7 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_qp(struct ibv_context *ctx,
 					      struct mlx5_devx_qp_attr *attr);
 int mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp,
 				  uint32_t qp_st_mod_op, uint32_t remote_qp_id);
+int mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
+			     struct mlx5_devx_rqt_attr *rqt_attr);
 
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */
