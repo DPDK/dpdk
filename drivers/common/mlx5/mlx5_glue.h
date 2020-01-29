@@ -66,6 +66,7 @@ enum mlx5dv_flow_table_type { flow_table_type = 0, };
 #ifndef HAVE_IBV_DEVX_OBJ
 struct mlx5dv_devx_obj;
 struct mlx5dv_devx_umem { uint32_t umem_id; };
+struct mlx5dv_devx_uar { void *reg_addr; void *base_addr; uint32_t page_id; };
 #endif
 
 #ifndef HAVE_IBV_DEVX_ASYNC
@@ -230,6 +231,9 @@ struct mlx5_glue {
 	int (*dv_destroy_flow)(void *flow);
 	int (*dv_destroy_flow_matcher)(void *matcher);
 	struct ibv_context *(*dv_open_device)(struct ibv_device *device);
+	struct mlx5dv_devx_uar *(*devx_alloc_uar)(struct ibv_context *context,
+						  uint32_t flags);
+	void (*devx_free_uar)(struct mlx5dv_devx_uar *devx_uar);
 	struct mlx5dv_devx_obj *(*devx_obj_create)
 					(struct ibv_context *ctx,
 					 const void *in, size_t inlen,

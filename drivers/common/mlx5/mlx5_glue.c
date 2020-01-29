@@ -1137,6 +1137,29 @@ mlx5_glue_devx_get_event(struct mlx5dv_devx_event_channel *eventc,
 #endif
 }
 
+static struct mlx5dv_devx_uar *
+mlx5_glue_devx_alloc_uar(struct ibv_context *context, uint32_t flags)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return mlx5dv_devx_alloc_uar(context, flags);
+#else
+	(void)context;
+	(void)flags;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void
+mlx5_glue_devx_free_uar(struct mlx5dv_devx_uar *devx_uar)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	mlx5dv_devx_free_uar(devx_uar);
+#else
+	(void)devx_uar;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -1242,4 +1265,6 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_subscribe_devx_event = mlx5_glue_devx_subscribe_devx_event,
 	.devx_subscribe_devx_event_fd = mlx5_glue_devx_subscribe_devx_event_fd,
 	.devx_get_event = mlx5_glue_devx_get_event,
+	.devx_alloc_uar = mlx5_glue_devx_alloc_uar,
+	.devx_free_uar = mlx5_glue_devx_free_uar,
 };
