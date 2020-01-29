@@ -8,9 +8,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
-#include "rte_byteorder.h"
-
 /* Verbs headers do not support -pedantic. */
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -20,6 +17,10 @@
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
+
+#include <rte_byteorder.h>
+
+#include "mlx5_autoconf.h"
 
 #ifndef MLX5_GLUE_VERSION
 #define MLX5_GLUE_VERSION ""

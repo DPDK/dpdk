@@ -28,13 +28,14 @@
 #include <rte_cycles.h>
 #include <rte_flow.h>
 
+#include <mlx5_devx_cmds.h>
+#include <mlx5_prm.h>
+
+#include "mlx5_defs.h"
 #include "mlx5.h"
-#include "mlx5_devx_cmds.h"
 #include "mlx5_utils.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
-#include "mlx5_defs.h"
-#include "mlx5_prm.h"
 
 /* TX burst subroutines return codes. */
 enum mlx5_txcmp_code {

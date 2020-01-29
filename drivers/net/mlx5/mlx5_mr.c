@@ -17,10 +17,11 @@
 #include <rte_rwlock.h>
 #include <rte_bus_pci.h>
 
+#include <mlx5_glue.h>
+
 #include "mlx5.h"
 #include "mlx5_mr.h"
 #include "mlx5_rxtx.h"
-#include "mlx5_glue.h"
 
 struct mr_find_contig_memsegs_data {
 	uintptr_t addr;

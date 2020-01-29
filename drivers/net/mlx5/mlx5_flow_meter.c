@@ -9,6 +9,8 @@
 #include <rte_mtr.h>
 #include <rte_mtr_driver.h>
 
+#include <mlx5_devx_cmds.h>
+
 #include "mlx5.h"
 #include "mlx5_flow.h"
 

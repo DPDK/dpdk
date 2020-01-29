@@ -1,0 +1,20 @@
+DPDK_20.02 {
+	global:
+
+	mlx5_devx_cmd_create_rq;
+	mlx5_devx_cmd_create_rqt;
+	mlx5_devx_cmd_create_sq;
+	mlx5_devx_cmd_create_tir;
+	mlx5_devx_cmd_create_td;
+	mlx5_devx_cmd_create_tis;
+	mlx5_devx_cmd_destroy;
+	mlx5_devx_cmd_flow_counter_alloc;
+	mlx5_devx_cmd_flow_counter_query;
+	mlx5_devx_cmd_flow_dump;
+	mlx5_devx_cmd_mkey_create;
+	mlx5_devx_cmd_modify_rq;
+	mlx5_devx_cmd_modify_sq;
+	mlx5_devx_cmd_qp_query_tis_td;
+	mlx5_devx_cmd_query_hca_attr;
+	mlx5_devx_get_out_command_status;
+};

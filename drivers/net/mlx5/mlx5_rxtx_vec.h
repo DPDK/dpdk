@@ -9,8 +9,9 @@
 #include <rte_common.h>
 #include <rte_mbuf.h>
 
+#include <mlx5_prm.h>
+
 #include "mlx5_autoconf.h"
-#include "mlx5_prm.h"
 
 /* HW checksum offload capabilities of vectorized Tx. */
 #define MLX5_VEC_TX_CKSUM_OFFLOAD_CAP \

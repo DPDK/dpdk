@@ -28,13 +28,14 @@
 #include <rte_ethdev_driver.h>
 #include <rte_common.h>
 
-#include "mlx5_utils.h"
+#include <mlx5_glue.h>
+#include <mlx5_devx_cmds.h>
+
 #include "mlx5_defs.h"
+#include "mlx5_utils.h"
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
-#include "mlx5_glue.h"
-#include "mlx5_devx_cmds.h"
 
 /**
  * Allocate TX queue elements.

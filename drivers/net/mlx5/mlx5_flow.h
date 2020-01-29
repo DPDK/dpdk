@@ -25,8 +25,9 @@
 #include <rte_alarm.h>
 #include <rte_mtr.h>
 
+#include <mlx5_prm.h>
+
 #include "mlx5.h"
-#include "mlx5_prm.h"
 
 /* Private rte flow items. */
 enum mlx5_rte_flow_item_type {

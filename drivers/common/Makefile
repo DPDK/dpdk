@@ -35,4 +35,8 @@ ifneq (,$(findstring y,$(IAVF-y)))
 DIRS-y += iavf
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_MLX5_PMD),y)
+DIRS-y += mlx5
+endif
+
 include $(RTE_SDK)/mk/rte.subdir.mk

@@ -13,9 +13,9 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 
+#include "mlx5_defs.h"
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
-#include "mlx5_defs.h"
 
 static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 	{

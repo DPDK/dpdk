@@ -27,12 +27,13 @@
 #include <rte_malloc.h>
 #include <rte_ip.h>
 
-#include "mlx5.h"
+#include <mlx5_glue.h>
+#include <mlx5_devx_cmds.h>
+#include <mlx5_prm.h>
+
 #include "mlx5_defs.h"
+#include "mlx5.h"
 #include "mlx5_flow.h"
-#include "mlx5_glue.h"
-#include "mlx5_devx_cmds.h"
-#include "mlx5_prm.h"
 #include "mlx5_rxtx.h"
 
 /* Dev ops structure defined in mlx5.c */

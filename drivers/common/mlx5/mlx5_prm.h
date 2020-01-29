@@ -7,7 +7,6 @@
 #define RTE_PMD_MLX5_PRM_H_
 
 #include <assert.h>
-
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
 #ifdef PEDANTIC
@@ -19,6 +18,8 @@
 #endif
 
 #include <rte_vect.h>
+#include <rte_byteorder.h>
+
 #include "mlx5_autoconf.h"
 
 /* RSS hash key size. */

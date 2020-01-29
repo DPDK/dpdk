@@ -2,6 +2,6 @@
 # Copyright(c) 2018 Cavium, Inc
 
 std_deps = ['eal']
-drivers = ['cpt', 'dpaax', 'iavf', 'mvep', 'octeontx', 'octeontx2', 'qat']
+drivers = ['cpt', 'dpaax', 'iavf', 'mlx5', 'mvep', 'octeontx', 'octeontx2', 'qat']
 config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
 driver_name_fmt = 'rte_common_@0@'

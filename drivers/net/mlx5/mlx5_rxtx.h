@@ -31,13 +31,14 @@
 #include <rte_bus_pci.h>
 #include <rte_malloc.h>
 
+#include <mlx5_glue.h>
+#include <mlx5_prm.h>
+
+#include "mlx5_defs.h"
 #include "mlx5_utils.h"
 #include "mlx5.h"
 #include "mlx5_mr.h"
 #include "mlx5_autoconf.h"
-#include "mlx5_defs.h"
-#include "mlx5_prm.h"
-#include "mlx5_glue.h"
 
 /* Support tunnel matching. */
 #define MLX5_FLOW_TUNNEL 10

@@ -32,13 +32,14 @@
 #include <rte_errno.h>
 #include <rte_flow.h>
 
+#include <mlx5_glue.h>
+#include <mlx5_devx_cmds.h>
+#include <mlx5_prm.h>
+
+#include "mlx5_defs.h"
 #include "mlx5_utils.h"
 #include "mlx5_mr.h"
 #include "mlx5_autoconf.h"
-#include "mlx5_defs.h"
-#include "mlx5_glue.h"
-#include "mlx5_prm.h"
-#include "mlx5_devx_cmds.h"
 
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,

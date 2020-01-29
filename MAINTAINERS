@@ -741,6 +741,7 @@ M: Matan Azrad <matan@mellanox.com>
 M: Shahaf Shuler <shahafs@mellanox.com>
 M: Viacheslav Ovsiienko <viacheslavo@mellanox.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
+F: drivers/common/mlx5/
 F: drivers/net/mlx5/
 F: buildtools/options-ibverbs-static.sh
 F: doc/guides/nics/mlx5.rst

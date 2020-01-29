@@ -3,12 +3,12 @@
 
 #include <unistd.h>
 
-#include <rte_flow_driver.h>
+#include <rte_errno.h>
 #include <rte_malloc.h>
 
 #include "mlx5_prm.h"
 #include "mlx5_devx_cmds.h"
-#include "mlx5_utils.h"
+#include "mlx5_common_utils.h"
 
 
 /**
