@@ -35,11 +35,11 @@
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
+#include <mlx5_nl.h>
 
 #include "mlx5_defs.h"
 #include "mlx5_utils.h"
 #include "mlx5_mr.h"
-#include "mlx5_nl.h"
 #include "mlx5_autoconf.h"
 
 /* Request types for IPC. */

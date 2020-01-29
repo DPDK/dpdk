@@ -30,7 +30,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_flow_meter.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_flow_dv.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_flow_verbs.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_mp.c
-SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_nl.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_utils.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_socket.c
 

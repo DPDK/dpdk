@@ -28,4 +28,20 @@ DPDK_20.02 {
 	mlx5_devx_get_out_command_status;
 
 	mlx5_dev_to_pci_addr;
+
+	mlx5_nl_allmulti;
+	mlx5_nl_ifindex;
+	mlx5_nl_init;
+	mlx5_nl_mac_addr_add;
+	mlx5_nl_mac_addr_flush;
+	mlx5_nl_mac_addr_remove;
+	mlx5_nl_mac_addr_sync;
+	mlx5_nl_portnum;
+	mlx5_nl_promisc;
+	mlx5_nl_switch_info;
+	mlx5_nl_vf_mac_addr_modify;
+	mlx5_nl_vlan_vmwa_create;
+	mlx5_nl_vlan_vmwa_delete;
+
+	mlx5_translate_port_name;
 };

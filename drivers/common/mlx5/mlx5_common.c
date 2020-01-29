@@ -105,6 +105,61 @@ mlx5_class_get(struct rte_devargs *devargs)
 	return ret;
 }
 
+/**
+ * Extract port name, as a number, from sysfs or netlink information.
+ *
+ * @param[in] port_name_in
+ *   String representing the port name.
+ * @param[out] port_info_out
+ *   Port information, including port name as a number and port name
+ *   type if recognized
+ *
+ * @return
+ *   port_name field set according to recognized name format.
+ */
+void
+mlx5_translate_port_name(const char *port_name_in,
+			 struct mlx5_switch_info *port_info_out)
+{
+	char pf_c1, pf_c2, vf_c1, vf_c2;
+	char *end;
+	int sc_items;
+
+	/*
+	 * Check for port-name as a string of the form pf0vf0
+	 * (support kernel ver >= 5.0 or OFED ver >= 4.6).
+	 */
+	sc_items = sscanf(port_name_in, "%c%c%d%c%c%d",
+			  &pf_c1, &pf_c2, &port_info_out->pf_num,
+			  &vf_c1, &vf_c2, &port_info_out->port_name);
+	if (sc_items == 6 &&
+	    pf_c1 == 'p' && pf_c2 == 'f' &&
+	    vf_c1 == 'v' && vf_c2 == 'f') {
+		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_PFVF;
+		return;
+	}
+	/*
+	 * Check for port-name as a string of the form p0
+	 * (support kernel ver >= 5.0, or OFED ver >= 4.6).
+	 */
+	sc_items = sscanf(port_name_in, "%c%d",
+			  &pf_c1, &port_info_out->port_name);
+	if (sc_items == 2 && pf_c1 == 'p') {
+		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_UPLINK;
+		return;
+	}
+	/* Check for port-name as a number (support kernel ver < 5.0 */
+	errno = 0;
+	port_info_out->port_name = strtol(port_name_in, &end, 0);
+	if (!errno &&
+	    (size_t)(end - port_name_in) == strlen(port_name_in)) {
+		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_LEGACY;
+		return;
+	}
+	port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN;
+	return;
+}
+
 #ifdef RTE_IBVERBS_LINK_DLOPEN
 
 /**

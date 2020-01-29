@@ -42,6 +42,7 @@ if build
 	sources = files(
 		'mlx5_devx_cmds.c',
 		'mlx5_common.c',
+		'mlx5_nl.c',
 	)
 	if not pmd_dlopen
 		sources += files('mlx5_glue.c')
