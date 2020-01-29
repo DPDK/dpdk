@@ -154,6 +154,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		func mlx5dv_dr_action_create_dest_devx_tir \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_IBV_DEVX_EVENT \
+		infiniband/mlx5dv.h \
+		func mlx5dv_devx_get_event \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER \
 		infiniband/mlx5dv.h \
 		func mlx5dv_dr_action_create_flow_meter \

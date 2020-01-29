@@ -86,6 +86,12 @@ struct mlx5dv_devx_port;
 struct mlx5dv_dr_flow_meter_attr;
 #endif
 
+#ifndef HAVE_IBV_DEVX_EVENT
+struct mlx5dv_devx_event_channel { int fd; };
+struct mlx5dv_devx_async_event_hdr;
+#define MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA 1
+#endif
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;
@@ -261,6 +267,25 @@ struct mlx5_glue {
 	int (*dr_dump_domain)(FILE *file, void *domain);
 	int (*devx_query_eqn)(struct ibv_context *context, uint32_t cpus,
 			      uint32_t *eqn);
+	struct mlx5dv_devx_event_channel *(*devx_create_event_channel)
+				(struct ibv_context *context, int flags);
+	void (*devx_destroy_event_channel)
+			(struct mlx5dv_devx_event_channel *event_channel);
+	int (*devx_subscribe_devx_event)
+			(struct mlx5dv_devx_event_channel *event_channel,
+			 struct mlx5dv_devx_obj *obj,
+			 uint16_t events_sz,
+			 uint16_t events_num[],
+			 uint64_t cookie);
+	int (*devx_subscribe_devx_event_fd)
+			(struct mlx5dv_devx_event_channel *event_channel,
+			 int fd,
+			 struct mlx5dv_devx_obj *obj,
+			 uint16_t event_num);
+	ssize_t (*devx_get_event)
+			(struct mlx5dv_devx_event_channel *event_channel,
+			 struct mlx5dv_devx_async_event_hdr *event_data,
+			 size_t event_resp_len);
 };
 
 const struct mlx5_glue *mlx5_glue;

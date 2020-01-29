@@ -1063,6 +1063,80 @@ mlx5_glue_devx_query_eqn(struct ibv_context *ctx, uint32_t cpus,
 #endif
 }
 
+static struct mlx5dv_devx_event_channel *
+mlx5_glue_devx_create_event_channel(struct ibv_context *ctx, int flags)
+{
+#ifdef HAVE_IBV_DEVX_EVENT
+	return mlx5dv_devx_create_event_channel(ctx, flags);
+#else
+	(void)ctx;
+	(void)flags;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void
+mlx5_glue_devx_destroy_event_channel(struct mlx5dv_devx_event_channel *eventc)
+{
+#ifdef HAVE_IBV_DEVX_EVENT
+	mlx5dv_devx_destroy_event_channel(eventc);
+#else
+	(void)eventc;
+#endif
+}
+
+static int
+mlx5_glue_devx_subscribe_devx_event(struct mlx5dv_devx_event_channel *eventc,
+				    struct mlx5dv_devx_obj *obj,
+				    uint16_t events_sz, uint16_t events_num[],
+				    uint64_t cookie)
+{
+#ifdef HAVE_IBV_DEVX_EVENT
+	return mlx5dv_devx_subscribe_devx_event(eventc, obj, events_sz,
+						events_num, cookie);
+#else
+	(void)eventc;
+	(void)obj;
+	(void)events_sz;
+	(void)events_num;
+	(void)cookie;
+	return -ENOTSUP;
+#endif
+}
+
+static int
+mlx5_glue_devx_subscribe_devx_event_fd(struct mlx5dv_devx_event_channel *eventc,
+				       int fd, struct mlx5dv_devx_obj *obj,
+				       uint16_t event_num)
+{
+#ifdef HAVE_IBV_DEVX_EVENT
+	return mlx5dv_devx_subscribe_devx_event_fd(eventc, fd, obj, event_num);
+#else
+	(void)eventc;
+	(void)fd;
+	(void)obj;
+	(void)event_num;
+	return -ENOTSUP;
+#endif
+}
+
+static ssize_t
+mlx5_glue_devx_get_event(struct mlx5dv_devx_event_channel *eventc,
+			 struct mlx5dv_devx_async_event_hdr *event_data,
+			 size_t event_resp_len)
+{
+#ifdef HAVE_IBV_DEVX_EVENT
+	return mlx5dv_devx_get_event(eventc, event_data, event_resp_len);
+#else
+	(void)eventc;
+	(void)event_data;
+	(void)event_resp_len;
+	errno = ENOTSUP;
+	return -1;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -1163,4 +1237,9 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_port_query = mlx5_glue_devx_port_query,
 	.dr_dump_domain = mlx5_glue_dr_dump_domain,
 	.devx_query_eqn = mlx5_glue_devx_query_eqn,
+	.devx_create_event_channel = mlx5_glue_devx_create_event_channel,
+	.devx_destroy_event_channel = mlx5_glue_devx_destroy_event_channel,
+	.devx_subscribe_devx_event = mlx5_glue_devx_subscribe_devx_event,
+	.devx_subscribe_devx_event_fd = mlx5_glue_devx_subscribe_devx_event_fd,
+	.devx_get_event = mlx5_glue_devx_get_event,
 };
