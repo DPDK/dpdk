@@ -40,7 +40,8 @@
 		(1 << VIRTIO_RING_F_EVENT_IDX) |			\
 		(1 << VIRTIO_CRYPTO_SERVICE_CIPHER) |			\
 		(1 << VIRTIO_CRYPTO_SERVICE_MAC) |			\
-		(1 << VIRTIO_NET_F_CTRL_VQ))
+		(1 << VIRTIO_NET_F_CTRL_VQ) |				\
+		(1 << VHOST_USER_PROTOCOL_F_CONFIG))
 
 #define IOVA_TO_VVA(t, r, a, l, p)					\
 	((t)(uintptr_t)vhost_iova_to_vva(r->dev, r->vq, a, l, p))
