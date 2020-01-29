@@ -1565,6 +1565,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->max_dump_files_num = tmp;
 	} else if (strcmp(MLX5_LRO_TIMEOUT_USEC, key) == 0) {
 		config->lro.timeout = tmp;
+	} else if (strcmp(MLX5_CLASS_ARG_NAME, key) == 0) {
+		DRV_LOG(DEBUG, "class argument is %s.", val);
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -1616,6 +1618,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_REPRESENTOR,
 		MLX5_MAX_DUMP_FILES_NUM,
 		MLX5_LRO_TIMEOUT_USEC,
+		MLX5_CLASS_ARG_NAME,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -2967,6 +2970,11 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mlx5_dev_config dev_config;
 	int ret;
 
+	if (mlx5_class_get(pci_dev->device.devargs) != MLX5_CLASS_NET) {
+		DRV_LOG(DEBUG, "Skip probing - should be probed by other mlx5"
+			" driver.");
+		return 1;
+	}
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		mlx5_pmd_socket_init();
 	ret = mlx5_init_once();

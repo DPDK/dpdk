@@ -69,6 +69,42 @@ mlx5_dev_to_pci_addr(const char *dev_path,
 	return 0;
 }
 
+static int
+mlx5_class_check_handler(__rte_unused const char *key, const char *value,
+			 void *opaque)
+{
+	enum mlx5_class *ret = opaque;
+
+	if (strcmp(value, "vdpa") == 0) {
+		*ret = MLX5_CLASS_VDPA;
+	} else if (strcmp(value, "net") == 0) {
+		*ret = MLX5_CLASS_NET;
+	} else {
+		DRV_LOG(ERR, "Invalid mlx5 class %s. Maybe typo in device"
+			" class argument setting?", value);
+		*ret = MLX5_CLASS_INVALID;
+	}
+	return 0;
+}
+
+enum mlx5_class
+mlx5_class_get(struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	const char *key = MLX5_CLASS_ARG_NAME;
+	enum mlx5_class ret = MLX5_CLASS_NET;
+
+	if (devargs == NULL)
+		return ret;
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return ret;
+	if (rte_kvargs_count(kvlist, key))
+		rte_kvargs_process(kvlist, key, mlx5_class_check_handler, &ret);
+	rte_kvargs_free(kvlist);
+	return ret;
+}
+
 #ifdef RTE_IBVERBS_LINK_DLOPEN
 
 /**

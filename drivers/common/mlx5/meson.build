@@ -37,7 +37,7 @@ endforeach
 
 if build
 	allow_experimental_apis = true
-	deps += ['hash', 'pci', 'net', 'eal']
+	deps += ['hash', 'pci', 'net', 'eal', 'kvargs']
 	ext_deps += libs
 	sources = files(
 		'mlx5_devx_cmds.c',

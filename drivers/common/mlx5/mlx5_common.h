@@ -11,6 +11,8 @@
 #include <rte_pci.h>
 #include <rte_atomic.h>
 #include <rte_log.h>
+#include <rte_kvargs.h>
+#include <rte_devargs.h>
 
 #include "mlx5_prm.h"
 
@@ -149,5 +151,14 @@ check_cqe(volatile struct mlx5_cqe *cqe, const uint16_t cqes_n,
 }
 
 int mlx5_dev_to_pci_addr(const char *dev_path, struct rte_pci_addr *pci_addr);
+
+#define MLX5_CLASS_ARG_NAME "class"
+
+enum mlx5_class {
+	MLX5_CLASS_NET,
+	MLX5_CLASS_VDPA,
+	MLX5_CLASS_INVALID,
+};
+enum mlx5_class mlx5_class_get(struct rte_devargs *devargs);
 
 #endif /* RTE_PMD_MLX5_COMMON_H_ */
