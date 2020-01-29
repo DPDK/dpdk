@@ -30,6 +30,7 @@
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
+#include <mlx5_common.h>
 
 #include "mlx5_defs.h"
 #include "mlx5_utils.h"
