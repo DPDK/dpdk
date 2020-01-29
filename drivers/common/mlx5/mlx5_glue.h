@@ -93,6 +93,11 @@ struct mlx5dv_devx_async_event_hdr;
 #define MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA 1
 #endif
 
+#ifndef HAVE_IBV_VAR
+struct mlx5dv_var { uint32_t page_id; uint32_t length; off_t mmap_off;
+			uint64_t comp_mask; };
+#endif
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;
@@ -231,6 +236,9 @@ struct mlx5_glue {
 	int (*dv_destroy_flow)(void *flow);
 	int (*dv_destroy_flow_matcher)(void *matcher);
 	struct ibv_context *(*dv_open_device)(struct ibv_device *device);
+	struct mlx5dv_var *(*dv_alloc_var)(struct ibv_context *context,
+					   uint32_t flags);
+	void (*dv_free_var)(struct mlx5dv_var *var);
 	struct mlx5dv_devx_uar *(*devx_alloc_uar)(struct ibv_context *context,
 						  uint32_t flags);
 	void (*devx_free_uar)(struct mlx5dv_devx_uar *devx_uar);

@@ -1160,6 +1160,30 @@ mlx5_glue_devx_free_uar(struct mlx5dv_devx_uar *devx_uar)
 #endif
 }
 
+static struct mlx5dv_var *
+mlx5_glue_dv_alloc_var(struct ibv_context *context, uint32_t flags)
+{
+#ifdef HAVE_IBV_VAR
+	return mlx5dv_alloc_var(context, flags);
+#else
+	(void)context;
+	(void)flags;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void
+mlx5_glue_dv_free_var(struct mlx5dv_var *var)
+{
+#ifdef HAVE_IBV_VAR
+	mlx5dv_free_var(var);
+#else
+	(void)var;
+	errno = ENOTSUP;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -1267,4 +1291,6 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_get_event = mlx5_glue_devx_get_event,
 	.devx_alloc_uar = mlx5_glue_devx_alloc_uar,
 	.devx_free_uar = mlx5_glue_devx_free_uar,
+	.dv_alloc_var = mlx5_glue_dv_alloc_var,
+	.dv_free_var = mlx5_glue_dv_free_var,
 };

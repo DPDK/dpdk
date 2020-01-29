@@ -174,6 +174,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum MLX5_MMAP_GET_NC_PAGES_CMD \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_IBV_VAR \
+		infiniband/mlx5dv.h \
+		func mlx5dv_alloc_var \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_ETHTOOL_LINK_MODE_25G \
 		/usr/include/linux/ethtool.h \
 		enum ETHTOOL_LINK_MODE_25000baseCR_Full_BIT \
