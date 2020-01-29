@@ -260,6 +260,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum IFLA_PHYS_PORT_NAME \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_DEVLINK \
+		linux/devlink.h \
+		define DEVLINK_GENL_NAME \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_SUPPORTED_40000baseKR4_Full \
 		/usr/include/linux/ethtool.h \
 		define SUPPORTED_40000baseKR4_Full \

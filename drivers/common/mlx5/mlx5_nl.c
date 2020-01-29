@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <linux/if_link.h>
 #include <linux/rtnetlink.h>
+#include <linux/genetlink.h>
 #include <net/if.h>
 #include <rdma/rdma_netlink.h>
 #include <stdbool.h>
@@ -21,6 +22,10 @@
 
 #include "mlx5_nl.h"
 #include "mlx5_common_utils.h"
+#ifdef HAVE_DEVLINK
+#include <linux/devlink.h>
+#endif
+
 
 /* Size of the buffer to receive kernel messages */
 #define MLX5_NL_BUF_SIZE (32 * 1024)
@@ -87,6 +92,59 @@
 #endif
 #ifndef HAVE_IFLA_PHYS_PORT_NAME
 #define IFLA_PHYS_PORT_NAME 38
+#endif
+
+/*
+ * Some Devlink defines may be missed in old kernel versions,
+ * adjust used defines.
+ */
+#ifndef DEVLINK_GENL_NAME
+#define DEVLINK_GENL_NAME "devlink"
+#endif
+#ifndef DEVLINK_GENL_VERSION
+#define DEVLINK_GENL_VERSION 1
+#endif
+#ifndef DEVLINK_ATTR_BUS_NAME
+#define DEVLINK_ATTR_BUS_NAME 1
+#endif
+#ifndef DEVLINK_ATTR_DEV_NAME
+#define DEVLINK_ATTR_DEV_NAME 2
+#endif
+#ifndef DEVLINK_ATTR_PARAM
+#define DEVLINK_ATTR_PARAM 80
+#endif
+#ifndef DEVLINK_ATTR_PARAM_NAME
+#define DEVLINK_ATTR_PARAM_NAME 81
+#endif
+#ifndef DEVLINK_ATTR_PARAM_TYPE
+#define DEVLINK_ATTR_PARAM_TYPE 83
+#endif
+#ifndef DEVLINK_ATTR_PARAM_VALUES_LIST
+#define DEVLINK_ATTR_PARAM_VALUES_LIST 84
+#endif
+#ifndef DEVLINK_ATTR_PARAM_VALUE
+#define DEVLINK_ATTR_PARAM_VALUE 85
+#endif
+#ifndef DEVLINK_ATTR_PARAM_VALUE_DATA
+#define DEVLINK_ATTR_PARAM_VALUE_DATA 86
+#endif
+#ifndef DEVLINK_ATTR_PARAM_VALUE_CMODE
+#define DEVLINK_ATTR_PARAM_VALUE_CMODE 87
+#endif
+#ifndef DEVLINK_PARAM_CMODE_DRIVERINIT
+#define DEVLINK_PARAM_CMODE_DRIVERINIT 1
+#endif
+#ifndef DEVLINK_CMD_RELOAD
+#define DEVLINK_CMD_RELOAD 37
+#endif
+#ifndef DEVLINK_CMD_PARAM_GET
+#define DEVLINK_CMD_PARAM_GET 38
+#endif
+#ifndef DEVLINK_CMD_PARAM_SET
+#define DEVLINK_CMD_PARAM_SET 39
+#endif
+#ifndef NLA_FLAG
+#define NLA_FLAG 6
 #endif
 
 /* Add/remove MAC address through Netlink */
@@ -1240,8 +1298,8 @@ nl_attr_put(struct nlmsghdr *nlh, int type, const void *data, int alen)
 	struct nlattr *nla = nl_msg_tail(nlh);
 
 	nla->nla_type = type;
-	nla->nla_len = NLMSG_ALIGN(sizeof(struct nlattr) + alen);
-	nlh->nlmsg_len = NLMSG_ALIGN(nlh->nlmsg_len) + nla->nla_len;
+	nla->nla_len = NLMSG_ALIGN(sizeof(struct nlattr)) + alen;
+	nlh->nlmsg_len += NLMSG_ALIGN(nla->nla_len);
 
 	if (alen)
 		memcpy((uint8_t *)nla + sizeof(struct nlattr), data, alen);
@@ -1333,4 +1391,308 @@ mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
 		return 0;
 	}
 	return ret;
+}
+
+/**
+ * Parse Netlink message to retrieve the general family ID.
+ *
+ * @param nh
+ *   Pointer to Netlink Message Header.
+ * @param arg
+ *   PMD data register with this callback.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_nl_family_id_cb(struct nlmsghdr *nh, void *arg)
+{
+
+	struct nlattr *tail = RTE_PTR_ADD(nh, nh->nlmsg_len);
+	struct nlattr *nla = RTE_PTR_ADD(nh, NLMSG_ALIGN(sizeof(*nh)) +
+					NLMSG_ALIGN(sizeof(struct genlmsghdr)));
+
+	for (; nla->nla_len && nla < tail;
+	     nla = RTE_PTR_ADD(nla, NLMSG_ALIGN(nla->nla_len))) {
+		if (nla->nla_type == CTRL_ATTR_FAMILY_ID) {
+			*(uint16_t *)arg = *(uint16_t *)(nla + 1);
+			return 0;
+		}
+	}
+	return -EINVAL;
+}
+
+#define MLX5_NL_MAX_ATTR_SIZE 100
+/**
+ * Get generic netlink family ID.
+ *
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] name
+ *   The family name.
+ *
+ * @return
+ *   ID >= 0 on success and @p enable is updated, a negative errno value
+ *   otherwise and rte_errno is set.
+ */
+static int
+mlx5_nl_generic_family_id_get(int nlsk_fd, const char *name)
+{
+	struct nlmsghdr *nlh;
+	struct genlmsghdr *genl;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
+	int name_size = strlen(name) + 1;
+	int ret;
+	uint16_t id = -1;
+	uint8_t buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct genlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct nlattr)) +
+		    NLMSG_ALIGN(MLX5_NL_MAX_ATTR_SIZE)];
+
+	memset(buf, 0, sizeof(buf));
+	nlh = (struct nlmsghdr *)buf;
+	nlh->nlmsg_len = sizeof(struct nlmsghdr);
+	nlh->nlmsg_type = GENL_ID_CTRL;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	genl = (struct genlmsghdr *)nl_msg_tail(nlh);
+	nlh->nlmsg_len += sizeof(struct genlmsghdr);
+	genl->cmd = CTRL_CMD_GETFAMILY;
+	genl->version = 1;
+	nl_attr_put(nlh, CTRL_ATTR_FAMILY_NAME, name, name_size);
+	ret = mlx5_nl_send(nlsk_fd, nlh, sn);
+	if (ret >= 0)
+		ret = mlx5_nl_recv(nlsk_fd, sn, mlx5_nl_family_id_cb, &id);
+	if (ret < 0) {
+		DRV_LOG(DEBUG, "Failed to get Netlink %s family ID: %d.", name,
+			ret);
+		return ret;
+	}
+	DRV_LOG(DEBUG, "Netlink \"%s\" family ID is %u.", name, id);
+	return (int)id;
+}
+
+/**
+ * Get Devlink family ID.
+ *
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ *
+ * @return
+ *   ID >= 0 on success and @p enable is updated, a negative errno value
+ *   otherwise and rte_errno is set.
+ */
+
+int
+mlx5_nl_devlink_family_id_get(int nlsk_fd)
+{
+	return mlx5_nl_generic_family_id_get(nlsk_fd, DEVLINK_GENL_NAME);
+}
+
+/**
+ * Parse Netlink message to retrieve the ROCE enable status.
+ *
+ * @param nh
+ *   Pointer to Netlink Message Header.
+ * @param arg
+ *   PMD data register with this callback.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_nl_roce_cb(struct nlmsghdr *nh, void *arg)
+{
+
+	int ret = -EINVAL;
+	int *enable = arg;
+	struct nlattr *tail = RTE_PTR_ADD(nh, nh->nlmsg_len);
+	struct nlattr *nla = RTE_PTR_ADD(nh, NLMSG_ALIGN(sizeof(*nh)) +
+					NLMSG_ALIGN(sizeof(struct genlmsghdr)));
+
+	while (nla->nla_len && nla < tail) {
+		switch (nla->nla_type) {
+		/* Expected nested attributes case. */
+		case DEVLINK_ATTR_PARAM:
+		case DEVLINK_ATTR_PARAM_VALUES_LIST:
+		case DEVLINK_ATTR_PARAM_VALUE:
+			ret = 0;
+			nla += 1;
+			break;
+		case DEVLINK_ATTR_PARAM_VALUE_DATA:
+			*enable = 1;
+			return 0;
+		default:
+			nla = RTE_PTR_ADD(nla, NLMSG_ALIGN(nla->nla_len));
+		}
+	}
+	*enable = 0;
+	return ret;
+}
+
+/**
+ * Get ROCE enable status through Netlink.
+ *
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] family_id
+ *   the Devlink family ID.
+ * @param pci_addr
+ *   The device PCI address.
+ * @param[out] enable
+ *   Where to store the enable status.
+ *
+ * @return
+ *   0 on success and @p enable is updated, a negative errno value otherwise
+ *   and rte_errno is set.
+ */
+int
+mlx5_nl_enable_roce_get(int nlsk_fd, int family_id, const char *pci_addr,
+			int *enable)
+{
+	struct nlmsghdr *nlh;
+	struct genlmsghdr *genl;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
+	int ret;
+	int cur_en;
+	uint8_t buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct genlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct nlattr)) * 4 +
+		    NLMSG_ALIGN(MLX5_NL_MAX_ATTR_SIZE) * 4];
+
+	memset(buf, 0, sizeof(buf));
+	nlh = (struct nlmsghdr *)buf;
+	nlh->nlmsg_len = sizeof(struct nlmsghdr);
+	nlh->nlmsg_type = family_id;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	genl = (struct genlmsghdr *)nl_msg_tail(nlh);
+	nlh->nlmsg_len += sizeof(struct genlmsghdr);
+	genl->cmd = DEVLINK_CMD_PARAM_GET;
+	genl->version = DEVLINK_GENL_VERSION;
+	nl_attr_put(nlh, DEVLINK_ATTR_BUS_NAME, "pci", 4);
+	nl_attr_put(nlh, DEVLINK_ATTR_DEV_NAME, pci_addr, strlen(pci_addr) + 1);
+	nl_attr_put(nlh, DEVLINK_ATTR_PARAM_NAME, "enable_roce", 12);
+	ret = mlx5_nl_send(nlsk_fd, nlh, sn);
+	if (ret >= 0)
+		ret = mlx5_nl_recv(nlsk_fd, sn, mlx5_nl_roce_cb, &cur_en);
+	if (ret < 0) {
+		DRV_LOG(DEBUG, "Failed to get ROCE enable on device %s: %d.",
+			pci_addr, ret);
+		return ret;
+	}
+	*enable = cur_en;
+	DRV_LOG(DEBUG, "ROCE is %sabled for device \"%s\".",
+		cur_en ? "en" : "dis", pci_addr);
+	return ret;
+}
+
+/**
+ * Reload mlx5 device kernel driver through Netlink.
+ *
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] family_id
+ *   the Devlink family ID.
+ * @param pci_addr
+ *   The device PCI address.
+ * @param[out] enable
+ *   The enable status to set.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_nl_driver_reload(int nlsk_fd, int family_id, const char *pci_addr)
+{
+	struct nlmsghdr *nlh;
+	struct genlmsghdr *genl;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
+	int ret;
+	uint8_t buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct genlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct nlattr)) * 2 +
+		    NLMSG_ALIGN(MLX5_NL_MAX_ATTR_SIZE) * 2];
+
+	memset(buf, 0, sizeof(buf));
+	nlh = (struct nlmsghdr *)buf;
+	nlh->nlmsg_len = sizeof(struct nlmsghdr);
+	nlh->nlmsg_type = family_id;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	genl = (struct genlmsghdr *)nl_msg_tail(nlh);
+	nlh->nlmsg_len += sizeof(struct genlmsghdr);
+	genl->cmd = DEVLINK_CMD_RELOAD;
+	genl->version = DEVLINK_GENL_VERSION;
+	nl_attr_put(nlh, DEVLINK_ATTR_BUS_NAME, "pci", 4);
+	nl_attr_put(nlh, DEVLINK_ATTR_DEV_NAME, pci_addr, strlen(pci_addr) + 1);
+	ret = mlx5_nl_send(nlsk_fd, nlh, sn);
+	if (ret >= 0)
+		ret = mlx5_nl_recv(nlsk_fd, sn, NULL, NULL);
+	if (ret < 0) {
+		DRV_LOG(DEBUG, "Failed to reload %s device by Netlink - %d",
+			pci_addr, ret);
+		return ret;
+	}
+	DRV_LOG(DEBUG, "Device \"%s\" was reloaded by Netlink successfully.",
+		pci_addr);
+	return 0;
+}
+
+/**
+ * Set ROCE enable status through Netlink.
+ *
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] family_id
+ *   the Devlink family ID.
+ * @param pci_addr
+ *   The device PCI address.
+ * @param[out] enable
+ *   The enable status to set.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_nl_enable_roce_set(int nlsk_fd, int family_id, const char *pci_addr,
+			int enable)
+{
+	struct nlmsghdr *nlh;
+	struct genlmsghdr *genl;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
+	int ret;
+	uint8_t buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct genlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct nlattr)) * 6 +
+		    NLMSG_ALIGN(MLX5_NL_MAX_ATTR_SIZE) * 6];
+	uint8_t cmode = DEVLINK_PARAM_CMODE_DRIVERINIT;
+	uint8_t ptype = NLA_FLAG;
+;
+
+	memset(buf, 0, sizeof(buf));
+	nlh = (struct nlmsghdr *)buf;
+	nlh->nlmsg_len = sizeof(struct nlmsghdr);
+	nlh->nlmsg_type = family_id;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	genl = (struct genlmsghdr *)nl_msg_tail(nlh);
+	nlh->nlmsg_len += sizeof(struct genlmsghdr);
+	genl->cmd = DEVLINK_CMD_PARAM_SET;
+	genl->version = DEVLINK_GENL_VERSION;
+	nl_attr_put(nlh, DEVLINK_ATTR_BUS_NAME, "pci", 4);
+	nl_attr_put(nlh, DEVLINK_ATTR_DEV_NAME, pci_addr, strlen(pci_addr) + 1);
+	nl_attr_put(nlh, DEVLINK_ATTR_PARAM_NAME, "enable_roce", 12);
+	nl_attr_put(nlh, DEVLINK_ATTR_PARAM_VALUE_CMODE, &cmode, sizeof(cmode));
+	nl_attr_put(nlh, DEVLINK_ATTR_PARAM_TYPE, &ptype, sizeof(ptype));
+	if (enable)
+		nl_attr_put(nlh, DEVLINK_ATTR_PARAM_VALUE_DATA, NULL, 0);
+	ret = mlx5_nl_send(nlsk_fd, nlh, sn);
+	if (ret >= 0)
+		ret = mlx5_nl_recv(nlsk_fd, sn, NULL, NULL);
+	if (ret < 0) {
+		DRV_LOG(DEBUG, "Failed to %sable ROCE for device %s by Netlink:"
+			" %d.", enable ? "en" : "dis", pci_addr, ret);
+		return ret;
+	}
+	DRV_LOG(DEBUG, "Device %s ROCE was %sabled by Netlink successfully.",
+		pci_addr, enable ? "en" : "dis");
+	/* Now, need to reload the driver. */
+	return mlx5_nl_driver_reload(nlsk_fd, family_id, pci_addr);
 }

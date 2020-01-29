@@ -53,5 +53,11 @@ void mlx5_nl_vlan_vmwa_delete(struct mlx5_nl_vlan_vmwa_context *vmwa,
 			      uint32_t ifindex);
 uint32_t mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
 				  uint32_t ifindex, uint16_t tag);
+int mlx5_nl_devlink_family_id_get(int nlsk_fd);
+int mlx5_nl_enable_roce_get(int nlsk_fd, int family_id, const char *pci_addr,
+			    int *enable);
+int mlx5_nl_driver_reload(int nlsk_fd, int family_id, const char *pci_addr);
+int mlx5_nl_enable_roce_set(int nlsk_fd, int family_id, const char *pci_addr,
+			    int enable);
 
 #endif /* RTE_PMD_MLX5_NL_H_ */

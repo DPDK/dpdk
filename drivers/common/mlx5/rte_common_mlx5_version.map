@@ -30,6 +30,10 @@ DPDK_20.02 {
 	mlx5_dev_to_pci_addr;
 
 	mlx5_nl_allmulti;
+	mlx5_nl_devlink_family_id_get;
+	mlx5_nl_driver_reload;
+	mlx5_nl_enable_roce_get;
+	mlx5_nl_enable_roce_set;
 	mlx5_nl_ifindex;
 	mlx5_nl_init;
 	mlx5_nl_mac_addr_add;
