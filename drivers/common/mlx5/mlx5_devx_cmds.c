@@ -377,24 +377,18 @@ mlx5_devx_cmd_query_hca_vdpa_attr(struct ibv_context *ctx,
 		vdpa_attr->max_num_virtio_queues =
 			MLX5_GET(virtio_emulation_cap, hcattr,
 				 max_num_virtio_queues);
-		vdpa_attr->umem_1_buffer_param_a =
-			MLX5_GET(virtio_emulation_cap, hcattr,
-				 umem_1_buffer_param_a);
-		vdpa_attr->umem_1_buffer_param_b =
-			MLX5_GET(virtio_emulation_cap, hcattr,
-				 umem_1_buffer_param_b);
-		vdpa_attr->umem_2_buffer_param_a =
-			MLX5_GET(virtio_emulation_cap, hcattr,
-				 umem_2_buffer_param_a);
-		vdpa_attr->umem_2_buffer_param_b =
-			MLX5_GET(virtio_emulation_cap, hcattr,
-				 umem_2_buffer_param_a);
-		vdpa_attr->umem_3_buffer_param_a =
-			MLX5_GET(virtio_emulation_cap, hcattr,
-				 umem_3_buffer_param_a);
-		vdpa_attr->umem_3_buffer_param_b =
-			MLX5_GET(virtio_emulation_cap, hcattr,
-				 umem_3_buffer_param_b);
+		vdpa_attr->umems[0].a = MLX5_GET(virtio_emulation_cap, hcattr,
+						 umem_1_buffer_param_a);
+		vdpa_attr->umems[0].b = MLX5_GET(virtio_emulation_cap, hcattr,
+						 umem_1_buffer_param_b);
+		vdpa_attr->umems[1].a = MLX5_GET(virtio_emulation_cap, hcattr,
+						 umem_2_buffer_param_a);
+		vdpa_attr->umems[1].b = MLX5_GET(virtio_emulation_cap, hcattr,
+						 umem_2_buffer_param_b);
+		vdpa_attr->umems[2].a = MLX5_GET(virtio_emulation_cap, hcattr,
+						 umem_3_buffer_param_a);
+		vdpa_attr->umems[2].b = MLX5_GET(virtio_emulation_cap, hcattr,
+						 umem_3_buffer_param_b);
 	}
 }
 
@@ -1149,4 +1143,173 @@ mlx5_devx_cmd_create_cq(struct ibv_context *ctx, struct mlx5_devx_cq_attr *attr)
 	}
 	cq_obj->id = MLX5_GET(create_cq_out, out, cqn);
 	return cq_obj;
+}
+
+/**
+ * Create VIRTQ using DevX API.
+ *
+ * @param[in] ctx
+ *   ibv_context returned from mlx5dv_open_device.
+ * @param [in] attr
+ *   Pointer to VIRTQ attributes structure.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_virtq(struct ibv_context *ctx,
+			   struct mlx5_devx_virtq_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_virtq_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	struct mlx5_devx_obj *virtq_obj = rte_zmalloc(__func__,
+						     sizeof(*virtq_obj), 0);
+	void *virtq = MLX5_ADDR_OF(create_virtq_in, in, virtq);
+	void *hdr = MLX5_ADDR_OF(create_virtq_in, in, hdr);
+	void *virtctx = MLX5_ADDR_OF(virtio_net_q, virtq, virtio_q_context);
+
+	if (!virtq_obj) {
+		DRV_LOG(ERR, "Failed to allocate virtq data.");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_VIRTQ);
+	MLX5_SET16(virtio_net_q, virtq, hw_available_index,
+		   attr->hw_available_index);
+	MLX5_SET16(virtio_net_q, virtq, hw_used_index, attr->hw_used_index);
+	MLX5_SET16(virtio_net_q, virtq, tso_ipv4, attr->tso_ipv4);
+	MLX5_SET16(virtio_net_q, virtq, tso_ipv6, attr->tso_ipv6);
+	MLX5_SET16(virtio_net_q, virtq, tx_csum, attr->tx_csum);
+	MLX5_SET16(virtio_net_q, virtq, rx_csum, attr->rx_csum);
+	MLX5_SET16(virtio_q, virtctx, virtio_version_1_0,
+		   attr->virtio_version_1_0);
+	MLX5_SET16(virtio_q, virtctx, event_mode, attr->event_mode);
+	MLX5_SET(virtio_q, virtctx, event_qpn_or_msix, attr->qp_id);
+	MLX5_SET64(virtio_q, virtctx, desc_addr, attr->desc_addr);
+	MLX5_SET64(virtio_q, virtctx, used_addr, attr->used_addr);
+	MLX5_SET64(virtio_q, virtctx, available_addr, attr->available_addr);
+	MLX5_SET16(virtio_q, virtctx, queue_index, attr->queue_index);
+	MLX5_SET16(virtio_q, virtctx, queue_size, attr->q_size);
+	MLX5_SET(virtio_q, virtctx, virtio_q_mkey, attr->mkey);
+	MLX5_SET(virtio_q, virtctx, umem_1_id, attr->umems[0].id);
+	MLX5_SET(virtio_q, virtctx, umem_1_size, attr->umems[0].size);
+	MLX5_SET64(virtio_q, virtctx, umem_1_offset, attr->umems[0].offset);
+	MLX5_SET(virtio_q, virtctx, umem_2_id, attr->umems[1].id);
+	MLX5_SET(virtio_q, virtctx, umem_2_size, attr->umems[1].size);
+	MLX5_SET64(virtio_q, virtctx, umem_2_offset, attr->umems[1].offset);
+	MLX5_SET(virtio_q, virtctx, umem_3_id, attr->umems[2].id);
+	MLX5_SET(virtio_q, virtctx, umem_3_size, attr->umems[2].size);
+	MLX5_SET64(virtio_q, virtctx, umem_3_offset, attr->umems[2].offset);
+	MLX5_SET(virtio_net_q, virtq, tisn_or_qpn, attr->tis_id);
+	virtq_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
+						    sizeof(out));
+	if (!virtq_obj->obj) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create VIRTQ Obj using DevX.");
+		rte_free(virtq_obj);
+		return NULL;
+	}
+	virtq_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return virtq_obj;
+}
+
+/**
+ * Modify VIRTQ using DevX API.
+ *
+ * @param[in] virtq_obj
+ *   Pointer to virtq object structure.
+ * @param [in] attr
+ *   Pointer to modify virtq attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_cmd_modify_virtq(struct mlx5_devx_obj *virtq_obj,
+			   struct mlx5_devx_virtq_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_virtq_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	void *virtq = MLX5_ADDR_OF(create_virtq_in, in, virtq);
+	void *hdr = MLX5_ADDR_OF(create_virtq_in, in, hdr);
+	void *virtctx = MLX5_ADDR_OF(virtio_net_q, virtq, virtio_q_context);
+	int ret;
+
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+		 MLX5_CMD_OP_MODIFY_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_VIRTQ);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_id, virtq_obj->id);
+	MLX5_SET64(virtio_net_q, virtq, modify_field_select, attr->type);
+	MLX5_SET16(virtio_q, virtctx, queue_index, attr->queue_index);
+	switch (attr->type) {
+	case MLX5_VIRTQ_MODIFY_TYPE_STATE:
+		MLX5_SET16(virtio_net_q, virtq, state, attr->state);
+		break;
+	case MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_PARAMS:
+		MLX5_SET(virtio_net_q, virtq, dirty_bitmap_mkey,
+			 attr->dirty_bitmap_mkey);
+		MLX5_SET64(virtio_net_q, virtq, dirty_bitmap_addr,
+			 attr->dirty_bitmap_addr);
+		MLX5_SET(virtio_net_q, virtq, dirty_bitmap_size,
+			 attr->dirty_bitmap_size);
+		break;
+	case MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_DUMP_ENABLE:
+		MLX5_SET(virtio_net_q, virtq, dirty_bitmap_dump_enable,
+			 attr->dirty_bitmap_dump_enable);
+		break;
+	default:
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	ret = mlx5_glue->devx_obj_modify(virtq_obj->obj, in, sizeof(in),
+					 out, sizeof(out));
+	if (ret) {
+		DRV_LOG(ERR, "Failed to modify VIRTQ using DevX.");
+		rte_errno = errno;
+		return -errno;
+	}
+	return ret;
+}
+
+/**
+ * Query VIRTQ using DevX API.
+ *
+ * @param[in] virtq_obj
+ *   Pointer to virtq object structure.
+ * @param [in/out] attr
+ *   Pointer to virtq attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_cmd_query_virtq(struct mlx5_devx_obj *virtq_obj,
+			   struct mlx5_devx_virtq_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_virtq_out)] = {0};
+	void *hdr = MLX5_ADDR_OF(query_virtq_out, in, hdr);
+	void *virtq = MLX5_ADDR_OF(query_virtq_out, out, virtq);
+	int ret;
+
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+		 MLX5_CMD_OP_QUERY_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_VIRTQ);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_id, virtq_obj->id);
+	ret = mlx5_glue->devx_obj_query(virtq_obj->obj, in, sizeof(in),
+					 out, sizeof(out));
+	if (ret) {
+		DRV_LOG(ERR, "Failed to modify VIRTQ using DevX.");
+		rte_errno = errno;
+		return -errno;
+	}
+	attr->hw_available_index = MLX5_GET16(virtio_net_q, virtq,
+					      hw_available_index);
+	attr->hw_used_index = MLX5_GET16(virtio_net_q, virtq, hw_used_index);
+	return ret;
 }

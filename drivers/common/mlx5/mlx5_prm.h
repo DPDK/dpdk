@@ -527,6 +527,8 @@ typedef uint8_t u8;
 #define __mlx5_16_bit_off(typ, fld) (16 - __mlx5_bit_sz(typ, fld) - \
 				    (__mlx5_bit_off(typ, fld) & 0xf))
 #define __mlx5_mask16(typ, fld) ((u16)((1ull << __mlx5_bit_sz(typ, fld)) - 1))
+#define __mlx5_16_mask(typ, fld) (__mlx5_mask16(typ, fld) << \
+				  __mlx5_16_bit_off(typ, fld))
 #define MLX5_ST_SZ_BYTES(typ) (sizeof(struct mlx5_ifc_##typ##_bits) / 8)
 #define MLX5_ST_SZ_DW(typ) (sizeof(struct mlx5_ifc_##typ##_bits) / 32)
 #define MLX5_BYTE_OFF(typ, fld) (__mlx5_bit_off(typ, fld) / 8)
@@ -549,6 +551,17 @@ typedef uint8_t u8;
 		assert(__mlx5_bit_sz(typ, fld) == 64); \
 		*((__be64 *)(p) + __mlx5_64_off(typ, fld)) = \
 			rte_cpu_to_be_64(v); \
+	} while (0)
+
+#define MLX5_SET16(typ, p, fld, v) \
+	do { \
+		u16 _v = v; \
+		*((__be16 *)(p) + __mlx5_16_off(typ, fld)) = \
+		rte_cpu_to_be_16((rte_be_to_cpu_16(*((__be16 *)(p) + \
+				  __mlx5_16_off(typ, fld))) & \
+				  (~__mlx5_16_mask(typ, fld))) | \
+				 (((_v) & __mlx5_mask16(typ, fld)) << \
+				  __mlx5_16_bit_off(typ, fld))); \
 	} while (0)
 
 #define MLX5_GET(typ, p, fld) \
@@ -723,6 +736,9 @@ enum {
 	MLX5_CMD_OP_CREATE_RQT = 0x916,
 	MLX5_CMD_OP_ALLOC_FLOW_COUNTER = 0x939,
 	MLX5_CMD_OP_QUERY_FLOW_COUNTER = 0x93b,
+	MLX5_CMD_OP_CREATE_GENERAL_OBJECT = 0xa00,
+	MLX5_CMD_OP_MODIFY_GENERAL_OBJECT = 0xa01,
+	MLX5_CMD_OP_QUERY_GENERAL_OBJECT = 0xa02,
 };
 
 enum {
@@ -1691,6 +1707,11 @@ struct mlx5_ifc_create_tir_in_bits {
 	struct mlx5_ifc_tirc_bits ctx;
 };
 
+enum {
+	MLX5_INLINE_Q_TYPE_RQ = 0x0,
+	MLX5_INLINE_Q_TYPE_VIRTQ = 0x1,
+};
+
 struct mlx5_ifc_rq_num_bits {
 	u8 reserved_at_0[0x8];
 	u8 rq_num[0x18];
@@ -1915,6 +1936,102 @@ struct mlx5_ifc_create_cq_in_bits {
 	u8 reserved_at_2e1[0x1f];
 	u8 reserved_at_300[0x580];
 	u8 pas[];
+};
+
+enum {
+	MLX5_GENERAL_OBJ_TYPE_VIRTQ = 0x000d,
+};
+
+struct mlx5_ifc_general_obj_in_cmd_hdr_bits {
+	u8 opcode[0x10];
+	u8 reserved_at_10[0x20];
+	u8 obj_type[0x10];
+	u8 obj_id[0x20];
+	u8 reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_general_obj_out_cmd_hdr_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 obj_id[0x20];
+	u8 reserved_at_60[0x20];
+};
+
+enum {
+	MLX5_VIRTQ_STATE_INIT = 0,
+	MLX5_VIRTQ_STATE_RDY = 1,
+	MLX5_VIRTQ_STATE_SUSPEND = 2,
+	MLX5_VIRTQ_STATE_ERROR = 3,
+};
+
+enum {
+	MLX5_VIRTQ_MODIFY_TYPE_STATE = (1UL << 0),
+	MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_PARAMS = (1UL << 3),
+	MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_DUMP_ENABLE = (1UL << 4),
+};
+
+struct mlx5_ifc_virtio_q_bits {
+	u8 virtio_q_type[0x8];
+	u8 reserved_at_8[0x5];
+	u8 event_mode[0x3];
+	u8 queue_index[0x10];
+	u8 full_emulation[0x1];
+	u8 virtio_version_1_0[0x1];
+	u8 reserved_at_22[0x2];
+	u8 offload_type[0x4];
+	u8 event_qpn_or_msix[0x18];
+	u8 doorbell_stride_idx[0x10];
+	u8 queue_size[0x10];
+	u8 device_emulation_id[0x20];
+	u8 desc_addr[0x40];
+	u8 used_addr[0x40];
+	u8 available_addr[0x40];
+	u8 virtio_q_mkey[0x20];
+	u8 reserved_at_160[0x20];
+	u8 umem_1_id[0x20];
+	u8 umem_1_size[0x20];
+	u8 umem_1_offset[0x40];
+	u8 umem_2_id[0x20];
+	u8 umem_2_size[0x20];
+	u8 umem_2_offset[0x40];
+	u8 umem_3_id[0x20];
+	u8 umem_3_size[0x20];
+	u8 umem_3_offset[0x40];
+	u8 reserved_at_300[0x100];
+};
+
+struct mlx5_ifc_virtio_net_q_bits {
+	u8 modify_field_select[0x40];
+	u8 reserved_at_40[0x40];
+	u8 tso_ipv4[0x1];
+	u8 tso_ipv6[0x1];
+	u8 tx_csum[0x1];
+	u8 rx_csum[0x1];
+	u8 reserved_at_84[0x6];
+	u8 dirty_bitmap_dump_enable[0x1];
+	u8 vhost_log_page[0x5];
+	u8 reserved_at_90[0xc];
+	u8 state[0x4];
+	u8 error_type[0x8];
+	u8 tisn_or_qpn[0x18];
+	u8 dirty_bitmap_mkey[0x20];
+	u8 dirty_bitmap_size[0x20];
+	u8 dirty_bitmap_addr[0x40];
+	u8 hw_available_index[0x10];
+	u8 hw_used_index[0x10];
+	u8 reserved_at_160[0xa0];
+	struct mlx5_ifc_virtio_q_bits virtio_q_context;
+};
+
+struct mlx5_ifc_create_virtq_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_virtio_net_q_bits virtq;
+};
+
+struct mlx5_ifc_query_virtq_out_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_virtio_net_q_bits virtq;
 };
 
 /* CQE format mask. */

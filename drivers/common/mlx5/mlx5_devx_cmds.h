@@ -64,12 +64,10 @@ struct mlx5_hca_vdpa_attr {
 	uint32_t log_doorbell_stride:5;
 	uint32_t log_doorbell_bar_size:5;
 	uint32_t max_num_virtio_queues;
-	uint32_t umem_1_buffer_param_a;
-	uint32_t umem_1_buffer_param_b;
-	uint32_t umem_2_buffer_param_a;
-	uint32_t umem_2_buffer_param_b;
-	uint32_t umem_3_buffer_param_a;
-	uint32_t umem_3_buffer_param_b;
+	struct {
+		uint32_t a;
+		uint32_t b;
+	} umems[3];
 	uint64_t doorbell_bar_offset;
 };
 
@@ -250,6 +248,37 @@ struct mlx5_devx_cq_attr {
 	uint64_t db_addr;
 };
 
+/* Virtq attributes structure, used by VIRTQ operations. */
+struct mlx5_devx_virtq_attr {
+	uint16_t hw_available_index;
+	uint16_t hw_used_index;
+	uint16_t q_size;
+	uint32_t virtio_version_1_0:1;
+	uint32_t tso_ipv4:1;
+	uint32_t tso_ipv6:1;
+	uint32_t tx_csum:1;
+	uint32_t rx_csum:1;
+	uint32_t event_mode:3;
+	uint32_t state:4;
+	uint32_t dirty_bitmap_dump_enable:1;
+	uint32_t dirty_bitmap_mkey;
+	uint32_t dirty_bitmap_size;
+	uint32_t mkey;
+	uint32_t qp_id;
+	uint32_t queue_index;
+	uint32_t tis_id;
+	uint64_t dirty_bitmap_addr;
+	uint64_t type;
+	uint64_t desc_addr;
+	uint64_t used_addr;
+	uint64_t available_addr;
+	struct {
+		uint32_t id;
+		uint32_t size;
+		uint64_t offset;
+	} umems[3];
+};
+
 /* mlx5_devx_cmds.c */
 
 struct mlx5_devx_obj *mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx,
@@ -288,4 +317,11 @@ int mlx5_devx_cmd_flow_dump(void *fdb_domain, void *rx_domain, void *tx_domain,
 			    FILE *file);
 struct mlx5_devx_obj *mlx5_devx_cmd_create_cq(struct ibv_context *ctx,
 					      struct mlx5_devx_cq_attr *attr);
+struct mlx5_devx_obj *mlx5_devx_cmd_create_virtq(struct ibv_context *ctx,
+					     struct mlx5_devx_virtq_attr *attr);
+int mlx5_devx_cmd_modify_virtq(struct mlx5_devx_obj *virtq_obj,
+			       struct mlx5_devx_virtq_attr *attr);
+int mlx5_devx_cmd_query_virtq(struct mlx5_devx_obj *virtq_obj,
+			      struct mlx5_devx_virtq_attr *attr);
+
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */
