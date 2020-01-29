@@ -142,7 +142,11 @@ struct mlx5_devx_obj *
 mlx5_devx_cmd_mkey_create(struct ibv_context *ctx,
 			  struct mlx5_devx_mkey_attr *attr)
 {
-	uint32_t in[MLX5_ST_SZ_DW(create_mkey_in)] = {0};
+	struct mlx5_klm *klm_array = attr->klm_array;
+	int klm_num = attr->klm_num;
+	int in_size_dw = MLX5_ST_SZ_DW(create_mkey_in) +
+		     (klm_num ? RTE_ALIGN(klm_num, 4) : 0) * MLX5_ST_SZ_DW(klm);
+	uint32_t in[in_size_dw];
 	uint32_t out[MLX5_ST_SZ_DW(create_mkey_out)] = {0};
 	void *mkc;
 	struct mlx5_devx_obj *mkey = rte_zmalloc("mkey", sizeof(*mkey), 0);
@@ -153,27 +157,52 @@ mlx5_devx_cmd_mkey_create(struct ibv_context *ctx,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
+	memset(in, 0, in_size_dw * 4);
 	pgsize = sysconf(_SC_PAGESIZE);
-	translation_size = (RTE_ALIGN(attr->size, pgsize) * 8) / 16;
 	MLX5_SET(create_mkey_in, in, opcode, MLX5_CMD_OP_CREATE_MKEY);
+	mkc = MLX5_ADDR_OF(create_mkey_in, in, memory_key_mkey_entry);
+	if (klm_num > 0) {
+		int i;
+		uint8_t *klm = (uint8_t *)MLX5_ADDR_OF(create_mkey_in, in,
+						       klm_pas_mtt);
+		translation_size = RTE_ALIGN(klm_num, 4);
+		for (i = 0; i < klm_num; i++) {
+			MLX5_SET(klm, klm, byte_count, klm_array[i].byte_count);
+			MLX5_SET(klm, klm, mkey, klm_array[i].mkey);
+			MLX5_SET64(klm, klm, address, klm_array[i].address);
+			klm += MLX5_ST_SZ_BYTES(klm);
+		}
+		for (; i < (int)translation_size; i++) {
+			MLX5_SET(klm, klm, mkey, 0x0);
+			MLX5_SET64(klm, klm, address, 0x0);
+			klm += MLX5_ST_SZ_BYTES(klm);
+		}
+		MLX5_SET(mkc, mkc, access_mode_1_0, attr->log_entity_size ?
+			 MLX5_MKC_ACCESS_MODE_KLM_FBS :
+			 MLX5_MKC_ACCESS_MODE_KLM);
+		MLX5_SET(mkc, mkc, log_page_size, attr->log_entity_size);
+	} else {
+		translation_size = (RTE_ALIGN(attr->size, pgsize) * 8) / 16;
+		MLX5_SET(mkc, mkc, access_mode_1_0, MLX5_MKC_ACCESS_MODE_MTT);
+		MLX5_SET(mkc, mkc, log_page_size, rte_log2_u32(pgsize));
+	}
 	MLX5_SET(create_mkey_in, in, translations_octword_actual_size,
 		 translation_size);
 	MLX5_SET(create_mkey_in, in, mkey_umem_id, attr->umem_id);
-	mkc = MLX5_ADDR_OF(create_mkey_in, in, memory_key_mkey_entry);
+	MLX5_SET(create_mkey_in, in, pg_access, attr->pg_access);
 	MLX5_SET(mkc, mkc, lw, 0x1);
 	MLX5_SET(mkc, mkc, lr, 0x1);
-	MLX5_SET(mkc, mkc, access_mode_1_0, MLX5_MKC_ACCESS_MODE_MTT);
 	MLX5_SET(mkc, mkc, qpn, 0xffffff);
 	MLX5_SET(mkc, mkc, pd, attr->pd);
 	MLX5_SET(mkc, mkc, mkey_7_0, attr->umem_id & 0xFF);
 	MLX5_SET(mkc, mkc, translations_octword_size, translation_size);
 	MLX5_SET64(mkc, mkc, start_addr, attr->addr);
 	MLX5_SET64(mkc, mkc, len, attr->size);
-	MLX5_SET(mkc, mkc, log_page_size, rte_log2_u32(pgsize));
-	mkey->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
+	mkey->obj = mlx5_glue->devx_obj_create(ctx, in, in_size_dw * 4, out,
 					       sizeof(out));
 	if (!mkey->obj) {
-		DRV_LOG(ERR, "Can't create mkey - error %d", errno);
+		DRV_LOG(ERR, "Can't create %sdirect mkey - error %d\n",
+			klm_num ? "an in" : "a ", errno);
 		rte_errno = errno;
 		rte_free(mkey);
 		return NULL;

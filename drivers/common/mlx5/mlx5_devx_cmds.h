@@ -6,6 +6,7 @@
 #define RTE_PMD_MLX5_DEVX_CMDS_H_
 
 #include "mlx5_glue.h"
+#include "mlx5_prm.h"
 
 
 /* devX creation object */
@@ -14,11 +15,26 @@ struct mlx5_devx_obj {
 	int id; /* The object ID. */
 };
 
+/* UMR memory buffer used to define 1 entry in indirect mkey. */
+struct mlx5_klm {
+	uint32_t byte_count;
+	uint32_t mkey;
+	uint64_t address;
+};
+
+/* This is limitation of libibverbs: in length variable type is u16. */
+#define MLX5_DEVX_MAX_KLM_ENTRIES ((UINT16_MAX - \
+		MLX5_ST_SZ_DW(create_mkey_in) * 4) / (MLX5_ST_SZ_DW(klm) * 4))
+
 struct mlx5_devx_mkey_attr {
 	uint64_t addr;
 	uint64_t size;
 	uint32_t umem_id;
 	uint32_t pd;
+	uint32_t log_entity_size;
+	uint32_t pg_access:1;
+	struct mlx5_klm *klm_array;
+	int klm_num;
 };
 
 /* HCA qos attributes. */
@@ -215,6 +231,7 @@ struct mlx5_devx_modify_sq_attr {
 	uint32_t hairpin_peer_rq:24;
 	uint32_t hairpin_peer_vhca:16;
 };
+
 
 /* mlx5_devx_cmds.c */
 

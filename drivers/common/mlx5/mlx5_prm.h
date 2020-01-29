@@ -726,6 +726,8 @@ enum {
 
 enum {
 	MLX5_MKC_ACCESS_MODE_MTT   = 0x1,
+	MLX5_MKC_ACCESS_MODE_KLM   = 0x2,
+	MLX5_MKC_ACCESS_MODE_KLM_FBS = 0x3,
 };
 
 /* Flow counters. */
@@ -788,6 +790,16 @@ struct mlx5_ifc_query_flow_counter_in_bits {
 	u8         dump_to_memory[0x1];
 	u8         num_of_counters[0x1e];
 	u8         flow_counter_id[0x20];
+};
+
+#define MLX5_MAX_KLM_BYTE_COUNT 0x80000000u
+#define MLX5_MIN_KLM_FIXED_BUFFER_SIZE 0x1000u
+
+
+struct mlx5_ifc_klm_bits {
+	u8         byte_count[0x20];
+	u8         mkey[0x20];
+	u8         address[0x40];
 };
 
 struct mlx5_ifc_mkc_bits {
