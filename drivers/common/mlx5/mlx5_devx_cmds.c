@@ -1093,3 +1093,60 @@ mlx5_devx_cmd_flow_dump(void *fdb_domain __rte_unused,
 #endif
 	return -ret;
 }
+
+/*
+ * Create CQ using DevX API.
+ *
+ * @param[in] ctx
+ *   ibv_context returned from mlx5dv_open_device.
+ * @param [in] attr
+ *   Pointer to CQ attributes structure.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_cq(struct ibv_context *ctx, struct mlx5_devx_cq_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_cq_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(create_cq_out)] = {0};
+	struct mlx5_devx_obj *cq_obj = rte_zmalloc(__func__, sizeof(*cq_obj),
+						   0);
+	void *cqctx = MLX5_ADDR_OF(create_cq_in, in, cq_context);
+
+	if (!cq_obj) {
+		DRV_LOG(ERR, "Failed to allocate CQ object memory.");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(create_cq_in, in, opcode, MLX5_CMD_OP_CREATE_CQ);
+	if (attr->db_umem_valid) {
+		MLX5_SET(cqc, cqctx, dbr_umem_valid, attr->db_umem_valid);
+		MLX5_SET(cqc, cqctx, dbr_umem_id, attr->db_umem_id);
+		MLX5_SET64(cqc, cqctx, dbr_addr, attr->db_umem_offset);
+	} else {
+		MLX5_SET64(cqc, cqctx, dbr_addr, attr->db_addr);
+	}
+	MLX5_SET(cqc, cqctx, cc, attr->use_first_only);
+	MLX5_SET(cqc, cqctx, oi, attr->overrun_ignore);
+	MLX5_SET(cqc, cqctx, log_cq_size, attr->log_cq_size);
+	MLX5_SET(cqc, cqctx, log_page_size, attr->log_page_size);
+	MLX5_SET(cqc, cqctx, c_eqn, attr->eqn);
+	MLX5_SET(cqc, cqctx, uar_page, attr->uar_page_id);
+	if (attr->q_umem_valid) {
+		MLX5_SET(create_cq_in, in, cq_umem_valid, attr->q_umem_valid);
+		MLX5_SET(create_cq_in, in, cq_umem_id, attr->q_umem_id);
+		MLX5_SET64(create_cq_in, in, cq_umem_offset,
+			   attr->q_umem_offset);
+	}
+	cq_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
+						 sizeof(out));
+	if (!cq_obj->obj) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create CQ using DevX errno=%d.", errno);
+		rte_free(cq_obj);
+		return NULL;
+	}
+	cq_obj->id = MLX5_GET(create_cq_out, out, cqn);
+	return cq_obj;
+}

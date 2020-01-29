@@ -233,6 +233,23 @@ struct mlx5_devx_modify_sq_attr {
 };
 
 
+/* CQ attributes structure, used by CQ operations. */
+struct mlx5_devx_cq_attr {
+	uint32_t q_umem_valid:1;
+	uint32_t db_umem_valid:1;
+	uint32_t use_first_only:1;
+	uint32_t overrun_ignore:1;
+	uint32_t log_cq_size:5;
+	uint32_t log_page_size:5;
+	uint32_t uar_page_id;
+	uint32_t q_umem_id;
+	uint64_t q_umem_offset;
+	uint32_t db_umem_id;
+	uint64_t db_umem_offset;
+	uint32_t eqn;
+	uint64_t db_addr;
+};
+
 /* mlx5_devx_cmds.c */
 
 struct mlx5_devx_obj *mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx,
@@ -269,4 +286,6 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_tis(struct ibv_context *ctx,
 struct mlx5_devx_obj *mlx5_devx_cmd_create_td(struct ibv_context *ctx);
 int mlx5_devx_cmd_flow_dump(void *fdb_domain, void *rx_domain, void *tx_domain,
 			    FILE *file);
+struct mlx5_devx_obj *mlx5_devx_cmd_create_cq(struct ibv_context *ctx,
+					      struct mlx5_devx_cq_attr *attr);
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */

@@ -1,6 +1,7 @@
 DPDK_20.02 {
 	global:
 
+	mlx5_devx_cmd_create_cq;
 	mlx5_devx_cmd_create_rq;
 	mlx5_devx_cmd_create_rqt;
 	mlx5_devx_cmd_create_sq;
