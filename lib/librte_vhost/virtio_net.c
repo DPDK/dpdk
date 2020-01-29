@@ -2133,6 +2133,20 @@ virtio_dev_tx_packed_zmbuf(struct virtio_net *dev,
 	return pkt_idx;
 }
 
+static __rte_always_inline bool
+next_desc_is_avail(const struct vhost_virtqueue *vq)
+{
+	bool wrap_counter = vq->avail_wrap_counter;
+	uint16_t next_used_idx = vq->last_used_idx + 1;
+
+	if (next_used_idx >= vq->size) {
+		next_used_idx -= vq->size;
+		wrap_counter ^= 1;
+	}
+
+	return desc_is_avail(&vq->desc_packed[next_used_idx], wrap_counter);
+}
+
 static __rte_noinline uint16_t
 virtio_dev_tx_packed(struct virtio_net *dev,
 		     struct vhost_virtqueue *vq,
@@ -2165,8 +2179,19 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 
 	} while (remained);
 
-	if (vq->shadow_used_idx)
+	if (vq->shadow_used_idx) {
 		do_data_copy_dequeue(vq);
+
+		if (remained && !next_desc_is_avail(vq)) {
+			/*
+			 * The guest may be waiting to TX some buffers to
+			 * enqueue more to avoid bufferfloat, so we try to
+			 * reduce latency here.
+			 */
+			vhost_flush_dequeue_shadow_packed(dev, vq);
+			vhost_vring_call_packed(dev, vq);
+		}
+	}
 
 	return pkt_idx;
 }
