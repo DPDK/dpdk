@@ -1539,18 +1539,18 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 
 	if (unlikely(dev == NULL)) {
 		VC_LOG_ERR("Invalid vid %i", vid);
-		return -EINVAL;
+		return 0;
 	}
 
 	if (unlikely(qid >= VHOST_MAX_QUEUE_PAIRS)) {
 		VC_LOG_ERR("Invalid qid %u", qid);
-		return -EINVAL;
+		return 0;
 	}
 
 	vcrypto = (struct vhost_crypto *)dev->extern_data;
 	if (unlikely(vcrypto == NULL)) {
 		VC_LOG_ERR("Cannot find required data, is it initialized?");
-		return -ENOENT;
+		return 0;
 	}
 
 	vq = dev->virtqueue[qid];
@@ -1572,7 +1572,7 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 		if (unlikely(rte_mempool_get_bulk(vcrypto->mbuf_pool,
 				(void **)mbufs, count * 2) < 0)) {
 			VC_LOG_ERR("Insufficient memory");
-			return -ENOMEM;
+			return 0;
 		}
 
 		for (i = 0; i < count; i++) {
@@ -1602,7 +1602,7 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 		if (unlikely(rte_mempool_get_bulk(vcrypto->mbuf_pool,
 				(void **)mbufs, count) < 0)) {
 			VC_LOG_ERR("Insufficient memory");
-			return -ENOMEM;
+			return 0;
 		}
 
 		for (i = 0; i < count; i++) {
