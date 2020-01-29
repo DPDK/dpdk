@@ -881,6 +881,11 @@ enum {
 	MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE = 0x0 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS = 0x1 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP = 0xc << 1,
+	MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION = 0x13 << 1,
+};
+
+enum {
+	MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q = (1ULL << 0xd),
 };
 
 enum {
@@ -1256,11 +1261,51 @@ struct mlx5_ifc_per_protocol_networking_offload_caps_bits {
 	u8 reserved_at_200[0x600];
 };
 
+enum {
+	MLX5_VIRTQ_TYPE_SPLIT = 0,
+	MLX5_VIRTQ_TYPE_PACKED = 1,
+};
+
+enum {
+	MLX5_VIRTQ_EVENT_MODE_NO_MSIX = 0,
+	MLX5_VIRTQ_EVENT_MODE_QP = 1,
+	MLX5_VIRTQ_EVENT_MODE_MSIX = 2,
+};
+
+struct mlx5_ifc_virtio_emulation_cap_bits {
+	u8 desc_tunnel_offload_type[0x1];
+	u8 eth_frame_offload_type[0x1];
+	u8 virtio_version_1_0[0x1];
+	u8 tso_ipv4[0x1];
+	u8 tso_ipv6[0x1];
+	u8 tx_csum[0x1];
+	u8 rx_csum[0x1];
+	u8 reserved_at_7[0x1][0x9];
+	u8 event_mode[0x8];
+	u8 virtio_queue_type[0x8];
+	u8 reserved_at_20[0x13];
+	u8 log_doorbell_stride[0x5];
+	u8 reserved_at_3b[0x3];
+	u8 log_doorbell_bar_size[0x5];
+	u8 doorbell_bar_offset[0x40];
+	u8 reserved_at_80[0x8];
+	u8 max_num_virtio_queues[0x18];
+	u8 reserved_at_a0[0x60];
+	u8 umem_1_buffer_param_a[0x20];
+	u8 umem_1_buffer_param_b[0x20];
+	u8 umem_2_buffer_param_a[0x20];
+	u8 umem_2_buffer_param_b[0x20];
+	u8 umem_3_buffer_param_a[0x20];
+	u8 umem_3_buffer_param_b[0x20];
+	u8 reserved_at_1c0[0x620];
+};
+
 union mlx5_ifc_hca_cap_union_bits {
 	struct mlx5_ifc_cmd_hca_cap_bits cmd_hca_cap;
 	struct mlx5_ifc_per_protocol_networking_offload_caps_bits
 	       per_protocol_networking_offload_caps;
 	struct mlx5_ifc_qos_cap_bits qos_cap;
+	struct mlx5_ifc_virtio_emulation_cap_bits vdpa_caps;
 	u8 reserved_at_0[0x8000];
 };
 

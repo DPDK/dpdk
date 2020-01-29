@@ -285,6 +285,91 @@ error:
 }
 
 /**
+ * Query NIC vDPA attributes.
+ *
+ * @param[in] ctx
+ *   ibv contexts returned from mlx5dv_open_device.
+ * @param[out] vdpa_attr
+ *   vDPA Attributes structure to fill.
+ */
+static void
+mlx5_devx_cmd_query_hca_vdpa_attr(struct ibv_context *ctx,
+				  struct mlx5_hca_vdpa_attr *vdpa_attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_hca_cap_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)] = {0};
+	void *hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
+	int status, syndrome, rc;
+
+	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
+	MLX5_SET(query_hca_cap_in, in, op_mod,
+		 MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION |
+		 MLX5_HCA_CAP_OPMOD_GET_CUR);
+	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+	status = MLX5_GET(query_hca_cap_out, out, status);
+	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
+	if (rc || status) {
+		RTE_LOG(DEBUG, PMD, "Failed to query devx VDPA capabilities,"
+			" status %x, syndrome = %x", status, syndrome);
+		vdpa_attr->valid = 0;
+	} else {
+		vdpa_attr->valid = 1;
+		vdpa_attr->desc_tunnel_offload_type =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 desc_tunnel_offload_type);
+		vdpa_attr->eth_frame_offload_type =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 eth_frame_offload_type);
+		vdpa_attr->virtio_version_1_0 =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 virtio_version_1_0);
+		vdpa_attr->tso_ipv4 = MLX5_GET(virtio_emulation_cap, hcattr,
+					       tso_ipv4);
+		vdpa_attr->tso_ipv6 = MLX5_GET(virtio_emulation_cap, hcattr,
+					       tso_ipv6);
+		vdpa_attr->tx_csum = MLX5_GET(virtio_emulation_cap, hcattr,
+					      tx_csum);
+		vdpa_attr->rx_csum = MLX5_GET(virtio_emulation_cap, hcattr,
+					      rx_csum);
+		vdpa_attr->event_mode = MLX5_GET(virtio_emulation_cap, hcattr,
+						 event_mode);
+		vdpa_attr->virtio_queue_type =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 virtio_queue_type);
+		vdpa_attr->log_doorbell_stride =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 log_doorbell_stride);
+		vdpa_attr->log_doorbell_bar_size =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 log_doorbell_bar_size);
+		vdpa_attr->doorbell_bar_offset =
+			MLX5_GET64(virtio_emulation_cap, hcattr,
+				   doorbell_bar_offset);
+		vdpa_attr->max_num_virtio_queues =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 max_num_virtio_queues);
+		vdpa_attr->umem_1_buffer_param_a =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 umem_1_buffer_param_a);
+		vdpa_attr->umem_1_buffer_param_b =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 umem_1_buffer_param_b);
+		vdpa_attr->umem_2_buffer_param_a =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 umem_2_buffer_param_a);
+		vdpa_attr->umem_2_buffer_param_b =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 umem_2_buffer_param_a);
+		vdpa_attr->umem_3_buffer_param_a =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 umem_3_buffer_param_a);
+		vdpa_attr->umem_3_buffer_param_b =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 umem_3_buffer_param_b);
+	}
+}
+
+/**
  * Query HCA attributes.
  * Using those attributes we can check on run time if the device
  * is having the required capabilities.
@@ -343,6 +428,9 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 	attr->flex_parser_protocols = MLX5_GET(cmd_hca_cap, hcattr,
 					       flex_parser_protocols);
 	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
+	attr->vdpa.valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
+					 general_obj_types) &
+			      MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q);
 	if (attr->qos.sup) {
 		MLX5_SET(query_hca_cap_in, in, op_mod,
 			 MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
@@ -367,6 +455,8 @@ mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 		attr->qos.flow_meter_reg_share =
 			MLX5_GET(qos_cap, hcattr, flow_meter_reg_share);
 	}
+	if (attr->vdpa.valid)
+		mlx5_devx_cmd_query_hca_vdpa_attr(ctx, &attr->vdpa);
 	if (!attr->eth_net_offloads)
 		return 0;
 

@@ -34,6 +34,29 @@ struct mlx5_hca_qos_attr {
 
 };
 
+struct mlx5_hca_vdpa_attr {
+	uint8_t virtio_queue_type;
+	uint32_t valid:1;
+	uint32_t desc_tunnel_offload_type:1;
+	uint32_t eth_frame_offload_type:1;
+	uint32_t virtio_version_1_0:1;
+	uint32_t tso_ipv4:1;
+	uint32_t tso_ipv6:1;
+	uint32_t tx_csum:1;
+	uint32_t rx_csum:1;
+	uint32_t event_mode:3;
+	uint32_t log_doorbell_stride:5;
+	uint32_t log_doorbell_bar_size:5;
+	uint32_t max_num_virtio_queues;
+	uint32_t umem_1_buffer_param_a;
+	uint32_t umem_1_buffer_param_b;
+	uint32_t umem_2_buffer_param_a;
+	uint32_t umem_2_buffer_param_b;
+	uint32_t umem_3_buffer_param_a;
+	uint32_t umem_3_buffer_param_b;
+	uint64_t doorbell_bar_offset;
+};
+
 /* HCA supports this number of time periods for LRO. */
 #define MLX5_LRO_NUM_SUPP_PERIODS 4
 
@@ -62,6 +85,7 @@ struct mlx5_hca_attr {
 	uint32_t log_max_hairpin_num_packets:5;
 	uint32_t vhca_id:16;
 	struct mlx5_hca_qos_attr qos;
+	struct mlx5_hca_vdpa_attr vdpa;
 };
 
 struct mlx5_devx_wq_attr {
