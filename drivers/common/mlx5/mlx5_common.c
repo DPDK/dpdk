@@ -5,6 +5,7 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <rte_errno.h>
 
@@ -15,6 +16,58 @@
 
 int mlx5_common_logtype;
 
+
+/**
+ * Get PCI information by sysfs device path.
+ *
+ * @param dev_path
+ *   Pointer to device sysfs folder name.
+ * @param[out] pci_addr
+ *   PCI bus address output buffer.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_dev_to_pci_addr(const char *dev_path,
+		     struct rte_pci_addr *pci_addr)
+{
+	FILE *file;
+	char line[32];
+	MKSTR(path, "%s/device/uevent", dev_path);
+
+	file = fopen(path, "rb");
+	if (file == NULL) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	while (fgets(line, sizeof(line), file) == line) {
+		size_t len = strlen(line);
+		int ret;
+
+		/* Truncate long lines. */
+		if (len == (sizeof(line) - 1))
+			while (line[(len - 1)] != '\n') {
+				ret = fgetc(file);
+				if (ret == EOF)
+					break;
+				line[(len - 1)] = ret;
+			}
+		/* Extract information. */
+		if (sscanf(line,
+			   "PCI_SLOT_NAME="
+			   "%" SCNx32 ":%" SCNx8 ":%" SCNx8 ".%" SCNx8 "\n",
+			   &pci_addr->domain,
+			   &pci_addr->bus,
+			   &pci_addr->devid,
+			   &pci_addr->function) == 4) {
+			ret = 0;
+			break;
+		}
+	}
+	fclose(file);
+	return 0;
+}
 
 #ifdef RTE_IBVERBS_LINK_DLOPEN
 

@@ -17,4 +17,6 @@ DPDK_20.02 {
 	mlx5_devx_cmd_qp_query_tis_td;
 	mlx5_devx_cmd_query_hca_attr;
 	mlx5_devx_get_out_command_status;
+
+	mlx5_dev_to_pci_addr;
 };

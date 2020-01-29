@@ -6,7 +6,9 @@
 #define RTE_PMD_MLX5_COMMON_H_
 
 #include <assert.h>
+#include <stdio.h>
 
+#include <rte_pci.h>
 #include <rte_log.h>
 
 
@@ -83,5 +85,7 @@ pmd_drv_log_basename(const char *s)
 	char name[mkstr_size_##name + 1]; \
 	\
 	snprintf(name, sizeof(name), "" __VA_ARGS__)
+
+int mlx5_dev_to_pci_addr(const char *dev_path, struct rte_pci_addr *pci_addr);
 
 #endif /* RTE_PMD_MLX5_COMMON_H_ */

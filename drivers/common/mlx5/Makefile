@@ -41,7 +41,7 @@ else
 LDLIBS += -libverbs -lmlx5
 endif
 
-LDLIBS += -lrte_eal
+LDLIBS += -lrte_eal -lrte_pci
 
 # A few warnings cannot be avoided in external headers.
 CFLAGS += -Wno-error=cast-qual -DNDEBUG -UPEDANTIC

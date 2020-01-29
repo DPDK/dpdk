@@ -30,6 +30,7 @@
 
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
+#include <mlx5_common.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
