@@ -279,6 +279,22 @@ struct mlx5_devx_virtq_attr {
 	} umems[3];
 };
 
+
+struct mlx5_devx_qp_attr {
+	uint32_t pd:24;
+	uint32_t uar_index:24;
+	uint32_t cqn:24;
+	uint32_t log_page_size:5;
+	uint32_t rq_size:17; /* Must be power of 2. */
+	uint32_t log_rq_stride:3;
+	uint32_t sq_size:17; /* Must be power of 2. */
+	uint32_t dbr_umem_valid:1;
+	uint32_t dbr_umem_id;
+	uint64_t dbr_address;
+	uint32_t wq_umem_id;
+	uint64_t wq_umem_offset;
+};
+
 /* mlx5_devx_cmds.c */
 
 struct mlx5_devx_obj *mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx,
@@ -323,5 +339,9 @@ int mlx5_devx_cmd_modify_virtq(struct mlx5_devx_obj *virtq_obj,
 			       struct mlx5_devx_virtq_attr *attr);
 int mlx5_devx_cmd_query_virtq(struct mlx5_devx_obj *virtq_obj,
 			      struct mlx5_devx_virtq_attr *attr);
+struct mlx5_devx_obj *mlx5_devx_cmd_create_qp(struct ibv_context *ctx,
+					      struct mlx5_devx_qp_attr *attr);
+int mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp,
+				  uint32_t qp_st_mod_op, uint32_t remote_qp_id);
 
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */

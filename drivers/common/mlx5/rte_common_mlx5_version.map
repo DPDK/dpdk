@@ -2,6 +2,7 @@ DPDK_20.02 {
 	global:
 
 	mlx5_devx_cmd_create_cq;
+	mlx5_devx_cmd_create_qp;
 	mlx5_devx_cmd_create_rq;
 	mlx5_devx_cmd_create_rqt;
 	mlx5_devx_cmd_create_sq;
@@ -14,6 +15,7 @@ DPDK_20.02 {
 	mlx5_devx_cmd_flow_counter_query;
 	mlx5_devx_cmd_flow_dump;
 	mlx5_devx_cmd_mkey_create;
+	mlx5_devx_cmd_modify_qp_state;
 	mlx5_devx_cmd_modify_rq;
 	mlx5_devx_cmd_modify_sq;
 	mlx5_devx_cmd_modify_virtq;
