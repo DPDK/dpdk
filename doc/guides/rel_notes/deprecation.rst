@@ -38,6 +38,13 @@ Deprecation Notices
   remove it from the externally visible ABI and allow it to be updated in the
   future.
 
+* igb_uio: In the view of reducing the kernel dependency from the main tree,
+  as a first step, the Technical Board decided to move ``igb_uio``
+  kernel module to the dpdk-kmods repository in the /linux/igb_uio/ directory
+  in 20.11.
+  Minutes of Technical Board Meeting of `2019-11-06
+  <http://mails.dpdk.org/archives/dev/2019-November/151763.html>`_.
+
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is
   used by iterators, and arrays holding these values are sized with this
