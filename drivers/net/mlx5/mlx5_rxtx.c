@@ -2185,11 +2185,11 @@ mlx5_tx_request_completion(struct mlx5_txq_data *restrict txq,
 		last->cseg.flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 					    MLX5_COMP_MODE_OFFSET);
 		/* Save elts_head in dedicated free on completion queue. */
-#ifdef NDEBUG
-		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head;
-#else
+#ifdef RTE_LIBRTE_MLX5_DEBUG
 		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head |
-					(last->cseg.opcode >> 8) << 16;
+			  (last->cseg.opcode >> 8) << 16;
+#else
+		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head;
 #endif
 		/* A CQE slot must always be available. */
 		assert((txq->cq_pi - txq->cq_ci) <= txq->cqe_s);

@@ -45,7 +45,7 @@ endif
 LDLIBS += -lrte_eal -lrte_pci -lrte_kvargs -lrte_net
 
 # A few warnings cannot be avoided in external headers.
-CFLAGS += -Wno-error=cast-qual -DNDEBUG -UPEDANTIC
+CFLAGS += -Wno-error=cast-qual -UPEDANTIC
 
 EXPORT_MAP := rte_common_mlx5_version.map
 

@@ -417,7 +417,7 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
 				rte_errno = ENOMEM;
 				return -rte_errno;
 			}
-#ifndef NDEBUG
+#ifdef RTE_LIBRTE_MLX5_DEBUG
 			char m[18];
 
 			rte_ether_format_addr(m, 18, RTA_DATA(attribute));

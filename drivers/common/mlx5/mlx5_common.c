@@ -302,7 +302,7 @@ RTE_INIT_PRIO(mlx5_glue_init, CLASS)
 	}
 	mlx5_glue = *sym;
 #endif /* RTE_IBVERBS_LINK_DLOPEN */
-#ifndef NDEBUG
+#ifdef RTE_LIBRTE_MLX5_DEBUG
 	/* Glue structure must not contain any NULL pointers. */
 	{
 		unsigned int i;

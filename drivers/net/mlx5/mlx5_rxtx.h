@@ -300,10 +300,10 @@ struct mlx5_txq_data {
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	struct mlx5_wqe *wqes; /* Work queue. */
 	struct mlx5_wqe *wqes_end; /* Work queue array limit. */
-#ifdef NDEBUG
-	uint16_t *fcqs; /* Free completion queue. */
-#else
+#ifdef RTE_LIBRTE_MLX5_DEBUG
 	uint32_t *fcqs; /* Free completion queue (debug extended). */
+#else
+	uint16_t *fcqs; /* Free completion queue. */
 #endif
 	volatile struct mlx5_cqe *cqes; /* Completion queue. */
 	volatile uint32_t *qp_db; /* Work queue doorbell. */

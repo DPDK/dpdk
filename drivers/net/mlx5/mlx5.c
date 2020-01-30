@@ -661,7 +661,7 @@ static void
 mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 {
 	pthread_mutex_lock(&mlx5_ibv_list_mutex);
-#ifndef NDEBUG
+#ifdef RTE_LIBRTE_MLX5_DEBUG
 	/* Check the object presence in the list. */
 	struct mlx5_ibv_shared *lctx;
 
@@ -2644,7 +2644,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		mac.addr_bytes[0], mac.addr_bytes[1],
 		mac.addr_bytes[2], mac.addr_bytes[3],
 		mac.addr_bytes[4], mac.addr_bytes[5]);
-#ifndef NDEBUG
+#ifdef RTE_LIBRTE_MLX5_DEBUG
 	{
 		char ifname[IF_NAMESIZE];
 

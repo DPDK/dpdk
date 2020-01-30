@@ -49,7 +49,7 @@ foreach option:cflags_options
 	endif
 endforeach
 if get_option('buildtype').contains('debug')
-	cflags += [ '-pedantic', '-UNDEBUG', '-DPEDANTIC' ]
+	cflags += [ '-pedantic', '-DPEDANTIC' ]
 else
-	cflags += [ '-DNDEBUG', '-UPEDANTIC' ]
+	cflags += [ '-UPEDANTIC' ]
 endif

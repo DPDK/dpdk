@@ -5118,7 +5118,7 @@ flow_dv_prepare(const struct rte_flow_attr *attr __rte_unused,
 	return dev_flow;
 }
 
-#ifndef NDEBUG
+#ifdef RTE_LIBRTE_MLX5_DEBUG
 /**
  * Sanity check for match mask and value. Similar to check_valid_spec() in
  * kernel driver. If unmasked bit is present in value, it returns failure.

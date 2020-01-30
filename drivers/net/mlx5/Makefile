@@ -67,13 +67,13 @@ endif
 
 # User-defined CFLAGS.
 ifeq ($(CONFIG_RTE_LIBRTE_MLX5_DEBUG),y)
-CFLAGS += -pedantic -UNDEBUG
+CFLAGS += -pedantic
 ifneq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 CFLAGS += -DPEDANTIC
 endif
 AUTO_CONFIG_CFLAGS += -Wno-pedantic
 else
-CFLAGS += -DNDEBUG -UPEDANTIC
+CFLAGS += -UPEDANTIC
 endif
 
 include $(RTE_SDK)/mk/rte.lib.mk
