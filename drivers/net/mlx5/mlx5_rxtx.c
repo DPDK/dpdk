@@ -537,6 +537,89 @@ mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
 }
 
 /**
+ * DPDK callback to get the RX queue information
+ *
+ * @param dev
+ *   Pointer to the device structure.
+ *
+ * @param rx_queue_id
+ *   Rx queue identificator.
+ *
+ * @param qinfo
+ *   Pointer to the RX queue information structure.
+ *
+ * @return
+ *   None.
+ */
+
+void
+mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+		  struct rte_eth_rxq_info *qinfo)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq = (*priv->rxqs)[rx_queue_id];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+
+	if (!rxq)
+		return;
+	qinfo->mp = mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
+					rxq->mprq_mp : rxq->mp;
+	qinfo->conf.rx_thresh.pthresh = 0;
+	qinfo->conf.rx_thresh.hthresh = 0;
+	qinfo->conf.rx_thresh.wthresh = 0;
+	qinfo->conf.rx_free_thresh = rxq->rq_repl_thresh;
+	qinfo->conf.rx_drop_en = 1;
+	qinfo->conf.rx_deferred_start = rxq_ctrl ? 0 : 1;
+	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = 1 << rxq->elts_n;
+}
+
+/**
+ * DPDK callback to get the RX packet burst mode information
+ *
+ * @param dev
+ *   Pointer to the device structure.
+ *
+ * @param rx_queue_id
+ *   Rx queue identificatior.
+ *
+ * @param mode
+ *   Pointer to the burts mode information.
+ *
+ * @return
+ *   0 as success, -EINVAL as failure.
+ */
+
+int
+mlx5_rx_burst_mode_get(struct rte_eth_dev *dev,
+		       uint16_t rx_queue_id __rte_unused,
+		       struct rte_eth_burst_mode *mode)
+{
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+
+	if (pkt_burst == mlx5_rx_burst) {
+		snprintf(mode->info, sizeof(mode->info), "%s", "Scalar");
+	} else if (pkt_burst == mlx5_rx_burst_mprq) {
+		snprintf(mode->info, sizeof(mode->info), "%s", "Multi-Packet RQ");
+	} else if (pkt_burst == mlx5_rx_burst_vec) {
+#if defined RTE_ARCH_X86_64
+		snprintf(mode->info, sizeof(mode->info), "%s", "Vector SSE");
+#elif defined RTE_ARCH_ARM64
+		snprintf(mode->info, sizeof(mode->info), "%s", "Vector Neon");
+#elif defined RTE_ARCH_PPC_64
+		snprintf(mode->info, sizeof(mode->info), "%s", "Vector AltiVec");
+#else
+		return -EINVAL;
+#endif
+	} else {
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/**
  * DPDK callback to get the number of used descriptors in a RX queue
  *
  * @param dev
@@ -5413,4 +5496,93 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 			DRV_LOG(DEBUG, "\tEMPW  (Enhanced MPW)");
 	}
 	return txoff_func[m].func;
+}
+
+/**
+ * DPDK callback to get the TX queue information
+ *
+ * @param dev
+ *   Pointer to the device structure.
+ *
+ * @param tx_queue_id
+ *   Tx queue identificator.
+ *
+ * @param qinfo
+ *   Pointer to the TX queue information structure.
+ *
+ * @return
+ *   None.
+ */
+
+void
+mlx5_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+		  struct rte_eth_txq_info *qinfo)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_txq_data *txq = (*priv->txqs)[tx_queue_id];
+	struct mlx5_txq_ctrl *txq_ctrl =
+			container_of(txq, struct mlx5_txq_ctrl, txq);
+
+	if (!txq)
+		return;
+	qinfo->nb_desc = txq->elts_s;
+	qinfo->conf.tx_thresh.pthresh = 0;
+	qinfo->conf.tx_thresh.hthresh = 0;
+	qinfo->conf.tx_thresh.wthresh = 0;
+	qinfo->conf.tx_rs_thresh = 0;
+	qinfo->conf.tx_free_thresh = 0;
+	qinfo->conf.tx_deferred_start = txq_ctrl ? 0 : 1;
+	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
+}
+
+/**
+ * DPDK callback to get the TX packet burst mode information
+ *
+ * @param dev
+ *   Pointer to the device structure.
+ *
+ * @param tx_queue_id
+ *   Tx queue identificatior.
+ *
+ * @param mode
+ *   Pointer to the burts mode information.
+ *
+ * @return
+ *   0 as success, -EINVAL as failure.
+ */
+
+int
+mlx5_tx_burst_mode_get(struct rte_eth_dev *dev,
+		       uint16_t tx_queue_id __rte_unused,
+		       struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	unsigned int i, olx;
+
+	for (i = 0; i < RTE_DIM(txoff_func); i++) {
+		if (pkt_burst == txoff_func[i].func) {
+			olx = txoff_func[i].olx;
+			snprintf(mode->info, sizeof(mode->info),
+				 "%s%s%s%s%s%s%s%s",
+				 (olx & MLX5_TXOFF_CONFIG_EMPW) ?
+				 ((olx & MLX5_TXOFF_CONFIG_MPW) ?
+				 "Legacy MPW" : "Enhanced MPW") : "No MPW",
+				 (olx & MLX5_TXOFF_CONFIG_MULTI) ?
+				 " + MULTI" : "",
+				 (olx & MLX5_TXOFF_CONFIG_TSO) ?
+				 " + TSO" : "",
+				 (olx & MLX5_TXOFF_CONFIG_SWP) ?
+				 " + SWP" : "",
+				 (olx & MLX5_TXOFF_CONFIG_CSUM) ?
+				 "  + CSUM" : "",
+				 (olx & MLX5_TXOFF_CONFIG_INLINE) ?
+				 " + INLINE" : "",
+				 (olx & MLX5_TXOFF_CONFIG_VLAN) ?
+				 " + VLAN" : "",
+				 (olx & MLX5_TXOFF_CONFIG_METADATA) ?
+				 " + METADATA" : "");
+			return 0;
+		}
+	}
+	return -EINVAL;
 }
