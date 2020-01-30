@@ -213,6 +213,7 @@ otx2_nix_update_flow_ctrl_mode(struct rte_eth_dev *eth_dev)
 
 	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
 	if (otx2_dev_is_Ax(dev) &&
+	    (dev->npc_flow.switch_header_type != OTX2_PRIV_FLAGS_HIGIG) &&
 	    (fc_conf.mode == RTE_FC_FULL || fc_conf.mode == RTE_FC_RX_PAUSE)) {
 		fc_conf.mode =
 				(fc_conf.mode == RTE_FC_FULL ||
