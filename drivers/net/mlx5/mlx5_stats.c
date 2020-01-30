@@ -306,7 +306,7 @@ mlx5_stats_init(struct rte_eth_dev *dev)
 			xstats_ctrl->info[idx] = mlx5_counters_init[i];
 		}
 	}
-	assert(xstats_ctrl->mlx5_stats_n <= MLX5_MAX_XSTATS);
+	MLX5_ASSERT(xstats_ctrl->mlx5_stats_n <= MLX5_MAX_XSTATS);
 	xstats_ctrl->stats_n = dev_stats_n;
 	/* Copy to base at first time. */
 	ret = mlx5_read_dev_counters(dev, xstats_ctrl->base);

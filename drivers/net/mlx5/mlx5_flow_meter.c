@@ -734,7 +734,7 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 					  NULL, "Meter object is being used.");
 	/* Get the meter profile. */
 	fmp = fm->profile;
-	RTE_ASSERT(fmp);
+	MLX5_ASSERT(fmp);
 	/* Update dependencies. */
 	fmp->ref_cnt--;
 	/* Remove from the flow meter list. */
@@ -1179,7 +1179,7 @@ mlx5_flow_meter_attach(struct mlx5_priv *priv, uint32_t meter_id,
 		goto error;
 	}
 	if (!fm->ref_cnt++) {
-		RTE_ASSERT(!fm->mfts->meter_action);
+		MLX5_ASSERT(!fm->mfts->meter_action);
 		fm->attr = *attr;
 		/* This also creates the meter object. */
 		fm->mfts->meter_action = mlx5_flow_meter_action_create(priv,
@@ -1187,7 +1187,7 @@ mlx5_flow_meter_attach(struct mlx5_priv *priv, uint32_t meter_id,
 		if (!fm->mfts->meter_action)
 			goto error_detach;
 	} else {
-		RTE_ASSERT(fm->mfts->meter_action);
+		MLX5_ASSERT(fm->mfts->meter_action);
 		if (attr->transfer != fm->attr.transfer ||
 		    attr->ingress != fm->attr.ingress ||
 		    attr->egress != fm->attr.egress) {
@@ -1217,7 +1217,7 @@ mlx5_flow_meter_detach(struct mlx5_flow_meter *fm)
 {
 	const struct rte_flow_attr attr = { 0 };
 
-	RTE_ASSERT(fm->ref_cnt);
+	MLX5_ASSERT(fm->ref_cnt);
 	if (--fm->ref_cnt)
 		return;
 	if (fm->mfts->meter_action)
@@ -1255,7 +1255,7 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 
 	TAILQ_FOREACH_SAFE(fm, fms, next, tmp) {
 		/* Meter object must not have any owner. */
-		RTE_ASSERT(!fm->ref_cnt);
+		MLX5_ASSERT(!fm->ref_cnt);
 		/* Get meter profile. */
 		fmp = fm->profile;
 		if (fmp == NULL)
@@ -1278,7 +1278,7 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 	}
 	TAILQ_FOREACH_SAFE(fmp, fmps, next, tmp) {
 		/* Check unused. */
-		RTE_ASSERT(!fmp->ref_cnt);
+		MLX5_ASSERT(!fmp->ref_cnt);
 		/* Remove from list. */
 		TAILQ_REMOVE(&priv->flow_meter_profiles, fmp, next);
 		rte_free(fmp);

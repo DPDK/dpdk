@@ -6,7 +6,6 @@
 #ifndef RTE_PMD_MLX5_RXTX_VEC_NEON_H_
 #define RTE_PMD_MLX5_RXTX_VEC_NEON_H_
 
-#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -440,8 +439,8 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	};
 	const uint32x4_t flow_mark_adj = { 0, 0, 0, rxq->mark * (-1) };
 
-	assert(rxq->sges_n == 0);
-	assert(rxq->cqe_n == rxq->elts_n);
+	MLX5_ASSERT(rxq->sges_n == 0);
+	MLX5_ASSERT(rxq->cqe_n == rxq->elts_n);
 	cq = &(*rxq->cqes)[cq_idx];
 	rte_prefetch_non_temporal(cq);
 	rte_prefetch_non_temporal(cq + 1);
@@ -470,7 +469,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	if (!pkts_n)
 		return rcvd_pkt;
 	/* At this point, there shouldn't be any remained packets. */
-	assert(rxq->decompressed == 0);
+	MLX5_ASSERT(rxq->decompressed == 0);
 	/*
 	 * Note that vectors have reverse order - {v3, v2, v1, v0}, because
 	 * there's no instruction to count trailing zeros. __builtin_clzl() is
@@ -728,7 +727,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	if (unlikely(!nocmp_n && comp_idx == MLX5_VPMD_DESCS_PER_LOOP))
 		return rcvd_pkt;
 	/* Update the consumer indexes for non-compressed CQEs. */
-	assert(nocmp_n <= pkts_n);
+	MLX5_ASSERT(nocmp_n <= pkts_n);
 	rxq->cq_ci += nocmp_n;
 	rxq->rq_pi += nocmp_n;
 	rcvd_pkt += nocmp_n;
@@ -738,7 +737,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 #endif
 	/* Decompress the last CQE if compressed. */
 	if (comp_idx < MLX5_VPMD_DESCS_PER_LOOP && comp_idx == n) {
-		assert(comp_idx == (nocmp_n % MLX5_VPMD_DESCS_PER_LOOP));
+		MLX5_ASSERT(comp_idx == (nocmp_n % MLX5_VPMD_DESCS_PER_LOOP));
 		rxq->decompressed = rxq_cq_decompress_v(rxq, &cq[nocmp_n],
 							&elts[nocmp_n]);
 		/* Return more packets if needed. */

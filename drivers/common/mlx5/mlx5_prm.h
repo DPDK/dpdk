@@ -6,7 +6,6 @@
 #ifndef RTE_PMD_MLX5_PRM_H_
 #define RTE_PMD_MLX5_PRM_H_
 
-#include <assert.h>
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
 #ifdef PEDANTIC
@@ -548,7 +547,7 @@ typedef uint8_t u8;
 
 #define MLX5_SET64(typ, p, fld, v) \
 	do { \
-		assert(__mlx5_bit_sz(typ, fld) == 64); \
+		MLX5_ASSERT(__mlx5_bit_sz(typ, fld) == 64); \
 		*((__be64 *)(p) + __mlx5_64_off(typ, fld)) = \
 			rte_cpu_to_be_64(v); \
 	} while (0)

@@ -670,8 +670,10 @@ mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
 	int ret;
 
 	ret = mlx5_nl_mac_addr_modify(nlsk_fd, iface_idx, mac, 1);
-	if (!ret)
+	if (!ret) {
+		MLX5_ASSERT((size_t)(index) < sizeof(mac_own) * CHAR_BIT);
 		BITFIELD_SET(mac_own, index);
+	}
 	if (ret == -EEXIST)
 		return 0;
 	return ret;
@@ -698,6 +700,7 @@ int
 mlx5_nl_mac_addr_remove(int nlsk_fd, unsigned int iface_idx, uint64_t *mac_own,
 			struct rte_ether_addr *mac, uint32_t index)
 {
+	MLX5_ASSERT((size_t)(index) < sizeof(mac_own) * CHAR_BIT);
 	BITFIELD_RESET(mac_own, index);
 	return mlx5_nl_mac_addr_modify(nlsk_fd, iface_idx, mac, 0);
 }
@@ -769,6 +772,7 @@ mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
 	for (i = n - 1; i >= 0; --i) {
 		struct rte_ether_addr *m = &mac_addrs[i];
 
+		MLX5_ASSERT((size_t)(i) < sizeof(mac_own) * CHAR_BIT);
 		if (BITFIELD_ISSET(mac_own, i))
 			mlx5_nl_mac_addr_remove(nlsk_fd, iface_idx, mac_own, m,
 						i);
@@ -812,7 +816,7 @@ mlx5_nl_device_flags(int nlsk_fd, unsigned int iface_idx, uint32_t flags,
 	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
 
-	assert(!(flags & ~(IFF_PROMISC | IFF_ALLMULTI)));
+	MLX5_ASSERT(!(flags & ~(IFF_PROMISC | IFF_ALLMULTI)));
 	if (nlsk_fd < 0)
 		return 0;
 	ret = mlx5_nl_send(nlsk_fd, &req.hdr, sn);
@@ -1182,7 +1186,7 @@ mlx5_nl_switch_info_cb(struct nlmsghdr *nh, void *arg)
 		/* We have some E-Switch configuration. */
 		mlx5_nl_check_switch_info(num_vf_set, &info);
 	}
-	assert(!(info.master && info.representor));
+	MLX5_ASSERT(!(info.master && info.representor));
 	memcpy(arg, &info, sizeof(info));
 	return 0;
 error:
@@ -1375,7 +1379,7 @@ mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
 	nl_attr_put(nlh, IFLA_VLAN_ID, &tag, sizeof(tag));
 	nl_attr_nest_end(nlh, na_vlan);
 	nl_attr_nest_end(nlh, na_info);
-	assert(sizeof(buf) >= nlh->nlmsg_len);
+	MLX5_ASSERT(sizeof(buf) >= nlh->nlmsg_len);
 	ret = mlx5_nl_send(vmwa->nl_socket, nlh, sn);
 	if (ret >= 0)
 		ret = mlx5_nl_recv(vmwa->nl_socket, sn, NULL, NULL);

@@ -49,7 +49,7 @@ mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key)
 	struct mlx5_hlist_head *first;
 	struct mlx5_hlist_entry *node;
 
-	assert(h);
+	MLX5_ASSERT(h);
 	idx = rte_hash_crc_8byte(key, 0) & h->mask;
 	first = &h->heads[idx];
 	LIST_FOREACH(node, first, next) {
@@ -66,7 +66,7 @@ mlx5_hlist_insert(struct mlx5_hlist *h, struct mlx5_hlist_entry *entry)
 	struct mlx5_hlist_head *first;
 	struct mlx5_hlist_entry *node;
 
-	assert(h && entry);
+	MLX5_ASSERT(h && entry);
 	idx = rte_hash_crc_8byte(entry->key, 0) & h->mask;
 	first = &h->heads[idx];
 	/* No need to reuse the lookup function. */
@@ -82,7 +82,7 @@ void
 mlx5_hlist_remove(struct mlx5_hlist *h __rte_unused,
 		  struct mlx5_hlist_entry *entry)
 {
-	assert(entry && entry->next.le_prev);
+	MLX5_ASSERT(entry && entry->next.le_prev);
 	LIST_REMOVE(entry, next);
 	/* Set to NULL to get rid of removing action for more than once. */
 	entry->next.le_prev = NULL;
@@ -95,7 +95,7 @@ mlx5_hlist_destroy(struct mlx5_hlist *h,
 	uint32_t idx;
 	struct mlx5_hlist_entry *entry;
 
-	assert(h);
+	MLX5_ASSERT(h);
 	for (idx = 0; idx < h->table_sz; ++idx) {
 		/* no LIST_FOREACH_SAFE, using while instead */
 		while (!LIST_EMPTY(&h->heads[idx])) {

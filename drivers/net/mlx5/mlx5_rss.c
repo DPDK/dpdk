@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
-#include <assert.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -218,7 +217,7 @@ mlx5_dev_rss_reta_update(struct rte_eth_dev *dev,
 		pos = i % RTE_RETA_GROUP_SIZE;
 		if (((reta_conf[idx].mask >> i) & 0x1) == 0)
 			continue;
-		assert(reta_conf[idx].reta[pos] < priv->rxqs_n);
+		MLX5_ASSERT(reta_conf[idx].reta[pos] < priv->rxqs_n);
 		(*priv->reta_idx)[i] = reta_conf[idx].reta[pos];
 	}
 	if (dev->data->dev_started) {

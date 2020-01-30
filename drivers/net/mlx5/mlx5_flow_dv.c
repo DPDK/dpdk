@@ -200,8 +200,8 @@ mlx5_flow_tunnel_ip_check(const struct rte_flow_item *item __rte_unused,
 			  uint8_t next_protocol, uint64_t *item_flags,
 			  int *tunnel)
 {
-	assert(item->type == RTE_FLOW_ITEM_TYPE_IPV4 ||
-	       item->type == RTE_FLOW_ITEM_TYPE_IPV6);
+	MLX5_ASSERT(item->type == RTE_FLOW_ITEM_TYPE_IPV4 ||
+		    item->type == RTE_FLOW_ITEM_TYPE_IPV6);
 	if (next_protocol == IPPROTO_IPIP) {
 		*item_flags |= MLX5_FLOW_LAYER_IPIP;
 		*tunnel = 1;
@@ -231,7 +231,7 @@ flow_dv_shared_lock(struct rte_eth_dev *dev)
 		int ret;
 
 		ret = pthread_mutex_lock(&sh->dv_mutex);
-		assert(!ret);
+		MLX5_ASSERT(!ret);
 		(void)ret;
 	}
 }
@@ -246,7 +246,7 @@ flow_dv_shared_unlock(struct rte_eth_dev *dev)
 		int ret;
 
 		ret = pthread_mutex_unlock(&sh->dv_mutex);
-		assert(!ret);
+		MLX5_ASSERT(!ret);
 		(void)ret;
 	}
 }
@@ -310,7 +310,7 @@ flow_dv_fetch_field(const uint8_t *data, uint32_t size)
 		ret = rte_be_to_cpu_32(*(const unaligned_uint32_t *)data);
 		break;
 	default:
-		assert(false);
+		MLX5_ASSERT(false);
 		ret = 0;
 		break;
 	}
@@ -360,8 +360,8 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 	 * The fields should be presented as in big-endian format either.
 	 * Mask must be always present, it defines the actual field width.
 	 */
-	assert(item->mask);
-	assert(field->size);
+	MLX5_ASSERT(item->mask);
+	MLX5_ASSERT(field->size);
 	do {
 		unsigned int size_b;
 		unsigned int off_b;
@@ -383,7 +383,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 		off_b = rte_bsf32(mask);
 		size_b = sizeof(uint32_t) * CHAR_BIT -
 			 off_b - __builtin_clz(mask);
-		assert(size_b);
+		MLX5_ASSERT(size_b);
 		size_b = size_b == sizeof(uint32_t) * CHAR_BIT ? 0 : size_b;
 		actions[i].action_type = type;
 		actions[i].field = field->id;
@@ -392,14 +392,14 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 		/* Convert entire record to expected big-endian format. */
 		actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
 		if (type == MLX5_MODIFICATION_TYPE_COPY) {
-			assert(dcopy);
+			MLX5_ASSERT(dcopy);
 			actions[i].dst_field = dcopy->id;
 			actions[i].dst_offset =
 				(int)dcopy->offset < 0 ? off_b : dcopy->offset;
 			/* Convert entire record to big-endian format. */
 			actions[i].data1 = rte_cpu_to_be_32(actions[i].data1);
 		} else {
-			assert(item->spec);
+			MLX5_ASSERT(item->spec);
 			data = flow_dv_fetch_field((const uint8_t *)item->spec +
 						   field->offset, field->size);
 			/* Shift out the trailing masked bits from data. */
@@ -911,8 +911,8 @@ flow_dv_convert_action_set_reg
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "too many items to modify");
-	assert(conf->id != REG_NONE);
-	assert(conf->id < RTE_DIM(reg_to_field));
+	MLX5_ASSERT(conf->id != REG_NONE);
+	MLX5_ASSERT(conf->id < RTE_DIM(reg_to_field));
 	actions[i].action_type = MLX5_MODIFICATION_TYPE_SET;
 	actions[i].field = reg_to_field[conf->id];
 	actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
@@ -959,10 +959,10 @@ flow_dv_convert_action_set_tag
 	ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, conf->index, error);
 	if (ret < 0)
 		return ret;
-	assert(ret != REG_NONE);
-	assert((unsigned int)ret < RTE_DIM(reg_to_field));
+	MLX5_ASSERT(ret != REG_NONE);
+	MLX5_ASSERT((unsigned int)ret < RTE_DIM(reg_to_field));
 	reg_type = reg_to_field[ret];
-	assert(reg_type > 0);
+	MLX5_ASSERT(reg_type > 0);
 	reg_c_x[0] = (struct field_modify_info){4, 0, reg_type};
 	return flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
@@ -1008,8 +1008,8 @@ flow_dv_convert_action_copy_mreg(struct rte_eth_dev *dev,
 		struct mlx5_priv *priv = dev->data->dev_private;
 		uint32_t reg_c0 = priv->sh->dv_regc0_mask;
 
-		assert(reg_c0);
-		assert(priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY);
+		MLX5_ASSERT(reg_c0);
+		MLX5_ASSERT(priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY);
 		if (conf->dst == REG_C_0) {
 			/* Copy to reg_c[0], within mask only. */
 			reg_dst.offset = rte_bsf32(reg_c0);
@@ -1088,7 +1088,7 @@ flow_dv_convert_action_mark(struct rte_eth_dev *dev,
 	reg = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
 	if (reg < 0)
 		return reg;
-	assert(reg > 0);
+	MLX5_ASSERT(reg > 0);
 	if (reg == REG_C_0) {
 		uint32_t msk_c0 = priv->sh->dv_regc0_mask;
 		uint32_t shl_c0 = rte_bsf32(msk_c0);
@@ -1183,7 +1183,7 @@ flow_dv_convert_action_set_meta
 		uint32_t msk_c0 = priv->sh->dv_regc0_mask;
 		uint32_t shl_c0;
 
-		assert(msk_c0);
+		MLX5_ASSERT(msk_c0);
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 		shl_c0 = rte_bsf32(msk_c0);
 #else
@@ -1191,7 +1191,7 @@ flow_dv_convert_action_set_meta
 #endif
 		mask <<= shl_c0;
 		data <<= shl_c0;
-		assert(!(~msk_c0 & rte_cpu_to_be_32(mask)));
+		MLX5_ASSERT(!(~msk_c0 & rte_cpu_to_be_32(mask)));
 	}
 	reg_c_x[0] = (struct field_modify_info){4, 0, reg_to_field[reg]};
 	/* The routine expects parameters in memory as big-endian ones. */
@@ -1465,7 +1465,7 @@ flow_dv_validate_item_tag(struct rte_eth_dev *dev,
 	ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, spec->index, error);
 	if (ret < 0)
 		return ret;
-	assert(ret != REG_NONE);
+	MLX5_ASSERT(ret != REG_NONE);
 	return 0;
 }
 
@@ -1898,7 +1898,7 @@ flow_dv_validate_action_flag(struct rte_eth_dev *dev,
 	ret = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
 	if (ret < 0)
 		return ret;
-	assert(ret > 0);
+	MLX5_ASSERT(ret > 0);
 	if (action_flags & MLX5_FLOW_ACTION_MARK)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -1958,7 +1958,7 @@ flow_dv_validate_action_mark(struct rte_eth_dev *dev,
 	ret = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
 	if (ret < 0)
 		return ret;
-	assert(ret > 0);
+	MLX5_ASSERT(ret > 0);
 	if (!mark)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -2407,7 +2407,7 @@ flow_dv_jump_tbl_resource_register
 		container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
 	int cnt;
 
-	assert(tbl);
+	MLX5_ASSERT(tbl);
 	cnt = rte_atomic32_read(&tbl_data->jump.refcnt);
 	if (!cnt) {
 		tbl_data->jump.action =
@@ -2420,7 +2420,7 @@ flow_dv_jump_tbl_resource_register
 		DRV_LOG(DEBUG, "new jump table resource %p: refcnt %d++",
 			(void *)&tbl_data->jump, cnt);
 	} else {
-		assert(tbl_data->jump.action);
+		MLX5_ASSERT(tbl_data->jump.action);
 		DRV_LOG(DEBUG, "existed jump table resource %p: refcnt %d++",
 			(void *)&tbl_data->jump, cnt);
 	}
@@ -6017,7 +6017,7 @@ flow_dv_match_meta_reg(void *matcher, void *key,
 		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_7, data);
 		break;
 	default:
-		assert(false);
+		MLX5_ASSERT(false);
 		break;
 	}
 }
@@ -6048,14 +6048,14 @@ flow_dv_translate_item_mark(struct rte_eth_dev *dev,
 			    &rte_flow_item_mark_mask;
 	mask = mark->id & priv->sh->dv_mark_mask;
 	mark = (const void *)item->spec;
-	assert(mark);
+	MLX5_ASSERT(mark);
 	value = mark->id & priv->sh->dv_mark_mask & mask;
 	if (mask) {
 		enum modify_reg reg;
 
 		/* Get the metadata register index for the mark. */
 		reg = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, NULL);
-		assert(reg > 0);
+		MLX5_ASSERT(reg > 0);
 		if (reg == REG_C_0) {
 			struct mlx5_priv *priv = dev->data->dev_private;
 			uint32_t msk_c0 = priv->sh->dv_regc0_mask;
@@ -6123,8 +6123,8 @@ flow_dv_translate_item_meta(struct rte_eth_dev *dev,
 #endif
 			value <<= shl_c0;
 			mask <<= shl_c0;
-			assert(msk_c0);
-			assert(!(~msk_c0 & mask));
+			MLX5_ASSERT(msk_c0);
+			MLX5_ASSERT(!(~msk_c0 & mask));
 		}
 		flow_dv_match_meta_reg(matcher, key, reg, value, mask);
 	}
@@ -6168,7 +6168,7 @@ flow_dv_translate_mlx5_item_tag(struct rte_eth_dev *dev,
 	const struct mlx5_rte_flow_item_tag *tag_m = item->mask;
 	uint32_t mask, value;
 
-	assert(tag_v);
+	MLX5_ASSERT(tag_v);
 	value = tag_v->data;
 	mask = tag_m ? tag_m->data : UINT32_MAX;
 	if (tag_v->id == REG_C_0) {
@@ -6204,11 +6204,11 @@ flow_dv_translate_item_tag(struct rte_eth_dev *dev,
 	const struct rte_flow_item_tag *tag_m = item->mask;
 	enum modify_reg reg;
 
-	assert(tag_v);
+	MLX5_ASSERT(tag_v);
 	tag_m = tag_m ? tag_m : &rte_flow_item_tag_mask;
 	/* Get the metadata register index for the tag. */
 	reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, tag_v->index, NULL);
-	assert(reg > 0);
+	MLX5_ASSERT(reg > 0);
 	flow_dv_match_meta_reg(matcher, key, reg, tag_v->data, tag_m->data);
 }
 
@@ -6775,7 +6775,7 @@ flow_dv_tag_release(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ibv_shared *sh = priv->sh;
 
-	assert(tag);
+	MLX5_ASSERT(tag);
 	DRV_LOG(DEBUG, "port %u tag %p: refcnt %d--",
 		dev->data->port_id, (void *)tag,
 		rte_atomic32_read(&tag->refcnt));
@@ -7125,14 +7125,14 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			assert(flow->rss.queue);
+			MLX5_ASSERT(flow->rss.queue);
 			queue = actions->conf;
 			flow->rss.queue_num = 1;
 			(*flow->rss.queue)[0] = queue->index;
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
-			assert(flow->rss.queue);
+			MLX5_ASSERT(flow->rss.queue);
 			rss = actions->conf;
 			if (flow->rss.queue)
 				memcpy((*flow->rss.queue), rss->queue,
@@ -7206,7 +7206,8 @@ cnt_err:
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
 			/* of_vlan_push action handled this action */
-			assert(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN);
+			MLX5_ASSERT(action_flags &
+				    MLX5_FLOW_ACTION_OF_PUSH_VLAN);
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 			if (action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN)
@@ -7631,8 +7632,10 @@ cnt_err:
 						   match_value, NULL))
 			return -rte_errno;
 	}
-	assert(!flow_dv_check_valid_spec(matcher.mask.buf,
-					 dev_flow->dv.value.buf));
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+	MLX5_ASSERT(!flow_dv_check_valid_spec(matcher.mask.buf,
+					      dev_flow->dv.value.buf));
+#endif
 	dev_flow->layers = item_flags;
 	if (action_flags & MLX5_FLOW_ACTION_RSS)
 		flow_dv_hashfields_set(dev_flow);
@@ -7696,7 +7699,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			   (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)) {
 			struct mlx5_hrxq *hrxq;
 
-			assert(flow->rss.queue);
+			MLX5_ASSERT(flow->rss.queue);
 			hrxq = mlx5_hrxq_get(dev, flow->rss.key,
 					     MLX5_RSS_HASH_KEY_LEN,
 					     dev_flow->hash_fields,
@@ -7782,7 +7785,7 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 {
 	struct mlx5_flow_dv_matcher *matcher = flow->dv.matcher;
 
-	assert(matcher->matcher_object);
+	MLX5_ASSERT(matcher->matcher_object);
 	DRV_LOG(DEBUG, "port %u matcher %p: refcnt %d--",
 		dev->data->port_id, (void *)matcher,
 		rte_atomic32_read(&matcher->refcnt));
@@ -7815,7 +7818,7 @@ flow_dv_encap_decap_resource_release(struct mlx5_flow *flow)
 	struct mlx5_flow_dv_encap_decap_resource *cache_resource =
 						flow->dv.encap_decap;
 
-	assert(cache_resource->verbs_action);
+	MLX5_ASSERT(cache_resource->verbs_action);
 	DRV_LOG(DEBUG, "encap/decap resource %p: refcnt %d--",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
@@ -7851,7 +7854,7 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 			container_of(cache_resource,
 				     struct mlx5_flow_tbl_data_entry, jump);
 
-	assert(cache_resource->action);
+	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "jump table resource %p: refcnt %d--",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
@@ -7882,7 +7885,7 @@ flow_dv_modify_hdr_resource_release(struct mlx5_flow *flow)
 	struct mlx5_flow_dv_modify_hdr_resource *cache_resource =
 						flow->dv.modify_hdr;
 
-	assert(cache_resource->verbs_action);
+	MLX5_ASSERT(cache_resource->verbs_action);
 	DRV_LOG(DEBUG, "modify-header resource %p: refcnt %d--",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
@@ -7913,7 +7916,7 @@ flow_dv_port_id_action_resource_release(struct mlx5_flow *flow)
 	struct mlx5_flow_dv_port_id_action_resource *cache_resource =
 		flow->dv.port_id_action;
 
-	assert(cache_resource->action);
+	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "port ID action resource %p: refcnt %d--",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
@@ -7944,7 +7947,7 @@ flow_dv_push_vlan_action_resource_release(struct mlx5_flow *flow)
 	struct mlx5_flow_dv_push_vlan_action_resource *cache_resource =
 		flow->dv.push_vlan_res;
 
-	assert(cache_resource->action);
+	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "push VLAN action resource %p: refcnt %d--",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));

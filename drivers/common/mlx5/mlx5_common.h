@@ -5,7 +5,6 @@
 #ifndef RTE_PMD_MLX5_COMMON_H_
 #define RTE_PMD_MLX5_COMMON_H_
 
-#include <assert.h>
 #include <stdio.h>
 
 #include <rte_pci.h>
@@ -30,21 +29,18 @@
 /* Bit-field manipulation. */
 #define BITFIELD_DECLARE(bf, type, size) \
 	type bf[(((size_t)(size) / (sizeof(type) * CHAR_BIT)) + \
-		 !!((size_t)(size) % (sizeof(type) * CHAR_BIT)))]
+		!!((size_t)(size) % (sizeof(type) * CHAR_BIT)))]
 #define BITFIELD_DEFINE(bf, type, size) \
 	BITFIELD_DECLARE((bf), type, (size)) = { 0 }
 #define BITFIELD_SET(bf, b) \
-	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)), \
-	 (void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] |= \
-		((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT)))))
+	(void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] |= \
+		((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT))))
 #define BITFIELD_RESET(bf, b) \
-	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)), \
-	 (void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] &= \
-		~((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT)))))
+	(void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] &= \
+		~((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT))))
 #define BITFIELD_ISSET(bf, b) \
-	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)), \
-	 !!(((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] & \
-	     ((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT))))))
+	!!(((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] & \
+		((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT)))))
 
 /*
  * Helper macros to work around __VA_ARGS__ limitations in a C99 compliant
@@ -102,12 +98,14 @@ pmd_drv_log_basename(const char *s)
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 
 #define DEBUG(...) DRV_LOG(DEBUG, __VA_ARGS__)
-#define claim_zero(...) assert((__VA_ARGS__) == 0)
-#define claim_nonzero(...) assert((__VA_ARGS__) != 0)
+#define MLX5_ASSERT(exp) RTE_VERIFY(exp)
+#define claim_zero(...) MLX5_ASSERT((__VA_ARGS__) == 0)
+#define claim_nonzero(...) MLX5_ASSERT((__VA_ARGS__) != 0)
 
 #else /* RTE_LIBRTE_MLX5_DEBUG */
 
 #define DEBUG(...) (void)0
+#define MLX5_ASSERT(exp) RTE_ASSERT(exp)
 #define claim_zero(...) (__VA_ARGS__)
 #define claim_nonzero(...) (__VA_ARGS__)
 

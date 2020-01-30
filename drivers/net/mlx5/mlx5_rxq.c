@@ -4,7 +4,6 @@
  */
 
 #include <stddef.h>
-#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>
@@ -127,7 +126,7 @@ mlx5_mprq_enabled(struct rte_eth_dev *dev)
 			++n;
 	}
 	/* Multi-Packet RQ can't be partially configured. */
-	assert(n == 0 || n == n_ibv);
+	MLX5_ASSERT(n == 0 || n == n_ibv);
 	return n == n_ibv;
 }
 
@@ -210,11 +209,11 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 			goto error;
 		}
 		/* Headroom is reserved by rte_pktmbuf_alloc(). */
-		assert(DATA_OFF(buf) == RTE_PKTMBUF_HEADROOM);
+		MLX5_ASSERT(DATA_OFF(buf) == RTE_PKTMBUF_HEADROOM);
 		/* Buffer is supposed to be empty. */
-		assert(rte_pktmbuf_data_len(buf) == 0);
-		assert(rte_pktmbuf_pkt_len(buf) == 0);
-		assert(!buf->next);
+		MLX5_ASSERT(rte_pktmbuf_data_len(buf) == 0);
+		MLX5_ASSERT(rte_pktmbuf_pkt_len(buf) == 0);
+		MLX5_ASSERT(!buf->next);
 		/* Only the first segment keeps headroom. */
 		if (i % sges_n)
 			SET_DATA_OFF(buf, 0);
@@ -303,7 +302,7 @@ rxq_free_elts_mprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 		rxq->port_id, rxq->idx);
 	if (rxq->mprq_bufs == NULL)
 		return;
-	assert(mlx5_rxq_check_vec_support(rxq) < 0);
+	MLX5_ASSERT(mlx5_rxq_check_vec_support(rxq) < 0);
 	for (i = 0; (i != (1u << rxq->elts_n)); ++i) {
 		if ((*rxq->mprq_bufs)[i] != NULL)
 			mlx5_mprq_buf_free((*rxq->mprq_bufs)[i]);
@@ -660,7 +659,7 @@ rxq_obj_hairpin_release(struct mlx5_rxq_obj *rxq_obj)
 {
 	struct mlx5_devx_modify_rq_attr rq_attr = { 0 };
 
-	assert(rxq_obj);
+	MLX5_ASSERT(rxq_obj);
 	rq_attr.state = MLX5_RQC_STATE_RST;
 	rq_attr.rq_state = MLX5_RQC_STATE_RDY;
 	mlx5_devx_cmd_modify_rq(rxq_obj->rq, &rq_attr);
@@ -679,26 +678,26 @@ rxq_obj_hairpin_release(struct mlx5_rxq_obj *rxq_obj)
 static int
 mlx5_rxq_obj_release(struct mlx5_rxq_obj *rxq_obj)
 {
-	assert(rxq_obj);
+	MLX5_ASSERT(rxq_obj);
 	if (rte_atomic32_dec_and_test(&rxq_obj->refcnt)) {
 		switch (rxq_obj->type) {
 		case MLX5_RXQ_OBJ_TYPE_IBV:
-			assert(rxq_obj->wq);
-			assert(rxq_obj->cq);
+			MLX5_ASSERT(rxq_obj->wq);
+			MLX5_ASSERT(rxq_obj->cq);
 			rxq_free_elts(rxq_obj->rxq_ctrl);
 			claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
 			claim_zero(mlx5_glue->destroy_cq(rxq_obj->cq));
 			break;
 		case MLX5_RXQ_OBJ_TYPE_DEVX_RQ:
-			assert(rxq_obj->cq);
-			assert(rxq_obj->rq);
+			MLX5_ASSERT(rxq_obj->cq);
+			MLX5_ASSERT(rxq_obj->rq);
 			rxq_free_elts(rxq_obj->rxq_ctrl);
 			claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
 			rxq_release_rq_resources(rxq_obj->rxq_ctrl);
 			claim_zero(mlx5_glue->destroy_cq(rxq_obj->cq));
 			break;
 		case MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN:
-			assert(rxq_obj->rq);
+			MLX5_ASSERT(rxq_obj->rq);
 			rxq_obj_hairpin_release(rxq_obj);
 			break;
 		}
@@ -1270,8 +1269,8 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_rxq_obj *tmpl = NULL;
 	int ret = 0;
 
-	assert(rxq_data);
-	assert(!rxq_ctrl->obj);
+	MLX5_ASSERT(rxq_data);
+	MLX5_ASSERT(!rxq_ctrl->obj);
 	tmpl = rte_calloc_socket(__func__, 1, sizeof(*tmpl), 0,
 				 rxq_ctrl->socket);
 	if (!tmpl) {
@@ -1342,8 +1341,8 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	int ret = 0;
 	struct mlx5dv_obj obj;
 
-	assert(rxq_data);
-	assert(!rxq_ctrl->obj);
+	MLX5_ASSERT(rxq_data);
+	MLX5_ASSERT(!rxq_ctrl->obj);
 	if (type == MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN)
 		return mlx5_rxq_obj_hairpin_new(dev, idx);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_RX_QUEUE;
@@ -1637,7 +1636,7 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 		if (strd_sz_n < rxq->strd_sz_n)
 			strd_sz_n = rxq->strd_sz_n;
 	}
-	assert(strd_num_n && strd_sz_n);
+	MLX5_ASSERT(strd_num_n && strd_sz_n);
 	buf_len = (1 << strd_num_n) * (1 << strd_sz_n);
 	obj_size = sizeof(struct mlx5_mprq_buf) + buf_len + (1 << strd_num_n) *
 		sizeof(struct rte_mbuf_ext_shared_info) + RTE_PKTMBUF_HEADROOM;
@@ -1742,7 +1741,7 @@ mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint16_t idx,
 	    MLX5_MAX_TCP_HDR_OFFSET)
 		max_lro_size -= MLX5_MAX_TCP_HDR_OFFSET;
 	max_lro_size = RTE_MIN(max_lro_size, MLX5_MAX_LRO_SIZE);
-	assert(max_lro_size >= MLX5_LRO_SEG_CHUNK_SIZE);
+	MLX5_ASSERT(max_lro_size >= MLX5_LRO_SEG_CHUNK_SIZE);
 	max_lro_size /= MLX5_LRO_SEG_CHUNK_SIZE;
 	if (priv->max_lro_msg_size)
 		priv->max_lro_msg_size =
@@ -2075,7 +2074,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (!(*priv->rxqs)[idx])
 		return 0;
 	rxq_ctrl = container_of((*priv->rxqs)[idx], struct mlx5_rxq_ctrl, rxq);
-	assert(rxq_ctrl->priv);
+	MLX5_ASSERT(rxq_ctrl->priv);
 	if (rxq_ctrl->obj && !mlx5_rxq_obj_release(rxq_ctrl->obj))
 		rxq_ctrl->obj = NULL;
 	if (rte_atomic32_dec_and_test(&rxq_ctrl->refcnt)) {

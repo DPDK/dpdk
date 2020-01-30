@@ -5,7 +5,6 @@
 
 #include <stddef.h>
 #include <errno.h>
-#include <assert.h>
 #include <stdint.h>
 #include <unistd.h>
 
@@ -61,7 +60,7 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 
 	DRV_LOG(DEBUG, "port %u %s VLAN filter ID %" PRIu16,
 		dev->data->port_id, (on ? "enable" : "disable"), vlan_id);
-	assert(priv->vlan_filter_n <= RTE_DIM(priv->vlan_filter));
+	MLX5_ASSERT(priv->vlan_filter_n <= RTE_DIM(priv->vlan_filter));
 	for (i = 0; (i != priv->vlan_filter_n); ++i)
 		if (priv->vlan_filter[i] == vlan_id)
 			break;
@@ -71,7 +70,7 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		return -rte_errno;
 	}
 	if (i < priv->vlan_filter_n) {
-		assert(priv->vlan_filter_n != 0);
+		MLX5_ASSERT(priv->vlan_filter_n != 0);
 		/* Enabling an existing VLAN filter has no effect. */
 		if (on)
 			goto out;
@@ -83,7 +82,7 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 			(priv->vlan_filter_n - i));
 		priv->vlan_filter[priv->vlan_filter_n] = 0;
 	} else {
-		assert(i == priv->vlan_filter_n);
+		MLX5_ASSERT(i == priv->vlan_filter_n);
 		/* Disabling an unknown VLAN filter has no effect. */
 		if (!on)
 			goto out;
@@ -214,12 +213,12 @@ void mlx5_vlan_vmwa_release(struct rte_eth_dev *dev,
 	struct mlx5_nl_vlan_vmwa_context *vmwa = priv->vmwa_context;
 	struct mlx5_nl_vlan_dev *vlan_dev = &vmwa->vlan_dev[0];
 
-	assert(vlan->created);
-	assert(priv->vmwa_context);
+	MLX5_ASSERT(vlan->created);
+	MLX5_ASSERT(priv->vmwa_context);
 	if (!vlan->created || !vmwa)
 		return;
 	vlan->created = 0;
-	assert(vlan_dev[vlan->tag].refcnt);
+	MLX5_ASSERT(vlan_dev[vlan->tag].refcnt);
 	if (--vlan_dev[vlan->tag].refcnt == 0 &&
 	    vlan_dev[vlan->tag].ifindex) {
 		mlx5_nl_vlan_vmwa_delete(vmwa, vlan_dev[vlan->tag].ifindex);
@@ -242,12 +241,12 @@ void mlx5_vlan_vmwa_acquire(struct rte_eth_dev *dev,
 	struct mlx5_nl_vlan_vmwa_context *vmwa = priv->vmwa_context;
 	struct mlx5_nl_vlan_dev *vlan_dev = &vmwa->vlan_dev[0];
 
-	assert(!vlan->created);
-	assert(priv->vmwa_context);
+	MLX5_ASSERT(!vlan->created);
+	MLX5_ASSERT(priv->vmwa_context);
 	if (vlan->created || !vmwa)
 		return;
 	if (vlan_dev[vlan->tag].refcnt == 0) {
-		assert(!vlan_dev[vlan->tag].ifindex);
+		MLX5_ASSERT(!vlan_dev[vlan->tag].ifindex);
 		vlan_dev[vlan->tag].ifindex =
 			mlx5_nl_vlan_vmwa_create(vmwa, vmwa->vf_ifindex,
 						 vlan->tag);

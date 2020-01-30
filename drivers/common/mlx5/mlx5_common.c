@@ -308,7 +308,7 @@ RTE_INIT_PRIO(mlx5_glue_init, CLASS)
 		unsigned int i;
 
 		for (i = 0; i != sizeof(*mlx5_glue) / sizeof(void *); ++i)
-			assert(((const void *const *)mlx5_glue)[i]);
+			MLX5_ASSERT(((const void *const *)mlx5_glue)[i]);
 	}
 #endif
 	if (strcmp(mlx5_glue->version, MLX5_GLUE_VERSION)) {

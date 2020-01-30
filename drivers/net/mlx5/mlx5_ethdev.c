@@ -4,7 +4,6 @@
  */
 
 #include <stddef.h>
-#include <assert.h>
 #include <inttypes.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -141,7 +140,7 @@ mlx5_get_master_ifname(const char *ibdev_path, char (*ifname)[IF_NAMESIZE])
 	unsigned int dev_port_prev = ~0u;
 	char match[IF_NAMESIZE] = "";
 
-	assert(ibdev_path);
+	MLX5_ASSERT(ibdev_path);
 	{
 		MKSTR(path, "%s/device/net", ibdev_path);
 
@@ -226,8 +225,8 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int ifindex;
 
-	assert(priv);
-	assert(priv->sh);
+	MLX5_ASSERT(priv);
+	MLX5_ASSERT(priv->sh);
 	ifindex = mlx5_ifindex(dev);
 	if (!ifindex) {
 		if (!priv->representor)
@@ -257,8 +256,8 @@ mlx5_ifindex(const struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int ifindex;
 
-	assert(priv);
-	assert(priv->if_index);
+	MLX5_ASSERT(priv);
+	MLX5_ASSERT(priv->if_index);
 	ifindex = priv->if_index;
 	if (!ifindex)
 		rte_errno = ENXIO;
@@ -578,7 +577,7 @@ mlx5_set_txlimit_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	inlen = (config->txq_inline_max == MLX5_ARG_UNSET) ?
 		MLX5_SEND_DEF_INLINE_LEN :
 		(unsigned int)config->txq_inline_max;
-	assert(config->txq_inline_min >= 0);
+	MLX5_ASSERT(config->txq_inline_min >= 0);
 	inlen = RTE_MAX(inlen, (unsigned int)config->txq_inline_min);
 	inlen = RTE_MIN(inlen, MLX5_WQE_SIZE_MAX +
 			       MLX5_ESEG_MIN_INLINE_SIZE -
@@ -657,7 +656,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 			    priv->pf_bond > MLX5_PORT_ID_BONDING_PF_MASK) {
 				DRV_LOG(ERR, "can't update switch port ID"
 					     " for bonding device");
-				assert(false);
+				MLX5_ASSERT(false);
 				return -ENODEV;
 			}
 			info->switch_info.port_id |=
@@ -795,7 +794,7 @@ mlx5_find_master_dev(struct rte_eth_dev *dev)
 
 	priv = dev->data->dev_private;
 	domain_id = priv->domain_id;
-	assert(priv->representor);
+	MLX5_ASSERT(priv->representor);
 	MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
 		struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
@@ -1234,7 +1233,7 @@ mlx5_dev_interrupt_device_fatal(struct mlx5_ibv_shared *sh)
 			continue;
 		}
 		dev = &rte_eth_devices[sh->port[i].ih_port_id];
-		assert(dev);
+		MLX5_ASSERT(dev);
 		if (dev->data->dev_conf.intr_conf.rmv)
 			_rte_eth_dev_callback_process
 				(dev, RTE_ETH_EVENT_INTR_RMV, NULL);
@@ -1273,7 +1272,7 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 			mlx5_dev_interrupt_device_fatal(sh);
 			continue;
 		}
-		assert(tmp && (tmp <= sh->max_port));
+		MLX5_ASSERT(tmp && (tmp <= sh->max_port));
 		if (!tmp) {
 			/* Unsupported devive level event. */
 			mlx5_glue->ack_async_event(&event);
@@ -1303,7 +1302,7 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 		/* Retrieve ethernet device descriptor. */
 		tmp = sh->port[tmp - 1].ih_port_id;
 		dev = &rte_eth_devices[tmp];
-		assert(dev);
+		MLX5_ASSERT(dev);
 		if ((event.event_type == IBV_EVENT_PORT_ACTIVE ||
 		     event.event_type == IBV_EVENT_PORT_ERR) &&
 			dev->data->dev_conf.intr_conf.lsc) {
@@ -1358,7 +1357,7 @@ mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
 		if (ret != -EAGAIN) {
 			DRV_LOG(INFO, "failed to unregister interrupt"
 				      " handler (error: %d)", ret);
-			assert(false);
+			MLX5_ASSERT(false);
 			return;
 		}
 		if (twait) {
@@ -1379,7 +1378,7 @@ mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
 			 * on first iteration.
 			 */
 			twait = rte_get_timer_hz();
-			assert(twait);
+			MLX5_ASSERT(twait);
 		}
 		/*
 		 * Timeout elapsed, show message (once a second) and retry.
@@ -1443,14 +1442,14 @@ mlx5_dev_shared_handler_uninstall(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
 	pthread_mutex_lock(&sh->intr_mutex);
-	assert(priv->ibv_port);
-	assert(priv->ibv_port <= sh->max_port);
-	assert(dev->data->port_id < RTE_MAX_ETHPORTS);
+	MLX5_ASSERT(priv->ibv_port);
+	MLX5_ASSERT(priv->ibv_port <= sh->max_port);
+	MLX5_ASSERT(dev->data->port_id < RTE_MAX_ETHPORTS);
 	if (sh->port[priv->ibv_port - 1].ih_port_id >= RTE_MAX_ETHPORTS)
 		goto exit;
-	assert(sh->port[priv->ibv_port - 1].ih_port_id ==
+	MLX5_ASSERT(sh->port[priv->ibv_port - 1].ih_port_id ==
 					(uint32_t)dev->data->port_id);
-	assert(sh->intr_cnt);
+	MLX5_ASSERT(sh->intr_cnt);
 	sh->port[priv->ibv_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
 	if (!sh->intr_cnt || --sh->intr_cnt)
 		goto exit;
@@ -1479,13 +1478,13 @@ mlx5_dev_shared_handler_devx_uninstall(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
 	pthread_mutex_lock(&sh->intr_mutex);
-	assert(priv->ibv_port);
-	assert(priv->ibv_port <= sh->max_port);
-	assert(dev->data->port_id < RTE_MAX_ETHPORTS);
+	MLX5_ASSERT(priv->ibv_port);
+	MLX5_ASSERT(priv->ibv_port <= sh->max_port);
+	MLX5_ASSERT(dev->data->port_id < RTE_MAX_ETHPORTS);
 	if (sh->port[priv->ibv_port - 1].devx_ih_port_id >= RTE_MAX_ETHPORTS)
 		goto exit;
-	assert(sh->port[priv->ibv_port - 1].devx_ih_port_id ==
-					(uint32_t)dev->data->port_id);
+	MLX5_ASSERT(sh->port[priv->ibv_port - 1].devx_ih_port_id ==
+		    (uint32_t)dev->data->port_id);
 	sh->port[priv->ibv_port - 1].devx_ih_port_id = RTE_MAX_ETHPORTS;
 	if (!sh->devx_intr_cnt || --sh->devx_intr_cnt)
 		goto exit;
@@ -1523,12 +1522,12 @@ mlx5_dev_shared_handler_install(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
 	pthread_mutex_lock(&sh->intr_mutex);
-	assert(priv->ibv_port);
-	assert(priv->ibv_port <= sh->max_port);
-	assert(dev->data->port_id < RTE_MAX_ETHPORTS);
+	MLX5_ASSERT(priv->ibv_port);
+	MLX5_ASSERT(priv->ibv_port <= sh->max_port);
+	MLX5_ASSERT(dev->data->port_id < RTE_MAX_ETHPORTS);
 	if (sh->port[priv->ibv_port - 1].ih_port_id < RTE_MAX_ETHPORTS) {
 		/* The handler is already installed for this port. */
-		assert(sh->intr_cnt);
+		MLX5_ASSERT(sh->intr_cnt);
 		goto exit;
 	}
 	if (sh->intr_cnt) {
@@ -1538,7 +1537,7 @@ mlx5_dev_shared_handler_install(struct rte_eth_dev *dev)
 		goto exit;
 	}
 	/* No shared handler installed. */
-	assert(sh->ctx->async_fd > 0);
+	MLX5_ASSERT(sh->ctx->async_fd > 0);
 	flags = fcntl(sh->ctx->async_fd, F_GETFL);
 	ret = fcntl(sh->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
@@ -1577,12 +1576,12 @@ mlx5_dev_shared_handler_devx_install(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
 	pthread_mutex_lock(&sh->intr_mutex);
-	assert(priv->ibv_port);
-	assert(priv->ibv_port <= sh->max_port);
-	assert(dev->data->port_id < RTE_MAX_ETHPORTS);
+	MLX5_ASSERT(priv->ibv_port);
+	MLX5_ASSERT(priv->ibv_port <= sh->max_port);
+	MLX5_ASSERT(dev->data->port_id < RTE_MAX_ETHPORTS);
 	if (sh->port[priv->ibv_port - 1].devx_ih_port_id < RTE_MAX_ETHPORTS) {
 		/* The handler is already installed for this port. */
-		assert(sh->devx_intr_cnt);
+		MLX5_ASSERT(sh->devx_intr_cnt);
 		goto exit;
 	}
 	if (sh->devx_intr_cnt) {
@@ -1713,7 +1712,7 @@ mlx5_select_rx_function(struct rte_eth_dev *dev)
 {
 	eth_rx_burst_t rx_pkt_burst = mlx5_rx_burst;
 
-	assert(dev != NULL);
+	MLX5_ASSERT(dev != NULL);
 	if (mlx5_check_vec_rx_support(dev) > 0) {
 		rx_pkt_burst = mlx5_rx_burst_vec;
 		DRV_LOG(DEBUG, "port %u selected Rx vectorized function",
@@ -1880,7 +1879,7 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 		mlx5_sysfs_check_switch_info(device_dir, &data);
 	}
 	*info = data;
-	assert(!(data.master && data.representor));
+	MLX5_ASSERT(!(data.master && data.representor));
 	if (data.master && data.representor) {
 		DRV_LOG(ERR, "ifindex %u device is recognized as master"
 			     " and as representor", ifindex);

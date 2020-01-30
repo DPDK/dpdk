@@ -259,7 +259,7 @@ flow_verbs_spec_add(struct mlx5_flow_verbs *verbs, void *src, unsigned int size)
 
 	if (!verbs)
 		return;
-	assert(verbs->specs);
+	MLX5_ASSERT(verbs->specs);
 	dst = (void *)(verbs->specs + verbs->size);
 	memcpy(dst, src, size);
 	++verbs->attr->num_of_specs;
@@ -1709,7 +1709,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		} else {
 			struct mlx5_hrxq *hrxq;
 
-			assert(flow->rss.queue);
+			MLX5_ASSERT(flow->rss.queue);
 			hrxq = mlx5_hrxq_get(dev, flow->rss.key,
 					     MLX5_RSS_HASH_KEY_LEN,
 					     dev_flow->hash_fields,

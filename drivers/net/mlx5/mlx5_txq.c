@@ -4,7 +4,6 @@
  */
 
 #include <stddef.h>
-#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>
@@ -83,7 +82,7 @@ txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
 	while (elts_tail != elts_head) {
 		struct rte_mbuf *elt = (*elts)[elts_tail & elts_m];
 
-		assert(elt != NULL);
+		MLX5_ASSERT(elt != NULL);
 		rte_pktmbuf_free_seg(elt);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 		/* Poisoning. */
@@ -347,8 +346,8 @@ txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl)
 
 	if (txq_ctrl->type != MLX5_TXQ_TYPE_STANDARD)
 		return;
-	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	assert(ppriv);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(ppriv);
 	ppriv->uar_table[txq_ctrl->txq.idx] = txq_ctrl->bf_reg;
 	txq_uar_ncattr_init(txq_ctrl, page_size);
 #ifndef RTE_ARCH_64
@@ -386,7 +385,7 @@ txq_uar_init_secondary(struct mlx5_txq_ctrl *txq_ctrl, int fd)
 
 	if (txq_ctrl->type != MLX5_TXQ_TYPE_STANDARD)
 		return 0;
-	assert(ppriv);
+	MLX5_ASSERT(ppriv);
 	/*
 	 * As rdma-core, UARs are mapped in size of OS page
 	 * size. Ref to libmlx5 function: mlx5_init_context()
@@ -447,7 +446,7 @@ mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd)
 	unsigned int i;
 	int ret;
 
-	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	for (i = 0; i != priv->txqs_n; ++i) {
 		if (!(*priv->txqs)[i])
 			continue;
@@ -455,7 +454,7 @@ mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd)
 		txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
 		if (txq_ctrl->type != MLX5_TXQ_TYPE_STANDARD)
 			continue;
-		assert(txq->idx == (uint16_t)i);
+		MLX5_ASSERT(txq->idx == (uint16_t)i);
 		ret = txq_uar_init_secondary(txq_ctrl, fd);
 		if (ret)
 			goto error;
@@ -495,8 +494,8 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_txq_obj *tmpl = NULL;
 	int ret = 0;
 
-	assert(txq_data);
-	assert(!txq_ctrl->obj);
+	MLX5_ASSERT(txq_data);
+	MLX5_ASSERT(!txq_ctrl->obj);
 	tmpl = rte_calloc_socket(__func__, 1, sizeof(*tmpl), 0,
 				 txq_ctrl->socket);
 	if (!tmpl) {
@@ -581,7 +580,7 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	if (priv->config.devx && !priv->sh->tdn)
 		qp.comp_mask |= MLX5DV_QP_MASK_RAW_QP_HANDLES;
 #endif
-	assert(txq_data);
+	MLX5_ASSERT(txq_data);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_TX_QUEUE;
 	priv->verbs_alloc_ctx.obj = txq_ctrl;
 	if (mlx5_getenv_int("MLX5_ENABLE_CQE_COMPRESSION")) {
@@ -832,7 +831,7 @@ mlx5_txq_obj_get(struct rte_eth_dev *dev, uint16_t idx)
 int
 mlx5_txq_obj_release(struct mlx5_txq_obj *txq_obj)
 {
-	assert(txq_obj);
+	MLX5_ASSERT(txq_obj);
 	if (rte_atomic32_dec_and_test(&txq_obj->refcnt)) {
 		if (txq_obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN) {
 			if (txq_obj->tis)
@@ -1050,12 +1049,12 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 		 * beginning of inlining buffer in Ethernet
 		 * Segment.
 		 */
-		assert(inlen_send >= MLX5_ESEG_MIN_INLINE_SIZE);
-		assert(inlen_send <= MLX5_WQE_SIZE_MAX +
-				     MLX5_ESEG_MIN_INLINE_SIZE -
-				     MLX5_WQE_CSEG_SIZE -
-				     MLX5_WQE_ESEG_SIZE -
-				     MLX5_WQE_DSEG_SIZE * 2);
+		MLX5_ASSERT(inlen_send >= MLX5_ESEG_MIN_INLINE_SIZE);
+		MLX5_ASSERT(inlen_send <= MLX5_WQE_SIZE_MAX +
+					  MLX5_ESEG_MIN_INLINE_SIZE -
+					  MLX5_WQE_CSEG_SIZE -
+					  MLX5_WQE_ESEG_SIZE -
+					  MLX5_WQE_DSEG_SIZE * 2);
 	} else if (inlen_mode) {
 		/*
 		 * If minimal inlining is requested we must
@@ -1105,12 +1104,12 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 				PORT_ID(priv), inlen_empw, temp);
 			inlen_empw = temp;
 		}
-		assert(inlen_empw >= MLX5_ESEG_MIN_INLINE_SIZE);
-		assert(inlen_empw <= MLX5_WQE_SIZE_MAX +
-				     MLX5_DSEG_MIN_INLINE_SIZE -
-				     MLX5_WQE_CSEG_SIZE -
-				     MLX5_WQE_ESEG_SIZE -
-				     MLX5_WQE_DSEG_SIZE);
+		MLX5_ASSERT(inlen_empw >= MLX5_ESEG_MIN_INLINE_SIZE);
+		MLX5_ASSERT(inlen_empw <= MLX5_WQE_SIZE_MAX +
+					  MLX5_DSEG_MIN_INLINE_SIZE -
+					  MLX5_WQE_CSEG_SIZE -
+					  MLX5_WQE_ESEG_SIZE -
+					  MLX5_WQE_DSEG_SIZE);
 		txq_ctrl->txq.inlen_empw = inlen_empw;
 	}
 	txq_ctrl->max_inline_data = RTE_MAX(inlen_send, inlen_empw);
@@ -1225,11 +1224,11 @@ txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 	}
 	txq_ctrl->max_inline_data = RTE_MAX(txq_ctrl->txq.inlen_send,
 					    txq_ctrl->txq.inlen_empw);
-	assert(txq_ctrl->max_inline_data <= max_inline);
-	assert(txq_ctrl->txq.inlen_mode <= max_inline);
-	assert(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_send);
-	assert(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_empw ||
-	       !txq_ctrl->txq.inlen_empw);
+	MLX5_ASSERT(txq_ctrl->max_inline_data <= max_inline);
+	MLX5_ASSERT(txq_ctrl->txq.inlen_mode <= max_inline);
+	MLX5_ASSERT(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_send);
+	MLX5_ASSERT(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_empw ||
+		    !txq_ctrl->txq.inlen_empw);
 	return 0;
 error:
 	rte_errno = ENOMEM;
@@ -1275,7 +1274,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	/* Save pointer of global generation number to check memory event. */
 	tmpl->txq.mr_ctrl.dev_gen_ptr = &priv->sh->mr.dev_gen;
-	assert(desc > MLX5_TX_COMP_THRESH);
+	MLX5_ASSERT(desc > MLX5_TX_COMP_THRESH);
 	tmpl->txq.offloads = conf->offloads |
 			     dev->data->dev_conf.txmode.offloads;
 	tmpl->priv = priv;

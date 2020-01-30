@@ -99,12 +99,12 @@ mr_btree_lookup(struct mlx5_mr_btree *bt, uint16_t *idx, uintptr_t addr)
 	uint16_t n;
 	uint16_t base = 0;
 
-	assert(bt != NULL);
+	MLX5_ASSERT(bt != NULL);
 	lkp_tbl = *bt->table;
 	n = bt->len;
 	/* First entry must be NULL for comparison. */
-	assert(bt->len > 0 || (lkp_tbl[0].start == 0 &&
-			       lkp_tbl[0].lkey == UINT32_MAX));
+	MLX5_ASSERT(bt->len > 0 || (lkp_tbl[0].start == 0 &&
+				    lkp_tbl[0].lkey == UINT32_MAX));
 	/* Binary search. */
 	do {
 		register uint16_t delta = n >> 1;
@@ -116,7 +116,7 @@ mr_btree_lookup(struct mlx5_mr_btree *bt, uint16_t *idx, uintptr_t addr)
 			n -= delta;
 		}
 	} while (n > 1);
-	assert(addr >= lkp_tbl[base].start);
+	MLX5_ASSERT(addr >= lkp_tbl[base].start);
 	*idx = base;
 	if (addr < lkp_tbl[base].end)
 		return lkp_tbl[base].lkey;
@@ -142,9 +142,9 @@ mr_btree_insert(struct mlx5_mr_btree *bt, struct mlx5_mr_cache *entry)
 	uint16_t idx = 0;
 	size_t shift;
 
-	assert(bt != NULL);
-	assert(bt->len <= bt->size);
-	assert(bt->len > 0);
+	MLX5_ASSERT(bt != NULL);
+	MLX5_ASSERT(bt->len <= bt->size);
+	MLX5_ASSERT(bt->len > 0);
 	lkp_tbl = *bt->table;
 	/* Find out the slot for insertion. */
 	if (mr_btree_lookup(bt, &idx, entry->start) != UINT32_MAX) {
@@ -194,7 +194,7 @@ mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket)
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	assert(!bt->table && !bt->size);
+	MLX5_ASSERT(!bt->table && !bt->size);
 	memset(bt, 0, sizeof(*bt));
 	bt->table = rte_calloc_socket("B-tree table",
 				      n, sizeof(struct mlx5_mr_cache),
@@ -284,9 +284,9 @@ mr_find_next_chunk(struct mlx5_mr *mr, struct mlx5_mr_cache *entry,
 	if (mr->msl == NULL) {
 		struct ibv_mr *ibv_mr = mr->ibv_mr;
 
-		assert(mr->ms_bmp_n == 1);
-		assert(mr->ms_n == 1);
-		assert(base_idx == 0);
+		MLX5_ASSERT(mr->ms_bmp_n == 1);
+		MLX5_ASSERT(mr->ms_n == 1);
+		MLX5_ASSERT(base_idx == 0);
 		/*
 		 * Can't search it from memseg list but get it directly from
 		 * verbs MR as there's only one chunk.
@@ -305,7 +305,7 @@ mr_find_next_chunk(struct mlx5_mr *mr, struct mlx5_mr_cache *entry,
 			msl = mr->msl;
 			ms = rte_fbarray_get(&msl->memseg_arr,
 					     mr->ms_base_idx + idx);
-			assert(msl->page_sz == ms->hugepage_sz);
+			MLX5_ASSERT(msl->page_sz == ms->hugepage_sz);
 			if (!start)
 				start = ms->addr_64;
 			end = ms->addr_64 + ms->hugepage_sz;
@@ -439,8 +439,8 @@ mr_lookup_dev(struct mlx5_ibv_shared *sh, struct mlx5_mr_cache *entry,
 		if (mr != NULL)
 			lkey = entry->lkey;
 	}
-	assert(lkey == UINT32_MAX || (addr >= entry->start &&
-				      addr < entry->end));
+	MLX5_ASSERT(lkey == UINT32_MAX || (addr >= entry->start &&
+					   addr < entry->end));
 	return lkey;
 }
 
@@ -477,7 +477,7 @@ mlx5_mr_garbage_collect(struct mlx5_ibv_shared *sh)
 	struct mlx5_mr_list free_list = LIST_HEAD_INITIALIZER(free_list);
 
 	/* Must be called from the primary process. */
-	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	/*
 	 * MR can't be freed with holding the lock because rte_free() could call
 	 * memory free callback function. This will be a deadlock situation.
@@ -550,7 +550,7 @@ mlx5_mr_create_secondary(struct rte_eth_dev *dev, struct mlx5_mr_cache *entry,
 	/* Fill in output data. */
 	mr_lookup_dev(priv->sh, entry, addr);
 	/* Lookup can't fail. */
-	assert(entry->lkey != UINT32_MAX);
+	MLX5_ASSERT(entry->lkey != UINT32_MAX);
 	rte_rwlock_read_unlock(&priv->sh->mr.rwlock);
 	DEBUG("port %u MR CREATED by primary process for %p:\n"
 	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "), lkey=0x%x",
@@ -635,12 +635,12 @@ mlx5_mr_create_primary(struct rte_eth_dev *dev, struct mlx5_mr_cache *entry,
 	}
 alloc_resources:
 	/* Addresses must be page-aligned. */
-	assert(rte_is_aligned((void *)data.start, data.msl->page_sz));
-	assert(rte_is_aligned((void *)data.end, data.msl->page_sz));
+	MLX5_ASSERT(rte_is_aligned((void *)data.start, data.msl->page_sz));
+	MLX5_ASSERT(rte_is_aligned((void *)data.end, data.msl->page_sz));
 	msl = data.msl;
 	ms = rte_mem_virt2memseg((void *)data.start, msl);
 	len = data.end - data.start;
-	assert(msl->page_sz == ms->hugepage_sz);
+	MLX5_ASSERT(msl->page_sz == ms->hugepage_sz);
 	/* Number of memsegs in the range. */
 	ms_n = len / msl->page_sz;
 	DEBUG("port %u extending %p to [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
@@ -707,7 +707,7 @@ alloc_resources:
 		mr_free(mr);
 		goto alloc_resources;
 	}
-	assert(data.msl == data_re.msl);
+	MLX5_ASSERT(data.msl == data_re.msl);
 	rte_rwlock_write_lock(&sh->mr.rwlock);
 	/*
 	 * Check the address is really missing. If other thread already created
@@ -760,7 +760,7 @@ alloc_resources:
 	}
 	len = data.end - data.start;
 	mr->ms_bmp_n = len / msl->page_sz;
-	assert(ms_idx_shift + mr->ms_bmp_n <= ms_n);
+	MLX5_ASSERT(ms_idx_shift + mr->ms_bmp_n <= ms_n);
 	/*
 	 * Finally create a verbs MR for the memory chunk. ibv_reg_mr() can be
 	 * called with holding the memory lock because it doesn't use
@@ -775,8 +775,8 @@ alloc_resources:
 		rte_errno = EINVAL;
 		goto err_mrlock;
 	}
-	assert((uintptr_t)mr->ibv_mr->addr == data.start);
-	assert(mr->ibv_mr->length == len);
+	MLX5_ASSERT((uintptr_t)mr->ibv_mr->addr == data.start);
+	MLX5_ASSERT(mr->ibv_mr->length == len);
 	LIST_INSERT_HEAD(&sh->mr.mr_list, mr, mr);
 	DEBUG("port %u MR CREATED (%p) for %p:\n"
 	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
@@ -789,7 +789,7 @@ alloc_resources:
 	/* Fill in output data. */
 	mr_lookup_dev(sh, entry, addr);
 	/* Lookup can't fail. */
-	assert(entry->lkey != UINT32_MAX);
+	MLX5_ASSERT(entry->lkey != UINT32_MAX);
 	rte_rwlock_write_unlock(&sh->mr.rwlock);
 	rte_mcfg_mem_read_unlock();
 	return entry->lkey;
@@ -895,8 +895,9 @@ mlx5_mr_mem_event_free_cb(struct mlx5_ibv_shared *sh,
 	      sh->ibdev_name, addr, len);
 	msl = rte_mem_virt2memseg_list(addr);
 	/* addr and len must be page-aligned. */
-	assert((uintptr_t)addr == RTE_ALIGN((uintptr_t)addr, msl->page_sz));
-	assert(len == RTE_ALIGN(len, msl->page_sz));
+	MLX5_ASSERT((uintptr_t)addr ==
+		    RTE_ALIGN((uintptr_t)addr, msl->page_sz));
+	MLX5_ASSERT(len == RTE_ALIGN(len, msl->page_sz));
 	ms_n = len / msl->page_sz;
 	rte_rwlock_write_lock(&sh->mr.rwlock);
 	/* Clear bits of freed memsegs from MR. */
@@ -912,14 +913,14 @@ mlx5_mr_mem_event_free_cb(struct mlx5_ibv_shared *sh,
 		mr = mr_lookup_dev_list(sh, &entry, start);
 		if (mr == NULL)
 			continue;
-		assert(mr->msl); /* Can't be external memory. */
+		MLX5_ASSERT(mr->msl); /* Can't be external memory. */
 		ms = rte_mem_virt2memseg((void *)start, msl);
-		assert(ms != NULL);
-		assert(msl->page_sz == ms->hugepage_sz);
+		MLX5_ASSERT(ms != NULL);
+		MLX5_ASSERT(msl->page_sz == ms->hugepage_sz);
 		ms_idx = rte_fbarray_find_idx(&msl->memseg_arr, ms);
 		pos = ms_idx - mr->ms_base_idx;
-		assert(rte_bitmap_get(mr->ms_bmp, pos));
-		assert(pos < mr->ms_bmp_n);
+		MLX5_ASSERT(rte_bitmap_get(mr->ms_bmp, pos));
+		MLX5_ASSERT(pos < mr->ms_bmp_n);
 		DEBUG("device %s MR(%p): clear bitmap[%u] for addr %p",
 		      sh->ibdev_name, (void *)mr, pos, (void *)start);
 		rte_bitmap_clear(mr->ms_bmp, pos);
@@ -973,7 +974,7 @@ mlx5_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 	struct mlx5_dev_list *dev_list = &mlx5_shared_data->mem_event_cb_list;
 
 	/* Must be called from the primary process. */
-	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	switch (event_type) {
 	case RTE_MEM_EVENT_FREE:
 		rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
@@ -1267,7 +1268,7 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 	struct mlx5_mr_cache entry;
 	uint32_t lkey;
 
-	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	/* If already registered, it should return. */
 	rte_rwlock_read_lock(&sh->mr.rwlock);
 	lkey = mr_lookup_dev(sh, &entry, addr);

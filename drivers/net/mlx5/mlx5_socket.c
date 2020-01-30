@@ -126,7 +126,7 @@ error:
 static int
 mlx5_pmd_interrupt_handler_install(void)
 {
-	assert(server_socket);
+	MLX5_ASSERT(server_socket);
 	server_intr_handle.fd = server_socket;
 	server_intr_handle.type = RTE_INTR_HANDLE_EXT;
 	return rte_intr_callback_register(&server_intr_handle,
@@ -166,7 +166,7 @@ mlx5_pmd_socket_init(void)
 	int ret = -1;
 	int flags;
 
-	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	if (server_socket)
 		return 0;
 	/*

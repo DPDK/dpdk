@@ -1126,11 +1126,11 @@ mlx5_devx_cmd_flow_dump(void *fdb_domain __rte_unused,
 		if (ret)
 			return ret;
 	}
-	assert(rx_domain);
+	MLX5_ASSERT(rx_domain);
 	ret = mlx5_glue->dr_dump_domain(file, rx_domain);
 	if (ret)
 		return ret;
-	assert(tx_domain);
+	MLX5_ASSERT(tx_domain);
 	ret = mlx5_glue->dr_dump_domain(file, tx_domain);
 #else
 	ret = ENOTSUP;
@@ -1400,7 +1400,7 @@ mlx5_devx_cmd_create_qp(struct ibv_context *ctx,
 		MLX5_SET(qpc, qpc, log_page_size, attr->log_page_size -
 			 MLX5_ADAPTER_PAGE_SHIFT);
 		if (attr->sq_size) {
-			RTE_ASSERT(RTE_IS_POWER_OF_2(attr->sq_size));
+			MLX5_ASSERT(RTE_IS_POWER_OF_2(attr->sq_size));
 			MLX5_SET(qpc, qpc, cqn_snd, attr->cqn);
 			MLX5_SET(qpc, qpc, log_sq_size,
 				 rte_log2_u32(attr->sq_size));
@@ -1408,7 +1408,7 @@ mlx5_devx_cmd_create_qp(struct ibv_context *ctx,
 			MLX5_SET(qpc, qpc, no_sq, 1);
 		}
 		if (attr->rq_size) {
-			RTE_ASSERT(RTE_IS_POWER_OF_2(attr->rq_size));
+			MLX5_ASSERT(RTE_IS_POWER_OF_2(attr->rq_size));
 			MLX5_SET(qpc, qpc, cqn_rcv, attr->cqn);
 			MLX5_SET(qpc, qpc, log_rq_stride, attr->log_rq_stride -
 				 MLX5_LOG_RQ_STRIDE_SHIFT);

@@ -4,7 +4,6 @@
  */
 
 #include <stddef.h>
-#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #include <inttypes.h>
@@ -70,7 +69,7 @@ mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const int vf = priv->config.vf;
 
-	assert(index < MLX5_MAX_MAC_ADDRESSES);
+	MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
 	if (rte_is_zero_ether_addr(&dev->data->mac_addrs[index]))
 		return;
 	if (vf)
@@ -101,7 +100,7 @@ mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 	const int vf = priv->config.vf;
 	unsigned int i;
 
-	assert(index < MLX5_MAX_MAC_ADDRESSES);
+	MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
 	if (rte_is_zero_ether_addr(mac)) {
 		rte_errno = EINVAL;
 		return -rte_errno;

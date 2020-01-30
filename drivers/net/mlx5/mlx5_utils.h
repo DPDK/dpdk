@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <limits.h>
-#include <assert.h>
 #include <errno.h>
 
 #include <mlx5_common.h>
@@ -27,25 +26,6 @@
 /* redefine as in stdbool.h */
 #define bool _Bool
 #endif
-
-/* Bit-field manipulation. */
-#define BITFIELD_DECLARE(bf, type, size) \
-	type bf[(((size_t)(size) / (sizeof(type) * CHAR_BIT)) + \
-		 !!((size_t)(size) % (sizeof(type) * CHAR_BIT)))]
-#define BITFIELD_DEFINE(bf, type, size) \
-	BITFIELD_DECLARE((bf), type, (size)) = { 0 }
-#define BITFIELD_SET(bf, b) \
-	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)), \
-	 (void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] |= \
-		((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT)))))
-#define BITFIELD_RESET(bf, b) \
-	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)), \
-	 (void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] &= \
-		~((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT)))))
-#define BITFIELD_ISSET(bf, b) \
-	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)), \
-	 !!(((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] & \
-	     ((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT))))))
 
 /* Convert a bit number to the corresponding 64-bit mask */
 #define MLX5_BITSHIFT(v) (UINT64_C(1) << (v))

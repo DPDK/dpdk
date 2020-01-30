@@ -3,7 +3,6 @@
  * Copyright 2017 Mellanox Technologies, Ltd
  */
 
-#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>

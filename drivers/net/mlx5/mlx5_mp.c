@@ -3,7 +3,6 @@
  * Copyright 2019 Mellanox Technologies, Ltd
  */
 
-#include <assert.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -62,7 +61,7 @@ mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	uint32_t lkey;
 	int ret;
 
-	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	if (!rte_eth_dev_is_valid_port(param->port_id)) {
 		rte_errno = ENODEV;
 		DRV_LOG(ERR, "port %u invalid port ID", param->port_id);
@@ -121,7 +120,7 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	struct rte_eth_dev *dev;
 	int ret;
 
-	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	if (!rte_eth_dev_is_valid_port(param->port_id)) {
 		rte_errno = ENODEV;
 		DRV_LOG(ERR, "port %u invalid port ID", param->port_id);
@@ -175,7 +174,7 @@ mp_req_on_rxtx(struct rte_eth_dev *dev, enum mlx5_mp_req_type type)
 	int ret;
 	int i;
 
-	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	if (!mlx5_shared_data->secondary_cnt)
 		return;
 	if (type != MLX5_MP_REQ_START_RXTX && type != MLX5_MP_REQ_STOP_RXTX) {
@@ -258,7 +257,7 @@ mlx5_mp_req_mr_create(struct rte_eth_dev *dev, uintptr_t addr)
 	struct timespec ts = {.tv_sec = MLX5_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
 	int ret;
 
-	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	mp_init_msg(dev, &mp_req, MLX5_MP_REQ_CREATE_MR);
 	req->args.addr = addr;
 	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
@@ -267,7 +266,7 @@ mlx5_mp_req_mr_create(struct rte_eth_dev *dev, uintptr_t addr)
 			dev->data->port_id);
 		return -rte_errno;
 	}
-	assert(mp_rep.nb_received == 1);
+	MLX5_ASSERT(mp_rep.nb_received == 1);
 	mp_res = &mp_rep.msgs[0];
 	res = (struct mlx5_mp_param *)mp_res->param;
 	ret = res->result;
@@ -300,7 +299,7 @@ mlx5_mp_req_queue_state_modify(struct rte_eth_dev *dev,
 	struct timespec ts = {.tv_sec = MLX5_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
 	int ret;
 
-	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	mp_init_msg(dev, &mp_req, MLX5_MP_REQ_QUEUE_STATE_MODIFY);
 	req->args.state_modify = *sm;
 	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
@@ -309,7 +308,7 @@ mlx5_mp_req_queue_state_modify(struct rte_eth_dev *dev,
 			dev->data->port_id);
 		return -rte_errno;
 	}
-	assert(mp_rep.nb_received == 1);
+	MLX5_ASSERT(mp_rep.nb_received == 1);
 	mp_res = &mp_rep.msgs[0];
 	res = (struct mlx5_mp_param *)mp_res->param;
 	ret = res->result;
@@ -336,7 +335,7 @@ mlx5_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev)
 	struct timespec ts = {.tv_sec = MLX5_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
 	int ret;
 
-	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	mp_init_msg(dev, &mp_req, MLX5_MP_REQ_VERBS_CMD_FD);
 	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
 	if (ret) {
@@ -344,7 +343,7 @@ mlx5_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev)
 			dev->data->port_id);
 		return -rte_errno;
 	}
-	assert(mp_rep.nb_received == 1);
+	MLX5_ASSERT(mp_rep.nb_received == 1);
 	mp_res = &mp_rep.msgs[0];
 	res = (struct mlx5_mp_param *)mp_res->param;
 	if (res->result) {
@@ -355,7 +354,7 @@ mlx5_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev)
 		ret = -rte_errno;
 		goto exit;
 	}
-	assert(mp_res->num_fds == 1);
+	MLX5_ASSERT(mp_res->num_fds == 1);
 	ret = mp_res->fds[0];
 	DRV_LOG(DEBUG, "port %u command FD from primary is %d",
 		dev->data->port_id, ret);
@@ -372,7 +371,7 @@ mlx5_mp_init_primary(void)
 {
 	int ret;
 
-	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 
 	/* primary is allowed to not support IPC */
 	ret = rte_mp_action_register(MLX5_MP_NAME, mp_primary_handle);
@@ -387,7 +386,7 @@ mlx5_mp_init_primary(void)
 void
 mlx5_mp_uninit_primary(void)
 {
-	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	rte_mp_action_unregister(MLX5_MP_NAME);
 }
 
@@ -397,7 +396,7 @@ mlx5_mp_uninit_primary(void)
 int
 mlx5_mp_init_secondary(void)
 {
-	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	return rte_mp_action_register(MLX5_MP_NAME, mp_secondary_handle);
 }
 
@@ -407,6 +406,6 @@ mlx5_mp_init_secondary(void)
 void
 mlx5_mp_uninit_secondary(void)
 {
-	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	rte_mp_action_unregister(MLX5_MP_NAME);
 }
