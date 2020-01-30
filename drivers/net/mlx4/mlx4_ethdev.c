@@ -8,7 +8,6 @@
  * Miscellaneous control operations for mlx4 driver.
  */
 
-#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <linux/ethtool.h>
@@ -874,7 +873,7 @@ mlx4_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		fc_conf->mode = RTE_FC_NONE;
 	ret = 0;
 out:
-	assert(ret >= 0);
+	MLX4_ASSERT(ret >= 0);
 	return -ret;
 }
 
@@ -920,7 +919,7 @@ mlx4_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 	ret = 0;
 out:
-	assert(ret >= 0);
+	MLX4_ASSERT(ret >= 0);
 	return -ret;
 }
 

@@ -8,7 +8,6 @@
  * Interrupts handling for mlx4 driver.
  */
 
-#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -122,7 +121,7 @@ mlx4_link_status_alarm(struct mlx4_priv *priv)
 	const struct rte_intr_conf *const intr_conf =
 		&ETH_DEV(priv)->data->dev_conf.intr_conf;
 
-	assert(priv->intr_alarm == 1);
+	MLX4_ASSERT(priv->intr_alarm == 1);
 	priv->intr_alarm = 0;
 	if (intr_conf->lsc && !mlx4_link_status_check(priv))
 		_rte_eth_dev_callback_process(ETH_DEV(priv),

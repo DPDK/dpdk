@@ -8,7 +8,6 @@
  * Utility functions used by the mlx4 driver.
  */
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stddef.h>
@@ -36,7 +35,7 @@ mlx4_fd_set_non_blocking(int fd)
 
 	if (ret != -1 && !fcntl(fd, F_SETFL, ret | O_NONBLOCK))
 		return 0;
-	assert(errno);
+	MLX4_ASSERT(errno);
 	rte_errno = errno;
 	return -rte_errno;
 }

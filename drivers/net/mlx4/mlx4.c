@@ -8,7 +8,6 @@
  * mlx4 driver initialization.
  */
 
-#include <assert.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -162,7 +161,7 @@ mlx4_alloc_verbs_buf(size_t size, void *data)
 
 		socket = rxq->socket;
 	}
-	assert(data != NULL);
+	MLX4_ASSERT(data != NULL);
 	ret = rte_malloc_socket(__func__, size, alignment, socket);
 	if (!ret && size)
 		rte_errno = ENOMEM;
@@ -180,7 +179,7 @@ mlx4_alloc_verbs_buf(size_t size, void *data)
 static void
 mlx4_free_verbs_buf(void *ptr, void *data __rte_unused)
 {
-	assert(data != NULL);
+	MLX4_ASSERT(data != NULL);
 	rte_free(ptr);
 }
 #endif
@@ -392,11 +391,11 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	mlx4_proc_priv_uninit(dev);
 	mlx4_mr_release(dev);
 	if (priv->pd != NULL) {
-		assert(priv->ctx != NULL);
+		MLX4_ASSERT(priv->ctx != NULL);
 		claim_zero(mlx4_glue->dealloc_pd(priv->pd));
 		claim_zero(mlx4_glue->close_device(priv->ctx));
 	} else
-		assert(priv->ctx == NULL);
+		MLX4_ASSERT(priv->ctx == NULL);
 	mlx4_intr_uninstall(priv);
 	memset(priv, 0, sizeof(*priv));
 }
@@ -705,7 +704,7 @@ mlx4_init_once(void)
 	if (mlx4_init_shared_data())
 		return -rte_errno;
 	sd = mlx4_shared_data;
-	assert(sd);
+	MLX4_ASSERT(sd);
 	rte_spinlock_lock(&sd->lock);
 	switch (rte_eal_process_type()) {
 	case RTE_PROC_PRIMARY:
@@ -775,16 +774,16 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		      strerror(rte_errno));
 		return -rte_errno;
 	}
-	assert(pci_drv == &mlx4_driver);
+	MLX4_ASSERT(pci_drv == &mlx4_driver);
 	list = mlx4_glue->get_device_list(&i);
 	if (list == NULL) {
 		rte_errno = errno;
-		assert(rte_errno);
+		MLX4_ASSERT(rte_errno);
 		if (rte_errno == ENOSYS)
 			ERROR("cannot list devices, is ib_uverbs loaded?");
 		return -rte_errno;
 	}
-	assert(i >= 0);
+	MLX4_ASSERT(i >= 0);
 	/*
 	 * For each listed device, check related sysfs entry against
 	 * the provided PCI ID.
@@ -821,7 +820,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			ERROR("cannot use device, are drivers up to date?");
 			return -rte_errno;
 		}
-		assert(err > 0);
+		MLX4_ASSERT(err > 0);
 		rte_errno = err;
 		return -rte_errno;
 	}
@@ -846,7 +845,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		err = ENODEV;
 		goto error;
 	}
-	assert(device_attr.max_sge >= MLX4_MAX_SGE);
+	MLX4_ASSERT(device_attr.max_sge >= MLX4_MAX_SGE);
 	for (i = 0; i < device_attr.phys_port_cnt; i++) {
 		uint32_t port = i + 1; /* ports are indexed from one */
 		struct ibv_context *ctx = NULL;
@@ -1303,7 +1302,7 @@ RTE_INIT(rte_mlx4_pmd_init)
 #ifdef RTE_IBVERBS_LINK_DLOPEN
 	if (mlx4_glue_init())
 		return;
-	assert(mlx4_glue);
+	MLX4_ASSERT(mlx4_glue);
 #endif
 #ifdef RTE_LIBRTE_MLX4_DEBUG
 	/* Glue structure must not contain any NULL pointers. */
@@ -1311,7 +1310,7 @@ RTE_INIT(rte_mlx4_pmd_init)
 		unsigned int i;
 
 		for (i = 0; i != sizeof(*mlx4_glue) / sizeof(void *); ++i)
-			assert(((const void *const *)mlx4_glue)[i]);
+			MLX4_ASSERT(((const void *const *)mlx4_glue)[i]);
 	}
 #endif
 	if (strcmp(mlx4_glue->version, MLX4_GLUE_VERSION)) {
