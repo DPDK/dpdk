@@ -38,11 +38,53 @@
 #include <rte_ethdev.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#include <rte_timer.h>
+#include <rte_spinlock.h>
+#include <rte_metrics.h>
 
 static volatile bool force_quit;
 
 /* MAC updating enabled by default */
 static int mac_updating = 1;
+
+/* Telemetry disabled by default */
+static int telemetry = 0;
+
+/* timer to update telemetry every 500ms */
+static struct rte_timer telemetry_timer;
+
+/* stats index returned by metrics lib */
+int telstats_index;
+
+struct telstats_name {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+};
+
+/* telemetry stats to be reported */
+const struct telstats_name telstats_strings[] = {
+	{"empty_poll"},
+	{"full_poll"},
+	{"busy_percent"}
+};
+
+/* core busyness in percentage */
+enum busy_rate {
+	ZERO = 0,
+	PARTIAL = 50,
+	FULL = 100
+};
+
+/* reference poll count to measure core busyness */
+#define DEFAULT_COUNT 10000
+/*
+ * reference CYCLES to be used to
+ * measure core busyness based on poll count
+ */
+#define MIN_CYCLES  1500000ULL
+#define MAX_CYCLES 22000000ULL
+
+/* (500ms) */
+#define TELEMETRY_INTERVALS_PER_SEC 2
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
@@ -76,6 +118,31 @@ struct lcore_queue_conf {
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 } __rte_cache_aligned;
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
+
+struct lcore_stats {
+	/*
+	 * Represents empty and non empty polls
+	 * of rte_eth_rx_burst();
+	 * ep_nep[0] holds non empty polls
+	 * i.e. 0 < nb_rx <= MAX_BURST
+	 * ep_nep[1] holds empty polls.
+	 * i.e. nb_rx == 0
+	 */
+	uint64_t ep_nep[2];
+	/*
+	 * Represents full and empty+partial
+	 * polls of rte_eth_rx_burst();
+	 * ep_nep[0] holds empty+partial polls.
+	 * i.e. 0 <= nb_rx < MAX_BURST
+	 * ep_nep[1] holds full polls
+	 * i.e. nb_rx == MAX_BURST
+	 */
+	uint64_t fp_nfp[2];
+	enum busy_rate br;
+	rte_spinlock_t telemetry_lock;
+} __rte_cache_aligned;
+
+static struct lcore_stats stats[RTE_MAX_LCORE] __rte_cache_aligned;
 
 static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
@@ -172,7 +239,6 @@ l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 	struct rte_eth_dev_tx_buffer *buffer;
 
 	dst_port = l2fwd_dst_ports[portid];
-
 	if (mac_updating)
 		l2fwd_mac_updating(m, dst_port);
 
@@ -190,15 +256,20 @@ l2fwd_main_loop(void)
 	struct rte_mbuf *m;
 	int sent;
 	unsigned lcore_id;
-	uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc;
+	uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc, prev_tel_tsc;
 	unsigned i, j, portid, nb_rx;
 	struct lcore_queue_conf *qconf;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S *
 			BURST_TX_DRAIN_US;
 	struct rte_eth_dev_tx_buffer *buffer;
+	uint64_t ep_nep[2] = {0}, fp_nfp[2] = {0};
+	uint64_t poll_count;
+	enum busy_rate br;
 
+	poll_count = 0;
 	prev_tsc = 0;
 	timer_tsc = 0;
+	prev_tel_tsc = 0;
 
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_queue_conf[lcore_id];
@@ -269,6 +340,14 @@ l2fwd_main_loop(void)
 			nb_rx = rte_eth_rx_burst(portid, 0,
 						 pkts_burst, MAX_PKT_BURST);
 
+			if (telemetry) {
+				ep_nep[nb_rx == 0]++;
+				fp_nfp[nb_rx == MAX_PKT_BURST]++;
+				poll_count++;
+				if (unlikely(nb_rx == 0))
+					continue;
+			}
+
 			port_statistics[portid].rx += nb_rx;
 
 			for (j = 0; j < nb_rx; j++) {
@@ -276,6 +355,28 @@ l2fwd_main_loop(void)
 				rte_prefetch0(rte_pktmbuf_mtod(m, void *));
 				l2fwd_simple_forward(m, portid);
 			}
+		}
+
+		if (telemetry && unlikely(poll_count >= DEFAULT_COUNT)) {
+			diff_tsc = cur_tsc - prev_tel_tsc;
+			if (diff_tsc >= MAX_CYCLES) {
+				br = FULL;
+			} else if (diff_tsc > MIN_CYCLES &&
+					diff_tsc < MAX_CYCLES) {
+				br = (diff_tsc * 100) / MAX_CYCLES;
+			} else {
+				br = ZERO;
+			}
+			poll_count = 0;
+			prev_tel_tsc = cur_tsc;
+			/* update stats for telemetry */
+			rte_spinlock_lock(&stats[lcore_id].telemetry_lock);
+			stats[lcore_id].ep_nep[0] = ep_nep[0];
+			stats[lcore_id].ep_nep[1] = ep_nep[1];
+			stats[lcore_id].fp_nfp[0] = fp_nfp[0];
+			stats[lcore_id].fp_nfp[1] = fp_nfp[1];
+			stats[lcore_id].br = br;
+			rte_spinlock_unlock(&stats[lcore_id].telemetry_lock);
 		}
 	}
 }
@@ -361,6 +462,7 @@ static const char short_options[] =
 
 #define CMD_LINE_OPT_MAC_UPDATING "mac-updating"
 #define CMD_LINE_OPT_NO_MAC_UPDATING "no-mac-updating"
+#define CMD_LINE_OPT_TELEMETRY "telemetry"
 
 enum {
 	/* long options mapped to a short option */
@@ -373,6 +475,7 @@ enum {
 static const struct option lgopts[] = {
 	{ CMD_LINE_OPT_MAC_UPDATING, no_argument, &mac_updating, 1},
 	{ CMD_LINE_OPT_NO_MAC_UPDATING, no_argument, &mac_updating, 0},
+	{ CMD_LINE_OPT_TELEMETRY, no_argument, &telemetry, 1},
 	{NULL, 0, 0, 0}
 };
 
@@ -509,6 +612,96 @@ signal_handler(int signum)
 	}
 }
 
+static void
+update_telemetry(__attribute__((unused)) struct rte_timer *tim,
+		__attribute__((unused)) void *arg)
+{
+	unsigned int lcore_id = rte_lcore_id();
+	struct lcore_queue_conf *qconf;
+	uint64_t app_eps = 0, app_fps = 0, app_br = 0;
+	uint64_t values[3] = {0};
+	int ret;
+	uint64_t count = 0;
+
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		qconf = &lcore_queue_conf[lcore_id];
+		if (qconf->n_rx_port == 0)
+			continue;
+		count++;
+		rte_spinlock_lock(&stats[lcore_id].telemetry_lock);
+		app_eps += stats[lcore_id].ep_nep[1];
+		app_fps += stats[lcore_id].fp_nfp[1];
+		app_br += stats[lcore_id].br;
+		rte_spinlock_unlock(&stats[lcore_id].telemetry_lock);
+	}
+
+	if (count > 0) {
+		values[0] = app_eps/count;
+		values[1] = app_fps/count;
+		values[2] = app_br/count;
+	} else {
+		values[0] = 0;
+		values[1] = 0;
+		values[2] = 0;
+	}
+
+	ret = rte_metrics_update_values(RTE_METRICS_GLOBAL, telstats_index,
+					values, RTE_DIM(values));
+	if (ret < 0)
+		RTE_LOG(WARNING, L2FWD, "failed to update metrcis\n");
+}
+
+static void
+telemetry_setup_timer(void)
+{
+	int lcore_id = rte_lcore_id();
+	uint64_t hz = rte_get_timer_hz();
+	uint64_t ticks;
+
+	ticks = hz / TELEMETRY_INTERVALS_PER_SEC;
+	rte_timer_reset_sync(&telemetry_timer,
+			ticks,
+			PERIODICAL,
+			lcore_id,
+			update_telemetry,
+			NULL);
+}
+
+static int
+launch_timer(unsigned int lcore_id)
+{
+	int64_t prev_tsc = 0, cur_tsc, diff_tsc, cycles_10ms;
+
+	RTE_SET_USED(lcore_id);
+
+
+	if (rte_get_master_lcore() != lcore_id) {
+		rte_panic("timer on lcore:%d which is not master core:%d\n",
+				lcore_id,
+				rte_get_master_lcore());
+	}
+
+	RTE_LOG(INFO, L2FWD, "Bring up the Timer\n");
+
+	telemetry_setup_timer();
+
+	cycles_10ms = rte_get_timer_hz() / 100;
+
+	while (!force_quit) {
+		cur_tsc = rte_rdtsc();
+		diff_tsc = cur_tsc - prev_tsc;
+		if (diff_tsc > cycles_10ms) {
+			rte_timer_manage();
+			prev_tsc = cur_tsc;
+			cycles_10ms = rte_get_timer_hz() / 100;
+		}
+	}
+
+	RTE_LOG(INFO, L2FWD, "Timer_subsystem is done\n");
+
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -521,6 +714,8 @@ main(int argc, char **argv)
 	unsigned nb_ports_in_mask = 0;
 	unsigned int nb_lcores = 0;
 	unsigned int nb_mbufs;
+	uint8_t num_telstats = RTE_DIM(telstats_strings);
+	const char *ptr_strings[num_telstats];
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -533,12 +728,16 @@ main(int argc, char **argv)
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
+	/* init RTE timer library to be used late */
+	rte_timer_subsystem_init();
+
 	/* parse application arguments (after the EAL ones) */
 	ret = l2fwd_parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L2FWD arguments\n");
 
 	printf("MAC updating %s\n", mac_updating ? "enabled" : "disabled");
+	printf("Telemetry mode %s\n", telemetry ? "enabled" : "disabled");
 
 	/* convert to number of cycles */
 	timer_period *= rte_get_timer_hz();
@@ -579,6 +778,7 @@ main(int argc, char **argv)
 		l2fwd_dst_ports[last_port] = last_port;
 	}
 
+	// rx_lcore_id = rte_get_master_lcore() + 1;
 	rx_lcore_id = 0;
 	qconf = NULL;
 
@@ -724,9 +924,35 @@ main(int argc, char **argv)
 
 	check_all_ports_link_status(l2fwd_enabled_port_mask);
 
-	ret = 0;
+
 	/* launch per-lcore init on every lcore */
-	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, CALL_MASTER);
+	if (telemetry) {
+		unsigned int i;
+
+		/* Init metrics library */
+		rte_metrics_init(rte_socket_id());
+		/** Register stats with metrics library */
+		for (i = 0; i < num_telstats; i++)
+			ptr_strings[i] = telstats_strings[i].name;
+
+		ret = rte_metrics_reg_names(ptr_strings, num_telstats);
+		if (ret >= 0)
+			telstats_index = ret;
+		else
+			rte_exit(EXIT_FAILURE, "failed to register metrics names");
+
+		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+			rte_spinlock_init(&stats[lcore_id].telemetry_lock);
+		}
+		rte_timer_init(&telemetry_timer);
+		rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL,
+						SKIP_MASTER);
+		launch_timer(rte_lcore_id());
+	} else{
+		rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, CALL_MASTER);
+	}
+
+	ret = 0;
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0) {
 			ret = -1;
