@@ -305,7 +305,7 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		      (void *)dev, strerror(-ret));
 		goto err;
 	}
-#ifndef NDEBUG
+#ifdef RTE_LIBRTE_MLX4_DEBUG
 	mlx4_mr_dump_dev(dev);
 #endif
 	ret = mlx4_rxq_intr_enable(priv);
@@ -1305,7 +1305,7 @@ RTE_INIT(rte_mlx4_pmd_init)
 		return;
 	assert(mlx4_glue);
 #endif
-#ifndef NDEBUG
+#ifdef RTE_LIBRTE_MLX4_DEBUG
 	/* Glue structure must not contain any NULL pointers. */
 	{
 		unsigned int i;
