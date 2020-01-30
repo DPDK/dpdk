@@ -38,6 +38,20 @@ Deprecation Notices
   remove it from the externally visible ABI and allow it to be updated in the
   future.
 
+* lib: will fix extending some enum/define breaking the ABI. There are multiple
+  samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is
+  used by iterators, and arrays holding these values are sized with this
+  ``.*MAX.*`` value. So extending this enum/define increases the ``.*MAX.*``
+  value which increases the size of the array and depending on how/where the
+  array is used this may break the ABI.
+  ``RTE_ETH_FLOW_MAX`` is one sample of the mentioned case, adding a new flow
+  type will break the ABI because of ``flex_mask[RTE_ETH_FLOW_MAX]`` array
+  usage in following public struct hierarchy:
+  ``rte_eth_fdir_flex_conf -> rte_fdir_conf -> rte_eth_conf (in the middle)``.
+  Need to identify this kind of usages and fix in 20.11, otherwise this blocks
+  us extending existing enum/define.
+  One solution can be using a fixed size array instead of ``.*MAX.*`` value.
+
 * dpaa2: removal of ``rte_dpaa2_memsegs`` structure which has been replaced
   by a pa-va search library. This structure was earlier being used for holding
   memory segments used by dpaa2 driver for faster pa->va translation. This
