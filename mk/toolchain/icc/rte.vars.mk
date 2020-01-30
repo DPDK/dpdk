@@ -47,10 +47,6 @@ WERROR_FLAGS += -diag-disable 13368 -diag-disable 15527
 WERROR_FLAGS += -diag-disable 188
 WERROR_FLAGS += -diag-disable 11074 -diag-disable 11076 -Wdeprecated
 
-ifeq ($(RTE_DEVEL_BUILD),y)
-WERROR_FLAGS += -Werror-all
-endif
-
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
 
