@@ -9,7 +9,6 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_errno.h>
-#include <rte_function_versioning.h>
 #include <rte_string_fns.h>
 #include <rte_eal_memconfig.h>
 #include <rte_pause.h>

@@ -7,4 +7,3 @@ headers = files('rte_lpm.h', 'rte_lpm6.h')
 # without worrying about which architecture we actually need
 headers += files('rte_lpm_altivec.h', 'rte_lpm_neon.h', 'rte_lpm_sse.h')
 deps += ['hash']
-use_function_versioning = true
