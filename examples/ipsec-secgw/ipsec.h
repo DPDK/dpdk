@@ -38,7 +38,6 @@
 #define DEFAULT_MAX_CATEGORIES	1
 
 #define IPSEC_SA_MAX_ENTRIES (128) /* must be power of 2, max 2 power 30 */
-#define SPI2IDX(spi) (spi & (IPSEC_SA_MAX_ENTRIES - 1))
 #define INVALID_SPI (0)
 
 #define DISCARD	INVALID_SPI
@@ -359,7 +358,7 @@ sp6_spi_present(uint32_t spi, int inbound, struct ip_addr ip_addr[2],
  * or -ENOENT otherwise.
  */
 int
-sa_spi_present(uint32_t spi, int inbound);
+sa_spi_present(struct sa_ctx *sa_ctx, uint32_t spi, int inbound);
 
 void
 sa_init(struct socket_ctx *ctx, int32_t socket_id);

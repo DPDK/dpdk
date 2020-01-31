@@ -625,10 +625,11 @@ acl6_init(const char *name, int32_t socketid, const struct acl6_rules *rules,
  * check that for each rule it's SPI has a correspondent entry in SAD
  */
 static int
-check_spi_value(int inbound)
+check_spi_value(struct sa_ctx *sa_ctx, int inbound)
 {
 	uint32_t i, num, spi;
-	const struct acl6_rules *acr;
+	int32_t spi_idx;
+	struct acl6_rules *acr;
 
 	if (inbound != 0) {
 		acr = acl6_rules_in;
@@ -640,11 +641,16 @@ check_spi_value(int inbound)
 
 	for (i = 0; i != num; i++) {
 		spi = acr[i].data.userdata;
-		if (spi != DISCARD && spi != BYPASS &&
-				sa_spi_present(spi, inbound) < 0) {
-			RTE_LOG(ERR, IPSEC, "SPI %u is not present in SAD\n",
-				spi);
-			return -ENOENT;
+		if (spi != DISCARD && spi != BYPASS) {
+			spi_idx = sa_spi_present(sa_ctx, spi, inbound);
+			if (spi_idx < 0) {
+				RTE_LOG(ERR, IPSEC,
+					"SPI %u is not present in SAD\n",
+					spi);
+				return -ENOENT;
+			}
+			/* Update userdata with spi index */
+			acr[i].data.userdata = spi_idx + 1;
 		}
 	}
 
@@ -667,11 +673,11 @@ sp6_init(struct socket_ctx *ctx, int32_t socket_id)
 		rte_exit(EXIT_FAILURE, "Outbound IPv6 SP DB for socket %u "
 				"already initialized\n", socket_id);
 
-	if (check_spi_value(1) < 0)
+	if (check_spi_value(ctx->sa_in, 1) < 0)
 		rte_exit(EXIT_FAILURE,
 			"Inbound IPv6 SP DB has unmatched in SAD SPIs\n");
 
-	if (check_spi_value(0) < 0)
+	if (check_spi_value(ctx->sa_out, 0) < 0)
 		rte_exit(EXIT_FAILURE,
 			"Outbound IPv6 SP DB has unmatched in SAD SPIs\n");
 

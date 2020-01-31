@@ -601,7 +601,7 @@ inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
 			continue;
 		}
 
-		sa_idx = SPI2IDX(res);
+		sa_idx = res - 1;
 		if (!inbound_sa_check(sa, m, sa_idx)) {
 			rte_pktmbuf_free(m);
 			continue;
@@ -688,7 +688,7 @@ outbound_sp(struct sp_ctx *sp, struct traffic_type *ip,
 	j = 0;
 	for (i = 0; i < ip->num; i++) {
 		m = ip->pkts[i];
-		sa_idx = SPI2IDX(ip->res[i]);
+		sa_idx = ip->res[i] - 1;
 		if (ip->res[i] == DISCARD)
 			rte_pktmbuf_free(m);
 		else if (ip->res[i] == BYPASS)

@@ -12,6 +12,7 @@ SRCS-y += esp.c
 SRCS-y += sp4.c
 SRCS-y += sp6.c
 SRCS-y += sa.c
+SRCS-y += sad.c
 SRCS-y += rt.c
 SRCS-y += ipsec_process.c
 SRCS-y += ipsec-secgw.c
