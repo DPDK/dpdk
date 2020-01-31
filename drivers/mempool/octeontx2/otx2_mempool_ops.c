@@ -641,6 +641,7 @@ otx2_npa_alloc(struct rte_mempool *mp)
 	struct npa_aura_s aura;
 	struct npa_pool_s pool;
 	uint64_t aura_handle;
+	size_t padding;
 	int rc;
 
 	lf = otx2_npa_lf_obj_get();
@@ -650,6 +651,18 @@ otx2_npa_alloc(struct rte_mempool *mp)
 	}
 
 	block_size = mp->elt_size + mp->header_size + mp->trailer_size;
+	/*
+	 * OCTEON TX2 has 8 sets, 41 ways L1D cache, VA<9:7> bits dictate
+	 * the set selection.
+	 * Add additional padding to ensure that the element size always
+	 * occupies odd number of cachelines to ensure even distribution
+	 * of elements among L1D cache sets.
+	 */
+	padding = ((block_size / RTE_CACHE_LINE_SIZE) % 2) ? 0 :
+				RTE_CACHE_LINE_SIZE;
+	mp->trailer_size += padding;
+	block_size += padding;
+
 	block_count = mp->size;
 
 	if (block_size % OTX2_ALIGN != 0) {
@@ -724,12 +737,22 @@ otx2_npa_calc_mem_size(const struct rte_mempool *mp, uint32_t obj_num,
 						align);
 }
 
+static uint8_t
+otx2_npa_l1d_way_set_get(uint64_t iova)
+{
+	return (iova >> rte_log2_u32(RTE_CACHE_LINE_SIZE)) & 0x7;
+}
+
 static int
 otx2_npa_populate(struct rte_mempool *mp, unsigned int max_objs, void *vaddr,
 		  rte_iova_t iova, size_t len,
 		  rte_mempool_populate_obj_cb_t *obj_cb, void *obj_cb_arg)
 {
+#define OTX2_L1D_NB_SETS	8
+	uint64_t distribution[OTX2_L1D_NB_SETS];
+	rte_iova_t start_iova;
 	size_t total_elt_sz;
+	uint8_t set;
 	size_t off;
 
 	if (iova == RTE_BAD_IOVA)
@@ -743,9 +766,30 @@ otx2_npa_populate(struct rte_mempool *mp, unsigned int max_objs, void *vaddr,
 	if (len < off)
 		return -EINVAL;
 
+
 	vaddr = (char *)vaddr + off;
 	iova += off;
 	len -= off;
+
+	memset(distribution, 0, sizeof(uint64_t) * OTX2_L1D_NB_SETS);
+	start_iova = iova;
+	while (start_iova < iova + len) {
+		set = otx2_npa_l1d_way_set_get(start_iova + mp->header_size);
+		distribution[set]++;
+		start_iova += total_elt_sz;
+	}
+
+	otx2_npa_dbg("iova %"PRIx64", aligned iova %"PRIx64"", iova - off,
+		     iova);
+	otx2_npa_dbg("length %"PRIu64", aligned length %"PRIu64"",
+		     (uint64_t)(len + off), (uint64_t)len);
+	otx2_npa_dbg("element size %"PRIu64"", (uint64_t)total_elt_sz);
+	otx2_npa_dbg("requested objects %"PRIu64", possible objects %"PRIu64"",
+		     (uint64_t)max_objs, (uint64_t)(len / total_elt_sz));
+	otx2_npa_dbg("L1D set distribution :");
+	for (int i = 0; i < OTX2_L1D_NB_SETS; i++)
+		otx2_npa_dbg("set[%d] : objects : %"PRIu64"", i,
+			     distribution[i]);
 
 	npa_lf_aura_op_range_set(mp->pool_id, iova, iova + len);
 
