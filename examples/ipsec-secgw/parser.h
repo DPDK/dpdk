@@ -75,6 +75,9 @@ parse_sp6_tokens(char **tokens, uint32_t n_tokens,
 	struct parse_status *status);
 
 void
+sa_sort_arr(void);
+
+void
 parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	struct parse_status *status);
 

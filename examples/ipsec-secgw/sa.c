@@ -133,11 +133,15 @@ const struct supported_aead_algo aead_algos[] = {
 	}
 };
 
-static struct ipsec_sa sa_out[IPSEC_SA_MAX_ENTRIES];
+#define SA_INIT_NB	128
+
+static struct ipsec_sa *sa_out;
+static uint32_t sa_out_sz;
 static uint32_t nb_sa_out;
 static struct ipsec_sa_cnt sa_out_cnt;
 
-static struct ipsec_sa sa_in[IPSEC_SA_MAX_ENTRIES];
+static struct ipsec_sa *sa_in;
+static uint32_t sa_in_sz;
 static uint32_t nb_sa_in;
 static struct ipsec_sa_cnt sa_in_cnt;
 
@@ -224,6 +228,31 @@ parse_key_string(const char *key_str, uint8_t *key)
 	return nb_bytes;
 }
 
+static int
+extend_sa_arr(struct ipsec_sa **sa_tbl, uint32_t cur_cnt, uint32_t *cur_sz)
+{
+	if (*sa_tbl == NULL) {
+		*sa_tbl = calloc(SA_INIT_NB, sizeof(struct ipsec_sa));
+		if (*sa_tbl == NULL)
+			return -1;
+		*cur_sz = SA_INIT_NB;
+		return 0;
+	}
+
+	if (cur_cnt >= *cur_sz) {
+		*sa_tbl = realloc(*sa_tbl,
+			*cur_sz * sizeof(struct ipsec_sa) * 2);
+		if (*sa_tbl == NULL)
+			return -1;
+		/* clean reallocated extra space */
+		memset(&(*sa_tbl)[*cur_sz], 0,
+			*cur_sz * sizeof(struct ipsec_sa));
+		*cur_sz *= 2;
+	}
+
+	return 0;
+}
+
 void
 parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	struct parse_status *status)
@@ -246,23 +275,15 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	if (strcmp(tokens[0], "in") == 0) {
 		ri = &nb_sa_in;
 		sa_cnt = &sa_in_cnt;
-
-		APP_CHECK(*ri <= IPSEC_SA_MAX_ENTRIES - 1, status,
-			"too many sa rules, abort insertion\n");
-		if (status->status < 0)
+		if (extend_sa_arr(&sa_in, nb_sa_in, &sa_in_sz) < 0)
 			return;
-
 		rule = &sa_in[*ri];
 		rule->direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
 	} else {
 		ri = &nb_sa_out;
 		sa_cnt = &sa_out_cnt;
-
-		APP_CHECK(*ri <= IPSEC_SA_MAX_ENTRIES - 1, status,
-			"too many sa rules, abort insertion\n");
-		if (status->status < 0)
+		if (extend_sa_arr(&sa_out, nb_sa_out, &sa_out_sz) < 0)
 			return;
-
 		rule = &sa_out[*ri];
 		rule->direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 	}
@@ -1320,13 +1341,24 @@ ipsec_satbl_init(struct sa_ctx *ctx, uint32_t nb_ent, int32_t socket)
 	return rc;
 }
 
+static int
+sa_cmp(const void *p, const void *q)
+{
+	uint32_t spi1 = ((const struct ipsec_sa *)p)->spi;
+	uint32_t spi2 = ((const struct ipsec_sa *)q)->spi;
+
+	return (int)(spi1 - spi2);
+}
+
 /*
  * Walk through all SA rules to find an SA with given SPI
  */
 int
 sa_spi_present(struct sa_ctx *sa_ctx, uint32_t spi, int inbound)
 {
-	uint32_t i, num;
+	uint32_t num;
+	struct ipsec_sa *sa;
+	struct ipsec_sa tmpl;
 	const struct ipsec_sa *sar;
 
 	sar = sa_ctx->sa;
@@ -1335,10 +1367,11 @@ sa_spi_present(struct sa_ctx *sa_ctx, uint32_t spi, int inbound)
 	else
 		num = nb_sa_out;
 
-	for (i = 0; i != num; i++) {
-		if (sar[i].spi == spi)
-			return i;
-	}
+	tmpl.spi = spi;
+
+	sa = bsearch(&tmpl, sar, num, sizeof(struct ipsec_sa), sa_cmp);
+	if (sa != NULL)
+		return RTE_PTR_DIFF(sa, sar) / sizeof(struct ipsec_sa);
 
 	return -ENOENT;
 }
@@ -1530,4 +1563,11 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 			*tx_offloads |= DEV_TX_OFFLOAD_SECURITY;
 	}
 	return 0;
+}
+
+void
+sa_sort_arr(void)
+{
+	qsort(sa_in, nb_sa_in, sizeof(struct ipsec_sa), sa_cmp);
+	qsort(sa_out, nb_sa_out, sizeof(struct ipsec_sa), sa_cmp);
 }

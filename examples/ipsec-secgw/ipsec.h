@@ -37,7 +37,6 @@
 
 #define DEFAULT_MAX_CATEGORIES	1
 
-#define IPSEC_SA_MAX_ENTRIES (128) /* must be power of 2, max 2 power 30 */
 #define INVALID_SPI (0)
 
 #define DISCARD	INVALID_SPI
