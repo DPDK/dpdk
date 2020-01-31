@@ -848,7 +848,7 @@ sa_create(const char *name, int32_t socket_id, uint32_t nb_sa)
 		return NULL;
 	}
 
-	sa_ctx = rte_malloc(NULL, sizeof(struct sa_ctx) +
+	sa_ctx = rte_zmalloc(NULL, sizeof(struct sa_ctx) +
 		sizeof(struct ipsec_sa) * nb_sa, RTE_CACHE_LINE_SIZE);
 
 	if (sa_ctx == NULL) {
@@ -1460,9 +1460,6 @@ inbound_sa_lookup(struct sa_ctx *sa_ctx, struct rte_mbuf *pkts[],
 		void *sa_arr[], uint16_t nb_pkts)
 {
 	uint32_t i;
-	struct ip *ip;
-	uint32_t *src4_addr;
-	uint8_t *src6_addr;
 	void *result_sa;
 	struct ipsec_sa *sa;
 
@@ -1488,32 +1485,7 @@ inbound_sa_lookup(struct sa_ctx *sa_ctx, struct rte_mbuf *pkts[],
 			intsa |= IPSEC_SA_OFFLOAD_FALLBACK_FLAG;
 			result_sa = (void *)intsa;
 		}
-
-		ip = rte_pktmbuf_mtod(pkts[i], struct ip *);
-		switch (WITHOUT_TRANSPORT_VERSION(sa->flags)) {
-		case IP4_TUNNEL:
-			src4_addr = RTE_PTR_ADD(ip,
-				offsetof(struct ip, ip_src));
-			if ((ip->ip_v == IPVERSION) &&
-					(sa->src.ip.ip4 == *src4_addr) &&
-					(sa->dst.ip.ip4 == *(src4_addr + 1)))
-				sa_arr[i] = result_sa;
-			else
-				sa_arr[i] = NULL;
-			break;
-		case IP6_TUNNEL:
-			src6_addr = RTE_PTR_ADD(ip,
-				offsetof(struct ip6_hdr, ip6_src));
-			if ((ip->ip_v == IP6_VERSION) &&
-				!memcmp(&sa->src.ip.ip6.ip6, src6_addr, 16) &&
-				!memcmp(&sa->dst.ip.ip6.ip6, src6_addr + 16, 16))
-				sa_arr[i] = result_sa;
-			else
-				sa_arr[i] = NULL;
-			break;
-		case TRANSPORT:
-			sa_arr[i] = result_sa;
-		}
+		sa_arr[i] = result_sa;
 	}
 }
 

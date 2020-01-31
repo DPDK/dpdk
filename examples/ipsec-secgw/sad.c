@@ -3,9 +3,16 @@
  */
 
 #include <rte_errno.h>
+#include <rte_malloc.h>
 
 #include "ipsec.h"
 #include "sad.h"
+
+RTE_DEFINE_PER_LCORE(struct ipsec_sad_cache, sad_cache) = {
+	.v4 = NULL,
+	.v6 = NULL,
+	.mask = 0,
+};
 
 int
 ipsec_sad_add(struct ipsec_sad *sad, struct ipsec_sa *sa)
@@ -60,6 +67,39 @@ ipsec_sad_add(struct ipsec_sad *sad, struct ipsec_sa *sa)
 			if (ret != 0)
 				return ret;
 		}
+	}
+
+	return 0;
+}
+
+/*
+ * Init per lcore SAD cache.
+ * Must be called by every processing lcore.
+ */
+int
+ipsec_sad_lcore_cache_init(uint32_t nb_cache_ent)
+{
+	uint32_t cache_elem;
+	size_t cache_mem_sz;
+	struct ipsec_sad_cache *cache;
+
+	cache = &RTE_PER_LCORE(sad_cache);
+
+	cache_elem = rte_align32pow2(nb_cache_ent);
+	cache_mem_sz = sizeof(struct ipsec_sa *) * cache_elem;
+
+	if (cache_mem_sz != 0) {
+		cache->v4 = rte_zmalloc_socket(NULL, cache_mem_sz,
+			RTE_CACHE_LINE_SIZE, rte_socket_id());
+		if (cache->v4 == NULL)
+			return -rte_errno;
+
+		cache->v6 = rte_zmalloc_socket(NULL, cache_mem_sz,
+			RTE_CACHE_LINE_SIZE, rte_socket_id());
+		if (cache->v6 == NULL)
+			return -rte_errno;
+
+		cache->mask = cache_elem - 1;
 	}
 
 	return 0;

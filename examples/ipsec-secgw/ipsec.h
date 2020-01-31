@@ -81,6 +81,7 @@ struct app_sa_prm {
 	uint32_t enable; /* use librte_ipsec API for ipsec pkt processing */
 	uint32_t window_size; /* replay window size */
 	uint32_t enable_esn;  /* enable/disable ESN support */
+	uint32_t cache_sz;	/* per lcore SA cache size */
 	uint64_t flags;       /* rte_ipsec_sa_prm.flags */
 };
 

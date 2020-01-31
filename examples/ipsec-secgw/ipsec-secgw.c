@@ -46,6 +46,7 @@
 
 #include "ipsec.h"
 #include "parser.h"
+#include "sad.h"
 
 #define RTE_LOGTYPE_IPSEC RTE_LOGTYPE_USER1
 
@@ -192,7 +193,10 @@ static uint32_t mtu_size = RTE_ETHER_MTU;
 static uint64_t frag_ttl_ns = MAX_FRAG_TTL_NS;
 
 /* application wide librte_ipsec/SA parameters */
-struct app_sa_prm app_sa_prm = {.enable = 0};
+struct app_sa_prm app_sa_prm = {
+			.enable = 0,
+			.cache_sz = SA_CACHE_SZ
+		};
 static const char *cfgfile;
 
 struct lcore_rx_queue {
@@ -1102,7 +1106,7 @@ main_loop(__attribute__((unused)) void *dummy)
 	uint16_t portid;
 	uint8_t queueid;
 	struct lcore_conf *qconf;
-	int32_t socket_id;
+	int32_t rc, socket_id;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1)
 			/ US_PER_S * BURST_TX_DRAIN_US;
 	struct lcore_rx_queue *rxql;
@@ -1131,6 +1135,14 @@ main_loop(__attribute__((unused)) void *dummy)
 			socket_ctx[socket_id].session_priv_pool;
 	qconf->frag.pool_dir = socket_ctx[socket_id].mbuf_pool;
 	qconf->frag.pool_indir = socket_ctx[socket_id].mbuf_pool_indir;
+
+	rc = ipsec_sad_lcore_cache_init(app_sa_prm.cache_sz);
+	if (rc != 0) {
+		RTE_LOG(ERR, IPSEC,
+			"SAD cache init on lcore %u, failed with code: %d\n",
+			lcore_id, rc);
+		return rc;
+	}
 
 	if (qconf->nb_rx_queue == 0) {
 		RTE_LOG(DEBUG, IPSEC, "lcore %u has nothing to do\n",
@@ -1271,6 +1283,7 @@ print_usage(const char *prgname)
 		" [-w REPLAY_WINDOW_SIZE]"
 		" [-e]"
 		" [-a]"
+		" [-c]"
 		" -f CONFIG_FILE"
 		" --config (port,queue,lcore)[,(port,queue,lcore)]"
 		" [--single-sa SAIDX]"
@@ -1290,6 +1303,8 @@ print_usage(const char *prgname)
 		"     size for each SA\n"
 		"  -e enables ESN\n"
 		"  -a enables SA SQN atomic behaviour\n"
+		"  -c specifies inbound SAD cache size,\n"
+		"     zero value disables the cache (default value: 128)\n"
 		"  -f CONFIG_FILE: Configuration file\n"
 		"  --config (port,queue,lcore): Rx queue configuration\n"
 		"  --single-sa SAIDX: Use single SA index for outbound traffic,\n"
@@ -1442,7 +1457,7 @@ parse_args(int32_t argc, char **argv)
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "aelp:Pu:f:j:w:",
+	while ((opt = getopt_long(argc, argvopt, "aelp:Pu:f:j:w:c:",
 				lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -1500,6 +1515,15 @@ parse_args(int32_t argc, char **argv)
 		case 'a':
 			app_sa_prm.enable = 1;
 			app_sa_prm.flags |= RTE_IPSEC_SAFLAG_SQN_ATOM;
+			break;
+		case 'c':
+			ret = parse_decimal(optarg);
+			if (ret < 0) {
+				printf("Invalid SA cache size: %s\n", optarg);
+				print_usage(prgname);
+				return -1;
+			}
+			app_sa_prm.cache_sz = ret;
 			break;
 		case CMD_LINE_OPT_CONFIG_NUM:
 			ret = parse_config(optarg);
