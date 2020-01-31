@@ -93,7 +93,7 @@ sad_lookup(struct ipsec_sad *sad, struct rte_mbuf *pkts[],
 		esp = rte_pktmbuf_mtod_offset(pkts[i], struct rte_esp_hdr *,
 				pkts[i]->l3_len);
 
-		is_ipv4 = ((ipv4->version_ihl >> 4) == IPVERSION);
+		is_ipv4 = pkts[i]->packet_type & RTE_PTYPE_L3_IPV4;
 		spi = rte_be_to_cpu_32(esp->spi);
 		cache_idx = SPI2IDX(spi, cache->mask);
 

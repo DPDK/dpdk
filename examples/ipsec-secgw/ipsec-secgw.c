@@ -323,6 +323,7 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 		}
 		pkt->l2_len = 0;
 		pkt->l3_len = sizeof(*iph4);
+		pkt->packet_type |= RTE_PTYPE_L3_IPV4;
 	} else if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
 		int next_proto;
 		size_t l3len, ext_len;
@@ -357,6 +358,7 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 		}
 		pkt->l2_len = 0;
 		pkt->l3_len = l3len;
+		pkt->packet_type |= RTE_PTYPE_L3_IPV6;
 	} else {
 		/* Unknown/Unsupported type, drop the packet */
 		RTE_LOG(ERR, IPSEC, "Unsupported packet type 0x%x\n",
