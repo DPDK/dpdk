@@ -394,7 +394,7 @@ __rte_ring_dequeue_elems(struct rte_ring *r, uint32_t cons_head,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects).
+ *   A pointer to a table of objects.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -441,7 +441,7 @@ end:
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects).
+ *   A pointer to a table of objects.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -492,7 +492,7 @@ end:
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects).
+ *   A pointer to a table of objects.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -521,7 +521,7 @@ rte_ring_mp_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects).
+ *   A pointer to a table of objects.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -552,7 +552,7 @@ rte_ring_sp_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects).
+ *   A pointer to a table of objects.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -657,7 +657,7 @@ rte_ring_enqueue_elem(struct rte_ring *r, void *obj, unsigned int esize)
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
+ *   A pointer to a table of objects that will be filled.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -684,7 +684,7 @@ rte_ring_mc_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
+ *   A pointer to a table of objects that will be filled.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -716,7 +716,7 @@ rte_ring_sc_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
+ *   A pointer to a table of objects that will be filled.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -746,7 +746,7 @@ rte_ring_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_p
- *   A pointer to a void * pointer (object) that will be filled.
+ *   A pointer to the object that will be filled.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -770,7 +770,7 @@ rte_ring_mc_dequeue_elem(struct rte_ring *r, void *obj_p,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_p
- *   A pointer to a void * pointer (object) that will be filled.
+ *   A pointer to the object that will be filled.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -798,7 +798,7 @@ rte_ring_sc_dequeue_elem(struct rte_ring *r, void *obj_p,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_p
- *   A pointer to a void * pointer (object) that will be filled.
+ *   A pointer to the object that will be filled.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -824,7 +824,7 @@ rte_ring_dequeue_elem(struct rte_ring *r, void *obj_p, unsigned int esize)
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects).
+ *   A pointer to a table of objects.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -853,7 +853,7 @@ rte_ring_mp_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects).
+ *   A pointer to a table of objects.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -884,7 +884,7 @@ rte_ring_sp_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects).
+ *   A pointer to a table of objects.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -916,7 +916,7 @@ rte_ring_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
+ *   A pointer to a table of objects that will be filled.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -945,7 +945,7 @@ rte_ring_mc_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
+ *   A pointer to a table of objects that will be filled.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
@@ -976,7 +976,7 @@ rte_ring_sc_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
  * @param r
  *   A pointer to the ring structure.
  * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
+ *   A pointer to a table of objects that will be filled.
  * @param esize
  *   The size of ring element, in bytes. It must be a multiple of 4.
  *   This must be the same value used while creating the ring. Otherwise
