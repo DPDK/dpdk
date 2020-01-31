@@ -146,6 +146,13 @@ New Features
   Such algorithm combinations are not supported on GEN1/GEN2 hardware
   and executing the request returns RTE_CRYPTO_OP_STATUS_INVALID_SESSION.
 
+* **Queue-pairs are now thread-safe on Intel QuickAssist Technology (QAT) PMD.**
+
+  Queue-pairs are thread-safe on Intel CPUs but Queues are not (that is, within
+  a single queue-pair all enqueues to the TX queue must be done from one thread
+  and all dequeues from the RX queue must be done from one thread, but enqueues
+  and dequeues may be done in different threads.).
+
 * **Updated the ZUC PMD.**
 
   * Transistioned underlying library from libSSO ZUC to intel-ipsec-mb
@@ -206,6 +213,15 @@ Removed Items
   In order to remove the build time dependency with Linux kernel,
   the Technical Board decided to disable all the kernel modules
   by default from 20.02 version.
+
+* **Removed coalescing feature from Intel QuickAssist Technology (QAT) PMD.**
+
+  The internal tail write coalescing feature was removed as not compatible with
+  dual-thread feature. It was replaced with a threshold feature. At busy times
+  if only a small number of packets can be enqueued, each enqueue causes
+  an expensive MMIO write. These MMIO write occurrences can be optimised by using
+  the new threshold parameter on process start. Please see qat documentation for
+  more details.
 
 
 API Changes
