@@ -47,6 +47,8 @@ union rte_ipsec_sad_key {
 	struct rte_ipsec_sadv6_key	v6;
 };
 
+/** Max number of characters in SAD name. */
+#define RTE_IPSEC_SAD_NAMESIZE		64
 /** Flag to create SAD with ipv6 dip and sip addresses */
 #define RTE_IPSEC_SAD_FLAG_IPV6			0x1
 /** Flag to support reader writer concurrency */

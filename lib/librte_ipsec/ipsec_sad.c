@@ -20,7 +20,6 @@
  * indicate presence of entries with the same SPI in DIP and DIP+SIP tables.
  */
 
-#define IPSEC_SAD_NAMESIZE	64
 #define SAD_PREFIX		"SAD_"
 /* "SAD_<name>" */
 #define SAD_FORMAT		SAD_PREFIX "%s"
@@ -34,7 +33,7 @@ struct hash_cnt {
 };
 
 struct rte_ipsec_sad {
-	char name[IPSEC_SAD_NAMESIZE];
+	char name[RTE_IPSEC_SAD_NAMESIZE];
 	struct rte_hash	*hash[RTE_IPSEC_SAD_KEY_TYPE_MASK];
 	/* Array to track number of more specific rules
 	 * (spi_dip or spi_dip_sip). Used only in add/delete
@@ -231,7 +230,7 @@ struct rte_ipsec_sad *
 rte_ipsec_sad_create(const char *name, const struct rte_ipsec_sad_conf *conf)
 {
 	char hash_name[RTE_HASH_NAMESIZE];
-	char sad_name[IPSEC_SAD_NAMESIZE];
+	char sad_name[RTE_IPSEC_SAD_NAMESIZE];
 	struct rte_tailq_entry *te;
 	struct rte_ipsec_sad_list *sad_list;
 	struct rte_ipsec_sad *sad, *tmp_sad = NULL;
@@ -249,8 +248,8 @@ rte_ipsec_sad_create(const char *name, const struct rte_ipsec_sad_conf *conf)
 		return NULL;
 	}
 
-	ret = snprintf(sad_name, IPSEC_SAD_NAMESIZE, SAD_FORMAT, name);
-	if (ret < 0 || ret >= IPSEC_SAD_NAMESIZE) {
+	ret = snprintf(sad_name, RTE_IPSEC_SAD_NAMESIZE, SAD_FORMAT, name);
+	if (ret < 0 || ret >= RTE_IPSEC_SAD_NAMESIZE) {
 		rte_errno = ENAMETOOLONG;
 		return NULL;
 	}
@@ -326,7 +325,8 @@ rte_ipsec_sad_create(const char *name, const struct rte_ipsec_sad_conf *conf)
 	/* guarantee there's no existing */
 	TAILQ_FOREACH(te, sad_list, next) {
 		tmp_sad = (struct rte_ipsec_sad *)te->data;
-		if (strncmp(sad_name, tmp_sad->name, IPSEC_SAD_NAMESIZE) == 0)
+		if (strncmp(sad_name, tmp_sad->name,
+				RTE_IPSEC_SAD_NAMESIZE) == 0)
 			break;
 	}
 	if (te != NULL) {
@@ -354,14 +354,14 @@ rte_ipsec_sad_create(const char *name, const struct rte_ipsec_sad_conf *conf)
 struct rte_ipsec_sad *
 rte_ipsec_sad_find_existing(const char *name)
 {
-	char sad_name[IPSEC_SAD_NAMESIZE];
+	char sad_name[RTE_IPSEC_SAD_NAMESIZE];
 	struct rte_ipsec_sad *sad = NULL;
 	struct rte_tailq_entry *te;
 	struct rte_ipsec_sad_list *sad_list;
 	int ret;
 
-	ret = snprintf(sad_name, IPSEC_SAD_NAMESIZE, SAD_FORMAT, name);
-	if (ret < 0 || ret >= IPSEC_SAD_NAMESIZE) {
+	ret = snprintf(sad_name, RTE_IPSEC_SAD_NAMESIZE, SAD_FORMAT, name);
+	if (ret < 0 || ret >= RTE_IPSEC_SAD_NAMESIZE) {
 		rte_errno = ENAMETOOLONG;
 		return NULL;
 	}
@@ -372,7 +372,7 @@ rte_ipsec_sad_find_existing(const char *name)
 	rte_mcfg_tailq_read_lock();
 	TAILQ_FOREACH(te, sad_list, next) {
 		sad = (struct rte_ipsec_sad *) te->data;
-		if (strncmp(sad_name, sad->name, IPSEC_SAD_NAMESIZE) == 0)
+		if (strncmp(sad_name, sad->name, RTE_IPSEC_SAD_NAMESIZE) == 0)
 			break;
 	}
 	rte_mcfg_tailq_read_unlock();
