@@ -11,7 +11,9 @@ Instead of having a linked list of infinite size, the rte_ring has the following
 
 *   FIFO
 
-*   Maximum size is fixed, the pointers are stored in a table
+*   Maximum size is fixed, the objects are stored in a table
+
+*   Objects can be pointers or elements of multiple of 4 byte size
 
 *   Lockless implementation
 
@@ -29,19 +31,19 @@ Instead of having a linked list of infinite size, the rte_ring has the following
 
 The advantages of this data structure over a linked list queue are as follows:
 
-*   Faster; only requires a single Compare-And-Swap instruction of sizeof(void \*) instead of several double-Compare-And-Swap instructions.
+*   Faster; only requires a single 32 bit Compare-And-Swap instruction instead of several pointer size Compare-And-Swap instructions.
 
 *   Simpler than a full lockless queue.
 
 *   Adapted to bulk enqueue/dequeue operations.
-    As pointers are stored in a table, a dequeue of several objects will not produce as many cache misses as in a linked queue.
+    As objects are stored in a table, a dequeue of several objects will not produce as many cache misses as in a linked queue.
     Also, a bulk dequeue of many objects does not cost more than a dequeue of a simple object.
 
 The disadvantages:
 
 *   Size is fixed
 
-*   Having many rings costs more in terms of memory than a linked list queue. An empty ring contains at least N pointers.
+*   Having many rings costs more in terms of memory than a linked list queue. An empty ring contains at least N objects.
 
 A simplified representation of a Ring is shown in with consumer and producer head and tail pointers to objects stored in the data structure.
 
@@ -125,7 +127,7 @@ Enqueue Second Step
 
 The second step is to modify *ring->prod_head* in ring structure to point to the same location as prod_next.
 
-A pointer to the added object is copied in the ring (obj4).
+The added object is copied in the ring (obj4).
 
 
 .. _figure_ring-enqueue2:
@@ -178,7 +180,7 @@ Dequeue Second Step
 
 The second step is to modify ring->cons_head in the ring structure to point to the same location as cons_next.
 
-The pointer to the dequeued object (obj1) is copied in the pointer given by the user.
+The dequeued object (obj1) is copied in the pointer given by the user.
 
 
 .. _figure_ring-dequeue2:
@@ -298,7 +300,7 @@ Modulo 32-bit Indexes
 
 In the preceding figures, the prod_head, prod_tail, cons_head and cons_tail indexes are represented by arrows.
 In the actual implementation, these values are not between 0 and size(ring)-1 as would be assumed.
-The indexes are between 0 and 2^32 -1, and we mask their value when we access the pointer table (the ring itself).
+The indexes are between 0 and 2^32 -1, and we mask their value when we access the object table (the ring itself).
 32-bit modulo also implies that operations on indexes (such as, add/subtract) will automatically do 2^32 modulo
 if the result overflows the 32-bit number range.
 
