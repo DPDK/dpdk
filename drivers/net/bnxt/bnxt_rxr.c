@@ -909,11 +909,8 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 	if (!cfa_code)
 		return;
 
-	if (cfa_code && !bp->mark_table[cfa_code].valid) {
-		PMD_DRV_LOG(WARNING, "Invalid mark_tbl entry! cfa_code: 0x%x\n",
-			    cfa_code);
+	if (cfa_code && !bp->mark_table[cfa_code].valid)
 		return;
-	}
 
 	flags2 = rte_le_to_cpu_16(rxcmp1->flags2);
 	meta = rte_le_to_cpu_32(rxcmp1->metadata);
