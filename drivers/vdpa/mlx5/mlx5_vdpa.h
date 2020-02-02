@@ -70,8 +70,10 @@ struct mlx5_vdpa_query_mr {
 
 struct mlx5_vdpa_virtq {
 	SLIST_ENTRY(mlx5_vdpa_virtq) next;
+	uint8_t enable;
 	uint16_t index;
 	uint16_t vq_size;
+	struct mlx5_vdpa_priv *priv;
 	struct mlx5_devx_obj *virtq;
 	struct mlx5_vdpa_event_qp eqp;
 	struct {
@@ -211,6 +213,19 @@ void mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv);
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv);
+
+/**
+ * Enable\Disable virtq..
+ *
+ * @param[in] virtq
+ *   The vdpa driver private virtq structure.
+ * @param[in] enable
+ *   Set to enable, otherwise disable.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int mlx5_vdpa_virtq_enable(struct mlx5_vdpa_virtq *virtq, int enable);
 
 /**
  * Unset steering and release all its related resources- stop traffic.

@@ -73,7 +73,7 @@ is_virtq_recvq(int virtq_index, int nr_vring)
 }
 
 #define MLX5_VDPA_DEFAULT_RQT_SIZE 512
-static int __rte_unused
+static int
 mlx5_vdpa_rqt_prepare(struct mlx5_vdpa_priv *priv)
 {
 	struct mlx5_vdpa_virtq *virtq;
@@ -91,7 +91,8 @@ mlx5_vdpa_rqt_prepare(struct mlx5_vdpa_priv *priv)
 		return -ENOMEM;
 	}
 	SLIST_FOREACH(virtq, &priv->virtq_list, next) {
-		if (is_virtq_recvq(virtq->index, priv->nr_virtqs)) {
+		if (is_virtq_recvq(virtq->index, priv->nr_virtqs) &&
+		    virtq->enable) {
 			attr->rq_list[i] = virtq->virtq->id;
 			i++;
 		}
@@ -113,6 +114,23 @@ mlx5_vdpa_rqt_prepare(struct mlx5_vdpa_priv *priv)
 			DRV_LOG(ERR, "Failed to modify RQT.");
 	}
 	rte_free(attr);
+	return ret;
+}
+
+int
+mlx5_vdpa_virtq_enable(struct mlx5_vdpa_virtq *virtq, int enable)
+{
+	struct mlx5_vdpa_priv *priv = virtq->priv;
+	int ret = 0;
+
+	if (virtq->enable == !!enable)
+		return 0;
+	virtq->enable = !!enable;
+	if (is_virtq_recvq(virtq->index, priv->nr_virtqs)) {
+		ret = mlx5_vdpa_rqt_prepare(priv);
+		if (ret)
+			virtq->enable = !enable;
+	}
 	return ret;
 }
 

@@ -15,13 +15,13 @@
 static int
 mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 {
-	int i;
+	unsigned int i;
 
 	if (virtq->virtq) {
 		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
 		virtq->virtq = NULL;
 	}
-	for (i = 0; i < 3; ++i) {
+	for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
 		if (virtq->umems[i].obj)
 			claim_zero(mlx5_glue->devx_umem_dereg
 							 (virtq->umems[i].obj));
@@ -60,6 +60,19 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 	priv->features = 0;
 }
 
+static int
+mlx5_vdpa_virtq_modify(struct mlx5_vdpa_virtq *virtq, int state)
+{
+	struct mlx5_devx_virtq_attr attr = {
+			.type = MLX5_VIRTQ_MODIFY_TYPE_STATE,
+			.state = state ? MLX5_VIRTQ_STATE_RDY :
+					 MLX5_VIRTQ_STATE_SUSPEND,
+			.queue_index = virtq->index,
+	};
+
+	return mlx5_devx_cmd_modify_virtq(virtq->virtq, &attr);
+}
+
 static uint64_t
 mlx5_vdpa_hva_to_gpa(struct rte_vhost_memory *mem, uint64_t hva)
 {
@@ -86,7 +99,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv,
 	struct mlx5_devx_virtq_attr attr = {0};
 	uint64_t gpa;
 	int ret;
-	int i;
+	unsigned int i;
 	uint16_t last_avail_idx;
 	uint16_t last_used_idx;
 
@@ -125,7 +138,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv,
 			" need event QPs and event mechanism.", index);
 	}
 	/* Setup 3 UMEMs for each virtq. */
-	for (i = 0; i < 3; ++i) {
+	for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
 		virtq->umems[i].size = priv->caps.umems[i].a * vq.size +
 							  priv->caps.umems[i].b;
 		virtq->umems[i].buf = rte_zmalloc(__func__,
@@ -182,8 +195,12 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv,
 	attr.tis_id = priv->tis->id;
 	attr.queue_index = index;
 	virtq->virtq = mlx5_devx_cmd_create_virtq(priv->ctx, &attr);
+	virtq->priv = priv;
 	if (!virtq->virtq)
 		goto error;
+	if (mlx5_vdpa_virtq_modify(virtq, 1))
+		goto error;
+	virtq->enable = 1;
 	return 0;
 error:
 	mlx5_vdpa_virtq_unset(virtq);

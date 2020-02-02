@@ -106,13 +106,34 @@ mlx5_vdpa_get_protocol_features(int did, uint64_t *features)
 	return 0;
 }
 
+static int
+mlx5_vdpa_set_vring_state(int vid, int vring, int state)
+{
+	int did = rte_vhost_get_vdpa_device_id(vid);
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct mlx5_vdpa_virtq *virtq = NULL;
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -EINVAL;
+	}
+	SLIST_FOREACH(virtq, &priv->virtq_list, next)
+		if (virtq->index == vring)
+			break;
+	if (!virtq) {
+		DRV_LOG(ERR, "Invalid or unconfigured vring id: %d.", vring);
+		return -EINVAL;
+	}
+	return mlx5_vdpa_virtq_enable(virtq, state);
+}
+
 static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_queue_num = mlx5_vdpa_get_queue_num,
 	.get_features = mlx5_vdpa_get_vdpa_features,
 	.get_protocol_features = mlx5_vdpa_get_protocol_features,
 	.dev_conf = NULL,
 	.dev_close = NULL,
-	.set_vring_state = NULL,
+	.set_vring_state = mlx5_vdpa_set_vring_state,
 	.set_features = NULL,
 	.migration_done = NULL,
 	.get_vfio_group_fd = NULL,
