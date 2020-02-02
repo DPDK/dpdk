@@ -209,6 +209,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			goto error;
 		}
 		priv->caps = attr.vdpa;
+		priv->log_max_rqt_size = attr.log_max_rqt_size;
 	}
 	priv->ctx = ctx;
 	priv->dev_addr.pci_addr = pci_dev->addr;

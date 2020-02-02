@@ -11,6 +11,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD) += mlx5_vdpa.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD) += mlx5_vdpa_mem.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD) += mlx5_vdpa_event.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD) += mlx5_vdpa_virtq.c
+SRCS-$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD) += mlx5_vdpa_steer.c
+
 
 # Basic CFLAGS.
 CFLAGS += -O3

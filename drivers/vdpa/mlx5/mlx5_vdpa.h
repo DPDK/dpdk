@@ -81,6 +81,18 @@ struct mlx5_vdpa_virtq {
 	} umems[3];
 };
 
+struct mlx5_vdpa_steer {
+	struct mlx5_devx_obj *rqt;
+	void *domain;
+	void *tbl;
+	struct {
+		struct mlx5dv_flow_matcher *matcher;
+		struct mlx5_devx_obj *tir;
+		void *tir_action;
+		void *flow;
+	} rss[7];
+};
+
 struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	int id; /* vDPA device id. */
@@ -101,7 +113,9 @@ struct mlx5_vdpa_priv {
 	struct mlx5_devx_obj *tis;
 	uint16_t nr_virtqs;
 	uint64_t features; /* Negotiated features. */
+	uint16_t log_max_rqt_size;
 	SLIST_HEAD(virtq_list, mlx5_vdpa_virtq) virtq_list;
+	struct mlx5_vdpa_steer steer;
 	SLIST_HEAD(mr_list, mlx5_vdpa_query_mr) mr_list;
 };
 
@@ -197,5 +211,25 @@ void mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv);
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv);
+
+/**
+ * Unset steering and release all its related resources- stop traffic.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ */
+int mlx5_vdpa_steer_unset(struct mlx5_vdpa_priv *priv);
+
+/**
+ * Setup steering and all its related resources to enable RSS traffic from the
+ * device to all the Rx host queues.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int mlx5_vdpa_steer_setup(struct mlx5_vdpa_priv *priv);
 
 #endif /* RTE_PMD_MLX5_VDPA_H_ */
