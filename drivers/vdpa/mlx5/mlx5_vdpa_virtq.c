@@ -2,9 +2,12 @@
  * Copyright 2019 Mellanox Technologies, Ltd
  */
 #include <string.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 #include <rte_malloc.h>
 #include <rte_errno.h>
+#include <rte_io.h>
 
 #include <mlx5_common.h>
 
@@ -12,11 +15,52 @@
 #include "mlx5_vdpa.h"
 
 
+static void
+mlx5_vdpa_virtq_handler(void *cb_arg)
+{
+	struct mlx5_vdpa_virtq *virtq = cb_arg;
+	struct mlx5_vdpa_priv *priv = virtq->priv;
+	uint64_t buf;
+	int nbytes;
+
+	do {
+		nbytes = read(virtq->intr_handle.fd, &buf, 8);
+		if (nbytes < 0) {
+			if (errno == EINTR ||
+			    errno == EWOULDBLOCK ||
+			    errno == EAGAIN)
+				continue;
+			DRV_LOG(ERR,  "Failed to read kickfd of virtq %d: %s",
+				virtq->index, strerror(errno));
+		}
+		break;
+	} while (1);
+	rte_write32(virtq->index, priv->virtq_db_addr);
+	DRV_LOG(DEBUG, "Ring virtq %u doorbell.", virtq->index);
+}
+
 static int
 mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 {
 	unsigned int i;
+	int retries = MLX5_VDPA_INTR_RETRIES;
+	int ret = -EAGAIN;
 
+	if (virtq->intr_handle.fd) {
+		while (retries-- && ret == -EAGAIN) {
+			ret = rte_intr_callback_unregister(&virtq->intr_handle,
+							mlx5_vdpa_virtq_handler,
+							virtq);
+			if (ret == -EAGAIN) {
+				DRV_LOG(DEBUG, "Try again to unregister fd %d "
+					"of virtq %d interrupt, retries = %d.",
+					virtq->intr_handle.fd,
+					(int)virtq->index, retries);
+				usleep(MLX5_VDPA_INTR_RETRIES_USEC);
+			}
+		}
+		memset(&virtq->intr_handle, 0, sizeof(virtq->intr_handle));
+	}
 	if (virtq->virtq) {
 		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
 		virtq->virtq = NULL;
@@ -56,6 +100,14 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 	if (priv->td) {
 		claim_zero(mlx5_devx_cmd_destroy(priv->td));
 		priv->td = NULL;
+	}
+	if (priv->virtq_db_addr) {
+		claim_zero(munmap(priv->virtq_db_addr, priv->var->length));
+		priv->virtq_db_addr = NULL;
+	}
+	if (priv->var) {
+		mlx5_glue->dv_free_var(priv->var);
+		priv->var = NULL;
 	}
 	priv->features = 0;
 }
@@ -201,6 +253,17 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv,
 	if (mlx5_vdpa_virtq_modify(virtq, 1))
 		goto error;
 	virtq->enable = 1;
+	virtq->intr_handle.fd = vq.kickfd;
+	virtq->intr_handle.type = RTE_INTR_HANDLE_EXT;
+	if (rte_intr_callback_register(&virtq->intr_handle,
+				       mlx5_vdpa_virtq_handler, virtq)) {
+		virtq->intr_handle.fd = 0;
+		DRV_LOG(ERR, "Failed to register virtq %d interrupt.", index);
+		goto error;
+	} else {
+		DRV_LOG(DEBUG, "Register fd %d interrupt for virtq %d.",
+			virtq->intr_handle.fd, index);
+	}
 	return 0;
 error:
 	mlx5_vdpa_virtq_unset(virtq);
@@ -274,6 +337,23 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 	if (ret || mlx5_vdpa_features_validate(priv)) {
 		DRV_LOG(ERR, "Failed to configure negotiated features.");
 		return -1;
+	}
+	priv->var = mlx5_glue->dv_alloc_var(priv->ctx, 0);
+	if (!priv->var) {
+		DRV_LOG(ERR, "Failed to allocate VAR %u.\n", errno);
+		return -1;
+	}
+	/* Always map the entire page. */
+	priv->virtq_db_addr = mmap(NULL, priv->var->length, PROT_READ |
+				   PROT_WRITE, MAP_SHARED, priv->ctx->cmd_fd,
+				   priv->var->mmap_off);
+	if (priv->virtq_db_addr == MAP_FAILED) {
+		DRV_LOG(ERR, "Failed to map doorbell page %u.", errno);
+		priv->virtq_db_addr = NULL;
+		goto error;
+	} else {
+		DRV_LOG(DEBUG, "VAR address of doorbell mapping is %p.",
+			priv->virtq_db_addr);
 	}
 	priv->td = mlx5_devx_cmd_create_td(priv->ctx);
 	if (!priv->td) {
