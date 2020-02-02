@@ -9,9 +9,10 @@ endif
 
 fmt_name = 'mlx5_vdpa'
 allow_experimental_apis = true
-deps += ['hash', 'common_mlx5', 'vhost', 'bus_pci', 'eal']
+deps += ['hash', 'common_mlx5', 'vhost', 'bus_pci', 'eal', 'sched']
 sources = files(
 	'mlx5_vdpa.c',
+	'mlx5_vdpa_mem.c',
 )
 cflags_options = [
 	'-std=c11',

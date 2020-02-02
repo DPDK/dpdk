@@ -7,13 +7,6 @@
 #include <rte_log.h>
 #include <rte_errno.h>
 #include <rte_bus_pci.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-#include <rte_vdpa.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-Wpedantic"
-#endif
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
@@ -21,15 +14,8 @@
 #include <mlx5_prm.h>
 
 #include "mlx5_vdpa_utils.h"
+#include "mlx5_vdpa.h"
 
-
-struct mlx5_vdpa_priv {
-	TAILQ_ENTRY(mlx5_vdpa_priv) next;
-	int id; /* vDPA device id. */
-	struct ibv_context *ctx; /* Device context. */
-	struct rte_vdpa_dev_addr dev_addr;
-	struct mlx5_hca_vdpa_attr caps;
-};
 
 #ifndef VIRTIO_F_ORDER_PLATFORM
 #define VIRTIO_F_ORDER_PLATFORM 36
@@ -243,6 +229,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		goto error;
 	}
+	SLIST_INIT(&priv->mr_list);
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
