@@ -391,6 +391,10 @@ struct mlx5_cqe {
 /* CQE format value. */
 #define MLX5_COMPRESSED 0x3
 
+/* CQ doorbell cmd types. */
+#define MLX5_CQ_DBR_CMD_SOL_ONLY (1 << 24)
+#define MLX5_CQ_DBR_CMD_ALL (0 << 24)
+
 /* Action type of header modification. */
 enum {
 	MLX5_MODIFICATION_TYPE_SET = 0x1,

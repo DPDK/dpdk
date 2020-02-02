@@ -13,6 +13,7 @@ deps += ['hash', 'common_mlx5', 'vhost', 'bus_pci', 'eal', 'sched']
 sources = files(
 	'mlx5_vdpa.c',
 	'mlx5_vdpa_mem.c',
+	'mlx5_vdpa_event.c',
 )
 cflags_options = [
 	'-std=c11',
