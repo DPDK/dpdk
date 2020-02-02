@@ -29,11 +29,35 @@ if [ "$BUILD_32BIT" = "1" ]; then
 fi
 
 OPTS="$OPTS --default-library=$DEF_LIB"
+OPTS="$OPTS --buildtype=debugoptimized"
 meson build --werror -Dexamples=all $OPTS
 ninja -C build
 
 if [ "$AARCH64" != "1" ]; then
     devtools/test-null.sh
+fi
+
+if [ "$ABI_CHECKS" = "1" ]; then
+    REF_GIT_REPO=${REF_GIT_REPO:-https://dpdk.org/git/dpdk}
+    REF_GIT_TAG=${REF_GIT_TAG:-v19.11}
+
+    if [ "$(cat reference/VERSION 2>/dev/null)" != "$REF_GIT_TAG" ]; then
+        rm -rf reference
+    fi
+
+    if [ ! -d reference ]; then
+        refsrcdir=$(readlink -f $(pwd)/../dpdk-$REF_GIT_TAG)
+        git clone --single-branch -b $REF_GIT_TAG $REF_GIT_REPO $refsrcdir
+        meson --werror $OPTS $refsrcdir $refsrcdir/build
+        ninja -C $refsrcdir/build
+        DESTDIR=$(pwd)/reference ninja -C $refsrcdir/build install
+        devtools/gen-abi.sh reference
+        echo $REF_GIT_TAG > reference/VERSION
+    fi
+
+    DESTDIR=$(pwd)/install ninja -C build install
+    devtools/gen-abi.sh install
+    devtools/check-abi.sh reference install ${ABI_CHECKS_WARN_ONLY:-}
 fi
 
 if [ "$RUN_TESTS" = "1" ]; then

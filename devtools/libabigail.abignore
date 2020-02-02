@@ -1,0 +1,13 @@
+[suppress_function]
+        symbol_version = EXPERIMENTAL
+[suppress_variable]
+        symbol_version = EXPERIMENTAL
+
+; Explicit ignore for driver-only ABI
+[suppress_type]
+        name = rte_cryptodev_ops
+; Ignore this enum update as it is part of an experimental API
+[suppress_type]
+        type_kind = enum
+        name = rte_crypto_asym_xform_type
+        changed_enumerators = RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END

@@ -513,6 +513,21 @@ in a single subfolder called "__builds" created in the current directory.
 Setting ``DPDK_BUILD_TEST_DIR`` to an absolute directory path e.g. ``/tmp`` is also supported.
 
 
+Checking ABI compatibility
+--------------------------
+
+By default, ABI compatibility checks are disabled.
+
+To enable them, a reference version must be selected via the environment
+variable ``DPDK_ABI_REF_VERSION``.
+
+The ``devtools/test-build.sh`` and ``devtools/test-meson-builds.sh`` scripts
+then build this reference version in a temporary directory and store the
+results in a subfolder of the current working directory.
+The environment variable ``DPDK_ABI_REF_DIR`` can be set so that the results go
+to a different location.
+
+
 Sending Patches
 ---------------
 

@@ -1,5 +1,8 @@
 language: c
-cache: ccache
+cache:
+  ccache: true
+  directories:
+    - reference
 compiler:
   - gcc
   - clang
@@ -21,7 +24,7 @@ aarch64_packages: &aarch64_packages
 
 extra_packages: &extra_packages
   - *required_packages
-  - [libbsd-dev, libpcap-dev, libcrypto++-dev, libjansson4]
+  - [libbsd-dev, libpcap-dev, libcrypto++-dev, libjansson4, abigail-tools]
 
 build_32b_packages: &build_32b_packages
   - *required_packages
@@ -151,5 +154,18 @@ matrix:
         packages:
           - *required_packages
           - *doc_packages
+  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 ABI_CHECKS=1
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 ABI_CHECKS=1
+    arch: arm64
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *extra_packages
 
 script: ./.ci/${TRAVIS_OS_NAME}-build.sh

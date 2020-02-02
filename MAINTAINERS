@@ -144,8 +144,11 @@ M: Neil Horman <nhorman@tuxdriver.com>
 F: lib/librte_eal/common/include/rte_compat.h
 F: lib/librte_eal/common/include/rte_function_versioning.h
 F: doc/guides/rel_notes/deprecation.rst
+F: devtools/check-abi.sh
 F: devtools/check-abi-version.sh
 F: devtools/check-symbol-change.sh
+F: devtools/gen-abi.sh
+F: devtools/libabigail.abignore
 F: devtools/update-abi.sh
 F: devtools/update_version_map_abi.py
 F: devtools/validate-abi.sh
