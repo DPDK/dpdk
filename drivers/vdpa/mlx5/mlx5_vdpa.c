@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2019 Mellanox Technologies, Ltd
  */
+#include <linux/virtio_net.h>
+
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_errno.h>
@@ -16,6 +18,7 @@
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
 #include <mlx5_devx_cmds.h>
+#include <mlx5_prm.h>
 
 #include "mlx5_vdpa_utils.h"
 
@@ -27,6 +30,27 @@ struct mlx5_vdpa_priv {
 	struct rte_vdpa_dev_addr dev_addr;
 	struct mlx5_hca_vdpa_attr caps;
 };
+
+#ifndef VIRTIO_F_ORDER_PLATFORM
+#define VIRTIO_F_ORDER_PLATFORM 36
+#endif
+
+#ifndef VIRTIO_F_RING_PACKED
+#define VIRTIO_F_RING_PACKED 34
+#endif
+
+#define MLX5_VDPA_DEFAULT_FEATURES ((1ULL << VHOST_USER_F_PROTOCOL_FEATURES) | \
+			    (1ULL << VIRTIO_F_ANY_LAYOUT) | \
+			    (1ULL << VIRTIO_NET_F_MQ) | \
+			    (1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE) | \
+			    (1ULL << VIRTIO_F_ORDER_PLATFORM))
+
+#define MLX5_VDPA_PROTOCOL_FEATURES \
+			    ((1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ) | \
+			     (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD) | \
+			     (1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER) | \
+			     (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) | \
+			     (1ULL << VHOST_USER_PROTOCOL_F_MQ))
 
 TAILQ_HEAD(mlx5_vdpa_privs, mlx5_vdpa_priv) priv_list =
 					      TAILQ_HEAD_INITIALIZER(priv_list);
@@ -68,10 +92,48 @@ mlx5_vdpa_get_queue_num(int did, uint32_t *queue_num)
 	return 0;
 }
 
+static int
+mlx5_vdpa_get_vdpa_features(int did, uint64_t *features)
+{
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -1;
+	}
+	*features = MLX5_VDPA_DEFAULT_FEATURES;
+	if (priv->caps.virtio_queue_type & (1 << MLX5_VIRTQ_TYPE_PACKED))
+		*features |= (1ULL << VIRTIO_F_RING_PACKED);
+	if (priv->caps.tso_ipv4)
+		*features |= (1ULL << VIRTIO_NET_F_HOST_TSO4);
+	if (priv->caps.tso_ipv6)
+		*features |= (1ULL << VIRTIO_NET_F_HOST_TSO6);
+	if (priv->caps.tx_csum)
+		*features |= (1ULL << VIRTIO_NET_F_CSUM);
+	if (priv->caps.rx_csum)
+		*features |= (1ULL << VIRTIO_NET_F_GUEST_CSUM);
+	if (priv->caps.virtio_version_1_0)
+		*features |= (1ULL << VIRTIO_F_VERSION_1);
+	return 0;
+}
+
+static int
+mlx5_vdpa_get_protocol_features(int did, uint64_t *features)
+{
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -1;
+	}
+	*features = MLX5_VDPA_PROTOCOL_FEATURES;
+	return 0;
+}
+
 static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_queue_num = mlx5_vdpa_get_queue_num,
-	.get_features = NULL,
-	.get_protocol_features = NULL,
+	.get_features = mlx5_vdpa_get_vdpa_features,
+	.get_protocol_features = mlx5_vdpa_get_protocol_features,
 	.dev_conf = NULL,
 	.dev_close = NULL,
 	.set_vring_state = NULL,
