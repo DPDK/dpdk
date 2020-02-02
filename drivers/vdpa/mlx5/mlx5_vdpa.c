@@ -15,6 +15,7 @@
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
+#include <mlx5_devx_cmds.h>
 
 #include "mlx5_vdpa_utils.h"
 
@@ -24,6 +25,7 @@ struct mlx5_vdpa_priv {
 	int id; /* vDPA device id. */
 	struct ibv_context *ctx; /* Device context. */
 	struct rte_vdpa_dev_addr dev_addr;
+	struct mlx5_hca_vdpa_attr caps;
 };
 
 TAILQ_HEAD(mlx5_vdpa_privs, mlx5_vdpa_priv) priv_list =
@@ -31,8 +33,43 @@ TAILQ_HEAD(mlx5_vdpa_privs, mlx5_vdpa_priv) priv_list =
 static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
 int mlx5_vdpa_logtype;
 
+static struct mlx5_vdpa_priv *
+mlx5_vdpa_find_priv_resource_by_did(int did)
+{
+	struct mlx5_vdpa_priv *priv;
+	int found = 0;
+
+	pthread_mutex_lock(&priv_list_lock);
+	TAILQ_FOREACH(priv, &priv_list, next) {
+		if (did == priv->id) {
+			found = 1;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&priv_list_lock);
+	if (!found) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	return priv;
+}
+
+static int
+mlx5_vdpa_get_queue_num(int did, uint32_t *queue_num)
+{
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -1;
+	}
+	*queue_num = priv->caps.max_num_virtio_queues;
+	return 0;
+}
+
 static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
-	.get_queue_num = NULL,
+	.get_queue_num = mlx5_vdpa_get_queue_num,
 	.get_features = NULL,
 	.get_protocol_features = NULL,
 	.dev_conf = NULL,
@@ -67,6 +104,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct ibv_device *ibv_match = NULL;
 	struct mlx5_vdpa_priv *priv = NULL;
 	struct ibv_context *ctx = NULL;
+	struct mlx5_hca_attr attr;
 	int ret;
 
 	if (mlx5_class_get(pci_dev->device.devargs) != MLX5_CLASS_VDPA) {
@@ -119,6 +157,20 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "Failed to allocate private memory.");
 		rte_errno = ENOMEM;
 		goto error;
+	}
+	ret = mlx5_devx_cmd_query_hca_attr(ctx, &attr);
+	if (ret) {
+		DRV_LOG(ERR, "Unable to read HCA capabilities.");
+		rte_errno = ENOTSUP;
+		goto error;
+	} else {
+		if (!attr.vdpa.valid || !attr.vdpa.max_num_virtio_queues) {
+			DRV_LOG(ERR, "Not enough capabilities to support vdpa,"
+				" maybe old FW/OFED version?");
+			rte_errno = ENOTSUP;
+			goto error;
+		}
+		priv->caps = attr.vdpa;
 	}
 	priv->ctx = ctx;
 	priv->dev_addr.pci_addr = pci_dev->addr;
