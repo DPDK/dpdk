@@ -16,6 +16,7 @@ sources = files(
 	'mlx5_vdpa_event.c',
 	'mlx5_vdpa_virtq.c',
 	'mlx5_vdpa_steer.c',
+	'mlx5_vdpa_lm.c',
 )
 cflags_options = [
 	'-std=c11',

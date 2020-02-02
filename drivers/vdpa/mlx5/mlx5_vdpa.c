@@ -19,7 +19,8 @@
 			    (1ULL << VIRTIO_F_ANY_LAYOUT) | \
 			    (1ULL << VIRTIO_NET_F_MQ) | \
 			    (1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE) | \
-			    (1ULL << VIRTIO_F_ORDER_PLATFORM))
+			    (1ULL << VIRTIO_F_ORDER_PLATFORM) | \
+			    (1ULL << VHOST_F_LOG_ALL))
 
 #define MLX5_VDPA_PROTOCOL_FEATURES \
 			    ((1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ) | \
@@ -127,6 +128,45 @@ mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 	return mlx5_vdpa_virtq_enable(virtq, state);
 }
 
+static int
+mlx5_vdpa_features_set(int vid)
+{
+	int did = rte_vhost_get_vdpa_device_id(vid);
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	uint64_t log_base, log_size;
+	uint64_t features;
+	int ret;
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -EINVAL;
+	}
+	ret = rte_vhost_get_negotiated_features(vid, &features);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to get negotiated features.");
+		return ret;
+	}
+	if (RTE_VHOST_NEED_LOG(features)) {
+		ret = rte_vhost_get_log_base(vid, &log_base, &log_size);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to get log base.");
+			return ret;
+		}
+		ret = mlx5_vdpa_dirty_bitmap_set(priv, log_base, log_size);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to set dirty bitmap.");
+			return ret;
+		}
+		DRV_LOG(INFO, "mlx5 vdpa: enabling dirty logging...");
+		ret = mlx5_vdpa_logging_enable(priv, 1);
+		if (ret) {
+			DRV_LOG(ERR, "Failed t enable dirty logging.");
+			return ret;
+		}
+	}
+	return 0;
+}
+
 static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_queue_num = mlx5_vdpa_get_queue_num,
 	.get_features = mlx5_vdpa_get_vdpa_features,
@@ -134,7 +174,7 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.dev_conf = NULL,
 	.dev_close = NULL,
 	.set_vring_state = mlx5_vdpa_set_vring_state,
-	.set_features = NULL,
+	.set_features = mlx5_vdpa_features_set,
 	.migration_done = NULL,
 	.get_vfio_group_fd = NULL,
 	.get_vfio_device_fd = NULL,
