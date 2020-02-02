@@ -57,6 +57,7 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 		claim_zero(mlx5_devx_cmd_destroy(priv->td));
 		priv->td = NULL;
 	}
+	priv->features = 0;
 }
 
 static uint64_t
@@ -94,6 +95,14 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv,
 		return -1;
 	virtq->index = index;
 	virtq->vq_size = vq.size;
+	attr.tso_ipv4 = !!(priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO4));
+	attr.tso_ipv6 = !!(priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO6));
+	attr.tx_csum = !!(priv->features & (1ULL << VIRTIO_NET_F_CSUM));
+	attr.rx_csum = !!(priv->features & (1ULL << VIRTIO_NET_F_GUEST_CSUM));
+	attr.virtio_version_1_0 = !!(priv->features & (1ULL <<
+							VIRTIO_F_VERSION_1));
+	attr.type = (priv->features & (1ULL << VIRTIO_F_RING_PACKED)) ?
+			MLX5_VIRTQ_TYPE_PACKED : MLX5_VIRTQ_TYPE_SPLIT;
 	/*
 	 * No need event QPs creation when the guest in poll mode or when the
 	 * capability allows it.
@@ -139,24 +148,29 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv,
 		attr.umems[i].offset = 0;
 		attr.umems[i].size = virtq->umems[i].size;
 	}
-	gpa = mlx5_vdpa_hva_to_gpa(priv->vmem, (uint64_t)(uintptr_t)vq.desc);
-	if (!gpa) {
-		DRV_LOG(ERR, "Fail to get GPA for descriptor ring.");
-		goto error;
+	if (attr.type == MLX5_VIRTQ_TYPE_SPLIT) {
+		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem,
+					   (uint64_t)(uintptr_t)vq.desc);
+		if (!gpa) {
+			DRV_LOG(ERR, "Failed to get descriptor ring GPA.");
+			goto error;
+		}
+		attr.desc_addr = gpa;
+		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem,
+					   (uint64_t)(uintptr_t)vq.used);
+		if (!gpa) {
+			DRV_LOG(ERR, "Failed to get GPA for used ring.");
+			goto error;
+		}
+		attr.used_addr = gpa;
+		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem,
+					   (uint64_t)(uintptr_t)vq.avail);
+		if (!gpa) {
+			DRV_LOG(ERR, "Failed to get GPA for available ring.");
+			goto error;
+		}
+		attr.available_addr = gpa;
 	}
-	attr.desc_addr = gpa;
-	gpa = mlx5_vdpa_hva_to_gpa(priv->vmem, (uint64_t)(uintptr_t)vq.used);
-	if (!gpa) {
-		DRV_LOG(ERR, "Fail to get GPA for used ring.");
-		goto error;
-	}
-	attr.used_addr = gpa;
-	gpa = mlx5_vdpa_hva_to_gpa(priv->vmem, (uint64_t)(uintptr_t)vq.avail);
-	if (!gpa) {
-		DRV_LOG(ERR, "Fail to get GPA for available ring.");
-		goto error;
-	}
-	attr.available_addr = gpa;
 	rte_vhost_get_vring_base(priv->vid, index, &last_avail_idx,
 				 &last_used_idx);
 	DRV_LOG(INFO, "vid %d: Init last_avail_idx=%d, last_used_idx=%d for "
@@ -176,6 +190,61 @@ error:
 	return -1;
 }
 
+static int
+mlx5_vdpa_features_validate(struct mlx5_vdpa_priv *priv)
+{
+	if (priv->features & (1ULL << VIRTIO_F_RING_PACKED)) {
+		if (!(priv->caps.virtio_queue_type & (1 <<
+						     MLX5_VIRTQ_TYPE_PACKED))) {
+			DRV_LOG(ERR, "Failed to configur PACKED mode for vdev "
+				"%d - it was not reported by HW/driver"
+				" capability.", priv->vid);
+			return -ENOTSUP;
+		}
+	}
+	if (priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO4)) {
+		if (!priv->caps.tso_ipv4) {
+			DRV_LOG(ERR, "Failed to enable TSO4 for vdev %d - TSO4"
+				" was not reported by HW/driver capability.",
+				priv->vid);
+			return -ENOTSUP;
+		}
+	}
+	if (priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO6)) {
+		if (!priv->caps.tso_ipv6) {
+			DRV_LOG(ERR, "Failed to enable TSO6 for vdev %d - TSO6"
+				" was not reported by HW/driver capability.",
+				priv->vid);
+			return -ENOTSUP;
+		}
+	}
+	if (priv->features & (1ULL << VIRTIO_NET_F_CSUM)) {
+		if (!priv->caps.tx_csum) {
+			DRV_LOG(ERR, "Failed to enable CSUM for vdev %d - CSUM"
+				" was not reported by HW/driver capability.",
+				priv->vid);
+			return -ENOTSUP;
+		}
+	}
+	if (priv->features & (1ULL << VIRTIO_NET_F_GUEST_CSUM)) {
+		if (!priv->caps.rx_csum) {
+			DRV_LOG(ERR, "Failed to enable GUEST CSUM for vdev %d"
+				" GUEST CSUM was not reported by HW/driver "
+				"capability.", priv->vid);
+			return -ENOTSUP;
+		}
+	}
+	if (priv->features & (1ULL << VIRTIO_F_VERSION_1)) {
+		if (!priv->caps.virtio_version_1_0) {
+			DRV_LOG(ERR, "Failed to enable version 1 for vdev %d "
+				"version 1 was not reported by HW/driver"
+				" capability.", priv->vid);
+			return -ENOTSUP;
+		}
+	}
+	return 0;
+}
+
 int
 mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 {
@@ -183,7 +252,12 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 	struct mlx5_vdpa_virtq *virtq;
 	uint32_t i;
 	uint16_t nr_vring = rte_vhost_get_vring_num(priv->vid);
+	int ret = rte_vhost_get_negotiated_features(priv->vid, &priv->features);
 
+	if (ret || mlx5_vdpa_features_validate(priv)) {
+		DRV_LOG(ERR, "Failed to configure negotiated features.");
+		return -1;
+	}
 	priv->td = mlx5_devx_cmd_create_td(priv->ctx);
 	if (!priv->td) {
 		DRV_LOG(ERR, "Failed to create transport domain.");

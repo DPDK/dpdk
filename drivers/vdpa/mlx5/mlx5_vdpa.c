@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2019 Mellanox Technologies, Ltd
  */
-#include <linux/virtio_net.h>
-
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_errno.h>
@@ -16,14 +14,6 @@
 #include "mlx5_vdpa_utils.h"
 #include "mlx5_vdpa.h"
 
-
-#ifndef VIRTIO_F_ORDER_PLATFORM
-#define VIRTIO_F_ORDER_PLATFORM 36
-#endif
-
-#ifndef VIRTIO_F_RING_PACKED
-#define VIRTIO_F_RING_PACKED 34
-#endif
 
 #define MLX5_VDPA_DEFAULT_FEATURES ((1ULL << VHOST_USER_F_PROTOCOL_FEATURES) | \
 			    (1ULL << VIRTIO_F_ANY_LAYOUT) | \

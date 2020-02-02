@@ -5,6 +5,7 @@
 #ifndef RTE_PMD_MLX5_VDPA_H_
 #define RTE_PMD_MLX5_VDPA_H_
 
+#include <linux/virtio_net.h>
 #include <sys/queue.h>
 
 #ifdef PEDANTIC
@@ -25,6 +26,14 @@
 
 #define MLX5_VDPA_INTR_RETRIES 256
 #define MLX5_VDPA_INTR_RETRIES_USEC 1000
+
+#ifndef VIRTIO_F_ORDER_PLATFORM
+#define VIRTIO_F_ORDER_PLATFORM 36
+#endif
+
+#ifndef VIRTIO_F_RING_PACKED
+#define VIRTIO_F_RING_PACKED 34
+#endif
 
 struct mlx5_vdpa_cq {
 	uint16_t log_desc_n;
@@ -91,6 +100,7 @@ struct mlx5_vdpa_priv {
 	struct mlx5_devx_obj *td;
 	struct mlx5_devx_obj *tis;
 	uint16_t nr_virtqs;
+	uint64_t features; /* Negotiated features. */
 	SLIST_HEAD(virtq_list, mlx5_vdpa_virtq) virtq_list;
 	SLIST_HEAD(mr_list, mlx5_vdpa_query_mr) mr_list;
 };
