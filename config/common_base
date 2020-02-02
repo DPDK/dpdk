@@ -366,6 +366,11 @@ CONFIG_RTE_LIBRTE_MLX4_DEBUG=n
 CONFIG_RTE_LIBRTE_MLX5_PMD=n
 CONFIG_RTE_LIBRTE_MLX5_DEBUG=n
 
+#
+# Compile vdpa-oriented Mellanox ConnectX-6 & Bluefield (MLX5) PMD
+#
+CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD=n
+
 # Linking method for mlx4/5 dependency on ibverbs and related libraries
 # Default linking is dynamic by linker.
 # Other options are: dynamic by dlopen at run-time, or statically embedded.

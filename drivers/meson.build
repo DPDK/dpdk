@@ -42,6 +42,7 @@ foreach class:dpdk_driver_classes
 		build = true # set to false to disable, e.g. missing deps
 		reason = '<unknown reason>' # set if build == false to explain
 		name = drv
+		fmt_name = ''
 		allow_experimental_apis = false
 		sources = []
 		objs = []
@@ -98,8 +99,11 @@ foreach class:dpdk_driver_classes
 		else
 			class_drivers += name
 
-			dpdk_conf.set(config_flag_fmt.format(name.to_upper()),1)
-			lib_name = driver_name_fmt.format(name)
+			if fmt_name == ''
+				fmt_name = name
+			endif
+			dpdk_conf.set(config_flag_fmt.format(fmt_name.to_upper()),1)
+			lib_name = driver_name_fmt.format(fmt_name)
 
 			if allow_experimental_apis
 				cflags += '-DALLOW_EXPERIMENTAL_API'

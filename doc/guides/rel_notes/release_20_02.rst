@@ -113,6 +113,11 @@ New Features
   * Added support for RSS using L3/L4 source/destination only.
   * Added support for matching on GTP tunnel header item.
 
+* **Add new vDPA PMD based on Mellanox devices**
+
+  Added a new Mellanox vDPA  (``mlx5_vdpa``) PMD.
+  See the :doc:`../vdpadevs/mlx5` guide for more details on this driver.
+
 * **Updated testpmd application.**
 
   Added support for ESP and L2TPv3 over IP rte_flow patterns to the testpmd

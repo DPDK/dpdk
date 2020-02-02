@@ -13,3 +13,4 @@ which can be used from an application through vhost API.
 
     features_overview
     ifc
+    mlx5

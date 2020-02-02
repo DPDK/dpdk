@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2019 Mellanox Technologies, Ltd
+
+if not is_linux
+	build = false
+	reason = 'only supported on Linux'
+	subdir_done()
+endif
+
+fmt_name = 'mlx5_vdpa'
+allow_experimental_apis = true
+deps += ['hash', 'common_mlx5', 'vhost', 'bus_pci', 'eal']
+sources = files(
+	'mlx5_vdpa.c',
+)
+cflags_options = [
+	'-std=c11',
+	'-Wno-strict-prototypes',
+	'-D_BSD_SOURCE',
+	'-D_DEFAULT_SOURCE',
+	'-D_XOPEN_SOURCE=600'
+]
+foreach option:cflags_options
+	if cc.has_argument(option)
+		cflags += option
+	endif
+endforeach
+
+if get_option('buildtype').contains('debug')
+	cflags += [ '-pedantic', '-DPEDANTIC' ]
+else
+	cflags += [ '-UPEDANTIC' ]
+endif

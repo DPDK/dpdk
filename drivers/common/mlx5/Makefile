@@ -10,15 +10,16 @@ LIB_GLUE_BASE = librte_pmd_mlx5_glue.so
 LIB_GLUE_VERSION = 20.02.0
 
 # Sources.
+ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)),y)
 ifneq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
-SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_glue.c
+SRCS-y += mlx5_glue.c
 endif
-SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_devx_cmds.c
-SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_common.c
-SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_nl.c
-
+SRCS-y += mlx5_devx_cmds.c
+SRCS-y += mlx5_common.c
+SRCS-y += mlx5_nl.c
 ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
-INSTALL-$(CONFIG_RTE_LIBRTE_MLX5_PMD)-lib += $(LIB_GLUE)
+INSTALL-y-lib += $(LIB_GLUE)
+endif
 endif
 
 # Basic CFLAGS.
@@ -317,7 +318,9 @@ mlx5_autoconf.h: mlx5_autoconf.h.new
 		cmp '$<' '$@' $(AUTOCONF_OUTPUT) || \
 		mv '$<' '$@'
 
-$(SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD):.c=.o): mlx5_autoconf.h
+ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)),y)
+$(SRCS-y:.c=.o): mlx5_autoconf.h
+endif
 
 # Generate dependency plug-in for rdma-core when the PMD must not be linked
 # directly, so that applications do not inherit this dependency.

@@ -35,7 +35,7 @@ ifneq (,$(findstring y,$(IAVF-y)))
 DIRS-y += iavf
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_MLX5_PMD),y)
+ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)),y)
 DIRS-y += mlx5
 endif
 

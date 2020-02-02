@@ -1107,6 +1107,13 @@ F: drivers/vdpa/ifc/
 F: doc/guides/vdpadevs/ifc.rst
 F: doc/guides/vdpadevs/features/ifcvf.ini
 
+Mellanox mlx5 vDPA
+M: Matan Azrad <matan@mellanox.com>
+M: Viacheslav Ovsiienko <viacheslavo@mellanox.com>
+F: drivers/vdpa/mlx5/
+F: doc/guides/vdpadevs/mlx5.rst
+F: doc/guides/vdpadevs/features/mlx5.ini
+
 
 Eventdev Drivers
 ----------------
