@@ -29,7 +29,7 @@ CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -Wno-strict-prototypes
 LDLIBS += -lrte_common_mlx5
-LDLIBS += -lrte_eal -lrte_vhost -lrte_kvargs -lrte_bus_pci -lrte_sched
+LDLIBS += -lrte_eal -lrte_vhost -lrte_kvargs -lrte_pci -lrte_bus_pci -lrte_sched
 
 # A few warnings cannot be avoided in external headers.
 CFLAGS += -Wno-error=cast-qual

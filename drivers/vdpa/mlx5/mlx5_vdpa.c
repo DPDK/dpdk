@@ -1,15 +1,19 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2019 Mellanox Technologies, Ltd
  */
+#include <unistd.h>
+
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_errno.h>
 #include <rte_bus_pci.h>
+#include <rte_pci.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
+#include <mlx5_nl.h>
 
 #include "mlx5_vdpa_utils.h"
 #include "mlx5_vdpa.h"
@@ -228,6 +232,145 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_notify_area = NULL,
 };
 
+static struct ibv_device *
+mlx5_vdpa_get_ib_device_match(struct rte_pci_addr *addr)
+{
+	int n;
+	struct ibv_device **ibv_list = mlx5_glue->get_device_list(&n);
+	struct ibv_device *ibv_match = NULL;
+
+	if (!ibv_list) {
+		rte_errno = ENOSYS;
+		return NULL;
+	}
+	while (n-- > 0) {
+		struct rte_pci_addr pci_addr;
+
+		DRV_LOG(DEBUG, "Checking device \"%s\"..", ibv_list[n]->name);
+		if (mlx5_dev_to_pci_addr(ibv_list[n]->ibdev_path, &pci_addr))
+			continue;
+		if (memcmp(addr, &pci_addr, sizeof(pci_addr)))
+			continue;
+		ibv_match = ibv_list[n];
+		break;
+	}
+	if (!ibv_match)
+		rte_errno = ENOENT;
+	mlx5_glue->free_device_list(ibv_list);
+	return ibv_match;
+}
+
+/* Try to disable ROCE by Netlink\Devlink. */
+static int
+mlx5_vdpa_nl_roce_disable(const char *addr)
+{
+	int nlsk_fd = mlx5_nl_init(NETLINK_GENERIC);
+	int devlink_id;
+	int enable;
+	int ret;
+
+	if (nlsk_fd < 0)
+		return nlsk_fd;
+	devlink_id = mlx5_nl_devlink_family_id_get(nlsk_fd);
+	if (devlink_id < 0) {
+		ret = devlink_id;
+		DRV_LOG(DEBUG, "Failed to get devlink id for ROCE operations by"
+			" Netlink.");
+		goto close;
+	}
+	ret = mlx5_nl_enable_roce_get(nlsk_fd, devlink_id, addr, &enable);
+	if (ret) {
+		DRV_LOG(DEBUG, "Failed to get ROCE enable by Netlink: %d.",
+			ret);
+		goto close;
+	} else if (!enable) {
+		DRV_LOG(INFO, "ROCE has already disabled(Netlink).");
+		goto close;
+	}
+	ret = mlx5_nl_enable_roce_set(nlsk_fd, devlink_id, addr, 0);
+	if (ret)
+		DRV_LOG(DEBUG, "Failed to disable ROCE by Netlink: %d.", ret);
+	else
+		DRV_LOG(INFO, "ROCE is disabled by Netlink successfully.");
+close:
+	close(nlsk_fd);
+	return ret;
+}
+
+/* Try to disable ROCE by sysfs. */
+static int
+mlx5_vdpa_sys_roce_disable(const char *addr)
+{
+	FILE *file_o;
+	int enable;
+	int ret;
+
+	MKSTR(file_p, "/sys/bus/pci/devices/%s/roce_enable", addr);
+	file_o = fopen(file_p, "rb");
+	if (!file_o) {
+		rte_errno = ENOTSUP;
+		return -ENOTSUP;
+	}
+	ret = fscanf(file_o, "%d", &enable);
+	if (ret != 1) {
+		rte_errno = EINVAL;
+		ret = EINVAL;
+		goto close;
+	} else if (!enable) {
+		ret = 0;
+		DRV_LOG(INFO, "ROCE has already disabled(sysfs).");
+		goto close;
+	}
+	fclose(file_o);
+	file_o = fopen(file_p, "wb");
+	if (!file_o) {
+		rte_errno = ENOTSUP;
+		return -ENOTSUP;
+	}
+	fprintf(file_o, "0\n");
+	ret = 0;
+close:
+	if (ret)
+		DRV_LOG(DEBUG, "Failed to disable ROCE by sysfs: %d.", ret);
+	else
+		DRV_LOG(INFO, "ROCE is disabled by sysfs successfully.");
+	fclose(file_o);
+	return ret;
+}
+
+#define MLX5_VDPA_MAX_RETRIES 20
+#define MLX5_VDPA_USEC 1000
+static int
+mlx5_vdpa_roce_disable(struct rte_pci_addr *addr, struct ibv_device **ibv)
+{
+	char addr_name[64] = {0};
+
+	rte_pci_device_name(addr, addr_name, sizeof(addr_name));
+	/* Firstly try to disable ROCE by Netlink and fallback to sysfs. */
+	if (mlx5_vdpa_nl_roce_disable(addr_name) == 0 ||
+	    mlx5_vdpa_sys_roce_disable(addr_name) == 0) {
+		/*
+		 * Succeed to disable ROCE, wait for the IB device to appear
+		 * again after reload.
+		 */
+		int r;
+		struct ibv_device *ibv_new;
+
+		for (r = MLX5_VDPA_MAX_RETRIES; r; r--) {
+			ibv_new = mlx5_vdpa_get_ib_device_match(addr);
+			if (ibv_new) {
+				*ibv = ibv_new;
+				return 0;
+			}
+			usleep(MLX5_VDPA_USEC);
+		}
+		DRV_LOG(ERR, "Cannot much device %s after ROCE disable, "
+			"retries exceed %d", addr_name, MLX5_VDPA_MAX_RETRIES);
+		rte_errno = EAGAIN;
+	}
+	return -rte_errno;
+}
+
 /**
  * DPDK callback to register a PCI device.
  *
@@ -246,8 +389,7 @@ static int
 mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		    struct rte_pci_device *pci_dev __rte_unused)
 {
-	struct ibv_device **ibv_list;
-	struct ibv_device *ibv_match = NULL;
+	struct ibv_device *ibv;
 	struct mlx5_vdpa_priv *priv = NULL;
 	struct ibv_context *ctx = NULL;
 	struct mlx5_hca_attr attr;
@@ -258,42 +400,25 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			" driver.");
 		return 1;
 	}
-	errno = 0;
-	ibv_list = mlx5_glue->get_device_list(&ret);
-	if (!ibv_list) {
-		rte_errno = ENOSYS;
-		DRV_LOG(ERR, "Failed to get device list, is ib_uverbs loaded?");
-		return -rte_errno;
-	}
-	while (ret-- > 0) {
-		struct rte_pci_addr pci_addr;
-
-		DRV_LOG(DEBUG, "Checking device \"%s\"..", ibv_list[ret]->name);
-		if (mlx5_dev_to_pci_addr(ibv_list[ret]->ibdev_path, &pci_addr))
-			continue;
-		if (pci_dev->addr.domain != pci_addr.domain ||
-		    pci_dev->addr.bus != pci_addr.bus ||
-		    pci_dev->addr.devid != pci_addr.devid ||
-		    pci_dev->addr.function != pci_addr.function)
-			continue;
-		DRV_LOG(INFO, "PCI information matches for device \"%s\".",
-			ibv_list[ret]->name);
-		ibv_match = ibv_list[ret];
-		break;
-	}
-	mlx5_glue->free_device_list(ibv_list);
-	if (!ibv_match) {
+	ibv = mlx5_vdpa_get_ib_device_match(&pci_dev->addr);
+	if (!ibv) {
 		DRV_LOG(ERR, "No matching IB device for PCI slot "
-			"%" SCNx32 ":%" SCNx8 ":%" SCNx8 ".%" SCNx8 ".",
-			pci_dev->addr.domain, pci_dev->addr.bus,
-			pci_dev->addr.devid, pci_dev->addr.function);
-		rte_errno = ENOENT;
+			PCI_PRI_FMT ".", pci_dev->addr.domain,
+			pci_dev->addr.bus, pci_dev->addr.devid,
+			pci_dev->addr.function);
+		return -rte_errno;
+	} else {
+		DRV_LOG(INFO, "PCI information matches for device \"%s\".",
+			ibv->name);
+	}
+	if (mlx5_vdpa_roce_disable(&pci_dev->addr, &ibv) != 0) {
+		DRV_LOG(WARNING, "Failed to disable ROCE for \"%s\".",
+			ibv->name);
 		return -rte_errno;
 	}
-	ctx = mlx5_glue->dv_open_device(ibv_match);
+	ctx = mlx5_glue->dv_open_device(ibv);
 	if (!ctx) {
-		DRV_LOG(ERR, "Failed to open IB device \"%s\".",
-			ibv_match->name);
+		DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
 		rte_errno = ENODEV;
 		return -rte_errno;
 	}
