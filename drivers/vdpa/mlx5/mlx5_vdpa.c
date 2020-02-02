@@ -167,12 +167,59 @@ mlx5_vdpa_features_set(int vid)
 	return 0;
 }
 
+static int
+mlx5_vdpa_dev_close(int vid)
+{
+	int did = rte_vhost_get_vdpa_device_id(vid);
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	int ret = 0;
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -1;
+	}
+	if (priv->configured)
+		ret |= mlx5_vdpa_lm_log(priv);
+	mlx5_vdpa_cqe_event_unset(priv);
+	ret |= mlx5_vdpa_steer_unset(priv);
+	mlx5_vdpa_virtqs_release(priv);
+	mlx5_vdpa_event_qp_global_release(priv);
+	mlx5_vdpa_mem_dereg(priv);
+	priv->configured = 0;
+	priv->vid = 0;
+	return ret;
+}
+
+static int
+mlx5_vdpa_dev_config(int vid)
+{
+	int did = rte_vhost_get_vdpa_device_id(vid);
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -EINVAL;
+	}
+	if (priv->configured && mlx5_vdpa_dev_close(vid)) {
+		DRV_LOG(ERR, "Failed to reconfigure vid %d.", vid);
+		return -1;
+	}
+	priv->vid = vid;
+	if (mlx5_vdpa_mem_register(priv) || mlx5_vdpa_virtqs_prepare(priv) ||
+	    mlx5_vdpa_steer_setup(priv) || mlx5_vdpa_cqe_event_setup(priv)) {
+		mlx5_vdpa_dev_close(vid);
+		return -1;
+	}
+	priv->configured = 1;
+	return 0;
+}
+
 static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_queue_num = mlx5_vdpa_get_queue_num,
 	.get_features = mlx5_vdpa_get_vdpa_features,
 	.get_protocol_features = mlx5_vdpa_get_protocol_features,
-	.dev_conf = NULL,
-	.dev_close = NULL,
+	.dev_conf = mlx5_vdpa_dev_config,
+	.dev_close = mlx5_vdpa_dev_close,
 	.set_vring_state = mlx5_vdpa_set_vring_state,
 	.set_features = mlx5_vdpa_features_set,
 	.migration_done = NULL,
@@ -321,12 +368,15 @@ mlx5_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 			break;
 		}
 	}
-	if (found) {
+	if (found)
 		TAILQ_REMOVE(&priv_list, priv, next);
+	pthread_mutex_unlock(&priv_list_lock);
+	if (found) {
+		if (priv->configured)
+			mlx5_vdpa_dev_close(priv->vid);
 		mlx5_glue->close_device(priv->ctx);
 		rte_free(priv);
 	}
-	pthread_mutex_unlock(&priv_list_lock);
 	return 0;
 }
 
