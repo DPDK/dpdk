@@ -230,6 +230,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto error;
 	}
 	SLIST_INIT(&priv->mr_list);
+	SLIST_INIT(&priv->virtq_list);
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);

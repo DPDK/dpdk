@@ -59,6 +59,19 @@ struct mlx5_vdpa_query_mr {
 	int is_indirect;
 };
 
+struct mlx5_vdpa_virtq {
+	SLIST_ENTRY(mlx5_vdpa_virtq) next;
+	uint16_t index;
+	uint16_t vq_size;
+	struct mlx5_devx_obj *virtq;
+	struct mlx5_vdpa_event_qp eqp;
+	struct {
+		struct mlx5dv_devx_umem *obj;
+		void *buf;
+		uint32_t size;
+	} umems[3];
+};
+
 struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	int id; /* vDPA device id. */
@@ -75,6 +88,10 @@ struct mlx5_vdpa_priv {
 	struct mlx5dv_devx_event_channel *eventc;
 	struct mlx5dv_devx_uar *uar;
 	struct rte_intr_handle intr_handle;
+	struct mlx5_devx_obj *td;
+	struct mlx5_devx_obj *tis;
+	uint16_t nr_virtqs;
+	SLIST_HEAD(virtq_list, mlx5_vdpa_virtq) virtq_list;
 	SLIST_HEAD(mr_list, mlx5_vdpa_query_mr) mr_list;
 };
 
@@ -151,5 +168,24 @@ int mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv);
  *   The vdpa driver private structure.
  */
 void mlx5_vdpa_cqe_event_unset(struct mlx5_vdpa_priv *priv);
+
+/**
+ * Release a virtq and all its related resources.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ */
+void mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv);
+
+/**
+ * Create all the HW virtqs resources and all their related resources.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv);
 
 #endif /* RTE_PMD_MLX5_VDPA_H_ */
