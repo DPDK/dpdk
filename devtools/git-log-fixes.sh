@@ -94,11 +94,23 @@ stable_tag () # <hash>
 	fi
 }
 
+# print a marker for fixes tag presence
+fixes_tag () # <hash>
+{
+        if git log --format='%b' -1 $1 | grep -qi '^Fixes: *' ; then
+                echo 'F'
+        else
+                echo '-'
+        fi
+}
+
 git log --oneline --reverse $range |
 while read id headline ; do
 	origins=$(origin_filter $id)
 	stable=$(stable_tag $id)
-	[ "$stable" = "S" ] || [ -n "$origins" ] || echo "$headline" | grep -q fix || continue
+	fixes=$(fixes_tag $id)
+	[ "$stable" = "S" ] || [ "$fixes" = "F" ] || [ -n "$origins" ] || \
+		echo "$headline" | grep -q fix || continue
 	version=$(commit_version $id)
 	if [ -n "$origins" ] ; then
 		origver="$(origin_version $origins)"
@@ -108,5 +120,5 @@ while read id headline ; do
 	else
 		origver='N/A'
 	fi
-	printf '%s %7s %s %s (%s)\n' $version $id $stable "$headline" "$origver"
+	printf '%s %7s %s %s %s (%s)\n' $version $id $stable $fixes "$headline" "$origver"
 done
