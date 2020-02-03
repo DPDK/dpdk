@@ -116,6 +116,7 @@ l2fwd_poll_lcore_config(struct l2fwd_resources *rsrc)
 
 		/* get the lcore_id for this port */
 		while (rte_lcore_is_enabled(rx_lcore_id) == 0 ||
+		       rx_lcore_id == rte_get_master_lcore() ||
 		       poll_rsrc->lcore_queue_conf[rx_lcore_id].n_rx_port ==
 		       rsrc->rx_queue_per_lcore) {
 			rx_lcore_id++;
