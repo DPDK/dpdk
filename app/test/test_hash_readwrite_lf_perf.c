@@ -1241,7 +1241,7 @@ err:
 }
 
 static int
-test_hash_readwrite_lf_main(void)
+test_hash_readwrite_lf_perf_main(void)
 {
 	/*
 	 * Variables used to choose different tests.
@@ -1254,7 +1254,7 @@ test_hash_readwrite_lf_main(void)
 	int ext_bkt = 0;
 
 	if (rte_lcore_count() < 2) {
-		printf("Not enough cores for hash_readwrite_lf_autotest, expecting at least 2\n");
+		printf("Not enough cores for hash_readwrite_lf_perf_autotest, expecting at least 2\n");
 		return TEST_SKIPPED;
 	}
 
@@ -1431,4 +1431,5 @@ results:
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(hash_readwrite_lf_autotest, test_hash_readwrite_lf_main);
+REGISTER_TEST_COMMAND(hash_readwrite_lf_perf_autotest,
+	test_hash_readwrite_lf_perf_main);
