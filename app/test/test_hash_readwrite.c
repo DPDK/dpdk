@@ -121,7 +121,7 @@ test_hash_readwrite_worker(__attribute__((unused)) void *arg)
 }
 
 static int
-init_params(int use_ext, int use_htm, int use_jhash)
+init_params(int use_ext, int use_htm, int rw_lf, int use_jhash)
 {
 	unsigned int i;
 
@@ -140,15 +140,16 @@ init_params(int use_ext, int use_htm, int use_jhash)
 	else
 		hash_params.hash_func = rte_hash_crc;
 
+	hash_params.extra_flag = RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
 	if (use_htm)
-		hash_params.extra_flag =
-			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT |
-			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
-			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
+		hash_params.extra_flag |=
+			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT;
+	if (rw_lf)
+		hash_params.extra_flag |=
+			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
 	else
-		hash_params.extra_flag =
-			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
-			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
+		hash_params.extra_flag |=
+			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
 
 	if (use_ext)
 		hash_params.extra_flag |=
@@ -195,7 +196,7 @@ err:
 }
 
 static int
-test_hash_readwrite_functional(int use_ext, int use_htm)
+test_hash_readwrite_functional(int use_htm, int use_rw_lf, int use_ext)
 {
 	unsigned int i;
 	const void *next_key;
@@ -214,7 +215,7 @@ test_hash_readwrite_functional(int use_ext, int use_htm)
 	rte_atomic64_init(&ginsertions);
 	rte_atomic64_clear(&ginsertions);
 
-	if (init_params(use_ext, use_htm, use_jhash) != 0)
+	if (init_params(use_ext, use_htm, use_rw_lf, use_jhash) != 0)
 		goto err;
 
 	if (use_ext)
@@ -229,6 +230,8 @@ test_hash_readwrite_functional(int use_ext, int use_htm)
 		tbl_rw_test_param.num_insert
 		* slave_cnt;
 
+	printf("\nHTM = %d, RW-LF = %d, EXT-Table = %d\n",
+		use_htm, use_rw_lf, use_ext);
 	printf("++++++++Start function tests:+++++++++\n");
 
 	/* Fire all threads. */
@@ -379,7 +382,7 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 	rte_atomic64_init(&gwrite_cycles);
 	rte_atomic64_clear(&gwrite_cycles);
 
-	if (init_params(0, use_htm, use_jhash) != 0)
+	if (init_params(0, use_htm, 0, use_jhash) != 0)
 		goto err;
 
 	/*
@@ -700,7 +703,6 @@ test_hash_rw_func_main(void)
 	 * than writer threads. This is to timing either reader threads or
 	 * writer threads for performance numbers.
 	 */
-	int use_htm, use_ext;
 	unsigned int i = 0, core_id = 0;
 
 	if (rte_lcore_count() < 3) {
@@ -721,29 +723,41 @@ test_hash_rw_func_main(void)
 
 		printf("Test read-write with Hardware transactional memory\n");
 
-		use_htm = 1;
-		use_ext = 0;
-
-		if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+		/* htm = 1, rw_lf = 0, ext = 0 */
+		if (test_hash_readwrite_functional(1, 0, 0) < 0)
 			return -1;
 
-		use_ext = 1;
-		if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+		/* htm = 1, rw_lf = 1, ext = 0 */
+		if (test_hash_readwrite_functional(1, 1, 0) < 0)
 			return -1;
 
+		/* htm = 1, rw_lf = 0, ext = 1 */
+		if (test_hash_readwrite_functional(1, 0, 1) < 0)
+			return -1;
+
+		/* htm = 1, rw_lf = 1, ext = 1 */
+		if (test_hash_readwrite_functional(1, 1, 1) < 0)
+			return -1;
 	} else {
 		printf("Hardware transactional memory (lock elision) "
 			"is NOT supported\n");
 	}
 
 	printf("Test read-write without Hardware transactional memory\n");
-	use_htm = 0;
-	use_ext = 0;
-	if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+	/* htm = 0, rw_lf = 0, ext = 0 */
+	if (test_hash_readwrite_functional(0, 0, 0) < 0)
 		return -1;
 
-	use_ext = 1;
-	if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+	/* htm = 0, rw_lf = 1, ext = 0 */
+	if (test_hash_readwrite_functional(0, 1, 0) < 0)
+		return -1;
+
+	/* htm = 0, rw_lf = 0, ext = 1 */
+	if (test_hash_readwrite_functional(0, 0, 1) < 0)
+		return -1;
+
+	/* htm = 0, rw_lf = 1, ext = 1 */
+	if (test_hash_readwrite_functional(0, 1, 1) < 0)
 		return -1;
 
 	return 0;
