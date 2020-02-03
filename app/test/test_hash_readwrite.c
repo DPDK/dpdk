@@ -606,7 +606,7 @@ err:
 }
 
 static int
-test_hash_readwrite_main(void)
+test_hash_rw_perf_main(void)
 {
 	/*
 	 * Variables used to choose different tests.
@@ -615,7 +615,7 @@ test_hash_readwrite_main(void)
 	 * than writer threads. This is to timing either reader threads or
 	 * writer threads for performance numbers.
 	 */
-	int use_htm, use_ext,  reader_faster;
+	int use_htm, reader_faster;
 	unsigned int i = 0, core_id = 0;
 
 	if (rte_lcore_count() < 3) {
@@ -637,14 +637,6 @@ test_hash_readwrite_main(void)
 		printf("Test read-write with Hardware transactional memory\n");
 
 		use_htm = 1;
-		use_ext = 0;
-
-		if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
-			return -1;
-
-		use_ext = 1;
-		if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
-			return -1;
 
 		reader_faster = 1;
 		if (test_hash_readwrite_perf(&htm_results, use_htm,
@@ -662,13 +654,6 @@ test_hash_readwrite_main(void)
 
 	printf("Test read-write without Hardware transactional memory\n");
 	use_htm = 0;
-	use_ext = 0;
-	if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
-		return -1;
-
-	use_ext = 1;
-	if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
-		return -1;
 
 	reader_faster = 1;
 	if (test_hash_readwrite_perf(&non_htm_results, use_htm,
@@ -705,4 +690,64 @@ test_hash_readwrite_main(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(hash_readwrite_autotest, test_hash_readwrite_main);
+static int
+test_hash_rw_func_main(void)
+{
+	/*
+	 * Variables used to choose different tests.
+	 * use_htm indicates if hardware transactional memory should be used.
+	 * reader_faster indicates if the reader threads should finish earlier
+	 * than writer threads. This is to timing either reader threads or
+	 * writer threads for performance numbers.
+	 */
+	int use_htm, use_ext;
+	unsigned int i = 0, core_id = 0;
+
+	if (rte_lcore_count() < 3) {
+		printf("Not enough cores for hash_readwrite_autotest, expecting at least 3\n");
+		return TEST_SKIPPED;
+	}
+
+	RTE_LCORE_FOREACH_SLAVE(core_id) {
+		slave_core_ids[i] = core_id;
+		i++;
+	}
+
+	setlocale(LC_NUMERIC, "");
+
+	if (rte_tm_supported()) {
+		printf("Hardware transactional memory (lock elision) "
+			"is supported\n");
+
+		printf("Test read-write with Hardware transactional memory\n");
+
+		use_htm = 1;
+		use_ext = 0;
+
+		if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+			return -1;
+
+		use_ext = 1;
+		if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+			return -1;
+
+	} else {
+		printf("Hardware transactional memory (lock elision) "
+			"is NOT supported\n");
+	}
+
+	printf("Test read-write without Hardware transactional memory\n");
+	use_htm = 0;
+	use_ext = 0;
+	if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+		return -1;
+
+	use_ext = 1;
+	if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+		return -1;
+
+	return 0;
+}
+
+REGISTER_TEST_COMMAND(hash_readwrite_func_autotest, test_hash_rw_func_main);
+REGISTER_TEST_COMMAND(hash_readwrite_perf_autotest, test_hash_rw_perf_main);

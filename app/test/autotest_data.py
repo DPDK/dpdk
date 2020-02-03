@@ -664,8 +664,14 @@ non_parallel_test_list = [
         "Report":  None,
     },
     {
-        "Name":    "Hash read-write concurrency autotest",
-        "Command": "hash_readwrite_autotest",
+        "Name":    "Hash read-write concurrency functional autotest",
+        "Command": "hash_readwrite_func_autotest",
+        "Func":    default_autotest,
+        "Report":  None,
+    },
+    {
+        "Name":    "Hash read-write concurrency perf autotest",
+        "Command": "hash_readwrite_perf_autotest",
         "Func":    default_autotest,
         "Report":  None,
     },
