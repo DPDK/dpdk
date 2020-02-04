@@ -52,6 +52,13 @@ static const char * const valid_arguments[] = {
 	NULL
 };
 
+static const struct rte_eth_link pmd_link = {
+	.link_speed = ETH_SPEED_NUM_10G,
+	.link_duplex = ETH_LINK_FULL_DUPLEX,
+	.link_status = ETH_LINK_DOWN,
+	.link_autoneg = ETH_LINK_AUTONEG
+};
+
 #define MEMIF_MP_SEND_REGION		"memif_mp_send_region"
 
 
@@ -1488,6 +1495,7 @@ memif_create(struct rte_vdev_device *vdev, enum memif_role_t role,
 	data = eth_dev->data;
 	data->dev_private = pmd;
 	data->numa_node = numa_node;
+	data->dev_link = pmd_link;
 	data->mac_addrs = ether_addr;
 
 	eth_dev->dev_ops = &ops;
