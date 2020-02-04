@@ -30,4 +30,8 @@ int otx2_sec_idev_tx_cpt_qp_add(uint16_t port_id, struct otx2_cpt_qp *qp);
 
 int otx2_sec_idev_tx_cpt_qp_remove(struct otx2_cpt_qp *qp);
 
+int otx2_sec_idev_tx_cpt_qp_put(struct otx2_cpt_qp *qp);
+
+int otx2_sec_idev_tx_cpt_qp_get(uint16_t port_id, struct otx2_cpt_qp **qp);
+
 #endif /* _OTX2_SEC_IDEV_H_ */

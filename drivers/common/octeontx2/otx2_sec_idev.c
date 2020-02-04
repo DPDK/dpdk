@@ -118,3 +118,66 @@ unlock:
 	rte_spinlock_unlock(&cfg->tx_cpt_lock);
 	return ret;
 }
+
+int
+otx2_sec_idev_tx_cpt_qp_get(uint16_t port_id, struct otx2_cpt_qp **qp)
+{
+	struct otx2_sec_idev_cfg *cfg;
+	uint16_t index;
+	int i, ret;
+
+	if (port_id > OTX2_MAX_INLINE_PORTS || qp == NULL)
+		return -EINVAL;
+
+	cfg = &sec_cfg[port_id];
+
+	rte_spinlock_lock(&cfg->tx_cpt_lock);
+
+	index = cfg->tx_cpt_idx;
+
+	/* Get the next index with valid data */
+	for (i = 0; i < OTX2_MAX_CPT_QP_PER_PORT; i++) {
+		if (cfg->tx_cpt[index].qp != NULL)
+			break;
+		index = (index + 1) % OTX2_MAX_CPT_QP_PER_PORT;
+	}
+
+	if (i >= OTX2_MAX_CPT_QP_PER_PORT) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	*qp = cfg->tx_cpt[index].qp;
+	rte_atomic16_inc(&cfg->tx_cpt[index].ref_cnt);
+
+	cfg->tx_cpt_idx = (index + 1) % OTX2_MAX_CPT_QP_PER_PORT;
+
+	ret = 0;
+
+unlock:
+	rte_spinlock_unlock(&cfg->tx_cpt_lock);
+	return ret;
+}
+
+int
+otx2_sec_idev_tx_cpt_qp_put(struct otx2_cpt_qp *qp)
+{
+	struct otx2_sec_idev_cfg *cfg;
+	uint16_t port_id;
+	int i;
+
+	if (qp == NULL)
+		return -EINVAL;
+
+	for (port_id = 0; port_id < OTX2_MAX_INLINE_PORTS; port_id++) {
+		cfg = &sec_cfg[port_id];
+		for (i = 0; i < OTX2_MAX_CPT_QP_PER_PORT; i++) {
+			if (cfg->tx_cpt[i].qp == qp) {
+				rte_atomic16_dec(&cfg->tx_cpt[i].ref_cnt);
+				return 0;
+			}
+		}
+	}
+
+	return -EINVAL;
+}
