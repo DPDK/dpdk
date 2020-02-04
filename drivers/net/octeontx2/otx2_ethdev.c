@@ -706,6 +706,9 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 			  NIX_TX_OFFLOAD_OL3_OL4_CSUM_F |
 			  NIX_TX_OFFLOAD_L3_L4_CSUM_F);
 
+	if (conf & DEV_TX_OFFLOAD_SECURITY)
+		flags |= NIX_TX_OFFLOAD_SECURITY_F;
+
 	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
 		flags |= NIX_TX_OFFLOAD_TSTAMP_F;
 

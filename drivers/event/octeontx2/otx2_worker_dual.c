@@ -307,7 +307,7 @@ otx2_ssogws_dual_deq_seg_timeout_burst_ ##name(void *port,		\
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
 
-#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)			\
+#define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
 uint16_t __hot								\
 otx2_ssogws_dual_tx_adptr_enq_ ## name(void *port,			\
 				       struct rte_event ev[],		\
@@ -324,7 +324,7 @@ otx2_ssogws_dual_tx_adptr_enq_ ## name(void *port,			\
 SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
 
-#define T(name, f5, f4, f3, f2, f1, f0, sz, flags)			\
+#define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
 uint16_t __hot								\
 otx2_ssogws_dual_tx_adptr_enq_seg_ ## name(void *port,			\
 					   struct rte_event ev[],	\
