@@ -754,6 +754,34 @@ eth_sec_ipsec_cfg(struct rte_eth_dev *eth_dev, uint8_t tt)
 }
 
 int
+otx2_eth_sec_update_tag_type(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_aq_enq_rsp *rsp;
+	struct nix_aq_enq_req *aq;
+	int ret;
+
+	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = 0; /* Read RQ:0 context */
+	aq->ctype = NIX_AQ_CTYPE_RQ;
+	aq->op = NIX_AQ_INSTOP_READ;
+
+	ret = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (ret < 0) {
+		otx2_err("Could not read RQ context");
+		return ret;
+	}
+
+	/* Update tag type */
+	ret = eth_sec_ipsec_cfg(eth_dev, rsp->rq.sso_tt);
+	if (ret < 0)
+		otx2_err("Could not update sec eth tag type");
+
+	return ret;
+}
+
+int
 otx2_eth_sec_init(struct rte_eth_dev *eth_dev)
 {
 	const size_t sa_width = sizeof(struct otx2_ipsec_fp_in_sa);
