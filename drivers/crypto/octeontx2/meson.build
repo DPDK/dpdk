@@ -9,6 +9,7 @@ deps += ['bus_pci']
 deps += ['common_cpt']
 deps += ['common_octeontx2']
 deps += ['ethdev']
+deps += ['security']
 name = 'octeontx2_crypto'
 
 allow_experimental_apis = true
@@ -32,5 +33,6 @@ endforeach
 
 includes += include_directories('../../common/cpt')
 includes += include_directories('../../common/octeontx2')
+includes += include_directories('../../crypto/octeontx2')
 includes += include_directories('../../mempool/octeontx2')
 includes += include_directories('../../net/octeontx2')

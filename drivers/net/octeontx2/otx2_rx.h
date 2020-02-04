@@ -5,6 +5,12 @@
 #ifndef __OTX2_RX_H__
 #define __OTX2_RX_H__
 
+#include <rte_ether.h>
+
+#include "otx2_common.h"
+#include "otx2_ethdev_sec.h"
+#include "otx2_ipsec_fp.h"
+
 /* Default mark value used when none is provided. */
 #define OTX2_FLOW_ACTION_FLAG_DEFAULT	0xffff
 
@@ -30,6 +36,12 @@
  */
 #define NIX_RX_MULTI_SEG_F            BIT(15)
 #define NIX_TIMESYNC_RX_OFFSET		8
+
+/* Inline IPsec offsets */
+
+#define INLINE_INB_RPTR_HDR		16
+/* nix_cqe_hdr_s + nix_rx_parse_s + nix_rx_sg_s + nix_iova_s */
+#define INLINE_CPT_RESULT_OFFSET	80
 
 struct otx2_timesync_info {
 	uint64_t	rx_tstamp;
@@ -190,6 +202,60 @@ nix_cqe_xtract_mseg(const struct nix_rx_parse_s *rx,
 	}
 }
 
+static __rte_always_inline uint16_t
+nix_rx_sec_cptres_get(const void *cq)
+{
+	volatile const struct otx2_cpt_res *res;
+
+	res = (volatile const struct otx2_cpt_res *)((const char *)cq +
+			INLINE_CPT_RESULT_OFFSET);
+
+	return res->u16[0];
+}
+
+static __rte_always_inline void *
+nix_rx_sec_sa_get(const void * const lookup_mem, int spi, uint16_t port)
+{
+	const uint64_t *const *sa_tbl = (const uint64_t * const *)
+			((const uint8_t *)lookup_mem + OTX2_NIX_SA_TBL_START);
+
+	return (void *)sa_tbl[port][spi];
+}
+
+static __rte_always_inline uint64_t
+nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
+		       const void * const lookup_mem)
+{
+	struct otx2_ipsec_fp_in_sa *sa;
+	struct rte_ipv4_hdr *ipv4;
+	uint16_t m_len;
+	uint32_t spi;
+	char *data;
+
+	if (unlikely(nix_rx_sec_cptres_get(cq) != OTX2_SEC_COMP_GOOD))
+		return PKT_RX_SEC_OFFLOAD | PKT_RX_SEC_OFFLOAD_FAILED;
+
+	/* 20 bits of tag would have the SPI */
+	spi = cq->tag & 0xFFFFF;
+
+	sa = nix_rx_sec_sa_get(lookup_mem, spi, m->port);
+	m->udata64 = (uint64_t)sa->userdata;
+
+	data = rte_pktmbuf_mtod(m, char *);
+	memcpy(data + INLINE_INB_RPTR_HDR, data, RTE_ETHER_HDR_LEN);
+
+	m->data_off += INLINE_INB_RPTR_HDR;
+
+	ipv4 = (struct rte_ipv4_hdr *)(data + INLINE_INB_RPTR_HDR +
+				       RTE_ETHER_HDR_LEN);
+
+	m_len = rte_be_to_cpu_16(ipv4->total_length) + RTE_ETHER_HDR_LEN;
+
+	m->data_len = m_len;
+	m->pkt_len = m_len;
+	return PKT_RX_SEC_OFFLOAD;
+}
+
 static __rte_always_inline void
 otx2_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 		     struct rte_mbuf *mbuf, const void *lookup_mem,
@@ -230,6 +296,13 @@ otx2_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 
 	if (flag & NIX_RX_OFFLOAD_MARK_UPDATE_F)
 		ol_flags = nix_update_match_id(rx->match_id, ol_flags, mbuf);
+
+	if (cq->cqe_type == NIX_XQE_TYPE_RX_IPSECH) {
+		*(uint64_t *)(&mbuf->rearm_data) = val;
+		ol_flags |= nix_rx_sec_mbuf_update(cq, mbuf, lookup_mem);
+		mbuf->ol_flags = ol_flags;
+		return;
+	}
 
 	mbuf->ol_flags = ol_flags;
 	*(uint64_t *)(&mbuf->rearm_data) = val;
