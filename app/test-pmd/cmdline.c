@@ -18866,14 +18866,18 @@ cmd_config_dynf_specific_parsed(void *parsed_result,
 		return;
 	flag = rte_mbuf_dynflag_lookup(res->name, NULL);
 	if (flag <= 0) {
-		strcpy(desc_flag.name, res->name);
+		if (strlcpy(desc_flag.name, res->name,
+			    RTE_MBUF_DYN_NAMESIZE) >= RTE_MBUF_DYN_NAMESIZE) {
+			printf("Flag name too long\n");
+			return;
+		}
 		desc_flag.flags = 0;
 		flag = rte_mbuf_dynflag_register(&desc_flag);
 		if (flag < 0) {
 			printf("Can't register flag\n");
 			return;
 		}
-		strcpy(dynf_names[flag], res->name);
+		strcpy(dynf_names[flag], desc_flag.name);
 	}
 	old_port_flags = ports[res->port_id].mbuf_dynf;
 	if (!strcmp(res->value, "set")) {
