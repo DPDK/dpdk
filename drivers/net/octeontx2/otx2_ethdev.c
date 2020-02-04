@@ -12,6 +12,7 @@
 #include <rte_mempool.h>
 
 #include "otx2_ethdev.h"
+#include "otx2_ethdev_sec.h"
 
 static inline uint64_t
 nix_get_rx_offload_capa(struct otx2_eth_dev *dev)
@@ -2250,10 +2251,17 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 		dev->hwcap |= OTX2_FIXUP_F_LIMIT_CQ_FULL;
 	}
 
+	/* Create security ctx */
+	rc = otx2_eth_sec_ctx_create(eth_dev);
+	if (rc)
+		goto free_mac_addrs;
+	dev->tx_offload_capa |= DEV_TX_OFFLOAD_SECURITY;
+	dev->rx_offload_capa |= DEV_RX_OFFLOAD_SECURITY;
+
 	/* Initialize rte-flow */
 	rc = otx2_flow_init(dev);
 	if (rc)
-		goto free_mac_addrs;
+		goto sec_ctx_destroy;
 
 	otx2_nix_mc_filter_init(dev);
 
@@ -2264,6 +2272,8 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 		     dev->rx_offload_capa, dev->tx_offload_capa);
 	return 0;
 
+sec_ctx_destroy:
+	otx2_eth_sec_ctx_destroy(eth_dev);
 free_mac_addrs:
 	rte_free(eth_dev->data->mac_addrs);
 unregister_irq:
@@ -2346,6 +2356,9 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 	rc = otx2_npa_lf_fini();
 	if (rc)
 		otx2_err("Failed to cleanup npa lf, rc=%d", rc);
+
+	/* Destroy security ctx */
+	otx2_eth_sec_ctx_destroy(eth_dev);
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;

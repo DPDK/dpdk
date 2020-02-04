@@ -732,6 +732,7 @@ Marvell OCTEON TX2 - security
 M: Anoob Joseph <anoobj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: drivers/common/octeontx2/otx2_sec*
+F: drivers/net/octeontx2/otx2_ethdev_sec*
 
 Mellanox mlx4
 M: Matan Azrad <matan@mellanox.com>
