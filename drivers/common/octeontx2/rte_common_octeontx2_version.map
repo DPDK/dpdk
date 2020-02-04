@@ -5,6 +5,7 @@ DPDK_20.0 {
 	otx2_dev_fini;
 	otx2_dev_priv_init;
 	otx2_disable_irqs;
+	otx2_eth_dev_is_sec_capable;
 	otx2_intra_dev_get_cfg;
 	otx2_logtype_base;
 	otx2_logtype_dpi;

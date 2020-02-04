@@ -728,6 +728,11 @@ F: drivers/net/octeontx2/
 F: doc/guides/nics/features/octeontx2*.ini
 F: doc/guides/nics/octeontx2.rst
 
+Marvell OCTEON TX2 - security
+M: Anoob Joseph <anoobj@marvell.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+F: drivers/common/octeontx2/otx2_sec*
+
 Mellanox mlx4
 M: Matan Azrad <matan@mellanox.com>
 M: Shahaf Shuler <shahafs@mellanox.com>
