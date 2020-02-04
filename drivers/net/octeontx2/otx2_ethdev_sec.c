@@ -10,9 +10,11 @@
 #include <rte_security.h>
 #include <rte_security_driver.h>
 
+#include "otx2_cryptodev_qp.h"
 #include "otx2_ethdev.h"
 #include "otx2_ethdev_sec.h"
 #include "otx2_ipsec_fp.h"
+#include "otx2_sec_idev.h"
 
 #define ETH_SEC_MAX_PKT_LEN	1450
 
@@ -160,11 +162,18 @@ int
 otx2_eth_sec_ctx_create(struct rte_eth_dev *eth_dev)
 {
 	struct rte_security_ctx *ctx;
+	int ret;
 
 	ctx = rte_malloc("otx2_eth_sec_ctx",
 			 sizeof(struct rte_security_ctx), 0);
 	if (ctx == NULL)
 		return -ENOMEM;
+
+	ret = otx2_sec_idev_cfg_init(eth_dev->data->port_id);
+	if (ret) {
+		rte_free(ctx);
+		return ret;
+	}
 
 	/* Populate ctx */
 

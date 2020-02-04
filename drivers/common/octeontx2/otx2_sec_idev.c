@@ -2,11 +2,15 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
+#include <rte_atomic.h>
 #include <rte_bus_pci.h>
 #include <rte_ethdev.h>
+#include <rte_spinlock.h>
 
 #include "otx2_common.h"
 #include "otx2_sec_idev.h"
+
+static struct otx2_sec_idev_cfg sec_cfg[OTX2_MAX_INLINE_PORTS];
 
 /**
  * @internal
@@ -25,4 +29,92 @@ otx2_eth_dev_is_sec_capable(struct rte_eth_dev *eth_dev)
 		return 1;
 
 	return 0;
+}
+
+int
+otx2_sec_idev_cfg_init(int port_id)
+{
+	struct otx2_sec_idev_cfg *cfg;
+	int i;
+
+	cfg = &sec_cfg[port_id];
+	cfg->tx_cpt_idx = 0;
+	rte_spinlock_init(&cfg->tx_cpt_lock);
+
+	for (i = 0; i < OTX2_MAX_CPT_QP_PER_PORT; i++) {
+		cfg->tx_cpt[i].qp = NULL;
+		rte_atomic16_set(&cfg->tx_cpt[i].ref_cnt, 0);
+	}
+
+	return 0;
+}
+
+int
+otx2_sec_idev_tx_cpt_qp_add(uint16_t port_id, struct otx2_cpt_qp *qp)
+{
+	struct otx2_sec_idev_cfg *cfg;
+	int i, ret;
+
+	if (qp == NULL || port_id > OTX2_MAX_INLINE_PORTS)
+		return -EINVAL;
+
+	cfg = &sec_cfg[port_id];
+
+	/* Find a free slot to save CPT LF */
+
+	rte_spinlock_lock(&cfg->tx_cpt_lock);
+
+	for (i = 0; i < OTX2_MAX_CPT_QP_PER_PORT; i++) {
+		if (cfg->tx_cpt[i].qp == NULL) {
+			cfg->tx_cpt[i].qp = qp;
+			ret = 0;
+			goto unlock;
+		}
+	}
+
+	ret = -EINVAL;
+
+unlock:
+	rte_spinlock_unlock(&cfg->tx_cpt_lock);
+	return ret;
+}
+
+int
+otx2_sec_idev_tx_cpt_qp_remove(struct otx2_cpt_qp *qp)
+{
+	struct otx2_sec_idev_cfg *cfg;
+	uint16_t port_id;
+	int i, ret;
+
+	if (qp == NULL)
+		return -EINVAL;
+
+	for (port_id = 0; port_id < OTX2_MAX_INLINE_PORTS; port_id++) {
+		cfg = &sec_cfg[port_id];
+
+		rte_spinlock_lock(&cfg->tx_cpt_lock);
+
+		for (i = 0; i < OTX2_MAX_CPT_QP_PER_PORT; i++) {
+			if (cfg->tx_cpt[i].qp != qp)
+				continue;
+
+			/* Don't free if the QP is in use by any sec session */
+			if (rte_atomic16_read(&cfg->tx_cpt[i].ref_cnt)) {
+				ret = -EBUSY;
+			} else {
+				cfg->tx_cpt[i].qp = NULL;
+				ret = 0;
+			}
+
+			goto unlock;
+		}
+
+		rte_spinlock_unlock(&cfg->tx_cpt_lock);
+	}
+
+	return -ENOENT;
+
+unlock:
+	rte_spinlock_unlock(&cfg->tx_cpt_lock);
+	return ret;
 }

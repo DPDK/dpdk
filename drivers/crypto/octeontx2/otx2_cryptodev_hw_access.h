@@ -15,6 +15,7 @@
 #include "cpt_mcode_defines.h"
 
 #include "otx2_dev.h"
+#include "otx2_cryptodev_qp.h"
 
 /* CPT instruction queue length */
 #define OTX2_CPT_IQ_LEN			8200
@@ -133,27 +134,6 @@ enum cpt_9x_comp_e {
 	CPT_9X_COMP_E_HWERR = 0x04,
 	CPT_9X_COMP_E_INSTERR = 0x05,
 	CPT_9X_COMP_E_LAST_ENTRY = 0x06
-};
-
-struct otx2_cpt_qp {
-	uint32_t id;
-	/**< Queue pair id */
-	uintptr_t base;
-	/**< Base address where BAR is mapped */
-	void *lmtline;
-	/**< Address of LMTLINE */
-	rte_iova_t lf_nq_reg;
-	/**< LF enqueue register address */
-	struct pending_queue pend_q;
-	/**< Pending queue */
-	struct rte_mempool *sess_mp;
-	/**< Session mempool */
-	struct rte_mempool *sess_mp_priv;
-	/**< Session private data mempool */
-	struct cpt_qp_meta_info meta_info;
-	/**< Metabuf info required to support operations on the queue pair */
-	rte_iova_t iq_dma_addr;
-	/**< Instruction queue address */
 };
 
 void otx2_cpt_err_intr_unregister(const struct rte_cryptodev *dev);

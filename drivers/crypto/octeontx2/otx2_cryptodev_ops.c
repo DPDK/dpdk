@@ -149,6 +149,11 @@ otx2_cpt_qp_inline_cfg(const struct rte_cryptodev *dev, struct otx2_cpt_qp *qp)
 	if (ret)
 		return ret;
 
+	/* Publish inline Tx QP to eth dev security */
+	ret = otx2_sec_idev_tx_cpt_qp_add(port_id, qp);
+	if (ret)
+		return ret;
+
 	return 0;
 }
 
@@ -243,6 +248,12 @@ otx2_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qp->lf_nq_reg = qp->base + OTX2_CPT_LF_NQ(0);
 
+	ret = otx2_sec_idev_tx_cpt_qp_remove(qp);
+	if (ret && (ret != -ENOENT)) {
+		CPT_LOG_ERR("Could not delete inline configuration");
+		goto mempool_destroy;
+	}
+
 	otx2_cpt_iq_disable(qp);
 
 	ret = otx2_cpt_qp_inline_cfg(dev, qp);
@@ -275,6 +286,12 @@ otx2_cpt_qp_destroy(const struct rte_cryptodev *dev, struct otx2_cpt_qp *qp)
 	const struct rte_memzone *lf_mem;
 	char name[RTE_MEMZONE_NAMESIZE];
 	int ret;
+
+	ret = otx2_sec_idev_tx_cpt_qp_remove(qp);
+	if (ret && (ret != -ENOENT)) {
+		CPT_LOG_ERR("Could not delete inline configuration");
+		return ret;
+	}
 
 	otx2_cpt_iq_disable(qp);
 
