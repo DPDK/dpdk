@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2017 Intel Corporation
+ * Copyright(c) 2016-2020 Intel Corporation
  */
 
 #ifndef _AESNI_GCM_PMD_PRIVATE_H_
@@ -92,6 +92,8 @@ struct aesni_gcm_session {
 	/**< GCM key type */
 	struct gcm_key_data gdata_key;
 	/**< GCM parameters */
+	struct aesni_gcm_session_ops ops;
+	/**< Session handlers */
 };
 
 
@@ -109,10 +111,13 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *ops,
 		struct aesni_gcm_session *sess,
 		const struct rte_crypto_sym_xform *xform);
 
-
-/**
- * Device specific operations function pointer structure */
+/* Device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *rte_aesni_gcm_pmd_ops;
 
+/** CPU crypto bulk process handler */
+uint32_t
+aesni_gcm_pmd_cpu_crypto_process(struct rte_cryptodev *dev,
+	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_sym_vec *vec);
 
 #endif /* _AESNI_GCM_PMD_PRIVATE_H_ */
