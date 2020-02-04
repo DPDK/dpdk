@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Intel Corporation
+ * Copyright(c) 2018-2020 Intel Corporation
  */
 
 #include <rte_ipsec.h>
@@ -243,10 +243,26 @@ static void
 esp_inb_init(struct rte_ipsec_sa *sa)
 {
 	/* these params may differ with new algorithms support */
-	sa->ctp.auth.offset = 0;
-	sa->ctp.auth.length = sa->icv_len - sa->sqh_len;
 	sa->ctp.cipher.offset = sizeof(struct rte_esp_hdr) + sa->iv_len;
 	sa->ctp.cipher.length = sa->icv_len + sa->ctp.cipher.offset;
+
+	/*
+	 * for AEAD and NULL algorithms we can assume that
+	 * auth and cipher offsets would be equal.
+	 */
+	switch (sa->algo_type) {
+	case ALGO_TYPE_AES_GCM:
+	case ALGO_TYPE_NULL:
+		sa->ctp.auth.raw = sa->ctp.cipher.raw;
+		break;
+	default:
+		sa->ctp.auth.offset = 0;
+		sa->ctp.auth.length = sa->icv_len - sa->sqh_len;
+		sa->cofs.ofs.cipher.tail = sa->sqh_len;
+		break;
+	}
+
+	sa->cofs.ofs.cipher.head = sa->ctp.cipher.offset - sa->ctp.auth.offset;
 }
 
 /*
@@ -269,12 +285,12 @@ esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 
 	sa->sqn.outb.raw = 1;
 
-	/* these params may differ with new algorithms support */
-	sa->ctp.auth.offset = hlen;
-	sa->ctp.auth.length = sizeof(struct rte_esp_hdr) +
-		sa->iv_len + sa->sqh_len;
-
 	algo_type = sa->algo_type;
+
+	/*
+	 * Setup auth and cipher length and offset.
+	 * these params may differ with new algorithms support
+	 */
 
 	switch (algo_type) {
 	case ALGO_TYPE_AES_GCM:
@@ -286,11 +302,30 @@ esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 		break;
 	case ALGO_TYPE_AES_CBC:
 	case ALGO_TYPE_3DES_CBC:
-		sa->ctp.cipher.offset = sa->hdr_len +
-			sizeof(struct rte_esp_hdr);
+		sa->ctp.cipher.offset = hlen + sizeof(struct rte_esp_hdr);
 		sa->ctp.cipher.length = sa->iv_len;
 		break;
 	}
+
+	/*
+	 * for AEAD and NULL algorithms we can assume that
+	 * auth and cipher offsets would be equal.
+	 */
+	switch (algo_type) {
+	case ALGO_TYPE_AES_GCM:
+	case ALGO_TYPE_NULL:
+		sa->ctp.auth.raw = sa->ctp.cipher.raw;
+		break;
+	default:
+		sa->ctp.auth.offset = hlen;
+		sa->ctp.auth.length = sizeof(struct rte_esp_hdr) +
+			sa->iv_len + sa->sqh_len;
+		break;
+	}
+
+	sa->cofs.ofs.cipher.head = sa->ctp.cipher.offset - sa->ctp.auth.offset;
+	sa->cofs.ofs.cipher.tail = (sa->ctp.auth.offset + sa->ctp.auth.length) -
+			(sa->ctp.cipher.offset + sa->ctp.cipher.length);
 }
 
 /*
@@ -544,9 +579,9 @@ lksd_proto_prepare(const struct rte_ipsec_session *ss,
  * - inbound/outbound for RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL
  * - outbound for RTE_SECURITY_ACTION_TYPE_NONE when ESN is disabled
  */
-static uint16_t
-pkt_flag_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
-	uint16_t num)
+uint16_t
+pkt_flag_process(const struct rte_ipsec_session *ss,
+		struct rte_mbuf *mb[], uint16_t num)
 {
 	uint32_t i, k;
 	uint32_t dr[num];
@@ -588,21 +623,59 @@ lksd_none_pkt_func_select(const struct rte_ipsec_sa *sa,
 	switch (sa->type & msk) {
 	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TUNLV4):
 	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TUNLV6):
-		pf->prepare = esp_inb_pkt_prepare;
+		pf->prepare.async = esp_inb_pkt_prepare;
 		pf->process = esp_inb_tun_pkt_process;
 		break;
 	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TRANS):
-		pf->prepare = esp_inb_pkt_prepare;
+		pf->prepare.async = esp_inb_pkt_prepare;
 		pf->process = esp_inb_trs_pkt_process;
 		break;
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV4):
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV6):
-		pf->prepare = esp_outb_tun_prepare;
+		pf->prepare.async = esp_outb_tun_prepare;
 		pf->process = (sa->sqh_len != 0) ?
 			esp_outb_sqh_process : pkt_flag_process;
 		break;
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TRANS):
-		pf->prepare = esp_outb_trs_prepare;
+		pf->prepare.async = esp_outb_trs_prepare;
+		pf->process = (sa->sqh_len != 0) ?
+			esp_outb_sqh_process : pkt_flag_process;
+		break;
+	default:
+		rc = -ENOTSUP;
+	}
+
+	return rc;
+}
+
+static int
+cpu_crypto_pkt_func_select(const struct rte_ipsec_sa *sa,
+		struct rte_ipsec_sa_pkt_func *pf)
+{
+	int32_t rc;
+
+	static const uint64_t msk = RTE_IPSEC_SATP_DIR_MASK |
+			RTE_IPSEC_SATP_MODE_MASK;
+
+	rc = 0;
+	switch (sa->type & msk) {
+	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TUNLV4):
+	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TUNLV6):
+		pf->prepare.sync = cpu_inb_pkt_prepare;
+		pf->process = esp_inb_tun_pkt_process;
+		break;
+	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TRANS):
+		pf->prepare.sync = cpu_inb_pkt_prepare;
+		pf->process = esp_inb_trs_pkt_process;
+		break;
+	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV4):
+	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV6):
+		pf->prepare.sync = cpu_outb_tun_pkt_prepare;
+		pf->process = (sa->sqh_len != 0) ?
+			esp_outb_sqh_process : pkt_flag_process;
+		break;
+	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TRANS):
+		pf->prepare.sync = cpu_outb_trs_pkt_prepare;
 		pf->process = (sa->sqh_len != 0) ?
 			esp_outb_sqh_process : pkt_flag_process;
 		break;
@@ -660,7 +733,7 @@ ipsec_sa_pkt_func_select(const struct rte_ipsec_session *ss,
 	int32_t rc;
 
 	rc = 0;
-	pf[0] = (struct rte_ipsec_sa_pkt_func) { 0 };
+	pf[0] = (struct rte_ipsec_sa_pkt_func) { {NULL}, NULL };
 
 	switch (ss->type) {
 	case RTE_SECURITY_ACTION_TYPE_NONE:
@@ -677,8 +750,11 @@ ipsec_sa_pkt_func_select(const struct rte_ipsec_session *ss,
 			pf->process = inline_proto_outb_pkt_process;
 		break;
 	case RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL:
-		pf->prepare = lksd_proto_prepare;
+		pf->prepare.async = lksd_proto_prepare;
 		pf->process = pkt_flag_process;
+		break;
+	case RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO:
+		rc = cpu_crypto_pkt_func_select(sa, pf);
 		break;
 	default:
 		rc = -ENOTSUP;

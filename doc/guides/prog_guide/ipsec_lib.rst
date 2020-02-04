@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2018 Intel Corporation.
+    Copyright(c) 2018-2020 Intel Corporation.
 
 IPsec Packet Processing Library
 ===============================
@@ -80,6 +80,14 @@ In that mode the library functions perform
   - prepare *rte_crypto_op* structure for each input packet
   - verify that crypto device operations (encryption, ICV generation)
     were completed successfully
+
+RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In that mode the library functions perform same operations as in
+``RTE_SECURITY_ACTION_TYPE_NONE``. The only difference is that crypto operations
+are performed with CPU crypto synchronous API.
+
 
 RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

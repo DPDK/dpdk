@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Intel Corporation
+ * Copyright(c) 2018-2020 Intel Corporation
  */
 
 #include <rte_ipsec.h>
@@ -105,6 +105,39 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 	}
 }
 
+static inline uint32_t
+inb_cpu_crypto_prepare(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb,
+	uint32_t *pofs, uint32_t plen, void *iv)
+{
+	struct aead_gcm_iv *gcm;
+	struct aesctr_cnt_blk *ctr;
+	uint64_t *ivp;
+	uint32_t clen;
+
+	ivp = rte_pktmbuf_mtod_offset(mb, uint64_t *,
+		*pofs + sizeof(struct rte_esp_hdr));
+	clen = 0;
+
+	switch (sa->algo_type) {
+	case ALGO_TYPE_AES_GCM:
+		gcm = (struct aead_gcm_iv *)iv;
+		aead_gcm_iv_fill(gcm, ivp[0], sa->salt);
+		break;
+	case ALGO_TYPE_AES_CBC:
+	case ALGO_TYPE_3DES_CBC:
+		copy_iv(iv, ivp, sa->iv_len);
+		break;
+	case ALGO_TYPE_AES_CTR:
+		ctr = (struct aesctr_cnt_blk *)iv;
+		aes_ctr_cnt_blk_fill(ctr, ivp[0], sa->salt);
+		break;
+	}
+
+	*pofs += sa->ctp.auth.offset;
+	clen = plen - sa->ctp.auth.length;
+	return clen;
+}
+
 /*
  * Helper function for prepare() to deal with situation when
  * ICV is spread by two segments. Tries to move ICV completely into the
@@ -157,17 +190,12 @@ inb_pkt_xprepare(const struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	}
 }
 
-/*
- * setup/update packet data and metadata for ESP inbound tunnel case.
- */
-static inline int32_t
-inb_pkt_prepare(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
-	struct rte_mbuf *mb, uint32_t hlen, union sym_op_data *icv)
+static inline int
+inb_get_sqn(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
+	struct rte_mbuf *mb, uint32_t hlen, rte_be64_t *sqc)
 {
 	int32_t rc;
 	uint64_t sqn;
-	uint32_t clen, icv_len, icv_ofs, plen;
-	struct rte_mbuf *ml;
 	struct rte_esp_hdr *esph;
 
 	esph = rte_pktmbuf_mtod_offset(mb, struct rte_esp_hdr *, hlen);
@@ -179,12 +207,21 @@ inb_pkt_prepare(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
 	sqn = rte_be_to_cpu_32(esph->seq);
 	if (IS_ESN(sa))
 		sqn = reconstruct_esn(rsn->sqn, sqn, sa->replay.win_sz);
+	*sqc = rte_cpu_to_be_64(sqn);
 
+	/* check IPsec window */
 	rc = esn_inb_check_sqn(rsn, sa, sqn);
-	if (rc != 0)
-		return rc;
 
-	sqn = rte_cpu_to_be_64(sqn);
+	return rc;
+}
+
+/* prepare packet for upcoming processing */
+static inline int32_t
+inb_prepare(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb,
+	uint32_t hlen, union sym_op_data *icv)
+{
+	uint32_t clen, icv_len, icv_ofs, plen;
+	struct rte_mbuf *ml;
 
 	/* start packet manipulation */
 	plen = mb->pkt_len;
@@ -217,7 +254,8 @@ inb_pkt_prepare(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
 
 	icv_ofs += sa->sqh_len;
 
-	/* we have to allocate space for AAD somewhere,
+	/*
+	 * we have to allocate space for AAD somewhere,
 	 * right now - just use free trailing space at the last segment.
 	 * Would probably be more convenient to reserve space for AAD
 	 * inside rte_crypto_op itself
@@ -238,8 +276,26 @@ inb_pkt_prepare(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
 	mb->pkt_len += sa->sqh_len;
 	ml->data_len += sa->sqh_len;
 
-	inb_pkt_xprepare(sa, sqn, icv);
 	return plen;
+}
+
+static inline int32_t
+inb_pkt_prepare(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
+	struct rte_mbuf *mb, uint32_t hlen, union sym_op_data *icv)
+{
+	int rc;
+	rte_be64_t sqn;
+
+	rc = inb_get_sqn(sa, rsn, mb, hlen, &sqn);
+	if (rc != 0)
+		return rc;
+
+	rc = inb_prepare(sa, mb, hlen, icv);
+	if (rc < 0)
+		return rc;
+
+	inb_pkt_xprepare(sa, sqn, icv);
+	return rc;
 }
 
 /*
@@ -270,17 +326,17 @@ esp_inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 			lksd_none_cop_prepare(cop[k], cs, mb[i]);
 			inb_cop_prepare(cop[k], sa, mb[i], &icv, hl, rc);
 			k++;
-		} else
+		} else {
 			dr[i - k] = i;
+			rte_errno = -rc;
+		}
 	}
 
 	rsn_release(sa, rsn);
 
 	/* copy not prepared mbufs beyond good ones */
-	if (k != num && k != 0) {
+	if (k != num && k != 0)
 		move_bad_mbufs(mb, dr, num, num - k);
-		rte_errno = EBADMSG;
-	}
 
 	return k;
 }
@@ -512,7 +568,6 @@ tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 	return k;
 }
 
-
 /*
  * *process* function for tunnel packets
  */
@@ -612,7 +667,7 @@ esp_inb_pkt_process(struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 	if (k != num && k != 0)
 		move_bad_mbufs(mb, dr, num, num - k);
 
-	/* update SQN and replay winow */
+	/* update SQN and replay window */
 	n = esp_inb_rsn_update(sa, sqn, dr, k);
 
 	/* handle mbufs with wrong SQN */
@@ -623,6 +678,67 @@ esp_inb_pkt_process(struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
 		rte_errno = EBADMSG;
 
 	return n;
+}
+
+/*
+ * Prepare (plus actual crypto/auth) routine for inbound CPU-CRYPTO
+ * (synchronous mode).
+ */
+uint16_t
+cpu_inb_pkt_prepare(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num)
+{
+	int32_t rc;
+	uint32_t i, k;
+	struct rte_ipsec_sa *sa;
+	struct replay_sqn *rsn;
+	union sym_op_data icv;
+	void *iv[num];
+	void *aad[num];
+	void *dgst[num];
+	uint32_t dr[num];
+	uint32_t l4ofs[num];
+	uint32_t clen[num];
+	uint64_t ivbuf[num][IPSEC_MAX_IV_QWORD];
+
+	sa = ss->sa;
+
+	/* grab rsn lock */
+	rsn = rsn_acquire(sa);
+
+	/* do preparation for all packets */
+	for (i = 0, k = 0; i != num; i++) {
+
+		/* calculate ESP header offset */
+		l4ofs[k] = mb[i]->l2_len + mb[i]->l3_len;
+
+		/* prepare ESP packet for processing */
+		rc = inb_pkt_prepare(sa, rsn, mb[i], l4ofs[k], &icv);
+		if (rc >= 0) {
+			/* get encrypted data offset and length */
+			clen[k] = inb_cpu_crypto_prepare(sa, mb[i],
+				l4ofs + k, rc, ivbuf[k]);
+
+			/* fill iv, digest and aad */
+			iv[k] = ivbuf[k];
+			aad[k] = icv.va + sa->icv_len;
+			dgst[k++] = icv.va;
+		} else {
+			dr[i - k] = i;
+			rte_errno = -rc;
+		}
+	}
+
+	/* release rsn lock */
+	rsn_release(sa, rsn);
+
+	/* copy not prepared mbufs beyond good ones */
+	if (k != num && k != 0)
+		move_bad_mbufs(mb, dr, num, num - k);
+
+	/* convert mbufs to iovecs and do actual crypto/auth processing */
+	cpu_crypto_bulk(ss, sa->cofs, mb, iv, aad, dgst, l4ofs, clen, k);
+	return k;
 }
 
 /*

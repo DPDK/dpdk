@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Intel Corporation
+ * Copyright(c) 2018-2020 Intel Corporation
  */
 
 #ifndef _MISC_H_
@@ -103,6 +103,77 @@ mbuf_cut_seg_ofs(struct rte_mbuf *mb, struct rte_mbuf *ms, uint32_t ofs,
 	}
 
 	mb->pkt_len -= len;
+}
+
+/*
+ * process packets using sync crypto engine
+ */
+static inline void
+cpu_crypto_bulk(const struct rte_ipsec_session *ss,
+	union rte_crypto_sym_ofs ofs, struct rte_mbuf *mb[],
+	void *iv[], void *aad[], void *dgst[], uint32_t l4ofs[],
+	uint32_t clen[], uint32_t num)
+{
+	uint32_t i, j, n;
+	int32_t vcnt, vofs;
+	int32_t st[num];
+	struct rte_crypto_sgl vecpkt[num];
+	struct rte_crypto_vec vec[UINT8_MAX];
+	struct rte_crypto_sym_vec symvec;
+
+	const uint32_t vnum = RTE_DIM(vec);
+
+	j = 0, n = 0;
+	vofs = 0;
+	for (i = 0; i != num; i++) {
+
+		vcnt = rte_crypto_mbuf_to_vec(mb[i], l4ofs[i], clen[i],
+			&vec[vofs], vnum - vofs);
+
+		/* not enough space in vec[] to hold all segments */
+		if (vcnt < 0) {
+			/* fill the request structure */
+			symvec.sgl = &vecpkt[j];
+			symvec.iv = &iv[j];
+			symvec.aad = &aad[j];
+			symvec.digest = &dgst[j];
+			symvec.status = &st[j];
+			symvec.num = i - j;
+
+			/* flush vec array and try again */
+			n += rte_cryptodev_sym_cpu_crypto_process(
+				ss->crypto.dev_id, ss->crypto.ses, ofs,
+				&symvec);
+			vofs = 0;
+			vcnt = rte_crypto_mbuf_to_vec(mb[i], l4ofs[i], clen[i],
+				vec, vnum);
+			RTE_ASSERT(vcnt > 0);
+			j = i;
+		}
+
+		vecpkt[i].vec = &vec[vofs];
+		vecpkt[i].num = vcnt;
+		vofs += vcnt;
+	}
+
+	/* fill the request structure */
+	symvec.sgl = &vecpkt[j];
+	symvec.iv = &iv[j];
+	symvec.aad = &aad[j];
+	symvec.digest = &dgst[j];
+	symvec.status = &st[j];
+	symvec.num = i - j;
+
+	n += rte_cryptodev_sym_cpu_crypto_process(ss->crypto.dev_id,
+		ss->crypto.ses, ofs, &symvec);
+
+	j = num - n;
+	for (i = 0; j != 0 && i != num; i++) {
+		if (st[i] != 0) {
+			mb[i]->ol_flags |= PKT_RX_SEC_OFFLOAD_FAILED;
+			j--;
+		}
+	}
 }
 
 #endif /* _MISC_H_ */

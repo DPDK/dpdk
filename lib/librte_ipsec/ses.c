@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Intel Corporation
+ * Copyright(c) 2018-2020 Intel Corporation
  */
 
 #include <rte_ipsec.h>
@@ -11,7 +11,8 @@ session_check(struct rte_ipsec_session *ss)
 	if (ss == NULL || ss->sa == NULL)
 		return -EINVAL;
 
-	if (ss->type == RTE_SECURITY_ACTION_TYPE_NONE) {
+	if (ss->type == RTE_SECURITY_ACTION_TYPE_NONE ||
+		ss->type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) {
 		if (ss->crypto.ses == NULL)
 			return -EINVAL;
 	} else {
