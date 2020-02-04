@@ -10,6 +10,7 @@
 
 #include <otx2_common.h>
 #include "otx2_evdev.h"
+#include "otx2_ethdev_sec_tx.h"
 
 /* SSO Operations */
 
@@ -281,6 +282,11 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
 	const struct otx2_eth_txq *txq = otx2_ssogws_xtract_meta(m);
 
 	rte_prefetch_non_temporal(txq);
+
+	if ((flags & NIX_TX_OFFLOAD_SECURITY_F) &&
+	    (m->ol_flags & PKT_TX_SEC_OFFLOAD))
+		return otx2_sec_event_tx(ws, ev, m, txq, flags);
+
 	/* Perform header writes before barrier for TSO */
 	otx2_nix_xmit_prepare_tso(m, flags);
 	otx2_ssogws_order(ws, !ev->sched_type);

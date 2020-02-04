@@ -10,9 +10,13 @@
 #include "otx2_ipsec_fp.h"
 
 #define OTX2_CPT_RES_ALIGN		16
+#define OTX2_NIX_SEND_DESC_ALIGN	16
+#define OTX2_CPT_INST_SIZE		64
 
 #define OTX2_CPT_EGRP_INLINE_IPSEC	1
 
+#define OTX2_CPT_OP_INLINE_IPSEC_OUTB		(0x40 | 0x25)
+#define OTX2_CPT_OP_INLINE_IPSEC_INB		(0x40 | 0x26)
 #define OTX2_CPT_OP_WRITE_HMAC_IPAD_OPAD	(0x40 | 0x27)
 
 #define OTX2_SEC_CPT_COMP_GOOD	0x1
@@ -92,6 +96,21 @@ struct otx2_sec_session_ipsec_ip {
 	void *cpt_lmtline;
 	/* CPT LF enqueue register address */
 	rte_iova_t cpt_nq_reg;
+
+	/* Pre calculated lengths and data for a session */
+	uint8_t partial_len;
+	uint8_t roundup_len;
+	uint8_t roundup_byte;
+	uint16_t ip_id;
+	union {
+		uint64_t esn;
+		struct {
+			uint32_t seq;
+			uint32_t esn_hi;
+		};
+	};
+
+	uint64_t inst_w7;
 
 	/* CPT QP used by SA */
 	struct otx2_cpt_qp *qp;

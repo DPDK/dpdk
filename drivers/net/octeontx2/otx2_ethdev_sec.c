@@ -3,12 +3,15 @@
  */
 
 #include <rte_cryptodev.h>
+#include <rte_esp.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
+#include <rte_ip.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_security.h>
 #include <rte_security_driver.h>
+#include <rte_udp.h>
 
 #include "otx2_common.h"
 #include "otx2_cryptodev_qp.h"
@@ -18,6 +21,15 @@
 #include "otx2_sec_idev.h"
 
 #define ETH_SEC_MAX_PKT_LEN	1450
+
+#define AH_HDR_LEN	12
+#define AES_GCM_IV_LEN	8
+#define AES_GCM_MAC_LEN	16
+#define AES_CBC_IV_LEN	16
+#define SHA1_HMAC_LEN	12
+
+#define AES_GCM_ROUNDUP_BYTE_LEN	4
+#define AES_CBC_ROUNDUP_BYTE_LEN	16
 
 struct eth_sec_tag_const {
 	RTE_STD_C11
@@ -215,6 +227,60 @@ in_sa_get(uint16_t port, int sa_index)
 }
 
 static int
+ipsec_sa_const_set(struct rte_security_ipsec_xform *ipsec,
+		   struct rte_crypto_sym_xform *xform,
+		   struct otx2_sec_session_ipsec_ip *sess)
+{
+	struct rte_crypto_sym_xform *cipher_xform, *auth_xform;
+
+	sess->partial_len = sizeof(struct rte_ipv4_hdr);
+
+	if (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_ESP) {
+		sess->partial_len += sizeof(struct rte_esp_hdr);
+		sess->roundup_len = sizeof(struct rte_esp_tail);
+	} else if (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_AH) {
+		sess->partial_len += AH_HDR_LEN;
+	} else {
+		return -EINVAL;
+	}
+
+	if (ipsec->options.udp_encap)
+		sess->partial_len += sizeof(struct rte_udp_hdr);
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		if (xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
+			sess->partial_len += AES_GCM_IV_LEN;
+			sess->partial_len += AES_GCM_MAC_LEN;
+			sess->roundup_byte = AES_GCM_ROUNDUP_BYTE_LEN;
+		}
+		return 0;
+	}
+
+	if (ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+		cipher_xform = xform;
+		auth_xform = xform->next;
+	} else if (ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
+		auth_xform = xform;
+		cipher_xform = xform->next;
+	} else {
+		return -EINVAL;
+	}
+	if (cipher_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
+		sess->partial_len += AES_CBC_IV_LEN;
+		sess->roundup_byte = AES_CBC_ROUNDUP_BYTE_LEN;
+	} else {
+		return -EINVAL;
+	}
+
+	if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC)
+		sess->partial_len += SHA1_HMAC_LEN;
+	else
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
 hmac_init(struct otx2_ipsec_fp_sa_ctl *ctl, struct otx2_cpt_qp *qp,
 	  const uint8_t *auth_key, int len, uint8_t *hmac_key)
 {
@@ -300,6 +366,7 @@ eth_sec_ipsec_out_sess_create(struct rte_eth_dev *eth_dev,
 	struct otx2_ipsec_fp_sa_ctl *ctl;
 	struct otx2_ipsec_fp_out_sa *sa;
 	struct otx2_sec_session *priv;
+	struct otx2_cpt_inst_s inst;
 	struct otx2_cpt_qp *qp;
 
 	priv = get_sec_session_private_data(sec_sess);
@@ -314,6 +381,12 @@ eth_sec_ipsec_out_sess_create(struct rte_eth_dev *eth_dev,
 
 	memset(sess, 0, sizeof(struct otx2_sec_session_ipsec_ip));
 
+	sess->seq = 1;
+
+	ret = ipsec_sa_const_set(ipsec, crypto_xform, sess);
+	if (ret < 0)
+		return ret;
+
 	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
 		memcpy(sa->nonce, &ipsec->salt, 4);
 
@@ -323,6 +396,9 @@ eth_sec_ipsec_out_sess_create(struct rte_eth_dev *eth_dev,
 	}
 
 	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
+		/* Start ip id from 1 */
+		sess->ip_id = 1;
+
 		if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
 			memcpy(&sa->ip_src, &ipsec->tunnel.ipv4.src_ip,
 			       sizeof(struct in_addr));
@@ -356,6 +432,12 @@ eth_sec_ipsec_out_sess_create(struct rte_eth_dev *eth_dev,
 		memcpy(sa->cipher_key, cipher_key, cipher_key_len);
 	else
 		return -EINVAL;
+
+	/* Determine word 7 of CPT instruction */
+	inst.u64[7] = 0;
+	inst.egrp = OTX2_CPT_EGRP_INLINE_IPSEC;
+	inst.cptr = rte_mempool_virt2iova(sa);
+	sess->inst_w7 = inst.u64[7];
 
 	/* Get CPT QP to be used for this SA */
 	ret = otx2_sec_idev_tx_cpt_qp_get(port, &qp);
