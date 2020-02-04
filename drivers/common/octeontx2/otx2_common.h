@@ -155,4 +155,8 @@ extern int otx2_logtype_ep;
 #include "otx2_io_generic.h"
 #endif
 
+/* Fastpath lookup */
+#define OTX2_NIX_FASTPATH_LOOKUP_MEM	"otx2_nix_fastpath_lookup_mem"
+#define OTX2_NIX_SA_TBL_START		(4096*4 + 69632*2)
+
 #endif /* _OTX2_COMMON_H_ */

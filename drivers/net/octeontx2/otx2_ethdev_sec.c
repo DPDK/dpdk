@@ -10,6 +10,7 @@
 #include <rte_security.h>
 #include <rte_security_driver.h>
 
+#include "otx2_common.h"
 #include "otx2_cryptodev_qp.h"
 #include "otx2_ethdev.h"
 #include "otx2_ethdev_sec.h"
@@ -134,6 +135,59 @@ static const struct rte_security_capability otx2_eth_sec_capabilities[] = {
 		.action = RTE_SECURITY_ACTION_TYPE_NONE
 	}
 };
+
+static void
+lookup_mem_sa_tbl_clear(struct rte_eth_dev *eth_dev)
+{
+	static const char name[] = OTX2_NIX_FASTPATH_LOOKUP_MEM;
+	uint16_t port = eth_dev->data->port_id;
+	const struct rte_memzone *mz;
+	uint64_t **sa_tbl;
+	uint8_t *mem;
+
+	mz = rte_memzone_lookup(name);
+	if (mz == NULL)
+		return;
+
+	mem = mz->addr;
+
+	sa_tbl  = (uint64_t **)RTE_PTR_ADD(mem, OTX2_NIX_SA_TBL_START);
+	if (sa_tbl[port] == NULL)
+		return;
+
+	rte_free(sa_tbl[port]);
+	sa_tbl[port] = NULL;
+}
+
+static int
+lookup_mem_sa_index_update(struct rte_eth_dev *eth_dev, int spi, void *sa)
+{
+	static const char name[] = OTX2_NIX_FASTPATH_LOOKUP_MEM;
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint16_t port = eth_dev->data->port_id;
+	const struct rte_memzone *mz;
+	uint64_t **sa_tbl;
+	uint8_t *mem;
+
+	mz = rte_memzone_lookup(name);
+	if (mz == NULL) {
+		otx2_err("Could not find fastpath lookup table");
+		return -EINVAL;
+	}
+
+	mem = mz->addr;
+
+	sa_tbl = (uint64_t **)RTE_PTR_ADD(mem, OTX2_NIX_SA_TBL_START);
+
+	if (sa_tbl[port] == NULL) {
+		sa_tbl[port] = rte_malloc(NULL, dev->ipsec_in_max_spi *
+					  sizeof(uint64_t), 0);
+	}
+
+	sa_tbl[port][spi] = (uint64_t)sa;
+
+	return 0;
+}
 
 static inline void
 in_sa_mz_name_get(char *name, int size, uint16_t port)
@@ -392,6 +446,9 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 	sess->in_sa = sa;
 
 	sa->userdata = priv->userdata;
+
+	if (lookup_mem_sa_index_update(eth_dev, ipsec->spi, sa))
+		return -EINVAL;
 
 	ret = ipsec_fp_sa_ctl_set(ipsec, crypto_xform, ctl);
 	if (ret)
@@ -669,6 +726,8 @@ otx2_eth_sec_fini(struct rte_eth_dev *eth_dev)
 	if (!(dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY) &&
 	    !(dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY))
 		return;
+
+	lookup_mem_sa_tbl_clear(eth_dev);
 
 	in_sa_mz_name_get(name, RTE_MEMZONE_NAMESIZE, port);
 	rte_memzone_free(rte_memzone_lookup(name));
