@@ -1068,6 +1068,8 @@ fs_dev_merge_info(struct rte_eth_dev_info *info,
 	info->rx_queue_offload_capa &= sinfo->rx_queue_offload_capa;
 	info->tx_queue_offload_capa &= sinfo->tx_queue_offload_capa;
 	info->flow_type_rss_offloads &= sinfo->flow_type_rss_offloads;
+	info->hash_key_size = RTE_MIN(info->hash_key_size,
+				      sinfo->hash_key_size);
 }
 
 /**
@@ -1117,6 +1119,7 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 	infos->max_hash_mac_addrs = UINT32_MAX;
 	infos->max_vfs = UINT16_MAX;
 	infos->max_vmdq_pools = UINT16_MAX;
+	infos->hash_key_size = UINT8_MAX;
 
 	/*
 	 * Set of capabilities that can be verified upon
