@@ -2,11 +2,13 @@
  * Copyright (C) 2020 Marvell International Ltd.
  */
 
+#include <rte_cryptodev.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_security.h>
+#include <rte_security_driver.h>
 
 #include "otx2_ethdev.h"
 #include "otx2_ethdev_sec.h"
@@ -27,11 +29,132 @@ struct eth_sec_tag_const {
 	};
 };
 
+static struct rte_cryptodev_capabilities otx2_eth_sec_crypto_caps[] = {
+	{	/* AES GCM */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AEAD,
+			{.aead = {
+				.algo = RTE_CRYPTO_AEAD_AES_GCM,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.digest_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.aad_size = {
+					.min = 8,
+					.max = 12,
+					.increment = 4
+				},
+				.iv_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* AES CBC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_CBC,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* SHA1 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 20,
+					.max = 64,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				},
+			}, }
+		}, }
+	},
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
+static const struct rte_security_capability otx2_eth_sec_capabilities[] = {
+	{	/* IPsec Inline Protocol ESP Tunnel Ingress */
+		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = otx2_eth_sec_crypto_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+	},
+	{	/* IPsec Inline Protocol ESP Tunnel Egress */
+		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = otx2_eth_sec_crypto_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+	},
+	{
+		.action = RTE_SECURITY_ACTION_TYPE_NONE
+	}
+};
+
 static inline void
 in_sa_mz_name_get(char *name, int size, uint16_t port)
 {
 	snprintf(name, size, "otx2_ipsec_in_sadb_%u", port);
 }
+
+static unsigned int
+otx2_eth_sec_session_get_size(void *device __rte_unused)
+{
+	return sizeof(struct otx2_sec_session);
+}
+
+static const struct rte_security_capability *
+otx2_eth_sec_capabilities_get(void *device __rte_unused)
+{
+	return otx2_eth_sec_capabilities;
+}
+
+static struct rte_security_ops otx2_eth_sec_ops = {
+	.session_get_size	= otx2_eth_sec_session_get_size,
+	.capabilities_get	= otx2_eth_sec_capabilities_get
+};
 
 int
 otx2_eth_sec_ctx_create(struct rte_eth_dev *eth_dev)
@@ -46,6 +169,7 @@ otx2_eth_sec_ctx_create(struct rte_eth_dev *eth_dev)
 	/* Populate ctx */
 
 	ctx->device = eth_dev;
+	ctx->ops = &otx2_eth_sec_ops;
 	ctx->sess_cnt = 0;
 
 	eth_dev->security_ctx = ctx;
