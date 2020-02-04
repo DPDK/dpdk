@@ -2,10 +2,14 @@
  * Copyright (C) 2019 Marvell International Ltd.
  */
 #include <rte_cryptodev.h>
+#include <rte_ethdev.h>
 
 #include "otx2_cryptodev.h"
+#include "otx2_cryptodev_hw_access.h"
 #include "otx2_cryptodev_mbox.h"
 #include "otx2_dev.h"
+#include "otx2_ethdev.h"
+#include "otx2_sec_idev.h"
 #include "otx2_mbox.h"
 
 #include "cpt_pmd_logs.h"
@@ -172,4 +176,54 @@ otx2_cpt_af_reg_write(const struct rte_cryptodev *dev, uint64_t reg,
 	msg->val = val;
 
 	return otx2_cpt_send_mbox_msg(vf);
+}
+
+int
+otx2_cpt_inline_init(const struct rte_cryptodev *dev)
+{
+	struct otx2_cpt_vf *vf = dev->data->dev_private;
+	struct otx2_mbox *mbox = vf->otx2_dev.mbox;
+	struct cpt_rx_inline_lf_cfg_msg *msg;
+	int ret;
+
+	msg = otx2_mbox_alloc_msg_cpt_rx_inline_lf_cfg(mbox);
+	msg->sso_pf_func = otx2_sso_pf_func_get();
+
+	otx2_mbox_msg_send(mbox, 0);
+	ret = otx2_mbox_process(mbox);
+	if (ret < 0)
+		return -EIO;
+
+	return 0;
+}
+
+int
+otx2_cpt_qp_ethdev_bind(const struct rte_cryptodev *dev, struct otx2_cpt_qp *qp,
+			uint16_t port_id)
+{
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
+	struct otx2_cpt_vf *vf = dev->data->dev_private;
+	struct otx2_mbox *mbox = vf->otx2_dev.mbox;
+	struct cpt_inline_ipsec_cfg_msg *msg;
+	struct otx2_eth_dev *otx2_eth_dev;
+	int ret;
+
+	if (!otx2_eth_dev_is_sec_capable(&rte_eth_devices[port_id]))
+		return -EINVAL;
+
+	otx2_eth_dev = otx2_eth_pmd_priv(eth_dev);
+
+	msg = otx2_mbox_alloc_msg_cpt_inline_ipsec_cfg(mbox);
+	msg->dir = CPT_INLINE_OUTBOUND;
+	msg->enable = 1;
+	msg->slot = qp->id;
+
+	msg->nix_pf_func = otx2_eth_dev->pf_func;
+
+	otx2_mbox_msg_send(mbox, 0);
+	ret = otx2_mbox_process(mbox);
+	if (ret < 0)
+		return -EIO;
+
+	return 0;
 }
