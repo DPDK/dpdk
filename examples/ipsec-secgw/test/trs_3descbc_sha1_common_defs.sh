@@ -33,14 +33,14 @@ cipher_key \
 de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
 auth_algo sha1-hmac \
 auth_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
-mode transport
+mode transport ${SGW_CFG_XPRM}
 
 sa in 9 cipher_algo 3des-cbc \
 cipher_key \
 de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
 auth_algo sha1-hmac \
 auth_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
-mode transport
+mode transport ${SGW_CFG_XPRM}
 
 #SA out rules
 sa out 7 cipher_algo 3des-cbc \
@@ -48,7 +48,7 @@ cipher_key \
 de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
 auth_algo sha1-hmac \
 auth_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
-mode transport
+mode transport ${SGW_CFG_XPRM}
 
 #SA out rules
 sa out 9 cipher_algo 3des-cbc \
@@ -56,7 +56,7 @@ cipher_key \
 de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
 auth_algo sha1-hmac \
 auth_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
-mode transport
+mode transport ${SGW_CFG_XPRM}
 
 #Routing rules
 rt ipv4 dst ${REMOTE_IPV4}/32 port 0

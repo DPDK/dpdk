@@ -42,6 +42,27 @@ DPDK_BUILD=${RTE_TARGET:-x86_64-native-linux-gcc}
 DEF_MTU_LEN=1400
 DEF_PING_LEN=1200
 
+#upsate operation mode based on env vars values
+select_mode()
+{
+	# select sync/async mode
+	if [[ -n "${CRYPTO_PRIM_TYPE}" && -n "${SGW_CMD_XPRM}" ]]; then
+		echo "${CRYPTO_PRIM_TYPE} is enabled"
+		SGW_CFG_XPRM="${SGW_CFG_XPRM} ${CRYPTO_PRIM_TYPE}"
+	fi
+
+	#make linux to generate fragmented packets
+	if [[ -n "${MULTI_SEG_TEST}" && -n "${SGW_CMD_XPRM}" ]]; then
+		echo "multi-segment test is enabled"
+		SGW_CMD_XPRM="${SGW_CMD_XPRM} ${MULTI_SEG_TEST}"
+		PING_LEN=5000
+		MTU_LEN=1500
+	else
+		PING_LEN=${DEF_PING_LEN}
+		MTU_LEN=${DEF_MTU_LEN}
+	fi
+}
+
 #setup mtu on local iface
 set_local_mtu()
 {

@@ -46,16 +46,7 @@ MODE=$1
  . ${DIR}/common_defs.sh
  . ${DIR}/${MODE}_defs.sh
 
-#make linux to generate fragmented packets
-if [[ -n "${MULTI_SEG_TEST}" && -n "${SGW_CMD_XPRM}" ]]; then
-	echo "multi-segment test is enabled"
-	SGW_CMD_XPRM="${SGW_CMD_XPRM} ${MULTI_SEG_TEST}"
-	PING_LEN=5000
-	MTU_LEN=1500
-else
-	PING_LEN=${DEF_PING_LEN}
-	MTU_LEN=${DEF_MTU_LEN}
-fi
+select_mode
 
 config_secgw
 
