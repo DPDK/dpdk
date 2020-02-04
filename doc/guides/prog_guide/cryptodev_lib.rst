@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2016-2017 Intel Corporation.
+    Copyright(c) 2016-2020 Intel Corporation.
 
 Cryptography Device Library
 ===========================
@@ -599,6 +599,37 @@ chain.
             };
         };
     };
+
+Synchronous mode
+----------------
+
+Some cryptodevs support synchronous mode alongside with a standard asynchronous
+mode. In that case operations are performed directly when calling
+``rte_cryptodev_sym_cpu_crypto_process`` method instead of enqueuing and
+dequeuing an operation before. This mode of operation allows cryptodevs which
+utilize CPU cryptographic acceleration to have significant performance boost
+comparing to standard asynchronous approach. Cryptodevs supporting synchronous
+mode have ``RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO`` feature flag set.
+
+To perform a synchronous operation a call to
+``rte_cryptodev_sym_cpu_crypto_process`` has to be made with vectorized
+operation descriptor (``struct rte_crypto_sym_vec``) containing:
+
+- ``num`` - number of operations to perform,
+- pointer to an array of size ``num`` containing a scatter-gather list
+  descriptors of performed operations (``struct rte_crypto_sgl``). Each instance
+  of ``struct rte_crypto_sgl`` consists of a number of segments and a pointer to
+  an array of segment descriptors ``struct rte_crypto_vec``;
+- pointers to arrays of size ``num`` containing IV, AAD and digest information,
+- pointer to an array of size ``num`` where status information will be stored
+  for each operation.
+
+Function returns a number of successfully completed operations and sets
+appropriate status number for each operation in the status array provided as
+a call argument. Status different than zero must be treated as error.
+
+For more details, e.g. how to convert an mbuf to an SGL, please refer to an
+example usage in the IPsec library implementation.
 
 Sample code
 -----------

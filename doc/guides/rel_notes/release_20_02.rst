@@ -130,6 +130,12 @@ New Features
   * ECPM (Elliptic Curve Point Multiplication) is added to
     asymmetric crypto library specifications.
 
+* **Added synchronous Crypto burst API.**
+
+  A new API is introduced in crypto library to handle synchronous cryptographic
+  operations allowing to achieve performance gain for cryptodevs which use
+  CPU based acceleration, such as Intel AES-NI.
+
 * **Added handling of mixed algorithms in encrypted digest requests in QAT PMD.**
 
   Added handling of mixed algorithms in encrypted digest hash-cipher

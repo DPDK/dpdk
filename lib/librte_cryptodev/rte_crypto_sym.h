@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2019 Intel Corporation
+ * Copyright(c) 2016-2020 Intel Corporation
  */
 
 #ifndef _RTE_CRYPTO_SYM_H_
@@ -25,6 +25,67 @@ extern "C" {
 #include <rte_mempool.h>
 #include <rte_common.h>
 
+/**
+ * Crypto IO Vector (in analogy with struct iovec)
+ * Supposed be used to pass input/output data buffers for crypto data-path
+ * functions.
+ */
+struct rte_crypto_vec {
+	/** virtual address of the data buffer */
+	void *base;
+	/** IOVA of the data buffer */
+	rte_iova_t iova;
+	/** length of the data buffer */
+	uint32_t len;
+};
+
+/**
+ * Crypto scatter-gather list descriptor. Consists of a pointer to an array
+ * of Crypto IO vectors with its size.
+ */
+struct rte_crypto_sgl {
+	/** start of an array of vectors */
+	struct rte_crypto_vec *vec;
+	/** size of an array of vectors */
+	uint32_t num;
+};
+
+/**
+ * Synchronous operation descriptor.
+ * Supposed to be used with CPU crypto API call.
+ */
+struct rte_crypto_sym_vec {
+	/** array of SGL vectors */
+	struct rte_crypto_sgl *sgl;
+	/** array of pointers to IV */
+	void **iv;
+	/** array of pointers to AAD */
+	void **aad;
+	/** array of pointers to digest */
+	void **digest;
+	/**
+	 * array of statuses for each operation:
+	 *  - 0 on success
+	 *  - errno on error
+	 */
+	int32_t *status;
+	/** number of operations to perform */
+	uint32_t num;
+};
+
+/**
+ * used for cpu_crypto_process_bulk() to specify head/tail offsets
+ * for auth/cipher processing.
+ */
+union rte_crypto_sym_ofs {
+	uint64_t raw;
+	struct {
+		struct {
+			uint16_t head;
+			uint16_t tail;
+		} auth, cipher;
+	} ofs;
+};
 
 /** Symmetric Cipher Algorithms */
 enum rte_crypto_cipher_algorithm {
@@ -787,6 +848,73 @@ __rte_crypto_sym_op_attach_sym_session(struct rte_crypto_sym_op *sym_op,
 	sym_op->session = sess;
 
 	return 0;
+}
+
+/**
+ * Converts portion of mbuf data into a vector representation.
+ * Each segment will be represented as a separate entry in *vec* array.
+ * Expects that provided *ofs* + *len* not to exceed mbuf's *pkt_len*.
+ * @param mb
+ *   Pointer to the *rte_mbuf* object.
+ * @param ofs
+ *   Offset within mbuf data to start with.
+ * @param len
+ *   Length of data to represent.
+ * @param vec
+ * @param num
+ * @return
+ *   - number of successfully filled entries in *vec* array.
+ *   - negative number of elements in *vec* array required.
+ */
+__rte_experimental
+static inline int
+rte_crypto_mbuf_to_vec(const struct rte_mbuf *mb, uint32_t ofs, uint32_t len,
+	struct rte_crypto_vec vec[], uint32_t num)
+{
+	uint32_t i;
+	struct rte_mbuf *nseg;
+	uint32_t left;
+	uint32_t seglen;
+
+	/* assuming that requested data starts in the first segment */
+	RTE_ASSERT(mb->data_len > ofs);
+
+	if (mb->nb_segs > num)
+		return -mb->nb_segs;
+
+	vec[0].base = rte_pktmbuf_mtod_offset(mb, void *, ofs);
+	vec[0].iova = rte_pktmbuf_iova_offset(mb, ofs);
+
+	/* whole data lies in the first segment */
+	seglen = mb->data_len - ofs;
+	if (len <= seglen) {
+		vec[0].len = len;
+		return 1;
+	}
+
+	/* data spread across segments */
+	vec[0].len = seglen;
+	left = len - seglen;
+	for (i = 1, nseg = mb->next; nseg != NULL; nseg = nseg->next, i++) {
+
+		vec[i].base = rte_pktmbuf_mtod(nseg, void *);
+		vec[i].iova = rte_pktmbuf_iova(nseg);
+
+		seglen = nseg->data_len;
+		if (left <= seglen) {
+			/* whole requested data is completed */
+			vec[i].len = left;
+			left = 0;
+			break;
+		}
+
+		/* use whole segment */
+		vec[i].len = seglen;
+		left -= seglen;
+	}
+
+	RTE_ASSERT(left == 0);
+	return i + 1;
 }
 
 

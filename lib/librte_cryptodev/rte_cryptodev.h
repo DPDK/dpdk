@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2017 Intel Corporation.
+ * Copyright(c) 2015-2020 Intel Corporation.
  */
 
 #ifndef _RTE_CRYPTODEV_H_
@@ -450,6 +450,8 @@ rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
 /**< Support encrypted-digest operations where digest is appended to data */
 #define RTE_CRYPTODEV_FF_ASYM_SESSIONLESS		(1ULL << 20)
 /**< Support asymmetric session-less operations */
+#define	RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO			(1ULL << 21)
+/**< Support symmetric cpu-crypto processing */
 
 
 /**
@@ -1273,6 +1275,24 @@ __rte_experimental
 void *
 rte_cryptodev_sym_session_get_user_data(
 					struct rte_cryptodev_sym_session *sess);
+
+/**
+ * Perform actual crypto processing (encrypt/digest or auth/decrypt)
+ * on user provided data.
+ *
+ * @param	dev_id	The device identifier.
+ * @param	sess	Cryptodev session structure
+ * @param	ofs	Start and stop offsets for auth and cipher operations
+ * @param	vec	Vectorized operation descriptor
+ *
+ * @return
+ *  - Returns number of successfully processed packets.
+ */
+__rte_experimental
+uint32_t
+rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
+	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_sym_vec *vec);
 
 #ifdef __cplusplus
 }

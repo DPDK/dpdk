@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2017 Intel Corporation
+ * Copyright(c) 2015-2020 Intel Corporation
  */
 
 #include <sys/types.h>
@@ -493,6 +493,8 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "RSA_PRIV_OP_KEY_QT";
 	case RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED:
 		return "DIGEST_ENCRYPTED";
+	case RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO:
+		return "SYM_CPU_CRYPTO";
 	default:
 		return NULL;
 	}
@@ -1616,6 +1618,37 @@ rte_cryptodev_sym_session_get_user_data(
 		return NULL;
 
 	return (void *)(sess->sess_data + sess->nb_drivers);
+}
+
+static inline void
+sym_crypto_fill_status(struct rte_crypto_sym_vec *vec, int32_t errnum)
+{
+	uint32_t i;
+	for (i = 0; i < vec->num; i++)
+		vec->status[i] = errnum;
+}
+
+uint32_t
+rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
+	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_sym_vec *vec)
+{
+	struct rte_cryptodev *dev;
+
+	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+		sym_crypto_fill_status(vec, EINVAL);
+		return 0;
+	}
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+
+	if (*dev->dev_ops->sym_cpu_process == NULL ||
+		!(dev->feature_flags & RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO)) {
+		sym_crypto_fill_status(vec, ENOTSUP);
+		return 0;
+	}
+
+	return dev->dev_ops->sym_cpu_process(dev, sess, ofs, vec);
 }
 
 /** Initialise rte_crypto_op mempool element */
