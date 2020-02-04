@@ -81,7 +81,7 @@ otx2_ssogws_release_event(struct otx2_ssogws *ws)
 	otx2_ssogws_swtag_flush(ws);
 }
 
-#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+#define R(name, f6, f5, f4, f3, f2, f1, f0, flags)			\
 uint16_t __hot								\
 otx2_ssogws_deq_ ##name(void *port, struct rte_event *ev,		\
 			uint64_t timeout_ticks)				\

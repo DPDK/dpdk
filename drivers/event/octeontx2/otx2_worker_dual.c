@@ -140,7 +140,7 @@ otx2_ssogws_dual_enq_fwd_burst(void *port, const struct rte_event ev[],
 	return 1;
 }
 
-#define R(name, f5, f4, f3, f2, f1, f0, flags)				\
+#define R(name, f6, f5, f4, f3, f2, f1, f0, flags)			\
 uint16_t __hot								\
 otx2_ssogws_dual_deq_ ##name(void *port, struct rte_event *ev,		\
 			     uint64_t timeout_ticks)			\
