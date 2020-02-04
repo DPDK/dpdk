@@ -193,6 +193,8 @@ M(CPT_SET_CRYPTO_GRP,	0xA03, cpt_set_crypto_grp,			\
 			       msg_rsp)					\
 M(CPT_INLINE_IPSEC_CFG, 0xA04, cpt_inline_ipsec_cfg,			\
 			       cpt_inline_ipsec_cfg_msg, msg_rsp)	\
+M(CPT_RX_INLINE_LF_CFG, 0xBFE, cpt_rx_inline_lf_cfg,			\
+			       cpt_rx_inline_lf_cfg_msg, msg_rsp)	\
 /* NPC mbox IDs (range 0x6000 - 0x7FFF) */				\
 M(NPC_MCAM_ALLOC_ENTRY,	0x6000, npc_mcam_alloc_entry,			\
 				npc_mcam_alloc_entry_req,		\
@@ -1206,6 +1208,11 @@ struct cpt_inline_ipsec_cfg_msg {
 	uint8_t __otx2_io dir;
 	uint16_t __otx2_io sso_pf_func; /* Inbound path SSO_PF_FUNC */
 	uint16_t __otx2_io nix_pf_func; /* Outbound path NIX_PF_FUNC */
+};
+
+struct cpt_rx_inline_lf_cfg_msg {
+	struct mbox_msghdr hdr;
+	uint16_t __otx2_io sso_pf_func;
 };
 
 /* NPC mbox message structs */
