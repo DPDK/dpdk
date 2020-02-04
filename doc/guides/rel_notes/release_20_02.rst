@@ -161,6 +161,15 @@ New Features
   armv8 crypto library is not used anymore. Library name is changed
   from armv8_crypto to AArch64crypto.
 
+* **Added inline IPsec support to Marvell OCTEON TX2 PMD.**
+
+  Added inline IPsec support to Marvell OCTEON TX2 PMD. With the feature,
+  applications would be able to offload entire IPsec offload to the hardware.
+  For the configured sessions, hardware will do the lookup and perform
+  decryption and IPsec transformation. For the outbound path, application
+  can submit a plain packet to the PMD, and it would be sent out on wire
+  after doing encryption and IPsec transformation of the packet.
+
 * **Added Marvell OCTEON TX2 End Point rawdev PMD.**
 
   Added a new OCTEON TX2 rawdev PMD for End Point mode of operation.

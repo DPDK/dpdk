@@ -329,6 +329,8 @@ struct otx2_eth_dev {
 	bool mc_tbl_set;
 	struct otx2_nix_mc_filter_tbl mc_fltr_tbl;
 	bool sdp_link; /* SDP flag */
+	/* Inline IPsec params */
+	uint16_t ipsec_in_max_spi;
 } __rte_cache_aligned;
 
 struct otx2_eth_txq {
