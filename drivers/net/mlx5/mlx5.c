@@ -679,12 +679,12 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	if (--sh->refcnt)
 		goto exit;
-	/* Release created Memory Regions. */
-	mlx5_mr_release(sh);
 	/* Remove from memory callback device list. */
 	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
 	LIST_REMOVE(sh, mem_event_cb);
 	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
+	/* Release created Memory Regions. */
+	mlx5_mr_release(sh);
 	/* Remove context from the global device list. */
 	LIST_REMOVE(sh, next);
 	/*
