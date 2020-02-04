@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2017 Intel Corporation
+ * Copyright(c) 2016-2020 Intel Corporation
  */
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -10,6 +10,7 @@
 #include <rte_crypto.h>
 #include <rte_security.h>
 #include <rte_cryptodev.h>
+#include <rte_ipsec.h>
 #include <rte_ethdev.h>
 #include <rte_mbuf.h>
 #include <rte_hash.h>
@@ -86,7 +87,8 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa,
 			ipsec_ctx->tbl[cdev_id_qp].id,
 			ipsec_ctx->tbl[cdev_id_qp].qp);
 
-	if (ips->type != RTE_SECURITY_ACTION_TYPE_NONE) {
+	if (ips->type != RTE_SECURITY_ACTION_TYPE_NONE &&
+		ips->type != RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) {
 		struct rte_security_session_conf sess_conf = {
 			.action_type = ips->type,
 			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
@@ -126,6 +128,18 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa,
 			return -1;
 		}
 	} else {
+		if (ips->type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) {
+			struct rte_cryptodev_info info;
+			uint16_t cdev_id;
+
+			cdev_id = ipsec_ctx->tbl[cdev_id_qp].id;
+			rte_cryptodev_info_get(cdev_id, &info);
+			if (!(info.feature_flags &
+				RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO))
+				return -ENOTSUP;
+
+			ips->crypto.dev_id = cdev_id;
+		}
 		ips->crypto.ses = rte_cryptodev_sym_session_create(
 				ipsec_ctx->session_pool);
 		rte_cryptodev_sym_session_init(ipsec_ctx->tbl[cdev_id_qp].id,
@@ -476,6 +490,13 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 			rte_security_attach_session(&priv->cop,
 				ips->security.ses);
 			break;
+
+		case RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO:
+			RTE_LOG(ERR, IPSEC, "CPU crypto is not supported by the"
+					" legacy mode.");
+			rte_pktmbuf_free(pkts[i]);
+			continue;
+
 		case RTE_SECURITY_ACTION_TYPE_NONE:
 
 			priv->cop.type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;

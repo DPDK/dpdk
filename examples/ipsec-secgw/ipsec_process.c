@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2017 Intel Corporation
+ * Copyright(c) 2016-2020 Intel Corporation
  */
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -92,7 +92,8 @@ fill_ipsec_session(struct rte_ipsec_session *ss, struct ipsec_ctx *ctx,
 	int32_t rc;
 
 	/* setup crypto section */
-	if (ss->type == RTE_SECURITY_ACTION_TYPE_NONE) {
+	if (ss->type == RTE_SECURITY_ACTION_TYPE_NONE ||
+			ss->type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) {
 		RTE_ASSERT(ss->crypto.ses == NULL);
 		rc = create_lookaside_session(ctx, sa, ss);
 		if (rc != 0)
@@ -216,6 +217,62 @@ ipsec_prepare_crypto_group(struct ipsec_ctx *ctx, struct ipsec_sa *sa,
 }
 
 /*
+ * helper routine for inline and cpu(synchronous) processing
+ * this is just to satisfy inbound_sa_check() and get_hop_for_offload_pkt().
+ * Should be removed in future.
+ */
+static inline void
+prep_process_group(void *sa, struct rte_mbuf *mb[], uint32_t cnt)
+{
+	uint32_t j;
+	struct ipsec_mbuf_metadata *priv;
+
+	for (j = 0; j != cnt; j++) {
+		priv = get_priv(mb[j]);
+		priv->sa = sa;
+	}
+}
+
+/*
+ * finish processing of packets successfully decrypted by an inline processor
+ */
+static uint32_t
+ipsec_process_inline_group(struct rte_ipsec_session *ips, void *sa,
+	struct ipsec_traffic *trf, struct rte_mbuf *mb[], uint32_t cnt)
+{
+	uint64_t satp;
+	uint32_t k;
+
+	/* get SA type */
+	satp = rte_ipsec_sa_type(ips->sa);
+	prep_process_group(sa, mb, cnt);
+
+	k = rte_ipsec_pkt_process(ips, mb, cnt);
+	copy_to_trf(trf, satp, mb, k);
+	return k;
+}
+
+/*
+ * process packets synchronously
+ */
+static uint32_t
+ipsec_process_cpu_group(struct rte_ipsec_session *ips, void *sa,
+	struct ipsec_traffic *trf, struct rte_mbuf *mb[], uint32_t cnt)
+{
+	uint64_t satp;
+	uint32_t k;
+
+	/* get SA type */
+	satp = rte_ipsec_sa_type(ips->sa);
+	prep_process_group(sa, mb, cnt);
+
+	k = rte_ipsec_pkt_cpu_prepare(ips, mb, cnt);
+	k = rte_ipsec_pkt_process(ips, mb, k);
+	copy_to_trf(trf, satp, mb, k);
+	return k;
+}
+
+/*
  * Process ipsec packets.
  * If packet belong to SA that is subject of inline-crypto,
  * then process it immediately.
@@ -225,10 +282,8 @@ ipsec_prepare_crypto_group(struct ipsec_ctx *ctx, struct ipsec_sa *sa,
 void
 ipsec_process(struct ipsec_ctx *ctx, struct ipsec_traffic *trf)
 {
-	uint64_t satp;
-	uint32_t i, j, k, n;
+	uint32_t i, k, n;
 	struct ipsec_sa *sa;
-	struct ipsec_mbuf_metadata *priv;
 	struct rte_ipsec_group *pg;
 	struct rte_ipsec_session *ips;
 	struct rte_ipsec_group grp[RTE_DIM(trf->ipsec.pkts)];
@@ -236,10 +291,17 @@ ipsec_process(struct ipsec_ctx *ctx, struct ipsec_traffic *trf)
 	n = sa_group(trf->ipsec.saptr, trf->ipsec.pkts, grp, trf->ipsec.num);
 
 	for (i = 0; i != n; i++) {
+
 		pg = grp + i;
 		sa = ipsec_mask_saptr(pg->id.ptr);
 
-		ips = ipsec_get_primary_session(sa);
+		/* fallback to cryptodev with RX packets which inline
+		 * processor was unable to process
+		 */
+		if (sa != NULL)
+			ips = (pg->id.val & IPSEC_SA_OFFLOAD_FALLBACK_FLAG) ?
+				ipsec_get_fallback_session(sa) :
+				ipsec_get_primary_session(sa);
 
 		/* no valid HW session for that SA, try to create one */
 		if (sa == NULL || (ips->crypto.ses == NULL &&
@@ -247,50 +309,26 @@ ipsec_process(struct ipsec_ctx *ctx, struct ipsec_traffic *trf)
 			k = 0;
 
 		/* process packets inline */
-		else if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
-				ips->type ==
-				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) {
-
-			/* get SA type */
-			satp = rte_ipsec_sa_type(ips->sa);
-
-			/*
-			 * This is just to satisfy inbound_sa_check()
-			 * and get_hop_for_offload_pkt().
-			 * Should be removed in future.
-			 */
-			for (j = 0; j != pg->cnt; j++) {
-				priv = get_priv(pg->m[j]);
-				priv->sa = sa;
+		else {
+			switch (ips->type) {
+			/* enqueue packets to crypto dev */
+			case RTE_SECURITY_ACTION_TYPE_NONE:
+			case RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL:
+				k = ipsec_prepare_crypto_group(ctx, sa, ips,
+					pg->m, pg->cnt);
+				break;
+			case RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO:
+			case RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL:
+				k = ipsec_process_inline_group(ips, sa,
+					trf, pg->m, pg->cnt);
+				break;
+			case RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO:
+				k = ipsec_process_cpu_group(ips, sa,
+					trf, pg->m, pg->cnt);
+				break;
+			default:
+				k = 0;
 			}
-
-			/* fallback to cryptodev with RX packets which inline
-			 * processor was unable to process
-			 */
-			if (pg->id.val & IPSEC_SA_OFFLOAD_FALLBACK_FLAG) {
-				/* offload packets to cryptodev */
-				struct rte_ipsec_session *fallback;
-
-				fallback = ipsec_get_fallback_session(sa);
-				if (fallback->crypto.ses == NULL &&
-					fill_ipsec_session(fallback, ctx, sa)
-					!= 0)
-					k = 0;
-				else
-					k = ipsec_prepare_crypto_group(ctx, sa,
-						fallback, pg->m, pg->cnt);
-			} else {
-				/* finish processing of packets successfully
-				 * decrypted by an inline processor
-				 */
-				k = rte_ipsec_pkt_process(ips, pg->m, pg->cnt);
-				copy_to_trf(trf, satp, pg->m, k);
-
-			}
-		/* enqueue packets to crypto dev */
-		} else {
-			k = ipsec_prepare_crypto_group(ctx, sa, ips, pg->m,
-				pg->cnt);
 		}
 
 		/* drop packets that cannot be enqueued/processed */

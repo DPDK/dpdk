@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2017 Intel Corporation
+ * Copyright(c) 2016-2020 Intel Corporation
  */
 
 /*
@@ -617,6 +617,8 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 				RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
 			else if (strcmp(tokens[ti], "no-offload") == 0)
 				ips->type = RTE_SECURITY_ACTION_TYPE_NONE;
+			else if (strcmp(tokens[ti], "cpu-crypto") == 0)
+				ips->type = RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO;
 			else {
 				APP_CHECK(0, status, "Invalid input \"%s\"",
 						tokens[ti]);
@@ -710,10 +712,12 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	if (status->status < 0)
 		return;
 
-	if ((ips->type != RTE_SECURITY_ACTION_TYPE_NONE) && (portid_p == 0))
+	if ((ips->type != RTE_SECURITY_ACTION_TYPE_NONE && ips->type !=
+			RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) && (portid_p == 0))
 		printf("Missing portid option, falling back to non-offload\n");
 
-	if (!type_p || !portid_p) {
+	if (!type_p || (!portid_p && ips->type !=
+			RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)) {
 		ips->type = RTE_SECURITY_ACTION_TYPE_NONE;
 		rule->portid = -1;
 	}
@@ -799,15 +803,25 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 	case RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL:
 		printf("lookaside-protocol-offload ");
 		break;
+	case RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO:
+		printf("cpu-crypto-accelerated");
+		break;
 	}
 
 	fallback_ips = &sa->sessions[IPSEC_SESSION_FALLBACK];
 	if (fallback_ips != NULL && sa->fallback_sessions > 0) {
 		printf("inline fallback: ");
-		if (fallback_ips->type == RTE_SECURITY_ACTION_TYPE_NONE)
+		switch (fallback_ips->type) {
+		case RTE_SECURITY_ACTION_TYPE_NONE:
 			printf("lookaside-none");
-		else
+			break;
+		case RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO:
+			printf("cpu-crypto-accelerated");
+			break;
+		default:
 			printf("invalid");
+			break;
+		}
 	}
 	printf("\n");
 }
@@ -1026,7 +1040,6 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 				return -EINVAL;
 		}
 
-
 		switch (WITHOUT_TRANSPORT_VERSION(sa->flags)) {
 		case IP4_TUNNEL:
 			sa->src.ip.ip4 = rte_cpu_to_be_32(sa->src.ip.ip4);
@@ -1077,7 +1090,6 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 					return -EINVAL;
 				}
 			}
-			print_one_sa_rule(sa, inbound);
 		} else {
 			switch (sa->cipher_algo) {
 			case RTE_CRYPTO_CIPHER_NULL:
@@ -1142,9 +1154,9 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 			sa_ctx->xf[idx].a.next = &sa_ctx->xf[idx].b;
 			sa_ctx->xf[idx].b.next = NULL;
 			sa->xforms = &sa_ctx->xf[idx].a;
-
-			print_one_sa_rule(sa, inbound);
 		}
+
+		print_one_sa_rule(sa, inbound);
 	}
 
 	return 0;
