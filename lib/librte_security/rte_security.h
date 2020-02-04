@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2017,2019 NXP
- * Copyright(c) 2017 Intel Corporation.
+ * Copyright(c) 2017-2020 Intel Corporation.
  */
 
 #ifndef _RTE_SECURITY_H_
@@ -307,9 +307,13 @@ enum rte_security_session_action_type {
 	/**< All security protocol processing is performed inline during
 	 * transmission
 	 */
-	RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL
+	RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
 	/**< All security protocol processing including crypto is performed
 	 * on a lookaside accelerator
+	 */
+	RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO
+	/**< Similar to ACTION_TYPE_NONE but crypto processing for security
+	 * protocol is processed synchronously by a CPU.
 	 */
 };
 

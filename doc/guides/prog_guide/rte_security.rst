@@ -511,13 +511,20 @@ Offload.
         /**< No security actions */
         RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
         /**< Crypto processing for security protocol is processed inline
-         * during transmission */
+         * during transmission
+         */
         RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
         /**< All security protocol processing is performed inline during
-         * transmission */
-        RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL
+         * transmission
+         */
+        RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
         /**< All security protocol processing including crypto is performed
-         * on a lookaside accelerator */
+         * on a lookaside accelerator
+         */
+        RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO
+        /**< Similar to ACTION_TYPE_NONE but crypto processing for security
+         * protocol is processed synchronously by a CPU.
+         */
     };
 
 The ``rte_security_session_protocol`` is defined as
