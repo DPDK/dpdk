@@ -35,7 +35,7 @@ struct route_rule {
 	uint8_t depth;
 };
 
-struct route_rule large_route_table[MAX_RULE_NUM];
+static struct route_rule large_route_table[MAX_RULE_NUM];
 
 static uint32_t num_route_entries;
 #define NUM_ROUTE_ENTRIES num_route_entries
