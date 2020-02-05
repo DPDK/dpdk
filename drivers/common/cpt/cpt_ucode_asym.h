@@ -888,7 +888,6 @@ cpt_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	vq_cmd_w0.s.param1 = curveid;
 	vq_cmd_w0.s.param2 = ecpm->scalar.length;
 	vq_cmd_w0.s.dlen = dlen;
-	vq_cmd_w0.u64 = vq_cmd_w0.u64;
 
 	/* Filling cpt_request_info structure */
 	req->ist.ei0 = vq_cmd_w0.u64;
