@@ -385,10 +385,12 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			 off_b - __builtin_clz(mask);
 		MLX5_ASSERT(size_b);
 		size_b = size_b == sizeof(uint32_t) * CHAR_BIT ? 0 : size_b;
-		actions[i].action_type = type;
-		actions[i].field = field->id;
-		actions[i].offset = off_b;
-		actions[i].length = size_b;
+		actions[i] = (struct mlx5_modification_cmd) {
+			.action_type = type,
+			.field = field->id,
+			.offset = off_b,
+			.length = size_b,
+		};
 		/* Convert entire record to expected big-endian format. */
 		actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
 		if (type == MLX5_MODIFICATION_TYPE_COPY) {
@@ -578,10 +580,12 @@ flow_dv_convert_action_modify_vlan_vid
 		return rte_flow_error_set(error, EINVAL,
 			 RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 			 "too many items to modify");
-	actions[i].action_type = MLX5_MODIFICATION_TYPE_SET;
-	actions[i].field = field->id;
-	actions[i].length = field->size;
-	actions[i].offset = field->offset;
+	actions[i] = (struct mlx5_modification_cmd) {
+		.action_type = MLX5_MODIFICATION_TYPE_SET,
+		.field = field->id,
+		.length = field->size,
+		.offset = field->offset,
+	};
 	actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
 	actions[i].data1 = conf->vlan_vid;
 	actions[i].data1 = actions[i].data1 << 16;
@@ -913,8 +917,10 @@ flow_dv_convert_action_set_reg
 					  "too many items to modify");
 	MLX5_ASSERT(conf->id != REG_NONE);
 	MLX5_ASSERT(conf->id < RTE_DIM(reg_to_field));
-	actions[i].action_type = MLX5_MODIFICATION_TYPE_SET;
-	actions[i].field = reg_to_field[conf->id];
+	actions[i] = (struct mlx5_modification_cmd) {
+		.action_type = MLX5_MODIFICATION_TYPE_SET,
+		.field = reg_to_field[conf->id],
+	};
 	actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
 	actions[i].data1 = rte_cpu_to_be_32(conf->data);
 	++i;
