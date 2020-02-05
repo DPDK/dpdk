@@ -148,8 +148,8 @@ extern struct burst_conf burst_conf;
 extern struct ring_thresh rx_thresh;
 extern struct ring_thresh tx_thresh;
 
-uint32_t active_queues[RTE_SCHED_QUEUES_PER_PIPE];
-uint32_t n_active_queues;
+extern uint32_t active_queues[RTE_SCHED_QUEUES_PER_PIPE];
+extern uint32_t n_active_queues;
 
 extern struct rte_sched_port_params port_params;
 extern struct rte_sched_subport_params subport_params[MAX_SCHED_SUBPORTS];

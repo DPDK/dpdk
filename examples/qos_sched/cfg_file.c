@@ -20,6 +20,9 @@
  * for new entries do we add in */
 #define CFG_ALLOC_ENTRY_BATCH 16
 
+uint32_t active_queues[RTE_SCHED_QUEUES_PER_PIPE];
+uint32_t n_active_queues;
+
 int
 cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port_params)
 {
