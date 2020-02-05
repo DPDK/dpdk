@@ -89,10 +89,11 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 	dev->features &= dev->device_features;
 
 	/* For packed ring, resetting queues is required in reconnection. */
-	if (vtpci_packed_queue(hw))
+	if (vtpci_packed_queue(hw)) {
 		PMD_INIT_LOG(NOTICE, "Packets on the fly will be dropped"
 				" when packed ring reconnecting.");
 		virtio_user_reset_queues_packed(eth_dev);
+	}
 
 	ret = virtio_user_start_device(dev);
 	if (ret < 0)
