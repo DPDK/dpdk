@@ -320,7 +320,7 @@ struct cpt_ctx {
 		mc_zuc_snow3g_ctx_t zs_ctx;
 		mc_kasumi_ctx_t k_ctx;
 	};
-	uint8_t  auth_key[64];
+	uint8_t  auth_key[1024];
 };
 
 /* Prime and order fields of built-in elliptic curves */

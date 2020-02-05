@@ -230,6 +230,9 @@ cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
 		 * sometimes iverride IV per operation.
 		 */
 		fctx->enc.iv_source = CPT_FROM_DPTR;
+
+		if (cpt_ctx->auth_key_len > 64)
+			return -1;
 	}
 
 	switch (type) {
@@ -2537,6 +2540,9 @@ cpt_fc_auth_set_key(void *ctx, auth_type_t type, const uint8_t *key,
 			cpt_ctx->fc_type = HASH_HMAC;
 	}
 
+	if (cpt_ctx->fc_type == FC_GEN && key_len > 64)
+		return -1;
+
 	/* For GMAC auth, cipher must be NULL */
 	if (type == GMAC_TYPE)
 		fctx->enc.enc_cipher = 0;
@@ -2551,7 +2557,9 @@ cpt_fc_auth_set_key(void *ctx, auth_type_t type, const uint8_t *key,
 		cpt_ctx->auth_key_len = key_len;
 		memset(fctx->hmac.ipad, 0, sizeof(fctx->hmac.ipad));
 		memset(fctx->hmac.opad, 0, sizeof(fctx->hmac.opad));
-		memcpy(fctx->hmac.opad, key, key_len);
+
+		if (key_len <= 64)
+			memcpy(fctx->hmac.opad, key, key_len);
 		fctx->enc.auth_input_type = 1;
 	}
 	return 0;
@@ -2733,11 +2741,6 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform,
 		sess->cpt_op |= CPT_OP_AUTH_GENERATE;
 	else {
 		CPT_LOG_DP_ERR("Unknown auth operation");
-		return -1;
-	}
-
-	if (a_form->key.length > 64) {
-		CPT_LOG_DP_ERR("Auth key length is big");
 		return -1;
 	}
 
