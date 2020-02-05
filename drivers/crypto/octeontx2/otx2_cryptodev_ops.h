@@ -16,6 +16,6 @@ enum otx2_cpt_egrp {
 	OTX2_CPT_EGRP_AE = 2
 };
 
-struct rte_cryptodev_ops otx2_cpt_ops;
+extern struct rte_cryptodev_ops otx2_cpt_ops;
 
 #endif /* _OTX2_CRYPTODEV_OPS_H_ */
