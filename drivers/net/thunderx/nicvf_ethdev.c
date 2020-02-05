@@ -1988,6 +1988,37 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+nicvf_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	int rc, i;
+
+	rc = nicvf_mbox_set_link_up_down(nic, true);
+	if (rc)
+		goto done;
+
+	/* Start tx queues  */
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		nicvf_dev_tx_queue_start(dev, i);
+
+done:
+	return rc;
+}
+
+static int
+nicvf_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	int i;
+
+	/* Stop tx queues  */
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		nicvf_dev_tx_queue_stop(dev, i);
+
+	return nicvf_mbox_set_link_up_down(nic, false);
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.dev_configure            = nicvf_dev_configure,
@@ -2015,6 +2046,8 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.rx_queue_count           = nicvf_dev_rx_queue_count,
 	.tx_queue_setup           = nicvf_dev_tx_queue_setup,
 	.tx_queue_release         = nicvf_dev_tx_queue_release,
+	.dev_set_link_up          = nicvf_dev_set_link_up,
+	.dev_set_link_down        = nicvf_dev_set_link_down,
 	.get_reg                  = nicvf_dev_get_regs,
 };
 

@@ -413,6 +413,16 @@ nicvf_mbox_reset_stat_counters(struct nicvf *nic, uint16_t rx_stat_mask,
 	return nicvf_mbox_send_msg_to_pf(nic, &mbx);
 }
 
+int
+nicvf_mbox_set_link_up_down(struct nicvf *nic, bool enable)
+{
+	struct nic_mbx mbx = { .msg = { 0 } };
+
+	mbx.lbk.msg = NIC_MBOX_MSG_SET_LINK;
+	mbx.lbk.vf_id = nic->vf_id;
+	mbx.lbk.enable = enable;
+	return nicvf_mbox_send_msg_to_pf(nic, &mbx);
+}
 void
 nicvf_mbox_shutdown(struct nicvf *nic)
 {
