@@ -112,8 +112,8 @@ struct inflight_blk_task {
 	struct rte_vhost_inflight_info_packed *inflight_packed;
 };
 
-struct vhost_blk_ctrlr *g_vhost_ctrlr;
-struct vhost_device_ops vhost_blk_device_ops;
+extern struct vhost_blk_ctrlr *g_vhost_ctrlr;
+extern struct vhost_device_ops vhost_blk_device_ops;
 
 int vhost_bdev_process_blk_commands(struct vhost_block_dev *bdev,
 				     struct vhost_blk_task *task);

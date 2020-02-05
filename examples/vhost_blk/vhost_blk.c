@@ -31,6 +31,8 @@
 			    (1ULL << VIRTIO_F_NOTIFY_ON_EMPTY) | \
 			    (1ULL << VHOST_USER_F_PROTOCOL_FEATURES))
 
+struct vhost_blk_ctrlr *g_vhost_ctrlr;
+
 /* Path to folder where character device will be created. Can be set by user. */
 static char dev_pathname[PATH_MAX] = "";
 static sem_t exit_sem;
