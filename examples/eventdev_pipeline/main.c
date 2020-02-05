@@ -10,6 +10,8 @@
 
 #include "pipeline_common.h"
 
+struct fastpath_data *fdata;
+
 struct config_data cdata = {
 	.num_packets = (1L << 25), /* do ~32M packets */
 	.num_fids = 512,

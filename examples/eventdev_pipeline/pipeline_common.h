@@ -93,8 +93,8 @@ struct port_link {
 	uint8_t priority;
 };
 
-struct fastpath_data *fdata;
-struct config_data cdata;
+extern struct fastpath_data *fdata;
+extern struct config_data cdata;
 
 static __rte_always_inline void
 exchange_mac(struct rte_mbuf *m)
