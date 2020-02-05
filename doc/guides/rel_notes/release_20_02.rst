@@ -120,7 +120,6 @@ New Features
 
 * **Added algorithms to cryptodev API.**
 
-  * Chacha20-Poly1305 AEAD algorithm can now be supported in cryptodev.
   * ECDSA (Elliptic Curve Digital Signature Algorithm) is added to
     asymmetric crypto library specifications.
   * ECPM (Elliptic Curve Point Multiplication) is added to
@@ -133,10 +132,6 @@ New Features
   ZUC + AES CTR) in QAT PMD possible when running on GEN3 QAT hardware.
   Such algorithm combinations are not supported on GEN1/GEN2 hardware
   and executing the request returns RTE_CRYPTO_OP_STATUS_INVALID_SESSION.
-
-* **Updated the Intel QuickAssist Technology (QAT) symmetric crypto PMD.**
-
-  Added Chacha20-Poly1305 AEAD algorithm.
 
 * **Added Marvell OCTEON TX2 End Point rawdev PMD.**
 
