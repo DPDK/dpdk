@@ -577,9 +577,9 @@ rte_cryptodev_capabilities otx2_cpt_capabilities[] = {
 					.increment = 8
 				},
 				.digest_size = {
-					.min = 8,
+					.min = 4,
 					.max = 16,
-					.increment = 4
+					.increment = 1
 				},
 				.aad_size = {
 					.min = 0,
