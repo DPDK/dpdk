@@ -149,7 +149,7 @@ static __rte_always_inline void
 cpt_fc_ciph_set_key_passthrough(struct cpt_ctx *cpt_ctx, mc_fc_context_t *fctx)
 {
 	cpt_ctx->enc_cipher = 0;
-	CPT_P_ENC_CTRL(fctx).enc_cipher = 0;
+	fctx->enc.enc_cipher = 0;
 }
 
 static __rte_always_inline void
@@ -171,7 +171,7 @@ cpt_fc_ciph_set_key_set_aes_key_type(mc_fc_context_t *fctx, uint16_t key_len)
 		CPT_LOG_DP_ERR("Invalid AES key len");
 		return;
 	}
-	CPT_P_ENC_CTRL(fctx).aes_key = aes_key_type;
+	fctx->enc.aes_key = aes_key_type;
 }
 
 static __rte_always_inline void
@@ -218,7 +218,6 @@ cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
 {
 	struct cpt_ctx *cpt_ctx = ctx;
 	mc_fc_context_t *fctx = &cpt_ctx->fctx;
-	uint64_t *ctrl_flags = NULL;
 	int ret;
 
 	ret = cpt_fc_ciph_set_type(type, cpt_ctx, key_len);
@@ -226,19 +225,17 @@ cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
 		return -1;
 
 	if (cpt_ctx->fc_type == FC_GEN) {
-		ctrl_flags = (uint64_t *)&(fctx->enc.enc_ctrl.flags);
-		*ctrl_flags = rte_be_to_cpu_64(*ctrl_flags);
 		/*
 		 * We need to always say IV is from DPTR as user can
 		 * sometimes iverride IV per operation.
 		 */
-		CPT_P_ENC_CTRL(fctx).iv_source = CPT_FROM_DPTR;
+		fctx->enc.iv_source = CPT_FROM_DPTR;
 	}
 
 	switch (type) {
 	case PASSTHROUGH:
 		cpt_fc_ciph_set_key_passthrough(cpt_ctx, fctx);
-		goto fc_success;
+		goto success;
 	case DES3_CBC:
 		/* CPT performs DES using 3DES with the 8B DES-key
 		 * replicated 2 more times to match the 24B 3DES-key.
@@ -255,7 +252,7 @@ cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
 		break;
 	case DES3_ECB:
 		/* For DES3_ECB IV need to be from CTX. */
-		CPT_P_ENC_CTRL(fctx).iv_source = CPT_FROM_CTX;
+		fctx->enc.iv_source = CPT_FROM_CTX;
 		break;
 	case AES_CBC:
 	case AES_ECB:
@@ -273,7 +270,7 @@ cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
 			 * and nothing else
 			 */
 			if (!key)
-				goto fc_success;
+				goto success;
 		}
 		cpt_fc_ciph_set_key_set_aes_key_type(fctx, key_len);
 		break;
@@ -305,13 +302,9 @@ cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
 
 	/* For GMAC auth, cipher must be NULL */
 	if (cpt_ctx->hash_type != GMAC_TYPE)
-		CPT_P_ENC_CTRL(fctx).enc_cipher = type;
+		fctx->enc.enc_cipher = type;
 
 	memcpy(fctx->enc.encr_key, key, key_len);
-
-fc_success:
-	if (ctrl_flags != NULL)
-		*ctrl_flags = rte_cpu_to_be_64(*ctrl_flags);
 
 success:
 	cpt_ctx->enc_cipher = type;
@@ -2494,7 +2487,6 @@ cpt_fc_auth_set_key(void *ctx, auth_type_t type, const uint8_t *key,
 {
 	struct cpt_ctx *cpt_ctx = ctx;
 	mc_fc_context_t *fctx = &cpt_ctx->fctx;
-	uint64_t *ctrl_flags = NULL;
 
 	if ((type >= ZUC_EIA3) && (type <= KASUMI_F9_ECB)) {
 		uint32_t keyx[4];
@@ -2545,15 +2537,12 @@ cpt_fc_auth_set_key(void *ctx, auth_type_t type, const uint8_t *key,
 			cpt_ctx->fc_type = HASH_HMAC;
 	}
 
-	ctrl_flags = (uint64_t *)&fctx->enc.enc_ctrl.flags;
-	*ctrl_flags = rte_be_to_cpu_64(*ctrl_flags);
-
 	/* For GMAC auth, cipher must be NULL */
 	if (type == GMAC_TYPE)
-		CPT_P_ENC_CTRL(fctx).enc_cipher = 0;
+		fctx->enc.enc_cipher = 0;
 
-	CPT_P_ENC_CTRL(fctx).hash_type = cpt_ctx->hash_type = type;
-	CPT_P_ENC_CTRL(fctx).mac_len = cpt_ctx->mac_len = mac_len;
+	fctx->enc.hash_type = cpt_ctx->hash_type = type;
+	fctx->enc.mac_len = cpt_ctx->mac_len = mac_len;
 
 	if (key_len) {
 		cpt_ctx->hmac = 1;
@@ -2563,9 +2552,8 @@ cpt_fc_auth_set_key(void *ctx, auth_type_t type, const uint8_t *key,
 		memset(fctx->hmac.ipad, 0, sizeof(fctx->hmac.ipad));
 		memset(fctx->hmac.opad, 0, sizeof(fctx->hmac.opad));
 		memcpy(fctx->hmac.opad, key, key_len);
-		CPT_P_ENC_CTRL(fctx).auth_input_type = 1;
+		fctx->enc.auth_input_type = 1;
 	}
-	*ctrl_flags = rte_cpu_to_be_64(*ctrl_flags);
 	return 0;
 }
 

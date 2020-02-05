@@ -267,41 +267,16 @@ struct cpt_sess_misc {
 	phys_addr_t ctx_dma_addr;
 };
 
-typedef union {
-	uint64_t flags;
-	struct {
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-		uint64_t enc_cipher   : 4;
-		uint64_t reserved1    : 1;
-		uint64_t aes_key      : 2;
-		uint64_t iv_source    : 1;
-		uint64_t hash_type    : 4;
-		uint64_t reserved2    : 3;
-		uint64_t auth_input_type : 1;
-		uint64_t mac_len      : 8;
-		uint64_t reserved3    : 8;
-		uint64_t encr_offset  : 16;
-		uint64_t iv_offset    : 8;
-		uint64_t auth_offset  : 8;
-#else
-		uint64_t auth_offset  : 8;
-		uint64_t iv_offset    : 8;
-		uint64_t encr_offset  : 16;
-		uint64_t reserved3    : 8;
-		uint64_t mac_len      : 8;
-		uint64_t auth_input_type : 1;
-		uint64_t reserved2    : 3;
-		uint64_t hash_type    : 4;
-		uint64_t iv_source    : 1;
-		uint64_t aes_key      : 2;
-		uint64_t reserved1    : 1;
-		uint64_t enc_cipher   : 4;
-#endif
-	} e;
-} encr_ctrl_t;
-
 typedef struct {
-	encr_ctrl_t enc_ctrl;
+	uint64_t iv_source      : 1;
+	uint64_t aes_key        : 2;
+	uint64_t rsvd_60        : 1;
+	uint64_t enc_cipher     : 4;
+	uint64_t auth_input_type : 1;
+	uint64_t rsvd_52_54     : 3;
+	uint64_t hash_type      : 4;
+	uint64_t mac_len        : 8;
+	uint64_t rsvd_39_0      : 40;
 	uint8_t  encr_key[32];
 	uint8_t  encr_iv[16];
 } mc_enc_context_t;
@@ -443,8 +418,6 @@ typedef mc_cipher_type_t cipher_type_t;
 typedef mc_hash_type_t auth_type_t;
 
 /* Helper macros */
-
-#define CPT_P_ENC_CTRL(fctx)  fctx->enc.enc_ctrl.e
 
 #define SRC_IOV_SIZE \
 	(sizeof(iov_ptr_t) + (sizeof(buf_ptr_t) * CPT_MAX_SG_CNT))
