@@ -678,10 +678,11 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
 	if (rc == -ENOMEM) {
-		int i;
+		int i = RING_NEXT(rxr->rx_ring_struct, prod);
+		int cnt = nb_rx_pkts;
 
-		for (i = prod; i <= nb_rx_pkts;
-			i = RING_NEXT(rxr->rx_ring_struct, i)) {
+		for (; cnt;
+			i = RING_NEXT(rxr->rx_ring_struct, i), cnt--) {
 			struct bnxt_sw_rx_bd *rx_buf = &rxr->rx_buf_ring[i];
 
 			/* Buffer already allocated for this index. */
