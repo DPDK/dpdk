@@ -1,4 +1,4 @@
-DPDK_20.0 {
+DPDK_20.0.1 {
 	global:
 
 	iavf_init_adminq;
