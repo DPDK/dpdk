@@ -11,6 +11,7 @@
 #include "ecore_vf_api.h"
 #include "ecore_l2_api.h"
 #include "ecore_vfpf_if.h"
+#include "ecore_dev_api.h"
 
 /* Default number of CIDs [total of both Rx and Tx] to be requested
  * by default.
@@ -59,6 +60,9 @@ struct ecore_vf_iov {
 	 * bar or via the doorbell bar.
 	 */
 	bool b_doorbell_bar;
+
+	/* retry count for VF acquire on channel timeout */
+	u8 acquire_retry_cnt;
 };
 
 /**
@@ -72,6 +76,8 @@ struct ecore_vf_iov {
 enum _ecore_status_t ecore_vf_pf_get_coalesce(struct ecore_hwfn *p_hwfn,
 					      u16 *p_coal,
 					      struct ecore_queue_cid *p_cid);
+
+enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn);
 /**
  * @brief VF - Set Rx/Tx coalesce per VF's relative queue.
  *             Coalesce value '0' will omit the configuration.
@@ -92,10 +98,13 @@ enum _ecore_status_t ecore_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn,
  *	sends ACQUIRE message
  *
  * @param p_hwfn
+ * @param p_params
  *
  * @return enum _ecore_status_t
  */
-enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn);
+enum _ecore_status_t
+ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn,
+		    struct ecore_hw_prepare_params *p_params);
 
 /**
  * @brief VF - start the RX Queue by sending a message to the PF

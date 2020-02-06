@@ -5617,7 +5617,7 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn, void OSAL_IOMEM *p_regview,
 	p_hwfn->db_phys_addr = db_phys_addr;
 
 	if (IS_VF(p_dev))
-		return ecore_vf_hw_prepare(p_hwfn);
+		return ecore_vf_hw_prepare(p_hwfn, p_params);
 
 	/* Validate that chip access is feasible */
 	if (REG_RD(p_hwfn, PXP_PF_ME_OPAQUE_ADDR) == 0xffffffff) {

@@ -277,6 +277,9 @@ struct ecore_hw_prepare_params {
 
 	/* Indicates whether this PF serves a storage target */
 	bool b_is_target;
+
+	/* retry count for VF acquire on channel timeout */
+	u8 acquire_retry_cnt;
 };
 
 /**

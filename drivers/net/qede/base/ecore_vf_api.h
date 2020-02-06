@@ -11,6 +11,9 @@
 #include "ecore_mcp_api.h"
 
 #ifdef CONFIG_ECORE_SRIOV
+
+#define ECORE_VF_ACQUIRE_THRESH 3
+
 /**
  * @brief Read the VF bulletin and act on it if needed
  *

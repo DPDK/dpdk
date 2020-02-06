@@ -51,6 +51,7 @@ enum ecore_iov_pf_to_vf_status {
 	PFVF_STATUS_NO_RESOURCE,
 	PFVF_STATUS_FORCED,
 	PFVF_STATUS_MALICIOUS,
+	PFVF_STATUS_ACQUIRED,
 };
 
 struct ecore_mcp_link_params;

@@ -226,7 +226,6 @@ enum _ecore_status_t ecore_vf_pf_release(struct ecore_hwfn *p_hwfn)
 	return _ecore_vf_pf_release(p_hwfn, true);
 }
 
-#define VF_ACQUIRE_THRESH 3
 static void ecore_vf_pf_acquire_reduce_resc(struct ecore_hwfn *p_hwfn,
 					    struct vf_pf_resc_request *p_req,
 					    struct pf_vf_resc *p_resp)
@@ -251,13 +250,47 @@ static void ecore_vf_pf_acquire_reduce_resc(struct ecore_hwfn *p_hwfn,
 	p_req->num_cids = p_resp->num_cids;
 }
 
-static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
+static enum _ecore_status_t
+ecore_vf_pf_soft_flr_acquire(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+	struct pfvf_def_resp_tlv *resp;
+	struct vfpf_soft_flr_tlv *req;
+	enum _ecore_status_t rc;
+
+	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_SOFT_FLR, sizeof(*req));
+
+	/* add list termination tlv */
+	ecore_add_tlv(&p_iov->offset,
+		      CHANNEL_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
+
+	resp = &p_iov->pf2vf_reply->default_resp;
+	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV, "rc=0x%x\n", rc);
+
+	/* to release the mutex as ecore_vf_pf_acquire() take the mutex */
+	ecore_vf_pf_req_end(p_hwfn, ECORE_AGAIN);
+
+	/* As of today, there is no mechanism in place for VF to know the FLR
+	 * status, so sufficiently (worst case time) wait for FLR to complete,
+	 * as mailbox request to MFW by the PF for initiating VF flr and PF
+	 * processing VF FLR could take time.
+	 */
+	OSAL_MSLEEP(3000);
+
+	return ecore_vf_pf_acquire(p_hwfn);
+}
+
+enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct pfvf_acquire_resp_tlv *resp = &p_iov->pf2vf_reply->acquire_resp;
 	struct pf_vf_pfdev_info *pfdev_info = &resp->pfdev_info;
 	struct ecore_vf_acquire_sw_info vf_sw_info;
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
+	u8 retry_cnt = p_iov->acquire_retry_cnt;
 	struct vf_pf_resc_request *p_resc;
 	bool resources_acquired = false;
 	struct vfpf_acquire_tlv *req;
@@ -318,6 +351,14 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 		/* send acquire request */
 		rc = ecore_send_msg2pf(p_hwfn,
 				       &resp->hdr.status, sizeof(*resp));
+
+		if (retry_cnt && rc == ECORE_TIMEOUT) {
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF retrying to acquire due to VPC timeout\n");
+			retry_cnt--;
+			continue;
+		}
+
 		if (rc != ECORE_SUCCESS)
 			goto exit;
 
@@ -343,7 +384,7 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 			resources_acquired = true;
 		} /* PF refuses to allocate our resources */
 		else if (resp->hdr.status == PFVF_STATUS_NO_RESOURCE &&
-			 attempts < VF_ACQUIRE_THRESH) {
+			 attempts < ECORE_VF_ACQUIRE_THRESH) {
 			ecore_vf_pf_acquire_reduce_resc(p_hwfn, p_resc,
 							&resp->resc);
 
@@ -391,6 +432,9 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 				  "PF rejected acquisition by VF\n");
 			rc = ECORE_INVAL;
 			goto exit;
+		} else if (resp->hdr.status == PFVF_STATUS_ACQUIRED) {
+			ecore_vf_pf_req_end(p_hwfn, ECORE_AGAIN);
+			return ecore_vf_pf_soft_flr_acquire(p_hwfn);
 		} else {
 			DP_ERR(p_hwfn,
 			       "PF returned err %d to VF acquisition request\n",
@@ -477,7 +521,9 @@ u32 ecore_vf_hw_bar_size(struct ecore_hwfn *p_hwfn,
 	return 0;
 }
 
-enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
+enum _ecore_status_t
+ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn,
+		    struct ecore_hw_prepare_params *p_params)
 {
 	struct ecore_hwfn *p_lead = ECORE_LEADING_HWFN(p_hwfn->p_dev);
 	struct ecore_vf_iov *p_iov;
@@ -583,6 +629,7 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
 #endif
 	OSAL_MUTEX_INIT(&p_iov->mutex);
 
+	p_iov->acquire_retry_cnt = p_params->acquire_retry_cnt;
 	p_hwfn->vf_iov_info = p_iov;
 
 	p_hwfn->hw_info.personality = ECORE_PCI_ETH;

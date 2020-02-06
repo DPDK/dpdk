@@ -56,6 +56,10 @@ qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
 	qed_init_pci(edev, pci_dev);
 
 	memset(&hw_prepare_params, 0, sizeof(hw_prepare_params));
+
+	if (is_vf)
+		hw_prepare_params.acquire_retry_cnt = ECORE_VF_ACQUIRE_THRESH;
+
 	hw_prepare_params.personality = ECORE_PCI_ETH;
 	hw_prepare_params.drv_resc_alloc = false;
 	hw_prepare_params.chk_reg_fifo = false;
