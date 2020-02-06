@@ -1509,7 +1509,8 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	if (eth_dev->data->dev_started)
 		qede_dev_stop(eth_dev);
 
-	qede_stop_vport(edev);
+	if (qdev->vport_started)
+		qede_stop_vport(edev);
 	qdev->vport_started = false;
 	qede_fdir_dealloc_resc(eth_dev);
 	qede_dealloc_fp_resc(eth_dev);
