@@ -1397,8 +1397,11 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 			VHOST_LOG(ERR, "Failed to probe %s\n", name);
 			return -1;
 		}
-		/* TODO: request info from primary to set up Rx and Tx */
+		eth_dev->rx_pkt_burst = eth_vhost_rx;
+		eth_dev->tx_pkt_burst = eth_vhost_tx;
 		eth_dev->dev_ops = &ops;
+		if (dev->device.numa_node == SOCKET_ID_ANY)
+			dev->device.numa_node = rte_socket_id();
 		eth_dev->device = &dev->device;
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
