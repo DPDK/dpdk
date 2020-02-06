@@ -133,6 +133,11 @@ void bnxt_handle_async_event(struct bnxt *bp,
 
 		bnxt_schedule_fw_health_check(bp);
 		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEBUG_NOTIFICATION:
+		PMD_DRV_LOG(INFO, "DNC event: evt_data1 %#x evt_data2 %#x\n",
+			    rte_le_to_cpu_32(async_cmp->event_data1),
+			    rte_le_to_cpu_32(async_cmp->event_data2));
+		break;
 	default:
 		PMD_DRV_LOG(DEBUG, "handle_async_event id = 0x%x\n", event_id);
 		break;
