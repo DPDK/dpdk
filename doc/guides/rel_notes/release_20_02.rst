@@ -70,6 +70,12 @@ New Features
   Added the new ``ionic`` net driver for Pensando Ethernet Network Adapters.
   See the :doc:`../nics/ionic` NIC guide for more details on this new driver.
 
+* **Updated Broadcom bnxt driver**
+
+  Updated Broadcom bnxt driver with new features and improvements, including:
+
+  * Added support for MARK action.
+
 * **Updated Hisilicon hns3 driver.**
 
   Updated Hisilicon hns3 driver with new features and improvements, including:
