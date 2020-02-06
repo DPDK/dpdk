@@ -4022,15 +4022,17 @@ static void bnxt_dev_recover(void *arg)
 	rc = bnxt_dev_start_op(bp->eth_dev);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "Failed to start port after reset\n");
-		goto err;
+		goto err_start;
 	}
 
 	rc = bnxt_restore_filters(bp);
 	if (rc)
-		goto err;
+		goto err_start;
 
 	PMD_DRV_LOG(INFO, "Recovered from FW reset\n");
 	return;
+err_start:
+	bnxt_dev_stop_op(bp->eth_dev);
 err:
 	bp->flags |= BNXT_FLAG_FATAL_ERROR;
 	bnxt_uninit_resources(bp, false);
