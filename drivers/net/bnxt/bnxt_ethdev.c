@@ -948,9 +948,10 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_dev_set_link_down_op(eth_dev);
 
 	/* Wait for link to be reset and the async notification to process.
-	 * During reset recovery, there is no need to wait
+	 * During reset recovery, there is no need to wait and
+	 * VF/NPAR functions do not have privilege to change PHY config.
 	 */
-	if (!is_bnxt_in_error(bp))
+	if (!is_bnxt_in_error(bp) && BNXT_SINGLE_PF(bp))
 		bnxt_link_update(eth_dev, 1, ETH_LINK_DOWN);
 
 	/* Clean queue intr-vector mapping */
