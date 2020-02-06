@@ -814,6 +814,9 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 	req.async_event_fwd[1] |=
 		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_PF_DRVR_UNLOAD |
 				 ASYNC_CMPL_EVENT_ID_VF_CFG_CHANGE);
+	if (BNXT_PF(bp))
+		req.async_event_fwd[1] |=
+			rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_DBG_NOTIFICATION);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
