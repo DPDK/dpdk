@@ -861,7 +861,9 @@ __rte_crypto_sym_op_attach_sym_session(struct rte_crypto_sym_op *sym_op,
  * @param len
  *   Length of data to represent.
  * @param vec
+ *   Pointer to an output array of IO vectors.
  * @param num
+ *   Size of an output array.
  * @return
  *   - number of successfully filled entries in *vec* array.
  *   - negative number of elements in *vec* array required.
