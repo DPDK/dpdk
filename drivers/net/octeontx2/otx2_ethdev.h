@@ -511,6 +511,8 @@ int otx2_cgx_mac_addr_set(struct rte_eth_dev *eth_dev,
 			  struct rte_ether_addr *addr);
 
 /* Flow Control */
+int otx2_nix_flow_ctrl_init(struct rte_eth_dev *eth_dev);
+
 int otx2_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_fc_conf *fc_conf);
 

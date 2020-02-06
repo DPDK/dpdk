@@ -200,16 +200,14 @@ int
 otx2_nix_update_flow_ctrl_mode(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_fc_info *fc = &dev->fc_info;
 	struct rte_eth_fc_conf fc_conf;
 
 	if (otx2_dev_is_lbk(dev) || otx2_dev_is_sdp(dev))
 		return 0;
 
 	memset(&fc_conf, 0, sizeof(struct rte_eth_fc_conf));
-	/* Both Rx & Tx flow ctrl get enabled(RTE_FC_FULL) in HW
-	 * by AF driver, update those info in PMD structure.
-	 */
-	otx2_nix_flow_ctrl_get(eth_dev, &fc_conf);
+	fc_conf.mode = fc->mode;
 
 	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
 	if (otx2_dev_is_Ax(dev) &&
@@ -222,4 +220,33 @@ otx2_nix_update_flow_ctrl_mode(struct rte_eth_dev *eth_dev)
 	}
 
 	return otx2_nix_flow_ctrl_set(eth_dev, &fc_conf);
+}
+
+int
+otx2_nix_flow_ctrl_init(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_fc_info *fc = &dev->fc_info;
+	struct rte_eth_fc_conf fc_conf;
+	int rc;
+
+	if (otx2_dev_is_lbk(dev) || otx2_dev_is_sdp(dev))
+		return 0;
+
+	memset(&fc_conf, 0, sizeof(struct rte_eth_fc_conf));
+	/* Both Rx & Tx flow ctrl get enabled(RTE_FC_FULL) in HW
+	 * by AF driver, update those info in PMD structure.
+	 */
+	rc = otx2_nix_flow_ctrl_get(eth_dev, &fc_conf);
+	if (rc)
+		goto exit;
+
+	fc->mode = fc_conf.mode;
+	fc->rx_pause = (fc_conf.mode == RTE_FC_FULL) ||
+			(fc_conf.mode == RTE_FC_RX_PAUSE);
+	fc->tx_pause = (fc_conf.mode == RTE_FC_FULL) ||
+			(fc_conf.mode == RTE_FC_TX_PAUSE);
+
+exit:
+	return rc;
 }

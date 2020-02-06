@@ -1744,6 +1744,12 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto cq_fini;
 
+	rc = otx2_nix_flow_ctrl_init(eth_dev);
+	if (rc) {
+		otx2_err("Failed to init flow ctrl mode %d", rc);
+		goto cq_fini;
+	}
+
 	rc = otx2_nix_mc_addr_list_install(eth_dev);
 	if (rc < 0) {
 		otx2_err("Failed to install mc address list rc=%d", rc);
