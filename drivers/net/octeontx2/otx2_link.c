@@ -82,31 +82,56 @@ otx2_eth_dev_link_status_update(struct otx2_dev *dev,
 	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
-int
-otx2_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
+static int
+lbk_link_update(struct rte_eth_link *link)
 {
-	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	link->link_status = ETH_LINK_UP;
+	link->link_speed = ETH_SPEED_NUM_100G;
+	link->link_autoneg = ETH_LINK_FIXED;
+	link->link_duplex = ETH_LINK_FULL_DUPLEX;
+	return 0;
+}
+
+static int
+cgx_link_update(struct otx2_eth_dev *dev, struct rte_eth_link *link)
+{
 	struct otx2_mbox *mbox = dev->mbox;
 	struct cgx_link_info_msg *rsp;
-	struct rte_eth_link link;
 	int rc;
-
-	RTE_SET_USED(wait_to_complete);
-
-	if (otx2_dev_is_lbk(dev) || otx2_dev_is_sdp(dev))
-		return 0;
-
 	otx2_mbox_alloc_msg_cgx_get_linkinfo(mbox);
 	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
 		return rc;
 
-	link.link_status = rsp->link_info.link_up;
-	link.link_speed = rsp->link_info.speed;
-	link.link_autoneg = ETH_LINK_AUTONEG;
+	link->link_status = rsp->link_info.link_up;
+	link->link_speed = rsp->link_info.speed;
+	link->link_autoneg = ETH_LINK_AUTONEG;
 
 	if (rsp->link_info.full_duplex)
-		link.link_duplex = rsp->link_info.full_duplex;
+		link->link_duplex = rsp->link_info.full_duplex;
+	return 0;
+}
+
+int
+otx2_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct rte_eth_link link;
+	int rc;
+
+	RTE_SET_USED(wait_to_complete);
+	memset(&link, 0, sizeof(struct rte_eth_link));
+
+	if (otx2_dev_is_sdp(dev))
+		return 0;
+
+	if (otx2_dev_is_lbk(dev))
+		rc = lbk_link_update(&link);
+	else
+		rc = cgx_link_update(dev, &link);
+
+	if (rc)
+		return rc;
 
 	return rte_eth_linkstatus_set(eth_dev, &link);
 }
