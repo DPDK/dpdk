@@ -120,7 +120,7 @@ int bnxt_hwrm_stat_ctx_free(struct bnxt *bp,
 int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx,
 			 struct rte_eth_stats *stats, uint8_t rx);
 
-int bnxt_hwrm_ver_get(struct bnxt *bp);
+int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout);
 
 int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic);

@@ -100,11 +100,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	if (bp->flags & BNXT_FLAG_FATAL_ERROR)
 		return 0;
 
-	/* For VER_GET command, set timeout as 50ms */
-	if (rte_cpu_to_le_16(req->req_type) == HWRM_VER_GET)
-		timeout = HWRM_CMD_TIMEOUT;
-	else
-		timeout = bp->hwrm_cmd_timeout;
+	timeout = bp->hwrm_cmd_timeout;
 
 	if (bp->flags & BNXT_FLAG_SHORT_CMD ||
 	    msg_len > bp->max_req_len) {
@@ -949,7 +945,7 @@ int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp)
 	return rc;
 }
 
-int bnxt_hwrm_ver_get(struct bnxt *bp)
+int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 {
 	int rc = 0;
 	struct hwrm_ver_get_input req = {.req_type = 0 };
@@ -960,6 +956,7 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	uint32_t dev_caps_cfg;
 
 	bp->max_req_len = HWRM_MAX_REQ_LEN;
+	bp->hwrm_cmd_timeout = timeout;
 	HWRM_PREP(req, VER_GET, BNXT_USE_CHIMP_MB);
 
 	req.hwrm_intf_maj = HWRM_VERSION_MAJOR;
@@ -994,7 +991,7 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	/* convert timeout to usec */
 	bp->hwrm_cmd_timeout *= 1000;
 	if (!bp->hwrm_cmd_timeout)
-		bp->hwrm_cmd_timeout = HWRM_CMD_TIMEOUT;
+		bp->hwrm_cmd_timeout = DFLT_HWRM_CMD_TIMEOUT;
 
 	if (resp->hwrm_intf_maj_8b != HWRM_VERSION_MAJOR) {
 		PMD_DRV_LOG(ERR, "Unsupported firmware API version\n");
