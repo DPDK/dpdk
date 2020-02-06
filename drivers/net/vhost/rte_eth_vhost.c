@@ -95,7 +95,6 @@ struct vhost_queue {
 
 struct pmd_internal {
 	rte_atomic32_t dev_attached;
-	char *dev_name;
 	char *iface_name;
 	uint64_t flags;
 	uint64_t disable_flags;
@@ -1073,7 +1072,6 @@ eth_dev_close(struct rte_eth_dev *dev)
 		for (i = 0; i < dev->data->nb_tx_queues; i++)
 			rte_free(dev->data->tx_queues[i]);
 
-	free(internal->dev_name);
 	rte_free(internal->iface_name);
 	rte_free(internal);
 
@@ -1307,9 +1305,6 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
 	internal = eth_dev->data->dev_private;
-	internal->dev_name = strdup(name);
-	if (internal->dev_name == NULL)
-		goto error;
 	internal->iface_name = rte_malloc_socket(name, strlen(iface_name) + 1,
 						 0, numa_node);
 	if (internal->iface_name == NULL)
@@ -1335,10 +1330,8 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	return 0;
 
 error:
-	if (internal) {
+	if (internal)
 		rte_free(internal->iface_name);
-		free(internal->dev_name);
-	}
 	rte_eth_dev_release_port(eth_dev);
 
 	return -1;
