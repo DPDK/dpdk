@@ -686,7 +686,6 @@ int bnxt_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete,
 		     bool exp_link_status);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 int is_bnxt_in_error(struct bnxt *bp);
-uint16_t bnxt_rss_ctxts(const struct bnxt *bp);
 
 int bnxt_map_fw_health_status_regs(struct bnxt *bp);
 uint32_t bnxt_read_fw_status_reg(struct bnxt *bp, uint32_t index);

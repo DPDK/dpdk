@@ -2254,7 +2254,8 @@ int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp)
 	return 0;
 }
 
-int bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
+static int
+bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
 {
 	int rc;
 	unsigned int i;
@@ -2305,7 +2306,8 @@ int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp)
 	return rc;
 }
 
-int bnxt_free_all_hwrm_ring_grps(struct bnxt *bp)
+static int
+bnxt_free_all_hwrm_ring_grps(struct bnxt *bp)
 {
 	uint16_t idx;
 	uint32_t rc = 0;
@@ -2396,7 +2398,8 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 		bp->grp_info[queue_index].cp_fw_ring_id = INVALID_HW_RING_ID;
 }
 
-int bnxt_free_all_hwrm_rings(struct bnxt *bp)
+static int
+bnxt_free_all_hwrm_rings(struct bnxt *bp)
 {
 	unsigned int i;
 
@@ -2485,7 +2488,8 @@ int bnxt_alloc_hwrm_resources(struct bnxt *bp)
 	return 0;
 }
 
-int bnxt_clear_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+static int
+bnxt_clear_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	struct bnxt_filter_info *filter;
 	int rc = 0;
@@ -2546,7 +2550,8 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
-void bnxt_free_tunnel_ports(struct bnxt *bp)
+static void
+bnxt_free_tunnel_ports(struct bnxt *bp)
 {
 	if (bp->vxlan_port_cnt)
 		bnxt_hwrm_tunnel_dst_port_free(bp, bp->vxlan_fw_dst_port_id,
