@@ -220,7 +220,7 @@ struct ccp_queue {
 	/**< lsb assigned for sha ctx */
 	uint32_t sb_hmac;
 	/**< lsb assigned for hmac ctx */
-} ____cacheline_aligned;
+} __rte_cache_aligned;
 
 /**
  * A structure describing a CCP device.
