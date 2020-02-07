@@ -59,6 +59,14 @@
 extern "C" {
 #endif
 
+/*
+ * List definitions.
+ */
+#define	LIST_HEAD(name, type)						\
+struct name {								\
+	struct type *lh_first;	/* first element */			\
+}
+
 #define	QMD_TRACE_ELEM(elem)
 #define	QMD_TRACE_HEAD(head)
 #define	TRACEBUF
