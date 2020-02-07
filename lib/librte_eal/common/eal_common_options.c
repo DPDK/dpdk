@@ -6,12 +6,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#ifndef RTE_EXEC_ENV_WINDOWS
 #include <syslog.h>
+#endif
 #include <ctype.h>
 #include <limits.h>
 #include <errno.h>
 #include <getopt.h>
+#ifndef RTE_EXEC_ENV_WINDOWS
 #include <dlfcn.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -205,7 +209,9 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	}
 	internal_cfg->base_virtaddr = 0;
 
+#ifdef LOG_DAEMON
 	internal_cfg->syslog_facility = LOG_DAEMON;
+#endif
 
 	/* if set to NONE, interrupt mode is determined automatically */
 	internal_cfg->vfio_intr_mode = RTE_INTR_MODE_NONE;
@@ -278,6 +284,7 @@ eal_plugindir_init(const char *path)
 int
 eal_plugins_init(void)
 {
+#ifndef RTE_EXEC_ENV_WINDOWS
 	struct shared_driver *solib = NULL;
 	struct stat sb;
 
@@ -306,6 +313,7 @@ eal_plugins_init(void)
 
 	}
 	return 0;
+#endif
 }
 
 /*
@@ -927,6 +935,7 @@ err:
 	return ret;
 }
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 static int
 eal_parse_syslog(const char *facility, struct internal_config *conf)
 {
@@ -965,6 +974,7 @@ eal_parse_syslog(const char *facility, struct internal_config *conf)
 	}
 	return -1;
 }
+#endif
 
 static int
 eal_parse_log_priority(const char *level)
@@ -1389,6 +1399,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		}
 		break;
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 	case OPT_SYSLOG_NUM:
 		if (eal_parse_syslog(optarg, conf) < 0) {
 			RTE_LOG(ERR, EAL, "invalid parameters for --"
@@ -1396,6 +1407,7 @@ eal_parse_common_option(int opt, const char *optarg,
 			return -1;
 		}
 		break;
+#endif
 
 	case OPT_LOG_LEVEL_NUM: {
 		if (eal_parse_log_level(optarg) < 0) {
@@ -1675,7 +1687,9 @@ eal_common_usage(void)
 	       "                      (can be used multiple times)\n"
 	       "  --"OPT_VMWARE_TSC_MAP"    Use VMware TSC map instead of native RDTSC\n"
 	       "  --"OPT_PROC_TYPE"         Type of this process (primary|secondary|auto)\n"
+#ifndef RTE_EXEC_ENV_WINDOWS
 	       "  --"OPT_SYSLOG"            Set syslog facility\n"
+#endif
 	       "  --"OPT_LOG_LEVEL"=<int>   Set global log level\n"
 	       "  --"OPT_LOG_LEVEL"=<type-match>:<int>\n"
 	       "                      Set specific log level\n"
