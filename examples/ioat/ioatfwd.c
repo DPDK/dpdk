@@ -697,7 +697,7 @@ check_link_status(uint32_t port_mask)
 {
 	uint16_t portid;
 	struct rte_eth_link link;
-	int retval = 0;
+	int ret, link_status = 0;
 
 	printf("\nChecking link status\n");
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -705,7 +705,12 @@ check_link_status(uint32_t port_mask)
 			continue;
 
 		memset(&link, 0, sizeof(link));
-		rte_eth_link_get(portid, &link);
+		ret = rte_eth_link_get(portid, &link);
+		if (ret < 0) {
+			printf("Port %u link get failed: err=%d\n",
+					portid, ret);
+			continue;
+		}
 
 		/* Print link status */
 		if (link.link_status) {
@@ -714,11 +719,11 @@ check_link_status(uint32_t port_mask)
 				portid, link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 				("full-duplex") : ("half-duplex\n"));
-			retval = 1;
+			link_status = 1;
 		} else
 			printf("Port %d Link Down\n", portid);
 	}
-	return retval;
+	return link_status;
 }
 
 static void
