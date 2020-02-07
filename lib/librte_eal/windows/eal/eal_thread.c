@@ -10,11 +10,14 @@
 #include <rte_lcore.h>
 #include <rte_per_lcore.h>
 #include <rte_common.h>
+#include <rte_memory.h>
 #include <eal_thread.h>
 
 #include "eal_private.h"
 
 RTE_DEFINE_PER_LCORE(unsigned int, _lcore_id) = LCORE_ID_ANY;
+RTE_DEFINE_PER_LCORE(unsigned int, _socket_id) = (unsigned int)SOCKET_ID_ANY;
+RTE_DEFINE_PER_LCORE(rte_cpuset_t, _cpuset);
 
 /*
  * Send a message to a slave lcore identified by slave_id to call a
@@ -150,5 +153,13 @@ eal_thread_create(pthread_t *thread)
 	SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 	SetThreadPriority(th, THREAD_PRIORITY_TIME_CRITICAL);
 
+	return 0;
+}
+
+int
+rte_thread_setname(__rte_unused pthread_t id, __rte_unused const char *name)
+{
+	/* TODO */
+	/* This is a stub, not the expected result */
 	return 0;
 }

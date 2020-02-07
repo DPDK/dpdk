@@ -6,6 +6,9 @@
 
 #include <rte_common.h>
 
+#include "eal_private.h"
+#include "eal_thread.h"
+
 /* global data structure that contains the CPU map */
 static struct _wcpu_map {
 	unsigned int total_procs;

@@ -4,6 +4,7 @@
 
 #include <stdarg.h>
 #include <rte_log.h>
+#include <rte_debug.h>
 
  /* call abort(), it will generate a coredump if enabled */
 void
