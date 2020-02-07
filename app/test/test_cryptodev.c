@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2019 Intel Corporation
+ * Copyright(c) 2015-2020 Intel Corporation
  */
 
 #include <time.h>
@@ -51,6 +51,9 @@
 #define OUT_OF_PLACE 1
 
 static int gbl_driver_id;
+
+static enum rte_security_session_action_type gbl_action_type =
+	RTE_SECURITY_ACTION_TYPE_NONE;
 
 struct crypto_testsuite_params {
 	struct rte_mempool *mbuf_pool;
@@ -139,9 +142,97 @@ ceil_byte_length(uint32_t num_bits)
 		return (num_bits >> 3);
 }
 
+static void
+process_cpu_gmac_op(uint8_t dev_id, struct rte_crypto_op *op)
+{
+	int32_t n, st;
+	void *iv;
+	struct rte_crypto_sym_op *sop;
+	union rte_crypto_sym_ofs ofs;
+	struct rte_crypto_sgl sgl;
+	struct rte_crypto_sym_vec symvec;
+	struct rte_crypto_vec vec[UINT8_MAX];
+
+	sop = op->sym;
+
+	n = rte_crypto_mbuf_to_vec(sop->m_src, sop->auth.data.offset,
+		sop->auth.data.length, vec, RTE_DIM(vec));
+
+	if (n < 0 || n != sop->m_src->nb_segs) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return;
+	}
+
+	sgl.vec = vec;
+	sgl.num = n;
+	symvec.sgl = &sgl;
+	iv = rte_crypto_op_ctod_offset(op, void *, IV_OFFSET);
+	symvec.iv = &iv;
+	symvec.aad = NULL;
+	symvec.digest = (void **)&sop->auth.digest.data;
+	symvec.status = &st;
+	symvec.num = 1;
+
+	ofs.raw = 0;
+
+	n = rte_cryptodev_sym_cpu_crypto_process(dev_id, sop->session, ofs,
+		&symvec);
+
+	if (n != 1)
+		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	else
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
+
+
+static void
+process_cpu_aead_op(uint8_t dev_id, struct rte_crypto_op *op)
+{
+	int32_t n, st;
+	void *iv;
+	struct rte_crypto_sym_op *sop;
+	union rte_crypto_sym_ofs ofs;
+	struct rte_crypto_sgl sgl;
+	struct rte_crypto_sym_vec symvec;
+	struct rte_crypto_vec vec[UINT8_MAX];
+
+	sop = op->sym;
+
+	n = rte_crypto_mbuf_to_vec(sop->m_src, sop->aead.data.offset,
+		sop->aead.data.length, vec, RTE_DIM(vec));
+
+	if (n < 0 || n != sop->m_src->nb_segs) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return;
+	}
+
+	sgl.vec = vec;
+	sgl.num = n;
+	symvec.sgl = &sgl;
+	iv = rte_crypto_op_ctod_offset(op, void *, IV_OFFSET);
+	symvec.iv = &iv;
+	symvec.aad = (void **)&sop->aead.aad.data;
+	symvec.digest = (void **)&sop->aead.digest.data;
+	symvec.status = &st;
+	symvec.num = 1;
+
+	ofs.raw = 0;
+
+	n = rte_cryptodev_sym_cpu_crypto_process(dev_id, sop->session, ofs,
+		&symvec);
+
+	if (n != 1)
+		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	else
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
+
 static struct rte_crypto_op *
 process_crypto_request(uint8_t dev_id, struct rte_crypto_op *op)
 {
+
+	RTE_VERIFY(gbl_action_type != RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO);
+
 	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
 		RTE_LOG(ERR, USER1, "Error sending packet for encryption\n");
 		return NULL;
@@ -6937,7 +7028,11 @@ test_authenticated_encryption(const struct aead_test_data *tdata)
 	ut_params->op->sym->m_src = ut_params->ibuf;
 
 	/* Process crypto operation */
-	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		process_cpu_aead_op(ts_params->valid_devs[0], ut_params->op);
+	else
+		TEST_ASSERT_NOT_NULL(
+			process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op), "failed to process sym crypto op");
 
 	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
@@ -7868,7 +7963,11 @@ test_authenticated_decryption(const struct aead_test_data *tdata)
 	ut_params->op->sym->m_src = ut_params->ibuf;
 
 	/* Process crypto operation */
-	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		process_cpu_aead_op(ts_params->valid_devs[0], ut_params->op);
+	else
+		TEST_ASSERT_NOT_NULL(
+			process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op), "failed to process sym crypto op");
 
 	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
@@ -8154,6 +8253,10 @@ test_authenticated_encryption_oop(const struct aead_test_data *tdata)
 			&cap_idx) == NULL)
 		return -ENOTSUP;
 
+	/* not supported with CPU crypto */
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Create AEAD session */
 	retval = create_aead_session(ts_params->valid_devs[0],
 			tdata->algo,
@@ -8239,6 +8342,10 @@ test_authenticated_decryption_oop(const struct aead_test_data *tdata)
 			&cap_idx) == NULL)
 		return -ENOTSUP;
 
+	/* not supported with CPU crypto */
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Create AEAD session */
 	retval = create_aead_session(ts_params->valid_devs[0],
 			tdata->algo,
@@ -8316,6 +8423,10 @@ test_authenticated_encryption_sessionless(
 			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD))) &&
 			(gbl_driver_id != rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD))))
+		return -ENOTSUP;
+
+	/* not supported with CPU crypto */
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
 
 	/* Verify the capabilities */
@@ -8412,6 +8523,10 @@ test_authenticated_decryption_sessionless(
 			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD))) &&
 			(gbl_driver_id != rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD))))
+		return -ENOTSUP;
+
+	/* not supported with CPU crypto */
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
 
 	/* Verify the capabilities */
@@ -9736,7 +9851,11 @@ test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
 
 	ut_params->op->sym->m_src = ut_params->ibuf;
 
-	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		process_cpu_gmac_op(ts_params->valid_devs[0], ut_params->op);
+	else
+		TEST_ASSERT_NOT_NULL(
+			process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op), "failed to process sym crypto op");
 
 	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
@@ -9848,7 +9967,11 @@ test_AES_GMAC_authentication_verify(const struct gmac_test_data *tdata)
 
 	ut_params->op->sym->m_src = ut_params->ibuf;
 
-	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		process_cpu_gmac_op(ts_params->valid_devs[0], ut_params->op);
+	else
+		TEST_ASSERT_NOT_NULL(
+			process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op), "failed to process sym crypto op");
 
 	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
@@ -10469,10 +10592,16 @@ test_authentication_verify_GMAC_fail_when_corruption(
 	else
 		tag_corruption(plaintext, reference->aad.len);
 
-	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) {
+		process_cpu_gmac_op(ts_params->valid_devs[0], ut_params->op);
+		TEST_ASSERT_NOT_EQUAL(ut_params->op->status,
+			RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"authentication not failed");
+	} else {
+		ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op);
-
-	TEST_ASSERT_NULL(ut_params->op, "authentication not failed");
+		TEST_ASSERT_NULL(ut_params->op, "authentication not failed");
+	}
 
 	return 0;
 }
@@ -10872,6 +11001,10 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 			&cap_idx) == NULL)
 		return -ENOTSUP;
 
+	/* OOP not supported with CPU crypto */
+	if (oop && gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Detailed check for the particular SGL support flag */
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 	if (!oop) {
@@ -11075,7 +11208,12 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 		ut_params->op->sym->m_dst = ut_params->obuf;
 
 	/* Process crypto operation */
-	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+	if (oop == IN_PLACE &&
+			gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		process_cpu_aead_op(ts_params->valid_devs[0], ut_params->op);
+	else
+		TEST_ASSERT_NOT_NULL(
+			process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op), "failed to process sym crypto op");
 
 	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
@@ -13272,6 +13410,29 @@ test_cryptodev_aesni_gcm(void)
 }
 
 static int
+test_cryptodev_cpu_aesni_gcm(void)
+{
+	int32_t rc;
+	enum rte_security_session_action_type at;
+
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_AESNI_GCM is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_SKIPPED;
+	}
+
+	at = gbl_action_type;
+	gbl_action_type = RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO;
+	rc = unit_test_suite_runner(&cryptodev_testsuite);
+	gbl_action_type = at;
+	return rc;
+}
+
+static int
 test_cryptodev_null(void)
 {
 	gbl_driver_id = rte_cryptodev_driver_id_get(
@@ -13509,6 +13670,8 @@ REGISTER_TEST_COMMAND(cryptodev_qat_autotest, test_cryptodev_qat);
 REGISTER_TEST_COMMAND(cryptodev_aesni_mb_autotest, test_cryptodev_aesni_mb);
 REGISTER_TEST_COMMAND(cryptodev_openssl_autotest, test_cryptodev_openssl);
 REGISTER_TEST_COMMAND(cryptodev_aesni_gcm_autotest, test_cryptodev_aesni_gcm);
+REGISTER_TEST_COMMAND(cryptodev_cpu_aesni_gcm_autotest,
+	test_cryptodev_cpu_aesni_gcm);
 REGISTER_TEST_COMMAND(cryptodev_null_autotest, test_cryptodev_null);
 REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_autotest, test_cryptodev_sw_snow3g);
 REGISTER_TEST_COMMAND(cryptodev_sw_kasumi_autotest, test_cryptodev_sw_kasumi);
