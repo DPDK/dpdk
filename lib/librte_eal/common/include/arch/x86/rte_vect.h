@@ -15,7 +15,9 @@
 #include <rte_config.h>
 #include "generic/rte_vect.h"
 
-#if (defined(__ICC) || (__GNUC__ == 4 &&  __GNUC_MINOR__ < 4))
+#if (defined(__ICC) || \
+	(defined(_WIN64)) || \
+	(__GNUC__ == 4 &&  __GNUC_MINOR__ < 4))
 
 #include <smmintrin.h> /* SSE4 */
 
