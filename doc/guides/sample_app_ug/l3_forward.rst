@@ -166,7 +166,7 @@ scheduler. Following is the sample command:
 
 .. code-block:: console
 
-    ./build/l3fwd -l 0-7 -s 0-3 -n 4 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered
+    ./build/l3fwd -l 0-7 -s 0xf0000 -n 4 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered
 
 In case of eventdev mode, *--config* option is not used for ethernet port
 configuration. Instead each ethernet port will be configured with mentioned
