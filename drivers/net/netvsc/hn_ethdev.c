@@ -823,6 +823,10 @@ hn_dev_start(struct rte_eth_dev *dev)
 	if (error)
 		hn_rndis_set_rxfilter(hv, 0);
 
+	/* Initialize Link state */
+	if (error == 0)
+		hn_dev_link_update(dev, 0);
+
 	return error;
 }
 
