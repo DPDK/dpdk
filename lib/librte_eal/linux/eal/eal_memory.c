@@ -1340,6 +1340,8 @@ eal_legacy_hugepage_init(void)
 
 	/* hugetlbfs can be disabled */
 	if (internal_config.no_hugetlbfs) {
+		void *prealloc_addr;
+		size_t mem_sz;
 		struct rte_memseg_list *msl;
 		int n_segs, cur_seg, fd, flags;
 #ifdef MEMFD_SUPPORTED
@@ -1395,17 +1397,31 @@ eal_legacy_hugepage_init(void)
 			}
 		}
 #endif
-		addr = mmap(NULL, internal_config.memory, PROT_READ | PROT_WRITE,
-				flags, fd, 0);
-		if (addr == MAP_FAILED) {
+		/* preallocate address space for the memory, so that it can be
+		 * fit into the DMA mask.
+		 */
+		mem_sz = internal_config.memory;
+		prealloc_addr = eal_get_virtual_area(
+				NULL, &mem_sz, page_sz, 0, 0);
+		if (prealloc_addr == NULL) {
+			RTE_LOG(ERR, EAL,
+					"%s: reserving memory area failed: "
+					"%s\n",
+					__func__, strerror(errno));
+			return -1;
+		}
+		addr = mmap(prealloc_addr, mem_sz, PROT_READ | PROT_WRITE,
+				flags | MAP_FIXED, fd, 0);
+		if (addr == MAP_FAILED || addr != prealloc_addr) {
 			RTE_LOG(ERR, EAL, "%s: mmap() failed: %s\n", __func__,
 					strerror(errno));
+			munmap(prealloc_addr, mem_sz);
 			return -1;
 		}
 		msl->base_va = addr;
 		msl->page_sz = page_sz;
 		msl->socket_id = 0;
-		msl->len = internal_config.memory;
+		msl->len = mem_sz;
 		msl->heap = 1;
 
 		/* we're in single-file segments mode, so only the segment list
