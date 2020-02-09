@@ -185,7 +185,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 /**
  * Force a function to be noinlined
  */
-#define __rte_noinline  __attribute__((noinline))
+#define __rte_noinline __attribute__((noinline))
 
 /*********** Macros for pointer arithmetic ********/
 

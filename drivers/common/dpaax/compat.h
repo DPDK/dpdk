@@ -60,7 +60,7 @@
 #define __packed	__rte_packed
 #endif
 #ifndef noinline
-#define noinline	__attribute__((noinline))
+#define noinline	__rte_noinline
 #endif
 #define L1_CACHE_BYTES 64
 #define ____cacheline_aligned __rte_aligned(L1_CACHE_BYTES)

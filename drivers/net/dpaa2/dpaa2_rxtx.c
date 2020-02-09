@@ -363,7 +363,7 @@ eth_fd_to_mbuf(const struct qbman_fd *fd,
 	return mbuf;
 }
 
-static int __attribute__ ((noinline)) __attribute__((hot))
+static int __rte_noinline __attribute__((hot))
 eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		  struct qbman_fd *fd, uint16_t bpid)
 {
@@ -434,7 +434,7 @@ static void
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 	       struct qbman_fd *fd, uint16_t bpid) __attribute__((unused));
 
-static void __attribute__ ((noinline)) __attribute__((hot))
+static void __rte_noinline __attribute__((hot))
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 	       struct qbman_fd *fd, uint16_t bpid)
 {
