@@ -2140,8 +2140,6 @@ notsup_err:
  *   Holds the actions detected until now.
  * @param[in] action
  *   Pointer to the action structure.
- * @param[in] attr
- *   Pointer to flow attributes
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -2151,29 +2149,22 @@ notsup_err:
 static int
 flow_dv_validate_action_l2_encap(uint64_t action_flags,
 				 const struct rte_flow_action *action,
-				 const struct rte_flow_attr *attr,
 				 struct rte_flow_error *error)
 {
 	if (!(action->conf))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "configuration cannot be null");
-	if (action_flags & (MLX5_FLOW_ENCAP_ACTIONS | MLX5_FLOW_DECAP_ACTIONS))
+	if (action_flags & MLX5_FLOW_ACTION_ENCAP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can only have a single encap or"
-					  " decap action in a flow");
-	if (!attr->transfer && attr->ingress)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-					  NULL,
-					  "encap action not supported for "
-					  "ingress");
+					  "can only have a single encap action "
+					  "in a flow");
 	return 0;
 }
 
 /**
- * Validate the L2 decap action.
+ * Validate a decap action.
  *
  * @param[in] action_flags
  *   Holds the actions detected until now.
@@ -2186,15 +2177,17 @@ flow_dv_validate_action_l2_encap(uint64_t action_flags,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_validate_action_l2_decap(uint64_t action_flags,
+flow_dv_validate_action_decap(uint64_t action_flags,
 				 const struct rte_flow_attr *attr,
 				 struct rte_flow_error *error)
 {
-	if (action_flags & (MLX5_FLOW_ENCAP_ACTIONS | MLX5_FLOW_DECAP_ACTIONS))
-		return rte_flow_error_set(error, EINVAL,
+	if (action_flags & MLX5_FLOW_XCAP_ACTIONS)
+		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can only have a single encap or"
-					  " decap action in a flow");
+					  action_flags &
+					  MLX5_FLOW_ACTION_DECAP ? "can only "
+					  "have a single decap action" : "decap "
+					  "after encap is not supported");
 	if (action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -2209,15 +2202,21 @@ flow_dv_validate_action_l2_decap(uint64_t action_flags,
 	return 0;
 }
 
+const struct rte_flow_action_raw_decap empty_decap = {.data = NULL, .size = 0,};
+
 /**
- * Validate the raw encap action.
+ * Validate the raw encap and decap actions.
  *
- * @param[in] action_flags
- *   Holds the actions detected until now.
- * @param[in] action
+ * @param[in] decap
+ *   Pointer to the decap action.
+ * @param[in] encap
  *   Pointer to the encap action.
  * @param[in] attr
  *   Pointer to flow attributes
+ * @param[in/out] action_flags
+ *   Holds the actions detected until now.
+ * @param[out] actions_n
+ *   pointer to the number of actions counter.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -2225,84 +2224,63 @@ flow_dv_validate_action_l2_decap(uint64_t action_flags,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_validate_action_raw_encap(uint64_t action_flags,
-				  const struct rte_flow_action *action,
-				  const struct rte_flow_attr *attr,
-				  struct rte_flow_error *error)
+flow_dv_validate_action_raw_encap_decap
+	(const struct rte_flow_action_raw_decap *decap,
+	 const struct rte_flow_action_raw_encap *encap,
+	 const struct rte_flow_attr *attr, uint64_t *action_flags,
+	 int *actions_n, struct rte_flow_error *error)
 {
-	const struct rte_flow_action_raw_encap *raw_encap =
-		(const struct rte_flow_action_raw_encap *)action->conf;
-	if (!(action->conf))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "configuration cannot be null");
-	if (action_flags & MLX5_FLOW_ENCAP_ACTIONS)
+	int ret;
+
+	if (encap && (!encap->size || !encap->data))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can only have a single encap"
-					  " action in a flow");
-	/* encap without preceding decap is not supported for ingress */
-	if (!attr->transfer &&  attr->ingress &&
-	    !(action_flags & MLX5_FLOW_ACTION_RAW_DECAP))
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-					  NULL,
-					  "encap action not supported for "
-					  "ingress");
-	if (!raw_encap->size || !raw_encap->data)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "raw encap data cannot be empty");
-	return 0;
-}
-
-/**
- * Validate the raw decap action.
- *
- * @param[in] action_flags
- *   Holds the actions detected until now.
- * @param[in] action
- *   Pointer to the encap action.
- * @param[in] attr
- *   Pointer to flow attributes
- * @param[out] error
- *   Pointer to error structure.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-static int
-flow_dv_validate_action_raw_decap(uint64_t action_flags,
-				  const struct rte_flow_action *action,
-				  const struct rte_flow_attr *attr,
-				  struct rte_flow_error *error)
-{
-	const struct rte_flow_action_raw_decap *decap	= action->conf;
-
-	if (action_flags & MLX5_FLOW_ENCAP_ACTIONS)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can't have encap action before"
-					  " decap action");
-	if (action_flags & MLX5_FLOW_DECAP_ACTIONS)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can only have a single decap"
-					  " action in a flow");
-	/* decap action is valid on egress only if it is followed by encap */
-	if (attr->egress && decap &&
-	    decap->size > MLX5_ENCAPSULATION_DECISION_SIZE) {
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
-					  NULL, "decap action not supported"
-					  " for egress");
-	} else if (decap && decap->size > MLX5_ENCAPSULATION_DECISION_SIZE &&
-		   (action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS)) {
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION,
-					  NULL,
-					  "can't have decap action "
-					  "after modify action");
+	if (decap && encap) {
+		if (decap->size <= MLX5_ENCAPSULATION_DECISION_SIZE &&
+		    encap->size > MLX5_ENCAPSULATION_DECISION_SIZE)
+			/* L3 encap. */
+			decap = NULL;
+		else if (encap->size <=
+			   MLX5_ENCAPSULATION_DECISION_SIZE &&
+			   decap->size >
+			   MLX5_ENCAPSULATION_DECISION_SIZE)
+			/* L3 decap. */
+			encap = NULL;
+		else if (encap->size >
+			   MLX5_ENCAPSULATION_DECISION_SIZE &&
+			   decap->size >
+			   MLX5_ENCAPSULATION_DECISION_SIZE)
+			/* 2 L2 actions: encap and decap. */
+			;
+		else
+			return rte_flow_error_set(error,
+				ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "unsupported too small "
+				"raw decap and too small raw "
+				"encap combination");
+	}
+	if (decap) {
+		ret = flow_dv_validate_action_decap(*action_flags, attr, error);
+		if (ret < 0)
+			return ret;
+		*action_flags |= MLX5_FLOW_ACTION_DECAP;
+		++(*actions_n);
+	}
+	if (encap) {
+		if (encap->size <= MLX5_ENCAPSULATION_DECISION_SIZE)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "small raw encap size");
+		if (*action_flags & MLX5_FLOW_ACTION_ENCAP)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "more than one encap action");
+		*action_flags |= MLX5_FLOW_ACTION_ENCAP;
+		++(*actions_n);
 	}
 	return 0;
 }
@@ -3054,7 +3032,7 @@ flow_dv_validate_action_modify_hdr(const uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL, "action configuration not set");
-	if (action_flags & MLX5_FLOW_ENCAP_ACTIONS)
+	if (action_flags & MLX5_FLOW_ACTION_ENCAP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have encap action before"
@@ -4416,6 +4394,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	int actions_n = 0;
 	uint8_t item_ipv6_proto = 0;
 	const struct rte_flow_item *gre_item = NULL;
+	const struct rte_flow_action_raw_decap *decap;
+	const struct rte_flow_action_raw_encap *encap;
+	const struct rte_flow_action_rss *rss;
 	struct rte_flow_item_tcp nic_tcp_mask = {
 		.hdr = {
 			.tcp_flags = 0xFF,
@@ -4425,6 +4406,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	};
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *dev_conf = &priv->config;
+	uint16_t queue_index = 0xFFFF;
 
 	if (items == NULL)
 		return -1;
@@ -4756,16 +4738,21 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							      attr, error);
 			if (ret < 0)
 				return ret;
+			queue_index = ((const struct rte_flow_action_queue *)
+							(actions->conf))->index;
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
+			rss = actions->conf;
 			ret = mlx5_flow_validate_action_rss(actions,
 							    action_flags, dev,
 							    attr, item_flags,
 							    error);
 			if (ret < 0)
 				return ret;
+			if (rss != NULL && rss->queue_num)
+				queue_index = rss->queue[0];
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			++actions_n;
 			break;
@@ -4816,45 +4803,44 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			ret = flow_dv_validate_action_l2_encap(action_flags,
-							       actions, attr,
-							       error);
+							       actions, error);
 			if (ret < 0)
 				return ret;
-			action_flags |= actions->type ==
-					RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP ?
-					MLX5_FLOW_ACTION_VXLAN_ENCAP :
-					MLX5_FLOW_ACTION_NVGRE_ENCAP;
+			action_flags |= MLX5_FLOW_ACTION_ENCAP;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
-			ret = flow_dv_validate_action_l2_decap(action_flags,
-							       attr, error);
+			ret = flow_dv_validate_action_decap(action_flags, attr,
+							    error);
 			if (ret < 0)
 				return ret;
-			action_flags |= actions->type ==
-					RTE_FLOW_ACTION_TYPE_VXLAN_DECAP ?
-					MLX5_FLOW_ACTION_VXLAN_DECAP :
-					MLX5_FLOW_ACTION_NVGRE_DECAP;
+			action_flags |= MLX5_FLOW_ACTION_DECAP;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
-			ret = flow_dv_validate_action_raw_encap(action_flags,
-								actions, attr,
-								error);
+			ret = flow_dv_validate_action_raw_encap_decap
+				(NULL, actions->conf, attr, &action_flags,
+				 &actions_n, error);
 			if (ret < 0)
 				return ret;
-			action_flags |= MLX5_FLOW_ACTION_RAW_ENCAP;
-			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
-			ret = flow_dv_validate_action_raw_decap(action_flags,
-								actions, attr,
-								error);
+			decap = actions->conf;
+			while ((++actions)->type == RTE_FLOW_ACTION_TYPE_VOID)
+				;
+			if (actions->type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
+				encap = NULL;
+				actions--;
+			} else {
+				encap = actions->conf;
+			}
+			ret = flow_dv_validate_action_raw_encap_decap
+					   (decap ? decap : &empty_decap, encap,
+					    attr, &action_flags, &actions_n,
+					    error);
 			if (ret < 0)
 				return ret;
-			action_flags |= MLX5_FLOW_ACTION_RAW_DECAP;
-			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
@@ -5081,6 +5067,22 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  actions,
 						  "no fate action is found");
+	}
+	/* Continue validation for Xcap actions.*/
+	if ((action_flags & MLX5_FLOW_XCAP_ACTIONS) && (queue_index == 0xFFFF ||
+	    mlx5_rxq_get_type(dev, queue_index) != MLX5_RXQ_TYPE_HAIRPIN)) {
+		if ((action_flags & MLX5_FLOW_XCAP_ACTIONS) ==
+		    MLX5_FLOW_XCAP_ACTIONS)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "encap and decap "
+						  "combination aren't supported");
+		if (!attr->transfer && attr->ingress && (action_flags &
+							MLX5_FLOW_ACTION_ENCAP))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "encap is not supported"
+						  " for ingress traffic");
 	}
 	return 0;
 }
@@ -7305,10 +7307,7 @@ cnt_err:
 				return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.encap_decap->verbs_action;
-			action_flags |= actions->type ==
-					RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP ?
-					MLX5_FLOW_ACTION_VXLAN_ENCAP :
-					MLX5_FLOW_ACTION_NVGRE_ENCAP;
+			action_flags |= MLX5_FLOW_ACTION_ENCAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
@@ -7318,14 +7317,11 @@ cnt_err:
 				return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.encap_decap->verbs_action;
-			action_flags |= actions->type ==
-					RTE_FLOW_ACTION_TYPE_VXLAN_DECAP ?
-					MLX5_FLOW_ACTION_VXLAN_DECAP :
-					MLX5_FLOW_ACTION_NVGRE_DECAP;
+			action_flags |= MLX5_FLOW_ACTION_DECAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			/* Handle encap with preceding decap. */
-			if (action_flags & MLX5_FLOW_ACTION_RAW_DECAP) {
+			if (action_flags & MLX5_FLOW_ACTION_DECAP) {
 				if (flow_dv_create_action_raw_encap
 					(dev, actions, dev_flow, attr, error))
 					return -rte_errno;
@@ -7340,15 +7336,11 @@ cnt_err:
 				dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.encap_decap->verbs_action;
 			}
-			action_flags |= MLX5_FLOW_ACTION_RAW_ENCAP;
+			action_flags |= MLX5_FLOW_ACTION_ENCAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
-			/* Check if this decap is followed by encap. */
-			for (; action->type != RTE_FLOW_ACTION_TYPE_END &&
-			       action->type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP;
-			       action++) {
-			}
-			/* Handle decap only if it isn't followed by encap. */
+			while ((++action)->type == RTE_FLOW_ACTION_TYPE_VOID)
+				;
 			if (action->type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
 				if (flow_dv_create_action_l2_decap
 				    (dev, dev_flow, attr->transfer, error))
@@ -7357,7 +7349,7 @@ cnt_err:
 					dev_flow->dv.encap_decap->verbs_action;
 			}
 			/* If decap is followed by encap, handle it at encap. */
-			action_flags |= MLX5_FLOW_ACTION_RAW_DECAP;
+			action_flags |= MLX5_FLOW_ACTION_DECAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			jump_data = action->conf;

@@ -4154,13 +4154,16 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 	} items_tx;
 	struct rte_flow_expand_rss *buf = &expand_buffer.buf;
 	const struct rte_flow_action *p_actions_rx = actions;
-	int ret;
 	uint32_t i;
 	uint32_t flow_size;
 	int hairpin_flow = 0;
 	uint32_t hairpin_id = 0;
 	struct rte_flow_attr attr_tx = { .priority = 0 };
+	int ret = flow_drv_validate(dev, attr, items, p_actions_rx, external,
+				    error);
 
+	if (ret < 0)
+		return NULL;
 	hairpin_flow = flow_check_hairpin_split(dev, attr, actions);
 	if (hairpin_flow > 0) {
 		if (hairpin_flow > MLX5_MAX_SPLIT_ACTIONS) {
@@ -4172,10 +4175,6 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 				   &hairpin_id);
 		p_actions_rx = actions_rx.actions;
 	}
-	ret = flow_drv_validate(dev, attr, items, p_actions_rx, external,
-				error);
-	if (ret < 0)
-		goto error_before_flow;
 	flow_size = sizeof(struct rte_flow);
 	rss = flow_get_rss_action(p_actions_rx);
 	if (rss)
