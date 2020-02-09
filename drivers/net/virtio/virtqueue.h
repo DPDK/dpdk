@@ -325,7 +325,7 @@ struct virtio_net_hdr_mrg_rxbuf {
 struct virtio_tx_region {
 	struct virtio_net_hdr_mrg_rxbuf tx_hdr;
 	struct vring_desc tx_indir[VIRTIO_MAX_TX_INDIRECT]
-		__attribute__((__aligned__(16)));
+		__rte_aligned(16);
 };
 
 static inline int

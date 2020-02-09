@@ -26,7 +26,7 @@ struct rte_arp_ipv4 {
 	uint32_t          arp_sip;  /**< sender IP address */
 	struct rte_ether_addr arp_tha;  /**< target hardware address */
 	uint32_t          arp_tip;  /**< target IP address */
-} __attribute__((__packed__)) __attribute__((aligned(2)));
+} __attribute__((__packed__)) __rte_aligned(2);
 
 /**
  * ARP header.
@@ -47,7 +47,7 @@ struct rte_arp_hdr {
 #define	RTE_ARP_OP_INVREPLY   9 /* response identifying peer */
 
 	struct rte_arp_ipv4 arp_data;
-} __attribute__((__packed__)) __attribute__((aligned(2)));
+} __attribute__((__packed__)) __rte_aligned(2);
 
 /**
  * @warning

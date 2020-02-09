@@ -11,7 +11,7 @@ struct _altivec_acl_const {
 	rte_xmm_t xmm_index_mask;
 	rte_xmm_t xmm_ones_16;
 	rte_xmm_t range_base;
-} altivec_acl_const  __attribute__((aligned(RTE_CACHE_LINE_SIZE))) = {
+} altivec_acl_const __rte_cache_aligned = {
 	{
 		.u32 = {0x00000000, 0x04040404, 0x08080808, 0x0c0c0c0c}
 	},

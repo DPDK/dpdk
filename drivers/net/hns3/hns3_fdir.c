@@ -686,8 +686,8 @@ static int hns3_config_key(struct hns3_adapter *hns,
 	struct hns3_fd_key_cfg *key_cfg;
 	uint8_t *cur_key_x;
 	uint8_t *cur_key_y;
-	uint8_t key_x[MAX_KEY_BYTES] __attribute__((aligned(4)));
-	uint8_t key_y[MAX_KEY_BYTES] __attribute__((aligned(4)));
+	uint8_t key_x[MAX_KEY_BYTES] __rte_aligned(4);
+	uint8_t key_y[MAX_KEY_BYTES] __rte_aligned(4);
 	uint8_t vf_id = rule->vf_id;
 	uint8_t meta_data_region;
 	uint8_t tuple_size;

@@ -732,13 +732,13 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		/* A.1 load cqes. */
 		p3 = (unsigned int)((vector unsigned short)p)[3];
 		cqes[3] = (vector unsigned char)(vector unsigned long){
-			*(__attribute__((__aligned__(8))) unsigned long *)
+			*(__rte_aligned(8) unsigned long *)
 			&cq[pos + p3].sop_drop_qpn, 0LL};
 		rte_compiler_barrier();
 
 		p2 = (unsigned int)((vector unsigned short)p)[2];
 		cqes[2] = (vector unsigned char)(vector unsigned long){
-			*(__attribute__((__aligned__(8))) unsigned long *)
+			*(__rte_aligned(8) unsigned long *)
 			&cq[pos + p2].sop_drop_qpn, 0LL};
 		rte_compiler_barrier();
 
@@ -751,12 +751,12 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		/* A.1 load a block having op_own. */
 		p1 = (unsigned int)((vector unsigned short)p)[1];
 		cqes[1] = (vector unsigned char)(vector unsigned long){
-			*(__attribute__((__aligned__(8))) unsigned long *)
+			*(__rte_aligned(8) unsigned long *)
 			&cq[pos + p1].sop_drop_qpn, 0LL};
 		rte_compiler_barrier();
 
 		cqes[0] = (vector unsigned char)(vector unsigned long){
-			*(__attribute__((__aligned__(8))) unsigned long *)
+			*(__rte_aligned(8) unsigned long *)
 			&cq[pos].sop_drop_qpn, 0LL};
 		rte_compiler_barrier();
 
@@ -783,10 +783,10 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 			vec_sel((vector unsigned short)cqes[2],
 			(vector unsigned short)cqe_tmp1, cqe_sel_mask1);
 		cqe_tmp2 = (vector unsigned char)(vector unsigned long){
-			*(__attribute__((__aligned__(8))) unsigned long *)
+			*(__rte_aligned(8) unsigned long *)
 			&cq[pos + p3].rsvd3[9], 0LL};
 		cqe_tmp1 = (vector unsigned char)(vector unsigned long){
-			*(__attribute__((__aligned__(8))) unsigned long *)
+			*(__rte_aligned(8) unsigned long *)
 			&cq[pos + p2].rsvd3[9], 0LL};
 		cqes[3] = (vector unsigned char)
 			vec_sel((vector unsigned short)cqes[3],
@@ -846,10 +846,10 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 			vec_sel((vector unsigned short)cqes[0],
 			(vector unsigned short)cqe_tmp1, cqe_sel_mask1);
 		cqe_tmp2 = (vector unsigned char)(vector unsigned long){
-			*(__attribute__((__aligned__(8))) unsigned long *)
+			*(__rte_aligned(8) unsigned long *)
 			&cq[pos + p1].rsvd3[9], 0LL};
 		cqe_tmp1 = (vector unsigned char)(vector unsigned long){
-			*(__attribute__((__aligned__(8))) unsigned long *)
+			*(__rte_aligned(8) unsigned long *)
 			&cq[pos].rsvd3[9], 0LL};
 		cqes[1] = (vector unsigned char)
 			vec_sel((vector unsigned short)cqes[1],

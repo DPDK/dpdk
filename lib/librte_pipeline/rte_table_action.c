@@ -471,7 +471,7 @@ struct encap_mpls_data {
 	struct rte_ether_hdr ether;
 	uint32_t mpls[RTE_TABLE_ACTION_MPLS_LABELS_MAX];
 	uint32_t mpls_count;
-} __attribute__((__packed__)) __attribute__((aligned(2)));
+} __attribute__((__packed__)) __rte_aligned(2);
 
 #define PPP_PROTOCOL_IP                                    0x0021
 
@@ -494,7 +494,7 @@ struct encap_vxlan_ipv4_data {
 	struct rte_ipv4_hdr ipv4;
 	struct rte_udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
-} __attribute__((__packed__)) __attribute__((aligned(2)));
+} __attribute__((__packed__)) __rte_aligned(2);
 
 struct encap_vxlan_ipv4_vlan_data {
 	struct rte_ether_hdr ether;
@@ -502,14 +502,14 @@ struct encap_vxlan_ipv4_vlan_data {
 	struct rte_ipv4_hdr ipv4;
 	struct rte_udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
-} __attribute__((__packed__)) __attribute__((aligned(2)));
+} __attribute__((__packed__)) __rte_aligned(2);
 
 struct encap_vxlan_ipv6_data {
 	struct rte_ether_hdr ether;
 	struct rte_ipv6_hdr ipv6;
 	struct rte_udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
-} __attribute__((__packed__)) __attribute__((aligned(2)));
+} __attribute__((__packed__)) __rte_aligned(2);
 
 struct encap_vxlan_ipv6_vlan_data {
 	struct rte_ether_hdr ether;
@@ -517,14 +517,14 @@ struct encap_vxlan_ipv6_vlan_data {
 	struct rte_ipv6_hdr ipv6;
 	struct rte_udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
-} __attribute__((__packed__)) __attribute__((aligned(2)));
+} __attribute__((__packed__)) __rte_aligned(2);
 
 struct encap_qinq_pppoe_data {
 	struct rte_ether_hdr ether;
 	struct rte_vlan_hdr svlan;
 	struct rte_vlan_hdr cvlan;
 	struct pppoe_ppp_hdr pppoe_ppp;
-} __attribute__((__packed__)) __attribute__((aligned(2)));
+} __attribute__((__packed__)) __rte_aligned(2);
 
 static size_t
 encap_data_size(struct rte_table_action_encap_config *encap)

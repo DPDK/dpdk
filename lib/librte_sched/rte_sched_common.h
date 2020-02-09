@@ -12,7 +12,7 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
-#define __rte_aligned_16 __attribute__((__aligned__(16)))
+#define __rte_aligned_16 __rte_aligned(16)
 
 #if 0
 static inline uint32_t

@@ -60,7 +60,7 @@ struct completion {
 	int32_t   priority[RTE_ACL_MAX_CATEGORIES]; /* running priorities. */
 	uint32_t  count;                            /* num of remaining tries */
 	/* true for allocated struct */
-} __attribute__((aligned(XMM_SIZE)));
+} __rte_aligned(XMM_SIZE);
 
 /*
  * One parms structure for each slot in the search engine.

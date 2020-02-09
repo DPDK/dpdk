@@ -107,7 +107,7 @@ union rte_thash_tuple {
 	struct rte_ipv4_tuple	v4;
 	struct rte_ipv6_tuple	v6;
 #ifdef RTE_ARCH_X86
-} __attribute__((aligned(XMM_SIZE)));
+} __rte_aligned(XMM_SIZE);
 #else
 };
 #endif

@@ -243,7 +243,7 @@ struct nfp_net_txq {
 	int qidx;
 	int tx_qcidx;
 	__le64 dma;
-} __attribute__ ((__aligned__(64)));
+} __rte_aligned(64);
 
 /* RX and freelist descriptor format */
 #define PCIE_DESC_RX_DD                 (1 << 7)
@@ -374,7 +374,7 @@ struct nfp_net_rxq {
 	int qidx;
 	int fl_qcidx;
 	int rx_qcidx;
-} __attribute__ ((__aligned__(64)));
+} __rte_aligned(64);
 
 struct nfp_net_hw {
 	/* Info from the firmware */

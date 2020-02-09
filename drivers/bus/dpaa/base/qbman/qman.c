@@ -94,7 +94,7 @@ struct qman_portal {
 	 * address (6 bits for address shift + 4 bits for the DQRR size).
 	 */
 	struct qm_dqrr_entry shadow_dqrr[QM_DQRR_SIZE]
-		    __attribute__((aligned(1024)));
+		    __rte_aligned(1024);
 #endif
 };
 

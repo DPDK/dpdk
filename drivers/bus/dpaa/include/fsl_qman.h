@@ -193,7 +193,7 @@ struct qm_fd {
 		u32 cmd;
 		u32 status;
 	};
-} __attribute__((aligned(8)));
+} __rte_aligned(8);
 #define QM_FD_DD_NULL		0x00
 #define QM_FD_PID_MASK		0x3f
 static inline u64 qm_fd_addr_get64(const struct qm_fd *fd)

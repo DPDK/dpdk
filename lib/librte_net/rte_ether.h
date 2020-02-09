@@ -59,7 +59,7 @@ extern "C" {
  */
 struct rte_ether_addr {
 	uint8_t addr_bytes[RTE_ETHER_ADDR_LEN]; /**< Addr bytes in tx order */
-} __attribute__((aligned(2)));
+} __rte_aligned(2);
 
 #define RTE_ETHER_LOCAL_ADMIN_ADDR 0x02 /**< Locally assigned Eth. address. */
 #define RTE_ETHER_GROUP_ADDR  0x01 /**< Multicast or broadcast Eth. address. */
@@ -273,7 +273,7 @@ struct rte_ether_hdr {
 	struct rte_ether_addr d_addr; /**< Destination address. */
 	struct rte_ether_addr s_addr; /**< Source address. */
 	uint16_t ether_type;      /**< Frame type. */
-} __attribute__((aligned(2)));
+} __rte_aligned(2);
 
 /**
  * Ethernet VLAN Header.

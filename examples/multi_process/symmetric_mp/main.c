@@ -66,7 +66,7 @@ struct port_stats{
 	unsigned rx;
 	unsigned tx;
 	unsigned drop;
-} __attribute__((aligned(RTE_CACHE_LINE_SIZE / 2)));
+} __rte_aligned(RTE_CACHE_LINE_SIZE / 2);
 
 static int proc_id = -1;
 static unsigned num_procs = 0;

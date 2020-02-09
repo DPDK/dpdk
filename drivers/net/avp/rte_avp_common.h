@@ -116,7 +116,7 @@ struct rte_avp_desc {
 	uint32_t pad3;
 	uint16_t vlan_tci; /**< VLAN Tag Control Identifier (CPU order). */
 	uint32_t pad4;
-} __attribute__ ((__aligned__(RTE_CACHE_LINE_SIZE), __packed__));
+} __attribute__ ((__packed__)) __rte_cache_aligned;
 
 
 /**{ AVP device features */

@@ -263,7 +263,7 @@ struct load_command_s {
  */
 struct sec_sd_t {
 	uint32_t rsvd[MAX_DESC_SIZE_WORDS];
-} __attribute__((packed, aligned(64)));
+} __attribute__((packed) __rte_aligned(64);
 
 /* Structure encompassing a job descriptor which processes
  * a single packet from a context. The job descriptor references
@@ -280,6 +280,6 @@ struct sec_job_descriptor_t {
 	uint32_t in_ext_length;
 	struct load_command_s load_dpovrd;
 	uint32_t dpovrd;
-} __attribute__((packed, aligned(64)));
+} __attribute__((packed) __rte_aligned(64);
 
 #endif

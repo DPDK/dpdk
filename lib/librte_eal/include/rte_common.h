@@ -64,9 +64,9 @@ extern "C" {
 #endif
 
 #ifdef RTE_ARCH_STRICT_ALIGN
-typedef uint64_t unaligned_uint64_t __attribute__ ((aligned(1)));
-typedef uint32_t unaligned_uint32_t __attribute__ ((aligned(1)));
-typedef uint16_t unaligned_uint16_t __attribute__ ((aligned(1)));
+typedef uint64_t unaligned_uint64_t __rte_aligned(1);
+typedef uint32_t unaligned_uint32_t __rte_aligned(1);
+typedef uint16_t unaligned_uint16_t __rte_aligned(1);
 #else
 typedef uint64_t unaligned_uint64_t;
 typedef uint32_t unaligned_uint32_t;

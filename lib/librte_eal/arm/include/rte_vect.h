@@ -26,7 +26,7 @@ typedef union rte_xmm {
 	uint32_t u32[XMM_SIZE / sizeof(uint32_t)];
 	uint64_t u64[XMM_SIZE / sizeof(uint64_t)];
 	double   pd[XMM_SIZE / sizeof(double)];
-} __attribute__((aligned(16))) rte_xmm_t;
+} __rte_aligned(16) rte_xmm_t;
 
 #ifdef RTE_ARCH_ARM
 /* NEON intrinsic vqtbl1q_u8() is not supported in ARMv7-A(AArch32) */

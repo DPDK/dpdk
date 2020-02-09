@@ -15,7 +15,7 @@
 typedef uint64_t large_int_ptr;
 #define MAX_PKE_PARAMS	8
 #define QAT_PKE_MAX_LN_SIZE 512
-#define _PKE_ALIGN_ __attribute__((__aligned__(8)))
+#define _PKE_ALIGN_ __rte_aligned(8)
 
 #define QAT_ASYM_MAX_PARAMS			8
 #define QAT_ASYM_MODINV_NUM_IN_PARAMS		2
