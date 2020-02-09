@@ -218,8 +218,7 @@ error:
 /**
  * Un-Initialize the pmd socket
  */
-void __attribute__((destructor))
-mlx5_pmd_socket_uninit(void)
+RTE_FINI(mlx5_pmd_socket_uninit)
 {
 	if (!server_socket)
 		return;
