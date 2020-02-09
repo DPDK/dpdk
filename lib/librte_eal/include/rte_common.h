@@ -91,6 +91,11 @@ typedef uint16_t unaligned_uint16_t;
  */
 #define __rte_weak __attribute__((__weak__))
 
+/**
+ * Force symbol to be generated even if it appears to be unused.
+ */
+#define __rte_used __attribute__((used))
+
 /*********** Macros to eliminate unused variable warnings ********/
 
 /**

@@ -205,17 +205,17 @@ typedef int (*rte_dev_cmp_t)(const struct rte_device *dev, const void *data);
 
 #define RTE_PMD_EXPORT_NAME(name, idx) \
 static const char RTE_PMD_EXPORT_NAME_ARRAY(this_pmd_name, idx) \
-__attribute__((used)) = RTE_STR(name)
+__rte_used = RTE_STR(name)
 
 #define DRV_EXP_TAG(name, tag) __##name##_##tag
 
 #define RTE_PMD_REGISTER_PCI_TABLE(name, table) \
-static const char DRV_EXP_TAG(name, pci_tbl_export)[] __attribute__((used)) = \
+static const char DRV_EXP_TAG(name, pci_tbl_export)[] __rte_used = \
 RTE_STR(table)
 
 #define RTE_PMD_REGISTER_PARAM_STRING(name, str) \
 static const char DRV_EXP_TAG(name, param_string_export)[] \
-__attribute__((used)) = str
+__rte_used = str
 
 /**
  * Advertise the list of kernel modules required to run this driver
@@ -240,7 +240,7 @@ __attribute__((used)) = str
  */
 #define RTE_PMD_REGISTER_KMOD_DEP(name, str) \
 static const char DRV_EXP_TAG(name, kmod_dep_export)[] \
-__attribute__((used)) = str
+__rte_used = str
 
 /**
  * Iteration context.

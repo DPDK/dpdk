@@ -59,7 +59,7 @@
  * that it is being used as an implementation of a particular version of symbol
  * <b>.
  */
-#define __vsym __attribute__((used))
+#define __vsym __rte_used
 
 /*
  * MAP_STATIC_SYMBOL
