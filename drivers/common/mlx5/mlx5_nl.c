@@ -1342,7 +1342,7 @@ mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
 	struct ifinfomsg *ifm;
 	char name[sizeof(MLX5_VMWA_VLAN_DEVICE_PFX) + 32];
 
-	alignas(RTE_CACHE_LINE_SIZE)
+	__rte_cache_aligned
 	uint8_t buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
 		    NLMSG_ALIGN(sizeof(struct ifinfomsg)) +
 		    NLMSG_ALIGN(sizeof(struct nlattr)) * 8 +
