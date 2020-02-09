@@ -67,7 +67,7 @@ ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_deferred_start = txq->deferred_start;
 }
 
-static inline void __attribute__((cold))
+static inline void __rte_cold
 ionic_tx_flush(struct ionic_cq *cq)
 {
 	struct ionic_queue *q = cq->bound_q;
@@ -118,7 +118,7 @@ ionic_tx_flush(struct ionic_cq *cq)
 	}
 }
 
-void __attribute__((cold))
+void __rte_cold
 ionic_dev_tx_queue_release(void *tx_queue)
 {
 	struct ionic_qcq *txq = (struct ionic_qcq *)tx_queue;
@@ -128,7 +128,7 @@ ionic_dev_tx_queue_release(void *tx_queue)
 	ionic_qcq_free(txq);
 }
 
-int __attribute__((cold))
+int __rte_cold
 ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 {
 	struct ionic_qcq *txq;
@@ -154,7 +154,7 @@ ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 	return 0;
 }
 
-int __attribute__((cold))
+int __rte_cold
 ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 		uint16_t nb_desc, uint32_t socket_id __rte_unused,
 		const struct rte_eth_txconf *tx_conf)
@@ -208,7 +208,7 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 /*
  * Start Transmit Units for specified queue.
  */
-int __attribute__((cold))
+int __rte_cold
 ionic_dev_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 {
 	struct ionic_qcq *txq;
@@ -609,7 +609,7 @@ ionic_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.offloads = rxq->offloads;
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 ionic_rx_empty(struct ionic_queue *q)
 {
 	struct ionic_qcq *rxq = IONIC_Q_TO_QCQ(q);
@@ -625,7 +625,7 @@ ionic_rx_empty(struct ionic_queue *q)
 	}
 }
 
-void __attribute__((cold))
+void __rte_cold
 ionic_dev_rx_queue_release(void *rx_queue)
 {
 	struct ionic_qcq *rxq = (struct ionic_qcq *)rx_queue;
@@ -637,7 +637,7 @@ ionic_dev_rx_queue_release(void *rx_queue)
 	ionic_qcq_free(rxq);
 }
 
-int __attribute__((cold))
+int __rte_cold
 ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		uint16_t rx_queue_id,
 		uint16_t nb_desc,
@@ -873,7 +873,7 @@ ionic_rx_recycle(struct ionic_queue *q, uint32_t q_desc_index,
 	ionic_q_post(q, true, ionic_rx_clean, mbuf);
 }
 
-static int __attribute__((cold))
+static int __rte_cold
 ionic_rx_fill(struct ionic_qcq *rxq, uint32_t len)
 {
 	struct ionic_queue *q = &rxq->q;
@@ -950,7 +950,7 @@ ionic_rx_fill(struct ionic_qcq *rxq, uint32_t len)
 /*
  * Start Receive Units for specified queue.
  */
-int __attribute__((cold))
+int __rte_cold
 ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
 	uint32_t frame_size = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
@@ -983,7 +983,7 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 	return 0;
 }
 
-static inline void __attribute__((cold))
+static inline void __rte_cold
 ionic_rxq_service(struct ionic_cq *cq, uint32_t work_to_do,
 		void *service_cb_arg)
 {
@@ -1038,7 +1038,7 @@ ionic_rxq_service(struct ionic_cq *cq, uint32_t work_to_do,
 /*
  * Stop Receive Units for specified queue.
  */
-int __attribute__((cold))
+int __rte_cold
 ionic_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
 	struct ionic_qcq *rxq;

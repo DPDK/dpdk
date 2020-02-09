@@ -203,7 +203,7 @@ fm10k_desc_to_pktype_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 #define fm10k_desc_to_pktype_v(desc, rx_pkts) do {} while (0)
 #endif
 
-int __attribute__((cold))
+int __rte_cold
 fm10k_rx_vec_condition_check(struct rte_eth_dev *dev)
 {
 #ifndef RTE_LIBRTE_IEEE1588
@@ -231,7 +231,7 @@ fm10k_rx_vec_condition_check(struct rte_eth_dev *dev)
 #endif
 }
 
-int __attribute__((cold))
+int __rte_cold
 fm10k_rxq_vec_setup(struct fm10k_rx_queue *rxq)
 {
 	uintptr_t p;
@@ -349,7 +349,7 @@ fm10k_rxq_rearm(struct fm10k_rx_queue *rxq)
 	FM10K_PCI_REG_WRITE(rxq->tail_ptr, rx_id);
 }
 
-void __attribute__((cold))
+void __rte_cold
 fm10k_rx_queue_release_mbufs_vec(struct fm10k_rx_queue *rxq)
 {
 	const unsigned mask = rxq->nb_desc - 1;
@@ -695,13 +695,13 @@ static const struct fm10k_txq_ops vec_txq_ops = {
 	.reset = fm10k_reset_tx_queue,
 };
 
-void __attribute__((cold))
+void __rte_cold
 fm10k_txq_vec_setup(struct fm10k_tx_queue *txq)
 {
 	txq->ops = &vec_txq_ops;
 }
 
-int __attribute__((cold))
+int __rte_cold
 fm10k_tx_vec_condition_check(struct fm10k_tx_queue *txq)
 {
 	/* Vector TX can't offload any features yet */
@@ -864,7 +864,7 @@ fm10k_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 fm10k_reset_tx_queue(struct fm10k_tx_queue *txq)
 {
 	static const struct fm10k_tx_desc zeroed_desc = {0};

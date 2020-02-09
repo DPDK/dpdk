@@ -121,7 +121,7 @@ mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
  * @return
  *   1 if supported, negative errno value if not.
  */
-int __attribute__((cold))
+int __rte_cold
 mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq)
 {
 	struct mlx5_rxq_ctrl *ctrl =
@@ -145,7 +145,7 @@ mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq)
  * @return
  *   1 if supported, negative errno value if not.
  */
-int __attribute__((cold))
+int __rte_cold
 mlx5_check_vec_rx_support(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;

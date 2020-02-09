@@ -702,25 +702,25 @@ ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
 {
 	_ixgbe_tx_queue_release_mbufs_vec(txq);
 }
 
-void __attribute__((cold))
+void __rte_cold
 ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 {
 	_ixgbe_rx_queue_release_mbufs_vec(rxq);
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 {
 	_ixgbe_tx_free_swring_vec(txq);
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 {
 	_ixgbe_reset_tx_queue_vec(txq);
@@ -732,19 +732,19 @@ static const struct ixgbe_txq_ops vec_txq_ops = {
 	.reset = ixgbe_reset_tx_queue,
 };
 
-int __attribute__((cold))
+int __rte_cold
 ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq)
 {
 	return ixgbe_rxq_vec_setup_default(rxq);
 }
 
-int __attribute__((cold))
+int __rte_cold
 ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq)
 {
 	return ixgbe_txq_vec_setup_default(txq, &vec_txq_ops);
 }
 
-int __attribute__((cold))
+int __rte_cold
 ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 {
 	return ixgbe_rx_vec_dev_conf_condition_check_default(dev);

@@ -609,7 +609,7 @@ ice_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx;
 }
 
-int __attribute__((cold))
+int __rte_cold
 ice_rxq_vec_setup(struct ice_rx_queue *rxq)
 {
 	if (!rxq)
@@ -619,7 +619,7 @@ ice_rxq_vec_setup(struct ice_rx_queue *rxq)
 	return ice_rxq_vec_setup_default(rxq);
 }
 
-int __attribute__((cold))
+int __rte_cold
 ice_txq_vec_setup(struct ice_tx_queue __rte_unused *txq)
 {
 	if (!txq)
@@ -629,13 +629,13 @@ ice_txq_vec_setup(struct ice_tx_queue __rte_unused *txq)
 	return 0;
 }
 
-int __attribute__((cold))
+int __rte_cold
 ice_rx_vec_dev_check(struct rte_eth_dev *dev)
 {
 	return ice_rx_vec_dev_check_default(dev);
 }
 
-int __attribute__((cold))
+int __rte_cold
 ice_tx_vec_dev_check(struct rte_eth_dev *dev)
 {
 	return ice_tx_vec_dev_check_default(dev);

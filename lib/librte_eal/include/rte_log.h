@@ -293,7 +293,7 @@ void rte_log_dump(FILE *f);
 int rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
 #ifdef __GNUC__
 #if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 2))
-	__attribute__((cold))
+	__rte_cold
 #endif
 #endif
 	__rte_format_printf(3, 4);

@@ -641,13 +641,13 @@ iavf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx;
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 iavf_rx_queue_release_mbufs_sse(struct iavf_rx_queue *rxq)
 {
 	_iavf_rx_queue_release_mbufs_vec(rxq);
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 iavf_tx_queue_release_mbufs_sse(struct iavf_tx_queue *txq)
 {
 	_iavf_tx_queue_release_mbufs_vec(txq);
@@ -661,27 +661,27 @@ static const struct iavf_txq_ops sse_vec_txq_ops = {
 	.release_mbufs = iavf_tx_queue_release_mbufs_sse,
 };
 
-int __attribute__((cold))
+int __rte_cold
 iavf_txq_vec_setup(struct iavf_tx_queue *txq)
 {
 	txq->ops = &sse_vec_txq_ops;
 	return 0;
 }
 
-int __attribute__((cold))
+int __rte_cold
 iavf_rxq_vec_setup(struct iavf_rx_queue *rxq)
 {
 	rxq->ops = &sse_vec_rxq_ops;
 	return iavf_rxq_vec_setup_default(rxq);
 }
 
-int __attribute__((cold))
+int __rte_cold
 iavf_rx_vec_dev_check(struct rte_eth_dev *dev)
 {
 	return iavf_rx_vec_dev_check_default(dev);
 }
 
-int __attribute__((cold))
+int __rte_cold
 iavf_tx_vec_dev_check(struct rte_eth_dev *dev)
 {
 	return iavf_tx_vec_dev_check_default(dev);

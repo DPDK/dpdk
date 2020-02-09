@@ -69,7 +69,7 @@ void rte_dump_registers(void);
 void __rte_panic(const char *funcname , const char *format, ...)
 #ifdef __GNUC__
 #if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 2))
-	__attribute__((cold))
+	__rte_cold
 #endif
 #endif
 	__attribute__((noreturn))

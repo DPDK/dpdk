@@ -27,7 +27,7 @@
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 
-int __attribute__((cold))
+int __rte_cold
 virtio_rxq_vec_setup(struct virtnet_rx *rxq)
 {
 	uintptr_t p;

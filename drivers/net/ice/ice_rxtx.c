@@ -2874,7 +2874,7 @@ ice_xmit_pkts_simple(void *tx_queue,
 	return nb_tx;
 }
 
-void __attribute__((cold))
+void __rte_cold
 ice_set_rx_function(struct rte_eth_dev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -2984,7 +2984,7 @@ ice_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 	return ret;
 }
 
-void __attribute__((cold))
+void __rte_cold
 ice_set_tx_function_flag(struct rte_eth_dev *dev, struct ice_tx_queue *txq)
 {
 	struct ice_adapter *ad =
@@ -3053,7 +3053,7 @@ ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	return i;
 }
 
-void __attribute__((cold))
+void __rte_cold
 ice_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct ice_adapter *ad =
@@ -3682,7 +3682,7 @@ ice_get_default_pkt_type(uint16_t ptype)
 	return type_table[ptype];
 }
 
-void __attribute__((cold))
+void __rte_cold
 ice_set_default_ptype_table(struct rte_eth_dev *dev)
 {
 	struct ice_adapter *ad =

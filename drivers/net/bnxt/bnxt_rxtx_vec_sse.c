@@ -490,7 +490,7 @@ bnxt_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_sent;
 }
 
-int __attribute__((cold))
+int __rte_cold
 bnxt_rxq_vec_setup(struct bnxt_rx_queue *rxq)
 {
 	uintptr_t p;

@@ -2290,7 +2290,7 @@ ixgbe_recv_pkts_lro_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
  *
  **********************************************************************/
 
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 {
 	unsigned i;
@@ -2415,7 +2415,7 @@ ixgbe_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 	return ixgbe_tx_done_cleanup_full(txq, free_cnt);
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 {
 	if (txq != NULL &&
@@ -2423,7 +2423,7 @@ ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 		rte_free(txq->sw_ring);
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_tx_queue_release(struct ixgbe_tx_queue *txq)
 {
 	if (txq != NULL && txq->ops != NULL) {
@@ -2433,14 +2433,14 @@ ixgbe_tx_queue_release(struct ixgbe_tx_queue *txq)
 	}
 }
 
-void __attribute__((cold))
+void __rte_cold
 ixgbe_dev_tx_queue_release(void *txq)
 {
 	ixgbe_tx_queue_release(txq);
 }
 
 /* (Re)set dynamic ixgbe_tx_queue fields to defaults */
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 {
 	static const union ixgbe_adv_tx_desc zeroed_desc = {{0}};
@@ -2490,7 +2490,7 @@ static const struct ixgbe_txq_ops def_txq_ops = {
  * the queue parameters. Used in tx_queue_setup by primary process and then
  * in dev_init by secondary process when attaching to an existing ethdev.
  */
-void __attribute__((cold))
+void __rte_cold
 ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
 {
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
@@ -2561,7 +2561,7 @@ ixgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 	return tx_offload_capa;
 }
 
-int __attribute__((cold))
+int __rte_cold
 ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx,
 			 uint16_t nb_desc,
@@ -2776,7 +2776,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
  *
  * @m scattered cluster head
  */
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_free_sc_cluster(struct rte_mbuf *m)
 {
 	uint16_t i, nb_segs = m->nb_segs;
@@ -2789,7 +2789,7 @@ ixgbe_free_sc_cluster(struct rte_mbuf *m)
 	}
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 {
 	unsigned i;
@@ -2826,7 +2826,7 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 			}
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_rx_queue_release(struct ixgbe_rx_queue *rxq)
 {
 	if (rxq != NULL) {
@@ -2837,7 +2837,7 @@ ixgbe_rx_queue_release(struct ixgbe_rx_queue *rxq)
 	}
 }
 
-void __attribute__((cold))
+void __rte_cold
 ixgbe_dev_rx_queue_release(void *rxq)
 {
 	ixgbe_rx_queue_release(rxq);
@@ -2851,7 +2851,7 @@ ixgbe_dev_rx_queue_release(void *rxq)
  *  -EINVAL: the preconditions are NOT satisfied and the default Rx burst
  *           function must be used.
  */
-static inline int __attribute__((cold))
+static inline int __rte_cold
 check_rx_burst_bulk_alloc_preconditions(struct ixgbe_rx_queue *rxq)
 {
 	int ret = 0;
@@ -2888,7 +2888,7 @@ check_rx_burst_bulk_alloc_preconditions(struct ixgbe_rx_queue *rxq)
 }
 
 /* Reset dynamic ixgbe_rx_queue fields back to defaults */
-static void __attribute__((cold))
+static void __rte_cold
 ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 {
 	static const union ixgbe_adv_rx_desc zeroed_desc = {{0}};
@@ -3013,7 +3013,7 @@ ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 	return offloads;
 }
 
-int __attribute__((cold))
+int __rte_cold
 ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx,
 			 uint16_t nb_desc,
@@ -3294,7 +3294,7 @@ ixgbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 /*
  * Set up link loopback for X540/X550 mode Tx->Rx.
  */
-static inline void __attribute__((cold))
+static inline void __rte_cold
 ixgbe_setup_loopback_link_x540_x550(struct ixgbe_hw *hw, bool enable)
 {
 	uint32_t macc;
@@ -3322,7 +3322,7 @@ ixgbe_setup_loopback_link_x540_x550(struct ixgbe_hw *hw, bool enable)
 	IXGBE_WRITE_REG(hw, IXGBE_MACC, macc);
 }
 
-void __attribute__((cold))
+void __rte_cold
 ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 {
 	unsigned i;
@@ -4430,7 +4430,7 @@ ixgbe_vmdq_tx_hw_configure(struct ixgbe_hw *hw)
 	IXGBE_WRITE_FLUSH(hw);
 }
 
-static int __attribute__((cold))
+static int __rte_cold
 ixgbe_alloc_rx_queue_mbufs(struct ixgbe_rx_queue *rxq)
 {
 	struct ixgbe_rx_entry *rxe = rxq->sw_ring;
@@ -4730,7 +4730,7 @@ ixgbe_set_ivar(struct rte_eth_dev *dev, u8 entry, u8 vector, s8 type)
 	}
 }
 
-void __attribute__((cold))
+void __rte_cold
 ixgbe_set_rx_function(struct rte_eth_dev *dev)
 {
 	uint16_t i, rx_using_sse;
@@ -4983,7 +4983,7 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 /*
  * Initializes Receive Unit.
  */
-int __attribute__((cold))
+int __rte_cold
 ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
@@ -5160,7 +5160,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 /*
  * Initializes Transmit Unit.
  */
-void __attribute__((cold))
+void __rte_cold
 ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
@@ -5249,7 +5249,7 @@ ixgbe_check_supported_loopback_mode(struct rte_eth_dev *dev)
 /*
  * Set up link for 82599 loopback mode Tx->Rx.
  */
-static inline void __attribute__((cold))
+static inline void __rte_cold
 ixgbe_setup_loopback_link_82599(struct ixgbe_hw *hw)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -5277,7 +5277,7 @@ ixgbe_setup_loopback_link_82599(struct ixgbe_hw *hw)
 /*
  * Start Transmit and Receive Units.
  */
-int __attribute__((cold))
+int __rte_cold
 ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
@@ -5365,7 +5365,7 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 /*
  * Start Receive Units for specified queue.
  */
-int __attribute__((cold))
+int __rte_cold
 ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct ixgbe_hw     *hw;
@@ -5407,7 +5407,7 @@ ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 /*
  * Stop Receive Units for specified queue.
  */
-int __attribute__((cold))
+int __rte_cold
 ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct ixgbe_hw     *hw;
@@ -5447,7 +5447,7 @@ ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 /*
  * Start Transmit Units for specified queue.
  */
-int __attribute__((cold))
+int __rte_cold
 ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct ixgbe_hw     *hw;
@@ -5486,7 +5486,7 @@ ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 /*
  * Stop Transmit Units for specified queue.
  */
-int __attribute__((cold))
+int __rte_cold
 ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct ixgbe_hw     *hw;
@@ -5583,7 +5583,7 @@ ixgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 /*
  * [VF] Initializes Receive Unit.
  */
-int __attribute__((cold))
+int __rte_cold
 ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
@@ -5707,7 +5707,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 /*
  * [VF] Initializes Transmit Unit.
  */
-void __attribute__((cold))
+void __rte_cold
 ixgbevf_dev_tx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
@@ -5748,7 +5748,7 @@ ixgbevf_dev_tx_init(struct rte_eth_dev *dev)
 /*
  * [VF] Start Transmit and Receive Units.
  */
-void __attribute__((cold))
+void __rte_cold
 ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;

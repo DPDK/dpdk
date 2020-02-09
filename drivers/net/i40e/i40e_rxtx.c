@@ -3094,7 +3094,7 @@ i40e_get_recommend_rx_vec(bool scatter)
 			 i40e_recv_pkts_vec;
 }
 
-void __attribute__((cold))
+void __rte_cold
 i40e_set_rx_function(struct rte_eth_dev *dev)
 {
 	struct i40e_adapter *ad =
@@ -3209,7 +3209,7 @@ i40e_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 	return ret;
 }
 
-void __attribute__((cold))
+void __rte_cold
 i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct i40e_tx_queue *txq)
 {
 	struct i40e_adapter *ad =
@@ -3260,7 +3260,7 @@ i40e_get_recommend_tx_vec(void)
 	return i40e_xmit_pkts_vec;
 }
 
-void __attribute__((cold))
+void __rte_cold
 i40e_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct i40e_adapter *ad =
@@ -3338,7 +3338,7 @@ i40e_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 	return ret;
 }
 
-void __attribute__((cold))
+void __rte_cold
 i40e_set_default_ptype_table(struct rte_eth_dev *dev)
 {
 	struct i40e_adapter *ad =
@@ -3349,7 +3349,7 @@ i40e_set_default_ptype_table(struct rte_eth_dev *dev)
 		ad->ptype_tbl[i] = i40e_get_default_pkt_type(i);
 }
 
-void __attribute__((cold))
+void __rte_cold
 i40e_set_default_pctype_table(struct rte_eth_dev *dev)
 {
 	struct i40e_adapter *ad =

@@ -2958,7 +2958,7 @@ fm10k_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx;
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 fm10k_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct fm10k_tx_queue *txq;
@@ -3007,7 +3007,7 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 	}
 }
 
-static void __attribute__((cold))
+static void __rte_cold
 fm10k_set_rx_function(struct rte_eth_dev *dev)
 {
 	struct fm10k_dev_info *dev_info =
