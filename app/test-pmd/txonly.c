@@ -153,7 +153,6 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 		const uint16_t vlan_tci_outer, const uint64_t ol_flags)
 {
 	struct rte_mbuf *pkt_segs[RTE_MAX_SEGS_PER_PKT];
-	uint8_t  ip_var = RTE_PER_LCORE(_ip_var);
 	struct rte_mbuf *pkt_seg;
 	uint32_t nb_segs, pkt_len;
 	uint8_t i;
@@ -193,6 +192,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
 			sizeof(struct rte_ether_hdr));
 	if (txonly_multi_flow) {
+		uint8_t  ip_var = RTE_PER_LCORE(_ip_var);
 		struct rte_ipv4_hdr *ip_hdr;
 		uint32_t addr;
 
@@ -208,6 +208,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 		 */
 		addr = (tx_ip_dst_addr | (ip_var++ << 8)) + rte_lcore_id();
 		ip_hdr->src_addr = rte_cpu_to_be_32(addr);
+		RTE_PER_LCORE(_ip_var) = ip_var;
 	}
 	copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
 			sizeof(struct rte_ether_hdr) +
@@ -315,7 +316,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	fs->tx_packets += nb_tx;
 
 	if (txonly_multi_flow)
-		RTE_PER_LCORE(_ip_var) += nb_tx;
+		RTE_PER_LCORE(_ip_var) -= nb_pkt - nb_tx;
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 	fs->tx_burst_stats.pkt_burst_spread[nb_tx]++;
