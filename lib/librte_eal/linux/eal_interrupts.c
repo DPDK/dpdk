@@ -1042,7 +1042,7 @@ eal_intr_handle_interrupts(int pfd, unsigned totalfds)
  * @return
  *  never return;
  */
-static __attribute__((noreturn)) void *
+static __rte_noreturn void *
 eal_intr_thread_main(__rte_unused void *arg)
 {
 	/* host thread, never break out */

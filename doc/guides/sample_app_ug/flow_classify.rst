@@ -422,7 +422,7 @@ following:
             .stats = (void *)&ntuple_stats
     };
 
-    static __attribute__((noreturn)) void
+    static __rte_noreturn void
     lcore_main(cls_app)
     {
         uint16_t port;

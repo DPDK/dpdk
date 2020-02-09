@@ -55,7 +55,7 @@
  * An exiting lthread must not terminate the pthread it is running in
  * since this would mean terminating the lthread scheduler.
  * We override pthread_exit() with a macro because it is typically declared with
- * __attribute__((noreturn))
+ * __rte_noreturn
  */
 void pthread_exit_override(void *v);
 

@@ -265,7 +265,7 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
  * The lcore main. This is the main thread that does the work, reading from
  * an input port classifying the packets and writing to an output port.
  */
-static __attribute__((noreturn)) void
+static __rte_noreturn void
 lcore_main(struct flow_classifier *cls_app)
 {
 	uint16_t port;

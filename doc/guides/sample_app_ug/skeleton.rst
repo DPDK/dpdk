@@ -191,7 +191,7 @@ looks like the following:
 
 .. code-block:: c
 
-    static __attribute__((noreturn)) void
+    static __rte_noreturn void
     lcore_main(void)
     {
         uint16_t port;

@@ -55,7 +55,7 @@ timer1_cb(__rte_unused struct rte_timer *tim,
 	rte_timer_reset(tim, hz/3, SINGLE, lcore_id, timer1_cb, NULL);
 }
 
-static __attribute__((noreturn)) int
+static __rte_noreturn int
 lcore_mainloop(__rte_unused void *arg)
 {
 	uint64_t prev_tsc = 0, cur_tsc, diff_tsc;

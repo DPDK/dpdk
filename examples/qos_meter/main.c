@@ -166,7 +166,7 @@ app_pkt_handle(struct rte_mbuf *pkt, uint64_t time)
 }
 
 
-static __attribute__((noreturn)) int
+static __rte_noreturn int
 main_loop(__rte_unused void *dummy)
 {
 	uint64_t current_time, last_time = rte_rdtsc();

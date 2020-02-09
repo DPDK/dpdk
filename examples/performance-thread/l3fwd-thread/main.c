@@ -1877,7 +1877,7 @@ process_burst(struct rte_mbuf *pkts_burst[MAX_PKT_BURST], int nb_rx,
 /*
  * CPU-load stats collector
  */
-static int __attribute__((noreturn))
+static int __rte_noreturn
 cpu_load_collector(__rte_unused void *arg) {
 	unsigned i, j, k;
 	uint64_t hits;
@@ -2299,7 +2299,7 @@ sched_spawner(__rte_unused void *arg) {
 }
 
 /* main processing loop */
-static int __attribute__((noreturn))
+static int __rte_noreturn
 pthread_tx(void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];

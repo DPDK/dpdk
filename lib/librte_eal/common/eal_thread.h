@@ -13,7 +13,7 @@
  * @param arg
  *   opaque pointer
  */
-__attribute__((noreturn)) void *eal_thread_loop(void *arg);
+__rte_noreturn void *eal_thread_loop(void *arg);
 
 /**
  * Init per-lcore info for master thread

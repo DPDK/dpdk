@@ -183,6 +183,11 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 	RTE_FINI_PRIO(func, LAST)
 
 /**
+ * Hint never returning function
+ */
+#define __rte_noreturn __attribute__((noreturn))
+
+/**
  * Force a function to be inlined
  */
 #define __rte_always_inline inline __attribute__((always_inline))
@@ -826,9 +831,8 @@ rte_str_to_size(const char *str)
  *     printf format characters which will be expanded using any further parameters
  *     to the function.
  */
-void
+__rte_noreturn void
 rte_exit(int exit_code, const char *format, ...)
-	__attribute__((noreturn))
 	__rte_format_printf(2, 3);
 
 #ifdef __cplusplus

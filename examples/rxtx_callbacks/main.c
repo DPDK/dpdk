@@ -215,7 +215,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
  * Main thread that does the work, reading from INPUT_PORT
  * and writing to OUTPUT_PORT
  */
-static  __attribute__((noreturn)) void
+static  __rte_noreturn void
 lcore_main(void)
 {
 	uint16_t port;
