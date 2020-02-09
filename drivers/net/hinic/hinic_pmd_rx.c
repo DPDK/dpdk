@@ -531,7 +531,7 @@ static void hinic_fillout_indir_tbl(struct hinic_nic_dev *nic_dev, u32 *indir)
 }
 
 static int hinic_rss_init(struct hinic_nic_dev *nic_dev,
-			  __attribute__((unused)) u8 *rq2iq_map,
+			  __rte_unused u8 *rq2iq_map,
 			  struct rte_eth_rss_conf *rss_conf)
 {
 	u32 indir_tbl[HINIC_RSS_INDIR_SIZE] = {0};

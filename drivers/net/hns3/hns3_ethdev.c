@@ -1403,7 +1403,7 @@ hns3_add_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 
 static int
 hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
-		  uint32_t idx, __attribute__ ((unused)) uint32_t pool)
+		  uint32_t idx, __rte_unused uint32_t pool)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];

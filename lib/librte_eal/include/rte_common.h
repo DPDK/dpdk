@@ -717,7 +717,7 @@ rte_log2_u64(uint64_t v)
 #ifndef container_of
 #define container_of(ptr, type, member)	__extension__ ({		\
 			const typeof(((type *)0)->member) *_ptr = (ptr); \
-			__attribute__((unused)) type *_target_ptr =	\
+			__rte_unused type *_target_ptr =	\
 				(type *)(ptr);				\
 			(type *)(((uintptr_t)_ptr) - offsetof(type, member)); \
 		})

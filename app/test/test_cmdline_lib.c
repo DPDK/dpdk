@@ -12,6 +12,8 @@
 #include <ctype.h>
 #include <sys/queue.h>
 
+#include <rte_common.h>
+
 #include <cmdline_vt100.h>
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -23,18 +25,18 @@
 /****************************************************************/
 /* static functions required for some tests */
 static void
-valid_buffer(__attribute__((unused))struct rdline *rdl,
-			__attribute__((unused))const char *buf,
-			__attribute__((unused)) unsigned int size)
+valid_buffer(__rte_unused struct rdline *rdl,
+			__rte_unused const char *buf,
+			__rte_unused unsigned int size)
 {
 }
 
 static int
-complete_buffer(__attribute__((unused)) struct rdline *rdl,
-			__attribute__((unused)) const char *buf,
-			__attribute__((unused)) char *dstbuf,
-			__attribute__((unused)) unsigned int dstsize,
-			__attribute__((unused)) int *state)
+complete_buffer(__rte_unused struct rdline *rdl,
+			__rte_unused const char *buf,
+			__rte_unused char *dstbuf,
+			__rte_unused unsigned int dstsize,
+			__rte_unused int *state)
 {
 	return 0;
 }

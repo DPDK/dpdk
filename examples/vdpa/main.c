@@ -228,9 +228,9 @@ struct cmd_help_result {
 	cmdline_fixed_string_t help;
 };
 
-static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_help_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_printf(
 		cl,
@@ -263,9 +263,9 @@ struct cmd_list_result {
 };
 
 static void cmd_list_vdpa_devices_parsed(
-		__attribute__((unused)) void *parsed_result,
+		__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	int did;
 	uint32_t queue_num;
@@ -320,7 +320,7 @@ struct cmd_create_result {
 
 static void cmd_create_vdpa_port_parsed(void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	int did;
 	struct cmd_create_result *res = parsed_result;
@@ -368,9 +368,9 @@ struct cmd_quit_result {
 	cmdline_fixed_string_t quit;
 };
 
-static void cmd_quit_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_quit_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	vdpa_sample_quit();
 	cmdline_quit(cl);

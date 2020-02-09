@@ -62,7 +62,7 @@ The following is the definition of the function:
 .. code-block:: c
 
     static int
-    lcore_hello( attribute ((unused)) void *arg)
+    lcore_hello(__rte_unused void *arg)
     {
         unsigned lcore_id;
 

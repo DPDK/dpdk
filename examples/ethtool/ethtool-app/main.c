@@ -176,7 +176,7 @@ static void process_frame(struct app_port *ptr_port,
 	rte_ether_addr_copy(&ptr_port->mac_addr, &ptr_mac_hdr->s_addr);
 }
 
-static int slave_main(__attribute__((unused)) void *ptr_data)
+static int slave_main(__rte_unused void *ptr_data)
 {
 	struct app_port *ptr_port;
 	struct rte_mbuf *ptr_frame;

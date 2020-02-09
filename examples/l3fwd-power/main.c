@@ -461,8 +461,8 @@ signal_exit_now(int sigtype)
 
 /*  Freqency scale down timer callback */
 static void
-power_timer_cb(__attribute__((unused)) struct rte_timer *tim,
-			  __attribute__((unused)) void *arg)
+power_timer_cb(__rte_unused struct rte_timer *tim,
+			  __rte_unused void *arg)
 {
 	uint64_t hz;
 	float sleep_time_ratio;
@@ -927,7 +927,7 @@ static int event_register(struct lcore_conf *qconf)
 }
 /* main processing loop */
 static int
-main_telemetry_loop(__attribute__((unused)) void *dummy)
+main_telemetry_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned int lcore_id;
@@ -1047,7 +1047,7 @@ main_telemetry_loop(__attribute__((unused)) void *dummy)
 }
 /* main processing loop */
 static int
-main_empty_poll_loop(__attribute__((unused)) void *dummy)
+main_empty_poll_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned int lcore_id;
@@ -1151,7 +1151,7 @@ main_empty_poll_loop(__attribute__((unused)) void *dummy)
 }
 /* main processing loop */
 static int
-main_loop(__attribute__((unused)) void *dummy)
+main_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned lcore_id;
@@ -2079,8 +2079,8 @@ init_power_library(void)
 	return ret;
 }
 static void
-update_telemetry(__attribute__((unused)) struct rte_timer *tim,
-		__attribute__((unused)) void *arg)
+update_telemetry(__rte_unused struct rte_timer *tim,
+		__rte_unused void *arg)
 {
 	unsigned int lcore_id = rte_lcore_id();
 	struct lcore_conf *qconf;

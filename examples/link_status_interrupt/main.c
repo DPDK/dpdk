@@ -286,7 +286,7 @@ lsi_main_loop(void)
 }
 
 static int
-lsi_launch_one_lcore(__attribute__((unused)) void *dummy)
+lsi_launch_one_lcore(__rte_unused void *dummy)
 {
 	lsi_main_loop();
 	return 0;

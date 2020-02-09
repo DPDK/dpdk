@@ -206,7 +206,7 @@ to generate hints based on recent network load trends.
 .. code-block:: c
 
     static
-    attribute ((noreturn)) int main_loop( attribute ((unused)) void *dummy)
+    attribute ((noreturn)) int main_loop(__rte_unused void *dummy)
     {
         // ...
 

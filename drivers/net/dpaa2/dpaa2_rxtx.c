@@ -29,7 +29,7 @@ static inline uint32_t __attribute__((hot))
 dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 			struct dpaa2_annot_hdr *annotation);
 
-static void enable_tx_tstamp(struct qbman_fd *fd) __attribute__((unused));
+static void enable_tx_tstamp(struct qbman_fd *fd) __rte_unused;
 
 #define DPAA2_MBUF_TO_CONTIG_FD(_mbuf, _fd, _bpid)  do { \
 	DPAA2_SET_FD_ADDR(_fd, DPAA2_MBUF_VADDR_TO_IOVA(_mbuf)); \
@@ -432,7 +432,7 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 
 static void
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
-	       struct qbman_fd *fd, uint16_t bpid) __attribute__((unused));
+	       struct qbman_fd *fd, uint16_t bpid) __rte_unused;
 
 static void __rte_noinline __attribute__((hot))
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
@@ -688,7 +688,7 @@ dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
 }
 
 void __attribute__((hot))
-dpaa2_dev_process_atomic_event(struct qbman_swp *swp __attribute__((unused)),
+dpaa2_dev_process_atomic_event(struct qbman_swp *swp __rte_unused,
 			       const struct qbman_fd *fd,
 			       const struct qbman_result *dq,
 			       struct dpaa2_queue *rxq,

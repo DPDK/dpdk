@@ -74,11 +74,11 @@ table_action_stub_miss(struct rte_pipeline *p, struct rte_mbuf **pkts,
 	uint64_t pkts_mask, struct rte_pipeline_table_entry *entry, void *arg);
 
 rte_pipeline_table_action_handler_hit
-table_action_0x00(__attribute__((unused)) struct rte_pipeline *p,
-	__attribute__((unused)) struct rte_mbuf **pkts,
+table_action_0x00(__rte_unused struct rte_pipeline *p,
+	__rte_unused struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
-	__attribute__((unused)) struct rte_pipeline_table_entry **entry,
-	__attribute__((unused)) void *arg)
+	__rte_unused struct rte_pipeline_table_entry **entry,
+	__rte_unused void *arg)
 {
 	printf("Table Action, setting pkts_mask to 0x00\n");
 	pkts_mask = ~0x00;
@@ -87,11 +87,11 @@ table_action_0x00(__attribute__((unused)) struct rte_pipeline *p,
 }
 
 rte_pipeline_table_action_handler_hit
-table_action_stub_hit(__attribute__((unused)) struct rte_pipeline *p,
-	__attribute__((unused)) struct rte_mbuf **pkts,
+table_action_stub_hit(__rte_unused struct rte_pipeline *p,
+	__rte_unused struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
-	__attribute__((unused)) struct rte_pipeline_table_entry **entry,
-	__attribute__((unused)) void *arg)
+	__rte_unused struct rte_pipeline_table_entry **entry,
+	__rte_unused void *arg)
 {
 	printf("STUB Table Action Hit - doing nothing\n");
 	printf("STUB Table Action Hit - setting mask to 0x%"PRIx64"\n",
@@ -103,10 +103,10 @@ table_action_stub_hit(__attribute__((unused)) struct rte_pipeline *p,
 
 static int
 table_action_stub_miss(struct rte_pipeline *p,
-	__attribute__((unused)) struct rte_mbuf **pkts,
+	__rte_unused struct rte_mbuf **pkts,
 	uint64_t pkts_mask,
-	__attribute__((unused)) struct rte_pipeline_table_entry *entry,
-	__attribute__((unused)) void *arg)
+	__rte_unused struct rte_pipeline_table_entry *entry,
+	__rte_unused void *arg)
 {
 	printf("STUB Table Action Miss - setting mask to 0x%"PRIx64"\n",
 		override_miss_mask);

@@ -65,7 +65,7 @@ struct try_rwlock_lcore {
 static struct try_rwlock_lcore try_lcore_data[RTE_MAX_LCORE];
 
 static int
-test_rwlock_per_core(__attribute__((unused)) void *arg)
+test_rwlock_per_core(__rte_unused void *arg)
 {
 	rte_rwlock_write_lock(&sl);
 	printf("Global write lock taken on core %u\n", rte_lcore_id());
@@ -92,7 +92,7 @@ static uint64_t time_count[RTE_MAX_LCORE] = {0};
 #define TEST_RWLOCK_DEBUG 0
 
 static int
-load_loop_fn(__attribute__((unused)) void *arg)
+load_loop_fn(__rte_unused void *arg)
 {
 	uint64_t time_diff = 0, begin;
 	uint64_t hz = rte_get_timer_hz();

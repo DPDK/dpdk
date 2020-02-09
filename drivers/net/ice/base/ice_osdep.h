@@ -120,10 +120,10 @@ writeq(uint64_t value, volatile void *addr)
 #endif /* __INTEL_NET_BASE_OSDEP__ */
 
 #ifndef __always_unused
-#define __always_unused  __attribute__((unused))
+#define __always_unused  __rte_unused
 #endif
 #ifndef __maybe_unused
-#define __maybe_unused  __attribute__((unused))
+#define __maybe_unused  __rte_unused
 #endif
 #ifndef __packed
 #define __packed  __rte_packed
@@ -219,14 +219,14 @@ ice_release_lock(struct ice_lock *sp)
 }
 
 static inline void
-ice_destroy_lock(__attribute__((unused)) struct ice_lock *sp)
+ice_destroy_lock(__rte_unused struct ice_lock *sp)
 {
 }
 
 struct ice_hw;
 
 static inline void *
-ice_alloc_dma_mem(__attribute__((unused)) struct ice_hw *hw,
+ice_alloc_dma_mem(__rte_unused struct ice_hw *hw,
 		  struct ice_dma_mem *mem, u64 size)
 {
 	const struct rte_memzone *mz = NULL;
@@ -252,7 +252,7 @@ ice_alloc_dma_mem(__attribute__((unused)) struct ice_hw *hw,
 }
 
 static inline void
-ice_free_dma_mem(__attribute__((unused)) struct ice_hw *hw,
+ice_free_dma_mem(__rte_unused struct ice_hw *hw,
 		 struct ice_dma_mem *mem)
 {
 	PMD_DRV_LOG(DEBUG, "memzone %s to be freed with physical address: "

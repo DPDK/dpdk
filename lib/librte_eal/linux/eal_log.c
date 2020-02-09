@@ -23,7 +23,7 @@
  * default log function
  */
 static ssize_t
-console_log_write(__attribute__((unused)) void *c, const char *buf, size_t size)
+console_log_write(__rte_unused void *c, const char *buf, size_t size)
 {
 	ssize_t ret;
 

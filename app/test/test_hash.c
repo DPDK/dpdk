@@ -75,9 +75,9 @@ int hash_logtype_test;
  * Hash function that always returns the same value, to easily test what
  * happens when a bucket is full.
  */
-static uint32_t pseudo_hash(__attribute__((unused)) const void *keys,
-			    __attribute__((unused)) uint32_t key_len,
-			    __attribute__((unused)) uint32_t init_val)
+static uint32_t pseudo_hash(__rte_unused const void *keys,
+			    __rte_unused uint32_t key_len,
+			    __rte_unused uint32_t init_val)
 {
 	return 3;
 }

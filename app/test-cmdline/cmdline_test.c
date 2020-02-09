@@ -12,6 +12,8 @@
 #include <ctype.h>
 #include <sys/queue.h>
 
+#include <rte_common.h>
+
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
@@ -20,7 +22,7 @@
 #include "cmdline_test.h"
 
 int
-main(int __attribute__((unused)) argc, char __attribute__((unused)) ** argv)
+main(int __rte_unused argc, char __rte_unused ** argv)
 {
 	struct cmdline *cl;
 

@@ -16,7 +16,7 @@
 #include <rte_debug.h>
 
 static int
-lcore_hello(__attribute__((unused)) void *arg)
+lcore_hello(__rte_unused void *arg)
 {
 	unsigned lcore_id;
 	lcore_id = rte_lcore_id();

@@ -25,8 +25,8 @@ static struct rte_timer timer1;
 
 /* timer0 callback */
 static void
-timer0_cb(__attribute__((unused)) struct rte_timer *tim,
-	  __attribute__((unused)) void *arg)
+timer0_cb(__rte_unused struct rte_timer *tim,
+	  __rte_unused void *arg)
 {
 	static unsigned counter = 0;
 	unsigned lcore_id = rte_lcore_id();
@@ -41,8 +41,8 @@ timer0_cb(__attribute__((unused)) struct rte_timer *tim,
 
 /* timer1 callback */
 static void
-timer1_cb(__attribute__((unused)) struct rte_timer *tim,
-	  __attribute__((unused)) void *arg)
+timer1_cb(__rte_unused struct rte_timer *tim,
+	  __rte_unused void *arg)
 {
 	unsigned lcore_id = rte_lcore_id();
 	uint64_t hz;
@@ -56,7 +56,7 @@ timer1_cb(__attribute__((unused)) struct rte_timer *tim,
 }
 
 static __attribute__((noreturn)) int
-lcore_mainloop(__attribute__((unused)) void *arg)
+lcore_mainloop(__rte_unused void *arg)
 {
 	uint64_t prev_tsc = 0, cur_tsc, diff_tsc;
 	unsigned lcore_id;

@@ -24,7 +24,7 @@
 
 static void
 cmdline_valid_buffer(struct rdline *rdl, const char *buf,
-		     __attribute__((unused)) unsigned int size)
+		     __rte_unused unsigned int size)
 {
 	struct cmdline *cl = rdl->opaque;
 	int ret;

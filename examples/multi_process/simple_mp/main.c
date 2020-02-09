@@ -53,7 +53,7 @@ struct rte_mempool *message_pool;
 volatile int quit = 0;
 
 static int
-lcore_recv(__attribute__((unused)) void *arg)
+lcore_recv(__rte_unused void *arg)
 {
 	unsigned lcore_id = rte_lcore_id();
 

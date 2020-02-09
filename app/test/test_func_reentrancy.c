@@ -66,7 +66,7 @@ static rte_atomic32_t synchro = RTE_ATOMIC32_INIT(0);
  * rte_eal_init only init once
  */
 static int
-test_eal_init_once(__attribute__((unused)) void *arg)
+test_eal_init_once(__rte_unused void *arg)
 {
 	unsigned lcore_self =  rte_lcore_id();
 
@@ -99,7 +99,7 @@ ring_clean(unsigned int lcore_id)
 }
 
 static int
-ring_create_lookup(__attribute__((unused)) void *arg)
+ring_create_lookup(__rte_unused void *arg)
 {
 	unsigned lcore_self = rte_lcore_id();
 	struct rte_ring * rp;
@@ -133,7 +133,7 @@ ring_create_lookup(__attribute__((unused)) void *arg)
 }
 
 static void
-my_obj_init(struct rte_mempool *mp, __attribute__((unused)) void *arg,
+my_obj_init(struct rte_mempool *mp, __rte_unused void *arg,
 	    void *obj, unsigned i)
 {
 	uint32_t *objnum = obj;
@@ -159,7 +159,7 @@ mempool_clean(unsigned int lcore_id)
 }
 
 static int
-mempool_create_lookup(__attribute__((unused)) void *arg)
+mempool_create_lookup(__rte_unused void *arg)
 {
 	unsigned lcore_self = rte_lcore_id();
 	struct rte_mempool * mp;
@@ -217,7 +217,7 @@ hash_clean(unsigned lcore_id)
 }
 
 static int
-hash_create_free(__attribute__((unused)) void *arg)
+hash_create_free(__rte_unused void *arg)
 {
 	unsigned lcore_self = rte_lcore_id();
 	struct rte_hash *handle;
@@ -281,7 +281,7 @@ fbk_clean(unsigned lcore_id)
 }
 
 static int
-fbk_create_free(__attribute__((unused)) void *arg)
+fbk_create_free(__rte_unused void *arg)
 {
 	unsigned lcore_self = rte_lcore_id();
 	struct rte_fbk_hash_table *handle;
@@ -347,7 +347,7 @@ lpm_clean(unsigned int lcore_id)
 }
 
 static int
-lpm_create_free(__attribute__((unused)) void *arg)
+lpm_create_free(__rte_unused void *arg)
 {
 	unsigned lcore_self = rte_lcore_id();
 	struct rte_lpm *lpm;

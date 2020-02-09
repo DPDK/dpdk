@@ -455,7 +455,7 @@ sighup_handler(int signum)
  * and writing to OUTPUT_PORT
  */
 static int
-lcore_main(__attribute__((__unused__)) void *dummy)
+lcore_main(__rte_unused void *dummy)
 {
 	const uint16_t lcore_id = (uint16_t)rte_lcore_id();
 	const uint16_t num_cores = (uint16_t)rte_lcore_count();

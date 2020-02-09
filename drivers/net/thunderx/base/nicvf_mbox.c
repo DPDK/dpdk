@@ -36,7 +36,7 @@ static const char *mbox_message[NIC_MBOX_MSG_MAX] =  {
 	[NIC_MBOX_MSG_SHUTDOWN]           = "NIC_MBOX_MSG_SHUTDOWN",
 };
 
-static inline const char * __attribute__((unused))
+static inline const char * __rte_unused
 nicvf_mbox_msg_str(int msg)
 {
 	assert(msg >= 0 && msg < NIC_MBOX_MSG_MAX);

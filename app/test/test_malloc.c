@@ -67,7 +67,7 @@ is_aligned(void *p, int align)
 }
 
 static int
-test_align_overlap_per_lcore(__attribute__((unused)) void *arg)
+test_align_overlap_per_lcore(__rte_unused void *arg)
 {
 	const unsigned align1 = 8,
 			align2 = 64,
@@ -138,7 +138,7 @@ test_align_overlap_per_lcore(__attribute__((unused)) void *arg)
 }
 
 static int
-test_reordered_free_per_lcore(__attribute__((unused)) void *arg)
+test_reordered_free_per_lcore(__rte_unused void *arg)
 {
 	const unsigned align1 = 8,
 			align2 = 64,
@@ -582,7 +582,7 @@ end:
 }
 
 static int
-test_random_alloc_free(void *_ __attribute__((unused)))
+test_random_alloc_free(void *_ __rte_unused)
 {
 	struct mem_list {
 		struct mem_list *next;

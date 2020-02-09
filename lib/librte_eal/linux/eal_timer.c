@@ -88,7 +88,7 @@ static pthread_t msb_inc_thread_id;
  * this because hpet is 32 bits by default under linux).
  */
 static void *
-hpet_msb_inc(__attribute__((unused)) void *arg)
+hpet_msb_inc(__rte_unused void *arg)
 {
 	uint32_t t;
 

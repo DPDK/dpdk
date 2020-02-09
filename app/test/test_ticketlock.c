@@ -52,7 +52,7 @@ static unsigned int count;
 static rte_atomic32_t synchro;
 
 static int
-test_ticketlock_per_core(__attribute__((unused)) void *arg)
+test_ticketlock_per_core(__rte_unused void *arg)
 {
 	rte_ticketlock_lock(&tl);
 	printf("Global lock taken on core %u\n", rte_lcore_id());
@@ -66,7 +66,7 @@ test_ticketlock_per_core(__attribute__((unused)) void *arg)
 }
 
 static int
-test_ticketlock_recursive_per_core(__attribute__((unused)) void *arg)
+test_ticketlock_recursive_per_core(__rte_unused void *arg)
 {
 	unsigned int id = rte_lcore_id();
 
@@ -186,7 +186,7 @@ test_ticketlock_perf(void)
  * checked as the result later.
  */
 static int
-test_ticketlock_try(__attribute__((unused)) void *arg)
+test_ticketlock_try(__rte_unused void *arg)
 {
 	if (rte_ticketlock_trylock(&tl_try) == 0) {
 		rte_ticketlock_lock(&tl);

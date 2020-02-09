@@ -17,7 +17,7 @@ int set_policy_mac(int port, int idx);
 
 int set_policy_defaults(struct channel_packet *pkt);
 
-void run_cli(__attribute__((unused)) void *arg);
+void run_cli(__rte_unused void *arg);
 
 #ifdef __cplusplus
 }

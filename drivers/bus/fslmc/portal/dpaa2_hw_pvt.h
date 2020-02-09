@@ -333,7 +333,7 @@ extern struct dpaa2_memseg_list rte_dpaa2_memsegs;
 
 #ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
 extern uint8_t dpaa2_virt_mode;
-static void *dpaa2_mem_ptov(phys_addr_t paddr) __attribute__((unused));
+static void *dpaa2_mem_ptov(phys_addr_t paddr) __rte_unused;
 
 static void *dpaa2_mem_ptov(phys_addr_t paddr)
 {
@@ -352,7 +352,7 @@ static void *dpaa2_mem_ptov(phys_addr_t paddr)
 	return va;
 }
 
-static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr) __attribute__((unused));
+static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr) __rte_unused;
 
 static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 {

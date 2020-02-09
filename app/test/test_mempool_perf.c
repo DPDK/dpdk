@@ -104,7 +104,7 @@ static struct mempool_test_stats stats[RTE_MAX_LCORE];
  * other bytes are set to 0.
  */
 static void
-my_obj_init(struct rte_mempool *mp, __attribute__((unused)) void *arg,
+my_obj_init(struct rte_mempool *mp, __rte_unused void *arg,
 	    void *obj, unsigned i)
 {
 	uint32_t *objnum = obj;

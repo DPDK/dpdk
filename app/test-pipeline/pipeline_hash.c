@@ -380,9 +380,9 @@ app_main_loop_worker_pipeline_hash(void) {
 
 uint64_t test_hash(
 	void *key,
-	__attribute__((unused)) void *key_mask,
-	__attribute__((unused)) uint32_t key_size,
-	__attribute__((unused)) uint64_t seed)
+	__rte_unused void *key_mask,
+	__rte_unused uint32_t key_size,
+	__rte_unused uint64_t seed)
 {
 	uint32_t *k32 = key;
 	uint32_t ip_dst = rte_be_to_cpu_32(k32[0]);
@@ -393,8 +393,8 @@ uint64_t test_hash(
 
 uint32_t test_hash_cuckoo(
 	const void *key,
-	__attribute__((unused)) uint32_t key_size,
-	__attribute__((unused)) uint32_t seed)
+	__rte_unused uint32_t key_size,
+	__rte_unused uint32_t seed)
 {
 	const uint32_t *k32 = key;
 	uint32_t ip_dst = rte_be_to_cpu_32(k32[0]);

@@ -109,9 +109,9 @@ struct cmd_help_result {
 };
 
 static void
-cmd_help_parsed(__attribute__((unused)) void *parsed_result,
+cmd_help_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_printf(
 		cl,
@@ -154,9 +154,9 @@ struct cmd_quit_result {
 };
 
 static void
-cmd_quit_parsed(__attribute__((unused)) void *parsed_result,
+cmd_quit_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	struct ntb_fwd_lcore_conf *conf;
 	uint32_t lcore_id;
@@ -209,8 +209,8 @@ struct cmd_sendfile_result {
 
 static void
 cmd_sendfile_parsed(void *parsed_result,
-		    __attribute__((unused)) struct cmdline *cl,
-		    __attribute__((unused)) void *data)
+		    __rte_unused struct cmdline *cl,
+		    __rte_unused void *data)
 {
 	struct cmd_sendfile_result *res = parsed_result;
 	struct rte_rawdev_buf *pkts_send[NTB_MAX_PKT_BURST];
@@ -793,9 +793,9 @@ struct cmd_start_result {
 };
 
 static void
-cmd_start_parsed(__attribute__((unused)) void *parsed_result,
-			    __attribute__((unused)) struct cmdline *cl,
-			    __attribute__((unused)) void *data)
+cmd_start_parsed(__rte_unused void *parsed_result,
+			    __rte_unused struct cmdline *cl,
+			    __rte_unused void *data)
 {
 	start_pkt_fwd();
 }
@@ -819,9 +819,9 @@ struct cmd_stop_result {
 };
 
 static void
-cmd_stop_parsed(__attribute__((unused)) void *parsed_result,
-		__attribute__((unused)) struct cmdline *cl,
-		__attribute__((unused)) void *data)
+cmd_stop_parsed(__rte_unused void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
 {
 	struct ntb_fwd_lcore_conf *conf;
 	uint32_t lcore_id;
@@ -983,8 +983,8 @@ struct cmd_stats_result {
 
 static void
 cmd_stats_parsed(void *parsed_result,
-		 __attribute__((unused)) struct cmdline *cl,
-		 __attribute__((unused)) void *data)
+		 __rte_unused struct cmdline *cl,
+		 __rte_unused void *data)
 {
 	struct cmd_stats_result *res = parsed_result;
 	if (!strcmp(res->show, "clear"))
@@ -1021,9 +1021,9 @@ struct cmd_set_fwd_mode_result {
 };
 
 static void
-cmd_set_fwd_mode_parsed(__attribute__((unused)) void *parsed_result,
-			__attribute__((unused)) struct cmdline *cl,
-			__attribute__((unused)) void *data)
+cmd_set_fwd_mode_parsed(__rte_unused void *parsed_result,
+			__rte_unused struct cmdline *cl,
+			__rte_unused void *data)
 {
 	struct cmd_set_fwd_mode_result *res = parsed_result;
 	int i;

@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-void run_cli(__attribute__((unused)) void *arg);
+void run_cli(void *arg);
 
 #ifdef __cplusplus
 }

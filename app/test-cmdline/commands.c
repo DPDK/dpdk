@@ -7,6 +7,8 @@
 #include <termios.h>
 #include <inttypes.h>
 
+#include <rte_common.h>
+
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
 #include <cmdline_parse_string.h>
@@ -23,9 +25,9 @@ struct cmd_quit_result {
 };
 
 static void
-cmd_quit_parsed(__attribute__((unused)) void *parsed_result,
+cmd_quit_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_quit(cl);
 }
@@ -54,9 +56,9 @@ struct cmd_single_result {
 };
 
 static void
-cmd_single_parsed(__attribute__((unused)) void *parsed_result,
+cmd_single_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_printf(cl, "Single word command parsed!\n");
 }
@@ -85,9 +87,9 @@ struct cmd_single_long_result {
 };
 
 static void
-cmd_single_long_parsed(__attribute__((unused)) void *parsed_result,
+cmd_single_long_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_printf(cl, "Single long word command parsed!\n");
 }
@@ -118,9 +120,9 @@ struct cmd_autocomplete_1_result {
 };
 
 static void
-cmd_autocomplete_1_parsed(__attribute__((unused)) void *parsed_result,
+cmd_autocomplete_1_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_printf(cl, "Autocomplete command 1 parsed!\n");
 }
@@ -151,9 +153,9 @@ struct cmd_autocomplete_2_result {
 };
 
 static void
-cmd_autocomplete_2_parsed(__attribute__((unused)) void *parsed_result,
+cmd_autocomplete_2_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_printf(cl, "Autocomplete command 2 parsed!\n");
 }
@@ -184,7 +186,7 @@ struct cmd_num_result {
 static void
 cmd_num_parsed(void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	unsigned result = ((struct cmd_num_result*)parsed_result)->num;
 	cmdline_printf(cl, "%u\n", result);
@@ -214,9 +216,9 @@ struct cmd_ambig_result_1 {
 };
 
 static void
-cmd_ambig_1_parsed(__attribute__((unused)) void *parsed_result,
+cmd_ambig_1_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_printf(cl, "Command 1 parsed!\n");
 }
@@ -250,9 +252,9 @@ struct cmd_ambig_result_2 {
 };
 
 static void
-cmd_ambig_2_parsed(__attribute__((unused)) void *parsed_result,
+cmd_ambig_2_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_printf(cl, "Command 2 parsed!\n");
 }
@@ -288,9 +290,9 @@ struct cmd_get_history_bufsize_result {
 };
 
 static void
-cmd_get_history_bufsize_parsed(__attribute__((unused)) void *parsed_result,
+cmd_get_history_bufsize_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_printf(cl, "History buffer size: %zu\n",
 			sizeof(cl->rdl.history_buf));
@@ -320,9 +322,9 @@ struct cmd_clear_history_result {
 };
 
 static void
-cmd_clear_history_parsed(__attribute__((unused)) void *parsed_result,
+cmd_clear_history_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	rdline_clear_history(&cl->rdl);
 }

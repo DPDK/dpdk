@@ -489,9 +489,9 @@ update_client_stats(uint32_t addr, uint16_t port, uint32_t *TXorRXindicator)
 #endif
 
 static void
-mode6_debug(const char __attribute__((unused)) *info,
+mode6_debug(const char __rte_unused *info,
 	struct rte_ether_hdr *eth_h, uint16_t port,
-	uint32_t __attribute__((unused)) *burstnumber)
+	uint32_t __rte_unused *burstnumber)
 {
 	struct rte_ipv4_hdr *ipv4_h;
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB

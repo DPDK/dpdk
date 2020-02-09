@@ -406,7 +406,7 @@ static inline void *pfe_mem_ptov(phys_addr_t paddr)
 	return rte_mem_iova2virt(paddr);
 }
 
-static phys_addr_t pfe_mem_vtop(uint64_t vaddr) __attribute__((unused));
+static phys_addr_t pfe_mem_vtop(uint64_t vaddr) __rte_unused;
 
 static inline phys_addr_t pfe_mem_vtop(uint64_t vaddr)
 {

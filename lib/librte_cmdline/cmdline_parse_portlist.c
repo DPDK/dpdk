@@ -72,7 +72,7 @@ parse_ports(cmdline_portlist_t *pl, const char *str)
 }
 
 int
-cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
+cmdline_parse_portlist(__rte_unused cmdline_parse_token_hdr_t *tk,
 	const char *buf, void *res, unsigned ressize)
 {
 	unsigned int token_len = 0;
@@ -108,7 +108,7 @@ cmdline_parse_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 }
 
 int
-cmdline_get_help_portlist(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
+cmdline_get_help_portlist(__rte_unused cmdline_parse_token_hdr_t *tk,
 		char *dstbuf, unsigned int size)
 {
 	int ret;

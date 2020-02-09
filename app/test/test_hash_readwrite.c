@@ -55,7 +55,7 @@ static rte_atomic64_t greads;
 static rte_atomic64_t gwrites;
 
 static int
-test_hash_readwrite_worker(__attribute__((unused)) void *arg)
+test_hash_readwrite_worker(__rte_unused void *arg)
 {
 	uint64_t i, offset;
 	uint32_t lcore_id = rte_lcore_id();

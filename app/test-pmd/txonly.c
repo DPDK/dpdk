@@ -342,7 +342,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 }
 
 static void
-tx_only_begin(__attribute__((unused)) portid_t pi)
+tx_only_begin(__rte_unused portid_t pi)
 {
 	uint16_t pkt_data_len;
 

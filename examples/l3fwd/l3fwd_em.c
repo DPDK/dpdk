@@ -618,7 +618,7 @@ em_cb_parse_ptype(uint16_t port __rte_unused, uint16_t queue __rte_unused,
 
 /* main processing loop */
 int
-em_main_loop(__attribute__((unused)) void *dummy)
+em_main_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned lcore_id;
@@ -835,7 +835,7 @@ em_event_loop(struct l3fwd_event_resources *evt_rsrc,
 }
 
 int __rte_noinline
-em_event_main_loop_tx_d(__attribute__((unused)) void *dummy)
+em_event_main_loop_tx_d(__rte_unused void *dummy)
 {
 	struct l3fwd_event_resources *evt_rsrc =
 					l3fwd_get_eventdev_rsrc();
@@ -845,7 +845,7 @@ em_event_main_loop_tx_d(__attribute__((unused)) void *dummy)
 }
 
 int __rte_noinline
-em_event_main_loop_tx_d_burst(__attribute__((unused)) void *dummy)
+em_event_main_loop_tx_d_burst(__rte_unused void *dummy)
 {
 	struct l3fwd_event_resources *evt_rsrc =
 					l3fwd_get_eventdev_rsrc();
@@ -855,7 +855,7 @@ em_event_main_loop_tx_d_burst(__attribute__((unused)) void *dummy)
 }
 
 int __rte_noinline
-em_event_main_loop_tx_q(__attribute__((unused)) void *dummy)
+em_event_main_loop_tx_q(__rte_unused void *dummy)
 {
 	struct l3fwd_event_resources *evt_rsrc =
 					l3fwd_get_eventdev_rsrc();
@@ -865,7 +865,7 @@ em_event_main_loop_tx_q(__attribute__((unused)) void *dummy)
 }
 
 int __rte_noinline
-em_event_main_loop_tx_q_burst(__attribute__((unused)) void *dummy)
+em_event_main_loop_tx_q_burst(__rte_unused void *dummy)
 {
 	struct l3fwd_event_resources *evt_rsrc =
 					l3fwd_get_eventdev_rsrc();

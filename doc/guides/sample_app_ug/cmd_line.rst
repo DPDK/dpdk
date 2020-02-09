@@ -128,7 +128,7 @@ For example, the cmd_obj_del_show command is defined as shown below:
         struct object *obj;
     };
 
-    static void cmd_obj_del_show_parsed(void *parsed_result, struct cmdline *cl, attribute ((unused)) void *data)
+    static void cmd_obj_del_show_parsed(void *parsed_result, struct cmdline *cl, __rte_unused void *data)
     {
        /* ... */
     }

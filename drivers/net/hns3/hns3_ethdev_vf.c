@@ -136,8 +136,8 @@ hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 
 static int
 hns3vf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
-		    __attribute__ ((unused)) uint32_t idx,
-		    __attribute__ ((unused)) uint32_t pool)
+		    __rte_unused uint32_t idx,
+		    __rte_unused uint32_t pool)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];

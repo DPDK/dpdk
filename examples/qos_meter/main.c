@@ -167,7 +167,7 @@ app_pkt_handle(struct rte_mbuf *pkt, uint64_t time)
 
 
 static __attribute__((noreturn)) int
-main_loop(__attribute__((unused)) void *dummy)
+main_loop(__rte_unused void *dummy)
 {
 	uint64_t current_time, last_time = rte_rdtsc();
 	uint32_t lcore_id = rte_lcore_id();

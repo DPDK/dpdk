@@ -103,14 +103,14 @@
 /* Function definitions */
 uint64_t pipeline_test_hash(
 	void *key,
-	__attribute__((unused)) void *key_mask,
-	__attribute__((unused)) uint32_t key_size,
-	__attribute__((unused)) uint64_t seed);
+	__rte_unused void *key_mask,
+	__rte_unused uint32_t key_size,
+	__rte_unused uint64_t seed);
 
 uint32_t pipeline_test_hash_cuckoo(
 	const void *key,
-	__attribute__((unused)) uint32_t key_size,
-	__attribute__((unused)) uint32_t seed);
+	__rte_unused uint32_t key_size,
+	__rte_unused uint32_t seed);
 
 /* Extern variables */
 extern struct rte_pipeline *p;

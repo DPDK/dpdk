@@ -137,7 +137,7 @@ In this case, the timer is stopped using the rte_timer_stop() function.
     /* timer0 callback */
 
     static void
-    timer0_cb( attribute ((unused)) struct rte_timer *tim, __attribute ((unused)) void *arg)
+    timer0_cb(__rte_unused struct rte_timer *tim, __rte_unused void *arg)
     {
         static unsigned counter = 0;
 
@@ -159,7 +159,7 @@ rte_timer_reset() function:
     /* timer1 callback */
 
     static void
-    timer1_cb( attribute ((unused)) struct rte_timer *tim, _attribute ((unused)) void *arg)
+    timer1_cb(__rte_unused struct rte_timer *tim, __rte_unused void *arg)
     {
         unsigned lcore_id = rte_lcore_id();
         uint64_t hz;

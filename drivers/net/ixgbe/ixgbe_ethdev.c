@@ -6263,8 +6263,8 @@ ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 
 static int
 ixgbevf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
-		     __attribute__((unused)) uint32_t index,
-		     __attribute__((unused)) uint32_t pool)
+		     __rte_unused uint32_t index,
+		     __rte_unused uint32_t pool)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int diag;
@@ -7066,7 +7066,7 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 }
 
 static u8 *
-ixgbe_dev_addr_list_itr(__attribute__((unused)) struct ixgbe_hw *hw,
+ixgbe_dev_addr_list_itr(__rte_unused struct ixgbe_hw *hw,
 			u8 **mc_addr_ptr, u32 *vmdq)
 {
 	u8 *mc_addr;

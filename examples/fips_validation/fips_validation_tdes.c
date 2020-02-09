@@ -60,7 +60,7 @@ parse_tdes_uint8_hex_str(const char *key, char *src, struct fips_val *val);
 
 static int
 parse_tdes_interim(const char *key,
-		__attribute__((__unused__)) char *text,
+		__rte_unused char *text,
 		struct fips_val *val);
 
 struct fips_test_callback tdes_tests_vectors[] = {
@@ -95,8 +95,8 @@ struct fips_test_callback tdes_writeback_callbacks[] = {
 
 static int
 parse_tdes_interim(const char *key,
-		__attribute__((__unused__)) char *text,
-		__attribute__((__unused__)) struct fips_val *val)
+		__rte_unused char *text,
+		__rte_unused struct fips_val *val)
 {
 	if (strstr(key, ENC_STR))
 		info.op = FIPS_TEST_ENC_AUTH_GEN;

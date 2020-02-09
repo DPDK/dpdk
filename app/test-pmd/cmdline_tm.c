@@ -220,8 +220,8 @@ cmdline_parse_token_num_t cmd_show_port_tm_cap_port_id =
 		 port_id, UINT16);
 
 static void cmd_show_port_tm_cap_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_show_port_tm_cap_result *res = parsed_result;
 	struct rte_tm_capabilities cap;
@@ -361,8 +361,8 @@ cmdline_parse_token_num_t cmd_show_port_tm_level_cap_level_id =
 
 
 static void cmd_show_port_tm_level_cap_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_show_port_tm_level_cap_result *res = parsed_result;
 	struct rte_tm_level_capabilities lcap;
@@ -487,8 +487,8 @@ cmdline_parse_token_num_t cmd_show_port_tm_node_cap_node_id =
 		 node_id, UINT32);
 
 static void cmd_show_port_tm_node_cap_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_show_port_tm_node_cap_result *res = parsed_result;
 	struct rte_tm_node_capabilities ncap;
@@ -603,8 +603,8 @@ cmdline_parse_token_num_t cmd_show_port_tm_node_stats_clear =
 		struct cmd_show_port_tm_node_stats_result, clear, UINT32);
 
 static void cmd_show_port_tm_node_stats_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_show_port_tm_node_stats_result *res = parsed_result;
 	struct rte_tm_node_stats stats;
@@ -719,8 +719,8 @@ cmdline_parse_token_num_t cmd_show_port_tm_node_type_node_id =
 			node_id, UINT32);
 
 static void cmd_show_port_tm_node_type_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_show_port_tm_node_type_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -831,8 +831,8 @@ cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_pktlen_adjust =
 			pktlen_adjust, UINT32);
 
 static void cmd_add_port_tm_node_shaper_profile_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_add_port_tm_node_shaper_profile_result *res = parsed_result;
 	struct rte_tm_shaper_params sp;
@@ -927,8 +927,8 @@ cmdline_parse_token_num_t cmd_del_port_tm_node_shaper_profile_shaper_id =
 			shaper_id, UINT32);
 
 static void cmd_del_port_tm_node_shaper_profile_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_del_port_tm_node_shaper_profile_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -1012,8 +1012,8 @@ cmdline_parse_token_num_t cmd_add_port_tm_node_shared_shaper_shaper_profile_id =
 			shaper_profile_id, UINT32);
 
 static void cmd_add_port_tm_node_shared_shaper_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_add_port_tm_node_shared_shaper_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -1108,8 +1108,8 @@ cmdline_parse_token_num_t cmd_del_port_tm_node_shared_shaper_shared_shaper_id =
 			shared_shaper_id, UINT32);
 
 static void cmd_del_port_tm_node_shared_shaper_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_del_port_tm_node_shared_shaper_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -1262,8 +1262,8 @@ cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_wq_log2_r =
 
 
 static void cmd_add_port_tm_node_wred_profile_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_add_port_tm_node_wred_profile_result *res = parsed_result;
 	struct rte_tm_wred_params wp;
@@ -1381,8 +1381,8 @@ cmdline_parse_token_num_t cmd_del_port_tm_node_wred_profile_wred_profile_id =
 			wred_profile_id, UINT32);
 
 static void cmd_del_port_tm_node_wred_profile_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_del_port_tm_node_wred_profile_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -1467,8 +1467,8 @@ cmdline_parse_token_num_t
 			shaper_profile_id, UINT32);
 
 static void cmd_set_port_tm_node_shaper_profile_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_set_port_tm_node_shaper_profile_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -1581,8 +1581,8 @@ cmdline_parse_token_string_t
 		 multi_shared_shaper_id, TOKEN_STRING_MULTI);
 
 static void cmd_add_port_tm_nonleaf_node_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_add_port_tm_nonleaf_node_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -1742,8 +1742,8 @@ cmdline_parse_token_string_t
 		 multi_shared_shaper_id, TOKEN_STRING_MULTI);
 
 static void cmd_add_port_tm_leaf_node_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_add_port_tm_leaf_node_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -1864,8 +1864,8 @@ cmdline_parse_token_num_t cmd_del_port_tm_node_node_id =
 		node_id, UINT32);
 
 static void cmd_del_port_tm_node_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_del_port_tm_node_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -1951,8 +1951,8 @@ cmdline_parse_token_num_t cmd_set_port_tm_node_parent_weight =
 		weight, UINT32);
 
 static void cmd_set_port_tm_node_parent_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_set_port_tm_node_parent_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -2030,8 +2030,8 @@ cmdline_parse_token_num_t cmd_suspend_port_tm_node_node_id =
 		struct cmd_suspend_port_tm_node_result, node_id, UINT32);
 
 static void cmd_suspend_port_tm_node_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_suspend_port_tm_node_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -2095,8 +2095,8 @@ cmdline_parse_token_num_t cmd_resume_port_tm_node_node_id =
 		struct cmd_resume_port_tm_node_result, node_id, UINT32);
 
 static void cmd_resume_port_tm_node_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_resume_port_tm_node_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -2162,8 +2162,8 @@ cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_clean_on_fail =
 		 clean_on_fail, "yes#no");
 
 static void cmd_port_tm_hierarchy_commit_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_port_tm_hierarchy_commit_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -2249,8 +2249,8 @@ cmdline_parse_token_num_t cmd_port_tm_mark_ip_ecn_red =
 				red, UINT16);
 
 static void cmd_port_tm_mark_ip_ecn_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_port_tm_mark_ip_ecn_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -2336,8 +2336,8 @@ cmdline_parse_token_num_t cmd_port_tm_mark_ip_dscp_red =
 				red, UINT16);
 
 static void cmd_port_tm_mark_ip_dscp_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_port_tm_mark_ip_dscp_result *res = parsed_result;
 	struct rte_tm_error error;
@@ -2423,8 +2423,8 @@ cmdline_parse_token_num_t cmd_port_tm_mark_vlan_dei_red =
 				red, UINT16);
 
 static void cmd_port_tm_mark_vlan_dei_parsed(void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	__attribute__((unused)) void *data)
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
 {
 	struct cmd_port_tm_mark_vlan_dei_result *res = parsed_result;
 	struct rte_tm_error error;

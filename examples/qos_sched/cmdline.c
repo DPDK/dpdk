@@ -21,9 +21,9 @@ struct cmd_help_result {
 	cmdline_fixed_string_t help;
 };
 
-static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_help_parsed(__rte_unused void *parsed_result,
                                   struct cmdline *cl,
-                                  __attribute__((unused)) void *data)
+                                  __rte_unused void *data)
 {
 	cmdline_printf(
 		cl,
@@ -64,9 +64,9 @@ struct cmd_quit_result {
 	cmdline_fixed_string_t quit;
 };
 
-static void cmd_quit_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_quit_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused void *data)
 {
 	cmdline_quit(cl);
 }
@@ -92,8 +92,8 @@ struct cmd_setqavg_result {
 };
 
 static void cmd_setqavg_parsed(void *parsed_result,
-                                __attribute__((unused)) struct cmdline *cl,
-                                __attribute__((unused)) void *data)
+                                __rte_unused struct cmdline *cl,
+                                __rte_unused void *data)
 {
         struct cmd_setqavg_result *res = parsed_result;
 
@@ -133,9 +133,9 @@ struct cmd_appstats_result {
 	cmdline_fixed_string_t app_string;
 };
 
-static void cmd_appstats_parsed(__attribute__((unused)) void *parsed_result,
-				__attribute__((unused)) struct cmdline *cl,
-				__attribute__((unused)) void *data)
+static void cmd_appstats_parsed(__rte_unused void *parsed_result,
+				__rte_unused struct cmdline *cl,
+				__rte_unused void *data)
 {
 	app_stat();
 }
@@ -168,8 +168,8 @@ struct cmd_subportstats_result {
 };
 
 static void cmd_subportstats_parsed(void *parsed_result,
-                                __attribute__((unused)) struct cmdline *cl,
-                                __attribute__((unused)) void *data)
+                                __rte_unused struct cmdline *cl,
+                                __rte_unused void *data)
 {
 	struct cmd_subportstats_result *res = parsed_result;
 
@@ -219,8 +219,8 @@ struct cmd_pipestats_result {
 };
 
 static void cmd_pipestats_parsed(void *parsed_result,
-                                __attribute__((unused)) struct cmdline *cl,
-                                __attribute__((unused)) void *data)
+                                __rte_unused struct cmdline *cl,
+                                __rte_unused void *data)
 {
         struct cmd_pipestats_result *res = parsed_result;
 
@@ -282,8 +282,8 @@ struct cmd_avg_q_result {
 };
 
 static void cmd_avg_q_parsed(void *parsed_result,
-                                __attribute__((unused)) struct cmdline *cl,
-                                __attribute__((unused)) void *data)
+                                __rte_unused struct cmdline *cl,
+                                __rte_unused void *data)
 {
         struct cmd_avg_q_result *res = parsed_result;
 
@@ -359,8 +359,8 @@ struct cmd_avg_tcpipe_result {
 };
 
 static void cmd_avg_tcpipe_parsed(void *parsed_result,
-                                __attribute__((unused)) struct cmdline *cl,
-                                __attribute__((unused)) void *data)
+                                __rte_unused struct cmdline *cl,
+                                __rte_unused void *data)
 {
         struct cmd_avg_tcpipe_result *res = parsed_result;
 
@@ -426,8 +426,8 @@ struct cmd_avg_pipe_result {
 };
 
 static void cmd_avg_pipe_parsed(void *parsed_result,
-                                __attribute__((unused)) struct cmdline *cl,
-                                __attribute__((unused)) void *data)
+                                __rte_unused struct cmdline *cl,
+                                __rte_unused void *data)
 {
         struct cmd_avg_pipe_result *res = parsed_result;
 
@@ -485,8 +485,8 @@ struct cmd_avg_tcsubport_result {
 };
 
 static void cmd_avg_tcsubport_parsed(void *parsed_result,
-                                __attribute__((unused)) struct cmdline *cl,
-                                __attribute__((unused)) void *data)
+                                __rte_unused struct cmdline *cl,
+                                __rte_unused void *data)
 {
         struct cmd_avg_tcsubport_result *res = parsed_result;
 
@@ -542,8 +542,8 @@ struct cmd_avg_subport_result {
 };
 
 static void cmd_avg_subport_parsed(void *parsed_result,
-                                __attribute__((unused)) struct cmdline *cl,
-                                __attribute__((unused)) void *data)
+                                __rte_unused struct cmdline *cl,
+                                __rte_unused void *data)
 {
         struct cmd_avg_subport_result *res = parsed_result;
 

@@ -31,9 +31,9 @@ struct hash_size_conversion {
 };
 
 static int
-parse_interim_algo(__attribute__((__unused__)) const char *key,
+parse_interim_algo(__rte_unused const char *key,
 		char *text,
-		__attribute__((__unused__)) struct fips_val *val)
+		__rte_unused struct fips_val *val)
 {
 
 	uint32_t i;

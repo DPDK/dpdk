@@ -52,7 +52,7 @@ static unsigned count = 0;
 static rte_atomic32_t synchro;
 
 static int
-test_spinlock_per_core(__attribute__((unused)) void *arg)
+test_spinlock_per_core(__rte_unused void *arg)
 {
 	rte_spinlock_lock(&sl);
 	printf("Global lock taken on core %u\n", rte_lcore_id());
@@ -66,7 +66,7 @@ test_spinlock_per_core(__attribute__((unused)) void *arg)
 }
 
 static int
-test_spinlock_recursive_per_core(__attribute__((unused)) void *arg)
+test_spinlock_recursive_per_core(__rte_unused void *arg)
 {
 	unsigned id = rte_lcore_id();
 
@@ -178,7 +178,7 @@ test_spinlock_perf(void)
  * checked as the result later.
  */
 static int
-test_spinlock_try(__attribute__((unused)) void *arg)
+test_spinlock_try(__rte_unused void *arg)
 {
 	if (rte_spinlock_trylock(&sl_try) == 0) {
 		rte_spinlock_lock(&sl);

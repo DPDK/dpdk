@@ -4489,7 +4489,7 @@ out:
  * @alignment: what to align the allocation to
  **/
 enum i40e_status_code
-i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
+i40e_allocate_dma_mem_d(__rte_unused struct i40e_hw *hw,
 			struct i40e_dma_mem *mem,
 			u64 size,
 			u32 alignment)
@@ -4523,7 +4523,7 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
  * @mem:  ptr to mem struct to free
  **/
 enum i40e_status_code
-i40e_free_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
+i40e_free_dma_mem_d(__rte_unused struct i40e_hw *hw,
 		    struct i40e_dma_mem *mem)
 {
 	if (!mem)
@@ -4547,7 +4547,7 @@ i40e_free_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
  * @size: size of memory requested
  **/
 enum i40e_status_code
-i40e_allocate_virt_mem_d(__attribute__((unused)) struct i40e_hw *hw,
+i40e_allocate_virt_mem_d(__rte_unused struct i40e_hw *hw,
 			 struct i40e_virt_mem *mem,
 			 u32 size)
 {
@@ -4569,7 +4569,7 @@ i40e_allocate_virt_mem_d(__attribute__((unused)) struct i40e_hw *hw,
  * @mem:  pointer to mem struct to free
  **/
 enum i40e_status_code
-i40e_free_virt_mem_d(__attribute__((unused)) struct i40e_hw *hw,
+i40e_free_virt_mem_d(__rte_unused struct i40e_hw *hw,
 		     struct i40e_virt_mem *mem)
 {
 	if (!mem)
@@ -4600,7 +4600,7 @@ i40e_release_spinlock_d(struct i40e_spinlock *sp)
 }
 
 void
-i40e_destroy_spinlock_d(__attribute__((unused)) struct i40e_spinlock *sp)
+i40e_destroy_spinlock_d(__rte_unused struct i40e_spinlock *sp)
 {
 	return;
 }

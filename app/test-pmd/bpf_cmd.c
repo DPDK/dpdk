@@ -87,8 +87,8 @@ bpf_parse_flags(const char *str, struct rte_bpf_arg *arg, uint32_t *flags)
 }
 
 static void cmd_operate_bpf_ld_parsed(void *parsed_result,
-				__attribute__((unused)) struct cmdline *cl,
-				__attribute__((unused)) void *data)
+				__rte_unused struct cmdline *cl,
+				__rte_unused void *data)
 {
 	int32_t rc;
 	uint32_t flags;
@@ -158,8 +158,8 @@ struct cmd_bpf_unld_result {
 };
 
 static void cmd_operate_bpf_unld_parsed(void *parsed_result,
-				__attribute__((unused)) struct cmdline *cl,
-				__attribute__((unused)) void *data)
+				__rte_unused struct cmdline *cl,
+				__rte_unused void *data)
 {
 	struct cmd_bpf_unld_result *res;
 

@@ -51,7 +51,7 @@
 	ret;								     \
 })
 
-#define __maybe_unused __attribute__((__unused__))
+#define __maybe_unused __rte_unused
 
 #define UNUSED(x)	(void)(x)
 

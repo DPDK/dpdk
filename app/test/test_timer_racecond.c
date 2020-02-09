@@ -106,7 +106,7 @@ reload_timer(struct rte_timer *tim)
 }
 
 static int
-slave_main_loop(__attribute__((unused)) void *arg)
+slave_main_loop(__rte_unused void *arg)
 {
 	unsigned lcore_id = rte_lcore_id();
 	unsigned i;

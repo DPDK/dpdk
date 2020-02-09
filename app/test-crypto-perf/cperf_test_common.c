@@ -86,7 +86,7 @@ static void
 mempool_obj_init(struct rte_mempool *mp,
 		 void *opaque_arg,
 		 void *obj,
-		 __attribute__((unused)) unsigned int i)
+		 __rte_unused unsigned int i)
 {
 	struct obj_params *params = opaque_arg;
 	struct rte_crypto_op *op = obj;

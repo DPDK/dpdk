@@ -382,7 +382,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 
 /* main processing loop */
 static int
-main_loop(__attribute__((unused)) void *dummy)
+main_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned lcore_id;

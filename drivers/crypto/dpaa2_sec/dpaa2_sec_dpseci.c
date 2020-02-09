@@ -3556,7 +3556,7 @@ dpaa2_sec_process_parallel_event(struct qbman_swp *swp,
 	qbman_swp_dqrr_consume(swp, dq);
 }
 static void
-dpaa2_sec_process_atomic_event(struct qbman_swp *swp __attribute__((unused)),
+dpaa2_sec_process_atomic_event(struct qbman_swp *swp __rte_unused,
 				 const struct qbman_fd *fd,
 				 const struct qbman_result *dq,
 				 struct dpaa2_queue *rxq,

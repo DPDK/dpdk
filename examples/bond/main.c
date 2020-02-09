@@ -359,7 +359,7 @@ struct global_flag_stru_t *global_flag_stru_p = &global_flag_stru;
  * Main thread that does the work, reading from INPUT_PORT
  * and writing to OUTPUT_PORT
  */
-static int lcore_main(__attribute__((unused)) void *arg1)
+static int lcore_main(__rte_unused void *arg1)
 {
 	struct rte_mbuf *pkts[MAX_PKT_BURST] __rte_cache_aligned;
 	struct rte_ether_addr d_addr;
@@ -481,8 +481,8 @@ static inline void get_string(struct cmd_obj_send_result *res, char *buf, uint8_
 		);
 }
 static void cmd_obj_send_parsed(void *parsed_result,
-		__attribute__((unused)) struct cmdline *cl,
-			       __attribute__((unused)) void *data)
+		__rte_unused struct cmdline *cl,
+			       __rte_unused void *data)
 {
 
 	struct cmd_obj_send_result *res = parsed_result;
@@ -569,9 +569,9 @@ struct cmd_start_result {
 	cmdline_fixed_string_t start;
 };
 
-static void cmd_start_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_start_parsed(__rte_unused void *parsed_result,
 			       struct cmdline *cl,
-			       __attribute__((unused)) void *data)
+			       __rte_unused void *data)
 {
 	int slave_core_id = rte_lcore_id();
 
@@ -627,9 +627,9 @@ struct cmd_help_result {
 	cmdline_fixed_string_t help;
 };
 
-static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_help_parsed(__rte_unused void *parsed_result,
 			    struct cmdline *cl,
-			    __attribute__((unused)) void *data)
+			    __rte_unused void *data)
 {
 	cmdline_printf(cl,
 			"ALB - link bonding mode 6 example\n"
@@ -659,9 +659,9 @@ struct cmd_stop_result {
 	cmdline_fixed_string_t stop;
 };
 
-static void cmd_stop_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_stop_parsed(__rte_unused void *parsed_result,
 			    struct cmdline *cl,
-			    __attribute__((unused)) void *data)
+			    __rte_unused void *data)
 {
 	rte_spinlock_trylock(&global_flag_stru_p->lock);
 	if (global_flag_stru_p->LcoreMainIsRunning == 0)	{
@@ -700,9 +700,9 @@ struct cmd_quit_result {
 	cmdline_fixed_string_t quit;
 };
 
-static void cmd_quit_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_quit_parsed(__rte_unused void *parsed_result,
 			    struct cmdline *cl,
-			    __attribute__((unused)) void *data)
+			    __rte_unused void *data)
 {
 	rte_spinlock_trylock(&global_flag_stru_p->lock);
 	if (global_flag_stru_p->LcoreMainIsRunning == 0)	{
@@ -743,9 +743,9 @@ struct cmd_show_result {
 	cmdline_fixed_string_t show;
 };
 
-static void cmd_show_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_show_parsed(__rte_unused void *parsed_result,
 			    struct cmdline *cl,
-			    __attribute__((unused)) void *data)
+			    __rte_unused void *data)
 {
 	uint16_t slaves[16] = {0};
 	uint8_t len = 16;
@@ -803,7 +803,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 };
 
 /* prompt function, called from main on MASTER lcore */
-static void prompt(__attribute__((unused)) void *arg1)
+static void prompt(__rte_unused void *arg1)
 {
 	struct cmdline *cl;
 

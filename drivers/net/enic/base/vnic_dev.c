@@ -234,7 +234,7 @@ void vnic_dev_clear_desc_ring(struct vnic_dev_ring *ring)
 int vnic_dev_alloc_desc_ring(struct vnic_dev *vdev,
 	struct vnic_dev_ring *ring,
 	unsigned int desc_count, unsigned int desc_size,
-	__attribute__((unused)) unsigned int socket_id,
+	__rte_unused unsigned int socket_id,
 	char *z_name)
 {
 	void *alloc_addr;
@@ -273,7 +273,7 @@ int vnic_dev_alloc_desc_ring(struct vnic_dev *vdev,
 	return 0;
 }
 
-void vnic_dev_free_desc_ring(__attribute__((unused))  struct vnic_dev *vdev,
+void vnic_dev_free_desc_ring(__rte_unused  struct vnic_dev *vdev,
 	struct vnic_dev_ring *ring)
 {
 	if (ring->descs) {

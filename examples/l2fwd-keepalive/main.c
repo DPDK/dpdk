@@ -117,8 +117,8 @@ static void handle_sigterm(__rte_unused int value)
 
 /* Print out statistics on packets dropped */
 static void
-print_stats(__attribute__((unused)) struct rte_timer *ptr_timer,
-	__attribute__((unused)) void *ptr_data)
+print_stats(__rte_unused struct rte_timer *ptr_timer,
+	__rte_unused void *ptr_data)
 {
 	uint64_t total_packets_dropped, total_packets_tx, total_packets_rx;
 	uint16_t portid;
@@ -278,7 +278,7 @@ l2fwd_main_loop(void)
 }
 
 static int
-l2fwd_launch_one_lcore(__attribute__((unused)) void *dummy)
+l2fwd_launch_one_lcore(__rte_unused void *dummy)
 {
 	l2fwd_main_loop();
 	return 0;

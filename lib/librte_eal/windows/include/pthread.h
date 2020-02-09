@@ -80,8 +80,8 @@ eal_create_thread(void *threadid, void *threadfunc, void *args)
 }
 
 static inline int
-pthread_join(pthread_t thread __attribute__((__unused__)),
-	void **value_ptr __attribute__((__unused__)))
+pthread_join(__rte_unused pthread_t thread,
+	__rte_unused void **value_ptr)
 {
 	return 0;
 }

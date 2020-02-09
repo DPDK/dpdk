@@ -49,8 +49,8 @@ struct aes_test_algo {
 
 static int
 parse_interim_enc_dec(const char *key,
-		__attribute__((__unused__)) char *text,
-		__attribute__((__unused__)) struct fips_val *val)
+		__rte_unused char *text,
+		__rte_unused struct fips_val *val)
 {
 	if (strcmp(key, OP_ENC_STR) == 0)
 		info.op = FIPS_TEST_ENC_AUTH_GEN;

@@ -40,8 +40,8 @@ struct cmd_send_result {
 };
 
 static void cmd_send_parsed(void *parsed_result,
-		__attribute__((unused)) struct cmdline *cl,
-		__attribute__((unused)) void *data)
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
 {
 	void *msg = NULL;
 	struct cmd_send_result *res = parsed_result;
@@ -77,9 +77,9 @@ struct cmd_quit_result {
 	cmdline_fixed_string_t quit;
 };
 
-static void cmd_quit_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_quit_parsed(__rte_unused void *parsed_result,
 			    struct cmdline *cl,
-			    __attribute__((unused)) void *data)
+			    __rte_unused void *data)
 {
 	quit = 1;
 	cmdline_quit(cl);
@@ -104,9 +104,9 @@ struct cmd_help_result {
 	cmdline_fixed_string_t help;
 };
 
-static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
+static void cmd_help_parsed(__rte_unused void *parsed_result,
 			    struct cmdline *cl,
-			    __attribute__((unused)) void *data)
+			    __rte_unused void *data)
 {
 	cmdline_printf(cl, "Simple demo example of multi-process in RTE\n\n"
 			"This is a readline-like interface that can be used to\n"

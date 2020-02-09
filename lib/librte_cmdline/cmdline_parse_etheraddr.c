@@ -27,7 +27,7 @@ struct cmdline_token_ops cmdline_token_etheraddr_ops = {
 };
 
 int
-cmdline_parse_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
+cmdline_parse_etheraddr(__rte_unused cmdline_parse_token_hdr_t *tk,
 	const char *buf, void *res, unsigned ressize)
 {
 	unsigned int token_len = 0;
@@ -58,7 +58,7 @@ cmdline_parse_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
 }
 
 int
-cmdline_get_help_etheraddr(__attribute__((unused)) cmdline_parse_token_hdr_t *tk,
+cmdline_get_help_etheraddr(__rte_unused cmdline_parse_token_hdr_t *tk,
 			       char *dstbuf, unsigned int size)
 {
 	int ret;

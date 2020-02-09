@@ -35,7 +35,7 @@
 static RTE_DEFINE_PER_LCORE(unsigned, test) = 0x12345678;
 
 static int
-assign_vars(__attribute__((unused)) void *arg)
+assign_vars(__rte_unused void *arg)
 {
 	if (RTE_PER_LCORE(test) != 0x12345678)
 		return -1;
@@ -44,7 +44,7 @@ assign_vars(__attribute__((unused)) void *arg)
 }
 
 static int
-display_vars(__attribute__((unused)) void *arg)
+display_vars(__rte_unused void *arg)
 {
 	unsigned lcore_id = rte_lcore_id();
 	unsigned var = RTE_PER_LCORE(test);
@@ -59,7 +59,7 @@ display_vars(__attribute__((unused)) void *arg)
 }
 
 static int
-test_per_lcore_delay(__attribute__((unused)) void *arg)
+test_per_lcore_delay(__rte_unused void *arg)
 {
 	rte_delay_ms(100);
 	printf("wait 100ms on lcore %u\n", rte_lcore_id());

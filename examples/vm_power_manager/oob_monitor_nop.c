@@ -8,20 +8,20 @@ void branch_monitor_exit(void)
 {
 }
 
-__attribute__((unused)) static float
-apply_policy(__attribute__((unused)) int core)
+__rte_unused static float
+apply_policy(__rte_unused int core)
 {
 	return 0.0;
 }
 
 int
-add_core_to_monitor(__attribute__((unused)) int core)
+add_core_to_monitor(__rte_unused int core)
 {
 	return 0;
 }
 
 int
-remove_core_from_monitor(__attribute__((unused)) int core)
+remove_core_from_monitor(__rte_unused int core)
 {
 	return 0;
 }

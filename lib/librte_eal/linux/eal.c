@@ -893,7 +893,7 @@ eal_check_mem_on_local_socket(void)
 }
 
 static int
-sync_func(__attribute__((unused)) void *arg)
+sync_func(__rte_unused void *arg)
 {
 	return 0;
 }

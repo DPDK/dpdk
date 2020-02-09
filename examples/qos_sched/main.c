@@ -29,7 +29,7 @@ uint32_t qavg_ntimes = APP_QAVG_NTIMES;
 
 /* main processing loop */
 static int
-app_main_loop(__attribute__((unused))void *dummy)
+app_main_loop(__rte_unused void *dummy)
 {
 	uint32_t lcore_id;
 	uint32_t i, mode;

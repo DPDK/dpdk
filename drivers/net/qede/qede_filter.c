@@ -1030,7 +1030,7 @@ qede_set_ucast_tunn_cmn_param(struct ecore_filter_ucast *ucast,
 static int
 _qede_tunn_filter_config(struct rte_eth_dev *eth_dev,
 			 const struct rte_eth_tunnel_filter_conf *conf,
-			 __attribute__((unused)) enum rte_filter_op filter_op,
+			 __rte_unused enum rte_filter_op filter_op,
 			 enum ecore_tunn_clss *clss,
 			 bool add)
 {
@@ -1168,7 +1168,7 @@ qede_tunn_filter_config(struct rte_eth_dev *eth_dev,
 }
 
 static int
-qede_flow_validate_attr(__attribute__((unused))struct rte_eth_dev *dev,
+qede_flow_validate_attr(__rte_unused struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			struct rte_flow_error *error)
 {
@@ -1218,7 +1218,7 @@ qede_flow_validate_attr(__attribute__((unused))struct rte_eth_dev *dev,
 }
 
 static int
-qede_flow_parse_pattern(__attribute__((unused))struct rte_eth_dev *dev,
+qede_flow_parse_pattern(__rte_unused struct rte_eth_dev *dev,
 			const struct rte_flow_item pattern[],
 			struct rte_flow_error *error,
 			struct rte_flow *flow)

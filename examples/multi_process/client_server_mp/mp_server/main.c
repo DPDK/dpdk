@@ -152,7 +152,7 @@ do_stats_display(void)
  * repeatedly sleeps.
  */
 static int
-sleep_lcore(__attribute__((unused)) void *dummy)
+sleep_lcore(__rte_unused void *dummy)
 {
 	/* Used to pick a display thread - static, so zero-initialised */
 	static rte_atomic32_t display_stats;

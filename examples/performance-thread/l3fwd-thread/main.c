@@ -869,7 +869,7 @@ get_ipv6_dst_port(void *ipv6_hdr,  uint16_t portid,
 #endif
 
 static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
-		__attribute__((unused));
+		__rte_unused;
 
 #if ((APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH) && \
 	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
@@ -1120,7 +1120,7 @@ simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 	struct rte_ether_hdr *eth_hdr[8];
 	union ipv6_5tuple_host key[8];
 
-	__attribute__((unused)) struct rte_ipv6_hdr *ipv6_hdr[8];
+	__rte_unused struct rte_ipv6_hdr *ipv6_hdr[8];
 
 	eth_hdr[0] = rte_pktmbuf_mtod(m[0], struct rte_ether_hdr *);
 	eth_hdr[1] = rte_pktmbuf_mtod(m[1], struct rte_ether_hdr *);

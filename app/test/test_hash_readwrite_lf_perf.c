@@ -98,7 +98,7 @@ get_short_sig(const hash_sig_t hash)
 }
 
 static inline uint32_t
-get_prim_bucket_index(__attribute__((unused)) const struct rte_hash *h,
+get_prim_bucket_index(__rte_unused const struct rte_hash *h,
 		      const hash_sig_t hash)
 {
 	uint32_t num_buckets;
@@ -109,7 +109,7 @@ get_prim_bucket_index(__attribute__((unused)) const struct rte_hash *h,
 }
 
 static inline uint32_t
-get_alt_bucket_index(__attribute__((unused)) const struct rte_hash *h,
+get_alt_bucket_index(__rte_unused const struct rte_hash *h,
 			uint32_t cur_bkt_idx, uint16_t sig)
 {
 	uint32_t num_buckets;
@@ -555,7 +555,7 @@ err:
 }
 
 static int
-test_rwc_reader(__attribute__((unused)) void *arg)
+test_rwc_reader(__rte_unused void *arg)
 {
 	uint32_t i, j;
 	int ret;
@@ -678,7 +678,7 @@ write_keys(uint8_t write_type)
 }
 
 static int
-test_rwc_multi_writer(__attribute__((unused)) void *arg)
+test_rwc_multi_writer(__rte_unused void *arg)
 {
 	uint32_t i, offset;
 	uint32_t pos_core = (uint32_t)((uintptr_t)arg);

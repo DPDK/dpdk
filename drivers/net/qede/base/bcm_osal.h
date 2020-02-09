@@ -426,7 +426,7 @@ u32 qede_osal_log2(u32);
 #define OSAL_PAGE_SIZE 4096
 #define OSAL_CACHE_LINE_SIZE RTE_CACHE_LINE_SIZE
 #define OSAL_IOMEM volatile
-#define OSAL_UNUSED    __attribute__((unused))
+#define OSAL_UNUSED    __rte_unused
 #define OSAL_UNLIKELY(x)  __builtin_expect(!!(x), 0)
 #define OSAL_MIN_T(type, __min1, __min2)	\
 	((type)(__min1) < (type)(__min2) ? (type)(__min1) : (type)(__min2))

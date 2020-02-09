@@ -77,9 +77,9 @@ rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
  */
 void
 rte_pktmbuf_init(struct rte_mempool *mp,
-		 __attribute__((unused)) void *opaque_arg,
+		 __rte_unused void *opaque_arg,
 		 void *_m,
-		 __attribute__((unused)) unsigned i)
+		 __rte_unused unsigned i)
 {
 	struct rte_mbuf *m = _m;
 	uint32_t mbuf_size, buf_len, priv_size;
@@ -167,7 +167,7 @@ static void
 __rte_pktmbuf_init_extmem(struct rte_mempool *mp,
 			  void *opaque_arg,
 			  void *_m,
-			  __attribute__((unused)) unsigned int i)
+			  __rte_unused unsigned int i)
 {
 	struct rte_mbuf *m = _m;
 	struct rte_pktmbuf_extmem_init_ctx *ctx = opaque_arg;

@@ -1326,7 +1326,7 @@ is_valid_ipv4_pkt(struct rte_ipv4_hdr *pkt, uint32_t link_len)
 
 /* main processing loop */
 static int
-main_loop(__attribute__((unused)) void *dummy)
+main_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned lcore_id;

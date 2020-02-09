@@ -420,7 +420,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 
 /* main processing loop */
 static int
-main_loop(__attribute__((unused)) void *dummy)
+main_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned lcore_id;

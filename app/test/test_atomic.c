@@ -108,7 +108,7 @@ static rte_atomic64_t count;
 static rte_atomic32_t synchro;
 
 static int
-test_atomic_usual(__attribute__((unused)) void *arg)
+test_atomic_usual(__rte_unused void *arg)
 {
 	unsigned i;
 
@@ -146,7 +146,7 @@ test_atomic_usual(__attribute__((unused)) void *arg)
 }
 
 static int
-test_atomic_tas(__attribute__((unused)) void *arg)
+test_atomic_tas(__rte_unused void *arg)
 {
 	while (rte_atomic32_read(&synchro) == 0)
 		;
@@ -162,7 +162,7 @@ test_atomic_tas(__attribute__((unused)) void *arg)
 }
 
 static int
-test_atomic_addsub_and_return(__attribute__((unused)) void *arg)
+test_atomic_addsub_and_return(__rte_unused void *arg)
 {
 	uint32_t tmp16;
 	uint32_t tmp32;
@@ -206,7 +206,7 @@ test_atomic_addsub_and_return(__attribute__((unused)) void *arg)
  *
  */
 static int
-test_atomic_inc_and_test(__attribute__((unused)) void *arg)
+test_atomic_inc_and_test(__rte_unused void *arg)
 {
 	while (rte_atomic32_read(&synchro) == 0)
 		;
@@ -233,7 +233,7 @@ test_atomic_inc_and_test(__attribute__((unused)) void *arg)
  * be checked as the result later.
  */
 static int
-test_atomic_dec_and_test(__attribute__((unused)) void *arg)
+test_atomic_dec_and_test(__rte_unused void *arg)
 {
 	while (rte_atomic32_read(&synchro) == 0)
 		;
@@ -261,7 +261,7 @@ static rte_int128_t count128;
  * iteration it runs compare and swap operation with different memory models.
  */
 static int
-test_atomic128_cmp_exchange(__attribute__((unused)) void *arg)
+test_atomic128_cmp_exchange(__rte_unused void *arg)
 {
 	rte_int128_t expected;
 	int success;
@@ -397,7 +397,7 @@ get_crc8(uint8_t *message, int length)
  * +------------+------------+
  */
 static int
-test_atomic_exchange(__attribute__((unused)) void *arg)
+test_atomic_exchange(__rte_unused void *arg)
 {
 	int i;
 	test16_t nt16, ot16; /* new token, old token */

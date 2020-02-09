@@ -137,8 +137,8 @@ mytimer_reset(struct mytimerinfo *timinfo, uint64_t ticks,
 
 /* timer callback for stress tests */
 static void
-timer_stress_cb(__attribute__((unused)) struct rte_timer *tim,
-		__attribute__((unused)) void *arg)
+timer_stress_cb(__rte_unused struct rte_timer *tim,
+		__rte_unused void *arg)
 {
 	long r;
 	unsigned lcore_id = rte_lcore_id();
@@ -163,7 +163,7 @@ timer_stress_cb(__attribute__((unused)) struct rte_timer *tim,
 }
 
 static int
-timer_stress_main_loop(__attribute__((unused)) void *arg)
+timer_stress_main_loop(__rte_unused void *arg)
 {
 	uint64_t hz = rte_get_timer_hz();
 	unsigned lcore_id = rte_lcore_id();
@@ -272,7 +272,7 @@ timer_stress2_cb(struct rte_timer *tim __rte_unused, void *arg __rte_unused)
 #define NB_STRESS2_TIMERS 8192
 
 static int
-timer_stress2_main_loop(__attribute__((unused)) void *arg)
+timer_stress2_main_loop(__rte_unused void *arg)
 {
 	static struct rte_timer *timers;
 	int i, ret;
@@ -457,7 +457,7 @@ timer_basic_cb(struct rte_timer *tim, void *arg)
 }
 
 static int
-timer_basic_main_loop(__attribute__((unused)) void *arg)
+timer_basic_main_loop(__rte_unused void *arg)
 {
 	uint64_t hz = rte_get_timer_hz();
 	unsigned lcore_id = rte_lcore_id();

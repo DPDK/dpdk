@@ -76,7 +76,7 @@ main(int argc, char **argv)
 }
 
 int
-app_lcore_main_loop(__attribute__((unused)) void *arg)
+app_lcore_main_loop(__rte_unused void *arg)
 {
 	unsigned lcore;
 

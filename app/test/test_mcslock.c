@@ -50,7 +50,7 @@ static unsigned int count;
 static rte_atomic32_t synchro;
 
 static int
-test_mcslock_per_core(__attribute__((unused)) void *arg)
+test_mcslock_per_core(__rte_unused void *arg)
 {
 	/* Per core me node. */
 	rte_mcslock_t ml_me = RTE_PER_LCORE(_ml_me);
@@ -148,7 +148,7 @@ test_mcslock_perf(void)
  * return immediately.
  */
 static int
-test_mcslock_try(__attribute__((unused)) void *arg)
+test_mcslock_try(__rte_unused void *arg)
 {
 	/**< Per core me node. */
 	rte_mcslock_t ml_me     = RTE_PER_LCORE(_ml_me);
