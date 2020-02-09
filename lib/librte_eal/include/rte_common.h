@@ -192,6 +192,11 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  */
 #define __rte_noinline __attribute__((noinline))
 
+/**
+ * Hint function in the hot path
+ */
+#define __rte_hot __attribute__((hot))
+
 /*********** Macros for pointer arithmetic ********/
 
 /**

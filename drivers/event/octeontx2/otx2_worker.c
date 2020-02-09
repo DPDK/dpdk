@@ -82,7 +82,7 @@ otx2_ssogws_release_event(struct otx2_ssogws *ws)
 }
 
 #define R(name, f6, f5, f4, f3, f2, f1, f0, flags)			\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_deq_ ##name(void *port, struct rte_event *ev,		\
 			uint64_t timeout_ticks)				\
 {									\
@@ -99,7 +99,7 @@ otx2_ssogws_deq_ ##name(void *port, struct rte_event *ev,		\
 	return otx2_ssogws_get_work(ws, ev, flags, ws->lookup_mem);	\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_deq_burst_ ##name(void *port, struct rte_event ev[],	\
 			      uint16_t nb_events,			\
 			      uint64_t timeout_ticks)			\
@@ -109,7 +109,7 @@ otx2_ssogws_deq_burst_ ##name(void *port, struct rte_event ev[],	\
 	return otx2_ssogws_deq_ ##name(port, ev, timeout_ticks);	\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_deq_timeout_ ##name(void *port, struct rte_event *ev,	\
 				uint64_t timeout_ticks)			\
 {									\
@@ -131,7 +131,7 @@ otx2_ssogws_deq_timeout_ ##name(void *port, struct rte_event *ev,	\
 	return ret;							\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_deq_timeout_burst_ ##name(void *port, struct rte_event ev[],\
 				      uint16_t nb_events,		\
 				      uint64_t timeout_ticks)		\
@@ -141,7 +141,7 @@ otx2_ssogws_deq_timeout_burst_ ##name(void *port, struct rte_event ev[],\
 	return otx2_ssogws_deq_timeout_ ##name(port, ev, timeout_ticks);\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_deq_seg_ ##name(void *port, struct rte_event *ev,		\
 			    uint64_t timeout_ticks)			\
 {									\
@@ -159,7 +159,7 @@ otx2_ssogws_deq_seg_ ##name(void *port, struct rte_event *ev,		\
 				    ws->lookup_mem);			\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_deq_seg_burst_ ##name(void *port, struct rte_event ev[],	\
 				  uint16_t nb_events,			\
 				  uint64_t timeout_ticks)		\
@@ -169,7 +169,7 @@ otx2_ssogws_deq_seg_burst_ ##name(void *port, struct rte_event ev[],	\
 	return otx2_ssogws_deq_seg_ ##name(port, ev, timeout_ticks);	\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_deq_seg_timeout_ ##name(void *port, struct rte_event *ev,	\
 				    uint64_t timeout_ticks)		\
 {									\
@@ -193,7 +193,7 @@ otx2_ssogws_deq_seg_timeout_ ##name(void *port, struct rte_event *ev,	\
 	return ret;							\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_deq_seg_timeout_burst_ ##name(void *port,			\
 					  struct rte_event ev[],	\
 					  uint16_t nb_events,		\
@@ -208,7 +208,7 @@ otx2_ssogws_deq_seg_timeout_burst_ ##name(void *port,			\
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
 
-uint16_t __hot
+uint16_t __rte_hot
 otx2_ssogws_enq(void *port, const struct rte_event *ev)
 {
 	struct otx2_ssogws *ws = port;
@@ -230,7 +230,7 @@ otx2_ssogws_enq(void *port, const struct rte_event *ev)
 	return 1;
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 otx2_ssogws_enq_burst(void *port, const struct rte_event ev[],
 		      uint16_t nb_events)
 {
@@ -238,7 +238,7 @@ otx2_ssogws_enq_burst(void *port, const struct rte_event ev[],
 	return otx2_ssogws_enq(port, ev);
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 otx2_ssogws_enq_new_burst(void *port, const struct rte_event ev[],
 			  uint16_t nb_events)
 {
@@ -255,7 +255,7 @@ otx2_ssogws_enq_new_burst(void *port, const struct rte_event ev[],
 	return nb_events;
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 otx2_ssogws_enq_fwd_burst(void *port, const struct rte_event ev[],
 			  uint16_t nb_events)
 {
@@ -268,7 +268,7 @@ otx2_ssogws_enq_fwd_burst(void *port, const struct rte_event ev[],
 }
 
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_tx_adptr_enq_ ## name(void *port, struct rte_event ev[],	\
 				  uint16_t nb_events)			\
 {									\
@@ -282,7 +282,7 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
 
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_tx_adptr_enq_seg_ ## name(void *port, struct rte_event ev[],\
 				      uint16_t nb_events)		\
 {									\

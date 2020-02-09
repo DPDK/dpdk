@@ -17,10 +17,6 @@ enum {
 	SSO_SYNC_EMPTY
 };
 
-#ifndef __hot
-#define __hot	__attribute__((hot))
-#endif
-
 /* SSO Operations */
 
 static __rte_always_inline struct rte_mbuf *

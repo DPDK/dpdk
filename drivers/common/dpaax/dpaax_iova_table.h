@@ -66,7 +66,7 @@ void dpaax_iova_table_depopulate(void);
 int dpaax_iova_table_update(phys_addr_t paddr, void *vaddr, size_t length);
 void dpaax_iova_table_dump(void);
 
-static inline void *dpaax_iova_table_get_va(phys_addr_t paddr) __attribute__((hot));
+static inline void *dpaax_iova_table_get_va(phys_addr_t paddr) __rte_hot;
 
 static inline void *
 dpaax_iova_table_get_va(phys_addr_t paddr) {

@@ -79,7 +79,7 @@ otx2_ssogws_dual_forward_event(struct otx2_ssogws_dual *ws,
 	}
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 otx2_ssogws_dual_enq(void *port, const struct rte_event *ev)
 {
 	struct otx2_ssogws_dual *ws = port;
@@ -102,7 +102,7 @@ otx2_ssogws_dual_enq(void *port, const struct rte_event *ev)
 	return 1;
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 otx2_ssogws_dual_enq_burst(void *port, const struct rte_event ev[],
 			   uint16_t nb_events)
 {
@@ -110,7 +110,7 @@ otx2_ssogws_dual_enq_burst(void *port, const struct rte_event ev[],
 	return otx2_ssogws_dual_enq(port, ev);
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 otx2_ssogws_dual_enq_new_burst(void *port, const struct rte_event ev[],
 			       uint16_t nb_events)
 {
@@ -127,7 +127,7 @@ otx2_ssogws_dual_enq_new_burst(void *port, const struct rte_event ev[],
 	return nb_events;
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 otx2_ssogws_dual_enq_fwd_burst(void *port, const struct rte_event ev[],
 			       uint16_t nb_events)
 {
@@ -141,7 +141,7 @@ otx2_ssogws_dual_enq_fwd_burst(void *port, const struct rte_event ev[],
 }
 
 #define R(name, f6, f5, f4, f3, f2, f1, f0, flags)			\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_deq_ ##name(void *port, struct rte_event *ev,		\
 			     uint64_t timeout_ticks)			\
 {									\
@@ -166,7 +166,7 @@ otx2_ssogws_dual_deq_ ##name(void *port, struct rte_event *ev,		\
 	return gw;							\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_deq_burst_ ##name(void *port, struct rte_event ev[],	\
 				   uint16_t nb_events,			\
 				   uint64_t timeout_ticks)		\
@@ -176,7 +176,7 @@ otx2_ssogws_dual_deq_burst_ ##name(void *port, struct rte_event ev[],	\
 	return otx2_ssogws_dual_deq_ ##name(port, ev, timeout_ticks);	\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_deq_timeout_ ##name(void *port, struct rte_event *ev,	\
 				     uint64_t timeout_ticks)		\
 {									\
@@ -208,7 +208,7 @@ otx2_ssogws_dual_deq_timeout_ ##name(void *port, struct rte_event *ev,	\
 	return gw;							\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_deq_timeout_burst_ ##name(void *port,			\
 					   struct rte_event ev[],	\
 					   uint16_t nb_events,		\
@@ -220,7 +220,7 @@ otx2_ssogws_dual_deq_timeout_burst_ ##name(void *port,			\
 						    timeout_ticks);	\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_deq_seg_ ##name(void *port, struct rte_event *ev,	\
 				 uint64_t timeout_ticks)		\
 {									\
@@ -245,7 +245,7 @@ otx2_ssogws_dual_deq_seg_ ##name(void *port, struct rte_event *ev,	\
 	return gw;							\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_deq_seg_burst_ ##name(void *port,			\
 				       struct rte_event ev[],		\
 				       uint16_t nb_events,		\
@@ -257,7 +257,7 @@ otx2_ssogws_dual_deq_seg_burst_ ##name(void *port,			\
 						timeout_ticks);		\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_deq_seg_timeout_ ##name(void *port,			\
 					 struct rte_event *ev,		\
 					 uint64_t timeout_ticks)	\
@@ -292,7 +292,7 @@ otx2_ssogws_dual_deq_seg_timeout_ ##name(void *port,			\
 	return gw;							\
 }									\
 									\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_deq_seg_timeout_burst_ ##name(void *port,		\
 					       struct rte_event ev[],	\
 					       uint16_t nb_events,	\
@@ -308,7 +308,7 @@ SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
 
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_tx_adptr_enq_ ## name(void *port,			\
 				       struct rte_event ev[],		\
 				       uint16_t nb_events)		\
@@ -325,7 +325,7 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
 
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
-uint16_t __hot								\
+uint16_t __rte_hot								\
 otx2_ssogws_dual_tx_adptr_enq_seg_ ## name(void *port,			\
 					   struct rte_event ev[],	\
 					   uint16_t nb_events)		\

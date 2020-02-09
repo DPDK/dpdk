@@ -2455,7 +2455,7 @@ cpt_fc_dec_hmac_prep(uint32_t flags,
 	return prep_req;
 }
 
-static __rte_always_inline void *__hot
+static __rte_always_inline void *__rte_hot
 cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		     fc_params_t *fc_params, void *op)
 {

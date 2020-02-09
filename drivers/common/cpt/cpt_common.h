@@ -31,10 +31,6 @@
 #define ROUNDUP16(val)	(((val) + 15) & 0xfffffff0)
 #endif
 
-#ifndef __hot
-#define __hot __attribute__((hot))
-#endif
-
 #define MOD_INC(i, l)   ((i) == (l - 1) ? (i) = 0 : (i)++)
 
 struct cpt_qp_meta_info {

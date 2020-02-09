@@ -3530,7 +3530,7 @@ void dpaa2_sec_stats_reset(struct rte_cryptodev *dev)
 	}
 }
 
-static void __attribute__((hot))
+static void __rte_hot
 dpaa2_sec_process_parallel_event(struct qbman_swp *swp,
 				 const struct qbman_fd *fd,
 				 const struct qbman_result *dq,

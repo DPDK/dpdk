@@ -7,10 +7,6 @@
 
 #include <rte_ethdev_driver.h>
 
-#ifndef __hot
-#define __hot	__attribute__((hot))
-#endif
-
 /* Packet type table */
 #define PTYPE_SIZE	OCCTX_PKI_LTYPE_LAST
 

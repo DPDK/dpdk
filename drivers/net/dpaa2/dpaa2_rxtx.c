@@ -25,7 +25,7 @@
 #include "dpaa2_ethdev.h"
 #include "base/dpaa2_hw_dpni_annot.h"
 
-static inline uint32_t __attribute__((hot))
+static inline uint32_t __rte_hot
 dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 			struct dpaa2_annot_hdr *annotation);
 
@@ -41,7 +41,7 @@ static void enable_tx_tstamp(struct qbman_fd *fd) __rte_unused;
 	DPAA2_RESET_FD_FLC(_fd);		\
 } while (0)
 
-static inline void __attribute__((hot))
+static inline void __rte_hot
 dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd)
 {
 	struct dpaa2_annot_hdr *annotation;
@@ -122,7 +122,7 @@ dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd)
 		frc, m->packet_type, m->ol_flags);
 }
 
-static inline uint32_t __attribute__((hot))
+static inline uint32_t __rte_hot
 dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 			struct dpaa2_annot_hdr *annotation)
 {
@@ -212,7 +212,7 @@ parse_done:
 	return pkt_type;
 }
 
-static inline uint32_t __attribute__((hot))
+static inline uint32_t __rte_hot
 dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, void *hw_annot_addr)
 {
 	struct dpaa2_annot_hdr *annotation =
@@ -259,7 +259,7 @@ dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, void *hw_annot_addr)
 	return dpaa2_dev_rx_parse_slow(mbuf, annotation);
 }
 
-static inline struct rte_mbuf *__attribute__((hot))
+static inline struct rte_mbuf *__rte_hot
 eth_sg_fd_to_mbuf(const struct qbman_fd *fd,
 		  int port_id)
 {
@@ -320,7 +320,7 @@ eth_sg_fd_to_mbuf(const struct qbman_fd *fd,
 	return (void *)first_seg;
 }
 
-static inline struct rte_mbuf *__attribute__((hot))
+static inline struct rte_mbuf *__rte_hot
 eth_fd_to_mbuf(const struct qbman_fd *fd,
 	       int port_id)
 {
@@ -363,7 +363,7 @@ eth_fd_to_mbuf(const struct qbman_fd *fd,
 	return mbuf;
 }
 
-static int __rte_noinline __attribute__((hot))
+static int __rte_noinline __rte_hot
 eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		  struct qbman_fd *fd, uint16_t bpid)
 {
@@ -434,7 +434,7 @@ static void
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 	       struct qbman_fd *fd, uint16_t bpid) __rte_unused;
 
-static void __rte_noinline __attribute__((hot))
+static void __rte_noinline __rte_hot
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 	       struct qbman_fd *fd, uint16_t bpid)
 {
@@ -463,7 +463,7 @@ eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 	}
 }
 
-static inline int __attribute__((hot))
+static inline int __rte_hot
 eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 		    struct qbman_fd *fd, uint16_t bpid)
 {
@@ -664,7 +664,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	return num_rx;
 }
 
-void __attribute__((hot))
+void __rte_hot
 dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
 				 const struct qbman_fd *fd,
 				 const struct qbman_result *dq,
@@ -687,7 +687,7 @@ dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
 	qbman_swp_dqrr_consume(swp, dq);
 }
 
-void __attribute__((hot))
+void __rte_hot
 dpaa2_dev_process_atomic_event(struct qbman_swp *swp __rte_unused,
 			       const struct qbman_fd *fd,
 			       const struct qbman_result *dq,
@@ -716,7 +716,7 @@ dpaa2_dev_process_atomic_event(struct qbman_swp *swp __rte_unused,
 	DPAA2_PER_LCORE_DQRR_MBUF(dqrr_index) = ev->mbuf;
 }
 
-void __attribute__((hot))
+void __rte_hot
 dpaa2_dev_process_ordered_event(struct qbman_swp *swp,
 				const struct qbman_fd *fd,
 				const struct qbman_result *dq,

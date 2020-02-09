@@ -464,7 +464,7 @@ cpt_rsa_crt_prep(struct asym_op_params *rsa_params,
 	cpt_fill_req_comp_addr(req, caddr);
 }
 
-static __rte_always_inline int __hot
+static __rte_always_inline int __rte_hot
 cpt_enqueue_rsa_op(struct rte_crypto_op *op,
 	       struct asym_op_params *params,
 	       struct cpt_asym_sess_misc *sess)
@@ -811,7 +811,7 @@ cpt_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	cpt_fill_req_comp_addr(req, caddr);
 }
 
-static __rte_always_inline int __hot
+static __rte_always_inline int __rte_hot
 cpt_enqueue_ecdsa_op(struct rte_crypto_op *op,
 		     struct asym_op_params *params,
 		     struct cpt_asym_sess_misc *sess,

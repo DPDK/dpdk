@@ -947,7 +947,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 #endif
 
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
-static uint16_t __rte_noinline	__hot					\
+static uint16_t __rte_noinline	__rte_hot					\
 otx2_nix_xmit_pkts_ ## name(void *tx_queue,				\
 			struct rte_mbuf **tx_pkts, uint16_t pkts)	\
 {									\
@@ -964,7 +964,7 @@ NIX_TX_FASTPATH_MODES
 #undef T
 
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
-static uint16_t __rte_noinline	__hot					\
+static uint16_t __rte_noinline	__rte_hot					\
 otx2_nix_xmit_pkts_mseg_ ## name(void *tx_queue,			\
 			struct rte_mbuf **tx_pkts, uint16_t pkts)	\
 {									\
@@ -982,7 +982,7 @@ NIX_TX_FASTPATH_MODES
 #undef T
 
 #define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)			\
-static uint16_t __rte_noinline	__hot					\
+static uint16_t __rte_noinline	__rte_hot					\
 otx2_nix_xmit_pkts_vec_ ## name(void *tx_queue,				\
 			struct rte_mbuf **tx_pkts, uint16_t pkts)	\
 {									\

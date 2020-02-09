@@ -252,7 +252,7 @@ static inline void enetc_slow_parsing(struct rte_mbuf *m,
 }
 
 
-static inline void __attribute__((hot))
+static inline void __rte_hot
 enetc_dev_rx_parse(struct rte_mbuf *m, uint16_t parse_results)
 {
 	ENETC_PMD_DP_DEBUG("parse summary = 0x%x   ", parse_results);

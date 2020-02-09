@@ -49,11 +49,6 @@
 	 (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
 #endif
 
-/* Compiler attributes */
-#ifndef __hot
-#define __hot   __attribute__((hot))
-#endif
-
 /* Intra device related functions */
 struct otx2_npa_lf;
 struct otx2_idev_cfg {

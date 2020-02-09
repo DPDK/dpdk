@@ -25,7 +25,7 @@
 #include "nicvf_rxtx.h"
 #include "nicvf_logs.h"
 
-static inline void __hot
+static inline void __rte_hot
 fill_sq_desc_header(union sq_entry_t *entry, struct rte_mbuf *pkt)
 {
 	/* Local variable sqe to avoid read from sq desc memory*/
@@ -61,7 +61,7 @@ fill_sq_desc_header(union sq_entry_t *entry, struct rte_mbuf *pkt)
 	entry->buff[0] = sqe.buff[0];
 }
 
-static inline void __hot
+static inline void __rte_hot
 fill_sq_desc_header_zero_w1(union sq_entry_t *entry,
 				struct rte_mbuf *pkt)
 {
@@ -69,7 +69,7 @@ fill_sq_desc_header_zero_w1(union sq_entry_t *entry,
 	entry->buff[1] = 0ULL;
 }
 
-void __hot
+void __rte_hot
 nicvf_single_pool_free_xmited_buffers(struct nicvf_txq *sq)
 {
 	int j = 0;
@@ -92,7 +92,7 @@ nicvf_single_pool_free_xmited_buffers(struct nicvf_txq *sq)
 	NICVF_TX_ASSERT(sq->xmit_bufs >= 0);
 }
 
-void __hot
+void __rte_hot
 nicvf_multi_pool_free_xmited_buffers(struct nicvf_txq *sq)
 {
 	uint32_t n = 0;
@@ -115,7 +115,7 @@ nicvf_multi_pool_free_xmited_buffers(struct nicvf_txq *sq)
 	NICVF_TX_ASSERT(sq->xmit_bufs >= 0);
 }
 
-static inline uint32_t __hot
+static inline uint32_t __rte_hot
 nicvf_free_tx_desc(struct nicvf_txq *sq)
 {
 	return ((sq->head - sq->tail - 1) & sq->qlen_mask);
@@ -124,7 +124,7 @@ nicvf_free_tx_desc(struct nicvf_txq *sq)
 /* Send Header + Packet */
 #define TX_DESC_PER_PKT 2
 
-static inline uint32_t __hot
+static inline uint32_t __rte_hot
 nicvf_free_xmitted_buffers(struct nicvf_txq *sq, struct rte_mbuf **tx_pkts,
 			    uint16_t nb_pkts)
 {
@@ -142,7 +142,7 @@ nicvf_free_xmitted_buffers(struct nicvf_txq *sq, struct rte_mbuf **tx_pkts,
 	return free_desc;
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
@@ -181,7 +181,7 @@ nicvf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	return i;
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_xmit_pkts_multiseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts)
 {
@@ -333,13 +333,13 @@ static const uint32_t ptype_table[16][16] __rte_cache_aligned = {
 	[L3_OTHER][L4_NVGRE] = RTE_PTYPE_TUNNEL_NVGRE,
 };
 
-static inline uint32_t __hot
+static inline uint32_t __rte_hot
 nicvf_rx_classify_pkt(cqe_rx_word0_t cqe_rx_w0)
 {
 	return ptype_table[cqe_rx_w0.l3_type][cqe_rx_w0.l4_type];
 }
 
-static inline uint64_t __hot
+static inline uint64_t __rte_hot
 nicvf_set_olflags(const cqe_rx_word0_t cqe_rx_w0)
 {
 	static const uint64_t flag_table[3] __rte_cache_aligned = {
@@ -353,7 +353,7 @@ nicvf_set_olflags(const cqe_rx_word0_t cqe_rx_w0)
 	return flag_table[idx];
 }
 
-static inline int __hot
+static inline int __rte_hot
 nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
 {
 	int i;
@@ -392,7 +392,7 @@ nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
 	return to_fill;
 }
 
-static inline int32_t __hot
+static inline int32_t __rte_hot
 nicvf_rx_pkts_to_process(struct nicvf_rxq *rxq, uint16_t nb_pkts,
 			 int32_t available_space)
 {
@@ -403,7 +403,7 @@ nicvf_rx_pkts_to_process(struct nicvf_rxq *rxq, uint16_t nb_pkts,
 	return RTE_MIN(nb_pkts, available_space);
 }
 
-static inline void __hot
+static inline void __rte_hot
 nicvf_rx_offload(cqe_rx_word0_t cqe_rx_w0, cqe_rx_word2_t cqe_rx_w2,
 		 struct rte_mbuf *pkt)
 {
@@ -484,7 +484,7 @@ nicvf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
 	return to_process;
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_recv_pkts_no_offload(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
@@ -492,7 +492,7 @@ nicvf_recv_pkts_no_offload(void *rx_queue, struct rte_mbuf **rx_pkts,
 			NICVF_RX_OFFLOAD_NONE);
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_recv_pkts_cksum(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
@@ -500,7 +500,7 @@ nicvf_recv_pkts_cksum(void *rx_queue, struct rte_mbuf **rx_pkts,
 			NICVF_RX_OFFLOAD_CKSUM);
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_recv_pkts_vlan_strip(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
@@ -508,7 +508,7 @@ nicvf_recv_pkts_vlan_strip(void *rx_queue, struct rte_mbuf **rx_pkts,
 			NICVF_RX_OFFLOAD_NONE | NICVF_RX_OFFLOAD_VLAN_STRIP);
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_recv_pkts_cksum_vlan_strip(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
@@ -516,7 +516,7 @@ nicvf_recv_pkts_cksum_vlan_strip(void *rx_queue, struct rte_mbuf **rx_pkts,
 			NICVF_RX_OFFLOAD_CKSUM | NICVF_RX_OFFLOAD_VLAN_STRIP);
 }
 
-static __rte_always_inline uint16_t __hot
+static __rte_always_inline uint16_t __rte_hot
 nicvf_process_cq_mseg_entry(struct cqe_rx_t *cqe_rx,
 			uint64_t mbuf_phys_off,
 			struct rte_mbuf **rx_pkt, uint8_t rbptr_offset,
@@ -572,7 +572,7 @@ nicvf_process_cq_mseg_entry(struct cqe_rx_t *cqe_rx,
 	return nb_segs;
 }
 
-static __rte_always_inline uint16_t __hot
+static __rte_always_inline uint16_t __rte_hot
 nicvf_recv_pkts_multiseg(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts, const uint32_t flag)
 {
@@ -616,7 +616,7 @@ nicvf_recv_pkts_multiseg(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return to_process;
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_recv_pkts_multiseg_no_offload(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
@@ -624,7 +624,7 @@ nicvf_recv_pkts_multiseg_no_offload(void *rx_queue, struct rte_mbuf **rx_pkts,
 			NICVF_RX_OFFLOAD_NONE);
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_recv_pkts_multiseg_cksum(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
@@ -632,7 +632,7 @@ nicvf_recv_pkts_multiseg_cksum(void *rx_queue, struct rte_mbuf **rx_pkts,
 			NICVF_RX_OFFLOAD_CKSUM);
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_recv_pkts_multiseg_vlan_strip(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
@@ -640,7 +640,7 @@ nicvf_recv_pkts_multiseg_vlan_strip(void *rx_queue, struct rte_mbuf **rx_pkts,
 			NICVF_RX_OFFLOAD_NONE | NICVF_RX_OFFLOAD_VLAN_STRIP);
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 nicvf_recv_pkts_multiseg_cksum_vlan_strip(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {

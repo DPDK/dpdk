@@ -19,7 +19,7 @@
 #include "octeontx_rxtx.h"
 #include "octeontx_logs.h"
 
-uint16_t __hot
+uint16_t __rte_hot
 octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int count;
@@ -43,7 +43,7 @@ octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	return count; /* return number of pkts transmitted */
 }
 
-uint16_t __hot
+uint16_t __rte_hot
 octeontx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct octeontx_rxq *rxq;

@@ -7,7 +7,7 @@
 
 #include "otx2_mempool.h"
 
-static int __hot
+static int __rte_hot
 otx2_npa_enq(struct rte_mempool *mp, void * const *obj_table, unsigned int n)
 {
 	unsigned int index; const uint64_t aura_handle = mp->pool_id;
@@ -281,7 +281,7 @@ otx2_npa_clear_alloc(struct rte_mempool *mp, void **obj_table, unsigned int n)
 	}
 }
 
-static __rte_noinline int __hot
+static __rte_noinline int __rte_hot
 otx2_npa_deq_arm64(struct rte_mempool *mp, void **obj_table, unsigned int n)
 {
 	const int64_t wdata = npa_lf_aura_handle_to_aura(mp->pool_id);
@@ -308,7 +308,7 @@ otx2_npa_deq_arm64(struct rte_mempool *mp, void **obj_table, unsigned int n)
 
 #else
 
-static inline int __hot
+static inline int __rte_hot
 otx2_npa_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 {
 	const int64_t wdata = npa_lf_aura_handle_to_aura(mp->pool_id);

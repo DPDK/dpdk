@@ -331,14 +331,14 @@ nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 #endif
 
 #define R(name, f6, f5, f4, f3, f2, f1, f0, flags)			       \
-static uint16_t __rte_noinline	__hot					       \
+static uint16_t __rte_noinline	__rte_hot					       \
 otx2_nix_recv_pkts_ ## name(void *rx_queue,				       \
 			struct rte_mbuf **rx_pkts, uint16_t pkts)	       \
 {									       \
 	return nix_recv_pkts(rx_queue, rx_pkts, pkts, (flags));		       \
 }									       \
 									       \
-static uint16_t __rte_noinline	__hot					       \
+static uint16_t __rte_noinline	__rte_hot					       \
 otx2_nix_recv_pkts_mseg_ ## name(void *rx_queue,			       \
 			struct rte_mbuf **rx_pkts, uint16_t pkts)	       \
 {									       \
@@ -346,7 +346,7 @@ otx2_nix_recv_pkts_mseg_ ## name(void *rx_queue,			       \
 			     (flags) | NIX_RX_MULTI_SEG_F);		       \
 }									       \
 									       \
-static uint16_t __rte_noinline	__hot					       \
+static uint16_t __rte_noinline	__rte_hot					       \
 otx2_nix_recv_pkts_vec_ ## name(void *rx_queue,				       \
 			struct rte_mbuf **rx_pkts, uint16_t pkts)	       \
 {									       \
