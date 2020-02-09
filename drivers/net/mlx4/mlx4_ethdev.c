@@ -645,9 +645,8 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	 */
 	max = ((priv->device_attr.max_cq > priv->device_attr.max_qp) ?
 	       priv->device_attr.max_qp : priv->device_attr.max_cq);
-	/* If max >= 65535 then max = 0, max_rx_queues is uint16_t. */
-	if (max >= 65535)
-		max = 65535;
+	/* max_rx_queues is uint16_t. */
+	max = RTE_MIN(max, (unsigned int)UINT16_MAX);
 	info->max_rx_queues = max;
 	info->max_tx_queues = max;
 	info->max_mac_addrs = RTE_DIM(priv->mac);
