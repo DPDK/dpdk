@@ -40,7 +40,7 @@ struct fm_status_t {
 	unsigned int phe:1; /* Header Error during parsing */
 	unsigned int frdr:1; /* Frame Dropped by disabled port */
 	unsigned int reserved5:4;
-} __attribute__ ((__packed__));
+} __rte_packed;
 
 /* Set MAC address for a particular interface */
 int fman_if_add_mac_addr(struct fman_if *p, uint8_t *eth, uint8_t addr_num);

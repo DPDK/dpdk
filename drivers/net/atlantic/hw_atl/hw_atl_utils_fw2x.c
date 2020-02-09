@@ -40,7 +40,7 @@
 struct fw2x_msg_wol_pattern {
 	u8 mask[16];
 	u32 crc;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct fw2x_msg_wol {
 	u32 msg_id;
@@ -53,7 +53,7 @@ struct fw2x_msg_wol {
 	u16 reserved;
 	u32 link_up_timeout;
 	u32 link_down_timeout;
-} __attribute__((__packed__));
+} __rte_packed;
 
 static int aq_fw2x_set_link_speed(struct aq_hw_s *self, u32 speed);
 static int aq_fw2x_set_state(struct aq_hw_s *self,

@@ -37,7 +37,7 @@ TAILQ_HEAD(ifpga_afu_drv_list, rte_afu_driver);
 struct rte_afu_uuid {
 	uint64_t uuid_low;
 	uint64_t uuid_high;
-} __attribute__ ((packed));
+} __rte_packed;
 
 #define IFPGA_BUS_DEV_PORT_MAX 4
 
@@ -48,7 +48,7 @@ struct rte_afu_uuid {
 struct rte_afu_id {
 	struct rte_afu_uuid uuid;
 	int      port; /**< port number */
-} __attribute__ ((packed));
+} __rte_packed;
 
 /**
  * A structure PR (Partial Reconfiguration) configuration AFU driver.
@@ -82,7 +82,7 @@ struct rte_afu_device {
 	struct rte_intr_handle intr_handle;     /**< Interrupt handle */
 	struct rte_afu_driver *driver;          /**< Associated driver */
 	char path[IFPGA_BUS_BITSTREAM_PATH_MAX_LEN];
-} __attribute__ ((packed));
+} __rte_packed;
 
 /**
  * @internal

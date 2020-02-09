@@ -148,7 +148,7 @@ typedef struct VhostUserMsg {
 	} payload;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num;
-} __attribute((packed)) VhostUserMsg;
+} __rte_packed VhostUserMsg;
 
 #define VHOST_USER_HDR_SIZE offsetof(VhostUserMsg, payload.u64)
 

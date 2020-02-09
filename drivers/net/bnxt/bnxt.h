@@ -188,13 +188,13 @@ enum bnxt_hw_context {
 struct bnxt_vlan_table_entry {
 	uint16_t		tpid;
 	uint16_t		vid;
-} __attribute__((packed));
+} __rte_packed;
 
 struct bnxt_vlan_antispoof_table_entry {
 	uint16_t		tpid;
 	uint16_t		vid;
 	uint16_t		mask;
-} __attribute__((packed));
+} __rte_packed;
 
 struct bnxt_child_vf_info {
 	void			*req_buf;

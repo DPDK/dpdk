@@ -35,6 +35,6 @@ struct rss_key {
 	__u32 key_size;
 	__u32 queues[TAP_MAX_QUEUES];
 	__u32 nb_queues;
-} __attribute__((packed));
+} __rte_packed;
 
 #endif /* _TAP_RSS_H_ */

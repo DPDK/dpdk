@@ -31,7 +31,7 @@ extern "C" {
 struct rte_vxlan_hdr {
 	uint32_t vx_flags; /**< flag (8) + Reserved (24). */
 	uint32_t vx_vni;   /**< VNI (24) + Reserved (8). */
-} __attribute__((__packed__));
+} __rte_packed;
 
 /** VXLAN tunnel header length. */
 #define RTE_ETHER_VXLAN_HLEN \
@@ -48,7 +48,7 @@ struct rte_vxlan_gpe_hdr {
 	uint8_t reserved[2]; /**< Reserved (16). */
 	uint8_t proto;       /**< next-protocol (8). */
 	uint32_t vx_vni;     /**< VNI (24) + Reserved (8). */
-} __attribute__((__packed__));
+} __rte_packed;
 
 /** VXLAN-GPE tunnel header length. */
 #define RTE_ETHER_VXLAN_GPE_HLEN (sizeof(struct rte_udp_hdr) + \

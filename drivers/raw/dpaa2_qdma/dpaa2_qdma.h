@@ -155,7 +155,7 @@ struct qdma_sdd {
 			uint32_t wrttype:4;
 		} write_cmd;
 	};
-} __attribute__ ((__packed__));
+} __rte_packed;
 
 /** Represents a DPDMAI raw device */
 struct dpaa2_dpdmai_dev {

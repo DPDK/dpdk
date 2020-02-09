@@ -2671,7 +2671,7 @@ struct pkt_key_qinq {
 	uint16_t svlan;
 	uint16_t ethertype_cvlan;
 	uint16_t cvlan;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct pkt_key_ipv4_5tuple {
 	uint8_t time_to_live;
@@ -2681,7 +2681,7 @@ struct pkt_key_ipv4_5tuple {
 	uint32_t da;
 	uint16_t sp;
 	uint16_t dp;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct pkt_key_ipv6_5tuple {
 	uint16_t payload_length;
@@ -2691,15 +2691,15 @@ struct pkt_key_ipv6_5tuple {
 	uint8_t da[16];
 	uint16_t sp;
 	uint16_t dp;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct pkt_key_ipv4_addr {
 	uint32_t addr;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct pkt_key_ipv6_addr {
 	uint8_t addr[16];
-} __attribute__((__packed__));
+} __rte_packed;
 
 static uint32_t
 parse_match(char **tokens,

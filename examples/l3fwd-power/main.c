@@ -280,7 +280,7 @@ struct ipv4_5tuple {
 	uint16_t port_dst;
 	uint16_t port_src;
 	uint8_t  proto;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct ipv6_5tuple {
 	uint8_t  ip_dst[IPV6_ADDR_LEN];
@@ -288,7 +288,7 @@ struct ipv6_5tuple {
 	uint16_t port_dst;
 	uint16_t port_src;
 	uint8_t  proto;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct ipv4_l3fwd_route {
 	struct ipv4_5tuple key;

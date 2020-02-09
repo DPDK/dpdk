@@ -90,6 +90,6 @@ struct vhost_user_msg {
 		struct vhost_memory_padded memory;
 		struct vhost_user_config cfg;
 	} payload;
-} __attribute((packed));
+} __rte_packed;
 
 #endif

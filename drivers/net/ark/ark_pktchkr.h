@@ -37,7 +37,7 @@ struct ark_pkt_chkr_stat_regs {
 	uint32_t pkts_missing;
 	uint32_t min_latency;
 	uint32_t max_latency;
-} __attribute__ ((packed));
+} __rte_packed;
 
 struct ark_pkt_chkr_ctl_regs {
 	uint32_t pkt_ctrl;
@@ -53,7 +53,7 @@ struct ark_pkt_chkr_ctl_regs {
 	uint32_t dst_mac_addr_h;
 	uint32_t eth_type;
 	uint32_t hdr_dw[7];
-} __attribute__ ((packed));
+} __rte_packed;
 
 struct ark_pkt_chkr_inst {
 	struct rte_eth_dev_info *dev_info;

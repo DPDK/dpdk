@@ -149,12 +149,12 @@ struct iavf_dma_mem {
 	u64 pa;
 	u32 size;
 	const void *zone;
-} __attribute__((packed));
+} __rte_packed;
 
 struct iavf_virt_mem {
 	void *va;
 	u32 size;
-} __attribute__((packed));
+} __rte_packed;
 
 /* SW spinlock */
 struct iavf_spinlock {

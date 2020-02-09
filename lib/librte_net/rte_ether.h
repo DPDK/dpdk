@@ -283,7 +283,7 @@ struct rte_ether_hdr {
 struct rte_vlan_hdr {
 	uint16_t vlan_tci; /**< Priority (3) + CFI (1) + Identifier Code (12) */
 	uint16_t eth_proto;/**< Ethernet type of encapsulated frame. */
-} __attribute__((__packed__));
+} __rte_packed;
 
 
 

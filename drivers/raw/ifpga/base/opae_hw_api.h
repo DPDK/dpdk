@@ -309,7 +309,7 @@ static inline void opae_adapter_remove_acc(struct opae_adapter *adapter,
 
 struct opae_ether_addr {
 	unsigned char addr_bytes[OPAE_ETHER_ADDR_LEN];
-} __attribute__((__packed__));
+} __rte_packed;
 
 /* OPAE vBNG network API*/
 int opae_manager_read_mac_rom(struct opae_manager *mgr, int port,

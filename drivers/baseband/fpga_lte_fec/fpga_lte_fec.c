@@ -114,7 +114,7 @@ enum {
 };
 
 /* FPGA LTE FEC DMA Encoding Request Descriptor */
-struct __attribute__((__packed__)) fpga_dma_enc_desc {
+struct __rte_packed fpga_dma_enc_desc {
 	uint32_t done:1,
 		rsrvd0:11,
 		error:4,
@@ -151,7 +151,7 @@ struct __attribute__((__packed__)) fpga_dma_enc_desc {
 };
 
 /* FPGA LTE FEC DMA Decoding Request Descriptor */
-struct __attribute__((__packed__)) fpga_dma_dec_desc {
+struct __rte_packed fpga_dma_dec_desc {
 	uint32_t done:1,
 		iter:5,
 		rsrvd0:2,
@@ -197,7 +197,7 @@ union fpga_dma_desc {
 };
 
 /* FPGA LTE FEC Ring Control Register */
-struct __attribute__((__packed__)) fpga_ring_ctrl_reg {
+struct __rte_packed fpga_ring_ctrl_reg {
 	uint64_t ring_base_addr;
 	uint64_t ring_head_addr;
 	uint16_t ring_size:11;

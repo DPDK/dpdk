@@ -32,7 +32,7 @@ struct rte_gtp_hdr {
 	uint8_t msg_type;     /**< GTP message type */
 	uint16_t plen;        /**< Total payload length */
 	uint32_t teid;        /**< Tunnel endpoint ID */
-} __attribute__((__packed__));
+} __rte_packed;
 
 /** GTP header length */
 #define RTE_ETHER_GTP_HLEN \

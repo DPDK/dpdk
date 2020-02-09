@@ -35,7 +35,7 @@ struct rte_tcp_hdr {
 	rte_be16_t rx_win;   /**< RX flow control window. */
 	rte_be16_t cksum;    /**< TCP checksum. */
 	rte_be16_t tcp_urp;  /**< TCP urgent pointer, if any. */
-} __attribute__((__packed__));
+} __rte_packed;
 
 /**
  * TCP Flags

@@ -75,14 +75,14 @@ struct ipv4_l3_l4_tuple {
 	__u32    dst_addr;
 	__u16    dport;
 	__u16    sport;
-} __attribute__((packed));
+} __rte_packed;
 
 struct ipv6_l3_l4_tuple {
 	__u8        src_addr[16];
 	__u8        dst_addr[16];
 	__u16       dport;
 	__u16       sport;
-} __attribute__((packed));
+} __rte_packed;
 
 static const __u8 def_rss_key[TAP_RSS_HASH_KEY_SIZE] = {
 	0xd1, 0x81, 0xc6, 0x2c,

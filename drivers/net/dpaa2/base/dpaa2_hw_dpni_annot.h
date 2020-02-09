@@ -37,7 +37,7 @@ struct dpaa2_fas {
 	uint8_t ppid;
 	__le16 ifpid;
 	__le32 status;
-}  __attribute__((__packed__));
+}  __rte_packed;
 
 /**
  * HW Packet Annotation  Register structures

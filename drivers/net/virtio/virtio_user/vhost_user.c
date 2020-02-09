@@ -43,7 +43,7 @@ struct vhost_user_msg {
 		struct vhost_memory memory;
 	} payload;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
-} __attribute((packed));
+} __rte_packed;
 
 #define VHOST_USER_HDR_SIZE offsetof(struct vhost_user_msg, payload.u64)
 #define VHOST_USER_PAYLOAD_SIZE \

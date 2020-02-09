@@ -27,10 +27,10 @@ struct hw_atl_txd_s {
 			u32 ct_idx:1;
 			u32 ct_en:1;
 			u32 pay_len:18;
-		} __attribute__((__packed__));
+		} __rte_packed;
 		u64 flags;
 	};
-} __attribute__((__packed__));
+} __rte_packed;
 
 /* Hardware tx context descriptor */
 union hw_atl_txc_s {
@@ -51,8 +51,8 @@ union hw_atl_txc_s {
 		u32 l3_len:9;
 		u32 l4_len:8;
 		u32 mss_len:16;
-	} __attribute__((__packed__));
-} __attribute__((__packed__));
+	} __rte_packed;
+} __rte_packed;
 
 enum aq_tx_desc_type {
 	tx_desc_type_desc = 1,
@@ -73,7 +73,7 @@ enum aq_tx_desc_cmd {
 struct hw_atl_rxd_s {
 	u64 buf_addr;
 	u64 hdr_addr;
-} __attribute__((__packed__));
+} __rte_packed;
 
 /* Hardware rx descriptor writeback */
 struct hw_atl_rxd_wb_s {
@@ -89,7 +89,7 @@ struct hw_atl_rxd_wb_s {
 	u16 pkt_len;
 	u16 next_desc_ptr;
 	u16 vlan;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct hw_atl_stats_s {
 	u32 uprc;
@@ -107,7 +107,7 @@ struct hw_atl_stats_s {
 	u32 ubrc;
 	u32 ubtc;
 	u32 dpc;
-} __attribute__((__packed__));
+} __rte_packed;
 
 union ip_addr {
 	struct {
@@ -117,7 +117,7 @@ union ip_addr {
 		u8 padding[12];
 		u8 addr[4];
 	} v4;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct hw_aq_atl_utils_fw_rpc {
 	u32 msg_id;
@@ -226,13 +226,13 @@ struct hw_aq_atl_utils_fw_rpc {
 		} msg_del_id;
 
 	};
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct hw_aq_atl_utils_mbox_header {
 	u32 version;
 	u32 transaction_id;
 	u32 error;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct hw_aq_info {
 	u8 reserved[6];
@@ -244,13 +244,13 @@ struct hw_aq_info {
 	u8 reserved2[32];
 	u32 caps_lo;
 	u32 caps_hi;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct hw_aq_atl_utils_mbox {
 	struct hw_aq_atl_utils_mbox_header header;
 	struct hw_atl_stats_s stats;
 	struct hw_aq_info info;
-} __attribute__((__packed__));
+} __rte_packed;
 
 /* fw2x */
 typedef u16	in_port_t;
@@ -261,7 +261,7 @@ typedef u32	fw_offset_t;
 
 struct ip6_addr {
 	u32 addr[4];
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct offload_ka_v4 {
 	u32 timeout;
@@ -273,7 +273,7 @@ struct offload_ka_v4 {
 	u32 ack_num;
 	ip4_addr_t local_ip;
 	ip4_addr_t remote_ip;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct offload_ka_v6 {
 	u32 timeout;
@@ -285,7 +285,7 @@ struct offload_ka_v6 {
 	u32 ack_num;
 	struct ip6_addr local_ip;
 	struct ip6_addr remote_ip;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct offload_ip_info {
 	u8 v4_local_addr_count;
@@ -296,14 +296,14 @@ struct offload_ip_info {
 	fw_offset_t v4_prefix;
 	fw_offset_t v6_addr;
 	fw_offset_t v6_prefix;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct offload_port_info {
 	u16 udp_port_count;
 	u16 tcp_port_count;
 	fw_offset_t udp_port;
 	fw_offset_t tcp_port;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct offload_ka_info {
 	u16 v4_ka_count;
@@ -312,14 +312,14 @@ struct offload_ka_info {
 	u32 retry_interval;
 	fw_offset_t v4_ka;
 	fw_offset_t v6_ka;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct offload_rr_info {
 	u32 rr_count;
 	u32 rr_buf_len;
 	fw_offset_t rr_id_x;
 	fw_offset_t rr_buf;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct offload_info {
 	u32 version;		// current version is 0x00000000
@@ -335,14 +335,14 @@ struct offload_info {
 	struct offload_ka_info kas;
 	struct offload_rr_info rrs;
 	u8 buf[0];
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct smbus_request {
 	u32 msg_id; /* not used */
 	u32 device_id;
 	u32 address;
 	u32 length;
-} __attribute__((__packed__));
+} __rte_packed;
 
 enum macsec_msg_type {
 	macsec_cfg_msg = 0,
@@ -358,7 +358,7 @@ struct macsec_cfg {
 	uint32_t egress_threshold;
 	uint32_t ingress_threshold;
 	uint32_t interrupts_enabled;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct add_rx_sc {
 	uint32_t index;
@@ -376,7 +376,7 @@ struct add_rx_sc {
 	uint32_t anti_replay_window; /* default 0 */
 	/* 1: auto_rollover enabled (when SA next_pn is saturated */
 	uint32_t an_rol;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct add_tx_sc {
 	uint32_t index;
@@ -391,26 +391,26 @@ struct add_tx_sc {
 	uint32_t da_mask; /* 0: ignore mac_da */
 	uint32_t protect;
 	uint32_t curr_an; /* SA index which currently used */
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct add_rx_sa {
 	uint32_t index;
 	uint32_t next_pn;
 	uint32_t key[4]; /* 128 bit key */
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct add_tx_sa {
 	uint32_t index;
 	uint32_t next_pn;
 	uint32_t key[4]; /* 128 bit key */
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct get_stats {
 	uint32_t version_only;
 	uint32_t ingress_sa_index;
 	uint32_t egress_sa_index;
 	uint32_t egress_sc_index;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct macsec_stats {
 	uint32_t api_version;
@@ -471,7 +471,7 @@ struct macsec_stats {
 	uint32_t ingress_threshold_expired;
 	uint32_t egress_expired;
 	uint32_t ingress_expired;
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct macsec_msg_fw_request {
 	uint32_t offset; /* not used */
@@ -485,12 +485,12 @@ struct macsec_msg_fw_request {
 		struct add_tx_sa txsa;
 		struct get_stats stats;
 	};
-} __attribute__((__packed__));
+} __rte_packed;
 
 struct macsec_msg_fw_response {
 	uint32_t result;
 	struct macsec_stats stats;
-} __attribute__((__packed__));
+} __rte_packed;
 
 #define HAL_ATLANTIC_UTILS_CHIP_MIPS         0x00000001U
 #define HAL_ATLANTIC_UTILS_CHIP_TPO2         0x00000002U

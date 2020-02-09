@@ -33,7 +33,7 @@ struct rte_mpls_hdr {
 	uint8_t tag_lsb:4;  /**< label(lsb) */
 #endif
 	uint8_t  ttl;       /**< Time to live. */
-} __attribute__((__packed__));
+} __rte_packed;
 
 #ifdef __cplusplus
 }

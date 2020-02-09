@@ -46,20 +46,20 @@ struct octeontx_mbox_fpa_cfg {
 	uint64_t	aura_cfg;
 };
 
-struct __attribute__((__packed__)) gen_req {
+struct __rte_packed gen_req {
 	uint32_t	value;
 };
 
-struct __attribute__((__packed__)) idn_req {
+struct __rte_packed idn_req {
 	uint8_t	domain_id;
 };
 
-struct __attribute__((__packed__)) gen_resp {
+struct __rte_packed gen_resp {
 	uint16_t	domain_id;
 	uint16_t	vfid;
 };
 
-struct __attribute__((__packed__)) dcfg_resp {
+struct __rte_packed dcfg_resp {
 	uint8_t	sso_count;
 	uint8_t	ssow_count;
 	uint8_t	fpa_count;

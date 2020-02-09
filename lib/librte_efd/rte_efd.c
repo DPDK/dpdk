@@ -207,7 +207,7 @@ struct efd_offline_chunk_rules {
 struct efd_online_group_entry {
 	efd_hashfunc_t hash_idx[RTE_EFD_VALUE_NUM_BITS];
 	efd_lookuptbl_t lookup_table[RTE_EFD_VALUE_NUM_BITS];
-} __attribute__((__packed__));
+} __rte_packed;
 
 /**
  * A single chunk record, containing EFD_TARGET_CHUNK_NUM_RULES rules.
@@ -223,7 +223,7 @@ struct efd_online_chunk {
 
 	struct efd_online_group_entry groups[EFD_CHUNK_NUM_GROUPS];
 	/**< Array of all the groups in the chunk. */
-} __attribute__((__packed__));
+} __rte_packed;
 
 /**
  * EFD table structure

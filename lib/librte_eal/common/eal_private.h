@@ -57,7 +57,7 @@ struct rte_config {
 	 * DPDK instances
 	 */
 	struct rte_mem_config *mem_config;
-} __attribute__((__packed__));
+} __rte_packed;
 
 /**
  * Get the global configuration structure.

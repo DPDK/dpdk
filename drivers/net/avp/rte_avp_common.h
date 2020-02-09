@@ -69,7 +69,7 @@ struct rte_avp_device_config {
 	uint16_t num_tx_queues;	/**< Number of active transmit queues */
 	uint16_t num_rx_queues;	/**< Number of active receive queues */
 	uint8_t if_up; /**< 1: interface up, 0: interface down */
-} __attribute__ ((__packed__));
+} __rte_packed;
 
 /*
  * Structure for AVP request.
@@ -83,7 +83,7 @@ struct rte_avp_request {
 	struct rte_avp_device_config config; /**< Queue configuration */
 	};
 	int32_t result;	/**< Result for processing request */
-} __attribute__ ((__packed__));
+} __rte_packed;
 
 /*
  * FIFO struct mapped in a shared memory. It describes a circular buffer FIFO
@@ -116,7 +116,7 @@ struct rte_avp_desc {
 	uint32_t pad3;
 	uint16_t vlan_tci; /**< VLAN Tag Control Identifier (CPU order). */
 	uint32_t pad4;
-} __attribute__ ((__packed__)) __rte_cache_aligned;
+} __rte_packed __rte_cache_aligned;
 
 
 /**{ AVP device features */

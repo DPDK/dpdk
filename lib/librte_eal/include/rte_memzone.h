@@ -68,7 +68,7 @@ struct rte_memzone {
 	int32_t socket_id;                /**< NUMA socket ID. */
 
 	uint32_t flags;                   /**< Characteristics of this memzone. */
-} __attribute__((__packed__));
+} __rte_packed;
 
 /**
  * Reserve a portion of physical memory.

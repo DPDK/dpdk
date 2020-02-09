@@ -170,8 +170,8 @@ struct dpaa_eth_parse_results_t {
 			uint16_t      vlan:1;
 			uint16_t      ethernet:1;
 #endif
-		} __attribute__((__packed__));
-	 } __attribute__((__packed__));
+		} __rte_packed;
+	 } __rte_packed;
 	 union {
 		uint16_t              l3r;	/**< Layer 3 result */
 		struct {
@@ -198,8 +198,8 @@ struct dpaa_eth_parse_results_t {
 			uint16_t      first_ipv6:1;
 			uint16_t      first_ipv4:1;
 #endif
-		} __attribute__((__packed__));
-	 } __attribute__((__packed__));
+		} __rte_packed;
+	 } __rte_packed;
 	 union {
 		uint8_t               l4r;	/**< Layer 4 result */
 		struct{
@@ -214,8 +214,8 @@ struct dpaa_eth_parse_results_t {
 			uint8_t        l4_info_err:1;
 			uint8_t        l4_type:3;
 #endif
-		} __attribute__((__packed__));
-	 } __attribute__((__packed__));
+		} __rte_packed;
+	 } __rte_packed;
 	 uint8_t     cplan;		 /**< Classification plan id */
 	 uint16_t    nxthdr;		 /**< Next Header  */
 	 uint16_t    cksum;		 /**< Checksum */
@@ -231,7 +231,7 @@ struct dpaa_eth_parse_results_t {
 	 uint8_t     gre_off;		 /**< GRE offset */
 	 uint8_t     l4_off;		 /**< Layer 4 offset */
 	 uint8_t     nxthdr_off;	 /**< Parser end point */
-} __attribute__ ((__packed__));
+} __rte_packed;
 
 /* The structure is the Prepended Data to the Frame which is used by FMAN */
 struct annotations_t {

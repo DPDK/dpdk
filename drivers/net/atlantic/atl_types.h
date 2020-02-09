@@ -12,6 +12,8 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
+#include <rte_common.h>
+
 typedef uint8_t		u8;
 typedef int8_t		s8;
 typedef uint16_t	u16;

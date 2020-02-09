@@ -25,7 +25,7 @@ struct flow_key {
 	uint16_t port_src;
 	uint16_t port_dst;
 	uint8_t proto;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Set ID Macros for multimatch test usage */
 #define M_MATCH_S 1	/* Not start with 0 since by default 0 means no match */

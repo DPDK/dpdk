@@ -67,7 +67,7 @@ struct rte_ioat_registers {
 	uint8_t		reserved2[0x8];	/* 0xA0 */
 	uint32_t	chanerr;	/* 0xA8 */
 	uint32_t	chanerrmask;	/* 0xAC */
-} __attribute__((packed));
+} __rte_packed;
 
 #define RTE_IOAT_CHANCMD_RESET			0x20
 #define RTE_IOAT_CHANCMD_SUSPEND		0x04

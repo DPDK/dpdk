@@ -305,7 +305,7 @@ struct virtio_net_config {
 	uint16_t   status;
 	uint16_t   max_virtqueue_pairs;
 	uint16_t   mtu;
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * How many bits to shift physical queue address written to QUEUE_PFN.

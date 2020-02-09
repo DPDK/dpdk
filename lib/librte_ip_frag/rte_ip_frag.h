@@ -131,7 +131,7 @@ struct ipv6_extension_fragment {
 	uint8_t reserved;               /**< Reserved */
 	uint16_t frag_data;             /**< All fragmentation data */
 	uint32_t id;                    /**< Packet ID */
-} __attribute__((__packed__));
+} __rte_packed;
 
 
 

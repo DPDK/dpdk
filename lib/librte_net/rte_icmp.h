@@ -31,7 +31,7 @@ struct rte_icmp_hdr {
 	rte_be16_t icmp_cksum;  /* ICMP packet checksum. */
 	rte_be16_t icmp_ident;  /* ICMP packet identifier. */
 	rte_be16_t icmp_seq_nb; /* ICMP packet sequence number. */
-} __attribute__((__packed__));
+} __rte_packed;
 
 /* ICMP packet types */
 #define RTE_IP_ICMP_ECHO_REPLY   0

@@ -255,7 +255,7 @@ struct cnt_blk {
 	uint32_t salt;
 	uint64_t iv;
 	uint32_t cnt;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Socket ctx */
 extern struct socket_ctx socket_ctx[NB_SOCKETS];

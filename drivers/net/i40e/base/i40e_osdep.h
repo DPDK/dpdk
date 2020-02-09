@@ -158,7 +158,7 @@ struct i40e_dma_mem {
 	u64 pa;
 	u32 size;
 	const void *zone;
-} __attribute__((packed));
+} __rte_packed;
 
 #define i40e_allocate_dma_mem(h, m, unused, s, a) \
 			i40e_allocate_dma_mem_d(h, m, s, a)
@@ -167,7 +167,7 @@ struct i40e_dma_mem {
 struct i40e_virt_mem {
 	void *va;
 	u32 size;
-} __attribute__((packed));
+} __rte_packed;
 
 #define i40e_allocate_virt_mem(h, m, s) i40e_allocate_virt_mem_d(h, m, s)
 #define i40e_free_virt_mem(h, m) i40e_free_virt_mem_d(h, m)

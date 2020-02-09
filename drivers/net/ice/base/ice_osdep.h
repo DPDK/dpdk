@@ -126,7 +126,7 @@ writeq(uint64_t value, volatile void *addr)
 #define __maybe_unused  __attribute__((unused))
 #endif
 #ifndef __packed
-#define __packed  __attribute__((packed))
+#define __packed  __rte_packed
 #endif
 
 #ifndef BIT_ULL
@@ -180,12 +180,12 @@ struct ice_dma_mem {
 	u64 pa;
 	u32 size;
 	const void *zone;
-} __attribute__((packed));
+} __rte_packed;
 
 struct ice_virt_mem {
 	void *va;
 	u32 size;
-} __attribute__((packed));
+} __rte_packed;
 
 #define ice_malloc(h, s)    rte_zmalloc(NULL, s, 0)
 #define ice_calloc(h, c, s) rte_zmalloc(NULL, (c) * (s), 0)

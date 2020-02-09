@@ -182,7 +182,7 @@ struct nfp_net_tx_desc {
 				__le16 vlan; /* VLAN tag to add if indicated */
 			};
 			__le16 data_len;    /* Length of frame + meta data */
-		} __attribute__((__packed__));
+		} __rte_packed;
 		__le32 vals[4];
 	};
 };
@@ -278,7 +278,7 @@ struct nfp_net_rx_desc {
 			uint8_t dd;
 
 			__le32 dma_addr_lo;
-		} __attribute__((__packed__)) fld;
+		} __rte_packed fld;
 
 		/* RX descriptor */
 		struct {
@@ -288,7 +288,7 @@ struct nfp_net_rx_desc {
 
 			__le16 flags;
 			__le16 vlan;
-		} __attribute__((__packed__)) rxd;
+		} __rte_packed rxd;
 
 		__le32 vals[2];
 	};

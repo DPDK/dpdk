@@ -35,7 +35,7 @@ struct rte_gre_hdr {
 	uint16_t ver:3;  /**< Version Number */
 #endif
 	uint16_t proto;  /**< Protocol Type */
-} __attribute__((__packed__));
+} __rte_packed;
 
 #ifdef __cplusplus
 }

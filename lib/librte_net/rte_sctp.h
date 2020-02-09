@@ -30,7 +30,7 @@ struct rte_sctp_hdr {
 	rte_be16_t dst_port; /**< Destin port. */
 	rte_be32_t tag;      /**< Validation tag. */
 	rte_be32_t cksum;    /**< Checksum. */
-} __attribute__((__packed__));
+} __rte_packed;
 
 #ifdef __cplusplus
 }

@@ -41,7 +41,7 @@ struct ark_pkt_gen_regs {
 	uint32_t hdr_dw[7];
 	uint32_t start_offset;
 	uint32_t bytes_per_cycle;
-} __attribute__ ((packed));
+} __rte_packed;
 
 struct ark_pkt_gen_inst {
 	struct rte_eth_dev_info *dev_info;

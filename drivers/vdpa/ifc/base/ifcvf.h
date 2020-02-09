@@ -100,7 +100,7 @@ struct ifcvf_net_config {
 	u8    mac[6];
 	u16   status;
 	u16   max_virtqueue_pairs;
-} __attribute__((packed));
+} __rte_packed;
 
 struct ifcvf_pci_mem_resource {
 	u64      phys_addr; /**< Physical address, 0 if not resource. */

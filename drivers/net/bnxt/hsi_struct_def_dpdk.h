@@ -39,7 +39,7 @@ struct hwrm_cmd_hdr {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* This is the HWRM response header. */
 /* hwrm_resp_hdr (size:64b/8B) */
@@ -52,7 +52,7 @@ struct hwrm_resp_hdr {
 	uint16_t	seq_id;
 	/* The length of the response data in number of bytes. */
 	uint16_t	resp_len;
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * TLV encapsulated message. Use the TLV type field of the
@@ -147,7 +147,7 @@ struct tlv {
 	 * and it must be an integer multiple of 8B.
 	 */
 	uint16_t	length;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Input */
 /* input (size:128b/16B) */
@@ -180,7 +180,7 @@ struct input {
 	 * and must be cleared to zero before the request is made.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Output */
 /* output (size:64b/8B) */
@@ -203,7 +203,7 @@ struct output {
 	 * memory.
 	 */
 	uint16_t	resp_len;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Short Command Structure */
 /* hwrm_short_input (size:128b/16B) */
@@ -239,7 +239,7 @@ struct hwrm_short_input {
 	 * This area must be 16B aligned.
 	 */
 	uint64_t	req_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * Command numbering
@@ -679,7 +679,7 @@ struct cmd_nums {
 	#define HWRM_NVM_RAW_WRITE_BLK                    UINT32_C(0xffff)
 	#define HWRM_LAST                                HWRM_NVM_RAW_WRITE_BLK
 	uint16_t	unused_0[3];
-} __attribute__((packed));
+} __rte_packed;
 
 /* Return Codes */
 /* ret_codes (size:64b/8B) */
@@ -785,7 +785,7 @@ struct ret_codes {
 	#define HWRM_ERR_CODE_LAST \
 		HWRM_ERR_CODE_CMD_NOT_SUPPORTED
 	uint16_t	unused_0[3];
-} __attribute__((packed));
+} __rte_packed;
 
 /* Output */
 /* hwrm_err_output (size:128b/16B) */
@@ -825,7 +825,7 @@ struct hwrm_err_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 /*
  * Following is the signature for HWRM message field that indicates not
  * applicable (All F's). Need to cast it the size of the field if needed.
@@ -923,7 +923,7 @@ struct hwrm_ver_get_input {
 	 */
 	uint8_t	hwrm_intf_upd;
 	uint8_t	unused_0[5];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_ver_get_output (size:1408b/176B) */
 struct hwrm_ver_get_output {
@@ -1398,7 +1398,7 @@ struct hwrm_ver_get_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* bd_base (size:64b/8B) */
 struct bd_base {
@@ -1444,7 +1444,7 @@ struct bd_base {
 	#define BD_BASE_TYPE_TX_BD_LONG_INLINE  UINT32_C(0x11)
 	#define BD_BASE_TYPE_LAST              BD_BASE_TYPE_TX_BD_LONG_INLINE
 	uint8_t	unused_1[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* tx_bd_short (size:128b/16B) */
 struct tx_bd_short {
@@ -1553,7 +1553,7 @@ struct tx_bd_short {
 	 * This value must be valid on all BDs of a packet.
 	 */
 	uint64_t	address;
-} __attribute__((packed));
+} __rte_packed;
 
 /* tx_bd_long (size:128b/16B) */
 struct tx_bd_long {
@@ -1660,7 +1660,7 @@ struct tx_bd_long {
 	 * This value must be valid on all BDs of a packet.
 	 */
 	uint64_t	address;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Last 16 bytes of tx_bd_long. */
 /* tx_bd_long_hi (size:128b/16B) */
@@ -1850,7 +1850,7 @@ struct tx_bd_long_hi {
 	#define TX_BD_LONG_CFA_META_KEY_VLAN_TAG        (UINT32_C(0x1) << 28)
 	#define TX_BD_LONG_CFA_META_KEY_LAST \
 		TX_BD_LONG_CFA_META_KEY_VLAN_TAG
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * This structure is used to inform the NIC of packet data that needs to be
@@ -2063,7 +2063,7 @@ struct tx_bd_long_inline {
 		(UINT32_C(0x1) << 28)
 	#define TX_BD_LONG_INLINE_CFA_META_KEY_LAST \
 		TX_BD_LONG_INLINE_CFA_META_KEY_VLAN_TAG
-} __attribute__((packed));
+} __rte_packed;
 
 /* tx_bd_empty (size:128b/16B) */
 struct tx_bd_empty {
@@ -2081,7 +2081,7 @@ struct tx_bd_empty {
 	uint8_t	unused_2;
 	uint8_t	unused_3[3];
 	uint8_t	unused_4[8];
-} __attribute__((packed));
+} __rte_packed;
 
 /* rx_prod_pkt_bd (size:128b/16B) */
 struct rx_prod_pkt_bd {
@@ -2139,7 +2139,7 @@ struct rx_prod_pkt_bd {
 	 * be placed in host memory.
 	 */
 	uint64_t	address;
-} __attribute__((packed));
+} __rte_packed;
 
 /* rx_prod_bfr_bd (size:128b/16B) */
 struct rx_prod_bfr_bd {
@@ -2168,7 +2168,7 @@ struct rx_prod_bfr_bd {
 	 * be placed in host memory.
 	 */
 	uint64_t	address;
-} __attribute__((packed));
+} __rte_packed;
 
 /* rx_prod_agg_bd (size:128b/16B) */
 struct rx_prod_agg_bd {
@@ -2207,7 +2207,7 @@ struct rx_prod_agg_bd {
 	 * be placed in host memory.
 	 */
 	uint64_t	address;
-} __attribute__((packed));
+} __rte_packed;
 
 /* cmpl_base (size:128b/16B) */
 struct cmpl_base {
@@ -2292,7 +2292,7 @@ struct cmpl_base {
 	#define CMPL_BASE_INFO3_SFT 1
 	/* info4 is 32 b */
 	uint32_t	info4;
-} __attribute__((packed));
+} __rte_packed;
 
 /* tx_cmpl (size:128b/16B) */
 struct tx_cmpl {
@@ -2391,7 +2391,7 @@ struct tx_cmpl {
 	uint16_t	unused_1;
 	/* unused3 is 32 b */
 	uint32_t	unused_2;
-} __attribute__((packed));
+} __rte_packed;
 
 /* rx_pkt_cmpl (size:128b/16B) */
 struct rx_pkt_cmpl {
@@ -2589,7 +2589,7 @@ struct rx_pkt_cmpl {
 	 * based on the mode bits and key value in the VNIC.
 	 */
 	uint32_t	rss_hash;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Last 16 bytes of rx_pkt_cmpl. */
 /* rx_pkt_cmpl_hi (size:128b/16B) */
@@ -2935,7 +2935,7 @@ struct rx_pkt_cmpl_hi {
 	 */
 	#define RX_PKT_CMPL_REORDER_MASK UINT32_C(0xffffff)
 	#define RX_PKT_CMPL_REORDER_SFT 0
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * This TPA completion structure is used on devices where the
@@ -3100,7 +3100,7 @@ struct rx_tpa_start_cmpl {
 	 * based on the mode bits and key value in the VNIC.
 	 */
 	uint32_t	rss_hash;
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * Last 16 bytes of rx_tpa_start_cmpl.
@@ -3217,7 +3217,7 @@ struct rx_tpa_start_cmpl_hi {
 	 */
 	#define RX_TPA_START_CMPL_INNER_L4_SIZE_MASK  UINT32_C(0xf8000000)
 	#define RX_TPA_START_CMPL_INNER_L4_SIZE_SFT   27
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * This TPA completion structure is used on devices where the
@@ -3374,7 +3374,7 @@ struct rx_tpa_end_cmpl {
 	 *     option is present in the packet.
 	 */
 	uint32_t	tsdelta;
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * Last 16 bytes of rx_tpa_end_cmpl.
@@ -3450,7 +3450,7 @@ struct rx_tpa_end_cmpl_hi {
 	 * completion that corresponds to this TPA end completion.
 	 */
 	uint32_t	start_opaque;
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * This TPA completion structure is used on devices where the
@@ -3621,7 +3621,7 @@ struct rx_tpa_v2_start_cmpl {
 	 * based on the mode bits and key value in the VNIC.
 	 */
 	uint32_t	rss_hash;
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * Last 16 bytes of rx_tpa_v2_start_cmpl.
@@ -3836,7 +3836,7 @@ struct rx_tpa_v2_start_cmpl_hi {
 	 */
 	#define RX_TPA_V2_START_CMPL_INNER_L4_SIZE_MASK  UINT32_C(0xf8000000)
 	#define RX_TPA_V2_START_CMPL_INNER_L4_SIZE_SFT   27
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * This TPA completion structure is used on devices where the
@@ -3967,7 +3967,7 @@ struct rx_tpa_v2_end_cmpl {
 	 *     option is present in the packet.
 	 */
 	uint32_t	tsdelta;
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * Last 16 bytes of rx_tpa_v2_end_cmpl.
@@ -4077,7 +4077,7 @@ struct rx_tpa_v2_end_cmpl_hi {
 	 * completion that corresponds to this TPA end completion.
 	 */
 	uint32_t	start_opaque;
-} __attribute__((packed));
+} __rte_packed;
 
 /*
  * This TPA completion structure is used on devices where the
@@ -4131,7 +4131,7 @@ struct rx_tpa_v2_abuf_cmpl {
 	 */
 	uint16_t	agg_id;
 	uint32_t	unused_1;
-} __attribute__((packed));
+} __rte_packed;
 
 /* rx_abuf_cmpl (size:128b/16B) */
 struct rx_abuf_cmpl {
@@ -4175,7 +4175,7 @@ struct rx_abuf_cmpl {
 	#define RX_ABUF_CMPL_V     UINT32_C(0x1)
 	/* unused3 is 32 b */
 	uint32_t	unused_2;
-} __attribute__((packed));
+} __rte_packed;
 
 /* eject_cmpl (size:128b/16B) */
 struct eject_cmpl {
@@ -4257,7 +4257,7 @@ struct eject_cmpl {
 	uint16_t	reserved16;
 	/* unused3 is 32 b */
 	uint32_t	unused_2;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cmpl (size:128b/16B) */
 struct hwrm_cmpl {
@@ -4290,7 +4290,7 @@ struct hwrm_cmpl {
 	#define HWRM_CMPL_V     UINT32_C(0x1)
 	/* unused4 is 32 b */
 	uint32_t	unused_3;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_fwd_req_cmpl (size:128b/16B) */
 struct hwrm_fwd_req_cmpl {
@@ -4339,7 +4339,7 @@ struct hwrm_fwd_req_cmpl {
 	/* Address of forwarded request. */
 	#define HWRM_FWD_REQ_CMPL_REQ_BUF_ADDR_MASK UINT32_C(0xfffffffe)
 	#define HWRM_FWD_REQ_CMPL_REQ_BUF_ADDR_SFT 1
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_fwd_resp_cmpl (size:128b/16B) */
 struct hwrm_fwd_resp_cmpl {
@@ -4380,7 +4380,7 @@ struct hwrm_fwd_resp_cmpl {
 	/* Address of forwarded request. */
 	#define HWRM_FWD_RESP_CMPL_RESP_BUF_ADDR_MASK UINT32_C(0xfffffffe)
 	#define HWRM_FWD_RESP_CMPL_RESP_BUF_ADDR_SFT 1
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl (size:128b/16B) */
 struct hwrm_async_event_cmpl {
@@ -4550,7 +4550,7 @@ struct hwrm_async_event_cmpl {
 	uint16_t	timestamp_hi;
 	/* Event specific data */
 	uint32_t	event_data1;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_link_status_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_link_status_change {
@@ -4629,7 +4629,7 @@ struct hwrm_async_event_cmpl_link_status_change {
 		UINT32_C(0xff00000)
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_STATUS_CHANGE_EVENT_DATA1_PF_ID_SFT \
 		20
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_link_mtu_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_link_mtu_change {
@@ -4679,7 +4679,7 @@ struct hwrm_async_event_cmpl_link_mtu_change {
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_EVENT_DATA1_NEW_MTU_MASK \
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_EVENT_DATA1_NEW_MTU_SFT 0
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_link_speed_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_link_speed_change {
@@ -4774,7 +4774,7 @@ struct hwrm_async_event_cmpl_link_speed_change {
 		UINT32_C(0xffff0000)
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_PORT_ID_SFT \
 		16
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_dcb_config_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_dcb_config_change {
@@ -4855,7 +4855,7 @@ struct hwrm_async_event_cmpl_dcb_config_change {
 		(UINT32_C(0xff) << 24)
 	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_L2_PRIORITY_LAST \
 		HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_L2_PRIORITY_NONE
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_port_conn_not_allowed (size:128b/16B) */
 struct hwrm_async_event_cmpl_port_conn_not_allowed {
@@ -4931,7 +4931,7 @@ struct hwrm_async_event_cmpl_port_conn_not_allowed {
 		(UINT32_C(0x3) << 16)
 	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_LAST \
 		HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_PWRDOWN
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_link_speed_cfg_not_allowed (size:128b/16B) */
 struct hwrm_async_event_cmpl_link_speed_cfg_not_allowed {
@@ -4984,7 +4984,7 @@ struct hwrm_async_event_cmpl_link_speed_cfg_not_allowed {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_EVENT_DATA1_PORT_ID_SFT \
 		0
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_link_speed_cfg_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_link_speed_cfg_change {
@@ -5053,7 +5053,7 @@ struct hwrm_async_event_cmpl_link_speed_cfg_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_EVENT_DATA1_ILLEGAL_LINK_SPEED_CFG \
 		UINT32_C(0x20000)
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_port_phy_cfg_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_port_phy_cfg_change {
@@ -5129,7 +5129,7 @@ struct hwrm_async_event_cmpl_port_phy_cfg_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_DATA1_PAUSE_CFG_CHANGE \
 		UINT32_C(0x40000)
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_reset_notify (size:128b/16B) */
 struct hwrm_async_event_cmpl_reset_notify {
@@ -5229,7 +5229,7 @@ struct hwrm_async_event_cmpl_reset_notify {
 		UINT32_C(0xffff0000)
 	#define HWRM_ASYNC_EVENT_CMPL_RESET_NOTIFY_EVENT_DATA1_DELAY_IN_100MS_TICKS_SFT \
 		16
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_error_recovery (size:128b/16B) */
 struct hwrm_async_event_cmpl_error_recovery {
@@ -5298,7 +5298,7 @@ struct hwrm_async_event_cmpl_error_recovery {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_RECOVERY_ENABLED \
 		UINT32_C(0x2)
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_func_drvr_unload (size:128b/16B) */
 struct hwrm_async_event_cmpl_func_drvr_unload {
@@ -5349,7 +5349,7 @@ struct hwrm_async_event_cmpl_func_drvr_unload {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_EVENT_DATA1_FUNC_ID_SFT \
 		0
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_func_drvr_load (size:128b/16B) */
 struct hwrm_async_event_cmpl_func_drvr_load {
@@ -5398,7 +5398,7 @@ struct hwrm_async_event_cmpl_func_drvr_load {
 	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_EVENT_DATA1_FUNC_ID_MASK \
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_EVENT_DATA1_FUNC_ID_SFT 0
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_func_flr_proc_cmplt (size:128b/16B) */
 struct hwrm_async_event_cmpl_func_flr_proc_cmplt {
@@ -5451,7 +5451,7 @@ struct hwrm_async_event_cmpl_func_flr_proc_cmplt {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_EVENT_DATA1_FUNC_ID_SFT \
 		0
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_pf_drvr_unload (size:128b/16B) */
 struct hwrm_async_event_cmpl_pf_drvr_unload {
@@ -5504,7 +5504,7 @@ struct hwrm_async_event_cmpl_pf_drvr_unload {
 	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_DATA1_PORT_MASK \
 		UINT32_C(0x70000)
 	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_DATA1_PORT_SFT    16
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_pf_drvr_load (size:128b/16B) */
 struct hwrm_async_event_cmpl_pf_drvr_load {
@@ -5557,7 +5557,7 @@ struct hwrm_async_event_cmpl_pf_drvr_load {
 	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_DATA1_PORT_MASK \
 		UINT32_C(0x70000)
 	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_DATA1_PORT_SFT    16
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_vf_flr (size:128b/16B) */
 struct hwrm_async_event_cmpl_vf_flr {
@@ -5609,7 +5609,7 @@ struct hwrm_async_event_cmpl_vf_flr {
 	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_PF_ID_MASK \
 		UINT32_C(0xff0000)
 	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_PF_ID_SFT 16
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_vf_mac_addr_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_vf_mac_addr_change {
@@ -5661,7 +5661,7 @@ struct hwrm_async_event_cmpl_vf_mac_addr_change {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_EVENT_DATA1_VF_ID_SFT \
 		0
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_pf_vf_comm_status_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_pf_vf_comm_status_change {
@@ -5717,7 +5717,7 @@ struct hwrm_async_event_cmpl_pf_vf_comm_status_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_EVENT_DATA1_COMM_ESTABLISHED \
 		UINT32_C(0x1)
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_vf_cfg_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_vf_cfg_change {
@@ -5802,7 +5802,7 @@ struct hwrm_async_event_cmpl_vf_cfg_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_EVENT_DATA1_TRUSTED_VF_CFG_CHANGE \
 		UINT32_C(0x10)
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_llfc_pfc_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_llfc_pfc_change {
@@ -5881,7 +5881,7 @@ struct hwrm_async_event_cmpl_llfc_pfc_change {
 		UINT32_C(0x1fffe0)
 	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_PORT_ID_SFT \
 		5
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_default_vnic_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_default_vnic_change {
@@ -5963,7 +5963,7 @@ struct hwrm_async_event_cmpl_default_vnic_change {
 		UINT32_C(0x3fffc00)
 	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_VF_ID_SFT \
 		10
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_hw_flow_aged (size:128b/16B) */
 struct hwrm_async_event_cmpl_hw_flow_aged {
@@ -6030,7 +6030,7 @@ struct hwrm_async_event_cmpl_hw_flow_aged {
 		(UINT32_C(0x1) << 31)
 	#define HWRM_ASYNC_EVENT_CMPL_HW_FLOW_AGED_EVENT_DATA1_FLOW_DIRECTION_LAST \
 		HWRM_ASYNC_EVENT_CMPL_HW_FLOW_AGED_EVENT_DATA1_FLOW_DIRECTION_TX
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_eem_cache_flush_req (size:128b/16B) */
 struct hwrm_async_event_cmpl_eem_cache_flush_req {
@@ -6078,7 +6078,7 @@ struct hwrm_async_event_cmpl_eem_cache_flush_req {
 	uint16_t	timestamp_hi;
 	/* Event specific data */
 	uint32_t	event_data1;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_eem_cache_flush_done (size:128b/16B) */
 struct hwrm_async_event_cmpl_eem_cache_flush_done {
@@ -6134,7 +6134,7 @@ struct hwrm_async_event_cmpl_eem_cache_flush_done {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_EVENT_DATA1_FID_SFT \
 		0
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_tcp_flag_action_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_tcp_flag_action_change {
@@ -6182,7 +6182,7 @@ struct hwrm_async_event_cmpl_tcp_flag_action_change {
 	uint16_t	timestamp_hi;
 	/* Event specific data */
 	uint32_t	event_data1;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_eem_flow_active (size:128b/16B) */
 struct hwrm_async_event_cmpl_eem_flow_active {
@@ -6282,7 +6282,7 @@ struct hwrm_async_event_cmpl_eem_flow_active {
 		(UINT32_C(0x1) << 31)
 	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_MODE_LAST \
 		HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_MODE_1
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_eem_cfg_change (size:128b/16B) */
 struct hwrm_async_event_cmpl_eem_cfg_change {
@@ -6339,7 +6339,7 @@ struct hwrm_async_event_cmpl_eem_cfg_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_EVENT_DATA1_EEM_RX_ENABLE \
 		UINT32_C(0x2)
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_quiesce_done (size:128b/16B) */
 struct hwrm_async_event_cmpl_quiesce_done {
@@ -6412,7 +6412,7 @@ struct hwrm_async_event_cmpl_quiesce_done {
 	/* Time stamp for error event */
 	#define HWRM_ASYNC_EVENT_CMPL_QUIESCE_DONE_EVENT_DATA1_TIMESTAMP \
 		UINT32_C(0x1)
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_fw_trace_msg (size:128b/16B) */
 struct hwrm_async_event_cmpl_fw_trace_msg {
@@ -6519,7 +6519,7 @@ struct hwrm_async_event_cmpl_fw_trace_msg {
 	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE9_MASK \
 		UINT32_C(0xff000000)
 	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE9_SFT 24
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_async_event_cmpl_hwrm_error (size:128b/16B) */
 struct hwrm_async_event_cmpl_hwrm_error {
@@ -6582,7 +6582,7 @@ struct hwrm_async_event_cmpl_hwrm_error {
 	/* Time stamp for error event */
 	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA1_TIMESTAMP \
 		UINT32_C(0x1)
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************
  * hwrm_func_reset *
@@ -6665,7 +6665,7 @@ struct hwrm_func_reset_input {
 	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_LAST \
 		HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETVF
 	uint8_t	unused_0;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_reset_output (size:128b/16B) */
 struct hwrm_func_reset_output {
@@ -6686,7 +6686,7 @@ struct hwrm_func_reset_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************
  * hwrm_func_getfid *
@@ -6737,7 +6737,7 @@ struct hwrm_func_getfid_input {
 	 */
 	uint16_t	pci_id;
 	uint8_t	unused_0[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_getfid_output (size:128b/16B) */
 struct hwrm_func_getfid_output {
@@ -6763,7 +6763,7 @@ struct hwrm_func_getfid_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_func_vf_alloc *
@@ -6813,7 +6813,7 @@ struct hwrm_func_vf_alloc_input {
 	uint16_t	first_vf_id;
 	/* The number of virtual functions requested. */
 	uint16_t	num_vfs;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_vf_alloc_output (size:128b/16B) */
 struct hwrm_func_vf_alloc_output {
@@ -6836,7 +6836,7 @@ struct hwrm_func_vf_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************
  * hwrm_func_vf_free *
@@ -6889,7 +6889,7 @@ struct hwrm_func_vf_free_input {
 	 * 0xFFFF - Cleanup all children of this PF.
 	 */
 	uint16_t	num_vfs;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_vf_free_output (size:128b/16B) */
 struct hwrm_func_vf_free_output {
@@ -6910,7 +6910,7 @@ struct hwrm_func_vf_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************
  * hwrm_func_vf_cfg *
@@ -7153,7 +7153,7 @@ struct hwrm_func_vf_cfg_input {
 	/* The number of HW ring groups requested for the VF. */
 	uint16_t	num_hw_ring_grps;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_vf_cfg_output (size:128b/16B) */
 struct hwrm_func_vf_cfg_output {
@@ -7174,7 +7174,7 @@ struct hwrm_func_vf_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************
  * hwrm_func_qcaps *
@@ -7218,7 +7218,7 @@ struct hwrm_func_qcaps_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_qcaps_output (size:640b/80B) */
 struct hwrm_func_qcaps_output {
@@ -7560,7 +7560,7 @@ struct hwrm_func_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************
  * hwrm_func_qcfg *
@@ -7604,7 +7604,7 @@ struct hwrm_func_qcfg_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_qcfg_output (size:704b/88B) */
 struct hwrm_func_qcfg_output {
@@ -8025,7 +8025,7 @@ struct hwrm_func_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************
  * hwrm_func_cfg *
@@ -8655,7 +8655,7 @@ struct hwrm_func_cfg_input {
 	 * be reserved for this function on the RX side.
 	 */
 	uint16_t	num_mcast_filters;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_cfg_output (size:128b/16B) */
 struct hwrm_func_cfg_output {
@@ -8676,7 +8676,7 @@ struct hwrm_func_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************
  * hwrm_func_qstats *
@@ -8733,7 +8733,7 @@ struct hwrm_func_qstats_input {
 	#define HWRM_FUNC_QSTATS_INPUT_FLAGS_LAST \
 		HWRM_FUNC_QSTATS_INPUT_FLAGS_ROCE_ONLY
 	uint8_t	unused_0[5];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_qstats_output (size:1408b/176B) */
 struct hwrm_func_qstats_output {
@@ -8815,7 +8815,7 @@ struct hwrm_func_qstats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_func_clr_stats *
@@ -8859,7 +8859,7 @@ struct hwrm_func_clr_stats_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_clr_stats_output (size:128b/16B) */
 struct hwrm_func_clr_stats_output {
@@ -8880,7 +8880,7 @@ struct hwrm_func_clr_stats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_func_vf_resc_free *
@@ -8923,7 +8923,7 @@ struct hwrm_func_vf_resc_free_input {
 	 */
 	uint16_t	vf_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_vf_resc_free_output (size:128b/16B) */
 struct hwrm_func_vf_resc_free_output {
@@ -8944,7 +8944,7 @@ struct hwrm_func_vf_resc_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_func_drv_rgtr *
@@ -9168,7 +9168,7 @@ struct hwrm_func_drv_rgtr_input {
 	uint16_t	ver_upd;
 	/* This is the 16bit patch version of the driver. */
 	uint16_t	ver_patch;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_drv_rgtr_output (size:128b/16B) */
 struct hwrm_func_drv_rgtr_output {
@@ -9196,7 +9196,7 @@ struct hwrm_func_drv_rgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /************************
  * hwrm_func_drv_unrgtr *
@@ -9241,7 +9241,7 @@ struct hwrm_func_drv_unrgtr_input {
 	#define HWRM_FUNC_DRV_UNRGTR_INPUT_FLAGS_PREPARE_FOR_SHUTDOWN \
 		UINT32_C(0x1)
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_drv_unrgtr_output (size:128b/16B) */
 struct hwrm_func_drv_unrgtr_output {
@@ -9262,7 +9262,7 @@ struct hwrm_func_drv_unrgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_func_buf_rgtr *
@@ -9376,7 +9376,7 @@ struct hwrm_func_buf_rgtr_input {
 	 * HWRM.
 	 */
 	uint64_t	resp_buf_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_buf_rgtr_output (size:128b/16B) */
 struct hwrm_func_buf_rgtr_output {
@@ -9397,7 +9397,7 @@ struct hwrm_func_buf_rgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /************************
  * hwrm_func_buf_unrgtr *
@@ -9446,7 +9446,7 @@ struct hwrm_func_buf_unrgtr_input {
 	 */
 	uint16_t	vf_id;
 	uint8_t	unused_0[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_buf_unrgtr_output (size:128b/16B) */
 struct hwrm_func_buf_unrgtr_output {
@@ -9467,7 +9467,7 @@ struct hwrm_func_buf_unrgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_func_drv_qver *
@@ -9513,7 +9513,7 @@ struct hwrm_func_drv_qver_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_drv_qver_output (size:256b/32B) */
 struct hwrm_func_drv_qver_output {
@@ -9575,7 +9575,7 @@ struct hwrm_func_drv_qver_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /****************************
  * hwrm_func_resource_qcaps *
@@ -9619,7 +9619,7 @@ struct hwrm_func_resource_qcaps_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_resource_qcaps_output (size:448b/56B) */
 struct hwrm_func_resource_qcaps_output {
@@ -9705,7 +9705,7 @@ struct hwrm_func_resource_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************************
  * hwrm_func_backing_store_qcaps *
@@ -9742,7 +9742,7 @@ struct hwrm_func_backing_store_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_backing_store_qcaps_output (size:640b/80B) */
 struct hwrm_func_backing_store_qcaps_output {
@@ -9872,7 +9872,7 @@ struct hwrm_func_backing_store_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_func_backing_store_cfg *
@@ -10886,7 +10886,7 @@ struct hwrm_func_backing_store_cfg_input {
 	uint16_t	mrav_entry_size;
 	/* Number of bytes that have been allocated for each context entry. */
 	uint16_t	tim_entry_size;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_backing_store_cfg_output (size:128b/16B) */
 struct hwrm_func_backing_store_cfg_output {
@@ -10907,7 +10907,7 @@ struct hwrm_func_backing_store_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************************
  * hwrm_func_backing_store_qcfg *
@@ -10944,7 +10944,7 @@ struct hwrm_func_backing_store_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_backing_store_qcfg_output (size:1920b/240B) */
 struct hwrm_func_backing_store_qcfg_output {
@@ -11821,7 +11821,7 @@ struct hwrm_func_backing_store_qcfg_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /****************************
  * hwrm_error_recovery_qcfg *
@@ -11859,7 +11859,7 @@ struct hwrm_error_recovery_qcfg_input {
 	 */
 	uint64_t	resp_addr;
 	uint8_t	unused_0[8];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_error_recovery_qcfg_output (size:1664b/208B) */
 struct hwrm_error_recovery_qcfg_output {
@@ -12188,7 +12188,7 @@ struct hwrm_error_recovery_qcfg_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_func_vlan_qcfg *
@@ -12233,7 +12233,7 @@ struct hwrm_func_vlan_qcfg_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_vlan_qcfg_output (size:320b/40B) */
 struct hwrm_func_vlan_qcfg_output {
@@ -12279,7 +12279,7 @@ struct hwrm_func_vlan_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_func_vlan_cfg *
@@ -12380,7 +12380,7 @@ struct hwrm_func_vlan_cfg_input {
 	/* Future use. */
 	uint32_t	rsvd2;
 	uint8_t	unused_3[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_vlan_cfg_output (size:128b/16B) */
 struct hwrm_func_vlan_cfg_output {
@@ -12401,7 +12401,7 @@ struct hwrm_func_vlan_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_func_vf_vnic_ids_query *
@@ -12448,7 +12448,7 @@ struct hwrm_func_vf_vnic_ids_query_input {
 	uint32_t	max_vnic_id_cnt;
 	/* This is the address for VF VNIC ID table */
 	uint64_t	vnic_id_tbl_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_vf_vnic_ids_query_output (size:128b/16B) */
 struct hwrm_func_vf_vnic_ids_query_output {
@@ -12475,7 +12475,7 @@ struct hwrm_func_vf_vnic_ids_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_func_vf_bw_cfg *
@@ -12579,7 +12579,7 @@ struct hwrm_func_vf_bw_cfg_input {
 		(UINT32_C(0xf) << 12)
 	#define HWRM_FUNC_VF_BW_CFG_INPUT_VFN_RATE_LAST \
 		HWRM_FUNC_VF_BW_CFG_INPUT_VFN_RATE_PCT_100
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_vf_bw_cfg_output (size:128b/16B) */
 struct hwrm_func_vf_bw_cfg_output {
@@ -12600,7 +12600,7 @@ struct hwrm_func_vf_bw_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /************************
  * hwrm_func_vf_bw_qcfg *
@@ -12649,7 +12649,7 @@ struct hwrm_func_vf_bw_qcfg_input {
 	/* The physical VF id of interest */
 	#define HWRM_FUNC_VF_BW_QCFG_INPUT_VFN_VFID_MASK UINT32_C(0xfff)
 	#define HWRM_FUNC_VF_BW_QCFG_INPUT_VFN_VFID_SFT 0
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_vf_bw_qcfg_output (size:960b/120B) */
 struct hwrm_func_vf_bw_qcfg_output {
@@ -12738,7 +12738,7 @@ struct hwrm_func_vf_bw_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_func_drv_if_change *
@@ -12791,7 +12791,7 @@ struct hwrm_func_drv_if_change_input {
 	 */
 	#define HWRM_FUNC_DRV_IF_CHANGE_INPUT_FLAGS_UP     UINT32_C(0x1)
 	uint32_t	unused;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_drv_if_change_output (size:128b/16B) */
 struct hwrm_func_drv_if_change_output {
@@ -12827,7 +12827,7 @@ struct hwrm_func_drv_if_change_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_func_host_pf_ids_query *
@@ -12913,7 +12913,7 @@ struct hwrm_func_host_pf_ids_query_input {
 	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_FILTER_LAST \
 		HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_FILTER_ROCE
 	uint8_t	unused_1[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_func_host_pf_ids_query_output (size:128b/16B) */
 struct hwrm_func_host_pf_ids_query_output {
@@ -13033,7 +13033,7 @@ struct hwrm_func_host_pf_ids_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************
  * hwrm_port_phy_cfg *
@@ -13575,7 +13575,7 @@ struct hwrm_port_phy_cfg_input {
 	#define HWRM_PORT_PHY_CFG_INPUT_TX_LPI_TIMER_MASK UINT32_C(0xffffff)
 	#define HWRM_PORT_PHY_CFG_INPUT_TX_LPI_TIMER_SFT 0
 	uint32_t	unused_3;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_phy_cfg_output (size:128b/16B) */
 struct hwrm_port_phy_cfg_output {
@@ -13596,7 +13596,7 @@ struct hwrm_port_phy_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_phy_cfg_cmd_err (size:64b/8B) */
 struct hwrm_port_phy_cfg_cmd_err {
@@ -13625,7 +13625,7 @@ struct hwrm_port_phy_cfg_cmd_err {
 	#define HWRM_PORT_PHY_CFG_CMD_ERR_CODE_LAST \
 		HWRM_PORT_PHY_CFG_CMD_ERR_CODE_RETRY
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_port_phy_qcfg *
@@ -13665,7 +13665,7 @@ struct hwrm_port_phy_qcfg_input {
 	/* Port ID of port that is to be queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_phy_qcfg_output (size:768b/96B) */
 struct hwrm_port_phy_qcfg_output {
@@ -14513,7 +14513,7 @@ struct hwrm_port_phy_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************
  * hwrm_port_mac_cfg *
@@ -14914,7 +14914,7 @@ struct hwrm_port_mac_cfg_input {
 	 */
 	int32_t	ptp_freq_adj_ppb;
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_mac_cfg_output (size:128b/16B) */
 struct hwrm_port_mac_cfg_output {
@@ -14968,7 +14968,7 @@ struct hwrm_port_mac_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_port_mac_qcfg *
@@ -15008,7 +15008,7 @@ struct hwrm_port_mac_qcfg_input {
 	/* Port ID of port that is to be configured. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_mac_qcfg_output (size:192b/24B) */
 struct hwrm_port_mac_qcfg_output {
@@ -15258,7 +15258,7 @@ struct hwrm_port_mac_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_port_mac_ptp_qcfg *
@@ -15298,7 +15298,7 @@ struct hwrm_port_mac_ptp_qcfg_input {
 	/* Port ID of port that is being queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_mac_ptp_qcfg_output (size:640b/80B) */
 struct hwrm_port_mac_ptp_qcfg_output {
@@ -15373,7 +15373,7 @@ struct hwrm_port_mac_ptp_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Port Tx Statistics Formats */
 /* tx_port_stats (size:3264b/408B) */
@@ -15514,7 +15514,7 @@ struct tx_port_stats {
 	uint64_t	tx_stat_discard;
 	/* Total Tx Error Drops per Port reported by STATS block */
 	uint64_t	tx_stat_error;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Port Rx Statistics Formats */
 /* rx_port_stats (size:4224b/528B) */
@@ -15729,7 +15729,7 @@ struct rx_port_stats {
 	/* Total Rx Discards per Port reported by STATS block */
 	uint64_t	rx_stat_discard;
 	uint64_t	rx_stat_err;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************
  * hwrm_port_qstats *
@@ -15779,7 +15779,7 @@ struct hwrm_port_qstats_input {
 	 * Rx port statistics will be stored
 	 */
 	uint64_t	rx_stat_host_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_qstats_output (size:128b/16B) */
 struct hwrm_port_qstats_output {
@@ -15804,7 +15804,7 @@ struct hwrm_port_qstats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Port Tx Statistics extended Formats */
 /* tx_port_stats_ext (size:2048b/256B) */
@@ -15873,7 +15873,7 @@ struct tx_port_stats_ext {
 	uint64_t	pfc_pri7_tx_duration_us;
 	/* Number of times, a XON -> XOFF and XOFF -> XON transitions occur for priority 7 */
 	uint64_t	pfc_pri7_tx_transitions;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Port Rx Statistics extended Formats */
 /* rx_port_stats_ext (size:3648b/456B) */
@@ -15995,7 +15995,7 @@ struct rx_port_stats_ext {
 	uint64_t	rx_discard_packets_cos6;
 	/* Total number of rx discard packets count on cos queue 7 */
 	uint64_t	rx_discard_packets_cos7;
-} __attribute__((packed));
+} __rte_packed;
 
 /************************
  * hwrm_port_qstats_ext *
@@ -16055,7 +16055,7 @@ struct hwrm_port_qstats_ext_input {
 	 * Rx port statistics will be stored
 	 */
 	uint64_t	rx_stat_host_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_qstats_ext_output (size:128b/16B) */
 struct hwrm_port_qstats_ext_output {
@@ -16088,7 +16088,7 @@ struct hwrm_port_qstats_ext_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_port_lpbk_qstats *
@@ -16125,7 +16125,7 @@ struct hwrm_port_lpbk_qstats_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_lpbk_qstats_output (size:768b/96B) */
 struct hwrm_port_lpbk_qstats_output {
@@ -16166,7 +16166,7 @@ struct hwrm_port_lpbk_qstats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_port_clr_stats *
@@ -16217,7 +16217,7 @@ struct hwrm_port_clr_stats_input {
 	 */
 	#define HWRM_PORT_CLR_STATS_INPUT_FLAGS_ROCE_COUNTERS     UINT32_C(0x1)
 	uint8_t	unused_0[5];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_clr_stats_output (size:128b/16B) */
 struct hwrm_port_clr_stats_output {
@@ -16238,7 +16238,7 @@ struct hwrm_port_clr_stats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_port_phy_qcaps *
@@ -16278,7 +16278,7 @@ struct hwrm_port_phy_qcaps_input {
 	/* Port ID of port that is being queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_phy_qcaps_output (size:192b/24B) */
 struct hwrm_port_phy_qcaps_output {
@@ -16508,7 +16508,7 @@ struct hwrm_port_phy_qcaps_output {
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_VALID_MASK \
 		UINT32_C(0xff000000)
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_VALID_SFT             24
-} __attribute__((packed));
+} __rte_packed;
 
 /****************************
  * hwrm_port_phy_mdio_write *
@@ -16564,7 +16564,7 @@ struct hwrm_port_phy_mdio_write_input {
 	uint8_t	cl45_mdio;
 	/*  */
 	uint8_t	unused_1[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_phy_mdio_write_output (size:128b/16B) */
 struct hwrm_port_phy_mdio_write_output {
@@ -16585,7 +16585,7 @@ struct hwrm_port_phy_mdio_write_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_port_phy_mdio_read *
@@ -16639,7 +16639,7 @@ struct hwrm_port_phy_mdio_read_input {
 	uint8_t	cl45_mdio;
 	/*  */
 	uint8_t	unused_1;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_phy_mdio_read_output (size:128b/16B) */
 struct hwrm_port_phy_mdio_read_output {
@@ -16662,7 +16662,7 @@ struct hwrm_port_phy_mdio_read_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************
  * hwrm_port_led_cfg *
@@ -17065,7 +17065,7 @@ struct hwrm_port_led_cfg_input {
 	uint8_t	led3_group_id;
 	/* Reserved field. */
 	uint8_t	rsvd3;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_led_cfg_output (size:128b/16B) */
 struct hwrm_port_led_cfg_output {
@@ -17086,7 +17086,7 @@ struct hwrm_port_led_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_port_led_qcfg *
@@ -17126,7 +17126,7 @@ struct hwrm_port_led_qcfg_input {
 	/* Port ID of port whose LED configuration is being queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_led_qcfg_output (size:448b/56B) */
 struct hwrm_port_led_qcfg_output {
@@ -17392,7 +17392,7 @@ struct hwrm_port_led_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_port_led_qcaps *
@@ -17432,7 +17432,7 @@ struct hwrm_port_led_qcaps_input {
 	/* Port ID of port whose LED configuration is being queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_led_qcaps_output (size:384b/48B) */
 struct hwrm_port_led_qcaps_output {
@@ -17744,7 +17744,7 @@ struct hwrm_port_led_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_port_prbs_test *
@@ -17851,7 +17851,7 @@ struct hwrm_port_prbs_test_input {
 	 * bit1 = lane1 ..bit31 = lane31
 	 */
 	uint32_t	rx_lane_map;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_prbs_test_output (size:128b/16B) */
 struct hwrm_port_prbs_test_output {
@@ -17875,7 +17875,7 @@ struct hwrm_port_prbs_test_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_port_dsc_dump *
@@ -17983,7 +17983,7 @@ struct hwrm_port_dsc_dump_input {
 	 */
 	#define HWRM_PORT_DSC_DUMP_INPUT_DSC_DUMP_CONFIG_START_RETRIEVE \
 		UINT32_C(0x1)
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_dsc_dump_output (size:128b/16B) */
 struct hwrm_port_dsc_dump_output {
@@ -18007,7 +18007,7 @@ struct hwrm_port_dsc_dump_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************************
  * hwrm_port_sfp_sideband_cfg *
@@ -18127,7 +18127,7 @@ struct hwrm_port_sfp_sideband_cfg_input {
 	/* When this bit is set to '1', the module will be powered down. */
 	#define HWRM_PORT_SFP_SIDEBAND_CFG_INPUT_FLAGS_PWR_DIS \
 		UINT32_C(0x40)
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_sfp_sideband_cfg_output (size:128b/16B) */
 struct hwrm_port_sfp_sideband_cfg_output {
@@ -18148,7 +18148,7 @@ struct hwrm_port_sfp_sideband_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_port_sfp_sideband_qcfg *
@@ -18188,7 +18188,7 @@ struct hwrm_port_sfp_sideband_qcfg_input {
 	/* Port ID of port that is to be queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_sfp_sideband_qcfg_output (size:192b/24B) */
 struct hwrm_port_sfp_sideband_qcfg_output {
@@ -18271,7 +18271,7 @@ struct hwrm_port_sfp_sideband_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************************
  * hwrm_port_phy_mdio_bus_acquire *
@@ -18326,7 +18326,7 @@ struct hwrm_port_phy_mdio_bus_acquire_input {
 	 */
 	uint16_t	mdio_bus_timeout;
 	uint8_t	unused_0[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_phy_mdio_bus_acquire_output (size:128b/16B) */
 struct hwrm_port_phy_mdio_bus_acquire_output {
@@ -18353,7 +18353,7 @@ struct hwrm_port_phy_mdio_bus_acquire_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************************
  * hwrm_port_phy_mdio_bus_release *
@@ -18398,7 +18398,7 @@ struct hwrm_port_phy_mdio_bus_release_input {
 	 */
 	uint16_t	client_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_phy_mdio_bus_release_output (size:128b/16B) */
 struct hwrm_port_phy_mdio_bus_release_output {
@@ -18422,7 +18422,7 @@ struct hwrm_port_phy_mdio_bus_release_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_queue_qportcfg *
@@ -18489,7 +18489,7 @@ struct hwrm_queue_qportcfg_input {
 	#define HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_LAST \
 		HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_ENABLED
 	uint8_t	unused_0;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_qportcfg_output (size:256b/32B) */
 struct hwrm_queue_qportcfg_output {
@@ -18875,7 +18875,7 @@ struct hwrm_queue_qportcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************
  * hwrm_queue_qcfg *
@@ -18927,7 +18927,7 @@ struct hwrm_queue_qcfg_input {
 		HWRM_QUEUE_QCFG_INPUT_FLAGS_PATH_RX
 	/* Queue ID of the queue. */
 	uint32_t	queue_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_qcfg_output (size:128b/16B) */
 struct hwrm_queue_qcfg_output {
@@ -18973,7 +18973,7 @@ struct hwrm_queue_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************
  * hwrm_queue_cfg *
@@ -19056,7 +19056,7 @@ struct hwrm_queue_cfg_input {
 	#define HWRM_QUEUE_CFG_INPUT_SERVICE_PROFILE_LAST \
 		HWRM_QUEUE_CFG_INPUT_SERVICE_PROFILE_UNKNOWN
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_cfg_output (size:128b/16B) */
 struct hwrm_queue_cfg_output {
@@ -19077,7 +19077,7 @@ struct hwrm_queue_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************************
  * hwrm_queue_pfcenable_qcfg *
@@ -19121,7 +19121,7 @@ struct hwrm_queue_pfcenable_qcfg_input {
 	 */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_pfcenable_qcfg_output (size:128b/16B) */
 struct hwrm_queue_pfcenable_qcfg_output {
@@ -19167,7 +19167,7 @@ struct hwrm_queue_pfcenable_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /****************************
  * hwrm_queue_pfcenable_cfg *
@@ -19236,7 +19236,7 @@ struct hwrm_queue_pfcenable_cfg_input {
 	 */
 	uint16_t	port_id;
 	uint8_t	unused_0[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_pfcenable_cfg_output (size:128b/16B) */
 struct hwrm_queue_pfcenable_cfg_output {
@@ -19257,7 +19257,7 @@ struct hwrm_queue_pfcenable_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_queue_pri2cos_qcfg *
@@ -19321,7 +19321,7 @@ struct hwrm_queue_pri2cos_qcfg_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[3];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_pri2cos_qcfg_output (size:192b/24B) */
 struct hwrm_queue_pri2cos_qcfg_output {
@@ -19408,7 +19408,7 @@ struct hwrm_queue_pri2cos_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_queue_pri2cos_cfg *
@@ -19564,7 +19564,7 @@ struct hwrm_queue_pri2cos_cfg_input {
 	 */
 	uint8_t	pri7_cos_queue_id;
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_pri2cos_cfg_output (size:128b/16B) */
 struct hwrm_queue_pri2cos_cfg_output {
@@ -19585,7 +19585,7 @@ struct hwrm_queue_pri2cos_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_queue_cos2bw_qcfg *
@@ -19629,7 +19629,7 @@ struct hwrm_queue_cos2bw_qcfg_input {
 	 */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_cos2bw_qcfg_output (size:896b/112B) */
 struct hwrm_queue_cos2bw_qcfg_output {
@@ -20628,7 +20628,7 @@ struct hwrm_queue_cos2bw_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_queue_cos2bw_cfg *
@@ -21699,7 +21699,7 @@ struct hwrm_queue_cos2bw_cfg_input {
 	 */
 	uint8_t	queue_id7_bw_weight;
 	uint8_t	unused_1[5];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_cos2bw_cfg_output (size:128b/16B) */
 struct hwrm_queue_cos2bw_cfg_output {
@@ -21720,7 +21720,7 @@ struct hwrm_queue_cos2bw_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_queue_dscp_qcaps *
@@ -21764,7 +21764,7 @@ struct hwrm_queue_dscp_qcaps_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_dscp_qcaps_output (size:128b/16B) */
 struct hwrm_queue_dscp_qcaps_output {
@@ -21790,7 +21790,7 @@ struct hwrm_queue_dscp_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /****************************
  * hwrm_queue_dscp2pri_qcfg *
@@ -21842,7 +21842,7 @@ struct hwrm_queue_dscp2pri_qcfg_input {
 	/* Size of the buffer pointed to by dest_data_addr. */
 	uint16_t	dest_data_buffer_size;
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_dscp2pri_qcfg_output (size:128b/16B) */
 struct hwrm_queue_dscp2pri_qcfg_output {
@@ -21873,7 +21873,7 @@ struct hwrm_queue_dscp2pri_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_queue_dscp2pri_cfg *
@@ -21943,7 +21943,7 @@ struct hwrm_queue_dscp2pri_cfg_input {
 	 */
 	uint16_t	entry_cnt;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_dscp2pri_cfg_output (size:128b/16B) */
 struct hwrm_queue_dscp2pri_cfg_output {
@@ -21964,7 +21964,7 @@ struct hwrm_queue_dscp2pri_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_queue_mpls_qcaps *
@@ -22008,7 +22008,7 @@ struct hwrm_queue_mpls_qcaps_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_mpls_qcaps_output (size:128b/16B) */
 struct hwrm_queue_mpls_qcaps_output {
@@ -22047,7 +22047,7 @@ struct hwrm_queue_mpls_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************************
  * hwrm_queue_mplstc2pri_qcfg *
@@ -22091,7 +22091,7 @@ struct hwrm_queue_mplstc2pri_qcfg_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_mplstc2pri_qcfg_output (size:192b/24B) */
 struct hwrm_queue_mplstc2pri_qcfg_output {
@@ -22168,7 +22168,7 @@ struct hwrm_queue_mplstc2pri_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************************
  * hwrm_queue_mplstc2pri_cfg *
@@ -22301,7 +22301,7 @@ struct hwrm_queue_mplstc2pri_cfg_input {
 	 * be changed before traffic has started.
 	 */
 	uint8_t	tc7_pri_queue_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_queue_mplstc2pri_cfg_output (size:128b/16B) */
 struct hwrm_queue_mplstc2pri_cfg_output {
@@ -22322,7 +22322,7 @@ struct hwrm_queue_mplstc2pri_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************
  * hwrm_vnic_alloc *
@@ -22366,7 +22366,7 @@ struct hwrm_vnic_alloc_input {
 	 */
 	#define HWRM_VNIC_ALLOC_INPUT_FLAGS_DEFAULT     UINT32_C(0x1)
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_alloc_output (size:128b/16B) */
 struct hwrm_vnic_alloc_output {
@@ -22389,7 +22389,7 @@ struct hwrm_vnic_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************
  * hwrm_vnic_free *
@@ -22429,7 +22429,7 @@ struct hwrm_vnic_free_input {
 	/* Logical vnic ID */
 	uint32_t	vnic_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_free_output (size:128b/16B) */
 struct hwrm_vnic_free_output {
@@ -22450,7 +22450,7 @@ struct hwrm_vnic_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************
  * hwrm_vnic_cfg *
@@ -22661,7 +22661,7 @@ struct hwrm_vnic_cfg_input {
 	 */
 	uint16_t	queue_id;
 	uint8_t	unused0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_cfg_output (size:128b/16B) */
 struct hwrm_vnic_cfg_output {
@@ -22682,7 +22682,7 @@ struct hwrm_vnic_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************
  * hwrm_vnic_qcfg *
@@ -22730,7 +22730,7 @@ struct hwrm_vnic_qcfg_input {
 	/* ID of Virtual Function whose VNIC resource is being queried. */
 	uint16_t	vf_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_qcfg_output (size:256b/32B) */
 struct hwrm_vnic_qcfg_output {
@@ -22844,7 +22844,7 @@ struct hwrm_vnic_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************
  * hwrm_vnic_qcaps *
@@ -22883,7 +22883,7 @@ struct hwrm_vnic_qcaps_input {
 	uint64_t	resp_addr;
 	uint32_t	enables;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_qcaps_output (size:192b/24B) */
 struct hwrm_vnic_qcaps_output {
@@ -22987,7 +22987,7 @@ struct hwrm_vnic_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************
  * hwrm_vnic_tpa_cfg *
@@ -23172,7 +23172,7 @@ struct hwrm_vnic_tpa_cfg_input {
 	 * and can be queried using hwrm_vnic_tpa_qcfg.
 	 */
 	uint32_t	min_agg_len;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_tpa_cfg_output (size:128b/16B) */
 struct hwrm_vnic_tpa_cfg_output {
@@ -23193,7 +23193,7 @@ struct hwrm_vnic_tpa_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************
  * hwrm_vnic_rss_cfg *
@@ -23323,7 +23323,7 @@ struct hwrm_vnic_rss_cfg_input {
 	/* Index to the rss indirection table. */
 	uint16_t	rss_ctx_idx;
 	uint8_t	unused_1[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_rss_cfg_output (size:128b/16B) */
 struct hwrm_vnic_rss_cfg_output {
@@ -23344,7 +23344,7 @@ struct hwrm_vnic_rss_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_rss_cfg_cmd_err (size:64b/8B) */
 struct hwrm_vnic_rss_cfg_cmd_err {
@@ -23365,7 +23365,7 @@ struct hwrm_vnic_rss_cfg_cmd_err {
 	#define HWRM_VNIC_RSS_CFG_CMD_ERR_CODE_LAST \
 		HWRM_VNIC_RSS_CFG_CMD_ERR_CODE_INTERFACE_NOT_READY
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_vnic_rss_qcfg *
@@ -23405,7 +23405,7 @@ struct hwrm_vnic_rss_qcfg_input {
 	/* Index to the rss indirection table. */
 	uint16_t	rss_ctx_idx;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_rss_qcfg_output (size:512b/64B) */
 struct hwrm_vnic_rss_qcfg_output {
@@ -23508,7 +23508,7 @@ struct hwrm_vnic_rss_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_vnic_plcmodes_cfg *
@@ -23651,7 +23651,7 @@ struct hwrm_vnic_plcmodes_cfg_input {
 	 */
 	uint16_t	hds_threshold;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_plcmodes_cfg_output (size:128b/16B) */
 struct hwrm_vnic_plcmodes_cfg_output {
@@ -23672,7 +23672,7 @@ struct hwrm_vnic_plcmodes_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_vnic_plcmodes_qcfg *
@@ -23712,7 +23712,7 @@ struct hwrm_vnic_plcmodes_qcfg_input {
 	/* Logical vnic ID */
 	uint32_t	vnic_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_plcmodes_qcfg_output (size:192b/24B) */
 struct hwrm_vnic_plcmodes_qcfg_output {
@@ -23801,7 +23801,7 @@ struct hwrm_vnic_plcmodes_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************************
  * hwrm_vnic_rss_cos_lb_ctx_alloc *
@@ -23838,7 +23838,7 @@ struct hwrm_vnic_rss_cos_lb_ctx_alloc_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_rss_cos_lb_ctx_alloc_output (size:128b/16B) */
 struct hwrm_vnic_rss_cos_lb_ctx_alloc_output {
@@ -23861,7 +23861,7 @@ struct hwrm_vnic_rss_cos_lb_ctx_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************************
  * hwrm_vnic_rss_cos_lb_ctx_free *
@@ -23901,7 +23901,7 @@ struct hwrm_vnic_rss_cos_lb_ctx_free_input {
 	/* rss_cos_lb_ctx_id is 16 b */
 	uint16_t	rss_cos_lb_ctx_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vnic_rss_cos_lb_ctx_free_output (size:128b/16B) */
 struct hwrm_vnic_rss_cos_lb_ctx_free_output {
@@ -23922,7 +23922,7 @@ struct hwrm_vnic_rss_cos_lb_ctx_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************
  * hwrm_ring_alloc *
@@ -24235,7 +24235,7 @@ struct hwrm_ring_alloc_input {
 	 * record.
 	 */
 	uint64_t	cq_handle;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_ring_alloc_output (size:128b/16B) */
 struct hwrm_ring_alloc_output {
@@ -24263,7 +24263,7 @@ struct hwrm_ring_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************
  * hwrm_ring_free *
@@ -24320,7 +24320,7 @@ struct hwrm_ring_free_input {
 	/* Physical number of ring allocated. */
 	uint16_t	ring_id;
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_ring_free_output (size:128b/16B) */
 struct hwrm_ring_free_output {
@@ -24341,7 +24341,7 @@ struct hwrm_ring_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************
  * hwrm_ring_reset *
@@ -24394,7 +24394,7 @@ struct hwrm_ring_reset_input {
 	/* Physical number of the ring. */
 	uint16_t	ring_id;
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_ring_reset_output (size:128b/16B) */
 struct hwrm_ring_reset_output {
@@ -24417,7 +24417,7 @@ struct hwrm_ring_reset_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_ring_aggint_qcaps *
@@ -24454,7 +24454,7 @@ struct hwrm_ring_aggint_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_ring_aggint_qcaps_output (size:384b/48B) */
 struct hwrm_ring_aggint_qcaps_output {
@@ -24567,7 +24567,7 @@ struct hwrm_ring_aggint_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************************
  * hwrm_ring_cmpl_ring_qaggint_params *
@@ -24607,7 +24607,7 @@ struct hwrm_ring_cmpl_ring_qaggint_params_input {
 	/* Physical number of completion ring. */
 	uint16_t	ring_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_ring_cmpl_ring_qaggint_params_output (size:256b/32B) */
 struct hwrm_ring_cmpl_ring_qaggint_params_output {
@@ -24674,7 +24674,7 @@ struct hwrm_ring_cmpl_ring_qaggint_params_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************************************
  * hwrm_ring_cmpl_ring_cfg_aggint_params *
@@ -24810,7 +24810,7 @@ struct hwrm_ring_cmpl_ring_cfg_aggint_params_input {
 	#define HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_ENABLES_NUM_CMPL_AGGR_INT \
 		UINT32_C(0x20)
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_ring_cmpl_ring_cfg_aggint_params_output (size:128b/16B) */
 struct hwrm_ring_cmpl_ring_cfg_aggint_params_output {
@@ -24831,7 +24831,7 @@ struct hwrm_ring_cmpl_ring_cfg_aggint_params_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_ring_grp_alloc *
@@ -24889,7 +24889,7 @@ struct hwrm_ring_grp_alloc_input {
 	 * with the ring group.
 	 */
 	uint16_t	sc;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_ring_grp_alloc_output (size:128b/16B) */
 struct hwrm_ring_grp_alloc_output {
@@ -24916,7 +24916,7 @@ struct hwrm_ring_grp_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_ring_grp_free *
@@ -24956,7 +24956,7 @@ struct hwrm_ring_grp_free_input {
 	/* This is the ring group ID value. */
 	uint32_t	ring_group_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_ring_grp_free_output (size:128b/16B) */
 struct hwrm_ring_grp_free_output {
@@ -24977,7 +24977,7 @@ struct hwrm_ring_grp_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 /*
  * special reserved flow ID to identify per function default
  * flows for vSwitch offload
@@ -25409,7 +25409,7 @@ struct hwrm_cfa_l2_filter_alloc_input {
 	 * 2 - Below the given filter
 	 */
 	uint64_t	l2_filter_id_hint;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_l2_filter_alloc_output (size:192b/24B) */
 struct hwrm_cfa_l2_filter_alloc_output {
@@ -25475,7 +25475,7 @@ struct hwrm_cfa_l2_filter_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_cfa_l2_filter_free *
@@ -25517,7 +25517,7 @@ struct hwrm_cfa_l2_filter_free_input {
 	 * context.
 	 */
 	uint64_t	l2_filter_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_l2_filter_free_output (size:128b/16B) */
 struct hwrm_cfa_l2_filter_free_output {
@@ -25538,7 +25538,7 @@ struct hwrm_cfa_l2_filter_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_cfa_l2_filter_cfg *
@@ -25645,7 +25645,7 @@ struct hwrm_cfa_l2_filter_cfg_input {
 	 * mirrored.
 	 */
 	uint32_t	new_mirror_vnic_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_l2_filter_cfg_output (size:128b/16B) */
 struct hwrm_cfa_l2_filter_cfg_output {
@@ -25666,7 +25666,7 @@ struct hwrm_cfa_l2_filter_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_cfa_l2_set_rx_mask *
@@ -25827,7 +25827,7 @@ struct hwrm_cfa_l2_set_rx_mask_input {
 	 */
 	uint32_t	num_vlan_tags;
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_l2_set_rx_mask_output (size:128b/16B) */
 struct hwrm_cfa_l2_set_rx_mask_output {
@@ -25848,7 +25848,7 @@ struct hwrm_cfa_l2_set_rx_mask_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_l2_set_rx_mask_cmd_err (size:64b/8B) */
 struct hwrm_cfa_l2_set_rx_mask_cmd_err {
@@ -25866,7 +25866,7 @@ struct hwrm_cfa_l2_set_rx_mask_cmd_err {
 	#define HWRM_CFA_L2_SET_RX_MASK_CMD_ERR_CODE_LAST \
 		HWRM_CFA_L2_SET_RX_MASK_CMD_ERR_CODE_NTUPLE_FILTER_CONFLICT_ERR
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_cfa_vlan_antispoof_cfg *
@@ -25920,7 +25920,7 @@ struct hwrm_cfa_vlan_antispoof_cfg_input {
 	 * for the 12-bit VLAN ID.
 	 */
 	uint64_t	vlan_tag_mask_tbl_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_vlan_antispoof_cfg_output (size:128b/16B) */
 struct hwrm_cfa_vlan_antispoof_cfg_output {
@@ -25941,7 +25941,7 @@ struct hwrm_cfa_vlan_antispoof_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************************
  * hwrm_cfa_vlan_antispoof_qcfg *
@@ -25998,7 +25998,7 @@ struct hwrm_cfa_vlan_antispoof_qcfg_input {
 	 * the mask value should be 0xfff for the 12-bit VLAN ID.
 	 */
 	uint64_t	vlan_tag_mask_tbl_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_vlan_antispoof_qcfg_output (size:128b/16B) */
 struct hwrm_cfa_vlan_antispoof_qcfg_output {
@@ -26021,7 +26021,7 @@ struct hwrm_cfa_vlan_antispoof_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************************
  * hwrm_cfa_tunnel_filter_alloc *
@@ -26268,7 +26268,7 @@ struct hwrm_cfa_tunnel_filter_alloc_input {
 	 * mirrored.
 	 */
 	uint32_t	mirror_vnic_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_tunnel_filter_alloc_output (size:192b/24B) */
 struct hwrm_cfa_tunnel_filter_alloc_output {
@@ -26331,7 +26331,7 @@ struct hwrm_cfa_tunnel_filter_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_cfa_tunnel_filter_free *
@@ -26370,7 +26370,7 @@ struct hwrm_cfa_tunnel_filter_free_input {
 	uint64_t	resp_addr;
 	/* This value is an opaque id into CFA data structures. */
 	uint64_t	tunnel_filter_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_tunnel_filter_free_output (size:128b/16B) */
 struct hwrm_cfa_tunnel_filter_free_output {
@@ -26391,7 +26391,7 @@ struct hwrm_cfa_tunnel_filter_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************************
  * hwrm_cfa_redirect_tunnel_type_alloc *
@@ -26482,7 +26482,7 @@ struct hwrm_cfa_redirect_tunnel_type_alloc_input {
 	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_FLAGS_MODIFY_DST \
 		UINT32_C(0x1)
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_redirect_tunnel_type_alloc_output (size:128b/16B) */
 struct hwrm_cfa_redirect_tunnel_type_alloc_output {
@@ -26503,7 +26503,7 @@ struct hwrm_cfa_redirect_tunnel_type_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************************
  * hwrm_cfa_redirect_tunnel_type_free *
@@ -26589,7 +26589,7 @@ struct hwrm_cfa_redirect_tunnel_type_free_input {
 	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_LAST \
 		HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_ANYTUNNEL
 	uint8_t	unused_0[5];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_redirect_tunnel_type_free_output (size:128b/16B) */
 struct hwrm_cfa_redirect_tunnel_type_free_output {
@@ -26610,7 +26610,7 @@ struct hwrm_cfa_redirect_tunnel_type_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************************
  * hwrm_cfa_redirect_tunnel_type_info *
@@ -26696,7 +26696,7 @@ struct hwrm_cfa_redirect_tunnel_type_info_input {
 	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_LAST \
 		HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_ANYTUNNEL
 	uint8_t	unused_0[5];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_redirect_tunnel_type_info_output (size:128b/16B) */
 struct hwrm_cfa_redirect_tunnel_type_info_output {
@@ -26719,7 +26719,7 @@ struct hwrm_cfa_redirect_tunnel_type_info_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vxlan_ipv4_hdr (size:128b/16B) */
 struct hwrm_vxlan_ipv4_hdr {
@@ -26745,7 +26745,7 @@ struct hwrm_vxlan_ipv4_hdr {
 	uint32_t	src_ip_addr;
 	/* IPv4 destination address. */
 	uint32_t	dest_ip_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_vxlan_ipv6_hdr (size:320b/40B) */
 struct hwrm_vxlan_ipv6_hdr {
@@ -26781,7 +26781,7 @@ struct hwrm_vxlan_ipv6_hdr {
 	uint32_t	src_ip_addr[4];
 	/* IPv6 destination address. */
 	uint32_t	dest_ip_addr[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_encap_data_vxlan (size:640b/80B) */
 struct hwrm_cfa_encap_data_vxlan {
@@ -26826,7 +26826,7 @@ struct hwrm_cfa_encap_data_vxlan {
 	/* VXLAN header flags field. */
 	uint8_t	hdr_flags;
 	uint8_t	unused[3];
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_cfa_encap_record_alloc *
@@ -26917,7 +26917,7 @@ struct hwrm_cfa_encap_record_alloc_input {
 	uint8_t	unused_0[3];
 	/* This value is encap data used for the given encap type. */
 	uint32_t	encap_data[20];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_encap_record_alloc_output (size:128b/16B) */
 struct hwrm_cfa_encap_record_alloc_output {
@@ -26940,7 +26940,7 @@ struct hwrm_cfa_encap_record_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************************
  * hwrm_cfa_encap_record_free *
@@ -26980,7 +26980,7 @@ struct hwrm_cfa_encap_record_free_input {
 	/* This value is an opaque id into CFA data structures. */
 	uint32_t	encap_record_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_encap_record_free_output (size:128b/16B) */
 struct hwrm_cfa_encap_record_free_output {
@@ -27001,7 +27001,7 @@ struct hwrm_cfa_encap_record_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************************
  * hwrm_cfa_ntuple_filter_alloc *
@@ -27376,7 +27376,7 @@ struct hwrm_cfa_ntuple_filter_alloc_input {
 	 * the pri_hint.
 	 */
 	uint64_t	ntuple_filter_id_hint;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_ntuple_filter_alloc_output (size:192b/24B) */
 struct hwrm_cfa_ntuple_filter_alloc_output {
@@ -27439,7 +27439,7 @@ struct hwrm_cfa_ntuple_filter_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_ntuple_filter_alloc_cmd_err (size:64b/8B) */
 struct hwrm_cfa_ntuple_filter_alloc_cmd_err {
@@ -27457,7 +27457,7 @@ struct hwrm_cfa_ntuple_filter_alloc_cmd_err {
 	#define HWRM_CFA_NTUPLE_FILTER_ALLOC_CMD_ERR_CODE_LAST \
 		HWRM_CFA_NTUPLE_FILTER_ALLOC_CMD_ERR_CODE_RX_MASK_VLAN_CONFLICT_ERR
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_cfa_ntuple_filter_free *
@@ -27496,7 +27496,7 @@ struct hwrm_cfa_ntuple_filter_free_input {
 	uint64_t	resp_addr;
 	/* This value is an opaque id into CFA data structures. */
 	uint64_t	ntuple_filter_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_ntuple_filter_free_output (size:128b/16B) */
 struct hwrm_cfa_ntuple_filter_free_output {
@@ -27517,7 +27517,7 @@ struct hwrm_cfa_ntuple_filter_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************************
  * hwrm_cfa_ntuple_filter_cfg *
@@ -27617,7 +27617,7 @@ struct hwrm_cfa_ntuple_filter_cfg_input {
 	#define HWRM_CFA_NTUPLE_FILTER_CFG_INPUT_NEW_METER_INSTANCE_ID_LAST \
 		HWRM_CFA_NTUPLE_FILTER_CFG_INPUT_NEW_METER_INSTANCE_ID_INVALID
 	uint8_t	unused_1[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_ntuple_filter_cfg_output (size:128b/16B) */
 struct hwrm_cfa_ntuple_filter_cfg_output {
@@ -27638,7 +27638,7 @@ struct hwrm_cfa_ntuple_filter_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_cfa_em_flow_alloc *
@@ -27981,7 +27981,7 @@ struct hwrm_cfa_em_flow_alloc_input {
 	/* Logical ID of the encapsulation record. */
 	uint32_t	encap_record_id;
 	uint8_t	unused_2[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_em_flow_alloc_output (size:192b/24B) */
 struct hwrm_cfa_em_flow_alloc_output {
@@ -28044,7 +28044,7 @@ struct hwrm_cfa_em_flow_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_cfa_em_flow_free *
@@ -28083,7 +28083,7 @@ struct hwrm_cfa_em_flow_free_input {
 	uint64_t	resp_addr;
 	/* This value is an opaque id into CFA data structures. */
 	uint64_t	em_filter_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_em_flow_free_output (size:128b/16B) */
 struct hwrm_cfa_em_flow_free_output {
@@ -28104,7 +28104,7 @@ struct hwrm_cfa_em_flow_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /************************
  * hwrm_cfa_meter_qcaps *
@@ -28141,7 +28141,7 @@ struct hwrm_cfa_meter_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_meter_qcaps_output (size:320b/40B) */
 struct hwrm_cfa_meter_qcaps_output {
@@ -28217,7 +28217,7 @@ struct hwrm_cfa_meter_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************************
  * hwrm_cfa_meter_profile_alloc *
@@ -28464,7 +28464,7 @@ struct hwrm_cfa_meter_profile_alloc_input {
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_LAST \
 		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_INVALID
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_meter_profile_alloc_output (size:128b/16B) */
 struct hwrm_cfa_meter_profile_alloc_output {
@@ -28495,7 +28495,7 @@ struct hwrm_cfa_meter_profile_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_cfa_meter_profile_free *
@@ -28559,7 +28559,7 @@ struct hwrm_cfa_meter_profile_free_input {
 	#define HWRM_CFA_METER_PROFILE_FREE_INPUT_METER_PROFILE_ID_LAST \
 		HWRM_CFA_METER_PROFILE_FREE_INPUT_METER_PROFILE_ID_INVALID
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_meter_profile_free_output (size:128b/16B) */
 struct hwrm_cfa_meter_profile_free_output {
@@ -28580,7 +28580,7 @@ struct hwrm_cfa_meter_profile_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************************
  * hwrm_cfa_meter_profile_cfg *
@@ -28830,7 +28830,7 @@ struct hwrm_cfa_meter_profile_cfg_input {
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_LAST \
 		HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_INVALID
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_meter_profile_cfg_output (size:128b/16B) */
 struct hwrm_cfa_meter_profile_cfg_output {
@@ -28851,7 +28851,7 @@ struct hwrm_cfa_meter_profile_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************************
  * hwrm_cfa_meter_instance_alloc *
@@ -28916,7 +28916,7 @@ struct hwrm_cfa_meter_instance_alloc_input {
 	#define HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_METER_PROFILE_ID_LAST \
 		HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_METER_PROFILE_ID_INVALID
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_meter_instance_alloc_output (size:128b/16B) */
 struct hwrm_cfa_meter_instance_alloc_output {
@@ -28947,7 +28947,7 @@ struct hwrm_cfa_meter_instance_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_cfa_meter_instance_cfg *
@@ -29019,7 +29019,7 @@ struct hwrm_cfa_meter_instance_cfg_input {
 	 */
 	uint16_t	meter_instance_id;
 	uint8_t	unused_1[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_meter_instance_cfg_output (size:128b/16B) */
 struct hwrm_cfa_meter_instance_cfg_output {
@@ -29040,7 +29040,7 @@ struct hwrm_cfa_meter_instance_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************************
  * hwrm_cfa_meter_instance_free *
@@ -29104,7 +29104,7 @@ struct hwrm_cfa_meter_instance_free_input {
 	#define HWRM_CFA_METER_INSTANCE_FREE_INPUT_METER_INSTANCE_ID_LAST \
 		HWRM_CFA_METER_INSTANCE_FREE_INPUT_METER_INSTANCE_ID_INVALID
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_meter_instance_free_output (size:128b/16B) */
 struct hwrm_cfa_meter_instance_free_output {
@@ -29125,7 +29125,7 @@ struct hwrm_cfa_meter_instance_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************************
  * hwrm_cfa_decap_filter_alloc *
@@ -29427,7 +29427,7 @@ struct hwrm_cfa_decap_filter_alloc_input {
 	 * information of the decap filter.
 	 */
 	uint16_t	l2_ctxt_ref_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_decap_filter_alloc_output (size:128b/16B) */
 struct hwrm_cfa_decap_filter_alloc_output {
@@ -29450,7 +29450,7 @@ struct hwrm_cfa_decap_filter_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************************
  * hwrm_cfa_decap_filter_free *
@@ -29490,7 +29490,7 @@ struct hwrm_cfa_decap_filter_free_input {
 	/* This value is an opaque id into CFA data structures. */
 	uint32_t	decap_filter_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_decap_filter_free_output (size:128b/16B) */
 struct hwrm_cfa_decap_filter_free_output {
@@ -29511,7 +29511,7 @@ struct hwrm_cfa_decap_filter_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_cfa_flow_alloc *
@@ -29793,7 +29793,7 @@ struct hwrm_cfa_flow_alloc_input {
 		UINT32_C(0xff)
 	#define HWRM_CFA_FLOW_ALLOC_INPUT_TUNNEL_TYPE_LAST \
 		HWRM_CFA_FLOW_ALLOC_INPUT_TUNNEL_TYPE_ANYTUNNEL
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_alloc_output (size:256b/32B) */
 struct hwrm_cfa_flow_alloc_output {
@@ -29860,7 +29860,7 @@ struct hwrm_cfa_flow_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_alloc_cmd_err (size:64b/8B) */
 struct hwrm_cfa_flow_alloc_cmd_err {
@@ -29888,7 +29888,7 @@ struct hwrm_cfa_flow_alloc_cmd_err {
 	#define HWRM_CFA_FLOW_ALLOC_CMD_ERR_CODE_LAST \
 		HWRM_CFA_FLOW_ALLOC_CMD_ERR_CODE_FLOW_CTXT_DB
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_cfa_flow_free *
@@ -29932,7 +29932,7 @@ struct hwrm_cfa_flow_free_input {
 	uint32_t	flow_counter_id;
 	/* This value identifies a set of CFA data structures used for a flow. */
 	uint64_t	ext_flow_handle;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_free_output (size:256b/32B) */
 struct hwrm_cfa_flow_free_output {
@@ -29957,7 +29957,7 @@ struct hwrm_cfa_flow_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_action_data (size:960b/120B) */
 struct hwrm_cfa_flow_action_data {
@@ -30038,7 +30038,7 @@ struct hwrm_cfa_flow_action_data {
 	uint8_t	unused[7];
 	/* This value is encap data for the associated encap type. */
 	uint32_t	encap_data[20];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_tunnel_hdr_data (size:64b/8B) */
 struct hwrm_cfa_flow_tunnel_hdr_data {
@@ -30094,7 +30094,7 @@ struct hwrm_cfa_flow_tunnel_hdr_data {
 	 * Virtual Network Identifier (VNI).
 	 */
 	uint32_t	tunnel_id;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_l4_key_data (size:64b/8B) */
 struct hwrm_cfa_flow_l4_key_data {
@@ -30103,7 +30103,7 @@ struct hwrm_cfa_flow_l4_key_data {
 	/* The value of destination port. */
 	uint16_t	l4_dst_port;
 	uint32_t	unused;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_l3_key_data (size:512b/64B) */
 struct hwrm_cfa_flow_l3_key_data {
@@ -30117,7 +30117,7 @@ struct hwrm_cfa_flow_l3_key_data {
 	/* NAT IPv4/IPv6 address. */
 	uint32_t	nat_ip_address[4];
 	uint32_t	unused[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_l2_key_data (size:448b/56B) */
 struct hwrm_cfa_flow_l2_key_data {
@@ -30150,7 +30150,7 @@ struct hwrm_cfa_flow_l2_key_data {
 	/* Inner VLAN TCI. */
 	uint16_t	ivlan_tci;
 	uint8_t	unused[8];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_key_data (size:4160b/520B) */
 struct hwrm_cfa_flow_key_data {
@@ -30180,7 +30180,7 @@ struct hwrm_cfa_flow_key_data {
 	uint32_t	l4_key_data[2];
 	/* Flow associated L4 header mask info. */
 	uint32_t	l4_key_mask[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_cfa_flow_info *
@@ -30238,7 +30238,7 @@ struct hwrm_cfa_flow_info_input {
 	uint8_t	unused_0[6];
 	/* This value identifies a set of CFA data structures used for a flow. */
 	uint64_t	ext_flow_handle;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_info_output (size:5632b/704B) */
 struct hwrm_cfa_flow_info_output {
@@ -30291,7 +30291,7 @@ struct hwrm_cfa_flow_info_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_cfa_flow_flush *
@@ -30404,7 +30404,7 @@ struct hwrm_cfa_flow_flush_input {
 	uint16_t	num_flows;
 	/* Pointer to the PBL, or PDL depending on number of levels */
 	uint64_t	page_dir;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_flush_output (size:128b/16B) */
 struct hwrm_cfa_flow_flush_output {
@@ -30425,7 +30425,7 @@ struct hwrm_cfa_flow_flush_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_cfa_flow_stats *
@@ -30505,7 +30505,7 @@ struct hwrm_cfa_flow_stats_input {
 	uint32_t	flow_id_8;
 	/* Flow ID of a flow. */
 	uint32_t	flow_id_9;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_stats_output (size:1408b/176B) */
 struct hwrm_cfa_flow_stats_output {
@@ -30566,7 +30566,7 @@ struct hwrm_cfa_flow_stats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************************
  * hwrm_cfa_flow_aging_timer_reset *
@@ -30613,7 +30613,7 @@ struct hwrm_cfa_flow_aging_timer_reset_input {
 	uint32_t	flow_timer;
 	/* This value identifies a set of CFA data structures used for a flow. */
 	uint64_t	ext_flow_handle;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_aging_timer_reset_output (size:128b/16B) */
 struct hwrm_cfa_flow_aging_timer_reset_output {
@@ -30634,7 +30634,7 @@ struct hwrm_cfa_flow_aging_timer_reset_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_cfa_flow_aging_cfg *
@@ -30738,7 +30738,7 @@ struct hwrm_cfa_flow_aging_cfg_input {
 	#define HWRM_CFA_FLOW_AGING_CFG_INPUT_EEM_CTX_MEM_TYPE_LAST \
 		HWRM_CFA_FLOW_AGING_CFG_INPUT_EEM_CTX_MEM_TYPE_EJECTION_DATA
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_aging_cfg_output (size:128b/16B) */
 struct hwrm_cfa_flow_aging_cfg_output {
@@ -30759,7 +30759,7 @@ struct hwrm_cfa_flow_aging_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /****************************
  * hwrm_cfa_flow_aging_qcfg *
@@ -30807,7 +30807,7 @@ struct hwrm_cfa_flow_aging_qcfg_input {
 	#define HWRM_CFA_FLOW_AGING_QCFG_INPUT_FLAGS_PATH_LAST \
 		HWRM_CFA_FLOW_AGING_QCFG_INPUT_FLAGS_PATH_RX
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_aging_qcfg_output (size:320b/40B) */
 struct hwrm_cfa_flow_aging_qcfg_output {
@@ -30844,7 +30844,7 @@ struct hwrm_cfa_flow_aging_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************************
  * hwrm_cfa_flow_aging_qcaps *
@@ -30892,7 +30892,7 @@ struct hwrm_cfa_flow_aging_qcaps_input {
 	#define HWRM_CFA_FLOW_AGING_QCAPS_INPUT_FLAGS_PATH_LAST \
 		HWRM_CFA_FLOW_AGING_QCAPS_INPUT_FLAGS_PATH_RX
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_flow_aging_qcaps_output (size:256b/32B) */
 struct hwrm_cfa_flow_aging_qcaps_output {
@@ -30921,7 +30921,7 @@ struct hwrm_cfa_flow_aging_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************************
  * hwrm_cfa_tcp_flag_process_qcfg *
@@ -30958,7 +30958,7 @@ struct hwrm_cfa_tcp_flag_process_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_tcp_flag_process_qcfg_output (size:192b/24B) */
 struct hwrm_cfa_tcp_flag_process_qcfg_output {
@@ -30987,7 +30987,7 @@ struct hwrm_cfa_tcp_flag_process_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_cfa_pair_info *
@@ -31037,7 +31037,7 @@ struct hwrm_cfa_pair_info_input {
 	uint8_t	pair_vfid;
 	/* Pair name (32 byte string). */
 	char	pair_name[32];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_pair_info_output (size:576b/72B) */
 struct hwrm_cfa_pair_info_output {
@@ -31108,7 +31108,7 @@ struct hwrm_cfa_pair_info_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************************
  * hwrm_cfa_redirect_query_tunnel_type *
@@ -31148,7 +31148,7 @@ struct hwrm_cfa_redirect_query_tunnel_type_input {
 	/* The source function id. */
 	uint16_t	src_fid;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_redirect_query_tunnel_type_output (size:128b/16B) */
 struct hwrm_cfa_redirect_query_tunnel_type_output {
@@ -31213,7 +31213,7 @@ struct hwrm_cfa_redirect_query_tunnel_type_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_cfa_ctx_mem_rgtr *
@@ -31284,7 +31284,7 @@ struct hwrm_cfa_ctx_mem_rgtr_input {
 	uint32_t	unused_0;
 	/* Pointer to the PBL, or PDL depending on number of levels */
 	uint64_t	page_dir;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_ctx_mem_rgtr_output (size:128b/16B) */
 struct hwrm_cfa_ctx_mem_rgtr_output {
@@ -31310,7 +31310,7 @@ struct hwrm_cfa_ctx_mem_rgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_cfa_ctx_mem_unrgtr *
@@ -31353,7 +31353,7 @@ struct hwrm_cfa_ctx_mem_unrgtr_input {
 	 */
 	uint16_t	ctx_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_ctx_mem_unrgtr_output (size:128b/16B) */
 struct hwrm_cfa_ctx_mem_unrgtr_output {
@@ -31374,7 +31374,7 @@ struct hwrm_cfa_ctx_mem_unrgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_cfa_ctx_mem_qctx *
@@ -31417,7 +31417,7 @@ struct hwrm_cfa_ctx_mem_qctx_input {
 	 */
 	uint16_t	ctx_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_ctx_mem_qctx_output (size:256b/32B) */
 struct hwrm_cfa_ctx_mem_qctx_output {
@@ -31472,7 +31472,7 @@ struct hwrm_cfa_ctx_mem_qctx_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_cfa_ctx_mem_qcaps *
@@ -31509,7 +31509,7 @@ struct hwrm_cfa_ctx_mem_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_ctx_mem_qcaps_output (size:128b/16B) */
 struct hwrm_cfa_ctx_mem_qcaps_output {
@@ -31532,7 +31532,7 @@ struct hwrm_cfa_ctx_mem_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_cfa_eem_qcaps *
@@ -31588,7 +31588,7 @@ struct hwrm_cfa_eem_qcaps_input {
 	#define HWRM_CFA_EEM_QCAPS_INPUT_FLAGS_PREFERRED_OFFLOAD \
 		UINT32_C(0x4)
 	uint32_t	unused_0;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_eem_qcaps_output (size:320b/40B) */
 struct hwrm_cfa_eem_qcaps_output {
@@ -31689,7 +31689,7 @@ struct hwrm_cfa_eem_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************
  * hwrm_cfa_eem_cfg *
@@ -31772,7 +31772,7 @@ struct hwrm_cfa_eem_cfg_input {
 	uint16_t	fid_ctx_id;
 	uint16_t	unused_2;
 	uint32_t	unused_3;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_eem_cfg_output (size:128b/16B) */
 struct hwrm_cfa_eem_cfg_output {
@@ -31793,7 +31793,7 @@ struct hwrm_cfa_eem_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************
  * hwrm_cfa_eem_qcfg *
@@ -31836,7 +31836,7 @@ struct hwrm_cfa_eem_qcfg_input {
 	/* When set to 1, indicates the configuration is the RX flow. */
 	#define HWRM_CFA_EEM_QCFG_INPUT_FLAGS_PATH_RX     UINT32_C(0x2)
 	uint32_t	unused_0;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_eem_qcfg_output (size:256b/32B) */
 struct hwrm_cfa_eem_qcfg_output {
@@ -31879,7 +31879,7 @@ struct hwrm_cfa_eem_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************
  * hwrm_cfa_eem_op *
@@ -31955,7 +31955,7 @@ struct hwrm_cfa_eem_op_input {
 	#define HWRM_CFA_EEM_OP_INPUT_OP_EEM_CLEANUP UINT32_C(0x3)
 	#define HWRM_CFA_EEM_OP_INPUT_OP_LAST \
 		HWRM_CFA_EEM_OP_INPUT_OP_EEM_CLEANUP
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_eem_op_output (size:128b/16B) */
 struct hwrm_cfa_eem_op_output {
@@ -31976,7 +31976,7 @@ struct hwrm_cfa_eem_op_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************************
  * hwrm_cfa_adv_flow_mgnt_qcaps *
@@ -32014,7 +32014,7 @@ struct hwrm_cfa_adv_flow_mgnt_qcaps_input {
 	 */
 	uint64_t	resp_addr;
 	uint32_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_adv_flow_mgnt_qcaps_output (size:128b/16B) */
 struct hwrm_cfa_adv_flow_mgnt_qcaps_output {
@@ -32142,7 +32142,7 @@ struct hwrm_cfa_adv_flow_mgnt_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************
  * hwrm_cfa_tflib *
@@ -32187,7 +32187,7 @@ struct hwrm_cfa_tflib_input {
 	uint8_t	unused0[4];
 	/* TFLIB request data. */
 	uint32_t	tf_req[26];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_cfa_tflib_output (size:5632b/704B) */
 struct hwrm_cfa_tflib_output {
@@ -32217,7 +32217,7 @@ struct hwrm_cfa_tflib_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************************
  * hwrm_tunnel_dst_port_query *
@@ -32277,7 +32277,7 @@ struct hwrm_tunnel_dst_port_query_input {
 	#define HWRM_TUNNEL_DST_PORT_QUERY_INPUT_TUNNEL_TYPE_LAST \
 		HWRM_TUNNEL_DST_PORT_QUERY_INPUT_TUNNEL_TYPE_VXLAN_GPE_V6
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_tunnel_dst_port_query_output (size:128b/16B) */
 struct hwrm_tunnel_dst_port_query_output {
@@ -32316,7 +32316,7 @@ struct hwrm_tunnel_dst_port_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************************
  * hwrm_tunnel_dst_port_alloc *
@@ -32388,7 +32388,7 @@ struct hwrm_tunnel_dst_port_alloc_input {
 	 */
 	uint16_t	tunnel_dst_port_val;
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_tunnel_dst_port_alloc_output (size:128b/16B) */
 struct hwrm_tunnel_dst_port_alloc_output {
@@ -32414,7 +32414,7 @@ struct hwrm_tunnel_dst_port_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************************
  * hwrm_tunnel_dst_port_free *
@@ -32480,7 +32480,7 @@ struct hwrm_tunnel_dst_port_free_input {
 	 */
 	uint16_t	tunnel_dst_port_id;
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_tunnel_dst_port_free_output (size:128b/16B) */
 struct hwrm_tunnel_dst_port_free_output {
@@ -32501,7 +32501,7 @@ struct hwrm_tunnel_dst_port_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Periodic statistics context DMA to host. */
 /* ctx_hw_stats (size:1280b/160B) */
@@ -32546,7 +32546,7 @@ struct ctx_hw_stats {
 	uint64_t	tpa_events;
 	/* Number of TPA aborts */
 	uint64_t	tpa_aborts;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Periodic statistics context DMA to host. */
 /* ctx_hw_stats_ext (size:1344b/168B) */
@@ -32593,7 +32593,7 @@ struct ctx_hw_stats_ext {
 	uint64_t	rx_tpa_bytes;
 	/* Number of TPA errors */
 	uint64_t	rx_tpa_errors;
-} __attribute__((packed));
+} __rte_packed;
 
 /* Periodic Engine statistics context DMA to host. */
 /* ctx_eng_stats (size:512b/64B) */
@@ -32639,7 +32639,7 @@ struct ctx_eng_stats {
 	 * the unit is count of clock cycles
 	 */
 	uint64_t	cdd_engine_usage;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_stat_ctx_alloc *
@@ -32717,7 +32717,7 @@ struct hwrm_stat_ctx_alloc_input {
 	 * for the periodic DMA updates.
 	 */
 	uint16_t	stats_dma_length;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_stat_ctx_alloc_output (size:128b/16B) */
 struct hwrm_stat_ctx_alloc_output {
@@ -32740,7 +32740,7 @@ struct hwrm_stat_ctx_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_stat_ctx_free *
@@ -32780,7 +32780,7 @@ struct hwrm_stat_ctx_free_input {
 	/* ID of the statistics context that is being queried. */
 	uint32_t	stat_ctx_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_stat_ctx_free_output (size:128b/16B) */
 struct hwrm_stat_ctx_free_output {
@@ -32803,7 +32803,7 @@ struct hwrm_stat_ctx_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***********************
  * hwrm_stat_ctx_query *
@@ -32843,7 +32843,7 @@ struct hwrm_stat_ctx_query_input {
 	/* ID of the statistics context that is being queried. */
 	uint32_t	stat_ctx_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_stat_ctx_query_output (size:1408b/176B) */
 struct hwrm_stat_ctx_query_output {
@@ -32904,7 +32904,7 @@ struct hwrm_stat_ctx_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_stat_ctx_eng_query *
@@ -32944,7 +32944,7 @@ struct hwrm_stat_ctx_eng_query_input {
 	/* ID of the statistics context that is being queried. */
 	uint32_t	stat_ctx_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_stat_ctx_eng_query_output (size:640b/80B) */
 struct hwrm_stat_ctx_eng_query_output {
@@ -33006,7 +33006,7 @@ struct hwrm_stat_ctx_eng_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_stat_ctx_clr_stats *
@@ -33046,7 +33046,7 @@ struct hwrm_stat_ctx_clr_stats_input {
 	/* ID of the statistics context that is being queried. */
 	uint32_t	stat_ctx_id;
 	uint8_t	unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_stat_ctx_clr_stats_output (size:128b/16B) */
 struct hwrm_stat_ctx_clr_stats_output {
@@ -33067,7 +33067,7 @@ struct hwrm_stat_ctx_clr_stats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /********************
  * hwrm_pcie_qstats *
@@ -33116,7 +33116,7 @@ struct hwrm_pcie_qstats_input {
 	 * PCIe statistics will be stored
 	 */
 	uint64_t	pcie_stat_host_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_pcie_qstats_output (size:128b/16B) */
 struct hwrm_pcie_qstats_output {
@@ -33139,7 +33139,7 @@ struct hwrm_pcie_qstats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* PCIe Statistics Formats */
 /* pcie_ctx_hw_stats (size:768b/96B) */
@@ -33175,7 +33175,7 @@ struct pcie_ctx_hw_stats {
 	 * to Recovery
 	 */
 	uint64_t	pcie_recovery_histogram;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_exec_fwd_resp *
@@ -33228,7 +33228,7 @@ struct hwrm_exec_fwd_resp_input {
 	 */
 	uint16_t	encap_resp_target_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_exec_fwd_resp_output (size:128b/16B) */
 struct hwrm_exec_fwd_resp_output {
@@ -33249,7 +33249,7 @@ struct hwrm_exec_fwd_resp_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /************************
  * hwrm_reject_fwd_resp *
@@ -33302,7 +33302,7 @@ struct hwrm_reject_fwd_resp_input {
 	 */
 	uint16_t	encap_resp_target_id;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_reject_fwd_resp_output (size:128b/16B) */
 struct hwrm_reject_fwd_resp_output {
@@ -33323,7 +33323,7 @@ struct hwrm_reject_fwd_resp_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************
  * hwrm_fwd_resp *
@@ -33391,7 +33391,7 @@ struct hwrm_fwd_resp_input {
 	uint64_t	encap_resp_addr;
 	/* This is an encapsulated response. */
 	uint32_t	encap_resp[24];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_fwd_resp_output (size:128b/16B) */
 struct hwrm_fwd_resp_output {
@@ -33412,7 +33412,7 @@ struct hwrm_fwd_resp_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************************
  * hwrm_fwd_async_event_cmpl *
@@ -33461,7 +33461,7 @@ struct hwrm_fwd_async_event_cmpl_input {
 	uint8_t	unused_0[6];
 	/* This is an encapsulated asynchronous event completion. */
 	uint32_t	encap_async_event_cmpl[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_fwd_async_event_cmpl_output (size:128b/16B) */
 struct hwrm_fwd_async_event_cmpl_output {
@@ -33482,7 +33482,7 @@ struct hwrm_fwd_async_event_cmpl_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_nvm_raw_write_blk *
@@ -33531,7 +33531,7 @@ struct hwrm_nvm_raw_write_blk_input {
 	uint32_t	dest_addr;
 	/* Length of data to be written, in bytes. */
 	uint32_t	len;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_raw_write_blk_output (size:128b/16B) */
 struct hwrm_nvm_raw_write_blk_output {
@@ -33552,7 +33552,7 @@ struct hwrm_nvm_raw_write_blk_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************
  * hwrm_nvm_read *
@@ -33602,7 +33602,7 @@ struct hwrm_nvm_read_input {
 	/* The length of the data to be read, in bytes. */
 	uint32_t	len;
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_read_output (size:128b/16B) */
 struct hwrm_nvm_read_output {
@@ -33623,7 +33623,7 @@ struct hwrm_nvm_read_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*********************
  * hwrm_nvm_raw_dump *
@@ -33669,7 +33669,7 @@ struct hwrm_nvm_raw_dump_input {
 	uint32_t	offset;
 	/* Total length of NVRAM contents to be read, in bytes. */
 	uint32_t	len;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_raw_dump_output (size:128b/16B) */
 struct hwrm_nvm_raw_dump_output {
@@ -33690,7 +33690,7 @@ struct hwrm_nvm_raw_dump_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /****************************
  * hwrm_nvm_get_dir_entries *
@@ -33732,7 +33732,7 @@ struct hwrm_nvm_get_dir_entries_input {
 	 * This is the host address where the directory will be written.
 	 */
 	uint64_t	host_dest_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_get_dir_entries_output (size:128b/16B) */
 struct hwrm_nvm_get_dir_entries_output {
@@ -33753,7 +33753,7 @@ struct hwrm_nvm_get_dir_entries_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_nvm_get_dir_info *
@@ -33790,7 +33790,7 @@ struct hwrm_nvm_get_dir_info_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_get_dir_info_output (size:192b/24B) */
 struct hwrm_nvm_get_dir_info_output {
@@ -33815,7 +33815,7 @@ struct hwrm_nvm_get_dir_info_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /******************
  * hwrm_nvm_write *
@@ -33891,7 +33891,7 @@ struct hwrm_nvm_write_input {
 	 */
 	uint32_t	dir_item_length;
 	uint32_t	unused_0;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_write_output (size:128b/16B) */
 struct hwrm_nvm_write_output {
@@ -33919,7 +33919,7 @@ struct hwrm_nvm_write_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_write_cmd_err (size:64b/8B) */
 struct hwrm_nvm_write_cmd_err {
@@ -33937,7 +33937,7 @@ struct hwrm_nvm_write_cmd_err {
 	#define HWRM_NVM_WRITE_CMD_ERR_CODE_LAST \
 		HWRM_NVM_WRITE_CMD_ERR_CODE_NO_SPACE
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /*******************
  * hwrm_nvm_modify *
@@ -33990,7 +33990,7 @@ struct hwrm_nvm_modify_input {
 	 */
 	uint32_t	len;
 	uint8_t	unused_1[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_modify_output (size:128b/16B) */
 struct hwrm_nvm_modify_output {
@@ -34011,7 +34011,7 @@ struct hwrm_nvm_modify_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_nvm_find_dir_entry *
@@ -34080,7 +34080,7 @@ struct hwrm_nvm_find_dir_entry_input {
 	#define HWRM_NVM_FIND_DIR_ENTRY_INPUT_OPT_ORDINAL_LAST \
 		HWRM_NVM_FIND_DIR_ENTRY_INPUT_OPT_ORDINAL_GT
 	uint8_t	unused_0[3];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_find_dir_entry_output (size:256b/32B) */
 struct hwrm_nvm_find_dir_entry_output {
@@ -34114,7 +34114,7 @@ struct hwrm_nvm_find_dir_entry_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /****************************
  * hwrm_nvm_erase_dir_entry *
@@ -34154,7 +34154,7 @@ struct hwrm_nvm_erase_dir_entry_input {
 	/* Directory Entry Index */
 	uint16_t	dir_idx;
 	uint8_t	unused_0[6];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_erase_dir_entry_output (size:128b/16B) */
 struct hwrm_nvm_erase_dir_entry_output {
@@ -34175,7 +34175,7 @@ struct hwrm_nvm_erase_dir_entry_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_nvm_get_dev_info *
@@ -34212,7 +34212,7 @@ struct hwrm_nvm_get_dev_info_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_get_dev_info_output (size:256b/32B) */
 struct hwrm_nvm_get_dev_info_output {
@@ -34249,7 +34249,7 @@ struct hwrm_nvm_get_dev_info_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_nvm_mod_dir_entry *
@@ -34308,7 +34308,7 @@ struct hwrm_nvm_mod_dir_entry_input {
 	 * value of the content in the directory entry.
 	 */
 	uint32_t	checksum;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_mod_dir_entry_output (size:128b/16B) */
 struct hwrm_nvm_mod_dir_entry_output {
@@ -34329,7 +34329,7 @@ struct hwrm_nvm_mod_dir_entry_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**************************
  * hwrm_nvm_verify_update *
@@ -34382,7 +34382,7 @@ struct hwrm_nvm_verify_update_input {
 	 */
 	uint16_t	dir_ext;
 	uint8_t	unused_0[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_verify_update_output (size:128b/16B) */
 struct hwrm_nvm_verify_update_output {
@@ -34403,7 +34403,7 @@ struct hwrm_nvm_verify_update_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /***************************
  * hwrm_nvm_install_update *
@@ -34480,7 +34480,7 @@ struct hwrm_nvm_install_update_input {
 	#define HWRM_NVM_INSTALL_UPDATE_INPUT_FLAGS_ALLOWED_TO_DEFRAG \
 		UINT32_C(0x4)
 	uint8_t	unused_0[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_install_update_output (size:192b/24B) */
 struct hwrm_nvm_install_update_output {
@@ -34549,7 +34549,7 @@ struct hwrm_nvm_install_update_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_install_update_cmd_err (size:64b/8B) */
 struct hwrm_nvm_install_update_cmd_err {
@@ -34567,7 +34567,7 @@ struct hwrm_nvm_install_update_cmd_err {
 	#define HWRM_NVM_INSTALL_UPDATE_CMD_ERR_CODE_LAST \
 		HWRM_NVM_INSTALL_UPDATE_CMD_ERR_CODE_NO_SPACE
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /******************
  * hwrm_nvm_flush *
@@ -34604,7 +34604,7 @@ struct hwrm_nvm_flush_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_flush_output (size:128b/16B) */
 struct hwrm_nvm_flush_output {
@@ -34625,7 +34625,7 @@ struct hwrm_nvm_flush_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_flush_cmd_err (size:64b/8B) */
 struct hwrm_nvm_flush_cmd_err {
@@ -34641,7 +34641,7 @@ struct hwrm_nvm_flush_cmd_err {
 	#define HWRM_NVM_FLUSH_CMD_ERR_CODE_LAST \
 		HWRM_NVM_FLUSH_CMD_ERR_CODE_FAIL
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_nvm_get_variable *
@@ -34718,7 +34718,7 @@ struct hwrm_nvm_get_variable_input {
 	#define HWRM_NVM_GET_VARIABLE_INPUT_FLAGS_FACTORY_DFLT \
 		UINT32_C(0x1)
 	uint8_t	unused_0;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_get_variable_output (size:128b/16B) */
 struct hwrm_nvm_get_variable_output {
@@ -34757,7 +34757,7 @@ struct hwrm_nvm_get_variable_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_get_variable_cmd_err (size:64b/8B) */
 struct hwrm_nvm_get_variable_cmd_err {
@@ -34777,7 +34777,7 @@ struct hwrm_nvm_get_variable_cmd_err {
 	#define HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_LAST \
 		HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_LEN_TOO_SHORT
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /*************************
  * hwrm_nvm_set_variable *
@@ -34875,7 +34875,7 @@ struct hwrm_nvm_set_variable_input {
 	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_FACTORY_DEFAULT \
 		UINT32_C(0x80)
 	uint8_t	unused_0;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_set_variable_output (size:128b/16B) */
 struct hwrm_nvm_set_variable_output {
@@ -34896,7 +34896,7 @@ struct hwrm_nvm_set_variable_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_set_variable_cmd_err (size:64b/8B) */
 struct hwrm_nvm_set_variable_cmd_err {
@@ -34914,7 +34914,7 @@ struct hwrm_nvm_set_variable_cmd_err {
 	#define HWRM_NVM_SET_VARIABLE_CMD_ERR_CODE_LAST \
 		HWRM_NVM_SET_VARIABLE_CMD_ERR_CODE_CORRUPT_VAR
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /****************************
  * hwrm_nvm_validate_option *
@@ -34985,7 +34985,7 @@ struct hwrm_nvm_validate_option_input {
 	/* index for the 4th dimensions */
 	uint16_t	index_3;
 	uint8_t	unused_0[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_validate_option_output (size:128b/16B) */
 struct hwrm_nvm_validate_option_output {
@@ -35013,7 +35013,7 @@ struct hwrm_nvm_validate_option_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_nvm_validate_option_cmd_err (size:64b/8B) */
 struct hwrm_nvm_validate_option_cmd_err {
@@ -35027,7 +35027,7 @@ struct hwrm_nvm_validate_option_cmd_err {
 	#define HWRM_NVM_VALIDATE_OPTION_CMD_ERR_CODE_LAST \
 		HWRM_NVM_VALIDATE_OPTION_CMD_ERR_CODE_UNKNOWN
 	uint8_t	unused_0[7];
-} __attribute__((packed));
+} __rte_packed;
 
 /*****************
  * hwrm_fw_reset *
@@ -35127,7 +35127,7 @@ struct hwrm_fw_reset_input {
 	 */
 	#define HWRM_FW_RESET_INPUT_FLAGS_RESET_GRACEFUL     UINT32_C(0x1)
 	uint8_t unused_0[4];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_fw_reset_output (size:128b/16B) */
 struct hwrm_fw_reset_output {
@@ -35164,7 +35164,7 @@ struct hwrm_fw_reset_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t valid;
-} __attribute__((packed));
+} __rte_packed;
 
 /**********************
  * hwrm_port_ts_query *
@@ -35222,7 +35222,7 @@ struct hwrm_port_ts_query_input {
 	/* Port ID of port that is being queried. */
 	uint16_t	port_id;
 	uint8_t		unused_0[2];
-} __attribute__((packed));
+} __rte_packed;
 
 /* hwrm_port_ts_query_output (size:192b/24B) */
 struct hwrm_port_ts_query_output {
@@ -35250,6 +35250,6 @@ struct hwrm_port_ts_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t		valid;
-} __attribute__((packed));
+} __rte_packed;
 
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */
