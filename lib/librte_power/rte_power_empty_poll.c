@@ -52,13 +52,13 @@ set_power_freq(int lcore_id, enum freq_val freq, bool specific_freq)
 }
 
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 exit_training_state(struct priority_worker *poll_stats)
 {
 	RTE_SET_USED(poll_stats);
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 enter_training_state(struct priority_worker *poll_stats)
 {
 	poll_stats->iter_counter = 0;
@@ -66,7 +66,7 @@ enter_training_state(struct priority_worker *poll_stats)
 	poll_stats->queue_state = TRAINING;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 enter_normal_state(struct priority_worker *poll_stats)
 {
 	/* Clear the averages arrays and strs */
@@ -86,7 +86,7 @@ enter_normal_state(struct priority_worker *poll_stats)
 	poll_stats->thresh[HGH].threshold_percent = high_to_med_threshold;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 enter_busy_state(struct priority_worker *poll_stats)
 {
 	memset(poll_stats->edpi_av, 0, sizeof(poll_stats->edpi_av));
@@ -101,14 +101,14 @@ enter_busy_state(struct priority_worker *poll_stats)
 	set_power_freq(poll_stats->lcore_id, HGH, false);
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 enter_purge_state(struct priority_worker *poll_stats)
 {
 	poll_stats->iter_counter = 0;
 	poll_stats->queue_state = LOW_PURGE;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 set_state(struct priority_worker *poll_stats,
 		enum queue_state new_state)
 {
@@ -131,7 +131,7 @@ set_state(struct priority_worker *poll_stats,
 	}
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 set_policy(struct priority_worker *poll_stats,
 		struct ep_policy *policy)
 {
@@ -204,7 +204,7 @@ update_training_stats(struct priority_worker *poll_stats,
 	}
 }
 
-static inline uint32_t __attribute__((always_inline))
+static __rte_always_inline uint32_t
 update_stats(struct priority_worker *poll_stats)
 {
 	uint64_t tot_edpi = 0, tot_ppi = 0;
@@ -249,7 +249,7 @@ update_stats(struct priority_worker *poll_stats)
 }
 
 
-static inline void  __attribute__((always_inline))
+static __rte_always_inline void
 update_stats_normal(struct priority_worker *poll_stats)
 {
 	uint32_t percent;

@@ -2585,7 +2585,7 @@ end_of_tx:
 	return nb_tx;
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 ice_tx_free_bufs(struct ice_tx_queue *txq)
 {
 	struct ice_tx_entry *txep;

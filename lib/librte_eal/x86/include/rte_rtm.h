@@ -25,7 +25,7 @@ extern "C" {
 #define RTE_XABORT_NESTED		(1 << 5)
 #define RTE_XABORT_CODE(x)		(((x) >> 24) & 0xff)
 
-static __attribute__((__always_inline__)) inline
+static __rte_always_inline
 unsigned int rte_xbegin(void)
 {
 	unsigned int ret = RTE_XBEGIN_STARTED;
@@ -34,7 +34,7 @@ unsigned int rte_xbegin(void)
 	return ret;
 }
 
-static __attribute__((__always_inline__)) inline
+static __rte_always_inline
 void rte_xend(void)
 {
 	 asm volatile(".byte 0x0f,0x01,0xd5" ::: "memory");
@@ -45,7 +45,7 @@ void rte_xend(void)
 	asm volatile(".byte 0xc6,0xf8,%P0" :: "i" (status) : "memory"); \
 } while (0)
 
-static __attribute__((__always_inline__)) inline
+static __rte_always_inline
 int rte_xtest(void)
 {
 	unsigned char out;

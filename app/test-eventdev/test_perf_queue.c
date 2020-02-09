@@ -15,7 +15,7 @@ perf_queue_nb_event_queues(struct evt_options *opt)
 	return nb_prod * opt->nb_stages;
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 mark_fwd_latency(struct rte_event *const ev,
 		const uint8_t nb_stages)
 {
@@ -26,7 +26,7 @@ mark_fwd_latency(struct rte_event *const ev,
 	}
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 fwd_event(struct rte_event *const ev, uint8_t *const sched_type_list,
 		const uint8_t nb_stages)
 {

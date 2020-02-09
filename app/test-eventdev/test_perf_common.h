@@ -91,7 +91,7 @@ struct perf_elt {
 		printf("%s(): lcore %d dev_id %d port=%d\n", __func__,\
 				rte_lcore_id(), dev, port)
 
-static inline __attribute__((always_inline)) int
+static __rte_always_inline int
 perf_process_last_stage(struct rte_mempool *const pool,
 		struct rte_event *const ev, struct worker_data *const w,
 		void *bufs[], int const buf_sz, uint8_t count)
@@ -107,7 +107,7 @@ perf_process_last_stage(struct rte_mempool *const pool,
 	return count;
 }
 
-static inline __attribute__((always_inline)) uint8_t
+static __rte_always_inline uint8_t
 perf_process_last_stage_latency(struct rte_mempool *const pool,
 		struct rte_event *const ev, struct worker_data *const w,
 		void *bufs[], int const buf_sz, uint8_t count)

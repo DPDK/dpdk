@@ -9,7 +9,7 @@
 
 /* See http://doc.dpdk.org/guides/tools/testeventdev.html for test details */
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 order_queue_process_stage_0(struct rte_event *const ev)
 {
 	ev->queue_id = 1; /* q1 atomic queue */

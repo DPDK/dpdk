@@ -62,7 +62,7 @@ order_nb_event_ports(struct evt_options *opt)
 	return evt_nr_active_lcores(opt->wlcores) + 1 /* producer */;
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 order_process_stage_1(struct test_order *const t,
 		struct rte_event *const ev, const uint32_t nb_flows,
 		uint32_t *const expected_flow_seq,
@@ -87,7 +87,7 @@ order_process_stage_1(struct test_order *const t,
 	rte_atomic64_sub(outstand_pkts, 1);
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 order_process_stage_invalid(struct test_order *const t,
 			struct rte_event *const ev)
 {
