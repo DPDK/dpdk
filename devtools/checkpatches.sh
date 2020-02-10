@@ -61,6 +61,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# refrain from using compiler attribute without defining a common macro
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS="__attribute__" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using compiler attribute directly' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# svg figures must be included with wildcard extension
 	# because of png conversion for pdf docs
 	awk -v FOLDERS='doc' \
