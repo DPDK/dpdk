@@ -5,7 +5,6 @@ DPDK_20.0 {
 	otx2_dev_fini;
 	otx2_dev_priv_init;
 	otx2_disable_irqs;
-	otx2_eth_dev_is_sec_capable;
 	otx2_intra_dev_get_cfg;
 	otx2_logtype_base;
 	otx2_logtype_dpi;
@@ -28,17 +27,23 @@ DPDK_20.0 {
 	otx2_npa_pf_func_get;
 	otx2_npa_set_defaults;
 	otx2_register_irq;
-	otx2_sec_idev_cfg_init;
-	otx2_sec_idev_tx_cpt_qp_add;
-	otx2_sec_idev_tx_cpt_qp_remove;
-	otx2_sec_idev_tx_cpt_qp_get;
-	otx2_sec_idev_tx_cpt_qp_put;
 	otx2_sso_pf_func_get;
 	otx2_sso_pf_func_set;
 	otx2_unregister_irq;
 
 	local: *;
 };
+
+DPDK_20.0.1 {
+	global:
+
+	otx2_eth_dev_is_sec_capable;
+	otx2_sec_idev_cfg_init;
+	otx2_sec_idev_tx_cpt_qp_add;
+	otx2_sec_idev_tx_cpt_qp_remove;
+	otx2_sec_idev_tx_cpt_qp_get;
+	otx2_sec_idev_tx_cpt_qp_put;
+} DPDK_20.0;
 
 EXPERIMENTAL {
 	global:
