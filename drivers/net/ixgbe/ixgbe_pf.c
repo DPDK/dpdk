@@ -772,9 +772,6 @@ ixgbe_set_vf_macvlan_msg(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		    IXGBE_VT_MSGINFO_SHIFT;
 
 	if (index) {
-		if (new_mac == NULL)
-			return -1;
-
 		if (!rte_is_valid_assigned_ether_addr(
 			(struct rte_ether_addr *)new_mac)) {
 			PMD_DRV_LOG(ERR, "set invalid mac vf:%d\n", vf);
