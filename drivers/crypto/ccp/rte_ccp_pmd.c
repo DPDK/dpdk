@@ -6,7 +6,6 @@
 #include <rte_bus_pci.h>
 #include <rte_bus_vdev.h>
 #include <rte_common.h>
-#include <rte_config.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
 #include <rte_pci.h>

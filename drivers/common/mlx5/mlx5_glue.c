@@ -14,8 +14,6 @@
  */
 #include <sys/types.h>
 
-#include <rte_config.h>
-
 #include "mlx5_glue.h"
 
 static int

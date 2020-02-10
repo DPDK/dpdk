@@ -2,7 +2,6 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
-#include <rte_config.h>
 #include <rte_eal_memconfig.h>
 #include <rte_version.h>
 

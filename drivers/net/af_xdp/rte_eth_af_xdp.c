@@ -26,7 +26,6 @@
 #include <rte_string_fns.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
-#include <rte_config.h>
 #include <rte_dev.h>
 #include <rte_eal.h>
 #include <rte_ether.h>

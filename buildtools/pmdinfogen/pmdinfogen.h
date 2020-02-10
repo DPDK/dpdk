@@ -24,7 +24,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <elf.h>
-#include <rte_config.h>
 #include <rte_pci.h>
 
 /* On BSD-alike OSes elf.h defines these according to host's word size */

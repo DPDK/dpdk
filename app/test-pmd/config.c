@@ -49,7 +49,6 @@
 #include <rte_pmd_bnxt.h>
 #endif
 #include <rte_gro.h>
-#include <rte_config.h>
 
 #include "testpmd.h"
 
