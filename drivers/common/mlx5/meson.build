@@ -185,7 +185,7 @@ endif
 # Build Glue Library
 if pmd_dlopen and build
 	dlopen_name = 'mlx5_glue'
-	dlopen_lib_name = driver_name_fmt.format(dlopen_name)
+	dlopen_lib_name = 'rte_pmd_@0@'.format(dlopen_name)
 	dlopen_so_version = LIB_GLUE_VERSION
 	dlopen_sources = files('mlx5_glue.c')
 	dlopen_install_dir = [ eal_pmd_path + '-glue' ]
