@@ -1746,7 +1746,7 @@ flow_dv_validate_action_push_vlan(uint64_t action_flags,
 {
 	const struct rte_flow_action_of_push_vlan *push_vlan = action->conf;
 
-	if (attr->ingress)
+	if (!attr->transfer && attr->ingress)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
 					  NULL,
