@@ -14,6 +14,7 @@ default_path=$PATH
 # - DPDK_DEP_BPF (y/[n])
 # - DPDK_DEP_CFLAGS
 # - DPDK_DEP_ELF (y/[n])
+# - DPDK_DEP_FDT (y/[n])
 # - DPDK_DEP_ISAL (y/[n])
 # - DPDK_DEP_JSON (y/[n])
 # - DPDK_DEP_LDFLAGS
@@ -108,6 +109,7 @@ reset_env ()
 	unset DPDK_DEP_BPF
 	unset DPDK_DEP_CFLAGS
 	unset DPDK_DEP_ELF
+	unset DPDK_DEP_FDT
 	unset DPDK_DEP_ISAL
 	unset DPDK_DEP_JSON
 	unset DPDK_DEP_LDFLAGS
@@ -140,6 +142,8 @@ config () # <directory> <target> <options>
 		# Built-in options (lowercase)
 		! echo $3 | grep -q '+default' || \
 		sed -ri="" 's,(RTE_MACHINE=")native,\1default,' $1/.config
+		! echo $3 | grep -q '+kmods' || \
+		sed -ri="" 's,(IGB_UIO=|KNI_KMOD=)n,\1y,' $1/.config
 		echo $3 | grep -q '+next' || \
 		sed -ri=""           's,(NEXT_ABI=)y,\1n,' $1/.config
 		! echo $3 | grep -q '+shared' || \
@@ -151,6 +155,8 @@ config () # <directory> <target> <options>
 		sed -ri="" 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config )
 
 		# Automatic configuration
+		! echo $2 | grep -q 'arm64' || \
+		sed -ri=""        's,(ARM_USE_WFE=)n,\1y,' $1/.config
 		test "$DPDK_DEP_NUMA" != n || \
 		sed -ri=""             's,(NUMA.*=)y,\1n,' $1/.config
 		sed -ri=""    's,(LIBRTE_IEEE1588=)n,\1y,' $1/.config
@@ -159,10 +165,14 @@ config () # <directory> <target> <options>
 		sed -ri=""       's,(RESOURCE_TAR=)n,\1y,' $1/.config
 		test "$DPDK_DEP_BPF" != y || \
 		sed -ri=""         's,(PMD_AF_XDP=)n,\1y,' $1/.config
+		test "$DPDK_DEP_FDT" != y || \
+		sed -ri=""   's,(PMD_IFPGA_RAWDEV=)n,\1y,' $1/.config
+		test "$DPDK_DEP_FDT" != y || \
+		sed -ri=""         's,(IPN3KE_PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ISAL" != y || \
 		sed -ri=""           's,(PMD_ISAL=)n,\1y,' $1/.config
 		test "$DPDK_DEP_MLX" != y || \
-		sed -ri=""           's,(MLX._PMD=)n,\1y,' $1/.config
+		sed -ri=""          's,(MLX.*_PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_NFB" != y || \
 		sed -ri=""            's,(NFB_PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SZE" != y || \
