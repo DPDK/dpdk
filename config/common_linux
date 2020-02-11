@@ -66,9 +66,3 @@ CONFIG_RTE_LIBRTE_HINIC_PMD=y
 # Hisilicon HNS3 PMD driver
 #
 CONFIG_RTE_LIBRTE_HNS3_PMD=y
-
-#
-# Compile PMD for Intel FPGA raw device
-# To compile, CONFIG_RTE_EAL_VFIO should be enabled.
-#
-CONFIG_RTE_LIBRTE_PMD_IFPGA_RAWDEV=n
