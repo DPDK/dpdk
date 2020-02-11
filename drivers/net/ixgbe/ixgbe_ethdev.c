@@ -4128,13 +4128,10 @@ static int
 ixgbe_wait_for_link_up(struct ixgbe_hw *hw)
 {
 #ifdef RTE_EXEC_ENV_FREEBSD
-	const int nb_iter = 25;
-#else
-	const int nb_iter = 0;
-#endif
 	int err, i;
 	bool link_up = false;
 	uint32_t speed = 0;
+	const int nb_iter = 25;
 
 	for (i = 0; i < nb_iter; i++) {
 		err = ixgbe_check_link(hw, &speed, &link_up, 0);
@@ -4144,7 +4141,12 @@ ixgbe_wait_for_link_up(struct ixgbe_hw *hw)
 			return 0;
 		msec_delay(200);
 	}
+
 	return 0;
+#else
+	RTE_SET_USED(hw);
+	return 0;
+#endif
 }
 
 /* return 0 means link status changed, -1 means not changed */
