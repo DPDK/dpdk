@@ -260,6 +260,9 @@ static int axgbe_enable_tx_flow_control(struct axgbe_port *pdata)
 			ehfc = 1;
 
 		AXGMAC_MTL_IOWRITE_BITS(pdata, i, MTL_Q_RQOMR, EHFC, ehfc);
+
+		PMD_DRV_LOG(DEBUG, "flow control %s for RXq%u\n",
+			    ehfc ? "enabled" : "disabled", i);
 	}
 
 	/* Set MAC flow control */
@@ -915,6 +918,9 @@ static void axgbe_config_rx_fifo_size(struct axgbe_port *pdata)
 	/*Calculate and config Flow control threshold*/
 	axgbe_calculate_flow_control_threshold(pdata);
 	axgbe_config_flow_control_threshold(pdata);
+
+	PMD_DRV_LOG(DEBUG, "%d Rx hardware queues, %d byte fifo per queue\n",
+		    pdata->rx_q_count, q_fifo_size);
 }
 
 static void axgbe_config_tx_fifo_size(struct axgbe_port *pdata)
@@ -938,6 +944,9 @@ static void axgbe_config_tx_fifo_size(struct axgbe_port *pdata)
 
 	for (i = 0; i < pdata->tx_q_count; i++)
 		AXGMAC_MTL_IOWRITE_BITS(pdata, i, MTL_Q_TQOMR, TQS, p_fifo);
+
+	PMD_DRV_LOG(DEBUG, "%d Tx hardware queues, %d byte fifo per queue\n",
+		    pdata->tx_q_count, q_fifo_size);
 }
 
 static void axgbe_config_queue_mapping(struct axgbe_port *pdata)
@@ -952,12 +961,16 @@ static void axgbe_config_queue_mapping(struct axgbe_port *pdata)
 	qptc_extra = pdata->tx_q_count % pdata->hw_feat.tc_cnt;
 
 	for (i = 0, queue = 0; i < pdata->hw_feat.tc_cnt; i++) {
-		for (j = 0; j < qptc; j++)
+		for (j = 0; j < qptc; j++) {
+			PMD_DRV_LOG(DEBUG, "TXq%u mapped to TC%u\n", queue, i);
 			AXGMAC_MTL_IOWRITE_BITS(pdata, queue, MTL_Q_TQOMR,
 						Q2TCMAP, i);
-		if (i < qptc_extra)
+		}
+		if (i < qptc_extra) {
+			PMD_DRV_LOG(DEBUG, "TXq%u mapped to TC%u\n", queue, i);
 			AXGMAC_MTL_IOWRITE_BITS(pdata, queue, MTL_Q_TQOMR,
 						Q2TCMAP, i);
+		}
 	}
 
 	if (pdata->rss_enable) {

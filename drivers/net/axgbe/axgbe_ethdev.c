@@ -201,12 +201,14 @@ axgbe_dev_interrupt_handler(void *param)
 	pdata->phy_if.an_isr(pdata);
 	/*DMA related interrupts*/
 	dma_isr = AXGMAC_IOREAD(pdata, DMA_ISR);
+	PMD_DRV_LOG(DEBUG, "DMA_ISR=%#010x\n", dma_isr);
 	if (dma_isr) {
 		if (dma_isr & 1) {
 			dma_ch_isr =
 				AXGMAC_DMA_IOREAD((struct axgbe_rx_queue *)
 						  pdata->rx_queues[0],
 						  DMA_CH_SR);
+			PMD_DRV_LOG(DEBUG, "DMA_CH0_ISR=%#010x\n", dma_ch_isr);
 			AXGMAC_DMA_IOWRITE((struct axgbe_rx_queue *)
 					   pdata->rx_queues[0],
 					   DMA_CH_SR, dma_ch_isr);
