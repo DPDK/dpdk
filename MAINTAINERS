@@ -784,7 +784,6 @@ F: doc/guides/nics/features/nfb.ini
 
 Netronome nfp
 M: Heinrich Kuhn <heinrich.kuhn@netronome.com>
-M: Jan Gutter <jan.gutter@netronome.com>
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
 F: doc/guides/nics/features/nfp*.ini
