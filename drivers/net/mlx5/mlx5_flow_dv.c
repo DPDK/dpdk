@@ -5216,6 +5216,15 @@ flow_dv_translate_item_eth(void *matcher, void *key,
 		 rte_be_to_cpu_16(eth_m->type));
 	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v, ethertype);
 	*(uint16_t *)(l24_v) = eth_m->type & eth_v->type;
+	if (eth_v->type) {
+		/* When ethertype is present set mask for tagged VLAN. */
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, cvlan_tag, 1);
+		/* Set value for tagged VLAN if ethertype is 802.1Q. */
+		if (eth_v->type == RTE_BE16(RTE_ETHER_TYPE_VLAN) ||
+		    eth_v->type == RTE_BE16(RTE_ETHER_TYPE_QINQ))
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, cvlan_tag,
+				 1);
+	}
 }
 
 /**
@@ -5356,6 +5365,7 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
 		 ipv4_m->hdr.next_proto_id);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
 		 ipv4_v->hdr.next_proto_id & ipv4_m->hdr.next_proto_id);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, cvlan_tag, 1);
 }
 
 /**
@@ -5460,6 +5470,7 @@ flow_dv_translate_item_ipv6(void *matcher, void *key,
 		 ipv6_m->hdr.proto);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
 		 ipv6_v->hdr.proto & ipv6_m->hdr.proto);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, cvlan_tag, 1);
 }
 
 /**
