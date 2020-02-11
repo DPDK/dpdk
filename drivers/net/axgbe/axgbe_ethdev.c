@@ -7,6 +7,7 @@
 #include "axgbe_ethdev.h"
 #include "axgbe_common.h"
 #include "axgbe_phy.h"
+#include "axgbe_regs.h"
 
 static int eth_axgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev);
@@ -21,6 +22,8 @@ static int axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static int axgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 				 int wait_to_complete);
+static int axgbe_dev_get_regs(struct rte_eth_dev *dev,
+			      struct rte_dev_reg_info *regs);
 static int axgbe_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static int axgbe_dev_stats_reset(struct rte_eth_dev *dev);
@@ -158,6 +161,7 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.allmulticast_enable  = axgbe_dev_allmulticast_enable,
 	.allmulticast_disable = axgbe_dev_allmulticast_disable,
 	.link_update          = axgbe_dev_link_update,
+	.get_reg	      = axgbe_dev_get_regs,
 	.stats_get            = axgbe_dev_stats_get,
 	.stats_reset          = axgbe_dev_stats_reset,
 	.xstats_get	      = axgbe_dev_xstats_get,
@@ -393,6 +397,27 @@ axgbe_dev_link_update(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static int
+axgbe_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	if (regs->data == NULL) {
+		regs->length = axgbe_regs_get_count(pdata);
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
+	/* Only full register dump is supported */
+	if (regs->length &&
+	    regs->length != (uint32_t)axgbe_regs_get_count(pdata))
+		return -ENOTSUP;
+
+	regs->version = pdata->pci_dev->id.vendor_id << 16 |
+			pdata->pci_dev->id.device_id;
+	axgbe_regs_dump(pdata, regs->data);
+	return 0;
+}
 static void axgbe_read_mmc_stats(struct axgbe_port *pdata)
 {
 	struct axgbe_mmc_stats *stats = &pdata->mmc_stats;

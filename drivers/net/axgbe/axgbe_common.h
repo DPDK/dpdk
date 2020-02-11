@@ -289,6 +289,9 @@
 #define MAC_RQC2_INC			4
 #define MAC_RQC2_Q_PER_REG		4
 
+#define MAC_MACAHR(i)	(MAC_MACA0HR + ((i) * 8))
+#define MAC_MACALR(i)	(MAC_MACA0LR + ((i) * 8))
+
 /* MAC register entry bit positions and sizes */
 #define MAC_HWF0R_ADDMACADRSEL_INDEX	18
 #define MAC_HWF0R_ADDMACADRSEL_WIDTH	5
