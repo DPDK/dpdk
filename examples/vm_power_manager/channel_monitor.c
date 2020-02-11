@@ -868,7 +868,7 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 		if (valid_unit) {
 			ret = send_ack_for_received_cmd(pkt,
 					chan_info,
-					scale_res > 0 ?
+					scale_res >= 0 ?
 						CPU_POWER_CMD_ACK :
 						CPU_POWER_CMD_NACK);
 			if (ret < 0)
