@@ -30,7 +30,7 @@ foreach libname:libnames
 	endif
 	if lib.found()
 		libs += lib
-		if not static_ibverbs
+		if not static_ibverbs and not dlopen_ibverbs
 			ext_deps += lib
 		endif
 	else
@@ -39,10 +39,12 @@ foreach libname:libnames
 		subdir_done()
 	endif
 endforeach
-if static_ibverbs
+if static_ibverbs or dlopen_ibverbs
 	# Build without adding shared libs to Requires.private
 	ibv_cflags = run_command(pkgconf, '--cflags', 'libibverbs').stdout()
 	ext_deps += declare_dependency(compile_args: ibv_cflags.split())
+endif
+if static_ibverbs
 	# Add static deps ldflags to internal apps and Libs.private
 	ibv_ldflags = run_command(ldflags_ibverbs_static, check:true).stdout()
 	ext_deps += declare_dependency(link_args:ibv_ldflags.split())
