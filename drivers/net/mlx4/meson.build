@@ -29,16 +29,26 @@ foreach libname:libnames
 		lib = cc.find_library(libname, required:false)
 	endif
 	if lib.found()
-		libs += [ lib ]
+		libs += lib
+		if not static_ibverbs
+			ext_deps += lib
+		endif
 	else
 		build = false
 		reason = 'missing dependency, "' + libname + '"'
 		subdir_done()
 	endif
 endforeach
+if static_ibverbs
+	# Build without adding shared libs to Requires.private
+	ibv_cflags = run_command(pkgconf, '--cflags', 'libibverbs').stdout()
+	ext_deps += declare_dependency(compile_args: ibv_cflags.split())
+	# Add static deps ldflags to internal apps and Libs.private
+	ibv_ldflags = run_command(ldflags_ibverbs_static, check:true).stdout()
+	ext_deps += declare_dependency(link_args:ibv_ldflags.split())
+endif
 
 allow_experimental_apis = true
-ext_deps += libs
 sources = files(
 	'mlx4.c',
 	'mlx4_ethdev.c',

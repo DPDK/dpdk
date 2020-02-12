@@ -3,9 +3,11 @@
 
 subdir('pmdinfogen')
 
+pkgconf = find_program('pkg-config', 'pkgconf', required: false)
 pmdinfo = find_program('gen-pmdinfo-cfile.sh')
 list_dir_globs = find_program('list-dir-globs.py')
 check_experimental_syms = find_program('check-experimental-syms.sh')
+ldflags_ibverbs_static = find_program('options-ibverbs-static.sh')
 
 # set up map-to-def script using python, either built-in or external
 python3 = import('python').find_installation(required: false)
