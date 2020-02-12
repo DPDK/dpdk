@@ -1248,7 +1248,8 @@ end_of_tx:
 		   (unsigned) txq->port_id, (unsigned) txq->queue_id,
 		   (unsigned) tx_id, (unsigned) nb_tx);
 
-	I40E_PCI_REG_WRITE(txq->qtx_tail, tx_id);
+	rte_cio_wmb();
+	I40E_PCI_REG_WRITE_RELAXED(txq->qtx_tail, tx_id);
 	txq->tx_tail = tx_id;
 
 	return nb_tx;
