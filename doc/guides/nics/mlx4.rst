@@ -92,6 +92,10 @@ These options can be modified in the ``.config`` file.
   adds additional run-time checks and debugging messages at the cost of
   lower performance.
 
+This option is available in meson:
+
+- ``ibverbs_link`` can be ``static``, ``shared``, or ``dlopen``.
+
 Environment variables
 ~~~~~~~~~~~~~~~~~~~~~
 

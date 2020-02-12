@@ -14,8 +14,8 @@ option('examples', type: 'string', value: '',
 	description: 'Comma-separated list of examples to build by default')
 option('flexran_sdk', type: 'string', value: '',
 	description: 'Path to FlexRAN SDK optional Libraries for BBDEV device')
-option('ibverbs_link', type: 'combo', choices : ['shared', 'dlopen'], value: 'shared',
-	description: 'Linkage method (shared/dlopen) for Mellanox PMDs with ibverbs dependencies.')
+option('ibverbs_link', type: 'combo', choices : ['static', 'shared', 'dlopen'], value: 'shared',
+	description: 'Linkage method (static/shared/dlopen) for Mellanox PMDs with ibverbs dependencies.')
 option('include_subdir_arch', type: 'string', value: '',
 	description: 'subdirectory where to install arch-dependent headers')
 option('kernel_dir', type: 'string', value: '',

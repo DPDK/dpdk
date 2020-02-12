@@ -8,6 +8,7 @@ if not is_linux
 	subdir_done()
 endif
 
+static_ibverbs = (get_option('ibverbs_link') == 'static')
 pmd_dlopen = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_pmd_mlx4_glue.so'
 LIB_GLUE_VERSION = '18.02.0'
@@ -23,8 +24,8 @@ endif
 libnames = [ 'mlx4', 'ibverbs' ]
 libs = []
 foreach libname:libnames
-	lib = dependency('lib' + libname, required:false)
-	if not lib.found()
+	lib = dependency('lib' + libname, static:static_ibverbs, required:false)
+	if not lib.found() and not static_ibverbs
 		lib = cc.find_library(libname, required:false)
 	endif
 	if lib.found()

@@ -275,6 +275,10 @@ These options can be modified in the ``.config`` file.
    64. Default armv8a configuration of make build and meson build set it to 128
    then brings performance degradation.
 
+This option is available in meson:
+
+- ``ibverbs_link`` can be ``static``, ``shared``, or ``dlopen``.
+
 Environment variables
 ~~~~~~~~~~~~~~~~~~~~~
 
