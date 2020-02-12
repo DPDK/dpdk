@@ -8,11 +8,11 @@ if not is_linux
 endif
 
 static_ibverbs = (get_option('ibverbs_link') == 'static')
-pmd_dlopen = (get_option('ibverbs_link') == 'dlopen')
+dlopen_ibverbs = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_pmd_mlx5_glue.so'
 LIB_GLUE_VERSION = '20.02.0'
 LIB_GLUE = LIB_GLUE_BASE + '.' + LIB_GLUE_VERSION
-if pmd_dlopen
+if dlopen_ibverbs
 	dpdk_conf.set('RTE_IBVERBS_LINK_DLOPEN', 1)
 	cflags += [
 		'-DMLX5_GLUE="@0@"'.format(LIB_GLUE),
@@ -54,7 +54,7 @@ sources = files(
 	'mlx5_common.c',
 	'mlx5_nl.c',
 )
-if not pmd_dlopen
+if not dlopen_ibverbs
 	sources += files('mlx5_glue.c')
 endif
 cflags_options = [
@@ -193,7 +193,7 @@ endforeach
 configure_file(output : 'mlx5_autoconf.h', configuration : config)
 
 # Build Glue Library
-if pmd_dlopen
+if dlopen_ibverbs
 	dlopen_name = 'mlx5_glue'
 	dlopen_lib_name = 'rte_pmd_@0@'.format(dlopen_name)
 	dlopen_so_version = LIB_GLUE_VERSION
