@@ -666,4 +666,47 @@ struct ipv4_7tuple acl_test_data[] = {
 		}, /* should not match */
 };
 
+/*
+ * ruleset for ACL 32 bit range (by src addr) unit test
+ * keep them ordered by priority in descending order.
+ */
+struct rte_acl_ipv4vlan_rule acl_u32_range_test_rules[] = {
+		{
+			.data = {
+				.userdata = 500,
+				.category_mask = ACL_ALLOW_MASK,
+				.priority = 500
+			},
+			.src_addr = RTE_IPV4(0, 0, 0, 1),
+			.src_mask_len = RTE_IPV4(0, 0, 2, 58),
+		},
+		{
+			.data = {
+				.userdata = 400,
+				.category_mask = ACL_ALLOW_MASK,
+				.priority = 400
+			},
+			.src_addr = RTE_IPV4(0, 4, 3, 2),
+			.src_mask_len = RTE_IPV4(0, 4, 7, 255),
+		},
+		{
+			.data = {
+				.userdata = 300,
+				.category_mask = ACL_ALLOW_MASK,
+				.priority = 300
+			},
+			.src_addr = RTE_IPV4(0, 1, 12, 14),
+			.src_mask_len = RTE_IPV4(0, 3, 11, 13),
+		},
+		{
+			.data = {
+				.userdata = 200,
+				.category_mask = ACL_ALLOW_MASK,
+				.priority = 200
+			},
+			.src_addr = RTE_IPV4(0, 0, 1, 40),
+			.src_mask_len = RTE_IPV4(0, 4, 5, 6),
+		},
+};
+
 #endif /* TEST_ACL_H_ */
