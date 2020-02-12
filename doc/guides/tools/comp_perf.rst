@@ -14,8 +14,16 @@ which are passed to compress device with compression operations.
 Then, the output buffers are fed into the decompression stage, and the resulting
 data is compared against the original data (verification phase). After that,
 a number of iterations are performed, compressing first and decompressing later,
-to check the throughput rate
-(showing cycles/iteration, cycles/Byte and Gbps, for compression and decompression).
+to check the throughput rate (showing cycles/iteration, cycles/Byte and Gbps,
+for compression and decompression).
+Another option: ``pmd-cyclecount``, gives the user the opportunity to measure
+the number of cycles per operation for the 3 phases: setup, enqueue_burst and
+dequeue_burst, for both compression and decompression. An optional delay can be
+inserted between enqueue and dequeue so no cycles are wasted in retries while
+waiting for a hardware device to finish. Although artificial, this allows
+to measure the minimum offload cost which could be achieved in a perfectly
+tuned system. Comparing the results of the two tests gives information about
+the trade-off between throughput and cycle-count.
 
 .. Note::
 
@@ -56,7 +64,7 @@ See the DPDK Getting Started Guides for more information on these options.
 Application Options
 ~~~~~~~~~~~~~~~~~~~
 
- ``--ptest [benchmark/verify]``: set test type (default: benchmark)
+ ``--ptest [throughput/verify/pmd-cyclecount]``: set test type (default: throughput)
 
  ``--driver-name NAME``: compress driver to use
 
@@ -83,6 +91,8 @@ Application Options
  ``--window-sz N``: base two log value of compression window size (default: max supported by PMD)
 
  ``--external-mbufs``: allocate and use memzones as external buffers instead of keeping the data directly in mbuf areas
+
+ ``--cc-delay-us N``: delay between enqueue and dequeue operations in microseconds, valid only for the cyclecount test (default: 500 us)
 
  ``-h``: prints this help
 

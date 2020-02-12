@@ -195,6 +195,11 @@ New Features
   Add event device support for ``l3fwd`` sample application. It demonstrates
   usage of poll and event mode IO mechanism under a single application.
 
+* **Added cycle-count mode to the compression performance tool.**
+
+  Enhanced the compression performance tool by adding a cycle-count mode
+  which can be used to help measure and tune hardware and software PMDs.
+
 
 Removed Items
 -------------
