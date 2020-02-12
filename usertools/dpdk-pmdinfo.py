@@ -539,7 +539,7 @@ def scan_for_autoload_pmds(dpdk_path):
         return
 
     (autoload_path, scannedfile) = readelf.search_for_autoload_path()
-    if (autoload_path is None or autoload_path is ""):
+    if not autoload_path:
         if (raw_output is False):
             print("No autoload path configured in %s" % dpdk_path)
         return
