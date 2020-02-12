@@ -8,21 +8,20 @@ endif
 if not dep.found()
 	build = false
 	reason = 'missing dependency, "libfdt"'
+	subdir_done()
 endif
 
-if build
-	subdir('base')
-	objs = [base_objs]
+subdir('base')
+objs = [base_objs]
 
-	deps += ['ethdev', 'rawdev', 'pci', 'bus_pci', 'kvargs',
-		'bus_vdev', 'bus_ifpga', 'net', 'pmd_i40e', 'pmd_ipn3ke']
-	ext_deps += dep
+deps += ['ethdev', 'rawdev', 'pci', 'bus_pci', 'kvargs',
+	'bus_vdev', 'bus_ifpga', 'net', 'pmd_i40e', 'pmd_ipn3ke']
+ext_deps += dep
 
-	sources = files('ifpga_rawdev.c')
+sources = files('ifpga_rawdev.c')
 
-	includes += include_directories('base')
-	includes += include_directories('../../net/ipn3ke')
-	includes += include_directories('../../net/i40e')
+includes += include_directories('base')
+includes += include_directories('../../net/ipn3ke')
+includes += include_directories('../../net/i40e')
 
-	allow_experimental_apis = true
-endif
+allow_experimental_apis = true

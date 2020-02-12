@@ -7,7 +7,6 @@ if not is_linux
 	reason = 'only supported on Linux'
 	subdir_done()
 endif
-build = true
 
 pmd_dlopen = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_pmd_mlx4_glue.so'
@@ -33,77 +32,77 @@ foreach libname:libnames
 	else
 		build = false
 		reason = 'missing dependency, "' + libname + '"'
+		subdir_done()
 	endif
 endforeach
 
-if build
-	allow_experimental_apis = true
-	ext_deps += libs
-	sources = files(
-		'mlx4.c',
-		'mlx4_ethdev.c',
-		'mlx4_flow.c',
-		'mlx4_intr.c',
-		'mlx4_mp.c',
-		'mlx4_mr.c',
-		'mlx4_rxq.c',
-		'mlx4_rxtx.c',
-		'mlx4_txq.c',
-		'mlx4_utils.c',
-	)
-	if not pmd_dlopen
-		sources += files('mlx4_glue.c')
-	endif
-	cflags_options = [
-		'-std=c11',
-		'-Wno-strict-prototypes',
-		'-D_BSD_SOURCE',
-		'-D_DEFAULT_SOURCE',
-		'-D_XOPEN_SOURCE=600'
-	]
-	foreach option:cflags_options
-		if cc.has_argument(option)
-			cflags += option
-		endif
-	endforeach
-	if get_option('buildtype').contains('debug')
-		cflags += [ '-pedantic', '-DPEDANTIC' ]
-	else
-		cflags += [ '-UPEDANTIC' ]
-	endif
-	# To maintain the compatibility with the make build system
-	# mlx4_autoconf.h file is still generated.
-	# input array for meson member search:
-	# [ "MACRO to define if found", "header for the search",
-	#   "symbol to search", "struct member to search" ]
-	#
-	has_member_args = [
-		[ 'HAVE_IBV_MLX4_WQE_LSO_SEG', 'infiniband/mlx4dv.h',
-		'struct mlx4_wqe_lso_seg', 'mss_hdr_size' ],
-	]
-	# input array for meson symbol search:
-	# [ "MACRO to define if found", "header for the search",
-	#   "symbol to search" ]
-	has_sym_args = [
-		[ 'HAVE_IBV_MLX4_BUF_ALLOCATORS', 'infiniband/mlx4dv.h',
-		'MLX4DV_SET_CTX_ATTR_BUF_ALLOCATORS' ],
-		[ 'HAVE_IBV_MLX4_UAR_MMAP_OFFSET', 'infiniband/mlx4dv.h',
-		'MLX4DV_QP_MASK_UAR_MMAP_OFFSET' ],
-	]
-	config = configuration_data()
-	foreach arg:has_sym_args
-		config.set(arg[0], cc.has_header_symbol(arg[1], arg[2],
-			dependencies: libs))
-	endforeach
-	foreach arg:has_member_args
-		file_prefix = '#include <' + arg[1] + '>'
-		config.set(arg[0], cc.has_member(arg[2], arg[3],
-			prefix: file_prefix, dependencies: libs))
-	endforeach
-	configure_file(output : 'mlx4_autoconf.h', configuration : config)
+allow_experimental_apis = true
+ext_deps += libs
+sources = files(
+	'mlx4.c',
+	'mlx4_ethdev.c',
+	'mlx4_flow.c',
+	'mlx4_intr.c',
+	'mlx4_mp.c',
+	'mlx4_mr.c',
+	'mlx4_rxq.c',
+	'mlx4_rxtx.c',
+	'mlx4_txq.c',
+	'mlx4_utils.c',
+)
+if not pmd_dlopen
+	sources += files('mlx4_glue.c')
 endif
+cflags_options = [
+	'-std=c11',
+	'-Wno-strict-prototypes',
+	'-D_BSD_SOURCE',
+	'-D_DEFAULT_SOURCE',
+	'-D_XOPEN_SOURCE=600'
+]
+foreach option:cflags_options
+	if cc.has_argument(option)
+		cflags += option
+	endif
+endforeach
+if get_option('buildtype').contains('debug')
+	cflags += [ '-pedantic', '-DPEDANTIC' ]
+else
+	cflags += [ '-UPEDANTIC' ]
+endif
+# To maintain the compatibility with the make build system
+# mlx4_autoconf.h file is still generated.
+# input array for meson member search:
+# [ "MACRO to define if found", "header for the search",
+#   "symbol to search", "struct member to search" ]
+#
+has_member_args = [
+	[ 'HAVE_IBV_MLX4_WQE_LSO_SEG', 'infiniband/mlx4dv.h',
+	'struct mlx4_wqe_lso_seg', 'mss_hdr_size' ],
+]
+# input array for meson symbol search:
+# [ "MACRO to define if found", "header for the search",
+#   "symbol to search" ]
+has_sym_args = [
+	[ 'HAVE_IBV_MLX4_BUF_ALLOCATORS', 'infiniband/mlx4dv.h',
+	'MLX4DV_SET_CTX_ATTR_BUF_ALLOCATORS' ],
+	[ 'HAVE_IBV_MLX4_UAR_MMAP_OFFSET', 'infiniband/mlx4dv.h',
+	'MLX4DV_QP_MASK_UAR_MMAP_OFFSET' ],
+]
+config = configuration_data()
+foreach arg:has_sym_args
+	config.set(arg[0], cc.has_header_symbol(arg[1], arg[2],
+		dependencies: libs))
+endforeach
+foreach arg:has_member_args
+	file_prefix = '#include <' + arg[1] + '>'
+	config.set(arg[0], cc.has_member(arg[2], arg[3],
+		prefix: file_prefix, dependencies: libs))
+endforeach
+configure_file(output : 'mlx4_autoconf.h', configuration : config)
+
 # Build Glue Library
-if pmd_dlopen and build
+if pmd_dlopen
 	dlopen_name = 'mlx4_glue'
 	dlopen_lib_name = driver_name_fmt.format(dlopen_name)
 	dlopen_so_version = LIB_GLUE_VERSION
