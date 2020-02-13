@@ -33,6 +33,7 @@
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
+#include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_ring.h>
@@ -754,11 +755,13 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals __rte_unused,
 	void *base_addr = NULL;
 	struct rte_mempool *mb_pool = rxq->mb_pool;
 
-	usr_config.frame_size = rte_pktmbuf_data_room_size(mb_pool) +
-					ETH_AF_XDP_MBUF_OVERHEAD +
-					mb_pool->private_data_size;
-	usr_config.frame_headroom = ETH_AF_XDP_DATA_HEADROOM +
-					mb_pool->private_data_size;
+	usr_config.frame_size = rte_mempool_calc_obj_size(mb_pool->elt_size,
+								mb_pool->flags,
+								NULL);
+	usr_config.frame_headroom = mb_pool->header_size +
+					sizeof(struct rte_mbuf) +
+					rte_pktmbuf_priv_size(mb_pool) +
+					RTE_PKTMBUF_HEADROOM;
 
 	umem = rte_zmalloc_socket("umem", sizeof(*umem), 0, rte_socket_id());
 	if (umem == NULL) {
