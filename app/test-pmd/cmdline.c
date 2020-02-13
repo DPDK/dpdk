@@ -1497,10 +1497,12 @@ static void cmd_operate_detach_port_parsed(void *parsed_result,
 {
 	struct cmd_operate_detach_port_result *res = parsed_result;
 
-	if (!strcmp(res->keyword, "detach"))
+	if (!strcmp(res->keyword, "detach")) {
+		RTE_ETH_VALID_PORTID_OR_RET(res->port_id);
 		detach_port_device(res->port_id);
-	else
+	} else {
 		printf("Unknown parameter\n");
+	}
 }
 
 cmdline_parse_token_string_t cmd_operate_detach_port_port =
