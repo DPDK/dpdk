@@ -58,13 +58,6 @@ static int af_xdp_logtype;
 
 #define ETH_AF_XDP_FRAME_SIZE		2048
 #define ETH_AF_XDP_NUM_BUFFERS		4096
-#ifdef XDP_UMEM_UNALIGNED_CHUNK_FLAG
-#define ETH_AF_XDP_MBUF_OVERHEAD	128 /* sizeof(struct rte_mbuf) */
-#define ETH_AF_XDP_DATA_HEADROOM \
-	(ETH_AF_XDP_MBUF_OVERHEAD + RTE_PKTMBUF_HEADROOM)
-#else
-#define ETH_AF_XDP_DATA_HEADROOM	0
-#endif
 #define ETH_AF_XDP_DFLT_NUM_DESCS	XSK_RING_CONS__DEFAULT_NUM_DESCS
 #define ETH_AF_XDP_DFLT_START_QUEUE_IDX	0
 #define ETH_AF_XDP_DFLT_QUEUE_COUNT	1
@@ -601,7 +594,14 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = internals->queue_cnt;
 
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
-	dev_info->max_mtu = ETH_AF_XDP_FRAME_SIZE - ETH_AF_XDP_DATA_HEADROOM;
+#if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
+	dev_info->max_mtu = getpagesize() -
+				sizeof(struct rte_mempool_objhdr) -
+				sizeof(struct rte_mbuf) -
+				RTE_PKTMBUF_HEADROOM - XDP_PACKET_HEADROOM;
+#else
+	dev_info->max_mtu = ETH_AF_XDP_FRAME_SIZE - XDP_PACKET_HEADROOM;
+#endif
 
 	dev_info->default_rxportconf.nb_queues = 1;
 	dev_info->default_txportconf.nb_queues = 1;
@@ -803,7 +803,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		.fill_size = ETH_AF_XDP_DFLT_NUM_DESCS,
 		.comp_size = ETH_AF_XDP_DFLT_NUM_DESCS,
 		.frame_size = ETH_AF_XDP_FRAME_SIZE,
-		.frame_headroom = ETH_AF_XDP_DATA_HEADROOM };
+		.frame_headroom = 0 };
 	char ring_name[RTE_RING_NAMESIZE];
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	int ret;
@@ -828,8 +828,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 
 	for (i = 0; i < ETH_AF_XDP_NUM_BUFFERS; i++)
 		rte_ring_enqueue(umem->buf_ring,
-				 (void *)(i * ETH_AF_XDP_FRAME_SIZE +
-					  ETH_AF_XDP_DATA_HEADROOM));
+				 (void *)(i * ETH_AF_XDP_FRAME_SIZE));
 
 	snprintf(mz_name, sizeof(mz_name), "af_xdp_umem_%s_%u",
 		       internals->if_name, rxq->xsk_queue_idx);
@@ -938,7 +937,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Now get the space available for data in the mbuf */
 	buf_size = rte_pktmbuf_data_room_size(mb_pool) -
 		RTE_PKTMBUF_HEADROOM;
-	data_size = ETH_AF_XDP_FRAME_SIZE - ETH_AF_XDP_DATA_HEADROOM;
+	data_size = ETH_AF_XDP_FRAME_SIZE;
 
 	if (data_size > buf_size) {
 		AF_XDP_LOG(ERR, "%s: %d bytes will not fit in mbuf (%d bytes)\n",
