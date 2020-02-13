@@ -1541,7 +1541,7 @@ static void cmd_operate_detach_device_parsed(void *parsed_result,
 	struct cmd_operate_detach_device_result *res = parsed_result;
 
 	if (!strcmp(res->keyword, "detach"))
-		detach_device(res->identifier);
+		detach_devargs(res->identifier);
 	else
 		printf("Unknown parameter\n");
 }

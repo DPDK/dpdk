@@ -2683,7 +2683,7 @@ detach_port_device(portid_t port_id)
 }
 
 void
-detach_device(char *identifier)
+detach_devargs(char *identifier)
 {
 	struct rte_dev_iterator iterator;
 	struct rte_devargs da;
