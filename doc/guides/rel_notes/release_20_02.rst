@@ -125,6 +125,14 @@ New Features
   Added a new Mellanox vDPA  (``mlx5_vdpa``) PMD.
   See the :doc:`../vdpadevs/mlx5` guide for more details on this driver.
 
+* **Added support for virtio-PMD notification data.**
+
+  Added support for virtio-PMD notification data so that the driver
+  passes extra data (besides identifying the virtqueue) in its device
+  notifications, expanding the notifications to include the avail index and
+  avail wrap counter (When split ring is used, the avail wrap counter is not
+  included in the notification data).
+
 * **Updated testpmd application.**
 
   Added support for ESP and L2TPv3 over IP rte_flow patterns to the testpmd
