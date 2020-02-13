@@ -133,6 +133,7 @@ New Features
   * Added support for RSS using L3/L4 source/destination only.
   * Added support for matching on GTP tunnel header item.
   * Removed limitation of matching on tagged/untagged packets (when using DV flow engine).
+  * Added BlueField-2 integrated ConnectX-6 Dx device support.
 
 * **Add new vDPA PMD based on Mellanox devices**
 
