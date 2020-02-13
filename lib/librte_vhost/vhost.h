@@ -462,14 +462,23 @@ static __rte_always_inline void
 vhost_log_cache_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			uint64_t offset, uint64_t len)
 {
-	vhost_log_cache_write(dev, vq, vq->log_guest_addr + offset, len);
+	if (unlikely(dev->features & (1ULL << VHOST_F_LOG_ALL))) {
+		if (unlikely(vq->log_guest_addr == 0))
+			return;
+		__vhost_log_cache_write(dev, vq, vq->log_guest_addr + offset,
+					len);
+	}
 }
 
 static __rte_always_inline void
 vhost_log_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		     uint64_t offset, uint64_t len)
 {
-	vhost_log_write(dev, vq->log_guest_addr + offset, len);
+	if (unlikely(dev->features & (1ULL << VHOST_F_LOG_ALL))) {
+		if (unlikely(vq->log_guest_addr == 0))
+			return;
+		__vhost_log_write(dev, vq->log_guest_addr + offset, len);
+	}
 }
 
 static __rte_always_inline void
@@ -626,6 +635,8 @@ void *vhost_alloc_copy_ind_table(struct virtio_net *dev,
 			struct vhost_virtqueue *vq,
 			uint64_t desc_addr, uint64_t desc_len);
 int vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq);
+uint64_t translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		uint64_t log_addr);
 void vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq);
 
 static __rte_always_inline uint64_t

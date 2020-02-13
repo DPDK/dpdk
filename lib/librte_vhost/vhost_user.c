@@ -656,13 +656,11 @@ ring_addr_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 {
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)) {
 		uint64_t vva;
-		uint64_t req_size = *size;
 
-		vva = vhost_user_iotlb_cache_find(vq, ra,
+		vhost_user_iotlb_rd_lock(vq);
+		vva = vhost_iova_to_vva(dev, vq, ra,
 					size, VHOST_ACCESS_RW);
-		if (req_size != *size)
-			vhost_user_iotlb_miss(dev, (ra + *size),
-					      VHOST_ACCESS_RW);
+		vhost_user_iotlb_rd_unlock(vq);
 
 		return vva;
 	}
@@ -670,37 +668,16 @@ ring_addr_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return qva_to_vva(dev, ra, size);
 }
 
-/*
- * Converts vring log address to GPA
- * If IOMMU is enabled, the log address is IOVA
- * If IOMMU not enabled, the log address is already GPA
- */
 static uint64_t
-translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
-		uint64_t log_addr)
+log_addr_to_gpa(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)) {
-		const uint64_t exp_size = sizeof(struct vring_used) +
-			sizeof(struct vring_used_elem) * vq->size;
-		uint64_t hva, gpa;
-		uint64_t size = exp_size;
+	uint64_t log_gpa;
 
-		hva = vhost_iova_to_vva(dev, vq, log_addr,
-					&size, VHOST_ACCESS_RW);
-		if (size != exp_size)
-			return 0;
+	vhost_user_iotlb_rd_lock(vq);
+	log_gpa = translate_log_addr(dev, vq, vq->ring_addrs.log_guest_addr);
+	vhost_user_iotlb_rd_unlock(vq);
 
-		gpa = hva_to_gpa(dev, hva, exp_size);
-		if (!gpa) {
-			VHOST_LOG_CONFIG(ERR,
-				"VQ: Failed to find GPA for log_addr: 0x%" PRIx64 " hva: 0x%" PRIx64 "\n",
-				log_addr, hva);
-			return 0;
-		}
-		return gpa;
-
-	} else
-		return log_addr;
+	return log_gpa;
 }
 
 static struct virtio_net *
@@ -712,7 +689,7 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 
 	if (addr->flags & (1 << VHOST_VRING_F_LOG)) {
 		vq->log_guest_addr =
-			translate_log_addr(dev, vq, addr->log_guest_addr);
+			log_addr_to_gpa(dev, vq);
 		if (vq->log_guest_addr == 0) {
 			VHOST_LOG_CONFIG(DEBUG,
 				"(%d) failed to map log_guest_addr.\n",
@@ -2251,6 +2228,13 @@ is_vring_iotlb_split(struct vhost_virtqueue *vq, struct vhost_iotlb_msg *imsg)
 	if (ra->used_user_addr < end && (ra->used_user_addr + len) > start)
 		return 1;
 
+	if (ra->flags & (1 << VHOST_VRING_F_LOG)) {
+		len = sizeof(uint64_t);
+		if (ra->log_guest_addr < end &&
+		    (ra->log_guest_addr + len) > start)
+			return 1;
+	}
+
 	return 0;
 }
 
@@ -2275,6 +2259,13 @@ is_vring_iotlb_packed(struct vhost_virtqueue *vq, struct vhost_iotlb_msg *imsg)
 	len = sizeof(struct vring_packed_desc_event);
 	if (ra->used_user_addr < end && (ra->used_user_addr + len) > start)
 		return 1;
+
+	if (ra->flags & (1 << VHOST_VRING_F_LOG)) {
+		len = sizeof(uint64_t);
+		if (ra->log_guest_addr < end &&
+		    (ra->log_guest_addr + len) > start)
+			return 1;
+	}
 
 	return 0;
 }

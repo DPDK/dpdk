@@ -353,6 +353,57 @@ free_device(struct virtio_net *dev)
 	rte_free(dev);
 }
 
+static __rte_always_inline int
+log_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	if (likely(!(vq->ring_addrs.flags & (1 << VHOST_VRING_F_LOG))))
+		return 0;
+
+	vq->log_guest_addr = translate_log_addr(dev, vq,
+						vq->ring_addrs.log_guest_addr);
+	if (vq->log_guest_addr == 0)
+		return -1;
+
+	return 0;
+}
+
+/*
+ * Converts vring log address to GPA
+ * If IOMMU is enabled, the log address is IOVA
+ * If IOMMU not enabled, the log address is already GPA
+ *
+ * Caller should have iotlb_lock read-locked
+ */
+uint64_t
+translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		uint64_t log_addr)
+{
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)) {
+		const uint64_t exp_size = sizeof(uint64_t);
+		uint64_t hva, gpa;
+		uint64_t size = exp_size;
+
+		hva = vhost_iova_to_vva(dev, vq, log_addr,
+					&size, VHOST_ACCESS_RW);
+
+		if (size != exp_size)
+			return 0;
+
+		gpa = hva_to_gpa(dev, hva, exp_size);
+		if (!gpa) {
+			VHOST_LOG_CONFIG(ERR,
+				"VQ: Failed to find GPA for log_addr: 0x%"
+				PRIx64 " hva: 0x%" PRIx64 "\n",
+				log_addr, hva);
+			return 0;
+		}
+		return gpa;
+
+	} else
+		return log_addr;
+}
+
+/* Caller should have iotlb_lock read-locked */
 static int
 vring_translate_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
@@ -391,6 +442,7 @@ vring_translate_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	return 0;
 }
 
+/* Caller should have iotlb_lock read-locked */
 static int
 vring_translate_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
@@ -437,6 +489,10 @@ vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		if (vring_translate_split(dev, vq) < 0)
 			return -1;
 	}
+
+	if (log_translate(dev, vq) < 0)
+		return -1;
+
 	vq->access_ok = 1;
 
 	return 0;
