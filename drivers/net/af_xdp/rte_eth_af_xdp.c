@@ -171,7 +171,8 @@ reserve_fill_queue_zc(struct xsk_umem_info *umem, uint16_t reserve_size,
 		uint64_t addr;
 
 		fq_addr = xsk_ring_prod__fill_addr(fq, idx++);
-		addr = (uint64_t)bufs[i] - (uint64_t)umem->buffer;
+		addr = (uint64_t)bufs[i] - (uint64_t)umem->buffer -
+				umem->mb_pool->header_size;
 		*fq_addr = addr;
 	}
 
@@ -270,8 +271,11 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		addr = xsk_umem__extract_addr(addr);
 
 		bufs[i] = (struct rte_mbuf *)
-				xsk_umem__get_data(umem->buffer, addr);
-		bufs[i]->data_off = offset - sizeof(struct rte_mbuf);
+				xsk_umem__get_data(umem->buffer, addr +
+					umem->mb_pool->header_size);
+		bufs[i]->data_off = offset - sizeof(struct rte_mbuf) -
+			rte_pktmbuf_priv_size(umem->mb_pool) -
+			umem->mb_pool->header_size;
 
 		rte_pktmbuf_pkt_len(bufs[i]) = len;
 		rte_pktmbuf_data_len(bufs[i]) = len;
@@ -384,7 +388,8 @@ pull_umem_cq(struct xsk_umem_info *umem, int size)
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 		addr = xsk_umem__extract_addr(addr);
 		rte_pktmbuf_free((struct rte_mbuf *)
-					xsk_umem__get_data(umem->buffer, addr));
+					xsk_umem__get_data(umem->buffer,
+					addr + umem->mb_pool->header_size));
 #else
 		rte_ring_enqueue(umem->buf_ring, (void *)addr);
 #endif
@@ -442,9 +447,11 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			}
 			desc = xsk_ring_prod__tx_desc(&txq->tx, idx_tx);
 			desc->len = mbuf->pkt_len;
-			addr = (uint64_t)mbuf - (uint64_t)umem->buffer;
+			addr = (uint64_t)mbuf - (uint64_t)umem->buffer -
+					umem->mb_pool->header_size;
 			offset = rte_pktmbuf_mtod(mbuf, uint64_t) -
-					(uint64_t)mbuf;
+					(uint64_t)mbuf +
+					umem->mb_pool->header_size;
 			offset = offset << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
 			desc->addr = addr | offset;
 			count++;
@@ -465,9 +472,11 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			desc = xsk_ring_prod__tx_desc(&txq->tx, idx_tx);
 			desc->len = mbuf->pkt_len;
 
-			addr = (uint64_t)local_mbuf - (uint64_t)umem->buffer;
+			addr = (uint64_t)local_mbuf - (uint64_t)umem->buffer -
+					umem->mb_pool->header_size;
 			offset = rte_pktmbuf_mtod(local_mbuf, uint64_t) -
-					(uint64_t)local_mbuf;
+					(uint64_t)local_mbuf +
+					umem->mb_pool->header_size;
 			pkt = xsk_umem__get_data(umem->buffer, addr + offset);
 			offset = offset << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
 			desc->addr = addr | offset;
