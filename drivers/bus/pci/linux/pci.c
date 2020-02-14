@@ -377,6 +377,11 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 						 */
 						RTE_LOG(ERR, EAL, "Unexpected device scan at %s!\n",
 							filename);
+					else if (dev2->device.devargs !=
+						 dev->device.devargs) {
+						rte_devargs_remove(dev2->device.devargs);
+						pci_name_set(dev2);
+					}
 				}
 				free(dev);
 			}
