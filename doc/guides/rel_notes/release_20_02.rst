@@ -99,6 +99,12 @@ New Features
   * Added more supported device IDs.
   * Updated virtual channel to latest AVF spec.
 
+* **Updated the Intel ixgbe driver.**
+
+  * Added support for API rte_eth_tx_done_cleanup.
+  * Added support setting VF MAC address by PF driver.
+  * Added support for setting the link to specific speed.
+
 * **Updated Intel i40e driver.**
 
   Updated i40e PMD with new features and improvements, including:
