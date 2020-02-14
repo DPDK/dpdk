@@ -29,11 +29,7 @@ otx2_ssogws_dual_get_work(struct otx2_ssogws_state *ws,
 		rte_prefetch_non_temporal(lookup_mem);
 #ifdef RTE_ARCH_ARM64
 	asm volatile(
-			"        ldr %[tag], [%[tag_loc]]    \n"
-			"        ldr %[wqp], [%[wqp_loc]]    \n"
-			"        tbz %[tag], 63, done%=      \n"
-			"        sevl                        \n"
-			"rty%=:  wfe                         \n"
+			"rty%=:	                             \n"
 			"        ldr %[tag], [%[tag_loc]]    \n"
 			"        ldr %[wqp], [%[wqp_loc]]    \n"
 			"        tbnz %[tag], 63, rty%=      \n"
