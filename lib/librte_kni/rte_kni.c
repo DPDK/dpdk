@@ -145,31 +145,38 @@ kni_reserve_mz(struct rte_kni *kni)
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_TX_Q_MZ_NAME_FMT, kni->name);
-	kni->m_tx_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	kni->m_tx_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY,
+			RTE_MEMZONE_IOVA_CONTIG);
 	KNI_MEM_CHECK(kni->m_tx_q == NULL, tx_q_fail);
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_RX_Q_MZ_NAME_FMT, kni->name);
-	kni->m_rx_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	kni->m_rx_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY,
+			RTE_MEMZONE_IOVA_CONTIG);
 	KNI_MEM_CHECK(kni->m_rx_q == NULL, rx_q_fail);
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_ALLOC_Q_MZ_NAME_FMT, kni->name);
-	kni->m_alloc_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	kni->m_alloc_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY,
+			RTE_MEMZONE_IOVA_CONTIG);
 	KNI_MEM_CHECK(kni->m_alloc_q == NULL, alloc_q_fail);
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_FREE_Q_MZ_NAME_FMT, kni->name);
-	kni->m_free_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	kni->m_free_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY,
+			RTE_MEMZONE_IOVA_CONTIG);
 	KNI_MEM_CHECK(kni->m_free_q == NULL, free_q_fail);
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_REQ_Q_MZ_NAME_FMT, kni->name);
-	kni->m_req_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	kni->m_req_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY,
+			RTE_MEMZONE_IOVA_CONTIG);
 	KNI_MEM_CHECK(kni->m_req_q == NULL, req_q_fail);
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_RESP_Q_MZ_NAME_FMT, kni->name);
-	kni->m_resp_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	kni->m_resp_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY,
+			RTE_MEMZONE_IOVA_CONTIG);
 	KNI_MEM_CHECK(kni->m_resp_q == NULL, resp_q_fail);
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_SYNC_ADDR_MZ_NAME_FMT, kni->name);
-	kni->m_sync_addr = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	kni->m_sync_addr = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY,
+			RTE_MEMZONE_IOVA_CONTIG);
 	KNI_MEM_CHECK(kni->m_sync_addr == NULL, sync_addr_fail);
 
 	return 0;
