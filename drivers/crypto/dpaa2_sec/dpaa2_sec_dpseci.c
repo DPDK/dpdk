@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2019 NXP
+ *   Copyright 2016-2020 NXP
  *
  */
 
@@ -164,7 +164,8 @@ build_proto_compound_sg_fd(dpaa2_sec_session *sess,
 	 * mbuf priv after sym_op.
 	 */
 	if (sess->ctxt_type == DPAA2_SEC_PDCP && sess->pdcp.hfn_ovd) {
-		uint32_t hfn_ovd = *((uint8_t *)op + sess->pdcp.hfn_ovd_offset);
+		uint32_t hfn_ovd = *(uint32_t *)((uint8_t *)op +
+					sess->pdcp.hfn_ovd_offset);
 		/*enable HFN override override */
 		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, hfn_ovd);
 		DPAA2_SET_FLE_INTERNAL_JD(op_fle, hfn_ovd);
@@ -239,7 +240,8 @@ build_proto_compound_fd(dpaa2_sec_session *sess,
 	 * mbuf priv after sym_op.
 	 */
 	if (sess->ctxt_type == DPAA2_SEC_PDCP && sess->pdcp.hfn_ovd) {
-		uint32_t hfn_ovd = *((uint8_t *)op + sess->pdcp.hfn_ovd_offset);
+		uint32_t hfn_ovd = *(uint32_t *)((uint8_t *)op +
+					sess->pdcp.hfn_ovd_offset);
 		/*enable HFN override override */
 		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, hfn_ovd);
 		DPAA2_SET_FLE_INTERNAL_JD(op_fle, hfn_ovd);
