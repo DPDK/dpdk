@@ -1699,7 +1699,7 @@ static inline int rte_pktmbuf_trim(struct rte_mbuf *m, uint16_t len)
 static inline int rte_pktmbuf_is_contiguous(const struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 1);
-	return !!(m->nb_segs == 1);
+	return m->nb_segs == 1;
 }
 
 /**
