@@ -3987,6 +3987,10 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``session_id {unsigned}``: L2TPv3 over IP session identifier.
 
+- ``ah``: match AH header.
+
+  - ``spi {unsigned}``: security parameters index.
+
 Actions list
 ^^^^^^^^^^^^
 
@@ -4820,6 +4824,20 @@ ESP rules can be created by the following commands::
  testpmd> flow create 0 ingress pattern eth / ipv6 / esp spi is 1 / end actions
         queue index 3 / end
  testpmd> flow create 0 ingress pattern eth / ipv6 / udp / esp spi is 1 / end
+        actions queue index 3 / end
+
+Sample AH rules
+~~~~~~~~~~~~~~~~
+
+AH rules can be created by the following commands::
+
+ testpmd> flow create 0 ingress pattern eth / ipv4 / ah spi is 1 / end actions
+        queue index 3 / end
+ testpmd> flow create 0 ingress pattern eth / ipv4 / udp / ah spi is 1 / end
+        actions queue index 3 / end
+ testpmd> flow create 0 ingress pattern eth / ipv6 / ah spi is 1 / end actions
+        queue index 3 / end
+ testpmd> flow create 0 ingress pattern eth / ipv6 / udp / ah spi is 1 / end
         actions queue index 3 / end
 
 BPF Functions

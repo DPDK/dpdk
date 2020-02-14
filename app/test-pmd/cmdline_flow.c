@@ -220,6 +220,8 @@ enum index {
 	ITEM_L2TPV3OIP_SESSION_ID,
 	ITEM_ESP,
 	ITEM_ESP_SPI,
+	ITEM_AH,
+	ITEM_AH_SPI,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -768,6 +770,7 @@ static const enum index next_item[] = {
 	ITEM_TAG,
 	ITEM_L2TPV3OIP,
 	ITEM_ESP,
+	ITEM_AH,
 	END_SET,
 	ZERO,
 };
@@ -1042,6 +1045,12 @@ static const enum index item_higig2[] = {
 
 static const enum index item_esp[] = {
 	ITEM_ESP_SPI,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_ah[] = {
+	ITEM_AH_SPI,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2698,6 +2707,19 @@ static const struct token token_list[] = {
 		.next = NEXT(item_esp, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_esp,
 				hdr.spi)),
+	},
+	[ITEM_AH] = {
+		.name = "ah",
+		.help = "match AH header",
+		.priv = PRIV_ITEM(AH, sizeof(struct rte_flow_item_ah)),
+		.next = NEXT(item_ah),
+		.call = parse_vc,
+	},
+	[ITEM_AH_SPI] = {
+		.name = "spi",
+		.help = "security parameters index",
+		.next = NEXT(item_ah, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ah, spi)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
@@ -6444,6 +6466,9 @@ flow_item_default_mask(const struct rte_flow_item *item)
 	case RTE_FLOW_ITEM_TYPE_ESP:
 		mask = &rte_flow_item_esp_mask;
 		break;
+	case RTE_FLOW_ITEM_TYPE_AH:
+		mask = &rte_flow_item_ah_mask;
+		break;
 	default:
 		break;
 	}
@@ -6540,6 +6565,10 @@ cmd_set_raw_parsed(const struct buffer *in)
 		case RTE_FLOW_ITEM_TYPE_ESP:
 			size = sizeof(struct rte_flow_item_esp);
 			proto = 0x32;
+			break;
+		case RTE_FLOW_ITEM_TYPE_AH:
+			size = sizeof(struct rte_flow_item_ah);
+			proto = 0x33;
 			break;
 		default:
 			printf("Error - Not supported item\n");
