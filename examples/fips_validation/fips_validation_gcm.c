@@ -19,7 +19,7 @@
 #define PTLEN_STR	"PTlen = "
 #define AADLEN_STR	"AADlen = "
 #define TAGLEN_STR	"Taglen = "
-#define CTLEN_STR	"PTlen = "
+#define CTLEN_STR	"CTlen = "
 
 #define COUNT_STR	"Count = "
 #define KEY_STR		"Key = "
