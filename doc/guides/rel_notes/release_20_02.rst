@@ -110,7 +110,10 @@ New Features
   * Added LLDP support.
   * Extended PHY access AQ cmd.
   * Added support for reading LPI counters.
-  * Added support for Energy Efficient Ethernet
+  * Added support for Energy Efficient Ethernet.
+  * Added support for API rte_eth_tx_done_cleanup.
+  * Added support for VF multiple queues interrupt.
+  * Added support for setting the link to specific speed.
 
 * **Updated Mellanox mlx5 driver.**
 
