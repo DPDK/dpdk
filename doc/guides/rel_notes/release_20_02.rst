@@ -90,6 +90,7 @@ New Features
   * Added support for MAC rules on specific port.
   * Added support for MAC/VLAN with TCP/UDP in switch rule.
   * Added support for 1/10G device.
+  * Added support for API rte_eth_tx_done_cleanup.
 
 * **Updated Intel iavf driver.**
 
