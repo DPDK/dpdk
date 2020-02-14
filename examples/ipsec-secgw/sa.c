@@ -1057,7 +1057,6 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 		}
 
 		if (sa->aead_algo == RTE_CRYPTO_AEAD_AES_GCM) {
-			struct rte_ipsec_session *ips;
 			iv_length = 12;
 
 			sa_ctx->xf[idx].a.type = RTE_CRYPTO_SYM_XFORM_AEAD;
@@ -1077,19 +1076,6 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 				sa->digest_len;
 
 			sa->xforms = &sa_ctx->xf[idx].a;
-
-			ips = ipsec_get_primary_session(sa);
-			if (ips->type ==
-				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL ||
-				ips->type ==
-				RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
-				rc = create_inline_session(skt_ctx, sa, ips);
-				if (rc != 0) {
-					RTE_LOG(ERR, IPSEC_ESP,
-						"create_inline_session() failed\n");
-					return -EINVAL;
-				}
-			}
 		} else {
 			switch (sa->cipher_algo) {
 			case RTE_CRYPTO_CIPHER_NULL:
@@ -1154,6 +1140,18 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 			sa_ctx->xf[idx].a.next = &sa_ctx->xf[idx].b;
 			sa_ctx->xf[idx].b.next = NULL;
 			sa->xforms = &sa_ctx->xf[idx].a;
+		}
+
+		if (ips->type ==
+			RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL ||
+			ips->type ==
+			RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
+			rc = create_inline_session(skt_ctx, sa, ips);
+			if (rc != 0) {
+				RTE_LOG(ERR, IPSEC_ESP,
+					"create_inline_session() failed\n");
+				return -EINVAL;
+			}
 		}
 
 		print_one_sa_rule(sa, inbound);
