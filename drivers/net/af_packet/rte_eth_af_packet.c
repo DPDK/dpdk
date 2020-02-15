@@ -19,6 +19,7 @@
 #include <linux/if_packet.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <net/if_arp.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -469,6 +470,32 @@ eth_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 }
 
 static int
+eth_dev_macaddr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
+{
+	struct pmd_internals *internals = dev->data->dev_private;
+	struct ifreq ifr = { };
+	int sockfd = internals->rx_queue[0].sockfd;
+	int ret;
+
+	if (sockfd == -1) {
+		PMD_LOG(ERR, "receive socket not found");
+		return -EINVAL;
+	}
+
+	strlcpy(ifr.ifr_name, internals->if_name, IFNAMSIZ);
+	ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
+	memcpy(ifr.ifr_hwaddr.sa_data, addr, sizeof(*addr));
+	ret = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
+
+	if (ret < 0) {
+		PMD_LOG_ERRNO(ERR, "ioctl(SIOCSIFHWADDR) failed");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 eth_dev_change_flags(char *if_name, uint32_t flags, uint32_t mask)
 {
 	struct ifreq ifr;
@@ -517,6 +544,7 @@ static const struct eth_dev_ops ops = {
 	.dev_close = eth_dev_close,
 	.dev_configure = eth_dev_configure,
 	.dev_infos_get = eth_dev_info,
+	.mac_addr_set = eth_dev_macaddr_set,
 	.mtu_set = eth_dev_mtu_set,
 	.promiscuous_enable = eth_dev_promiscuous_enable,
 	.promiscuous_disable = eth_dev_promiscuous_disable,
