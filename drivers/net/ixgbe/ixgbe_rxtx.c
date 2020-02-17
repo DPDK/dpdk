@@ -986,6 +986,12 @@ ixgbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			return i;
 		}
 
+		/* check the size of packet */
+		if (m->pkt_len < IXGBE_TX_MIN_PKT_LEN) {
+			rte_errno = EINVAL;
+			return i;
+		}
+
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {

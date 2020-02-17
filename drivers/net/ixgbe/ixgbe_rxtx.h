@@ -53,6 +53,8 @@
 
 #define IXGBE_TX_MAX_SEG                    40
 
+#define IXGBE_TX_MIN_PKT_LEN		     14
+
 #define IXGBE_PACKET_TYPE_MASK_82599        0X7F
 #define IXGBE_PACKET_TYPE_MASK_X550         0X10FF
 #define IXGBE_PACKET_TYPE_MASK_TUNNEL       0XFF
