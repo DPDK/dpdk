@@ -651,46 +651,68 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct vf_cmd_info args;
-	uint8_t cmd_buffer[sizeof(struct virtchnl_irq_map_info) + \
-		sizeof(struct virtchnl_vector_map) * dev->data->nb_rx_queues];
+	uint8_t *cmd_buffer = NULL;
 	struct virtchnl_irq_map_info *map_info;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
-	uint32_t vector_id;
-	int i, err;
+	uint32_t vec, cmd_buffer_size, max_vectors, nb_msix, msix_base, i;
+	uint16_t rxq_map[vf->vf_res->max_vectors];
+	int err;
 
+	memset(rxq_map, 0, sizeof(rxq_map));
 	if (dev->data->dev_conf.intr_conf.rxq != 0 &&
-	    rte_intr_allow_others(intr_handle))
-		vector_id = I40E_RX_VEC_START;
-	else
-		vector_id = I40E_MISC_VEC_ID;
+		rte_intr_allow_others(intr_handle)) {
+		msix_base = I40E_RX_VEC_START;
+		/* For interrupt mode, available vector id is from 1. */
+		max_vectors = vf->vf_res->max_vectors - 1;
+		nb_msix = RTE_MIN(max_vectors, intr_handle->nb_efd);
+
+		vec = msix_base;
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			rxq_map[vec] |= 1 << i;
+			intr_handle->intr_vec[i] = vec++;
+			if (vec >= vf->vf_res->max_vectors)
+				vec = msix_base;
+		}
+	} else {
+		msix_base = I40E_MISC_VEC_ID;
+		nb_msix = 1;
+
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			rxq_map[msix_base] |= 1 << i;
+			if (rte_intr_dp_is_en(intr_handle))
+				intr_handle->intr_vec[i] = msix_base;
+		}
+	}
+
+	cmd_buffer_size = sizeof(struct virtchnl_irq_map_info) +
+			sizeof(struct virtchnl_vector_map) * nb_msix;
+	cmd_buffer = rte_zmalloc("i40e", cmd_buffer_size, 0);
+	if (!cmd_buffer) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory");
+		return I40E_ERR_NO_MEMORY;
+	}
 
 	map_info = (struct virtchnl_irq_map_info *)cmd_buffer;
-	map_info->num_vectors = dev->data->nb_rx_queues;
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+	map_info->num_vectors = nb_msix;
+	for (i = 0; i < nb_msix; i++) {
 		map_info->vecmap[i].rxitr_idx = I40E_ITR_INDEX_DEFAULT;
 		map_info->vecmap[i].vsi_id = vf->vsi_res->vsi_id;
-		/* Always use default dynamic MSIX interrupt */
-		map_info->vecmap[i].vector_id = vector_id;
-		/* Don't map any tx queue */
+		map_info->vecmap[i].vector_id = msix_base + i;
 		map_info->vecmap[i].txq_map = 0;
-		map_info->vecmap[i].rxq_map = 1 << i;
-		if (rte_intr_dp_is_en(intr_handle))
-			intr_handle->intr_vec[i] = vector_id;
-		if (vector_id > I40E_MISC_VEC_ID)
-			vector_id++;
-		if (vector_id >= vf->vf_res->max_vectors)
-			vector_id = I40E_RX_VEC_START;
+		map_info->vecmap[i].rxq_map = rxq_map[msix_base + i];
 	}
 
 	args.ops = VIRTCHNL_OP_CONFIG_IRQ_MAP;
 	args.in_args = (u8 *)cmd_buffer;
-	args.in_args_size = sizeof(cmd_buffer);
+	args.in_args_size = cmd_buffer_size;
 	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command OP_ENABLE_QUEUES");
+
+	rte_free(cmd_buffer);
 
 	return err;
 }
