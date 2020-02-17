@@ -326,7 +326,6 @@ M: Harini Ramakrishnan <harini.ramakrishnan@microsoft.com>
 M: Omar Cardona <ocardona@microsoft.com>
 M: Pallavi Kadam <pallavi.kadam@intel.com>
 M: Ranjit Menon <ranjit.menon@intel.com>
-F: kernel/windows/
 F: lib/librte_eal/windows/
 F: lib/librte_eal/rte_eal_exports.def
 F: doc/guides/windows_gsg/
