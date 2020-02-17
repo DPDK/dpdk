@@ -112,3 +112,9 @@ Deprecation Notices
   to set new power environment if power environment was already initialized.
   In this case the function will return -1 unless the environment is unset first
   (using ``rte_power_unset_env``). Other function usage scenarios will not change.
+
+* python: Since the beginning of 2020, Python 2 has officially reached
+  end-of-support: https://www.python.org/doc/sunset-python-2/.
+  Python 2 support will be completely removed in 20.11.
+  In 20.08, explicit deprecation warnings will be displayed when running
+  scripts with Python 2.
