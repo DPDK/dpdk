@@ -230,6 +230,11 @@ New Features
   Enhanced the compression performance tool by adding a cycle-count mode
   which can be used to help measure and tune hardware and software PMDs.
 
+* **Added OpenWrt howto guide.**
+
+  Added document describes how to enable DPDK on OpenWrt in both virtual and
+  physical machine.
+
 
 Removed Items
 -------------
