@@ -50,6 +50,13 @@ can be downloaded in `<https://github.com/01org/intel-ipsec-mb/archive/v0.53.zip
     make
     make install
 
+.. note::
+
+   Compilation of the Multi-Buffer library is broken when GCC < 5.0, if library <= v0.53.
+   If a lower GCC version than 5.0, the workaround proposed by the following link
+   should be used: `<https://github.com/intel/intel-ipsec-mb/issues/40>`_.
+
+
 As a reference, the following table shows a mapping between the past DPDK versions
 and the external crypto libraries supported by them:
 
