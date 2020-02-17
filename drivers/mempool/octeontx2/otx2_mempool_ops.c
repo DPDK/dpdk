@@ -754,6 +754,7 @@ otx2_npa_populate(struct rte_mempool *mp, unsigned int max_objs, void *vaddr,
 	size_t total_elt_sz;
 	uint8_t set;
 	size_t off;
+	int i;
 
 	if (iova == RTE_BAD_IOVA)
 		return -EINVAL;
@@ -787,7 +788,7 @@ otx2_npa_populate(struct rte_mempool *mp, unsigned int max_objs, void *vaddr,
 	otx2_npa_dbg("requested objects %"PRIu64", possible objects %"PRIu64"",
 		     (uint64_t)max_objs, (uint64_t)(len / total_elt_sz));
 	otx2_npa_dbg("L1D set distribution :");
-	for (int i = 0; i < OTX2_L1D_NB_SETS; i++)
+	for (i = 0; i < OTX2_L1D_NB_SETS; i++)
 		otx2_npa_dbg("set[%d] : objects : %"PRIu64"", i,
 			     distribution[i]);
 
