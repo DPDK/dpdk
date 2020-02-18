@@ -81,9 +81,8 @@ mlx5_vdpa_cq_destroy(struct mlx5_vdpa_cq *cq)
 static inline void
 mlx5_vdpa_cq_arm(struct mlx5_vdpa_priv *priv, struct mlx5_vdpa_cq *cq)
 {
-	const unsigned int cqe_mask = (1 << cq->log_desc_n) - 1;
 	uint32_t arm_sn = cq->arm_sn << MLX5_CQ_SQN_OFFSET;
-	uint32_t cq_ci = cq->cq_ci & MLX5_CI_MASK & cqe_mask;
+	uint32_t cq_ci = cq->cq_ci & MLX5_CI_MASK;
 	uint32_t doorbell_hi = arm_sn | MLX5_CQ_DBR_CMD_ALL | cq_ci;
 	uint64_t doorbell = ((uint64_t)doorbell_hi << 32) | cq->cq->id;
 	uint64_t db_be = rte_cpu_to_be_64(doorbell);
@@ -182,15 +181,15 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_priv *priv __rte_unused,
 {
 	struct mlx5_vdpa_event_qp *eqp =
 				container_of(cq, struct mlx5_vdpa_event_qp, cq);
-	const unsigned int cqe_size = 1 << cq->log_desc_n;
-	const unsigned int cqe_mask = cqe_size - 1;
+	const unsigned int cq_size = 1 << cq->log_desc_n;
+	const unsigned int cq_mask = cq_size - 1;
 	int ret;
 
 	do {
 		volatile struct mlx5_cqe *cqe = cq->cqes + (cq->cq_ci &
-							    cqe_mask);
+							    cq_mask);
 
-		ret = check_cqe(cqe, cqe_size, cq->cq_ci);
+		ret = check_cqe(cqe, cq_size, cq->cq_ci);
 		switch (ret) {
 		case MLX5_CQE_STATUS_ERR:
 			cq->errors++;
@@ -208,7 +207,7 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_priv *priv __rte_unused,
 	cq->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
 	rte_io_wmb();
 	/* Ring SW QP doorbell record. */
-	eqp->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci + cqe_size);
+	eqp->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci + cq_size);
 }
 
 static void
