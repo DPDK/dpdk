@@ -5594,13 +5594,13 @@ flow_dv_translate_item_gre_key(void *matcher, void *key,
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 	rte_be32_t gre_key_default_mask = RTE_BE32(UINT32_MAX);
 
+	/* GRE K bit must be on and should already be validated */
+	MLX5_SET(fte_match_set_misc, misc_m, gre_k_present, 1);
+	MLX5_SET(fte_match_set_misc, misc_v, gre_k_present, 1);
 	if (!key_v)
 		return;
 	if (!key_m)
 		key_m = &gre_key_default_mask;
-	/* GRE K bit must be on and should already be validated */
-	MLX5_SET(fte_match_set_misc, misc_m, gre_k_present, 1);
-	MLX5_SET(fte_match_set_misc, misc_v, gre_k_present, 1);
 	MLX5_SET(fte_match_set_misc, misc_m, gre_key_h,
 		 rte_be_to_cpu_32(*key_m) >> 8);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_key_h,
