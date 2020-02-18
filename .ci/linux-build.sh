@@ -14,6 +14,20 @@ on_error() {
 }
 trap on_error EXIT
 
+install_libabigail() {
+    version=$1
+    instdir=$2
+
+    wget -q "http://mirrors.kernel.org/sourceware/libabigail/${version}.tar.gz"
+    tar -xf ${version}.tar.gz
+    cd $version && autoreconf -vfi && cd -
+    mkdir $version/build
+    cd $version/build && ../configure --prefix=$instdir && cd -
+    make -C $version/build all install
+    rm -rf $version
+    rm ${version}.tar.gz
+}
+
 if [ "$AARCH64" = "1" ]; then
     # convert the arch specifier
     OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_gcc"
@@ -38,6 +52,21 @@ if [ "$AARCH64" != "1" ]; then
 fi
 
 if [ "$ABI_CHECKS" = "1" ]; then
+    LIBABIGAIL_VERSION=${LIBABIGAIL_VERSION:-libabigail-1.6}
+
+    if [ "$(cat libabigail/VERSION 2>/dev/null)" != "$LIBABIGAIL_VERSION" ]; then
+        rm -rf libabigail
+        # if we change libabigail, invalidate existing abi cache
+        rm -rf reference
+    fi
+
+    if [ ! -d libabigail ]; then
+        install_libabigail $LIBABIGAIL_VERSION $(pwd)/libabigail
+        echo $LIBABIGAIL_VERSION > libabigail/VERSION
+    fi
+
+    export PATH=$(pwd)/libabigail/bin:$PATH
+
     REF_GIT_REPO=${REF_GIT_REPO:-https://dpdk.org/git/dpdk}
     REF_GIT_TAG=${REF_GIT_TAG:-v19.11}
 

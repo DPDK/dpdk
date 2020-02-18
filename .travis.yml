@@ -2,6 +2,7 @@ language: c
 cache:
   ccache: true
   directories:
+    - libabigail
     - reference
 compiler:
   - gcc
@@ -24,7 +25,10 @@ aarch64_packages: &aarch64_packages
 
 extra_packages: &extra_packages
   - *required_packages
-  - [libbsd-dev, libpcap-dev, libcrypto++-dev, libjansson4, abigail-tools]
+  - [libbsd-dev, libpcap-dev, libcrypto++-dev, libjansson4]
+
+libabigail_build_packages: &libabigail_build_packages
+  - [autoconf, automake, libtool, pkg-config, libxml2-dev, libdw-dev]
 
 build_32b_packages: &build_32b_packages
   - *required_packages
@@ -160,6 +164,7 @@ matrix:
       apt:
         packages:
           - *extra_packages
+          - *libabigail_build_packages
   - env: DEF_LIB="shared" EXTRA_PACKAGES=1 ABI_CHECKS=1
     arch: arm64
     compiler: gcc
@@ -167,5 +172,6 @@ matrix:
       apt:
         packages:
           - *extra_packages
+          - *libabigail_build_packages
 
 script: ./.ci/${TRAVIS_OS_NAME}-build.sh
