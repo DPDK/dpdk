@@ -25,7 +25,7 @@ aarch64_packages: &aarch64_packages
 
 extra_packages: &extra_packages
   - *required_packages
-  - [libbsd-dev, libpcap-dev, libcrypto++-dev, libjansson4]
+  - [libbsd-dev, libpcap-dev, libibverbs-dev, libcrypto++-dev, libfdt-dev, libjansson4]
 
 libabigail_build_packages: &libabigail_build_packages
   - [autoconf, automake, libtool, pkg-config, libxml2-dev, libdw-dev]
