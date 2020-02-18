@@ -667,6 +667,10 @@ struct eth_dev_ops {
 	/**< Check the status of a Rx descriptor. */
 	eth_tx_descriptor_status_t tx_descriptor_status;
 	/**< Check the status of a Tx descriptor. */
+	/*
+	 * Static inline functions use functions ABOVE this comment.
+	 * New dev_ops functions should be added BELOW to avoid breaking ABI.
+	 */
 	eth_rx_enable_intr_t       rx_queue_intr_enable;  /**< Enable Rx queue interrupt. */
 	eth_rx_disable_intr_t      rx_queue_intr_disable; /**< Disable Rx queue interrupt. */
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue. */
