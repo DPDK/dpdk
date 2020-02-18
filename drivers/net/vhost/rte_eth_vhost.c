@@ -876,6 +876,11 @@ vhost_driver_setup(struct rte_eth_dev *eth_dev)
 	unsigned int numa_node = eth_dev->device->numa_node;
 	const char *name = eth_dev->device->name;
 
+	/* Don't try to setup again if it has already been done. */
+	list = find_internal_resource(internal->iface_name);
+	if (list)
+		return 0;
+
 	list = rte_zmalloc_socket(name, sizeof(*list), 0, numa_node);
 	if (list == NULL)
 		return -1;
