@@ -18,9 +18,6 @@ packets through the socket which would bypass the kernel network stack.
 Current implementation only supports single queue, multi-queues feature will
 be added later.
 
-Note that MTU of AF_XDP PMD is limited due to XDP lacks support for
-fragmentation.
-
 AF_XDP PMD enables need_wakeup flag by default if it is supported. This
 need_wakeup feature is used to support executing application and driver on the
 same core efficiently. This feature not only has a large positive performance
@@ -57,3 +54,26 @@ The following example will set up an af_xdp interface in DPDK:
 .. code-block:: console
 
     --vdev net_af_xdp,iface=ens786f1
+
+Limitations
+-----------
+
+- **MTU**
+
+  The MTU of the AF_XDP PMD is limited due to the XDP requirement of one packet
+  per page. In the PMD we report the maximum MTU for zero copy to be equal
+  to the page size less the frame overhead introduced by AF_XDP (XDP HR = 256)
+  and DPDK (frame headroom = 320). With a 4K page size this works out at 3520.
+  However in practice this value may be even smaller, due to differences between
+  the supported RX buffer sizes of the underlying kernel netdev driver.
+
+  For example, the largest RX buffer size supported by the underlying kernel driver
+  which is less than the page size (4096B) may be 3072B. In this case, the maximum
+  MTU value will be at most 3072, but likely even smaller than this, once relevant
+  headers are accounted for eg. Ethernet and VLAN.
+
+  To determine the actual maximum MTU value of the interface you are using with the
+  AF_XDP PMD, consult the documentation for the kernel driver.
+
+  Note: The AF_XDP PMD will fail to initialise if an MTU which violates the driver's
+  conditions as above is set prior to launching the application.
