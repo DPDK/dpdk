@@ -42,8 +42,6 @@ before_install: ./.ci/${TRAVIS_OS_NAME}-setup.sh
 env:
   - DEF_LIB="static"
   - DEF_LIB="shared"
-  - DEF_LIB="static" OPTS="-Denable_kmods=false"
-  - DEF_LIB="shared" OPTS="-Denable_kmods=false"
   - DEF_LIB="shared" RUN_TESTS=1
 
 matrix:
@@ -54,13 +52,13 @@ matrix:
       apt:
         packages:
           - *build_32b_packages
-  - env: DEF_LIB="static" OPTS="-Denable_kmods=false" AARCH64=1
+  - env: DEF_LIB="static" AARCH64=1
     compiler: gcc
     addons:
       apt:
         packages:
           - *aarch64_packages
-  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false" AARCH64=1
+  - env: DEF_LIB="shared" AARCH64=1
     compiler: gcc
     addons:
       apt:
@@ -79,13 +77,7 @@ matrix:
         packages:
           - *extra_packages
           - *doc_packages
-  - env: DEF_LIB="static" OPTS="-Denable_kmods=false" EXTRA_PACKAGES=1
-    compiler: gcc
-    addons:
-      apt:
-        packages:
-          - *extra_packages
-  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false" EXTRA_PACKAGES=1
+  - env: DEF_LIB="static" EXTRA_PACKAGES=1
     compiler: gcc
     addons:
       apt:
@@ -110,18 +102,6 @@ matrix:
         packages:
           - *extra_packages
           - *doc_packages
-  - env: DEF_LIB="static" OPTS="-Denable_kmods=false" EXTRA_PACKAGES=1
-    compiler: clang
-    addons:
-      apt:
-        packages:
-          - *extra_packages
-  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false" EXTRA_PACKAGES=1
-    compiler: clang
-    addons:
-      apt:
-        packages:
-          - *extra_packages
   - env: DEF_LIB="static"
     arch: arm64
     compiler: gcc
@@ -150,7 +130,7 @@ matrix:
       apt:
         packages:
           - *required_packages
-  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false" BUILD_DOCS=1
+  - env: DEF_LIB="shared" BUILD_DOCS=1
     arch: arm64
     compiler: gcc
     addons:
