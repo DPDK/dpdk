@@ -4621,6 +4621,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							    error);
 			if (ret < 0)
 				return ret;
+			item_ipv6_proto = IPPROTO_ICMPV6;
 			last_item = MLX5_FLOW_LAYER_ICMP6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TAG:
