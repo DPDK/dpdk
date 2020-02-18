@@ -325,3 +325,110 @@ Tested Platforms
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
+
+* Intel\ |reg| platforms with Intel\ |reg| NICs combinations
+
+  * CPU
+
+    * Intel\ |reg| Atom\ |trade| CPU C3758 @ 2.20GHz
+    * Intel\ |reg| Atom\ |trade| CPU C3858 @ 2.00GHz
+    * Intel\ |reg| Atom\ |trade| CPU C3958 @ 2.00GHz
+    * Intel\ |reg| Xeon\ |reg| CPU D-1541 @ 2.10GHz
+    * Intel\ |reg| Xeon\ |reg| CPU D-1553N @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2680 0 @ 2.70GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2680 v2 @ 2.80GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2699 v3 @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2699 v4 @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6139 CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6252N CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8180 CPU @ 2.50GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8280M CPU @ 2.70GHz
+
+  * OS:
+
+    * CentOS 7.7
+    * CentOS 8.0
+    * Fedora 31
+    * FreeBSD 12.1
+    * Red Hat Enterprise Linux Server release 8.0
+    * Red Hat Enterprise Linux Server release 7.7
+    * Suse15SP1
+    * Ubuntu 14.04
+    * Ubuntu 16.04
+    * Ubuntu 16.10
+    * Ubuntu 18.04
+    * Ubuntu 19.04
+
+  * NICs:
+
+    * Intel\ |reg| Corporation Ethernet Controller E810-C for SFP (4x25G)
+
+      * Firmware version: 1.02 0x80002b69
+      * Device id (pf): 8086:1593
+      * Driver version: 0.12.34 (ice)
+
+    * Intel\ |reg| Corporation Ethernet Controller E810-C for SFP (2x100G)
+
+      * Firmware version: 1.02 0x80002b68
+      * Device id (pf): 8086:1592
+      * Driver version: 0.12.34 (ice)
+
+    * Intel\ |reg| 82599ES 10 Gigabit Ethernet Controller
+
+      * Firmware version: 0x61bf0001
+      * Device id (pf/vf): 8086:10fb / 8086:10ed
+      * Driver version: 5.6.1 (ixgbe)
+
+    * Intel\ |reg| Corporation Ethernet Connection X552/X557-AT 10GBASE-T
+
+      * Firmware version: 0x800003e7
+      * Device id (pf/vf): 8086:15ad / 8086:15a8
+      * Driver version: 5.1.0 (ixgbe)
+
+    * Intel\ |reg| Corporation Ethernet Controller 10G X550T
+
+      * Firmware version: 0x80000482
+      * Device id (pf): 8086:1563
+      * Driver version: 5.6.1 (ixgbe)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter X710-DA4 (4x10G)
+
+      * Firmware version: 7.20 0x800079e8
+      * Device id (pf/vf): 8086:1572 / 8086:154c
+      * Driver version: 2.10.19.30 (i40e)
+
+    * Intel\ |reg| Corporation Ethernet Connection X722 for 10GbE SFP+ (4x10G)
+
+      * Firmware version: 4.11 0x80001def
+      * Device id (pf/vf): 8086:37d0 / 8086:37cd
+      * Driver version: 2.10.19.30 (i40e)
+
+    * Intel\ |reg| Corporation Ethernet Connection X722 for 10GBASE-T (2x10G)
+
+      * Firmware version: 4.10 0x80001a7a
+      * Device id (pf/vf): 8086:37d2 / 8086:37cd
+      * Driver version: 2.10.19.30 (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XXV710-DA2 (2x25G)
+
+      * Firmware version: 7.20 0x80007947
+      * Device id (pf/vf): 8086:158b / 8086:154c
+      * Driver version: 2.10.19.30 (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XL710-QDA2 (2X40G)
+
+      * Firmware version: 7.20 0x80007948
+      * Device id (pf/vf): 8086:1583 / 8086:154c
+      * Driver version: 2.10.19.30 (i40e)
+
+    * Intel\ |reg| Corporation I350 Gigabit Network Connection
+
+      * Firmware version: 1.63, 0x80000cbc
+      * Device id (pf/vf): 8086:1521 / 8086:1520
+      * Driver version: 5.4.0-k (igb)
+
+    * Intel\ |reg| Corporation I210 Gigabit Network Connection
+
+      * Firmware version: 3.25, 0x800006eb
+      * Device id (pf): 8086:1533
+      * Driver version: 5.4.0-k(igb)
