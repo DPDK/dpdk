@@ -1520,7 +1520,7 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	if ((rss_conf->rss_key != NULL) &&
 	    (rss_conf->rss_key_len != sizeof(rss->key))) {
-		sfc_err(sa, "RSS key size is wrong (should be %lu)",
+		sfc_err(sa, "RSS key size is wrong (should be %zu)",
 			sizeof(rss->key));
 		return -EINVAL;
 	}

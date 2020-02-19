@@ -30,7 +30,7 @@ sfc_dma_alloc(const struct sfc_adapter *sa, const char *name, uint16_t id,
 {
 	const struct rte_memzone *mz;
 
-	sfc_log_init(sa, "name=%s id=%u len=%lu socket_id=%d",
+	sfc_log_init(sa, "name=%s id=%u len=%zu socket_id=%d",
 		     name, id, len, socket_id);
 
 	mz = rte_eth_dma_zone_reserve(sa->eth_dev, name, id, len,

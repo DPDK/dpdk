@@ -1403,7 +1403,7 @@ sfc_rx_process_adv_conf_rss(struct sfc_adapter *sa,
 
 	if (conf->rss_key != NULL) {
 		if (conf->rss_key_len != sizeof(rss->key)) {
-			sfc_err(sa, "RSS key size is wrong (should be %lu)",
+			sfc_err(sa, "RSS key size is wrong (should be %zu)",
 				sizeof(rss->key));
 			return EINVAL;
 		}
