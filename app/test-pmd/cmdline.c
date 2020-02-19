@@ -1446,7 +1446,7 @@ cmdline_parse_inst_t cmd_set_port_setup_on = {
 struct cmd_operate_attach_port_result {
 	cmdline_fixed_string_t port;
 	cmdline_fixed_string_t keyword;
-	cmdline_fixed_string_t identifier;
+	cmdline_multi_string_t identifier;
 };
 
 static void cmd_operate_attach_port_parsed(void *parsed_result,
@@ -1469,7 +1469,7 @@ cmdline_parse_token_string_t cmd_operate_attach_port_keyword =
 			keyword, "attach");
 cmdline_parse_token_string_t cmd_operate_attach_port_identifier =
 	TOKEN_STRING_INITIALIZER(struct cmd_operate_attach_port_result,
-			identifier, NULL);
+			identifier, TOKEN_STRING_MULTI);
 
 cmdline_parse_inst_t cmd_operate_attach_port = {
 	.f = cmd_operate_attach_port_parsed,
