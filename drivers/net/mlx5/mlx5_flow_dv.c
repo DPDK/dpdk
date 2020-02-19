@@ -85,19 +85,55 @@ union flow_dv_attr {
  *   Pointer to item specification.
  * @param[out] attr
  *   Pointer to flow attributes structure.
+ * @param[in] tunnel_decap
+ *   Whether action is after tunnel decapsulation.
  */
 static void
-flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr)
+flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr,
+		  bool tunnel_decap)
 {
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		uint8_t next_protocol = 0xff;
+
 		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_GRE:
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+			if (tunnel_decap)
+				attr->attr = 0;
+			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			if (!attr->ipv6)
 				attr->ipv4 = 1;
+			if (item->mask != NULL &&
+			    ((const struct rte_flow_item_ipv4 *)
+			    item->mask)->hdr.next_proto_id)
+				next_protocol =
+				    ((const struct rte_flow_item_ipv4 *)
+				      (item->spec))->hdr.next_proto_id &
+				    ((const struct rte_flow_item_ipv4 *)
+				      (item->mask))->hdr.next_proto_id;
+			if ((next_protocol == IPPROTO_IPIP ||
+			    next_protocol == IPPROTO_IPV6) && tunnel_decap)
+				attr->attr = 0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			if (!attr->ipv4)
 				attr->ipv6 = 1;
+			if (item->mask != NULL &&
+			    ((const struct rte_flow_item_ipv6 *)
+			    item->mask)->hdr.proto)
+				next_protocol =
+				    ((const struct rte_flow_item_ipv6 *)
+				      (item->spec))->hdr.proto &
+				    ((const struct rte_flow_item_ipv6 *)
+				      (item->mask))->hdr.proto;
+			if ((next_protocol == IPPROTO_IPIP ||
+			    next_protocol == IPPROTO_IPV6) && tunnel_decap)
+				attr->attr = 0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			if (!attr->tcp)
@@ -604,6 +640,8 @@ flow_dv_convert_action_modify_vlan_vid
  *   Pointer to rte_flow_item objects list.
  * @param[in] attr
  *   Pointer to flow attributes structure.
+ * @param[in] tunnel_decap
+ *   Whether action is after tunnel decapsulation.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -615,7 +653,7 @@ flow_dv_convert_action_modify_tp
 			(struct mlx5_flow_dv_modify_hdr_resource *resource,
 			 const struct rte_flow_action *action,
 			 const struct rte_flow_item *items,
-			 union flow_dv_attr *attr,
+			 union flow_dv_attr *attr, bool tunnel_decap,
 			 struct rte_flow_error *error)
 {
 	const struct rte_flow_action_set_tp *conf =
@@ -628,7 +666,7 @@ flow_dv_convert_action_modify_tp
 	struct field_modify_info *field;
 
 	if (!attr->valid)
-		flow_dv_attr_init(items, attr);
+		flow_dv_attr_init(items, attr, tunnel_decap);
 	if (attr->udp) {
 		memset(&udp, 0, sizeof(udp));
 		memset(&udp_mask, 0, sizeof(udp_mask));
@@ -678,6 +716,8 @@ flow_dv_convert_action_modify_tp
  *   Pointer to rte_flow_item objects list.
  * @param[in] attr
  *   Pointer to flow attributes structure.
+ * @param[in] tunnel_decap
+ *   Whether action is after tunnel decapsulation.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -689,7 +729,7 @@ flow_dv_convert_action_modify_ttl
 			(struct mlx5_flow_dv_modify_hdr_resource *resource,
 			 const struct rte_flow_action *action,
 			 const struct rte_flow_item *items,
-			 union flow_dv_attr *attr,
+			 union flow_dv_attr *attr, bool tunnel_decap,
 			 struct rte_flow_error *error)
 {
 	const struct rte_flow_action_set_ttl *conf =
@@ -702,7 +742,7 @@ flow_dv_convert_action_modify_ttl
 	struct field_modify_info *field;
 
 	if (!attr->valid)
-		flow_dv_attr_init(items, attr);
+		flow_dv_attr_init(items, attr, tunnel_decap);
 	if (attr->ipv4) {
 		memset(&ipv4, 0, sizeof(ipv4));
 		memset(&ipv4_mask, 0, sizeof(ipv4_mask));
@@ -738,6 +778,8 @@ flow_dv_convert_action_modify_ttl
  *   Pointer to rte_flow_item objects list.
  * @param[in] attr
  *   Pointer to flow attributes structure.
+ * @param[in] tunnel_decap
+ *   Whether action is after tunnel decapsulation.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -748,7 +790,7 @@ static int
 flow_dv_convert_action_modify_dec_ttl
 			(struct mlx5_flow_dv_modify_hdr_resource *resource,
 			 const struct rte_flow_item *items,
-			 union flow_dv_attr *attr,
+			 union flow_dv_attr *attr, bool tunnel_decap,
 			 struct rte_flow_error *error)
 {
 	struct rte_flow_item item;
@@ -759,7 +801,7 @@ flow_dv_convert_action_modify_dec_ttl
 	struct field_modify_info *field;
 
 	if (!attr->valid)
-		flow_dv_attr_init(items, attr);
+		flow_dv_attr_init(items, attr, tunnel_decap);
 	if (attr->ipv4) {
 		memset(&ipv4, 0, sizeof(ipv4));
 		memset(&ipv4_mask, 0, sizeof(ipv4_mask));
@@ -7463,7 +7505,8 @@ cnt_err:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
 			if (flow_dv_convert_action_modify_tp
 					(mhdr_res, actions, items,
-					 &flow_attr, error))
+					 &flow_attr, !!(action_flags &
+					 MLX5_FLOW_ACTION_DECAP), error))
 				return -rte_errno;
 			action_flags |= actions->type ==
 					RTE_FLOW_ACTION_TYPE_SET_TP_SRC ?
@@ -7472,14 +7515,17 @@ cnt_err:
 			break;
 		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
 			if (flow_dv_convert_action_modify_dec_ttl
-					(mhdr_res, items, &flow_attr, error))
+					(mhdr_res, items, &flow_attr,
+					 !!(action_flags &
+					 MLX5_FLOW_ACTION_DECAP), error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_DEC_TTL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TTL:
 			if (flow_dv_convert_action_modify_ttl
-					(mhdr_res, actions, items,
-					 &flow_attr, error))
+					(mhdr_res, actions, items, &flow_attr,
+					 !!(action_flags &
+					 MLX5_FLOW_ACTION_DECAP), error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_TTL;
 			break;
