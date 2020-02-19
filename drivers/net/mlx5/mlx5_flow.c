@@ -167,7 +167,9 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 		.rss_types = ETH_RSS_NONFRAG_IPV6_TCP,
 	},
 	[MLX5_EXPANSION_VXLAN] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH),
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
+						 MLX5_EXPANSION_IPV4,
+						 MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN,
 	},
 	[MLX5_EXPANSION_VXLAN_GPE] = {
