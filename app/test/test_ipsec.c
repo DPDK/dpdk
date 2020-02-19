@@ -237,7 +237,7 @@ fill_crypto_xform(struct ipsec_unitest_params *ut_params,
 }
 
 static int
-check_cryptodev_capablity(const struct ipsec_unitest_params *ut,
+check_cryptodev_capability(const struct ipsec_unitest_params *ut,
 		uint8_t dev_id)
 {
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -302,7 +302,7 @@ testsuite_setup(void)
 
 	/* Find first valid crypto device */
 	for (i = 0; i < nb_devs; i++) {
-		rc = check_cryptodev_capablity(ut_params, i);
+		rc = check_cryptodev_capability(ut_params, i);
 		if (rc == 0) {
 			ts_params->valid_dev = i;
 			ts_params->valid_dev_found = 1;

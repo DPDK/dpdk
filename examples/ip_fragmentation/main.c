@@ -646,7 +646,7 @@ check_all_ports_link_status(uint32_t port_mask)
 	}
 }
 
-/* Check L3 packet type detection capablity of the NIC port */
+/* Check L3 packet type detection capability of the NIC port */
 static int
 check_ptype(int portid)
 {
