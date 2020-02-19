@@ -1,17 +1,14 @@
+# default values for all jobs
 language: c
 cache:
   ccache: true
   directories:
     - libabigail
     - reference
-compiler:
-  - gcc
-  - clang
 
 dist: bionic
 
-os:
-  - linux
+os: linux
 
 addons:
   apt:
@@ -38,98 +35,105 @@ _doc_packages: &doc_packages
   - [doxygen, graphviz, python3-sphinx]
 
 before_install: ./.ci/${TRAVIS_OS_NAME}-setup.sh
-
-env:
-  - DEF_LIB="static"
-  - DEF_LIB="shared"
-  - DEF_LIB="shared" RUN_TESTS=1
+script: ./.ci/${TRAVIS_OS_NAME}-build.sh
 
 jobs:
   include:
-  - env: DEF_LIB="static" BUILD_32BIT=1
+  # x86_64 gcc jobs
+  - env: DEF_LIB="static"
+    arch: amd64
     compiler: gcc
-    addons:
-      apt:
-        packages:
-          - *build_32b_packages
-  - env: DEF_LIB="static" AARCH64=1
+  - env: DEF_LIB="shared"
+    arch: amd64
     compiler: gcc
-    addons:
-      apt:
-        packages:
-          - *aarch64_packages
-  - env: DEF_LIB="shared" AARCH64=1
+  - env: DEF_LIB="shared" RUN_TESTS=1
+    arch: amd64
     compiler: gcc
-    addons:
-      apt:
-        packages:
-          - *aarch64_packages
   - env: DEF_LIB="static" EXTRA_PACKAGES=1
+    arch: amd64
     compiler: gcc
     addons:
       apt:
         packages:
           - *extra_packages
   - env: DEF_LIB="shared" EXTRA_PACKAGES=1 RUN_TESTS=1 BUILD_DOCS=1
+    arch: amd64
     compiler: gcc
     addons:
       apt:
         packages:
           - *extra_packages
           - *doc_packages
-  - env: DEF_LIB="static" EXTRA_PACKAGES=1
+  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 ABI_CHECKS=1
+    arch: amd64
     compiler: gcc
     addons:
       apt:
         packages:
           - *extra_packages
+          - *libabigail_build_packages
+  # x86_64 clang jobs
+  - env: DEF_LIB="static"
+    arch: amd64
+    compiler: clang
+  - env: DEF_LIB="shared"
+    arch: amd64
+    compiler: clang
+  - env: DEF_LIB="shared" RUN_TESTS=1
+    arch: amd64
+    compiler: clang
   - env: DEF_LIB="static" EXTRA_PACKAGES=1
+    arch: amd64
     compiler: clang
     addons:
       apt:
         packages:
           - *extra_packages
   - env: DEF_LIB="shared" EXTRA_PACKAGES=1
+    arch: amd64
     compiler: clang
     addons:
       apt:
         packages:
           - *extra_packages
   - env: DEF_LIB="shared" EXTRA_PACKAGES=1 RUN_TESTS=1 BUILD_DOCS=1
+    arch: amd64
     compiler: clang
     addons:
       apt:
         packages:
           - *extra_packages
           - *doc_packages
-  - env: DEF_LIB="static"
-    arch: arm64
+  # x86_64 cross-compiling 32-bits jobs
+  - env: DEF_LIB="static" BUILD_32BIT=1
+    arch: amd64
     compiler: gcc
     addons:
       apt:
         packages:
-          - *required_packages
-  - env: DEF_LIB="shared"
-    arch: arm64
+          - *build_32b_packages
+  # x86_64 cross-compiling aarch64 jobs
+  - env: DEF_LIB="static" AARCH64=1
+    arch: amd64
     compiler: gcc
     addons:
       apt:
         packages:
-          - *required_packages
+          - *aarch64_packages
+  - env: DEF_LIB="shared" AARCH64=1
+    arch: amd64
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *aarch64_packages
+  # aarch64 gcc jobs
   - env: DEF_LIB="static"
     arch: arm64
-    compiler: clang
-    addons:
-      apt:
-        packages:
-          - *required_packages
+    compiler: gcc
   - env: DEF_LIB="shared"
     arch: arm64
-    compiler: clang
-    addons:
-      apt:
-        packages:
-          - *required_packages
+    compiler: gcc
   - env: DEF_LIB="shared" BUILD_DOCS=1
     arch: arm64
     compiler: gcc
@@ -139,13 +143,6 @@ jobs:
           - *required_packages
           - *doc_packages
   - env: DEF_LIB="shared" EXTRA_PACKAGES=1 ABI_CHECKS=1
-    compiler: gcc
-    addons:
-      apt:
-        packages:
-          - *extra_packages
-          - *libabigail_build_packages
-  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 ABI_CHECKS=1
     arch: arm64
     compiler: gcc
     addons:
@@ -153,5 +150,10 @@ jobs:
         packages:
           - *extra_packages
           - *libabigail_build_packages
-
-script: ./.ci/${TRAVIS_OS_NAME}-build.sh
+  # aarch64 clang jobs
+  - env: DEF_LIB="static"
+    arch: arm64
+    compiler: clang
+  - env: DEF_LIB="shared"
+    arch: arm64
+    compiler: clang
