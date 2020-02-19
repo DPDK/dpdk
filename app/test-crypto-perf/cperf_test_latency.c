@@ -40,9 +40,6 @@ struct priv_op_data {
 	struct cperf_op_result *result;
 };
 
-#define max(a, b) (a > b ? (uint64_t)a : (uint64_t)b)
-#define min(a, b) (a < b ? (uint64_t)a : (uint64_t)b)
-
 static void
 cperf_latency_test_free(struct cperf_latency_ctx *ctx)
 {
@@ -254,13 +251,13 @@ cperf_latency_test_runner(void *arg)
 						(void **)ops_processed, ops_deqd);
 
 				deqd_tot += ops_deqd;
-				deqd_max = max(ops_deqd, deqd_max);
-				deqd_min = min(ops_deqd, deqd_min);
+				deqd_max = RTE_MAX(ops_deqd, deqd_max);
+				deqd_min = RTE_MIN(ops_deqd, deqd_min);
 			}
 
 			enqd_tot += ops_enqd;
-			enqd_max = max(ops_enqd, enqd_max);
-			enqd_min = min(ops_enqd, enqd_min);
+			enqd_max = RTE_MAX(ops_enqd, enqd_max);
+			enqd_min = RTE_MIN(ops_enqd, enqd_min);
 
 			b_idx++;
 		}
@@ -284,15 +281,15 @@ cperf_latency_test_runner(void *arg)
 						(void **)ops_processed, ops_deqd);
 
 				deqd_tot += ops_deqd;
-				deqd_max = max(ops_deqd, deqd_max);
-				deqd_min = min(ops_deqd, deqd_min);
+				deqd_max = RTE_MAX(ops_deqd, deqd_max);
+				deqd_min = RTE_MIN(ops_deqd, deqd_min);
 			}
 		}
 
 		for (i = 0; i < tsc_idx; i++) {
 			tsc_val = ctx->res[i].tsc_end - ctx->res[i].tsc_start;
-			tsc_max = max(tsc_val, tsc_max);
-			tsc_min = min(tsc_val, tsc_min);
+			tsc_max = RTE_MAX(tsc_val, tsc_max);
+			tsc_min = RTE_MIN(tsc_val, tsc_min);
 			tsc_tot += tsc_val;
 		}
 
