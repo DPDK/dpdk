@@ -2605,9 +2605,9 @@ __vsi_queues_bind_intr(struct ice_vsi *vsi, uint16_t msix_vect,
 	for (i = 0; i < nb_queue; i++) {
 		/*do actual bind*/
 		val = (msix_vect & QINT_RQCTL_MSIX_INDX_M) |
-		      (0 < QINT_RQCTL_ITR_INDX_S) | QINT_RQCTL_CAUSE_ENA_M;
+		      (0 << QINT_RQCTL_ITR_INDX_S) | QINT_RQCTL_CAUSE_ENA_M;
 		val_tx = (msix_vect & QINT_TQCTL_MSIX_INDX_M) |
-			 (0 < QINT_TQCTL_ITR_INDX_S) | QINT_TQCTL_CAUSE_ENA_M;
+			 (0 << QINT_TQCTL_ITR_INDX_S) | QINT_TQCTL_CAUSE_ENA_M;
 
 		PMD_DRV_LOG(INFO, "queue %d is binding to vect %d",
 			    base_queue + i, msix_vect);
