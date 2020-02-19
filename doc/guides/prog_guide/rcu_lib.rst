@@ -61,7 +61,7 @@ wait till thread 2 enters quiescent state as well.
 
 However, the writer does not need to wait for reader thread 3 to enter
 quiescent state. Reader thread 3 was not accessing D1 when the delete
-operation happened. So, reader thread 1 will not have a reference to the
+operation happened. So, reader thread 3 will not have a reference to the
 deleted entry.
 
 It can be noted that, the critical sections for D2 is a quiescent state
