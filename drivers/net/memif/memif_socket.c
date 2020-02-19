@@ -204,6 +204,13 @@ memif_msg_receive_init(struct memif_control_channel *cc, memif_msg_t *msg)
 		pmd = dev->data->dev_private;
 		if (((pmd->flags & ETH_MEMIF_FLAG_DISABLED) == 0) &&
 		    (pmd->id == i->id) && (pmd->role == MEMIF_ROLE_MASTER)) {
+			if (pmd->flags & (ETH_MEMIF_FLAG_CONNECTING |
+					   ETH_MEMIF_FLAG_CONNECTED)) {
+				memif_msg_enq_disconnect(cc,
+							 "Already connected", 0);
+				return -1;
+			}
+
 			/* assign control channel to device */
 			cc->dev = dev;
 			pmd->cc = cc;
@@ -215,12 +222,6 @@ memif_msg_receive_init(struct memif_control_channel *cc, memif_msg_t *msg)
 				return -1;
 			}
 
-			if (pmd->flags & (ETH_MEMIF_FLAG_CONNECTING |
-					   ETH_MEMIF_FLAG_CONNECTED)) {
-				memif_msg_enq_disconnect(pmd->cc,
-							 "Already connected", 0);
-				return -1;
-			}
 			strlcpy(pmd->remote_name, (char *)i->name,
 				sizeof(pmd->remote_name));
 
@@ -772,6 +773,7 @@ memif_intr_handler(void *arg)
 	ret = memif_msg_receive(cc);
 	/* if driver failed to assign device */
 	if (cc->dev == NULL) {
+		memif_msg_send_from_queue(cc);
 		ret = rte_intr_callback_unregister_pending(&cc->intr_handle,
 							   memif_intr_handler,
 							   cc,
