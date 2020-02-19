@@ -2703,7 +2703,7 @@ parse_fwd_portlist(const char *portlist)
 	 * and thereby calculate the total number of
 	 * valid ports
 	 */
-	for (i = 0; i < portcount && valid_port_count < portcount; i++) {
+	for (i = 0; i < portcount && i < RTE_DIM(portindex); i++) {
 		if (rte_eth_dev_is_valid_port(portindex[i])) {
 			portindex[valid_port_count] = portindex[i];
 			valid_port_count++;
