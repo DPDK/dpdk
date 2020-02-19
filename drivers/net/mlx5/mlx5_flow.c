@@ -2135,9 +2135,7 @@ mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
 		.protocol = RTE_BE16(UINT16_MAX),
 	};
 
-	if (!(priv->config.hca_attr.flex_parser_protocols &
-	      MLX5_HCA_FLEX_GENEVE_ENABLED) ||
-	    !priv->config.hca_attr.tunnel_stateless_geneve_rx)
+	if (!priv->config.hca_attr.tunnel_stateless_geneve_rx)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L3 Geneve is not enabled by device"
