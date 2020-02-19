@@ -15,14 +15,11 @@ addons:
     update: true
     packages: &required_packages
       - [libnuma-dev, python3-setuptools, python3-wheel, python3-pip, ninja-build]
+      - [libbsd-dev, libpcap-dev, libibverbs-dev, libcrypto++-dev, libfdt-dev, libjansson4]
 
 _aarch64_packages: &aarch64_packages
   - *required_packages
   - [gcc-aarch64-linux-gnu, libc6-dev-arm64-cross, pkg-config-aarch64-linux-gnu]
-
-_extra_packages: &extra_packages
-  - *required_packages
-  - [libbsd-dev, libpcap-dev, libibverbs-dev, libcrypto++-dev, libfdt-dev, libjansson4]
 
 _libabigail_build_packages: &libabigail_build_packages
   - [autoconf, automake, libtool, pkg-config, libxml2-dev, libdw-dev]
@@ -43,66 +40,39 @@ jobs:
   - env: DEF_LIB="static"
     arch: amd64
     compiler: gcc
-  - env: DEF_LIB="shared"
-    arch: amd64
-    compiler: gcc
   - env: DEF_LIB="shared" RUN_TESTS=1
     arch: amd64
     compiler: gcc
-  - env: DEF_LIB="static" EXTRA_PACKAGES=1
+  - env: DEF_LIB="shared" BUILD_DOCS=1
     arch: amd64
     compiler: gcc
     addons:
       apt:
         packages:
-          - *extra_packages
-  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 RUN_TESTS=1 BUILD_DOCS=1
-    arch: amd64
-    compiler: gcc
-    addons:
-      apt:
-        packages:
-          - *extra_packages
+          - *required_packages
           - *doc_packages
-  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 ABI_CHECKS=1
+  - env: DEF_LIB="shared" ABI_CHECKS=1
     arch: amd64
     compiler: gcc
     addons:
       apt:
         packages:
-          - *extra_packages
+          - *required_packages
           - *libabigail_build_packages
   # x86_64 clang jobs
   - env: DEF_LIB="static"
     arch: amd64
     compiler: clang
-  - env: DEF_LIB="shared"
-    arch: amd64
-    compiler: clang
   - env: DEF_LIB="shared" RUN_TESTS=1
     arch: amd64
     compiler: clang
-  - env: DEF_LIB="static" EXTRA_PACKAGES=1
+  - env: DEF_LIB="shared" BUILD_DOCS=1
     arch: amd64
     compiler: clang
     addons:
       apt:
         packages:
-          - *extra_packages
-  - env: DEF_LIB="shared" EXTRA_PACKAGES=1
-    arch: amd64
-    compiler: clang
-    addons:
-      apt:
-        packages:
-          - *extra_packages
-  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 RUN_TESTS=1 BUILD_DOCS=1
-    arch: amd64
-    compiler: clang
-    addons:
-      apt:
-        packages:
-          - *extra_packages
+          - *required_packages
           - *doc_packages
   # x86_64 cross-compiling 32-bits jobs
   - env: DEF_LIB="static" BUILD_32BIT=1
@@ -131,9 +101,6 @@ jobs:
   - env: DEF_LIB="static"
     arch: arm64
     compiler: gcc
-  - env: DEF_LIB="shared"
-    arch: arm64
-    compiler: gcc
   - env: DEF_LIB="shared" BUILD_DOCS=1
     arch: arm64
     compiler: gcc
@@ -142,13 +109,13 @@ jobs:
         packages:
           - *required_packages
           - *doc_packages
-  - env: DEF_LIB="shared" EXTRA_PACKAGES=1 ABI_CHECKS=1
+  - env: DEF_LIB="shared" ABI_CHECKS=1
     arch: arm64
     compiler: gcc
     addons:
       apt:
         packages:
-          - *extra_packages
+          - *required_packages
           - *libabigail_build_packages
   # aarch64 clang jobs
   - env: DEF_LIB="static"
