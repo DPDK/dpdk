@@ -573,7 +573,7 @@ flow_dv_convert_action_modify_vlan_vid
 	const struct rte_flow_action_of_set_vlan_vid *conf =
 		(const struct rte_flow_action_of_set_vlan_vid *)(action->conf);
 	int i = resource->actions_num;
-	struct mlx5_modification_cmd *actions = &resource->actions[i];
+	struct mlx5_modification_cmd *actions = resource->actions;
 	struct field_modify_info *field = modify_vlan_out_first_vid;
 
 	if (i >= MLX5_MAX_MODIFY_NUM)
