@@ -17,7 +17,7 @@ addons:
   apt:
     update: true
     packages: &required_packages
-      - [libnuma-dev, linux-headers-$(uname -r), python3-setuptools, python3-wheel, python3-pip, ninja-build]
+      - [libnuma-dev, python3-setuptools, python3-wheel, python3-pip, ninja-build]
 
 aarch64_packages: &aarch64_packages
   - *required_packages
