@@ -106,7 +106,8 @@ mbuf_cut_seg_ofs(struct rte_mbuf *mb, struct rte_mbuf *ms, uint32_t ofs,
 }
 
 /*
- * process packets using sync crypto engine
+ * process packets using sync crypto engine.
+ * expects *num* to be greater than zero.
  */
 static inline void
 cpu_crypto_bulk(const struct rte_ipsec_session *ss,

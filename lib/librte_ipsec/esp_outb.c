@@ -502,7 +502,9 @@ cpu_outb_pkt_prepare(const struct rte_ipsec_session *ss,
 		move_bad_mbufs(mb, dr, n, n - k);
 
 	/* convert mbufs to iovecs and do actual crypto/auth processing */
-	cpu_crypto_bulk(ss, sa->cofs, mb, iv, aad, dgst, l4ofs, clen, k);
+	if (k != 0)
+		cpu_crypto_bulk(ss, sa->cofs, mb, iv, aad, dgst,
+			l4ofs, clen, k);
 	return k;
 }
 
