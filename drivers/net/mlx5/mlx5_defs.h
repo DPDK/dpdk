@@ -173,6 +173,10 @@
 #define MLX5_FLOW_MREG_HNAME "MARK_COPY_TABLE"
 #define MLX5_DEFAULT_COPY_ID UINT32_MAX
 
+/* Hairpin TX/RX queue configuration parameters. */
+#define MLX5_HAIRPIN_QUEUE_STRIDE 6
+#define MLX5_HAIRPIN_JUMBO_LOG_SIZE (15 + 2)
+
 /* Definition of static_assert found in /usr/include/assert.h */
 #ifndef HAVE_STATIC_ASSERT
 #define static_assert _Static_assert

@@ -1268,6 +1268,7 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_devx_create_rq_attr attr = { 0 };
 	struct mlx5_rxq_obj *tmpl = NULL;
 	int ret = 0;
+	uint32_t max_wq_data;
 
 	MLX5_ASSERT(rxq_data);
 	MLX5_ASSERT(!rxq_ctrl->obj);
@@ -1283,11 +1284,15 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	tmpl->type = MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN;
 	tmpl->rxq_ctrl = rxq_ctrl;
 	attr.hairpin = 1;
-	/* Workaround for hairpin startup */
-	attr.wq_attr.log_hairpin_num_packets = log2above(32);
-	/* Workaround for packets larger than 1KB */
+	max_wq_data = priv->config.hca_attr.log_max_hairpin_wq_data_sz;
+	/* Jumbo frames > 9KB should be supported, and more packets. */
 	attr.wq_attr.log_hairpin_data_sz =
-			priv->config.hca_attr.log_max_hairpin_wq_data_sz;
+			(max_wq_data < MLX5_HAIRPIN_JUMBO_LOG_SIZE) ?
+			max_wq_data : MLX5_HAIRPIN_JUMBO_LOG_SIZE;
+	/* Set the packets number to the maximum value for performance. */
+	attr.wq_attr.log_hairpin_num_packets =
+			attr.wq_attr.log_hairpin_data_sz -
+			MLX5_HAIRPIN_QUEUE_STRIDE;
 	tmpl->rq = mlx5_devx_cmd_create_rq(priv->sh->ctx, &attr,
 					   rxq_ctrl->socket);
 	if (!tmpl->rq) {
