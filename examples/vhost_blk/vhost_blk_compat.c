@@ -60,7 +60,7 @@ vhost_blk_get_config(struct vhost_block_dev *bdev, uint8_t *config,
 	fprintf(stdout, "block device:blk_size = %d, blkcnt = %"PRIx64"\n",
 		blk_size, blkcnt);
 
-	memcpy(config, &blkcfg, min(len, sizeof(blkcfg)));
+	memcpy(config, &blkcfg, RTE_MIN(len, sizeof(blkcfg)));
 
 	return 0;
 }

@@ -40,8 +40,6 @@ struct vhost_blk_queue {
 
 #define NUM_OF_BLK_QUEUES 1
 
-#define min(a, b) (((a) < (b)) ? (a) : (b))
-
 struct vhost_block_dev {
 	/** ID for vhost library. */
 	int vid;

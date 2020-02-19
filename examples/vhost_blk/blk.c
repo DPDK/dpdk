@@ -68,7 +68,7 @@ int
 vhost_bdev_process_blk_commands(struct vhost_block_dev *bdev,
 				 struct vhost_blk_task *task)
 {
-	int used_len;
+	size_t used_len;
 
 	if (unlikely(task->data_len > (bdev->blockcnt * bdev->blocklen))) {
 		fprintf(stderr, "read or write beyond capacity\n");
@@ -113,7 +113,7 @@ vhost_bdev_process_blk_commands(struct vhost_block_dev *bdev,
 	case VIRTIO_BLK_T_GET_ID:
 		if (!task->iovs_cnt || task->data_len)
 			return VIRTIO_BLK_S_UNSUPP;
-		used_len = min(VIRTIO_BLK_ID_BYTES, task->data_len);
+		used_len = RTE_MIN((size_t)VIRTIO_BLK_ID_BYTES, task->data_len);
 		vhost_strcpy_pad(task->iovs[0].iov_base,
 				 bdev->product_name, used_len, ' ');
 		break;
