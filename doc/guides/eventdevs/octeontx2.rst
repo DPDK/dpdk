@@ -66,7 +66,7 @@ Runtime Config Options
   upper limit for in-flight events.
   For example::
 
-    --dev "0002:0e:00.0,xae_cnt=16384"
+    -w 0002:0e:00.0,xae_cnt=16384
 
 - ``Force legacy mode``
 
@@ -74,7 +74,7 @@ Runtime Config Options
   single workslot mode in SSO and disable the default dual workslot mode.
   For example::
 
-    --dev "0002:0e:00.0,single_ws=1"
+    -w 0002:0e:00.0,single_ws=1
 
 - ``Event Group QoS support``
 
@@ -89,7 +89,7 @@ Runtime Config Options
   default.
   For example::
 
-    --dev "0002:0e:00.0,qos=[1-50-50-50]"
+    -w 0002:0e:00.0,qos=[1-50-50-50]
 
 - ``Selftest``
 
@@ -98,7 +98,7 @@ Runtime Config Options
   The tests are run once the vdev creation is successfully complete.
   For example::
 
-    --dev "0002:0e:00.0,selftest=1"
+    -w 0002:0e:00.0,selftest=1
 
 - ``TIM disable NPA``
 
@@ -107,7 +107,7 @@ Runtime Config Options
   parameter disables NPA and uses software mempool to manage chunks
   For example::
 
-    --dev "0002:0e:00.0,tim_disable_npa=1"
+    -w 0002:0e:00.0,tim_disable_npa=1
 
 - ``TIM modify chunk slots``
 
@@ -118,7 +118,7 @@ Runtime Config Options
   to SSO. The default value is 255 and the max value is 4095.
   For example::
 
-    --dev "0002:0e:00.0,tim_chnk_slots=1023"
+    -w 0002:0e:00.0,tim_chnk_slots=1023
 
 - ``TIM enable arm/cancel statistics``
 
@@ -126,7 +126,7 @@ Runtime Config Options
   event timer adapter.
   For example::
 
-    --dev "0002:0e:00.0,tim_stats_ena=1"
+    -w 0002:0e:00.0,tim_stats_ena=1
 
 - ``TIM limit max rings reserved``
 
@@ -136,7 +136,7 @@ Runtime Config Options
   rings.
   For example::
 
-    --dev "0002:0e:00.0,tim_rings_lmt=5"
+    -w 0002:0e:00.0,tim_rings_lmt=5
 
 - ``TIM ring control internal parameters``
 
@@ -146,7 +146,7 @@ Runtime Config Options
   default values.
   For Example::
 
-    --dev "0002:0e:00.0,tim_ring_ctl=[2-1023-1-0]"
+    -w 0002:0e:00.0,tim_ring_ctl=[2-1023-1-0]
 
 Debugging Options
 ~~~~~~~~~~~~~~~~~
