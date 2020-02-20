@@ -31,8 +31,8 @@ abi_version = run_command(find_program('cat', 'more'),
 #      sonames => librte_stable.so.20.0, librte_experimental.so.0.200
 abi_va = abi_version.split('.')
 stable_so_version = abi_va.length() == 2 ? abi_va[0] : abi_va[0] + '.' + abi_va[1]
-experimental_abi_version = '0.' + ''.join(abi_va)
-experimental_so_version = '0.' + ''.join(stable_so_version.split('.'))
+experimental_abi_version = '0.' + abi_va[0] + abi_va[1] + '.' + abi_va[2]
+experimental_so_version = experimental_abi_version
 
 # extract all version information into the build configuration
 dpdk_conf.set('RTE_VER_YEAR', pver.get(0).to_int())

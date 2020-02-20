@@ -15,8 +15,8 @@ LIBABIVER ?= $(shell cat $(RTE_SRCDIR)/ABI_VERSION)
 SOVER := $(basename $(LIBABIVER))
 ifeq ($(shell grep -s "^DPDK_" $(SRCDIR)/$(EXPORT_MAP)),)
 # EXPERIMENTAL ABI is versioned as 0.major+minor, e.g. 0.201 for 20.1 ABI
-LIBABIVER := 0.$(shell echo $(LIBABIVER) | tr -d '.')
-SOVER := 0.$(shell echo $(SOVER) | tr -d '.')
+LIBABIVER := 0.$(shell echo $(LIBABIVER) | awk 'BEGIN { FS="." }; { print $$1$$2"."$$3 }')
+SOVER := $(LIBABIVER)
 endif
 
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
@@ -135,7 +135,9 @@ $(RTE_OUTPUT)/lib/$(LIB): $(LIB)
 	$(Q)cp -f $(LIB) $(RTE_OUTPUT)/lib
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 	$(Q)ln -s -f $< $(shell echo $@ | sed 's/\.so.*/.so/')
-	$(Q)ln -s -f $< $(shell echo $@ | sed 's/\.so.*/.so.$(SOVER)/')
+	$(Q)if [ $(SOVER) != $(LIBABIVER) ]; then \
+		ln -s -f $< $(shell echo $@ | sed 's/\.so.*/.so.$(SOVER)/') ; \
+	fi
 endif
 
 #
