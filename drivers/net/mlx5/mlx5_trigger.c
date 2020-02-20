@@ -280,11 +280,13 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		rte_net_mlx5_dynf_inline_mask = 1UL << fine_inline;
 	else
 		rte_net_mlx5_dynf_inline_mask = 0;
-	ret = mlx5_dev_configure_rss_reta(dev);
-	if (ret) {
-		DRV_LOG(ERR, "port %u reta config failed: %s",
-			dev->data->port_id, strerror(rte_errno));
-		return -rte_errno;
+	if (dev->data->nb_rx_queues > 0) {
+		ret = mlx5_dev_configure_rss_reta(dev);
+		if (ret) {
+			DRV_LOG(ERR, "port %u reta config failed: %s",
+				dev->data->port_id, strerror(rte_errno));
+			return -rte_errno;
+		}
 	}
 	ret = mlx5_txq_start(dev);
 	if (ret) {
