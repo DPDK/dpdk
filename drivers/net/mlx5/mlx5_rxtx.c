@@ -2262,6 +2262,7 @@ mlx5_tx_request_completion(struct mlx5_txq_data *restrict txq,
 	     (uint16_t)(txq->wqe_ci - txq->wqe_comp) >= txq->wqe_thres)) {
 		volatile struct mlx5_wqe *last = loc->wqe_last;
 
+		MLX5_ASSERT(last);
 		txq->elts_comp = head;
 		if (MLX5_TXOFF_CONFIG(INLINE))
 			txq->wqe_comp = txq->wqe_ci;
@@ -3921,6 +3922,8 @@ mlx5_tx_sdone_empw(struct mlx5_txq_data *restrict txq,
  *   Total size of descriptor/data in bytes.
  * @param slen
  *   Accumulated statistics, data bytes sent.
+ * @param wqem
+ *   The base WQE for the eMPW/MPW descriptor.
  * @param olx
  *   Configured Tx offloads mask. It is fully defined at
  *   compile time and may be used for optimization.
@@ -3934,9 +3937,10 @@ mlx5_tx_idone_empw(struct mlx5_txq_data *restrict txq,
 		   struct mlx5_txq_local *restrict loc,
 		   unsigned int len,
 		   unsigned int slen,
+		   struct mlx5_wqe *restrict wqem,
 		   unsigned int olx __rte_unused)
 {
-	struct mlx5_wqe_dseg *dseg = &loc->wqe_last->dseg[0];
+	struct mlx5_wqe_dseg *dseg = &wqem->dseg[0];
 
 	MLX5_ASSERT(MLX5_TXOFF_CONFIG(INLINE));
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -3963,9 +3967,10 @@ mlx5_tx_idone_empw(struct mlx5_txq_data *restrict txq,
 		MLX5_ASSERT((len % MLX5_WSEG_SIZE) == 0);
 		len = len / MLX5_WSEG_SIZE + 2;
 	}
-	loc->wqe_last->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | len);
+	wqem->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | len);
 	txq->wqe_ci += (len + 3) / 4;
 	loc->wqe_free -= (len + 3) / 4;
+	loc->wqe_last = wqem;
 }
 
 /**
@@ -4202,7 +4207,7 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 	pkts_n -= loc->pkts_sent;
 	for (;;) {
 		struct mlx5_wqe_dseg *restrict dseg;
-		struct mlx5_wqe_eseg *restrict eseg;
+		struct mlx5_wqe *restrict wqem;
 		enum mlx5_txcmp_code ret;
 		unsigned int room, part, nlim;
 		unsigned int slen = 0;
@@ -4221,22 +4226,21 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 			return MLX5_TXCMP_CODE_EXIT;
 		if (likely(pkts_n > 1))
 			rte_prefetch0(*pkts);
-		loc->wqe_last = txq->wqes + (txq->wqe_ci & txq->wqe_m);
+		wqem = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 		/*
 		 * Build eMPW title WQEBB:
 		 * - Control Segment, eMPW opcode, zero DS
 		 * - Ethernet Segment, no inline
 		 */
-		mlx5_tx_cseg_init(txq, loc, loc->wqe_last, 0,
+		mlx5_tx_cseg_init(txq, loc, wqem, 0,
 				  MLX5_OPCODE_ENHANCED_MPSW, olx);
-		mlx5_tx_eseg_none(txq, loc, loc->wqe_last,
+		mlx5_tx_eseg_none(txq, loc, wqem,
 				  olx & ~MLX5_TXOFF_CONFIG_VLAN);
-		eseg = &loc->wqe_last->eseg;
-		dseg = &loc->wqe_last->dseg[0];
+		dseg = &wqem->dseg[0];
 		/* Store the packet length for legacy MPW. */
 		if (MLX5_TXOFF_CONFIG(MPW))
-			eseg->mss = rte_cpu_to_be_16
-					(rte_pktmbuf_data_len(loc->mbuf));
+			wqem->eseg.mss = rte_cpu_to_be_16
+					 (rte_pktmbuf_data_len(loc->mbuf));
 		room = RTE_MIN(MLX5_WQE_SIZE_MAX / MLX5_WQE_SIZE,
 			       loc->wqe_free) * MLX5_WQE_SIZE -
 					MLX5_WQE_CSEG_SIZE -
@@ -4273,7 +4277,8 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 				 * We have some successfully built
 				 * packet Data Segments to send.
 				 */
-				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
+				mlx5_tx_idone_empw(txq, loc, part,
+						   slen, wqem, olx);
 				return MLX5_TXCMP_CODE_ERROR;
 			}
 			/* Inline or not inline - that's the Question. */
@@ -4293,7 +4298,7 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 					 * No pointer and inline descriptor
 					 * intermix for legacy MPW sessions.
 					 */
-					if (loc->wqe_last->dseg[0].bcount)
+					if (wqem->dseg[0].bcount)
 						break;
 				}
 			} else {
@@ -4342,7 +4347,7 @@ pointer_empw:
 			 */
 			if (MLX5_TXOFF_CONFIG(MPW) &&
 			    part != room &&
-			    loc->wqe_last->dseg[0].bcount == RTE_BE32(0))
+			    wqem->dseg[0].bcount == RTE_BE32(0))
 				break;
 			/*
 			 * Not inlinable VLAN packets are
@@ -4372,7 +4377,8 @@ next_mbuf:
 				 * continue build descriptors.
 				 */
 				part -= room;
-				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
+				mlx5_tx_idone_empw(txq, loc, part,
+						   slen, wqem, olx);
 				return MLX5_TXCMP_CODE_EXIT;
 			}
 			loc->mbuf = *pkts++;
@@ -4386,7 +4392,8 @@ next_mbuf:
 			 */
 			if (ret == MLX5_TXCMP_CODE_MULTI) {
 				part -= room;
-				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
+				mlx5_tx_idone_empw(txq, loc, part,
+						   slen, wqem, olx);
 				if (unlikely(!loc->elts_free ||
 					     !loc->wqe_free))
 					return MLX5_TXCMP_CODE_EXIT;
@@ -4395,7 +4402,8 @@ next_mbuf:
 			MLX5_ASSERT(NB_SEGS(loc->mbuf) == 1);
 			if (ret == MLX5_TXCMP_CODE_TSO) {
 				part -= room;
-				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
+				mlx5_tx_idone_empw(txq, loc, part,
+						   slen, wqem, olx);
 				if (unlikely(!loc->elts_free ||
 					     !loc->wqe_free))
 					return MLX5_TXCMP_CODE_EXIT;
@@ -4403,7 +4411,8 @@ next_mbuf:
 			}
 			if (ret == MLX5_TXCMP_CODE_SINGLE) {
 				part -= room;
-				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
+				mlx5_tx_idone_empw(txq, loc, part,
+						   slen, wqem, olx);
 				if (unlikely(!loc->elts_free ||
 					     !loc->wqe_free))
 					return MLX5_TXCMP_CODE_EXIT;
@@ -4412,7 +4421,8 @@ next_mbuf:
 			if (ret != MLX5_TXCMP_CODE_EMPW) {
 				MLX5_ASSERT(false);
 				part -= room;
-				mlx5_tx_idone_empw(txq, loc, part, slen, olx);
+				mlx5_tx_idone_empw(txq, loc, part,
+						   slen, wqem, olx);
 				return MLX5_TXCMP_CODE_ERROR;
 			}
 			/* Check if we have minimal room left. */
@@ -4427,7 +4437,8 @@ next_mbuf:
 			 * - software parser settings
 			 * - packets length (legacy MPW only)
 			 */
-			if (!mlx5_tx_match_empw(txq, eseg, loc, dlen, olx))
+			if (!mlx5_tx_match_empw(txq, &wqem->eseg,
+						loc, dlen, olx))
 				break;
 			/* Packet attributes match, continue the same eMPW. */
 			if ((uintptr_t)dseg >= (uintptr_t)txq->wqes_end)
@@ -4441,7 +4452,7 @@ next_mbuf:
 		part -= room;
 		if (unlikely(!part))
 			return MLX5_TXCMP_CODE_EXIT;
-		mlx5_tx_idone_empw(txq, loc, part, slen, olx);
+		mlx5_tx_idone_empw(txq, loc, part, slen, wqem, olx);
 		if (unlikely(!loc->elts_free ||
 			     !loc->wqe_free))
 			return MLX5_TXCMP_CODE_EXIT;
