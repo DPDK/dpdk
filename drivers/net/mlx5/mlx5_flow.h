@@ -34,6 +34,7 @@ enum mlx5_rte_flow_item_type {
 	MLX5_RTE_FLOW_ITEM_TYPE_END = INT_MIN,
 	MLX5_RTE_FLOW_ITEM_TYPE_TAG,
 	MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
+	MLX5_RTE_FLOW_ITEM_TYPE_VLAN,
 };
 
 /* Private (internal) rte flow actions. */
@@ -327,6 +328,9 @@ enum mlx5_feature_name {
  */
 #define MLX5_GENEVE_OPT_LEN_0 14
 #define MLX5_GENEVE_OPT_LEN_1 63
+
+#define MLX5_ENCAPSULATION_DECISION_SIZE (sizeof(struct rte_flow_item_eth) + \
+					  sizeof(struct rte_flow_item_ipv4))
 
 enum mlx5_flow_drv_type {
 	MLX5_FLOW_TYPE_MIN,

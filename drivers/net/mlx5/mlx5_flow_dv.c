@@ -54,8 +54,6 @@
 #define MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL 1
 #endif
 
-#define MLX5_ENCAPSULATION_DECISION_SIZE (sizeof(struct rte_flow_item_eth) + \
-					  sizeof(struct rte_flow_item_ipv4))
 /* VLAN header definitions */
 #define MLX5DV_FLOW_VLAN_PCP_SHIFT 13
 #define MLX5DV_FLOW_VLAN_PCP_MASK (0x7 << MLX5DV_FLOW_VLAN_PCP_SHIFT)
@@ -1757,10 +1755,14 @@ flow_dev_get_vlan_info_from_items(const struct rte_flow_item *items,
 
 	if (items == NULL)
 		return;
-	for (; items->type != RTE_FLOW_ITEM_TYPE_END &&
-	       items->type != RTE_FLOW_ITEM_TYPE_VLAN; items++)
-		;
-	if (items->type == RTE_FLOW_ITEM_TYPE_VLAN) {
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		int type = items->type;
+
+		if (type == RTE_FLOW_ITEM_TYPE_VLAN ||
+		    type == MLX5_RTE_FLOW_ITEM_TYPE_VLAN)
+			break;
+	}
+	if (items->type != RTE_FLOW_ITEM_TYPE_END) {
 		const struct rte_flow_item_vlan *vlan_m = items->mask;
 		const struct rte_flow_item_vlan *vlan_v = items->spec;
 

@@ -2664,26 +2664,6 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 }
 
 /**
- * Get port id item from the item list.
- *
- * @param[in] item
- *   Pointer to the list of items.
- *
- * @return
- *   Pointer to the port id item if exist, else return NULL.
- */
-static const struct rte_flow_item *
-find_port_id_item(const struct rte_flow_item *item)
-{
-	MLX5_ASSERT(item);
-	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
-		if (item->type == RTE_FLOW_ITEM_TYPE_PORT_ID)
-			return item;
-	}
-	return NULL;
-}
-
-/**
  * Get RSS action from the action list.
  *
  * @param[in] actions
@@ -3502,6 +3482,10 @@ flow_create_split_inner(struct rte_eth_dev *dev,
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param[in] items
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[out] sfx_items
+ *   Suffix flow match items (list terminated by the END pattern item).
  * @param[in] actions
  *   Associated actions (list terminated by the END action).
  * @param[out] actions_sfx
@@ -3518,70 +3502,60 @@ flow_create_split_inner(struct rte_eth_dev *dev,
  */
 static int
 flow_meter_split_prep(struct rte_eth_dev *dev,
+		 const struct rte_flow_item items[],
+		 struct rte_flow_item sfx_items[],
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_action actions_sfx[],
 		 struct rte_flow_action actions_pre[])
 {
 	struct rte_flow_action *tag_action = NULL;
+	struct rte_flow_item *tag_item;
 	struct mlx5_rte_flow_action_set_tag *set_tag;
 	struct rte_flow_error error;
 	const struct rte_flow_action_raw_encap *raw_encap;
 	const struct rte_flow_action_raw_decap *raw_decap;
+	struct mlx5_rte_flow_item_tag *tag_spec;
+	struct mlx5_rte_flow_item_tag *tag_mask;
 	uint32_t tag_id;
+	bool copy_vlan = false;
 
 	/* Prepare the actions for prefix and suffix flow. */
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		struct rte_flow_action **action_cur = NULL;
+
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_METER:
 			/* Add the extra tag action first. */
 			tag_action = actions_pre;
 			tag_action->type = MLX5_RTE_FLOW_ACTION_TYPE_TAG;
 			actions_pre++;
-			memcpy(actions_pre, actions,
-			       sizeof(struct rte_flow_action));
-			actions_pre++;
+			action_cur = &actions_pre;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
-			memcpy(actions_pre, actions,
-			       sizeof(struct rte_flow_action));
-			actions_pre++;
+			action_cur = &actions_pre;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			raw_encap = actions->conf;
-			if (raw_encap->size >
-			    (sizeof(struct rte_flow_item_eth) +
-			     sizeof(struct rte_flow_item_ipv4))) {
-				memcpy(actions_sfx, actions,
-				       sizeof(struct rte_flow_action));
-				actions_sfx++;
-			} else {
-				rte_memcpy(actions_pre, actions,
-					   sizeof(struct rte_flow_action));
-				actions_pre++;
-			}
+			if (raw_encap->size < MLX5_ENCAPSULATION_DECISION_SIZE)
+				action_cur = &actions_pre;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			raw_decap = actions->conf;
-			/* Size 0 decap means 50 bytes as vxlan decap. */
-			if (raw_decap->size && (raw_decap->size <
-			    (sizeof(struct rte_flow_item_eth) +
-			     sizeof(struct rte_flow_item_ipv4)))) {
-				memcpy(actions_sfx, actions,
-				       sizeof(struct rte_flow_action));
-				actions_sfx++;
-			} else {
-				rte_memcpy(actions_pre, actions,
-					   sizeof(struct rte_flow_action));
-				actions_pre++;
-			}
+			if (raw_decap->size > MLX5_ENCAPSULATION_DECISION_SIZE)
+				action_cur = &actions_pre;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			copy_vlan = true;
 			break;
 		default:
-			memcpy(actions_sfx, actions,
-				sizeof(struct rte_flow_action));
-			actions_sfx++;
 			break;
 		}
+		if (!action_cur)
+			action_cur = &actions_sfx;
+		memcpy(*action_cur, actions, sizeof(struct rte_flow_action));
+		(*action_cur)++;
 	}
 	/* Add end action to the actions. */
 	actions_sfx->type = RTE_FLOW_ACTION_TYPE_END;
@@ -3597,6 +3571,42 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	set_tag->data = tag_id << MLX5_MTR_COLOR_BITS;
 	assert(tag_action);
 	tag_action->conf = set_tag;
+	/* Prepare the suffix subflow items. */
+	tag_item = sfx_items++;
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		int item_type = items->type;
+
+		switch (item_type) {
+		case RTE_FLOW_ITEM_TYPE_PORT_ID:
+			memcpy(sfx_items, items, sizeof(*sfx_items));
+			sfx_items++;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			if (copy_vlan) {
+				memcpy(sfx_items, items, sizeof(*sfx_items));
+				/*
+				 * Convert to internal match item, it is used
+				 * for vlan push and set vid.
+				 */
+				sfx_items->type = MLX5_RTE_FLOW_ITEM_TYPE_VLAN;
+				sfx_items++;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	sfx_items->type = RTE_FLOW_ITEM_TYPE_END;
+	sfx_items++;
+	tag_spec = (struct mlx5_rte_flow_item_tag *)sfx_items;
+	tag_spec->data = tag_id << MLX5_MTR_COLOR_BITS;
+	tag_spec->id = mlx5_flow_get_reg_id(dev, MLX5_MTR_SFX, 0, &error);
+	tag_mask = tag_spec + 1;
+	tag_mask->data = 0xffffff00;
+	tag_item->type = MLX5_RTE_FLOW_ITEM_TYPE_TAG;
+	tag_item->spec = tag_spec;
+	tag_item->last = NULL;
+	tag_item->mask = tag_mask;
 	return tag_id;
 }
 
@@ -4022,7 +4032,6 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 	struct rte_flow_action *sfx_actions = NULL;
 	struct rte_flow_action *pre_actions = NULL;
 	struct rte_flow_item *sfx_items = NULL;
-	const  struct rte_flow_item *sfx_port_id_item;
 	struct mlx5_flow *dev_flow = NULL;
 	struct rte_flow_attr sfx_attr = *attr;
 	uint32_t mtr = 0;
@@ -4035,13 +4044,11 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 	if (priv->mtr_en)
 		actions_n = flow_check_meter_action(actions, &mtr);
 	if (mtr) {
-		struct mlx5_rte_flow_item_tag *tag_spec;
-		struct mlx5_rte_flow_item_tag *tag_mask;
 		/* The five prefix actions: meter, decap, encap, tag, end. */
 		act_size = sizeof(struct rte_flow_action) * (actions_n + 5) +
-			   sizeof(struct rte_flow_action_set_tag);
-		/* tag, end. */
-#define METER_SUFFIX_ITEM 3
+			   sizeof(struct mlx5_rte_flow_action_set_tag);
+		/* tag, vlan, port id, end. */
+#define METER_SUFFIX_ITEM 4
 		item_size = sizeof(struct rte_flow_item) * METER_SUFFIX_ITEM +
 			    sizeof(struct mlx5_rte_flow_item_tag) * 2;
 		sfx_actions = rte_zmalloc(__func__, (act_size + item_size), 0);
@@ -4050,9 +4057,12 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL, "no memory to split "
 						  "meter flow");
+		sfx_items = (struct rte_flow_item *)((char *)sfx_actions +
+			     act_size);
 		pre_actions = sfx_actions + actions_n;
-		mtr_tag_id = flow_meter_split_prep(dev, actions, sfx_actions,
-						     pre_actions);
+		mtr_tag_id = flow_meter_split_prep(dev, items, sfx_items,
+						   actions, sfx_actions,
+						   pre_actions);
 		if (!mtr_tag_id) {
 			ret = -rte_errno;
 			goto exit;
@@ -4066,29 +4076,6 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			goto exit;
 		}
 		dev_flow->mtr_flow_id = mtr_tag_id;
-		/* Prepare the suffix flow match pattern. */
-		sfx_items = (struct rte_flow_item *)((char *)sfx_actions +
-			     act_size);
-		tag_spec = (struct mlx5_rte_flow_item_tag *)(sfx_items +
-			    METER_SUFFIX_ITEM);
-		tag_spec->data = dev_flow->mtr_flow_id << MLX5_MTR_COLOR_BITS;
-		tag_spec->id = mlx5_flow_get_reg_id(dev, MLX5_MTR_SFX, 0,
-						    error);
-		tag_mask = tag_spec + 1;
-		tag_mask->data = 0xffffff00;
-		sfx_items->type = MLX5_RTE_FLOW_ITEM_TYPE_TAG;
-		sfx_items->spec = tag_spec;
-		sfx_items->last = NULL;
-		sfx_items->mask = tag_mask;
-		sfx_items++;
-		sfx_port_id_item = find_port_id_item(items);
-		if (sfx_port_id_item) {
-			memcpy(sfx_items, sfx_port_id_item,
-			       sizeof(*sfx_items));
-			sfx_items++;
-		}
-		sfx_items->type = RTE_FLOW_ITEM_TYPE_END;
-		sfx_items -= sfx_port_id_item ? 2 : 1;
 		/* Setting the sfx group atrr. */
 		sfx_attr.group = sfx_attr.transfer ?
 				(MLX5_FLOW_TABLE_LEVEL_SUFFIX - 1) :
