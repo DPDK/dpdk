@@ -2744,7 +2744,7 @@ flow_get_prefix_layer_flags(struct mlx5_flow *dev_flow)
 }
 
 /**
- * Get QUEUE/RSS action from the action list.
+ * Get metadata split action information.
  *
  * @param[in] actions
  *   Pointer to the list of actions.
@@ -2753,18 +2753,38 @@ flow_get_prefix_layer_flags(struct mlx5_flow *dev_flow)
  * @param[out] qrss_type
  *   Pointer to the action type to return. RTE_FLOW_ACTION_TYPE_END is returned
  *   if no QUEUE/RSS is found.
+ * @param[out] encap_idx
+ *   Pointer to the index of the encap action if exists, otherwise the last
+ *   action index.
  *
  * @return
  *   Total number of actions.
  */
 static int
-flow_parse_qrss_action(const struct rte_flow_action actions[],
-		       const struct rte_flow_action **qrss)
+flow_parse_metadata_split_actions_info(const struct rte_flow_action actions[],
+				       const struct rte_flow_action **qrss,
+				       int *encap_idx)
 {
+	const struct rte_flow_action_raw_encap *raw_encap;
 	int actions_n = 0;
+	int raw_decap_idx = -1;
 
+	*encap_idx = -1;
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+			*encap_idx = actions_n;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+			raw_decap_idx = actions_n;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+			raw_encap = actions->conf;
+			if (raw_encap->size > MLX5_ENCAPSULATION_DECISION_SIZE)
+				*encap_idx = raw_decap_idx != -1 ?
+						      raw_decap_idx : actions_n;
+			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			*qrss = actions;
@@ -2774,6 +2794,8 @@ flow_parse_qrss_action(const struct rte_flow_action actions[],
 		}
 		actions_n++;
 	}
+	if (*encap_idx == -1)
+		*encap_idx = actions_n;
 	/* Count RTE_FLOW_ACTION_TYPE_END. */
 	return actions_n + 1;
 }
@@ -3739,6 +3761,8 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
  *   Number of actions in the list.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
+ * @param[in] encap_idx
+ *   The encap action inndex.
  *
  * @return
  *   0 on success, negative value otherwise
@@ -3747,7 +3771,8 @@ static int
 flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
 		       struct rte_flow_action *ext_actions,
 		       const struct rte_flow_action *actions,
-		       int actions_n, struct rte_flow_error *error)
+		       int actions_n, struct rte_flow_error *error,
+		       int encap_idx)
 {
 	struct mlx5_flow_action_copy_mreg *cp_mreg =
 		(struct mlx5_flow_action_copy_mreg *)
@@ -3762,15 +3787,24 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
 	if (ret < 0)
 		return ret;
 	cp_mreg->src = ret;
-	memcpy(ext_actions, actions,
-			sizeof(*ext_actions) * actions_n);
-	ext_actions[actions_n - 1] = (struct rte_flow_action){
-		.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
-		.conf = cp_mreg,
-	};
-	ext_actions[actions_n] = (struct rte_flow_action){
-		.type = RTE_FLOW_ACTION_TYPE_END,
-	};
+	if (encap_idx != 0)
+		memcpy(ext_actions, actions, sizeof(*ext_actions) * encap_idx);
+	if (encap_idx == actions_n - 1) {
+		ext_actions[actions_n - 1] = (struct rte_flow_action){
+			.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+			.conf = cp_mreg,
+		};
+		ext_actions[actions_n] = (struct rte_flow_action){
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		};
+	} else {
+		ext_actions[encap_idx] = (struct rte_flow_action){
+			.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+			.conf = cp_mreg,
+		};
+		memcpy(ext_actions + encap_idx + 1, actions + encap_idx,
+				sizeof(*ext_actions) * (actions_n - encap_idx));
+	}
 	return 0;
 }
 
@@ -3821,6 +3855,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	int mtr_sfx = 0;
 	size_t act_size;
 	int actions_n;
+	int encap_idx;
 	int ret;
 
 	/* Check whether extensive metadata feature is engaged. */
@@ -3830,7 +3865,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		return flow_create_split_inner(dev, flow, NULL, prefix_layers,
 					       attr, items, actions, external,
 					       error);
-	actions_n = flow_parse_qrss_action(actions, &qrss);
+	actions_n = flow_parse_metadata_split_actions_info(actions, &qrss,
+							   &encap_idx);
 	if (qrss) {
 		/* Exclude hairpin flows from splitting. */
 		if (qrss->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
@@ -3905,7 +3941,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 						  "metadata flow");
 		/* Create the action list appended with copy register. */
 		ret = flow_mreg_tx_copy_prep(dev, ext_actions, actions,
-					     actions_n, error);
+					     actions_n, error, encap_idx);
 		if (ret < 0)
 			goto exit;
 	}
