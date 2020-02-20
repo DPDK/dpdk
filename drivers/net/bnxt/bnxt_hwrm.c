@@ -184,6 +184,10 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
  */
 #define HWRM_PREP(req, type, kong) do { \
 	rte_spinlock_lock(&bp->hwrm_lock); \
+	if (bp->hwrm_cmd_resp_addr == NULL) { \
+		rte_spinlock_unlock(&bp->hwrm_lock); \
+		return -EACCES; \
+	} \
 	memset(bp->hwrm_cmd_resp_addr, 0, bp->max_resp_len); \
 	req.req_type = rte_cpu_to_le_16(HWRM_##type); \
 	req.cmpl_ring = rte_cpu_to_le_16(-1); \
@@ -3096,9 +3100,9 @@ static void add_random_mac_if_needed(struct bnxt *bp,
 	}
 }
 
-static void reserve_resources_from_vf(struct bnxt *bp,
-				      struct hwrm_func_cfg_input *cfg_req,
-				      int vf)
+static int reserve_resources_from_vf(struct bnxt *bp,
+				     struct hwrm_func_cfg_input *cfg_req,
+				     int vf)
 {
 	struct hwrm_func_qcaps_input req = {0};
 	struct hwrm_func_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
@@ -3132,6 +3136,8 @@ static void reserve_resources_from_vf(struct bnxt *bp,
 	bp->max_ring_grps -= rte_le_to_cpu_16(resp->max_hw_ring_grps);
 
 	HWRM_UNLOCK();
+
+	return 0;
 }
 
 int bnxt_hwrm_func_qcfg_current_vf_vlan(struct bnxt *bp, int vf)
