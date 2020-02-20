@@ -2616,9 +2616,6 @@ set_fwd_ports_list(unsigned int *portlist, unsigned int nb_pt)
  *   If the user wants to use only the ports 1,2 then the input
  *   is 1,2.
  *   valid characters are '-' and ','
- *   invalid chars like '.' or '#' will result in
- *   EAL: Error - exiting with code: 1
- *     Cause: Invalid fwd port list
  * @param[out] values
  *   This array will be filled with a list of port IDs
  *   based on the user input
@@ -2630,7 +2627,8 @@ set_fwd_ports_list(unsigned int *portlist, unsigned int nb_pt)
  *   1) Number of elements in the values array
  *   2) Maximum value of each element in the values array
  * @return
- *   -returns total count of parsed port IDs
+ *   On success, returns total count of parsed port IDs
+ *   On failure, returns 0
  */
 static unsigned int
 parse_port_list(const char *list, unsigned int *values, unsigned int maxsize)
@@ -2642,7 +2640,7 @@ parse_port_list(const char *list, unsigned int *values, unsigned int maxsize)
 	unsigned int marked[maxsize];
 
 	if (list == NULL || values == NULL)
-		return -1;
+		return 0;
 
 	for (i = 0; i < (int)maxsize; i++)
 		marked[i] = 0;
