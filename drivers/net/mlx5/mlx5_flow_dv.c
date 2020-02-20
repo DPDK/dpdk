@@ -7813,7 +7813,11 @@ cnt_err:
 	MLX5_ASSERT(!flow_dv_check_valid_spec(matcher.mask.buf,
 					      dev_flow->dv.value.buf));
 #endif
-	dev_flow->layers = item_flags;
+	/*
+	 * Layers may be already initialized from prefix flow if this dev_flow
+	 * is the suffix flow.
+	 */
+	dev_flow->layers |= item_flags;
 	if (action_flags & MLX5_FLOW_ACTION_RSS)
 		flow_dv_hashfields_set(dev_flow);
 	/* Register matcher. */

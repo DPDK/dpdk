@@ -2727,6 +2727,43 @@ find_graph_root(const struct rte_flow_item pattern[], uint32_t rss_level)
 }
 
 /**
+ *  Get layer flags from the prefix flow.
+ *
+ *  Some flows may be split to several subflows, the prefix subflow gets the
+ *  match items and the suffix sub flow gets the actions.
+ *  Some actions need the user defined match item flags to get the detail for
+ *  the action.
+ *  This function helps the suffix flow to get the item layer flags from prefix
+ *  subflow.
+ *
+ * @param[in] dev_flow
+ *   Pointer the created preifx subflow.
+ *
+ * @return
+ *   The layers get from prefix subflow.
+ */
+static inline uint64_t
+flow_get_prefix_layer_flags(struct mlx5_flow *dev_flow)
+{
+	uint64_t layers = 0;
+
+	/* If no decap actions, use the layers directly. */
+	if (!(dev_flow->actions & MLX5_FLOW_ACTION_DECAP))
+		return dev_flow->layers;
+	/* Convert L3 layers with decap action. */
+	if (dev_flow->layers & MLX5_FLOW_LAYER_INNER_L3_IPV4)
+		layers |= MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+	else if (dev_flow->layers & MLX5_FLOW_LAYER_INNER_L3_IPV6)
+		layers |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+	/* Convert L4 layers with decap action.  */
+	if (dev_flow->layers & MLX5_FLOW_LAYER_INNER_L4_TCP)
+		layers |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
+	else if (dev_flow->layers & MLX5_FLOW_LAYER_INNER_L4_UDP)
+		layers |= MLX5_FLOW_LAYER_OUTER_L4_UDP;
+	return layers;
+}
+
+/**
  * Get QUEUE/RSS action from the action list.
  *
  * @param[in] actions
@@ -3406,6 +3443,8 @@ flow_hairpin_split(struct rte_eth_dev *dev,
  *   Parent flow structure pointer.
  * @param[in, out] sub_flow
  *   Pointer to return the created subflow, may be NULL.
+ * @param[in] prefix_layers
+ *   Prefix subflow layers, may be 0.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
@@ -3423,6 +3462,7 @@ static int
 flow_create_split_inner(struct rte_eth_dev *dev,
 			struct rte_flow *flow,
 			struct mlx5_flow **sub_flow,
+			uint64_t prefix_layers,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item items[],
 			const struct rte_flow_action actions[],
@@ -3437,6 +3477,12 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 	dev_flow->external = external;
 	/* Subflow object was created, we must include one in the list. */
 	LIST_INSERT_HEAD(&flow->dev_flows, dev_flow, next);
+	/*
+	 * If dev_flow is as one of the suffix flow, some actions in suffix
+	 * flow may need some user defined item layer flags.
+	 */
+	if (prefix_layers)
+		dev_flow->layers = prefix_layers;
 	if (sub_flow)
 		*sub_flow = dev_flow;
 	return flow_drv_translate(dev, dev_flow, attr, items, actions, error);
@@ -3768,8 +3814,9 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	if (!config->dv_flow_en ||
 	    config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
 	    !mlx5_flow_ext_mreg_supported(dev))
-		return flow_create_split_inner(dev, flow, NULL, attr, items,
-					       actions, external, error);
+		return flow_create_split_inner(dev, flow, NULL, 0,
+					       attr, items, actions, external,
+					       error);
 	actions_n = flow_parse_qrss_action(actions, &qrss);
 	if (qrss) {
 		/* Exclude hairpin flows from splitting. */
@@ -3850,9 +3897,9 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			goto exit;
 	}
 	/* Add the unmodified original or prefix subflow. */
-	ret = flow_create_split_inner(dev, flow, &dev_flow, attr, items,
-				      ext_actions ? ext_actions : actions,
-				      external, error);
+	ret = flow_create_split_inner(dev, flow, &dev_flow, 0, attr,
+				      items, ext_actions ? ext_actions :
+				      actions, external, error);
 	if (ret < 0)
 		goto exit;
 	MLX5_ASSERT(dev_flow);
@@ -3886,7 +3933,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 				.type = RTE_FLOW_ACTION_TYPE_END,
 			},
 		};
-		uint64_t hash_fields = dev_flow->hash_fields;
+		uint64_t layers = flow_get_prefix_layer_flags(dev_flow);
 
 		/*
 		 * Configure the tag item only if there is no meter subflow.
@@ -3913,14 +3960,13 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		}
 		dev_flow = NULL;
 		/* Add suffix subflow to execute Q/RSS. */
-		ret = flow_create_split_inner(dev, flow, &dev_flow,
+		ret = flow_create_split_inner(dev, flow, &dev_flow, layers,
 					      &q_attr, mtr_sfx ? items :
 					      q_items, q_actions,
 					      external, error);
 		if (ret < 0)
 			goto exit;
 		MLX5_ASSERT(dev_flow);
-		dev_flow->hash_fields = hash_fields;
 	}
 
 exit:
@@ -4009,8 +4055,9 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			goto exit;
 		}
 		/* Add the prefix subflow. */
-		ret = flow_create_split_inner(dev, flow, &dev_flow, attr, items,
-						  pre_actions, external, error);
+		ret = flow_create_split_inner(dev, flow, &dev_flow, 0, attr,
+					      items, pre_actions, external,
+					      error);
 		if (ret) {
 			ret = -rte_errno;
 			goto exit;
