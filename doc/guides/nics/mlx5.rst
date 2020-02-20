@@ -568,16 +568,17 @@ Run-time configuration
   The rdma core library can map doorbell register in two ways, depending on the
   environment variable "MLX5_SHUT_UP_BF":
 
-  - As regular cached memory, if the variable is either missing or set to zero.
+  - As regular cached memory (usually with write combining attribute), if the
+    variable is either missing or set to zero.
   - As non-cached memory, if the variable is present and set to not "0" value.
 
   The type of mapping may slightly affect the Tx performance, the optimal choice
   is strongly relied on the host architecture and should be deduced practically.
 
   If ``tx_db_nc`` is set to zero, the doorbell is forced to be mapped to regular
-  memory, the PMD will perform the extra write memory barrier after writing to
-  doorbell, it might increase the needed CPU clocks per packet to send, but
-  latency might be improved.
+  memory (with write combining), the PMD will perform the extra write memory barrier
+  after writing to doorbell, it might increase the needed CPU clocks per packet
+  to send, but latency might be improved.
 
   If ``tx_db_nc`` is set to one, the doorbell is forced to be mapped to non
   cached memory, the PMD will not perform the extra write memory barrier
