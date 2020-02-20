@@ -76,6 +76,12 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		PMD_DRV_LOG(INFO, "Port conn async event\n");
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_RESET_NOTIFY:
+		/* Ignore reset notify async events when stopping the port */
+		if (!bp->eth_dev->data->dev_started) {
+			bp->flags |= BNXT_FLAG_FATAL_ERROR;
+			return;
+		}
+
 		event_data = rte_le_to_cpu_32(async_cmp->event_data1);
 		/* timestamp_lo/hi values are in units of 100ms */
 		bp->fw_reset_max_msecs = async_cmp->timestamp_hi ?
