@@ -4286,6 +4286,8 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 			    loc->mbuf->ol_flags & PKT_TX_DYNF_NOINLINE)
 				goto pointer_empw;
 			if (MLX5_TXOFF_CONFIG(MPW)) {
+				if (dlen > txq->inlen_send)
+					goto pointer_empw;
 				tlen = dlen;
 				if (part == room) {
 					/* Open new inline MPW session. */
