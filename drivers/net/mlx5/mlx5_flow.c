@@ -3778,6 +3778,8 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
  *   Pointer to Ethernet device.
  * @param[in] flow
  *   Parent flow structure pointer.
+ * @param[in] prefix_layers
+ *   Prefix flow layer flags.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
@@ -3794,6 +3796,7 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
 static int
 flow_create_split_metadata(struct rte_eth_dev *dev,
 			   struct rte_flow *flow,
+			   uint64_t prefix_layers,
 			   const struct rte_flow_attr *attr,
 			   const struct rte_flow_item items[],
 			   const struct rte_flow_action actions[],
@@ -3814,7 +3817,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	if (!config->dv_flow_en ||
 	    config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
 	    !mlx5_flow_ext_mreg_supported(dev))
-		return flow_create_split_inner(dev, flow, NULL, 0,
+		return flow_create_split_inner(dev, flow, NULL, prefix_layers,
 					       attr, items, actions, external,
 					       error);
 	actions_n = flow_parse_qrss_action(actions, &qrss);
@@ -3897,7 +3900,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			goto exit;
 	}
 	/* Add the unmodified original or prefix subflow. */
-	ret = flow_create_split_inner(dev, flow, &dev_flow, 0, attr,
+	ret = flow_create_split_inner(dev, flow, &dev_flow, prefix_layers, attr,
 				      items, ext_actions ? ext_actions :
 				      actions, external, error);
 	if (ret < 0)
@@ -4092,7 +4095,9 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 				 MLX5_FLOW_TABLE_LEVEL_SUFFIX;
 	}
 	/* Add the prefix subflow. */
-	ret = flow_create_split_metadata(dev, flow, &sfx_attr,
+	ret = flow_create_split_metadata(dev, flow, dev_flow ?
+					 flow_get_prefix_layer_flags(dev_flow) :
+					 0, &sfx_attr,
 					 sfx_items ? sfx_items : items,
 					 sfx_actions ? sfx_actions : actions,
 					 external, error);
