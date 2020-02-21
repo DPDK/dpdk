@@ -40,8 +40,13 @@ for dump in $(find $refdir -name "*.dump"); do
 	# skip glue drivers, example librte_pmd_mlx5_glue.dump
 	# We can't rely on a suppression rule for now:
 	# https://sourceware.org/bugzilla/show_bug.cgi?id=25480
-	if [ "$name" != "${name%%_glue.dump}" ]; then
-		echo "Skipping ${dump}..."
+	if grep -qE "\<soname='[^']*_glue\.so\.[^']*'" $dump; then
+		echo "Skipped glue library $name."
+		continue
+	fi
+	# skip experimental libraries, with a sover starting with 0.
+	if grep -qE "\<soname='[^']*\.so\.0\.[^']*'" $dump; then
+		echo "Skipped experimental library $name."
 		continue
 	fi
 	dump2=$(find $newdir -name $name)
