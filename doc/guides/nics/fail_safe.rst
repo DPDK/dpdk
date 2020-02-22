@@ -49,7 +49,7 @@ The Fail-safe PMD can be used like most other DPDK virtual devices, by passing a
 ``--vdev`` parameter to the EAL when starting the application. The device name
 must start with the *net_failsafe* prefix, followed by numbers or letters. This
 name must be unique for each device. Each fail-safe instance must have at least one
-sub-device, up to ``RTE_MAX_ETHPORTS-1``.
+sub-device, and at most two.
 
 A sub-device can be any DPDK device, including possibly another fail-safe device.
 
