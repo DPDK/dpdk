@@ -202,6 +202,16 @@ Limitations
   - can be applied to VF ports only.
   - must specify PF port action (packet redirection from VF to PF).
 
+- Raw encapsulation:
+
+  - The input buffer, used as outer header, is not validated.
+
+- Raw decapsulation:
+
+  - The decapsulation is always done up to the outermost tunnel detected by the HW.
+  - The input buffer, providing the removal size, is not validated.
+  - The buffer size must match the length of the headers to be removed.
+
 - ICMP/ICMP6 code/type matching, IP-in-IP and MPLS flow matching are all
   mutually exclusive features which cannot be supported together
   (see :ref:`mlx5_firmware_config`).
