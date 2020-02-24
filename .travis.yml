@@ -42,7 +42,7 @@ before_install: ./.ci/${TRAVIS_OS_NAME}-setup.sh
 env:
 #  - DEF_LIB="static"
 #  - DEF_LIB="shared"
-  - DEF_LIB="shared" RUN_TESTS_NO_HUGE=1
+  - DEF_LIB="shared" RUN_TESTS=1
 
 matrix:
   include:
