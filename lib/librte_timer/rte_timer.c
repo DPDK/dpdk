@@ -145,10 +145,12 @@ rte_timer_subsystem_init(void)
 	const size_t mem_size = data_arr_size + sizeof(*rte_timer_mz_refcnt);
 	bool do_full_init = true;
 
-	if (rte_timer_subsystem_initialized)
-		return -EALREADY;
-
 	rte_mcfg_timer_lock();
+
+	if (rte_timer_subsystem_initialized) {
+		rte_mcfg_timer_unlock();
+		return -EALREADY;
+	}
 
 	mz = rte_memzone_lookup(mz_name);
 	if (mz == NULL) {
@@ -183,9 +185,9 @@ rte_timer_subsystem_init(void)
 	rte_timer_data_arr[default_data_id].internal_flags |= FL_ALLOCATED;
 	(*rte_timer_mz_refcnt)++;
 
-	rte_mcfg_timer_unlock();
-
 	rte_timer_subsystem_initialized = 1;
+
+	rte_mcfg_timer_unlock();
 
 	return 0;
 }
@@ -193,17 +195,19 @@ rte_timer_subsystem_init(void)
 void
 rte_timer_subsystem_finalize(void)
 {
-	if (!rte_timer_subsystem_initialized)
-		return;
-
 	rte_mcfg_timer_lock();
+
+	if (!rte_timer_subsystem_initialized) {
+		rte_mcfg_timer_unlock();
+		return;
+	}
 
 	if (--(*rte_timer_mz_refcnt) == 0)
 		rte_memzone_free(rte_timer_data_mz);
 
-	rte_mcfg_timer_unlock();
-
 	rte_timer_subsystem_initialized = 0;
+
+	rte_mcfg_timer_unlock();
 }
 
 /* Initialize the timer handle tim for use */
