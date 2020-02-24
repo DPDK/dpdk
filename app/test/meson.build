@@ -261,6 +261,7 @@ nohuge_test_names = [
         'lpm6_autotest',
         'malloc_autotest',
         'mbuf_autotest',
+        'mcslock_autotest',
         'memcpy_autotest',
         'memory_autotest',
         'mempool_autotest',
@@ -289,6 +290,7 @@ nohuge_test_names = [
         'version_autotest',
         'crc_autotest',
         'delay_us_sleep_autotest',
+        'distributor_autotest',
         'eventdev_common_autotest',
         'fbarray_autotest',
         'hash_readwrite_func_autotest',
@@ -306,6 +308,7 @@ nohuge_test_names = [
 ]
 
 perf_test_names = [
+        'alarm_autotest',
         'ring_perf_autotest',
         'mempool_perf_autotest',
         'memcpy_perf_autotest',
