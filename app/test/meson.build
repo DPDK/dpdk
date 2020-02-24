@@ -492,7 +492,10 @@ foreach arg : fast_test_names
 	endif
 endforeach
 
-foreach arg : nohuge_test_names
+suite_nr = 0
+
+foreach arg : fast_test_names
+  suite_nr = suite_nr + 1
   if host_machine.system() == 'linux'
     test(arg, dpdk_test,
         env : ['DPDK_TEST=' + arg],
@@ -501,14 +504,14 @@ foreach arg : nohuge_test_names
          ['--file-prefix=@0@'.format(arg)],
     timeout : timeout_seconds_fast,
     is_parallel : false,
-    suite : 'nohuge-tests')
+    suite : 'nohuge-tests-' + suite_nr.to_string())
   else
     test(arg, dpdk_test,
       env : ['DPDK_TEST=' + arg],
       args : test_args,
     timeout : timeout_seconds_fast,
     is_parallel : false,
-    suite : 'nohuge-tests')
+    suite : 'nohuge-tests-' + suite_nr.to_string())
   endif
 endforeach
 
