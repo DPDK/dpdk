@@ -1,18 +1,18 @@
-#!/bin/sh -x
+#!/bin/sh -xe
 
-#on_error() {
-#    if [ $? = 0 ]; then
-#        exit
-#    fi
-#    FILES_TO_PRINT="build/meson-logs/testlog.txt build/.ninja_log build/meson-logs/meson-log.txt"
-#
-#    for pr_file in $FILES_TO_PRINT; do
-#        if [ -e "$pr_file" ]; then
-#            cat "$pr_file"
-#        fi
-#    done
-#}
-#trap on_error EXIT
+on_error() {
+    if [ $? = 0 ]; then
+        exit
+    fi
+    FILES_TO_PRINT="build/meson-logs/testlog.txt build/.ninja_log build/meson-logs/meson-log.txt"
+
+    for pr_file in $FILES_TO_PRINT; do
+        if [ -e "$pr_file" ]; then
+            cat "$pr_file"
+        fi
+    done
+}
+trap on_error EXIT
 
 install_libabigail() {
     version=$1
@@ -93,8 +93,5 @@ if [ "$RUN_TESTS" = "1" ]; then
     sudo meson test -C build --suite fast-tests -t 3
 fi
 if [ "$RUN_TESTS_NO_HUGE" = "1" ]; then
-  for i in $(seq 1 80)
-    do
-      sudo meson test -C build --suite nohuge-tests-$i -t 3
-    done
+    sudo meson test -C build --suite nohuge-tests -t 3
 fi

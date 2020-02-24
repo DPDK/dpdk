@@ -253,13 +253,18 @@ nohuge_test_names = [
         'event_ring_autotest',
         'fib_autotest',
         'fib6_autotest',
+        'func_reentrancy_autotest',
+        'flow_classify_autotest',
         'interrupt_autotest',
         'logs_autotest',
         'lpm_autotest',
         'lpm6_autotest',
+        'malloc_autotest',
         'mbuf_autotest',
         'memcpy_autotest',
         'memory_autotest',
+        'mempool_autotest',
+        'memzone_autotest',
         'meter_autotest',
         'multiprocess_autotest',
         'per_lcore_autotest',
@@ -269,28 +274,29 @@ nohuge_test_names = [
         'rib_autotest',
         'rib6_autotest',
         'ring_autotest',
-        'ring_pmd_autotest',
+        'rwlock_test1_autotest',
         'rwlock_rda_autotest',
         'rwlock_rds_wrm_autotest',
         'rwlock_rde_wro_autotest',
         'sched_autotest',
         'spinlock_autotest',
+        'stack_autotest',
+        'stack_lf_autotest',
         'string_autotest',
         'tailq_autotest',
+        'timer_autotest',
         'user_delay_us',
         'version_autotest',
-        'bitratestats_autotest',
         'crc_autotest',
         'delay_us_sleep_autotest',
         'eventdev_common_autotest',
         'fbarray_autotest',
+        'hash_readwrite_func_autotest',
         'ipsec_autotest',
         'kni_autotest',
         'kvargs_autotest',
-        'latencystats_autotest',
         'member_autotest',
         'metrics_autotest',
-        'pdump_autotest',
         'power_cpufreq_autotest',
         'power_autotest',
         'power_kvm_vm_autotest',
@@ -492,10 +498,7 @@ foreach arg : fast_test_names
 	endif
 endforeach
 
-suite_nr = 0
-
-foreach arg : fast_test_names
-  suite_nr = suite_nr + 1
+foreach arg : nohuge_test_names
   if host_machine.system() == 'linux'
     test(arg, dpdk_test,
         env : ['DPDK_TEST=' + arg],
@@ -504,14 +507,14 @@ foreach arg : fast_test_names
          ['--file-prefix=@0@'.format(arg)],
     timeout : timeout_seconds_fast,
     is_parallel : false,
-    suite : 'nohuge-tests-' + suite_nr.to_string())
+    suite : 'nohuge-tests')
   else
     test(arg, dpdk_test,
       env : ['DPDK_TEST=' + arg],
       args : test_args,
     timeout : timeout_seconds_fast,
     is_parallel : false,
-    suite : 'nohuge-tests-' + suite_nr.to_string())
+    suite : 'nohuge-tests')
   endif
 endforeach
 
