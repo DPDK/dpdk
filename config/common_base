@@ -361,13 +361,13 @@ CONFIG_RTE_LIBRTE_MLX4_DEBUG=n
 
 #
 # Compile burst-oriented Mellanox ConnectX-4, ConnectX-5,
-# ConnectX-6 & Bluefield (MLX5) PMD
+# ConnectX-6 & BlueField (MLX5) PMD
 #
 CONFIG_RTE_LIBRTE_MLX5_PMD=n
 CONFIG_RTE_LIBRTE_MLX5_DEBUG=n
 
 #
-# Compile vdpa-oriented Mellanox ConnectX-6 & Bluefield (MLX5) PMD
+# Compile vdpa-oriented Mellanox ConnectX-6 & BlueField (MLX5) PMD
 #
 CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD=n
 

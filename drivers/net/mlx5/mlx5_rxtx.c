@@ -5213,7 +5213,7 @@ MLX5_TXOFF_DECL(iv,
 
 /*
  * Generate routines with Legacy Multi-Packet Write support.
- * This mode is supported by ConnectX-4LX only and imposes
+ * This mode is supported by ConnectX-4 Lx only and imposes
  * offload limitations, not supported:
  *   - ACL/Flows (metadata are becoming meaningless)
  *   - WQE Inline headers

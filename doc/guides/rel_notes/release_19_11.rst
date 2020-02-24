@@ -206,7 +206,7 @@ New Features
   * Added support for VLAN set VID offload command.
   * Added support for matching on packets withe Geneve tunnel header.
   * Added hairpin support.
-  * Added ConnectX6-DX support.
+  * Added ConnectX-6 Dx support.
   * Flow engine selected based on RDMA Core library version.
     DV flow engine selected if version is rdma-core-24.0 or higher.
     Verbs flow engine selected otherwise.

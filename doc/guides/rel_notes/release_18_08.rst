@@ -546,4 +546,4 @@ Tested Platforms
      * Mellanox MLNX_OFED 4.2-1.4.21.0
 
   * DPDK application running on ARM cores inside SmartNIC
-  * Bluefield representors support planned for next release.
+  * BlueField representors support planned for next release.

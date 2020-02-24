@@ -983,7 +983,7 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 	 * If there is requested minimal amount of data to inline
 	 * we MUST enable inlining. This is a case for ConnectX-4
 	 * which usually requires L2 inlined for correct operating
-	 * and ConnectX-4LX which requires L2-L4 inlined to
+	 * and ConnectX-4 Lx which requires L2-L4 inlined to
 	 * support E-Switch Flows.
 	 */
 	if (inlen_mode) {

@@ -298,11 +298,6 @@ Installing Mellanox OFED
 
 5. Continue with :ref:`section 2 of the Quick Start Guide <QSG_2>`.
 
-Supported NICs
---------------
-
-* Mellanox(R) ConnectX(R)-3 Pro 40G MCX354A-FCC_Ax (2*40G)
-
 .. _qsg:
 
 Quick Start Guide

@@ -109,7 +109,7 @@ New Features
     ``CONFIG_RTE_IBVERBS_LINK_DLOPEN`` for make and ``ibverbs_link`` for meson.
   * Added static linkage of ``mlx`` dependency.
   * Improved stability of E-Switch flow driver.
-  * Added new make build configuration to set the cacheline size for Bluefield
+  * Added new make build configuration to set the cacheline size for BlueField
     correctly - ``arm64-bluefield-linux-gcc``.
 
 * **Updated the enic driver.**

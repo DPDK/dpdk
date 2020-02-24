@@ -2,12 +2,14 @@
     Copyright 2015 6WIND S.A.
     Copyright 2015 Mellanox Technologies, Ltd
 
+.. include:: <isonum.txt>
+
 MLX5 poll mode driver
 =====================
 
 The MLX5 poll mode driver library (**librte_pmd_mlx5**) provides support
 for **Mellanox ConnectX-4**, **Mellanox ConnectX-4 Lx** , **Mellanox
-ConnectX-5**, **Mellanox ConnectX-6**, **Mellanox ConnectX-6DX** and
+ConnectX-5**, **Mellanox ConnectX-6**, **Mellanox ConnectX-6 Dx** and
 **Mellanox BlueField** families of 10/25/40/50/100/200 Gb/s adapters
 as well as their virtual functions (VF) in SR-IOV context.
 
@@ -336,9 +338,9 @@ Run-time configuration
 
   Supported on:
 
-  - x86_64 with ConnectX-4, ConnectX-4 LX, ConnectX-5, ConnectX-6, ConnectX-6 DX
+  - x86_64 with ConnectX-4, ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx
     and BlueField.
-  - POWER9 and ARMv8 with ConnectX-4 LX, ConnectX-5, ConnectX-6, ConnectX-6 DX
+  - POWER9 and ARMv8 with ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx
     and BlueField.
 
 - ``rxq_cqe_pad_en`` parameter [int]
@@ -369,9 +371,9 @@ Run-time configuration
 
   Supported on:
 
-  - x86_64 with ConnectX-4, ConnectX-4 LX, ConnectX-5, ConnectX-6, ConnectX-6 DX
+  - x86_64 with ConnectX-4, ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx
     and BlueField.
-  - POWER8 and ARMv8 with ConnectX-4 LX, ConnectX-5, ConnectX-6, ConnectX-6 DX
+  - POWER8 and ARMv8 with ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx
     and BlueField.
 
 - ``mprq_en`` parameter [int]
@@ -474,14 +476,14 @@ Run-time configuration
   If ``txq_inline_min`` key is not present, the value may be queried by the
   driver from the NIC via DevX if this feature is available. If there is no DevX
   enabled/supported the value 18 (supposing L2 header including VLAN) is set
-  for ConnectX-4 and ConnectX-4LX, and 0 is set by default for ConnectX-5
+  for ConnectX-4 and ConnectX-4 Lx, and 0 is set by default for ConnectX-5
   and newer NICs. If packet is shorter the ``txq_inline_min`` value, the entire
   packet is inlined.
 
   For ConnectX-4 NIC, driver does not allow specifying value below 18
   (minimal L2 header, including VLAN), error will be raised.
 
-  For ConnectX-4LX NIC, it is allowed to specify values below 18, but
+  For ConnectX-4 Lx NIC, it is allowed to specify values below 18, but
   it is not recommended and may prevent NIC from sending packets over
   some configurations.
 
@@ -564,7 +566,7 @@ Run-time configuration
 - ``txq_mpw_en`` parameter [int]
 
   A nonzero value enables Enhanced Multi-Packet Write (eMPW) for ConnectX-5,
-  ConnectX-6, ConnectX-6 DX and BlueField. eMPW allows the TX burst function to pack
+  ConnectX-6, ConnectX-6 Dx and BlueField. eMPW allows the TX burst function to pack
   up multiple packets in a single descriptor session in order to save PCI bandwidth
   and improve performance at the cost of a slightly higher CPU usage. When
   ``txq_inline_mpw`` is set along with ``txq_mpw_en``, TX burst function copies
@@ -611,7 +613,7 @@ Run-time configuration
 
 - ``tx_vec_en`` parameter [int]
 
-  A nonzero value enables Tx vector on ConnectX-5, ConnectX-6, ConnectX-6 DX
+  A nonzero value enables Tx vector on ConnectX-5, ConnectX-6, ConnectX-6 Dx
   and BlueField NICs if the number of global Tx queues on the port is less than
   ``txqs_max_vec``. The parameter is deprecated and ignored.
 
@@ -912,7 +914,7 @@ Mellanox OFED/EN
   - ConnectX-5: **16.21.1000** and above.
   - ConnectX-5 Ex: **16.21.1000** and above.
   - ConnectX-6: **20.99.5374** and above.
-  - ConnectX-6 DX: **22.27.0090** and above.
+  - ConnectX-6 Dx: **22.27.0090** and above.
   - BlueField: **18.25.1010** and above.
 
 While these libraries and kernel modules are available on OpenFabrics
@@ -937,28 +939,43 @@ required from that distribution.
 Supported NICs
 --------------
 
-* Mellanox(R) ConnectX(R)-4 10G MCX4111A-XCAT (1x10G)
-* Mellanox(R) ConnectX(R)-4 10G MCX4121A-XCAT (2x10G)
-* Mellanox(R) ConnectX(R)-4 25G MCX4111A-ACAT (1x25G)
-* Mellanox(R) ConnectX(R)-4 25G MCX4121A-ACAT (2x25G)
-* Mellanox(R) ConnectX(R)-4 40G MCX4131A-BCAT (1x40G)
-* Mellanox(R) ConnectX(R)-4 40G MCX413A-BCAT (1x40G)
-* Mellanox(R) ConnectX(R)-4 40G MCX415A-BCAT (1x40G)
-* Mellanox(R) ConnectX(R)-4 50G MCX4131A-GCAT (1x50G)
-* Mellanox(R) ConnectX(R)-4 50G MCX413A-GCAT (1x50G)
-* Mellanox(R) ConnectX(R)-4 50G MCX414A-BCAT (2x50G)
-* Mellanox(R) ConnectX(R)-4 50G MCX415A-GCAT (2x50G)
-* Mellanox(R) ConnectX(R)-4 50G MCX416A-BCAT (2x50G)
-* Mellanox(R) ConnectX(R)-4 50G MCX416A-GCAT (2x50G)
-* Mellanox(R) ConnectX(R)-4 50G MCX415A-CCAT (1x100G)
-* Mellanox(R) ConnectX(R)-4 100G MCX416A-CCAT (2x100G)
-* Mellanox(R) ConnectX(R)-4 Lx 10G MCX4121A-XCAT (2x10G)
-* Mellanox(R) ConnectX(R)-4 Lx 25G MCX4121A-ACAT (2x25G)
-* Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
-* Mellanox(R) ConnectX(R)-5 Ex EN 100G MCX516A-CDAT (2x100G)
-* Mellanox(R) ConnectX(R)-6 200G MCX654106A-HCAT (4x200G)
-* Mellanox(R) ConnectX(R)-6DX EN 100G MCX623106AN-CDAT (2*100g)
-* Mellanox(R) ConnectX(R)-6DX EN 200G MCX623105AN-VDAT (1*200g)
+The following Mellanox device families are supported by the same mlx5 driver:
+
+  - ConnectX-4
+  - ConnectX-4 Lx
+  - ConnectX-5
+  - ConnectX-5 Ex
+  - ConnectX-6
+  - ConnectX-6 Dx
+  - BlueField
+
+Below are detailed device names:
+
+* Mellanox\ |reg| ConnectX\ |reg|-4 10G MCX4111A-XCAT (1x10G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 10G MCX412A-XCAT (2x10G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 25G MCX4111A-ACAT (1x25G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 25G MCX412A-ACAT (2x25G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 40G MCX413A-BCAT (1x40G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 40G MCX4131A-BCAT (1x40G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 40G MCX415A-BCAT (1x40G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX413A-GCAT (1x50G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX4131A-GCAT (1x50G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX414A-BCAT (2x50G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX415A-GCAT (1x50G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX416A-BCAT (2x50G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX416A-GCAT (2x50G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 50G MCX415A-CCAT (1x100G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 100G MCX416A-CCAT (2x100G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 Lx 10G MCX4111A-XCAT (1x10G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 Lx 10G MCX4121A-XCAT (2x10G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4111A-ACAT (1x25G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4121A-ACAT (2x25G)
+* Mellanox\ |reg| ConnectX\ |reg|-4 Lx 40G MCX4131A-BCAT (1x40G)
+* Mellanox\ |reg| ConnectX\ |reg|-5 100G MCX556A-ECAT (2x100G)
+* Mellanox\ |reg| ConnectX\ |reg|-5 Ex EN 100G MCX516A-CDAT (2x100G)
+* Mellanox\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
+* Mellanox\ |reg| ConnectX\ |reg|-6 Dx EN 100G MCX623106AN-CDAT (2x100G)
+* Mellanox\ |reg| ConnectX\ |reg|-6 Dx EN 200G MCX623105AN-VDAT (1x200G)
 
 Quick Start Guide on OFED/EN
 ----------------------------
