@@ -69,6 +69,11 @@ New Features
 
   Added support for new flow item to handle L2TPv3 over IP rte_flow patterns.
 
+* **Added DSCP rewrite action.**
+
+  New actions ``RTE_FLOW_ACTION_TYPE_SET_IPV[4/6]_DSCP`` have been added
+  to support rewrite the DSCP field in the IP header.
+
 * **Added IONIC net PMD.**
 
   Added the new ``ionic`` net driver for Pensando Ethernet Network Adapters.
@@ -135,6 +140,7 @@ New Features
   * Added support for RSS using L3/L4 source/destination only.
   * Added support for matching on GTP tunnel header item.
   * Removed limitation of matching on tagged/untagged packets (when using DV flow engine).
+  * Added support for IPv4/IPv6 DSCP rewrite action.
   * Added BlueField-2 integrated ConnectX-6 Dx device support.
 
 * **Add new vDPA PMD based on Mellanox devices.**

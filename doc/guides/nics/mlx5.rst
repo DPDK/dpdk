@@ -1168,6 +1168,11 @@ Supported hardware offloads
    | | set_mac_src /       | |               | |               |
    | | set_mac_dst)        | |               | |               |
    +-----------------------+-----------------+-----------------+
+   | | Header rewrite      | | DPDK 20.02    | | DPDK 20.02    |
+   | | (set_dscp)          | | OFED 5.0      | | OFED 5.0      |
+   | |                     | | rdma-core 24  | | rdma-core 24  |
+   | |                     | | ConnectX-5    | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
    | Jump                  | | DPDK 19.05    | | DPDK 19.02    |
    |                       | | OFED 4.7-1    | | OFED 4.7-1    |
    |                       | | rdma-core 24  | | N/A           |
