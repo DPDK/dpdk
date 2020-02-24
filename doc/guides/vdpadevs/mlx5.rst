@@ -56,7 +56,7 @@ Supported NICs
 Prerequisites
 -------------
 
-- Mellanox OFED version: **4.7**
+- Mellanox OFED version: **5.0**
   see :doc:`../../nics/mlx5` guide for more Mellanox OFED details.
 
 Compilation options
