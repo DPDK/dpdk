@@ -162,6 +162,9 @@ Limitations
      - msg_type
      - teid
 
+- No Tx metadata go to the E-Switch steering domain for the Flow group 0.
+  The flows within group 0 and set metadata action are rejected by hardware.
+
 .. note::
 
    MAC addresses not already present in the bridge table of the associated
