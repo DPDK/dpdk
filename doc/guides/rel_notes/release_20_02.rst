@@ -65,6 +65,10 @@ New Features
 
   New APIs have been added to support rings with custom element size.
 
+* **Added mbuf pool with pinned external memory.**
+
+  Added support of mbuf with data buffer allocated in an external device memory.
+
 * **Updated rte_flow api to support L2TPv3 over IP flows.**
 
   Added support for new flow item to handle L2TPv3 over IP rte_flow patterns.
@@ -137,6 +141,7 @@ New Features
 
   Updated Mellanox mlx5 driver with new features and improvements, including:
 
+  * Added support for the mbufs with external pinned buffers.
   * Added support for RSS using L3/L4 source/destination only.
   * Added support for matching on GTP tunnel header item.
   * Removed limitation of matching on tagged/untagged packets (when using DV flow engine).
