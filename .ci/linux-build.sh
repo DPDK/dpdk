@@ -1,4 +1,4 @@
-#!/bin/sh -xe
+#!/bin/sh -x
 
 #on_error() {
 #    if [ $? = 0 ]; then
