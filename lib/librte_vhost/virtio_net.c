@@ -2004,7 +2004,7 @@ virtio_dev_tx_batch_packed_zmbuf(struct virtio_net *dev,
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
 		zmbufs[i]->mbuf = pkts[i];
-		zmbufs[i]->desc_idx = avail_idx + i;
+		zmbufs[i]->desc_idx = ids[i];
 		zmbufs[i]->desc_count = 1;
 	}
 
@@ -2045,7 +2045,7 @@ virtio_dev_tx_single_packed_zmbuf(struct virtio_net *dev,
 		return -1;
 	}
 	zmbuf->mbuf = *pkts;
-	zmbuf->desc_idx = vq->last_avail_idx;
+	zmbuf->desc_idx = buf_id;
 	zmbuf->desc_count = desc_count;
 
 	rte_mbuf_refcnt_update(*pkts, 1);
