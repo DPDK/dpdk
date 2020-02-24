@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <sys/eventfd.h>
 
 #include <rte_malloc.h>
 #include <rte_errno.h>
@@ -156,17 +157,9 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 		rte_errno = errno;
 		goto error;
 	}
-	/* Subscribe CQ event to the guest FD only if it is not in poll mode. */
-	if (callfd != -1) {
-		ret = mlx5_glue->devx_subscribe_devx_event_fd(priv->eventc,
-							      callfd,
-							      cq->cq->obj, 0);
-		if (ret) {
-			DRV_LOG(ERR, "Failed to subscribe CQE event fd.");
-			rte_errno = errno;
-			goto error;
-		}
-	}
+	cq->callfd = callfd;
+	/* Init CQ to ones to be in HW owner in the start. */
+	memset((void *)(uintptr_t)cq->umem_buf, 0xFF, attr.db_umem_offset);
 	/* First arming. */
 	mlx5_vdpa_cq_arm(priv, cq);
 	return 0;
@@ -231,6 +224,9 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 		rte_spinlock_lock(&cq->sl);
 		mlx5_vdpa_cq_poll(priv, cq);
 		mlx5_vdpa_cq_arm(priv, cq);
+		if (cq->callfd != -1)
+			/* Notify guest for descriptors consuming. */
+			eventfd_write(cq->callfd, (eventfd_t)1);
 		rte_spinlock_unlock(&cq->sl);
 		DRV_LOG(DEBUG, "CQ %d event: new cq_ci = %u.", cq->cq->id,
 			cq->cq_ci);

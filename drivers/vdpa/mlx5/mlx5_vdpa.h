@@ -39,6 +39,7 @@ struct mlx5_vdpa_cq {
 	uint16_t log_desc_n;
 	uint32_t cq_ci:24;
 	uint32_t arm_sn:2;
+	int callfd;
 	rte_spinlock_t sl;
 	struct mlx5_devx_obj *cq;
 	struct mlx5dv_devx_umem *umem_obj;
