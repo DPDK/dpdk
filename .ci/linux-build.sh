@@ -95,6 +95,6 @@ fi
 if [ "$RUN_TESTS_NO_HUGE" = "1" ]; then
   for i in $(seq 1 80)
     do
-      sudo meson test -C build --suite nohuge-tests-$i-t 3
+      sudo meson test -C build --suite nohuge-tests-$i -t 3
     done
 fi
