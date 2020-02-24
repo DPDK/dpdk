@@ -6,7 +6,7 @@ cache:
     - reference
 compiler:
   - gcc
-  - clang
+#- clang
 
 dist: bionic
 
@@ -103,6 +103,13 @@ matrix:
 #        packages:
 #          - *extra_packages
 #          - *doc_packages
+  - env: DEF_LIB="static" RUN_TESTS=1
+    arch: arm64
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *required_packages
   - env: DEF_LIB="static" RUN_TESTS_NO_HUGE=1
     arch: arm64
     compiler: gcc
@@ -124,13 +131,13 @@ matrix:
 #      apt:
 #        packages:
 #          - *required_packages
-  - env: DEF_LIB="shared" RUN_TESTS_NO_HUGE=1
-    arch: arm64
-    compiler: clang
-    addons:
-      apt:
-        packages:
-          - *required_packages
+#  - env: DEF_LIB="shared" RUN_TESTS_NO_HUGE=1
+#    arch: arm64
+#    compiler: clang
+#    addons:
+#      apt:
+#        packages:
+#          - *required_packages
 #  - env: DEF_LIB="shared" BUILD_DOCS=1
 #    arch: arm64
 #    compiler: gcc
