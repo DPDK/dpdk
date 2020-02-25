@@ -59,6 +59,21 @@ Prerequisites
 - Upgrade the NVM/FW version following the `Intel® Ethernet NVM Update Tool Quick Usage Guide for Linux
   <https://www-ssl.intel.com/content/www/us/en/embedded/products/networking/nvm-update-tool-quick-linux-usage-guide.html>`_ and `Intel® Ethernet NVM Update Tool: Quick Usage Guide for EFI <https://www.intel.com/content/www/us/en/embedded/products/networking/nvm-update-tool-quick-efi-usage-guide.html>`_ if needed.
 
+- For information about supported media, please refer to this document: `Intel® Ethernet Controller X710/XXV710/XL710 Feature Support Matrix
+  <http://www.intel.com/content/dam/www/public/us/en/documents/release-notes/xl710-ethernet-controller-feature-matrix.pdf>`_.
+
+   .. Note::
+
+      * Some adapters based on the Intel(R) Ethernet Controller 700 Series only
+        support Intel Ethernet Optics modules. On these adapters, other modules are not
+        supported and will not function.
+
+      * For connections based on Intel(R) Ethernet Controller 700 Series,
+        support is dependent on your system board. Please see your vendor for details.
+
+      * In all cases Intel recommends using Intel Ethernet Optics; other modules
+        may function but are not validated by Intel. Contact Intel for supported media types.
+
 Recommended Matching List
 -------------------------
 
