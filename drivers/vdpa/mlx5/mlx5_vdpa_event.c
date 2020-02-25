@@ -241,8 +241,14 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 int
 mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 {
-	int flags = fcntl(priv->eventc->fd, F_GETFL);
-	int ret = fcntl(priv->eventc->fd, F_SETFL, flags | O_NONBLOCK);
+	int flags;
+	int ret;
+
+	if (!priv->eventc)
+		/* All virtqs are in poll mode. */
+		return 0;
+	flags = fcntl(priv->eventc->fd, F_GETFL);
+	ret = fcntl(priv->eventc->fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to change event channel FD.");
 		rte_errno = errno;
