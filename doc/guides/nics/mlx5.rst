@@ -97,6 +97,7 @@ Features
   increment/decrement, count, drop, mark. For details please see :ref:`mlx5_offloads_support`.
 - Flow insertion rate of more then million flows per second, when using Direct Rules.
 - Support for multiple rte_flow groups.
+- Per packet no-inline hint flag to disable packet data copying into Tx descriptors.
 - Hardware LRO.
 
 Limitations
@@ -188,6 +189,33 @@ Limitations
   and allmulticast mode are both set to off.
   To receive IPv6 Multicast messages on VM, explicitly set the relevant
   MAC address using rte_eth_dev_mac_addr_add() API.
+
+- To support a mixed traffic pattern (some buffers from local host memory, some
+  buffers from other devices) with high bandwidth, a mbuf flag is used.
+
+  An application hints the PMD whether or not it should try to inline the
+  given mbuf data buffer. PMD should do the best effort to act upon this request.
+
+  The hint flag ``RTE_PMD_MLX5_FINE_GRANULARITY_INLINE`` is dynamic,
+  registered by application with rte_mbuf_dynflag_register(). This flag is
+  purely driver-specific and declared in PMD specific header ``rte_pmd_mlx5.h``,
+  which is intended to be used by the application.
+
+  To query the supported specific flags in runtime,
+  the function ``rte_pmd_mlx5_get_dyn_flag_names`` returns the array of
+  currently (over present hardware and configuration) supported specific flags.
+  The "not inline hint" feature operating flow is the following one:
+
+    - application starts
+    - probe the devices, ports are created
+    - query the port capabilities
+    - if port supporting the feature is found
+    - register dynamic flag ``RTE_PMD_MLX5_FINE_GRANULARITY_INLINE``
+    - application starts the ports
+    - on ``dev_start()`` PMD checks whether the feature flag is registered and
+      enables the feature support in datapath
+    - application might set the registered flag bit in ``ol_flags`` field
+      of mbuf being sent and PMD will handle ones appropriately.
 
 - The amount of descriptors in Tx queue may be limited by data inline settings.
   Inline data require the more descriptor building blocks and overall block
