@@ -514,9 +514,11 @@ static void
 vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len,
 		void *arg __rte_unused)
 {
+	rte_iova_t iova_start, iova_expected;
 	struct rte_memseg_list *msl;
 	struct rte_memseg *ms;
 	size_t cur_len = 0;
+	uint64_t va_start;
 
 	msl = rte_mem_virt2memseg_list(addr);
 
@@ -545,22 +547,63 @@ vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len,
 #endif
 	/* memsegs are contiguous in memory */
 	ms = rte_mem_virt2memseg(addr, msl);
+
+	/*
+	 * This memory is not guaranteed to be contiguous, but it still could
+	 * be, or it could have some small contiguous chunks. Since the number
+	 * of VFIO mappings is limited, and VFIO appears to not concatenate
+	 * adjacent mappings, we have to do this ourselves.
+	 *
+	 * So, find contiguous chunks, then map them.
+	 */
+	va_start = ms->addr_64;
+	iova_start = iova_expected = ms->iova;
 	while (cur_len < len) {
+		bool new_contig_area = ms->iova != iova_expected;
+		bool last_seg = (len - cur_len) == ms->len;
+		bool skip_last = false;
+
+		/* only do mappings when current contiguous area ends */
+		if (new_contig_area) {
+			if (type == RTE_MEM_EVENT_ALLOC)
+				vfio_dma_mem_map(default_vfio_cfg, va_start,
+						iova_start,
+						iova_expected - iova_start, 1);
+			else
+				vfio_dma_mem_map(default_vfio_cfg, va_start,
+						iova_start,
+						iova_expected - iova_start, 0);
+			va_start = ms->addr_64;
+			iova_start = ms->iova;
+		}
 		/* some memory segments may have invalid IOVA */
 		if (ms->iova == RTE_BAD_IOVA) {
 			RTE_LOG(DEBUG, EAL, "Memory segment at %p has bad IOVA, skipping\n",
 					ms->addr);
-			goto next;
+			skip_last = true;
 		}
-		if (type == RTE_MEM_EVENT_ALLOC)
-			vfio_dma_mem_map(default_vfio_cfg, ms->addr_64,
-					ms->iova, ms->len, 1);
-		else
-			vfio_dma_mem_map(default_vfio_cfg, ms->addr_64,
-					ms->iova, ms->len, 0);
-next:
+		iova_expected = ms->iova + ms->len;
 		cur_len += ms->len;
 		++ms;
+
+		/*
+		 * don't count previous segment, and don't attempt to
+		 * dereference a potentially invalid pointer.
+		 */
+		if (skip_last && !last_seg) {
+			iova_expected = iova_start = ms->iova;
+			va_start = ms->addr_64;
+		} else if (!skip_last && last_seg) {
+			/* this is the last segment and we're not skipping */
+			if (type == RTE_MEM_EVENT_ALLOC)
+				vfio_dma_mem_map(default_vfio_cfg, va_start,
+						iova_start,
+						iova_expected - iova_start, 1);
+			else
+				vfio_dma_mem_map(default_vfio_cfg, va_start,
+						iova_start,
+						iova_expected - iova_start, 0);
+		}
 	}
 #ifdef RTE_ARCH_PPC_64
 	cur_len = 0;
