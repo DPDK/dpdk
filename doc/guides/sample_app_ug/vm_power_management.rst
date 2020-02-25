@@ -408,26 +408,21 @@ Command Line Options for Enabling Out-of-band Branch Ratio Monitoring
 
 There are a couple of command line parameters for enabling the out-of-band
 monitoring of branch ratios on cores doing busy polling using PMDs as
-described in the following table.
+described below:
 
-Table 1 – Command Line Options for Enabling Out-of-band Monitoring of
-Branch Ratios
+``--core-list {list of cores}``
+   Specify the list of cores to monitor the ratio of branch misses
+   to branch hits.  A tightly-polling PMD thread has a very low
+   branch ratio, therefore the core frequency scales down to the
+   minimum allowed value. On receiving packets, the code path changes,
+   causing the branch ratio to increase. When the ratio goes above
+   the ratio threshold, the core frequency scales up to the maximum
+   allowed value.
 
-=============================== ==============================================
-**Command Line Option**         **Description**
-=============================== ==============================================
-``--core-list {list of cores}`` | Specify the list of cores to monitor the ratio of branch misses
-                                | to branch hits.  A tightly-polling PMD thread has a very low
-                                | branch ratio, therefore the core frequency scales down to the
-                                | minimum allowed value. On receiving packets, the code path changes,
-                                | causing the branch ratio to increase. When the ratio goes above
-                                | the ratio threshold, the core frequency scales up to the maximum
-                                | allowed value.
-``--branch-ratio {ratio}``      | Specify a floating-point number that identifies the threshold at which
-                                | to scale up or down for the given workload. The default branch ratio
-                                | is 0.01 and needs adjustment for different workloads.
-=============================== ==============================================
-
+``--branch-ratio {ratio}``
+   Specify a floating-point number that identifies the threshold at which
+   to scale up or down for the given workload. The default branch ratio
+   is 0.01 and needs adjustment for different workloads.
 
 
 Compiling and Running the Guest Applications
@@ -533,48 +528,46 @@ Command Line Options Available When Sending a Policy to the Host
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Optionally, there are several command line options for a user who needs
-to send a power policy to the host application. The following table
-describes these options.
+to send a power policy to the host application:
 
-Table 1 – Command Line Options Available When Sending a Policy to the Host
+``--vm-name {name of guest vm}``
+   Allows the user to change the virtual machine name
+   passed down to the host application using the power policy.
+   The default is ubuntu2.
 
-======================================= ======================================
-**Command Line Option**                 **Description**
-======================================= ======================================
-``--vm-name {name of guest vm}``        | Allows the user to change the virtual machine name passed
-                                        | down to the host application using the power policy. The
-                                        | default is ubuntu2.
-``--vcpu-list {list vm cores}``         | A comma-separated list of cores in the VM that the user
-                                        | wants the host application to monitor. The list of cores
-                                        | in any vm starts at zero, and the host application maps
-                                        | these to the physical cores once the policy passes down
-                                        | to the host. Valid syntax includes individual cores
-                                        | 2,3,4, a range of cores 2-4, or a combination of both
-                                        | 1,3,5-7.
-``--busy-hours {list of busy hours}``   | A comma-separated list of hours in which to set the core
-                                        | frequency to the maximum. Valid syntax includes
-                                        | individual hours 2,3,4, a range of hours 2-4, or a
-                                        | combination of both 1,3,5-7. Valid hour values are 0 to 23.
-``--quiet-hours {list of quiet hours}`` | A comma-separated list of hours in which to set the core
-                                        | frequency to minimum. Valid syntax includes individual
-                                        | hours 2,3,4, a range of hours 2-4, or a combination of
-                                        | both 1,3,5-7. Valid hour values are 0 to 23.
-``--policy {policy type}``              | The type of policy. This can be one of the following values:
+``--vcpu-list {list vm cores}``
+   A comma-separated list of cores in the VM that the user
+   wants the host application to monitor.
+   The list of cores in any VM starts at zero,
+   and the host application maps these to the physical cores
+   once the policy passes down to the host.
+   Valid syntax includes individual cores 2,3,4,
+   a range of cores 2-4, or a combination of both 1,3,5-7.
 
-                                        - | TRAFFIC Based on incoming traffic rates on the NIC.
+``--busy-hours {list of busy hours}``
+   A comma-separated list of hours in which to set the core
+   frequency to the maximum.
+   Valid syntax includes individual hours 2,3,4,
+   a range of hours 2-4, or a combination of both 1,3,5-7.
+   Valid hour values are 0 to 23.
 
-                                        - | TIME - Uses a busy/quiet hours policy.
+``--quiet-hours {list of quiet hours}``
+   A comma-separated list of hours in which to set the core frequency
+   to minimum. Valid syntax includes individual hours 2,3,4,
+   a range of hours 2-4, or a combination of both 1,3,5-7.
+   Valid hour values are 0 to 23.
 
-                                        - | BRANCH_RATIO - Uses branch ratio counters to determine
-                                          | core busyness.
+``--policy {policy type}``
+   The type of policy. This can be one of the following values:
 
-                                        - | WORKLOAD - Sets the frequency to low, medium or high
-                                          | based on the received policy setting.
+   - TRAFFIC - Based on incoming traffic rates on the NIC.
+   - TIME - Uses a busy/quiet hours policy.
+   - BRANCH_RATIO - Uses branch ratio counters to determine core busyness.
+   - WORKLOAD - Sets the frequency to low, medium or high
+     based on the received policy setting.
 
-                                        | **Note**: Not all policy types need all parameters. For
-                                        |           example, BRANCH_RATIO only needs the vcpu-list
-                                        |           parameter.
-======================================= ======================================
+   **Note**: Not all policy types need all parameters.
+   For example, BRANCH_RATIO only needs the vcpu-list parameter.
 
 After successful initialization, the VM Power Manager Guest CLI prompt
 appears:
@@ -747,191 +740,203 @@ The following are the name-value pairs supported by the JSON interface:
 avg_packet_thresh
 ^^^^^^^^^^^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "avg_packet_thresh"
-================== ===========================================================
- **Description:**   | The threshold below which the frequency is set to the minimum value for the
-                    | TRAFFIC policy. If the traffic rate is above this value and below the
-                    | maximum value, the frequency is set to medium.
- **Type:**          integer
- **Values:**        | The number of packets below which the TRAFFIC policy applies the minimum
-                    | frequency, or the medium frequency if between the average and maximum
-                    | thresholds.
- **Required:**      Yes
- **Example:**       ``"avg_packet_thresh": 100000``
-================== ===========================================================
+Description
+   The threshold below which the frequency is set to the minimum value
+   for the TRAFFIC policy.
+   If the traffic rate is above this value and below the maximum value,
+   the frequency is set to medium.
+Type
+   integer
+Values
+   The number of packets below which the TRAFFIC policy applies
+   the minimum frequency, or the medium frequency
+   if between the average and maximum thresholds.
+Required
+   Yes
+Example
+   ``"avg_packet_thresh": 100000``
 
 busy_hours
 ^^^^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "busy_hours"
-================== ===========================================================
- **Description:**   The hours of the day in which we scale up the cores for busy times.
- **Type:**          array of integers
- **Values:**        An array with a list of hour values (0-23).
- **Required:**      For the TIME policy only.
- **Example:**       ``"busy_hours":[ 17, 18, 19, 20, 21, 22, 23 ]``
-================== ===========================================================
+Description
+   The hours of the day in which we scale up the cores for busy times.
+Type
+   array of integers
+Values
+   An array with a list of hour values (0-23).
+Required
+   For the TIME policy only.
+Example
+   ``"busy_hours":[ 17, 18, 19, 20, 21, 22, 23 ]``
 
 command
 ^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "command"
-================== ===========================================================
- **Description:**   | The type of packet to send to the VM Power Manager. It is possible to create
-                    | or destroy a policy or send a direct command to adjust the frequency of a core,
-                    | as is possible on the command line interface.
- **Type:**          | string
- **Values:**        Possible values are:
-
-                    - CREATE: Create a new policy.
-                    - DESTROY: Remove an existing policy.
-                    - POWER: Send an immediate command, max, min, and so on.
-
- **Required:**       Yes
- **Example:**        ``"command": "CREATE"``
-================== ===========================================================
+Description
+   The type of packet to send to the VM Power Manager.
+   It is possible to create or destroy a policy or send a direct command
+   to adjust the frequency of a core,
+   as is possible on the command line interface.
+Type
+   string
+Values
+   Possible values are:
+   - CREATE: Create a new policy.
+   - DESTROY: Remove an existing policy.
+   - POWER: Send an immediate command, max, min, and so on.
+Required
+   Yes
+Example
+   ``"command": "CREATE"``
 
 core_list
 ^^^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "core_list"
-================== ===========================================================
- **Description:**   The cores to which to apply a policy.
- **Type:**          array of integers
- **Values:**        An array with a list of virtual CPUs.
- **Required:**      For CREATE/DESTROY policy requests only.
- **Example:**       ``"core_list":[ 10, 11 ]``
-================== ===========================================================
+Description
+   The cores to which to apply a policy.
+Type
+   array of integers
+Values
+   An array with a list of virtual CPUs.
+Required
+   For CREATE/DESTROY policy requests only.
+Example
+   ``"core_list":[ 10, 11 ]``
 
 mac_list
 ^^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "mac_list"
-================== ===========================================================
- **Description:**   | When the policy is of type TRAFFIC, it is necessary to specify the MAC addresses
-                    | that the host must monitor.
- **Type:**          | array of strings
- **Values:**        An array with a list of mac address strings.
- **Required:**      For TRAFFIC policy types only.
- **Example:**       ``"mac_list":[ "de:ad:be:ef:01:01","de:ad:be:ef:01:02" ]``
-================== ===========================================================
-
+Description
+   When the policy is of type TRAFFIC,
+   it is necessary to specify the MAC addresses that the host must monitor.
+Type
+   array of strings
+Values
+   An array with a list of MAC address strings.
+Required
+   For TRAFFIC policy types only.
+Example
+   ``"mac_list":[ "de:ad:be:ef:01:01","de:ad:be:ef:01:02" ]``
 
 max_packet_thresh
 ^^^^^^^^^^^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "max_packet_thresh"
-================== ===========================================================
- **Description:**   | In a policy of type TRAFFIC, the threshold value above which the frequency is set
-                    | to a maximum.
- **Type:**          | integer
- **Values:**        | The number of packets per interval above which the TRAFFIC
-                    | policy applies the maximum frequency.
- **Required:**      For the TRAFFIC policy only.
- **Example:**       ``"max_packet_thresh": 500000``
-================== ===========================================================
+Description
+   In a policy of type TRAFFIC,
+   the threshold value above which the frequency is set to a maximum.
+Type
+   integer
+Values
+   The number of packets per interval above which
+   the TRAFFIC policy applies the maximum frequency.
+Required
+   For the TRAFFIC policy only.
+Example
+   ``"max_packet_thresh": 500000``
 
 name
 ^^^^
 
-================== ===========================================================
- **Pair Name:**     "name"
-================== ===========================================================
- **Description:**   | The name of the VM or host. Allows the parser to associate the policy with the
-                    | relevant VM or host OS.
- **Type:**          | string
- **Values:**        Any valid string.
- **Required:**      Yes
- **Example:**       ``"name": "ubuntu2"``
-================== ===========================================================
+Description
+   The name of the VM or host.
+   Allows the parser to associate the policy with the relevant VM or host OS.
+Type
+   string
+Values
+   Any valid string.
+Required
+   Yes
+Example
+   ``"name": "ubuntu2"``
 
 policy_type
 ^^^^^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "policy_type"
-================== ===========================================================
- **Description:**   | The type of policy to apply. See the ``--policy`` option description for more
-                    | information.
- **Type:**          string
- **Values:**        Possible values are:
+Description
+   The type of policy to apply.
+   See the ``--policy`` option description for more information.
+Type
+   string
+Values
+   Possible values are:
 
-                    - | TIME: Time-of-day policy. Scale the frequencies of the relevant cores up/down
-                      | depending on busy and quiet hours.
-                    - | TRAFFIC: Use statistics from the NIC and scale up and down accordingly.
-                    - | WORKLOAD: Determine how heavily loaded the cores are and scale up and down
-                      | accordingly.
-                    - | BRANCH_RATIO: An out-of-band policy that looks at the ratio between branch
-                      | hits and misses on a core and uses that information to determine how much
-                      | packet processing a core is doing.
+   - TIME: Time-of-day policy.
+     Scale the frequencies of the relevant cores up/down
+     depending on busy and quiet hours.
+   - TRAFFIC: Use statistics from the NIC and scale up and down accordingly.
+   - WORKLOAD: Determine how heavily loaded the cores are
+     and scale up and down accordingly.
+   - BRANCH_RATIO: An out-of-band policy that looks at the ratio
+     between branch hits and misses on a core
+     and uses that information to determine how much packet processing
+     a core is doing.
 
- **Required:**       For ``CREATE`` and ``DESTROY`` policy requests only.
- **Example:**        ``"policy_type": "TIME"``
-================== ===========================================================
+Required
+   For ``CREATE`` and ``DESTROY`` policy requests only.
+Example
+   ``"policy_type": "TIME"``
 
 quiet_hours
 ^^^^^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "quiet_hours"
-================== ===========================================================
- **Description:**   | The hours of the day to scale down the cores for quiet times.
- **Type:**          array of integers
- **Values:**        | An array with a list of hour numbers with values in the range 0 to 23.
- **Required:**      For the TIME policy only.
- **Example:**       ``"quiet_hours":[ 2, 3, 4, 5, 6 ]``
-================== ===========================================================
+Description
+   The hours of the day to scale down the cores for quiet times.
+Type
+   array of integers
+Values
+   An array with a list of hour numbers with values in the range 0 to 23.
+Required
+   For the TIME policy only.
+Example
+   ``"quiet_hours":[ 2, 3, 4, 5, 6 ]``
 
 resource_id
 ^^^^^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "resource_id"
-================== ===========================================================
- **Description:**   The core to which to apply a power command.
- **Type:**          integer
- **Values:**        A valid core ID for the VM or host OS.
- **Required:**      For the ``POWER`` instruction only.
- **Example:**       ``"resource_id": 10``
-================== ===========================================================
+Description
+   The core to which to apply a power command.
+Type
+   integer
+Values
+   A valid core ID for the VM or host OS.
+Required
+   For the ``POWER`` instruction only.
+Example
+   ``"resource_id": 10``
 
 unit
 ^^^^
 
-================== ===========================================================
- **Pair Name:**     "unit"
-================== ===========================================================
- **Description:**   The type of power operation to apply in the command.
- **Type:**          string
- **Values:**         - SCALE_MAX: Scale the frequency of this core to the maximum.
-                     - SCALE_MIN: Scale the frequency of this core to the minimum.
-                     - SCALE_UP: Scale up the frequency of this core.
-                     - SCALE_DOWN: Scale down the frequency of this core.
-                     - ENABLE_TURBO: Enable Intel® Turbo Boost Technology for this core.
-                     - DISABLE_TURBO: Disable Intel® Turbo Boost Technology for this core.
- **Required:**      For the ``POWER`` instruction only.
- **Example:**       ``"unit": "SCALE_MAX"``
-================== ===========================================================
+Description
+   The type of power operation to apply in the command.
+Type
+   string
+Values
+   - SCALE_MAX: Scale the frequency of this core to the maximum.
+   - SCALE_MIN: Scale the frequency of this core to the minimum.
+   - SCALE_UP: Scale up the frequency of this core.
+   - SCALE_DOWN: Scale down the frequency of this core.
+   - ENABLE_TURBO: Enable Intel® Turbo Boost Technology for this core.
+   - DISABLE_TURBO: Disable Intel® Turbo Boost Technology for this core.
+Required
+   For the ``POWER`` instruction only.
+Example
+   ``"unit": "SCALE_MAX"``
 
 workload
 ^^^^^^^^
 
-================== ===========================================================
- **Pair Name:**     "workload"
-================== ===========================================================
- **Description:**   In a policy of type WORKLOAD, it is necessary to specify
-                    how heavy the workload is.
- **Type:**          string
- **Values:**         - HIGH: Scale the frequency of this core to maximum.
-                     - MEDIUM: Scale the frequency of this core to minimum.
-                     - LOW: Scale up the frequency of this core.
- **Required:**       For the ``WORKLOAD`` policy only.
- **Example:**        ``"workload": "MEDIUM"``
-================== ===========================================================
-
+Description
+   In a policy of type WORKLOAD,
+   it is necessary to specify how heavy the workload is.
+Type
+   string
+Values
+   - HIGH: Scale the frequency of this core to maximum.
+   - MEDIUM: Scale the frequency of this core to minimum.
+   - LOW: Scale up the frequency of this core.
+Required
+   For the ``WORKLOAD`` policy only.
+Example
+   ``"workload": "MEDIUM"``
