@@ -34,6 +34,10 @@ _doc_packages: &doc_packages
 before_install: ./.ci/${TRAVIS_OS_NAME}-setup.sh
 script: ./.ci/${TRAVIS_OS_NAME}-build.sh
 
+env:
+  global:
+    - REF_GIT_TAG=v20.02
+
 jobs:
   include:
   # x86_64 gcc jobs
