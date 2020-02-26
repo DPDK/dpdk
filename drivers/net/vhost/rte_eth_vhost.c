@@ -1335,6 +1335,8 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	internal->disable_flags = disable_flags;
 	data->dev_link = pmd_link;
 	data->dev_flags = RTE_ETH_DEV_INTR_LSC | RTE_ETH_DEV_CLOSE_REMOVE;
+	data->promiscuous = 1;
+	data->all_multicast = 1;
 
 	eth_dev->dev_ops = &ops;
 
