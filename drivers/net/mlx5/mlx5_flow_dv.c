@@ -1771,7 +1771,7 @@ flow_dev_get_vlan_info_from_items(const struct rte_flow_item *items,
 		/* Only full match values are accepted */
 		if ((vlan_m->tci & MLX5DV_FLOW_VLAN_PCP_MASK_BE) ==
 		     MLX5DV_FLOW_VLAN_PCP_MASK_BE) {
-			vlan->vlan_tci &= MLX5DV_FLOW_VLAN_PCP_MASK;
+			vlan->vlan_tci &= ~MLX5DV_FLOW_VLAN_PCP_MASK;
 			vlan->vlan_tci |=
 				rte_be_to_cpu_16(vlan_v->tci &
 						 MLX5DV_FLOW_VLAN_PCP_MASK_BE);
