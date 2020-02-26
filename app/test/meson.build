@@ -238,6 +238,7 @@ fast_test_names = [
 ]
 
 nohuge_test_names = [
+        'acl_autotest',
         'alarm_autotest',
         'atomic_autotest',
         'byteorder_autotest',
@@ -246,9 +247,18 @@ nohuge_test_names = [
         'cpuflags_autotest',
         'cycles_autotest',
         'debug_autotest',
+        'eal_flags_c_opt_autotest',
+        'eal_flags_master_opt_autotest',
         'eal_flags_n_opt_autotest',
+        'eal_flags_hpet_autotest',
         'eal_flags_no_huge_autotest',
+        'eal_flags_w_opt_autotest',
+        'eal_flags_b_opt_autotest',
         'eal_flags_vdev_opt_autotest',
+        'eal_flags_r_opt_autotest',
+        'eal_flags_mem_autotest',
+        'eal_flags_file_prefix_autotest',
+        'eal_flags_misc_autotest',
         'eal_fs_autotest',
         'errno_autotest',
         'event_ring_autotest',
@@ -256,6 +266,7 @@ nohuge_test_names = [
         'fib6_autotest',
         'func_reentrancy_autotest',
         'flow_classify_autotest',
+        'hash_autotest',
         'interrupt_autotest',
         'logs_autotest',
         'lpm_autotest',
@@ -285,6 +296,7 @@ nohuge_test_names = [
         'stack_autotest',
         'stack_lf_autotest',
         'string_autotest',
+        'table_autotest',
         'tailq_autotest',
         'timer_autotest',
         'user_delay_us',
@@ -309,7 +321,6 @@ nohuge_test_names = [
 ]
 
 perf_test_names = [
-        'alarm_autotest',
         'ring_perf_autotest',
         'mempool_perf_autotest',
         'memcpy_perf_autotest',
@@ -502,7 +513,10 @@ foreach arg : fast_test_names
 	endif
 endforeach
 
+suite_nr = 0
+
 foreach arg : nohuge_test_names
+  suite_nr = suite_nr + 1
   if host_machine.system() == 'linux'
     test(arg, dpdk_test,
         env : ['DPDK_TEST=' + arg],
@@ -511,14 +525,14 @@ foreach arg : nohuge_test_names
          ['--file-prefix=@0@'.format(arg)],
     timeout : timeout_seconds_fast,
     is_parallel : false,
-    suite : 'nohuge-tests')
+    suite : 'nohuge-tests-' + suite_nr.to_string())
   else
     test(arg, dpdk_test,
       env : ['DPDK_TEST=' + arg],
       args : test_args,
     timeout : timeout_seconds_fast,
     is_parallel : false,
-    suite : 'nohuge-tests')
+    suite : 'nohuge-tests-' + suite_nr.to_string())
   endif
 endforeach
 
