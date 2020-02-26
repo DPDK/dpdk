@@ -82,6 +82,11 @@ Deprecation Notices
   In 19.11 PMDs will still update the field even when the offload is not
   enabled.
 
+* ethdev: ``rx_descriptor_done`` dev_ops and ``rte_eth_rx_descriptor_done``
+  will be deprecated in 20.11 and will be removed in 21.11.
+  Existing ``rte_eth_rx_descriptor_status`` and ``rte_eth_tx_descriptor_status``
+  APIs can be used as replacement.
+
 * cryptodev: support for using IV with all sizes is added, J0 still can
   be used but only when IV length in following structs ``rte_crypto_auth_xform``,
   ``rte_crypto_aead_xform`` is set to zero. When IV length is greater or equal
