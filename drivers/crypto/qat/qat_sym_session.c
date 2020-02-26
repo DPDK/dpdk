@@ -35,7 +35,7 @@ bpi_cipher_ctx_free(void *bpi_ctx)
 static int
 bpi_cipher_ctx_init(enum rte_crypto_cipher_algorithm cryptodev_algo,
 		enum rte_crypto_cipher_operation direction __rte_unused,
-		const uint8_t *key, void **ctx)
+		const uint8_t *key, uint16_t key_length, void **ctx)
 {
 	const EVP_CIPHER *algo = NULL;
 	int ret;
@@ -49,7 +49,10 @@ bpi_cipher_ctx_init(enum rte_crypto_cipher_algorithm cryptodev_algo,
 	if (cryptodev_algo == RTE_CRYPTO_CIPHER_DES_DOCSISBPI)
 		algo = EVP_des_ecb();
 	else
-		algo = EVP_aes_128_ecb();
+		if (key_length == ICP_QAT_HW_AES_128_KEY_SZ)
+			algo = EVP_aes_128_ecb();
+		else
+			algo = EVP_aes_256_ecb();
 
 	/* IV will be ECB encrypted whether direction is encrypt or decrypt*/
 	if (EVP_EncryptInit_ex(*ctx, algo, NULL, key, 0) != 1) {
@@ -286,6 +289,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 					cipher_xform->algo,
 					cipher_xform->op,
 					cipher_xform->key.data,
+					cipher_xform->key.length,
 					&session->bpi_ctx);
 		if (ret != 0) {
 			QAT_LOG(ERR, "failed to create DES BPI ctx");
@@ -304,6 +308,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 					cipher_xform->algo,
 					cipher_xform->op,
 					cipher_xform->key.data,
+					cipher_xform->key.length,
 					&session->bpi_ctx);
 		if (ret != 0) {
 			QAT_LOG(ERR, "failed to create AES BPI ctx");
@@ -1908,6 +1913,9 @@ int qat_sym_validate_aes_docsisbpi_key(int key_len,
 	switch (key_len) {
 	case ICP_QAT_HW_AES_128_KEY_SZ:
 		*alg = ICP_QAT_HW_CIPHER_ALGO_AES128;
+		break;
+	case ICP_QAT_HW_AES_256_KEY_SZ:
+		*alg = ICP_QAT_HW_CIPHER_ALGO_AES256;
 		break;
 	default:
 		return -EINVAL;
