@@ -4143,16 +4143,35 @@ out:
 	return ret_val;
 }
 
+/* return 1: setup complete, return 0: setup not complete, and wait timeout*/
+static int
+ixgbe_dev_wait_setup_link_complete(struct rte_eth_dev *dev)
+{
+#define DELAY_INTERVAL 100 /* 100ms */
+#define MAX_TIMEOUT    90 /* 9s (90 * 100ms) in total */
+	struct ixgbe_adapter *ad = dev->data->dev_private;
+	int timeout = MAX_TIMEOUT;
+
+	while (rte_atomic32_read(&ad->link_thread_running) && timeout) {
+		msec_delay(DELAY_INTERVAL);
+		timeout--;
+	}
+
+
+	return !!timeout;
+}
+
 static void
 ixgbe_dev_cancel_link_thread(struct rte_eth_dev *dev)
 {
 	struct ixgbe_adapter *ad = dev->data->dev_private;
 	void *retval;
 
-	if (rte_atomic32_read(&ad->link_thread_running)) {
+	if (!ixgbe_dev_wait_setup_link_complete(dev)) {
 		pthread_cancel(ad->link_thread_tid);
 		pthread_join(ad->link_thread_tid, &retval);
 		rte_atomic32_clear(&ad->link_thread_running);
+		PMD_DRV_LOG(ERR, "Link thread not complete, cancel it!");
 	}
 }
 
@@ -4263,7 +4282,8 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	if (link_up == 0) {
 		if (ixgbe_get_media_type(hw) == ixgbe_media_type_fiber) {
 			intr->flags |= IXGBE_FLAG_NEED_LINK_CONFIG;
-			if (rte_atomic32_test_and_set(&ad->link_thread_running)) {
+			if (ixgbe_dev_wait_setup_link_complete(dev) &&
+			    rte_atomic32_test_and_set(&ad->link_thread_running)) {
 				if (rte_ctrl_thread_create(&ad->link_thread_tid,
 					"ixgbe-link-handler",
 					NULL,
