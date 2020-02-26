@@ -54,6 +54,16 @@ The user can specify below arguments in `--vdev` option.
     It is used to enable tso support in vhost library.
     (Default: 0 (disabled))
 
+#.  ``linear-buffer``:
+
+    It is used to enable linear buffer support in vhost library.
+    (Default: 0 (disabled))
+
+#.  ``ext-buffer``:
+
+    It is used to enable external buffer support in vhost library.
+    (Default: 0 (disabled))
+
 Vhost PMD event handling
 ------------------------
 
