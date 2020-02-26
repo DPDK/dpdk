@@ -47,6 +47,10 @@ static const uint8_t ciphertext_aes_docsis_bpi_cfb[] = {
 	0xFC, 0x68, 0xA3, 0x55, 0x60, 0x37, 0xDC
 };
 
+static const uint8_t ciphertext_aes256_docsis_bpi_cfb[] = {
+	0xE3, 0x75, 0xF2, 0x30, 0x1F, 0x75, 0x9A
+};
+
 static const uint8_t plaintext_aes_docsis_bpi_cbc_cfb[] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 	0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x91,
@@ -57,6 +61,12 @@ static const uint8_t ciphertext_aes_docsis_bpi_cbc_cfb[] = {
 	0x9D, 0xD1, 0x67, 0x4B, 0xBA, 0x61, 0x10, 0x1B,
 	0x56, 0x75, 0x64, 0x74, 0x36, 0x4F, 0x10, 0x1D,
 	0x44, 0xD4, 0x73
+};
+
+static const uint8_t ciphertext_aes256_docsis_bpi_cbc_cfb[] = {
+	0xD1, 0x28, 0x73, 0x1F, 0xB5, 0x28, 0xB5, 0x18,
+	0xAB, 0x51, 0xAB, 0xC8, 0x98, 0x3D, 0xD1, 0xEE,
+	0xE4, 0x43, 0x59
 };
 
 static const uint8_t plaintext_aes192ctr[] = {
@@ -1535,6 +1545,93 @@ static const struct blockcipher_test_data aes_test_data_docsis_3 = {
 	}
 };
 
+/* Multiple of AES 256 block size */
+static const struct blockcipher_test_data aes_test_data_docsis_4 = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_AES_DOCSISBPI,
+	.cipher_key = {
+		.data = {
+			0xE4, 0x23, 0x33, 0x8A, 0x35, 0x64, 0x61, 0xE2,
+			0x49, 0x03, 0xDD, 0xC6, 0xB8, 0xCA, 0x55, 0x7A,
+			0xD4, 0xC3, 0xA3, 0xAA, 0x33, 0x62, 0x61, 0xE0,
+			0x37, 0x07, 0xB8, 0x23, 0xA2, 0xA3, 0xB5, 0x8D
+		},
+		.len = 32
+	},
+	.iv = {
+		.data = {
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+			0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
+		},
+		.len = 16
+	},
+	.plaintext = {
+		.data = plaintext_aes_common,
+		.len = 512
+	},
+	.ciphertext = {
+		.data = ciphertext512_aes256cbc,
+		.len = 512
+	}
+};
+
+/* Less than AES 256 block size */
+static const struct blockcipher_test_data aes_test_data_docsis_5 = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_AES_DOCSISBPI,
+	.cipher_key = {
+		.data = {
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB,
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB,
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB,
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB
+		},
+		.len = 32
+	},
+	.iv = {
+		.data = {
+			0x81, 0x0E, 0x52, 0x8E, 0x1C, 0x5F, 0xDA, 0x1A,
+			0x81, 0x0E, 0x52, 0x8E, 0x1C, 0x5F, 0xDA, 0x1A
+		},
+		.len = 16
+	},
+	.plaintext = {
+		.data = plaintext_aes_docsis_bpi_cfb,
+		.len = 7
+	},
+	.ciphertext = {
+		.data = ciphertext_aes256_docsis_bpi_cfb,
+		.len = 7
+	}
+};
+
+/* Not multiple of AES 256 block size */
+static const struct blockcipher_test_data aes_test_data_docsis_6 = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_AES_DOCSISBPI,
+	.cipher_key = {
+		.data = {
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB,
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB,
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB,
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB
+		},
+		.len = 32
+	},
+	.iv = {
+		.data = {
+			0x81, 0x0E, 0x52, 0x8E, 0x1C, 0x5F, 0xDA, 0x1A,
+			0x81, 0x0E, 0x52, 0x8E, 0x1C, 0x5F, 0xDA, 0x1A
+		},
+		.len = 16
+	},
+	.plaintext = {
+		.data = plaintext_aes_docsis_bpi_cbc_cfb,
+		.len = 19
+	},
+	.ciphertext = {
+		.data = ciphertext_aes256_docsis_bpi_cbc_cfb,
+		.len = 19
+	}
+};
+
 static const uint8_t
 cipher_aescbc_offset_16[] = {
 	0x57, 0x68, 0x61, 0x74, 0x20, 0x61, 0x20, 0x6C,
@@ -2636,6 +2733,85 @@ static const struct blockcipher_test_case aes_docsis_test_cases[] = {
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_MB
+	},
+	/* AES 256 */
+	{
+		.test_descr = "AES-256-DOCSIS-BPI Full Block Encryption",
+		.test_data = &aes_test_data_docsis_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI Runt Block Encryption",
+		.test_data = &aes_test_data_docsis_5,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI Uneven Encryption",
+		.test_data = &aes_test_data_docsis_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI Full Block Decryption",
+		.test_data = &aes_test_data_docsis_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI Runt Block Decryption",
+		.test_data = &aes_test_data_docsis_5,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI Uneven Decryption",
+		.test_data = &aes_test_data_docsis_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI OOP Full Block Encryption",
+		.test_data = &aes_test_data_docsis_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI OOP Runt Block Encryption",
+		.test_data = &aes_test_data_docsis_5,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI OOP Uneven Block Encryption",
+		.test_data = &aes_test_data_docsis_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI OOP Full Block Decryption",
+		.test_data = &aes_test_data_docsis_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI OOP Runt Block Decryption",
+		.test_data = &aes_test_data_docsis_5,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-256-DOCSIS-BPI OOP Uneven Block Decryption",
+		.test_data = &aes_test_data_docsis_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 };
 #endif /* TEST_CRYPTODEV_AES_TEST_VECTORS_H_ */
