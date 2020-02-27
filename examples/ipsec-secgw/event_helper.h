@@ -19,8 +19,14 @@
 /* Max Rx adapters supported */
 #define EVENT_MODE_MAX_RX_ADAPTERS RTE_EVENT_MAX_DEVS
 
+/* Max Tx adapters supported */
+#define EVENT_MODE_MAX_TX_ADAPTERS RTE_EVENT_MAX_DEVS
+
 /* Max Rx adapter connections */
 #define EVENT_MODE_MAX_CONNECTIONS_PER_ADAPTER 16
+
+/* Max Tx adapter connections */
+#define EVENT_MODE_MAX_CONNECTIONS_PER_TX_ADAPTER 16
 
 /* Max event queues supported per event device */
 #define EVENT_MODE_MAX_EVENT_QUEUES_PER_DEV RTE_EVENT_MAX_QUEUES_PER_DEV
@@ -28,6 +34,9 @@
 /* Max event-lcore links */
 #define EVENT_MODE_MAX_LCORE_LINKS \
 	(EVENT_MODE_MAX_EVENT_DEVS * EVENT_MODE_MAX_EVENT_QUEUES_PER_DEV)
+
+/* Max adapters that one Tx core can handle */
+#define EVENT_MODE_MAX_ADAPTERS_PER_TX_CORE EVENT_MODE_MAX_TX_ADAPTERS
 
 /**
  * Packet transfer mode of the application
@@ -76,6 +85,23 @@ struct rx_adapter_conf {
 			conn[EVENT_MODE_MAX_CONNECTIONS_PER_ADAPTER];
 };
 
+/* Tx adapter connection info */
+struct tx_adapter_connection_info {
+	uint8_t ethdev_id;
+	int32_t ethdev_tx_qid;
+};
+
+/* Tx adapter conf */
+struct tx_adapter_conf {
+	int32_t eventdev_id;
+	int32_t adapter_id;
+	uint32_t tx_core_id;
+	uint8_t nb_connections;
+	struct tx_adapter_connection_info
+			conn[EVENT_MODE_MAX_CONNECTIONS_PER_TX_ADAPTER];
+	uint8_t tx_ev_queue;
+};
+
 /* Eventmode conf data */
 struct eventmode_conf {
 	int nb_eventdev;
@@ -86,6 +112,10 @@ struct eventmode_conf {
 		/**< No of Rx adapters */
 	struct rx_adapter_conf rx_adapter[EVENT_MODE_MAX_RX_ADAPTERS];
 		/**< Rx adapter conf */
+	uint8_t nb_tx_adapter;
+		/**< No of Tx adapters */
+	struct tx_adapter_conf tx_adapter[EVENT_MODE_MAX_TX_ADAPTERS];
+		/** Tx adapter conf */
 	uint8_t nb_link;
 		/**< No of links */
 	struct eh_event_link_info
@@ -165,5 +195,23 @@ eh_devs_init(struct eh_conf *conf);
  */
 int32_t
 eh_devs_uninit(struct eh_conf *conf);
+
+/**
+ * Get eventdev tx queue
+ *
+ * If the application uses event device which does not support internal port
+ * then it needs to submit the events to a Tx queue before final transmission.
+ * This Tx queue will be created internally by the eventmode helper subsystem,
+ * and application will need its queue ID when it runs the execution loop.
+ *
+ * @param mode_conf
+ *   Event helper configuration
+ * @param eventdev_id
+ *   Event device ID
+ * @return
+ *   Tx queue ID
+ */
+uint8_t
+eh_get_tx_queue(struct eh_conf *conf, uint8_t eventdev_id);
 
 #endif /* _EVENT_HELPER_H_ */

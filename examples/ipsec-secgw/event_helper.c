@@ -5,6 +5,7 @@
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
 #include <rte_event_eth_rx_adapter.h>
+#include <rte_event_eth_tx_adapter.h>
 #include <rte_malloc.h>
 #include <stdbool.h>
 
@@ -76,6 +77,22 @@ eh_get_next_active_core(struct eventmode_conf *em_conf, unsigned int prev_core)
 	return next_core;
 }
 
+static struct eventdev_params *
+eh_get_eventdev_params(struct eventmode_conf *em_conf, uint8_t eventdev_id)
+{
+	int i;
+
+	for (i = 0; i < em_conf->nb_eventdev; i++) {
+		if (em_conf->eventdev_config[i].eventdev_id == eventdev_id)
+			break;
+	}
+
+	/* No match */
+	if (i == em_conf->nb_eventdev)
+		return NULL;
+
+	return &(em_conf->eventdev_config[i]);
+}
 static int
 eh_set_default_conf_eventdev(struct eventmode_conf *em_conf)
 {
@@ -288,6 +305,95 @@ eh_set_default_conf_rx_adapter(struct eventmode_conf *em_conf)
 }
 
 static int
+eh_set_default_conf_tx_adapter(struct eventmode_conf *em_conf)
+{
+	struct tx_adapter_connection_info *conn;
+	struct eventdev_params *eventdev_config;
+	struct tx_adapter_conf *tx_adapter;
+	int eventdev_id;
+	int adapter_id;
+	int nb_eth_dev;
+	int conn_id;
+	int i;
+
+	/*
+	 * Create one Tx adapter with all eth queues mapped to event queues
+	 * 1:1.
+	 */
+
+	if (em_conf->nb_eventdev == 0) {
+		EH_LOG_ERR("No event devs registered");
+		return -EINVAL;
+	}
+
+	/* Get the number of eth devs */
+	nb_eth_dev = rte_eth_dev_count_avail();
+
+	/* Use the first event dev */
+	eventdev_config = &(em_conf->eventdev_config[0]);
+
+	/* Get eventdev ID */
+	eventdev_id = eventdev_config->eventdev_id;
+	adapter_id = 0;
+
+	/* Get adapter conf */
+	tx_adapter = &(em_conf->tx_adapter[adapter_id]);
+
+	/* Set adapter conf */
+	tx_adapter->eventdev_id = eventdev_id;
+	tx_adapter->adapter_id = adapter_id;
+
+	/* TODO: Tx core is required only when internal port is not present */
+	tx_adapter->tx_core_id = eh_get_next_eth_core(em_conf);
+
+	/*
+	 * Application uses one event queue per adapter for submitting
+	 * packets for Tx. Reserve the last queue available and decrement
+	 * the total available event queues for this
+	 */
+
+	/* Queue numbers start at 0 */
+	tx_adapter->tx_ev_queue = eventdev_config->nb_eventqueue - 1;
+
+	/*
+	 * Map all Tx queues of the eth device (port) to the event device.
+	 */
+
+	/* Set defaults for connections */
+
+	/*
+	 * One eth device (port) is one connection. Map all Tx queues
+	 * of the device to the Tx adapter.
+	 */
+
+	for (i = 0; i < nb_eth_dev; i++) {
+
+		/* Use only the ports enabled */
+		if ((em_conf->eth_portmask & (1 << i)) == 0)
+			continue;
+
+		/* Get the connection id */
+		conn_id = tx_adapter->nb_connections;
+
+		/* Get the connection */
+		conn = &(tx_adapter->conn[conn_id]);
+
+		/* Add ethdev to connections */
+		conn->ethdev_id = i;
+
+		/* Add all eth tx queues to adapter */
+		conn->ethdev_tx_qid = -1;
+
+		/* Update no of connections */
+		tx_adapter->nb_connections++;
+	}
+
+	/* We have setup one adapter */
+	em_conf->nb_tx_adapter = 1;
+	return 0;
+}
+
+static int
 eh_validate_conf(struct eventmode_conf *em_conf)
 {
 	int ret;
@@ -318,6 +424,16 @@ eh_validate_conf(struct eventmode_conf *em_conf)
 	 */
 	if (em_conf->nb_rx_adapter == 0) {
 		ret = eh_set_default_conf_rx_adapter(em_conf);
+		if (ret != 0)
+			return ret;
+	}
+
+	/*
+	 * Check if tx adapters are specified. Else generate a default config
+	 * with one tx adapter.
+	 */
+	if (em_conf->nb_tx_adapter == 0) {
+		ret = eh_set_default_conf_tx_adapter(em_conf);
 		if (ret != 0)
 			return ret;
 	}
@@ -573,6 +689,133 @@ eh_initialize_rx_adapter(struct eventmode_conf *em_conf)
 	return 0;
 }
 
+static int
+eh_tx_adapter_configure(struct eventmode_conf *em_conf,
+		struct tx_adapter_conf *adapter)
+{
+	struct rte_event_dev_info evdev_default_conf = {0};
+	struct rte_event_port_conf port_conf = {0};
+	struct tx_adapter_connection_info *conn;
+	struct eventdev_params *eventdev_config;
+	uint8_t tx_port_id = 0;
+	uint8_t eventdev_id;
+	uint32_t service_id;
+	int ret, j;
+
+	/* Get event dev ID */
+	eventdev_id = adapter->eventdev_id;
+
+	/* Get event device conf */
+	eventdev_config = eh_get_eventdev_params(em_conf, eventdev_id);
+
+	/* Create Tx adapter */
+
+	/* Get default configuration of event dev */
+	ret = rte_event_dev_info_get(eventdev_id, &evdev_default_conf);
+	if (ret < 0) {
+		EH_LOG_ERR("Failed to get event dev info %d", ret);
+		return ret;
+	}
+
+	/* Setup port conf */
+	port_conf.new_event_threshold =
+			evdev_default_conf.max_num_events;
+	port_conf.dequeue_depth =
+			evdev_default_conf.max_event_port_dequeue_depth;
+	port_conf.enqueue_depth =
+			evdev_default_conf.max_event_port_enqueue_depth;
+
+	/* Create adapter */
+	ret = rte_event_eth_tx_adapter_create(adapter->adapter_id,
+			adapter->eventdev_id, &port_conf);
+	if (ret < 0) {
+		EH_LOG_ERR("Failed to create tx adapter %d", ret);
+		return ret;
+	}
+
+	/* Setup various connections in the adapter */
+	for (j = 0; j < adapter->nb_connections; j++) {
+
+		/* Get connection */
+		conn = &(adapter->conn[j]);
+
+		/* Add queue to the adapter */
+		ret = rte_event_eth_tx_adapter_queue_add(adapter->adapter_id,
+				conn->ethdev_id, conn->ethdev_tx_qid);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to add eth queue to tx adapter %d",
+				   ret);
+			return ret;
+		}
+	}
+
+	/* Setup Tx queue & port */
+
+	/* Get event port used by the adapter */
+	ret = rte_event_eth_tx_adapter_event_port_get(
+			adapter->adapter_id, &tx_port_id);
+	if (ret) {
+		EH_LOG_ERR("Failed to get tx adapter port id %d", ret);
+		return ret;
+	}
+
+	/*
+	 * Tx event queue is reserved for Tx adapter. Unlink this queue
+	 * from all other ports
+	 *
+	 */
+	for (j = 0; j < eventdev_config->nb_eventport; j++) {
+		rte_event_port_unlink(eventdev_id, j,
+				      &(adapter->tx_ev_queue), 1);
+	}
+
+	/* Link Tx event queue to Tx port */
+	ret = rte_event_port_link(eventdev_id, tx_port_id,
+			&(adapter->tx_ev_queue), NULL, 1);
+	if (ret != 1) {
+		EH_LOG_ERR("Failed to link event queue to port");
+		return ret;
+	}
+
+	/* Get the service ID used by Tx adapter */
+	ret = rte_event_eth_tx_adapter_service_id_get(adapter->adapter_id,
+						      &service_id);
+	if (ret != -ESRCH && ret < 0) {
+		EH_LOG_ERR("Failed to get service id used by tx adapter %d",
+			   ret);
+		return ret;
+	}
+
+	rte_service_set_runstate_mapped_check(service_id, 0);
+
+	/* Start adapter */
+	ret = rte_event_eth_tx_adapter_start(adapter->adapter_id);
+	if (ret < 0) {
+		EH_LOG_ERR("Failed to start tx adapter %d", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+eh_initialize_tx_adapter(struct eventmode_conf *em_conf)
+{
+	struct tx_adapter_conf *adapter;
+	int i, ret;
+
+	/* Configure Tx adapters */
+	for (i = 0; i < em_conf->nb_tx_adapter; i++) {
+		adapter = &(em_conf->tx_adapter[i]);
+		ret = eh_tx_adapter_configure(em_conf, adapter);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to configure tx adapter %d", ret);
+			return ret;
+		}
+	}
+	return 0;
+}
+
 int32_t
 eh_devs_init(struct eh_conf *conf)
 {
@@ -627,6 +870,13 @@ eh_devs_init(struct eh_conf *conf)
 	ret = eh_initialize_rx_adapter(em_conf);
 	if (ret < 0) {
 		EH_LOG_ERR("Failed to initialize rx adapter %d", ret);
+		return ret;
+	}
+
+	/* Setup Tx adapter */
+	ret = eh_initialize_tx_adapter(em_conf);
+	if (ret < 0) {
+		EH_LOG_ERR("Failed to initialize tx adapter %d", ret);
 		return ret;
 	}
 
@@ -713,5 +963,68 @@ eh_devs_uninit(struct eh_conf *conf)
 		}
 	}
 
+	/* Stop and release tx adapters */
+	for (i = 0; i < em_conf->nb_tx_adapter; i++) {
+
+		id = em_conf->tx_adapter[i].adapter_id;
+		ret = rte_event_eth_tx_adapter_stop(id);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to stop tx adapter %d", ret);
+			return ret;
+		}
+
+		for (j = 0; j < em_conf->tx_adapter[i].nb_connections; j++) {
+
+			ret = rte_event_eth_tx_adapter_queue_del(id,
+				em_conf->tx_adapter[i].conn[j].ethdev_id, -1);
+			if (ret < 0) {
+				EH_LOG_ERR(
+					"Failed to remove tx adapter queues %d",
+					ret);
+				return ret;
+			}
+		}
+
+		ret = rte_event_eth_tx_adapter_free(id);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to free tx adapter %d", ret);
+			return ret;
+		}
+	}
+
 	return 0;
+}
+
+uint8_t
+eh_get_tx_queue(struct eh_conf *conf, uint8_t eventdev_id)
+{
+	struct eventdev_params *eventdev_config;
+	struct eventmode_conf *em_conf;
+
+	if (conf == NULL) {
+		EH_LOG_ERR("Invalid event helper configuration");
+		return -EINVAL;
+	}
+
+	if (conf->mode_params == NULL) {
+		EH_LOG_ERR("Invalid event mode parameters");
+		return -EINVAL;
+	}
+
+	/* Get eventmode conf */
+	em_conf = conf->mode_params;
+
+	/* Get event device conf */
+	eventdev_config = eh_get_eventdev_params(em_conf, eventdev_id);
+
+	if (eventdev_config == NULL) {
+		EH_LOG_ERR("Failed to read eventdev config");
+		return -EINVAL;
+	}
+
+	/*
+	 * The last queue is reserved to be used as atomic queue for the
+	 * last stage (eth packet tx stage)
+	 */
+	return eventdev_config->nb_eventqueue - 1;
 }
