@@ -816,6 +816,210 @@ eh_initialize_tx_adapter(struct eventmode_conf *em_conf)
 	return 0;
 }
 
+static void
+eh_display_operating_mode(struct eventmode_conf *em_conf)
+{
+	char sched_types[][32] = {
+		"RTE_SCHED_TYPE_ORDERED",
+		"RTE_SCHED_TYPE_ATOMIC",
+		"RTE_SCHED_TYPE_PARALLEL",
+	};
+	EH_LOG_INFO("Operating mode:");
+
+	EH_LOG_INFO("\tScheduling type: \t%s",
+		sched_types[em_conf->ext_params.sched_type]);
+
+	EH_LOG_INFO("");
+}
+
+static void
+eh_display_event_dev_conf(struct eventmode_conf *em_conf)
+{
+	char queue_mode[][32] = {
+		"",
+		"ATQ (ALL TYPE QUEUE)",
+		"SINGLE LINK",
+	};
+	char print_buf[256] = { 0 };
+	int i;
+
+	EH_LOG_INFO("Event Device Configuration:");
+
+	for (i = 0; i < em_conf->nb_eventdev; i++) {
+		sprintf(print_buf,
+			"\tDev ID: %-2d \tQueues: %-2d \tPorts: %-2d",
+			em_conf->eventdev_config[i].eventdev_id,
+			em_conf->eventdev_config[i].nb_eventqueue,
+			em_conf->eventdev_config[i].nb_eventport);
+		sprintf(print_buf + strlen(print_buf),
+			"\tQueue mode: %s",
+			queue_mode[em_conf->eventdev_config[i].ev_queue_mode]);
+		EH_LOG_INFO("%s", print_buf);
+	}
+	EH_LOG_INFO("");
+}
+
+static void
+eh_display_rx_adapter_conf(struct eventmode_conf *em_conf)
+{
+	int nb_rx_adapter = em_conf->nb_rx_adapter;
+	struct rx_adapter_connection_info *conn;
+	struct rx_adapter_conf *adapter;
+	char print_buf[256] = { 0 };
+	int i, j;
+
+	EH_LOG_INFO("Rx adapters configured: %d", nb_rx_adapter);
+
+	for (i = 0; i < nb_rx_adapter; i++) {
+		adapter = &(em_conf->rx_adapter[i]);
+		EH_LOG_INFO(
+			"\tRx adaper ID: %-2d\tConnections: %-2d\tEvent dev ID: %-2d"
+			"\tRx core: %-2d",
+			adapter->adapter_id,
+			adapter->nb_connections,
+			adapter->eventdev_id,
+			adapter->rx_core_id);
+
+		for (j = 0; j < adapter->nb_connections; j++) {
+			conn = &(adapter->conn[j]);
+
+			sprintf(print_buf,
+				"\t\tEthdev ID: %-2d", conn->ethdev_id);
+
+			if (conn->ethdev_rx_qid == -1)
+				sprintf(print_buf + strlen(print_buf),
+					"\tEth rx queue: %-2s", "ALL");
+			else
+				sprintf(print_buf + strlen(print_buf),
+					"\tEth rx queue: %-2d",
+					conn->ethdev_rx_qid);
+
+			sprintf(print_buf + strlen(print_buf),
+				"\tEvent queue: %-2d", conn->eventq_id);
+			EH_LOG_INFO("%s", print_buf);
+		}
+	}
+	EH_LOG_INFO("");
+}
+
+static void
+eh_display_tx_adapter_conf(struct eventmode_conf *em_conf)
+{
+	int nb_tx_adapter = em_conf->nb_tx_adapter;
+	struct tx_adapter_connection_info *conn;
+	struct tx_adapter_conf *adapter;
+	char print_buf[256] = { 0 };
+	int i, j;
+
+	EH_LOG_INFO("Tx adapters configured: %d", nb_tx_adapter);
+
+	for (i = 0; i < nb_tx_adapter; i++) {
+		adapter = &(em_conf->tx_adapter[i]);
+		sprintf(print_buf,
+			"\tTx adapter ID: %-2d\tConnections: %-2d\tEvent dev ID: %-2d",
+			adapter->adapter_id,
+			adapter->nb_connections,
+			adapter->eventdev_id);
+		if (adapter->tx_core_id == (uint32_t)-1)
+			sprintf(print_buf + strlen(print_buf),
+				"\tTx core: %-2s", "[INTERNAL PORT]");
+		else if (adapter->tx_core_id == RTE_MAX_LCORE)
+			sprintf(print_buf + strlen(print_buf),
+				"\tTx core: %-2s", "[NONE]");
+		else
+			sprintf(print_buf + strlen(print_buf),
+				"\tTx core: %-2d,\tInput event queue: %-2d",
+				adapter->tx_core_id, adapter->tx_ev_queue);
+
+		EH_LOG_INFO("%s", print_buf);
+
+		for (j = 0; j < adapter->nb_connections; j++) {
+			conn = &(adapter->conn[j]);
+
+			sprintf(print_buf,
+				"\t\tEthdev ID: %-2d", conn->ethdev_id);
+
+			if (conn->ethdev_tx_qid == -1)
+				sprintf(print_buf + strlen(print_buf),
+					"\tEth tx queue: %-2s", "ALL");
+			else
+				sprintf(print_buf + strlen(print_buf),
+					"\tEth tx queue: %-2d",
+					conn->ethdev_tx_qid);
+			EH_LOG_INFO("%s", print_buf);
+		}
+	}
+	EH_LOG_INFO("");
+}
+
+static void
+eh_display_link_conf(struct eventmode_conf *em_conf)
+{
+	struct eh_event_link_info *link;
+	char print_buf[256] = { 0 };
+	int i;
+
+	EH_LOG_INFO("Links configured: %d", em_conf->nb_link);
+
+	for (i = 0; i < em_conf->nb_link; i++) {
+		link = &(em_conf->link[i]);
+
+		sprintf(print_buf,
+			"\tEvent dev ID: %-2d\tEvent port: %-2d",
+			link->eventdev_id,
+			link->event_port_id);
+
+		if (em_conf->ext_params.all_ev_queue_to_ev_port)
+			sprintf(print_buf + strlen(print_buf),
+				"Event queue: %-2s\t", "ALL");
+		else
+			sprintf(print_buf + strlen(print_buf),
+				"Event queue: %-2d\t", link->eventq_id);
+
+		sprintf(print_buf + strlen(print_buf),
+			"Lcore: %-2d", link->lcore_id);
+		EH_LOG_INFO("%s", print_buf);
+	}
+	EH_LOG_INFO("");
+}
+
+void
+eh_display_conf(struct eh_conf *conf)
+{
+	struct eventmode_conf *em_conf;
+
+	if (conf == NULL) {
+		EH_LOG_ERR("Invalid event helper configuration");
+		return;
+	}
+
+	if (conf->mode != EH_PKT_TRANSFER_MODE_EVENT)
+		return;
+
+	if (conf->mode_params == NULL) {
+		EH_LOG_ERR("Invalid event mode parameters");
+		return;
+	}
+
+	/* Get eventmode conf */
+	em_conf = (struct eventmode_conf *)(conf->mode_params);
+
+	/* Display user exposed operating modes */
+	eh_display_operating_mode(em_conf);
+
+	/* Display event device conf */
+	eh_display_event_dev_conf(em_conf);
+
+	/* Display Rx adapter conf */
+	eh_display_rx_adapter_conf(em_conf);
+
+	/* Display Tx adapter conf */
+	eh_display_tx_adapter_conf(em_conf);
+
+	/* Display event-lcore link */
+	eh_display_link_conf(em_conf);
+}
+
 int32_t
 eh_devs_init(struct eh_conf *conf)
 {
@@ -848,6 +1052,9 @@ eh_devs_init(struct eh_conf *conf)
 		EH_LOG_ERR("Failed to validate the requested config %d", ret);
 		return ret;
 	}
+
+	/* Display the current configuration */
+	eh_display_conf(conf);
 
 	/* Stop eth devices before setting up adapter */
 	RTE_ETH_FOREACH_DEV(port_id) {

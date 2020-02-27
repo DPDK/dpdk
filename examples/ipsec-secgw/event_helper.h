@@ -13,6 +13,11 @@
 		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
 			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
+#define EH_LOG_INFO(...) \
+	RTE_LOG(INFO, EH, \
+		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
+			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
+
 /* Max event devices supported */
 #define EVENT_MODE_MAX_EVENT_DEVS RTE_EVENT_MAX_DEVS
 
@@ -213,5 +218,14 @@ eh_devs_uninit(struct eh_conf *conf);
  */
 uint8_t
 eh_get_tx_queue(struct eh_conf *conf, uint8_t eventdev_id);
+
+/**
+ * Display event mode configuration
+ *
+ * @param conf
+ *   Event helper configuration
+ */
+void
+eh_display_conf(struct eh_conf *conf);
 
 #endif /* _EVENT_HELPER_H_ */
