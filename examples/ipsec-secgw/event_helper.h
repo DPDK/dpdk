@@ -73,6 +73,14 @@ enum eh_tx_types {
 	EH_TX_TYPE_NO_INTERNAL_PORT
 };
 
+/**
+ * Event mode ipsec mode types
+ */
+enum eh_ipsec_mode_types {
+	EH_IPSEC_MODE_TYPE_APP = 0,
+	EH_IPSEC_MODE_TYPE_DRIVER
+};
+
 /* Event dev params */
 struct eventdev_params {
 	uint8_t eventdev_id;
@@ -182,6 +190,10 @@ struct eh_conf {
 		 */
 	void *mode_params;
 		/**< Mode specific parameters */
+
+		/** Application specific params */
+	enum eh_ipsec_mode_types ipsec_mode;
+		/**< Mode of ipsec run */
 };
 
 /* Workers registered by the application */
@@ -193,6 +205,8 @@ struct eh_app_worker_params {
 			/**< Specify status of rx type burst */
 			uint64_t tx_internal_port : 1;
 			/**< Specify whether tx internal port is available */
+			uint64_t ipsec_mode : 1;
+			/**< Specify ipsec processing level */
 		};
 		uint64_t u64;
 	} cap;

@@ -135,14 +135,14 @@ const struct supported_aead_algo aead_algos[] = {
 
 #define SA_INIT_NB	128
 
-static struct ipsec_sa *sa_out;
+struct ipsec_sa *sa_out;
+uint32_t nb_sa_out;
 static uint32_t sa_out_sz;
-static uint32_t nb_sa_out;
 static struct ipsec_sa_cnt sa_out_cnt;
 
-static struct ipsec_sa *sa_in;
+struct ipsec_sa *sa_in;
+uint32_t nb_sa_in;
 static uint32_t sa_in_sz;
-static uint32_t nb_sa_in;
 static struct ipsec_sa_cnt sa_in_cnt;
 
 static const struct supported_cipher_algo *
@@ -825,19 +825,6 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 	}
 	printf("\n");
 }
-
-struct ipsec_xf {
-	struct rte_crypto_sym_xform a;
-	struct rte_crypto_sym_xform b;
-};
-
-struct sa_ctx {
-	void *satbl; /* pointer to array of rte_ipsec_sa objects*/
-	struct ipsec_sad sad;
-	struct ipsec_xf *xf;
-	uint32_t nb_sa;
-	struct ipsec_sa sa[];
-};
 
 static struct sa_ctx *
 sa_create(const char *name, int32_t socket_id, uint32_t nb_sa)

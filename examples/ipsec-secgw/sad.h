@@ -18,11 +18,6 @@ struct ipsec_sad_cache {
 
 RTE_DECLARE_PER_LCORE(struct ipsec_sad_cache, sad_cache);
 
-struct ipsec_sad {
-	struct rte_ipsec_sad *sad_v4;
-	struct rte_ipsec_sad *sad_v6;
-};
-
 int ipsec_sad_create(const char *name, struct ipsec_sad *sad,
 	int socket_id, struct ipsec_sa_cnt *sa_cnt);
 
