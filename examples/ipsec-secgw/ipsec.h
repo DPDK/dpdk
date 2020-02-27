@@ -87,6 +87,12 @@ struct app_sa_prm {
 
 extern struct app_sa_prm app_sa_prm;
 
+struct flow_info {
+	struct rte_flow *rx_def_flow;
+};
+
+extern struct flow_info flow_info_tbl[RTE_MAX_ETHPORTS];
+
 enum {
 	IPSEC_SESSION_PRIMARY = 0,
 	IPSEC_SESSION_FALLBACK = 1,

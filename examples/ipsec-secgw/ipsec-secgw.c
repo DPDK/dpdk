@@ -129,6 +129,8 @@ struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS] = {
 	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x49, 0x9e, 0xdd) }
 };
 
+struct flow_info flow_info_tbl[RTE_MAX_ETHPORTS];
+
 #define CMD_LINE_OPT_CONFIG		"config"
 #define CMD_LINE_OPT_SINGLE_SA		"single-sa"
 #define CMD_LINE_OPT_CRYPTODEV_MASK	"cryptodev_mask"
@@ -2432,6 +2434,48 @@ reassemble_init(void)
 	return rc;
 }
 
+static void
+create_default_ipsec_flow(uint16_t port_id, uint64_t rx_offloads)
+{
+	struct rte_flow_action action[2];
+	struct rte_flow_item pattern[2];
+	struct rte_flow_attr attr = {0};
+	struct rte_flow_error err;
+	struct rte_flow *flow;
+	int ret;
+
+	if (!(rx_offloads & DEV_RX_OFFLOAD_SECURITY))
+		return;
+
+	/* Add the default rte_flow to enable SECURITY for all ESP packets */
+
+	pattern[0].type = RTE_FLOW_ITEM_TYPE_ESP;
+	pattern[0].spec = NULL;
+	pattern[0].mask = NULL;
+	pattern[0].last = NULL;
+	pattern[1].type = RTE_FLOW_ITEM_TYPE_END;
+
+	action[0].type = RTE_FLOW_ACTION_TYPE_SECURITY;
+	action[0].conf = NULL;
+	action[1].type = RTE_FLOW_ACTION_TYPE_END;
+	action[1].conf = NULL;
+
+	attr.ingress = 1;
+
+	ret = rte_flow_validate(port_id, &attr, pattern, action, &err);
+	if (ret)
+		return;
+
+	flow = rte_flow_create(port_id, &attr, pattern, action, &err);
+	if (flow == NULL)
+		return;
+
+	flow_info_tbl[port_id].rx_def_flow = flow;
+	RTE_LOG(INFO, IPSEC,
+		"Created default flow enabling SECURITY for all ESP traffic on port %d\n",
+		port_id);
+}
+
 int32_t
 main(int32_t argc, char **argv)
 {
@@ -2440,7 +2484,8 @@ main(int32_t argc, char **argv)
 	uint32_t i;
 	uint8_t socket_id;
 	uint16_t portid;
-	uint64_t req_rx_offloads, req_tx_offloads;
+	uint64_t req_rx_offloads[RTE_MAX_ETHPORTS];
+	uint64_t req_tx_offloads[RTE_MAX_ETHPORTS];
 	size_t sess_sz;
 
 	/* init EAL */
@@ -2502,8 +2547,10 @@ main(int32_t argc, char **argv)
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
 
-		sa_check_offloads(portid, &req_rx_offloads, &req_tx_offloads);
-		port_init(portid, req_rx_offloads, req_tx_offloads);
+		sa_check_offloads(portid, &req_rx_offloads[portid],
+				&req_tx_offloads[portid]);
+		port_init(portid, req_rx_offloads[portid],
+				req_tx_offloads[portid]);
 	}
 
 	cryptodevs_init();
@@ -2513,11 +2560,9 @@ main(int32_t argc, char **argv)
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
 
-		/*
-		 * Start device
-		 * note: device must be started before a flow rule
-		 * can be installed.
-		 */
+		/* Create flow before starting the device */
+		create_default_ipsec_flow(portid, req_rx_offloads[portid]);
+
 		ret = rte_eth_dev_start(portid);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_dev_start: "
