@@ -456,9 +456,9 @@ rte_telemetry_command_ports_stats_values_by_name(struct telemetry_impl
 	size_t index;
 	json_t *value;
 
+	memset(&ep, 0, sizeof(ep));
 	ep.pp.num_port_ids = json_array_size(port_ids_json);
 	ep.pp.num_metric_ids = num_stat_names;
-	memset(&ep, 0, sizeof(ep));
 	if (telemetry == NULL) {
 		TELEMETRY_LOG_ERR("Invalid telemetry argument");
 		return -1;
