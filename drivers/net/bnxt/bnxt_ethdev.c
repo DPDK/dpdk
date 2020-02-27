@@ -1108,6 +1108,10 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
+	/* Filter settings will get applied when port is started */
+	if (!eth_dev->data->dev_started)
+		return 0;
+
 	rc = bnxt_add_mac_filter(bp, vnic, mac_addr, index, pool);
 
 	return rc;
@@ -2098,6 +2102,10 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
 
 	if (rte_is_zero_ether_addr(addr))
 		return -EINVAL;
+
+	/* Filter settings will get applied when port is started */
+	if (!dev->data->dev_started)
+		return 0;
 
 	/* Check if the requested MAC is already added */
 	if (memcmp(addr, bp->mac_addr, RTE_ETHER_ADDR_LEN) == 0)
