@@ -137,7 +137,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev);
 int
 rte_devargs_parsef(struct rte_devargs *da,
 		   const char *format, ...)
-__attribute__((format(printf, 2, 0)));
+__rte_format_printf(2, 0);
 
 /**
  * Insert an rte_devargs in the global list.

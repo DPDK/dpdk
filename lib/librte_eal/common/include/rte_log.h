@@ -282,7 +282,7 @@ int rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
 	__attribute__((cold))
 #endif
 #endif
-	__attribute__((format(printf, 3, 4)));
+	__rte_format_printf(3, 4);
 
 /**
  * Generates a log message.
@@ -311,7 +311,7 @@ int rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
  *   - Negative on error.
  */
 int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
-	__attribute__((format(printf,3,0)));
+	__rte_format_printf(3, 0);
 
 /**
  * Generates a log message.

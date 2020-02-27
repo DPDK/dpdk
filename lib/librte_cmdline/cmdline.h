@@ -7,6 +7,8 @@
 #ifndef _CMDLINE_H_
 #define _CMDLINE_H_
 
+#include <rte_common.h>
+
 #include <termios.h>
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -34,7 +36,7 @@ struct cmdline *cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_
 void cmdline_set_prompt(struct cmdline *cl, const char *prompt);
 void cmdline_free(struct cmdline *cl);
 void cmdline_printf(const struct cmdline *cl, const char *fmt, ...)
-	__attribute__((format(printf,2,3)));
+	__rte_format_printf(2, 3);
 int cmdline_in(struct cmdline *cl, const char *buf, int size);
 int cmdline_write_char(struct rdline *rdl, char c);
 
