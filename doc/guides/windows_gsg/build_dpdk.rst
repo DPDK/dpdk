@@ -101,6 +101,17 @@ To compile the examples, the flag ``-Dexamples`` is required.
     meson -Dexamples=helloworld build
     ninja -C build
 
+Option 2. Cross-Compile with MinGW-w64
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The cross-file option must be specified for Meson.
+Depending on the distribution, paths in this file may need adjustments.
+
+.. code-block:: console
+
+    meson --cross-file config/x86/meson_mingw.txt -Dexamples=helloworld build
+    ninja -C build
+
 
 Run the helloworld example
 ==========================
