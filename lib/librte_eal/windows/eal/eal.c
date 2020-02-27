@@ -2,9 +2,11 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
-#include <sys/stat.h>
-#include <io.h>
 #include <fcntl.h>
+#include <io.h>
+#include <share.h>
+#include <sys/stat.h>
+
 #include <rte_debug.h>
 #include <rte_eal.h>
 #include <eal_memcfg.h>

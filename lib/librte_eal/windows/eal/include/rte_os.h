@@ -57,6 +57,7 @@ int eal_thread_create(pthread_t *thread);
  */
 void eal_create_cpu_map(void);
 
+#ifndef RTE_TOOLCHAIN_GCC
 static inline int
 asprintf(char **buffer, const char *format, ...)
 {
@@ -83,6 +84,7 @@ asprintf(char **buffer, const char *format, ...)
 	}
 	return ret;
 }
+#endif /* RTE_TOOLCHAIN_GCC */
 
 /* cpu_set macros implementation */
 #define RTE_CPU_AND(dst, src1, src2) CPU_AND(dst, src1, src2)

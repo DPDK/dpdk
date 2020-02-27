@@ -26,7 +26,11 @@
 #ifndef NEED_USUAL_GETOPT
 
 /* Use system getopt */
+#ifdef RTE_TOOLCHAIN_GCC
+#include_next <getopt.h>
+#else
 #include <getopt.h>
+#endif
 
 #else /* NEED_USUAL_GETOPT */
 
