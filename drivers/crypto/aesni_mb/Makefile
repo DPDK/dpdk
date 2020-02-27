@@ -20,7 +20,8 @@ LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
 LDLIBS += -lrte_bus_vdev
 
-IMB_HDR = $(shell echo '\#include <intel-ipsec-mb.h>' | \
+H := \#
+IMB_HDR = $(shell echo '$Hinclude <intel-ipsec-mb.h>' | \
 	$(CC) -E $(EXTRA_CFLAGS) - | grep 'intel-ipsec-mb.h' | \
 	head -n1 | cut -d'"' -f2)
 
