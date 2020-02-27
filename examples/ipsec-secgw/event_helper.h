@@ -46,6 +46,9 @@
 /* Max adapters that one Tx core can handle */
 #define EVENT_MODE_MAX_ADAPTERS_PER_TX_CORE EVENT_MODE_MAX_TX_ADAPTERS
 
+/* Used to indicate that queue schedule type is not set */
+#define SCHED_TYPE_NOT_SET	3
+
 /**
  * Packet transfer mode of the application
  */
@@ -198,6 +201,26 @@ struct eh_app_worker_params {
 			uint8_t nb_links);
 			/**< Worker thread */
 };
+
+/**
+ * Allocate memory for event helper configuration and initialize
+ * it with default values.
+ *
+ * @return
+ * - pointer to event helper configuration structure on success.
+ * - NULL on failure.
+ */
+struct eh_conf *
+eh_conf_init(void);
+
+/**
+ * Uninitialize event helper configuration and release its memory
+. *
+ * @param conf
+ *   Event helper configuration
+ */
+void
+eh_conf_uninit(struct eh_conf *conf);
 
 /**
  * Initialize event mode devices

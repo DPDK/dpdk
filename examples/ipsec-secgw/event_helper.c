@@ -1379,6 +1379,109 @@ eh_display_link_conf(struct eventmode_conf *em_conf)
 	EH_LOG_INFO("");
 }
 
+struct eh_conf *
+eh_conf_init(void)
+{
+	struct eventmode_conf *em_conf = NULL;
+	struct eh_conf *conf = NULL;
+	unsigned int eth_core_id;
+	void *bitmap = NULL;
+	uint32_t nb_bytes;
+
+	/* Allocate memory for config */
+	conf = calloc(1, sizeof(struct eh_conf));
+	if (conf == NULL) {
+		EH_LOG_ERR("Failed to allocate memory for eventmode helper "
+			   "config");
+		return NULL;
+	}
+
+	/* Set default conf */
+
+	/* Packet transfer mode: poll */
+	conf->mode = EH_PKT_TRANSFER_MODE_POLL;
+
+	/* Keep all ethernet ports enabled by default */
+	conf->eth_portmask = -1;
+
+	/* Allocate memory for event mode params */
+	conf->mode_params = calloc(1, sizeof(struct eventmode_conf));
+	if (conf->mode_params == NULL) {
+		EH_LOG_ERR("Failed to allocate memory for event mode params");
+		goto free_conf;
+	}
+
+	/* Get eventmode conf */
+	em_conf = conf->mode_params;
+
+	/* Allocate and initialize bitmap for eth cores */
+	nb_bytes = rte_bitmap_get_memory_footprint(RTE_MAX_LCORE);
+	if (!nb_bytes) {
+		EH_LOG_ERR("Failed to get bitmap footprint");
+		goto free_em_conf;
+	}
+
+	bitmap = rte_zmalloc("event-helper-ethcore-bitmap", nb_bytes,
+			     RTE_CACHE_LINE_SIZE);
+	if (!bitmap) {
+		EH_LOG_ERR("Failed to allocate memory for eth cores bitmap\n");
+		goto free_em_conf;
+	}
+
+	em_conf->eth_core_mask = rte_bitmap_init(RTE_MAX_LCORE, bitmap,
+						 nb_bytes);
+	if (!em_conf->eth_core_mask) {
+		EH_LOG_ERR("Failed to initialize bitmap");
+		goto free_bitmap;
+	}
+
+	/* Set schedule type as not set */
+	em_conf->ext_params.sched_type = SCHED_TYPE_NOT_SET;
+
+	/* Set two cores as eth cores for Rx & Tx */
+
+	/* Use first core other than master core as Rx core */
+	eth_core_id = rte_get_next_lcore(0,	/* curr core */
+					 1,	/* skip master core */
+					 0	/* wrap */);
+
+	rte_bitmap_set(em_conf->eth_core_mask, eth_core_id);
+
+	/* Use next core as Tx core */
+	eth_core_id = rte_get_next_lcore(eth_core_id,	/* curr core */
+					 1,		/* skip master core */
+					 0		/* wrap */);
+
+	rte_bitmap_set(em_conf->eth_core_mask, eth_core_id);
+
+	return conf;
+
+free_bitmap:
+	rte_free(bitmap);
+free_em_conf:
+	free(em_conf);
+free_conf:
+	free(conf);
+	return NULL;
+}
+
+void
+eh_conf_uninit(struct eh_conf *conf)
+{
+	struct eventmode_conf *em_conf = NULL;
+
+	if (!conf || !conf->mode_params)
+		return;
+
+	/* Get eventmode conf */
+	em_conf = conf->mode_params;
+
+	/* Free evenmode configuration memory */
+	rte_free(em_conf->eth_core_mask);
+	free(em_conf);
+	free(conf);
+}
+
 void
 eh_display_conf(struct eh_conf *conf)
 {
