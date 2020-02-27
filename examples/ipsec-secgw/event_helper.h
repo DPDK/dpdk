@@ -62,12 +62,21 @@ enum eh_rx_types {
 	EH_RX_TYPE_BURST
 };
 
+/**
+ * Event mode packet tx types
+ */
+enum eh_tx_types {
+	EH_TX_TYPE_INTERNAL_PORT = 0,
+	EH_TX_TYPE_NO_INTERNAL_PORT
+};
+
 /* Event dev params */
 struct eventdev_params {
 	uint8_t eventdev_id;
 	uint8_t nb_eventqueue;
 	uint8_t nb_eventport;
 	uint8_t ev_queue_mode;
+	uint8_t all_internal_ports;
 };
 
 /**
@@ -179,6 +188,8 @@ struct eh_app_worker_params {
 		struct {
 			uint64_t burst : 1;
 			/**< Specify status of rx type burst */
+			uint64_t tx_internal_port : 1;
+			/**< Specify whether tx internal port is available */
 		};
 		uint64_t u64;
 	} cap;
