@@ -10,5 +10,5 @@ deps += ['security', 'lpm', 'acl', 'hash', 'ip_frag', 'ipsec', 'eventdev']
 allow_experimental_apis = true
 sources = files(
 	'esp.c', 'event_helper.c', 'ipsec.c', 'ipsec_process.c', 'ipsec-secgw.c',
-	'parser.c', 'rt.c', 'sa.c', 'sad.c', 'sp4.c', 'sp6.c'
+	'ipsec_worker.c', 'parser.c', 'rt.c', 'sa.c', 'sad.c', 'sp4.c', 'sp6.c'
 )
