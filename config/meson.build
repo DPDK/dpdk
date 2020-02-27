@@ -14,6 +14,10 @@ foreach env:supported_exec_envs
 	set_variable('is_' + env, exec_env == env)
 endforeach
 
+# MS linker requires special treatment.
+# TODO: use cc.get_linker_id() with Meson >= 0.54
+is_ms_linker = is_windows and (cc.get_id() == 'clang')
+
 # set the major version, which might be used by drivers and libraries
 # depending on the configuration options
 pver = meson.project_version().split('.')
@@ -245,6 +249,16 @@ add_project_arguments('-D_GNU_SOURCE', language: 'c')
 # specify -D__BSD_VISIBLE for FreeBSD
 if is_freebsd
 	add_project_arguments('-D__BSD_VISIBLE', language: 'c')
+endif
+
+if is_windows
+	# Minimum supported API is Windows 7.
+	add_project_arguments('-D_WIN32_WINNT=0x0601', language: 'c')
+
+	# Use MinGW-w64 stdio, because DPDK assumes ANSI-compliant formatting.
+	if cc.get_id() == 'gcc'
+		add_project_arguments('-D__USE_MINGW_ANSI_STDIO', language: 'c')
+	endif
 endif
 
 if get_option('b_lto')
