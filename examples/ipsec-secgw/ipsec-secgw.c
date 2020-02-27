@@ -1930,7 +1930,7 @@ check_cryptodev_mask(uint8_t cdev_id)
 }
 
 static uint16_t
-cryptodevs_init(void)
+cryptodevs_init(uint16_t req_queue_num)
 {
 	struct rte_cryptodev_config dev_conf;
 	struct rte_cryptodev_qp_conf qp_conf;
@@ -1993,6 +1993,7 @@ cryptodevs_init(void)
 			i++;
 		}
 
+		qp = RTE_MIN(max_nb_qps, RTE_MAX(req_queue_num, qp));
 		if (qp == 0)
 			continue;
 
@@ -2761,7 +2762,16 @@ main(int32_t argc, char **argv)
 
 	sess_sz = max_session_size();
 
-	nb_crypto_qp = cryptodevs_init();
+	/*
+	 * In event mode request minimum number of crypto queues
+	 * to be reserved equal to number of ports.
+	 */
+	if (eh_conf->mode == EH_PKT_TRANSFER_MODE_EVENT)
+		nb_crypto_qp = rte_eth_dev_count_avail();
+	else
+		nb_crypto_qp = 0;
+
+	nb_crypto_qp = cryptodevs_init(nb_crypto_qp);
 
 	if (nb_bufs_in_pool == 0) {
 		RTE_ETH_FOREACH_DEV(portid) {
