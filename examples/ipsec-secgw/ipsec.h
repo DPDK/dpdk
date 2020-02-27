@@ -15,11 +15,9 @@
 
 #include "ipsec-secgw.h"
 
-#define RTE_LOGTYPE_IPSEC       RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_IPSEC_ESP   RTE_LOGTYPE_USER2
 #define RTE_LOGTYPE_IPSEC_IPIP  RTE_LOGTYPE_USER3
 
-#define MAX_PKT_BURST 32
 #define MAX_INFLIGHT 128
 #define MAX_QP_PER_LCORE 256
 
@@ -258,20 +256,6 @@ struct cnt_blk {
 	uint64_t iv;
 	uint32_t cnt;
 } __attribute__((packed));
-
-struct traffic_type {
-	const uint8_t *data[MAX_PKT_BURST * 2];
-	struct rte_mbuf *pkts[MAX_PKT_BURST * 2];
-	void *saptr[MAX_PKT_BURST * 2];
-	uint32_t res[MAX_PKT_BURST * 2];
-	uint32_t num;
-};
-
-struct ipsec_traffic {
-	struct traffic_type ipsec;
-	struct traffic_type ip4;
-	struct traffic_type ip6;
-};
 
 /* Socket ctx */
 extern struct socket_ctx socket_ctx[NB_SOCKETS];
