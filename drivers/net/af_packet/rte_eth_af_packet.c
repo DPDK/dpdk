@@ -38,8 +38,6 @@
 #define DFLT_FRAME_SIZE		(1 << 11)
 #define DFLT_FRAME_COUNT	(1 << 9)
 
-#define RTE_PMD_AF_PACKET_MAX_RINGS 16
-
 struct pkt_rx_queue {
 	int sockfd;
 
@@ -78,8 +76,8 @@ struct pmd_internals {
 
 	struct tpacket_req req;
 
-	struct pkt_rx_queue rx_queue[RTE_PMD_AF_PACKET_MAX_RINGS];
-	struct pkt_tx_queue tx_queue[RTE_PMD_AF_PACKET_MAX_RINGS];
+	struct pkt_rx_queue *rx_queue;
+	struct pkt_tx_queue *tx_queue;
 };
 
 static const char *valid_arguments[] = {
@@ -629,6 +627,21 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	if (*internals == NULL)
 		return -1;
 
+
+	(*internals)->rx_queue = rte_calloc_socket("af_packet_rx",
+						nb_queues,
+						sizeof(struct pkt_rx_queue),
+						0, numa_node);
+	(*internals)->tx_queue = rte_calloc_socket("af_packet_tx",
+						nb_queues,
+						sizeof(struct pkt_tx_queue),
+						0, numa_node);
+	if (!(*internals)->rx_queue || !(*internals)->tx_queue) {
+		rte_free((*internals)->rx_queue);
+		rte_free((*internals)->tx_queue);
+		return -1;
+	}
+
 	for (q = 0; q < nb_queues; q++) {
 		(*internals)->rx_queue[q].map = MAP_FAILED;
 		(*internals)->tx_queue[q].map = MAP_FAILED;
@@ -874,8 +887,7 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 		pair = &kvlist->pairs[k_idx];
 		if (strstr(pair->key, ETH_AF_PACKET_NUM_Q_ARG) != NULL) {
 			qpairs = atoi(pair->value);
-			if (qpairs < 1 ||
-			    qpairs > RTE_PMD_AF_PACKET_MAX_RINGS) {
+			if (qpairs < 1) {
 				PMD_LOG(ERR,
 					"%s: invalid qpairs value",
 				        name);
@@ -1047,6 +1059,8 @@ rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 		rte_free(internals->tx_queue[q].rd);
 	}
 	free(internals->if_name);
+	rte_free(internals->rx_queue);
+	rte_free(internals->tx_queue);
 
 	rte_eth_dev_release_port(eth_dev);
 
