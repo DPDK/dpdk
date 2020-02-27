@@ -1,10 +1,32 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) 2020 Marvell International Ltd.
  */
+#include <rte_bitmap.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
+#include <rte_malloc.h>
 
 #include "event_helper.h"
+
+static inline unsigned int
+eh_get_next_active_core(struct eventmode_conf *em_conf, unsigned int prev_core)
+{
+	unsigned int next_core;
+
+	/* Get next active core skipping cores reserved as eth cores */
+	do {
+		/* Get the next core */
+		next_core = rte_get_next_lcore(prev_core, 0, 0);
+
+		/* Check if we have reached max lcores */
+		if (next_core == RTE_MAX_LCORE)
+			return next_core;
+
+		prev_core = next_core;
+	} while (rte_bitmap_get(em_conf->eth_core_mask, next_core));
+
+	return next_core;
+}
 
 static int
 eh_set_default_conf_eventdev(struct eventmode_conf *em_conf)
@@ -77,6 +99,71 @@ eh_set_default_conf_eventdev(struct eventmode_conf *em_conf)
 }
 
 static int
+eh_set_default_conf_link(struct eventmode_conf *em_conf)
+{
+	struct eventdev_params *eventdev_config;
+	struct eh_event_link_info *link;
+	unsigned int lcore_id = -1;
+	int i, link_index;
+
+	/*
+	 * Create a 1:1 mapping from event ports to cores. If the number
+	 * of event ports is lesser than the cores, some cores won't
+	 * execute worker. If there are more event ports, then some ports
+	 * won't be used.
+	 *
+	 */
+
+	/*
+	 * The event queue-port mapping is done according to the link. Since
+	 * we are falling back to the default link config, enabling
+	 * "all_ev_queue_to_ev_port" mode flag. This will map all queues
+	 * to the port.
+	 */
+	em_conf->ext_params.all_ev_queue_to_ev_port = 1;
+
+	/* Get first event dev conf */
+	eventdev_config = &(em_conf->eventdev_config[0]);
+
+	/* Loop through the ports */
+	for (i = 0; i < eventdev_config->nb_eventport; i++) {
+
+		/* Get next active core id */
+		lcore_id = eh_get_next_active_core(em_conf,
+				lcore_id);
+
+		if (lcore_id == RTE_MAX_LCORE) {
+			/* Reached max cores */
+			return 0;
+		}
+
+		/* Save the current combination as one link */
+
+		/* Get the index */
+		link_index = em_conf->nb_link;
+
+		/* Get the corresponding link */
+		link = &(em_conf->link[link_index]);
+
+		/* Save link */
+		link->eventdev_id = eventdev_config->eventdev_id;
+		link->event_port_id = i;
+		link->lcore_id = lcore_id;
+
+		/*
+		 * Don't set eventq_id as by default all queues
+		 * need to be mapped to the port, which is controlled
+		 * by the operating mode.
+		 */
+
+		/* Update number of links */
+		em_conf->nb_link++;
+	}
+
+	return 0;
+}
+
+static int
 eh_validate_conf(struct eventmode_conf *em_conf)
 {
 	int ret;
@@ -87,6 +174,16 @@ eh_validate_conf(struct eventmode_conf *em_conf)
 	 */
 	if (em_conf->nb_eventdev == 0) {
 		ret = eh_set_default_conf_eventdev(em_conf);
+		if (ret != 0)
+			return ret;
+	}
+
+	/*
+	 * Check if links are specified. Else generate a default config for
+	 * the event ports used.
+	 */
+	if (em_conf->nb_link == 0) {
+		ret = eh_set_default_conf_link(em_conf);
 		if (ret != 0)
 			return ret;
 	}
@@ -102,6 +199,8 @@ eh_initialize_eventdev(struct eventmode_conf *em_conf)
 	struct rte_event_dev_config eventdev_conf;
 	struct eventdev_params *eventdev_config;
 	int nb_eventdev = em_conf->nb_eventdev;
+	struct eh_event_link_info *link;
+	uint8_t *queue = NULL;
 	uint8_t eventdev_id;
 	int nb_eventqueue;
 	uint8_t i, j;
@@ -196,6 +295,33 @@ eh_initialize_eventdev(struct eventmode_conf *em_conf)
 					   ret);
 				return ret;
 			}
+		}
+	}
+
+	/* Make event queue - event port link */
+	for (j = 0; j <  em_conf->nb_link; j++) {
+
+		/* Get link info */
+		link = &(em_conf->link[j]);
+
+		/* Get event dev ID */
+		eventdev_id = link->eventdev_id;
+
+		/*
+		 * If "all_ev_queue_to_ev_port" params flag is selected, all
+		 * queues need to be mapped to the port.
+		 */
+		if (em_conf->ext_params.all_ev_queue_to_ev_port)
+			queue = NULL;
+		else
+			queue = &(link->eventq_id);
+
+		/* Link queue to port */
+		ret = rte_event_port_link(eventdev_id, link->event_port_id,
+				queue, NULL, 1);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to link event port %d", ret);
+			return ret;
 		}
 	}
 

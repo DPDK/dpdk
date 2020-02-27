@@ -16,6 +16,13 @@
 /* Max event devices supported */
 #define EVENT_MODE_MAX_EVENT_DEVS RTE_EVENT_MAX_DEVS
 
+/* Max event queues supported per event device */
+#define EVENT_MODE_MAX_EVENT_QUEUES_PER_DEV RTE_EVENT_MAX_QUEUES_PER_DEV
+
+/* Max event-lcore links */
+#define EVENT_MODE_MAX_LCORE_LINKS \
+	(EVENT_MODE_MAX_EVENT_DEVS * EVENT_MODE_MAX_EVENT_QUEUES_PER_DEV)
+
 /**
  * Packet transfer mode of the application
  */
@@ -32,17 +39,43 @@ struct eventdev_params {
 	uint8_t ev_queue_mode;
 };
 
+/**
+ * Event-lcore link configuration
+ */
+struct eh_event_link_info {
+	uint8_t eventdev_id;
+		/**< Event device ID */
+	uint8_t event_port_id;
+		/**< Event port ID */
+	uint8_t eventq_id;
+		/**< Event queue to be linked to the port */
+	uint8_t lcore_id;
+		/**< Lcore to be polling on this port */
+};
+
 /* Eventmode conf data */
 struct eventmode_conf {
 	int nb_eventdev;
 		/**< No of event devs */
 	struct eventdev_params eventdev_config[EVENT_MODE_MAX_EVENT_DEVS];
 		/**< Per event dev conf */
+	uint8_t nb_link;
+		/**< No of links */
+	struct eh_event_link_info
+		link[EVENT_MODE_MAX_LCORE_LINKS];
+		/**< Per link conf */
+	struct rte_bitmap *eth_core_mask;
+		/**< Core mask of cores to be used for software Rx and Tx */
 	union {
 		RTE_STD_C11
 		struct {
 			uint64_t sched_type			: 2;
 		/**< Schedule type */
+			uint64_t all_ev_queue_to_ev_port	: 1;
+		/**<
+		 * When enabled, all event queues need to be mapped to
+		 * each event port
+		 */
 		};
 		uint64_t u64;
 	} ext_params;
