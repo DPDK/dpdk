@@ -112,11 +112,15 @@ dpdk_conf.set('RTE_TOOLCHAIN_' + toolchain.to_upper(), 1)
 
 dpdk_conf.set('RTE_ARCH_64', cc.sizeof('void *') == 8)
 
-add_project_link_arguments('-Wl,--no-as-needed', language: 'c')
+if not is_windows
+	add_project_link_arguments('-Wl,--no-as-needed', language: 'c')
+endif
 
-# use pthreads
-add_project_link_arguments('-pthread', language: 'c')
-dpdk_extra_ldflags += '-pthread'
+# use pthreads if available for the platform
+if not is_ms_linker
+	add_project_link_arguments('-pthread', language: 'c')
+	dpdk_extra_ldflags += '-pthread'
+endif
 
 # on some OS, maths functions are in a separate library
 if cc.find_library('m', required : false).found()
