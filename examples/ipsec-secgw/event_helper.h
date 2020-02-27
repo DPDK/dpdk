@@ -40,6 +40,9 @@
 #define EVENT_MODE_MAX_LCORE_LINKS \
 	(EVENT_MODE_MAX_EVENT_DEVS * EVENT_MODE_MAX_EVENT_QUEUES_PER_DEV)
 
+/* Max adapters that one Rx core can handle */
+#define EVENT_MODE_MAX_ADAPTERS_PER_RX_CORE EVENT_MODE_MAX_RX_ADAPTERS
+
 /* Max adapters that one Tx core can handle */
 #define EVENT_MODE_MAX_ADAPTERS_PER_TX_CORE EVENT_MODE_MAX_TX_ADAPTERS
 
@@ -49,6 +52,14 @@
 enum eh_pkt_transfer_mode {
 	EH_PKT_TRANSFER_MODE_POLL = 0,
 	EH_PKT_TRANSFER_MODE_EVENT,
+};
+
+/**
+ * Event mode packet rx types
+ */
+enum eh_rx_types {
+	EH_RX_TYPE_NON_BURST = 0,
+	EH_RX_TYPE_BURST
 };
 
 /* Event dev params */
@@ -161,6 +172,22 @@ struct eh_conf {
 		/**< Mode specific parameters */
 };
 
+/* Workers registered by the application */
+struct eh_app_worker_params {
+	union {
+		RTE_STD_C11
+		struct {
+			uint64_t burst : 1;
+			/**< Specify status of rx type burst */
+		};
+		uint64_t u64;
+	} cap;
+			/**< Capabilities of this worker */
+	void (*worker_thread)(struct eh_event_link_info *links,
+			uint8_t nb_links);
+			/**< Worker thread */
+};
+
 /**
  * Initialize event mode devices
  *
@@ -227,5 +254,26 @@ eh_get_tx_queue(struct eh_conf *conf, uint8_t eventdev_id);
  */
 void
 eh_display_conf(struct eh_conf *conf);
+
+
+/**
+ * Launch eventmode worker
+ *
+ * The application can request the eventmode helper subsystem to launch the
+ * worker based on the capabilities of event device and the options selected
+ * while initializing the eventmode.
+ *
+ * @param conf
+ *   Event helper configuration
+ * @param app_wrkr
+ *   List of all the workers registered by application, along with its
+ *   capabilities
+ * @param nb_wrkr_param
+ *   Number of workers passed by the application
+ *
+ */
+void
+eh_launch_worker(struct eh_conf *conf, struct eh_app_worker_params *app_wrkr,
+		uint8_t nb_wrkr_param);
 
 #endif /* _EVENT_HELPER_H_ */
