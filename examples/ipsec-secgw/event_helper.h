@@ -16,6 +16,12 @@
 /* Max event devices supported */
 #define EVENT_MODE_MAX_EVENT_DEVS RTE_EVENT_MAX_DEVS
 
+/* Max Rx adapters supported */
+#define EVENT_MODE_MAX_RX_ADAPTERS RTE_EVENT_MAX_DEVS
+
+/* Max Rx adapter connections */
+#define EVENT_MODE_MAX_CONNECTIONS_PER_ADAPTER 16
+
 /* Max event queues supported per event device */
 #define EVENT_MODE_MAX_EVENT_QUEUES_PER_DEV RTE_EVENT_MAX_QUEUES_PER_DEV
 
@@ -53,12 +59,33 @@ struct eh_event_link_info {
 		/**< Lcore to be polling on this port */
 };
 
+/* Rx adapter connection info */
+struct rx_adapter_connection_info {
+	uint8_t ethdev_id;
+	uint8_t eventq_id;
+	int32_t ethdev_rx_qid;
+};
+
+/* Rx adapter conf */
+struct rx_adapter_conf {
+	int32_t eventdev_id;
+	int32_t adapter_id;
+	uint32_t rx_core_id;
+	uint8_t nb_connections;
+	struct rx_adapter_connection_info
+			conn[EVENT_MODE_MAX_CONNECTIONS_PER_ADAPTER];
+};
+
 /* Eventmode conf data */
 struct eventmode_conf {
 	int nb_eventdev;
 		/**< No of event devs */
 	struct eventdev_params eventdev_config[EVENT_MODE_MAX_EVENT_DEVS];
 		/**< Per event dev conf */
+	uint8_t nb_rx_adapter;
+		/**< No of Rx adapters */
+	struct rx_adapter_conf rx_adapter[EVENT_MODE_MAX_RX_ADAPTERS];
+		/**< Rx adapter conf */
 	uint8_t nb_link;
 		/**< No of links */
 	struct eh_event_link_info
@@ -66,6 +93,8 @@ struct eventmode_conf {
 		/**< Per link conf */
 	struct rte_bitmap *eth_core_mask;
 		/**< Core mask of cores to be used for software Rx and Tx */
+	uint32_t eth_portmask;
+		/**< Mask of the eth ports to be used */
 	union {
 		RTE_STD_C11
 		struct {
