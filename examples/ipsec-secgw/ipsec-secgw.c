@@ -60,8 +60,6 @@ volatile bool force_quit;
 
 #define MEMPOOL_CACHE_SIZE 256
 
-#define NB_MBUF	(32000)
-
 #define CDEV_QUEUE_DESC 2048
 #define CDEV_MAP_ENTRIES 16384
 #define CDEV_MP_NB_OBJS 1024
@@ -164,6 +162,7 @@ static int32_t promiscuous_on = 1;
 static int32_t numa_on = 1; /**< NUMA is enabled by default. */
 static uint32_t nb_lcores;
 static uint32_t single_sa;
+static uint32_t nb_bufs_in_pool;
 
 /*
  * RX/TX HW offload capabilities to enable/use on ethernet ports.
@@ -1280,6 +1279,7 @@ print_usage(const char *prgname)
 		" [-e]"
 		" [-a]"
 		" [-c]"
+		" [-s NUMBER_OF_MBUFS_IN_PKT_POOL]"
 		" -f CONFIG_FILE"
 		" --config (port,queue,lcore)[,(port,queue,lcore)]"
 		" [--single-sa SAIDX]"
@@ -1303,6 +1303,9 @@ print_usage(const char *prgname)
 		"  -a enables SA SQN atomic behaviour\n"
 		"  -c specifies inbound SAD cache size,\n"
 		"     zero value disables the cache (default value: 128)\n"
+		"  -s number of mbufs in packet pool, if not specified number\n"
+		"     of mbufs will be calculated based on number of cores,\n"
+		"     ports and crypto queues\n"
 		"  -f CONFIG_FILE: Configuration file\n"
 		"  --config (port,queue,lcore): Rx queue configuration. In poll\n"
 		"                               mode determines which queues from\n"
@@ -1507,7 +1510,7 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "aelp:Pu:f:j:w:c:",
+	while ((opt = getopt_long(argc, argvopt, "aelp:Pu:f:j:w:c:s:",
 				lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -1541,6 +1544,19 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 			cfgfile = optarg;
 			f_present = 1;
 			break;
+
+		case 's':
+			ret = parse_decimal(optarg);
+			if (ret < 0) {
+				printf("Invalid number of buffers in a pool: "
+					"%s\n", optarg);
+				print_usage(prgname);
+				return -1;
+			}
+
+			nb_bufs_in_pool = ret;
+			break;
+
 		case 'j':
 			ret = parse_decimal(optarg);
 			if (ret < RTE_MBUF_DEFAULT_BUF_SIZE ||
@@ -1913,12 +1929,12 @@ check_cryptodev_mask(uint8_t cdev_id)
 	return -1;
 }
 
-static int32_t
+static uint16_t
 cryptodevs_init(void)
 {
 	struct rte_cryptodev_config dev_conf;
 	struct rte_cryptodev_qp_conf qp_conf;
-	uint16_t idx, max_nb_qps, qp, i;
+	uint16_t idx, max_nb_qps, qp, total_nb_qps, i;
 	int16_t cdev_id;
 	struct rte_hash_parameters params = { 0 };
 
@@ -1946,6 +1962,7 @@ cryptodevs_init(void)
 	printf("lcore/cryptodev/qp mappings:\n");
 
 	idx = 0;
+	total_nb_qps = 0;
 	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
 		struct rte_cryptodev_info cdev_info;
 
@@ -1979,6 +1996,7 @@ cryptodevs_init(void)
 		if (qp == 0)
 			continue;
 
+		total_nb_qps += qp;
 		dev_conf.socket_id = rte_cryptodev_socket_id(cdev_id);
 		dev_conf.nb_queue_pairs = qp;
 		dev_conf.ff_disable = RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO;
@@ -2011,7 +2029,7 @@ cryptodevs_init(void)
 
 	printf("\n");
 
-	return 0;
+	return total_nb_qps;
 }
 
 static void
@@ -2665,19 +2683,35 @@ inline_sessions_free(struct sa_ctx *sa_ctx)
 	}
 }
 
+static uint32_t
+calculate_nb_mbufs(uint16_t nb_ports, uint16_t nb_crypto_qp, uint32_t nb_rxq,
+		uint32_t nb_txq)
+{
+	return RTE_MAX((nb_rxq * nb_rxd +
+			nb_ports * nb_lcores * MAX_PKT_BURST +
+			nb_ports * nb_txq * nb_txd +
+			nb_lcores * MEMPOOL_CACHE_SIZE +
+			nb_crypto_qp * CDEV_QUEUE_DESC +
+			nb_lcores * frag_tbl_sz *
+			FRAG_TBL_BUCKET_ENTRIES),
+		       8192U);
+}
+
 int32_t
 main(int32_t argc, char **argv)
 {
 	int32_t ret;
-	uint32_t lcore_id;
+	uint32_t lcore_id, nb_txq, nb_rxq = 0;
 	uint32_t cdev_id;
 	uint32_t i;
 	uint8_t socket_id;
-	uint16_t portid;
+	uint16_t portid, nb_crypto_qp, nb_ports = 0;
 	uint64_t req_rx_offloads[RTE_MAX_ETHPORTS];
 	uint64_t req_tx_offloads[RTE_MAX_ETHPORTS];
 	struct eh_conf *eh_conf = NULL;
 	size_t sess_sz;
+
+	nb_bufs_in_pool = 0;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -2727,6 +2761,22 @@ main(int32_t argc, char **argv)
 
 	sess_sz = max_session_size();
 
+	nb_crypto_qp = cryptodevs_init();
+
+	if (nb_bufs_in_pool == 0) {
+		RTE_ETH_FOREACH_DEV(portid) {
+			if ((enabled_port_mask & (1 << portid)) == 0)
+				continue;
+			nb_ports++;
+			nb_rxq += get_port_nb_rx_queues(portid);
+		}
+
+		nb_txq = nb_lcores;
+
+		nb_bufs_in_pool = calculate_nb_mbufs(nb_ports, nb_crypto_qp,
+						nb_rxq, nb_txq);
+	}
+
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		if (rte_lcore_is_enabled(lcore_id) == 0)
 			continue;
@@ -2740,11 +2790,12 @@ main(int32_t argc, char **argv)
 		if (socket_ctx[socket_id].mbuf_pool)
 			continue;
 
-		pool_init(&socket_ctx[socket_id], socket_id, NB_MBUF);
+		pool_init(&socket_ctx[socket_id], socket_id, nb_bufs_in_pool);
 		session_pool_init(&socket_ctx[socket_id], socket_id, sess_sz);
 		session_priv_pool_init(&socket_ctx[socket_id], socket_id,
 			sess_sz);
 	}
+	printf("Number of mbufs in packet pool %d\n", nb_bufs_in_pool);
 
 	RTE_ETH_FOREACH_DEV(portid) {
 		if ((enabled_port_mask & (1 << portid)) == 0)
@@ -2755,8 +2806,6 @@ main(int32_t argc, char **argv)
 		port_init(portid, req_rx_offloads[portid],
 				req_tx_offloads[portid]);
 	}
-
-	cryptodevs_init();
 
 	/*
 	 * Set the enabled port mask in helper config for use by helper
