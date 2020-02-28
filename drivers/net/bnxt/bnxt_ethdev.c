@@ -133,6 +133,7 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev);
 static int bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev);
 static void bnxt_cancel_fw_health_check(struct bnxt *bp);
 static int bnxt_restore_vlan_filters(struct bnxt *bp);
+static void bnxt_dev_recover(void *arg);
 
 int is_bnxt_in_error(struct bnxt *bp)
 {
@@ -979,6 +980,10 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
+
+	/* cancel the recovery handler before remove dev */
+	rte_eal_alarm_cancel(bnxt_dev_reset_and_resume, (void *)bp);
+	rte_eal_alarm_cancel(bnxt_dev_recover, (void *)bp);
 
 	if (eth_dev->data->dev_started)
 		bnxt_dev_stop_op(eth_dev);
