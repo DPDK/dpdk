@@ -1008,6 +1008,35 @@ static void axgbe_enable_mtl_interrupts(struct axgbe_port *pdata)
 	}
 }
 
+void axgbe_set_mac_addn_addr(struct axgbe_port *pdata, u8 *addr, uint32_t index)
+{
+	unsigned int mac_addr_hi, mac_addr_lo;
+	u8 *mac_addr;
+
+	mac_addr_lo = 0;
+	mac_addr_hi = 0;
+
+	if (addr) {
+		mac_addr = (u8 *)&mac_addr_lo;
+		mac_addr[0] = addr[0];
+		mac_addr[1] = addr[1];
+		mac_addr[2] = addr[2];
+		mac_addr[3] = addr[3];
+		mac_addr = (u8 *)&mac_addr_hi;
+		mac_addr[0] = addr[4];
+		mac_addr[1] = addr[5];
+
+		/*Address Enable: Use this Addr for Perfect Filtering */
+		AXGMAC_SET_BITS(mac_addr_hi, MAC_MACA1HR, AE, 1);
+	}
+
+	PMD_DRV_LOG(DEBUG, "%s mac address at %#x\n",
+		    addr ? "set" : "clear", index);
+
+	AXGMAC_IOWRITE(pdata, MAC_MACAHR(index), mac_addr_hi);
+	AXGMAC_IOWRITE(pdata, MAC_MACALR(index), mac_addr_lo);
+}
+
 static int axgbe_set_mac_address(struct axgbe_port *pdata, u8 *addr)
 {
 	unsigned int mac_addr_hi, mac_addr_lo;

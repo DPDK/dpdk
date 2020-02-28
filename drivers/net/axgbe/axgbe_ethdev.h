@@ -16,7 +16,7 @@
 #define AXGBE_TX_MAX_BUF_SIZE		(0x3fff & ~(64 - 1))
 #define AXGBE_RX_MAX_BUF_SIZE		(0x3fff & ~(64 - 1))
 #define AXGBE_RX_MIN_BUF_SIZE		(RTE_ETHER_MAX_LEN + VLAN_HLEN)
-#define AXGBE_MAX_MAC_ADDRS		1
+#define AXGBE_MAX_MAC_ADDRS		32
 
 #define AXGBE_RX_BUF_ALIGN		64
 
@@ -631,5 +631,7 @@ void axgbe_init_function_ptrs_dev(struct axgbe_hw_if *hw_if);
 void axgbe_init_function_ptrs_phy(struct axgbe_phy_if *phy_if);
 void axgbe_init_function_ptrs_phy_v2(struct axgbe_phy_if *phy_if);
 void axgbe_init_function_ptrs_i2c(struct axgbe_i2c_if *i2c_if);
+void axgbe_set_mac_addn_addr(struct axgbe_port *pdata, u8 *addr,
+			     uint32_t index);
 
 #endif /* RTE_ETH_AXGBE_H_ */

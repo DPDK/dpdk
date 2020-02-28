@@ -20,6 +20,16 @@ static int axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static int axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static int axgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int axgbe_dev_mac_addr_set(struct rte_eth_dev *dev,
+				  struct rte_ether_addr *mac_addr);
+static int axgbe_dev_mac_addr_add(struct rte_eth_dev *dev,
+				  struct rte_ether_addr *mac_addr,
+				  uint32_t index,
+				  uint32_t vmdq);
+static void axgbe_dev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
+static int axgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+				      struct rte_ether_addr *mc_addr_set,
+				      uint32_t nb_mc_addr);
 static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 				 int wait_to_complete);
 static int axgbe_dev_get_regs(struct rte_eth_dev *dev,
@@ -160,6 +170,10 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.promiscuous_disable  = axgbe_dev_promiscuous_disable,
 	.allmulticast_enable  = axgbe_dev_allmulticast_enable,
 	.allmulticast_disable = axgbe_dev_allmulticast_disable,
+	.mac_addr_set         = axgbe_dev_mac_addr_set,
+	.mac_addr_add         = axgbe_dev_mac_addr_add,
+	.mac_addr_remove      = axgbe_dev_mac_addr_remove,
+	.set_mc_addr_list     = axgbe_dev_set_mc_addr_list,
 	.link_update          = axgbe_dev_link_update,
 	.get_reg	      = axgbe_dev_get_regs,
 	.stats_get            = axgbe_dev_stats_get,
@@ -380,6 +394,74 @@ axgbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	if (!AXGMAC_IOREAD_BITS(pdata, MAC_PFR, PM))
 		return 0;
 	AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, PM, 0);
+
+	return 0;
+}
+
+static int
+axgbe_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	/* Set Default MAC Addr */
+	axgbe_set_mac_addn_addr(pdata, (u8 *)mac_addr, 0);
+
+	return 0;
+}
+
+static int
+axgbe_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
+			      uint32_t index, uint32_t pool __rte_unused)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
+
+	if (index > hw_feat->addn_mac) {
+		PMD_DRV_LOG(ERR, "Invalid Index %d\n", index);
+		return -EINVAL;
+	}
+	axgbe_set_mac_addn_addr(pdata, (u8 *)mac_addr, index);
+	return 0;
+}
+
+static void
+axgbe_dev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
+
+	if (index > hw_feat->addn_mac) {
+		PMD_DRV_LOG(ERR, "Invalid Index %d\n", index);
+		return;
+	}
+	axgbe_set_mac_addn_addr(pdata, NULL, index);
+}
+
+static int
+axgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+				      struct rte_ether_addr *mc_addr_set,
+				      uint32_t nb_mc_addr)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
+	uint32_t index = 1; /* 0 is always default mac */
+	uint32_t i;
+
+	if (nb_mc_addr > hw_feat->addn_mac) {
+		PMD_DRV_LOG(ERR, "Invalid Index %d\n", nb_mc_addr);
+		return -EINVAL;
+	}
+
+	/* clear unicast addresses */
+	for (i = 1; i < hw_feat->addn_mac; i++) {
+		if (rte_is_zero_ether_addr(&dev->data->mac_addrs[i]))
+			continue;
+		memset(&dev->data->mac_addrs[i], 0,
+		       sizeof(struct rte_ether_addr));
+	}
+
+	while (nb_mc_addr--)
+		axgbe_set_mac_addn_addr(pdata, (u8 *)mc_addr_set++, index++);
 
 	return 0;
 }
@@ -823,7 +905,7 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = pdata->tx_ring_count;
 	dev_info->min_rx_bufsize = AXGBE_RX_MIN_BUF_SIZE;
 	dev_info->max_rx_pktlen = AXGBE_RX_MAX_BUF_SIZE;
-	dev_info->max_mac_addrs = AXGBE_MAX_MAC_ADDRS;
+	dev_info->max_mac_addrs = pdata->hw_feat.addn_mac + 1;
 	dev_info->speed_capa =  ETH_LINK_SPEED_10G;
 
 	dev_info->rx_offload_capa =
@@ -1060,6 +1142,7 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	struct axgbe_port *pdata;
 	struct rte_pci_device *pci_dev;
 	uint32_t reg, mac_lo, mac_hi;
+	uint32_t len;
 	int ret;
 
 	eth_dev->dev_ops = &axgbe_eth_dev_ops;
@@ -1128,12 +1211,13 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	pdata->mac_addr.addr_bytes[4] = mac_hi & 0xff;
 	pdata->mac_addr.addr_bytes[5] = (mac_hi >> 8)  &  0xff;
 
-	eth_dev->data->mac_addrs = rte_zmalloc("axgbe_mac_addr",
-					       RTE_ETHER_ADDR_LEN, 0);
+	len = RTE_ETHER_ADDR_LEN * AXGBE_MAX_MAC_ADDRS;
+	eth_dev->data->mac_addrs = rte_zmalloc("axgbe_mac_addr", len, 0);
+
 	if (!eth_dev->data->mac_addrs) {
 		PMD_INIT_LOG(ERR,
-			     "Failed to alloc %u bytes needed to store MAC addr tbl",
-			     RTE_ETHER_ADDR_LEN);
+			     "Failed to alloc %u bytes needed to "
+			     "store MAC addresses", len);
 		return -ENOMEM;
 	}
 
