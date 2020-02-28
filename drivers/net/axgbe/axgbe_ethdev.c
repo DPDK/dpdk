@@ -30,6 +30,11 @@ static void axgbe_dev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 static int axgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
+static int axgbe_dev_uc_hash_table_set(struct rte_eth_dev *dev,
+				       struct rte_ether_addr *mac_addr,
+				       uint8_t add);
+static int axgbe_dev_uc_all_hash_table_set(struct rte_eth_dev *dev,
+					   uint8_t add);
 static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 				 int wait_to_complete);
 static int axgbe_dev_get_regs(struct rte_eth_dev *dev,
@@ -174,6 +179,8 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.mac_addr_add         = axgbe_dev_mac_addr_add,
 	.mac_addr_remove      = axgbe_dev_mac_addr_remove,
 	.set_mc_addr_list     = axgbe_dev_set_mc_addr_list,
+	.uc_hash_table_set    = axgbe_dev_uc_hash_table_set,
+	.uc_all_hash_table_set = axgbe_dev_uc_all_hash_table_set,
 	.link_update          = axgbe_dev_link_update,
 	.get_reg	      = axgbe_dev_get_regs,
 	.stats_get            = axgbe_dev_stats_get,
@@ -463,6 +470,65 @@ axgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 	while (nb_mc_addr--)
 		axgbe_set_mac_addn_addr(pdata, (u8 *)mc_addr_set++, index++);
 
+	return 0;
+}
+
+static int
+axgbe_dev_uc_hash_table_set(struct rte_eth_dev *dev,
+			    struct rte_ether_addr *mac_addr, uint8_t add)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
+
+	if (!hw_feat->hash_table_size) {
+		PMD_DRV_LOG(ERR, "MAC Hash Table not supported\n");
+		return -ENOTSUP;
+	}
+
+	axgbe_set_mac_hash_table(pdata, (u8 *)mac_addr, add);
+
+	if (pdata->uc_hash_mac_addr > 0) {
+		AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, HPF, 1);
+		AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, HUC, 1);
+	} else {
+		AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, HPF, 0);
+		AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, HUC, 0);
+	}
+	return 0;
+}
+
+static int
+axgbe_dev_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t add)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
+	uint32_t index;
+
+	if (!hw_feat->hash_table_size) {
+		PMD_DRV_LOG(ERR, "MAC Hash Table not supported\n");
+		return -ENOTSUP;
+	}
+
+	for (index = 0; index < pdata->hash_table_count; index++) {
+		if (add)
+			pdata->uc_hash_table[index] = ~0;
+		else
+			pdata->uc_hash_table[index] = 0;
+
+		PMD_DRV_LOG(DEBUG, "%s MAC hash table at Index %#x\n",
+			    add ? "set" : "clear", index);
+
+		AXGMAC_IOWRITE(pdata, MAC_HTR(index),
+			       pdata->uc_hash_table[index]);
+	}
+
+	if (add) {
+		AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, HPF, 1);
+		AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, HUC, 1);
+	} else {
+		AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, HPF, 0);
+		AXGMAC_IOWRITE_BITS(pdata, MAC_PFR, HUC, 0);
+	}
 	return 0;
 }
 
@@ -906,6 +972,7 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = AXGBE_RX_MIN_BUF_SIZE;
 	dev_info->max_rx_pktlen = AXGBE_RX_MAX_BUF_SIZE;
 	dev_info->max_mac_addrs = pdata->hw_feat.addn_mac + 1;
+	dev_info->max_hash_mac_addrs = pdata->hw_feat.hash_table_size;
 	dev_info->speed_capa =  ETH_LINK_SPEED_10G;
 
 	dev_info->rx_offload_capa =
@@ -1217,6 +1284,18 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	if (!eth_dev->data->mac_addrs) {
 		PMD_INIT_LOG(ERR,
 			     "Failed to alloc %u bytes needed to "
+			     "store MAC addresses", len);
+		return -ENOMEM;
+	}
+
+	/* Allocate memory for storing hash filter MAC addresses */
+	len = RTE_ETHER_ADDR_LEN * AXGBE_MAX_HASH_MAC_ADDRS;
+	eth_dev->data->hash_mac_addrs = rte_zmalloc("axgbe_hash_mac_addr",
+						    len, 0);
+
+	if (eth_dev->data->hash_mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate %d bytes needed to "
 			     "store MAC addresses", len);
 		return -ENOMEM;
 	}

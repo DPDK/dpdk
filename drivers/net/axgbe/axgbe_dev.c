@@ -1008,6 +1008,50 @@ static void axgbe_enable_mtl_interrupts(struct axgbe_port *pdata)
 	}
 }
 
+static uint32_t bitrev32(uint32_t x)
+{
+	x = (x >> 16) | (x << 16);
+	x = (((x & 0xff00ff00) >> 8) | ((x & 0x00ff00ff) << 8));
+	x = (((x & 0xf0f0f0f0) >> 4) | ((x & 0x0f0f0f0f) << 4));
+	x = (((x & 0xcccccccc) >> 2) | ((x & 0x33333333) << 2));
+	x = (((x & 0xaaaaaaaa) >> 1) | ((x & 0x55555555) << 1));
+	return x;
+}
+
+static uint32_t crc32_le(uint32_t crc, uint8_t *p, uint32_t len)
+{
+	int i;
+	while (len--) {
+		crc ^= *p++;
+		for (i = 0; i < 8; i++)
+			crc = (crc >> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+	}
+	return crc;
+}
+
+void axgbe_set_mac_hash_table(struct axgbe_port *pdata, u8 *addr, bool add)
+{
+	uint32_t crc, htable_index, htable_bitmask;
+
+	crc = bitrev32(~crc32_le(~0, addr, RTE_ETHER_ADDR_LEN));
+	crc >>= pdata->hash_table_shift;
+	htable_index = crc >> 5;
+	htable_bitmask = 1 << (crc & 0x1f);
+
+	if (add) {
+		pdata->uc_hash_table[htable_index] |= htable_bitmask;
+		pdata->uc_hash_mac_addr++;
+	} else {
+		pdata->uc_hash_table[htable_index] &= ~htable_bitmask;
+		pdata->uc_hash_mac_addr--;
+	}
+	PMD_DRV_LOG(DEBUG, "%s MAC hash table Bit %d at Index %#x\n",
+		    add ? "set" : "clear", (crc & 0x1f), htable_index);
+
+	AXGMAC_IOWRITE(pdata, MAC_HTR(htable_index),
+		       pdata->uc_hash_table[htable_index]);
+}
+
 void axgbe_set_mac_addn_addr(struct axgbe_port *pdata, u8 *addr, uint32_t index)
 {
 	unsigned int mac_addr_hi, mac_addr_lo;
@@ -1049,6 +1093,21 @@ static int axgbe_set_mac_address(struct axgbe_port *pdata, u8 *addr)
 	AXGMAC_IOWRITE(pdata, MAC_MACA0LR, mac_addr_lo);
 
 	return 0;
+}
+
+static void axgbe_config_mac_hash_table(struct axgbe_port *pdata)
+{
+	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
+
+	pdata->hash_table_shift = 0;
+	pdata->hash_table_count = 0;
+	pdata->uc_hash_mac_addr = 0;
+	memset(pdata->uc_hash_table, 0, sizeof(pdata->uc_hash_table));
+
+	if (hw_feat->hash_table_size) {
+		pdata->hash_table_shift = 26 - (hw_feat->hash_table_size >> 7);
+		pdata->hash_table_count = hw_feat->hash_table_size / 32;
+	}
 }
 
 static void axgbe_config_mac_address(struct axgbe_port *pdata)
@@ -1129,6 +1188,7 @@ static int axgbe_init(struct axgbe_port *pdata)
 	axgbe_enable_mtl_interrupts(pdata);
 
 	/* Initialize MAC related features */
+	axgbe_config_mac_hash_table(pdata);
 	axgbe_config_mac_address(pdata);
 	axgbe_config_jumbo_enable(pdata);
 	axgbe_config_flow_control(pdata);
