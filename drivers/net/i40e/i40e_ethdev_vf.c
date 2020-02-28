@@ -2191,6 +2191,8 @@ i40evf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	ret = i40evf_config_promisc(dev, 1, vf->promisc_multicast_enabled);
 	if (ret == 0)
 		vf->promisc_unicast_enabled = TRUE;
+	else if (ret == I40E_NOT_SUPPORTED)
+		ret = -ENOTSUP;
 	else
 		ret = -EAGAIN;
 
@@ -2206,6 +2208,8 @@ i40evf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	ret = i40evf_config_promisc(dev, 0, vf->promisc_multicast_enabled);
 	if (ret == 0)
 		vf->promisc_unicast_enabled = FALSE;
+	else if (ret == I40E_NOT_SUPPORTED)
+		ret = -ENOTSUP;
 	else
 		ret = -EAGAIN;
 
@@ -2221,6 +2225,8 @@ i40evf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	ret = i40evf_config_promisc(dev, vf->promisc_unicast_enabled, 1);
 	if (ret == 0)
 		vf->promisc_multicast_enabled = TRUE;
+	else if (ret == I40E_NOT_SUPPORTED)
+		ret = -ENOTSUP;
 	else
 		ret = -EAGAIN;
 
@@ -2236,6 +2242,8 @@ i40evf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	ret = i40evf_config_promisc(dev, vf->promisc_unicast_enabled, 0);
 	if (ret == 0)
 		vf->promisc_multicast_enabled = FALSE;
+	else if (ret == I40E_NOT_SUPPORTED)
+		ret = -ENOTSUP;
 	else
 		ret = -EAGAIN;
 
