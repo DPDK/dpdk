@@ -869,7 +869,7 @@ static int hinic_func_to_func_init(struct hinic_hwdev *hwdev)
 
 	err = alloc_mbox_info(func_to_func->mbox_resp);
 	if (err) {
-		PMD_DRV_LOG(ERR, "Allocating memory for mailbox responsing failed");
+		PMD_DRV_LOG(ERR, "Allocating memory for mailbox responding failed");
 		goto alloc_mbox_for_resp_err;
 	}
 

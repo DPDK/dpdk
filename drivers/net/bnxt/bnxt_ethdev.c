@@ -1752,7 +1752,7 @@ static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
 		}
 		if (hash_types) {
 			PMD_DRV_LOG(ERR,
-				"Unknwon RSS config from firmware (%08x), RSS disabled",
+				"Unknown RSS config from firmware (%08x), RSS disabled",
 				vnic->hash_type);
 			return -ENOTSUP;
 		}

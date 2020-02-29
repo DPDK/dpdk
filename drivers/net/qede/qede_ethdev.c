@@ -1100,7 +1100,7 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 		qede_reset_queue_stats(qdev, true);
 
 	/* Newer SR-IOV PF driver expects RX/TX queues to be started before
-	 * enabling RSS. Hence RSS configuration is deferred upto this point.
+	 * enabling RSS. Hence RSS configuration is deferred up to this point.
 	 * Also, we would like to retain similar behavior in PF case, so we
 	 * don't do PF/VF specific check here.
 	 */

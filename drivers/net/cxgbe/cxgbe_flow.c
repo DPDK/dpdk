@@ -233,7 +233,7 @@ ch_rte_parsetype_port(const void *dmask, const struct rte_flow_item *item,
 	if (val->index > 0x7)
 		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
-					  "port index upto 0x7 is supported");
+					  "port index up to 0x7 is supported");
 
 	CXGBE_FILL_FS(val->index, mask->index, iport);
 

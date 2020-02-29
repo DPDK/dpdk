@@ -1850,13 +1850,13 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 	key_iova = (size_t)rte_malloc(NULL, 256, 64);
 	if (!key_iova) {
 		DPAA2_PMD_ERR(
-			"Memory allocation failure for rule configration\n");
+			"Memory allocation failure for rule configuration\n");
 		goto mem_failure;
 	}
 	mask_iova = (size_t)rte_malloc(NULL, 256, 64);
 	if (!mask_iova) {
 		DPAA2_PMD_ERR(
-			"Memory allocation failure for rule configration\n");
+			"Memory allocation failure for rule configuration\n");
 		goto mem_failure;
 	}
 

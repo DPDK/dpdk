@@ -4850,7 +4850,7 @@ send_loop:
 	/*
 	 * Calculate the number of available resources - elts and WQEs.
 	 * There are two possible different scenarios:
-	 * - no data inlining into WQEs, one WQEBB may contains upto
+	 * - no data inlining into WQEs, one WQEBB may contains up to
 	 *   four packets, in this case elts become scarce resource
 	 * - data inlining into WQEs, one packet may require multiple
 	 *   WQEBBs, the WQEs become the limiting factor.

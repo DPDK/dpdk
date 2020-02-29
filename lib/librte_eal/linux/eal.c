@@ -1084,7 +1084,7 @@ rte_eal_init(int argc, char **argv)
 #if defined(RTE_LIBRTE_KNI) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 			} else if (rte_eal_check_module("rte_kni") == 1) {
 				iova_mode = RTE_IOVA_PA;
-				RTE_LOG(DEBUG, EAL, "KNI is loaded, selecting IOVA as PA mode for better KNI perfomance.\n");
+				RTE_LOG(DEBUG, EAL, "KNI is loaded, selecting IOVA as PA mode for better KNI performance.\n");
 #endif
 			} else if (is_iommu_enabled()) {
 				/* we have an IOMMU, pick IOVA as VA mode */

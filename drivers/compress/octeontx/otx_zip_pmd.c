@@ -406,7 +406,7 @@ zip_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 
 	qp->name = name;
 
-	/* Create completion queue upto max_inflight_ops */
+	/* Create completion queue up to max_inflight_ops */
 	qp->processed_pkts = zip_pmd_qp_create_processed_pkts_ring(qp,
 						max_inflight_ops, socket_id);
 	if (qp->processed_pkts == NULL)

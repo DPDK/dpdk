@@ -1157,7 +1157,7 @@ test_refcnt_mbuf(void)
 		tref += refcnt_lcore[slave];
 
 	if (tref != refcnt_lcore[master])
-		rte_panic("refernced mbufs: %u, freed mbufs: %u\n",
+		rte_panic("referenced mbufs: %u, freed mbufs: %u\n",
 		          tref, refcnt_lcore[master]);
 
 	rte_mempool_dump(stdout, refcnt_pool);

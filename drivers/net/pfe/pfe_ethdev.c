@@ -13,7 +13,7 @@
 #include "pfe_logs.h"
 #include "pfe_mod.h"
 
-#define PFE_MAX_MACS 1 /*we can support upto 4 MACs per IF*/
+#define PFE_MAX_MACS 1 /* we can support up to 4 MACs per IF */
 #define PFE_VDEV_GEM_ID_ARG	"intf"
 
 struct pfe_vdev_init_params {

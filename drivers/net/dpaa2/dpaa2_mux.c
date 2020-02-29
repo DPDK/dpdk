@@ -84,7 +84,7 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 			   (2 * DIST_PARAM_IOVA_SIZE), RTE_CACHE_LINE_SIZE);
 	if (!flow) {
 		DPAA2_PMD_ERR(
-			"Memory allocation failure for rule configration\n");
+			"Memory allocation failure for rule configuration\n");
 		goto creation_error;
 	}
 	key_iova = (void *)((size_t)flow + sizeof(struct rte_flow));

@@ -95,7 +95,7 @@ static void cmd_help_brief_parsed(__rte_unused void *parsed_result,
 		"    help ports                      : Configuring ports.\n"
 		"    help registers                  : Reading and setting port registers.\n"
 		"    help filters                    : Filters configuration help.\n"
-		"    help traffic_management         : Traffic Management commmands.\n"
+		"    help traffic_management         : Traffic Management commands.\n"
 		"    help devices                    : Device related cmds.\n"
 		"    help all                        : All of the above sections.\n\n"
 	);
@@ -5150,7 +5150,7 @@ cmd_gso_size_parsed(void *parsed_result,
 
 	if (test_done == 0) {
 		printf("Before setting GSO segsz, please first"
-				" stop fowarding\n");
+				" stop forwarding\n");
 		return;
 	}
 

@@ -115,7 +115,7 @@ struct rte_ipsec_sa {
 	 * sqn and replay window
 	 * In case of SA handled by multiple threads *sqn* cacheline
 	 * could be shared by multiple cores.
-	 * To minimise perfomance impact, we try to locate in a separate
+	 * To minimise performance impact, we try to locate in a separate
 	 * place from other frequently accesed data.
 	 */
 	union {
