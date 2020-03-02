@@ -37,3 +37,7 @@ Runtime Config Options
 
    $RTE_TARGET/app/testpmd -l 0-3 -n 4 --vdev "net_null0,size=256" -- -i
 
+- ``no-rx`` [optional, default disabled]
+
+ Makes PMD more like ``/dev/null``. On Rx no packets received, on Tx all packets are freed.
+ This option can't co-exist with ``copy`` option.

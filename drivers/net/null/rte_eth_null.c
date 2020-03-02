@@ -14,13 +14,16 @@
 
 #define ETH_NULL_PACKET_SIZE_ARG	"size"
 #define ETH_NULL_PACKET_COPY_ARG	"copy"
+#define ETH_NULL_PACKET_NO_RX_ARG	"no-rx"
 
 static unsigned int default_packet_size = 64;
 static unsigned int default_packet_copy;
+static unsigned int default_no_rx;
 
 static const char *valid_arguments[] = {
 	ETH_NULL_PACKET_SIZE_ARG,
 	ETH_NULL_PACKET_COPY_ARG,
+	ETH_NULL_PACKET_NO_RX_ARG,
 	NULL
 };
 
@@ -39,11 +42,13 @@ struct null_queue {
 struct pmd_options {
 	unsigned int packet_copy;
 	unsigned int packet_size;
+	unsigned int no_rx;
 };
 
 struct pmd_internals {
 	unsigned int packet_size;
 	unsigned int packet_copy;
+	unsigned int no_rx;
 	uint16_t port_id;
 
 	struct null_queue rx_null_queues[RTE_MAX_QUEUES_PER_PORT];
@@ -124,6 +129,13 @@ eth_null_copy_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	rte_atomic64_add(&(h->rx_pkts), i);
 
 	return i;
+}
+
+static uint16_t
+eth_null_no_rx(void *q __rte_unused, struct rte_mbuf **bufs __rte_unused,
+		uint16_t nb_bufs __rte_unused)
+{
+	return 0;
 }
 
 static uint16_t
@@ -504,6 +516,7 @@ eth_dev_null_create(struct rte_vdev_device *dev, struct pmd_options *args)
 	internals = eth_dev->data->dev_private;
 	internals->packet_size = args->packet_size;
 	internals->packet_copy = args->packet_copy;
+	internals->no_rx = args->no_rx;
 	internals->port_id = eth_dev->data->port_id;
 	rte_eth_random_addr(internals->eth_addr.addr_bytes);
 
@@ -526,6 +539,9 @@ eth_dev_null_create(struct rte_vdev_device *dev, struct pmd_options *args)
 	if (internals->packet_copy) {
 		eth_dev->rx_pkt_burst = eth_null_copy_rx;
 		eth_dev->tx_pkt_burst = eth_null_copy_tx;
+	} else if (internals->no_rx) {
+		eth_dev->rx_pkt_burst = eth_null_no_rx;
+		eth_dev->tx_pkt_burst = eth_null_tx;
 	} else {
 		eth_dev->rx_pkt_burst = eth_null_rx;
 		eth_dev->tx_pkt_burst = eth_null_tx;
@@ -570,12 +586,31 @@ get_packet_copy_arg(const char *key __rte_unused,
 }
 
 static int
+get_packet_no_rx_arg(const char *key __rte_unused,
+		const char *value, void *extra_args)
+{
+	const char *a = value;
+	unsigned int no_rx;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	no_rx = (unsigned int)strtoul(a, NULL, 0);
+	if (no_rx != 0 && no_rx != 1)
+		return -1;
+
+	*(unsigned int *)extra_args = no_rx;
+	return 0;
+}
+
+static int
 rte_pmd_null_probe(struct rte_vdev_device *dev)
 {
 	const char *name, *params;
 	struct pmd_options args = {
 		.packet_copy = default_packet_copy,
 		.packet_size = default_packet_size,
+		.no_rx = default_no_rx,
 	};
 	struct rte_kvargs *kvlist = NULL;
 	struct rte_eth_dev *eth_dev;
@@ -602,6 +637,9 @@ rte_pmd_null_probe(struct rte_vdev_device *dev)
 		if (internals->packet_copy) {
 			eth_dev->rx_pkt_burst = eth_null_copy_rx;
 			eth_dev->tx_pkt_burst = eth_null_copy_tx;
+		} else if (internals->no_rx) {
+			eth_dev->rx_pkt_burst = eth_null_no_rx;
+			eth_dev->tx_pkt_burst = eth_null_tx;
 		} else {
 			eth_dev->rx_pkt_burst = eth_null_rx;
 			eth_dev->tx_pkt_burst = eth_null_tx;
@@ -627,6 +665,20 @@ rte_pmd_null_probe(struct rte_vdev_device *dev)
 				&get_packet_copy_arg, &args.packet_copy);
 		if (ret < 0)
 			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist,
+				ETH_NULL_PACKET_NO_RX_ARG,
+				&get_packet_no_rx_arg, &args.no_rx);
+		if (ret < 0)
+			goto free_kvlist;
+
+		if (args.no_rx && args.packet_copy) {
+			PMD_LOG(ERR,
+				"Both %s and %s arguments at the same time not supported",
+				ETH_NULL_PACKET_COPY_ARG,
+				ETH_NULL_PACKET_NO_RX_ARG);
+			goto free_kvlist;
+		}
 	}
 
 	PMD_LOG(INFO, "Configure pmd_null: packet size is %d, "
@@ -675,7 +727,8 @@ RTE_PMD_REGISTER_VDEV(net_null, pmd_null_drv);
 RTE_PMD_REGISTER_ALIAS(net_null, eth_null);
 RTE_PMD_REGISTER_PARAM_STRING(net_null,
 	"size=<int> "
-	"copy=<int>");
+	"copy=<int> "
+	ETH_NULL_PACKET_NO_RX_ARG "=0|1");
 
 RTE_INIT(eth_null_init_log)
 {
