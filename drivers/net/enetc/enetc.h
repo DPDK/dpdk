@@ -53,23 +53,23 @@ struct enetc_swbd {
 };
 
 struct enetc_bdr {
-	struct rte_eth_dev *ndev;
-	struct rte_mempool *mb_pool;   /* mbuf pool to populate RX ring. */
 	void *bd_base;			/* points to Rx or Tx BD ring */
+	struct enetc_swbd *q_swbd;
 	union {
 		void *tcir;
 		void *rcir;
 	};
-	uint16_t index;
 	int bd_count; /* # of BDs */
 	int next_to_use;
 	int next_to_clean;
-	struct enetc_swbd *q_swbd;
+	uint16_t index;
+	uint8_t	crc_len; /* 0 if CRC stripped, 4 otherwise */
 	union {
 		void *tcisr; /* Tx */
 		int next_to_alloc; /* Rx */
 	};
-	uint8_t	crc_len; /* 0 if CRC stripped, 4 otherwise */
+	struct rte_mempool *mb_pool;   /* mbuf pool to populate RX ring. */
+	struct rte_eth_dev *ndev;
 };
 
 /*
