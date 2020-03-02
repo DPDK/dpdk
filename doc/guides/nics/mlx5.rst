@@ -383,6 +383,32 @@ Run-time configuration
 
 - **ethtool** operations on related kernel interfaces also affect the PMD.
 
+Run as non-root
+^^^^^^^^^^^^^^^
+
+In order to run as a non-root user,
+some capabilities must be granted to the application::
+
+   setcap cap_sys_admin,cap_net_admin,cap_net_raw,cap_ipc_lock+ep <dpdk-app>
+
+Below are the reasons of the need for each capability:
+
+``cap_sys_admin``
+   When using physical addresses (PA mode), with Linux >= 4.0,
+   for access to ``/proc/self/pagemap``.
+
+``cap_net_admin``
+   For device configuration.
+
+``cap_net_raw``
+   For raw ethernet queue allocation through kernel driver.
+
+``cap_ipc_lock``
+   For DMA memory pinning.
+
+Driver options
+^^^^^^^^^^^^^^
+
 - ``rxq_cqe_comp_en`` parameter [int]
 
   A nonzero value enables the compression of CQE on RX side. This feature
