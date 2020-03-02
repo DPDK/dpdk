@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2020 NXP
  */
 
 #include <stdbool.h>
@@ -21,12 +21,24 @@ enetc_clean_tx_ring(struct enetc_bdr *tx_ring)
 {
 	int tx_frm_cnt = 0;
 	struct enetc_swbd *tx_swbd;
-	int i;
+	int i, hwci;
 
 	i = tx_ring->next_to_clean;
 	tx_swbd = &tx_ring->q_swbd[i];
-	while ((int)(enetc_rd_reg(tx_ring->tcisr) &
-	       ENETC_TBCISR_IDX_MASK) != i) {
+
+	hwci = (int)(enetc_rd_reg(tx_ring->tcisr) &
+		     ENETC_TBCISR_IDX_MASK);
+
+	/* we're only reading the CI index once here, which means HW may update
+	 * it while we're doing clean-up.  We could read the register in a loop
+	 * but for now I assume it's OK to leave a few Tx frames for next call.
+	 * The issue with reading the register in a loop is that we're stalling
+	 * here trying to catch up with HW which keeps sending traffic as long
+	 * as it has traffic to send, so in effect we could be waiting here for
+	 * the Tx ring to be drained by HW, instead of us doing Rx in that
+	 * meantime.
+	 */
+	while (i != hwci) {
 		rte_pktmbuf_free(tx_swbd->buffer_addr);
 		tx_swbd->buffer_addr = NULL;
 		tx_swbd++;
