@@ -14,6 +14,8 @@
 #include "enetc.h"
 #include "enetc_logs.h"
 
+#define ENETC_RXBD_BUNDLE 16 /* Number of buffers to allocate at once */
+
 static int
 enetc_clean_tx_ring(struct enetc_bdr *tx_ring)
 {
@@ -107,15 +109,25 @@ enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt)
 {
 	struct enetc_swbd *rx_swbd;
 	union enetc_rx_bd *rxbd;
-	int i, j;
+	int i, j, k = ENETC_RXBD_BUNDLE;
+	struct rte_mbuf *m[ENETC_RXBD_BUNDLE];
+	struct rte_mempool *mb_pool;
 
 	i = rx_ring->next_to_use;
+	mb_pool = rx_ring->mb_pool;
 	rx_swbd = &rx_ring->q_swbd[i];
 	rxbd = ENETC_RXBD(*rx_ring, i);
 	for (j = 0; j < buff_cnt; j++) {
-		rx_swbd->buffer_addr = (void *)(uintptr_t)
-			rte_cpu_to_le_64((uint64_t)(uintptr_t)
-					rte_pktmbuf_alloc(rx_ring->mb_pool));
+		/* bulk alloc for the next up to 8 BDs */
+		if (k == ENETC_RXBD_BUNDLE) {
+			k = 0;
+			int m_cnt = RTE_MIN(buff_cnt - j, ENETC_RXBD_BUNDLE);
+
+			if (rte_pktmbuf_alloc_bulk(mb_pool, m, m_cnt))
+				return -1;
+		}
+
+		rx_swbd->buffer_addr = m[k];
 		rxbd->w.addr = (uint64_t)(uintptr_t)
 			       rx_swbd->buffer_addr->buf_iova +
 			       rx_swbd->buffer_addr->data_off;
@@ -124,6 +136,7 @@ enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt)
 		rx_swbd++;
 		rxbd++;
 		i++;
+		k++;
 		if (unlikely(i == rx_ring->bd_count)) {
 			i = 0;
 			rxbd = ENETC_RXBD(*rx_ring, 0);
