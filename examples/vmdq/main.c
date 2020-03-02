@@ -441,10 +441,11 @@ update_mac_address(struct rte_mbuf *m, unsigned dst_port)
 static void
 sighup_handler(int signum)
 {
-	unsigned q;
-	for (q = 0; q < num_queues; q++) {
-		if (q % (num_queues/num_pools) == 0)
-			printf("\nPool %u: ", q/(num_queues/num_pools));
+	unsigned int q = vmdq_queue_base;
+	for (; q < num_queues; q++) {
+		if ((q - vmdq_queue_base) % (num_vmdq_queues / num_pools) == 0)
+			printf("\nPool %u: ", (q - vmdq_queue_base) /
+			       (num_vmdq_queues / num_pools));
 		printf("%lu ", rxPackets[q]);
 	}
 	printf("\nFinished handling signal %d\n", signum);
