@@ -15,8 +15,8 @@
 #define ETH_NULL_PACKET_SIZE_ARG	"size"
 #define ETH_NULL_PACKET_COPY_ARG	"copy"
 
-static unsigned default_packet_size = 64;
-static unsigned default_packet_copy;
+static unsigned int default_packet_size = 64;
+static unsigned int default_packet_copy;
 
 static const char *valid_arguments[] = {
 	ETH_NULL_PACKET_SIZE_ARG,
@@ -37,8 +37,8 @@ struct null_queue {
 };
 
 struct pmd_internals {
-	unsigned packet_size;
-	unsigned packet_copy;
+	unsigned int packet_size;
+	unsigned int packet_copy;
 	uint16_t port_id;
 
 	struct null_queue rx_null_queues[RTE_MAX_QUEUES_PER_PORT];
@@ -74,7 +74,7 @@ eth_null_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	int i;
 	struct null_queue *h = q;
-	unsigned packet_size;
+	unsigned int packet_size;
 
 	if ((q == NULL) || (bufs == NULL))
 		return 0;
@@ -99,7 +99,7 @@ eth_null_copy_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	int i;
 	struct null_queue *h = q;
-	unsigned packet_size;
+	unsigned int packet_size;
 
 	if ((q == NULL) || (bufs == NULL))
 		return 0;
@@ -143,7 +143,7 @@ eth_null_copy_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	int i;
 	struct null_queue *h = q;
-	unsigned packet_size;
+	unsigned int packet_size;
 
 	if ((q == NULL) || (bufs == NULL))
 		return 0;
@@ -194,7 +194,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 {
 	struct rte_mbuf *dummy_packet;
 	struct pmd_internals *internals;
-	unsigned packet_size;
+	unsigned int packet_size;
 
 	if ((dev == NULL) || (mb_pool == NULL))
 		return -EINVAL;
@@ -228,7 +228,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 {
 	struct rte_mbuf *dummy_packet;
 	struct pmd_internals *internals;
-	unsigned packet_size;
+	unsigned int packet_size;
 
 	if (dev == NULL)
 		return -EINVAL;
@@ -283,7 +283,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 static int
 eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 {
-	unsigned i, num_stats;
+	unsigned int i, num_stats;
 	unsigned long rx_total = 0, tx_total = 0;
 	const struct pmd_internals *internal;
 
@@ -291,7 +291,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 		return -EINVAL;
 
 	internal = dev->data->dev_private;
-	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
+	num_stats = RTE_MIN((unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS,
 			RTE_MIN(dev->data->nb_rx_queues,
 				RTE_DIM(internal->rx_null_queues)));
 	for (i = 0; i < num_stats; i++) {
@@ -300,7 +300,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 		rx_total += igb_stats->q_ipackets[i];
 	}
 
-	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
+	num_stats = RTE_MIN((unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS,
 			RTE_MIN(dev->data->nb_tx_queues,
 				RTE_DIM(internal->tx_null_queues)));
 	for (i = 0; i < num_stats; i++) {
@@ -318,7 +318,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
-	unsigned i;
+	unsigned int i;
 	struct pmd_internals *internal;
 
 	if (dev == NULL)
@@ -463,11 +463,11 @@ static const struct eth_dev_ops ops = {
 
 static int
 eth_dev_null_create(struct rte_vdev_device *dev,
-		unsigned packet_size,
-		unsigned packet_copy)
+		unsigned int packet_size,
+		unsigned int packet_copy)
 {
-	const unsigned nb_rx_queues = 1;
-	const unsigned nb_tx_queues = 1;
+	const unsigned int nb_rx_queues = 1;
+	const unsigned int nb_tx_queues = 1;
 	struct rte_eth_dev_data *data;
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
@@ -537,12 +537,12 @@ get_packet_size_arg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
 	const char *a = value;
-	unsigned *packet_size = extra_args;
+	unsigned int *packet_size = extra_args;
 
 	if ((value == NULL) || (extra_args == NULL))
 		return -EINVAL;
 
-	*packet_size = (unsigned)strtoul(a, NULL, 0);
+	*packet_size = (unsigned int)strtoul(a, NULL, 0);
 	if (*packet_size == UINT_MAX)
 		return -1;
 
@@ -554,12 +554,12 @@ get_packet_copy_arg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
 	const char *a = value;
-	unsigned *packet_copy = extra_args;
+	unsigned int *packet_copy = extra_args;
 
 	if ((value == NULL) || (extra_args == NULL))
 		return -EINVAL;
 
-	*packet_copy = (unsigned)strtoul(a, NULL, 0);
+	*packet_copy = (unsigned int)strtoul(a, NULL, 0);
 	if (*packet_copy == UINT_MAX)
 		return -1;
 
@@ -570,8 +570,8 @@ static int
 rte_pmd_null_probe(struct rte_vdev_device *dev)
 {
 	const char *name, *params;
-	unsigned packet_size = default_packet_size;
-	unsigned packet_copy = default_packet_copy;
+	unsigned int packet_size = default_packet_size;
+	unsigned int packet_copy = default_packet_copy;
 	struct rte_kvargs *kvlist = NULL;
 	struct rte_eth_dev *eth_dev;
 	int ret;
