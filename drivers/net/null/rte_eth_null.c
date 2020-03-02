@@ -610,23 +610,18 @@ rte_pmd_null_probe(struct rte_vdev_device *dev)
 		if (kvlist == NULL)
 			return -1;
 
-		if (rte_kvargs_count(kvlist, ETH_NULL_PACKET_SIZE_ARG) == 1) {
+		ret = rte_kvargs_process(kvlist,
+				ETH_NULL_PACKET_SIZE_ARG,
+				&get_packet_size_arg, &packet_size);
+		if (ret < 0)
+			goto free_kvlist;
 
-			ret = rte_kvargs_process(kvlist,
-					ETH_NULL_PACKET_SIZE_ARG,
-					&get_packet_size_arg, &packet_size);
-			if (ret < 0)
-				goto free_kvlist;
-		}
 
-		if (rte_kvargs_count(kvlist, ETH_NULL_PACKET_COPY_ARG) == 1) {
-
-			ret = rte_kvargs_process(kvlist,
-					ETH_NULL_PACKET_COPY_ARG,
-					&get_packet_copy_arg, &packet_copy);
-			if (ret < 0)
-				goto free_kvlist;
-		}
+		ret = rte_kvargs_process(kvlist,
+				ETH_NULL_PACKET_COPY_ARG,
+				&get_packet_copy_arg, &packet_copy);
+		if (ret < 0)
+			goto free_kvlist;
 	}
 
 	PMD_LOG(INFO, "Configure pmd_null: packet size is %d, "
