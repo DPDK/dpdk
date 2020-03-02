@@ -68,6 +68,10 @@ static int axgbe_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
 static int axgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_pfc_conf *pfc_conf);
+static void axgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo);
+static void axgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo);
 
 struct axgbe_xstats {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -204,6 +208,8 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.flow_ctrl_get        = axgbe_flow_ctrl_get,
 	.flow_ctrl_set        = axgbe_flow_ctrl_set,
 	.priority_flow_ctrl_set = axgbe_priority_flow_ctrl_set,
+	.rxq_info_get                 = axgbe_rxq_info_get,
+	.txq_info_get                 = axgbe_txq_info_get,
 };
 
 static int axgbe_phy_reset(struct axgbe_port *pdata)
@@ -1184,6 +1190,30 @@ axgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 	pdata->phy.rx_pause = pdata->rx_pause;
 
 	return 0;
+}
+
+void
+axgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo)
+{
+	struct   axgbe_rx_queue *rxq;
+
+	rxq = dev->data->rx_queues[queue_id];
+	qinfo->mp = rxq->mb_pool;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_desc;
+	qinfo->conf.rx_free_thresh = rxq->free_thresh;
+}
+
+void
+axgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo)
+{
+	struct  axgbe_tx_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+	qinfo->nb_desc = txq->nb_desc;
+	qinfo->conf.tx_free_thresh = txq->free_thresh;
 }
 
 static void axgbe_get_all_hw_features(struct axgbe_port *pdata)
