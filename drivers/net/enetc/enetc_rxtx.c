@@ -14,6 +14,8 @@
 #include "enetc.h"
 #include "enetc_logs.h"
 
+#define ENETC_CACHE_LINE_RXBDS	(RTE_CACHE_LINE_SIZE / \
+				 sizeof(union enetc_rx_bd))
 #define ENETC_RXBD_BUNDLE 16 /* Number of buffers to allocate at once */
 
 static int
@@ -321,18 +323,37 @@ enetc_clean_rx_ring(struct enetc_bdr *rx_ring,
 		    int work_limit)
 {
 	int rx_frm_cnt = 0;
-	int cleaned_cnt, i;
+	int cleaned_cnt, i, bd_count;
 	struct enetc_swbd *rx_swbd;
+	union enetc_rx_bd *rxbd;
 
-	cleaned_cnt = enetc_bd_unused(rx_ring);
 	/* next descriptor to process */
 	i = rx_ring->next_to_clean;
+	/* next descriptor to process */
+	rxbd = ENETC_RXBD(*rx_ring, i);
+	rte_prefetch0(rxbd);
+	bd_count = rx_ring->bd_count;
+	/* LS1028A does not have platform cache so any software access following
+	 * a hardware write will go directly to DDR.  Latency of such a read is
+	 * in excess of 100 core cycles, so try to prefetch more in advance to
+	 * mitigate this.
+	 * How much is worth prefetching really depends on traffic conditions.
+	 * With congested Rx this could go up to 4 cache lines or so.  But if
+	 * software keeps up with hardware and follows behind Rx PI by a cache
+	 * line or less then it's harmful in terms of performance to cache more.
+	 * We would only prefetch BDs that have yet to be written by ENETC,
+	 * which will have to be evicted again anyway.
+	 */
+	rte_prefetch0(ENETC_RXBD(*rx_ring,
+				 (i + ENETC_CACHE_LINE_RXBDS) % bd_count));
+	rte_prefetch0(ENETC_RXBD(*rx_ring,
+				 (i + ENETC_CACHE_LINE_RXBDS * 2) % bd_count));
+
+	cleaned_cnt = enetc_bd_unused(rx_ring);
 	rx_swbd = &rx_ring->q_swbd[i];
 	while (likely(rx_frm_cnt < work_limit)) {
-		union enetc_rx_bd *rxbd;
 		uint32_t bd_status;
 
-		rxbd = ENETC_RXBD(*rx_ring, i);
 		bd_status = rte_le_to_cpu_32(rxbd->r.lstatus);
 		if (!bd_status)
 			break;
@@ -353,11 +374,18 @@ enetc_clean_rx_ring(struct enetc_bdr *rx_ring,
 			i = 0;
 			rx_swbd = &rx_ring->q_swbd[i];
 		}
+		rxbd = ENETC_RXBD(*rx_ring, i);
+		rte_prefetch0(ENETC_RXBD(*rx_ring,
+					 (i + ENETC_CACHE_LINE_RXBDS) %
+					  bd_count));
+		rte_prefetch0(ENETC_RXBD(*rx_ring,
+					 (i + ENETC_CACHE_LINE_RXBDS * 2) %
+					 bd_count));
 
-		rx_ring->next_to_clean = i;
 		rx_frm_cnt++;
 	}
 
+	rx_ring->next_to_clean = i;
 	enetc_refill_rx_ring(rx_ring, cleaned_cnt);
 
 	return rx_frm_cnt;
