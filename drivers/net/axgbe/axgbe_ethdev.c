@@ -72,6 +72,7 @@ static void axgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);
 static void axgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
+const uint32_t *axgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 
 struct axgbe_xstats {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -210,6 +211,7 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.priority_flow_ctrl_set = axgbe_priority_flow_ctrl_set,
 	.rxq_info_get                 = axgbe_rxq_info_get,
 	.txq_info_get                 = axgbe_txq_info_get,
+	.dev_supported_ptypes_get     = axgbe_dev_supported_ptypes_get,
 };
 
 static int axgbe_phy_reset(struct axgbe_port *pdata)
@@ -1214,6 +1216,41 @@ axgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	txq = dev->data->tx_queues[queue_id];
 	qinfo->nb_desc = txq->nb_desc;
 	qinfo->conf.tx_free_thresh = txq->free_thresh;
+}
+const uint32_t *
+axgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_TIMESYNC,
+		RTE_PTYPE_L2_ETHER_LLDP,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_L4_NONFRAG,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_TUNNEL_GRENAT,
+		RTE_PTYPE_TUNNEL_IP,
+		RTE_PTYPE_INNER_L2_ETHER,
+		RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_FRAG,
+		RTE_PTYPE_INNER_L4_ICMP,
+		RTE_PTYPE_INNER_L4_NONFRAG,
+		RTE_PTYPE_INNER_L4_SCTP,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == axgbe_recv_pkts)
+		return ptypes;
+	return NULL;
 }
 
 static void axgbe_get_all_hw_features(struct axgbe_port *pdata)
