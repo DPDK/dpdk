@@ -14,8 +14,6 @@
 #include "enetc.h"
 #include "enetc_logs.h"
 
-#define ENETC_RXBD_BUNDLE 8 /* Number of BDs to update at once */
-
 static int
 enetc_clean_tx_ring(struct enetc_bdr *tx_ring)
 {
@@ -305,12 +303,6 @@ enetc_clean_rx_ring(struct enetc_bdr *rx_ring,
 		union enetc_rx_bd *rxbd;
 		uint32_t bd_status;
 
-		if (cleaned_cnt >= ENETC_RXBD_BUNDLE) {
-			int count = enetc_refill_rx_ring(rx_ring, cleaned_cnt);
-
-			cleaned_cnt -= count;
-		}
-
 		rxbd = ENETC_RXBD(*rx_ring, i);
 		bd_status = rte_le_to_cpu_32(rxbd->r.lstatus);
 		if (!bd_status)
@@ -336,6 +328,8 @@ enetc_clean_rx_ring(struct enetc_bdr *rx_ring,
 		rx_ring->next_to_clean = i;
 		rx_frm_cnt++;
 	}
+
+	enetc_refill_rx_ring(rx_ring, cleaned_cnt);
 
 	return rx_frm_cnt;
 }
