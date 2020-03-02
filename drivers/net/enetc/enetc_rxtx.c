@@ -23,11 +23,14 @@ enetc_clean_tx_ring(struct enetc_bdr *tx_ring)
 	struct enetc_swbd *tx_swbd;
 	int i, hwci;
 
+	/* we don't need barriers here, we just want a relatively current value
+	 * from HW.
+	 */
+	hwci = (int)(rte_read32_relaxed(tx_ring->tcisr) &
+		     ENETC_TBCISR_IDX_MASK);
+
 	i = tx_ring->next_to_clean;
 	tx_swbd = &tx_ring->q_swbd[i];
-
-	hwci = (int)(enetc_rd_reg(tx_ring->tcisr) &
-		     ENETC_TBCISR_IDX_MASK);
 
 	/* we're only reading the CI index once here, which means HW may update
 	 * it while we're doing clean-up.  We could read the register in a loop
