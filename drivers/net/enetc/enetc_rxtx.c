@@ -76,7 +76,6 @@ enetc_xmit_pkts(void *tx_queue,
 
 	start = 0;
 	while (nb_pkts--) {
-		enetc_clean_tx_ring(tx_ring);
 		tx_ring->q_swbd[i].buffer_addr = tx_pkts[start];
 		txbd = ENETC_TXBD(*tx_ring, i);
 		tx_swbd = &tx_ring->q_swbd[i];
@@ -91,6 +90,14 @@ enetc_xmit_pkts(void *tx_queue,
 		if (unlikely(i == tx_ring->bd_count))
 			i = 0;
 	}
+
+	/* we're only cleaning up the Tx ring here, on the assumption that
+	 * software is slower than hardware and hardware completed sending
+	 * older frames out by now.
+	 * We're also cleaning up the ring before kicking off Tx for the new
+	 * batch to minimize chances of contention on the Tx ring
+	 */
+	enetc_clean_tx_ring(tx_ring);
 
 	tx_ring->next_to_use = i;
 	enetc_wr_reg(tx_ring->tcir, i);
